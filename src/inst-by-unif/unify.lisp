@@ -17,9 +17,8 @@
     (unwind-protect
 	(let ((res (unify trm1 trm2 cs)))
 	  (if (symbolp res) *fail*
-	      (let ((xs (union (union (vars-of trm1)
-				      (vars-of trm2))
-			              (dom subst))))
+	      (let ((xs (remove-duplicates
+			    (append (vars-of trm1) (vars-of trm2) (dom subst)))))
 		(make-subst xs res))))
       (npop-cong-state cs))))
 
