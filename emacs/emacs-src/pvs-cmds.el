@@ -1382,8 +1382,7 @@ that some changes have been made that may invalidate the proof."
 The status-proof-theory command provides a summary of the status of the
 proofs in the current theory in the PVS Status buffer."
   (interactive (complete-theory-name "Proof status for theory named: "))
-  (pvs-send-and-wait (format "(status-proof-theory \"%s\" %s)"
-			 theoryname (and current-prefix-arg t))
+  (pvs-send-and-wait (format "(status-proof-theory \"%s\")" theoryname)
 		     nil (pvs-get-abbreviation 'status-proof-theory)
 		     'dont-care))
 
@@ -1393,8 +1392,7 @@ proofs in the current theory in the PVS Status buffer."
 The status-proof-pvs-file command provides a summary of the status of the
 proofs in the current PVS file in the PVS Status buffer."
   (interactive (list (current-pvs-file)))
-  (pvs-send-and-wait (format "(status-proof-pvs-file \"%s\" %s)"
-			 filename (and current-prefix-arg t))
+  (pvs-send-and-wait (format "(status-proof-pvs-file \"%s\")" filename)
 		     nil (pvs-get-abbreviation 'status-proof-pvs-file)
 		     'dont-care))
 
@@ -1406,8 +1404,7 @@ the proofs of the importchain of the current theory in the PVS Status
 buffer."
   (interactive (complete-theory-name
 		"Proof status for import chain of theory named: "))
-  (pvs-send-and-wait (format "(status-proof-importchain \"%s\" %s)"
-			 theoryname (and current-prefix-arg t))
+  (pvs-send-and-wait (format "(status-proof-importchain \"%s\")" theoryname)
 		     nil (pvs-get-abbreviation 'status-proof-importchain)
 		     'dont-care))
 
