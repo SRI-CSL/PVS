@@ -559,13 +559,10 @@ pvs-strategies files.")
 				 (not (file-equal
 				       (directory-namestring (pvs-file-path dth))
 				       (namestring *pvs-context-path*))))
-			(assert (file-exists-p (pvs-file-path dth)))
-			(setq depname (format nil "~a~a"
-					(lib-ref dth) (filename dth)))
-			(assert (file-exists-p
-				 (format nil "~a~a.pvs"
-				   (libref-to-pathname (libref-directory depname))
-				   (pathname-name depname)))))
+			(let ((lib-ref (get-dependent-file-lib-ref
+					(lib-ref dth))))
+			  (setq depname (format nil "~a~a"
+					  lib-ref (filename dth)))))
 		      (pushnew depname depfiles
 			       :test #'(lambda (x y)
 					 (or (equal x filename)
@@ -574,6 +571,18 @@ pvs-strategies files.")
 	(let ((entry (get-context-file-entry filename)))
 	  (when entry
 	    (mapcar #'string (delete-if #'null (ce-dependencies entry))))))))
+
+;;; Given a lib-ref from a library theory (that is relative to the
+;;; *pvs-current-context-path*), return a lib-ref relative to the
+;;; *pvs-context-path*, which is were we are currently saving the
+;;; .pvscontext file.
+(defun get-dependent-file-lib-ref (lib-ref)
+  (if (or (eq *pvs-current-context-path* *pvs-context-path*)
+	  (not (member (char lib-ref 0) '(#\/ #\. #\~))))
+      lib-ref
+      (let ((lib-path (merge-pathnames lib-ref *pvs-current-context-path*)))
+	(assert (file-exists-p lib-path))
+	(relative-path lib-path *pvs-context-path*))))
 
 (defun circular-file-dependencies (filename)
   (let ((deps (assoc filename *circular-file-dependencies* :test #'equal)))
