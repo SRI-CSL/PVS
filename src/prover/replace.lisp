@@ -457,17 +457,15 @@
 	 (*bound-variables* (if (dep-binding? (domain expr))
 				(cons (domain expr) *bound-variables*)
 				*bound-variables*))
-	 (nrng (replace-expr* lhs rhs (range expr) nil)))
-    (if (eq ndom (domain expr))
-	(lcopy expr 'range nrng
-	       'print-type (when (eq nrng (range expr))
-			     (replace-expr* lhs rhs (print-type expr) nil)))
-	(if (dep-binding? (domain expr))
-	    (lcopy expr
-	      'domain ndom
-	      'range (substit nrng (acons (domain expr) ndom nil))
-	      'print-type nil)
-	    (lcopy expr 'domain ndom 'range nrng 'print-type nil)))))
+	 (srng (if (or (not (binding? ndom))
+		       (eq ndom (domain expr)))
+		   (range expr)
+		   (substit (range expr) (acons (domain expr) ndom nil))))
+	 (nrng (replace-expr* lhs rhs srng nil))
+	 (ptype (when (and (eq ndom (domain expr))
+			   (eq nrng (range expr)))
+		  (replace-expr* lhs rhs (print-type expr) nil))))
+    (lcopy expr 'domain ndom 'range nrng 'print-type ptype)))
 
 (defmethod replace-expr* (lhs rhs (expr tupletype) lastopinfix?)
   (let ((ntypes (replace-expr-types lhs rhs (types expr))))
