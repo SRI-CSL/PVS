@@ -746,16 +746,24 @@
   (subtype-wrt?* type1 type2 reltype bindings))
 
 (defmethod subtype-wrt?* ((te1 type-expr) (te2 type-expr) reltype bindings)
+  (declare (ignore reltype bindings))
+  (subtype-of? te1 te2))
+
+(defmethod subtype-wrt?* ((te1 type-expr) (te2 subtype) (reltype subtype)
+			  bindings)
   (or (subtype-of? te1 te2)
-      (and (subtype? te2)
-	   (same-predicate? te2 reltype bindings)
-	   (subtype-of? te1 (supertype te2)))))
+      (and (same-predicate? te2 reltype bindings)
+	   (subtype-wrt?* te1 (supertype te2) (supertype reltype) bindings))))
 
 (defmethod subtype-wrt?* ((te1 dep-binding) (te2 type-expr) reltype bindings)
   (subtype-wrt?* (type te1) te2 reltype bindings))
 
 (defmethod subtype-wrt?* ((te1 type-expr) (te2 dep-binding) reltype bindings)
   (subtype-wrt?* te1 (type te2) reltype bindings))
+
+(defmethod subtype-wrt?* ((te1 type-expr) (te2 type-expr) (reltype dep-binding)
+			  bindings)
+  (subtype-wrt?* te1 te2 (type reltype) bindings))
 
 (defmethod subtype-wrt?* ((te1 funtype) (te2 funtype) reltype bindings)
   (and (subtype-wrt?* (domain te1) (domain te2) (domain reltype) bindings)
