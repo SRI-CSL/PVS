@@ -2371,11 +2371,9 @@ euclidean_division : THEORY
  END euclidean_division
 
 
-%
 %  Divisibility relation
-%  
 %  For integers and natural numbers
-%
+%  Provided by Bruno Dutertre
 divides : THEORY
  BEGIN
   n, m, l, x, y : VAR int
@@ -2480,99 +2478,8 @@ min_nat[T: TYPE FROM nat]: THEORY
  END min_nat
 
 
-common_divisor : THEORY
- BEGIN
-  a, b: VAR nzint
-  c, d, x: VAR posnat
-  n, m: VAR int
-
-  E(a, b) : (nonempty?[posnat]) = { x | EXISTS n, m: x = a * n + b * m }
-
-  gcd(a, b): posnat = min(E(a, b))
-
-  gcd_decomp: LEMMA  EXISTS n, m: gcd(a, b) = a * n + b * m
-
-  gcd_commutes: LEMMA gcd(b, a) = gcd(a, b)
-
-  gcd_divides1: LEMMA divides(gcd(a, b), a)
-
-  gcd_divides2: LEMMA divides(gcd(a, b), b)
-
-  greatest_common_divisor: LEMMA
-     divides(x, a) AND divides(x, b) IMPLIES divides(x, gcd(a, b))
-
-  gcd_def: LEMMA
-     gcd(a, b) = d IFF (divides(d, a) AND divides(d, b) AND 
-        (FORALL x: divides(x, a) AND divides(x, b) IMPLIES divides(x, d)))
-
-  gcd_self: LEMMA gcd(c, c) = c
-
-  gcd_opp1: LEMMA  gcd(-a, b) = gcd(a, b)
-
-  gcd_opp2: LEMMA  gcd(a, -b) = gcd(a, b)
-
-  gcd_one1: LEMMA  gcd(1, a) = 1
-
-  gcd_one2: LEMMA  gcd(a, 1) = 1
-
-  gcd_rule1: LEMMA  a + b * x /= 0 IMPLIES gcd(a + b * x, b) = gcd(a, b)
-
-  gcd_rule2: LEMMA  b + a * x /= 0 IMPLIES gcd(a, b + a * x) = gcd(a, b)
-
-  gcd_multiple1: LEMMA gcd(c * a, c) = c
-
-  gcd_multiple2: LEMMA gcd(c, c * a) = c
-
-  gcd_multiple3: LEMMA gcd(c, b) = c IFF divides(c, b)
-
-  gcd_multiple4: LEMMA gcd(a, c) = c IFF divides(c, a)
-
-  gcd_bound1: LEMMA gcd(c, b) <= c
-
-  gcd_bound2: LEMMA gcd(a, c) <= c
-
- END common_divisor
-
-
-mutual_primes : THEORY
- BEGIN
-  a, b, c: VAR nzint
-  d: VAR posnat
-  n, m: VAR int
-
-  prime(a, b): bool = gcd(a, b) = 1
-
-  mutual_primes_commutes: LEMMA  prime(a, b) IFF prime(b, a)
-
-  mutual_primes_equiv: LEMMA
-      prime(a, b) IFF EXISTS n, m: a * n + b * m = 1
-
-  common_div_of_primes: LEMMA
-      prime(a, b) AND divides(d, a) AND divides(d, b) IMPLIES d=1
-
-  mutual_primes_equiv2: LEMMA
-      prime(a, b) IFF (FORALL d: divides(d, a) AND divides(d, b) IMPLIES d=1)
-
-  divides_prod_prime1: LEMMA
-      divides(c, a * b) AND prime(a, c) IMPLIES divides(c, b)
-
-  divides_prod_prime2: LEMMA
-      divides(c, a * b) AND prime(b, c) IMPLIES divides(c, a)
-
-  common_multiple_primes: LEMMA
-      divides(a, c) AND divides(b, c) AND prime(a, b) 
-          IMPLIES divides(a * b, c)  
-
-  mutual_prime_prod: LEMMA
-      prime(a * b, c) IFF prime(a, c) AND prime(b, c)
-
-  prime_with_one: LEMMA  prime(1, a)
-
-  prime_with_one2: LEMMA  prime(a, 1)
-
- END mutual_primes
-
-
+% Modulo arithmetic defines rem and associated properties
+% Provided by Bruno Dutertre
 modulo_arithmetic : THEORY
  BEGIN
   x, y, z, t, q : VAR int
@@ -2677,18 +2584,6 @@ modulo_arithmetic : THEORY
 
   rem_opposite_elim: LEMMA
      rem(b)(- x) = rem(b)(- y) IFF rem(b)(x) = rem(b)(y)
-
-
-
-  %------------------------------------
-  %  Existence of an inverse modulo b
-  %------------------------------------
-
-  rem_inverse: LEMMA 
-     (EXISTS y : rem(b)(x * y) = 1) IFF x /= 0 AND b /= 1 AND prime(x, b)
-
-  rem_inverse2: LEMMA
-     (EXISTS py: rem(b)(x * py) = 1) IFF  x /= 0 AND b /= 1 AND prime(x, b)
 
   END modulo_arithmetic
 
