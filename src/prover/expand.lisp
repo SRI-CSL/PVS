@@ -335,8 +335,12 @@ list of positive numbers" occurrence)
   (if (and (plusp *max-occurrence*)
 	   (< *max-occurrence* *count-occurrences*))
       expr
-  (lcopy expr
-    'exprs (expand-defn name (exprs expr) occurrence))))
+      (let ((nexprs (expand-defn name (exprs expr) occurrence)))
+	(if (eq nexprs (exprs expr))
+	    expr
+	    (copy expr
+	      'exprs nexprs
+	      'type (mk-tupletype (mapcar #'type nexprs)))))))
 
 (defmethod expand-defn (name (expr record-expr) occurrence)
   (if (and (plusp *max-occurrence*)
