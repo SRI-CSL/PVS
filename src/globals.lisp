@@ -33,7 +33,7 @@
 
 (defparameter *pvs-directories*
   '("" "src" "src/prover" "src/decision-procedures" "src/interface"
-    "src/decision-procedures/polylib" "src/utils" "BDD" "src/interface"
+    "src/utils" "BDD" "src/interface" "src/ics-interface"
     "src/WS1S/lisp" "src/abstraction"
     "src/ground-prover" "src/groundeval" "src/inst-by-unif" ))
 
