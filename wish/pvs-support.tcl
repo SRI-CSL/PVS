@@ -550,7 +550,7 @@ proc show-sequent {proofwin top} {
     update-color $proofwin $path $path.label$label
     
     frame .sequent$label
-    toplevel $seqwin -class Sequent
+    toplevel $seqwin -class Sequent -borderwidth 2
     frame $seqwin.fr
     pack $seqwin.fr -expand yes -fill both
     text $seqwin.fr.text -bd 2 -relief raised -height 2 -width 80 -setgrid true
@@ -764,7 +764,9 @@ proc proof-current {name theory relpath} {
 }
 
 proc clear-message {top} {
-    $top.message config -text ""
+    if [winfo exists $top] {
+	$top.message config -text ""
+    }
 }
 
 proc show-message {top text} {
