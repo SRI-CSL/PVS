@@ -10,6 +10,8 @@
 
 (declaim (notinline canonsig-arith))
 
+(defvar *arithops* '(plus minus difference times divide))
+
 (defun canonsig-arith (term &optional (dont-add-use nil))
   (canonsig term dont-add-use))
 
@@ -41,7 +43,16 @@
      ((null v) t)
      ((symbolp u)
       (cond
-       ((symbolp v)(alphalessp u v))
+       ((symbolp v)
+	;; Added the upcase of interpreted symbols because otherwise
+	;; terms are ordered differently in case-sensitive version
+	(let ((ui (if (memq u interpsyms)
+		      (intern (string-upcase u))
+		      u))
+	      (vi (if (memq v interpsyms)
+		      (intern (string-upcase v))
+		      v)))
+	  (alphalessp ui vi)))
        ((qnumberp v) nil)
        (t t)))
      ((symbolp v)(qnumberp u))
@@ -117,11 +128,11 @@
 	   (denom1 (arg2 u))
 	   (numer 1)
 	   (denom 1))
-      (if (and (consp numer1) (eq (funsym numer1) 'DIVIDE))
+      (if (and (consp numer1) (eq (funsym numer1) 'divide))
 	  (setq numer (arg1 numer1)
 		denom (arg2 numer1))
 	(setq numer numer1))
-      (if (and (consp denom1) (eq (funsym denom1) 'DIVIDE))
+      (if (and (consp denom1) (eq (funsym denom1) 'divide))
 	  (setq numer (sigtimes `(times ,numer ,(arg2 denom1)))
 		denom (sigtimes `(times ,denom ,(arg1 denom1))))
 	(setq denom (sigtimes `(times ,denom ,denom1))))
@@ -180,7 +191,7 @@
 (defun make-inverse-1 (denom)
   (if (is-infinity denom)
       0
-      `(DIVIDE 1 ,denom)))
+      `(divide 1 ,denom)))
 
 (defun is-infinity (sym)
   (eq sym *infinity*))
@@ -223,10 +234,40 @@
     ((equal (caadr ptr) u)             ;found it
      (rplacd (cadr ptr) (qnorm (qplus (cdadr ptr) coef)))
      (return nil))
-    ((arithord u (caadr ptr))          ;Splice it in here.
+    ((nonlinarithord u (caadr ptr))          ;Splice it in here.
        (rplacd ptr
 	       (cons (cons u coef)(cdr ptr)))
        (return nil)))))
+
+(defun nonlinarithord (u v)
+  (if *jmr-mult*
+      (let ((uvars (sortedarithvars u))
+	    (vvars (sortedarithvars v)))
+	(if (and uvars vvars)
+	    (arithordlist uvars vvars)
+	    (arithord u v)))
+      (arithord u v)))
+
+(defun sortedarithvars (term)
+  (sort (remove-duplicates (allarithvarsof term)) #'arithord))
+
+(defun allarithvarsof (term)
+  (cond ((and (consp term)
+	      (memq (car term) *arithops*))
+	 (loop for arg in (cdr term)
+	       nconc (allarithvarsof arg)))
+	((qnumberp term) nil)
+	(t (list term))))
+
+(defun arithordlist (x y)
+  (if (consp y)
+      (if (consp x)
+	  (if (equal x y)
+	      (arithordlist (cdr x)(cdr y))
+	      (arithord x y))
+	  t)
+      nil))
+
 
 (defun collectsum(s)
   (loop for pair in s nconc
@@ -266,17 +307,17 @@
 
 (defun arithsolve(lit)
   (case (funsym lit)				
-    (EQUAL (ncons (normineq lit)))
-    ((LESSEQP GREATEREQP LESSP GREATERP) (ineqsolve lit))
-    (t `((EQUAL ,lit TRUE)))))
+    (equal (ncons (normineq lit)))
+    ((lesseqp greatereqp lessp greaterp) (ineqsolve lit))
+    (t `((equal ,lit true)))))
 
 ; solver for negative predicates over linear arithmetic
 
 (defun arithnsolve(lit)
   (case (funsym lit)				
-    (EQUAL (eqnsolve lit))
-    ((LESSEQP GREATEREQP LESSP GREATERP)(ineqsolve (negineq lit)))
-    (t `((EQUAL ,lit FALSE)))))
+    (equal (eqnsolve lit))
+    ((lesseqp greatereqp lessp greaterp)(ineqsolve (negineq lit)))
+    (t `((equal ,lit false)))))
 
 ; solver for negation of equality over linear arithmetic
 ; patched 6/3/85 by JMR to do retfalse if process returns true
@@ -285,19 +326,19 @@
     (return
      (cond
       ((equal (arg1 lit)(arg2 lit)) (retfalse))
-      ((eq (setq res (newcontext (process lit))) 'FALSE) '(TRUE))
-      ((eq res 'TRUE) (retfalse))
-      (t `((NEQUAL ,(arg1 lit) ,(arg2 lit))))))))
+      ((eq (setq res (newcontext (process lit))) 'false) '(true))
+      ((eq res 'true) (retfalse))
+      (t `((nequal ,(arg1 lit) ,(arg2 lit))))))))
 
 ; returns negation of inequality
 
 (defun negineq(ineq)
   (list
    (case (funsym ineq)				
-       (LESSEQP 'GREATERP)
-       (LESSP   'GREATEREQP)
-       (GREATERP 'LESSEQP)
-       (GREATEREQP 'LESSP))
+       (lesseqp 'greaterp)
+       (lessp   'greatereqp)
+       (greaterp 'lesseqp)
+       (greatereqp 'lessp))
    (arg1 ineq)
    (arg2 ineq)))
 
@@ -309,15 +350,15 @@
     (setq norm (normineq ineq))      ; normalize it
     (return
      (cond
-      ((eq norm 'TRUE) '(TRUE))
-      ((eq norm 'FALSE) (retfalse))
-      ((eq norm 'IDENT) '(TRUE))
-      ((eq (setq res (newcontext (process1 (ncons (negineq norm))))) 'FALSE)
-       '(TRUE)) ;dac 8-28-91: used to be TRUE, but process1 could have returned FALSE
+      ((eq norm 'true) '(true))
+      ((eq norm 'false) (retfalse))
+      ((eq norm 'ident) '(true))
+      ((eq (setq res (newcontext (process1 (ncons (negineq norm))))) 'false)
+       '(true)) ;dac 8-28-91: used to be true, but process1 could have returned false
 		      ; due to using a recently generated pr-union in pr-merge
-                      ; but would have retruned TRUE if it didn't use that pr-union.
+                      ; but would have retruned true if it didn't use that pr-union.
                       ; thus this is safer as the contradiction will be found later.
-      ((eq res 'TRUE) (retfalse))
+      ((eq res 'true) (retfalse))
       (t (ncons norm))))))
 
 
@@ -341,23 +382,23 @@
   (let (lb ub)
     (when (eq (prtype (arg1 ineq1)) 'integer)
       (case (funsym ineq1)
-	    (LESSP (setq ub (if (eq (prtype (arg2 ineq1)) 'integer)
+	    (lessp (setq ub (if (eq (prtype (arg2 ineq1)) 'integer)
 				(sigplus `(plus -1 ,(arg2 ineq1)))
 				(arg2 ineq1))))
-	    (LESSEQP (setq ub (arg2 ineq1)))
-	    (GREATERP (setq lb (if (eq (prtype (arg2 ineq1)) 'integer)
+	    (lesseqp (setq ub (arg2 ineq1)))
+	    (greaterp (setq lb (if (eq (prtype (arg2 ineq1)) 'integer)
 				   (sigplus `(plus 1 ,(arg2 ineq1)))
 				   (arg2 ineq1))))
-	    (GREATEREQP (setq lb (arg2 ineq1))))
+	    (greatereqp (setq lb (arg2 ineq1))))
       (case (funsym ineq2)
-	    (LESSP (setq ub (if (eq (prtype (arg2 ineq2)) 'integer)
+	    (lessp (setq ub (if (eq (prtype (arg2 ineq2)) 'integer)
 				(sigplus `(plus -1 ,(arg2 ineq2)))
 				(arg2 ineq2))))
-	    (LESSEQP (setq ub (arg2 ineq2)))
-	    (GREATERP (setq lb (if (eq (prtype (arg2 ineq2)) 'integer)
+	    (lesseqp (setq ub (arg2 ineq2)))
+	    (greaterp (setq lb (if (eq (prtype (arg2 ineq2)) 'integer)
 				   (sigplus `(plus 1 ,(arg2 ineq2)))
 				   (arg2 ineq2))))
-	    (GREATEREQP (setq lb (arg2 ineq2))))
+	    (greatereqp (setq lb (arg2 ineq2))))
       (let ((dif (sigdifference `(difference ,ub ,lb))))
 	;(break)
 	(when (and (qlesseqp dif *jmr-dist*) (eq (prtype lb) 'integer))
@@ -366,25 +407,25 @@
 (defun make-equals-from-bounds (var lb ub
 				    &optional (dif (sigdifference `(difference ,ub ,lb))))
   (if (qzerop dif)
-      `(EQUAL ,var ,lb)
-    (cons `OR
+      `(equal ,var ,lb)
+    (cons `or
 	  (loop for i from 0 ; to dif
 		until (qgreaterp i dif)
-		collect `(EQUAL ,var ,(sigplus `(plus ,i ,lb)))))))
+		collect `(equal ,var ,(sigplus `(plus ,i ,lb)))))))
 
 ; calculates equalities and inequalities in transitive
 ; closure produced by ineq, adds them to special global ineqpot
 ; supplied by ineqsolve
 
 ;(defun transclosure(ineq)
-;  (push `(EQUAL ,(canonsig ineq) TRUE) ineqpot)
+;  (push `(equal ,(canonsig ineq) true) ineqpot)
 ;  (for chainineq in (chainineqs ineq) do-bind (norm) do
 ;       (setq norm (normineq (residue ineq chainineq)))
 ;       (cond
-;	((eq norm 'TRUE))
-;	((eq norm 'FALSE)(retfalse))
-;	((eq norm 'IDENT)
-;	 (push `(EQUAL ,(arg1 ineq),(arg2 ineq)) ineqpot)
+;	((eq norm 'true))
+;	((eq norm 'false)(retfalse))
+;	((eq norm 'ident)
+;	 (push `(equal ,(arg1 ineq),(arg2 ineq)) ineqpot)
 ;	 (return nil))
 ;	(t (transclosure norm)))))
 
@@ -397,30 +438,30 @@
 ;; INEQPOT SUPPOSED TO BE DETECTED IN ANOTHER WAY?
 ;; MES 8/17/88
 
-(defvar *ineqstack* NIL) ;;;NSH(4/90): a loop detector for transclosure
+(defvar *ineqstack* nil) ;;;NSH(4/90): a loop detector for transclosure
 
 (defun normineqatom (ineq)
   (if (consp ineq)
       (let ((norm (normineq ineq)))
-	(if (eq norm `IDENT)
-	    TRUE
+	(if (eq norm `ident)
+	    true
 	  norm))
     ineq))
 
 (defun normalize-new-eqn (eqn)
-  (normineq `(EQUAL ,(canonsig-arith (arg1 eqn))
+  (normineq `(equal ,(canonsig-arith (arg1 eqn))
 		    ,(canonsig-arith (arg2 eqn)))))
 
 (defun transclosure(ineq)		;(break)
-  (cond ((member ineq *ineqstack* :test #'equal) NIL)
+  (cond ((member ineq *ineqstack* :test #'equal) nil)
 	(t (let* ((*ineqstack* (cons ineq *ineqstack*))
 		  (nrmineq (normineqatom (arithcan ineq)))
-					;(nrmineq-TRUE `(EQUAL ,nrmineq TRUE))
+					;(nrmineq-true `(equal ,nrmineq true))
 		  (nrmineq-unchanged
 		   (or (not (consp nrmineq)) (equal nrmineq ineq))))
-	     (if (eq nrmineq 'FALSE) (retfalse))
+	     (if (eq nrmineq 'false) (retfalse))
 	     (when nrmineq-unchanged
-	       (setq nrmineq `(EQUAL ,nrmineq TRUE)))
+	       (setq nrmineq `(equal ,nrmineq true)))
 	     ;;; 1/28/94: DAC added nrmineq-unchanged so that nrmineq
 	     ;;; would be added to the begginning or end of ineqpot
 	     ;;; correctly. (See notes by DAC and NSH below.)
@@ -443,14 +484,14 @@
 		   (when *tc-dbg* (break "loop"))
 
 		   (cond
-		    ((eq norm 'TRUE)
+		    ((eq norm 'true)
 		     (add-disjunct-of-equals ineq chainineq))
-		    ((eq norm 'FALSE)(retfalse))
-		    ((eq norm 'IDENT)
+		    ((eq norm 'false)(retfalse))
+		    ((eq norm 'ident)
 		     (let ((new-eqn
 			    (if *tc-ehdm-test*
-				`(EQUAL ,(arg1 ineq) ,(arg2 ineq))
-				(normineq `(EQUAL ,(canonsig-arith (arg1 ineq))
+				`(equal ,(arg1 ineq) ,(arg2 ineq))
+				(normineq `(equal ,(canonsig-arith (arg1 ineq))
 						  ,(canonsig-arith (arg2 ineq)))))))
 		       (unless (if *tc-ehdm-test*
 				   (subtermof (arg1 ineq) (arg2 ineq))
@@ -464,13 +505,13 @@
 
 	     (when *tc-dbg* (break "after loop"))
 	     
-	     (when nrmineq-unchanged ;(and (consp nrmineq)(eq (car nrmineq) 'EQUAL))
+	     (when nrmineq-unchanged ;(and (consp nrmineq)(eq (car nrmineq) 'equal))
 	       (push nrmineq ineqpot)
 	       )
 	     ))))
 
 
-; returns list of TRUE ineqs that chain with ineq.  e.g. x < y chains
+; returns list of true ineqs that chain with ineq.  e.g. x < y chains
 ; with x > z
 
 (defun chainineqs(ineq)
@@ -479,25 +520,25 @@
    (loop for u in (use (arg1 ineq))
 	 when (and (oppsensep (funsym ineq)(funsym u))
 		   (equal (arg1 ineq)(arg1 u))
-		   (eq (pr-find u) 'TRUE))
+		   (eq (pr-find u) 'true))
 	 collect u)))
 
 (defun chain-square-ineq (ineq)
-  (when (and (or (eq (funsym ineq) 'LESSEQP) (eq (funsym ineq) 'LESSP))
+  (when (and (or (eq (funsym ineq) 'lesseqp) (eq (funsym ineq) 'lessp))
 	     (consp (arg1 ineq))
-	     (eq (funsym (arg1 ineq)) 'TIMES)
+	     (eq (funsym (arg1 ineq)) 'times)
 	     (equal (arg1 (arg1 ineq))
 		    (arg2 (arg1 ineq)))
 	     (= (length (argsof (arg1 ineq))) 2))
-    `((GREATEREQP ,(arg1 ineq) 0))))
+    `((greatereqp ,(arg1 ineq) 0))))
 
-; returns TRUE if fnsym2 is an inequality operator with sense 
+; returns true if fnsym2 is an inequality operator with sense 
 ; opposite to that of fnsym1
 
 (defun oppsensep(fnsym1 fnsym2)
   (case fnsym1
-    ((LESSEQP LESSP)(or (eq fnsym2 'GREATEREQP)(eq fnsym2 'GREATERP)))
-    ((GREATERP GREATEREQP)(or (eq fnsym2 'LESSEQP)(eq fnsym2 'LESSP)))))
+    ((lesseqp lessp)(or (eq fnsym2 'greatereqp)(eq fnsym2 'greaterp)))
+    ((greaterp greatereqp)(or (eq fnsym2 'lesseqp)(eq fnsym2 'lessp)))))
 
 ; returns the residue obtained by chaining two inequalities with
 ; same first arg and with inequality operators having opposite sense
@@ -505,14 +546,14 @@
 (defun residue(ineq1 ineq2)
   (list 
    (case (funsym ineq2)
-     (LESSP 'GREATERP)
-     (GREATERP 'LESSP)
+     (lessp 'greaterp)
+     (greaterp 'lessp)
      (t (funsym ineq1)))
    (arg2 ineq2)
    (arg2 ineq1)))
 
-; normalizes an equality or inequality, returns TRUE, FALSE, IDENT
-; (for inequals that eval to TRUE), or something of form
+; normalizes an equality or inequality, returns true, false, ident
+; (for inequals that eval to true), or something of form
 ; (fnsym var linearexpr)
 
 
@@ -584,7 +625,7 @@
 							   (pr-find u))) )
 	      (loop for arg in (argsof newterm) do (adduse newterm arg)) ))
 	newterm ))
-     (T term) )))
+     (t term) )))
 
 
 ; if expression dif can be solved, i.e., has a variable v that occurs
@@ -597,12 +638,12 @@
   (cond
    ((listp dif)
     (case (funsym dif)
-      (PLUS (solvableplus dif))
-      (TIMES (solvabletimes dif))
-      (t (setq var dif coef 1) T)))
-   (t (setq var dif coef 1) T)))
+      (plus (solvableplus dif))
+      (times (solvabletimes dif))
+      (t (setq var dif coef 1) t)))
+   (t (setq var dif coef 1) t)))
 
-; solvable for case in which dif is a PLUS expression
+; solvable for case in which dif is a plus expression
 
 (defun solvableplus(dif)
   (loop for term in (argsof dif)
@@ -612,43 +653,43 @@
 			(setq var (varof term) coef (coefof term))
 			(onlyoccurrencep var term dif))))))
 
-; solvable for case in which dif is a TIMES expression
+; solvable for case in which dif is a times expression
 
 (defun solvabletimes(dif)
   (cond
-   ((linearp dif)(setq var (varof dif) coef (coefof dif)) T)))
+   ((linearp dif)(setq var (varof dif) coef (coefof dif)) t)))
 
-; returns T if term has no nonlinear use of times
+; returns t if term has no nonlinear use of times
 
 ;;; 18-Sept-90 DAC: From arith.lisp to change mult to uninterp as far as solving eqns.
 
 (defun linearp (term)
   (or *jmr-mult*
       (cond
-       ((and (listp term)(eq (funsym term) 'TIMES))
+       ((and (listp term)(eq (funsym term) 'times))
 	(and (qnumberp (arg1 term))
 	     (linearp (arg2 term))))
        (t t))))
 
-; returns T if only occurrence of var in PLUS expr l is in term t
+; returns t if only occurrence of var in plus expr l is in term t
 
 (defun onlyoccurrencep(var term l)
   (loop for arg in (argsof l)
 	never (and (not (equal arg term))
 		   (occursin var arg))))
 
-; returns T if var is a variable of term
+; returns t if var is a variable of term
 
 (defun occursin (var term)
   (cond
-   ((and (listp term)(eq (funsym term) 'TIMES))
+   ((and (listp term)(eq (funsym term) 'times))
     (cond
      ((qnumberp (arg1 term))(occursin var (arg2 term)))
      (t (if *jmr-mult*
 	    (or (equal var term)
 		(member-or-div-member var (argsof term)))
 	    (member var (argsof term))))))
-   ((and (listp term)(eq (funsym term) 'DIVIDE))
+   ((and (listp term)(eq (funsym term) 'divide))
     (cond
      ((qnumberp (arg1 term))(interp-subtermof var (arg2 term)))
      (t (or (interp-subtermof var (arg1 term))
@@ -681,26 +722,26 @@
   (cond
    ((qzerop dif)
     (case fnsymbol
-      (EQUAL 'TRUE)
-      ((LESSEQP GREATEREQP) 'IDENT)
-      (t 'FALSE)))
+      (equal 'true)
+      ((lesseqp greatereqp) 'ident)
+      (t 'false)))
    ((qminusp dif)
     (case fnsymbol
-      ((LESSP LESSEQP) 'TRUE)
-      (t  'FALSE)))
+      ((lessp lesseqp) 'true)
+      (t  'false)))
    (t
     (case fnsymbol
-      ((GREATERP GREATEREQP) 'TRUE)
-      (t 'FALSE)))))
+      ((greaterp greatereqp) 'true)
+      (t 'false)))))
 
 ; returns symmetric function symbol for f
 
 (defun antifnsym(fnsym)
   (case fnsym		
-    (LESSEQP 'GREATEREQP)
-    (GREATEREQP 'LESSEQP)
-    (LESSP 'GREATERP)
-    (GREATERP 'LESSP)
+    (lesseqp 'greatereqp)
+    (greatereqp 'lesseqp)
+    (lessp 'greaterp)
+    (greaterp 'lessp)
     (t fnsym)))
 
 ; returns first term of linear form or nil if there isn't one
@@ -709,7 +750,7 @@
 (defun firsttermof(l)
   (cond
    ((qnumberp l) nil)
-   ((and (consp l)(eq (funsym l) 'PLUS))
+   ((and (consp l)(eq (funsym l) 'plus))
     (cond
      ((qnumberp (arg1 l))(arg2 l))
      (t (arg1 l))))
@@ -721,7 +762,7 @@
 (defun varof(term)
   (cond
    ((and (consp term)			
-	 (equal (funsym term) 'TIMES)
+	 (equal (funsym term) 'times)
 	 (qnumberp (arg1 term)))
     (arg2 term))
    (t term)))
@@ -731,7 +772,7 @@
 (defun coefof(term)
   (cond
    ((and (consp term)			
-	 (equal (funsym term) 'TIMES)
+	 (equal (funsym term) 'times)
 	 (qnumberp (arg1 term)))
     (arg1 term))
    (t 1)))
@@ -743,7 +784,7 @@
     (setq fract
 	  (and 
 	   (consp lit)
-	   (eq (prtype (arg1 lit)) 'INTEGER)
+	   (eq (prtype (arg1 lit)) 'integer)
 	   (fractpt (arg2 lit))))
     (return
      (cond
@@ -756,12 +797,12 @@
 
 (defun zerocut(ineq)
   (case (funsym ineq)	
-    (LESSP
-     `(LESSEQP
+    (lessp
+     `(lesseqp
        ,(arg1 ineq)
        ,(sigplus `(plus -1 ,(arg2 ineq)))))
-    (GREATERP
-     `(GREATEREQP
+    (greaterp
+     `(greatereqp
        ,(arg1 ineq)
        ,(sigplus `(plus 1 ,(arg2 ineq)))))
     (t ineq)))
@@ -770,26 +811,26 @@
 
 (defun minuscut(ineq fract)
   (case (funsym ineq)	
-    (EQUAL 'FALSE)
-    ((LESSP LESSEQP)
-     `(LESSEQP
+    (equal 'false)
+    ((lessp lesseqp)
+     `(lesseqp
        ,(arg1 ineq)
        ,(sigplus `(plus ,(qminus (qplus fract 1)) ,(arg2 ineq)))))
     (t
-     `(GREATEREQP ,(arg1 ineq)
+     `(greatereqp ,(arg1 ineq)
 		  ,(sigdifference `(difference ,(arg2 ineq) ,fract))))))
 
 ; performs cut for positive fractional part
 
 (defun poscut(ineq fract)
   (case (funsym ineq)
-    (EQUAL 'FALSE)
-    ((LESSP LESSEQP)
-     `(LESSEQP
+    (equal 'false)
+    ((lessp lesseqp)
+     `(lesseqp
        ,(arg1 ineq)
        ,(sigplus `(plus ,(qminus fract) ,(arg2 ineq)))))
     (t
-     `(GREATEREQP
+     `(greatereqp
        ,(arg1 ineq)
        ,(sigplus `(plus ,(qdifference 1 fract) ,(arg2 ineq)))))))
 
