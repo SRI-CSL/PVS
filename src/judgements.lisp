@@ -875,6 +875,7 @@
   (nreverse preds))
 
 (let ((ignored-type-constraints nil))
+  (pushnew 'clear-ignored-type-constraints *load-prelude-hook*)
   (defun push-ignored-type-constraints (te)
     (push te ignored-type-constraints))
   (defun ignored-type-constraint (type)
