@@ -42,9 +42,6 @@
 	(list (list (make!-lt* (argument arg)))
 	      (list (make!-gt* (argument arg))))
 	(dnf- arg))))
-      
-(defmethod dnf- ((fml expr))
-  (list (list (make!-negation fml))))
 
 (defmethod dnf- ((fml disjunction))
   (dnf-conjunction (dnf- (args1 fml))
