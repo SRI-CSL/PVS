@@ -35,7 +35,8 @@
 ;;; Formula mu_mk_ite_formula (Formula cond, Formula then_part, Formula else_part)
 (ff:defforeign 'mu_mk_curry_application)
 ;;; Formula mu_mk_curry_application (Term R, LIST subs, int curried)
-
+(ff:defforeign 'mu_mk_application)
+;;; Formula mu_mk_application (Term R, LIST subs, int curried)
 (ff:defforeign 'mu_mk_forall) ;; (listvars fml1) always formula
 (ff:defforeign 'mu_mk_exists) ;; (listvars fml1) always formula
 
@@ -75,12 +76,14 @@
 (ff:defforeign 'mu_mk_xor_term) ;; (fml1 fml2)
 
 (ff:defforeign 'get_bdd_var_id) ;; (int)
-
+(ff:defforeign 'get_mu_bool_var_name) ;; (char)
 ;;;;;;;;;;;;;;;;;;;
 ;;;  Lists      ;;;
 ;;;;;;;;;;;;;;;;;;;
 ;; 
+
 (ff:defforeign 'append_cont)
+(ff:defforeign 'empty_list)
 
 ;;;
 ;;; Flags
@@ -94,6 +97,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Main function   ;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (ff:defforeign 'mu_init)
 (ff:defforeign 'mu_quit)
 (ff:defforeign 'modelcheck_formula)
@@ -103,7 +107,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defvar *build-mu-term* nil) ;; t when converting a term and nil when converting a formula
 (defvar *build-rel-var* nil) ;; t when mu_mk_rel_var and nil when mu_mk_bool_var
+(defvar *build-arguments* nil)
 (defvar *build-access-var* nil) ;; t when mu_check_bool_var and nil othrwise.
+;;(defvar *save-bdd-counter* nil) ;; save current bdd index
+
+(defvar *convert-list* nil)
+(defvar *list-of-relational-vars* nil) ;; list of expressions
+(defvar *incl-excl-var-id-indx-pairs*  nil) ;; (bddvarid . index)
 
 
 (addrule 'musimp () ((fnums *)
@@ -129,6 +139,7 @@
 	 (*bdd-counter* *bdd-counter*)
 	 (*recognizer-forms-alist* nil)
          (*mu-subtype-list* nil)
+         (*incl-excl-var-id-indx-pairs* nil)
 	 (sforms (s-forms (current-goal ps)))
 	 (selected-sforms (select-seq sforms fnums))
 	 (remaining-sforms (delete-seq sforms fnums))
@@ -146,10 +157,10 @@
 	 (mu-output (run-pvsmu mu-formula dynamic-ordering?))
 	 (list-of-conjuncts (mu-translate-from-bdd-list  
 			     (bdd_sum_of_cubes mu-output 1)))
-         (lit-list (from-bdd-list-to-pvs-list list-of-conjuncts)))
+         (lit-list (mu-from-bdd-list-to-pvs-list list-of-conjuncts)))
     (mu_quit)
-    (bdd_quit)
-    (add-bdd-subgoals ps sforms lit-list remaining-sforms)
+    (bdd_quit)(setq zozo *pvs-bdd-inclusivity-formulas*)
+    (mu-add-bdd-subgoals ps sforms lit-list remaining-sforms)
     )
   )
 
@@ -157,14 +168,52 @@
 ;; Initialization of hashtables with *true* 
 ;; 
 
+
+(defun mu-from-bdd-list-to-pvs-list (list-of-conjuncts)
+   (init-hash-tables) ;; definition in mu.lisp
+  (let* ((lit-list (mapcar #'(lambda (conj)
+                            (let ((list-conj
+			     (mapcar #'(lambda (lit)
+                                   (let* ((is-list (consp lit))
+                                          (hash-expression 
+				            (if is-list
+					     (gethash (car lit) *bdd-pvs-hash*)
+                                             (gethash lit *bdd-pvs-hash*)))
+                                          (can-not-decode 
+                                             (null hash-expression))
+                                          (pvs-expression
+                                             (if can-not-decode nil
+                                              (if is-list hash-expression 
+                                               (make-negation 
+                                                  hash-expression )))))
+                                    pvs-expression ))
+		      	 conj)))
+                     (if (member nil list-conj) nil list-conj)))
+		   list-of-conjuncts)))
+  (assert (hash-table-p *pvs-bdd-hash*))
+    lit-list)
+)
+
+
+(defun mu-add-bdd-subgoals (ps sforms lit-list remaining-sforms)
+ (let ((can-decode (not (member nil lit-list))))
+   (if can-decode 
+            (add-bdd-subgoals ps sforms lit-list remaining-sforms) 
+           (progn 	
+           (format t "~%Failed to Model check:
+    could not decode binary encodings of scalars.")
+            (values 'X nil nil))))
+)
+
+
 (defun init-bdd-pvs-hash ()
  (setf (gethash *true* *bdd-pvs-hash*) *true*)
  (setf (gethash *false* *bdd-pvs-hash*) *false*) ;; not used
 )
 
+
 (defun init-hash-tables ()
  (init-bdd-pvs-hash)
- (setq zozo *bdd-pvs-hash*)
 )
 
 ;;
@@ -179,12 +228,10 @@
 
 
 (defun run-pvsmu (mu-formula dynamic-ordering?)
-;;   (set_mu_bdd_ordering (if dynamic-ordering? 1 0))
    (set_mu_warnings 0)
    (set_mu_simplify_frontier 1)
    (set_mu_verbose 1)
    (init-hash-tables)
-;;   (pvs-message "goes in for model-check")
    (mu-interpret-formula mu-formula)
  )
 
@@ -264,8 +311,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Convert PVS to MU     ;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
 (defmethod convert-pvs-to-mu* :around ((expr expr))
   (let ((type (type expr)))
     (when (and (subtype? type)
@@ -280,12 +325,28 @@
 	(format t "~%Added constraints: ~a" constraints)))
     (call-next-method)))
 
+;; Hassen 06/15/98
+(defmethod convert-pvs-to-mu* :around ((expr expr))
+  (let ((type (type expr)))
+    (when (and (subtype? type)
+	       (not (member expr *mu-subtype-list* :test #'tc-eq))
+	       (not (assoc expr *pvs-bdd-inclusivity-formulas*
+			   :test #'tc-eq)))
+      (let ((constraints (collect-type-constraints-step expr))
+	    (*mu-subtype-list* (cons expr *mu-subtype-list*)))
+	(loop for x in constraints do
+	      (push (cons expr (convert-pvs-to-mu* x))
+		    *pvs-bdd-inclusivity-formulas*))
+	(format t "~%Added constraints: ~a" constraints)))
+  (call-next-method)))
+
 
 (defmethod convert-pvs-to-mu* ((expr list))
- (if (null expr) (NULL_LIST)
-      (append_cont (convert-pvs-to-mu* (car expr))
-          (convert-pvs-to-mu* (cdr expr)))
-  )
+  (loop for x in expr
+	append (let ((result (convert-pvs-to-mu* x)))
+		(if (listp result)
+		    result
+		    (list result))))
 )
 
 
@@ -360,48 +421,48 @@
 
 (defun convert-pvs-to-mu-binding-expr (expr)
          (let* ((expr-bindings (bindings expr))
-		(expr-bindings
+		(variables-bindings
 		 (mapcar #'make-variable-expr expr-bindings))
 		(old-inclusivities *pvs-bdd-inclusivity-formulas*)
 		(boundvars (let ((*build-access-var* t)) 
-                        (convert-pvs-to-mu* expr-bindings)))
-		(*bound-variables* (append expr-bindings
+                             (lisp-to-c-list
+                       (convert-pvs-to-mu* variables-bindings))))
+		(*bound-variables* (append variables-bindings
 					   *bound-variables*))
-		(new-inclusivities
-		 (ldiff *pvs-bdd-inclusivity-formulas*
-			old-inclusivities))
-		(boundexpr
-		  (convert-pvs-to-mu-formula (expression expr))
+		(new-inclusivities (ldiff *pvs-bdd-inclusivity-formulas*
+		                 	old-inclusivities))
+		(boundexpr (convert-pvs-to-mu-formula (expression expr))
 		))
 	   (setq *pvs-bdd-inclusivity-formulas*  ;;NSH(8.17.95): to collect
-		                            ;;subtypes from inside binding expr.
+		                           ;;subtypes from inside binding expr.
 		 (set-difference *pvs-bdd-inclusivity-formulas*
 				 new-inclusivities
 				 :key #'car
 				 :test #'tc-eq))
       (cond ((forall-expr? expr) 
-                (convert-pvs-to-mu-forall boundvars boundexpr new-inclusivities))
+        (convert-pvs-to-mu-forall  boundvars boundexpr new-inclusivities))
             ((exists-expr? expr) 
-                (convert-pvs-to-mu-exists boundvars boundexpr new-inclusivities))
-            ((lambda-expr? expr) (convert-pvs-to-mu-lambda boundvar boundexpr))
+        (convert-pvs-to-mu-exists  boundvars boundexpr new-inclusivities))
+            ((lambda-expr? expr) 
+       (convert-pvs-to-mu-lambda  boundvars boundexpr))
             ))
 )
 
 
 
 
-(defun convert-pvs-to-mu-forall (expr boundvars boundexpr new-inclusivities)
+(defun convert-pvs-to-mu-forall (boundvars boundexpr new-inclusivities)
   (if new-inclusivities
          (mu_mk_forall  boundvars
-                 (mu-mk-implies
-                    (make-mu-conjunction  (mapcar #'cdr new-inclusivities)) boundexpr))
+                 (mu-mk-implies (make-mu-conjunction 
+                      (mapcar #'cdr new-inclusivities)) boundexpr))
          (mu_mk_forall  boundvars boundexpr)
   ))
 
 
-(defun convert-pvs-to-mu-exists (expr boundvars boundexpr new-inclusivities)
+(defun convert-pvs-to-mu-exists (boundvars boundexpr new-inclusivities)
   (if new-inclusivities
-         (mu_mk_exists (mu_exist) boundvars
+         (mu_mk_exists boundvars
                 (mu-mk-and 
                      (make-mu-conjunction  (mapcar #'cdr new-inclusivities)) boundexpr)) 
          (mu_mk_exists  boundvars boundexpr) 
@@ -449,9 +510,9 @@
 
 (defun convert-pvs-to-mu-branch  (expr)
  (let ((result (assert-test0 (condition expr))))
-	(cond ((eq result (mu-mk-true))
+	(cond ((eq result 'TRUE)
 	       (convert-pvs-to-mu* (then-part expr)))
-	      ((eq result (mu-mk-false))
+	      ((eq result 'FALSE)
 	       (convert-pvs-to-mu* (else-part expr)))
 	      (t 
 	       (let ((fml1 (convert-pvs-to-mu* (condition expr)))
@@ -471,7 +532,8 @@
 
 (defun convert-pvs-to-mu-nu-application  (expr)
       (let* ((exprargs (arguments expr))
-	     (argsfml (convert-pvs-to-mu* exprargs)) 
+	     (argsfml (let ((*build-arguments* t))
+                     (lisp-to-c-list (convert-pvs-to-mu* exprargs))))
 	     (muop (operator expr))
 	     (mu-or-nu (string (id (operator muop))))
 	     (muargs1bindgs (bindings (args1 muop)))
@@ -479,12 +541,12 @@
 	      (append muargs1bindgs
 		      *mu-nu-lambda-bindings-list*))
 	     (muarg1fml (let ((*build-rel-var* t)) 
-                                  (convert-pvs-to-mu*
-			 (mapcar #'make-variable-expr muargs1bindgs))))
+                                 (car (convert-pvs-to-mu*
+			 (mapcar #'make-variable-expr muargs1bindgs)))))
 	     (muarg2expr (expression (args1 muop)))
 	     (muarg2fml (convert-pvs-to-mu-term muarg2expr))
 	     (muexprfml
-               (mu_mk_curry_application
+               (make-mu-application
                       (if (string= mu-or-nu "mu") 
                           (mu_mk_l_fixed_point muarg1fml muarg2fml)
                           (mu_mk_g_fixed_point muarg1fml muarg2fml))  argsfml))
@@ -498,8 +560,9 @@
 	     (mu-or-nu (string (id muop)))
 	     (muargs1bindgs (bindings (args1 expr)));;args1muop islambda-expr
 	     (muarg1fml 
-                    (let ((*build-rel-var* t)) (convert-pvs-to-mu*
-			 (mapcar #'make-variable-expr muargs1bindgs))))
+                    (let ((*build-rel-var* t)) 
+                   (car (convert-pvs-to-mu*
+			 (mapcar #'make-variable-expr muargs1bindgs)))))
 	     (*mu-nu-lambda-bindings-list*;;NSH(6.23.95)
 	      (append muargs1bindgs
 		      *mu-nu-lambda-bindings-list*))
@@ -555,7 +618,8 @@
           (mu-translateable? (find-supertype (type (args1 expr)))))
     (convert-pvs-to-mu-equality-with-funtype-mu-trans-supertype-in-arg expr)) 
    ((sub-range? (type (args1 expr)))
-    (convert-pvs-to-mu-equality-with-subrangetype-in-arg expr)) 
+    (convert-pvs-to-mu-equality-with-subrangetype-in-arg expr))
+   (t (make-mu-variable expr)) 
  )
 )                 
 
@@ -568,7 +632,7 @@
                (loop for i from 0 to (1- len)
 	             collect (if (eql (digit-char-p (elt bit-string i)) 1)
 		                   (mu-mk-true) (mu-mk-false))))))
- (from-lisp-list-to-c-list lisp-list-values))
+ (lisp-to-c-list lisp-list-values))
 )
 
 
@@ -600,7 +664,7 @@
 
 
 (defun make-mu-variable (expr)
- (pvs-message "make-expr" )
+ ;; (pvs-message (format nil "make-mu-variable ~a" (unparse expr :string t)))
   (let ((bddvarid (gethash expr *pvs-bdd-hash*)))
        (cond ((null bddvarid)
               (cond ((sub-range? (type expr)) (make-subrange-names expr))
@@ -620,6 +684,46 @@
                  ))
 )
 
+;;
+;;
+;;
+
+(defun make-mu-variable (expr) ;; new-make-variable
+    (let ((bddname (gethash expr *pvs-bdd-hash*)))
+    (if bddname (if (consp bddname)
+              (let ((new-bddname (cadr bddname)))
+             (if *build-arguments* (make-argument-vars-scalar new-bddname) 
+                 (if *build-access-var* (make-binding-vars-scalar new-bddname) 
+                          new-bddname))) 
+           (if (member expr *list-of-relational-vars* :test #'tc-eq)
+                        (mu-make-bool-var (format nil "b~d" bddname))
+                               (if *build-arguments* 
+    (mu-make-bool-var (format nil "b~d" bddname)) bddname)) ;; not sure 
+                              )
+	(if (sub-range? (type expr))
+	    (make-subrange-names expr)
+	    (if (scalar? expr)
+		(make-scalar-names expr)
+                (if (recognizer-application? expr)
+                    (make-mu-variable-recognizer-application expr)
+                    (let* ((bddhash-name (make-bdd-var-id))   
+                           (mu-expression  (mu-create-bool-var bddhash-name))
+                           (is-rel-var (and *build-rel-var* 
+                                 (not *build-access-var*)))
+                           (is-access-var *build-access-var*))
+                            (setf (gethash expr *pvs-bdd-hash*)
+			     (if (or is-access-var is-rel-var) 
+                                        bddhash-name mu-expression))
+	        	    (when (null (freevars expr))
+		              (setf (gethash bddhash-name *bdd-pvs-hash*)
+			        expr))
+                            (when (or is-access-var is-rel-var) 
+                                (push expr *list-of-relational-vars* ))
+             	mu-expression
+)))))))
+
+
+
 ;; negates a particular element in a list of boolean lits (symbols)
 ;; and forms a conjunction of the elements
 
@@ -637,6 +741,7 @@
 
 
 (defun make-mu-variable* (list &optional accum)
+ (pvs-massage "list" )
   (cond ((null list)
 	 (nreverse accum))
 	(t (let ((answer (make-mu-variable (car list))))
@@ -647,6 +752,7 @@
     
     
 (defun uncurry-application-and-mu-convert (expr)
+;; (pvs-message (format nil "uncurry-app ~a" (unparse expr :string t)))
   (let* ((*lift-if-updates* T)
 	 (old-expr expr)
 	 (expr (lift-if-expr expr)))
@@ -664,8 +770,9 @@
 				    (member op* *mu-nu-lambda-bindings-list*
 					    :test #'same-declaration))))
 		      (let ((op-str (convert-pvs-to-mu-term op*)) ;; is a term?
-			    (args-list (convert-pvs-to-mu* args*)))       
-                        (mk_mu_application op-str args-list))                                    
+			    (args-list (let ((*build-arguments* t))
+                                (lisp-to-c-list (convert-pvs-to-mu* args*))))) 
+                        (make-mu-application op-str args-list))            
 		      (if (and (mu-translateable? (type (operator expr)))
 			       (not (number-expr? (argument expr))))
 			  (let* ((args-list (convert-pvs-to-mu* (argument expr)))
@@ -729,7 +836,7 @@
      (if (equal 0 len) bindexpr
            (mu_mk_curry_application  
                   (mu_mk_abstraction () bindexpr)  
-                        (from-lisp-list-to-c-list oplist)))
+                        (lisp-to-c-list oplist)))
 ))
 
 
@@ -784,8 +891,8 @@
 	      (if (bind-decl? exprarg2)
 		  (make-variable-expr exprarg2)
 		  exprarg2))
-	     (muvarlist1 (make-scalar-names scalar1))
-	     (muvarlist2 (make-scalar-names scalar2))
+	     (muvarlist1 (make-argument-vars-scalar(make-scalar-names scalar1)))
+	     (muvarlist2 (make-argument-vars-scalar(make-scalar-names scalar2)))
 	     )
 	(make-mu-conjunction
 	 (mapcar #'(lambda (x y) (mu-mk-equiv x y)
@@ -949,7 +1056,7 @@
           (mu-mk-true)
           (mu-mk-not (mu-create-bool-var (make-bdd-incl-excl-var-id bvar 0)))
            )
-      (let ((bvarbit (make-bdd-incl-excl-var-id bvar index))
+    (let ((bvarbit (mu-create-bool-var (make-bdd-incl-excl-var-id bvar index)))
 	    (bit (logbitp index num))
 	    (rest-fmla
 	     (make-scalar-inclusive-formula bvar num (1- index))))
@@ -961,6 +1068,7 @@
              ))))
 
 (defun make-subrange-inclusive-formula (bddvarid-list lo hi)
+ ;; (pvs-message "make-subrange-incl" )
   (let* ((lo-rep (convert-number lo))
 	(hi-rep (convert-number hi))
 	(lower-rep (make-geq-bdd bddvarid-list lo-rep))
@@ -992,14 +1100,18 @@
     (unless bddvarid-hash
       (setf (gethash expr *pvs-bdd-hash*)
 	    (list bddvarid bddvarid-list))
+       (let (( *build-access-var*  nil))  ;; Hassen 06/14/98
       (pushnew (cons expr (make-subrange-inclusive-formula
 			   bddvarid-list lo hi))
 	       *pvs-bdd-inclusivity-formulas*
 	       :test #'(lambda (x y)(tc-eq (car x)(car y)))))
+        )
 	bddvarid-list))
 	
-
+(defvar record-scalars nil)
 (defun make-scalar-names (expr)
+ (setq record-scalars (cons expr record-scalars))
+;;  (pvs-message (format nil "make-scalar-names acc is ~d  and  arg is ~d  and  term is ~d" (if *build-access-var* 1 0) (if *build-arguments* 1 0) (if *build-mu-term* 1 0) ))
   (let* ((recs (recognizers
 		(find-supertype (type expr))))
 	 (len (max 1   ;;NSH(9.29.95) needed since log 1 2 = 0
@@ -1021,6 +1133,8 @@
                         )))
 	 (format-bitstring (format nil "~~~d,'0b" len)))
     (unless bddvarid-hash
+    ;;  (pvs-message (format nil "setf ~a with ~d ~d" (unparse expr :string t)
+     ;;          bddvarid (length bddvarid-list)))
       (setf (gethash expr *pvs-bdd-hash*)
 	    (list bddvarid bddvarid-list))
       (when (null (freevars expr))
@@ -1040,14 +1154,36 @@
 		      (make-disjunction irecs)))
 		(setf (gethash bddnm *bdd-pvs-hash*)
 		      bdd-hashname))))
+      (let (( *build-access-var*  nil)) ;; Hassen 06/14 
+                                        ;; create-bool-var in inclusivity
       (pushnew (cons expr (make-scalar-inclusive-formula
 			   bddvarid (1- (length recs)) (1- len)))
 	       *pvs-bdd-inclusivity-formulas*
 	       :test #'(lambda (x y)(tc-eq (car x)(car y)))))
-    bddvarid-list))
+           )
+ (if *build-access-var*  
+   (make-binding-vars-scalar bddvarid-list) 
+        (if *build-arguments* (make-argument-vars-scalar bddvarid-list) 
+               bddvarid-list)) ;; Hassen 06/14/98
+))
 
-(defun make-scalar-constant-bits (constant) ;;given a scalar constant
-  (let* ((recog (recognizer constant))
+
+(defun make-binding-vars-scalar (bddvarid-list) 
+ (mapcar #'(lambda (bddvarid) 
+        (mu-check-bool-var (format nil "b~d" bddvarid))) bddvarid-list)
+)
+
+
+(defun make-argument-vars-scalar (bddvarid-list) 
+ (mapcar #'(lambda (bddvarid) 
+        (mu-make-bool-var (format nil "b~d" bddvarid))) bddvarid-list)
+)
+
+
+
+(defun make-scalar-constant-bits (constant) ;; given a scalar constant
+ ;; (pvs-message (format nil "make-scalar-const ~a"(unparse constant :string t)))
+    (let* ((recog (recognizer constant))
 	 (recs (recognizers
 		(find-supertype (type constant))))
 	 (len (ceiling
@@ -1061,18 +1197,21 @@
 			   (format nil "~~~d,'0b"
 			     len)
 			 (position recog recs :test #'tc-eq)))))
-   (from-lisp-list-to-c-list bitlist) 
+   (lisp-to-c-list bitlist) 
 ))
 		   
 
 (defun make-mu-variable-recognizer-application (expr)
+ ;; (pvs-message (format nil "make-expr-recog ~a" (unparse expr :string t)))
   (let* ((arg (args1 expr))
 	 (op (operator expr))
 	 (recs (recognizers
 		(find-supertype (type arg))))
 	 (len (ceiling
 	       (log (length recs) 2)))
-	 (bddvarid-list (reverse (convert-pvs-to-mu* arg)))
+;;	 (bddvarid-list (reverse (map-bdds-to-ids (convert-pvs-to-mu* arg))))
+	 (bddlist  (reverse (make-scalar-names arg)))
+         (bddvarid-list bddlist)
 	 (format-bitstring (format nil "~~~d,'0b" len)))
     ;;NSH(6.1.96): moved reverse here from below.
     (make-mu-conjunction
@@ -1093,8 +1232,45 @@
 ;; Klaus noticed this unsoundness since the lsb was being set to the
 ;;msb of the position bit string.  
 
+;;
+;;
+;;
+;; Hassen tests 06/11/98
+
+
+(defun make-mu-variable-recognizer-application (expr)
+ ;; (pvs-message (format nil "make-expr-recog ~a" (unparse expr :string t)))
+  (let* ((arg (args1 expr))
+	 (op (operator expr))
+	 (recs (recognizers
+		(find-supertype (type arg))))
+	 (len (ceiling
+	       (log (length recs) 2)))
+	 (bddlist  (reverse (make-scalar-names arg)))
+         (bddvarid-list bddlist)
+	 (format-bitstring (format nil "~~~d,'0b" len)))
+    (make-mu-conjunction
+     (map 'list
+	  #'(lambda (bit bddnm)
+             (let ((new-mu-var  (mu-create-bool-var bddnm)))
+	      (if (eql (digit-char-p bit) 1)
+                   new-mu-var 
+	         (mu-mk-not new-mu-var)
+                ))
+                 )
+	  (format nil
+	       format-bitstring
+	     (position op recs :test #'tc-eq))
+	   bddvarid-list))))
+
+;;
+;;
+;;
+;;
+
 
 (defun make-geq-bdd (bddvarid-list number-rep) ;; bddvarid-list is a lisp list
+ ;; (pvs-message "apply make-geq-bdd " )
   (let* ((bddvarid-list-len (length bddvarid-list))
 	 (len (length number-rep))
 	 (max-length (max bddvarid-list-len len))
@@ -1122,6 +1298,7 @@
 
 
 (defun make-leq-bdd (bddvarid-list number-rep)
+ ;; (pvs-message "apply make-leq-bdd " )
   (let* ((bddvarid-list-len (length bddvarid-list))
 	 (len (length number-rep))
 	 (max-length (max bddvarid-list-len len))
@@ -1201,25 +1378,33 @@
    (mu_mk_cofactor fml1 fml2)
 )
 
+
+(defun make-mu-application (op-str args-list)
+ (mu_mk_curry_application op-str args-list)
+)
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun make-mu-conjunction (list-fmls &optional resfml)
- (if (null list-fmls) (if *build-mu-term* (mu_mk_true_term) (mu_mk_true_formula)) 
+ (if (null list-fmls) 
+  (if *build-mu-term* (mu_mk_true_term) (mu_mk_true_formula)) 
        (mu-mk-and  (car list-fmls) (make-mu-conjunction (cdr list-fmls)))
  )
 )  
 
 
 (defun make-mu-disjunction (list-fmls &optional resfml)
- (if (null list-fmls) (if *build-mu-term* (mu_mk_false_term) (mu_mk_false_formula))
+ (if (null list-fmls) 
+    (if *build-mu-term* (mu_mk_false_term) (mu_mk_false_formula))
        (mu-mk-or (car list-fmls) (make-mu-disjunction (cdr list-fmls)))
  )
 )  
 
 
-(defun make-mu-restriction (mue-xpr1 mu-expr2)
- (mu-mk-cof mue-xpr1 mu-expr2)
+(defun make-mu-restriction (mu-expr1 mu-expr2)
+;; (pvs-message "make-mu-restriction ")
+  (let ((e1 mu-expr1)(e2 mu-expr2))
+   (mu-mk-cof e1 e2))
 )
 
 
@@ -1230,23 +1415,35 @@
 
 
 (defun make-bdd-incl-excl-var-id (bvarid index) 
-  (let ((new-index (1+ index))  ;; index may be 0
-        (update-bdd-counter (funcall *bdd-counter*)))
+ ;; (pvs-message (format nil "incl excl ~d ~d" bvarid index) )
+  (when (and (not (member (cons bvarid index) 
+         *incl-excl-var-id-indx-pairs* :test #'equal)) (not (zerop index)))
+         (funcall *bdd-counter*) 
+         (setq *incl-excl-var-id-indx-pairs* 
+                 (cons (cons bvarid index) *incl-excl-var-id-indx-pairs* )))
+;;  (let ((new-index (1+ index)))  ;; index may be 0 | yes but bvarid does not correspond to any variable!!!
+ (let ((new-index  index))
     (+ bvarid new-index))
 )
 
 
 (defun mu-create-bool-var (bvarid)
- (pvs-message (format nil "~d " bvarid))
- (let ((bvarname (format nil "b~a" bvarid)))
-    (if *build-rel-var*  
-            (mu_mk_rel_var_dcl (FF:STRING-TO-CHAR* bvarname))
+;;  (pvs-message (format nil "create ~d rel is ~a    and  acc is  ~a" bvarid
+;; (if *build-rel-var* 1 0)  (if *build-access-var* 1 0 ) ))
+ (let ((bvarname (format nil "b~d" bvarid)))
+    (if (and *build-rel-var* (not *build-access-var*))  
+            (mu-mk-rel-var-dcl  bvarname)
           (if *build-access-var* 
-              (mu_check_bool_var (FF:STRING-TO-CHAR* bvarname))
+              (mu-check-bool-var bvarname)
               (mu-make-bool-var bvarname)
        )))
 )
 
+(defun mu-mk-rel-var-dcl (bvarname)
+(mu_mk_rel_var_dcl (FF:STRING-TO-CHAR* bvarname)))
+
+(defun mu-check-bool-var (bvarname)
+(mu_check_bool_var (FF:STRING-TO-CHAR* bvarname)))
 
 (defun mu-make-bool-var (bvarname)
   (mu_check_mk_bool_var (FF:STRING-TO-CHAR* bvarname))
@@ -1359,7 +1556,7 @@
       (mu-translateable? (supertype type))))
 
 (defmethod mu-translateable? ((type T))
-  NIL)
+  nil)
  
 ;;
 ;;
@@ -1430,8 +1627,16 @@
 ;; where list-args1 is of length 2 or 3.
 ;;
 
+(defun lisp-to-c-list (lisp-list)
+ (if (consp lisp-list)
+         (from-lisp-list-to-c-list  (reverse lisp-list)) 
+ ;; reverse to get the right order again
+         lisp-list))
+
+
 (defun from-lisp-list-to-c-list (lisp-list)
-  (if (null lisp-list) (NULL_LIST)
+;; (pvs-message (format nil "lisp to c list with length ~d" (length lisp-list)))
+  (if (null lisp-list) (empty_list)
        (append_cont (car lisp-list) (from-lisp-list-to-c-list (cdr lisp-list))
   ))
 )
@@ -1467,9 +1672,40 @@
       (nreverse result)
       (let ((bdd-t (bdd_cofactor_pos_ cube))
 	    (bdd-e (bdd_cofactor_neg_ cube))
-	    (varid (get_bdd_var_id cube)))
+	    (varid (mu_bdd_var_id (bdd_varid cube))))
 	(cond ((bdd-0? bdd-e)
 	       (mu-translate-bdd-cube* bdd-t (cons varid result)))
 	      ((bdd-0? bdd-t)
-	       (translate-bdd-cube* bdd-e (cons (list varid) result)))
+	       (mu-translate-bdd-cube* bdd-e (cons (list varid) result)))
 	      (t (mu-translate-bdd-cube* bdd-t (cons varid result)))))))
+
+;;(defun mu_bdd_var_id  (bdd-id)
+;;  (+ *save-bdd-counter* (get_bdd_var_id  bdd-id))
+;;)
+
+(defun mu_bdd_var_id  (bdd-id)
+(string-to-number  
+    (string-left-trim "b" 
+        (FF:CHAR*-TO-STRING 
+             (get_mu_bool_var_name  bdd-id))))
+)
+
+
+(defun map-bdds-to-ids (bddlist)
+ (mapcar #'(lambda (bddpointer) (let ((varid (bdd_varid bddpointer))) 
+            (mu_bdd_var_id varid)))
+     (get-bdd-ids-from-c-list bddlist)))
+
+(defun get-bdd-ids-from-c-list (clist)
+  (let ((first-elem (list_first clist)))
+     (real-get-bdd-ids-from-c-list first-elem))
+)
+
+(defun real-get-bdd-ids-from-c-list (clist &optional result)
+  (if (equal 0 clist)  
+        (nreverse result)
+        (real-get-bdd-ids-from-c-list
+	  (list_next  clist)
+           (cons (elem_contents clist)  result)))
+)
+
