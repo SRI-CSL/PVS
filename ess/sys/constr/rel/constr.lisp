@@ -13,7 +13,7 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
-
+#-gcl
 (defpackage "CONSTR")
 (in-package "CONSTR") (use-package :ergolisp)
 

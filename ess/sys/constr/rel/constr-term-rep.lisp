@@ -13,7 +13,7 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
-
+#-gcl
 (defpackage "CONSTR-TERM-REP")
 (in-package :CONSTR-TERM-REP) (use-package :ergolisp)
 
