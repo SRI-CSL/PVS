@@ -18,22 +18,22 @@
 ;;;  Formula  ;;;
 ;;;;;;;;;;;;;;;;;
 
-(ff:def-foreign-call (mu_mk_false_formula "mu___mu_mk_false_formula") ())
 ;;; Formula mu_mk_false_formula (void)
-(ff:def-foreign-call (mu_mk_true_formula "mu___mu_mk_true_formula") ())
+(ff:def-foreign-call (mu_mk_false_formula "mu___mu_mk_false_formula") ())
 ;;; Formula mu_mk_true_formula (void)
-(ff:def-foreign-call (mu_mk_bool_var "mu___mu_mk_bool_var") ())
+(ff:def-foreign-call (mu_mk_true_formula "mu___mu_mk_true_formula") ())
 ;;; Formula mu_mk_bool_var (char *name)
-(ff:def-foreign-call (mu_check_bool_var "mu___mu_check_bool_var") ())
+(ff:def-foreign-call (mu_mk_bool_var "mu___mu_mk_bool_var") ())
 ;;; Formula mu_check_bool_var
-(ff:def-foreign-call (mu_check_mk_bool_var "mu___mu_check_mk_bool_var") ())
+(ff:def-foreign-call (mu_check_bool_var "mu___mu_check_bool_var") ())
 ;;; Formula mu_check_mk_bool_var
-(ff:def-foreign-call (mu_mk_ite_formula "mu___mu_mk_ite_formula") ())
+(ff:def-foreign-call (mu_check_mk_bool_var "mu___mu_check_mk_bool_var") ())
 ;;; Formula mu_mk_ite_formula (Formula cond, Formula then_part, Formula else_part)
-(ff:def-foreign-call (mu_mk_curry_application "mu___mu_mk_curry_application") ())
+(ff:def-foreign-call (mu_mk_ite_formula "mu___mu_mk_ite_formula") ())
 ;;; Formula mu_mk_curry_application (Term R, LIST subs, int curried)
-(ff:def-foreign-call (mu_mk_application "mu___mu_mk_application") ())
+(ff:def-foreign-call (mu_mk_curry_application "mu___mu_mk_curry_application") ())
 ;;; Formula mu_mk_application (Term R, LIST subs, int curried)
+(ff:def-foreign-call (mu_mk_application "mu___mu_mk_application") ())
 (ff:def-foreign-call (mu_mk_forall "mu___mu_mk_forall") ()) ;; (listvars fml1) always formula
 (ff:def-foreign-call (mu_mk_exists "mu___mu_mk_exists") ()) ;; (listvars fml1) always formula
 
