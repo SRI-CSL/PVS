@@ -515,6 +515,19 @@ proc get-full-rule {proofwin top} {
 #     source $file
 #     exec rm -f $file
 # }
+    
+
+proc undo-to-sequent {proofwin} {
+    upvar #0 dag-$proofwin dag
+
+    set path $dag(idtotag,[$proofwin find withtag current])
+
+    set lisp_path [path-to-lisp-path $path]
+
+    set file [lindex [pvs-send-and-wait "(undo-to-sequent '($lisp_path))"] 0]
+    source $file
+    exec rm -f $file
+}
 
 proc show-sequent {proofwin top} {    
     global pathtolabel
@@ -694,20 +707,20 @@ proc canvas-set-scroll {win {recenter 0}} {
 proc proof-current {name theory relpath} {
     global curpath
     set proofwin .proof.$theory-$name.fr.c
-    set top $theory-$name-top
+    set ptop $theory-$name-top
     set path $theory-$name-$relpath
 
     if {[info exists curpath]} {
 	$proofwin delete current-circle
 	$proofwin dtag current-subgoal
-	set ancs [ancestors $curpath $top]
+	set ancs [ancestors $curpath $ptop]
 	unset curpath
 	foreach tag $ancs {
 	    update-color $proofwin $tag $tag
 	}
     }
     if {$relpath!={}} {
-	foreach tag [ancestors $path $top] {
+	foreach tag [ancestors $path $ptop] {
 	    $proofwin addtag current-subgoal withtag $tag
 	}
 	my-foreground $proofwin current-subgoal [get-option ancestorColor]
@@ -754,7 +767,7 @@ proc proof-current {name theory relpath} {
 	    [expr [lindex $bbox 1]-$phit/2.8] \
 	    [expr [lindex $bbox 2]+$pwid/2.8] \
 	    [expr [lindex $bbox 3]+$phit/2.8] \
-	    -tags "$path $path.outline current-circle [ancestors $path $top .desc]" \
+	    -tags "$path $path.outline current-circle [ancestors $path $ptop .desc]" \
 	    -outline [get-option currentColor] \
 	    -width 2
     }
