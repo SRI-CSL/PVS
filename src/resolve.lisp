@@ -120,7 +120,7 @@
 	   (get-record-arg-resolutions name kind args)
 	   (get-decls-resolutions decls (actuals name) kind args)
 	   (get-theory-alias-decls-resolutions theory-aliases adecls
-					       kind args)))))
+					       kind args))))
 
 (defun get-theory-alias-decls-resolutions (theory-aliases adecls kind args
 							  &optional reses)
@@ -1005,11 +1005,12 @@
   (declare (ignore name))
   (if (cdr reses)
       (let* ((dreses (remove-duplicates reses :test #'tc-eq))
+	     (treses (remove-smaller-types-of-same-theories dreses))
 	     (res (or (remove-if
 			  #'(lambda (r)
 			      (typep (module-instance r) 'datatype-modname))
-			dreses)
-		      dreses)))
+			treses)
+		      treses)))
 	(if (eq kind 'expr)
 	    (if (cdr res)
 		(filter-local-expr-resolutions
@@ -1017,6 +1018,20 @@
 		res)
 	    (remove-outsiders (remove-generics res))))
       reses))
+
+(defun remove-smaller-types-of-same-theories (reses &optional result)
+  (if (null reses)
+      result
+      (let* ((modinst (module-instance (car reses)))
+	     (amodinst (adt-modinst modinst)))
+	(if (and (not (eq amodinst modinst))
+		 (or (some #'(lambda (r) (tc-eq (module-instance r) amodinst))
+			   (cdr reses))
+		     (some #'(lambda (r) (tc-eq (module-instance r) amodinst))
+			   result)))
+	    (remove-smaller-types-of-same-theories (cdr reses) result)
+	    (remove-smaller-types-of-same-theories
+	     (cdr reses) (cons (car reses) result))))))
 
 (defun filter-bindings (reses args)
   (or (remove-if-not #'(lambda (r) (memq (declaration r) *bound-variables*))
