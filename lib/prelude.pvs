@@ -4367,3 +4367,358 @@ finite_sets_of_sets[T: TYPE]: THEORY
     powerset(A) HAS_TYPE finite_set[set[T]]
 
  END finite_sets_of_sets
+
+
+% Equivalence classes, quotient types, etc.
+%
+% Bart Jacobs, Dep. Comp. Sci., Univ. Nijmegen.
+% 
+% With suggestions and remarks from: 
+% Ulrich Hensel, Marieke Huisman, Hendrik Tews.
+%
+% Timestamp: Friday 27 November 98 16:26:37 bart@irritatie.cs.kun.nl
+%
+%   Updated to PVS 3.0 by Sam Owre 2002-10-15
+
+EquivalenceClosure[T : TYPE] : THEORY
+BEGIN
+
+  R, S : VAR PRED[[T, T]]
+  x, y : VAR T
+
+  % Higher order definition of equivalence relation closure.
+
+  EquivClos(R) : equivalence[T] =
+    { (x, y) | FORALL(S : equivalence[T]) : subset?(R, S) IMPLIES S(x, y) }
+
+  EquivClosSuperset : LEMMA
+    subset?(R, EquivClos(R))
+
+  EquivClosMonotone : LEMMA
+    subset?(R, S) IMPLIES subset?(EquivClos(R), EquivClos(S))
+
+  EquivClosLeast : LEMMA
+    equivalence?(S) AND subset?(R, S) IMPLIES subset?(EquivClos(R), S)
+
+  EquivClosIdempotent : LEMMA
+    EquivClos(EquivClos(R)) = EquivClos(R)
+
+  EquivalenceCharacterization : LEMMA
+    equivalence?(S) IFF (S = EquivClos(S))
+
+END EquivalenceClosure
+
+
+QuotientDefinition[T : TYPE] : THEORY
+BEGIN
+
+  R : VAR set[[T, T]]
+  S : VAR equivalence[T]
+  x, y, z : VAR T
+
+  EquivClass(R)(x) : set[T] = { z | R(x, z) }
+
+  EquivClassNonEmpty : LEMMA
+    nonempty?[T](EquivClass(S)(x))
+
+  EquivClassEq : LEMMA
+    EquivClass(S)(x) = EquivClass(S)(y) IFF S(x, y)
+
+  repEC(S)(x): T = choose(EquivClass(S)(x))
+
+  % The next two lemmas facilitate working with representatives.
+
+  EquivClassChoose : LEMMA
+    S(x, repEC(S)(x))
+
+  ChooseEquivClassChoose : LEMMA
+    EquivClass(S)(repEC(S)(x)) = EquivClass(S)(x)
+
+  Quotient(S) : TYPE =
+    { P : set[T] | EXISTS x : P = EquivClass(S)(x) }
+
+  rep(S)(P: Quotient(S)): T = choose(P)
+
+  rep_is_repEC: LEMMA
+     rep(S)(EquivClass(S)(x)) = repEC(S)(x)
+
+  % Note that quotient_map has a different range type than EquivClass,
+  % and EquivClass(S) is not surjective.
+  quotient_map(S)(x) : Quotient(S) =
+    EquivClass(S)(x)
+
+  quotient_map_surjective : LEMMA
+    surjective?(quotient_map(S))
+
+  % Quotients are also defined for arbitrary relations, via the
+  % Equivalence Closure (EC).
+
+  ECQuotient(R) : TYPE =              
+    Quotient(EquivClos(R))
+
+  ECquotient_map(R)(x) : ECQuotient(R) =
+    quotient_map(EquivClos(R))(x)
+
+END QuotientDefinition
+
+KernelDefinition[X, Y : TYPE] : THEORY
+BEGIN
+
+  IMPORTING EquivalenceClosure[X]
+
+  f : VAR [X -> Y]
+  R : VAR PRED[[X, X]]
+  x1, x2 : VAR X
+
+  % The following definition would be part of the 'functions' theory
+  % but equivalence is defined afterwards.
+
+  EquivalenceKernel(f) : equivalence[X] =
+    { (x1, x2) | f(x1) = f(x2) }
+
+  PreservesEq(R)(f) : bool =
+    subset?(R, EquivalenceKernel(f))
+
+  PreservesEqClosure : LEMMA
+    PreservesEq(R) = PreservesEq(EquivClos(R))
+
+  PreservesEq_is_preserving: LEMMA
+    PreservesEq(R) = preserves(R, =[Y])
+
+END KernelDefinition
+
+QuotientKernelProperties[X : TYPE] : THEORY
+BEGIN
+
+  S : VAR equivalence[X]
+  R : VAR PRED[[X, X]]
+
+  Kernel_quotient_map : LEMMA
+    EquivalenceKernel[X, Quotient(S)](quotient_map(S)) = S
+
+  PreservesEq_quotient_map : LEMMA
+    PreservesEq[X, Quotient(S)](S)(quotient_map(S))
+
+  quotient_map_is_Quotient_EqivalenceRespecting: JUDGEMENT
+    quotient_map(S) HAS_TYPE (PreservesEq[X, Quotient(S)](S))
+
+  Kernel_ECquotient_map : LEMMA
+    EquivalenceKernel[X, ECQuotient(S)](quotient_map(S)) = S
+
+  PreservesEq_ECquotient_map : LEMMA
+    PreservesEq[X, ECQuotient(S)](S)(quotient_map(S))
+
+  quotient_map_is_ECQuotient_EqivalenceRespecting: JUDGEMENT
+    quotient_map(S) HAS_TYPE (PreservesEq[X, ECQuotient(S)](S))
+
+END QuotientKernelProperties
+
+
+QuotientExtensionProperties[X, Y : TYPE] : THEORY
+BEGIN
+
+  S : VAR equivalence[X]
+
+  lift(S)(g : (PreservesEq[X, Y](S)))(P : Quotient(S)) : Y
+    = g(rep(S)(P))
+
+  lift_commutation : LEMMA
+    FORALL(g : (PreservesEq[X, Y](S))) : 
+      lift(S)(g) o quotient_map(S) = g
+
+  lift_unicity : LEMMA
+    FORALL(g : (PreservesEq[X, Y](S))) : FORALL(h : [Quotient(S) -> Y]) :
+      h o quotient_map(S) = g IMPLIES h = lift(S)(g)
+
+END QuotientExtensionProperties
+
+
+QuotientDistributive[X, Y : TYPE] : THEORY
+BEGIN
+
+% This theory makes clear that quotients commute with products: there is an isomorphism 
+%
+%     [X/S, Y] iso [X,Y]/EqualityExtension(S)
+%
+% given by the canonical map (from right to left). Such distributivity
+% results can be used to define functions with several parameters on a
+% quotient.  In the presence of function types, this can also be done
+% via Currying.  The result is included here mainly as a test for the
+% formalisation of quotients.
+%
+
+  S : VAR equivalence[X]
+  z, w : VAR [X, Y]
+
+  EqualityExtension(S) : set[[[X, Y], [X, Y]]] =
+    { (z, w) | S(z`1, w`1) AND z`2 = w`2  }
+
+  EqualityExtension_is_equivalence: JUDGEMENT
+    EqualityExtension(S) HAS_TYPE equivalence[[X, Y]]
+
+  EqualityExtensionPreservesEq : LEMMA
+    PreservesEq[[X, Y], [Quotient(S), Y]]
+        (EqualityExtension(S))
+        (LAMBDA(x : X, y : Y) : (quotient_map(S)(x), y))
+
+  QuotientDistributive : LEMMA
+    bijective?[Quotient(EqualityExtension(S)), [Quotient(S), Y]]
+      (lift(EqualityExtension(S))
+           (LAMBDA(x : X, y : Y) : (quotient_map(S)(x), y)))
+
+  %     [X/S, Y/R] iso [X,Y]/RelExtension(S,R)
+
+  R: VAR equivalence[Y]
+
+  RelExtension(S, R) : equivalence[[X, Y]] =
+    LAMBDA(z, w : [X, Y]) : S(z`1, w`1) AND R(z`2, w`2)
+
+  RelExtensionPreservesEq : LEMMA
+    PreservesEq[[X, Y], [Quotient(S), Quotient(R)]]
+        (RelExtension(S,R))
+        (LAMBDA(x : X, y : Y) : (quotient_map(S)(x), quotient_map(R)(y)))
+
+  RelQuotientDistributive : LEMMA
+    bijective?[Quotient(RelExtension(S,R)), [Quotient(S), Quotient(R)]]
+      (lift(RelExtension(S, R))
+           (LAMBDA(x : X, y : Y) : (quotient_map(S)(x), quotient_map(R)(y))))
+
+  %     F: [X -> equivalence[Y]]
+  %        [x:X -> Y/F(x)] iso [X -> Y]/FunExtension(F)
+  F: VAR [X -> equivalence[Y]]
+  f, g : VAR [X -> Y]
+
+  FunExtension(F) : equivalence[[X -> Y]] =
+    { (f, g) | FORALL (x : X) : F(x)(f(x), g(x)) }
+
+  FunExtensionPreservesEq : LEMMA
+    PreservesEq[[X -> Y], [x : X -> Quotient(F(x))]]
+        (FunExtension(F))
+        (LAMBDA(f : [X -> Y]) : LAMBDA (x : X) : quotient_map(F(x))(f(x)))
+
+  FunQuotientDistributive : LEMMA
+    bijective?[Quotient(FunExtension(F)), [x : X -> Quotient(F(x))]]
+      (lift(FunExtension(F))
+           (LAMBDA(f : [X -> Y]) : (LAMBDA (x : X): (quotient_map(F(x))(f(x))))))
+
+END QuotientDistributive
+
+
+QuotientIteration[X : TYPE] : THEORY
+BEGIN
+
+% In this theory it will be shown how successive quotients can be reduced
+% to a single quotient:
+% 
+%     (X/S)/R iso X/action(S)(R)
+%
+% again via the canonical map.
+
+  S : VAR equivalence[X]
+  x, y : VAR X
+
+  action(S)(R : equivalence[Quotient(S)])(x, y) : bool =
+    R(EquivClass(S)(x), EquivClass(S)(y))
+
+  action_equivalence_is_equivalence: JUDGEMENT
+    action(S)(R : equivalence[Quotient(S)]) HAS_TYPE equivalence[X]
+
+  QuotientAction : LEMMA
+    FORALL(R : equivalence[Quotient(S)]) :
+      bijective?[Quotient(R), Quotient(action(S)(R))]
+        (lift[Quotient(S), Quotient(action(S)(R))](R)
+           (lift[X, Quotient(action(S)(R))](S)
+              (quotient_map[X](action(S)(R)))))
+
+END QuotientIteration
+
+
+% The following theory illustrates how the lift type can be used
+% to describe partial functions from X to Y, namely as total
+% functions from X to lift[Y].
+
+PartialFunctionDefinitions[X, Y : TYPE] : THEORY
+BEGIN
+
+% Two representations of partial functions are described,
+% and shown to be isomorphic. In practice, the formulation
+% based on lift is more convenient, because definitions
+% are easier and fewer TCCs are generated.
+
+  SubsetPartialFunction : TYPE =
+    [# dom : PRED[X], fun : [(dom) -> Y] #]
+
+  LiftPartialFunction : TYPE =
+    [X -> lift[Y]]
+
+  f : VAR LiftPartialFunction
+  g : VAR SubsetPartialFunction
+  h : VAR [X -> Y]
+
+  SPartFun_appl(g): [(dom(g)) -> Y] = g`fun
+
+  SPartFun_to_LPartFun(g) : LiftPartialFunction =
+    LAMBDA(x : X) : IF dom(g)(x) THEN up(fun(g)(x)) ELSE bottom ENDIF
+
+  LPartFun_to_SPartFun(f) : SubsetPartialFunction =
+    (# 
+      dom := {x : X | up?(f(x))}, 
+      fun := LAMBDA(y : {x : X | up?(f(x))}) : down(f(y))
+    #)
+
+  TotalFun_to_SPartFun(h): SubsetPartialFunction =
+    (#
+      dom := {x : X | TRUE},
+      fun := h
+    #)
+
+  TotalFun_to_LPartFun(h): LiftPartialFunction =
+    LAMBDA(x : X) : up(h(x))
+
+  CONVERSION SPartFun_appl,
+             SPartFun_to_LPartFun, LPartFun_to_SPartFun,
+             TotalFun_to_SPartFun, TotalFun_to_LPartFun
+
+  SPartFun_to_LPartFun_to_SPartFun : LEMMA
+    LPartFun_to_SPartFun(SPartFun_to_LPartFun(g)) = g
+
+  LPartFun_to_SPartFun_to_LPartFun : LEMMA
+    SPartFun_to_LPartFun(LPartFun_to_SPartFun(f)) = f
+
+END PartialFunctionDefinitions
+
+
+PartialFunctionComposition[X, Y, Z : TYPE] : THEORY
+BEGIN
+
+  f : VAR LiftPartialFunction[X, Y]
+  g : VAR LiftPartialFunction[Y, Z]
+
+  o(g, f) : LiftPartialFunction[X, Z] =
+    LAMBDA(x : X) :
+      CASES f(x) OF
+        bottom : bottom,
+        up(y) : g(y)
+      ENDCASES
+
+  h : VAR SubsetPartialFunction[X, Y]
+  k : VAR SubsetPartialFunction[Y, Z]
+
+  CompDom(k, h) : PRED[X] =
+    { x : X | dom(h)(x) AND dom(k)(fun(h)(x)) };
+
+  o(k, h) : SubsetPartialFunction[X, Z] =
+    (# 
+      dom := CompDom(k, h),
+      fun := LAMBDA(x : (CompDom(k, h))) : fun(k)(fun(h)(x))
+    #)
+
+  SPartFun_to_LPartFun_CompositionPreservation : LEMMA
+    SPartFun_to_LPartFun(k o h)
+      = SPartFun_to_LPartFun(k) o SPartFun_to_LPartFun(h)
+
+  LPartFun_to_SPartFun_CompositionPreservation : LEMMA
+    LPartFun_to_SPartFun(g o f)
+      = LPartFun_to_SPartFun(g) o LPartFun_to_SPartFun(f)
+
+END PartialFunctionComposition
