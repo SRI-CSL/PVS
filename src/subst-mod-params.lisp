@@ -1161,7 +1161,8 @@
 	     (let ((ntype (subst-mod-params* type modinst bindings)))
 	       (mk-resolution decl modinst ntype)))
 	    (t (let* ((nacts (subst-mod-params* acts modinst bindings)))
-		 (if (eq nacts acts)
+		 (if (and (eq nacts acts)
+			  (not (binding? decl)))
 		     res
 		     (mk-resolution decl
 		       (mk-modname (id mi)
