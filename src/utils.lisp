@@ -154,7 +154,7 @@
 (defun special-variable-p (obj)
   #+lucid (system:proclaimed-special-p obj)
   #+kcl (system:specialp obj)
-  #+(allegro and (not allegro-v6.0)) (clos::variable-special-p obj nil)
+  #+(and allegro (not allegro-v6.0)) (clos::variable-special-p obj nil)
   #+allegro-v6.0 (excl::variable-special-p obj nil)
   #+harlequin-common-lisp (system:declared-special-p obj)
   #-(or lucid kcl allegro harlequin-common-lisp)
