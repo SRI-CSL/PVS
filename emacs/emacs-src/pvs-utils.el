@@ -636,7 +636,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 (defun pvs-remove-whitespace (string)
   (let ((str (comint-remove-whitespace string)))
-    (if (string-match "^NIL" str)
+    (if (string-match "^\\(nil\\|NIL\\)" str)
 	(substring str 0 (- (match-beginning 0) 1))
 	str)))
 
@@ -754,7 +754,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
   (let ((file-list (append (context-files (or dir *pvs-current-directory*))
 			   (when with-prelude-p
 			     (list (format "prelude" pvs-path))))))
-    (if (eq file-list 'NIL)
+    (if (member file-list '(nil NIL))
 	(error "No files in context")
 	(let* ((default (unless no-default-p (current-pvs-file t)))
 	       (dprompt (if default
@@ -778,7 +778,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
   "Perform completion on PVS file names in the specified directory"
   (pvs-bury-output)
   (let ((file-list (context-files dir)))
-    (if (eq file-list 'NIL)
+    (if (member file-list '(nil NIL))
 	(error "No files in context")
 	(let* ((default (current-pvs-file t))
 	       (dprompt (if default
@@ -1591,16 +1591,18 @@ differences to be whitespace")
   ad-do-it)
 
 ;;; Can't use kill-emacs-hook instead, as in batch mode the hook is ignored.
-(defadvice kill-emacs (around pvs-batch-control activate)
-  (when (and ilisp-buffer (get-buffer ilisp-buffer))
-    (let ((process (ilisp-process)))
-      (when (and process (equal (process-status process) 'run))
+(defadvice kill-emacs (before pvs-batch-control activate)
+  (if (and ilisp-buffer
+	   (get-buffer ilisp-buffer)
+	   (ilisp-process)
+	   (eq (process-status (ilisp-process)) 'run))
+      (progn
 	(save-some-buffers nil t)
-	(message "Exiting PVS")
 	(comint-simple-send (ilisp-process) "(exit-pvs)")
-	(while (equal (process-status process) 'run)
-	  (sleep-for 1)))))
-  ad-do-it)
+	(while (equal (process-status (ilisp-process)) 'run)
+	  (sleep-for 1)))
+      (message "PVS not running - context not saved"))
+  (message "PVS Exited"))
 )
 
 (defun list-lisp-declarations (filename)
