@@ -961,7 +961,7 @@
 	      (pprint-exit-if-list-exhausted)
 	      (write-char #\,)
 	      (write-char #\space)
-	      (pprint-newline :linear)))
+	      (pprint-newline :fill)))
       (call-next-method)))
 
 (defmethod pp-tex* ((ex null-expr))
