@@ -5,13 +5,11 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Fri Oct 30 17:08:27 1998
 ;; Update Count    : 49
-;; Status          : Beta test
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
-
-(in-package 'pvs)
+(in-package :pvs)
 
 ;;; Load-prelude initializes the *prelude*, *prelude-context*, and
 ;;; *prelude-theories* variables
@@ -86,33 +84,33 @@
 		     (nusing-hash (copy (using-hash ctx))))
 		(typecase m
 		  (datatype
-		   (setf (gethash (adt-theory m) nusing-hash)
+		   (setf (get-importings (adt-theory m) nusing-hash)
 			 (list (mk-modname (id (adt-theory m)))))
 		   (when (adt-map-theory m)
-		     (setf (gethash (adt-map-theory m) nusing-hash)
+		     (setf (get-importings (adt-map-theory m) nusing-hash)
 			   (list (mk-modname (id (adt-map-theory m)))))
 		     (dolist (decl (append (assuming (adt-map-theory m))
 					   (theory (adt-map-theory m))))
 		       (when (and (declaration? decl) (visible? decl))
 			 (put-decl decl ndecls-hash))))
 		   (when (adt-reduce-theory m)
-		     (setf (gethash (adt-reduce-theory m) nusing-hash)
+		     (setf (get-importings (adt-reduce-theory m) nusing-hash)
 			   (list (mk-modname (id (adt-reduce-theory m)))))
 		     (dolist (decl (append (assuming (adt-reduce-theory m))
 					   (theory (adt-reduce-theory m))))
 		       (when (and (declaration? decl) (visible? decl))
 			 (put-decl decl ndecls-hash)))))
-		  (t (setf (gethash m nusing-hash)
+		  (t (setf (get-importings m nusing-hash)
 			   (list (mk-modname (id m))))))
 		(maphash #'(lambda (id decls)
-			     (setf (gethash id ndecls-hash)
+			     (setf (gethash id (lhash-table ndecls-hash))
 				   (remove-if #'(lambda (d)
 						  (typep d '(or formal-decl
 								var-decl)))
 				     decls)))
-			 ndecls-hash)
+			 (lhash-table ndecls-hash))
 		(let ((pusing-hash (copy nusing-hash)))
-		  (setf (gethash (theory ctx) pusing-hash)
+		  (setf (get-importings (theory ctx) pusing-hash)
 			(list (theory-name ctx)))
 		  (setq *prelude-context*
 			(copy ctx
@@ -207,10 +205,10 @@
 	(show-tccs (id th))))))
 
 (defun prelude-duplicated-names ()
-  (maphash #'(lambda (id decls)
-	       (when (prelude-duplicates? decls)
-		 (format t "~%~a" id)))
-	   (declarations-hash *prelude-context*)))
+  (map-lhash #'(lambda (id decls)
+		 (when (prelude-duplicates? decls)
+		   (format t "~%~a" id)))
+	     (declarations-hash *prelude-context*)))
 
 (defun prelude-duplicates? (decls)
   (when (cdr decls)
@@ -250,12 +248,13 @@
                  ~%  or run M-x remove-prelude-library and remove this library."
 	      lib-ref))))))
 
+(defvar *loading-libraries* nil)
+
 ;;; This is called from the Emacs load-prelude-library command as well.
 ;;; Loads the .pvscontext, associated PVS files, pvs-lib.lisp file
 ;;; (and any libloaded file), and pvs-lib.el.  Note that pvs-strategies is
 ;;; not loaded here, but when the prover is invoked.
 (defun load-prelude-library (lib &optional force?)
-  (declare (special loading-libraries))
   (multiple-value-bind (lib-ref lib-path err-msg)
       (get-prelude-library-refs lib)
     (cond (err-msg
@@ -263,12 +262,12 @@
 	  ((and (not force?)
 		(prelude-library-loaded? lib-ref))
 	   (pvs-message "Prelude library ~a is already loaded." lib))
-	  ((member lib-ref loading-libraries :test #'string=)
+	  ((member lib-ref *loading-libraries* :test #'string=)
 	   (pvs-error "Load Prelude Error"
 	     "Detected circular calls to load-prelude-library,~%~
               check pvs-lib.lisp files in ~{~a~^, ~}"
-	     loading-libraries))
-	  (t (let ((loading-libraries (cons lib-ref loading-libraries))
+	     *loading-libraries*))
+	  (t (let ((*loading-libraries* (cons lib-ref *loading-libraries*))
 		   (pvs-files-loaded
 		    (load-prelude-library-context lib-ref lib-path))
 		   (lisp-files-loaded (load-pvs-lib-lisp-file lib-path))
@@ -492,16 +491,20 @@
     (let* ((*current-theory* th)
 	   (*current-context* *prelude-library-context*)
 	   (judgements (judgements *prelude-library-context*))
-	   (name-judgements-hash (name-judgements-hash judgements))
-	   (appl-judgements-hash (application-judgements-hash judgements)))
-      (setf (name-judgements-hash judgements) (make-hash-table :test 'eq))
-      (setf (application-judgements-hash judgements)
-	    (make-hash-table :test 'eq))
-      (merge-name-judgements name-judgements-hash
-			     (name-judgements-hash judgements)
+	   (number-judgements-alist (number-judgements-alist judgements))
+	   (name-judgements-alist (name-judgements-alist judgements))
+	   (appl-judgements-alist (application-judgements-alist judgements)))
+      (setf (number-judgements-alist judgements) nil)
+      (setf (name-judgements-alist judgements) nil)
+      (setf (application-judgements-alist judgements) nil)
+      (merge-number-judgements number-judgements-alist
+			       (number-judgements-alist judgements)
+			       th (mk-modname (id th)))
+      (merge-name-judgements name-judgements-alist
+			     (name-judgements-alist judgements)
 			     th (mk-modname (id th)))
-      (merge-application-judgements appl-judgements-hash
-				    (application-judgements-hash judgements)
+      (merge-application-judgements appl-judgements-alist
+				    (application-judgements-alist judgements)
 				    th (mk-modname (id th)))))
   (let* ((*current-theory* th)
 	 (*current-context* *prelude-library-context*)
@@ -509,8 +512,8 @@
     (update-current-context th thname)
     (dolist (decl (append (assuming th) (theory th)))
       (when (and (declaration? decl) (visible? decl))
-	(put-decl decl (current-declarations-hash))))
-    (setf (gethash th (current-using-hash)) (list thname))))
+	(put-decl decl)))
+    (setf (get-importings th) (list thname))))
 
 
 
@@ -518,48 +521,53 @@
   (assoc lib *prelude-libraries-files* :test #'string=))
 
 
-;;; Called from restore-theories*; the dep-file-ref comes from the
+;;; Called from restore-theories*; the dep-lib-ref comes from the
 ;;; .pvscontext So is always relative to the *pvs-context-path*, but not
 ;;; necessarily the *pvs-current-context-path*.  lib-ref is relative to
 ;;; the *pvs-current-context-path*.
-(defun restore-imported-library-file (dep-file-ref)
-  (let* ((dep-lib-ref (libref-directory dep-file-ref))
-	 (lib-ref (get-relative-library-reference dep-lib-ref)))
+(defun restore-imported-library-files (dep-lib-ref theory-ids)
+  (let ((lib-ref (get-relative-library-reference
+		  (get-library-reference dep-lib-ref))))
     (multiple-value-bind (lib-path err-msg)
 	(libref-to-pathname lib-ref)
       (if err-msg
-	  (type-error dep-file-ref err-msg)
+	  (type-error dep-lib-ref err-msg)
 	  (unless (or (gethash lib-ref *prelude-libraries*)
 		      (file-equal lib-path *pvs-context-path*))
 	    (with-pvs-context lib-ref
-	      (let ((*current-theory* *current-theory*)
-		    (*pvs-context-writable*
-		     (write-permission? *pvs-context-path*))
-		    (*pvs-context-changed* nil)
-		    (filename (pathname-name dep-file-ref)))
-		(restore-context)
-		(multiple-value-bind (*pvs-files* *pvs-modules*)
-		    (get-imported-files-and-theories lib-ref)
-		  (let* ((*prelude-libraries* (make-hash-table :test #'equal))
-			 (theories (typecheck-file filename nil nil nil t)))
+	      (restore-context)
+	      (multiple-value-bind (*pvs-files* *pvs-modules*)
+		  (get-imported-files-and-theories lib-ref)
+		(unless (every #'(lambda (thid)
+				   (gethash thid *pvs-modules*))
+			       theory-ids)
+		  (let* ((*prelude-libraries*
+			  (make-hash-table :test #'equal))
+			 (theories (mapcan
+				       #'(lambda (thid)
+					   (unless (gethash thid
+							    *pvs-modules*)
+					     (list (get-typechecked-theory
+						    thid))))
+				     theory-ids)))
 		    (cond ((and theories
 				(every #'typechecked? theories))
 			   (save-context)
-			   (maphash
-			    #'(lambda (id th)
-				(declare (ignore id))
-				(when (typechecked? th)
-				  (unless (library-datatype-or-theory? th)
-				    (if (typep th 'module)
-					(change-class th 'library-theory)
-					(change-class th 'library-datatype)))
-				  (unless (and (lib-ref th)
-					       (file-equal (lib-ref th)
-							   *pvs-current-context-path*))
-				    (setf (lib-ref th) lib-ref))))
-			    *pvs-modules*)
+			   (dolist (th theories)
+			     (when (typechecked? th)
+			       (unless (library-datatype-or-theory? th)
+				 (if (typep th 'module)
+				     (change-class th 'library-theory)
+				     (change-class th 'library-datatype))
+				 (setf (all-imported-theories th) 'unbound))
+			       (unless (and (lib-ref th)
+					    (file-equal
+					     (lib-ref th)
+					     *pvs-current-context-path*))
+				 (setf (lib-ref th) lib-ref))))
 			   theories)
 			  (t
+			   (break "restore-imported-library-files needs fix")
 			   (remhash filename *pvs-files*)
 			   (dolist (th theories)
 			     (remhash (id th) *pvs-modules*))
@@ -586,7 +594,8 @@
   (if (or (gethash lib-ref *prelude-libraries*)
 	  (file-equal lib-ref *pvs-context-path*))
       (get-theory (copy theory-name 'library nil))
-      (let ((value nil))
+      (let ((value nil)
+	    (changed-theories nil))
 	(with-pvs-context lib-ref
 	  (let ((*current-theory* *current-theory*)
 		(*pvs-context-writable*
@@ -604,28 +613,31 @@
 				      theory-name))))
 		(if filename
 		    (unwind-protect
-			(let* ((theories (typecheck-file filename))
-			       (theory (find theory-name theories :test #'same-id)))
-			  (cond (theory
-				 (let ((*current-context* (context theory))
-				       (*current-theory* theory))
-				   (save-context))
-				 (maphash
-				  #'(lambda (id th)
-				      (declare (ignore id))
-				      (when (typechecked? th)
-					(unless (library-datatype-or-theory? th)
-					  (if (typep th 'module)
-					      (change-class th 'library-theory)
-					      (change-class th 'library-datatype)))
-					(setf (lib-ref th) lib-ref)))
-				  *pvs-modules*)
-				 (setq value theory))
-				(t (setq value
-					 (format nil
-					     "Theory ~a could  not be found in ~
+			(multiple-value-bind (theories changed)
+			    (typecheck-file filename)
+			  (setq changed-theories changed)
+			  (let ((theory (find theory-name theories
+					      :test #'same-id)))
+			    (cond (theory
+				   (let ((*current-context* (context theory))
+					 (*current-theory* theory))
+				     (save-context))
+				   (maphash
+				    #'(lambda (id th)
+					(declare (ignore id))
+					(when (typechecked? th)
+					  (unless (library-datatype-or-theory? th)
+					    (if (typep th 'module)
+						(change-class th 'library-theory)
+						(change-class th 'library-datatype)))
+					  (setf (lib-ref th) lib-ref)))
+				    *pvs-modules*)
+				   (setq value theory))
+				  (t (setq value
+					   (format nil
+					       "Theory ~a could  not be found in ~
                                           the PVS context of library ~a"
-					   theory-name lib-ref)))))
+					     theory-name lib-ref))))))
 		      (maphash #'(lambda (thid theory)
 				   (unless (library-datatype-or-theory?
 					    theory)
@@ -638,6 +650,8 @@
 			      "Theory ~a not found in the PVS context of ~
                                library ~a"
 			    theory-name lib-ref)))))))
+	(dolist (cth changed-theories)
+	  (untypecheck-usedbys cth))
 	(if (stringp value)
 	    (type-error theory-name value)
 	    value))))
@@ -654,9 +668,13 @@
 				   ((hash-table-p prefiles)
 				    prefiles)
 				   (t *pvs-files*))))
-	   (and (filename th)
-		(let ((path (probe-file (pvs-file-path th))))
-		  (parsed?* path)))))))
+	   (if (generated-by th)
+	       (let ((gth (get-theory (generated-by th))))
+		 (and gth
+		      (parsed? gth)))
+	       (and (filename th)
+		    (let ((path (probe-file (pvs-file-path th))))
+		      (parsed?* path))))))))
 
 (defun remove-prelude-library (lib)
   (multiple-value-bind (lib-ref lib-path err-msg)
@@ -870,33 +888,52 @@
 	       (relative-path (merge-pathnames dirstr *pvs-context-path*)
 			      *pvs-current-context-path*)
 	       (values nil (format nil "Directory ~a does not exist" libstr))))
-	  (t (or (get-library-reference (intern libstr))
-		 (values nil (format nil
-				 "Directory ~a does not exist" libstr)))))))
+	  (t (let* ((csubdir (format nil "./~a" dirstr))
+		    (csubref (when (file-exists-p
+				    (merge-pathnames csubdir
+						     *pvs-context-path*))
+			       csubdir))
+		    (lsubref (when (some #'(lambda (lpath)
+					     (file-exists-p
+					      (concatenate 'string
+						lpath "/" dirstr)))
+					 *pvs-library-path*)
+			       libstr)))
+	       (or csubref
+		   lsubref
+		   (values nil
+			   (format nil
+			       "Directory ~a does not exist" libstr))))))))
 
 
 (defmethod get-library-reference ((libid symbol))
   ;; libid is the library part of a name, e.g., the foo in foo@bar.x
   ;; Must be a reference to a lib-decl, a subdirectory of the current context,
   ;; or a library in *pvs-path*/lib/
-  (let* ((lib-decls (get-lib-decls libid))
-	 (librefs (mapcar #'get-library-reference lib-decls))
-	 (csubdir (format nil "./~a/" libid))
-	 (csubref (when (and (not (member csubdir librefs :test #'string=))
-			     (file-exists-p
-			      (merge-pathnames csubdir *pvs-context-path*)))
-		    csubdir))
-	 (lsubref (when (some #'(lambda (lpath)
-				  (file-exists-p (concatenate 'string
-						   lpath "/" (string libid))))
-			      *pvs-library-path*)
-		    (concatenate 'string (string libid) "/")))
-	 (refs (nconc librefs
-		      (when csubref (list csubref))
-		      (when lsubref (list lsubref)))))
-    (or (car refs)
-	(values nil (format nil "Library id ~a cannot be resolved to a library declaration, a subdirectory of the current context, a subdirectory of PVS_LIBRARY_PATH, nor a subdirectory of ~a/lib/"
-		      libid *pvs-path*)))))
+  (assert *current-context*)
+  (or (cdr (assq libid (library-alist *current-context*)))
+      (let* ((lib-decls (get-lib-decls libid))
+	     (librefs (mapcar #'get-library-reference lib-decls))
+	     (csubdir (format nil "./~a/" libid))
+	     (csubref (when (and (not (member csubdir librefs :test #'string=))
+				 (file-exists-p
+				  (merge-pathnames csubdir
+						   *pvs-context-path*)))
+			csubdir))
+	     (lsubref (when (some #'(lambda (lpath)
+				      (file-exists-p (concatenate 'string
+						       lpath "/"
+						       (string libid))))
+				  *pvs-library-path*)
+			(concatenate 'string (string libid) "/")))
+	     (refs (nconc librefs
+			  (when csubref (list csubref))
+			  (when lsubref (list lsubref)))))
+	(when refs
+	  (push (cons libid (car refs)) (library-alist *current-context*)))
+	(or (car refs)
+	    (values nil (format nil "Library id ~a cannot be resolved to a library declaration, a subdirectory of the current context, a subdirectory of PVS_LIBRARY_PATH, nor a subdirectory of ~a/lib/"
+			  libid *pvs-path*))))))
 
 (defmethod get-library-reference ((ldecl lib-decl))
   (if (and (eq *pvs-current-context-path* *pvs-context-path*)
@@ -930,7 +967,7 @@
   (assert *current-context*)
   (assert (symbolp libid))
   (let ((lib-decls (remove-if (complement #'lib-decl?)
-		     (gethash libid (current-declarations-hash)))))
+		     (get-declarations libid))))
     (remove-duplicates (sort (copy-list lib-decls) #'< :key #'locality)
       :test #'equal :key #'lib-ref :from-end t)))
 
@@ -1015,33 +1052,15 @@
 ;;; building a theory name.
 (defun libref-to-libid (lib-ref)
   (assert *current-context*)
-  ;; First see if there is a corresponding lib-decl
-  (or (libref-to-lib-decl-id lib-ref)
-      ;; If not, might be a local subdirectory ./foo/
-      (and (char= (char lib-ref 0) #\.)
-	   (char= (char lib-ref 1) #\/)
-	   (= (count #\/ lib-ref) 2)
-	   (file-exists-p lib-ref)
-	   (intern (subseq lib-ref 2 (1- (length lib-ref)))))
-      ;; Finally, look for PVSLIB, e.g., foo/
-      (and (not (member (char lib-ref 0) '(#\/ #\~ #\.) :test #'char=))
-	   (= (count #\/ lib-ref) 1)
-	   (pvs-library-path-ref lib-ref)
-	   (intern (subseq lib-ref 0 (1- (length lib-ref)))))))
+  (car (rassoc lib-ref (library-alist *current-context*)
+	       :test #'string=)))
 
 (defun libref-to-lib-decl-id (lib-ref)
   (let ((lib-decls nil))
-    (maphash #'(lambda (id decls)
-		 (declare (ignore id))
-		 (setq lib-decls
-		       (nconc (mapcan
-				  #'(lambda (d)
-				      (when (and (lib-decl? d)
-						 (string= lib-ref (lib-ref d)))
-					(list d)))
-				decls)
-			      lib-decls)))
-	     (current-declarations-hash))
+    (do-all-declarations #'(lambda (d)
+			     (when (and (lib-decl? d)
+					(string= lib-ref (lib-ref d)))
+			       (push d lib-decls))))
     (when lib-decls
       (get-most-local-reference lib-decls))))
 
@@ -1051,7 +1070,7 @@
       (id most-local)
       (let ((lnum (locality (car list))))
 	(if (<= lnum min)
-	    (car list)
+	    (id (car list))
 	    (if (or (null most-local)
 		    (< lnum most-local-num))
 		(get-most-local-reference
@@ -1062,12 +1081,9 @@
 
 (defun get-all-lib-decls ()
   (let ((lib-decls nil))
-    (maphash #'(lambda (id decls)
-		 (declare (ignore id))
-		 (setq lib-decls
-		       (append (remove-if (complement #'lib-decl?) decls)
-			       lib-decls)))
-	     (current-declarations-hash))
+    (do-all-declarations #'(lambda (decl)
+			     (when (lib-decl? decl)
+			       (push decl lib-decls))))
     lib-decls))
 
 ;;; pvs-file-path is called from file-dependencies and
