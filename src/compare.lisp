@@ -371,9 +371,10 @@
 
 ;;; Expressions
 
-;;; Handled by name method
-;(defmethod compare* ((old name-expr) (new name-expr))
-;  (call-next-method))
+(defmethod compare* :around ((old expr) (new expr))
+  (if (from-macro old)
+      (compare* (from-macro old) new)
+      (call-next-method)))
 
 (defmethod compare* ((old number-expr) (new number-expr))
   (compare* (number old) (number new)))
