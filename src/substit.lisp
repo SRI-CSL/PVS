@@ -108,7 +108,6 @@
 				(change-class (copy (cdr binding))
 					      'name-expr))))
 		   (setf (parens nex) 0)
-		   (setf (kind nex) 'VARIABLE)
 		   (setf (resolutions nex)
 			 (list (make-resolution (cdr binding)
 				 (current-theory-name)
@@ -284,7 +283,8 @@
 	(copy expr
 	  'bindings new-bindings
 	  'type ntype
-	  'expression (substit* (expression expr) nalist)))))
+	  'expression (substit* (expression expr) nalist)
+	  'parens 0))))
 
 (defun make-new-bindings (old-bindings alist)
   (make-new-bindings* old-bindings (alist-freevars alist) alist))
