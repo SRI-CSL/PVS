@@ -699,7 +699,8 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	 ;; string is an exact match already, or `nil' if the string matches
 	 ;; no possibility.
 	 (cond ((equal string "")
-		"")
+		(try-completion string pvs-library-path-completions
+				  predicate))
 	       ((member (aref string 0) '(?. ?/ ?~))
 		(let* ((fstring (if (member string '("." ".." "~"))
 				    ""
@@ -715,7 +716,8 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	 ;; `t' specifies `all-completions'.  The completion function should
 	 ;; return a list of all possible completions of the specified string.
 	 (cond ((equal string "")
-		(list ""))
+		(all-completions string pvs-library-path-completions
+				   predicate))
 	       ((member (aref string 0) '(?. ?/ ?~))
 		(let* ((fstring (if (member string '("." ".." "~"))
 				    ""
@@ -743,7 +745,13 @@ The save-pvs-file command saves the PVS file of the current buffer."
       (when (file-directory-p dir)
 	(dolist (subdir (directory-files dir))
 	  (unless (member subdir '("." ".."))
-	    (when (file-directory-p (concat dir "/" subdir))
+	    (when (and (file-directory-p (concat dir "/" subdir))
+		       (or (file-exists-p
+			    (concat dir "/" subdir "/.pvscontext"))
+			   (file-exists-p
+			    (concat dir "/" subdir "/pvs-lib.lisp"))
+			   (file-exists-p
+			    (concat dir "/" subdir "/pvs-lib.el"))))
 	      (unless (assoc subdir dirname-paths)
 		(push (cons subdir dir) dirname-paths)))))))
     dirname-paths))
