@@ -3315,14 +3315,17 @@ skolem constants for the induction scheme to make sense."
   "Applying rule induction over ~a")
 
 (defstep rule-induct (rel &optional (fnum +) name)
-  (then (repeat (skolem! fnum))
-	(try (flatten)
-	     (let ((fnum *new-fmla-nums*))
-	       ;;note rule-induct recursively, not rule-induct-step
-	       ;;to deal with embedded induction predicates.
-	       (rule-induct$ rel :fnum + :name name))
-	     (rule-induct-step$ rel :fnum - :name name)))
-    "Applies rule induction over an inductive relation REL in
+  (let ((relname (pc-parse rel 'expr)))
+    (if (name-expr? relname)
+	(then (repeat (skolem! fnum))
+	      (try (flatten)
+		   (let ((fnum *new-fmla-nums*))
+		     ;;note rule-induct recursively, not rule-induct-step
+		     ;;to deal with embedded induction predicates.
+		     (rule-induct$ rel :fnum + :name name))
+		   (rule-induct-step$ rel :fnum - :name name)))
+	(skip-msg "Expected the name of an inductive relation for the REL argument to rule-induct")))
+  "Applies rule induction over an inductive relation REL in
    order to prove a sequent of the form
       ...|- (FORALL ...: REL(...) IMPLIES ... or
      ..., REL(x1,...,xn) ... |-- ... 
