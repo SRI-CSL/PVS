@@ -9,9 +9,10 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (defvar *resolve-error-info* nil)
 
@@ -48,13 +49,20 @@
 		   (argument-list argument)
 		   argument))
 	 (res (resolve* name k args)))
+    (when (and (cdr res)
+	       (resolution name)
+	       (member (resolution name) res :test #'tc-eq))
+      (setf res (copy-list (resolutions name))))
     (when (and (null res)
 	       args
 	       (eq k 'expr))
       ;; argument-conversion may add to the types of args, and if it returns
       ;; a resolution we are done, otherwise try function-conversion.
-      (setq res (or (argument-conversion name args)
-		    (function-conversion name args))))
+      (setq res (let ((ares (argument-conversion name args)))
+		  (if ares
+		      (append ares (argument-k-conversion name args))
+		      (or (function-conversion name args)
+			  (argument-k-conversion name args))))))
     (when (memq name *recursive-calls-without-enough-args*)
       (dolist (r res)
 	(when (eq (declaration r) (current-declaration))
@@ -79,25 +87,28 @@
 (defmethod typecheck* ((name modname) expected kind argument)
   (declare (ignore expected kind argument))
   (let ((theory (get-typechecked-theory name)))
-    (when (actuals name)
-      (unless (= (length (formals-sans-usings theory))
-		 (length (actuals name)))
-	(type-error name "Wrong number of actuals in ~a" name))
-      ;; Skip typechecking if already done.  Note that this has no effect on
-      ;; TCCs generated, since set-type-actuals is called in any case.  It
-      ;; just keeps actuals from being typechecked to something else.
-      ;; This fix is needed because the prover calls typecheck on the
-      ;; module-instances it finds to ensure that the proper TCCs are
-      ;; generated (see lemma-step).
-      (unless (every #'typed? (actuals name))
-	(typecheck-actuals name))
-      (unless (member name (gethash theory (using-hash *current-context*))
-		      :test #'tc-eq)
-	(set-type-actuals name)
-	(check-compatible-params (formals-sans-usings theory)
-				 (actuals name) nil)))
-    (when (mappings name)
-      (typecheck-mappings (mappings name) name))
+    (cond ((actuals name)
+	   (unless (= (length (formals-sans-usings theory))
+		      (length (actuals name)))
+	     (type-error name "Wrong number of actuals in ~a" name))
+	   ;; Skip typechecking if already done.  Note that this has
+	   ;; no effect on TCCs generated, since set-type-actuals is
+	   ;; called in any case.  It just keeps actuals from being
+	   ;; typechecked to something else.  This fix is needed
+	   ;; because the prover calls typecheck on the
+	   ;; module-instances it finds to ensure that the proper TCCs
+	   ;; are generated (see lemma-step).
+	   (unless (every #'typed? (actuals name))
+	     (typecheck-actuals name))
+	   (when (mappings name)
+	     (typecheck-mappings (mappings name) name))
+	   (unless (member name (get-importings theory) :test #'tc-eq)
+	     (set-type-actuals name)
+	     (check-compatible-params (formals-sans-usings theory)
+				      (actuals name) nil)))
+	  ((mappings name)
+	   (typecheck-mappings (mappings name) name)
+	   (set-type-actuals name)))
     name))
 
 (defmethod module (binding)
@@ -113,7 +124,7 @@
 ;;(type-error name "Free variables not allowed here")
 
 (defun get-resolutions (name kind args)
-  (let* ((adecls (gethash (id name) (current-declarations-hash)))
+  (let* ((adecls (get-declarations (id name)))
 	 (ldecls (if (library name)
 		     (let ((libref (get-library-reference (library name))))
 		       (if libref
@@ -133,10 +144,16 @@
 	 (theory-aliases (get-theory-aliases name)))
     (nconc (get-binding-resolutions name kind args)
 	   (get-record-arg-resolutions name kind args)
+	   (get-mapping-lhs-resolutions name kind args)
 	   (get-decls-resolutions decls (actuals name) (mappings name)
 				  kind args)
 	   (when (and (eq kind 'module)
-		      (null args))
+		      (null args)
+		      (or (null *typechecking-actual*)
+			  (some #'(lambda (th)
+				    (some #'formal-theory-decl?
+					  (formals-sans-usings th)))
+				(all-importings (current-theory)))))
 	     (let* ((thname (mk-modname (id name) (actuals name)
 					(library name) (mappings name)))
 		    (theory (get-theory thname)))
@@ -163,7 +180,7 @@
   (when (mod-id name)
     (let ((mod-decls (remove-if-not #'(lambda (d)
 					(typep d 'theory-abbreviation-decl))
-		       (gethash (mod-id name) (current-declarations-hash)))))
+		       (get-declarations (mod-id name)))))
       (get-theory-aliases* mod-decls))))
 
 (defun get-theory-aliases* (mod-decls &optional modnames)
@@ -174,8 +191,7 @@
        (let ((thname (theory-name (car mod-decls))))
 	 (if (eq (module (car mod-decls)) (current-theory))
 	     (nconc (list thname) modnames)
-	     (let ((instances (gethash (module (car mod-decls))
-				       (current-using-hash))))
+	     (let ((instances (get-importings (module (car mod-decls)))))
 	       (nconc modnames
 		      (mapcar #'(lambda (inst)
 				  (if (actuals inst)
@@ -273,6 +289,31 @@
 				   (cons stype rtypes)
 				   rtypes)))))
 
+;;; Need to get the mappings, if any.  They may come from the name
+;;; itself, or by chasing the mod-id to a theory-decl or
+;;; theory-abbreviation.  Of course, this is recursive, as the
+;;; theory-decl could be built on a theory-decl.  We look for the first
+;;; set of mappings with a matching LHS.
+(defun get-mapping-lhs-resolutions (name kind args)
+  (when (mod-id name)
+    (if (assoc (id name) (mappings name) :key #'id)
+	(break "In given mappings")
+	(let* ((theory (get-theory (mod-id name)))
+	       (aliases (get-theory-aliases name))
+	       (names (if (theory-interpretation? theory)
+			  (cons (from-theory-name theory) aliases)
+			  aliases)))
+	   (mapcan #'(lambda (alias)
+		       (let ((mapping (find (id name) (mappings alias)
+					    :key #'id)))
+			 (when mapping
+			   (list (make-instance 'mapping-resolution
+				   'declaration mapping
+				   'module-instance alias
+				   'type (or (type-value (rhs mapping))
+					     (type (expr (rhs mapping)))))))))
+	     names)))))
+
 (defun get-decls-resolutions (decls acts mappings kind args &optional reses)
   (if (null decls)
       reses
@@ -295,8 +336,7 @@
   (let ((dth (module decl)))
     (when (and (kind-match (kind-of decl) kind)
 	       (or (eq dth (current-theory))
-		   (and (visible? decl)
-			(can-use-for-assuming-tcc? decl)))
+		   (visible? decl))
 	       (not (disallowed-free-variable? decl))
 	       (or (null args)
 		   (case kind
@@ -305,22 +345,40 @@
 				    (singleton? (formals decl))
 				    (singleton? args))))
 		     (expr (let ((ftype (find-supertype (type decl))))
-			     (and (typep ftype 'funtype)
-				  (or (length= (domain-types ftype) args)
-				      (singleton? (domain-types ftype))
-				      (singleton? args)))))
+			     (or (and (typep ftype 'funtype)
+				      (or (length= (domain-types ftype) args)
+					  (singleton? (domain-types ftype))
+					  (singleton? args)))
+				 (and (type-name? ftype)
+				      (formal-type-decl?
+				       (declaration ftype))))))
 		     (t nil))))
       (if (null acts)
 	  (if (and (null mappings)
+		   (null args)
 		   (or (eq dth (current-theory))
 		       (and (null (formals-sans-usings dth))
 			    (every (complement #'mappings)
-				   (gethash dth (current-using-hash)))))
-		   (null args))
-	      (list (mk-resolution decl (mk-modname (id (module decl)))
-				   (case kind
-				     (expr (type decl))
-				     (type (type-value decl)))))
+				   (get-importings dth)))))
+	      (let* ((usings (unless (eq dth (current-theory))
+				  (get-importings dth)))
+		     (thname (mk-modname (id (module decl))
+			       nil (when usings (library (car usings))))))
+		(when (theory-interpretation? dth)
+		  (change-class thname 'interpreted-modname
+				'interpretation dth))
+		(when (visible-to-mapped-tcc? decl thname dth)
+		  #+pvsdebug
+		  (assert (or (not (library-datatype-or-theory? dth))
+			      (and (library (car usings))
+				   (every #'(lambda (mi)
+					      (eq (library mi)
+						  (library (car usings))))
+					  (cdr usings)))))
+		  (list (mk-resolution decl thname
+				       (case kind
+					 (expr (type decl))
+					 (type (type-value decl)))))))
 	      (let* ((modinsts (decl-args-compatible? decl args mappings))
 		     (unint-modinsts
 		      (remove-if
@@ -331,12 +389,11 @@
 						  (and (mapping-def? m)
 						       (declaration (lhs m)))))))
 			modinsts))
-		     (thinsts (if nil ;mappings have already been considered
-				  (remove-if-not
-				      #'(lambda (mi)
-					  (matching-mappings mappings mi))
-				    unint-modinsts)
-				  unint-modinsts)))
+		     (thinsts (remove-if
+				  (complement
+				   #'(lambda (mi)
+				       (visible-to-mapped-tcc? decl mi dth)))
+				unint-modinsts)))
 		(mapcar #'(lambda (thinst)
 			    (if mappings
 				(make-resolution-with-mappings
@@ -344,19 +401,21 @@
 				(make-resolution decl thinst)))
 		  thinsts)))
 	  (when (length= acts (formals-sans-usings dth))
-	    (let* ((thinsts (gethash dth (current-using-hash)))
+	    (let* ((thinsts (get-importings dth))
 		   (genthinst (find-if-not #'actuals thinsts)))
 	      (if genthinst
 		  (let* ((nacts (compatible-parameters?
 				 acts (formals-sans-usings dth)))
 			 (dthi (when nacts
-				 (mk-modname-no-tccs (id dth) nacts)))
+				 (mk-modname-no-tccs
+				  (id dth) nacts (library genthinst))))
 			 (*generate-tccs* 'none))
 		    (when dthi
 		      (set-type-actuals dthi dth)
 		      #+pvsdebug (assert (fully-typed? dthi))
-		      (when (compatible-arguments? decl dthi args
-						   (current-theory))
+		      (when (and (compatible-arguments? decl dthi args
+							(current-theory))
+				 (visible-to-mapped-tcc? decl dthi dth))
 			(list (make-resolution decl dthi)))))
 		  (let* ((modinsts (decl-args-compatible? decl args mappings))
 			 (thinsts (matching-decl-theory-instances
@@ -364,7 +423,40 @@
 		    (when thinsts
 		      (mapcar #'(lambda (thinst)
 				  (make-resolution decl thinst))
-			thinsts))))))))))
+			(remove-if (complement
+				    #'(lambda (thinst)
+					(visible-to-mapped-tcc? decl thinst dth)))
+			  thinsts)))))))))))
+
+(defun visible-to-mapped-tcc? (decl thinst theory)
+  (let ((cdecl (current-declaration)))
+    (typecase cdecl
+      (assuming-tcc
+       (or (not (memq decl (all-decls (module (generating-assumption cdecl)))))
+	   (memq decl (preceding-theory-decls (generating-assumption cdecl)))
+	   (not (mapped-theory-instance-possible-match
+		 thinst (theory-instance cdecl) theory))))
+      (mapped-axiom-tcc
+       (or (not (memq decl (all-decls (module (generating-axiom cdecl)))))
+	   (memq decl (preceding-theory-decls (generating-axiom cdecl)))
+	   (not (mapped-theory-instance-possible-match
+		 thinst (theory-instance cdecl) theory))))
+      (t t))))
+
+;;; What is going on here is that we have the theory instance from the
+;;; resolution, and the one associated with the assuming or mapped
+;;; axiom TCC, and teh declaration comes after it.  This is fine, as
+;;; long as the resolution instance is from a different instance.
+;;; This can be determined by seeing if there is an earlier IMPORTING
+;;; that is tc-eq to the res-thinst, because if there is, then it
+;;; generated TCCs and there is no unsoundness introduced.
+(defun mapped-theory-instance-possible-match (res-thinst tcc-thinst theory)
+  (or (tc-eq res-thinst tcc-thinst)
+      (not (member res-thinst (get-importings theory) :test #'tc-eq))))
+  
+(defun preceding-theory-decls (decl)
+  (let ((all-decls (all-decls (module decl))))
+    (ldiff all-decls (memq decl all-decls))))
 
 (defun matching-decl-theory-instances (acts theory thinsts &optional matches)
   (if (null thinsts)
@@ -428,7 +520,7 @@
 					   (member (id (lhs m)) idecls
 						   :key #'id))
 				       mappings))
-			(gethash (module decl) (current-using-hash))))
+			(get-importings (module decl))))
 	     (mthinsts (if mappings
 			   (create-theorynames-with-name-mappings
 			    thinsts mappings)
@@ -452,7 +544,12 @@
        (cdr thinsts)
        mappings
        (if (matching-mappings mappings (car thinsts))
-	   (let* ((nmappings (copy-all mappings))
+	   (let* ((rmappings (remove-if
+				 #'(lambda (m)
+				     (member (lhs m) (mappings (car thinsts))
+					     :key #'lhs :test #'same-id))
+			       mappings))
+		  (nmappings (copy-all rmappings))
 		  (nthinst (copy (car thinsts)
 			     'mappings (append (mappings (car thinsts))
 					       nmappings))))
@@ -486,9 +583,9 @@
 	       (with-no-type-errors (resolve* name 'expr nil)))
 	   (declare (ignore error obj))
 	   (let ((thres (unless (mod-id name)
-			  (with-no-type-errors
-			   (resolve* (name-to-modname name)
-				     'module nil)))))
+			  (let ((*typechecking-actual* t))
+			    (with-no-type-errors
+			     (resolve* (name-to-modname name) 'module nil))))))
 	     (unless (or tres eres thres)
 	       (resolution-error name 'expr-or-type nil))
 	     (if (cdr tres)
@@ -496,7 +593,7 @@
 			(setf (resolutions name) eres))
 		       (t (setf (resolutions name) tres)
 			  (type-ambiguity name)))
-		 (setf (resolutions name) (nconc tres eres thres)))
+		 (setf (resolutions name) (append tres eres thres)))
 	     (when eres
 	       (setf (types (expr act)) (mapcar #'type eres))
 	       (when (and (plusp (parens (expr act)))
@@ -677,10 +774,13 @@
 
 (defun compatible-parameters?** (actuals formals types nacts alist)
   (when types
-    (let ((nact (copy-untyped (car actuals)))
-	  (*generate-tccs* 'none))
-      (typecheck* nact nil nil nil)
-      (set-type (expr nact) (car types))
+    (let ((nact (if (typed? (car actuals))
+		    (car actuals)
+		    (let ((uact (copy-untyped (car actuals)))
+			  (*generate-tccs* 'none))
+		      (typecheck* uact nil nil nil)
+		      (set-type (expr uact) (car types))
+		      uact))))
       (or (unless (cdr actuals)
 	    (cons nact nacts))
 	  (compatible-parameters?*
@@ -1130,14 +1230,6 @@
 				(tc-eq (type (expr (rhs mmap))) pty))
 			    (types (expr (rhs map))))))))))
 
-(defun can-use-for-assuming-tcc? (d)
-  (or (not *in-checker*)
-      (not *top-proofstate*)
-      (not (typep (declaration *top-proofstate*) 'assuming-tcc))
-      (let ((ass (generating-assumption (declaration *top-proofstate*))))
-	(or (not (eq (module d) (module ass)))
-	    (not (memq d (memq ass (all-decls (module ass)))))))))
-
 (defun kind-match (kind1 kind2)
   (or (eq kind1 kind2)
       (and (eq kind2 'rewrite)
@@ -1196,9 +1288,11 @@
 (defmethod compatible-arguments? (decl modinst args mod)
   (declare (type list args))
   (declare (ignore mod))
+  #+pvsdebug (assert (or (not (library-datatype-or-theory? (module decl)))
+			 (library modinst)))
   (if (null args)
       (list modinst)
-      (let* ((stype (find-supertype (type decl)))
+      (let* ((stype (subst-mod-params (find-supertype (type decl)) modinst))
 	     (dtypes (when (typep stype 'funtype)
 		       (if (singleton? args)
 			   (list (domain stype))
@@ -1444,16 +1538,17 @@
 	    mreses
 	    (multiple-value-bind (freses ureses)
 		(split-on #'fully-instantiated? mreses)
-	      (if ureses
-		  (append ureses
-			  (remove-if (complement
-				      #'(lambda (r)
-					  (member (module-instance r)
-						  (get-immediate-usings
-						   (current-theory))
-						  :test #'tc-eq)))
-			    freses))
-		  mreses))))
+	      (let ((imm-reses (remove-if (complement
+					   #'(lambda (r)
+					       (member (module-instance r)
+						       (get-immediate-usings
+							(current-theory))
+						       :test #'tc-eq)))
+				 freses)))
+		(if (or (null imm-reses)
+			(equal imm-reses freses))
+		    mreses
+		    (append ureses imm-reses))))))
       mreses))
 
 (defun remove-mapping-resolutions (reses)
@@ -1691,8 +1786,7 @@
       (if (get-theory modname)
 	  (progn
 	    (typecheck* modname nil nil nil)
-	    (let* ((importings (gethash (get-theory modname)
-					(using-hash *current-context*))))
+	    (let* ((importings (get-importings (get-theory modname))))
 	      (unless importings
 		(type-error modname
 		  "Theory ~a is not imported in the current context"
@@ -1709,7 +1803,7 @@
 
 (defun resolve-theory-abbreviation (theory-name)
   (let* ((abbrs (remove-if-not #'mod-decl?
-		  (gethash (id theory-name) (current-declarations-hash)))))
+		  (get-declarations (id theory-name)))))
     (cond ((null abbrs)
 	   (type-error theory-name
 	     "Theory ~a is not an abbreviation, nor is it imported ~
@@ -1736,14 +1830,21 @@
 				  (typep (find-supertype (type r)) 'funtype))
 		 (resolve name 'expr nil))))
     (declare (special *found-one*))
-    (if (let ((*ignored-conversions*
-	       (cons "K_conversion" *ignored-conversions*)))
-	  (argument-conversions (mapcar #'type reses) arguments))
-	(resolve name 'expr arguments)
-	(unless (member "K_conversion" *ignored-conversions* :test #'string=)
-	  (let ((*only-use-conversions* (list "K_conversion")))
-	    (when (argument-conversions (mapcar #'type reses) arguments)
-	      (resolve name 'expr arguments)))))))
+    (when (let ((*ignored-conversions*
+		 (cons "K_conversion" *ignored-conversions*)))
+	    (argument-conversions (mapcar #'type reses) arguments))
+      (resolve name 'expr arguments))))
+
+(defun argument-k-conversion (name arguments)
+  (let ((*found-one* nil)
+	(reses (remove-if-not #'(lambda (r)
+				  (typep (find-supertype (type r)) 'funtype))
+		 (resolve name 'expr nil))))
+    (declare (special *found-one*))
+    (unless (member "K_conversion" *ignored-conversions* :test #'string=)
+      (let ((*only-use-conversions* (list "K_conversion")))
+	(when (argument-conversions (mapcar #'type reses) arguments)
+	  (resolve name 'expr arguments))))))
 
 (defun argument-conversions (optypes arguments)
   (declare (special *found-one*))
@@ -2189,7 +2290,7 @@
 			     (id (module-instance r))))
 		 reses)
 	       (some #'var-decl?
-		     (gethash (id name) (current-declarations-hash))))
+		     (get-declarations (id name))))
 	     name))
       (if (and (eq kind 'expr)
 	       (conversion-occurs-in? arguments))
