@@ -304,6 +304,16 @@
 
 (defcl let-lambda-expr (lambda-expr))
 
+(defcl funtype-conversion (lambda-expr)
+  domain-conversion
+  range-conversion)
+
+(defcl rectype-conversion (lambda-expr)
+  conversions)
+
+(defcl tuptype-conversion (lambda-expr)
+  conversions)
+
 (defcl quant-expr (binding-expr))
 
 (defcl forall-expr (quant-expr))
