@@ -1060,7 +1060,7 @@
       (change-class expr 'lambda-conversion)
       (setf (bindings expr) bindings
 	    (expression expr) (mk-application* op args))
-      (add-conversion-info (car conversions) oexpr)
+      (add-conversion-info (find-if #'expr? conversions) oexpr)
       (typecheck* expr nil nil nil))))
 
 (defun make-arg-conversion-bindings (conversions expr &optional bindings)
