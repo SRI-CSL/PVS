@@ -464,7 +464,7 @@
 			      integer-args))))
      (number-args (mk-floor (sigplus (mk-plus number-args))))
      (integer-args (sigplus (mk-plus integer-args)))
-     (t 0))))
+     (t *zero*))))
 
 (defun split-args-num-int (arg)
   (let ((args (cond
