@@ -171,6 +171,8 @@
 ;;; BDDPTR bdd_else (BDDPTR f)
 (ff:defforeign 'bdd_else :entry-point '"bdd___bdd_else")
 ;;; BDDPTR bdd_apply (BDDPTR (*f)(BDDPTR,BDDPTR),BDDPTR a,BDDPTR b)
+(ff:defforeign 'bdd_constrain :entry-point '"bdd___bdd_constrain")
+;;; BDDPTR bdd_constrain (BDDPTR f, BDDPTR c)
 
 (ff:defforeign 'bdd_sum_of_cubes :entry-point '"bdd___bdd_sum_of_cubes")
 
@@ -259,6 +261,7 @@
   (let* ((*pvs-bdd-hash* (make-hash-table
 			  :hash-function 'pvs-sxhash :test 'tc-eq))
 	 (*bdd-pvs-hash* (make-hash-table))
+	 (*recognizer-forms-alist* nil)
 	 (sforms-bdd (make-sforms-bdd selected-sforms))
 	 (list-of-conjuncts (translate-from-bdd-list
 			     (bdd_sum_of_cubes sforms-bdd
@@ -307,13 +310,54 @@
 
 (defun make-sforms-bdd (selected-sforms &optional bdd)
   (if (null selected-sforms)
-      bdd
+      (add-enum-bdds bdd *recognizer-forms-alist*)
       (let* ((fbdd (translate-to-bdd (formula (car selected-sforms))))
 	     (negbdd (bdd_not fbdd)))
 	(make-sforms-bdd (cdr selected-sforms)
 			 (if bdd
 			     (bdd_and bdd negbdd)
 			     negbdd)))))
+
+(defun add-enum-bdds (bdd rec-form-alist &optional enum-bdds)
+  (if (null rec-form-alist)
+      (if enum-bdds
+	  (bdd_constrain bdd enum-bdds)
+	  bdd)
+      (let* ((excl-bdd (make-enum-exclusive-bdd
+			(mapcar #'(lambda (e) (bdd_create_var (cdr e)))
+			  (cdar rec-form-alist))))
+	     (incl-bdd (make-enum-inclusive-bdd (car rec-form-alist)))
+	     (enum-bdd (if excl-bdd
+			   (if incl-bdd
+			       (bdd-and excl-bdd incl-bdd)
+			       excl-bdd)
+			   incl-bdd)))
+	(add-enum-bdds
+	 bdd
+	 (cdr rec-form-alist)
+	 (if enum-bdd
+	     (if enum-bdds
+		 (bdd-and enum-bdds enum-bdd)
+		 enum-bdd)
+	     enum-bdds)))))
+
+(defun make-enum-exclusive-bdd (enum-list &optional bdd)
+  (if (null (cdr enum-list))
+      bdd
+      (let ((bdd-disj (bdd-or (bdd-not (car enum-list))
+			      (bdd-not (bdd-or* (cdr enum-list))))))
+	(make-enum-exclusive-bdd
+	 (cdr enum-list)
+	 (if bdd
+	     (bdd-and bdd bdd-disj)
+	     bdd-disj)))))
+
+(defun make-enum-inclusive-bdd (rec-alist)
+  (let ((enum-size (length (constructors
+			    (adt (find-supertype (type (car rec-alist))))))))
+    (when (= enum-size (length (cdr rec-alist)))
+      (bdd-or* (mapcar #'(lambda (e) (bdd_create_var (cdr e)))
+		 (cdr rec-alist))))))
 
 (defmethod translate-to-bdd (expr)
   (translate-to-bdd* expr))
@@ -385,12 +429,9 @@
 	     (arg (args1 recexpr))
 	     (entry (assoc  arg *recognizer-forms-alist*
 			    :test #'tc-eq)))
-	(cond ((null entry)
-	       (push (cons arg (list (cons op name)))
-		     *recognizer-forms-alist*))
-	      (t (pushnew (cons op name)
-			  (cdr entry)
-			  :test #'(lambda(x y) (eql (cdr x) (cdr y))))))))))
+	(if (null entry)
+	    (push (cons arg (list (cons op name))) *recognizer-forms-alist*)
+	    (pushnew (cons op name) (cdr entry) :test #'eql :key #'cdr))))))
 
 (defun translate-from-bdd-list (bddlist)
   (let ((bdds (unless (zerop bddlist)
@@ -423,3 +464,19 @@
 	      ((bdd-0? bdd-t)
 	       (translate-bdd-cube* bdd-e (cons (list varid) result)))
 	      (t (translate-bdd-cube* bdd-t (cons varid result)))))))
+
+(defun bdd-and* (bdd-list &optional bdd)
+  (if (null bdd-list)
+      (or bdd (bdd_1))
+      (bdd-and* (cdr bdd-list)
+		(if bdd
+		    (bdd_and bdd (car bdd-list))
+		    (car bdd-list)))))
+
+(defun bdd-or* (bdd-list &optional bdd)
+  (if (null bdd-list)
+      (or bdd (bdd_0))
+      (bdd-or* (cdr bdd-list)
+	       (if bdd
+		   (bdd_or bdd (car bdd-list))
+		   (car bdd-list)))))
