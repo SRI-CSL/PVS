@@ -11,19 +11,23 @@
 
 (in-package :pvs)
 
+(export '(substit make-new-bindings substit-binding))
+
 ;;; NOTE: Many attempts have been made to use hash tables to speed up this
-;;; function, and for particular examples it may look like a win, but in
-;;; general it makes things slower.  The real slowness in this function is
+;;; function, and for particular examples it may look like a win, but it
+;;; often makes things slower.  The real slowness in this function is
 ;;; in the calls to pseudo-normalize, which are needed in subtypes,
 ;;; actuals, and type-applications.
 
-;;; The *needs-pseudo-normalizing* flag controls when to invoke
-;;; pseudo-normalize.  It is let to nil prior to substituting for the
-;;; expression that may need to be pseudo-normalized, and if an expression
-;;; other than a name is substituted for, it is set to t (in substit*
-;;; (name-expr)).  Pseudo-normalize is then invoked only if the flag is set.
+;;; Here we are using hash tables, but we now make sure that substit* never
+;;; directly calls substit.  Keep in mind that pseudo-normalize can make
+;;; calls to substit.
 
 (defvar *needs-pseudo-normalizing* nil)
+
+(defvar *alist-freevars*)
+(defvar *alist-boundvars*)
+(defvar *substit-hash*)
 
 (defun substit (obj alist)
   ;; At some point, should verify that car of every element of the
@@ -34,7 +38,10 @@
 				 '(or simple-decl declaration))
 			  (eq (declaration (car a)) (car a))))
 		 alist))
-  (let* ((fvars (freevars obj))
+  (let* ((*alist-freevars* 'unbound)
+	 (*alist-boundvars* 'unbound)
+	 (*substit-hash* (make-hash-table :test #'eq))
+	 (fvars (freevars obj))
 	 (nalist (remove-if
 		     (complement
 		      #'(lambda (a)
@@ -50,7 +57,8 @@
   (declare (ignore alist))
   (if (null (freevars expr))
       expr
-      (call-next-method)))
+      (or (gethash expr *substit-hash*)
+	  (setf (gethash expr *substit-hash*) (call-next-method)))))
 
 (defmethod substit* :around ((expr type-expr) alist)
   (if (freevars expr)
@@ -60,7 +68,8 @@
 		(let ((result (call-next-method)))
 		  (install-subst-hash expr alist result *subst-type-hash*)
 		  result)))
-	  (call-next-method))
+	  (or (gethash expr *substit-hash*)
+	      (setf (gethash expr *substit-hash*) (call-next-method))))
       expr))
 
 (defun lookup-subst-hash (expr alist hash)
@@ -123,7 +132,7 @@
 					      'name-expr))))
 		   (setf (parens nex) 0)
 		   (setf (resolutions nex)
-			 (list (make-resolution (cdr binding)
+			 (list (mk-resolution (cdr binding)
 				 (current-theory-name)
 				 (type (cdr binding)))))
 		   nex)))
@@ -171,9 +180,7 @@
 	     (nth (1- index) (exprs narg)))
 	    ((eq argument narg)
 	     expr)
-	    (t (let ((ntype (projection-type*
-			     (types (find-supertype (type narg)))
-			     index 1 narg (type narg))))
+	    (t (let ((ntype (substit* (type expr) alist)))
 		 (lcopy expr
 		   'argument narg
 		   'actuals (substit* actuals alist)
@@ -224,7 +231,8 @@
   (let ((new-modinst (substit* (module-instance expr) alist)))
     (if (eq new-modinst (module-instance expr))
 	expr
-	(make-resolution (declaration expr) new-modinst))))
+	(mk-resolution (declaration expr) new-modinst
+		       (substit* (type expr) alist)))))
 
 (defmethod substit* ((expr modname) alist)
   (lcopy expr 'actuals (substit* (actuals expr) alist)))
@@ -240,7 +248,7 @@
 		    (type-value ntype)
 		    (t (let* ((*needs-pseudo-normalizing* nil)
 			      (nexpr (substit* expr alist)))
-			 (if *needs-pseudo-normalizing*
+			 (if t ;*needs-pseudo-normalizing*
 			     (pseudo-normalize nexpr)
 			     nexpr))))
 	'type-value ntype))))
@@ -261,21 +269,58 @@
       (cond ((and (not *substit-dont-simplify*)
 		  (lambda-expr? op)
 		  (not (let-expr? expr)))
-	     (make!-reduced-application op arg))
+	     (make!-reduced-application* op arg))
 	    ((and (eq op operator)
 		  (eq arg argument))
 	     expr)
+	    ((typep op '(or projection-expr injection-expr injection?-expr
+			    extraction-expr))
+	     (typecase op
+	       (projection-expr
+		(make!-projection-application (index op) arg (actuals op)))
+	       (injection-expr
+		(make!-injection-application
+		 (index op) arg (range (type op)) (actuals op)))
+	       (injection?-expr
+		(make!-injection?-application (index op) arg (actuals op)))
+	       (extraction-expr
+		(make!-extraction-application (index op) arg (actuals op)))))
 	    (t (let* ((stype (find-supertype (type op)))
 		      (nex (copy expr
 			     'operator op
 			     'argument arg
 			     'type (if (typep (domain stype) 'dep-binding)
-				       (substit (range stype)
-					 (acons (domain stype) arg nil))
+				       (let ((*alist-freevars* 'unbound)
+					     (*alist-boundvars* 'unbound)
+					     (*substit-hash*
+					      (make-hash-table :test #'eq)))
+					 (substit* (range stype)
+						   (acons (domain stype)
+							  arg nil)))
 				       (range stype)))))
 		 ;; Note: the copy :around (application) method takes care of
 		 ;; changing the class if it is needed.
 		 nex))))))
+
+
+(defmethod make!-reduced-application* ((op lambda-expr) (arg tuple-expr))
+  (if (singleton? (bindings op))
+      (call-next-method)
+      (let ((*alist-freevars* 'unbound)
+	    (*alist-boundvars* 'unbound)
+	    (*substit-hash* (make-hash-table :test #'eq)))
+	(substit* (expression op)
+		  (pairlis (bindings op) (exprs arg))))))
+
+(defmethod make!-reduced-application* ((op lambda-expr) arg)
+  (let ((*alist-freevars* 'unbound)
+	(*alist-boundvars* 'unbound)
+	(*substit-hash* (make-hash-table :test #'eq)))
+    (if (singleton? (bindings op))
+	(substit* (expression op)
+		  (acons (car (bindings op)) arg nil))
+	(substit* (expression op)
+		  (pairlis (bindings op) (make!-projections arg))))))
 
 (defmethod substit* ((expr equation) alist)
   (declare (ignore alist))
@@ -467,17 +512,26 @@
   (cond ((null expr)
 	 (nreverse result))
 	((binding? (car expr))
-	 (let ((newcar (substit-binding (car expr) alist)))
+	 (let ((newcar (substit-binding* (car expr) alist)))
 	   (cond ((eq newcar (car expr))
 		  (substit*-list (cdr expr) alist (cons newcar result)))
-		 (t (substit*-list (cdr expr)
-				   (acons (car expr) newcar alist)
-				   (cons newcar result))))))
+		 (t (let ((*alist-freevars* 'unbound)
+			  (*alist-boundvars* 'unbound)
+			  (*substit-hash* (make-hash-table :test #'eq)))
+		      (substit*-list (cdr expr)
+				     (acons (car expr) newcar alist)
+				     (cons newcar result)))))))
 	(t (substit*-list (cdr expr) alist
 			  (cons (substit* (car expr) alist)
 				result)))))
 
-(defmethod substit-binding (expr alist)
+(defun substit-binding (expr alist)
+  (let ((*alist-freevars* 'unbound)
+	(*alist-boundvars* 'unbound)
+	(*substit-hash* (make-hash-table :test #'eq)))
+    (substit-binding* expr alist)))
+
+(defun substit-binding* (expr alist)
   (let* ((newtype (substit* (type expr) alist))
 	 (newdtype (if (tc-eq (print-type (type expr))
 			      (declared-type expr))
@@ -492,15 +546,16 @@
 (defmethod substit* ((expr binding-expr) alist)
   (if (not (substit-possible? expr alist))
       expr
-      (let* ((new-bindings (make-new-bindings (bindings expr) alist (expression expr)))
+      (let* ((new-bindings (make-new-bindings-internal
+			    (bindings expr) alist (expression expr)))
 	     (nalist (substit-pairlis (bindings expr) new-bindings alist))
-	     (nexpr (substit* (expression expr) nalist))
+	     (nexpr (let ((*alist-freevars* 'unbound)
+			  (*alist-boundvars* 'unbound)
+			  (*substit-hash* (make-hash-table :test #'eq)))
+		      (substit* (expression expr) nalist)))
 	     (ntype (if (quant-expr? expr)
 			(type expr)
-			(make-formals-funtype (list new-bindings)
-					      (type nexpr))))
-	     (*bound-variables* (nconc (reverse new-bindings)
-				       *bound-variables*)))
+			(substit* (type expr) alist))))
 	(copy expr
 	  'bindings new-bindings
 	  'type ntype
@@ -516,6 +571,16 @@
 			   (acons (car bindings) (car new-bindings) alist)))))
 
 (defun make-new-bindings (old-bindings alist expr)
+  (let* ((*alist-freevars* 'unbound)
+	 (*alist-boundvars* 'unbound)
+	 (*substit-hash* (make-hash-table :test #'eq)))
+    (make-new-bindings* old-bindings
+			(alist-freevars alist)
+			(alist-boundvars alist)
+			alist
+			expr)))
+
+(defun make-new-bindings-internal (old-bindings alist expr)
   (make-new-bindings* old-bindings
 		      (alist-freevars alist)
 		      (alist-boundvars alist)
@@ -523,7 +588,10 @@
 		      expr))
 
 (defun alist-freevars (alist)
-  (delete-duplicates (mapappend #'alist-freevars* alist)))
+  (if (eq *alist-freevars* 'unbound)
+      (setq *alist-freevars*
+	    (delete-duplicates (mapappend #'alist-freevars* alist)))
+      *alist-freevars*))
 
 (defun alist-freevars* (alist-pair)
   (freevars (cdr alist-pair)))
@@ -541,15 +609,17 @@
 	   (cons (declaration (car freevars)) alist-freevars)))))
 
 (defun alist-boundvars (alist)
-  (let ((bvars nil))
-    (dolist (acons alist)
-      (mapobject #'(lambda (ex)
-		     (or (subtype? ex)
-			 (when (binding-expr? ex)
-			   (dolist (bd (bindings ex)) (pushnew bd bvars))
-			   nil)))
-		 (cdr acons)))
-    bvars))
+  (if (eq *alist-boundvars* 'unbound)
+      (let ((bvars nil))
+	(dolist (acons alist)
+	  (mapobject #'(lambda (ex)
+			 (or (subtype? ex)
+			     (when (binding-expr? ex)
+			       (dolist (bd (bindings ex)) (pushnew bd bvars))
+			       nil)))
+		     (cdr acons)))
+	(setq *alist-boundvars* bvars))
+      *alist-boundvars*))
 
 ;;freevars must be the free variables in alist.
 
@@ -560,7 +630,18 @@
       (let* ((bind (car old-bindings))
 	     (btype (type bind))
 	     (check (or (member (id bind) freevars :key #'id)
-			(member (id bind) boundvars :key #'id)))
+			(member (id bind) boundvars :key #'id)
+;; 			(some #'(lambda (fv)
+;; 				  (let ((bval (cdr (assq (declaration fv)
+;; 							 alist))))
+;; 				    (and bval
+;; 					 (member bind (collect-references bval)
+;; 						 :test #'(lambda (x y)
+;; 							   (and (eq (id x)
+;; 								    (id y))
+;; 								(not (eq x y))))))))
+;; 			      (freevars expr))
+			))
 	     (stype (substit* btype alist))
 	     (dec-type (declared-type bind))
 	     (new-binding
@@ -598,14 +679,18 @@
 	(substit* (translate-cases-to-if expr) alist))))
 
 (defmethod substit* ((expr selection) alist)
-  (let ((new-bindings (make-new-bindings (args expr) alist (expression expr))))
+  (let ((new-bindings (make-new-bindings-internal
+		       (args expr) alist (expression expr))))
     (lcopy expr
       'constructor (substit* (constructor expr) alist)
       'args new-bindings
-      'expression (substit* (expression expr)
-			    (nconc (pairlis (args expr)
-					    new-bindings)
-				   alist)))))
+      'expression (let ((*alist-freevars* 'unbound)
+			(*alist-boundvars* 'unbound)
+			(*substit-hash* (make-hash-table :test #'eq)))
+		    (substit* (expression expr)
+			      (nconc (pairlis (args expr)
+					      new-bindings)
+				     alist))))))
 
 ;(defmethod substit* ((expr coercion) alist)
 ;  (lcopy expr
@@ -622,11 +707,27 @@
 
 ;;NSH:8-21-91: substit* for type-expressions.
 (defmethod substit* ((texpr type-name) alist)
-  (lcopy texpr
-    'actuals (substit* (actuals texpr) alist)
-    'resolutions (substit* (resolutions texpr) alist)
-    'print-type (substit* (print-type texpr) alist)))
-
+  (let ((nacts (substit* (actuals texpr) alist))
+	(ptype (substit* (print-type texpr) alist))
+	(mi (substit* (module-instance (resolution texpr)) alist)))
+    (if (and (eq nacts (actuals texpr))
+	     (eq ptype (print-type texpr))
+	     (eq mi (module-instance (resolution texpr))))
+	texpr
+	(let ((nte (copy texpr
+		     'actuals nacts
+		     'print-type ptype)))
+	  (setf (gethash texpr *substit-hash*) nte)
+	  (setf (resolutions nte)
+		(list
+		 (if (eq texpr (type (resolution texpr)))
+		     (mk-resolution (declaration (resolution texpr))
+		       mi
+		       nte)
+		     (mk-resolution (declaration (resolution texpr))
+		       mi
+		       (substit* (type (resolution texpr)) alist)))))
+	  nte))))
 
 (defmethod substit* ((texpr subtype) alist)
   (with-slots (supertype predicate print-type) texpr
@@ -634,7 +735,7 @@
 	   (npred (substit* predicate alist)))
       (if (eq npred predicate)
 	  texpr
-	  (let* ((spred (if *needs-pseudo-normalizing*
+	  (let* ((spred (if t ;*needs-pseudo-normalizing*
 			    (pseudo-normalize npred)
 			    npred))
 		 (stype (domain (find-supertype (type spred)))))
@@ -687,11 +788,8 @@
 (defmethod substit* ((te type-application) alist)
   (lcopy te
     'type (substit* (type te) alist)
-    'parameters (let* ((*needs-pseudo-normalizing* nil)
-		       (nparms (substit* (parameters te) alist)))
-		  (if *needs-pseudo-normalizing*
-		      (pseudo-normalize nparms)
-		      nparms))
+    'parameters (let* ((nparms (substit* (parameters te) alist)))
+		  (pseudo-normalize nparms))
     'print-type (substit* (print-type te) alist)))
 
 (defmethod substit* ((fd field-decl) alist)
