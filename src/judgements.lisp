@@ -491,7 +491,7 @@
   (let ((args-list (argument* ex)))
     (compute-appl-judgement-types
      args-list
-     (mapcar #'judgement-types+ args-list)
+     (mapcar #'judgement-types* args-list) ;; Not judgement-types+
      (operator-domain ex)
      graph)))
 
