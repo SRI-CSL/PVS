@@ -1,4 +1,4 @@
--(in-package :pvs)
+(in-package :pvs)
 
 ;; DFAs are packaged into a structure in order to finalize objects of this type
 
@@ -8,10 +8,11 @@
 	    (:print-function
 	     (lambda (p s k)
 	       (declare (ignore k))
-	       (format s "#<S: ~a, N: ~a, T: ~a>"
-		       (number-of-states p)
-		       (number-of-bdd-nodes p)
-		       (number-of-transitions p)))))
+	       (format s "~a" (dfa-ptr-address p)))))
+	    ;   (format s "#<S: ~a, N: ~a, T: ~a>"
+		;       (number-of-states p)
+		;       (number-of-bdd-nodes p)
+		;       (number-of-transitions p)))))
   address)
 
 (defun dfa-ptr= (p1 p2)
@@ -120,35 +121,37 @@
 		   (loop* (cdr l) (dfa-disjunction acc a)))))))
     (loop* as (dfa-false-val))))
 
-(defun dfa-exists2 (i a &optional b)
-  (let ((a1 (if (null b) a (dfa-conjunction b a))))
-    (dfa-exists i a1)))
+(defun dfa-exists2 (i p) (dfa-exists i p))
+(defun dfa-exists1 (i p) (dfa-exists i (dfa-conjunction (dfa-var1 i) p)))
+(defun dfa-exists0 (i p) (dfa-exists i (dfa-conjunction (dfa-var0 i) p)))
 
-(defun dfa-exists1 (i a &optional restriction)
-   (let ((new-restriction (if (null restriction) (dfa-var1 i)
-			    (dfa-conjunction (dfa-var1 i) restriction))))
-     (dfa-exists2 i a new-restriction)))
+(defun dfa-forall2 (i p) (dfa-negation (dfa-exists i (dfa-negation p))))
+(defun dfa-forall1 (i p) (dfa-negation (dfa-exists i (dfa-conjunction
+						      (dfa-var1 i)
+						      (dfa-negation p)))))
+(defun dfa-forall0 (i p) (dfa-negation (dfa-exists i (dfa-conjunction
+						      (dfa-var0 i)
+						      (dfa-negation p)))))
 
-(defun dfa-exists0 (i a &optional restriction)
-  (let ((new-restriction (if (null restriction) (dfa-var0 i)
-			   (dfa-conjunction (dfa-var0 i) restriction))))
-     (dfa-exists2 i a new-restriction)))
+(defun dfa-exists* (levels is a)
+  (cond ((and (null levels) (null is))
+	 a)
+	((and (consp levels) (consp is))
+	 (dfa-exists* (cdr levels)
+		      (cdr is)
+		      (let ((level (car levels)))
+			(cond ((= level 2)
+			       (dfa-exists2 (car is) a))
+			      ((= level 1)
+			       (dfa-exists1 (car is) a))
+			      ((= level 0)
+			       (dfa-exists0 (car is) a))
+			      (t (error "Fatal Error: Unknown Level ~a" level))))))
+	(t
+	 (error "Fatal Error: List arguments not of equal length"))))
 
-(defun dfa-forall (i p)
-   (dfa-negation (dfa-exists i (dfa-negation p))))
-
-(defun dfa-forall2 (i a &optional restriction)
-   (dfa-negation (dfa-exists2 i (dfa-negation a) restriction)))
-
-(defun dfa-forall1 (i a &optional restriction)
-  (let ((new-restriction (if (null restriction) (dfa-var1 i)
-			   (dfa-conjunction (dfa-var1 i) restriction))))
-    (dfa-forall2 i a new-restriction)))
-
-(defun dfa-forall0 (i a &optional restriction)
-  (let ((new-restriction (if (null restriction)	(dfa-var0 i)
-			   (dfa-conjunction (dfa-var0 i) restriction))))
-    (dfa-forall2 i a new-restriction)))
+(defun dfa-forall* (levels is a)
+  (dfa-negation (dfa-exists* levels is (dfa-negation a))))
 
 (defun dfa-exists2* (is a)
   (if (null is) a
