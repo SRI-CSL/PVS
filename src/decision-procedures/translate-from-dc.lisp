@@ -81,7 +81,7 @@
 (defun translate-from-dc-name (var)
   (cond ((dp::true-p var) *true*)
 	((dp::false-p var) *false*)
-	((dp::dp-numberp var) (make-number-expr (dp::constant-id var)))
+	((dp::dp-numberp var) (make!-number-expr (dp::constant-id var)))
 	(t (let ((dc-infix (dc-infix-fun (dp::constant-id var))))
 	     (if dc-infix
 		 (mk-name-expr dc-infix)
