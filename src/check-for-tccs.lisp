@@ -10,8 +10,9 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (defvar *skip-tcc-check-exprs* nil)
 
@@ -50,10 +51,11 @@
 
 (defun check-type-actuals (expr)
   (let* ((modinst (module-instance expr))
+	 (theory (module (declaration expr)))
 	 (acts (actuals modinst)))
     (when acts
-      (check-type-actuals* acts (formals-sans-usings (get-theory modinst)))
-      (generate-assuming-tccs modinst expr)
+      (check-type-actuals* acts (formals-sans-usings theory))
+      (generate-assuming-tccs modinst expr theory)
       (generate-actuals-tccs (actuals expr) acts))))
 
 (defun check-type-actuals* (actuals formals &optional alist)
