@@ -723,6 +723,8 @@ sets [T: TYPE]: THEORY
 
   fullset: set = {x | true}
 
+  nontrivial?(a): bool = a /= emptyset & a /= fullset
+
   subset?(a, b): bool = (FORALL x: member(x, a) => member(x, b))
 
   strict_subset?(a, b): bool = subset?(a, b) & a /= b
@@ -752,6 +754,8 @@ sets [T: TYPE]: THEORY
 
   singleton(x): (singleton?) = {y | y = x}
 
+  CONVERSION+ singleton
+
   add(x, a): (nonempty?) = {y | x = y OR member(y, a)}
 
   remove(x, a): set = {y | x /= y AND member(y, a)}
@@ -760,6 +764,10 @@ sets [T: TYPE]: THEORY
   choose(p: (nonempty?)): (p) = epsilon(p)
 
   the(p: (singleton?)): (p) = epsilon(p)
+
+  singleton_elt(a: (singleton?)): T = the! x: member(x, a)
+
+  CONVERSION+ singleton_elt
 
   rest(a): set = IF empty?(a) THEN a ELSE remove(choose(a), a) ENDIF
 
@@ -1204,16 +1212,24 @@ function_inverse[D: NONEMPTY_TYPE, R: TYPE]: THEORY
     inverse(f:(bijective?[D,R])) HAS_TYPE (bijective?[R,D])
 
   surjective_inverse: LEMMA
-    (FORALL (f:(surjective?[D, R])):
-       inverse(f)(y) = x IMPLIES y = f(x))
+    FORALL (f:(surjective?[D, R])):
+       inverse(f)(y) = x IMPLIES y = f(x)
+
+  inverse_surjective: LEMMA
+    FORALL (f:(surjective?[D, R])):
+       f(inverse(f)(y)) = y
 
   injective_inverse: LEMMA
-    (FORALL (f:(injective?[D, R])):
-       y = f(x) IMPLIES inverse(f)(y) = x)
+    FORALL (f:(injective?[D, R])):
+       y = f(x) IMPLIES inverse(f)(y) = x
+
+  inverse_injective: LEMMA
+    FORALL (f:(injective?[D, R])):
+       inverse(f)(f(x)) = x
 
   bijective_inverse: LEMMA
-    (FORALL (f:(bijective?[D, R])):
-       inverse(f)(y) = x IFF y = f(x))
+    FORALL (f:(bijective?[D, R])):
+       inverse(f)(y) = x IFF y = f(x)
 
   bij_inv_is_bij: LEMMA
     bijective?(f) IMPLIES bijective?(inverse(f))
@@ -1437,6 +1453,10 @@ relation_defs [T1, T2: TYPE]: THEORY
   R: VAR pred[[T1, T2]]
   X: VAR set[T1]
   Y: VAR set[T2]
+
+  domain?(R)(x: T1): bool = EXISTS (y: T2): R(x, y)
+
+  range?(R)(y: T2): bool = EXISTS (x: T1): R(x, y)
 
   domain(R): TYPE = {x: T1 | EXISTS (y: T2): R(x, y)}
 
@@ -1721,7 +1741,7 @@ reals: THEORY
 
   nonzero_real: NONEMPTY_TYPE = {r: real | r /= 0} CONTAINING 1
   nzreal: NONEMPTY_TYPE = nonzero_real
-  nzreal_is_nznum: JUDGEMENT nonzero_real SUBTYPE_OF nonzero_number
+  % nzreal_is_nznum: JUDGEMENT nonzero_real SUBTYPE_OF nonzero_number
 
   x, y: VAR real
   n0z: VAR nzreal
@@ -1944,7 +1964,7 @@ rationals: THEORY
 
   nonzero_rational: NONEMPTY_TYPE = {r: rational | r /= 0} CONTAINING 1
   nzrat: NONEMPTY_TYPE = nonzero_rational
-  nzrat_is_nzreal: JUDGEMENT nonzero_rational SUBTYPE_OF nonzero_real
+  % nzrat_is_nzreal: JUDGEMENT nonzero_rational SUBTYPE_OF nonzero_real
 
   x, y: VAR rat
   n0z: VAR nzrat
@@ -1975,10 +1995,10 @@ rationals: THEORY
   nx, ny: VAR negrat
   n0x, n0y: VAR nzrat
 
-  nnrat_is_nnreal:   JUDGEMENT nonneg_rat SUBTYPE_OF nonneg_real
-  nprat_is_npreal:   JUDGEMENT nonpos_rat SUBTYPE_OF nonpos_real
-  posrat_is_posreal: JUDGEMENT posrat     SUBTYPE_OF posreal
-  negrat_is_negreal: JUDGEMENT negrat     SUBTYPE_OF negreal
+  % nnrat_is_nnreal:   JUDGEMENT nonneg_rat SUBTYPE_OF nonneg_real
+  % nprat_is_npreal:   JUDGEMENT nonpos_rat SUBTYPE_OF nonpos_real
+  % posrat_is_posreal: JUDGEMENT posrat     SUBTYPE_OF posreal
+  % negrat_is_negreal: JUDGEMENT negrat     SUBTYPE_OF negreal
   posrat_is_nzrat:   JUDGEMENT posrat     SUBTYPE_OF nzrat
   negrat_is_nzrat:   JUDGEMENT negrat     SUBTYPE_OF nzrat
 
@@ -2029,7 +2049,7 @@ integers: THEORY
 
   nonzero_integer: NONEMPTY_TYPE = {i: int | i /= 0} CONTAINING 1
   nzint: NONEMPTY_TYPE = nonzero_integer
-  nzint_is_nzrat: JUDGEMENT nonzero_integer SUBTYPE_OF nonzero_rational
+  % nzint_is_nzrat: JUDGEMENT nonzero_integer SUBTYPE_OF nonzero_rational
 
   i, j: VAR int
   n0i, n0j: VAR nzint
@@ -2064,10 +2084,10 @@ integers: THEORY
   % Built in:
   % JUDGEMENT 1, 2, 3, ... HAS_TYPE posint
 
-  nnint_is_nnrat:   JUDGEMENT nonneg_int SUBTYPE_OF nonneg_rat
-  npint_is_nprat:   JUDGEMENT nonpos_int SUBTYPE_OF nonpos_rat
-  posint_is_posrat: JUDGEMENT posint     SUBTYPE_OF posrat
-  negint_is_negrat: JUDGEMENT negint     SUBTYPE_OF negrat
+  % nnint_is_nnrat:   JUDGEMENT nonneg_int SUBTYPE_OF nonneg_rat
+  % npint_is_nprat:   JUDGEMENT nonpos_int SUBTYPE_OF nonpos_rat
+  % posint_is_posrat: JUDGEMENT posint     SUBTYPE_OF posrat
+  % negint_is_negrat: JUDGEMENT negint     SUBTYPE_OF negrat
   posint_is_nzint:  JUDGEMENT posint     SUBTYPE_OF nzint
   negint_is_nzint:  JUDGEMENT negint     SUBTYPE_OF nzint
 
@@ -3737,6 +3757,7 @@ finite_sets[T: TYPE]: THEORY
 
   card_add        : THEOREM card(add(x, S)) = card(S) 
                                                    + IF S(x) THEN 0 ELSE 1 ENDIF
+  card_add_gt0    : THEOREM card(add(x,S)) > 0
 
   card_remove     : THEOREM card(remove(x, S)) = card(S)
                                                    - IF S(x) THEN 1 ELSE 0 ENDIF
@@ -4334,8 +4355,7 @@ character: DATATYPE
 
 
 % strings - the strings theory introduces the char type and represents
-% strings as a finite sequence of chars.  The string_rep lemma shows how
-% strings are represented internally.  The other lemmas are useful for
+% strings as a finite sequence of chars.  The lemmas are useful for
 % rewriting.  This theory is useful to auto-rewrite with, but make sure
 % that list2finseq is not also an auto-rewrite rule.
 %
@@ -4357,11 +4377,6 @@ strings: THEORY
  BEGIN
   char: TYPE = (char?)
   string: TYPE = finite_sequence[char]
-
-  string_rep: LEMMA
-    "foo" = list2finseq(cons(char(102),
-                             cons(char(111),
-                                  cons(char(111), null))))
 
   l1, l2: VAR list[char]
 
