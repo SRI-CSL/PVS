@@ -380,8 +380,8 @@
 
 (defmethod check-update-argument ((expr record-expr)
 				  updated-variables)
-  (with-slots (fields) expr
-    (check-update-argument fields updated-variables)))
+  (with-slots (assignments) expr
+    (check-update-argument assignments updated-variables)))
 
 (defmethod check-update-argument ((expr tuple-expr)
 				  updated-variables)
