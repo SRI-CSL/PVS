@@ -672,7 +672,8 @@ buffer."
 
 (defpvs install-and-step-proof edit-proof ()
   (interactive)
-  (install-proof t))
+  (when (y-or-n-p "Install proof? ")
+    (install-proof t)))
 
 (defpvs install-and-x-step-proof edit-proof ()
   (interactive)
@@ -825,11 +826,13 @@ As of PVS 3.0, formulas may have multiple proofs attached, and one of them
 is always the default.  The show-proofs-importchain command displays all
 the default proof scripts of all the formulas of the importchain with the
 specified theory at the root.  See also display-proofs-pvs-file, which
-allows access to all the proofs, not just the defaults."
+allows access to all the proofs, not just the defaults.  With an argument,
+shows proofs of all formulas and theories of the .prf files, even those that
+are (no longer) part of the corresponding .pvs files."
   (interactive (complete-theory-name
 		"Show proofs of importchain of theory named: "))
-  (when (pvs-send-and-wait (format "(show-proofs-importchain \"%s\")"
-			       theoryname)
+  (when (pvs-send-and-wait (format "(show-proofs-importchain \"%s\" %s)"
+			       theoryname (and current-prefix-arg t))
 			   nil nil 'bool))
     (pop-to-buffer "Show Proofs")
     (goto-char (point-min))
@@ -842,9 +845,12 @@ As of PVS 3.0, formulas may have multiple proofs attached, and one of them
 is always the default.  The show-proofs-pvs-file command displays all the
 default proof scripts of all the formulas of the specified PVS file.  See
 also display-proofs-pvs-file, which allows access to all the proofs, not
-just the defaults."
+just the defaults.  With an argument, shows proofs of all formulas and
+theories of the .prf file, even those that are (no longer) part of the
+corresponding .pvs file."
   (interactive (complete-pvs-file-name "Show proofs of PVS file named: "))
-  (when (pvs-send-and-wait (format "(show-proofs-pvs-file \"%s\")" filename)
+  (when (pvs-send-and-wait (format "(show-proofs-pvs-file \"%s\" %s)"
+			       filename (and current-prefix-arg t))
 			   nil nil 'bool))
     (pop-to-buffer "Show Proofs")
     (goto-char (point-min))
@@ -857,9 +863,12 @@ As of PVS 3.0, formulas may have multiple proofs attached, and one of them
 is always the default.  The show-proofs-theory command displays all the
 default proof scripts of all the formulas of the specified theory.  See
 also display-proofs-theory, which allows access to all the proofs, not
-just the defaults."
+just the defaults.  With an argument, shows proofs of all associated formulas
+of the .prf file, even those that are (no longer) part of the corresponding
+theory."
   (interactive (complete-theory-name "Show proofs of theory named: "))
-  (when (pvs-send-and-wait (format "(show-proofs-theory \"%s\")" theoryname)
+  (when (pvs-send-and-wait (format "(show-proofs-theory \"%s\" %s)"
+			       theoryname (and current-prefix-arg t))
 			   nil nil 'bool))
     (pop-to-buffer "Show Proofs")
     (goto-char (point-min))
@@ -923,7 +932,7 @@ describe-mode) , the following are available:
 
 ;;; add-declaration
 
-(defvar *add-decl-window-config* nil
+(defvar add-decl-window-config nil
   "Saves the window configuration when add-declaration or modify-declaration
 are invoked")
 
@@ -967,7 +976,7 @@ declarations will not be installed."
     (when (pvs-send-and-wait (format "(lisp (add-declaration-at \"%s\" %d))"
 				 file (current-line-number))
 			     nil nil 'bool)
-      (setq *add-decl-window-config* (current-window-configuration))
+      (setq add-decl-window-config (current-window-configuration))
       (let ((buf (get-buffer-create "Add Declaration")))
 	(save-excursion
 	  (set-buffer buf)
@@ -987,29 +996,26 @@ declarations will not be installed."
 	   (delete-initial-blank-lines)
 	   (add-final-newline)
 	   (write-region (point-min) (point-max) *pvs-tmp-file* nil 'notnil))
-	 (let ((ret (pvs-send-and-wait
-		     (format "(typecheck-add-declaration \"%s\" t)"
-			 *pvs-tmp-file*)
-		     nil nil 'list)))
-	   (when (and ret (consp ret))
-	     (let* ((file (car ret))
-		    (place (cadr ret))
-		    (decls (save-excursion
-			     (set-buffer "Add Declaration")
-			     (goto-char (point-max))
-			     (delete-blank-lines)
-			     (substring (buffer-string) 0 -1))))
-	       (find-pvs-file file)
-	       (goto-line (car place))
-	       (insert-decls decls (cadr place) t)
-	       (save-buffer)
-	       (pvs-send-and-wait
-		(format "(reset-parsed-date \"%s\")" file) nil nil 'dont-care)
-	       (remove-buffer "Add Declaration")
-	       (when *add-decl-window-config*
-		 (set-window-configuration *add-decl-window-config*)
-		 (setq *add-decl-window-config* nil))))))
+	 (pvs-send
+	  (format "(typecheck-add-declaration \"%s\" t)" *pvs-tmp-file*)))
 	(t (error "No declaration is currently being edited"))))
+
+(defun add-declaration-to-file (file placestr)
+  (let* ((place (car (read-from-string placestr)))
+	 (decls (save-excursion
+		  (set-buffer "Add Declaration")
+		  (goto-char (point-max))
+		  (delete-blank-lines)
+		  (substring (buffer-string) 0 -1))))
+    (find-pvs-file file)
+    (goto-line (car place))
+    (insert-decls decls (cadr place) t)
+    (save-buffer)
+    (pvs-send (format "(reset-parsed-date \"%s\")" file))
+    (remove-buffer "Add Declaration")
+    (when add-decl-window-config
+      (set-window-configuration add-decl-window-config)
+      (setq add-decl-window-config nil))))
 
 (defun insert-decls (decls indent &optional crs)
   (let ((start (point))
@@ -1064,7 +1070,7 @@ will replace the original when C-c C-c is typed."
     (when (pvs-send-and-wait (format "(lisp (modify-declaration-at \"%s\" %d))"
 				 file (current-line-number))
 			     nil nil 'bool)
-      (setq *add-decl-window-config* (current-window-configuration))
+      (setq add-decl-window-config (current-window-configuration))
       (let ((buf (get-buffer-create "Modify Declaration")))
 	(save-excursion
 	  (set-buffer buf)
@@ -1109,9 +1115,9 @@ will replace the original when C-c C-c is typed."
 	       (pvs-send-and-wait
 		(format "(reset-parsed-date \"%s\")" file) nil nil 'dont-care))
 	     (remove-buffer "Modify Declaration")
-	     (when *add-decl-window-config*
-	       (set-window-configuration *add-decl-window-config*)
-	       (setq *add-decl-window-config* nil)))))
+	     (when add-decl-window-config
+	       (set-window-configuration add-decl-window-config)
+	       (setq add-decl-window-config nil)))))
 	(t (error "No declaration is currently being modified"))))
 
 (defpvs help-pvs-prover help ()
