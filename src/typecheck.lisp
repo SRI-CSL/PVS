@@ -535,13 +535,13 @@
   (update-conversions-of-current-context theory theoryname))
 
 (defun update-conversions-of-current-context (theory theoryname)
-  (dolist (conversion (conversions (saved-context theory)))
+  (dolist (conversion (reverse
+		       (list-diff (conversions (saved-context theory))
+				  (conversions *current-context*))))
     (if (eq (module conversion) theory)
-	(pushnew (subst-params-decl conversion theoryname)
-		 (conversions *current-context*)
-		 :test #'eq)
-	(pushnew conversion (conversions *current-context*)
-		 :test #'eq)))
+	(push (subst-params-decl conversion theoryname)
+	      (conversions *current-context*))
+	(push conversion (conversions *current-context*))))
   (dolist (conversion (disabled-conversions (saved-context theory)))
     (if (eq (module conversion) theory)
 	(pushnew (subst-params-decl conversion theoryname)
@@ -549,6 +549,11 @@
 		 :test #'eq)
 	(pushnew conversion (disabled-conversions *current-context*)
 		 :test #'eq))))
+
+(defun list-diff (l1 l2 &optional elts)
+  (if (or (null l1) (equal l1 l2))
+      (nreverse elts)
+      (list-diff (cdr l1) l2 (cons (car l1) elts))))
 
 (defmethod subst-params-decl ((c conversion-decl) modinst)
   (lcopy c
