@@ -287,6 +287,7 @@
 	  (actuals inst))))
 
 (defun add-theory-mappings-importings (theory inst)
+  (declare (ignore theory))
   (mapc #'(lambda (map)
 	    (when (mod-decl? (declaration (lhs map)))
 	      (add-to-using (mk-modname (id (expr (rhs map)))
@@ -503,53 +504,6 @@
 		 (setf (gethash theory (current-using-hash))
 		       (list tname)))))))
 
-(defmethod get-mapped-decl ((map mapping-def))
-  (break)
-  (or (mapped-decl map)
-      (let ((decl (declaration (lhs map))))
-	(setf (mapped-decl map)
-	      (typecase decl
-		(type-decl
-		 (copy decl
-		   'module (current-theory)
-		   'type-value (type-value (rhs map))))
-		(const-decl
-		 (let ((mdecl (copy decl
-				'module (current-theory)
-				'type (type (expr (rhs map)))
-				'declared-type (or (print-type
-						    (type (expr (rhs map))))
-						   (type (expr (rhs map))))
-				'definition (expr (rhs map)))))
-		   (make-def-axiom mdecl)
-		   mdecl))
-		(t (break "get-mapped-decl")
-		   decl))))))
-
-(defmethod get-mapped-decl ((map mapping-rename))
-  (break)
-  (or (mapped-decl map)
-      (let ((decl (declaration (lhs map))))
-	(typecase decl
-	  (type-decl
-	   (let* ((id (id (expr (rhs map))))
-		  (tn (mk-type-name id)))
-	     (setf (resolutions tn)
-		   (list (mk-resolution decl (current-theory-name) tn)))
-	     (setf (mapped-decl map)
-		   (copy decl
-		     'id id
-		     'type-value tn))))
-	  (const-decl
-	   (let ((id (id (expr (rhs map)))))
-	     (assert (type (expr (rhs map))))
-	     (break "get-mapped-decl (mapping-rename) const-decl")
-	     (setf (mapped-decl map)
-		   (copy decl
-		     'id (id (expr (rhs map)))
-		     ))))
-	  (t (break "get-mapped-decl (mapping-rename) theory"))))))
-
 (defmethod check-for-importing-conflicts ((decl lib-decl))
   (let ((lib-ref (lib-ref decl)))
     (dolist (d (gethash (id decl) (current-declarations-hash)))
@@ -735,11 +689,12 @@
 	  (typecheck-mapping-rhs mapping)))))
 
 (defmethod typecheck-mappings (mappings (n number-expr))
+  (declare (ignore mappings))
   nil)
 
 (defmethod typecheck-mapping-rhs ((mapping mapping))
   (when (declared-type mapping)
-    (setf (type mapping) (typecheck* dtype nil nil nil)))
+    (setf (type mapping) (typecheck* (declared-type mapping) nil nil nil)))
   (typecheck-mapping-rhs* (expr (rhs mapping))
 			  (kind mapping)
 			  (type mapping)
@@ -747,7 +702,7 @@
 
 (defmethod typecheck-mapping-rhs ((mapping mapping-rename))
   (when (declared-type mapping)
-    (setf (type mapping) (typecheck* dtype nil nil nil)))
+    (setf (type mapping) (typecheck* (declared-type mapping) nil nil nil)))
   ;; Just check that the rhs won't clash with any existing names of the
   ;; source theory.
   )
@@ -796,6 +751,7 @@
 	    (setf (type-value rhs) (type (car tres))))))))
 
 (defmethod typecheck-mapping-rhs* (ex kind type rhs)
+  (declare (ignore kind type))
   (let ((typed-ex (typecheck* ex nil nil nil)))
     (when (type-expr? typed-ex)
       (setf (type-value rhs) typed-ex))
