@@ -3,11 +3,9 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec 16 02:42:01 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sun May 28 03:13:00 1995
-;; Update Count    : 19
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Last Modified On: Thu May 20 16:23:41 2004
+;; Update Count    : 20
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -148,10 +146,9 @@
   (let ((info (if args
 		  (format nil "~?" ctl args)
 		  ctl)))
-    (when *noninteractive*
-      (pvs-message "~% ~a~%" info)
-      ;;(format t "~% ~a~%" info)
-      )
+    (when (and *noninteractive*
+	       (> *pvs-verbose* 1))
+      (pvs-message "~% ~a~%" info))
     (when (and (current-theory)
 	       (not *in-checker*)
 	       (not *in-evaluator*))
