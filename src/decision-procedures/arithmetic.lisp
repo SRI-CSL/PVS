@@ -75,6 +75,44 @@
   (and (application-p term)
        (eq (funsym term) *floor*)))
 
+(defun less-p (term)
+  (and (application-p term)
+       (eq (funsym term) *lessp*)))
+
+(defun lesseq-p (term)
+  (and (application-p term)
+       (eq (funsym term) *lesseqp*)))
+
+(defun greater-p (term)
+  (and (application-p term)
+       (eq (funsym term) *greaterp*)))
+
+(defun greatereq-p (term)
+  (and (application-p term)
+       (eq (funsym term) *greatereqp*)))
+
+(defun mk-less (trm1 trm2)
+  (declare (type node trm))
+  (mk-term (list *lessp* trm1 trm2)))
+
+(defun mk-lesseq (trm1 trm2)
+  (declare (type node trm))
+  (mk-term (list *lesseqp* trm1 trm2)))
+
+(defun mk-greater (trm1 trm2)
+  (declare (type node trm))
+  (mk-term (list *greaterp* trm1 trm2)))
+
+(defun mk-greatereq (trm1 trm2)
+  (declare (type node trm))
+  (mk-term (list *greatereqp* trm1 trm2)))
+
+(defun strict-ineq-p (trm)
+  (or (less-p trm) (greater-p trm)))
+
+(defun nonstrict-ineq-p (trm)
+  (or (lesseq-p trm) (greatereq-p trm)))
+
 ;;returns monomials of a polynomial
 (defun termsof (expr)  ;;;expr must be arithmetic.
   (if (plus-p expr)
