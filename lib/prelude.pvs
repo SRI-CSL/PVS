@@ -2655,6 +2655,7 @@ list_props [T: TYPE]: THEORY
  BEGIN
   l, l1, l2, l3: VAR list[T]
   x: VAR T
+  P, Q: VAR PRED[T]
 
   length(l): RECURSIVE nat =
     CASES l OF
@@ -2669,6 +2670,8 @@ list_props [T: TYPE]: THEORY
       cons(hd, tl): x = hd OR member(x, tl)
     ENDCASES
    MEASURE length(l)
+
+  member_null: LEMMA member(x, l) IMPLIES NOT null?(l)
 
   nth(l, (n:below[length(l)])): RECURSIVE T =
     IF n = 0 THEN car(l) ELSE nth(cdr(l), n-1) ENDIF
@@ -2705,6 +2708,20 @@ list_props [T: TYPE]: THEORY
   a, b, c: VAR T
 
   list_rep: LEMMA (: a, b, c :) = cons(a, cons(b, cons(c, null)))
+
+  every_append: LEMMA
+    every(P)(append(l1, l2)) IFF (every(P)(l1) AND every(P)(l2))
+
+  every_disjunct1: LEMMA
+    every(P)(l) IMPLIES every(LAMBDA (x: T): P(x) OR Q(x))(l)
+
+  every_disjunct2: LEMMA
+    every(Q)(l) IMPLIES every(LAMBDA (x: T): P(x) OR Q(x))(l)
+
+  every_conjunct: LEMMA
+    every(LAMBDA (x: T): P(x) AND Q(x))(l) => (every(P)(l) AND every(Q)(l))
+
+  every_member: LEMMA every({c: T | member(c, l)})(l)
 
  END list_props
 
