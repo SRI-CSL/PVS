@@ -164,11 +164,14 @@
   (let* ((dc-base-name (dc-unique-prover-name expr))
 	 (actuals (actuals (module-instance expr)))
 	 (dc-actuals (translate-to-dc-actuals actuals)))
-    (if dc-actuals
-	(dp::mk-term (cons dp::*th-app*
-			   (cons dc-base-name dc-actuals))
-		     (dp::node-type dc-base-name))
-	dc-base-name)))
+    (if (and (constructor? expr)
+	     (enum-adt? (find-supertype (type expr))))
+	dc-base-name
+	(if dc-actuals
+	    (dp::mk-term (cons dp::*th-app*
+			       (cons dc-base-name dc-actuals))
+			 (dp::node-type dc-base-name))
+	    dc-base-name))))
 	
 
 (defun list-of-decl-and-type-actuals (expr)
