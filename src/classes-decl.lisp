@@ -458,7 +458,9 @@
 
 (defcl conversion-decl (declaration)
   k-combinator?
-  (expr :parse t))
+  (expr :parse t)
+  (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound)
+  (free-parameter-theories :ignore t :initform 'unbound :fetch-as 'unbound))
 
 ;;; Same as conversion-decl, but prints differently
 (defcl conversionplus-decl (conversion-decl))
