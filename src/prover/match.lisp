@@ -3,12 +3,11 @@
 ;; Author          : N. Shankar
 ;; Created On      : Sat May 23 22:44:44 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sat Oct 31 02:44:36 1998
-;; Update Count    : 2
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Last Modified On: Thu May 20 21:29:14 2004
+;; Update Count    : 3
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -55,13 +54,15 @@
 	    'fail
 	    (match-remaining-actuals (cdr stack) result)))))
 
+(defvar *strict-matches* nil)
+
 (defun match (expr instance bind-alist subst)
   (let* ((*match-cache* (or *match-cache* ;;for initialization
-			                   ;;not shadowing
+			    ;;not shadowing
 			    (make-hash-table :test #'eq)))
 	 (hashed-table-expr
-	  (unless *no-bound-variables-in-match* ;;NSH(10.19.95)
-	    (gethash expr *match-cache*)))  ;;should not cache or lookup
+	  (unless *no-bound-variables-in-match*	;;NSH(10.19.95)
+	    (gethash expr *match-cache*))) ;;should not cache or lookup
 	 (hashed-value (when hashed-table-expr
 			 (gethash instance hashed-table-expr)))
 	 (hashed-result (when hashed-value (car hashed-value)))
@@ -76,6 +77,7 @@
 			    (merge-subst subst hashed-result)
 			    hashed-result))
 	  (t (let* ((frees (freevars expr)) ;just to set no-freevars?
+		    (*strict-matches* nil) ; SO 2003/7/15 - to control tc-match
 		    (res (match* expr instance bind-alist subst))
 		    (result
 		     (if (or (eq res 'fail)
@@ -90,13 +92,13 @@
 			  (null *dont-cache-match?*)
 			  (null *no-bound-variables-in-match*))
 		 (if hashed-table-expr
-		   (setf (gethash instance hashed-table-expr)
-			 (cons result *modsubst*))
-		   (setf (gethash expr *match-cache*)
-			 (let ((hash (make-hash-table :test #'eq)))
-			   (setf (gethash instance hash)
-				 (cons result *modsubst*))
-			   hash))))
+		     (setf (gethash instance hashed-table-expr)
+			   (cons result *modsubst*))
+		     (setf (gethash expr *match-cache*)
+			   (let ((hash (make-hash-table :test #'eq)))
+			     (setf (gethash instance hash)
+				   (cons result *modsubst*))
+			     hash))))
 	       result)))))
 				
 
@@ -128,14 +130,17 @@
 (defmethod match* ((texpr type-name) (instance type-expr) bind-alist subst)
   (if (and (consp *modsubst*)
 	   (assoc texpr *modsubst* :test #'same-declaration))
-      (let ((newmodsubst (tc-unify instance texpr  (copy-tree *modsubst*))))
+      (multiple-value-bind (newmodsubst strict-matches)
+	  (tc-match instance texpr (copy-tree *modsubst*) *strict-matches*)
+	(when strict-matches
+	  (setq *strict-matches* (union strict-matches *strict-matches*)))
 	(cond (newmodsubst
 	       (setq *modsubst* newmodsubst)
 	       subst)
 	      (t 'fail)))
       (if (type-name? instance)
-	  (with-slots ((id1 id)(act1 actuals)) texpr
-	    (with-slots ((id2 id)(act2 actuals)) instance
+	  (with-slots ((id1 id)) texpr
+	    (with-slots ((id2 id)) instance
 	      (if (eq id1 id2)
 		  (match* (resolution texpr)(resolution instance)
 			  bind-alist
@@ -144,72 +149,73 @@
 	  'fail)))
 
 (defmethod match* ((expr resolution)(instance resolution) bind-alist subst)
-;;  (break)
   (if (and (eq expr instance)(null (freevars expr))) subst
-  (with-slots ((d1 declaration) (m1 module-instance)) expr
-    (with-slots ((d2 declaration) (m2 module-instance)) instance
-      (if (eq d1 d2)
-	  (match* m1 m2 bind-alist
-	     subst)
-      'fail)))))
+      (with-slots ((d1 declaration) (m1 module-instance)) expr
+	(with-slots ((d2 declaration) (m2 module-instance)) instance
+	  (if (eq d1 d2)
+	      (match-modnames m1 m2 bind-alist subst (module d1))
+	      'fail)))))
 
-;;NSH(7.14.94) need to be careful with tc-unify-acts since it uses assoc
+;;NSH(7.14.94) need to be careful with tc-match-acts since it uses assoc
 ;;by symbol rather than same-declaration.  Either I check that the modname
 ;;is the one that is currently being instantiated or Sam needs to change
 ;;the assoc to use same-declaration.
-;;; SO 8/17/94 - changed tc-unify-acts to tc-match-acts
-(defmethod match* ((expr modname)(instance modname) bind-alist subst)
-;;  (break "match:modname")
-  (if (and (eq expr instance)(null (freevars expr))) subst
-  (with-slots ((id1 id)(act1 actuals)) expr
-    (with-slots ((id2 id)(act2 actuals)) instance
-      (if (eq id1 id2)
-	  (if act1 
-	      (match* act1 act2 bind-alist subst)
-	      (if act2 
-		  (let ((formals (formals (get-theory id1))))
-		    (if formals
-			(let* ((*tc-match-exact* t)
-			       (newmodsubst
+(defun match-modnames (expr instance bind-alist subst theory)
+  (if (and (eq expr instance) (null (freevars expr))) subst
+      (let ((id1 (id expr))
+	    (id2 (id instance))
+	    (act1 (actuals expr))
+	    (act2 (actuals instance)))
+	(if (eq id1 id2)
+	    (if act1 
+		(match* act1 act2 bind-alist subst)
+		(if act2 
+		    (let ((formals (formals theory)))
+		      (if formals
+			  (let ((*tc-match-exact* t))
+			    (multiple-value-bind (newmodsubst strict-matches)
 				(and (consp *modsubst*)
 				     (or (tc-match-acts
 					  act2 formals  (copy-tree *modsubst*))
 					 (tc-match-acts
 					  act2 formals
-					  (mapcar #'(lambda (s)
-						      (list (car s)))
-					    *modsubst*))))))
-			  (cond (newmodsubst
-				 (setq *modsubst* newmodsubst)
-				 subst)
-				(t 'fail)))
-			'fail))
-		  subst))
-	  'fail)))))
+					  (mapcar #'(lambda (s) (list (car s)))
+					    *modsubst*))))
+			      (cond (newmodsubst
+				     (setq *strict-matches*
+					   (union strict-matches
+						  *strict-matches*))
+				     (setq *modsubst* newmodsubst)
+				     subst)
+				    (t 'fail))))
+			  'fail))
+		    subst))
+	    'fail))))
 
 
 (defmethod match* ((expr actual)(instance actual) bind-alist subst)
   (if (and (eq expr instance)(null (freevars expr))) subst
-  (with-slots ((tv1 type-value) (ex1 expr)) expr
-    (with-slots ((tv2 type-value) (ex2 expr)) instance
-      (if tv1 (if tv2
-		  (let ((res (match* tv1 tv2 bind-alist subst)))
+      (with-slots ((tv1 type-value) (ex1 expr)) expr
+	(with-slots ((tv2 type-value) (ex2 expr)) instance
+	  (if tv1 (if tv2
+		      (let* ((*tc-match-strictly* t)
+			     (res (match* tv1 tv2 bind-alist subst)))
+			(cond ((and (eq res 'fail)
+				    (freevars tv1))
+			       (push (list tv1 tv2 bind-alist)
+				     *remaining-actuals-matches*)
+			       subst)
+			      (t res)))
+		      'fail)
+	      (if tv2 'fail
+		  (let ((res (match* ex1 ex2 bind-alist subst)))
 		    (cond ((and (eq res 'fail)
-				(freevars tv1))
-			   (push (list tv1 tv2 bind-alist)
+				(freevars ex1))
+			   (push (list ex1 ex2 bind-alist)
 				 *remaining-actuals-matches*)
 			   subst)
 			  (t res)))
-		  'fail)
-	  (if tv2 'fail
-	      (let ((res (match* ex1 ex2 bind-alist subst)))
-		(cond ((and (eq res 'fail)
-			    (freevars ex1))
-		       (push (list ex1 ex2 bind-alist)
-				 *remaining-actuals-matches*)
-		       subst)
-		      (t res)))
-			 ))))))
+		  ))))))
 
 (defmethod match* ((expr subtype)(instance subtype) bind-alist subst)
   (with-slots ((st1 supertype) (p1 predicate)) expr
@@ -218,10 +224,10 @@
 
 (defmethod match* ((expr funtype)(instance funtype) bind-alist subst)
   (with-slots ((d1 domain) (r1 range)) expr
-    (with-slots ((d2 domain) (r2 range))  instance
-      (match* (if (consp d1)(append d1 (list r1)) (list d1 r1))
-	      (if (consp d2)(append d2 (list r2)) (list d2 r2))
-	      bind-alist subst))))
+    (with-slots ((d2 domain) (r2 range)) instance
+      (match* r1 r2 bind-alist
+	      (let* ((*tc-match-strictly* t))
+		(match* d1 d2 bind-alist subst))))))
 
 (defmethod match* ((expr tupletype)(instance tupletype) bind-alist subst)
   (with-slots ((ty1 types)) expr
@@ -270,6 +276,9 @@
 (defmethod match* ((expr type-expr)(instance dep-binding) bind-alist subst)
   (match* expr (type instance) bind-alist subst))
 
+(defmethod match* ((expr dep-binding)(instance type-expr) bind-alist subst)
+  (match* (type expr) instance bind-alist subst))
+
 
 
 
@@ -284,92 +293,85 @@
 			 |rationals| |reals| |number_fields| |numbers|)))))
 ;;T here caused Allegro compiler bug.
 
-(defmethod match* :around
-  ((expr expr)(instance expr) bind-alist subst)
-  (let ((oldmodsubst  *modsubst*)
-	 (result
-	  (if (eq subst 'fail) 'fail
-      (if (and (null (freevars expr))(tc-eq expr instance))
-	  subst
-      (let ((ans (call-next-method)))
-	(if (and (eq ans 'fail);;(null bind-alist)
-		 (not (bind-decl? expr));;NSH(12.1.94)
-		 (type expr) (type instance)
-		 ;;NSH(9.19.97)fixes Wilding's rewriting inefficiency
-		 ;;by avoiding assert-test0 on numbers
-		 (not (and (number-expr? expr)
-			   (number-expr? instance)))
-		 (tc-eq (find-supertype (type expr)) *number*)
-		 (tc-eq (find-supertype (type instance)) *number*))
-	    (let* (
-		   ;;NSH(9.19.94) not needed anymore.
-;		   (*bound-variables*
-;		    (nconc (loop for (x . y) in bind-alist
-;				 collect y)
-;			   *bound-variables*))  ;;;nconc (list x y)))
-		   (*keep-unbound* *bound-variables*)
-		   (subst-bind-alist
-		    (loop for x in bind-alist
-			  collect
-			  (if (consp (cdr x))
-			      (cons (car x)
-				    (make!-tuple-expr
-				     (mapcar #'(lambda (z)
-						 (make!-name-expr
-						  (id z) nil nil
-						  (make-resolution z
-						    nil (type z))))
-					     (cdr x))))
-			      x)))
-		   (substituted-expr
-		    (substit expr (append subst-bind-alist subst)))
-		   (lhs (if (eq expr substituted-expr)
-			    expr
-			    (beta-reduce substituted-expr)))
-		   (equality (make!-equation lhs instance))
-;;NSH(11.18.96): switching back to using assert-test0 over
-;;tc-eq-norm-addition. 
-		   (result
-		    (if (subsetp (freevars lhs) *bound-variables* :test
-				 #'same-declaration) ;was #'tc-eq
-			(assert-test0;;pseudo-normalize would do
-			 ;;too much work.  
-			 equality)
-			'fail))
-; 		   (result
-;		    (and (subsetp (freevars lhs) *bound-variables* :test
-;				 #'tc-eq)
-;			 (tc-eq (norm-addition lhs)(norm-addition instance))))
-		   ) ;;(when (not (eq (eq result 'TRUE) result2))(break "match :around"))
-	      (if  (true-p result)  subst ;;NSH(4.10.97) was 'fail
-		  (multiple-value-bind
-		      (sig lhs-terms rhs-terms)
-		      (light-cancel-terms (addends lhs)
-					  (addends instance))
-		    (if (and (null lhs-terms)(null rhs-terms))
-			subst
-			(if (eq sig '?)
-			    (if (or (intersection (freevars lhs-terms)
-					      *bound-variables*
-					      :test #'same-declaration)
-				    (intersection (freevars rhs-terms)
-					      *bound-variables*
-					      :test #'same-declaration))
-				'fail
-				(match* (make-sum lhs-terms
-						  (compatible-type (type lhs)
-								   *integer*))
-					(make-sum rhs-terms
-						  (compatible-type (type instance)
-								   *integer*))
-					bind-alist
-					subst))
-		    'fail)))
-		  ))
-	    ans))))))
+(defmethod match* :around ((expr expr) (instance expr) bind-alist subst)
+  (let ((oldmodsubst *modsubst*)
+	(result
+	 (if (eq subst 'fail) 'fail
+	     (if (and (null (freevars expr))(tc-eq expr instance))
+		 subst
+		 (let ((ans (call-next-method)))
+		   (if (and (eq ans 'fail) ;;(null bind-alist)
+			    (not (bind-decl? expr)) ;;NSH(12.1.94)
+			    (type expr) (type instance)
+			    ;; NSH(9.19.97)fixes Wilding's rewriting
+			    ;; inefficiency by avoiding assert-test0 on numbers
+			    (not (and (number-expr? expr)
+				      (number-expr? instance)))
+			    (tc-eq (find-supertype (type expr)) *number*)
+			    (tc-eq (find-supertype (type instance)) *number*))
+		       (let* ((*keep-unbound* *bound-variables*)
+			      (subst-bind-alist
+			       (loop for x in bind-alist
+				     collect
+				     (if (consp (cdr x))
+					 (cons (car x)
+					       (make!-tuple-expr
+						(mapcar #'(lambda (z)
+							    (make!-name-expr
+							     (id z) nil nil
+							     (make-resolution z
+							       nil (type z))))
+						  (cdr x))))
+					 x)))
+			      (substituted-expr
+			       (substit expr (append subst-bind-alist subst)))
+			      (lhs (if (eq expr substituted-expr)
+				       expr
+				       (beta-reduce substituted-expr)))
+			      (equality (make!-equation lhs instance))
+			      ;;NSH(11.18.96): switching back to using
+			      ;; assert-test0 over tc-eq-norm-addition. 
+			      (result
+			       (if (subsetp (freevars lhs) *bound-variables*
+					    :test #'same-declaration)
+				   (assert-test0 ;;pseudo-normalize would do
+				    ;;too much work.  
+				    equality)
+				   'fail))
+			      )
+			 (if (true-p result)  subst ;;NSH(4.10.97) was 'fail
+			     (multiple-value-bind
+				 (sig lhs-terms rhs-terms)
+				 (light-cancel-terms (addends lhs)
+						     (addends instance))
+			       (if (and (null lhs-terms)(null rhs-terms))
+				   subst
+				   (if (eq sig '?)
+				       (if (or (intersection
+						(freevars lhs-terms)
+						*bound-variables*
+						:test #'same-declaration)
+					       (intersection
+						(freevars rhs-terms)
+						*bound-variables*
+						:test #'same-declaration))
+					   'fail
+					   (match* (make-sum lhs-terms
+							     (compatible-type
+							      (type lhs)
+							      *integer*))
+						   (make-sum rhs-terms
+							     (compatible-type
+							      (type instance)
+							      *integer*))
+						   bind-alist
+						   subst))
+				       'fail)))
+			     ))
+		       ans))))))
     (when (eq result 'fail)
-      ; (break "failaround")
-      ; (format t "~%resetting modsubst from ~a to ~a" *modsubst* oldmodsubst)
+      ;; (break "failaround")
+      ;; (format t "~%resetting modsubst from ~a to ~a" *modsubst* oldmodsubst)
       (setq *modsubst* oldmodsubst))
     result))
 
@@ -511,18 +513,17 @@
        (subst-entry
 	(let* ((subst-term (cdr subst-entry))
 	       (newmodsubst
-		(tc-eq-or-unify* (substit (type lhs) subst)
+		(tc-eq-or-match* (substit (type lhs) subst)
 				 (if (type subst-term)
 				     (list (type subst-term))
 				     (types subst-term))
-				 *modsubst*)))
+				 (copy-tree *modsubst*))))
 	  (cond (newmodsubst
 		 (let ((newsubst-term (if (type subst-term)
 					  subst-term
 					  (copy-all subst-term))))
 		   (unless (type newsubst-term)
-		     (set-type newsubst-term (type instance)
-			       *current-context*))
+		     (set-type newsubst-term (type instance)))
 		   (if (tc-eq newsubst-term instance)
 		       (let* ((subst
 			       (if (type subst-term)
@@ -544,7 +545,7 @@
 		     (if (eq typesubst 'fail)
 			 'fail
 			 typesubst))))))
-       (;;(and (null bind-entry)(null subst-entry) ;(variable? lhs)
+       ( ;;(and (null bind-entry)(null subst-entry) ;(variable? lhs)
 	(let ((freevars (freevars instance)))
 	  (assert (subsetp instance-bindings *bound-variables*
 			   :test #'same-declaration))
@@ -554,7 +555,8 @@
 		   (null (intersection freevars *bound-variables*
 				       :test #'same-declaration)))))
 	(let* ((stype (substit (type lhs) subst))
-	       (newmodsubst (tc-eq-or-unify stype (type instance) *modsubst*))
+	       (newmodsubst (tc-eq-or-match stype (type instance)
+					    (copy-tree *modsubst*)))
 	       (newsubst (acons (declaration lhs) instance subst)))
 	  ;;(break "match:name-expr")
 	  (cond (newmodsubst
@@ -583,22 +585,15 @@
     (match* (resolution lhs)(resolution instance) bind-alist subst))
    ((and (consp *modsubst*)
 	 (assoc-decl lhs *modsubst*))
-    (let ((newmodsubst (tc-unify instance lhs  (copy-tree *modsubst*))))
+    (multiple-value-bind (newmodsubst strict-matches)
+	(tc-match instance lhs (copy-tree *modsubst*) *strict-matches*)
       (cond (newmodsubst
+	     (setq *strict-matches* (union strict-matches *strict-matches*))
 	     (setq *modsubst* newmodsubst)
 	     subst)
 	    (t 'fail))))
    (t 'fail)))
 
-;;NSH: replaced by match*(resolution) above.	     
-;		  (eq (declaration lhs)(declaration instance))))
-;	 (let ((modsubst
-;		(tc-eq-or-unify (type lhs)(type instance) *modsubst*)))
-;	   (cond (modsubst (setq *modsubst* modsubst) subst)
-;		 (t 'fail))))
-;	 (t 'fail)))
-
-;;; SO 8/17/94 - uses the new form of application
 (defmethod match* ((lhs application)(instance application) bind-alist subst)
   (with-slots ((op1 operator)(lhs-args argument)) lhs
     (with-slots ((op2 operator)(rhs-args argument)) instance
@@ -747,7 +742,7 @@
 			      (and (eql (length x)(length y))
 				   (every #'same-declaration x y)))
 			  rhs-args* instance-args*)
-		   (tc-eq-or-unify (type op*) ;;NSH(5.29.96) was tc-eq
+		   (tc-eq-or-match (type op*) ;;NSH(5.29.96) was tc-eq
 				   (type instance-op*)
 				   *modsubst*))
 	      instance-op*
@@ -1015,3 +1010,19 @@
 	(match* (collect-conjuncts lhs) (collect-conjuncts instance)
 		bind-alist subst)
 	cmatch)))
+
+(defun tc-eq-or-match (lhs rhs modsubst)
+  (if (eq modsubst t)
+      (strict-compatible? lhs rhs)
+      (multiple-value-bind (nmodsubst strict-matches)
+	  (tc-match rhs lhs modsubst *strict-matches*)
+	(when strict-matches
+	  (setq *strict-matches* (union strict-matches *strict-matches*)))
+	nmodsubst)))
+
+(defun tc-eq-or-match* (lhs rhs-list modsubst)
+  (when rhs-list
+    (let ((newmodsubst (tc-eq-or-match lhs (car rhs-list) modsubst)))
+      (if newmodsubst
+	  (values newmodsubst (car rhs-list))
+	  (tc-eq-or-match* lhs (cdr rhs-list) modsubst)))))
