@@ -1707,7 +1707,8 @@
 	   mod)
 	  ((and mod (parsed? mod))
 	   mod)
-	  ((library theoryref)
+	  ((and (name? theoryref)
+		(library theoryref))
 	   (multiple-value-bind (lib msg)
 	       (get-library-pathname (library theoryref))
 	     (if lib
