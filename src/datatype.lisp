@@ -1088,8 +1088,7 @@ generated")
 		       (incf num)
 		       (when pred
 			 (list (mk-application pred
-				 (make-instance
-				     'projection-application
+				 (make-instance 'projappl
 				   'id (makesym "PROJ_~d" num)
 				   'index num
 				   'argument tvar)))))
@@ -1342,7 +1341,7 @@ generated")
 				   (everywhere-true? pred)
 				   (everywhere-false? pred))
 			 (list (mk-application pred
-				 (make-instance 'projection-application
+				 (make-instance 'projappl
 				   'id (makesym "PROJ_~d" num)
 				   'index num
 				   'argument (copy arg))))))
@@ -1470,7 +1469,7 @@ generated")
 				     (everywhere-true? pred)
 				     (everywhere-false? pred))
 			   (list (mk-application pred
-				   (make-instance 'projection-application
+				   (make-instance 'projappl
 				     'id (makesym "PROJ_~d" num)
 				     'index num
 				     'argument tvar)))))
@@ -1823,7 +1822,7 @@ generated")
 	 (let ((num 0))
 	   (mapcar #'(lambda (map)
 		       (incf num)
-		       (let ((proj (make-instance 'projection-application
+		       (let ((proj (make-instance 'projappl
 				     'id (makesym "PROJ_~d" num)
 				     'index num
 				     'argument (copy arg))))
@@ -1923,7 +1922,7 @@ generated")
 	   (let ((num 0))
 	     (mapcar #'(lambda (map)
 			 (incf num)
-			 (let ((proj (make-instance 'projection-application
+			 (let ((proj (make-instance 'projappl
 				       'id (makesym "PROJ_~d" num)
 				       'index num
 				       'argument tvar)))
@@ -2270,7 +2269,7 @@ generated")
 	 (let ((num 0))
 	   (mapcar #'(lambda (fun)
 		       (incf num)
-		       (let ((proj (make-instance 'projection-application
+		       (let ((proj (make-instance 'projappl
 				     'id (makesym "PROJ_~d" num)
 				     'index num
 				     'argument (copy arg))))
@@ -2373,7 +2372,7 @@ generated")
 	     (let ((num 0))
 	       (mapcar #'(lambda (fun)
 			   (incf num)
-			   (let ((proj (make-instance 'projection-application
+			   (let ((proj (make-instance 'projappl
 					 'id (makesym "PROJ_~d" num)
 					 'index num
 					 'argument tvar)))
@@ -2831,8 +2830,7 @@ generated")
 				   (incf num)
 				   (unless (everywhere-false? sub)
 				     (list (mk-application sub
-					     (make-instance
-						 'projection-application
+					     (make-instance 'projappl
 					       'id (makesym "PROJ_~d" num)
 					       'index num
 					       'argument tvar)))))
