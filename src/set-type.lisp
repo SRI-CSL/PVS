@@ -145,6 +145,12 @@ required a context.")
       (change-application-to-conversion expr)
       (set-type expr expected)
       expr)
+     ((and (typep expr 'application)
+	   (typep (operator expr) 'name-expr)
+	   (k-combinator? (from-conversion ctype)))
+      (change-to-lambda-conversion expr ctype)
+      (set-type expr expected)
+      expr)
      (t
       #+pvsdebug (assert (typep (from-conversion ctype) 'expr))
       
@@ -162,33 +168,67 @@ required a context.")
 	;; If expr already has a type, this doesn't do anything
 	(typecheck* expr expected nil nil))))))
 
-(defun add-conversion-info (conversion expr)
+(defun change-to-lambda-conversion (expr ctype)
+  (unless (or *no-conversions-allowed*
+	      *in-application-conversion*)
+    (let* ((*in-application-conversion* t)
+	   (op (operator expr))
+	   (id (make-new-variable '|x| expr))
+	   (bd (make-bind-decl id (domain ctype)))
+	   (*bound-variables* (cons bd *bound-variables*))
+	   (varex (make-variable-expr bd))
+	   (args (application-conversion-arguments
+		  (arguments expr)
+		  (make-list (length (arguments expr))
+			     :initial-element (from-conversion ctype))
+		  (list varex)))
+	   (orig-expr (copy expr)))
+      (change-class expr 'lambda-conversion)
+      (setf (bindings expr) (list bd))
+      (setf (types op) nil)
+      (when (name-expr? op)
+	(setf (resolutions op) nil))
+      (setf (expression expr) (mk-application* op args))
+      (add-conversion-info "LAMBDA conversion" orig-expr expr) 
+      (typecheck* expr nil nil nil))))
+
+(defun add-conversion-info (conversion expr &optional new-expr)
+  (reset-subst-mod-params-cache)
   (let ((str "pretty-print-expanded (M-x ppe) shows the conversions."))
     (unless (or *in-checker*
 		*in-evaluator*)
       (pushnew str (info *current-theory*) :test #'string=)))
-  (let ((conv-name (if (typep conversion 'name-expr)
-		       conversion
-		       (name conversion))))
-    (pvs-info "In ~a:~
+  (let ((origin
+	 (if (or *in-checker* *in-evaluator*)
+	     (if *in-typechecker*
+		 (format nil "input ~s"
+		   (if (stringp *in-typechecker*)
+		       *in-typechecker*
+		       (unparse *in-typechecker* :string t)))
+		 "input")
+	     (format nil "declaration ~a"
+	       (if (typep (declaration *current-context*) 'declaration)
+		   (id (declaration *current-context*))
+		   (unparse (declaration *current-context*) :string t))))))
+    (if (stringp conversion)
+	(pvs-info "In ~a:~
+                 ~%  added ~a, converting~
+                 ~%    ~a~%  to~%    ~a"
+	  origin
+	  conversion
+	  expr new-expr)
+	(let ((conv-name (if (typep conversion 'name-expr)
+			     conversion
+			     (name conversion))))
+	  (pvs-info "In ~a:~
              ~%  added conversion ~a~
              ~%  to ~a, converting~
              ~%     ~a~%  to ~a"
-      (if (or *in-checker* *in-evaluator*)
-	  (if *in-typechecker*
-	      (format nil "input ~s"
-		(if (stringp *in-typechecker*)
-		    *in-typechecker*
-		    (unparse *in-typechecker* :string t)))
-	      "input")
-	  (format nil "declaration ~a"
-	    (if (typep (declaration *current-context*) 'declaration)
-		(id (declaration *current-context*))
-		(unparse (declaration *current-context*) :string t))))
-      (raise-actuals conversion 1)
-      expr
-      (domain (find-supertype (type conv-name)))
-      (range (find-supertype (type conv-name))))))
+	    origin
+	    (raise-actuals conversion 1)
+	    expr
+	    (domain (find-supertype (type conv-name)))
+	    (range (find-supertype (type conv-name))))))))
 
 (defmethod set-type* ((ex name-expr) expected)
   (assert (or (null (type ex)) (resolution ex)))
