@@ -326,15 +326,52 @@
 		 (values k
 			 (cons k (union xs ys :test #'=))
 			 (dfa-conjunction* (list a a1 a2)))))))
-	;((singleton2? trm)
-	; (multiple-value-bind (i xs a1)
-	;     (nat-to-dfa* (argument trm))
-	;   (let* ((k (symtab-new-index))
-	;	   (a (dfa-op #'dfa-single k i)))
-	;     (values k xs (dfa-conjunction* (list a a1))))))
+	((add2? trm)
+	 (multiple-value-bind (i xs a1)
+	     (nat-to-dfa* (args1 trm))
+	   (multiple-value-bind (j ys a2)
+	       (fset-to-dfa* (args2 trm))
+	     (let* ((k (symtab-new-index))
+		    (l (symtab-new-index))
+		    (a (dfa-op #'dfa-union k l j))
+		    (b (dfa-op #'dfa-single l i)))
+	       (values k
+		       (adjoin k (adjoin l (union xs ys :test #'=)
+					 :test #'=)
+			       :test #'=)
+		       (dfa-conjunction* (list a b a1 a2)))))))
+	((remove2? trm)
+	 (multiple-value-bind (i xs a1)
+	     (nat-to-dfa* (args1 trm))
+	   (multiple-value-bind (j ys a2)
+	       (fset-to-dfa* (args2 trm))
+	     (let* ((k (symtab-new-index))
+		    (l (symtab-new-index))
+		    (a (dfa-op #'dfa-difference k j l))
+		    (b (dfa-op #'dfa-single l i)))
+	       (values k
+		       (adjoin k (adjoin l (union xs ys :test #'=)
+					 :test #'=)
+			       :test #'=)
+		       (dfa-conjunction* (list a b a1 a2)))))))
+
+	((singleton2? trm)
+	 (multiple-value-bind (i xs a1)
+	     (nat-to-dfa* (argument trm))
+	   (let* ((k (symtab-new-index))
+		  (a (dfa-op #'dfa-single k i)))
+	     (values k xs (dfa-conjunction* (list a a1))))))
 	(t
 	 (error-format-if "Application ~a is not 2nd-order" trm)
 	 (call-next-method))))
+
+(defun add2? (trm)
+  (and (tc-eq (operator trm) (add-operator))
+       (2nd-order? trm)))
+
+(defun remove2? (trm)
+  (and (tc-eq (operator trm) (remove-operator))
+       (2nd-order? trm)))
 
 (defun union2? (trm)
   (and (tc-eq (operator trm) (union-operator))
@@ -376,7 +413,7 @@
   (if (var1? trm)
       (values (symtab-index trm) nil (dfa-true-val))
     (progn
-      (error-format-if "~a is not a 1st-order variable" trm)
+      (error-format-if "Variable ~a is not 1st-order" trm)
       (call-next-method))))
 
 (defmethod nat-to-dfa* ((trm number-expr))
@@ -425,7 +462,7 @@
 		 (error-format-if "Subtraction ~a not 1st-order" trm)
 		 (call-next-method)))))
 	  ((tc-eq op (plus1))
-	   (let* ((ntrm (pseudo-normalize trm))                 ; now canonized to p_i =  n + p_j   
+	   (let* ((ntrm (pseudo-normalize trm))   ; now of the form p_i =  n + p_j   
 		  (lhs (args1 ntrm))
 		  (rhs (args2 ntrm)))
 	     (if (and (natural-number-expr? lhs)
