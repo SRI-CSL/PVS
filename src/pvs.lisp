@@ -1552,10 +1552,17 @@
 				      (list theory)
 				      (remove-if #'generated-by
 					*prelude-theories*)))
-			(typespec (if unproved?
-				      'unproved-formula-decl
-				      'formula-decl))
-			(decl (get-decl-at line typespec theories)))
+			(typespec (formula-typespec unproved?))
+			(decl-at (get-decl-at line typespec theories))
+			(decl (if (judgement? decl-at)
+				  (let ((jtcc (find-if #'(lambda (d)
+							   (eq (id d)
+							       (id decl-at)))
+						(generated decl-at))))
+				    (unless (place jtcc)
+				      (setf (place jtcc) (place decl-at)))
+				    jtcc)
+				  decl-at)))
 		   (values decl (place decl))))
 	(t (if (pathname-directory name)
 	       (let* ((lpath (get-library-reference
@@ -1569,18 +1576,39 @@
 		     (let* ((name (pathname-name name))
 			    (theories (cdr (gethash name
 						    (car files&theories))))
-			    (typespec (if unproved?
-					  'unproved-formula-decl
-					  'formula-decl))
+			    (typespec (formula-typespec unproved?))
 			    (decl (get-decl-at line typespec theories)))
 		       (values decl (when decl (place decl))))
 		     (pvs-message "Library ~a is not imported" name)))
 	       (let* ((theories (typecheck-file name nil nil nil t))
-		  (typespec (if unproved?
-				'unproved-formula-decl
-				'formula-decl))
-		  (decl (get-decl-at line typespec theories)))
+		      (typespec (if unproved?
+				    'unproved-formula-decl
+				    'formula-decl))
+		      (decl-at (get-decl-at line typespec theories))
+		      (decl (if (judgement? decl-at)
+				(let ((jtcc (find-if #'(lambda (d)
+							 (eq (id d)
+							     (id decl-at)))
+					      (generated decl-at))))
+				  (unless (place jtcc)
+				    (setf (place jtcc) (place decl-at)))
+				  jtcc)
+				decl-at)))
 		 (values decl (when decl (place decl)))))))))
+
+(defun formula-typespec (unproved?)
+  (if unproved?
+      '(or unproved-formula-decl
+	   (and judgement
+		(satisfies id)
+		(satisfies (lambda (jd)
+			     (some #'(lambda (d)
+				       (and (tcc? d)
+					    (eq (id d) (id jd))
+					    (unproved? d)))
+				   (generated jd))))))
+      '(or formula-decl
+	   (and judgement (satisfies id)))))
 
 
 ;;; This function is invoked from Emacs by pvs-prove-formula.  It provides
