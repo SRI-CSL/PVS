@@ -1,0 +1,1103 @@
+%
+%  JAVA BITVECTOR INTEGRALS
+%  ========================
+%
+%  for Translating Java Classes into the Higher Order Logic of PVS.
+%
+%  All integral types are interpreted as PVS integers, without 
+%  taking bounds into account
+%
+%  Author: Bart Jacobs
+%  Started: Wednesday 24 May 00 10:59:26 bart@frustratie
+%  Last-modified: $Date$
+%  Last-modified by: $Author$
+%
+% THEORIES
+%
+
+bv_mult_div_rem: THEORY
+BEGIN
+  IMPORTING BitvectorUtil, BitvectorMultiplication,
+            BitvectorMultiplicationWidenNarrow, DivisionUtil,
+            BitvectorOneComplementDivision, BitvectorTwoComplementDivision,
+            BitvectorTwoComplementDivisionWidenNarrow
+ END bv_mult_div_rem
+
+
+BitvectorUtil[N : nat] : THEORY
+BEGIN
+
+  ASSUMING
+     N_size: ASSUMPTION N >= 2
+  ENDASSUMING
+
+  IMPORTING bv_core, bv_rules, bv_notes
+
+  bv, bv1, bv2 : VAR bvec[N]
+  BV, BV1, BV2 : VAR bvec[2*N]
+  k : VAR int
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% auxiliary results
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  bvec_induction : LEMMA % :-)
+    FORALL(p:PRED[bvec[N]]) :
+      p(fill[N](FALSE))
+        AND
+      (FORALL(bv:bvec[N]) : p(bv) IMPLIES p(bv+1))
+        IMPLIES
+      FORALL(bv:bvec[N]) : p(bv)
+
+  plus_min_zero : LEMMA % :-)
+    bv + (-bv) = fill[N](FALSE)
+
+  min_fill_F : LEMMA % :-)
+    -fill[N](FALSE) = fill[N](FALSE)
+
+  inc_zero : LEMMA % :-)
+    (bv+1)(0) IFF NOT bv(0)
+
+  sum_upper_n : LEMMA % :-)
+    FORALL(F : [nat -> nat], high,low,n : nat) :
+      low <= n AND n <= high
+        IMPLIES
+      sigma(low, high, F) >= F(n)
+
+  bv2nat_upper_n : LEMMA % :-)
+    FORALL(n:below(N)) :
+      bv(n) IMPLIES bv2nat(bv) >= exp2(n)
+
+  bv2nat_upperbound : LEMMA % :-)
+    FORALL(n:below(N)) :
+      bv2nat(bv) < exp2(n) 
+        IFF
+      FORALL(k:below(N)) : k >= n IMPLIES NOT bv(k)
+
+  bv2nat_upperbound_caret : LEMMA % :-)
+    FORALL(n:below(N)) :
+      bv2nat[N](bv) < exp2(n) 
+        IMPLIES
+      bv2nat[N](bv) = IF n = 0
+                      THEN 0
+                      ELSE bv2nat[n](bv^(n-1,0))
+                      ENDIF
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Widen & Narrow
+%
+% These are typical Java Integral operations to move back and forth
+% between integral types. Widen doubles the length of the 
+% representation (e.g. from byte to short (8 to 16 bits), or
+% from short to int (16 to 32 bits). It does so by keeping the sign.
+% 
+% In the reverse direction, narrowing drops half of the bits (the
+% most significant ones) in going e.g. from int to short. This
+% may affect the sign.
+%
+% See, JLS (Java Language Specification, 2nd ed.), 5.1.2 and 5.1.3.
+%
+% Operations on integral types typically first ``promote'' the
+% arguments to int type.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  widen(bv) : bvec[2*N] = 
+    LAMBDA(k:below(2*N)) : IF k < N-1
+                           THEN bv(k) 
+                           ELSE bv(N-1) % negative byte
+                           ENDIF
+
+  bv2int_widen : LEMMA % :-)
+    bv2int[2*N](widen(bv)) = bv2int[N](bv)
+
+  widen_inj : LEMMA % :-)
+    (widen(bv1) = widen(bv2)) = (bv1 = bv2)
+
+  bv2int_plus_widens : LEMMA % :-)
+    bv2int[2*N](widen(bv1) + widen(bv2)) = bv2int[N](bv1) + bv2int[N](bv2)
+
+  bv2int_min_widen : LEMMA % :-)
+    bv2int[2*N](-widen(bv)) = -bv2int[N](bv)
+
+  bv2nat_widen : LEMMA % :-)
+    bv2nat(widen(bv)) = IF bv2nat(bv) < exp2(N-1)
+                        THEN bv2nat(bv)
+                        ELSE bv2nat(bv) + exp2(2*N)-exp2(N)
+                        ENDIF
+
+  bv2nat_widen_null : LEMMA % :-)
+    (bv2nat(widen(bv)) = 0) = (bv2nat(bv) = 0)
+
+  narrow(BV) : bvec[N] = BV^(N-1,0)
+
+  bv2int_narrow : LEMMA % :-)
+    -exp2(N-1) <= bv2int(BV) AND bv2int(BV) < exp2(N-1)
+      IMPLIES
+    bv2int[N](narrow(BV)) = bv2int[2*N](BV)
+
+  narrow_int2bv : LEMMA % :-)
+    -exp2(N-1) <= k AND k < exp2(N-1)
+      IMPLIES
+    narrow(int2bv[2*N](k)) = int2bv[N](k)
+
+  narrow_widen : LEMMA % :-)
+    narrow(widen(bv)) = bv;
+
+  narrow_plus : LEMMA % :-)
+    narrow(BV1 + BV2) = narrow(BV1) + narrow(BV2)
+
+  narrow_min : LEMMA % :-)
+    narrow(-BV) = -narrow(BV)
+    
+  narrow_minus : LEMMA % :-)
+    narrow(BV1 - BV2) = narrow(BV1) - narrow(BV2)
+
+  % The next lemma will probably not often work because of the representation
+  % of bitvectors, namely as:  (x o (x o (x o (x...))))
+
+  narrow_concat : LEMMA %-)
+    FORALL (bv1,bv2 : bvec[N]):
+      narrow[2*N](bv1 o bv2) = bv2
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% More auxiliary results
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  leftshift_zero : LEMMA % :-)
+    left_shift(0, bv) = bv
+
+  leftshift_inc : LEMMA % :-)
+    FORALL(n:below(N-1)) : 
+      n > 0  % Condition needed to prevent circular rewriting
+        IMPLIES
+      left_shift(n+1, bv) = left_shift(1, left_shift(n, bv))
+
+  bv2nat_leftshift : LEMMA % :-)
+    FORALL(n:below(N)) :
+      bv2nat(bv) < exp2(N-n) 
+        IMPLIES 
+      bv2nat(left_shift(n, bv)) = exp2(n) * bv2nat(bv)
+
+  bv2nat_rightshift_upperbound : LEMMA % :-)
+    FORALL(n:below(N)) :
+      exp2(n) * bv2nat(right_shift(n, bv)) <= bv2nat(bv)
+
+  bv2int_rightshift_upperbound : LEMMA % :-)
+    FORALL(n:below(N)) : 
+      bv2int(bv) >= 0
+        IMPLIES
+      exp2(n) * bv2int(right_shift(n, bv)) <= bv2int(bv)
+
+  rightshift_zero : LEMMA % :-)
+    right_shift(0, bv) = bv
+
+  rightshift_inc : LEMMA % :-)
+    FORALL(n:below(N-1)) :
+      n > 0  % Condition needed to prevent circular rewriting
+        IMPLIES
+      right_shift(n+1, bv) = right_shift(1, right_shift(n, bv))
+
+  bv2int_rightshift_pos : LEMMA % :-)
+    FORALL(n:posnat) : 
+      bv2int(right_shift(n, bv)) >= 0
+
+  leftshift1_add_aux : LEMMA % :-)
+    FORALL(n:below(N-1)) : 
+      n_cout_rec[N](n+1, left_shift(1, bv1), left_shift(1, bv2), FALSE)
+      =
+      n_cout_rec[N](n, bv1, bv2, FALSE)
+
+  leftshift1_add : LEMMA % :-)
+   left_shift(1, bv1 + bv2) = 
+     left_shift(1, bv1) + left_shift(1, bv2)
+
+  narrow_rightshift : LEMMA % :-)
+    FORALL(n:nat) :
+    0 <= bv2int(BV) AND bv2int(BV) < exp2(N)
+        IMPLIES
+      narrow(right_shift(n, BV)) = right_shift(n, narrow(BV))
+
+END BitvectorUtil
+
+
+BitvectorMultiplication[N : posnat] : THEORY
+BEGIN
+
+  ASSUMING
+     N_size: ASSUMPTION N >= 2
+  ENDASSUMING
+
+  IMPORTING BitvectorUtil[N]
+
+  bv, bv1, bv2, bv3 : VAR bvec[N]
+
+  times_rec(bv1:bvec[N], bv2:bvec[N], n:nat) : RECURSIVE bvec[N] =
+    IF n = 0
+    THEN fill[N](FALSE)
+    ELSIF bv1(0)
+    THEN bv2 + left_shift(1, times_rec(right_shift(1, bv1), bv2, n-1))
+    ELSE left_shift(1, times_rec(right_shift(1, bv1), bv2, n-1))
+    ENDIF
+    MEASURE n;
+
+  *(bv1, bv2) : bvec[N] = times_rec(bv1, bv2, N)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% auxiliary results
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  times_rec_zero_right : LEMMA % :-)
+    FORALL(n:nat) : 
+      times_rec(bv, fill[N](FALSE), n) = fill[N](FALSE)
+
+  times_rec_zero_left : LEMMA % :-)
+    FORALL(n:nat) : 
+      times_rec(fill[N](FALSE), bv, n) = fill[N](FALSE)
+
+  times_rec_repeat : LEMMA % :-)
+    FORALL(n,m:nat) : 
+      bv2nat(bv1) < exp2(n)
+        IMPLIES
+      times_rec(bv1, bv2, n+m) = times_rec(bv1, bv2, n)
+
+% Distributivity of zero
+
+  times_zero_first : LEMMA % :-)
+    fill[N](FALSE) * bv = fill[N](FALSE)
+
+  times_zero_second : LEMMA % :-)
+    bv * fill[N](FALSE) = fill[N](FALSE)
+
+% inc-right
+
+  times_rec_inc_right : LEMMA % :-)
+    FORALL(n:below(N+1)) : 
+      times_rec(bv1, bv2+1, n) = 
+        times_rec(bv1, bv2, n) + (IF n = 0
+                                  THEN fill[N](FALSE)
+                                  ELSE (fill[N-n](FALSE) o bv1 ^ (n-1, 0))
+                                  ENDIF)
+
+  times_rec_max_inc_right : LEMMA % :-)
+    times_rec(bv1, bv2+1, N) = 
+      times_rec(bv1, bv2, N) + bv1
+
+  times_rec_max_inc_n_right : LEMMA % :-)
+    FORALL(n:nat) : 
+      times_rec(bv1, bv2+n, N) =
+        iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv1, n)
+                        (times_rec(bv1, bv2, N))
+
+  times_rec_iterate : LEMMA % :-)
+    times_rec(bv1, bv2, N) =
+      iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv1, bv2nat(bv2))
+                      (fill[N](FALSE))
+
+% two crucial auxiliary results, on which much of the subsequent reasoning
+% depends:
+
+  bv2nat_iterate : LEMMA % :-)
+    FORALL(n:nat) :
+      n * bv2nat(bv1) < exp2(N) 
+        IMPLIES
+      bv2nat(iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv1, n)(fill[N](FALSE)))
+        = n * bv2nat(bv1)
+
+  bv2int_iterate : LEMMA % :-)
+    FORALL(n:nat) :
+      -exp2(N-1) <= n * bv2int(bv1) AND n * bv2int(bv1) < exp2(N-1) 
+        IMPLIES
+      bv2int(iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv1, n)(fill[N](FALSE)))
+        = n * bv2int(bv1)
+
+% towards commutativity, proved by bitvector induction
+
+  iterate_inc : LEMMA % :-)
+    FORALL(n:nat) :
+      iterate[bvec[N]](LAMBDA (b:bvec[N]): b + (bv1 + 1), n)
+                      (fill[N](FALSE))
+      =
+      iterate[bvec[N]](LAMBDA (b:bvec[N]): b + bv1, n)
+                    (fill[N](FALSE)) + n
+
+  iterate_inc_m : LEMMA % :-)
+    FORALL(n,m:nat) :
+      iterate[bvec[N]](LAMBDA (b:bvec[N]): b + (bv1 + m), n)
+                      (fill[N](FALSE))
+      =
+      iterate[bvec[N]](LAMBDA (b:bvec[N]): b + bv1, n)
+                    (fill[N](FALSE)) + (n * m)
+
+  iterate_modulo : LEMMA % :-)
+    FORALL(i:nat) : 
+      iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv2, i * exp2(N))
+                      (fill[N](FALSE))    
+      = 
+      fill[N](FALSE)
+
+  iterate_comm : LEMMA % :-)
+    iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv1, bv2nat(bv2))
+                    (fill[N](FALSE))    
+    =
+    iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv2, bv2nat(bv1))
+                    (fill[N](FALSE))    
+
+  times_rec_comm : LEMMA % :-)
+    times_rec(bv1, bv2, N) = times_rec(bv2, bv1, N)
+
+  times_comm : LEMMA % :-)
+    bv1 * bv2 = bv2 * bv1
+
+% commutation with min
+
+  iterate_min_second : LEMMA % :-)
+    FORALL(n:nat) : 
+      iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + (-bv), n)
+                      (fill[N](FALSE))    
+      =
+      -iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv, n)
+                      (fill[N](FALSE))    
+
+  times_rec_min_first : LEMMA % :-)
+    times_rec(-bv1, bv2, N) = -times_rec(bv1, bv2, N)
+      
+  times_rec_min_second : LEMMA % :-)
+    times_rec(bv1, -bv2, N) = -times_rec(bv1, bv2, N)
+
+  times_min_first : LEMMA % :-)
+    (-bv1) * bv2 = -(bv1 * bv2)
+
+  times_min_second : LEMMA % :-)
+    bv1 * (-bv2) = -(bv1 * bv2)
+
+% multiplicative unit
+
+  one : bvec[N] = (LAMBDA(k:below(N)) : k=0)
+
+  bv2nat_one : LEMMA % :-)
+    bv2nat[N](one) = 1
+
+  bv2int_one : LEMMA % :-)
+    bv2int[N](one) = 1
+
+  times_one_first : LEMMA % :-)
+    one * bv = bv
+
+  times_one_second : LEMMA % :-)
+    bv * one = bv
+
+% distributivity over +
+
+  iterate_zero_add : LEMMA % :-)
+    FORALL(n:nat) : 
+      iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv1, n)
+                      (bv2)    
+      =
+      iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv1, n)
+                      (fill[N](FALSE)) + bv2
+
+  times_rec_distr : LEMMA % :-)
+    times_rec(bv1, bv2 + bv3, N)
+    =
+    times_rec(bv1, bv2, N) + times_rec(bv1, bv3, N)
+
+  times_distr_right : LEMMA % :-)
+    bv1 * (bv2 + bv3) = (bv1 * bv2) + (bv1 * bv3)
+    
+  times_distr_left : LEMMA % :-)
+    (bv1 + bv2) * bv3 = (bv1 * bv3) + (bv2 * bv3)
+    
+  times_distr_iterate : LEMMA % :-)
+    FORALL(n:nat) :
+      bv2 * iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv1, n)(fill[N](FALSE))
+      =
+      iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + (bv2 * bv1), n)(fill[N](FALSE))
+
+% associativity
+
+  times_assoc : LEMMA % :-)
+    (bv1 * bv2) * bv3 = bv1 * (bv2 * bv3)
+
+% Now we can say that bvec[N] carries a commutative group structure
+% (0, +, -) and a commutative monoid structure (*, one), and that
+% the latter preserves the group structure. More formally, (*, one)
+% is a commutative monoid in the category of commutative groups,
+% see MacLane, Categories for the Working Mathematician (1972), 
+% Chapter VII, section 3.
+
+END BitvectorMultiplication
+
+
+BitvectorMultiplicationWidenNarrow[N : posnat] : THEORY
+BEGIN
+  ASSUMING
+     N_size: ASSUMPTION N >= 2
+  ENDASSUMING
+
+  IMPORTING BitvectorMultiplication[N],
+            BitvectorMultiplication[2*N]
+
+  bv, bv1, bv2 : VAR bvec[N]
+  BV, BV1, BV2 : VAR bvec[2*N]
+
+  bv2nat_narrow : LEMMA % :-)
+    bv2nat(BV) < exp2(N) IMPLIES bv2nat(narrow(BV)) = bv2nat(BV)
+
+  bv2nat_times_rec : LEMMA % :-)
+    bv2nat(BV1) < exp2(N) AND bv2nat(BV2) < exp2(N)
+      IMPLIES
+    bv2nat(times_rec[2*N](BV1, BV2, 2*N)) = bv2nat(BV1) * bv2nat(BV2)
+
+  bv2nat_times : LEMMA % :-)
+    bv2nat(BV1) * bv2nat(BV2) < exp2(2*N)
+      IMPLIES
+    bv2nat(BV1 * BV2) = bv2nat(BV1) * bv2nat(BV2)
+
+  bv2int_times : LEMMA % :-)
+   -exp2(2*N-1) < bv2int(BV1) * bv2int(BV2) 
+     AND 
+   bv2int(BV1) * bv2int(BV2) < exp2(2*N-1)
+      IMPLIES
+    bv2int(BV1 * BV2) = bv2int(BV1) * bv2int(BV2)
+
+% main results for computing outcomes of multiplications:
+
+  bv2int_times_widens : LEMMA % :-)
+    bv2int(widen(bv1) * widen(bv2)) = bv2int(bv1) * bv2int(bv2)
+
+  bv2int_times_int2bv_first : LEMMA % :-)
+    FORALL(k:int) :
+     -exp2(2*N-1) < k * bv2int(BV) AND k * bv2int(BV) < exp2(2*N-1)      
+       AND
+     -exp2(2*N-1) <= k AND k < exp2(2*N-1)      
+       IMPLIES
+     bv2int[2*N](int2bv[2*N](k) * BV) = k * bv2int(BV)
+
+  bv2int_times_int2bv_second : LEMMA % :-)
+    FORALL(k:int) :
+     -exp2(2*N-1) < k * bv2int(BV) AND k * bv2int(BV) < exp2(2*N-1)      
+       AND
+     -exp2(2*N-1) <= k AND k < exp2(2*N-1)      
+       IMPLIES
+     bv2int[2*N](BV * int2bv[2*N](k)) = k * bv2int(BV)
+
+% narrow and multiplication
+
+  narrow_iterate : LEMMA % :-)
+    FORALL(n:nat) :
+      narrow(iterate[bvec[2*N]](LAMBDA(b:bvec[2*N]) : b + BV1, n)
+                               (fill[2*N](FALSE)))
+      =
+      iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + narrow(BV1), n)(fill[N](FALSE))
+
+  bv2nat_split : LEMMA % :-)
+    bv2nat(BV) = exp2(N) * bv2nat(BV^(2*N-1,N)) + bv2nat(BV^(N-1,0))
+
+  narrow_times : LEMMA % :-)
+    narrow(BV1 * BV2) = narrow(BV1) * narrow(BV2)
+
+
+% JLS, 15.17.1:
+%
+% The binary * operator performs multiplication, producing the product
+% of its operands. Multiplication is a commutative operation if the
+% operand expressions have no side effects. While integer multiplication
+% is associative when the operands are all of the same type,
+% floating-point multiplication is not associative. If an integer
+% multiplication overflows, then the result is the low-order bits of the
+% mathematical product as represented in some sufficiently large
+% two's-complement format. As a result, if overflow occurs, then the sign
+% of the result may not be the same as the sign of the mathematical
+% product of the two operand values.
+%
+% This is formalised in the following way:
+
+  times_is_java_times : LEMMA % :-)
+    bv1 * bv2 = narrow(widen(bv1) * widen(bv2))
+
+END BitvectorMultiplicationWidenNarrow
+
+
+DivisionUtil : THEORY
+BEGIN
+
+  IMPORTING BitvectorUtil
+
+  leftshift_with : LEMMA % :-)
+    FORALL(n:nat, bv:bvec[n], b:bool) : 
+      n > 1 AND bv2nat[n](bv) < exp2(n-1)
+        IMPLIES
+      bv2nat[n](left_shift(1, bv) WITH [(0) := b]) = 2 * bv2nat[n](bv) + b2n(b)
+
+  bv2nat_minus : LEMMA % :-)
+    FORALL(n:posnat, bv1, bv2:bvec[n]) :
+      bv2nat[n](bv1) <= bv2nat[n](bv2)
+        IMPLIES
+      bv2nat[n](bv2 - bv1) = bv2nat[n](bv2) - bv2nat[n](bv1);
+
+END DivisionUtil
+
+
+BitvectorOneComplementDivision[N : posnat] : THEORY
+BEGIN
+
+  ASSUMING
+     N_size: ASSUMPTION N >= 2
+  ENDASSUMING
+
+  IMPORTING DivisionUtil,
+            BitvectorMultiplication[N]
+
+  bv, bv1, bv2, bv3 : VAR bvec[N]
+  dvs, dvd, rem, quot, aux : VAR bvec[N]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% The next function implements 1-complement division-remainder
+% computation, following for instance: Stallings, Computer Organization
+% and Architecture (4th ed., 1996), Section 8.3: Integer arithmetic.
+%
+% Basically, it follows the standard paper-and-pencil approach.
+%
+% The function should be called with rem = fill[N](FALSE), n = N,
+% see the subsequent definitions of div and rem.
+%
+% Names: dvs = divisor, 
+%        dvd = dividend (as in dividend/divisor), 
+%        rem = remainder, 
+%        n   = counter
+% 
+% An output tuple should be interpreted as (dvd/dvs, dvd%dvs), see
+% the subsequent definitions of div and rem.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  divrem(dvd, dvs, rem : bvec[N], n : nat) : RECURSIVE [bvec[N], bvec[N]] =
+    IF n = 0
+    THEN (dvd, rem)
+    ELSE LET 
+             rem1 = left_shift(1, rem) WITH [(0) := dvd(N-1)],
+             dvd1 = left_shift(1, dvd)
+         IN
+             IF bv2nat[N](dvs) <= bv2nat[N](rem1)
+             THEN divrem(dvd1 WITH [(0) := TRUE], dvs, rem1-dvs, n-1)
+             ELSE divrem(dvd1, dvs, rem1, n-1)
+             ENDIF
+    ENDIF
+    MEASURE n;
+
+% div
+
+  div(dvd, dvs) : bvec[N] = divrem(dvd, dvs, fill[N](FALSE), N)`1;
+
+% rem
+
+  rem(dvd, dvs) : bvec[N] = divrem(dvd, dvs, fill[N](FALSE), N)`2
+
+% Some easy results about div and rem
+
+  divrem_dvd : LEMMA % :-)
+    FORALL(n:below(N+1), k:below(N-n)) :
+      divrem(dvd, dvs, rem, n)`1(k+n) = dvd(k)
+
+  divrem_dvs0 : LEMMA % :-)
+    FORALL(n:below(N+1)) :
+      divrem(dvd, fill[N](FALSE), rem, n) = 
+        ((LAMBDA(i:below(N)) : IF i < n
+                               THEN TRUE
+                               ELSE dvd(i-n)
+                               ENDIF),
+
+         (LAMBDA(i:below(N)) : IF i < n
+                               THEN dvd(N-n+i)
+                               ELSE rem(i-n)
+                               ENDIF))
+
+% A couple of auxiliary results needed for the key invariant
+% property of divrem below.
+
+  bv2nat_left_false_inc : LEMMA % :-)
+    FORALL(n:below(N)) :
+      bv2nat[N](LAMBDA(i:below(N)) :
+                  IF i < n+1
+                  THEN bv(i)
+                  ELSE FALSE
+                  ENDIF)
+      =
+      bv2nat[N](LAMBDA(i:below(N)) :
+                  IF i < n
+                  THEN bv(i)
+                  ELSE FALSE
+                  ENDIF) + exp2(n) * b2n(bv(n))
+
+  bv2nat_right_false_inc : LEMMA % :-)
+    FORALL(n:below(N)) :
+      bv2nat[N](LAMBDA(i:below(N)) :
+                  IF i < n
+                  THEN FALSE
+                  ELSE bv(i)
+                  ENDIF) 
+      =
+      bv2nat[N](LAMBDA(i:below(N)) :
+                  IF i < n+1
+                  THEN FALSE
+                  ELSE bv(i)
+                  ENDIF) + exp2(n) * b2n(bv(n))
+
+  bv2nat_left_false_dec : LEMMA % :-)
+    FORALL(n:below(N)) :
+      bv2nat[N](LAMBDA(i:below(N)) :
+                  IF i < N-n
+                  THEN bv(i+n)
+                  ELSE FALSE
+                  ENDIF)
+      =
+      bv2nat[N](LAMBDA(i:below(N)) :
+                  IF i < N-n-1
+                  THEN bv(i+n)
+                  ELSE FALSE
+                  ENDIF) + exp2(N-n-1) * b2n(bv(N-1))
+
+  bv2nat_split : LEMMA % :-)
+    FORALL(m:below(N+1)) :
+      bv2nat[N](LAMBDA(i:below(N)) :
+                  IF i < m
+                  THEN bv1(i+N-m)
+                  ELSE bv2(i-m)
+                  ENDIF)
+      =
+      bv2nat[N](LAMBDA(i:below(N)) :
+                  IF i < m
+                  THEN bv1(i+N-m)
+                  ELSE FALSE
+                  ENDIF)
+      + exp2(m) * bv2nat[N](LAMBDA(i:below(N)) :
+                              IF i < N-m
+                              THEN bv2(i)
+                              ELSE FALSE
+                              ENDIF)
+
+  bv2nat_left_false_minus : LEMMA % :-)
+    FORALL(n:below(N)) :
+      bv2nat[N](LAMBDA (i: below(N)):
+                  IF i < N - n
+                  THEN bv(i + n)
+                  ELSE FALSE
+                  ENDIF)
+      =
+      2 * bv2nat[N](LAMBDA (i: below(N)):
+                  IF i < N - n - 1
+                  THEN bv(1 + i + n)
+                  ELSE FALSE
+                  ENDIF)
+      + b2n(bv(n))
+
+  bv2nat_leftshift_exp : LEMMA % :-)
+    bv2nat(bv) = bv2nat(left_shift(1, bv))/2 + exp2(N-1) * b2n(bv(N-1))
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% The above divrem function is too compact. For instance, it overwrites
+% the argument dvd from the left, which becomes the intended quotient.
+% In this way we cannot formulate the intended invariant property.
+% Therefore we introduce a more explicit auxiliary variation `divrem_mem' 
+% with ``memory'', which keeps the dvd argument.
+% Also, in its cycles it considers only the appropriate part of the
+% remainder argument.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  divrem_mem(aux, dvs, quot, rem : bvec[N], n : below(N+1)) : 
+    RECURSIVE [bvec[N], bvec[N], bvec[N]] =
+      IF n = 0
+      THEN (aux, quot, rem)
+      ELSE LET 
+               aux1  = left_shift(1, aux) WITH [(0) := quot(N-1)],
+               rem1  = left_shift(1, rem) WITH [(0) := quot(N-1)],
+               quot1 = left_shift(1, quot)
+           IN
+               IF bv2nat[N](dvs) <= bv2nat[N](LAMBDA(i:below(N)) : IF i < N-n+1
+                                                                   THEN rem1(i)
+                                                                   ELSE FALSE
+                                                                   ENDIF)
+               THEN divrem_mem(aux1, dvs, quot1 WITH [(0) := TRUE], 
+                               (LAMBDA(i:below(N)) : IF i < N-n+1
+                                                     THEN rem1(i)
+                                                     ELSE FALSE
+                                                     ENDIF) - dvs, n-1)
+               ELSE divrem_mem(aux1, dvs, quot1, rem1, n-1)
+               ENDIF
+      ENDIF
+      MEASURE n;
+
+% The next three results relate divrem_mem with divrem, and with div and rem.
+
+  divrem_mem_first_second_third : LEMMA % :-)
+    FORALL(n:below(N+1)) :
+      LET
+          drm = divrem_mem(aux, dvs, quot, rem, n),
+          dr  = divrem(quot, dvs, (LAMBDA(i:below(N)) : IF i < N-n
+                                                        THEN rem(i)
+                                                        ELSE FALSE
+                                                        ENDIF), n)
+      IN 
+          drm`1 = (LAMBDA(i:below(N)) : IF i < n
+                                        THEN quot(N-n+i)
+                                        ELSE aux(i-n)
+                                        ENDIF)
+            AND
+          drm`2 = dr`1
+            AND
+          drm`3 = dr`2
+
+  divrem_mem_rem : LEMMA % :-)
+    FORALL(n:below(N+1)) :
+      (LAMBDA(i:below(N)) : IF i < N-n
+                            THEN rem(i)
+                            ELSE FALSE
+                            ENDIF) < dvs 
+        IMPLIES 
+      divrem_mem(aux, dvs, dvd, rem, n)`3 < dvs
+
+  div_divrem_mem : LEMMA % :-)
+    div(dvd, dvs) = divrem_mem(fill[N](FALSE), dvs, dvd, fill[N](FALSE), N)`2
+
+  rem_divrem_mem : LEMMA % :-)
+    rem(dvd, dvs) = divrem_mem(fill[N](FALSE), dvs, dvd, fill[N](FALSE), N)`3
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% The key invariant property of divrem_mem. The parameter n should be
+% interpreted as the number of cycles that still need to be performed
+% to complete the computation.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  divrem_mem_invariant : LEMMA % :-)
+    FORALL(n:below(N+1)) : 
+      LET 
+          start_n = (LAMBDA(i:below(N)) : IF i < n
+                                          THEN quot(N-n+i)
+                                          ELSE aux(i-n)
+                                          ENDIF),
+          quot_n =  (LAMBDA(i:below(N)) : IF i < N-n
+                                          THEN quot(i)
+                                          ELSE FALSE
+                                          ENDIF),
+          rem_n =   (LAMBDA(i:below(N)) : IF i < n
+                                          THEN quot(N-n+i)
+                                          ELSE rem(i-n)
+                                          ENDIF),
+          drm = divrem_mem(aux, dvs, quot, rem, n)
+      IN
+          bv2nat[N](start_n) = 
+            exp2(n) * bv2nat[N](dvs) * bv2nat[N](quot_n) + bv2nat[N](rem_n)
+            IMPLIES
+          bv2nat[N](drm`1) = 
+            bv2nat[N](dvs) * bv2nat[N](drm`2) + bv2nat[N](drm`3)
+
+% Key properties of div and rem, including: 
+%     (a/b)*b+(a%b) = a and a%b < b
+% The `1' in the names of the lemmas refers to the 1-complement interpretation.
+
+  divrem1_eq : LEMMA % :-)
+    bv2nat(div(dvd, dvs)) * bv2nat(dvs) + bv2nat(rem(dvd, dvs)) = bv2nat(dvd)
+
+  rem1_below_dvs : LEMMA % :-)
+    bv2nat(dvs) /= 0 IMPLIES bv2nat(rem(dvd, dvs)) < bv2nat(dvs)
+
+  rem1_dvs0 : LEMMA % :-)
+    rem(dvd, fill[N](FALSE)) = dvd
+
+  div1_dvs0 : LEMMA % :-)
+    div(dvd, fill[N](FALSE)) = fill[N](TRUE)
+
+  div1_below_dvd : LEMMA % :-)
+    bv2nat(dvs) /= 0 IMPLIES bv2nat(div(dvd, dvs)) <= bv2nat(dvd)
+
+  divrem1_uniqueness : LEMMA % :-)
+    FORALL(q,r:nat) : 
+      r < bv2nat(dvs) AND q * bv2nat(dvs) + r = bv2nat(dvd)
+        IMPLIES
+      q = bv2nat(div(dvd, dvs)) AND r = bv2nat(rem(dvd, dvs));
+
+  divrem1_dvs1 : LEMMA % :-)
+    div(dvd, one) = dvd AND rem(dvd, one) = fill[N](FALSE)
+
+  div1_eq0 : LEMMA % :-)
+    (bv2nat(div(dvd, dvs)) = 0) = (bv2nat(dvd) < bv2nat(dvs))
+
+END BitvectorOneComplementDivision
+
+
+BitvectorTwoComplementDivision[N:posnat] : THEORY
+BEGIN
+
+  ASSUMING
+     N_size: ASSUMPTION N >= 2
+  ENDASSUMING
+
+  IMPORTING BitvectorOneComplementDivision[N],
+            BitvectorOneComplementDivision[2*N],
+            BitvectorMultiplicationWidenNarrow[N]
+
+  dvd, dvs, bv : VAR bvec[N]
+  DVD, DVS, BV : VAR bvec[2*N]
+
+% First some additional results about one-complement division,
+% requiring parameter 2*N.
+
+  DIVREM1_eq : LEMMA % :-)
+    div(DVD, DVS) * DVS + rem(DVD, DVS) = DVD
+
+  div1_cancel : LEMMA % :-)
+    bv2nat(BV) * bv2nat(DVD) < exp2(2*N)
+      AND
+    bv2nat(BV) * bv2nat(DVS) < exp2(2*N)
+      AND
+    bv2nat(BV) /= 0
+      IMPLIES
+    div(BV * DVD, BV * DVS) = div(DVD, DVS)
+      AND
+    (bv2nat(DVS) /= 0 IMPLIES 
+       rem(BV * DVD, BV * DVS) = BV * rem(DVD, DVS));
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Definitions for 2-complement interpretation
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  /(dvd, dvs) : bvec[N] =
+    IF bv2int[N](dvd) >= 0
+    THEN IF bv2int[N](dvs) >= 0
+         THEN div[N](dvd, dvs)
+         ELSE -div[N](dvd, -dvs)
+         ENDIF
+    ELSE IF bv2int[N](dvs) >= 0
+         THEN -div[N](-dvd, dvs)
+         ELSE div[N](-dvd, -dvs)
+         ENDIF
+    ENDIF;
+
+  //(dvd, dvs) : bvec[N] =
+    IF bv2int[N](dvd) >= 0
+    THEN IF bv2int[N](dvs) >= 0
+         THEN rem[N](dvd, dvs)
+         ELSE rem[N](dvd, -dvs)
+         ENDIF
+    ELSE IF bv2int[N](dvs) >= 0
+         THEN -rem[N](-dvd, dvs)
+         ELSE -rem[N](-dvd, -dvs)
+         ENDIF
+    ENDIF
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Below the relevant texts from the Java Language Specification (2nd ed.)
+% are included. All the stated properties about divisition and remainder
+% are proven below (plus of few more, like divrem_widens).
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% JLS 15.17.2 Division Operator
+%
+% The binary / operator performs division, producing the quotient of its
+% operands. The left-hand operand is the dividend and the right-hand
+% operand is the divisor. Integer division rounds toward 0. That is, the
+% quotient produced for operands n and d that are integers after binary
+% numeric promotion (Åß5.6.2) is an integer value q whose magnitude is as
+% large as possible while satisfying |d * q| <= |n|; moreover, q is
+% positive when and n and d have the same sign, but q is negative when
+% and n and d have opposite signs. There is one special case that does
+% not satisfy this rule: if the dividend is the negative integer of
+% largest possible magnitude for its type, and the divisor is -1, then
+% integer overflow occurs and the result is equal to the
+% dividend. Despite the overflow, no exception is thrown in this
+% case. On the other hand, if the value of the divisor in an integer
+% division is 0, then an ArithmeticException is thrown. 
+%
+%
+% JLS 15.17.3 Remainder Operator 
+%
+% The binary % operator is said to yield the remainder of its operands
+% from an implied division; the left-hand operand is the dividend and
+% the right-hand operand is the divisor. In C and C++, the remainder
+% operator accepts only integral operands, but in the Java programming
+% language, it also accepts floating-point operands. The remainder
+% operation for operands that are integers after binary numeric
+% promotion (Åß5.6.2) produces a result value such that (a/b)*b+(a%b) is
+% equal to a. This identity holds even in the special case that the
+% dividend is the negative integer of largest possible magnitude for its
+% type and the divisor is -1 (the remainder is 0). It follows from this
+% rule that the result of the remainder operation can be negative only
+% if the dividend is negative, and can be positive only if the dividend
+% is positive; moreover, the magnitude of the result is always less than
+% the magnitude of the divisor. If the value of the divisor for an
+% integer remainder operator is 0, then an ArithmeticException is
+% thrown. 
+%
+% Examples: 
+%	5%3 produces 2 (note that 5/3 produces 1) 
+%	5%(-3) produces 2 (note that 5/(-3) produces -1) 
+%	(-5)%3 produces -2 (note that (-5)/3 produces -1) 
+%	(-5)%(-3) produces -2 (note that (-5)/(-3) produces 1) 
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%  div_minus_dvd : LEMMA
+%    (-dvd) / dvs = -(dvd / dvs)
+
+  rem_dvs0 : LEMMA % :-)
+    dvd // fill[N](FALSE) = dvd
+
+  div_dvs0 : LEMMA % :-)
+    dvd / fill[N](FALSE) = IF bv2int[N](dvd) >= 0
+                           THEN fill[N](TRUE)  % -1
+                           ELSE one[N]         % 1
+                           ENDIF
+
+  divrem_dvs1 : LEMMA % :-)
+    dvd / one = dvd AND dvd // one = fill[N](FALSE)
+
+  rem_below_dvs : LEMMA % :-)
+    bv2int(dvs) /= 0
+      IMPLIES
+    abs(bv2int(dvd // dvs)) < abs(bv2int(dvs))
+
+  divrem_eq : LEMMA % :-)
+    NOT (bv2int(dvd) = -exp2(N-1) AND bv2int(dvs) = -1)
+      IMPLIES
+    bv2int[N](dvd / dvs) * bv2int[N](dvs) + bv2int[N](dvd // dvs) 
+      = bv2int[N](dvd)
+
+  divrem_overflow : LEMMA % :-)
+    bv2int(dvd) = -exp2(N-1) AND bv2int(dvs) = -1
+      IMPLIES
+    bv2int[N](dvd / dvs) = -exp2(N-1) AND bv2int[N](dvd // dvs) = 0
+
+  div_sgn : LEMMA % :-)
+    NOT (bv2int(dvd) = -exp2(N-1) AND bv2int(dvs) = -1)
+      AND
+    bv2int(dvs) /= 0
+      IMPLIES
+    ((bv2int(dvd / dvs) > 0) = 
+        ((bv2int(dvd) >= bv2int(dvs) AND bv2int(dvs) > 0)
+         OR
+         (bv2int(dvd) <= bv2int(dvs) AND bv2int(dvs) < 0)))
+      AND
+    ((bv2int(dvd / dvs) = 0) = 
+        (abs(bv2int(dvd)) < abs(bv2int(dvs))))
+      AND
+    ((bv2int(dvd / dvs) < 0) = 
+        ((bv2int(dvd) >= -bv2int(dvs) AND bv2int(dvs) < 0)
+         OR
+         (bv2int(dvd) <= -bv2int(dvs) AND bv2int(dvs) > 0)))
+
+  rem_sgn : LEMMA % :-)
+    ((bv2int(dvd) > 0) IMPLIES (bv2int(dvd // dvs) >= 0))
+       AND
+    ((bv2int(dvd) < 0) IMPLIES (bv2int(dvd // dvs) <= 0))
+
+  divrem_uniqueness : LEMMA % :-)
+    FORALL(q,r:int) : 
+      (NOT (bv2int(dvd) = -exp2(N-1) AND bv2int(dvs) = -1))
+        AND
+      bv2int(dvs) /= 0
+        AND
+      ((q > 0) = 
+        ((bv2int(dvd) >= bv2int(dvs) AND bv2int(dvs) > 0)
+         OR
+         (bv2int(dvd) <= bv2int(dvs) AND bv2int(dvs) < 0)))
+        AND
+      ((q = 0) = 
+         (abs(bv2int(dvd)) < abs(bv2int(dvs))))
+        AND
+      ((q < 0) = 
+         ((bv2int(dvd) >= -bv2int(dvs) AND bv2int(dvs) < 0)
+          OR
+          (bv2int(dvd) <= -bv2int(dvs) AND bv2int(dvs) > 0)))
+        AND
+      ((bv2int(dvd) > 0) IMPLIES (r >= 0))
+        AND
+      ((bv2int(dvd) < 0) IMPLIES (r <= 0))
+        AND
+      abs(r) < abs(bv2int(dvs)) 
+        AND 
+      q * bv2int(dvs) + r = bv2int(dvd)
+        IMPLIES
+      q = bv2int(dvd / dvs) AND r = bv2int(dvd // dvs)
+
+
+% from JLS: division ... is an integer value q whose magnitude is as
+% large as possible while satisfying |d * q| <= |n|
+
+  div_largest : LEMMA % :-)
+    FORALL(q:int) : 
+      bv2int(dvs) /= 0
+        AND
+      abs(bv2int(dvs) * q) <= abs(bv2int(dvd)) 
+        IMPLIES 
+      abs(q) <= abs(bv2int(dvd/dvs))
+
+END BitvectorTwoComplementDivision
+
+
+BitvectorTwoComplementDivisionWidenNarrow[N:posnat] : THEORY
+BEGIN
+
+  ASSUMING
+     N_size: ASSUMPTION N >= 2
+  ENDASSUMING
+
+  IMPORTING BitvectorTwoComplementDivision[N],
+            BitvectorTwoComplementDivision[2*N]
+
+  dvd, dvs, bv : VAR bvec[N]
+  DVD, DVS, BV : VAR bvec[2*N]
+
+  DIVREM_eq : LEMMA % :-)
+    (DVD / DVS) * DVS + (DVD // DVS) = DVD
+
+  divrem_widens : LEMMA % :-)
+    NOT (bv2int(dvd) = -exp2(N-1) AND bv2int(dvs) = -1)
+      IMPLIES
+    widen(dvd) / widen(dvs) = widen(dvd / dvs)
+      AND
+    widen(dvd) // widen(dvs) = widen(dvd // dvs)
+
+  div_cancel : LEMMA % :-)
+   -exp2(2*N-1) < bv2int(BV) * bv2int(DVD) 
+     AND 
+    bv2int(BV) * bv2int(DVD) < exp2(2*N-1)
+      AND
+   -exp2(2*N-1) < bv2int(BV) * bv2int(DVS) 
+     AND 
+    bv2int(BV) * bv2int(DVS) < exp2(2*N-1)
+      AND
+    bv2int(BV) /= 0
+      AND
+    bv2int(DVS) /= 0
+      AND
+    NOT (bv2int(DVD) = -exp2(2 * N - 1) AND bv2int(DVS) = -1)
+      IMPLIES
+    (BV * DVD) / (BV * DVS) = DVD / DVS
+      AND
+    (BV * DVD) // (BV * DVS) = BV * (DVD // DVS)
+
+END BitvectorTwoComplementDivisionWidenNarrow
+
