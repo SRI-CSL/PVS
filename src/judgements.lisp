@@ -1374,7 +1374,8 @@
     (merge-appl-judgement-generics* subst-from-gens to-gens to-graph)))
 
 (defun merge-appl-judgement-generics* (from-jdecls to-gens to-graph)
-  (if (null from-jdecls)
+  (if (or (null from-jdecls)
+	  (equal from-jdecls to-gens))
       (values to-gens to-graph)
       (if (fully-instantiated? (car from-jdecls))
 	  (if (assoc (car from-jdecls) to-graph :test #'judgement-eq)

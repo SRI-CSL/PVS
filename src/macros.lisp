@@ -188,7 +188,8 @@
       (if (pathnamep ,dir)
 	  (let ((*default-pathname-defaults* *default-pathname-defaults*)
 		(*pvs-context-path* nil)
-		(*pvs-context* nil))
+		(*pvs-context* nil)
+		(*file-dependencies* nil))
 	    (setq *pvs-context-path* (shortpath ,dir))
 	    (setq *default-pathname-defaults* *pvs-context-path*)
 	    ,@forms)
@@ -340,7 +341,7 @@
 				      t))))
 	,@forms)
     (unless *in-typechecker*
-      (clrhash *empty-expression-types*))))
+      (setq *empty-expression-types* (make-hash-table :test 'eq)))))
 
 (defmacro with-case-insensitive-lower (&rest forms)
   #+(or allegro-v6.0 allegro-v6.2)
