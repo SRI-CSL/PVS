@@ -221,16 +221,19 @@
       
       ;; Now repair damage to the window below us, if it still exists.
       (let ((lower-window (ilisp-find-lower-window window)))
-	(if lower-window
-	    (progn
-	      (select-window lower-window)
-	      (let ((old-point (point)))
-		(goto-char (window-start))
-		(vertical-motion delta)
-		(set-window-start lower-window (point))
-		(goto-char old-point)
-		(if (not (pos-visible-in-window-p old-point))
-		    (recenter 0))))))
+	(when lower-window
+	  (select-window lower-window)
+	  (when (or (> (window-height lower-window)
+		       (ilisp-needed-buffer-height (window-buffer lower-window)))
+		    (<= (point) (window-start)))
+	    (let ((old-point (point)))
+	      (goto-char (window-start))
+	      (vertical-motion (- desired-height))
+	      (set-window-start lower-window (point))
+	      (goto-char old-point)))))
+      
+      ;;(if (not (pos-visible-in-window-p old-point))
+      ;;    (recenter 0))))))
       ;; If there was no lower window, then we ought to preserve
       ;; the start of the window above us, if any.
 
@@ -325,7 +328,7 @@
 	     (setq new-window top-window))
 	    (t
 	     (setq new-window (split-window-vertically desired-height)))))
-
+    
     (set-window-buffer top-window buffer)
     ;; The height is already correct, unless there was line wrapping.
     ;; Account for that here.
