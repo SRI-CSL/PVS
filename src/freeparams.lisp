@@ -325,7 +325,7 @@
       frees
       (cons decl frees)))
 
-(defmethod free-params-res ((decl field-decl) mi type frees)
+(defmethod free-params-res ((decl binding) mi type frees)
   (declare (ignore mi))
   (free-params* type frees))
 
@@ -336,6 +336,7 @@
 	(let ((afrees (free-params* actuals nil)))
 	  (union afrees frees :test #'eq))
 	(let ((theory (module decl)))
+	  (break)
 	  (when theory
 	    (dolist (x (formals-sans-usings theory))
 	      (setq frees (pushnew x frees :test #'eq))))
