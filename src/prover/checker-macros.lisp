@@ -377,46 +377,6 @@
 (defmacro add-strategy (name args)
   `(push (cons ,name ,args) *strategies*))
 
-(defmacro not-expr? (exp)
-  `(and (typep ,exp 'application)(negation? ,exp)))
-
-
-(defmacro equality? (exp)
-  `(and (typep ,exp 'application)
-	(typep (operator ,exp) 'name-expr)
-	(eq (id (operator ,exp)) '=)
-        (eq (id (module-instance (resolution (operator ,exp))))
-	 '|equalities|)))
-
-(defmacro inequality? (exp)
-  `(and (typep ,exp 'application)
-	(typep (operator ,exp) 'name-expr)
-	(eq (id (operator ,exp)) '|/=|)
-        (eq (id (module-instance (resolution (operator ,exp))))
-	 '|notequal|)))
-
-(defmacro and-expr? (exp)
-  `(and (typep ,exp 'application)(conjunction? ,exp)))
-
-
-(defmacro or-expr? (exp)
-  `(and (typep ,exp 'application)(disjunction? ,exp)))
-
-
-(defmacro implies-expr? (exp)
-  `(and (typep ,exp 'application)(implication? ,exp)))
-
-
-(defmacro iff-expr? (exp)
-  `(and (typep ,exp 'application)(iff? ,exp)))
-
-(defun ifff? (expr)
-  (let ((op (operator expr)))
-    (and (typep op 'name-expr)
-	 (and (member (id op) '(iff <=>))
-		  (eq (id (module-instance (resolution op))) '|booleans|)))))
-
-
 (defmacro lambda? (exp)
   `(typep ,exp 'lambda-expr))
 
@@ -440,7 +400,7 @@
 (defmacro in-sformnums? (sform pos neg sformnums)
   (let ((sign (gentemp))
 	(sfnums (gentemp)))
-    `(let ((,sign (not (not-expr? (formula ,sform))))
+    `(let ((,sign (not (negation? (formula ,sform))))
 	   (,sfnums (cleanup-fnums ,sformnums)))
        (cond ((eql ,sfnums '*) T)
 	     ((eql ,sfnums '+) ,sign)
