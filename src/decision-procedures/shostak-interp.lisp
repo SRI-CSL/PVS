@@ -108,7 +108,7 @@
        ((eq lhs *true*) rhs)
        ((eq lhs *false*)
 	(sigma (mk-term (list *not* rhs)) cong-state after-solve))
-       ((arith-term-< lhs rhs) term)
+       ((monom-< lhs rhs) term)
        (t (mk-equality rhs lhs)))))
    ((ineq-p term) (sigineq term cong-state))
    ((negation-p term)
@@ -181,7 +181,7 @@
 	    *distinct-lists*)
       *false*)
      (after-solve term)
-     ((arith-term-< lhs rhs) term)
+     ((monom-< lhs rhs) term)
      (t (mk-equality rhs lhs)))))
 
 (defun sigineq (term cong-state)
