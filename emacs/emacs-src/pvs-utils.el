@@ -1312,18 +1312,6 @@ The save-pvs-file command saves the PVS file of the current buffer."
 (setq pvs-reserved-words-regexp
   "\\bassuming\\b\\|\\baxiom\\b\\|\\baccept\\b\\|\\bchanges\\b\\|\\ball\\b\\|\\band\\b\\|\\barray\\b\\|\\bbegin\\b\\|\\bby\\b\\|\\bcase\\b\\|\\bdeclare\\b\\|\\bdefinition\\b\\|\\belse\\b\\|\\belsif\\b\\|\\bendif\\b\\|\\bendassuming\\b\\|\\bendcase\\b\\|\\bend\\b\\|\\bexists\\b\\|\\bexporting\\b\\|\\bexit\\b\\|\\bforall\\b\\|\\bfunction\\b\\|\\bformula\\b\\|\\bfrom\\b\\|\\bif\\b\\|\\biff\\b\\|\\bimplies\\b\\|\\bimporting\\b\\|\\bin\\b\\|\\bis\\b\\|\\blambda\\b\\|\\blemma\\b\\|\\bloop\\b\\|\\bmapping\\b\\|\\bmeasure\\b\\|\\bmodule\\b\\|\\bnot\\b\\|\\bnothing\\b\\|\\bof\\b\\|\\bonto\\b\\|\\bobligation\\b\\|\\bopspec\\b\\|\\bor\\b\\|\\bproof\\b\\|\\bprove\\b\\|\\brecursive\\b\\|\\bresult\\b\\|\\btheorem\\b\\|\\btheory\\b\\|\\busing\\b\\|\\bvar\\b\\|\\bvariable\\b\\|\\brecord\\b\\|\\bverify\\b\\|\\bwhere\\b\\|\\bthen\\b\\|\\btype\\b\\|\\bwhen\\b\\|\\bwhile\\b\\|\\bwith\\b\\|\\blet\\b\\|\\bsetvariable\\b\\|\\[#\\|#\\]\\|[(]#\\|#[)]")
 
-(defvar *pvs-reserved-words*
-  '("assuming" "axiom" "accept" "changes" "all" "and" "array" "begin" "by"
-    "case" "declare" "definition" "else" "elsif" "endif" "endassuming"
-    "endcase" "end" "exists" "exporting" "exit" "forall" "function"
-    "formula" "from" "if" "iff" "implies" "importing" "in" "is" "lambda"
-    "lemma" "loop" "mapping" "measure" "module" "not" "nothing" "of" "onto"
-    "obligation" "opspec" "or" "proof" "prove" "recursive" "result"
-    "theorem" "theory" "using" "var" "variable" "record" "verify" "where"
-    "then" "type" "when" "while" "with" "let" "setvariable"
-    "[#" "#]" "(#" "#)"))
-
-
 (defun highlight-pvs ()
   (interactive)
   (unless (internal-find-face 'pvs-keyword)
