@@ -248,7 +248,7 @@
 			   (id type)))
 		  (well-founded (format nil "for ~a" (id decl))))))
     (when (and *typecheck-using*
-	       (typep (declaration *current-context*) 'using))
+	       (typep (declaration *current-context*) 'importing))
       (setf (importing-instance ndecl)
 	    (list *typecheck-using* *set-type-formal*)))
     (push (definition ndecl) *tccs*)
