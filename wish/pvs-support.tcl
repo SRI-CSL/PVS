@@ -1,3 +1,13 @@
+#                               -*- Mode: Tcl -*- 
+# new-pvs-support.tcl -- 
+# Author          : Carl Witty with mods by Sam Owre
+# Created On      : Thu Apr 27 02:27:14 1995
+# Last Modified By: Sam Owre
+# Last Modified On: Sat Apr 29 18:37:45 1995
+# Update Count    : 13
+# Status          : Unknown, Use with caution!
+
+
 wm withdraw .
 
 proc emacs-eval {arg} {
@@ -318,12 +328,15 @@ proc move-tree {win tag {x 0} {y 0}} {
     }
 }
 
-proc ancestors {path {suffix {}}} {
-    if {$path=={top}} {
+
+# Support for Proof windows
+
+proc ancestors {path top {suffix {}}} {
+    if {$path==$top} {
 	return $path$suffix
     } else {
 	regexp {^(.*)\.([^.]+)$} $path whole pre post
-	return [concat $path$suffix [ancestors $pre $suffix]]
+	return [concat $path$suffix [ancestors $pre $top $suffix]]
     }
 }
 
@@ -335,35 +348,36 @@ proc kids {path nkids} {
     return $kids
 }
 
-proc delete-proof-subtree {path} {
-    global proofwin
-
+proc delete-proof-subtree {name theory relpath} {
+    set proofwin .proof.$theory-$name.fr.c
+    set path $theory-$name-$relpath
     catch {move-dag-item $proofwin $path 0 0}
 
     dag-delete-subtree $proofwin $path
 }
 
-proc proof-num-children {path kids} {
-    global $path
-
-    set ${path}(kids) $kids
-    catch {unset ${path}(rule)}
-    catch {unset ${path}(done)}
-    catch {unset ${path}(tcc)}
+proc proof-num-children {name theory path kids} {
+    set fullpath $theory-$name-$path
+    global $fullpath
+    set ${fullpath}(kids) $kids
+    catch {unset ${fullpath}(rule)}
+    catch {unset ${fullpath}(done)}
+    catch {unset ${fullpath}(tcc)}
 }
 
-proc proof-rule {path rule} {
-    global $path
-
-    set ${path}(rule) $rule
+proc proof-rule {name theory path rule} {
+    set fullpath $theory-$name-$path
+    global $fullpath
+    set ${fullpath}(rule) $rule
 }
 
-proc proof-done {path} {
-    global $path proofwin
+proc proof-done {name theory path} {
+    set fullpath $theory-$name-$path
+    global $fullpath
+    set pwin .proof.$theory-$name.fr.c
+    set ${fullpath}(done) 1
 
-    set ${path}(done) 1
-
-    my-foreground $proofwin $path [get-option doneColor]
+    my-foreground $pwin $fullpath [get-option doneColor]
 }
 
 proc proof-tcc {path} {
@@ -372,23 +386,26 @@ proc proof-tcc {path} {
     set ${path}(tcc) 1
 }
 
-proc proof-show {path} {
-    global $path proofwin env
-
-    if [info exists ${path}(sequent)] {
-	show-sequent $path
+proc proof-show {name theory path} {
+    global env
+    set top $theory-$name-top
+    set fullpath $theory-$name-$path
+    global $fullpath
+    set proofwin .proof.$theory-$name.fr.c
+    if [info exists ${fullpath}(sequent)] {
+	show-sequent $proofwin $fullpath $top
     } else {
 	set seq \
 	    [$proofwin create bitmap 0 0 \
 		 -bitmap @$env(PVSPATH)/wish/sequent.xbm \
-		 -tags "$path.sequent $path $path.real sequent [ancestors $path .desc]" \
+		 -tags "$fullpath.sequent $fullpath $fullpath.real sequent [ancestors $fullpath $top .desc]" \
 		 -anchor n \
 		 -foreground [get-option foreground]]
-	if [info exists ${path}(rule)] {
+	if [info exists ${fullpath}(rule)] {
 	    set bbox [$proofwin bbox $seq]
 	    set seqbot [lindex $bbox 3]
 	    set linebot [expr $seqbot+[get-option ySep $proofwin]]
-	    set rule [set ${path}(rule)]
+	    set rule [set ${fullpath}(rule)]
 	    set alen [get-option abbrevLen]
 	    if $alen {
 		if {[string length $rule]>$alen} {
@@ -397,29 +414,29 @@ proc proof-show {path} {
 		    }
 		}
 	    }
-	    set ${path}(rule_abbr) $rule
+	    set ${fullpath}(rule_abbr) $rule
 	    $proofwin create line 0 $seqbot 0 $linebot \
-		-tags "$path.line $path $path.real [ancestors $path .desc]" \
+		-tags "$fullpath.line $fullpath $fullpath.real [ancestors $fullpath $top .desc]" \
 		-fill [get-option foreground]
 	    $proofwin create text 0 $linebot -text $rule \
-		-tags "$path.rule $path $path.real rule [ancestors $path .desc]" \
+		-tags "$fullpath.rule $fullpath $fullpath.real rule [ancestors $fullpath $top .desc]" \
 		-anchor n \
 		-fill [get-option foreground]
 	}
     }
 
 
-    dag-add-item $proofwin $path [kids $path [set ${path}(kids)]] [ancestors $path .desc]
-    dag-add-destroy-cb $proofwin $path "global $path; catch {unset $path}"
-    if [info exists ${path}(done)] {
-	my-foreground $proofwin $path [get-option doneColor]
-    } elseif [info exists ${path}(tcc)] {
-	my-foreground $proofwin $path [get-option tccColor]
+    dag-add-item $proofwin $fullpath [kids $fullpath [set ${fullpath}(kids)]] [ancestors $fullpath $top .desc]
+    dag-add-destroy-cb $proofwin $fullpath "global $fullpath; catch {unset $fullpath}"
+    if [info exists ${fullpath}(done)] {
+	my-foreground $proofwin $fullpath [get-option doneColor]
+    } elseif [info exists ${fullpath}(tcc)] {
+	my-foreground $proofwin $fullpath [get-option tccColor]
     }
 }
 
-proc get-full-rule {} {
-    global proofwin pathtorlabel
+proc get-full-rule {proofwin top} {
+    global pathtorlabel
     upvar #0 dag-$proofwin dag
 
     set path $dag(idtotag,[$proofwin find withtag current])
@@ -433,7 +450,7 @@ proc get-full-rule {} {
     }
 
     if [info exists pathtorlabel($path)] {
-	return
+ 	return
     }
     set pathtorlabel($path) $label
 
@@ -442,9 +459,9 @@ proc get-full-rule {} {
     set x [lindex $bbox 2]
     set y [expr round(([lindex $bbox 1]+[lindex $bbox 3])/2)]
     $proofwin create text $x $y -anchor w \
-	-tags "$path $path.rlabel $path.rlabel$label rlabel [ancestors $path .desc] rlabel.$label" \
+	-tags "$path $path.rlabel $path.rlabel$label rlabel [ancestors $path $top .desc] rlabel.$label" \
 	-text $label
-    update-color $path $path.rlabel$label
+    update-color $proofwin $path $path.rlabel$label
     
     frame .rule$label
     toplevel $win -class Command
@@ -472,8 +489,7 @@ proc get-full-rule {} {
 }
     
 
-proc get-current-sequent {} {
-    global proofwin
+proc get-current-sequent {proofwin} {
     upvar #0 dag-$proofwin dag
 
     set path $dag(idtotag,[$proofwin find withtag current])
@@ -485,8 +501,11 @@ proc get-current-sequent {} {
     exec rm -f $file
 }
 
-proc show-sequent {path seq_label text} {
-    global proofwin pathtolabel
+proc show-sequent {name theory relpath seq_label text} {
+    global pathtolabel
+    set proofwin .proof.$theory-$name.fr.c
+    set top $theory-$name-top
+    set path $theory-$name-$relpath
 
     for {set label 1} {[winfo exists .sequent$label]} {incr label} {
     }
@@ -501,9 +520,9 @@ proc show-sequent {path seq_label text} {
     set x [lindex $bbox 2]
     set y [expr round(([lindex $bbox 1]+[lindex $bbox 3])/2)]
     $proofwin create text $x $y -anchor w \
-	-tags "$path $path.label $path.label$label label [ancestors $path .desc] label.$label" \
+	-tags "$path $path.label $path.label$label label [ancestors $path $top .desc] label.$label" \
 	-text $label
-    update-color $path $path.label$label
+    update-color $proofwin $path $path.label$label
     
     frame .sequent$label
     toplevel $win -class Sequent
@@ -567,8 +586,8 @@ proc my-foreground {win tag color} {
     }
 }
 
-proc update-color {path tag} {
-    global proofwin $path curpath
+proc update-color {proofwin path tag} {
+    global $path curpath
 
     if [info exists ${path}(done)] {
 	my-foreground $proofwin $tag [get-option doneColor]
@@ -610,10 +629,10 @@ proc my-config {win type tag opt val} {
     }
 }
 
-proc layout-proof {} {
-    global proofwin
-
-    tree-layout $proofwin top
+proc layout-proof {name theory} {
+    set proofwin .proof.$theory-$name.fr.c
+    set top $theory-$name-top
+    tree-layout $proofwin $top
     canvas-set-scroll $proofwin
 }
 
@@ -631,20 +650,23 @@ proc canvas-set-scroll {win {recenter 0}} {
     }
 }
 
-proc proof-current {path} {
-    global proofwin curpath
+proc proof-current {name theory relpath} {
+    global curpath
+    set proofwin .proof.$theory-$name.fr.c
+    set top $theory-$name-top
+    set path $theory-$name-$relpath
 
     if {[info exists curpath]} {
 	$proofwin delete current-circle
 	$proofwin dtag current-subgoal
-	set ancs [ancestors $curpath]
+	set ancs [ancestors $curpath $top]
 	unset curpath
 	foreach tag $ancs {
-	    update-color $tag $tag
+	    update-color $proofwin $tag $tag
 	}
     }
-    if {$path!={}} {
-	foreach tag [ancestors $path] {
+    if {$relpath!={}} {
+	foreach tag [ancestors $path $top] {
 	    $proofwin addtag current-subgoal withtag $tag
 	}
 	my-foreground $proofwin current-subgoal [get-option ancestorColor]
@@ -652,7 +674,7 @@ proc proof-current {path} {
 
 	set bbox [$proofwin bbox $path.real]
 	regexp {^(.*).c} $proofwin whole fr
-	set hscroll $fr.hscroll
+	set hscroll $fr.bottom.hscroll
 	set vscroll $fr.vscroll
 
 	set hget [$hscroll get]
@@ -691,7 +713,7 @@ proc proof-current {path} {
 	    [expr [lindex $bbox 1]-$phit/2.8] \
 	    [expr [lindex $bbox 2]+$pwid/2.8] \
 	    [expr [lindex $bbox 3]+$phit/2.8] \
-	    -tags "$path $path.outline current-circle [ancestors $path .desc]" \
+	    -tags "$path $path.outline current-circle [ancestors $path $top .desc]" \
 	    -outline [get-option currentColor] \
 	    -width 2
     }
@@ -709,7 +731,7 @@ proc show-message {top text} {
     after 5000 "clear-message $top"
 }
 
-proc gen-ps {top psfile} {
+proc gen-ps {top psfile landscape} {
     global canvcolors
 
     set w $top.fr.c
@@ -722,14 +744,15 @@ proc gen-ps {top psfile} {
 	-width [expr [lindex $bbox 2]-[lindex $bbox 0]] \
 	-y [lindex $bbox 1] \
 	-height [expr [lindex $bbox 3]-[lindex $bbox 1]] \
-	-rotate yes
+	-pageheight 8.5i \
+	-rotate [expr {$landscape ? "yes" : "no"}]
     show-message $top "Saved PS to $psfile"
 }
 
 proc setup-dag-win {title icon PSname win_name class} {
     reset-options
     catch {destroy $win_name}
-    set top [toplevel $win_name -geometry 400x400 -class $class]
+    set top [toplevel $win_name -geometry 400x400 -class $class -bd 2 -relief raised]
     pack propagate $top 0
     wm title $top $title
     wm iconname $top $icon
@@ -737,21 +760,35 @@ proc setup-dag-win {title icon PSname win_name class} {
     wm maxsize $top 10000 10000
     set fr [frame $top.fr]
     pack $fr -expand yes -fill both
-    set c [canvas $fr.c -xscroll "$fr.hscroll set" -yscroll "$fr.vscroll set" \
-	      -height 1 -width 1]
+    set sbwidth 12
+    frame $fr.bottom -width $sbwidth
+    set c [canvas $fr.c -xscroll "$fr.bottom.hscroll set" -yscroll "$fr.vscroll set" \
+	      -height 1 -width 1 -bd 3 -relief ridge]
     create-dag $c
-    scrollbar $fr.vscroll -relief sunken -command "$c yview"
-    scrollbar $fr.hscroll -relief sunken -command "$c xview" -orient horiz
+    frame $fr.bottom.right -height 18 -width 18 -bd 3 -relief flat
+    scrollbar $fr.vscroll -width $sbwidth -bd 3 -relief ridge \
+	-command "$c yview"
+    scrollbar $fr.bottom.hscroll -width $sbwidth -bd 3 -relief ridge \
+	-command "$c xview" -orient horiz
+    pack $fr.bottom -side bottom -fill x
+    pack $fr.bottom.right -side right
+    pack $fr.bottom.hscroll -side bottom -fill x
     pack $fr.vscroll -side right -fill y
-    pack $fr.hscroll -side bottom -fill x
     pack $c -expand yes -fill both
     label $top.message -text ""
     pack $top.message -fill x -side bottom
-    button $top.dismiss -text "Dismiss" -command "destroy $win_name"
+    button $top.dismiss -text "Dismiss" -command "destroy $win_name" -bd 2
     pack $top.dismiss -side left -padx 2 -pady 2
-    button $top.ps -text "Gen PS" -command "gen-ps $top $PSname"
+#    button $top.ps -text "Gen PS" -command "gen-ps $top $PSname"
+    menubutton $top.ps -text "Gen PS" -menu $top.ps.menu -relief raised -bd 2
+    menu $top.ps.menu
+    $top.ps.menu add command -label Portrait -command "gen-ps $top $PSname 0"
+    $top.ps.menu add command -label Landscape -command "gen-ps $top $PSname 1"
     pack $top.ps -side left -padx 2 -pady 2
-    menubutton $top.conf -text Config -menu $top.conf.menu -relief raised
+    button $top.help -text "Help" -bd 2 \
+	-command "help-$class $win_name"
+    pack $top.help -side right -padx 2 -pady 2
+    menubutton $top.conf -text Config -menu $top.conf.menu -relief raised -bd 2
     pack $top.conf -side right -padx 2 -pady 2
     menu $top.conf.menu
     $top.conf.menu add cascade -label "Horiz. Separation" \
@@ -799,7 +836,9 @@ proc make-setter {top orient} {
     pack $win.ent -side left
     focus $win.ent
 }
-    
+
+
+# Theory hierarchy support
 
 proc module-hierarchy {name file directory dag} {
     catch {frame .th-hier}
@@ -810,6 +849,7 @@ proc module-hierarchy {name file directory dag} {
 	     $directory${name}_hier.ps \
 	     [string tolower .th-hier.$name] \
 	     TheoryHierarchy]
+    .th-hier.$name configure -bg [get-option background]
     dag-bind-move $win {} Control 1 both
     $win bind :theory <Enter> "module-highlight $win"
     $win bind :theory <Leave> "module-unhighlight $win"
@@ -851,23 +891,33 @@ proc module-highlight {win} {
 proc module-unhighlight {win} {
     my-foreground $win :hier_highlight [get-option foreground]
 }
-    
 
-proc setup-proof {name file directory counter} {
-    global proofwin
-    set proofwin \
+
+# Called from wish.lisp to set up a proof
+
+proc setup-proof {name theory directory counter interactive} {
+    catch {frame .proof}
+    set pw \
 	[setup-dag-win \
-	     "Proof of $name in $directory$file" \
+	     "Proof of $name in $theory" \
 	     "PVS Proof" \
-	     $directory${file}_$name.ps \
-	     .proof \
+	     $directory${theory}_$name.ps \
+	     .proof.$theory-$name \
 	     Proof]
-    dag-bind-move $proofwin .desc Control 1 to
-    dag-bind-move $proofwin {} Control 2 both
-    $proofwin bind sequent <1> {get-current-sequent}
-    $proofwin bind rule <1> {get-full-rule}
-    bind $proofwin <Destroy> "+pvs-send {(stop-displaying-proof $counter)}"
-    bind $proofwin <Destroy> {+
+    .proof.$theory-$name configure -bg [get-option background]
+
+    if {$interactive} {
+	set proofwin $pw
+    }
+
+    dag-bind-move $pw .desc Control 1 to
+    dag-bind-move $pw {} Control 2 both
+    if {$interactive} {
+	$pw bind sequent <1> "get-current-sequent $pw"
+    }
+    $pw bind rule <1> "get-full-rule $pw $theory-$name-top"
+    bind $pw <Destroy> "+pvs-send {(stop-displaying-proof $counter)}"
+    bind $pw <Destroy> {+
 	foreach kid [winfo children .] {
 	    if {[string match .sequent* $kid]} {
 		destroy $kid
@@ -921,4 +971,36 @@ proc parse-bool {str} {
     }
 
     return $val
+}
+
+proc help-Proof {top} {
+    set win $top.helptext
+    catch {destroy $win}
+    toplevel $win -relief raised -bd 2
+    message $win.text -aspect 390 -text "This is a proof display.  The turnstiles represent sequents, and are connected by proof commands.
+
+The mouse has the following bindings:
+
+Left on turnstile - display the corresponding sequent
+Left on rule      - expand the rule if not already expanded
+C-Left on turnstile or rule - moves the subtree rooted at that pair
+C-Middle on turnstile or rule - moves the turnstile/rule pair only"
+    button $win.dismiss -text Dismiss -command "destroy $win"
+    pack $win.text -side top
+    pack $win.dismiss -side left -padx 2 -pady 2
+}
+
+proc help-TheoryHierarchy {top} {
+    set win $top.helptext
+    catch {destroy $win}
+    toplevel $win -relief raised -bd 2
+    message $win.text -aspect 390 -text "This is a theory hierarchy display.  Each name represents a theory, and the arcs represent IMPORTINGs between theories, where the imported theory is below the importing theory.
+
+The mouse has the following bindings:
+
+Left on theory name - display that theory in an Emacs buffer
+C-Left on theory name - moves the name"
+    button $win.dismiss -text Dismiss -command "destroy $win"
+    pack $win.text -side top
+    pack $win.dismiss -side left -padx 2 -pady 2
 }
