@@ -2156,10 +2156,17 @@ The possible values are:
   :ask - the default; all four questions are asked
   :overwrite - similar to earlier PVS versions; asks if the proof should be
                saved and then simply overwrites the earlier one.
-  :new - asks if the proof should be saved, then creates a new proof with a
+  :add - asks if the proof should be saved, then creates a new proof with a
          generated id and empty description."
   (interactive (list (completing-read "Set default proof behavior to: "
-		       '((":ask") (":overwrite") (":new")))))
+		       '((":ask") (":overwrite") (":add")))))
   (pvs-send-and-wait (format "(setq *multiple-proof-default-behavior* %s)"
 			 behavior)))
   
+(defpvs pvs-set-proof-default-description prove (string)
+  "Set the default description for interactive proofs
+
+Sets the default description string for interactive proofs."
+  (interactive "sEnter the default description: ")
+  (pvs-send-and-wait (format "(setq *default-proof-description* \"%s\")"
+			 string)))

@@ -123,6 +123,8 @@ dump-sequents		    Indicate that unproved sequents go to a file
 toggle-proof-prettyprinting Toggles whether to prettyprint proof files
 pvs-set-proof-prompt-behavior Indicates the kind of prompting at the end of
                               a proof; one of :ask, :overwrite, or :new
+pvs-set-proof-default-description Sets a default description string for saved
+                                  proofs			      
 
 -----------------------Proof Information Commands-----------------------------
 
