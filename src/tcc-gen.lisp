@@ -35,7 +35,7 @@
 (defun generate-subtype-tcc (expr expected incs)
   (if (every #'(lambda (i) (member i *tcc-conditions* :test #'tc-eq))
 	     incs)
-      (add-tcc-comment 'subtype expr expected incs nil)
+      (add-tcc-comment 'subtype expr expected)
       (let* ((*old-tcc-name* nil)
 	     (ndecl (make-subtype-tcc-decl expr incs)))
 	(if ndecl
@@ -45,7 +45,7 @@
 				 (recursive-signature (current-declaration))
 				 ndecl)
 		(insert-tcc-decl 'subtype expr expected ndecl))
-	    (add-tcc-comment 'subtype expr expected incs nil)))))
+	    (add-tcc-comment 'subtype expr expected)))))
 
 (defvar *simplify-tccs* nil)
 
@@ -265,7 +265,10 @@
 	     (not (and (declaration? decl)
 		       (id decl)
 		       (assq expr *compatible-pred-reason*))))
-	(add-tcc-comment kind expr type ndecl match))
+	(add-tcc-comment kind expr type
+			 (format nil "% is subsumed by ~a"
+			   (id match))
+			 match))
        (t (when match
 	    (pvs-warning "The judgement TCC generated for and named ~a ~
                           is subsumed by ~a,~%  ~
@@ -449,7 +452,9 @@
     (if ndecl
 	(insert-tcc-decl 'termination
 			 (make!-applications name arguments) nil ndecl)
-	(incf (tccs-simplified)))))
+	(add-tcc-comment 'termination
+			 (make!-applications name arguments)
+			 nil))))
 
 (defun make-recursive-tcc-decl (name arguments)
     (when (null arguments)
@@ -759,6 +764,7 @@
 	    ;; depend on any conditions, including implicit ones in the
 	    ;; prover
 	    (unless (or (or *in-checker* *in-evaluator*)
+			(mappings modinst)
 			*tcc-conditions*)
 	      (push modinst (assuming-instances (current-theory))))
 	    (dolist (ass assumptions)
@@ -775,7 +781,7 @@
 			 (ndecl (make-assuming-tcc-decl ass modinst)))
 		    (if ndecl
 			(insert-tcc-decl 'assuming modinst ass ndecl)
-			(incf (tccs-simplified))))))))))))
+			(add-tcc-comment 'assuming modinst ass)))))))))))
 
 (defun check-assumption-subterm-visibility (assumptions modinst)
   (dolist (ass assumptions)
@@ -858,8 +864,11 @@
 	(push modinst (assuming-instances (current-theory))))
       (dolist (ax (remove-if-not #'axiom? (theory mod)))
 	(let* ((*old-tcc-name* nil)
-	       (ndecl (make-mapped-axiom-tcc-decl ax modinst)))
-	  (if ndecl
+	       (ndecl (make-mapped-axiom-tcc-decl ax modinst))
+	       (netype (nonempty-formula-type ndecl)))
+	  (if (and ndecl
+		   (or (null netype)
+		       (possibly-empty-type? netype)))
 	      (let ((refs (collect-references (definition ndecl))))
 		(if (some #'(lambda (d)
 			      (and (same-id (module d) modinst)
@@ -867,7 +876,26 @@
 			  refs)
 		    (pvs-warning "Axiom ~a not translated" (id ax))
 		    (insert-tcc-decl 'mapped-axiom modinst ax ndecl)))
-	      (incf (tccs-simplified))))))))
+	      (if ndecl
+		  (add-tcc-comment
+		   'mapped-axiom nil modinst
+		   (format nil
+		       "%~a~%  % was not generated because ~a is non-empty"
+		     (unpindent ndecl 2 :string t :comment? t)
+		     (unpindent netype 2 :string t :comment? t)))
+		  (add-tcc-comment
+		   'mapped-axiom nil modinst))))))))
+
+(defmethod nonempty-formula-type ((decl formula-decl))
+  (nonempty-formula-type (definition decl)))
+
+(defmethod nonempty-formula-type ((ex exists-expr))
+  (when (and (tc-eq (expression ex) *true*)
+	     (singleton? (bindings ex)))
+    (type (car (bindings ex)))))
+
+(defmethod nonempty-formula-type ((ex expr))
+  nil)
 
 (defun make-mapped-axiom-tcc-decl (ax modinst)
   (let* ((*generate-tccs* 'none)
@@ -949,21 +977,25 @@
 		     1)))
 
 (defmethod make-tcc-name* ((decl subtype-judgement) expr extra-id)
+  (declare (ignore extra-id))
   (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
 	(id decl))
       (call-next-method)))
 
 (defmethod make-tcc-name* ((decl number-judgement) expr extra-id)
+  (declare (ignore extra-id))
   (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
 	(id decl))
       (call-next-method)))
 
 (defmethod make-tcc-name* ((decl name-judgement) expr extra-id)
+  (declare (ignore extra-id))
   (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
 	(id decl))
       (call-next-method)))
 
 (defmethod make-tcc-name* ((decl application-judgement) expr extra-id)
+  (declare (ignore extra-id))
   (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
 	(id decl))
       (call-next-method)))
@@ -1064,8 +1096,7 @@
 	 (ndecl (make-actuals-tcc-decl act mact)))
     (if ndecl
 	(insert-tcc-decl 'actuals act nil ndecl)
-	(unless (or *in-checker* *in-evaluator*)
-	  (incf (tccs-simplified))))))
+	(add-tcc-comment 'actuals act nil))))
 
 (defun make-actuals-tcc-decl (act mact)
   (let* ((*generate-tccs* 'none)
@@ -1208,8 +1239,7 @@
 	 (ndecl (make-cond-disjoint-tcc expr conditions values)))
     (when ndecl
       (insert-tcc-decl 'disjointness expr nil ndecl)
-      (unless (or *in-checker* *in-evaluator*)
-	(incf (tccs-simplified))))))
+      (add-tcc-comment 'disjointness expr nil))))
 
 (defun make-cond-disjoint-tcc (expr conditions values)
   (let* ((*generate-tccs* 'none)
@@ -1266,8 +1296,7 @@
 	 (ndecl (make-cond-coverage-tcc expr conditions)))
     (when ndecl
       (insert-tcc-decl 'coverage expr nil ndecl)
-      (unless (or *in-checker* *in-evaluator*)
-	(incf (tccs-simplified))))))
+      (add-tcc-comment 'coverage expr nil))))
 
 (defun make-cond-coverage-tcc (expr conditions)
   (let* ((*generate-tccs* 'none)
@@ -1302,8 +1331,7 @@
 		(get-arithmetic-value (car exprs)))
 	   (tcc-evaluates-to-true* (cdr exprs)))))
 
-(defun add-tcc-comment (kind expr type ndecl subsumed-by)
-  (declare (ignore ndecl))
+(defun add-tcc-comment (kind expr type &optional reason subsumed-by)
   (unless (or *in-checker* *in-evaluator* *collecting-tccs*)
     (cond (subsumed-by
 	   (incf (tccs-matched))
@@ -1323,6 +1351,8 @@
 		     (coverage nil)
 		     (disjointness nil)
 		     (existence nil)
+		     (mapped-axiom
+		      (unpindent type 4 :string t :comment? t))
 		     ((subtype termination-subtype)
 		      (format nil "expected type ~a"
 			(unpindent type 19 :string t :comment? t)))
@@ -1331,29 +1361,27 @@
 	   (place (or (place *set-type-actuals-name*)
 		     (place expr) (place type)))
 	   (plstr (when place
-		    (format nil "(at line ~d, column ~d) "
+		    (format nil "(at line ~d, column ~d)"
 		      (starting-row place) (starting-col place))))
 	   (tccstr (format nil
-		       "% The ~@[~a ~]~a TCC ~@[~a~]for~
-                        ~:[ ~;~%    % ~]~a~@[~%    % ~a~]~%  ~a"
+		       "% The ~@[~a ~]~a TCC ~@[~a~] for~
+                        ~:[ ~;~%    % ~]~@[~a~]~@[~%    %~a~]~%  ~a"
 		     (cdr (assq expr *compatible-pred-reason*))
 		     kind plstr
 		     (> (+ (length (cdr (assq expr
 					      *compatible-pred-reason*)))
 			   (length (string kind))
 			   (length plstr)
-			   (length (unpindent (or *set-type-actuals-name*
-						  expr type)
+			   (length (unpindent (or *set-type-actuals-name* expr)
 					      4 :string t :comment? t))
 			   25)
 			*default-char-width*)
-		     (unpindent (or *set-type-actuals-name* expr type)
-				4 :string t :comment? t)
+		     (when (or *set-type-actuals-name* expr)
+		       (unpindent (or *set-type-actuals-name* expr)
+				  4 :string t :comment? t))
 		     submsg
-		     (if subsumed-by
-			 (format nil "% is subsumed by ~a"
-			   (id subsumed-by))
-			 "% was not generated because it simplified to TRUE."))))
+		     (or reason
+			 "% was not generated because it simplifies to TRUE."))))
       (pvs-info tccstr)
       (let* ((decl (current-declaration))
 	     (theory (current-theory))
