@@ -134,8 +134,7 @@
 	    (,id (make-new-variable ,vsym (cons ,type ,op)))
 	    (,bd (typecheck* (mk-bind-decl ,id ,type ,type) nil nil nil))
 	    (,nvar (mk-name-expr ,id nil nil (make-resolution ,bd
-					       (current-theory-name) ,type)
-				 'variable)))
+					       (current-theory-name) ,type))))
       (beta-reduce (make-lambda-expr (list ,bd)
 		     (if (listp ,op)
 			 (make!-conjunction*
@@ -154,8 +153,7 @@
 	    (,op ,operator)
 	    (,id (make-new-variable ,vsym (cons ,type ,op)))
 	    (,bd (typecheck* (mk-bind-decl ,id ,type ,type) nil nil nil))
-	    (,nvar (mk-name-expr ,id nil nil (make-resolution ,bd nil ,type)
-				 'variable)))
+	    (,nvar (mk-name-expr ,id nil nil (make-resolution ,bd nil ,type))))
       (beta-reduce (make-forall-expr (list ,bd)
 		     (if (listp ,op)
 			 (mk-conjunction
