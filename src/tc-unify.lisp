@@ -262,14 +262,12 @@
 			    (a1
 			     (tc-match-acts1
 			      a1 (formals-sans-usings
-				  (get-theory (module-instance
-					       (resolution farg))))
+				  (module (declaration (resolution farg))))
 			      bindings))
 			    (a2
 			     (tc-match-acts1
 			      a2 (formals-sans-usings
-				  (get-theory (module-instance
-					       (resolution arg))))
+				  (module (declaration (resolution arg))))
 			      bindings))
 			    (t (tc-match-names arg farg bindings)))
 		      (or (and (formal-type-decl? (declaration farg))
@@ -436,9 +434,13 @@
 	  (cond ((and a1 a2)
 		 (tc-match* a1 a2 bindings))
 		(a1
-		 (tc-match-acts1 a1 (formals (get-theory m2)) bindings))
+		 (tc-match-acts1
+		  a1 (formals-sans-usings (module (declaration n2)))
+		  bindings))
 		(a2
-		 (tc-match-acts1 a2 (formals (get-theory m1)) bindings)))))))
+		 (tc-match-acts1
+		  a2 (formals-sans-usings (module (declaration n1)))
+		  bindings)))))))
 
 (defmethod tc-match* ((a1 actual) (a2 actual) bindings)
   (if (type-value a1)
@@ -490,7 +492,7 @@
 				       (tc-eq (cdr bind) act)))
 				 (t (setq bindings nil))))))
 		   (actuals (module-instance arg))
-		   (formals (get-theory (module-instance arg))))
+		   (formals-sans-usings (module (declaration arg))))
 	     bindings))
 	  ((null (cdr binding))
 	   (setf (cdr binding) arg)
