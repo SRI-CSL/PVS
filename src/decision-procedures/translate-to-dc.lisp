@@ -25,7 +25,7 @@
 	(mk-name '<= nil '|reals|)
 	(mk-name '> nil '|reals|)
 	(mk-name '>= nil '|reals|)
-	(mk-name 'floor nil '|floor_ceil|)
+	(mk-name '|floor| nil '|floor_ceil|)
 	))
 
 (defvar *dc-interpretations*
@@ -47,7 +47,7 @@
     (not . ,dp::*not*)
     (if . ,dp::*if*)
     (update . ,dp::*update*)
-    (floor . ,dp::*floor*)))
+    (|floor| . ,dp::*floor*)))
 
 (defvar *translate-to-dc-hash* (make-hash-table :hash-function 'pvs-sxhash
 						:test 'tc-eq))
@@ -86,7 +86,7 @@
 	  (not . ,dp::*not*)
 	  (if . ,dp::*if*)
 	  (update . ,dp::*update*)
-	  (floor . ,dp::*floor*))))
+	  (|floor| . ,dp::*floor*))))
 
 (defmethod interpreted? ((expr name-expr))
   (member expr (if *newdc*
