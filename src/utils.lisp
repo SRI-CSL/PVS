@@ -54,7 +54,8 @@
 
 (defmethod copy :around ((ex application) &rest args)
   (let ((nex (call-next-method)))
-    (if (eq (operator ex) (operator nex))
+    (if (or (not (type ex))
+	    (eq (operator ex) (operator nex)))
 	nex
 	(change-application-class-if-necessary ex nex))))
 
