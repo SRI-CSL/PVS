@@ -28,7 +28,6 @@
   (:files)				; No files predefined.
   )
 
-#-gcl
 (defbox lisp-loader
   "The Lisp loader.  This box does only loads compiled files to avoid
 a conflict with the lisp-processor for files with .lisp extension."
@@ -39,30 +38,11 @@ a conflict with the lisp-processor for files with .lisp extension."
 	      (file #,(concatenate 'string "*" *lisp-compiled-suffix-string*)
 		    :input)))
 
-#+gcl
-(defbox lisp-loader
-  "The Lisp loader.  This box does only loads compiled files to avoid
-a conflict with the lisp-processor for files with .lisp extension."
-  (:maintainers)
-  (:needs)
-  (:path)
-  (:generates "tools::lisp-load" &key
-	      (file #.(concatenate 'string "*" *lisp-compiled-suffix-string*)
-		    :input)))
-
-#-gcl
 (defbox lisp-source-loader
   (:generates "tools::lisp-load" &key
 	      (file #,(concatenate 'string "*" *lisp-source-suffix-string*)
 		    :input)))
 
-#+gcl
-(defbox lisp-source-loader
-  (:generates "tools::lisp-load" &key
-	      (file #.(concatenate 'string "*" *lisp-source-suffix-string*)
-		    :input)))
-
-#-gcl
 (defbox ccom
   "The C compiler."
   (:maintainers "tsf")
@@ -76,7 +56,6 @@ a conflict with the lisp-processor for files with .lisp extension."
 
 ;;; The function lisp-load and global variables are now in box-system.lisp.
 
-#-gcl
 (defbox lisp-compiler
   "The Lisp compiler."
   (:needs)
@@ -86,17 +65,6 @@ a conflict with the lisp-processor for files with .lisp extension."
 	      (compiled-file #,(concatenate 'string "*" *lisp-compiled-suffix-string*)
 			     :output)))
 
-#+gcl
-(defbox lisp-compiler
-  "The Lisp compiler."
-  (:needs)
-  (:path)
-  (:generates "tools::lisp-compile" &key
-	      (source-file #.(concatenate 'string "*" *lisp-source-suffix-string*) :input)
-	      (compiled-file #.(concatenate 'string "*" *lisp-compiled-suffix-string*)
-			     :output)))
-
-#-gcl
 (defbox cload
   "The foreign function loader."
   (:maintainers "tsf")
@@ -106,14 +74,14 @@ a conflict with the lisp-processor for files with .lisp extension."
 
 (defbox install-utils
   (:maintainers)
-  (:path "/homes/EHDM/systems/ess/bin/")
+  (:path "/project/pvs/pvs2.3/ess/bin/")
   (:readme "relocate"))
 
 (defbox initload
   "Files that are loaded initially, but should not be loaded again
 afterwards.  Thus this box SHOULD NEVER BE LOADED."
   (:maintainers)
-  (:path "/homes/EHDM/systems/ess/")
+  (:path "/project/pvs/pvs2.3/ess/")
   (:readme "README" "INSTALL" "LICENSE")
   (:files "dist-ess.lisp"
 	  "init-load.lisp"
@@ -122,14 +90,14 @@ afterwards.  Thus this box SHOULD NEVER BE LOADED."
 (defbox ess-doc
   "General documentation for the Ergo Support System."
   (:maintainers)
-  (:path "/homes/EHDM/systems/ess/doc/")
+  (:path "/project/pvs/pvs2.3/ess/doc/")
   (:readme "README")
   (:files "elpbib.ps" "penn-trs.txt"))
 
 (defbox gnu-support
   "Support files for gnu-emacs that help to interact with the ESS."
   (:maintainers)
-  (:path "/homes/EHDM/systems/ess/gnu/")
+  (:path "/project/pvs/pvs2.3/ess/gnu/")
   (:readme "README")
   (:files "emacs.el"
 	  "funkeys.el"
@@ -140,8 +108,8 @@ afterwards.  Thus this box SHOULD NEVER BE LOADED."
   "Support for making general-purpose Lisp extensions for the ERGO
 Lisp programming environment." 
   (:maintainers conal fp)
-  (:path "/homes/EHDM/systems/ess/sys/ergolisp/rel/")
-  (:readme "/homes/EHDM/systems/ess/sys/ergolisp/README")
+  (:path "/project/pvs/pvs2.3/ess/sys/ergolisp/rel/")
+  (:readme "/project/pvs/pvs2.3/ess/sys/ergolisp/README")
   (:files
    "ergolisp-exports"
    "ergolisp"
@@ -151,8 +119,8 @@ Lisp programming environment."
   "Miscellaneous stuff that becomes part of ERGOLISP"
   (:maintainers conal fp)
   (:needs ergolisp)
-  (:path "/homes/EHDM/systems/ess/sys/ergolisp/rel/")
-  (:readme "/homes/EHDM/systems/ess/sys/ergolisp/doc/type-check.doc")
+  (:path "/project/pvs/pvs2.3/ess/sys/ergolisp/rel/")
+  (:readme "/project/pvs/pvs2.3/ess/sys/ergolisp/doc/type-check.doc")
   (:files
    "type-check"
    "ergo-types"
@@ -163,7 +131,7 @@ Lisp programming environment."
   "Basic Lisp tools."
   (:maintainers fp tsf conal)
   (:needs ergomisc)
-  (:path "/homes/EHDM/systems/ess/sys/tools/rel/")
+  (:path "/project/pvs/pvs2.3/ess/sys/tools/rel/")
   (:files
    "print-utils"		; Used by the SB.
    "box-lib"
@@ -180,15 +148,15 @@ Lisp programming environment."
 (defbox internal-boxes
   "Box with one file: the boxes that are not exported."
   (:maintainers :all)
-  (:path "/homes/EHDM/systems/ess/sys/tools/rel/")
+  (:path "/project/pvs/pvs2.3/ess/sys/tools/rel/")
   (:files ("internal-box-defs.lisp" :compile "box" :source t)))
 
 (defbox dlambda
   "Destructuring support"
   (:maintainers conal)
   (:needs ergolisp)
-  (:readme "/homes/EHDM/systems/ess/sys/ergolisp/doc/dlambda.doc")
-  (:path "/homes/EHDM/systems/ess/sys/ergolisp/rel/")
+  (:readme "/project/pvs/pvs2.3/ess/sys/ergolisp/doc/dlambda.doc")
+  (:path "/project/pvs/pvs2.3/ess/sys/ergolisp/rel/")
   (:files
    "dlambda-lib"
    "dlambda"
@@ -198,7 +166,7 @@ Lisp programming environment."
   "Summarizer of files and boxes"
   (:maintainers fp)
   (:needs ergolisp dlambda)
-  (:path "/homes/EHDM/systems/ess/sys/tools/rel/")
+  (:path "/project/pvs/pvs2.3/ess/sys/tools/rel/")
   (:files
    ("summarize-actions" :compile "summarize")
    "summarize"
@@ -207,7 +175,7 @@ Lisp programming environment."
 (defbox profilers
   "Profiling tools."
   (:maintainers fp tsf conal)
-  (:path "/homes/EHDM/systems/ess/sys/tools/rel/")
+  (:path "/project/pvs/pvs2.3/ess/sys/tools/rel/")
   (:files  #+lucid "monitor"   ; Lucid profiler.  See doc.  No source avail.
 	   ))
 
@@ -215,7 +183,7 @@ Lisp programming environment."
 (defbox languages
   "Language information"
   (:maintainers "srd" "fp")
-  (:path "/homes/EHDM/systems/ess/term/language/rel/")
+  (:path "/project/pvs/pvs2.3/ess/term/language/rel/")
   (:readme "languages-doc.txt")
   (:files "languages")
   )
@@ -224,7 +192,7 @@ Lisp programming environment."
   "Operators for terms"
   (:maintainers "srd")
   (:needs dlambda)			; declare-constructor
-  (:path "/homes/EHDM/systems/ess/term/terms/rel/")
+  (:path "/project/pvs/pvs2.3/ess/term/terms/rel/")
   (:readme "oper-doc.txt")
   (:files "opers")
   )
@@ -232,7 +200,7 @@ Lisp programming environment."
 (defbox occur
   "Occurrences for terms"
   (:maintainers "srd")
-  (:path "/homes/EHDM/systems/ess/term/terms/rel/")
+  (:path "/project/pvs/pvs2.3/ess/term/terms/rel/")
   (:readme "occ-doc.txt")
   (:files "occur")
   )
@@ -241,7 +209,7 @@ Lisp programming environment."
   "Sort ADT"
   (:maintainers "srd")
   (:needs operators)
-  (:path "/homes/EHDM/systems/ess/term/terms/rel/")
+  (:path "/project/pvs/pvs2.3/ess/term/terms/rel/")
   (:readme "sort-doc.txt")
   (:files "sorts")
   )
@@ -250,8 +218,8 @@ Lisp programming environment."
   "Generic term primitives, supporting multiple representations."
   (:maintainers conal tsf srd)
   (:needs operators sorts dlambda)	; dlambda for declare-constructor
-  (:path "/homes/EHDM/systems/ess/term/trep/rel/")
-  (:readme "/homes/EHDM/systems/ess/term/trep/doc/gterm-doc.txt")
+  (:path "/project/pvs/pvs2.3/ess/term/trep/rel/")
+  (:readme "/project/pvs/pvs2.3/ess/term/trep/doc/gterm-doc.txt")
   (:files
    ;; "attributable-term"
    "gterm"				; mk-term, etc.  Rep installation.
@@ -262,7 +230,7 @@ Lisp programming environment."
   "Generic Term ADT"
   (:maintainers "srd")
   (:needs operators occur dlambda gterm) ; dlambda for declare-constructor
-  (:path "/homes/EHDM/systems/ess/term/terms/rel/")
+  (:path "/project/pvs/pvs2.3/ess/term/terms/rel/")
   (:readme "term-doc.txt"
 	   "termop-doc.txt")
   (:files
@@ -274,7 +242,7 @@ Lisp programming environment."
   "Attribute ADT compatible with  SB and term package."
   (:needs terms languages occur operators sorts (:boot sb-support)); sb-support
   (:maintainers "fp" "rln" "srd")
-  (:path "/homes/EHDM/systems/ess/term/attr/rel/")
+  (:path "/project/pvs/pvs2.3/ess/term/attr/rel/")
   (:files ("attr-occ" :compile "attr-global")
 	  ("attr-gsort" :compile "attr-global")
 	  ("attr-lib" :compile "attr-global")
@@ -291,8 +259,8 @@ Lisp programming environment."
   ;; in the box attr, then generate sb-support (if necessary).
   (:needs ergolisp ergomisc
 	  operators occur terms sorts languages attr) ; (:boot attr)
-  (:readme "/homes/EHDM/systems/ess/lang/sb-term/README")
-  (:path "/homes/EHDM/systems/ess/lang/sb-term/rel/")
+  (:readme "/project/pvs/pvs2.3/ess/lang/sb-term/README")
+  (:path "/project/pvs/pvs2.3/ess/lang/sb-term/rel/")
   (:generates)
   (:files
    ("rt-unp-top"   :load "rt-format" :load "rt-unparse")
@@ -321,8 +289,8 @@ Lisp programming environment."
   "The syntax-box parser, unparser, etc. generator."  
   (:maintainers "srd" "tsf")
   (:needs tools operators occur terms sorts languages sb-support attr)
-  (:readme "/homes/EHDM/systems/ess/lang/sb-term/README")
-  (:path "/homes/EHDM/systems/ess/lang/sb-term/rel/")
+  (:readme "/project/pvs/pvs2.3/ess/lang/sb-term/README")
+  (:path "/project/pvs/pvs2.3/ess/lang/sb-term/rel/")
   (:generates "sb:sb-make" &key
 	
 	      (grammar-file "*-gr.txt" :input)
@@ -419,7 +387,7 @@ Lisp programming environment."
 (defbox sb-doc
   "Documentation for the SB (TeX and PostScript)."
   (:maintainers srd)			; (not really)
-  (:path "/homes/EHDM/systems/ess/lang/sb-term/doc/")
+  (:path "/project/pvs/pvs2.3/ess/lang/sb-term/doc/")
   (:files
    "sb-manual.PS"			; postscript output.
 ;   "sb-manual.tex"
@@ -444,8 +412,8 @@ Lisp programming environment."
 ;   "doc-macros.tex"
 ;   "latex-1.tex"
 ;   "prog-mode.tex"
-;   "/homes/EHDM/systems/ess/lang/sb-term/rel/sb-tabbing.tex"
-;   "/homes/EHDM/systems/ess/lang/sb-term/rel/sb-prog-mode.tex"
+;   "/project/pvs/pvs2.3/ess/lang/sb-term/rel/sb-tabbing.tex"
+;   "/project/pvs/pvs2.3/ess/lang/sb-term/rel/sb-prog-mode.tex"
 ;   "tex-example.tex"
 ;   "makefile"
    )
@@ -457,7 +425,7 @@ Lisp programming environment."
 
 (defbox pascal
   (:maintainers "srd")
-  (:path "/homes/EHDM/systems/ess/lang/sb-term/examples/pascal/")
+  (:path "/project/pvs/pvs2.3/ess/lang/sb-term/examples/pascal/")
   (:needs sb-support)
   (:files "pascal-unparser"
 	  "pascal-parser"
@@ -474,7 +442,7 @@ Lisp programming environment."
 (defbox formtest
   "Test cases for the formatting language."
   (:maintainers "srd")
-  (:path "/homes/EHDM/systems/ess/lang/sb-term/examples/formtest/")
+  (:path "/project/pvs/pvs2.3/ess/lang/sb-term/examples/formtest/")
   (:needs sb-support)
   (:files "form-unparser"
 	  "form-parser"
@@ -497,7 +465,7 @@ Lisp programming environment."
   "Analysis Facility generator."
   (:maintainers rln)
   (:needs ab-support sb-support)
-  (:path "/homes/EHDM/systems/ess/lang/ab-term/rel/")
+  (:path "/project/pvs/pvs2.3/ess/lang/ab-term/rel/")
   (:readme "release-doc.txt")
   (:generates "ab:ab-make" &key
 	      (grammar "*-agr.txt" :input)
@@ -525,7 +493,7 @@ Lisp programming environment."
   "Analysis Facility runtime system."
   (:maintainers rln)
   (:needs terms sorts attr)
-  (:path "/homes/EHDM/systems/ess/lang/ab-term/rel/")
+  (:path "/project/pvs/pvs2.3/ess/lang/ab-term/rel/")
   (:files "af-runtime"))
 
 ;;; Examples for the Analysis Facility
@@ -533,7 +501,7 @@ Lisp programming environment."
 (defbox ab-doc
   "Documentation for the Analysis Facility"
   (:maintainers rln)
-  (:path "/homes/EHDM/systems/ess/lang/ab-term/doc/")
+  (:path "/project/pvs/pvs2.3/ess/lang/ab-term/doc/")
   (:readme "README")
   (:files "abox-doc.ps"))
 
@@ -541,8 +509,8 @@ Lisp programming environment."
   "Simple calculator"
   (:maintainers rln)
   (:needs sb-support ab-support)
-  (:path "/homes/EHDM/systems/ess/lang/ab-term/examples/calc/")
-  (:readme "/homes/EHDM/systems/ess/lang/ab-term/examples/README")
+  (:path "/project/pvs/pvs2.3/ess/lang/ab-term/examples/calc/")
+  (:readme "/project/pvs/pvs2.3/ess/lang/ab-term/examples/README")
   (:files
    "calc-test" "calc-top"
    ("calc-agr.txt" :package "CALC" :analyzer "calc-analyzer")
@@ -555,7 +523,7 @@ Lisp programming environment."
   "Trivial language with statements and expressions."
   (:maintainers rln)
   (:needs sb-support)
-  (:path "/homes/EHDM/systems/ess/lang/ab-term/examples/tl/")
+  (:path "/project/pvs/pvs2.3/ess/lang/ab-term/examples/tl/")
   (:files
    ("tl-gr.txt" :language "TL")
    "tl-unparser" "tl-parser" "tl-lexer"
@@ -565,7 +533,7 @@ Lisp programming environment."
   "Dead variable analysis"
   (:maintainers rln)
   (:needs tl ab-support)
-  (:path "/homes/EHDM/systems/ess/lang/ab-term/examples/dv/")
+  (:path "/project/pvs/pvs2.3/ess/lang/ab-term/examples/dv/")
   (:files
    "dv-test"
    ("dv-agr.txt" :package "TL" :analyzer "dv-analyzer")
@@ -575,7 +543,7 @@ Lisp programming environment."
   "Safety conditions"
   (:maintainers rln)
   (:needs sb-support ab-support)
-  (:path "/homes/EHDM/systems/ess/lang/ab-term/examples/sf/")
+  (:path "/project/pvs/pvs2.3/ess/lang/ab-term/examples/sf/")
   (:files
    "sf-test"
    ("sf-agr.txt" :package "SF" :analyzer "sf-analyzer")
@@ -589,10 +557,10 @@ Lisp programming environment."
 ML-like concrete syntax.  The Lisp type syntax should be factored out someday."
   (:maintainers conal)
   (:needs dlambda gterm sb-support)
-  (:path "/homes/EHDM/systems/ess/sys/constr/rel/")
+  (:path "/project/pvs/pvs2.3/ess/sys/constr/rel/")
   ;; We never (and can't) unparse.
   (:local-opts :unparser? nil :suppress-sort-errors t)
-  (:readme "/homes/EHDM/systems/ess/sys/constr/doc/constructure.doc")
+  (:readme "/project/pvs/pvs2.3/ess/sys/constr/doc/constructure.doc")
   (:files
    "defsconstr"
    ("constr-gr.txt" :language "constr"
@@ -612,7 +580,7 @@ specification.  Also similar variants of deftype, defvar, etc."
   (:maintainers conal fp)
   ;; Uses only type concrete syntax from constr box
   (:needs constr dlambda)
-  (:path "/homes/EHDM/systems/ess/sys/ergolisp/rel/")
+  (:path "/project/pvs/pvs2.3/ess/sys/ergolisp/rel/")
   (:files
    "tdefun"
    ))
@@ -624,7 +592,7 @@ specification.  Also similar variants of deftype, defvar, etc."
   "The interface of the LP interpreter to the term language."
   (:maintainers conal fp dmiller srd)
   (:needs constr)
-  (:path "/homes/EHDM/systems/ess/elp/lp/rel/")
+  (:path "/project/pvs/pvs2.3/ess/elp/lp/rel/")
   (:files
    "lp-form"
    "lp-id"
@@ -635,7 +603,7 @@ specification.  Also similar variants of deftype, defvar, etc."
   "Syntactic form of lp modules."
   (:maintainers conal fp dmiller)
   (:needs sb-support constr)
-  (:path "/homes/EHDM/systems/ess/elp/lp/rel/")
+  (:path "/project/pvs/pvs2.3/ess/elp/lp/rel/")
   (:files
    "smodule"
    ))
@@ -644,7 +612,7 @@ specification.  Also similar variants of deftype, defvar, etc."
   "The LP interpreter."
   (:maintainers conal fp dmiller srd)
   (:needs constr lp-interface ident smodule)
-  (:path "/homes/EHDM/systems/ess/elp/lp/rel/")
+  (:path "/project/pvs/pvs2.3/ess/elp/lp/rel/")
   (:files
    "lp-top"
    "lp-evaluate"
@@ -660,7 +628,7 @@ specification.  Also similar variants of deftype, defvar, etc."
 tevars in lp terms."
   (:maintainers conal fp dmiller)
   (:needs)
-  (:path "/homes/EHDM/systems/ess/elp/lp/rel/")
+  (:path "/project/pvs/pvs2.3/ess/elp/lp/rel/")
   (:files
    "ident"
    ))
@@ -682,7 +650,7 @@ tevars in lp terms."
   "SB support for slterm.  NOTE THE PATH."
   (:maintainers conal fp dmiller srd)
   (:needs sb-support)
-  (:path "/homes/EHDM/systems/ess/elp/grammar/rel/")
+  (:path "/project/pvs/pvs2.3/ess/elp/grammar/rel/")
   (:files
    ("slterm-gr.txt" :language "slterm"
     :abs-syn-package "SLTERM"
@@ -698,7 +666,7 @@ tevars in lp terms."
   "The ADTs for constructing and using the `syntactic form' of lterms."
   (:maintainers conal fp dmiller srd)
   (:needs constr)
-  (:path "/homes/EHDM/systems/ess/elp/lterm/rel/")
+  (:path "/project/pvs/pvs2.3/ess/elp/lterm/rel/")
   (:files
    "slterm"
    ))
@@ -707,7 +675,7 @@ tevars in lp terms."
   "Concrete syntax support for slterms."
   (:maintainers conal fp dmiller srd)
   (:needs slterm-lang terms slterm lp-interface)
-  (:path "/homes/EHDM/systems/ess/elp/lterm/rel/")
+  (:path "/project/pvs/pvs2.3/ess/elp/lterm/rel/")
   (:files
    "slterm-system"			; Lisp impl. dependent.
    "slterm-io"
@@ -718,7 +686,7 @@ tevars in lp terms."
   "Lterms, i.e., the ADTs of simply typed lambda terms, their types, etc."
   (:maintainers conal fp dmiller srd)
   (:needs ident constr slterm lp-interface tdefun slterm-io)
-  (:path "/homes/EHDM/systems/ess/elp/lterm/rel/")
+  (:path "/project/pvs/pvs2.3/ess/elp/lterm/rel/")
   (:files
    "lterm-tlang"
    ("lterm-cterm" :compile "lterm-adts") ; For print functions.
@@ -747,7 +715,7 @@ tevars in lp terms."
   "The lterm version of eLP.  This is the lterm side of the interface to LP."
   (:maintainers conal fp dmiller srd)
   (:needs lp lterm)
-  (:path "/homes/EHDM/systems/ess/elp/lterm/rel/")
+  (:path "/project/pvs/pvs2.3/ess/elp/lterm/rel/")
   (:files
    "lterm-special"))
 
@@ -755,7 +723,7 @@ tevars in lp terms."
   "The system modules used by eLP."
   (:maintainers conal fp dmiller srd)
   (:needs elp-lterm)
-  (:path "/homes/EHDM/systems/ess/elp/lib/rel/")
+  (:path "/project/pvs/pvs2.3/ess/elp/lib/rel/")
   (:files
    "maps.mod"
    "lists.mod"
@@ -767,7 +735,7 @@ tevars in lp terms."
 type inference and interpretation."
   (:maintainers fp)
   (:needs elp-modules)
-  (:path "/homes/EHDM/systems/ess/elp/examples/polylam/")
+  (:path "/project/pvs/pvs2.3/ess/elp/examples/polylam/")
   (:files
    "lameval.mod"
    "lamsig.mod"
@@ -782,7 +750,7 @@ type inference and interpretation."
 on Metaprogramming in Logic Programming in June 1988.  This is a mini-ML
 interpreter, compiler to CAM code, and CAM code evaluator."
   (:needs elp-modules)
-  (:path "/homes/EHDM/systems/ess/elp/examples/meta88/")
+  (:path "/project/pvs/pvs2.3/ess/elp/examples/meta88/")
   (:readme "README")
   (:files "mldecl.mod"
 	  "mltype.mod" "mleval.mod"
@@ -795,7 +763,7 @@ interpreter, compiler to CAM code, and CAM code evaluator."
   "A box with the code for various eLP meta interpreters."
   (:maintainers fp)
   (:needs elp-modules)
-  (:path "/homes/EHDM/systems/ess/elp/examples/metaint/")
+  (:path "/project/pvs/pvs2.3/ess/elp/examples/metaint/")
   (:readme "README" "meta_ex.rec")
   (:files "meta.mod"
 	  "meta_ex.mod"
@@ -808,7 +776,7 @@ interpreter, compiler to CAM code, and CAM code evaluator."
   "A box with the eLP code by John Hannan which implements a variety
 of substitution predicates."
   (:needs elp-modules)
-  (:path "/homes/EHDM/systems/ess/elp/examples/subst/")
+  (:path "/project/pvs/pvs2.3/ess/elp/examples/subst/")
   (:readme "README")
   (:files "director.mod"
 	  "examples.mod"
@@ -828,7 +796,7 @@ of substitution predicates."
   "A box with the eLP code for a little calculator on Church numerals."
   (:maintainers fp)
   (:needs elp-modules)
-  (:path "/homes/EHDM/systems/ess/elp/examples/church/")
+  (:path "/project/pvs/pvs2.3/ess/elp/examples/church/")
   (:readme "README")
   (:files "church.mod"))
 
@@ -836,17 +804,17 @@ of substitution predicates."
   "Examples of deductive systems and theorem provers in eLP from Amy Felty."
   (:maintainers felty fp)
   (:needs elp-modules)
-  (:path "/homes/EHDM/systems/ess/elp/examples/deduction/")
+  (:path "/project/pvs/pvs2.3/ess/elp/examples/deduction/")
   (:readme "README"
 	   ;; The following grammar files are listed here since the current
 	   ;; version of eLP requires them to have the same name as
 	   ;; already existing files (the standard grammar for eLP).
-	   "/homes/EHDM/systems/ess/elp/examples/deduction/grammar/slterm-gr.txt"
-	   "/homes/EHDM/systems/ess/elp/examples/deduction/grammar/slterm-info.lisp"
-	   "/homes/EHDM/systems/ess/elp/examples/deduction/grammar/slterm-lexer.lisp"
-	   "/homes/EHDM/systems/ess/elp/examples/deduction/grammar/slterm-parser.lisp"
-	   "/homes/EHDM/systems/ess/elp/examples/deduction/grammar/slterm-sorts.lisp"
-	   "/homes/EHDM/systems/ess/elp/examples/deduction/grammar/slterm-unparser.lisp")
+	   "/project/pvs/pvs2.3/ess/elp/examples/deduction/grammar/slterm-gr.txt"
+	   "/project/pvs/pvs2.3/ess/elp/examples/deduction/grammar/slterm-info.lisp"
+	   "/project/pvs/pvs2.3/ess/elp/examples/deduction/grammar/slterm-lexer.lisp"
+	   "/project/pvs/pvs2.3/ess/elp/examples/deduction/grammar/slterm-parser.lisp"
+	   "/project/pvs/pvs2.3/ess/elp/examples/deduction/grammar/slterm-sorts.lisp"
+	   "/project/pvs/pvs2.3/ess/elp/examples/deduction/grammar/slterm-unparser.lisp")
   (:files 
    "convert.mod"
    "copy.mod"
@@ -906,7 +874,7 @@ of substitution predicates."
   "A box with miscellaneous eLP examples."
   (:maintainers conal fp dmiller)
   (:needs elp-modules)
-  (:path "/homes/EHDM/systems/ess/elp/examples/misc/")
+  (:path "/project/pvs/pvs2.3/ess/elp/examples/misc/")
   (:files
    "norm_dform.mod"
    "prims.mod"
@@ -914,12 +882,12 @@ of substitution predicates."
 
 (defbox misc-elp-files
   "A box with miscellaneous unloadable files for eLP."
-  (:path "/homes/EHDM/systems/ess/elp/examples/")
+  (:path "/project/pvs/pvs2.3/ess/elp/examples/")
   (:files "elp.init"))
 
 (defbox misc-elp-doc
   "An unloadable box with miscellaneous documentation files for eLP."
-  (:path "/homes/EHDM/systems/ess/elp/doc/")
+  (:path "/project/pvs/pvs2.3/ess/elp/doc/")
   (:readme "WELCOME")
   (:files "help.list"
 	  "document.list"
@@ -928,7 +896,7 @@ of substitution predicates."
 
 (defbox elp-topics-doc
   "An unloadable box with the documentation for eLP organized by topics."
-  (:path "/homes/EHDM/systems/ess/elp/doc/topics/")
+  (:path "/project/pvs/pvs2.3/ess/elp/doc/topics/")
   (:readme "README")
   (:files "arithmetic.doc"
 	  "help.doc"
@@ -949,7 +917,7 @@ of substitution predicates."
 (defbox ebg
   "eLP code for EBG (explanation-based generalization)"
   (:maintainers srd fp)
-  (:path "/homes/EHDM/systems/ess/elp/examples/ebg/")
+  (:path "/project/pvs/pvs2.3/ess/elp/examples/ebg/")
   (:files
    "metaebg.mod"
    ))
@@ -957,7 +925,7 @@ of substitution predicates."
 (defbox ebg-doc
   "Documentation for the EBG system (under ELP) (PostScript)."
   (:maintainers srd fp)		
-  (:path "/homes/EHDM/systems/ess/elp/examples/ebg/doc/")
+  (:path "/project/pvs/pvs2.3/ess/elp/examples/ebg/doc/")
   (:files
    "ebg.PS"			; postscript output.
    ))
@@ -966,7 +934,7 @@ of substitution predicates."
   "suicide ebg example"
   (:maintainers srd fp)
   (:needs ebg)
-  (:path "/homes/EHDM/systems/ess/elp/examples/ebg/suicide/")
+  (:path "/project/pvs/pvs2.3/ess/elp/examples/ebg/suicide/")
   (:files
    "suicide.mod"
    ))
@@ -975,7 +943,7 @@ of substitution predicates."
   "integration ebg example"
   (:maintainers srd fp)
   (:needs ebg)
-  (:path "/homes/EHDM/systems/ess/elp/examples/ebg/intgr/")
+  (:path "/project/pvs/pvs2.3/ess/elp/examples/ebg/intgr/")
   (:files
    "integrate.mod"
    ))
@@ -984,7 +952,7 @@ of substitution predicates."
   "Proof checking ebg example"
   (:maintainers srd fp)
   (:needs ebg slterm-lang)
-  (:path "/homes/EHDM/systems/ess/elp/examples/ebg/proofck/")
+  (:path "/project/pvs/pvs2.3/ess/elp/examples/ebg/proofck/")
   (:files
    "nj_ebg.mod" 
    "nproofex.mod"
@@ -998,7 +966,7 @@ of substitution predicates."
   "Tactical theorem proving ebg example"
   (:maintainers srd fp)
   ;; (:needs ebg)     ; uses an extended another version.
-  (:path "/homes/EHDM/systems/ess/elp/examples/ebg/tactic/")
+  (:path "/project/pvs/pvs2.3/ess/elp/examples/ebg/tactic/")
   (:files
    "tac_integrate.mod"
    "ebg_tacticals.mod"
@@ -1009,7 +977,7 @@ of substitution predicates."
   "Tail recursion ebg example"
   (:maintainers srd fp)
   (:needs ebg)
-  (:path "/homes/EHDM/systems/ess/elp/examples/ebg/tail_rec/")
+  (:path "/project/pvs/pvs2.3/ess/elp/examples/ebg/tail_rec/")
   (:files
    "tail_rec_ebg.mod"
    ))
@@ -1025,7 +993,7 @@ of substitution predicates."
   "ADT-OBJ (object system for DISPLAY)"
   (:maintainers tsf)
   (:needs dlambda)
-  (:path "/homes/EHDM/systems/ess/sys/adt-obj/rel/")
+  (:path "/project/pvs/pvs2.3/ess/sys/adt-obj/rel/")
   (:files
    "tracer"
    ("adt-obj" :compile ("pcl-walk" "pcl-macros"))
@@ -1037,7 +1005,7 @@ of substitution predicates."
 (defbox adt-obj-doc
   "Documentation for adt-obj"
   (:maintainers tsf)
-  (:path "/homes/EHDM/systems/ess/sys/adt-obj/doc/")
+  (:path "/project/pvs/pvs2.3/ess/sys/adt-obj/doc/")
   (:files
    "design.txt"
    "adt-obj.PS"))
@@ -1049,14 +1017,14 @@ of substitution predicates."
 (defbox low-display
   "New Object Oriented Interaction Facility (different object system)"
   (:maintainers tsf)
-  (:readme "/homes/EHDM/systems/ess/if/display/INSTALL")
+  (:readme "/project/pvs/pvs2.3/ess/if/display/INSTALL")
   (:needs xint sb-support adt-obj #+x11 clx)
   (:path
    ;; See $ess/if/display/INSTALL for instructions explaining how to
    ;; run DISPLAY under X10.  Those instructions refer to the 
    ;; path of the low-display box, which is the following:
-   #-x11 "/homes/EHDM/systems/ess/if/display/rel-x10/"
-   "/homes/EHDM/systems/ess/if/display/rel/"
+   #-x11 "/project/pvs/pvs2.3/ess/if/display/rel-x10/"
+   "/project/pvs/pvs2.3/ess/if/display/rel/"
    ;; end path of the low-display box.
    )
   (:files
@@ -1105,8 +1073,8 @@ of substitution predicates."
    ;; See $ess/if/display/INSTALL for instructions explaining how to
    ;; run DISPLAY under X10.  Those instructions refer to the 
    ;; path of the color-display box, which is the following:
-   #-x11 "/homes/EHDM/systems/ess/if/display/rel-x10/"
-   "/homes/EHDM/systems/ess/if/display/rel/"
+   #-x11 "/project/pvs/pvs2.3/ess/if/display/rel-x10/"
+   "/project/pvs/pvs2.3/ess/if/display/rel/"
    ;; end path of the color-display box.
    )
   (:files
@@ -1122,7 +1090,7 @@ of substitution predicates."
 (defbox display-doc
   "Documentation for display"
   (:maintainers tsf)
-  (:path "/homes/EHDM/systems/ess/if/display/doc/")
+  (:path "/project/pvs/pvs2.3/ess/if/display/doc/")
   (:files
    "display.PS"
    ))
@@ -1130,7 +1098,7 @@ of substitution predicates."
 (defbox xint-x10 
   "Minimal X-C interface, ought to be quite robust."
   (:maintainers "tsf")
-  (:path "/homes/EHDM/systems/ess/sys/xint/rel/")
+  (:path "/project/pvs/pvs2.3/ess/sys/xint/rel/")
   (:files
    ("dispopen.o" :libraries ("-lX" "-lc"))
    "xint"
@@ -1141,7 +1109,7 @@ of substitution predicates."
   "Minimal X-C interface, ought to be quite robust."
   (:maintainers "tsf")
   (:needs #-x11 xint-x10)
-  (:path "/homes/EHDM/systems/ess/sys/xint/rel/")
+  (:path "/project/pvs/pvs2.3/ess/sys/xint/rel/")
   (:files
    "xblock"
    ("block.o" :libraries ("-lc"))))
@@ -1150,10 +1118,10 @@ of substitution predicates."
 ;;; To compile this, you'll have to load defsystem.lisp and give the command
 ;;; (compile-clx).  
 (defbox clx
-  (:path "/homes/EHDM/systems/ess/if/clx/rel/")
+  (:path "/project/pvs/pvs2.3/ess/if/clx/rel/")
   (:load-hook
    (progn
-     (let ((*default-pathname-defaults* (pathname "/homes/EHDM/systems/ess/if/clx/rel/")))
+     (let ((*default-pathname-defaults* (pathname "/project/pvs/pvs2.3/ess/if/clx/rel/")))
        (load "defsystem.lisp")
        (funcall (intern "LOAD-CLX" (find-package "USER")))))))
 
@@ -1161,7 +1129,7 @@ of substitution predicates."
   "References all files in clx box.
    Don't boxload or boxgen this box, boxload the clx box or use clx's
    compile-clx function instead."
-  (:path "/homes/EHDM/systems/ess/if/clx/rel/")
+  (:path "/project/pvs/pvs2.3/ess/if/clx/rel/")
   (:readme "README" "NEWCHANGES" "exclREADME" "exclMakefile" "Makefile")
   (:files 
    ("attributes.lisp" :lisp-loader nil :lisp-compiler nil)
@@ -1196,7 +1164,7 @@ of substitution predicates."
 
 (defbox clx-test
   "References all test files for clx box."
-  (:path "/homes/EHDM/systems/ess/if/clx/rel/test/")
+  (:path "/project/pvs/pvs2.3/ess/if/clx/rel/test/")
   (:needs clx)
   (:files 
    ("trivial"
@@ -1208,15 +1176,15 @@ of substitution predicates."
   "Helps for working with elp from lisp."
   (:maintainers tsf)
   (:needs elp-modules)
-  (:path "/homes/EHDM/systems/ess/if/mellowcard/rel/")
+  (:path "/project/pvs/pvs2.3/ess/if/mellowcard/rel/")
   (:files "elp-hacks"))
 
 (defbox mellowcard
   "Cheap hypertext."
   (:maintainers tsf)
   (:needs display lp)
-  (:readme "/homes/EHDM/systems/ess/if/mellowcard/README.txt")
-  (:path "/homes/EHDM/systems/ess/if/mellowcard/rel/")
+  (:readme "/project/pvs/pvs2.3/ess/if/mellowcard/README.txt")
+  (:path "/project/pvs/pvs2.3/ess/if/mellowcard/rel/")
   (:files
    "hyperhack"))
 
@@ -1224,14 +1192,14 @@ of substitution predicates."
   "Cheap hypertext for lambda prolog self-documentation."
   (:maintainers tsf)
   (:needs display mellowcard elp-programming-aides)
-  (:path "/homes/EHDM/systems/ess/if/mellowcard/rel/")
+  (:path "/project/pvs/pvs2.3/ess/if/mellowcard/rel/")
   (:files
    "mellowlam"))
 
 (defbox mellowcard-modules
   (:maintainers tsf)
   (:needs mellowlam)
-  (:path "/homes/EHDM/systems/ess/if/mellowcard/rel/")
+  (:path "/project/pvs/pvs2.3/ess/if/mellowcard/rel/")
   (:files
    "mellowdb.mod"
    "mellowdesc.mod"
@@ -1292,7 +1260,7 @@ of substitution predicates."
 
 ;; the examples and documentation crate for eLP should not be loaded, merely
 ;; listed when making the tar tape.  See instructions in
-;; /homes/EHDM/systems/ess/TAR-README
+;; /project/pvs/pvs2.3/ess/TAR-README
 
 (defcrate elp-examples
   (:boxes polylam meta88 subst misc-elp-examples

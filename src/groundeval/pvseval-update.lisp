@@ -47,11 +47,6 @@
 (defvar *output-vars* nil)
 (defvar *external* NIL)
 
-(defcl const-decl (typed-declaration)
-  (definition :parse t)
-  def-axiom
-  (eval-info :fetch-as nil)) ;;added eval-info
-
  ;need to exploit the fact that at most one makes sense
             ;if external needs actuals, then internal will crash.
 

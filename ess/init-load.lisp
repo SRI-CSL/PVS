@@ -29,14 +29,18 @@
     ;; Next form is a bug-workaround for Lucid 3.0.  See above.
     (setq constr::*proclaim-constrs-inline* t)
     )
-;;  #+allegro (unintern 'excl::retry :excl) ; take out when retry is moved to el.
-  (load "/homes/EHDM/systems/ess/sys/ergolisp/rel/ergolisp.lisp")
-  (load "/homes/EHDM/systems/ess/sys/ergolisp/rel/ergolisp-exports.lisp")
-  (load "/homes/EHDM/systems/ess/sys/ergolisp/rel/ergo-system.lisp")
-  (load "/homes/EHDM/systems/ess/sys/tools/rel/retry.lisp")
-  (load "/homes/EHDM/systems/ess/sys/tools/rel/box-system.lisp")
-  (load "/homes/EHDM/systems/ess/sys/tools/rel/box")
-  (load "/homes/EHDM/systems/ess/box-defs")
+;;#+allegro (unintern 'excl::retry :excl) ; take out when retry is moved to el.
+  #+allegro
+  (progn
+    (unless (find-package :ergolisp) (make-package :ergolisp))
+    (import '(excl::memq) :ergolisp))
+  (load "/project/pvs/pvs2.3/ess/sys/ergolisp/rel/ergolisp.lisp")
+  (load "/project/pvs/pvs2.3/ess/sys/ergolisp/rel/ergolisp-exports.lisp")
+  (load "/project/pvs/pvs2.3/ess/sys/ergolisp/rel/ergo-system.lisp")
+  (load "/project/pvs/pvs2.3/ess/sys/tools/rel/retry.lisp")
+  (load "/project/pvs/pvs2.3/ess/sys/tools/rel/box-system.lisp")
+  (load "/project/pvs/pvs2.3/ess/sys/tools/rel/box")
+  (load "/project/pvs/pvs2.3/ess/box-defs")
   (use-package :tools)
 
   )

@@ -7,7 +7,7 @@
 ;;;
 ;;; Last Modified Fri Oct 13 01:03:46 1989
 ;;;
-;;; Instructions:  see /homes/EHDM/systems/ess/README
+;;; Instructions:  see /project/pvs/pvs2.3/ess/README
 ;;;
 
 (in-package :user)
@@ -15,8 +15,8 @@
 #+(and allegro compiler)
 (setq comp:*cltl1-compile-file-toplevel-compatibility-p* t)
 #+allegro
-(setq *record-source-file-info* nil
-      *record-xref-info* nil
+(setq ;; *record-source-file-info* nil
+      ;; *record-xref-info* nil
       excl:*cltl1-in-package-compatibility-p* t
       excl:*enable-package-locked-errors* nil)
 
@@ -25,7 +25,7 @@
 ;;; (export '(build-ess use-production-compiler use-development-compiler))
 
 ;;; First load init-load, which includes box-defs.lisp
-(load "/homes/EHDM/systems/ess/init-load.lisp")
+(load "/project/pvs/pvs2.3/ess/init-load.lisp")
 
 ;;; Why are these constants put into the tools package??
 
@@ -174,22 +174,22 @@ checking in the listed compiler options if compilation-speed is 0.")
   (format t "~&;;; Switching compiler to development mode.~%")
   (proclaim '(optimize (speed 1) (safety 1))))
 
-#+cmu
+#+(or cmu gcl)
 (defun use-production-compiler ()
   (format t "~&;;; Switching compiler to production mode.~%")
   (proclaim '(optimize (speed 3) (safety 1) (space 2) (compilation-speed 0))))
 
-#+cmu
+#+(or cmu gcl)
 (defun use-development-compiler ()
   (format t "~&;;; Switching compiler to development mode.~%")
   (warn "Development mode for CMU Common Lisp not yet defined."))
 
-#-(or allegro lucid cmu)
+#-(or allegro lucid cmu gcl)
 (warn "Production compilation declarations undefined for this Common Lisp
 implementation.  You may add them by defining USE-PRODUCTION-COMPILER
 in the file dist-ess.lisp.")
 
-#-(or allegro lucid cmu)
+#-(or allegro lucid cmu gcl)
 (warn "Development compilation declarations undefined for this Common Lisp
 implementation.  You may add them by defining USE-DEVELOPMENT-COMPILER
 in the file dist-ess.lisp.")
