@@ -311,7 +311,7 @@
         (abstract-type (typecheck (make-recordtype
 				   (copy-list abstract-fields)))))
    (setq *abs-state-type* abstract-type)
-   (setq *new-abstract-field-ids* (mapcar #'id abstract-fields))
+   (setq *new-abstract-field-ids* (reverse (mapcar #'id abstract-fields)))
    (print-abstract-state-type list-state-predicates)))
 
 
