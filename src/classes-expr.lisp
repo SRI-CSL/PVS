@@ -27,7 +27,8 @@
   (parens :initform 0 :parse t)
   type
   (free-variables :ignore t :initform 'unbound :fetch-as 'unbound)
-  (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound))
+  (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound)
+  from-macro)
 
 (defcl name (syntax)
   (mod-id :parse t)
@@ -128,6 +129,14 @@
 
 (defcl bracket-expr (application)
   ;;"Used for expressions of the form [| |]"
+  )
+
+(defcl paren-vbar-expr (application)
+  ;;"Used for expressions of the form (| |)"
+  )
+
+(defcl brace-vbar-expr (application)
+  ;;"Used for expressions of the form {| |}"
   )
 
 (defcl infix-application (application))
@@ -399,6 +408,9 @@
 (defcl lambda-conversion-resolution (resolution)
   conversion)
 
+(defcl recursive-function-resolution (resolution)
+  conversion)
+
 (defcl context ()
   theory
   theory-name
@@ -409,7 +421,9 @@
   (judgements :initform (make-instance 'judgements))
   (known-subtypes :initform nil)
   (conversions :initform nil)
-  (disabled-conversions :initform nil))
+  (disabled-conversions :initform nil)
+  (auto-rewrites :initform nil)
+  (disabled-auto-rewrites :initform nil))
 
 (defcl judgements ()
   (judgement-types-hash

@@ -81,7 +81,7 @@
 ;;; but the unparser wants them put back together.  See parse.lisp and
 ;;; unparse.lisp for details.
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (export '(id status type declared-type ))
 
@@ -343,6 +343,8 @@
   def-axiom
   (eval-info :fetch-as nil))
 
+(defcl macro-decl (const-decl))
+
 (defcl adt-constructor-decl (const-decl)
   ordnum)
 
@@ -355,7 +357,8 @@
   (declared-measure :parse t)
   (ordering :parse t)
   measure
-  measure-depth)
+  measure-depth
+  recursive-signature)
 
 (defcl fixpoint-decl (const-decl))
 
@@ -459,6 +462,61 @@
 (defcl conversionminus-decl (conversion-decl))
 
 (defcl typed-conversionminus-decl (typed-conversion-decl))
+
+(defcl auto-rewrite-decl (declaration)
+  (rewrite-names :parse t))
+
+;;; Same as auto-rewrite-decl, but prints differently
+(defcl auto-rewrite-plus-decl (auto-rewrite-decl))
+
+;;; Not only prints differently, but removes the auto-rewrite(s)
+(defcl auto-rewrite-minus-decl (auto-rewrite-decl))
+
+;;; Rewrites
+
+(defcl rewrite (syntax))
+
+(defcl rewrite-name (rewrite name)) ; A mixin
+
+(defcl lazy-rewrite (rewrite)) ; A mixin
+
+(defcl eager-rewrite (rewrite)) ; A mixin
+
+(defcl macro-rewrite (rewrite)) ; A mixin
+
+(defcl constant-rewrite-name (rewrite-name) ; A mixin
+  declared-type
+  type)
+
+(defcl formula-rewrite-name (rewrite-name) ; A mixin
+  spelling)
+
+(defcl lazy-rewrite-name (rewrite-name lazy-rewrite))
+
+(defcl eager-rewrite-name (rewrite-name eager-rewrite))
+
+(defcl macro-rewrite-name (rewrite-name macro-rewrite))
+
+(defcl lazy-constant-rewrite-name (constant-rewrite-name lazy-rewrite-name))
+
+(defcl lazy-formula-rewrite-name (formula-rewrite-name lazy-rewrite-name))
+
+(defcl eager-constant-rewrite-name (constant-rewrite-name eager-rewrite-name))
+
+(defcl eager-formula-rewrite-name (formula-rewrite-name eager-rewrite-name))
+
+(defcl macro-constant-rewrite-name (constant-rewrite-name macro-rewrite-name))
+
+(defcl macro-formula-rewrite-name (formula-rewrite-name macro-rewrite-name))
+
+(defcl fnum-rewrite (rewrite)
+  fnum)
+
+(defcl lazy-fnum-rewrite (fnum-rewrite lazy-rewrite))
+
+(defcl eager-fnum-rewrite (fnum-rewrite eager-rewrite))
+
+(defcl macro-fnum-rewrite (fnum-rewrite macro-rewrite))
 
 
 ;;; Type Expressions
