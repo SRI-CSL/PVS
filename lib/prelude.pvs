@@ -356,6 +356,24 @@ extend_props [T: TYPE, R: TYPE, d: R]: THEORY
   extend_full: LEMMA extend[T, T, R, d](f) = f
  END extend_props
 
+%-------------------------------------------------------------------------
+%
+%  Cases in which the introduction of extend preserves properties.
+%
+%  ---------------------------------------------------------------------
+%      Author: Jerry James (jamesj@acm.org), University of Kansas
+%
+%  extend_func_props
+%-------------------------------------------------------------------------
+extend_func_props[T: TYPE, S: TYPE FROM T, R: TYPE, d: R]: THEORY
+ BEGIN
+
+  surjective_extend: JUDGEMENT
+    extend[T, S, R, d](f: (surjective?[S, R])) HAS_TYPE (surjective?[T, R])
+
+ END extend_func_props
+
+
 % The K combinator is used to trigger lambda conversions.
 % Due to user demand, it is turned off by default.
 
@@ -452,8 +470,12 @@ orders [T: TYPE]: THEORY
 
   strict_order?(<): bool = irreflexive?(<) & transitive?(<)
 
-  strict_is_irreflexive: JUDGEMENT (strict_order?) SUBTYPE_OF (irreflexive?[T])
-  strict_is_transitive:  JUDGEMENT (strict_order?) SUBTYPE_OF (transitive?[T])
+  strict_is_irreflexive: JUDGEMENT
+    (strict_order?) SUBTYPE_OF (irreflexive?[T])
+  strict_order_is_antisymmetric: JUDGEMENT
+    (strict_order?[T]) SUBTYPE_OF (antisymmetric?[T])
+  strict_is_transitive: JUDGEMENT
+    (strict_order?) SUBTYPE_OF (transitive?[T])
 
   dichotomous?(<=): bool = (FORALL x, y: (x <= y OR y <= x))
 
@@ -490,7 +512,7 @@ orders [T: TYPE]: THEORY
 
   nonempty_pred: TYPE = {p: pred[T] | EXISTS (x: T): p(x)}
 
-  pe: VAR nonempty_pred
+  pe: VAR pred[T]
 
   upper_bound?(<)(x, pe): bool = FORALL (y: (pe)): y < x
 
@@ -529,6 +551,96 @@ orders_alt [T: TYPE, <: pred[[T, T]], pe: nonempty_pred[T]]: THEORY
   greatest_lower_bound_is_lower_bound: JUDGEMENT
     (greatest_lower_bound?) SUBTYPE_OF (lower_bound?)
  END orders_alt
+
+
+%-------------------------------------------------------------------------
+%
+%  Cases in which the introduction of restrict preserves properties.
+%
+%  ---------------------------------------------------------------------
+%      Author: Jerry James (jamesj@acm.org), University of Kansas
+%
+%  restrict_order_props
+%-------------------------------------------------------------------------
+restrict_order_props[T: TYPE, S: TYPE FROM T]: THEORY
+ BEGIN
+
+  reflexive_restrict: JUDGEMENT
+    restrict(R: (reflexive?[T])) HAS_TYPE (reflexive?[S])
+
+  irreflexive_restrict: JUDGEMENT
+    restrict(R: (irreflexive?[T])) HAS_TYPE (irreflexive?[S])
+
+  symmetric_restrict: JUDGEMENT
+    restrict(R: (symmetric?[T])) HAS_TYPE (symmetric?[S])
+
+  antisymmetric_restrict: JUDGEMENT
+    restrict(R: (antisymmetric?[T])) HAS_TYPE (antisymmetric?[S])
+
+  connected_restrict: JUDGEMENT
+    restrict(R: (connected?[T])) HAS_TYPE (connected?[S])
+
+  transitive_restrict: JUDGEMENT
+    restrict(R: (transitive?[T])) HAS_TYPE (transitive?[S])
+
+  equivalence_restrict: JUDGEMENT
+    restrict(R: (equivalence?[T])) HAS_TYPE (equivalence?[S])
+
+  preorder_restrict: JUDGEMENT
+    restrict(R: (preorder?[T])) HAS_TYPE (preorder?[S])
+
+  partial_order_restrict: JUDGEMENT
+    restrict(R: (partial_order?[T])) HAS_TYPE (partial_order?[S])
+
+  strict_order_restrict: JUDGEMENT
+    restrict(R: (strict_order?[T])) HAS_TYPE (strict_order?[S])
+
+  dichotomous_restrict: JUDGEMENT
+    restrict(R: (dichotomous?[T])) HAS_TYPE (dichotomous?[S])
+
+  total_order_restrict: JUDGEMENT
+    restrict(R: (total_order?[T])) HAS_TYPE (total_order?[S])
+
+  trichotomous_restrict: JUDGEMENT
+    restrict(R: (trichotomous?[T])) HAS_TYPE (trichotomous?[S])
+
+  strict_total_order_restrict: JUDGEMENT
+    restrict(R: (strict_total_order?[T])) HAS_TYPE (strict_total_order?[S])
+
+  well_founded_restrict: JUDGEMENT
+    restrict(R: (well_founded?[T])) HAS_TYPE (well_founded?[S])
+
+  well_ordered_restrict: JUDGEMENT
+    restrict(R: (well_ordered?[T])) HAS_TYPE (well_ordered?[S])
+
+ END restrict_order_props
+
+
+% Courtesy of Jerry James
+extend_order_props[T: TYPE, S: TYPE FROM T]: THEORY
+ BEGIN
+
+  irreflexive_extend: JUDGEMENT
+    extend[[T, T], [S, S], bool, FALSE](R: (irreflexive?[S]))
+        HAS_TYPE (irreflexive?[T])
+
+  symmetric_extend: JUDGEMENT
+    extend[[T, T], [S, S], bool, FALSE](R: (symmetric?[S]))
+        HAS_TYPE (symmetric?[T])
+
+  antisymmetric_extend: JUDGEMENT
+    extend[[T, T], [S, S], bool, FALSE](R: (antisymmetric?[S]))
+        HAS_TYPE (antisymmetric?[T])
+
+  transitive_extend: JUDGEMENT
+    extend[[T, T], [S, S], bool, FALSE](R: (transitive?[S]))
+        HAS_TYPE (transitive?[T])
+
+  strict_order_extend: JUDGEMENT
+    extend[[T, T], [S, S], bool, FALSE](R: (strict_order?[S]))
+        HAS_TYPE (strict_order?[T])
+
+ END extend_order_props
 
 
 % wf_induction defines induction for any type that has a well-founded
@@ -609,7 +721,7 @@ sets [T: TYPE]: THEORY
 
   full?(a): bool = (FORALL x: member(x, a))
 
-  fullset: set = {x | true}
+  fullset: MACRO set = {x | true}
 
   subset?(a, b): bool = (FORALL x: member(x, a) => member(x, b))
 
@@ -692,8 +804,14 @@ sets_lemmas [T: TYPE]: THEORY
   fullset_member: LEMMA member(x, fullset)
 
   fullset_max: LEMMA subset?(fullset, a)  IMPLIES a = fullset
+
+  fullset_is_full?: LEMMA full?(a) IFF a = fullset
   
   nonempty_exists: LEMMA nonempty?(a) IFF EXISTS (x: (a)): TRUE
+
+  subset_emptyset: LEMMA subset?(emptyset, a)
+
+  subset_fullset: LEMMA subset?(a, fullset)
 
   subset_reflexive: LEMMA subset?(a, a)
 
@@ -704,9 +822,19 @@ sets_lemmas [T: TYPE]: THEORY
 
   subset_partial_order: LEMMA partial_order?(subset?[T])
 
-  subset_emptyset: LEMMA subset?(emptyset, a)
+  subset_is_partial_order: JUDGEMENT
+    subset?[T] HAS_TYPE (partial_order?[set[T]])
 
-  subset_fullset: LEMMA subset?(a, fullset)
+  strict_subset_irreflexive: LEMMA NOT strict_subset?(a, a)
+
+  strict_subset_transitive: LEMMA
+    strict_subset?(a, b) AND strict_subset?(b, c) IMPLIES
+     strict_subset?(a, c)
+
+  strict_subset_strict_order: LEMMA strict_order?(strict_subset?[T])
+
+  strict_subset_is_strict_order: JUDGEMENT
+    strict_subset?[T] HAS_TYPE (strict_order?[set[T]])
 
   union_idempotent: LEMMA union(a, a) = a
 
@@ -760,6 +888,8 @@ sets_lemmas [T: TYPE]: THEORY
 
   complement_complement: LEMMA complement(complement(a)) = a
 
+  complement_equal: LEMMA complement(a) = complement(b) IFF a = b
+
   subset_complement: LEMMA
     subset?(complement(a), complement(b)) IFF subset?(b, a)
 
@@ -789,7 +919,12 @@ sets_lemmas [T: TYPE]: THEORY
 
   difference_subset : LEMMA  subset?(difference(a, b), a)
 
+  difference_subset2: LEMMA
+    subset?(a, b) IMPLIES difference(a, b) = emptyset
+
   difference_disjoint: LEMMA disjoint?(a, difference(b, a))
+
+  difference_disjoint2: LEMMA disjoint?(a, b) IMPLIES difference(a, b) = a
 
   diff_union_inter: LEMMA
     difference(union(a, b), a) = difference(b, intersection(a, b))
@@ -863,9 +998,176 @@ sets_lemmas [T: TYPE]: THEORY
 
   empty_powerset: LEMMA empty?(a) IFF singleton?(powerset(a))
 
+  powerset_emptyset: LEMMA member(emptyset, powerset(a))
+
   nonempty_powerset: JUDGEMENT powerset(a) HAS_TYPE (nonempty?[set[T]])
 
+  powerset_union: LEMMA Union(powerset(a)) = a
+
+  powerset_intersection: LEMMA empty?(Intersection(powerset(a)))
+
+  powerset_subset: LEMMA subset?(a, b) IFF subset?(powerset(a), powerset(b))
+
+  Union_empty: LEMMA empty?(Union(A)) IFF empty?(A) OR every(empty?)(A)
+
+  Union_full: LEMMA
+    full?(Union(A)) IFF (FORALL x: EXISTS (a: (A)): member(x, a))
+
+  Union_subset: LEMMA FORALL (a: (A)): subset?(a, Union(A))
+
+  Union_surjective: JUDGEMENT
+    Union HAS_TYPE (surjective?[setofsets[T], set[T]])
+
+  Intersection_empty: LEMMA
+    empty?(Intersection(A)) IFF
+     (FORALL x: EXISTS (a: (A)): NOT member(x, a))
+
+  Intersection_full: LEMMA full?(Intersection(A)) IFF every(full?)(A)
+
+  %% The Intersection function should only be applied to nonempty sets of
+  %% sets.  This is why.
+  Intersection_empty_full: COROLLARY full?(Intersection(emptyset[set[T]]))
+
+  Intersection_surjective: JUDGEMENT
+    Intersection HAS_TYPE (surjective?[setofsets[T], set[T]])
+
+  Complement(A): setofsets[T] = {a | EXISTS (b: (A)): a = complement(b)}
+
+  Complement_empty: LEMMA empty?(Complement(A)) IFF empty?(A)
+
+  Complement_full: LEMMA full?(Complement(A)) IFF full?(A)
+
+  Complement_Complement: LEMMA Complement(Complement(A)) = A
+
+  subset_Complement: LEMMA
+    subset?(Complement(A), Complement(B)) IFF subset?(A, B)
+
+  Complement_bijective: JUDGEMENT
+    Complement HAS_TYPE (bijective?[setofsets[T], setofsets[T]])
+
+  Demorgan1: LEMMA complement(Union(A)) = Intersection(Complement(A))
+  Demorgan2: LEMMA complement(Intersection(A)) = Union(Complement(A))
+
 END sets_lemmas
+
+
+%-------------------------------------------------------------------------
+%
+%  An alternate formulation of function inverses.  The version above
+%  requires that the domain type be nonempty.  This causes two
+%  difficulties:
+%
+%  (1) Functions from empty types to empty types have inverses, but the
+%      function_inverse theory cannot describe them.
+%
+%  (2) Bijections always have inverses, but function_inverse (uselessly)
+%      generates TCCs requiring that the domain type be nonempty.
+%
+%  Furthermore, for non-injective functions, the function_inverse theory
+%  only gives a way of generating *some* inverse, using the Axiom of Choice.
+%  There is no way to ask whether some function *is* an inverse of the given
+%  function.
+%
+%  This theory is presented in two parts.  The first part makes no
+%  assumptions about the domain and range types at all.  It presents
+%  basic definitions, and some results that can be proven with no
+%  information on the types.  The second part uses an assumption on the
+%  input types, which is constructed to be as easily satisfiable as
+%  possible.  However, this is still not as convenient as the
+%  function_inverse version when the domain type is known to be nonempty.
+%
+%  ---------------------------------------------------------------------
+%      Author: Jerry James (jamesj@acm.org), University of Kansas
+%-------------------------------------------------------------------------
+function_inverse_def[D: TYPE, R: TYPE]: THEORY
+ BEGIN
+
+  d: VAR D
+  r: VAR R
+  f: VAR [D -> R]
+  g: VAR [R -> D]
+
+  left_inverse?(g, f): bool = FORALL d: g(f(d)) = d
+  right_inverse?(g, f): bool = FORALL r: f(g(r)) = r
+  inverse?(g, f): bool = FORALL r: (EXISTS d: f(d) = r) => f(g(r)) = r
+
+  left_inverse?(f)(g): MACRO bool = left_inverse?(g, f)
+  right_inverse?(f)(g): MACRO bool = right_inverse?(g, f)
+  inverse?(f)(g): MACRO bool = inverse?(g, f)
+
+  %%% Left inverses / injective functions
+
+  left_inverse_is_inverse: LEMMA
+    FORALL f, (g: (left_inverse?(f))): inverse?(g, f)
+
+  left_inj_surj: LEMMA
+    FORALL f, (g: (left_inverse?(f))): injective?(f) AND surjective?(g)
+
+  inj_left_alt: LEMMA
+    FORALL (f: (injective?[D, R])), (g: (inverse?(f))): left_inverse?(g, f)
+
+  surj_inv_alt: COROLLARY
+    FORALL (f: (injective?[D, R])), (g: (inverse?(f))): surjective?(g)
+
+  injective_inverse_alt: LEMMA
+    FORALL (f: (injective?[D, R])), (g: (inverse?(f))): r = f(d) => g(r) = d
+
+  comp_inverse_left_inj_alt: LEMMA
+    FORALL (f: (injective?[D, R])), (g: (inverse?(f))): g(f(d)) = d
+
+  noninjective_inverse_exists: LEMMA
+    FORALL f: injective?(f) OR (EXISTS g: inverse?(g, f))
+
+  %%% Right inverses / surjective functions
+
+  right_inverse_is_inverse: LEMMA
+    FORALL f, (g: (right_inverse?(f))): inverse?(g, f)
+
+  right_surj_inj: LEMMA
+    FORALL f, (g: (right_inverse?(f))): surjective?(f) AND injective?(g)
+
+  surj_right_alt: LEMMA
+    FORALL (f: (surjective?[D, R])), (g: (inverse?(f))): right_inverse?(g, f)
+
+  inj_inv_alt: COROLLARY
+    FORALL (f: (surjective?[D, R])), (g: (inverse?(f))): injective?(g)
+
+  surjective_inverse_alt: LEMMA
+    FORALL (f: (surjective?[D, R])), (g: (inverse?(f))): g(r) = d => r = f(d)
+
+  comp_inverse_right_surj_alt: LEMMA
+    FORALL (f: (surjective?[D, R])), (g: (inverse?(f))): f(g(r)) = r
+
+  surjective_inverse_exists: LEMMA
+    FORALL (f: (surjective?[D, R])): EXISTS g: inverse?(g, f)
+
+  %%% Left-right inverses / bijective functions
+
+  left_right_bij: COROLLARY
+    FORALL f, g:
+      right_inverse?(g, f) AND left_inverse?(g, f) =>
+       bijective?(f) AND bijective?(g)
+
+  bij_left_right: COROLLARY
+    FORALL (f: (bijective?[D, R])), (g: (inverse?(f))):
+      right_inverse?(g, f) AND left_inverse?(g, f)
+
+  bij_inv_is_bij_alt: COROLLARY
+    FORALL (f: (bijective?[D, R])), (g: (inverse?(f))): bijective?(g)
+
+  bijective_inverse_alt: COROLLARY
+    FORALL (f: (bijective?[D, R])), (g: (inverse?(f))): g(r) = d IFF r = f(d)
+
+  comp_inverse_right_alt: COROLLARY
+    FORALL (f: (bijective?[D, R])), (g: (inverse?(f))): f(g(r)) = r
+
+  comp_inverse_left_alt: COROLLARY
+    FORALL (f: (bijective?[D, R])), (g: (inverse?(f))): g(f(d)) = d
+
+  bijective_inverse_exists: LEMMA
+    FORALL (f: (bijective?[D, R])): exists1(inverse?(f))
+
+ END function_inverse_def
 
 
 % function_inverse.  In practice this definition will only be useful
@@ -904,9 +1206,9 @@ function_inverse[D: NONEMPTY_TYPE, R: TYPE]: THEORY
   bij_inv_is_bij: LEMMA
     bijective?(f) IMPLIES bijective?(inverse(f))
 
-  left_inverse?(g, f): bool = (FORALL x: g(f(x)) = x)
+%   left_inverse?(g, f): bool = (FORALL x: g(f(x)) = x)
 
-  right_inverse?(g, f): bool = (FORALL y: f(g(y)) = y)
+%   right_inverse?(g, f): bool = (FORALL y: f(g(y)) = y)
 
   surj_right: LEMMA surjective?(f) IFF right_inverse?(inverse(f), f)
 
@@ -934,6 +1236,61 @@ function_inverse[D: NONEMPTY_TYPE, R: TYPE]: THEORY
 	FORALL (f:(bijective?[D,R])): inverse(f)(f(x)) = x
 
  END function_inverse
+
+
+% This theory was provided by Jerry James
+function_inverse_alt[D: TYPE, R: TYPE]: THEORY
+ BEGIN
+
+  ASSUMING
+
+   % The function_inverse theory, in effect, forces its users to prove the
+   % first disjunction; however, any of them give us the ability to define
+   % inverses.  Note that the first two disjunctions are implied by each of
+   % the others.  The axiom is expressed this way for the convenience of its
+   % users, who may have any one of these pieces of evidence of invertibility
+   % at hand.
+   inverse_types: ASSUMPTION
+     (EXISTS (d: D): TRUE) OR
+     (FORALL (r: R): FALSE)
+
+  ENDASSUMING
+
+  d: VAR D
+  r: VAR R
+  f: VAR [D -> R]
+  g: VAR [R -> D]
+
+  exists_inv1: LEMMA
+    ((EXISTS (d: D): TRUE) OR (FORALL (r: R): FALSE)) IFF (EXISTS g: TRUE)
+  exists_inv2: LEMMA
+    (EXISTS (f: (surjective?[D, R])): TRUE) =>
+       ((EXISTS (d: D): TRUE) OR (FORALL (r: R): FALSE))
+  exists_inv3: LEMMA
+    (EXISTS f: NOT injective?(f)) =>
+       ((EXISTS (d: D): TRUE) OR (FORALL (r: R): FALSE))
+
+  inverses(f): TYPE+ = (inverse?(f))
+
+  inverse_alt(f): inverses(f) = choose({g: inverses(f) | TRUE})
+
+
+  bijective_inverse_is_inverse_alt: COROLLARY
+    FORALL (f: (bijective?[D, R])), (g: inverses(f)): g = inverse_alt(f)
+
+  unique_bijective_inverse_alt: JUDGEMENT
+    inverse_alt(f: (bijective?[D,R]))(r) HAS_TYPE {d | f(d) = r}
+
+  bijective_inverse_alt_is_bijective: JUDGEMENT
+    inverse_alt(f: (bijective?[D,R])) HAS_TYPE (bijective?[R,D])
+
+  inv_inj_is_surj_alt: JUDGEMENT
+    inverse_alt(f: (injective?[D, R])) HAS_TYPE (surjective?[R, D])
+
+  inv_surj_is_inj_alt: JUDGEMENT
+    inverse_alt(f: (surjective?[D, R])) HAS_TYPE (injective?[R, D])
+
+ END function_inverse_alt
 
 
 % function_image provides the image and inverse_image functions.
@@ -1143,6 +1500,62 @@ relation_props2 [T1, T2, T3, T4: TYPE]: THEORY
 
   assoc: LEMMA (R1 o R2) o R3 = R1 o (R2 o R3)
  END relation_props2
+
+
+%-------------------------------------------------------------------------
+%
+%  Properties of converses of relations on a single type.
+%
+%  ---------------------------------------------------------------------
+%      Author: Jerry James (jamesj@acm.org), University of Kansas
+%
+%-------------------------------------------------------------------------
+relation_converse_props[T: TYPE]: THEORY
+ BEGIN
+
+  reflexive_converse: JUDGEMENT
+    converse(R: (reflexive?[T])) HAS_TYPE (reflexive?[T])
+
+  irreflexive_converse: JUDGEMENT
+    converse(R: (irreflexive?[T])) HAS_TYPE (irreflexive?[T])
+
+  symmetric_converse: JUDGEMENT
+    converse(R: (symmetric?[T])) HAS_TYPE (symmetric?[T])
+
+  antisymmetric_converse: JUDGEMENT
+    converse(R: (antisymmetric?[T])) HAS_TYPE (antisymmetric?[T])
+
+  connected_converse: JUDGEMENT
+    converse(R: (connected?[T])) HAS_TYPE (connected?[T])
+
+  transitive_converse: JUDGEMENT
+    converse(R: (transitive?[T])) HAS_TYPE (transitive?[T])
+
+  equivalence_converse: JUDGEMENT
+    converse(R: (equivalence?[T])) HAS_TYPE (equivalence?[T])
+
+  preorder_converse: JUDGEMENT
+    converse(R: (preorder?[T])) HAS_TYPE (preorder?[T])
+
+  partial_order_converse: JUDGEMENT
+    converse(R: (partial_order?[T])) HAS_TYPE (partial_order?[T])
+
+  strict_order_converse: JUDGEMENT
+    converse(R: (strict_order?[T])) HAS_TYPE (strict_order?[T])
+
+  dichotomous_converse: JUDGEMENT
+    converse(R: (dichotomous?[T])) HAS_TYPE (dichotomous?[T])
+
+  total_order_converse: JUDGEMENT
+    converse(R: (total_order?[T])) HAS_TYPE (total_order?[T])
+
+  trichotomous_converse: JUDGEMENT
+    converse(R: (trichotomous?[T])) HAS_TYPE (trichotomous?[T])
+
+  strict_total_order_converse: JUDGEMENT
+    converse(R: (strict_total_order?[T])) HAS_TYPE (strict_total_order?[T])
+
+ END relation_converse_props
 
 
 indexed_sets[index, T: TYPE]: THEORY
@@ -1656,7 +2069,6 @@ integers: THEORY
   negint_is_nzint:  JUDGEMENT negint     SUBTYPE_OF nzint
 
   nzint_times_nzint_is_nzint:    JUDGEMENT *(n0i, n0j) HAS_TYPE nzint
-  minus_nzint_is_nzint:          JUDGEMENT -(n0i)      HAS_TYPE nzint
   
   nnint_plus_nnint_is_nnint:	 JUDGEMENT +(nni, nnj) HAS_TYPE nonneg_int
   nnint_times_nnint_is_nnint:    JUDGEMENT *(nni, nnj) HAS_TYPE nonneg_int
@@ -1734,8 +2146,8 @@ naturalnumbers: THEORY
   upto(i):   NONEMPTY_TYPE = {s: nat | s <= i} CONTAINING i
   below(i):  TYPE = {s: nat | s < i}  % may be empty
 
-  nat_plus_nat_is_nat: JUDGEMENT +(i,j) HAS_TYPE nat
-  nat_times_nat_is_nat: JUDGEMENT *(i,j) HAS_TYPE nat
+%  nat_plus_nat_is_nat: JUDGEMENT +(i,j) HAS_TYPE nat
+%  nat_times_nat_is_nat: JUDGEMENT *(i,j) HAS_TYPE nat
   
   succ(i): nat = i + 1
 
@@ -1756,6 +2168,10 @@ naturalnumbers: THEORY
   NAT_induction: LEMMA 
     (FORALL j: (FORALL k: k < j IMPLIES p(k)) IMPLIES p(j))
        IMPLIES (FORALL i: p(i))
+
+  % This seems out of place - it is here so we can prove it by induction
+  x: VAR int
+  even_or_odd: THEOREM even?(x) IFF NOT odd?(x)
 
  END naturalnumbers
 
@@ -2344,6 +2760,16 @@ real_props: THEORY
   archimedean: LEMMA
     FORALL (px: posreal): EXISTS (n: posnat): 1/n < px
 
+  real_lt_is_strict_total_order: JUDGEMENT
+    < HAS_TYPE (strict_total_order?[real])
+
+  real_le_is_total_order: JUDGEMENT <= HAS_TYPE (total_order?[real])
+
+  real_gt_is_strict_total_order: JUDGEMENT
+    > HAS_TYPE (strict_total_order?[real])
+
+  real_ge_is_total_order: JUDGEMENT >= HAS_TYPE (total_order?[real])
+
  END real_props
 
 
@@ -2826,6 +3252,12 @@ divides : THEORY
   %--------------------------------
 
   divisor_smaller: LEMMA divides(p, q) IMPLIES q=0 OR p <= q
+
+  divides_next: LEMMA divides(n, n + 1) IFF n = 1 OR n = -1
+
+  p1: VAR above(1)
+  divides_plus_1: LEMMA
+    divides(p1, nz) => NOT divides(p1, nz + 1)
   
  END divides
 
@@ -2834,7 +3266,7 @@ divides : THEORY
 % Provided by Bruno Dutertre
 modulo_arithmetic : THEORY
  BEGIN
-  x, y, z, t, q : VAR int
+  x, y, z, t, q, i : VAR int
   n0x : VAR nzint
   px, py, b: VAR posnat
   n: VAR nat
@@ -2944,8 +3376,33 @@ modulo_arithmetic : THEORY
 
   JUDGEMENT ndiv(n,b) HAS_TYPE upto(n)
 
-  END modulo_arithmetic
+  rem_floor: LEMMA FORALL b, x: x = rem(b)(x) + b * floor(x / b)
 
+  rem_base: LEMMA
+    FORALL b, x, i, n:
+      rem(b)(x) = rem(b + n)(x + i) IFF divides(b + n, i - n * floor(x / b))
+
+  rem_sum_floor: LEMMA
+    FORALL b, x, i:
+      rem(b)(x + i) = rem(b)(x) + i - b * floor((rem(b)(x) + i) / b)
+
+  rem_sum_assoc: COROLLARY
+    FORALL b, x, n: rem(b)(x + n) = rem(b)(x) + n IFF rem(b)(x) < b - n
+
+  rem_add_one: LEMMA
+    FORALL b, x:
+      rem(b)(x + 1) = rem(b)(x) + 1 OR
+       (rem(b)(x) = b - 1 AND rem(b)(x + 1) = 0)
+
+  rem_wrap: LEMMA
+    FORALL b, x, (n: below(b)):
+      rem(b)(x) < rem(b)(x + n) IFF rem(b)(x) < b - n AND n > 0
+
+  rem_wrap_eq: COROLLARY
+    FORALL b, x, (n: below(b)):
+      rem(b)(x) <= rem(b)(x + n) IFF rem(b)(x) < b - n OR divides(b, n)
+
+ END modulo_arithmetic
 
 
 % subrange_induction defines induction schemas for subranges.  This is a
@@ -3309,6 +3766,79 @@ finite_sets[T: TYPE]: THEORY
 %                                   (FORALL (i,j: below[N]): X(i) /= X(j)))
                
 END finite_sets
+
+
+% Courtesy Jerry James
+restrict_set_props[T: TYPE, S: TYPE FROM T]: THEORY
+ BEGIN
+
+  restrict_finite: LEMMA
+    FORALL (a: set[T]): is_finite(a) => is_finite(restrict[T, S, bool](a))
+
+  finite_restrict: JUDGEMENT
+    restrict[T, S, bool](a: finite_set[T]) HAS_TYPE finite_set[S]
+
+  empty_restrict: JUDGEMENT
+    restrict[T, S, bool](a: (empty?[T])) HAS_TYPE (empty?[S])
+
+  card_restrict: LEMMA
+    FORALL (a: finite_set[T]): card(restrict[T, S, bool](a)) <= card(a)
+
+ END restrict_set_props
+
+
+% Courtesy Jerry James
+extend_set_props[T: TYPE, S: TYPE FROM T]: THEORY
+ BEGIN
+
+  finite_extension: LEMMA
+    FORALL (a: set[S]):
+      is_finite(extend[T, S, bool, FALSE](a)) IFF is_finite(a)
+
+  finite_extend: JUDGEMENT
+    extend[T, S, bool, FALSE](a: finite_set[S]) HAS_TYPE finite_set[T]
+
+  empty_extend: JUDGEMENT
+    extend[T, S, bool, FALSE](a: (empty?[S])) HAS_TYPE (empty?[T])
+
+  nonempty_extend: JUDGEMENT
+    extend[T, S, bool, FALSE](a: (nonempty?[S])) HAS_TYPE (nonempty?[T])
+
+  singleton_extend: JUDGEMENT
+    extend[T, S, bool, FALSE](a: (singleton?[S])) HAS_TYPE (singleton?[T])
+
+  card_extend: LEMMA
+    FORALL (a: finite_set[S]): card(extend[T, S, bool, FALSE](a)) = card(a)
+
+ END extend_set_props
+
+
+%-------------------------------------------------------------------------
+%
+%  Additions to the function_image theory.  These additions
+%  show that the image of a finite set is finite, and that any injective
+%  function is bijective with its image.
+%
+%  ---------------------------------------------------------------------
+%      Author: Jerry James (jamesj@acm.org), University of Kansas
+%-------------------------------------------------------------------------
+function_image_aux[D: TYPE, R: TYPE]: THEORY
+ BEGIN
+
+  S: VAR finite_set[D]
+  f: VAR [D -> R]
+  inj: VAR (injective?[D, R])
+
+  finite_image: JUDGEMENT image(f, S) HAS_TYPE finite_set[R]
+
+  card_image: LEMMA FORALL f, S: card(image(f, S)) <= card(S)
+
+  card_injective_image: LEMMA FORALL inj, S: card(image(inj, S)) = card(S)
+
+  bijective_image: LEMMA
+    FORALL inj: bijective?[D, (image(inj, fullset[D]))](inj)
+
+ END function_image_aux
 
 
 % function_iterate provides the iterate function, which composes a
@@ -3885,6 +4415,8 @@ mucalculus[T:TYPE]: THEORY
   % least fixpoint
   lfp(pp): pred[T] = glb({p | pp(p) <= p})
 
+  lfp_induction: FORMULA pp(p) <= p IMPLIES lfp(pp) <= p
+
   mu(pp): pred[T] = lfp(pp)
 
   lfp?(pp, p1): bool =
@@ -3896,6 +4428,8 @@ mucalculus[T:TYPE]: THEORY
 
   % greatest fixpoint
   gfp(pp): pred[T] = lub({p | p <= (pp(p))})
+
+  gfp_induction: FORMULA p <= pp(p) IMPLIES p <= gfp(pp)
 
   nu(pp): pred[T] = gfp(pp)
 
@@ -4348,9 +4882,72 @@ BEGIN
 END bv_caret 
 
 
+%-------------------------------------------------------------------------
+%
+%  Basic properties of infinite sets.  This theory defines infinite sets
+%  as the subtype of set[T] that satisfies the predicate "is_infinite".
+%  This predicate states that there is no injective function into below[N]
+%  for any N.
+%
+%  ---------------------------------------------------------------------
+%      Author: Jerry James (jamesj@acm.org), University of Kansas
+%
+%-------------------------------------------------------------------------
+infinite_sets_def[T: TYPE]: THEORY
+ BEGIN
+
+  S, R: VAR set[T]
+
+
+  % ==========================================================================
+  % The main definition
+  % ==========================================================================
+
+  is_infinite(S): MACRO bool = NOT is_finite(S)  
+  infinite_set: TYPE = {S | NOT is_finite(S)}
+
+  Inf: VAR infinite_set
+  Fin: VAR finite_set[T]
+  t: VAR T
+
+
+  % ==========================================================================
+  % Properties of infinite sets
+  % ==========================================================================
+
+  infinite_nonempty: JUDGEMENT infinite_set SUBTYPE_OF (nonempty?[T])
+
+  infinite_add: JUDGEMENT add(t, Inf) HAS_TYPE infinite_set
+
+  infinite_remove: JUDGEMENT remove(t, Inf) HAS_TYPE infinite_set
+
+  infinite_superset: THEOREM FORALL Inf, S: subset?(Inf, S) => is_infinite(S)
+
+  infinite_union_left: JUDGEMENT union(Inf, S) HAS_TYPE infinite_set
+  infinite_union_right: JUDGEMENT union(S, Inf) HAS_TYPE infinite_set
+
+  infinite_union: THEOREM
+    FORALL S, R:
+      is_infinite(union(S, R)) => is_infinite(S) OR is_infinite(R)
+
+  infinite_intersection: THEOREM
+    FORALL S, R:
+      is_infinite(intersection(S, R)) => is_infinite(S) AND is_infinite(R)
+
+  infinite_difference: JUDGEMENT difference(Inf, Fin) HAS_TYPE infinite_set
+
+  infinite_rest: JUDGEMENT rest(Inf) HAS_TYPE infinite_set
+
+  infinite_fullset: THEOREM
+    (EXISTS S: is_infinite(S)) => is_infinite(fullset[T])
+
+ END infinite_sets_def
+
+
 finite_sets_of_sets[T: TYPE]: THEORY
  BEGIN
-  A, B: VAR finite_set[T]
+
+  a: VAR set[T]
 
   powerset_natfun_rec(A: finite_set[T],
                       n: upto(card(A)),
@@ -4390,7 +4987,35 @@ finite_sets_of_sets[T: TYPE]: THEORY
         powerset_natfun(A)(B1) = powerset_natfun(A)(B2) IMPLIES B1 = B2
 
   powerset_finite: JUDGEMENT
-    powerset(A) HAS_TYPE finite_set[set[T]]
+    powerset(A: finite_set[T]) HAS_TYPE finite_set[set[T]]
+
+  SS: VAR setofsets[T]
+
+  Union_finite: THEOREM
+    FORALL SS: is_finite(Union(SS)) IFF is_finite(SS) AND every(is_finite)(SS)
+
+  Union_infinite: COROLLARY
+    FORALL SS:
+      is_infinite(Union(SS)) IFF is_infinite(SS) OR some(is_infinite)(SS)
+
+  Intersection_finite: THEOREM
+    FORALL SS:
+      nonempty?(SS) AND every(is_finite)(SS) => is_finite(Intersection(SS))
+
+  Intersection_infinite: COROLLARY
+    FORALL SS: is_infinite(Intersection(SS)) => every(is_infinite)(SS)
+
+  Complement_finite: THEOREM
+    FORALL SS: is_finite(Complement(SS)) IFF is_finite(SS)
+
+  Complement_is_finite: JUDGEMENT
+    Complement(SS: finite_set[set[T]]) HAS_TYPE finite_set[set[T]]
+
+  Complement_infinite: COROLLARY
+    FORALL SS: is_infinite(Complement(SS)) IFF is_infinite(SS)
+
+  Complement_is_infinite: JUDGEMENT
+    Complement(SS: infinite_set[set[T]]) HAS_TYPE infinite_set[set[T]]
 
  END finite_sets_of_sets
 
@@ -4490,8 +5115,6 @@ END QuotientDefinition
 
 KernelDefinition[X: TYPE, X1: TYPE FROM X, Y : TYPE] : THEORY
 BEGIN
-
-  IMPORTING EquivalenceClosure[X]
 
   f : VAR [X1 -> Y]
   R : VAR PRED[[X, X]]
