@@ -2807,41 +2807,43 @@ or succedent formula in the sequent."
 
 (defmethod pc-typecheck ((expr expr) &key expected (fnums '*) (uniquely? T))
   ;;assumption is that expr is pc-parsed, and expected is typechecked.
-  (typecheck expr :expected expected)
-  (cond ((type expr)
-	 expr)
-	((singleton? (types expr))
-	 (set-type expr (car (types expr)))
-	 expr)
-	(t (let* ((sforms
-		   (when *ps*
-		     (select-seq (s-forms (current-goal *ps*)) fnums)))
-		  (forms (mapcar #'formula sforms))
-		  (terms (collect-subterms forms
-					   #'(lambda (x)
-					       (print-equal x expr))))
-		  (term (loop for tm in terms
-			      thereis (and (null (freevars tm))
-					   (or (null expected)
-					       (strict-compatible?
-						expected
-						(type tm)))
-					   tm)))
-		  (type (if term
-			    (type term)
-			    expected)))
-	     (if type
-		 (let ((ptypes (remove-if-not #'(lambda (pty)
-						  (compatible? pty type))
-				 (ptypes expr))))
-		   (set-type expr
-			     (if (singleton? ptypes)
-				 (car ptypes)
-				 type))
-		   expr)
-		 (if uniquely?
-		     (type-ambiguity expr)
-		     expr))))))
+  (protect-types-hash
+   expr
+   (typecheck expr :expected expected)
+   (cond ((type expr)
+	  expr)
+	 ((singleton? (types expr))
+	  (set-type expr (car (types expr)))
+	  expr)
+	 (t (let* ((sforms
+		    (when *ps*
+		      (select-seq (s-forms (current-goal *ps*)) fnums)))
+		   (forms (mapcar #'formula sforms))
+		   (terms (collect-subterms forms
+					    #'(lambda (x)
+						(print-equal x expr))))
+		   (term (loop for tm in terms
+			       thereis (and (null (freevars tm))
+					    (or (null expected)
+						(strict-compatible?
+						 expected
+						 (type tm)))
+					    tm)))
+		   (type (if term
+			     (type term)
+			     expected)))
+	      (if type
+		  (let ((ptypes (remove-if-not #'(lambda (pty)
+						   (compatible? pty type))
+				  (ptypes expr))))
+		    (set-type expr
+			      (if (singleton? ptypes)
+				  (car ptypes)
+				  type))
+		    expr)
+		  (if uniquely?
+		      (type-ambiguity expr)
+		      expr)))))))
 
 (defmethod pc-typecheck ((expr T) &key expected (fnums '*) (uniquely? T))
   (declare (ignore expected fnums uniquely?))
