@@ -74,61 +74,44 @@ Precedence Information
 	'`' medial left
 	jux medial left  % application
 
-Spacing
-	arb _0 '.'
-	'.' _0 arb
-	'FUNCTION' _0 arb
-	'ARRAY' _0 arb
-	arb _0 jux
-	jux _0 arb
-	')' _0 '('
-
-
 adt-or-theories	::= {adt-or-theory+} <adt-or-modules(adt-or-theory+)>;
 
 % SO - require endid so that multiple theories parse
 
-adt-or-theory 	::=  {id [theory-formals] ':' !+0 {theory | datatype} !- ###}
-			<adt-or-module(id,[no-theory-formals()|theory-formals],alt)>
-			<<id [theory-formals] ':' !+0 {theory | datatype}
-                               !->:sb-tex>;
+adt-or-theory ::= {id [theory-formals] ':' {theory | datatype}}
+		    <adt-or-module(id,[no-theory-formals()|theory-formals],
+                                   alt)>;
 
-theory		::= {'THEORY' !+ #
-		     [exporting]^e
-		     'BEGIN' ## 
-                     [assuming-part]^a
-		     [theory-part]^t
-		     !- 'END' id #}
-			<module([noexp()|exporting]^e,
-				[noass()|assuming-part]^a,
-                                [notheory()|theory-part]^t,id)>;
+theory ::= {'THEORY' [exporting]^e 'BEGIN' [assuming-part]^a
+            [theory-part]^t 'END' id}
+	      <module([noexp()|exporting]^e,
+		      [noass()|assuming-part]^a,
+                      [notheory()|theory-part]^t,id)>;
 
-datatype	::= {'DATATYPE' ['WITH' 'SUBTYPES' {id^s ++ ','}] !+ #
-		     'BEGIN' # 
-		     [{using [';']^u #}
-                         <using-elt(using,[nosemic()|semic()]^u)>]^2
-		     [assuming-part]^1
-		     adtcase+ !-
-		     'END' id #}
-			<[datatype(opt^1,opt^2,adtcases(plus),id)
-			 |datatypes(subtypes(doubleplus),opt^1,opt^2,
-                                    adtcases(plus),id)]>;
+datatype ::= {'DATATYPE' ['WITH' 'SUBTYPES' {id^s ++ ','}]
+	      'BEGIN' [{using [';']^u}
+                        <using-elt(using,[nosemic()|semic()]^u)>]^2
+              [assuming-part]^1
+	      adtcase+ 'END' id}
+	        <[datatype(opt^1,opt^2,adtcases(plus),id)
+		 |datatypes(subtypes(doubleplus),opt^1,opt^2,
+                            adtcases(plus),id)]>;
 
-adtcase		::= {constructor ':' idop [':' id] #}
-                      <[adtcase(constructor,idop)
-		       |adtcase-subtype(constructor,idop,id)]>;
+adtcase ::= {constructor ':' idop [':' id]}
+              <[adtcase(constructor,idop)
+               |adtcase-subtype(constructor,idop,id)]>;
 
-constructor	::= {idop [{'(' {{{idops ':' type-expr}
+constructor ::= {idop [{'(' {{{idops ':' type-expr}
 				<adtdecl(idops,type-expr)>} ++ ','} ')'}
 			   <adtdecls(doubleplus)>]}
 			<constructor(idop,opt)>;
 
-theory-formals	::= {'[' @> {theory-formal ++ ','} @^ ']'}
+theory-formals	::= {'[' {theory-formal ++ ','} ']'}
 			<theory-formals(theory-formal+)>;
 
-theory-formal	::= {[{'(' using ')'} <using-elt(using,nosemic())>] idops /+5
-                                     ':' /+5 theory-formal-decl}
-			<theory-formal(opt,idops,theory-formal-decl)>;
+theory-formal ::= {[{'(' using ')'} <using-elt(using,nosemic())>]
+                   idops ':' theory-formal-decl}
+		     <theory-formal(opt,idops,theory-formal-decl)>;
 
 theory-formal-decl ::= {'TYPE' [{'FROM' type-expr} <type-expr>]}
 			<ftype-decl(opt)>
@@ -139,33 +122,30 @@ theory-formal-decl ::= {'TYPE' [{'FROM' type-expr} <type-expr>]}
 			<fconst-decl(type-expr)>
 		 ;
 
-exporting	::= {'EXPORTING' !+ /+8 exportings
-		      [{ 'WITH' !+ exportingmods !- }] !- ##}
-			<exporting(exportings,
-				   [noexportingmods()|exportingmods])>;
+exporting ::= {'EXPORTING' exportings [{ 'WITH' exportingmods}]}
+	        <exporting(exportings,[noexportingmods()|exportingmods])>;
 
-exportings	::= {'ALL' ['BUT' {expname ++ ','}]}
+exportings ::= {'ALL' ['BUT' {expname ++ ','}]}
 			<exporting-all([noexpbuts()|expbuts(doubleplus)])>
 		 |  {expname ++ ','}
 			<expnames(doubleplus)>
 		 ;
 
-expname		::= {idop [':' {type-expr <type-expr> |
-			        'TYPE' <exptype()> |
-			        'FORMULA' <expformula()>}]}
+expname ::= {idop [':' {type-expr <type-expr> |
+			'TYPE' <exptype()> |
+			'FORMULA' <expformula()>}]}
 			<expname(idop,[noexpkind()|alt])>
 %		 |  {'|' idop '|'} <absexpname(idop)>
 		 ;
 
-exportingmods	::= 'ALL' <expmodall()>
-		 |  'CLOSURE' <expmodclosure()>
-		 |  modnames
-		 ;
+exportingmods ::= 'ALL' <expmodall()>
+		|  'CLOSURE' <expmodclosure()>
+		|  modnames
+		;
 
-assuming-part 	::= {'ASSUMING' !+ ## @> assumings @^ !- 'ENDASSUMING' ##}
-			<assumings>;
+assuming-part ::= {'ASSUMING' assumings 'ENDASSUMING'} <assumings>;
 
-assumings	::= {{assuming ##}+} <assuming-part(plus)>;
+assumings ::= {assuming+} <assuming-part(plus)>;
 
 assuming ::= {using [';']}
                <using-elt(using,[nosemic()|semic()])>
@@ -173,11 +153,11 @@ assuming ::= {using [';']}
                  <judgement-elt(judgement,[nosemic()|semic()])>
 	   | {conversion [';']}
 		 <conversion-elt(conversion,[nosemic()|semic()])>
-	   | {idops pdformals* ':' !+ assuming-decl [';'] !-}
+	   | {idops pdformals* ':' assuming-decl [';']}
 		<assuming(idops,pdf(star),assuming-decl,[nosemic()|semic()])>
 	   ;
 
-theory-part ::= {{theory-elt ##}+} <theory-part(plus)>;
+theory-part ::= {theory-elt+} <theory-part(plus)>;
 
 theory-elt ::= {using [';']}
                  <using-elt(using,[nosemic()|semic()])>
@@ -185,13 +165,12 @@ theory-elt ::= {using [';']}
                  <judgement-elt(judgement,[nosemic()|semic()])>
 	     | {conversion [';']}
 		 <conversion-elt(conversion,[nosemic()|semic()])>
-	     | {idops /+8 [pdformals+] ':' !+4 theory-decl [';']^s !-}
+	     | {idops [pdformals+] ':' theory-decl [';']^s}
 		 <theory(idops,[noformals()|pdf(plus)],
                          theory-decl,[nosemic()|semic()]^s)>
 	     ;
 
-using ::= {'IMPORTING' @> /+8 {modname ++ ','} @^}
-	    <using(modname+)>;
+using ::= {'IMPORTING' {modname ++ ','}} <using(modname+)>;
 
 judgement ::= {'JUDGEMENT' {jdecl++','} {'HAS_TYPE'|'SUBTYPE_OF'} type-expr}
 	      <{judgement(jdecls(doubleplus),
@@ -206,9 +185,9 @@ ename ::= {name [':' type-expr]} <ename(name,[notype()|type-expr])>;
 
 conversion ::= {'CONVERSION' {ename++','}} <conversion(ename+)>;
 
-pdformals ::= {'(' @> adformals @^ ')'} <adformals>;
+pdformals ::= {'(' adformals ')'} <adformals>;
 
-adformals ::= {adformal++',' /+2} <adformals(adformal+)>;
+adformals ::= {adformal++','} <adformals(adformal+)>;
 
 adformal ::= typed-id
 	   | {'(' typed-ids ')'} <typed-ids>
@@ -222,38 +201,34 @@ theory-decl ::= lib-decl | mod-decl | type-decl | netype-decl
 
 lib-decl ::= {'LIBRARY' ['='] string} <lib-decl([noeq()|eq()],string)>;
 
-mod-decl ::= {'THEORY' /+4 '=' /+2 !+ modname !-}
-			<mod-decl(modname)>;
+mod-decl ::= {'THEORY' '=' modname} <mod-decl(modname)>;
 
-type-decl ::= {'TYPE' /+3 !+ [type-def] !-}
-		<[uninterp-type-decl() | type-decl(type-def)]>;
+type-decl ::= {'TYPE' [type-def]}
+                <[uninterp-type-decl() | type-decl(type-def)]>;
 
-netype-decl ::= {{'NONEMPTY_TYPE'|'TYPE+'} /+3 !+ [type-def] !-}
-			<netype-decl({nonempty-type()|typeplus()},
-                                     [no-type-def()|type-def])>;
+netype-decl ::= {{'NONEMPTY_TYPE'|'TYPE+'} [type-def]}
+		 <netype-decl({nonempty-type()|typeplus()},
+                              [no-type-def()|type-def])>;
 
 var-decl ::= {'VAR' type-expr} <var-decl(type-expr)>;
 
-const-decl ::= {type-expr !- /+3 [const-value] !+}
+const-decl ::= {type-expr [const-value]}
 		<[uninterp-const-decl(type-expr)
 		 |const-decl(type-expr,const-value)]>;
 
-const-value ::= {'=' /-4 !+ expr !-} <expr>;
+const-value ::= {'=' expr} <expr>;
 
-def-decl ::= {'RECURSIVE' /+4 !+ type-expr /+8 '=' /+6 expr !-
-		!+1 # 'MEASURE' !+ /+2 expr^b ['BY' expr^r] !- !-}
+def-decl ::= {'RECURSIVE' type-expr '=' expr 'MEASURE' expr^b ['BY' expr^r]}
 		<def-decl(type-expr,expr,expr^b, [noexpr()| expr^r])>;
 
-ind-decl ::= {'INDUCTIVE' !+ type-expr '=' /-2 expr !- #}
-		<ind-decl(type-expr,expr)>;
+ind-decl ::= {'INDUCTIVE' type-expr '=' expr} <ind-decl(type-expr,expr)>;
 		
-assumption ::= {'ASSUMPTION' /-2 !+ expr !-} <assumption(expr)>;
+assumption ::= {'ASSUMPTION' expr} <assumption(expr)>;
 
-formula-decl ::= {formula-name /-2 !+ expr !-}
-		  <formula-decl(formula-name,expr)>;
+formula-decl ::= {formula-name expr} <formula-decl(formula-name,expr)>;
 
 % '=' must appear in name type-def, to avoid overlap with '=' as an opsym.
-type-def	::= {{'=' <equal()> | 'FROM' <from()>} type-expr}
+type-def ::= {{'=' <equal()> | 'FROM' <from()>} type-expr}
 			<type-def(alt,type-expr)>;
 
 type-expr ::= {name [arguments]}
@@ -263,8 +238,8 @@ type-expr ::= {name [arguments]}
 
 type-expr-sans-name ::= { '(' expr ')' ['CONTAINING' expr^c]}
                         	<expr-as-type(expr,[nocontains()|expr^c])>
-		     |  {'{' @> set-formals @^ /+6 ['|' /+2 !+ expr !-] '}' !+
-                                         ['CONTAINING' expr^1]^c !-}
+		     |  {'{' set-formals ['|' expr] '}'
+                                         ['CONTAINING' expr^1]^c}
 				<[enumtype(set-formals,
                                            [nocontaining()|expr^1]^c)
 				  |subtype(set-formals,expr,
@@ -276,10 +251,9 @@ type-expr-sans-name ::= { '(' expr ')' ['CONTAINING' expr^c]}
 % names cause conflicts.
 
 comp-type-expr	::= recordtype
-		 |  {[fun-array /+4]^f
-			'[' @> /+4 {dep-type-expr**',' /+4} /+2 !+2
-		     	[{'->' /+5 type-expr} <type-expr>]^r !- @^ ']'}
-			<funtype(opt^f,dom(dep-type-expr*),opt^r)>
+		 |  {[fun-array]^f '[' {dep-type-expr**','}
+		     	[{'->' type-expr} <type-expr>]^r ']'}
+		     <funtype(opt^f,dom(dep-type-expr*),opt^r)>
 		 ;
 
 %enum-or-subtype ::= {idops '}' } <enum(idops)>
@@ -292,17 +266,16 @@ comp-type-expr	::= recordtype
 %			<psubtype(alt, [nobindtype() | type-expr],expr)>
 %		 ;
 
-recordtype	::= {'[#' /+5 @> {field-decls ++ ',' ?r} @^ /+5 '#]'}
-			<recordtype(fields(field-decls+))>
-		 ;
+recordtype ::= {'[#' {field-decls ++ ','} '#]'}
+                <recordtype(fields(field-decls+))>;
 
-field-decls	::= {ids /+5 ':' /+5 type-expr} <field-decls(ids,type-expr)>;
+field-decls ::= {ids ':' type-expr} <field-decls(ids,type-expr)>;
 
-fun-array	::= 'FUNCTION' <function()> | 'ARRAY' <array()>;
+fun-array ::= 'FUNCTION' <function()> | 'ARRAY' <array()>;
 
-dep-type-expr	::= type-expr
-		 |  {idop ':' type-expr} <dep-binding(idop,type-expr)>
-		 ;
+dep-type-expr ::= type-expr
+	       |  {idop ':' type-expr} <dep-binding(idop,type-expr)>
+	       ;
 
 
 %% Expressions
@@ -310,169 +283,98 @@ dep-type-expr	::= type-expr
 expr ::= number <number-expr(number)>
        | string <string-expr(string)>
        | name <name-expr(name)>
-       | {'(:' @> {expr ** ','} @^ /+4 ':)'} <list-expr(expr*)>
-       | {'[|' @> {expr ** ','} @^ /+4 '|]'} <brack-expr(expr*)>
-       | {'(#' /+5 @> {assignment ++ ',' ?r} /+5 '#)' @^}
-	  <rec-expr(assignments(assignment+))>
-       | {'(' @> {expr ** ','} @^ /+4 ')'} <tuple-expr(expr*)>
+       | {'(:' {expr ** ','} ':)'} <list-expr(expr*)>
+       | {'[|' {expr ** ','} '|]'} <brack-expr(expr*)>
+       | {'(#' {assignment ++ ','} '#)'} <rec-expr(assignments(assignment+))>
+       | {'(' {expr ** ','} ')'} <tuple-expr(expr*)>
        | {expr '`' {id | number}} <{fieldappl(expr,id)|projappl(expr,number)}>
-       | {expr !+ jux fun-arguments !-} <application(expr,fun-arguments)>
-       | {expr !+!+ 'O' /+4 !- expr^1 !- }
-	  <term-expr(o(),expr-args(list(expr,expr^1)))>
-       | {expr !+!+ 'IFF' /+4 !- expr^1 !- }
-	  <term-expr(iff(),expr-args(list(expr,expr^1)))>
-       | {expr !+!+ '<=>' /+4 !- expr^1 !- }
-	  <term-expr(`\<=\>(),expr-args(list(expr,expr^1)))>
-       | {expr !+!+ 'IMPLIES' /+4 !- expr^1 !- }
-	  <term-expr(implies(),expr-args(list(expr,expr^1)))>
-       | {expr !+!+ '=>' /+4 !- expr^1 !- }
-	  <term-expr(`=\>(),expr-args(list(expr,expr^1)))>
-       | {expr !+!+ 'WHEN' /+4 !- expr^1 !- }
-	  <term-expr(when(),expr-args(list(expr,expr^1)))>
-       | {expr !+!+ 'OR' /+4 !- expr^1 !- }
-	  <term-expr(or(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '\\/' /+4 !- expr^1 !- }
-	  <term-expr(`\\\/(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ 'AND' /+4 !- expr^1 !- }
-	  <term-expr(and(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '/\\' /+4 !- expr^1 !- }
-	  <term-expr(`\/\\(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '&' /+4 !- expr^1 !- }
-	  <term-expr(`&(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ 'XOR' /+4 !- expr^1 !- }
-	  <term-expr(xor(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ 'ANDTHEN' /+4 !- expr^1 !- }
-	  <term-expr(andthen(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ 'ORELSE' /+4 !- expr^1 !- }
-	  <term-expr(orelse(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '^' /+4 !- expr^1 !- }
-	  <term-expr(`^(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '+' /+4 !- expr^1 !- }
-	  <term-expr(`+(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '-' /+4 !- expr^1 !- }
-	  <term-expr(`-(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '*' /+4 !- expr^1 !- }
-	  <term-expr(`*(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '/' /+4 !- expr^1 !- }
-	  <term-expr(`\/(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '++' /+4 !- expr^1 !- }
-	  <term-expr(`++(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '~' /+4 !- expr^1 !- }
-	  <term-expr(`~(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '**' /+4 !- expr^1 !- }
-	  <term-expr(`**(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '//' /+4 !- expr^1 !- }
-	  <term-expr(`\/\/(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '^^' /+4 !- expr^1 !- }
-	  <term-expr(`\^\^(),expr-args(list(expr,expr^1)))>
-%	| {expr !+!+ '||' /+4 !- expr^1 !- }
-%	  <term-expr(`\|\|(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '|-' /+4 !- expr^1 !- }
-	  <term-expr(`\|-(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '|=' /+4 !- expr^1 !- }
-	  <term-expr(`\|=(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '<|' /+4 !- expr^1 !- }
-	  <term-expr(`\<\|(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '|>' /+4 !- expr^1 !- }
-	  <term-expr(`\|\>(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '=' /+4 !- expr^1 !- }
-	  <term-expr(`=(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '/=' /+4 !- expr^1 !- }
-	  <term-expr(`\/=(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '==' /+4 !- expr^1 !- }
-	  <term-expr(`==(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '<' /+4 !- expr^1 !- }
-	  <term-expr(`\<(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '<=' /+4 !- expr^1 !- }
-	  <term-expr(`\<=(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '>' /+4 !- expr^1 !- }
-	  <term-expr(`\>(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '>=' /+4 !- expr^1 !- }
-	  <term-expr(`\>=(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '<<' /+4 !- expr^1 !- }
-	  <term-expr(`\<\<(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '>>' /+4 !- expr^1 !- }
-	  <term-expr(`\>\>(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '<<=' /+4 !- expr^1 !- }
-	  <term-expr(`\<\<=(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '>>=' /+4 !- expr^1 !- }
-	  <term-expr(`\>\>=(),expr-args(list(expr,expr^1)))>
-%	| {expr !+!+ '::' /+4 !- expr^1 !- }
-%	  <term-expr(`\:\:(),expr-args(list(expr,expr^1)))>
-%	| {expr !+!+ '@' /+4 !- expr^1 !- }
-%	  <term-expr(`@(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '#' /+4 !- expr^1 !- }
-	  <term-expr(`#(),expr-args(list(expr,expr^1)))>
-%	| {expr !+!+ '$' /+4 !- expr^1 !- }
-%	  <term-expr(`$(),expr-args(list(expr,expr^1)))>
-%	| {expr !+!+ '!' /+4 !- expr^1 !- }
-%	  <term-expr(`\!(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '@@' /+4 !- expr^1 !- }
-	  <term-expr(`\@\@(),expr-args(list(expr,expr^1)))>
-	| {expr !+!+ '##' /+4 !- expr^1 !- }
-	  <term-expr(`\#\#(),expr-args(list(expr,expr^1)))>
-%	| {expr !+!+ '$$' /+4 !- expr^1 !- }
-%	  <term-expr(`$$(),expr-args(list(expr,expr^1)))>
-%	| {expr !+!+ '!!' /+4 !- expr^1 !- }
-%	  <term-expr(`\!\!(),expr-args(list(expr,expr^1)))>
-	| {'NOT' !+ expr !- }
-	  <unary-term-expr(not(),expr)>
-	| {'~' !+ expr !- }
-	  <unary-term-expr(`~(),expr)>
-	| {'[]' !+ expr !- }
-	  <unary-term-expr(`\[\](),expr)>
-	| {'<>' !+ expr !- }
-	  <unary-term-expr(`\<\>(),expr)>
-	| {'-' !+ _0 expr !- }
-	  <unary-term-expr(`-(),expr)>
-%	| {'|' expr '|'}
-%	  <unary-term-expr(`\|(),expr)>
-	| {expr '::' _0 !+ type-expr !-}
-	  <coercion(expr,type-coercion(type-expr))>
-%	| {expr 'HAS_TYPE' _0 !+ type-expr !-}
-%	  <has-type(expr,type-coercion(type-expr))>
-	| {'IF' !+ !+ /+4 expr^c !- ?2 /+2 'THEN' /+4 expr^t ?1 !-
-	       {{'ELSIF' !+ !+ /+4 expr^ic !- ?2 /+2
-		 'THEN' /+4 expr^it ?1 !-} <elsif(expr^ic,expr^it)>}*
-		 'ELSE' /+4 !+ expr^e !- ?1 'ENDIF'}
+       | {expr jux fun-arguments} <application(expr,fun-arguments)>
+       | {expr 'O' expr^1} <term-expr(o(),expr-args(list(expr,expr^1)))>
+       | {expr 'IFF' expr^1} <term-expr(iff(),expr-args(list(expr,expr^1)))>
+       | {expr '<=>' expr^1} <term-expr(`\<=\>(),expr-args(list(expr,expr^1)))>
+       | {expr 'IMPLIES' expr^1}
+                    <term-expr(implies(),expr-args(list(expr,expr^1)))>
+       | {expr '=>' expr^1} <term-expr(`=\>(),expr-args(list(expr,expr^1)))>
+       | {expr 'WHEN' expr^1} <term-expr(when(),expr-args(list(expr,expr^1)))>
+       | {expr 'OR' expr^1} <term-expr(or(),expr-args(list(expr,expr^1)))>
+       | {expr '\\/' expr^1} <term-expr(`\\\/(),expr-args(list(expr,expr^1)))>
+       | {expr 'AND' expr^1} <term-expr(and(),expr-args(list(expr,expr^1)))>
+       | {expr '/\\' expr^1} <term-expr(`\/\\(),expr-args(list(expr,expr^1)))>
+       | {expr '&' expr^1} <term-expr(`&(),expr-args(list(expr,expr^1)))>
+       | {expr 'XOR' expr^1} <term-expr(xor(),expr-args(list(expr,expr^1)))>
+       | {expr 'ANDTHEN' expr^1}
+                    <term-expr(andthen(),expr-args(list(expr,expr^1)))>
+       | {expr 'ORELSE' expr^1}
+                    <term-expr(orelse(),expr-args(list(expr,expr^1)))>
+       | {expr '^' expr^1} <term-expr(`^(),expr-args(list(expr,expr^1)))>
+       | {expr '+' expr^1} <term-expr(`+(),expr-args(list(expr,expr^1)))>
+       | {expr '-' expr^1} <term-expr(`-(),expr-args(list(expr,expr^1)))>
+       | {expr '*' expr^1} <term-expr(`*(),expr-args(list(expr,expr^1)))>
+       | {expr '/' expr^1} <term-expr(`\/(),expr-args(list(expr,expr^1)))>
+       | {expr '++' expr^1} <term-expr(`++(),expr-args(list(expr,expr^1)))>
+       | {expr '~' expr^1} <term-expr(`~(),expr-args(list(expr,expr^1)))>
+       | {expr '**' expr^1} <term-expr(`**(),expr-args(list(expr,expr^1)))>
+       | {expr '//' expr^1} <term-expr(`\/\/(),expr-args(list(expr,expr^1)))>
+       | {expr '^^' expr^1} <term-expr(`\^\^(),expr-args(list(expr,expr^1)))>
+       | {expr '|-' expr^1} <term-expr(`\|-(),expr-args(list(expr,expr^1)))>
+       | {expr '|=' expr^1} <term-expr(`\|=(),expr-args(list(expr,expr^1)))>
+       | {expr '<|' expr^1} <term-expr(`\<\|(),expr-args(list(expr,expr^1)))>
+       | {expr '|>' expr^1} <term-expr(`\|\>(),expr-args(list(expr,expr^1)))>
+       | {expr '=' expr^1} <term-expr(`=(),expr-args(list(expr,expr^1)))>
+       | {expr '/=' expr^1} <term-expr(`\/=(),expr-args(list(expr,expr^1)))>
+       | {expr '==' expr^1} <term-expr(`==(),expr-args(list(expr,expr^1)))>
+       | {expr '<' expr^1} <term-expr(`\<(),expr-args(list(expr,expr^1)))>
+       | {expr '<=' expr^1} <term-expr(`\<=(),expr-args(list(expr,expr^1)))>
+       | {expr '>' expr^1} <term-expr(`\>(),expr-args(list(expr,expr^1)))>
+       | {expr '>=' expr^1} <term-expr(`\>=(),expr-args(list(expr,expr^1)))>
+       | {expr '<<' expr^1} <term-expr(`\<\<(),expr-args(list(expr,expr^1)))>
+       | {expr '>>' expr^1} <term-expr(`\>\>(),expr-args(list(expr,expr^1)))>
+       | {expr '<<=' expr^1} <term-expr(`\<\<=(),expr-args(list(expr,expr^1)))>
+       | {expr '>>=' expr^1} <term-expr(`\>\>=(),expr-args(list(expr,expr^1)))>
+       | {expr '#' expr^1} <term-expr(`#(),expr-args(list(expr,expr^1)))>
+       | {expr '@@' expr^1} <term-expr(`\@\@(),expr-args(list(expr,expr^1)))>
+       | {expr '##' expr^1} <term-expr(`\#\#(),expr-args(list(expr,expr^1)))>
+       | {'NOT' expr} <unary-term-expr(not(),expr)>
+       | {'~' expr} <unary-term-expr(`~(),expr)>
+       | {'[]' expr} <unary-term-expr(`\[\](),expr)>
+       | {'<>' expr} <unary-term-expr(`\<\>(),expr)>
+       | {'-' expr} <unary-term-expr(`-(),expr)>
+       | {expr '::' type-expr} <coercion(expr,type-coercion(type-expr))>
+       | {'IF' expr^c 'THEN' expr^t
+          {{'ELSIF' expr^ic 'THEN' expr^it} <elsif(expr^ic,expr^it)>}*
+          'ELSE' expr^e 'ENDIF'}
           <if-expr(expr^c,expr^t,elsifs(star),expr^e)>
-	| {{'LAMBDA' <lambda-expr()> | 'FORALL' <forall-expr()>
-                                     | 'EXISTS' <exists-expr()>} /+20
+       | {{'LAMBDA' <lambda-expr()> | 'FORALL' <forall-expr()>
+                                     | 'EXISTS' <exists-expr()>}
 		     lambda-body}
 	  <bind-expr(alt,lambda-body)>
-	| {id _0 '!' /+20 {number | lambda-body}^1}
+       | {id '!' {number | lambda-body}^1}
 	  <{skovar(id,number)| name-bind-expr(id,lambda-body)}^1>
-	| set-expr
-%	| {'{' idop [':' type-expr] '|' expr '}'}
-%	  <set-expr(idop,[notype()|type-expr],expr)>
-	| {'LET' /+6 @> {bind++',' ?b} @^
-	      !+ 'IN' /+6 !+ expr !- !-}
-	  <let-expr(let-bindings(doubleplus),expr)>
-	| {expr !+ /-2 'WHERE' @> {bind++','} @^ !- }
+       | set-expr
+       | {'LET' {bind++','} 'IN' expr}
+           <let-expr(let-bindings(doubleplus),expr)>
+       | {expr 'WHERE' {bind++','}}
 	  <where-expr(let-bindings(doubleplus),expr)>
-	| {expr !+ 'WITH' /+4 '[' @> {{assignment ++ ','} ?1 } @^ ']' !- }
+       | {expr 'WITH' '[' {assignment ++ ','} ']'}
 	  <update-expr(expr,assignments(assignment+))>
-	| {'CASES' expr !+ 'OF' @> {selection ++ ',' ?c} ?c
-		[{'ELSE' !+ expr^e !-} <expr^e>] ?c 'ENDCASES' @^ !-}
+       | {'CASES' expr 'OF' {selection ++ ','}
+		[{'ELSE' expr^e} <expr^e>] 'ENDCASES'}
 	  <cases-expr(expr,args(selection+),opt)>
-	| {'COND' @> {cond-case ++ ',' ?c} ?c
-		[{',' 'ELSE' '->' !+ expr^e !-}] ?c 'ENDCOND' @^}
+       | {'COND' {cond-case ++ ','}
+		[{',' 'ELSE' '->' expr^e}] 'ENDCOND'}
 	  <cond-expr(args(cond-case+),[noelse()|expr^e])>
-	| table-expr
-	;
+       | table-expr
+       ;
 
-% set-expr ::= {'{' set-formals /+6 ['|' !+ expr !-] '}'}
-%	       <[eset-expr(set-formals)|set-expr(set-formals,expr)]>
-
-set-expr ::= {'{' set-formals /+6 ['|' !+ expr !-] '}'}
+set-expr ::= {'{' set-formals ['|' expr] '}'}
 	     <[eset-expr(set-formals)|set-expr(set-formals,expr)]>;
 
-cond-case ::= {expr^l '->' @> expr^r @^} <cond-case(expr^l,expr^r)>;
+cond-case ::= {expr^l '->' expr^r} <cond-case(expr^l,expr^r)>;
 
-lambda-body ::= {lambda-formals [{'->' !+ type-expr !- }] ':' /-6 !+ expr !-}
+lambda-body ::= {lambda-formals [{'->' type-expr}] ':' expr}
 		   <lambda-body(lambda-formals,
 			        [noreturntype()|type-expr],
-				expr)>;
+				expr)>;nnn
 
 % What we would really like to say here is
 %   lambda-formals ::= adformal++',' | pdformals+
@@ -507,13 +409,13 @@ set-formals ::= {set-formal [[',']^c set-formals]}
 set-formal ::= {{idop [':' type-expr]} | pdformals}
 	       <{set-id(idop,[notype()|type-expr])|pdformals}>;
 
-selection ::= {idop [{'(' idops ')'} <idops>] !+ ':' !+ expr !-!-}
+selection ::= {idop [{'(' idops ')'} <idops>] ':' expr}
 	      <selection(idop,opt,expr)>;
 
 % assignment	::= {expr {':='|'|->'} !+ @> expr^1 @^ !- }
 %			<assignment(expr,expr^1,{ceq()|arr()})>;
 
-assignment ::= {assign-arg+ {':='|'|->'} !+ @> expr @^ !- }
+assignment ::= {assign-arg+ {':='|'|->'} expr}
 			<assignment(args(plus),expr,{ceq()|arr()})>;
 
 assign-arg ::= {'(' expr++',' ')'} <assign-tuple(expr+)>
@@ -522,33 +424,20 @@ assign-arg ::= {'(' expr++',' ')'} <assign-tuple(expr+)>
              | number <assign-num(number)>
 	     ;
 
-table-expr ::= {'TABLE' _1 [expr^1]^r [',' expr^2]^c #
-		[col-heading #]^h
-		table-entries 'ENDTABLE'}
+table-expr ::= {'TABLE' [expr^1]^r [',' expr^2]^c [col-heading]^h
+                 table-entries 'ENDTABLE'}
 			<table-expr([norowvar()|expr^1]^r,
                                     [nocolvar()|expr^2]^c,
 				    [nocolheading()|col-heading]^h,
-				    table-entries)>
-			<<{'TABLE' _1 [expr^1]^r [',' expr^2]^c #
-				'&TABLE&'
-				[col-heading #]^h
-				table-entries '&ENDTABLE&' 'ENDTABLE'}>
-					:sb-tex>;
+				    table-entries)>;
 
 col-heading ::= {'|[' expr^1 {'|' {expr | 'ELSE'}}+ ']|'}
-		<col-heading(expr^1,colrest({expr|else()}+))>
-		<<{'&STARTCOL&' expr^1 '&VBAR&'
-		   {{expr | 'ELSE'}++ '&VBAR&'} '&ENDCOL&'}> :sb-tex>;
+		<col-heading(expr^1,colrest({expr|else()}+))>;
 
-table-entries ::= {table-entry+}
-			<table-entries(table-entry+)>;
+table-entries ::= {table-entry+} <table-entries(table-entry+)>;
 
-table-entry ::= {{'|' [{expr | 'ELSE'}]}+ '||' #}
+table-entry ::= {{'|' [{expr | 'ELSE'}]}+ '||'}
 			<table-entry([notableentry()|{expr|else()}]+)>
-			<<{[{expr | 'ELSE'}]++ '&VBAR&'} '&ENDROW&'>:sb-tex>;
-
-%bind ::= {adformal /+10 '=' /+6 !+ @> expr^1 @^ !-}
-%	  <bind(adformal,expr^1)>;
 
 bind ::= {{simplebind | {'(' simplebind++',' ')'}} '=' expr}
 	 <bind({simplebind|binds(doubleplus)},expr)>;
@@ -558,21 +447,21 @@ simplebind ::= {idop pdformals* [':' type-expr]}
 
 modnames ::= {modname ++ ','} <modnames(modname+)>;
 
-modname ::= {[{id^1 _0 '@' _0}]^p id [actuals] [mappings]^m}
+modname ::= {[{id^1 '@'}]^p id [actuals] [mappings]^m}
 	    <modname(id,[nolib()|id^1]^p,[noactuals()|actuals],
                         [nomap()|mappings]^m)>;
 
 mappings ::= {'{' mapdecl++ ',' '}'} <mappings(mapdecl+)>;
 
-mapdecl ::= {idops /+4 [pdformals+ <pdf(plus)>|theory-formals] /+4
-                   ':' /+2 !+ {type-decl|const-decl} [';' <semic()>]^s !-}
+mapdecl ::= {idops [pdformals+ <pdf(plus)>|theory-formals]
+                   ':' {type-decl|const-decl} [';' <semic()>]^s}
 	    <mapdecl(idops,opt,{type-decl|const-decl},opt^s)>;
 
 names ::= {name ++ ','}	<names(name+)>;
 
-fun-arguments ::= {'(' @> {expr ** ','} @^ ')'} <fun-arguments(expr*)>;
+fun-arguments ::= {'(' {expr ** ','} ')'} <fun-arguments(expr*)>;
 
-arguments ::= {'(' @> {expr ++ ','} @^ ')'} <arguments(expr+)>;
+arguments ::= {'(' {expr ++ ','} ')'} <arguments(expr+)>;
 
 idops ::= {idop ++ ','} <idops(idop+)>;
 
@@ -580,14 +469,14 @@ idop ::=  id  <idop(id)> | opsym <idop(opsym)>;
 
 ids ::= {id ++ ','} <ids(id+)>;
 
-typed-id ::= {idop [':' /+4 type-expr]^t ['|' expr]^e} 
+typed-id ::= {idop [':' type-expr]^t ['|' expr]^e} 
 	     <typed-id(idop,[no-type-expr()|type-expr]^t,[no-pred()|expr]^e)>;
 
-typed-ids ::= {idops [':' /+4 type-expr]^t ['|' expr]^e}
+typed-ids ::= {idops [':' type-expr]^t ['|' expr]^e}
 	      <{typed-ids(idops,[no-type-expr()|type-expr]^t,
 				[no-pred()|expr]^e)>;
 
-name ::= {[{id _0 '@' _0}]^L idop [actuals] [{'.' idop^1}]^1}
+name ::= {[{id '@'}]^L idop [actuals] [{'.' idop^1}]^1}
 	 <name(idop,[nolib()|id]^L,[noacts()|actuals],[nomod()|idop^1]^1)>;
 
 unique-name ::= {name [':' {type-expr|formula-name}]}
@@ -615,11 +504,9 @@ opsym ::= '+' <`+()> | '-' <`-()> | '*' <`*()> | '/' <`\/()>
 	| '|>' <`\|\>()> | '[||]' <`\[\|\|\]()>
 	;
 
-actuals ::= {'[' @> {actual ++ ','} @^ ']'} <actuals(actual+)>;
+actuals ::= {'[' {actual ++ ','} ']'} <actuals(actual+)>;
 
-
-actual		::= expr
-		 |  comp-type-expr;
+actual ::= expr | comp-type-expr;
 
 formula-name	::= 'AXIOM' <`AXIOM()> | 'CHALLENGE' <`CHALLENGE()>
 		|   'CLAIM' <`CLAIM()> | 'CONJECTURE' <`CONJECTURE()>
