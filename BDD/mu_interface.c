@@ -22,14 +22,14 @@ Date: 05/09/98
 #include <signal.h>
 
 int bdd_interrupted = 0;
-sigjmp_buf catch;
+sigjmp_buf bddcatch;
 struct sigaction lisp_handler;
 void restore_sigint(void);
 
 void new_handler(int sig)
 {
   restore_sigint();
-  siglongjmp(catch, -1);
+  siglongjmp(bddcatch, -1);
 }
 
 void
@@ -190,8 +190,9 @@ BDDPTR mu___modelcheck_formula (Formula fml)
    BDDPTR mcvalue;
 
    bdd_interrupted = 0;
-   if ((return_value = sigsetjmp(catch,1)) != 0) {
+   if ((return_value = sigsetjmp(bddcatch,1)) != 0) {
      bdd_interrupted = 1;
+     restore_sigint();
      return BDD_0;
    }
 
@@ -207,8 +208,9 @@ BDD_LIST bdd___bdd_sum_of_cubes (BDDPTR f, int irredundant)
    BDD_LIST mcvalue;
 
    bdd_interrupted = 0;
-   if ((return_value = sigsetjmp(catch,1)) != 0) {
+   if ((return_value = sigsetjmp(bddcatch,1)) != 0) {
      bdd_interrupted = 1;
+     restore_sigint();
      return NULL_LIST;
    }
    
