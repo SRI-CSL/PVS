@@ -904,15 +904,20 @@ making use of outline mode."
 
 (defun insert-pvs-patch-information ()
   (let ((versions (get-pvs-version-information)))
+    (insert "\n%% " (pvs-version-string))
+    (insert "\n%% " (sixth versions))
     (unless (member (cadr versions) '(nil NIL))
-      (insert (format "%%Patch files loaded: patch2 version %s\n"
+      (insert (format "%%Patch files loaded: patch version %s\n"
 		  (cadr versions))))
     (unless (member (caddr versions) '(nil NIL))
-      (insert (format "%%                    patch2-test version %s\n"
+      (insert (format "%%                    patch-test version %s\n"
 		  (caddr versions))))
     (unless (member (cadddr versions) '(nil NIL))
-      (insert (format "%%                    patch2-exp version %s\n"
-		  (cadddr versions))))))
+      (insert (format "%%                    patch-exp version %s\n"
+		  (cadddr versions))))
+    (let ((prelude-libs (pvs-send-and-wait "(pvs-context-libraries)")))
+      (dolist (lib prelude-libs)
+	(insert (format "\n(load-prelude-library \"%s\")" lib))))))
 
 (defpvs undump-pvs-files dump-files (filename directory)
   "Break dump files into separate PVS files.
@@ -1132,10 +1137,8 @@ in the extended prelude.  The PVS context is updated to reflect that the
 prelude has been extended.  Thus the next time this context is entered,
 the prelude will automatically be extended (by typechecking the libraries
 if necessary)."
-  (interactive (let ((cdir (pvs-current-directory t)))
-		 (list (read-file-name
-			"(Load prelude library from) directory path: "
-			cdir nil t))))
+  (interactive (list (pvs-complete-library-path
+		      "(Load prelude library from) directory: ")))
   (let ((default-directory (pvs-current-directory t)))
     (unless (file-directory-p dir)
       (error "Must specify an existing directory"))
@@ -1146,7 +1149,11 @@ if necessary)."
       (setq dir (concat dir "/")))
     (if (file-equal dir *pvs-current-directory*)
 	(message "Cannot use current context as a prelude")
-	(pvs-send (format "(load-prelude-library \"%s\")" dir)))))
+	(pvs-send (format "(load-prelude-library \"%s\")" dir)))
+    (let ((load-path (cons dir load-path)))
+      (message "Loading %s" "pvs-lib.el")
+      (load "pvs-lib" t nil nil t))))
+
 
 (defpvs remove-prelude-library library (dir)
   "Remove the specified context from the prelude
