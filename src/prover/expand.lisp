@@ -261,7 +261,6 @@ list of positive numbers" occurrence)
       (let* ((oper (operator expr))
 	     (lhs (args1 expr))
 	     (rhs (args2 expr))
-	     (op* (operator* expr))
 	     (newlhs (expand-defn name lhs occurrence))
 	     (newoper (expand-defn name oper occurrence))
 	     (newrhs (expand-defn name rhs occurrence)))
@@ -269,17 +268,22 @@ list of positive numbers" occurrence)
 		 (eq lhs newlhs)
 		 (eq rhs newrhs))
 	    expr
-	    (let* ((stype (find-supertype (type newoper)))
-		   (nex (lcopy expr
-			  'operator newoper
-			  'argument (make!-arg-tuple-expr newlhs newrhs)
-			  'type (if (typep (domain stype) 'dep-binding)
-				    (substit (range stype)
-				      (acons (domain stype) newargs nil))
-				    (range stype)))))
-	      (unless (eq newoper (operator expr))
-		(change-application-class-if-necessary expr nex))
-	      nex)))
+	    (if (typep newoper 'lambda-expr)
+		(substit (expression newoper)
+		  (pairlis-args (bindings newoper)
+				(list newlhs newrhs)))
+		(let* ((stype (find-supertype (type newoper)))
+		       (newargs (make!-arg-tuple-expr newlhs newrhs))
+		       (nex (lcopy expr
+			      'operator newoper
+			      'argument newargs
+			      'type (if (typep (domain stype) 'dep-binding)
+					(substit (range stype)
+					  (acons (domain stype) newargs nil))
+					(range stype)))))
+		  (unless (eq newoper (operator expr))
+		    (change-application-class-if-necessary expr nex))
+		  nex))))
       (call-next-method)))
 
 
