@@ -1822,10 +1822,18 @@ existence and time differences to be whitespace")
     (unless (and noninteractive (= pvs-verbose 0)) ad-do-it))
 
 (defadvice yes-or-no-p (around pvs-batch-control activate)
-  (when noninteractive
-    (let ((pvs-verbose 1))
-      (message (ad-get-arg 0))))
-  ad-do-it)
+  (if noninteractive
+      (let ((pvs-verbose 1))
+	(message (ad-get-arg 0))
+	t)
+      ad-do-it))
+
+(defadvice y-or-n-p (around pvs-batch-control activate)
+  (if noninteractive
+      (let ((pvs-verbose 1))
+	(message (ad-get-arg 0))
+	t)
+      ad-do-it))
 
 ;; (prompter actor list &optional help action-alist no-cursor-in-echo-area)
 (defadvice save-some-buffers (around pvs-batch-control activate)
