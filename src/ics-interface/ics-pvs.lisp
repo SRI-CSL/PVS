@@ -421,15 +421,18 @@
 	  (typecase type
 	   (recordtype (position (id (caar args)) sorted-fields :test #'eq :key #'id))
 	   (tupletype (1- (number (caar args))))
-	   (t (if (singleton? (car args))
+	   (funtype (if (singleton? (car args))
 		  (translate-term-to-ics* (caar args))
-		(ics_term_mk_tuple (translate-term-list-to-ics* (car args)))))))
+		(ics_term_mk_tuple (translate-term-list-to-ics* (car args)))))
+	   (t 
+	    (translate-term-to-ics* (caar args)))))
 	 (next-trbasis-type     
 	  (find-supertype 
 	   (typecase type
 	    (recordtype (type (find (id (caar args)) (fields type) :test #'eq :key #'id)))
 	    (tupletype (nth (1- (number (caar args))) (types type)))
-	    (t (range type)))))
+	    (funtype (range type))
+	    (t (range (type (caar args)))))))
 	 (next-trbasis
 	  (typecase type
 	   (recordtype
@@ -441,12 +444,17 @@
 	   (tupletype
 	    (make-ics-projection-application
 	     next-trbasis-type (number (caar args)) (length (types type)) trbasis))
-	   (t (make-ics-assign-application
+	   (funtype (make-ics-assign-application
 	       type
 	       trbasis
 	       (if (singleton? (car args))
 		   (translate-term-to-ics* (caar args))
-		 (ics_term_mk_tuple (translate-term-list-to-ics* (car args)))))))))
+		 (ics_term_mk_tuple (translate-term-list-to-ics* (car args))))))
+	   (t 
+	    (make-ics-assign-application
+	     (type (caar args))
+	     (translate-term-to-ics* (caar args))
+	     trbasis)))))
     (ics_term_mk_update
      (ics_context_empty)
      (ics_triple
