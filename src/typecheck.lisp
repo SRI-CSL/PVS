@@ -82,11 +82,6 @@
   (gethash ex *expression-types*))
 
 (defmethod (setf types) (types (ex expr))
-;   (when (some #'(lambda (ty)
-; 		  (not (subsetp (freevars ty) *bound-variables*
-; 				:test #'same-declaration)))
-; 	      types)
-;     (break "setf types has freevars"))
   (if types
       (setf (gethash ex *expression-types*) types)
       (remhash ex *expression-types*)))
@@ -143,6 +138,7 @@
   (unless (and (memq 'typechecked (status m))
 	       (typechecked? m))
     (let ((*subtype-of-hash* (make-hash-table :test #'equal)))
+      (reset-pseudo-normalize-caches)
       (tcdebug "~%Typecheck ~a" (id m))
       (setf (formals-sans-usings m)
 	    (remove-if #'(lambda (ff) (typep ff 'importing)) (formals m)))
@@ -172,10 +168,11 @@
 	(assert (eq (current-theory) m))
 	(setf (all-usings m)
 	      (let ((imps nil))
-		(map-lhash #'(lambda (th thinsts)
-			       (unless (from-prelude? th)
-				 (push (cons th thinsts) imps)))
-			   (current-using-hash))
+		(maphash #'(lambda (th thinsts)
+			     (unless (and (from-prelude? th)
+					  (singleton? thinsts))
+			       (push (cons th thinsts) imps)))
+			 (lhash-table (current-using-hash)))
 		imps))
 	(check-exporting m)
 	(setf (dependent-known-subtypes m)
@@ -249,6 +246,7 @@
 	     (mod (get-typechecked-theory theory-inst)))
 	;; If get-typechecked-theory ended up loading a new prelude library,
 	;; we need to update the current context.
+	(assert (saved-context mod))
 	(when (context-difference? plib-context *prelude-library-context*)
 	  (setf (lhash-next (using-hash *current-context*))
 		(using-hash *prelude-library-context*))
@@ -284,6 +282,8 @@
 	   (typecheck-actuals inst)
 	   (typecheck-mappings (mappings inst) inst)
 	   (setq nmodinst (set-type-actuals inst mod))
+	   (unless (fully-instantiated? inst)
+	     (type-error inst "Importing actuals must be fully instantiated"))
 	   (check-compatible-params (formals-sans-usings mod)
 				    (actuals inst) nil))
 	  ((mappings inst)
@@ -541,11 +541,14 @@
   (let ((thimps (get-importings theory)))
     (setf (get-importings theory)
 	  (append thimps (list theoryname))))
-  (maphash #'(lambda (th thinsts)
+  (maphash #'(lambda (th ithinsts)
 	       (unless (eq th theory)
-		 (let* ((curimps (get-importings th))
+		 (let* ((thinsts (exportable-theory-instances ithinsts theory))
+			(curimps (get-importings th))
+			(expinsts (get-exported-theory-instances
+				   thinsts (closure (exporting theory))))
 			(sthinsts (subst-theory-importings
-				   th thinsts theoryname theory))
+				   th expinsts theoryname theory))
 			(newinsts (remove-if #'(lambda (sth)
 						 (member sth curimps
 							 :test #'tc-eq))
@@ -555,6 +558,39 @@
 		   (when newinsts
 		     (setf (get-importings th) (append curimps newinsts))))))
 	   (lhash-table (using-hash (saved-context theory)))))
+
+(defun exportable-theory-instances (thinsts theory &optional expinsts)
+  (if (null thinsts)
+      (nreverse expinsts)
+      (exportable-theory-instances
+       (cdr thinsts)
+       theory
+       (if (every #'(lambda (x) (or (formal-decl? x) (exportable? x theory)))
+		  (collect-references (actuals (car thinsts))))
+	   (cons (car thinsts) expinsts)
+	   expinsts))))
+
+(defun get-exported-theory-instances (thinsts closure &optional insts)
+  (if (null thinsts)
+      (nreverse insts)
+      (let ((inst (car (assoc (car thinsts) closure :test #'expinst-eq))))
+	(get-exported-theory-instances
+	 (cdr thinsts) closure
+	 (if inst
+	     (cons (if (actuals inst)
+		       inst
+		       (car thinsts))
+		   insts)
+	     insts)))))
+
+(defun expinst-eq (inst1 inst2)
+  (and (eq (id inst1) (id inst2))
+       (eq (library inst1) (library inst2))
+       (or (null (actuals inst1))
+	   (null (actuals inst2))
+	   (tc-eq (actuals inst1) (actuals inst2)))
+       (tc-eq (mappings inst1) (mappings inst2))))
+	   
 
 (defun subst-theory-importings (th thinsts theoryname theory)
   (let* ((mthinsts (if (mappings theoryname)
@@ -606,7 +642,11 @@
 	       (declare (ignore id))
 	       (dolist (decl decls)
 		 (when (and (declaration? decl)
-			    (visible? decl))
+			    (visible? decl)
+			    (exportable? decl theory))
+		   (when (and (eq (id (current-theory)) 'min_seq)
+			      (eq (id decl) 'amax))
+		     (break "update-declarations-hash"))
 		   (let ((map (find decl (mappings theoryname)
 				    :key #'(lambda (m)
 					     (declaration (lhs m))))))
@@ -614,6 +654,24 @@
 		       (check-for-importing-conflicts decl)
 		       (put-decl decl))))))
 	   (lhash-table (declarations-hash (saved-context theory)))))
+
+;;; Checks whether the given declaration is exportable from the given theory.
+;;; to the current theory.
+;;; Used mostly in merging judgements from one context to another.
+(defun exportable? (decl theory)
+  (or (from-prelude? decl)
+      (from-prelude-library? decl)
+      (unless (or (from-prelude? theory)
+		  (from-prelude-library? theory))
+	(let ((exp (exporting theory)))
+	  (if (eq (module decl) theory)
+	      (or (eq (kind exp) 'default)
+		  (if (eq (names exp) 'all)
+		      (not (member decl (but-names exp) :test #'expname-test))
+		      (member decl (names exp) :test #'expname-test)))
+	      (or ;;(eq (kind exp) 'default)
+	       (and (rassoc (module decl) (closure exp) :test #'eq)
+		    (exportable? decl (module decl)))))))))
 
 (defun remove-uninstantiated-repeated-importings (entry imps)
   (remove-if
@@ -1091,6 +1149,10 @@
 	  (check-exported-names
 	   (cdr expnames) decls (append expdecls vdecls))))))
 
+(defun expname-test (decl expname)
+  (and (eq (id decl) (id expname))
+       (correct-expkind decl expname)))
+
 (defun correct-expkind (decl expname)
   (case (kind expname)
     ((nil) t)
@@ -1101,6 +1163,9 @@
 (defun check-exported-completeness (exporting expdecls)
   (check-exported-internal-completeness (names exporting) expdecls)
   (case (kind exporting)
+    ;; kind refers to what the modnames means:
+    ;;  default == no exporting clause
+    ;;  all     == EXPORTING names WITH all
     ((all default)
      (setf (closure exporting)
 	   (mapcan #'(lambda (imp)
@@ -1108,6 +1173,7 @@
 				   (cons inst (car imp)))
 			 (cdr imp)))
 	     (all-usings (current-theory)))))
+    ;;  closure == EXPORTING names WITH closure
     (closure
      (setf (closure exporting)
 	   (let ((insts nil))
@@ -1119,6 +1185,8 @@
 				       :test #'tc-eq)))
 			expdecls)
 	     insts)))
+    ;;  nil     == EXPORTING names    (e.g., no WITH)
+    ;;  or the names were listed explicitely
     (t (check-exported-external-completeness
 	(names exporting)
 	(exporting-with-closure (modules exporting))
