@@ -100,6 +100,16 @@
 (defconst pvs-1char-overloadable-ops-regexp
   "+\\|-\\|\\*\\|\\&\\|\\^\\|=\\|/\\|<\\|>\\|~\\|#")
 
+(defconst pvs-reserved-words
+  '("assuming" "axiom" "accept" "changes" "all" "array" "begin" "by"
+    "case" "declare" "definition" "else" "elsif" "endif" "endassuming"
+    "endcase" "end" "exists" "exporting" "exit" "forall" "function" "formula"
+    "from" "importing" "in" "is" "lambda" "lemma" "loop"
+    "mapping" "measure" "module" "nothing" "of" "onto" "obligation"
+    "opspec" "proof" "prove" "recursive" "result" "theorem" "theory"
+    "using" "var" "variable" "record" "verify" "where" "then" "type"
+    "while" "with" "let" "setvariable"))
+
 
 ;;
 ;; Functions
@@ -937,13 +947,15 @@ anything but a left paren or a \", ignoring whitespace."
   "Internal function to insert a skolem or inst command."
   (let* ((count 1)
 	 (arglist "")
-	 (nextarg (read-from-minibuffer (concat which " " prompt " " count
+	 (nextarg (read-from-minibuffer (concat which " " prompt " "
+						(number-to-string count)
 						" [CR to quit]: ")
 					"")))
     (while (not (string= nextarg ""))
       (setq count (1+ count))
       (setq arglist (concat arglist "\"" nextarg "\" ")) 
-      (setq nextarg (read-from-minibuffer (concat which " " prompt " " count
+      (setq nextarg (read-from-minibuffer (concat which " " prompt " "
+						  (number-to-string count)
 						  " [CR to quit]: ")
 					  "")))
     (if (string= arglist "")
@@ -968,8 +980,7 @@ anything but a left paren or a \", ignoring whitespace."
 	    (setq def2expand (buffer-substring sbeg (point))))
 	  (setq found-expansion
 		(and 
-		 (not (assoc (downcase def2expand)
-			     pvs-reserved-words-alist))
+		 (not (member (downcase def2expand) pvs-reserved-words))
 		 (y-or-n-p (concat "Expand " def2expand " "))))
 	  (while (not found-expansion)
 	    (setq tried-alist (cons (list (downcase def2expand))
@@ -980,8 +991,7 @@ anything but a left paren or a \", ignoring whitespace."
 	      (setq def2expand (buffer-substring sbeg (point))))
 	    (setq found-expansion
 		  (and 
-		   (not (assoc (downcase def2expand)
-			       pvs-reserved-words-alist))
+		   (not (member (downcase def2expand) pvs-reserved-words))
 		   (not (assoc (downcase def2expand) tried-alist))
 		   (y-or-n-p (concat "Expand " def2expand " ")))))
 	  (goto-char cpt)))
