@@ -1589,7 +1589,7 @@ Point will be on the offending delimiter."
 		       (unexpected-list (pvs-expected-output-regexps
 					 pvs-unexpected-output)))
 		   (dolist (exp unexpected-list)
-		     (pvs-message "Checking for%s expected output"
+		     (pvs-message "Checking for%s unexpected output"
 		       (if (null (cdr unexpected-list))
 			   ""
 			   (let ((pos (position exp unexpected-list
