@@ -1,0 +1,788 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; typecheck.lisp -- 
+;; Author          : Sam Owre
+;; Created On      : Thu Dec  2 19:01:35 1993
+;; Last Modified By: Sam Owre
+;; Last Modified On: Tue Apr 14 12:44:55 1998
+;; Update Count    : 33
+;; Status          : Beta test
+;; 
+;; HISTORY
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(in-package 'pvs)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Top level typechecking functions
+
+(defmethod typecheck ((m module) &key expected context tccs)
+  (declare (ignore expected context tccs))
+  (let ((*generate-tccs* 'ALL)
+	(*in-typechecker* t))
+    (typecheck* m nil nil nil)))
+
+
+;;; Typecheck, returning the original object.  The gen-tccs keyword indicates
+;;; that all tccs must be generated, even if the expression is fully
+;;; typechecked.  This is for the prover, which may be using the formula in
+;;; different contexts.
+
+(defmethod typecheck (obj &key expected (context *current-context*)
+			  (tccs nil given))
+  (assert context)
+  (assert (memq tccs '(nil none all all! top)))
+  (let ((*current-context* context)
+	(*generate-tccs* (if given tccs *generate-tccs*))
+	(*in-typechecker* t))
+    (assert *generate-tccs*)
+    (typecheck* obj expected nil nil))
+  obj)
+
+
+;;; Typecheck, returning the canonical form
+
+(defmethod typecheck ((te type-expr) &key expected (context *current-context*)
+		      (tccs nil given))
+  (assert context)
+  (assert (memq tccs '(nil none all all! top)))
+  (let ((*current-context* context)
+	(*generate-tccs* (if given tccs *generate-tccs*))
+	(*in-typechecker* t))
+    (typecheck* te expected 'type nil)))
+
+(defmethod typecheck ((ex expr) &key expected (context *current-context*)
+		      (tccs nil given))
+  (assert context)
+  ;;(assert (or (not given) expected (type ex)))
+  (assert (memq tccs '(nil none all all! top)))
+  (let ((*current-context* context)
+	(*generate-tccs* (if given tccs *generate-tccs*))
+	(*in-typechecker* t))
+    (assert *generate-tccs*)
+    (cond ((type ex)
+	   (cond ((memq *generate-tccs* '(all all!))
+		  (call-next-method))
+		 (expected
+		  (set-type ex (or expected (type ex))))))
+	  (t (call-next-method)
+	     (unless (or expected (type ex))
+	       (let ((type (get-unique-type ex)))
+		 (when type
+		   (set-type ex type))))))
+    ex))
+
+(defmethod get-unique-type ((ex name-expr))
+  (if (singleton? (resolutions ex))
+      (let ((type (type (car (resolutions ex)))))
+	(when (fully-instantiated? type)
+	  type))
+      (call-next-method)))
+
+(defmethod get-unique-type ((ex expr))
+  (let ((types (remove-duplicates (types ex) :test #'tc-eq)))
+    (when (and (singleton? types)
+	       (fully-instantiated? (car types)))
+      (car types))))
+
+(defun typecheck-uniquely (expr &key (tccs 'all given))
+  (let ((*generate-tccs* (if given tccs *generate-tccs*)))
+    (typecheck* expr nil nil nil)
+    (cond ((and (null (type expr))
+		(not (every #'(lambda (ty)
+				(compatible? ty (car (types expr))))
+			    (cdr (types expr)))))
+	   (unless *suppress-printing*
+	     (if (types expr)
+		 (type-ambiguity expr)
+		 (type-error expr
+		   "~%Given expression does not typecheck uniquely.~%")))
+	   (type-ambiguity expr))
+	  ((not (fully-instantiated? (car (types expr))))
+	   (unless *suppress-printing*
+	     (type-error expr
+	       "Could not determine the full theory instance")))
+	  (t (set-type expr (car (types expr))))))
+  expr)
+
+
+;;; Typecheck* methods for theories - returns the theory
+
+(defmethod typecheck* ((m module) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (unless (and (memq 'typechecked (status m))
+	       (typechecked? m))
+    (let ((*subtype-of-hash* (make-hash-table :test #'eq)))
+      (tcdebug "~%Typecheck ~a" (id m))
+      (setf (declarations m) (make-hash-table :test #'eq :size 37))
+      (setf (formals-sans-usings m)
+	    (remove-if #'(lambda (ff) (typep ff 'using)) (formals m)))
+      (let* ((*current-theory* m)
+	     (*typechecking-module* t)
+	     (*tccs* nil)
+	     (*tccdecls* nil)
+	     (*tccforms* nil)
+	     (pres (append (copy-tree (prelude-libraries-uselist))
+			   (copy-tree *prelude-names*)))
+	     (context (mk-context m nil pres))
+	     (*current-context* context))
+	(mapc #'add-prelude-info-to-context (reverse *prelude-names*))
+	(tcdebug "~%  Processing formals")
+	(typecheck-decls (formals m))
+	(set-dependent-formals (formals-sans-usings m))
+	(tcdebug "~%  Processing assuming")
+	(when (and (assuming m)
+		   (null (formals-sans-usings m)))
+	  (type-error m
+	    "Theory ~a has no formal parameters, hence no need for ASSUMING section"
+	    (id m)))
+	(typecheck-decls (assuming m))
+	(tcdebug "~%  Processing theory")
+	(typecheck-decls (theory m))
+	(maphash #'(lambda (id decls)
+		     (let ((ndecls (remove-if #'formal-decl? decls)))
+		       (when ndecls
+			 (setf (gethash id (declarations m)) ndecls))))
+		 (local-decls *current-context*))
+	;;(setf (judgements m) (judgements *current-context*))
+	;;(setf (conversions m) (conversions *current-context*))
+	(tcdebug "~%  Processing exporting")
+	(generate-xref m)
+	(assert (eq *current-theory* m))
+	(check-exporting m)
+	(setf (all-usings m)
+	      (remove-if #'(lambda (mu) (assoc (car mu) *prelude-names*))
+		(using *current-context*)))
+	(setf (saved-context m) *current-context*)
+	;;(reset-fully-instantiated-cache)
+	)
+      (push 'typechecked (status m))
+      m)))
+
+(defun set-dependent-formals (formals)
+  (mapc #'(lambda (f1)
+	    (typecase f1
+	      (formal-subtype-decl
+	       (when (some #'(lambda (f2)
+			       (occurs-in f2 (type-value f1)))
+			   formals)
+		 (setf (dependent? f1) t)))
+	       
+	      (formal-const-decl
+	       (when (some #'(lambda (f2)
+			       (occurs-in f2 (type f1)))
+			   formals)
+		 (setf (dependent? f1) t)))))
+	formals))
+
+;(defun adt-generating-theory (theory)
+;  (unless *generating-adt*
+;    (let ((cmt (comment theory)))
+;      (when (and cmt (string= cmt "% Generated from file " :end1 22))
+;	(let ((*typechecking-module* nil))
+;	  (typecheck-file (subseq cmt 22 (- (length cmt) 4))))))))
+
+(defmethod typecheck* ((list list) expected kind args)
+  (typecheck*-list list expected kind args))
+
+(defun typecheck*-list (list expected kind args &optional result)
+  (if (null list)
+      (nreverse result)
+      (let ((obj (typecheck* (car list) expected kind args))
+	    (*bound-variables* (cond ((binding? (car list))
+				      (cons (car list) *bound-variables*))
+				     ((and (listp (car list))
+					   (every #'binding? (car list)))
+				      (append (car list) *bound-variables*))
+				     (t *bound-variables*))))
+	(typecheck*-list (cdr list) expected kind args
+			 (cons obj result)))))
+
+
+(defmethod typecheck* ((use using) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (typecheck-usings (modules use))
+  use)
+
+(defun typecheck-usings (names)
+  (dolist (inst names)
+    (if (and (null (library inst))
+	     (eq (id inst) (id *current-theory*)))
+	(type-error inst
+	  "A theory may not import itself")
+	(let ((mod (get-typechecked-theory inst)))
+	  (typecheck-using* mod inst)))))
+
+(defvar *ignore-exportings* nil)
+
+(defvar *typecheck-using* nil)
+
+(defmethod typecheck-using* (obj inst)
+  (declare (ignore obj))
+  (type-error inst "Theory ~a not found" (id inst)))
+
+(defmethod typecheck-using* ((mod module) inst)
+  (let ((nmodinst inst)
+	(*typecheck-using* inst))
+    (cond ((actuals inst)
+	   (unless (length= (formals-sans-usings mod) (actuals inst))
+	     (type-error inst "Wrong number of actuals in ~a" inst))
+	   (typecheck-actuals inst)
+	   (setq nmodinst (set-type-actuals inst))
+	   (check-compatible-params (formals-sans-usings mod)
+				    (actuals inst) nil))
+	  (t (setq nmodinst (set-type-actuals inst))))
+;    (unless (from-prelude? mod)
+;      (pushnew nmodinst
+;	       (instances-used *current-theory*)
+;	       :test #'tc-eq))
+    (add-to-using nmodinst)
+    (unless *ignore-exportings*
+      (add-exporting-with-theories mod nmodinst))))
+
+(defmethod typecheck-using* ((adt datatype) inst)
+  (let* ((th1 (adt-theory adt))
+	 (th2 (adt-map-theory adt))
+	 (th3 (adt-reduce-theory adt))
+	 (use1 (copy inst 'id (id th1)))
+	 (use2 (when th2 (copy inst 'id (id th2) 'actuals nil)))
+	 (use3 (copy inst 'id (id th3) 'actuals nil))
+	 (*typecheck-using* inst))
+    (typecheck-usings (list use1))
+    (let ((*ignore-exportings* t)
+	  (supinst (adt-modinst use1)))
+      (typecheck-usings `(,@(unless (eq supinst inst) (list supinst))
+			  ,@(when use2 (list use2))
+			  ,use3)))))
+
+;;; Handles EXPORTING WITH clauses.  For example,
+;;;
+;;; m: THEORY [t:TYPE, c:t]		m1: THEORY [s:TYPE, a:s]
+;;;   USING m1[t,c]			   USING m2[s]
+;;;					   EXPORTING ALL WITH m2[s]
+;;;
+;;; The using list generated for m should include (#m2 m2[t])
+;;; The function will be called with (#m1 m1[t]), (#m2 m2[t])
+;;; The theory is associated with the inst (i.e., they have the same id)
+
+(defun add-exporting-with-theories (theory inst)
+  (when (exporting theory)
+    (let ((cusing (using (context theory))))
+      (dolist (ename (closure (exporting theory)))
+	(let* ((itheory (car (assoc ename cusing :test #'same-id)))
+	       (lname (if (typep itheory 'library-theory)
+			  (copy ename
+			    'library
+			    (makesym "~a"
+				     (cdr (assoc (library itheory)
+						 *library-alist*
+						 :test #'equal))))
+			  ename))
+	       (iname (if (actuals inst)
+			  (subst-mod-params lname inst)
+			  lname)))
+	  (assert itheory)
+	  (unless (and (formals-sans-usings itheory) (null (actuals iname)))
+	    ;; Add this to the assuming-instances list if fully instantiated
+	    (pushnew iname (assuming-instances *current-theory*)
+		     :test #'tc-eq))
+	  (add-to-using iname itheory))))))
+
+
+;;; Returns all of the theorynames directly used by the specified
+;;; theory, either through USINGs or MOD-DECLs.  Note that when a datatype
+;;; is referenced, it is replaced by (instances of) its generated
+;;; theories.
+
+(defmethod get-immediate-usings ((theory module))
+  (with-slots (immediate-usings formals assuming (theory-part theory))
+      theory
+    (if (eq immediate-usings 'unbound)
+	(setf immediate-usings
+	      (mapcan #'(lambda (imp)
+			  (let ((th (get-theory imp)))
+			    (or (and (typep th 'datatype)
+				     (datatype-instances imp))
+				(list imp))))
+		      (apply #'append
+			     (mapcar #'modules
+				     (delete-if-not #'mod-or-using?
+				       (append formals
+					       assuming
+					       (copy-list theory-part)))))))
+	immediate-usings)))
+
+(defun datatype-instances (imported-adt)
+  (let* ((adt (get-theory imported-adt))
+	 (th1 (adt-theory adt))
+	 (th2 (adt-map-theory adt))
+	 (th3 (adt-reduce-theory adt)))
+    (when th1
+      (nconc (list (mk-modname (id th1)
+		     (when (actuals imported-adt)
+		       (ldiff (actuals imported-adt)
+			      (nthcdr (length (formals-sans-usings adt))
+				      (actuals imported-adt))))))
+	     (when th2
+	       (list (mk-modname (id th2))))
+	     (when th3
+	       (list (mk-modname (id th3))))))))
+
+(defmethod get-immediate-usings ((adt datatype))
+  (append (apply #'append
+		 (mapcar #'modules
+			 (remove-if-not #'mod-or-using?
+			   (append (formals adt)
+				   (assuming adt)))))
+	  (when (using adt)
+	    (modules (using adt)))))
+
+(defun mod-or-using? (obj)
+  (typep obj '(or mod-decl using)))
+
+(defmethod modules ((decl mod-decl))
+  (list (modname decl)))
+    
+
+;;; Perform the substitution.  In the above, would be called with
+;;; (m1[t,c] #m1 m2[s]) and return m2[t].
+
+(defun subst-actuals (inst theory target-inst)
+  (let* ((etheory (subst-mod-params target-inst inst))
+	 (actuals (subst-actuals* inst
+				  (formals-sans-usings theory)
+				  (actuals etheory)
+				  nil)))
+    (if (equal actuals (actuals etheory))
+	etheory
+	(mk-modname (id etheory) actuals))))
+
+(defun subst-actuals* (inst formals actuals result)
+  (if (null actuals)
+      (nreverse result)
+      (let* ((pos (if (name-expr? (expr (car actuals)))
+		      (position (expr (car actuals)) formals :test #'same-id)))
+	     (nactual (or (and pos
+			       (nth pos (actuals inst)))
+			  (car actuals))))
+	(subst-actuals* inst formals (cdr actuals) (cons nactual result)))))
+
+
+;;; The using list of a context has the form
+;;;   ((theory theoryname_1 ... theoryname_n) ... )
+;;; where theory is a theory and the theoryname_i's are the theory instances
+;;; This is the form that is most convenient in resolving names.
+
+(defun add-to-using (theoryname &optional itheory)
+  (assert *current-context*)
+  (let* ((entry (assoc theoryname (using *current-context*)
+		       :test #'theoryname-in-context-using))
+	 (tname (remove-coercions
+		 (remove-indirect-formals-of-name theoryname))))
+    (if entry
+	(unless (member tname (cdr entry) :test #'tc-eq)
+	  (when (actuals tname)
+	    (let ((imps (immediate-usings *current-theory*)))
+	      (setf (cdr entry)
+		    (delete-if #'(lambda (imp)
+				   (and (actuals imp)
+					(not (fully-instantiated? imp))
+					(member (id imp) imps :key #'id)
+					(not (member imp imps :test #'tc-eq))))
+		    (cdr entry)))))
+	  (nconc entry (list tname))
+	  (update-current-context (car entry) theoryname))
+	(let ((theory (or itheory (get-typechecked-theory tname))))
+	  (unless theory
+	    (type-error theoryname "Theory ~a not found" (id theoryname)))
+	  (update-current-context theory theoryname)
+	  (setf (using *current-context*)
+		(nconc (using *current-context*)
+		       (list (list theory tname))))))))
+
+(defun update-current-context (theory theoryname)
+  (assert (saved-context theory))
+  (update-known-subtypes theory theoryname)
+  (update-judgements-of-current-context theory theoryname)
+  (update-conversions-of-current-context theory theoryname))
+
+(defun update-known-subtypes (theory theoryname)
+  (when (saved-context theory)
+    (dolist (subtype (known-subtypes (saved-context theory)))
+      (if (fully-instantiated? (car subtype))
+	  (mapcar #'(lambda (ety)
+		      (add-to-known-subtypes (car subtype) (car ety)))
+		  (cdr subtype))
+	  (let ((aty (subst-mod-params (car subtype) theoryname))
+		(etypes (mapcar #'(lambda (ety)
+				    (subst-mod-params (car ety) theoryname))
+				(cdr subtype))))
+	    (mapcar #'(lambda (ety) (add-to-known-subtypes aty ety))
+		    etypes))))))
+
+(defun update-judgements-of-current-context (theory theoryname)
+  (dolist (judgement-entry (judgements (saved-context theory)))
+    (let ((cjudgements (cdr (assq (car judgement-entry)
+				  (judgements *current-context*)))))
+      (dolist (judgement (cdr judgement-entry))
+	(when (eq (module judgement) theory)
+	  (let ((substj (subst-params-decl judgement theoryname)))
+	    (unless (member substj cjudgements :test #'same-judgement-types)
+	      (add-to-alist (car judgement-entry) substj
+			    (judgements *current-context*))))))))
+  (dolist (judgement-entry (application-judgements (saved-context theory)))
+    (let ((cjudgements (cdr (assq (car judgement-entry)
+				  (application-judgements *current-context*)))))
+      (dolist (judgement (cdr judgement-entry))
+	(when (eq (module judgement) theory)
+	  (let ((substj (subst-params-decl judgement theoryname)))
+	    (unless (member substj cjudgements :test #'same-judgement-types)
+	      (add-to-alist (car judgement-entry) substj
+			    (application-judgements *current-context*)))))))))
+
+(defun update-conversions-of-current-context (theory theoryname)
+  (dolist (conversion (conversions (saved-context theory)))
+    (when (eq (module conversion) theory)
+      (pushnew (subst-params-decl conversion theoryname)
+	       (conversions *current-context*)
+	       :test #'eq))))
+
+
+(defmethod subst-params-decl ((j judgement) modinst)
+  (let* ((gj (or (generated-by j) j))
+	 (nj (lcopy gj
+	      'declared-type (subst-mod-params (declared-type gj) modinst)
+	      'type (subst-mod-params (type gj) modinst))))
+    (unless (eq gj nj)
+      (setf (generated-by nj) gj))
+    nj))
+
+(defmethod subst-params-decl ((j named-judgement) modinst)
+  (let* ((gj (or (generated-by j) j))
+	 (nj (lcopy gj
+	       'declared-type (subst-mod-params (declared-type gj) modinst)
+	       'type (subst-mod-params (type gj) modinst)
+	       'name (subst-mod-params (name gj) modinst))))
+    (unless (eq gj nj)
+      (setf (generated-by nj) gj))
+    nj))
+
+(defmethod subst-params-decl ((j typed-judgement) modinst)
+  (let* ((gj (or (generated-by j) j))
+	 (nj (lcopy gj
+	       'declared-type (subst-mod-params (declared-type gj) modinst)
+	       'type (subst-mod-params (type gj) modinst)
+	       'name (subst-mod-params (name gj) modinst)
+	       'declared-name-type (subst-mod-params (declared-name-type gj)
+						     modinst))))
+    (unless (eq gj nj)
+      (setf (generated-by nj) gj))
+    nj))
+
+
+(defmethod subst-params-decl ((c conversion-decl) modinst)
+  (lcopy c
+    'name (subst-mod-params (name c) modinst)))
+
+(defmethod subst-params-decl ((c typed-conversion-decl) modinst)
+  (lcopy (call-next-method)
+    'declared-type (subst-mod-params (declared-type c) modinst)))
+
+
+(defun theoryname-in-context-using (typename theory)
+  (and (same-id typename theory)
+       (if (library typename)
+	   (and (typep theory '(or library-theory library-datatype))
+		(equal (pvs-truename (library theory))
+		       (pvs-truename (get-library-pathname (library typename)
+							   *current-theory*))))
+	   (not (typep theory '(or library-theory library-datatype))))))
+
+(defun modname-equal (m1 m2)
+  (and (same-id m1 m2)
+       (if (null (library m1))
+	   (null (library m2))
+	   (and (library m2)
+		(eq (library-of (library m1))
+		    (library-of (library m2)))))))
+
+;(defun add-visible-records (theoryname theory)
+;  (dolist (rtype (visible-records theory))
+;    (when t ;;(visible? rtype)
+;      (pushnew (subst-mod-params rtype theoryname)
+;	       (visible-records *current-theory*) :test #'tc-eq))))
+
+
+;;; Remove formals that are not a part of the current module.  This
+;;; handles the following circumstance:
+;;;
+;;; t1[t:TYPE]:THEORY     t2[tt:TYPE]:THEORY         t3: THEORY
+;;;   ...                   EXPORTING ALL WITH t1      USING t2
+;;;   ...                   USING t1[tt]
+;;;
+;;; So in typechecking t3, add-to-using is called with t1[tt] and
+;;; returns t1.
+
+(defun remove-indirect-formals-of-name (theoryname)
+  (if (and (actuals theoryname)
+	   (every #'(lambda (a)
+		      (let ((aval (or (type-value a) (expr a))))
+			(and (name? aval)
+			       (formal-decl? (declaration aval))
+			       (not (eq (module (declaration aval))
+					*current-theory*)))))
+		  (actuals theoryname)))
+      (copy theoryname 'actuals nil)
+      theoryname))
+
+(defun check-compatible-params (formals actuals assoc)
+  (or (null formals)
+      (and (check-compatible-param (car formals) (car actuals) assoc)
+	   (check-compatible-params
+	    (cdr formals) (cdr actuals)
+	    (acons (car formals)
+		   (if (formal-type-decl? (car formals))
+		       (type-value (car actuals))
+		       (expr (car actuals)))
+		   (if (formal-subtype-decl? (car formals))
+		       (acons (find-if #'(lambda (c) (typep c 'const-decl))
+				(generated (car formals)))
+			      (subtype-pred (type-value (car actuals))
+					    (subst-types
+					     (supertype (type-value
+							 (car formals)))
+					     assoc))
+			      assoc)
+		       assoc))))))
+
+(defun check-compatible-param (formal actual assoc)
+  (cond ((formal-type-decl? formal)
+	 (unless (type-value actual)
+	   (type-error actual "Expression provided where a type is expected"))
+	 (when (formal-subtype-decl? formal)
+	   (let ((type (subst-types (supertype (type-value formal)) assoc)))
+	     (unless (compatible? (type-value actual) type)
+	       (type-error actual "~a Should be a subtype of ~a"
+			   (type-value actual) type)))))
+	(t (let ((type (subst-types (type formal) assoc)))
+	     (typecheck* (expr actual) type nil nil))))
+  t)
+
+(defun subst-types (type assoc)
+  (when assoc
+    (gensubst type
+      #'(lambda (te) (cdr (assoc (declaration te) assoc)))
+      #'(lambda (te) (and (name? te)
+			  (assoc (declaration te) assoc))))))
+
+
+;;; check-exporting checks the names and theory instances being exported.
+
+(defun check-exporting (theory)
+  (check-exported-theories (modules (exporting theory)))
+  (let* ((alldecls (collect-all-exportable-decls theory))
+	 (edecls (cond ((eq (kind (exporting theory)) 'DEFAULT)
+			alldecls)
+		       ((but-names (exporting theory))
+			(set-difference
+			 alldecls
+			 (check-exported-names (but-names (exporting theory))
+					       (declarations theory)
+					       nil)))
+		       ((eq (names (exporting theory)) 'ALL)
+			alldecls)
+		       ((names (exporting theory))
+			(check-exported-names (names (exporting theory))
+					      (declarations theory)
+					      nil))
+		       (t (error "Something's wrong with EXPORTINGs")))))
+    (mapc #'set-visibility edecls)
+    (check-exported-completeness (exporting theory) edecls)))
+
+(defun collect-all-exportable-decls (theory)
+  (remove-if #'(lambda (d)
+		 (typep d '(or using var-decl field-decl datatype)))
+	     (append (assuming theory)
+		     (theory theory))))
+
+(defun check-exported-names (expnames decls expdecls)
+  (if (null expnames)
+      expdecls
+      (let ((expname (car expnames)))
+	(when (type-expr? (kind expname))
+	  (setf (type expname) (typecheck* (kind expname) 'type nil nil))
+	  (set-type (kind expname) nil))
+	(let* ((edecls (gethash (id expname) decls))
+	       (kdecls (remove-if-not #'(lambda (d)
+					  (correct-expkind d expname))
+				      edecls))
+	       (vdecls (remove-if #'(lambda (d)
+				      (typep d '(or var-decl field-decl)))
+				  kdecls)))
+	  (unless edecls
+	    (if (member expname (formals *current-theory*) :test #'same-id)
+		(type-error expname "May not export formal parameters")
+		(type-error expname "Name ~a is not declared in this theory"
+			    expname)))
+	  (unless kdecls
+	    (type-error expname "Name ~a is not declared as ~a in this theory"
+			expname (kind expname)))
+	  (unless vdecls
+	    (type-error expname "~a may not be exported" expname))
+	  (check-exported-names
+	   (cdr expnames) decls (append expdecls vdecls))))))
+
+(defun correct-expkind (decl expname)
+  (case (kind expname)
+    ((nil) t)
+    (type (type-decl? decl))
+    (formula (formula-decl? decl))
+    (t (tc-eq (type decl) (type expname)))))
+
+(defun check-exported-completeness (exporting expdecls)
+  (check-exported-internal-completeness (names exporting) expdecls)
+  (case (kind exporting)
+    ((all default)
+     (setf (closure exporting)
+	   (collect-all-exporting-with-theories
+	    (get-immediate-usings *current-theory*))))
+    (closure
+     (setf (closure exporting)
+	   (let ((insts nil))
+	     (mapobject #'(lambda (ex)
+			    (when (external-name ex)
+			      (pushnew (module-instance ex) insts
+				       :test #'tc-eq)))
+			expdecls)
+	     insts)))
+    (t (check-exported-external-completeness
+	(names exporting)
+	(exporting-with-closure (modules exporting))
+	expdecls)
+       (setf (closure exporting)
+	     (collect-all-exporting-with-theories
+	      (modules exporting))))))
+
+(defun collect-all-exporting-with-theories (theories)
+  (remove-duplicates
+      (mapcan #'(lambda (thinst)
+		  (collect-all-exporting-with-theories* thinst
+						    (get-theory thinst)))
+	      theories)
+    :test #'tc-eq))
+
+(defmethod collect-all-exporting-with-theories* (thinst (theory module))
+  (nconc (list thinst)
+	 (if (actuals thinst)
+	     (mapcar #'(lambda (thinst2)
+			 (subst-mod-params thinst2 thinst))
+		     (closure (exporting theory)))
+	     (copy-list (closure (exporting theory))))))
+
+(defmethod collect-all-exporting-with-theories* (thinst (adt datatype))
+  (let ((th1 (adt-theory adt))
+	(th2 (adt-map-theory adt))
+	(th3 (adt-reduce-theory adt)))
+    (nconc (collect-all-exporting-with-theories*
+	    (mk-modname (id th1)
+	      (actuals thinst))
+	    th1)
+	   (when th2
+	     (collect-all-exporting-with-theories*
+	      (mk-modname (id th2)) th2))
+	   (collect-all-exporting-with-theories*
+	    (mk-modname (id th3)) th3))))
+
+(defmethod exporting ((adt datatype))
+  (exporting (adt-theory adt)))
+
+(defvar *theory-instances* nil)
+
+(defun exporting-with-closure (instances)
+  (let ((*theory-instances* nil))
+    (mapc #'collect-exporting-with-theories instances)
+    *theory-instances*))
+
+(defun collect-exporting-with-theories (inst)
+  (push inst *theory-instances*)
+  (let ((theory (get-typechecked-theory inst)))
+    (when (exporting theory)
+      (dolist (etheory (modules (exporting theory)))
+	(let ((itheory (subst-mod-params etheory inst)))
+	  (collect-exporting-with-theories itheory))))))
+
+(defun check-exported-internal-completeness (expnames expdecls)
+  (mapc #'(lambda (edecl)
+	    (let ((rdecls (remove-if
+			   #'(lambda (d)
+			       (or (not (eq (module d) *current-theory*))
+				   (typep d '(or formal-decl using var-decl
+					      field-decl datatype))
+				   (and (const-decl? d)
+					(formal-subtype-decl?
+					 (generated-by d)))
+				   (member d expdecls :test #'eq)))
+			   (refers-to edecl))))
+	      (when rdecls
+		(let ((expname (if (consp expnames)
+				   (car (member edecl expnames
+						:test #'same-id))
+				   edecl)))
+		  (type-error expname
+		    "~a may not be exported unless the following are also:~
+                     ~%  ~{~a~^, ~}"
+		    (if (consp expnames)
+			expname
+			(format nil "~a:~a" (id expname) (ptype-of expname)))
+		    (mapcar #'(lambda (d) (format nil "~a:~a"
+					    (id d) (ptype-of d)))
+			    rdecls))))))
+	expdecls))
+
+(defun check-exported-external-completeness (expnames exptheories expdecls)
+  (unless (null expdecls)
+    (let ((decl (car expdecls)))
+      (mapobject #'(lambda (ex)
+		     (when (and (external-name ex)
+				(not (member (module-instance ex) exptheories
+					     :test #'tc-eq)))
+		       (let ((expname (if (consp expnames)
+					  (car (member decl expnames
+						       :test #'same-id))
+					  decl)))
+			 (type-error expname
+			   "~a refers to ~a~@[[~{~a~^, ~}]~].~a, which must be exported"
+			   (id decl) (id (module-instance ex))
+			   (actuals (module-instance ex)) (id ex)))))
+		 decl))
+    (check-exported-external-completeness expnames exptheories (cdr expdecls))))
+
+(defun external-name (ex)
+  (and (name? ex)
+       (not (freevars ex))
+       (module-instance ex)
+       (not (eq (module (declaration ex))
+		*current-theory*))
+       (not (from-prelude? (declaration ex)))))
+
+(defun set-visibility (decl)
+  (unless (typep decl '(or var-decl field-decl))
+    (setf (visible? decl) t)))
+
+(defun check-exported-theories (theories)
+  (unless (symbolp theories);; Handles NIL, ALL, and CLOSURE
+    (when (actuals (car theories))
+      (typecheck-actuals (car theories)))
+    (unless (member (car theories) (using *current-context*)
+		    :test #'(lambda (x y)
+			      (member x (cdr y)
+				      :test #'(lambda (u v)
+						(and (same-id u v)
+						     (or (null (actuals v))
+							 (tc-eq (actuals u)
+								(actuals v))))))))
+      (type-error (car theories)
+	"~a occurs in an EXPORTING WITH but is not in a IMPORTING clause"
+	(car theories)))
+    (check-exported-theories (cdr theories))))
