@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Sun Feb 27 01:34:00 1994
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Mar 31 17:25:56 1994
-;; Update Count    : 9
+;; Last Modified On: Thu Nov  5 15:10:01 1998
+;; Update Count    : 10
 ;; Status          : Unknown, Use with caution!
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -102,16 +102,22 @@
   (setf (spelling old) (spelling new))
   (copy-lex* (definition old) (definition new)))
 
-(defmethod copy-lex* ((old named-judgement) (new named-judgement))
-  (copy-lex* (name old) (name new)))
-
-(defmethod copy-lex* ((old typed-judgement) (new typed-judgement))
+(defmethod copy-lex* ((old subtype-judgement) (new subtype-judgement))
   (call-next-method)
-  (copy-lex* (declared-name-type old) (declared-name-type new)))
+  (copy-lex* (declared-subtype old) (declared-subtype new)))
 
 (defmethod copy-lex* ((old number-judgement) (new number-judgement))
   (call-next-method)
   (copy-lex* (number old) (number new)))
+
+(defmethod copy-lex* ((old name-judgement) (new name-judgement))
+  (call-next-method)
+  (copy-lex* (name old) (name new)))
+
+(defmethod copy-lex* ((old application-judgement) (new application-judgement))
+  (call-next-method)
+  (copy-lex* (name old) (name new))
+  (copy-lex* (formals old) (formals new)))
 
 (defmethod copy-lex* ((old conversion-decl) (new conversion-decl))
   (copy-lex* (name old) (name new)))
@@ -220,7 +226,7 @@
 
 (defmethod copy-lex* ((old when-expr) (new application))
   (copy-lex* (operator old) (operator new))
-  (copy-lex* (argument old) (reverse (expr (argument new)))))
+  (copy-lex* (argument old) (reverse (exprs (argument new)))))
 
 (defmethod copy-lex* ((old implicit-conversion) (new expr))
   (copy-lex* (args1 old) new))
