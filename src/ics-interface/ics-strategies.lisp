@@ -299,15 +299,5 @@
 (defstep inst! (&optional (fnums *)
 			  copy?
 			  (relativize? t))
-  (let ((sforms (s-forms (current-goal *ps*)))
-	(inst-sforms (gather-seq sforms fnums nil
-				 (compose #'essentially-existential? #'formula)))
-	(inst-fmlas (mapcar #'formula inst-sforms))
-	(inst-fnums (gather-fnums sforms fnums nil
-				  (compose #'essentially-existential? #'formula))))
-    (if (null inst-fmlas)
-	(skip-msg "Could not find an existential-strength formula.")
-      (let ((state (ics-current-state *ps*))
-	    (subst (first (generate-substs state inst-fmlas))))
-	(inst* subst))))
+  (skip-msg "inst! does not work for now.")
   "" "")
