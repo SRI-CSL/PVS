@@ -112,12 +112,16 @@
 		    (newconst (or id-hash
 				  (when (tc-eq expr *true*) '(true))
 				  (when (tc-eq expr *false*) '(false))
-				  (list (intern (concatenate 'string
-						  (string (id expr))
-						  "_"
-						  (princ-to-string
-						   (funcall
-						    *translate-id-counter*))))))))
+				  (list (intern
+					 (concatenate 'string
+					   (string (if (integerp (id expr))
+						       (format nil "~r"
+							 (id expr))
+						       (id expr)))
+					   "_"
+					   (princ-to-string
+					    (funcall
+					     *translate-id-counter*))))))))
 	       (unless id-hash
 		 (setf (gethash norm-expr *translate-id-hash*)
 		       newconst)
