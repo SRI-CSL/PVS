@@ -336,6 +336,10 @@
   (name-judgements-hash :initform (make-hash-table :test 'eq))
   (application-judgements-hash :initform (make-hash-table :test 'eq)))
 
+(defcl name-judgements ()
+  (minimal-judgements :initform nil)
+  (generic-judgements :initform nil))
+
 ;;; Application judgements are treated specially; we cannot just keep the
 ;;; minimal elements, as it is driven by the actual arguments.  The
 ;;; judgements-list is a tree of judgement declarations, starting with the
