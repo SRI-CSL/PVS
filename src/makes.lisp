@@ -26,6 +26,7 @@
 (def-pvs-term greater-operator ">" "reals")
 (def-pvs-term lesseq-operator "<=" "reals")
 (def-pvs-term less-operator "<" "reals")
+(def-pvs-term floor-operator "floor" "floor_ceil")
 
   
 ;;; This file provides make-class for the useful classes in classes.
@@ -515,6 +516,8 @@
 (defun mk-less (a1 a2)
   (mk-application (less-operator) a1 a2))
 
+(defun mk-floor (a1)
+  (mk-application (floor-operator) a1))
 
 ;;; Note that an expected type is unnecessary; bind-decls always
 ;;; complain if they don't uniquely typecheck.
@@ -1153,6 +1156,9 @@
 
 (defun make-less (x y)
   (typecheck (mk-less x y) :expected *boolean* :tccs 'top))
+
+(defun make-floor (x)
+  (typecheck (mk-floor x) :expected *integer* :tccs 'top))
 
 ;;; make!- forms assume that the provided expressions are fully
 ;;; typechecked, and generate typed expressions accordingly.
