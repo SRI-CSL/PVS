@@ -293,4 +293,5 @@
     (copy-lex* (cdr old) (cdr new))))
 
 (defmethod copy-lex* (old new)
-  )
+  (declare (ignore old new))
+  nil)
