@@ -323,7 +323,7 @@
       (let ((*no-obligations-allowed* t))
 	(parse :file file))
     (check-for-theory-clashes new-theories filename)
-    ;;(check-import-circularities new-theories filename)
+    ;;(check-import-circularities new-theories)
     (update-parsed-file filename file theories new-theories forced?)
     (pvs-message "~a parsed in ~,2,-3f seconds" filename time)
     #+pvsdebug (assert (every #'(lambda (nth) (get-theory (id nth)))
@@ -587,6 +587,8 @@
 	      (*in-evaluator*
 	       (pvs-message "Must exit the evaluator first"))
 	      (t (pvs-message "Typechecking ~a" filename)
+		 (when forced?
+		   (delete-generated-adt-files theories))
 		 (typecheck-theories filename theories)
 		 ;;(assert (every #'typechecked? theories))
 		 (update-context filename)))
@@ -605,6 +607,19 @@
 		   t)
 		  (prove-unproved-tccs theories))))
 	theories))))
+
+(defun delete-generated-adt-files (theories)
+  (dolist (th theories)
+    (when (datatype? th)
+      (let* ((adt-file (concatenate 'string (string (id th)) "_adt"))
+	     (adt-path (make-specpath adt-file)))
+	(when (file-exists-p adt-path)
+	  (multiple-value-bind (ignore error)
+	      (ignore-errors (delete-file adt-path))
+	    (if error
+		(pvs-message "Error in removing file ~a:~% ~"
+		  (shortname adt-file) error)
+		(pvs-message "Deleted file ~a" (shortname adt-file)))))))))
 
 (defun typecheck-theories (filename theories)
   (let ((all-proofs (read-pvs-file-proofs filename))
