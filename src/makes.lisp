@@ -453,19 +453,23 @@
 (defun application-class (op args)
   (let ((id (if (and (syntax? op)
 		     (slot-exists-p op 'id))
-		(id op) op)))
+		(id op) op))
+	(arg-list (if (and (singleton? args)
+			   (tuple-expr? (car args)))
+		      (exprs (car args))
+		      args)))
     (cond ((and (symbolp id)
-		(singleton? args)
+		(singleton? arg-list)
 		(memq id *unary-operators*))
 	   'unary-application)
 	  ((and (symbolp id)
-		(cdr args)
-		(null (cddr args))
+		(cdr arg-list)
+		(null (cddr arg-list))
 		(memq id *infix-operators*))
 	   'infix-application)
 	  ((and (symbolp id)
 		(eq id 'IF)
-		(= (length args) 3))
+		(= (length arg-list) 3))
 	   'if-expr)
 	  (t 'application))))
 
@@ -571,6 +575,22 @@
 
 (defun mk-floor (a1)
   (mk-application (floor-operator) a1))
+
+(defun mk-null-expr ()
+  (make-instance 'null-expr 'id '|null|))
+
+(defun mk-list-expr (exprs)
+  (mk-list-expr* (reverse exprs) (mk-null-expr)))
+
+(defun mk-list-expr* (exprs result)
+  (if (null exprs)
+      result
+      (mk-list-expr*
+       (cdr exprs)
+       (make-instance 'list-expr
+	 'operator (make-instance 'name-expr 'id '|cons|)
+	 'argument (make-instance 'arg-tuple-expr
+		     'exprs (list (car exprs) result))))))
 
 ;;; Note that an expected type is unnecessary; bind-decls always
 ;;; complain if they don't uniquely typecheck.
@@ -687,6 +707,21 @@
 				     'type-value (type-value a)))
 		     actuals)
     'mappings mappings))
+
+(defmethod mk-auto-rewrite-name ((decl declaration) theory-name always?)
+  (case always?
+    (!! (make-instance 'macro-rewrite-name
+	  'id (id decl)
+	  'actuals (actuals theory-name)
+	  'mod-id (id theory-name)))
+    ((nil) (make-instance 'lazy-rewrite-name
+	     'id (id decl)
+	     'actuals (actuals theory-name)
+	     'mod-id (id theory-name)))
+    (t (make-instance 'eager-rewrite-name
+	     'id (id decl)
+	     'actuals (actuals theory-name)
+	     'mod-id (id theory-name)))))
 
 (defun mk-name (id &optional actuals mod resolution)
   (make-instance 'name
@@ -1039,9 +1074,9 @@
 (defun make-implication (ante succ)
   (if (and (eq *generate-tccs* 'none)
 	   (type ante)
-	   (tc-eq (type ante) *boolean*)
+	   (tc-eq (find-supertype (type ante)) *boolean*)
 	   (type succ)
-	   (tc-eq (type succ) *boolean*))
+	   (tc-eq (find-supertype (type succ)) *boolean*))
       (make!-implication ante succ)
       (let ((expr (mk-implication ante succ)))
 	(assert *current-context*)
@@ -1058,7 +1093,7 @@
       (if (and (eq *generate-tccs* 'none)
 	       (every #'(lambda (a)
 			  (and (type a)
-			       (tc-eq (type a) *boolean*)))
+			       (tc-eq (find-supertype (type a)) *boolean*)))
 		      args))
 	  (if (cdr args)
 	      (make!-conjunction* (copy-list args))
@@ -1073,7 +1108,7 @@
       (if (and (eq *generate-tccs* 'none)
 	       (every #'(lambda (a)
 			  (and (type a)
-			       (tc-eq (type a) *boolean*)))
+			       (tc-eq (find-supertype (type a)) *boolean*)))
 		      args))
 	  (if (cdr args)
 	      (make!-disjunction* (copy-list args))
@@ -1085,7 +1120,7 @@
 (defun make-negation (arg)
   (if (and (eq *generate-tccs* 'none)
 	   (type arg)
-	   (tc-eq (type arg) *boolean*)
+	   (tc-eq (find-supertype (type arg)) *boolean*)
 	   (or (not (typep arg 'name-expr))
 	       (resolution arg)))
       (make!-negation arg)
@@ -1113,6 +1148,17 @@
   (let ((nexpr (mk-exists-expr vars expr)))
     (assert *current-context*)
     (typecheck nexpr :expected *boolean*)))
+
+(defun make-null-expr (type)
+  (typecheck* (mk-null-expr) type nil nil))
+
+(defun make-list-expr (exprs &optional type)
+  (assert (or type
+	      (and exprs (every #'type exprs))))
+  (if type
+      (typecheck* (mk-list-expr exprs) type nil nil)
+      (let ((ctype (reduce #'compatible-exprs-type exprs)))
+	(typecheck* (mk-list-expr exprs) ctype nil nil))))
 
 (let ((numhash (make-hash-table :test #'eql)))
   (pushnew 'clrnumhash *load-prelude-hook*)
@@ -1220,7 +1266,8 @@
   (mk-assignment 'uni (list (list arg)) expression))
 
 (defmethod make-assignment ((arg name-expr) expression)
-  (if (typep (declaration arg) 'field-decl)
+  (if (and (typep (declaration arg) 'field-decl)
+	   (typep arg '(not field-assignment-arg)))
       (call-next-method (change-class (copy arg) 'field-assignment-arg)
 			expression)
       (call-next-method)))
@@ -1259,6 +1306,17 @@
 ;;; make!- forms assume that the provided expressions are fully
 ;;; typechecked, and generate typed expressions accordingly.
 
+;;; (make!-applications (operator* ex) (argument* ex)) == ex
+;;; Note: args-list may be a simple list of arguments, or a list of
+;;; argument-lists
+(defun make!-applications (op args-list)
+  (if args-list
+      (make!-applications (if (consp (car args-list))
+			      (make!-application* op (car args-list))
+			      (make!-application op (car args-list)))
+			  (cdr args-list))
+      op))
+
 (defun make!-application* (op arguments)
   (make!-application op
 		     (if (cdr arguments)
@@ -1266,6 +1324,29 @@
 			 (car arguments))))
 
 (defun make!-application (op &rest args)
+  (assert (type op))
+  (make!-reduced-application op
+			     (if (cdr args)
+				 (make!-arg-tuple-expr* args)
+				 (car args))))
+
+(defmethod make!-reduced-application ((op lambda-expr) (arg tuple-expr))
+  (if (singleton? (bindings op))
+      (call-next-method)
+      (substit (expression op)
+	(pairlis (bindings op) (exprs arg)))))
+
+(defmethod make!-reduced-application ((op lambda-expr) arg)
+  (if (singleton? (bindings op))
+      (substit (expression op)
+	(acons (car (bindings op)) arg nil))
+      (substit (expression op)
+	(pairlis (bindings op) (make!-projections arg)))))
+
+(defmethod make!-reduced-application (op arg)
+  (make!-application-internal op arg))
+
+(defun make!-application-internal (op &rest args)
   (assert (type op))
   (let* ((appl (apply #'mk-application op args))
 	 (ftype (find-supertype (type op)))
@@ -1376,7 +1457,7 @@
 
 (defun make!-if-expr* (cond then else chained?)
   (assert (and (type cond) (type then) (type else)))
-  (assert (tc-eq (type cond) *boolean*))
+  (assert (tc-eq (find-supertype (type cond)) *boolean*))
   (assert (compatible? (type then) (type else)))
   (let* ((stype (compatible-type (type then) (type else)))
 	 (ifoptype (make-instance 'funtype
@@ -1453,13 +1534,15 @@
 
 (defun make!-projection-application (index arg)
   (assert (type arg))
-  (let* ((stype (find-supertype (type arg)))
-	 (projtype (make!-projection-type* (types stype) index 1 arg)))
-    (make-instance 'projappl
-      'id (makesym "PROJ_~d" index)
-      'index index
-      'argument arg
-      'type projtype)))
+  (if (tuple-expr? arg)
+      (nth (1- index) (exprs arg))
+      (let* ((stype (find-supertype (type arg)))
+	     (projtype (make!-projection-type* (types stype) index 1 arg)))
+	(make-instance 'projappl
+	  'id (makesym "PROJ_~d" index)
+	  'index index
+	  'argument arg
+	  'type projtype))))
 
 (defun make!-projection-type* (types index ctr arg)
   (let* ((dep? (typep (car types) 'dep-binding))
@@ -1481,12 +1564,17 @@
 
 (defun make!-field-application (field-name arg)
   (assert (and (type arg) (typep (find-supertype (type arg)) 'recordtype)))
-  (let* ((fid (ref-to-id field-name))
-	 (ftype (make!-field-application-type fid (type arg) arg)))
-    (make-instance 'fieldappl
-      'id fid
-      'argument arg
-      'type ftype)))
+  (let ((fid (ref-to-id field-name)))
+    (if (record-expr? arg)
+	(let ((ass (find fid (assignments arg)
+			 :key #'(lambda (a) (id (caar (arguments a)))))))
+	  (assert ass)
+	  (expression ass))
+	(let ((ftype (make!-field-application-type fid (type arg) arg)))
+	  (make-instance 'fieldappl
+	    'id fid
+	    'argument arg
+	    'type ftype)))))
 
 (defun make!-field-application-type (field-id type arg)
   (let ((rtype (find-supertype type)))
@@ -1520,7 +1608,7 @@
 ;;; The following create special forms that are used frequently
 
 (defun make!-negation (ex)
-  (assert (and (type ex) (tc-eq (type ex) *boolean*)))
+  (assert (and (type ex) (tc-eq (find-supertype (type ex)) *boolean*)))
   (cond ((tc-eq ex *true*)
 	 *false*)
 	((tc-eq ex *false*)
@@ -1532,7 +1620,8 @@
 
 (defun make!-conjunction (ex1 ex2)
   (assert (and (type ex1) (type ex2)
-	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
+	       (tc-eq (find-supertype (type ex1)) *boolean*)
+	       (tc-eq (find-supertype (type ex2)) *boolean*)))
   (cond ((tc-eq ex1 *true*)
 	 ex2)
 	((tc-eq ex1 *false*)
@@ -1558,7 +1647,8 @@
 
 (defun make!-disjunction (ex1 ex2)
   (assert (and (type ex1) (type ex2)
-	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
+	       (tc-eq (find-supertype (type ex1)) *boolean*)
+	       (tc-eq (find-supertype (type ex2)) *boolean*)))
   (cond ((tc-eq ex1 *true*)
 	 *true*)
 	((tc-eq ex1 *false*)
@@ -1584,7 +1674,8 @@
 
 (defun make!-implication (ex1 ex2)
   (assert (and (type ex1) (type ex2)
-	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
+	       (tc-eq (find-supertype (type ex1)) *boolean*)
+	       (tc-eq (find-supertype (type ex2)) *boolean*)))
   (cond ((tc-eq ex1 *true*)
 	 ex2)
 	((tc-eq ex1 *false*)
@@ -1600,7 +1691,8 @@
 
 (defun make!-iff (ex1 ex2)
   (assert (and (type ex1) (type ex2)
-	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
+	       (tc-eq (find-supertype (type ex1)) *boolean*)
+	       (tc-eq (find-supertype (type ex2)) *boolean*)))
   (cond ((tc-eq ex1 *true*)
 	 ex2)
 	((tc-eq ex1 *false*)
@@ -1664,14 +1756,14 @@
     'type *real*))
 
 (defun make!-forall-expr (bindings expr)
-  (assert (and (type expr) (tc-eq (type expr) *boolean*)))
+  (assert (and (type expr) (tc-eq (find-supertype (type expr)) *boolean*)))
   (make-instance 'forall-expr
     'bindings bindings
     'expression expr
     'type *boolean*))
 
 (defun make!-exists-expr (bindings expr)
-  (assert (and (type expr) (tc-eq (type expr) *boolean*)))
+  (assert (and (type expr) (tc-eq (find-supertype (type expr)) *boolean*)))
   (make-instance 'exists-expr
     'bindings bindings
     'expression expr

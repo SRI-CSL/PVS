@@ -200,7 +200,8 @@
   (id-occurs-in id (parameters te)))
 
 (defmethod id-occurs-in (id (te dep-binding))
-  (id-occurs-in id (declared-type te)))
+  (or (eq id (id te))
+      (id-occurs-in id (declared-type te))))
 
 (defmethod id-occurs-in (id (te expr-as-type))
   (id-occurs-in id (expr te)))
@@ -296,3 +297,12 @@
 (defmethod id-occurs-in (id (bd bind-decl))
   (or (string= id (id bd))
       (id-occurs-in id (declared-type bd))))
+
+(defun occurs-in-eq (x y)
+  (let ((found nil))
+    (mapobject #'(lambda (ex)
+		   (or found
+		       (when (eq ex x)
+			 (setq found t))))
+	       y)
+    found))
