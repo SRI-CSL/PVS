@@ -251,12 +251,13 @@
 	 (use2 (when th2 (copy inst 'id (id th2) 'actuals nil)))
 	 (use3 (copy inst 'id (id th3) 'actuals nil))
 	 (*typecheck-using* inst))
-    (typecheck-usings (list use1))
+    (typecheck-using use1)
     (let ((*ignore-exportings* t)
 	  (supinst (adt-modinst use1)))
-      (typecheck-usings `(,@(unless (eq supinst inst) (list supinst))
-			  ,@(when use2 (list use2))
-			  ,use3)))))
+      (mapc #'typecheck-using
+	    `(,@(unless (eq supinst inst) (list supinst))
+		,@(when use2 (list use2))
+		,use3)))))
 
 ;;; Handles EXPORTING WITH clauses.  For example,
 ;;;
