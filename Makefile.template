@@ -14,15 +14,13 @@ lisp = allegro5.0
 PLATFORM = $(shell bin/pvs-platform)
 export PLATFORM
 ifeq ($(PLATFORM),sun4-SunOS5)
-	LISP = /pkg/allegro5.0/sol24/lisp
+	LISP=
 else
 ifeq ($(PLATFORM),ix86-redhat4)
-	LISP=/pkg/allegro5.0/redhat4/lisp
+	LISP=
 else
 ifeq ($(PLATFORM),ix86-redhat5)
-	LISP=/pkg/allegro5.0/redhat5/lisp
-else
-	LISP = lisp
+	LISP=
 endif
 endif
 endif
