@@ -239,6 +239,11 @@
 		  (:file "gensubst")
 		  (:file "substit"))
      :depends-on (language))
+   (:module dc-structure
+     :source-pathname "src/decision-procedures"
+     :components ((:file "types")
+		  (:file "node-structures"
+			 :depends-on ("types"))))
    (:module emacs-interface
      :source-pathname "src/interface"
      :components ((:file "pvs-emacs")
@@ -304,11 +309,6 @@
      :components ((:file "mu")
 		  (:file "strategies"))
      :depends-on (proof-checker))
-   (:module dc-structure
-     :source-pathname "src/decision-procedures"
-     :components ((:file "types")
-		  (:file "node-structures"
-			 :depends-on ("types"))))
    (:module dc-interface
      :source-pathname "src/decision-procedures"
      :components (;;(:file "dc-pvs")
