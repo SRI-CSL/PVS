@@ -1300,9 +1300,15 @@ Exit PVS, saving the context."
 	     (let ((process (ilisp-process)))
 	       (when (and process (equal (process-status process) 'run))
 		 (save-some-buffers nil t)
-		 (pvs-send "(exit-pvs)")
-		 (while (equal (process-status process) 'run)
-		   (sleep-for 1)))))
+		 (condition-case ()
+		     (progn
+		       (pvs-send "(exit-pvs)")
+		       (while (equal (process-status process) 'run)
+			 (sleep-for 1)))
+		   (error
+		    (unless (y-or-n-p
+			     "Problem saving .pvscontext - exit anyway? ")
+		      (error "Exit aborted")))))))
 	   (save-buffers-kill-emacs nil)))
 	(t (save-buffers-kill-emacs nil))))
 
@@ -1620,12 +1626,15 @@ processing other commands."
   "Show the theory hierarchy starting from THEORYNAME
 
 The x-theory-hierarchy command prompts for a theory name and displays the
-IMPORTING hierarchy rooted at that theory.  The display uses Tcl/Tk, click
-on the Help button at the bottom of the display for more information."
+IMPORTING hierarchy rooted at that theory.  By default library theories
+are not included; give an argument to include them.  The display uses
+Tcl/Tk, click on the Help button at the bottom of the display for more
+information."
   (interactive (complete-theory-name "Show theory hierarchy from theory:"))
   (unless (interactive-p) (pvs-collect-theories))
   (if (getenv "DISPLAY")
-      (pvs-send (format "(x-module-hierarchy \"%s\")" theoryname))
+      (pvs-send (format "(x-module-hierarchy \"%s\" %s)"
+		    theoryname (and current-prefix-arg t)))
       (message
        "DISPLAY variable not set, cannot popup theory hierarchy display")))
 
