@@ -3526,28 +3526,34 @@ top-level antecedent conjunctions, equivalences, and negations, and
 succedent disjunctions, implications, and negations from the sequent."
  "Applying disjunctive simplification to flatten sequent")
 
-(defstep model-check (&optional (dynamic-ordering? T)(cases-rewrite? T)
-                          defs ; NIL, T, !, explicit, or explicit!
-			  theories
-			  rewrites
-			  exclude
-			  )
+(defstep model-check (&optional (dynamic-ordering? T) (cases-rewrite? T)
+				defs	; NIL, T, !, explicit, or explicit!
+				theories
+				rewrites
+				exclude
+				irredundant?)
   (let ((cuth *current-theory*)
 	(cuthstr (string (id cuth)))
-	)
-	(then* (skolem!)
-	       (install-rewrites$ :defs defs :theories theories
-		     :rewrites rewrites :exclude exclude)
-	       (auto-rewrite-theory cuthstr :always? T)
-	       (auto-rewrite-theory "ctlops" :defs T :always? !!)
-	       (auto-rewrite-theory "fairctlops" :defs T :always? !!)
-               (auto-rewrite-theory "Fairctlops" :defs T :always? !!)
-	       (auto-rewrite "/=")
-	       (stop-rewrite "mucalculus.mu" "mucalculus.nu"
-	                     "Reachable.Reachable")
-	       (rewrite-msg-off)
-	       (assert :cases-rewrite?  cases-rewrite?)
-	       (musimp :dynamic-ordering? dynamic-ordering?)))
+	(init-real-time (get-internal-real-time))
+	(init-run-time (get-run-time)))
+    (then* (skolem!)
+	   (install-rewrites$ :defs defs :theories theories
+			      :rewrites rewrites :exclude exclude)
+	   (auto-rewrite-theory cuthstr :always? T)
+	   (auto-rewrite-theory "ctlops" :defs T :always? !!)
+	   (auto-rewrite-theory "fairctlops" :defs T :always? !!)
+	   (auto-rewrite-theory "Fairctlops" :defs T :always? !!)
+	   (auto-rewrite "/=")
+	   (stop-rewrite "mucalculus.mu" "mucalculus.nu"
+			 "Reachable.Reachable")
+	   (rewrite-msg-off)
+	   (assert :cases-rewrite?  cases-rewrite?)
+	   (musimp :dynamic-ordering? dynamic-ordering?
+		   :irredundant? irredundant?)
+	   (skip-msg
+	    (format nil
+		"~%Finished model-checking in ~,2,-3f real, ~,2,-3f cpu seconds"
+	      (realtime-since init-real-time) (runtime-since init-run-time)))))
   "Rewrites temporal operators into mu/nu expressions, and
 simplifies using mu-calculus checker.  If DYNAMIC-ORDERING? is T,
 the BDD package uses dynamic ordering to minimize the BDD size.
