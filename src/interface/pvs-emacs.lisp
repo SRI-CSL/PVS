@@ -470,7 +470,14 @@
 
 (defun parse-error (obj message &rest args)
   ;;(assert (or *in-checker* *current-file*))
-  (cond ((and *to-emacs*
+  (cond (*parse-error-catch*
+	 (throw *parse-error-catch*
+		(values nil
+			(if args
+			    (format nil "~?" message args)
+			    message)
+			obj)))
+	((and *to-emacs*
 	      (or (not *in-checker*)
 		  (not *in-evaluator*)
 		  *tc-add-decl*))
