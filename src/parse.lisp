@@ -52,13 +52,19 @@
   (setq *operator-places* nil))
 
 (defun parse-error-msg (message args)
-  (cond ((initial-error? message)
-	 (format nil "Found ~A when expecting~%  ~A" (car args) (cadr args)))
-	((lam-error? message)
-	 (format nil "~A expected here" (car args)))
-	((medial-error? message)
-	 (format nil "Found ~A when expecting~%  ~A" (car args) (cadr args)))
-	(t (format nil "~?" message args))))
+  (multiple-value-bind (found expected)
+      (cond ((initial-error? message)
+	     (values (car args) (cadr args)))
+	    ((lam-error? message)
+	     (values (caddr args) (car args)))
+	    ((medial-error? message)
+	     (values (car args) (cadr args))))
+    (if found
+	(format nil "Found '~A' when expecting '~A'~
+                     ~@[~%  Note: '~a' is now a keyword~]"
+	  found expected
+	  (when (string= found "AS") found))
+	(format nil "~?" message args))))
 
 (defun initial-error? (message)
   (and (stringp message)
