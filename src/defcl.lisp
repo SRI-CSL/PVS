@@ -45,7 +45,9 @@ unignored slots, saved-slots, and unsaved-slots.")
 			    (remove-keyword
 			     :ignore
 			     (remove-keyword
-			      :fetch-as a))))
+			      :gnorc
+			      (remove-keyword
+			       :fetch-as a)))))
 		   (append a (list :accessor (car a)
 				   :initarg (car a)
 				   :initarg (intern (string (car a))
@@ -216,7 +218,8 @@ unignored slots, saved-slots, and unsaved-slots.")
   (remove-if #'ignored-slot% args))
 
 (defun ignored-slot% (arg)
-  (cadr (memq :ignore arg)))
+  (or (cadr (memq :ignore arg))
+      (cadr (memq :ignorc arg))))
 
 (defun saved-slots% (args)
   (remove-if #'(lambda (a) (memq :fetch-as a)) args))
