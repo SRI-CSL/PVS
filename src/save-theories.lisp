@@ -240,21 +240,3 @@
    :class (fetch-obj (stored-word 2))
    :type (fetch-obj (stored-word 3))
    :theory-id (fetch-obj (stored-word 4))))
-
-(defmethod store-object* ((obj cons))
-  (if (true-listp obj)
-      (reserve-space (+ (length obj) 2)
-	(push-word (store-obj 'list))
-	(push-word (length obj))
-	(dolist (x obj)
-	  (when (and (not *saving-theory*)
-		     (typep x 'datatype-or-module))
-	    (remhash x *store-object-hash*))
-	  (push-word (store-obj x))))
-      (reserve-space 3
-	(push-word (store-obj 'cons))
-	(push-word (store-obj (car obj)))
-	(push-word (store-obj (cdr obj))))))
-
-(defmethod store-object* ((obj pathname))
-  (store-object* (namestring obj)))
