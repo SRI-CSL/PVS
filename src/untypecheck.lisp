@@ -459,6 +459,7 @@
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (actuals ex))
   (untypecheck-theory (mappings ex))
+  (untypecheck-theory (target ex))
   (setf (resolutions ex) nil))
 
 ; (defmethod untypecheck-theory ((ex name-expr))
