@@ -14,7 +14,7 @@
 (eval-when-compile (require 'pvs-macros))
 
 ;;; FIXME - this may be related to changes in easymenu.el ???
-(when (memq pvs-emacs-system '(xemacs19 xemacs20))
+(when (memq pvs-emacs-system '(xemacs21 xemacs20 xemacs19))
   (add-hook 'ilisp-mode-hook
     '(lambda ()
        (add-submenu nil pvs-mode-menus ""))))
@@ -89,6 +89,7 @@ intervenes."
 (defvar *pvs-initialized* nil)
 
 (defun pvs-init ()
+  (setq ilisp-prefix-match t)
   (pvsallegro "pvs" nil)
   (save-excursion
     (set-buffer (ilisp-buffer))
@@ -282,7 +283,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
 
 (defun pvs-output-filter (output)
   (if (string-match
-       ":pvs-\\(msg\\|log\\|warn\\|err\\|qry\\|buf\\|yn\\|bel\\|loc\\|mod\\|pmt\\|dis\\|wish\\|eval\\) "
+       ":pvs-\\(msg\\|log\\|warn\\|out\\|err\\|qry\\|buf\\|yn\\|bel\\|loc\\|mod\\|pmt\\|dis\\|wish\\|eval\\) "
        output)
       (let* ((orig-string-end (match-beginning 0))
 	     (beg (match-end 0))
@@ -300,7 +301,10 @@ want to set this to nil for slow terminals, or connections over a modem.")
 			      (princ-nl (remove-esc out)
 					'external-debugging-output)))
 			   (t (message (remove-esc out))
-			      (sit-for 0 pvs-message-delay)
+			      (if (memq pvs-emacs-system
+					'(xemacs21 xemacs20 xemacs19))
+				  (sit-for (/ pvs-message-delay 1000.0))
+				  (sit-for 0 pvs-message-delay))
 			      (pvs-log-message 'MSG (remove-esc out)))))
 		    ((string-equal kind "log")
 		     (pvs-log-log (remove-esc out)))
@@ -309,6 +313,8 @@ want to set this to nil for slow terminals, or connections over a modem.")
 		    ((string-equal kind "err")
 		     (pvs-error out)
 		     (pushw))
+		    ((string-equal kind "out")
+		     (pvs-output out))
 		    ((string-equal kind "qry")
 		     (pvs-query out))
 		    ((string-equal kind "buf")
@@ -334,7 +340,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
 		    (t (error "%s not handled" kind))
 		    )
 	      (sit-for 0)
-	      (substring output 0 orig-string-end))
+	      (concat (substring output 0 orig-string-end) "\n"))
 	    output))
       (if (string-match ">>Error:[ \n\t]+TO-EMACS:" output)
 	  ""
@@ -422,7 +428,9 @@ want to set this to nil for slow terminals, or connections over a modem.")
 		   (set-buffer (find-file-noselect err))
 		   (prog1 (format "%s: %s\n" msg (buffer-string))
 		     (kill-buffer (current-buffer))))
-		 'external-debugging-output)))
+		 'external-debugging-output))
+	(delete-file err)
+	(setq pvs-waiting nil))
       (let ((pos (pvs-get-place place)))
 	(when pos
 	  (if (member dir '("nil" "NIL"))
@@ -433,6 +441,24 @@ want to set this to nil for slow terminals, or connections over a modem.")
 	(recenter '(nil))
 	(message msg)
 	t)))
+
+(defun pvs-output (file)
+  (when (and noninteractive
+	     (not (equal file "NIL")))
+    (let* ((buf (get-buffer-create "temp"))
+	   (bufstr (save-excursion
+		     (set-buffer buf)
+		     (erase-buffer)
+		     (insert-file-contents file nil)
+		     (buffer-string))))
+      (when pvs-validating
+	(princ bufstr)
+	(terpri))
+      (when (> pvs-verbose 0)
+	(princ bufstr 'external-debugging-output)
+	(terpri 'external-debugging-output))))
+  (unless (equal file "NIL")
+    (delete-file file)))
 
 (defun comint-display-file-output (file buffer)
   "Put TEXT of file in optional BUFFER and show it in a small temporary
@@ -514,37 +540,40 @@ window."
 		    (pvs-view-mode))
 		  (when (and append-p at-end)
 		    (goto-char (point-max))))
-		(case (intern display)
-		  ((nil NIL) nil)
-		  ((popto POPTO)
-		   (pop-to-buffer buf)
-		   (cond (append-p
-			  (when at-end
-			    (goto-char (point-max))))
-			 (t (goto-char cpoint)
-			    (beginning-of-line))))
-		  ((temp TEMP)
-		   (with-output-to-temp-buffer bufname
-		     (set-buffer bufname)
-		     (insert-file-contents file nil))
-		   (ilisp-show-output buf)
-		   (pvs-add-to-buffer-list bufname)
-		   (let ((rh (substitute-command-keys "\\[pvs-bury-output]")) 
-			 (s (substitute-command-keys "\\[ilisp-scroll-output]")))
-		     (message
-		      (format 
-			  "%s removes help window, %s scrolls, M-- %s scrolls back"
-			  rh s s))))
-		  (t
-		   (when (member (intern display) '(t T))
-		     (pop-to-buffer buf)
-		     (ilisp-show-output buf)
-		     (cond (append-p
-			    (when at-end
-			      (goto-char (point-max))))
-			   (t (goto-char (point-min)) ;was cpoint
-			      (beginning-of-line)))
-		     (pop-to-buffer obuf)))))
+		(if (= (point-min) (point-max))
+		    (message "PVS sent an empty buffer")
+		    (case (intern display)
+		      ((nil NIL) nil)
+		      ((popto POPTO)
+		       (pop-to-buffer buf)
+		       (cond (append-p
+			      (when at-end
+				(goto-char (point-max))))
+			     (t (goto-char cpoint)
+				(beginning-of-line))))
+		      ((temp TEMP)
+		       (with-output-to-temp-buffer bufname
+			 (set-buffer bufname)
+			 (insert-file-contents file nil))
+		       (ilisp-show-output buf)
+		       (pvs-add-to-buffer-list bufname)
+		       (let ((rh (substitute-command-keys "\\[pvs-bury-output]")) 
+			     (s (substitute-command-keys "\\[ilisp-scroll-output]")))
+			 (message
+			  (format 
+			      "%s removes help window, %s scrolls, M-- %s scrolls back"
+			      rh s s))))
+		      (t
+		       (when (member (intern display) '(t T))
+			 (pop-to-buffer buf)
+			 (ilisp-show-output buf)
+			 (cond (append-p
+				(when at-end
+				  (goto-char (point-max))))
+			       (t (goto-char (point-min)) ;was cpoint
+				  (beginning-of-line)))
+			 (sit-for 0)
+			 (pop-to-buffer obuf))))))
 	      (delete-file file)))
 	t)))
 
@@ -1104,6 +1133,8 @@ is emptied."
 	  (message "Resetting PVS")
 	  (when pvs-in-checker
 	    (comint-simple-send (ilisp-process) (format "(quit)y\nno")))
+	  (comint-send (ilisp-process) ":reset")
+ 	  (sleep-for 1)
 	  (interrupt-process (ilisp-process))
 	  (save-excursion
 	    (set-buffer (ilisp-buffer))
@@ -1305,5 +1336,8 @@ Returns nil if there isn't one longer than `completion-min-length'."
 (defun pvs-bury-output ()
   "Bury all temporary windows"
   (interactive)
+  (when expanded-form-overlay
+    (delete-overlay expanded-form-overlay)
+    (setq expanded-form-overlay nil))
   (ilisp-bury-output)
   (mapcar #'ilisp-bury-output *pvs-buffers-to-bury*))

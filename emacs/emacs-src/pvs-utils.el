@@ -1439,12 +1439,24 @@ Point will be on the offending delimiter."
 ;; desired context, to allow for "remote" validation, potentially without
 ;; write permission on the directory
 
+;;; pvs-expected-output should be set to a regexp within pvs-validate.
+;;;   This regexp is then looked for and an ERROR message is generated if it
+;;;   is not found.
+;;; pvs-unexpected-output is also a regexp, but the error message is
+;;;   generated if the regexp is found - this is needed because there is no
+;;;   easy way to negate a regexp.
+(defvar pvs-expected-output nil)
+(defvar pvs-unexpected-output nil)
+
 (defmacro pvs-validate (file directory &rest body)
   (` (let* ((logfile (concat default-directory (, file))))
        (pvs-backup-logfile logfile)
        (let ((logbuf (find-file-noselect logfile t)))
 	 (unwind-protect
 	     (save-excursion
+	       (fset 'pvs-handler-orig 'pvs-handler)
+	       (fset 'pvs-handler 'pvs-validate-handler)
+	       (fset 'ask-user-about-lock-orig 'ask-user-about-lock)
 	       (fset 'ask-user-about-lock 'pvs-log-ignore-lock)
 	       (set-buffer logbuf)
 	       (when buffer-read-only (toggle-read-only))
@@ -1459,6 +1471,22 @@ Point will be on the offending delimiter."
 	       (pvs-wait-for-it)
 	       ;;(save-buffer 0) ;writes a message-use the following 3 lines
 	       (set-buffer logbuf)	; body may have changed active buffer
+	       (when pvs-expected-output
+		 (goto-char (point-min))
+		 (pvs-message "Checking for expected output:\n  %s"
+		   pvs-expected-output)
+		 (if (re-search-forward pvs-expected-output nil t)
+		     (pvs-message "Found expected output")
+		     (pvs-message "ERROR: expected output not found - check %s"
+		       logfile)))
+	       (when pvs-unexpected-output
+		 (goto-char (point-min))
+		 (pvs-message "Checking for unexpected output:\n  %s"
+		   pvs-unexpected-output)
+		 (if (re-search-forward pvs-unexpected-output nil t)
+		     (pvs-message "ERROR: unexpected output found - check %s"
+		       logfile)
+		     (pvs-message "Did not find unexpected output")))
 	       (write-region (point-min) (point-max) (buffer-file-name) nil 'nomsg)
 	       (set-buffer-modified-p nil)
 	       (clear-visited-file-modtime)
@@ -1470,7 +1498,20 @@ Point will be on the offending delimiter."
 		   (progn
 		     (pvs-message "NO BASELINE - using this run to create baseline.log")
 		     (copy-file (buffer-file-name) "baseline.log"))))
-	   (fset 'pvs-log-ignore-lock 'ask-user-about-lock))))))
+	   (fset 'pvs-handler 'pvs-handler-orig)
+	   (fset 'ask-user-about-lock 'ask-user-about-lock-orig))))))
+
+(defun pvs-validate-handler (error-p wait-p message output prompt)
+  (cond ((and (stringp output)
+	      (string-match (ilisp-value 'ilisp-error-regexp) output))
+	 (pvs-message "Lisp ERROR: %s\n" (comint-remove-whitespace output))
+	 ;;(kill-process (ilisp-process))
+	 )
+	(t t)))
+
+(defmacro pvs-validate-and-die (file directory &rest body)
+  `(progn (pvs-validate ,file ,directory ,@body)
+	  (kill-process (ilisp-process))))
 
 (defun pvs-log-ignore-lock (file opponent)
   nil)
@@ -1584,12 +1625,15 @@ existence and time differences to be whitespace")
 
 (defvar pvs-waiting nil)
 
-(defun pvs-wait-for-it ()
+(defun pvs-wait-for-it (&optional timeout)
   (setq pvs-waiting t)
-  (pvs-send "(pvs-emacs-eval \"(setq pvs-waiting nil)\")")
-  (while pvs-waiting
+  (while (and pvs-waiting
+	      (ilisp-process)
+	      (or (null timeout)
+		  (> (decf timeout) 0)))
+    (pvs-send "(pvs-emacs-eval \"(setq pvs-waiting nil)\")")
     (accept-process-output)
-    (sit-for 0)))
+    (sit-for 1)))
 
 (defun pvs-message (control-string &rest data)
   (princ (apply 'format control-string data))

@@ -1811,34 +1811,34 @@ Letters do not insert themselves; instead, they are commands:
   (setq major-mode 'pvs-browse-proofs-mode)
   (setq mode-name "Proofs"))
 
-; (defpvs display-proofs-formula browse ()
-;   (interactive)
-;   (pvs-bury-output)
-;   (let* ((name-and-origin (pvs-formula-origin))
-; 	 (name (car name-and-origin))
-; 	 (origin (cadr name-and-origin))
-; 	 (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
-; 	 (line (+ (current-line-number) prelude-offset)))
-;     (pvs-send-and-wait
-;      (format "(display-proofs-formula-at \"%s\" \"%s\" %d)"
-; 	 name origin line)
-;      nil 'proofs 'dont-care)))
+(defpvs display-proofs-formula browse ()
+  (interactive)
+  (pvs-bury-output)
+  (let* ((name-and-origin (pvs-formula-origin))
+	 (name (car name-and-origin))
+	 (origin (cadr name-and-origin))
+	 (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
+	 (line (+ (current-line-number) prelude-offset)))
+    (pvs-send-and-wait
+     (format "(display-proofs-formula-at \"%s\" \"%s\" %d)"
+	 name origin line)
+     nil 'proofs 'dont-care)))
 
-; (defpvs display-proofs-theory browse (theoryname)
-;   "Show the proofs for all formulas of the specified theory"
-;   (interactive (complete-theory-name "Show proofs for theory named: "))
-;   (pvs-bury-output)
-;   (pvs-send-and-wait (format "(display-proofs-theory \"%s\")" theoryname)
-; 		     nil (pvs-get-abbreviation 'display-proofs-theory)
-; 		     'dont-care))
+(defpvs display-proofs-theory browse (theoryname)
+  "Show the proofs for all formulas of the specified theory"
+  (interactive (complete-theory-name "Show proofs for theory named: "))
+  (pvs-bury-output)
+  (pvs-send-and-wait (format "(display-proofs-theory \"%s\")" theoryname)
+		     nil (pvs-get-abbreviation 'display-proofs-theory)
+		     'dont-care))
 
-; (defpvs display-proofs-pvs-file browse (filename)
-;   "Show the proofs for all formulas of the specified PVS file"
-;   (interactive (complete-pvs-file-name "Show proofs for PVS file named: "))
-;   (pvs-bury-output)
-;   (pvs-send-and-wait (format "(display-proofs-pvs-file \"%s\")" filename)
-; 		     nil (pvs-get-abbreviation 'display-proofs-pvs-file)
-; 		     'dont-care))
+(defpvs display-proofs-pvs-file browse (filename)
+  "Show the proofs for all formulas of the specified PVS file"
+  (interactive (complete-pvs-file-name "Show proofs for PVS file named: "))
+  (pvs-bury-output)
+  (pvs-send-and-wait (format "(display-proofs-pvs-file \"%s\")" filename)
+		     nil (pvs-get-abbreviation 'display-proofs-pvs-file)
+		     'dont-care))
 
 ;;; These are invoked from key bindings from the Proofs buffer
 
