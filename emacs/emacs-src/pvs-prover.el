@@ -1361,8 +1361,10 @@ the specified prover command in the `Strategy Display' buffer"
 (defun complete-strategy-name (prompt)
   (let* ((minibuffer-local-must-match-map
 	  minibuffer-pvs-strategy-must-match-map)
-	 (strategies (pvs-file-send-and-wait "(collect-strategy-names)"
-					     nil nil 'list))
+	 (strategies (pvs-file-send-and-wait
+		      (format "(collect-strategy-names %s)"
+			  (and current-prefix-arg t))
+		      nil nil 'list))
 	 (strategy (completing-read prompt (mapcar 'list strategies) nil t)))
     (if (equal strategy "")
 	(error "Must provide a strategy name")
