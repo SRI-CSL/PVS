@@ -203,14 +203,14 @@
   (ics-init 0))
 
 (defmethod dpi-start* ((dp (eql 'ics)) prove-body)
-  (let ((*pvs-to-ics-hash* (init-if-rec *pvs-to-ics-hash*))
-	(*ics-to-pvs-hash* (init-if-rec *ics-to-pvs-hash*)))
-    (funcall prove-body)))
+  (pvs-to-ics-reset)
+  (funcall prove-body))
 
 (defmethod dpi-end* ((dp (eql 'ics)) proofstate)
   (declare (ignore proofstate))
   (clrhash *pvs-to-ics-hash*)
   (clrhash *ics-to-pvs-hash*)
+  (setf *unique-name-counter* 0)
   (ics_reset))
 
 (defmethod dpi-empty-state* ((dp (eql 'ics)))
@@ -223,9 +223,10 @@
     (cond ((not (zerop (ics_is_consistent ics-value)))
 	   (let ((nstate (ics-d-consistent ics-value)))
 	     (values nil nstate)))
-	  ((not (zerop (ics_is_redundant ics-value)))
-	   (values *true* state))
-	  (t (values *false* state)))))
+	  ((not (zerop (ics_is_inconsistent ics-value)))
+	   (values *false* state))
+	  (t
+	   (values *true* state)))))
 
 (defmethod dpi-process* ((dp (eql 'ics)) ics-expr state)
   (let* ((ics-value (ics_process_wrapper ics-expr))
@@ -233,9 +234,11 @@
     (cond ((not (zerop (ics_is_consistent ics-value)))
 	   (let ((nstate (ics-d-consistent ics-value)))
 	     (values nil nstate)))
-	  ((not (zerop (ics_is_redundant ics-value)))
-	   (values *true* state))
-	  (t (values *false* state)))))
+	  ((not (zerop (ics_is_inconsistent ics-value)))
+	   (values *false* state))
+	  (t
+	   (values *true* state)))))
+	 
 
 (defmethod dpi-valid?* ((dp (eql 'ics)) state pvs-expr)
   (not (zerop (ics_is_valid state (ics_process state ics-expr)))))
@@ -254,6 +257,3 @@
 
 (defmethod dpi-state-changed?* ((dp (eql 'ics)) old-state new-state)
   (not (eq old-state new-state)))
-
-(defmethod dpi-canon* ((dp (eql 'ics)) term state)
-  (ics-canon state term))
