@@ -1,5 +1,3 @@
-<<<<<<< mu.lisp
-=======
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pvs-mu.lisp -- Interface to the Mu-calculus model-checker
 ;; Author          : Sree, Shankar and Saidi
