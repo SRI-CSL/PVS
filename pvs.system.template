@@ -374,13 +374,11 @@
 		  (:file "ws1s-strategy")))
     (:module inst-by-unif
       :source-pathname "src/inst-by-unif"
-      :components ((:file "utils")
+      :components ((:file "inst-by-unif-utils")
 		   (:file "herbrandize")
 		   (:file "flatten")
-		   (:file "lvars-and-skofuns")
-		   (:file "translate-to-dc-lvars")
 		   (:file "unify")
-		   (:file "herbrandize")
+		   (:file "gensubsts")
 		   (:file "inst-by-unif")))
      (:module qe
        :source-pathname "src/qe"
