@@ -1119,13 +1119,14 @@
 	   (*bound-variables* (append bindings *bound-variables*))
 	   (vars (make-arg-conversion-variables bindings))
 	   (args (application-conversion-arguments
-		  (arguments expr) conversions vars)))
-      (add-conversion-info (find-if #'expr? conversions) expr)
+		  (arguments expr) conversions vars))
+	   (orig-expr (copy expr)))
       (change-class expr 'lambda-conversion)
       (setf (bindings expr) bindings
 	    (types op) nil
 	    (resolutions op) nil
 	    (expression expr) (mk-application* op args))
+      (add-conversion-info "LAMBDA conversion" orig-expr expr) 
       (typecheck* expr nil nil nil))))
 
 (defun make-arg-conversion-bindings (conversions expr &optional bindings)
