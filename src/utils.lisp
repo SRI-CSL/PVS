@@ -2107,7 +2107,6 @@ space")
       (let* ((fvars (freevars expr))
 	     (nexpr (unless fvars
 		      (gethash expr *pseudo-normalize-hash*))))
-	(assert (not (eq *assert-flag* 'simplify)))
 	(if nexpr
 	    (if (tc-eq nexpr expr)
 		expr
