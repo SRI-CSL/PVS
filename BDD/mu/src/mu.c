@@ -894,7 +894,7 @@ static BDDPTR mu_reachable (Term T, R_Interpret Ip, Term FT)
 
   if (mu_verbose) {
     BDDPTR Domain = bdd_1 ();
-    char buf[36];		/* more than enough */
+    /*  char buf[36]; */		/* more than enough */
     int i;
 
     for (i = n - 1; i >= 0; i--) {
@@ -906,11 +906,10 @@ static BDDPTR mu_reachable (Term T, R_Interpret Ip, Term FT)
       Domain = R;
     }
 
-    D_sprintf (buf, bdd_count_sat_assignments (R, Domain), 0);
-    fprintf (stdout, "Reachable took %u msec (%u BDD nodes, %s states).\n",
+    /*  D_sprintf (buf, bdd_count_sat_assignments (R, Domain), 0); */
+    fprintf (stdout, "Reachable took %u msec (%u BDD nodes).\n",
 	             (clock () - start_t) / CLOCKS_PER_MSEC, 
-                     bdd_size (R),
-        	     buf);
+                     bdd_size (R));
     bdd_free (Domain);
   }
   return R;
