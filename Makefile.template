@@ -225,9 +225,17 @@ ws1slisp = src/WS1S/lisp/dfa-foreign.lisp src/WS1S/lisp/dfa.lisp \
            src/WS1S/lisp/signature.lisp src/WS1S/lisp/pvs2dfa.lisp \
            src/WS1S/lisp/ws1s-strategy.lisp
 
+groundevallisp = src/groundeval/eval-macros.lisp \
+		 src/groundeval/eval-utils.lisp \
+		 src/groundeval/groundp.lisp \
+		 src/groundeval/static-update.lisp \
+		 src/groundeval/pvseval-update.lisp \
+		 src/groundeval/cl2pvs.lisp \
+		 src/groundeval/generate-lisp-for-theory.lisp
+
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
-	     ${decision-procedures} ${ws1slisp}
+	     ${decision-procedures} ${ws1slisp} ${groundevallisp}
 
 fasl-files = $(lisp-files:.lisp=.$(LISPEXT))
 
