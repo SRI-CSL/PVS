@@ -54,6 +54,8 @@
 
 (defvar *bin-theories-set* nil)
 
+(defvar *adt-type-name-pending*)
+
 (defvar *pvs-context* nil)
 
 (defvar *pvs-context-path* nil
