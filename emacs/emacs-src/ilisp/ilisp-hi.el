@@ -577,8 +577,9 @@ name of FILE and buffer match, select that buffer."
 		 (if (string-equal buffer-file (car lisp-buffer-file)) 
 		     lisp-buffer-file
 		     (setq lisp-buffer-file
-			   (cons buffer-file 
-				 (expand-file-name buffer-file)))))))
+			   (cons buffer-file
+				 (when buffer-file
+				   (expand-file-name buffer-file))))))))
 	  (if (or (and name (string-equal filename name))
 		  (string-equal expanded buffer-expanded))
 	      (setq file buffer-file
