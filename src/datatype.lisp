@@ -198,6 +198,21 @@ generated")
 	      (mapc #'copy-lex adt-theories ntheories)
 	      (pvs-message "Wrote pvs file ~a" adt-file))))
       (chmod "a-w" (namestring adt-path)))
+    (dolist (th adt-theories)
+      (let* ((tot (car (tcc-info th)))
+	     (prv (cadr (tcc-info th)))
+	     (mat (caddr (tcc-info th)))
+	     (obl (- tot prv mat)))
+	(if (zerop tot)
+	    (pvs-message "In DATATYPE theory ~a: No TCCs generated~
+                          ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
+		  (id th) (length (warnings th)) (length (info th)))
+	    (pvs-message
+		    "In DATATYPE theory ~a: ~d TCC~:p, ~d proved, ~
+                     ~d subsumed, ~d unproved~
+                     ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
+		  (id th) tot prv mat obl
+		  (length (warnings th)) (length (info th))))))
     (let ((fdate (file-write-date adt-path))
 	  (ce2 (get-context-file-entry adt-file)))
       (setf (generated-file-date adt) fdate)
@@ -978,6 +993,7 @@ generated")
 		   (pc-parse (unparse (declared-type a) :string t)
 			     'type-expr)))
 	     (*adt-decl* (declared-type a)))
+	(copy-lex (declared-type bd) (declared-type a))
 	(typecheck* bd nil nil nil)
 	(setf (type a) (type bd)
 	      (bind-decl a) bd)
@@ -1049,9 +1065,9 @@ generated")
 		     adt)))
 	   (pos-datype-adt?* adt-type (cdr acts) (cdr formals) adt))))
 
-(defun some-adt-type-is-positive (adt)
-  (some #'(lambda (fml)
-	    (and (typep fml 'type-decl)
+(defun all-adt-types-are-positive (adt)
+  (every #'(lambda (fml)
+	     (or (not (typep fml 'type-decl))
 		 (member fml (positive-types adt)
 			 :test #'(lambda (x y)
 				   (tc-eq (type-value x) y)))))
@@ -1742,12 +1758,9 @@ generated")
 (defun generate-adt-map-theory (adt)
   (when (and (some #'(lambda (ff) (typep ff 'formal-type-decl))
 		   (formals adt))
-	     (or (positive-types adt)
+	     (or (all-adt-types-are-positive adt)
 		 (pvs-warning
-		  "No map is generated since there are no positive type parameters"))
-	     (or (no-adt-subtypes adt)
-		 (pvs-warning
-		  "No map generated - some accessor has type involving a subtype of the datatype.")))
+		  "No map is generated since some formal parameter is not positive")))
     (build-adt-theory (makesym "~a_~a_map"
 			       (id adt)
 			       (if (datatype? adt) "adt" "codt"))
@@ -2769,7 +2782,7 @@ generated")
 	 red)
 	((adt? te)
 	 (let* ((acts (actuals (module-instance te)))
-		(funs (acc-reduce-sel-acts acts (actuals fte)
+		(funs (acc-reduce-sel-acts acts (actuals (find-supertype fte))
 					   fname red adt)))
 	   (if (every #'identity-fun? funs)
 	       (mk-identity-fun te)
@@ -2975,9 +2988,12 @@ generated")
 
 (defmethod gen-adt-reduce-dom? ((ex subtype) adt-type)
   (or (subtype-of? ex adt-type)
-      (adt-type-name? (find-supertype ex))))
+      (let ((stype (find-supertype ex)))
+	(and (adt-type-name? stype)
+	     (occurs-in adt-type stype)))))
 
 (defmethod gen-adt-reduce-dom! ((ex subtype) rtype adt-type)
+  (declare (ignore adt-type))
   (if (subtype-of? ex adt-type)
       (copy rtype)
       (gen-adt-reduce-dom* (find-supertype ex) rtype adt-type)))
@@ -3251,17 +3267,15 @@ generated")
 	       xvar adt)))
     (if (everywhere-false? sub)
 	(call-next-method)
-	(if (sequence? te)
-	    (mk-predicate-application '|some| te adt (list sub))
-	    (let* ((fid (make-new-variable '|f| (list te sub)))
-		   (fbd (make-bind-decl fid te))
-		   (fvar (mk-name-expr fid nil nil
-				       (make-resolution fbd
-					 (current-theory-name) te))))
-	      (mk-lambda-expr (list fbd)
-		(mk-exists-expr (list zbd)
-		  (mk-application sub
-		    (mk-application fvar zvar)))))))))
+	(let* ((fid (make-new-variable '|f| (list te sub)))
+	       (fbd (make-bind-decl fid te))
+	       (fvar (mk-name-expr fid nil nil
+				   (make-resolution fbd
+				     (current-theory-name) te))))
+	  (mk-lambda-expr (list fbd)
+	    (mk-exists-expr (list zbd)
+	      (mk-application sub
+		(mk-application fvar zvar))))))))
 
 (defmethod acc-subterm-selection* ((te recordtype) xvar adt)
   (let* ((rid (make-new-variable '|r| te))
@@ -3398,32 +3412,98 @@ generated")
   (acc-<<-selection* (supertype te) xvar adt))
 
 (defmethod acc-<<-selection* ((te funtype) xvar adt)
-  (if (sequence? te)
-      (let ((sub (acc-subterm-selection* (range te) xvar adt)))
-	(if (everywhere-false? sub)
-	    (call-next-method)
-	    (mk-predicate-application '|some| te adt (list sub))))
-      (let* ((zid (make-new-variable '|z| te))
-	     (zbd (make-bind-decl zid (domain te)))
-	     (zvar (mk-name-expr zid nil nil
-				 (make-resolution zbd
-				   (current-theory-name) (domain te))))
-	     (sub (acc-subterm-selection*
-		   (if (typep (domain te) 'dep-binding)
-		       (substit (range te) (acons (domain te) zvar nil))
-		       (range te))
-		   xvar adt)))
-	(if (everywhere-false? sub)
-	    (call-next-method)
-	    (let* ((fid (make-new-variable '|f| (list te sub)))
-		   (fbd (make-bind-decl fid te))
-		   (fvar (mk-name-expr fid nil nil
-				       (make-resolution fbd
-					 (current-theory-name) te))))
-	      (mk-lambda-expr (list fbd)
-		(mk-exists-expr (list zbd)
-		  (mk-application sub
-		    (mk-application fvar zvar)))))))))
+  (let* ((zid (make-new-variable '|z| (list te xvar)))
+	 (zbd (make-bind-decl zid (domain te)))
+	 (zvar (mk-name-expr zid nil nil
+			     (make-resolution zbd
+			       (current-theory-name) (domain te))))
+	 (sub (acc-subterm-selection*
+	       (if (typep (domain te) 'dep-binding)
+		   (substit (range te) (acons (domain te) zvar nil))
+		   (range te))
+	       xvar adt)))
+    (if (everywhere-false? sub)
+	(call-next-method)
+	(let* ((fid (make-new-variable '|f| (list te sub)))
+	       (fbd (make-bind-decl fid te))
+	       (fvar (mk-name-expr fid nil nil
+				   (make-resolution fbd
+				     (current-theory-name) te))))
+	  (mk-lambda-expr (list fbd)
+	    (mk-exists-expr (list zbd)
+	      (mk-application sub
+		(mk-application fvar zvar))))))))
+
+(defmethod acc-<<-selection* ((te recordtype) xvar adt)
+  (let* ((rid (make-new-variable '|r| te))
+	 (rbd (make-bind-decl rid te))
+	 (rvar (mk-name-expr rid nil nil
+			     (make-resolution rbd
+			       (current-theory-name) te)))
+	 (subs (acc-<<-fields (fields te) xvar rvar adt (dependent? te))))
+    (if (every #'everywhere-false? subs)
+	(call-next-method)
+	(mk-lambda-expr (list rbd)
+	  (mk-disjunction
+	   (mapcan #'(lambda (fd sub)
+		       (unless (everywhere-false? sub)
+			 (list (mk-application sub
+				 (mk-application (id fd) rvar)))))
+	     (fields te) subs))))))
+
+(defun acc-<<-fields (fields xvar rvar adt dep? &optional result)
+  (if (null fields)
+      (nreverse result)
+      (acc-<<-fields
+       (if dep?
+	   (substit (cdr fields)
+	     (acons (car fields)
+		    (make-field-application (car fields) rvar)
+		    nil))
+	   (cdr fields))
+       xvar rvar adt dep?
+       (cons (acc-<<-selection* (type (car fields)) xvar adt)
+	     result))))
+
+(defmethod acc-<<-selection* ((te tupletype) xvar adt)
+  (let* ((tid (make-new-variable '|t| te))
+	 (tbd (make-bind-decl tid te))
+	 (tvar (mk-name-expr tid nil nil
+			     (make-resolution tbd
+			       (current-theory-name) te)))
+	 (subs (acc-<<-types (types te) xvar tvar adt)))
+    (if (every #'everywhere-false? subs)
+	(call-next-method)
+	(let ((le (mk-lambda-expr (list tbd)
+		    (let ((num 0))
+		      (mk-disjunction
+		       (mapcan #'(lambda (sub)
+				   (incf num)
+				   (unless (everywhere-false? sub)
+				     (list (mk-application sub
+					     (make-instance 'projappl
+					       'id (makesym "PROJ_~d" num)
+					       'index num
+					       'argument tvar)))))
+			 subs))))))
+	  (setf (parens le) 1)
+	  le))))
+
+(defun acc-<<-types (types xvar tvar adt &optional (index 1) result)
+  (if (null types)
+      (nreverse result)
+      (acc-<<-types
+       (if (typep (car types) 'dep-binding)
+	   (substit (cdr types)
+	     (acons (car types)
+		    (make-projection-application index tvar)
+		    nil))
+	   (cdr types))
+       xvar tvar adt (1+ index)
+       (cons (acc-<<-selection* (car types) xvar adt) result))))
+
+(defmethod acc-<<-selection* ((te dep-binding) xvar adt)
+  (acc-<<-selection* (type te) xvar adt))
 
 (defmethod acc-<<-selection* ((te type-expr) xvar adt)
   (declare (ignore xvar adt))
