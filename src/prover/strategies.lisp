@@ -937,48 +937,39 @@ is T) and disjunctively simplifies."
     (and (funtype? type)
 	 (tc-eq (find-supertype (range type)) *boolean*))))
 
-(defun upfrom-res ()
-  (car (resolve (mk-type-name '|upfrom| nil '|integers|) 'type nil)))
-
-(defun below-res ()
-  (car (resolve (mk-type-name '|below| nil '|naturalnumbers|) 'type nil)))
-
-(defun upto-res ()
-  (car (resolve (mk-type-name '|upto|  nil '|naturalnumbers|) 'type nil)))
-
-(defun subrange-res ()
-  (car (resolve (mk-type-name '|subrange| nil '|integers|) 'type nil)))
-
-(defun above-res ()
-  (car (resolve (mk-type-name '|above| nil '|integers|) 'type nil)))
+;(def-pvs-term upfrom-subtype "upfrom" "int_types" :nt type-expr)
+;(def-pvs-term below-subtype "below" "nat_types" :nt type-expr)
+;(def-pvs-term upto-subtype "upto" "nat_types" :nt type-expr)
+;(def-pvs-term subrange-subtype "subrange" "subrange_type" :nt type-expr)
+;(def-pvs-term above-subtype "above" "int_types" :nt type-expr)
 
 (defun upfrom? (type)
-  (let ((subst (match! (type-value (declaration (upfrom-res)))
-		      type nil nil)))
+  (let ((subst (match! (upfrom-subtype)
+		       type nil nil)))
     (when (not (eq subst 'fail))
       (cdr (assoc '|i| subst :test #'same-id)))))
 
 (defun upto? (type)
-  (let ((subst (match! (type-value (declaration (upto-res)))
+  (let ((subst (match! (upto-subtype)
 		      type nil nil)))
     (when (not (eq subst 'fail))
       (cdr (assoc '|i| subst :test #'same-id)))))
 
 (defun below? (type)
-  (let ((subst (match! (type-value (declaration (below-res)))
+  (let ((subst (match! (below-subtype)
 		      type nil nil)))
     (when (not (eq subst 'fail))
       (cdr (assoc '|i| subst :test #'same-id)))))
 
 (defun subrange? (type)
-  (let ((subst (match! (type-value (declaration (subrange-res)))
+  (let ((subst (match! (subrange-subtype)
 		      type nil nil)))
     (when (not (eq subst 'fail))
       (cons (cdr (assoc '|i| subst :test #'same-id))
 	    (cdr (assoc '|j| subst :test #'same-id))))))
 
 (defun above? (type)
-  (let ((subst (match! (type-value (declaration (above-res)))
+  (let ((subst (match! (above-subtype)
 		      type nil nil)))
     (when (not (eq subst 'fail))
       (cdr (assoc '|i| subst :test #'same-id)))))
@@ -1866,6 +1857,7 @@ x_1!n rather than x!n, for some number n."
   "Same as INSTANTIATE but treated as a SKIP if the instantiation would
 introduce a duplicate formula."
   "~%Instantiating the top quantifier in ~a with the terms: ~% ~a,")
+
 
 (defstep inst (fnum &rest terms)
   (let ((terms (if (listp terms) terms (list terms)))
