@@ -1,5 +1,6 @@
 ;;; Added the use-package of :ergolisp, since this is the first time
 ;;; package SB-RUNTIME is seen.  fp, Mon Jan  2 11:07:17 1989.
+#-gcl
 (defpackage "SB-RUNTIME")
 (in-package "SB-RUNTIME") (use-package :ergolisp)
 
