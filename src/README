@@ -1,0 +1,42 @@
+
+To run the Allegro profiler (change redhat4 to redhat5 or sol24 if necessary)::
+
+  (load "/pkg/allegro5.0/redhat4/code/prof-s.fasl")
+  (load "/pkg/allegro5.0/redhat4/code/prof.fasl")
+
+  (prof:with-profiling (:type :time :count 100000) <body>)
+  (prof:show-call-graph)
+  (prof:show-call-counts :count 100000)
+  (prof:show-flat-profile)
+
+To get more information from Allegro compilation
+ (proclaim '(:explain :types :calls :boxing :variables))
+
+If the tracer seems to not work (especially in the debugger),
+ (setq lucid::*trace-suppress* nil)
+ (setq excl::*inhibit-trace* nil)     for allegro
+
+To see where a slot is set incorrectly, you need to use two methods:
+ (defmethod initialize-instance :around ((expr expr) &rest initargs)
+   (call-next-method)
+   (unless (and (integerp (parens expr)) (>= (parens expr) 0))
+     (break))
+   expr)
+
+ (defmethod (setf parens) :around (val (expr expr))
+   (unless (>= val 0) (break)) (call-next-method))
+
+find-method example:
+(find-method #'subst-mod-params*
+             (list :around)
+             (list (find-class 'type-expr) (find-class T) (find-class T)))
+remove-method example:
+(remove-method #'subst-mod-params* (find-method etc.))
+
+
+To run the Lucid monitor:
+  (monitor-functions '(<foo> <bar>))
+  (monitor-methods '<baz>)
+  (mon <form>)
+Use (unmonitor) to unmonitor functions; this is not the same as 
+                                        (stop-monitoring)
