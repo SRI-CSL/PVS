@@ -5,7 +5,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Thu Nov  5 15:10:01 1998
 ;; Update Count    : 10
-;; Status          : Unknown, Use with caution!
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
