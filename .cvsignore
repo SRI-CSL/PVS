@@ -1,2 +1,2 @@
 .pvscontext autoloads.out *_adt.pvs orphaned-proofs.prf
-*.lfasl *.fasl *.elc pvs pvs.system
+*.lfasl *.fasl *.elc pvs pvs.system *.tgz
