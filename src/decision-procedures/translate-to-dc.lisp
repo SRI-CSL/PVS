@@ -567,7 +567,7 @@
 		    ;;Note that two tc-eq such LAMBDAs will generate
 		    ;;different translations so that ASSERT might miss some
 		    ;;syntactic equalities when there are IFs in LAMBDAs.
-		    (let* ((newid (gentemp))
+		    (let* ((newid (dp::mk-constant (gentemp)))
 			   ;;(freevars (freevars (expression expr)))
 			   )
 		      ;;NSH(2.5.96) (freevars (expr..)) instead of
