@@ -18,7 +18,7 @@
 	((string-match "Emacs 19" (emacs-version))
 	 'emacs19)
 	(t
-	 (message "Your Emacs version is not known by PVS 2.3 - assuming Emacs 20")
+	 (message "Your Emacs version is not known by PVS - assuming Emacs 20")
          'emacs20))
   "The version of Emacs in which PVS is running. Set in go-pvs.el.
    Defined as one of (xemacs21 xemacs20 xemacs19 emacs20 emacs19) and defaults
