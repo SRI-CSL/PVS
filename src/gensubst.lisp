@@ -308,8 +308,7 @@
 	 (ntype (cond ((or *parsing-or-unparsing*
 			   *visible-only*)
 		       (type ex))
-		      ((and (dep-binding? (domain (find-supertype (type nop))))
-			    (not (eq narg (argument ex))))
+		      ((dep-binding? (domain (find-supertype (type nop))))
 		       (substit (range (find-supertype (type nop)))
 			 (acons (domain (find-supertype (type nop))) narg
 				nil)))
