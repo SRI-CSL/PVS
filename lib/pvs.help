@@ -59,16 +59,27 @@ x-prove,          xpr (C-c C-p x)  Start proof along with X display
 step-proof,       prs (C-c C-p s)  Start proof and set up for stepping
 x-step-proof,     xsp (C-c C-p X)  Combines x-prove and step-proof
 redo-proof,       prr (C-c C-p r)  Redo proof of formula at cursor
+prove-next-unproved-formula        Start proof on next unproved formula
 prove-theory,     prt (C-c C-p t)  Do all proofs in specified theory
+prove-theories			   Do all proofs in specified theories
 prove-pvs-file,   prf (C-c C-p f)  Do all the proofs in current file
 prove-importchain,pri (C-c C-p i)  Do all proofs in IMPORT chain
+prove-importchain-subtree          Do proofs in subtree of IMPORT chain
 prove-proofchain, prp (C-c C-p p)  Do all proofs in proofchain of formula
+prove-theory-using-default-dp      Do proofs with default decision procedures
+prove-theories-using-default-dp    Do proofs with default decision procedures
+prove-pvs-file-using-default-dp    Do proofs with default decision procedures
+prove-importchain-using-default-dp Do proofs with default decision procedures
+prove-importchain-subtree-using-default-dp Do proofs with default dec. procs.
+prove-proofchain-using-default-dp  Do proofs with default decision procedures
 
 ------------------------Proof Editing Commands--------------------------------
 
 edit-proof, show-proof      Edit the proof of the formula at cursor
 			      (C-c C-i) offers to rerun the proof
 install-proof, (C-c C-i)    Install the current proof at formula
+install-and-step-proof      Install the current proof at formula and step
+install-and-x-step-proof    Install the current proof at formula and step
 revert-proof                Reverts the proof of the formula at cursor
                               to the previous one (toggles)
 remove-proof                Removes the proof of the formula at cursor
@@ -81,8 +92,11 @@ install-pvs-proof-file      Install a new proof file
 load-pvs-strategies         Load the pvs-strategies file(s)
 set-print-depth             Set the print depth for formulas of sequents
 set-print-length            Set the print length for formulas of sequents
+set-print-lines		    Set the number of lines to print for seq. formulas
 set-rewrite-depth           Set the print depth for displaying rewrites
 set-rewrite-length          Set the print length for displaying rewrites
+set-proof-backup-number     Set the number of backups to keep for proof files
+dump-sequents		    Indicate that unproved sequents go to a file
 
 -----------------------Proof Information Commands-----------------------------
 
