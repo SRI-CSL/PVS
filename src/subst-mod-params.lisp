@@ -699,7 +699,7 @@
 		       (adt-compatible-preds ntype type var nil)))
 	       (stype (make-instance 'datatype-subtype
 			'supertype ntype
-			'predicate (make-lambda-expr (list bd) preds)
+			'predicate (make!-lambda-expr (list bd) preds)
 			'declared-type type)))
 	  (setf (print-type stype) type)
 	  stype))))
