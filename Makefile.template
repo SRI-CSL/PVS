@@ -3,8 +3,8 @@
 ## Author          : Sam Owre
 ## Created On      : Wed Dec 30 19:29:47 1998
 ## Last Modified By: Sam Owre
-## Last Modified On: Sat Jan  2 22:24:34 1999
-## Update Count    : 19
+## Last Modified On: Sat Jan  2 23:46:17 1999
+## Update Count    : 20
 ## Status          : Alpha test
 ###############################################################################
 .SUFFIXES:
@@ -216,7 +216,7 @@ ilisp = emacs/emacs-src/ilisp/cl-ilisp.lisp \
         emacs/emacs-src/ilisp/allegro.lisp \
         emacs/emacs-src/ilisp/ilisp-pkg.lisp
 
-lisp-files = ${ess} ${pvs-parser-out} ${ground-prover} ${pvs-src} \
+lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
              ${pvs-prover} ${bddlisp} ${decision-procedures} ${ilisp}
 
 fasl-files = $(lisp-files:.lisp=.$(LISPEXT))
@@ -225,15 +225,16 @@ all : makebdd makepolylib ${pvsfull} ${pvsrt}
 
 ${fasl-files} : ${pvs-make-files} ${ff-files} ${lisp-files}
 	$(LISP) -e '(load "pvs.system")' \
-		-e '(operate-on-system \'pvs :lf)'
+		-e '(operate-on-system \'pvs :lf)' \
+		-e '(excl:exit)'
 
-${pvsfull} : ${pvs-make-files} ${ff-files} ${fasl-files}
+${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${fasl-files}
 	rm -rf ${bindir}/full
 	$(LISP) -e '(defvar *runtime* nil)' \
 		-L src/make-pvs.lisp
 	touch ${pvsfull}
 
-${pvsrt} : ${pvs-make-files} ${ff-files} ${ess} ${pvs-parser-out} \
+${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${ess} ${pvs-parser-out} \
            ${ground-prover} ${pvs-src} ${pvs-prover} ${bddlisp} \
            ${decision-procedures} ${ilisp}
 	rm -rf ${bindir}/runtime
