@@ -1299,17 +1299,12 @@
   (typecheck* (bindings expr) nil nil nil)
   ;; XXX do something with arguments here
   (let ((*bound-variables* (append (bindings expr) *bound-variables*)))
-    (when (result-type expr)
-      (setf (type-value expr) (typecheck* (result-type expr) nil nil nil)))
     (typecheck* (expression expr) nil nil nil)
     (setf (types expr)
-	  (if (type-value expr)
-	      (list (make-formals-funtype (list (bindings expr))
-					  (type-value expr)))
-	      (mapcar #'(lambda (ty)
-			  ;;(assert (fully-typed? (bindings expr)))
-			  (make-formals-funtype (list (bindings expr)) ty))
-		      (ptypes (expression expr)))))))
+	  (mapcar #'(lambda (ty)
+		      ;;(assert (fully-typed? (bindings expr)))
+		      (make-formals-funtype (list (bindings expr)) ty))
+	    (ptypes (expression expr))))))
 
 
 ;;; Quant-expr -
