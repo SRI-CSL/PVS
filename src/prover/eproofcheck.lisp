@@ -1570,7 +1570,7 @@
 	 (* '*)
 	 (*goal* (current-goal ps))
 	 (*label* (label  ps))
-					;	 (*subgoalnum* (subgoalnum ps))
+	 ;; (*subgoalnum* (subgoalnum ps))
 	 (*+* (mapcar #'formula (pos-s-forms (s-forms (current-goal ps)))))
 	 (*-* (mapcar #'formula (neg-s-forms (s-forms (current-goal ps)))))
 	 (*par-label* (when (parent-proofstate ps)
@@ -1646,82 +1646,86 @@
 			      (if *tccforms*
 				  (copy (tcc-hash ps))
 				  (tcc-hash ps)))
-			     (tccforms (assert-tccforms *tccforms* ps))
-			     (tcc-subgoals
-			      (mapcar
-				  #'(lambda (x)
-				      (let ((y 
-					     (change-class
-					      (copy (current-goal ps)
-						's-forms
-						(cons
-						 (make-instance
-						     's-formula
-						   'formula
-						   (tccinfo-formula x))
-						 (s-forms
-						  (current-goal ps))))
-					      'tcc-sequent)))
-					(setf (tcc y)
-					      (tccinfo-formula x)
-					      (reason y)
-					      (tccinfo-reason x)
-					      (expr y)
-					      (tccinfo-expr x)
-					      (kind y)
-					      (tccinfo-kind x)
-					      (type y)
-					      (tccinfo-type x))
-					y))
-				tccforms))
-			     (subgoal-proofstates
-			      (make-subgoal-proofstates
-			       ps
-			       (subgoal-strategy step)
-			       subgoals
-			       tcc-subgoals
+			     (tccforms (assert-tccforms *tccforms* ps)))
+			(if (some #'(lambda (tccf)
+				      (tc-eq (tccinfo-formula tccf) *false*))
+				  tccforms)
+			    (values 'X nil)
+			    (let* ((tcc-subgoals
+				    (mapcar
+					#'(lambda (x)
+					    (let ((y 
+						   (change-class
+						    (copy (current-goal ps)
+						      's-forms
+						      (cons
+						       (make-instance
+							   's-formula
+							 'formula
+							 (tccinfo-formula x))
+						       (s-forms
+							(current-goal ps))))
+						    'tcc-sequent)))
+					      (setf (tcc y)
+						    (tccinfo-formula x)
+						    (reason y)
+						    (tccinfo-reason x)
+						    (expr y)
+						    (tccinfo-expr x)
+						    (kind y)
+						    (tccinfo-kind x)
+						    (type y)
+						    (tccinfo-type x))
+					      y))
+				      tccforms))
+				   (subgoal-proofstates
+				    (make-subgoal-proofstates
+				     ps
+				     (subgoal-strategy step)
+				     subgoals
+				     tcc-subgoals
 					;updates;must be attached to subgoals.
-			       )))
-			;;cleaning up (NSH(7.27.94)
-			;;1. convert main subgoals of tccs into
-			;;non-tccs.
-			;;2. hash the new tccs into new-tcc-hash
-			;;3. set tcc-hash of main subgoals as
-			;;new-tcc-hash
-			(when (> tcc-hash-counter 0)
-			  (format-if "~%Ignoring ~a repeated TCCs."
-				     tcc-hash-counter))
-			(loop for tcc in *tccforms*
-			      do
-			      (setf (gethash (tccinfo-formula tcc)
-					     new-tcc-hash)
-				    T))
-			(assert
-			 (every #'(lambda (sps)
-				    (every #'(lambda (sfmla)
-					       (null (freevars (formula sfmla)))
-					       )
-					   (s-forms (current-goal sps))))
-				subgoal-proofstates))
-			(loop for sps in subgoal-proofstates
-			      when (not (tcc-proofstate? sps))
-			      do (setf (tcc-hash sps)
-				       new-tcc-hash))
-			(when (memq name *ruletrace*)
-			  (decf *ruletracedepth*)
-			  (format t "~%~vT Exit: ~a -- ~a subgoal(s) generated."
-			    *ruletracedepth* name (length subgoal-proofstates)))
-			(push-references *tccforms* ps)
-			(setf (status-flag ps) '?
-			      (current-rule ps) (rule-input topstep)
-			      (printout ps) (sublis (remove-if #'null
-						    *rule-args-alist*
-						    :key #'cdr)
-						    (rule-format topstep))
-			      (remaining-subgoals ps) subgoal-proofstates)
-			(unless (typep ps 'top-proofstate)
-			  (setf (strategy ps) nil))
-			ps))
+				     )))
+			      ;;cleaning up (NSH 7.27.94)
+			      ;;1. convert main subgoals of tccs into
+			      ;;non-tccs.
+			      ;;2. hash the new tccs into new-tcc-hash
+			      ;;3. set tcc-hash of main subgoals as
+			      ;;new-tcc-hash
+			      (when (> tcc-hash-counter 0)
+				(format-if "~%Ignoring ~a repeated TCCs."
+					   tcc-hash-counter))
+			      (loop for tcc in *tccforms*
+				    do
+				    (setf (gethash (tccinfo-formula tcc)
+						   new-tcc-hash)
+					  T))
+			      (assert
+			       (every #'(lambda (sps)
+					  (every #'(lambda (sfmla)
+						     (null (freevars (formula sfmla)))
+						     )
+						 (s-forms (current-goal sps))))
+				      subgoal-proofstates))
+			      (loop for sps in subgoal-proofstates
+				    when (not (tcc-proofstate? sps))
+				    do (setf (tcc-hash sps)
+					     new-tcc-hash))
+			      (when (memq name *ruletrace*)
+				(decf *ruletracedepth*)
+				(format t "~%~vT Exit: ~a -- ~a subgoal(s) generated."
+				  *ruletracedepth* name (length subgoal-proofstates)))
+			      (push-references *tccforms* ps)
+			      (setf (status-flag ps) '?
+				    (current-rule ps) (rule-input topstep)
+				    (printout ps) (sublis (remove-if #'null
+							    *rule-args-alist*
+							    :key #'cdr)
+							  (rule-format topstep))
+				    (remaining-subgoals ps) subgoal-proofstates)
+			      (unless (typep ps 'top-proofstate)
+				(setf (strategy ps) nil))
+			      ps))))
 		     ((eq signal 'X)
 		      (when (memq name *ruletrace*)
 			(decf *ruletracedepth*)
@@ -1741,8 +1745,7 @@
 		     ((eq signal '*)
 		      (setf (status-flag ps) '*)
 		      ps)
-		     (t  (undo-proof signal ps)))
-	       )))
+		     (t  (undo-proof signal ps))))))
 	  ((typep (topstep step) 'strategy)
 	   (setf (status-flag ps) '?
 		 ;;		 (current-rule ps) (strategy-input rule)
