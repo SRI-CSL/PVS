@@ -656,32 +656,11 @@ where db is to replace db1 and db2")
 	    (and bind
 		 (eq decl2 (if (consp bind) (car bind) bind))))
 	  (and (eq decl1 decl2)
-	       (if mi1
-		   (and mi2
-			(tc-eq* mi1 mi2 bindings))
-		   (null mi2)))
-	  ;;(tc-eq-operators decl1 decl2)
-	  ))))
-
-(defun tc-eq-operators (decl1 decl2)
-  (let ((id1 (id decl1))
-	(id2 (id decl2)))
-    (and (memq id1 '(& AND => IMPLIES <=> IFF))
-	 (memq id2 '(& AND => IMPLIES <=> IFF))
-	 (let* ((th1 (module decl1))
-	       (th2 (module decl2))
-	       (thid (when th1 (id th1))))
-	   (and th1 th2
-		(eq thid (id (module decl2)))
-		(eq thid '|booleans|)
-		(when (or (and (memq id1 '(& AND))
-			       (memq id2 '(& AND)))
-			  (and (memq id1 '(=> IMPLIES))
-			       (memq id2 '(=> IMPLIES)))
-			  (and (memq id1 '(<=> IFF))
-			       (memq id2 '(<=> IFF))))
-		  t))))))
-
+	       (or (binding? decl1)
+		   (if mi1
+		       (and mi2
+			    (tc-eq* mi1 mi2 bindings))
+		       (null mi2))))))))
 
 (defmethod tc-eq* ((n1 modname) (n2 modname) bindings)
   (or (eq n1 n2)
@@ -699,17 +678,6 @@ where db is to replace db1 and db2")
 		   (tc-eq* tv1 tv2 bindings))
 	      (and (not tv2)
 		   (tc-eq* ex1 ex2 bindings)))))))
-
-;(defmethod tc-eq* ((r1 resolution) (r2 resolution) bindings)
-;  (or (eq r1 r2)
-;      (with-slots ((d1 declaration) (mi1 module-instance) (t1 type)) r1
-;	(with-slots ((d2 declaration) (mi2 module-instance) (t2 type)) r2
-;	  (or (and (eq d1 d2)
-;		   (tc-eq* mi1 mi2 bindings))
-;	      (and (typep d1 'field-decl)
-;		   (typep d2 'field-decl)
-;		   (same-id d1 d2)
-;		   (tc-eq* t1 t2 bindings)))))))
 
 
 ;;; Compatible? for types checks whether two types have a common
