@@ -1922,7 +1922,14 @@
 	 (cons dtype ntypes)))))
 
 (defmethod extend-domain-type (arg (type subtype) expr)
-  (if (some #'(lambda (ty) (subtype-of? ty type))
+  (if (some #'(lambda (ty)
+		(or (subtype-of? ty type)
+		    (and (fully-instantiated? ty)
+			 (let ((*generate-tccs* 'none)
+			       (narg (typecheck* (copy-untyped arg)
+						 ty nil nil)))
+			   (some #'(lambda (jty) (subtype-of? jty type))
+				 (judgement-types+ narg))))))
 	    (types arg))
       type
       (let* ((*generate-tccs* 'none)
@@ -1980,6 +1987,9 @@
 (defun typecheck-assignments (assigns type)
   (when assigns
     (let ((assign (car assigns)))
+      (when (and (maplet? assign)
+		 (cdr (arguments assign)))
+	(type-error assign "Maplet assignment may not be nested"))
       (typecheck-ass-args (arguments assign) type (typep assign 'maplet))
       (typecheck* (expression assign) nil nil nil)
       (typecheck-assignments (cdr assigns) type))))
