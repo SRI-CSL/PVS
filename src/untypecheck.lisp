@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Mon Oct 25 23:18:47 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Oct 30 18:46:33 1998
-;; Update Count    : 19
+;; Last Modified On: Thu Jan 28 14:16:59 1999
+;; Update Count    : 20
 ;; Status          : Beta test
 ;; 
 ;; HISTORY
@@ -178,7 +178,7 @@
 
 (defmethod untypecheck-theory ((decl formal-type-decl))
   (when (next-method-p) (call-next-method))
-  (setf (nonempty? decl) nil)
+  ;;(setf (nonempty? decl) nil)
   (setf (type decl) nil))
 
 (defmethod untypecheck-theory ((decl formal-const-decl))
