@@ -1593,8 +1593,13 @@
 				:key #'(lambda (d)
 					 (or (run-proof-time d) 0))
 				:initial-value 0))
-	       (timelength (length (format nil "~,2,-3f" maxtime)))
-	       (idlength (- 48 timelength)))
+	       (statuslength 20)
+	       (dplength (+ (apply #'max
+			      (mapcar #'(lambda (x) (length (string x)))
+				*decision-procedures*))
+			    2))
+	       (timelength (length (format nil "~,2f" maxtime)))
+	       (idlength (- 79 4 statuslength dplength timelength 4)))
 	  (dolist (decl decls-tried)
 	    (format out "~%    ~v,1,0,'.a~19a [~a](~a s)"
 	      idlength
@@ -1604,7 +1609,7 @@
 		  (decision-procedure-used decl)
 		  "Untried")
 	      (if (run-proof-time decl)
-		  (format nil "~v,2,-3f" timelength (run-proof-time decl))
+		  (format nil "~v,2f" timelength (run-proof-time decl))
 		  (format nil "~v<n/a~>" timelength))))
 	  (format out "~%    Totals: ~d formulas, ~d attempted, ~d succeeded ~
                        (~,2,-3f s)"
