@@ -961,6 +961,7 @@ messages in *Aborted Commands*."
       (set-buffer buffer)
       (insert text)
       (set-buffer-modified-p nil)))
+  (ilisp-show-output (get-buffer buffer))
   text)
 ;; Perhaps this should use ilisp-display-output.
 
