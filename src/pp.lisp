@@ -1,13 +1,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; pp.lisp -- 
+;; pp.lisp -- The PVS prettyprinter
 ;; Author          : Sam Owre
 ;; Created On      : Thu Oct 29 23:19:42 1998
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Tue Jan 26 18:34:54 1999
 ;; Update Count    : 8
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -522,6 +520,16 @@ bind tighter.")
 ;;; (defmethod pp* ((constr constructor-with-subtype)))
 
 (defmethod pp* ((te enumtype))
+  (write (id te))
+  (write-char #\:)
+  (write-char #\space)
+  (pprint-newline :fill)
+  (write 'TYPE)
+  (write-char #\space)
+  (pprint-newline :miser)
+  (write-char #\=)
+  (write-char #\space)
+  (pprint-newline :fill)
   (pprint-logical-block (nil (constructors te) :prefix "{" :suffix "}")
     (pprint-indent :block 0)
     (loop (write (id (pprint-pop)))
@@ -1373,6 +1381,22 @@ bind tighter.")
 	(pp* (argument ex)))
     (write-char #\`)
     (write (id ex))))
+
+(defmethod pp* ((ex fieldex))
+  (pprint-logical-block (nil nil)
+    (write-char #\`)
+    (write (id ex))
+    (when (actuals ex)
+      (pprint-newline :fill)
+      (pp-actuals (actuals ex)))))
+
+(defmethod pp* ((ex projex))
+  (pprint-logical-block (nil nil)
+    (write-char #\`)
+    (write (index ex))
+    (when (actuals ex)
+      (pprint-newline :fill)
+      (pp-actuals (actuals ex)))))
 
 (defmethod pp* ((ex implicit-conversion))
   (if *show-conversions*
