@@ -3386,10 +3386,10 @@ space")
 	  (or (declared-type-string decl)
 	      (setf (declared-type-string decl)
 		    (unparse (or (declared-type decl)
-				 (type decl)) :string t))))    ;; dave_sc fix for skolem-const-decl
+				 (type decl)) :string t))))
 	(when (module decl) (id (module decl)))
 	(when (typep (module decl) 'library-theory)
-	  (library (module decl)))))
+	  (lib-ref (module decl)))))
 
 (defmethod sexp ((theory module))
   (list (id theory)
