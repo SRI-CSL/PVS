@@ -338,10 +338,6 @@
 	      ptypes)))))
     
 
-
-;;; Numbers - because of the way they are loaded, we give them the smallest
-;;; type that is available (see load-predefined-modules)
-
 (defmethod typecheck* ((expr number-expr) expected kind arguments)
   (declare (ignore expected kind))
   ;;(assert (typep *number* 'type-expr))
@@ -350,7 +346,9 @@
       (change-class expr 'name-expr
 		    'id (number expr)
 		    'resolutions reses))
-    (setf (types expr) (cons *real* (mapcar #'type reses)))))
+    (assert *number_field*)
+    (setf (types expr)
+	  (cons (or *real* *number_field*) (mapcar #'type reses)))))
 
 (defun available-numeric-type (num)
   (or (unless (zerop num) *posint*)
@@ -1437,20 +1435,21 @@
 ;;;  LAMBDA (x:T): IF a(x) THEN b(x) ELSE c(x) ENDIF : [T -> int]
 (defmethod application-conversion-argument (arg conv vars)
   (declare (ignore conv vars))
-;;   (let ((var1 (find-if #'(lambda (v)
-;; 			   (every #'(lambda (ty)
-;; 				      (let ((sty (find-supertype ty)))
-;; 					(and (funtype? sty)
-;; 					     (tc-eq (type v) (domain sty)))))
-;; 				  (ptypes arg)))
-;; 		vars)))
-;;     (if var1
-;; 	(let ((ac (make-instance 'argument-conversion
-;; 		    'operator arg
-;; 		    'argument var1)))
-;; 	  (typecheck* ac nil nil nil))
-;; 	arg))
-  arg)
+  (let ((var1 (find-if #'(lambda (v)
+			   (every #'(lambda (ty)
+				      (let ((sty (find-supertype ty)))
+					(and (funtype? sty)
+					     (tc-eq (type v) (domain sty)))))
+				  (ptypes arg)))
+		vars)))
+    (if var1
+	(let ((ac (make-instance 'argument-conversion
+		    'operator arg
+		    'argument var1)))
+	  (typecheck* ac nil nil nil))
+	arg))
+  ;;arg
+  )
 
 (defmethod type-mismatch-error (expr)
   (let ((exprstr (unpindent expr 4 :string t)))
