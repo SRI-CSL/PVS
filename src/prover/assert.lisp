@@ -103,22 +103,25 @@
 	   (dpi-pop-state *dp-state*)
 	   (values '! nil (list 'dependent-decls *dependent-decls*)))
 	  (t (multiple-value-bind
-		 (signal subgoal)
+		 (qsignal qsubgoal)
 		 (sequent-reduce-around
 		  (if (eq signal 'X) sequent subgoal)
 		  #'(lambda (sform) (assert-sform sform rewrite-flag))
 		  quant-sformnums)
-	       (cond ((eq signal '!)
+	       (cond ((eq qsignal '!)
 		      (dpi-pop-state *dp-state*)
 		      (values '! nil (list 'dependent-decls *dependent-decls*)))
 		     (t (multiple-value-bind
 			    (newsignal newsubgoal)
 			    (if (eq *assert-flag* 'record)
 				(values 'X
-					(if (eq signal 'X) sequent subgoal))
+					(if (and (eq signal 'X)
+						 (eq qsignal 'X))
+					    sequent qsubgoal))
 				(sequent-reduce-around
-				 (if (eq signal 'X) sequent
-				     subgoal)
+				 (if (and (eq signal 'X)(eq qsignal 'X))
+				     sequent
+				     qsubgoal)
 				 #'(lambda (sform)
 				     (assert-sform sform
 						   rewrite-flag
@@ -127,14 +130,12 @@
 			  (cond ((eq newsignal '!)
 				 (dpi-pop-state *dp-state*)
 				 (values '! nil (list 'dependent-decls *dependent-decls*)))
-				((and (eq signal 'X)(eq newsignal 'X))
+				((and (eq signal 'X)(eq qsignal 'X)(eq newsignal 'X))
 				 (values 'X nil nil))
 				(t 
 				 (values
 				  '?
-				  (list (cons (if (eq newsignal 'X)
-						  subgoal
-						  newsubgoal)
+				  (list (cons newsubgoal 
 					      (list 'rewrite-hash *rewrite-hash*
 						    'subtype-hash *subtype-hash*
 						    'dependent-decls *dependent-decls*
