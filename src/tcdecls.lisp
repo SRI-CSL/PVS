@@ -159,9 +159,10 @@
   (when (formals decl)
     (type-error decl "Formals are not allowed in ~(~a~)s" (type-of decl)))
   ;;;(check-duplication decl)
-  (unless (library-of (library decl))
-    (type-error decl "Library ~a does not exist"
-		(lib-string decl))))
+  (multiple-value-bind (path msg)
+      (get-library-pathname (library decl))
+    (when msg
+      (type-error decl msg (lib-string decl)))))
 
 
 ;;; Module declarations
