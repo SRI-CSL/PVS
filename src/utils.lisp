@@ -268,7 +268,10 @@
 
 (defun get-decl (module id)
   (let* ((mod (if (typep module 'module) module (get-module module))))
-    (gethash id (declarations mod))))
+    (remove-if-not #'(lambda (d)
+		       (and (declaration? d)
+			    (eq (id d) id)))
+      (all-decls mod))))
 
 (defmethod get-module ((id symbol))
   (get-theory id))
@@ -570,46 +573,46 @@
 ;    (car (types expr))))
 
 
-(defmethod conjunction? ((expr application))
-  (with-slots ((op operator)) expr
-    (boolean-op? op '(and &))))
+; (defmethod conjunction? ((expr application))
+;   (with-slots ((op operator)) expr
+;     (boolean-op? op '(and &))))
 
-(defmethod conjunction? (expr)
-  (declare (ignore expr))
-  nil)
+; (defmethod conjunction? (expr)
+;   (declare (ignore expr))
+;   nil)
 
-(defmethod disjunction? ((expr application))
-  (with-slots ((op operator)) expr
-    (boolean-op? op '(or))))
+; (defmethod disjunction? ((expr application))
+;   (with-slots ((op operator)) expr
+;     (boolean-op? op '(or))))
 
-(defmethod disjunction? (expr)
-  (declare (ignore expr))
-  nil)
+; (defmethod disjunction? (expr)
+;   (declare (ignore expr))
+;   nil)
 
-(defmethod implication? ((expr application))
-  (with-slots ((op operator)) expr
-    (boolean-op? op '(implies =>))))
+; (defmethod implication? ((expr application))
+;   (with-slots ((op operator)) expr
+;     (boolean-op? op '(implies =>))))
 
-(defmethod implication? (expr)
-  (declare (ignore expr))
-  nil)
+; (defmethod implication? (expr)
+;   (declare (ignore expr))
+;   nil)
 
-(defmethod negation? ((expr application))
-  (with-slots ((op operator)) expr
-    (boolean-op? op '(not))))
+; (defmethod negation? ((expr application))
+;   (with-slots ((op operator)) expr
+;     (boolean-op? op '(not))))
 
-(defmethod negation? (expr)
-  (declare (ignore expr))
-  nil)
+; (defmethod negation? (expr)
+;   (declare (ignore expr))
+;   nil)
 
-(defmethod iff? ((expr application))
-  (with-slots ((op operator)) expr
-    (or (boolean-op? op '(iff <=>))
-	(boolean-equality-op? op))))
+; (defmethod iff? ((expr application))
+;   (with-slots ((op operator)) expr
+;     (or (boolean-op? op '(iff <=>))
+; 	(boolean-equality-op? op))))
 
-(defmethod iff? (expr)
-  (declare (ignore expr))
-  nil)
+; (defmethod iff? (expr)
+;   (declare (ignore expr))
+;   nil)
 
 (defmethod boolean-when-expr? ((expr application))
   (with-slots ((op operator)) expr
@@ -2702,6 +2705,7 @@ space")
 	       (= (arg-length argument) 2))
       (change-class new-expr 'infix-application)
       (incf (parens new-expr)))
+    (change-application-class-if-needed new-expr)
     new-expr))
 
 (defmethod change-application-class-if-necessary ((expr infix-application)
@@ -2711,6 +2715,7 @@ space")
 	      (not (= (arg-length argument) 2)))
       (change-class new-expr 'application)
       (setf (parens new-expr) 0))
+    (change-application-class-if-needed new-expr)
     new-expr))
 
 (defmethod change-application-class-if-necessary ((expr unary-application)
@@ -2720,6 +2725,7 @@ space")
 	      (not (= (arg-length argument) 1)))
       (change-class new-expr 'application)
       (setf (parens new-expr) 0))
+    (change-application-class-if-needed new-expr)
     new-expr))
 
 (defmethod unary-op? (expr)
