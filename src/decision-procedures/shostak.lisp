@@ -215,7 +215,7 @@
     (dp-union t1 t2 cong-state)
     (type-union t1 t2 cong-state)
     (loop for u in (use t1 cong-state) do
-	  ;;(break)
+	  (when (equality-p u) (break))
 	  (cond
 	   ((uninterp? u)
 	    (replace-term-in-sig t1 t2 u cong-state)
@@ -297,12 +297,19 @@
 (defun mk-term-cs (list)
   (mk-term list))
 
+(defun need-equality-use (eqn cong-state)
+  (let ((uses (use eqn cong-state)))
+    (loop for u in uses
+	  thereis (not (or (equality-p u)
+			   (negation-p u))))))
+
 (defun canonsig (w cong-state &optional (no-mod nil))
   (declare (notinline mk-term-cs))
   (cond
    ((interpsym? w) w)
-   ((equality-p w) w)
+   ;((and (equality-p w) (not (need-equality-use w cong-state))) w)
    ((application-p w)
+    ;(when (and (equality-p w) (need-equality-use w cong-state)) (break))
     (let ((ww (if (and (interp? w)
 		       (not (project-p w)))
 		 (or (sigma
@@ -373,7 +380,8 @@
   (declare (type node term)
 	   (type cong-state cong-state))
   (cond
-   ((equality-p term) term)
+   ;((and (equality-p term) (not (need-equality-use term cong-state))) term)
+   ;((equality-p term) term)
    ((application-p term)
     (map-args #'add-use (the application term)
 	      (the application term) (the cong-state cong-state)))
