@@ -972,7 +972,10 @@
   (let ((conversions nil))
     (dolist (conv (conversions *current-context*))
       (let ((nconv (compatible-operator-conversion conv optype args)))
-	(when nconv (push nconv conversions))))
+	(when (and nconv
+		   (not (member nconv (disabled-conversions *current-context*)
+				:key #'name :test #'tc-eq)))
+	  (push nconv conversions))))
     (nreverse conversions)))
 
 (defun compatible-operator-conversion (conversion optype args)
