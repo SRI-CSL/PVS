@@ -1640,7 +1640,7 @@ See also EXTENSIONALITY, APPLY-EXTENSIONALITY."
 			     (if (memq fnum '(* + -)) fnum
 				       (list fnum))))
 	 (fmla (loop for sf in sforms thereis
-		     (when (equality? (formula sf))
+		     (when (equation? (formula sf))
 		       (formula sf))))
 	 (lhs (when fmla (args1 fmla)))
 	 (rhs (when fmla (args2 fmla))))
@@ -1897,7 +1897,7 @@ introduce a duplicate formula."
   (let ((terms (if (listp terms) terms (list terms)))
 	(fnum (find-sform (s-forms (current-goal *ps*)) fnum
 			   #'(lambda (sform)
-			      (if (not-expr? (formula sform))
+			      (if (negation? (formula sform))
 				  (check-inst-quant (args1 (formula sform))
 						    terms NIL)
 				  (check-inst-quant (formula sform)
@@ -1906,7 +1906,7 @@ introduce a duplicate formula."
 					   fnum))
 			(fmla (when sforms (formula (car sforms)))))
 		    (when fmla
-		      (if (not-expr? fmla)
+		      (if (negation? fmla)
 			  (bindings (args1 fmla))
 			  (bindings fmla))))))
     (if fnum
@@ -1929,7 +1929,7 @@ quantified formula."
   (let ((terms (if (listp terms) terms (list terms)))
 	(fnum (find-sform (s-forms (current-goal *ps*)) fnum
 			   #'(lambda (sform)
-			      (if (not-expr? (formula sform))
+			      (if (negation? (formula sform))
 				  (check-inst-quant (args1 (formula sform))
 						    terms NIL)
 				  (check-inst-quant (formula sform)
@@ -1938,7 +1938,7 @@ quantified formula."
 					   fnum))
 			(fmla (when sforms (formula (car sforms)))))
 		    (when fmla
-		      (if (not-expr? fmla)
+		      (if (negation? fmla)
 			  (bindings (args1 fmla))
 			  (bindings fmla))))))
     (if fnum
@@ -2427,19 +2427,19 @@ found. "
 			  
 
 (defun conjuncts (fmla)
-  (cond ((not-expr? fmla)
+  (cond ((negation? fmla)
 	 (mapcar #'negate  (disjuncts (args1 fmla))))
-	((and-expr? fmla)
+	((conjunction? fmla)
 	 (nconc (conjuncts (args1 fmla))
 		 (conjuncts (args2 fmla))))
 	(t (list fmla))))
 
 (defun disjuncts (fmla)
-  (cond ((not-expr? fmla)
+  (cond ((negation? fmla)
 	 (mapcar #'negate (conjuncts (args1 fmla))))
-	((or-expr? fmla)
+	((disjunction? fmla)
 	 (nconc (disjuncts (args1 fmla))(disjuncts (args2 fmla))))
-	((implies-expr? fmla)
+	((implication? fmla)
 	 (nconc (conjuncts (args1 fmla))(disjuncts (args2 fmla))))
 	(t (list fmla))))
 	 
@@ -2452,10 +2452,10 @@ found. "
     
 (defun check-forward-formula (fmla)
   (let* ((body (forall-body* fmla))			      
-	 (antec (when (implies-expr? body)
+	 (antec (when (implication? body)
 		  (args1 body)))
 	 (antec-fmlas (when antec (conjuncts antec)))
-	 (conc (if (implies-expr? body) (args2 body) body)))
+	 (conc (if (implication? body) (args2 body) body)))
     (if (subsetp (freevars conc)(freevars antec-fmlas)
 		 :test #'tc-eq)
 	(cons conc antec-fmlas)
@@ -3024,7 +3024,7 @@ in the given fnums."
 (defun gather-fnums* (seq yesnums nonums
 		       pred pos neg)
    (cond ((null seq) nil)
-	 ((not-expr? (formula (car seq)))
+	 ((negation? (formula (car seq)))
 	  (if (and (in-sformnums? (car seq) pos neg yesnums)
 		   (not (in-sformnums? (car seq) pos neg nonums))
 		   (funcall pred (car seq)))
@@ -3047,10 +3047,10 @@ in the given fnums."
 ;;for converting (dis)equalities on compound types to their
 ;;component equalities.
 
-(defun disequality? (expr)(inequality? expr))
+(defun disequality? (expr)(disequation? expr))
 
 (defun decomposable-equality? (fmla)
-  (and (or (equality? fmla)
+  (and (or (equation? fmla)
 	   (disequality? fmla))
        (or (typep (find-supertype
 		   (type (args1 fmla)))
@@ -3065,16 +3065,16 @@ in the given fnums."
 	(fm (find-if
 		#'(lambda (sf)
 		    (or (decomposable-equality? (formula sf))
-			(and (not-expr? (formula sf))
+			(and (negation? (formula sf))
 			     (decomposable-equality? (args1 (formula sf))))))
 	      sforms))
 	(ffm (when fm (formula fm)))
 	(equality? (when fm
-		     (or (equality? ffm)
-			 (and (not-expr? ffm)
-			      (inequality? (args1 ffm))))))
+		     (or (equation? ffm)
+			 (and (negation? ffm)
+			      (disequation? (args1 ffm))))))
 	(fmla (when fm
-		(if (not-expr? ffm)
+		(if (negation? ffm)
 		    (args1 ffm)
 		    ffm)))
 	(lhs (when fmla (args1 fmla)))
@@ -3192,7 +3192,7 @@ invokes apply-extensionality.  Otherwise it decomposes the
 (defun inductive-antecedent? (rel)
   #'(lambda (x)
       (let ((xf (formula x)))
-	(and (not-expr? xf)
+	(and (negation? xf)
 	     (name-expr? (operator* (args1 xf)))
 	     (same-id (operator* (args1 xf))
 		      rel)
@@ -3255,7 +3255,7 @@ skolem constants for the induction scheme to make sense."
 						  y #'constant?)))))
 			      (all-antec-fmlas
 			       (loop for sf in sforms
-				     when (and (not-expr? (formula sf))
+				     when (and (negation? (formula sf))
 					       (intersection
 						pred-constants
 						(collect-subterms (formula sf)
@@ -3266,7 +3266,7 @@ skolem constants for the induction scheme to make sense."
 						   all-antec-fmlas))
 			      (conseq-fmlas
 			       (loop for sf in sforms
-				     when (and (not (not-expr? (formula sf)))
+				     when (and (not (negation? (formula sf)))
 					       (intersection
 						pred-constants
 						(collect-subterms (formula sf)
@@ -3310,7 +3310,7 @@ skolem constants for the induction scheme to make sense."
 						       (s-forms (current-goal *ps*))
 						       '*
 						       #'(lambda (x)
-							   (or (and (not-expr? x)
+							   (or (and (negation? x)
 								    (memq (args1 x) old-fmlas))
 							       (memq x old-fmlas))))))
 					   (hide :fnums fnums)))))))))))))

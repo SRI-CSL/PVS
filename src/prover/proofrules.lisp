@@ -26,7 +26,7 @@
   (loop for sform in sformlist
 	thereis
 	(if (funcall pred sform pos neg)
-	    (if (not-expr? (formula sform)) neg pos)
+	    (if (negation? (formula sform)) neg pos)
 	    nil)))
 	
 
@@ -34,7 +34,7 @@
 (defun sform-reduce (sformlist simplifier sformnums pos neg)
   (if (null sformlist) (values 'X NIL)
     (let* ((x (car sformlist))
-	   (sign (not (not-expr? (formula x)))))
+	   (sign (not (negation? (formula x)))))
       (multiple-value-bind
 	    (signal result)
 	  (if (in-sformnums? x pos neg sformnums)
@@ -67,7 +67,7 @@
 				       (or
 					(tc-eq formula
 					       *false*)
-					(and (not-expr?
+					(and (negation?
 					      formula)
 					     (tc-eq (args1
 						     formula)
@@ -144,7 +144,7 @@
 		  ((implication? formula)
 		   (nconc (simplify-disjunct (negate (args1 formula)) depth)
 			  (simplify-disjunct (args2 formula) depth)))
-		  ((inequality? formula)
+		  ((disequation? formula)
 		   (list (negate (make-equality (args1 formula)(args2 formula)))))
 		  ((negation? formula)
 		   (let ((arg (args1 formula)))
@@ -154,7 +154,7 @@
 				(loop for argum in (arguments arg)
 				      nconc (simplify-disjunct (negate argum)
 							       depth)))
-			       ((inequality? arg)
+			       ((disequation? arg)
 				(list (make-equality (args1 arg)(args2 arg))))
 			       ((negation? arg)
 				(simplify-disjunct (args1 arg) depth))
@@ -250,7 +250,7 @@
 (defun lift-if (ps sform)
   (let* ((formula (formula sform))
 	 (conds (top-collect-conds formula))
-	 (body (if (not-expr? formula) (args1 formula) formula))
+	 (body (if (negation? formula) (args1 formula) formula))
 	 (*top-simplify-ifs-hash*
 	  (make-hash-table :test #'eq));;faster than pvs-hash.(NSH:10.19.94)
 ;	  (make-pvs-hash-table :hashfn #'pvs-sxhash
@@ -261,14 +261,14 @@
 	    (values '? (lcopy sform 'formula
 			      (let ((newbody
 				     (translate-cases-to-if body)))
-				(if (not-expr? formula)
+				(if (negation? formula)
 				    (negate newbody)
 				    newbody))))
 	    (values 'X sform))
 	(values '?
 		(lcopy sform
 		  'formula
-		  (typecheck (if (not-expr? formula)
+		  (typecheck (if (negation? formula)
 				 (negate if-expr)
 				 if-expr)
 		    :expected *boolean* :context
@@ -277,17 +277,17 @@
 (defun truecond? (cond trueconds falseconds)   ;;NSH(9.27.95)
   (or (equal cond *true*)
       (member cond trueconds :test #'tc-eq)
-      (and (equality? cond)
+      (and (equation? cond)
 	   (tc-eq (args1 cond)(args2 cond)))
-      (and (not-expr? cond)
+      (and (negation? cond)
 	   (member (args1 cond) falseconds :test #'tc-eq))))
 
 (defun falsecond? (cond trueconds falseconds)  ;;NSH(9.27.95)
   (or (equal cond *false*)
       (member cond falseconds :test #'tc-eq)
-      (and (not-expr? cond)
+      (and (negation? cond)
 	   (or (member (args1 cond) trueconds :test #'tc-eq)
-	       (and (equality? (args1 cond))
+	       (and (equation? (args1 cond))
 		    (tc-eq (args1 (args1 cond))
 			   (args2 (args1 cond))))))))
 
@@ -525,7 +525,7 @@
 	(collect-conds nexpr))))
 
 (defmethod top-collect-conds ((expr expr))
-  (if (not-expr? expr)
+  (if (negation? expr)
       (top-collect-conds (args1 expr))
       (collect-conds expr)))
 
@@ -1095,8 +1095,8 @@ or supply more substitutions."
 
 (defun iff-sform (sform ps)
   (let ((fmla (formula sform)))
-    (cond ((and (not-expr? fmla)
-	       (equality? (args1 fmla))
+    (cond ((and (negation? fmla)
+	       (equation? (args1 fmla))
 	       (tc-eq (type (args1 (args1 fmla))) *boolean*)
 	       (tc-eq (type (args2 (args1 fmla))) *boolean*))
 	  (values '? (lcopy sform
@@ -1106,7 +1106,7 @@ or supply more substitutions."
 					      (args2 (args1 fmla))))
 			    :expected *boolean*
 			    :context *current-context*))))
-	  ((and (equality? fmla)
+	  ((and (equation? fmla)
 		(tc-eq (type  (args1 fmla)) *boolean*)
 	       (tc-eq (type (args2  fmla)) *boolean*))
 	   (values '? (lcopy sform 'formula

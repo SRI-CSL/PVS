@@ -28,7 +28,7 @@
   (let* ((fmla (formula sform))
 	 (newfmla (if (memq rewrite-flag '(LR RL))
 		      (if (and (negation? fmla)
-			       (equality? (args1 fmla)))
+			       (equation? (args1 fmla)))
 			  (lcopy fmla
 			    'argument
 			    (lcopy (args1 fmla)

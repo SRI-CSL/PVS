@@ -40,8 +40,8 @@
 		  (fmla (formula sform))
 		  ;;(freevars-fmla (freevars fmla))
 		  (lhs
-		   (if  (not-expr? fmla)
-			(if (or (equality? (args1 fmla))
+		   (if  (negation? fmla)
+			(if (or (equation? (args1 fmla))
 				(iff-or-boolean-equation? (args1 fmla)))
 			    (if (eq direction 'RL)
 				(args2 (args1 fmla))
@@ -49,8 +49,8 @@
 			    (args1 fmla))
 			fmla))
 		  (rhs
-		   (if  (not-expr? fmla)
-			(if (or (equality? (args1 fmla))
+		   (if  (negation? fmla)
+			(if (or (equation? (args1 fmla))
 				(iff-or-boolean-equation? (args1 fmla)))
 			    (if (eq direction 'RL)
 				(args1 (args1 fmla))
@@ -99,7 +99,7 @@
   (let ((*replace-cache*
 	 (make-hash-table :test #'eq)))
     (if (null sforms) nil
-	(if (not-expr? (formula (car sforms)))
+	(if (negation? (formula (car sforms)))
 	    (if (or (eq sformnum neg)
 		    (not (in-sformnums? (car sforms) pos neg sformnums)))
 		(cons (car sforms)
