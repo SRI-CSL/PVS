@@ -143,20 +143,24 @@
 		  (cdr x)))))
 	 (mu-output (run-pvsmu mu-formula dynamic-ordering?))
 	 (list-of-conjuncts (translate-from-bdd-list  
-			     (bdd_sum_of_cubes mu-output 1))) 
-	 (lit-list (mapcar #'(lambda (conj)
-			       (mapcar #'(lambda (lit)
-					   (if (consp lit)
-					     (gethash (car lit) *bdd-pvs-hash*)
-					     (make-negation
-						(gethash lit *bdd-pvs-hash*))))
-				 conj))
-		     list-of-conjuncts))
-	 )
+			     (bdd_sum_of_cubes mu-output 1)))
+         (lit-list (from-bdd-list-to-pvs-list list-of-conjuncts)))
     (add-bdd-subgoals ps sforms lit-list remaining-sforms)
     )
   )
 
+;;
+;; Initialization of hashtables with *true* and *false*
+;; 
+
+(defun init-bdd-pvs-hash ()
+ (setf (gethash *true* *bdd-pvs-hash*) *true*)
+ (setf (gethash *false* *bdd-pvs-hash*) *false*)
+)
+
+(defun init-hash-tables ()
+ (init-bdd-pvs-hash)
+)
 
 ;;
 ;;
@@ -169,6 +173,8 @@
    (set_mu_warnings 0)
    (set_mu_simplify_frontier 1)
    (set_mu_verbose 1)
+   (init-hash-tables)
+;;   (pvs-message "goes in for model-check")
    (mu-interpret-formula mu-formula)
  )
 
@@ -1233,10 +1239,7 @@
 
 
 (defun mu-make-bool-var (bvarname)
- (pvs-message "goes in")
-;;  (mu_check_bool_var bvarname)
-  (pvs-message "never come back")
- (mu_check_mk_bool_var bvarname)
+  (mu_check_mk_bool_var bvarname)
 )
 
 ;;
