@@ -229,10 +229,12 @@
 		 (mk-mapping
 		  (mk-name (id d) nil nil res)
 		  (if map
+		      (rhs map)
 		      (typecase d
 			(type-decl (mk-type-name (id d) nil nil res))
 			(module (mk-modname (id d)))
-			(t (mk-name-expr (id d) nil nil res)))))))
+			(t (mk-name-expr (id d) nil nil res)))
+		      ))))
      (interpretable-declarations source-theory))
 ;    (mapcar #'(lambda (d)
 ; 	       (let ((map (find d (mappings thname)
@@ -299,7 +301,15 @@
 					   source-theory)
 			nil)))
     (acons decl rhs
-	   (append pre-bindings bindings))))
+	   (append (mapcar #'(lambda (x)
+			       (let ((interp
+				      (assq (car x)
+					    (mapping interpreted-theory))))
+				 (if interp
+				     (cons (cdr interp) (cdr x))
+				     x)))
+		     pre-bindings)
+		   bindings))))
 
 (defmethod make-subst-mod-params-map-bindings* (decl rhs bindings)
   (acons decl rhs bindings))

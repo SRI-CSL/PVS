@@ -253,13 +253,12 @@
 				    (actuals inst) nil))
 	  (t (typecheck-mappings (mappings inst) inst)
 	     (setq nmodinst (set-type-actuals inst))))
-    (when (some #'(lambda (m) (mod-decl? (declaration (lhs m))))
-		(mappings nmodinst))
-      (type-error inst
-	"IMPORTINGs with theory interpretations is not allowed - use a theory declaration instead"))
     (add-to-using nmodinst)
     (unless (eq nmodinst inst)
       (pushnew inst (gethash (get-theory inst) (current-using-hash))))
+    (when (some #'(lambda (m) (mod-decl? (declaration (lhs m))))
+		(mappings nmodinst))
+      (add-theory-mappings-importings mod nmodinst))
     (when (some #'formal-theory-decl? (formals mod))
       (add-theory-parameters-importings mod nmodinst))
     (unless *ignore-exportings*
@@ -277,6 +276,16 @@
 			      (get-theory (expr act)))))
 	  (formals-sans-usings theory)
 	  (actuals inst))))
+
+(defun add-theory-mappings-importings (theory inst)
+  (mapc #'(lambda (map)
+	    (when (mod-decl? (declaration (lhs map)))
+	      (add-to-using (mk-modname (id (expr (rhs map)))
+			      (actuals (expr (rhs map)))
+			      (library (expr (rhs map)))
+			      (mappings (expr (rhs map))))
+			    (get-theory (expr (rhs map))))))
+	(mappings inst)))
 
 (defmethod typecheck-using* ((adt recursive-type) inst)
   (let* ((th1 (adt-theory adt))
