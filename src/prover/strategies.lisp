@@ -1755,9 +1755,16 @@ See also EXTENSIONALITY, APPLY-EXTENSIONALITY."
 		    (fnum (if fnums (car fnums) nil)))
 		(if (and hide? fnum) (delete fnum) (skip)))
 	      (assert))
-	     (skip-msg "Couldn't find a suitable extensionality rule."))
+	     (let ((msg (format nil
+			    "Couldn't find a suitable extensionality rule ~
+                             for formula ~a"
+			  (car (gather-fnums sforms fnum nil
+					     #'(lambda (x)
+						 (tc-eq (formula x) fmla)))))))
+	       (skip-msg msg)))
 	(skip-msg "Couldn't find suitable formula for applying extensionality.")))
-  "Tries to prove an equality indicated by FNUM via extensionality.
+  "Tries to prove an equality indicated by FNUM via extensionality.  Note that
+if FNUM is not given, then the first consequent that is an equation is used.
 If KEEP? is T, the equality is retained as an antecedent.
 If HIDE? is T, the equality formula to which extensionality is applied,
 is hidden.
