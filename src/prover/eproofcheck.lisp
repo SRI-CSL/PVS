@@ -3,12 +3,11 @@
 ;; Author          : N. Shankar
 ;; Created On      : Thu Apr  2 21:12:58 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Jan 22 18:56:13 1999
-;; Update Count    : 10
-;; Status          : Beta test
-;; 
-;; HISTORY
+;; Last Modified On: Thu May 20 21:07:07 2004
+;; Update Count    : 11
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -84,7 +83,7 @@
 		      (copy-prover-context)
 		      (setf (declarations-hash *current-context*)
 			    (copy (current-declarations-hash)))
-		      (put-decl skdecl (current-declarations-hash))
+		      (put-decl skdecl)
 		      (make!-application (typecheck (pc-parse sk-id 'expr)
 					   :expected ftype)
 					 expr))))
@@ -1750,6 +1749,14 @@
 			(decf *ruletracedepth*)
 			(format t "~%~vT Exit: ~a -- Proved subgoal"
 			  *ruletracedepth* name ))
+		      (when (eq (car (rule-input topstep)) 'apply)
+			(let ((timeout-sect
+			       (memq :timeout (rule-input topstep))))
+			  (when timeout-sect
+			    (setf (rule-input topstep)
+				  (append (ldiff (rule-input topstep)
+						 timeout-sect)
+					  (cddr timeout-sect))))))
 		      (setf (status-flag ps) '!      
 			    (current-rule ps) (rule-input topstep)
 			    (parsed-input ps) (sublis (remove-if #'null
@@ -1869,6 +1876,20 @@
 				(format t "~%~vT Exit: ~a -- ~a subgoal(s) generated."
 				  *ruletracedepth* name (length subgoal-proofstates)))
 			      (push-references *tccforms* ps)
+			      (when (eq (car (rule-input topstep)) 'apply)
+				(let* ((rinput (rule-input topstep))
+				       (mtimeout (memq :timeout rinput)))
+				  (if mtimeout
+				      ;; Given by keyword
+				      (setf (rule-input topstep)
+					    (append (ldiff rinput mtimeout)
+						    (cddr mtimeout)))
+				      ;; Positional
+				      (when (and (not (some #'keywordp rinput))
+						 (> (length rinput) 4))
+					(assert (= (length rinput) 5))
+					(setf (rule-input topstep)
+					      (butlast rinput))))))
 			      (setf (status-flag ps) '?
 				    (current-rule ps) (rule-input topstep)
 				    (parsed-input ps) (sublis (remove-if #'null
@@ -2072,8 +2093,8 @@
 ;    (break "bad ps"))
   (let ((allsubgoals (append subgoals tcc-subgoals))
 	(proof-dependent-decls
-	 (append (dependent-decls proofstate)
-		 (proof-dependent-decls proofstate))))
+	 (union (dependent-decls proofstate)
+		(proof-dependent-decls proofstate))))
 ;;    (cond ((consp allsubgoals)))
     (loop for goal in allsubgoals
 	  as goalnum from 1
@@ -2249,22 +2270,22 @@
 				 (xrule justif)
 				 (rule justif))))
 	   (format-if "~%Rerunning step: ~s" (format-rule top-rule-in t))
-	   (if nil ;(and (consp top-rule-in)
-		    ;(not (step-or-rule-defn (car top-rule-in))))
+	   (if nil ;;(and (consp top-rule-in)
+	           ;;     (not (step-or-rule-defn (car top-rule-in))))
 	       (rerun-step (when (subgoals justif)
-			       (car (subgoals justif)))
+			     (car (subgoals justif)))
 			   recheck? break?)
 	       (let ((top-rule `(let ((x (retypecheck-sexp (quote ,top-rule-in)
 							   *ps*)))
-				 x))
-		      (subgoal-strategy
-		       (loop for subjustif in
-			     (sort (subgoals justif) #'mystring<=
-				   :key #'label)
-			     collect `(let ((strat (rerun-step (quote
-								,subjustif) ,recheck? ,break?)))
+				  x))
+		     (subgoal-strategy
+		      (loop for subjustif in
+			    (sort (subgoals justif) #'mystring<=
+				  :key #'label)
+			    collect `(let ((strat (rerun-step (quote
+							       ,subjustif) ,recheck? ,break?)))
 				       strat)))
-		       )
+		     )
 		 (if break?
 		     `(spread! ,top-rule ,subgoal-strategy)
 		     `(spread@ ,top-rule ,subgoal-strategy))))))
@@ -3451,10 +3472,10 @@
     (if newline-position
 	(let ((preline (subseq comment-string 0 newline-position))
 	      (postline (subseq comment-string (1+ newline-position))))
-	  (format nil ";;;~a~%~a"
+	  (format nil ";;; ~a~%~a"
 	    preline
 	    (semi-colonize postline)))
-	(format nil ";;;~a" comment-string))))
+	(format nil ";;; ~a" comment-string))))
 
 (defun comment-step (string)
   #'(lambda (ps)
