@@ -736,10 +736,10 @@
 	     ;;; added to the ineqpot.
 
 	     (loop for chainineq in (chainineqs ineq) do ;;with (norm) do
-		   (let ((chainineq `(,(funsym chainineq)
+		   (let* ((chainineq `(,(funsym chainineq)
 				      ,(arg1 chainineq)
 				      ,(arithcan (arg2 chainineq))))
-			 (norm (normineq (residue ineq chainineq))))
+			  (norm (normineq (residue ineq chainineq))))
 		   (cond
 		    ((eq norm 'true)
 		     (add-disjunct-of-equals ineq chainineq))
