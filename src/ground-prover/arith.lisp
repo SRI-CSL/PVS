@@ -524,8 +524,8 @@
 		     (newarg2 (when check
 				   (cancel-reciprocal (arg2 norm) divterms)))
 				   ;(arg2 norm)
-		     (newlits (when check
-				  (solvecan `(equal ,newhead ,newarg2)))))
+		     (newlits (when check ;;NSH(8-27-03) was solvecan
+				  (solve `(equal ,newhead ,newarg2)))))
 		(if check
 		    newlits
 ; 		    (if (and (singleton? newlits)
@@ -572,7 +572,9 @@
 		 ((eq norm false) *truecons*)
 		 (t (let ((eqlits (equalsolve lit)))
 		      (if (singleton? eqlits)
-			  `((nequal ,(arg1 (car eqlits)) ,(arg2 (car eqlits))))
+			  (if (eq (car eqlits) false);;NSH(8-27-03)
+			      *truecons*
+			  `((nequal ,(arg1 (car eqlits)) ,(arg2 (car eqlits)))))
 			`((nequal ,(arg1 norm) ,(arg2 norm)))))))))))))
 
 (defun isneqzero? (x)
