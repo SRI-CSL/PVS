@@ -93,8 +93,7 @@
     (fv-union frees-bindlist diff)))
 
 (defmethod freevars* ((expr name-expr))
-  (with-slots (kind type resolutions free-variables) expr
-    (assert kind)
+  (with-slots (type resolutions free-variables) expr
     (if (variable? expr)
 	(let ((tfrees (freevars* type)))
 	  (cons (copy expr) tfrees))
@@ -105,7 +104,6 @@
     (freevars* (actuals module-instance))))
 
 (defmethod freevars* ((expr field-name-expr))
-  (assert (kind expr))
   (if (variable? expr)
       (let ((tfrees (freevars* (type expr))))
 	(cons expr tfrees))
