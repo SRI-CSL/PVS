@@ -5,6 +5,7 @@
 (defvar *newdc* nil) ;;needs to be set to T to get new ground prover
 ;;(defvar *bindings* nil)
 
+(defvar *translate-rewrite-rule* nil)
 
 (defvar *dc-interpretations*
   `((true . ,dp::*true*)
@@ -136,6 +137,7 @@
 		      (dp::mk-constant nvar)));;coercion needed 
 		)))))  ;;regardless of type:(all (x:foo):..)/=(all (x:bar)..)
 
+
 (defun dc-unique-prover-name (expr)
   (cond ((constant? expr) ;;NSH(2.16.94): changed to deal with Ricky's
 	                  ;;soundness bug where actuals are ignored.
@@ -167,7 +169,9 @@
 	     (add-to-prtype-hash  newconst expr))
 	   newconst))
 	(t (add-to-local-prtype-hash (id expr) expr)
-	   (dp::mk-variable (id expr)))))
+	   (if *translate-rewrite-rule*
+	       (dp::mk-variable (id expr))
+	       (dp::mk-constant (id expr))))))
 
 ;(defmethod normalize-name-expr-actuals ((expr name-expr))
 ;  (with-slots (resolutions) expr
