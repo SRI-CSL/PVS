@@ -119,70 +119,17 @@ required a context.")
 (defmethod reset-generate-tccs ((ex expr))
   (if (or (eq *generate-tccs* 'none)
 	  (and *in-checker*
-	       (tc-eq (find-supertype (type ex)) *boolean*)
-	       (member ex (unguarded-bexprs-of-current-sequent *ps*)
+	       *ps*
+	       ;;(tc-eq (find-supertype (type ex)) *boolean*)
+	       (member ex (collect-all-subexprs-with-implicit-typepreds
+			   (s-forms (current-goal *ps*)))
 		       :test #'tc-eq)))
       'none
       *generate-tccs*))
 
 (defmethod reset-generate-tccs (ex)
+  (declare (ignore ex))
   *generate-tccs*)
-
-(defmethod unguarded-bexprs-of-current-sequent ((ps proofstate))
-  (unguarded-bexprs-of-current-sequent (current-goal ps)))
-
-(defmethod unguarded-bexprs-of-current-sequent ((seq sequent))
-  (unguarded-bexprs-of-current-sequent (s-forms seq)))
-
-(defmethod unguarded-bexprs-of-current-sequent ((list list))
-  (unguarded-bexprs-of-current-sequent-list list nil))
-
-(defun unguarded-bexprs-of-current-sequent-list (list lits)
-  (if (null list)
-      lits
-      (let ((nlits (unguarded-bexprs-of-current-sequent (car list))))
-	(unguarded-bexprs-of-current-sequent-list
-	 (cdr list)
-	 (union nlits lits :test #'tc-eq)))))
-
-(defmethod unguarded-bexprs-of-current-sequent ((form s-formula))
-  (unguarded-bexprs-of-current-sequent (formula form)))
-
-(defmethod unguarded-bexprs-of-current-sequent :around ((ex expr))
-  (assert (tc-eq (find-supertype (type ex)) *boolean*))
-  (let ((subexprs (call-next-method)))
-    (if (member ex subexprs :test #'tc-eq)
-	subexprs
-	(cons ex subexprs))))
-
-(defmethod unguarded-bexprs-of-current-sequent ((ex expr))
-  nil)
-
-(defmethod unguarded-bexprs-of-current-sequent ((ex negation))
-  (unguarded-bexprs-of-current-sequent (args1 ex)))
-
-(defmethod unguarded-bexprs-of-current-sequent ((ex conjunction))
-  (unguarded-bexprs-of-current-sequent (args1 ex)))
-
-(defmethod unguarded-bexprs-of-current-sequent ((ex disjunction))
-  (unguarded-bexprs-of-current-sequent (args1 ex)))
-
-(defmethod unguarded-bexprs-of-current-sequent ((ex implication))
-  (unguarded-bexprs-of-current-sequent (args1 ex)))
-
-(defmethod unguarded-bexprs-of-current-sequent ((ex iff-or-boolean-equation))
-  (union (unguarded-bexprs-of-current-sequent (args1 ex))
-	 (unguarded-bexprs-of-current-sequent (args2 ex))
-	 :test #'tc-eq))
-
-(defmethod unguarded-bexprs-of-current-sequent ((ex disequation))
-  (when (tc-eq (find-supertype (type (args1 ex))) *boolean*)
-    (union (unguarded-bexprs-of-current-sequent (args1 ex))
-	   (unguarded-bexprs-of-current-sequent (args2 ex))
-	   :test #'tc-eq)))
-
-(defmethod unguarded-bexprs-of-current-sequent ((ex branch))
-  (unguarded-bexprs-of-current-sequent (condition ex)))
 
 
 ;;; expand1 expands the top-level constant or application; it either
@@ -817,7 +764,7 @@ required a context.")
 (defun map-depends-on (map1 map2)
   (let ((d1 (declaration (lhs map1))))
     ;; uninterpreted type declarations can't possibly depend on anything
-    (unless (type-decl? d1)
+    (unless (typep d1 '(or type-decl datatype-or-module))
       (let ((d2 (declaration (lhs map2)))
 	    (refs (collect-references (type d1))))
 	(and (memq d2 refs) t)))))
@@ -839,6 +786,7 @@ required a context.")
     (set-type-lhs-mappings* (cdr mappings) thinst)))
 
 (defun set-type-lhs-mapping (map thinst)
+  (declare (ignore thinst))
   (let ((lhs (lhs map))
 	(rhs (rhs map)))
     (assert (resolutions lhs))
@@ -893,11 +841,11 @@ required a context.")
 	      (lhs map) (id unint))))))))
 
 ;; Checks to see if the obj has dependencies that are not properly mapped
-(defun safe-mappings? (obj theory theoryname)
-  (or (null (mappings theoryname))
-      (let ((imdecls (invalid-mapping-decls theory theoryname))
-	    (refs (collect-references obj)))
-	(some #'(lambda (r) (memq r imdecls)) refs))))
+;; (defun safe-mappings? (obj theory theoryname)
+;;   (or (null (mappings theoryname))
+;;       (let ((imdecls (invalid-mapping-decls theory theoryname))
+;; 	    (refs (collect-references obj)))
+;; 	(some #'(lambda (r) (memq r imdecls)) refs))))
 
 
 ;;; Use the mappings of the theory and theoryname to determine which
@@ -910,21 +858,21 @@ required a context.")
 ;;; If T and z are mapped (say to int and 0), then references to ny have
 ;;; problems since it is unclear what y maps to.
 
-(defun invalid-mapping-references (theory theoryname)
-  (when (mappings theoryname)
-    (let ((decls (all-decls theory))
-	  (unmapped-constants nil)
-	  (unmapped-types nil)
-	  (invalid-refs nil))
-      (dolist (decl decls)
-	(typecase decl
-	  ((or formal-decl var-decl) nil)
-	  (const-decl (if (interpretable? decl)
-			  (unless (member decl (mappings theoryname)
-					  :key #'(lambda (m)
-						   (declaration (lhs m))))
-			    (push decl unmapped-constants))
-			  ())))))))
+;; (defun invalid-mapping-references (theory theoryname)
+;;   (when (mappings theoryname)
+;;     (let ((decls (all-decls theory))
+;; 	  (unmapped-constants nil)
+;; 	  (unmapped-types nil)
+;; 	  (invalid-refs nil))
+;;       (dolist (decl decls)
+;; 	(typecase decl
+;; 	  ((or formal-decl var-decl) nil)
+;; 	  (const-decl (if (interpretable? decl)
+;; 			  (unless (member decl (mappings theoryname)
+;; 					  :key #'(lambda (m)
+;; 						   (declaration (lhs m))))
+;; 			    (push decl unmapped-constants))
+;; 			  ())))))))
 			    
 
 (defun has-mapping? (decl mappings)
@@ -2208,6 +2156,7 @@ required a context.")
 	   result))))
 
 (defun instantiable-operator-type (optype op args expected)
+  (declare (ignore op))
   (or (fully-instantiated? optype)
       *dont-worry-about-full-instantiations*
       (let* ((frees (free-params optype))
