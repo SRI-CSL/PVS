@@ -1597,6 +1597,10 @@
 	(mk-name '|null| nil '|list_adt|)
 	(mk-name '|null?| nil '|list_adt|)
 	(mk-name '|restrict| nil '|restrict|)
+	(mk-name '|length| nil '|list_props|)
+	(mk-name '|member| nil '|list_props|)
+	(mk-name '|nth| nil '|list_props|)
+	(mk-name '|append| nil '|list_props|)
 	))
 
 (defun same-primitive?  (n i)

@@ -35,6 +35,13 @@
 (defun pvs_|cons?| (x) (consp x))
 (defun pvs_|null?| (x) (null x))
 (defun pvs_|restrict| (f) f)
+(defun pvs_|length| (x) (length x))   ;; should this be list-length?
+(defun pvs_|member| (x) (member (svref x 0) (svref x 1)))
+(defun pvs_|nth| (x) (nth (svref x 1) (svref x 0)))
+(defun pvs_|append| (x) (append (svref x 0) (svref x 1)))
+(defun pvs_|reverse| (x) (reverse x))
+
+
 
 ;;multiary macro versions of primitives
 (defmacro pvs__= (x y)
@@ -81,9 +88,14 @@
 	   (ceiling ,xx ,yy)))))
 (defmacro pvs__|cons| (x y) `(cons ,x ,(the list y)))
 
+(defmacro pvs__|member| (x y) `(member ,x ,y))
+(defmacro pvs__|nth| (x y) `(nth ,y ,x))
+(defmacro pvs__|append| (x y) `(append ,x ,y))
+
 (defmacro project (index tuple)
   (let ((ind (1- index)))
     `(let ((val (svref ,tuple ,ind)))
        (if (eq val 'undefined)(undefined nil) val)   ;; what can we do here?
 	 )))
+
 

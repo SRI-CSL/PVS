@@ -36,40 +36,60 @@
   (eq (id (module-instance (resolution type))) '|list_adt|))
 
 (defmethod cl2pvs* (sexpr (type adt-type-name) context)
-  (let* ((recognizers (recognizers type))
-	 (recognizer-funs
-	  (if (list-type? type)
-	      (list #'null #'consp)
-	      (loop for rec in recognizers
-		    collect (lisp-function (declaration rec)))))
-	 (recognizer (loop for recfun in recognizer-funs
-			   as rec in recognizers
-			   thereis
-			   (and recfun
-				(funcall recfun
-					 sexpr)
-				rec))))
-    (if recognizer
-	(let* ((constructor (constructor recognizer))
-	       (accessors (accessors constructor))
-	       (accessor-funs
-		(if (list-type? type)
-		    (if (eq (id recognizer) '|cons?|)
-			(list #'car #'cdr)
-			nil)
+  (if (list-type? type)
+      (if (listp sexpr)
+	  (cl2pvs*-list sexpr type context)
+	  (break "Expected list type but got a non list ~a" sexpr))
+      (let* ((recognizers (recognizers type))
+	     (recognizer-funs
+	      (if (list-type? type)
+		  (list #'null #'consp)
+		  (loop for rec in recognizers
+			collect (lisp-function (declaration rec)))))
+	     (recognizer (loop for recfun in recognizer-funs
+			       as rec in recognizers
+			       thereis
+			       (and recfun
+				    (funcall recfun
+					     sexpr)
+				    rec))))
+	(if recognizer
+	    (let* ((constructor (constructor recognizer))
+		   (accessors (accessors constructor))
+		   (accessor-funs
+					;	(if (list-type? type) (if (eq (id recognizer)
+					;	'|cons?|) (list #'car #'cdr) nil)
 		    (loop for acc in accessors
-			  collect (lisp-function (declaration acc)))))
-	       (args (loop for accfn in accessor-funs
-			   as acc in accessors
-			   collect 
-			   (cl2pvs*
-			    (funcall accfn
-				     sexpr)
-			    (range (type acc))
-			    context))))
-	  (if accessors
-	      (mk-application* constructor args)
-	      constructor))
-	(break "No recognizer for datatype expression ~a" sexpr))))
+			  collect (lisp-function (declaration acc))));;; )
+		   (args (loop for accfn in accessor-funs
+			       as acc in accessors
+			       collect 
+			       (cl2pvs*
+				(funcall accfn
+					 sexpr)
+				(range (type acc))
+				context))))
+	      (if accessors
+		  (mk-application* constructor args)
+		  constructor))
+	    (break "No recognizer for datatype expression ~a" sexpr)))))
+
+(defun cl2pvs*-list (exprs type context)
+  (let* ((eltype (type-value (car (actuals type)))))
+    (cl2pvs*-list* exprs eltype context)))
+
+(defun cl2pvs*-list* (exprs eltype context)  
+  (if exprs
+      (let ((ex (cl2pvs* (car exprs) eltype context))
+	    (list (cl2pvs*-list* (cdr exprs) eltype context)))
+	(make-instance 'list-expr
+	  'operator (make-instance 'name-expr
+		      'id '|cons|)
+	  'argument (make-instance 'arg-tuple-expr
+		      'exprs (list ex list))))
+      (make-instance 'null-expr
+	'id '|null|)))
+
+
 
 
