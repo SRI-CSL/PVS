@@ -1,0 +1,50 @@
+\input texinfo   @c -*-texinfo-*-
+@c %**start of header
+@setfilename pvs-release-notes.info
+@settitle PVS Release Notes
+@setchapternewpage odd
+@paragraphindent 0
+@c %**end of header
+
+@ifinfo
+This file contains the release notes for PVS version 3.0
+
+Copyright 2002 SRI International
+@end ifinfo
+
+@c  This title page illustrates only one of the
+@c  two methods of forming a title page.
+
+@titlepage
+@title PVS Release Notes
+@author Sam Owre <owre@@csl.sri.com>, SRI International 
+
+@end titlepage
+
+@node Top
+@top PVS Release Notes
+
+The PVS release notes are given here, for each version, starting from
+version 3.0.  Note that the release notes are now written in texinfo,
+and are thus available in Emacs info, HTML, Postscript, and PDF forms.
+@code{M-x pvs-release-notes} brings up the info files.  The others are
+available in the @code{doc/release-notes} subdirectory of the PVS
+distribution.
+
+
+@menu
+* PVS 3.1 Release Notes:: PVS 3.1 Release Notes
+* PVS 3.0 Release Notes:: PVS 3.0 Release Notes
+@end menu
+
+@include pvs3.1-release-notes.texi
+@include pvs3.0-release-notes.texi
+
+@iftex
+@sp 1
+@end iftex
+
+@summarycontents
+@contents
+@bye
+

@@ -1,0 +1,36 @@
+@node PVS 3.1 Release Notes
+@chapter PVS 3.1 Release Notes
+
+@ifinfo
+
+The release notes contain the features, bug fixes, and
+incompatibilities of PVS version 3.1 over version 3.0.  
+This release is primarily for bug fixes, though the prelude has also
+been updated.
+
+A number of bugs have been fixed in 3.1, mostly those reported since
+its release December 2002.  Some of these fixes are to the judgement
+and TCC mechanism, so may have an impact on existing proofs.  As
+usual, if it is not obvious why a proof is failing, it is often
+easiest to run it in parallel on an earlier version to see where it
+differs.
+
+Some of the difference can be quite subtle, for example, one of the
+proofs that quit working was an induct-and-simplify.  There were two
+possible instantiations found in an underlying @code{inst?} command,
+and in version 3.0 one of these led to a nontrivial TCC, so the other
+was chosen.  In version 3.1, a fix to the judgement mechanism meant
+that the TCC was no longer generated, resulting in a different
+instantiation.  The proof was fixed using @code{:if-match all}.
+
+Most of the other incompatibilities were more obvious, and the proofs
+were easily repaired.  If you have difficulties understanding why a
+proof has failed, or repairing an existing proof, send it to us at
+@uref{mailto:pvs-bugs@@csl.sri.com, @emph{pvs-bugs@@csl.sri.com}}.
+
+Thanks to Jerry James @uref{mailto:jamesj@acm.org,
+@emph{jamesj@acm.org}}, a number of new theories and declarations have
+been added to the prelude.  Several judgments have been added, that
+generally result in fewer TCCs, and could affect proofs as noted
+above.
+@end ifinfo
