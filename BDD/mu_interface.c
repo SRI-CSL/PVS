@@ -18,6 +18,9 @@ Date: 05/09/98
 
 #include "mu.h"
 
+#include <setjmp.h> /* For interrupt handling */
+#include <signal.h> /* For interrupt handling */
+
 int debug;
 int warnings;
 int negate = 0;
@@ -139,6 +142,49 @@ Main function
   extern int yyparse ();
 /*  extern int yylineno = 0;  */
 
+int bdd_interrupted;
+jmp_buf catch;
+void (*old_handler)();
+
+BDDPTR mu___modelcheck_formula (Formula fml)
+ { auto int return_value;
+   extern void new_handler();
+   extern BDDPTR modelcheck_formula();
+   BDDPTR mcvalue;
+
+   bdd_interrupted = 0;
+   if ((return_value = setjmp(catch)) != 0) {
+     bdd_interrupted = 1;
+     return BDD_0;
+   }
+   old_handler = signal(SIGINT, &new_handler);
+   mcvalue = modelcheck_formula(fml);
+   signal(SIGINT, old_handler);
+   return mcvalue;
+ }
+
+BDD_LIST bdd___bdd_sum_of_cubes (BDDPTR f, int irredundant)
+ { auto int return_value;
+   extern void new_handler();
+   extern BDD_LIST bdd_sum_of_cubes();
+   BDD_LIST mcvalue;
+
+   bdd_interrupted = 0;
+   if ((return_value = setjmp(catch)) != 0) {
+     bdd_interrupted = 1;
+     return NULL_LIST;
+   }
+   old_handler = signal(SIGINT, &new_handler);
+   mcvalue = bdd_sum_of_cubes (f, irredundant);
+   signal(SIGINT, old_handler);
+   return mcvalue;
+ }
+
+void new_handler(int sig)
+ {
+   signal(SIGINT, old_handler);
+   longjmp(catch, -1);
+ }
 
 BDDPTR modelcheck_formula (Formula fml)
  { BDDPTR R;
@@ -162,9 +208,8 @@ BDDPTR modelcheck_formula (Formula fml)
  return R;
  }
 
-
 void pvs_mu_print_formula (Formula fml)
 {mu_print_formula_infix (stdout, fml);}
 
-void pvs_mu_print_term (Formula fml)
-{mu_print_term_infix (stdout, fml);}
+void pvs_mu_print_term (Term t)
+{mu_print_term_infix (stdout, t);}
