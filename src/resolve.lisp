@@ -992,11 +992,7 @@
 		 reses)))
     (if (eq kind 'expr)
 	(if (cdr res)
-	    (let* ((bres (filter-bindings res))
-		   (nres (if (and args (cdr bres))
-			     bres ;;(find-best-resolutions name res args)
-			     bres)))
-	      nres)
+	    (filter-bindings res)
 	    res)
 	(remove-outsiders (remove-generics res)))))
 
@@ -1004,26 +1000,6 @@
   (or (delete-if-not #'(lambda (r) (typep (declaration r) 'bind-decl))
 	reses)
       reses))
-
-(defun find-best-resolutions (op reses args)
-  (let ((mreses (or (remove-if-not
-			#'(lambda (r)
-			    (let ((dtypes (if (cdr args)
-					      (domain-types (type r))
-					      (list (domain (type r))))))
-			      (every #'(lambda (arg dtype)
-					 (some #'(lambda (ty)
-						   (tc-eq ty dtype))
-					       (types arg)))
-				     args dtypes)))
-		      reses)
-		    reses)))
-    (multiple-value-bind (ires gres)
-	(split-on #'fully-instantiated? mreses)
-      (let* ((res-part (partition-on-same-ranges ires nil))
-	     (breses (find-best-resolutions* op res-part args nil))
-	     (cres-part (partition-on-compatible-ranges breses nil)))
-	(nconc (mapcan #'filter-local-resolutions cres-part) gres)))))
 
 (defun partition-on-same-ranges (reses partition)
   (if (null reses)
@@ -1037,84 +1013,6 @@
 		  (cdr reses)
 		  (acons range (list (car reses)) partition)))))))
 
-(defun partition-on-compatible-ranges (reses partition)
-  (if (null reses)
-      (mapcar #'cdr partition)
-      (let* ((range (range (find-supertype (type (car reses)))))
-	     (part (assoc range partition :test #'compatible?)))
-	(cond (part
-	       (nconc part (list (car reses)))
-	       (partition-on-compatible-ranges (cdr reses) partition))
-	      (t (partition-on-compatible-ranges
-		  (cdr reses)
-		  (acons range (list (car reses)) partition)))))))
-
-(defun find-best-resolutions* (op res-part args reses)
-  (if (null res-part)
-      reses
-      (let ((res (find-best-operator-resolution op (car res-part) args)))
-	(find-best-resolutions* op (cdr res-part) args (cons res reses)))))
-
-(defun find-best-operator-resolution (op reses args)
-  (if (cdr reses)
-      (let ((lreses (filter-local-resolutions reses)))
-	(if (cdr lreses)
-	    (let ((optype (find-best-operator-type
-			   op args
-			   (mapcar #'(lambda (r) (find-supertype (type r)))
-				   lreses)
-			   lreses)))
-	      (if (typep optype 'resolution)
-		  optype
-		  (let* ((breses (remove-if-not
-				     #'(lambda (r)
-					 (tc-eq (find-supertype (type r))
-						optype))
-				   reses))
-			 (ngreses (or (remove-generics breses) breses)))
-		    (if (cdr ngreses)
-			(let ((freses (or (remove-redeclared-field-decls
-					   ngreses)
-					  ngreses)))
-			  (cond ((cdr freses)
-				 (setf (resolutions op) freses)
-				 (type-ambiguity op))
-				(t (car freses))))
-			(car ngreses)))))
-	    (car lreses)))
-      (car reses)))
-
-(defun remove-redeclared-field-decls (reses &optional result)
-  (cond ((null reses)
-	 (nreverse result))
-	((and (typep (declaration (car reses)) 'const-decl)
-	      (definition (declaration (car reses)))
-	      (or (member (car reses) (cdr reses)
-			  :test #'redeclared-field-decl)
-		  (member (car reses) result
-			  :test #'redeclared-field-decl)))
-	 (remove-redeclared-field-decls (cdr reses) result))
-	(t (remove-redeclared-field-decls (cdr reses)
-					  (cons (car reses) result)))))
-
-(defun redeclared-field-decl (res1 res2)
-  (and (tc-eq (type res1) (type res2))
-       (typep (declaration res2) 'field-decl)
-       (let ((def (args2 (car (last (def-axiom (declaration res1)))))))
-	 (and (typep def 'lambda-expr)
-	      (typep (expression def) 'field-application)
-	      (eq (id (expression def)) (id (declaration res2)))
-	      (typep (argument (expression def)) 'name-expr)
-	      (eq (declaration (argument (expression def)))
-		  (car (bindings def)))))))
-
-(defun compatible-wrt-freeparams (ty1 ty2)
-  (and (compatible? ty1 ty2)
-       (let ((fp1 (free-params ty1))
-	     (fp2 (free-params ty2)))
-	 (or (subsetp fp1 fp2)
-	     (subsetp fp2 fp1)))))
-		 
 (defun remove-outsiders (resolutions)
   (filter-local-resolutions resolutions))
 
@@ -1143,32 +1041,8 @@
 			    resolutions)))
 	     resolutions))
 
-(defun filter-preferences* (res resolutions args result)
-  (if (null res)
-      result
-      (if (or (member res resolutions
-		      :test #'(lambda (x y)
-				(less-preferred? x y)))
-	      (member res result
-		      :test #'(lambda (x y)
-				(less-preferred? x y))))
-	  (filter-preferences* (car resolutions) (cdr resolutions)
-			       args result)
-	  (filter-preferences* (car resolutions) (cdr resolutions)
-			       args (cons res result)))))
-
-(defun less-preferred? (r1 r2)
-  (let ((d1 (declaration r1))
-	(d2 (declaration r2)))
-    (or (and (not (typep d1 'bind-decl))
-	     (typep d2 'bind-decl))
-	(and (memq d2 *bound-variables*)
-	     (not (memq d1 *bound-variables*)))
-	(and (tc-eq (type r1) (type r2))
-	     (eq (module d2) *current-theory*)
-	     (not (eq (module d1) *current-theory*))))))
-
-(defmethod resolve ((name symbol) kind args &optional (context *current-context*))
+(defmethod resolve ((name symbol) kind args &optional
+		    (context *current-context*))
   (let* ((n (mk-name-expr name))
 	 (res (resolve n kind args context)))
     (when (singleton? res)

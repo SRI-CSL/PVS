@@ -15,7 +15,7 @@
 
 (export '(set-type kind-of-name-expr set-type-actuals
 		   subst-actual-in-remaining-formals set-lambda-dep-types
-		   find-best-operator-type free-formals
+		   free-formals
 		   subst-for-formals))
 
 (defvar *dont-worry-about-full-instantiations* nil)
@@ -297,27 +297,29 @@ required a context.")
 			 *bound-variables*))))))
 
 (defun find-best-name-resolution (ex resolutions expected)
-  (or (bound-variable-resolution resolutions)
-      (let* ((mreses (find-tc-matching-resolutions resolutions expected))
-	     (lreses (filter-local-resolutions (or mreses resolutions))))
-	(if (cdr lreses)
-	    (let ((dreses (or (remove-if-not #'fully-instantiated? lreses)
-			      lreses)))
-	      (if (cdr dreses)
-		  (let ((mreses (or (remove-if #'from-datatype-modname? dreses)
-				    dreses)))
-		    (if (cdr mreses)
-			(let ((freses (or (remove-if-not
-					      #'instantiated-importing?
-					    mreses)
-					  mreses)))
-			  (cond ((cdr freses)
-				 (setf (resolutions ex) freses)
-				 (type-ambiguity ex))
-				(t (car freses))))
-			(car mreses)))
-		  (car dreses)))
-	    (car lreses)))))
+  (if (cdr resolutions)
+      (or (bound-variable-resolution resolutions)
+	  (let* ((mreses (find-tc-matching-resolutions resolutions expected))
+		 (lreses (filter-local-resolutions (or mreses resolutions))))
+	    (if (cdr lreses)
+		(let ((dreses (or (remove-if-not #'fully-instantiated? lreses)
+				  lreses)))
+		  (if (cdr dreses)
+		      (let ((mreses (or (remove-if #'from-datatype-modname? dreses)
+					dreses)))
+			(if (cdr mreses)
+			    (let ((freses (or (remove-if-not
+						  #'instantiated-importing?
+						mreses)
+					      mreses)))
+			      (cond ((cdr freses)
+				     (setf (resolutions ex) freses)
+				     (type-ambiguity ex))
+				    (t (car freses))))
+			    (car mreses)))
+		      (car dreses)))
+		(car lreses))))
+      (car resolutions)))
 
 (defun instantiated-importing? (res)
   (find-if #'(lambda (x) (tc-eq x (module-instance res)))
@@ -933,20 +935,135 @@ required a context.")
 	  (type operator)
 	  (instantiate-operator-type
 	   (type operator) operator (argument-list argument) expected))
-      (let* ((optypes1 (remove-if-not #'(lambda (ty)
+      (let* ((optypes1 (delete-if-not #'(lambda (ty)
 					  (compatible? (range ty) expected))
 			 (types operator)))
-	     (optypes (if (cdr optypes1)
-			  (or (remove-if-not #'fully-instantiated? optypes1)
-			      optypes1)
-			  optypes1)))
+	     (optypes2 (if (cdr optypes1)
+			   (local-operator-types operator optypes1 argument)
+			   optypes1))
+	     (optypes3 (if (cdr optypes2)
+			   (or (delete-if-not #'fully-instantiated? optypes1)
+			       optypes2)
+			   optypes2))
+	     (optypes (if (cdr optypes3)
+			  (instantiable-operator-types
+			   operator optypes3 (argument* argument) expected)
+			  optypes3)))
 	(assert optypes)
+	(assert (null (duplicates? optypes :test #'tc-eq)))
 	(cond ((cdr optypes)
-	       (break "determine-operator-type"))
+	       
+	       (setf (types operator) optypes)
+	       (when (typep operator 'name-expr)
+		 (setf (resolutions operator)
+		       (remove-if-not #'(lambda (r)
+					  (member (type r) optypes
+						  :test #'tc-eq))
+			 (resolutions operator))))
+	       (type-ambiguity operator))
 	      ((fully-instantiated? (car optypes))
 	       (car optypes))
 	      (t (instantiate-operator-type
-		  (car optypes) operator (argument-list argument) expected))))))
+		  (car optypes) operator (argument-list argument)
+		  expected))))))
+
+(defmethod local-operator-types ((op name-expr) optypes argument)
+  (let* ((reses (remove-if-not #'(lambda (r)
+				   (member (type r) optypes :test #'tc-eq))
+		  (resolutions op)))
+	 (lreses (local-resolutions reses))
+	 (loptypes (mapcar #'type lreses)))
+    (if (cdr loptypes)
+	(optypes-for-local-arguments argument loptypes)
+	loptypes)))
+
+(defun local-resolutions (reses)
+  (or (let ((breses (remove-if-not #'(lambda (r)
+				       (memq (declaration r)
+					     *bound-variables*))
+		      reses)))
+	(when breses
+	  (list (nearest-bound-variable breses))))
+      (remove-if-not #'(lambda (r)
+			 (eq (module (declaration r))
+			     *current-theory*))
+	reses)
+      (remove-if #'(lambda (r)
+		     (let ((th (module (declaration r))))
+		       (or (typep th '(or library-theory
+					  library-datatype))
+			   (from-prelude? th))))
+	reses)
+      (remove-if #'(lambda (r)
+		     (let ((th (module (declaration r))))
+		       (from-prelude? th)))
+	reses)
+      reses))
+
+(defmethod local-operator-types (op optypes argument)
+  (declare (ignore op))
+  (optypes-for-local-arguments argument optypes))
+
+(defun optypes-for-local-arguments (arg optypes)
+  (let ((pos (optypes-for-local-arguments*
+	      arg
+	      (mapcar #'(lambda (oty)
+			  (let ((dom (domain (find-supertype oty))))
+			    (if (typep dom 'dep-binding)
+				(type dom)
+				dom)))
+		optypes))))
+    (if pos
+	(list (nth pos optypes))
+	optypes)))
+
+(defmethod optypes-for-local-arguments* ((ex name-expr) domtypes)
+  (let* ((reses (local-resolutions (resolutions ex))))
+    (when (singleton? reses)
+      (let* ((rtype (type (car reses)))
+	     (dtypes (member rtype domtypes :test #'compatible?)))
+	(unless (member rtype (cdr dtypes) :test #'compatible?)
+	  (position (car dtypes) domtypes))))))
+
+(defmethod optypes-for-local-arguments* ((ex tuple-expr) domtypes)
+  (let ((dtypes-list (mapcar #'domain-types domtypes)))
+    (optypes-for-local-arguments-list (exprs ex) dtypes-list)))
+
+(defun optypes-for-local-arguments-list (exprs dtypes-list &optional pos)
+  (if (null exprs)
+      pos
+      (let ((apos (optypes-for-local-arguments*
+		   (car exprs) (mapcar #'car dtypes-list))))
+	(when (or (null apos)
+		  (null pos)
+		  (= pos apos))
+	  (optypes-for-local-arguments-list
+	   (cdr exprs) (mapcar #'cdr dtypes-list) (or apos pos))))))
+
+(defmethod optypes-for-local-arguments* ((ex application) domtypes)
+  (break "optypes-for-local-arguments*"))
+
+(defun instantiable-operator-types (op optypes args expected &optional result)
+  (if (null optypes)
+      (nreverse result)
+      (instantiable-operator-types
+       op (cdr optypes) args expected
+       (if (instantiable-operator-type (car optypes) op args expected)
+	   (cons (car optypes) result)
+	   result))))
+
+(defun instantiable-operator-type (optype op args expected)
+  (or (fully-instantiated? optype)
+      (let* ((frees (free-params optype))
+	     (bindings (instantiate-operator-bindings frees))
+	     (domain (domain-types optype))
+	     (range (range optype)))
+	(assert bindings)
+	(let ((nbindings (tc-match-domain
+			  op optype args domain
+			  (tc-match expected range bindings))))
+	  (not (null nbindings))))))
+
 
 (defmethod set-type-application (expr (operator lambda-expr) argument expected)
   (with-slots (bindings expression) operator
@@ -981,7 +1098,8 @@ required a context.")
 				(make-tupletype-from-bindings bindings)
 				(type (car bindings)))))
     (let* ((*tcc-conditions* (nconc (pairlis bindings args) *tcc-conditions*))
-	   (otype (set-operator-type operator args expected expr)))
+	   (otype (determine-operator-type operator argument expected)))
+      (set-type* operator otype)
       (unless (type argument)
 	(let ((etype (domain (find-supertype (type operator)))))
 	  (set-expr-type argument etype)))
@@ -1007,7 +1125,8 @@ required a context.")
 					  (compatible? ty expected)))
 			  ptypes)))
 	 (otype (or optype
-		    (set-operator-type operator args nexpected expr))))
+		    (determine-operator-type operator argument nexpected))))
+    (set-type* operator otype)
     (cond ((and (typep operator 'field-name-expr)
 		(not (memq (declaration operator) *bound-variables*))
 		(typep (find-supertype (domain otype)) 'recordtype))
@@ -1107,65 +1226,6 @@ required a context.")
 			   (cons (arguments expr) args)
 			   (1- depth)))))
 
-(defun set-operator-type (op args expected expr)
-  (if nil ;(typed? op)
-      (type op)
-      (if nil ;(type op)
-	  (let ((itype (if (fully-instantiated? (type op))
-			   (type op)
-			   (instantiate-operator-type
-			    (type op) op args expected))))
-	    (set-type* op itype)
-	    (type op))
-	  (set-operator-type* op args expected expr))))
-
-(defun set-operator-type* (op args expected expr)
-  (let ((optypes
-	 (remove-if-not #'(lambda (ty)
-			    (let ((sty (find-supertype ty)))
-			      (and (typep sty 'funtype)
-				   (compatible? (range sty) expected))))
-	   (if (typep op 'name-expr)
-	       (mapcar #'type (resolutions op))
-	       (types op)))))
-    ;;(assert (not (cdr optypes)))
-    (if (null optypes)
-	(type-incompatible expr (mapcar #'(lambda (ty)
-					    (range (find-supertype ty)))
-					(ptypes op))
-			   expected)
-	(set-op-type op optypes args expected))))
-
-(defmethod set-op-type ((op name-expr) optypes args expected)
-  (assert (and (null (type op)) (types op)))
-  (let ((reses (resolutions op)))
-    (assert reses)
-    (let* ((optype (if nil ;;(singleton? reses)
-		       (type (car reses))
-		       (find-best-operator-type
-			op args optypes reses expected)))
-	   (res (if (singleton? reses)
-		    (car reses)
-		    (let ((nreses (remove-if-not #'(lambda (r)
-						     (tc-eq (type r) optype))
-						 reses)))
-		      (if (singleton? nreses)
-			  (car nreses)
-			  (break "set-op-type: Multiple resolutions")))))
-	   (noptype (if (fully-instantiated? optype)
-			optype
-			(instantiate-operator-type optype op args expected))))
-      (assert res)
-      (unless (fully-instantiated? res)
-	(setf res (instantiate-resolution op res noptype)))
-      ;; Not necessarily - see sets_lemmas in prelude
-      ;; (assert (fully-instantiated? res))
-      (setf (resolutions op) (list res))
-      (setf (types op) (list noptype))
-      (assert (types op))
-      (set-type* op noptype)
-      noptype)))
-
 (defun instantiate-resolution (ex res type)
   (let ((theories (delete *current-theory*
 			  (delete-duplicates (mapcar #'module
@@ -1190,15 +1250,6 @@ required a context.")
 	       "Could not determine the full theory instance for ~a~
                 ~%  Theory instance: ~a"
 	       ex (full-name (module-instance ex)))))))
-
-(defmethod set-op-type (op optypes args expected)
-  (assert (and (null (type op)) (types op)))
-  (let* ((optype (find-best-operator-type op args optypes nil expected))
-	 (noptype (if (fully-instantiated? optype)
-		      optype
-		      (instantiate-operator-type optype op args expected))))
-    (set-type* op noptype)
-    noptype))
 
 (defun instantiate-operator-type (optype op args expected)
   (let* ((frees (free-params optype))
@@ -1282,71 +1333,6 @@ required a context.")
 			 (tc-match (car arg-types) dom-type bindings))))
 
 
-;;; find-best-operator-type filters through the optypes using the
-;;; following tests:
-;;;  1. The operator types that are the least distance from the arguments.
-;;;     Least distance means the fewest number of walks up the subtype
-;;;     hierarchy of an optype domain before an argument type is a
-;;;     subtype.
-;;;  2. If the operator is a name, prefer those declared in the current
-;;;     theory, current context, or visible libraries, in that order.
-;;;  3. Prefer fully instantiated types.
-
-(defun find-best-operator-type (op args optypes &optional reses expected)
-  (assert optypes)
-  (if (cdr optypes)
-      (let* ((*generate-tccs* 'none)
-	     (noptypes (remove-duplicate-optypes optypes))
-	     (optype (if (cdr noptypes)
-			 (operator-instantiable-test
-			  op args noptypes reses expected)
-			 (car noptypes))))
-	(assert optype)
-	optype)
-      (car optypes)))
-
-(defun remove-duplicate-optypes (optypes)
-  (remove-duplicates optypes :test #'tc-eq))
-
-(defun operator-instantiable-test (op args optypes reses expected)
-  (let ((noptypes (or (operator-instantiable-test* op optypes args expected)
-		      optypes)))
-    (if (cdr noptypes)
-	(operator-of-current-theory op args noptypes reses)
-	(car noptypes))))
-
-(defun operator-instantiable-test* (op optypes args expected &optional result)
-  (if (null optypes)
-      (nreverse result)
-      (operator-instantiable-test*
-       op (cdr optypes) args expected
-       (if (instantiable-operator-type (car optypes) op args expected)
-	   (cons (car optypes) result)
-	   result))))
-
-(defun instantiable-operator-type (optype op args expected)
-  (or (fully-instantiated? optype)
-      (let* ((frees (free-params optype))
-	     (bindings (instantiate-operator-bindings frees))
-	     (domain (domain-types optype))
-	     (range (range optype)))
-	(assert bindings)
-	(let ((nbindings (tc-match-domain
-			  op optype args domain
-			  (tc-match expected range bindings))))
-	  (not (null nbindings))))))
-
-(defmethod operator-of-current-theory ((op name-expr) args optypes reses)
-  (let* ((noptypes (or (mapcar #'type (filter-local-resolutions reses))
-		       optypes)))
-    (if (cdr noptypes)
-	(operator-instantiated-types op args noptypes reses)
-	(car noptypes))))
-
-(defmethod operator-of-current-theory (op args optypes reses)
-  (operator-instantiated-types op args optypes reses))
-
-
 ;;; Returns the resolutions "closest" to the current theory.
 
 (defun filter-local-resolutions (reses)
@@ -1396,57 +1382,6 @@ required a context.")
 	     result
 	     (cons (car resolutions) result))))))
 
-
-(defun operator-instantiated-types (op args optypes reses)
-  (let ((noptypes (or (operator-instantiated-types* optypes)
-		      optypes)))
-    (if (cdr noptypes)
-	(operator-args-bound-variable-preferences op args optypes reses)
-	(car noptypes))))
-
-(defun operator-instantiated-types* (optypes &optional result)
-  (if (null optypes)
-      result
-      (operator-instantiated-types*
-       (cdr optypes)
-       (if (fully-instantiated? (car optypes))
-	   (cons (car optypes) result)
-	   result))))
-
-(defun operator-args-bound-variable-preferences (op args optypes reses)
-  (let ((noptypes (or (operator-args-bound-variable-preferences* args optypes)
-		      optypes)))
-    (if (cdr noptypes)
-	(operator-args-of-current-theory op args optypes reses)
-	(car noptypes))))
-
-(defun operator-args-bound-variable-preferences* (args optypes
-						       &optional (index 0))
-  (if (null args)
-      optypes
-      (if (typep (car args) 'name-expr)
-	  (let* ((breses (remove-if-not #'(lambda (r)
-					    (memq (declaration r)
-						  *bound-variables*))
-			   (resolutions (car args)))))
-	    (if breses
-		(let* ((bres (nearest-bound-variable breses))
-		       (noptypes (remove-if-not
-				     #'(lambda (opty)
-					 (let* ((rty (if (typep opty 'resolution)
-							 (type opty)
-							 opty))
-						(dty (nth index
-							  (domain-types rty))))
-					   (compatible? dty (type bres))))
-				   optypes)))
-		  (operator-args-bound-variable-preferences*
-		   (cdr args) (or noptypes optypes) (1+ index)))
-		(operator-args-bound-variable-preferences*
-		 (cdr args) optypes (1+ index))))
-	  (operator-args-bound-variable-preferences*
-	   (cdr args) optypes (1+ index)))))
-
 (defun nearest-bound-variable (reses &optional res)
   (cond ((null reses)
 	 res)
@@ -1457,88 +1392,58 @@ required a context.")
 	 (nearest-bound-variable (cdr reses) res))
 	(t (nearest-bound-variable (cdr reses) (car reses)))))
 
-(defun operator-args-of-current-theory (op args optypes reses)
-  (declare (ignore reses))
-  (let ((noptypes (or (operator-args-of-current-theory* args optypes)
-		      ;;(operator-args-of-current-context* args optypes)
-		      ;;(operator-args-of-visible-library* args optypes)
-		      optypes)))
-    (if (cdr noptypes)
-	(progn (setf (types op) optypes)
-	       (type-ambiguity op))
-	(car noptypes))))
-
-(defun operator-args-of-current-theory* (args optypes &optional (index 0))
-  (when args
-    (if (typep (car args) 'name-expr)
-	(let ((atypes (resolutions-of-current-theory*
-		       (resolutions (car args)) nil)))
-	  (if atypes
-	      (remove-if-not #'(lambda (opty)
-				 (let* ((rty (if (typep opty 'resolution)
-						 (type opty)
-						 opty))
-					(dty (nth index (domain-types rty))))
-				   (some #'(lambda (aty)
-					     (compatible? dty (type aty)))
-					 atypes)))
-		optypes)
-	      (operator-args-of-current-theory*
-	       (cdr args) optypes (1+ index))))
-	(operator-args-of-current-theory*
-	 (cdr args) optypes (1+ index)))))
-
 
 ;;; Set-type (if-expr)
 
 (defvar *ignore-else-part-tccs* nil)
 
 (defmethod set-type* ((ex if-expr) expected)
-  (set-operator-type (operator ex) (arguments ex) expected ex)
   ;;(assert (fully-typed? (operator ex)))
   (let* ((op (operator ex))
-	 (reses (remove-if-not
-		    #'(lambda (r)
-			(let ((stype (find-supertype (type r))))
-			  (and stype
-			       (typep stype 'funtype)
-			       (compatible? (range stype) expected))))
-		  (resolutions op))))
-    (unless (singleton? reses)
-      (if reses
-	  (type-ambiguity ex)
-	  (type-incompatible ex (ptypes ex) expected)))
-    (if (eq (id (module-instance (car reses))) '|if_def|)
-	(let ((econd (condition ex))
-	      (ethen (then-part ex))
-	      (eelse (else-part ex)))
-	  (set-type* econd *boolean*)
-	  (let ((*tcc-conditions* (cons econd *tcc-conditions*)))
-	    (set-type* ethen expected))
-	  (let* ((*generate-tccs* (if *ignore-else-part-tccs*
-				      'none
-				      *generate-tccs*))
-		 (*tcc-conditions*
-		  (if (typep ex '(or first-cond-expr single-cond-expr
-				     cond-expr last-cond-expr))
-		      *tcc-conditions*
-		      (cons (make!-negation econd) *tcc-conditions*))))
-	    (set-type* eelse expected))
-	  (let ((iftype (compatible-type (type ethen) (type eelse))))
-	    (assert iftype)
-	    ;;(set-type* op (mk-funtype (list *boolean* iftype iftype)
-	    ;;			iftype))
-	    (setf (type op) (mk-funtype (list *boolean* iftype iftype)
-					iftype))
-	    (setf (resolutions op) reses)
-	    (unless (eq (id *current-theory*) '|if_def|)
-	      (setf (actuals (module-instance op))
-		    (list (mk-actual iftype))))
-	    ;;(assert (fully-instantiated? op))
-	    (setf (type (argument ex))
-		  (mk-tupletype (list *boolean* iftype iftype)))
-	    (setf (type ex) iftype)))
-	(call-next-method))))
+	 (optype (determine-operator-type op (argument ex) expected)))
+    (set-type* op optype)
+    (let ((reses (remove-if-not
+		     #'(lambda (r)
+			 (let ((stype (find-supertype (type r))))
+			   (and stype
+				(typep stype 'funtype)
+				(compatible? (range stype) expected))))
+		   (resolutions op))))
+      (unless (singleton? reses)
+	(if reses
+	    (type-ambiguity ex)
+	    (type-incompatible ex (ptypes ex) expected)))
+      (if (eq (id (module-instance (car reses))) '|if_def|)
+	  (let ((econd (condition ex))
+		(ethen (then-part ex))
+		(eelse (else-part ex)))
+	    (set-type* econd *boolean*)
+	    (let ((*tcc-conditions* (cons econd *tcc-conditions*)))
+	      (set-type* ethen expected))
+	    (let* ((*generate-tccs* (if *ignore-else-part-tccs*
+					'none
+					*generate-tccs*))
+		   (*tcc-conditions*
+		    (if (typep ex '(or first-cond-expr single-cond-expr
+				       cond-expr last-cond-expr))
+			*tcc-conditions*
+			(cons (make!-negation econd) *tcc-conditions*))))
+	      (set-type* eelse expected))
+	    (let ((iftype (compatible-type (type ethen) (type eelse))))
+	      (assert iftype)
+	      ;;(set-type* op (mk-funtype (list *boolean* iftype iftype)
+	      ;;			iftype))
+	      (setf (type op) (mk-funtype (list *boolean* iftype iftype)
+					  iftype))
+	      (setf (resolutions op) reses)
+	      (unless (eq (id *current-theory*) '|if_def|)
+		(setf (actuals (module-instance op))
+		      (list (mk-actual iftype))))
+	      ;;(assert (fully-instantiated? op))
+	      (setf (type (argument ex))
+		    (mk-tupletype (list *boolean* iftype iftype)))
+	      (setf (type ex) iftype)))
+	  (call-next-method)))))
 
 (defvar *generating-cond-tcc* nil)
 
