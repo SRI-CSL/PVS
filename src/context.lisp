@@ -1549,10 +1549,8 @@ pvs-strategies files.")
 				 (if (eq nproof 'eof)
 				     (nreverse proofs)
 				     (let ((cproof
-					    (cons (car nproof)
-						  (cons (cadr nproof)
-							(convert-proof-form-to-lowercase
-							 (cddr nproof))))))
+					    (convert-proof-case-if-needed
+					     nproof)))
 				       (reader (if (member cproof proofs
 							   :test #'equal)
 						   proofs
@@ -1564,6 +1562,16 @@ pvs-strategies files.")
 	       (pvs-log (format nil "  ~a" error))
 	       nil)
 	      (t proofs))))))
+
+(defun convert-proof-case-if-needed (proofs)
+  (if (integerp (cadr (car (cdr proofs))))
+      proofs
+      (cons (car proofs)
+	    (mapcar #'(lambda (pform)
+			(cons (car pform)
+			      (convert-proof-form-to-lowercase
+			       (cdr pform))))
+	      (cdr proofs)))))
 
 (defun read-orphaned-proofs (&optional theoryref)
   (when (file-exists-p "orphaned-proofs.prf")
