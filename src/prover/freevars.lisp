@@ -3,12 +3,11 @@
 ;; Author          : Sam Owre & N. Shankar
 ;; Created On      : Wed Aug 17 00:48:46 1994
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sat Oct 31 02:38:17 1998
-;; Update Count    : 2
-;; Status          : Alpha test
-;; 
-;; HISTORY
+;; Last Modified On: Thu May 20 21:26:13 2004
+;; Update Count    : 3
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -101,6 +100,9 @@
 	     (remove (car list) ufrees :test #'same-declaration)
 	     ufrees)))))
 
+(defmethod freevars* ((conv conversion-result))
+  (freevars* (expr conv)))
+
 (defmethod declaration ((expr field-decl))
   expr)
 
@@ -186,8 +188,10 @@
     (fv-union tfrees (fv-union sfrees (fv-union elfrees exfrees)))))
 
 (defmethod freevars* ((expr selection))
-  (set-difference (freevars* (expression expr)) (args expr)
-		  :test #'same-declaration))
+  (let ((cfrees (freevars* (constructor expr))))
+    (fv-union cfrees
+	      (set-difference (freevars* (expression expr)) (args expr)
+			      :test #'same-declaration))))
 
 (defmethod no-freevars? ((expr selection))
   (no-freevars? (expression expr)))
@@ -286,3 +290,6 @@
 
 (defmethod freevars* ((expr template))
   (freevars* (template-expression expr)))
+
+(defmethod freevars* ((expr simple-constructor))
+  nil)
