@@ -103,14 +103,16 @@
 	(call-next-method))))
 
 (defmethod get-unique-type ((ex expr))
-  (let ((types (remove-duplicates (types ex) :test #'tc-eq)))
+  (let ((types (remove-duplicates (ptypes ex) :test #'tc-eq)))
     (if (and (singleton? types)
 	     (fully-instantiated? (car types)))
 	(car types)
 	(if (every #'(lambda (ty)
 		       (compatible? ty (car types)))
 		   (cdr types))
-	    (reduce #'compatible-type types)
+	    (let ((ctype (reduce #'compatible-type types)))
+	      (when (fully-instantiated? ctype)
+		ctype))
 	    (type-ambiguity ex)))))
 
 (defun typecheck-uniquely (expr &key (tccs 'all given))
