@@ -548,9 +548,9 @@
     (connective-occurs? assignments)))
 
 (defmethod connective-occurs? ((expr assignment))
-  (with-slots (arguments expression) expr)
-  (or (connective-occurs? arguments)
-      (connective-occurs? expression)))
+  (with-slots (arguments expression) expr
+    (or (connective-occurs? arguments)
+	(connective-occurs? expression))))
 
 (defmethod connective-occurs? ((expr field-application))
   (with-slots (argument) expr
