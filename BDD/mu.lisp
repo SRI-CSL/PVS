@@ -159,8 +159,8 @@
 
 
 (defun run-pvsmu (mu-formula dynamic-ordering?)
- (let ((*pvs-bdd-hash* (make-pvs-hash-table :hashfn #'pvs-sxhash
-					     :test #'tc-eq))
+ (let ((*pvs-bdd-hash* (make-hash-table :hash-function 'pvs-sxhash
+					     :test 'tc-eq))
 	(*bdd-pvs-hash* (make-hash-table :test #'eq))
 	(*pvs-bdd-inclusivity-formulas* nil)
 	(*bdd-counter* *bdd-counter*)
@@ -585,7 +585,7 @@
 
 
 (defun make-mu-variable (expr)
-  (let ((bddvarid (pvs-gethash expr *pvs-bdd-hash*)))
+  (let ((bddvarid (gethash expr *pvs-bdd-hash*)))
        (cond ((null bddvarid)
               (cond ((sub-range? (type expr)) (make-subrange-names expr))
                     ((scalar? expr) (make-scalar-names expr))
@@ -593,7 +593,7 @@
 		       (if (recognizer-application? expr)
 			   (make-mu-variable-recognizer-application expr)
 			   (make-bdd-var-id)))))
-		  (setf (pvs-gethash expr *pvs-bdd-hash*)
+		  (setf (gethash expr *pvs-bdd-hash*)
 			new-bddvarid)
 		  (when (null (freevars expr))
 		    (setf (gethash new-varid *bdd-pvs-hash*)
@@ -864,12 +864,12 @@
 	     (recapps (mapcar #'(lambda (x) (make-application x scalarvar))
 			      recogzrs))
 	     
-	     (bddvarid0 (pvs-gethash scalarvar *pvs-bdd-hash*))
+	     (bddvarid0 (gethash scalarvar *pvs-bdd-hash*))
 	     (scalar-encoding-list  ;; list of string? or list of mu_var??
 	      (if (null bddvarid0)
 		  (let ((newname (make-bdd-var-id)))
 		    (cadr
-		     (setf (pvs-gethash scalarvar *pvs-bdd-hash*)
+		     (setf (gethash scalarvar *pvs-bdd-hash*)
 			   (list newname
 				 (loop for i from 0 to
 				       (- (length recogzrs) 1)
@@ -960,7 +960,7 @@
 	 (hi (cdr range))
 	 (len (max 1 (ceiling (log (1+ hi) 2))))
 	 (bddvarid-hash
-	  (pvs-gethash expr *pvs-bdd-hash*))
+	  (gethash expr *pvs-bdd-hash*))
 	 (bddvarid
 	  (if bddvarid-hash
 	      (car bddvarid-hash)
@@ -974,7 +974,7 @@
                        (make-bdd-incl-excl-var-id   bddvarid index)
                        ))))
     (unless bddvarid-hash
-      (setf (pvs-gethash expr *pvs-bdd-hash*)
+      (setf (gethash expr *pvs-bdd-hash*)
 	    (list bddvarid bddvarid-list))
       (pushnew (cons expr (make-subrange-inclusive-formula
 			   bddvarid-list lo hi))
@@ -990,7 +990,7 @@
 		   (ceiling  ;;noticed by Nick Graham (York)
 		    (log (length recs) 2))))
 	 (bddvarid-hash
-	  (pvs-gethash expr *pvs-bdd-hash*))
+	  (gethash expr *pvs-bdd-hash*))
 	 (bddvarid
 	  (if bddvarid-hash
 	      (car bddvarid-hash)
@@ -1005,7 +1005,7 @@
                         )))
 	 (format-bitstring (format nil "~~~d,'0b" len)))
     (unless bddvarid-hash
-      (setf (pvs-gethash expr *pvs-bdd-hash*)
+      (setf (gethash expr *pvs-bdd-hash*)
 	    (list bddvarid bddvarid-list))
       (when (null (freevars expr))
 	(loop for bddnm in (reverse bddvarid-list)
