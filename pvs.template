@@ -129,15 +129,18 @@ case $opsys in
 esac
 
 if [ ! $PVSLISP ]
-   then if [ -f $PVSPATH/bin/$PVSARCH-$opsys${majvers}/pvs-allegro5.0 ]
-	   then PVSLISP=pvs-allegro5.0
-	   else PVSLISP=pvs-allegro5.0
-	fi
+   then PVSLISP=pvs-allegro5.0
 fi
-PATH=$PVSPATH/bin/$PVSARCH-$opsys${majvers}:$PVSPATH/bin:$PATH
+
+binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
+
+if [ -e $binpath/full ]
+   then PATH=$binpath/full:$binpath:$PVSPATH/bin:$PATH
+   else PATH=$binpath/runtime:$binpath:$PVSPATH/bin:$PATH
+fi
+
 ALLEGRO_CL_HOME=$PVSPATH/bin/$PVSARCH-$opsys${majvers}/home
 PVSPATCHLEVEL=${PVSPATCHLEVEL:-2}
-
 
 case $PVSPATCHLEVEL in
     none) PVSPATCHLEVEL=0;;
