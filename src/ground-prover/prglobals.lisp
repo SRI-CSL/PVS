@@ -128,7 +128,7 @@
 
 (defconstant *infixlist*	;temporary list of infixes	
    '(equal nequal lessp greaterp lesseq lesseqp greatereq greatereqp
-	   plus minus times divide difference) )
+	   PLUS MINUS TIMES DIVIDE DIFFERENCE) )
 
 (defconstant precedence-alist 					
   '((iff 1)
