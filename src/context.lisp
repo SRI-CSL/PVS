@@ -78,7 +78,7 @@
   file
   write-date
   proofs-date
-  ;; object-date
+  object-date
   dependencies
   theories
   extension)
