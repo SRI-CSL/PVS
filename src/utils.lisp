@@ -1730,7 +1730,10 @@
 
 (defmethod ref-to-id ((ref number-judgement))
   (or (id ref)
-      (makesym "~r" (number (number-expr ref)))))
+      (intern (substitute #\_ #\space
+			  (substitute #\_ #\-
+				      (format nil "~r"
+					(number (number-expr ref))))))))
 
 (defmethod ref-to-id ((ref name-judgement))
   (or (id ref)
@@ -1845,9 +1848,10 @@
 (defun translate-applied-update-leaf (op args exprs)
   (if args
       (make!-update-expr op
-			 (mapcar #'(lambda (arg expr)
-				     (mk-assignment nil arg expr))
-			   args exprs))
+			 (nreverse
+			  (mapcar #'(lambda (arg expr)
+				      (mk-assignment nil arg expr))
+			    args exprs)))
       op))
 
 (defun make-applied-update-equation (applarg arg)
