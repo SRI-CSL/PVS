@@ -1185,8 +1185,9 @@ required a context.")
 	      (position (car dtypes) domtypes :test #'tc-eq))))))))
 
 (defmethod optypes-for-local-arguments* ((ex tuple-expr) domtypes)
-  (let ((dtypes-list (mapcar #'types domtypes)))
-    (optypes-for-local-arguments-list (exprs ex) dtypes-list)))
+  (when (every #'tupletype? domtypes)
+    (let ((dtypes-list (mapcar #'types domtypes)))
+      (optypes-for-local-arguments-list (exprs ex) dtypes-list))))
 
 (defun dtypes-list (types-list)
   (when (car types-list)
