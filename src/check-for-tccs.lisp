@@ -286,7 +286,7 @@
   (when assns
     (let* ((ass (car assns))
 	   (type (nth (1- (number (caar (arguments ass)))) types)))
-      (check-for-tccs* ass tuptype)
+      (check-assignment-types ass expr tuptype)
       (let* ((dep? (typep (car types) 'dep-binding))
 	     (aexpr (when dep?
 		      (make-assignment-subst-expr ass (type type) expr)))
