@@ -791,8 +791,32 @@ pvs-strategies files.")
 
 ;;; Used by dump-pvs-files
 
+(defvar *file-dependencies*)
+
 (defun get-pvs-file-dependencies (filename)
-  (cons filename (file-dependencies filename)))
+  (if (gethash filename *pvs-files*)
+      ;; Things have been parsed, we can use that information
+      (let ((*file-dependencies* nil))
+	(get-pvs-file-dependencies* filename)
+	*file-dependencies*)
+      ;; Not even parsed - must go by the .pvscontext information
+      (cons filename (file-dependencies filename))))
+
+(defun get-pvs-file-dependencies* (filename)
+  (unless (member filename *file-dependencies* :test #'string=)
+    (push filename *file-dependencies*)
+    (let ((theories (cdr (gethash filename *pvs-files*))))
+      (dolist (theory theories)
+	(unless (rectype-theory? theory)
+	  (dolist (importing (get-immediate-usings theory))
+	    (let ((itheory (unless (library importing)
+			     (gethash (id importing) *pvs-modules*))))
+	      (if itheory
+		  (unless (rectype-theory? itheory)
+		    (get-pvs-file-dependencies* (filename itheory)))
+		  (unless (or (library importing)
+			      (gethash (id importing) *prelude*))
+		    (pvs-message "~a not available" importing))))))))))
 
 (defun get-theory-dependencies (theoryid)
   (let ((te (get-context-theory-entry theoryid)))
