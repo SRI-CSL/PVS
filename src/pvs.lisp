@@ -1321,7 +1321,7 @@
 	  (unless (unproved? d) (incf proved)))
 	(when *justifications-changed?*
 	  (save-all-proofs *current-theory*))))
-    (pvs-message "~a: ~d proofs attempted, ~d proved in ~d seconds"
+    (pvs-message "~a: ~d proofs attempted, ~d proved in ~,2f seconds"
 		   name total proved time)))
 
 
