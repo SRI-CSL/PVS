@@ -672,7 +672,7 @@ Please provide skolem constants for these variables." overlap)
 
 (defun make-quant-rule (fnum newterms)
   (let* ((badterm (find-if #'(lambda (nt)
-			       (member "_" nt))
+			       (member "_" nt :test #'equal))
 		    newterms))
 	 (nterms (ldiff newterms (cdr (memq badterm newterms)))))
     (cons 'then*
