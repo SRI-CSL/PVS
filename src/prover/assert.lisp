@@ -1443,8 +1443,8 @@
 	      (if in-beta-reduce?
 		  (if (tc-eq uarg1 arg1)
 		      'true
-		      (if (or (and (number-expr? uarg1)
-				   (number-expr? arg1))
+		      (if (or (and (integer-expr? uarg1)
+				   (integer-expr? arg1))
 			      (and (scalar-constant? uarg1)
 				   (scalar-constant? arg1)))
 			  'false
@@ -1459,6 +1459,16 @@
 	       (check-update-args (cdr update-args) (cdr args)))
 	      ((false-p result) 'false)
 	      (t 'noidea)))))
+
+(defmethod integer-expr? ((ex number-expr))
+  t)
+
+(defmethod integer-expr? ((ex application))
+  (and (is-unary-minus? ex)
+       (integer-expr? (argument ex))))
+
+(defmethod integer-expr? (ex)
+  nil)
 
 (defmethod assert-if ((expr tuple-expr))
   (multiple-value-bind (sig newexprs)
