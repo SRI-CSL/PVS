@@ -19,6 +19,11 @@
     (store-object-to-file (cons *binfile-version* theories)
 			  (make-binpath file))))
 
+(defun save-theory (theory)
+  (format t "~%Saving ~a" (id theory))
+  (store-object-to-file (cons *binfile-version* theory)
+			(make-binpath (id theory))))
+
 (defmethod get-theories-to-save (file)
   (mapcan #'get-theories-to-save (sort-theories (get-theories file))))
 
