@@ -1104,7 +1104,8 @@
 ;;are done nondestructively.  
 (defmethod pvs2cl_up* ((expr update-expr) bindings livevars)
   (if (updateable? (type (expression expr)))
-      (if *destructive?*
+      (if (and *destructive?*
+	       (not (some #'maplet? (assignments expr))))
 	  (let* ((expression (expression expr))
 		 (assignments (assignments expr))
 		 (updateable-livevars

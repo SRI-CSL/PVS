@@ -54,6 +54,14 @@
 	   (format t "  noconvert      : don't convert resulting expressions~%")
 	   (format t "  verbose        : enable verbose compilation messages~%")
 	   (format t "  quiet          : disable verbose compilation messages~%")
+	   (format t "~%Current values are:~%")
+	   (unless *pvs-eval-do-timing* (format t "no"))
+	   (format t "timing, ")
+	   (unless *destructive?* (format t "non"))
+	   (format t "destructive, ")
+	   (unless *convert-back-to-pvs* (format t "no"))
+	   (format t "convert, ")
+	   (if *eval-verbose* (format t "verbose.") (format t "quiet."))
 	   (format t "~%~%Use M-x pvs-lisp-theory to see the generated lisp for a PVS theory")
 	   (format t "~%~%Evaluator input should be enclosed in double quotes~%")
 	   (gqread))
@@ -124,7 +132,6 @@
 		 t))))))
     (when result
       (evaluate))))
-
 
 
 
