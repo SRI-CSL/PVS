@@ -424,34 +424,6 @@
 		(let ((path (probe-file (pvs-file-path th))))
 		  (parsed?* path)))))))
 
-
-(defun add-to-visible-libraries (lib libname)
-  (push (cons lib libname) *library-alist*)
-  (setf (gethash lib *visible-libraries*)
-	(gethash lib *prelude-libraries*))
-  (setq *visible-libraries-uselist*
-	(let ((uselist nil))
-	  (maphash #'(lambda (path lib)
-		       (declare (ignore path))
-		       (maphash #'(lambda (id theory)
-				    (push (list theory (mk-modname id))
-					  uselist))
-				lib))
-		   *visible-libraries*)
-	  uselist)))
-
-(defun visible-libraries-pathnames ()
-  (let ((paths nil))
-    (maphash #'(lambda (p ht)
-		 (declare (ignore ht))
-		 (let ((str (cdr (assoc p *library-alist* :test #'equal))))
-		   (push str paths)))
-	     *visible-libraries*)
-    paths))
-
-(defun visible-libraries-uselist ()
-  *visible-libraries-uselist*)
-
 (defun remove-prelude-library (lib-path)
   (multiple-value-bind (lib-ref err-msg)
       (pathname-to-libref lib-path)
@@ -866,20 +838,21 @@
 
 ;;; This function is goes from a lib-ref to a library id, suitable for
 ;;; building a theory name.
-;; (defun libref-to-libid (lib-ref)
-;;   (assert *current-context*)
-;;   ;; First see if there is a corresponding lib-decl
-;;   (or (libref-to-lib-decl-id lib-ref)
-;;       ;; If not, might be a local subdirectory ./foo/
-;;       (and (char= (char lib-ref 0) #\.)
-;; 	   (char= (char lib-ref 1) #\/)
-;; 	   (= (count #\/ lib-ref) 2)
-;; 	   (file-exists-p lib-ref)
-;; 	   (intern (subseq lib-ref 2 (1- (length lib-ref)))))
-;;       ;; Finally, look for PVSLIB, e.g., foo/
-;;       (and (not (member (char lib-ref 0) '(#\/ #\~ #\.) :test #'char=))
-;; 	   (= (count #\/ lib-ref) 1)
-;; 	   (intern (subseq lib-ref 0 (1- (length lib-ref)))))))
+(defun libref-to-libid (lib-ref)
+  (assert *current-context*)
+  ;; First see if there is a corresponding lib-decl
+  (or (libref-to-lib-decl-id lib-ref)
+      ;; If not, might be a local subdirectory ./foo/
+      (and (char= (char lib-ref 0) #\.)
+	   (char= (char lib-ref 1) #\/)
+	   (= (count #\/ lib-ref) 2)
+	   (file-exists-p lib-ref)
+	   (intern (subseq lib-ref 2 (1- (length lib-ref)))))
+      ;; Finally, look for PVSLIB, e.g., foo/
+      (and (not (member (char lib-ref 0) '(#\/ #\~ #\.) :test #'char=))
+	   (= (count #\/ lib-ref) 1)
+	   (file-exists-p (format nil "~a/lib/~a" *pvs-path* lib-ref))
+	   (intern (subseq lib-ref 0 (1- (length lib-ref)))))))
 
 (defun libref-to-lib-decl-id (lib-ref)
   (let ((lib-decls nil))
@@ -894,7 +867,8 @@
 				 decls)
 			       lib-decls)))
 	     (current-declarations-hash))
-    (sort lib-decls #'< :key #'locality)))
+    (when lib-decls
+      (id (car (sort lib-decls #'< :key #'locality))))))
 
 (defun get-all-lib-decls ()
   (let ((lib-decls nil))
