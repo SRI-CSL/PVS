@@ -79,7 +79,11 @@
   (arguments nil :type (or simple-vector list)))
 
 (defun print-application (a s)
-  (format s "~A" (array-to-list (application-arguments a))))
+  (format s "~A" 
+    (if (eq *argument-type* 'list)
+	(application-arguments a)
+	(array-to-list (application-arguments a)))))
+
 
 (defmacro defdpfield (name)
   (let ((accessor (intern (concatenate 'string "NODE-" (string name))))
@@ -220,13 +224,14 @@
 
 (defun mk-term-list (arg-list &optional (type nil))
   (let ((hashed-term (dp-gethash arg-list *term-hash*)))
-    (if hashed-term
-	(if type
-	    (progn (setf (node-type hashed-term) type)
-		   hashed-term)
-	    hashed-term)
-	(setf (dp-gethash arg-list *term-hash*)
-	      (mk-term* arg-list type)))))
+    (cond
+     (hashed-term
+      (if type
+	  (progn (setf (node-type hashed-term) type)
+		 hashed-term)
+	  hashed-term))
+     (t (setf (dp-gethash arg-list *term-hash*)
+	      (mk-term* arg-list type))))))
 
 (defun mk-term* (arguments type)
   (let ((new-node (make-application :sxhash (dp-sxhash arguments)
