@@ -215,7 +215,6 @@
     (dp-union t1 t2 cong-state)
     (type-union t1 t2 cong-state)
     (loop for u in (use t1 cong-state) do
-	  (when (equality-p u) (break))
 	  (cond
 	   ((uninterp? u)
 	    (replace-term-in-sig t1 t2 u cong-state)
