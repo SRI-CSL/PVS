@@ -3,10 +3,11 @@
 ;; Author          : Sam Owre
 ;; Created On      : Wed Sep 15 17:51:30 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sun Oct 15 02:57:25 1995
-;; Update Count    : 17
-;; Status          : Beta test
+;; Last Modified On: Thu May 20 22:48:18 2004
+;; Update Count    : 18
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (eval-when-compile (require 'pvs-macros))
 (require 'compare-w)
@@ -1561,7 +1562,10 @@ Point will be on the offending delimiter."
 		 (pvs-message (pvs-version-string))
 		 (let ((pvs-disable-messages nil))
 		   (change-context (, directory)))
-		 (,@ body))
+		 (condition-case err
+		     (progn (,@ body))
+		   (error (pvs-message "ERROR: Emacs: %s %s"
+			    (car err) (cdr err)))))
 	       (pvs-wait-for-it)
 	       ;;(save-buffer 0) ;writes a message-use the following 3 lines
 	       (set-buffer logbuf)	; body may have changed active buffer
@@ -1627,7 +1631,8 @@ Point will be on the offending delimiter."
 ;;; This function provides the most basic form of test, removing bin
 ;;; files, typechecking a file, then running prove-importchain on it.
 ;;; After, it runs any functions in pvs-validate-hooks.
-(defun pvs-validate-typecheck-and-prove (filename &optional show-proof?)
+(defun pvs-validate-typecheck-and-prove (filename &optional show-proof?
+						  importchain? theory)
   (pvs-validate-typecheck filename)
   (set-rewrite-depth 0)
   (let ((current-prefix-arg t)
@@ -1638,9 +1643,15 @@ Point will be on the offending delimiter."
 	  "Resetting verbose level to 3 for the proof of this validation")
       (setq pvs-verbose 3)
       (pvs-send-and-wait "(setq *pvs-verbose* 3)"))
-      (prove-pvs-file filename)
-      (setq pvs-verbose overbose)
-      (pvs-send-and-wait (format "(setq *pvs-verbose* %s)" overbose)))
+    (if importchain?
+	(if theory
+	    (prove-importchain theory)
+	    (prove-importchain filename))
+	(if theory
+	    (prove-theory theory)
+	    (prove-pvs-file filename)))
+    (setq pvs-verbose overbose)
+    (pvs-send-and-wait (format "(setq *pvs-verbose* %s)" overbose)))
   (run-hooks 'pvs-validate-proof-hooks))
 
 (defun pvs-validate-typecheck (filename)
@@ -1786,15 +1797,19 @@ existence and time differences to be whitespace")
 
 (defvar pvs-waiting nil)
 
+;;; pvs-wait-for-it waits until the *pvs* buffer is at the prompt,
+;;; i.e., with a :ready or :error status.  Used in pvs-validate to
+;;; ensure that pending commands are complete before checking for the
+;;; (un)expected regexp.
 (defun pvs-wait-for-it (&optional timeout)
-  (setq pvs-waiting t)
-  (while (and pvs-waiting
-	      (ilisp-process)
-	      (or (null timeout)
-		  (> (decf timeout) 0)))
-    (pvs-send "(pvs::pvs-emacs-eval \"(setq pvs-waiting nil)\")")
-    (accept-process-output)
-    (sit-for 1)))
+  (while (and (or (null timeout)
+		  (> timeout 0))
+	      (not (save-excursion
+		     ;; comint-status is buffer-local
+		     (set-buffer (ilisp-buffer))
+		     (member comint-status '(" :ready" " :error")))))
+    (when timeout (decf timeout))
+    (sleep-for 1)))
 
 (defun pvs-message (control-string &rest data)
   (princ (apply 'format control-string data))
@@ -1823,20 +1838,21 @@ existence and time differences to be whitespace")
 	(save-buffer)))))
 
 ;;; Can't use kill-emacs-hook instead, as in batch mode the hook is ignored.
-(defadvice kill-emacs (before pvs-batch-control activate)
-  (if (and ilisp-buffer
-	   (get-buffer ilisp-buffer)
-	   (ilisp-process)
-	   (eq (process-status (ilisp-process)) 'run))
-      (let ((ctr 10))
-	(save-some-buffers nil t)
-	(comint-simple-send (ilisp-process) "(pvs::lisp (pvs::exit-pvs))\n")
-	(while (and (equal (process-status (ilisp-process)) 'run)
-		    (> ctr 0))
-	  (setq ctr (- ctr 1))
-	  (sleep-for 1)))
-      (message "PVS not running - context not saved"))
-  (message "PVS Exited"))
+;; (defadvice kill-emacs (before pvs-batch-control activate)
+;;   (if (and ilisp-buffer
+;; 	   (get-buffer ilisp-buffer)
+;; 	   (ilisp-process)
+;; 	   (eq (process-status (ilisp-process)) 'run))
+;;       (let ((ctr 10))
+;; 	(save-some-buffers nil t)
+;; 	(while (and (not (save-excursion
+;; 			   (set-buffer (ilisp-buffer))
+;; 			   (member comint-status '(" :ready" " :error"))))
+;; 		    (> ctr 0))
+;; 	  (setq ctr (- ctr 1))
+;; 	  (sleep-for 1)))
+;;       (message "PVS not running - context not saved"))
+;;   (message "PVS Exited"))
 )
 
 (defun trailing-components (directory num)
