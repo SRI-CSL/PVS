@@ -152,7 +152,7 @@ required a context.")
 	(change-class expr 'implicit-conversion)
 	(setf (argument expr) nexpr)
 	(setf (types nexpr) (list (if (typep dom 'dep-binding) (type dom) dom)))
-	(setf (operator expr) (copy (from-conversion ctype)))
+	(setf (operator expr) (raise-actuals (copy (from-conversion ctype)) 1))
 	(setf (types expr) (list ctype))
 	(when (typep (argument expr) 'name-expr)
 	  (setf (resolutions (argument expr)) nil
@@ -212,7 +212,8 @@ required a context.")
 		  (resolutions ex) (list nres))
 	    (type-error ex
 	      "Could not determine the full theory instance for ~a" ex))))
-    (when (actuals (module-instance ex))
+    (when (or (actuals (module-instance ex))
+	      (mappings (module-instance ex)))
       (setf (module-instance (resolution ex))
 	    (set-type-actuals ex)))
     (change-name-expr-class-if-needed (declaration res) ex)
@@ -377,7 +378,7 @@ required a context.")
       (unless (fully-instantiated? modinst)
 	(type-error modinst
 	  "Actual parameters must be provided to include mappings"))
-      (set-type-mappings (mappings modinst) modinst)))
+      (set-type-mappings modinst)))
   (let ((nmodinst (simplify-modinst modinst)))
     (unless (eq *generate-tccs* 'none)
       (generate-assuming-tccs nmodinst modinst)
@@ -408,7 +409,7 @@ required a context.")
 				 (t *generate-tccs*)))
 	  (fmls (formals-sans-usings (get-theory modinst))))
       (set-type-actuals* (actuals modinst) fmls))
-    (set-type-mappings (mappings modinst) modinst)
+    (set-type-mappings modinst)
     (when (typep modinst 'modname-no-tccs)
       (change-class modinst 'modname))
     #+pvsdebug (fully-typed? (actuals modinst))
@@ -497,42 +498,76 @@ required a context.")
 	  (t (setf (resolutions (expr act)) threses)))
     (set-type-actuals (expr act))))
 
-(defun set-type-mappings (mappings modinst &optional first-mappings)
+(defun set-type-mappings (modinst)
+  (when (mappings modinst)
+    (set-type-mappings* (mappings modinst) modinst)))
+
+(defun set-type-mappings* (mappings modinst &optional previous-mappings)
   (when mappings
-    (let ((lhs (lhs (car mappings)))
-	  (rhs (rhs (car mappings))))
-      (assert (resolutions lhs))
-      ;;(assert (ptypes (expr rhs)))
-      (determine-best-mapping-lhs lhs rhs)
-      (set-type-mapping-rhs rhs lhs modinst first-mappings)
-      (set-type-mappings (cdr mappings) modinst
-			 (nconc first-mappings (list (car mappings))))
-      )))
+    (set-type-mapping (car mappings) modinst previous-mappings)
+    (set-type-mappings*
+     (cdr mappings) modinst (nconc previous-mappings (list (car mappings))))))
+
+(defmethod set-type-mapping ((map mapping) modinst previous-mappings)
+  (let ((lhs (lhs map))
+	(rhs (rhs map)))
+    (assert (resolutions lhs))
+    ;;(assert (ptypes (expr rhs)))
+    (determine-best-mapping-lhs lhs rhs)
+    (set-type-mapping-rhs rhs lhs modinst previous-mappings)))
+
+(defmethod set-type-mapping ((map mapping-rename) modinst previous-mappings)
+  (let* ((lhs (lhs map))
+	 (rhs (rhs map))
+	 (decl (declaration lhs))
+	 (id (id (expr rhs))))
+    (assert (resolution lhs))
+    (typecase decl
+      (type-decl
+       (let ((tn (mk-type-name id)))
+	 (setf (resolutions tn)
+	       (list (mk-resolution decl (current-theory-name) tn)))
+	 (setf (type-value (rhs map)) tn)
+	 (setf (mapped-decl map)
+	       (copy decl 'id id 'module (current-theory) 'type-value tn))))
+      (const-decl
+       (let ((subst-type (subst-mod-params
+			      (type (declaration lhs))
+			      (lcopy modinst 'mappings previous-mappings))))
+	 (setf (mapped-decl map)
+	       (copy decl
+		 'id (id (expr rhs))
+		 'module (current-theory)
+		 'declared-type (or (print-type subst-type) subst-type)
+		 'type subst-type))
+	 (setf (resolutions (expr rhs))
+	       (list (mk-resolution decl (current-theory-name) subst-type)))
+	 (setf (type (expr rhs)) subst-type)))
+      (t (break "set-type-mapping (mapping-rename) theory")))))
 
 (defun set-type-mapping-rhs (rhs lhs modinst mappings)
-  (cond ((type-decl? (declaration lhs))
-	 (if (type-value rhs)
-	     (set-type* (type-value rhs) nil)
-	     (type-error (expr rhs) "Type expected here")))
-	((mod-decl? (declaration lhs))
-	 (let ((threses (remove-if-not #'(lambda (r)
-					   (module? (declaration r)))
-			  (resolutions (expr rhs)))))
-	   (cond ((cdr threses)
-		  (type-error (expr rhs)
-		    "Theory name ~a is ambiguous" (expr rhs)))
-		 ((null threses)
-		  (type-error (expr rhs)
-		    "No resolution for theory name ~a" (expr rhs)))
-		 (t (setf (resolutions (expr rhs)) threses)
-		    (when (mappings (expr rhs))
-		      (set-type-mappings (mappings (expr rhs))
-					 (name-to-modname
-					  (expr rhs))))))))
-	(t (let ((subst-type (subst-mod-params
-			      (type (declaration lhs))
-			      (lcopy modinst 'mappings mappings))))
-	     (set-type* (expr rhs) subst-type)))))
+  (typecase (declaration lhs)
+    (type-decl
+     (if (type-value rhs)
+	 (set-type* (type-value rhs) nil)
+	 (type-error (expr rhs) "Type expected here")))
+    (mod-decl
+     (let ((threses (remove-if-not #'(lambda (r)
+				       (module? (declaration r)))
+		      (resolutions (expr rhs)))))
+       (cond ((cdr threses)
+	      (type-error (expr rhs)
+		"Theory name ~a is ambiguous" (expr rhs)))
+	     ((null threses)
+	      (type-error (expr rhs)
+		"No resolution for theory name ~a" (expr rhs)))
+	     (t (setf (resolutions (expr rhs)) threses)
+		(when (mappings (expr rhs))
+		  (set-type-mappings (name-to-modname (expr rhs))))))))
+    (t (let ((subst-type (subst-mod-params
+			  (type (declaration lhs))
+			  (lcopy modinst 'mappings mappings))))
+	 (set-type* (expr rhs) subst-type)))))
 
 (defun determine-best-mapping-lhs (lhs rhs)
   (unless (singleton? (resolutions lhs))
@@ -716,7 +751,7 @@ required a context.")
 	  (change-class expr 'implicit-conversion)
 	  ;;(setf (abstract-syntax expr) nil)
 	  (setf (argument expr) nexpr)
-	  (setf (operator expr) (copy (car conversions)))
+	  (setf (operator expr) (raise-actuals (copy (car conversions)) 1))
 	  (setf (type expr) nil (types expr) nil)
 	  (set-type-actuals (operator expr))
 	  (typecheck* expr expected nil nil)
@@ -2867,225 +2902,34 @@ required a context.")
 
 ;;; instantiate-from
 
-(defvar *instantiate-from-expr* nil)
-(defvar *instantiate-from-modinsts* nil)
-
 (defun instantiate-from (type expected expr)
   #+pvsdebug (assert (fully-instantiated? expected))
+  (or (find-parameter-instantiation type expected)
+      (if *dont-worry-about-full-instantiations*
+	  type
+	  (type-error expr
+	    "Could not determine the full theory instance for ~a~
+               ~:[~;~%  May be a problem with splitting dependent types~]~
+               ~@[~%  Theory instance: ~a~]"
+	    expr
+	    (and (typep expr 'application)
+		 (some #'(lambda (a)
+			   (some #'(lambda (aty)
+				     (and (typep (find-supertype aty)
+						 '(or funtype tupletype))
+					  (dependent? (find-supertype aty))))
+				 (ptypes a)))
+		       (arguments expr)))
+	    (when (typep expr 'name-expr)
+	      (full-name (module-instance expr)))))))
+
+(defun find-parameter-instantiation (type expected)
   (let* ((bindings (tc-match expected type
 			     (instantiate-operator-bindings
 			      (free-params type)))))
-    (if (every #'cdr bindings)
-	(instantiate-operator-from-bindings type bindings)
-	(if *dont-worry-about-full-instantiations*
-	    type
-	    (type-error expr
-	      "Could not determine the full theory instance for ~a~
-               ~:[~;~%  May be a problem with splitting dependent types~]~
-               ~@[~%  Theory instance: ~a~]"
-	      expr
-	      (and (typep expr 'application)
-		   (some #'(lambda (a)
-			     (some #'(lambda (aty)
-				       (and (typep (find-supertype aty)
-						   '(or funtype tupletype))
-					    (dependent? (find-supertype aty))))
-				   (ptypes a)))
-			 (arguments expr)))
-	      (when (typep expr 'name-expr)
-		(full-name (module-instance expr))))))))
+    (when (every #'cdr bindings)
+      (instantiate-operator-from-bindings type bindings))))
 
-(defmethod instantiate-from* :around (te1 te2)
-  (declare (ignore te2))
-  (if (fully-instantiated? te1)
-      te1
-      (let ((nte (call-next-method)))
-	#+pvsdebug (assert (fully-instantiated? nte))
-	nte)))
-
-(defmethod instantiate-from* ((l1 list) (l2 list))
-  (mapcar #'instantiate-from* l1 l2))
-
-(defmethod instantiate-from* (te1 (te2 dep-binding))
-  (instantiate-from* te1 (type te2)))
-
-(defmethod instantiate-from* ((te1 type-name) (te2 type-name))
-  (let ((res (instantiate-from* (resolution te1) (resolution te2))))
-    (cond ((eq res (resolution te1))
-	   te1)
-	  (t (pushnew (module-instance res) *instantiate-from-modinsts*
-		      :test #'tc-eq)
-	     (let ((acts (mapcar #'(lambda (a) (or (type-value a) (expr a)))
-				 (actuals (module-instance te1)))))
-	       (when (and (every #'(lambda (a) (and (name? a)
-						    (typep (declaration a)
-							   'formal-decl)))
-				 acts)
-			  (every #'(lambda (a)
-				     (eq (module (declaration a))
-					 (module (declaration (car acts)))))
-				 (cdr acts)))
-		 (break "Do something here")))
-	     (lcopy te1
-	       'actuals (when (actuals te1) (actuals (module-instance res)))
-	       'resolutions (list res))))))
-
-(defmethod instantiate-from* ((res1 resolution) (res2 resolution))
-  res2)
-
-(defmethod instantiate-from* ((te1 type-expr) (te2 type-expr))
-  (let ((modinsts (collect-module-instances te2)))
-    (instantiate-from-modinsts te1 modinsts)))
-
-(defmethod instantiate-from* ((te1 subtype) (te2 subtype))
-  (lcopy te1
-    'supertype (instantiate-from* (supertype te1) (supertype te2))
-    'predicate (instantiate-from* (predicate te1) (type (predicate te2)))))
-
-(defmethod instantiate-from* ((te1 funtype) (te2 funtype))
-  (if (compatible? te1 te2)
-      (let ((dom (mapcar #'instantiate-from* (domain te1) (domain te2))))
-	(lcopy te1
-	  'domain (if (equal dom (domain te1)) (domain te1) dom)
-	  'range (instantiate-from* (range te1) (range te2))))
-      (call-next-method)))
-
-(defmethod instantiate-from* ((te1 tupletype) (te2 tupletype))
-  (lcopy te1
-    'types (instantiate-from* (types te1) (types te2))))
-
-(defmethod instantiate-from* ((te1 recordtype) (te2 recordtype))
-  (let ((nfields (instantiate-from-fields (fields te1) (fields te2))))
-    (if (eq nfields (fields te1))
-	te1
-	(let ((nte (copy te1 'fields nfields)))
-	  ;;(update-fields nte (dependent? te1))
-	  nte))))
-
-(defun instantiate-from-fields (fields1 fields2 &optional result)
-  (if (null fields1)
-      (let ((fields (nreverse result)))
-	(if (equal fields1 fields)
-	    fields1
-	    fields))
-      (let* ((fld1 (car fields1))
-	     (fld2 (find-if #'(lambda (fld) (same-id fld fld1)) fields2))
-	     (ifld (instantiate-from* fld1 fld2)))
-	(instantiate-from-fields (cdr fields1)
-				 (remove fld2 fields2)
-				 (cons ifld result)))))
-	 
-
-(defmethod instantiate-from* ((fd1 field-decl) (fd2 field-decl))
-  (lcopy fd1 'type (instantiate-from* (type fd1) (type fd2))))
-
-
-;;; Expressions
-
-(defmethod instantiate-from* ((ex expr) type)
-  (let ((modinsts (collect-module-instances type)))
-    (instantiate-from-modinsts ex modinsts)))
-
-(defun instantiate-from-modinsts (ex modinsts)
-  (if (fully-instantiated? ex)
-      ex
-      (gensubst ex
-	#'(lambda (x) (instantiate-from-modinsts! x modinsts))
-	#'instantiate-from-modinsts?)))
-
-(defmethod instantiate-from-modinsts? :around (ex)
-  (unless (fully-instantiated? ex)
-    (call-next-method)))
-
-(defmethod instantiate-from-modinsts? ((ex name))
-  (and (not (actuals (module-instance ex)))
-       (formals (module (declaration ex)))))
-
-(defmethod instantiate-from-modinsts? ((ex modname))
-  nil)
-
-(defmethod instantiate-from-modinsts? (ex)
-  (declare (ignore ex))
-  nil)
-
-(defmethod instantiate-from-modinsts! :around ((ex name-expr) modinsts)
-  (declare (ignore modinsts))
-  (let ((ne (call-next-method)))
-    (if (eq ne ex)
-	ex
-	(progn (setf (type ne) (type (resolution ne)))
-	       ne))))
-
-(defmethod instantiate-from-modinsts! ((ex name) modinsts)
-  (let* ((mi (or (module-instance ex) (module (declaration ex))))
-	 (matches (remove-if-not #'(lambda (m) (same-id m mi))
-		    modinsts)))
-    (cond ((singleton? matches)
-	   (let ((nres (make-resolution (declaration ex) (car matches))))
-	     (lcopy ex
-	       'actuals (when (actuals ex) (actuals (car matches)))
-	       'resolutions (list nres))))
-	  ((cdr matches)
-	   (type-error *instantiate-from-expr*
-	     "Ambiguous theory instance, could be one of:~{~%  ~a~}"
-	     matches))
-	  (*dont-worry-about-full-instantiations* ex)
-	  (t (type-error *instantiate-from-expr*
-	       "Could not determine the full theory instance for ~a"
-	       *instantiate-from-expr*)))))
-
-(defun collect-module-instances (type-expr)
-  (let ((modinsts nil))
-    (mapobject #'(lambda (te)
-		   (when (typep te 'name)
-		     (pushnew (module-instance te) modinsts :test #'tc-eq)))
-	       type-expr)
-    modinsts))
-
-(defmethod resolution-matching ((te type-name) modinst)
-  (when (same-id (module-instance (resolution te)) modinst)
-    (resolution te)))
-
-(defmethod resolution-matching ((te dep-binding) modinst)
-  (resolution-matching (type te) modinst))
-
-(defmethod resolution-matching ((te subtype) modinst)
-  (resolution-matching (supertype te) modinst))
-
-(defmethod resolution-matching ((te funtype) modinst)
-  (or (resolution-matching (domain te) modinst)
-      (resolution-matching (range te) modinst)))
-
-(defmethod resolution-matching ((te tupletype) modinst)
-  (resolution-matching (types te) modinst))
-
-(defmethod resolution-matching ((te recordtype) modinst)
-  (resolution-matching (fields te) modinst))
-
-(defmethod resolution-matching ((fd field-decl) modinst)
-  (resolution-matching (type fd) modinst))
-
-(defmethod resolution-matching ((list list) modinst)
-  (when list
-    (or (resolution-matching (car list) modinst)
-	(resolution-matching (cdr list) modinst))))
-
-;(defun modinsts-with-free-formals (obj)
-;  (let ((frees nil))
-;    (mapobject #'(lambda (ex)
-;		   (when (and (typep ex '(or name-expr type-name))
-;			      (resolution ex)
-;			      (some #'(lambda (act)
-;					(let ((tex (or (type-value act)
-;						       (expr act))))
-;					  (and (typep tex 'name)
-;					       (typep (declaration
-;						       (type-value act))
-;						      'formal-decl))))
-;				    (actuals (module-instance ex))))
-;		     (pushnew ex frees :test #'tc-eq)))
-;	       obj)
-;    frees))
 
 (defun free-formals (obj)
   (let ((frees nil))
