@@ -76,7 +76,8 @@
      ["show-expanded-sequent" show-expanded-sequent pvs-in-checker]
      ["show-skolem-constants" show-skolem-constants pvs-in-checker]
      ["pvs-set-proof-parens" pvs-set-proof-parens t]
-     ["pvs-set-proof-prompt-behavior" pvs-set-proof-prompt-behavior t])
+     ["pvs-set-proof-prompt-behavior" pvs-set-proof-prompt-behavior t]
+     ["pvs-set-proof-default-description" pvs-set-proof-default-description t])
     ("Adding and Modifying Declarations"
      ["add-declaration" add-declaration (current-pvs-file t)]
      ["modify-declaration" modify-declaration (current-pvs-file t)])
