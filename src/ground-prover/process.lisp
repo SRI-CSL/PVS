@@ -426,6 +426,10 @@
 					      ,newsig))))))
 	       ;;was (setq s (append (solve `(equal ,new-u
                ;;			      ,newsig)) s)))))
+	  ((and (isapplyupdate newsig) ;;NSH(10.22.02): for bug 135 loop
+	       (not (isapplyupdate u)));;when f in (app f..) becomes update.
+	   (let ((newsig (canonsig-merge newsig)))
+	     (addprm2pot (solve `(equal ,u ,newsig)))))
 	  (t				; interpreted term
 	   ;(setq newsig
 		; (sigma newsig))
