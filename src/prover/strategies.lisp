@@ -2454,7 +2454,8 @@ found. "
 	((disjunction? fmla)
 	 (nconc (disjuncts (args1 fmla))(disjuncts (args2 fmla))))
 	((implication? fmla)
-	 (nconc (conjuncts (args1 fmla))(disjuncts (args2 fmla))))
+	 (nconc (mapcar #'negate (conjuncts (args1 fmla)))
+		(disjuncts (args2 fmla))))
 	(t (list fmla))))
 	 
 
