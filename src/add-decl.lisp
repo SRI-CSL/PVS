@@ -459,8 +459,7 @@
   (setf (spelling old) (spelling new))
   (setf (definition old) (definition new))
   (setf (closed-definition old) (closed-definition new))
-  (setf (kind old) (kind new))
-  (setf (tcc-disjuncts old) (tcc-disjuncts new)))
+  (setf (kind old) (kind new)))
   
 
 (defun verify-mod-decl (decl decls)
