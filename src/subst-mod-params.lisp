@@ -753,7 +753,7 @@
 			     (list (mk-actual (find-supertype
 					       (type-value (car nacts)))))
 			     nacts)
-			 (library modinst))
+			 (library mi))
 		       (subst-mod-params* type modinst bindings)))))))))
 
 (defmethod make-resolution (decl modinst &optional type)
