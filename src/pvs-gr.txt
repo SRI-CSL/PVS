@@ -1,13 +1,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -*- Mode: Tex -*- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% pvs-gr.txt -- 
+%% pvs-gr.txt -- The PVS grammar for ERGO
 %% Author          : Sam Owre
 %% Created On      : Thu Dec  2 13:45:18 1993
 %% Last Modified By: Sam Owre
 %% Last Modified On: Wed Nov  4 16:14:48 1998
 %% Update Count    : 93
-%% Status          : Unknown, Use with caution!
-%% 
-%% HISTORY
+%% Status          : Stable
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -322,6 +320,8 @@ expr ::= string <string-expr(string)>
        | {'{|' {expr ** ','} '|}'} <brace-vbar-expr(expr*)>
        | {'(#' {assignment ++ ','} '#)'} <rec-expr(assignments(assignment+))>
        | {'(' {expr ** ','} ')'} <tuple-expr(expr*)>
+       | {'`' {id | number} [actuals]} <{fieldex(id,[noactuals()|actuals])
+                                        |projex(number,[noactuals()|actuals])}>
        | {expr '`' {id | number}} <{fieldappl(expr,id)|projappl(expr,number)}>
        | {expr jux fun-arguments} <application(expr,fun-arguments)>
        | {expr 'O' expr^1} <term-expr(o(),expr-args(list(expr,expr^1)))>
