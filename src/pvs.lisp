@@ -95,6 +95,7 @@
     (clrhash *prelude-libraries*)
     (clrhash *imported-libraries*)
     (setq *prelude-libraries-uselist* nil)
+    (setq *prelude-library-context* nil)
     (setq *library-alist* nil)))
 
 (defvar *pvs-patches-loaded* nil)
@@ -786,22 +787,33 @@
   (typecheck-file modname forced? t))
 
 
-(defun grind-untried-of-pvs-file (filename)
-  (dolist (theory (get-theories filename))
-    (grind-untried-formulas theory nil))
-  (status-proof-pvs-file filename))
+(defun prove-untried-pvs-file (filename &optional (strategy '(grind)) tccs?)
+  (let ((just `("" ,strategy)))
+    (multiple-value-bind (msg subjust)
+	(check-edited-justification just)
+      (when subjust
+	(justification-error subjust just msg)))
+    (dolist (theory (get-theories filename))
+      (prove-untried-formulas theory just tccs?))
+    (status-proof-pvs-file filename)))
 
-(defun grind-untried-of-theory (theoryname)
-  (grind-untried-formulas (get-theory theoryname) t))
+(defun prove-untried-theory (theoryname &optional (strategy '(grind)) tccs?)
+  (let ((just `("" ,strategy)))
+    (multiple-value-bind (msg subjust)
+	(check-edited-justification just)
+      (when subjust
+	(justification-error subjust just msg)))
+    (prove-untried-formulas (get-theory theoryname) just tccs?)
+    (status-proof-theory (get-theory theoryname))))
 
-(defun grind-untried-formulas (theory &optional (show? t))
+(defun prove-untried-formulas (theory &optional just tccs?)
   (dolist (fmla (provable-formulas theory))
-    (unless (justification fmla)
-      (pvs-message "Grinding ~a" (id fmla))
-      (setf (justification fmla) '("" (grind) nil))
-      (rerun-prove fmla)))
-  (when show?
-    (status-proof-theory theory)))
+    (unless (or (justification fmla)
+		(and (not tccs?)
+		     (tcc? fmla)))
+      (pvs-message "Proving untried formula ~a" (id fmla))
+      (setf (justification fmla) just)
+      (rerun-prove fmla))))
 
 
 ;;; Prettyprinting
