@@ -777,17 +777,17 @@ function_inverse[D: NONEMPTY_TYPE, R: TYPE]: THEORY
 
   surj_inv: LEMMA injective?(f) IMPLIES surjective?(inverse(f))
 
-  comp_inverse_right : LEMMA
-	bijective?(f) IMPLIES  f(inverse(f)(y)) = y
+  comp_inverse_right_surj: LEMMA
+	FORALL (f:(surjective?[D,R])): f(inverse(f)(y)) = y
 
-  comp_inverse_left  : LEMMA
-	bijective?(f) IMPLIES  inverse(f)(f(x)) = x
+  comp_inverse_left_inj: LEMMA
+	FORALL (f:(injective?[D,R])): inverse(f)(f(x)) = x
 
-  comp_inverse_right_inj : LEMMA
-	injective?(f) IMPLIES  f(inverse(f)(y)) = y
+  comp_inverse_right: LEMMA
+	FORALL (f:(bijective?[D,R])): f(inverse(f)(y)) = y
 
-  comp_inverse_left_surj : LEMMA
-	surjective?(f) IMPLIES  inverse(f)(f(x)) = x
+  comp_inverse_left: LEMMA
+	FORALL (f:(bijective?[D,R])): inverse(f)(f(x)) = x
 
  END function_inverse
 
@@ -1170,7 +1170,7 @@ real_types: THEORY
   npreal_plus_npreal_is_npreal:  JUDGEMENT +(npx, npy) HAS_TYPE npreal
   npreal_times_npreal_is_nnreal: JUDGEMENT *(npx, npy) HAS_TYPE nnreal
   npreal_div_posreal_is_npreal:  JUDGEMENT /(npx, py)  HAS_TYPE npreal
-  npreal_div_negreal_is_nnreal:  JUDGEMENT /(npx, ny)  HAS_TYPE npreal
+  npreal_div_negreal_is_nnreal:  JUDGEMENT /(npx, ny)  HAS_TYPE nnreal
 
   posreal_plus_nnreal_is_posreal:   JUDGEMENT +(px, nny) HAS_TYPE posreal
   nnreal_plus_posreal_is_posreal:   JUDGEMENT +(nnx, py) HAS_TYPE posreal
@@ -1253,7 +1253,7 @@ rationals: THEORY
   nprat_plus_nprat_is_nprat:  JUDGEMENT +(npx, npy) HAS_TYPE nprat
   nprat_times_nprat_is_nnrat: JUDGEMENT *(npx, npy) HAS_TYPE nnrat
   nprat_div_posrat_is_nprat:  JUDGEMENT /(npx, py)  HAS_TYPE nprat
-  nprat_div_negrat_is_nnrat:  JUDGEMENT /(npx, ny)  HAS_TYPE nprat
+  nprat_div_negrat_is_nnrat:  JUDGEMENT /(npx, ny)  HAS_TYPE nnrat
 
   posrat_plus_nnrat_is_posrat:   JUDGEMENT +(px, nny) HAS_TYPE posrat
   nnrat_plus_posrat_is_posrat:   JUDGEMENT +(nnx, py) HAS_TYPE posrat
@@ -1979,7 +1979,7 @@ real_props: THEORY
   eq1_gt: FORMULA x > 1 AND x * y = 1 IMPLIES y < 1
 
   eq1_ge: FORMULA x >= 1 AND x * y = 1 IMPLIES y <= 1
-
+  
   eqm1_gt: FORMULA x > 1 AND x * y = -1 IMPLIES y > -1
 
   eqm1_ge: FORMULA x >= 1 AND x * y = -1 IMPLIES y >= -1
@@ -3333,8 +3333,8 @@ mucalculus[T:TYPE]: THEORY
 
   s: VAR T
   p, p1, p2: VAR pred[T]
-  predtt: TYPE = [pred[T]->pred[T]]
-  pp: VAR predtt
+  predicate_transformer: TYPE = [pred[T]->pred[T]]
+  pp: VAR predicate_transformer
   setofpred: VAR pred[pred[T]]
 
   <=(p1,p2): bool = FORALL s: p1(s) IMPLIES p2(s)
