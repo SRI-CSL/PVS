@@ -487,3 +487,21 @@
   (fields :parse t)
   ;;generated?
   dependent?)
+
+
+(defcl eval-defn-info ()
+  unary  ;;defn needed for returning functional values.
+  multiary ;;fully applied form
+  destructive) ;;destructive version of multiary form
+
+(defcl eval-defn ()
+  name
+  definition
+  output-vars) ;;These are the input vars that structure share with output.
+
+(defcl eval-info ()
+  internal  ;both are eval-defn-info 
+  external)
+
+(defcl destructive-eval-defn (eval-defn)
+  side-effects) ;;alist of updated variables/live vars when updated.
