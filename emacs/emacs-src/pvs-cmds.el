@@ -319,6 +319,37 @@ to be proved and invoking the prove command."
 	(pvs-view-mode)
 	(use-local-map pvs-show-formulas-map)))))
 
+(defpvs show-declaration-tccs tcc ()
+  "Shows the TCCs of the declaration at the current-cursor position
+
+The show-declaration-tccs command pops up a buffer with the name
+\"THEORY.DECLID.tccs\".  displaying just the TCCs of the specified
+declaration.  Proofs of any displayed TCCs may be initiated in the usual
+way, simply by moving the cursor to the formula to be proved and invoking
+the prove command."
+  (interactive)
+  (let* ((name-and-origin (pvs-formula-origin))
+	 (name (car name-and-origin))
+	 (origin (cadr name-and-origin))
+	 (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
+	 (line (+ (current-line-number) prelude-offset)))
+  (message "Creating the tccs buffer...")
+  (let ((theory-decl
+	 (pvs-send-and-wait (format
+				"(show-declaration-tccs \"%s\" \"%s\" %d %s)"
+				name origin line
+				(and current-prefix-arg t))
+			    nil (pvs-get-abbreviation 'show-declaration-tccs)
+			    nil)))
+    (let ((buf (get-buffer (format "%s.tccs" theory-decl))))
+      (when buf
+	(save-excursion
+	  (message "")
+	  (set-buffer buf)
+	  (setq pvs-context-sensitive t)
+	  (pvs-view-mode)
+	  (use-local-map pvs-show-formulas-map)))))))
+
 
 ;;; Show-theory-warnings
 
@@ -1403,11 +1434,14 @@ that some changes have been made that may invalidate the proof."
   (interactive)
   (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
-	 (filename (car name-and-origin))
-	 (origin (cadr name-and-origin)))
+	 (oname (car name-and-origin))
+	 (origin (cadr name-and-origin))
+	 (dotpos (position ?. oname))
+	 (filename (if dotpos (substring oname 0 dotpos) oname))
+	 (declname (when dotpos (substring oname (1+ dotpos)))))
     (save-some-pvs-buffers)
-    (pvs-send (format "(proof-status-at \"%s\" %d \"%s\")"
-		       filename
+    (pvs-send (format "(proof-status-at \"%s\" %s %d \"%s\")"
+		  filename (when declname (format "\"%s\"" declname))
 		(+ (current-line-number)
 		   (if (equal origin "prelude")
 		       pvs-prelude 0))
@@ -1463,11 +1497,14 @@ no circularities."
   (interactive)
   (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
-	 (filename (car name-and-origin))
-	 (origin (cadr name-and-origin)))
+	 (oname (car name-and-origin))
+	 (origin (cadr name-and-origin))
+	 (dotpos (position ?. oname))
+	 (filename (if dotpos (substring oname 0 dotpos) oname))
+	 (declname (when dotpos (substring oname (1+ dotpos)))))
     (save-some-pvs-buffers)
-    (pvs-send-and-wait (format "(proofchain-status-at \"%s\" %d \"%s\")"
-			   filename
+    (pvs-send-and-wait (format "(proofchain-status-at \"%s\" %s %d \"%s\")"
+			   filename (when declname (format "\"%s\"" declname))
 			 (+ (current-line-number)
 			    (if (equal origin "prelude")
 				pvs-prelude 0))
