@@ -5,9 +5,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Fri Jan 29 19:35:03 1999
 ;; Update Count    : 31
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -19,7 +17,7 @@
 
 (defcl syntax ()
   ;;newline-comment
-  place
+  (place :ignore t :restore-as nil)
   (pvs-sxhash-value :fetch-as nil :ignore t))
 
 ;;; Expressions
@@ -58,6 +56,11 @@
 
 (defcl field-name-expr (name-expr))
 
+;; For stand-alone field projections, e.g., `a[R]
+(defcl fieldex (expr)
+  id
+  actuals)
+
 (defcl adt-name-expr (name-expr)
   adt-type)
 
@@ -78,8 +81,14 @@
 
 (defcl fieldappl (field-application))
 
+;; When a fieldex is used as a conversion
+(defcl field-conversion (fieldappl))
+
 (defcl projection-expr (name-expr)
   (index :parse t :restore-as nil))
+
+;; For stand-alone projections, e.g., `2[T]
+(defcl projex (projection-expr))
 
 (defcl projection-application (expr)
   (id :restore-as nil)
@@ -88,6 +97,9 @@
   argument)
 
 (defcl projappl (projection-application))
+
+;; When a projection-expr is used as a conversion
+(defcl projection-conversion (projappl))
 
 (defcl injection-expr (constructor-name-expr)
   (index :parse t :restore-as nil))
@@ -104,6 +116,9 @@
   (index :restore-as nil)
   argument)
 
+;; When an injection-expr is used as a conversion
+(defcl injection-conversion (injection-application))
+
 (defcl injection?-application (expr)
   (id :restore-as nil)
   actuals
@@ -115,6 +130,10 @@
   actuals
   (index :restore-as nil)
   argument)
+
+;; When an extraction-expr is used as a conversion
+(defcl extraction-conversion (extraction-application))
+
 
 (defcl number-expr (expr)
   (number :parse t :restore-as nil))
@@ -311,6 +330,11 @@
 
 (defcl let-lambda-expr (lambda-expr))
 
+;; After typechecking, a fieldex is converted to a fieldex-lambda-expr, to
+;; minimize the effect of adding the fieldex class.
+(defcl fieldex-lambda-expr (lambda-expr)
+  actuals)
+
 (defcl funtype-conversion (lambda-expr)
   domain-conversion
   range-conversion)
@@ -467,6 +491,11 @@
 
 (defcl lambda-conversion-resolution (resolution)
   (k-conv-type :documentation "The common conversion type, e.g., state"))
+
+;; This allows us to keep track of where the conversion expr came from.
+(defcl conversion-result ()
+  conversion
+  expr)
 
 (defcl recursive-function-resolution (resolution)
   conversion)
