@@ -12,7 +12,6 @@
 #   -emacs       emacs, xemacs, or pathname
 #   -load-after  emacs file name
 #   -lisp        lisp image name
-#   -redhat              the redhat version (4 or 5)
 #   -runtime             use the runtime image
 #   -decision-procedures  set the default decision procedures
 #                                         (ics, shostak, or cyrluk)
@@ -75,11 +74,6 @@ do
              shift;;
      -load-after) loadafter=$loadafter" -load $2"
                   shift;;
-     -redhat) if [ $opsys = Linux ]
-		 then majvers="$2"
-		 else echo "The -redhat flag only makes sense under Linux"
-	      fi
-	      shift;;
      -runtime) pvsruntime=1;;
      -decision-procedures)
         case $2 in
@@ -141,7 +135,6 @@ where options include:
   -emacs emacspath     emacs to use (e.g., emacs, xemacs, /usr/local/bin/emacs)
   -lisp lispversion  lisp image to use (e.g., allegro6.0)
   -load-after        emacs file
-  -redhat number     the number corresponding to the Redhat release (4 or 5)
   -runtime           use the runtime image
   -decision-procedures  set default decision procedures (ics or shostak)
   -force-decision-procedures  forces the decision procedures (ics or shostak)
@@ -171,23 +164,15 @@ case $opsys in
 	 PVSARCH=sun4;;
   Linux) # If Linux, we need to determine the Redhat version to use.
 	 opsys=redhat
-	 if [ ! $majvers ]; then
-	    if [ -f /etc/redhat-release ]
-	       then majvers=`sed 's/.*release \([0-9]*\)\.\([0-9]*\).*/\1/' \
-	                         /etc/redhat-release`
-	       # Not Redhat; use the libc version to try and figure it out.
-	       else if [ -f /lib/libc.so.6 ]
-		       then majvers=5; othervers=4 
-		       else majvers=4; othervers=5
-		    fi
-		    echo "Using redhat$majvers; if it doesn't work try running"
-		    echo "$0 -redhat $othervers $*"
-	    fi
-	 fi
-	 if [ $majvers -gt 5 ]
-	    then majvers=5
-	 fi
-	 PVSARCH=ix86;;
+	 majvers=5
+	 othervers=4 
+	 PVSARCH=ix86
+	 # Allegro does not work with Linux's New Posix Thread Library (NPTL)
+	 # used in newer Red Hat kernels and 2.6 kernels.  This will force
+	 # the old thread-implementation.
+	 LD_ASSUME_KERNEL=2.4.19
+	 export LD_ASSUME_KERNEL
+	 ;;
   *) echo "PVS 3.0 only runs under Solaris or Linux"; exit 1
 esac
 
