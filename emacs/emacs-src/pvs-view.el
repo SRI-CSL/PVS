@@ -56,7 +56,7 @@ Key bindings are:
   (setq major-mode 'pvs-view-mode)
   (setq mode-name "PVS View")
   (set-syntax-table pvs-mode-syntax-table)
-  )
+  (run-hooks 'pvs-view-mode-hook))
 
 (defun pvs-view-file (file-name)
   (find-file-other-window file-name)
