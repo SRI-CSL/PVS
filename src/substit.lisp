@@ -314,7 +314,7 @@
       (nreverse nbindings)
       (let* ((bind (car old-bindings))
 	     (btype (type bind))
-	     (check (member bind freevars :key #'declaration))
+	     (check (member (id bind) freevars :key #'id))
 	     (dec-type (declared-type bind))
 	     (new-binding
 	      (if (not check)
