@@ -426,13 +426,6 @@
 		    (measure-depth decl)
 		    (type (measure decl))))
 
-(defmethod bindings* ((expr lambda-expr))
-  (cons (bindings expr) (bindings* (expression expr))))
-
-(defmethod bindings* (expr)
-  (declare (ignore expr))
-  nil)
-
 (defun outer-arguments* (bindings depth mtype &optional args)
   (let ((nargs (mapcar #'make-variable-expr
 		 (or (car bindings)
@@ -979,11 +972,11 @@
 (defun equality-predicates-list (l1 l2 bindings preds)
   (if (null l1)
       (when preds
-	(mk-conjunction preds))
-      (let ((npred (equality-predicates* (car l1) (car l2) nil nil bindings)))
+	(make!-conjunction* (nreverse preds)))
+      (let ((npred (equality-predicates* (car l1) (car l2) nil nil bindings))
+	    (nbindings (new-tc-eq-list-bindings (car l1) (car l2) bindings)))
 	(equality-predicates-list
-	 (cdr l1) (cdr l2)
-	 (new-tc-eq-list-bindings (car l1) (car l2) bindings)
+	 (substit (cdr l1) nbindings) (cdr l2) nbindings 
 	 (if npred
 	     (cons npred preds)
 	     preds)))))
