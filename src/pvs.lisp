@@ -108,9 +108,9 @@
     (when pathenv
       (let ((dirs (excl:split-regexp ":" pathenv)))
 	(dolist (dir dirs)
-	  (when (char= (char dir (1- (length dir))) #\/)
-	    (setq dir (subseq dir 0 (1- (length dir)))))
-	  (cond ((directory-p dir)
+	  (unless (char= (char dir (1- (length dir))) #\/)
+	    (setq dir (concatenate 'string dir "/")))
+	  (cond ((file-exists-p dir)
 		 (pushnew dir libs :test #'file-equal))
 		(t (pushnew dir libs :test #'string=)
 		   (pvs-message "Directory ~a in PVS_LIBRARY_PATH does not exist"
