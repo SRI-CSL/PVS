@@ -75,13 +75,13 @@
     (cond (primitive
 	   (format t "~%~a exists as a primitive rule.  It cannot be redefined." name))
 	  (rule
-	   (format t "~%~a exists as a defined rule." name))
+	   (format-if "~%~a exists as a defined rule." name))
 	  (strat
-	   (format t "~%~a exists as a strategy." name)))
+	   (format-if "~%~a exists as a strategy." name)))
     (cond (primitive (format t "~%No change. "))
 	  (t  (if (or rule strat)
-		  (format t "~%Redefining ~a. " name)
-		  (format t "~%Defining ~a. " name))
+		  (format-if "~%Redefining ~a. " name)
+		  (format-if "~%Defining ~a. " name))
 	      (if rule (remhash name *rules*))
 	      (if strat (remhash name *steps*))
 	      #+lucid (record-source-file name 'strategy)
