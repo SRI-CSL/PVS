@@ -1406,8 +1406,8 @@ required a context.")
       (nreverse result)
       (resolutions-of-current-theory*
        (cdr resolutions)
-       (if (eq (module-instance (car resolutions))
-	       (theory-name *current-context*))
+       (if (tc-eq (module-instance (car resolutions))
+		  (current-theory-name))
 	   (cons (car resolutions) result)
 	   result))))
 
