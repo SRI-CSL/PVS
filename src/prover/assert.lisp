@@ -3623,9 +3623,10 @@
 
 (defun assert-test0 (fmla)
   (unless (check-for-connectives? fmla)
-    (nprotecting-cong-state
-     ((*dp-state* *init-dp-state*))
-     (call-process fmla *dp-state*))))
+    (let ((*sequent-typealist* nil))
+      (nprotecting-cong-state
+       ((*dp-state* *init-dp-state*))
+       (call-process fmla *dp-state*)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;auto-rewriting
