@@ -815,8 +815,9 @@ generated")
 			(declared-type acc)))
 	     (*adt-decl* (declared-type acc)))
 	(assert atype)
-	(let* ((ty (typecheck (pc-parse (unparse atype :string t)
-					'dep-type-expr)))
+	(let* ((ty (when occ?
+		     (typecheck (pc-parse (unparse atype :string t)
+				  'dep-type-expr))))
 	       (*bound-variables* (if occ?
 				      (cons ty *bound-variables*)
 				      *bound-variables*)))
