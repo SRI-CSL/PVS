@@ -658,6 +658,7 @@
 	 (rem-decls (if prev-imp
 			(ldiff prev-decls (memq prev-imp prev-decls))
 			prev-decls)))
+    (assert (or (not prev-imp) (saved-context prev-imp)))
     (copy-context (if prev-imp
 		      (saved-context prev-imp)
 		      *prelude-context*)
@@ -2570,6 +2571,11 @@ space")
 		  (format t ";;; Finished GC~%")
 		  (setq *pvs-gc-count* 0)
 		  (setq *prevent-gc-recursion* nil)))))))
+
+#+allegro
+(eval-when (load)
+  (when (compiled-function-p #'pvs-gc-after-hook)
+    (setf excl:*gc-after-hook* #'pvs-gc-after-hook)))
 
 (defun reset-print-equal-cache ()
   (if *term-print-strings*
