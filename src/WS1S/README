@@ -1,4 +1,4 @@
-mona-1.3:	Original Mona Distrution
+mona:	       Original Mona 1.4 Distrution, but I added a couple of function to DFA/analyze.c
 lisp:		Connection of PVS with Mona
 ws1s_extended_interface.c : Some C functions for realizing this interface
 ix86-redhat4:	Shared object file for the PVS Mona connection
