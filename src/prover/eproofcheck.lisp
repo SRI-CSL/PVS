@@ -2308,6 +2308,11 @@
 (defmethod extract-justification-sexp (x)
   x)
 
+;;; editable-justification ::=
+;;;   '(' [label] [comment]
+;;;       ( editable-justification | '(' editable-justification++ ')' ) ')'
+;;; ++ here means two or more.
+
 (defun editable-justification (justif &optional
 				      label xflag full-label no-escape?)
   ;;NSH(1.3.98) if full-label is given, then the full label is
@@ -2359,12 +2364,10 @@
 	((null label)
 	 (if (and (stringp (car ejustif))
 		  (every #'digit-char-p (car ejustif)))
-	     (check-edited-justification (cdr ejustif)
-					 (car ejustif))
+	     (check-edited-justification (cdr ejustif) (car ejustif))
 	     (values "Label must be a string of numbers." (car ejustif))))
 	(t
-	 (if (and (consp (car ejustif))
-		  (consp (caar ejustif)))
+	 (if (and (consp (car ejustif)) (consp (caar ejustif)))
 	     (some #'check-edited-justification (car ejustif))
 	     (if (consp (car ejustif))
 		 (check-edited-justification (cdr ejustif) label)
@@ -2386,21 +2389,32 @@
 	(t (unless after-newline?
 	     (valid-comment-string? string (1+ pos) nil len))))))
 
+;;; revert-justification converts an editable-justification to
+;;; a justification-sexp.  It adds missing labels, moves comments
+;;; to the end, and adds parens around singleton justifications.
+;;; label should only be given in the recursive call.
 (defun revert-justification (ejustif &optional label)
   (unless (null ejustif)
-    (if  (null label)
-	 (if (consp (cadr ejustif)) 
-  	     (list (car ejustif)
-	       (unformat-rule (cadr ejustif))
-	       (revert-justification (cddr ejustif)(car ejustif)))
-	     (revert-justification (cddr ejustif)(car ejustif)))
-	 (if (and (consp (car ejustif))(consp (caar ejustif)))
-	     (mapcar #'revert-justification (car ejustif))
-	     (if (consp (car ejustif))
-  	         (list (list label
-			 (unformat-rule (car ejustif))
-			 (revert-justification (cdr ejustif) label)))
-		 (revert-justification (cdr ejustif) label))))))
+    (if (null label)
+	(if (consp (cadr ejustif))	; Not a comment
+	    (list (car ejustif)		; Assumes this is a label
+		  (unformat-rule (cadr ejustif))
+		  (revert-justification (cddr ejustif) (car ejustif)))
+	    (let ((rjust (revert-justification (cddr ejustif) (car ejustif))))
+	      (assert (singleton? rjust))
+	      ;; Need to put the comment in the right place
+	      (append (car rjust) (list (cadr ejustif)))))
+	(if (and (consp (car ejustif)) (consp (caar ejustif)))
+	    (mapcar #'revert-justification (car ejustif))
+	    ;; Singleton editable-justification
+	    (if (consp (car ejustif)) ; No label or comment - must be a rule
+		(list (list label
+			    (unformat-rule (car ejustif))
+			    (revert-justification (cdr ejustif) label)))
+		(if (every #'digit-char-p (car ejustif))
+		    (revert-justification (cdr ejustif) label)
+		    (append (revert-justification (cdr ejustif) label)
+			    (list (car ejustif)))))))))
   
 
 (defmethod pp-justification ((justification justification))
