@@ -138,6 +138,7 @@
 (defun ics-process (state atom)
   (assert (state-wrap? state))
   (assert (atom-wrap? atom))
+  (break)
   (ics_process_wrapper (state-unwrap state) (atom-unwrap atom)))
 
 
@@ -156,7 +157,7 @@
 	
 (defun unique-name-ics (expr)
   (or (gethash expr *pvs-to-ics-symtab*)
-      (let ((name (format nil "~a@@~d"
+      (let ((name (format nil "~a__~d"
 			       (if (name-expr? expr) (symbol-name (id expr)) "new")
 			       *unique-name-ics-counter*)))
 	(setf *counter* (1+ *unique-name-ics-counter*))
@@ -179,6 +180,7 @@
 (defmethod translate-posatom-to-ics* ((expr expr))
   "Fallthrough method: Boolean expressions 'b' are translated as 'b = true'"
   (let ((ics-term (translate-term-to-ics* expr)))
+    (assert (integerp ics-term))
     (ics_atom_mk_equal ics-term (ics_term_mk_true))))
 
 (defmethod translate-posatom-to-ics* ((expr name-expr))
@@ -218,7 +220,7 @@
 			     (translate-term-to-ics* (args2 expr))))
 	    ((tc-eq op (integer_pred))
 	     (ics_atom_mk_int (translate-term-to-ics* (args1 expr))))
-	    ((or (tc-eq op (real_pred))	; ICS does not distinguish between rationals and reals
+	    ((or (tc-eq op (real_pred))
 		 (tc-eq op (rational_pred)))
 	     (ics_atom_mk_real (translate-term-to-ics* (args1 expr))))
 	    (t
