@@ -2,19 +2,24 @@
 ;; ics-pvs.lisp -- 
 ;; Author          : Harald Ruess
 ;; Created On      : Tue May 14 11:32:58 PDT 2002
-;; Last Modified By: Harald Ruess
-;; Last Modified On: Tue May 14 11:32:58 PDT 2002
-;; Update Count    : 1
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Last Modified By: Sam Owre
+;; Last Modified On: Thu May 20 16:22:40 2004
+;; Update Count    : 2
+;; Status          : Beta
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
 ;; Global variables
 
-(defvar *pvs-to-ics-hash* 
+(defvar *pvs-to-ics-term-hash* 
+  (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+
+(defvar *pvs-to-ics-posexpr-hash* 
+  (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+
+(defvar *pvs-to-ics-negexpr-hash* 
   (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
 
 (defvar *ics-to-pvs-translation* nil)
@@ -27,22 +32,33 @@
 
 (defvar *unique-name-ics-counter* 0)
 
-(defvar *ics-nonlin* nil)
-
 (defvar *ics-debug* nil)
 
 (defun pvs-to-ics-reset ()
-  (clrhash *pvs-to-ics-hash*)
+  (clrhash *pvs-to-ics-term-hash*)
+  (clrhash *pvs-to-ics-posexpr-hash*)
+  (clrhash *pvs-to-ics-negexpr-hash*)
   (clrhash *ics-to-pvs-hash*)
   (clrhash *pvs-to-ics-symtab*)
   (setf *unique-name-ics-counter* 0))
 
-(defun pvs-to-ics-add-hash (expr wrapper)
-  #+icsdebug(assert (expr? expr))
-  #+icsdebug(assert (wrap? wrapper))
-  (setf (gethash expr *pvs-to-ics-hash*) wrapper)
+(defun pvs-to-ics-add-term-hash (pvs-expr ics-term)
+  #+icsdebug (assert (expr? pvs-expr))
+  (setf (gethash pvs-expr *pvs-to-ics-term-hash*) ics-term)
   (when *ics-to-pvs-translation*
-    (setf (gethash wrapper *pvs-to-ics-hash*) expr)))
+    (setf (gethash ics-term *ics-to-pvs-hash*) pvs-expr)))
+
+(defun pvs-to-ics-add-posexpr-hash (pvs-expr ics-expr)
+  #+icsdebug (assert (expr? pvs-expr))
+  (setf (gethash pvs-expr *pvs-to-ics-posexpr-hash*) ics-expr)
+  (when *ics-to-pvs-translation*
+    (setf (gethash ics-expr *ics-to-pvs-hash*) pvs-expr)))
+
+(defun pvs-to-ics-add-negexpr-hash (pvs-expr ics-expr)
+  #+icsdebug (assert (expr? pvs-expr))
+  (setf (gethash pvs-expr *pvs-to-ics-negexpr-hash*) ics-expr)
+  (when *ics-to-pvs-translation*
+    (setf (gethash ics-expr *ics-to-pvs-hash*) pvs-expr)))
 
 
 ;; Wrapping and unwrapping ICS values in order to finalize 
@@ -193,8 +209,10 @@
     state))
     
 (defmethod ics-process (state (expr expr))
-   #+icsdebug(assert (state-wrap? state))
+  #+icsdebug(assert (state-wrap? state))
+  (ics_context_pp (state-unwrap state))
   (let* ((atom (translate-to-ics expr))
+	 (foo (ics_atom_pp (atom-unwrap atom)))
 	 (result (ics_process (state-unwrap state) (atom-unwrap atom))))
     (cond ((not (zerop (ics_is_consistent result)))
 	   (ics-d-consistent result))
@@ -247,22 +265,34 @@
 
 ;; Translating from PVS expressions to ICS terms
 
+;; (defun translate-to-ics (expr)
+;;   (let* ((atom (translate-posatom-to-ics* expr))
+;; 	 (wrapper (atom-wrap atom)))
+;;     (wrap-finalize! wrapper)
+;;     (pvs-to-ics-add-hash expr wrapper)
+;;     wrapper))
+
 ;; An atom is either an equality, disequality, an arithmetic
 ;; constraint, or some other expression of Boolean type
 
-(defmethod translate-to-ics (expr)
-  (or (gethash expr *pvs-to-ics-hash*)
-      (let ((atom (translate-posatom-to-ics* expr)))
-	 #+icsdebug(assert (integerp atom))
-	(let ((wrapper (atom-wrap atom)))
-	  (wrap-finalize! wrapper)
-	  (pvs-to-ics-add-hash expr wrapper)
-	  wrapper))))
+(defun translate-to-ics (expr)
+  (let ((atom (translate-posatom-to-ics* expr)))
+    #+icsdebug (assert (integerp atom))
+    (let ((wrapper (atom-wrap atom)))
+      (wrap-finalize! wrapper)
+      wrapper)))
+
+(defmethod translate-posatom-to-ics* :around ((expr expr))
+  (or (gethash expr *pvs-to-ics-posexpr-hash*)
+      (let ((atom (call-next-method)))
+	#+icsdebug (assert (integerp atom))
+	(pvs-to-ics-add-posexpr-hash expr atom)
+	atom)))
 
 (defmethod translate-posatom-to-ics* ((expr expr))
   "Fallthrough method: Boolean expressions 'b' are translated as 'b = true'"
   (let ((ics-term (translate-term-to-ics* expr)))
-     #+icsdebug(assert (integerp ics-term))
+    #+icsdebug (assert (integerp ics-term))
     (ics_atom_mk_equal ics-term (ics_term_mk_true))))
 
 (defmethod translate-posatom-to-ics* ((expr name-expr))
@@ -318,6 +348,15 @@
 	(t
 	 (translate-negatom-to-ics* (args1 expr)))))
 
+;;; Translation of negative atoms
+
+(defmethod translate-negatom-to-ics* :around ((expr expr))
+  (or (gethash expr *pvs-to-ics-negexpr-hash*)
+      (let ((atom (call-next-method)))
+	#+icsdebug (assert (integerp atom))
+	(pvs-to-ics-add-negexpr-hash expr atom)
+	atom)))
+
 (defmethod translate-negatom-to-ics* ((expr expr))
   "Fallthrough method: Negations of Boolean expressions 'b' are translated as 'b = false'"
   (let ((ics-term (translate-term-to-ics* expr)))
@@ -363,9 +402,14 @@
 	    (t
 	     (call-next-method))))))
 
+;;; translate-term-to-ics*
 
 (defmethod translate-term-to-ics* :around ((expr expr))
-  (call-next-method))
+  (or (gethash expr *pvs-to-ics-term-hash*)
+      (let ((term (call-next-method)))
+	#+icsdebug (assert (integerp term))
+	(pvs-to-ics-add-term-hash expr term)
+	term)))
 
 (defmethod translate-term-to-ics* ((expr expr))
   (ics_term_mk_var (unique-name-ics expr)))
@@ -390,7 +434,7 @@
   (let ((op (operator expr)))
     (cond ((tc-eq op (plus-operator))
 	   (ics_term_mk_add (translate-term-to-ics* (args1 expr))
-			     (translate-term-to-ics* (args2 expr))))
+			    (translate-term-to-ics* (args2 expr))))
 	  ((tc-eq op (difference-operator))
 	   (ics_term_mk_sub (translate-term-to-ics* (args1 expr))
 			    (translate-term-to-ics* (args2 expr))))
@@ -398,14 +442,15 @@
 	   (ics_term_mk_unary_minus (translate-term-to-ics* (args1 expr))))
 	  ((tc-eq op (times-operator))
 	   (translate-mult-to-ics* (args1 expr) (args2 expr)))
-	  ((and *ics-nonlin*
-		(tc-eq op (divides-operator)))
+	  ((and (tc-eq op (divides-operator))
+		(format t "~%Still need to handle the translation of division")
+		nil)
 	   (ics_term_mk_div (translate-term-to-ics* (args1 expr))
 			    (translate-term-to-ics* (args2 expr))))
 	  (t
 	   (let ((opterm (translate-term-to-ics* op))
-		 (argterms (translate-term-list-to-ics* (arguments expr))))
-	     (ics_term_mk_apply opterm argterms))))))
+		 (argterms (translate-term-list-to-term (arguments expr))))
+	     (ics_term_mk_select opterm argterms))))))
 
 
 (defmethod translate-mult-to-ics* ((expr1 number-expr) (expr2 expr))
@@ -419,11 +464,7 @@
 (defmethod translate-mult-to-ics* ((expr1 expr) (expr2 expr))
   (let ((term1 (translate-term-to-ics* expr1))
 	(term2 (translate-term-to-ics* expr2)))
-    (if *ics-nonlin*
-	(ics_term_mk_mult term1 term2)
-      (let ((mult (translate-term-to-ics* (times-operator)))
-	    (args (ics_cons term1 (ics_cons term2 (ics_nil)))))
-	(ics_term_mk_apply mult args)))))
+    (ics_term_mk_mult term1 term2)))
       
 	
 (defmethod translate-term-to-ics* ((expr let-expr))
@@ -435,7 +476,7 @@
 
 (defmethod translate-term-to-ics* ((expr record-expr))
   (let ((exprs (mapcar #'expression (sort-assignments (assignments expr)))))
-    (ics_term_mk_tuple (translate-term-list-to-ics* exprs))))
+    (translate-term-list-to-term exprs)))
 
 (defun sort-assignments (assignments)
   (sort (copy-list assignments)
@@ -443,7 +484,7 @@
 	:key #'(lambda (assignment) (id (caar (arguments assignment))))))
 
 (defmethod translate-term-to-ics* ((expr tuple-expr))
-  (ics_term_mk_tuple (translate-term-list-to-ics* (exprs expr))))
+  (translate-term-list-to-term (exprs expr)))
 	
 (defmethod translate-to-ics* ((expr coercion))
   (with-slots (operator argument) expr
@@ -452,20 +493,22 @@
 					(argument* expr)))))
       (translate-term-to-ics* reduced-expr))))
 
+(defun translate-term-list-to-term (exprs)
+  (ics_term_mk_tuple (translate-term-list-to-ics* exprs)))
+
 (defun translate-term-list-to-ics* (exprs)
   (cond ((null exprs)
 	 (ics_nil))
 	((expr? exprs)
-         (ics_cons (translate-term-to-ics* (ics_nil))))
+         (ics_cons (translate-term-to-ics* exprs) (ics_nil)))
 	(t
 	 (let ((trm (translate-term-to-ics* (car exprs))))
 	   (ics_cons trm (translate-term-list-to-ics* (cdr exprs)))))))
 
 (defmethod translate-term-to-ics* ((expr projection-application))
   (let* ((arg (argument expr))
-	 (width (width-of (type arg)))
 	 (index (1- (index expr))))
-    (ics_term_mk_proj index width (translate-term-to-ics* arg))))
+    (ics_term_mk_proj index (translate-term-to-ics* arg))))
 
 #+workinprogress
 (defmethod translate-term-to-ics* ((expr injection-application))
@@ -493,7 +536,7 @@
 	   (pos (position id (sort-fields fields)
 			  :test #'(lambda (x y) (eq x (id y)))))
 	   (trm (translate-term-to-ics* argument)))
-      (ics_term_mk_proj pos (length fields) trm))))
+      (ics_term_mk_proj pos trm))))
 
 (defmethod width-of ((type tupletype))
   (length (types type)))
@@ -563,7 +606,7 @@
 	   (tupletype (1- (number (caar args))))
 	   (funtype (if (singleton? (car args))
 		  (translate-term-to-ics* (caar args))
-		(ics_term_mk_tuple (translate-term-list-to-ics* (car args)))))
+		(translate-term-list-to-term (car args))))
 	   (t 
 	    (translate-term-to-ics* (caar args)))))
 	 (next-trbasis-type     
@@ -589,7 +632,7 @@
 	       trbasis
 	       (if (singleton? (car args))
 		   (translate-term-to-ics* (caar args))
-		 (ics_term_mk_tuple (translate-term-list-to-ics* (car args))))))
+		 (translate-term-list-to-term (car args)))))
 	   (t 
 	    (make-ics-assign-application
 	     (type (caar args))
@@ -605,14 +648,14 @@
   (declare (ignore field-accessor-type))
    #+icsdebug(assert (integerp fieldnum))
    #+icsdebug(assert (integerp length))
-  (ics_term_mk_proj fieldnum length term))
+  (ics_term_mk_proj fieldnum term))
 
 (defun make-ics-projection-application (type number length term)
   "Forget about the 'type' for now"
   (declare (ignore type))
    #+icsdebug(assert (integerp number))
    #+icsdebug(assert (integerp length))
-  (ics_term_mk_proj (1- number) length term))
+  (ics_term_mk_proj (1- number) term))
 
 (defun make-ics-assign-application (fun-type term term-args)
   "Forget about the 'fun-type' for now"
@@ -659,13 +702,7 @@
 (defmethod translate-prop-to-ics* ((expr iff-or-boolean-equation))
   (let ((trm1 (translate-prop-to-ics* (args1 expr)))
 	(trm2 (translate-prop-to-ics* (args2 expr))))
-    (ics_prop_mk_iff (ics_cons trm1 (ics_cons trm2 (ics_nil))))))
+    (ics_prop_mk_iff trm1 trm2)))
 
 (defmethod translate-prop-to-ics* ((expr let-expr))
   (break "to do"))
-
-
-
-
-
-
