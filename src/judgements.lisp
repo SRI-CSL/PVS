@@ -351,13 +351,15 @@
 (defmethod judgement-types* ((ex name-expr))
   (let ((entry (name-judgements ex)))
     (when entry
-      (if (generic-judgements entry)
-	  (let ((inst-types (instantiate-generic-judgement-types
-			     ex (generic-judgements entry))))
-	    (assert (every #'fully-instantiated? inst-types))
-	    (minimal-types (nconc inst-types
-				  (mapcar #'type (minimal-judgements entry)))))
-	  (mapcar #'type (minimal-judgements entry))))))
+      (delete-if-not #'(lambda (ty) (compatible? ty (type ex)))
+	(if (generic-judgements entry)
+	    (let ((inst-types (instantiate-generic-judgement-types
+			       ex (generic-judgements entry))))
+	      (assert (every #'fully-instantiated? inst-types))
+	      (minimal-types (nconc inst-types
+				    (mapcar #'type
+				      (minimal-judgements entry)))))
+	    (mapcar #'type (minimal-judgements entry)))))))
 
 (defun instantiate-generic-judgement-types (name judgements &optional types)
   (if (null judgements)
