@@ -1250,16 +1250,16 @@
 			     (find-operator-conversions (types op) args))))
 	  (if conversions
 	      (let* ((conv (car conversions))
-		     (ctype (type (name conv)))
+		     (ctype (type (expr conv)))
 		     (dom (domain (find-supertype ctype)))
 		     ;;(ran (range (find-supertype ctype)))
 		     (nop (copy op)))
-		(add-conversion-info (name conv) op)
+		(add-conversion-info (expr conv) op)
 		(change-class op 'implicit-conversion)
 		(setf (argument op) nop)
 		(setf (types nop)
 		      (list (if (typep dom 'dep-binding) (type dom) dom)))
-		(setf (operator op) (copy (name conv)))
+		(setf (operator op) (copy (expr conv)))
 		(setf (types op) (list ctype))
 		(typecheck* op nil nil nil))
 	      (type-mismatch-error expr))))))
@@ -1284,11 +1284,14 @@
 
 (defun compatible-operator-conversion (conversion optype args)
   (let* ((theory (module conversion))
-	 (ctype (find-supertype (type (name conversion))))
+	 (ctype (find-supertype (type (expr conversion))))
 	 (fmls (formals-sans-usings theory)))
     (and (typep ctype 'funtype)
 	 (typep (find-supertype (range ctype)) 'funtype)
-	 (if (and (free-params (name conversion))
+	 (if (and (remove-if #'(lambda (fp)
+				 (memq fp (formals-sans-usings
+					   (current-theory))))
+		    (free-params conversion))
 		  fmls
 		  (not (eq theory *current-theory*)))
 	     (let* ((bindings1 (tc-match optype (domain ctype)
@@ -1303,18 +1306,16 @@
 			(nmi (mk-modname (id theory) acts)))
 		   (and (with-no-type-errors
 			 (check-compatible-params
-			  (formals-sans-usings theory)
-			  acts
-			  nil))
+			  (formals-sans-usings theory) acts nil))
 			(check-operator-conversion
 			 (subst-params-decl conversion nmi) args)))))
 	     (when (compatible? optype (domain ctype))
 	       (check-operator-conversion conversion args))))))
 
 (defun check-operator-conversion (conversion args)
-  (let* ((ftype (find-supertype (type (name conversion))))
+  (let* ((ftype (find-supertype (type (expr conversion))))
 	 (rtype (find-supertype (range ftype))))
-    (when (and (valid-actuals (name conversion))
+    (when (and ;;(valid-actuals (expr conversion))
 	       (typep rtype 'funtype)
 	       (length= args (domain-types rtype))
 	       (every #'(lambda (a d)
@@ -1322,27 +1323,6 @@
 				(ptypes a)))
 		      args (domain-types rtype)))
       conversion)))
-
-(defun valid-actuals (name)
-  (valid-actuals* (actuals (module-instance name))
-		  (formals-sans-usings (module (declaration name)))))
-
-(defun valid-actuals* (actuals formals &optional alist)
-  (or (null actuals)
-      (multiple-value-bind (nfml nalist)
-	  (subst-actuals-in-next-formal (car actuals) (car formals) alist)
-	(and (valid-actual (car actuals) nfml)
-	     (valid-actuals* (cdr actuals) (cdr formals) nalist)))))
-
-(defmethod valid-actual (act (formal formal-type-decl))
-  (type-value act))
-
-(defmethod valid-actual (act (formal formal-subtype-decl))
-  (and (type-value act)
-       (compatible? (type-value act) (type-value formal))))
-
-(defmethod valid-actual (act (formal formal-const-decl))
-  (null (type-value act)))
 
 (defvar *in-application-conversion* nil)
 
@@ -1355,18 +1335,17 @@
 	      *in-application-conversion*)
     (let* ((*in-application-conversion* t)
 	   (op (operator expr))
-	   (conversions (conversion
-			 (find-if #'(lambda (r)
-				      (typep r 'lambda-conversion-resolution))
-			   (resolutions (operator expr)))))
-	   (bindings (make-arg-conversion-bindings conversions expr))
-	   (*bound-variables* (append bindings *bound-variables*))
-	   (vars (make-arg-conversion-variables bindings))
-	   (args (application-conversion-arguments
-		  (arguments expr) conversions vars))
+	   (kres (find-if #'(lambda (r)
+			      (typep r 'lambda-conversion-resolution))
+		   (resolutions (operator expr))))
+	   (kid (make-new-variable 's expr))
+	   (kbd (make-bind-decl kid (k-conv-type kres)))
+	   (*bound-variables* (cons kbd *bound-variables*))
+	   (kvar (make-variable-expr kbd))
+	   (args (application-conversion-arguments (arguments expr) kvar))
 	   (orig-expr (copy expr)))
       (change-class expr 'lambda-conversion)
-      (setf (bindings expr) bindings
+      (setf (bindings expr) (list kbd)
 	    (types op) nil
 	    (resolutions op) nil
 	    (expression expr) (make-instance (class-of orig-expr)
@@ -1378,39 +1357,28 @@
       (add-conversion-info "LAMBDA conversion" orig-expr expr)
       (typecheck* expr nil nil nil))))
 
-(defun make-arg-conversion-bindings (conversions expr &optional bindings)
-  (if (null conversions)
-      (nreverse bindings)
-      (let ((nbinding (make-arg-conversion-binding (car conversions) expr
-						   bindings)))
-	(make-arg-conversion-bindings
-	 (cdr conversions)
-	 expr
-	 (if nbinding
-	     (cons nbinding bindings)
-	     bindings)))))
-
-(defmethod make-arg-conversion-binding ((conv name-expr) expr bindings)
-  (let ((type (domain (range (type conv)))))
-    (unless (member type bindings :key #'type :test #'tc-eq)
-      (let ((vid (make-new-variable '|x| expr)))
-	(typecheck* (mk-bind-decl vid type type) nil nil nil)))))
-
-(defmethod make-arg-conversion-binding (nonconv expr bindings)
-  (declare (ignore nonconv expr bindings))
-  nil)
-
-(defun make-arg-conversion-variables (bindings)
-  (mapcar #'(lambda (bd)
-	      (mk-name-expr (id bd) nil nil
-			    (make-resolution bd
-			      (theory-name *current-context*) (type bd))))
-	  bindings))
-
-(defun application-conversion-arguments (arguments conversions vars)
-  (mapcar #'(lambda (arg conv)
-	      (application-conversion-argument arg conv vars))
-	  arguments conversions))
+(defun application-conversion-arguments (arguments kvar)
+  (let* ((*parsing-or-unparsing* t)
+	 (*gensubst-reset-types* t)
+	 (nargs (gensubst arguments
+		  #'(lambda (ex)
+		      (setf (types ex) nil)
+		      (when (name-expr? ex) (setf (resolutions ex) nil))
+		      (let ((ac (make-instance 'argument-conversion
+				  'operator ex
+				  'argument kvar)))
+			(typecheck* ac nil nil nil)))
+		  #'(lambda (ex)
+		      (and (expr? ex)
+			   (some #'(lambda (ty)
+				     (and (not (from-conversion ty))
+					  (let ((sty (find-supertype ty)))
+					    (and (funtype? sty)
+						 (compatible? (domain sty)
+							      (type kvar))))))
+				 (ptypes ex)))))))
+    (typecheck* nargs nil nil nil)))
+      
 
 (defmethod application-conversion-argument (arg (conv name-expr) vars)
   (let ((var1 (find-if #'(lambda (v)

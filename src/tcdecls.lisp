@@ -199,7 +199,7 @@
 	(type-error (theory-name decl)
 	  "Theory declarations may not be used for a datatype~a"
 	  abbr-info))
-      (unless (equal abbrinfo "")
+      (unless (equal abbr-info "")
 	(pvs-info abbr-info))
       (typecheck-named-theory* theory theory-name decl))))
 
@@ -1849,8 +1849,7 @@
 (defmethod look-for-expected-from-conversion ((expr application))
   (and (typep (operator expr) 'name-expr)
        (typep (resolution (operator expr)) 'lambda-conversion-resolution)
-       (list (range (type (find-if #'(lambda (x) (not (null x)))
-			    (conversion (resolution (operator expr)))))))))
+       (list (k-conv-type (resolution (operator expr))))))
 
 (defmethod look-for-expected-from-conversion (expr)
   (declare (ignore expr))
@@ -2268,79 +2267,83 @@
 (defmethod typecheck* ((decl conversion-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (unless (typechecked? decl)
-    (typecheck* (name decl) nil 'expr nil)
-    (unless (singleton? (resolutions (name decl)))
-      (type-ambiguity (name decl)))
-    (setf (type (name decl)) (type (resolution (name decl)))))
-  (typecheck-conversion decl)
+    (typecheck* (expr decl) nil nil nil)
+    (mapobject #'(lambda (ex)
+		   (when (and (expr? ex)
+			      (not (type ex)))
+		     (if (singleton? (types ex))
+			 (setf (type ex) (car (types ex)))
+			 (type-ambiguity ex))
+		     nil))
+	       (expr decl)))
+  (check-conversion-applicability decl)
+  (setf (k-combinator? decl) (k-combinator? (expr decl)))
+  (let ((ndecl (if (fully-instantiated? (expr decl))
+		   decl
+		   (let ((th (module
+			      (find-if #'(lambda (fp)
+					   (not (memq fp (formals-sans-usings
+							  (current-theory)))))
+				(free-params (expr decl))))))
+		     (copy decl 'module th)))))
+    (push ndecl (conversions *current-context*)))
   decl)
 
-(defmethod typecheck* ((decl typed-conversion-decl) expected kind arguments)
-  (declare (ignore expected kind arguments))
-  (unless (typechecked? decl)
-    (let ((type (let ((*generate-tccs* 'none))
-		  (typecheck* (declared-type decl) nil nil nil))))
-      (set-type (declared-type decl) nil)
-      (typecheck* (name decl) type 'expr nil)))
-  (typecheck-conversion decl)
-  decl)
-
-(defun typecheck-conversion (decl)
-  (unless (typep (declaration (name decl)) 'const-decl)
-    (type-error (name decl)
-      "Conversion must be a constant"))
-  (let ((type (find-supertype (type (name decl)))))
-;    (unless (and (typep type 'funtype)
-;		 (singleton? (domain type)))
-;      (type-error (name decl)
-;	"Coercion is not a unary function:~%  ~a: ~a" (name decl) type))
-    (when (strict-compatible? (domain type) (range type))
-      (type-error (name decl)
+(defun check-conversion-applicability (decl)
+  (let* ((ctype (type (expr decl)))
+	 (stype (find-supertype ctype)))
+    (unless (typep stype 'funtype)
+      (type-error (expr decl)
+	"Conversion is not a function:~%  ~a: ~a" (expr decl) ctype))
+    (when (strict-compatible? (domain stype) (range stype))
+      (type-error (expr decl)
 	"The domain and range of this conversion are compatible;~%~
-         the conversion will never be used:~%  ~a: ~a" (name decl) type))
-    (setf (k-combinator? decl) (k-combinator? (declaration (name decl))))
-    (let ((ndecl (if (fully-instantiated? (name decl))
-		     decl
-		     (copy decl 'module (module (declaration (name decl)))))))
-      (push ndecl (conversions *current-context*)))
-    decl))
+         the conversion will never be used:~%  ~a: ~a" (name decl) ctype))
+    ;; Note that conversions are similar to auto-rewrites, where the
+    ;; free-params of a conversion correspond to the free variables of an
+    ;; auto-rewrite.  This is a test that the LHS covers all the free
+    ;; variables.
+    (unless (fully-instantiated? (expr decl))
+      (let* ((frees (remove-if #'(lambda (fp)
+				   (memq fp (formals-sans-usings
+					     (current-theory))))
+		      (free-params (expr decl))))
+	     (ftheory (module (car frees))))
+	(unless (every #'(lambda (fp) (eq (module fp) ftheory))
+		       (cdr frees))
+	  (type-error (expr decl)
+	    "Conversion expression has free parameters from different theories"
+	    ))
+	(unless (= (length frees) (length (formals-sans-usings ftheory)))
+	  (type-error (expr decl)
+	    "conversion does not determine all free parameters"))))))
 
 (defmethod type ((decl conversion-decl))
-  (type (name decl)))
+  (type (expr decl)))
 
 ;;; Disabling conversions
 
 (defmethod typecheck* ((decl conversionminus-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (unless (typechecked? decl)
-    (typecheck* (name decl) nil 'expr nil)
-    (unless (singleton? (resolutions (name decl)))
-      (type-ambiguity (name decl)))
-    (setf (type (name decl)) (type (resolution (name decl)))))
-  (disable-conversion decl)
-  decl)
-
-(defmethod typecheck* ((decl typed-conversionminus-decl)
-		       expected kind arguments)
-  (declare (ignore expected kind arguments))
-  (unless (typechecked? decl)
-    (typecheck* (name decl) nil 'expr nil)
-    (unless (singleton? (resolutions (name decl)))
-      (type-ambiguity (name decl)))
-    (setf (type (name decl)) (type (resolution (name decl)))))
+    (typecheck* (expr decl) nil nil nil)
+    (unless (singleton? (types (expr decl)))
+      (type-ambiguity (expr decl)))
+    (setf (type (expr decl)) (car (types (expr decl)))))
   (disable-conversion decl)
   decl)
 
 (defun disable-conversion (decl)
   (let ((new-convs (remove-if #'(lambda (cd)
-				  (tc-eq (name decl) (name cd)))
+				  (tc-eq (expr decl) (expr cd)))
 		     (conversions *current-context*))))
     (if (equal new-convs (conversions *current-context*))
 		 ;;; Three possibilities in this case
 	(let ((similar-convs
 	       (remove-if-not #'(lambda (cd)
-				  (same-declaration (name decl)
-						    (name cd)))
+				  (break)
+				  (same-declaration (expr decl)
+						    (expr cd)))
 		 (conversions *current-context*))))
 	  ;; Don't need to do anything if the conversion doesn't
 	  ;; appear.  Won't even complain since it may have been
@@ -2350,20 +2353,24 @@
 	    ;; If we are removing the generic version, and
 	    ;; instances are in the conversions list, simply
 	    ;; remove them.
-	    (if (not (fully-instantiated? (name decl)))
+	    (if (not (fully-instantiated? (expr decl)))
 		(setf (conversions *current-context*)
 		      (remove-if #'(lambda (cd)
 				     (memq cd similar-convs))
 			(conversions *current-context*)))
 		;; Otherwise, add it to the disabled-conversions list
 		(pushnew decl (disabled-conversions *current-context*)
-			 :test #'tc-eq :key #'name))))
-	(if (fully-instantiated? (name decl))
+			 :test #'tc-eq :key #'expr))))
+	(if (fully-instantiated? (expr decl))
 	    (setf (conversions *current-context*) new-convs)
 	    (setf (conversions *current-context*)
-		  (remove-if #'(lambda (cd)
-				 (same-declaration (name decl) (name cd)))
-		    (conversions *current-context*)))))))
+		  (if (name-expr? (expr decl))
+		      (remove-if #'(lambda (cd)
+				     (and (name-expr? (expr cd))
+					  (same-declaration (expr decl)
+							    (expr cd))))
+			(conversions *current-context*))
+		      (break)))))))
     
 
 ;;; auto-rewrite-decls
