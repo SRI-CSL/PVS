@@ -349,7 +349,7 @@
 				       (judgement-types+ arg)))
 			     (arguments expr))))
 	     (let ((op (interpretation operator)))
-	       (cond ((and (eq op 'difference) (singleton? args))
+	       (cond ((and (eq op 'DIFFERENCE) (singleton? args))
 		      (cons 'MINUS args))
 		     ((eq op '/=)
 		      (list 'not (cons 'equal args)))
