@@ -69,7 +69,8 @@
   (setf (acc-decls con) nil))
 
 (defmethod untypecheck-theory ((theory module))
-  (unless (eq theory (current-theory))
+  (unless (or (eq theory (current-theory))
+	      (memq theory *tc-theories*))
     (tcdebug "~%Untypechecking theory ~a" (id theory))
     ;;(setf (declarations theory) (make-hash-table :test #'eq :size 20))
     (dolist (ty (nonempty-types theory))
@@ -93,7 +94,7 @@
     (remove-associated-buffers (id theory))
     (setf (ppe-form theory) nil)
     (setf (tcc-form theory) nil)
-    (setf (saved-context theory) nil)))
+    (setf (saved-context theory) nil)))o
 
 (defmethod untypecheck-theory ((exp exporting))
   (if (memq (kind exp) '(all closure default))
