@@ -33,7 +33,7 @@
 			    'argument
 			    (lcopy (args1 fmla)
 			      'argument
-			      (make!-arg-tuple-expr
+			      (make!-arg-tuple-expr*
 			       (if (eq rewrite-flag 'RL)
 				   (list (beta-reduce (args1
 						       (args1 fmla)))
@@ -213,7 +213,7 @@
 	((and (singleton? formals)
 	      (typep (find-supertype (type (car formals))) 'tupletype))
 	 (list (cons (car formals)
-		     (make!-tuple-expr actuals (type (car formals))))))
+		     (make!-tuple-expr actuals))))
 	(t (break "~%pairlis-args invoked with unsuitable formals/actuals."))))
 
 ;;; SO 8/31/94 - added following two methods, extracted from application
