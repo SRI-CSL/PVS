@@ -1772,6 +1772,12 @@
       most-positive-fixnum
       (call-next-method)))
 
+(defparameter *expr-prec-info* (gethash 'expr pvs-prec-info)
+  "The precedence information - a list of four hash tables, for initial,
+left (medial), right (medial), and aggregate operators.  Each of these
+hash tables gives a binding number for a given operator; higher numbers
+bind tighter.")
+
 ;; Most types of expressions cannot be ambiguous (e.g. tuples, if-exprs).
 (defmethod precedence ((expr expr) ctx)
   (declare (ignore ctx))
