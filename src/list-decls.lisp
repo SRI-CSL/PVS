@@ -381,10 +381,14 @@
   (namestring (filename theory)))
 
 (defmethod pvs-filename ((theory library-theory))
-  (namestring (format nil "~a~a" (library-path theory) (filename theory))))
+  (namestring (format nil "~a~a"
+		(libref-to-pathname (lib-ref theory))
+		(filename theory))))
 
 (defmethod pvs-filename ((theory library-datatype))
-  (namestring (format nil "~a~a" (library-path theory) (filename theory))))
+  (namestring (format nil "~a~a"
+		(libref-to-pathname (lib-ref theory))
+		(filename theory))))
 
 
 (defun ptype-of (decl)
