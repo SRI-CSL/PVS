@@ -63,9 +63,10 @@
 	   (if (null lvars)
 	       (inst!-rule-top fnums list-of-bndngs (list renamings) renamings copy? if-match)
 	       (multiple-value-bind (trms new-lvars new-renamings)
-		   (herbrandize fmlas lvars renamings)
-		 (declare (ignore new-renamings))
-		 (let ((score-substs (dp::gensubsts new-lvars trms)))
+		   (herbrandize fmlas lvars renamings 'T)
+		 (declare (ignore new-renamings)
+			  (ignore lvars))
+		 (let ((score-substs (dp::gensubsts lvars trms)))
 		   (if (null score-substs) nil
 		       (let ((substs (choose-substs score-substs if-match)))
 			 (inst!-rule-top fnums list-of-bndngs substs renamings copy? if-match)))))))))))
@@ -168,16 +169,17 @@
 
 (defun inst!-rule (fnum bndngs)
   (declare (special *copy*) (special *if-match*))
-  (let ((insts (construct-insts bndngs)))
+  (let* ((insts (construct-insts bndngs)))
     (display-substitution fnum bndngs insts)
     (make-inst?-rule fnum insts *copy* *if-match*)))
+         ; e.g. (make-inst?-rule -2 '(((x)) ((a 1))) nil 'all)
 
 (defun construct-insts (bndngs)
   (declare (special *substs*))
   (cond ((= (length *substs*) 0)
-	 (list (construct-inst bndngs nil)))
+	 (list (list (construct-inst bndngs nil))))
 	((= (length *substs*) 1)
-	 (list (construct-inst bndngs (first *substs*))))
+	 (list (list (construct-inst bndngs (first *substs*)))))
 	(t (loop for subst in *substs*
 		 collect (list (construct-inst bndngs subst))))))
 
@@ -198,6 +200,11 @@
 (defun display-substitution (fnum bndngs trms)
   (error-format-if "~%Substitution:")
   (error-format-if "~%   ~a: ~{~a~^, ~} --> ~{~a~^, ~}" fnum bndngs trms))
+
+
+
+
+
 
 
 
