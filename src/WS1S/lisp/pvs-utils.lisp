@@ -1,23 +1,40 @@
 (in-package :pvs)
 
+(defmethod try-to-expand ((expr name-expr))
+  "Returns the expanded term for a defined name expr"
+  (let ((decl (declaration (resolution expr))))
+    (if (typep decl 'const-decl)  
+	(let ((defs (def-axiom decl)))
+	  (if defs
+	      (subst-mod-params (args2 (car (last defs)))
+				(module-instance expr))
+	    expr))
+      expr)))
 
-(defun mk-expr (str &key expected)
-    (if expected
-        (let ((typ (if (stringp expected)
-                      (pc-typecheck (pc-parse expected 'type-expr))
-                    expected)))
-          (pc-typecheck (pc-parse str 'expr) :expected typ))
-      (pc-typecheck (pc-parse str 'expr))))
+(defmethod try-to-expand ((expr expr))
+  expr)
 
-(defun bindings-to-var (bndngs)
-  (mapcar #'make-variable-expr bndngs))
+(defun destructure-bindings (bndngs &key exclude)
+  (let ((*exclude* exclude))
+    (declare (special *exclude*))
+    (destructure-bindings* bndngs)))
+
+(defun destructure-bindings* (bndngs &optional xs types preds)
+  (if (null bndngs)
+      (values (nreverse xs) (nreverse types) (nreverse preds))
+    (multiple-value-bind (x type newpreds)
+	(destructure-binding (car bndngs) :exclude *exclude*)
+      (destructure-bindings* (cdr bndngs)
+			    (cons x xs)
+			    (cons type types)
+			    (append newpreds preds)))))
 
 (defun destructure-binding (bndng &key exclude)
   (assert (typep bndng 'bind-decl))
   (let ((x (make-variable-expr bndng)))
-    (multiple-value-bind (supertype preds)
+    (multiple-value-bind (type preds)
 	(destructure-type x :exclude exclude)
-      (values x supertype preds))))
+      (values x type preds))))
 	
 (defun destructure-type (expr &key exclude (all? 'T))
   (let ((jtypes (judgement-types+ expr))
@@ -105,80 +122,14 @@
 	      (find-if #'(lambda (d)
 			   (eq (id (module d)) '|finite_sets_def|))
 		(gethash '|is_finite| (current-declarations-hash))))))
+  
   (defun reset-is-finite-decl ()
-    (setq is-finite-decl nil)))
+    (setq is-finite-decl nil))
+)
 
-; some recognizers for arithmetic relations
+;; Check if some name-expr is a certain symbol of some theory 
 
-(defmacro is? (op sym mod)
-  (let ((id (gensym))
-	(resolutions (gensym)))
-    `(with-slots (,id ,resolutions) ,op
-	(and (eq ,id ,sym)
-         (eq (,id (module-instance (car ,resolutions))) ,mod)))))
-
-
-(defmethod number-lt-op? ((op name-expr))
-  (with-slots (id resolutions) op
-    (and (eq id '|<|)
-         (eq (id (module-instance (car resolutions))) '|reals|))))
-
-(defmethod number-lt-op? (op)
-  (declare (ignore op))
-  nil)
-
-(defmethod number-le-op? ((op name-expr))
-  (with-slots (id resolutions) op
-    (and (eq id '|<=|)
-         (eq (id (module-instance (car resolutions))) '|reals|))))
-
-(defmethod number-le-op? (op)
-  (declare (ignore op))
-  nil)
-
-(defmethod number-ge-op? ((op name-expr))
-  (with-slots (id resolutions) op
-    (and (eq id '|>=|)
-         (eq (id (module-instance (car resolutions))) '|reals|))))
-
-(defmethod number-ge-op? (op)
-  (declare (ignore op))
-  nil)
-
-(defmethod minus-op? ((op name-expr))
-  (with-slots (id resolutions) op
-    (and (eq id '|-|)
-         (eq (id (module-instance (car resolutions))) '|reals|))))
-
-(defmethod minus-op? (op)
-  (declare (ignore op))
-  nil)
-
-(defmethod plus-op? ((op name-expr))
-  (with-slots (id resolutions) op
-    (and (eq id '|+|)
-         (eq (id (module-instance (car resolutions))) '|reals|))))
-
-(defmethod plus-op? (op)
-  (declare (ignore op))
-  nil)
-
-(defmethod number-gt-op? ((op name-expr))
-  (with-slots (id resolutions) op
-    (and (eq id '|>|)
-         (eq (id (module-instance (car resolutions))) '|reals|))))
-
-(defmethod number-gt-op? (op)
-  (declare (ignore op))
-  nil)
-
-(defmethod the-op? ((op name-expr))
-  (with-slots (id resolutions) op
-    (and (eq id '|the|)
-         (eq (id (module-instance (car resolutions))) '|sets|)))) 
-          
-(defmethod the-op? (op)
-  (declare (ignore op))
-  nil)
-
-
+(defun is? (op sym mod)
+   (and (typep op 'name-expr)
+	(eq (id op) sym)
+	(eq (id (module-instance (car (resolutions op)))) mod)))
