@@ -8,6 +8,7 @@
     (or (dp-theory (lhs term))
 	(dp-theory (rhs term))))
    ((arith-p term) 'arith)
+   ((record-p term) 'record)
    ((array-p term) 'array)
    ((bv-p term) 'bv)
    (t nil)))
@@ -240,6 +241,7 @@
   (let* ((theory (dp-theory eqn)))
     (case theory
       (arith (arith-solve eqn cong-state))
+      (record (record-solve eqn cong-state))
       (array (array-solve eqn cong-state))
       (bv (bv-solve eqn cong-state))
       (t (list eqn)))))
