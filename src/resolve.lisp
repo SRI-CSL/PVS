@@ -1039,6 +1039,7 @@
 (defun filter-bindings (reses args)
   (or (remove-if-not #'(lambda (r) (memq (declaration r) *bound-variables*))
 	reses)
+      (remove-if-not #'(lambda (r) (var-decl? (declaration r))) reses)
       (and args
 	   (filter-res-exact-matches reses args))
       reses))
@@ -1273,7 +1274,7 @@
 						    (get-conversion-range-type
 						     c arg))
 					  convs))
-			      :test #'tc-eq))))
+			      :test #'tc-eq :from-end t))))
 		arguments conversions))
 	(argument-conversions* arguments (cdr dtypes-list)
 			       (if found-one

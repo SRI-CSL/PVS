@@ -52,7 +52,8 @@
   (let ((theory-list nil))
     (maphash #'(lambda (id mod)
 		 (declare (ignore id))
-		 (push mod theory-list))
+		 (when (typechecked? mod)
+		   (push mod theory-list)))
 	     *pvs-modules*)
     theory-list))
 
