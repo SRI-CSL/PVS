@@ -580,11 +580,7 @@
 
 (defmethod subst-params-decl ((c conversion-decl) modinst)
   (lcopy c
-    'name (subst-mod-params (name c) modinst)))
-
-(defmethod subst-params-decl ((c typed-conversion-decl) modinst)
-  (lcopy (call-next-method)
-    'declared-type (subst-mod-params (declared-type c) modinst)))
+    'expr (subst-mod-params (expr c) modinst)))
 
 ;;; Remove formals that are not a part of the current module.  This
 ;;; handles the following circumstance:

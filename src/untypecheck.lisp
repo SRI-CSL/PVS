@@ -259,11 +259,7 @@
 (defmethod untypecheck-theory ((decl conversion-decl))
   (when (next-method-p) (call-next-method))
   (setf (k-combinator? decl) nil)
-  (untypecheck-theory (name decl)))
-
-(defmethod untypecheck-theory ((decl typed-conversion-decl))
-  (when (next-method-p) (call-next-method))
-  (untypecheck-theory (declared-type decl)))
+  (untypecheck-theory (expr decl)))
 
 (defmethod untypecheck-theory ((decl assuming-decl))
   (setf (definition decl) (original-definition decl))

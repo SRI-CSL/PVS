@@ -2559,9 +2559,9 @@ space")
 			       *current-context*)))
 		      (subtypes-satisfied? acts fmls)))
 		   (check-conversion
-		    (subst-mod-params (name conversion) nmi))))))
+		    (subst-mod-params (expr conversion) nmi))))))
 	(when (compatible? ctype type)
-	  (name conversion)))))
+	  (expr conversion)))))
 
 (defun subtypes-satisfied? (actuals formals &optional alist)
   (or (notany #'(lambda (fm) (typep fm 'formal-subtype-decl)) formals)
@@ -2617,9 +2617,9 @@ space")
 			 (mapcar #'(lambda (a)
 				     (mk-res-actual (cdr a) ctheory))
 				 bindings))))
-	      (subst-mod-params (name conversion) nmi))))
+	      (subst-mod-params (expr conversion) nmi))))
 	(when (compatible? ctype type)
-	  (name conversion)))))
+	  (expr conversion)))))
 
 #-gcl
 (defun direct-superclasses (class)
