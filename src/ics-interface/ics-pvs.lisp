@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ics-pvs.lisp -- 
 ;; Author          : Harald Ruess
 ;; Created On      : Tue May 14 11:32:58 PDT 2002
@@ -371,17 +371,14 @@
 	   (ics_term_mk_unary_minus (translate-term-to-ics* (args1 expr))))
 	  ((tc-eq op (times-operator))
 	   (translate-mult-to-ics* (args1 expr) (args2 expr)))
-	  ((tc-eq op (expt-operator))  ; swapping of args required
-	   (ics_term_mk_expt (translate-term-to-ics* (args2 expr))
-			     (translate-term-to-ics* (args1 expr))))
 	  ((and *ics-nonlin*
 		(tc-eq op (divides-operator)))
 	   (ics_term_mk_div (translate-term-to-ics* (args1 expr))
 			    (translate-term-to-ics* (args2 expr))))
 	  (t
 	   (let ((opterm (translate-term-to-ics* op))
-		 (argterm (translate-term-to-ics* (argument expr))))
-	     (ics_term_mk_apply opterm argterm))))))
+		 (argterms (translate-term-list-to-ics* (arguments expr))))
+	     (ics_term_mk_apply opterm argterms))))))
 
 
 (defmethod translate-mult-to-ics* ((expr1 number-expr) (expr2 expr))
@@ -429,10 +426,13 @@
       (translate-term-to-ics* reduced-expr))))
 
 (defun translate-term-list-to-ics* (exprs)
-  (if (null exprs)
-      (ics_nil)
-    (let ((trm (translate-term-to-ics* (car exprs))))
-      (ics_cons trm (translate-term-list-to-ics* (cdr exprs))))))
+  (cond ((null exprs)
+	 (ics_nil))
+	((expr? exprs)
+         (ics_cons (translate-term-to-ics* (ics_nil))))
+	(t
+	 (let ((trm (translate-term-to-ics* (car exprs))))
+	   (ics_cons trm (translate-term-list-to-ics* (cdr exprs)))))))
 
 (defmethod translate-term-to-ics* ((expr projection-application))
   (let* ((arg (argument expr))
@@ -442,15 +442,23 @@
 
 #+workinprogress
 (defmethod translate-term-to-ics* ((expr injection-application))
-  (let* ((arg (translate-to-prove (argument expr))))
-    (break)
-    (ics_term_mk_inj idx arg)))
+  (let ((arg (translate-to-prove (argument expr)))
+	(index (1- (index expr))))
+    (ics_term_mk_inj index arg)))
 
 #+workinprogress
 (defmethod translate-term-to-ics* ((expr extraction-application))
-  (let* ((arg (translate-to-prove (argument expr))))
-    (break)
-    (ics_term_mk_out idx arg)))
+  (let* ((arg (translate-to-prove (argument expr)))
+	 (index (1- (index expr))))
+    (ics_term_mk_out index arg)))
+
+;#+workinprogress
+;(defmethod translate-term-to-ics* ((expr injection?-application))
+;  (let ((arg (translate-to-prove (argument expr))))
+; (mk-funtype (type (argument expr)) (type expr)))
+;	 (index (1- (index expr))))
+;    (ics_term_mk_out index arg)))
+
 
 (defmethod translate-term-to-ics* ((expr field-application))
   (with-slots (id argument type) expr
