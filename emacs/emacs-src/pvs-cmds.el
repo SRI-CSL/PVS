@@ -1329,12 +1329,15 @@ Exit PVS, saving the context."
 		 (condition-case ()
 		     (progn
 		       (pvs-send "(exit-pvs)")
-		       (while (equal (process-status process) 'run)
-			 (sleep-for 1)))
+		       (while (and (equal (process-status process) 'run)
+				   (not (string-match (ilisp-value
+						       'comint-prompt-regexp)
+						      pvs-process-output)))
+			 (sit-for 1)))
 		   (error
-		    (unless (y-or-n-p
-			     "Problem saving .pvscontext - exit anyway? ")
-		      (error "Exit aborted")))))))
+		    (sleep-for 1)
+		    (when (equal (process-status process) 'run)
+		      (error "PVS not exited")))))))
 	   (save-buffers-kill-emacs nil)))
 	(t (save-buffers-kill-emacs nil))))
 
