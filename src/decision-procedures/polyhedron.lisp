@@ -491,31 +491,36 @@
 	collect
 	(constraint2equation constraints i ineq-var-index-array cong-state)))
 
-(defun polyhedral-structure-to-equalities (poly-s cong-state)
+(defun polyhedral-structure-to-equalities (poly-s cong-state &optional all)
   (if (= (polyhedron-next (polyhedral-structure-polyhedron poly-s)) 0)
       (polyhedron-to-equalities (polyhedral-structure-polyhedron poly-s)
 				(polyhedral-structure-ineq-var-index-array
 				 poly-s)
-				cong-state)
+				cong-state
+				all)
       (domain-to-equalities (polyhedral-structure-polyhedron poly-s)
 			    (polyhedral-structure-ineq-var-index-array poly-s)
-			    cong-state)))
+			    cong-state
+			    all)))
 
-(defun polyhedron-to-equalities (polyhedron ineq-var-index-array cong-state)
+(defun polyhedron-to-equalities (polyhedron ineq-var-index-array
+					    cong-state all)
   (constraints2equalities
    (polyhedron2constraints polyhedron)
    ineq-var-index-array
-   cong-state))
+   cong-state
+   all))
 
-(defun domain-to-equalities-list (polyhedron ineq-var-index-array cong-state)
+(defun domain-to-equalities-list (polyhedron ineq-var-index-array cong-state
+					     all)
   (if (= (polyhedron-next polyhedron) 0)
       (list (polyhedron-to-equalities polyhedron ineq-var-index-array
-				      cong-state))
+				      cong-state all))
       (cons (polyhedron-to-equalities polyhedron ineq-var-index-array
-				      cong-state)
+				      cong-state all)
 	    (domain-to-equalities-list (polyhedron-next polyhedron)
 				       ineq-var-index-array
-				       cong-state))))
+				       cong-state all))))
 
 (defun domain-to-equalities-intersect
   (current-eqs polyhedron ineq-var-index-array cong-state)
@@ -523,9 +528,9 @@
       (intersection
        current-eqs
        (polyhedron-to-equalities polyhedron ineq-var-index-array
-				 cong-state))
+				 cong-state nil))
       (let* ((eqs1 (polyhedron-to-equalities polyhedron ineq-var-index-array
-					     cong-state))
+					     cong-state nil))
 	     (rest-poly (polyhedron-next polyhedron))
 	     (ceqs (intersection current-eqs eqs1)))
 	(if (= rest-poly 0)
@@ -535,24 +540,30 @@
 		 ceqs rest-poly ineq-var-index-array cong-state)
 		nil)))))	    
 
-(defun domain-to-equalities (polyhedron ineq-var-index-array cong-state)
+(defun domain-to-equalities (polyhedron ineq-var-index-array cong-state all)
   (let ((equalities-list
 	 (domain-to-equalities-list polyhedron ineq-var-index-array
-				    cong-state)))
-    (reduce #'intersection equalities-list)))
+				    cong-state all)))
+    ;(reduce #'intersection equalities-list)
+    equalities-list))
 
-(defun domain-to-equalities (polyhedron ineq-var-index-array cong-state)
-  (let ((first-eqs
-	 (polyhedron-to-equalities polyhedron ineq-var-index-array
-				   cong-state)))
-    (domain-to-equalities-intersect
-     first-eqs (polyhedron-next polyhedron) ineq-var-index-array cong-state)))
+(defun domain-to-equalities (polyhedron ineq-var-index-array cong-state all)
+  (if all
+      (domain-to-equalities-list polyhedron ineq-var-index-array
+				 cong-state all)
+      (let ((first-eqs
+	     (polyhedron-to-equalities polyhedron ineq-var-index-array
+				       cong-state nil)))
+	(domain-to-equalities-intersect
+	 first-eqs (polyhedron-next polyhedron)
+	 ineq-var-index-array cong-state))))
 
-(defun constraints2equalities (constraints ineq-var-index-array cong-state)
+(defun constraints2equalities (constraints ineq-var-index-array cong-state all)
   (loop for i from 0 below (matrix-NbRows constraints)
-	while (= (matrix_ref constraints i 0) 0)
+	while (or all (= (matrix_ref constraints i 0) 0))
 	collect
-	(constraint2equation constraints i ineq-var-index-array cong-state)))
+	(constraint2equation
+	 constraints i ineq-var-index-array cong-state)))
 
 (defun constraint2equation (constraints row ineq-var-index-array cong-state)
   (let ((predicate (if (= (matrix_ref constraints row 0) 1)
