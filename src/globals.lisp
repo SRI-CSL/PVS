@@ -18,7 +18,7 @@
   "Set by Emacs")
 
 (defparameter *pvs-directories*
-  '("src" "ground-prover" "src/prover" "src/decision-procedures"
+  '("" "src" "ground-prover" "src/prover" "src/decision-procedures"
     "src/decision-procedures/polylib" "src/utils" "BDD"
     "src/prover/evaluation"))
 
