@@ -464,6 +464,10 @@
 	       (format t "~%~?" message args)
 	       (format t "~%Restoring the state.")
 	       (restore))
+	      (*in-evaluator*
+	       (format t "~%~?" message args)
+	       (format t "~%Try again.")
+	       (throw 'tcerror t))
 	      (t (format t "~%~?~:[~;~%You may need to add a semicolon (;) ~
                       to the end of the previous declaration~]"
 		   message args *in-coercion*)
