@@ -19,43 +19,43 @@
 ; These inequalities would only be merged back into (EQUAL X Y)
 ; if doing so would not result in a loop.
 
-(defun arithord1(u v)
-;    (cond ((and (consp u)(eq (car u) 'times)(qnumberp (cadr u)))
-;	   (setq u (caddr u))))
-;    (cond ((and (consp v)(eq (car v) 'times)(qnumberp (cadr v)))
-;	   (setq v (caddr v))))
-;    (when (and (eq *printerpdivide* 'no) (consp u) (eq (funsym u) 'divide))
-;      (setq u (cons 'apply-2-number (cons '/_9 (cdr u)))))
-;    (when (and (eq *printerpdivide* 'no) (consp v) (eq (funsym v) 'divide))
-;      (setq v (cons 'apply-2-number (cons '/_9 (cdr v)))))
-    (cond
-     ((null u) nil)
-     ((null v) t)
-     ((symbolp u)
-      (cond
-       ((symbolp v)(alphalessp u v))
-       ((qnumberp v) nil)
-       (t t)))
-     ((symbolp v)(qnumberp u))
-     ((qnumberp u)
-      (cond
-       ((qnumberp v)(qlessp u v))
-       (t t)))
-     ((qnumberp v) nil)
-     ((equal (car u)(car v))(arithord1 (cdr u)(cdr v)))
-     (t (arithord1 (car u)(car v)))))
+; (defun arithord1(u v)
+; ;    (cond ((and (consp u)(eq (car u) 'times)(qnumberp (cadr u)))
+; ;	   (setq u (caddr u))))
+; ;    (cond ((and (consp v)(eq (car v) 'times)(qnumberp (cadr v)))
+; ;	   (setq v (caddr v))))
+; ;    (when (and (eq *printerpdivide* 'no) (consp u) (eq (funsym u) 'divide))
+; ;      (setq u (cons 'apply-2-number (cons '/_9 (cdr u)))))
+; ;    (when (and (eq *printerpdivide* 'no) (consp v) (eq (funsym v) 'divide))
+; ;      (setq v (cons 'apply-2-number (cons '/_9 (cdr v)))))
+;     (cond
+;      ((null u) nil)
+;      ((null v) t)
+;      ((symbolp u)
+;       (cond
+;        ((symbolp v)(alphalessp u v))
+;        ((qnumberp v) nil)
+;        (t t)))
+;      ((symbolp v)(qnumberp u))
+;      ((qnumberp u)
+;       (cond
+;        ((qnumberp v)(qlessp u v))
+;        (t t)))
+;      ((qnumberp v) nil)
+;      ((equal (car u)(car v))(arithord1 (cdr u)(cdr v)))
+;      (t (arithord1 (car u)(car v)))))
 
 (defun arithsolve(lit)
   (case (funsym lit)				
-    (EQUAL (equalsolve lit))
-    ((LESSEQP GREATEREQP LESSP GREATERP) (ineqsolve lit))
-    (t `((EQUAL ,lit TRUE)))))
+    (equal (equalsolve lit))
+    ((lesseqp greatereqp lessp greaterp) (ineqsolve lit))
+    (t `((equal ,lit true)))))
 
 
 (defun termsof (lit)
   (cons (arg1 lit)
 	(if (and (consp (arg2 lit)) (eq (funsym (arg2 lit))
-					`PLUS))
+					`plus))
 	    (argsof (arg2 lit))
 	  (ncons (arg2 lit)))))
 
@@ -65,23 +65,23 @@
 	(let* ((all-terms (termsof norm))
 	       (head (car all-terms)))
 	  (if (and (consp head)
-		   (eq (funsym head) 'TIMES))
-	      (list `(LESSEQP ,(arg1 norm) ,(arg2 norm))
-		  `(GREATEREQP ,(arg1 norm) ,(arg2 norm)))
+		   (eq (funsym head) 'times))
+	      (list `(lesseqp ,(arg1 norm) ,(arg2 norm))
+		  `(greatereqp ,(arg1 norm) ,(arg2 norm)))
 	    (if (onlyoccurrencep head head all-terms)
 		(ncons norm)
-	      (list `(LESSEQP ,(arg1 norm) ,(arg2 norm))
-		    `(GREATEREQP ,(arg1 norm) ,(arg2 norm))))))
+	      (list `(lesseqp ,(arg1 norm) ,(arg2 norm))
+		    `(greatereqp ,(arg1 norm) ,(arg2 norm))))))
       (ncons norm))))
 
 (defun bad-eqn (eqn)
-  (or (eq eqn 'IDENT)
+  (or (eq eqn 'ident)
       (and (consp eqn)
 	   (or (subtermoflambda (arg1 eqn) (arg2 eqn))
 	       (let* ((all-terms (termsof eqn))
 		      (head (car all-terms)))
 		 (if (not (and (consp head)
-			       (eq (funsym head) 'TIMES)))
+			       (eq (funsym head) 'times)))
 		     (not (onlyoccurrencep head head all-terms))
 		   nil))))))
 
@@ -101,8 +101,8 @@
 	  (list
 	   (cond ((qminusp coef)(antifnsym fnsymbol))(t fnsymbol))
 	   var
-;;;	(canon `(plus ,var (times ,(qnorm (qquotient -1 coef)) ,dif)))
-;;;   fix to get around the "order bug"  18-Nov-85
+	   ;;	(canon `(plus ,var (times ,(qnorm (qquotient -1 coef)) ,dif)))
+	   ;;   fix to get around the "order bug"  18-Nov-85
 	   (if *use-can*
 	       (arithcan
 	    ;`(plus ,var (times ,(qnorm (qquotient -1 coef)) ,dif))
@@ -141,76 +141,76 @@
 ;;  ~owre/ehdm6/rcp/minimial_v_prf_2--nf_v_sched to go through in ehdm.
 ;; Otherwise the proof is false.
 
-(defun transclosure(ineq)		;(break)
-  (cond ((member ineq *ineqstack* :test #'equal) NIL)
-	(t (let* ((*ineqstack* (cons ineq *ineqstack*))
-		  (nrmineq (normineqatom (arithcan ineq)))
-					;(nrmineq-TRUE `(EQUAL ,nrmineq TRUE))
-		  (nrmineq-unchanged
-		   (or (not (consp nrmineq)) (equal nrmineq ineq))))
-	     (if (eq nrmineq 'FALSE) (retfalse))
-	     (when nrmineq-unchanged
-	       (setq nrmineq `(EQUAL ,nrmineq TRUE)))
-	     ;;; 1/28/94: DAC added nrmineq-unchanged so that nrmineq
-	     ;;; would be added to the begginning or end of ineqpot
-	     ;;; correctly. (See notes by DAC and NSH below.)
-	     (unless nrmineq-unchanged
-	       (push nrmineq ineqpot))
-	     ;;; 11/17/92: DAC Put nrmineq into the ineqpot after the
-	     ;;; following loop that adds the transitive closure consequences.
-	     ;;; This puts the nrmineq at the beginning of the ineqpot so that
-	     ;;; process1 will process it first. This is important in the case
-	     ;;; that the nrmineq is of the form (EQUAL blah TRUE).
-	     ;;; IN this case we need the findalist to note this so that the
-	     ;;; next time blah is seen it will be reduced to true and not
-	     ;;; added to the ineqpot.
+; (defun transclosure(ineq)		;(break)
+;   (cond ((member ineq *ineqstack* :test #'equal) nil)
+; 	(t (let* ((*ineqstack* (cons ineq *ineqstack*))
+; 		  (nrmineq (normineqatom (arithcan ineq)))
+; 					;(nrmineq-true `(equal ,nrmineq true))
+; 		  (nrmineq-unchanged
+; 		   (or (not (consp nrmineq)) (equal nrmineq ineq))))
+; 	     (if (eq nrmineq 'false) (retfalse))
+; 	     (when nrmineq-unchanged
+; 	       (setq nrmineq `(equal ,nrmineq true)))
+; 	     ;;; 1/28/94: DAC added nrmineq-unchanged so that nrmineq
+; 	     ;;; would be added to the begginning or end of ineqpot
+; 	     ;;; correctly. (See notes by DAC and NSH below.)
+; 	     (unless nrmineq-unchanged
+; 	       (push nrmineq ineqpot))
+; 	     ;;; 11/17/92: DAC Put nrmineq into the ineqpot after the
+; 	     ;;; following loop that adds the transitive closure consequences.
+; 	     ;;; This puts the nrmineq at the beginning of the ineqpot so that
+; 	     ;;; process1 will process it first. This is important in the case
+; 	     ;;; that the nrmineq is of the form (EQUAL blah TRUE).
+; 	     ;;; IN this case we need the findalist to note this so that the
+; 	     ;;; next time blah is seen it will be reduced to true and not
+; 	     ;;; added to the ineqpot.
 
-	     (when *tc-dbg* (break "before loop"))
+; 	     (when *tc-dbg* (break "before loop"))
 
-	     (loop for chainineq in (chainineqs ineq) with (norm) do
-		   (setq norm (normineq (residue ineq chainineq)))
+; 	     (loop for chainineq in (chainineqs ineq) with (norm) do
+; 		   (setq norm (normineq (residue ineq chainineq)))
 
-		   (when *tc-dbg* (break "loop"))
+; 		   (when *tc-dbg* (break "loop"))
 
-		   (cond
-		    ((eq norm 'TRUE)
-		     (add-disjunct-of-equals ineq chainineq))
-		    ((eq norm 'FALSE)(retfalse))
-		    ((eq norm 'IDENT)
-		     (let ((new-eqn
-			    (if *tc-ehdm-test*
-				`(EQUAL ,(arg1 ineq) ,(arg2 ineq))
-				(normineq `(EQUAL ,(canonsig-arith (arg1 ineq))
-						  ,(canonsig-arith (arg2 ineq)))))))
-		       (unless (if *tc-ehdm-test*
-				   (subtermof (arg1 ineq) (arg2 ineq))
-				   (bad-eqn new-eqn))
-			 (push new-eqn ineqpot)
-			 (return nil))))
-		    (t (push norm ineqpot))))
-	     ;;; 11/17/92: DAC see note above about nrmineq.
-	     ;;; NSH(1/15/94): Loops without WHEN clause below.  DAC's note
-	     ;;; indicates why it might be needed.  
+; 		   (cond
+; 		    ((eq norm 'true)
+; 		     (add-disjunct-of-equals ineq chainineq))
+; 		    ((eq norm 'false)(retfalse))
+; 		    ((eq norm 'ident)
+; 		     (let ((new-eqn
+; 			    (if *tc-ehdm-test*
+; 				`(equal ,(arg1 ineq) ,(arg2 ineq))
+; 				(normineq `(equal ,(canonsig-arith (arg1 ineq))
+; 						  ,(canonsig-arith (arg2 ineq)))))))
+; 		       (unless (if *tc-ehdm-test*
+; 				   (subtermof (arg1 ineq) (arg2 ineq))
+; 				   (bad-eqn new-eqn))
+; 			 (push new-eqn ineqpot)
+; 			 (return nil))))
+; 		    (t (push norm ineqpot))))
+; 	     ;;; 11/17/92: DAC see note above about nrmineq.
+; 	     ;;; NSH(1/15/94): Loops without WHEN clause below.  DAC's note
+; 	     ;;; indicates why it might be needed.  
 
-	     (when *tc-dbg* (break "after loop"))
+; 	     (when *tc-dbg* (break "after loop"))
 	     
-	     (when nrmineq-unchanged ;(and (consp nrmineq)(eq (car nrmineq) 'EQUAL))
-	       (push nrmineq ineqpot)
-	       )
-	     ))))
+; 	     (when nrmineq-unchanged ;(and (consp nrmineq)(eq (car nrmineq) 'equal))
+; 	       (push nrmineq ineqpot)
+; 	       )
+; 	     ))))
 
 (defun eqnsolve(lit)
   (prog (res)
     (return
      (cond
       ((equal (arg1 lit)(arg2 lit)) (retfalse))
-      ((eq (setq res (newcontext (process lit))) 'FALSE) '(TRUE))
-      ((eq res 'TRUE) (retfalse))
+      ((eq (setq res (newcontext (process lit))) 'false) '(true))
+      ((eq res 'true) (retfalse))
       (t (let ((norm (normineq lit)))
 	   (cond ((eq norm 'ident) (retfalse))
-		 ((eq norm TRUE) (retfalse))
-		 ((eq norm FALSE) '(TRUE))
-		 (t `((NEQUAL ,(arg1 norm) ,(arg2 norm)))))))))))
+		 ((eq norm true) (retfalse))
+		 ((eq norm false) '(true))
+		 (t `((nequal ,(arg1 norm) ,(arg2 norm)))))))))))
 
 (defun strict?(ineq)
   (loop for u in (use (arg1 ineq))
@@ -221,12 +221,12 @@
 
 (defun make-strict (ineq)
   (case (funsym ineq)
-    (EQUAL (if (strict? ineq) FALSE ineq))
-    (LESSEQP (if (strict? ineq)
-		 `(LESSP ,(arg1 ineq) ,(arg2 ineq))
+    (equal (if (strict? ineq) false ineq))
+    (lesseqp (if (strict? ineq)
+		 `(lessp ,(arg1 ineq) ,(arg2 ineq))
 	       ineq))
-    (GREATEREQP (if (strict? ineq)
-		    `(GREATERP ,(arg1 ineq) ,(arg2 ineq))
+    (greatereqp (if (strict? ineq)
+		    `(greaterp ,(arg1 ineq) ,(arg2 ineq))
 		  ineq))
     (t ineq)))
 
@@ -255,7 +255,7 @@
 							   newterm)) )
 	      (loop for arg in (argsof newterm) do (adduse newterm arg)) ))
 	newterm ))
-     (T term) )))
+     (t term) )))
 
 (defvar *merge-dbg-i* nil)
 (defvar *merge-dbg* nil)
@@ -271,7 +271,7 @@
     (cond
      ((equal t1 t2) (return nil))
      ((and (consp t1) (consp (car t1)))    ;t1, t2 known to be unequal	
-      (RETFALSE) ))
+      (retfalse) ))
     (cond ((and (consp t1) (is-lambda-expr t1))  ; (SJ 5/13/86) added:
 	   (setq t2 (prog1 t1 (setq t1 t2)))     ; swap to make lambda expr the find.
 	   (setq t2-is-lambda t))
@@ -302,21 +302,21 @@
 		(eq (apply-operator u) t1))
 	   (setq newsig
 		 (sigma newsig))
-	   (setq s (append (solve `(EQUAL ,(pr-find u) ,(canonsig-merge newsig))) s))
+	   (setq s (append (solve `(equal ,(pr-find u) ,(canonsig-merge newsig))) s))
 	   )
 	  ((uninterp newsig)		; SO 9/28/90 was u - is now newsig
 
 	   (when *merge-dbg* (break "uninterp1"))
 
 	   (putsig newsig u)
-	   (SETQ USE2 (COPY-LIST (USE T2))) ; MES 6/22/88 (CANONSIG call in interpreted term case below can add to (USE T2))
+	   (setq use2 (copy-list (use t2))) ; MES 6/22/88 (CANONSIG call in interpreted term case below can add to (USE T2))
 	   (setq vptr (push u use2))
 	   (loop while (cdr vptr) do
 		  (cond
 		   ((equal newsig (sig (cadr vptr)))
 		    (or (equal u (cadr vptr))
 			(let* ((pr-u (pr-find u))
-			       (new-eqn `(EQUAL ,pr-u
+			       (new-eqn `(equal ,pr-u
 					  ,(pr-find (cadr vptr)))))
 			  (when *merge-dbg* (break "uninterp2"))
 			  (if (or (not (consp pr-u))
@@ -352,18 +352,18 @@
 					   (if (equal arg t1) t2 arg)))
 		    (solvelist (solve
 				(cons (funsym u) args))))
-	       (cond ((and (memq (funsym u) '(GREATEREQP LESSEQP))
-			   (equal solvelist '(TRUE)))
+	       (cond ((and (memq (funsym u) '(greatereqp lesseqp))
+			   (equal solvelist '(true)))
 		      (if (equal
 			   (catch 'context
 			       (solve
-				(cons (if (eq (funsym u) 'GREATEREQP)
-					  'LESSEQP
-					  'GREATEREQP)
+				(cons (if (eq (funsym u) 'greatereqp)
+					  'lesseqp
+					  'greatereqp)
 				      args)))
 			     
-			   '(TRUE))
-			  (setq s (append (solvecan `(EQUAL ,@args)) s))
+			   '(true))
+			  (setq s (append (solvecan `(equal ,@args)) s))
 			  (setq s (append solvelist s))))
 		     (t (setq s (append solvelist s))))))
 	    ((or (isapplyupdate newsig) (isapplylambda newsig))
@@ -373,7 +373,7 @@
 					; and as apply`s of updates and lambdas.
 	     (setq newsig
 		   (sigma newsig))
-	     (push `(EQUAL ,u ,(canonsig-merge newsig)) s))
+	     (push `(equal ,u ,(canonsig-merge newsig)) s))
 
 	    ((equal (pr-find u) (pr-find 'false))
 	     (print "msg from merge - this should not have occurred
@@ -385,10 +385,10 @@
 		; (sigma newsig))
 	   ; 7-24-91: dac changed above sigma no longer needed due to change in canonsig.
 	   ; bug manifested itself in needing recursive call for sigupdate.
-	   (push `(EQUAL ,u ,(canonsig-merge newsig)) s))) )))
+	   (push `(equal ,u ,(canonsig-merge newsig)) s))) )))
 
 (defun subtermoflambda (subterm term)
   (and (consp term)
-       (if (eq (funsym term) 'LAMBDA)
+       (if (eq (funsym term) 'lambda)
 	   (subtermof subterm term)
 	 (loop for a in term thereis (subtermoflambda subterm a)))))
