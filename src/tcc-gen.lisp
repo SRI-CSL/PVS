@@ -55,8 +55,9 @@
 	 (conc (make!-conjunction* incs))
 	 (*no-expected* nil)
 	 (*bound-variables* *keep-unbound*)
-	 (tform (add-tcc-conditions conc))
-	 (uform (cond ((tcc-evaluates-to-true conc tform)
+	 (true-conc? (tcc-evaluates-to-true conc))
+	 (tform (unless true-conc? (add-tcc-conditions conc)))
+	 (uform (cond ((or true-conc? (tcc-evaluates-to-true tform))
 		       *true*)
 		      (*simplify-tccs*
 		       (pseudo-normalize tform))
@@ -365,11 +366,11 @@
       (push ndecl (refers-to decl))
       (when *old-tcc-name*
 	(push (cons (id ndecl) *old-tcc-name*) *old-tcc-names*))
-      (pvs-output "~2%~a~%"
-		  (let ((*no-comments* t)
-			(*unparse-expanded* t))
-		    (string-trim '(#\Space #\Tab #\Newline)
-				 (unparse ndecl :string t))))
+;      (pvs-output "~2%~a~%"
+;		  (let ((*no-comments* t)
+;			(*unparse-expanded* t))
+;		    (string-trim '(#\Space #\Tab #\Newline)
+;				 (unparse ndecl :string t))))
       (add-decl ndecl))))
 
 (defun tcc-submsg-string (kind expr type decl)
@@ -476,8 +477,9 @@
 	   (relterm (beta-reduce
 		     (typecheck* (mk-application ordering appl2 appl1)
 				 *boolean* nil nil)))
-	   (form (add-tcc-conditions relterm))
-	   (uform (cond ((tcc-evaluates-to-true relterm form)
+	   (true-conc? (tcc-evaluates-to-true relterm))
+	   (form (unless true-conc? (add-tcc-conditions relterm)))
+	   (uform (cond ((or true-conc? (tcc-evaluates-to-true form))
 			 *true*)
 			((and *simplify-tccs*
 			      (not (or *in-checker* *in-evaluator*)))
@@ -839,8 +841,9 @@
 (defun make-assuming-tcc-decl (ass modinst)
   (let* ((*generate-tccs* 'none)
 	 (expr (subst-mod-params (definition ass) modinst))
-	 (tform (add-tcc-conditions expr))
-	 (uform (cond ((tcc-evaluates-to-true expr tform)
+	 (true-conc? (tcc-evaluates-to-true expr))
+	 (tform (unless true-conc? (add-tcc-conditions expr)))
+	 (uform (cond ((or true-conc? (tcc-evaluates-to-true tform))
 		       *true*)
 		      (*simplify-tccs*
 		       (pseudo-normalize tform))
@@ -1105,8 +1108,9 @@
   (let* ((*generate-tccs* 'none)
 	 (conc (typecheck* (make-actuals-equality act mact)
 			   *boolean* nil nil))
-	 (form (add-tcc-conditions conc))
-	 (uform (cond ((tcc-evaluates-to-true conc form)
+	 (true-conc? (tcc-evaluates-to-true conc))
+	 (form (unless true-conc? (add-tcc-conditions conc)))
+	 (uform (cond ((or true-conc? (tcc-evaluates-to-true form))
 		       *true*)
 		      (*simplify-tccs*
 		       (pseudo-normalize (expose-binding-types
@@ -1250,8 +1254,9 @@
     (when conc
       (let* ((*no-expected* nil)
 	     (*bound-variables* *keep-unbound*)
-	     (tform (add-tcc-conditions conc))
-	     (uform (cond ((tcc-evaluates-to-true conc tform)
+	     (true-conc? (tcc-evaluates-to-true conc))
+	     (tform (unless true-conc? (add-tcc-conditions conc)))
+	     (uform (cond ((or true-conc? (tcc-evaluates-to-true tform))
 			   *true*)
 			  (*simplify-tccs*
 			   (pseudo-normalize tform))
@@ -1304,8 +1309,9 @@
 (defun make-cond-coverage-tcc (expr conditions)
   (let* ((*generate-tccs* 'none)
 	 (conc (make!-disjunction* conditions))
-	 (tform (add-tcc-conditions conc))
-	 (uform (cond ((tcc-evaluates-to-true conc tform)
+	 (true-conc? (tcc-evaluates-to-true conc))
+	 (tform (unless true-conc? (add-tcc-conditions conc)))
+	 (uform (cond ((or true-conc? (tcc-evaluates-to-true tform))
 		       *true*)
 		      (*simplify-tccs*
 		       (pseudo-normalize tform))
