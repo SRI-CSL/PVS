@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Oct 29 23:19:42 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Oct 30 01:03:39 1998
-;; Update Count    : 1
+;; Last Modified On: Thu Nov  5 15:14:07 1998
+;; Update Count    : 3
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -27,7 +27,9 @@
 (defmethod unparse :around (obj &rest keys)
   (if *use-pp*
       (let ((*default-char-width* (or (cadr (memq :char-width keys))
-				      *default-char-width*)))
+				      *default-char-width*))
+	    (*print-pretty* (or (not (memq :pretty keys))
+				(cadr (memq :pretty keys)))))
 	(cond ((memq :sb-tex keys)
 	       (call-next-method))
 	      ((memq :string keys)
@@ -44,8 +46,7 @@
       (call-next-method)))
 
 (defun pp (obj)
-  (let ((*print-pretty* t)
-	(*print-escape* nil)
+  (let ((*print-escape* nil)
 	(*print-level* nil)
 	(*print-length* nil)
 	(*print-right-margin* *default-char-width*))
@@ -73,8 +74,8 @@
     (pprint-logical-block (nil nil)
       (write id)
       (pp-theory-formals formals)
-      (write-char #\space)
       (write-char #\:)
+      (write-char #\space)
       (pprint-indent :block 2)
       (write 'THEORY)
       (pprint-indent :block 1)
@@ -173,11 +174,16 @@
 	(write 'ENDASSUMING)))))
 
 (defun pp-theory (theory)
-  (let ((*pretty-printing-decl-list* t))
+  (let ((*pretty-printing-decl-list* t)
+	(last-one (car (last theory))))
     (pprint-logical-block (nil theory)
       (pprint-newline :mandatory)
-      (loop (pp* (pprint-pop))
-	    (pprint-newline :mandatory)
+      (loop (let ((decl (pprint-pop)))
+	      (pp* decl)
+	      (unless (or (and (typep decl 'declaration)
+			       (chain? decl))
+			  (eq decl last-one))
+		(pprint-newline :mandatory)))
 	    (pprint-exit-if-list-exhausted)))))
 
 (defmethod pp* ((dt datatype))
@@ -385,7 +391,6 @@
   (with-slots (modname) decl
     (write 'library)
     (when (typep decl 'lib-eq-decl)
-      (write-char #\space)
       (write-char #\=))
     (write-char #\space)
     (pprint-newline :fill)
@@ -400,7 +405,6 @@
 
 (defmethod pp* ((decl const-decl))
   (with-slots (declared-type definition) decl
-    (write-char #\space)
     (pprint-newline :fill)
     (pp* declared-type)
     (when definition
@@ -477,7 +481,7 @@
     (pp* definition)
     (pprint-indent :block 2)))
 
-(defmethod pp* :around ((decl named-judgement))
+(defmethod pp* :around ((decl name-judgement))
   (with-slots (name chain? declared-type) decl
     (when (or (not *pretty-printing-decl-list*)
 	      (not *pretty-printed-prefix*))
@@ -487,11 +491,31 @@
       (write-char #\space)
       (pprint-newline :miser))
     (pp* name)
-    (when (typep decl 'typed-judgement)
-      (write-char #\:)
+    (cond ((and chain?
+		*pretty-printing-decl-list*)
+	   (write-char #\,)
+	   (write-char #\space))
+	  (t (pprint-indent :block 4)
+	     (write-char #\space)
+	     (pprint-newline :fill)
+	     (write 'HAS_TYPE)
+	     (write-char #\space)
+	     (pprint-newline :fill)
+	     (pp* declared-type)
+	     (pprint-indent :block 2)
+	     (setq *pretty-printed-prefix* nil)))
+    (pprint-newline :mandatory)))
+
+(defmethod pp* :around ((decl application-judgement))
+  (with-slots (name chain? declared-type) decl
+    (when (or (not *pretty-printing-decl-list*)
+	      (not *pretty-printed-prefix*))
+      (when *pretty-printing-decl-list*
+	(setq *pretty-printed-prefix* t))
+      (write 'JUDGEMENT)
       (write-char #\space)
-      (pprint-newline :miser)
-      (pp* (declared-name-type decl)))
+      (pprint-newline :miser))
+    (pp* name)
     (cond ((and chain?
 		*pretty-printing-decl-list*)
 	   (write-char #\,)
@@ -602,12 +626,12 @@
 
 (defmethod pp* ((ex field-assign))
   (pprint-logical-block (nil nil)
-    (write-char #\#)
+    (write-char #\`)
     (write (id ex))))
 
 (defmethod pp* ((ex proj-assign))
   (pprint-logical-block (nil nil)
-    (write-char #\#)
+    (write-char #\`)
     (write (number ex))))
 
 (defun pp-arguments (args)
@@ -822,12 +846,12 @@
 (defmethod pp* ((ex projection-application))
   (with-slots (id argument) ex
     (write id)
-    (pp-arguments (argument* argument))))
+    (pp-arguments (argument-list argument))))
 
 (defmethod pp* ((ex projappl))
   (pprint-logical-block (nil nil)
     (pp* (argument ex))
-    (write-char #\#)
+    (write-char #\`)
     (write (index ex))))
 
 (defmethod pp* ((ex field-application))
@@ -836,12 +860,12 @@
       (pprint-indent :current 2)
       (write id)
       (pprint-newline :fill)
-      (pp-arguments (argument* argument)))))
+      (pp-arguments (argument-list argument)))))
 
 (defmethod pp* ((ex fieldappl))
   (pprint-logical-block (nil nil)
     (pp* (argument ex))
-    (write-char #\#)
+    (write-char #\`)
     (write (id ex))))
 
 (defmethod pp* ((ex application))
@@ -852,7 +876,7 @@
 				  6))
       (pp* operator)
       (pprint-newline :miser)
-      (pp-arguments (argument* argument)))))
+      (pp-arguments (argument-list argument)))))
 
 (defvar *pp-infix-indents* 0)
 
