@@ -95,12 +95,8 @@
   (let ((neg-result (negate-and-check-eqn eqn cong-state)))
     (cond
      ((true-p neg-result)
-      (setf (cong-state-used-assertions cong-state)
-	    (cdr (cong-state-used-assertions cong-state)))
       *false*)
      ((false-p neg-result)
-      (setf (cong-state-used-assertions cong-state)
-	    (cdr (cong-state-used-assertions cong-state)))
       *true*)
      (t nil))))
 
