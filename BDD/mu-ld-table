@@ -43,3 +43,5 @@ mu___set_mu_verbose = set_mu_verbose ;
 mu___mu_init = mu_init ;
 mu___mu_quit = mu_quit ;
 mu___modelcheck_formula = modelcheck_formula ;
+mu___pvs_mu_print_formula = pvs_mu_print_formula ;
+mu___pvs_mu_print_term = pvs_mu_print_term ;
