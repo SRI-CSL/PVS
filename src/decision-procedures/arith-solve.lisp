@@ -125,8 +125,15 @@
 	(add-neq-constraint neq cong-state)
 	(list neq))))
 
+(defun norm-after-solve (eqn cong-state)
+  (if (equality-p eqn)
+      (normineq eqn cong-state)
+      eqn))
+
 (defun add-pure-ineq (pure-ineq cong-state)
-  (add-ineq-constraint pure-ineq cong-state))
+  (let ((solved-eqns (add-ineq-constraint pure-ineq cong-state)))
+    (loop for e in solved-eqns collect
+	  (norm-after-solve e cong-state))))
 
 (defun purify-eqn (eqn cong-state)
   (let* ((head (lhs eqn))
