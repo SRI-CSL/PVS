@@ -546,9 +546,11 @@ bddsimp, and assert, until nothing works.  DEFS is either
   "Obsolete - subsumed by (TCC)."
   "Trying repeated skolemization, instantiation, and if-lifting")
 
-(defstep bash (&optional (if-match T)(updates? T) polarity?)
+(defstep bash (&optional (if-match T)(updates? T) polarity? (instantiator inst?))
   (then (assert)(bddsimp)
-	(if if-match (inst? :if-match if-match :polarity? polarity?)(skip))
+	(if if-match (let ((command (generate-instantiator-command
+				     if-match polarity? instantiator)))
+		       command)(skip))
 	(repeat (then (skolem-typepred)(flatten)))
 	(lift-if :updates? updates?))
   "Core of REDUCE.  Does ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, 
@@ -556,13 +558,37 @@ FLATTEN, and LIFT-IF once and in that order.  The IF-MATCH option
 can be NIL, T, ALL, or BEST for no, some, all, or the best instantiation.
 If the UPDATES? option is NIL, update applications are not if-lifted.
 When the POLARITY? flag is T, INST? matches templates against
-complementary subexpressions.  "
+complementary subexpressions.
+The INSTANTIATOR argument can be used to specify use of an alternative
+instantiation mechanism.  This defaults to the (INST?) strategy."
   "Simplifying with decision procedures, rewriting, propositional
 reasoning, quantifier instantiation, skolemization, if-lifting.")
 
-(defstep reduce (&optional (if-match T)(updates? T) polarity?)
+(defun generate-instantiator-command (if-match polarity? instantiator)
+  (let* ((instcmd (if (consp instantiator)
+		      (car instantiator)
+		      instantiator))
+	 (givenargs (when (listp
+			   instantiator)
+		      (cdr instantiator)))
+	 (okargs (or (assoc instcmd *prover-keywords*)
+		     (format t "~a is not a valid prover command" instcmd)
+		     (restore)))
+	 (instargs (append (when (and (memq :if-match okargs)
+				      (not (memq :if-match givenargs)))
+			     (list :if-match if-match))
+			   (when (and (memq :polarity? okargs)
+				      (not (memq :if-match givenargs)))
+			     (list :polarity? polarity?))))
+	 (command (append (list instcmd) givenargs instargs)))
+    (if (check-arguments command)
+	command
+	'(fail))))
+
+	 
+(defstep reduce (&optional (if-match T)(updates? T) polarity? (instantiator inst?))
     (repeat* (try (bash$ :if-match if-match :updates? updates?
-			 :polarity? polarity?)
+			 :polarity? polarity? :instantiator instantiator)
                (replace*)
                (skip)))
 "Core of GRIND (ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, FLATTEN,
@@ -630,13 +656,15 @@ EXCLUDE is a list of rewrite rules. "
 			  exclude
 			  (if-match T)
 			  (updates? T)
-			  polarity?)
+			  polarity?
+			  (instantiator inst?))
   (then
    (install-rewrites$ :defs defs :theories theories
 		     :rewrites rewrites :exclude exclude)
     (then (bddsimp)(assert))
     (replace*)
-    (reduce$ :if-match if-match :updates? updates? :polarity? polarity?))
+    (reduce$ :if-match if-match :updates? updates?
+	     :polarity? polarity? :instantiator instantiator))
     "A super-duper strategy.  Does auto-rewrite-defs/theories,
 auto-rewrite then applies skolem!, inst?, lift-if, bddsimp, and
 assert, until nothing works. Here
@@ -657,7 +685,9 @@ assert, until nothing works. Here
  If the UPDATES? option is NIL, update applications are not if-lifted.
  POLARITY? if T, a positively occurring template is only matched against
      negatively occuring subexpressions, and less-than term occurrences
-     are matched against greater-than occurrences."
+     are matched against greater-than occurrences.
+The INSTANTIATOR argument can be used to specify use of an alternative
+instantiation mechanism.  This defaults to the (INST?) strategy."
     "Trying repeated skolemization, instantiation, and if-lifting")
 
 
@@ -1179,6 +1209,7 @@ as the optional NAME argument.
 				  theories
 				  rewrites
 				  exclude
+				  (instantiator inst?)
 				  )
   (then
    (install-rewrites$ :defs defs :theories theories
@@ -1190,11 +1221,14 @@ as the optional NAME argument.
 	 (repeat (lift-if));;To lift the embedded ifs,
 	 ;;then simplify, split, then instantiate
 	 ;;the induction hypothesis.  
-	 (repeat* (then (assert)(bddsimp)(skosimp*)
-				(if if-match
-				    (inst? :if-match if-match)
-				    (skip))
-				(lift-if))))
+	 (repeat* (then (assert)
+			(bddsimp)
+			(skosimp*)
+			(if if-match
+			    (let ((command (generate-instantiator-command if-match nil instantiator)))
+			      command)
+			    (skip))
+			(lift-if))))
 	(skip)))
   "Inducts on VAR in formula number FNUM using the induction
 scheme named NAME, then simplifies using rewrite rules taken
@@ -1212,6 +1246,8 @@ from THEORIES and REWRITES.
           AUTO-REWRITE-THEORY,
  REWRITES is a list of rewrite rules in AUTO-REWRITE format.
  EXCLUDE is a list of rewrite rules on which rewriting must be stopped.
+The INSTANTIATOR argument can be used to specify use of an alternative
+instantiation mechanism.  This defaults to the (INST?) strategy.
 
   (induct-and-simplify \"i\" :defs ! :theories \"real_props\"
                :rewrites \"assoc\" :exclude (\"div\_times\" \"add\_div\")):
@@ -1510,11 +1546,12 @@ Example:  (measure-induct+ \"length(x) + length(y)\" (\"x\" \"y\"))."
 
 (defstep measure-induct-and-simplify
   (measure vars &optional (fnum 1) order expand (defs T)
-				  (if-match best)
-				  theories
-				  rewrites
-				  exclude
-				  )
+	   (if-match best)
+	   theories
+	   rewrites
+	   exclude
+	   (instantiator inst?)
+	   )
   (then
    (install-rewrites$ :defs defs :theories theories
 		      :rewrites rewrites :exclude exclude)
@@ -1525,18 +1562,22 @@ Example:  (measure-induct+ \"length(x) + length(y)\" (\"x\" \"y\"))."
 		    (loop for x in expand
 			  collect `(expand ,x :fnum +))
 		    `((expand ,expand :fnum +))))
-		(command `(then ,@expands)))
+	       (command `(then ,@expands)))
 	   command)
 	 (skosimp*)
 	 (assert);;To expand the functions in the induction conclusion
 	 (repeat (lift-if));;To lift the embedded ifs,
 	 ;;then simplify, split, then instantiate
 	 ;;the induction hypothesis.  
-	 (repeat* (then (assert)(bddsimp)(skosimp*)
-				(if if-match
-				    (inst? :if-match if-match)
-				    (skip))
-				(lift-if))))
+	 (repeat* (then (assert)
+			(bddsimp)
+			(skosimp*)
+			(if if-match
+			    (let ((command (generate-instantiator-command
+					    if-match nil instantiator)))
+			      command)
+			    (skip))
+			(lift-if))))
 	(skip)))
   "Invokes MEASURE-INDUCT+ on MEASURE, VARS, FNUM, and ORDER, and then
 repeatedly expands definition(s) taken from EXPAND in the succedent,
@@ -1559,6 +1600,8 @@ REWRITES, instantiates, and lifts IFs.
           AUTO-REWRITE-THEORY,
  REWRITES is a list of rewrite rules in AUTO-REWRITE format.
  EXCLUDE is a list of rewrite rules on which rewriting must be stopped.
+ INSTANTIATOR argument can be used to specify use of an alternative
+       instantiation mechanism.  This defaults to the (INST?) strategy.
 
 Example:
     (measure-induct-and-simplify \"size(x)\" (\"x\") :expand \"unfold\" :if-match all)."
@@ -2649,16 +2692,18 @@ or succedent formula in the sequent."
 
 ;;NSH(5.27.95) : From JMR
 ;;added exclude argument to grind and if-match argument to use.
-(defstep use (lemma &optional subst (if-match best))
+(defstep use (lemma &optional subst (if-match best) (instantiator inst?))
   (then@ (lemma lemma subst)
 	 (if *new-fmla-nums*
-	     (let ((fnum (car *new-fmla-nums*)))
+	     (let ((fnum (car *new-fmla-nums*))
+		   (command (generate-instantiator-command if-match nil instantiator)))
 	       (then 
 		(beta fnum)
-		(repeat (inst? fnum :if-match if-match))))
+		(repeat (command))))
 	     (skip)))
   "Introduces lemma LEMMA, then does BETA and INST? (repeatedly) on
- the lemma."
+ the lemma.  The INSTANTIATOR argument may be used to specify an alternative
+ to INST?."
   "Using lemma ~a")
 
 (defstep use* (&rest names)
