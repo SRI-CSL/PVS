@@ -559,11 +559,11 @@
          (nbofargs (length (arguments (operator expr))))
          (mu-reach-expr
    (cond ((equal 2 nbofargs) (mu_mk_reach (nth 0 reach-list-args) 
-                             (nth 1 reach-list-args) (mu-mk-true) ))
+                             (nth 1 reach-list-args) (mu_mk_true_term) ))
          ((equal 3 nbofargs) (mu_mk_reach (nth 0 reach-list-args) 
                  (nth 1 reach-list-args) (nth 2 reach-list-args) ))
               )))
-   (mu_mk_curry_application mu-reach-expr (lisp-to-c-list mu-list-args)))
+   (mu_mk_application mu-reach-expr (lisp-to-c-list mu-list-args) 0))
 )
 
 (defun convert-pvs-to-mu-equality (expr)
