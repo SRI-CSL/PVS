@@ -112,7 +112,9 @@ where db is to replace db1 and db2")
   t)
 
 (defmethod new-tc-eq-list-bindings ((b1 binding) (b2 binding) bindings)
-  (acons b1 b2 bindings))
+  (if (eq b1 b2)
+      bindings
+      (acons b1 b2 bindings)))
 
 (defmethod new-tc-eq-list-bindings (e1 e2 bindings)
   (declare (ignore e1 e2))
