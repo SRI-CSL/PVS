@@ -27,11 +27,11 @@ if ! test -f $with_ics/src/ics.ml ; then
 fi
 if ! test -f $with_ics/config.guess ; then
    echo
-   AC_MSG_ERROR(ICS file $with_ics/bin/config.guess not found)
+   AC_MSG_ERROR(ICS file $with_ics/config.guess not found)
 fi
 ICSPATH=$with_ics
 AC_MSG_RESULT($ICSPATH)
-ICSARCH=`$ICSPATH/bin/config.guess`
+ICSARCH=`$ICSPATH/config.guess`
 ICSLIB=$ICSPATH/lib/$ICSARCH
 ICSOBJ=$ICSPATH/obj/$ICSARCH
 AC_SUBST(ICSPATH)
