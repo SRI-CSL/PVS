@@ -350,11 +350,12 @@
 	    (let* ((thinsts (gethash dth (current-using-hash)))
 		   (genthinst (find-if-not #'actuals thinsts)))
 	      (if genthinst
-		  (when (compatible-parameters?
-			 acts (formals-sans-usings dth))
-		    (let* ((nacts (copy-actuals acts))
-			   (dthi (mk-modname-no-tccs (id dth) nacts))
-			   (*generate-tccs* 'none))
+		  (let* ((nacts (compatible-parameters?
+				 acts (formals-sans-usings dth)))
+			 (dthi (when nacts
+				 (mk-modname-no-tccs (id dth) nacts)))
+			 (*generate-tccs* 'none))
+		    (when dthi
 		      (set-type-actuals dthi)
 		      #+pvsdebug (assert (fully-typed? dthi))
 		      (when (compatible-arguments? decl dthi args
@@ -652,29 +653,41 @@
 
 ;;; compatible-parameters? checks that the actuals and formals of a given
 ;;; theory are compatible.  The actuals do not have to be fully-typed, but
-;;; at least typechecked by typecheck-actuals.
+;;; at least typechecked by typecheck-actuals.  If satisfied, a list of
+;;; new actuals is returned that is consistent with the given actuals.
 
 (defun compatible-parameters? (actuals formals)
   (when (length= actuals formals)
-    (compatible-parameters?* actuals formals)))
+    (nreverse (compatible-parameters?* actuals formals))))
 
-(defun compatible-parameters?* (actuals formals &optional alist)
-  (or (null actuals)
+(defun compatible-parameters?* (actuals formals &optional nacts alist)
+  (if (null actuals)
+      nacts
       (multiple-value-bind (nfml nalist)
 	  (subst-actuals-in-next-formal (car actuals) (car formals) alist)
 	(let ((type (compatible-parameter? (car actuals) nfml)))
 	  (and type
 	       (if (typep nfml 'formal-type-decl)
-		   (compatible-parameters?* (cdr actuals) (cdr formals) nalist)
-		   (some #'(lambda (ty)
-			     (let ((nact (copy-untyped (car actuals)))
-				   (*generate-tccs* 'none))
-			       (typecheck* nact nil nil nil)
-			       (set-type (expr nact) ty)
-			       (compatible-parameters?*
-				(cdr actuals) (cdr formals)
-				(acons (car formals) nact (cdr nalist)))))
-			 type)))))))
+		   (compatible-parameters?*
+		    (cdr actuals) (cdr formals)
+		    (cons (copy-all (car actuals)) nacts) nalist)
+		   (compatible-parameters?**
+		    actuals formals type nacts nalist)))))))
+
+(defun compatible-parameters?** (actuals formals types nacts alist)
+  (when types
+    (let ((nact (copy-untyped (car actuals)))
+	  (*generate-tccs* 'none))
+      (typecheck* nact nil nil nil)
+      (set-type (expr nact) (car types))
+      (or (unless (cdr actuals)
+	    (cons nact nacts))
+	  (compatible-parameters?*
+	   (cdr actuals) (cdr formals)
+	   (cons nact nacts)
+	   (acons (car formals) nact (cdr alist)))
+	  (compatible-parameters?**
+	   actuals formals (cdr types) nacts alist)))))
 
 (defun compatible-parameter? (actual formal)
   (if (formal-type-decl? formal)
@@ -1552,6 +1565,10 @@
 (defmethod locality ((decl binding))
   0)
 
+(defmethod locality ((ex lambda-expr))
+  ;; This comes from K_conversion
+  4)
+
 (defmethod locality ((decl declaration))
   (with-slots (module) decl
     (cond ((eq module (current-theory))
@@ -2183,7 +2200,7 @@
 		    (format nil
 			"~a~%Enabling K_conversion before this declaration might help"
 		      error)))
-	  (if type-error?
+	  (if (and (not *in-checker*) type-error?)
 	      (type-error-noconv obj error)
 	      (progn (set-strategy-errors error)
 		     nil)))))))
