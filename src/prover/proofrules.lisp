@@ -407,7 +407,7 @@
 (defmethod simplify-ifs ((expr projection-application) trueconds falseconds)
   (with-slots (argument) expr
   (lcopy expr
-    'argument (simplify-ifs argument trueconds falseconds)))
+    'argument (simplify-ifs argument trueconds falseconds))))
 
 (defmethod simplify-ifs ((expr field-application) trueconds falseconds)
   (with-slots (argument) expr
