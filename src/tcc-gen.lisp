@@ -476,7 +476,8 @@
 	      (typep (declaration *current-context*) 'adt-accessor-decl))
     (when (possibly-empty-type? type)
       (generate-existence-tcc type expr)
-      (unless *in-checker*
+      (unless (or *in-checker*
+		  *tcc-conditions*)
 	(set-nonempty-type type)))))
 
 (defmethod possibly-empty-type? :around ((te type-expr))
