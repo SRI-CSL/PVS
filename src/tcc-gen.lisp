@@ -650,7 +650,9 @@
 
 (defun generate-assuming-tccs (modinst expr)
   (let ((mod (get-theory modinst))
-	(cdecl (declaration *current-context*)))
+	(cdecl (or (and *in-checker*
+			(declaration *top-proofstate*))
+		   (declaration *current-context*))))
     (unless (or (eq mod *current-theory*)
 		(and (formals-sans-usings mod) (null (actuals modinst)))
 		(and (member modinst (assuming-instances *current-theory*)
