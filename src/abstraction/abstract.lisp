@@ -772,12 +772,16 @@
 (defun normalize-equality-expr (expr)
   (if (equation? expr)
       (let* ((args (arguments expr))
-             (fml-update (member-if  #'(lambda (x) (update-expr? x)) args))
-             (fml-no-u (member-if  #'(lambda (x) (not(update-expr? x))) args))
-             (fml-update (if fml-update (car fml-update) nil))
-             (fml-no-u (if fml-no-u (car fml-no-u) nil)))
-        (if (or (null fml-update) (null fml-no-u)) expr
-	    (normalize-update-expr fml-no-u fml-update)))
+	     (update-args (if (update-expr? (car args))
+			      args
+			      (if (update-expr? (cadr args))
+				  (reverse args)
+				  args)))
+	     (update-arg (car update-args))
+	     (other-arg (cadr update-args)))
+        (if (update-expr? update-arg) 
+	    (normalize-update-expr other-arg update-arg)
+	    expr))
       expr))
 
 (defun normalize-update-expr (fml-no-u fml-update)
