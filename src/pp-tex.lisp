@@ -1731,7 +1731,7 @@
 			(if cdecls (cons (nreverse cdecls) part) part))))))))
   
 (defmethod pp-tex* ((ex symbol))
-  (write ex))
+  (when ex (write ex)))
 
 
 ;;;;; Substitutions
