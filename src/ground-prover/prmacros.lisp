@@ -34,4 +34,19 @@
 (defmacro getq (arg alist) `(cdr (assq ,arg ,alist)))
 
 (defun prerr (&rest args)
-  (apply #'error args)) 
+  (apply #'error args))
+
+(defconstant *truecons* '(true))
+
+(defconstant *eqarithrels* '(greatereqp lesseqp))
+
+(defconstant *ifops* '(if if*))
+
+(defconstant *boolconstants* '(false true))
+
+(defconstant *arithrels* '(lessp lesseqp greaterp greatereqp))
+
+(defconstant *arithops* '(plus times difference minus))
+
+(defconstant *boolops* '(and or implies not if iff))
+
