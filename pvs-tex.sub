@@ -93,14 +93,14 @@ OMEGA		id	1	\Omega
 *		2	1	{#1\times#2}
 /		2	1	{#1/#2}
 O		2	1	{#1\circ#2}
-member		2	1	{(#1 \in #2)}
-member		0	4	{(\star1 \in \star2)}
-emptyset        0       1       {\emptyset}
-subset?         2       1       {(#1 \subseteq #2)}
-strict_subset?  2       1       {(#1 \subset #2)}
-union           2       1       {(#1 \cup #2)}
-intersection    2       1       {(#1 \cap #2)}
-complement      1       1       {\overline{#1}}
-difference      2       1       {(#1 \setminus #2)}
-add		2	2	{(#2 \cup \{#1\})}
-remove		2	2	{(#2 \setminus \{#1\})}
+sets.member		2	1	{(#1 \in #2)}
+sets.member		0	4	{(\star1 \in \star2)}
+sets.emptyset		0       1       {\emptyset}
+sets.subset?		2       1       {(#1 \subseteq #2)}
+sets.strict_subset?	2       1       {(#1 \subset #2)}
+sets.union		2       1       {(#1 \cup #2)}
+sets.intersection	2       1       {(#1 \cap #2)}
+sets.complement		1       1       {\overline{#1}}
+sets.difference		2       1       {(#1 \setminus #2)}
+sets.add		2	2	{(#2 \cup \{#1\})}
+sets.remove		2	2	{(#2 \setminus \{#1\})}
