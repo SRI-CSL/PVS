@@ -734,7 +734,7 @@ approaches to managing proofs."
 	 (line (+ (current-line-number) prelude-offset)))
     (pvs-send
      (format "(remove-proof-at \"%s\" %s %d \"%s\")"
-	 name (when declname (format "\"%s\"" declname) line origin)))))
+	 name (when declname (format "\"%s\"" declname)) line origin))))
 
 (defpvs install-pvs-proof-file edit-proof (filename)
   "Installs the specified proof file
