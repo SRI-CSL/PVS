@@ -1209,6 +1209,7 @@ bind tighter.")
        (not (library ex))))
 
 (defmethod simple-name? (ex)
+  (declare (ignore ex))
   nil)
 
 (defun pp-arguments-list (args)
@@ -1393,6 +1394,7 @@ bind tighter.")
       (values bindings ex)))
 
 (defmethod pp-unchain-binding-expr (ex bindings op)
+  (declare (ignore op))
   (values bindings ex))
   
 
