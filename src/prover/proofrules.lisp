@@ -129,67 +129,72 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;simplify-disjunct takes a formula and returns a list of formulas, the
 ;;disjunction of which is equivalent to the original formula.  
-(defun simplify-disjunct (formula &optional depth)
-  (if (and (integerp depth)
-	   (zerop depth))
+(defmethod simplify-disjunct ((formula application) depth)
+  (if (or (and (integerp depth)
+	       (zerop depth))
+	  (not (typep (operator formula) 'name-expr)))
       (list formula)
-      (let ((depth (if (integerp depth)
-		       (1- depth)
-		       depth)))
-	(if (and (typep formula 'application)
-		 (typep (operator formula) 'name-expr))
-	    (cond ((disjunction? formula)
-		   (loop for arg in (arguments formula)
-			 nconc (simplify-disjunct arg depth)))
-		  ((implication? formula)
-		   (nconc (simplify-disjunct (negate (args1 formula)) depth)
-			  (simplify-disjunct (args2 formula) depth)))
-		  ((disequation? formula)
-		   (list (negate (make-equality (args1 formula)(args2 formula)))))
-		  ((negation? formula)
-		   (let ((arg (args1 formula)))
-		     (if (and (typep arg 'application)
-			      (typep (operator arg) 'name-expr))
-			 (cond ((conjunction? arg)
-				(loop for argum in (arguments arg)
-				      nconc (simplify-disjunct (negate argum)
-							       depth)))
-			       ((disequation? arg)
-				(list (make-equality (args1 arg)(args2 arg))))
-			       ((negation? arg)
-				(simplify-disjunct (args1 arg) depth))
-			       ((iff? arg)
-				(nconc
-				 (simplify-disjunct
-				  (negate
-				   (make-implication
-				    (args1 arg)(args2 arg)))
-				  depth)
-				 (simplify-disjunct
-				  (negate
-				   (make-implication
-				    (args2 arg)(args1 arg)))
-				  depth)))
-			       (t (list formula)))
-			 (list formula))))
-		  (t (list formula)))
-	    (list formula)))))
- 
+      (simplify-disjunct* formula (when depth (1- depth)))))
+
+(defmethod simplify-disjunct (formula depth)
+  (declare (ignore depth))
+  (list formula))
+
+(defmethod simplify-disjunct* ((formula disjunction) depth)
+  (loop for arg in (arguments formula)
+	nconc (simplify-disjunct arg depth)))
+
+(defmethod simplify-disjunct* ((formula implication) depth)
+  (nconc (simplify-disjunct (negate (args1 formula)) depth)
+	 (simplify-disjunct (args2 formula) depth)))
+
+(defmethod simplify-disjunct* ((formula disequation) depth)
+  (declare (ignore depth))
+  (list (negate (make!-equation (args1 formula)
+				(args2 formula)))))
+
+(defmethod simplify-disjunct* ((formula negation) depth)
+  (or (simplify-disjunct-neg (args1 formula) depth)
+      (list formula)))
+  
+(defmethod simplify-disjunct* (formula depth)
+  (declare (ignore depth))
+  (list formula))
+
+(defmethod simplify-disjunct-neg ((formula application) depth)
+  (and (typep (operator formula) 'name-expr)
+       (simplify-disjunct-neg* formula depth)))
+
+(defmethod simplify-disjunct-neg* ((formula conjunction) depth)
+  (loop for arg in (arguments formula)
+	nconc (simplify-disjunct (negate arg) depth)))
+
+(defmethod simplify-disjunct-neg* ((formula disequation) depth)
+  (declare (ignore depth))
+  (list (make!-equation (args1 formula)
+			(args2 formula))))
+
+(defmethod simplify-disjunct-neg* ((formula negation) depth)
+  (simplify-disjunct (args1 formula) depth))
+
+(defmethod simplify-disjunct-neg* ((formula iff) depth)
+  (nconc (simplify-disjunct (negate (make!-implication (args1 formula)
+						       (args2 formula))) depth)
+	 (simplify-disjunct (negate (make!-implication (args2 formula)
+						       (args1 formula))) depth)))
+
+(defmethod simplify-disjunct-neg* (formula depth)
+  (declare (ignore formula depth))
+  nil)
+      
 (defun simplify-disjunct-sform (sform depth)
   (let ((new-sforms
 	 (loop for x in (simplify-disjunct (formula sform) depth)
 	       collect (lcopy sform 'formula x))))
-    (if (and (= (length new-sforms) 1)
+    (if (and (not (cdr new-sforms))  ;;; = (length new-sforms) 1)
 	     (s-form-equal? sform (car new-sforms)))
 	(values 'X sform)
       (values '? new-sforms))))
-
-;(defun dsimp-rule (sformnums) (make-instance 'rule
-;		      'rule-part (dsimp sformnums)
-;		      'rule-input `(dsimp ,sformnums)))
-
-
-
 
 
 (defun flatten (sformnums  depth)
