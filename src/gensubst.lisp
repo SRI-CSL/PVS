@@ -993,6 +993,7 @@
   (with-slots (id actuals argument) ex
     (copy ex
       'id id
+      'type nil
       'actuals (copy-untyped* actuals)
       'argument (copy-untyped* argument))))
 
