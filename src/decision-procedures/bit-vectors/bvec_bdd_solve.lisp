@@ -34,7 +34,7 @@
 ;;; Last Changes:  March, 16th    1998
 ;;; Version 2.0
 
-(in-package bvec)
+(in-package 'bvec)
 
 
 ;; ******************************
@@ -97,35 +97,35 @@
 (defvar *false-node*)  ;; to the right matching value
 
 
-(defun-hashed bdd-compute
-  (non-bdd-args bdd-args args-function termination-function leaf-function)
-  (when args-function
-    (setq bdd-args (apply args-function (append non-bdd-args bdd-args))))
-  (cond
-   ((and
-     termination-function
-     (apply termination-function (append non-bdd-args bdd-args))))
-   ((every #'leaf-node? bdd-args)
-    (apply leaf-function (append non-bdd-args bdd-args)))
-   (t
-    (let* ((min-bdd (smallest-bdd bdd-args))
-	   (min-var (node-variable min-bdd)))
-      (let* ((else-bdds (mapcar #'(lambda (bdd) (else-wrt-index bdd min-var))
-			       bdd-args))
-	     (then-bdds (mapcar #'(lambda (bdd) (then-wrt-index bdd min-var))
-			       bdd-args))
-	     (node-else (bdd-compute non-bdd-args  else-bdds
-						 args-function nil
-						 leaf-function))
-	     (node-then (bdd-compute non-bdd-args  then-bdds
-						 args-function nil
-						 leaf-function)))
-	(if (eq node-then node-else)
-	    node-then
-	  
-	  (make-unique-node  :variable min-var
-			     :else     node-else
-			     :then     node-then)))))))
+;(defun-hashed bdd-compute
+;  (non-bdd-args bdd-args args-function termination-function leaf-function)
+;  (when args-function
+;    (setq bdd-args (apply args-function (append non-bdd-args bdd-args))))
+;  (cond
+;   ((and
+;     termination-function
+;     (apply termination-function (append non-bdd-args bdd-args))))
+;   ((every #'leaf-node? bdd-args)
+;    (apply leaf-function (append non-bdd-args bdd-args)))
+;   (t
+;    (let* ((min-bdd (smallest-bdd bdd-args))
+;	   (min-var (node-variable min-bdd)))
+;      (let* ((else-bdds (mapcar #'(lambda (bdd) (else-wrt-index bdd min-var))
+;			       bdd-args))
+;	     (then-bdds (mapcar #'(lambda (bdd) (then-wrt-index bdd min-var))
+	;		       bdd-args))
+;	     (node-else (bdd-compute non-bdd-args  else-bdds
+;						 args-function nil
+;						 leaf-function))
+;	     (node-then (bdd-compute non-bdd-args  then-bdds
+;						 args-function nil
+;						 leaf-function)))
+;	(if (eq node-then node-else)
+;	    node-then
+;	  
+;	  (make-unique-node  :variable min-var
+;			     :else     node-else
+;			     :then     node-then)))))))
 
 
 ;;; ------------------------------
@@ -622,7 +622,7 @@
    (t (error-misc "lift-to-bdd" bv "not caught."))))
    
 (defun bv-const-to-node (const)
-  (ifassert (rec-bv-const? const))
+  #+dbg(assert (rec-bv-const? const))
   (let ((len (bv-const-length const))
 	(val (bv-const-value const)))
     (cond
