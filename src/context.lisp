@@ -757,7 +757,9 @@ pvs-strategies files.")
   (let ((start-time (get-internal-real-time))
 	(*bin-theories-set* nil))
     (multiple-value-bind (theories condition)
-	(ignore-errors (get-theories-from-file filename))
+	(if *testing-restore*
+	    (get-theories-from-file filename)
+	    (ignore-errors (get-theories-from-file filename)))
       (cond (condition
 	     (restore-filename-error filename condition))
 	    (t (setf (gethash filename *pvs-files*)
