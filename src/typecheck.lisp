@@ -82,7 +82,7 @@
 				    *empty-expression-types*))
 	    (*in-typechecker* (or *in-typechecker*
 				  (if (or *in-checker* *in-evaluator*)
-				      (unparse obj :string t)
+				      obj
 				      t))))
 	(call-next-method))
     (unless *in-typechecker*
@@ -265,7 +265,7 @@
     (unless *ignore-exportings*
       (add-exporting-with-theories mod nmodinst))))
 
-(defmethod typecheck-using* ((adt datatype) inst)
+(defmethod typecheck-using* ((adt recursive-type) inst)
   (let* ((th1 (adt-theory adt))
 	 (th2 (adt-map-theory adt))
 	 (th3 (adt-reduce-theory adt))
@@ -325,7 +325,7 @@
 	(setf immediate-usings
 	      (mapcan #'(lambda (thname)
 			  (let ((th (get-theory thname)))
-			    (or (and (typep th 'datatype)
+			    (or (and (typep th 'recursive-type)
 				     (datatype-instances thname))
 				(list thname))))
 		(mapcar #'theory-name
@@ -337,7 +337,7 @@
   (mapcan #'(lambda (thname)
 	      (unless (library thname)
 		(let ((th (get-theory thname)))
-		  (or (and (typep th 'datatype)
+		  (or (and (typep th 'recursive-type)
 			   (datatype-instances thname))
 		      (list thname)))))
     (mapcar #'theory-name
@@ -363,7 +363,7 @@
 	     (when th3
 	       (list (mk-modname (id th3))))))))
 
-(defmethod get-immediate-usings ((adt datatype))
+(defmethod get-immediate-usings ((adt recursive-type))
   (append (mapcar #'theory-name
 	    (remove-if-not #'mod-or-using?
 	      (append (formals adt)
@@ -371,7 +371,7 @@
 	  (when (importings adt)
 	    (mapcar #'theory-name (importings adt)))))
 
-(defmethod get-immediate-context-usings ((adt datatype))
+(defmethod get-immediate-context-usings ((adt recursive-type))
   (append (mapcar #'theory-name
 	    (remove-if-not #'mod-or-using?
 	      (append (formals adt)
@@ -592,7 +592,7 @@
 
 (defun collect-all-exportable-decls (theory)
   (remove-if #'(lambda (d)
-		 (typep d '(or importing var-decl field-decl datatype)))
+		 (typep d '(or importing var-decl field-decl recursive-type)))
 	     (append (assuming theory)
 		     (theory theory))))
 
@@ -673,7 +673,7 @@
 		     (closure (exporting theory)))
 	     (copy-list (closure (exporting theory))))))
 
-(defmethod collect-all-exporting-with-theories* (thinst (adt datatype))
+(defmethod collect-all-exporting-with-theories* (thinst (adt recursive-type))
   (let ((th1 (adt-theory adt))
 	(th2 (adt-map-theory adt))
 	(th3 (adt-reduce-theory adt)))
@@ -687,7 +687,7 @@
 	   (collect-all-exporting-with-theories*
 	    (mk-modname (id th3)) th3))))
 
-(defmethod exporting ((adt datatype))
+(defmethod exporting ((adt recursive-type))
   (exporting (adt-theory adt)))
 
 (defvar *theory-instances* nil)
@@ -711,7 +711,7 @@
 			   #'(lambda (d)
 			       (or (not (eq (module d) (current-theory)))
 				   (typep d '(or formal-decl importing var-decl
-					      field-decl datatype))
+					      field-decl recursive-type))
 				   (and (const-decl? d)
 					(formal-subtype-decl?
 					 (generated-by d)))

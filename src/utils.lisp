@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre and N. Shankar
 ;; Created On      : Thu Dec  2 13:31:00 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Nov  5 14:25:48 1998
-;; Update Count    : 91
+;; Last Modified On: Wed Jun 30 17:22:59 1999
+;; Update Count    : 92
 ;; Status          : Beta test
 ;; 
 ;; HISTORY
@@ -270,7 +270,7 @@
 (defmethod get-theory ((mod module))
   mod)
 
-(defmethod get-theory ((dt datatype))
+(defmethod get-theory ((dt recursive-type))
   dt)
 
 #+(or gcl cmu)
@@ -294,17 +294,18 @@
 		     (gethash id *pvs-modules*)
 		     (or (and imphash (gethash id imphash))
 			 (and prehash (gethash id prehash))
-			 (gethash id *prelude*))))))
+			 ;;(gethash id *prelude*)
+			 )))))
 	(or (gethash id *prelude*)
 	    ;;(gethash id *pvs-modules*)
 	    (car (assoc id (prelude-libraries-uselist)
 			:test #'(lambda (x y) (eq x (id y)))))
+	    (gethash id *pvs-modules*)
 	    (let ((theories (get-imported-theories id)))
-	      (cond ((cdr theories)
-		     (pvs-message "Ambiguous theories - ~a"
-		       (id (car theories))))
-		    ((car theories))
-		    (t (gethash id *pvs-modules*))))))))
+	      (if (cdr theories)
+		  (pvs-message "Ambiguous theories - ~a"
+		    (id (car theories)))
+		  (car theories)))))))
 
 (defun get-imported-theories (id)
   (let ((theories nil))
@@ -336,7 +337,7 @@
 (defmethod else-part ((expr branch))
   (caddr (arguments expr)))
 
-(defmethod theory ((adt datatype))
+(defmethod theory ((adt recursive-type))
   nil)
 
 (defmethod resolution ((name name))
@@ -647,7 +648,7 @@
 						      (reverse
 						       *prelude-theories*)))))
 				     (saved-context
-				      (if (datatype? prevp)
+				      (if (recursive-type? prevp)
 					  (or (adt-reduce-theory prevp)
 					      (adt-map-theory prevp)
 					      (adt-theory prevp))
@@ -680,11 +681,11 @@
 	(type-def-decl (unless (enumtype? (type-expr d))
 			 (put-decl d (current-declarations-hash))))
 	(declaration (put-decl d (current-declarations-hash)))
-	(datatype nil)))
+	(recursive-type nil)))
     (when (from-prelude? decl)
       (let* ((prevp (cadr (memq (module decl)
 				(reverse *prelude-theories*))))
-	     (pths (if (datatype? prevp)
+	     (pths (if (recursive-type? prevp)
 		       (delete-if #'null
 			 (list (adt-theory prevp)
 			       (adt-map-theory prevp)
@@ -696,7 +697,7 @@
     (setf (declaration *current-context*) decl)
     *current-context*))
 
-(defmethod saved-context ((adt datatype))
+(defmethod saved-context ((adt recursive-type))
   (when (adt-theory adt)
     (saved-context (adt-theory adt))))
 	      
@@ -841,7 +842,7 @@
   (add-to-using inst)
   (add-exporting-with-theories theory inst))
 
-(defmethod add-usings-to-context* ((adt datatype) inst)
+(defmethod add-usings-to-context* ((adt recursive-type) inst)
   (let ((acts (actuals inst)))
     (add-usings-to-context
      (mapcar #'(lambda (gen)
@@ -1255,15 +1256,15 @@
 
 (defun get-adt-slot-value (te)
   (or (let ((dt (get-theory (id te))))
-	(and (datatype? dt) dt))
+	(and (recursive-type? dt) dt))
       (find-if #'(lambda (d)
-		   (and (typep d 'datatype)
+		   (and (typep d 'recursive-type)
 			(eq (id d) (id te))))
 	(all-decls (module (declaration te))))
       (let ((enumtype (find-if #'(lambda (d)
 				   (and (typep d 'type-eq-decl)
 					(eq (id d) (id te))
-					(typep (type-expr d) 'datatype)))
+					(typep (type-expr d) 'recursive-type)))
 			(all-decls (module (declaration te))))))
 	(when enumtype
 	  (type-expr enumtype)))))
