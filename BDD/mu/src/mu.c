@@ -34,7 +34,7 @@
 /* LOCAL DEFINES                                                            */
 /* ------------------------------------------------------------------------ */
 
-#define CLOCKS_PER_MSEC	(CLOCKS_PER_SEC/1000)
+#define CLOCKS_PER_MSEC	(CLOCKS_PER_SEC/1000.0)
 
 /* Use as: "forever { ... }" or "do { ... } forever" */
 #define forever		while(1)
@@ -907,7 +907,7 @@ static BDDPTR mu_reachable (Term T, R_Interpret Ip, Term FT)
     }
 
     /*  D_sprintf (buf, bdd_count_sat_assignments (R, Domain), 0); */
-    fprintf (stdout, "Reachable took %u msec (%u BDD nodes).\n",
+    fprintf (stdout, "Reachable took %.2f msec (%u BDD nodes).\n",
 	             (clock () - start_t) / CLOCKS_PER_MSEC, 
                      bdd_size (R));
     bdd_free (Domain);
