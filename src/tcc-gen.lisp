@@ -647,37 +647,38 @@
 ;;; Assuming TCC generation
 
 (defun generate-assuming-tccs (modinst expr)
-  (let ((mod (get-theory modinst))
-	(cdecl (or (and *in-checker*
-			(declaration *top-proofstate*))
-		   (declaration *current-context*))))
-    (unless (or (eq mod *current-theory*)
-		(and (formals-sans-usings mod) (null (actuals modinst)))
-		(and (member modinst (assuming-instances *current-theory*)
+  (let ((mod (get-theory modinst)))
+    (unless (or (eq mod (current-theory))
+		(null (assuming mod))
+		(and (formals-sans-usings mod) (null (actuals modinst))))
+      (let ((cdecl (or (and *in-checker*
+			    *top-proofstate*
+			    (declaration *top-proofstate*))
+		       (declaration *current-context*))))
+	(unless (and (member modinst (assuming-instances (current-theory))
 			     :test #'tc-eq)
-		     (not (typep cdecl 'existence-tcc))))
-      ;; Don't want to save this module instance unless it does not depend on
-      ;; any conditions, including implicit ones in the prover
-      (unless (or *in-checker*
-		  *tcc-conditions*)
-	(push modinst (assuming-instances *current-theory*)))
-      (dolist (ass (remove-if-not #'(lambda (a)
-				      (and (formula-decl? a)
-					   (eq (spelling a) 'ASSUMPTION)))
-		     (assuming mod)))
-	(if (eq (kind ass) 'existence)
-	    (let ((atype (subst-mod-params (existence-tcc-type ass) modinst)))
-	      (if (typep cdecl 'existence-tcc)
-		  (let ((dtype (existence-tcc-type cdecl)))
-		    (if (tc-eq atype dtype)
-			(generate-existence-tcc atype expr)
-			(check-nonempty-type atype expr)))
-		  (check-nonempty-type atype expr)))
-	    (let* ((*old-tcc-name* nil)
-		   (ndecl (make-assuming-tcc-decl ass modinst)))
-	      (if ndecl
-		  (insert-tcc-decl 'assuming modinst ass ndecl)
-		  (incf (tccs-simplified)))))))))
+		     (not (existence-tcc? cdecl)))
+	  ;; Don't want to save this module instance unless it does not
+	  ;; depend on any conditions, including implicit ones in the
+	  ;; prover
+	  (unless (or *in-checker*
+		      *tcc-conditions*)
+	    (push modinst (assuming-instances *current-theory*)))
+	  (dolist (ass (remove-if-not #'assumption? (assuming mod)))
+	    (if (eq (kind ass) 'existence)
+		(let ((atype (subst-mod-params (existence-tcc-type ass)
+					       modinst)))
+		  (if (typep cdecl 'existence-tcc)
+		      (let ((dtype (existence-tcc-type cdecl)))
+			(if (tc-eq atype dtype)
+			    (generate-existence-tcc atype expr)
+			    (check-nonempty-type atype expr)))
+		      (check-nonempty-type atype expr)))
+		(let* ((*old-tcc-name* nil)
+		       (ndecl (make-assuming-tcc-decl ass modinst)))
+		  (if ndecl
+		      (insert-tcc-decl 'assuming modinst ass ndecl)
+		      (incf (tccs-simplified)))))))))))
 
 (defmethod existence-tcc-type ((decl existence-tcc))
   (existence-tcc-type (definition decl)))
