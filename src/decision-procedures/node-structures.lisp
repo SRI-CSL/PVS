@@ -195,6 +195,9 @@
 				     :id id)))
     new-constant))
 
+(defun mk-new-constant (id type)
+  (mk-constant* id type))
+
 (defun mk-variable (id &optional (type nil))
   (let ((hashed-variable (dp-gethash id *term-hash*)))
     (if hashed-variable
@@ -211,6 +214,9 @@
 					:initial-type type
 					:id id)))
     new-variable))
+
+(defun mk-new-variable (id type)
+  (mk-variable* id type))
 
 (defun mk-interpreted-constant (sym &optional type)
   (let ((result (mk-constant sym type)))
@@ -1559,6 +1565,21 @@
 		   (occurs-p x e))
 	       (funargs trm)))
 	(t nil)))
+
+(defun replace-by (trm subst)
+  (let ((*subst* subst))
+    (declare (special *subst*))
+    (replace-by* trm)))
+
+(defun replace-by* (trm)
+  (cond ((leaf-p trm)
+	 (let ((lookup (assoc trm *subst*)))
+	   (if lookup (cdr lookup) trm)))
+	((application-p trm)
+	 (mk-term (cons (funsym trm)
+			(mapcar #'replace-by* (funargs trm)))))
+	(t
+	 trm)))
 
 (defun occurs-in-scope-of-uninterp-p (x trm)
   (and (application-p trm)
