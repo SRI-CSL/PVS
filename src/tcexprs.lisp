@@ -623,7 +623,9 @@
 	   (c (car (member (constructor sel) (constructors adt)
 			   :test #'same-id))))
       (unless c
-	(type-error-noconv sel "No matching constructor found"))
+	(type-error-noconv sel
+	    "No matching constructor found for ~a in datatype ~a"
+	    (constructor sel) (id adt)))
       ;;(typecheck* constr nil nil nil)
       (unless (length= (args sel) (arguments c))
 	(type-error-noconv sel "Wrong number of arguments"))
@@ -640,7 +642,9 @@
 	  (if reses
 	      (setf (resolutions constr) reses
 		    (types constr) (mapcar #'type reses))
-	      (type-error-noconv sel "No matching constructor found")))
+	      (type-error-noconv sel
+		  "No matching constructor found for ~a in datatype ~a"
+		  (constructor sel) (id adt))))
 	(typecheck* (expression sel) nil nil args)))
     (typecheck-selections* (cdr selections) adt type args)))
 
