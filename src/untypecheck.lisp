@@ -1,18 +1,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; untypecheck.lisp -- 
+;; untypecheck.lisp -- Untypecheck-Theory removes types, resolutions,
+;;                     and references to other declarations.
 ;; Author          : Sam Owre
 ;; Created On      : Mon Oct 25 23:18:47 1993
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Thu Jan 28 14:16:59 1999
 ;; Update Count    : 20
-;; Status          : Beta test
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-;;; Untypecheck-Theory removes types, resolutions, and references to other
-;;; declarations.
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 ;;; For now the entire theory will be untypechecked.
 
@@ -37,12 +33,13 @@
 				      (generated-by d)))
 	  (assuming dorm)))
   (untypecheck-theory (assuming dorm))
-  (setf (status dorm) (list 'parsed))
+  (setf (status dorm) nil)
   (setf (tcc-comments dorm) nil)
   (setf (info dorm) nil)
   (setf (warnings dorm) nil)
   (setf (conversion-messages dorm) nil)
-  (setf (all-declarations dorm) nil))
+  (setf (all-declarations dorm) nil)
+  (setf (all-imported-theories dorm) 'unbound))
 
 (defmethod untypecheck-theory ((adt datatype))
   (untypecheck-theory (importings adt))
@@ -69,32 +66,104 @@
   (setf (acc-decls con) nil))
 
 (defmethod untypecheck-theory ((theory module))
-  (unless (or (eq theory (current-theory))
-	      (memq theory *tc-theories*))
-    (tcdebug "~%Untypechecking theory ~a" (id theory))
-    ;;(setf (declarations theory) (make-hash-table :test #'eq :size 20))
-    (dolist (ty (nonempty-types theory))
-      (setf (nonempty? ty) nil))
-    (setf (nonempty-types theory) nil)
-    (untypecheck-theory (exporting theory))
-    (setf (all-usings theory) nil)
-    (setf (immediate-usings theory) 'unbound)
-    (call-next-method)
-    (setf (instances-used theory) nil)
-    (setf (assuming-instances theory) nil)
-    (setf (used-by theory) nil)
-    (setf (theory theory) (remove-if #'(lambda (d)
-					 (and (declaration? d)
-					      (generated-by d)))
-			    (theory theory)))
-    (untypecheck-theory (theory theory))
-    (setf (tccs-tried? theory) nil)
-    (setf (modified-proof? theory) nil)
-    (setf (tcc-info theory) (list 0 0 0 0))
-    (remove-associated-buffers (id theory))
-    (setf (ppe-form theory) nil)
-    (setf (tcc-form theory) nil)
-    (setf (saved-context theory) nil)))
+  (cond ((assq theory *tc-theories*)
+	 (let ((cdecl (cdr (assq theory *tc-theories*))))
+	   (untypecheck-theory-after-decl theory cdecl)))
+	((eq theory (current-theory))
+	 (untypecheck-theory-after-decl theory (current-declaration)))
+	(t
+	 (tcdebug "~%Untypechecking theory ~a" (id theory))
+	 ;;(setf (declarations theory) (make-hash-table :test #'eq :size 20))
+	 (dolist (ty (nonempty-types theory))
+	   (setf (nonempty? ty) nil))
+	 (setf (nonempty-types theory) nil)
+	 (untypecheck-theory (exporting theory))
+	 (setf (all-usings theory) nil)
+	 (setf (immediate-usings theory) 'unbound)
+	 (call-next-method)
+	 (setf (instances-used theory) nil)
+	 (setf (assuming-instances theory) nil)
+	 (setf (used-by theory) nil)
+	 (setf (theory theory) (remove-if #'(lambda (d)
+					      (and (declaration? d)
+						   (generated-by d)))
+				 (theory theory)))
+	 (untypecheck-theory (theory theory))
+	 (setf (tccs-tried? theory) nil)
+	 (setf (modified-proof? theory) nil)
+	 (setf (tcc-info theory) (list 0 0 0 0))
+	 (remove-associated-buffers (id theory))
+	 (setf (ppe-form theory) nil)
+	 (setf (tcc-form theory) nil)
+	 (setf (saved-context theory) nil))))
+
+(defun untypecheck-theory-after-decl (theory decl)
+  ;; Need to only untypecheck declarations following the given one
+  (dolist (ty (nonempty-types theory))
+    (setf (nonempty? ty) nil))
+  (setf (nonempty-types theory) nil)
+  (untypecheck-theory (exporting theory))
+  (setf (all-usings theory) nil)
+  (setf (immediate-usings theory) 'unbound)
+  ;; next-method
+  (setf (instances-used theory) nil)
+  (setf (assuming-instances theory) nil)
+  (setf (used-by theory) nil)
+  (let* ((fdecls (memq decl (formals theory)))
+	 (adecls (unless fdecls (memq decl (assuming theory))))
+	 (tdecls (unless (or fdecls adecls) (memq decl (theory theory)))))
+    (assert (or fdecls adecls tdecls))
+    (cond (fdecls
+	   (setf (formals theory)
+		 (append (ldiff (formals theory) fdecls)
+			 (remove-if #'(lambda (d)
+					(and (declaration? d)
+					     (generated-by d)))
+			   fdecls)))
+	   (setf (assuming theory)
+		 (remove-if #'(lambda (d)
+				(and (declaration? d)
+				     (generated-by d)))
+		   (assuming theory)))
+	   (setf (theory theory)
+		 (remove-if #'(lambda (d)
+				(and (declaration? d)
+				     (generated-by d)))
+		   (theory theory))))
+	  (adecls
+	   (setf (assuming theory)
+		 (append (ldiff (assuming theory) adecls)
+			 (remove-if #'(lambda (d)
+					(and (declaration? d)
+					     (generated-by d)))
+			   adecls)))
+	   (setf (theory theory)
+		 (remove-if #'(lambda (d)
+				(and (declaration? d)
+				     (generated-by d)))
+		   (theory theory))))
+	  (t
+	   (setf (theory theory)
+		 (append (ldiff (theory theory) tdecls)
+			 (remove-if #'(lambda (d)
+					(and (declaration? d)
+					     (generated-by d)))
+			   tdecls)))))
+    (let* ((untc-decls (cond (fdecls
+			      (append fdecls
+				      (assuming theory) (theory theory)))
+			     (adecls
+			      (append adecls (theory theory)))
+			     (t tdecls))))
+      (untypecheck-theory untc-decls)))
+  (setf (all-declarations theory) nil)
+  (setf (tccs-tried? theory) nil)
+  (setf (modified-proof? theory) nil)
+  (setf (tcc-info theory) (list 0 0 0 0))
+  (remove-associated-buffers (id theory))
+  (setf (ppe-form theory) nil)
+  (setf (tcc-form theory) nil)
+  (setf (saved-context theory) nil))
 
 (defmethod untypecheck-theory ((exp exporting))
   (if (memq (kind exp) '(all closure default))
@@ -128,25 +197,25 @@
 	     (not (generated-by decl)))
     (tcdebug "~%  Untypechecking ~a ~a!~a"
 	     (type-of decl) (id (module decl)) (id decl))
-    (untypecheck-references decl)
+    ;;(untypecheck-references decl)
     (when (module? (module decl))
       (setf (theory (module decl))
 	    (delete-if #'(lambda (d) (memq d (generated decl)))
 	      (theory (module decl)))))
-    (mapc #'(lambda (rd)
-	      (unless (or (module? rd) (from-prelude? rd))
-		(setf (referred-by rd)
-		      (remove decl (referred-by rd)))))
-	  (refers-to decl))
-    (mapc #'(lambda (d)
-; 	      (setf (gethash (id d) (declarations (module decl)))
-; 		    (remove d (gethash (id d) (declarations (module decl)))))
-	      (mapc #'(lambda (rd)
-			(unless (from-prelude? rd)
-			  (setf (referred-by rd)
-				(remove d (referred-by rd)))))
-		    (refers-to d)))
-	  (generated decl))
+;;     (mapc #'(lambda (rd)
+;; 	      (unless (or (module? rd) (from-prelude? rd))
+;; 		(setf (referred-by rd)
+;; 		      (remove decl (referred-by rd)))))
+;; 	  (refers-to decl))
+;;     (mapc #'(lambda (d)
+;; ; 	      (setf (gethash (id d) (declarations (module decl)))
+;; ; 		    (remove d (gethash (id d) (declarations (module decl)))))
+;; 	      (mapc #'(lambda (rd)
+;; 			(unless (from-prelude? rd)
+;; 			  (setf (referred-by rd)
+;; 				(remove d (referred-by rd)))))
+;; 		    (refers-to d)))
+;; 	  (generated decl))
     (setf (status (module decl))
 	  (remove 'typechecked (status (module decl))))
     (call-next-method)
@@ -154,22 +223,22 @@
     (setf (module decl) nil
 	  (visible? decl) nil
 	  (refers-to decl) nil
-	  (referred-by decl) nil
+	  ;;(referred-by decl) nil
 	  (typechecked? decl) nil
 	  (generated decl) nil)))
 
 ;;; Be careful of generated declarations.
 
-(defun untypecheck-references (decl)
-  (dolist (d (append (referred-by decl)
-		     (mapcan #'(lambda (d)
-				 (copy-list (referred-by d)))
-			     (generated decl))))
-    (unless (eq d decl)
-      (untypecheck-theory d))))
+;; (defun untypecheck-references (decl)
+;;   (dolist (d (append (referred-by decl)
+;; 		     (mapcan #'(lambda (d)
+;; 				 (copy-list (referred-by d)))
+;; 			     (generated decl))))
+;;     (unless (eq d decl)
+;;       (untypecheck-theory d))))
 
-(defmethod referred-by ((decl field-decl))
-  nil)
+;; (defmethod referred-by ((decl field-decl))
+;;   nil)
 
 (defmethod refers-to ((decl field-decl))
   nil)
@@ -303,8 +372,11 @@
 
 (defmethod untypecheck-theory ((te type-name))
   (when (next-method-p) (call-next-method))
-  (setf (adt te) nil)
-  (setf (uninterpreted? te) nil))
+  ;;(setf (adt te) nil)
+  )
+
+(defmethod untypecheck-theory ((te adt-type-name))
+  (setf (adt te) nil))
 
 (defmethod untypecheck-theory ((te type-application))
   (when (next-method-p) (call-next-method))
@@ -354,15 +426,6 @@
 
 
 ;;; Expressions
-
-(defmethod untypecheck-theory :around ((ex expr))
-  (if (from-macro ex)
-      (let ((macro (from-macro ex)))
-	(change-class ex (class-of macro))
-	(copy-slots ex macro)
-	(setf (from-macro ex) nil)
-	(untypecheck-theory ex))
-      (call-next-method)))
 
 (defmethod untypecheck-theory ((ex expr))
   (when (next-method-p) (call-next-method))
@@ -479,6 +542,10 @@
   (call-next-method)
   (untypecheck-theory (argument ex)))
 
+(defmethod untypecheck-theory ((ex fieldex-lambda-expr))
+  (untypecheck-theory (actuals ex))
+  (change-class ex 'fieldex 'id (id (expression ex))))
+
 (defmethod untypecheck-theory ((ex application))
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (operator ex))
@@ -502,6 +569,29 @@
     (copy-slots ex expr)
     (untypecheck-theory ex)))
 
+(defmethod untypecheck-theory ((ex field-conversion))
+  (let ((expr (argument ex)))
+    (change-class ex (class-of expr))
+    (copy-slots ex expr)
+    (untypecheck-theory ex)))
+
+(defmethod untypecheck-theory ((ex projection-conversion))
+  (let ((expr (argument ex)))
+    (change-class ex (class-of expr))
+    (copy-slots ex expr)
+    (untypecheck-theory ex)))
+
+(defmethod untypecheck-theory ((ex injection-conversion))
+  (let ((expr (argument ex)))
+    (change-class ex (class-of expr))
+    (copy-slots ex expr)
+    (untypecheck-theory ex)))
+
+(defmethod untypecheck-theory ((ex extraction-conversion))
+  (let ((expr (argument ex)))
+    (change-class ex (class-of expr))
+    (copy-slots ex expr)
+    (untypecheck-theory ex)))
 
 (defmethod untypecheck-theory ((ex binding-expr))
   (when (next-method-p) (call-next-method))
@@ -616,7 +706,7 @@
 ;;; copy-slots copies the slots of one expr into another.
 
 (defmethod copy-slots :around ((ex1 syntax) (ex2 syntax))
-  (setf (newline-comment ex1) (newline-comment ex2))
+  ;;(setf (newline-comment ex1) (newline-comment ex2))
   ;;(setf (abstract-syntax ex1) (abstract-syntax ex2))
   (setf (place ex1) (place ex2))
   (call-next-method))
