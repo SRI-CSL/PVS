@@ -277,8 +277,9 @@
 		  (compiled-file-older-than-source? lfile bfile))
 	  (multiple-value-bind (ignore error)
 	      (ignore-errors (compile-file lfile))
+	    (declare (ignore ignore))
 	    (cond (error
-		   (pvs-message "Compilation error - ~a" condition)
+		   (pvs-message "Compilation error - ~a" error)
 		   (pvs-message "Loading lib file ~a interpreted"
 		     (shortname lfile))
 		   (setq bfile nil))
