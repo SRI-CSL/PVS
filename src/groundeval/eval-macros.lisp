@@ -85,7 +85,10 @@
 (defun pvs_nth (x) (nth (svref x 1) (svref x 0)))
 (defun pvs_append (x) (append (svref x 0) (svref x 1)))
 (defun pvs_reverse (x) (reverse x))
-
+(defun pvs_number_field_pred (x) (numberp x))
+(defun pvs_real_pred (x) (realp x))
+(defun pvs_rational_pred (x) (rationalp x))
+(defun pvs_integer_pred (x) (integerp x))
 
 ;;multiary macro versions of primitives
 (defmacro pvs__= (x y)
@@ -138,6 +141,11 @@
 (defmacro pvs__member (x y) `(not (null (member ,x ,y :test #'equalp))))
 (defmacro pvs__nth (x y) `(nth ,y ,x))
 (defmacro pvs__append (x y) `(append ,x ,y))
+(defmacro pvs__number_field_pred (x) `(numberp ,x))
+(defmacro pvs__real_pred (x) `(realp ,x))
+(defmacro pvs__rational_pred (x) `(rationalp ,x))
+(defmacro pvs__integer_pred (x) `(integerp ,x))
+
 
 (defmacro project (index tuple)
   (let ((ind (1- index)))
