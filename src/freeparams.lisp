@@ -341,8 +341,10 @@
 	  frees))))
 
 (defmethod free-params-res ((decl mapping) mi type frees)
-  (declare (ignore mi type))
-  (free-params* (lhs decl) (free-params* (rhs decl) frees)))
+  (declare (ignore type))
+  (if (memq decl (mappings mi))
+      frees
+      (free-params* (lhs decl) (free-params* (rhs decl) frees))))
 
 (defmethod free-params* ((act actual) frees)
   (with-slots (expr type-value) act
