@@ -446,7 +446,7 @@ ${LISP} :
 	@echo "Need to set the LISP variable in Makefile to a valid"
 	@echo "allegro 6.0 lisp executable for this platform"
 
-.PHONY: all makefileutils makebdd makews1s clean
+.PHONY: all makefileutils makebdd makews1s make-release-notes clean
 makefileutils :
 	umask 002; \
 	$(MAKE) -C src/utils/$(PLATFORM)
@@ -467,6 +467,9 @@ src/ics-interface/$(PLATFORM)/ics_lisp_error.o : src/ics-interface/ics_lisp_erro
 	mkdir -p src/ics-interface/$(PLATFORM); \
 	$(CC) $(CFLAGS) -o $@ -c $<
 
+make-release-notes : 
+	$(MAKE) -C doc/release-notes
+
 runtime-image-tar = pvs-$(PLATFORM).tgz
 
 full-image-tar = pvs-full-$(PLATFORM).tgz
@@ -481,13 +484,19 @@ runtime-image-files = $(wildcard ${bindir}/runtime/*)
 
 full-image-files = $(wildcard ${bindir}/full/*)
 
+release-notes = doc/release-notes/pvs3.0-release-notes.texi \
+                doc/release-notes/pvs3.0-release-notes.info \
+                doc/release-notes/pvs3.0-release-notes.html \
+                doc/release-notes/pvs3.0-release-notes.ps \
+                doc/release-notes/pvs3.0-release-notes.pdf
+
 system-files = README pvs pvs-tex.sub pvs.sty bin/relocate bin/pvs-platform \
 	       bin/tarmail bin/untarmail Examples \
                lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
                lib/ordstruct_adt.pvs lib/character_adt.pvs \
                lib/pvs-language.help lib/pvs-prover.help lib/pvs.help \
                lib/pvs.grammar lib/pvs.bnf wish/pvs-support.tcl \
-               lib/strategies.lisp doc/release-notes.html \
+               lib/strategies.lisp $(release-notes) \
                wish/gray.xbm wish/sequent.xbm \
                emacs/README emacs/go-pvs.el $(pvs-emacs-src) \
                emacs/emacs-src/pvs.xpm \
