@@ -1342,11 +1342,15 @@
 					,@(append (when declarations
 						    (list declarations))
 						  (list 
-						   (pvs2cl_up* defn-expr
-							       (append (pairlis defn-bindings
-										defn-binding-ids)
-								       bindings)
-							       nil)))))
+						   (pvs2cl_till-output-stable
+						    (ex-defn-d decl)
+						    defn-expr
+						    (append (pairlis defn-bindings
+								     defn-binding-ids)
+							    bindings)
+						    nil)))))
+			       ;;setf output-vars already in
+			       ;;pvs2cl-till-output-stable
 			       (setf (output-vars (ex-defn-d decl))
 				     *output-vars*))
 			     (eval (definition (ex-defn-d decl)))
@@ -1370,12 +1374,13 @@
 			(compile id)
 			id)))))))))
 
-(defun pvs2cl-till-output-stable (expr bindings livevars)
+(defun pvs2cl-till-output-stable (defn-slot expr bindings livevars)
   (let ((old-outputvars (copy-list *output-vars*))
 	(cl-expr (pvs2cl_up* expr bindings livevars)))
-    (if (equal old-outputvars *output-vars*)
-	cl-expr
-	(pvs2cl-till-output-stable expr bindings livevars))))
+    (cond ((equal old-outputvars *output-vars*)
+	   cl-expr)
+	  (t (setf (output-vars defn-slot) *output-vars*)
+	     (pvs2cl-till-output-stable defn-slot expr bindings livevars)))))
     
 	
 
@@ -1438,10 +1443,13 @@
 					      (list declarations))
 					    (list 
 					     (pvs2cl-till-output-stable
+					      (in-defn-d decl)
 					      defn-body
 					      (pairlis defn-bindings
 						       defn-binding-ids)
 					      nil)))))
+			 ;;setf output-vars already in
+			 ;;pvs2cl-till-output-stable
 			 (setf (output-vars (in-defn-d decl))
 			       *output-vars*))
 		       (eval (definition (in-defn-d decl)))
