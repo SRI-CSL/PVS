@@ -48,6 +48,30 @@
   (and (call-next-method)
        (singleton? (resolutions expr))))
 
+
+;;; This is the basic function for selecting the best type from the set of
+;;; possible types, and setting the type slot accordingly.  After setting
+;;; the type, subtype tccs are checked for.
+
+(defun set-expr-type (expr expected)
+  (unless (type expr)
+    #+pvsdebug (assert (not (duplicates? (ptypes expr))))
+    (let* ((ptypes (types expr))
+	   (possibles
+	    (delete-if-not #'(lambda (ty)
+			       (and (not (eq ty 'type))
+				    (compatible? ty expected)))
+	      ptypes)))
+      (cond ((singleton? possibles)
+	     (setf (type expr)
+		   (if (fully-instantiated? (car possibles))
+		       (car possibles)
+		       (instantiate-from (car possibles) expected expr)))
+	     #+pvsdebug (assert (fully-instantiated? (type expr))))
+	    ((null possibles)
+	     (type-incompatible expr ptypes expected))
+	    (t (type-ambiguity expr))))))
+
 (defvar *has-tccs* nil
   "Used to keep track of whether an expression generated any TCCs that
 required a context.")
@@ -168,6 +192,9 @@ required a context.")
       (setf (module-instance (resolution ex))
 	    (set-type-actuals ex)))
     (change-name-expr-class-if-needed (declaration res) ex)
+    (let ((alias (cdr (assq (declaration res) (boolean-aliases)))))
+      (when alias
+	(setf (declaration res) alias)))
     (when (and (typep (declaration ex) 'bind-decl)
 	       (not (memq (declaration ex) *bound-variables*)))
       (type-error ex "Bound variable outside of context"))
@@ -182,8 +209,7 @@ required a context.")
 	      "Could not determine the full theory instance for ~a" ex))))
     (unless (compatible? (type res) expected)
       (type-incompatible ex (list (type res)) expected))
-    (setf (type ex) (type res))
-    (setf (judgement-types ex) (get-judgement-types res))))
+    (setf (type ex) (type res))))
 
 (defmethod change-name-expr-class-if-needed ((decl field-decl) expr)
   (change-class expr 'field-name-expr)
@@ -211,6 +237,20 @@ required a context.")
   (declare (ignore decl expr))
   nil)
 
+
+(let ((boolean-alias-table nil))
+  (defun boolean-aliases ()
+    (or boolean-alias-table
+	(let ((declhash (declarations (get-theory "booleans"))))
+	  (setq boolean-alias-table
+		(list (cons (car (gethash '& declhash))
+			    (car (gethash 'AND declhash)))
+		      (cons (car (gethash '=> declhash))
+			    (car (gethash 'IMPLIES declhash)))
+		      (cons (car (gethash '<=> declhash))
+			    (car (gethash 'IFF declhash))))))))
+  (defun reset-boolean-aliases ()
+    (setq boolean-alias-table nil)))
 
 ;;; The order of preference is those that are bound-variables, then the
 ;;; local resolutions (current theory, context, or library, in that
@@ -317,55 +357,6 @@ required a context.")
 		  (cons mres mreses)
 		  mreses))))))
 
-
-(defun find-best-name-resolution-judgement (ex res judgements expected)
-  (if (or (null judgements)
-	  (subtype-of? (type res) expected))
-      res
-      (let* ((reses (cons res judgements))
-	     (distances (resolution-distances reses expected))
-	     (mreses (minimal-resolutions reses distances
-					  (apply #'min distances) nil)))
-	(cond ((singleton? mreses)
-	       (if (eq (car mreses) res)
-		   res
-		   (car mreses)))
-	      (t (pvs-warning "Ambiguous judgements possible for ~a" ex)
-		 (car mreses))))))
-
-(defun resolution-distances (resolutions expected)
-  (mapcar #'(lambda (r) (expected-type-distance expected (real-type r) 0))
-	  resolutions))
-
-(defmethod expected-type-distance (expected te distance)
-  (declare (ignore te expected))
-  ;;(assert (subtype-of? te expected))
-  distance)
-
-(defmethod expected-type-distance ((expected funtype) te distance)
-  (expected-type-distance (range expected) (range (find-supertype te))
-			  distance))
-
-(defmethod expected-type-distance ((expected subtype) te distance)
-  (let ((dist (subtype-of? te expected)))
-    (if dist
-	(+ distance dist)
-	(expected-type-distance (supertype expected) te (+ distance 100)))))
-
-;;; it is possible to save consing and the call to apply above
-;;; but for minimal gain and losing clarity of code...
-(defun minimal-resolutions (reses distances min result)
-  (if (null reses)
-      (nreverse result)
-      (if (= (car distances) 0)
-	  (list (car reses))
-	  (minimal-resolutions (cdr reses) (cdr distances)
-			       min
-			       (if (= (car distances) min)
-				   (cons (car reses) result)
-				   result)))))
-
-
 (defun kind-of-name-expr (expr)
   #+pvsdebug (assert (every #'declaration *bound-variables*))
   (or (kind expr)
@@ -379,7 +370,7 @@ required a context.")
 
 (defmethod set-type-actuals ((modinst modname))
   (let ((fmls (formals-sans-usings (get-theory modinst))))
-    (set-type-actuals* (actuals modinst) fmls fmls))
+    (set-type-actuals* (actuals modinst) fmls))
   (let ((nmodinst (simplify-modinst modinst)))
     (unless (eq *generate-tccs* 'none)
       (generate-assuming-tccs nmodinst modinst)
@@ -389,13 +380,17 @@ required a context.")
     nmodinst))
 
 (defmethod set-type-actuals ((expr name))
-  (let ((modinst (module-instance expr)))
+  ;;(assert (null *set-type-actuals-name*))
+  (let* ((modinst (module-instance expr))
+	 (*typecheck-using* nil)
+	 (*set-type-actuals-name* expr))
     (unless modinst
       (type-ambiguity expr))
     (when (and (not *dont-worry-about-full-instantiations*)
 	       (some #'null (actuals modinst)))
       (type-error expr
-	"Could not determine the full theory instance for ~a" expr))
+	"Could not determine the full theory instance for ~a~
+         ~%  Theory instance: ~a" expr (full-name (module-instance expr))))
     ;; if modname was previously generated without allowing tccs
     ;; now we have to force tccs. (unless we don't want any tccs.)
     ;; see resolve.lisp for where modname-no-tccs are generated
@@ -403,7 +398,7 @@ required a context.")
 				 ((typep modinst 'modname-no-tccs) 'all)
 				 (t *generate-tccs*)))
 	  (fmls (formals-sans-usings (get-theory modinst))))
-      (set-type-actuals* (actuals modinst) fmls fmls))
+      (set-type-actuals* (actuals modinst) fmls))
     (when (typep modinst 'modname-no-tccs)
       (change-class modinst 'modname))
     #+pvsdebug (fully-typed? (actuals modinst))
@@ -411,8 +406,11 @@ required a context.")
     (when (actuals expr)
       (mapc #'(lambda (ea ma)
 		(if (type-value ma)
-		    nil ;;(setf (type-value ea) (type-value ma))
-		    (set-type* (expr ea) (type (expr ma)))))
+		    ;;(setf (type-value ea) (type-value ma))
+		    (when (typep (expr ea) 'name-expr)
+		      (setf (kind (expr ea)) 'constant))
+		    (progn (setf (type-value ea) nil)
+			   (set-type* (expr ea) (type (expr ma))))))
 	    (actuals expr) (actuals modinst)))
     (let ((nmodinst (simplify-modinst modinst)))
       (unless (eq *generate-tccs* 'none)
@@ -424,14 +422,14 @@ required a context.")
 
 ;;; Sets the types of the actuals.
 
-(defun set-type-actuals* (actuals sformals formals)
+(defun set-type-actuals* (actuals formals &optional alist)
   (when actuals
-    (let ((*set-type-formal* (car formals)))
-      (set-type-actual (car actuals) (car sformals)))
-    (set-type-actuals* (cdr actuals)
-		       (subst-actual-in-remaining-formals
-			actuals sformals)
-		       (cdr formals))))
+    (let ((act (car actuals))
+	  (form (car formals)))
+      (multiple-value-bind (nform nalist)
+	  (subst-actuals-in-next-formal act form alist)
+	(set-type-actual act nform)
+	(set-type-actuals* (cdr actuals) (cdr formals) nalist)))))
 
 (defmethod set-type-actual (act (formal formal-type-decl))
   (cond ((type-value act)
@@ -443,9 +441,9 @@ required a context.")
 				    (typep (declaration res) 'type-decl))
 		   (resolutions (expr act))))
 	   (setf (module-instance (resolution (expr act)))
-		 (set-type-actuals (expr act)))
-	   (when (typep (expr act) 'name-expr)
-	     (setf (kind (expr act)) 'constant)))
+		 (set-type-actuals (expr act))))
+	 (when (typep (expr act) 'name-expr)
+	   (setf (kind (expr act)) 'constant))
 	 #+pvsdebug (assert (fully-typed? act)))
 	(t (type-error act
 	     "Expression provided where a type is expected"))))
@@ -456,16 +454,17 @@ required a context.")
 	 (texp (type-value formal))
 	 (vid (make-new-variable '|x| act))
 	 (vb (typecheck* (mk-bind-decl vid tact) nil nil nil))
-	 (svar (mk-name-expr vid nil nil (make-resolution vb nil tact)
+	 (svar (mk-name-expr vid nil nil
+			     (make-resolution vb nil tact)
 			     'variable)))
-    (check-for-subtype-tcc svar (supertype texp))))
+    (check-for-subtype-tcc tact (supertype texp) svar)))
 
 (defmethod set-type-actual (act (formal formal-const-decl))
   #+pvsdebug (assert (fully-typed? (type formal)))
   (if (and (typep (expr act) 'expr)
-	   (or (type (expr act))
-	       (some #'(lambda (x) (typep x 'type-expr)) (types (expr act)))))
-      (set-type* (expr act) (type formal))
+	   (some #'(lambda (x) (typep x 'type-expr)) (types (expr act))))
+      (progn (set-type* (expr act) (type formal))
+	     (setf (type-value act) nil))
       (type-error act
 	"Type provided where an expression is expected"))
   #+pvsdebug (assert (fully-instantiated? (type formal)))
@@ -499,35 +498,71 @@ required a context.")
 	     result))))
   
 
-(defun subst-actual-in-remaining-formals (actuals formals)
-  (let ((rest (subst-actual-in-remaining-formals*
-	       (car actuals) (car formals) (cdr formals) nil)))
-    (subst-actual-for-formal-subtype-pred (cadr actuals) (car rest) rest)))
 
+;;; subst-actuals-in-next-formal takes an actual, a corresponding formal,
+;;; and an alist mapping formals to actuals and returns two values:
+;;;   1. A substituted form of the formal
+;;;   2. The new alist      
 
-;;; similar to what happens in subst-mod-params
-(defmethod subst-actual-for-formal-subtype-pred (act formal rest)
-  (declare (ignore act formal))
-  rest)
+(defun subst-actuals-in-next-formal (act formal alist)
+  (let* ((pred (get-actual-subtype-predicate act formal alist))
+	 (nalist (if pred
+		     (acons (car (generated formal)) pred alist)
+		     alist))
+	 (nform (if (and alist (dependent? formal))
+		    (subst-acts-in-form formal nalist)
+		    formal)))
+    (when (and (typep formal 'formal-subtype-decl)
+	       (not (eq nform formal)))
+      (setf (print-type (type-value nform)) nil))
+    (values nform (acons nform act nalist))))
 
-(defmethod subst-actual-for-formal-subtype-pred (act
-						 (formal formal-subtype-decl)
-						 rest)
-  (let ((ftype (cond ((compatible? (type-value act) (type-expr formal))
-		      (type-expr formal))
-		     ((compatible? (type-value act) (type-value formal))
-		      (type-value formal)))))
-    (if ftype
-	(let* ((*generate-tccs* 'none)
-	       (pred (or (subtype-pred (type-value act) ftype)
-			  (gen-true-lambda ftype))))
-	   (gensubst rest
-	     #'(lambda (ex) (declare (ignore ex)) pred)
-	     #'(lambda (ex)
-		 (and (typep ex 'name-expr)
-		      (eq (declaration ex)
-			  (car (generated formal)))))))
-	(type-incompatible act (list (type-value act)) (type-value formal)))))
+(defmethod get-actual-subtype-predicate (act (formal formal-subtype-decl) alist)
+  (let ((tact (type-value act))
+	(tform (subst-acts-in-form (supertype (type-value formal)) alist)))
+    (if (compatible? tact tform)
+	(let* ((*generate-tccs* 'none))
+	  (or (subtype-pred tact tform)
+	      (gen-true-lambda tform)))
+	(type-incompatible act (list tact) tform))))
+
+(defmethod get-actual-subtype-predicate (act formal alist)
+  nil)
+
+(defun subst-acts-in-form (formal alist)
+  (gensubst formal
+    #'(lambda (ex) (subst-acts-in-form! ex alist))
+    #'(lambda (ex) (subst-acts-in-form? ex alist))))
+
+(defmethod subst-acts-in-form? ((ex name) alist)
+  (assoc (declaration ex) alist :test #'subst-formal-eq))
+
+(defmethod subst-acts-in-form? ((ex actual) alist)
+  (call-next-method)
+;  (and (typep (expr ex) 'name)
+;       (assoc (declaration (expr ex)) alist :test #'subst-formal-eq))
+  )
+
+(defmethod subst-acts-in-form? (ex alist)
+  (declare (ignore ex form))
+  nil)
+
+(defmethod subst-acts-in-form! ((ex name) alist)
+  (let ((act (cdr (assoc (declaration ex) alist :test #'subst-formal-eq))))
+    (if (typep act 'actual)
+	(or (type-value act)
+	    (expr act))
+	act)))
+
+(defmethod subst-acts-in-form! ((ex actual) alist)
+  (let ((act (cdr (assoc (declaration (expr ex)) alist
+			 :test #'subst-formal-eq))))
+    act))
+
+(defun subst-formal-eq (formal1 formal2)
+  (and (eq (class-of formal1) (class-of formal2))
+       (same-id formal1 formal2)
+       (eq (module formal1) (module formal2))))
 
 (defun gen-true-lambda (type)
   (let* ((id '|x|)
@@ -536,87 +571,6 @@ required a context.")
 	 )
     (make-lambda-expr (list bd) *true*)))
 
-
-;;; Subst actual in remaining formals handles the dependencies inherent in
-;;; the formal parameters, by substituting the given actual for the given
-;;; formal in the remaining formals, returning a list of formals.
-
-(defun subst-actual-in-remaining-formals* (act form formals result)
-  (if (null formals)
-      (nreverse result)
-      (let* ((formal (car formals))
-	     (nform (if (dependent? formal)
-			(subst-act-in-form act form formal)
-			formal)))
-	(subst-actual-in-remaining-formals*
-	 act form
-	 (subst-formal-in-remaining-formals nform (car formals) (cdr formals))
-	 (cons nform result)))))
-
-(defmethod subst-formal-in-remaining-formals (nform formal formals)
-  formals)
-
-(defmethod subst-formal-in-remaining-formals ((nform formal-const-decl)
-					      formal formals)
-  (gensubst formals
-    #'(lambda (ex) (subst-form-in-form! ex nform formal))
-    #'(lambda (ex) (subst-form-in-form? ex nform formal))))
-
-(defmethod subst-form-in-form? ((ex resolution) nform formal)
-  (eq (declaration ex) formal))
-
-(defmethod subst-form-in-form? (ex nform formal)
-  nil)
-
-(defmethod subst-form-in-form! ((ex resolution) nform formal)
-  (make-resolution nform (module-instance ex)))
-
-(defun subst-act-in-form (act form formal)
-  (gensubst formal
-    #'(lambda (ex) (subst-act-in-form! ex act form))
-    #'(lambda (ex) (subst-act-in-form? ex form))))
-
-(defmethod subst-act-in-form? ((ex name) form)
-  (subst-formal-eq (declaration ex) form))
-
-(defmethod subst-act-in-form? ((ex name) (form formal-subtype-decl))
-  (let ((decl (declaration ex)))
-    (or (eq decl (car (generated form)))
-	(subst-formal-eq decl form))))
-
-(defmethod subst-act-in-form? ((ex actual) form)
-  (and (typep (expr ex) 'name)
-       (subst-formal-eq (declaration (expr ex)) form)))
-
-(defun subst-formal-eq (formal1 formal2)
-  (and (eq (class-of formal1) (class-of formal2))
-       (same-id formal1 formal2)
-       (eq (module formal1) (module formal2))))
-
-(defmethod subst-act-in-form? (ex form)
-  (declare (ignore ex form))
-  nil)
-
-(defmethod subst-act-in-form! (ex act (form formal-const-decl))
-  (declare (ignore ex))
-  (expr act))
-
-(defmethod subst-act-in-form! (ex act (form formal-subtype-decl))
-  ;; ex must either be the subtype name or the subtype predicate
-  (if (eq (declaration ex) (car (generated form)))
-      ;; subtype predicate case
-      (if (typep (type-value act) 'subtype)
-	  (predicate (type-value act))
-	  (typecheck* mk-everywhere-true-function (type-value act)))
-      ;; subtype name case
-      (type-value act)))
-
-(defmethod subst-act-in-form! (ex act (form formal-type-decl))
-  (declare (ignore ex))
-  (type-value act))
-
-(defmethod subst-act-in-form! ((ex actual) act form)
-  act)
 
 (defun generate-actuals-tccs (acts macts)
   (when acts
@@ -634,12 +588,7 @@ required a context.")
 (defmethod set-type* ((ex number-expr) expected)
   (unless (compatible? expected *number*)
     (type-incompatible ex (list ntype) expected))
-  (setf (type ex) *number*)
-  (setf (judgement-types ex) (get-judgement-types ex))
-  ;;(check-for-subtype-tcc ex expected)
-  )
-
-	 
+  (setf (type ex) *number*))
 
 (defun check-for-subtype-tcc (ex expected)
   ;;(assert (fully-instantiated? expected))
@@ -733,17 +682,7 @@ required a context.")
 	(type-error expr "Wrong arity: expect ~d subexpressions"
 		    (length types)))
       (set-tup-types exprs types)
-      (setf (type expr) (mk-tupletype (mapcar #'type exprs)))
-      ;; We don't set the judgement-types slot for record-exprs or
-      ;; tuple-exprs, since they involve Cartesian products.
-;      (when (some #'judgement-types exprs)
-;	(setf (judgement-types expr)
-;	      (mapcar #'mk-tupletype
-;		(cartesian-product
-;		 (mapcar #'(lambda (e)
-;			     (or (judgement-types e) (list (type e))))
-;		   exprs)))))
-      )))
+      (setf (type expr) (mk-tupletype (mapcar #'type exprs))))))
 
 (defun set-tup-types (exprs etypes)
   (when exprs
@@ -771,9 +710,7 @@ required a context.")
 		      (set-sel-constr (constructor s) atype))
 		(if (resolution (constructor s))
 		    (let ((ctype (car (ptypes (constructor s)))))
-		      (setf (type (constructor s)) ctype)
-		      ;;(setf (types (constructor s)) (list ctype))
-		      )
+		      (setf (type (constructor s)) ctype))
 		    (type-ambiguity (constructor s)))
 		(change-class (constructor s) 'constructor-name-expr)
 		(setf (kind (constructor s)) 'constant)
@@ -868,7 +805,7 @@ required a context.")
 			   (setf (types (argument ex))
 				 (list (type (car reses))))
 			   (set-type* (argument ex) (type (car reses)))
-			   (setf (type ex)
+			   (setf (types ex)
 				 (list (projection-application-type
 					ex (type (car reses))))))
 			  (t (setf (types (argument ex)) ptypes)
@@ -1396,10 +1333,6 @@ required a context.")
   (assert (and (null (type op)) (types op)))
   (let ((reses (resolutions op)))
     (assert reses)
-    (when (and (declaration? (declaration *current-context*))
-	       (eq (id (declaration *current-context*)) '|flat|)
-	       (eq (id op) '|reduce|))
-      (break))
     (let* ((optype (if nil ;;(singleton? reses)
 		       (type (car reses))
 		       (find-best-operator-type
@@ -1447,7 +1380,9 @@ required a context.")
 	  (nres (car nres))
 	  (*dont-worry-about-full-instantiations* res)
 	  (t (type-error ex
-	       "Could not determine the full theory instance for ~a" ex)))))
+	       "Could not determine the full theory instance for ~a~
+                ~%  Theory instance: ~a"
+	       ex (full-name (module-instance ex)))))))
 
 (defmethod set-op-type (op optypes args expected)
   (assert (and (null (type op)) (types op)))
@@ -1465,14 +1400,26 @@ required a context.")
 	 (range (range optype)))
     (assert bindings)
     (let ((nbindings (tc-match-domain op optype args domain
-				      (tc-match expected range
-						bindings))))
+				       (tc-match expected range
+						 bindings))))
       (if (every #'cdr nbindings)
 	  (instantiate-operator-from-bindings optype bindings)
-	  (unless *dont-worry-about-full-instantiations*
-	    (type-error op
-	      "Could not determine the full theory instance for ~a"
-	      op))))))
+	  (if *dont-worry-about-full-instantiations*
+	      optype
+	      (type-error op
+		"Could not determine the full theory instance for ~a~
+                 ~:[~;~%  May be a problem with splitting dependent types~]~
+                 ~@[~%  Theory instance: ~a~]"
+		op
+		(some #'(lambda (a)
+			  (some #'(lambda (aty)
+				    (and (typep (find-supertype aty)
+						'(or funtype tupletype))
+					 (dependent? (find-supertype aty))))
+				(ptypes a)))
+		      args)
+		(when (typep op 'name-expr)
+		  (full-name (module-instance op)))))))))
 
 (defun instantiate-operator-bindings (formals)
   (let ((theories nil))
@@ -1513,11 +1460,7 @@ required a context.")
   (cond ((every #'cdr bindings)
 	 bindings)
 	((null args)
-	 (if *dont-worry-about-full-instantiations*
-	     bindings
-	     (type-error op
-	       "Could not determine the full theory instance for ~a"
-	       op)))
+	 bindings)
 	(t (tc-match-domain op optype (cdr args) (cdr domain-types)
 			    (tc-match-domain* (car args) (car domain-types)
 					      bindings)))))
@@ -1529,10 +1472,7 @@ required a context.")
   (if (null arg-types)
       bindings
       (tc-match-domain** (cdr arg-types) dom-type
-			 (or (tc-match (car arg-types) dom-type bindings)
-			     bindings))))
-
-
+			 (tc-match (car arg-types) dom-type bindings))))
 
 (defmethod domain ((j judgement-resolution))
   (domain (find-supertype (judgement-type j))))
@@ -1556,12 +1496,47 @@ required a context.")
 
 (defun find-best-operator-type (op args optypes &optional reses expected)
   (assert optypes)
-  (let* ((*generate-tccs* 'none)
-	 (optype (if (cdr optypes)
-		     (operator-of-current-theory op args optypes reses)
-		     (car optypes))))
-    (assert optype)
-    optype))
+  (if (cdr optypes)
+      (let* ((*generate-tccs* 'none)
+	     (noptypes (remove-duplicate-optypes optypes))
+	     (optype (if (cdr noptypes)
+			 (operator-instantiable-test
+			  op args noptypes reses expected)
+			 (car noptypes))))
+	(assert optype)
+	optype)
+      (car optypes)))
+
+(defun remove-duplicate-optypes (optypes)
+  (remove-duplicates optypes :test #'tc-eq))
+
+(defun operator-instantiable-test (op args optypes reses expected)
+  (let ((noptypes (or (operator-instantiable-test* op optypes args expected)
+		      optypes)))
+    (if (cdr noptypes)
+	(operator-of-current-theory op args noptypes reses)
+	(car noptypes))))
+
+(defun operator-instantiable-test* (op optypes args expected &optional result)
+  (if (null optypes)
+      (nreverse result)
+      (operator-instantiable-test*
+       op (cdr optypes) args expected
+       (if (instantiable-operator-type (car optypes) op args expected)
+	   (cons (car optypes) result)
+	   result))))
+
+(defun instantiable-operator-type (optype op args expected)
+  (or (fully-instantiated? optype)
+      (let* ((frees (free-params optype))
+	     (bindings (instantiate-operator-bindings frees))
+	     (domain (domain-types optype))
+	     (range (range optype)))
+	(assert bindings)
+	(let ((nbindings (tc-match-domain
+			  op optype args domain
+			  (tc-match expected range bindings))))
+	  (not (null nbindings))))))
 
 (defmethod operator-of-current-theory ((op name-expr) args optypes reses)
   (let* ((noptypes (or (mapcar #'type (filter-local-resolutions reses))
@@ -1629,7 +1604,7 @@ required a context.")
   (let ((noptypes (or (operator-instantiated-types* optypes)
 		      optypes)))
     (if (cdr noptypes)
-	(operator-args-of-current-theory op args optypes)
+	(operator-args-bound-variable-preferences op args optypes)
 	(car noptypes))))
 
 (defun operator-instantiated-types* (optypes &optional result)
@@ -1641,33 +1616,59 @@ required a context.")
 	   (cons (car optypes) result)
 	   result))))
 
+(defun operator-args-bound-variable-preferences (op args optypes)
+  (let ((noptypes (or (operator-args-bound-variable-preferences* args optypes)
+		      optypes)))
+    (if (cdr noptypes)
+	(operator-args-of-current-theory op args optypes)
+	(car noptypes))))
+
+(defun operator-args-bound-variable-preferences* (args optypes
+						       &optional (index 0))
+  (if (null args)
+      optypes
+      (if (typep (car args) 'name-expr)
+	  (let* ((breses (remove-if-not #'(lambda (r)
+					    (memq (declaration r)
+						  *bound-variables*))
+			   (resolutions (car args)))))
+	    (if breses
+		(let* ((bres (nearest-bound-variable breses))
+		       (noptypes (remove-if-not
+				     #'(lambda (opty)
+					 (let* ((rty (if (typep opty 'resolution)
+							 (real-type opty)
+							 opty))
+						(dty (nth index
+							  (domain-types rty))))
+					   (compatible? dty (type bres))))
+				   optypes)))
+		  (operator-args-bound-variable-preferences*
+		   (cdr args) (or noptypes optypes) (1+ index)))
+		(operator-args-bound-variable-preferences*
+		 (cdr args) optypes (1+ index))))
+	  (operator-args-bound-variable-preferences*
+	   (cdr args) optypes (1+ index)))))
+
+(defun nearest-bound-variable (reses &optional res)
+  (cond ((null reses)
+	 res)
+	((null res)
+	 (nearest-bound-variable (cdr reses) (car reses)))
+	((memq (declaration (car reses))
+	       (memq (declaration res) *bound-variables*))
+	 (nearest-bound-variable (cdr reses) res))
+	(t (nearest-bound-variable (cdr reses) (car reses)))))
+
 (defun operator-args-of-current-theory (op args optypes)
   (let ((noptypes (or (operator-args-of-current-theory* args optypes)
 		      ;;(operator-args-of-current-context* args optypes)
 		      ;;(operator-args-of-visible-library* args optypes)
 		      optypes)))
     (if (cdr noptypes)
-	(optypes-ignoring-judgements op noptypes)
-	(car noptypes))))
-
-(defun optypes-ignoring-judgements (op optypes)
-  (let ((noptypes (or (optypes-ignoring-judgements* optypes nil) optypes)))
-    (if (cdr noptypes)
 	(progn (setf (types op) optypes)
 	       (type-ambiguity op))
 	(car noptypes))))
-
-(defun optypes-ignoring-judgements* (optypes noptypes)
-  (if (null optypes)
-      noptypes
-      (optypes-ignoring-judgements*
-       (cdr optypes)
-       (let ((optype (if (typep (car optypes) 'judgement-resolution)
-			 (type (car optypes))
-			 (car optypes))))
-	 (if (member optype noptypes :test #'tc-eq)
-	     noptypes
-	     (cons optype noptypes))))))
 
 (defun operator-args-of-current-theory* (args optypes &optional (index 0))
   (when args
@@ -1739,31 +1740,8 @@ required a context.")
 	    ;;(assert (fully-instantiated? op))
 	    (setf (type (argument ex))
 		  (mk-tupletype (list *boolean* iftype iftype)))
-	    (setf (type ex) iftype)
-	    (when (and (judgement-types ethen) (judgement-types eelse))
-	      (let ((ctypes (all-compatible-types (judgement-types ethen)
-						  (judgement-types eelse))))
-		(setf (judgement-types ex)
-		      (remove-if #'(lambda (cty) (tc-eq cty (type ex)))
-			ctypes))))))
+	    (setf (type ex) iftype)))
 	(call-next-method))))
-
-(defun all-compatible-types (types1 types2 &optional ctypes)
-  (if (null types1)
-      (minimal-types ctypes)
-      (let ((car-ctypes (all-compatible-types* (car types1) types2)))
-	(all-compatible-types (cdr types1) types2
-			      (nconc car-ctypes ctypes)))))
-
-(defun all-compatible-types* (type types &optional ctypes)
-  (if (null types)
-      ctypes
-      (let ((ctype (compatible-type type (car types))))
-	(all-compatible-types*
-	 type (cdr types)
-	 (if (some #'(lambda (cty) (subtype-of? cty ctype)) ctypes)
-	     ctypes
-	     (cons ctype ctypes))))))
 
 (defvar *generating-cond-tcc* nil)
 
@@ -1941,12 +1919,7 @@ required a context.")
 					 (type (expression ex))))
 	    (etype (make-formals-funtype (list (bindings ex))
 					 rng)))
-	(setf (type ex) ftype)
-	(when (judgement-types (expression ex))
-	  (setf (judgement-types ex)
-		(mapcar #'(lambda (jty)
-			    (make-formals-funtype (list (bindings ex)) jty))
-		  (judgement-types (expression ex)))))))))
+	(setf (type ex) ftype)))))
 
 
 ;;; set-lambda-dep-types is called to handle lambda-expressions.  The
@@ -2008,13 +1981,13 @@ required a context.")
   (when (declared-type ex)
     (set-type* (declared-type ex) nil)))
 
-(defmethod set-type* ((expr quant-expr) expected)
-  ;;(set-formals-types (bindings expr))
-  (let ((*bound-variables* (append (bindings expr) *bound-variables*)))
-    (set-quant-dep-types (append (bindings expr) (list (expression expr)))
-			 (nconc (mapcar #'type (bindings expr))
+(defmethod set-type* ((ex quant-expr) expected)
+  ;;(set-formals-types (bindings ex))
+  (let ((*bound-variables* (append (bindings ex) *bound-variables*)))
+    (set-quant-dep-types (append (bindings ex) (list (expression ex)))
+			 (nconc (mapcar #'type (bindings ex))
 				(list expected))))
-  (setf (type expr) *boolean*))
+  (setf (type ex) *boolean*))
 
 
 ;;; set-quant-dep-types is called to handle quant-exprs.  The input is a
@@ -2071,10 +2044,7 @@ required a context.")
 			     (ty (type (expression a))))
 			 (mk-field-decl (id fld) ty ty)))
 		   ass)
-	   nil))
-    ;; We don't set the judgement-types slot for record-exprs or
-    ;; tuple-exprs, since they involve Cartesian products.
-    ))
+	   nil))))
 
 
 ;;; check-record-expr-types does a quick check on the return types of the
@@ -2093,54 +2063,105 @@ required a context.")
 (defmethod set-type* ((expr update-expr) (expected recordtype))
   (with-slots (expression assignments) expr
     (with-slots (fields) expected
-      (let ((etypes
-	     (remove-if-not
-		 #'(lambda (ty)
-		     (and (typep (find-supertype ty) 'recordtype)
-			  (every
-			   #'(lambda (fld)
-			       (member fld (fields expected)
-				       :test #'(lambda (x y)
-						 (and (eq (id x) (id y))
-						      (compatible?
-						       (type x) (type y))))))
-			   (fields (find-supertype ty)))))
-	       (types expression))))
-	(cond ((cdr etypes)
-	       (type-ambiguity expression))
-	      ((null etypes)
-	       (type-incompatible expression (types expression) expected))
-	      (t 
-	       (set-type* expression (car etypes)))))
-      (let ((atype (find-supertype (type expression))))
-	(set-rec-assignment-types (complete-assignments expr expected)
-				  expression fields expected nil)
-	(setf (type expr) atype)
-	;;(setf (types expr) nil)
-	))))
+      (let ((etypes (collect-compatible-recordtypes (types expression)
+						    expected)))
+	(check-unique-type utypes expr expected)
+	(set-type* expression (contract-expected expr (car etypes) expected))
+	(let* ((stype (find-supertype (car etypes)))
+	       (atype (if (fully-instantiated? stype)
+			  stype
+			  (instantiate-from stype expected expr))))
+	  (set-rec-assignment-types (complete-assignments expr expected)
+				    expression fields expected nil)
+	  (setf (type expr) atype))))))
+
+(defmethod contract-expected (expr type (expected recordtype))
+  (let* ((new-ids (mapcar #'(lambda (a) (id (caar (arguments a))))
+		    (remove-if-not #'maplet? (assignments expr))))
+	 (types (collect-compatible-recordtypes
+		 (types (expression expr)) expected new-ids)))
+    (check-unique-type types (expression expr) expected)
+    (let ((fields (fields (find-supertype (car types)))))
+      ;; Remove those fields added by maplets, and replace fields changed
+      ;; by maplets.
+      (lcopy expected
+	'fields (mapcar #'(lambda (fld)
+			    (if (memq (id fld) new-ids)
+				(car (member (id fld) fields :key #'id))
+				fld))
+		  (remove-if-not #'(lambda (fld)
+				     (member fld fields :test #'same-id))
+		    (fields expected)))))))
+
+(defun check-unique-type (types expr expected)
+  (cond ((cdr types)
+	 (setf (types expr) types)
+	 (type-ambiguity expr))
+	((null types)
+	 (type-incompatible expr (types expr) expected))))
+
+(defun collect-compatible-recordtypes (types expected &optional ignore-ids)
+  (delete-if-not
+      #'(lambda (ty)
+	  (let ((sty (find-supertype ty)))
+	    (and (typep sty 'recordtype)
+		 (or ignore-ids
+		     (length= (fields sty) (fields expected)))
+		 (every #'(lambda (fld)
+			    (or (memq (id fld) ignore-ids)
+				(member fld (fields expected)
+					:test #'(lambda (x y)
+						  (and (eq (id x) (id y))
+						       (compatible?
+							(type x) (type y)))))))
+			(fields sty)))))
+    types))
 
 (defmethod set-type* ((expr update-expr) (expected tupletype))
   (with-slots (expression assignments) expr
     (with-slots (types) expected
-      (let ((etypes
-	     (remove-if-not
-		 #'(lambda (ty)
-		     (and (typep (find-supertype ty) 'tupletype)
-			  (<= (length (types (find-supertype ty)))
-			      (length types))))
-	       (types expression))))
-	(cond ((cdr etypes)
-	       (type-ambiguity expression))
-	      ((null etypes)
-	       (type-incompatible expression (types expression) expected))
-	      (t
-	       (set-type* expression (car etypes)))))
-      (let ((atype (find-supertype (type expression))))
-	(set-tup-assignment-types (complete-assignments expr expected)
-				  expression types expected)
-	(setf (type expr) atype)
-	;;(setf (types expr) nil)
-	))))
+      (let ((utypes (collect-compatible-tupletypes (types expr) expected)))
+	(check-unique-type utypes expr expected)
+	(set-type* expression (contract-expected expr (car utypes) expected))
+	(let* ((stype (find-supertype (type expression)))
+	       (atype (if (fully-instantiated? stype)
+			  stype
+			  (instantiate-from stype expected expr))))
+	  (set-tup-assignment-types (complete-assignments expr expected)
+				    expression types expected)
+	  (setf (type expr) atype))))))
+
+(defmethod contract-expected (expr type (expected tupletype))
+  (let* ((new-indices (mapcar #'(lambda (a) (number (caar (arguments a))))
+			(remove-if-not #'maplet? (assignments expr))))
+	 (types (collect-compatible-tupletypes
+		 (types (expression expr)) expected new-indices)))
+    (check-unique-type types (expression expr) expected)
+    (let ((types (types (find-supertype (car types)))))
+      ;; Remove those types added by maplets, and replace types changed
+      ;; by maplets.
+      (lcopy expected
+	'types (let ((index 0))
+		 (mapcar #'(lambda (ty ety)
+			     (if (member (incf index) new-indices :test #'=)
+				 ty
+				 ety))
+		   types (types expected)))))))
+
+(defun collect-compatible-tupletypes (types expected &optional ignore-indices)
+  (remove-if-not
+      #'(lambda (ty)
+	  (let ((sty (find-supertype ty)))
+	    (and (typep sty 'tupletype)
+		 (or ignore-indices
+		     (= (length (types sty)) (length (types expected))))
+		 (let ((index 0))
+		   (every #'(lambda (ety ty)
+			      (or (member (incf index) ignore-indices
+					  :test #'=)
+				  (compatible? ety ty)))
+			  (types expected) (types sty))))))
+    types))
 
 
 ;;; set-rec-assignment-types is the record equivalent of
@@ -2161,26 +2182,38 @@ required a context.")
       (when ass
 	(change-class (caar (arguments ass)) 'field-name-expr)
 	(set-assignment-types ass rectype ex))	
-      (let* ((dep? (dependent? rectype))
+      (let* ((dep? (and (dependent? rectype)
+			(some #'(lambda (fld)
+				  (member (car fields) (freevars fld)
+					  :key #'declaration))
+			      fields)))
 	     (aexpr (when dep?
 		      (make-assignment-subst-expr
 		       ass (type (car fields)) ex)))
-	     (remfields (if dep?
-			    (subst-rec-dep-type aexpr (car fields)
-						(cdr fields))
-			    (cdr fields))))
+	     (subst-fields (if dep?
+			       (subst-rec-dep-type
+				aexpr (car fields) (cdr fields))
+			       (cdr fields)))
+	     (rem-assns (remove ass assns))
+	     (done-with-field?
+	      (not (member (car fields) rem-assns
+			   :test #'same-id
+			   :key #'(lambda (a) (caar (arguments a))))))
+	     (next-fields (if done-with-field?
+			      (cons (car fields) nfields)
+			      nfields)))
 	(set-rec-assignment-types
-	 (remove ass assns)
+	 rem-assns
 	 ex
-	 remfields
+	 (if done-with-field? subst-fields (cons (car fields) subst-fields))
 	 (if dep?
 	     (make-instance 'recordtype
-	       'fields (sort-fields (append (reverse nfields)
-					    (cons (car fields) remfields))
+	       'fields (sort-fields (append (reverse next-fields)
+					    subst-fields)
 				    t)
 	       'dependent? t)
 	     rectype)
-	 (cons (car fields) nfields))))))
+	 next-fields)))))
 
 ;;; Set the assignment types of a tupletype update-expr.  The only
 ;;; difficulty here is with dependent types.  The inputs are the
@@ -2234,10 +2267,6 @@ required a context.")
 
 (defmethod make-assignment-appl-expr ((arg name-expr) expr)
   (make-field-application arg expr))
-
-(defun make-assignment-subst-expr* (args expr type proj)
-  (declare (ignore type))
-  (make-update-expr proj (list (mk-assignment nil args expr)) (type proj)))
 
 (defmethod make-assignment-else-expr ((arg number-expr) expr)
   (make-projection-application (number arg) expr))
@@ -2318,23 +2347,28 @@ required a context.")
 					  (strict-compatible? ty expected))
 			 cetypes)
 		       cetypes))
+	   (fetypes (mapcar #'(lambda (ety)
+				(if (fully-instantiated? ety)
+				    ety
+				    (instantiate-from ety expected expression)))
+		      etypes))
 	   (cutypes (remove-if-not #'(lambda (ty) (compatible? ty expected))
 		      (ptypes expr)))
 	   (utypes (or (remove-if-not #'(lambda (ty)
 					  (strict-compatible? ty expected))
 			 cutypes)
 		       cutypes)))
-      (cond ((null etypes)
+      (cond ((null fetypes)
 	     (type-incompatible expression (ptypes expression) expected))
 	    ((null utypes)
 	     (type-incompatible expr (ptypes expr) expected))
-	    ((cdr etypes)
-	     (setf (types expression) etypes)
+	    ((cdr fetypes)
+	     (setf (types expression) fetypes)
 	     (type-ambiguity expression))
 	    ((cdr utypes)
 	     (setf (types expr) utypes)
 	     (type-ambiguity expr))
-	    (t (set-type* expression (car etypes))
+	    (t (set-type* expression (car fetypes))
 	       (set-assignment-types-for-funtype
 		assignments expected expression (car utypes))
 	       (setf (type expr) (car utypes)))))))
@@ -2432,6 +2466,9 @@ required a context.")
 (defmethod dependent? ((type tupletype))
   (some #'(lambda (ty) (typep ty 'dep-binding)) (types type)))
 
+(defmethod dependent? ((type funtype))
+  (typep (domain type) 'dep-binding))
+
 (defun subst-rec-dep-type (expr fld fields &optional bindings result)
   (if (null fields)
       (nreverse result)
@@ -2521,29 +2558,29 @@ required a context.")
 	(if (and oexpr
 		 (typep srange '(or recordtype tupletype))
 		 (dependent? srange))
-	    (let* ((nexpr (apply #'make-application oexpr (car args)))
+	    (let* ((nexpr (let ((*generate-tccs* 'none))
+			    (apply #'make-application oexpr (car args))))
 		   (nupdate (make-instance 'update-expr
 			      'expression nexpr
 			      'assignments (list (make-instance 'assignment
 						   'arguments (cdr args)
-						   'expression expr
-						   'separator 'ceq))
-			      'type (type nexpr)
-			      'types (list (type nexpr))))
+						   'expression expr))
+			      'type (type nexpr)))
 		   (nass (complete-assignments nupdate
 					       (find-supertype nrange))))
 	      (if (typep srange 'recordtype)
 		  (set-rec-assignment-types nass nexpr (fields srange)
 					    (type nexpr) nil)
 		  (set-tup-assignment-types nass nexpr (types srange)
-					    (type nexpr) nil 1)))
+					    (type nexpr))))
 	    (set-assignment-types*
 	     (cdr args)
 	     expr
 	     nrange
 	     maplet?
 	     (when oexpr
-	       (apply #'make-application oexpr (car args)))))))))
+	       (let ((*generate-tccs* 'none))
+		 (apply #'make-application oexpr (car args))))))))))
 
 (defmethod set-assignment-types* (args expr (expected recordtype)
 				       maplet? oexpr)
@@ -2552,12 +2589,18 @@ required a context.")
     (unless field
       (type-error (car args) "Field not found"))
     (change-class (caar args) 'field-assignment-arg)
-    (let ((ftype (if oexpr
-		     (field-application-type field expected oexpr)
-		     (type field))))
+    (let* ((dep? (and oexpr
+		      (freevars field)
+		      (some #'(lambda (fd)
+				(member fd (freevars field)
+					:key #'declaration))
+			    (fields expected))))
+	   (ftype (if dep?
+		      (field-application-type field expected oexpr)
+		      (type field))))
       (set-assignment-types*
        (cdr args) expr ftype maplet?
-       (when oexpr
+       (when dep?
 	 (make-field-application field oexpr))))))
 
 (defmethod set-assignment-types* (args expr (expected tupletype) maplet? oexpr)
@@ -2609,9 +2652,15 @@ required a context.")
     (setf (module-instance (resolution te))
 	  (set-type-actuals te)))
   #+pvsdebug (fully-typed? te)
+  (when (and (typep (type (resolution te)) 'type-name)
+	     (adt (type (resolution te))))
+    (setf (adt te) (adt (type (resolution te)))))
   (unless (or *dont-worry-about-full-instantiations*
 	      (fully-instantiated? te))
-    (type-error te "Could not determine the full theory instance for ~a" te)))
+    (type-error te
+      "Could not determine the full theory instance for ~a~
+       ~%  Theory instance: ~a"
+      te (full-name (module-instance te)))))
 
 (defmethod set-type* ((te type-application) expected)
   (declare (ignore expected))
@@ -2671,11 +2720,30 @@ required a context.")
 (defvar *instantiate-from-expr* nil)
 (defvar *instantiate-from-modinsts* nil)
 
-(defun instantiate-from (te1 te2 expr)
-  (let ((*instantiate-from-expr* expr)
-	(*instantiate-from-modinsts* nil))
-    (values (instantiate-from* te1 te2)
-	    *instantiate-from-modinsts*)))
+(defun instantiate-from (type expected expr)
+  (assert (fully-instantiated? expected))
+  (let* ((bindings (tc-match expected type
+			     (instantiate-operator-bindings
+			      (free-params type)))))
+    (if (every #'cdr bindings)
+	(instantiate-operator-from-bindings type bindings)
+	(if *dont-worry-about-full-instantiations*
+	    type
+	    (type-error expr
+	      "Could not determine the full theory instance for ~a~
+               ~:[~;~%  May be a problem with splitting dependent types~]~
+               ~@[~%  Theory instance: ~a~]"
+	      expr
+	      (and (typep expr 'application)
+		   (some #'(lambda (a)
+			     (some #'(lambda (aty)
+				       (and (typep (find-supertype aty)
+						   '(or funtype tupletype))
+					    (dependent? (find-supertype aty))))
+				   (ptypes a)))
+			 (arguments expr)))
+	      (when (typep expr 'name-expr)
+		(full-name (module-instance expr))))))))
 
 (defmethod instantiate-from* :around (te1 te2)
   (declare (ignore te2))
@@ -2890,9 +2958,8 @@ required a context.")
   (let ((texp (or (type-value act)
 		  (expr act))))
     (and (typep texp 'name)
-	 (typep (declaration (type-value act)) 'formal-decl)
-	 (not (eq (module (declaration (type-value act)))
-		  *current-theory*)))))
+	 (typep (declaration texp) 'formal-decl)
+	 (not (eq (module (declaration texp)) *current-theory*)))))
 
 ;(defun find-modinsts-matching (obj modids)
 ;  (let ((modinsts nil))
