@@ -11,302 +11,255 @@
 
 ;; Predefined basic automata
 
-(ff:defforeign 'mona-true     ; true
-  :entry-point "ws1s___dfaTrue"
-  :arguments   nil
-  :return-type :integer)
+(ff:def-foreign-call (mona-true "ws1s___dfaTrue")     ; true
+    nil
+  :returning :int)
 
-(ff:defforeign 'mona-false    ; false
-  :entry-point "ws1s___dfaFalse"
-  :arguments   nil
-  :return-type :integer)
+(ff:def-foreign-call (mona-false "ws1s___dfaFalse")   ; false
+     nil
+  :returning :int)
 
-(ff:defforeign 'mona-const   ; p_i = n
-  :entry-point "ws1s___dfaConst"
-  :arguments '(integer integer) ; n i
-  :return-type :integer)
+(ff:def-foreign-call (mona-const "ws1s___dfaConst")  ; p_i = n
+   ((n :int) (i :int))
+  :returning :int)
 
-(ff:defforeign 'mona-less    ; p_i < p_j
-  :entry-point "ws1s___dfaLess"
-  :arguments '(integer integer) ; i j
-  :return-type :integer)
+(ff:def-foreign-call (mona-less "ws1s___dfaLess")   ; p_i < p_j
+    ((i :int) (j :int))
+  :returning :int)
 
-(ff:defforeign 'mona-lesseq    ; p_i <= p_j
-  :entry-point "ws1s___dfaLesseq"
-  :arguments '(integer integer) ; i j
-  :return-type :integer)
+(ff:def-foreign-call (mona-lesseq "ws1s___dfaLesseq")   ; p_i <= p_j
+    ((i :int) (j :int))
+  :returning :int)
 
-(ff:defforeign 'mona-plus1    ;  p_i = p_j + n
-  :entry-point "ws1s___dfaPlus1"
-  :arguments '(integer integer integer) ; i j n
-  :return-type :integer)
+(ff:def-foreign-call (mona-plus1 "ws1s___dfaPlus1")   ;  p_i = p_j + n
+   ((i :int) (j :int) (n :int))
+  :returning :int)
 
-(ff:defforeign 'mona-minus1    ;  p_i = p_j - n
-  :entry-point "ws1s___dfaMinus1"
-  :arguments '(integer integer integer) ; i j n
-  :return-type :integer)
+(ff:def-foreign-call (mona-minus1 "ws1s___dfaMinus1")   ;  p_i = p_j - n
+   ((i :int) (j :int) (n :int))
+  :returning :int)
 
-(ff:defforeign 'mona-eq1     ; p_i = p_j
-  :entry-point "ws1s___dfaEq1"
-  :arguments '(integer integer) ; i j
-  :return-type :integer)
+(ff:def-foreign-call (mona-eq1 "ws1s___dfaEq1")    ; p_i = p_j
+   ((i :int) (j :int))
+  :returning :int)
 
-(ff:defforeign 'mona-eq2       ; P_i = P_j
-  :entry-point "ws1s___dfaEq2"
-  :arguments '(integer integer);  i j
-  :return-type :integer)
+(ff:def-foreign-call (mona-eq2 "ws1s___dfaEq2")      ; P_i = P_j
+   ((i :int) (j :int))
+  :returning :int)
 
-(ff:defforeign 'mona-plus2    ; P_i = P_j + 1
-  :entry-point "ws1s___dfaPlus2"
-  :arguments '(integer integer)
-  :return-type :integer)
+(ff:def-foreign-call (mona-plus2 "ws1s___dfaPlus2")   ; P_i = P_j + 1
+   ((i :int) (j :int))
+  :returning :int)
 
-(ff:defforeign 'mona-minus2    ; P_i = P_j - 1
-  :entry-point "ws1s___dfaMinus2"
-  :arguments '(integer integer)
-  :return-type :integer)
+(ff:def-foreign-call (mona-minus2 "ws1s___dfaMinus2")   ; P_i = P_j - 1
+   ((i :int) (j :int))
+  :returning :int)
 
-(ff:defforeign 'mona-plusmodulo1    ;  p_i = p_j + 1 % p_k
-  :entry-point "ws1s___dfaPlusModulo1"
-  :arguments '(integer integer integer) ; i j k
-  :return-type :integer)
+(ff:def-foreign-call (mona-plusmodulo1 "ws1s___dfaPlusModulo1")   ;  p_i = p_j + 1 % p_k
+   ((i :int) (j :int) (k :int))
+  :returning :int)
 
-(ff:defforeign 'mona-minusmodulo1    ;  p_i = p_j - 1 % p_k
-  :entry-point "ws1s___dfaMinusModulo1"
-  :arguments '(integer integer integer) ; i j k
-  :return-type :integer)
+(ff:def-foreign-call (mona-minusmodulo1 "ws1s___dfaMinusModulo1")   ;  p_i = p_j - 1 % p_k
+   ((i :int) (j :int) (k :int))
+  :returning :int)
 
-(ff:defforeign 'mona-empty     ; P_i = empty
-  :entry-point "ws1s___dfaEmpty"
-  :arguments '(integer)
-  :return-type :integer)
+(ff:def-foreign-call (mona-empty "ws1s___dfaEmpty")    ; P_i = empty
+   ((i :int))
+  :returning :int)
 
-(ff:defforeign 'mona-in         ; p_i in P_j  recognizes <X,X>(<0,X>+)<1,1>(<X,X>*)
-  :entry-point "ws1s___dfaIn"
-  :arguments '(integer integer) ; i j
-  :return-type :integer)
+(ff:def-foreign-call (mona-in "ws1s___dfaIn") ; p_i in P_j  recognizes <X,X>(<0,X>+)<1,1>(<X,X>*)
+    ((i :int) (j :int))
+  :returning :int)
 
-(ff:defforeign 'mona-subset    ; P_i sub P_j
-  :entry-point "ws1s___dfaSubset"
-  :arguments '(integer integer) ; i j
-  :return-type :integer)
+(ff:def-foreign-call (mona-subset "ws1s___dfaSubset")   ; P_i sub P_j
+    ((i :int) (j :int))
+  :returning :int)
 
-(ff:defforeign 'mona-union     ; P_i = P_j union P_k
-  :entry-point "ws1s___dfaUnion"
-  :arguments '(integer integer integer) ; i j k
-  :return-type :integer)
+(ff:def-foreign-call (mona-union "ws1s___dfaUnion")    ; P_i = P_j union P_k
+   ((i :int) (j :int) (k :int))
+  :returning :int)
 
-(ff:defforeign 'mona-intersection     ; P_i = P_j inter P_k
-  :entry-point "ws1s___dfaInter"
-  :arguments '(integer integer integer) ; i j k
-  :return-type :integer)
+(ff:def-foreign-call (mona-intersection "ws1s___dfaInter")    ; P_i = P_j inter P_k
+   ((i :int) (j :int) (k :int))
+  :returning :int)
 
-(ff:defforeign 'mona-difference       ; P_i = P_j \ P_k
-  :entry-point "ws1s___dfaSetminus"
-  :arguments '(integer integer integer) ; i j k
-  :return-type :integer)
+(ff:def-foreign-call (mona-difference "ws1s___dfaSetminus")      ; P_i = P_j \ P_k
+   ((i :int) (j :int) (k :int))
+  :returning :int)
 
-(ff:defforeign 'mona-max    ;  p_i = max(P_j)
-  :entry-point "ws1s___dfaMax"
-  :arguments '(integer integer) ; i j
-  :return-type :integer)
+(ff:def-foreign-call (mona-max "ws1s___dfaMax")   ;  p_i = max(P_j)
+   ((i :int) (j :int))
+  :returning :int)
 
-(ff:defforeign 'mona-min    ;  p_i = min(P_j)
-  :entry-point "ws1s___dfaMin"
-  :arguments '(integer integer) ; i j
-  :return-type :integer)
+(ff:def-foreign-call (mona-min "ws1s___dfaMin")   ;  p_i = min(P_j)
+   ((i :int) (j :int))
+  :returning :int)
 
 
-(ff:defforeign 'mona-boolvar     ; 1(X*)
-  :entry-point "ws1s___dfaBoolvar"
-  :arguments '(integer)
-  :return-type :integer)
+(ff:def-foreign-call (mona-boolvar "ws1s___dfaBoolvar")    ; 1(X*)
+   ((i :int))
+  :returning :int)
 
-(ff:defforeign 'mona-presburger-const ; P_i = pconst(n)
-  :entry-point "ws1s___dfaPresbConst"
-  :arguments '(integer integer)  ; i n
-  :return-type :integer)
+(ff:def-foreign-call (mona-presburger-const "ws1s___dfaPresbConst") ; P_i = pconst(n)
+   ((i :int) (n :int))
+  :returning :int)
 
-(ff:defforeign 'mona-singleton ; (0*)1(0*)
-  :entry-point "ws1s___dfaSingleton"
-  :arguments '(integer)
-  :return-type :integer)
+(ff:def-foreign-call (mona-singleton "ws1s___dfaSingleton") ; (0*)1(0*)
+   ((i :int))
+  :returning :int)
 
 
-(ff:defforeign 'mona-first-order        ; recognizes 0*1+
-  :entry-point "ws1s___dfaFirstOrder"
-  :arguments '(integer)
-  :return-type :integer)
+(ff:def-foreign-call (mona-first-order "ws1s___dfaFirstOrder")       ; recognizes 0*1+
+   ((i :int))
+  :returning :int)
 
 
 ;; Automaton operations
 
-(ff:defforeign 'mona-free!
-  :entry-point "ws1s___dfaFree"
-  :arguments   '(integer)
-  :return-type :void)
+(ff:def-foreign-call (mona-free! "ws1s___dfaFree")
+    ((i :int))
+  :returning :void)
 
-(ff:defforeign 'mona-negation!
-  :entry-point "ws1s___dfaNegation"
-  :arguments '(integer)
-  :return-type :void)
+(ff:def-foreign-call (mona-negation! "ws1s___dfaNegation")
+    ((i :int))
+  :returning :void)
 
-(ff:defforeign 'mona-restrict!
-  :entry-point "ws1s___dfaRestrict"
-  :arguments '(integer)
-  :return-type :void)
+(ff:def-foreign-call (mona-restrict! "ws1s___dfaRestrict")
+    ((i :int))
+  :returning :void)
 
-(ff:defforeign 'mona-unrestrict!
-  :entry-point "ws1s___dfaUnrestrict"
-  :arguments '(integer)
-  :return-type :void)
+(ff:def-foreign-call (mona-unrestrict! "ws1s___dfaUnrestrict")
+    ((i :int))
+  :returning :void)
 
-(ff:defforeign 'mona-copy
-  :entry-point "ws1s___dfaCopy"
-  :arguments   '(integer)
-  :return-type :integer)
+(ff:def-foreign-call (mona-copy "ws1s___dfaCopy")
+    ((i :int))
+  :returning :int)
 
-(ff:defforeign 'mona-product
-  :entry-point "ws1s___dfaProduct"
-  :arguments '(integer integer integer) ; (automaton * a1, a2, unsigned mode)
-  :return-type :integer)
+(ff:def-foreign-call (mona-product "ws1s___dfaProduct")
+    ((a1 :int) (a2 :int) (mode :int)) ; (automaton * a1, a2, unsigned mode)
+  :returning :int)
 
-(ff:defforeign 'mona-prefix-close! ; Prefix Close
-  :entry-point "ws1s___dfaPrefixClose"
-  :arguments '(integer)
-  :return-type :void)
+(ff:def-foreign-call (mona-prefix-close! "ws1s___dfaPrefixClose") ; Prefix Close
+   ((i :int))
+  :returning :void)
 
-(ff:defforeign 'mona-conjunction
-  :entry-point "ws1s___dfaConjunction"
-  :arguments '(integer integer) ; (automaton * a1, a2)
-  :return-type :integer)
+(ff:def-foreign-call (mona-conjunction "ws1s___dfaConjunction")
+   ((a1 :int) (a2 :int)) ; (automaton * a1, a2)
+  :returning :int)
 
-(ff:defforeign 'mona-disjunction
-  :entry-point "ws1s___dfaDisjunction"
-  :arguments '(integer integer) ; (automaton * a1, a2)
-  :return-type :integer)
+(ff:def-foreign-call (mona-disjunction "ws1s___dfaDisjunction")
+   ((a1 :int) (a2 :int)) ; (automaton * a1, a2)
+  :returning :int)
 
-(ff:defforeign 'mona-implication
-  :entry-point "ws1s___dfaImplication"
-  :arguments '(integer integer) ; (automaton * a1, a2)
-  :return-type :integer)
+(ff:def-foreign-call (mona-implication "ws1s___dfaImplication")
+   ((a1 :int) (a2 :int)) ; (automaton * a1, a2)
+  :returning :int)
 
 
 
-(ff:defforeign 'mona-iff
-  :entry-point "ws1s___dfaIff"
-  :arguments '(integer integer) ; (automaton * a1, a2)
-  :return-type :integer)
+(ff:def-foreign-call (mona-iff "ws1s___dfaIff")
+   ((a1 :int) (a2 :int)) ; (automaton * a1, a2)
+  :returning :int)
 
-(ff:defforeign 'mona-status
-  :entry-point "ws1s___dfaStatus"
-  :arguments '(integer) ; (automaton * a)
-  :return-type :integer)
+(ff:def-foreign-call (mona-status "ws1s___dfaStatus")
+   ((a :int)) ; (automaton * a)
+  :returning :int)
 
-(ff:defforeign 'mona-project     ; projects away track var_index from a and                         
-  :entry-point "ws1s___dfaProject"     ; determinizes the resulting automaton
-  :arguments '(integer integer) ; (automaton * a, unsigned var_index)
-  :return-type :integer)
+(ff:def-foreign-call (mona-project "ws1s___dfaProject")
+					; projects away track var_index from a and                         
+					; determinizes the resulting automaton
+    ((a :int) (var_index :int)) ; (automaton * a, unsigned var_index)
+  :returning :int)
 
-(ff:defforeign 'mona-right-quotient!
-  :entry-point "ws1s___dfaRightQuotient"
-  :arguments '(integer integer) ; (automaton * a, unsigned var_index)
-  :return-type :void)
+(ff:def-foreign-call (mona-right-quotient! "ws1s___dfaRightQuotient")
+    ((a :int) (var_index :int)) ; (automaton * a, unsigned var_index)
+  :returning :void)
 
-(ff:defforeign 'mona-minimize           ; Minimization
-  :entry-point "ws1s___dfaMinimize"
-  :arguments '(integer)     ; automaton * a
-  :return-type :integer)
+(ff:def-foreign-call (mona-minimize "ws1s___dfaMinimize") ; Minimization
+    ((a :int))     ; automaton * a
+  :returning :int)
 
 
 
 ;; Analysis and printing
 
-(ff:defforeign 'mona-make-example
-  :entry-point "ws1s___dfaMakeExample"
-  :arguments   '(integer                ; DFA * a, 
-		 integer                ; int kind
-		 integer                ; int num
-		 (simple-array fixnum)) ; unsigned indices()
-  :return-type :integer)                ; char *
+(ff:def-foreign-call (mona-make-example "ws1s___dfaMakeExample")
+    ((a :int)    ; DFA * a, 
+     (kind :int) ; int kind
+     (num :int)  ; int num
+     (indices (:array :int))) ; unsigned indices()
+  :returning :int)                ; char *
 					
 
-(ff:defforeign 'mona-analyze
-  :entry-point "ws1s___dfaAnalyze"
-  :arguments   '(integer                          ; DFA * a_impl
-		 integer                          ; DFA * a_conj
-		 integer                          ; int num
-		 (simple-array simple-string (*)) ; char **names
-		 string                           ; char * orders
-		 integer)                         ; int treestyle
-  :return-type :void)
+(ff:def-foreign-call (mona-analyze "ws1s___dfaAnalyze")
+    ((a :int)				; DFA * a_impl
+     (a_conj :int)			; DFA * a_conj
+     (num :int)				; int num
+     (names (:array (* :char))) ; char **names
+     (orders (* :char))			; char * orders
+     (treestyle :int))			; int treestyle
+  :returning :void)
 
-(ff:defforeign 'mona-print-vitals
-  :entry-point "ws1s___dfaPrintVitals"
-  :arguments   '(integer)
-  :return-type :void)
+(ff:def-foreign-call (mona-print-vitals "ws1s___dfaPrintVitals")
+    ((i :int))
+  :returning :void)
 
-(ff:defforeign 'mona-print
-  :entry-point "ws1s___dfaPrint"
-  :arguments   '(integer integer (simple-array simple-string (*)) (simple-array fixnum))
-		; DFA * a, int num, char * names[], unsigned indices()
-  :return-type :void)
+(ff:def-foreign-call (mona-print "ws1s___dfaPrint")
+    ((a :int)				; DFA * a
+     (num :int)				; int num
+     (names (:array (* :char))) ; char * names[]
+     (indices (:array :fixnum)))	; unsigned indices()
+  :returning :void)
 
-(ff:defforeign 'mona-print-graphviz
-  :entry-point "ws1s___dfaPrintGraphviz"
-  :arguments   '(integer integer (simple-array fixnum))  ; DFA * a, int num, unsigned indices()
-  :return-type :void)
+(ff:def-foreign-call (mona-print-graphviz "ws1s___dfaPrintGraphviz")
+    ((a :int)				; DFA * a
+     (num :int)				; int num
+     (indices (:array :fixnum)))	; unsigned indices()
+  :returning :void)
 					
-(ff:defforeign 'mona-print-verbose
-  :entry-point "ws1s___dfaPrintVerbose"
-  :arguments   '(integer)
-  :return-type :void)
+(ff:def-foreign-call (mona-print-verbose "ws1s___dfaPrintVerbose")
+    ((i :int))
+  :returning :void)
 
-(ff:defforeign 'bdd-size
-   :entry-point "ws1s___bdd_size"
-   :arguments   '(integer)
-   :return-type :integer)
+(ff:def-foreign-call (bdd-size "ws1s___bdd_size")
+    ((i :int))
+  :returning :int)
 
-;(ff:defforeign 'transition-table-size
+;(ff:def-foreign-call 'transition-table-size
 ;   :entry-point "ws1s___transition_table_size"
-;   :arguments   '(integer)
-;  :return-type :integer)
+;      '(integer)
+;  :returning :int)
 
 ;; Constructing Automata Explicitly
 
-(ff:defforeign 'mona-setup
-  :entry-point "ws1s___dfaSetup"
-  :arguments   '(integer                ; int n
-		 integer                ; int len
-		 (simple-array fixnum)) ; int * indices
-  :return-type :void)
+(ff:def-foreign-call (mona-setup "ws1s___dfaSetup")
+    ((n :int)				; int n
+     (len :int)				; int len
+     (indices (:array :fixnum)))	; int * indices
+  :returning :void)
 
-(ff:defforeign 'mona-alloc-exceptions 
-  :entry-point "ws1s___dfaAllocExceptions"
-  :arguments   '(integer)                ; int n
-  :return-type :void)
+(ff:def-foreign-call (mona-alloc-exceptions "ws1s___dfaAllocExceptions")
+    ((n :int))                ; int n
+  :returning :void)
 
-(ff:defforeign 'mona-store-exception
-  :entry-point "ws1s___dfaStoreException"
-  :arguments   '(integer string)        ; int s, char * path
-  :return-type :void)
+(ff:def-foreign-call (mona-store-exception "ws1s___dfaStoreException")
+    ((s :int) (path (* :char)))        ; int s, char * path
+  :returning :void)
 
-(ff:defforeign 'mona-store-state
-  :entry-point "ws1s___dfaStoreState"
-  :arguments   '(integer)        ; int s
-  :return-type :void)
+(ff:def-foreign-call (mona-store-state "ws1s___dfaStoreState")
+    ((s :int))        ; int s
+  :returning :void)
 
-(ff:defforeign 'mona-build
-   :entry-point "ws1s___dfaBuild"
-   :arguments   '(string)  ; char * statuses
-   :return-type :integer)
+(ff:def-foreign-call (mona-build "ws1s___dfaBuild")
+    ((statuses (* :char)))  ; char * statuses
+   :returning :int)
 
 ;; Exporting
 
-(ff:defforeign 'mona-export
-   :entry-point "ws1s___dfaExport"
-   :arguments   '(integer                          ; DFA  *a
-		  string                           ; char *filename
-		  (simple-array simple-string (*)) ; char *names()
-		  (simple-array fixnum))           ; int orders()
-   :return-type :integer)
+(ff:def-foreign-call (mona-export "ws1s___dfaExport")
+    ((a :int)				; DFA  *a
+     (filename (* :char))			; char *filename
+     (names (:array (* :char))) ; char *names()
+     (orders (:array :fixnum)))	; int orders()
+  :returning :int)
