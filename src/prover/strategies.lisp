@@ -238,9 +238,9 @@ computations.  E.g.,
 
 (defstep assert  (&optional (fnums *) rewrite-flag
 			    flush? linear? cases-rewrite? (type-constraints? t)
-			    ignore-prover-output?) 
+			    ignore-prover-output? (let-reduce? t))
 	 (simplify
-	  fnums t t rewrite-flag flush? linear? cases-rewrite? type-constraints? ignore-prover-output?) 
+	  fnums t t rewrite-flag flush? linear? cases-rewrite? type-constraints? ignore-prover-output? let-reduce?) 
  "Simplifies/rewrites/records formulas in FNUMS using decision
 procedures.  Variant of SIMPLIFY with RECORD? and REWRITE? flags set
 to T. If REWRITE-FLAG is RL(LR) then only lhs(rhs) of equality
@@ -556,8 +556,8 @@ bddsimp, and assert, until nothing works.  DEFS is either
   "Obsolete - subsumed by (TCC)."
   "Trying repeated skolemization, instantiation, and if-lifting")
 
-(defstep bash (&optional (if-match t)(updates? t) polarity? (instantiator inst?))
-  (then (assert)(bddsimp)
+(defstep bash (&optional (if-match t)(updates? t) polarity? (instantiator inst?) (let-reduce? t))
+  (then (assert :let-reduce? let-reduce?)(bddsimp)
 	(if if-match (let ((command (generate-instantiator-command
 				     if-match polarity? instantiator)))
 		       command)(skip))
@@ -598,9 +598,11 @@ reasoning, quantifier instantiation, skolemization, if-lifting.")
 	'(fail))))
 
 	 
-(defstep reduce (&optional (if-match t)(updates? t) polarity? (instantiator inst?))
+(defstep reduce (&optional (if-match t)(updates? t) polarity?
+			   (instantiator inst?) (let-reduce? t))
     (repeat* (try (bash$ :if-match if-match :updates? updates?
-			 :polarity? polarity? :instantiator instantiator)
+			 :polarity? polarity? :instantiator instantiator
+			 :let-reduce? let-reduce?)
                (replace*)
                (skip)))
 "Core of GRIND (ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, FLATTEN,
@@ -610,8 +612,8 @@ See BASH for more explanation."
   propositional reasoning, quantifier instantiation, skolemization,
  if-lifting and equality replacement")
 
-(defstep smash (&optional (updates? t))
-  (repeat* (then (bddsimp)(assert)(lift-if :updates? updates?)))
+(defstep smash (&optional (updates? t) (let-reduce? t))
+  (repeat* (then (bddsimp)(assert :let-reduce? let-reduce?)(lift-if :updates? updates?)))
   "Repeatedly tries BDDSIMP, ASSERT, and LIFT-IF.  If the UPDATES?
 option is NIL, update applications are not if-lifted."
   "Repeatedly simplifying with BDDs, decision procedures, rewriting,
@@ -669,14 +671,16 @@ EXCLUDE is a list of rewrite rules. "
 			  (if-match t)
 			  (updates? t)
 			  polarity?
-			  (instantiator inst?))
+			  (instantiator inst?)
+			  (let-reduce? t))
   (then
    (install-rewrites$ :defs defs :theories theories
 		     :rewrites rewrites :exclude exclude)
-    (then (bddsimp)(assert))
+    (then (bddsimp)(assert :let-reduce? let-reduce?))
     (replace*)
     (reduce$ :if-match if-match :updates? updates?
-	     :polarity? polarity? :instantiator instantiator))
+	     :polarity? polarity? :instantiator instantiator
+	     :let-reduce? let-reduce?))
     "A super-duper strategy.  Does auto-rewrite-defs/theories,
 auto-rewrite then applies skolem!, inst?, lift-if, bddsimp, and
 assert, until nothing works. Here
@@ -901,8 +905,8 @@ is applied.")
 resulting subgoals.  The last step is used for any excess subgoals.
 If STEP does nothing, then ELSE-STEP is applied.")
 
-(defstep ground ()
-  (try (flatten)(ground$)(try (split)(ground$)(assert)))
+(defstep ground (&optional (let-reduce? t))
+  (try (flatten)(ground$)(try (split)(ground$)(assert :let-reduce? let-reduce?)))
   "Does propositional simplification followed by the use of decision procedures."
   "Applying propositional simplification and decision procedures")
 
@@ -2775,14 +2779,14 @@ or succedent formula in the sequent."
 ;;NSH(5.27.95) : From JMR
 ;;added exclude argument to grind and if-match argument to use.
 (defstep use (lemma &optional subst (if-match best) (instantiator inst?)
-		    polarity?)
+		    polarity? let-reduce?)
   (then@ (lemma lemma subst)
 	 (if *new-fmla-nums*
 	     (let ((fnum (car *new-fmla-nums*))
 		   (command (generate-instantiator-command
 			     if-match polarity? instantiator fnum)))
 	       (then 
-		(beta fnum)
+		(beta fnum :let-reduce? let-reduce?)
 		(repeat command)))
 	     (skip)))
   "Introduces lemma LEMMA, then does BETA and INST? (repeatedly) on
@@ -3684,11 +3688,12 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
   "Auto-rewriting given theories ~a with :always? T option")
 
 (defstep lazy-grind  (&optional (if-match t) (defs !) rewrites
-                                theories exclude (updates? t))
+                                theories exclude (updates? t) (let-reduce? t))
   (then
    (grind$ :if-match nil :defs defs :rewrites rewrites 
-	   :theories theories :exclude exclude :updates? updates?)
-   (reduce$ :if-match if-match :updates? updates?))
+	   :theories theories :exclude exclude :updates? updates?
+	   :let-reduce? let-reduce?)
+   (reduce$ :if-match if-match :updates? updates? :let-reduce? let-reduce?))
   "Equiv. to (grind) with the instantiations postponed until after simplification."
   "By skolemization, if-lifting, simplification and instantiation")
 
