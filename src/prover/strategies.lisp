@@ -2227,11 +2227,12 @@ corresponding to dir (left-to-right when LR, and right-to-left when RL)."
 	      (skip-msg "No matching substitution found")
 	      (let ((fnum1 (inc-fnum fnum))  
 		    (rules
-		     (when subs
-		       (cons `(inst-cp ,fnum :terms ,(car subs))
-			     (loop for sub in (cdr subs)
-				   collect
-				   `(inst ,fnum1 :terms ,sub))))))
+		     (if subs
+			 (cons `(inst-cp ,fnum :terms ,(car subs))
+			       (loop for sub in (cdr subs)
+				     collect
+				     `(inst ,fnum1 :terms ,sub)))
+			 (list `(copy ,fnum)))))
 		(then (then :steps rules)
 		      (rewrite-directly-with-fnum fnum1 fnums dir)))))
 	(skip-msg "No rewritable FNUM found.")))
