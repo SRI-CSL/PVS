@@ -2747,7 +2747,7 @@ replaces each expri in the sequent with the corresponding namei."
   (let ((sforms (select-seq (s-forms (current-goal *ps*)) fnum)))
     (if sforms
 	(let ((fmla (formula (car sforms)))
-	      (negfmla (negate fmla)))
+	      (negfmla (negate! fmla)))
 	  (then (case negfmla)(skip)))
 	(let ((msg
 	       (format nil "Could not find formula number ~a" fnum)))

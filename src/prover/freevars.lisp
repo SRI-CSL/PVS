@@ -92,9 +92,9 @@
       result
       (let* ((frees-car (freevars* (car list)))
 	     (ufrees (fv-union frees-car result)))
-	(assert (not (and (binding? (car list))
-			  (member (car list) frees-car
-				  :test #'same-declaration))))
+	#+pvsdebug (assert (not (and (binding? (car list))
+				     (member (car list) frees-car
+					     :test #'same-declaration))))
 	(freevars-list
 	 (cdr list)
 	 (if (binding? (car list))
