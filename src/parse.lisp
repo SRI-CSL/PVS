@@ -582,61 +582,37 @@
 (defun xt-conversion (decl)
   (xt-conversion* (term-args decl) (sim-term-op decl)))
 
-(defun xt-conversion* (enames convkey &optional result)
-  (cond ((null enames)
+(defun xt-conversion* (exprs convkey &optional result)
+  (cond ((null exprs)
 	 (setf (chain? (car result)) nil)
 	 (nreverse result))
-	(t (let ((cdecl (xt-conversion** (car enames)
-					 (null (cdr enames))
+	(t (let ((cdecl (xt-conversion** (car exprs)
+					 (null (cdr exprs))
 					 convkey)))
-	     (xt-conversion* (cdr enames) convkey
+	     (xt-conversion* (cdr exprs) convkey
 			     (cons cdecl result))))))
 
-(defun xt-conversion** (ename last? convkey)
-  (let ((name (xt-name (term-arg0 ename) nil))
-	(ntype (term-arg1 ename)))
-    (if (is-sop 'NOTYPE ntype)
-	(case convkey
-	  (CONVERSIONPLUS
-	   (make-instance 'conversionplus-decl
-	     'id (id name)
-	     'name (change-class name 'name-expr)
-	     'chain? (not last?)
-	     'place (term-place name)))
-	  (CONVERSIONMINUS
-	   (make-instance 'conversionminus-decl
-	     'id (id name)
-	     'name (change-class name 'name-expr)
-	     'chain? (not last?)
-	     'place (term-place name)))
-	  (t
-	   (make-instance 'conversion-decl
-	     'id (id name)
-	     'name (change-class name 'name-expr)
-	     'chain? (not last?)
-	     'place (term-place name))))
-	(case convkey
-	  (CONVERSIONPLUS
-	   (make-instance 'typed-conversionplus-decl
-	     'id (id name)
-	     'name (change-class name 'name-expr)
-	     'declared-type (xt-not-enum-type-expr ntype)
-	     'chain? (not last?)
-	     'place (term-place name)))
-	  (CONVERSIONMINUS
-	   (make-instance 'typed-conversionminus-decl
-	     'id (id name)
-	     'name (change-class name 'name-expr)
-	     'declared-type (xt-not-enum-type-expr ntype)
-	     'chain? (not last?)
-	     'place (term-place name)))
-	  (t
-	   (make-instance 'typed-conversion-decl
-	     'id (id name)
-	     'name (change-class name 'name-expr)
-	     'declared-type (xt-not-enum-type-expr ntype)
-	     'chain? (not last?)
-	     'place (term-place name)))))))
+(defun xt-conversion** (texpr last? convkey)
+  (let ((expr (xt-expr texpr)))
+    (case convkey
+      (CONVERSIONPLUS
+       (make-instance 'conversionplus-decl
+	 'id (when (name-expr? expr) (id expr))
+	 'expr expr
+	 'chain? (not last?)
+	 'place (term-place texpr)))
+      (CONVERSIONMINUS
+       (make-instance 'conversionminus-decl
+	 'id (when (name-expr? expr) (id expr))
+	 'expr expr
+	 'chain? (not last?)
+	 'place (term-place texpr)))
+      (t
+       (make-instance 'conversion-decl
+	 'id (when (name-expr? expr) (id expr))
+	 'expr expr
+	 'chain? (not last?)
+	 'place (term-place texpr))))))
 
 
 ;;; auto-rewrites

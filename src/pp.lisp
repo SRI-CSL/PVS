@@ -901,7 +901,7 @@ bind tighter.")
 	     (setq *pretty-printed-prefix* nil)))))
 
 (defmethod pp* :around ((decl conversion-decl))
-  (with-slots (name chain?) decl
+  (with-slots (expr chain?) decl
     (when (or (not *pretty-printing-decl-list*)
 	      (not *pretty-printed-prefix*))
       (when *pretty-printing-decl-list*
@@ -912,11 +912,7 @@ bind tighter.")
 	(conversionminus-decl (write '-)))
       (write-char #\space)
       (pprint-newline :miser))
-    (pp* name)
-    (when (typep decl 'typed-conversion-decl)
-      (write-char #\:)
-      (write-char #\space)
-      (pp* (declared-type decl)))
+    (pp* expr)
     (when (and chain?
 	       *pretty-printing-decl-list*)
       (write-char #\,)

@@ -290,18 +290,9 @@
 (defmethod compare* ((old conversion-decl) (new conversion-decl))
   (and (call-next-method)
        (typecase old
-	 (typed-conversionminus-decl (typed-conversionminus-decl? new))
-	 (typed-conversion-decl (and (typed-conversion-decl? new)
-				     (not (conversionminus-decl? new))))
-	 (conversionminus-decl (and (conversionminus-decl? new)
-				    (not (typed-conversion-decl? new))))
-	 (conversion-decl (not (or (conversionminus-decl? new)
-				   (typed-conversion-decl? new)))))
-       (compare-sig (name old) (name new))))
-
-(defmethod compare* ((old typed-conversion-decl) (new typed-conversion-decl))
-  (and (call-next-method)
-       (compare-sig (declared-type old) (declared-type new))))
+	 (conversionminus-decl (conversionminus-decl? new))
+	 (conversion-decl (not (conversionminus-decl? new))))
+       (compare-sig (expr old) (expr new))))
 
 (defmethod compare* ((old auto-rewrite-decl) (new auto-rewrite-decl))
   (and (call-next-method)

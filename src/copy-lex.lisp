@@ -129,11 +129,7 @@
 (defmethod copy-lex* ((old conversion-decl) (new conversion-decl))
   (unless (eq (class-of old) (class-of new))
     (change-class old (class-of new)))
-  (copy-lex* (name old) (name new)))
-
-(defmethod copy-lex* ((old typed-conversion-decl) (new typed-conversion-decl))
-  (call-next-method)
-  (copy-lex* (declared-type old) (declared-type new)))
+  (copy-lex* (expr old) (expr new)))
 
 (defmethod copy-lex* ((old auto-rewrite-decl) (new auto-rewrite-decl))
   (unless (eq (class-of old) (class-of new))

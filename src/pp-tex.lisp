@@ -847,7 +847,7 @@
 	     (setq *pretty-printed-prefix* nil)))))
 
 (defmethod pp-tex* :around ((decl conversion-decl))
-  (with-slots (name chain?) decl
+  (with-slots (expr chain?) decl
     (when (or (not *pretty-printing-decl-list*)
 	      (not *pretty-printed-prefix*))
       (when *pretty-printing-decl-list*
@@ -858,11 +858,7 @@
 	(t (pp-tex-keyword 'CONVERSION)))
       (write-char #\space)
       (pprint-newline :miser))
-    (pp-tex* name)
-    (when (typep decl 'typed-conversion-decl)
-      (write-char #\:)
-      (write-char #\space)
-      (pp-tex* (declared-type decl)))
+    (pp-tex* expr)
     (when (and chain?
 	       *pretty-printing-decl-list*)
       (write-char #\,)
