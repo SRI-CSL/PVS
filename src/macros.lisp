@@ -9,6 +9,7 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -37,11 +38,6 @@
 
 (defmacro typec (inst class-name)
   `(eq (class-name (class-of ,inst)) ,class-name))
-
-(defmacro put-decl (decl hashtable)
-  (let ((gdecl (gensym)))
-    `(let ((,gdecl ,decl))
-       (pushnew ,gdecl (gethash (id ,gdecl) ,hashtable)))))
 
 (defmacro add-comment (decl ctl &rest args)
   (let ((cdecl (gensym)))
@@ -183,15 +179,19 @@
 
 (defmacro with-pvs-context (lib-ref &rest forms)
   (let ((dir (gentemp))
-	(curdir (gentemp)))
+	(shortdir (gentemp)))
     `(let ((,dir (directory-p (libref-to-pathname ,lib-ref))))
       (if (pathnamep ,dir)
-	  (let ((*default-pathname-defaults* *default-pathname-defaults*)
-		(*pvs-context-path* nil)
-		(*pvs-context* nil)
-		(*file-dependencies* nil))
-	    (setq *pvs-context-path* (shortpath ,dir))
-	    (setq *default-pathname-defaults* *pvs-context-path*)
+	  (let* ((,shortdir (shortpath ,dir))
+		 (*pvs-context-path* ,shortdir)
+		 (*default-pathname-defaults* ,shortdir)
+		 (*pvs-context-writable* (write-permission? ,shortdir))
+		 (*pvs-context* nil)
+		 (*pvs-context-changed* nil)
+		 (*current-context* nil)
+		 (*current-theory* nil)
+		 (*all-subst-mod-params-caches* nil)
+		 (*file-dependencies* nil))
 	    ,@forms)
 	  (pvs-message "Library ~a does not exist" ,dir)))))
 
@@ -351,3 +351,60 @@
      (excl:set-case-mode :case-sensitive-lower))
   #-(or allegro-v6.0 allegro-v6.2)
   `(progn ,@forms))
+
+(defmacro get-declarations (id &optional decl-hash)
+  (if decl-hash
+      `(get-lhash ,id ,decl-hash)
+      `(get-lhash ,id (current-declarations-hash))))
+
+(defsetf get-declarations (id &optional decl-hash) (decl)
+  (if decl-hash
+      `(pushnew ,decl (get-lhash ,id ,decl-hash) :test #'eq)
+      `(pushnew ,decl (get-lhash ,id (current-declarations-hash)) :test #'eq)))
+
+(defmacro put-decl (decl &optional decl-hash)
+  (let ((gdecl (gensym)))
+    (if decl-hash
+	`(let ((,gdecl ,decl))
+	   (setf (get-declarations (id ,gdecl) ,decl-hash) ,gdecl))
+	`(let ((,gdecl ,decl))
+	   (setf (get-declarations (id ,gdecl) (current-declarations-hash))
+		 ,gdecl)))))
+
+;; Only used by add-decl, destructively modifies the context
+(defun delete-declaration (decl &optional decl-hash)
+  (assert (or decl-hash *current-context*))
+  (let* ((lht (or decl-hash (current-declarations-hash)))
+	 (ht (lhash-table lht)))
+    (when (hash-table-p ht)
+      (let* ((decls (gethash (id decl) ht)))
+	(when (memq decl decls)
+	  (if (cdr decls)
+	      (setf (gethash (id decl) ht) (delete decl decls))
+	      (remhash (id decl) ht)))))
+    (when (lhash-next lht)
+      (delete-declaration decl (lhash-next lht)))))
+
+(defun do-all-declarations (function &optional decl-hash)
+  (assert (or decl-hash *current-context*))
+  (let ((lht (or decl-hash (current-declarations-hash))))
+    (map-lhash #'(lambda (id decls)
+		   (declare (ignore id))
+		   (mapc function decls))
+	       lht)))
+
+
+(defmacro get-importings (theory &optional using-hash)
+  (if using-hash
+      `(get-lhash ,theory ,using-hash)
+      `(get-lhash ,theory (current-using-hash))))
+
+(defsetf get-importings (theory &optional using-hash) (using)
+  (if using-hash
+      `(setf (get-lhash ,theory ,using-hash) ,using)
+      `(setf (get-lhash ,theory (current-using-hash)) ,using)))
+
+(defmacro put-importing (inst theory &optional using-hash)
+  (if using-hash
+      `(pushnew ,inst (get-importings ,theory ,using-hash))
+      `(pushnew ,inst (get-importings ,theory (current-using-hash)))))
