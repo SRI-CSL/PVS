@@ -1492,7 +1492,8 @@
 
 (defun get-let-binding-type (bd bindings arg anum)
   (if (declared-type bd)
-      (typecheck* (declared-type bd) nil nil nil)
+      (progn (typecheck* (declared-type bd) nil nil nil)
+	     (set-type (declared-type bd) nil))
       (let ((vdecl (find-if #'(lambda (v)
 				(and (var-decl? v)
 				     (eq (module v) (current-theory))))
