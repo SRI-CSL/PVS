@@ -340,6 +340,9 @@ to be used for discharging the abstraction proof obligations."
 (defmethod mu-atom? ((fmla application) cstate)
   (not (mu-application? fmla cstate)))
 
+(defmethod mu-atom? ((expr t) cstate)
+  t)
+
 (defmethod mu-application? ((fmla application) cstate)
   (with-slots (operator argument) fmla
     (and (any-mu-nu-expr? operator)
