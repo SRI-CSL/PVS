@@ -1673,10 +1673,7 @@ required a context.")
 			(cons (expression ex) *ignore-for-tccs*)))
 		   (set-type* (expression ex) rng)))))
       (let ((ftype (make-formals-funtype (list (bindings ex))
-					 (type (expression ex))))
-	    ;;(etype (make-formals-funtype (list (bindings ex))
-		;;			 rng))
-	    )
+					 (type (expression ex)))))
 	(setf (type ex) ftype)))))
 
 
