@@ -20,7 +20,7 @@
 
 (defun make-prover-keywords (formals &optional result)
   (if (null formals)
-      result
+      (nreverse result)
       (let* ((formal (car formals))
 	     (nresult (if (memq formal '(&optional &rest))
 			  result
