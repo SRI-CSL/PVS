@@ -79,7 +79,7 @@
  
   (defun shielding? (expr)
     (some #'(lambda (bvar)
-	      (occurs-in bvar expr))
+	      (occurs-in (car bvar) expr))
 	  *bvars*))
 
   (defun fvars (l &optional acc)
