@@ -205,6 +205,57 @@ and removes the declaration buffer."
     (setq *pvs-decls* pvs-decls)
     (pvs-make-browse-buffer)))
 
+(defpvs unusedby-proof-of-formula browse (bufname origin line column)
+  "Produce list of declarations unused by the proof of the formula at point
+
+The unusedby-proof-of-formula command creates a 'Browse' buffer
+listing all the declarations that are unused in the proof of the given
+formula.  Removing all these declarations and those that follow the
+given formula should give a theory that typechecks and for which the
+proofchain is still complete, if it was in the full theory."
+  (interactive
+   (let* ((name-and-origin (if (string-equal (buffer-name) "Declaration")
+			       (list nil "Declaration")
+			       (pvs-formula-origin)))
+	  (bufname (car name-and-origin))
+	  (origin (cadr name-and-origin))
+	  (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
+	  (line (+ (current-line-number) prelude-offset)))
+     (list bufname origin line (real-current-column))))
+  (if (member-equal origin '("tccs" "ppe"))
+      (message
+       "The unusedby-proof-of-formula command is not available in this buffer.")
+      (let ((pvs-decls (pvs-file-send-and-wait
+			(format "(unusedby-proof-of-formula \"%s\" \"%s\" %d)"
+			    bufname origin line)
+			"Collecting..." 'unusedby 'list)))
+	(unless pvs-decls
+	  (error "No nuused declarations found for formula %s" ))
+	(setq *pvs-decls* pvs-decls)
+	(pvs-make-browse-buffer))))
+
+(defpvs unusedby-proofs-of-formulas browse (formulas theory)
+  "Produce list of declarations unused by the proofs of the given formulas
+
+The unusedby-proofs-of-formulas command prompts for a list of formulas (just
+hit 'Return' when done) and a root theory, and creates a 'Browse' buffer
+listing all the declarations that are unused in the proofs of the given
+formulas.  Removing all these declarations and those that follow the given
+formula should give a theory that typechecks and for which the proofchain is
+still complete, if it was in the full theory."
+  (interactive
+   (append (complete-formula-name-list "Formula: ")
+	   (complete-theory-name "Root theory to use as context: ")))
+  (let ((pvs-decls (pvs-file-send-and-wait
+		    (format "(unusedby-proofs-of-formulas '%s \"%s\")"
+			(mapcar '(lambda (x) (format "\"%s\"" x)) formulas)
+		      theory)
+		    "Collecting..." 'unusedby 'list)))
+    (unless pvs-decls
+      (error "No nuused declarations found for formula %s" ))
+    (setq *pvs-decls* pvs-decls)
+    (pvs-make-browse-buffer)))
+
 
 ;;; Functions to support PVS browse mode
 
@@ -216,6 +267,7 @@ and removes the declaration buffer."
       (erase-buffer)
       (pvs-insert-declarations)
       (goto-line 3)
+      (set-buffer-modified-p nil)
       (toggle-read-only)
       (pvs-browse-mode)
       (pvs-display-browse-buffer buf)
@@ -239,7 +291,18 @@ and removes the declaration buffer."
 		 (format "%s.pvs" (fourth entry))))
 	 (loc (fifth entry)))
     (if (member loc '(nil NIL))
-	(message "Cannot select this entry")
+	(let* ((bufname (format "%s.%s" (third entry) (second entry)))
+	       (buf (get-buffer-create bufname)))
+	  (save-excursion
+	    (message "")
+	    (set-buffer buf)
+	    (if buffer-read-only (toggle-read-only))
+	    (erase-buffer)
+	    (insert (sixth entry))
+	    (set-buffer-modified-p nil)
+	    (toggle-read-only)
+	    (pvs-view-mode))
+	  (pop-to-buffer buf))
 	(pvs-browse-quit)
 	(cond ((null file)
 	       (set-prelude-files-and-regions)
@@ -254,8 +317,8 @@ and removes the declaration buffer."
 		 (forward-char (cadr loc))))
 	      (t (find-file file)
 		 (goto-line (car loc))
-		 (forward-char (cadr loc))))))
-  (delete-other-windows)
+		 (forward-char (cadr loc))))
+	(delete-other-windows)))
   (recenter))
 
 
@@ -277,6 +340,7 @@ Returns to Declaration List when done."
       (insert decl)
       (set-buffer-modified-p nil)
       (toggle-read-only)
+      (pvs-view-mode)
       (goto-char (point-min))
       (let ((view-window (get-buffer-window-list buf)))
 	(cond (view-window
