@@ -206,7 +206,7 @@ print object produces an error, and won't allow inspection of the object.")
 #+allegro
 (defmethod describe-object :around (obj stream)
   (call-next-method)
-  (when (excl:source-file obj)
+  (when (ignore-errors (excl:source-file obj))
     (format stream "  Its source file is ~a" (excl:source-file obj))))
 
 (defmethod kind-of ((decl type-decl)) 'type)
