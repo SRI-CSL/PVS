@@ -51,8 +51,10 @@
     (when (and (null res)
 	       args
 	       (eq k 'expr))
-      (setq res (append (argument-conversion name args)
-			(function-conversion name args))))
+      ;; argument-conversion may add to the types of args, and if it returns
+      ;; a resolution we are done, otherwise try function-conversion.
+      (setq res (or (argument-conversion name args) 
+		    (function-conversion name args))))
     (when (memq name *recursive-calls-without-enough-args*)
       (dolist (r res)
 	(when (eq (declaration r) (current-declaration))
