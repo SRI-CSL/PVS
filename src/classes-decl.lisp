@@ -283,7 +283,8 @@
 
 (defcl const-decl (typed-declaration)
   (definition :parse t)
-  def-axiom)
+  def-axiom
+  (eval-info :fetch-as nil))
 
 (defcl proj-decl (const-decl))
 
