@@ -42,6 +42,7 @@
 (pvs-abbreviate 'prettyprint-declaration 'ppd)
 (pvs-abbreviate 'prettyprint-region 'ppr)
 (pvs-abbreviate 'prettyprint-expanded 'ppe)
+(pvs-abbreviate 'prettyprint-theory-instance 'ppti)
 (pvs-abbreviate 'show-tccs 'tccs)
 (pvs-abbreviate 'find-pvs-file 'ff)
 (pvs-abbreviate 'find-theory 'ft)
