@@ -304,7 +304,7 @@
 
 (defmethod check-for-tccs* ((expr update-expr) (expected funtype))
   (with-slots (expression assignments) expr
-    (check-for-tccs* expression (type expr))
+    (check-for-tccs* expression (type expression))
     (mapcar #'(lambda (a) (check-for-tccs* a expected))
       assignments)))
 
