@@ -854,7 +854,8 @@
 	      (if (or (eq (kind ass) 'existence)
 		      (nonempty-formula-type ass))
 		  (let ((atype (subst-mod-params (existence-tcc-type ass)
-						 modinst)))
+						 modinst
+						 mod)))
 		    (if (typep cdecl 'existence-tcc)
 			(let ((dtype (existence-tcc-type cdecl)))
 			  (if (tc-eq atype dtype)
@@ -869,7 +870,8 @@
 
 (defun check-assumption-subterm-visibility (assumptions modinst)
   (dolist (ass assumptions)
-    (let* ((subassdef (subst-mod-params (closed-definition ass) modinst))
+    (let* ((subassdef (subst-mod-params (closed-definition ass) modinst
+					(module ass)))
 	   (badobj (find-nonvisible-assuming-reference subassdef)))
       (when badobj
 	(type-error badobj
@@ -920,7 +922,7 @@
 
 (defun make-assuming-tcc-decl (ass modinst)
   (let* ((*generate-tccs* 'none)
-	 (expr (subst-mod-params (definition ass) modinst))
+	 (expr (subst-mod-params (definition ass) modinst (module ass)))
 	 (true-conc? (tcc-evaluates-to-true expr))
 	 (tform (unless true-conc? (add-tcc-conditions expr)))
 	 (uform (cond ((or true-conc? (tcc-evaluates-to-true tform))
@@ -995,7 +997,7 @@
 (defun make-mapped-axiom-tcc-decl (axiom modinst)
   (let* ((*generate-tccs* 'none)
 	 (*generating-mapped-axiom-tcc* t)
-	 (expr (subst-mod-params (definition axiom) modinst))
+	 (expr (subst-mod-params (definition axiom) modinst (module axiom)))
 	 (tform (add-tcc-conditions expr))
 	 (xform (if *simplify-tccs*
 		    (pseudo-normalize tform)

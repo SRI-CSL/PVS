@@ -708,7 +708,8 @@
 			'actuals (or (actuals rtype)
 				     (actuals (module-instance rtype))))
 		      (copy rtype)))
-	   (dtype (subst-mod-params atype (module-instance type))))
+	   (dtype (subst-mod-params atype (module-instance type)
+				    (module (declaration type)))))
       (setf (declared-type (car selargs))
 	    (if (typep dtype 'datatype-subtype)
 		(declared-type dtype)
@@ -1272,7 +1273,8 @@
 		     srange
 		     (mk-modname (id th)
 		       (mapcar #'(lambda (a) (mk-res-actual (cdr a) th))
-			 bindings)))))))
+			 bindings))
+		     th)))))
 	srange)))
 
 (defmethod application-range-type (arg (optype subtype))

@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec  2 19:01:35 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Nov  5 17:41:07 1998
-;; Update Count    : 35
+;; Last Modified On: Mon May 24 17:48:12 2004
+;; Update Count    : 36
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
@@ -462,7 +462,7 @@
 ;;; (m1[t,c] #m1 m2[s]) and return m2[t].
 
 (defun subst-actuals (inst theory target-inst)
-  (let* ((etheory (subst-mod-params target-inst inst))
+  (let* ((etheory (subst-mod-params target-inst inst theory))
 	 (actuals (subst-actuals* inst
 				  (formals-sans-usings theory)
 				  (actuals etheory)
@@ -729,9 +729,14 @@
 	    (if (formal-theory-decl? (car formals))
 		(let* ((mdecl (declaration (resolution (expr (car actuals)))))
 		       (fmappings (mapping (generated-theory (car formals))))
-		       (amappings (if (theory-abbreviation-decl? mdecl)
-				      (mapping mdecl)
-				      (mapping (generated-theory mdecl))))
+		       (amappings (typecase mdecl
+				    (theory-abbreviation-decl (mapping mdecl))
+				    (mod-decl
+				     (mapping (generated-theory mdecl)))
+				    (t (make-subst-mod-params-map-bindings
+					(expr (car actuals))
+					(mappings (expr (car actuals)))
+					nil))))
 		       (nalist (compose-formal-to-actual-mapping
 				fmappings amappings)))
 		  (assert (= (length fmappings) (length amappings)))
@@ -815,11 +820,8 @@
 			      (resolve* (lhs mapping) 'expr nil)))))
 		   (thres (unless (and (kind mapping)
 				       (not (eq (kind mapping) 'theory)))
-			    (delete-if-not
-				#'(lambda (r)
-				    (memq (declaration r) lhs-theory-decls))
-			      (with-no-type-errors
-			       (resolve* (lhs mapping) 'module nil))))))
+			    (with-no-type-errors
+			     (resolve* (lhs mapping) 'module nil)))))
 	      (unless (or eres tres thres)
 		(type-error (lhs mapping)
 		  "Map lhs does not resolve to an uninterpreted type or constant"))
@@ -1163,7 +1165,7 @@
   (let ((theory (get-typechecked-theory inst)))
     (when (exporting theory)
       (dolist (etheory (modules (exporting theory)))
-	(let ((itheory (subst-mod-params etheory inst)))
+	(let ((itheory (subst-mod-params etheory inst theory)))
 	  (collect-exporting-with-theories itheory))))))
 
 (defun check-exported-internal-completeness (expnames expdecls)

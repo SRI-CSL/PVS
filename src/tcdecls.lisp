@@ -52,9 +52,8 @@
 	      (generated decl))
 	(unwind-protect
 	    (progn
-	      (assert (typep (theory *current-context*)
-			     '(or module recursive-type)))
-	      (setf (module decl) (theory *current-context*))
+	      (assert (typep (current-theory) '(or module recursive-type)))
+	      (setf (module decl) (current-theory))
 	      (assert (module decl))
 	      (tcdebug "~%    Typechecking ~a" decl)
 	      (let ((stime (get-run-time)))
@@ -365,7 +364,7 @@
 	  (if (every #'mapping-subst? (mappings theory-name))
 	      *all-subst-mod-params-caches*
 	      nil))
-	 (stheory (subst-mod-params theory theory-name))
+	 (stheory (subst-mod-params theory theory-name theory))
 	 (itheory (add-referring-theory-importings theory-name stheory))
 	 (ntheory (pc-parse (unparse (copy itheory 'id (id decl)) :string t)
 		    'adt-or-theory))
@@ -727,7 +726,9 @@
 	   (setf (print-type utype) tn)
 	   utype))
 	((enumtype? (type-expr decl))
-	 (change-class tn 'adt-type-name 'adt (type-expr decl))
+	 (change-class tn 'adt-type-name
+	   'adt (type-expr decl)
+	   'single-constructor? (singleton? (constructors (type-expr decl))))
 	 (set-nonempty-type tn)
 	 tn)
 	(t (let ((tval (typecheck* (type-expr decl) nil nil nil)))
@@ -1893,6 +1894,7 @@
 (defmethod typecheck* ((type enumtype) expected kind arguments)
   (declare (ignore expected kind arguments))
   (setf (id type) (id (declaration *current-context*)))
+  (setf (module type) (current-theory))
   (call-next-method))
 
 
@@ -1936,7 +1938,8 @@
 	  (typeslist (make-formals-type-app
 		      (subst-mod-params (formals (declaration (type type)))
 					(module-instance
-					 (resolution (type type)))))))
+					 (resolution (type type)))
+					(module (declaration (type type)))))))
       (set-type-for-application-parameters (parameters type) (car typeslist)))
     (let ((tval (substit te (pairlis (car (formals (declaration (type type))))
 				     (parameters type)))))
