@@ -5,8 +5,8 @@
  file	   : bdd_quant.c
  unit-title: 
  ref.	   :
- author(s) : Copyright (c) 1990-1996 G.L.J.M. Janssen
- date	   : 17-DEC-1996
+ author(s) : Copyright (c) 1990-1998 G.L.J.M. Janssen
+ date	   : 31-MAR-1998
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 */
 
@@ -762,8 +762,8 @@ BDDPTR bdd_consensus (BDDPTR f, int x)
   return bdd_quant_1 (0, f, x);
 }
 
-/* Must be prime number. With 1279, spending ~15kbytes on cache. */
-#define BDD_AND_SMOOTH_CACHE_SIZE	1279
+/* With 2^13 = 8192, spending ~100kbytes on cache. */
+#define BDD_AND_SMOOTH_CACHE_LOG2SIZE	13
 
 typedef struct bdd_and_smooth_cache_entry BDD_AND_SMOOTH_CACHE_ENTRY;
 
@@ -772,10 +772,19 @@ static struct bdd_and_smooth_cache_entry {
   BDDPTR f;
   BDDPTR g;
   BDDPTR R;
-} bdd_and_smooth_cache[BDD_AND_SMOOTH_CACHE_SIZE] = {0};
+} bdd_and_smooth_cache[pow2(BDD_AND_SMOOTH_CACHE_LOG2SIZE)] = {0};
+
+/* Using muliplicative method in hashing. Constant A according Knuth:
+   A = (PHI - 1) * 2^32, with PHI = golden ratio = (1 + sqrt(5))/2
+   PHI-1 = 0.61803 39887 49894 84820 ...
+   A = 26544357690 = -1640531527 = 0x9E3779B9U
+*/
+
+/* Hashes Nat `k' to a value in the range [0..2^log2size-1]. */
+#define BDD_HASH(k,log2size)	div_pow2(0x9E3779B9U*(k), NAT_BIT-(log2size))
 
 #define hash_and_smooth(a, b) \
-  (((((int) a) ^ ((int) b << 15)) & INT_MAX) % BDD_AND_SMOOTH_CACHE_SIZE)
+    BDD_HASH((((Nat) (a)) ^ ((Nat) (b) << 15)), BDD_AND_SMOOTH_CACHE_LOG2SIZE)
 
 static BDDPTR bdd_lookup_and_smooth_cache (BDDPTR f, BDDPTR g)
 {
@@ -794,7 +803,7 @@ static BDDPTR bdd_lookup_and_smooth_cache (BDDPTR f, BDDPTR g)
   if (   (R = entry->R)
       && BDD_EQUAL_P (f, entry->f)
       && BDD_EQUAL_P (g, entry->g))
-    return R;
+    return bdd_assign (R);
   return BDD_VOID;
 }
 
@@ -802,7 +811,7 @@ static BDDPTR bdd_insert_and_smooth_cache (BDDPTR f, BDDPTR g, BDDPTR R)
 {
   BDD_AND_SMOOTH_CACHE_ENTRY *entry;
 
-  /* Make canonical: and operation is commutative. */
+  /* Make canonical: `and' operation is commutative. */
   if (f > g) {
     BDDPTR t = f;
     f = g;
@@ -838,7 +847,7 @@ static BDDPTR bdd_insert_and_smooth_cache (BDDPTR f, BDDPTR g, BDDPTR R)
 
 static void bdd_cleanup_and_smooth_cache (void)
 {
-  register int size = BDD_AND_SMOOTH_CACHE_SIZE;
+  register int size = pow2(BDD_AND_SMOOTH_CACHE_LOG2SIZE);
   register BDD_AND_SMOOTH_CACHE_ENTRY *entry = bdd_and_smooth_cache;
 
   while (size--) {
@@ -895,7 +904,7 @@ static BDDPTR bdd_and_smooth_aux (BDDPTR f, BDDPTR g, BDD_ELEM vars)
   }
 
   if (!BDD_VOID_P (R = bdd_lookup_and_smooth_cache (f, g)))
-    return bdd_assign (R);
+    return R;
 
   { /* Here: topF,topG <= rank < BDD_TERMID */
     BDDPTR v, T, E;
@@ -1008,7 +1017,7 @@ static BDDPTR bdd_and_smooth_c_aux (BDDPTR f, BDDPTR g, BDDPTR vars_cube)
   /* Here: min(topF,topG) <= rank < BDD_TERMID */
 
   if (!BDD_VOID_P (R = bdd_lookup_and_smooth_cache (f, g)))
-    return bdd_assign (R);
+    return R;
 
   {
     BDDPTR v, T, E;
@@ -1052,7 +1061,7 @@ BDDPTR bdd_and_smooth_c (BDDPTR f, BDDPTR g, BDDPTR vars_cube)
     return BDD_VOID;
 
   if (BDD_1_P (vars_cube))
-    /* Empty list: interpret as no quantification. */
+    /* The BDD_1 cube: interpret as no quantification. */
     return bdd_and (f, g);
 
   if (BDD_TERM_P (vars_cube))
@@ -1061,6 +1070,14 @@ BDDPTR bdd_and_smooth_c (BDDPTR f, BDDPTR g, BDDPTR vars_cube)
 
   save_bdd_do_dynamic_ordering = bdd_do_dynamic_ordering;
   bdd_do_dynamic_ordering = 0;
+
+#if 0
+  if (   ehv_bdd_last_smooth_set
+      && !BDD_EQUAL_P (ehv_bdd_last_smooth_set, vars_cube)) {
+    ehv_bdd_cleanup_and_smooth_cache ();
+    ehv_bdd_last_smooth_set = ehv_bdd_assign (vars_cube);
+  }
+#endif
 
   R = bdd_and_smooth_c_aux (f, g, vars_cube);
 

@@ -5,8 +5,8 @@
  file	   : main.c
  unit-title: 
  ref.	   : 
- author(s) : Copyright (c) 1991-1996 G.L.J.M. Janssen
- date	   : 12-JUN-1996
+ author(s) : Copyright (c) 1991-1998 G.L.J.M. Janssen
+ date	   : 16-APR-1998
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 */
 
@@ -15,7 +15,7 @@
 #include "alloc.h"
 #include "hash.h"
 #include "bdd_fns.h"
-#include "vfns.h"
+#include "bdd_vfns.h"
 #include "appl.h"
 #include "plot.h"
 

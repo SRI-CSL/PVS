@@ -6,8 +6,8 @@
 
 # specify appropriate C compiler flags here:
 # include -DDO_CHECKS to incorporate range checks in bitvector routines
-#CFLAGS= -Aa -D_POSIX_SOURCE
-CFLAGS= -D_POSIX_SOURCE
+CFLAGS= -Aa -D_POSIX_SOURCE
+#CFLAGS= -D_POSIX_SOURCE
 XCFLAGS= -O
 
 obj=	double.o list.o hash.o alloc.o

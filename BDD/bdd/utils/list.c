@@ -181,24 +181,15 @@ LIST push_cont(void *p, LIST list)
 {
   register LIST_ELEM_PTR new_elem;
 
-  printf("PUSH-CONT: 1"); fflush(stdout);
-  
   if (!list) list = make_list();
-  printf("PUSH-CONT: 2"); fflush(stdout);
 
   new_elem = CALLOC_LIST_ELEM();
-   printf("PUSH-CONT: 3"); fflush(stdout);
- ELEM_CONTENTS(new_elem) = p;
-  printf("PUSH-CONT: 4"); fflush(stdout);
+  ELEM_CONTENTS(new_elem) = p;
 
   LIST_NEXT(new_elem) = LIST_FIRST(list);
-  printf("PUSH-CONT: 5"); fflush(stdout);
   if (!LIST_FIRST(list)) LIST_LAST(list) = new_elem;
-  printf("PUSH-CONT: 6"); fflush(stdout);
   LIST_FIRST(list) = new_elem;
-  printf("PUSH-CONT: 7"); fflush(stdout);
   list->size++;
-  printf("PUSH-CONT: 8"); fflush(stdout);
 
   return list;
 }

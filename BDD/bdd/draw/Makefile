@@ -13,7 +13,7 @@ ARS = ${SRC}/libbdd2.a $(UTILS)/libutils.a
 CFLAGS= -O -Aa -D_POSIX_SOURCE $(INCLUDES)
 LDFLAGS=-s
 
-objbdd= ${SRC}/vfns.o ${SRC}/bdd_factor.o ${SRC}/bdd_fns.o ${SRC}/bdd_quant.o \
+objbdd= ${SRC}/bdd_vfns.o ${SRC}/bdd_factor.o ${SRC}/bdd_fns.o ${SRC}/bdd_quant.o \
         ${SRC}/bdd.o
 objX=	main.o plot.o draw_X.o
 objA=	main.o plot.o draw_ascii.o

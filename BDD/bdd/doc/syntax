@@ -4,80 +4,99 @@
  system    : Apollo DN3000
  file      : syntax (LL(1) grammar)
  unit-title: PL GRAMMAR
- ref.      : 
+ ref.      : Using Super-Backus Naur Form (my own format)
  author(s) : G.L.J.M. Janssen
- date      : 29-JAN-1995
+ date      : 23-JAN-1998
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 */
 /*$C+*/
 
+/* Input is 1 or more Rule_or_Definitions separated by a . or ; */
 PL_input : { Rule_or_Definition ( '.' | ';' ) }+ .
 
+/* At top-level we have Rules, Definitions, Vectors, and Write statements. */
 Rule_or_Definition : Rule | Vector | Definition | Write_Statement .
 
+/* A vector is comma separated list of Exprs enclosed in square brackets. */
 Vector : '[' { Expr / ',' }+ ']' .
 
+/* A Definition is in fact a special kind of Expr. */
 Definition : Definition_Expr .
 
+/* Associates the IDENTIFIER with the Expr as side-effect. */
 Definition_Expr : 'LET' IDENTIFIER '=' ( Expr | Definition_Expr ) .
 
+/* Writes STRING to standard output. */
 Write_Statement : 'WRITE' '(' STRING ')' .
 
+/* Semantics is Body implies Head. */
 Rule : Head [ ':-' Body ] .
 
+/* Head is colon separated list of Exprs. Meaning is OR-ing them. */
 Head : { Expr / ':' } .
 
+/* Body is comma separated list of Exprs. Meaning is AND-ing them. */
 Body : { ( Expr | Definition_Expr ) / ',' } .
 
 Expr : Identity .
 
+/* = tests equality of PL_formulas. */
 Identity : PL_formula [ '=' PL_formula ] .
 
 PL_formula : PL_formula_1 .
 
-/* Conditional expression: */
+/* Conditional expression a la C. */
 PL_formula : PL_formula_1 '?' PL_formula ':' PL_formula .
 
-/* Substitution: */
+/* Substitution: in PL_formula replaces Var by Body. */
 PL_formula : PL_formula_1 '[' Body '/' Var ']' .
 
-/* Substitution; alternative notation: */
+/* Substitution; alternative notation. */
 PL_formula : PL_formula_1 '[' Var ':=' Body ']' .
 
-/* Universal quantification (consensus): */
+/* Universal quantification (a.k.a. consensus). */
 PL_formula : 'A' Body '.' PL_formula .
 
-/* Existential quantification (smooth): */
+/* Existential quantification (a.k.a. smooth). */
 PL_formula : 'E' Body '.' PL_formula .
 
-/* And-Smooth: */
+/* And-Smooth: (Existential quantification and AND-ing combined) */
 PL_formula : 'E' Body '.'
                '(' cofactor AND cofactor ')' .
 
-/* Boolean difference (exor of cofactors): */
+/* Boolean difference a la Brayton (i.e., exor of cofactors). */
 PL_formula : 'D' Body '.' PL_formula .
 
+/* list of formulas separated by '->', '==' or '*' operators. */
 PL_formula_1 : { formula / implies_equiv_xor }+ .
 
 implies_equiv_xor : IMPLIES | EQUIV | XOR .
 
+/* formula is list of terms separated by '+' operators. */
 formula : { term / OR }+ .
 
+/* term is list of cofactors optionally separated by '&' operators. */
 term : { cofactor / opt_and }+ .
 
 opt_and : [ AND ] .
 
+/* cofactor is a list of factors separated by the cofactoring operator '|'. */
 cofactor : { factor / '|' }+ .
 
+/* factor is an optionally negated primary (postfix') or negated factor (!). */
 factor : primary [ '''' ]
        | NOT factor
        .
 
+/* primary is atomic_formula or Body in parentheses or function call. */
 primary : atomic_formula
         | '(' Body ')'
         | predefined_function_call
         .
 
+/* Here are all the predefined function calls:
+   (For now, all names are reserved words)
+*/
 predefined_function_call :
                'GC'                     /* explicit garbage collection */
         |     'TOP' '(' Expr ')'        /* top variable */
@@ -102,12 +121,23 @@ predefined_function_call :
         |     'E!' '(' { Expr / ',' }+ ')'
         .
 
+/* A Cube is an Expr resulting from the AND-ing Vars or their negation. */
 /*Cube : Expr .*/
 
-atomic_formula : FALSE
+/* atomic_formula are the constants and variables.
+   VOID denotes the BDD_VOID. It's included for sake of completeness.
+*/
+atomic_formula : VOID
+	       | FALSE
                | TRUE
                | 'X'
                | Var
                .
 
+/* A variable is denoted by an IDENTIFIER.
+   IDENTIFIER is any string of letters and digits, but must start with
+   a letter and may have constant subscripts in order to deal with generated
+   names, e.g. from a high-level circuit description language.
+   Examples of the latter are: In[3], Out[5], Bus[0][13].
+*/
 Var : IDENTIFIER .

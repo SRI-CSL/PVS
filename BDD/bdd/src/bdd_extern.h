@@ -69,7 +69,7 @@ extern int BDD_COMPUTED_TABLE_SIZE; /* DEFAULT_BDD_COMPUTED_TABLE_SIZE */
 extern int BDD_HASHTAB_SIZE;	    /* DEFAULT_BDD_HASHTAB_SIZE */
 extern int BDD_NR_RANKS;	    /* DEFAULT_BDD_NR_RANKS */
 
-extern int BDD_LOAD_FACTOR;	    /* default DEFAULT_BDD_LOAD_FACTOR */
+extern int BDD_LOAD_FACTOR;	    /* DEFAULT_BDD_LOAD_FACTOR */
 
 /* Considered to be user read-only: */
 extern int bdd_nr_vars;

@@ -9,13 +9,13 @@
              Richard Rudell, IWLS '93 Workshop Notes
  author(s) : Copyright (c) 1990-1998 G.L.J.M. Janssen
  credits   : Thanks to Koen van Eijk and Arjen Mets.
- date	   : 13-JAN-1998
+ date	   : 15-APR-1998
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 */
 
 #ifdef __MWERKS__
 
-// this is not a C++ file, but CodeWarrior won't recognize this...
+/* this is not a C++ file, but CodeWarrior won't recognize this... */
 
 #pragma cplusplus off
 #endif
@@ -235,8 +235,8 @@ struct block {
 };
 
 struct hash_table {
-  unsigned id : BDD_NR_ID_BITS; /* varid associated with this table */
-  unsigned log2size : 32-BDD_NR_ID_BITS; /* 2log of table size */
+  Nat id : BDD_NR_ID_BITS;	/* varid associated with this table */
+  Nat log2size : 32-BDD_NR_ID_BITS; /* 2log of table size */
   int nr_items;			/* # BDD nodes in table */
   BDDPTR entries[1];		/* the chains */
 };
@@ -255,7 +255,7 @@ struct computed_table_entry {
 typedef struct computed_table *COMPUTED_TABLE_PTR;
 
 struct computed_table {
-  unsigned log2size;
+  Nat log2size;
   /* Statistics for computed table: */
   int nr_hits;
   int nr_lookups;
@@ -317,7 +317,7 @@ static int nr_nodes_per_block;
 static BLKPTR block_free_list = NULL;
 
 /* Initial aux field value: */
-static const aux_field NULL_AUX_FIELD = {0};
+static const bdd_aux_field NULL_AUX_FIELD = {0};
 
 UNIQUE_TABLE unique_table = {0};
 
@@ -593,7 +593,7 @@ int bdd_check_valid (BDDPTR f, char *text)
   if (reason = bdd_valid_p (f)) {
     fprintf (stderr,
 	     "[bdd_check_valid]: 0x%x, %s%s%s.\n",
-	     (unsigned int) f, mess[reason],
+	     (Nat) f, mess[reason],
 	     text ? ", " : "", text);
     exit (1);
   }
@@ -994,7 +994,7 @@ static Nat ceil_log2(Nat n)
    A = 26544357690 = -1640531527 = 0x9E3779B9U
 */
 
-/* Hashes unsigned int `k' to a value in the range [0..2^log2size-1]. */
+/* Hashes Nat `k' to a value in the range [0..2^log2size-1]. */
 #define BDD_HASH(k,log2size)	div_pow2(0x9E3779B9U*(k), NAT_BIT-(log2size))
 
 #define hash_U(T, E, log2size) \
@@ -1114,7 +1114,10 @@ static V_HASHTAB bdd_resize_hash_table (V_HASHTAB hash_table, int extend)
 
     log2size++;
 
-    check_mem_limit (BDD_VUT_SIZEOF (o_log2size));
+    /* Two hash tables temporarily coexist; so let's be honest
+       and check for the size of the new (bigger) one:
+    */
+    check_mem_limit (BDD_VUT_SIZEOF (log2size));
   }
   else {
 #ifdef COMMENT
@@ -1486,6 +1489,8 @@ static int bdd_gc_aux (void)
 
   bdd_nr_gc++;
 
+  if (bdd_gc_hook) bdd_gc_hook ();
+
 /*
   if (bdd_verbose)
     fprintf (stderr, "[bdd_gc]: Cleaning SOP cache...");
@@ -1529,8 +1534,6 @@ static int bdd_gc_aux (void)
     } /*if*/
   } /*for i*/
   unique_table.nr_items -= total_nr_nodes_freed;
-
-  if (bdd_gc_hook) bdd_gc_hook ();
 
   return total_nr_nodes_freed;
 }
@@ -1627,8 +1630,7 @@ static int bdd_node_present (int v, BDDPTR T, BDDPTR E)
 }
 #endif
 
-/* There are 4 possible configurations in case of
-   negated edges:
+/* There are 4 possible configurations in case of negated edges:
 
    f1 =  v.T + v'.E,
    f2 = (v.T + v'.E)',
@@ -1637,8 +1639,7 @@ static int bdd_node_present (int v, BDDPTR T, BDDPTR E)
 
    For sake of canonicity, in all 4 we see that the THEN edge `T'
    always appears positive.
-   Of these, only cases 1 and 2 are allowed to also have
-   inverted inputs:
+   Of these, only cases 1 and 2 are allowed to also have inverted inputs:
 
    f1 =  v.T + v'.E   =  (v').E + (v')'.T,
    f2 = (v.T + v'.E)' = ((v').E + (v')'.T)'.
@@ -1650,11 +1651,10 @@ static int bdd_node_present (int v, BDDPTR T, BDDPTR E)
    variable will have the inverted-input bit cleared.
    Constants cannot have the inverted-input bit on!
 
-   The following table lists all possible
-   negated-output (O)/invert-input (I) combinations that are possible
-   for a non-constant BDD pointer and gives the invariants for its
-   node's then- and else-field pointers: + means that the pointer
-   value must be positive, i.e. the negated-output bit is off.
+   The following table lists all possible negated-output (O)/invert-input (I)
+   combinations that are possible for a non-constant BDD pointer and gives
+   the invariants for its node's then- and else-field pointers: + means that
+   the pointer value must be positive, i.e. the negated-output bit is off.
 
    I | O || T ~ E
    --+---++------
@@ -1989,7 +1989,7 @@ static int bdd_var_id_to_group (int id)
   if (rank < 0) return -1;
 
   for (g = 0; g < NR_GROUPS; g++)
-    if ((unsigned int) rank <= GROUP_LAST_RANK(g))
+    if ((Nat) rank <= GROUP_LAST_RANK(g))
       return g;
   return -1;
 }
@@ -2724,8 +2724,6 @@ BDDPTR bdd_ite (BDDPTR F, BDDPTR G, BDDPTR H)
   int reason;
   float increase;
 
-  printf("IN BDD ITE\n"); fflush(stdout);
-
   /* Accept BDD_VOID arguments: result will always be BDD_VOID too: */
   if (BDD_VOID_P (F) || BDD_VOID_P (G) || BDD_VOID_P (H))
     return BDD_VOID;
@@ -3101,10 +3099,10 @@ static void bdd_print_node_aux (BDDPTR v)
   fprintf (global_fp, "(M:%s), ", BDD_MARK (v) ? "1" : "0");
 
   fprintf (global_fp, "&v: 0x%08x, Refs: %3d, Then: 0x%08x, Else: 0x%08x\n",
-	   (unsigned int) v,
+	   (Nat) v,
 	   BDD_REFCOUNT (v),
-	   (unsigned int) BDD_THEN (v),
-	   (unsigned int) BDD_ELSE (v));
+	   (Nat) BDD_THEN (v),
+	   (Nat) BDD_ELSE (v));
 }
 
 void bdd_print_node (FILE *fp, BDDPTR v)
@@ -3403,7 +3401,6 @@ BDDPTR bdd_not (BDDPTR F)
 
 BDDPTR bdd_and (BDDPTR F, BDDPTR G)
 {
-  printf("IN BDD AND\n"); fflush(stdout);
   return bdd_ite (F, G, BDD_0);
 }
 
@@ -3506,9 +3503,7 @@ BDDPTR bdd_X (void)
 
 BDDPTR bdd_assign (BDDPTR f)
 {
-  printf ("IN BDD ASSIGN\n");fflush(stdout);
   BDD_INCR_REF (f);
-  printf ("LEAVING BDD ASSIGN\n");fflush(stdout);
   return f;
 }
 
@@ -3607,7 +3602,7 @@ int bdd_depth (BDDPTR f)
 #undef BDD_DEPTH
 
 
-/* New bdd_constrain (used to be in vfns.c).
+/* New bdd_constrain (used to be in bdd_vfns.c).
    (Mis)uses computed table cache which is much bigger than original
    constrain cache.
    Also, allows dynamic variable ordering during recursive calls.
@@ -5472,7 +5467,7 @@ void bdd_set_var_group_reorderable (int varid)
   int g = bdd_var_id_to_group (varid);
 
   if (g >= 0)
-    GROUP_ORDERABLE(g) = (GROUP_NR_RANKS(g) > (unsigned int) 1);
+    GROUP_ORDERABLE(g) = (GROUP_NR_RANKS(g) > (Nat) 1);
 }
 
 /* Resets the dynamic reordering flag for the subset of variables of which

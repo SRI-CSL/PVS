@@ -109,7 +109,7 @@
 #define BDD_AUX2_PTR(F)		(PTR (F)->aux.aux.aux2.ptr)
 #define BDD_AUX2_FLT(F)		(PTR (F)->aux.aux.aux2.flt)
 /* Returns pointer to start of user_data field in bdd node. */
-#define BDD_USER_DATA_PTR(F)	(((char *) PTR (F)) + sizeof (BDD))
+#define BDD_USER_DATA_PTR(F)	(((char *) PTR (F)) + sizeof (struct bdd))
 /* Flagging BDD nodes for pointer-reversal technique: */
 #define BDD_FLAG(F)		(PTR (F)->flag)
 #define BDD_FLAGGED(F,G)	(PTR (F)->flag == PTR (G)->flag)
@@ -340,12 +340,12 @@ typedef union {
   char *str;
   void *ptr;
   float flt;
-} aux_field;
+} bdd_aux_field;
 
 typedef union {
   struct {
-    aux_field aux1;
-    aux_field aux2;
+    bdd_aux_field aux1;
+    bdd_aux_field aux2;
   } aux;
 #ifdef BDD_LIGHT
   double d;
@@ -353,7 +353,7 @@ typedef union {
   Double d;
 #endif
   double dbl;
-} aux_union;
+} bdd_aux_union;
 
 struct bdd {
   unsigned varid:BDD_NR_ID_BITS;/* id of variable, Xi, counted from 0 */
@@ -363,7 +363,7 @@ struct bdd {
   BDDPTR then_link;		/* child for variable = 1 */
   BDDPTR else_link;		/* child for variable = 0 */
   BDDPTR next;			/* chaining in unique table */
-  aux_union aux;		/* general purpose, initialized to 0! */
+  bdd_aux_union aux;		/* general purpose, initialized to 0! */
 /* Accessory user specified fields may be allocated here.
    Size of this in bytes is kept in bdd_sizeof_user_data.
 */

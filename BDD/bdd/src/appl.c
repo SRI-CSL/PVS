@@ -20,6 +20,10 @@
 extern int debug;		/* see main.c */
 extern int warnings;		/* see main.c */
 
+#define FALSE		0
+#define TRUE		1
+#define DONTCARE	2
+
 HASHTAB *var_table;		/* primary variable names */
 HASHTAB *aux_table;		/* secondary (function) names */
 
@@ -284,7 +288,7 @@ void bdd_print_as_sum_of_cubes (FILE *fp, BDDPTR f, int irredundant)
   else {
     BDD_LIST list;
 
-    list = irredundant ? foobarsucks(f) /* bdd_irredundant_sum_of_cubes_as_list (f)*/
+    list = irredundant ? bdd_irredundant_sum_of_cubes_as_list (f)
 	               :             bdd_sum_of_cubes_as_list (f);
     /* Could return empty list because of don't cares in f. */
     if (list) {
@@ -334,7 +338,7 @@ void bdd_print_vec_as_sum_of_cubes (
       fprintf (fp, "%s",
 	       bdd_has_dontcare (f) ? "/* Note: X interpreted as 0 */" : "");
       if (irredundant)
-	list = foobarsucks(f) ; /* bdd_irredundant_sum_of_cubes_as_list (f); */
+	list = bdd_irredundant_sum_of_cubes_as_list (f);
       else
 	list =             bdd_sum_of_cubes_as_list (f);
 

@@ -26,10 +26,6 @@
 /* DEFINES                                                                  */
 /* ------------------------------------------------------------------------ */
 
-#define FALSE		0
-#define TRUE		1
-#define DONTCARE	2
-
 #define FOR_EACH_CUBE(list, c) \
   { \
     BDD_LIST _xyz_list = list; \
@@ -117,5 +113,6 @@ extern     void bdd_cleanup_sop_cache          (void);
 extern      int bdd_subfunction_p              (BDDPTR g, BDDPTR f);
 */
 extern   BDDPTR bdd_cube_factor                (BDDPTR f);
+extern	 BDDPTR bdd_swap_odd_even_vars	       (BDDPTR f);
 
 #endif /* BDD_FNS_H */

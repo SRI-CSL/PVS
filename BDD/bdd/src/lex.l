@@ -6,8 +6,8 @@
  file      : lex.l
  unit-title: Lexical Rules
  ref.      : 
- author(s) : Copyright (c) 1990-1997 G.L.J.M. Janssen
- date      :  2-MAY-1997
+ author(s) : Copyright (c) 1990-1998 G.L.J.M. Janssen
+ date      : 27-MAR-1998
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 */
 
@@ -107,6 +107,7 @@ X					return DONTCARE_SYM;
 [xX][oO][rR]				return XOR_SYM;
 [eE][vV][aA][lL]			return EVAL_SYM;
 [fF][rR][eE][eE]			return FREE_SYM;
+[vV][oO][iI][dD]			return VOID_SYM;
 [mM][iI][nN]_[X]			return MINIMIZE_X_SYM;
 [fF][rR][eE][eE][zZ][eE]		return FREEZE_SYM;
 [hH][aA][sS]_X"?"			return HAS_X_SYM;
@@ -134,6 +135,7 @@ X					return DONTCARE_SYM;
 [pP][aA][tT][hH]			return PATH_SYM;
 [mM][tT][eE][rR][mM][sS]		return MTERMS_SYM;
 [cC][oO][rR][eE]			return CORE_SYM;
+[sS][wW][aA][pP]			return SWAP_SYM;
 [pP][rR][iI][mM][eE]			return PRIME_SYM;
 reorder					return REORDER_SYM;
 
@@ -247,7 +249,7 @@ reorder					return REORDER_SYM;
 /* unimportant white space or new_line */	}
 
 .						{
-	lexerr (ill_char_mess (yytchar));	}
+	lexerr (ill_char_mess (yytext[0]));	}
 
 %%
 

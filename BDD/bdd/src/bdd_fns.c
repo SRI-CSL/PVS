@@ -5,8 +5,8 @@
  file	   : bdd_fns.c
  unit-title: 
  ref.	   : Efficient Implementation of a BDD Package, Karl S. Brace. DAC'90
- author(s) : Copyright (c) 1990-1996 G.L.J.M. Janssen
- date	   : 17-DEC-1996
+ author(s) : Copyright (c) 1990-1998 G.L.J.M. Janssen
+ date	   : 27-MAR-1998
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 */
 
@@ -179,22 +179,22 @@ static int sat_aux (BDDPTR f, BYTE *pi, int negate_result)
 {
   BDDPTR temp;
 
-  if (BDD_0_P (f) || BDD_X_P (f)) return FALSE;
+  if (BDD_0_P (f) || BDD_X_P (f)) return 0;
 
-  if (BDD_TERM_P (f)) return negate_result ? FALSE : TRUE;
+  if (BDD_TERM_P (f)) return !negate_result;
 
   /* Assign FALSE: */
-  pi[BDD_VARID (f)] = BDD_I_INV_EDGE_P (f) ? TRUE : FALSE;
+  pi[BDD_VARID (f)] = !!BDD_I_INV_EDGE_P (f);
 
   temp = BDD_ELSE (f);
   if (BDD_NEG_P (temp)) {
-    if (sat_aux (BDD_O_OFF (temp), pi, !negate_result)) return TRUE;
+    if (sat_aux (BDD_O_OFF (temp), pi, !negate_result)) return 1;
   }
   else
-    if (sat_aux (temp, pi, negate_result)) return TRUE;
+    if (sat_aux (temp, pi, negate_result)) return 1;
 
   /* Not successful, try assigning TRUE: */
-  pi[BDD_VARID (f)] = BDD_I_INV_EDGE_P (f) ? FALSE : TRUE;
+  pi[BDD_VARID (f)] = !BDD_I_INV_EDGE_P (f);
 
   temp = BDD_THEN (f);
   if (BDD_NEG_P (temp))
@@ -341,6 +341,7 @@ Double bdd_count_sat_assignments (BDDPTR f, BDDPTR domain)
 {
   Double count;
   unsigned long d;
+  BDDPTR R;
 
   if (   BDD_VOID_P (f)      || BDD_0_P (f)      || BDD_X_P (f)
       || BDD_VOID_P (domain) || BDD_1_P (domain))
@@ -356,32 +357,29 @@ Double bdd_count_sat_assignments (BDDPTR f, BDDPTR domain)
     return D_2up (global_N);
 
   /* Make sure X's are interpreted correctly: */
-  {
-    BDDPTR R = bdd_on_set (f);
-
-    bdd_free (f);
-    f = R;
-  }
+  R = bdd_on_set (f);
 
   VarDomain = domain;
 
-  /* Here: !BDD_VOID_P (f) && !BDD_TERM_P (f) */
+  /* Here: !BDD_VOID_P (R) && !BDD_TERM_P (R) */
   /* Watch out! Cannot use regular bdd_traverse_post because that
      might affect VarDomain BDD.
   */
-  bdd_traverse_post_rec (f, bdd_count_sat_aux);
+  bdd_traverse_post_rec (R, bdd_count_sat_aux);
 
-  count = BDD_AUX_D (f);
+  count = BDD_AUX_D (R);
 
   /* Reinit all the Double aux fields: */
-  bdd_traverse_pre (f, bdd_reinit_aux1_and_aux2_action);
+  bdd_traverse_pre (R, bdd_reinit_aux1_and_aux2_action);
 
-  d = position (f);
+  d = position (R);
 
-  if (BDD_NEG_P (f))
+  if (BDD_NEG_P (R))
     count = D_sub (D_2up (global_N - d), count);
 
-  return D_times2up (count, d);
+  count = D_times2up (count, d);
+  bdd_free (R);
+  return count;
 }
 #endif
 
@@ -392,6 +390,7 @@ Double bdd_count_sat_assignments (BDDPTR f, BDDPTR domain)
 Double bdd_count_sat_assignments (BDDPTR f)
 {
   Double count;
+  BDDPTR R;
 
   if (BDD_VOID_P (f) || BDD_0_P (f) || BDD_X_P (f))
     return Double_0;
@@ -403,23 +402,20 @@ Double bdd_count_sat_assignments (BDDPTR f)
     return D_2up (global_N);
 
   /* Make sure X's are interpreted correctly: */
-  {
-    BDDPTR R = bdd_on_set (f);
+  R = bdd_on_set (f);
 
-    bdd_free (f);
-    f = R;
-  }
+  /* Here: !BDD_VOID_P (R) && !BDD_TERM_P (R) */
+  bdd_traverse_post (R, bdd_count_sat_aux);
 
-  /* Here: !BDD_VOID_P (f) && !BDD_TERM_P (f) */
-  bdd_traverse_post (f, bdd_count_sat_aux);
+  count = BDD_AUX_D (R);
 
-  count = BDD_AUX_D (f);
+  bdd_traverse_pre (R, bdd_reinit_aux1_and_aux2_action);
 
-  bdd_traverse_pre (f, bdd_reinit_aux1_and_aux2_action);
-
-  if (BDD_NEG_P (f))
-    count = D_sub (D_2up (global_N - BDD_RANK (f)), count);
-  return D_times2up (count, BDD_RANK (f));
+  if (BDD_NEG_P (R))
+    count = D_sub (D_2up (global_N - BDD_RANK (R)), count);
+  count = D_times2up (count, BDD_RANK (R));
+  bdd_free (R);
+  return count;
 }
 #endif
 
@@ -515,6 +511,7 @@ See also the Double package in double.[ch].
 Double bdd_count_sat_assignments (BDDPTR f, BDDPTR domain)
 {
   Double count;
+  BDDPTR R;
 
   if (   BDD_VOID_P (f)      || BDD_0_P (f)      || BDD_X_P (f)
       || BDD_VOID_P (domain) || BDD_1_P (domain))
@@ -529,31 +526,28 @@ Double bdd_count_sat_assignments (BDDPTR f, BDDPTR domain)
     /* Result is 2^nr_vars: */
     return D_2up (global_N);
 
-  /* Make sure X's are interpreted correctly: */
-  {
-    BDDPTR R = bdd_on_set (f);
-
-    bdd_free (f);
-    f = R;
-  }
+  /* Make sure X's are interpreted correctly (must NOT free f!): */
+  R = bdd_on_set (f);
 
   VarDomain = domain;
 
-  /* Here: !BDD_VOID_P (f) && !BDD_TERM_P (f) */
+  /* Here: !BDD_VOID_P (R) && !BDD_TERM_P (R) */
   /* Watch out! Cannot use regular bdd_traverse_post because that
      might affect VarDomain BDD.
   */
-  bdd_traverse_post_rec (f, bdd_count_sat_aux);
+  bdd_traverse_post_rec (R, bdd_count_sat_aux);
 
-  count = BDD_NEG_P (f) ? *BDD_NEG_DPTR (f) : *BDD_POS_DPTR (f);
+  count = BDD_NEG_P (R) ? *BDD_NEG_DPTR (R) : *BDD_POS_DPTR (R);
 
   /* Reinit all the Double aux fields: */
   /* For safety clear the aux fields on constants: */
   bdd_reinit_aux1_and_aux2_action (BDD_0);
   bdd_reinit_aux1_and_aux2_action (BDD_1);
-  bdd_traverse_pre (f, bdd_reset_aux1_and_aux2_action);
+  bdd_traverse_pre (R, bdd_reset_aux1_and_aux2_action);
 
-  return D_times2up (count, position (f));
+  count = D_times2up (count, position (R));
+  bdd_free (R);
+  return count;
 }
 
 /* Pre: !BDD_VOID_P (f) */
@@ -2400,14 +2394,10 @@ static BDD_LIST prime_implicants (int var, BDDPTR T, BDD_LIST T_sop,
   BDDPTR top, top_neg;
   BDD_LIST result = BDD_LIST_NULL;
 
-printf("PRIME IMPLICANTS 1\n");fflush(stdout);
-  
   /* Create BDD for var (positive literal): */
   top = bdd_create_var (var);
-printf("PRIME IMPLICANTS 2\n");fflush(stdout);
   /* Create BDD for complement of var (negative literal): */
   top_neg = bdd_not (top);
-printf("PRIME IMPLICANTS 3\n");fflush(stdout);
 
   /* case 1: T -> E = 1, then f = <v,T,E> unate in v, E'.T = 0;
      	f = v.T + v'.E = v.T + v'.(E + E'.T) = v.T + v'.(E + T)
@@ -2436,63 +2426,47 @@ printf("PRIME IMPLICANTS 3\n");fflush(stdout);
     return disjoint_union (T_sop, E_sop);
   }
 #endif
-printf("PRIME IMPLICANTS 4\n");fflush(stdout);
 				/* Case 3 */
   while (T_sop) {
     BDDPTR cube = bdd_list_pop_cont (&T_sop);
-printf("PRIME IMPLICANTS 5,6\n");fflush(stdout);
 
     if (!BDD_COVERS (E, cube)) {
       /* cube is not expandable in `top' direction.
 	 Must create new cube: top AND cube.
       */
       BDDPTR R;
-printf("PRIME IMPLICANTS 7\n");fflush(stdout);
 
       R = bdd_and (top, cube);
-printf("PRIME IMPLICANTS 8\n");fflush(stdout);
       bdd_free (cube);
-printf("PRIME IMPLICANTS 9\n");fflush(stdout);
       cube = R;
     }
-printf("PRIME IMPLICANTS 10\n");fflush(stdout);
     result = bdd_list_append_cont (cube, result);
   } /*while*/
-printf("PRIME IMPLICANTS 11\n");fflush(stdout);
   bdd_free (top);
-printf("PRIME IMPLICANTS 12\n");fflush(stdout);
 
   while (E_sop) {
     BDDPTR cube = bdd_list_pop_cont (&E_sop);
-printf("PRIME IMPLICANTS 13\n");fflush(stdout);
 
     if (!BDD_COVERS (T, cube)) {
       /* cube is not expandable in `top_neg' direction.
 	 Must create new cube: top_neg AND cube.
       */
       BDDPTR R;
-printf("PRIME IMPLICANTS 14\n");fflush(stdout);
 
       R = bdd_and (top_neg, cube);
- printf("PRIME IMPLICANTS 15\n");fflush(stdout);
-     bdd_free (cube);
-printf("PRIME IMPLICANTS 16\n");fflush(stdout);
+      bdd_free (cube);
       /* Cube R for sure not yet in result. */
       result = bdd_list_append_cont (R, result);
-printf("PRIME IMPLICANTS 17\n");fflush(stdout);
     }
     else {
-printf("PRIME IMPLICANTS 18\n");fflush(stdout);
       /* Mind that cube could already be in result. */
       if (bdd_list_present (cube, result, 0 /* means test is == */))
 	bdd_free (cube);
       else
 	result = bdd_list_append_cont (cube, result);
     }
-printf("PRIME IMPLICANTS 19\n");fflush(stdout);
   } /*while*/
   bdd_free (top_neg);
-printf("PRIME IMPLICANTS 20 (END) \n");fflush(stdout);
 
   return result;
 }
@@ -2612,23 +2586,18 @@ void bdd_cleanup_sop_cache (void)
 */
 static BDD_LIST sum_of_cubes_as_list_aux (BDDPTR f)
 {
-  printf("in sum aux fn\n");fflush(stdout);
-  
   if (BDD_0_P (f) || BDD_X_P (f))
     /* Must interpret X's as 0's because cannot handle them in cubes. */
     return BDD_LIST_NULL;
-  printf("in sum aux fn 2\n");fflush(stdout);
 
   if (BDD_TERM_P (f))		/* Found a satisfying path */
     /* Return singleton list containing the 1 cube: */
     return bdd_list_push_cont (bdd_assign (f), BDD_LIST_NULL);
-  printf("in sum aux fn 3\n");fflush(stdout);
 
   /* Extra speed up for literal BDD's: */
   if (BDD_LIT_P (f))
     /* Return singleton list containing f: */
     return bdd_list_push_cont (bdd_assign (f), BDD_LIST_NULL);
-  printf("in sum aux fn 4\n");fflush(stdout);
 
   /* Here f is a non-constant node. */
   {
@@ -2651,26 +2620,19 @@ static BDD_LIST sum_of_cubes_as_list_aux (BDDPTR f)
       BDDPTR T = bdd_assign (BDD_COFACTOR_POS (f));
       BDDPTR E = bdd_assign (BDD_COFACTOR_NEG (f));
       BDD_LIST T_sop, E_sop;
-      
-   printf("in sum aux fn 4.2\n");fflush(stdout);
 
       /* Recurse for subgraphs: */
       T_sop = sum_of_cubes_as_list_aux (T);
-   printf("in sum aux fn 4.3\n");fflush(stdout);
-     E_sop = sum_of_cubes_as_list_aux (E);
-   printf("in sum aux fn 4.4\n");fflush(stdout);
+      E_sop = sum_of_cubes_as_list_aux (E);
 
       /* prime_implicants frees the T_sop and E_sop arguments. */
       result = prime_implicants (v, T, T_sop, E, E_sop);
 
-      /*       bdd_free (T); */
-      /*      bdd_free (E); */
-   printf("in sum aux fn 4.5\n");fflush(stdout);
+      bdd_free (T);
+      bdd_free (E);
 
       insert_sop_cache (f, result);
     }
-    
-  printf("in sum aux fn 5\n");fflush(stdout);
 
     /* Here result is list of distinct prime implicants for f. */
     return result;
@@ -2681,9 +2643,7 @@ BDD_LIST bdd_sum_of_cubes_as_list (BDDPTR f)
 {
   int save_bdd_do_dynamic_ordering;
   BDD_LIST R;
-  printf("In bdd_sum_of_cubes_as_list\n");fflush(stdout);
-  R = BDD_LIST_NULL;
-  
+
   if (BDD_VOID_P (f))
     return BDD_LIST_NULL;
 
@@ -2697,8 +2657,6 @@ BDD_LIST bdd_sum_of_cubes_as_list (BDDPTR f)
 /*  bdd_cleanup_sop_cache ();*/
 
   bdd_do_dynamic_ordering = save_bdd_do_dynamic_ordering;
-  
-  printf("Leaving bdd_sum_of_cubes_as_list\n");fflush(stdout);
 
   return R;
 }
@@ -2735,25 +2693,20 @@ static BDDPTR list_without_cube_as_bdd (BDD_LIST cubes, BDDPTR cube)
   return F;
 }
 
-/* BDD_LIST bdd_irredundant_sum_of_cubes_as_list (BDDPTR f) */
-BDD_LIST foobarsucks (BDDPTR f)
+BDD_LIST bdd_irredundant_sum_of_cubes_as_list (BDDPTR f)
 {
-    int save_bdd_do_dynamic_ordering;
-    BDD_LIST cubes, result;
-    BDDPTR R; 
+  int save_bdd_do_dynamic_ordering;
+  BDD_LIST cubes, result;
+  BDDPTR R;
 
-    printf("BEGINING of bdd_irr \n"); fflush(stdout);
-  
   if (BDD_VOID_P (f))
     return BDD_LIST_NULL;
-  
 
   save_bdd_do_dynamic_ordering = bdd_do_dynamic_ordering;
   bdd_do_dynamic_ordering = 0;
 
   cubes  = bdd_sum_of_cubes_as_list (f);
   result = BDD_LIST_NULL;
-  
 
   /* Here cubes is list of prime implicants for f. */
 
@@ -2771,28 +2724,28 @@ BDD_LIST foobarsucks (BDDPTR f)
     */
     if (BDD_EQUAL_P (R, f)) {
       /* Redundant cube found. Must remove it from the list: */
-      /* bdd_free (cube); */
+      bdd_free (cube);
       /* No real delete; just put a harmless BDD_0 element: */
       BDD_ELEM_SET_CONTENTS (elem, bdd_0 ());
     }
     else
       result = bdd_list_append_cont (bdd_assign (cube), result);
-    /* bdd_free (R); */
+    bdd_free (R);
   } BDD_LIST_END_FOR_EACH_ELEM;
-  /*   bdd_list_free (cubes, (void (*)(void *)) bdd_free); */
+  bdd_list_free (cubes, (void (*)(void *)) bdd_free);
 
-/* #ifdef COMMENT
-  /* Check: *//* 
+#ifdef COMMENT
+  /* Check: */
   R = sum_of_cubes_as_bdd (result);
 
   if (!BDD_EQUAL_P (R, f))
    fprintf (stderr, "SEVERE ERROR: irredundant_sum_of_cubes_as_list fails.\n");
   bdd_free (R);
-#endif  */
-  
+#endif
+
   bdd_do_dynamic_ordering = save_bdd_do_dynamic_ordering;
 
-  return result; 
+  return result;
 }
 
 int bdd_traverse_cube (BDDPTR cube,
@@ -3329,3 +3282,53 @@ BDDPTR bdd_cube_factor (BDDPTR f)
   }
 }
 
+#define swap_vars_interpret_mod_bits(f)	\
+	bdd_invert_input_interpret_mod_bits (f)
+
+static void bdd_swap_vars_aux (BDDPTR f)
+{
+  /* Mark wherever we go: */
+  BDD_TOGGLE_MARK (f);
+
+  if (BDD_TERM_P (f))
+    BDD_AUX1_BDD (f) = PTR (bdd_assign (f));
+  else {
+    int   id = BDD_VARID (f);
+    BDDPTR T = BDD_THEN  (f);
+    BDDPTR E = BDD_ELSE  (f);
+    BDDPTR v;
+
+    if (BDD_NOT_MARKED (T, f)) bdd_swap_vars_aux (T);
+    if (BDD_NOT_MARKED (E, f)) bdd_swap_vars_aux (E);
+    T = swap_vars_interpret_mod_bits (T);
+    E = swap_vars_interpret_mod_bits (E);
+
+    v = bdd_create_var (id + (odd(id) ? -1 : 1));
+
+    BDD_AUX1_BDD (f) = PTR (bdd_ite (v, T, E));
+    bdd_free (v);
+    bdd_free (T);
+    bdd_free (E);
+  }
+}
+
+/* Swaps the odd and even variable ids in f. */
+BDDPTR bdd_swap_odd_even_vars (BDDPTR f)
+{
+  int save_bdd_do_dynamic_ordering;
+  BDDPTR R;
+
+  if (BDD_VOID_P (f) || BDD_TERM_P (f))
+    return bdd_assign (f);
+
+  save_bdd_do_dynamic_ordering = bdd_do_dynamic_ordering;
+  bdd_do_dynamic_ordering = 0;
+  bdd_swap_vars_aux (f);
+  R = swap_vars_interpret_mod_bits (f);
+  bdd_do_dynamic_ordering = save_bdd_do_dynamic_ordering;
+
+  /* Also resets marks: */
+  bdd_traverse_pre (f, bdd_free_aux1_action);
+
+  return R;
+}

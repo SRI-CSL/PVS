@@ -1,3 +1,15 @@
+Thu Apr 16 10:25:56 1998  Geert Janssen  <geert@cobra.ics.ele.tue.nl>
+
+	* bdd_quant.c (bdd_lookup_and_smooth_cache): also using
+	multiplicative hashing for and_smooth cache.
+
+Thu Jan 29 12:42:28 1998  Geert Janssen  <geert@cobra.ics.ele.tue.nl>
+
+	* bdd_fns.c (bdd_count_sat_assignments): Should not bdd_free(f);
+	corrected by using R throughout.
+
+	* Renamed vfns files to bdd_vfns.
+
 Tue Jan 20 18:08:48 1998  Geert Janssen  <geert@cobra.ics.ele.tue.nl>
 
 	* bdd.c (print_unique_table_stats): local var max changed to maxk

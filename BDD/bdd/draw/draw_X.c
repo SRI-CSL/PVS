@@ -98,8 +98,8 @@ static void event_handler (void)
       /* Skip move events here, they are handled as Expose events */
       if (!(   xsh.width  == event.xconfigure.width
 	    && xsh.height == event.xconfigure.height)) {
-        if (   xsh.width  > event.xconfigure.width
-	    && xsh.height > event.xconfigure.height)
+        if (   xsh.width   > event.xconfigure.width
+	    && xsh.height  > event.xconfigure.height)
 	  reduced = 1;
 
 	first_expose = 1;	
@@ -122,12 +122,10 @@ static void event_handler (void)
 
     case KeyPress:
       {
-	XComposeStatus compose;
-	KeySym         keysym;
-	char           buffer[10];
-	int            bufsize = 10;
+	KeySym keysym;
+	char   buffer[10];
 
-	XLookupString (&event.xkey, buffer, bufsize, &keysym, &compose);
+	XLookupString (&event.xkey, buffer, sizeof(buffer), &keysym, NULL);
 	if (keysym == XK_Q || keysym == XK_q)
 	  return;
 	break;

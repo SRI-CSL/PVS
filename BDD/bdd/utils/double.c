@@ -505,11 +505,7 @@ char *D_sprintf (char *buf, Double d, int maximize_exp)
     /* Note: on some UNIX sprintf does not return #chars transferred!
        Then use:  sprintf (p, "%.0f", g); while (*p) p++, etc.
     */
-#ifdef SYSV    
     p += sprintf (p, "%.0f", g);
-#else
-    sprintf (p, "%.0f", g); while (*p) p++;
-#endif
 
     mantissa1 = 0;
   }
@@ -518,18 +514,10 @@ char *D_sprintf (char *buf, Double d, int maximize_exp)
        don't output 1*, just the 2-power.
     */
     if (!(mantissa1 = D_L_MANTISSA (d) == 1) || !D_EXP (d))
-#ifdef SYSV
       p += sprintf (p, "%u", D_L_MANTISSA (d));
-#else
-      sprintf (p, "%u", D_L_MANTISSA (d)); while (*p) p++;
-#endif
 
   if (D_EXP (d))
-#ifdef SYSV
     p += sprintf (p, "%s2^%u", mantissa1 ? "" : "*", D_EXP (d));
-#else
-    sprintf (p, "%s2^%u", mantissa1 ? "" : "*", D_EXP (d)); while (*p) p++;
-#endif
 
 /*
   p += sprintf (p, " Hex: ");
@@ -537,11 +525,7 @@ char *D_sprintf (char *buf, Double d, int maximize_exp)
   p += sprintf (p, "%0X", D_L_MANTISSA (d));
 */
 
-#ifdef SYSV
   p += sprintf (p, "%s", D_INEXACT (d) ? " (approx)" : "");
-#else
-  sprintf (p, "%s", D_INEXACT (d) ? " (approx)" : ""); while (*p) p++;
-#endif
 
   return buf;
 }

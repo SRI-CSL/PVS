@@ -6,14 +6,15 @@
  file      : yacc.y
  unit-title: YACC GRAMMAR RULES FOR BDD INPUT
  ref.      : 
- author(s) : Copyright (c) 1990-1997 G.L.J.M. Janssen
- date      :  2-MAY-1997
+ author(s) : Copyright (c) 1990-1998 G.L.J.M. Janssen
+ date      : 27-MAR-1998
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 */
 %}
 
 /* The Reserved Words: */
 %token LET_SYM
+%token VOID_SYM
 %token TRUE_SYM
 %token FALSE_SYM
 %token DONTCARE_SYM
@@ -71,6 +72,7 @@
 %token CORE_SYM
 %token PRIME_SYM
 %token REORDER_SYM
+%token SWAP_SYM
 
 /* Punctuation: */
 %token ASSIGN
@@ -84,7 +86,7 @@
 #include "alloc.h"
 #include "hash.h"
 #include "bdd_fns.h"
-#include "vfns.h"
+#include "bdd_vfns.h"
 #include "appl.h"
 
 extern char yytext[];
@@ -694,6 +696,12 @@ primary : CORE_SYM '(' Expr ')'
   bdd_free ($3);
 }
 ;
+primary : SWAP_SYM '(' Expr ')'
+{
+  $$ = bdd_swap_odd_even_vars ($3);
+  bdd_free ($3);
+}
+;
 
 variable : IDENTIFIER
 {
@@ -714,6 +722,11 @@ arg_list : arg_list ',' Expr
 }
 ;
 
+atomic_formula : VOID_SYM
+{
+  $$ = BDD_VOID;
+}
+;
 atomic_formula : FALSE_SYM
 {
   $$ = bdd_0 ();

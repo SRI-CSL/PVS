@@ -1,6 +1,6 @@
 # Makefile for Reduced Ordered Boolean Decision Diagram Manipulation
 # includes: lexical analyser + parser
-# Copyright (c) 1992-1995 G. Janssen
+# Copyright (c) 1992-1998 G. Janssen
 
 UTILS=../utils
 
@@ -9,16 +9,16 @@ INCLUDES   = -I. -I$(UTILS)
 ARS = $(UTILS)/libutils.a
 
 # specify appropriate C compiler flags here:
-#CFLAGS=  -Aa -D_POSIX_SOURCE $(INCLUDES)
-CFLAGS= -D_POSIX_SOURCE $(INCLUDES)
+CFLAGS=  -Aa -D_POSIX_SOURCE $(INCLUDES)
+#CFLAGS= -D_POSIX_SOURCE $(INCLUDES)
 XCFLAGS= -O
 XLDFLAGS=-s
 
-obj= bdd_factor.o bdd.o bdd_quant.o bdd_fns.o vfns.o appl.o y.tab.o \
+obj= bdd_factor.o bdd.o bdd_quant.o bdd_fns.o bdd_vfns.o appl.o y.tab.o \
      lex.yy.o main.o
 
 bdd : ${obj}
-	$(CC) ${XLDFLAGS} -o bdd ${obj} $(ARS) -lfl -lm
+	$(CC) ${XLDFLAGS} -o bdd ${obj} $(ARS) -ll -lm
 
 template : lib template.o
 	$(CC) -o template template.o libbdd.a $(ARS)
@@ -29,7 +29,7 @@ bdd_factor.o : bdd_factor.c bdd_factor.h
 bdd.o : bdd.c bdd.h bdd_extern.h
 bdd_fns.o : bdd_fns.c bdd_fns.h bdd.h bdd_extern.h
 bdd_quant.o : bdd_quant.c bdd_fns.h bdd.h bdd_extern.h
-vfns.o : vfns.c vfns.h bdd_fns.h bdd.h bdd_extern.h
+bdd_vfns.o : bdd_vfns.c bdd_vfns.h bdd_fns.h bdd.h bdd_extern.h
 appl.o : appl.c appl.h bdd_fns.h bdd.h bdd_extern.h
 main.o : main.c appl.h bdd_fns.h bdd.h bdd_extern.h
 y.tab.c : yacc.y bdd_fns.h bdd.h bdd_extern.h
@@ -55,9 +55,9 @@ libbdd.a : bdd.o bdd_fns.o bdd_quant.o
 
 lib2 : libbdd2.a
 
-libbdd2.a : bdd.o bdd_fns.o bdd_quant.o bdd_factor.o vfns.o appl.o y.tab.o \
+libbdd2.a : bdd.o bdd_fns.o bdd_quant.o bdd_factor.o bdd_vfns.o appl.o y.tab.o \
             lex.yy.o
-	ar r libbdd2.a bdd.o bdd_fns.o bdd_quant.o bdd_factor.o vfns.o \
+	ar r libbdd2.a bdd.o bdd_fns.o bdd_quant.o bdd_factor.o bdd_vfns.o \
              appl.o y.tab.o lex.yy.o
 	ranlib libbdd2.a
 
