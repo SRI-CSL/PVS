@@ -256,8 +256,9 @@
 	       (setq *pvs-context-changed* t))
 	     (add-to-prelude-libraries lib-ref)
 	     (load-pvs-lib-lisp-file lib-path)
-	     ;; If restoring? is t, then we need to load the pvs-lib.el
-	     ;; file if it exists.  Otherwise the user invoked it explicitly
+	     ;; If restoring? is t, then we are restoring the context, and
+	     ;; we need to load the pvs-lib.el file if it exists.  Otherwise
+	     ;; the user invoked M-x load-prelude-library explicitly
 	     ;; From Emacs, which does the loading itself.
 	     (when restoring?
 	       ;; Note that this is a noop if Emacs is not there
@@ -283,7 +284,14 @@
 		   (setq bfile nil))
 		  (t
 		   (chmod "ug+w" (namestring bfile))))))
-	(load (or bfile lfile))))))
+	(pvs-message "Loading ~a..." (or bfile lfile))
+	(multiple-value-bind (ignore error)
+	    (load (or bfile lfile))
+	  (declare (ignore ignore))
+	  (if error
+	      (pvs-message "Error loading ~a:~%  ~a"
+		(or bfile lfile) error)
+	      (pvs-message "~a loaded" (or bfile lfile))))))))
 
 (defun load-prelude-library* (lib-ref lib-path)
   (if (gethash lib-ref *loaded-libraries*)
