@@ -8,6 +8,7 @@
 
 # command line arguments:
 #   -h | -help | --help  prints a help line and exits
+#   -version | --version prints the PVS version
 #   -emacs       emacs, xemacs, or pathname
 #   -load-after  emacs file name
 #   -lisp        lisp image name
@@ -54,6 +55,7 @@ opsys=`uname -s`
 flags=
 batch=
 rawmode=
+getversion=
 if [ -f $HOME/.emacs ]
   then dotemacs="-l $HOME/.emacs"
   else dotemacs=
@@ -114,10 +116,12 @@ do
      -q|-no-init-file) flags="$flags $1"
                        PVSMINUSQ="-q"
 		       dotemacs= ;;
+     -version|--version) getversion="yes";;
      -h|-help|--help)  echo "usage:
        pvs [-options ...] [file]
 where options include:
   -h | -help | --help  print out this message
+  -version | --version show the PVS version number
   -emacs emacspath     emacs to use (e.g., emacs, xemacs, /usr/local/bin/emacs)
   -lisp lispversion  lisp image to use (e.g., allegro5.0)
   -load-after        emacs file
@@ -207,7 +211,7 @@ export PVSPATCHLEVEL PVSMINUSQ PVSFORCEDP PVSDEFAULTDP
 
 pvsemacsinit="-load $PVSPATH/emacs/go-pvs.el $loadafter"
 
-if [ ! "$rawmode" -a ! "$batch" -a "$DISPLAY" != "" -a "$nowin" != 1 ]
+if [ ! "$getversion" -a ! "$rawmode" -a ! "$batch" -a "$DISPLAY" != "" -a "$nowin" != 1 ]
  then
   HOST=${HOST:-`uname -n`}
 
@@ -222,7 +226,10 @@ if [ ! "$rawmode" -a ! "$batch" -a "$DISPLAY" != "" -a "$nowin" != 1 ]
       ($PVSEMACS $flags -name pvs -xrm "pvs*title:PVS@$HOST
                                         pvs*iconName:PVS@$HOST" \
 		 $PVSXINIT $pvsemacsinit &);;
-  esac    
+  esac
+elif [ $getversion ]
+  then
+    $PVSIMAGE -qq -e "(progn (format t \"PVS version ~a~%\" pvs::*pvs-version*) (excl:exit nil :quiet t))"
 elif [ $rawmode ]
   then
     $PVSIMAGE -qq
