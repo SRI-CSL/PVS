@@ -3,12 +3,11 @@
 ;; Author          : Sam Owre
 ;; Created On      : Sun Apr 30 13:46:32 1995
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Tue Nov 21 18:14:50 1995
-;; Update Count    : 4
-;; Status          : Beta test
-;; 
-;; HISTORY
+;; Last Modified On: Thu May 20 22:47:34 2004
+;; Update Count    : 5
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (eval-when-compile (require 'pvs-macros))
 
@@ -163,7 +162,7 @@ PVS are automatically put in the proper mode."
   (interactive)
   (condition-case nil
       (delete-window)
-    (error (previous-buffer))))
+    (error (switch-to-buffer nil))))
  
 (defun remove-buffer (buf)
   (when (equal buf (process-buffer (ilisp-process)))
