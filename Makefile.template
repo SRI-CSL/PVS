@@ -3,8 +3,8 @@
 ## Author          : Sam Owre
 ## Created On      : Wed Dec 30 19:29:47 1998
 ## Last Modified By: Sam Owre
-## Last Modified On: Thu Dec 31 21:49:57 1998
-## Update Count    : 18
+## Last Modified On: Sat Jan  2 22:24:34 1999
+## Update Count    : 19
 ## Status          : Alpha test
 ###############################################################################
 .SUFFIXES:
@@ -15,12 +15,15 @@ PLATFORM = $(shell bin/pvs-platform)
 export PLATFORM
 ifeq ($(PLATFORM),sun4-SunOS5)
 	LISP=/pkg/allegro5.0/sol24/lisp
+	LISPEXT=fasl
 else
 ifeq ($(PLATFORM),ix86-redhat4)
 	LISP=/pkg/allegro5.0/redhat4/lisp
+	LISPEXT=lfasl
 else
 ifeq ($(PLATFORM),ix86-redhat5)
 	LISP=/pkg/allegro5.0/redhat5/lisp
+	LISPEXT=lfasl
 endif
 endif
 endif
@@ -213,11 +216,18 @@ ilisp = emacs/emacs-src/ilisp/cl-ilisp.lisp \
         emacs/emacs-src/ilisp/allegro.lisp \
         emacs/emacs-src/ilisp/ilisp-pkg.lisp
 
+lisp-files = ${ess} ${pvs-parser-out} ${ground-prover} ${pvs-src} \
+             ${pvs-prover} ${bddlisp} ${decision-procedures} ${ilisp}
+
+fasl-files = $(lisp-files:.lisp=.$(LISPEXT))
+
 all : makebdd makepolylib ${pvsfull} ${pvsrt}
 
-${pvsfull} : ${pvs-make-files} ${ff-files} ${ess} ${pvs-parser-out} \
-             ${ground-prover} ${pvs-src} ${pvs-prover} ${bddlisp} \
-             ${decision-procedures} ${ilisp}
+${fasl-files} : ${pvs-make-files} ${ff-files} ${lisp-files}
+	$(LISP) -e '(load "pvs.system")' \
+		-e '(operate-on-system \'pvs :lf)'
+
+${pvsfull} : ${pvs-make-files} ${ff-files} ${fasl-files}
 	rm -rf ${bindir}/full
 	$(LISP) -e '(defvar *runtime* nil)' \
 		-L src/make-pvs.lisp
