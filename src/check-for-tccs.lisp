@@ -13,16 +13,19 @@
 
 (in-package 'pvs)
 
+(defvar *skip-tcc-check-exprs* nil)
+
 ;;; check-for-tccs is called by set-type when the type is already set, but
 ;;; TCCs need to be checked for.  Thus it is effectively called from the
 ;;; prover.  This is similar to what typecheck and set-type do, but
 ;;; theoretically should be simpler since the types and resolutions are
 ;;; already known.
 
-(defun check-for-tccs (expr expected)
+(defun check-for-tccs (expr expected &optional skip-exprs)
   (unless (compatible? (type expr) expected)
     (type-incompatible expr (list (type expr)) expected))
-      (let ((*no-conversions-allowed* t))
+      (let ((*no-conversions-allowed* t)
+	    (*skip-tcc-check-exprs* skip-exprs))
 	(check-for-tccs* expr expected)))
 
 (defvar *inner-check-for-tccs* nil)
@@ -37,7 +40,8 @@
 
 (defmethod check-for-tccs* :around ((ex expr) expected)
    (call-next-method)
-   (unless (typep ex '(or branch lambda-expr))
+   (unless (or (typep ex '(or branch lambda-expr))
+	       (memq ex *skip-tcc-check-exprs*))
      (check-for-subtype-tcc ex expected)))
 
 (defmethod check-for-tccs* ((ex name-expr) expected)
