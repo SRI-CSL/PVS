@@ -139,7 +139,7 @@
   (assert (state-wrap? state))
   (assert (atom-wrap? atom))
 ;  (break)
-  (ics_process_wrapper (state-unwrap state) (atom-unwrap atom)))
+  (ics_process (state-unwrap state) (atom-unwrap atom)))
 
 
 (defun ics-state-unchanged? (state1 state2)
