@@ -538,6 +538,10 @@
 	(index ex1) (index ex2)
 	(argument ex1) (argument ex2)))
 
+(defmethod copy-slots ((ex1 field-application) (ex2 field-application))
+  (setf (id ex1) (id ex2)
+	(argument ex1) (argument ex2)))
+
 (defmethod copy-slots ((ex1 number-expr) (ex2 number-expr))
   (setf (number ex1) (number ex2)))
 
