@@ -286,7 +286,14 @@
 	(type-error local-ref
 	  "Illegal reference to ~a~%May not use theory declarations with ~
       actuals or mappings that reference~%entities declared in this theory."
-	  local-ref)))	
+	  local-ref)))
+    (when (some #'(lambda (m) (mod-decl? (declaration (lhs m))))
+		(mappings theory-name))
+      (add-theory-mappings-importings theory theory-name))
+    (when (some #'formal-theory-decl? (formals theory))
+      (add-theory-parameters-importings theory theory-name))
+    (when (mappings theory-name)
+      (generate-mapped-axiom-tccs theory-name))
     (let ((interpreted-copy (make-interpreted-copy theory theory-name decl
 						   tgt-theory tgt-name)))
       (cleanup-mapped-axiom-tccs decl (current-theory) theory interpreted-copy)
@@ -517,21 +524,6 @@
 	       (if (null rem)
 		   rem-usings
 		   (cons (cons (car ref) rem) rem-usings))))))))
-
-(defun get-interpreted-mapping (theory interpretation theory-name)
-  (let ((mapping (make-subst-mod-params-map-bindings
-		  theory-name (mappings theory-name) nil))
-	(int-decls (when interpretation (all-decls interpretation))))
-    (when interpretation
-      (dolist (decl (interpretable-declarations theory))
-	(unless (assq decl mapping)
-	  (push (cons decl (find decl int-decls
-				 :test #'(lambda (x y)
-					   (and (declaration? y)
-						(same-id x y)))))
-		mapping))))
-    (assert (every #'cdr mapping))
-    mapping))
 		     
 
 
