@@ -1717,12 +1717,16 @@ See \\[set-proof-backup-number] for details."
   (message (format "The proof backup number is %s"
 	       (pvs-send-and-wait "*number-of-proof-backups*"))))
 
-(defpvs new-decision-procedures prove ()
+(defpvs set-decision-procedure prove (name)
   "Sets the default to the new decision procedures"
-  (interactive)
-  (pvs-send-and-wait "(new-decision-procedures)"))
+  (interactive (list (select-decision-procedure)))
+  (unless (equal name "")
+    (pvs-send-and-wait (format "(set-decision-procedure '%s)" name))))
 
-(defpvs old-decision-procedures prove ()
-  "Sets the default to the old decision procedures"
-  (interactive)
-  (pvs-send-and-wait "(old-decision-procedures)"))
+(defun select-decision-procedure ()
+  (let ((dps (pvs-send-and-wait
+	      "(mapcar #'string-downcase (cons *default-decision-procedure* *decision-procedures*))"
+	      nil nil 'list)))
+    (completing-read (format "Set decision procedure (currently %s) to: "
+			 (car dps))
+      (mapcar 'list (cdr dps)) nil 't nil)))
