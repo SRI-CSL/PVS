@@ -363,6 +363,7 @@
 
 (defmethod compare* ((old projection-application) (new projection-application))
   (and (compare* (id old) (id new))
+       (compare* (index old) (index new))
        (compare* (argument old) (argument new))))
 
 (defmethod compare* ((old field-application) (new field-application))
