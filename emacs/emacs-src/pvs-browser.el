@@ -215,6 +215,7 @@ and removes the declaration buffer."
     (pop-to-buffer (pvs-make-browse-buffer))
     (optimize-window-height)
     (goto-line 3)
+    (message "")
     (pvs-browse-mode)))
 
 
