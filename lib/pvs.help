@@ -246,6 +246,8 @@ status-theory, stt (C-c C-s t)      Status of specified theory (parsed etc.)
 status-pvs-file, stf (C-c C-s f)    Status of theories of current file
 status-importchain, sti (C-c C-s i) Status of theories in import chain
 status-importbychain, stb (C-c C-s b) Status of theories in imported-by chain
+show-theory-conversions             Show conversion messages for theory
+show-pvs-file-conversions           Show conversion messages for PVS file
 show-theory-warnings                Show warnings for theory
 show-pvs-file-warnings              Show warnings for PVS file
 show-theory-messages                Show informational messages for theory
