@@ -229,16 +229,16 @@
 			     ;;want to check for connectives even if
 			     ;;assert-connectives? is T
 			     (and (not (connective-occurs? body))
-				  (let* ((translated-body
-					  (top-translate-to-prove
-					   body))
-					 (translated-fmla
-					  (if sign translated-body
-					      (list 'NOT translated-body)))
-					 (res (catch 'context
-						(call-process translated-fmla
-							      *dp-state*
-							      *alists*))))
+				  (let* (
+					 ;(translated-body
+					 ; (top-translate-to-prove
+					 ;  body))
+					 ;(translated-fmla
+					 ; (if sign translated-body
+					 ;     (list 'NOT translated-body)))
+					 (res (call-process fmla
+							    *dp-state*
+							    *alists*)))
 				    (when (consp res)
 				      (loop for x in res
 					    do (push x *process-output*)))
@@ -263,16 +263,16 @@
 			     ;;want to check for connectives even if
 			     ;;assert-connectives? is T
 	(or (and (not (connective-occurs? body))
-		 (let* ((translated-body
-			 (top-translate-to-prove
-			  body))
-			(translated-fmla
-			 (if sign translated-body
-			     (list 'NOT
-				   translated-body)))
-			(res (catch 'context
-			       (call-process translated-fmla
-					     *dp-state* *alists*))))
+		 (let* (
+			;(translated-body
+			; (top-translate-to-prove
+			;  body))
+			;(translated-fmla
+			; (if sign translated-body
+			;     (list 'NOT
+			;	   translated-body)))
+			(res (call-process fmla
+					   *dp-state* *alists*)))
 		   (when (consp res)
 		     (loop for x in res
 			   do (push x *process-output*)))
@@ -350,9 +350,8 @@
 (defun process-sform (sform newfmla sig)
   ;(when (connective-occurs? newfmla)(break))
   (let* ((*bindings* nil)
-	 (transformula (top-translate-to-prove (negate newfmla)))
-	 (result (catch 'context
-		   (call-process transformula *dp-state* *alists*))))
+	 ;(transformula (top-translate-to-prove (negate newfmla)))
+	 (result (call-process (negate newfmla) *dp-state* *alists*)))
     ;(break "cp")
     (when (consp result)
       (loop for x in result do (push x *process-output*)))
@@ -595,9 +594,7 @@
 	      when (and (not (false-p condition)) ;;; DAC: condition
 			;;;should never be false
 			(not (check-for-connectives? condition)))
-	      do (let ((translation (top-translate-to-prove condition)))
-		   (catch 'context
-		     (call-process translation *dp-state* *alists*))))
+	      do (call-process condition *dp-state* *alists*))
 	;;    (format T "~%  Simplifying ~a under conditions ~{~a, ~}"
 	;;	       expr conditions);;NSH(10.10.94)omitting for now.
 	(assert-if expr)))))
