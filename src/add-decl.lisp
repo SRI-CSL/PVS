@@ -137,7 +137,10 @@
 
 (defun typecheck-new-decls (decls pdecl)
   (let ((*insert-add-decl* nil)
-	(*current-context* (decl-context pdecl t))
+	(*current-context*
+	 (if pdecl
+	     (decl-context pdecl t)
+	     (make-new-context (third *add-declaration-info*))))
 	(*generate-tccs* 'all))
     (typecheck-decls decls)
     (dolist (d decls)
