@@ -126,7 +126,7 @@
       (setf (declarations m)
 	    (make-hash-table :test #'eq :size (length (theory m))))
       (setf (formals-sans-usings m)
-	    (remove-if #'(lambda (ff) (typep ff 'using)) (formals m)))
+	    (remove-if #'(lambda (ff) (typep ff 'importing)) (formals m)))
       (let* ((*current-theory* m)
 	     (*typechecking-module* t)
 	     (*tccs* nil)
@@ -207,19 +207,18 @@
 			 (cons obj result)))))
 
 
-(defmethod typecheck* ((use using) expected kind arguments)
+(defmethod typecheck* ((use importing) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (typecheck-usings (modules use))
+  (typecheck-using (theory-name use))
+  (setf (saved-context use) (copy-context (current-context)))
   use)
 
-(defun typecheck-usings (names)
-  (dolist (inst names)
-    (if (and (null (library inst))
-	     (eq (id inst) (id *current-theory*)))
-	(type-error inst
-	  "A theory may not import itself")
-	(let ((mod (get-typechecked-theory inst)))
-	  (typecheck-using* mod inst)))))
+(defun typecheck-using (theory-inst)
+  (if (and (null (library theory-inst))
+	   (eq (id theory-inst) (id (current-theory))))
+      (type-error theory-inst "A theory may not import itself")
+      (let ((mod (get-typechecked-theory theory-inst)))
+	(typecheck-using* mod theory-inst))))
 
 (defvar *ignore-exportings* nil)
 
@@ -306,17 +305,14 @@
       theory
     (if (eq immediate-usings 'unbound)
 	(setf immediate-usings
-	      (mapcan #'(lambda (imp)
-			  (let ((th (get-theory imp)))
+	      (mapcan #'(lambda (thname)
+			  (let ((th (get-theory thname)))
 			    (or (and (typep th 'datatype)
-				     (datatype-instances imp))
-				(list imp))))
-		      (apply #'append
-			     (mapcar #'modules
-				     (delete-if-not #'mod-or-using?
-				       (append formals
-					       assuming
-					       (copy-list theory-part)))))))
+				     (datatype-instances thname))
+				(list thname))))
+		(mapcar #'theory-name
+		  (remove-if-not #'mod-or-using?
+		    (all-decls theory)))))
 	immediate-usings)))
 
 (defun datatype-instances (imported-adt)
@@ -341,11 +337,11 @@
 			 (remove-if-not #'mod-or-using?
 			   (append (formals adt)
 				   (assuming adt)))))
-	  (when (using adt)
-	    (modules (using adt)))))
+	  (when (importings adt)
+	    (mapcar #'theory-name (importings adt)))))
 
 (defun mod-or-using? (obj)
-  (typep obj '(or mod-decl using)))
+  (typep obj '(or mod-decl importing)))
 
 (defmethod modules ((decl mod-decl))
   (list (modname decl)))
@@ -553,7 +549,7 @@
 
 (defun collect-all-exportable-decls (theory)
   (remove-if #'(lambda (d)
-		 (typep d '(or using var-decl field-decl datatype)))
+		 (typep d '(or importing var-decl field-decl datatype)))
 	     (append (assuming theory)
 		     (theory theory))))
 
@@ -668,7 +664,7 @@
 	    (let ((rdecls (remove-if
 			   #'(lambda (d)
 			       (or (not (eq (module d) *current-theory*))
-				   (typep d '(or formal-decl using var-decl
+				   (typep d '(or formal-decl importing var-decl
 					      field-decl datatype))
 				   (and (const-decl? d)
 					(formal-subtype-decl?

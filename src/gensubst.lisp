@@ -34,7 +34,7 @@
 	 (formals-sans-usings (if (eq formals (formals obj))
 				  (formals-sans-usings obj)
 				  (remove-if #'(lambda (ff)
-						 (typep ff 'using))
+						 (typep ff 'importing))
 				    formals))))
 
 	
@@ -50,12 +50,12 @@
 	 (formals-sans-usings (if (eq formals (formals obj))
 				  (formals-sans-usings obj)
 				  (remove-if #'(lambda (ff)
-						 (typep ff 'using))
+						 (typep ff 'importing))
 				    formals))))
     (lcopy obj
       'formals formals
       'formals-sans-usings formals-sans-usings
-      'using (gensubst* (using obj) substfn testfn)
+      'importings (gensubst* (importings obj) substfn testfn)
       'constructors (gensubst* (constructors obj) substfn testfn))))
 
 (defmethod gensubst* ((obj simple-constructor) substfn testfn)
@@ -107,8 +107,8 @@
     'but-names (gensubst* (but-names obj) substfn testfn)
     'modules (gensubst* (modules obj) substfn testfn)))
 
-(defmethod gensubst* ((using using) substfn testfn)
-  (lcopy using 'modules (gensubst* (modules using) substfn testfn)))
+(defmethod gensubst* ((using importing) substfn testfn)
+  (lcopy using 'theory-name (gensubst* (theory-name using) substfn testfn)))
 
 (defmethod gensubst* ((decl declaration) substfn testfn)
   (declare (ignore substfn testfn))
@@ -475,8 +475,8 @@
   (mapobject* fn (but-names obj))
   (mapobject* fn (modules obj)))
 
-(defmethod mapobject* (fn (obj using))
-  (mapobject* fn (modules obj)))
+(defmethod mapobject* (fn (obj importing))
+  (mapobject* fn (theory-name obj)))
 
 ;;; Declarations
 

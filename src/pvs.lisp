@@ -1061,7 +1061,7 @@
 		    (let ((proof (cond (background?
 					(pvs-prove-decl fdecl t))
 				       (t (auto-save-proof-setup fdecl)
-					  (prove (id fdecl)
+					  (prove fdecl
 						 :strategy
 						 (when rerun? '(rerun)))))))
 		      (when (typep proof 'proofstate)

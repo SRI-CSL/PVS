@@ -63,8 +63,8 @@
 	(generate-xref d))))
   m)
 
-(defmethod generate-xref ((use using))
-  (generate-xref (modules use)))
+(defmethod generate-xref ((use importing))
+  (generate-xref (theory-name use)))
 
 (defmethod generate-xref ((d formal-type-decl))
   (call-next-method))
@@ -308,5 +308,5 @@
 (defmethod from-prelude? ((decl binding))
   nil)
 
-(defmethod from-prelude? ((use using))
+(defmethod from-prelude? ((use importing))
   nil)

@@ -113,9 +113,9 @@
     (unless same?
       (push (list old new 'changed) *differences*))))
 
-(defmethod compare* ((old using) (new using))
+(defmethod compare* ((old importing) (new importing))
   (let ((*decl-diffs* nil))
-    (compare-sig (modules old) (modules new))
+    (compare-sig (theory-name old) (theory-name new))
     (values t *decl-diffs*)))
 
 

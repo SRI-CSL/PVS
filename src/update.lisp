@@ -102,10 +102,10 @@
    )
   omod)
 
-(defmethod update ((ousing using) (nusing using) &optional diffs)
+(defmethod update ((ousing importing) (nusing importing) &optional diffs)
   (let ((diff (assoc ousing diffs)))
     (when diff
-      (update (modules ousing) (modules nusing) (car (last diff))))
+      (update (theory-name ousing) (theory-name nusing) (car (last diff))))
     ousing))
 
 (defmethod update ((oexp exporting) (nexp exporting) &optional diffs)

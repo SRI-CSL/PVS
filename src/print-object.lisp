@@ -43,11 +43,10 @@ print object produces an error, and won't allow inspection of the object.")
       (call-next-method)
       (format stream "#<~a ~a>" (type-of decl) (id decl))))
 
-(defmethod print-object ((imp using) stream)
+(defmethod print-object ((imp importing) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (let ((*no-comments* t))
-	(unparse imp :stream stream))))
+      (format stream "#<IMPORTING ~a>" (theory-name imp))))
 
 (defmethod print-object ((c adt-constructor) stream)
   (if *debugging-print-object*
@@ -97,7 +96,7 @@ print object produces an error, and won't allow inspection of the object.")
       (format stream "#<Context ~a.~a>"
 	      (id (module ctx))
 	      (when (declaration ctx)
-		(if (using? (declaration ctx))
+		(if (importing? (declaration ctx))
 		    (declaration ctx)
 		    (id (declaration ctx)))))))
 

@@ -50,9 +50,11 @@
 (defmethod copy-lex* ((old expname) (new expname))
   )
 
-(defmethod copy-lex* ((old using) (new using))
-  (copy-lex* (modules old) (modules new))
-  (setf (spelling old) (spelling new)))
+(defmethod copy-lex* ((old importing) (new importing))
+  (copy-lex* (theory-name old) (theory-name new))
+  (setf (semi old) (semi new))
+  (setf (chain? old) (chain? new)))
+
 
 (defun copy-lex-decls (old-list new-list)
   (when old-list

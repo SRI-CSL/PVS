@@ -226,9 +226,15 @@
 	pathname)))
 
 (defun get-formula (module id)
-  (let* ((mod (if (typep module 'module) module (get-module module)))
-	 (decls (gethash id (declarations mod))))
-    (find-if #'(lambda (d) (typep d 'formula-decl)) decls)))
+  (let ((mod (if (typep module 'module) module (get-module module))))
+    (or (find-if #'(lambda (decl)
+		     (and (typep decl 'formula-decl)
+			  (eq (id decl) id)))
+	  (assuming module))
+	(find-if #'(lambda (decl)
+		     (and (typep decl 'formula-decl)
+			  (eq (id decl) id)))
+	  (theory module)))))
 
 (defun get-decl (module id)
   (let* ((mod (if (typep module 'module) module (get-module module))))
@@ -465,7 +471,7 @@
 	(cons new-elt tail))))
       
 
-(defmethod generated-by ((u using)) nil)
+(defmethod generated-by ((u importing)) nil)
 
 (defun add-decl-test (x y)
   (and (eq (kind-of x) (kind-of y))
@@ -630,16 +636,34 @@
 (defmethod context ((theory module))
   (if (saved-context theory)
       (copy-context (saved-context theory))
-      (let ((alldecls (append (formals theory)
-			       (assuming theory)
-			       (theory theory))))
-	(decl-context (car (last alldecls)) t theory))))
+      (decl-context (car (last (or (theory theory)
+				   (assuming theory)
+				   (formals theory))))
+		    t)))
 
-(defmethod context ((using using))
+(defmethod context ((using importing))
   (decl-context using))
 
 (defmethod context ((decl declaration))
   (decl-context decl))
+
+(defun decl-context (decl &optional include?)
+  (let* ((*generate-tccs* 'none)
+	 (theory (module decl))
+	 (all-decls (reverse (all-decls theory)))
+	 (prev-decls (if include?
+			 (memq decl all-decls)
+			 (cdr (memq decl all-decls))))
+	 (prev-imp (find-if #'using-decl? prev-decls))
+	 (rem-decls (if prev-imp
+			(ldiff prev-decls (memq prev-imp prev-decls))
+			prev-decls))
+	 (context (copy-context
+		   (if prev-imp
+		       (copy-context (saved-context prev-imp))
+		       (copy-context *prelude-context*)))))))
+    
+	 
 
 (defun decl-context (decl &optional include? th)
   (let* ((*generate-tccs* 'none)
@@ -658,14 +682,6 @@
 					(not (and (type-def-decl? d)
 						  (enumtype? (type-expr d))))))
 		  adecls))
-;	 (prelude-names (if (and (not *generating-adt*)
-;				 decl
-;				 (from-prelude? decl))
-;			    (copy-tree
-;			     (cdr (memq (assq (module decl)
-;					      *prelude-names*)
-;					*prelude-names*)))
-;			    (copy-tree *prelude-names*)))
 	 (ctx (mk-context
 	       theory
 	       (if nil;;(gethash (id theory) *prelude*)
@@ -709,7 +725,7 @@
 
 (defun add-formal-importings-to-context* (formals modinst fml)
   (unless (eq fml (car formals))
-    (when (typep (car formals) 'using)
+    (when (typep (car formals) 'importing)
       (dolist (m (modules (car formals)))
 	(add-to-using (subst-mod-params m modinst))))
     (add-formal-importings-to-context* (cdr formals) modinst fml)))
@@ -721,7 +737,7 @@
 (defmethod add-immediate-importings-to-context ((decl tcc-decl))
   (let ((modinst (car (importing-instance decl)))
 	(gdecl (generated-by decl)))
-    (when (and modinst (typep gdecl 'using))
+    (when (and modinst (typep gdecl 'importing))
       (let ((rem (memq modinst (modules gdecl))))
 	(assert rem)
 	(add-usings-to-context (ldiff (modules gdecl) rem))))))
@@ -834,7 +850,7 @@
 			      (adt-map-theory adt)
 			      (adt-reduce-theory adt)))))))
 
-(defmethod module ((using using))
+(defmethod module ((using importing))
   (let ((utheory nil))
     (maphash #'(lambda (id theory)
 		 (declare (ignore id))

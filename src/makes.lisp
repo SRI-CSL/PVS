@@ -87,9 +87,6 @@
   (make-instance 'context
     'theory mod
     'theory-name (when mod (mk-modname (id mod)))
-;    'local-decls (let ((ht (make-hash-table :test #'eq :size 10)))
-;		   (mapc #'(lambda (d) (put-decl d ht)) decls)
-;		   ht)
     'declarations-hash (let ((ht (make-hash-table :test #'eq :size 10)))
 			 (mapc #'(lambda (d) (put-decl d ht)) decls)
 			 ht)

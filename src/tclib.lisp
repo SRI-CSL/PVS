@@ -339,8 +339,8 @@
 			   (remove-if-not #'mod-or-using?
 			     (append (formals adt)
 				     (assuming adt)))))
-	  (when (using adt)
-	    (modules (using adt))))))
+	  (when (importings adt)
+	    (mapcar #'theory-name (importings adt))))))
 
 (defun all-decls (theory)
   (append (formals theory)

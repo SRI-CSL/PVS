@@ -125,9 +125,9 @@
 	 (assuming-term (term-arg1 datatype))
 	 (assuming (unless (is-sop 'datatype-null-2 assuming-term)
 		     (xt-assumings assuming-term)))
-	 (using-term (term-arg2 datatype))
-	 (using (unless (is-sop 'datatype-null-1 using-term)
-		  (xt-using-elt using-term)))
+	 (importing-term (term-arg2 datatype))
+	 (importings (unless (is-sop 'datatype-null-1 importing-term)
+		  (xt-importing-elt importing-term)))
 	 (adtcases-term (term-arg3 datatype))
 	 (adtcases (xt-adtcases adtcases-term))
 	 (endid (ds-vid (term-arg4 datatype))))
@@ -140,13 +140,13 @@
 	(make-instance 'inline-datatype-with-subtypes
 	  'subtypes subtypes
 	  'assuming assuming
-	  'using using
+	  'importings importings
 	  'constructors adtcases
 	  'place (term-place datatype))
 	(make-instance 'datatype-with-subtypes
 	  'subtypes subtypes
 	  'assuming assuming
-	  'using using
+	  'importings importings
 	  'constructors adtcases
 	  'place (term-place datatype)))))
 
@@ -181,19 +181,19 @@
   (mapcan #'xt-theory-formal (term-args theory-formals)))
 
 (defun xt-theory-formal (theory-formal)
-  (let* ((using (term-arg0 theory-formal))
+  (let* ((importing (term-arg0 theory-formal))
 	 (idops (term-arg1 theory-formal))
 	 (decl-body (term-arg2 theory-formal)))
     (multiple-value-bind (decl dtype)
 	(xt-declaration-body decl-body)
-      (append (unless (is-sop 'theory-formal-null-1 using)
-		(list (xt-using-elt using)))
+      (append (unless (is-sop 'theory-formal-null-1 importing)
+		(xt-importing-elt importing))
 	      (xt-chained-decls (term-args idops) dtype nil decl
 				theory-formal)))))
 
 (defun xt-datatype (datatype &optional id inline)
   (let ((assuming (term-arg0 datatype))
-	(using (term-arg1 datatype))
+	(importing (term-arg1 datatype))
 	(adtcases (term-arg2 datatype))
 	(endid (ds-vid (term-arg3 datatype))))
     (unless (or (null id)
@@ -203,8 +203,8 @@
     (make-instance (if (or (null id) inline) 'inline-datatype 'datatype)
       'assuming (unless (is-sop 'datatype-null-2 assuming)
 		  (xt-assumings assuming))
-      'using (unless (is-sop 'datatype-null-1 using)
-	       (xt-using-elt using))
+      'importings (unless (is-sop 'datatype-null-1 importing)
+		   (xt-importing-elt importing))
       'constructors (xt-adtcases adtcases)
       'place (term-place datatype))))
 
@@ -313,15 +313,15 @@
 
 (defun xt-assuming-part (assumings)
   (mapcan #'(lambda (ass)
-	      (if (is-sop 'using-elt ass)
-		  (list (xt-using-elt ass))
+	      (if (is-sop 'importing-elt ass)
+		  (xt-importing-elt ass)
 		  (xt-assuming ass)))
 	  (term-args assumings)))
 
 (defun xt-assumings (assumings)
   (mapcan #'(lambda (ass)
-	      (if (is-sop 'using-elt ass)
-		  (list (xt-using-elt ass))
+	      (if (is-sop 'importing-elt ass)
+		  (xt-importing-elt ass)
 		  (xt-assuming ass)))
 	  (term-args assumings)))
 
@@ -345,7 +345,7 @@
 (defun xt-theory-part (theory)
   (mapcan #'(lambda (decl)
 	      (case (sim-term-op decl)
-		(using-elt (list (xt-using-elt decl)))
+		(using-elt (xt-importing-elt decl))
 		(judgement-elt (xt-judgement-elt decl))
 		(conversion-elt (xt-conversion-elt decl))
 		(t (xt-theory decl))))
@@ -406,16 +406,17 @@
 		   (semi adt) (when (is-sop 'semic semi) t))
 	     (list adt)))))
 
-(defun xt-using-elt (using)
-  (make-instance 'using
-    'modules (mapcar #'xt-modname (term-args (term-arg0 using)))
-    'place (term-place using)
-    'semi (when (is-sop 'semic (term-arg1 using)) t)))
-
-(defun xt-using (using)
-  (make-instance 'using
-    'modules (mapcar #'xt-modname (term-args using))
-    'place (term-place using)))
+(defun xt-importing-elt (importing)
+  (let ((importings
+	 (mapcar #'(lambda (thname)
+		     (make-instance 'importing
+		       'theory-name (xt-modname thname)
+		       'place (term-place thname)
+		       'semi (when (is-sop 'semic (term-arg1 importing)) t)
+		       'chain? t))
+	   (term-args (term-arg0 importing)))))
+    (setf (chain? (car (last importings))) nil)
+    importings))
 
 (defun xt-judgement-elt (decl)
   (let ((jdecls (xt-judgement (term-arg0 decl))))

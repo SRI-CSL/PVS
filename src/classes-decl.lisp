@@ -20,7 +20,8 @@
 ;;;   modules		- modules
 ;;;   datatype-or-module- id, formals, formals-sans-usings, assuming,
 ;;;                       filename, status, generated-by
-;;;   datatype		- using, constructors, typechecked?, adt-type-name,
+;;;   datatype		- importings, constructors, typechecked?,
+;;;                       adt-type-name,
 ;;;                       adt-theory, adt-map-theory, adt-reduce-theory,
 ;;;                       generated-file-date, positive-types, semi
 ;;;   adt-constructor	- recognizer, ordnum
@@ -115,7 +116,7 @@
 ;;; Datatypes and related classes
 
 (defcl datatype (datatype-or-module)
-  (using :parse t)
+  (importings :parse t)
   (constructors :documentation "a list of constructors"
 		:parse t)
   adt-type-name
@@ -193,12 +194,13 @@
   (kind :parse t)
   type)
 
-(defcl using (syntax)
-  (modules :parse t)
-  (spelling :initform 'importing :parse t)
+(defcl importing (syntax)
+  (theory-name :parse t)
   (semi :parse t)
+  (chain? :parse t)
   refers-to
-  generated)
+  generated
+  saved-context)
 
 ;;; DECLARATION Classes.  Many of these have both a declared-type and a
 ;;; type slot.  The declared-type is set by the parser and used by the
@@ -227,6 +229,14 @@
   declared-type-string
   type)
 
+
+;;;  t: TYPE  --> type-decl
+;;;  t: TYPE+ --> nonempty-type-decl
+;;;  t: TYPE = x  --> type-eq-decl
+;;;  t: TYPE+ = x --> nonempty-type-eq-decl
+;;;  t: TYPE FROM x  --> type-from-decl
+;;;  t: TYPE+ FROM x --> nonempty-type-from-decl
+
 (defcl type-decl (declaration)
   type-value)
 
@@ -246,14 +256,15 @@
 
 (defcl nonempty-type-from-decl (type-from-decl nonempty-type-def-decl))
 
+
+;;; Formal theory parameter declarations
+
 (defcl formal-decl (declaration)
   dependent?)
 
-(defcl formal-type-decl (formal-decl type-decl typed-declaration)
-  nonempty?)
+(defcl formal-type-decl (formal-decl type-decl typed-declaration))
 
-(defcl formal-nonempty-type-decl (formal-type-decl nonempty-type-decl)
-  )
+(defcl formal-nonempty-type-decl (formal-type-decl nonempty-type-decl))
 
 (defcl formal-subtype-decl (formal-type-decl type-from-decl))
 

@@ -203,7 +203,7 @@
   (if (or (equal origin "Declaration")
 	  (typechecked-origin? oname origin))
       (let* ((object (get-id-object-at oname origin pos))
-	     (decl (if (typep object '(or declaration using))
+	     (decl (if (typep object '(or declaration importing))
 		       object
 		       (get-decl-associated-with object))))
 	(if decl
@@ -262,13 +262,13 @@
   (assert (or (place decl) (from-prelude? decl)))
   (let ((*default-char-width* 1000000))
     (list (format nil "~25A ~25A ~25A"
-	    (struncate (if (typep decl 'using)
+	    (struncate (if (typep decl 'importing)
 			   (unparse decl :string t)
 			   (id decl))
 		       25)
 	    (struncate type 25)
 	    (struncate (id theory) 25))
-	  (if (typep decl 'using)
+	  (if (typep decl 'importing)
 	      (unparse decl :string t)
 	      (string (id decl)))
 	  (string (id theory))
@@ -334,7 +334,7 @@
 	  (mod-decl "theory abbr")
 	  (formal-const-decl "formal-const")
 	  (formal-type-decl "formal-type")
-	  (using "IMPORTING")
+	  (importing "IMPORTING")
 	  (conversion-decl "CONVERSION")
 	  (datatype "DATATYPE")
 	  (adt-constructor "CONSTRUCTOR")
@@ -391,8 +391,8 @@
 (defmethod whereis (sym (l list))
   (some #'(lambda (e) (whereis sym e)) l))
 
-(defmethod whereis (sym (u using))
-  (whereis sym (modules u)))
+(defmethod whereis (sym (u importing))
+  (whereis sym (theory-name u)))
 
 (defmethod whereis (sym (adt datatype))
   (whereis sym (constructors adt)))

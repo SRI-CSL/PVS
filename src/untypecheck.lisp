@@ -39,7 +39,7 @@
   (setf (status dorm) (list 'parsed)))
 
 (defmethod untypecheck-theory ((adt datatype))
-  (untypecheck-theory (using adt))
+  (untypecheck-theory (importings adt))
   (untypecheck-theory (constructors adt))
   (call-next-method)
   (when (typep adt 'inline-datatype)
@@ -108,9 +108,9 @@
 (defmethod untypecheck-theory ((name expname))
   (setf (type name) nil))
 
-(defmethod untypecheck-theory ((using using))
+(defmethod untypecheck-theory ((using importing))
   (setf (refers-to using) nil)
-  (untypecheck-theory (modules using))
+  (untypecheck-theory (theory-name using))
   (setf (generated using) nil))
 
 (defmethod untypecheck-theory ((list list))
