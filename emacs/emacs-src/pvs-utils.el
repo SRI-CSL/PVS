@@ -1472,29 +1472,49 @@ Point will be on the offending delimiter."
 	       ;;(save-buffer 0) ;writes a message-use the following 3 lines
 	       (set-buffer logbuf)	; body may have changed active buffer
 	       (when pvs-expected-output
-		 (let ((standard-output logbuf))
-		   (pvs-message "Checking for expected output:")
-		   (let ((foundit nil))
-		     (save-excursion
-		       (goto-char (point-min))
-		       (setq foundit
-			     (re-search-forward pvs-expected-output nil t)))
-		     (if foundit
-			 (pvs-message "Found expected output")
-			 (pvs-message "ERROR: expected output not found - check %s"
-			   logfile)))))
+		 (let ((standard-output logbuf)
+		       (expected-list (pvs-expected-output-regexps
+				       pvs-expected-output)))
+		   (dolist (exp expected-list)
+		     (pvs-message "Checking for%s expected output"
+		       (if (null (cdr expected-list))
+			   ""
+			   (let ((pos (position exp expected-list
+						:test 'equal)))
+			     (case pos
+			       (0 "1st") (1 "2nd") (2 "3rd")
+			       (t (format "%dth" (+ pos 1)))))))
+		     (let ((foundit nil))
+		       (save-excursion
+			 (goto-char (point-min))
+			 (setq foundit
+			       (re-search-forward exp nil t)))
+		       (if foundit
+			   (pvs-message "Found expected output")
+			   (pvs-message "ERROR: expected output not found - check %s"
+			     logfile))))))
 	       (when pvs-unexpected-output
-		 (let ((standard-output logbuf))
-		   (pvs-message "Checking for unexpected output:")
-		   (let ((foundit nil))
-		     (save-excursion
-		       (goto-char (point-min))
-		       (setq foundit
-			     (re-search-forward pvs-unexpected-output nil t)))
-		     (if foundit
-			 (pvs-message "ERROR: unexpected output found - check %s"
-			   logfile)
-			 (pvs-message "Did not find unexpected output")))))
+		 (let ((standard-output logbuf)
+		       (unexpected-list (pvs-expected-output-regexps
+					 pvs-unexpected-output)))
+		   (dolist (exp unexpected-list)
+		     (pvs-message "Checking for%s expected output"
+		       (if (null (cdr unexpected-list))
+			   ""
+			   (let ((pos (position exp unexpected-list
+						:test 'equal)))
+			     (case pos
+			       (0 "1st") (1 "2nd") (2 "3rd")
+			       (t (format "%dth" (+ pos 1)))))))
+		     (let ((foundit nil))
+		       (save-excursion
+			 (goto-char (point-min))
+			 (setq foundit
+			       (re-search-forward exp nil t)))
+		       (if foundit
+			   (pvs-message "ERROR: unexpected output found - check %s"
+			     logfile)
+			   (pvs-message "Did not find unexpected output"))))))
 	       (write-region (point-min) (point-max) (buffer-file-name) nil 'nomsg)
 	       (set-buffer-modified-p nil)
 	       (clear-visited-file-modtime)
@@ -1508,6 +1528,19 @@ Point will be on the offending delimiter."
 		     (copy-file (buffer-file-name) "baseline.log"))))
 	   (fset 'pvs-handler 'pvs-handler-orig)
 	   (fset 'ask-user-about-lock 'ask-user-about-lock-orig))))))
+
+(defun pvs-expected-output-regexps (output-regexps)
+  (if (stringp output-regexps)
+      (list output-regexps)
+      (if (pvs-valid-output-regexps output-regexps)
+	  output-regexps
+	  (error "pvs-expected-output should be a string or list of strings"))))
+
+(defun pvs-valid-output-regexps (output-regexps)
+  (or (null output-regexps)
+      (and (listp output-regexps)
+	   (stringp (car output-regexps))
+	   (pvs-valid-output-regexps (cdr output-regexps)))))
 
 (defun pvs-validate-handler (error-p wait-p message output prompt)
   (cond ((and (stringp output)
