@@ -473,7 +473,7 @@ orders [T: TYPE]: THEORY
   strict_is_irreflexive: JUDGEMENT
     (strict_order?) SUBTYPE_OF (irreflexive?[T])
   strict_order_is_antisymmetric: JUDGEMENT
-    (strict_order?[T]) SUBTYPE_OF (antisymmetric?[T])
+    (strict_order?) SUBTYPE_OF (antisymmetric?[T])
   strict_is_transitive: JUDGEMENT
     (strict_order?) SUBTYPE_OF (transitive?[T])
 
@@ -4675,13 +4675,13 @@ BEGIN
 END exp2
 
 
-bv_cnv: THEORY
+% bv_cnv: THEORY
 
-BEGIN
+% BEGIN
 
-  CONVERSION fill[1]
+%   CONVERSION fill[1]
 
-END bv_cnv
+% END bv_cnv
 
 
 bv_concat_def [n:nat, m:nat ]: THEORY
