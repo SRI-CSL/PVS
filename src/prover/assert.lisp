@@ -19,9 +19,9 @@
 ;;multiplication uninterpreted.  flag is either note, simplify,
 ;;assert, or *rewrite.
 
-(defun pvs-initprover ()
-  (setq *alists* (copy *init-alists*))
-  (setq *dp-state* (dp::push-new-cong-state *init-dp-state*)))
+; (defun pvs-initprover ()
+;   (setq *alists* (copy *init-alists*))
+;   (setq *dp-state* (dp::push-new-cong-state *init-dp-state*)))
 
 (defun invoke-simplification (sformnums record? rewrite?
 				   rewrite-flag flush? linear?
@@ -70,16 +70,12 @@
 					      :test 'tc-eq)
 			     (copy (subtype-hash ps))))
 	 (*assert-typepreds-off* (not type-constraints?))
-	 (*alists* (alists ps))
 	 (*dp-state* (dp-state ps)))
     (unwind-protect
 	(protecting-cong-state
 	 ((*dp-state* (if flush?
 			  *init-dp-state*
-			  *dp-state*))
-	  (*alists* (if flush?
-			*init-alists*
-			*alists*)))
+			  *dp-state*)))
 	 (assert-sequent goalsequent sformnums rewrite-flag))
       (when *subst-type-hash*
 	(clrhash *subst-type-hash*)))))
@@ -108,16 +104,15 @@
 				      (connective-occurs? fmla)))))
 	 (other-sformnums
 	  (find-remaining-sformnums (s-forms sequent) sformnums
-			      simplifiable-sformnums)))
+				    simplifiable-sformnums)))
   (multiple-value-bind
 	(signal subgoal)
       (sequent-reduce sequent
 		      #'(lambda (sform) (assert-sform sform rewrite-flag))
 		      other-sformnums)
-    (cond ((eq signal '!) (when *new-ground?*
-			    (dp::npop-cong-state *dp-state*))
-			  (values '! nil
-				  (list 'dependent-decls *dependent-decls*)))
+    (cond ((eq signal '!)
+	   (dpi-pop-state *dp-state*)
+	   (values '! nil (list 'dependent-decls *dependent-decls*)))
 	  (t (multiple-value-bind
 		   (newsignal newsubgoal)
 		 (if (eq *assert-flag* 'record)
@@ -132,8 +127,7 @@
 					T))
 		      simplifiable-sformnums))
 	       (cond ((eq newsignal '!)
-		      (when *new-ground?*
-			(dp::npop-cong-state *dp-state*))
+		      (dpi-pop-state *dp-state*)
 		      (values '! nil (list 'dependent-decls *dependent-decls*)))
 		     ((and (eq signal 'X)(eq newsignal 'X))
 		      (values 'X nil nil))
@@ -146,8 +140,7 @@
 				   (list 'rewrite-hash *rewrite-hash*
 					 'subtype-hash *subtype-hash*
 					 'dependent-decls *dependent-decls*
-					 'dp-state *dp-state*
-					 'alists *alists*))))))))))))
+					 'dp-state *dp-state*))))))))))))
 
 ;;this is needed to take care of the output from process.
 (defun sequent-reduce-around (sequent simplifier sformnums)
@@ -162,8 +155,7 @@
 
 (defun assert-process-output (signal sequent)
   (nprotecting-cong-state
-   ((*dp-state* *dp-state*)
-    (*alists* *alists*))
+   ((*dp-state* *dp-state*))
    (let ((result (catch 'context (process-assert *process-output*))))
      (if (false-p result)
 	 (values '! sequent)
@@ -176,8 +168,7 @@
 	(cond ((eq op 'OR)
 	       (when (loop for x in (cdr fmla)
 			   always (nprotecting-cong-state
-				   ((*dp-state* *dp-state*)
-				    (*alists* *alists*))
+				   ((*dp-state* *dp-state*))
 				   (let* ((result
 					   (catch 'context 
 					     (process-assert
@@ -186,7 +177,7 @@
 		   (retfalse)))
 	      ((memq op '(if if* implies not and iff))
 	       (process-assert (cdr forms)))
-	      (t (let ((result (call-process fmla *dp-state* *alists*)))
+	      (t (let ((result (call-process fmla *dp-state*)))
 		   (if (false-p result)
 		       (throw 'context *false*)
 		       (process-assert (cdr forms)))))))))
@@ -248,9 +239,7 @@
 		;;(translated-fmla
 		;; (if sign translated-body
 		;;     (list 'NOT translated-body)))
-		(res (call-process fmla
-				   *dp-state*
-				   *alists*)))
+		(res (call-process fmla *dp-state*)))
 	   (when (and (consp res)
 		      (not (update-or-connective-occurs?
 			    body)));;NSH(4.7.99)
@@ -281,8 +270,7 @@
 			; (if sign translated-body
 			;     (list 'NOT
 			;	   translated-body)))
-			(res (call-process fmla
-					   *dp-state* *alists*)))
+			(res (call-process fmla *dp-state*)))
 		   (when (consp res)
 		     (loop for x in res
 			   do (push x *process-output*)))
@@ -296,8 +284,7 @@
 	 (*bound-variables* nil)
 	 (*top-rewrite-hash* *rewrite-hash*))
     (copying-cong-state
-     ((*top-dp-state* *dp-state*)
-      (*top-alists* *alists*))
+     ((*top-dp-state* *dp-state*))
      ;;(break "0")
      (cond (rewrite-flag
 	    (multiple-value-bind (sig newbodypart)
@@ -362,7 +349,7 @@
   ;(when (connective-occurs? newfmla)(break))
   (let* ((*bindings* nil)
 	 ;(transformula (top-translate-to-prove (negate newfmla)))
-	 (result (call-process (negate newfmla) *dp-state* *alists*)))
+	 (result (call-process (negate newfmla) *dp-state*)))
     ;(break "cp")
     (when (and (consp result)
 	       (not (update-or-connective-occurs? newfmla)))
@@ -375,22 +362,9 @@
 	      (values '? new-sform))
 	     ;;;***Need a flag to check if *top-dp-state* was changed,
 	     ;;;namely, is the new stuff essentially empty.  
-	    (if (dp-changed *top-dp-state* *dp-state* *top-alists* *alists*)
+	    (if (dpi-state-changed? *top-dp-state* *dp-state*)
 		(values '? sform) 
 		(values 'X sform))))))
-
-(defun dp-changed (old-dpstate new-dpstate old-alists new-alists)
-  (let ((new-changed (and *new-ground?*
-			  (dp::dp-changed old-dpstate new-dpstate)))
-	(old-changed (and *old-ground?*
-			  (alists-changed old-alists new-alists))))
-    (assert (or (not *break-on-ground-diff*)
-		(not (and *new-ground?* *old-ground?*))
-		(eq new-changed old-changed))
-	    (*break-on-ground-diff*))
-    (if *new-ground?*
-	new-changed
-	old-changed)))
 
 (defun top-translate-to-dc (expr)
   (let ((*newdc* t))
@@ -457,14 +431,6 @@
 (defun dp::restore ()
   (in-package pvs)
   (restore))
-
-(defun alists-changed (old-alists new-alists)
-  (not (and (eq (dpinfo-usealist old-alists)
-		(dpinfo-usealist new-alists))
-	    (eq (dpinfo-findalist old-alists)
-		(dpinfo-findalist new-alists))
-	    (eq (dpinfo-sigalist old-alists)
-		(dpinfo-sigalist new-alists)))))
 
 (defmethod quant-occurs? ((expr projection-application))
   (with-slots (argument) expr
@@ -693,35 +659,32 @@
 
 
 (defun cond-assert-if (expr &optional conditions)
-  (if (number-expr? expr)  ;;NSH(4.7.96)
+  (if (number-expr? expr);;NSH(4.7.96)
       (values 'X expr)
-      (nprotecting-cong-state   ;;;changed from LET on alists
-       ((*dp-state* *dp-state*)
-	(*alists* *alists*))
-      (let ((*rewrite-hash* (if *hash-rewrites?*
-				(copy *rewrite-hash*)
-				*rewrite-hash*))
-	    (conditions (if (not (listp conditions))
-			    (list conditions)
-			    conditions))
-	    (condition-result nil)
-	    )
-	(loop for condition
-	      in conditions  ;;NSH(5.18.97):restored check to catch
-	                    ;;nested updates.
-	      when (and (not (false-p condition)) ;;; DAC: condition
+      (nprotecting-cong-state
+       ((*dp-state* *dp-state*))
+       (let ((*rewrite-hash* (if *hash-rewrites?*
+				 (copy *rewrite-hash*)
+				 *rewrite-hash*))
+	     (conditions (if (not (listp conditions))
+			     (list conditions)
+			     conditions))
+	     (condition-result nil))
+	 (loop for condition
+	       in conditions;;NSH(5.18.97):restored check to catch
+	       ;;nested updates.
+	       when (and (not (false-p condition)) ;;; DAC: condition
 			;;;should never be false
-			(not (check-for-connectives? condition)))
-	      do (setq condition-result
-		       (call-process condition *dp-state* *alists*)))
-	;;    (format T "~%  Simplifying ~a under conditions ~{~a, ~}"
-	;;	       expr conditions);;NSH(10.10.94)omitting for now.
-	(if (false-p condition-result)
-	    (nprotecting-cong-state
-	     ((*dp-state* *top-dp-state*)
-	      (*alists* *top-alists*))
-	     (assert-if expr))
-	    (assert-if expr))))))
+			 (not (check-for-connectives? condition)))
+	       do (setq condition-result
+			(call-process condition *dp-state*)))
+	 ;;    (format T "~%  Simplifying ~a under conditions ~{~a, ~}"
+	 ;;	       expr conditions);;NSH(10.10.94)omitting for now.
+	 (if (false-p condition-result)
+	     (nprotecting-cong-state
+	      ((*dp-state* *top-dp-state*))
+	      (assert-if expr))
+	     (assert-if expr))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;assert-if-inside rewrites only inside the expression but leaves
@@ -1585,6 +1548,14 @@
 (defmethod is-subtraction? ((expr T))
   nil)
 
+(defmethod is-unary-minus? ((expr application))
+  (with-slots ((op operator) (arg argument)) expr
+    (and (is-minus? op)
+	 (not (tuple-expr? arg)))))
+
+(defmethod is-unary-minus? ((expr T))
+  nil)
+
 (defmethod is-multiplication? ((expr application))
   (with-slots (operator)
       expr
@@ -2431,18 +2402,17 @@
 
 
 (defun do-auto-rewrite-memo* (expr op* decl sig hash-res)
-  (let* (
-	 (hashed-result  (nth 0 hash-res))
+  (assert (= (length hash-res) 5))
+  (let* ((hashed-result  (nth 0 hash-res))
 	 (hashed-dp-state (nth 1 hash-res))
-	 (hashed-alists  (nth 2 hash-res))
-	 (hashed-rewrites  (nth 3 hash-res))
-	 (hashed-rewrites!  (nth 4 hash-res))
-	 (hashed-macros (nth 5 hash-res))) ;;(break "memo")
+	 (hashed-rewrites  (nth 2 hash-res))
+	 (hashed-rewrites!  (nth 3 hash-res))
+	 (hashed-macros (nth 4 hash-res))) ;;(break "memo")
 	(progn
 	  (incf *rewrite-hits*)
-	  (if (and (not (dp-changed hashed-dp-state *dp-state*;;if context
-				    hashed-alists *alists*));;unchanged since
-		   (eq *auto-rewrites-names* hashed-rewrites);;hashing
+	  (if (and (not (dpi-state-changed? hashed-dp-state *dp-state*))
+		   ;;if context unchanged since hashing
+		   (eq *auto-rewrites-names* hashed-rewrites)
 		   (eq *auto-rewrites!-names* hashed-rewrites!)
 		   (eq *macro-names* hashed-macros))
 	      (if (eq hashed-result 'X) ; Previous rewrites did not alter expr.
@@ -2472,9 +2442,8 @@
       (do-auto-rewrite-non-memo-then-hash* expr op* decl sig)
       (multiple-value-bind
 	  (topsig topexpr)
-	  (nprotecting-cong-state  ;;;changed from LET on alists
-	   ((*dp-state* *top-dp-state*)
-	    (*alists* *top-alists*))
+	  (nprotecting-cong-state
+	   ((*dp-state* *top-dp-state*))
 	   (let ((*rewrite-hash* *top-rewrite-hash*))
 	     (do-auto-rewrite-non-memo-then-hash* expr op* decl sig)))
 	(if (eq topsig 'X)
@@ -2489,17 +2458,10 @@
 		       (values '? newexpr))))))))
 
 (defun set-rewrite-hash (expr result)
-  (let ((hashed-dp-state
-	 (when *new-ground?*
-	   (dp::make-cong-state :stack nil :reverse nil
-				:used-assertions
-				(dp::cong-state-used-assertions *dp-state*))))
-	(hashed-alists
-	 (make-dpinfo (dpinfo-sigalist *alists*)
-		      (dpinfo-findalist *alists*)
-		      (dpinfo-usealist *alists*))))
+  (let ((hashed-dp-state (dpi-copy-state *dp-state*)))
     (setf (gethash expr *rewrite-hash*)
-	  (list result hashed-dp-state hashed-alists;;(cons findalist usealist)
+	  (list result
+		hashed-dp-state
 		*auto-rewrites-names*
 		*auto-rewrites!-names*
 		*macro-names*))))
@@ -3098,23 +3060,20 @@
 (defun assert-test (fmla)
   (unless (check-for-connectives? fmla)
     (nprotecting-cong-state  ;;changed from LET on alists
-     ((*dp-state* *dp-state*)
-      (*alists* *alists*))
+     ((*dp-state* *dp-state*))
      (if (eq *pseudo-normalizing* 'include-typepreds?)
 	 (let ((typealist typealist))
 	   (unless (assq (caar primtypealist) typealist)
 	     (setq typealist (append typealist primtypealist)))
 	   (assert-typepreds *assert-typepreds*)
-	   (call-process fmla *dp-state* *alists*))
-	 (call-process fmla *dp-state* *alists*)))))
+	   (call-process fmla *dp-state*))
+	 (call-process fmla *dp-state*)))))
 
 (defun assert-test0 (fmla)
   (unless (check-for-connectives? fmla)
     (nprotecting-cong-state
-     ((*dp-state* *init-dp-state*)
-      (*alists* *init-alists*))
-     (let ((result (call-process fmla *dp-state* *alists*)))
-       result))))
+     ((*dp-state* *init-dp-state*))
+     (call-process fmla *dp-state*))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;auto-rewriting
