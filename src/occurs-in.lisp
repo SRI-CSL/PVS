@@ -133,6 +133,15 @@
       (occurs-in obj (bindings ex))
       (occurs-in obj (expression ex))))
 
+(defmethod occurs-in (obj (ex cases-expr))
+  (or (when (tc-eq obj ex) ex)
+      (occurs-in obj (selections ex))
+      (occurs-in obj (expression ex))))
+
+(defmethod occurs-in (obj (ex selection))
+  (or (occurs-in obj (expression ex))
+      (occurs-in obj (constructor ex))))
+
 (defmethod occurs-in (obj (ex update-expr))
   (or (when (tc-eq obj ex) ex)
       (occurs-in obj (expression ex))
