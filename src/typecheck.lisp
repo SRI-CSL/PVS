@@ -11,7 +11,7 @@
 
 (in-package :pvs)
 
-(export '(typecheck typecheck*))
+(export '(typecheck typecheck* typecheck-uniquely set-dependent-formals))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

@@ -12,7 +12,7 @@
 
 (in-package :pvs)
 
-(export '(defcl))
+(export '(defcl copy write-deferred-methods))
 
 #+cmu
 (defmethod slot-exists-p-using-class (c o s)

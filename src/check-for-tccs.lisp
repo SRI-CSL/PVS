@@ -12,6 +12,8 @@
 
 (in-package :pvs)
 
+(export '(check-for-tccs*))
+
 (defvar *skip-tcc-check-exprs* nil)
 
 ;;; check-for-tccs is called by set-type when the type is already set, but

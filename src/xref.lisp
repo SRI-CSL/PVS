@@ -11,6 +11,8 @@
 
 (in-package :pvs)
 
+(export '(from-prelude?))
+
 (defvar *generate-xref-declaration* nil)
 
 (defvar *xref-names-seen* nil)

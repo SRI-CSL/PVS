@@ -11,6 +11,8 @@
 
 (in-package :pvs)
 
+(export '(free-params free-params*)) ; free-params
+
 ;;; Collect the free parameters of an object.
 ;;; Returns a list of formal decls.
 

@@ -11,7 +11,7 @@
 
 (in-package :pvs)
 
-(export '(pvs-message pvs-error))
+(export '(pvs-message set-pvs-tmp-file pvs-error type-error))
 
 (defvar *to-emacs* nil)
 (defvar *output-to-emacs* "")

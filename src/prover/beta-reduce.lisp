@@ -12,6 +12,8 @@
 
 (in-package :pvs)
 
+(export '(beta-reduce))
+
 ;;; Moved from proofrules.lisp
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -12,6 +12,8 @@
 
 (in-package :pvs)
 
+(export '(make-resolution))
+
 ;;; Substitutes the actuals for the formals in an expression or
 ;;; type-expr.  The result is an expr with all resolutions fully
 ;;; resolved (except possibly the current module).  If nothing changed,

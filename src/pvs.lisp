@@ -11,6 +11,8 @@
 
 (in-package :pvs)
 
+(export '(exit-pvs))
+
 ;;; This file provides the basic commands of PVS.  It provides the
 ;;; functions invoked by pvs-cmds.el, as well as the functions used in
 ;;; batch mode.

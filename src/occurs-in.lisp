@@ -13,6 +13,8 @@
 
 (in-package :pvs)
 
+(export '(occurs-in))
+
 (defmethod occurs-in (x y)
   (when (eql x y) y))
 

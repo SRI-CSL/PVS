@@ -11,7 +11,10 @@
 
 (in-package :pvs)
 
-(export '(index assignments))
+
+(export '(assignments boolean-equation conjunction disequation disjunction
+	  equation iff iff-or-boolean-equation implication index negation
+	  propositional-application))
 
 ;;; Provide a class on which to hang syntactic information
 

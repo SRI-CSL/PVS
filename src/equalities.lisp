@@ -21,6 +21,8 @@
 
 (in-package :pvs)
 
+(export '(tc-eq compatible?))
+
 (defvar *dep-bindings* nil
   "An alist of dep-bindings: each elt is of the form (db db1 db2),
 where db is to replace db1 and db2")

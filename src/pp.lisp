@@ -11,6 +11,8 @@
 
 (in-package :pvs)
 
+(export '(unparse pp* pp-chained-decls check-chained-syntax simple-name?))
+
 ;; The variable excl:*enclose-printer-errors* is supposed to allow
 ;; errors to be seen when they happen.
 

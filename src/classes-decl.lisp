@@ -106,7 +106,22 @@
 
 (in-package :pvs)
 
-(export '(id status type declared-type ))
+(export '(actual actuals adt-or-theory adtdecl application argument arguments
+          assignment assuming bind-decl binding-expr bindings branch chain?
+	  const-decl const-decl? constructors context conversion-decl
+	  conversionplus-decl? conversions declaration declarations-hash
+	  declared-type definition domain enumtype enumtype expr expression
+	  exprs field-application field-decl fields filename formal-const-decl
+	  formal-type-decl formals formals-sans-usings formals-sans-usings
+	  funtype generated-by id infix-application info inline-datatype
+	  judgement? lambda-expr let-expr modname module name name-expr
+	  nonempty-types nonempty? number number-expr operator parens
+	  predicate print-type projection-application quant-expr range
+	  recognizer record-expr recordtype resolutions saved-context
+	  simple-constructor status subtype supertype theory theory-name
+	  tuple-expr tupletype type type-decl type-def-decl type-expr
+	  type-name type-name? type-value types update-expr using-hash
+	  var-decl visible?))
 
 ;;; So we can unparse a list of modules into a single file.
 

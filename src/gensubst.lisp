@@ -10,6 +10,8 @@
 
 (in-package :pvs)
 
+(export '(gensubst gensubst* mapobject mapobject*))
+
 (defvar *gensubst-cache* (make-hash-table :test #'eq))
 
 (defvar *dont-expand-adt-subtypes* nil)

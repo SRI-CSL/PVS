@@ -11,6 +11,8 @@
 
 (in-package :pvs)
 
+(export '(pc-parse pc-typecheck))
+
 (defvar *subgoals* nil)
 
 (defvar *multiple-proof-default-behavior* :ask)

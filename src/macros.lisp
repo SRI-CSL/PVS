@@ -11,7 +11,7 @@
 
 (in-package :pvs)
 
-(export '(length= singleton? add-to-alist))
+(export '(length= singleton? add-to-alist makesym))
 
 (defmacro tcdebug (ctl &rest args)
   `(when *tcdebug*

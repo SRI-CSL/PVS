@@ -13,7 +13,10 @@
 
 ;;(proclaim '(inline resolution))
 
-(export '(make-new-context copy-context lf show))
+(export '(argument* copy-all copy-context current-declarations-hash
+	  current-theory current-theory-name current-using-hash file-older
+	  find-supertype get-theory lf make-new-context mapappend operator*
+	  put-decl pvs-current-directory resolution show))
 
 (defmethod initialize-instance :around ((obj syntax) &rest initargs)
   (let ((place (getf initargs 'place)))
