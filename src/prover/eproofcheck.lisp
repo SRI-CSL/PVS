@@ -392,16 +392,19 @@
 		script
 		(not (equal script '("" (postpone) nil nil)))
 		(not (equal (script prinfo) script))
-		(let ((ids (mapcar #'id
-			     (remove-if-not #'(lambda (prinfo)
-						(equal (script prinfo) script))
-			       (proofs decl)))))
-		  (pvs-yes-or-no-p
-		   "~@[This proof is already associated with this formula ~
+		(or (eq *multiple-proof-default-behavior* :noquestions)
+		    (let ((ids (mapcar #'id
+				 (remove-if-not
+				     #'(lambda (prinfo)
+					 (equal (script prinfo) script))
+				   (proofs decl)))))
+		      (pvs-yes-or-no-p
+		       "~@[This proof is already associated with this formula ~
                        as ~{~a~^, ~}~%~]~
                     Would you like the proof to be saved~@[ anyway~]? "
-		   ids ids)))
-	   (cond ((or (eq *multiple-proof-default-behavior* :overwrite)
+		       ids ids))))
+	   (cond ((or (memq *multiple-proof-default-behavior*
+			    '(:overwrite :noquestions))
 		      (and (eq *multiple-proof-default-behavior* :ask)
 			   (pvs-yes-or-no-p
 			    "Would you like to overwrite the current proof (named ~a)? "
@@ -497,51 +500,52 @@
 			   (quit)))))))
 
 
-(defmethod prove* ((proofstate proofstate))
+(defun prove* (proofstate)
   (let ((*current-context* (context proofstate)))
-    (labels ((prove*-int (proofstate)
-		(setf *current-context* (context proofstate))
-		(when (and (null *printproofstate*)
-			   (fresh? proofstate)
-			   (not (typep (strategy proofstate) 'strategy))
-			   ;;(not (typep proofstate 'strat-proofstate))
-			   ;;(not (null (strategy proofstate)))
-			   ;;(NSH:11.17.94): commented out
-			   )
-		  ;;(let ((*to-emacs* t))
-		  ;;      (pvs-buffer "*goal*"
-		  ;;		      proofstate
-		  ;;		      t t))
-		  ;;  (break)
-		  (print-proofstate-if proofstate)
-		  (unless *suppress-printing*
-		    (clear-strategy-errors))
-		  )
-		(let ((nextstate (proofstepper proofstate)))
-		  (cond  ((null (parent-proofstate proofstate))
-			  (cond ((eq (status-flag proofstate) '!)
-				 (when (typep proofstate 'top-proofstate)
-				   (let ((decl (declaration proofstate)))
-				     (setf (proof-refers-to decl)
-					   (dependent-decls proofstate)
-					   (proof-status decl) 'proved)) 
-				   (format-if "~%Q.E.D.~%"))
-				 proofstate)
-				((memq (status-flag proofstate) '(X XX))
-				 (when (typep proofstate 'top-proofstate)
-				   (format-if "~%Failed!~%"))
-				 proofstate)
-				((and (or (fresh? proofstate)
-					  (eq (status-flag proofstate) '*))
-				      (null (strategy proofstate))
-				      (not (typep proofstate 'top-proofstate))) 
-				 (unless *suppress-printing*
-				   (format t "Subgoal completed"))
-				 (setf (status-flag proofstate) '*)
-				 proofstate)
-				(t (prove*-int nextstate))))
-			 (t (prove*-int nextstate))))))
-      (prove*-int proofstate))))
+    (prove*-int proofstate)))
+
+(defun prove*-int (proofstate)
+  (setf *current-context* (context proofstate))
+  (when (and (null *printproofstate*)
+	     (fresh? proofstate)
+	     (not (typep (strategy proofstate) 'strategy))
+	     ;;(not (typep proofstate 'strat-proofstate))
+	     ;;(not (null (strategy proofstate)))
+	     ;;(NSH:11.17.94): commented out
+	     )
+    ;;(let ((*to-emacs* t))
+    ;;      (pvs-buffer "*goal*"
+    ;;		      proofstate
+    ;;		      t t))
+    ;;  (break)
+    (print-proofstate-if proofstate)
+    (unless *suppress-printing*
+      (clear-strategy-errors))
+    )
+  (let ((nextstate (proofstepper proofstate)))
+    (cond  ((null (parent-proofstate proofstate))
+	    (cond ((eq (status-flag proofstate) '!)
+		   (when (typep proofstate 'top-proofstate)
+		     (let ((decl (declaration proofstate)))
+		       (setf (proof-refers-to decl)
+			     (dependent-decls proofstate)
+			     (proof-status decl) 'proved)) 
+		     (format-if "~%Q.E.D.~%"))
+		   proofstate)
+		  ((memq (status-flag proofstate) '(X XX))
+		   (when (typep proofstate 'top-proofstate)
+		     (format-if "~%Failed!~%"))
+		   proofstate)
+		  ((and (or (fresh? proofstate)
+			    (eq (status-flag proofstate) '*))
+			(null (strategy proofstate))
+			(not (typep proofstate 'top-proofstate))) 
+		   (unless *suppress-printing*
+		     (format t "Subgoal completed"))
+		   (setf (status-flag proofstate) '*)
+		   proofstate)
+		  (t (prove*-int nextstate))))
+	   (t (prove*-int nextstate)))))
 
 ;;12/16: need to fix prove* to save the proof, etc.
 
@@ -1732,7 +1736,9 @@
 		  (topstep (topstep step))
 		  (name (if (consp (rule-input topstep))
 			    (car (rule-input topstep))
-			    topstep)))
+			    topstep))
+		  (*suppress-printing* (or *suppress-printing*
+					   (eq name 'lisp))))
 	     (when (memq name *ruletrace*)
 	       (format t "~%~vTEnter: ~a" *ruletracedepth*
 		       (rule-input topstep))
@@ -3052,15 +3058,15 @@
 			       *print-ancestor*
 			       (parent-proofstate *ps*)))
 	 (*pp-print-parens* *show-parens-in-proof*))
-  (if *debugging-print-object*
-      (call-next-method)
-      (if (comment ps)
-	  (format stream "~%~a : ~%~a~%~a"
-	    (label ps)
-	    (comment ps)
-	    (current-goal ps))
-	  (format stream "~%~a :  ~%~a"  (label ps) 
-		  (current-goal ps))))))
+    (if *debugging-print-object*
+	(call-next-method)
+	(if (comment ps)
+	    (format stream "~%~a : ~%~a~%~a"
+	      (label ps)
+	      (comment ps)
+	      (current-goal ps))
+	    (format stream "~%~a :  ~%~a"  (label ps) 
+		    (current-goal ps))))))
 
 (defmethod print-object ((ps tcc-proofstate) stream)
   (let* ((*ps* ps)
