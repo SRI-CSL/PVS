@@ -309,6 +309,8 @@ qelisp = src/qe/qe-utils.lisp \
 follisp = src/fol/fol.lisp \
           src/fol/fol-top.lisp
 
+abstractionlisp = src/abstraction/abstract.lisp
+
 groundevallisp = src/groundeval/eval-macros.lisp \
 		 src/groundeval/eval-utils.lisp \
 		 src/groundeval/ground-expr.lisp \
@@ -325,7 +327,7 @@ inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
 	     ${decision-procedures} ${ws1slisp} ${groundevallisp} \
-             ${inst-by-unif-lisp} ${qelisp} ${follisp}
+             ${inst-by-unif-lisp} ${qelisp} ${follisp} ${abstractionlisp}
 
 all-lisp-files = ${ess} ${pvs-parser-in} ${lisp-files}
 

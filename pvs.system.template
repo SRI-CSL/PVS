@@ -388,4 +388,7 @@
        :source-pathname "src/fol"
        :components ((:file "fol")
 		    (:file "fol-top")))
-   ))
+      (:module abstraction
+	:source-pathname "src/abstraction"
+	:componenets ((:file "abstraction")))
+      ))
