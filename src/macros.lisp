@@ -3,15 +3,16 @@
 ;; Author          : Sam Owre
 ;; Created On      : Sun Jan  9 18:44:56 1994
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Oct 29 22:44:02 1998
-;; Update Count    : 12
+;; Last Modified On: Wed Sep  1 03:37:46 2004
+;; Update Count    : 15
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
-(export '(length= singleton? add-to-alist makesym))
+(export '(length= singleton? add-to-alist makesym get-declarations put-decl
+		  get-importings))
 
 (defmacro tcdebug (ctl &rest args)
   `(when *tcdebug*
@@ -396,7 +397,7 @@
 				    *empty-expression-types*))
 	    (*in-typechecker* (or *in-typechecker*
 				  (if (or *in-checker* *in-evaluator*)
-				      ,obj
+				      (copy-all ,obj)
 				      t))))
 	,@forms)
     (unless *in-typechecker*
