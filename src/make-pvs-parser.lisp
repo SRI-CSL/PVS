@@ -50,5 +50,5 @@
 ;;(compile-file-if-needed "src/ergo-runtime-fixes")
 ;;(load "src/ergo-runtime-fixes")
 (let ((sbmake (intern "SB-MAKE" :sb)))
-  (funcall sbmake :language "pvs" :working-dir "./src/"))
+  (funcall sbmake :language "pvs" :working-dir "./src/" :unparser? nil))
 (excl:exit)
