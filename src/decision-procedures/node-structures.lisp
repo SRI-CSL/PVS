@@ -1,6 +1,7 @@
 (in-package dp)
 
-(defvar *develop* t)
+(eval-when (eval compile load)
+  (defvar *develop* t))
 
 (declaim (special *dp-changed*))
 (defvar *dp-changed* nil)
