@@ -1,4 +1,4 @@
-(in-package 'pvs)
+(in-package :pvs)
 
 (require :foreign)
 
@@ -273,6 +273,7 @@
   (let* ((*pvs-bdd-hash* (make-hash-table
 			  :hash-function 'pvs-sxhash :test 'tc-eq))
 	 (*bdd-pvs-hash* (make-hash-table))
+	 (*bdd-counter* (let ((x 0)) #'(lambda () (incf x))))
 	 (*recognizer-forms-alist* nil)
 	 (sforms-bdd (make-sforms-bdd selected-sforms))
 	 (list-of-conjuncts (translate-from-bdd-list
@@ -416,7 +417,7 @@
 			(translate-to-bdd* (args2 expr)))
 	     (make-bdd-var expr)))
 	((and (disequation? expr)
-	      (tc-eq (type (args1 expr)) *boolean*))
+	      (compatible? (type (args1 expr)) *boolean*))
 	 (bdd-not (bdd-equiv (translate-to-bdd* (args1 expr))
 			     (translate-to-bdd* (args2 expr)))))
 	((negation? expr)
