@@ -243,9 +243,12 @@
 (defcl nonempty-type-decl (type-decl)
   keyword)
 
+;;; A mixin
 (defcl type-def-decl (type-decl)
-  (type-expr :parse t))
+  (type-expr :parse t)
+  (contains :parse t))
 
+;;; A mixin
 (defcl nonempty-type-def-decl (type-def-decl nonempty-type-decl))
 
 (defcl type-eq-decl (type-def-decl))
@@ -327,7 +330,8 @@
   (tcc-disjuncts
    :documentation "The disjuncts of the definition used for TCCs")
   (justification :fetch-as nil)
-  justification2
+  (justification2 :fetch-as nil)
+  new-ground?
   modified-proof?
   (proof-status
    :documentation "One of proved, unproved, unfinished, or unchecked")
@@ -411,11 +415,10 @@
 
 (defcl type-application (type-expr)
   (type :parse t)
-  (parameters :parse t)
-  (contains :parse t))
+  (parameters :parse t))
 
 
-;;; Subtypes are of the form {x [: type] | expr} [CONTAINING expr],
+;;; Subtypes are of the form {x [: type] | expr},
 ;;; but also come in with bind-decls of the form (x [: type] | pred)
 ;;; The formals and formula are for this latter form, as the predicate is
 ;;; constructed from them.  Thus for (x:int | p(x)) the formals are (x: int)
@@ -425,7 +428,6 @@
 ;;; This is a mixin class
 
 (defcl subtype (type-expr)
-  (contains :parse t)
   (supertype :parse t)
   predicate)
 
