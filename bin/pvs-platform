@@ -18,17 +18,7 @@ case `uname -s` in
 	   *)    arch=`uname -m`;;
 	 esac
 	 os=redhat
-	 # If Linux, we need to determine the Redhat version to use.
-	 if [ -f /etc/redhat-release ]
-	   then os_version=`sed 's/.*release \([0-9]*\)\.\([0-9]*\) .*/\1/' \
-	                      /etc/redhat-release`
-	   # Not Redhat; use the libc version to try and figure it out.
-	   else if [ -f /lib/libc.so.6 ]
-		  then os_version=5
-		  else os_version=4
-		fi;
-	 fi;
-	 if [ $os_version -gt 5 ]; then os_version=5; fi;;
+	 os_version=5;;
   AIX) arch=powerpc-ibm
        os=AIX
        os_version=`uname -r`;;
