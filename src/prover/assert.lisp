@@ -3777,16 +3777,12 @@ chronological order are:~3%")
 	   hash))
 
 (defun pick-freevars-entries (freevars alist)
-  (if (consp freevars)
-      (let ((entry (assoc (declaration (car freevars))
-			  alist
-			  :test #'same-declaration)))
-	(if entry
-	    (cons (cdr entry) (pick-freevars-entries (cdr freevars)
-						     alist))
-	    (pick-freevars-entries (cdr freevars)
-				   alist)))
-      NIL))
+  (when (consp freevars)
+    (let ((entry (assq (declaration (car freevars)) alist)))
+      (if entry
+	  (cons (cdr entry)
+		(pick-freevars-entries (cdr freevars) alist))
+	  (pick-freevars-entries (cdr freevars) alist)))))
 
 (defun install-subst-hash (expr alist result hash)
   (let* ((fv (freevars expr))
