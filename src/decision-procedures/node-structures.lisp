@@ -1551,8 +1551,8 @@
   (cond ((dp-variable-p trm)
         (list trm))
        ((application-p trm)
-        (mapcan #'vars-of
-          (funargs trm)))
+	(append (vars-of (funsym trm))
+		(mapcan #'vars-of (funargs trm))))
        (t nil)))
 
 (defun occurs-p (x trm)
@@ -1561,13 +1561,10 @@
 	((constant-p trm)
 	 (eq x trm))
 	((application-p trm)
-	 (some #'(lambda (e)
-		   (occurs-p x e))
-	       (funargs trm)))
-	((listp trm)
-	 (some #'(lambda (e)
-		   (occurs-p x e))
-	       trm))
+	 (or (occurs-p x (funsym trm))
+	     (some #'(lambda (arg)
+		       (occurs-p x arg))
+		   (funargs trm))))
 	(t nil)))
 
 (defun replace-by (trm subst)
@@ -1577,13 +1574,16 @@
 
 (defun replace-by* (trm)
   (cond ((leaf-p trm)
-	 (let ((lookup (assoc trm *subst*)))
-	   (if lookup (cdr lookup) trm)))
+	 (let ((res (lookup trm *subst*)))
+	   (if res (cdr res) trm)))
 	((application-p trm)
-	 (mk-term (cons (funsym trm)
-			(mapcar #'replace-by* (funargs trm)))))
+	 (mk-term (cons (replace-by* (funsym trm))
+		        (mapcar #'replace-by* (funargs trm)))))
 	(t
 	 trm)))
+
+(defun lookup (trm subst)
+  (assoc trm subst))
 
 (defun occurs-in-scope-of-uninterp-p (x trm)
   (and (application-p trm)
@@ -1595,6 +1595,12 @@
          (some #'(lambda (arg)
 	           (occurs-p x arg))
 	       (funargs trm)))))
+
+(defun well-formed-node-p (trm)
+  (or (leaf-p trm)
+      (and (application-p trm)
+	   (well-formed-node-p (funsym trm))
+	   (every #'well-formed-node-p (funargs trm)))))
 
 ;; Additional Symbols, Recognizers etc.
 
