@@ -350,14 +350,15 @@
      :components ((:file "forward-chain-pvs")
 		  (:file "forward-chain"))
      :depends-on ("dc-structure"))
-;   (:module groundeval
-;     :source-pathname "src/groundeval"
-;     :components ((:file "eval-macros")
-;		  (:file "eval-utils")
-;		  (:file "groundp")
-;		  (:file "static-update")
-;		  (:file "pvseval-update")
-;		  (:file "cl2pvs")))
+   (:module groundeval
+     :source-pathname "src/groundeval"
+     :components ((:file "eval-macros")
+		  (:file "eval-utils")
+		  (:file "groundp")
+		  (:file "static-update")
+		  (:file "pvseval-update")
+		  (:file "cl2pvs")
+		  (:file "generate-lisp-for-theory")))
    (:module ws1s
      :source-pathname "src/WS1S/lisp"
      :components ((:file "dfa-foreign")
