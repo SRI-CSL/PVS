@@ -276,7 +276,7 @@
 (defmethod check-for-tccs* ((expr update-expr) (expected recordtype))
   (with-slots (expression assignments) expr
     (check-for-tccs* expression (type expression))
-    (let ((atype (find-supertype (type expression)))
+    (let ((atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
       (check-assignment-arg-types args-list values expression atype))))
@@ -284,7 +284,7 @@
 (defmethod check-for-tccs* ((expr update-expr) (expected tupletype))
   (with-slots (expression assignments) expr
     (check-for-tccs* expression (type expression))
-    (let ((atype (find-supertype (type expression)))
+    (let ((atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
       (check-assignment-arg-types args-list values expression atype))))
@@ -292,7 +292,7 @@
 (defmethod check-for-tccs* ((expr update-expr) (expected funtype))
   (with-slots (expression assignments) expr
     (check-for-tccs* expression (type expression))
-    (let ((atype (find-supertype (type expression)))
+    (let ((atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
       (check-assignment-arg-types args-list values expression atype))))
@@ -300,7 +300,7 @@
 (defmethod check-for-tccs* ((expr update-expr) (expected datatype-subtype))
   (with-slots (expression assignments) expr
     (check-for-tccs* expression (type expression))
-    (let ((atype (find-supertype (type expression)))
+    (let ((atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
       (check-assignment-arg-types args-list values expression atype))))
@@ -308,7 +308,7 @@
 (defmethod check-for-tccs* ((expr update-expr) (expected adt-type-name))
   (with-slots (expression assignments) expr
     (check-for-tccs* expression (type expression))
-    (let ((atype (find-supertype (type expression)))
+    (let ((atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
       (check-assignment-arg-types args-list values expression atype))))
