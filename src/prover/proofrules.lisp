@@ -1045,7 +1045,8 @@ or supply more substitutions."
 							    (forall-body* form)))
 						     form))
 			      (subform
-			       (substit intermediate-form bindalist))
+			       (let ((*substit-dont-simplify* t));;NSH(11.27.02)
+				 (substit intermediate-form bindalist)))
 			      (sform    (make-instance 's-formula
 					  'formula (negate subform)))
 			      (newsequent (lcopy (current-goal ps)
