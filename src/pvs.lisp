@@ -332,8 +332,8 @@
 	   (clash (gethash (id theory) *prelude*)))
       (when clash
 	(parse-error theory
-	  "~a is in use as a prelude ~a name and may not be redefined"
-	  (if (datatype? clash) "datatype" "theory") (id clash)))
+	  "~a is a prelude ~a and may not be redefined"
+	  (id clash) (if (datatype? clash) "datatype" "theory")))
       (check-for-prelude-theory-clashes (cdr new-theories)))))
 
 (defun check-for-context-theory-clashes (new-theories filename)
