@@ -348,7 +348,6 @@
 ;;; dependent type.
 
 (defcl application-judgements ()
-  (argtype-hash :initform nil)
+  ;;(argtype-hash :initform nil)
   (generic-judgements :initform nil)
   (judgements-graph :initform nil))
-
