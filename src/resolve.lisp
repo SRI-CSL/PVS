@@ -1010,24 +1010,37 @@
       reses))
 
 (defun filter-bindings (reses args)
-  (or (delete-if-not #'(lambda (r) (memq (declaration r) *bound-variables*))
+  (or (remove-if-not #'(lambda (r) (memq (declaration r) *bound-variables*))
 	reses)
       (and args
-	   (delete-if-not #'(lambda (r)
-			      (let* ((stype (find-supertype (type r)))
-				     (dtypes (if (cdr args)
-						 (domain-types stype)
-						 (list (if (dep-binding?
-							    (domain stype))
-							   (type (domain stype))
-							   (domain stype))))))
-				(every #'(lambda (a dt)
-					   (some #'(lambda (aty)
-						     (tc-eq aty dt))
-						 (types a)))
-				       args dtypes)))
-	     reses))
+	   (filter-res-exact-matches reses args))
       reses))
+
+(defun filter-res-exact-matches (reses args)
+  (let ((exact-matches
+	 (remove-if-not #'(lambda (r)
+			    (let* ((stype (find-supertype (type r)))
+				   (dtypes (if (cdr args)
+					       (domain-types stype)
+					       (list (if (dep-binding?
+							  (domain stype))
+							 (type (domain stype))
+							 (domain stype))))))
+			      (every #'(lambda (a dt)
+					 (some #'(lambda (aty)
+						   (tc-eq aty dt))
+					       (types a)))
+				     args dtypes)))
+	   reses)))
+    (append exact-matches
+	    (remove-if #'(lambda (r)
+			   (or (memq r exact-matches)
+			       (let* ((stype (find-supertype (type r))))
+				 (some #'(lambda (r2)
+					   (compatible? (range stype)
+							(range (find-supertype (type r2)))))
+				       exact-matches))))
+	      reses))))
 
 (defun filter-local-expr-resolutions (reses)
   (if *get-all-resolutions*
