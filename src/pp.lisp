@@ -1515,7 +1515,7 @@ bind tighter.")
     (write-char #\space)
     (pprint-indent :block 0)
     (pprint-newline :linear)
-    (cond ((typep (else-part ex) '(or chained-branch chained-if-expr))
+    (cond ((chained-else? (else-part ex))
 	   (write 'ELSIF)
 	   (pp-chained-if-expr (else-part ex) nil))
 	  (t (write 'ELSE)
@@ -1524,6 +1524,23 @@ bind tighter.")
     (write-char #\space)
     (pprint-newline :linear)
     (write 'ENDIF)))
+
+(defmethod chained-else? ((ex chained-branch))
+  t)
+
+(defmethod chained-else? ((ex chained-if-expr))
+  t)
+
+(defmethod chained-else? ((ex argument-conversion))
+  (and (null *show-conversions*)
+       (chained-else? (operator ex))))
+
+(defmethod chained-else? ((ex lambda-conversion))
+  (and (null *show-conversions*)
+       (chained-else? (expression ex))))
+
+(defmethod chained-else? (ex)
+  nil)
 
 (defmethod pp* ((ex chained-if-expr))
   (pp-chained-if-expr ex t))
@@ -1550,6 +1567,24 @@ bind tighter.")
 	  (t (write 'ELSE)
 	     (write-char #\space)
 	     (pp* (else-part ex))))))
+
+(defmethod condition ((ex argument-conversion))
+  (condition (operator ex)))
+
+(defmethod then-part ((ex argument-conversion))
+  (then-part (operator ex)))
+
+(defmethod else-part ((ex argument-conversion))
+  (else-part (operator ex)))
+
+(defmethod condition ((ex lambda-conversion))
+  (condition (expression ex)))
+
+(defmethod then-part ((ex lambda-conversion))
+  (then-part (expression ex)))
+
+(defmethod else-part ((ex lambda-conversion))
+  (else-part (expression ex)))
 
 (defmethod pp* ((ex coercion))
   (with-slots (argument operator) ex
