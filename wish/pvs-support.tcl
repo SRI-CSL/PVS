@@ -1,3 +1,7 @@
+
+>> HISTORY 
+>> 12-Jul-1994		Natarajan Shankar	
+>>    Fix proof-current.
 wm withdraw .
 
 proc emacs-eval {arg} {
@@ -554,55 +558,56 @@ proc proof-current {path} {
 	$proofwin delete current-circle
 	$proofwin dtag current-subgoal
 	set ancs [ancestors $curpath]
-	set curpath {}
+	unset curpath
 	foreach tag $ancs {
 	    update-color $tag $tag
 	}
     }
-    foreach tag [ancestors $path] {
-	$proofwin addtag current-subgoal withtag $tag
-    }
-    my-foreground $proofwin current-subgoal [get-option ancestorColor]
-    my-foreground $proofwin $path [get-option currentColor]
+    if {$path!={}} {
+	foreach tag [ancestors $path] {
+	    $proofwin addtag current-subgoal withtag $tag
+	}
+	my-foreground $proofwin current-subgoal [get-option ancestorColor]
+	my-foreground $proofwin $path [get-option currentColor]
 
-    set bbox [$proofwin bbox $path.real]
-    regexp {^(.*).c} $proofwin whole fr
-    set hscroll $fr.hscroll
-    set vscroll $fr.vscroll
+	set bbox [$proofwin bbox $path.real]
+	regexp {^(.*).c} $proofwin whole fr
+	set hscroll $fr.hscroll
+	set vscroll $fr.vscroll
 
-    set hget [$hscroll get]
-    set vget [$vscroll get]
+	set hget [$hscroll get]
+	set vget [$vscroll get]
 
-    set units [lindex [$proofwin config -scrollincrement] 4]
+	set units [lindex [$proofwin config -scrollincrement] 4]
 
-    set allbbox [lindex [$proofwin config -scrollregion] 4]
+	set allbbox [lindex [$proofwin config -scrollregion] 4]
 
-    set width [winfo width $proofwin]
-    set height [winfo height $proofwin]
+	set width [winfo width $proofwin]
+	set height [winfo height $proofwin]
 
-    set left [expr $units*[lindex $hget 2]+[lindex $allbbox 0]]
-    set top [expr $units*[lindex $vget 2]+[lindex $allbbox 1]]
-    set right [expr $left+$width]
-    set bottom [expr $top+$height]
+	set left [expr $units*[lindex $hget 2]+[lindex $allbbox 0]]
+	set top [expr $units*[lindex $vget 2]+[lindex $allbbox 1]]
+	set right [expr $left+$width]
+	set bottom [expr $top+$height]
 
-    if {[lindex $bbox 3]+10>$bottom} {
-	$proofwin yview [expr ([lindex $bbox 3]+10-$height-[lindex $allbbox 1])/$units]
-    } elseif {[lindex $bbox 1]-10<$top} {
-	$proofwin yview [expr ([lindex $bbox 1]-10-[lindex $allbbox 1])/$units]
-    }
+	if {[lindex $bbox 3]+10>$bottom} {
+	    $proofwin yview [expr ([lindex $bbox 3]+10-$height-[lindex $allbbox 1])/$units]
+	} elseif {[lindex $bbox 1]-10<$top} {
+	    $proofwin yview [expr ([lindex $bbox 1]-10-[lindex $allbbox 1])/$units]
+	}
 
-    if {[lindex $bbox 2]+10>$right} {
-	$proofwin xview [expr ([lindex $bbox 2]+10-$width-[lindex $allbbox 0])/$units]
-    } elseif {[lindex $bbox 0]-10<$left} {
-	$proofwin xview [expr ([lindex $bbox 0]-10-[lindex $allbbox 0])/$units]
-    }				      
+	if {[lindex $bbox 2]+10>$right} {
+	    $proofwin xview [expr ([lindex $bbox 2]+10-$width-[lindex $allbbox 0])/$units]
+	} elseif {[lindex $bbox 0]-10<$left} {
+	    $proofwin xview [expr ([lindex $bbox 0]-10-[lindex $allbbox 0])/$units]
+	}				      
 
-    set pwid [expr [lindex $bbox 2]-[lindex $bbox 0]]
-    set phit [expr [lindex $bbox 3]-[lindex $bbox 1]]
+	set pwid [expr [lindex $bbox 2]-[lindex $bbox 0]]
+	set phit [expr [lindex $bbox 3]-[lindex $bbox 1]]
     
-    if {[parse-bool [get-option circleCurrent]]} {
-	$proofwin create oval \
-	    [expr [lindex $bbox 0]-$pwid/2.8] \
+	if {[parse-bool [get-option circleCurrent]]} {
+	    $proofwin create oval \
+		[expr [lindex $bbox 0]-$pwid/2.8] \
 	    [expr [lindex $bbox 1]-$phit/2.8] \
 	    [expr [lindex $bbox 2]+$pwid/2.8] \
 	    [expr [lindex $bbox 3]+$phit/2.8] \
@@ -612,6 +617,7 @@ proc proof-current {path} {
     }
     
     set curpath $path
+    }
 }
 
 proc clear-message {top} {
