@@ -61,5 +61,19 @@ bdd___bdd_then = bdd_then ;
 bdd___bdd_else = bdd_else ;
 bdd___bdd_constrain = bdd_constrain ;
 /* bdd___bdd_sum_of_cubes = bdd_sum_of_cubes ; */
-
-
+bdd___bdd_reorder_var = bdd_reorder_var ;
+bdd___bdd_and_smooth = bdd_and_smooth ;
+bdd___bdd_rank_order_vars = bdd_rank_order_vars ;
+bdd___bdd_quantify = bdd_quantify ;
+bdd___bdd_subst_par = bdd_subst_par ;
+bdd___bdd_free_vec = bdd_free_vec ;
+bdd___bdd_get_output_string = bdd_get_output_string ;
+bdd___bdd_set_output_string = bdd_set_output_string ;
+bdd___bdd_print_as_sum_of_cubes = bdd_print_as_sum_of_cubes ;
+bdd___bdd_diff = bdd_diff ;
+bdd___bdd_one_of_vec = bdd_one_of_vec ;
+bdd___bdd_none_of_vec = bdd_none_of_vec ;
+bdd___bdd_subst = bdd_subst ;
+bdd___bdd_sum_of_cubes_as_list = bdd_sum_of_cubes_as_list ;
+bdd___bdd_traverse_cube = bdd_traverse_cube ;
+bdd___bdd_support_as_list_of_vars = bdd_support_as_list_of_vars ;
