@@ -76,7 +76,7 @@
 	;; This fix is needed because the prover calls typecheck on the
 	;; module-instances it finds to ensure that the proper TCCs are
 	;; generated (see lemma-step).
-	(unless (every #'typechecked? (actuals name))
+	(unless (every #'typed? (actuals name))
 	  (typecheck-actuals name))
 	(unless (member name (assq theory (using *current-context*))
 			:test #'tc-eq)
@@ -84,141 +84,9 @@
 	  (check-compatible-params (formals-sans-usings theory)
 				   (actuals name) nil)))))
 
-(defun set-argument-formals (res arguments)
-  (mapc #'(lambda (r)
-	    (set-argument-formals* (domain-types (find-supertype (type r)))
-				   arguments))
-	res))
-
-(defun domain-types (type)
-  (domain-types* (domain type)))
-
-(defmethod domain-types* ((type dep-binding))
-  (domain-types* (type type)))
-
-(defmethod domain-types* ((type tupletype))
-  (types type))
-
-(defmethod domain-types* ((type type-expr))
-  (list type))
-
-(defun set-argument-formals* (domain arguments)
-  (mapc #'set-arg-formals domain arguments))
-
-(defun set-arg-formals (dom arg)
-  (mapc #'(lambda (ty) (set-arg-formals* dom ty arg))
-			(ptypes arg)))
-
-(defun set-arg-formals* (dom type arg)
-  (let ((frees (free-formals type)))
-    (if frees
-	(let ((bindings (mapcar #'(lambda (ff) (list (declaration ff)))
-				frees)))
-	  (tc-match dom type bindings)
-	  (if (and bindings (every #'cdr bindings))
-	      (subst-for-formals arg bindings)
-	      type))
-	type)))
-	
-
-(defmethod typechecked? ((act actual))
-  (when (or (type-value act)
-	    (and (typep (expr act) 'expr)
-		 (type (expr act))))
-    t))
-
 (defmethod module (binding)
   (declare (ignore binding))
   *current-theory*)
-
-(defun resolution-error (name kind arguments)
-  (let ((reses (when (actuals name)
-		 (resolve (copy name 'actuals nil) kind arguments))))
-    (if (and *resolve-error-info*
-	     (or (assq :arg-mismatch *resolve-error-info*)
-		 (not (assq :no-instantiation *resolve-error-info*))))
-	(resolution-args-error *resolve-error-info* name arguments)
-	(type-error name
-	  "Expecting a~a~%No resolution for ~a~@[ with arguments of types:~
-       ~:{~%  ~a : ~{~a~^, ~}~}~]~:[~;~%Check the actual parameters~]"
-	  (case kind
-	    (expr "n expression")
-	    (type " type")
-	    (formula " formula")
-	    (t kind))
-	  name
-	  (mapcar #'(lambda (a)
-		      (list a (full-name (ptypes a) 1)))
-		  arguments)
-	  reses))))
-
-(defun resolution-args-error (infolist name arguments)
-  (when infolist
-    (let ((info (car (best-guess-resolution-error infolist arguments))))
-      (case (car info)
-	(:arg-length
-	 (type-error name
-	   "Wrong number of arguments:~%  ~d provided, ~d expected"
-	   (length arguments)
-	   (length (if (typep (cadr info) 'expr)
-		       (domain-types (type (cadr info)))
-		       (car (formals (cadr info)))))))
-	(:arg-mismatch
-	 ;; Info = (:arg-mismatch decl argnum args types)
-	 (type-error (car (fourth info))
-	   "~:r argument to ~a has the wrong type~
-          ~%     Found: ~{~a~%~^~12T~}  Expected: ~a"
-	   (third info)
-	   name
-	   (mapcar #'(lambda (fn) (unpindent fn 12 :string t))
-		   (full-name (ptypes (car (fourth info))) 1))
-	   (full-name (car (fifth info)) 1)))))))
-
-(defun best-guess-resolution-error (infolist arguments)
-  (if (cdr infolist)
-      (let ((mismatches (remove-if-not
-			    #'(lambda (x) (eq (car x) :arg-mismatch))
-			  infolist)))
-	(if mismatches
-	    (best-guess-mismatch-error mismatches arguments)
-	    (best-guess-length-error infolist arguments)))
-      infolist))
-
-(defun best-guess-mismatch-error (infolist arguments &optional best bnum)
-  (if (null infolist)
-      best
-      (let ((num (number-of-compatible-args (fifth (car infolist))
-					    (fourth (car infolist))
-					    (1- (third (car infolist))))))
-	(best-guess-mismatch-error
-	 (cdr infolist)
-	 arguments
-	 (cond ((or (null best)
-		    (> num bnum))
-		(list (car infolist)))
-	       ((= num bnum)
-		(cons (car infolist) best))
-	       (t best))
-	 (if (or (null bnum)
-		 (> num bnum))
-	     num
-	     bnum)))))
-
-(defun number-of-compatible-args (types args &optional (num 0))
-  (if (null args)
-      num
-      (number-of-compatible-args
-       (cdr types)
-       (cdr args)
-       (if (some #'(lambda (ptype)
-		    (compatible-args**? ptype (car types)))
-		(ptypes (car args)))
-	   (1+ num)
-	   num))))
-
-(defun best-guess-length-error (infolist arguments)
-  (declare (ignore arguments))
-  infolist)
 
 (defun resolve* (name kind args)
   (typecheck-actuals name kind)
@@ -260,7 +128,7 @@
   (declare (ignore expected kind arguments))
   #+pvsdebug (when (type (expr act)) (break "Type set already???"))
   (unless (and ;;*in-checker*
-	       (typechecked? act))
+	       (typed? act))
     (typecase (expr act)
       (name-expr (let* ((name (expr act))
 			(tres (with-no-type-errors (resolve* name 'type nil)))
@@ -935,9 +803,10 @@
 			      *resolve-error-info*)
 			nil))
 	     (if (uninstantiated? modinst mod decl)
-		 (compatible-uninstantiated? decl modinst args)
+		 (compatible-uninstantiated? decl modinst dtypes args)
 		 (let ((*generate-tccs* 'none))
-		   (set-type-actuals modinst)
+		   (assert (fully-instantiated? modinst))
+		   ;;(set-type-actuals modinst)
 		   (when (compatible-args?
 			  decl
 			  args
@@ -968,9 +837,11 @@
 		       decl
 		       args
 		       (mapcar #'(lambda (dt)
-				   (if (actuals modinst)
-				       (subst-mod-params dt modinst)
-				       dt))
+				   (let ((*smp-include-actuals* t)
+					 (*smp-dont-cache* t))
+				     (if (actuals modinst)
+					 (subst-mod-params dt modinst)
+					 dt)))
 			       (domain-types stype)))
 		  (list modinst)))))
 	(t
@@ -1026,33 +897,22 @@
 			    (not (member d (formals mod))))))
 		 (actuals modinst)))))
 
-(defmethod declaration ((act actual))
-  (if (type-value act)
-      (when (typep (type-value act) 'type-name)
-	(declaration (resolution (type-value act))))
-      (when (typep (expr act) 'name-expr)
-	(declaration (expr act)))))
-
-(defmethod compatible-uninstantiated? (decl modinst args)
+(defmethod compatible-uninstantiated? (decl modinst dtypes args)
   (let ((bindings (find-compatible-bindings
 		   args
-		   (if (singleton? args)
-		       (list (find-supertype (domain (type decl))))
-		       (mapcar #'find-supertype (domain-types (type decl))))
-		   (mapcar #'list
-			   (formals-sans-usings (module decl))))))
+		   dtypes
+		   (mapcar #'list (formals-sans-usings (module decl))))))
     (or (create-compatible-modinsts modinst bindings nil)
 	(progn (push (list :no-instantiation decl)
 		     *resolve-error-info*)
 	       nil))))
 
-(defmethod compatible-uninstantiated? ((decl type-decl) modinst args)
+(defmethod compatible-uninstantiated? ((decl type-decl) modinst dtypes args)
   (let ((bindings (find-compatible-bindings
 		   args
-		   (mapcar #'(lambda (fd) (find-supertype (type fd)))
-			   (car (formals decl)))
+		   dtypes
 		   (mapcar #'list
-			   (formals-sans-usings (get-theory modinst))))))
+		     (formals-sans-usings (get-theory modinst))))))
     (create-compatible-modinsts modinst bindings nil)))
 
 (defun create-compatible-modinsts (modinst bindings result)
@@ -1060,20 +920,13 @@
       result
       (create-compatible-modinsts
        modinst (cdr bindings)
-       (cond ((every #'cdr (car bindings))
-	      (cons (copy modinst
-		      'actuals (mapcar #'(lambda (a)
-					   (mk-res-actual (cdr a) modinst))
-				       (car bindings)))
-		    result))
-;	     ((some #'cdr (car bindings))
-;	      (cons (copy modinst
-;		      'actuals (mapcar #'(lambda (a)
-;					   (when (cdr a)
-;					     (mk-res-actual (cdr a) modinst)))
-;				       (car bindings)))
-;		    result))
-	     (t (cons (copy modinst) result))))))
+       (if (every #'cdr (car bindings))
+	   (cons (copy modinst
+		   'actuals (mapcar #'(lambda (a)
+					(mk-res-actual (cdr a) modinst))
+			      (car bindings)))
+		 result)
+	   (cons (copy modinst) result)))))
 
 (defun mk-res-actual (expr modinst)
   (if (member (id modinst) '(|equalities| |notequal|))
@@ -1132,6 +985,7 @@
 ;;;   T1 is a subtype of T2, or
 
 (defun filter-preferences (name reses kind args)
+  (declare (ignore name))
   (let ((res (or (remove-if #'(lambda (r)
 				(typep (module-instance r) 'datatype-modname))
 		   reses)
@@ -1140,7 +994,7 @@
 	(if (cdr res)
 	    (let* ((bres (filter-bindings res))
 		   (nres (if (and args (cdr bres))
-			     (find-best-resolutions name res args)
+			     bres ;;(find-best-resolutions name res args)
 			     bres)))
 	      nres)
 	    res)
@@ -1713,3 +1567,95 @@
 	 (cconv (copy conv)))
     (change-name-expr-class-if-needed (declaration conv) cconv)
     (copy rtype 'from-conversion cconv)))
+
+
+;;; Resolution error handling
+
+(defun resolution-error (name kind arguments)
+  (let ((reses (when (actuals name)
+		 (resolve (copy name 'actuals nil) kind arguments))))
+    (if (and *resolve-error-info*
+	     (or (assq :arg-mismatch *resolve-error-info*)
+		 (not (assq :no-instantiation *resolve-error-info*))))
+	(resolution-args-error *resolve-error-info* name arguments)
+	(type-error name
+	  "Expecting a~a~%No resolution for ~a~@[ with arguments of types:~
+       ~:{~%  ~a : ~{~a~^, ~}~}~]~:[~;~%Check the actual parameters~]"
+	  (case kind
+	    (expr "n expression")
+	    (type " type")
+	    (formula " formula")
+	    (t kind))
+	  name
+	  (mapcar #'(lambda (a)
+		      (list a (full-name (ptypes a) 1)))
+		  arguments)
+	  reses))))
+
+(defun resolution-args-error (infolist name arguments)
+  (when infolist
+    (let ((info (car (best-guess-resolution-error infolist arguments))))
+      (case (car info)
+	(:arg-length
+	 (type-error name
+	   "Wrong number of arguments:~%  ~d provided, ~d expected"
+	   (length arguments)
+	   (length (if (typep (cadr info) 'expr)
+		       (domain-types (type (cadr info)))
+		       (car (formals (cadr info)))))))
+	(:arg-mismatch
+	 ;; Info = (:arg-mismatch decl argnum args types)
+	 (type-error (car (fourth info))
+	   "~:r argument to ~a has the wrong type~
+          ~%     Found: ~{~a~%~^~12T~}  Expected: ~a"
+	   (third info)
+	   name
+	   (mapcar #'(lambda (fn) (unpindent fn 12 :string t))
+		   (full-name (ptypes (car (fourth info))) 1))
+	   (full-name (car (fifth info)) 1)))))))
+
+(defun best-guess-resolution-error (infolist arguments)
+  (if (cdr infolist)
+      (let ((mismatches (remove-if-not
+			    #'(lambda (x) (eq (car x) :arg-mismatch))
+			  infolist)))
+	(if mismatches
+	    (best-guess-mismatch-error mismatches arguments)
+	    (best-guess-length-error infolist arguments)))
+      infolist))
+
+(defun best-guess-mismatch-error (infolist arguments &optional best bnum)
+  (if (null infolist)
+      best
+      (let ((num (number-of-compatible-args (fifth (car infolist))
+					    (fourth (car infolist))
+					    (1- (third (car infolist))))))
+	(best-guess-mismatch-error
+	 (cdr infolist)
+	 arguments
+	 (cond ((or (null best)
+		    (> num bnum))
+		(list (car infolist)))
+	       ((= num bnum)
+		(cons (car infolist) best))
+	       (t best))
+	 (if (or (null bnum)
+		 (> num bnum))
+	     num
+	     bnum)))))
+
+(defun number-of-compatible-args (types args &optional (num 0))
+  (if (null args)
+      num
+      (number-of-compatible-args
+       (cdr types)
+       (cdr args)
+       (if (some #'(lambda (ptype)
+		    (compatible-args**? ptype (car types)))
+		(ptypes (car args)))
+	   (1+ num)
+	   num))))
+
+(defun best-guess-length-error (infolist arguments)
+  (declare (ignore arguments))
+  infolist)
