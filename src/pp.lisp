@@ -9,6 +9,7 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -1990,7 +1991,8 @@ bind tighter.")
   (with-slots (arguments expression) ass
     (pprint-logical-block (nil nil)
       (pprint-indent :current 2)
-      (if (typep ass 'uni-assignment)
+      (if (and (typep ass 'uni-assignment)
+	       (simple-name? (caar arguments)))
 	  (pp* (caar arguments))
 	  (pp-arguments* arguments))
       (write-char #\space)
