@@ -42,14 +42,15 @@
 #+allegro
 (defmethod copy ((ht hash-table) &rest args)
   (let* ((test (hash-table-test ht))
+	 (size (hash-table-size ht))
 	 (new-ht (if (memq test '(eq eql equal equalp))
-		     (make-hash-table :test test)
-		     (make-hash-table :test test :hash-function 'pvs-sxhash))))
+		     (make-hash-table :test test :size size)
+		     (make-hash-table :test test :size size
+				      :hash-function 'pvs-sxhash))))
     (maphash #'(lambda (id data)
-		 (setf (gethash id new-ht) data))
-	     ht)
+		 (setf (gethash id (the hash-table new-ht)) data))
+	     (the hash-table ht))
     new-ht))
-
 
 ;;; The following allows slot-exists-p to be called on anything.
 ;#+gcl
