@@ -348,6 +348,7 @@
 		  ;;(:file "rewrite-2")
 		  (:file "rewrite-pvs")
 		  (:file "datatypes-pvs")
+		  (:file "datatypes")
 		  (:file "records")
 		  (:file "rewrite-optimize")
 		  (:file "simplify"))
