@@ -273,10 +273,10 @@ to be proved and invoking the prove command."
 			 theory (and current-prefix-arg t))
 		     nil (pvs-get-abbreviation 'show-tccs)
 		     'dont-care)
-  (message "")
   (let ((buf (get-buffer (format "%s.tccs" theory))))
     (when buf
       (save-excursion
+	(message "")
 	(set-buffer buf)
 	(setq pvs-context-sensitive t)
 	(pvs-view-mode)
