@@ -2049,6 +2049,7 @@
 	  expr))))
 
 (defmethod assert-if-application* (expr (newop branch) newargs sig)
+  (declare (ignore sig))
   (let ((thenval (nth-value 1
 		   (assert-if-application*
 		    (make!-application (then-part newop) newargs)
@@ -2063,6 +2064,7 @@
      expr)))
 
 (defmethod assert-if-application* (expr (newop lambda-expr) newargs sig)
+    (declare (ignore sig))
   (let ((val (nth-value 1
 		      (assert-if (substit (expression newop)
 				   (pairlis-args (bindings newop)
@@ -2070,6 +2072,7 @@
 	   (values-assert-if '? val expr)))
 
 (defmethod assert-if-application* ((expr negation) newop  newargs sig)
+    (declare (ignore newop))
   (if (tc-eq newargs *true*)
 	     (values '? *false*)
 	     (if (tc-eq newargs *false*)
@@ -2079,6 +2082,7 @@
 		     (do-auto-rewrite expr sig)))))
 
 (defmethod assert-if-application* ((expr implication) newop  newargs sig)
+    (declare (ignore newop))
   (let ((nargs (argument-list newargs)))
 	   (cond ((or (tc-eq (car nargs) *false*)
 		      (tc-eq (cadr nargs) *true*))
@@ -2090,6 +2094,7 @@
 		 (t (do-auto-rewrite expr sig)))))
 
 (defmethod assert-if-application* ((expr conjunction) newop  newargs sig)
+  (declare (ignore newop))
   (let ((nargs (argument-list newargs)))
 	   (cond ((tc-eq (car nargs) *true*)
 		  (values '? (cadr nargs)))
@@ -2101,6 +2106,7 @@
 		 (t (do-auto-rewrite expr sig)))))
 
 (defmethod assert-if-application* ((expr disjunction) newop  newargs sig)
+  (declare (ignore newop))
   (let ((nargs (argument-list newargs)))
 	   (cond ((or (tc-eq (car nargs) *true*)
 		      (tc-eq (cadr nargs) *true*))
@@ -2113,6 +2119,7 @@
 
 (defmethod assert-if-application* ((expr iff-or-boolean-equation)
 				   newop  newargs sig)
+  (declare (ignore newop))  
   (let* ((nargs (argument-list newargs))
 		(left (car nargs))
 		(right (cadr nargs)))
@@ -2129,9 +2136,11 @@
 		 (t (do-auto-rewrite expr sig)))))
 
 (defmethod assert-if-application* ((expr equation) newop  newargs sig)
+  (declare (ignore newop))  
   (assert-equality expr newargs sig))
 
 (defmethod assert-if-application* ((expr disequation) newop  newargs sig)
+  (declare (ignore newop))
   (assert-disequality expr newargs sig))
 
 (defmethod assert-if-application* (expr newop  newargs sig)
