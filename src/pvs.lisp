@@ -116,7 +116,7 @@
 		(t (pushnew dir libs :test #'string=)
 		   (pvs-message "Directory ~a in PVS_LIBRARY_PATH does not exist"
 		     dir))))))
-    (pushnew (concatenate 'string *pvs-path* "/lib") libs :test #'file-equal)
+    (pushnew (concatenate 'string *pvs-path* "/lib/") libs :test #'file-equal)
     (setq *pvs-library-path* (nreverse libs))))
 
 (defvar *pvs-patches-loaded* nil)
