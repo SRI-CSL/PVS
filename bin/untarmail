@@ -1,0 +1,133 @@
+#! /bin/sh
+#
+#-	untarmail - unpack tarmail files to recreate file structure
+#-
+#-	Untarmail  can now  handle  tarmail with more   than  one mail
+#-	message.   This is   very  useful  when  sending large package
+#-	across  phone  line.  It will  sort the files specified in the
+#-	command line by the "Subject: ... (part n/m)" before it append
+#-	them together so that incorrect file sequence will  be ok.  If
+#-	insufficient files  were given, it  will reject the operation.
+#-	For a detail description see man pages for tarmail.
+#-
+#	Author:		Paul Lew, General Systems Group, lew@gsg.com
+#	Original:	Paul Rutter
+#	Created at:	04/02/88  10:30 AM
+#	Last update:	10/11/92  10:21 PM  (Edition: 34)
+#
+#-	Version: 2.3
+#-
+#-	Usage:		untarmail [-t dir] [-k] [file1 file2 ...]    or
+#-			... | untarmail [-t dir] [-k]
+#-	where options:
+#-		-t dir	use "dir" to store temporary files, this should be
+#-			used if you have a huge tarmail file but small /tmp
+#-			space.  If not specified, "/tmp" will be used.
+#-		-k	keep old files, normally files will be moved into
+#-			/usr/tmp at the end of the untarmail.
+#
+#---------------------------------------------------------------#
+#	      Display help if requested by user			#
+#---------------------------------------------------------------#
+case "$1" in
+	-H[xX])	set -x; shift;;
+	-H*)	show_help `which $0` $1; exit 0;;
+	*)	;;
+	esac
+tmproot=/tmp
+done=0
+while [ "$done" = "0" ]; do
+	case "$1" in
+		-t)	shift; tmproot="$1"; shift;;
+		-k)	keep=1; shift;;
+		*)	done=1;;
+		esac
+	done
+#---------------------------------------------------------------#
+#	   Sort all the files by its part number		#
+#---------------------------------------------------------------#
+files=$*
+datafile=$tmproot/$$.untarmail
+tmpfile=$tmproot/untarmail.$$
+if test $# -ge 1; then
+	files=$*
+else
+	cat > $datafile
+	files=$datafile
+	fi
+for file in $files; do
+	pno=`grep '^Subject: ' $file | \
+	    sed -n 's:^.*(part \([^/]*\)/\([^)]*\)).*$:\1 \2 :p'`
+	echo $pno $file
+	done |
+sort -n > $tmpfile
+files=`sed 's/.* //' $tmpfile | tr '\012' ' '`
+#---------------------------------------------------------------#
+#	check if all parts are there before unpack		#
+#---------------------------------------------------------------#
+fno=`cat $tmpfile | wc -l`
+pno=`sed -n '$s/^[^ ]* \([0-9]*\) .*$/\1/p' $tmpfile`
+/bin/rm $tmpfile
+if test -n "$pno" -o $fno -gt 1; then
+	if test $pno -ne $fno; then
+		echo ...Got only $fno parts of total $pno parts, aborted...
+		/bin/rm -f $datafile
+		exit 1
+		fi
+	fi
+#---------------------------------------------------------------#
+#		Ok, go unpack them in a tarfile			#
+#---------------------------------------------------------------#
+bad=$tmproot/bad.$$
+tarfile=$tmproot/tarfile.$$
+for file in $files; do
+	if atob < $file; then continue; fi
+	echo "File $file corrupted, aborted" > $bad
+	grep '^Subject' $file >> $bad
+	break
+	done > $tarfile
+file $tarfile | grep -s compress
+if test $? -eq 0; then		#it is compressed file
+	mv $tarfile $tarfile.Z
+	uncompress $tarfile.Z
+	fi
+#---------------------------------------------------------------#
+#	    if any problem, clean up and exit			#
+#---------------------------------------------------------------#
+if [ -r $bad ]; then
+	cat $bad
+	/bin/rm -f $bad $tarfile
+	exit 1
+	fi
+#---------------------------------------------------------------#
+#       Check if any of the file exists, security check		#
+#---------------------------------------------------------------#
+if true; then
+	tar tf $tarfile | \
+		sed 's/.*/if [ -s & ]; then echo & exist; fi/' | \
+		sh > $bad
+	fi
+if [ -s $bad ]; then
+	echo "untarmail aborted because of possible clobbering:"
+	cat $bad
+else
+	tar xvpf $tarfile
+	fi
+#---------------------------------------------------------------#
+#		   move source to /usr/tmp			#
+#---------------------------------------------------------------#
+if test "$files" = "$datafile "; then
+	/bin/rm -f $datafile
+else
+	if [ ! -s $bad ]; then
+		if [ "$keep" = "1" ]; then
+			echo ...You have to remove original tarmail files...
+		else
+			for file in $files; do
+				mv $file /usr/tmp/$file.$$
+				echo tarmail file moved to: /usr/tmp/$file.$$
+				done
+			fi
+		fi
+	fi
+/bin/rm -f $bad $tarfile

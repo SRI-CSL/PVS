@@ -1,0 +1,118 @@
+#! /bin/sh
+#
+#-	tarmail - send compressed package thru mail
+#-
+#-	Tarmail will read stdin or files specified in the command line
+#-	and create a tar file, the output  is then compressed, splited
+#-	into chunks where each chunk is then mail as a unit.
+#-
+#-	Trickle  mode  will  create a sh script to be executed  in wee
+#-	hours when communication  cost is the lowest.  The script will
+#-	divide the source into chunks and only send out 20 parts a day
+#-	to avoid jamming the mail system.
+#-
+#	Author:		Paul Lew, (original author: Paul Rutter)
+#	Created at:	Unknown
+#	Last update:	10/11/92  05:01 PM  (Edition: 36)
+#
+#-	Version: 2.3
+#-
+#-	Usage:	tarmail [-b nn] [-p xxx] [-c] [-t] [-s n] [-T hh:mm]
+#-			mailpath "subject" dir-or-file(s)
+#-	where option:
+#-		-b nn		each chunk to nn bytes (default: 20000)
+#-		-T hh:mm	set trickle starting time
+#-		-s n		wait n seconds before send next parts
+#-				in trickle mode (default: 86400)
+#-		-c		dont run compress, use this if the source
+#-				files are already in tar.Z format
+#-		-t		send files in trickle mode
+#-		-p xxx		send only part specified in strings xxx (for
+#-				retransmission), xxx might consists of a list
+#-				of numbers or ranges separated by whitespaces
+#-				or ','. Range is composed of two numbers
+#-				separated by '-'.
+#-				e.g.,
+#-					-p 1 -p 4 -p 5	--- send part 1,4,5
+#-					-p 1,4,5	--- send part 1,4,5
+#-					-p 4-7,9	--- send part 4,5,6,7,9
+#
+#---------------------------------------------------------------#
+#	      Display help if requested by user			#
+#---------------------------------------------------------------#
+progname=$0
+case "$1" in
+	-H[xX])	set -x; shift;;
+	-H*)	show_help `which $0` $1; exit;;
+	*)	;;
+	esac
+#---------------------------------------------------------------#
+#		Process command line options			#
+#---------------------------------------------------------------#
+blk=20000
+cmp='compress'
+copt=''
+trickle=0
+start='23:00'
+sleep=86400
+while true; do
+	case "$1" in
+		-b)	shift; blk=$1; shift;;
+		-c)	shift; cmp='cat'; copt='-c';;
+		-t)	shift; trickle=1;;
+		-T)	shift; start=$1; shift;;
+		-s)	shift; sleep=$1; shift;;
+		-p)	shift
+			for i in $1; do
+				part="$part -p$i"
+				done
+			shift;;
+		*)	break
+		esac
+	done
+#---------------------------------------------------------------#
+#	    tar, compress, chunk, btoa, then mail		#
+#---------------------------------------------------------------#
+if test $# -lt 3; then
+	show_help `which $progname`
+	exit
+	fi
+tmpfile=/tmp/tarmail.$$
+msg='unpack with untarmail'
+mailpath=$1
+shift
+subject="$1"
+shift
+tar cvf - $* | $cmp > $tmpfile
+total=`chunk -b $blk < $tmpfile| sed -n 's/Total \(.*\) chunk.*$/\1/p'`
+#---------------------------------------------------------------#
+#	  write a script to trickle all the parts		#
+#---------------------------------------------------------------#
+if test $trickle -eq 1; then
+	script=$HOME/tarmail.$$
+	echo '#! /bin/sh' > $script
+	echo cd `pwd` >> $script
+	i=1
+	while [ $i -lt $total ]; do
+		j=`expr $i + 20 - 1`
+		echo tarmail $copt -p $i-$j $mailpath "'$subject'" $*
+		echo sleep $sleep
+		i=`expr $j + 1`
+		done >> $script
+	echo rm $script >> $script
+	at -s -m $start $script
+	/bin/rm $tmpfile
+	exit
+	fi
+#---------------------------------------------------------------#
+#	      normal mode, just send the files			#
+#---------------------------------------------------------------#
+echo "Files: $*"
+echo "To: $mailpath"
+echo "Subject: $subject ($total parts) $part"
+cat $tmpfile | chunk -b $blk $part \
+	-c "btoa | mail -s '$subject (part %i/$total) $msg' $mailpath"
+/bin/rm $tmpfile
+#---------------------------------------------------------------#
+#		Clean up and exit here...			#
+#---------------------------------------------------------------#
