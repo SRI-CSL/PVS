@@ -904,14 +904,22 @@ generated")
 	     (dep-name (make-variable-expr dtype))
 	     (*bound-variables* (cons dtype *bound-variables*))
 	     (subst-range (substit range
-			    (pairlis
-			     (cons domain (mapcar #'declaration deps))
-			     (cons dtype
-				   (mapcar #'(lambda (dep)
-					       (typecheck* (mk-application (id dep)
-							     dep-name)
-							   (type dep) nil nil))
-				     deps))))))
+			    (if (dep-binding? domain)
+				(pairlis
+				 (cons domain (mapcar #'declaration deps))
+				 (cons dtype
+				       (mapcar #'(lambda (dep)
+						   (typecheck* (mk-application (id dep)
+								 dep-name)
+							       (type dep) nil nil))
+					 deps)))
+				(pairlis
+				 (mapcar #'declaration deps)
+				 (mapcar #'(lambda (dep)
+					     (typecheck* (mk-application (id dep)
+							   dep-name)
+							 (type dep) nil nil))
+				   deps))))))
 	(mk-funtype dtype subst-range))
       (mk-funtype domain range)))
 
@@ -2204,7 +2212,10 @@ generated")
 				     (if nil ;(eq nusing (car formals))
 					 pairs
 					 (acons (car formals) nusing pairs)))))
-	    ((or (formal-const-decl? (car formals))
+	    ((if (formal-const-decl? (car formals))
+		 (not (some #'(lambda (fty) (member fty (positive-types adt)
+						:key #'declaration))
+			(free-params (type (car formals)))))
 		 (not (member (car formals)
 			      (positive-types adt)
 			      :test #'(lambda (x y)

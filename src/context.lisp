@@ -1714,9 +1714,12 @@ pvs-strategies files.")
 	  (if entry
 	      (setf (cdr entry) fwd)
 	      (push (cons lib fwd) *library-strategy-file-dates*))
-	  (with-open-file (str file :direction :input)
-	    (unless (ignore-errors (load str :verbose nil))
-	      (pvs-message "Error in loading ~a" file))))))))
+	  (unless (ignore-errors (load file :verbose nil))
+	    (with-open-file (str file :direction :input)
+	      (if *testing-restore*
+		  (load str :verbose t)
+		  (unless (ignore-errors (load str :verbose nil))
+		    (pvs-message "Error in loading ~a" file))))))))))
 
 (defun load-strategies-file (file dates)
   (when (file-exists-p file)

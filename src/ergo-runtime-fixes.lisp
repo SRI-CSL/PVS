@@ -73,8 +73,9 @@
 	       *elsif-places*)
       (setq splace (pop *elsif-places*)))
     (sbrt::save-place-and-comment-info result nil splace eplace)
-    (when (eq sim-op 'TERM-EXPR)
-      (reset-operator-place args))
+    (case sim-op
+      (TERM-EXPR (reset-operator-place args))
+      (UNARY-TERM-EXPR (reset-unary-operator-place args)))
     ;;(assert (type-of result))
     result))
 
@@ -136,6 +137,12 @@
     (assert oplace)
     (setq *operator-places* (delete oplace *operator-places*))
     (setf (getf (term:term-attr (car args)) :place) (cdr oplace))))
+
+(defun reset-unary-operator-place (args)
+  (let ((op (sim-term-op (car args)))
+	(oplace (getf (term:term-attr (car args)) :place)))
+    (setf (svref oplace 2) (svref oplace 0))
+    (setf (svref oplace 3) (+ (svref oplace 1) (length (string op))))))
 
 (defun place< (place1 place2)
   (or (< (svref place1 2) (svref place2 0))
@@ -202,7 +209,7 @@
 			     *abs-syn-package*)))
 	       (values 'sbst::!id! id place comment))))))
 
-(in-package 'sbrt)
+(in-package :sbrt)
 
 ;;; Sets *end-of-last-token* to the place in the lexical stream before
 ;;; stripping off white space. 
@@ -410,6 +417,18 @@ with the comment so as to put it in the proper place")
      (when char (return)))
     (values (car char) place *newline-comments*)))
 
+(defun open-lexical-stream (stream &aux result)
+  (setq result (make-lexical-stream :stream stream))
+  (setf (lexical-stream-readtable result) (make-array `(,char-code-limit)
+						    :initial-element :alphabetic)
+	(lexical-stream-stringbuffer result)
+	(make-array '(20) :element-type 'character
+		    :adjustable t
+		    :fill-pointer t))
+  (dolist (xa '(#\space #\tab #\newline #\page #\return #\^z))
+    (setf (elt (lexical-stream-readtable result) (char-code xa)) nil))
+  (lexical-make-macro result #\" #'string-lexer)
+  result)
 
 (defun save-place-and-comment-info (term lterm splace &optional eplace)
   ;;(peek-first)			;to make sure that next token is
