@@ -503,6 +503,7 @@ makepolylib :
 	$(MAKE) -C src/decision-procedures/polylib/$(PLATFORM)
 makews1s :
 	umask 002; \
+	(cd src/WS1S ; ln -s mona-1.4 mona);\
 	$(MAKE) -C src/WS1S/$(PLATFORM)
 
 runtime-image-tar = pvs-$(PLATFORM).tgz
