@@ -24,10 +24,10 @@ obj  = analyze.o prefix.o product.o \
 .SUFFIXES: .c .o
 .c.o : ; $(CC) $(XCFLAGS) ${CFLAGS} -c $< -o $@
 
+all : ws1s.so
+
 ws1s_extended_interface.o : ../ws1s_extended_interface.c
 	$(CC) $(XCFLAGS) ${CFLAGS} -c $< -o $@
-
-all : ws1s.so
 
 ws1s.so : ${obj}
 	$(LD) ../ws1s-ld-table $(LDFLAGS) -o ws1s.so ${obj}
