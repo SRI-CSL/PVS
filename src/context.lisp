@@ -209,7 +209,6 @@ pvs-strategies files.")
     (setf (caddr *strat-file-dates*) 0)
     (set-working-directory dir)
     (setq *pvs-context-path* (shortpath (working-directory)))
-    (setq *pvs-current-context-path* *pvs-context-path*)
     (setq *default-pathname-defaults* *pvs-context-path*)
     (clear-theories t)
     (restore-context)
@@ -256,7 +255,14 @@ pvs-strategies files.")
 	     (unless (or *dont-write-object-files*
 			 (not *pvs-context-writable*))
 	       (write-object-files))
-	     (write-context)))))
+	     (write-context)
+	     #+pvsdebug
+	     (maphash #'(lambda (file theories)
+			  (assert (or (some #'(lambda (th)
+						(not (typechecked? th)))
+					    (cdr theories))
+				      (check-binfiles file))))
+		      *pvs-files*)))))
 
 (defun sc ()
   (save-context))
@@ -283,7 +289,7 @@ pvs-strategies files.")
 
 (defun write-object-files (&optional force?)
   (update-stored-mod-depend)
-  (when (and (> (hash-table-count *pvs-modules*))
+  (when (and (> (hash-table-count *pvs-modules*) 0)
 	     (ensure-bin-subdirectory))
     (if t ; *testing-restore*
 	(maphash #'(lambda (id theory)
@@ -708,8 +714,7 @@ pvs-strategies files.")
 			       (not (file-equal
 				     (directory-namestring (pvs-file-path dth))
 				     (namestring *pvs-context-path*))))
-		      (let ((lib-ref (get-dependent-file-lib-ref
-				      (lib-ref dth))))
+		      (let ((lib-ref (lib-ref dth)))
 			(setq depname (format nil "~a~a"
 					lib-ref (filename dth)))))
 		    (pushnew depname depfiles
@@ -720,18 +725,6 @@ pvs-strategies files.")
 	(let ((entry (get-context-file-entry filename)))
 	  (when entry
 	    (mapcar #'string (delete-if #'null (ce-dependencies entry))))))))
-
-;;; Given a lib-ref from a library theory (that is relative to the
-;;; *pvs-current-context-path*), return a lib-ref relative to the
-;;; *pvs-context-path*, which is were we are currently saving the
-;;; .pvscontext file.
-(defun get-dependent-file-lib-ref (lib-ref)
-  (if (or (eq *pvs-current-context-path* *pvs-context-path*)
-	  (not (member (char lib-ref 0) '(#\/ #\. #\~))))
-      lib-ref
-      (let ((lib-path (merge-pathnames lib-ref *pvs-current-context-path*)))
-	(assert (file-exists-p lib-path))
-	(relative-path lib-path *pvs-context-path*))))
 
 (defun circular-file-dependencies (filename)
   (let ((deps (assoc filename *circular-file-dependencies* :test #'equal)))
@@ -812,16 +805,14 @@ pvs-strategies files.")
 ;;; .pvscontext
 
 (defun restore-context ()
-  (let ((ctx-file (if (eq *pvs-context-path* *pvs-current-context-path*)
-		      *context-name*
-		      (merge-pathnames *context-name* *pvs-context-path*))))
+  (let ((ctx-file *context-name*))
     (if (file-exists-p ctx-file)
 	(multiple-value-bind (context error)
-	    (ignore-errors (if (with-open-file (in ctx-file)
-				 (and (char= (read-char in) #\()
-				      (char= (read-char in) #\")))
-			       (with-open-file (in ctx-file) (read in))
-			       (fetch-object-from-file ctx-file)))
+	    (if (with-open-file (in ctx-file)
+		  (and (char= (read-char in) #\()
+		       (char= (read-char in) #\")))
+		(with-open-file (in ctx-file) (read in))
+		(fetch-object-from-file ctx-file))
 	  (cond (error
 		 (pvs-message "PVS context unreadable - resetting")
 		 (pvs-log "  ~a" error)
@@ -870,7 +861,7 @@ pvs-strategies files.")
 (defvar *theories-restored* nil)
 (defvar *files-seen* nil)
 
-;;; Called from parse-file - already checked that binfiles are valid.
+;;; Called from parse-file
 (defun restore-theories (filename)
   (let* ((*theories-restored* nil)
 	 (*adt-type-name-pending* nil)
@@ -2135,6 +2126,11 @@ pvs-strategies files.")
 
 ;;(defun editable-justification-to-sexp (just)
 
+;;; Find the maximal theory elements according to the .pvscontext
+;;; Example:
+;;; (with-pvs-context "../prelude/"
+;;;    (restore-context) (maximal-theory-hierarchy-elements))
+
 (defun maximal-theory-hierarchy-elements ()
   (let ((max nil) (nonmax nil))
     (dolist (ce (pvs-context-entries))
@@ -2149,3 +2145,64 @@ pvs-strategies files.")
 	(unless (memq (te-id te) nonmax)
 	  (push (te-id te) max))))
     (values max nonmax)))
+
+(defvar *binfiles-checked*)
+(defvar *ces-checked*)
+
+(defun check-binfiles (filename)
+  (let ((*binfiles-checked* nil)
+	(*ces-checked* nil))
+    (check-binfiles* filename)))
+
+(defun check-binfiles* (filename)
+  (let ((dir (simple-directory-namestring filename)))
+    (if dir
+	(with-pvs-context dir
+	  (restore-context)
+	  (check-binfiles** (file-namestring filename)))
+	(check-binfiles** filename))))
+
+(defun simple-directory-namestring (filename)
+  ;; if filename starts with a single ".", it is lost by directory-namestring
+  ;; so we use a simpler form.
+  (let ((pos (position #\/ filename :from-end t)))
+    (when pos
+      (subseq filename 0 (1+ pos)))))
+
+(defun check-binfiles** (filename)
+  (let ((ce (get-context-file-entry filename)))
+    (when ce
+      (cond ((memq ce *ces-checked*)
+	     t)
+	    (t (push ce *ces-checked*)
+	       (cond ((and (every #'check-binfiles* (ce-dependencies ce))
+			   (check-binfile filename ce)))
+		     (t (dolist (objdate (ce-object-date ce))
+			  (setf (cdr objdate) 0))
+			nil)))))))
+
+(defun check-binfile (filename ce)
+  (let* ((spec-file (make-specpath filename))
+	 (file-info (get-file-info spec-file))
+	 (checked (assoc file-info *binfiles-checked* :test #'equal)))
+    (if checked
+	(cadr checked)
+	(let* ((spec-date (file-write-date spec-file))
+	       (expected-spec-date (ce-write-date ce))
+	       (bin-dates (ce-object-date ce))
+	       (th-entries (ce-theories ce))
+	       (ok? (and spec-date
+			 expected-spec-date
+			 (= spec-date expected-spec-date)
+			 (every #'(lambda (te)
+				    (let ((bin-date (file-write-date
+						     (make-binpath (te-id te))))
+					  (expected-bin-date
+					   (cdr (assq (te-id te) bin-dates))))
+				      (and bin-date
+					   expected-bin-date
+					   (= bin-date expected-bin-date)
+					   (<= spec-date bin-date))))
+				th-entries))))
+	  (push (list file-info ok? spec-file) *binfiles-checked*)
+	  ok?))))
