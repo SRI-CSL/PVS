@@ -1515,3 +1515,27 @@
 
 (defmethod make!-bind-decl (id (type dep-binding))
   (make!-bind-decl id (type type)))
+
+(defun make!-floor (ex)
+  (assert (type ex))
+  (assert (tc-eq (find-supertype (type ex)) *number*))
+  (make-instance 'unary-application
+    'operator (floor-operator)
+    'argument ex
+    'type *naturalnumber*))
+
+(defun make!-succ (ex)
+  (assert (type ex))
+  (assert (tc-eq (find-supertype (type ex)) *number*))
+  (make-instance 'infix-application
+    'operator (plus-operator)
+    'argument (make!-arg-tuple-expr ex (one-constant))
+    'type (type ex)))
+
+(defun make!-pred (ex)
+  (assert (type ex))
+  (assert (tc-eq (find-supertype (type ex)) *number*))
+  (make-instance 'infix-application
+    'operator (minus-operator)
+    'argument (make!-arg-tuple-expr ex (one-constant))
+    'type (type ex)))
