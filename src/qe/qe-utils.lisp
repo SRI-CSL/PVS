@@ -89,10 +89,10 @@
 	((tc-eq then-part else-part) then-part)
 	(t (make!-if-expr condition then-part else-part))))
 
-(defun make!-disequation (lhs rhs)
-  (assert (and (type lhs) (type rhs)))
-  (assert (compatible? (type lhs) (type rhs)))
-  (make!-negation (make!-equation lhs rhs)))
+; (defun make!-disequation (lhs rhs)
+;  (assert (and (type lhs) (type rhs)))
+;  (assert (compatible? (type lhs) (type rhs)))
+;  (make!-negation (make!-equation lhs rhs)))
 
 (defmethod destructure-disequation ((fml disequation))
   (values (args1 fml) (args2 fml)))
