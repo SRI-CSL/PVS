@@ -28,7 +28,8 @@
   (let ((*print-pretty* t)
 	(*print-escape* nil)
 	(*print-right-margin* *latex-linelength*)
-	(*tex-symbol-counters* nil))
+	(*tex-symbol-counters* nil)
+	(*disable-gc-printout* t))
     ;;(setf (slot-value *standard-output* 'excl::charpos) 0)
     (unwind-protect
 	(let ((str (with-output-to-string (*standard-output*)
