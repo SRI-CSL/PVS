@@ -212,7 +212,6 @@
 	    (old-ground)
 	    (new-ground)))
       (pvs-message "Using ~:[old~;new~] decision procedures" *new-ground?*)
-      (setf (new-ground? decl) *new-ground?*)
       (let ((*dp-state* (when *new-ground?*
 			  (dp::push-new-cong-state *init-dp-state*)))
 	    (*top-dp-state* (when *new-ground?*
