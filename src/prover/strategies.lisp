@@ -2771,11 +2771,13 @@ or succedent formula in the sequent."
 
 ;;NSH(5.27.95) : From JMR
 ;;added exclude argument to grind and if-match argument to use.
-(defstep use (lemma &optional subst (if-match best) (instantiator inst?))
+(defstep use (lemma &optional subst (if-match best) (instantiator inst?)
+		    polarity?)
   (then@ (lemma lemma subst)
 	 (if *new-fmla-nums*
 	     (let ((fnum (car *new-fmla-nums*))
-		   (command (generate-instantiator-command if-match nil instantiator fnum)))
+		   (command (generate-instantiator-command
+			     if-match polarity? instantiator fnum)))
 	       (then 
 		(beta fnum)
 		(repeat command)))
@@ -3390,14 +3392,19 @@ skolem constants for the induction scheme to make sense."
 				(beta)
 				(branch (prop)
 					((then (inst? :polarity? t)(prop))
-					 (let ((old-fmlas (append all-antec-fmlas conseq-fmlas))
-					       (fnums (find-all-sformnums
-						       (s-forms (current-goal *ps*))
-						       '*
-						       #'(lambda (x)
-							   (or (and (negation? x)
-								    (memq (args1 x) old-fmlas))
-							       (memq x old-fmlas))))))
+					 (let ((old-fmlas
+						(append all-antec-fmlas
+							conseq-fmlas))
+					       (fnums
+						(find-all-sformnums
+						 (s-forms (current-goal
+							   *ps*))
+						 '*
+						 #'(lambda (x)
+						     (or (and (negation? x)
+							      (memq (args1 x)
+								    old-fmlas))
+							 (memq x old-fmlas))))))
 					   (hide :fnums fnums)))))))))))))
   "Applies rule induction over an inductive relation REL in
    order to prove a sequent of the form
