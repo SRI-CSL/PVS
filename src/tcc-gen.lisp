@@ -20,10 +20,10 @@
 
 (defvar *old-tcc-name* nil)
 
-(defmacro total-tccs () '(car (tcc-info *current-theory*)))
-(defmacro tccs-proved () '(cadr (tcc-info *current-theory*)))
-(defmacro tccs-matched () '(caddr (tcc-info *current-theory*)))
-(defmacro tccs-simplified () '(cadddr (tcc-info *current-theory*)))
+(defmacro total-tccs () '(car (tcc-info (current-theory))))
+(defmacro tccs-proved () '(cadr (tcc-info (current-theory))))
+(defmacro tccs-matched () '(caddr (tcc-info (current-theory))))
+(defmacro tccs-simplified () '(cadddr (tcc-info (current-theory))))
 
 (defstruct tccinfo
   formula
@@ -35,10 +35,7 @@
 (defun generate-subtype-tcc (expr expected incs)
   (if (every #'(lambda (i) (member i *tcc-conditions* :test #'tc-eq))
 	     incs)
-      (unless (or *in-checker* *in-evaluator*)
-	(if (numberp (tccs-simplified))
-	    (incf (tccs-simplified))
-	    (setf (tccs-simplified) 1)))
+      (add-tcc-comment 'subtype expr expected incs nil)
       (let* ((*old-tcc-name* nil)
 	     (ndecl (make-subtype-tcc-decl expr incs)))
 	(if ndecl
@@ -48,8 +45,66 @@
 				 (recursive-signature (current-declaration))
 				 ndecl)
 		(insert-tcc-decl 'subtype expr expected ndecl))
-	    (unless (or *in-checker* *in-evaluator*)
-	      (incf (tccs-simplified)))))))
+	    (add-tcc-comment 'subtype expr expected incs nil)))))
+
+(defun add-tcc-comment (kind expr type ndecl subsumed-by)
+  (unless (or *in-checker* *in-evaluator* *collecting-tccs*)
+    (cond (subsumed-by
+	   (incf (tccs-matched))
+	   (push subsumed-by (refers-to (current-declaration))))
+	  (t (if (numberp (tccs-simplified))
+		 (incf (tccs-simplified))
+		 (setf (tccs-simplified) 1))))
+    (let* ((decl (current-declaration))
+	   (submsg (case kind
+		     (actuals nil)
+		     (assuming (format nil "generated from assumption ~a.~a"
+				 (id (module type)) (id type)))
+		     (cases
+		      (format nil
+			  "for missing ELSE of CASES expression over datatype ~a"
+			(id type)))
+		     (coverage nil)
+		     (disjointness nil)
+		     (existence nil)
+		     ((subtype termination-subtype)
+		      (format nil "expected type ~a"
+			(unpindent type 19 :string t :comment? t)))
+		     (termination nil)
+		     (well-founded (format nil "for ~a" (id decl)))))
+	   (place (or (place *set-type-actuals-name*)
+		     (place expr) (place type)))
+	   (plstr (when place
+		    (format nil "(at line ~d, column ~d) "
+		      (starting-row place) (starting-col place))))
+	   (tccstr (format nil
+		       "% The ~@[~a ~]~a TCC ~@[~a~]for~
+                        ~:[ ~;~%    ~]~a~@[~%    % ~a~]~%  ~a"
+		     (cdr (assq expr *compatible-pred-reason*))
+		     kind plstr
+		     (> (+ (length (cdr (assq expr
+					      *compatible-pred-reason*)))
+			   (length (string kind))
+			   (length plstr)
+			   (length (unpindent (or *set-type-actuals-name*
+						  expr type)
+					      4 :string t :comment? t))
+			   25)
+			*default-char-width*)
+		     (unpindent (or *set-type-actuals-name* expr type)
+				4 :string t :comment? t)
+		     submsg
+		     (if subsumed-by
+			 (format nil "% is subsumed by ~a"
+			   (id subsumed-by))
+			 "% was not generated because it simplified to TRUE."))))
+      (pvs-info tccstr)
+      (let* ((decl (current-declaration))
+	     (theory (current-theory))
+	     (entry (assq decl (tcc-comments theory))))
+	(if entry
+	    (nconc entry (list tccstr))
+	    (push (list decl tccstr) (tcc-comments theory)))))))
 
 (defvar *simplify-tccs* nil)
 
@@ -260,28 +315,7 @@
 	     (not (and (declaration? decl)
 		       (id decl)
 		       (assq expr *compatible-pred-reason*))))
-	(let* ((place (or (place *set-type-actuals-name*)
-			  (place expr) (place type)))
-	       (plstr (when place
-			(format nil "(at line ~d, column ~d) "
-			  (starting-row place) (starting-col place)))))
-	  (assert (declaration? match))
-	  (pvs-info "The following ~@(~@[~a ~]~a~) TCC ~@[~a~]for~
-                     ~:[ ~;~%    ~]~a~% is subsumed by ~a:~%  ~a"
-	    (cdr (assq expr *compatible-pred-reason*))
-	    kind plstr
-	    (> (+ (length (cdr (assq expr *compatible-pred-reason*)))
-		  (length (string kind))
-		  (length plstr)
-		  (length (unpindent (or *set-type-actuals-name* expr type)
-				     4 :string t :comment? t))
-		  25)
-	       *default-char-width*)
-	    (or *set-type-actuals-name* expr type)
-	    (id match)
-	    (unpindent (definition ndecl) 2 :string t)))
-	(incf (tccs-matched))
-	(push match (refers-to decl)))
+	(add-tcc-comment kind expr type ndecl match))
        (t (when match
 	    (pvs-warning "The judgement TCC generated for and named ~a ~
                           is subsumed by ~a,~%  ~
@@ -572,7 +606,7 @@
 (defun check-nonempty-type (type expr)
   (unless (or (nonempty? type)
 	      (typep (declaration *current-context*) 'adt-accessor-decl)
-	      (member type (nonempty-types *current-theory*) :test #'tc-eq))
+	      (member type (nonempty-types (current-theory)) :test #'tc-eq))
     (when (possibly-empty-type? type)
       (generate-existence-tcc type expr)
       (unless (or (or *in-checker* *in-evaluator*)
@@ -633,7 +667,7 @@
 ;	       (not (nonempty? tdecl)))
 ;      (make-nonempty-assumption te dtypes)
 ;;      (format t "~%Added nonempty assertion for ~a to ~a"
-;;	te (id *current-theory*))
+;;	te (id (current-theory)))
 ;      (setf (nonempty? tdecl) t)))
 ;  nil)
 
@@ -685,7 +719,7 @@
 
 (defmethod set-nonempty-type :around ((te type-expr))
   (unless (nonempty? te)
-    (push te (nonempty-types *current-theory*))
+    (push te (nonempty-types (current-theory)))
     (setf (nonempty? te) t)
     (call-next-method)))
 
@@ -776,7 +810,7 @@
 	    ;; prover
 	    (unless (or (or *in-checker* *in-evaluator*)
 			*tcc-conditions*)
-	      (push modinst (assuming-instances *current-theory*)))
+	      (push modinst (assuming-instances (current-theory))))
 	    (dolist (ass assumptions)
 	      (if (eq (kind ass) 'existence)
 		  (let ((atype (subst-mod-params (existence-tcc-type ass)
@@ -831,6 +865,7 @@
 				       :test #'tc-eq))))))))))
 
 (defmethod nonvisible-assuming-reference? (ex)
+  (declare (ignore ex))
   nil)
 
 (defmethod existence-tcc-type ((decl existence-tcc))
@@ -860,32 +895,28 @@
 	  tform))
       (typecheck* (mk-assuming-tcc id uform modinst ass) nil nil nil))))
 
-(defun generate-mapped-axiom-tccs (modinst expr)
+(defun generate-mapped-axiom-tccs (modinst)
   (let ((mod (get-theory modinst)))
-    (unless (eq mod (current-theory))
-      (let ((cdecl (or (and (or *in-checker* *in-evaluator*)
-			    *top-proofstate*
-			    (declaration *top-proofstate*))
-		       (declaration *current-context*))))
-	(unless (member modinst (assuming-instances (current-theory))
-			:test #'tc-eq)
-	  ;; Don't want to save this module instance unless it does not
-	  ;; depend on any conditions, including implicit ones in the
-	  ;; prover
-	  (unless (or (or *in-checker* *in-evaluator*)
-		      *tcc-conditions*)
-	    (push modinst (assuming-instances *current-theory*)))
-	  (dolist (ax (remove-if-not #'axiom? (theory mod)))
-	    (let* ((*old-tcc-name* nil)
-		   (ndecl (make-mapped-axiom-tcc-decl ax modinst)))
-	      (if ndecl
-		  (let ((refs (collect-references (definition ndecl))))
-		    (if (some #'(lambda (d)
-				  (same-id (module d) modinst))
-			      refs)
-			(pvs-warning "Axiom ~a not translated" (id ax))
-			(insert-tcc-decl 'mapped-axiom modinst ax ndecl)))
-		  (incf (tccs-simplified))))))))))
+    (unless (or (eq mod (current-theory))
+		(member modinst (assuming-instances (current-theory))
+			:test #'tc-eq))
+      ;; Don't want to save this module instance unless it does not
+      ;; depend on any conditions, including implicit ones in the
+      ;; prover
+      (unless (or (or *in-checker* *in-evaluator*)
+		  *tcc-conditions*)
+	(push modinst (assuming-instances (current-theory))))
+      (dolist (ax (remove-if-not #'axiom? (theory mod)))
+	(let* ((*old-tcc-name* nil)
+	       (ndecl (make-mapped-axiom-tcc-decl ax modinst)))
+	  (if ndecl
+	      (let ((refs (collect-references (definition ndecl))))
+		(if (some #'(lambda (d)
+			      (same-id (module d) modinst))
+			  refs)
+		    (pvs-warning "Axiom ~a not translated" (id ax))
+		    (insert-tcc-decl 'mapped-axiom modinst ax ndecl)))
+	      (incf (tccs-simplified))))))))
 
 (defun make-mapped-axiom-tcc-decl (ax modinst)
   (let* ((*generate-tccs* 'none)
