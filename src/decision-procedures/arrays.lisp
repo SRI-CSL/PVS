@@ -32,7 +32,9 @@
 (defun test-equality (term1 term2 cong-state)
   (let* ((equality (mk-equality term1 term2))
 	 (norm-equality (sigma equality cong-state)))
-    norm-equality))
+    (if (eq (dp-theory norm-equality) 'arith)
+	(simplify-ineq-constraint norm-equality cong-state)
+	norm-equality)))
 
 (defun expr-< (term1 term2)
   (arith-term-< term1 term2))
