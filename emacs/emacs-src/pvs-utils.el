@@ -270,13 +270,13 @@ beginning of the previous one."
 	    (setq blist (cdr blist))))
 	fbuf)))
 
-(defun in-comment (&optional strings-computed)
+(defun in-comment ()
   (let ((limit (point)))
     (save-excursion
       (beginning-of-line)
-      (let ((found (search-forward "%" limit t)))
+      (let ((found (search-forward comment-start limit t)))
 	(while (and found (in-string))
-	  (setq found (search-forward "%" limit t)))
+	  (setq found (search-forward comment-start limit t)))
 	found))))
 
 (defun in-string (&optional strings-computed)
@@ -341,7 +341,7 @@ delimiter."
   (let ((limit (point)))
     (save-excursion
       (beginning-of-line)
-      (search-forward "%" limit t))))
+      (search-forward comment-start limit t))))
 
 (defun pvs-count-char-pairs (start end sdel edel)
   (let ((mismatch (pvs-count-char-pairs* start end sdel edel)))
