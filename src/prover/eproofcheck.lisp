@@ -309,7 +309,8 @@
 
 (defun after-prove* ()
   (unless *recursive-prove-decl-call*
-    (unless *proving-tcc*
+    (when (or (not *proving-tcc*)
+	      *noninteractive*)
       (pvs-emacs-eval "(setq pvs-in-checker nil)")
       (display-proofstate nil))
     (when *dump-sequents-to-file*
