@@ -68,7 +68,7 @@ do
              shift;;
      -lisp)  PVSLISP="$2"
              shift;;
-     -load-after) loadafter+=" -load $2"
+     -load-after) loadafter=$loadafter" -load $2"
                   shift;;
      -redhat) if [ $opsys = Linux ]
 		 then majvers="$2"
