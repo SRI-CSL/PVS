@@ -87,6 +87,7 @@
   ;;(setq comint-send-newline nil)
   (setq ilisp-binary-extension (pvs-allegro-binary-extension))
   (setq ilisp-init-binary-extension ilisp-binary-extension)
+  (setq ilisp-load-inits nil)
   (setq ilisp-program (format "%s -qq" (pvs-program)))
   (setq comint-prompt-regexp
 	"^[ ]*\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\)?\\(\\(<[-A-Za-z]* ?[0-9]*> \\)\\3?\\|[-A-Za-z0-9]+([0-9]+): \\)\\|Rule\\? \\|(Y or N)\\|(Yes or No)\\|Please enter")
