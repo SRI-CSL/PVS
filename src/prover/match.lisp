@@ -102,26 +102,33 @@
 
 (defmethod match* :around ((texpr type-expr)(instance type-expr)
 			  bind-alist subst)
-	   (if (eq subst 'fail) 'fail
-	       (if (and (eq texpr instance)(null (freevars texpr)))
-		   subst
-		   (with-slots ((print-texpr print-type)) texpr
-		     (with-slots ((print-instance print-type)) instance
-		       (if (and print-texpr
-				print-instance
-				(type-name? print-texpr)
-				(type-name? print-instance)
-				(same-declaration print-texpr
-					      print-instance))
-			   (match* print-texpr
-				   print-instance
-				   bind-alist subst)
-			   (call-next-method)))))))
+	   (let ((oldmodsubst  *modsubst*)
+		  (result
+		   (if (eq subst 'fail) 'fail
+		       (if (and (eq texpr instance)(null (freevars texpr)))
+			   subst
+			   (with-slots ((print-texpr print-type)) texpr
+			     (with-slots ((print-instance print-type)) instance
+			       (if (and print-texpr
+					print-instance
+					(type-name? print-texpr)
+					(type-name? print-instance)
+					(same-declaration print-texpr
+							  print-instance))
+				   (match* print-texpr
+					   print-instance
+					   bind-alist subst)
+				   (call-next-method))))))))
+	     (when (eq result 'fail)
+	       ; (break "failaround")
+ 	       ;(format t "~%resetting modsubst from ~a to ~a" *modsubst* oldmodsubst)
+	       (setq *modsubst* oldmodsubst))
+	     result))
 
 (defmethod match* ((texpr type-name) (instance type-expr) bind-alist subst)
   (if (and (consp *modsubst*)
 	   (assoc texpr *modsubst* :test #'same-declaration))
-      (let ((newmodsubst (tc-unify instance texpr *modsubst*)))
+      (let ((newmodsubst (tc-unify instance texpr  (copy-tree *modsubst*))))
 	(cond (newmodsubst
 	       (setq *modsubst* newmodsubst)
 	       subst)
@@ -166,7 +173,7 @@
 			       (newmodsubst
 				(and (consp *modsubst*)
 				     (or (tc-match-acts
-					  act2 formals *modsubst*)
+					  act2 formals  (copy-tree *modsubst*))
 					 (tc-match-acts
 					  act2 formals
 					  (mapcar #'(lambda (s)
@@ -274,7 +281,9 @@
 
 (defmethod match* :around
   ((expr expr)(instance expr) bind-alist subst)
-  (if (eq subst 'fail) 'fail
+  (let ((oldmodsubst  *modsubst*)
+	 (result
+	  (if (eq subst 'fail) 'fail
       (if (and (null (freevars expr))(tc-eq expr instance))
 	  subst
       (let ((ans (call-next-method)))
@@ -352,7 +361,12 @@
 					subst))
 		    'fail)))
 		  ))
-	    ans)))))
+	    ans))))))
+    (when (eq result 'fail)
+      ; (break "failaround")
+      ; (format t "~%resetting modsubst from ~a to ~a" *modsubst* oldmodsubst)
+      (setq *modsubst* oldmodsubst))
+    result))
 
 (defun light-cancel-terms (lhs-terms rhs-terms)
   (light-cancel-terms* lhs-terms rhs-terms NIL 'X))
@@ -537,7 +551,7 @@
     (match* (resolution lhs)(resolution instance) bind-alist subst))
    ((and (consp *modsubst*)
 	 (assoc-decl lhs *modsubst*))
-    (let ((newmodsubst (tc-unify instance lhs *modsubst*)))
+    (let ((newmodsubst (tc-unify instance lhs  (copy-tree *modsubst*))))
       (cond (newmodsubst
 	     (setq *modsubst* newmodsubst)
 	     subst)
