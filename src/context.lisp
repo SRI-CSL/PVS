@@ -546,9 +546,10 @@ pvs-strategies files.")
 				 (not (equal (library dth)
 					     *pvs-context-path*)))
 			(setq depname
-			      (namestring
+			      (enough-namestring
 			       (merge-pathnames
-				(pvs-truename (library dth)) (filename dth)))))
+				(pvs-truename (library dth)) (filename dth))
+			       (format nil "~a/lib/" *pvs-path*))))
 		      (pushnew depname depfiles
 			       :test #'(lambda (x y)
 					 (or (equal x filename)
@@ -556,7 +557,7 @@ pvs-strategies files.")
 	  (delete-if #'null (nreverse depfiles)))
 	(let ((entry (get-context-file-entry filename)))
 	  (when entry
-	    (delete-if #'null (mapcar #'string (ce-dependencies entry))))))))
+	    (mapcar #'string (delete-if #'null (ce-dependencies entry))))))))
 
 (defun dependencies (theory)
   (let ((*modules-visited* nil))
@@ -568,12 +569,7 @@ pvs-strategies files.")
 	      (from-prelude? theory)
 	      (memq theory *modules-visited*))
     (push theory *modules-visited*)
-    (let* ((imps (remove-if #'(lambda (th)
-				(let ((ce (context-entry-of th)))
-				  (and ce
-				       (memq (id th)
-					     (ce-dependencies ce)))))
-		   (get-immediate-usings theory)))
+    (let* ((imps (get-immediate-usings theory))
 	   (all-imps (if (generated-by theory)
 			 (cons (mk-modname (generated-by theory)
 				 nil
@@ -975,9 +971,8 @@ pvs-strategies files.")
 
 ;;; Called from typecheck-theories in pvs.lisp
 
-(defun restore-from-context (filename theory)
-  (when (file-exists-p (make-prf-pathname filename))
-    (restore-proofs (make-prf-pathname filename) theory))
+(defun restore-from-context (filename theory &optional proofs)
+  (restore-proofs filename theory proofs)
   (multiple-value-bind (valid? entry)
       (valid-context-entry filename)
     (when entry
@@ -1218,19 +1213,24 @@ pvs-strategies files.")
 			proofs
 			(nconc proofs (list (car oldproofs)))))))
 
-(defun restore-proofs (filestring theory)
+(defun restore-proofs (filename theory &optional proofs)
   (unless *loading-prelude*
-    (multiple-value-bind (ignore error)
-	(ignore-errors
-	  (with-open-file (input filestring :direction :input)
-	    (restore-theory-proofs input filestring theory)))
-      (declare (ignore ignore))
-      (when error
-	(pvs-message "Error reading proof file ~a"
-	  (namestring filestring))
-	(pvs-log (format nil "  ~a" error))))))
+    (if proofs
+	(let ((tproofs (cdr (assq (id theory) proofs))))
+	  (restore-theory-proofs theory tproofs))
+	(let ((prfpath (make-prf-pathname filename)))
+	  (when (file-exists-p prfpath)
+	    (multiple-value-bind (ignore error)
+		(ignore-errors
+		  (with-open-file (input prfpath :direction :input)
+		    (restore-theory-proofs-from-file input prfpath theory)))
+	      (declare (ignore ignore))
+	      (when error
+		(pvs-message "Error reading proof file ~a"
+		  (namestring prfpath))
+		(pvs-log (format nil "  ~a" error)))))))))
 
-(defun restore-theory-proofs (input filestring theory)
+(defun restore-theory-proofs-from-file (input filestring theory)
   (let ((theory-proofs (read input NIL NIL)))
     (when theory-proofs
       (let* ((theoryid (car theory-proofs))
@@ -1240,13 +1240,16 @@ pvs-strategies files.")
 	    filestring)
 	  (setq proofs (remove-if-not #'consp proofs)))
 	(if (eq theoryid (id theory))
-	    (let ((restored (mapcar #'(lambda (decl)
-					(restore-theory-proofs* decl proofs))
-				    (append (assuming theory)
-					    (theory theory)))))
-	      (copy-proofs-to-orphan-file
-	       theoryid (set-difference proofs restored :test #'equal)))
-	    (restore-theory-proofs input filestring theory))))))
+	    (restore-theory-proofs theory proofs)
+	    (restore-theory-proofs-from-file input filestring theory))))))
+
+(defun restore-theory-proofs (theory proofs)
+  (let ((restored (mapcar #'(lambda (decl)
+			      (restore-theory-proofs* decl proofs))
+		    (append (assuming theory)
+			    (theory theory)))))
+    (copy-proofs-to-orphan-file
+     (id theory) (set-difference proofs restored :test #'equal))))
 
 (defun restore-theory-proofs* (decl proofs)
   (when (formula-decl? decl)
