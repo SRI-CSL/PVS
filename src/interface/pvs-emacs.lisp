@@ -64,9 +64,10 @@
 (defun pvs-message (ctl &rest args)
   (unless *suppress-msg*
     (if *to-emacs*
-	(let ((*output-to-emacs*
-	       (protect-emacs-output
-		(format nil ":pvs-msg ~? :end-pvs-msg" ctl args))))
+	(let* ((*print-pretty* nil)
+	       (*output-to-emacs*
+		(protect-emacs-output
+		 (format nil ":pvs-msg ~? :end-pvs-msg" ctl args))))
 	  (to-emacs))
 	(format t "~%~?" ctl args))))
 
@@ -155,9 +156,10 @@
 
 (defun pvs-log (ctl &rest args)
   (unless *suppress-msg*
-    (let ((*output-to-emacs*
-	   (protect-emacs-output
-	    (format nil ":pvs-log ~? :end-pvs-log" ctl args))))
+    (let* ((*print-pretty* nil)
+	   (*output-to-emacs*
+	    (protect-emacs-output
+	     (format nil ":pvs-log ~? :end-pvs-log" ctl args))))
       (to-emacs))))
 
 (defun verbose-msg (ctl &rest args)
@@ -166,9 +168,10 @@
   ;; the minibuffer.
   (when *pvs-verbose*
     (if *to-emacs*
-	(let ((*output-to-emacs*
-	       (protect-emacs-output
-		(format nil ":pvs-msg ~? :end-pvs-msg" ctl args))))
+	(let* ((*print-pretty* nil)
+	       (*output-to-emacs*
+		(protect-emacs-output
+		 (format nil ":pvs-msg ~? :end-pvs-msg" ctl args))))
 	  (to-emacs))
 	(format t "~%~?" ctl args))))
 
@@ -184,6 +187,7 @@
 				    (filename (current-theory)))
 			       *current-file*)
 			   (or *from-buffer* itheory)))
+		 (*print-pretty* nil)
 		 (*output-to-emacs*
 		  (format nil ":pvs-err ~a&~a&~a&~a&~d ~d :end-pvs-err"
 		    buff
@@ -230,11 +234,12 @@
 (defun pvs-yn (msg full? timeout?)
   (cond (*in-pvs-batch* t)
 	(*to-emacs*
-	 (let ((*output-to-emacs*
-		(format nil ":pvs-yn ~a&~a&~a :end-pvs-yn"
-		  (protect-emacs-output msg)
-		  (if full? "t" "nil")
-		  (if timeout? "t" "nil"))))
+	 (let* ((*print-pretty* nil)
+		(*output-to-emacs*
+		 (format nil ":pvs-yn ~a&~a&~a :end-pvs-yn"
+		   (protect-emacs-output msg)
+		   (if full? "t" "nil")
+		   (if timeout? "t" "nil"))))
 	   (to-emacs)
 	   (let ((val (read)))
 	     (when (eq val :abort)
@@ -246,30 +251,33 @@
 
 (defun pvs-query (theory msg query place)
   (if *to-emacs*
-      (let ((*output-to-emacs*
-	     (format nil ":pvs-qry ~a&~a&~a&~a&~d ~d :end-pvs-qry"
-		     theory
-		     (protect-emacs-output (namestring *pvs-context-path*))
-		     (protect-emacs-output msg)
-		     (protect-emacs-output query)
-		     (if place (sbrt::place-linenumber place))
-		     (if place (sbrt::place-charnumber place)))))
+      (let* ((*print-pretty* nil)
+	     (*output-to-emacs*
+	      (format nil ":pvs-qry ~a&~a&~a&~a&~d ~d :end-pvs-qry"
+		theory
+		(protect-emacs-output (namestring *pvs-context-path*))
+		(protect-emacs-output msg)
+		(protect-emacs-output query)
+		(if place (sbrt::place-linenumber place))
+		(if place (sbrt::place-charnumber place)))))
 	(to-emacs))
       (query theory msg query place)))
 
 (defun pvs-prompt (type msg &rest args)
   (if *to-emacs*
-      (let ((*output-to-emacs*
-	     (format nil ":pvs-pmt ~a&~? :end-pvs-pmt"
-		     type (protect-emacs-output msg) args)))
+      (let* ((*print-pretty* nil)
+	     (*output-to-emacs*
+	      (format nil ":pvs-pmt ~a&~? :end-pvs-pmt"
+		type (protect-emacs-output msg) args)))
 	(to-emacs)
 	(read))
       (progn (format t "PVS> ~?" msg args)
 	     (read))))
 
 (defun pvs-emacs-eval (form)
-  (let ((*output-to-emacs*
-	 (format nil ":pvs-eval ~a :end-pvs-eval" form)))
+  (let* ((*print-pretty* nil)
+	 (*output-to-emacs*
+	  (format nil ":pvs-eval ~a :end-pvs-eval" form)))
     (to-emacs)
     (read)))
 
@@ -291,22 +299,24 @@
 
 (defun pvs-buffer (name contents &optional display? read-only? append?)
   (if *to-emacs*
-      (let ((*output-to-emacs*
-	     (format nil ":pvs-buf ~a&~a&~a&~a&~a :end-pvs-buf"
-	       name (when contents (write-to-temp-file contents))
-	       display? read-only? append?)))
+      (let* ((*print-pretty* nil)
+	     (*output-to-emacs*
+	      (format nil ":pvs-buf ~a&~a&~a&~a&~a :end-pvs-buf"
+		name (when contents (write-to-temp-file contents))
+		display? read-only? append?)))
 	(to-emacs))
       (if display?
 	  (format t "~%~a" contents))))
 
 (defun pvs-display (name instance type value)
   ;; note no test for *to-emacs* 
-  (let ((*output-to-emacs*
-	 (format nil ":pvs-dis ~a&~a&~a&~a :end-pvs-dis"
-		 (protect-emacs-output name)
-		 (protect-emacs-output instance)
-		 (protect-emacs-output type)
-		 (protect-emacs-output value))))
+  (let* ((*print-pretty* nil)
+	 (*output-to-emacs*
+	  (format nil ":pvs-dis ~a&~a&~a&~a :end-pvs-dis"
+	    (protect-emacs-output name)
+	    (protect-emacs-output instance)
+	    (protect-emacs-output type)
+	    (protect-emacs-output value))))
     (to-emacs)))
 
 (defun to-emacs ()
@@ -533,20 +543,21 @@
   (let ((place (coerce (or loc (place obj)) 'list)))
     (assert place)
     (when *to-emacs*
-      (let ((*output-to-emacs*
-	     (format nil ":pvs-loc ~a&~a&~a :end-pvs-loc"
-	       (cond ((typep theory '(or library-theory library-datatype))
-		      (library theory))
-		     ((datatype-or-module? theory)
-		      (if (from-prelude? theory)
-			  (format nil "~a/lib/" *pvs-path*)
-			  (protect-emacs-output
-			   (shortname *pvs-context-path*)))))
-	       (if (datatype-or-module? theory)
-		   (or (filename theory)
-		       "prelude.pvs")
-		   theory)
-	       place)))
+      (let* ((*print-pretty* nil)
+	     (*output-to-emacs*
+	      (format nil ":pvs-loc ~a&~a&~a :end-pvs-loc"
+		(cond ((typep theory '(or library-theory library-datatype))
+		       (library theory))
+		      ((datatype-or-module? theory)
+		       (if (from-prelude? theory)
+			   (format nil "~a/lib/" *pvs-path*)
+			   (protect-emacs-output
+			    (shortname *pvs-context-path*)))))
+		(if (datatype-or-module? theory)
+		    (or (filename theory)
+			"prelude.pvs")
+		    theory)
+		place)))
 	(to-emacs)))))
 
 (defun pvs-insert-declaration (decl after-decl &optional buf)
