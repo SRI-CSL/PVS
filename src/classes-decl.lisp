@@ -477,15 +477,15 @@
 
 ;;; Rewrites
 
-(defcl rewrite (syntax))
+(defcl rewrite-elt (syntax))
 
-(defcl rewrite-name (rewrite name)) ; A mixin
+(defcl rewrite-name (rewrite-elt name)) ; A mixin
 
-(defcl lazy-rewrite (rewrite)) ; A mixin
+(defcl lazy-rewrite (rewrite-elt)) ; A mixin
 
-(defcl eager-rewrite (rewrite)) ; A mixin
+(defcl eager-rewrite (rewrite-elt)) ; A mixin
 
-(defcl macro-rewrite (rewrite)) ; A mixin
+(defcl macro-rewrite (rewrite-elt)) ; A mixin
 
 (defcl constant-rewrite-name (rewrite-name) ; A mixin
   declared-type
@@ -512,7 +512,7 @@
 
 (defcl macro-formula-rewrite-name (formula-rewrite-name macro-rewrite-name))
 
-(defcl fnum-rewrite (rewrite)
+(defcl fnum-rewrite (rewrite-elt)
   fnum)
 
 (defcl lazy-fnum-rewrite (fnum-rewrite lazy-rewrite))
