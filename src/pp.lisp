@@ -130,7 +130,7 @@ bind tighter.")
 	(unpindent* str indent 0 (position #\linefeed str) comment? nil))))
 
 (defun unpindent* (str indent start end comment? notfirst?)
-  (format t "~v%~vT~:[~;% ~]~a"
+  (format t "~v%~v,0T~:[~;% ~]~a"
     (if notfirst? 1 0)
     (if notfirst? indent 0)
     (and comment? notfirst?)
