@@ -10,26 +10,101 @@
 
 (declaim (notinline canonsig-arith))
 
-(defvar *arithops* '(plus minus difference times divide))
+(defvar *use-can* t)
+
+;; Set to t in order to cause the proof:
+;;  ~owre/ehdm6/rcp/minimial_v_prf_2--nf_v_sched to go through in ehdm.
+;; Otherwise the proof is false.
+(defvar *tc-ehdm-test* nil)
 
 (defun canonsig-arith (term &optional (dont-add-use nil))
   (canonsig term dont-add-use))
 
-(defun arithord (u v)
+(defun arithord (u v)  ;;NSH(9.14.01):modified to treat nonlin terms.
+    (arithord1 u v))  ;(arithord1 up vp)
+
+; NONLIN Modifications to arith.lisp to fix the loop
+; problem in dealing with nonlinear arithmetic.
+
+; In particular, the ordering ("arithord") associated with
+; the loop-residue code must be respected by the
+; implicit ordering imposed by the pr-union/pr-find code.
+
+; For example, if the normal form of a polynomial is:
+; (EQUAL X (TIMES X B)) then this is the way the equality
+; would have to be presented to the union/find algorithm, namely
+; pr-find(X) = (TIMES X B).
+
+; But this would result in a loop:
+; canon(TIMES X B) = TIMES(canon(TIMES X B), B) = ...
+
+; My solution here is to split polynomial equalities (EQUAL X Y) into
+; two inequalities (<= X Y) and (>= X Y).
+; These inequalities would only be merged back into (EQUAL X Y)
+; if doing so would not result in a loop.
+
+(defun times-arithord-rep (x)
+  (if (qnumberp (cadr x))
+      (caddr x)
+      (cadr x)))
+
+(defun arithord1(u v)
+    (cond
+     ((null u) nil)
+     ((null v) t)
+     ((symbolp u)
+      (cond
+       ((symbolp v)(alphalessp u v))
+       ((qnumberp v) nil)
+       ((consp v) (if (eq (car v) 'times)  ;;NSH(10-23-01)
+		      (let ((v1 (times-arithord-rep v)))
+			(and (not (equal u v1))
+			     (arithord1 u v1)))
+		      t))
+       (t t)))
+     ((symbolp v)
+      (or (qnumberp u)
+	  (and (consp u)  ;;NSH(10-23-01)
+	       (eq (car u) 'times)
+	       (let  ((u1 (times-arithord-rep u)))
+		 (or (equal u1 v)
+		     (arithord1 u1 v))))))
+     ((qnumberp u)
+      (cond
+       ((qnumberp v)(qlessp u v))
+       (t t)))
+     ((qnumberp v) nil)
+     ((equal (car u) 'times)
+      (if (equal (car v) 'times)
+	  (arithord1 (cdr u) (cdr v))
+	  (arithord1 (times-arithord-rep u) v)))
+     ((equal (car v) 'times)
+      (arithord1 u (times-arithord-rep v)))
+     ((equal (car u)(car v))(arithord1 (cdr u)(cdr v)))
+     (t (arithord1 (car u)(car v)))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;NSH(10.26.01): I'm saving the old arithord for use with make-sum
+;;and make-prod in the simplifier (assert.lisp).  In the ground prover,
+;;the new arithord deals correctly with nonlinear expressions by ordering
+;;them according to the minimal product term.
+
+(defun old-arithord (u v)
   (let ((up (if (and (consp u) (eq (car u) 'times) (qnumberp (cadr u)))
 		(caddr u)
 	      u))
 	(vp (if (and (consp v) (eq (car v) 'times) (qnumberp (cadr v)))
 		(caddr v)
 	      v)))
-;    (let ((a1 (arithord1 up vp))
-;	  (a2 (arithord1 vp up)))
+;    (let ((a1 (old-arithord1 up vp))
+;	  (a2 (old-arithord1 vp up)))
 ;      (when (and (equal a1 a2) (not (equal up vp))) (break))
 ;      a1)
-    (arithord1 up vp)))
+    (old-arithord1 up vp)))
 
 
-(defun arithord1(u v)
+(defun old-arithord1(u v)
 ;    (cond ((and (consp u)(eq (car u) 'times)(qnumberp (cadr u)))
 ;	   (setq u (caddr u))))
 ;    (cond ((and (consp v)(eq (car v) 'times)(qnumberp (cadr v)))
@@ -43,16 +118,7 @@
      ((null v) t)
      ((symbolp u)
       (cond
-       ((symbolp v)
-	;; Added the upcase of interpreted symbols because otherwise
-	;; terms are ordered differently in case-sensitive version
-	(let ((ui (if (memq u interpsyms)
-		      (intern (string-upcase u))
-		      u))
-	      (vi (if (memq v interpsyms)
-		      (intern (string-upcase v))
-		      v)))
-	  (alphalessp ui vi)))
+       ((symbolp v)(alphalessp u v))
        ((qnumberp v) nil)
        (t t)))
      ((symbolp v)(qnumberp u))
@@ -61,9 +127,10 @@
        ((qnumberp v)(qlessp u v))
        (t t)))
      ((qnumberp v) nil)
-     ((equal (car u)(car v))(arithord1 (cdr u)(cdr v)))
-     (t (arithord1 (car u)(car v)))))
+     ((equal (car u)(car v))(old-arithord1 (cdr u)(cdr v)))
+     (t (old-arithord1 (car u)(car v)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun sigtimes(u)
   (catch 'fastexit
@@ -234,40 +301,10 @@
     ((equal (caadr ptr) u)             ;found it
      (rplacd (cadr ptr) (qnorm (qplus (cdadr ptr) coef)))
      (return nil))
-    ((nonlinarithord u (caadr ptr))          ;Splice it in here.
+    ((arithord u (caadr ptr))          ;Splice it in here.
        (rplacd ptr
 	       (cons (cons u coef)(cdr ptr)))
        (return nil)))))
-
-(defun nonlinarithord (u v)
-  (if *jmr-mult*
-      (let ((uvars (sortedarithvars u))
-	    (vvars (sortedarithvars v)))
-	(if (and uvars vvars)
-	    (arithordlist uvars vvars)
-	    (arithord u v)))
-      (arithord u v)))
-
-(defun sortedarithvars (term)
-  (sort (remove-duplicates (allarithvarsof term)) #'arithord))
-
-(defun allarithvarsof (term)
-  (cond ((and (consp term)
-	      (memq (car term) *arithops*))
-	 (loop for arg in (cdr term)
-	       nconc (allarithvarsof arg)))
-	((qnumberp term) nil)
-	(t (list term))))
-
-(defun arithordlist (x y)
-  (if (consp y)
-      (if (consp x)
-	  (if (equal x y)
-	      (arithordlist (cdr x)(cdr y))
-	      (arithord x y))
-	  t)
-      nil))
-
 
 (defun collectsum(s)
   (loop for pair in s nconc
@@ -307,9 +344,47 @@
 
 (defun arithsolve(lit)
   (case (funsym lit)				
-    (equal (ncons (normineq lit)))
+    (equal (equalsolve lit))
     ((lesseqp greatereqp lessp greaterp) (ineqsolve lit))
     (t `((equal ,lit true)))))
+
+(defun reciprocal (x)
+  (if (and (consp x)
+	   (eq (funsym x) 'divide)
+	   (eql (arg1 x) 1))
+      (arg2 x)
+      `(DIVIDE 1 ,x)))
+
+(defun equalsolve (lit)
+  (let ((norm (normineq lit)))
+    (if (and t (consp norm))
+	(let* ((all-terms (termsof norm))
+	       (head (car all-terms)))
+	  (if (and (consp head)
+		   (eq (funsym head) 'times))
+	      (let* ((args (argsof head))
+		     (nzarg-reciprocals
+		      (loop for a in args
+			    when (isneqzero? a)
+			    collect (reciprocal a))))
+		(if nzarg-reciprocals
+		    (solvecan `(EQUAL (TIMES ,head ,@nzarg-reciprocals)
+				      (TIMES ,(arg2 norm)
+					     ,@nzarg-reciprocals)))
+		    (list `(LESSEQP ,(arg1 norm) ,(arg2 norm))
+			  `(GREATEREQP ,(arg1 norm) ,(arg2 norm)))))
+	    (if (onlyoccurrencep head head all-terms t)
+		(ncons norm)
+	      (list `(LESSEQP ,(arg1 norm) ,(arg2 norm))
+		    `(GREATEREQP ,(arg1 norm) ,(arg2 norm))))))
+      (ncons norm))))
+
+(defun termsof (lit)
+  (cons (arg1 lit)
+	(if (and (consp (arg2 lit)) (eq (funsym (arg2 lit))
+					`PLUS))
+	    (argsof (arg2 lit))
+	  (ncons (arg2 lit)))))
 
 ; solver for negative predicates over linear arithmetic
 
@@ -328,7 +403,36 @@
       ((equal (arg1 lit)(arg2 lit)) (retfalse))
       ((eq (setq res (newcontext (process lit))) 'false) '(true))
       ((eq res 'true) (retfalse))
-      (t `((nequal ,(arg1 lit) ,(arg2 lit))))))))
+      (t (let ((norm (normineq lit)))
+	   (cond ((eq norm 'ident) (retfalse))
+		 ((eq norm true) (retfalse))
+		 ((eq norm false) '(true))
+		 (t `((nequal ,(arg1 norm) ,(arg2 norm)))))))))))
+
+(defun isneqzero? (x)
+  (let ((ux (use x)))
+    (loop for u in ux
+	  thereis (and (consp u)
+		       (consp (car u))
+		       (consp (cdr u))
+		       (equal (caar u) x)
+		       (equal (cdar u) 0)
+		       (equal (cadr u) x)))))
+
+(defun quotients (expr accum)
+  (if (consp expr)
+      (if (or (eq (funsym expr) 'plus)(eq (funsym expr) 'times))
+	  (quotients-list (cdr expr) accum)
+	  (if (eq (funsym expr) 'divide)
+	      (cons (arg2 expr) accum)
+	      nil))
+      accum))
+
+(defun quotients-list (list accum)
+  (if (consp list)
+      (quotients-list (cdr list) (quotients (car list) accum))
+      accum))
+	      
 
 ; returns negation of inequality
 
@@ -476,13 +580,8 @@
 	     ;;; next time blah is seen it will be reduced to true and not
 	     ;;; added to the ineqpot.
 
-	     (when *tc-dbg* (break "before loop"))
-
 	     (loop for chainineq in (chainineqs ineq) with (norm) do
 		   (setq norm (normineq (residue ineq chainineq)))
-
-		   (when *tc-dbg* (break "loop"))
-
 		   (cond
 		    ((eq norm 'true)
 		     (add-disjunct-of-equals ineq chainineq))
@@ -502,13 +601,28 @@
 	     ;;; 11/17/92: DAC see note above about nrmineq.
 	     ;;; NSH(1/15/94): Loops without WHEN clause below.  DAC's note
 	     ;;; indicates why it might be needed.  
-
-	     (when *tc-dbg* (break "after loop"))
 	     
 	     (when nrmineq-unchanged ;(and (consp nrmineq)(eq (car nrmineq) 'equal))
 	       (push nrmineq ineqpot)
 	       )
 	     ))))
+
+(defun bad-eqn (eqn)
+  (or (eq eqn 'ident)
+      (and (consp eqn)
+	   (or (subtermoflambda (arg1 eqn) (arg2 eqn))
+	       (let* ((all-terms (termsof eqn))
+		      (head (car all-terms)))
+		 (if (not (and (consp head)
+			       (eq (funsym head) 'times)))
+		     (not (onlyoccurrencep head head all-terms t))
+		   nil))))))
+
+(defun subtermoflambda (subterm term)
+  (and (consp term)
+       (if (eq (funsym term) 'lambda)
+	   (subtermof subterm term)
+	 (loop for a in term thereis (subtermoflambda subterm a)))))
 
 
 ; returns list of true ineqs that chain with ineq.  e.g. x < y chains
@@ -555,7 +669,10 @@
 ; normalizes an equality or inequality, returns true, false, ident
 ; (for inequals that eval to true), or something of form
 ; (fnsym var linearexpr)
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;NSH(1.15.94): Added WHEN clause in front of push of nrmineq.  This is needed
+;;to prevent loops where increasingly large inequalities are introduced.
+;;DAC(1/28/94): Added nrmineq-unchanged and pushed more often.
 
 (defun normineq(lit)
   (integercut (normineq1 lit)))
@@ -571,31 +688,44 @@
 ;;; by letting *kmr-mut* to be t.
 ;;; If *jmr-mult* is originally t then products are alwys treated independently.
 
-(defvar *jmr-mult* nil) ; if t then treat mult as uninterp as much as plausible.
+(defvar *jmr-mult* t) ; if t then treat mult as uninterp as much as plausible.
 
-(defun normineq1(lit)
+(defun normineq1 (ineq)
+  (let ((norm (normineq2 ineq)))
+    (if (consp norm)
+	(make-strict norm)
+      norm)))
+
+(defun normineq2(lit)
   (prog(var coef dif fnsymbol)
        (setq fnsymbol (funsym lit))
        (setq dif (sigdifference `(difference ,(arg1 lit) ,(arg2 lit))))
+       ;(break)
        (return
 	(cond
 	 ((qnumberp dif)(normconstdif fnsymbol dif)) ; constant dif
-	 ((solvable dif)
+	 ((solvable dif nil)
 	  (list
 	   (cond ((qminusp coef)(antifnsym fnsymbol))(t fnsymbol))
 	   var
 ;;;	(canon `(plus ,var (times ,(qnorm (qquotient -1 coef)) ,dif)))
 ;;;   fix to get around the "order bug"  18-Nov-85
-	   (arithcan 
+	   (if *use-can*
+	       (arithcan
 	    ;`(plus ,var (times ,(qnorm (qquotient -1 coef)) ,dif))
 	    ;; DAC fix to make sure var is cancelled in resulting expression.
-	    `(times ,(qnorm (qquotient -1 coef))
-		   ,(sigplus `(plus ,(sigtimes `(times ,(qtimes -1 coef) ,var)) ,dif))))
+		`(times ,(qnorm (qquotient -1 coef))
+			,(sigplus `(plus ,(sigtimes `(times ,(qtimes -1 coef) ,var)) ,dif))))
+	     (sigma
+	    ;`(plus ,var (times ,(qnorm (qquotient -1 coef)) ,dif))
+	    ;; DAC fix to make sure var is cancelled in resulting expression.
+	      `(times ,(qnorm (qquotient -1 coef))
+		      ,(sigplus `(plus ,(sigtimes `(times ,(qtimes -1 coef) ,var)) ,dif)))))
 	   ))
 	 ((eq *printerpmult* 'normal) lit)
 	 ((eq *printerpmult* 'experimental)
 	  (let ((*jmr-mult* t))
-	    (if (solvable dif)
+	    (if (solvable dif (and t (eq fnsymbol 'equal)))
 		(list
 		 (cond ((qminusp coef)(antifnsym fnsymbol))(t fnsymbol))
 		 var
@@ -606,10 +736,28 @@
 	      lit)))
 	 (t (prerr "Formula falls outside domain of completeness"))))))
 
+(defun make-strict (ineq)
+  (case (funsym ineq)
+    (EQUAL (if (strict? ineq) FALSE ineq))
+    (LESSEQP (if (strict? ineq)
+		 `(LESSP ,(arg1 ineq) ,(arg2 ineq))
+	       ineq))
+    (GREATEREQP (if (strict? ineq)
+		    `(GREATERP ,(arg1 ineq) ,(arg2 ineq))
+		  ineq))
+    (t ineq)))
+
+(defun strict?(ineq)
+  (loop for u in (use (arg1 ineq))
+        thereis (and (consp u)
+		     (consp (car u))
+		     (equal (arg1 ineq) (caar u))
+		     (equal (arg2 ineq) (cdar u)))))
+
 (defun arithcan (term)   ;weakened formof canon, added to fix "order bug"
   (catch 'found
     (cond
-     ((symbolp term) (pr-find term))
+     ((symbolp term) term)
      ((integerp term) term)
      ((interp term)
       (let ((newterm
@@ -622,7 +770,7 @@
 	     (progn
 	      (loop for u in (use (arg1 newterm))
 		   do (and (equal newterm (sig u)) (throw 'found 
-							   (pr-find u))) )
+							   newterm)) )
 	      (loop for arg in (argsof newterm) do (adduse newterm arg)) ))
 	newterm ))
      (t term) )))
@@ -634,24 +782,24 @@
 ;
 ; else returns nil
 
-(defun solvable (dif)
+(defun solvable(dif &optional (funsymis= nil))
   (cond
    ((listp dif)
     (case (funsym dif)
-      (plus (solvableplus dif))
-      (times (solvabletimes dif))
+      (PLUS (solvableplus dif funsymis=))
+      (TIMES (solvabletimes dif))
       (t (setq var dif coef 1) t)))
    (t (setq var dif coef 1) t)))
 
 ; solvable for case in which dif is a plus expression
 
-(defun solvableplus(dif)
+(defun solvableplus(dif &optional (funsymis= nil))
   (loop for term in (argsof dif)
 	thereis (and (not (qnumberp term))
 		     (cond
 		       ((linearp term)
 			(setq var (varof term) coef (coefof term))
-			(onlyoccurrencep var term dif))))))
+			(onlyoccurrencep var term dif funsymis=))))))
 
 ; solvable for case in which dif is a times expression
 
@@ -673,27 +821,28 @@
 
 ; returns t if only occurrence of var in plus expr l is in term t
 
-(defun onlyoccurrencep(var term l)
+(defun onlyoccurrencep(var term l &optional (funsymis= nil))
   (loop for arg in (argsof l)
 	never (and (not (equal arg term))
-		   (occursin var arg))))
+		   (occursin var arg funsymis=))))
 
 ; returns t if var is a variable of term
 
-(defun occursin (var term)
+;;; davesc (fix from shankar), for bug # 524
+(defun occursin (var term &optional (funsymis= nil))
   (cond
    ((and (listp term)(eq (funsym term) 'times))
     (cond
-     ((qnumberp (arg1 term))(occursin var (arg2 term)))
+     ((qnumberp (arg1 term))(occursin var (arg2 term) funsymis=))
      (t (if *jmr-mult*
-	    (or (equal var term)
-		(member-or-div-member var (argsof term)))
-	    (member var (argsof term))))))
-   ((and (listp term)(eq (funsym term) 'divide))
+            (or (equal var term)
+                    (member-or-div-member var (argsof term)))
+            (member var (argsof term))))))
+   ((and (listp term)(eq (funsym term) 'divide) funsymis=)
     (cond
      ((qnumberp (arg1 term))(interp-subtermof var (arg2 term)))
      (t (or (interp-subtermof var (arg1 term))
-	    (interp-subtermof var (arg2 term))))))
+            (interp-subtermof var (arg2 term))))))
    ((equal var term))))
 
 (defun interp-subtermof (var term)
