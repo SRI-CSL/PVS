@@ -4,6 +4,7 @@
   (require 'tpl-debug)
   #+(or runtime-standard runtime-dynamic)
   (pushnew :runtime *features*)
-  #-runtime (require 'prof)
+  #-(or runtime-standard runtime-dynamic)
+  (require 'prof)
   (load (format nil "~a/pvs.system" *pvs-path*)))
 (operate-on-system :pvs :compile)
