@@ -1072,8 +1072,7 @@
 	  (pp-tex* operator))
       (pprint-indent :block 4)
       (unless *in-tex-math-mode*
-	(if (and (name? operator)
-		 (< (length (string (id operator))) 6))
+	(if (simple-name? operator)
 	    (pprint-newline :miser)
 	    (pprint-newline :fill)))
       (pp-tex-arguments-list args))))
@@ -1081,7 +1080,8 @@
 (defun pp-tex-arguments-list (args)
   (pprint-logical-block (nil args)
     (loop (pp-tex-arguments (argument-list (pprint-pop)))
-	  (pprint-exit-if-list-exhausted))))
+	  (pprint-exit-if-list-exhausted)
+	  (pprint-newline :fill))))
 
 (defmethod pp-tex* ((ex infix-application))
   (with-slots (operator argument) ex

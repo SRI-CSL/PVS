@@ -1173,16 +1173,24 @@ bind tighter.")
 		 (write-char #\)))
 	  (pp* operator))
       (pprint-indent :block 4)
-      (if (and (name? operator)
-	       (< (length (string (id operator))) 6))
+      (if (simple-name? operator)
 	  (pprint-newline :miser)
 	  (pprint-newline :fill))
       (pp-arguments-list args))))
 
+(defmethod simple-name? ((ex name))
+  (and (not (mod-id ex))
+       (not (actuals ex))
+       (not (library ex))))
+
+(defmethod simple-name? (ex)
+  nil)
+
 (defun pp-arguments-list (args)
   (pprint-logical-block (nil args)
     (loop (pp-arguments (argument-list (pprint-pop)))
-	  (pprint-exit-if-list-exhausted))))
+	  (pprint-exit-if-list-exhausted)
+	  (pprint-newline :fill))))
 
 (defmethod pp* ((ex infix-application))
   (with-slots (operator argument) ex
