@@ -234,12 +234,77 @@
 ;;; SO 8/31/94 - added following two methods, extracted from application
 ;;; method
 
+(defun beta-reduce-tuple-update-redex (index arg)
+  (let ((updates (loop for assn in (assignments arg)
+		 when (eql index (number (caar (arguments assn))))
+		 collect assn))
+	(expr-of-arg (expression arg)))
+    (if updates
+	(if (every #'(lambda (x) (cdr (arguments x)))
+		     updates) ;;;a curried update::
+	                             ;;;PROJ_n(exp WITH [(n)(i):= e])
+	    (let ((newexpr (make!-update-expr
+			    (make-tuple-update-reduced-projection
+			     index expr-of-arg)
+			    (mapcar #'(lambda (x)
+				    (lcopy x 'arguments
+					   (cdr (arguments x))))
+			      updates)
+			    ;;(type (make!-projection-application index arg))
+			    )))
+	      newexpr)
+	    (make-beta-update-expr-from-updates updates))
+	(make-tuple-update-reduced-projection
+	 index expr-of-arg))))
+
 (defmethod beta-reduce* ((expr projection-application))
   (with-slots (index argument) expr
     (let ((narg (beta-reduce* argument)))
       (if (typep narg 'tuple-expr)
 	  (nth (1- index) (exprs narg))
-	  (lcopy expr 'argument narg)))))
+	  (if (typep narg 'update-expr)
+	      (beta-reduce-tuple-update-redex index narg)
+	  (lcopy expr 'argument narg))))))
+
+(defun beta-reduce-record-update-redex (op arg)
+  (let ((updates
+	 (loop for assn in (assignments arg)
+	       when (eq op (id (caar (arguments assn))))
+	       collect assn))
+	(expr-of-arg (expression arg)))
+    (if updates
+	(if (every #'(lambda (x) (cdr (arguments x)))
+		   updates) ;;;a curried update::
+	                             ;;;a(exp WITH [((a)(i)):= e])
+	    (let ((newexpr;;NSH(9.15.94): otherwise TCCs
+		   ;;are generated when domain is subtype.
+		   ;;(let ((*generate-tccs* 'NONE)))
+		   (make!-update-expr
+		    (make-record-update-reduced-application
+		     op expr-of-arg)
+		    (mapcar #'(lambda (x)
+				(lcopy x 'arguments
+				       (cdr (arguments x))))
+		      updates))))
+	       newexpr)
+	    (make-beta-update-expr-from-updates
+	     updates))
+	(make-record-update-reduced-application
+			   op expr-of-arg))))
+
+(defun make-beta-update-expr-from-updates (updates)
+    (if (and (consp updates)
+	   (null (cdr (arguments (car updates))))
+	   (every #'(lambda (x) (cdr (arguments x)))
+		  (cdr updates)))
+      (if (null (cdr updates))
+	  (expression (car updates))
+	  (make!-update-expr
+	    (expression (car updates))
+	    (mapcar #'(lambda (x) (lcopy x 'arguments
+					 (cdr (arguments x))))
+	      (cdr updates))))
+      (make-beta-update-expr-from-updates (cdr updates))))
 
 (defmethod beta-reduce* ((expr field-application))
   (with-slots (id argument) expr
@@ -252,22 +317,7 @@
 		     :test #'(lambda (x y)
 			       (eq x (id (caar (arguments y)))))))))
 	    ((record-update-redex? expr)
-	     (let ((update-field (find id (assignments arg)
-				       :test
-				       #'(lambda (x y)
-					   (eq x (id (caar (arguments y))))))))
-	       (if update-field
-		   (if (cdr (arguments update-field))
-		       (beta-reduce*
-			(make-update-expr
-			 (make!-field-application id
-						 (expression arg))
-			 (list (lcopy update-field 'arguments
-				      (cdr (arguments update-field))))
-			 (type expr)))
-	       (beta-reduce* (expression update-field)))
-		   (beta-reduce*
-		    (make!-field-application id (expression arg))))))
+	     (beta-reduce-record-update-redex id arg))
 	    (t (lcopy expr 'argument arg))))))
 
 ;;NSH(10.27.94): needed to avoid betareducing lets in TCCs.
