@@ -227,17 +227,23 @@
       (when (eq (spelling ndecl) 'OBLIGATION)
 	(incf (total-tccs)))
       (cond
-       (match
+       ((and match
+	     (not (and (declaration? decl)
+		       (id decl)
+		       (assq expr *compatible-pred-reason*))))
 	(assert (declaration? match))
-	(let ((msg (format nil
-		       "~@(~a~) TCC for ~a subsumed by earlier TCC - not generated"
-		     kind (or expr type))))
-	  (when (eq *tcc-messages* 'yes)
-	    (pvs-message msg))
-	  (incf (tccs-matched))
-	  ;;(add-comment decl msg)
-	  (push match (refers-to decl))))
-       (t (insert-tcc-decl* kind expr type decl ndecl))))))
+	(pvs-info "~@(~a~) TCC for ~a:~%  ~a~%is subsumed by earlier TCC ~a~%~
+                   so is not generated"
+	  kind (or expr type)
+	  (unpindent (definition ndecl) 2 :string t)
+	  (id match))
+	(incf (tccs-matched))
+	(push match (refers-to decl)))
+       (t (when match
+	    (pvs-warning "The judgement TCC ~a is subsumed by ~a,~%~
+                          but generated anyway since it was given a name"
+	      (id decl) (id match)))
+	  (insert-tcc-decl* kind expr type decl ndecl))))))
 
 (defun insert-tcc-decl* (kind expr type decl ndecl)
   (let ((submsg (case kind
