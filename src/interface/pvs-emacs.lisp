@@ -197,7 +197,9 @@
 		(restore)
 		(pvs-abort)))
 	  (progn (format t "~%~%~a~%~a" msg err)
-		 (error "PVS error")))))
+		 (if *in-checker*
+		     (restore)
+		     (error "PVS error"))))))
 
 (defun pvs-abort ()
   #-allegro (abort)
