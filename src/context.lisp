@@ -1400,18 +1400,17 @@ pvs-strategies files.")
 	      (pvs-log (format nil "  ~a" error))))))))
 
 (defun restore-theory-proofs-from-file (input filestring theory)
-  (with-case-insensitive-lower
-   (let ((theory-proofs (read input nil nil)))
-     (when theory-proofs
-       (let* ((theoryid (car theory-proofs))
-	      (proofs (cdr theory-proofs)))
-	 (unless (every #'consp proofs)
-	   (pvs-message "Proofs file ~a is corrupted, will try to keep going."
-	     filestring)
-	   (setq proofs (remove-if-not #'consp proofs)))
-	 (if (eq theoryid (id theory))
-	     (restore-theory-proofs theory proofs)
-	     (restore-theory-proofs-from-file input filestring theory)))))))
+  (let ((theory-proofs (read input nil nil)))
+    (when theory-proofs
+      (let* ((theoryid (car theory-proofs))
+	     (proofs (cdr theory-proofs)))
+	(unless (every #'consp proofs)
+	  (pvs-message "Proofs file ~a is corrupted, will try to keep going."
+	    filestring)
+	  (setq proofs (remove-if-not #'consp proofs)))
+	(if (eq theoryid (id theory))
+	    (restore-theory-proofs theory proofs)
+	    (restore-theory-proofs-from-file input filestring theory))))))
 
 (defun restore-theory-proofs (theory proofs)
   (let ((restored (mapcar #'(lambda (decl)
@@ -1436,7 +1435,8 @@ pvs-strategies files.")
 	     (unless (some #'(lambda (prinfo)
 			       (equal (script prinfo) (cdr prf-entry)))
 			   (proofs decl))
-	       (let ((prinfo (make-proof-info (cdr prf-entry)
+	       (let ((prinfo (make-proof-info (convert-NIL-to-nil
+					       (cdr prf-entry))
 					      (next-proof-id decl)))
 		     (fe (get-context-formula-entry decl)))
 		 (when fe
@@ -1447,6 +1447,14 @@ pvs-strategies files.")
 		 (push prinfo (proofs decl))
 		 (setf (default-proof decl) prinfo)))))
       prf-entry)))
+
+(defun convert-NIL-to-nil (proof-form)
+  (cond ((eq proof-form 'NIL)
+	 nil)
+	((consp proof-form)
+	 (cons (convert-NIL-to-nil (car proof-form))
+	       (convert-NIL-to-nil (cdr proof-form))))
+	(t proof-form)))
 
 (defmethod find-associated-proof-entry ((decl tcc-decl) proofs)
   (or (assq (id decl) proofs)
