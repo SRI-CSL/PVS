@@ -542,33 +542,43 @@ emacs/emacs-src/pvs-prelude-files-and-regions.el : lib/prelude.pvs ${pvsfull}
                         -f set-prelude-files-and-regions
 
 emacs/emacs20/%.el : emacs/emacs-src/%.el
+	mkdir -p emacs/emacs20
 	(cd emacs/emacs20; ln -sf ../emacs-src/$(@F) .)
 
 emacs/emacs19/%.el : emacs/emacs-src/%.el
+	mkdir -p emacs/emacs19
 	(cd emacs/emacs19; ln -sf ../emacs-src/$(@F) .)
 
 emacs/xemacs21/%.el : emacs/emacs-src/%.el
+	mkdir -p emacs/xemacs21
 	(cd emacs/xemacs21; ln -sf ../emacs-src/$(@F) .)
 
 emacs/xemacs20/%.el : emacs/emacs-src/%.el
+	mkdir -p emacs/xemacs20
 	(cd emacs/xemacs20; ln -sf ../emacs-src/$(@F) .)
 
 emacs/xemacs19/%.el : emacs/emacs-src/%.el
+	mkdir -p emacs/xemacs19
 	(cd emacs/xemacs19; ln -sf ../emacs-src/$(@F) .)
 
 emacs/emacs20/%.el : emacs/emacs-src/ilisp/%.el
+	mkdir -p emacs/emacs20
 	(cd emacs/emacs20; ln -sf ../emacs-src/ilisp/$(@F) .)
 
 emacs/emacs19/%.el : emacs/emacs-src/ilisp/%.el
+	mkdir -p emacs/emacs19
 	(cd emacs/emacs19; ln -sf ../emacs-src/ilisp/$(@F) .)
 
 emacs/xemacs21/%.el : emacs/emacs-src/ilisp/%.el
+	mkdir -p emacs/xemacs21
 	(cd emacs/xemacs21; ln -sf ../emacs-src/ilisp/$(@F) .)
 
 emacs/xemacs20/%.el : emacs/emacs-src/ilisp/%.el
+	mkdir -p emacs/xemacs20
 	(cd emacs/xemacs20; ln -sf ../emacs-src/ilisp/$(@F) .)
 
 emacs/xemacs19/%.el : emacs/emacs-src/ilisp/%.el
+	mkdir -p emacs/xemacs19
 	(cd emacs/xemacs19; ln -sf ../emacs-src/ilisp/$(@F) .)
 
 ifeq ($(shell if [ -x ${emacs20} ] ; then echo OK ; fi), OK)
