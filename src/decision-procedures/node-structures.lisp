@@ -35,6 +35,7 @@
 (defdpstruct node
   (initial-type nil :type symbol)
   (type initial-type :type symbol)
+  (external-info nil :type list)
   (index :type integer)
   (sxhash nil :type (integer 0 65535)))
 
@@ -427,6 +428,18 @@
   (eq (node-type constant) 'array-op))
 
 (defvar *update* (mk-array-operator 'update))
+
+(defvar *tuple* (mk-constant 'tuple 'tuple-op))
+
+(defun tuple-op-p (constant)
+  (declare (type node constant))
+  (eq (node-type constant) 'tuple-op))
+
+(defvar *record* (mk-constant 'record 'record-op))
+
+(defun record-op-p (constant)
+  (declare (type node constant))
+  (eq (node-type constant) 'record-op))
 
 (defvar *print-polyhedron* nil)
 
@@ -1160,4 +1173,6 @@
   (setq *zero* (mk-dp-number 0))
   (setq *one* (mk-dp-number 1))
   (setq *neg-one* (mk-dp-number -1))
-  (setq *update* (mk-array-operator 'update)))
+  (setq *update* (mk-array-operator 'update))
+  (setq *tuple* (mk-constant 'tuple 'tuple-op))
+  (setq *record* (mk-constant 'record 'record-op)))
