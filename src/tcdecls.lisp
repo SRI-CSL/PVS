@@ -1774,7 +1774,6 @@
   (case id
     (|boolean| (setq *boolean* type))
     (|number| (setq *number* type))
-    (|ordered_number| (setq *ordered_number* type))
     (|real| (setq *real* type)
      (push-ignored-type-constraints *real*))
     (|rational| (setq *rational* type)
