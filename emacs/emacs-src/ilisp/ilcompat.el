@@ -59,13 +59,13 @@ Set in ilcompat.el")
 ;;; Code
 
 (cond ((memq +ilisp-emacs-version-id+ '(xemacs-19 xemacs-20))
-       (load "ilxemacs"))
+       (load "ilxemacs" nil noninteractive))
       ((eq +ilisp-emacs-version-id+ 'fsf-19)
-       (load "ilfsf19"))
+       (load "ilfsf19" nil noninteractive))
       ((eq +ilisp-emacs-version-id+ 'fsf-20)
-       (load "ilfsf20"))
+       (load "ilfsf20" nil noninteractive))
       (t
-       (load "ilfsf20")) ;; fall through assumption to Emacs 20
+       (load "ilfsf20" nil noninteractive)) ;; fall through assumption to Emacs 20
       )
 
 ;;;============================================================================
