@@ -260,7 +260,8 @@
 	       (epsilon-leq-0-poly (polyhedral-structure-epsilon-poly
 				    poly-s))
 	       (ineq-constraint (make-diff-constraint diff strict max-ineq-vars
-						      ineq-var-to-index-hash))
+						      ineq-var-to-index-hash
+						      (equality-p eqn)))
 	       (old-polyhedron (polyhedral-structure-polyhedron
 				poly-s))
 ;;;	   (new-polyhedron (loop for np =
@@ -414,9 +415,12 @@
     (matrix_set constraint 0 0 1)
     (matrix_set constraint 0 (1+ var-index) 1)))
 
-(defun make-diff-constraint (diff strict max-ineq-vars ineq-var-to-index-hash)
+(defun make-diff-constraint (diff strict max-ineq-vars ineq-var-to-index-hash
+				  &optional (equality nil))
   (let ((constraint (make-empty-constraint max-ineq-vars)))
-    (matrix_set constraint 0 0 1)
+    (if equality
+	(matrix_set constraint 0 0 0)
+	(matrix_set constraint 0 0 1))
     (when strict (matrix_set constraint 0 1 -1))
     (if (plus-p diff)
 	(matrix-set-coef-from-node-plus-dif diff constraint max-ineq-vars
