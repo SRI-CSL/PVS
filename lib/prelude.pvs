@@ -341,6 +341,7 @@ K_conversion [T1, T2: TYPE]: THEORY
 K_props [T1, T2: TYPE, S: TYPE FROM T1]: THEORY
  BEGIN
   K_preserves: JUDGEMENT K_conversion[T1, T2](x:S)(y:T2) HAS_TYPE S
+  K_preserves1: JUDGEMENT K_conversion[T1, T2](x:S) HAS_TYPE [T2 -> S]
  END K_props
 
 % identity simply defines the identity function.  The identity is used for
@@ -2251,6 +2252,13 @@ integer_props: THEORY
     upper_bound?(i, I)
       => EXISTS (j:(I)): least_upper_bound?(j, I)
 
+  glb_nat: LEMMA
+    EXISTS (n:(N)): greatest_lower_bound?(n, N)
+
+  glb_int: LEMMA
+    lower_bound?(i, I)
+      => EXISTS (j:(I)): greatest_lower_bound?(j, I)
+
  END integer_props
 
 
@@ -2756,6 +2764,9 @@ modulo_arithmetic : THEORY
   rem_opposite_elim: LEMMA
      rem(b)(- x) = rem(b)(- y) IFF rem(b)(x) = rem(b)(y)
 
+  % Provide a name for the function asserted to exist by euclid_int
+  ndiv(n,b) : {q: int | n = b * q + rem(b)(n)}
+
   END modulo_arithmetic
 
 
@@ -2897,6 +2908,9 @@ finite_sets_def[T: TYPE]: THEORY
   finite_set: TYPE = (is_finite) CONTAINING emptyset[T]
 
   non_empty_finite_set: TYPE = {s: finite_set | NOT empty?(s)}
+
+  is_finite_surj: LEMMA (EXISTS (N: posnat), (f: [below[N] -> (S)]):
+                            surjective?(f)) IMPLIES is_finite(S) 
 
 
   A,B: VAR finite_set
