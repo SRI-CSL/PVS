@@ -181,11 +181,21 @@
 (defun get-object-in-theory-at (objects theory pos1 pos2)
   (let* ((decls (all-decls theory))
 	 (decl (find-element-containing-pos decls pos1)))
-      (if (or (equal pos1 pos2)
-	      (within-place pos2 (place decl)))
-	  (get-object-in-declaration-at objects pos1 pos2)
-	  (let ((decl2 (find-element-containing-pos decls pos2)))
-	    (ldiff (memq decl decls) (cdr (memq decl2 decls)))))))
+    (unless decl
+      (setq decl (find-decl-after-pos decls pos1)))
+    (if (or (equal pos1 pos2)
+	    (within-place pos2 (place decl)))
+	(get-object-in-declaration-at objects pos1 pos2)
+	(let ((decl2 (find-element-containing-pos decls pos2)))
+	  (ldiff (memq decl decls) (cdr (memq decl2 decls)))))))
+
+(defun find-decl-after-pos (decls pos)
+  (when decls
+    (if (or (< (car pos) (starting-row (place (car decls))))
+	    (and (= (car pos) (starting-row (place (car decls))))
+		 (<= (cadr pos) (starting-col (place (car decls))))))
+	(car decls)
+	(find-decl-after-pos (cdr decls) pos))))
 
 (defun find-element-containing-pos (list pos)
   (when list
