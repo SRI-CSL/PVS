@@ -28,6 +28,9 @@
 (defvar *pvs-path* nil
   "Set by Emacs")
 
+(defvar *pvs-library-path* nil
+  "Set from the PVS_LIBRARY_PATH environment variable + *pvs-path*")
+
 (defvar *pvs-emacs-interface* nil
   "Set to t by Emacs in pvs-load - affects how pvs-emacs functions work")
 
@@ -38,7 +41,7 @@
     "src/ground-prover" "src/groundeval" "src/inst-by-unif" ))
 
 (defparameter *pvs-version* "3.0 Beta")
-(defparameter *binfile-version* 18)
+(defparameter *binfile-version* 19)
 
 (defparameter *context-name* ".pvscontext")
 
@@ -204,6 +207,7 @@ prelude libraries")
 (defvar *true* nil)
 (defvar *false* nil)
 (defvar *number* nil)
+(defvar *number_field* nil)
 (defvar *real* nil)
 (defvar *rational* nil)
 (defvar *integer* nil)
