@@ -78,7 +78,7 @@ beginning of the previous one."
 	 (found (re-search-forward "\\(\\btheory\\b\\|\\bdatatype\\b\\)"
 				   nil t)))
     (while (and found
-		(or (in-comment)
+		(or (in-comment-or-string)
 		    (in-square-braces (or start (point-min)))
 		    (in-begin-end (or start (point-min)))))
       (setq found (re-search-forward "\\(\\btheory\\b\\|\\bdatatype\\b\\)"
@@ -94,7 +94,7 @@ beginning of the previous one."
 	 (found (re-search-backward "\\(\\btheory\\b\\|\\bdatatype\\b\\)"
 				    nil t)))
     (while (and found
-		(or (in-comment)
+		(or (in-comment-or-string)
 		    (in-square-braces (or start (point-min)))
 		    (in-begin-end (or start (point-min)))))
       (setq found (re-search-backward "\\(\\btheory\\b\\|\\bdatatype\\b\\)"
@@ -270,6 +270,9 @@ beginning of the previous one."
 	    (setq blist (cdr blist))))
 	fbuf)))
 
+(defun in-comment-or-string ()
+  (or (in-comment) (in-string)))
+
 (defun in-comment ()
   (let ((limit (point)))
     (save-excursion
@@ -358,7 +361,7 @@ delimiter."
 	(while (and (not err)
 		    ;; Don't reverse sdel and edel or square braces won't work
 		    (re-search-forward (format "[%s%s]" edel sdel) end t))
-	  (unless (in-comment)
+	  (unless (in-comment-or-string)
 	    (if (equal (char-to-string (preceding-char)) sdel)
 		(push (point) pairstack)
 		(if pairstack
@@ -386,7 +389,7 @@ delimiter."
 	(goto-char start)
 	(while (and (not err)
 		    (re-search-forward regexp end t))
-	  (unless (in-comment)
+	  (unless (in-comment-or-string)
 	    (if (save-excursion
 		  (re-search-backward regexp nil t)
 		  (looking-at sdel))
@@ -404,7 +407,7 @@ delimiter."
 	  (limit (point)))
       (goto-char (or start (point-min)))
       (while (re-search-forward "[][]" limit t)
-	(unless (in-comment)
+	(unless (in-comment-or-string)
 	  (setq count
 		(+ count (if (eq (preceding-char) ?\[) 1 -1)))))
       (not (= count 0)))))
@@ -417,7 +420,7 @@ delimiter."
 	(goto-char (or start (point-min)))
 	(while (re-search-forward (format "\\b%s\\b\\|\\b%s\\b" sdel edel)
 				  limit t)
-	  (unless (in-comment)
+	  (unless (in-comment-or-string)
 	    (setq count
 		  (+ count (save-excursion
 			     (forward-word -1)
@@ -1620,6 +1623,32 @@ Point will be on the offending delimiter."
 	   (fset 'pvs-handler 'pvs-handler-orig)
 	   (fset 'ask-user-about-lock 'ask-user-about-lock-orig))))))
 
+
+;;; This function provides the most basic form of test, removing bin
+;;; files, typechecking a file, then running prove-importchain on it.
+;;; After, it runs any functions in pvs-validate-hooks.
+(defun pvs-validate-typecheck-and-prove (filename &optional show-proof?)
+  (pvs-validate-typecheck filename)
+  (set-rewrite-depth 0)
+  (let ((current-prefix-arg t)
+	(overbose pvs-verbose))
+    (when (and show-proof?
+	       (< pvs-verbose 3))
+      (pvs-message
+	  "Resetting verbose level to 3 for the proof of this validation")
+      (setq pvs-verbose 3)
+      (pvs-send-and-wait "(setq *pvs-verbose* 3)"))
+      (prove-pvs-file filename)
+      (setq pvs-verbose overbose)
+      (pvs-send-and-wait (format "(setq *pvs-verbose* %s)" overbose)))
+  (run-hooks 'pvs-validate-proof-hooks))
+
+(defun pvs-validate-typecheck (filename)
+  (pvs-remove-bin-files)
+  (find-pvs-file filename)
+  (typecheck filename)
+  (run-hooks 'pvs-validate-hooks))
+
 (defun pvs-expected-output-regexps (output-regexps)
   (if (stringp output-regexps)
       (list output-regexps)
@@ -1637,7 +1666,7 @@ Point will be on the offending delimiter."
   (cond ((and (stringp output)
 	      (string-match (ilisp-value 'ilisp-error-regexp) output))
 	 (pvs-message "Lisp ERROR: %s\n" (comint-remove-whitespace output))
-	 ;;(kill-process (ilisp-process))
+	 ;;(reset-pvs)
 	 )
 	(t t)))
 
@@ -1783,16 +1812,28 @@ existence and time differences to be whitespace")
       (message (ad-get-arg 0))))
   ad-do-it)
 
+;; (prompter actor list &optional help action-alist no-cursor-in-echo-area)
+(defadvice save-some-buffers (around pvs-batch-control activate)
+  (save-window-excursion
+    (dolist (buf (buffer-list))
+      (when (and (buffer-modified-p buf)
+		 (not (buffer-base-buffer buf))
+		 (buffer-file-name buf))
+	(set-buffer buf)
+	(save-buffer)))))
+
 ;;; Can't use kill-emacs-hook instead, as in batch mode the hook is ignored.
 (defadvice kill-emacs (before pvs-batch-control activate)
   (if (and ilisp-buffer
 	   (get-buffer ilisp-buffer)
 	   (ilisp-process)
 	   (eq (process-status (ilisp-process)) 'run))
-      (progn
+      (let ((ctr 10))
 	(save-some-buffers nil t)
-	(comint-simple-send (ilisp-process) "(pvs::lisp (pvs::exit-pvs))")
-	(while (equal (process-status (ilisp-process)) 'run)
+	(comint-simple-send (ilisp-process) "(pvs::lisp (pvs::exit-pvs))\n")
+	(while (and (equal (process-status (ilisp-process)) 'run)
+		    (> ctr 0))
+	  (setq ctr (- ctr 1))
 	  (sleep-for 1)))
       (message "PVS not running - context not saved"))
   (message "PVS Exited"))
