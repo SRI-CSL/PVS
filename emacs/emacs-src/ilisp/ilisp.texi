@@ -1,0 +1,2160 @@
+\input texinfo    @c -*-texinfo-*-              Last modified: October 25, 1996
+@setfilename ilisp.info
+@settitle The ILISP Inferior LISP Interface
+
+@c  NOTE:  KEYBINDING DESCRIPTIONS IN THIS FILE
+@c
+@c  Texinfo doesn't support the functionality of  substitute-command-keys, 
+@c  which kind of makes things tough when the bindings change.
+@c
+@c  Note that all the keys here which use the ILISP prefix have 
+@c  @key{C-z} before them, so a global replace can be used to put in a
+@c  specific value for this (if wanted).  The whole string should be
+@c  rpelaced, as in (replace-string "@key{C-z}" "@key{C-c}").  Any occurrances
+@c  of this should be in the proper @kbd{} construct, or in a table.
+@c
+@c  Key command descriptions in tables have the function listed after
+@c  them, as in   "@item RET   (return-ilisp)"  so it should be poosible
+@c  to update these descriptions with a little elisp code.
+@c
+@c  Todd Kaufmann    17-Mar-91
+@c  toad@cs.cmu.edu
+
+
+@c ================================================================
+@c THIS file has the new style title page commands.
+
+@c Run using special version of `texinfo.tex'.
+@c Version 2.13 or higher is recommended.
+
+@c Also, run `makeinfo' rather than `texinfo-format-buffer'.
+@c (Get the texinfo2 package.)
+@c ================================================================
+
+@c Use this if you want small book size like the GNU Emacs bound book.
+@c smallbook
+
+@c tex
+@c \overfullrule=0pt
+@c end tex
+
+@comment   INDEX   USAGE:
+@c  
+@c	@cindex     concept
+@c	@findex     function
+@c	@vindex     variable        
+@c	@kindex     key
+@c	@pindex     command     (normally program)
+@c
+@c not used:
+@c	@tindex    (data)type
+
+
+@c
+@c Combine indices.
+@c @synindex cp fn
+@c @syncodeindex vr fn
+@c @syncodeindex ky fn
+@c @syncodeindex pg fn
+@c @syncodeindex tp fn
+@c oops: texinfo-format-buffer ignores synindex
+@c So, use makeinfo.c.  Get texinfo2.tar.Z off of prep.ai.mit.edu
+@c
+
+@c TODO:
+@c - Add doc for rlogin lisps.
+@c - Add doc for trace-defun-break
+
+
+@ifinfo
+This file documents ILISP.
+
+This is edition 0.12 of the ILISP manual
+for ILISP Version 5.8.
+
+Copyright (C) 1991,1992,1993 Todd Kaufmann
+              1993,1994 Ivan Vasquez
+              1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
+              1996 Marco Antoniotti and Rick Campbell
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the entire
+resulting derived work is distributed under the terms of a permission
+notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation approved
+by the Foundation.
+@end ifinfo
+@c
+
+@c
+@setchapternewpage odd
+
+@titlepage
+@title ILISP User Manual
+@subtitle A GNU Emacs Interface for Interacting with Lisp
+@subtitle Edition 0.13, October 1996
+@subtitle For ILISP Version 5.8
+@c
+@c the following comment string is removed by the ctrl-c-doc.sh script,
+@c which can be used to change all ilisp-prefix bindings to C-c (or
+@c other). 
+@c
+@comment ctrl-C version: @subtitle This is the ``@key{C-z}'' version of the manual.
+
+@author by Todd Kaufmann, Chris McConnell, Ivan Vazquez, Marco Antoniotti, and Rick Campbell
+
+@page
+@vskip 0pt plus 1filll
+Copyright @copyright{} 1991, 1992, 1993 Todd Kaufmann
+                       1993, 1994 Ivan Vasquez
+                       1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
+                       1996 Marco Antoniotti and Rick Campbell
+
+@sp 2
+This is edition 0.12 of the @cite{ILISP User Manual}
+for ILISP Version 5.8,
+July 1996.
+
+@sp 2
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the entire
+resulting derived work is distributed under the terms of a permission
+notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation approved
+by this author.
+@end titlepage
+@page
+
+
+@node Top, Distribution, (dir), (dir)
+@comment  node-name,  next,  previous,  up
+
+
+@ifinfo
+This Info file documents ILISP, a GNU Emacs interface for a lisp
+running in a buffer.
+@comment ctrl-C version: @sp
+@comment ctrl-C version: This is the ``@key{C-z}'' version of the manual.
+@end ifinfo
+
+@menu
+* Distribution::                How to get the latest ILISP distribution.
+
+* Acknowledgements::            Acknowledgements
+* Introduction::                An introduction to ILISP and its features.
+* Installation::                How to install ILISP.
+* Starting up::                 How to run a Lisp process using ILISP.
+
+* Buffers of ILISP::            Buffers used by ILISP, and their commands.
+* ILISP Commands::              
+* Customization::               Description of ILISP variables and hooks.
+* Dialects::                    How ILISP knows how to communicate with Lisp,
+                                    and how to define new dialects.
+
+Indices:
+* Concept index::               General concepts.
+* Key index::                   ILISP key sequences.
+* Command index::               Commands by name.
+* Variable index::              Variables and hooks that influence ILISP's
+								   behavior.
+
+* Function index::              Internal Emacs Lisp functions.
+@end menu
+
+@node Distribution, Acknowledgements, Top, Top
+@unnumbered How to get the latest ILISP distribution.
+
+ILISP is "free"; this means that everyone is free to use it and free
+to redistribute it on a free basis.  ILISP is not in the public domain;
+it is copyrighted and there are restrictions on its distribution, but
+these restrictions are designed to permit everything that a good
+cooperating citizen would want to do.  What is not allowed is to try to
+prevent others from further sharing any version of ILISP that they might
+get from you.  The precise conditions appears following this section.
+
+The easiest way to get a copy of ILISP is from someone else who has it.
+You need not ask for permission to do so, or tell any one else; just
+copy it.
+
+If you do start using the package, please send mail to 
+@code{ilisp-request@@naggum.no} to subscribe to the ILISP mailing
+list.
+
+Please send bugs, questions or suggestions for discussion to
+@code{ilisp@@naggum.no}.  Message sent there will be distributed to
+all subscribers.
+
+@menu
+* FTP directions::              FTP directions
+* WWW directions::              WWW directions
+@end menu
+
+@node FTP directions, WWW directions,  , Distribution
+@unnumberedsec FTP directions
+@cindex FTP site
+@cindex Anonymous FTP
+@cindex How to get
+@cindex Getting ILISP
+@noindent
+You can get the distribution file, @code{ilisp-5.8.tar.gz} via
+anonymous FTP from @code{FTP.CS.CMU.EDU} (128.2.206.173) in
+@code{/afs/cs/user/campbell/http/ilisp/}.
+
+@format
+% @dfn{ftp ftp.cs.cmu.edu}
+Name (ftp.cs.cmu.edu:rickc): @dfn{anonymous}
+331 Guest login ok, send username@@node as password.
+Password: @dfn{@var{your-user-id@@your-hostname}}
+ftp> @dfn{cd /afs/cs/user/campbell/http/ilisp}
+250 Directory path set to /afs/cs/user/campbell/http/ilisp.
+ftp> @dfn{type binary}
+200 Type set to I.
+ftp> @dfn{get ilisp-5.8.tar.gz}
+200 PORT command successful.
+150 Opening data connection for ilisp-5.8.tar.gz.
+226 Transfer complete.
+local: ilisp-5.8.tar.gz remote: ilisp-5.8.tar.gz
+168801 bytes received.
+ftp> @dfn{quit}
+221 Goodbye.
+@end format
+
+@noindent
+Or get whatever single files you need from the @code{untarred}
+subdirectory.
+
+@noindent
+You can also get @code{ilisp-5.8.tar.gz} via
+anonymous FTP from @code{FTP.ICSI.BERKELEY.EDU} in either
+@code{/pub/software/elisp/} or @code{/pub/theory/marcoxa/elisp/}.
+
+@noindent
+Unpack and install:
+
+@code{% @dfn{gzip -dc ilisp-5.8.tar.gz | tar xf -}}
+
+@xref{Installation}.
+
+@node WWW directions,  , FTP directions, Distribution
+@unnumberedsec WWW directions
+@cindex WWW site
+@cindex How to get
+@cindex Getting ILISP
+@noindent
+You can use the World Wide Web (WWW) to get the distribution file from
+the anonymous FTP locations using one of the following URLs:
+@itemize @bullet
+@item
+@code{ftp://ftp.cs.cmu.edu/afs/cs/user/campbell/http/ilisp/ilisp-5.8.tar.gz}
+@item
+@code{ftp://ftp.icsi.berkeley.edu/pub/software/elisp/ilisp-5.8.tar.gz}
+@item
+@code{ftp://ftp.icsi.berkeley.edu/pub/theory/marcoxa/ilisp-5.8.tar.gz}
+@end itemize
+
+You can also use the CMU Artificial Intelligence Repository:
+
+@code{http://www.cs.cmu.edu/Web/Groups/AI/html/repository.html}
+
+@noindent
+From there follow: @code{LISP}, @code{UTIL}, @code{EMACS} and finally
+@code{ILISP}.  Use your browser capabilities to download what you
+need.
+
+@noindent
+The complete URL for the distribution file in the CMU AI Repository is
+@code{http://www.cs.cmu.edu/afs/cs/project/ai-repository/ai/lang/lisp/util/emacs/ilisp/v57/ilisp57.tgz}
+
+@noindent
+Other URLs for the distribution file include:
+@itemize
+@item
+@code{http://www.c2.net/~campbell/ilisp/ilisp-5.8.tar.gz}
+@item
+@code{http://www.cs.cmu.edu/~campbell/ilisp/ilisp-5.8.tar.gz}
+@end itemize
+
+@noindent
+Unpack and install:
+
+@code{% @dfn{gzip -dc ilisp-5.8.tar.gz | tar xf -}}
+
+@xref{Installation}.
+
+@node Acknowledgements, Introduction, Distribution, Top
+@unnumbered Acknowledgements
+
+ILISP replaces the standard inferior LISP mode.  ILISP is based on
+comint mode and derived from a number of different interfaces including
+Symbolics, CMU Common Lisp, and Thinking Machines.  
+
+There are many people that have taken the time to report bugs, make
+suggestions and even better send code to fix bugs or implement new
+features.  
+
+Thanks to Guido Bosch, David Braunegg, Tim Bradshaw, Thomas M. Breuel,
+Hans Chalupsky, Kimball Collins, Brian Dennis, David Duff, Tom
+Emerson, Michael Ernst, Scott Fahlman, David Gadbois, Robert
+P. Goldman, Marty Hall, Richard Harris, Jim Healy, Christopher Hoover,
+Larry Hunter, Ben Hyde, Chuck Irvine, Michael Kashket, Mark
+Kantrowitz, Qiegang Long, Erik Naggum, Dan Pierson, Yusuf Pisan, Frank
+Ritter, Jeffrey Mark Siskind, Neil Smithline, Richard Stallman, Larry
+Stead, Jason Trenouth, Christof Ullwer, Bjorn Victor, Fred White, Ben
+Wing, Matsuo Yoshihiro, Jamie Zawinski, Paul Fuqua (for the CMU-CL GC
+display code) and Marco Antoniotti for bug reports, suggestions and
+code.  Our apologies to anyone we may have forgotten.
+
+Special thanks to Todd Kaufmann for the texinfo file, work on bridge,
+epoch-pop and for really exercising everything.
+
+Please send bug reports, fixes and extensions to
+@code{ilisp@@naggum.no} so that they can be merged into the master
+source.
+@noindent
+@example
+--Chris McConnell                     18-Mar-91 
+--Ivan Vazquez                        27-Jun-93
+--Marco Antoniotti and Rick Campbell  25-Oct-96
+@end example
+
+
+@node Introduction, Installation, Acknowledgements, Top
+@unnumbered Introduction
+@cindex features
+
+ILISP is an interface from GNU Emacs to an inferior LISP.  It has the
+following features:
+
+@itemize @bullet
+@item
+Runs under Emacs-18, Emacs-19, and XEmacs-19.
+
+@item
+Support for multiple LISP dialects including Lucid, Allegro and CMU
+on multiple machines even at the same time.
+
+@item
+Dynamically sized pop-up windows that can be buried and scrolled from
+any window.
+
+@item
+Packages are properly handled including the distinction between
+exported and internal symbols.
+
+@item
+Synchronous, asynchronous or batch eval and compile of files, regions,
+definitions and sexps with optional switching and automatic calling.
+
+@item
+Arglist, documentation, describe, inspect and macroexpand.
+
+@item
+Completion of filename components and LISP symbols including partial matches.
+
+@item
+Find source both with and without help from the inferior LISP,
+including CLOS methods, multiple definitions and multiple files.  
+
+
+@item
+Edit the callers of a function with and without help from the
+inferior LISP.
+
+@item
+Trace/untrace a function.
+
+@item
+@kbd{M-q} (``Fill-paragraph'') works properly on paragraphs in comments,
+strings and code.
+
+@item
+Find unbalanced parentheses.
+
+@item
+Super brackets.
+
+@item
+Handles editing, entering and indenting full LISP expressions.
+
+@item
+Next, previous, and similar history mechanism compatible with comint.
+
+@item
+Handles LISP errors.
+
+@item
+Result histories are maintained in the inferior LISP.
+
+@item
+Does not create spurious symbols and handles case issues.
+
+@item
+Online manuals for ILISP and Common LISP.
+
+@end itemize
+
+@node Installation, Starting up, Introduction, Top
+@chapter How to install ILISP
+@cindex Installation
+Installation of ILISP and some initialization of your computing
+environment are described in this chapter.  Please read the following
+sections carefully before getting started with ILISP.
+
+If ILISP has already been installed at your location, you can probably
+skip ahead to ``Autoloading.''
+
+Note that Jamie Zawinki's byte-compiler is required when compiling
+ILISP.  If you don't have it, get it from
+@code{ftp://archive.cis.ohio-state.edu/pub/gnu/emacs/elisp-archive/bytecomp2.tar.Z}
+
+You don't need it if you are running emacs version 19 as both the FSF
+and XEmacs releases include this in their distributions.
+
+@menu
+* Makefile configuration::      
+* Files of ILISP::              
+* Autoloading::                 How to define autoload entries.
+@end menu
+
+@node  Makefile configuration, Files of ILISP,  , Installation
+@comment  node-name,  next,  previous,  up
+@section Makefile configuration
+
+Some configuration needs to be done before compiling the emacs-lisp
+files that comprise ILISP.  This should be done in the
+@code{Makefile} file in the section of the file marked
+CONFIGURATION SECTION. 
+
+First, set the @code{YOUR_EMACS} variable to be the pathname of the
+emacs you will be using ILISP with.  This is the emacs that will be used
+to compile ILISP with.
+
+If you don't have Jamie Zawinski's byte compiler in your standard load
+path ( both FSF's 19 and XEmacs 19 do have enhaced versions of it )
+then you will have to uncomment the @code{BYTECOMP} line and set it to
+point to the correct location of the bytecomp files.
+
+If you do not have comint already in your emacs ( both FSF 19 and XEmacs
+19 do ) then uncomment the @code{USE_BUNDLED_COMINT} line.  This will
+cause the copy of @code{comint.el} to be moved from the @code{Extras}
+directory into the main ILISP directory.
+
+The advice section is left uncommented out in the distributed
+@code{Makefile} because most people will not have
+@code{advice.elc} in their load path.  Only XEmacs will have
+this in the standard distribution.  If you do have it in your load path,
+then to avoid having two copies in your load-path and avoiding future
+confusion then comment out both the @code{ADVICE} and
+@code{USE_BUNDLED_ADVICE} lines.
+
+@cindex Compiling ILISP files 
+@cindex Byte-compiling ILISP files
+@findex ilisp-compile-inits 
+@vindex ilisp-load-inits
+@vindex ilisp-site-hook
+@vindex ilisp-program
+@vindex ilisp-init-binary-command
+@vindex ilisp-init-binary-extension
+
+You can then compile everything with the shell command
+
+   @code{% @dfn{make -f Makefile-ilisp }}@dfn{@var{<your target here>}}
+
+Where the possible targets are @code{emacs_18}, @code{emacs_18_epoch},
+@code{emacs_18_menu}, and @code{emacs_19}.
+
+Ignore any compilation warnings unless they result in ILISP not
+compiling completely.
+
+You should then copy relevant sections of @code{ilisp.emacs} to your
+@code{.emacs} or to the system-wide @code{default.el} file, depending on
+who will be using ILISP.  
+
+You should add the directory where all of the ILISP emacs-lisp files
+reside to your @code{load-path}.  There is an example of this in
+@code{ilisp.emacs} 
+
+As an alternative you could set up a @code{.ilisp} which contains the
+appropriate portions of @code{ilisp.emacs}, in order to avoid cluttering
+too much @code{.emacs} or @code{default.el}
+
+The first time a dialect is started, the interface files will complain
+about not being compiled, just hit @kbd{i} to ignore the message.  Once
+a lisp dialect is started up, you should execute the command
+@code{ilisp-compile-inits} which will compile the @samp{*.lisp} files
+and write them to the same directory as the ilisp files.@refill
+
+The binary files should have a unique
+extension for each different combination of architecture and
+LISP dialect.  You will need to change
+@code{ilisp-init-binary-extension} and
+@code{ilisp-init-binary-command} to get additional
+extensions.  The binary for each different architecture
+should be different.  If you want to build the interface
+files into a LISP world, you will also need to set
+@code{ilisp-load-inits} to @code{nil} in the same place that
+you change @code{ilisp-program} to load the LISP
+world.@refill
+
+
+There is an @code{ilisp-site-hook} for initializing site specific stuff
+like program locations when ILISP is first loaded.  You may want to
+define appropriate autoloads in your system Emacs start up file.
+
+Example site init:
+@example
+;;; CMU site
+(setq ilisp-site-hook
+      '(lambda ()
+        (setq ilisp-motd "CMU ILISP V%s")
+        (setq expand-symlinks-rfs-exists t)
+        (setq allegro-program "/usr/misc/.allegro/bin/cl")
+        (setq lucid-program "/usr/misc/.lucid/bin/lisp")))
+@end example
+
+
+
+@node Files of ILISP, Autoloading, Makefile configuration, Installation
+@section Files of ILISP
+@cindex Files of ILISP
+The files you need to use ilisp are:
+
+@table @file
+
+@item ilisp.emacs
+File with sample @file{.emacs} code for ILISP.
+@cindex @file{ilisp.emacs}
+
+@item symlink-fix.el
+Expand pathnames resolving links.
+@cindex @file{symlink-fix.el}
+
+@item completer.el
+Partial completion code.
+@cindex @file{completer.el}
+
+@item bridge.el
+Process to process communication.
+@cindex @file{bridge.el}
+
+@item comint.el
+The basic comint abstraction.  You only need this if running emacs-18.
+@cindex @file{comint.el}
+
+@item comint-ipc.el
+Extensions for sending commands and getting results.
+@cindex @file{comint-ipc.el}
+
+@item ilisp-ext.el
+Standalone lisp-mode extensions.
+@cindex @file{ilisp-ext.el}
+
+@item ilisp-bug.el
+ILISP bug submittal code.
+@cindex @file{ilisp-bug.el}
+
+@item compat.el
+Compatibility code between fsf-18, fsf-19 and lemacs-19.
+@cindex @file{compat.el}
+
+@item ilisp-inp.el
+Buffer input module.
+@cindex @file{ilisp-inp.el}
+
+@item ilisp-def.el
+Variable definitions.
+@cindex @file{ilisp-def.el}
+
+@item ilisp-ind.el
+Indentation code.
+@cindex @file{ilisp-ind.el}
+
+@item ilisp-mov.el
+Buffer-point movement code.
+@cindex @file{ilisp-mov.el}
+
+@item ilisp-key.el
+Keymap setups, including @code{ilisp-lispm-bindings}.
+@cindex @file{ilisp-key.el}
+
+@item ilisp-doc.el
+ILISP mode documenation.
+@cindex @file{ilisp-doc.el}
+
+@item ilisp-mod.el
+ILISP mode definition.
+@cindex @file{ilisp-mod.el}
+
+@item ilisp-prn.el
+Parenthesis handling.
+@cindex @file{ilisp-prn.el}
+
+@item ilisp-el.el
+Emacs-lisp additions.
+@cindex @file{ilisp-el.el}
+
+@item ilisp-sym.el
+ILISP symbol handling.
+@cindex @file{ilisp-sym.el}
+
+@item ilisp-low.el
+Low level interface code.
+@cindex @file{ilisp-low.el}
+
+@item ilisp-hi.el
+High level interface code.
+@cindex @file{ilisp-hi.el}
+
+@item ilisp-out.el
+Output handling, include typeout window (a popper replacement).
+@cindex @file{ilisp-out.el}
+
+@item ilisp-prc.el
+Process handling code.
+@cindex @file{ilisp-prc.el}
+
+@item ilisp-val.el
+Buffer value interface.
+@cindex @file{ilisp-val.el}
+
+@item ilisp-rng.el
+Match ring code.
+@cindex @file{ilisp-rng.el}
+
+@item ilisp-utl.el
+Misc. utilities.
+@cindex @file{ilisp-utl.el}
+
+@item ilisp-hnd.el
+Error handling.
+@cindex @file{ilisp-hnd.el}
+
+@item ilisp-kil.el
+Interface to reset/kill/abort inferior lisp.
+@cindex @file{ilisp-kil.el}
+
+@item ilisp-snd.el
+ilisp-send definitions and associated code.
+@cindex @file{ilisp-snd.el}
+
+@item ilisp-cmt.el
+Comint related code/setup.
+@cindex @file{ilisp-cmt.el}
+
+@item ilisp-cmp.el
+ILISP completer related code. 
+@cindex @file{ilisp-cmp.el}
+
+@item ilisp-xfr.el 
+Transfer between lisp <-> emacs code.
+@cindex @file{ilisp-xfr.el }
+
+@item ilisp-cl.el
+Commo-Lisp dialect definition.
+@cindex @file{ilisp-cl.el}
+
+@item ilisp-src.el
+ILISP source code module.
+@cindex @file{ilisp-src.el}
+
+@item ilisp-bat.el
+ILISP batch code module.
+@cindex @file{ilisp-bat.el}
+
+@item ilisp.el
+File to be loaded, loads in all necessary parts of ILISP.
+@cindex @file{ilisp.el}
+
+@item *.lisp
+ILISP support code.  Each dialect will have one of these files.
+
+@item *.lcd
+Package descriptors for the Lisp Code Directory.
+
+@item ilisp.texi
+Texinfo file for ILISP.
+@cindex @file{ilisp.texi}
+
+@end table
+
+@cindex @file{.el} files 
+
+@node Autoloading,  , Files of ILISP, Installation
+@section How to define autoload entries
+@cindex autoload definitions
+@cindex defining autoloads
+@cindex @file{.emacs} forms
+A complete example of things you may want to add to your @code{.emacs}
+can be found in the in the file @file{ilisp.emacs} in the 
+@code{ilisp-directory} what follows is that file.
+
+
+@example
+@c start of ilisp.emacs
+;;;
+;;; This file shows examples of some of the things you might want to
+;;; do to install or customize ILISP.  You may not want to include all
+;;; of them in your .emacs.  For example, the default key binding
+;;; prefix for ILISP is C-z and this file changes the default prefix to
+;;; C-c.  For more information on things that can be changed, see the
+;;; file ilisp.el. 
+;;;
+
+;;; If ilisp lives in some non-standard directory, you must tell emacs
+;;; where to get it. This may or may not be necessary.
+(setq load-path (cons (expand-file-name "~jones/emacs/ilisp/") load-path))
+
+;;; If you always want partial minibuffer completion
+(require 'completer)
+
+;;; If you want to redefine typeout-window keys:
+(add-hook 'ilisp-load-hook
+      '(lambda ()
+	(define-key global-map "\C-c1" 'ilisp-bury-output)
+	(define-key global-map "\C-cv" 'ilisp-scroll-output)
+	(define-key global-map "\C-cg" 'ilisp-grow-output)))
+
+
+(autoload 'run-ilisp "ilisp" "Select a new inferior LISP." t)
+;;; Autoload based on your LISP.  You only really need the one you use.
+;;; If called with a prefix, you will be prompted for a buffer and
+;;; program.
+;;; 
+;;; [Back to the old way now -- Ivan Mon Jun 28 23:30:51 1993]
+;;;
+(autoload 'clisp     "ilisp" "Inferior generic Common LISP." t)
+(autoload 'allegro   "ilisp" "Inferior Allegro Common LISP." t)
+(autoload 'lucid     "ilisp" "Inferior Lucid Common LISP." t)
+(autoload 'cmulisp   "ilisp" "Inferior CMU Common LISP." t)
+(autoload 'kcl       "ilisp" "Inferior Kyoto Common LISP." t)
+(autoload 'akcl      "ilisp" "Inferior Austin Kyoto Common LISP." t)
+(autoload 'ibcl      "ilisp" "Ibuki Common LISP." t)
+(autoload 'scheme    "ilisp" "Inferior generic Scheme." t)
+(autoload 'oaklisp   "ilisp" "Inferior Oaklisp Scheme." t)
+
+;;; Define where LISP programs are found.  (This may already be done
+;;; at your site.)
+(setq allegro-program "/usr/misc/.allegro/bin/cl")
+(setq lucid-program "/usr/misc/.lucid/bin/lisp")
+(setq cmulisp-program "/usr/misc/.cmucl/bin/lisp")
+
+;;; If you run cmu-cl then set this to where your source files are.
+(setq cmulisp-local-source-directory 
+      "/usr/local/utils/CMU-CL/")
+
+
+;;; This makes reading a lisp file load in ilisp.
+(set-default 'auto-mode-alist
+	     (append '(("\\.lisp$" . lisp-mode)) auto-mode-alist))
+(setq lisp-mode-hook '(lambda () (require 'ilisp)))
+
+;;; Sample load hook
+(add-hook 'ilisp-load-hook 
+	  '(lambda ()
+	    ;; Change default key prefix to C-c
+	    (setq ilisp-prefix "\C-c")
+
+	    ;; Define LispMachine-like key bindings, too.
+	    (ilisp-lispm-bindings)
+
+	    ;; Sample initialization hook.  Set the inferior LISP directory to
+	    ;; the directory of the buffer that spawned it on the first prompt.
+	    (setq ilisp-init-hook
+	     '(lambda ()
+	       (default-directory-lisp ilisp-last-buffer)))))
+@c end of ilisp.emacs
+@end example
+
+@c ==================================================================
+@node Starting up, Buffers of ILISP, Installation, Top
+@chapter How to run a Lisp process using ILISP
+@cindex Running lisp
+@cindex Starting up lisp
+@cindex Supported dialects
+@cindex Dialects supported
+@pindex run-ilisp
+@pindex clisp
+@pindex allegro
+@pindex lucid
+@pindex cmulisp
+@pindex kcl
+@pindex akcl
+@pindex ibcl
+@pindex scheme
+@pindex oaklisp
+
+To start a Lisp use @kbd{M-x run-ilisp}, or a specific dialect like
+@kbd{M-x allegro}.  If called with a prefix you will be prompted for a
+buffer name and a program to run.  The default buffer name is the name
+of the dialect.  The default program for a dialect will be the value of
+DIALECT-program or the value of ilisp-program inherited from a less
+specific dialect.  If there are multiple LISP's, use the dialect name or
+@kbd{M-x select-ilisp} (@kbd{@key{C-z} S}) to select the current ILISP
+buffer.
+
+Entry into ILISP mode runs the hooks on @code{comint-mode-hook} and
+@code{ilisp-mode-hook} and then DIALECT-hooks specific to LISP
+dialects in the nesting order above.  Many dialects call
+@code{ilisp-load-init} in their dialect setup.  
+
+These are the currently supported dialects.
+
+@itemize @bullet
+@item allegro
+Allegro Common Lisp from Franz Inc.
+
+@item lispworks
+Harlequin Common Lisp from Harlequin Ltd.
+
+@item lucid
+Lucid Common Lisp, currently supported by Harlequin Ltd.
+
+@item kcl
+Kyoto Common Lisp, original version.
+
+@item akcl
+Austin Kyoto Common Lisp, the U. Texas derivative.
+
+@item gcl
+GNU Common Lisp, the official GNU release. A derivative of AKCL.
+
+@item ecl
+EcoLisp, the Embeddable Common Lisp by Beppe Attardi. A derivative of
+KCL and AKCL.
+
+@item ibcl
+Ibuki Common Lisp, derived from KCL.
+
+@item cmucl
+CMU Common Lisp, the major development platform for ILISP so far.
+
+@item clisp-hs
+CLISP by Haible and Stoll.
+
+@item oaklisp
+Oaklisp scheme.
+
+@end itemize
+
+The dialects
+are listed so that the indentation correponds to the hierarchical
+relationship between dialects.
+@example
+ clisp
+   allegro
+   lucid
+   kcl
+     akcl
+       gcl
+       ecl
+     ibcl
+   cmulisp
+   clisp-hs
+   lispworks
+ scheme
+   oaklisp
+@end example
+
+If anyone figures out support for other dialects I would be happy
+to include it in future releases.  @xref{Dialects}.
+
+To define a new dialect, @xref{Defining new dialects} and @xref{Customization}.
+
+
+@node Buffers of ILISP, ILISP Commands, Starting up, Top
+@chapter Buffers used by ILISP, and their commands
+@cindex buffers of ILISP
+@cindex ILISP buffers
+@table @code
+
+@item *@var{dialect}*
+The Lisp listener buffer.  Forms can be entered in this buffer in, and
+they will be sent to lisp when you hit return if the form is complete.
+This buffer is in ilisp-mode, which is built on top of comint-mode, and
+all comint commands such as history mechanism and job control are
+available.
+@c  xref..
+
+@item @var{lisp-mode-buffers}
+A buffer is assumed to contain Lisp source code if its major mode is in
+the list @code{lisp-source-modes}.  If it's loaded into a buffer that is
+in one of these major modes, it's considered a lisp source file by
+@code{find-file-lisp}, @code{load-file-lisp} and
+@code{compile-file-lisp}.
+Used by these commands to determine defaults.@refill
+
+@item @code{*Completions*}
+@cindex @code{*Completions*} buffer
+Used for listing completions of symbols or files by the completion commands.
+@xref{Completion}.
+
+@item *Aborted Commands*
+@cindex @code{*Aborted Commands*} buffer
+@xref{Interrupts}.
+
+@item *Errors*
+@itemx *Output*
+@itemx *Error Output*
+@cindex @code{*Error Output*} buffer
+@cindex @code{*Errors*} buffer
+@cindex @code{*Output*} buffer
+used to pop-up results and errors from the inferior LISP.
+
+@item *ilisp-send*
+@cindex @code{*ilisp-send*} buffer
+Buffer containing the last form sent to the inferior LISP.
+
+@item *Edit-Definitions*
+@itemx *All-Callers*
+@cindex @code{*Edit-Definitions*} buffer
+@cindex @code{*All-Callers*} buffer
+@xref{Source code commands}.
+
+@item *Last-Changes*
+@itemx *Changed-Definitions*
+@cindex @code{*Last-Changes*} buffer
+@cindex @code{*Changed-Definitions*} buffer
+@xref{Batch commands}.
+@end table
+
+@menu
+* Typeout windows::              temporary windows used for display.
+* Switching buffers::           Switching buffers
+@end menu
+
+@node Typeout windows, Switching buffers,  , Buffers of ILISP
+@section Typeout windows
+@cindex  Typeout windows
+
+All ILISP output is funneled through the function which is bound to 
+the hook @code{ilisp-display-output-function}.  The function gets
+a single argument, a string, and should make that output visible to
+the user somehow.
+
+One possible choice for output display is
+@code{ilisp-display-output-in-typeout-window},
+which pops up a window at the top of the current screen which is
+just large enough to display the output.  This window can be
+"remote controlled" by the commands @code{ilisp-scroll-output},
+@code{ilisp-bury-output}, and @code{ilisp-grow-output}.
+
+Unlike the old popper facility, the ilisp typeout window facility
+does not trounce on any existing Emacs functions or on any common
+key bindings, like @kbd{C-x o}.
+
+Other built-in functions which might be useful as values for 
+@code{ilisp-display-output-function} include
+@code{ilisp-display-output-default},
+@code{ilisp-display-output-adaptively},
+@code{ilisp-display-output-in-lisp-listener},
+@code{ilisp-display-output-in-temp-buffer}, and
+@code{ilisp-display-output-in-typeout-window}.
+
+The default display function is @code{ilisp-display-output-default},
+which obeys the @code{lisp-no-popper} variable.
+
+Users are encouraged to write their own output display functions 
+to get the exact desired behavior, displaying on a private emacs
+screen, in a pop-up dialog box, or whetever.
+
+
+@table @kbd
+
+@item @key{C-z} 1   (ilisp-bury-output)
+deletes and buries the typeout output window.
+@kindex C-z 1
+@pindex ilisp-bury-output
+@cindex bury output window
+
+
+@item @key{C-z} v   (ilisp-scroll-output)
+scrolls the output window if it is showing, otherwise does nothing.
+If it is called with a negative prefix, it will scroll backwards.
+@cindex scrolling output
+@pindex ilisp-scroll-output
+@kindex C-z v
+
+@item @key{C-z} G   (ilisp-grow-output)
+will grow the output window if showing by the prefix number of lines.
+@cindex grow output window
+@pindex ilisp-grow-output
+@kindex C-z G
+
+@end table
+
+An alternative to typeout windows is to always have the inferior LISP
+buffer visible and have all output go there.  Setting
+@code{lisp-no-popper} to @code{t} will cause all output to go to the
+inferior LISP buffer.  Setting @code{lisp-no-popper} to @code{'message}
+will make output of one line go to the message window. Setting
+@code{comint-always-scroll} to @code{t} will cause process output to
+always be visible.  If a command gets an error, you will be left in the
+break loop.@refill
+
+@cindex Turning off typeout windows
+@vindex comint-always-scroll
+@vindex lisp-no-popper
+
+
+
+@node Switching buffers,  ,Typeout windows, Buffers of ILISP
+@section Switching buffers
+
+Commands to make switching between buffers easier.
+@cindex Switching buffers
+
+@table @kbd
+@item @key{C-z} b   (switch-to-lisp)
+@kindex @key{C-z} b
+@pindex switch-to-lisp
+will pop to the current ILISP buffer or if already in an ILISP buffer,
+it will return to the buffer that last switched to an ILISP buffer.
+With a prefix, it will also go to the end of the buffer.  If you do not
+want it to pop, set @code{pop-up-windows} to nil.
+@vindex pop-up-windows
+
+
+@item M-C-l   (previous-buffer-lisp)
+will switch to the last visited buffer in the current window or the Nth
+previous buffer with a prefix.
+@cindex Previous lisp buffer
+@pindex previous-buffer-lisp
+@kindex M-C-l
+
+@end table
+
+
+@node ILISP Commands, Customization, Buffers of ILISP, Top
+@chapter ILISP Commands
+
+
+Most of these key bindings work in both Lisp Mode and ILISP mode.
+There are a few additional and-go bindings found in Lisp Mode.
+
+
+@menu
+* Eval and compile functions::  
+* Documentation functions::     
+* Macroexpansion::              
+* Tracing functions::           
+* Package Commands::            
+* Source code commands::        Working on several files
+* Batch commands::              Grouping changes for eval/compile
+* Files and directories::       
+* Keyboard modes::              Interactive and raw keyboard modes
+* Interrupts::                  Interrupts, aborts, and errors
+* Command history::             
+* Completion::                  
+* Miscellany::                  Indentation, parenthesis balancing,
+				  and comment commands.
+@end menu
+
+@node Eval and compile functions, Documentation functions,  , ILISP Commands
+@section Eval and compile functions
+@cindex Eval/compile commands
+@cindex Compile/eval commands
+
+In LISP, the major unit of interest is a form, which is anything between
+two matching parentheses.  Some of the commands here also refer to
+``defun,'' which is a list that starts at the left margin in a LISP
+buffer, or after a prompt in the ILISP buffer.  These commands refer to
+the ``defun'' that contains the point.
+@cindex Defun
+
+``A call'' refers to a reference to a function call for a function or
+macro, or a reference to a variable.  Commands which ``insert a call''
+in the ILISP buffer will bring up the last command which matches it or
+else will insert a template for a call.
+@cindex Call
+
+When an eval is done of a single form matching @code{ilisp-defvar-regexp}
+the corresponding symbol will be unbound and the value assigned again.
+@vindex ilisp-defvar-regexp
+
+When you send a form to LISP, the status light will reflect the
+progress of the command.  In a lisp mode buffer the light will reflect
+the status of the currently selected inferior LISP unless
+@code{lisp-show-status} is nil.  If you want to find out what command is
+currently running, use the command @kbd{@key{C-z} s} (status-lisp).
+If you call it with a prefix, the pending commands will be displayed as
+well.@refill
+@cindex Currently running command
+@cindex Displaying commands
+@pindex status-lisp
+@kindex @key{C-z} s
+@vindex lisp-show-status
+@cindex Status light
+@cindex Modeline status
+
+Note that in this table as elsewhere, the key @key{C-z} (ilisp-prefix)
+is used as a prefix character for ILISP commands, though this may be
+changed.
+@kindex @key{C-z} prefix
+@vindex ilisp-prefix
+@c xref .. custom? or autoload?
+For a full list of key-bindings, use @kbd{M-x describe-mode} or
+@kbd{M-x describe-bindings} while in an ILISP-mode buffer.@refill
+@cindex Listing bindings
+@cindex Describing bindings
+
+
+The eval/compile commands verify that their expressions are balanced and
+then send the form to the inferior LISP.  If called with a positive
+prefix, the result of the operation will be inserted into the buffer
+after the form that was just sent.
+@cindex Inserting results
+
+For commands which operate on a region, the result of the compile or eval
+is the last form in the region.
+@cindex Region commands
+
+The @samp{and-go} versions will perform the operation and then
+immediately switch to the ILISP buffer where you will see the results of
+executing your form.  If @code{eval-defun-and-go-lisp} or
+@code{compile-defun-and-go-lisp} is called with a prefix, a call for the
+form will be inserted as well.@refill
+@cindex Inserting calls
+@pindex compile-defun-and-go-lisp
+@pindex eval-defun-and-go-lisp
+@cindex @samp{and-go} functions
+
+@table @kbd
+
+@item @key{C-z}
+The prefix-key for most ILISP commands.  This can be changed by setting
+the variable @code{ilisp-prefix}.
+@c xref custom?
+
+@item RET   (return-ilisp)
+In ILISP-mode buffer, sends the current form to lisp if complete,
+otherwise creates a new line and indents.  If you edit old input, the
+input will be copied to the end of the buffer first and then sent.
+@cindex Sending input to lisp
+@pindex return-ilisp
+@kindex RET
+
+@item C-]   (close-and-send-lisp)
+Closes the current sexp, indents it, and then sends it to the current
+inferior LISP.
+@pindex close-and-send-lisp
+@kindex C-]
+
+@item LFD   (newline-and-indent-lisp)
+Insert a new line and then indent to the appropriate level.  If called
+at the end of the inferior LISP buffer and an sexp, the sexp will be
+sent to the inferior LISP without a trailing newline.
+@pindex newline-and-indent-lisp
+@kindex LFD
+
+@item @key{C-z} e   (eval-defun-lisp)
+@itemx M-C-x   (eval-defun-lisp)
+@itemx @key{C-z} C-e   (eval-defun-and-go-lisp)
+@kindex M-C-x
+@kindex @key{C-z} e
+@kindex @key{C-z} C-e
+Send the defun to lisp.
+@pindex eval-defun-and-go-lisp
+@pindex eval-defun-lisp
+
+@item @key{C-z} r   (eval-region-lisp)
+@itemx @key{C-z} C-r   (eval-region-and-go-lisp)
+@kindex @key{C-z} r
+@pindex eval-region-lisp
+@kindex @key{C-z} C-r
+@pindex eval-region-and-go-lisp
+@cindex Eval region
+
+@item @key{C-z} n   (eval-next-sexp-lisp)
+@itemx @key{C-z} C-n   (eval-next-sexp-and-go-lisp)
+@kindex @key{C-z} n
+@pindex eval-next-sexp-lisp
+@kindex @key{C-z} C-n
+@pindex eval-next-sexp-and-go-lisp
+
+@item @key{C-z} c   (compile-defun-lisp)
+@kindex @key{C-z} c
+@pindex compile-defun-lisp
+@item @key{C-z} C-c   (compile-defun-lisp-and-go)
+@kindex @key{C-z} C-c
+When @code{compile-defun-lisp} is called in an inferior LISP buffer with
+no current form, the last form typed to the top-level will be compiled.
+@cindex Compile last form
+@pindex compile-defun-lisp-and-go
+
+@item @key{C-z} w   (compile-region-lisp)
+@itemx @key{C-z} C-w   (compile-region-and-go-lisp)
+@kindex @key{C-z} w
+@pindex compile-region-lisp
+@kindex @key{C-z} C-w
+@pindex compile-region-and-go-lisp
+@cindex Compile region
+
+@end table
+
+
+If any of the forms contain an interactive command, then the command
+will never return.  To get out of this state, you need to use
+@code{abort-commands-lisp} (@kbd{@key{C-z} g}).  If @code{lisp-wait-p}
+is t, then EMACS will display the result of the command in the
+minibuffer or a pop-up window.  If @code{lisp-wait-p} is @code{nil},
+(the default) the send is done asynchronously and the results will be
+brought up only if there is more than one line or there is an error.  In
+this case, you will be given the option of ignoring the error, keeping
+it in another buffer or keeping it and aborting all pending sends.  If
+there is not a command already running in the inferior LISP, you can
+preserve the break loop.  If called with a negative prefix, the sense of
+@code{lisp-wait-p} will be inverted for the next command.
+@c @cindex Aborting commands
+@vindex lisp-wait-p
+@kindex @key{C-z} g
+@pindex abort-commands-lisp
+
+
+
+@node Documentation functions, Macroexpansion, Eval and compile functions, ILISP Commands
+@section Documentation functions
+
+@code{describe-lisp}, @code{inspect-lisp}, @code{arglist-lisp}, and
+@code{documentation-lisp} switch whether they prompt for a response or
+use a default when called with a negative prefix.  If they are
+prompting, there is completion through the inferior LISP by using
+@kbd{TAB} or @kbd{M-TAB}.  When entering an expression in the
+minibuffer, all of the normal ilisp commands like @code{arglist-lisp}
+also work.@refill
+@cindex Arglist lisp
+@cindex Describing lisp objects
+@kindex @key{M-TAB}
+@kindex @key{TAB}
+@cindex Negative prefix
+@cindex Minibuffer completion
+@pindex documentation-lisp
+@pindex arglist-lisp
+@pindex describe-lisp
+@pindex inspect-lisp
+@cindex Documentation Functions
+
+Commands that work on a function will use the nearest previous function
+symbol.  This is either a symbol after a @samp{#'} or the symbol at the
+start of the current list.
+
+@table @code
+
+@item @key{C-z} a   (arglist-lisp)
+@kindex @key{C-z} a
+Return the arglist of the current function.  With a numeric prefix, the
+leading paren will be removed and the arglist will be inserted into the
+buffer.
+
+@item @key{C-z} d   (documentation-lisp)
+@kindex @key{C-z} d
+Infers whether function or variable documentation is desired.  With a
+negative prefix, you can specify the type of documentation as well.
+With a positive prefix the documentation of the current function call is
+inserted into the buffer.
+
+@item @key{C-z} i   (describe-lisp)
+@kindex @key{C-z} i
+Describe the previous sexp (it is evaluated).  If there is no previous
+sexp and if called from inside an ILISP buffer, the previous result will
+be described.
+
+@item @key{C-z} i   (describe-lisp)
+@kindex @key{C-z} i
+Describe the previous sexp (it is evaluated).  If there is no previous
+sexp and if called from inside an ILISP buffer, the previous result will
+be described.
+
+@item @key{C-z} I   (inspect-lisp)
+@kindex @key{C-z} I
+Switch to the current inferor LISP and inspect the previous sexp (it is
+evaluated).  If there is no previous sexp and if called from inside an
+ILISP buffer, the previous result will be inspected.
+
+@item @key{C-z} D   (fi:clman)
+@itemx @key{C-z} A   (fi:clman-apropos)
+@kindex @key{C-z} D
+@pindex fi:clman
+@kindex @key{C-z} A
+@pindex fi:clman-apropos
+If the Franz online Common LISP manual is available, get information on
+a specific symbol.  @code{fi:clman-apropos} will get information apropos
+a specific string.  Some of the documentation is specific to the allegro
+dialect, but most of it is for standard Common LISP.
+@cindex Apropos help
+@cindex Common Lisp manual
+@cindex Franz manual
+
+@end table
+
+
+@node Macroexpansion, Tracing functions, Documentation functions, ILISP Commands
+@section Macroexpansion
+
+@table @kbd
+@item @key{C-z} M   (macroexpand-lisp)
+@itemx @key{C-z} m   (macroexpand-1-lisp)
+@kindex @key{C-z} M
+@pindex macroexpand-lisp
+@kindex @key{C-z} m
+@pindex macroexpand-1-lisp
+These commands apply to the next sexp.  If called with a positive
+numeric prefix, the result of the macroexpansion will be inserted into
+the buffer.  With a negative prefix, prompts for expression to expand.
+@cindex Expanding macro forms
+@cindex Macroexpansion
+
+
+@end table
+
+@node Tracing functions, Package Commands, Macroexpansion, ILISP Commands
+@section Tracing functions
+
+@table @kbd
+@item @key{C-z} t   (trace-defun-lisp)
+@kindex @key{C-z} t
+@pindex trace-defun-lisp
+@cindex Tracing defuns
+@cindex Untracing defuns
+traces the current defun.   When called with a numeric prefix the
+function will be untraced.  When called with negative prefix, prompts
+for function to be traced.
+@end table
+
+@node Package Commands, Source code commands, Tracing functions, ILISP Commands
+@section Package Commands
+@cindex Package commands
+
+The first time an inferior LISP mode command is executed in a Lisp Mode
+buffer, the package will be determined by using the regular expression
+@code{ilisp-package-regexp} to find a package sexp and then passing that
+sexp to the inferior LISP through @code{ilisp-package-command}.
+For the @samp{clisp} dialect, this will find the first @code{(in-package
+PACKAGE)} form in the file.
+A buffer's package will be displayed in the mode line.
+If a buffer has no
+specification, forms will be evaluated in the current inferior LISP
+package.@refill
+
+Buffer package caching can be turned off by setting the variable
+@code{lisp-dont-cache-package} to @code{T}.  This will force ILISP to
+search for the closest previous @code{ilisp-package-regexp} in the
+buffer each time an inferior LISP mode command is executed. 
+@cindex Buffer package
+@cindex Buffer package caching
+@vindex lisp-dont-cache-package
+@vindex ilisp-package-regexp
+@findex ilisp-package-command
+@cindex In-package form
+
+@table @code
+
+@item @key{C-z} p   (package-lisp)
+@kindex @key{C-z} p
+@pindex package-lisp
+@cindex Show current package
+Show the current package of the inferior LISP.
+
+@item @key{C-z} P   (set-package-lisp)
+@kindex @key{C-z} P
+@pindex set-package-lisp
+Set the inferior LISP package to the current buffer's package or with a
+prefix to a manually entered package.
+
+@item M-x set-buffer-package-lisp
+@kindex M-x set-buffer-package-lisp
+@cindex Set buffer package
+@pindex set-buffer-package-lisp
+Set the buffer's package from the buffer.  If it is called with a
+prefix, the package can be set manually.
+
+@end table
+
+@node Source code commands, Batch commands, Package Commands, ILISP Commands
+@section Source Code Commands
+@cindex Source Code Commands
+@cindex Finding source
+
+The following commands all deal with finding things in source code.
+The first time that one of these commands is used, there may be some
+delay while the source module is loaded.  When searching files, the
+first applicable rule is used:
+@itemize @bullet
+@item
+try the inferior LISP,
+@item
+try a tags file if defined,
+@item
+try all buffers in one of @code{lisp-source-modes} or all files
+defined using @code{lisp-directory}.@refill
+@pindex lisp-directory
+@vindex lisp-source-modes
+@end itemize
+
+@code{M-x lisp-directory} defines a set of files to be
+searched by the source code commands.  It prompts for a directory and
+sets the source files to be those in the directory that match entries
+in @code{auto-mode-alist} for modes in @code{lisp-source-modes}.
+With a positive
+prefix, the files are appended.  With a negative prefix, all current
+buffers that are in one of @code{lisp-source-modes} will be searched.  This
+is also what happens by default.  Using this command stops using a
+tags file.@refill
+@cindex Source modes
+@vindex auto-mode-alist
+@kindex M-x lisp-directory
+
+@code{edit-definitions-lisp}, @code{who-calls-lisp}, and
+@code{edit-callers-lisp} will switch whether they prompt for a response
+or use a default when called with a negative prefix.  If they are
+prompting, there is completion through the inferior LISP by using
+@kbd{TAB} or @kbd{M-TAB}.  When entering an expression in the
+minibuffer, all of the normal ILISP commands like @kbd{arglist-lisp}
+also work.@refill
+@pindex edit-callers-lisp
+@pindex who-calls-lisp
+@pindex edit-definitions-lisp
+
+@code{edit-definitions-lisp} (@kbd{M-.}) will find a
+particular type of definition for a symbol.  It tries to use the rules
+described above.  The files to be searched are listed in the buffer
+@code{*Edit-Definitions*}.  If @code{lisp-edit-files} is nil, no search will be
+done if not found through the inferior LISP.  The variable
+@code{ilisp-locator} contains a function that when given the name and type
+should be able to find the appropriate definition in the file.  There
+is often a flag to cause your LISP to record source files that you
+will need to set in the initialization file for your LISP.  The
+variable is @code{*record-source-files*} in both allegro and lucid.  Once a
+definition has been found, @code{next-definition-lisp}
+(@kbd{M-,}) will find the next definition
+(or the previous definition with a prefix).@refill
+@pindex next-definition-lisp
+@vindex *record-source-files*
+@vindex ilisp-locator
+@vindex lisp-edit-files
+@cindex @code{*Edit-Definitions*} buffer
+@kindex M-.
+
+@code{edit-callers-lisp} (@kbd{@key{C-z} ^}) will generate a list of all
+of the callers of a function in the current inferior LISP and edit the
+first caller using @code{edit-definitions-lisp}.  Each successive call to
+@code{next-caller-lisp} (@kbd{M-`}) will edit the next caller
+(or the previous caller with a prefix).  The list is stored in the
+buffer @code{*All-Callers*}.  You can also look at the callers by doing
+@kbd{M-x who-calls-lisp}.@refill
+@cindex List callers
+@cindex Find callers
+@cindex @code{*All-Callers*} buffer
+@kindex M-x who-calls-lisp
+@kindex M-`
+@pindex next-caller-lisp
+@kindex @key{C-z} ^
+@pindex edit-callers-lisp
+
+@code{search-lisp} (@kbd{M-?}) will search the current tags files,
+@code{lisp-directory} files or buffers in one of @code{lisp-source-modes} for a
+string or a regular expression when called with a prefix.
+@code{next-definition-lisp} (@kbd{M-,}) will find the next definition
+(or the previous definition with a prefix).@refill
+@cindex Next definition
+@cindex Previous definition
+@kindex M-,
+@pindex next-definition-lisp
+@kindex M-?
+@pindex search-lisp
+
+@code{replace-lisp} (@kbd{M-"}) will replace a string (or a regexp with
+a prefix) in the current tags files, @code{lisp-directory} files or
+buffers in one of @code{lisp-source-modes}.@refill
+@cindex Replace lisp
+@kindex M-"
+@pindex replace-lisp
+
+
+Here is a summary of the above commands (behavior when given prefix
+argument is given in parentheses):
+
+@table @code
+@item M-x lisp-directory
+Define a set of files to be used by the source code commands.
+
+@item M-.   (edit-definitions-lisp)
+Find definition of a symbol.
+
+@item M-,   (next-definition-lisp)
+Find next (previous) definition.
+
+@item @key{C-z} ^   (edit-callers-lisp)
+Find all callers of a function, and edit the first.
+
+@item M-`   (next-caller-lisp)
+Edit next (previous) caller of function set by @code{edit-callers-lisp}.
+
+@item M-x who-calls-lisp
+List all the callers of a function.
+
+
+@item M-?   (search-lisp)
+Search for string (regular expression) in current tags,
+@code{lisp-directory} files or buffers.  Use @code{next-definition-lisp}
+to find next occurence.
+
+@item M-"   (replace-lisp)
+Replace a string (regular expression) in files.
+
+@end table
+
+
+@node Batch commands, Files and directories, Source code commands, ILISP Commands
+@section Batch commands
+
+
+The following commands all deal with making a number of changes all at
+once.  The first time one of these commands is used, there may be some
+delay as the module is loaded.  The eval/compile versions of these
+commands are always executed asynchronously.
+@cindex Group changes
+@cindex File changes
+@cindex Change commands
+
+@code{mark-change-lisp} (@kbd{@key{C-z} SPC}) marks the current defun as
+being changed.  A prefix causes it to be unmarked.  @code{clear-changes-lisp}
+(@kbd{@key{C-z} * 0}) will clear all of the changes.
+@code{list-changes-lisp} (@kbd{@key{C-z} * l}) will show the forms
+currently marked.@refill
+@cindex Marking changes
+@cindex Clearing changes
+@cindex Listing changes
+@kindex @key{C-z} * l
+@kindex @key{C-z} * 0
+@kindex @key{C-z} SPC
+@pindex list-changes-lisp
+@pindex clear-changes-lisp
+@pindex mark-change-lisp
+
+@code{eval-changes-lisp} (@kbd{@key{C-z} * e}), or
+@code{compile-changes-lisp} (@kbd{@key{C-z} * c}) will
+evaluate or compile these changes as appropriate.
+If called with a positive prefix, the changes will be kept.
+If there is an error, the process will stop and show the error
+and all remaining changes will remain in the list.  All of the results
+will be kept in the buffer @code{*Last-Changes*}.@refill
+@cindex Eval'ing changes
+@cindex Compiling changes
+@cindex @code{*Last-Changes*} buffer
+@kindex @key{C-z} * e
+@kindex @key{C-z} * c
+@pindex compile-changes-lisp
+@pindex eval-changes-lisp
+
+@noindent
+Summary:
+
+@table @code
+@item @key{C-z} SPC   (mark-change-lisp)
+Mark (unmark) current defun as changed.
+@item @key{C-z} * e   (eval-changes-lisp)
+@itemx @key{C-z} * c   (compile-changes-lisp)
+Call with a positive prefix to keep changes.
+@item @key{C-z} * 0   (clear-changes-lisp)
+@item @key{C-z} * l   (list-changes-lisp)
+@end table
+
+
+@node Files and directories, Keyboard modes, Batch commands, ILISP Commands
+@section Files and directories
+
+@cindex Files and directories
+@cindex Directories and files
+@cindex Current directory
+File commands in lisp-source-mode buffers keep track of the last used
+directory and file.  If the point is on a string, that will be the
+default if the file exists.  If the buffer is one of
+@code{lisp-source-modes}, the buffer file will be the default.  Otherwise,
+the last file used in a lisp-source-mode will be used.
+
+
+@table @kbd
+@item C-x C-f   (find-file-lisp)
+@kindex C-x C-f
+@cindex Find file
+@cindex Lisp find file
+@cindex Symbolic link expansion
+@pindex find-file-lisp
+will find a file.  If it is in a string, that will be used as the
+default if it matches an existing file.  Symbolic links are expanded so
+that different references to the same file will end up with the same
+buffer.
+
+@item @key{C-z} l   (load-file-lisp)
+@kindex @key{C-z} l
+will load a file into the inferior LISP.  You will be given the
+opportunity to save the buffer if it has changed and to compile the file
+if the compiled version is older than the current version.
+@pindex load-file-lisp
+@cindex Loading files
+
+@item @key{C-z} k   (compile-file-lisp)
+@kindex @key{C-z} k
+will compile a file in the current inferior LISP.
+@pindex compile-file-lisp
+@cindex Compiling files
+
+@item @key{C-z} !   (default-directory-lisp)
+@kindex @key{C-z} !
+sets the default inferior LISP directory to the directory of the current
+buffer.  If called in an inferior LISP buffer, it sets the Emacs
+@code{default-directory} to the LISP default directory.
+@vindex default-directory
+@cindex Default directory
+@cindex Set default directory
+@pindex default-directory-lisp
+
+@end table
+
+@node Keyboard modes, Interrupts, Files and directories, ILISP Commands
+@section Switching between interactive and raw keyboard modes
+
+@cindex Raw keyboard mode
+@cindex Interactive keyboard mode
+@vindex ilisp-raw-echo
+
+There are two keyboard modes for interacting with the inferior LISP,
+\"interactive\" and \"raw\".  Normally you are in interactive mode
+where keys are interpreted as commands to EMACS and nothing is sent to
+the inferior LISP unless a specific command does so.  In raw mode, all
+characters are passed directly to the inferior LISP without any
+interpretation as EMACS commands.  Keys will not be echoed unless
+ilisp-raw-echo is T.
+
+@pindex raw-keys-ilisp
+@kindex @key{C-z} #
+@pindex io-bridge-ilisp
+@kindex M-x io-bridge-ilisp
+
+Raw mode can be turned on interactively by the command
+@code{raw-keys-ilisp} (@kbd{@key{C-z} #}) and will continue until you
+type @key{C-g}.  Raw mode can also be turned on/off by inferior LISP
+functions if the command @code{io-bridge-ilisp} (M-x io-bridge-ilisp)
+has been executed in the inferior LISP either interactively or on a
+hook.  To turn on raw mode, a function should print ^[1^] and to turn
+it off should print ^[0^].  An example in Common LISP would be:
+
+@code{(progn (format t "1") (print (read-char)) (format t "0"))}
+
+@node Interrupts, Command history, Keyboard modes, ILISP Commands
+@section Interrupts, aborts, and errors
+
+
+If you want to abort the last command you can use @kbd{C-g}.
+@kindex C-g
+@cindex Errors
+@cindex Aborting commands
+@cindex Interrupting commands
+
+If you want to abort all commands, you should use the command
+@code{abort-commands-lisp} (@kbd{@key{C-z} g}).  Commands that are
+aborted will be put in the buffer @code{*Aborted Commands*} so that
+you can see what was aborted.  If you want to abort the currently
+running top-level command, use @code{interrupt-subjob-ilisp} (@kbd{C-c
+C-c}).  As a last resort, @kbd{M-x panic-lisp} will reset the ILISP
+state without affecting the inferior LISP so that you can see what is
+happening.
+
+@pindex interrupt-subjob-ilisp
+@cindex @code{*Aborted Commands*} buffer
+@kindex @key{C-z} g
+@pindex abort-commands-lisp
+@pindex panic-lisp
+
+@code{delete-char-or-pop-ilisp} (@kbd{C-d}) will delete
+prefix characters unless you are at the end of an ILISP buffer in
+which case it will pop one level in the break loop.
+@cindex Pop in break loop
+@cindex Break loop
+@kindex C-d
+@pindex delete-char-or-pop-ilisp
+
+@code{reset-ilisp}, (@kbd{@key{C-z} z}) will reset the current inferior
+LISP's top-level so that it will no longer be in a break loop.
+@cindex Resetting lisp
+@cindex Top-level, return to
+@kindex @key{C-z} z
+@pindex reset-ilisp
+
+
+Summary:
+
+@table @kbd
+@item C-c C-c   (interrupt-subjob-ilisp)
+Send a keyboard interrupt signal to lisp.
+@item @key{C-z} g    (abort-commands-lisp)
+Abort all running or unsent commands.
+@item M-x panic-lisp (panic-lisp)
+Reset the ILISP process state.
+@item @key{C-z} z   (reset-ilisp)
+Reset lisp to top-level.
+@item C-d   (delete-char-or-pop-ilisp)
+If at end of buffer, pop a level in break loop.
+
+@end table
+
+@c duplicated from eval section.
+If @code{lisp-wait-p} is @code{nil}  (the default),
+all sends are done asynchronously and the results will be
+brought up only if there is more than one line or there is an error.
+In case, you will be given the option of ignoring the error, keeping
+it in another buffer or keeping it and aborting all pending sends.
+If there is not a command already running in the inferior LISP, you can
+preserve the break loop.  If called with a negative prefix, the sense of
+@code{lisp-wait-p} will be inverted for the next command.
+@vindex lisp-wait-p
+
+
+
+@node Command history, Completion, Interrupts, ILISP Commands
+@section Command history
+@cindex Command history
+@cindex Last command
+@cindex Previous commands
+
+ILISP mode is built on top of @code{comint-mode}, the general
+command-interpreter-in-a-buffer mode.  As such, it inherits many
+commands and features from this, including a command history mechanism.
+@cindex @code{comint-mode}
+
+Each ILISP buffer has a command history associated with it.  Commands
+that do not match @code{ilisp-filter-regexp} and that are longer than
+@code{ilisp-filter-length} and that do not match the immediately prior
+command will be added to this history.
+@vindex ilisp-filter-length
+@vindex ilisp-filter-regexp
+
+@table @kbd
+
+@item M-n   (comint-next-input)
+@itemx M-p   (comint-previous-input)
+@kindex M-n
+@pindex comint-next-input
+@cindex Next input
+@kindex M-p
+@pindex comint-previous-input
+Cycle through the input history.
+
+@item M-s    (comint-previous-similar-input)
+@kindex M-s
+@pindex comint-previous-similar-input
+@cindex Similar input
+Cycle through input that has the string typed so far as a prefix.
+
+@item M-N    (comint-psearch-input)
+@kindex M-N
+@pindex comint-psearch-input
+@cindex Search input
+@cindex Input search
+Search forwards for prompt.
+@item M-P    (comint-msearch-input)
+@kindex M-P
+@pindex comint-msearch-input
+Search backwards for prompt.
+
+@item C-c R   (comint-msearch-input-matching)
+@kindex C-c R
+@pindex comint-msearch-input-matching
+Search backwards for occurrence of prompt followed by string which is prompted
+for (@emph{not} a regular expression).
+@end table
+
+See @code{comint-mode} documentation for more information on
+@samp{comint} commands.
+
+
+@node Completion, Miscellany, Command history, ILISP Commands
+@section Completion
+
+Commands to reduce number of keystrokes.
+@cindex Completion
+@cindex Partial completion
+@cindex Filename completion
+
+@table @kbd
+@item M-TAB   (complete-lisp)
+@kindex M-TAB
+@pindex complete-lisp
+@vindex ilisp-prefix-match
+will try to complete the previous symbol in the current inferior LISP.
+Partial completion is supported unless @code{ilisp-prefix-match} is set to @code{t}.
+(If you set it to @code{t}, inferior LISP completions will be faster.)
+With partial completion, @samp{p--n} would complete to
+@samp{position-if-not} in Common LISP.
+If the symbol follows a left paren or a @samp{#'}, only symbols with
+function cells will be considered.
+If the symbol starts with a @samp{*} or you call with a
+positive prefix all possible completions will be considered.
+Only external symbols are considered if there is a package qualification
+with only one colon.
+The first time you try to complete a string the longest common substring
+will be inserted and the cursor will be left
+on the point of ambiguity.
+If you try to complete again, you can see the possible completions.
+If you are in a string, then filename completion will be done instead.
+And if you try to complete a filename twice, you will see a list of
+possible completions. 
+Filename components are completed individually, so @samp{/u/mi/} could
+expand to @samp{/usr/misc/}. 
+If you complete with a negative
+prefix, the most recent completion (symbol or filename) will be undone.@refill
+
+
+@item  M-RET   (complete)
+@kindex  M-RET
+@pindex complete
+@cindex TMC completion
+will complete the current symbol to the most recently seen symbol in
+Emacs that matches what you have typed so far.  Executing it repeatedly
+will cycle through potential matches.  This is from the TMC completion
+package and there may be some delay as it is initially loaded.
+
+@end table
+
+@node Miscellany,  , Completion, ILISP Commands
+@section Miscellany
+
+Indentation, parenthesis balancing, and comment commands.
+
+@table @kbd
+
+@item @kbd{TAB}   (indent-line-ilisp)
+@kindex @kbd{TAB}
+indents for LISP.  With prefix, shifts rest of expression rigidly with
+the current line.
+@pindex indent-line-ilisp
+@cindex Indentation
+@cindex Rigid indentation
+
+
+@item M-C-q   (indent-sexp-ilisp)
+@kindex M-C-q
+will indent each line in the next sexp.
+@pindex indent-sexp-ilisp
+
+@item M-q   (reindent-lisp)
+@kindex M-q
+will reindent the current paragraph if in a comment or string.
+Otherwise it will close the containing defun and reindent it.
+@pindex reindent-lisp
+@cindex Reindent lisp
+
+@item @key{C-z} ;   (comment-region-lisp)
+@kindex @key{C-z} ;
+will put prefix copies of @code{comment-start} before and
+@code{comment-end}'s after the lines in region.  To uncomment a region,
+use a minus prefix.@refill
+@pindex comment-region-lisp
+@cindex Comment region
+@cindex Uncomment region
+
+@item @key{C-z} )   (find-unbalanced-lisp)
+@kindex @key{C-z} )
+will find unbalanced parens in the current buffer.  When called with a
+prefix it will look in the current region.
+@pindex find-unbalanced-lisp
+@cindex Find unbalanced parens
+@cindex Parenthesis balancing
+
+@item ]   (close-all-lisp)
+@kindex ]
+will close all outstanding parens back to the containing form, or a
+previous left bracket which will be converted to a left parens.  If
+there are too many parens, they will be deleted unless there is text
+between the last paren and the end of the defun.  If called with a
+prefix, all open left brackets will be closed.
+@pindex close-all-lisp
+@cindex Close all parens
+@cindex Close brackets
+
+@end table
+
+
+@node Customization, Dialects, ILISP Commands, Top
+@chapter ILISP Customization
+
+@c = = =   = = =   = = =   = = =   = = =   = = =   = = =   = = =
+@c this refers to hierarchiy, which isn't shown here.
+@cindex Customization
+@cindex Hooks
+@cindex Dialect startup
+
+
+Starting a dialect runs the hooks on @code{comint-mode-hook}
+and @code{ilisp-mode-hook} and then @var{DIALECT}@code{-hooks} specific
+to dialects in the nesting order below.
+@vindex ilisp-mode-hook
+@vindex comint-mode-hook
+@example
+ clisp
+   allegro
+   lucid
+   kcl
+     akcl
+     ibcl
+   cmulisp
+ scheme
+   oaklisp
+@end example
+
+On the very first prompt in the inferior LISP,
+the hooks on @code{ilisp-init-hook} are run.  For more information on
+creating a new dialect or variables to set in hooks, see @file{ilisp.el}.
+@cindex First prompt
+@vindex ilisp-init-hook
+
+
+
+@c ->  ->  ->  ->  ->  ->  ->  ->  ->  ->  ->  plenty of indexing here
+@c         put these in a table for later expandment
+@c 
+
+ILISP Mode Hooks:
+@cindex ILISP Mode Hooks
+@table @code
+@item ilisp-site-hook
+@vindex ilisp-site-hook
+Executed when file is loaded
+@item ilisp-load-hook
+@vindex ilisp-load-hook
+Executed when file is loaded
+@item ilisp-mode-hook
+@vindex ilisp-mode-hook
+Executed when an ilisp buffer is created
+@item ilisp-init-hook
+@vindex ilisp-init-hook
+Executed after inferior LISP is initialized and the first prompt is
+seen.
+@item @var{DIALECT}-hook
+@vindex @var{DIALECT}-hook
+Executed when dialect is set
+@end table
+
+Variables you might want to set in a hook or dialect:
+@table @code
+@item ilisp-prefix
+@vindex ilisp-prefix
+Keys to prefix ilisp key bindings
+@item ilisp-program
+@vindex ilisp-program
+Program to start for inferior LISP
+@item ilisp-motd
+@vindex ilisp-motd
+String printed on startup with version
+@item lisp-wait-p
+@vindex lisp-wait-p
+Set to T for synchronous sends
+@item ilisp-handle-errors
+@vindex ilisp-handle-errors
+Set to T for ilisp to handle errors from the underlying lisp.
+@item ilisp-display-output-function
+@vindex ilisp-display-output-function
+The name of a function which displays ILISP output.
+@item lisp-no-popper
+@vindex lisp-no-popper
+Set to T to have all output in inferior LISP
+@item lisp-show-status
+@vindex lisp-show-status
+Set to nil to stop showing process status
+@item ilisp-prefix-match
+@vindex ilisp-prefix-match
+Set to T if you do not want partial completion
+@item ilisp-filter-regexp
+@vindex ilisp-filter-regexp
+Input history filter 
+@item ilisp-filter-length
+@vindex ilisp-filter-length
+Input history minimum length
+@item ilisp-other-prompt
+@vindex ilisp-other-prompt
+Prompt for non- top-level read-eval print loops
+@end table
+
+@node Dialects, Concept index, Customization, Top
+@chapter Dialects
+@cindex Dialects
+
+A @dfn{dialect} of lisp is a specific implementation.  For the parts of
+Common Lisp which are well specified, they are usually the same.  For
+the parts that are not (debugger, top-level loop, etc.), there is
+usually the same functionality but different commands.
+
+ILISP provides the means to specify these differences so that the ILISP
+commands will use the specific command peculiar to an implementation,
+but still offer the same behavior with the same interface.
+
+
+@menu
+* Defining new dialects::       
+* Writing new commands::        
+@end menu
+
+@node Defining new dialects, Writing new commands,  , Dialects
+@section Defining new dialects
+
+
+To define a new dialect use the macro @code{defdialect}.  For examples,
+look at the dialect definitions in @file{ilisp-acl.el},
+@file{ilisp-cmu.el}, @file{ilisp-kcl.el}, @file{ilisp-luc}.  There are
+hooks and variables for almost anything that you are likely to need to
+change.  The relationship between dialects is hierarchical with the root
+values being defined in @code{setup-ilisp}.  For a new dialect, you only
+need to change the variables that are different than in the parent
+dialect.
+@cindex Defining new dialects
+@pindex setup-ilisp
+@pindex defdialect
+
+
+@node Writing new commands,  , Defining new dialects, Dialects
+@section Writing new commands
+@cindex Internal ILISP functions
+
+Basic tools for creating new commands:
+@table @code
+@item deflocal
+@findex deflocal
+Define a new buffer local variable.
+@item ilisp-dialect
+@findex ilisp-dialect
+List of dialect types.  For specific dialect clauses.
+@item lisp-symbol
+@findex lisp-symbol
+Create a symbol.
+@item lisp-symbol-name
+@findex lisp-symbol-name
+Return a symbol's name
+@item lisp-symbol-delimiter
+@findex lisp-symbol-delimiter
+Return a symbol's qualification
+@item lisp-symbol-package
+@findex lisp-symbol-package
+Return a symbol's package
+@item lisp-string-to-symbol
+@findex lisp-string-to-symbol
+Convert string to symbol
+@item lisp-symbol-to-string
+@findex lisp-symbol-to-string
+Convert symbol to string
+@item lisp-buffer-symbol
+@findex lisp-buffer-symbol
+Convert symbol to string qualified for buffer
+@item lisp-previous-symbol
+@findex lisp-previous-symbol
+Return previous symbol 
+@item lisp-previous-sexp
+@findex lisp-previous-sexp
+Return previous sexp
+@item lisp-def-name
+@findex lisp-def-name
+Return name of current definition
+@item lisp-function-name
+@findex lisp-function-name
+Return previous function symbol
+@item ilisp-read
+@findex ilisp-read
+Read an sexp with completion, arglist, etc
+@item ilisp-read-symbol
+@findex ilisp-read-symbol
+Read a symbol or list with completion
+@item ilisp-completing-read
+@findex ilisp-completing-read
+Read from choices or list with completion
+@end table
+
+@noindent
+Notes:
+@itemize @bullet
+@item
+Special commands like arglist should use @code{ilisp-send} to send a
+message to the inferior LISP.
+@findex ilisp-send
+
+@item
+Eval/compile commands should use @code{eval-region-lisp} or
+@code{compile-region-lisp}.
+@findex compile-region-lisp
+@findex eval-region-lisp
+
+@end itemize
+
+@node Concept index, Key index, Dialects, Top
+@unnumbered Concept Index
+@printindex cp
+
+@node Key index, Command index, Concept index, Top
+@unnumbered Key Index
+@printindex ky
+
+@node Command index, Variable index, Key index, Top
+@unnumbered Command Index
+
+@noindent
+Commands available via @kbd{M-x} prefix.
+
+@printindex pg
+
+@node Variable index, Function index, Command index, Top
+@unnumbered Variable Index
+
+@noindent
+Variables and hooks of ILISP.
+
+@printindex vr
+
+@node Function index,  , Variable index, Top
+@unnumbered Function Index
+
+@noindent
+Internal functions of ILISP which can be used to write new commands.
+
+@printindex fn
+
+@contents
+
+@bye
+
+
+Should this stuff go anywhere?? 
+
+misc ILISP
+ bol-ilisp (C-a) will go after the prompt as defined by
+ comint-prompt-regexp or ilisp-other-prompt or to the left margin with
+ a prefix.
+
+misc
+ backward-delete-char-untabify (DEL)
+ converts tabs to spaces as it moves back.
+
+
+about cmds
+ The very first inferior LISP command executed may send some forms to
+ initialize the inferior LISP.
+
+ Each time an inferior LISP command is executed, the last form sent can be
+ seen in the *ilisp-send* buffer.
+
+
+@comment Local variables:
+@comment version-control: t
+@comment End:

@@ -1,0 +1,482 @@
+# -*- Mode: Text -*-
+
+ILISP HISTORY
+
+===============================================================================
+Version 5.8 alpha
+
+Fixes and enhancements since 5.7
+
+-- XLISP and XLISPSTAT support has been added on an experimental way.
+   Please give us feedback on their behavior.
+
+-- There is now a way to disable the DEFPACKAGE feature for GCL.  But
+   it is not turned on.  You have to fix it manually by transforming two
+   '#+(and nil gcl)' into '#+(and t gcl)'
+
+-- A few fixes were made to realign ILISP to Xemacs 19.14
+
+-- The file 'clisp.lisp' has been renamed to 'cl-ilisp.lisp', in order
+   to avoid confusion with the CLISP implementation of Common Lisp.
+
+-- The file ILISP.prj (if present) can be safely ignored unless you
+   want to use the PRCS project control system
+   (http://http.cs.berkeley.edu/~jmacd/prcs-home.html)
+
+-- Changed 'comint-ipc' and 'bridge'. They now use
+   'process-send-string' instead of defining specialized versions of
+   it. (This was done because it appears that the newer versions of
+   'comint' have a 'process-send-string' that does what these specialized
+   versions used to do.)
+
+-- Added constant '+ilisp-emacs-minor-version-number+' (in 'ilcompat').
+
+-- Conditionalized loading of 'bridge.el' (in 'ilisp').
+
+-- Fixed the annoying ECL/GCL glitch in 'ilisp-kcl' and the error
+   regexps for KCL and IBCL in the same file
+
+-- Patched 'comint-ipc' according to suggestion by Kazuhiro Fujieda.
+
+-- Patched 'ilisp-out'  according to suggestion by Kazuhiro Fujieda.
+
+
+Known Bugs
+
+-- Allegro multiprocessing output handling is still broken.  This is a
+   though one and the maintaners cannot fix it.
+
+-------------------------------------------------------------------------------
+
+Version 5.7
+
+Fixes and enhancements since 5.6:
+
+-- ILISP now unpacks in a directory called ./ilisp-<version>.
+
+-- Fixed various simple bugs in the init files (hooks et
+   similia). Check 'ilisp.el' and 'ilisp.emacs' for details.
+
+-- Support for different Emacs versions has been broken down in
+   various version specific files. See:
+	ilcompat.el (new name for compatibility file)
+	ilfsf19.el
+	ilfsf18.el
+	illuc19.el = ilxemacs.el
+
+-- ILISP is now compiled with version 19 bytecodes when
+   appropriate. (This should work at least for FSF 19.xx).
+
+-- Added a primitive menubar entry.
+
+-- Included the bug fixes for source file tracking.
+
+-- The Makefile now contains a new target called 'loadfile', which
+   generates a file called 'ilisp-all.elc'. This speeds up ILISP sturtup.
+
+-- Popping to the inferior lisp buffer is now done in a more
+   intelligent way in FSF-19 (i.e. if a frame with the appropriate
+   window is available, then that frame is raised instead of
+   recreating a window in the current one).
+
+-- The ILD uniform Lisp debugger by J. Siskind has been added to the
+   distribution (file 'ild.mail').  ILD is not integrated yet with
+   ILISP, but it is important enough that people should experiment
+   with it.
+
+-- The texinfo file has been fixed.
+
+-- New dialects have been added: GCL, ECL, Harlequin Lispworks, CLISP.
+
+-- The special-form-p/special-operator-p mess should be fixed (at
+   least in CMUCL).
+
+-- Cleaned up support for Lucid, Allegro and CMULISP.
+
+-- The file 'scheme2c.mail' contains a trick to make Scheme->C to work
+   with ILISP.
+
+-- The file 'ilisp-s2c.el' contains a first cut definition of the
+   Scheme->C dialect. Note that this file is neither byte compiled nor
+   loaded.
+
+
+Known bugs:
+
+-- Keymap handling is still rather inflexible. Either you like the
+   setup or you don't. (A patch by Kimball Collins was not inserted in
+   the code because we feel there should be a more thorough cleanup).
+
+-- AKCL and GCL may cause an error in the sturtup procedure of ILISP. We (the
+   maintainers) have been unable to track down this one since we have
+   not access to an AKCL or GCL environment. Please help us.
+
+-- Source level tracking for interpreted code in CMUCL may still break down
+   unexpectedly. This is due to the inner working of CMUCL and there
+   is no easy fix. We try to fall back on the TAG machinery.
+
+-- The menu entry does not track correctly the status of the inferior
+   lisp. I.e. there is no code yet that disables the menu items when
+   the inferior Lisp is not running anymore.
+
+-- Package tracking is still somewhat flaky.
+
+-- Multiprocessing Lisps may still cause problems with prompts. This
+   has been noticed especially with Allegro CL.
+
+-- The "send the source even if compiled file file exist" bug is still
+   in place.
+
+
+===============================================================================
+Mon, 11 Jul 94 10:48:24 EDT  Version 5.6 Released
+
+-- Works once again with GNU emacs 19.25, lemacs 19.10. and emacs 18.58.
+
+-- The popper facility has been completely replaced by a much less
+   intrusive facility which has most of the original functionality.
+   All ilisp output is funneled through the function which is the value 
+   of the variable ilisp-display-output-function.  Several sample display 
+   functions are provided.  Do c-H m in an ilisp buffer for more info.
+
+-- The common lisp arglist printer has been prettified somewhat.
+
+-- Ilisp no longer tries to handle lisp errors by default.  This is
+   controlled by the varible ilisp-handle-errors.
+
+-- Many of the hairy regexps used to located definitions have been
+   broken out into separate variables. One is ilisp-cl-source-locater-patterns,
+   which is an alist of (function-type regexp)
+
+-- Compile-defun, eval-defun and friends display the returned lisp value.
+
+-- Defined variables for the init files for the built-in dialects, to ease
+   customization (ilisp-clisp-init-file, etc).
+
+-- Some handy new functions: ilisp-lispm-bindings, repair-ilisp.
+
+-- A minor bugfix in ilisp-send.
+
+-- A simplified makefile.
+
+===============================================================================
+Fixes in 5.5:
+
+-- Now works with lemacs 19.8 (to be released soon) in addition to all
+   the other versions of emacs around.
+
+===============================================================================
+Fixes in 5.4:
+
+-- Added support for CMUCL 17b.
+
+-- Fixed definition regexp in ilisp-locate-ilisp.   Thanks to Paul
+   Krause.
+
+-- Hacked popper to make output lines of one line or less get
+   displayed in the message buffer, depending on the variable
+   popper-use-message-buffer.
+
+===============================================================================
+Fixes in 5.3:
+
+-- Fixes some problems in clisp.lisp
+
+-- Makefile-ilisp now valid for Sun's distributed `make'.
+
+-- Did the right thing regarding autoloads (yes you have to define them
+in your .emacs, and make them autoload "ilisp".)  See ilisp.emacs
+
+-- Put the run-hooks calls at the end of ilisp.el where they should
+   be.
+
+	"Fixes" in version 5.2 of ILISP.  
+
+Cause more problems with autoloads and fixes a missing definition in the
+Makefile-ilisp in 5.1
+
+	"Fixes" in version 5.1:
+
+It removes some correct information concerning autoloads in ilisp.texi
+and ilisp.emacs that was released in 5.0
+
+======================================================================
+Sat Jun 26 14:22:01 1993  Version 5.0 Released
+
+Changes:
+
+The major changes from 4.12:
+
+--Now works with emacs-18, fsf emacs-19, and Lucid emacs-19.
+
+--Major file splitting done in an attempt to modularize ILISP.
+
+--Added LISP-DONT-CACHE-PACKAGE lets users tell ILISP to search for the
+most recent IN-PACKAGE on each eval/compile in a lisp buffer.
+
+--Added 'message feature for lisp-no-popper, allows output from ILISP
+to be sent to the message window (instead of via the popper or the
+inferior lisp buffer) if it is one line long.  Useful for small
+arg-lists, etc. Now the default.  
+
+--Made the popper be off by default.  To have the popper on, set
+popper-pop-buffers and popper-buffers-to-skip to t in a
+popper-load-hook. See the sample in popper.el
+
+FEATURES:
+
++Support for multiple LISP dialects including Lucid, Allegro, KCL,
+AKCL, IBCL and CMU on multiple machines even at the same time.
+
++Dynamically sized pop-up windows that can be buried and scrolled from
+any window.
+
++Packages are properly handled including the distinction between
+exported and internal symbols.
+
++Synchronous, asynchronous or batch eval and compile of files,
+regions, definitions and sexps with optional switching and automatic
+calling.
+
++Arglist, documentation, describe, and macroexpand.
+
++Completion of filename components and LISP symbols including partial
+matches.
+
++Find source both with and without help from the inferior LISP.
+Including CLOS methods, multiple definitions and multiple files.  Also
+works for automatically generated functions like defstruct.
+
++Edit the callers of a function with and without help from the
+inferior LISP.
+
++Trace/untrace a function.
+
++Esc-q works properly on paragraphs in comments, strings and code.
+
++Find unbalanced parentheses.
+
++Super brackets.
+
++Handles editing, entering and indenting full LISP expressions.
+
++Next/previous and similar history mechanism compatible with comint.
+
++Handles LISP errors.
+
++Result histories are maintained in the inferior LISP.
+
++Does not create spurious symbols and handles case issues.
+
++Raw keyboard mode allows interaction with interactive programs
+through Emacs.
+
++Online manuals for ILISP.
+
+======================================================================
+92/03/17 Version 4.12 released
+
+Changes: Fixed an intermittent send bug.  Made it so that popper is
+not required so aggressively.  Ignore symbolics font information of
+source. Made lisp-end-defun-text so that it would work in non-lisp
+modes. Set the package for ilisp-arglist. Made error dispatch case
+insensitive.  Fixed lisp-directory to add files when lisp-edit-files
+is t.  Fixed clisp.lisp compile for lucid.  Made
+comint-interrupt-subjob interactive. Updated popper to run with emacs
+19.  Fixed popper-wraps so that shell-command gets wrapped at load
+time and changed it to be a function.  Added newline at end of bug
+messages.  Updated the cmulisp interface file to run with the lastest
+CMU CL release. Made sure that *standard-output* and *error-output*
+are bound to *terminal-io*.  Fixed completer so that last completion
+was accurate in the case of interruptions.  Added a path cache to
+completer. Fixed completer so that Meta-return completes to best guess
+and so that the full pattern is used for disambiguation.  Fixed +
+history so that it is saved/restored. Fixed popper so that popping up
+a window when in a popper window resuses the same window and if the
+buffer is changed within a temp-buffer-show form, it works properly.
+Fixed lisp-defun-end so that it no longer includes to the end of the
+line.  Made it so that initialization through commands did not try to
+synchronize with the inferior LISP.  Fixed edit-definitions-lisp so
+that it would work if there is no inferior lisp.  Fixed popper-wrap so
+that it included numeric documentation strings.  Made it so that
+popper preserves the buffer point and scrolling backwards wraps
+around.  Incoroporated the latest version of completion.  Added
+documentation on global-map bindings.  Added
+ilisp-load-no-compile-query.  Added ilisp-use-map so that keymaps can
+be switched in dialect definitions. Added completer-any-delimiter to
+completer. Fixed bug in completer that caused relative file names to
+get erased. Fixed popper so that it handled killed buffers, popped
+faster and had negative buffer lists.  Fixed it so that
+dialect-program doesn't get stomped by loading ilisp.  Made it so that
+ilisp-bug doesn't stomp on someone's unfinished message.  Look for
+both .elc and .el files for setting ilisp-directory. Fixed a bug in
+lucid that prevented compilation of the interface files on some
+implementations.  Fixed epoch-pop so that it quits nicer.  Fixed bug
+in CMU LISP interface.  Added *features* to ilisp-bug.  Fixed bugs in
+completer when extending directories and for Apollo and AFS.  Fixed
+popper so that it does not remove the trailing newline.  Made
+lisp-buffer smart about killed buffers.
+
+======================================================================
+91/05/08 Version 4.11 released
+
+Changes: Improved the way that completer handled filenames ending with
+a / and relative pathnames.  Added popper-wrap to popper for functions
+that don't use with-output-to-temp-buffer.  Added popper-empty-min and
+popper-min-heights. Made popper-pop-buffers and popper-buffers-to-skip
+default to t.  Fixed lisp-prefix-p so that reusing completion tables
+works better. Fixed a bug in lisp-end-defun-text that made things
+weird when people did not use ;;; for top comment blocks. Improved
+ilisp-bug so that it gives more information and is less likely to
+break.  Put interface files in their own package.  Changed
+ilisp-compile to funcall of compile for all except lucid.  Fixed a bug
+in lisp-pop-to-buffer that put the lisp in the popper buffer.  Fixed a
+bug in ilisp-matching-symbols that prevented pattern matching with a
+pattern that matched the last word.  Bare CR's now send an empty
+string.  Made it so that allegro init binary extensions default to
+excl:*fasl-default-type* unless on a known platform.  Added fboundp to
+generic-function-p in ilisp-arglist.  Fixed KCL and friends dialects.
+Fixed a couple of small bugs in completer.  Added raw keyboard mode.
+Fixed lisp-pop-to-buffer so that the buffer was always selected which
+fixed a bug in edit-definitions and friends.  Removed space from KCL
+comint-prompt-regexp.  Added inspect-lisp.  Fixed a bug in popper-show
+that complained if buffer was a string and fixed call in
+who-calls-lisp.  Fixed some bugs in completer that completed too much
+for local returns and that nuked the string if confirmation was
+required.
+
+======================================================================
+91/03/19 Version 4.10 released
+
+Changes: Changed the default binding of close-and-send-lisp.  Added
+better dialect support for kcl, akcl, and ibcl.  Improved the run-time
+detection of PCL/CLOS in clisp.lisp.  Fixed a nasty popper bug if you
+tried to pop up a window when in a popper window.  Made it so that
+popper-other-window would switch to the popper window when called with
+a C-u prefix.  Added support for allegro 4.0. Made lisp-in-string
+smarter about escaped " so that close-all-lisp worked better.  Renamed
+reparse-attribute-list and made it so that you can specify manual
+packages.  Improved partial completion of symbols so that it goes to
+the ambiguous part.  Changed it so that uncompiled interface files
+complain rather than compile.  Improved completer so that it completes
+pathname components.  Made it so that dialects could be started up
+with emacs switches.  Incorporated a new fancier version of
+reposition-window-lisp.  Fixed restore so that it no longer printed
+messages when there were multiple line values restored.  Added
+trace-function-lisp.  Improved lisp-function-name when it is in a
+string.  Changed initialization so that there is a dialect specific
+program variable and the defaults are better and sticky.
+lucid-check-prompt was hosed which of course broke everything in
+Lucid.  Fixed load-file-lisp so that it allows interaction and senses
+compile errors better.  Added process bridges.  Added
+comint-always-scroll.  Made allegro macroexpand so that it would walk
+instead.  Fixed popper so that switching to the popper buffer worked.
+Fixed close-all-lisp so that it did not blow away # or ' at start of
+sexp.  Fixed ilisp-buffer so that it complained if the buffer was
+killed out from under it.  Changed ilisp-filter-regexp to filter all
+lone keywords.  Added prefix arg to documentation-lisp so that
+function call doc could be gotten.  Set ilisp-directory in
+initialization so that it could be built into Emacs image.  Added
+Franz online common lisp manual.  Added reset-ilisp to reset to
+top-level and made it so that delete-char would pop one level at the
+end.  Added call-defun-lisp and bound it to C-z y.  Fixed the binding
+for popper-grow-output.  Added lisp-no-popper to stop using popper.
+Fixed compile-defun-lisp so that it would compile the previous form in
+the inferior LISP.  Made it so that the entire in-package sexp is sent
+to the inferior so that nicknames get set.  Added package-lisp and
+set-package-lisp.  Removed eval-prev-sexp-lisp and made
+eval-next-sexp-lisp do that with a negative prefix.  Fixed
+lisp-defun-name so that it returned just the function name.  Added
+lisp-region-name to better name regions.  Improved messages in
+interrupt-subjob-lisp.  Added sit-for to all accept-process-output
+loops to prevent locking up Emacs in Sys V.  Changed how
+comment-region-lisp treated the end of the region and fixed a nasty
+bug for a region including the eob.  Made changes to clisp.lisp for
+lucid and kcl.  Added better kcl dialect definition.  Made it so that
+end-of-defun-lisp would require ;;; at the left margin to decide that
+the next definition had started.  Made it so that multiple sexps could
+be typed to the top-level.  Made it so that all popper windows could
+be skipped.  Simplified the ilisp-package-regexp.
+
+======================================================================
+90/12/30 Version 4.00 released
+
+IMPROVEMENTS: Process stuff has been rewritten and much improved.  If
+you prefer the old eval/compile behavior, set lisp-wait-p to t in your
+ilisp-load-hook.  Improved edit-definitions and edit-callers so that
+they support multiple definitions of any LISP object even if the
+inferior LISP does not store the information.  Added support for
+Epoch.  Separated out lisp-mode extensions, symlink fix, source stuff
+and batch eval/compile.  Lots of minor improvements, see details
+below.
+
+INCOMPATIBLE CHANGES: Renamed interactive functions to put package
+specification at the end so that names were quicker to specify and
+some internal functions so that they were unique to ilisp.
+ilisp-clisp now takes the full file name.  ilisp-load-or-send-command
+now takes the binary and source paths explicitly.  The ilisp- prefix
+was removed from dialect file names.  ilisp-definition-regexp has gone
+away.  ilisp-prompt, ilisp-fix-error and ilisp-continue have gone away
+in favor of the actual comint- variables.  ilisp-expand-symlinks has
+gone away. 
+
+DETAILS: Finally fixed up how many newlines are inserted.  Made it so
+that the source file stuff would use a resident buffer with the same
+name if available.  Added ilisp-filter-length to the input filter.
+When reading a symbol, the inferior lisp is no longer queried with an
+empty string.  newline-and-indent-ilisp will send a string w/o a new
+line if called at the end of a buffer.  This was so that raw character
+i/o could be done in some lisps.  All comint and comint-ipc variables
+can now be set in hooks and the right thing will happen.  Made
+lisp-end-defun-text skip over leading comments.  Added the functions
+search-in-lisp-files and replace-in-lisp-files.  Prevented the
+addition of duplicate entries to the input ring and expanded its size
+to 200 entries.  Made lisp-def-name so that it adds the name of the
+defining form and returns an empty string at the end of a buffer.
+Swapped bindings of macroexpand-lisp and macroexpand-1-lisp.  Fixed
+expand-file-name bug if // was at the start of a filename.  Fixed
+obscure bug in make-local-variable.  Added ilisp-other-prompt and
+bol-ilisp.  Added case-fold-search to appropriate places.  Fixed error
+recovery in ilisp-completer.  Removed extra parentheses in the string
+for ilisp-init-binary-command.  Added documentation on scrolling the
+popper window backwards.  Fixed comment-region so that it handles
+empty lines and deleting spaces at the start.  Fixed behavior of
+reindent-lisp on comments at the start and end of a buffer.  Saved the
+point in reposition-window-lisp.  Rewrote close-all-lisp so that it
+inserted a bracket if in a string and was better behaved WRT non sexp
+brackets and so that it could close all brackets.  Removed breaks in
+lisp-end-defun-text for unclosed strings.  Added comint-check-prompt
+to comint-ipc so that dialects can be smarter about errors.  Added
+ilisp-check-prompt and allegro and lucid definitions.  Changed
+edit-callers so that it uses the name of the current defun as its
+default.  Changed popper so that it handles more windows, removes
+trailing lines, is nicer about bindings and added popper-grow-output.
+Also added epoch-pop for epoch.  Made lisp-input-start work if the
+point was at the start of the line the prompt was on.  This made
+reindent-lisp and close-all-lisp work in ilisp mode.  Added
+close-and-send-lisp.  Made it so that bindings are only done after the
+hooks are run.  Shorter clisp error messages.  Removed
+ilisp-definition-regexp and replaced it with ilisp-locator.  Made
+message optional in ilisp-send and ilisp-send-string.  Added a startup
+message to ilisp buffers.  Made it so that there is filename
+completion when prompting for lisp program.  Fixed bug in
+ilisp-load-init.  Made it so that if an eval/compile worked normally,
+no message was displayed.  Fixed lucid ilisp-list-callers so that it
+does not recurse forever.  Changed lisp-list-callers to who-calls-lisp
+and made it so that it would display the buffer.  Added ilisp-dialect
+as a list of dialect names for the inferior LISP.  Added partial
+minibuffer completion.  Improved filename completion help in
+complete-lisp.  Added ilisp-bug for bug reporting. Improved case
+handling for clisp.  popper v2.00, completer v2.00.
+
+======================================================================
+10/12/90 Version 3.0 released.  Improved pop-up windows, symbol
+completion, package handling, compilation and initialization.
+Changed default binding prefix.  Added trace/untrace and
+evaluation of defvars.
+  
+======================================================================
+ 8/22/90 Version 2.0 released. Fixed bugs and changed initialization.
+
+======================================================================
+ 6/11/90 Version 1.0 released.

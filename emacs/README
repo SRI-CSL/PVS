@@ -1,0 +1,22 @@
+
+This is the new directory structure for the Emacs end of PVS.
+
+/emacs-src:		All .el files for the PVS interface
+/emacs-src/ilisp:	The PVS ILISP Code (based on ilisp-5.8)
+/nemacs/[x]emacsNN:	.elc (byte compiled) files for [X]emacs version NN
+
+There is a Makefile in each of the emacs byte compiled directories
+for rebuilding the elc files.  This uses the Elisp file pvs-byte-compile.el
+
+Major differences from PVS2.2 include:
+
+	o No support for Emacs 18
+	o No support for lisp images other than Allegro
+	o Improved support for [X]Emacs 20
+	o Heavier reliance on Emacs supplied libraries
+	o Byte Compilation of all Elisp code
+	o New logo and font locking in XEmacs
+	o Lots of bug fixes 
+
+dave_sc, 12/22/98.
+
