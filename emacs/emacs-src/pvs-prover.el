@@ -610,6 +610,11 @@ buffer."
 	   (sleep-for 1)
 	   (install-proof t))))
 
+(defpvs revert-proof edit-proof ()
+  "This command is no longer supported - use M-x display-proofs-formula instead"
+  (interactive)
+  (message "This command is no longer supported - use M-x display-proofs-formula instead"))
+
 (defun find-unbalanced-pvs-in-strings ()
   (save-excursion
     (goto-char (point-min))
@@ -1893,8 +1898,8 @@ Letters do not insert themselves; instead, they are commands:
       (error "At end of buffer")
       (let ((start (point)))
 	(cond ((memq pvs-emacs-system '(xemacs21 xemacs20 xemacs19))
-	       (insert-face "!!" 'font-lock-pvs-checkpoint-face))
-	      (t (insert "!!")
+	       (insert-face "!!!" 'font-lock-pvs-checkpoint-face))
+	      (t (insert "!!!")
 		 (overlay-put (make-overlay start (point))
 			      'face 'font-lock-pvs-checkpoint-face))))))
 
@@ -1904,7 +1909,7 @@ Letters do not insert themselves; instead, they are commands:
     (error "Must be in a Proof buffer to make a checkpoint"))
   (pvs-prover-goto-next-step)
   (forward-char -2)
-  (if (looking-at "!!")
+  (if (looking-at "!!!")
       (delete-char 2)
       (error "Not at a checkpoint mark")))
 
@@ -1914,7 +1919,7 @@ Letters do not insert themselves; instead, they are commands:
     (error "Must be in a Proof buffer to make a checkpoint"))
   (save-excursion
     (goto-char (point-min))
-    (while (search-forward "!!" nil t)
+    (while (search-forward "!!!" nil t)
       (delete-char -2))))
 
 ;; (defun prove-with-checkpoint ()
@@ -1925,7 +1930,7 @@ Letters do not insert themselves; instead, they are commands:
 ;;   (pvs-prover-goto-next-step)
 ;;   (let ((proof (concat (buffer-substring-without-properties
 ;; 			(point-min) (point))
-;; 		       "!!"
+;; 		       "!!!"
 ;; 		       (buffer-substring-without-properties
 ;; 			(point) (point-max)))))
 ;;     (ilisp-send (format "(prove-with-checkpoint %s)" proof))))
@@ -1934,12 +1939,12 @@ Letters do not insert themselves; instead, they are commands:
   (save-excursion
     (set-buffer "Proof")
     (goto-char (point-min))
-    (while (search-forward "!!" nil t)
+    (while (search-forward "!!!" nil t)
       (replace-match "(checkpoint)" nil t))
     (write-region (point-min) (point-max) *pvs-tmp-file* nil 'notnil)
     (goto-char (point-min))
     (while (search-forward "(checkpoint)" nil t)
-      (replace-match "!!" nil t)))
+      (replace-match "!!!" nil t)))
   (let* ((*pvs-error* nil)
 	 (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
 	 (line (+ (current-line-number) prelude-offset))
@@ -1955,7 +1960,7 @@ Letters do not insert themselves; instead, they are commands:
 		   (save-excursion
 		     (set-buffer "Proof")
 		     (goto-char (point-min))
-		     (re-search-forward "!!" nil t))
+		     (re-search-forward "!!!" nil t))
 		   (y-or-n-p "Run the proof? ")))
       (when step
 	(pop-to-buffer (get-buffer "Proof"))
