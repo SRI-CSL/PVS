@@ -259,7 +259,7 @@ Estimated total monitoring overhead: 0.88 seconds
 ;;; MONITOR ********************************************************
 ;;; ****************************************************************
 (provide "monitor")
-(in-package "MONITOR" :nicknames '("MON"))
+(in-package "monitor" :nicknames '("mon"))
 (export '(*monitored-functions*
 	  monitor monitor-all unmonitor monitor-form
 	  with-monitoring
@@ -369,7 +369,7 @@ Estimated total monitoring overhead: 0.88 seconds
 	  (values 0 t)))))
 
 ;;; Lucid and Allegro
-#+(OR :lcl3.0 (and :allegro (not :coral)))
+#+(or :lcl3.0 (and :allegro (not :coral)))
 (defun required-arguments (name)
   (let* ((function (symbol-function name))
          (args #+:excl(excl::arglist function)
@@ -413,22 +413,22 @@ Estimated total monitoring overhead: 0.88 seconds
 ;;; ********************************
 ;;; Global Variables ***************
 ;;; ********************************
-(defvar *MONITOR-TIME-OVERHEAD* nil
+(defvar *monitor-time-overhead* nil
   "The amount of time an empty monitored function costs.")
-(defvar *MONITOR-CONS-OVERHEAD* nil
+(defvar *monitor-cons-overhead* nil
   "The amount of cons an empty monitored function costs.")
 
-(defvar *TOTAL-TIME* 0
+(defvar *total-time* 0
   "Total amount of time monitored so far.")
-(defvar *TOTAL-CONS* 0
+(defvar *total-cons* 0
   "Total amount of consing monitored so far.")
-(defvar *TOTAL-CALLS* 0
+(defvar *total-calls* 0
   "Total number of calls monitored so far.")
 
 ;;; ********************************
 ;;; Accessor Functions *************
 ;;; ********************************
-(defun PLACE-FUNCTION (function-place)
+(defun place-function (function-place)
   "Return the function found at FUNCTION-PLACE. Evals FUNCTION-PLACE
 if it isn't a symbol, to allow monitoring of closures located in
 variables/arrays/structures."
@@ -436,19 +436,19 @@ variables/arrays/structures."
       (symbol-function function-place)
       (eval function-place)))
 
-(defsetf PLACE-FUNCTION (function-place) (function)
+(defsetf place-function (function-place) (function)
   "Set the function in FUNCTION-PLACE to FUNCTION."
   `(if (symbolp ,function-place)
        (setf (symbol-function ,function-place) ,function)
        (eval '(setf ,function-place ',function))))
 
-(defun PLACE-FBOUNDP (function-place)
+(defun place-fboundp (function-place)
   "Test to see if FUNCTION-PLACE is a function."
   (if (symbolp function-place)
       (fboundp function-place)
       (functionp (place-function function-place))))
 
-(defun PLACE-MACROP (function-place)
+(defun place-macrop (function-place)
   "Test to see if FUNCTION-PLACE is a macro."
   (when (symbolp function-place)
     (macro-function function-place)))
@@ -477,7 +477,7 @@ variables/arrays/structures."
 (defsetf get-monitor-info (name) (info)
   `(setf (gethash ,name *monitor*) ,info))
 
-(defun MONITORED (function-place)
+(defun monitored (function-place)
   "Test to see if a FUNCTION-PLACE is monitored."
   (and (place-fboundp function-place)	; this line necessary?
        (get-monitor-info function-place)))
@@ -689,7 +689,7 @@ adjusted for overhead."
 ;;; ********************************
 ;;; Main Monitoring Functions ******
 ;;; ********************************
-(defmacro MONITOR (&rest names)
+(defmacro monitor (&rest names)
   "Monitor the named functions. As in TRACE, the names are not evaluated.
    If a function is already monitored, then unmonitor and remonitor (useful
    to notice function redefinition). If a name is undefined, give a warning
@@ -699,13 +699,13 @@ adjusted for overhead."
      ,@(mapcar #'(lambda (name) `(monitoring-encapsulate ',name)) names)
      *monitored-functions*))
 
-(defmacro UNMONITOR (&rest names)
+(defmacro unmonitor (&rest names)
   "Remove the monitoring on the named functions. 
    Names defaults to the list of all currently monitored functions."
   `(dolist (name ,(if names `',names '*monitored-functions*) (values))
      (monitoring-unencapsulate name)))		 
 
-(defun MONITOR-ALL (&optional (package *package*))
+(defun monitor-all (&optional (package *package*))
   "Monitor all functions in the specified package."
   (let ((package (if (symbolp package)
 		     (find-package package)
@@ -714,7 +714,7 @@ adjusted for overhead."
       (when (eq (symbol-package symbol) package)
 	(monitoring-encapsulate symbol)))))
 
-(defmacro MONITOR-FORM (form 
+(defmacro monitor-form (form 
 			&optional (nested :exclusive) (threshold 0.01)
 			(key :percent-time))
   "Monitor the execution of all functions in the current package
@@ -728,7 +728,7 @@ THRESHOLD % will be reported."
 	 (report-monitoring :all ,nested ,threshold ,key :ignore-no-calls))
      (unmonitor)))
 
-(defmacro WITH-MONITORING ((&rest functions)
+(defmacro with-monitoring ((&rest functions)
 			   (&optional (nested :exclusive) 
 				      (threshold 0.01)
 				      (key :percent-time))
@@ -750,11 +750,11 @@ THRESHOLD % will be reported."
   "Number of iterations over which the timing overhead is averaged.")
 
 ;;; Perhaps this should return something to frustrate clever compilers.
-(defun STUB-FUNCTION ()
+(defun stub-function ()
   )
 (proclaim '(notinline stub-function))
 
-(defun SET-MONITOR-OVERHEAD ()
+(defun set-monitor-overhead ()
   "Determines the average overhead of monitoring by monitoring the execution
 of an empty function many times." 
   (setq *monitor-time-overhead* 0
@@ -797,7 +797,7 @@ of an empty function many times."
   time-per-call
   cons-per-call)
 
-(defun REPORT-MONITORING (&optional names 
+(defun report-monitoring (&optional names 
 				    (nested :exclusive) 
 				    (threshold 0.01)
 				    (key :percent-time)
