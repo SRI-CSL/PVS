@@ -158,6 +158,14 @@
 	    (cons neq
 		  (good-equalities brand-new-equalities))))))))
 
+(defun domain-add-all-constraints (poly constraints max-rays)
+  (let ((result poly))
+    (loop for c in constraints
+	  do (setq result
+		   (mydomainaddconstraints
+		    result c max-rays)))
+    result))
+
 (defun poly-add-ineq-constraint (eqn cong-state)
   (declare (special *dp-changed*))
   (declare (special *contradiction*))
@@ -165,8 +173,9 @@
 	(strict (ineq-strict? eqn))
 	(predicate (funsym eqn))
 	(poly-s (polyhedral-structure cong-state)))
-    (add-to-index-from-diff-terms diff poly-s)
-    (let* ((max-ineq-vars (polyhedral-structure-max-vars
+    (let* ((new-var-constraints
+	    (add-to-index-from-diff-terms diff poly-s))
+	   (max-ineq-vars (polyhedral-structure-max-vars
 			   poly-s))
 	   (ineq-var-to-index-hash
 	    (polyhedral-structure-ineq-var-to-index-hash poly-s))
@@ -187,8 +196,14 @@
 ;;;                                 for max-rays = (+ max-rays *max-rays*)
 ;;;                                 until (= ps 0)
 ;;;                                 finally (return np)))
+	   (constrained-polyhedron (domain-add-all-constraints
+				    old-polyhedron
+				    new-var-constraints
+				    max-rays))
 	   (new-polyhedron (mydomainaddconstraints
-			    old-polyhedron ineq-constraint max-rays)))
+			    old-polyhedron
+			    ineq-constraint
+			    max-rays)))
       (setf (polyhedral-structure-max-rays poly-s)
 	    max-rays)
       ;(break)
@@ -207,7 +222,9 @@
 	(setf (polyhedral-structure-input-eqns poly-s)
 	      (cons eqn (polyhedral-structure-input-eqns poly-s)))
 	(list *false*))
-       ((= (mydomainincludes new-polyhedron old-polyhedron)  1)
+       ((= (mydomainincludes new-polyhedron constrained-polyhedron)  1)
+	(setf (polyhedral-structure-polyhedron poly-s)
+	      constrained-polyhedron)
 	(list *true*))
        (t (setf (polyhedral-structure-polyhedron poly-s)
 		new-polyhedron)
@@ -361,12 +378,13 @@
 
 (defun add-to-index-from-diff-terms (diff poly-s)
   (if (plus-p diff)
-      (map-funargs #'add-ineq-node diff poly-s)
+      (map-funargs-nconc #'add-ineq-node diff poly-s)
       (add-ineq-node diff poly-s)))
 
 (defun add-ineq-node (node poly-s)
   (let ((var (term-var node)))
-    (or (dp-gethash var (polyhedral-structure-ineq-var-to-index-hash poly-s))
+    (if (dp-gethash var (polyhedral-structure-ineq-var-to-index-hash poly-s))
+	nil
 	(let ((var-index
 	       (incf (polyhedral-structure-ineq-var-count poly-s))))
 	  (setq *max-ineq-var-count*
@@ -378,7 +396,23 @@
 		var-index)
 	  (setf (aref (polyhedral-structure-ineq-var-index-array poly-s)
 		      var-index)
-		var)))))
+		var)
+	  (make-var-constraints var var-index
+				(polyhedral-structure-max-vars poly-s))))))
+
+(defun make-var-constraints (var var-index max-ineq-vars)
+  (when (square-p var)
+    (list (make-non-neg-constraint var-index max-ineq-vars))))
+
+(defun square-p (var)
+  (and (times-p var)
+       (= (length (funargs var)) 2)
+       (eq (arg 1 var) (arg 2 var))))
+
+(defun make-non-neg-constraint (var-index max-ineq-vars)
+  (let ((constraint (make-empty-constraint max-ineq-vars)))
+    (matrix_set constraint 0 0 1)
+    (matrix_set constraint 0 (1+ var-index) 1)))
 
 (defun make-diff-constraint (diff strict max-ineq-vars ineq-var-to-index-hash)
   (let ((constraint (make-empty-constraint max-ineq-vars)))
