@@ -5,11 +5,8 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Wed Apr 15 16:01:21 1998
 ;; Update Count    : 24
-;; Status          : Beta test
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 (in-package :pvs)
 
@@ -243,7 +240,8 @@
   (let ((ntype (if *visible-only*
 		   (type fd)
 		   (gensubst* (type fd) substfn testfn))))
-    (if (and (eq ntype (type fd))
+    (if (and ntype
+	     (eq ntype (type fd))
 	     (not *visible-only*))
 	fd
 	(let ((dtype (let ((*dont-expand-adt-subtypes* t))
@@ -330,6 +328,13 @@
 	    'else-part else
 	    'type ntype))
 	(gensubst* (translate-cases-to-if ex) substfn testfn))))
+
+(defmethod gensubst* ((ex fieldex) substfn testfn)
+  (let ((ntype (if (or *parsing-or-unparsing*
+		       *visible-only*)
+		   (type ex)
+		   (gensubst* (type ex) substfn testfn))))
+    (lcopy ex 'type ntype)))
 
 (defmethod gensubst* ((ex projection-expr) substfn testfn)
   (let ((ntype (if (or *parsing-or-unparsing*
