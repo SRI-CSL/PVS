@@ -184,7 +184,7 @@
      (multiple-value-bind (x supertype preds)
 	 (destructure-binding (car bindings) :exclude (list *boolean*
 							    *naturalnumber*
-							    *fset-of-nats*))
+							    (fset-of-nats)))
        (unwind-protect
 	   (let* ((i (symtab-shadow x))
 		  (a (fml-to-dfa-quantor fn (cdr bindings) body))
@@ -194,7 +194,7 @@
 
 (defun fml-to-dfa-forall (i type r a)
   (assert type)
-    (cond ((tc-eq type *fset-of-nats*)
+    (cond ((tc-eq type (fset-of-nats))
            (dfa-forall2 i a r))
           ((tc-eq type *naturalnumber*)
            (dfa-forall1 i a r))
@@ -206,7 +206,7 @@
 
 (defun fml-to-dfa-exists (i type r a)
   (assert type)
-    (cond ((tc-eq type *fset-of-nats*)
+    (cond ((tc-eq type (fset-of-nats))
            (dfa-exists2 i a r))
           ((tc-eq type *naturalnumber*)
            (dfa-exists1 i a r))
@@ -271,7 +271,7 @@
     (call-next-method))
   (multiple-value-bind (x supertype preds)
       (destructure-binding (car (bindings trm)) :exclude (list *boolean* *naturalnumber*
-							       *fset-of-nats*))
+							       (fset-of-nats)))
     (unless (tc-eq supertype *naturalnumber*)
 	(call-next-method))
     (unwind-protect              
@@ -315,8 +315,8 @@
 (defmethod fset-to-dfa* ((trm application))
   (if (the2? trm)
       (multiple-value-bind (X supertype preds)
-	  (destructure-binding (car (bindings (argument trm))) :exclude *fset-of-nats*)
-	(assert (tc-eq supertype *fset-of-nats*))
+	  (destructure-binding (car (bindings (argument trm))) :exclude (fset-of-nats))
+	(assert (tc-eq supertype (fset-of-nats)))
 	(unwind-protect                
 	    (let ((j (symtab-shadow X)))
 	      (values j

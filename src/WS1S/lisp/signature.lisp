@@ -4,11 +4,13 @@
 
 ;; Signature
 
-(defvar *fset-of-nats* 
-  (let* ((*current-context* (context (get-theory "finite_sets_def[nat]")))
-         (*current-theory* (module *current-context*))
-         (*generate-tccs* 'none))
-    (pc-typecheck (pc-parse "finite_set[nat]" 'type-expr))))
+(let ((fset-of-nats nil))
+  (defun fset-of-nats ()
+    (or fset-of-nats
+	(setq fset-of-nats
+	      (pc-typecheck (pc-parse "finite_set[nat]" 'type-expr)))))
+  (defun reset-fset-of-nats ()
+    (setq fset-of-nats nil)))
 
 (defun 0th-order? (expr)
   (tc-eq (type expr) *boolean*))
@@ -20,7 +22,7 @@
 	  types)))
 
 (defun 2nd-order? (expr)
-  (or (subtype-of? (type expr) *fset-of-nats*)
+  (or (subtype-of? (type expr) (fset-of-nats))
       (finite-set-of-nat? expr)
       (some #'finite-set-of-nat? (gethash expr *known-judgements*))))
  
