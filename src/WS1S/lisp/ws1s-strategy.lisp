@@ -42,16 +42,16 @@
    based on the Mona package developed at BRICS (http://www.brics.dk/~mona).
    Expands definitions in the formulas specified by FNUMS, applies Boolean
    abstraction for formulas outside the scope of WS1S, and constructs an
-   automata that recognizes the 'language' of interpretations of these formulas.
+   automata that recognizes the language of interpretations of these formulas.
 
-   The argument FNUMS restricts the focus of the strategy to the thereby specified seqbuent
-   formulas. If EXAMPLES? is true, a witness and a counterexample are being displayed if these
-   formulas turn out to be satisfiable but not valid setting the flag AUTOMATON? causes
-   the strategy to display the constructed automaton, TRACES? displays a trace version of
-   the witness. For a description of the remaining flags DEFS, THEORIES, REWRITES, and
-   EXCLUDE see e.g. (help install-rewrites).
+   The argument FNUMS restricts the focus of the strategy to the thereby specified sequent
+   formulas. If EXAMPLES? is true, a witness and a counterexample are being displayed if
+   these formulas turn out to be satisfiable but not valid. Setting the flag AUTOMATON?
+   causes the strategy to display the constructed automaton, TRACES? displays a
+   trace version of the witness. For a description of the remaining flags
+   DEFS, THEORIES, REWRITES, and EXCLUDE see e.g. (help install-rewrites).
 
-   The supported fragment includes boolean expression, arithmetic on the
+   The supported fragment includes boolean expressions, arithmetic on the
    natural numbers restricted to addition/subraction with/from a constant, and
    operations on finite sets over the naturals like union, intersection, set
    difference, addition and removal of a natural.  Predicates include arithmetic
