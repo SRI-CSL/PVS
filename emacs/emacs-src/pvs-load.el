@@ -108,7 +108,12 @@
   (mail-subject))
 
 
-; fancy PVS logo for XEmacs startup
+; fancy PVS logo for Emacs startup
+
+(when (and (memq pvs-emacs-system '(emacs20))
+	   (boundp 'image-types)
+	   (memq 'xpm image-types))
+  (setq pvs-logo (create-image (concat pvs-path "/emacs/emacs-src/pvs.xpm"))))
 
 (when (and (memq pvs-emacs-system '(xemacs21 xemacs20 xemacs19))
 	   (valid-image-instantiator-format-p 'xpm))
@@ -121,7 +126,8 @@
   (let ((cbuf (current-buffer))
 	(buf (get-buffer-create "PVS Welcome"))
 	(cdir *pvs-current-directory*)
-	(vers (get-pvs-version-information)))
+	(vers (get-pvs-version-information))
+	(cpoint (point-min)))
     (set-buffer buf)
     (setq fill-column (window-width))
     (if buffer-read-only (toggle-read-only))    
@@ -129,8 +135,12 @@
     (if (boundp 'pvs-logo)
 	(progn
 	  (insert "\n\n")
-	  (indent-to (startup-center-spaces pvs-logo))
-	  (set-extent-begin-glyph (make-extent (point) (point)) pvs-logo)
+	  (cond ((string-match "XEmacs" (emacs-version))
+		 (indent-to (startup-center-spaces pvs-logo))
+		 (set-extent-begin-glyph (make-extent (point) (point)) pvs-logo))
+		(t (insert "           ")
+		   (insert-image pvs-logo)
+		   (setq cpoint (1+ (point)))))
 	  (insert "\n"))
         (progn
 	  (insert "\n\nSRI International\nComputer Science Laboratory")
@@ -189,9 +199,8 @@
    MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.")
     (put-text-property pvs-welcome-point (point) 'face 'blue)
     (setq pvs-welcome-point (point))
-
     (condition-case ()
-	(center-region (point-min) (point))
+	(center-region cpoint (point))
       (error nil))
     (set-buffer-modified-p nil)
     (text-mode)
