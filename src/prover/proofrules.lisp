@@ -338,8 +338,9 @@
 			expr
 		 (let* ((result (call-next-method))
 			(result
-			 (if (tc-eq (find-supertype (type result))
-				    *boolean*)
+			 (if (and (type result)
+				  (tc-eq (find-supertype (type result))
+					 *boolean*))
 			     (truefalsecond-reduce result
 						   trueconds
 						   falseconds)
