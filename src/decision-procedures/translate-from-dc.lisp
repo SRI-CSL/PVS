@@ -1,6 +1,5 @@
 (in-package pvs)
 
-
 (defvar *use-translate-from-dc-hash* t)
 
 (defvar *dc-reverse-prover-name* nil)
@@ -268,7 +267,9 @@
 				   record-type)))
 
 (defun translate-from-dc-application (expr)
-  (let ((translated-args (dp::map-args-list #'translate-from-dc-expr expr)))
+  (let ((translated-args ; (dp::map-args-list #'translate-from-dc-expr expr)))
+	                 (mapcar #'translate-from-dc-expr
+			   (dp::application-arguments expr)))) ; -hr
     (mk-pvs-application-from-translated-args translated-args)))
 
 (defun translate-from-dc-constant (expr)
