@@ -192,10 +192,12 @@ remove-prelude-library     Undoes load-prelude-library
 
 ---------------------------Browsing Commands----------------------------------
 
-show-declaration         (M-.) Show declaration of symbol at cursor
-find-declaration         (M-,) Search for declarations of given symbol
-whereis-declaration-used (M-;) Search for declarations which reference symbol
-list-declarations        (M-:) Show list of declarations of current context
+show-declaration         (M-.)   Show declaration of symbol at cursor
+goto-declaration	 (C-M-.) Go to the declaration at cursor
+find-declaration         (M-,)   Search for declarations of given symbol
+whereis-declaration-used (M-;)   Search for declarations which reference decl
+whereis-identifier-used  (C-M-;) Search for declarations which reference symbol
+list-declarations        (M-:)   Show list of declarations of current context
 
 ----------------------------Status Commands-----------------------------------
 
