@@ -27,6 +27,7 @@ case `uname -s` in
 		  then os_version=5
 		  else os_version=4
 		fi
+	 if [ $os_version -gt 5 ]; then os_version=5; fi
 	 fi;;
   AIX) arch=powerpc-ibm
        os=AIX
