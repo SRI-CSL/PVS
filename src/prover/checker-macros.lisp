@@ -569,85 +569,19 @@
 (defmacro tc-assoc (x alist)
   `(assoc ,x ,alist :test #'tc-eq))
 
-(defmacro nprotecting-cong-state (((new-cong-state old-cong-state)
-				  (new-alists old-alists))
-				 &body body)
-  (let ((resultsym (gensym)))
-    `(let ((,new-alists (copy ,old-alists))
-	   (,new-cong-state (new-cs ,old-cong-state))
-	   (,resultsym nil))
-       (unwind-protect
-	   (setq ,resultsym
-		 (multiple-value-list (progn ,@body)))
-	 (restore-old-cs ,new-cong-state))
-       (values-list ,resultsym))))
+(defmacro nprotecting-cong-state (((new-state old-state)) &body body)
+  `(let ((,new-state (dpi-push-state ,old-state)))
+     (unwind-protect
+	 (progn ,@body)
+       (dpi-pop-state ,new-state))))
 
-(defmacro copying-cong-state (((new-cong-state old-cong-state)
-			       (new-alists old-alists))
-			      &body body)
-  (let ((resultsym (gensym)))
-    `(let ((,new-alists (copy ,old-alists))
-	   (,new-cong-state (copy-cs ,old-cong-state))
-	   (,resultsym nil))
-       (setq ,resultsym
-	     (multiple-value-list (progn ,@body)))
-       (values-list ,resultsym))))
+(defmacro copying-cong-state (((new-state old-state)) &body body)
+  `(let ((,new-state (dpi-copy-state ,old-state)))
+     ,@body))
 
-(defmacro protecting-cong-state (((new-cong-state old-cong-state)
-				  (new-alists old-alists))
-				 &body body)
-  (let ((resultsym (gensym)))
-    `(let ((,new-alists (copy ,old-alists))
-	   (,new-cong-state (new-cs ,old-cong-state))
-	   (,resultsym nil))
-       (setq ,resultsym
-	     (multiple-value-list (progn ,@body)))
-       (values-list ,resultsym))))
-
-(defmacro call-process (expr dp-state alists)
-  (let ((g-expr (gentemp))
-	(g-dp-state (gentemp))
-	(g-alists (gentemp)))
-    `(let* ((,g-expr ,expr)
-	    (,g-dp-state ,dp-state)
-	    (,g-alists ,alists)
-	    (sigalist (dpinfo-sigalist ,g-alists))
-	    (findalist (dpinfo-findalist ,g-alists))
-	    (usealist (dpinfo-usealist ,g-alists))
-	    (new-expr (when *new-ground?* (top-translate-to-dc ,g-expr)))
-	    ;; put in (typep expr 'syntax) check
-	    ;; in case call-process is called from process-assert
-	    ;; which already has translated exprs
-	    (old-expr (when *old-ground?*
-			(if (typep ,g-expr 'syntax)
-			    (top-translate-to-old-prove ,g-expr)
-			    ,g-expr)))
-	    (new-result nil)
-	    (old-result nil))
-       (let ((typealist (append *local-typealist* typealist)))
-	 (when *new-ground?*
-	   (setq new-result (translate-from-dc
-			     (dp::invoke-process new-expr ,g-dp-state))))
-	 (when *old-ground?*
-	   (setq old-result (translate-from-prove-list
-			       (invoke-process old-expr)))
-	   (setf (dpinfo-sigalist ,g-alists) sigalist
-		 (dpinfo-findalist ,g-alists) findalist
-		 (dpinfo-usealist ,g-alists) usealist))
-	 (let ((not-incompatible
-		(or (not (and *new-ground?* *old-ground?*))
-		    (and (compatible-dp-results new-result old-result)))))
-	   (when (and *dp-print-incompatible-warning*
-		      (not not-incompatible))
-	     (format t "~%***IncompatibleWarning*** expr: ~A,~%new-result: ~A, ~%old-result:~A"
-	       new-expr new-result old-result))
-	   (assert (or (not *break-on-ground-diff*)
-		       not-incompatible)
-		   (*break-on-ground-diff*)))
-	 (setq *break-on-ground-diff* t)
-	 (if *new-ground?*
-	     new-result
-	     old-result)))))
+(defmacro protecting-cong-state (((new-state old-state)) &body body)
+  `(let ((,new-state (dpi-push-state ,old-state)))
+     ,@body))
 
 (defmacro translate-to-ground (expr)
   `(if *newdc*
@@ -681,7 +615,8 @@
 (defmacro with-zero-context (lisp-expr)
   `(nprotecting-cong-state
     ((*dp-state* *init-dp-state*)
-     (*alists* *init-alists*))
+     (*alists* *init-alists*)
+     (*ics-state* *init-ics-state*))
     ,lisp-expr))
 
 (defmacro inc-fnum (fnum)
