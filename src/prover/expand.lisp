@@ -88,7 +88,6 @@ list of positive numbers" occurrence)
 		  (expand-defn name fmla occurrence)
 		  fmla))
 	     )
-	(break)
 	(if (eq fmla new-fmla)
 	    (expand-sforms name (cdr sforms)
 			   sformnums occurrence
