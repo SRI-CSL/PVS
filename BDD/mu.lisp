@@ -176,7 +176,7 @@ time)."
 	   (multiple-value-prog1
 	    (mu-add-bdd-subgoals ps sforms lit-list remaining-sforms)
 	    (format t
-		"~%Finished MU simplification in ~,2,-3f real, ~,2,-3f cpu seconds"
+		"~%MU simplification took ~,2,-3f real, ~,2,-3f cpu seconds"
 	      (realtime-since init-real-time) (runtime-since init-run-time))))
 	  (t (format t "~%MU Simplifier interrupted")
 	     (values 'X nil)))))

@@ -3550,10 +3550,13 @@ succedent disjunctions, implications, and negations from the sequent."
 	   (assert :cases-rewrite?  cases-rewrite?)
 	   (musimp :dynamic-ordering? dynamic-ordering?
 		   :irredundant? irredundant?)
-	   (skip-msg
-	    (format nil
-		"~%Finished model-checking in ~,2,-3f real, ~,2,-3f cpu seconds"
-	      (realtime-since init-real-time) (runtime-since init-run-time)))))
+	   (let ((dummy
+		  (format t
+		      "~%model-checking took ~,2,-3f real, ~
+                       ~,2,-3f cpu seconds total"
+		    (realtime-since init-real-time)
+		    (runtime-since init-run-time))))
+	     (skip))))
   "Rewrites temporal operators into mu/nu expressions, and
 simplifies using mu-calculus checker.  If DYNAMIC-ORDERING? is T,
 the BDD package uses dynamic ordering to minimize the BDD size.
