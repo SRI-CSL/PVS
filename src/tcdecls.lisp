@@ -5,20 +5,17 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Wed Nov  4 17:04:21 1998
 ;; Update Count    : 90
-;; Status          : Beta testing
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
+(in-package :pvs)
 
 ;;; Typecheck* methods for declarations - all of these methods have a
 ;;; declaration instance and a context for input, and they all check for
 ;;; duplication, set the type or type-value of the decl as appropriate,
 ;;; and return the decl.  Any other behavior is specific to the decl
 ;;; class, and described with the corresponding method below.
-
-
-(in-package 'pvs)
 
 (export '(typecheck-decls typecheck-decl))
 
@@ -44,8 +41,8 @@
   ;; declarations from the current theory, but the decls list to
   ;; typecheck-decls will not be affected, and TCCs may be accidentally
   ;; added.
-  (when (or (null (generated-by decl))
-	    (and (declaration (generated-by decl))
+  (when (or (symbolp (generated-by decl))
+	    (and (declaration? (generated-by decl))
 		 (typechecked? (generated-by decl))))
     (if (and (typechecked? decl)
 	     (not (typep decl '(or theory-abbreviation-decl
@@ -58,6 +55,7 @@
 	      (assert (typep (theory *current-context*)
 			     '(or module recursive-type)))
 	      (setf (module decl) (theory *current-context*))
+	      (assert (module decl))
 	      (tcdebug "~%    Typechecking ~a" decl)
 	      (let ((stime (get-run-time)))
 		(typecheck* decl nil nil nil)
@@ -66,9 +64,7 @@
 	  (unless (or *loading-prelude*
 		      (typechecked? decl))
 	    (cleanup-typecheck-decls decl))))
-    (unless (and (type-def-decl? decl)
-		 (enumtype? (type-expr decl)))
-      (put-decl decl (current-declarations-hash)))))
+    (put-decl decl)))
 
 (defun cleanup-datatype (adt)
   (unless (typechecked? adt)
@@ -116,7 +112,6 @@
   (declare (ignore expected kind arguments))
   (check-duplication decl)
   (let ((tn (mk-type-name (id decl))))
-    (setf (uninterpreted? tn) t)
     (setf (resolutions tn)
 	  (list (mk-resolution decl (current-theory-name) tn)))
     (setf (type decl) tn)
@@ -126,7 +121,7 @@
 (defmethod typecheck* ((decl formal-nonempty-type-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (call-next-method)
-  (put-decl decl (current-declarations-hash))
+  (put-decl decl)
   (make-nonempty-assumption (type-value decl))
   (set-nonempty-type (type-value decl))
   decl)
@@ -135,17 +130,15 @@
   (declare (ignore expected kind arguments))
   (check-duplication decl)
   (let* ((tn (mk-type-name (id decl)))
-	 (res (mk-resolution decl (current-theory-name) tn))
-	 (tval (type-def-decl-value decl tn)))
+	 (res (mk-resolution decl (current-theory-name) tn)))
     (setf (resolutions tn) (list res))
-    (setf (uninterpreted? tn) t)
-    (setf (type-value decl) tval))
+    (type-def-decl-value decl tn))
   decl)
 
 (defmethod typecheck* ((decl formal-nonempty-subtype-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (call-next-method)
-  (put-decl decl (current-declarations-hash))
+  (put-decl decl)
   (make-nonempty-assumption (type-value decl))
   (set-nonempty-type (type-value decl))
   decl)
@@ -169,14 +162,14 @@
   ;; theory, and it has uninterpreted types, constants, or theories, then
   ;; we must create a separate copy.
   (let ((th (get-theory (id decl))))
-    (when (and th (gethash th (current-using-hash)))
+    (when (and th (get-importings th))
       (type-error decl
 	"Identifier ~a is already in use as a theory" (id decl))))
   (typecheck-named-theory decl)
   (unless (fully-instantiated? (theory-name decl))
     (type-error (theory-name decl)
       "Actual parameters must be provided for theory declarations"))
-  (put-decl decl (current-declarations-hash))
+  (put-decl decl)
   (setf (saved-context decl) (copy-context *current-context*))
   decl)
 
@@ -186,26 +179,97 @@
 	       (eq (id (theory-name decl)) (id (current-theory))))
       (type-error (theory-name decl)
 	"Formal theory declarations may not refer to the containing theory"))
-    (let ((theory (get-typechecked-theory theory-name))
-	  (abbr-info (if (mappings theory-name) ""
-			 (format nil
-			     "~%No mappings given in theory declaration ~a~%~
+    (let* ((theory (get-typechecked-theory theory-name))
+	   (tgt-name (target theory-name))
+	   (tgt-theory (when tgt-name (get-typechecked-theory tgt-name)))
+	   (abbr-info (if (or (mappings theory-name)
+			      (target theory-name))
+			  ""
+			  (format nil
+			      "~%No mappings given in theory declaration ~a~%~
                               Perhaps this should be given the abbreviation form~
                               ~%  ~a"
-			   (id decl)
-			   (unparse (make-instance 'theory-abbreviation-decl
-				      'id (id decl)
-				      'theory-name theory-name)
-			     :string t)))))
+			    (id decl)
+			    (unparse (make-instance 'theory-abbreviation-decl
+				       'id (id decl)
+				       'theory-name theory-name)
+			      :string t)))))
       (unless (interpretable? theory)
 	(pvs-info
 	    "Theory ~a has no interpretable types, constants, or theories"
 	  theory-name))
       (unless (equal abbr-info "")
 	(pvs-info abbr-info))
-      (typecheck-named-theory* theory theory-name decl))))
+      (let ((mappings (determine-implicit-mappings
+		       theory theory-name tgt-name tgt-theory)))
+	(when tgt-theory
+	  (typecheck-using (target theory-name)))
+	(typecheck-named-theory* theory
+				 (lcopy theory-name
+				   'mappings mappings
+				   'target nil)
+				 decl
+				 tgt-theory
+				 tgt-name)))))
 
-(defmethod typecheck-named-theory* ((theory module) theory-name decl)
+(defun determine-implicit-mappings (theory theory-name tgt-name tgt-theory)
+  (if tgt-theory
+      (let ((*current-context* (copy-context *current-context*)))
+	(add-to-using tgt-name tgt-theory)
+	(determine-implicit-mappings*
+	 (interpretable-declarations theory)
+	 tgt-theory (target theory-name) (mappings theory-name)))
+      (mappings theory-name)))
+
+(defun determine-implicit-mappings* (decls tgt-theory target mappings
+					   &optional imappings)
+  (if (null decls)
+      (nreverse imappings)
+      (let ((mapping (or (find (id (car decls)) mappings
+			       :key #'(lambda (m) (id (lhs m))))
+			 (determine-implicit-mapping
+			  (car decls) target tgt-theory))))
+	(determine-implicit-mappings*
+	 (cdr decls)
+	 tgt-theory
+	 target
+	 mappings
+	 (if mapping
+	     (cons mapping imappings)
+	     imappings)))))
+
+(defun determine-implicit-mapping (decl target tgt-theory)
+  (let ((tgt-decls (remove-if (complement
+			       #'(lambda (d)
+				   (and (declaration? d)
+					(eq (id d) (id decl))
+					(visible? d)
+					(eq (kind-of d) (kind-of decl)))))
+		     (all-decls tgt-theory))))
+    (cond ((null tgt-decls)
+	   (pvs-info "No implicit mapping found for ~a" (id decl)))
+	  ((cdr tgt-decls)
+	   (break "Need to refine"))
+	  (t (mk-mapping
+	      (mk-name (id decl) nil (id (module decl))
+		       (make-resolution decl (mk-modname (id (module decl)))))
+	      (typecase decl
+		(type-decl (typecheck*
+			    (mk-type-name (id decl)
+			      (actuals target) (id target)
+			      (make-resolution (car tgt-decls) target)
+			      (mappings target) (library target))
+			    nil nil nil))
+		(module (mk-modname (id decl) (actuals target)
+				    (library target)
+				    (mappings target)))
+		(t (mk-name-expr (id decl) (actuals target) (id target)
+				 (make-resolution (car tgt-decls) target)
+				 (mappings target) (library target)))))))))
+
+
+(defmethod typecheck-named-theory* ((theory module) theory-name decl
+				    tgt-theory tgt-name)
   (let ((*typecheck-using* theory-name))
     (cond ((actuals theory-name)
 	   (unless (length= (formals-sans-usings theory) (actuals theory-name))
@@ -224,19 +288,55 @@
 	  "Illegal reference to ~a~%May not use theory declarations with ~
       actuals or mappings that reference~%entities declared in this theory."
 	  local-ref)))	
-    (let ((interpreted-copy (make-interpreted-copy theory theory-name decl)))
+    (let ((interpreted-copy (make-interpreted-copy theory theory-name decl
+						   tgt-theory tgt-name)))
+      (cleanup-mapped-axiom-tccs decl (current-theory) theory interpreted-copy)
       (push interpreted-copy (named-theories *current-context*))
       (typecheck-using* interpreted-copy (mk-modname (id interpreted-copy)))
       (setf (generated-theory decl) interpreted-copy))))
 
-(defmethod typecheck-named-theory* ((theory datatype) theory-name decl)
+(defun cleanup-mapped-axiom-tccs (thdecl cur-th src-th int-th)
+  (let ((mapped-tccs (remove-if
+			 (complement #'(lambda (d)
+					 (and (mapped-axiom-tcc? d)
+					      (eq (generated-by d) thdecl))))
+		       (all-decls cur-th))))
+    (mapobject #'(lambda (x)
+		   (when (and (name? x)
+			      (resolution x)
+			      (eq (module (declaration x)) src-th))
+		     (setf (module-instance (resolution x))
+			   (mk-modname (id int-th)))
+		     (setf (declaration (resolution x))
+			   (find-associated-interpreted-declaration
+			    (declaration x) int-th))
+		     nil))
+	       mapped-tccs)))
+
+(defun find-associated-interpreted-declaration (decl int-theory)
+  (let ((pdecls (remove-if (complement
+			    #'(lambda (d)
+				(and (declaration? d)
+				     (eq (id d) (id decl)))))
+		  (all-decls int-theory))))
+    (cond ((null pdecls)
+	   (break "Something's wrong, notify pvs-bugs"))
+	  ((cdr pdecls)
+	   (break))
+	  (t (car pdecls)))))
+	   
+
+(defmethod typecheck-named-theory* ((theory datatype) theory-name decl
+				    tgt-theory tgt-name)
   (typecheck-named-theory* (adt-theory theory)
 			   (copy theory-name 'id (id (adt-theory theory)))
-			   decl))
+			   decl
+			   tgt-theory tgt-name))
 
 (defun find-local-theory-reference (expr &optional allowed-decls)
   (let ((local-ref nil)
-	(place-ex nil))
+	(place-ex nil)
+	(*ignore-declared-types* t))
     (mapobject #'(lambda (ex)
 		   (or local-ref
 		       (if (name? ex)
@@ -260,7 +360,7 @@
 
 ;;; theory and theory-name are the theory to be mapped
 ;;; (current-theory) is the theory referencing theory-name
-(defun make-interpreted-copy (theory theory-name decl)
+(defun make-interpreted-copy (theory theory-name decl tgt-theory tgt-name)
   (let* ((*all-subst-mod-params-caches*
 	  (if (every #'mapping-subst? (mappings theory-name))
 	      *all-subst-mod-params-caches*
@@ -272,12 +372,27 @@
 	 (*generate-tccs* 'none)
 	 (*current-context* (make-new-context ntheory)))
     (change-class ntheory 'theory-interpretation
-		  'from-theory theory)
+		  'from-theory theory
+		  'from-theory-name theory-name)
     (push ntheory (named-theories *current-context*))
     (typecheck* ntheory nil nil nil)
     (setf (generated-by ntheory) (id theory))
+    (setf (generated-by-decl ntheory) decl)
     (setf (mapping ntheory)
 	  (get-interpreted-mapping theory ntheory theory-name))
+    (setf (all-usings ntheory)
+	  (let ((imps nil))
+	    (map-lhash #'(lambda (th thinsts)
+			   (unless (from-prelude? th)
+			     (push (cons th thinsts) imps)))
+		       (current-using-hash))
+	    (let ((timps (if (assq theory imps)
+			     imps
+			     (cons (list theory theory-name) imps))))
+	      (if (or (null tgt-theory)
+		      (assq tgt-theory timps))
+		  timps
+		  (cons (list tgt-theory tgt-name) timps)))))
     ntheory))
 
 (defun add-referring-theory-importings (theory-name stheory)
@@ -331,42 +446,91 @@
   (list (theory-name imp)))
 
 ;;; We grab the instances from impinstances that are actually used
-(defun collect-mapping-rhs-imported-instances (theory-name impinstances)
-  (let ((thinstances nil))
+(defun collect-mapping-rhs-imported-instances (theory-name imp-instances)
+  (let ((ref-usings nil))
     (mapobject #'(lambda (ex)
 		   (when (and (name? ex)
 			      (resolution ex)
 			      (not (from-prelude? (declaration ex)))
 			      (not (from-prelude-library? (declaration ex))))
-		     (pushnew (module-instance ex) thinstances :test #'tc-eq)
-		     nil))
+		     (let* ((th (module (declaration ex)))
+			    (entry (assq th ref-usings)))
+		       (if entry
+			   (pushnew (module-instance ex) (cdr entry)
+				    :test #'tc-eq)
+			   (push (list th (module-instance ex)) ref-usings))
+		       nil)))
 	       (append (actuals theory-name)
 		       (mapcar #'rhs (mappings theory-name))))
     ;; Now remove from impinstances those not in thinstances
     ;; We do this because we want the minimal set, otherwise might bring in
     ;; references to local decls that are not actually needed.
-    (remove-if (complement
-		#'(lambda (impinst)
-		    (or (member impinst thinstances :test #'tc-eq)
-			(and (null (actuals impinst))
-			     (some #'(lambda (thinst)
-				       (and (eq (id thinst) (id impinst))
-					    (not (member thinst impinstances
-							 :test #'tc-eq))))
-				   thinstances)))))
-      impinstances)))
+    (remove-unneeded-mapping-importings imp-instances ref-usings)))
+
+(defun remove-unneeded-mapping-importings (imp-instances ref-usings
+							 &optional imps)
+  (if (or (null imp-instances)
+	  (null ref-usings))
+      (nreverse imps)
+      (let* ((imp-inst (car imp-instances))
+	     (imp-theory (get-theory imp-inst))
+	     (imp-usings (all-usings imp-theory))
+	     (remaining-usings (remove-referenced-mapping-usings
+				ref-usings imp-inst imp-theory imp-usings)))
+	(remove-unneeded-mapping-importings
+	 (cdr imp-instances)
+	 remaining-usings
+	 (if (equal remaining-usings ref-usings)
+	     imps
+	     (cons (car imp-instances) imps))))))
+
+(defun remove-referenced-mapping-usings (ref-usings imp-inst imp-theory
+						    imp-usings
+						    &optional rem-usings)
+  (if (null ref-usings)
+      (nreverse rem-usings)
+      (let ((ref (car ref-usings)))
+	(if (eq (car ref) imp-theory)
+	    (let ((rem (unless (and (formals-sans-usings imp-theory)
+				    (null (actuals imp-inst)))
+			 (remove imp-inst (cdr ref) :test #'tc-eq))))
+	      (remove-referenced-mapping-usings
+	       (cdr ref-usings)
+	       imp-inst
+	       imp-theory
+	       imp-usings
+	       (if (null rem)
+		   rem-usings
+		   (cons (cons (car ref) rem) rem-usings))))
+	    (let* ((imps (subst-mod-params (cdr (assq (car ref) imp-usings))
+					   imp-inst imp-theory))
+		   (rem (unless (and (formals-sans-usings (car ref))
+				     (every #'(lambda (i) (null (actuals i)))
+					    imps))
+			  (remove-if #'(lambda (r)
+					 (member r imps :test #'tc-eq))
+			    (cdr ref)))))
+	      (remove-referenced-mapping-usings
+	       (cdr ref-usings)
+	       imp-inst
+	       imp-theory
+	       imp-usings
+	       (if (null rem)
+		   rem-usings
+		   (cons (cons (car ref) rem) rem-usings))))))))
 
 (defun get-interpreted-mapping (theory interpretation theory-name)
   (let ((mapping (make-subst-mod-params-map-bindings
 		  theory-name (mappings theory-name) nil))
-	(int-decls (all-decls interpretation)))
-    (dolist (decl (interpretable-declarations theory))
-      (unless (assq decl mapping)
-	(push (cons decl (find decl int-decls
-			       :test #'(lambda (x y)
-					 (and (declaration? y)
-					      (same-id x y)))))
-	      mapping)))
+	(int-decls (when interpretation (all-decls interpretation))))
+    (when interpretation
+      (dolist (decl (interpretable-declarations theory))
+	(unless (assq decl mapping)
+	  (push (cons decl (find decl int-decls
+				 :test #'(lambda (x y)
+					   (and (declaration? y)
+						(same-id x y)))))
+		mapping))))
     (assert (every #'cdr mapping))
     mapping))
 		     
@@ -382,7 +546,9 @@
     (when msg
       (type-error decl msg (lib-string decl)))
     (setf (lib-ref decl) ref)
-    (dolist (d (gethash (id decl) (current-declarations-hash)))
+    (pushnew (cons (id decl) ref) (library-alist *current-context*)
+	     :test #'equal)
+    (dolist (d (get-declarations (id decl)))
       (when (and (lib-decl? d)
 		 ;; FIXME - Should refine this
 		 (not (string= ref (lib-ref d))))
@@ -402,7 +568,7 @@
 		    (concatenate 'string libstr "/"))))
     (cond ((member (char dirstr 0) '(#\/ #\~) :test #'char=)
 	   (if (file-exists-p dirstr)
-	       dirstr
+	       (get-library-reference dirstr)
 	       (values nil (format nil "Directory ~a does not exist" libstr))))
 	  ((char= (char dirstr 0) #\.)
 	   (if (file-exists-p (merge-pathnames dirstr *pvs-context-path*))
@@ -417,14 +583,14 @@
 (defmethod typecheck* ((decl mod-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (let ((th (get-theory (id decl))))
-    (when (and th (gethash th (current-using-hash)))
+    (when (and th (get-importings th))
       (type-error decl
 	"Identifier ~a is already in use as a theory" (id decl))))
   (typecheck-named-theory decl)
   (unless (fully-instantiated? (modname decl))
     (type-error (modname decl)
       "Actual parameters must be provided for theory declarations"))
-  (put-decl decl (current-declarations-hash))
+  (put-decl decl)
   (setf (saved-context decl) (copy-context *current-context*))
   ;; Need to allow id to be used as abbreviation
   )
@@ -438,7 +604,7 @@
 	 (add-exporting-with-theories mod modinst)
 	 (add-to-using modinst))
       (typecheck-using (theory-name decl)))
-  (put-decl decl (current-declarations-hash))
+  (put-decl decl)
   (setf (saved-context decl) (copy-context *current-context*))
   ;; Need to allow id to be used as abbreviation
   )
@@ -461,12 +627,9 @@
       "Uninterpreted types may not have parameters"))
   (check-duplication decl)
   (setf (type-value decl)
-	(let ((tn (mk-type-name (id decl))))
-	  (setf (uninterpreted? tn) t)
-	  (when *generating-adt*
-	    (setf (adt tn) *generating-adt*)
-	    ;;(setf (nonempty? tn) t)
-	    )
+	(let ((tn (if *generating-adt*
+		      (mk-adt-type-name (id decl) nil nil nil *generating-adt*)
+		      (mk-type-name (id decl)))))
 	  (setf (resolutions tn)
 		(list (mk-resolution decl (current-theory-name) tn)))
 	  tn))
@@ -479,7 +642,7 @@
   (call-next-method)
   (set-nonempty-type (type-value decl))
   (unless (eq (id *current-theory*) '|booleans|)
-    (put-decl decl (current-declarations-hash))
+    (put-decl decl)
     (generate-existence-axiom decl))
   decl)
 
@@ -500,30 +663,30 @@
   (check-type-application-formals decl)
   (check-duplication decl)
   (let* ((tn (mk-type-name (id decl)))
-	 (res (mk-resolution decl (current-theory-name) tn))
-	 (*bound-variables* (apply #'append (formals decl)))
-	 (*tcc-conditions* (add-formals-to-tcc-conditions (formals decl)))
-	 (ptype (if (formals decl)
-		    (make-instance 'type-application
-		      'type tn
-		      'parameters (mapcar #'mk-name-expr (car (formals decl))))
-		    tn))
-	 (tval (type-def-decl-value decl ptype)))
+	 (res (mk-resolution decl (current-theory-name) tn)))
     (setf (resolutions tn) (list res))
-    (setf (uninterpreted? tn) t)
-    (setf (type-value decl) tval)
-    (typecase (type-expr decl)
-      (enumtype (typecheck* (type-expr decl) nil nil nil))
-      (subtype (when (typep (predicate (type-expr decl)) 'expr)
-		 (put-decl decl (current-declarations-hash)))))
-    (when (and (nonempty-type-def-decl? decl)
-	       (not (contains decl)))
-      (let ((*bound-variables* (apply #'append (formals decl))))
-	(check-nonempty-type-of decl)))
-    (when (contains decl)
-      (typecheck* (contains decl) tval nil nil)
-      (set-nonempty-type (type-expr decl))
-      (set-nonempty-type tval)))
+    (let* ((*bound-variables* (apply #'append (formals decl)))
+	   (*tcc-conditions* (add-formals-to-tcc-conditions (formals decl)))
+	   (ptype (if (formals decl)
+		      (make-instance 'type-application
+			'type tn
+			'parameters (mapcar #'mk-name-expr
+				      (car (formals decl))))
+		      tn))
+	   (tval (type-def-decl-value decl ptype)))
+      (setf (type-value decl) tval)
+      (typecase (type-expr decl)
+	(enumtype (typecheck* (type-expr decl) nil nil nil))
+	(subtype (when (typep (predicate (type-expr decl)) 'expr)
+		   (put-decl decl))))
+      (when (and (nonempty-type-def-decl? decl)
+		 (not (contains decl)))
+	(let ((*bound-variables* (apply #'append (formals decl))))
+	  (check-nonempty-type-of decl)))
+      (when (contains decl)
+	(typecheck* (contains decl) tval nil nil)
+	(set-nonempty-type (type-expr decl))
+	(set-nonempty-type tval))))
   (when *loading-prelude*
     (set-prelude-types (id decl) (type-value decl)))
   decl)
@@ -547,7 +710,7 @@
 (defmethod check-nonempty-type-of ((decl nonempty-type-from-decl))
   (check-nonempty-type (supertype (type-value decl)) decl)
   (set-nonempty-type (type-value decl))
-  (put-decl decl (current-declarations-hash))
+  (put-decl decl)
   (generate-existence-axiom decl))
 
 (defun type-def-decl-value (decl tn)
@@ -560,10 +723,11 @@
 		(stype (typecheck* (type-expr decl) nil nil nil))
 		(utype (generate-uninterpreted-subtype decl stype)))
 	   (set-type (type-expr decl) nil)
+	   (setf (type-value decl) utype)
 	   (setf (print-type utype) tn)
 	   utype))
 	((enumtype? (type-expr decl))
-	 (setf (adt tn) (type-expr decl))
+	 (change-class tn 'adt-type-name 'adt (type-expr decl))
 	 (set-nonempty-type tn)
 	 tn)
 	(t (let ((tval (typecheck* (type-expr decl) nil nil nil)))
@@ -613,7 +777,7 @@
       (let ((*tcc-conditions* (add-formals-to-tcc-conditions (formals decl))))
 	(typecheck* (definition decl) rtype nil nil))
       #+pvsdebug (assert (fully-instantiated? (definition decl)))
-      (put-decl decl (current-declarations-hash))
+      (put-decl decl)
       (make-def-axiom decl)))
   decl)
 
@@ -726,7 +890,7 @@
       (typecheck-measure decl)
       (setf (recursive-signature decl) (compute-recursive-signature decl)))
     (set-nonempty-type rtype)
-    (put-decl decl (current-declarations-hash))
+    (put-decl decl)
     (let ((*recursive-calls-without-enough-args*
 	   (unless (adt-def-decl? decl)
 	     (recursive-calls-without-enough-args decl)))
@@ -1007,7 +1171,8 @@
 (defun typecheck-ordering (decl)
   (let* ((ordering (ordering decl))
 	 (measure (measure decl))
-	 (mtype (range (find-supertype (type measure)))))
+	 (mtype (range (find-supertype (type measure))))
+	 (*bound-variables* (apply #'append (formals decl))))
     ;; The measure has already been typechecked.
     (typecheck-ordering* decl ordering mtype)))
 
@@ -1124,7 +1289,7 @@
       (type-error decl
 	"(Co)Inductive definitions must have (eventual) range type boolean"))
     (set-nonempty-type rtype)
-    (put-decl decl (current-declarations-hash))
+    (put-decl decl)
     (typecheck* (definition decl) rtype nil nil)
     (let* ((all-vars (ind-def-formals decl))
 	   (fixed-vars (fixed-inductive-variables decl all-vars))
@@ -1744,14 +1909,14 @@
 	       (null arguments))
       (type-error type "Type name must have arguments"))
     (assert tval)
-    (when (typep tval 'type-name)
-      (setf (uninterpreted? type) (uninterpreted? tval)))
-    (when (and (mod-id type)
-	       (type-name? (print-type tval))
-	       (not (mod-id (print-type tval))))
-      (setq tval (copy tval
-		   'print-type (copy (print-type tval)
-				 'mod-id (mod-id type)))))
+    (when (mod-id type)
+      (cond ((null (print-type tval))
+	     (setq tval (copy tval 'print-type (copy type))))
+	    ((and (type-name? (print-type tval))
+		  (not (mod-id (print-type tval))))
+	     (setq tval (copy tval
+			  'print-type (copy (print-type tval)
+					'mod-id (mod-id type)))))))
     (if (eq tval 'type)
 	type
 	tval)))
@@ -1760,6 +1925,8 @@
   (declare (ignore expected kind arguments))
   (typecheck* (parameters type) nil nil nil)
   (let ((te (typecheck* (type type) nil 'type (parameters type))))
+    ;; Note that te is just the subtype associated with the
+    ;; type-application; the parameters have not yet been substituted
     (unless (formals (declaration (type type)))
       (type-error type "~a may not be used in a type application" te))
     (unless (length= (car (formals (declaration (type type))))
@@ -1773,6 +1940,7 @@
       (set-type-for-application-parameters (parameters type) (car typeslist)))
     (let ((tval (substit te (pairlis (car (formals (declaration (type type))))
 				     (parameters type)))))
+      ;; tval now has the parameters
       (unless (print-type tval)
 	(setf (print-type tval) type))
       (when (or (nonempty-type-decl? (declaration (type type)))
@@ -2105,7 +2273,7 @@
     (if (and (eq dom (domain type))
 	     (eq rng (range type)))
 	type
-	(let ((tval (mk-funtype dom rng)))
+	(let ((tval (mk-funtype dom rng (class-of type))))
 	  tval))))
 
 (defun get-funtype-dependencies (funtype types)
@@ -2268,7 +2436,8 @@
 
 (defmethod generic-judgement-warning ((decl application-judgement))
   (unless (subsetp (free-params (type decl))
-		   (free-params (name decl)))
+		   (union (free-params (name decl))
+			  (free-params (formals decl))))
     (pvs-warning
 	"Judgement ~@[~a ~]at line ~d will not be used if theory ~a~%  ~
          is only imported generically, as the theory instance cannot be~%  ~
@@ -2314,18 +2483,14 @@
 					    (resolutions ex)))))
 				 (t (type-ambiguity ex)))))
 		     nil))
-	       (expr decl)))
+	       (expr decl))
+    (when (has-type-vars? (type (expr decl)))
+      (type-error (expr decl)
+	"Cannot determine the type associated with ~a:~%  Please provide more ~
+         information, i.e., actual parameters or a coercion." (expr decl))))
   (check-conversion-applicability decl)
   (setf (k-combinator? decl) (k-combinator? (expr decl)))
-  (let ((ndecl (if (fully-instantiated? (expr decl))
-		   decl
-		   (let ((th (module
-			      (find-if #'(lambda (fp)
-					   (not (memq fp (formals-sans-usings
-							  (current-theory)))))
-				(free-params (expr decl))))))
-		     (copy decl 'module th)))))
-    (push ndecl (conversions *current-context*)))
+  (push decl (conversions *current-context*))
   decl)
 
 (defun check-conversion-applicability (decl)
@@ -2334,10 +2499,14 @@
     (unless (typep stype 'funtype)
       (type-error (expr decl)
 	"Conversion is not a function:~%  ~a: ~a" (expr decl) ctype))
+    (when (has-type-vars? ctype)
+      (type-error (expr decl)
+	"Cannot determine the conversion type for ~a:~%  Please provide more ~
+         information, i.e., actual parameters or a coercion." (expr decl)))
     (when (strict-compatible? (domain stype) (range stype))
       (type-error (expr decl)
 	"The domain and range of this conversion are compatible;~%~
-         the conversion will never be used:~%  ~a: ~a" (name decl) ctype))
+         the conversion will never be used:~%  ~a: ~a" (expr decl) ctype))
     ;; Note that conversions are similar to auto-rewrites, where the
     ;; free-params of a conversion correspond to the free variables of an
     ;; auto-rewrite.  This is a test that the LHS covers all the free
@@ -2377,7 +2546,7 @@
 				  (tc-eq (expr decl) (expr cd)))
 		     (conversions *current-context*))))
     (if (equal new-convs (conversions *current-context*))
-		 ;;; Three possibilities in this case
+	;; Three possibilities in this case
 	(let ((similar-convs
 	       (remove-if-not #'(lambda (cd)
 				  (same-declaration (expr decl)
@@ -2427,15 +2596,32 @@
 		     (remove-enabled-rewrites disabled (rewrite-names decl)))
 	   (disabled-auto-rewrites *current-context*))))
     (unless (equal new-disabled (disabled-auto-rewrites *current-context*))
-      (setf (disabled-auto-rewrites *current-context*) new-disabled))))  
+      (setf (disabled-auto-rewrites *current-context*) new-disabled))))
 
 (defun remove-enabled-rewrites (disabled names)
   (let ((diff (remove-if #'(lambda (rname)
 			     (member rname names :test #'tc-eq))
 		  (rewrite-names disabled))))
-    (if (eq diff (rewrite-names disabled))
+    (if (equal diff (rewrite-names disabled))
 	disabled
-	(copy disabled 'rewrite-names diff))))
+	(let ((edecl (find-if #'(lambda (d)
+				  (and (auto-rewrite-minus-decl? d)
+				       (eq (module d) (current-theory))
+				       (tc-eq (rewrite-names d) diff)))
+		       (get-declarations (id disabled)))))
+	  (or edecl
+	      (let ((ndisabled (copy disabled
+				 'rewrite-names diff
+				 'module (current-theory)
+				 'generated-by disabled)))
+		(assert (not (member ndisabled
+				     (remove-if-not #'(lambda (d)
+							(eq (module d) (current-theory)))
+				       (get-declarations (id ndisabled)))
+				     :test #'add-decl-test)))
+		(add-decl ndisabled)
+		(assert (memq ndisabled (all-decls (module ndisabled))))
+		ndisabled))))))
 
 
 (defmethod typecheck* ((decl auto-rewrite-minus-decl) expected kind arguments)
@@ -2475,7 +2661,7 @@
 (defun check-duplication (decl)
   (when (projection? (id decl))
     (type-error decl "May not overload projection names"))
-  (let* ((decls (gethash (id decl) (current-declarations-hash))))
+  (let* ((decls (get-declarations (id decl))))
     (mapc #'(lambda (d) (when (and (not (eq d decl))
 				   (declaration? d)
 				   (eq (module d) (current-theory)))
