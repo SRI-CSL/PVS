@@ -715,6 +715,9 @@
 (defmethod interpretable? ((th module))
   (some #'interpretable? (all-decls th)))
 
+(defmethod interpretable? ((ty recursive-type))
+  t)
+
 (defmethod interpretable? ((d type-decl))
   t)
 
