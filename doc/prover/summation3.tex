@@ -1,19 +1,18 @@
 sum: THEORY
-  BEGIN
+BEGIN
 
-   n: VAR nat
-   f, g: VAR [nat -> nat]
+  n: VAR nat
+  f, g: VAR [nat -> nat]
 
-   sum(f, n): RECURSIVE nat =
-  (IF n = 0
-      THEN 0
-      ELSE f(n-1) + sum(f, n - 1)
-   ENDIF)
-  MEASURE n
+  sum(f, n): RECURSIVE nat =
+    IF n = 0
+       THEN 0
+       ELSE f(n-1) + sum(f, n - 1)
+    ENDIF
+   MEASURE n
 
- sum_plus: LEMMA
-    sum((lambda n: f(n) + g(n)), n)
-   = sum(f, n) + sum(g, n)
+  sum_plus: LEMMA
+   sum((lambda n: f(n) + g(n)), n) = sum(f, n) + sum(g, n)
 
   square(n): nat = n*n
 
@@ -25,4 +24,4 @@ sum: THEORY
   sum_of_cubes: LEMMA
     4 * sum(cube, n+1) = n*n*(n+1)*(n+1)
 
- END sum
+END sum
