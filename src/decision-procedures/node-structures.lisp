@@ -540,7 +540,9 @@
    ((application-p term)
     (arith-op-p (the node (funsym (the application term)))))
    ((constant-p term)
-    (numberp (constant-id (the constant term))))
+    (or (numberp (constant-id (the constant term)))
+	(eq (node-type term)  *integer*)
+	(eq (node-type term) *number*)))
    (t nil)))
 
 (defvar *number-type-preds* '(integer-pred rational-pred real-pred))
