@@ -18,28 +18,28 @@ ifeq ($(origin PVSPATH), undefined)
   PVSPATH = `pwd`
 endif
 
-LISPDIR = /pkg/allegro5.0
+LISPDIR = /csl/allegro/allegro5.0.1
 lisp = allegro5.0
 TAR = tar
 SED = sed
-TARFLAGS = -cvohz --mode="u+rw" --atime-preserve
+TARFLAGS = -cvohz --mode="u+rw" --atime-preserve --exclude=CVS
 PLATFORM = $(shell bin/pvs-platform)
 export PLATFORM
 ifeq ($(PLATFORM),sun4-SunOS5)
 	ifeq ($(origin PVSLISP), undefined)
-	  PVSLISP = $(LISPDIR)/sol24/lisp
+	  PVSLISP = $(LISPDIR)/lisp
 	endif
 	LISPEXT=fasl
 else
 ifeq ($(PLATFORM),ix86-redhat4)
 	ifeq ($(origin PVSLISP), undefined)
-	  PVSLISP = $(LISPDIR)/redhat4/lisp
+	  PVSLISP = $(LISPDIR)/lisp
 	endif
 	LISPEXT=lfasl
 else
 ifeq ($(PLATFORM),ix86-redhat5)
 	ifeq ($(origin PVSLISP), undefined)
-	  PVSLISP = $(LISPDIR)/redhat5/lisp
+	  PVSLISP = $(LISPDIR)/lisp
 	endif
 	LISPEXT=lfasl
 endif
@@ -429,7 +429,6 @@ ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files} \
 	$(PVSLISP) -e '(defvar *runtime* nil)' \
 		-L src/make-pvs.lisp
 	touch ${pvsfull}
-	touch bin/.full-$(LISPEXT)s
 
 ${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files} \
            lib/prelude.pvs lib/prelude.prf
@@ -451,7 +450,6 @@ ${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files} \
 	$(PVSLISP) -e '(defvar *runtime* t)' \
 		-L src/make-pvs.lisp
 	touch ${pvsrt}
-	touch bin/.runtime-$(LISPEXT)s
 
 src/pvs-lexer.lisp : ${pvs-parser-in}
 	umask 002; \
@@ -491,7 +489,8 @@ tarfiles : ${image-tar} ${system-tar} ${emacs19-tar}
 
 image-files = $(wildcard ${bindir}/runtime/*)
 
-system-files = README Makefile pvs pvs-tex.sub pvs.sty bin/pvs-platform \
+system-files = README pvs pvs-tex.sub pvs.sty bin/relocate bin/pvs-platform \
+	       Examples \
                lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
                lib/ordstruct_adt.pvs lib/character_adt.pvs \
                lib/pvs-language.help lib/pvs-prover.help lib/pvs.help \
