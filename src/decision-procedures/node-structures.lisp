@@ -1573,6 +1573,7 @@
     (replace-by* trm)))
 
 (defun replace-by* (trm)
+  (declare (special *subst*))
   (cond ((leaf-p trm)
 	 (let ((res (lookup trm *subst*)))
 	   (if res (cdr res) trm)))
@@ -1632,3 +1633,4 @@
 (defun implication-p (term)
   (and (application-p term)
        (eq (funsym term) *implies*)))
+

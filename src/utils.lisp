@@ -2867,7 +2867,7 @@ space")
   nil)
 
 
-;; Destructuring of curried applications
+;; Destructuring of curried applications and detupling
 ;; e.g. f(a)(b, c)(d) ==> f (a b c d)
 
 (defun destructure-application (e &optional acc)
@@ -2958,9 +2958,20 @@ space")
   (if (and (eq (args1 orig) arg1) (eq (args2 orig) arg2)) orig
     (make!-disequality arg1 arg2)))
 
+;; checks if argument expression is known to be an integer
+
+(defun integer? (expr)
+  (or (and (type expr)
+	   (subtype-of? (type expr) *integer*))
+      (and (number-expr? expr)
+	   (integerp (number expr)))
+      (some #'(lambda (type)
+		(subtype-of? type *integer*))
+	    (judgement-types+ expr))))
 
 
 
 
 
-		    
+
+

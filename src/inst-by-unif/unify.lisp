@@ -69,18 +69,18 @@
 			 (loop for a1 in args1
 			       as a2 in args2
 			       do (unif-closure a1 a2)))
-		       (throw 'fail :clash)))))
+		       (throw 'fail :clash1)))))
 	      ((and (constant-p r1)
 		    (constant-p r2))
 	       (unless (eq (constant-id r1)
 			   (constant-id r2))
-		 (throw 'fail :clash)))
+		 (throw 'fail :clash2)))
 	      ((and (application-p t1) (uninterp? t1)
 		    (constant-p t2))
-	       (throw 'fail :clash))
+	       (throw 'fail :clash3))
 	      ((and (application-p t2) (uninterp? t2)
 		    (constant-p t1))
-	       (throw 'fail :clash))
+	       (throw 'fail :clash4))
 	      (t
 	       (dp-union* s1 s2)))))))
 
