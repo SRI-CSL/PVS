@@ -16,10 +16,6 @@
 
 (defvar *add-declaration-info* nil)
 
-(defvar *insert-add-decl* t
-  "Flag used for the add-declaration and modify-declaration commands to
-   allow typechecking without side effects.")
-
 (defun add-declaration-at (filename line)
   (typecheck-file filename nil)
   (let ((theory (find-theory-at filename line)))
@@ -134,7 +130,9 @@
 (defun add-new-decls-to-context (decls context)
   (let ((*current-context* context))
     (dolist (d decls)
-      (put-decl d (declarations-hash context)))))
+      (typecase d
+	(importing nil)
+	(declaration (put-decl d (declarations-hash context)))))))
 
 (defun typecheck-new-decls (decls pdecl)
   (let ((*insert-add-decl* nil)
