@@ -124,6 +124,8 @@ Given a pathname, returns a hash-table which can then be put into
 
 (defvar *prelude-libraries-uselist* nil)
 
+(defvar *prelude-libraries-files* nil)
+
 (defvar *visible-libraries-uselist* nil
   "Used to be able to quickly build a context - keeps track of the visible
 prelude libraries")
