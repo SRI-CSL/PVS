@@ -49,7 +49,6 @@
 (defun filter-substs (score-substs &optional acc)
   (if (null score-substs) (nreverse acc)
     (let* ((score-subst (car score-substs))
-	   (score (score-of score-subst))
 	   (subst (subst-of score-subst))
 	   (newacc (if (null subst) acc
 		       (cons (variable-free-part-of score-subst) acc))))
