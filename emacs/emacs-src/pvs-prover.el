@@ -623,8 +623,9 @@ documentation for edit-proof-mode for more information."
 	  (save-excursion
 	    (insert "\n")
 	    (indent-line-ilisp)))
-	;(delete-char -1)
-	)
+	(forward-char -1)
+	(if (looking-at "\"")
+	    (delete-char 1)))
       (goto-char (point-min))
       (while (looking-at ";;;")
 	(forward-line 1))
