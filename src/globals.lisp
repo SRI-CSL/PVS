@@ -58,6 +58,12 @@ formula declaration.")
   "Set to the buffer from which a temporary file was generated for
 parsing or typechecking - used by pvs-error.")
 
+(defvar *load-prelude-hook* nil
+  "Functions (with no args) to be called when the prelude is (re)loaded")
+
+(defvar *untypecheck-hook* nil
+  "Functions (with no args) to be called whenever untypecheck is called")
+
 (defvar *prelude-context* nil
   "Provides the context associated with the prelude")
 
