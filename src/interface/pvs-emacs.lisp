@@ -435,10 +435,11 @@
 (defun conversion-occurs-in? (obj)
   (let ((conv? nil))
     (mapobject #'(lambda (ex)
-		   (when (typep ex '(or argument-conversion
-					implicit-conversion
-					lambda-conversion))
-		     (setq conv? t)))
+		   (or (type-expr? ex)
+		       (when (typep ex '(or argument-conversion
+					    implicit-conversion
+					    lambda-conversion))
+			 (setq conv? ex))))
 	       obj)
     conv?))
 
