@@ -168,8 +168,14 @@ where db is to replace db1 and db2")
 (defmethod tc-eq* ((t1 subtype) (t2 subtype) bindings)
   (with-slots ((st1 supertype) (p1 predicate)) t1
     (with-slots ((st2 supertype) (p2 predicate)) t2
-      (and (tc-eq* st1 st2 bindings)
-	   (tc-eq-ops p1 p2 bindings)))))
+      (if (everywhere-true? p1)
+	  (if (everywhere-true? p2)
+	      (tc-eq* st1 st2 bindings)
+	      (tc-eq* st1 t2 bindings))
+	  (if (everywhere-true? p2)
+	      (tc-eq* t1 st2 bindings)
+	      (and (tc-eq* st1 st2 bindings)
+		   (tc-eq-ops p1 p2 bindings)))))))
 
 (defmethod tc-eq* ((t1 subtype) (t2 type-name) bindings)
   (when (or (everywhere-true? (predicate t1))
