@@ -168,6 +168,7 @@ pvs-set-linelength                       Set the prettyprinter line length
 
 prettyprint-expanded, ppe (C-c C-q e) Prettyprint expanded theory in ppe buffer
 show-tccs,            tccs (C-c C-q s) Show the TCCs of the indicated theory
+show-declaration-tccs                 Show TCCs of declaration at cursor
 
 ------------------------File and Theory Commands------------------------------
 
