@@ -968,12 +968,23 @@ required a context.")
 	  (type operator)
 	  (instantiate-operator-type
 	   (type operator) operator (argument-list argument) expected))
-      (let ((optypes1 (delete-if-not #'(lambda (ty)
+      (let ((coptypes (delete-if-not #'(lambda (ty)
 					 (compatible? (range ty) expected))
 			(types operator))))
-	(unless optypes1
+	(unless coptypes
 	  (type-incompatible operator (types operator) expected))
-	(let* ((optypes2 (if (cdr optypes1)
+	(let* ((optypes1 (if (cdr coptypes)
+			     (or (delete-if-not
+				     #'(lambda (oty)
+					 (let ((dty (domain
+						     (find-supertype oty))))
+					   (some #'(lambda (aty)
+						     (compatible? dty aty))
+						 (types argument))))
+				   coptypes)
+				 coptypes)
+			     coptypes))
+		(optypes2 (if (cdr optypes1)
 			     (local-operator-types operator optypes1 argument)
 			     optypes1))
 	       (optypes3 (if (cdr optypes2)
