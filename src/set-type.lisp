@@ -1596,7 +1596,7 @@ required a context.")
     (let ((nbindings (tc-match-domain op optype args domain
 				       (tc-match expected range
 						 bindings))))
-      (if (every #'cdr nbindings)
+      (if (and nbindings (every #'cdr nbindings))
 	  (instantiate-operator-from-bindings optype nbindings)
 	  (if *dont-worry-about-full-instantiations*
 	      optype
