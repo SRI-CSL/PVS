@@ -135,13 +135,16 @@
 	    *false*
 	    (make-nequality new-lhs new-rhs cong-state)))))
 
+(defvar *use-t-c* nil)
+
 (defun check-and-canonize-neqs (cong-state)
   (let ((false-eq?
 	 (loop for neq in (nequals cong-state)
 	       for find-neq = (find-neq neq cong-state)
 	       for canon-neq = (canon-neq neq cong-state)
 	       unless (true-p canon-neq) collect canon-neq into new-neqs
-	       when (and (not (eq canon-neq neq))
+	       when (and (not *use-t-c*)
+			 (not (eq canon-neq neq))
 			 (eq neq find-neq))
 	       do (break "This is not a problem. ~%Just send email to cyrluk and do a :cont 0")
 	       thereis (and (false-p canon-neq) (not (false-p neq)))
@@ -246,8 +249,29 @@
   (setf (sig u cong-state)
 	(replace-term-in-term t1 t2 (sig u cong-state))))
 
+(defun find-eq (eqn cong-state)
+  (let ((lhs (lhs eqn))
+	(rhs (rhs eqn)))
+    (sigma (mk-equality (dp-find lhs cong-state)
+			(dp-find rhs cong-state))
+	   cong-state)))
+
+(defun find-top (term cong-state)
+  (cond
+   ((equality-p term) (find-eq term cong-state))
+   (t (dp-find term cong-state))))
+
 (defun canon (term cong-state &optional (no-mod nil))
-  (canon* term cong-state no-mod))
+  (cond
+   ((seen term cong-state)
+    (let ((t-f (find-top term cong-state))
+	  (t-c (canon* term cong-state no-mod)))
+      (cond
+       ((eq t-f t-c) t-f)
+       (*use-t-c* t-c)
+       (t (break "Please contact Cyrluk and do a :cont 0 to continue")
+	  t-c))))
+   (t (canon* term cong-state no-mod))))
 
 (defun canon* (term cong-state &optional (no-mod nil))
   (canonsig-canon (signature term cong-state no-mod) cong-state no-mod))
