@@ -1108,7 +1108,11 @@
     (if (and (typep operator 'name-expr)
 	     (memq (id operator) *infix-operators*)
 	     (typep argument 'tuple-expr)
-	     (= (length (exprs argument)) 2))
+	     (= (length (exprs argument)) 2)
+	     (not (or (mod-id operator)
+		      (library operator)
+		      (actuals operator)
+		      (mappings operator))))
 	(let ((lhs (car (exprs argument)))
 	      (rhs (cadr (exprs argument)))
 	      (oper (sbst-symbol (id operator))))
@@ -1546,7 +1550,7 @@
 	(pp-tex* declared-type)))))
 
 (defmethod pp-tex* ((ex name))
-  (with-slots (library mod-id actuals id resolutions) ex
+  (with-slots (library mod-id actuals id mappings resolutions) ex
     (pprint-logical-block (nil (list ex))
       (when library
 	(pp-tex-id library)
@@ -1555,12 +1559,34 @@
 	     (pp-tex-id mod-id)
 	     (when actuals
 	       (pp-tex-actuals actuals))
+	     (when mappings
+	       (pp-tex-mappings mappings))
 	     (write-char #\.)
 	     (pp-tex-id id))
 	    (t
 	     (pp-tex-id id)
 	     (when actuals
-	       (pp-tex-actuals actuals)))))))
+	       (pp-tex-actuals actuals))
+	     (when mappings
+	       (pp-tex-mappings mappings)))))))
+
+(defun pp-tex-mappings (mappings)
+  (pprint-logical-block (nil mappings :prefix "{{ " :suffix " }}")
+    (loop (pp-tex** (pprint-pop))
+	  (pprint-exit-if-list-exhausted)
+	  (write ", ")
+	  (pprint-newline :fill))))
+
+(defmethod pp-tex* ((map mapping))
+  (pprint-logical-block (nil nil)
+    (pp-tex* (lhs map))
+    (write-char #\space)
+    (pprint-newline :fill)
+    (write ":=")
+    (write-char #\space)
+    (if (rhs map)
+	(pp-tex* (expr (rhs map)))
+	(write "NORHS"))))
 
 (defmethod pp-tex* ((list list))
   (if (and list
