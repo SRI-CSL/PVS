@@ -165,7 +165,6 @@
 (defcl module (datatype-or-module)
   (theory :type list :parse t) ; The declarations of the theory-part
   (exporting :type list :parse t)  ; A list of exportings
-  declarations   ; A hash-table for declarations
   nonempty-types  ; Keep track of types marked nonempty during typechecking
   all-usings ; The transitive closure of the usings of the theory
   (immediate-usings :initform 'unbound) ; immediate usings of the theory
