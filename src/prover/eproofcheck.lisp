@@ -389,23 +389,53 @@
 
 ;;12/16: need to fix prove* to save the proof, etc.
 
-(defun check-command-arguments (cmd keywords arguments)
+(defun check-command-arguments (cmd keywords arguments has-rest? &optional expect-key?)
   (or (null arguments)
-      (if (keywordp (car arguments))
-	  (if (not (member (car arguments) keywords))
-	      (progn (error-format-if "~%~a is not a valid keyword for ~a"
-			  (car arguments) cmd)
-	             nil)
-	      (;;;; here check the argument to the keyword
-	       ;;;; is in the appropriate domain
-	       check-command-arguments cmd keywords (cddr arguments)))
-          (check-command-arguments cmd keywords (cdr arguments)))))
+      (if (or expect-key?
+	      (keywordp (car arguments)))
+	  (cond ((not (keywordp (car arguments)))
+		 (error-format-if "~%Found ~a when expecting a keyword in argument to ~a"
+				  (car arguments) cmd)
+		 nil)
+		((not (memq (car arguments) keywords))
+		 (error-format-if "~%~a is not a valid keyword for ~a"
+				  (car arguments) cmd)
+		 nil)
+		((not (cdr arguments))
+		 (error-format-if "~%Keyword ~a (of ~a) requires an argument"
+				  (car arguments) cmd)
+		 nil)
+		((keywordp (cadr arguments))
+		 (error-format-if "~%Argument to ~a (of ~a) may not be a keyword (given as ~a)"
+				  (car arguments) cmd (cadr arguments))
+		 nil)
+		((and has-rest?
+		      (not (cdr (memq (car arguments) keywords)))
+		      (some #'keywordp (cdr arguments)))
+		 (error-format-if "~%Keywords are not allowed after the start of an &rest argument")
+		 nil)
+		((memq (car arguments) (cdr arguments))
+		 (error-format-if "~%Keyword ~a was specified more than once to ~a" (car arguments) cmd)
+		 nil)
+		(t
+		 (check-command-arguments cmd keywords (cddr arguments) has-rest? t)))
+	  (check-command-arguments cmd keywords (cdr arguments) has-rest?))))
 
 (defun check-arguments (pcmd)
-  (let ((keywords (cdr (assoc (car pcmd) *prover-keywords*))))
-    (or (null keywords)
-        (singleton? pcmd)
-        (check-command-arguments (car pcmd) keywords (cdr pcmd)))))
+  (let* ((keylist (assq (car pcmd) *prover-keywords*))
+	 (keywords (cddr keylist))
+	 (has-rest? (cadr keylist)))
+    (cond ((not keylist)
+	   (error-format-if "~%~a is not a valid prover command" (car pcmd))
+	   nil)
+	  ((and (not keywords)
+		(cdr pcmd))
+	   (error-format-if "~%~a takes no arguments, but was given argument(s) ~a"
+			    (car pcmd) (cdr pcmd))
+	   nil)
+	  ((singleton? pcmd))
+	  (t
+	   (check-command-arguments (car pcmd) keywords (cdr pcmd) has-rest?)))))
 
 (defun qread (prompt)
   (format t "~%~a"  prompt)
