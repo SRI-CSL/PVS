@@ -1066,10 +1066,15 @@ required a context.")
 			     (or (delete-if-not #'fully-instantiated? optypes1)
 				 optypes2)
 			     optypes2))
-	       (optypes (if (cdr optypes3)
-			    (instantiable-operator-types
-			     operator optypes3 (argument* argument) expected)
-			    optypes3)))
+	       (optypes4 (if (cdr optypes3)
+			     (instantiable-operator-types
+			      operator optypes3 (argument-list argument)
+			      expected)
+			     optypes3))
+	       (optypes (if (cdr optypes4)
+			    (preferred-argument-conversion
+			     (argument-list argument) optypes4)
+			    optypes4)))
 	  (assert optypes)
 	  #+pvsdebug (assert (null (duplicates? optypes :test #'tc-eq)))
 	  (cond ((cdr optypes)
@@ -1239,6 +1244,37 @@ required a context.")
 			  (tc-match expected range bindings))))
 	  (not (null nbindings))))))
 
+(defun preferred-argument-conversion (args optypes &optional best best-rank)
+  (if (null optypes)
+      (nreverse best)
+      (let* ((atypes (mapcar #'(lambda (a dty)
+				 (remove-if-not #'(lambda (aty)
+						    (compatible? aty dty))
+				   (types a)))
+		       args (domain-types (car optypes))))
+	     (rank (argtype-conversion-ranking atypes)))
+	(preferred-argument-conversion
+	 args (cdr optypes)
+	 (cond ((or (null best-rank)
+		    (< rank best-rank))
+		(list (car optypes)))
+	       ((= rank best-rank)
+		(cons (car optypes) best))
+	       (t best))
+	 (if best-rank (min rank best-rank) rank)))))
+
+(defun argtype-conversion-ranking (argtypes &optional (rank 0))
+  (if (null argtypes)
+      rank
+      (argtype-conversion-ranking
+       (cdr argtypes)
+       (max rank (argtype-conversion-ranking* (car argtypes))))))
+
+(defun argtype-conversion-ranking* (argtypes)
+  (if (every #'from-conversion argtypes)
+      (reduce #'min (mapcar #'(lambda (aty) (locality (from-conversion aty)))
+		      argtypes))
+      0))
 
 (defmethod set-type-application (expr (operator lambda-expr) argument expected)
   (with-slots (bindings expression) operator
