@@ -236,6 +236,7 @@
 (defvar *fetch-object-update-ptr* (make-array 10000))
 (defvar *fetch-object-update-ptr-size* 1000)
 (defvar *fetch-object-update-end*)
+(defvar *fetch-object-case-ok?*)
 
 (defvar *fetch-object-ptr*)
 
@@ -245,7 +246,8 @@
             (sorry, these functions are not reentrant)" *storing-or-fetching*))
   (let ((*fetch-object-not-present* (cons nil nil))
 	(*fetch-object-update-end* 0)
-	(*storing-or-fetching* 'fetch-object))
+	(*storing-or-fetching* 'fetch-object)
+	(*fetch-object-case-ok?* nil))
     (ensure-vector-size *fetch-object-table* *fetch-object-table-size*
 			(object-store start))
     (fill *fetch-object-table* *fetch-object-not-present*
@@ -376,7 +378,28 @@
 
 (defun fetch-symbol ()
   (let ((str (fetch-temp-string 1)))
-    (intern str)))
+    (unless *fetch-object-case-ok?*
+      (if (every #'(lambda (ch)
+		     (or (not (alpha-char-p ch))
+			 (upper-case-p ch)))
+		 str)
+	  (setq *fetch-object-case-ok?* :lower)
+	  (setq *fetch-object-case-ok?* t)))
+    (if (eq *fetch-object-case-ok?* :lower)
+	(intern (convert-fetched-string-to-lowercase str))
+	(intern str))))
+
+(defun convert-fetched-string-to-lowercase (str)
+  (let ((in-vertbars nil))
+    (dotimes (i (length str))
+      (let ((ch (char str i)))
+	(cond ((char= ch #\|)
+	       (setf in-vertbars (not in-vertbars)))
+	      (in-vertbars nil)
+	      ((upper-case-p ch)
+	       (setf (char str i) (char-downcase ch)))))))
+  str)
+	
     
 ;;; Here's the definition of fast-make-instance.  I can't believe this
 ;;; is a performance win, but it is (at least in Lucid).
