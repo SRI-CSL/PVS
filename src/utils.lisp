@@ -2107,7 +2107,7 @@ space")
       (let* ((fvars (freevars expr))
 	     (nexpr (unless fvars
 		      (gethash expr *pseudo-normalize-hash*))))
-	(when (eq *assert-flag* 'simplify) 'break)
+	(assert (not (eq *assert-flag* 'simplify)))
 	(if nexpr
 	    (if (tc-eq nexpr expr)
 		expr
@@ -2120,7 +2120,10 @@ space")
 		   (*assert-if-arith-hash*
 		    (if *assert-if-arith-hash*;;NSH(11.30.95) 
 			*assert-if-arith-hash*;;not real shadowing
-			(make-hash-table :test #'eq))))
+			(make-hash-table :test #'eq)))
+		   (*newdc* nil)
+		   (*new-ground?* nil)
+		   (*old-ground?* t))
 	      (nprotecting-cong-state
 	       ((*dp-state* *init-dp-state*)
 		(*alists* *init-alists*))
