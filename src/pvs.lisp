@@ -614,12 +614,12 @@
       (let* ((adt-file (concatenate 'string (string (id th)) "_adt"))
 	     (adt-path (make-specpath adt-file)))
 	(when (file-exists-p adt-path)
-	  (multiple-value-bind (ignore error)
-	      (ignore-errors (delete-file adt-path))
-	    (if error
-		(pvs-message "Error in removing file ~a:~% ~"
-		  (shortname adt-file) error)
-		(pvs-message "Deleted file ~a" (shortname adt-file)))))))))
+	  (let ((sname (shortname adt-file)))
+	    (multiple-value-bind (ignore error)
+		(ignore-errors (delete-file adt-path))
+	      (if error
+		  (pvs-message "Error in removing file ~a:~% ~" sname error)
+		  (pvs-message "Deleted file ~a" sname)))))))))
 
 (defun typecheck-theories (filename theories)
   (let ((all-proofs (read-pvs-file-proofs filename))
