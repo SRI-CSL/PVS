@@ -199,7 +199,7 @@
 		  (format nil ":pvs-err ~a&~a&~a&~a&~d ~d :end-pvs-err"
 		    buff
 		    (unless *from-buffer*
-		      (protect-emacs-output (namestring (working-directory))))
+		      (protect-emacs-output (namestring *pvs-context-path*)))
 		    (protect-emacs-output msg)
 		    (write-to-temp-file err)
 		    (line-begin place) (col-begin place))))
@@ -258,7 +258,7 @@
       (let ((*output-to-emacs*
 	     (format nil ":pvs-qry ~a&~a&~a&~a&~d ~d :end-pvs-qry"
 		     theory
-		     (protect-emacs-output (namestring (working-directory)))
+		     (protect-emacs-output (namestring *pvs-context-path*))
 		     (protect-emacs-output msg)
 		     (protect-emacs-output query)
 		     (if place (sbrt::place-linenumber place))
@@ -581,7 +581,7 @@
 		      (if (from-prelude? theory)
 			  (format nil "~a/lib/" *pvs-path*)
 			  (protect-emacs-output
-			   (shortname (working-directory))))))
+			   (shortname *pvs-context-path*)))))
 	       (if (datatype-or-module? theory)
 		   (or (filename theory)
 		       "prelude.pvs")
@@ -600,7 +600,7 @@
 		       (generated-by decl)
 		       (car (newline-comment decl)))
 		  indent text)))
-    (pvs-modify-buffer (unless buf (shortname (working-directory)))
+    (pvs-modify-buffer (unless buf (shortname *pvs-context-path*))
 		       (or buf (id theory))
 		       dplace
 		       itext)))

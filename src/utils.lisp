@@ -429,12 +429,12 @@
   (make-specpath (id name) ext))
 
 (defmethod make-binpath ((name symbol))
-  (make-pathname :defaults (working-directory)
+  (make-pathname :defaults *pvs-context-path*
 		 :name name
 		 :type "bin"))
 
 (defmethod make-binpath ((name string))
-  (make-pathname :defaults (working-directory)
+  (make-pathname :defaults *pvs-context-path*
 		 :name name
 		 :type "bin"))
 
@@ -512,7 +512,7 @@
    (format nil "cp ~a ~a" (namestring from) (namestring to))))
 
 #+gcl
-(defun write-permission? (&optional (dir (working-directory)))
+(defun write-permission? (&optional (dir *pvs-context-path*))
   (let ((path (make-pathname :defaults dir :name "PVS" :type "tmp"))
 	(*break-enable* nil)
 	(error t))
@@ -526,7 +526,7 @@
     (not error)))
 
 #+(or lucid allegro harlequin-common-lisp)
-(defun write-permission? (&optional (dir (working-directory)))
+(defun write-permission? (&optional (dir *pvs-context-path*))
   (let* ((path (make-pathname :defaults dir :name "PVS" :type "tmp"))
 	 (str (ignore-errors (open path :direction :output
 				   :if-exists :append
@@ -534,7 +534,7 @@
     (when str (close str) (delete-file path) t)))
 
 #+(or lucid allegro harlequin-common-lisp)
-(defun file-write-permission? (file &optional (dir (working-directory)))
+(defun file-write-permission? (file &optional (dir *pvs-context-path*))
   (let* ((path (merge-pathnames file dir))
 	 (str (ignore-errors (open path :direction :output
 				   :if-exists :append
