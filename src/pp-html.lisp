@@ -253,7 +253,9 @@
 			    (decl-to-declname decl)
 			    (typecase decl
 			      (type-decl "Type Declaration")
-			      (typed-declaration (type decl))
+			      (typed-declaration
+			       (let ((*print-pretty* nil))
+				 (format nil "~a" (type decl))))
 			      (lib-decl "library-declaration")
 			      (mod-decl "theory-declaration")
 			      (theory-abbreviation-decl
@@ -266,16 +268,23 @@
 			      (auto-rewrite-decl "auto-rewrite-declaration")
 			      (t (break "What?")))))))
 		   (push (cdr e) started))
+		 (unless (or (not (eq in-comment 'maybe))
+			     (member ch '(#\space #\tab #\page #\return
+					  #\newline #\linefeed)
+				     :test #'char=))
+		   (fmt-html "</span comment>")
+		   (setq in-comment nil))
 		 (when (eq (car e) :begin-span)
 		   (typecase (cdr e)
 		     (datatype-or-module
-		      (fmt-html "<span class=\"~a\">"
+		      (fmt-html "<span class=\"~a\" id=\"~a\">"
 			(typecase (cdr e)
 			  (module "theory")
 			  (datatype "datatype")
-			  (codatatype "codatatype"))))
+			  (codatatype "codatatype"))
+			(id (cdr e))))
 		     (declaration
-		      (fmt-html "<span class=\"~a\">"
+		      (fmt-html "<span class=\"~a\" id=\"~a\">"
 			(typecase (cdr e)
 			  (type-decl "type-declaration")
 			  (formal-decl "formal-declaration")
@@ -295,16 +304,16 @@
 			  (judgement "judgement-declaration")
 			  (conversion-decl "conversion-declaration")
 			  (auto-rewrite-decl "auto-rewrite-declaration")
-			  (t (break "What?"))))))
+			  (t (break "What?")))
+			(ref-to-id (cdr e)))))
 		   (push (cdr e) started)))
-	       (when (and (char= ch #\%)
-			  (not in-comment))
-		 (fmt-html "<span class=\"comment\">")
+	       (when (char= ch #\%)
+		 (unless in-comment ;; could be t or 'maybe
+		   (fmt-html "<span class=\"comment\">"))
 		 (setq in-comment t))
-	       (when (and (char= ch #\newline)
-			  in-comment)
-		 (fmt-html "</span>")
-		 (setq in-comment nil))
+	       (when (char= ch #\newline)
+		 (when (eq in-comment t)
+		   (setq in-comment 'maybe)))
 	       (write-char ch *html-out*)
 	       (dolist (e centries)
 		 (when (eq (car e) :end)
