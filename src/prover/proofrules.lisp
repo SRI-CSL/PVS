@@ -1493,7 +1493,7 @@ which should be fully instantiated. Please supply actual parameters.")
 	      (put-decl (make-instance
 			    'skolem-const-decl
 			  'id name
-			  'type (type tc-expr)
+			  'type (car (judgement-types+ tc-expr))
 			  'module (module context))
 			(declarations-hash context))
 	      (let* ((name (typecheck (pc-parse name 'expr)
