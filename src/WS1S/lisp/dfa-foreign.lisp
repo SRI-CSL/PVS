@@ -132,10 +132,6 @@
   :arguments '(integer)
   :return-type :integer)
 
-(ff:defforeign 'mona-last
-  :entry-point "ws1s___dfaLast"
-  :arguments '(integer)
-  :return-type :integer)
 
 (ff:defforeign 'mona-first-order        ; recognizes 0*1+
   :entry-point "ws1s___dfaFirstOrder"
@@ -170,20 +166,42 @@
   :arguments   '(integer)
   :return-type :integer)
 
-(ff:defforeign 'mona-prefix-close! ; Prefix Close
-  :entry-point "ws1s___dfaPrefixClose"
-  :arguments '(integer)
-  :return-type :void)
-
 (ff:defforeign 'mona-product
   :entry-point "ws1s___dfaProduct"
   :arguments '(integer integer integer) ; (automaton * a1, a2, unsigned mode)
   :return-type :integer)
 
-(defconstant *ANDmode*   8)
-(defconstant *ORmode*    14) 
-(defconstant *IMPLmode*  11) 
-(defconstant *BIMPLmode* 9)
+(ff:defforeign 'mona-prefix-close! ; Prefix Close
+  :entry-point "ws1s___dfaPrefixClose"
+  :arguments '(integer)
+  :return-type :void)
+
+(ff:defforeign 'mona-conjunction
+  :entry-point "ws1s___dfaConjunction"
+  :arguments '(integer integer) ; (automaton * a1, a2)
+  :return-type :integer)
+
+(ff:defforeign 'mona-disjunction
+  :entry-point "ws1s___dfaDisjunction"
+  :arguments '(integer integer) ; (automaton * a1, a2)
+  :return-type :integer)
+
+(ff:defforeign 'mona-implication
+  :entry-point "ws1s___dfaImplication"
+  :arguments '(integer integer) ; (automaton * a1, a2)
+  :return-type :integer)
+
+
+
+(ff:defforeign 'mona-iff
+  :entry-point "ws1s___dfaIff"
+  :arguments '(integer integer) ; (automaton * a1, a2)
+  :return-type :integer)
+
+(ff:defforeign 'mona-status
+  :entry-point "ws1s___dfaStatus"
+  :arguments '(integer) ; (automaton * a)
+  :return-type :integer)
 
 (ff:defforeign 'mona-project     ; projects away track var_index from a and                         
   :entry-point "ws1s___dfaProject"     ; determinizes the resulting automaton
@@ -200,17 +218,7 @@
   :arguments '(integer)     ; automaton * a
   :return-type :integer)
 
-;; Extensions
 
-(ff:defforeign 'monaFull
-  :entry-point "ws1s___dfaIsFull"
-  :arguments   '(integer)
-  :return-type :integer)
-
-(ff:defforeign 'monaEmpty
-  :entry-point "ws1s___dfaIsEmpty"
-  :arguments   '(integer)
-  :return-type :integer)
 
 ;; Analysis and printing
 
@@ -222,17 +230,6 @@
 		 (simple-array fixnum)) ; unsigned indices()
   :return-type :integer)                ; char *
 					
-;(ff:defforeign 'print-example
-;  :entry-point "ws1s___print_example"
-;  :arguments  '(integer                          ; char * example (here: use address)
-;	        string                           ; char * name
-;	        string                           ; char * description
-;	        integer                          ; int no_free_vars
-;	        (simple-array simple-string (*)) ; char **free_variables
-;	        (simple-array fixnum)            ; unsigned offsets()
-;	        string                           ; char * types
-;	        integer)                         ; int treestyle
-;  :return-type :void)
 
 (ff:defforeign 'mona-analyze
   :entry-point "ws1s___dfaAnalyze"
