@@ -123,27 +123,28 @@
 (defvar *convert-list* nil)
 (defvar *list-of-relational-vars* nil) ;; list of expressions
 (defvar *incl-excl-var-id-indx-pairs*  nil) ;; (bddvarid . index)
+(defvar *mu-verbose* nil)
 
-
-(addrule 'musimp () ((fnums *) dynamic-ordering? irredundant?)
-  (musimp-fun fnums dynamic-ordering? irredundant?)
+(addrule 'musimp () ((fnums *) dynamic-ordering? irredundant? verbose?)
+  (musimp-fun fnums dynamic-ordering? irredundant? verbose?)
   "MU Calculus Simplification.  Dynamic-ordering? set to T means the BDD
 package can reorder literals to reduce BDD size.  Irredundant? T computes
 the disjunctive normal form of the result (which can take quite a bit of
-time)."
+time).  Verbose? set to T provides more information."
   "~%Applying musimp,")
 
 
-(defun musimp-fun (&optional fnums dynamic-ordering? irredundant?)
-  #'(lambda (ps) (run-musimp ps fnums dynamic-ordering? irredundant?)))
+(defun musimp-fun (&optional fnums dynamic-ordering? irredundant? verbose?)
+  #'(lambda (ps) (run-musimp ps fnums dynamic-ordering? irredundant? verbose?)))
 
 
-(defun run-musimp (ps fnums dynamic-ordering? irredundant?)
+(defun run-musimp (ps fnums dynamic-ordering? irredundant? verbose?)
   (bdd_init)
   (mu_init)
   (let* ((init-real-time (get-internal-real-time))
 	 (init-run-time (get-run-time))
 	 (*bdd-initialized* t)
+	 (*mu-verbose* verbose?)
 	 (*pvs-bdd-hash* (make-hash-table
 			  :hash-function 'pvs-sxhash :test 'tc-eq))
 	 (*bdd-pvs-hash* (make-hash-table))
@@ -159,9 +160,10 @@ time)."
 			(mapcar #'(lambda (sf) (negate (formula sf)))
 			  selected-sforms)))
 	 (uniq-formula (uniquefy-bindings pvs-formula))
+	 (mu-uniq-formula (convert-pvs-to-mu uniq-formula))
 	 (mu-formula
 	  (make-mu-restriction
-	   (convert-pvs-to-mu uniq-formula)
+	   mu-uniq-formula
 	   (make-mu-conjunction
 	    (loop for x in  *pvs-bdd-inclusivity-formulas*
 		  when (null (freevars (car x)))
@@ -208,14 +210,13 @@ time)."
 
 
 (defun mu-add-bdd-subgoals (ps sforms lit-list remaining-sforms)
- (let ((can-decode (not (member nil lit-list))))
-   (if can-decode 
-            (add-bdd-subgoals ps sforms lit-list remaining-sforms) 
-           (progn 	
-           (format t "~%Failed to Model check:
-    could not decode binary encodings of scalars.")
-            (values 'X nil nil))))
-)
+  (let ((can-decode (not (member nil lit-list))))
+    (if can-decode 
+	(add-bdd-subgoals ps sforms lit-list remaining-sforms) 
+	(progn 	
+	  (format t "~%Failed to Model check:~%   ~
+                     could not decode binary encodings of scalars.")
+	  (values 'X nil nil)))))
 
 
 (defun init-hash-tables ()
@@ -226,6 +227,7 @@ time)."
 ;; run-pvsmu
 
 (defun run-pvsmu (mu-formula dynamic-ordering?)
+  (when *mu-verbose* (format t "~%"))
   (if dynamic-ordering?
       (set_bdd_do_dynamic_ordering 1)
       (set_bdd_do_dynamic_ordering 0))
@@ -311,12 +313,18 @@ time)."
 	       (not (member expr *mu-subtype-list* :test #'tc-eq))
 	       (not (assoc expr *pvs-bdd-inclusivity-formulas*
 			   :test #'tc-eq)))
-      (let ((constraints (collect-type-constraints expr))
+      (let ((constraints (unless (sub-range? (type expr))
+			   (type-constraints expr nil)))
 	    (*mu-subtype-list* (cons expr *mu-subtype-list*)))
 	(loop for x in constraints do
-	      (push (cons expr (convert-pvs-to-mu* x))
-		    *pvs-bdd-inclusivity-formulas*))
-	(format t "~%Added constraints: ~a" constraints)))
+	      (let* ((*build-access-var* nil)
+		     (muform (convert-pvs-to-mu* x)))
+		(push (cons expr muform)
+		      *pvs-bdd-inclusivity-formulas*)))
+	(when *mu-verbose*
+	  (format t "~:{~%b~a represents constraint ~a~}"
+	    (mapcar #'(lambda (x) (list (gethash x *pvs-bdd-hash*) x))
+	      constraints)))))
     (let ((trm (call-next-method)))
 ;       (unless (consp trm)
 ; 	(if *build-mu-term*
@@ -857,17 +865,37 @@ time)."
 		collect (mu-mk-equiv x y))))
     (make-mu-conjunction equality-bdds)))
 
-(defun convert-pvs-to-mu-equality-with-subrangetype-in-arg (expr)
-  (if (and (variable? (args1 expr)) (variable? (args2 expr)))
-        (let* ((args1-atoms (convert-pvs-to-mu* (args1 expr)))
-	       (args2-atoms (convert-pvs-to-mu* (args2 expr)))
-	       (equalities (loop for x in args1-atoms
-			       as y in args2-atoms
-			       collect
-			  (mu-mk-equiv x y)      
-                    )))
-	(make-mu-conjunction equalities))
-	   (make-mu-variable expr)))
+(defun convert-pvs-to-mu-equality-with-subrangetype-in-arg (expr) 
+  (if (and (or (name-expr? (args1 expr))
+	       (number-expr? (args1 expr)))
+	   (or (name-expr? (args2 expr))
+	       (number-expr? (args2 expr))))
+      (let ((args1-atoms (convert-pvs-to-mu* (args1 expr)))
+	    (args2-atoms (convert-pvs-to-mu* (args2 expr))))
+	(create-mu-subrange-equalities args1-atoms args2-atoms))
+      (make-mu-variable expr)))
+
+(defun create-mu-subrange-equalities (bdd-args1 bdd-args2 &optional muform)
+  (cond ((null bdd-args1)
+	 (add-negated-bdd-var-forms muform bdd-args2))
+	((null bdd-args2)
+	 (add-negated-bdd-var-forms muform bdd-args1))
+	(t (create-mu-subrange-equalities
+	    (cdr bdd-args1) (cdr bdd-args2)
+	    (if muform
+		(make-mu-conjunction
+		 (list muform
+		       (mu-mk-equiv (car bdd-args1) (car bdd-args2))))
+		(mu-mk-equiv (car bdd-args1) (car bdd-args2)))))))
+
+(defun add-negated-bdd-var-forms (muform bdd-args)
+  (assert muform)
+  (if (null bdd-args)
+      muform
+      (add-negated-bdd-var-forms
+       (make-mu-conjunction
+	(list muform (mu-mk-not (car bdd-args))))
+       (cdr bdd-args))))
 
 
 (defun convert-pvs-to-mu-equality-with-case-args (expr rhs?)
@@ -1018,13 +1046,14 @@ time)."
     (unless bddvarid-hash
       (setf (gethash expr *pvs-bdd-hash*)
 	    (list bddvarid bddvarid-list))
-       (let (( *build-access-var*  nil))  ;; Hassen 06/14/98
-      (pushnew (cons expr (make-subrange-inclusive-formula
-			   bddvarid-list lo hi))
-	       *pvs-bdd-inclusivity-formulas*
-	       :test #'(lambda (x y)(tc-eq (car x)(car y)))))
-        )
-	bddvarid-list))
+       (when *mu-verbose*
+	(format t "~%~{b~a~^,~} represents scalar ~a of type ~a"
+	  bddvarid-list expr (type expr)))
+       (let* ((*build-access-var* nil)
+	     (incform (make-subrange-inclusive-formula bddvarid-list lo hi)))
+	(pushnew (cons expr incform) *pvs-bdd-inclusivity-formulas*
+		 :test #'tc-eq)))
+    bddvarid-list))
 
 (defun make-scalar-names (expr)
   #+pvsdebug
@@ -1068,7 +1097,7 @@ time)."
 	(pushnew (cons expr (make-scalar-inclusive-formula
 			     bddvarid (1- (length recs)) (1- len)))
 		 *pvs-bdd-inclusivity-formulas*
-		 :test #'(lambda (x y)(tc-eq (car x)(car y))))))
+		 :test #'tc-eq :key #'car)))
     (if *build-access-var*  
 	(make-binding-vars-scalar bddvarid-list) 
         (if *build-arguments* (make-argument-vars-scalar bddvarid-list) 
@@ -1161,12 +1190,12 @@ time)."
 (defun make-geq-bdd* (bdd-list num-rep)
   (if (consp num-rep)
       (if (consp (cdr num-rep))
-	  (if (eq (car num-rep) (mu-mk-true))
+	  (if (= (car num-rep) (mu-mk-true))
                (mu-mk-and  (mu-create-bool-var (car bdd-list)) 
                         (make-geq-bdd* (cdr bdd-list)(cdr num-rep)))
                (mu-mk-or (mu-create-bool-var (car bdd-list)) 
                         (make-geq-bdd* (cdr bdd-list)(cdr num-rep))))
-	  (if (eq (car num-rep) (mu-mk-true))
+	  (if (= (car num-rep) (mu-mk-true))
 	      (mu-create-bool-var  (car bdd-list))
 	      (mu-mk-true)))
       (mu-mk-true)))
@@ -1188,14 +1217,14 @@ time)."
 (defun make-leq-bdd* (bdd-list num-rep)
   (if (consp num-rep)
       (if (consp (cdr num-rep))
-	  (if (eq (car num-rep) (mu-mk-true))
+	  (if (= (car num-rep) (mu-mk-true))
               (mu-mk-or
                     (mu-mk-not (mu-create-bool-var (car bdd-list)))
                        (make-leq-bdd* (cdr bdd-list)(cdr num-rep)))
               (mu-mk-and 
                     (mu-mk-not (mu-create-bool-var (car bdd-list)))
                        (make-leq-bdd* (cdr bdd-list)(cdr num-rep))))
-	  (if (eq (car num-rep) (mu-mk-true))
+	  (if (= (car num-rep) (mu-mk-true))
 	      (mu-mk-true)
 	      (mu-mk-not (mu-create-bool-var (car bdd-list)) )))
       (mu-mk-true)))
