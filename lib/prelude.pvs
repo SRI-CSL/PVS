@@ -318,7 +318,7 @@ K_conversion[T1, T2: TYPE]: THEORY
   K_conversion(x:T1)(y:T2): T1 = x
   CONVERSION K_conversion
   
- END K
+ END K_conversion
 
 % identity simply defines the identity function.  The identity is used for
 % conversion expressions.  For example, "foo: T" is translated to
