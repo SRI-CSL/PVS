@@ -328,7 +328,7 @@
 	((iff-or-boolean-equation? expr)
 	 (bdd-equiv (translate-to-bdd* (args1 expr))
 		    (translate-to-bdd* (args2 expr))))
-	((not-expr? expr)
+	((negation? expr)
 	 (bdd-not (translate-to-bdd* (args1 expr))))
 	((branch? expr)
 	 (let ((bdd1 (translate-to-bdd* (condition expr)))
@@ -362,7 +362,7 @@
   (if (and (application? expr)
 	   (recognizer? (operator expr)))
       expr
-      (if (equality? expr)
+      (if (equation? expr)
 	  (if (unit-constructor? (args1 expr))
 	      (make-application (recognizer (args1 expr)) (args2 expr))
 	      (if (unit-constructor? (args2 expr))
