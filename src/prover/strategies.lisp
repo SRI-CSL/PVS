@@ -85,10 +85,11 @@
 	      (if rule (remhash name *rules*))
 	      (if strat (remhash name *steps*))
 	      #+lucid (record-source-file name 'strategy)
-	      (let ((old (assoc name *prover-keywords*)))
+	      (let ((old (assoc name *prover-keywords*))
+		    (has-rest? (when (memq '&rest formals) t)))
 		(if old
-		    (setf (cdr old) (make-prover-keywords formals))
-		    (push (cons name (make-prover-keywords formals))
+		    (setf (cdr old) (cons has-rest? (make-prover-keywords formals)))
+		    (push (cons name (cons has-rest? (make-prover-keywords formals)))
 				*prover-keywords*)))
 	      (add-symbol-entry name
 				(make-instance entry-type
@@ -571,7 +572,7 @@ reasoning, quantifier instantiation, skolemization, if-lifting.")
 	 (givenargs (when (listp
 			   instantiator)
 		      (cdr instantiator)))
-	 (okargs (or (assoc instcmd *prover-keywords*)
+	 (okargs (or (cddr (assq instcmd *prover-keywords*))
 		     (format t "~a is not a valid prover command" instcmd)
 		     (restore)))
 	 (instargs (append (when (and (memq :if-match okargs)

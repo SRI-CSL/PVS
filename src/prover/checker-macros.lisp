@@ -12,8 +12,12 @@
 
 (in-package 'pvs)
 
-; DAVESC
+;
+; *prover-keywords* is an alist of the form
+; (command has-rest? arg1 arg2 ...) 
+;
 (defvar *prover-keywords* nil)
+
 (defun make-prover-keywords (formals &optional result)
   (if (null formals)
       result

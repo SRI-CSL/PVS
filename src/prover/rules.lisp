@@ -20,7 +20,8 @@
 				      (if (eq (car ',optional-args) '&rest)
 					  ',optional-args
 					  '(&optional ,optional-args))))))
-	  (docstr (format nil "~s: ~%    ~a" form ,docstring)))
+	  (docstr (format nil "~s: ~%    ~a" form ,docstring))
+	  (has-rest? (when (memq '&rest ',optional-args) t)))
      (cond ((null entry)
 	    (add-symbol-entry ,name
 			      (make-instance 'rule-entry
@@ -36,8 +37,8 @@
 				'format-string ,format-string)
 			      *rulebase*)
 	    (push ,name *rulenames*)
-	    (push (cons ,name (make-prover-keywords
-			       (append ',required-args ',optional-args)))
+	    (push (cons ,name (cons has-rest? (make-prover-keywords
+			       (append ',required-args ',optional-args))))
 		  *prover-keywords*)
 	    #+lucid (record-source-file ,name 'strategy)
 	    (format t "~%Added rule ~a.~%" ,name))
@@ -52,10 +53,10 @@
 						    ,body)))
 	    (let ((old (assoc ,name *prover-keywords*)))
 	      (if old
-		  (setf (cdr old) (make-prover-keywords
-			       (append ',required-args ',optional-args)))
-		  (push (cons ,name (make-prover-keywords
-			       (append ',required-args ',optional-args)))
+		  (setf (cdr old) (cons has-rest? (make-prover-keywords
+			       (append ',required-args ',optional-args))))
+		  (push (cons ,name (cons has-rest? (make-prover-keywords
+			       (append ',required-args ',optional-args))))
 			*prover-keywords*)))
 	    #+lucid (record-source-file ,name 'strategy)
 	    (format t "~%Changed rule ~a" ,name)))))
