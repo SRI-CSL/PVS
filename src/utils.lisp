@@ -315,7 +315,8 @@
 	       (imphash (cadr (gethash libpath *imported-libraries*)))
 	       (prehash (cadr (gethash libpath *prelude-libraries*))))
 	  (if (and libpath
-		   (equal (pvs-truename libpath) (working-directory)))
+		   (equal (pvs-truename libpath)
+			  (pvs-truename *pvs-context-path*)))
 	      (gethash id *pvs-modules*)
 	      (or (and imphash (gethash id imphash))
 		  (and prehash (gethash id prehash))
@@ -2754,3 +2755,64 @@ space")
     (or (gethash elt *dependent-type-substitutions*)
 	(setf (gethash elt *dependent-type-substitutions*)
 	      (substit obj alist)))))
+
+(defmethod lift-predicates-in-quantifier ((ex forall-expr) &optional exclude)
+  (multiple-value-bind (nbindings preds)
+      (collect-bindings-predicates (bindings ex) exclude)
+    (if preds
+	(copy ex
+	  'bindings nbindings
+	  'expression (make!-implication
+		       (make!-conjunction* preds)
+		       (substit (expression ex)
+			 (pairlis (bindings ex) nbindings))))
+	ex)))
+
+(defmethod lift-predicates-in-quantifier ((ex exists-expr) &optional exclude)
+  (multiple-value-bind (nbindings preds)
+      (collect-bindings-predicates (bindings ex) exclude)
+    (if preds
+	(copy ex
+	  'bindings nbindings
+	  'expression (make!-conjunction
+		       (make!-conjunction* preds)
+		       (substit (expression ex)
+			 (pairlis (bindings ex) nbindings))))
+	ex)))
+
+(defmethod lift-predicates-in-quantifier ((ex expr) &optional exclude)
+  ex)
+
+(defun collect-bindings-predicates (bindings exclude &optional nbindings preds)
+  (if (null bindings)
+      (values (nreverse nbindings)
+	      (apply #'nconc (nreverse preds)))
+      (multiple-value-bind (nbinding npreds)
+	  (collect-binding-predicates (car bindings)
+				      (if (listp exclude)
+					  exclude
+					  (list exclude)))
+	(collect-bindings-predicates
+	 (if (eq nbinding (car bindings))
+	     (cdr bindings)
+	     (substit (cdr bindings) (acons (car bindings) nbinding nil)))
+	 exclude
+	 (cons nbinding nbindings)
+	 (cons npreds preds)))))
+
+(defun collect-binding-predicates (binding exclude)
+  (let* ((etype (find-if #'(lambda (ety)
+			     (compatible? (type binding) ety))
+		  exclude))
+	 (type (if etype
+		   (compatible-type etype (type binding))
+		   (find-supertype (type binding)))))
+    (if (eq type (type binding))
+	(values binding nil)
+	(let* ((nbd (make!-bind-decl (id binding) type))
+	       (nvar (make-variable-expr nbd))
+	       (preds (collect-predicates (type binding) type nvar)))
+	  (values nbd preds)))))
+
+(defmethod collect-predicates (subtype supertype expr)
+  (compatible-preds supertype subtype expr))
