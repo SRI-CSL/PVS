@@ -1711,7 +1711,7 @@ See also EXTENSIONALITY."
     (if (adt? (find-supertype type))
 	(if (subtype? type)
 	    (if (recognizer? (predicate type))
-		(let ((name (format nil "~a_~a_eta~@[[~a]~]"
+		(let ((name (format nil "~a_~a_eta~@[[~{~a~^, ~}]~]"
 			 (id (find-supertype type))
 			 (op-to-id (constructor (predicate type)))
 			 (actuals (module-instance (supertype type))))))
