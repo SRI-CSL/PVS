@@ -74,7 +74,7 @@ intervenes."
 (defvar *pvs-error* nil)
 (defvar in-pvs-emacs-eval nil)
 (defvar *default-char-width* 80)
-(defvar pvs-message-delay 500
+(defvar pvs-message-delay 300
   "Time for which a PVS message is displayed, in milliseconds")
 
 (defvar pvs-gc-end-regexp nil)
@@ -440,8 +440,8 @@ window."
       (set-buffer buffer)
       (insert-file-contents file)
       (set-buffer-modified-p nil)))
-  (ilisp-show-output (get-buffer buffer))
   (save-excursion
+    (ilisp-show-output (get-buffer buffer)))
     (set-buffer buffer)
     (when noninteractive
       (when pvs-validating
@@ -449,7 +449,7 @@ window."
 	(terpri))
       (when (> pvs-verbose 1)
 	(princ (buffer-string) 'external-debugging-output)
-	(terpri 'external-debugging-output))))
+	(terpri 'external-debugging-output)))
   file)
   
 
@@ -524,7 +524,7 @@ window."
 		 (with-output-to-temp-buffer bufname
 		   (set-buffer bufname)
 		   (insert-file-contents file nil))
-		 (let ((rh (substitute-command-keys "\\[ilisp-bury-output]")) 
+		 (let ((rh (substitute-command-keys "\\[pvs-bury-output]")) 
 		       (s (substitute-command-keys "\\[ilisp-scroll-output]")))
 		   (message
 		    (format 
@@ -725,7 +725,7 @@ let the user decide what to do."
 		      (funcall
 		       (ilisp-temp-buffer-show-function)
 		       buffer)
-		      (ilisp-bury-output))
+		      (pvs-bury-output))
 		  t)
 		(save-excursion
 		  (set-buffer (get-buffer-create "*Errors*"))
@@ -1054,7 +1054,7 @@ is emptied."
   (if (ilisp-process)
       (if (not (y-or-n-p "Reset PVS? "))
 	  (message "")
-	  (ilisp-bury-output)
+	  (pvs-bury-output)
 	  (message "Resetting PVS")
 	  (when pvs-in-checker
 	    (comint-simple-send (ilisp-process) (format "(quit)y\nno")))
@@ -1255,4 +1255,13 @@ Returns nil if there isn't one longer than `completion-min-length'."
 (eval-after-load "completion" '(pvs-set-completion-functions))
 
 (pvs-set-completion-functions)
-)
+
+) ;; end of when emacs19 < 19.31
+
+
+(defun pvs-bury-output ()
+  "Bury all temporary windows"
+  (interactive)
+  (ilisp-bury-output)
+  (ilisp-bury-output "PVS Error")
+  (ilisp-bury-output "*Completions*"))

@@ -36,7 +36,7 @@
     (define-key pvs-view-mode-map "\C-x\C-s" 'save-pvs-buffer)
     (define-key pvs-view-mode-map "\C-x\C-w" 'save-pvs-buffer)
     ;;(define-key pvs-view-mode-map "\C-z" (make-keymap))
-    (define-key pvs-view-mode-map "\C-z1" 'ilisp-bury-output)
+    (define-key pvs-view-mode-map "\C-z1" 'pvs-bury-output)
     (define-key pvs-view-mode-map "\C-zv" 'ilisp-scroll-output)
     (define-key pvs-view-mode-map "\C-zg" 'ilisp-grow-output)
     )

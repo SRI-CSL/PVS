@@ -139,7 +139,7 @@ PVS are automatically put in the proper mode."
       (let ((v (completing-read query
 				(mapcar '(lambda (x) (list (cdr x))) items)
 				nil t)))
-	(ilisp-bury-output)
+	(pvs-bury-output)
 	v))))
 
 

@@ -78,7 +78,7 @@
 The parse command parses the PVS file in the current buffer.  With an
 argument, it forces reparsing of the file."
   (interactive (list (current-pvs-file)))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (save-some-pvs-buffers)
   (pvs-send (format "(parse-file \"%s\" %s)"
 		filename (and current-prefix-arg t))
@@ -128,7 +128,7 @@ reparsing and retypechecking of the entire importchain."
 (defun pvs-typecheck-file (filename prove-tccs-p importchain-p cmd)
   (save-some-pvs-buffers)
   (cond ((file-exists-p (pvs-file-name filename))
-	 (ilisp-bury-output)
+	 (pvs-bury-output)
 	 (pvs-send (format "(typecheck-file \"%s\" %s %s %s)"
 		       filename (and current-prefix-arg t)
 		       prove-tccs-p importchain-p)
@@ -155,7 +155,7 @@ The prettyprint-region command prettyprints all the declarations that are
 (partially) contained in the specified region.  Use undo (C-x u or C-_) or
 M-x revert-buffer to return to the old version."
   (interactive "r")
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let ((filename (current-pvs-file)))
     (save-pvs-file filename)
       (save-excursion
@@ -182,7 +182,7 @@ The prettyprint-theory command prettyprints the specified theory and
 replaces the old theory in the current buffer.  Can use undo (C-x u or
 C-_) or M-x revert-buffer to return to the old version."
   (interactive (complete-theory-name "Prettyprint theory name: "))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (save-some-pvs-buffers t)
   (let ((file (when (member-equal theoryname (buffer-theories))
 		(current-pvs-file))))
@@ -204,7 +204,7 @@ The prettyprint-pvs-file command prettyprints the PVS file in the current
 buffer.  The buffer is modified to show the prettyprinted version.  Use
 undo (C-x u or C-_) or M-x revert-buffer to return to the old version."
   (interactive (list (current-pvs-file)))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (save-pvs-file filename)
   (pvs-send-and-wait (format "(prettyprint-pvs-file \"%s\")" filename)
 		     "Prettyprinting"
@@ -246,7 +246,7 @@ displayed TCCs or other formulas may be initiated in the usual way, simply
 by moving the cursor to the formula to be proved and invoking the prove
 command."
   (interactive (complete-theory-name "Prettyprint-expanded theory named: "))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (message "Creating the %s.ppe buffer..." theory)
   (pvs-send-and-wait (format "(prettyprint-expanded \"%s\")" theory)
 		     nil (pvs-get-abbreviation 'prettyprint-expanded)
@@ -288,7 +288,7 @@ to be proved and invoking the prove command."
 (defpvs show-theory-warnings theory-status (theoryname)
   "Displays the warnings associated with THEORYNAME"
   (interactive (complete-theory-name "Show warnings of theory named: "))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (pvs-send-and-wait (format "(show-theory-warnings \"%s\")" theoryname) nil
 		     (pvs-get-abbreviation 'show-theory-warnings)
 		     'dont-care))
@@ -296,7 +296,7 @@ to be proved and invoking the prove command."
 (defpvs show-pvs-file-warnings theory-status (filename)
   "Displays the warnings associated with FILENAME"
   (interactive (complete-pvs-file-name "Show warnings of PVS file named: "))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (pvs-send-and-wait (format "(show-pvs-file-warnings \"%s\")" filename) nil
 		     (pvs-get-abbreviation 'show-pvs-file-warnings)
 		     'dont-care))
@@ -304,7 +304,7 @@ to be proved and invoking the prove command."
 (defpvs show-theory-messages theory-status (theoryname)
   "Displays the informational messages associated with THEORYNAME"
   (interactive (complete-theory-name "Show messages of theory named: "))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (pvs-send-and-wait (format "(show-theory-messages \"%s\")" theoryname) nil
 		     (pvs-get-abbreviation 'show-theory-warnings)
 		     'dont-care))
@@ -312,7 +312,7 @@ to be proved and invoking the prove command."
 (defpvs show-pvs-file-messages theory-status (filename)
   "Displays the informational messages associated with FILENAME"
   (interactive (complete-pvs-file-name "Show messages of PVS file named: "))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (pvs-send-and-wait (format "(show-pvs-file-messages \"%s\")" filename) nil
 		     (pvs-get-abbreviation 'show-pvs-file-warnings)
 		     'dont-care))
@@ -528,7 +528,7 @@ is created."
   (interactive (new-pvs-file-name "New file name: "))
   (unless (valid-theory-name theoryname)
     (error "%s is not valid as a theoryname" theoryname))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (find-file (pvs-file-name theoryname))
   (pvs-insert-theory-template theoryname nil (and current-prefix-arg t)))
 
@@ -557,7 +557,7 @@ current PVS buffer after the current theory.  With an argument, only a
 minimal skeleton is produced."
   (interactive (when (current-pvs-file)
 		 (new-theory-name "New theory name: ")))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (unless (forward-theory t)
     (goto-char (point-max))
     (insert "\n\n"))
@@ -580,7 +580,7 @@ context.  In addition, the corresponding proof file is copied."
      (cons path
 	   (new-pvs-file-name "Import to file name: "
 			      (pathname-name path) t))))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (unless (file-exists-p file)
     (error "File does not exist"))
   (setq pvs-last-import-dir (pathname-directory file))
@@ -607,7 +607,7 @@ the source; the theory is copied after the current theory in the current
 PVS buffer.  It is an error to invoke this command from any buffer other
 than a '.pvs' buffer."
   (interactive)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let* ((file (current-pvs-file))
 	 (fromfile (read-file-name "Import theory from file: "
 				   pvs-last-import-dir nil t))
@@ -935,7 +935,7 @@ ESC or `q' to not overwrite any of the remaining files,
 		   (pvs-msg "%s is not a directory!" ndir))
 		  (t (pvs-msg "Skipping %s" fname)))))
 	(goto-char (point-min)))
-      (ilisp-bury-output)
+      (pvs-bury-output)
       (pvs-msg "Finished undumping %s" filename)
       (kill-buffer buf))))
 
@@ -971,10 +971,10 @@ ESC or `q' to not overwrite any of the remaining files,
 				   (princ prompt))
 				 (prog1 (yes-or-no-p
 					 "Use a different directory? ")
-				   (ilisp-bury-output)))
+				   (pvs-bury-output)))
 				(t (prog1
 				       (yes-or-no-p prompt)
-				     (ilisp-bury-output))))))
+				     (pvs-bury-output))))))
 		   (setq ldir (short-file-name
 			       (read-file-name "New directory to use: "
 					       (pvs-current-directory)))))
@@ -1014,7 +1014,7 @@ for any reason, then the current PVS context is not changed."
 	(error "Directory does not exist")))
   (unless (file-directory-p dir)
     (error "Must specify a directory, not a file"))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (save-some-pvs-files)
   (setq dir (expand-file-name dir))
   (unless (string-match "/$" dir)
@@ -1105,7 +1105,7 @@ if necessary)."
     (unless (file-directory-p dir)
       (error "Must specify an existing directory"))
     (confirm-not-in-checker)
-    (ilisp-bury-output)
+    (pvs-bury-output)
     (save-some-pvs-files)
     (unless (string-match "/$" dir)
       (setq dir (concat dir "/")))
@@ -1122,7 +1122,7 @@ guarantee that no theories depend on the removed library.  Note that the
 built-in prelude may not be removed this way."
   (interactive (pvs-complete-prelude-library))
   (confirm-not-in-checker)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (save-some-pvs-files)
   (setq dir (expand-file-name dir))
   (unless (string-match "/$" dir)
@@ -1311,7 +1311,7 @@ buffer."
 The status-theory command provides a description of the status of the
 specified theory in the minibuffer."
   (interactive (complete-theory-name "Status of theory named: "))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (pvs-send-and-wait (format "(status-theory \"%s\")" theory) nil
 		     (pvs-get-abbreviation 'status-theory)
 		     'dont-care))
@@ -1324,7 +1324,7 @@ PVS Status buffer
 The status-pvs-file command provides a description of the status of each
 theory within the PVS file in the PVS Status buffer."
   (interactive (complete-pvs-file-name "Status of PVS file named: "))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (pvs-send-and-wait (format "(status-pvs-file \"%s\")" filename)
 		     nil (pvs-get-abbreviation 'status-pvs-file)
 		     'dont-care))
@@ -1362,7 +1362,7 @@ attempted.  Unfinished means that the proof has been attempted, but is not
 complete.  Unchecked means that the proof was successful at one point, but
 that some changes have been made that may invalidate the proof."
   (interactive)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
 	 (filename (car name-and-origin))
 	 (origin (cadr name-and-origin)))
@@ -1420,7 +1420,7 @@ analyses the formulas used in the proof to insure that the proof is
 complete; lemmas used in the proof are proved, and sound, i.e. there are
 no circularities."
   (interactive)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
 	 (filename (car name-and-origin))
 	 (origin (cadr name-and-origin)))
@@ -1596,7 +1596,7 @@ context."
 (defun typecheck-formula (formula-decl &optional theory-name)
   (let ((*pvs-error* nil)
 	(tname (or theory-name (current-theory))))
-    (ilisp-bury-output)
+    (pvs-bury-output)
     (pvs-busy)
     (pvs-send-and-wait (format "(typecheck-formula-decl \"%s\" %s)"
 			   formula-decl (when tname (format "\"%s\"" tname)))

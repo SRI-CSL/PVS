@@ -64,7 +64,7 @@ starting a new proof will not delete the old proof unless you allow the
 prover to overwrite it at the end of the proof session."
   (interactive)
   (confirm-not-in-checker)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
 	 (name (car name-and-origin))
 	 (origin (cadr name-and-origin)))
@@ -107,7 +107,7 @@ has already been proved, and automatically runs any proof associated with
 the formula.  With an argument, runs the proof in the background."
   (interactive)
   (confirm-not-in-checker)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
 	 (name (car name-and-origin))
 	 (origin (cadr name-and-origin)))
@@ -156,7 +156,7 @@ starting a new proof will not delete the old proof unless you allow the
 prover to overwrite it at the end of the proof session."
   (interactive)
   (confirm-not-in-checker)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
 	 (name (car name-and-origin))
 	 (origin (cadr name-and-origin))
@@ -190,7 +190,7 @@ all proof scripts, including those already proved."
   (interactive (complete-theory-name "Prove theory named: "))
   (confirm-not-in-checker)
   (save-some-pvs-buffers)
-  ;;; (ilisp-bury-output)
+  ;;; (pvs-bury-output)
   (pvs-send (format "(prove-theory \"%s\" %s %s)"
 		theory (and current-prefix-arg t)
 		(when (equal theory (current-theory))
@@ -220,7 +220,7 @@ associated proof script.  With an argument (e.g., C-u or M-0) will rerun
 all proof scripts, including those already proved."
   (interactive (complete-pvs-file-name "Prove PVS file named: "))
   (confirm-not-in-checker)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (save-some-pvs-buffers)
   (pvs-send (format "(prove-pvs-file \"%s\" %s)"
 		file (and current-prefix-arg t))
@@ -269,7 +269,7 @@ specified formula.  With an argument (e.g., C-u or M-0) will rerun all
 proof scripts, including those already proved."
   (interactive)
   (confirm-not-in-checker)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
 	 (name (car name-and-origin))
 	 (origin (cadr name-and-origin)))
@@ -290,7 +290,7 @@ all proof scripts, including those already proved."
   (interactive (complete-theory-name "Prove theory named: "))
   (confirm-not-in-checker)
   (save-some-pvs-buffers)
-  ;;; (ilisp-bury-output)
+  ;;; (pvs-bury-output)
   (pvs-send (format "(prove-theory \"%s\" %s %s t)"
 		theory (and current-prefix-arg t)
 		(when (equal theory (current-theory))
@@ -320,7 +320,7 @@ associated proof script.  With an argument (e.g., C-u or M-0) will rerun
 all proof scripts, including those already proved."
   (interactive (complete-pvs-file-name "Prove PVS file named: "))
   (confirm-not-in-checker)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (save-some-pvs-buffers)
   (pvs-send (format "(prove-pvs-file \"%s\" %s t)"
 		file (and current-prefix-arg t))
@@ -368,7 +368,7 @@ specified formula.  With an argument (e.g., C-u or M-0) will rerun all
 proof scripts, including those already proved."
   (interactive)
   (confirm-not-in-checker)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
 	 (name (car name-and-origin))
 	 (origin (cadr name-and-origin)))
@@ -507,7 +507,7 @@ current cursor position.  The current buffer must be a PVS buffer, a TCC
 buffer, a ppe buffer, or a prelude (file or theory) buffer.  See the
 documentation for edit-proof-mode for more information."
   (interactive)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
 	 (name (car name-and-origin))
 	 (origin (cadr name-and-origin)))
@@ -846,7 +846,7 @@ buffer; when finished, type C-c C-c to install the new declaration(s).  If
 there is a typecheck error, the error will be displayed and the
 declarations will not be installed."
   (interactive)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let ((file (current-pvs-file)))
     (when (buffer-modified-p (get-file-buffer file))
       (error "%s is not parsed" file))
@@ -865,7 +865,7 @@ declarations will not be installed."
 
 (defun install-add-declaration ()
   "Installs the edited declarations."
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (cond ((get-buffer "Add Declaration")
 	 (save-excursion
 	   (set-buffer "Add Declaration")
@@ -942,7 +942,7 @@ The modify-declaration command creates a new buffer containing the
 declaration at the cursor.  The body of the declaration may be edited, and
 will replace the original when C-c C-c is typed."
   (interactive)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let ((file (current-pvs-file)))
     (when (buffer-modified-p (get-file-buffer file))
       (error "~a is not parsed" file))
@@ -960,7 +960,7 @@ will replace the original when C-c C-c is typed."
 
 (defun install-modified-declaration ()
   "Installs the modified declaration"
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (cond ((get-buffer "Modify Declaration")
 	 (save-excursion
 	   (set-buffer "Modify Declaration")
@@ -1156,7 +1156,7 @@ If it is 0 (zero), then the whole formula is printed."
 debugging."
   (interactive)
   (confirm-not-in-checker)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
 	 (name (car name-and-origin))
 	 (origin (cadr name-and-origin)))
@@ -1463,7 +1463,7 @@ Letters do not insert themselves; instead, they are commands:
 
 (defpvs display-proofs-formula browse ()
   (interactive)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
 	 (name (car name-and-origin))
 	 (origin (cadr name-and-origin))
@@ -1477,7 +1477,7 @@ Letters do not insert themselves; instead, they are commands:
 (defpvs display-proofs-theory browse (theoryname)
   "Show the proofs for all formulas of the specified theory"
   (interactive (complete-theory-name "Show proofs for theory named: "))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (pvs-send-and-wait (format "(display-proofs-theory \"%s\")" theoryname)
 		     nil (pvs-get-abbreviation 'display-proofs-theory)
 		     'dont-care))
@@ -1485,7 +1485,7 @@ Letters do not insert themselves; instead, they are commands:
 (defpvs display-proofs-pvs-file browse (filename)
   "Show the proofs for all formulas of the specified PVS file"
   (interactive (complete-pvs-file-name "Show proofs for PVS file named: "))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (pvs-send-and-wait (format "(display-proofs-pvs-file \"%s\")" filename)
 		     nil (pvs-get-abbreviation 'display-proofs-pvs-file)
 		     'dont-care))

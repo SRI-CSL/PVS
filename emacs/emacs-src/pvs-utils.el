@@ -623,13 +623,13 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 (defun pvs-complete-file-name (prompt &optional defdir)
   "Perform completion on file names"
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let* ((dir (or defdir (pvs-current-directory)))
 	 (default-directory dir))
     (list (read-file-name prompt dir dir t))))
 
 (defun pvs-complete-library-name (prompt &optional distributed-p)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let* ((lfiles (relativize-pvs-filenames
 		  (pvs-send-and-wait "(library-files)" nil nil 'list)))
 	 (ldirs (delete-duplicates (mapcar 'file-name-directory lfiles)
@@ -647,7 +647,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 (defvar pvs-library-file-and-place nil)
 
 (defun pvs-complete-library-theory-name (prompt)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let ((theories
 	 (mapcar '(lambda (tf)
 		    (list (relativize-pvs-filename (car tf))
@@ -701,7 +701,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 (defun complete-pvs-file-name (prompt &optional no-default-p dir no-timeout
 				      with-prelude-p)
   "Perform completion on PVS file names"
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (pvs-current-directory)
   (let ((file-list (append (context-files (or dir *pvs-current-directory*))
 			   (when with-prelude-p
@@ -728,7 +728,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 (defun complete-pvs-file-name-in-dir (prompt dir &optional no-timeout)
   "Perform completion on PVS file names in the specified directory"
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let ((file-list (context-files dir)))
     (if (eq file-list 'NIL)
 	(error "No files in context")
@@ -767,7 +767,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 (defun complete-theory-name (prompt &optional no-timeout with-prelude-p)
   "Perform completion on PVS theories"
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (let ((default (or (current-theory)
 		     (and with-prelude-p
 			  pvs-prelude
@@ -803,7 +803,7 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 (defun complete-theory-name-in-buffer (prompt)
   "Perform completion on PVS theories in current buffer."
-  (ilisp-bury-output)  
+  (pvs-bury-output)  
   (let ((theories (buffer-theories)))
     (if (null theories)
 	(error "No theories available.")

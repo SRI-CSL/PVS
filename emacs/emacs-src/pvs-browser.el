@@ -78,7 +78,7 @@ or the resolution determined by the typechecker for an overloaded name."
 	  (line (+ (current-line-number) prelude-offset)))
      (list bufname origin line (real-current-column))))
   (save-some-pvs-files)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (if (member-equal origin '("tccs" "ppe"))
       (message
        "The show-declaration command is not available in this buffer.")
@@ -102,7 +102,7 @@ declaration."
 	  (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
 	  (line (+ (current-line-number) prelude-offset)))
      (list bufname origin line (real-current-column))))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (save-some-pvs-files)
   (pvs-send-and-wait (format "(goto-declaration \"%s\" \"%s\" '(%d %d))"
 			 bufname origin line (real-current-column))
@@ -151,7 +151,7 @@ and removes the declaration buffer."
 	  (line (+ (current-line-number) prelude-offset)))
      (list bufname origin line (real-current-column))))
   (save-some-pvs-files)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (if (member-equal origin '("tccs" "ppe"))
       (message
        "The show-declaration command is not available in this buffer.")
@@ -289,7 +289,7 @@ Returns to Declaration List when done."
 (defun pvs-browse-quit ()
   (interactive)
   (remove-buffer (current-buffer))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   )
 
 (defun pvs-browse-help ()
@@ -332,7 +332,7 @@ or the resolution determined by the typechecker for an overloaded name."
 	  (line (+ (current-line-number) prelude-offset)))
      (list bufname origin line (real-current-column))))
   (save-some-pvs-files)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (if (member-equal origin '("tccs" "ppe"))
       (message
        "The usedby-proofs command is not available in this buffer.")
