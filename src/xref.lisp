@@ -300,7 +300,10 @@
 (defmethod generate-xref ((a actual))
   (if (type-value a)
       (generate-xref (type-value a))
-      (generate-xref (expr a))))
+      (if (and (name-expr? (expr a))
+	       (module? (declaration (expr a))))
+	  (generate-xref (car (resolutions (expr a))))
+	  (generate-xref (expr a)))))
 
 (defmethod generate-xref ((m mapping))
   (generate-xref (rhs m)))
@@ -311,7 +314,10 @@
 (defmethod generate-xref ((a mapping-rhs))
   (if (type-value a)
       (generate-xref (type-value a))
-      (generate-xref (expr a))))
+      (if (and (name-expr? (expr a))
+	       (module? (declaration (expr a))))
+	  (generate-xref (car (resolutions (expr a))))
+	  (generate-xref (expr a)))))
 
 (defmethod generate-xref ((n modname))
   (generate-xref (actuals n))
