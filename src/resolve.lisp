@@ -1728,8 +1728,7 @@
   (let ((*found-one* nil)
 	(reses (remove-if-not #'(lambda (r)
 				  (typep (find-supertype (type r)) 'funtype))
-		 (resolve name 'expr nil)))
-	)
+		 (resolve name 'expr nil))))
     (declare (special *found-one*))
     (if (let ((*ignored-conversions*
 	       (cons "K_conversion" *ignored-conversions*)))

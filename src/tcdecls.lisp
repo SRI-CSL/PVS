@@ -2299,7 +2299,20 @@
 			      (not (type ex)))
 		     (if (singleton? (types ex))
 			 (setf (type ex) (car (types ex)))
-			 (type-ambiguity ex))
+			 (let ((inst-types
+				(remove-if (complement #'fully-instantiated?)
+				  (types ex))))
+			   (cond ((singleton? inst-types)
+				  (setf (type ex) (car inst-types))
+				  (when (name-expr? ex)
+				    (setf (resolutions ex)
+					  (remove-if
+					      (complement
+					       #'(lambda (r)
+						   (tc-eq (type r)
+							  (car inst-types))))
+					    (resolutions ex)))))
+				 (t (type-ambiguity ex)))))
 		     nil))
 	       (expr decl)))
   (check-conversion-applicability decl)
@@ -2404,8 +2417,26 @@
   (declare (ignore expected kind arguments))
   (unless (typechecked? decl)
     (typecheck* (rewrite-names decl) nil nil nil))
-  (pushnew decl (auto-rewrites *current-context*))
+  (add-auto-rewrite-to-context decl)
   decl)
+
+(defun add-auto-rewrite-to-context (decl)
+  (pushnew decl (auto-rewrites *current-context*))
+  (let ((new-disabled
+	 (mapcar #'(lambda (disabled)
+		     (remove-enabled-rewrites disabled (rewrite-names decl)))
+	   (disabled-auto-rewrites *current-context*))))
+    (unless (equal new-disabled (disabled-auto-rewrites *current-context*))
+      (setf (disabled-auto-rewrites *current-context*) new-disabled))))  
+
+(defun remove-enabled-rewrites (disabled names)
+  (let ((diff (remove-if #'(lambda (rname)
+			     (member rname names :test #'tc-eq))
+		  (rewrite-names disabled))))
+    (if (eq diff (rewrite-names disabled))
+	disabled
+	(copy disabled 'rewrite-names diff))))
+
 
 (defmethod typecheck* ((decl auto-rewrite-minus-decl) expected kind arguments)
   (declare (ignore expected kind arguments))

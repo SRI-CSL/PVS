@@ -802,7 +802,10 @@
 (defun prove-tcc (decl)
   (unless (and (default-proof decl)
 	       (proved? decl))
-    (unless (default-proof decl)
+    (unless (and (default-proof decl)
+		 (not (or (null (script (default-proof decl)))
+			  (equal (script (default-proof decl))
+				 '("" (postpone) nil nil)))))
       (make-default-proof decl (tcc-strategy decl))
       (setq *justifications-changed?* t))
     (let* ((*proving-tcc* 'TCC)
@@ -1546,11 +1549,12 @@
 	(ppe (let* ((theories (ppe-form (get-theory name)))
 		    (typespec (formula-typespec unproved?))
 		    (decl (get-decl-at line typespec theories)))
-	       (values (find-if #'(lambda (d)
-				    (and (formula-decl? d)
-					 (eq (id d) (id decl))))
-			 (all-decls (get-theory name)))
-		       (place decl))))
+	       (when decl
+		 (values (find-if #'(lambda (d)
+				      (and (formula-decl? d)
+					   (eq (id d) (id decl))))
+			   (all-decls (get-theory name)))
+			 (place decl)))))
 	(tccs (let* ((theory (get-theory name))
 		     (decls
 		      (if declname
@@ -1561,11 +1565,12 @@
 					     (or (null unproved?)
 						 (unproved? d))))
 			     decls)))
-		(values (find-if #'(lambda (d) (and (eq (module d) theory)
-						    (formula-decl? d)
-						    (eq (id d) (id decl))))
-			  (all-decls theory))
-			(place decl))))
+		(when decl
+		  (values (find-if #'(lambda (d) (and (eq (module d) theory)
+						      (formula-decl? d)
+						      (eq (id d) (id decl))))
+			    (all-decls theory))
+			  (place decl)))))
 	(prelude (let* ((theory (get-theory name))
 			(theories (if (and theory (generated-by theory))
 				      (list theory)
@@ -1648,7 +1653,9 @@
 			t 'no))
 	       'no))
 	  (unproved? (pvs-message "No more unproved formulas below"))
-	  (t (pvs-message "Not at a formula declaration")))))
+	  (t (pvs-message
+		 "Not at a formula declaration~@[ - ~a buffer may be invalid~]"
+	       (car (member (intern (string-downcase origin)) '(tccs ppe))))))))
 
 (defun prove-formula (theoryname formname rerun?)
   (let ((theory (get-typechecked-theory theoryname)))
@@ -2596,6 +2603,8 @@
 
 (defvar *prove-formula-proof* nil)
 
+(defvar *prove-formula-proved?* nil)
+
 (defun prove-formula-decl (formula-decl &optional theory-name strategy)
   (let* ((*to-emacs* t)
 	 (*current-theory* (if theory-name
@@ -2635,6 +2644,8 @@
     (unwind-protect
 	(let ((proof (prove-decl fdecl :strategy (when strategy
 						   '(then (rerun) (quit))))))
+	  (setq *prove-formula-proved?*
+		(eq (status-flag proof) '!))
 	  (setq *prove-formula-proof*
 		(editable-justification
 		 (extract-justification-sexp (justification proof)))))
