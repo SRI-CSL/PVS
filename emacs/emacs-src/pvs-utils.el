@@ -1482,8 +1482,8 @@ Point will be on the offending delimiter."
 			   (let ((pos (position exp expected-list
 						:test 'equal)))
 			     (case pos
-			       (0 "1st") (1 "2nd") (2 "3rd")
-			       (t (format "%dth" (+ pos 1)))))))
+			       (0 " 1st") (1 " 2nd") (2 " 3rd")
+			       (t (format " %dth" (+ pos 1)))))))
 		     (let ((foundit nil))
 		       (save-excursion
 			 (goto-char (point-min))
@@ -1504,8 +1504,8 @@ Point will be on the offending delimiter."
 			   (let ((pos (position exp unexpected-list
 						:test 'equal)))
 			     (case pos
-			       (0 "1st") (1 "2nd") (2 "3rd")
-			       (t (format "%dth" (+ pos 1)))))))
+			       (0 " 1st") (1 " 2nd") (2 " 3rd")
+			       (t (format " %dth" (+ pos 1)))))))
 		     (let ((foundit nil))
 		       (save-excursion
 			 (goto-char (point-min))
