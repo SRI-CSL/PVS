@@ -751,7 +751,8 @@
 		    (concatenate 'string libstr "/"))))
     (if (file-exists-p dirstr)
 	(pathname-to-libref dirstr)
-	(values nil "Directory ~a does not exist" libstr))))
+	(or (libref-to-pathname dirstr)
+	    (values nil "Directory ~a does not exist" libstr)))))
 
 
 (defmethod get-library-reference ((libid symbol))
