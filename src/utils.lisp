@@ -2850,3 +2850,7 @@ space")
   (with-slots (resolutions) expr
     (assert (singleton? resolutions))
     (typep (declaration (car resolutions)) '(or var-decl binding))))
+
+(defmethod variable? (expr)
+  (declare (ignore expr))
+  nil)
