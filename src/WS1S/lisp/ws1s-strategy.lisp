@@ -3,28 +3,38 @@
 (defvar *output-examples* nil)
 (defvar *output-automaton* nil)
 (defvar *output-traces* nil)
-(defvar *babble* nil)
 
+(defstep ws1s (&optional (fnums *) (examples T) (automaton nil) (traces nil))
+  (let ((cuth *current-theory*)
+	(cuthstr (string (id cuth))))
+    (then* (skolem!)
+	   (auto-rewrite-defs cuthstr :always? !!)
+	   (stop-rewrite "the")
+	   (rewrite-msg-off)
+	   (assert :cases-rewrite? T)
+	   (ws1s-simp fnums examples automaton traces)))
+  "Expands definitions in the formulas specified by FNUMS and tries to decide then
+   using the WS1S decision procedures (based on the Mona package developed
+   at BRICS (http://www.brics.dk/~mona).  If EXAMPLES is true a witness
+   is being displayed if these formulas turn out to be satisfiable put not
+   valid, setting the flag AUTOMATON causes the procedure to display the
+   constructed automaton, TRACES displays a trace version of the witness."
+  "By rewriting and WS1S decision procedure")
 
-(addrule 'ws1s nil ((fnums *) (examples T) (automaton nil) (traces nil) (babble nil))
-	 (ws1s-step fnums examples automaton traces babble)
+(addrule 'ws1s-simp nil ((fnums *) (examples T) (automaton nil) (traces nil))
+	 (ws1s-step fnums examples automaton traces)
 	 "WS1S Decision Procedure.")
 
-(defun ws1s-message (format-string &rest args)
-  (when *babble*
-    (apply #'format-if (cons format-string args))))
-
-(defun ws1s-step (fnums examples automaton traces babble)
+(defun ws1s-step (fnums examples automaton traces)
   #'(lambda (ps)
       (let* ((*output-examples* examples)
 	     (*output-automaton* automaton)
 	     (*output-traces* traces)
-	     (*babble* babble)
 	     (sforms (s-forms (current-goal ps)))
 	     (selected-sforms (select-seq sforms fnums))
 	     (remaining-sforms (delete-seq sforms fnums)))
 	(declare (special *output-examples* *output-automaton*
-			  *output-traces*) *babble*)
+			  *output-traces*))
 	(multiple-value-bind (signal newform)
 	    (ws1s-sforms selected-sforms)
 	  (case signal
@@ -67,6 +77,8 @@
 					 (t fmla))))
 		      (ws1s-output fmla newfmla)
 		      (when (and (not (eq newfmla *true*)) (not (eq newfmla *false*)))
+			(ws1s-example-output "Counterexample: "
+					     counterex length-of-counterex num types fvars)
 			(ws1s-example-output "Witness: "
 					     witness length-of-witness num types fvars))
 		      (ws1s-automaton-output conj num fvars offsets)

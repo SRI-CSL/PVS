@@ -13,28 +13,14 @@
 
 (defun fml-to-dfa-init ()
   (symtab-init)
-  (fml-to-dfa-hash-init)
-  (known-judgements-hash-init)
-  (unfold1-hash-init))
+  (fml-to-dfa-hash-init))
 
 (defvar *fml-to-dfa-table* nil)
-(defvar *unfold1-table* nil)
-(defvar *known-judgements* nil)
 
 (defun fml-to-dfa-hash-init ()
   (if *fml-to-dfa-table*
       (clrhash *fml-to-dfa-table*)
     (setf *fml-to-dfa-table* (make-hash-table :test 'eq))))
-
-(defun unfold1-hash-init ()
-  (if *unfold1-table*
-      (clrhash *unfold1-table*)
-    (setf *unfold1-table* (make-hash-table :test 'eq))))
-
-(defun known-judgements-hash-init ()
-  (if *known-judgements*
-      (clrhash *known-judgements*)
-    (setf *known-judgements* (make-hash-table :test 'eq))))
 
 ; Translation of Formulas
 
@@ -50,17 +36,14 @@
 	     dfa))))
        
 (defmethod fml-to-dfa* ((fml expr))
-  (let ((expanded-fml (unfold1 fml)))
-    (cond ((not (eq fml expanded-fml))  
-	   (fml-to-dfa expanded-fml))
-	  ((shielding? fml)
-	   (ws1s-message "~%Formula ~a is shielding. Giving up..." fml)
-	   (throw 'not-ws1s-translatable nil))
-	  (t (multiple-value-bind (i signal)
-		 (symtab-index fml)
-	       (when (eq signal :new)
-		 (ws1s-message "~%New Boolean parameter for ~a" fml))
-	       (dfa-var0 i))))))
+  (cond ((shielding? fml)
+	 (error-format-if "~%Formula ~a is shielding. Giving up..." fml)
+	 (throw 'not-ws1s-translatable nil))
+	(t (multiple-value-bind (i signal)
+	       (symtab-index fml)
+	     (when (eq signal :new)
+	       (error-format-if "~%New Boolean parameter for ~a" fml))
+	     (dfa-var0 i)))))
 
 (defmethod fml-to-dfa* ((fml name-expr))
   (cond ((tc-eq fml *true*)
@@ -70,6 +53,7 @@
 	((var0? fml)              
 	 (dfa-var0 (symtab-index fml)))
 	(t
+	 (error-format-if "Name ~a not translatable" fml)
 	 (call-next-method))))
 
 (defmethod fml-to-dfa* ((fml negation))
@@ -125,7 +109,9 @@
 	   (process-binrel1 lhs rhs #'dfa-eq1))
 	  ((and (2nd-order? lhs) (2nd-order? rhs))
 	   (process-binrel2 lhs rhs #'dfa-eq2))
-	  (t (call-next-method)))))
+	  (t
+	   (error-format-if "Equation ~a not translatable" fml)
+	   (call-next-method)))))
 
 (defmethod fml-to-dfa* ((fml disequation))
   (let ((lhs (args1 fml))
@@ -134,7 +120,9 @@
 	   (dfa-negation (process-binrel1 lhs rhs #'dfa-eq1)))
 	  ((and (2nd-order? lhs) (2nd-order? rhs))
 	   (dfa-negation (process-binrel2 lhs rhs #'dfa-eq2)))
-	  (t (call-next-method)))))
+	  (t
+	   (error-format-if "Disequation ~a not translatable" fml)
+	   (call-next-method)))))
 
 (defmethod fml-to-dfa* ((fml application))
   (let ((op (operator fml))
@@ -154,8 +142,12 @@
 		  (process-binrel1 (first args) (second args) #'dfa-lesseq))
 		 ((is? op '|>=| '|reals|)
 		  (process-binrel1 (second args) (first args) #'dfa-lesseq))
-		 (t (call-next-method))))
-	  (t (call-next-method)))))
+		 (t
+		  (error-format-if "1st-order application ~a not translatable" fml)
+		  (call-next-method))))
+	  (t
+	   (error-format-if "Application ~a not translatable" fml)
+	   (call-next-method)))))
 
 (defmethod fml-to-dfa* ((fml forall-expr))
   (multiple-value-bind (vars types preds)
@@ -225,28 +217,25 @@
   (fset-to-dfa* trm))
 
 (defmethod fset-to-dfa* ((trm expr))
-  (let ((new-trm (unfold1 trm)))
-    (if (not (eq trm new-trm)) 
-	(multiple-value-bind (i xs a)
-	    (fset-to-dfa new-trm)
-	  (values i xs a))
-      (if (shielding? trm)
-	  (progn
-	    (ws1s-message "~%2nd-order term ~a
+  (if (shielding? trm)
+      (progn
+	(error-format-if "~%2nd-order term ~a
                             is shielding and can thus not be abstracted. Giving up..." trm)
-	    (throw 'not-ws1s-translatable nil))
-	(multiple-value-bind (i signal)
-	    (symtab-index trm)
-	  (when (eq signal :new)
-	    (ws1s-message "~%New 2nd-order parameter for ~a" trm))
-	  (values i nil (dfa-true-val)))))))
+	(throw 'not-ws1s-translatable nil))
+      (multiple-value-bind (i signal)
+	  (symtab-index trm)
+	(when (eq signal :new)
+	  (error-format-if "~%New 2nd-order parameter for ~a" trm))
+	(values i nil (dfa-true-val)))))
 
 (defmethod fset-to-dfa* ((trm lambda-expr))
   (unless (= (length (bindings trm)) 1)
+    (error-format-if "~a has more than one binder" trm)
     (call-next-method))
   (multiple-value-bind (x supertype preds)
       (destructure-binding (car (bindings trm)) :exclude (list *naturalnumber*))
     (unless (tc-eq supertype *naturalnumber*)
+      (error-format-if "Binding ~a is not first-order" trm)
 	(call-next-method))
     (let ((i (symtab-shadow x)))
       (unwind-protect              
@@ -262,7 +251,9 @@
 (defmethod fset-to-dfa* ((trm name-expr))
   (if (var2? trm)
       (values (symtab-index trm) nil (dfa-true-val))
-    (call-next-method)))
+    (progn
+      (error-format-if "~a is not a 2nd-order variable" trm)
+      (call-next-method))))
 
 (defmethod fset-to-dfa* ((fml branch))
   (let ((c (fml-to-dfa (condition fml))))
@@ -297,7 +288,9 @@
 		       (bs (mapcar #'fml-to-dfa preds)))			   
 		   (values j (list j) (dfa-conjunction* (cons a bs))))
 	       (symtab-unshadow)))))
-	(t (call-next-method))))
+	(t
+	 (error-format-if "Application ~a is not 2nd-order" trm)
+	 (call-next-method))))
 
 (defun the2? (trm)
   (and (is? (operator trm) '|the| '|sets|)
@@ -311,31 +304,30 @@
   (nat-to-dfa* trm))
 
 (defmethod nat-to-dfa* ((trm expr))
-  (let ((new-trm (unfold1 trm)))
-    (cond ((not (eq trm new-trm))     
-	   (multiple-value-bind (i xs a)
-	       (nat-to-dfa new-trm)
-	     (values i xs a)))
-	  ((shielding? trm)
-	   (ws1s-message "~%2nd-order term ~a is shielding and can thus not be abstracted.
+  (cond ((shielding? trm)
+	 (error-format-if "~%2nd-order term ~a is shielding and can thus not be abstracted.
                          Giving up..." trm)
-	   (throw 'not-ws1s-translatable nil))
-	  (t (multiple-value-bind (i signal)
-		 (symtab-index trm)
-	       (when (eq signal :new)
-		 (ws1s-message "~%New 1st-order parameter for ~a" trm))
-	  (values i (list i) (dfa-var1 i)))))))
+	 (throw 'not-ws1s-translatable nil))
+	(t (multiple-value-bind (i signal)
+	       (symtab-index trm)
+	     (when (eq signal :new)
+	       (error-format-if "~%New 1st-order parameter for ~a" trm))
+	     (values i (list i) (dfa-var1 i))))))
 
 (defmethod nat-to-dfa* ((trm name-expr))
   (if (var1? trm)
       (values (symtab-index trm) nil (dfa-true-val))
-    (call-next-method)))
+    (progn
+      (error-format-if "~a is not a 1st-order variable" trm)
+      (call-next-method))))
 
 (defmethod nat-to-dfa* ((trm number-expr))
   (if (natural-number-expr? trm) 
       (let ((i (symtab-new-index)))
 	(values i (list i) (dfa-op #'dfa-const (number trm) i)))
-    (call-next-method)))
+    (progn
+      (error-format-if "Number ~a is not a natural" trm)
+      (call-next-method))))
 
 (defmethod nat-to-dfa* ((trm branch))
   (let ((c (fml-to-dfa (condition trm))))
@@ -371,7 +363,9 @@
 		   (let*  ((i (symtab-new-index))
 			   (a (dfa-conjunction* (list (dfa-op #'dfa-minus1 i j (number rhs)) b))))
 		     (values i (cons i xs) a)))
-	       (call-next-method))))
+	       (progn
+		 (error-format-if "Subtraction ~a not 1st-order" trm)
+		 (call-next-method)))))
 	  ((is? op '|+| '|reals|)                               ; p_i = p_j + n, p_i = n + p_j
 	   (let* ((ntrm (pseudo-normalize trm))                 ; now canonized to p_i =  n + p_j   
 		  (lhs (args1 ntrm))
@@ -383,13 +377,16 @@
 		   (let*  ((i (symtab-new-index))
 			   (a (dfa-conjunction* (list (dfa-op #'dfa-plus1 i j (number lhs)) b))))
 		     (values i (cons i xs) a)))
-	       (call-next-method))))
+		 (progn
+		 (error-format-if "Addition ~a not 1st-order" trm)
+		 (call-next-method)))))
 	  ((the1? trm)
 	   (let ((bndng (car (bindings (argument trm))))
 		 (expr  (expression (argument trm))))
 	     (multiple-value-bind (x supertype preds)
 		 (destructure-binding bndng :exclude *naturalnumber*)
 	       (unless (tc-eq supertype *naturalnumber*)
+		 (error-format-if "Choice ~a is not 1st-order" trm)
 		 (call-next-method))
 	       (let ((j (symtab-shadow x)))
 		 (unwind-protect
@@ -398,6 +395,7 @@
 		       (values j (list j) a))
 		   (symtab-unshadow))))))
 	  (t
+	   (error-format-if "Application ~a not translatable" trm)
 	   (call-next-method)))))
 
 (defun the1? (trm)
@@ -411,89 +409,3 @@
        (integerp (number expr))
        (>= (number expr) 0)))
 
-
-;; Stepwise Unfolding
-
-(defmethod unfold1 :around (expr)
-  (or (gethash expr *unfold1-table*)
-      (let ((nexpr (call-next-method)))
-        (setf (gethash expr *unfold1-table*) nexpr)
-	(when (and *babble* (not (eq expr nexpr)))
-	  (ws1s-message "~%Unfolding: ~a" expr)
-	  (ws1s-message "~%   ==> ~a" nexpr))
-        nexpr)))
-
-(defmethod unfold1 ((expr expr))
-  expr)
-
-(defmethod unfold1 ((expr name-expr))
-  (if (is? expr '|the| '|sets|)
-      expr
-    (try-to-expand expr)))
-
-(defmethod unfold1 ((expr application))
-   (let* ((nop (unfold1 (operator expr)))
-	  (narg (unfold1 (argument expr)))
-	  (nexpr (if (lambda-expr? nop)
-		     (let ((nexpr (make!-reduced-application nop narg)))
-		       (if (branch? nexpr)
-			   (unfold1 nexpr)
-			  nexpr))
-		   (lcopy expr 'operator nop 'argument narg))))
-     (if (eq nexpr expr) expr
-       (prog1
-	 (pseudo-normalize nexpr)
-	 (register-judgements nexpr expr)))))
-
-(defun register-judgements (nexpr expr)
-  "Register judgements of expr for an equivalent nexpr that
-   may otherwise be lost."
-  (setf (gethash nexpr *known-judgements*) 
-	(union (gethash expr *known-judgements*)
-	       (judgement-types+ expr)
-	       :test #'tc-eq)))
-
-(defmethod unfold1 ((expr branch))
-  (let ((nexpr (unfold1 (condition expr))))
-    (multiple-value-bind (signal bexpr)
-	(assert-if nexpr)
-      (declare (ignore signal))
-      (cond ((tc-eq bexpr *true*)                      
-	     (then-part expr))
-	    ((tc-eq bexpr *false*)                
-	     (else-part expr))
-	    (t
-	     (make!-if-expr bexpr (then-part expr) (else-part expr)))))))
-
-(defmethod unfold1 ((expr let-expr))  ; structure sharing handled by hash table(s)
-  (beta-reduce expr))
-
-(defmethod unfold1 ((expr tuple-expr))
-  expr)
-
-(defmethod unfold1 ((expr coercion))
-   (let ((nexpr (beta-reduce expr)))
-     (when (not (eq expr nexpr))
-       (register-judgements nexpr expr))
-     nexpr))
-
-
-(defmethod unfold1 ((expr update-expr))
-  (unfold1 (translate-update-to-if expr))))
-
-(defmethod unfold1 ((expr cases-expr))
-  (unfold1 (translate-cases-to-if expr)))
-
-(defmethod unfold1 ((list list))
-  (let ((nlist (unfold1-list list)))
-    (if (equal nlist list) list nlist)))
-
-(defun unfold1-list (list &optional acc)
-  (if (null list) (nreverse acc)
-    (let ((nelt (unfold1 (car list)))) 
-      (if (or (eq nelt (car list))
-	      (not (typep (car list) 'binding)))
-	  (unfold1-list (cdr list) (cons nelt acc))
-	(unfold1-list (substit (cdr list)
-				 (acons (car list) nelt nil))
-			(cons nelt acc))))))
