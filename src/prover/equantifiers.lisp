@@ -662,7 +662,7 @@ Please provide skolem constants for these variables." overlap)
 						    translated-body))))
 				    (and (not (connective-occurs? body))
 					 (let ((res (call-process
-						     translated-fmla
+						     fmla
 						     *dp-state* *alists*)))
 					   (when (consp res)
 					     (loop for x in res
