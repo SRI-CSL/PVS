@@ -20,7 +20,18 @@
 (def-pvs-term ge1    ">=" "naturalnumbers" :expected "[nat, nat -> boolean]")
 (def-pvs-term lt1   "<" "naturalnumbers" :expected "[nat, nat -> boolean]")
 (def-pvs-term le1    "<=" "naturalnumbers" :expected "[nat, nat -> boolean]")
-                       
+
+(def-pvs-term union-operator    "union[nat]" "record_prelude_example"
+                                    :expected "[set[nat], set[nat] -> set[nat]]")
+(def-pvs-term intersection-operator "intersection[nat]" "record_prelude_example"
+                                    :expected "[set[nat], set[nat] -> set[nat]]")
+(def-pvs-term difference-operator "difference[nat]" "record_prelude_example"
+                                    :expected "[set[nat], set[nat] -> set[nat]]")
+(def-pvs-term emptyset-operator "emptyset[nat]" "record_prelude_example"
+                                    :expected "set[nat]")
+
+
+                        
 
 (defun ws1s-types ()
   (list *boolean*
