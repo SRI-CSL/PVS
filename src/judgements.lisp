@@ -1029,7 +1029,10 @@
 	 (nreverse preds))
 	(t (push te *subtypes-seen*)
 	   (let ((pred (make!-reduced-application (predicate te) ex)))
-	     (type-constraints* (supertype te) ex
+	     (type-constraints* (if (tc-eq te *real*)
+				    (find-supertype te)
+				    (supertype te))
+				ex
 				(nconc (and+ pred) preds) all?)))))
 
 (defmethod type-constraints* ((te dep-binding) ex preds all?)
@@ -1041,7 +1044,7 @@
 
 (let ((ignored-type-constraints
        (when *naturalnumber*
-	 (list *naturalnumber* *integer* *rational* *real*))))
+	 (list *naturalnumber* *integer* *rational* *real* *number_field*))))
   (pushnew 'clear-ignored-type-constraints *load-prelude-hook*)
   (defun push-ignored-type-constraints (te)
     (pushnew te ignored-type-constraints))
