@@ -418,10 +418,9 @@
 	 (args-livevars (append args-free-formals livevars)))
     (if internal-actuals
 	(mk-funapp (pvs2cl-operator2 op actuals arguments bindings)
-	     (append (trap-undefined-list
-		      (pvs2cl_up* internal-actuals
+	     (append (pvs2cl_up* internal-actuals
 				     bindings
-				     args-livevars))
+				     args-livevars)
 		      (pvs2cl_up* arguments bindings
 				 (append (mapcan #'updateable-free-formal-vars
 					   actuals);;only updateable
@@ -446,8 +445,7 @@
 	  (pvs2cl-primitive-app expr bindings livevars)
 	  (if (datatype-constant? op)
 	      (mk-funapp (pvs2cl-resolution op)
-			 (trap-undefined-list
-			  (pvs2cl_up* (arguments expr) bindings livevars)))
+			 (pvs2cl_up* (arguments expr) bindings livevars))
 	      (let* ((defax (def-axiom (declaration op)))
 		     (defbody (when defax (args2 (car (last defax)))))
 		     (defbindings (when  (lambda-expr? defbody)
@@ -479,20 +477,35 @@
 				    (append (updateable-free-formal-vars op)
 					     livevars)))))))
 
-(defun pvs2cl-let-pairs (let-bindings argument bindings livevars)
+(defun pvs2cl-let-pairs (let-bindings argument declaration
+				      cl-expression bindings livevars)
   (let ((args (argument-list argument)))
     (if (= (length let-bindings) (length args))
-	(let ((clargs (pvs2cl_up* args bindings livevars)))
-	  (loop for bnd in let-bindings
-		as clarg in clargs
-		collect (list bnd clarg)))
+	(let* ((clargs (pvs2cl_up* args bindings livevars))
+	       (let-pairs (loop for bnd in let-bindings
+			    as clarg in clargs
+			    collect (list bnd clarg))))
+	  (if declaration
+	  `(let ,let-pairs ,declaration ,cl-expression)
+	  `(let ,let-pairs ,cl-expression)))
 	(if (= (length let-bindings) 1)
-	    (list (list (car let-bindings)
-			argument))
-	    (let ((arg (pvs2cl_up* (car args) bindings livevars)))
-	      (loop for bnd in let-bindings
-		    as i from 1
-		    collect (list bnd `(project ,i ,arg))))))))
+	    (let ((let-pairs
+		   (list (list (car let-bindings)
+			       argument))))
+	      (if declaration
+		  `(let ,let-pairs ,declaration ,cl-expression)
+		  `(let ,let-pairs ,cl-expression)))
+	    (let* ((arg (pvs2cl_up* (car args) bindings livevars))
+		   (argvar (gentemp "A"))
+		   (let-pairs 
+		    (loop for bnd in let-bindings
+			  as i from 1
+			  collect (list bnd `(project ,i ,argvar)))))
+	      (if declaration
+		  `(let ((,argvar ,arg))
+		     (let ,let-pairs ,declaration ,cl-expression))
+		  `(let ((,argvar ,arg))
+		     (let ,let-pairs ,cl-expression))))))))
 
 ;;above change to pvs2cl-let-pairs simpler but untested.
 ;  (if (consp let-bindings)
@@ -584,12 +597,6 @@
 		(pairlis let-bindings args)
 		(loop for x in let-bindings
 		      collect (cons x arg))))
-	   (let-pairs (pvs2cl-let-pairs
-		       let-variables
-		       arg bindings ;;operator free-formal-vars
-		                     ;;are always updateable.
-		       (append (updateable-vars (operator expr))
-			       livevars)))
 	   (declaration (pvs2cl-declare-vars-types
 			 let-variables
 			 (if (tupletype? arg-type)
@@ -600,9 +607,16 @@
 			    livevars
 			   let-vars-args-pairs
 			   let-bindings)))
-      (if declaration
-	  `(let ,let-pairs ,declaration ,cl-expression)
-	  `(let ,let-pairs ,cl-expression)))))
+      (pvs2cl-let-pairs
+	    let-variables
+	    arg declaration
+	    cl-expression
+	    bindings;;operator free-formal-vars
+	    ;;are always updateable.
+	    (append (updateable-vars (operator expr))
+		    livevars)))))
+
+
 ;;let* not needed, nested anyway.
 
 (defmethod pvs2cl_up* ((expr if-expr) bindings livevars)
