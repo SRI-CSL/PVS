@@ -1463,9 +1463,12 @@
 
 (defmethod update-expr-type (assignments expr (te funtype))
   ;;; Note that te may not be fully instantiated
-  (if (typep (domain te) 'subtype)
-      (update-expr-type-funtype assignments expr te)
-      te))
+  (let ((dom (if (dep-binding? (domain te))
+		 (type (domain te))
+		 (domain te))))
+    (if (subtype? dom)
+	(update-expr-type-funtype assignments expr te)
+	te)))
 
 (defun update-expr-type-funtype (assignments expr funtype)
   (if (null assignments)
