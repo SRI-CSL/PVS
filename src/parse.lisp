@@ -970,9 +970,9 @@
 			   (comp-type-expr-null-1 'funtype)
 			   (function 'functiontype)
 			   (array 'arraytype))
-	  'domain domain
-	  'range (xt-subst-new-domain-dep domain range)
-	  'place (term-place funtype))))))
+	    'domain domain
+	    'range (xt-subst-new-domain-dep domain range)
+	    'place (term-place funtype))))))
 
 (defmethod xt-subst-new-domain-dep (domain range)
   (declare (ignore domain))
@@ -1625,10 +1625,11 @@
   (let* ((let-bindings (term-arg0 lexpr))
 	 (expr (xt-expr (term-arg1 lexpr)))
 	 (bindings (xt-let-bindings let-bindings))
+	 (bformals (xt-let-formals let-bindings))
 	 (args (apply #'xt-let-arguments (term-args let-bindings))))
-    (xt-let-expr* expr bindings args lexpr t)))
+    (xt-let-expr* expr bindings bformals args lexpr t)))
 
-(defun xt-let-expr* (expr bindings args &optional lexpr first?)
+(defun xt-let-expr* (expr bindings bformals args &optional lexpr first?)
   (if (null bindings)
       expr
       (make-instance (if first? 'let-expr 'chained-let-expr)
@@ -1636,20 +1637,31 @@
 		    'bindings (if (listp (car bindings))
 				  (car bindings)
 				  (list (car bindings)))
-		    'expression (xt-let-expr* expr (cdr bindings) (cdr args)
-					      lexpr)
+		    'expression (xt-let-expr*
+				 expr (cdr bindings) (cdr bformals) (cdr args)
+				 lexpr)
 		    'place (term-place lexpr))
-	'argument (car args)
+	'argument (xt-let-expr-argument (reverse (car bformals)) (car args))
 	'place (term-place lexpr))))
+
+(defun xt-let-expr-argument (formals arg)
+  (if (null formals)
+      arg
+      (xt-let-expr-argument
+       (cdr formals)
+       (make-instance 'let-lambda-expr
+	 'bindings (car formals)
+	 'expression arg))))
 
 (defun xt-where-expr (lexpr)
   (let* ((let-bindings (term-arg0 lexpr))
 	 (expr (xt-expr (term-arg1 lexpr)))
 	 (bindings (xt-let-bindings let-bindings))
+	 (bformals (xt-let-formals let-bindings))
 	 (args (apply #'xt-let-arguments (term-args let-bindings))))
-    (xt-where-expr* expr bindings args lexpr)))
+    (xt-where-expr* expr bindings bformals args lexpr)))
 
-(defun xt-where-expr* (expr bindings args &optional lexpr)
+(defun xt-where-expr* (expr bindings bformals args &optional lexpr)
   (if (null bindings)
       expr
       (make-instance (if lexpr 'where-expr 'chained-where-expr)
@@ -1657,9 +1669,10 @@
 		    'bindings (if (listp (car bindings))
 				  (car bindings)
 				  (list (car bindings)))
-		    'expression (xt-where-expr* expr (cdr bindings) (cdr args))
+		    'expression (xt-where-expr*
+				 expr (cdr bindings) (cdr bformals) (cdr args))
 		    'place (term-place lexpr))
-	'argument (car args)
+	'argument (xt-let-expr-argument (reverse (car bformals)) (car args))
 	'place (term-place lexpr))))
 
 (defun xt-let-bindings (let-bindings)
@@ -1672,14 +1685,61 @@
 	(mapcar #'xt-simplebind (term-args let-bind)))))
 
 (defun xt-simplebind (bind)
-  (if (is-sop 'notype (term-arg2 bind))
-      (make-instance 'untyped-bind-decl
-	'id (xt-idop (term-arg0 bind))
-	'place (term-place bind))
-      (make-instance 'arg-bind-decl
-	'id (xt-idop (term-arg0 bind))
-	'declared-type (xt-type-expr (term-arg2 bind))
-	'place (term-place bind))))
+  (let ((formals (xt-pdf (term-arg1 bind))))
+    (if (or (is-sop 'notype (term-arg2 bind))
+	    (some #'(lambda (fmls)
+		      (some #'(lambda (fml)
+				(not (declared-type fml)))
+			    fmls))
+		  formals))
+	(make-instance 'untyped-bind-decl
+	  'id (xt-idop (term-arg0 bind))
+	  'place (term-place bind))
+	(make-instance 'arg-bind-decl
+	  'id (xt-idop (term-arg0 bind))
+	  'declared-type (if formals
+			     (xt-simplebind-funtype
+			      (reverse formals)
+			      (xt-type-expr (term-arg2 bind)))
+			     (xt-type-expr (term-arg2 bind)))
+	  'place (term-place bind)))))
+
+(defun xt-simplebind-funtype (formals range)
+  (if (null formals)
+      range
+      (xt-simplebind-funtype
+       (cdr formals)
+       (let* ((dom (maplist #'(lambda (x)
+				(xt-simplebind-domain-type x range))
+			    (car formals)))
+	      (tvar (make-new-variable '|t| (cons range dom)))
+	      (domain (xt-funtype-domain dom tvar)))
+	 (make-instance 'funtype
+	   'domain domain
+	   'range (xt-subst-new-domain-dep domain range))))))
+
+(defun xt-simplebind-domain-type (fmls range)
+  (if (or (id-occurs-in (id (car fmls)) (cdr fmls))
+	  (id-occurs-in (id (car fmls)) range))
+      (mk-dep-binding (id (car fmls)) (declared-type (car fmls)))
+      (declared-type (car fmls))))
+
+(defun xt-let-formals (let-bindings)
+  (mapcar #'xt-let-formals* (term-args let-bindings)))
+
+(defun xt-let-formals* (lbind)
+  (let ((let-bind (term-arg0 lbind)))
+    (if (is-sop 'simplebind let-bind)
+	(xt-let-formals** let-bind)
+	(progn (mapc #'xt-check-let-formals (term-args let-bind))
+	       nil))))
+
+(defun xt-let-formals** (bind)
+  (xt-pdf (term-arg1 bind)))
+
+(defun xt-check-let-formals (bind)
+  (when (xt-pdf (term-arg1 bind))
+    (parse-error (term-arg1 bind) "May not include parameters here")))
 
 (defun xt-let-arguments (&rest let-binds)
   (mapcar #'(lambda (b) (xt-expr (term-arg1 b))) let-binds))
