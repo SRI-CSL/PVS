@@ -389,10 +389,6 @@
 (defmethod judgement-types ((ex record-expr))
   nil)
 
-(defmethod judgement-types ((ex binding-expr))
-  nil)
-
-
 (defmethod judgement-types* ((ex number-expr))
   (append (gethash (number ex)
 		   (number-judgements-hash (judgements *current-context*)))
