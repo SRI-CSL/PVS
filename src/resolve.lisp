@@ -151,20 +151,25 @@
 
 (defun get-theory-aliases (name)
   (when (mod-id name)
-    (let ((mod-decls (remove-if-not #'(lambda (d) (or (mod-decl? d)
-						      (formal-theory-decl? d)))
+    (let ((mod-decls (remove-if-not #'(lambda (d)
+					(typep d '(or mod-decl
+						      theory-abbreviation-decl
+						      formal-theory-decl)))
 		       (gethash (mod-id name) (current-declarations-hash)))))
       (get-theory-aliases* mod-decls))))
 
 (defmethod modname ((d formal-theory-decl))
   (theory-name d))
 
+(defmethod theory-name ((d mod-decl))
+  (modname d))
+
 (defun get-theory-aliases* (mod-decls &optional modnames)
   (if (null mod-decls)
       (delete-duplicates modnames :test #'tc-eq)
       (get-theory-aliases*
        (cdr mod-decls)
-       (let ((thname (modname (car mod-decls))))
+       (let ((thname (theory-name (car mod-decls))))
 	 (if (eq (module (car mod-decls)) (current-theory))
 	     (nconc (list thname) modnames)
 	     (let ((instances (gethash (module (car mod-decls))
@@ -307,12 +312,19 @@
 				(make-resolution decl thinst))
 		      modinsts)))
 	      (let* ((modinsts (decl-args-compatible? decl args))
+		     (unint-modinsts
+		      (remove-if #'(lambda (mi)
+				     (and (mappings mi)
+					  (find decl (mappings mi)
+						:key #'(lambda (m)
+							 (declaration (lhs m))))))
+			modinsts))
 		     (thinsts (if mappings
 				  (remove-if-not
 				      #'(lambda (mi)
 					  (matching-mappings mappings mi))
-				    modinsts)
-				  modinsts)))
+				    unint-modinsts)
+				  unint-modinsts)))
 		(mapcar #'(lambda (thinst)
 			    (make-resolution decl thinst))
 		  thinsts)))
@@ -751,15 +763,14 @@
 
 (defun matching-mapping (map mappings decls)
   (let ((mmap (find (lhs map) mappings :test #'same-id :key #'lhs)))
-    (if mmap
-	(if (type-value (rhs map))
-	    (and (type-value (rhs mmap))
-		 (tc-eq (type-value (rhs map)) (type-value (rhs mmap))))
-	    (and (not (type-value (rhs mmap)))
-		 (some #'(lambda (pty)
-			   (tc-eq (type (expr (rhs mmap))) pty))
-		       (types (expr (rhs map))))))
-	(break "matching-mapping"))))
+    (when mmap
+      (if (type-value (rhs map))
+	  (and (type-value (rhs mmap))
+	       (tc-eq (type-value (rhs map)) (type-value (rhs mmap))))
+	  (and (not (type-value (rhs mmap)))
+	       (some #'(lambda (pty)
+			 (tc-eq (type (expr (rhs mmap))) pty))
+		     (types (expr (rhs map)))))))))
 
 (defun can-use-for-assuming-tcc? (d)
   (or (not *in-checker*)
@@ -1038,8 +1049,18 @@
 		 (filter-local-expr-resolutions
 		  (filter-bindings res args)))
 		res)
-	    (remove-outsiders (remove-generics res))))
+	    (remove-mapping-resolutions
+	     (remove-outsiders (remove-generics res)))))
       reses))
+
+(defun remove-mapping-resolutions (reses)
+  (remove-if #'(lambda (res)
+		 (and (mappings (module-instance res))
+		      (some #'(lambda (r)
+				(and (not (mappings (module-instance r)))
+				     (eq (declaration r) (declaration res))))
+			    reses)))
+    reses))
 
 (defun filter-equality-resolutions (reses)
   (if (and (cdr reses)
