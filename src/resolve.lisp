@@ -264,6 +264,7 @@
 	    rtypes))))))
 
 (defmethod get-record-arg-resolutions ((ex number-expr) kind args)
+  (declare (ignore kind args))
   nil)
 
 (defun get-arg-record-types (arg)
@@ -485,6 +486,7 @@
 	 (multiple-value-bind (eres error obj)
 	     (let ((*typechecking-actual* t))
 	       (with-no-type-errors (resolve* name 'expr nil)))
+	   (declare (ignore error obj))
 	   (unless (or tres eres)
 	     (resolution-error name 'expr-or-type nil))
 	   (if (cdr tres)
@@ -532,6 +534,7 @@
        (multiple-value-bind (ex error obj)
 	   (let ((*typechecking-actual* t))
 	     (with-no-type-errors (typecheck* (expr act) nil nil nil)))
+	 (declare (ignore ex))
 	 (cond ((and (zerop (parens (expr act)))
 		     (typep (operator (expr act)) 'name))
 		(with-no-type-errors
@@ -748,6 +751,7 @@
 
 (defmethod matching-actual-expr* ((e1 projection-expr) (e2 projection-expr)
 				  bindings)
+  (declare (ignore bindings))
   (or (eq e1 e2)
       (with-slots ((id1 index)) e1
 	(with-slots ((id2 index)) e2
@@ -767,6 +771,7 @@
 
 (defmethod matching-actual-expr* ((e1 injection-expr) (e2 injection-expr)
 				  bindings)
+  (declare (ignore bindings))
   (or (eq e1 e2)
       (with-slots ((id1 index)) e1
 	(with-slots ((id2 index)) e2
@@ -786,6 +791,7 @@
 
 (defmethod matching-actual-expr* ((e1 injection?-expr) (e2 injection?-expr)
 				  bindings)
+  (declare (ignore bindings))
   (or (eq e1 e2)
       (with-slots ((id1 index)) e1
 	(with-slots ((id2 index)) e2
@@ -805,6 +811,7 @@
 
 (defmethod matching-actual-expr* ((e1 extraction-expr) (e2 extraction-expr)
 				  bindings)
+  (declare (ignore bindings))
   (or (eq e1 e2)
       (with-slots ((id1 index)) e1
 	(with-slots ((id2 index)) e2
@@ -1041,6 +1048,7 @@
   nil)
 
 (defmethod matching-actual-expr* ((n1 name-expr) (n2 name-expr) bindings)
+  (declare (ignore bindings))
   (some #'(lambda (ty1)
 	    (some #'(lambda (ty2)
 		      (compatible? ty1 ty2))

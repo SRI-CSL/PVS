@@ -47,65 +47,6 @@
 		(insert-tcc-decl 'subtype expr expected ndecl))
 	    (add-tcc-comment 'subtype expr expected incs nil)))))
 
-(defun add-tcc-comment (kind expr type ndecl subsumed-by)
-  (unless (or *in-checker* *in-evaluator* *collecting-tccs*)
-    (cond (subsumed-by
-	   (incf (tccs-matched))
-	   (push subsumed-by (refers-to (current-declaration))))
-	  (t (if (numberp (tccs-simplified))
-		 (incf (tccs-simplified))
-		 (setf (tccs-simplified) 1))))
-    (let* ((decl (current-declaration))
-	   (submsg (case kind
-		     (actuals nil)
-		     (assuming (format nil "generated from assumption ~a.~a"
-				 (id (module type)) (id type)))
-		     (cases
-		      (format nil
-			  "for missing ELSE of CASES expression over datatype ~a"
-			(id type)))
-		     (coverage nil)
-		     (disjointness nil)
-		     (existence nil)
-		     ((subtype termination-subtype)
-		      (format nil "expected type ~a"
-			(unpindent type 19 :string t :comment? t)))
-		     (termination nil)
-		     (well-founded (format nil "for ~a" (id decl)))))
-	   (place (or (place *set-type-actuals-name*)
-		     (place expr) (place type)))
-	   (plstr (when place
-		    (format nil "(at line ~d, column ~d) "
-		      (starting-row place) (starting-col place))))
-	   (tccstr (format nil
-		       "% The ~@[~a ~]~a TCC ~@[~a~]for~
-                        ~:[ ~;~%    % ~]~a~@[~%    % ~a~]~%  ~a"
-		     (cdr (assq expr *compatible-pred-reason*))
-		     kind plstr
-		     (> (+ (length (cdr (assq expr
-					      *compatible-pred-reason*)))
-			   (length (string kind))
-			   (length plstr)
-			   (length (unpindent (or *set-type-actuals-name*
-						  expr type)
-					      4 :string t :comment? t))
-			   25)
-			*default-char-width*)
-		     (unpindent (or *set-type-actuals-name* expr type)
-				4 :string t :comment? t)
-		     submsg
-		     (if subsumed-by
-			 (format nil "% is subsumed by ~a"
-			   (id subsumed-by))
-			 "% was not generated because it simplified to TRUE."))))
-      (pvs-info tccstr)
-      (let* ((decl (current-declaration))
-	     (theory (current-theory))
-	     (entry (assq decl (tcc-comments theory))))
-	(if entry
-	    (nconc entry (list tccstr))
-	    (push (list decl tccstr) (tcc-comments theory)))))))
-
 (defvar *simplify-tccs* nil)
 
 (defun make-subtype-tcc-decl (expr incs)
@@ -1346,3 +1287,63 @@
        (or (and (ground-arithmetic-term? (car exprs))
 		(get-arithmetic-value (car exprs)))
 	   (tcc-evaluates-to-true* (cdr exprs)))))
+
+(defun add-tcc-comment (kind expr type ndecl subsumed-by)
+  (declare (ignore ndecl))
+  (unless (or *in-checker* *in-evaluator* *collecting-tccs*)
+    (cond (subsumed-by
+	   (incf (tccs-matched))
+	   (push subsumed-by (refers-to (current-declaration))))
+	  (t (if (numberp (tccs-simplified))
+		 (incf (tccs-simplified))
+		 (setf (tccs-simplified) 1))))
+    (let* ((decl (current-declaration))
+	   (submsg (case kind
+		     (actuals nil)
+		     (assuming (format nil "generated from assumption ~a.~a"
+				 (id (module type)) (id type)))
+		     (cases
+		      (format nil
+			  "for missing ELSE of CASES expression over datatype ~a"
+			(id type)))
+		     (coverage nil)
+		     (disjointness nil)
+		     (existence nil)
+		     ((subtype termination-subtype)
+		      (format nil "expected type ~a"
+			(unpindent type 19 :string t :comment? t)))
+		     (termination nil)
+		     (well-founded (format nil "for ~a" (id decl)))))
+	   (place (or (place *set-type-actuals-name*)
+		     (place expr) (place type)))
+	   (plstr (when place
+		    (format nil "(at line ~d, column ~d) "
+		      (starting-row place) (starting-col place))))
+	   (tccstr (format nil
+		       "% The ~@[~a ~]~a TCC ~@[~a~]for~
+                        ~:[ ~;~%    % ~]~a~@[~%    % ~a~]~%  ~a"
+		     (cdr (assq expr *compatible-pred-reason*))
+		     kind plstr
+		     (> (+ (length (cdr (assq expr
+					      *compatible-pred-reason*)))
+			   (length (string kind))
+			   (length plstr)
+			   (length (unpindent (or *set-type-actuals-name*
+						  expr type)
+					      4 :string t :comment? t))
+			   25)
+			*default-char-width*)
+		     (unpindent (or *set-type-actuals-name* expr type)
+				4 :string t :comment? t)
+		     submsg
+		     (if subsumed-by
+			 (format nil "% is subsumed by ~a"
+			   (id subsumed-by))
+			 "% was not generated because it simplified to TRUE."))))
+      (pvs-info tccstr)
+      (let* ((decl (current-declaration))
+	     (theory (current-theory))
+	     (entry (assq decl (tcc-comments theory))))
+	(if entry
+	    (nconc entry (list tccstr))
+	    (push (list decl tccstr) (tcc-comments theory)))))))
