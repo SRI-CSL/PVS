@@ -1591,7 +1591,7 @@
 ;	     (incf row)
 ;	     (setq col 0))
 ;	    (t (incf col))))
-    (list row col)))
+    (vector row col)))
 
 
 (defun matching-position (subexpr expr string pos)
