@@ -168,6 +168,7 @@
 
 (defun pvs-send* (string &optional message status and-go)
   (let (*pvs-output-pos*)
+    (comint-log (ilisp-process) (format "\nsent:{%s}\n" string))
     (prog1
 	(let ((cursor-in-echo-area t))
 	  (ilisp-send (format "(pvs::lisp (pvs::pvs-errors %s))" string)
@@ -177,7 +178,7 @@
 	(switch-to-buffer (marker-buffer *pvs-output-pos*))
 	(goto-char (marker-position *pvs-output-pos*))))))
 
-(defvar *pvs-maximize-proof-display* t                                           ;;;; DOCUMENT THIS
+(defvar *pvs-maximize-proof-display* t  
   "Controls whether to keep the prover prompts at the bottom.  You may
 want to set this to nil for slow terminals, or connections over a modem.")
 
@@ -195,7 +196,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
 
 (defun pvs-process-filter (process output)
   (when comint-log-verbose
-    (comint-log (ilisp-process) (format "rec:{%s}\n" output)))
+    (comint-log (ilisp-process) (format "\nrec:{%s}\n" output)))
   (when *pvs-initialized*
     (check-screen-width))
   (setq output (pvs-process-gc-messages output))
