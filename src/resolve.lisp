@@ -2121,9 +2121,6 @@
 	 (cconv (copy iconv)))
     (when (name-expr? cconv)
       (change-name-expr-class-if-needed (declaration conv) cconv))
-    (when (and (fully-instantiated? (type res))
-	       (not (fully-instantiated? rtype)))
-      (break "Problem"))
     (make-instance 'conversion-resolution
       'module-instance (module-instance res)
       'declaration (declaration res)
