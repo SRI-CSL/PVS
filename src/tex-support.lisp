@@ -479,8 +479,8 @@ useful if more than one specification is to be included in one document")
   (let ((par-sforms
 	 (when *print-ancestor*
 	   (s-forms (current-goal *print-ancestor*)))))
-    (let ((neg-s-forms (neg-s-forms (s-forms sequent)))
-	  (pos-s-forms (pos-s-forms (s-forms sequent))))
+    (let ((neg-s-forms (neg-s-forms sequent))
+	  (pos-s-forms (pos-s-forms sequent)))
       (cond (neg-s-forms
 	     (loop for sf in neg-s-forms as sfnum downfrom -1  
 		   do (latex-sform sf sfnum stream))
