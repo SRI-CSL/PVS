@@ -136,7 +136,7 @@
 
 (defun adt-modinst (modinst)
   (let* ((th (get-theory modinst))
-	 (dth (get-theory* (generated-by th) (library modinst))))
+	 (dth (get-theory* (generated-by th) (library th))))
     (if (and dth
 	     (typep dth 'datatype))
 	(adt-modinst* (positive-types dth) (actuals modinst)
