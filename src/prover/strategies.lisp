@@ -389,10 +389,12 @@ non-recursive definitions are always rewritten even when only a few of the
 curried arguments have been provided.)  Declarations named in EXCLUDE are
 not introduced and any current rewrite rules in the EXCLUDE list are
 disabled.  By default, TCCs in the theory are excluded but they can be
-included when the TCC? flag is T.  Examples: (auto-rewrite-theory \"sets\"
-:exclude (\"union\" \"subset?\") :defs explicit) (auto-rewrite-theory
-\"lists[nat]\" :always? T) (auto-rewrite-theory \"connectives\" :always?
-!!)."
+included when the TCC? flag is T.
+  Examples:
+    (auto-rewrite-theory \"sets\" :exclude (\"union\" \"subset?\")
+			          :defs explicit)
+    (auto-rewrite-theory \"lists[nat]\" :always? T)
+    (auto-rewrite-theory \"connectives\" :always? !!)."
 	 "Rewriting relative to the theory: ~a")
 
 (defstep auto-rewrite-theories (&rest theories)
@@ -1539,7 +1541,7 @@ See also SIMPLE-MEASURE-INDUCT."
 			 (innerbody (when innerbvars (expression (args2 body)))))
 		     (if innerbvars
 			 (let 
-			     ((new-outers (make-new-bindings outerbvars nil))
+			     ((new-outers (make-new-bindings outerbvars nil body))
 			      (new-measure-ineq (substit measure-ineq
 						  (pairlis new-outers
 							   outerbvars)))
@@ -2514,7 +2516,7 @@ found. "
 		    (and (singleton? bindings)
 			 (or (tupletype? (find-supertype (type (car bindings))))
 			     (recordtype? (find-supertype (type (car bindings)))))))
-		(make-new-detupled-bindings bindings nil nil)
+		(make-new-detupled-bindings bindings nil nil expression)
 		(cons nil bindings))) ;;NSH(9.19.96) was bindings.
 	   (alist (car lists))
 	   (new-bvars (cdr lists)))
@@ -2524,13 +2526,13 @@ found. "
 	    'bindings new-bvars
 	    'expression (detuple* (substit expression alist)))))))
       
-(defun make-new-detupled-binding-list (boundvar types alist)
+(defun make-new-detupled-binding-list (boundvar types alist expr)
   (if (null types) nil
       (let* ((type1 (car types))
 	     (type11 (if (dep-binding? type1) (type type1) type1))
 	     (new-id 
 	      (new-boundvar-id
-	       (id boundvar)))
+	       (id boundvar) expr))
 	     (stype11 (substit type11 alist))
 	     (new-bvar
 	      (copy boundvar
@@ -2546,11 +2548,11 @@ found. "
 		  (make-new-detupled-binding-list
 		   boundvar
 		   (cdr types)
-		   (cons (cons type1 new-bvar) alist)))
+		   (cons (cons type1 new-bvar) alist)
+		   (cons new-id expr)))
 	    (cons new-bvar
 		  (make-new-detupled-binding-list
-		   boundvar
-		   (cdr types) alist))))))
+		   boundvar (cdr types) alist (cons new-id expr)))))))
 
 (defmethod detuple* ((expr application))
   (let ((op (detuple* (operator expr)))
@@ -2592,7 +2594,7 @@ found. "
 				   (eq x (id (caar (arguments y)))))))
 	(lcopy expr 'argument result))))))
 
-(defun make-new-detupled-bindings (bindings alist bvars)
+(defun make-new-detupled-bindings (bindings alist bvars expr)
   (cond ((null bindings) (cons alist bvars))
 	((or (tupletype? (type (car bindings)))
 	     (recordtype? (type (car bindings))))
@@ -2602,7 +2604,7 @@ found. "
 			   (mapcar #'type (fields type))
 			   (types type)))
 		(new-bvars (make-new-detupled-binding-list
-			    bind1 types alist))
+			    bind1 types alist expr))
 		(new-vars (loop for x in new-bvars
 				collect (make!-name-expr
 					 (id x) nil nil
@@ -2623,12 +2625,14 @@ found. "
 				       (cons (cons bind1
 						   new-tuple)
 					     alist)
-				       (nconc bvars new-bvars))))
+				       (nconc bvars new-bvars)
+				       (append new-bvars expr))))
 	(t (make-new-detupled-bindings (cdr bindings)
 				       (cons (cons (car bindings)
 						   (car bindings))
 					     alist)
-				       (append bvars (list (car bindings)))))))
+				       (append bvars (list (car bindings)))
+				       (cons (car bindings) expr)))))
 
 (defmethod detuple* ((expr record-expr))
   (lcopy expr
@@ -2687,9 +2691,8 @@ or (LAMBDA x: ...)."
 		       (detuple* fmla)))
 	    (equality (make-equality fmla de-fmla))
 	    (fmlas (cdr formulas)))
-	(then (case-replace equality)
-	      (detuple-boundvars-in-formulas fmlas singles?)
-	      (delete -1)))
+	(then (case-replace equality :hide? t)
+	      (detuple-boundvars-in-formulas fmlas singles?)))
       (skip))
   "Replaces given formulas by equivalent formulas where any bound
 variable of tuple type is replaced by a list of variables.
@@ -3000,24 +3003,26 @@ is needed, the best option is to use CASE."
 		  (parse-integer string :start (1+ pos) :junk-allowed t))))
     (if index (intern prefix) id)))
 
-(defun make-constant-bind-decl-alist (constants done-alist)
+(defun make-constant-bind-decl-alist (constants done-alist expr)
   ;;constants must be sorted according to occurrence as done in
   ;;generalize-skolem-constants defstep.
+  ;; The expr is passed in to new-boundvar-id
   (if (null constants)
       (nreverse done-alist)
-      (make-constant-bind-decl-alist
-       (cdr constants)
-       (cons (cons (car constants)
-		   (make-bind-decl
-			   (new-boundvar-id
-			    (sko-symbol-prefix (id (car constants))))
-		     (gensubst
-		        (type (car constants))
-		       #'(lambda (x)
-			   (make-variable-expr
-			    (cdr (assoc x done-alist :test #'tc-eq))))
-		       #'(lambda (x)(assoc x done-alist :test #'tc-eq)))))
-	     done-alist))))
+      (let ((new-id (new-boundvar-id
+		     (sko-symbol-prefix (id (car constants))) expr)))
+	(make-constant-bind-decl-alist
+	 (cdr constants)
+	 (cons (cons (car constants)
+		     (make-bind-decl new-id
+		       (gensubst
+			   (type (car constants))
+			 #'(lambda (x)
+			     (make-variable-expr
+			      (cdr (assoc x done-alist :test #'tc-eq))))
+			 #'(lambda (x)(assoc x done-alist :test #'tc-eq)))))
+	       done-alist)
+	 (cons new-id expr)))))
 
 (defstep generalize-skolem-constants (&optional (fnums *))
   (then (merge-fnums fnums)
@@ -3037,7 +3042,7 @@ is needed, the best option is to use CASE."
 			   #'(lambda (x y)
 			       (member x (collect-subterms y #'skolem-constant?)))))
 		    (constant-bind-decl-alist
-		     (make-constant-bind-decl-alist skolem-constants nil))
+		     (make-constant-bind-decl-alist skolem-constants nil form))
 		    (constant-variable-alist
 		     (loop for (x . y) in constant-bind-decl-alist
 			   collect (cons x (make-variable-expr y))))
@@ -3373,7 +3378,7 @@ skolem constants for the induction scheme to make sense."
 					 (make-disjunction conseq-fmlas))
 					(make-disjunction conseq-fmlas)))
 			      (constant-bind-decl-alist
-			       (make-constant-bind-decl-alist pred-constants nil))
+			       (make-constant-bind-decl-alist pred-constants nil form))
 			      (constant-variable-alist
 			       (loop for (x . y) in constant-bind-decl-alist
 				     collect (cons x (make-variable-expr y))))
