@@ -34,9 +34,13 @@ earlier version of PVS.
 * Binary Files:: 
 * Generating HTML:: 
 * Default Strategies::
-* all-typepreds strategy::
+* Better handling of TCCs in Proofs::
+* typepred! rule and all-typepreds strategy::
+* grind-with-ext and reduce-with-ext::
+* New forward chain commands::
 * TeX Substitutions::
 * add-declaration and IMPORTINGs::
+* Prelude additions::
 @end menu
 
 @node Startup Script Update
@@ -333,14 +337,88 @@ pvs-strategies files.  For example, the @code{pvs-strategies} file in
 the home directory may reference this, which is set to different
 values in different contexts.
 
-@node all-typepreds strategy
-@subsection @code{all-typepreds} strategy
+@node Better handling of TCCs in Proofs
+@subsection Better handling of TCCs in Proofs
 
-There is now a new strategy, @code{all-typepreds}, that collects the
-typepreds for each subexpression of the specified formula numbers.
-This can be especially handy for automating proofs, though they will
-not be particularly fast since a lot of irrelevant formulas may be
-added to the sequent.
+While in the prover, the typechecker now checks the sequent to see if
+the given expression needs to have a TCC generated.  It does this by
+examining the formulas of the sequent, to see if the given expression
+occurs at the top level, or in a position from which an unguarded TCC
+would be generated.  Thus if @code{1/x} appears in the sequent in an
+equation @code{y = 1/x}, the TCC @code{x /= 0} will not be generated.
+But if the expression only appears in a guarded formula, for example,
+@code{x = 0 IMPLIES y = 1/x}, then the TCC will still be generated.
+
+This is sound, because for the expression to appear in the sequent
+necessary TCCs must already have been generated.  This greatly
+simplifies proofs where annoying TCCs pop up over and over, and where
+the judgment mechanism is too restrictive (for example, judgements
+cannot currently state that @code{x * x >= 0} for any real @code{x}).
+
+Obviously, this could affect existing proofs, though it generally
+makes them much simpler.
+
+@node typepred! rule and all-typepreds strategy
+@subsection @code{typepred!} rule and @code{all-typepreds} strategy
+
+Any given term in the sequent may have associated @emph{implicit
+type constraints}.  When a term is first introduced to a sequent there
+may be TCCs associated, either on the formula itself, or as new
+branches in the proof.  The term may subsequently be rewritten, but
+there is still associated with the term an implicit TCC.  For example,
+the term @code{1/f(x)} may be introduced, and later simplified to
+@code{1/(x * x - 1)}.  Since @code{f(x)} was known to be nonzero, it
+follows that @code{x * x - 1} is also nonzero (in this context),
+though this is not reflected in the types or judgements.
+
+The @code{typepred!} rule has been modified to take a
+@code{:implicit-typepreds?} argument, which looks for occurrences of
+the given expression in the sequent, and creates the implicit type
+constraint (if any) as a hypothesis.  It does this only for
+occurrences that are @emph{unguarded}, i.e., occur positively. This is
+stricter than the way TCCs are actually generated.  This is needed
+because, for example, conjunction is commutative, and can be rewritten
+in the prover.  Thus the hypothesis @code{x /= 0 => 1/x /= x} could be
+rewritten to @code{1/x = x => x = 0}, and the left-to-right reading
+will generate @code{x /= 0}, which is obviously unsound.  Note that
+this does not mean that TCC generation or applying the rewrite is
+unsound, as the TCC simply says that a type can be assigned to the
+term.  Technically, a TCC for a term of the form @code{A => B} could
+be a disjunction @code{(A => TCC(B)) OR (NOT B => TCC(A))}, but this
+is more costly in many ways, and rarely useful in practice.
+
+Thus the command @code{(typepred! "x * x - 1" :implicit-typepreds? t)}
+generates the hypothesis @code{x * x - 1 /= 0} assuming that the term
+occurs positively in a denominator.
+
+A generally more useful strategy is @code{all-typepreds}.  This
+collects the implicit type constraints for each subexpression of the
+specified formula numbers.  This can be especially handy for
+automating proofs, though there is the potential of creating a lot of
+irrelevant hypotheses.
+
+@node grind-with-ext and reduce-with-ext
+@subsection grind-with-ext and reduce-with-ext
+
+There are two new prover commands: @code{grind-with-ext} and
+@code{reduce-with-ext}.  These are essentially the same as
+@code{grind} and @code{reduce}, but also perform extensionality.  This
+is especially useful when reasoning about sets.
+
+@node New forward chain commands
+@subsection New forward chain commands
+
+There are new forward chain commands available:
+@code{forward-chain@@}, @code{forward-chain*}, and
+@code{forward-chain-theory}.  @code{forward-chain@@} takes a list of
+forward-chaining lemmas (of the form @code{A1 & ... & An => B}, where
+free variables in @code{B} occur among the free variables in the
+@code{Ai}), and attempts the forward-chain rule until the first one
+succeeds.  @code{forward-chain*} takes a list, and repeatedly
+forward-chains until there is no change; when successful it starts
+back at the beginning of the list.  @code{forward-chain-theory}
+creates a list of the applicable lemmas of the given theory and
+invokes @code{forward-chain*}.
 
 
 @node TeX Substitutions
@@ -421,6 +499,21 @@ longer typecheck due to ambiguities after this, even though the proof
 will go through just fine.  Such errors are typically very easy to
 repair.
 
+@node Prelude additions
+@subsection Prelude additions
+Although no new theories have been added, there are a number of new
+declarations, mostly lemmas.  These are in the theories @code{sets},
+@code{function_inverse}, @code{relation_defs}, @code{naturalnumbers},
+@code{reals}, @code{floor_ceil}, @code{exponentiation}, and
+@code{finite_sets}.
+
+The @code{bv_cnv} theory was removed, as the conversion can sometimes
+hide real type errors.  To enable it, just add the following line to
+your specification.
+@code
+  CONVERSION fill[1]
+@end code
+
 
 @node 3.2 Bug Fixes
 @section Bug Fixes
@@ -485,14 +578,56 @@ setting the flag to @code{t} allows the simplification.
 @section Incompatibilities
 
 @menu
+* Ground Decision Procedure Completeness::
+* Actuals not allowed for Current Theory::
 * Referencing Library Theories::
 * Renaming of Bound Variables::
 * bddsimp and Enumeration Types::
 * Prettyprinting Theory Instances::
 * Assuming and Mapped Axiom TCC Visibility Rules::
-* Better handling of TCCs in Proofs::
-* expand Rule uses Full Name::
+* Replacing actuals including types::
+* expand Prover Command uses Full Name::
+* finite_sets min and max renamed::
+* induct no longer beta-reduces everything::
 @end menu
+
+@node Ground Decision Procedure Completeness
+@subsection Ground Decision Procedure Completeness
+
+The decision procedures have been made more complete, which means that
+some proofs may finish sooner.  Unfortunately, some proofs may also
+loop that didn't before @footnote{There are some outstanding bugs
+reported on decision procedure loops that have not yet been resolved}.
+This is usually due to division, and a workaround is to use the
+@code{name-replace} command to replace the term involving division
+with a new name, and then using the decision procedure (e.g.,
+@code{assert}).  If you find that the prover is taking too long, you
+can interrupt it with @code{C-c C-c}, and run @code{:bt} to see the
+backtrace.  If it shows something like the following, then you know
+you are in the ground decision procedure.
+@example
+ find1 <-
+   pr-find <- chainineqs <- transclosure <- addineq <- process1 <- ineqsolve <-
+   arithsolve <- solve <- pr-merge <- process1 <- ineqsolve <- arithsolve <-
+   solve
+@end example
+At this point, you can either run @code{(restore)} to try a different
+command (like @code{name-replace}), or @code{:cont} in the hope that
+it will terminate with a little more time.  And yes, there are
+situations where the bug is not a problem, it just takes a long time
+to finish.
+
+
+@node Actuals not allowed for Current Theory
+@subsection Actuals not allowed for Current Theory
+
+In the past, a name could reference the actuals of the current theory.
+This is actually a mistake, as the actuals were generally ignored in
+this case.  Though this rarely caused problems, there were a few
+reported bugs that were directly due to this, so now the system will
+report that the actuals are not allowed.  To fix this, simply remove
+the actual parameters.  Note that this can affect both specifications
+and proofs.
 
 @node Referencing Library Theories
 @subsection Referencing Library Theories
@@ -573,28 +708,16 @@ this, these TCCs are treated specially when creating the context.  All
 declarations preceding the assuming or axiom that generated the TCC
 are visible in the proof of the TCC.
 
-@node Better handling of TCCs in Proofs
-@subsection Better handling of TCCs in Proofs
+@node Replacing actuals including types
+@subsection Replacing actuals including types
 
-While in the prover, the typechecker now checks the sequent to see if
-the given expression needs to have a TCC generated.  It does this by
-examining the formulas of the sequent, to see if the given expression
-occurs at the top level, or in a position from which an unguarded TCC
-would be generated.  Thus if @code{1/x} appears in the sequent in an
-equation @code{y = 1/x}, no TCC will be generated.  But if the
-expression only appears in a guarded formula, for example, @code{x = 0
-IMPLIES y = 1/x}, then the TCC will still be generated.
+The @code{replace} prover command now does the replacement in types as
+well as expressions when the @code{:actuals?} flag is set.  It is
+possible, though unlikely, that this could cause current proofs to
+fail.  It is more likely that branches will be proved sooner.
 
-This is sound, because for the expression to appear in the sequent
-necessary TCCs must already have been generated.  This greatly
-simplifies proofs where annoying TCCs pop up over and over, and where
-the judgment mechanism is too restrictive (for example, judgements
-cannot currently state that @code{x * x >= 0} for any real @code{x}).
 
-Obviously, this could affect existing proofs, though it generally
-makes them much simpler.
-
-@node expand Rule uses Full Name
+@node expand Prover Command uses Full Name
 @subsection @code{expand} Rule uses Full Name
 
 When the @code{expand} rule was given a full name it would ignore
@@ -606,3 +729,27 @@ Thus @code{th.foo} will match @code{foo} only if it is from theory
 @code{foo[int]} will match any occurrence of @code{foo} of any theory,
 as long as it has a single parameter matching @code{int}.  The
 @code{occurrence} number counts only the matching instances.
+
+This change is only going to affect proofs in which more than just an
+identifier is given to @code{expand}.
+
+@node finite_sets min and max renamed
+@subsection finite_sets min and max renamed
+
+In theory @code{finite_sets_minmax} the functions @code{min} and
+@code{max} defined on the type parameter have been renamed to
+@code{fsmin} and @code{fsmax}, respectively.  This was done because
+they are only used in the definitions of @code{min} and @code{max}
+over finite sets, and can cause ambiguities elsewhere.
+
+@node induct no longer beta-reduces everything
+@subsection induct no longer beta-reduces everything
+
+There was a bug reported where @code{induct} was generating a large
+number of subgoals; this turned out to be due to the indiscriminate
+use of @code{beta}, which was intended to simplify newly added
+formulas but could also affect the conclusion and subsequent
+processing.  To fix this, @code{beta} is now only applied to newly
+generated formulas.  This may make some proofs fail, though generally
+they will be fixed simply by using @code{beta} after @code{induct}.
+
