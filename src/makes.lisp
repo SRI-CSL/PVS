@@ -179,10 +179,19 @@
     'spelling 'OBLIGATION
     'kind 'tcc
     'definition expr
+    'reason reason
     'semi t))
 
 (defun mk-termination-tcc (id expr)
   (make-instance 'termination-tcc
+    'id id
+    'spelling 'OBLIGATION
+    'kind 'tcc
+    'definition expr
+    'semi t))
+
+(defun mk-judgement-tcc (id expr)
+  (make-instance 'judgement-tcc
     'id id
     'spelling 'OBLIGATION
     'kind 'tcc
