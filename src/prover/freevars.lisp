@@ -161,6 +161,15 @@
   (and (no-freevars? (expr expr))
        (no-freevars? (type-value expr))))
 
+(defmethod freevars* ((map mapping-rhs))
+  (if (type-value map)
+      (freevars* (type-value map))
+      (freevars* (expr map))))
+
+(defmethod no-freevars? ((expr mapping-rhs))
+  (and (no-freevars? (expr expr))
+       (no-freevars? (type-value expr))))
+
 (defmethod freevars* ((expr expr))
   nil)
 
