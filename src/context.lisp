@@ -320,7 +320,6 @@ pvs-strategies files.")
 	 (ce (get-context-file-entry file))
 	 (te (get-context-theory-entry gtheory ce))
 	 (te-date (when ce (assq (id theory) (ce-object-date ce)))))
-    (assert (and te specdate) () "Error in writing binfile")
     (when (and te specdate)
       (unless (or (not (typechecked? theory))
 		  (and (not force?)
@@ -2147,5 +2146,3 @@ pvs-strategies files.")
 	(unless (memq (te-id te) nonmax)
 	  (push (te-id te) max))))
     (values max nonmax)))
-
-			   
