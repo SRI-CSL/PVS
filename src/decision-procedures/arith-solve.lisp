@@ -25,16 +25,6 @@
 ;(defdpstruct (ineq-constant (:include constant))
 ;  (index 0 :type fixnum))
 
-(defun make-epsilon ()
-  (let* ((id (gentemp "epsilon"))
-	 (result (make-constant :initial-type 'strict
-				:sxhash (dp-sxhash id)
-				:id id
-				:index 0)))
-    (setf (dp-gethash id *term-hash*)
-	  result)))
-
-(defvar *epsilon* (make-epsilon))
 
 (defun mk-ineq-var (id cong-state)
   (setf (dp-gethash id *term-hash*)
