@@ -200,7 +200,7 @@
 ;;; ICS interface
 
 (defmethod dpi-init* ((dp (eql 'ics)))
-  (ics-init 0))
+  (ics-init nil))
 
 (defmethod dpi-start* ((dp (eql 'ics)) prove-body)
   (pvs-to-ics-reset)
@@ -277,17 +277,19 @@
       (dpi-process* 'shostak expr (car state))
     (multiple-value-bind (ics-result ics-nstate)
 	(dpi-process* 'ics expr (cdr state))
-      (unless (tc-eq shostak-result ics-result)
-	(format t "~%ICS-SHOSTAK-DIFFERENCE dpi-process*: shostak and ICS differ on ~a"
-	  expr))
+      (if (tc-eq shostak-result ics-result)
+	  (format t "~%ICS-SHOSTAK dpi-process*: same results on~%  ~a:~%    Result: ~a"
+	    expr shostak-result)
+	  (format t "~%ICS-SHOSTAK-DIFFERENCE dpi-process*: shostak and ICS differ on~%  ~a:~%    Shostak: ~a~%        ICS: ~a"
+	    expr shostak-result ics-result))
       (values shostak-result (cons shostak-nstate ics-nstate)))))
 
 (defmethod dpi-valid?* ((dp (eql 'shostak-and-ics)) state pvs-expr)
   (let ((shostak-result (dpi-valid?* 'shostak (car state) pvs-expr))
 	(ics-result (dpi-valid?* 'ics (cdr state) pvs-expr)))
     (unless (tc-eq shostak-result ics-result)
-      (format t "~%ICS-SHOSTAK-DIFFERENCE dpi-valid?* shostak and ICS differ on ~a"
-	pvs-expr))
+      (format t "~%ICS-SHOSTAK-DIFFERENCE dpi-valid?* shostak and ICS differ on~%  ~a:~%    Shostak: ~a~%        ICS: ~a"
+	pvs-expr shostak-result ics-result))
     shostak-result))
 
 (defmethod dpi-push-state* ((dp (eql 'shostak-and-ics)) state)
@@ -309,6 +311,9 @@
 					     (car old-state) (car new-state)))
 	(ics-result (dpi-state-changed?* 'ics
 					 (cdr old-state) (cdr new-state))))
-    (unless (eq shostak-result ics-result)
-      (format t "~%ICS-SHOSTAK-DIFFERENCE dpi-state-changed?* shostak and ICS differ"))
+    (if (eq shostak-result ics-result)
+	(format t "~%ICS-SHOSTAK dpi-state-changed?* no difference: result = ~a"
+	  shostak-result)
+	(format t "~%ICS-SHOSTAK-DIFFERENCE dpi-state-changed?* shostak and ICS differ:~% Shostak: ~a~%     ICS: ~a"
+	  shostak-result ics-result))
     shostak-result))
