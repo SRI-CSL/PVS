@@ -178,11 +178,13 @@
    pvs-request@csl.sri.com")
     (insert "\n\n-----------------------------------------------------------------")
     (insert "\n
-   PVS (Prototype Verification System) is  made freely available  by
-   SRI for  experimental  use under the  terms   of the PVS  License
-   Agreement.  Note in particular that PVS is provided ``as is'' and
-   with  absolutely no warranty  of  any   kind.  PVS may be further
-   redistributed under the terms of its license agreement.")
+    Use of PVS(TM)  (Prototype Verification System) is subject to the
+   terms and conditions of the Software License Agreement between SRI
+   and the user of the Software.  Note in particular that PVS IS
+   PROVIDED ``AS IS'', AND SRI EXPRESSLY DISCLAIMS ALL REPRESENTATIONS
+   AND WARRANTIES REGARDING THE SOFTWARE AND DOCUMENTATION, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTY OF NONINFRINGEMENT,
+   MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.")
     (put-text-property pvs-welcome-point (point) 'face 'blue)
     (setq pvs-welcome-point (point))
 
