@@ -51,6 +51,12 @@ print object produces an error, and won't allow inspection of the object.")
       (format stream "#<~a ~a.~a>"
 	(type-of decl) (when (module decl) (id (module decl))) (id decl))))
 
+(defmethod print-object ((decl conversion-decl) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (format stream "#<~a: ~a>"
+	(type-of decl) (expr decl))))
+
 (defmethod print-object ((imp importing) stream)
   (if *debugging-print-object*
       (call-next-method)
