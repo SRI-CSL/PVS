@@ -857,15 +857,17 @@ time)."
 		collect (mu-mk-equiv x y))))
     (make-mu-conjunction equality-bdds)))
 
-(defun convert-pvs-to-mu-equality-with-subrangetype-in-arg (expr) 
-      (let* ((args1-atoms (convert-pvs-to-mu* (args1 expr)))
-	     (args2-atoms (convert-pvs-to-mu* (args2 expr)))
-	     (equalities (loop for x in args1-atoms
+(defun convert-pvs-to-mu-equality-with-subrangetype-in-arg (expr)
+  (if (and (variable? (args1 expr)) (variable? (args2 expr)))
+        (let* ((args1-atoms (convert-pvs-to-mu* (args1 expr)))
+	       (args2-atoms (convert-pvs-to-mu* (args2 expr)))
+	       (equalities (loop for x in args1-atoms
 			       as y in args2-atoms
 			       collect
 			  (mu-mk-equiv x y)      
                     )))
-	(make-mu-conjunction equalities)))
+	(make-mu-conjunction equalities))
+	   (make-mu-variable expr)))
 
 
 (defun convert-pvs-to-mu-equality-with-case-args (expr rhs?)
