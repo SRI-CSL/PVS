@@ -694,7 +694,7 @@
 	 (setf (saved-context d) (copy-context *current-context*)))
 	(subtype-judgement (add-to-known-subtypes (subtype d) (type d)))
 	(judgement (add-judgement-decl d))
-	(conversion-decl (push decl (conversions *current-context*)))
+	(conversion-decl (push d (conversions *current-context*)))
 	(declaration (put-decl d (current-declarations-hash)))
 	(datatype nil)))
     *current-context*))
