@@ -212,86 +212,78 @@ process has died for some reason, and you wish to keep using the same
 Emacs session.  Note that you will still need to retypecheck your files to
 get to the same state."
   (interactive)
-  (setq debug-on-error t)
-  (setq window-min-height 2)
-  (when current-prefix-arg
-    (let ((num (prefix-numeric-value current-prefix-arg)))
-      (if (and (<= 0 num) (<= num 3))
-	  (setenv "PVSPATCHLEVEL" num)
-	(message "Illegal patchlevel number - %s" num)))
-    (setq current-prefix-arg nil))
-  (unless noninteractive
-    (message "Initializing PVS: please wait..."))
-  (save-excursion
-    (set-buffer (get-buffer-create "PVS Log"))
-    (pvs-view-mode))
-  (save-excursion
-    (setq *pvs-initialized* nil)
-    (pvs-init)
-    (while (and (not (equal (simple-status-pvs) "Done"))
-		(equal (process-status (ilisp-process)) 'run))
-      (accept-process-output (ilisp-process))))
-  (unless (equal (process-status (ilisp-process)) 'run)
-    (switch-to-buffer "*pvs*")
-    (error "Could not run PVS"))
-  (save-excursion
-    (set-buffer (get-buffer "*pvs*"))
-    (make-local-variable 'kill-buffer-hook)
-    (setq kill-buffer-hook (list 'dont-kill-pvs-buffer))
-    (set-syntax-table pvs-mode-syntax-table))
-  (pvs-send-and-wait "(progn (in-package \"PVS\") nil)" nil nil 'dont-care)
-  (sleep-for 1)
-  (load (format "patch%d" (pvs-major-version-number)) t t)
-  (let ((comint-log nil))
-    (pvs-send-and-wait
-     (format "(progn (setq *pvs-path* \"%s\")
+  (if (and ilisp-buffer
+	   (get-buffer ilisp-buffer)
+	   (ilisp-process))
+      (error "PVS is already running")
+      (setq debug-on-error t)
+      (setq window-min-height 2)
+      (when current-prefix-arg
+	(let ((num (prefix-numeric-value current-prefix-arg)))
+	  (if (and (<= 0 num) (<= num 3))
+	      (setenv "PVSPATCHLEVEL" num)
+	      (message "Illegal patchlevel number - %s" num)))
+	(setq current-prefix-arg nil))
+      (unless noninteractive
+	(message "Initializing PVS: please wait..."))
+      (save-excursion
+	(set-buffer (get-buffer-create "PVS Log"))
+	(pvs-view-mode))
+      (save-excursion
+	(setq *pvs-initialized* nil)
+	(pvs-init)
+	(while (and (not (equal (simple-status-pvs) "Done"))
+		    (equal (process-status (ilisp-process)) 'run))
+	  (accept-process-output (ilisp-process))))
+      (unless (equal (process-status (ilisp-process)) 'run)
+	(switch-to-buffer "*pvs*")
+	(error "Could not run PVS"))
+      (save-excursion
+	(set-buffer (get-buffer "*pvs*"))
+	(make-local-variable 'kill-buffer-hook)
+	(setq kill-buffer-hook (list 'dont-kill-pvs-buffer))
+	(set-syntax-table pvs-mode-syntax-table))
+      (pvs-send-and-wait "(progn (in-package \"PVS\") nil)" nil nil 'dont-care)
+      (sleep-for 1)
+      (load (format "patch%d" (pvs-major-version-number)) t t)
+      (let ((comint-log nil))
+	(pvs-send-and-wait
+	 (format "(progn (setq *pvs-path* \"%s\")
                      (pvs-init nil %s)
                      (setq *noninteractive* %s)
                      (setq *pvs-verbose* %d)
                      (setq *force-dp* %s))"
 	     pvs-path (equal (getenv "PVSMINUSQ") "-q")
 	     noninteractive pvs-verbose (getenv "PVSFORCEDP"))
-     nil nil 'dont-care))
-  (cond ((equal (getenv "PVSDEFAULTDP") "new")
-	 (new-decision-procedures))
-	((equal (getenv "PVSDEFAULTDP") "old")
-	 (old-decision-procedures)))
-  (setq *pvs-version-information* nil)
-  (sleep-for 1)
-  ;; sets *pvs-current-directory* and pops up the welcome buffer
-  (condition-case ()
-      (init-change-context *pvs-current-directory*)
-    (quit nil))
-  (setq pvs-in-checker nil)
-  (setq pvs-in-evaluator nil)
-  (unless noninteractive
-    (pvs-auto-set-linelength (selected-frame))
-    (pvs-welcome))
-  (when (boundp 'save-options-file)
-    (setq save-options-file "~/.pvsxemacs-options")
-    (setq save-options-init-file "~/.pvsemacs"))
-  (when (and (file-exists-p "~/.pvsemacs")
-             (not (getenv "PVSMINUSQ")))
-    (load "~/.pvsemacs"))
-  (run-hooks 'change-context-hook)
-  (if (pvs-buffer-file-name)
-      (pvs-mode)
-    (unless noninteractive
-      (switch-to-buffer (get-buffer-create "PVS Welcome"))))
-  (setq debug-on-error nil)
-  (unless noninteractive
-    (message "Ready")))
+	 nil nil 'dont-care))
+      (cond ((equal (getenv "PVSDEFAULTDP") "new")
+	     (new-decision-procedures))
+	    ((equal (getenv "PVSDEFAULTDP") "old")
+	     (old-decision-procedures)))
+      (setq *pvs-version-information* nil)
+      (sleep-for 1)
+      ;; sets *pvs-current-directory* and pops up the welcome buffer
+      (condition-case ()
+	  (init-change-context *pvs-current-directory*)
+	(quit nil))
+      (setq pvs-in-checker nil)
+      (setq pvs-in-evaluator nil)
+      (unless noninteractive
+	(pvs-auto-set-linelength (selected-frame))
+	(pvs-welcome))
+      (when (boundp 'save-options-file)
+	(setq save-options-file "~/.pvsxemacs-options")
+	(setq save-options-init-file "~/.pvsemacs"))
+      (when (and (file-exists-p "~/.pvsemacs")
+		 (not (getenv "PVSMINUSQ")))
+	(load "~/.pvsemacs"))
+      (run-hooks 'change-context-hook)
+      (if (pvs-buffer-file-name)
+	  (pvs-mode)
+	  (unless noninteractive
+	    (switch-to-buffer (get-buffer-create "PVS Welcome"))))
+      (setq debug-on-error nil)
+      (unless noninteractive
+	(message "Ready"))))
 
 (pvs)
-
-
-
-
-
-
-
-
-
-
-
-
