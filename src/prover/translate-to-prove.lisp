@@ -48,15 +48,15 @@
 	      result)))))
 
 (defmethod translate-to-prove :around ((obj binding-expr))
-	   (if (or *bound-variables* *bindings*)
-	       (call-next-method)
-	       (let ((hashed-value
-		      (gethash obj *translate-to-prove-hash*)))
-		 (or hashed-value
-		     (let ((result (call-next-method)))
-		       (setf (gethash obj *translate-to-prove-hash*)
-			     result)
-		       result)))))
+  (if (or *bound-variables* *bindings*)
+      (call-next-method)
+      (let ((hashed-value
+	     (gethash obj *translate-to-prove-hash*)))
+	(or hashed-value
+	    (let ((result (call-next-method)))
+	      (setf (gethash obj *translate-to-prove-hash*)
+		    result)
+	      result)))))
 
 (defun conjunction (list)
   (if (cdr list)
@@ -164,7 +164,49 @@
 		    ))
 	  (push (cons (type expr) name) *subtype-names*)
 	  name))))
-	
+
+(defmethod add-explicit-prover-type ((ex application))
+  (when (and (name-expr? (operator ex))
+	     (memq (id (operator ex)) '(integer_pred rational_pred real_pred))
+	     (from-prelude? (declaration (operator ex))))
+    (let ((type (case (id (operator ex))
+		  (integer_pred 'integer)
+		  (t 'number))))
+      (if (name-expr? (argument ex))
+	  (let* ((norm-expr (normalize-name-expr-actuals (argument ex)))
+		 (id-hash (gethash norm-expr *translate-id-hash*))
+		 (newconst
+		  (or id-hash
+		      (list (intern
+			     (concatenate 'string
+			       (string (if (integerp (id (argument ex)))
+					   (format nil "~r" (id (argument ex)))
+					   (id (argument ex))))
+			       "_"
+			       (princ-to-string
+				(funcall *translate-id-counter*))))))))
+	    (unless id-hash
+	      (setf (gethash norm-expr *translate-id-hash*)
+		    newconst))
+	    (add-to-sequent-typealist (car newconst) type))
+	  (let ((name (cdr (assoc (argument ex) *named-exprs*
+				  :test #'tc-eq))))
+	    (unless name
+	      (let ((newid (gentemp)))
+		(add-to-sequent-typealist newid type)
+		(push (list (argument ex) newid) *named-exprs*))))))))
+
+(defun add-to-sequent-typealist (id type)
+  (let ((entry (assq id *sequent-typealist*)))
+    (if entry
+	(when (or (not (memq (cdr entry) '(integer number)))
+		  (and (eq type 'integer)
+		       (not (eq (cdr entry) 'integer))))
+	  (setf (cdr entry) type))
+	(push (cons id type) *sequent-typealist*))))
+
+(defmethod add-explicit-prover-type (ex)
+  nil)
 
 (defun add-to-typealist (id expr &optional type)
   (let ((prtype (prover-type (or type (type expr) (car (ptypes expr))))))
@@ -450,12 +492,14 @@
 	   (when (and *real*
 		      (subtype? *real*))
 	     (setq *real-pred* (translate-to-ground (predicate *real*))))
+	   (add-explicit-prover-type expr)
 	   (translate-to-ground (unit-derecognize expr)))
 	  (t (translate-with-new-hash
 	       (unless *integer-pred*
 		 (setq *integer-pred*
 		       (when *integer*
 			 (translate-to-ground (predicate *integer*)))))
+	       (add-explicit-prover-type expr)
 	       (translate-to-ground (unit-derecognize expr)))))))
 
 (defmethod translate-to-prove ((expr binding-expr))
@@ -479,8 +523,7 @@
 		    ;;different translations so that ASSERT might miss some
 		    ;;syntactic equalities when there are IFs in LAMBDAs.
 		    (let* ((newid (gentemp))
-				 
-					;(freevars (freevars (expression expr)))
+			   ;;(freevars (freevars (expression expr)))
 			   )
 		      ;;NSH(2.5.96) (freevars (expr..)) instead of
 		      ;;(freevars expr).
@@ -679,7 +722,7 @@
 (defmethod prover-type ((type type-expr))
   (cond ((tc-eq (find-supertype type) *boolean*) 'bool)
 	((member type `(,*integer* ,*naturalnumber*) :test #'tc-eq) 'integer)
-	((tc-eq type *number*) 'number)
+	((tc-eq type *real*) 'number)
 ;;	((typep type 'tupletype) 'tuple)
 ;;	((typep type 'arraytype) 'array)
 	((typep type 'funtype) 'functional)
