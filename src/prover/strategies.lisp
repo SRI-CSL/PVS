@@ -3436,7 +3436,7 @@ fnums."
     (hide :fnums fnums))
   "Hides all sequent formulas from FNUMS except those listed in
 KEEP-FNUMS.  Useful when all but a few formulas need to be hidden."
-  "Hiding ~a but keeping ~a")
+  "Keeping ~a and hiding ~a")
 
 (defstep skolem_inst (&optional (sk_fnum *) (inst_fnum *))
   (let ((sk_fnum (find-!quant sk_fnum *ps*))
