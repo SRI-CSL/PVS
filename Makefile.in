@@ -50,6 +50,11 @@ emacsversion = $(shell expr "`emacs --version 2> /dev/null`" \
 xemacsversion = $(shell expr "`xemacs --version 2> /dev/null`" \
                             : '[^X]*\(X\?Emacs [0-9]\+\)')
 
+ifeq ("$(emacsversion)", "Emacs 21")
+EMACS20 = "$(shell which emacs)"
+else
+emacs21version = $(shell expr "`emacs-21.2 --version 2> /dev/null`" \
+                              : '[^X]*\(X\?Emacs [0-9]\+\)')
 ifeq ("$(emacsversion)", "Emacs 20")
 EMACS20 = "$(shell which emacs)"
 else
@@ -57,6 +62,7 @@ emacs20version = $(shell expr "`emacs-20.3 --version 2> /dev/null`" \
                               : '[^X]*\(X\?Emacs [0-9]\+\)')
 ifeq ("$(emacs20version)", "Emacs 20")
 EMACS20 = "$(shell which emacs-20.3)"
+endif
 endif
 endif
 
@@ -340,6 +346,11 @@ all-lisp-files = ${ess} ${pvs-parser-in} ${lisp-files}
 fasl-files = $(lisp-files:.lisp=.$(LISPEXT))
 
 all-fasl-files = $(filter %.$(LISPEXT), $(all-lisp-files:.lisp=.$(LISPEXT)))
+
+ifneq ($(strip $(EMACS21)),)
+emacs20-elc = $(pvs-emacs20-src:.el=.elc) $(ilisp-emacs20-src:.el=.elc)
+emacs += emacs/emacs20/pvs-load.elc
+endif
 
 ifneq ($(strip $(EMACS20)),)
 emacs20-elc = $(pvs-emacs20-src:.el=.elc) $(ilisp-emacs20-src:.el=.elc)
