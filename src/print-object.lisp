@@ -9,7 +9,7 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -60,7 +60,7 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod print-object ((imp importing) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "#<IMPORTING ~a>" (theory-name imp))))
+      (format stream "~@<#<IMPORTING ~a>~:>" (theory-name imp))))
 
 (defmethod print-object ((c adt-constructor) stream)
   (if *debugging-print-object*
@@ -102,7 +102,7 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod print-object ((ctx context) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "#<Context ~a.~a>"
+      (format stream "~@<#<context ~w.~w>~:>"
 	      (when (theory ctx)
 		(id (theory ctx)))
 	      (when (declaration ctx)
@@ -197,10 +197,20 @@ print object produces an error, and won't allow inspection of the object.")
 	    (or (type res) (type (declaration res)))
 	    (kind-of (declaration res))))))
 
+(defmethod print-object ((res mapping-resolution) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (format stream
+	  "~@<~2I#<Mapping-Resolution~:@_ ~@<~2I~a ~:_{{ ~a }}~:>~:>>"
+	(and (module-instance res) (lcopy (module-instance res) 'mappings nil))
+	(declaration res))))
+
 (defmethod print-object ((alists dpinfo) stream)
   (if (or (not *print-expanded-dpinfo*) *debugging-print-object*)
       (call-next-method)
-      (format stream "#<DPINFO: ~a>" (dpinfo-findalist alists))))
+      (let ((*print-level* 3)
+	    (*print-length* 3))
+	(format stream "#<DPINFO: ~w>" (dpinfo-findalist alists)))))
 
 (defmethod print-object ((rule rule-instance) stream)
   (if *debugging-print-object*
@@ -223,6 +233,16 @@ print object produces an error, and won't allow inspection of the object.")
       (format stream "<#PROOF-INFO~@[ ~a:~] ~a>"
 	(id prinfo) (if (run-date prinfo)
 			(date-string (run-date prinfo))))))
+
+(defmethod print-object ((pt store-print-type) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (format stream "<#store-print-type ~a>"
+	(print-type pt))))
+
+(defmethod pp* ((pt store-print-type))
+  (format t "<#store-print-type ~a>"
+    (print-type pt)))
 
 #+allegro
 (defmethod describe-object :around (obj stream)
