@@ -234,12 +234,18 @@
 		  (:file "unparse" :depends-on ("macros"))
 		  (:file "pp")
 		  (:file "print-object")
-		  (:file "pvs-emacs")
 		  (:file "equalities")
 		  (:file "utils")
 		  (:file "gensubst")
 		  (:file "substit"))
      :depends-on (language))
+   (:module emacs-interface
+     :source-pathname "src/interface"
+     :components ((:file "pvs-emacs")
+		  (:file "emacs-calls")
+		  (:file "ilisp-pkg")
+		  (:file "cl-ilisp")
+		  (:file "allegro"))
    (:module typechecker
      :source-pathname "src/"
      :components ((:file "freeparams")
@@ -344,8 +350,4 @@
 ;		  (:file "static-update")
 ;		  (:file "pvseval-update")
 ;		  (:file "cl2pvs")))
-   (:module ilisp
-     :source-pathname "emacs/emacs-src/ilisp"
-     :components ((:file "ilisp-pkg")
-		  (:file "cl-ilisp")
-		  (:file "allegro")))))
+   ))
