@@ -1253,9 +1253,11 @@
 			     (cdr subtype))))
 	       (mapcar #'(lambda (ety) (add-to-known-subtypes aty ety))
 		 etypes)))
-	    (t (mapcar #'(lambda (ety) (add-to-known-subtypes (car subtype)
-							      ety))
-		 (cdr subtype)))))))
+	    (t (let ((ncar (subst-mod-params (car subtype) theoryname)))
+		 (mapcar #'(lambda (ety)
+			     (add-to-known-subtypes
+			      ncar (subst-mod-params ety theoryname)))
+		   (cdr subtype))))))))
 
 (defun known-subtype-of? (t1 t2)
   (let ((it (cons t1 t2)))
