@@ -68,12 +68,12 @@
 	 (*current-theory* (get-theory module-name))
 	 (*current-context* (context *current-theory*))
 	 (expr (typecheck-uniquely (pc-parse expr 'expr)))
-	 (id 'F!1)
+	 (sk-id 'F!1)
 	 (bexpr (if (tc-eq (type expr) *boolean*)
 		    expr
 		    (let* ((ftype (mk-funtype (type expr) *boolean*))
 			   (skdecl (make-instance 'skolem-const-decl
-				     'id id
+				     'id sk-id
 				     'type ftype
 				     'module *current-theory*))
 			   (*in-checker* t))
@@ -81,7 +81,7 @@
 		      (setf (declarations-hash *current-context*)
 			    (copy (current-declarations-hash)))
 		      (put-decl skdecl (current-declarations-hash))
-		      (make!-application (typecheck (pc-parse id 'expr)
+		      (make!-application (typecheck (pc-parse sk-id 'expr)
 					   :expected ftype)
 					 expr))))
 	 (cexpr (universal-closure bexpr))
@@ -99,7 +99,7 @@
 	 #'(lambda (ex) (argument ex))
 	 #'(lambda (ex) (and (application? ex)
 			     (name-expr? (operator ex))
-			     (eq (id (operator ex)) id))))))))
+			     (eq (id (operator ex)) sk-id))))))))
 
 (defun remove-skolem-constants (expr)
   (let* ((alist nil)
