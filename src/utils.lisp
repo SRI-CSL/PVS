@@ -667,7 +667,7 @@
 			 (memq decl all-decls)
 			 (cdr (memq decl all-decls))))
 	 (prev-imp (find-if #'importing? prev-decls))
-	 (rem-decls (if prev-imp
+	 (rem-decls (if (and prev-imp (saved-context prev-imp))
 			(ldiff prev-decls (memq prev-imp prev-decls))
 			prev-decls))
 	 (*current-context*
@@ -690,6 +690,27 @@
 			    (reverse rem-decls)
 			    (or (car rem-decls) decl))
 	      (make-new-context (module decl)))))
+    (dolist (d (reverse rem-decls))
+      (typecase d
+	(mod-decl
+	 (put-decl d (current-declarations-hash))
+	 (let* ((thname (theory-name d))
+		(th (get-theory thname)))
+	   (add-exporting-with-theories th thname)
+	   (add-to-using thname))
+	 (setf (saved-context d) (copy-context *current-context*)))
+	(importing
+	 (let* ((thname (theory-name d))
+		(th (get-theory thname)))
+	   (add-usings-to-context* th thname))
+	 (setf (saved-context d) (copy-context *current-context*)))
+	(subtype-judgement (add-to-known-subtypes (subtype d) (type d)))
+	(judgement (add-judgement-decl d))
+	(conversion-decl (push d (conversions *current-context*)))
+	(type-def-decl (unless (enumtype? (type-expr d))
+			 (put-decl d (current-declarations-hash))))
+	(declaration (put-decl d (current-declarations-hash)))
+	(datatype nil)))
     (when (from-prelude? decl)
       (let* ((prevp (cadr (memq (module decl)
 				(reverse *prelude-theories*))))
@@ -826,31 +847,7 @@
 	   'known-subtypes (copy-tree (known-subtypes context)))))
     (setf (judgements *current-context*)
 	  (copy-judgements (judgements context)))
-    (dolist (d decls)
-      (typecase d
-	(mod-decl
-	 (put-decl d (current-declarations-hash))
-	 (let* ((thname (theory-name d))
-		(th (get-theory thname)))
-	   (add-exporting-with-theories th thname)
-	   (add-to-using thname))
-	 (setf (saved-context d) (copy-context *current-context*)))
-	(importing
-	 (let* ((thname (theory-name d))
-		(th (get-theory thname)))
-	   (add-usings-to-context* th thname))
-	 (setf (saved-context d) (copy-context *current-context*)))
-	(subtype-judgement (add-to-known-subtypes (subtype d) (type d)))
-	(judgement (add-judgement-decl d))
-	(conversion-decl (push d (conversions *current-context*)))
-	(type-def-decl (unless (enumtype? (type-expr d))
-			 (put-decl d (current-declarations-hash))))
-	(declaration (put-decl d (current-declarations-hash)))
-	(datatype nil)))
     *current-context*))
-
-
-    
 
 (defun copy-prover-context (&optional (context *current-context*))
   (assert *in-checker*)
