@@ -51,6 +51,16 @@
 (defun dfa-false? (p)
   (dfa= p (dfa-false)))
 
+;; Status
+
+(defun dfa-status (p)
+  (assert (dfa? p))
+  (let ((status (mona-status (address p))))
+    (cond ((eql status 1) :valid)
+	  ((eql status -1) :inconsistent)
+	  ((eql status 0) :satisfiablebutnotvalid)
+	  (t (error "Unreachable")))))
+
 ;; Variable
 
 (defun dfa-var0 (i)
@@ -135,13 +145,46 @@
       (mona-free! a)
       q)))
 
-(defun dfa-cross-product (p1 p2 mode)
+(defun dfa-conjunction (p1 p2)
   (assert (dfa? p1))
   (assert (dfa? p2))
-  (let* ((a (mona-product (address p1) (address p2) mode))
+  (cond ((dfa-false? p1) (dfa-false))
+	((dfa-false? p2) (dfa-false))
+	((dfa-true? p1) p2)
+	((dfa-true? p2) p1)
+	(t (let* ((a (mona-conjunction (address p1) (address p2)))
+		  (p (mk-dfa (mona-minimize a))))
+	     (mona-free! a)
+	     p))))
+
+(defun dfa-disjunction (p1 p2)
+  (assert (dfa? p1))
+  (assert (dfa? p2))
+  (cond ((or (dfa-true? p1) (dfa-true? p2)) (dfa-true))
+	((dfa-false? p1) p2)
+	((dfa-false? p2) p1)
+	(t (let* ((a (mona-disjunction (address p1) (address p2)))
+		  (p (mk-dfa (mona-minimize a))))
+	     (mona-free! a)
+	     p))))
+
+(defun dfa-implication (p1 p2)
+  (assert (dfa? p1))
+  (assert (dfa? p2))
+  (let* ((a (mona-implication (address p1) (address p2)))
 	 (p (mk-dfa (mona-minimize a))))
     (mona-free! a)
     p))
+
+(defun dfa-iff (p1 p2)
+  (assert (dfa? p1))
+  (assert (dfa? p2))
+  (if (dfa= p1 p2)
+      (dfa-true)
+    (let* ((a (mona-iff (address p1) (address p2)))
+	   (p (mk-dfa (mona-minimize a))))
+      (mona-free! a)
+      p)))
 
 (defun dfa-unrestrict (p)
   (assert (dfa? p))
@@ -158,33 +201,10 @@
       (mk-dfa (mona-minimize b)))))
 
 ;; Derived Automaton Constructions
- 
-(defun dfa-conjunction (p1 p2)
-  (assert (dfa? p1))
-  (assert (dfa? p2))
-  (cond ((dfa-false? p1) (dfa-false))
-	((dfa-false? p2) (dfa-false))
-	((dfa-true? p1) p2)
-	((dfa-true? p2) p1)
-	(t (dfa-cross-product p1 p2 *ANDmode*))))
 
-(defun dfa-disjunction (p1 p2)
-  (assert (dfa? p1))
-  (assert (dfa? p2))
-  (cond ((or (dfa-true? p1) (dfa-true? p2)) (dfa-true))
-	((dfa-false? p1) p2)
-	((dfa-false? p2) p1)
-	(t (dfa-cross-product p1 p2 *ORmode*))))
- 
-(defun dfa-implication (p1 p2)
-  (dfa-cross-product p1 p2 *IMPLmode*))
-
-(defun dfa-equivalence (p1 p2)
-  (if (dfa= p1 p2) (dfa-true)
-      (dfa-cross-product p1 p2 *BIMPLmode*)))
 
 (defun dfa-xor (p1 p2)
-  (dfa-negation (dfa-equivalence p1 p2)))
+  (dfa-negation (dfa-iff p1 p2)))
 
 (defun dfa-ite (c p1 p2)
   (dfa-disjunction (dfa-conjunction c p1)
@@ -261,9 +281,8 @@
 (defun dfa-single (k i) ; P_k = {i}
   (mk-dfa
    (mona-minimize
-    (mona-product (mona-singleton k)
-		  (mona-in i k)
-		  *ANDmode*))))
+    (mona-conjunction (mona-singleton k)
+		      (mona-in i k)))))
 
 ;; Accessors, Recognizers
 
@@ -328,7 +347,7 @@
 				     (rt (dfa-in t0 r))
 				     (ct (dfa-in t0 c)))
 				 (dfa-conjunction
-				  (dfa-equivalence
+				  (dfa-iff
 				   (dfa-exists1 t1           ; t1 = t0 + 1 & t1 in c
 				    (dfa-conjunction
 				     (dfa-plus1 t1 t0 1)
@@ -337,7 +356,7 @@
 				    (list (dfa-conjunction pt qt)
 					  (dfa-conjunction pt ct)
 					  (dfa-conjunction qt ct))))
-				 (dfa-equivalence
+				 (dfa-iff
 				  rt
 				  (dfa-xor (dfa-xor pt qt) ct)))))))))
 				 
@@ -347,13 +366,13 @@
       (dfa-exists2 r (dfa-presburger-add p q r new))))
 
 (defun dfa-presburger-greater (p q new) ; P > Q
-  (dfa-conjunction (dfa-greatereq2 p q new) (dfa-negation (dfa-eq2 p q))))
+  (dfa-conjunction (dfa-presburger-greatereq p q new) (dfa-negation (dfa-eq2 p q))))
 
 (defun dfa-presburger-less (p q new)
-  (dfa-greater2 q p new))
+  (dfa-presburger-greater q p new))
 
 (defun dfa-presburger-lesseq (p q new)
-  (dfa-greatereq2 q p new))
+  (dfa-presburger-greatereq q p new))
 
 ;; Test functions
 
