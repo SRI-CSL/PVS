@@ -558,6 +558,13 @@
      (mapcar #'cdr bindings))
    'let-expr))
 
+(defun mk-coercion (expr type)
+  (let ((var (makesym "x%~a" (funcall *coercion-var-counter*))))
+    (make-instance 'coercion
+      'operator (mk-lambda-expr (list (mk-bind-decl var type))
+		  (mk-name-expr var))
+      'argument expr)))
+
 (defun mk-forall-expr (vars expr)
   (make-instance 'forall-expr
     'bindings (mk-bindings vars)
