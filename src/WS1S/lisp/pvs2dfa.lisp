@@ -67,9 +67,9 @@
 
 (defmethod fml-to-dfa* ((fml name-expr))
   (cond ((tc-eq fml *true*)
-	 *dfa-true*)
+	 (dfa-true-val))
 	((tc-eq fml *false*)
-	 *dfa-false*)
+	 (dfa-false-val))
 	((var0? fml)              
 	 (dfa-var0 (symtab-index fml)))
 	(t
@@ -83,7 +83,7 @@
 	 (rhs (args2 fml))
 	 (a1 (fml-to-dfa lhs)))
     (cond ((dfa-true? a1) (fml-to-dfa rhs))        
-	  ((dfa-false? a1) *dfa-false*)            
+	  ((dfa-false? a1) (dfa-false-val))            
 	  (t (dfa-conjunction a1 (fml-to-dfa rhs))))))
 
 (defmethod fml-to-dfa* ((fml disjunction))
@@ -91,14 +91,14 @@
 	 (rhs (args2 fml))
 	 (a1 (fml-to-dfa lhs)))
     (cond ((dfa-false? a1) (fml-to-dfa rhs)) 
-	  ((dfa-true? a1)  *dfa-true*)
+	  ((dfa-true? a1)  (dfa-true-val))
 	  (t (dfa-disjunction a1 (fml-to-dfa rhs))))))
 
 (defmethod fml-to-dfa* ((fml implication))
   (let* ((lhs (args1 fml))
 	 (rhs (args2 fml))
 	 (a1 (fml-to-dfa lhs)))
-    (if (dfa-false? a1) *dfa-true*
+    (if (dfa-false? a1) (dfa-true-val)
       (let ((a2 (fml-to-dfa rhs)))              
 	(dfa-implication a1 a2)))))
 
@@ -264,7 +264,7 @@
 	    (symtab-index trm)
 	  (when (eq signal :new)
 	    (format t "~%New 2nd-order parameter for ~a" trm))
-	  (values i nil *dfa-true*))))))
+	  (values i nil (dfa-true-val)))))))
 
 (defmethod fset-to-dfa* ((trm lambda-expr))
   (unless (= (length (bindings trm)) 1)
@@ -286,7 +286,7 @@
 
 (defmethod fset-to-dfa* ((trm name-expr))
   (if (var2? trm)
-      (values (symtab-index trm) nil *dfa-true*)
+      (values (symtab-index trm) nil (dfa-true-val))
     (call-next-method)))
 
 (defmethod fset-to-dfa* ((fml branch))
@@ -366,7 +366,7 @@
 
 (defmethod nat-to-dfa* ((trm name-expr))
   (if (var1? trm)
-      (values (symtab-index trm) nil *dfa-true*)
+      (values (symtab-index trm) nil (dfa-true-val))
     (call-next-method)))
 
 (defmethod nat-to-dfa* ((trm number-expr))
