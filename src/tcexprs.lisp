@@ -1297,8 +1297,9 @@
 	     (let* ((bindings1 (tc-match optype (domain ctype)
 					 (mapcar #'list fmls)))
 		    (dtypes (domain-types (find-supertype (range ctype))))
-		    (bindings (car (find-compatible-bindings args dtypes
-							     bindings1))))
+		    (bindings (when (= (length args) (length dtypes))
+				(car (find-compatible-bindings args dtypes
+							       bindings1)))))
 	       (when (and bindings (every #'cdr bindings))
 		 (let* ((acts (mapcar #'(lambda (a)
 					  (mk-res-actual (cdr a) theory))
