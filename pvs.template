@@ -114,7 +114,8 @@ case $opsys in
 	 opsys=redhat
 	 if [ ! $majvers ]; then
 	    if [ -f /etc/redhat-release ]
-	       then majvers=`cut -d" " -f2 /etc/redhat-release | cut -d"." -f1`
+	       then majvers=`sed 's/.*release \([0-9]*\)\.\([0-9]*\) .*/\1/' \
+	                         /etc/redhat-release`
 	       # Not Redhat; use the libc version to try and figure it out.
 	       else if [ -f /lib/libc.so.6 ]
 		       then majvers=5; othervers=4 
@@ -134,9 +135,13 @@ fi
 
 binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
 
-if [ -e $binpath/full ]
+if [ -e $binpath/full -a -x $binpath/full/$PVSIMAGE ]
    then PATH=$binpath/full:$binpath:$PVSPATH/bin:$PATH
-   else PATH=$binpath/runtime:$binpath:$PVSPATH/bin:$PATH
+elif [ -e $binpath/runtime -a -x $binpath/runtime/$PVSIMAGE ]
+   then PATH=$binpath/runtime:$binpath:$PVSPATH/bin:$PATH
+   else echo "Cannot find $binpath/runtime/$PVSIMAGE"
+        echo "Check the values of PVSPATH and PVSLISP"
+	exit 1
 fi
 
 ALLEGRO_CL_HOME=$PVSPATH/bin/$PVSARCH-$opsys${majvers}/home
@@ -158,12 +163,6 @@ PVSIMAGE="$PVSLISP"
 
 export ALLEGRO_CL_HOME DISPLAY
 export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSPATCHLEVEL
-
-if [ ! -x "$PVSPATH/bin/$PVSARCH-$opsys$majvers/$PVSIMAGE" ]
- then echo "Cannot find $PVSPATH/bin/$PVSARCH-$opsys$majvers/$PVSIMAGE"
-      echo "Check the values of PVSPATH and PVSLISP"
-      exit 1
-fi
 
 pvsemacsinit="-load $PVSPATH/emacs/go-pvs.el"
 
@@ -193,7 +192,3 @@ elif [ $batch ]
 else
   $PVSEMACS $pvsemacsinit $flags
 fi
-
-echo This is dave\'s new emacs testing version of PVS 2.3 
-echo I hope you know what you are doing with this...
-
