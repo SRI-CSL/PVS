@@ -69,7 +69,7 @@
   (typecheck* (argument expr) nil nil nil)
   (let ((tuptypes (delete-if-not #'(lambda (ty)
 				     (typep (find-supertype ty) 'tupletype))
-		    (types (argument expr)))))
+		    (ptypes (argument expr)))))
     (unless tuptypes
       (type-error expr
 	"The argument to a projection must be of a tuple type."))
