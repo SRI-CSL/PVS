@@ -1,0 +1,12 @@
+sum: THEORY
+ BEGIN
+
+ n: VAR nat
+
+ sum(n): RECURSIVE nat =
+  (IF n = 0 THEN 0 ELSE n + sum(n - 1) ENDIF)
+  MEASURE id
+
+ closed_form: THEOREM sum(n) = (n * (n + 1))/2
+
+ END sum

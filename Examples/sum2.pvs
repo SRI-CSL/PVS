@@ -1,0 +1,29 @@
+sum2: THEORY
+BEGIN
+
+  n : VAR nat
+  f,g : VAR [nat -> nat]
+
+  sum(f,n) : RECURSIVE nat =
+    IF n = 0 THEN
+      0
+    ELSE
+      f(n-1) + sum(f, n - 1)
+    ENDIF
+  MEASURE n
+
+  sum_plus : LEMMA
+    sum((lambda n : f(n) + g(n)), n)
+   = sum(f,n) + sum(g,n)
+
+  square(n) : nat = n * n
+
+  sum_of_squares : LEMMA
+    6 * sum(square, n+1) = n * (n+1) * (2*n + 1)
+
+  cube(n) : nat = n * n * n
+
+  sum_of_cubes : LEMMA
+    4 * sum(cube, n+1) = n*n*(n+1)*(n+1)
+
+END sum2
