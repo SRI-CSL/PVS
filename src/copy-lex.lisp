@@ -127,6 +127,8 @@
   (copy-lex* (formals old) (formals new)))
 
 (defmethod copy-lex* ((old conversion-decl) (new conversion-decl))
+  (unless (eq (class-of old) (class-of new))
+    (change-class old (class-of new)))
   (copy-lex* (name old) (name new)))
 
 (defmethod copy-lex* ((old typed-conversion-decl) (new typed-conversion-decl))

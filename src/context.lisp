@@ -194,6 +194,7 @@ pvs-strategies files.")
     (setf (caddr *strat-file-dates*) 0)
     (set-working-directory dir)
     (setq *pvs-context-path* (working-directory))
+    (setq *pvs-current-context-path* *pvs-context-path*)
     (setq *default-pathname-defaults* *pvs-context-path*)
     (clear-theories t)
     (restore-context)
@@ -550,29 +551,32 @@ pvs-strategies files.")
     (if theories
 	(let ((depfiles nil))
 	  (dolist (theory theories)
-	    (when (memq 'typechecked (status theory))
-	      (dolist (dth (dependencies theory))
-		(when (filename dth)
-		  (let ((depname (pathname-name (filename dth))))
-		    (unless (or (from-prelude? dth)
-				(equal filename depname)
-				(some #'(lambda (th)
-					  (and (datatype? th)
-					       (eq (id th)
-						   (generated-by dth))))
-				      theories))
-		      (when (and (typep dth '(or library-theory
-						 library-datatype))
-				 (not (equal (library-path dth)
-					     (namestring *pvs-context-path*))))
-			(setq depname
-			      (enough-namestring
-			       (merge-pathnames (library dth) (filename dth))
-			       (format nil "~a/lib/" *pvs-path*))))
-		      (pushnew depname depfiles
-			       :test #'(lambda (x y)
-					 (or (equal x filename)
-					     (equal x y))))))))))
+	    (dolist (dth (dependencies theory))
+	      (when (filename dth)
+		(let ((depname (pathname-name (filename dth))))
+		  (unless (or (from-prelude? dth)
+			      (and (equal filename depname)
+				   (not (typep dth '(or library-theory
+							library-datatype))))
+			      (some #'(lambda (th)
+					(and (datatype? th)
+					     (eq (id th)
+						 (generated-by dth))))
+				    theories))
+		    (when (and (typep dth '(or library-theory
+					       library-datatype))
+			       (not (file-equal
+				     (directory-namestring (path dth))
+				     (namestring *pvs-context-path*))))
+		      (setq depname
+			    (enough-namestring
+			     (merge-pathnames (library-path dth)
+					      (filename dth))
+			     (format nil "~a/lib/" *pvs-path*))))
+		    (pushnew depname depfiles
+			     :test #'(lambda (x y)
+				       (or (equal x filename)
+					   (equal x y)))))))))
 	  (delete-if #'null (nreverse depfiles)))
 	(let ((entry (get-context-file-entry filename)))
 	  (when entry
@@ -623,15 +627,58 @@ pvs-strategies files.")
 
 (defun dependencies (theory)
   (let ((*current-context* (or *current-context*
-			       (and (memq 'typechecked (status theory))
-				    (context theory))))
+			       (if (memq 'typechecked (status theory))
+				   (context theory)
+				   (dependencies-context theory))))
 	(*modules-visited* nil))
     (dependencies* theory)
     (remove theory *modules-visited*)))
 
+(defun dependencies-context (theory)
+  (let ((decl (car (last (or (theory theory)
+				  (assuming theory)
+				  (formals theory))))))
+    (if decl
+	(let* ((prev-decls (reverse (all-decls theory)))
+	       (rem-decls prev-decls)
+	       (*current-context* (make-new-context theory)))
+	  (dolist (d (reverse rem-decls))
+	    (typecase d
+	      (lib-decl
+	       (put-decl d (current-declarations-hash)))
+	      (mod-decl
+	       (put-decl d (current-declarations-hash))
+	       (let* ((thname (theory-name d))
+		      (th (get-theory thname)))
+		 (add-exporting-with-theories th thname)))
+	      (importing
+	       (let* ((thname (theory-name d))
+		      (th (get-theory thname)))
+		 (when th
+		   (add-dependencies-to-context th)
+		   (setf (saved-context d)
+			 (copy-context *current-context*)))))))
+	  (setf (declaration *current-context*) decl)
+	  *current-context*)
+	(make-new-context theory))))
+
+(defun add-dependencies-to-context (theory)
+  (unless (gethash theory (current-using-hash))
+    (setf (gethash theory (current-using-hash))
+	  (list (mk-modname (id theory)))))
+  (add-dependencies-exporting-with-theories theory))
+
+(defun add-dependencies-exporting-with-theories (theory)
+  (when (and (module? theory) (exporting theory))
+    (dolist (ename (closure (exporting theory)))
+      (let ((itheory (get-theory ename)))
+	(when itheory
+	  (unless (gethash itheory (current-using-hash))
+	    (setf (gethash itheory (current-using-hash))
+		  (list (mk-modname (id itheory))))))))))
+
 (defun dependencies* (theory)
   (unless (or (null theory)
-	      (not (memq 'typechecked (status theory)))
 	      (from-prelude? theory)
 	      (memq theory *modules-visited*))
     (push theory *modules-visited*)
@@ -671,6 +718,9 @@ pvs-strategies files.")
       (te-dependencies te))))
 
 ;;; Restore context
+;;; Reads in the .pvscontext file to the *pvs-context* variable.  Most of
+;;; the rest of this function provides for reading previous versions of the
+;;; .pvscontext
 
 (defun restore-context ()
   ;;(reset-context)
@@ -745,15 +795,18 @@ pvs-strategies files.")
 	      (when errcond
 		(restore-filename-error file errcond))))
 	  (unless (member dep *files-seen* :test #'string=)
+	    (push dep *files-seen*)
 	    (unless (gethash dep *pvs-files*)
-	      (restore-theories* dep))
-	    (push dep *files-seen*))))
+	      (restore-theories* dep)))))
     (if (valid-binfile? filename)
 	(restore-theories-from-file filename)
-	(typecheck-file filename))))
+	(typecheck-file filename nil nil nil t))))
 
 (defun restore-theories-from-file (filename)
-  (pvs-message "Restoring theories from ~a.bin" filename)
+  (pvs-message "Restoring theories from ~a.bin~@[ (library ~a)~]"
+    filename
+    (unless (eq *pvs-current-context-path* *pvs-context-path*)
+      (enough-namestring *pvs-context-path* *pvs-current-context-path*)))
   (let ((start-time (get-internal-real-time))
 	(*bin-theories-set* nil))
     (multiple-value-bind (theories condition)
@@ -1443,7 +1496,8 @@ pvs-strategies files.")
 			      :stream orph))))
 	       proofs)))
       (unless (zerop count)
-	(pvs-message "Found ~d orphaned proof~:p from theory ~a"
+	(pvs-message
+	    "Added ~d proof~:p from theory ~a to orphaned-proofs.prf"
 	  count theoryid)))))
 
 (defun read-theory-proofs (theoryref)
@@ -1612,15 +1666,37 @@ pvs-strategies files.")
 					 "pvs-strategies")))
     (load-strategies-file pvs-strat-file *strat-file-dates*)
     (load-strategies-file home-strat-file (cdr *strat-file-dates*))
+    (load-library-strategy-files)
     (load-strategies-file ctx-strat-file (cddr *strat-file-dates*))))
+
+(defvar *library-strategy-file-dates* nil)
+
+(defun load-library-strategy-files ()
+  (dolist (lib (current-library-pathnames))
+    (load-library-strategy-file lib)))
+
+(defun load-library-strategy-file (lib)
+  (let ((file (merge-pathnames lib "pvs-strategies")))
+    (when (file-exists-p file)
+      (let ((fwd (file-write-date file))
+	    (entry (assoc lib *library-strategy-file-dates* :test #'equal)))
+	(unless (and (cdr entry)
+		     (= fwd (cdr entry)))
+	  (if entry
+	      (setf (cdr date-entry) fwd)
+	      (push (cons lib fwd) *library-strategy-file-dates*))
+	  (with-open-file (str file :direction :input)
+	    (unless (ignore-errors (load str :verbose nil))
+	      (pvs-message "Error in loading ~a" file))))))))
 
 (defun load-strategies-file (file dates)
   (when (file-exists-p file)
     (let ((fwd (file-write-date file)))
       (unless (= fwd (car dates))
 	(setf (car dates) fwd)
-	(unless (ignore-errors (load file :verbose nil))
-	  (pvs-message "Error in loading ~a" file))))))
+	(with-open-file (str file :direction :input)
+	  (unless (ignore-errors (load str :verbose nil))
+	    (pvs-message "Error in loading ~a" file)))))))
 
 (defun make-prf-pathname (fname &optional (dir *pvs-context-path*))
   (assert (or (stringp fname) (pathnamep fname)))
@@ -1829,6 +1905,3 @@ pvs-strategies files.")
 ;; 	   ("2" (INST + "n3!1+2" "n5!1-1") (("1" (ASSERT)) ("2" (ASSERT))))))))
 
 ;;(defun editable-justification-to-sexp (just)
-  
-       
-       
