@@ -250,7 +250,7 @@ endif
 
 all : makebdd makepolylib ${pvsfull} ${pvsrt} ${emacs}
 
-${fasl-files} : ${pvs-make-files} ${ff-files} ${lisp-files}
+src/closopt.fasl : ${pvs-make-files} ${ff-files} ${lisp-files}
 	$(LISP) -e '(load "pvs.system")' \
 		-e "(let ((code 1)) (unwind-protect (progn (operate-on-system 'pvs :lf) (setq code 0)) (excl:exit code)))"
 
