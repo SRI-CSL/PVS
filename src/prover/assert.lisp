@@ -567,6 +567,12 @@
 (defmethod connective-occurs?* ((expr propositional-application) accum)
   T)
 
+(defmethod connective-occurs?* ((expr negation) accum)
+  (connective-occurs?* (argument expr) accum));;exception to prop-app.
+
+(defmethod connective-occurs?* ((expr boolean-equation) accum)
+  (connective-occurs?* (argument expr) accum))
+
 (defmethod connective-occurs?* ((expr application) accum)
   (with-slots (operator argument) expr
    (connective-occurs?* operator (cons argument accum))))
