@@ -21,6 +21,7 @@
 #       2 (test). Test patches (patch2-test.lisp) (the default)
 #       3 (exp).  Experimental patches (patch2-exp.lisp)
 #   -batch       run in batch mode
+#   -raw         run PVS without Emacs
 #   -v           the (verbose) level number - 0-3
 #   any emacs parameters (e.g. -q -batch -l foo)
 #   any X window parameters (e.g. -geometry 80x60+0-0)
@@ -51,6 +52,7 @@ PVSPATH=@PVSPATH@
 opsys=`uname -s`
 flags=
 batch=
+rawmode=
 if [ -f $HOME/.emacs ]
   then dotemacs="-l $HOME/.emacs"
   else dotemacs=
@@ -102,6 +104,7 @@ do
 	esac
         shift;;
      -batch) batch="$1";;
+     -raw) rawmode="yes";;
      -v) PVSVERBOSE=$2
          shift;;
      -name|-title|-xrm) PVSXINIT="$PVSXINIT $1 $2"
@@ -121,6 +124,7 @@ where options include:
   -force-decision-procedures  forces the decision procedures (ics, shostak, or cyrluk)
   -patchlevel level  patchlevel (none, rel, test, exp)
   -batch             run in batch mode
+  -raw               run PVS without Emacs
   -v number          verbosity level for batch mode (0-3)
   and any Emacs or X window options
 To change the title and icon names, use -title and -xrm, for example,
@@ -200,7 +204,7 @@ export PVSPATCHLEVEL PVSMINUSQ PVSFORCEDP PVSDEFAULTDP
 
 pvsemacsinit="-load $PVSPATH/emacs/go-pvs.el"
 
-if [ ! "$batch" -a "$DISPLAY" != "" -a "$nowin" != 1 ]
+if [ ! "$rawmode" -a ! "$batch" -a "$DISPLAY" != "" -a "$nowin" != 1 ]
  then
   HOST=${HOST:-`uname -n`}
 
@@ -216,6 +220,9 @@ if [ ! "$batch" -a "$DISPLAY" != "" -a "$nowin" != 1 ]
                                         pvs*iconName:PVS@$HOST" \
 		 $PVSXINIT $pvsemacsinit &);;
   esac    
+elif [ $rawmode ]
+  then
+    $PVSIMAGE -qq
 elif [ $batch ]
   then
     $PVSEMACS $batch $dotemacs $pvsemacsinit $flags 2>&1
