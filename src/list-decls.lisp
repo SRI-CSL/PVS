@@ -131,7 +131,7 @@
 		 nil))))
 
 (defmethod get-decl-associated-with ((obj field-assignment-arg))
-  (pvs-message "Declarations for field assignments broken.  Awaiting Sam to fix")
+  (pvs-message "Declaration information presently not available for field assignment arguments")
   nil)
 
 (defmethod get-decl-associated-with ((obj projection-application))
