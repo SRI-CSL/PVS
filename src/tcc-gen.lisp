@@ -1224,13 +1224,21 @@
   (if (null l1)
       (when preds
 	(make!-conjunction* (nreverse preds)))
-      (let ((npred (equality-predicates* (car l1) (car l2) nil nil bindings))
-	    (nbindings (new-tc-eq-list-bindings (car l1) (car l2) bindings)))
-	(equality-predicates-list
-	 (substit (cdr l1) nbindings) (cdr l2) nbindings 
-	 (if npred
-	     (cons npred preds)
-	     preds)))))
+      (let* ((npred (equality-predicates* (car l1) (car l2) nil nil bindings))
+	     (newpreds (if npred (cons npred preds) preds))
+	     (carl1 (car l1))
+	     (carl2 (car l2))
+	     (dep-binding? (and (dep-binding? carl1)
+				(dep-binding? carl2))))
+	(if dep-binding?
+	    (let*
+		((bd (make-bind-decl (id carl1) carl1))
+		 (bdvar (make-variable-expr bd))
+		 (new-cdrl1 (subst-var-into-deptypes bdvar carl1 (cdr l1)))
+		 (new-cdrl2 (subst-var-into-deptypes bdvar carl2 (cdr l2)))
+		 (*bound-variables (cons bd *bound-variables*)))
+	      (equality-predicates-list new-cdrl1 new-cdrl2 bindings newpreds))
+	    (equality-predicates-list (cdr l1)(cdr l2) bindings newpreds)))))
 
 (defmethod equality-predicates* ((a1 actual) (a2 actual) p1 p2 bindings)
   (if (type-value a1)
