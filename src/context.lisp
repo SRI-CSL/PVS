@@ -1251,21 +1251,20 @@ pvs-strategies files.")
 			(nconc proofs (list (car oldproofs)))))))
 
 (defun restore-proofs (filename theory &optional proofs)
-  (unless *loading-prelude*
-    (if proofs
-	(let ((tproofs (cdr (assq (id theory) proofs))))
-	  (restore-theory-proofs theory tproofs))
-	(let ((prfpath (make-prf-pathname filename)))
-	  (when (file-exists-p prfpath)
-	    (multiple-value-bind (ignore error)
-		(ignore-errors
-		  (with-open-file (input prfpath :direction :input)
-		    (restore-theory-proofs-from-file input prfpath theory)))
-	      (declare (ignore ignore))
-	      (when error
-		(pvs-message "Error reading proof file ~a"
-		  (namestring prfpath))
-		(pvs-log (format nil "  ~a" error)))))))))
+  (if proofs
+      (let ((tproofs (cdr (assq (id theory) proofs))))
+	(restore-theory-proofs theory tproofs))
+      (let ((prfpath (make-prf-pathname filename)))
+	(when (file-exists-p prfpath)
+	  (multiple-value-bind (ignore error)
+	      (ignore-errors
+		(with-open-file (input prfpath :direction :input)
+		  (restore-theory-proofs-from-file input prfpath theory)))
+	    (declare (ignore ignore))
+	    (when error
+	      (pvs-message "Error reading proof file ~a"
+		(namestring prfpath))
+	      (pvs-log (format nil "  ~a" error))))))))
 
 (defun restore-theory-proofs-from-file (input filestring theory)
   (let ((theory-proofs (read input NIL NIL)))
