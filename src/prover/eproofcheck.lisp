@@ -1878,12 +1878,19 @@
 			 (1+ info)))))
 	     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defun remove-dble-negation (expr)
-  (if (negation? expr)
-      (if (negation? (args1 expr))
-	  (remove-dble-negation (args1 (args1 expr)))
-	expr)
-    expr))
+
+(defmethod remove-dble-negation ((ex negation))
+  (or (remove-dble-negation* (argument ex))
+      ex))
+
+(defmethod remove-dble-negation (ex)
+  ex)
+
+(defmethod remove-dble-negation* ((ex negation))
+  (remove-dble-negation (argument ex)))
+
+(defmethod remove-dble-negation* ((ex expr))
+  nil)
   
 (defun clean-goal (goal)
   (let ((new-s-forms (loop for sf in (s-forms goal)
@@ -1894,7 +1901,7 @@
 			   collect
 			   (lcopy sf 'formula
 				  (remove-dble-negation (formula sf))))))
-    (if (every #'eq (s-forms goal) new-s-forms)
+    (if (equal (s-forms goal) new-s-forms)
 	goal
 	(lcopy goal 's-forms new-s-forms))))
 
