@@ -4,6 +4,11 @@
    to the usual markup, there are <span> elements with classes for the
    following: */
 
+/* Don't underline - makes operators difficult to read */
+a:link {text-decoration: none; }
+a:active {text-decoration: none; }
+a:visited {text-decoration: none; }
+
 span.comment {font-style: italic; background-color: #F0F0F0;}
 /* span.theory { } */
 /* span.datatype { } */
