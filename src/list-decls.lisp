@@ -29,12 +29,13 @@
 	  (typechecked-origin? oname origin))
       (multiple-value-bind (object *current-theory*)
 	  (get-object-at oname origin pos1 pos2)
-	(let ((*disable-gc-printout* t)
-	      (*current-context* (context *current-theory*)))
-	  (pvs-buffer "Expanded Form"
-	    (unparse (full-name object nil (not all?)) :string t)
-	    t))
-	(place-list (place object)))))
+	(when object
+	  (let ((*disable-gc-printout* t)
+		(*current-context* (context *current-theory*)))
+	    (pvs-buffer "Expanded Form"
+	      (unparse (full-name object nil (not all?)) :string t)
+	      t))
+	  (place-list (place object))))))
 
 ;;; Called by Emacs - show-declaration command
 
@@ -172,7 +173,8 @@
     (let ((theory (find-element-containing-pos theories pos1)))
       (if (or (equal pos1 pos2)
 	      (within-place pos2 (place theory)))
-	  (values (get-object-in-theory-at objects theory pos1 pos2) theory)
+	  (let ((object (get-object-in-theory-at objects theory pos1 pos2)))
+	    (values object theory))
 	  (pvs-message "Region may not cross theory boundaries")))))
 
 (defun get-object-in-theory-at (objects theory pos1 pos2)
@@ -192,6 +194,7 @@
 
 (defun get-object-in-declaration-at (decl pos1 pos2)
   (let ((object nil)
+	(objects nil)
 	(*parsing-or-unparsing* t))
     (mapobject #'(lambda (ex)
 		   (or (and (syntax? ex)
@@ -200,8 +203,8 @@
 			    (within-place pos1 (place ex))
 			    (or (equal pos1 pos2)
 				(within-place pos2 (place ex)))
-			    (unless (and (infix-application? object)
-					 (arg-tuple-expr? ex))
+			    (unless (arg-tuple-expr? ex)
+			      (push ex objects)
 			      (setq object ex))
 			    nil)
 		       (when (and (place ex)
@@ -215,7 +218,7 @@
 				      (within-place pos2 (place ex))))
 			 nil)))
 	       decl)
-    object))
+    (values object objects)))
 
 (defun get-id-object-at (oname origin pos)
   (let ((objects (get-syntactic-objects-for oname origin))
