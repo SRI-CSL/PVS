@@ -658,8 +658,15 @@
 ;;; Checks whether the given declaration is exportable from the given theory.
 ;;; to the current theory.
 ;;; Used mostly in merging judgements from one context to another.
+
+;;; There are three theories involved here: the (module decl), the given
+;;; theory, and the (current-theory).  The tricky bit is judgements, which
+;;; when instantiated end up belonging to a different theory (see
+;;; subst-params-decl).  
 (defun exportable? (decl theory)
-  (or (from-prelude? decl)
+  (assert *current-context*)
+  (or (eq (module decl) (current-theory))
+      (from-prelude? decl)
       (from-prelude-library? decl)
       (unless (or (from-prelude? theory)
 		  (from-prelude-library? theory))
