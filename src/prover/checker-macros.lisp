@@ -518,7 +518,10 @@
 (defmacro make-assert-expr (expr)
   `(let* ((*tccforms* nil)
 	  (*keep-unbound*  *bound-variables*)
-	  (*generate-tccs* (OR *generate-tccs* 'ALL!))
+	  (*generate-tccs* (if (and *generate-tccs*
+				    (not (eq *generate-tccs* 'NONE)))
+			       *generate-tccs*
+			       'ALL!))
 	  (expr ,expr)
 	  (tcc-fmlas (when (not (eq *generate-tccs* 'NONE))
 		       (loop for tccinfo in *tccforms*
