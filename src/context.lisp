@@ -2127,6 +2127,48 @@ pvs-strategies files.")
 	      (t (format t "~%Theory ~a not found, ignoring" theoryid)))
 	(restore-proofs-from-split-file* input prfpath)))))
 
+(defun cleanup-proofs-pvs-file (file)
+  (let* ((all-proofs (read-pvs-file-proofs file))
+	 (aproofs (proofs-with-associated-decls file all-proofs))
+	 (dproofs (collect-default-proofs file aproofs)))
+    (if (equalp all-proofs dproofs)
+	(pvs-message "Proof file is already cleaned up")
+	(let ((prf-file (make-prf-pathname file)))
+	  (pvs-message "Moving ~a to ~a.bak" prf-file prf-file)
+	  (rename-file prf-file (concatenate 'string prf-file ".bak"))
+	  (pvs-message "Writing cleaned up proof file ~a" prf-file) 
+	  (multiple-value-bind (value condition)
+	      (ignore-file-errors
+	       (with-open-file (out prf-file :direction :output
+				    :if-exists :supersede)
+		 (mapc #'(lambda (prf)
+			   (write prf :length nil :level nil :escape t
+				  :pretty *save-proofs-pretty*
+				  :stream out)
+			   (when *save-proofs-pretty* (terpri out)))
+		       dproofs)
+		 (terpri out)))
+	    (declare (ignore value))
+	    (if (or condition
+		    (setq condition
+			  (and *validate-saved-proofs*
+			       (invalid-proof-file prf-file dproofs))))
+		(pvs-message "Error writing out proof file:~%  ~a"
+		  condition)
+		(pvs-message "Proof file ~a written" prf-file)))))))
+
+(defun collect-default-proofs (proofs)
+  (mapcar #'collect-theory-default-proofs proofs))
+
+(defun collect-theory-default-proofs (proofs)
+  (cons (car proofs) ;; theory id
+	(mapcar #'collect-formula-default-proofs (cdr proofs))))
+
+(defun collect-formula-default-proofs (proofs)
+  (let ((index (cadr proofs)))
+    (list (car proofs) ;; formula id
+	  0            ;; new index
+	  (list (nth index (cddr proofs))))))
 
 ;;; There are 3 forms of justification used in PVS.
 ;;;   justification - this is what is generated during proof
