@@ -34,7 +34,9 @@
 		  top-level::*print-level* nil)
   (unless dont-load-patches
     (load-pvs-patches))
-  (pvs-init-globals))
+  (pvs-init-globals)
+  (let ((*new-ground?* t))
+    (init-dc t)))
 
 (defun pvs-init-globals ()
   (setq *pvs-modules* (make-hash-table :test #'eq :size 20 :rehash-size 10))
@@ -1361,8 +1363,11 @@
 	   ;;(setq *current-theory* (module fdecl))
 	   (pvs-buffer "Proof"
 	     (with-output-to-string (out)
-	       ;;(format out ";;; Proof ~a for formula ~a.~a~%"
-		 ;;(id (default-proof fdecl)) (id (module fdecl)) (id fdecl))
+	       (format out ";;; Proof for formula ~a.~a~%"
+		 (id (module fdecl)) (id fdecl))
+	       (format out
+		   ";;; developed with ~:[old~;new~] decision procedures~%"
+		 (new-ground? fdecl))
 	       (write (editable-justification (justification fdecl)
 					      nil nil (when full-label ""))
 		      :stream out :pretty t :escape t
