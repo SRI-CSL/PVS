@@ -248,22 +248,25 @@
 ;(defmethod translate-to-dc ((expr coercion))
 ;  (translate-to-dc (expression expr)))
 
-;(defmethod translate-to-dc ((expr if-expr))
-;  (if (eq (id (module-instance (resolution (operator expr))))
-;	  '|if_def|)
-;      (list 'IF
-;	    (translate-to-dc (condition expr))
-;	    (translate-to-dc (then-part expr))
-;	    (translate-to-dc (else-part expr)))
-;      (call-next-method)))
+(defmethod translate-to-dc ((expr if-expr))
+  (if (eq (id (module-instance (resolution (operator expr))))
+	  '|if_def|)
+      (dp::mk-if-then-else
+       (translate-to-dc (condition expr))
+       (translate-to-dc (then-part expr))
+       (translate-to-dc (else-part expr)))
+      (call-next-method)))
+
+;(defmethod translate-to-dc ((expr cases-expr))
+;  (let ((name (pvs-gethash expr *dc-named-exprs*)))
+;    (or name
+;        (let ((newid (dp::mk-constant (gentemp))))
+;          (add-to-prtype-hash newid nil (type expr))
+;          (setf (pvs-gethash expr *dc-named-exprs*) newid)
+;          newid))))
 
 (defmethod translate-to-dc ((expr cases-expr))
-  (let ((name (pvs-gethash expr *dc-named-exprs*)))
-    (or name
-	(let ((newid (dp::mk-constant (gentemp))))
-	  (add-to-prtype-hash newid nil (type expr))
-	  (setf (pvs-gethash expr *dc-named-exprs*) newid)
-	  newid))))
+  (translate-to-dc (translate-cases-to-if expr)))
 
 ;(defun translate-dc-args (arguments expected)
 ;  (if (eql (length expected)
