@@ -675,25 +675,34 @@
 	      (copy-context (cond (prev-imp
 				   (saved-context prev-imp))
 				  ((from-prelude? decl)
-				   (let ((ptheories
-					  (cdr (memq (module decl)
-						     (reverse
-						      *prelude-theories*)))))
+				   (let ((prevp
+					  (cadr (memq (module decl)
+						      (reverse
+						       *prelude-theories*)))))
 				     (saved-context
-				      (find-if #'module? ptheories))))
+				      (if (datatype? prevp)
+					  (or (adt-reduce-theory prevp)
+					      (adt-map-theory prevp)
+					      (adt-theory prevp))
+					  prevp))))
 				  (t *prelude-context*))
 			    (module decl)
 			    (reverse rem-decls)
 			    (or (car rem-decls) decl))
 	      (make-new-context (module decl)))))
     (when (from-prelude? decl)
-      (let* ((ptheories (cdr (memq (module decl)
-				   (reverse *prelude-theories*))))
-	     (pth (find-if #'module? ptheories)))
-	(setf (gethash pth (using-hash *current-context*))
-	      (list (mk-modname (id pth))))))
-    (setf (declaration *current-context*)
-	  (or (car prev-decls) decl))
+      (let* ((prevp (cadr (memq (module decl)
+				(reverse *prelude-theories*))))
+	     (pths (if (datatype? prevp)
+		       (delete-if #'null
+			 (list (adt-theory prevp)
+			       (adt-map-theory prevp)
+			       (adt-reduce-theory prevp)))
+		       (list prevp))))
+	(dolist (pth pths)
+	  (setf (gethash pth (using-hash *current-context*))
+		(list (mk-modname (id pth)))))))
+    (setf (declaration *current-context*) decl)
     (dolist (d (reverse prev-decls))
       (typecase d
 	(mod-decl
