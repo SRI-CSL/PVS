@@ -1792,6 +1792,7 @@
 	       (setf (strategy newps)(query*-step))
 	       newps))
 	  (t (format t "~% UNDO operations must be immediately undone.")
+	     (setf (strategy ps) (query*-step));;(NSH:5/8/99)
 	     ps))
       (let ((newps (findps info ps)))
 	(cond ((null newps)
