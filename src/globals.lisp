@@ -45,8 +45,7 @@
   (let ((end (position #\space excl::cl-release-date :from-end t)))
     (subseq excl::cl-release-date 0 end)))
 
-(defparameter *pvs-version*
-  (concatenate 'string "3.0 Beta 2"))
+(defparameter *pvs-version* "3.0")
 
 (defparameter *binfile-version* 19)
 
