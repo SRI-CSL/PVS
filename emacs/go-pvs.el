@@ -8,7 +8,7 @@
 
 (defconst pvs-emacs-system
   (cond ((string-match "Xemacs 21" (emacs-version))
-	 'xemacs20)
+	 'xemacs21)
 	((string-match "XEmacs 20" (emacs-version))
 	 'xemacs20)
 	((string-match "XEmacs 19" (emacs-version))
@@ -21,7 +21,7 @@
 	 (message "Your Emacs version is not known by PVS 2.3 - assuming Emacs 20")
          'emacs20))
   "The version of Emacs in which PVS is running. Set in go-pvs.el.
-   Defined as one of (xemacs20 xemacs19 emacs20 emacs19) and defaults
+   Defined as one of (xemacs21 xemacs20 xemacs19 emacs20 emacs19) and defaults
    to emacs20 if the current version cannot be determined.")
 
 (if (getenv "PVSPATH")
