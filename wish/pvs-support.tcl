@@ -1,7 +1,3 @@
-
->> HISTORY 
->> 12-Jul-1994		Natarajan Shankar	
->>    Fix proof-current.
 wm withdraw .
 
 proc emacs-eval {arg} {
