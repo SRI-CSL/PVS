@@ -297,28 +297,28 @@ ilisp-emacs19-src = $(addprefix emacs/emacs19/,$(notdir ${ilisp-emacs-src}))
 ilisp-xemacs20-src = $(addprefix emacs/xemacs20/,$(notdir ${ilisp-emacs-src}))
 ilisp-xemacs19-src = $(addprefix emacs/xemacs19/,$(notdir ${ilisp-emacs-src}))
 
-${pvs-emacs20-src} : ${pvs-emacs-src}
+emacs/emacs20/%.el : emacs/emacs-src/%.el
 	(cd emacs/emacs20; ln -s ../emacs-src/$(@F) .)
 
-${pvs-emacs19-src} : ${pvs-emacs-src}
+emacs/emacs19/%.el : emacs/emacs-src/%.el
 	(cd emacs/emacs19; ln -s ../emacs-src/$(@F) .)
 
-${pvs-xemacs20-src} : ${pvs-emacs-src}
+emacs/xemacs20/%.el : emacs/emacs-src/%.el
 	(cd emacs/xemacs20; ln -s ../emacs-src/$(@F) .)
 
-${pvs-xemacs19-src} : ${pvs-emacs-src}
+emacs/xemacs19/%.el : emacs/emacs-src/%.el
 	(cd emacs/xemacs19; ln -s ../emacs-src/$(@F) .)
 
-${ilisp-emacs20-src} : ${ilisp-emacs-src}
+emacs/emacs20/%.el : emacs/emacs-src/ilisp/%.el
 	(cd emacs/emacs20; ln -s ../emacs-src/ilisp/$(@F) .)
 
-${ilisp-emacs19-src} : ${ilisp-emacs-src}
+emacs/emacs19/%.el : emacs/emacs-src/ilisp/%.el
 	(cd emacs/emacs19; ln -s ../emacs-src/ilisp/$(@F) .)
 
-${ilisp-xemacs20-src} : ${ilisp-emacs-src}
+emacs/xemacs20/%.el : emacs/emacs-src/ilisp/%.el
 	(cd emacs/xemacs20; ln -s ../emacs-src/ilisp/$(@F) .)
 
-${ilisp-xemacs19-src} : ${ilisp-emacs-src}
+emacs/xemacs19/%.el : emacs/emacs-src/ilisp/%.el
 	(cd emacs/xemacs19; ln -s ../emacs-src/ilisp/$(@F) .)
 
 ifeq ($(shell if [ -x ${emacs20} ] ; then echo OK ; fi), OK)
