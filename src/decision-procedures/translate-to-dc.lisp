@@ -19,7 +19,8 @@
     (+ . ,dp::*plus*)
     (- . ,dp::*difference*) 
     (* . ,dp::*times*)
-    (/ . ,dp::*divide*)))
+    (/ . ,dp::*divide*)
+    (update . ,dp::*update*)))
 
 (defvar *translate-to-dc-hash* (make-pvs-hash-table :hashfn #'pvs-sxhash
 						    :test #'tc-eq))
@@ -51,7 +52,8 @@
 	  (+ . ,dp::*plus*)
 	  (- . ,dp::*difference*) 
 	  (* . ,dp::*times*)
-	  (/ . ,dp::*divide*))))
+	  (/ . ,dp::*divide*)
+	  (update . ,dp::*update*))))
 
 (defun interpretation (name)
   (or (cdr (assoc (id name)
@@ -500,7 +502,7 @@
 
 (defun translate-dc-assign-args (args value trbasis type)
   (if args
-      (dp::mk-term (list (dp::mk-constant 'UPDATE)
+      (dp::mk-term (list dp::*update*
 		     trbasis
 		     (typecase type
 		       (recordtype
@@ -534,7 +536,7 @@
 
 (defun translate-dc-assign-args (args value trbasis type)
   (if args
-      (dp::mk-term (list (dp::mk-constant 'UPDATE)
+      (dp::mk-term (list dp::*update*
 		     trbasis
 		     (typecase type
 		       (recordtype
