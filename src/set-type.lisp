@@ -113,7 +113,7 @@ required a context.")
 	   (setf (types ex) nil)))
   #+pvsdebug (assert (fully-typed? ex))
   #+pvsdebug (assert (fully-instantiated? ex))
-  (unless (typep ex '(or branch lambda-expr))
+  (unless (typep ex '(or branch lambda-expr update-expr))
     (check-for-subtype-tcc ex expected)))
 
 (defun look-for-conversion (expr expected)
@@ -2847,10 +2847,15 @@ required a context.")
 		   ass)
 	   nil))))
 
+;;; Have to be careful here to make sure the right TCCs are generated.
+;;;     r: [# x: int, y: int #]
+;;;     s: [# x, y, z: nat #] = r WITH [`y := 2, `z |-> -5]
+;;; Should only generate TCCs r`x >= 0 and -5 >= 0
+;;; To do this, we need to compare with the expected type at the right time.
+
 (defmethod set-type* ((expr update-expr) (expected recordtype))
   (with-slots (expression assignments) expr
-    (let ((etypes (collect-compatible-recordtypes (ptypes expression)
-						  expected)))
+    (let ((etypes (collect-compatible-recordtypes (ptypes expr) expected)))
       (check-unique-type etypes expr expected)
       (let* ((stype (find-supertype (car etypes)))
 	     (atype (if (fully-instantiated? stype)
@@ -2858,14 +2863,13 @@ required a context.")
 			(instantiate-from stype expected expr)))
 	     (args-list (mapcar #'arguments assignments))
 	     (values (mapcar #'expression assignments)))
-	(set-type* expression (car etypes))
-	(set-assignment-arg-types args-list values expression atype)
+	(set-type* expression (contract-expected expr atype))
+	(set-assignment-arg-types args-list values expression expected)
 	(setf (type expr) atype)))))
 
 (defmethod set-type* ((expr update-expr) (expected tupletype))
   (with-slots (expression assignments) expr
-    (let ((etypes (collect-compatible-tupletypes (ptypes expression)
-						 expected)))
+    (let ((etypes (collect-compatible-tupletypes (ptypes expr) expected)))
       (check-unique-type etypes expr expected)
       (let* ((stype (find-supertype (car etypes)))
 	     (atype (if (fully-instantiated? stype)
@@ -2873,23 +2877,28 @@ required a context.")
 			(instantiate-from stype expected expr)))
 	     (args-list (mapcar #'arguments assignments))
 	     (values (mapcar #'expression assignments)))
-	(set-type* expression (car etypes))
-	(set-assignment-arg-types args-list values expression atype)
+	(set-type* expression (contract-expected expr atype))
+	(set-assignment-arg-types args-list values expression expected)
 	(setf (type expr) atype)))))
 
 (defmethod set-type* ((expr update-expr) (expected funtype))
   (with-slots (expression assignments) expr
-    (let ((etypes (collect-compatible-funtypes (ptypes expression)
-					       expected)))
+    (let ((etypes (collect-compatible-funtypes (ptypes expr) expected))
+	  (extypes (collect-compatible-funtypes (ptypes expression) expected)))
       (check-unique-type etypes expr expected)
+      (check-unique-type extypes expression expected)
       (let* ((stype (find-supertype (car etypes)))
 	     (atype (if (fully-instantiated? stype)
 			stype
 			(instantiate-from stype expected expr)))
+	     (sxtype (find-supertype (car extypes)))
+	     (axtype (if (fully-instantiated? sxtype)
+			 sxtype
+			 (instantiate-from sxtype expected expr)))
 	     (args-list (mapcar #'arguments assignments))
 	     (values (mapcar #'expression assignments)))
-	(set-type* expression (car etypes))
-	(set-assignment-arg-types args-list values expression atype)
+	(set-type* expression axtype)
+	(set-assignment-arg-types args-list values expression expected)
 	(setf (type expr) atype)))))
 
 (defmethod set-type* ((expr update-expr) (expected datatype-subtype))
@@ -2899,7 +2908,7 @@ required a context.")
   (set-type-update-expr-datatype expr expected))
 
 (defun set-type-update-expr-datatype (expr expected)
-  (let ((etypes (collect-compatible-adt-types (types expr) expected)))
+  (let ((etypes (collect-compatible-adt-types (ptypes expr) expected)))
     (check-unique-type etypes expr expected)
     (let* ((stype (find-update-supertype (car etypes)))
 	   (atype (if (fully-instantiated? stype)
@@ -2908,12 +2917,20 @@ required a context.")
 	   (args-list (mapcar #'arguments (assignments expr)))
 	   (values (mapcar #'expression (assignments expr))))
       (set-type* (expression expr) atype)
-      (set-assignment-arg-types args-list values (expression expr) atype)
+      (set-assignment-arg-types args-list values (expression expr) expected)
       (setf (type expr) atype))))
 
 (defmethod set-type* ((expr update-expr) (expected subtype))
   (let ((stype (find-update-supertype expected)))
-    (set-type* expr stype)))
+    (set-type* expr stype)
+    (let* ((id (make-new-variable '|x| (list expr expected)))
+	   (bd (make-bind-decl id stype))
+	   (var (make-variable-expr bd))
+	   (cpreds (compatible-predicates (list stype) expected var))
+	   (incs (beta-reduce (substit cpreds
+				(acons bd (copy expr 'parens 1) nil)))))
+      (when incs
+	(generate-subtype-tcc expr expected incs)))))
 
 (defmethod set-type* ((expr update-expr) (expected dep-binding))
   (set-type* expr (type expected)))
@@ -3020,11 +3037,13 @@ required a context.")
 
 (defun set-assignment-update-arg-types* (constrs args-list values ex)
   (assert constrs)
-  (set-constructors-update-arg-types constrs args-list values ex))
+  (let ((cpreds (mapcar #'(lambda (c) (make!-application (recognizer c) ex))
+		  constrs)))
+    (set-constructors-update-arg-types constrs args-list values ex cpreds)))
 
 ;; When multiple constructors are involved we need to collect the TCCs for
 ;; each one, and form the disjunction.
-(defun set-constructors-update-arg-types (constrs args-list values ex
+(defun set-constructors-update-arg-types (constrs args-list values ex cpreds
 						  &optional tccs recs)
   (if (null constrs)
       (let* ((dtcc (make!-disjunction* (nreverse tccs)))
@@ -3043,20 +3062,33 @@ required a context.")
 	(insert-tcc-decl 'subtype ex type ndecl))
       (let* ((c (car constrs))
 	     (accs (accessors c))
-	     (*tccforms* nil))
+	     (*tccforms* nil)
+	     (jhash (judgement-types-hash (judgements *current-context*))))
 	(multiple-value-bind (cargs-list cvalues)
 	    (complete-constructor-assignments args-list values ex accs)
-	  (let ((*collecting-tccs* t))
-	    (set-assignment-accessor-arg-types cargs-list cvalues ex accs))
-	  (let* ((cpred (make!-application (recognizer c) ex))
+	  (unwind-protect
+	      (let ((*collecting-tccs* t)
+		    (rectype (if (fully-instantiated? (range (type c)))
+				 (range (type c))
+				 (instantiate-from
+				  (range (type c)) (type ex) ex))))
+		(setf (gethash ex jhash)
+		      (cons rectype (judgement-types ex)))
+		(set-assignment-accessor-arg-types cargs-list cvalues ex accs))
+	    (setf (gethash ex jhash)
+		  (cdr (gethash ex jhash))))
+	  (let* ((cpred (find (recognizer c) cpreds
+			      :key #'operator :test #'tc-eq))
+		 (stccs (gensubst (mapcar #'tccinfo-formula *tccforms*)
+			 #'(lambda (x) (if (tc-eq x cpred) *true* *false*))
+			 #'(lambda (x) (member x cpreds :test #'tc-eq))))
 		 (ntccs (cons cpred
-			      (remove cpred (mapcar #'tccinfo-formula
-					      *tccforms*)
+			      (remove *true* (pseudo-normalize stccs)
 				      :test #'tc-eq)))
 		 (tcc (make!-conjunction* ntccs)))
 	    (setf (parens tcc) 1)
 	    (set-constructors-update-arg-types
-	     (cdr constrs) args-list values ex
+	     (cdr constrs) args-list values ex cpreds
 	     (cons tcc tccs) (cons (recognizer c) recs)))))))
 
 (defun set-assignment-rec-arg-types (args-list values ex fields
@@ -3079,25 +3111,42 @@ required a context.")
 	      (change-class (caar args) 'field-assign)
 	      (change-class (caar args) 'field-assignment-arg)))
 	(when done-with-field?
-	  (set-assignment-arg-types*
-	   (mapcar #'cdr (nreverse (cons args cargs)))
-	   (nreverse (cons value cvalues))
-	   (when ex (make!-field-application (car fields) ex))
-	   (type (car fields)))))
-      (set-assignment-rec-arg-types
-       rem-args rem-values ex
-       (if done-with-field?
-	   (if (some #'(lambda (fld)
-			 (member (car fields) (freevars fld)
-				 :key #'declaration))
-		     fields)
-	       (subst-rec-dep-type value (car fields) (cdr fields))
-	       (cdr fields))
-	   fields)
-       (unless done-with-field?
-	 (cons args cargs))
-       (unless done-with-field?
-	 (cons value cvalues))))))
+	  (let ((cdr-args (mapcar #'cdr (nreverse (cons args cargs)))))
+	    (set-assignment-arg-types*
+	     cdr-args
+	     (nreverse (cons value cvalues))
+	     (when (and ex (some (complement #'null) cdr-args))
+	       (make!-field-application (car fields) ex))
+	     (type (car fields))))))
+      (let ((nfields (if done-with-field?
+			 (if (some #'(lambda (fld)
+				       (member (car fields) (freevars fld)
+					       :key #'declaration))
+				   fields)
+			     (subst-rec-dep-type value (car fields) (cdr fields))
+			     (cdr fields))
+			 fields)))
+	(if nfields
+	    (set-assignment-rec-arg-types rem-args rem-values ex nfields
+					  (unless done-with-field?
+					    (cons args cargs))
+					  (unless done-with-field?
+					    (cons value cvalues)))
+	    (set-assignment-rec-arg-maplet-types rem-args rem-values ex))))))
+
+(defun set-assignment-rec-arg-maplet-types (args-list values ex)
+  (when args-list
+    (let ((args (car args-list))
+	  (value (car values)))
+      (assert (null (cdr args)))
+      (unless (field-assignment-arg? (caar args))
+	(if (id-assign? (caar args))
+	    (change-class (caar args) 'field-assign)
+	    (change-class (caar args) 'field-assignment-arg)))
+      (if (singleton? (types value))
+	  (set-type* value (car (types value)))
+	  (type-ambiguity value)))
+    (set-assignment-rec-arg-maplet-types (cdr args-list) (cdr values) ex)))
 
 (defun set-assignment-tup-arg-types (args-list values ex types index
 					       &optional cargs cvalues)
@@ -3236,6 +3285,7 @@ required a context.")
 	((null types)
 	 (type-incompatible expr (types expr) expected))))
 
+;;; collects those types that are compatible with the expected type
 (defun collect-compatible-recordtypes (types expected &optional ignore-ids)
   (delete-if-not
       #'(lambda (ty)
@@ -3456,16 +3506,15 @@ required a context.")
 	  (append (ldiff types (cdr rest)) srest)))))
 
 (defmethod complete-assignments (args-list values ex (rtype recordtype))
-  (if (or (dependent? rtype)
-	  (and ex (dependent? (find-supertype (type ex)))))
-      ;; Since field-decls don't point to their associated recordtypes
-      ;; (they can't, since they may appear in several different ones due
-      ;; to copying and dependent substitutions), we create the
-      ;; association list in *field-records*.
-      (let ((*field-records* (mapcar #'(lambda (fld) (cons fld rtype))
-				     (fields rtype))))
-	(complete-rec-assignments args-list values (fields rtype) ex nil nil))
-      (values args-list values)))
+  ;; Used to check for dependent?, but we really need all assignments if
+  ;; we're going to generate correct TCCs.
+  ;; Since field-decls don't point to their associated recordtypes
+  ;; (they can't, since they may appear in several different ones due
+  ;; to copying and dependent substitutions), we create the
+  ;; association list in *field-records*.
+  (let ((*field-records* (mapcar #'(lambda (fld) (cons fld rtype))
+			   (fields rtype))))
+    (complete-rec-assignments args-list values (fields rtype) ex nil nil)))
 
 (defun complete-rec-assignments (args-list values fields ex cargs cvalues)
   (if (null fields)
@@ -3490,9 +3539,7 @@ required a context.")
     (make!-field-application field expr)))
 
 (defmethod complete-assignments (args-list values ex (type tupletype))
-  (if (dependent? type)
-      (complete-tup-assignments args-list values (types type) ex 1 nil nil)
-      (values args-list values)))
+  (complete-tup-assignments args-list values (types type) ex 1 nil nil))
 
 (defun complete-tup-assignments (args-list values types ex num cargs cvalues)
   (if (null types)
