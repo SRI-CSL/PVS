@@ -199,6 +199,11 @@
        (set-buffer cbuf))
     buf))
 
+(defun dont-kill-pvs-buffer ()
+  (if (yes-or-no-p "Killing the *pvs* buffer causes PVS to die.  Really kill? ")
+      (message "Type M-x pvs to restart PVS")
+      (keyboard-quit)))
+
 (defpvs pvs environment ()
   "Starts the PVS process
 
@@ -230,6 +235,8 @@ get to the same state."
     (error "Could not run PVS"))
   (save-excursion
     (set-buffer (get-buffer "*pvs*"))
+    (make-local-variable 'kill-buffer-hook)
+    (setq kill-buffer-hook (list 'dont-kill-pvs-buffer))
     (set-syntax-table pvs-mode-syntax-table))
   (pvs-send-and-wait "(progn (in-package \"PVS\") nil)" nil nil 'dont-care)
   (sleep-for 1)
