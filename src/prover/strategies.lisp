@@ -2140,7 +2140,7 @@ corresponding to dir (left-to-right when LR, and right-to-left when RL)."
     in-subst))
 
 (defstep rewrite-with-fnum (fnum &optional subst (fnums *) (dir LR))
-  (let ((fnum (find-sform (s-forms (current-goal *ps*)) (list fnum)))
+  (let ((fnum (find-sform (s-forms (current-goal *ps*))  fnum))
 	;;NSH(5.9.99): numeralizes labels.
 	 (sforms (select-seq (s-forms (current-goal *ps*))
 			    (list fnum))))
@@ -2171,13 +2171,13 @@ corresponding to dir (left-to-right when LR, and right-to-left when RL)."
 						T))))
 	      (subs (unless (eq out-subst 'fail)
 		      (if (negation? fmla)
-			  (quant-subs* form
-				       out-subst nil nil)
-			  (quant-subs* fmla out-subst
+			  (quant-subs* form ;cons NIL needed for quant-subs*
+				       (cons NIL out-subst) nil nil)
+			  (quant-subs* fmla (cons NIL out-subst)
 				       T nil)))))
 	  (if (eq out-subst 'fail)
 	      (skip-msg "No matching substitution found")
-	      (let ((fnum1 (inc-fnum fnum))
+	      (let ((fnum1 (inc-fnum fnum))  
 		    (rules
 		     (when subs
 		       (cons `(inst-cp ,fnum :terms ,(car subs))
