@@ -71,7 +71,7 @@
 		  ((null rcols) results)
 		(let ((eqn `(equal ,(car lcols) ,(car rcols))))
 		  (setq result
-			(newcontext (process-no-canon eqn) ))
+			(newcontext (process-arithcan eqn) ))
 		  ; Following relies on the fact that process does
 		  ; (retfalse) if its result is false, and only
 		  ; non-list value returned is 'true.  See below too.
@@ -109,7 +109,7 @@
 					       ,newlhs))))
 			 (setq result
 			       (newcontext
-				(process-no-canon eqn)))
+				(process-arithcan eqn)))
 			 (cond ((eq result 'false)(retfalse))
 			       ((null result)
 				(setq results
@@ -152,12 +152,12 @@
       (equal
        (if (equal leftside rightside)  ;NSH eq->equal
 	   '(false)
-	   (let ((result (newcontext (process-no-canon atf))))
+	   (let ((result (newcontext (process-arithcan atf))))
 	     (cond ((eq result 'false) '(true))
 		   ((eq result 'true)  '(false))
 		   (t `((nequal ,leftside ,rightside))) ))))
       ((lessp lesseqp greaterp greatereqp)
-       (let ((result (newcontext (process-no-canon atf))))
+       (let ((result (newcontext (process-arithcan atf))))
 	 (cond ((eq result 'false) '(true))
 	       ((eq result 'true) '(false))
 	       (t (list (negineq atf))))))
@@ -186,7 +186,7 @@
 	  (false
 	   (let ((lexeq1
 		    (newcontext
-		     (process-no-canon `(equal ,(car left) ,(car right))))))
+		     (process-arithcan `(equal ,(car left) ,(car right))))))
 	       (case lexeq1
 		 (true
 		  (tupineqprocess (cdr left)(cdr right) rel))
