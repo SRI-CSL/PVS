@@ -480,7 +480,7 @@
   (let* ((newtype (substit* (type expr) alist))
 	 (newdtype (if (tc-eq (print-type (type expr))
 			      (declared-type expr))
-		       (print-type newtype)
+		       (declared-type expr)
 		       (substit* (declared-type expr) alist))))
     (lcopy expr
       'type newtype
