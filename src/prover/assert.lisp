@@ -2640,13 +2640,21 @@
   (or (branch? expr)(cases? expr)))
 
 (defmethod lazy-assert-if-with-subst ((expr branch) subst &optional if-flag)
-  (let ((newtest (assert-if-simplify (substit (condition expr) subst))))
+  (let* ((subexpr (substit (condition expr) subst))
+	 (newtest (assert-if-simplify subexpr))) (break "lazy")
     ;;check if assert-if-simplify is needed.  Why another assert-test
     ;;below.
     (if (check-for-connectives? newtest)
 	(if if-flag
 	    (values 'X expr);;expr is irrelevant
-	    (values '? (substit expr subst)))
+	    (let ((newexpr (substit expr subst)))
+	      (values '? (if (eq newtest subexpr)
+			     newexpr
+			   (lcopy newexpr
+			     'argument
+			     (lcopy (argument newexpr)
+			       'exprse(cons newtest
+					      (cdr (arguments newexpr)))))))))
 	(let ((result newtest));;instead of (assert-test newtest)
 	  (cond ((tc-eq result *true*)
 		 (let ((newthen
@@ -2659,7 +2667,15 @@
 				      (else-part expr) subst))))
 		   (values-assert-if  '? newelse expr)))
 		(if-flag (values 'X expr))
-		(t (values '? (substit expr subst))))))))
+		(t (values '? (let ((newexpr (substit expr subst)))
+				(if (eq newtest subexpr)
+				    newexpr
+				    (lcopy newexpr
+				      'argument
+				      (lcopy (argument newexpr)
+					'exprs (cons newtest
+						     (cdr (arguments
+							     newexpr))))))))))))))
 
 (defmethod lazy-assert-if ((expr branch))
   (let ((newtest (assert-if-simplify (condition expr))))
