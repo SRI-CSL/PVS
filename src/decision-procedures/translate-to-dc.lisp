@@ -334,7 +334,7 @@
   (with-slots (operator argument) expr
     (let ((reduced-expr (substit (expression operator)
 			  (pairlis-args (bindings operator)
-					(argument* argument)))))
+					(argument* expr)))))
       (translate-to-dc reduced-expr))))
 
 (defmethod translate-to-dc ((expr if-expr))
