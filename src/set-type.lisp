@@ -1054,7 +1054,7 @@ required a context.")
 					 (compatible? (range ty) expected))
 			(types operator))))
 	(unless coptypes
-	  (type-incompatible operator (types operator) expected))
+	  (type-incompatible operator (types operator) expected argument))
 	(let* ((optypes1 (if (cdr coptypes)
 			     (or (delete-if-not
 				     #'(lambda (oty)
@@ -2623,7 +2623,7 @@ required a context.")
 		      (subst-mod-params (formals (declaration (type te)))
 					(module-instance
 					 (resolution (type te)))))))
-    (mapc #'set-type (parameters te) (car typeslist)))) 
+    (set-type-for-application-parameters (parameters te) (car typeslist)))) 
 
 (defmethod set-type* ((te subtype) expected)
   (when (print-type te)

@@ -1127,6 +1127,7 @@
 			(*start-proof-display* display?)
 			(ojust (extract-justification-sexp
 				(justification fdecl)))
+			(new-ground? (new-ground? fdecl))
 			(*justifications-changed?* nil))
 		    (read-strategies-files)
 		    (let ((proof (cond (background?
@@ -1146,7 +1147,8 @@
 		      (when (or *justifications-changed?*
 				(not (equal ojust
 					    (extract-justification-sexp
-					     (justification fdecl)))))
+					     (justification fdecl))))
+				(not (eq (new-ground? fdecl) new-ground?)))
 			(save-all-proofs *current-theory*))
 		      ;; If the proof status has changed, update the context.
 		      (update-context-proof-status fdecl))

@@ -500,6 +500,8 @@
 		 (tc-eq atv (type-value mactual))
 		 (and (name? (type-value mactual))
 		      (formal-type-decl? (declaration (type-value mactual)))
+		      (not (memq (declaration (type-value mactual))
+				 (formals (current-theory))))
 		      (setq *matching-actual-to-formal* t)))))
       (matching-actual-expr (expr actual) mactual)))
 
@@ -1173,6 +1175,14 @@
 	       (*get-all-resolutions* t))
 	  (resolve* nname kind args)))))
 
+(defun formula-or-definition-resolutions (name)
+  (let* ((*resolve-error-info* nil)
+	 (reses (append (resolve name 'formula nil)
+			(resolve name 'expr nil))))
+    (or reses
+	(resolution-error name 'expr-or-formula nil nil))))
+
+
 
 ;;; resolve-theory-name is called by the prover.  It returns a list of
 ;;; instances of the specified theory that are visible in the current
@@ -1608,9 +1618,13 @@
 
 ;;; Resolution error handling
 
-(defun resolution-error (name kind arguments)
+(defun resolution-error (name kind arguments &optional (type-error? t))
   (let ((reses (when (actuals name)
-		 (resolve (copy name 'actuals nil) kind arguments))))
+		 (mapcan #'(lambda (k)
+			     (resolve (copy name 'actuals nil) k arguments))
+		   (if (eq kind 'expr-or-formula)
+		       '(expr formula)
+		       (list kind))))))
     (multiple-value-bind (obj error)
 	(if (and *resolve-error-info*
 		 (or (assq :arg-mismatch *resolve-error-info*)
@@ -1621,18 +1635,25 @@
 	     (format nil
 		 "Expecting a~a~%No resolution for ~a~
                   ~@[ with arguments of types: ~:{~%  ~a : ~{~a~^, ~}~}~]~
-                  ~:[~;~%Check the actual parameters~]
+                  ~@[~% Check the actual parameters; the following ~
+                        instances are visible,~% but don't match the ~
+                        given actuals:~%   ~{~a~^, ~}~]
                   ~:[~;~% There is a variable declaration with this name,~% ~
                           but free variables are not allowed here.~]"
 	       (case kind
 		 (expr "n expression")
 		 (type " type")
 		 (formula " formula")
+		 (expr-or-formula " formula or constant")
 		 (t kind))
 	       name
 	       (mapcar #'(lambda (a) (list a (full-name (ptypes a) 1)))
 		 arguments)
-	       reses
+	       (mapcar #'(lambda (r)
+			   (mk-name (id (declaration r))
+			     (actuals (module-instance r))
+			     (id (module-instance r))))
+		 reses)
 	       (some #'var-decl?
 		     (gethash (id name) (current-declarations-hash))))
 	     name))
@@ -1647,7 +1668,10 @@
 		 (*no-conversions-allowed* t))
 	    (untypecheck-theory appl)
 	    (typecheck appl))
-	  (type-error obj error)))))
+	  (if type-error?
+	      (type-error obj error)
+	      (progn (set-strategy-errors error)
+		     nil))))))
 
 (defun resolution-args-error (infolist name arguments)
   (let ((info (car (best-guess-resolution-error infolist arguments))))

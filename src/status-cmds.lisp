@@ -557,8 +557,13 @@
 				  (eq (id d) (car prf))))
 		  decls)))
       (when decl
-	(format outstr "~3%~a.~a: ~a~2%"
-	  (id theory) (id decl) (proof-status-string decl))
+	(format outstr "~3%~a.~a: ~a [~a](~a s)~2%"
+	  (id theory) (id decl)
+	  (proof-status-string decl)
+	  (if (justification decl) (if (new-ground? decl) 'N 'O) 'U)
+	  (if (run-proof-time decl)
+	      (format nil "~,2,-3f" (run-proof-time decl))
+	      (format nil "n/a")))
 	(write (editable-justification
 		(if (and (listp (cadr prf))
 			 (keywordp (caadr prf)))
