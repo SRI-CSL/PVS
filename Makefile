@@ -3,8 +3,8 @@
 ## Author          : Sam Owre
 ## Created On      : Wed Dec 30 19:29:47 1998
 ## Last Modified By: Sam Owre
-## Last Modified On: Thu Dec 31 21:12:20 1998
-## Update Count    : 16
+## Last Modified On: Thu Dec 31 21:48:23 1998
+## Update Count    : 17
 ## Status          : Alpha test
 ###############################################################################
 .SUFFIXES:
@@ -230,7 +230,7 @@ ${pvsrt} : ${pvs-make-files} ${ff-files} ${ess} ${pvs-parser} \
 	touch ${pvsrt}
 
 ${pvs-parser-out} : ${pvs-parser-in}
-	$(LISP) -e '(load "src/make-pvs-parser")'
+	$(LISP) -L src/make-pvs-parser
 
 src/pvs-methods.lisp : src/make-pvs-methods.lisp src/defcl.lisp \
                        src/classes-expr.lisp src/classes-decl.lisp
