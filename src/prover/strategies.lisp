@@ -216,14 +216,12 @@
 	   (format nil "~%~a," ,format)))))
 
 
-(defstrat try (strategy then else)
+;;; if, let, quote, and try are built-in to strat-eval, the following simply
+;;; allow help to be given.
+(defstrat if (condition step1 step2)
   ()
-  "Tries strategy STRATEGY on current goal, and if successful, applies
-strategy THEN to the subgoals.  If no change, then the ELSE strategy is
-applied to current goal.
-E.g., (try (skip)(flatten)(skolem!)) is just (skolem!)
-      (try (lemma \"assoc\")(beta)(flatten)) is just lemma followed
-           by beta if lemma assoc exists."
+  "Evaluates the condition (in Lisp) and if it evaluates to nil, step2 is
+applied, otherwise step1 is applied."
   "")
 
 (defstrat let (bindings body)
@@ -232,6 +230,23 @@ E.g., (try (skip)(flatten)(skolem!)) is just (skolem!)
 computations.  E.g.,
   (let ((x (car *new-fmla-nums*)))
       (then (inst? x)(split x)))."
+  "")
+
+(defstrat quote (step)
+  ()
+  "This simply evaluates to step.  This is used by the let strategy to
+ensure that the values for variables are not evaluated again after
+substitution.  It is unlikely to be useful otherwise."
+  "")
+
+(defstrat try (strategy then else)
+  ()
+  "Tries strategy STRATEGY on current goal, and if successful, applies
+strategy THEN to the subgoals.  If no change, then the ELSE strategy is
+applied to current goal.
+E.g., (try (skip)(flatten)(skolem!)) is just (skolem!)
+      (try (lemma \"assoc\")(beta)(flatten)) is just lemma followed
+           by beta if lemma assoc exists."
   "")
 
 
@@ -824,8 +839,7 @@ then turns off all the installed rewrites.  Examples:
 
 (defstrat then (&rest steps)
   (let ((x (when steps (car steps)))
-	(y (when steps (cons 'then (cdr steps))))
-	(z steps))
+	(y (when steps (cons 'then (cdr steps)))))
     (if steps (if (cdr steps)(try x y y) x) (skip)))
   "Successively applies the steps in STEPS.")
 
@@ -944,17 +958,20 @@ If STEP does nothing, then ELSE-STEP is applied.")
 
 (defstrat rerun (&optional proof recheck? break?)
   (let ((x (rerun-step (cond  ((null proof)
-				(justification *ps*))
-			       ((null (check-edited-justification proof))
-				(revert-justification proof))
-			       (t (error-format-if "~%Given proof is not well-formed")
-				  '(skip)))
-			recheck?
-			break?)))
+			       (justification *ps*))
+			      ((null (check-edited-justification proof))
+			       (revert-justification proof))
+			      (t (error-format-if
+				  "~%Given proof is not well-formed")
+				 '(skip)))
+		       recheck?
+		       break?)))
     x)
-  "Strategy to rerun existing or supplied proof. The RECHECK? flag when T and
-used to rerun an entire proof causes an expanded proof using only primitive
-proof steps to be rerun."
+  "Strategy to rerun existing or supplied proof. The RECHECK? flag when T is
+used to rerun an entire proof using only primitive proof steps.  Normally
+rerun gives warnings when there is a mismatch between the number of sobgoals
+and the number of subproofs.  The BREAK? flag causes an error and queries
+the user instead."
   "")
 
 
@@ -2093,7 +2110,7 @@ TCC? if NIL only selects instantiations that do not generate any TCCs.
      true in the given context."
   "Instantiating quantified variables")
 
- (defstep quant? (&optional (fnums *) subst (where *)
+ (defhelper quant? (&optional (fnums *) subst (where *)
 		   copy? if-match)
   (inst? fnums subst where copy? if-match)
   "Use INST? instead.  Tries to automatically instantiate a quantifier:
@@ -2851,7 +2868,6 @@ or (LAMBDA x: ...)."
   (let ((sformnum (find-!quant fnum *ps*))
 	(newterms (fill-up-terms sformnum nil *ps*))
 	(x `(typepred ,@newterms))) 
-    
     (then (skolem sformnum newterms)
 	  x))
   "Skolemizes and then introduces type-constraints of the Skolem
@@ -3589,7 +3605,7 @@ skolem constants for the induction scheme to make sense."
    order to prove a sequent of the form
       ...|- (FORALL ...: REL(...) IMPLIES ... or
      ..., REL(x1,...,xn) ... |-- ... 
-   RULE-INDUCT invokes first applies repeated skolemization  and flattening
+   RULE-INDUCT first applies repeated skolemization  and flattening
    to the specified FNUM (or the first positive, skolemizable consequent)
    before invoking RULE-INDUCT-STEP.   The strategy uses the default
    weak induction scheme but can be told to use strong induction by giving
@@ -3819,6 +3835,7 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
   "Expands all the given names and simplifies. "
   "Expanding the definition(s) of ~a")
 
+;; For backward compatibility
 (defhelper auto-rewrite-theory-always (thlist)
   (if (or (stringp thlist)
 	  (and (listp thlist)
@@ -3872,7 +3889,7 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
      postpones instantiations to follow a first round of simplification."
   "~%Grinding away with the supplied lemmas,")
 
-(defstep crush (&optional (defs !); nil, t, !, explicit, or explicit!
+(defstep grind-with-ext (&optional (defs !); nil, t, !, explicit, or explicit!
 			  theories
 			  rewrites
 			  exclude
@@ -3881,31 +3898,34 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
 			  polarity?
 			  (instantiator inst?)
 			  (let-reduce? t)
-			  quant-simp?)
+			  quant-simp?
+			  no-replace?)
   (then
    (install-rewrites$ :defs defs :theories theories
 		     :rewrites rewrites :exclude exclude)
    (then (bddsimp) (assert :let-reduce? let-reduce?))
    (replace*)
-   (reduce-ext$ :if-match if-match :updates? updates?
-		:polarity? polarity? :instantiator instantiator
-		:let-reduce? let-reduce? :quant-simp? quant-simp?))
-  "Like GRIND, but calls REDUCE-EXT, which also uses extensionality."
+   (reduce-with-ext$ :if-match if-match :updates? updates?
+		     :polarity? polarity? :instantiator instantiator
+		     :let-reduce? let-reduce? :quant-simp? quant-simp?
+		     :no-replace? no-replace?))
+  "Like GRIND, but calls REDUCE-EXT, which also uses APPLY-EXTENSIONALITY.  See GRIND for an explanation of the arguments."
   "Trying repeated skolemization, instantiation, if-lifting, and extensionality")
 
-(defstep reduce-ext (&optional (if-match t)(updates? t) polarity?
-			       (instantiator inst?) (let-reduce? t)
-			       quant-simp?)
-    (repeat* (try (bash$ :if-match if-match :updates? updates?
-			 :polarity? polarity? :instantiator instantiator
-			 :let-reduce? let-reduce?
-			 :quant-simp? quant-simp?)
-		  (then (apply-extensionality$ :hide? t)
-			(replace*))
-		  (skip)))
-"Core of CRUSH (ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, FLATTEN,
-LIFT-IF, i.e., BASH then REPLACE*), like REDUCE, but includes extensionality."
-"Repeatedly simplifying with decision procedures, rewriting,
+(defstep reduce-with-ext (&optional (if-match t)(updates? t) polarity?
+				    (instantiator inst?) (let-reduce? t)
+				    quant-simp? no-replace?)
+  (repeat* (try (bash$ :if-match if-match :updates? updates?
+		       :polarity? polarity? :instantiator instantiator
+		       :let-reduce? let-reduce?
+		       :quant-simp? quant-simp?)
+		(then (apply-extensionality$ :hide? t)
+		      (if no-replace? (skip) (replace*)))
+		(skip)))
+  "Core of GRIND-WITH-EXT (ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, FLATTEN,
+LIFT-IF, i.e., BASH then REPLACE*), like REDUCE, but includes
+APPLY-EXTENSIONALITY.  See reduce for an explanation of the arguments."
+  "Repeatedly simplifying with decision procedures, rewriting,
   propositional reasoning, quantifier instantiation, skolemization,
  if-lifting, extensionality, and equality replacement")
 
@@ -3938,7 +3958,7 @@ LIFT-IF, i.e., BASH then REPLACE*), like REDUCE, but includes extensionality."
     exprs))
 
 (defun useful-typepred? (preds)
-  ;; A predicate is useful if it contains an expandible definition or
+  ;; A predicate is useful if it contains an expandable definition or
   ;; is propositional, since these will be treated as uninterpreted in
   ;; the ground prover.
   (let ((found-one nil))
