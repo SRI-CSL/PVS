@@ -1,5 +1,8 @@
 (in-package dp)
 
+(defvar *use-fourier-motzkin* nil)
+(defvar *test-fourier-motzkin* nil)
+
 (defun term-var-type (var cong-state)
   (cond ((strict-var-p var) 'strict)
 	((nonneg-var-p var) t)
@@ -120,7 +123,7 @@
 
 (defun arith-solve-neq (neq cong-state)
   (let ((eqn (arg 1 neq)))
-    (if (and (integer-equality-p eqn)
+    (if (and (integer-equality-p eqn cong-state)
 	     (or (dp-numberp (rhs eqn))
 		 (floor-p (lhs eqn))
 		 (floor-p (rhs eqn))))
@@ -136,6 +139,29 @@
   (let ((solved-eqns (add-ineq-constraint pure-ineq cong-state)))
     (loop for e in solved-eqns collect
 	  (norm-after-solve e cong-state))))
+
+(defun add-ineq-constraint (ineq cong-state)
+  (if *use-fourier-motzkin*
+      (if *test-fourier-motzkin*
+	  (let ((f-m-res (f-m-add-ineq-constraint ineq cong-state))
+		(poly-res (poly-add-ineq-constraint ineq cong-state)))
+	    (when (not (equal f-m-res poly-res))
+	      (break "on ineq f-m and poly disagree"))
+	    f-m-res)
+	  (f-m-add-ineq-constraint ineq cong-state))
+      (poly-add-ineq-constraint ineq cong-state)))
+
+(defun add-neq-constraint (neq cong-state)
+  (if *use-fourier-motzkin*
+      (if *test-fourier-motzkin*
+	  (let ((f-m-res (f-m-add-neq-constraint neq cong-state))
+		(poly-res (poly-add-neq-constraint neq cong-state)))
+	    (when (not (equal f-m-res poly-res))
+	      (break "on neq f-m and poly disagree"))
+	    f-m-res)
+	  (f-m-add-neq-constraint neq cong-state))
+      (poly-add-neq-constraint neq cong-state)))
+
 
 (defun purify-eqn (eqn cong-state)
   (let* ((head (lhs eqn))
