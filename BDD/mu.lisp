@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pvs-mu.lisp -- Interface to the Mu-calculus model-checker
 ;; Author          : Sree, Shankar and Saidi
 ;; Created On      : Wed May  3 19:51:22 1995
@@ -229,6 +229,7 @@
 ;; calls convert-pvs-to-mu-formula*
 
 (defun convert-pvs-to-mu (expr);;expr must be of boolean type
+  ;; Should we lift-if here rather than in convert-pvs-to-mu*?
   (let ((*bound-variables* nil)
 	(*mu-nu-lambda-bindings-list* nil)
 	(mu-expr (convert-pvs-to-mu-formula expr)));; Formulas come first
@@ -342,7 +343,7 @@
 (defmethod convert-pvs-to-mu* ((expr expr));;NSH(8.17.95) added find-supertype
   (cond ((tc-eq expr *true*) (mu-mk-true))
 	((tc-eq expr *false*) (mu-mk-false))
-	((reachable? expr) (reach_pf))
+	;;((reachable? expr) (reach_pf))
 	((and (binding-expr? expr);;NSH(6.19.98):remove find-supertype
               (translateable-binding-expr? expr))
 	 (convert-pvs-to-mu-binding-expr expr))
@@ -580,11 +581,10 @@
       (convert-pvs-to-mu-equality-with-funtype-in-arg expr)) 
      ((or (branch? (args1 expr));;NSH(2.2.96): added cases?
 	  (cases-expr? (args1 expr)));;to this and next case, else      
-      (convert-pvs-to-mu-equality-with-case-args expr )) 
+      (convert-pvs-to-mu-equality-with-case-args expr nil))
      ((or (branch? (args2 expr))
 	  (cases-expr? (args2 expr)))
-      (convert-pvs-to-mu-equality-with-case-args
-       (make-equality (args2 expr) (args1 expr))))
+      (convert-pvs-to-mu-equality-with-case-args expr t))
      ((or (scalar-constant? (args1 expr))
 	  (scalar-constant? (args2 expr)))           
       (convert-pvs-to-mu-equality-with-scalarconstant-in-args expr)) 
@@ -758,7 +758,7 @@
 					  
 (defun decode-array-format (args)
   (if (consp args)
-      (mk_ite_formula (car args) 
+      (mu_mk_ite_formula (car args) 
                    (decode-array-format (cdr args)) 
                    (decode-array-format (cdr args)))
       (mu-create-bool-var  (funcall *bdd-counter*))))
@@ -860,17 +860,21 @@
 	(make-mu-conjunction equalities)))
 
 
- 
-(defun convert-pvs-to-mu-equality-with-case-args (expr) 
-  (let ((arg1 (if (cases-expr? (args1 expr))
-		      (translate-cases-to-if (args1 expr))
-		      (args1 expr))))
-	(convert-pvs-to-mu*
-	 (make-if-expr (condition arg1)
-		       (make-equality (then-part arg1)
-				      (args2 expr))
-		       (make-equality (else-part arg1)
-				      (args2 expr))))))
+(defun convert-pvs-to-mu-equality-with-case-args (expr rhs?)
+  ;; expr is an equation.
+  ;; If rhs? is nil, the lhs is a cases or branch, else the rhs is.
+  (let* ((arg (if rhs? (args2 expr) (args1 expr)))
+	 (arg1 (if (cases-expr? arg)
+		   (translate-cases-to-if arg)
+		   arg)))
+    (convert-pvs-to-mu*
+     (if rhs?
+	 (make!-if-expr (condition arg)
+			(make!-equation (args1 expr) (then-part arg1))
+			(make!-equation (args1 expr) (else-part arg1)))
+	 (make!-if-expr (condition arg)
+			(make!-equation (then-part arg1) (args2 expr))
+			(make!-equation (else-part arg1) (args2 expr)))))))
 
 
 ;;
