@@ -212,7 +212,7 @@ get to the same state."
     (let ((num (prefix-numeric-value current-prefix-arg)))
       (if (and (<= 0 num) (<= num 3))
 	  (setenv "PVSPATCHLEVEL" num)
-	  (message "Illegal patchlevel number - %s" num)))
+	(message "Illegal patchlevel number - %s" num)))
     (setq current-prefix-arg nil))
   (unless noninteractive
     (message "Initializing PVS: please wait..."))
@@ -237,10 +237,10 @@ get to the same state."
   (let ((comint-log nil))
     (pvs-send-and-wait
      (format "(progn (setq *pvs-path* \"%s\")
-                     (pvs-init)
+                     (pvs-init nil %s)
                      (setq *noninteractive* %s)
                      (setq *pvs-verbose* %d))"
-	 pvs-path noninteractive pvs-verbose)
+	     pvs-path (not init-file-user) noninteractive pvs-verbose)
      nil nil 'dont-care))
   (setq *pvs-version-information* nil)
   (sleep-for 1)
@@ -254,13 +254,13 @@ get to the same state."
     (setq save-options-file "~/.pvsxemacs-options")
     (setq save-options-init-file "~/.pvsemacs"))
   (when (and (file-exists-p "~/.pvsemacs")
-	     (not (member "-q" command-line-args)))
+             init-file-user)
     (load "~/.pvsemacs"))
   (run-hooks 'change-context-hook)
   (if (pvs-buffer-file-name)
       (pvs-mode)
-      (unless noninteractive
-	(switch-to-buffer (get-buffer-create "PVS Welcome"))))
+    (unless noninteractive
+      (switch-to-buffer (get-buffer-create "PVS Welcome"))))
   (setq debug-on-error nil)
   (unless noninteractive
     (message "Ready")))
