@@ -321,7 +321,8 @@
     (select-window top-window)
 
     ;; Always minimize redisplay (except in emacs 18).
-    (let ((split-window-keep-point nil))
+    (let ((split-window-keep-point nil)
+	  (window-min-height 2))
       ;; If the top window is not big enough to split, commandeer it
       ;; entirely.
       (cond ((> desired-height (- (window-height) window-min-height))
