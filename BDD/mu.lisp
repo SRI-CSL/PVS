@@ -622,7 +622,8 @@ time)."
                (loop for i from 0 to (1- len)
 	             collect (if (eql (digit-char-p (elt bit-string i)) 1)
 		                   (mu-mk-true) (mu-mk-false))))))
- (lisp-to-c-list lisp-list-values))
+;; (lisp-to-c-list lisp-list-values))
+    lisp-list-values)
 )
 
 
@@ -668,10 +669,10 @@ time)."
 		     (make-argument-vars-scalar new-bddname))
 		    (*build-access-var*
 		     (make-binding-vars-scalar new-bddname))
-		    (t new-bddname)))
+		    (t (make-argument-vars-scalar new-bddname))))
 	    (mu-create-bool-var (format nil "b~d" bddname)))
 	(cond ((sub-range? (type expr))
-	       (make-subrange-names expr))
+	       (mapcar #'mu-create-bool-var (make-subrange-names expr)))
 	      ((scalar? expr)
 	       (make-scalar-names expr))
 	      ((recognizer-application? expr)
@@ -1164,7 +1165,7 @@ time)."
                (mu-mk-or (mu-create-bool-var (car bdd-list)) 
                         (make-geq-bdd* (cdr bdd-list)(cdr num-rep))))
 	  (if (eq (car num-rep) (mu-mk-true))
-	      (car bdd-list)
+	      (mu-create-bool-var  (car bdd-list))
 	      (mu-mk-true)))
       (mu-mk-true)))
 
@@ -1194,7 +1195,7 @@ time)."
                        (make-leq-bdd* (cdr bdd-list)(cdr num-rep))))
 	  (if (eq (car num-rep) (mu-mk-true))
 	      (mu-mk-true)
-	      (mu-mk-not (car bdd-list) )))
+	      (mu-mk-not (mu-create-bool-var (car bdd-list)) )))
       (mu-mk-true)))
 
 
@@ -1371,33 +1372,33 @@ time)."
 ;;
 ;;
 
-
 (defun subrange!? (type)
-  (let* ((subrange (subrange-subtype))
-	 (*modsubst* T)
-	 (subst (match subrange type nil nil))) ;(break)
+  (let* ((subrange (type-value (declaration (subrange-res))))
+         (*modsubst* T)
+         (subst (match subrange type nil nil))) ;(break)
     (when (and (not (eq subst 'fail))
-	       (every #'(lambda (x)(number-expr? (cdr x))) subst))
+               (every #'(lambda (x)(number-expr? (cdr x))) subst))
       (cons (number (cdr (assoc '|i| subst :test #'same-id)))
-	    (number (cdr (assoc '|j| subst :test #'same-id)))))))
-	
+            (number (cdr (assoc '|j| subst :test #'same-id)))))))
+        
 
 (defun below!? (type)
-  (let* ((below (below-subtype))
-	 (*modsubst* T)
-	 (subst (match below type nil nil)))
+  (let* ((below (type-value (declaration (below-res))))
+         (*modsubst* T)
+         (subst (match below type nil nil)))
     (when (and (not (eq subst 'fail))
-	       (every #'(lambda (x)(number-expr? (cdr x))) subst))
+               (every #'(lambda (x)(number-expr? (cdr x))) subst))
       (cons 0 (1- (number
-		   (cdr (assoc '|i| subst :test #'same-id))))))))
+                   (cdr (assoc '|i| subst :test #'same-id))))))))
 
 (defun upto!? (type)
-  (let* ((upto (upto-subtype))
-	 (*modsubst* T)
-	 (subst (match upto type nil nil)))
+  (let* ((upto (type-value (declaration (upto-res))))
+         (*modsubst* T)
+         (subst (match upto type nil nil)))
     (when (and (not (eq subst 'fail))
-	       (every #'(lambda (x)(number-expr? (cdr x))) subst))
+               (every #'(lambda (x)(number-expr? (cdr x))) subst))
       (cons 0 (number (cdr (assoc '|i| subst :test #'same-id)))))))
+
 
 (defun sub-range? (type)
   (or (subrange!? type)
