@@ -167,12 +167,16 @@
   expr)
 
 (defmethod beta-reduce* :around ((expr table-expr))
-  (lcopy (call-next-method)
-    'row-expr (beta-reduce* (row-expr expr))
-    'col-expr (beta-reduce* (col-expr expr))
-    'row-headings (beta-reduce* (row-headings expr))
-    'col-headings (beta-reduce* (col-headings expr))
-    'table-entries (beta-reduce* (table-entries expr))))
+  (let ((nexpr (call-next-method)))
+    (if (and (not (eq nexpr expr))
+	     (table-expr? nexpr))
+	(lcopy nexpr
+	  'row-expr (beta-reduce* (row-expr nexpr))
+	  'col-expr (beta-reduce* (col-expr nexpr))
+	  'row-headings (beta-reduce* (row-headings nexpr))
+	  'col-headings (beta-reduce* (col-headings nexpr))
+	  'table-entries (beta-reduce* (table-entries nexpr)))
+	nexpr)))
 
 ;(defmethod beta-reduce* ((bd bind-decl))
 ;  (let ((te (beta-reduce* (type bd))))
