@@ -230,6 +230,7 @@ pvs-src = src/closopt.lisp \
 	  src/resolve.lisp \
 	  src/tcc-gen.lisp \
 	  src/set-type.lisp \
+	  src/check-for-tccs.lisp \
           src/tcexprs.lisp \
 	  src/tcdecls.lisp \
 	  src/judgements.lisp \
