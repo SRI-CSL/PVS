@@ -271,7 +271,7 @@
 	(multiple-value-bind (lib condition)
 	    (ignore-errors
 	      (if (valid-pvs-id* rawlibname)
-		  (or (directory-p (make-pathnames
+		  (or (directory-p (make-pathname
 				    :directory libname
 				    :defaults (format nil "~a/lib/"
 						*pvs-path*)))
