@@ -1,9 +1,19 @@
 (in-package :pvs)
 
+(defun apply-dp-func (dp-func dp-state &rest pvs-args)
+  (let* ((dp-args (mapcar #'top-translate-to-dc pvs-args))
+	 (dp-result (apply dp-func (append dp-args (list dp-state))))
+	 (result (translate-from-dc-list dp-result)))
+    result))
+
+(defun dp-canon (expr dp-state)
+  (apply-dp-func #'(lambda (expr dp-state)
+		     (dp::canon expr dp-state 'no-mod))
+		 dp-state expr))
 
 (defmacro protecting-dp-state (((new-dp-state old-dp-state)) &body body)
   (let ((resultsym (gensym)))
-    `(let ((,new-dp-state (new-cs ,old-dp-state))
+    `(let ((,new-dp-state (dp::push-new-cong-state ,old-dp-state))
 	   (,resultsym nil))
        (setq ,resultsym
 	     (multiple-value-list (progn ,@body)))
@@ -24,6 +34,10 @@
 	   (if (and (dp::occurs-p x trm)
 		    (not (dp::occurs-in-scope-of-uninterp-p x trm)))
 	       (let ((solved-trm (dp::normineq canonized-trm state x)))
+		 (unless (dp::well-formed-node-p solved-trm)
+		   (error-format-if "Term ~a may contain nonlinearity"
+				    (translate-from-dc canonized-trm))
+		   (throw 'unable nil))
 		 (translate-from-dc solved-trm))
 	       expr)))))
 
