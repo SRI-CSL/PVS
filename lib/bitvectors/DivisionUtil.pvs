@@ -1,0 +1,30 @@
+%
+%  DivisionUtil
+%  ============
+%
+%  for Translating Java Classes into the Higher Order Logic of PVS.
+%
+%  All integral types are interpreted as PVS integers, without 
+%  taking bounds into account
+%
+%  Author: Bart Jacobs
+%  Integrated with the bitvector library by Sam Owre <owre@csl.sri.com>
+
+DivisionUtil : THEORY
+BEGIN
+
+  IMPORTING BitvectorUtil
+
+  leftshift_with : LEMMA % :-)
+    FORALL(n:nat, bv:bvec[n], b:bool) : 
+      n > 1 AND bv2nat[n](bv) < exp2(n-1)
+        IMPLIES
+      bv2nat[n](left_shift(1, bv) WITH [(0) := b]) = 2 * bv2nat[n](bv) + b2n(b)
+
+  bv2nat_minus3 : LEMMA % :-)
+    FORALL(n:posnat, bv1, bv2:bvec[n]) :
+      bv2nat[n](bv1) <= bv2nat[n](bv2)
+        IMPLIES
+      bv2nat[n](bv2 - bv1) = bv2nat[n](bv2) - bv2nat[n](bv1);
+
+END DivisionUtil
