@@ -82,6 +82,8 @@
     (prove-decl expr-decl :strategy `(then (then ,strategy (postpone)) (quit)))
     *subgoals*))
 
+(defvar *force-dp* nil)
+
 (defmethod prove-decl ((decl formula-decl) &key strategy)
   (let ((init-real-time (get-internal-real-time))
 	(init-run-time (get-run-time))
@@ -159,6 +161,10 @@
 	(*current-context* (context decl))
 	(*current-theory* (module decl)))
     (initprover)			;initialize prover
+    (cond ((eq *force-dp* :old)
+	   (old-ground))
+	  ((eq *force-dp* :new)
+	   (new-ground)))
     (when *new-ground?*
       (init-dc))
     (newcounter  *skovar-counter*)
@@ -188,7 +194,8 @@
 	      'justification (justification decl)
 	      'declaration decl
 	      'current-auto-rewrites auto-rewrites-info)))
-      (unless (or (eq *new-ground?* (new-ground? decl))
+      (unless (or *force-dp*
+		  (eq *new-ground?* (new-ground? decl))
 		  (and *proving-tcc* *use-default-dp?*)
 		  (and (not *proving-tcc*)
 		       (not
