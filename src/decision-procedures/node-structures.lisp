@@ -37,7 +37,7 @@
   (interpreted? nil :type boolean)
   (initial-type nil :type symbol)
   (type initial-type :type symbol)
-  (constructor? :type boolean)
+  (constructor? nil :type boolean)
   (external-info nil :type list)
   (index :type integer)
   (sxhash nil :type (integer 0 65535)))
