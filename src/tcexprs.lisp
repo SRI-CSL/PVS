@@ -936,7 +936,9 @@
 (defun find-application-conversion (expr)
   (let* ((op (operator expr))
 	 (arg (argument expr))
-	 (args (arguments expr)))
+	 (args (arguments expr))
+	 (*found-one* nil))
+    (declare (special *found-one*))
     (if (or (argument-conversions (types op) args)
 	    (argument-conversions (types op) (list arg)))
 	(set-possible-argument-types op (argument expr))
@@ -1044,7 +1046,6 @@
 				(resolutions (operator expr)))))
   (unless (or *no-conversions-allowed*
 	      *in-application-conversion*)
-    (add-conversion-info (find-if #'expr? conversions) expr)
     (let* ((*in-application-conversion* t)
 	   (op (operator expr))
 	   (conversions (conversion
@@ -1056,6 +1057,7 @@
 	   (vars (make-arg-conversion-variables bindings))
 	   (args (application-conversion-arguments
 		  (arguments expr) conversions vars)))
+      (add-conversion-info (find-if #'expr? conversions) expr)
       (change-class expr 'lambda-conversion)
       (setf (bindings expr) bindings
 	    (expression expr) (mk-application* op args))
