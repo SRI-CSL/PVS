@@ -1771,7 +1771,7 @@ See also EXTENSIONALITY."
 				  (domain type)
 				*current-context*))
 	 (lhs (quant-to-lambda
-	       (let ((*no-expected* T)) ;shadowing (NSH:10-29-01)
+	       (let ((*no-expected* t)) ;shadowing (NSH:10-29-01)
 		 (close-freevars (make-application var bvar)
 			       *current-context*
 			       (list bvar))))))

@@ -5,10 +5,10 @@
 (defvar *output-traces* nil)
 
 (defstep ws1s (&optional (fnums *)
-			 (examples? T)
+			 (examples? t)
 			 (automaton? nil)
 			 (traces? nil)
-			 (verbose? T)
+			 (verbose? t)
 			 (defs !)
 			 theories
 			 rewrites
@@ -30,10 +30,10 @@
 			     :exclude all-exclude)
            (rewrite-msg-off)
 	   (expand* expand)
-	   (skip-msg "Expanding definitions..." :force-printing? T)
-	   (assert fnums :cases-rewrite? T)
+	   (skip-msg "Expanding definitions..." :force-printing? t)
+	   (assert fnums :cases-rewrite? t)
 	   (if rewrite-msg (skip) (rewrite-msg-on)) ; restore if necessary
-	   (skip-msg "WS1S decision procedure..." :force-printing? T)
+	   (skip-msg "WS1S decision procedure..." :force-printing? t)
 	   (ws1s-simp fnums examples? automaton? traces? verbose?)))
   "Decision procedure for Weak Second-order monadic logic of 1 Successor (WS1S)
    based on the Mona package developed at BRICS (http://www.brics.dk/~mona).
@@ -68,7 +68,7 @@
   "By rewriting and WS1S decision procedure")
 
 
-(addrule 'ws1s-simp nil ((fnums *) (examples? T) (automaton? nil) (traces? nil) (verbose? T))
+(addrule 'ws1s-simp nil ((fnums *) (examples? t) (automaton? nil) (traces? nil) (verbose? t))
 	 (ws1s-step fnums examples? automaton? traces? verbose?)
 	 "WS1S Decision Procedure.")
 

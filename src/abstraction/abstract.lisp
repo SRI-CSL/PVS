@@ -1061,9 +1061,9 @@ to be used for discharging the abstraction proof obligations."
 			     collect
 			     (list (termsubst cn
 					      (conc-abs-subst abs-conc-map
-							      #'tc-eq T)
+							      #'tc-eq t)
 					      (conc-abs-test abs-conc-map
-							     #'tc-eq T))))
+							     #'tc-eq t))))
 		       nil)));;has an unabstracted variable
 	      (abstract-sorted-conjuncts* conjunct-fields
 					  (cdr field-sets) absvars

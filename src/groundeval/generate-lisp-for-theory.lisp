@@ -9,7 +9,7 @@
     (cond ((null theory)
 	   (pvs-message "Theory ~a is not typechecked" theoryname))
 	  (t (pvs2cl-theory theory)
-	     (print-lisp-defns theoryname (format nil "~a.lisp" theoryname) T)))))
+	     (print-lisp-defns theoryname (format nil "~a.lisp" theoryname) t)))))
 
 (defun evaluation-mode (theoryname)
   (let ((theory (get-theory theoryname)))  
@@ -68,7 +68,7 @@
 	   (gqread))
 	  ((eq input 'abort)
 	   (if (pvs-y-or-n-p "~%Do you really want to abort?  ")
-	       (throw 'abort T)
+	       (throw 'abort t)
 	       (gqread)))
 	  ((eq input 'timing)
 	   (setq *pvs-eval-do-timing* t)
