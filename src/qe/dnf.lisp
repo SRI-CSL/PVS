@@ -1,6 +1,6 @@
-;;; Computing the disjunctive normal form (DNF)
-
 (in-package :pvs)
+
+;;; Computing the disjunctive normal form (DNF)
 
 (defvar *false-dnf* '())
 (defvar *true-dnf* '(()))
@@ -88,7 +88,8 @@
   (if (null dnf2)
       (nreverse acc)
       (let ((newc (union c1 (car dnf2) :test #'tc-eq)))
-	(dnf-conjunction1 c1 (cdr dnf2) (adjoin newc acc :test #'conjuncts=)))))
+	(dnf-conjunction1 c1 (cdr dnf2)
+			  (adjoin newc acc :test #'conjuncts=)))))
 
 (defmethod dnf+ ((expr disequation))
   (let ((arg (argument expr)))
