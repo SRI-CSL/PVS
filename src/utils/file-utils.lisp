@@ -5,37 +5,46 @@
 
 (ff:def-foreign-call fileutils___file_exists_p
     ((filename (* :char) simple-string))
-  :returning :int
   #+(version>= 6) :strings-convert #+(version>= 6) nil
-  :call-direct t)
+  :arg-checking nil
+  :call-direct t
+  :returning :int)
 
 (ff:def-foreign-call fileutils___directory_p
     ((filename (* :char) simple-string))
-  :returning :int
   #+(version>= 6) :strings-convert #+(version>= 6) nil
-  :call-direct t)
+  :arg-checking nil
+  :call-direct t
+  :returning :int)
 
 (ff:def-foreign-call fileutils___read_permission_p
     ((filename (* :char) simple-string))
   #+(version>= 6) :strings-convert #+(version>= 6) nil
-  :call-direct t)
+  :arg-checking nil
+  :call-direct t
+  :returning :int)
 
 (ff:def-foreign-call fileutils___write_permission_p
     ((filename (* :char) simple-string))
   #+(version>= 6) :strings-convert #+(version>= 6) nil
-  :call-direct t)
+  :arg-checking nil
+  :call-direct t
+  :returning :int)
 
 (ff:def-foreign-call fileutils___file_write_time
     ((filename (* :char) simple-string))
   #+(version>= 6) :strings-convert #+(version>= 6) nil
-  :returning :int
-  :call-direct t)
+  :arg-checking nil
+  :call-direct t
+  :returning :int)
 
 (ff:def-foreign-call fileutils___getfileinfo
     ((filename (* :char) simple-string)
-     (stat (* :int) (simple-array fixnum)))
+     (stat (* :int) (simple-array (signed-byte 32) (2))))
   #+(version>= 6) :strings-convert #+(version>= 6) nil
-  :call-direct t)
+  :arg-checking nil
+  :call-direct t
+  :returning :int)
 
 ;;;
 
@@ -62,16 +71,12 @@
 (defun read-permission? (filename)
   (excl:with-native-string
    (cstr (expanded-tilde-namestring filename))
-   (let ((errno (fileutils___read_permission_p cstr)))
-     (or (zerop errno)
-	 (values nil (ff:char*-to-string errno))))))
+   (zerop (fileutils___read_permission_p cstr))))
 
 (defun write-permission? (filename)
   (excl:with-native-string
    (cstr (expanded-tilde-namestring filename))
-   (let ((errno (fileutils___write_permission_p cstr)))
-     (or (zerop errno)
-	 (values nil (ff:char*-to-string errno))))))
+   (zerop (fileutils___write_permission_p cstr))))
 
 (defconstant u1970 (encode-universal-time 0 0 0 1 1 1970 0))
 
