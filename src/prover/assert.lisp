@@ -22,13 +22,14 @@
 (defun invoke-simplification (sformnums record? rewrite?
 				   rewrite-flag flush? linear?
 				   cases-rewrite? type-constraints?
-				   ignore-prover-output?)
+				   ignore-prover-output? let-reduce?)
 				   ;;assert-connectives?
   #'(lambda (ps)
       (let ((*cases-rewrite* cases-rewrite?)
 	    ;;(*assert-connectives?* assert-connectives?)
 	    (*false-tcc-error-flag* nil)
-	    (*ignore-prover-output?* ignore-prover-output?))
+	    (*ignore-prover-output?* ignore-prover-output?)
+	    (*let-reduce?* let-reduce?))
 	(if record?
 	    (if rewrite?
 		(assert-sformnums
@@ -751,7 +752,9 @@
 		'operator (if (eq sigop '?) newop (operator expr))
 		'argument (if (eq sigargs '?) newargs (argument expr)))))
 	(cond ((and (eq sigop '?)
-		    (typep newop 'lambda-expr))
+		    (typep newop 'lambda-expr)
+		    (or *let-reduce?*
+			(not (let-expr? expr))))
 	       (multiple-value-bind (sig val)
 		   (assert-if (substit (expression newop)
 				(pvs-pairlis (bindings newop)
@@ -2133,12 +2136,18 @@
      expr)))
 
 (defmethod assert-if-application* (expr (newop lambda-expr) newargs sig)
-    (declare (ignore sig))
+  (declare (ignore sig))
   (let ((val (nth-value 1
-		      (assert-if (substit (expression newop)
-				   (pairlis-args (bindings newop)
-						 (argument-list newargs)))))))
-	   (values-assert-if '? val expr)))
+	       (assert-if (substit (expression newop)
+			    (pairlis-args (bindings newop)
+					  (argument-list newargs)))))))
+    (values-assert-if '? val expr)))
+
+(defmethod assert-if-application* ((expr let-expr) newop newargs sig)
+  (declare (ignore newop newargs))
+  (if *let-reduce?*
+      (call-next-method)
+      (do-auto-rewrite expr sig)))
 
 (defmethod assert-if-application* ((expr negation) newop  newargs sig)
     (declare (ignore newop))
@@ -3105,7 +3114,8 @@
 (defmethod lazy-assert-if-with-subst ((expr application) subst &optional if-flag)
   (with-slots ((op operator) (arg argument))
       expr
-  (if (lambda? op)  ;;Don't bother simplifying within a lambda op.
+  (if (and *let-reduce?*
+	   (lambda? op))  ;;Don't bother simplifying within a lambda op.
       (lazy-assert-if-with-subst
        (expression (operator expr))
        (append (pairlis-args (bindings op)
