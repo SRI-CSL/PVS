@@ -1555,26 +1555,151 @@
     (setf (types expr) (update-expr-types expr))))
 
 (defun update-expr-types (expr)
-  (if (some #'maplet? (assignments expr))
-      (let ((*dont-worry-about-full-instantiations* t)
-	    (*generate-tccs* 'none))
-	(mapcar #'(lambda (ty)
-		    (update-expr-type
-		     (assignments expr)
-		     (typecheck* (copy-untyped (expression expr)) ty nil nil)
-		     ty))
-	  (mapcar #'find-update-supertype (ptypes (expression expr)))))
-      (mapcar #'find-update-supertype (ptypes (expression expr)))))
+  (let ((*generate-tccs* 'none))
+    (if (some #'maplet? (assignments expr))
+	(let ((*dont-worry-about-full-instantiations* t)
+	      (*generate-tccs* 'none))
+	  (find-update-commontypes expr))
+	(find-update-commontypes expr))))
 
-(defmethod find-update-supertype ((te datatype-subtype))
+(defun find-update-commontypes (expr)
+  (mapcar #'(lambda (ptype)
+	      (find-update-commontype
+	       ptype (expression expr) (assignments expr)))
+    (ptypes (expression expr))))
+
+(defun find-update-commontype (te expr assignments)
+  (if (null assignments)
+      te
+      (let ((args (arguments (car assignments)))
+	    (value (expression (car assignments))))
+	(find-update-commontype
+	 (find-update-commontype* te expr args value)
+	 expr
+	 (cdr assignments)))))
+
+(defmethod find-update-commontype* ((te funtype) expr args value)
+  (if (null args)
+      (call-next-method)
+      (lcopy te
+	'range (find-update-commontype*
+		(range te)
+		(typecheck* (copy-untyped (mk-application* expr (car args)))
+			    (range te) nil nil)
+		(cdr args) value))))
+
+(defmethod find-update-commontype* ((te tupletype) expr args value)
+  (if (null args)
+      (call-next-method)
+      (let* ((index (number (caar args)))
+	     (dtype (nth (1- index) (types te)))
+	     (mtype (unless dtype
+		      ;; In a maplet - (cdr args) is nil, value has unique type
+		      ;; and index = (1+ (length (type te)))
+		      (car (ptypes value))))
+	     (ptype (if (dep-binding? dtype) (type dtype) dtype))
+	     (pappl (when ptype
+		      (make-instance 'projappl
+			'id (makesym "PROJ_~d" index)
+			'index index
+			'argument expr)))
+	     (tpappl (when ptype
+		       (typecheck* (copy-untyped pappl) ptype nil nil)))
+	     (ttype (when ptype
+		      (find-update-commontype* ptype tpappl (cdr args) value)))
+	     (rtypes (if (some #'dep-binding? (types te))
+			 (let ((texpr (typecheck* (copy-untyped expr)
+						  te nil nil)))
+			   (subst-tuptypes te texpr))
+			 (types te)))
+	     (stypes (if (or (null dtype)
+			     (tc-eq ttype ptype))
+			 rtypes
+			 (let ((ctypes (copy-list rtypes)))
+			   (setf (nth (1- index) ctypes) ttype)
+			   ctypes)))
+	     (etypes (if mtype
+			 (append stypes (list mtype))
+			 stypes)))
+	(assert (every #'(lambda (ty) (not (dep-binding? ty))) etypes))
+	(if (eq etypes (types te)))
+	    te
+	    (mk-tupletype etypes))))
+
+(defmethod find-update-commontype* ((te recordtype) expr (args cons) value)
+  (let* ((sfields (subst-fields te
+				(typecheck* (copy-untyped expr) te nil nil)))
+	 (fdecl (find (caar args) sfields :test #'same-id))
+	 (mdecl (unless fdecl
+		  ;; If we don't find fdecl, we are in a maplet
+		  (mk-field-decl (id (caar args))
+				 (car (ptypes value))
+				 (car (ptypes value)))))
+	 (fappl (when fdecl
+		  (make-instance 'fieldappl
+		    'id (id fdecl)
+		    'argument expr)))
+	 (tfappl (when fdecl
+		   (typecheck* (copy-untyped fappl) (type fdecl) nil nil)))
+	 (ftype (when fdecl
+		  (find-update-commontype*
+		   (type fdecl) tfappl (cdr args) value)))
+	 (nfdecl (when (and fdecl
+			    (not (tc-eq ftype (type fdecl))))
+		   (copy fdecl
+		     'type ftype
+		     'declared-type ftype)))
+	 (sfields (if nfdecl
+		      (substit sfields (acons fdecl nfdecl nil))
+		      sfields))
+	 (efields (if mdecl
+		      (append sfields (list mdecl))
+		      sfields)))
+    (assert (every #'(lambda (fd)
+		       (every #'(lambda (fv)
+				  (or (not (field-decl? (declaration fv)))
+				      (break)))
+			      (freevars (type fd))))
+		   efields))
+    (if (equal efields (fields te))
+	te
+	(copy te
+	  'fields efields
+	  'dependent? nil
+	  'print-type nil))))
+
+(defmethod find-update-commontype* ((te datatype-subtype) expr (args cons) value)
+  (let* ((acc (caar args))
+	 (cappl (typecheck* (mk-application (id acc) (copy-untyped expr))
+			    (range (type acc)) nil nil))
+	 (ctype (find-update-commontype* (type cappl) cappl (cdr args) value)))
+    (if (tc-eq ctype (range (type acc)))
+	te
+	(let* ((pdecls (mapcar #'declaration (positive-types (adt te))))
+	       (cmatch (tc-match ctype (range (type (declaration acc)))
+				 (mapcar #'list pdecls))))
+	  (if (some #'cdr cmatch)
+	      (let* ((nacts (mapcar #'(lambda (act fml)
+					(if (cdr (assq fml cmatch))
+					    (mk-actual (cdr (assq fml cmatch)))
+					    act))
+			      (actuals te) (formals (adt-theory (adt te)))))
+		     (nte (typecheck* (copy (declared-type te) 'actuals nacts)
+				      nil nil nil)))
+		nte)
+	      te)))))
+
+(defmethod find-update-commontype* ((te adt-type-name) expr (args cons) value)
   te)
 
-(defmethod find-update-supertype ((te subtype))
-  (find-update-supertype (supertype te)))
+(defmethod find-update-commontype* ((te subtype) expr (args cons) value)
+  (find-update-commontype* (supertype te) expr args value))
 
-(defmethod find-update-supertype ((te type-expr))
-  te)
-  
+(defmethod find-update-commontype* ((te type-expr) expr (args null) value)
+  (let ((tvalue (typecheck* (copy-untyped value) te nil nil)))
+    (assert (and tvalue (type tvalue)))
+    (reduce #'compatible-type (cons te (judgement-types tvalue)))))
+
 
 (defmethod update-expr-type (assignments expr (te tupletype))
   (let ((type (update-expr-type-types assignments expr
@@ -1798,7 +1923,7 @@
       (let* ((*generate-tccs* 'none)
 	     (stype (supertype type))
 	     (pred (predicate type))
-	     (vid (make-new-variable '|x| expr))
+	     (vid (make-new-variable 'x expr))
 	     (vb (make-bind-decl vid stype))
 	     (var (make-variable-expr vb))
 	     (carg (typecheck* (copy arg) stype nil nil))
@@ -1832,9 +1957,9 @@
 	     (var (make-variable-expr vb))
 	     (carg (typecheck* (copy arg) type nil nil))
 	     (upred (make!-lambda-expr (list vb)
-		      (make!-equation var carg))))
+		      (make!-equation var carg)))
 	     (tpred (beta-reduce upred)))
-	(mk-subtype stype tpred)))
+	(mk-subtype stype tpred))))
 
 (defmethod extend-domain-type (arg type expr)
   (declare (ignore arg expr))
