@@ -64,8 +64,7 @@
 		       (t nil))))
 		   *auto-rewrites*)
 	     (protecting-cong-state
-	      ((*dp-state* (dp-state ps))
-	       (*alists* *alists*))
+	      ((*dp-state* (dp-state ps)))
 	      (dp::add-rewrite-rules
 	       rewrites rewrites! *dp-state*)
 	      (values '? (list (cons (current-goal ps)
@@ -90,8 +89,7 @@ Should be proceeded by an install-ground-rewrites.")
   (let* ((goalsequent (current-goal ps))
 	 (*dp-state* (dp-state ps)))
     (protecting-cong-state
-     ((*dp-state* *dp-state*)
-      (*alists* *alists*))
+     ((*dp-state* *dp-state*))
      (ground-rewrite-sequent goalsequent sformnums replace?))))
 
 (defun ground-rewrite-sequent (sequent sformnums replace?)

@@ -19,10 +19,6 @@
 ;;multiplication uninterpreted.  flag is either note, simplify,
 ;;assert, or *rewrite.
 
-; (defun pvs-initprover ()
-;   (setq *alists* (copy *init-alists*))
-;   (setq *dp-state* (dp::push-new-cong-state *init-dp-state*)))
-
 (defun invoke-simplification (sformnums record? rewrite?
 				   rewrite-flag flush? linear?
 				   cases-rewrite? type-constraints?
@@ -384,53 +380,6 @@
   (if (listp list)
       (mapcar #'translate-from-prove list)
       (translate-from-prove list)))
-
-(defun init-cong-state ()
-  (when *new-ground?* (dp::null-single-cong-state)))
-
-(defun copy-cs (old-cs)
-  (when *new-ground?*
-    (dp::copy-cong-state old-cs)))
-
-(defun new-cs (old-cs)
-  (when *new-ground?*
-    (dp::push-new-cong-state old-cs)))
-
-(defun restore-old-cs (new-cs)
-  (when *new-ground?*
-    (dp::npop-cong-state new-cs)))
-
-(defun init-dp (&optional strong)
-  (when *new-ground?*
-    (dp::init-dp-0 strong)))
-
-(defun compatible-dp-results (new-result old-result)
-  (or (tc-eq new-result old-result)
-      (and (true-p new-result) (true-p old-result))
-      (and (true-p new-result) (null old-result))
-      (and (false-p new-result) (false-p old-result))
-      (and 
-	   (or (listp old-result)
-	       (and (not (or (true-p old-result)
-			     (false-p old-result)))
-		    (typep old-result 'syntax)))
-	   (null new-result))))
-
-(defvar *init-dp-state*
-  (when nil
-    (init-cong-state)))
-
-(defun init-dc (&optional strong)
-  (init-dp strong)
-  (dp::return-all-cong-states dp::*made-cong-states*)
-  (setq *init-dp-state* (init-cong-state))
-  (reset-translate-from-dc)
-  (reset-translate-to-dc)
-  )
-
-(defun dp::restore ()
-  (in-package pvs)
-  (restore))
 
 (defmethod quant-occurs? ((expr projection-application))
   (with-slots (argument) expr
@@ -1689,10 +1638,11 @@
   (if (connective-occurs? list)
       (make-sum* list type)
       (let ((*newdc* nil))
-	(make-sum* (sort list #'(lambda (x y)
-				  (arithord (top-translate-to-prove x)
-					    (top-translate-to-prove y))))
-		   type))))
+	(make-sum* (sort list #'arith-order) type))))
+
+(defun arith-order (x y)
+  (arithord (top-translate-to-prove x)
+	    (top-translate-to-prove y)))
 
 (defun make-sum* (list type)
   (cond ((null list) (make!-number-expr 0))

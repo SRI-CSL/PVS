@@ -137,31 +137,11 @@
 (defvar *checkpointed-branches* nil)
 (defvar *dp-print-incompatible-warning* t)
 (defvar *print-expanded-dpinfo* t)
-(defvar *dp-state* nil)
-(defvar *new-ground?* nil)
-(defvar *old-ground?* t)
+(defvar *init-dp-state*)
+(defvar *top-dp-state*)
+(defvar *dp-state*)
 (defvar *newdc* nil) ;;needs to be set to T to get new ground prover
 (defvar *dp-changed*)
-(defvar *alists*)
-(defvar *dp-state*)
-(defvar *top-alists*)
-(defvar *top-dp-state*)
-(defvar *break-on-ground-diff* t)
-
-(defun new-ground ()
-  (setq *newdc* t
-	*new-ground?* t
-	*old-ground?* nil))
-
-(defun old-ground ()
-  (setq *newdc* nil
-	*new-ground?* nil
-	*old-ground?* t))
-
-(defun both-ground ()
-  (setq *newdc* nil
-	*new-ground?* t
-	*old-ground?* t))
 
 #+lucid
 (defmacro pvs-format (stream format-string &rest args)

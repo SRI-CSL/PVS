@@ -24,8 +24,7 @@
       (let ((new-ground-fcs (names-to-ground-fc names)))
 	(if new-ground-fcs
 	    (protecting-cong-state
-	     ((*dp-state* (dp-state ps))
-	      (*alists* *alists*))
+	     ((*dp-state* (dp-state ps)))
 	     (setf (dp::forward-chains-orig-rules
 		    (dp::forward-chains *dp-state*))
 		   (append new-ground-fcs
@@ -90,8 +89,7 @@
 	(split-fc-ants ants)
       (let ((ground-fc (make-ground-fc name pos-ants neg-ants conc)))
 	(protecting-cong-state
-	 ((*dp-state* (dp-state ps))
-	  (*alists* *alists*))
+	 ((*dp-state* (dp-state ps)))
 	 (setf (dp::forward-chains-orig-rules
 		(dp::forward-chains *dp-state*))
 	       (cons ground-fc (dp::forward-chains-orig-rules
