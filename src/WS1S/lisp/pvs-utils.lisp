@@ -1,18 +1,10 @@
 (in-package :pvs)
 
-(defmethod try-to-expand ((expr name-expr))
-  "Returns the expanded term for a defined name expr"
-  (let ((decl (declaration (resolution expr))))
-    (if (typep decl 'const-decl)  
-	(let ((defs (def-axiom decl)))
-	  (if defs
-	      (subst-mod-params (args2 (car (last defs)))
-				(module-instance expr))
-	    expr))
-      expr)))
-
-(defmethod try-to-expand ((expr expr))
-  expr)
+(defun destructure-application (e &optional acc)
+  (if (application? e)
+      (destructure-application (operator e)
+                               (append (arguments e) acc))
+    (values e acc)))
 
 (defun destructure-bindings (bndngs &key exclude)
   (let ((*exclude* exclude))
