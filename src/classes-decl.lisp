@@ -83,6 +83,8 @@
 
 (in-package 'pvs)
 
+(export '(id status type declared-type))
+
 ;;; So we can unparse a list of modules into a single file.
 
 (defcl modules ()
@@ -205,6 +207,11 @@
   library
   library-path)
 
+(defcl theory-interpretation (module)
+  from-theory
+  (mapping :documentation
+	   "An alist mapping declarations of the from-theory to this theory"))
+
 (defcl exporting (syntax)
   (names :documentation "a list of names and absexpnames" :parse t)
   (but-names :documentation "a list of names and absexpnames" :parse t)
@@ -299,6 +306,11 @@
 (defcl formal-const-decl (formal-decl typed-declaration)
   possibly-empty-type?)
 
+(defcl formal-theory-decl (formal-decl)
+  theory-name
+  (generated-theory :fetch-as nil)
+  (saved-context :fetch-as nil))
+
 (defcl adtdecl (typed-declaration)
   (bind-decl :documentation "Keeps a corresponding bind-decl"))
 
@@ -310,6 +322,12 @@
 
 (defcl mod-decl (declaration)
   (modname :parse t)
+  (generated-theory :fetch-as nil)
+  (saved-context :fetch-as nil))
+
+(defcl theory-abbreviation-decl (declaration)
+  (theory-name :parse t)
+  (generated-theory :fetch-as nil)
   (saved-context :fetch-as nil))
 
 (defcl var-decl (typed-declaration))
@@ -371,6 +389,9 @@
   kind
   (default-proof :fetch-as nil)
   (proofs :fetch-as nil))
+
+(defcl assuming-decl (formula-decl)
+  original-definition)
 
 (defcl tcc-decl (formula-decl)
   (tcc-disjuncts
@@ -480,6 +501,7 @@
 
 (defcl subtype (type-expr)
   (supertype :parse t)
+  (top-type :fetch-as nil :ignore t)
   predicate)
 
 (defcl datatype-subtype (subtype)
@@ -519,6 +541,9 @@
 (defcl tupletype (type-expr)
   (types :parse t)
   generated?)
+
+(defcl cotupletype (type-expr)
+  (types :parse t))
 
 
 ;;; The domain-tupletype is a tupletype created for a function type, to
