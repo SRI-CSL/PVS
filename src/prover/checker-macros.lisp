@@ -84,7 +84,7 @@
 (defvar *recording-type-constraints* nil)
 (defvar *top-simplify-ifs-hash* nil)
 (defvar *local-simplify-ifs-hash* nil)
-(defvar *dont-beta-reduce-let-exprs* nil)
+(defvar *let-reduce?* t)
 (defvar *no-bound-variables-in-match* nil)
 (defvar *dynamic-ordering?* nil)
 (defvar *smash?* nil)
