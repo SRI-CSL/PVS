@@ -383,60 +383,48 @@
 (defvar *type-error* nil)
 
 (defun type-error (obj message &rest args)
-  (if *type-error-catch*
-      (throw *type-error-catch*
-	     (values nil (set-strategy-errors (format nil "~%~?" message args))))
-      (let ((place (place obj)))
-	(cond ((and *to-emacs*
-		    (or (not *in-checker*)
-			*tc-add-decl*))
-	       (let ((error (format nil
-				"~?~@[~%~a~]~:[~;~%You may need to add a semicolon (;) ~
-                                 to the end of the previous declaration~]"
-			      message args *type-error* *in-coercion*)))
-		 (if (conversion-occurs-in? obj)
-		     (let* ((*type-error*
-			     (format nil
-				   "--------------~%With conversions, ~
+  (let ((error (type-error-for-conversion obj message args)))
+    (cond (*type-error-catch*
+	   (throw *type-error-catch*
+		  (values nil (set-strategy-errors
+			       (format nil "~%~a" error)))))
+	  ((and *to-emacs*
+		(or (not *in-checker*)
+		    *tc-add-decl*))
+	   (pvs-error "Typecheck error"
+	     error
+	     (or (and (current-theory)
+		      (filename (current-theory)))
+		 *current-file*)
+	     (place obj)))
+	  ((and *in-checker* (not *tcdebug*))
+	   (format t "~%~a" error)
+	   (format t "~%Restoring the state.")
+	   (restore))
+	  (*in-evaluator*
+	   (format t "~%~a" error)
+	   (format t "~%Try again.")
+	   (throw 'tcerror t))
+	  (t (format t "~%~a" error)
+	     (error "Typecheck error")))))
+
+(defun type-error-for-conversion (obj message args)
+  (let ((error (format nil
+		   "~?~@[~%~a~]~:[~;~%You may need to add a semicolon (;) ~
+                    to the end of the previous declaration~]"
+		 message args *type-error* *in-coercion*)))
+    (if (conversion-occurs-in? obj)
+	(let* ((*type-error*
+		(format nil
+		    "--------------~%With conversions, ~
                                     it becomes the expression ~%  ~a~%~
                                     and leads to the error:~%  ~a"
-				 obj error))
-			    (*no-conversions-allowed* t))
-		       (untypecheck-theory obj)
-		       (typecheck obj))
-		     (pvs-error "Typecheck error"
-		       error
-		       (or (and (current-theory)
-				(filename (current-theory)))
-			   *current-file*)
-		       place))))
-	      ((and *in-checker* (not *tcdebug*))
-	       (format t "~%~?" message args)
-	       (format t "~%Restoring the state.")
-	       (restore))
-	      (*in-evaluator*
-	       (format t "~%~?" message args)
-	       (format t "~%Try again.")
-	       (throw 'tcerror t))
-	      (t (let ((error
-			(format nil
-			    "~?~@[~%~a~]~:[~;~%You may need to add a semicolon (;) ~
-                             to the end of the previous declaration~]"
-			  message args *type-error* *in-coercion*)))
-		   (if (conversion-occurs-in? obj)
-		       (let* ((*type-error*
-			       (format nil
-				   "--------------~%With conversions, ~
-                                    it becomes the expression ~%  ~a~%~
-                                    and leads to the error:~%  ~a"
-				 obj error))
-			      (*no-conversions-allowed* t)
-			      (etype (type obj)))
-			 (untypecheck-theory obj)
-			 (typecheck obj :expected etype))
-		       (progn
-			 (format t "~%~a" error)
-			 (error "Typecheck error")))))))))
+		  obj error))
+	       (*no-conversions-allowed* t)
+	       (etype (type obj)))
+	  (untypecheck-theory obj)
+	  (typecheck obj :expected etype))
+	error)))
 
 (defun conversion-occurs-in? (obj)
   (let ((conv? nil))
