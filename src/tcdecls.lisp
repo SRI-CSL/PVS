@@ -1808,4 +1808,6 @@
     (|naturalnumber| (setq *naturalnumber* type)
      (push-ignored-type-constraints *naturalnumber*))
     (|posint| (setq *posint* type))
+    (|even_int| (setq *even_int* type))
+    (|odd_int| (setq *odd_int* type))
     (|ordinal| (setq *ordinal* type))))
