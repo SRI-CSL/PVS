@@ -549,7 +549,8 @@
   (member (funsym ineq) (list *lessp* *greaterp*) :test #'eq))
 
 (defun normineq (ineq cong-state &optional (var nil))
-  (integercut (normineq-rational ineq cong-state var)
+  (integercut (normineq-rational (integercut ineq cong-state)
+				 cong-state var)
 	      cong-state))
 
 ;;canonizes inequalities a {<, <=, >, >=, =} b by
