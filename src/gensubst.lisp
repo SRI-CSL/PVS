@@ -305,15 +305,15 @@
 (defmethod gensubst* ((ex application) substfn testfn)
   (let* ((nop (gensubst* (operator ex) substfn testfn))
 	 (narg (gensubst* (argument ex) substfn testfn))
-	 (stype (find-supertype (type nop)))
 	 (ntype (cond ((or *parsing-or-unparsing*
 			   *visible-only*)
 		       (type ex))
-		      ((and (dep-binding? (domain stype))
+		      ((and (dep-binding? (domain (find-supertype (type nop))))
 			    (not (eq narg (argument ex))))
-		       (substit (range stype)
-			 (acons (domain stype) narg nil)))
-		      (t (range stype)))))
+		       (substit (range (find-supertype (type nop)))
+			 (acons (domain (find-supertype (type nop))) narg
+				nil)))
+		      (t (range (find-supertype (type nop)))))))
     (lcopy ex
       'operator (if (or (eq narg (argument ex))
 			(not (eq nop (operator ex))))
