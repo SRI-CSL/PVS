@@ -98,6 +98,10 @@
   (declare (ignore expr))
   t)
 
+(defmethod ground-expr?* ((expr field-assignment-arg))
+  (declare (ignore expr))
+  t)
+
 ; fundamental things are ground
 
 (defmethod ground-expr?* ((expr number-expr))
