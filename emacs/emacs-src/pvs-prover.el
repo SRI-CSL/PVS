@@ -642,8 +642,9 @@ buffer."
   "Removes the proof associated with the specified formula
 
 The remove-proof command removes the proof associated with the specified
-formula.  It may be recovered using revert-proof, as long as you have not
-changed contexts, restarted the system, or retypechecked the file."
+formula.  There is usually no need to do this, as multiple proofs may be
+ associated with a formula.  See the display-proofs commands for alternative
+approaches to managing proofs."
   (interactive)
   (let* ((name-and-origin (pvs-formula-origin))
 	 (name (car name-and-origin))
@@ -1916,18 +1917,18 @@ Letters do not insert themselves; instead, they are commands:
     (while (search-forward "!!" nil t)
       (delete-char -2))))
 
-(defun prove-with-checkpoint ()
-  (interactive)
-  (confirm-not-in-checker)  
-  (unless (eq (current-buffer) (get-buffer "Proof"))
-    (error "Must be run from a Proof buffer"))
-  (pvs-prover-goto-next-step)
-  (let ((proof (concat (buffer-substring-without-properties
-			(point-min) (point))
-		       "!!"
-		       (buffer-substring-without-properties
-			(point) (point-max)))))
-    (ilisp-send (format "(prove-with-checkpoint %s)" proof))))
+;; (defun prove-with-checkpoint ()
+;;   (interactive)
+;;   (confirm-not-in-checker)  
+;;   (unless (eq (current-buffer) (get-buffer "Proof"))
+;;     (error "Must be run from a Proof buffer"))
+;;   (pvs-prover-goto-next-step)
+;;   (let ((proof (concat (buffer-substring-without-properties
+;; 			(point-min) (point))
+;; 		       "!!"
+;; 		       (buffer-substring-without-properties
+;; 			(point) (point-max)))))
+;;     (ilisp-send (format "(prove-with-checkpoint %s)" proof))))
 
 (defun install-proof* (name origin &optional step)
   (save-excursion
