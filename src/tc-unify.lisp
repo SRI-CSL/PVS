@@ -161,29 +161,35 @@
 		      (tc-match* (car args) (car fargs) bindings)))))
 
 (defmethod tc-match* :around ((arg type-expr) farg bindings)
-  (if (tc-eq arg farg)
-      bindings
-      (let ((nbindings (call-next-method)))
-	(if (and nbindings
-		 (print-type arg)
-		 (typep (print-type arg) 'name)
-		 (actuals (module-instance (print-type arg)))
-		 (eq (module (declaration (print-type arg)))
-		     *formals-theory*))
-	    (or (let* ((res (car (resolutions (print-type arg))))
-		       (acts (actuals (module-instance res)))
-		       (formals (formals-sans-usings (module (declaration res)))))
-		  (tc-match-actuals acts formals nbindings))
-		nbindings)
-	    (or (and nbindings
-		     (print-type arg)
-		     (typep (print-type arg) 'type-application)
-		     (tc-match* (print-type arg)
-				(or (when (type-expr? farg)
-				      (print-type farg))
-				    farg)
-				nbindings))
-		nbindings)))))
+  (with-slots (print-type) arg
+    (when bindings
+      (if (tc-eq arg farg)
+	  bindings
+	  (let ((nbindings (call-next-method)))
+	    (when nbindings
+	      (tc-match-print-type print-type farg nbindings)))))))
+
+(defmethod tc-match-print-type ((ptype name) farg nbindings)
+  (declare (ignore farg))
+  (let* ((res (car (resolutions ptype)))
+	 (acts (actuals (module-instance res))))
+    (or (and acts
+	     (eq (module (declaration res)) *formals-theory*)
+	     (let ((formals (formals-sans-usings (module (declaration res)))))
+	       (tc-match-actuals acts formals nbindings)))
+	nbindings)))
+
+(defmethod tc-match-print-type ((ptype type-application) farg nbindings)
+  (or (tc-match* ptype
+		 (or (when (type-expr? farg)
+		       (print-type farg))
+		     farg)
+		 nbindings)
+      nbindings))
+
+(defmethod tc-match-print-type (ptype farg nbindings)
+  (declare (ignore ptype farg))
+  nbindings)
 
 (defmethod tc-match* ((arg type-expr) (farg type-name) bindings)
   (let ((binding (assq (declaration farg) bindings)))
