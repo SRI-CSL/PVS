@@ -163,6 +163,17 @@
 					     (bindings expr) nbindings))))
 	   'bindings nbindings)))
 
+(defmethod beta-reduce* ((expr symbol))
+  expr)
+
+(defmethod beta-reduce* :around ((expr table-expr))
+  (lcopy (call-next-method)
+    'row-expr (beta-reduce* (row-expr expr))
+    'col-expr (beta-reduce* (col-expr expr))
+    'row-headings (beta-reduce* (row-headings expr))
+    'col-headings (beta-reduce* (col-headings expr))
+    'table-entries (beta-reduce* (table-entries expr))))
+
 ;(defmethod beta-reduce* ((bd bind-decl))
 ;  (let ((te (beta-reduce* (type bd))))
 ;    (if (eq te (type bd))
