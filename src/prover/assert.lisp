@@ -54,6 +54,9 @@
 			 type-constraints? ps)
   (let* ((*printerpmult* (if linear? 'normal *printerpmult*))
 	 (*printerpdivide* (if linear? 'no *printerpdivide*))
+	 ;; translate-to-prove adds to this from the sequent, e.g.,
+	 ;; hypothesis integer_pred(x), where x is of type real.
+	 (*sequent-typealist* nil)
 	 (*assert-flag* flag)
 	 (*top-assert-flag* flag)
 	 (*process-output* nil)
@@ -1851,8 +1854,9 @@
 	      type))
 
 (defun arith-ord-translate (x y)
-  (old-arithord (top-translate-to-prove x)
-		(top-translate-to-prove y)))
+  (let ((*sequent-typealist* nil))
+    (old-arithord (top-translate-to-prove x)
+		  (top-translate-to-prove y))))
 
 (defun make-prod* (list type)
   (cond ((null list) (make!-number-expr 1))
@@ -3337,7 +3341,8 @@
   (if (tc-eq newbody *false*)
       (values '? *false*)
       (if (tc-eq newbody *true*)
-	  (let ((check (and (not (existence-tcc? (declaration
+	  (let ((check (and *top-proofstate*
+			    (not (existence-tcc? (declaration
 						  *top-proofstate*)))
 			    (loop for bd in (bindings expr)
 				  always (nonempty? (type bd))))))
@@ -3604,16 +3609,17 @@
 ;;tests the value of a formula in the current dec. procedure alist.
 (defun assert-test (fmla)
   (unless (check-for-connectives? fmla)
-    (nprotecting-cong-state;;changed from LET on alists
-     ((*dp-state* *dp-state*))
-     (if (eq *pseudo-normalizing* 'include-typepreds?)
-	 (let ((*assert-typepreds* *assert-typepreds*))
-	   (collect-subexpr-typepreds fmla)
-	   (unless (assq (caar primtypealist) typealist)
-	     (setq typealist (append typealist primtypealist)))
-	   (assert-typepreds *assert-typepreds*)
-	   (call-process fmla *dp-state*))
-	 (call-process fmla *dp-state*)))))
+    (let ((*sequent-typealist* nil))
+      (nprotecting-cong-state ;;changed from LET on alists
+       ((*dp-state* *dp-state*))
+       (if (eq *pseudo-normalizing* 'include-typepreds?)
+	   (let ((*assert-typepreds* *assert-typepreds*))
+	     (collect-subexpr-typepreds fmla)
+	     (unless (assq (caar primtypealist) typealist)
+	       (setq typealist (append typealist primtypealist)))
+	     (assert-typepreds *assert-typepreds*)
+	     (call-process fmla *dp-state*))
+	   (call-process fmla *dp-state*))))))
 
 (defun assert-test0 (fmla)
   (unless (check-for-connectives? fmla)
