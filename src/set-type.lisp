@@ -525,7 +525,8 @@ required a context.")
 (defun find-best-name-resolution (ex resolutions expected)
   (if (cdr resolutions)
       (or (bound-variable-resolution resolutions)
-	  (let* ((mreses (find-tc-matching-resolutions resolutions expected))
+	  (let* ((mreses (when expected
+			   (find-tc-matching-resolutions resolutions expected)))
 		 (lreses (filter-local-resolutions (or mreses resolutions))))
 	    (if (cdr lreses)
 		(let ((dreses (or (remove-if-not #'fully-instantiated? lreses)
@@ -539,8 +540,10 @@ required a context.")
 						mreses)
 					      mreses)))
 			      (if (cdr freses)
-				  (let ((maxreses (find-maximal-res-subtypes
-						   freses expected)))
+				  (let ((maxreses (if expected
+						      (find-maximal-res-subtypes
+						       freses expected)
+						      freses)))
 				    (cond ((cdr maxreses)
 					   (setf (resolutions ex) maxreses)
 					   (type-ambiguity ex))
