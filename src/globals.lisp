@@ -59,7 +59,7 @@
   (pushnew :pvs3.2 *features*)
   )
 
-(defparameter *binfile-version* 20)
+(defparameter *binfile-version* 21)
 
 (defparameter *context-name* ".pvscontext")
 
@@ -98,6 +98,8 @@ formula declaration.")
   "Flag indicating whether conversions are to be displayed when unparsing.")
 
 (defvar *no-conversions-allowed* nil)
+
+(defvar *conversions-allowed* nil)
 
 (defvar *from-buffer* nil
   "Set to the buffer from which a temporary file was generated for
