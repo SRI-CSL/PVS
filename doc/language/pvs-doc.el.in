@@ -2,15 +2,17 @@
 
 (defvar pvs-grammar-file "@PVSPATH@/src/pvs-gr.txt")
 
-(defun get-pvs-keywords ()
+(defun get-pvs-keywords (&optional notex)
   (let ((keys nil))
     (let ((buf (find-file-noselect pvs-grammar-file)))
       (save-excursion
 	(set-buffer buf)
 	(goto-char (point-min))
 	(while (re-search-forward "'\\([A-Z][^' \n\t]*\\)'" nil t)
-	  (let ((key (buffer-substring (match-beginning 1) (match-end 1))))
-	    (pushnew (escape-tex-chars key) keys :test 'string=)))))
+	  (let ((key (buffer-substring-no-properties
+		      (match-beginning 1) (match-end 1))))
+	    (pushnew (if notex key (escape-tex-chars key)) keys
+		     :test 'string=)))))
     (sort* keys 'string<)))
 
 (defun escape-tex-chars (string)
@@ -25,6 +27,17 @@
 	    (decf pos)))
 	(concat chars))
       (escape-tex-operator-chars string)))
+
+(defun escape-format-chars (string)
+  (let ((pos (- (length string) 1))
+	(chars nil))
+    (while (>= pos 0)
+      (let ((ch (aref string pos)))
+	(push ch chars)
+	(when (= ch ?%)
+	  (push ?% chars))
+	(decf pos)))
+    (concat chars)))
 
 (defun string-to-char-list (string)
   "Return a list of which elements are characters in the STRING."
@@ -41,16 +54,19 @@
       (decf pos))
     (concat chars)))
 
-(defun get-pvs-operators ()
+(defun get-pvs-operators (&optional notex)
   (let ((keys nil))
     (let ((buf (find-file-noselect pvs-grammar-file)))
       (save-excursion
 	(set-buffer buf)
 	(goto-char (point-min))
 	(while (re-search-forward "'\\([^A-Z ][^'A-Za-z \n\t]*\\)'" nil t)
-	  (let ((key (buffer-substring (match-beginning 1) (match-end 1))))
+	  (let ((key (buffer-substring-no-properties
+		      (match-beginning 1) (match-end 1))))
 	    (pushnew key keys :test 'string=)))))
-    (mapcar 'escape-tex-chars (sort* keys 'string<))))
+    (if notex
+	(mapcar 'escape-format-chars (sort* keys 'string<))
+	(mapcar 'escape-tex-chars (sort* keys 'string<)))))
 
 (defun get-pvs-opsyms ()
   (let ((keys nil))
@@ -72,9 +88,9 @@
 (defun pvs-keyword-table-5 ()
   (pvs-keyword-table 5))
 
-(defun pvs-keyword-table (ncols)
+(defun pvs-keyword-table (ncols &optional notex)
   (interactive "nNumber of columns")
-  (pvs-generate-table (get-pvs-keywords) ncols))
+  (pvs-generate-table (get-pvs-keywords notex) ncols notex))
 
 (defun pvs-opsym-table-6 ()
   (pvs-opsym-table 6))
@@ -83,7 +99,7 @@
   (interactive "nNumber of columns")
   (pvs-generate-table (get-pvs-opsyms) ncols))
 
-(defun pvs-generate-table (keywords ncold)
+(defun pvs-generate-table (keywords ncold &optional notex)
   (let* ((colsize (+ (max-string-length keywords) 2))
 	 (div (/ (length keywords) ncols))
 	 (mod (% (length keywords) ncols))
@@ -92,11 +108,12 @@
     (dotimes (r nrows)
       (setq listing
 	    (concat listing
-		    (make-listing-row keywords r nrows ncols colsize div mod))))
+		    (make-listing-row keywords r nrows ncols
+				      colsize div mod notex))))
     (message listing)))
 
-(defun pvs-operator-table (ncols)
-  (pvs-generate-table (get-pvs-operators) ncols))
+(defun pvs-operator-table (ncols &optional notex)
+  (pvs-generate-table (get-pvs-operators notex) ncols notex))
 
 (defun pvs-operator-table-6 ()
   (pvs-operator-table 6))
@@ -107,18 +124,22 @@
       (if (or (null l) (> ls l)) (setq l ls))))
   l)
 
-(defun make-listing-row (list row numrows numcols colsize div mod)
-  (let ((lrow "\\\\\n")
+(defun make-listing-row (list row numrows numcols colsize div mod
+			      &optional notex)
+  (let ((lrow (if notex (format "\n") "\\\\\n"))
 	(spaces (make-string colsize ? )))
     (dotimes (i numcols)
       (let* ((c (- numcols i 1))
 	     (elt (or (nth (+ (* c numrows) row 1)
 			   list)
-		      "")))
+		      ""))
+	     (eltspaces (make-string (- colsize (length elt)) ? )))
 	(setq lrow
 	      (concat (if (zerop i)
 			  elt
-			  (format "%s &%s" elt "  "))
+			  (if notex
+			      (format "%s %s" elt eltspaces)
+			      (format "%s &%s" elt "  ")))
 		      lrow))
 	(setq first nil)))
     lrow))
@@ -132,5 +153,3 @@
 	(pushnew (intern (buffer-substring (match-beginning 1) (match-end 1)))
 		 cmds))
       cmds)))
-
-  
