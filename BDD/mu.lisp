@@ -877,7 +877,7 @@ time).  Verbose? set to T provides more information."
 		  0))) ;; could not be 0! Hassen
      (if (equal 0 len) bindexpr
            (mu_mk_curry_application  
-                  (mu_mk_abstraction () bindexpr)  
+                  (mu_mk_abstraction (empty_list) bindexpr)  
                         (lisp-to-c-list oplist)))
 ))
 
