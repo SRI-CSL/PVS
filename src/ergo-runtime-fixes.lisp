@@ -441,7 +441,6 @@ with the comment so as to put it in the proper place")
 		(append *newline-comments*
 			(list (list comment *num-keywords-skipped*
 				    newline?)))))
-;	(break)
 ;	(if *collect-comments*
 ;	    (setq *hold-comments*
 ;		  (append *hold-comments* (list (list comment 0 newline?))))
