@@ -777,7 +777,7 @@
       (eq (status-flag proof) '!))))
 
 (defun tcc-prove (decl context)
-  (let ((*suppress-printing* T)
+  (let ((*suppress-printing* t)
 	(*printproofstate* nil)
 	(*proving-tcc* 'TCC));;'TCC to save the proof.
     (prove-decl decl
