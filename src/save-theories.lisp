@@ -12,8 +12,6 @@
 
 (in-package :pvs)
 
-(defparameter *binfile-version* 10)
-
 (defun save-theories (file)
   ;;(update-stored-mod-depend)
   (let ((theories (get-theories-to-save file)))
