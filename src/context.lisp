@@ -1539,9 +1539,7 @@ pvs-strategies files.")
 	      (t proofs))))))
 
 (defun read-pvs-file-proofs (filename &optional (dir *pvs-context-path*))
-  (let ((prf-file (make-prf-pathname filename dir))
-	(*readtable* (copy-readtable nil)))
-    (setf (readtable-case *readtable*) :downcase)
+  (let ((prf-file (make-prf-pathname filename dir)))
     (when (file-exists-p prf-file)
       (multiple-value-bind (proofs error)
 	  (ignore-errors
@@ -1550,10 +1548,15 @@ pvs-strategies files.")
 			       (let ((nproof (read input nil 'eof)))
 				 (if (eq nproof 'eof)
 				     (nreverse proofs)
-				     (reader (if (member nproof proofs
-							 :test #'equal)
-						 proofs
-						 (cons nproof proofs)))))))
+				     (let ((cproof
+					    (cons (car nproof)
+						  (cons (cadr nproof)
+							(convert-proof-form-to-lowercase
+							 (cddr proof))))))
+				       (reader (if (member cproof proofs
+							   :test #'equal)
+						   proofs
+						   (cons cproof proofs))))))))
 		(reader nil))))
 	(cond (error
 	       (pvs-message "Error reading proof file ~a"
