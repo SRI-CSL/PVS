@@ -1092,16 +1092,29 @@
 	  (let* ((expression (expression expr))
 		 (assignments (assignments expr))
 		 (updateable-livevars
-		  (no-livevars? expression livevars)))
+		  (no-livevars? expression livevars))
+		 (check-assign-types
+		  (loop for assgn in assignments
+			always
+			(not (contains-possible-closure?
+			      (type (expression assgn)))))))
 	    ;;very unrefined: uses all
 	    ;;freevars of eventually updated expression.
-	    (cond (updateable-livevars
+	    (cond ((and updateable-livevars check-assign-types)
 		   (push-output-vars (car updateable-livevars)
 				     (cdr updateable-livevars))
 		   (pvs2cl-update expression
 				  assignments
 				  bindings livevars))
-		  (t (pvs2cl-update-nondestructive  expr
+		  (t
+		   (when (and *eval-verbose* (not updateable-livevars))
+		     (format t "Update ~s translated nondestructively.
+ Live variables ~s present" expr livevars))
+		   (when (and *eval-verbose* (not check-assign-types))
+		     (format t "Update ~s translated nondestructively.
+Assignment right-hand sides contain possible function types that can
+trap references." expr))
+		   (pvs2cl-update-nondestructive  expr
 						    bindings livevars))))
 	  (pvs2cl-update-nondestructive expr bindings livevars))
       (pvs2cl_up* (translate-update-to-if! expr)
