@@ -814,14 +814,84 @@
 ; returns list of true ineqs that chain with ineq.  e.g. x < y chains
 ; with x > z
 
+(defun numeric-upper-bounds (chainineqs &optional bestineq)
+  (loop for ineq in chainineqs
+	when (and (qnumberp (caddr ineq))
+		  (or (eq (car ineq) 'lesseqp)
+		      (eq (car ineq) 'lessp)))
+	collect (caddr ineq)))
+
+
+(defun numeric-lower-bounds (chainineqs)
+  (loop for ineq in chainineqs
+	when (and (qnumberp (caddr ineq))
+		  (or (eq (car ineq) 'greatereqp)
+		      (eq (car ineq) 'greaterp)))
+	collect (caddr ineq)))
+
+(defun bound-inequality? (expr)
+  (and (consp expr)
+       (memq (car expr) *arithrels*)
+       (qnumberp (caddr expr))))
+
+(defun subsumed-upper? (ineq1 ineq2) ;;ineq must be lessp or lesseqp
+  (and (bound-inequality? ineq2)
+       (if (eq (car ineq2) 'lesseqp)
+	   (or (qlessp (caddr ineq2)(caddr  ineq1))
+	       (and (eq (car ineq1) 'lesseqp)
+		    (qlesseqp (caddr ineq2)(caddr  ineq1))))
+	   (and (eq (car ineq2) 'lessp)
+		(qlesseqp (caddr ineq2)(caddr  ineq1))))))
+
+(defun subsumed-lower? (ineq1 ineq2) ;;ineq must be greaterp or greatereqp
+  (and (bound-inequality? ineq2)
+       (if (eq (car ineq2) 'greatereqp)
+	   (or (qlessp (caddr  ineq1)(caddr ineq2))
+	       (and (eq (car ineq1) 'greatereqp)
+		    (qlesseqp (caddr  ineq1)(caddr ineq2))))
+	   (and (eq (car ineq2) 'greaterp)
+		(qlesseqp (caddr  ineq1)(caddr ineq2))))))
+
+(defun subsumed-ineq-list? (ineq list) ;;ineq is bounded
+  (if (or (eq (car ineq) 'lesseqp)(eq (car ineq) 'lessp))
+      (loop for atom in list
+	    thereis (and (bound-inequality? atom)
+			 (subsumed-upper? ineq atom)))
+      (loop for atom in list
+	    thereis (and (bound-inequality? atom)
+			 (subsumed-lower? ineq atom)))))
+
+(defun subsumed-ineq? (ineq  upper lower)
+  (let ((bnd (caddr ineq)))
+    (and (qnumberp bnd)
+       (cond ((and upper
+		  (or (eq (car ineq) 'lesseqp)
+		      (eq (car ineq) 'lessp)))
+	      (qlessp upper bnd))
+	     ((and lower
+		  (or (eq (car ineq) 'greatereqp)
+		      (eq (car ineq) 'greaterp)))
+	      (qlessp bnd lower))
+	     (t nil)))))
+
 (defun chainineqs(ineq)
-  (append
-   (chain-square-ineq ineq)
-   (loop for u in (use (arg1 ineq))
-	 when (and (oppsensep (funsym ineq)(funsym u))
-		   (equal (arg1 ineq)(arg1 u))
-		   (eq (pr-find u) 'true))
-	 collect u)))
+  (let* ((ineqs 
+	  (append
+	   (chain-square-ineq ineq)
+	   (loop for u in (use (arg1 ineq))
+		 when (and (oppsensep (funsym ineq)(funsym u))
+			   (equal (arg1 ineq)(arg1 u))
+			   (eq (pr-find u) 'true))
+		 collect u)))
+	 (uppers (numeric-upper-bounds ineqs))
+	 (bestupper (when uppers (apply #'min uppers)))
+	 (lowers (numeric-lower-bounds ineqs))
+	 (bestlower (when lowers (apply #'max lowers)))
+	 (okay-ineqs (loop for ineq in ineqs
+			   when (not (subsumed-ineq? ineq bestupper bestlower))
+			   collect ineq)))
+    okay-ineqs))
+   
 
 ;;added this because chain-square-ineq was only catching
 ;;squares of the form (times x x) and missing (times x x y y).

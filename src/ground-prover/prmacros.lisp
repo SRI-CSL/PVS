@@ -55,8 +55,11 @@
 
 
 (defun add2pot (atoms)
-  (setq s (append atoms s))
-  nil)
+  (let ((atoms (nreverse atoms)))
+    (loop for atom in atoms
+	  when (not (and (bound-inequality? atom)
+			 (subsumed-ineq-list? atom s)))
+	  do (push atom s))))
 
 (defmacro addneq2pot (atoms)
   `(add2pot ,atoms))
