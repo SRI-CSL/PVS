@@ -386,7 +386,7 @@
 
 (defmethod translate-mult-to-ics* ((expr1 number-expr) (expr2 expr))
   (ics_term_mk_multq (q-of-number-expr expr1)
-		     (translate-term-to-ics*I expr2)))
+		     (translate-term-to-ics* expr2)))
 
 (defmethod translate-mult-to-ics* ((expr1 expr) (expr2 number-expr))
   (ics_term_mk_multq (q-of-number-expr expr2)
