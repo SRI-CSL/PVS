@@ -56,7 +56,7 @@
       (cond ((initial-error? message)
 	     (values (car args) (cadr args)))
 	    ((lam-error? message)
-	     (values (caddr args) (car args)))
+	     (values (cadr args) (car args)))
 	    ((medial-error? message)
 	     (values (car args) (cadr args))))
     (if found

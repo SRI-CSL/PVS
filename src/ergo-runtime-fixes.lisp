@@ -1007,7 +1007,7 @@ with the comment so as to put it in the proper place")
   (multiple-value-bind (type name place) (peek-first)
     (do-syntax-error "Look ahead set match error.~%~
 		     Missing ~A inserted here:~%~A~%Bad token is ~A~%"
-		     (caar fs-list) place type)))
+		     (caar fs-list) type place)))
 
 (defvar *sbst-infix-operators*
   (mapcar #'(lambda (s) (intern (string s) :sbst))
