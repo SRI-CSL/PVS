@@ -3,12 +3,11 @@
 ;; Author          : N. Shankar
 ;; Created On      : Sat May 23 10:40:02 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sat Oct 31 03:05:24 1998
-;; Update Count    : 2
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Last Modified On: Thu May 20 21:52:42 2004
+;; Update Count    : 3
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -135,7 +134,7 @@
 	   (res-params (external-free-params res))
 	   (*modsubst* (if res-params
 			   (mapcar #'list res-params)
-			   t)));;(break "search-rw*")
+			   t)))
       (multiple-value-bind
 	  (subst modsubst)
 	  (if (not check) 'fail
@@ -164,12 +163,16 @@
 					       (assoc fml modsubst))
 				     formals)))
 			     (make-instance 'modname
-			       'id mod-id 
-			       'actuals (mapcar #'(lambda (x) (mk-actual (cdr x))) alist)))))
+			       'id mod-id
+			       'library (get-lib-id module)
+			       'actuals (mapcar #'(lambda (x)
+						    (mk-actual (cdr x)))
+					  alist)))))
 			(newres
 			 (if (eq modsubst t)
 			     res
-			     (subst-mod-params res modinst)))
+			     (subst-mod-params res modinst
+					       (module (declaration res)))))
 			(full-name-expr
 			 (copy name-expr
 			   'resolutions (list newres)
@@ -873,19 +876,6 @@
 	((negation? form)
 	 (values (args1 form) *false* nil))
 	(t (values form *true* nil))))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun tc-eq-or-unify (lhs rhs modsubst)
-  (if (eq modsubst t)
-      (strict-compatible? lhs rhs)
-      (tc-unify rhs lhs modsubst)))
-
-(defun tc-eq-or-unify* (lhs rhs-list modsubst)
-  (cond ((null rhs-list) nil)
-	(t (let ((newmodsubst
-		  (tc-eq-or-unify lhs (car rhs-list) modsubst)))
-	     (if newmodsubst (values newmodsubst (car rhs-list))
-		 (tc-eq-or-unify* lhs (cdr rhs-list) modsubst))))))
 
 	      
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
