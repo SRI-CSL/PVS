@@ -386,4 +386,9 @@
 		    (:file "dp-interface")
 		    (:file "dnf")
 		    (:file "qe")))
+      (:module fol
+       :source-pathname "src/fol"
+       :components ((:file "fol-utils")
+		    (:file "fol")
+		    (:file "fol-top")))
    ))
