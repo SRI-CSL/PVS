@@ -93,12 +93,12 @@
   (if *noninteractive*
       (pvs-message "~% ~?~%" ctl args)
       (format t "~% ~?~%" ctl args))
-  (when (and *current-theory*
+  (when (and (current-theory)
 	     (not *in-checker*))
     (let ((warning (format nil "~?" ctl args)))
-      (if (warnings *current-theory*)
-	  (nconc (warnings *current-theory*) (list warning))
-	  (setf (warnings *current-theory*) (list warning)))))
+      (if (warnings (current-theory))
+	  (nconc (warnings (current-theory)) (list warning))
+	  (setf (warnings (current-theory)) (list warning)))))
   nil)
 
 (defun show-theory-warnings (theoryname)
@@ -128,12 +128,12 @@
   (if *noninteractive*
       (pvs-message "~% ~?~%" ctl args)
       (format t "~% ~?~%" ctl args))
-  (when (and *current-theory*
+  (when (and (current-theory)
 	     (not *in-checker*))
     (let ((info (format nil "~?" ctl args)))
-      (if (info *current-theory*)
-	  (nconc (info *current-theory*) (list info))
-	  (setf (info *current-theory*) (list info)))))
+      (if (info (current-theory))
+	  (nconc (info (current-theory)) (list info))
+	  (setf (info (current-theory)) (list info)))))
   nil)
 
 (defun show-theory-messages (theoryname)
@@ -191,8 +191,8 @@
 	  (let* ((place (if *adt-decl* (place *adt-decl*) iplace))
 		 (buff (if *adt-decl*
 			   (or (filename *generating-adt*)
-			       (and *current-theory*
-				    (filename *current-theory*))
+			       (and (current-theory)
+				    (filename (current-theory)))
 			       *current-file*)
 			   (or *from-buffer* itheory)))
 		 (*output-to-emacs*
@@ -456,8 +456,8 @@
 		     "~?~:[~;~%You may need to add a semicolon (;) ~
                       to the end of the previous declaration~]"
 		   message args *in-coercion*)
-		 (or (and *current-theory*
-			  (filename *current-theory*))
+		 (or (and (current-theory)
+			  (filename (current-theory)))
 		     *current-file*)
 		 place))
 	      ((and *in-checker* (not *tcdebug*))
