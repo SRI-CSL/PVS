@@ -1812,14 +1812,6 @@
   (make-equality (make-arg-tuple-expr arg)
 		 (make-arg-tuple-expr applarg)))
 
-(defun make!-update-expr (expression assignments &optional expected)
-  (let ((type (or expected (type expression))))
-    (make-instance 'update-expr
-      'expression expression
-      'assignments assignments
-      'type type
-      'types (list type))))
-
 (defmethod translate-update-to-if* ((op expr) args)
   (declare (ignore args))
   nil)
