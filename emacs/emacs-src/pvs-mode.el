@@ -174,6 +174,6 @@ PVS are automatically put in the proper mode."
 
 (defun optimize-window-height ()
   (ilisp-shrink-wrap-window (selected-window))
-  (goto-char (point-min))))
+  (goto-char (point-min)))
 
 (provide 'pvs-mode)
