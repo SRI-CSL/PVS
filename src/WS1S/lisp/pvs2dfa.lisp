@@ -42,13 +42,12 @@
   (fml-to-dfa* fml))
 
 (defmethod fml-to-dfa* :around (fml)
-  (call-next-method))
-;   (if (freevars fml)
-;       (call-next-method)
-;       (or (gethash fml *fml-to-dfa-table*)
-;	   (let ((dfa (call-next-method)))
-;	     (setf (gethash fml *fml-to-dfa-table*) dfa)
-;	     dfa))))
+   (if (freevars fml)
+       (call-next-method)
+       (or (gethash fml *fml-to-dfa-table*)
+	   (let ((dfa (call-next-method)))
+	     (setf (gethash fml *fml-to-dfa-table*) dfa)
+	     dfa))))
        
 (defmethod fml-to-dfa* ((fml expr))
   (let ((expanded-fml (unfold1 fml)))
@@ -138,7 +137,7 @@
 	  (t (call-next-method)))))
 
 (defmethod fml-to-dfa* ((fml application))
-  (let ((op   (operator fml))
+  (let ((op (operator fml))
 	(args (arguments fml)))
     (cond ((and (= (length args) 1)   ; membership
 		(2nd-order? op)
@@ -416,14 +415,13 @@
 ;; Stepwise Unfolding
 
 (defmethod unfold1 :around (expr)
-	   (call-next-method))
-;  (or (gethash expr *unfold1-table*)
-;      (let ((nexpr (call-next-method)))
-;        (setf (gethash expr *unfold1-table*) nexpr)
-;	(when (and *babble* (not (eq expr nexpr)))
-;	  (ws1s-message "~%Unfolding: ~a" expr)
-;	  (ws1s-message "~%   ==> ~a" nexpr))
-;        nexpr)))
+  (or (gethash expr *unfold1-table*)
+      (let ((nexpr (call-next-method)))
+        (setf (gethash expr *unfold1-table*) nexpr)
+	(when (and *babble* (not (eq expr nexpr)))
+	  (ws1s-message "~%Unfolding: ~a" expr)
+	  (ws1s-message "~%   ==> ~a" nexpr))
+        nexpr)))
 
 (defmethod unfold1 ((expr expr))
   expr)
@@ -471,17 +469,14 @@
   (beta-reduce expr))
 
 (defmethod unfold1 ((expr tuple-expr))
-  (lcopy expr 'exprs (unfold1 (exprs expr))))
-
-;(defmethod unfold1 ((expr record-expr))
-;  (lcopy expr 'assignments (unfold1 (assignments expr))))
-
-(defmethod unfold1 ((expr record-expr))
   expr)
 
-(defmethod unfold1 ((expr binding-expr))
-  ; (call-next-method))
-  expr)
+(defmethod unfold1 ((expr coercion))
+   (let ((nexpr (beta-reduce expr)))
+     (when (not (eq expr nexpr))
+       (register-judgements nexpr expr))
+     nexpr))
+
 
 (defmethod unfold1 ((expr update-expr))
   (unfold1 (translate-update-to-if expr))))
