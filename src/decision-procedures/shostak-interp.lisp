@@ -13,7 +13,13 @@
    (t nil)))
 
 (defun array-p (term) nil)
-(defun bv-p (term) nil)
+
+;(defun bv-p (term)
+;  (bvec::is-bv? term))
+
+;(defun sigbvec (term cong-state)
+;  (declare (ignore cong-state))
+;  (bvec::fixed-sigma term))
 
 (defun sigma (term cong-state)
   ;;; assumes immediate args are already in sigma-normal form.
@@ -27,6 +33,7 @@
    ((equality-p term) (sigequal term cong-state))
    ((if-p term) (sigif term cong-state))
    ((bool-p term) (sigbool term cong-state))
+   ((bv-p term) (sigbvec term cong-state))
    (t term)))
 
 (defvar *process-types* nil)
@@ -187,6 +194,12 @@
       (array (array-solve eqn cong-state))
       (bv (bv-solve eqn cong-state))
       (t (list eqn)))))
+
+;(defun bv-solve (eq cong-state)
+;  (bvec::fixed-bv-solve eq))
+
+;(defun bv-solve-neq (neq cong-state)
+;  (bvec::fixed-bv-solve neq))
 
 (defun add-if-pure-to-theory (eqn cong-state)
   (let ((theory (pure-theory? eqn)))
