@@ -3,21 +3,21 @@ BEGIN
 
   IMPORTING  finite_sets_inductions[T] %, sets_aux[T]
 
-  min(x,y:T): T = IF x <= y THEN x ELSE y ENDIF
-  max(x,y:T): T = IF x <= y THEN y ELSE x ENDIF
+  fsmin(x,y:T): T = IF x <= y THEN x ELSE y ENDIF
+  fsmax(x,y:T): T = IF x <= y THEN y ELSE x ENDIF
 
   a,x,y: VAR T
   SS: VAR non_empty_finite_set
 
   minrec(SS): RECURSIVE T = 
                 IF empty?(rest(SS)) THEN choose(SS)
-                ELSE min(choose(SS),minrec(rest(SS)))
+                ELSE fsmin(choose(SS),minrec(rest(SS)))
                 ENDIF
               MEASURE (LAMBDA SS: card(SS))
 
   maxrec(SS): RECURSIVE T = 
                 IF empty?(rest(SS)) THEN choose(SS)
-                ELSE max(choose(SS),maxrec(rest(SS)))
+                ELSE fsmax(choose(SS),maxrec(rest(SS)))
                 ENDIF
               MEASURE (LAMBDA SS: card(SS))
 
@@ -39,10 +39,10 @@ BEGIN
   A,B:   VAR non_empty_finite_set
 
   min_union: LEMMA min(A) = x AND min(B) = y IMPLIES
-                      min(union(A,B)) = min(x,y)
+                      min(union(A,B)) = fsmin(x,y)
 
   max_union: LEMMA max(A) = x AND max(B) = y IMPLIES
-                      max(union(A,B)) = max(x,y)
+                      max(union(A,B)) = fsmax(x,y)
 
 
 END finite_sets_minmax
