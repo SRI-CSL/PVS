@@ -797,7 +797,7 @@
             :test #'(lambda (x y) (eq x (id y)))))
 
 (defmethod pvs2cl_up*  ((expr field-application) bindings livevars)
-  (let ((index (get-field-num (id expr)(type (argument expr)))))
+  (let ((index (get-field-num (id expr)(find-supertype (type (argument expr))))))
     `(project ,(1+ index) ,(pvs2cl_up* (argument expr) bindings livevars))))
 
 (defmethod no-livevars? ((expr update-expr) livevars)
@@ -826,7 +826,7 @@
 			  (1- (length (constructors stype)))))))))))
 
 (defun pvs2cl-update (expr assigns bindings livevars)
-  (let* ((expr-type (type expr))
+  (let* ((expr-type (find-supertype (type expr)))
 	 (cl-expr (pvs2cl_up* expr bindings
 			      ;;RHS vars needed here in case
 			      ;;expr tries to update one of them.
@@ -900,6 +900,10 @@
 	   (setf ,newexpr ,newrhs)
 	   ,cl-expr-var)))
 
+(defmethod pvs2cl-update-assign-args ((type subtype) cl-expr args rhs
+					 bindings livevars)
+  (pvs2cl-update-assign-args (find-supertype type) cl-expr args
+			     rhs bindings livevars))
 
 (defmethod pvs2cl-update-assign-args ((type recordtype) cl-expr args rhs
 					 bindings livevars)
@@ -1628,7 +1632,7 @@
 	((eq (id expr) 'FALSE) NIL)
 	((eq (id expr) '|null|) NIL)
 	((and (eq (id expr) '-) ;;hard to distinguish unary,binary.
-	      (tupletype? (domain (type expr))))
+	      (tupletype? (domain (find-supertype (type expr)))))
 	 (intern (format nil "PVS_--")))
 	(t (intern (format nil "PVS_~a" (id expr))))))
 
