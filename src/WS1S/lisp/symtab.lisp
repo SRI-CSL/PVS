@@ -84,6 +84,9 @@
 	    fvars
 	    types)))
 
+(defun symtab-length (symtab)
+  (length (symtab-freevars symtab)))
+
 
 ; An expression is shielding if it contains bound variables
 
