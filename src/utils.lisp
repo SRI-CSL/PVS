@@ -874,6 +874,7 @@
 			    (declaration context))
 	   'declarations-hash (copy (declarations-hash context))
 	   'using-hash (copy (using-hash context))
+	   'named-theories (copy-list (named-theories context))
 	   'conversions (copy-list (conversions context))
 	   'disabled-conversions (copy-list (disabled-conversions context))
 	   'known-subtypes (copy-tree (known-subtypes context)))))
