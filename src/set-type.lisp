@@ -587,9 +587,8 @@ required a context.")
 	  (type (type ex)))
       (or (and (not (strict-compatible? type expected))
 	       (find-funtype-conversion type expected ex))
-	  (let* ((bex (beta-reduce ex))
-		 (jtypes (judgement-types+ bex))
-		 (incs (compatible-predicates jtypes expected bex)))
+	  (let* ((jtypes (judgement-types+ ex))
+		 (incs (compatible-predicates jtypes expected ex)))
 	    (when incs
 	      (generate-subtype-tcc ex expected incs)))))))
 
