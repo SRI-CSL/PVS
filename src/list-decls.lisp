@@ -185,9 +185,18 @@
       (setq decl (find-decl-after-pos decls pos1)))
     (if (or (equal pos1 pos2)
 	    (within-place pos2 (place decl)))
-	(get-object-in-declaration-at objects pos1 pos2)
+	(or decl
+	    (get-object-in-declaration-at objects pos1 pos2))
 	(let ((decl2 (find-element-containing-pos decls pos2)))
-	  (ldiff (memq decl decls) (cdr (memq decl2 decls)))))))
+	  (unless decl2
+	    (setq decl2
+		  (find-decl-before-pos pos2)))
+	  (or (when (and decl decl2)
+		(ldiff (memq decl decls) (cdr (memq decl2 decls))))
+	      (when decl
+		(list decl))
+	      (when decl2
+		(list decl2)))))))
 
 (defun find-decl-after-pos (decls pos)
   (when decls
@@ -196,6 +205,14 @@
 		 (<= (cadr pos) (starting-col (place (car decls))))))
 	(car decls)
 	(find-decl-after-pos (cdr decls) pos))))
+
+(defun find-decl-before-pos (decls pos &optional prev)
+  (when decls
+    (if (or (< (car pos) (starting-row (place (car decls))))
+	    (and (= (car pos) (starting-row (place (car decls))))
+		 (<= (cadr pos) (starting-col (place (car decls))))))
+	prev
+	(find-decl-before-pos (cdr decls) pos (car decls)))))
 
 (defun find-element-containing-pos (list pos)
   (when list
