@@ -1651,14 +1651,19 @@ bind tighter.")
 		     (mapcar #'cons row-headings table-entries)
 		     table-entries))
 	   (col-widths (compute-table-column-widths
-			col-headings rows)))
+			col-headings row-headings rows)))
       (when col-headings
 	(when *pp-table-hrules*
-	  (format t "~v<~>  %+~{~v,,,'-<~>--+~}+"
-	    (car col-widths) (cdr col-widths))
+	  (if row-headings
+	      (format t "~v<~>  %+~{~v,,,'-<~>--+~}+"
+		(car col-widths) (cdr col-widths))
+	      (format t "%~{~v,,,'-<~>--+~}+"
+		 col-widths))
 	  (pprint-newline :mandatory))
-	(let ((widths col-widths))
-	  (format t "~va" (+ (pop widths) 2) " ")
+	(let ((widths col-widths)
+	      (first? t))
+	  (when row-headings
+	    (format t "~va" (+ (pop widths) 2) " "))
 	  (pprint-logical-block (nil col-headings
 				     :prefix "|[ " :suffix " ]|")
 	    (loop (let* ((entry (or (pprint-pop) ""))
@@ -1668,7 +1673,10 @@ bind tighter.")
 			(format t "~w" entry)
 			(format t "~v:a" width str)))
 		  (pprint-exit-if-list-exhausted)
-		  (write " | ")
+		  (if (and first? (not row-headings))
+		      (write "| ")
+		      (write " | "))
+		  (setq first? nil)
 		  (pprint-indent :current 0)))
 	  (pprint-newline :mandatory)))
       (when *pp-table-hrules*
@@ -1696,11 +1704,15 @@ bind tighter.")
       (pprint-newline :mandatory)
       (write 'endtable))))
 
-(defun compute-table-column-widths (col-headings rows)
+(defun compute-table-column-widths (col-headings row-headings rows)
   (compute-table-column-widths*
    rows
    (if col-headings
-       (cons 0 (mapcar #'compute-column-width col-headings))
+       (if row-headings
+	   (cons 0 (mapcar #'compute-column-width col-headings))
+	   (let ((col-widths (mapcar #'compute-column-width col-headings)))
+	     (incf (car col-widths))
+	     col-widths))
        (mapcar #'(lambda (x) (declare (ignore x)) 0) (car rows)))))
 
 (defun compute-table-column-widths* (rows widths)
