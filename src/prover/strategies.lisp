@@ -885,7 +885,7 @@ If STEP does nothing, then ELSE-STEP is applied.")
 				(justification *ps*))
 			       ((null (check-edited-justification proof))
 				(revert-justification proof))
-			       (t (format-if "~%Given proof is not well-formed")
+			       (t (error-format-if "~%Given proof is not well-formed")
 				  '(skip)))
 			recheck?
 			break?)))
@@ -1870,7 +1870,7 @@ x_1!n rather than x!n, for some number n."
 						   (and (name-expr? x)
 							(eq (id x) '_))))
 					   current-terms))
-				    (format-if "~%Misplaced underscore in given term list."))
+				    (error-format-if "~%Misplaced underscore in given term list."))
 			       (check-inst-quant (expression fmla)
 						 rest-terms
 						 pos?))))))))))
@@ -2031,7 +2031,7 @@ IF-MATCH if all, all possible instantiations of a chosen template
 		     do
 		     (if (has-id? name) ;;NSH(4.23.97)
 			 (pushnew name *track-rewrites* :test #'same-id)
-			 (format-if "~%Bad name: ~a" name))))
+			 (error-format-if "~%Bad name: ~a" name))))
 	(msg (format nil "Tracking rewrites: ~{~a, ~}" names))) 
     (skip-msg msg))
   "Tracks the named rewrite rules during rewriting when the rule fails to
@@ -2046,7 +2046,7 @@ apply.  Behaves like a (SKIP), otherwise."
 	(skip-msg msg))
       (let ((names (loop for name in names
 			 when (or (has-id? name) ;;NSH(4.23.97)
-				  (format-if "~%Bad name: ~a" name))
+				  (error-format-if "~%Bad name: ~a" name))
 			 collect name))
 	    (dummy (setq *track-rewrites*
 			 (set-difference *track-rewrites*  names
@@ -2262,7 +2262,7 @@ ORDER is inside-out(IN) or outside-in (OUT)."
 (defstrat skip-msg (msg &optional force-printing?)
   (let ((dummy (if force-printing?
 		   (format t "~%~a" msg)
-		   (format-if "~%~a" msg))))
+		   (error-format-if "~%~a" msg))))
     (skip))
   "Prints the given string but behaves like a skip.
 Useful for generating error messages in strategies."
@@ -2831,8 +2831,7 @@ or succedent formula in the sequent."
 				 type))
 		   expr)
 		 (if uniquely?
-		     (unless *suppress-printing*
-		       (type-ambiguity expr))
+		     (type-ambiguity expr)
 		     expr))))))
 
 (defmethod pc-typecheck ((expr T) &key expected (fnums '*) (uniquely? T))

@@ -255,6 +255,11 @@
   `(format nil "~{~#[ none~;~s~; ~s and ~s~:;~@{~#[~; and~] ~s~^,~}~].~}"
     ,list))
 
+(defmacro error-format-if (string &rest args)
+  `(if *suppress-printing*
+    (set-strategy-errors (format nil ,string ,@args))
+    (format t ,string ,@args)))
+
 (defmacro format-if (string &rest args)
   `(unless *suppress-printing*
     (format t ,string ,@args)))

@@ -35,15 +35,15 @@
 	 ;;(typealist (typealist alists)) ;;NSH(2.16.94)
 	 (sigalist (dpinfo-sigalist alists)))
     (cond ((null resolutions)
-	   (format-if "~%No resolution for ~a" lemma)
+	   (error-format-if "~%No resolution for ~a" lemma)
 	   '(skip))
 	  ((or (not (listp subst))
 	       (oddp (length subst)))
-	   (format-if "~%Substitution ~a must be an even length list."
+	   (error-format-if "~%Substitution ~a must be an even length list."
 		      subst)
 	   '(skip))
 	  ((null sforms)
-	   (format-if "~%No sequent formulas for ~a" fnums)
+	   (error-format-if "~%No sequent formulas for ~a" fnums)
 	   '(skip))
 	  (t (let ((in-subst
 		    (loop for (x . y) in (make-alist subst)
@@ -60,7 +60,7 @@
 (defun search-and-rewrite (name-expr resolutions sforms &optional
 				     in-subst context in-sformnums dir order)
   (cond ((null resolutions)
-	 (format-if "~%No matching instance for ~a found." name-expr)
+	 (error-format-if "~%No matching instance for ~a found." name-expr)
 	 '(skip))
 	(t (let* ((res (car resolutions))
 		  (mod-inst (module-instance res))

@@ -60,7 +60,7 @@
 			   sformnums)
 	(when (not (eq signal '?))
 ;;	    (format-if "~%Beta reducing the formulas ~a," sformnums)
-	    (format-if "~%No suitable redexes found."))
+	    (error-format-if "~%No suitable redexes found."))
 	(values signal (list subgoal) ))))
 
 

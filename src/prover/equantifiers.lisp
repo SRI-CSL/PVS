@@ -226,12 +226,12 @@
 	   (format-if qalist)
 	   expr)
 	  (freevars
-	   (format-if "~%The supplied terms should not contain free variables.
+	   (error-format-if "~%The supplied terms should not contain free variables.
 The following irrelevant free variables occur in the terms: ~a"
 		      freevars)
 	   expr)
 	  (overlap
-	   (format-if
+	   (error-format-if
 	    "~%The types of the substituted variables contain free occurrences
 of the following quantified variables: ~a.
 Please provide substitutions for these variables." overlap)
@@ -299,14 +299,14 @@ Please provide substitutions for these variables." overlap)
 		      collect y))
 	 (*current-context* context))
     (cond (check
-	   (format-if "~%The supplied skolem constants must all be new names.
+	   (error-format-if "~%The supplied skolem constants must all be new names.
 The following are either not names or are previously declared: ~a" check)
 	   expr)
 	  ((duplicates? subterms :test #'same-id)
-	   (format-if "~%Duplicate use of skolem constants.")
+	   (error-format-if "~%Duplicate use of skolem constants.")
 	   expr)
 	  (overlap
-	   (format-if
+	   (error-format-if
 	    "~%The types of the skolemized variables contain free occurrences
 of the following quantified variables: ~a.
 Please provide skolem constants for these variables." overlap)
@@ -374,7 +374,7 @@ Please provide skolem constants for these variables." overlap)
 
 (defun quant-step (sformnum ps &optional terms copy?)
   (cond ((or (null sformnum)(null terms))
-	 (format-if "~%No suitable (+ve EXISTS/-ve FORALL) quantified formula found.")
+	 (error-format-if "~%No suitable (+ve EXISTS/-ve FORALL) quantified formula found.")
 	 (values 'X nil nil))
 	(t (let ((*tccforms* NIL)
 		 (*dependent-decls* NIL))
@@ -464,9 +464,9 @@ Please provide skolem constants for these variables." overlap)
 				   terms ps)
 		    body)))
     (if (not instantiable?)
-	(format-if "~%Formula ~a is not instantiable." body)
+	(error-format-if "~%Formula ~a is not instantiable." body)
 	(when (not length-check)
-	  (format-if "Expecting ~a terms, but ~a terms provided."
+	  (error-format-if "Expecting ~a terms, but ~a terms provided."
 		      (length (bindings body)) (length terms))))
     (if (exequal qbody body) (values 'X sform)
 	(values '? (if copy?
@@ -492,9 +492,9 @@ Please provide skolem constants for these variables." overlap)
 				   terms)
 		      body)))
     (if (not skolemizable?)
-	(format-if "~%Formula~%~a~% is not skolemizable." body)
+	(error-format-if "~%Formula~%~a~% is not skolemizable." body)
 	(when (not length-check)
-	  (format-if "Expecting ~a skolem constant(s), but ~a supplied."
+	  (error-format-if "Expecting ~a skolem constant(s), but ~a supplied."
 		     (length (bindings body)) (length terms))))
     (if (exequal skobody body) (values 'X sform)
 	(values '? 
@@ -555,7 +555,7 @@ Please provide skolem constants for these variables." overlap)
 
 (defun quant-step (sformnum ps &optional terms copy?)
   (cond ((or (null sformnum)(null terms))
-	 (format-if "~%No suitable (+ve EXISTS/-ve FORALL) quantified formula found.")
+	 (error-format-if "~%No suitable (+ve EXISTS/-ve FORALL) quantified formula found.")
 	 (values 'X nil nil))
 	(t (let ((*tccforms* NIL)
 		 (*dependent-decls* NIL))
@@ -638,7 +638,7 @@ Please provide skolem constants for these variables." overlap)
      ((*dp-state* *dp-state*)
       (*alists* *alists*))
      (cond ((null sformnum)
-	    (format-if "~%No suitable (+ve FORALL/-ve EXISTS) quantified expression found.")
+	    (error-format-if "~%No suitable (+ve FORALL/-ve EXISTS) quantified expression found.")
 	    (values 'X nil nil))
 	   (t (multiple-value-bind (signal subgoal)
 		  (sequent-reduce (current-goal ps)
@@ -781,7 +781,7 @@ Please provide skolem constants for these variables." overlap)
 			when (not (typep x 'name-expr))
 			collect x)))
     (cond (badnames
-	   (format-if "~%Substitution ~a is ill-formed" subst)
+	   (error-format-if "~%Substitution ~a is ill-formed" subst)
 	   nil)
 	  (t (find-sform (s-forms (current-goal ps)) sformnum
 	      #'(lambda (sform)
@@ -885,7 +885,7 @@ Please provide skolem constants for these variables." overlap)
 				polarity?
 				ps)
   (cond ((null sforms)
-	 (format-if "~%Couldn't find a suitable quantified formula.")
+	 (error-format-if "~%Couldn't find a suitable quantified formula.")
 	 NIL)
 	(t
 	 (let* ((*dp-state* (dp-state ps))
@@ -909,12 +909,12 @@ Please provide skolem constants for these variables." overlap)
 
 (defun find-quant-terms* (sforms subst where if-match polarity? ps)
     (cond ((null sforms)
-	   (format-if "~%Couldn't find a suitable instantiation for any
+	   (error-format-if "~%Couldn't find a suitable instantiation for any
 quantified  formula.  Please provide partial instantiation.")
 	   nil)
 	  ((or (not (listp subst))
 	       (oddp (length subst)))
-	   (format-if "~%Given substitution ~a
+	   (error-format-if "~%Given substitution ~a
 is not of the form: (<var> <term>...)" subst)
 	   nil)
 	  ((not (quant-expr? (if (negation? (formula (car sforms)))

@@ -57,7 +57,7 @@
 				    (and (numberp x)
 					 (plusp x)))
 				occurrence))))
-	   (format-if "Occurrence ~a must be nil, a positive number or a 
+	   (error-format-if "Occurrence ~a must be nil, a positive number or a 
 list of positive numbers" occurrence)
 	   (values 'X nil nil))
 	  (t 

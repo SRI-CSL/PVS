@@ -29,11 +29,11 @@
 	(*replace-in-actuals?* actuals?)
 	(*modsubst* T))
   (cond ((null selected-s-forms)
-	 (format-if "~%No sequent formula corresponding to ~a,"
+	 (error-format-if "~%No sequent formula corresponding to ~a,"
 		    sformnum)
 	 (values 'X nil nil))
 	((not (check-sformnums? sformnums))
-	 (format-if "~%~a must be *, +, -, an integer, or list of integers."
+	 (error-format-if "~%~a must be *, +, -, an integer, or list of integers."
 		    sformnums)
 	 (values 'X nil nil))
 	(t (let* ((sform (car selected-s-forms))

@@ -20,13 +20,36 @@
 	 (prove-decl decl
 		     :strategy
 		     (when strategy `(then ,strategy (query*)))))
-	(format-if "~%No such formula.  Try again."))))
+	(error-format-if "~%No such formula.  Try again."))))
 
 (defmethod prove ((decl formula-decl) &key  strategy)
   (timeprover
    (prove-decl decl
 	       :strategy
 	       (when strategy `(then ,strategy (query*))))))
+
+; dave_sc
+(defvar *first-strategy-error* nil)
+(defvar *last-strategy-error* nil)
+
+(defun explain-errors ()
+  (when *first-strategy-error*
+    (when *last-strategy-error*
+      (format t "~%The following errors occurred within the strategy:~%"))
+    (format t "~a~%" *first-strategy-error*)
+    (when *last-strategy-error*
+      (format t "~a~%" *last-strategy-error*))
+    (clear-strategy-errors)))
+
+(defun set-strategy-errors (message)
+  (if *first-strategy-error*
+      (setq *last-strategy-error* message)
+      (setq *first-strategy-error* message)))
+
+(defun clear-strategy-errors ()
+  (setq *first-strategy-error* nil
+        *last-strategy-error*  nil))
+
 
 (defvar *steps* (init-symbol-table))
 (defvar *rules* (init-symbol-table))
@@ -176,7 +199,7 @@
 
 (defmethod prove-decl ((decl declaration) &key strategy)
   (declare (ignore strategy))
-  (format-if "~%Couldn't find formula ~a in module ~a."
+  (error-format-if "~%Couldn't find formula ~a in module ~a."
 	     (id decl) (id *current-theory*)))
 
 (defun before-prove* ()
@@ -317,7 +340,8 @@ Would you like to rerun the proof?~%")))
 					  (eq (status-flag proofstate) '*))
 				      (null (strategy proofstate))
 				      (not (typep proofstate 'top-proofstate))) 
-				 (format-if "Subgoal completed")
+				 (unless *suppress-printing*
+				   (format t "Subgoal completed"))
 				 (setf (status-flag proofstate) '*)
 				 proofstate)
 				(t (prove*-int nextstate))))
@@ -330,7 +354,7 @@ Would you like to rerun the proof?~%")))
   (or (null arguments)
       (if (keywordp (car arguments))
 	  (if (not (member (car arguments) keywords))
-	      (progn (format-if "~%~a is not a valid keyword for ~a"
+	      (progn (error-format-if "~%~a is not a valid keyword for ~a"
 			  (car arguments) cmd)
 	             nil)
 	      (;;;; here check the argument to the keyword
@@ -344,8 +368,8 @@ Would you like to rerun the proof?~%")))
         (singleton? pcmd)
         (check-command-arguments (car pcmd) keywords (cdr pcmd)))))
 
-; optional until I've checked if qread is used elsewhere.
 (defun qread (prompt &optional checkargs)
+  (clear-strategy-errors)
   (format t "~%~a"  prompt)
   (force-output)
   (let ((input (ignore-errors (read))))
@@ -608,7 +632,7 @@ Would you like to rerun the proof?~%")))
   (cond ((typep strat 'strategy) strat)
 	((null strat) (get-rule '(skip) *ps*))
 	((not (consp strat))
-	 (format-if "~%Ill-formed rule/strategy: ~s " strat)
+	 (error-format-if "~%Ill-formed rule/strategy: ~s " strat)
 	 (get-rule '(skip) *ps*))
 	((quote? strat)(strat-eval (cadr strat)))
 	((if-form? strat);;(break "if")
@@ -681,7 +705,7 @@ Would you like to rerun the proof?~%")))
 	   (strat-eval def-expr)))
 	((primitive-rule (car strat))
 	 (get-rule strat *ps*))
-	(t (format-if "~%Ill-formed rule/strategy: ~s " strat)
+	(t (error-format-if "~%Ill-formed rule/strategy: ~s " strat)
 	   (get-rule '(skip) *ps*))))
 
 (defun let-eval (let-list &optional alist alist-as-let-binding)
@@ -767,7 +791,7 @@ Would you like to rerun the proof?~%")))
 	 (pair-formals-args (cdr formals) args T))
 	((null args) (if opt-flag
 			 (collect-default-values formals)
-			 (progn (format-if "~%Not enough actuals.")
+			 (progn (error-format-if "~%Not enough actuals.")
 				(restore))))
 	((and opt-flag
 	      (keywordp (car args)))
@@ -1569,7 +1593,9 @@ Would you like to rerun the proof?~%")))
 			(decf *ruletracedepth*)
 			(format t "~%~vT Exit: ~a -- No change."
 			  *ruletracedepth* name))
-		      (format-if "~%No change on: ~s" (rule-input topstep))
+		      (unless *suppress-printing*
+			(explain-errors)
+			(format t "~%No change on: ~s" (rule-input topstep)))
 		      (setf (status-flag ps) nil;;start afresh
 			    (strategy ps)
 			    (failure-strategy step))
@@ -2962,7 +2988,7 @@ Would you like to rerun the proof?~%")))
 				   fnums)
 		 (values signal (list subgoal);;(substitution ps)
 			 )))
-	      (t (format-if "~%Label ~a is not a string." label)
+	      (t (error-format-if "~%Label ~a is not a string." label)
 		 (values 'X nil nil))))))
 
 (defun just-install-proof-step (proof ps)
@@ -2996,7 +3022,7 @@ Would you like to rerun the proof?~%")))
 	     (values '? (list (list (current-goal ps)
 				    'comment
 				    (semi-colonize string)))))
-	    (t (format-if "~%Input ~a is not a string.")
+	    (t (error-format-if "~%Input ~a is not a string.")
 	       (values 'X nil nil)))))
 
 (defun new-comment (proofstate)

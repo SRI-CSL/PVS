@@ -737,24 +737,24 @@ Example: (same-name \"bvec0[i + j]\" \"bvec0[j + i]\")."
 			  :expected type
 			  :tccs 'ALL)))
 	(cond ((not (name-expr? name1))
-	       (format-if "~%Argument ~a is not a name." name1)
+	       (error-format-if "~%Argument ~a is not a name." name1)
 	       (values 'X nil nil))
 	      ((not (name-expr? name2))
-	       (format-if "~%Argument ~a is not a name." name2)
+	       (error-format-if "~%Argument ~a is not a name." name2)
 	       (values 'X nil nil))
 	      ((null (type name1))
-	       (format-if "~%Argument ~a does not typecheck uniquely."
+	       (error-format-if "~%Argument ~a does not typecheck uniquely."
 			  name1)
 	       (values 'X nil nil))
 	      ((null (type name2))
-	       (format-if "~%Argument ~a does not typecheck uniquely."
+	       (error-format-if "~%Argument ~a does not typecheck uniquely."
 			  name2)
 	       (values 'X nil nil))
 	      ((null (actuals name1))
-	       (format-if "~%Argument ~a must have actuals." name1)
+	       (error-format-if "~%Argument ~a must have actuals." name1)
 	       (values 'X nil nil))
 	      ((null (actuals name2))
-	       (format-if "~%Argument ~a must have actuals." name2)
+	       (error-format-if "~%Argument ~a must have actuals." name2)
 	       (values 'X nil nil))
 	      ((eq (id name1)(id name2))
 	       (mapcar #'(lambda (x)
@@ -769,7 +769,7 @@ Example: (same-name \"bvec0[i + j]\" \"bvec0[j + i]\")."
 					     (make-equality name1 name2)))
 					  (s-forms (current-goal ps))))))
 		 (values '? (list new-subgoal))))
-	      (t (format-if "Arguments ~a and ~a must have identical ~
+	      (t (error-format-if "Arguments ~a and ~a must have identical ~
 identifiers" name1 name2)
 	       (values 'X nil nil))))))
 

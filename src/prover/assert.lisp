@@ -2923,7 +2923,7 @@
 		   do (let ((res-alist
 			     (collect-auto-rewrite-res nm *current-context*)))
 			(if (null res-alist)
-			    (format-if "~%No resolution for ~a" nm)
+			    (error-format-if "~%No resolution for ~a" nm)
 			    (loop for (res . fmla) in res-alist
 				  do (if (integerp res)
 					 (auto-rewrite-antecedent
@@ -2964,7 +2964,7 @@
 					    (list name))))
 		 (fmla (when fmlas (args1 (car fmlas)))))
 	    (when fmla (list (cons name fmla))))
-	  (progn (format-if "~%Consequent formula numbered ~a ~
+	  (progn (error-format-if "~%Consequent formula numbered ~a ~
 cannot be used for rewriting." name)
 		 nil))
       (let* ((name (pc-parse name 'name))
@@ -3017,22 +3017,22 @@ cannot be used for rewriting." name)
 	     (hashname (auto-rewrite-hashname op*)))
 	(cond
 	 ((null hashname)
-	  (format-if "~%Can't rewrite using ~a:  LHS key ~a is bad."
+	  (error-format-if "~%Can't rewrite using ~a:  LHS key ~a is bad."
 		     (id (declaration res)) op*)
 	  nil)
 	 ((not (subsetp rhs-freevars lhs-freevars
 			:test #'tc-eq))
-	  (format-if "~%RHS free variables in ~a must be contained in the LHS f
+	  (error-format-if "~%RHS free variables in ~a must be contained in the LHS f
 ree variables in: ~a" rhs lhs)
 	  nil)
 	 ((not (subsetp hyp-freevars lhs-freevars
 			:test #'tc-eq))
-	  (format-if "~%Hypothesis free variables in ~a must be contained in th
+	  (error-format-if "~%Hypothesis free variables in ~a must be contained in th
 e LHS free variables in ~a" hyp lhs)
 	  nil)
 	 ((and formals (null actuals)
 	       (not (subsetp (free-params lhs) formals)))
-	  (format-if "~%Theory~a is generic; No actuals given;
+	  (error-format-if "~%Theory~a is generic; No actuals given;
 Free parameters in the LHS of rewrite must contain all theory formals."
 		     mod-inst)
 	  nil)
@@ -3111,16 +3111,16 @@ Free parameters in the LHS of rewrite must contain all theory formals."
 		     hashname))) ;;(break "install-rewrite-res")
       (cond
        ((null hashname)
-	(format-if "~%Can't rewrite using ~a:  LHS key ~a is bad" name op*))
+	(error-format-if "~%Can't rewrite using ~a:  LHS key ~a is bad" name op*))
        ((not (subsetp rhs-freevars lhs-freevars
 		      :test #'tc-eq))
-	(format-if "~%Can't rewrite using ~a: non-LHS freevars in RHS." name ))
+	(error-format-if "~%Can't rewrite using ~a: non-LHS freevars in RHS." name ))
        ((not (subsetp hyp-freevars lhs-freevars
 		      :test #'tc-eq))
-	(format-if "~%Can't rewrite using ~a: non-LHS freevars in hypotheses." name))
+	(error-format-if "~%Can't rewrite using ~a: non-LHS freevars in hypotheses." name))
        ((and (resolution? res)
 	     (inductive-decl? (declaration res)))
-	(format-if "~%Can't rewrite using ~a: inductive definition cannot be used." name))
+	(error-format-if "~%Can't rewrite using ~a: inductive definition cannot be used." name))
        (t
 	(unless (consp res);;(6.16.95)avoids antecedent rewrites
 	  (typecheck (module-instance res) :tccs 'ALL))
@@ -3315,18 +3315,18 @@ Free parameters in the LHS of rewrite must contain all theory formals."
 (defun check-theory-names (names modules &optional defs-only?)
   (cond ((null modules) T)
 	((null (car modules))
-	 (format-if "~%Could not find theory ~a" (car names))
+	 (error-format-if "~%Could not find theory ~a" (car names))
 	 nil)
 	((and (eq (id (car modules))(id *current-theory*))
 	      (actuals (car names))) ;;NSH(9.21.94)
-	 (format-if "~%Current theory ~a should not have actuals."
+	 (error-format-if "~%Current theory ~a should not have actuals."
 		    (id (car modules)))
 	 nil)
 	((and (null defs-only?)
 	      (not (or (eq (id (car modules))(id *current-theory*))
 		       (null (formals-sans-usings (car modules)))
 		       (actuals (car names)))))
-	 (format-if
+	 (error-format-if
 	  "~%~a is not a fully instantiated theory." (car names))
 	 nil)
 	(t t)))
@@ -3513,7 +3513,7 @@ Free parameters in the LHS of rewrite must contain all theory formals."
 				   :test #'tc-eq)
 			  (member res *macro-names* :test #'tc-eq))
 		      (stop-rewrite-res res)
-		      (format-if "~%~a is not an auto-rewrite"
+		      (error-format-if "~%~a is not an auto-rewrite"
 				 (id (declaration res)))))
 	    (if (and (eq *auto-rewrites-names* old-auto-rewrites-names)
 		     (eq *auto-rewrites!-names* old-auto-rewrites!-names)
@@ -3602,9 +3602,9 @@ Free parameters in the LHS of rewrite must contain all theory formals."
 		  (loop for res in theory-resolves
 			do (stop-rewrite-res res))
 		  (values '? (list (current-goal ps)))))
-	       (t (format-if "~%~a is not a fully instantiated theory." name)
+	       (t (error-format-if "~%~a is not a fully instantiated theory." name)
 		  (values 'X nil))))
-	((format-if "~%Could not find theory ~a" name)
+	((error-format-if "~%Could not find theory ~a" name)
 	 (values 'X nil))))
 
 

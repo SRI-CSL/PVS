@@ -885,7 +885,7 @@
 		       (resolve name-expr 'expr nil)))
 	 (resolutions
 	  (cond ((freevars resolutions)
-		 (format-if "~%Free variables in lemma name: ~a" name)
+		 (error-format-if "~%Free variables in lemma name: ~a" name)
 		 nil)
 		(t resolutions)))
 	 (pre-alist (make-alist substs))
@@ -904,16 +904,16 @@
     (cond (;; SO - 4/14/93: Added this case to protect against bad
 	   ;; substitution arguments (like numbers)
 	   (not (listp substs))
-	   (format-if
+	   (error-format-if
 	    "~%The form of a substitution is: (<var1> <term1>...<varn> <termn>).")
 	   (values 'X nil))
 	  ((not (null badnames))
-	   (format-if
+	   (error-format-if
 	    "~%The form of a substitution is: (<var1> <term1>...<varn> <termn>).
 The following are not possible variables: ~{~a,~}" badnames)
 	   (values 'X nil))
 	  ((oddp (length substs))
-	   (format-if
+	   (error-format-if
 	    "~%The form of a substitution is: (<varn> <termn>...<varn> <termn>).")
 	   (values 'X nil))
 ;	  (subfreevars
@@ -953,16 +953,16 @@ The following are not possible variables: ~{~a,~}" badnames)
 	       (let ((subfreevars (loop for (x . y) in newalist
 					append (freevars y)))) ;;was nconc
 		 (cond ((null resolutions)
-		      (format-if "~%Couldn't find a definition or lemma named ~a" name)
+		      (error-format-if "~%Couldn't find a definition or lemma named ~a" name)
 		      (values 'X nil))
 		     ((null form)
-		      (format-if "~%Found ~a resolutions for ~a relative to the substitution.
+		      (error-format-if "~%Found ~a resolutions for ~a relative to the substitution.
 Please check substitution, provide actual parameters for lemma name,
 or supply more substitutions."
 				 (length possibilities) name)
 		      (values 'X nil))
 		     (subfreevars
-		      (format-if "~%Irrelevant free variables ~a in substitution."
+		      (error-format-if "~%Irrelevant free variables ~a in substitution."
 				 subfreevars)
 		      (values 'X nil))
 		     (t
@@ -1058,7 +1058,7 @@ or supply more substitutions."
 				 append (freevars (formula sform)))))
 	(cond ((loop for var in freevars-expr
 		     thereis (not (member var freevars-seq :test #'tc-eq)))
-	       (format-if "~%Irrelevant free variables in ~a" tc-expr)
+	       (error-format-if "~%Irrelevant free variables in ~a" tc-expr)
 	       nil)
 	      (t (let* ((constraints (type-constraints tc-expr all?))
 			(reduced-constraints
@@ -1131,10 +1131,10 @@ or supply more substitutions."
 				       :context *current-context*)))
 	     (freevars (freevars tc-fmlas)))
 	(cond ((null tc-fmlas)
-	       (format-if "~%No formulas given.")
+	       (error-format-if "~%No formulas given.")
 	       (values 'X nil nil))
 	      ((not (null freevars))
-	       (format-if
+	       (error-format-if
 		 "~%Irrelevant free variables ~{~a, ~} occur in formulas."
 		 freevars)
 	       (values 'X nil nil))
@@ -1323,12 +1323,12 @@ or supply more substitutions."
 	     ;;(*generate-tccs* NIL)
 	     (freevars (freevars tc-expr)))
 	(cond (freevars
-	       (format-if "~%The following irrelevant free variables
+	       (error-format-if "~%The following irrelevant free variables
 occur in the given type expression: ~a." freevars)
 	       (values 'X nil))
 	      ((not (fully-instantiated? tc-expr))
 	       ;;NSH(5.5.97): Hoffman reported this test missing.
-	       (format-if "~%The given type expression contains ~
+	       (error-format-if "~%The given type expression contains ~
 free theory parameters
 which should be fully instantiated. Please supply actual parameters.")
 	       (values 'X nil))
@@ -1393,7 +1393,7 @@ which should be fully instantiated. Please supply actual parameters.")
 	   (extensionality-step (type-value (declaration texpr))
 				given ps))
 	  (t
-	   (format-if "~%Could not find a suitable extensionality axiom for ~a." given)
+	   (error-format-if "~%Could not find a suitable extensionality axiom for ~a." given)
 	   (values 'X nil)))))
 
 (defmethod extensionality-step ((texpr subtype) given ps)
@@ -1439,12 +1439,12 @@ which should be fully instantiated. Please supply actual parameters.")
 					(s-forms (current-goal ps))))
 				'dependent-decls
 				references)))))
-	      (t (format-if "~%Could not find ADT extensionality axiom for ~a." given)
+	      (t (error-format-if "~%Could not find ADT extensionality axiom for ~a." given)
 		 (values 'X nil))))
       (extensionality-step (supertype texpr) (supertype texpr) ps)))
 
 (defmethod extensionality-step ((texpr type-expr) given ps)
-  (format-if "~%Could not find extensionality axiom for ~a." given)
+  (error-format-if "~%Could not find extensionality axiom for ~a." given)
     (values 'X nil nil))
 
 
@@ -1483,10 +1483,10 @@ which should be fully instantiated. Please supply actual parameters.")
 		  :context *current-context*))
 	  (context (copy-prover-context)))
      (cond ((not (valid-pvs-id* name))
-	    (format-if "~%Error: ~a is not a valid symbol." name)
+	    (error-format-if "~%Error: ~a is not a valid symbol." name)
 	    (values 'X nil nil))
 	   ((resolve pc-name 'expr nil)
-	    (format-if "~%Error: ~a is already declared." name)
+	    (error-format-if "~%Error: ~a is already declared." name)
 	    (values 'X nil nil))
 	   (t (setf (declarations-hash context)
 		    (copy (declarations-hash context)))
@@ -1503,7 +1503,7 @@ which should be fully instantiated. Please supply actual parameters.")
 		     (references NIL)
 		     (fvars (freevars formula)))
 	       (cond (fvars
-		      (format-if "~%Free variables ~a in expr = name" fvars)
+		      (error-format-if "~%Free variables ~a in expr = name" fvars)
 		      (values 'X nil nil))
 	       ;;(push-references expr ps)
 		     (t (push-references-list formula references)
