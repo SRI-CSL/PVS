@@ -278,8 +278,10 @@ generated")
     (when (and (positive-types adt)
 	       (not (every #'null (positive-types adt))))
       (generate-adt-every adt)
-      (generate-adt-some adt))
-    (generate-adt-subterm adt)
+      (generate-adt-some adt)))
+  (generate-adt-subterm adt)
+  (unless (or (enumtype? adt)
+	      (every #'(lambda (c) (null (arguments c))) (constructors adt)))
     (generate-adt-reduce adt '|nat|)
     (when (and (not (eq (id adt) '|ordstruct|))
 	       (get-theory "ordstruct_adt"))
@@ -1431,32 +1433,40 @@ generated")
 			       (acons (car bds) var nil))
 			     (cons nbd result)))))
 
+(defun generate-disjoint-axiom (adt)
+  ;; We no longer generate the disjointness axiom because it can get large
+  ;; and significantly slow down typechecking.  For a datatype with n
+  ;; constructors, it would need to generate choose(n, 2) = n!/(n-2)!2!
+  ;; disequalities.  The ord function axiom uses the fact that natural
+  ;; numbers are distinct, and hence provides this.
+  )
+  
 (defparameter *disjoint-axiom-expansion-maxsize* 100)
 
-(defun generate-disjoint-axiom (adt)
-  (let* ((varid (makesym "~a_var" (id adt)))
-	 (bd (make-bind-decl varid (adt-type-name adt)))
-	 (var (make-variable-expr bd))
-	 (*generate-tccs* 'none)
-	 (appls (mapcar #'(lambda (c)
-			    (let ((recname
-				   (mk-name-expr (recognizer c)
-				     nil nil
-				     (make-resolution (rec-decl c)
-				       (current-theory-name)
-				       (type (rec-decl c))))))
-			      (make!-application recname var)))
-		  (constructors adt))))
-    (typecheck-adt-decl
-     (mk-formula-decl (makesym "~a_disjoint" (id adt))
-       (make!-forall-expr (list bd)
-	 (if (<= (length appls) *disjoint-axiom-expansion-maxsize*)
-	     (make!-conjunction* (make-disjoint-pairs appls))
-	     (let ((list-type (typecheck* (pc-parse "list[bool]" 'type-expr)
-					  nil nil nil)))
-	       (make-application (mk-name-expr '|pairwise_disjoint?|)
-		 (make-list-expr appls list-type)))))
-       'AXIOM))))
+;; (defun generate-disjoint-axiom (adt)
+;;   (let* ((varid (makesym "~a_var" (id adt)))
+;; 	 (bd (make-bind-decl varid (adt-type-name adt)))
+;; 	 (var (make-variable-expr bd))
+;; 	 (*generate-tccs* 'none)
+;; 	 (appls (mapcar #'(lambda (c)
+;; 			    (let ((recname
+;; 				   (mk-name-expr (recognizer c)
+;; 				     nil nil
+;; 				     (make-resolution (rec-decl c)
+;; 				       (current-theory-name)
+;; 				       (type (rec-decl c))))))
+;; 			      (make!-application recname var)))
+;; 		  (constructors adt))))
+;;     (typecheck-adt-decl
+;;      (mk-formula-decl (makesym "~a_disjoint" (id adt))
+;;        (make!-forall-expr (list bd)
+;; 	 (if (<= (length appls) *disjoint-axiom-expansion-maxsize*)
+;; 	     (make!-conjunction* (make-disjoint-pairs appls))
+;; 	     (let ((list-type (typecheck* (pc-parse "list[bool]" 'type-expr)
+;; 					  nil nil nil)))
+;; 	       (make-application (mk-name-expr '|pairwise_disjoint?|)
+;; 		 (make-list-expr appls list-type)))))
+;;        'AXIOM))))
 
 (defun make-disjoint-pairs (appls &optional result)
   (if (null (cdr appls))
