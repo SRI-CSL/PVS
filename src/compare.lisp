@@ -371,6 +371,9 @@
 (defmethod compare* ((old tupletype) (new tupletype))
   (compare* (types old) (types new)))
 
+(defmethod compare* ((old cotupletype) (new cotupletype))
+  (compare* (types old) (types new)))
+
 (defmethod compare* ((old recordtype) (new recordtype))
   (compare* (fields old) (fields new)))
 
@@ -402,6 +405,11 @@
        (compare* (expression old) (expression new))))
 
 (defmethod compare* ((old projection-application) (new projection-application))
+  (and (compare* (id old) (id new))
+       (compare* (index old) (index new))
+       (compare* (argument old) (argument new))))
+
+(defmethod compare* ((old injection-application) (new injection-application))
   (and (compare* (id old) (id new))
        (compare* (index old) (index new))
        (compare* (argument old) (argument new))))

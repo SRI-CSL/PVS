@@ -187,6 +187,9 @@
 (defmethod copy-lex* ((old tupletype) (new tupletype))
   (copy-lex* (types old) (types new)))
 
+(defmethod copy-lex* ((old cotupletype) (new cotupletype))
+  (copy-lex* (types old) (types new)))
+
 (defmethod copy-lex* ((old recordtype) (new recordtype))
   (copy-lex* (fields old) (fields new)))
 
@@ -217,6 +220,9 @@
   (copy-lex* (expression old) (expression new)))
 
 (defmethod copy-lex* ((old projection-application) (new projection-application))
+  (copy-lex* (argument old) (argument new)))
+
+(defmethod copy-lex* ((old injection-application) (new injection-application))
   (copy-lex* (argument old) (argument new)))
 
 (defmethod copy-lex* ((old field-application) (new field-application))
