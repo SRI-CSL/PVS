@@ -109,6 +109,8 @@
   (status :type list
 	  :documentation "A list containing the completed actions")
   (generated-by :documentation "a module id")
+  (tcc-comments :documentation
+		"An alist of TCCs and comments that follow.")
   (info :documentation
 	"A list of information strings produced by calls to pvs-info")
   (warnings :documentation
