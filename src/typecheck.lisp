@@ -292,8 +292,8 @@
 	 (th2 (adt-map-theory adt))
 	 (th3 (adt-reduce-theory adt))
 	 (use1 (copy inst 'id (id th1)))
-	 (use2 (when th2 (copy inst 'id (id th2) 'actuals nil)))
-	 (use3 (copy inst 'id (id th3) 'actuals nil))
+	 (use2 (when th2 (copy inst 'id (id th2) 'actuals nil 'mappings nil)))
+	 (use3 (copy inst 'id (id th3) 'actuals nil 'mappings nil))
 	 (*typecheck-using* inst))
     (typecheck-using use1)
     (let ((*ignore-exportings* t)
@@ -616,12 +616,18 @@
 	  (let* ((*current-theory* lhs-theory)
 		 (*current-context* lhs-context)
 		 (*generate-tccs* 'none)
-		 (tres (with-no-type-errors
-			(resolve* (lhs mapping) 'type nil)))
-		 (eres (with-no-type-errors
-			(resolve* (lhs mapping) 'expr nil)))
-		 (thres (with-no-type-errors
-			 (resolve* (lhs mapping) 'module nil))))
+		 (tres (unless (and (kind mapping)
+				    (not (eq (kind mapping) 'type)))
+			 (with-no-type-errors
+			  (resolve* (lhs mapping) 'type nil))))
+		 (eres (unless (and (kind mapping)
+				    (not (eq (kind mapping) 'expr)))
+			 (with-no-type-errors
+			  (resolve* (lhs mapping) 'expr nil))))
+		 (thres (unless (and (kind mapping)
+				     (not (eq (kind mapping) 'theory)))
+			  (with-no-type-errors
+			   (resolve* (lhs mapping) 'module nil)))))
 	    (unless (or eres tres thres)
 	      (type-error (lhs mapping) "Map lhs does not resolve"))
 	    (if (cdr tres)
@@ -631,13 +637,12 @@
 			 (type-ambiguity (lhs mapping))))
 		(setf (resolutions (lhs mapping)) (nconc tres eres thres)))
 	    (assert (resolutions (lhs mapping))))
-	  (typecheck-mapping-rhs (rhs mapping))
+	  (typecheck-mapping-rhs mapping)
 	  ;;(assert (ptypes (expr (rhs mapping))))
 	  )))))
 
 (defmethod typecheck-mappings (mappings (name name))
-  ;; Used with a name that has no mod-id - don't try to typecheck lhs in
-  ;; this case
+  ;; Used with a name that is not necessarily a modname
   (when mappings
     (if (mod-id name)
 	(typecheck-mappings mappings (name-to-modname name))
@@ -647,16 +652,30 @@
 (defmethod typecheck-mappings (mappings (n number-expr))
   nil)
 
-(defun typecheck-mapping-rhs (rhs)
-  (typecheck-mapping-rhs* (expr rhs) rhs))
+(defun typecheck-mapping-rhs (mapping)
+  (when (declared-type mapping)
+    (setf (type mapping) (typecheck* dtype nil nil nil)))
+  (typecheck-mapping-rhs* (expr (rhs mapping))
+			  (kind mapping)
+			  (type mapping)
+			  rhs))
 
-(defmethod typecheck-mapping-rhs* ((ex name-expr) rhs)
-  (let ((tres (with-no-type-errors (resolve* ex 'type nil)))
-	(eres (with-no-type-errors (resolve* ex 'expr nil)))
-	(thres (with-no-type-errors (unless (mod-id ex)
-				      (with-no-type-errors
-					  (resolve* (name-to-modname ex)
-						    'module nil))))))
+(defmethod typecheck-mapping-rhs* ((ex name-expr) kind type rhs)
+  (let ((tres (unless (and kind
+			   (not (eq kind 'type)))
+		(with-no-type-errors (resolve* ex 'type nil))))
+	(eres (unless (and kind
+			   (not (eq kind 'expr)))
+		(with-no-type-errors (resolve* ex 'expr nil))))
+	(thres (unless (and kind
+			    (not (eq kind 'theory)))
+		 (with-no-type-errors (unless (mod-id ex)
+					(with-no-type-errors
+					 (resolve* (name-to-modname ex)
+						   'module nil)))))))
+    (when type
+      (setf eres (delete-if-not #'(lambda (r) (compatible? (type r) type))
+		   eres)))
     (if (cdr tres)
 	(cond (eres
 	       (setf (resolutions ex) eres))
@@ -684,7 +703,7 @@
 	  (progn
 	    (setf (type-value rhs) (type (car tres))))))))
 
-(defmethod typecheck-mapping-rhs* (ex rhs)
+(defmethod typecheck-mapping-rhs* (ex kind type rhs)
   (let ((typed-ex (typecheck* ex nil nil nil)))
     (when (type-expr? typed-ex)
       (setf (type-value rhs) typed-ex))
