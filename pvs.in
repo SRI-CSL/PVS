@@ -159,7 +159,7 @@ PVSEMACS=${PVSEMACS:-"emacs"}
 case $opsys in
   SunOS) majvers=`uname -r | cut -d"." -f1`
 	 if [ $majvers = 4 ]
-	    then echo "PVS 3.0 only runs under Solaris or Linux"; exit 1
+	    then echo "PVS 3.3 only runs under Mac OS X, Linux, FreeBSD, or Solaris"; exit 1
 	 fi
 	 PVSARCH=sun4;;
   Linux) # If Linux, we need to determine the Redhat version to use.
@@ -173,7 +173,21 @@ case $opsys in
 	 LD_ASSUME_KERNEL=2.4.19
 	 export LD_ASSUME_KERNEL
 	 ;;
-  *) echo "PVS 3.0 only runs under Solaris or Linux"; exit 1
+  FreeBSD) opsys=redhat
+	   majvers=5
+	   othervers=4 
+	   PVSARCH=ix86
+	   # Allegro does not work with Linux's New Posix Thread Library (NPTL)
+	   # used in newer Red Hat kernels and 2.6 kernels.  This will force
+	   # the old thread-implementation.
+	   LD_ASSUME_KERNEL=2.4.19
+	   export LD_ASSUME_KERNEL
+           ;;
+  Darwin) opsys=MacOSX
+          majvers=7
+	  PVSARCH=powerpc
+	  ;;
+  *) echo "PVS 3.3 only runs under Solaris, Linux, FreeBSD (linux-enabled), or Mac (Darwin 7.4)"; exit 1
 esac
 
 if [ ! "$PVSLISP" ]

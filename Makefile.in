@@ -31,15 +31,17 @@ LISP=@LISP@
 ALLEGRODIR= @ALLEGRODIR@
 PVSLISP= @ALLEGRODIR@/@LISPEXE@
 LD_LIBRARY_PATH = @ALLEGRODIR@:$LD_LIBRARY_PATH
+LOAD-FOREIGN-EXTENSION=so
 export LD_LIBRARY_PATH
 ifeq ($(PLATFORM),sun4-SunOS5)
 	LISPEXT=fasl
 else
-ifeq ($(PLATFORM),ix86-redhat4)
-	LISPEXT=lfasl
-else
 ifeq ($(PLATFORM),ix86-redhat5)
 	LISPEXT=lfasl
+else
+ifeq ($(PLATFORM),powerpc-MacOSX7)
+	LISPEXT=mfasl
+	LOAD-FOREIGN-EXTENSION=dylib
 endif
 endif
 endif
@@ -128,15 +130,16 @@ pvsrt = ${bindir}/runtime/$(SYSTEM)-${LISP}
 pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
 		 src/make-allegro-pvs.lisp src/closopt.lisp
 
-ff-files = src/utils/$(PLATFORM)/file_utils.so \
-           BDD/$(PLATFORM)/mu.so \
-           src/WS1S/$(PLATFORM)/ws1s.so
+
+ff-files = src/utils/$(PLATFORM)/file_utils.$(LOAD-FOREIGN-EXTENSION) \
+           BDD/$(PLATFORM)/mu.$(LOAD-FOREIGN-EXTENSION) \
+           src/WS1S/$(PLATFORM)/ws1s.$(LOAD-FOREIGN-EXTENSION)
 
 ifneq (@ICSPATH@,)
 ff-files = $(ff-files) \
-           src/ics-interface/$(PLATFORM)/ics_lisp.so
+           src/ics-interface/$(PLATFORM)/ics_lisp.$(LOAD-FOREIGN-EXTENSION)
 
-libics-file = @ICSLIB@/libics.so
+libics-file = @ICSLIB@/libics.$(LOAD-FOREIGN-EXTENSION)
 
 ics-lisp = src/ics-interface/ics-pvs.lisp \
            src/ics-interface/ics-strategies.lisp
@@ -497,7 +500,7 @@ makews1s :
 	$(MAKE) -C $(PVSPATH)src/WS1S/$(PLATFORM)
 
 ifneq (@ICSPATH@,)
-$(PVSPATH)src/ics-interface/$(PLATFORM)/ics_lisp.so : $(PVSPATH)src/ics-interface/$(PLATFORM)/ics_lisp_error.o @ICSLIB@/libics.a
+$(PVSPATH)src/ics-interface/$(PLATFORM)/ics_lisp.$(LOAD-FOREIGN-EXTENSION) : $(PVSPATH)src/ics-interface/$(PLATFORM)/ics_lisp_error.o @ICSLIB@/libics.a
 	umask 002; \
 	$(LD) -G -o $@ $< -L@ALLEGRODIR@ -l@ALLEGROLIB@ \
 	      --whole-archive @ICSLIB@/libics.a --no-whole-archive

@@ -37,6 +37,7 @@
     #+(and allegro rios) "rfasl"	; PowerPC/RS6000
     #+(and allegro hpux) "hfasl"	; HP 9000
     #+(and allegro x86) "lfasl"         ; Intel x86
+    #+(and allegro macosx) "mfasl"      ; Mac OS X
     #+(and lucid lcl4.1 sparc) "sbin"	; Sun4 new Lucid
     #+(and lucid (not lcl4.1) sparc) "obin" ; Sun4 old Lucid
     #+(and lucid rios) "rbin"		; PowerPC/RS6000
@@ -109,6 +110,8 @@
 
 (defvar *load-pvs-classes* #-allegro nil #+allegro t)
 
+(defvar *load-foreign-extension*
+  #+allegro (car excl::*load-foreign-extension*))
 
 (defsystem pvs
   :source-pathname *pvs-path*
@@ -159,11 +162,12 @@
 				 :sb-runtime :lang :newattr))
 		  #+gcl (defmacro ignore-errors (&body forms)
 			  `(progn ,@forms))
-		  #+(and allegro dlfcn)
+		  #+(and allegro dynload)
 		  (let* ((platform #+(and sun4 sunos4) "sun4-SunOS4"
 				   #+(and sun4 (not sunos4)) "sun4-SunOS5"
 				   #+(and x86 (not redhat4)) "ix86-redhat5"
-				   #+(and x86 redhat4) "ix86-redhat4")
+				   #+(and x86 redhat4) "ix86-redhat4"
+				   #+macosx "powerpc-MacOSX7")
 			 (utilpath (concatenate 'string
 				     *pvs-path* "/src/utils/" platform))
 			 (bddpath (concatenate 'string
@@ -172,13 +176,19 @@
 				     *pvs-path*
 				     "/src/ics-interface/"
 				     platform))
+			 #-macosx
 			 (ws1spath (concatenate 'string
 				     *pvs-path* "/src/WS1S/" platform)))
-		    (load (format nil "~a/file_utils.so" utilpath))
-		    (load (format nil "~a/mu.so" bddpath))
-		    (load (format nil "~a/ws1s.so" ws1spath))
+		    (load (format nil "~a/file_utils.~a"
+			    utilpath *load-foreign-extension*))
+		    (load (format nil "~a/mu.~a"
+			    bddpath *load-foreign-extension*))
+		    #-macosx
+		    (load (format nil "~a/ws1s.~a"
+			    ws1spath *load-foreign-extension*))
 		    (ignore-errors
-		      (load (format nil "~a/ics_lisp.so" icspath))))
+		      (load (format nil "~a/ics_lisp.~a"
+			      icspath *load-foreign-extension*))))
 		  (setq *pvs-system-loaded* t))
   :finally-do (progn
 		#+lucid (precompile-generic-functions)
