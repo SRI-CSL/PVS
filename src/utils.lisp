@@ -2553,6 +2553,9 @@ space")
 (defmethod id ((expr coercion))
   (id (argument expr)))
 
+(defmethod id ((ex implicit-conversion))
+  (id (argument ex)))
+
 (defmethod constructor ((expr coercion))
   (constructor (argument expr)))
 
