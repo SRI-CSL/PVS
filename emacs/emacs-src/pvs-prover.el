@@ -490,18 +490,49 @@ commands are available.
   quit (C-c q)"
   (kill-all-local-variables)
   (use-local-map edit-proof-mode-map)
-    ;; fix up comment handling
+  ;; fix up comment handling
   (make-local-variable 'comment-start)
   (setq comment-start ";")
   (make-local-variable 'comment-end)
-  (setq comment-end "\n")
+  (setq comment-end "")
   (make-local-variable 'comment-start-skip)
-  (setq comment-start-skip ";")
+  (setq comment-start-skip "\\(\\(^\\|[^\\\\\n]\\)\\(\\\\\\\\\\)*\\);+ *")
+  ;; proofs-buffer-num
+  (make-local-variable 'font-lock-defaults)
+  (setq font-lock-defaults '(proof-script-font-lock-keywords nil t))
   (setq major-mode 'edit-proof-mode)
   (setq mode-name "Edit Proof")
+  (setq parse-sexp-ignore-comments t)
   (setq mode-line-process 'ilisp-status)
-  (set-syntax-table pvs-mode-syntax-table))
+  (set-syntax-table pvs-proof-script-syntax-table))
 
+(defvar pvs-proof-script-syntax-table nil)
+(if pvs-proof-script-syntax-table ()
+    (let ((st (syntax-table)))
+      (unwind-protect
+	   (progn
+	     (setq pvs-proof-script-syntax-table (make-syntax-table))
+	     (set-syntax-table pvs-proof-script-syntax-table)
+	     (modify-syntax-entry ?_ "w")
+	     (modify-syntax-entry ?\? "w")
+	     (modify-syntax-entry ?: ".")
+	     (modify-syntax-entry ?\; "<")
+	     (modify-syntax-entry ?\f ">")
+	     (modify-syntax-entry ?\n ">")
+	     (modify-syntax-entry ?\r ">"))
+	(set-syntax-table st))))
+
+(defvar proof-script-font-lock-keywords nil)
+
+(defun set-proof-script-font-lock-keywords ()
+  (setq proof-script-font-lock-keywords
+	(let ((strategy-names (pvs-file-send-and-wait
+			       (format "(collect-strategy-names %s)"
+				   (and current-prefix-arg t))
+			       nil nil 'list)))
+	  (purecopy
+	   (list
+	    (mapconcat 'pvs-keyword-match strategy-names "\\|"))))))
 
 (defpvs edit-proof edit-proof ()
   "Edit a proof in the \"Proof\" buffer
@@ -528,12 +559,16 @@ documentation for edit-proof-mode for more information."
 					nil 'tc nil)
 	       (error "%s is not typechecked" name))))
       (unless *pvs-error*
+	(when (get-buffer "Proof")
+	  (kill-buffer "Proof"))
+	(set-proof-script-font-lock-keywords)
 	(pvs-send-and-wait
 	 (format "(edit-proof-at \"%s\" %d \"%s\" \"%s\" %d %s)"
 	     name line origin (buffer-name) prelude-offset
 	     (and current-prefix-arg t))
 	 nil 'EditProof 'dont-care)
-	(cond ((eq (current-buffer) (get-buffer "Proof"))
+	(cond ((get-buffer "Proof")
+	       (pop-to-buffer (get-buffer "Proof"))
 	       (fix-edit-proof-comments)
 	       (setq buffer-modified-p nil)
 	       (goto-char (point-min))
@@ -554,7 +589,8 @@ documentation for edit-proof-mode for more information."
 	  (save-excursion
 	    (insert "\n")
 	    (indent-line-ilisp)))
-	(delete-char -1))
+	;(delete-char -1)
+	)
       (goto-char (point-min))
       (while (looking-at ";;;")
 	(forward-line 1))
@@ -787,7 +823,8 @@ installed on a formula."
 	 (error "Select from one of the entries below."))
 	(t (pvs-send-and-wait (format "(pvs-select-proof %d)"
 				  (- (current-line-number) 3))
-			      nil nil 'dont-care))))
+			      nil nil 'dont-care)
+	   )))
 
 (defun pvs-view-proof ()
   "Display the proof in a \"View Proof\" buffer allowing it to be viewed
@@ -1227,6 +1264,7 @@ through using the edit-proof command."
 	       (line (+ (current-line-number) prelude-offset)))
 	  (when (get-buffer "Proof")
 	    (kill-buffer "Proof"))
+	  (set-proof-script-font-lock-keywords)
 	  (pvs-send-and-wait
 	   (format "(edit-proof-at \"%s\" %d \"%s\" \"%s\" %d %s)"
 	       name line origin (buffer-name) prelude-offset
