@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Tue Jan 12 03:25:25 1999
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Mon Jan 25 19:00:21 1999
-;; Update Count    : 6
+;; Last Modified On: Tue Jan 26 16:37:07 1999
+;; Update Count    : 7
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -1615,7 +1615,10 @@
 	  (t (format nil "\\pvsid{~a}" (latex-protect str))))))
 
 (defmethod get-pp-tex-funsym ((op name-expr) arglengths &optional theory-id)
-  (get-pp-tex-funsym (id op) arglengths theory-id))
+  (get-pp-tex-funsym (id op) arglengths
+		     (or theory-id
+			 (when (resolution op)
+			   (id (module-instance op))))))
 
 (defmethod get-pp-tex-funsym (ex arglengths &optional theory-id)
   (declare (ignore ex arglengths))
