@@ -64,8 +64,8 @@
       (adjoin cs dnf :test #'conjuncts=)))
   
 (defun conjuncts= (cs1 cs2)
-  (not (and (subsetp cs1 cs2 :test #'tc-eq)
-	    (subsetp cs2 cs1 :test #'tc-eq))))
+  (and (subsetp cs1 cs2 :test #'tc-eq)
+       (subsetp cs2 cs1 :test #'tc-eq)))
 
 (defun dnf-conjuncts (cs)
   "Compute a dnf with one reduced set of conjunctions"
