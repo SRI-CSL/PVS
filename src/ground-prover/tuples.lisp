@@ -3,7 +3,7 @@
 ; tuples.lsp         (Author: Allen Van Gelder, Sep 12, 1984)
 
 ; decision procedure for tuples.
-; tuple selector functions look like (tupsel 0 t), (tupsel 1 t), ...
+; tuple selector functions look like (tupsel0 t), (tupsel 1 t), ...
 ; tuple constructor function is (tupcons e0 e1 e2 ... en)
 
 
@@ -14,7 +14,7 @@
 ;
 ; tupsel(k, tupcons(x0, ... xk, ... )) => xk
 
-(defvar *tupsel-list* '(tupsel- tupsel-integer tupsel-number tupsel-bool))
+(defvar *tupsel-list* '(TUPSEL- TUPSEL-integer TUPSEL-number TUPSEL-bool))
 
 (defun is-tupsel-n (name)
   (memq name *tupsel-list*))
@@ -24,7 +24,7 @@
        (is-tupsel-n (funsym term))))
 
 (defun make-tupsel (type)
-  (intern (if type (format nil "tupsel-~a" type) (format nil "tupsel-"))))
+  (intern (if type (format nil "TUPSEL-~a" type) (format nil "TUPSEL-"))))
 
 (defun sigtupsel (term)
   ; currently an error if term is an atom.
