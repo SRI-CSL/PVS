@@ -68,10 +68,13 @@
 		 (tc-eq uform *false*))
 	(type-error expr "Subtype TCC for ~a simplifies to FALSE~@[:~2%  ~a~]"
 		    expr (unless (tc-eq uform *false*) uform)))
-      (typecheck* (if (and *recursive-subtype-term*
-			   (occurs-in-eq *recursive-subtype-term* incs))
-		      (mk-termination-tcc id uform)
-		      (mk-subtype-tcc id uform))
+      (typecheck* (cond ((and *recursive-subtype-term*
+			      (occurs-in-eq *recursive-subtype-term* incs))
+			 (mk-termination-tcc id uform))
+			((equal (cdr (assq expr *compatible-pred-reason*))
+				"judgement")
+			 (mk-judgement-tcc id uform))
+			(t (mk-subtype-tcc id uform)))
 		  nil nil nil))))
 
 (defvar *substitute-let-bindings* nil)
