@@ -103,7 +103,7 @@
 (defmethod store-object* :around ((obj datatype-or-module))
   (if (typep obj '(not (or inline-recursive-type enumtype)))
       (if *saving-theory*
-	  (if (library-datatype-or-theory? obj)
+	  (if (external-library-reference? obj)
 	      (reserve-space 3
 		(push-word (store-obj 'modulelibref))
 		(push-word (store-obj (id obj)))
@@ -120,10 +120,16 @@
   (if (inline-recursive-type? (adt obj))
       (call-next-method)
       (call-next-method (copy obj
-			  'adt (if (library-recursive-type? (adt obj))
+			  'adt (if (external-library-reference? (adt obj))
 				   (cons (lib-ref (adt obj))
 					 (id (adt obj)))
 				   (id (adt obj)))))))
+
+(defmethod external-library-reference? ((obj library-datatype-or-theory))
+  (not (eq obj (gethash (id obj) *pvs-modules*))))
+
+(defmethod external-library-reference? (obj)
+  nil)
 
 (defmethod store-object* :around ((obj mod-decl))
   (let ((*store-mapped-theories* (cons (get-theory (modname obj))
@@ -185,7 +191,7 @@
 (defmethod store-object* :around ((obj declaration))
   (with-slots (module) obj
     (if (and module (not (eq module *saving-theory*)))
-	(if (library-datatype-or-theory? module)
+	(if (external-library-reference? module)
 	    (reserve-space 4
 	      (push-word (store-obj 'decllibref))
 	      (push-word (store-obj (lib-ref module)))
@@ -210,7 +216,7 @@
   (with-slots ((theory adt-theory)) obj
     (assert (position obj (all-decls theory)))
     (if (not (eq theory *saving-theory*))
-	(if (library-datatype-or-theory? theory)
+	(if (external-library-reference? theory)
 	    (reserve-space 4
 	      (push-word (store-obj 'decllibref))
 	      (push-word (store-obj (lib-ref theory)))
@@ -660,11 +666,11 @@
   (call-next-method)
   (postrestore-context *current-context*))
 
-(defmethod restore-object* :around ((obj subtype))
-  (call-next-method)
-  (assert (not (store-print-type? (supertype obj))) ()
-	  "store-print-type subtype")
-  obj)
+;; (defmethod restore-object* :around ((obj subtype))
+;;   (call-next-method)
+;;   (assert (not (store-print-type? (supertype obj))) ()
+;; 	  "store-print-type subtype")
+;;   obj)
 
 (defun prerestore-context (obj)
   (setf (declarations-hash obj)
@@ -854,17 +860,18 @@
 
 (defmethod restore-object* :around ((obj declaration))
   (unless (or (typep obj '(or mod-decl theory-abbreviation-decl
-			      formal-theory-decl))
+			      formal-theory-decl adtdecl))
 	      (and (type-def-decl? obj)
 		   (enumtype? (type-expr obj))))
     (put-decl obj))
   (if (and (module obj)
 	   (eq (module obj) *restoring-theory*))
       (if (boundp '*restoring-declaration*)
-	  (unless (or (eq *restoring-declaration* obj)
-		      (memq *restoring-declaration*
-			    (memq obj (all-decls (module obj)))))
-	    (break "trying to look ahead"))
+	  nil
+;; 	  (unless (or (eq *restoring-declaration* obj)
+;; 		      (memq *restoring-declaration*
+;; 			    (memq obj (all-decls (module obj)))))
+;; 	    (break "trying to look ahead"))
 	  (let ((*restoring-declaration* obj))
 	    (call-next-method)))
       (call-next-method)))
@@ -900,7 +907,8 @@
 	(if (type-def-decl? obj)
 	    (setf (type-value obj) (type-def-decl-saved-value obj ptype))
 	    (setf (type-value obj) tn))
-	(assert (true-type-expr? (type-value obj))))))
+	#+pvsdebug (assert (true-type-expr? (type-value obj)))
+	)))
   obj)
 
 (defmethod restore-object* :around ((obj conversionminus-decl))
@@ -962,8 +970,8 @@
    nobj *restore-object-parent* *restore-object-parent-slot*))
 
 (defmethod setf-restored-object* (nobj parent slot)
-  (assert (eq (type-of (class-of parent)) 'standard-class))
-  (assert (slot-exists-p parent slot))
+  #+pvsdebug (assert (eq (type-of (class-of parent)) 'standard-class))
+  #+pvsdebug (assert (slot-exists-p parent slot))
   (when (eq slot 'declarations-hash) (break "setting declarations-hash"))
   (setf (slot-value parent slot) nobj))
 
@@ -1036,7 +1044,8 @@
 (defmethod restore-object* ((obj store-print-type))
   (or (type obj)
       (let ((pt (print-type obj))
-	    (*pseudo-normalizing* t))
+	    ;;(*pseudo-normalizing* t)
+	    )
 	(cond ((and (type-name? pt)
 		    (store-print-type? (type-value (declaration pt))))
 	       ;;(assert (eq (type-value (declaration pt)) obj))
@@ -1052,21 +1061,21 @@
 				 tn))
 		      (tval (type-def-decl-saved-value decl ptype)))
 		 (setf (resolutions tn) (list res))
-		 (assert (true-type-expr? tval) ()
-			 "Not a true type - type-name")
+		 #+pvsdebug (assert (true-type-expr? tval) ()
+				    "Not a true type - type-name")
 		 (setf (type-value decl) tval)))
 	      ((type-application? pt)
 	       (restore-object* (parameters pt))
 	       (let ((texpr (type-expr-from-print-type pt)))
-		 (assert (true-type-expr? texpr) ()
-			 "Not a true type - type-application")
+		 #+pvsdebug (assert (true-type-expr? texpr) ()
+				    "Not a true type - type-application")
 		 (setf (type obj) texpr)))
 	      ((store-print-type? pt)
 	       (setf (type obj) (restore-object* pt)))
 	      (t (restore-object* pt)
 		 (let ((texpr (type-expr-from-print-type pt)))
-		   (assert (true-type-expr? texpr) ()
-			   "Not a true type - default case")
+		   #+pvsdebug (assert (true-type-expr? texpr) ()
+				      "Not a true type - default case")
 		   (setf (type obj) texpr)))))))
 
 (defun type-def-decl-saved-value (decl tn)
@@ -1094,7 +1103,7 @@
 	   (let* ((*generate-tccs* 'none)
 		  (tval (typecheck* (type-expr decl) nil nil nil)))
 	     (assert (type-expr? tn))
-	     (assert (true-type-expr? tval))
+	     #+pvsdebug (assert (true-type-expr? tval))
 	     (copy tval 'print-type tn)))))
 
 (defmethod true-type-expr? (obj)
@@ -1150,8 +1159,8 @@
 	(let* ((type-expr (if (actuals thinst)
 			      (subst-mod-params tval thinst (module decl))
 			      (copy tval 'print-type te))))
-	  (assert (or (print-type type-expr) (tc-eq te type-expr)))
-	  (assert (true-type-expr? type-expr))
+	  #+pvsdebug (assert (or (print-type type-expr) (tc-eq te type-expr)))
+	  #+pvsdebug (assert (true-type-expr? type-expr))
 	  type-expr))))
 
 (defmethod type-expr-from-print-type ((te expr-as-type))
@@ -1176,7 +1185,7 @@
 			mtype-expr
 			(substit mtype-expr
 			  (pairlis (car (formals decl)) (parameters te))))))
-    (assert (true-type-expr? type-expr))
+    #+pvsdebug (assert (true-type-expr? type-expr))
     (with-slots (print-type) type-expr
       (setf print-type te))
     type-expr))
