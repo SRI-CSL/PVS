@@ -346,14 +346,6 @@ pvs-strategies files.")
 	     *prelude-libraries*)
     paths))
 
-(defun visible-libraries-pathnames ()
-  (let ((paths nil))
-    (maphash #'(lambda (p ht)
-		 (declare (ignore ht))
-		 (push p paths))
-	     *visible-libraries*)
-    (mapcar #'namestring paths)))
-
 
 ;;; update-context is called by parse-file after parsing a file.  It compares
 ;;; the context-entry of the file with the write-date of the file.  If the
@@ -408,7 +400,8 @@ pvs-strategies files.")
      :extension nil
      :proofs-date proofs-write-date
      :dependencies fdeps
-     :theories (mapcar #'(lambda (th) (create-theory-entry th file-entry))
+     :theories (mapcar #'(lambda (th)
+			   (create-theory-entry th file-entry))
 		       (cdr theories)))))
 
 (defun sort-context (context &optional result)
@@ -562,14 +555,22 @@ pvs-strategies files.")
 	      (from-prelude? theory)
 	      (memq theory *modules-visited*))
     (push theory *modules-visited*)
-    (dolist (th (cons (generated-by theory)
-		      (remove-if #'(lambda (th)
-				     (let ((ce (context-entry-of th)))
-				       (and ce
-					    (memq (id th)
-						  (ce-dependencies ce)))))
-			(get-immediate-usings theory))))
-      (dependencies* (get-theory th)))))
+    (let* ((imps (remove-if #'(lambda (th)
+				(let ((ce (context-entry-of th)))
+				  (and ce
+				       (memq (id th)
+					     (ce-dependencies ce)))))
+		   (get-immediate-usings theory)))
+	   (all-imps (if (generated-by theory)
+			 (cons (mk-modname (generated-by theory)
+				 nil
+				 (when (library-theory? theory)
+				   (cdr (assoc (library theory) *library-alist*
+					       :test #'equal))))
+			       imps)
+			 imps)))
+      (dolist (th all-imps)
+	(dependencies* (get-theory th))))))
 
 (defun context-usingchain (theoryref)
   (let ((uchain nil))
@@ -659,6 +660,7 @@ pvs-strategies files.")
 	    (multiple-value-bind (imports errcond)
 		(with-no-type-errors 
 		 (load-imported-library-file lib file))
+	      (declare (ignore imports))
 	      (when errcond
 		(restore-filename-error file errcond))))
 	  (unless (member dep *files-seen* :test #'string=)
@@ -702,6 +704,7 @@ pvs-strategies files.")
     filename condition)
   (multiple-value-bind (val condition)
       (ignore-errors (delete-file (make-binpath filename)))
+    (declare (ignore val))
     (if condition
 	(pvs-message "Couldn't delete ~a: ~a"
 	  (make-binpath filename) condition)
@@ -766,46 +769,6 @@ pvs-strategies files.")
 (defun pvs-rename-file (file new-name)
   (ignore-file-errors (rename-file file new-name)))
 
-
-
-
-;(defun restore-theories (entries &optional untypechecked)
-;  (when entries
-;    (restore-theories (cdr entries)
-;		      (if (restore-theory (car entries) untypechecked)
-;			  untypechecked
-;			  (cons (ce-file (car entries))
-;				untypechecked)))))
-;
-;(defun restore-theory (entry untypechecked)
-;  (if (typep entry 'context-entry)
-;      (let* ((file (ce-file entry))
-;	     (sdate (ce-write-date entry))
-;	     (deps (ce-dependencies entry))
-;	     (theories (ce-theories entry))
-;	     (src (probe-file (make-specpath file))))
-;	(cond ((null src)
-;	       (pvs-message "File for ~a is not in the current context" file)
-;	       nil)
-;	      ((not (= (file-write-date src) sdate))
-;	       (pvs-message "~a has been modified since last context save" file)
-;	       ;;(put-module file)
-;	       nil)
-;	      ((some #'(lambda (d) (member d untypechecked)) deps)
-;	       (pvs-message "~a depends on ~a: needs to be retypechecked"
-;			    file (find-if #'(lambda (d) (member d untypechecked))
-;					  deps))
-;	       ;;(put-module file)
-;	       )
-;	      (t (pvs-message "Restoring ~a" file)
-;		 (typecheck-file file nil t)
-;		 ;;(restore-proofs file entry)
-;		 t)))
-;      (pvs-message "Unrecognizable context entry")))
-
-;(defun restore-proofs (id entry)
-;  (let ((mod (get-module id)))
-;    (format t "~%Need to restore proof information")))
 
 ;;; Show Context Path
 
@@ -899,45 +862,6 @@ pvs-strategies files.")
 
 (defmethod get-context-file-entry ((decl declaration))
   (get-context-file-entry (theory decl)))
-
-(defmethod get-context-file-entry (obj)
-  (error "Illegal call to get-context-file-entry"))
-
-;(defun get-context-file-names (&optional context)
-;  (when (or (null context)
-;	    (probe-file context))
-;    (if (or (null context)
-;	    (equal (truename context) (truename (working-directory))))
-;	(sort (mapcar #'(lambda (e) (format nil "~a.~a"
-;				      (ce-file e) (ce-extension e)))
-;		      (pvs-context-entries))
-;	      #'string-lessp)
-;	(let ((cfile (make-pathname :defaults context :name ".pvscontext")))
-;	  (when (probe-file cfile)
-;	    (let ((context (with-open-file (in cfile) (read in))))
-;	      (sort (mapcar #'(lambda (e) (format nil "~a.~a"
-;				      (ce-file e) (ce-extension e)))
-;			    (cdr context))
-;		    #'string-lessp)))))))
-
-;(defun get-context-all-theory-names (&optional context)
-;  (when (or (null context)
-;	    (probe-file context))
-;    (if (or (null context)
-;	    (equal (truename context) (truename (working-directory))))
-;	(sort (mapcan #'(lambda (e)
-;			  (mapcar #'(lambda (te) (string (id te)))
-;				  (ce-theories e)))
-;		      (pvs-context-entries))
-;	      #'string-lessp)
-;	(let ((cfile (make-pathname :defaults context :name ".pvscontext")))
-;	  (when (probe-file cfile)
-;	    (let ((context (with-open-file (in cfile) (read in))))
-;	      (sort (mapcan #'(lambda (e)
-;				(mapcar #'(lambda (te) (string (id te)))
-;					(ce-theories e)))
-;			    (cdr context))
-;		    #'string-lessp)))))))
 
 (defun context-files-and-theories (&optional context)
   (when (or (null context)
@@ -1097,7 +1021,7 @@ pvs-strategies files.")
 			   (and (typep d 'declaration)
 				(eq (id d) (de-id de))
 				(eq (type-of d) (de-class de))))
-		       (all-decls theory))))
+		     (all-decls theory))))
 	(cond ((singleton? decls)
 	       (car decls))
 	      ((and (cdr decls)
@@ -1234,8 +1158,7 @@ pvs-strategies files.")
 
 (defun current-proofs-contain-old-proofs** (curproof oldproof fmla)
   (declare (ignore fmla))
-  (assert (or curproof
-	      (not oldproof))))
+  (assert (or curproof (not oldproof))))
 
 
 (defun collect-theories-proofs (theories)
