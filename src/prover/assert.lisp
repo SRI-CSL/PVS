@@ -535,15 +535,14 @@
 
 
 (defmethod connective-occurs?* ((expr name-expr) accum)
-  (declare (ignore expr))
   (accum-connective-occurs?* accum))
 
 (defmethod connective-occurs?* ((expr branch) accum)
-  (declare (ignore expr accum))
+  (declare (ignore accum))
     T)
 
 (defmethod connective-occurs?* ((expr cases-expr) accum)
-  (declare (ignore expr accum))
+  (declare (ignore accum))
   T)
 
 (defmethod connective-occurs?* ((expr projection-application) accum)
@@ -568,7 +567,7 @@
       (connective-occurs?* argument accum)))
 
 (defmethod connective-occurs?* ((expr propositional-application) accum)
-  (declare (ignore expr accum))
+  (declare (ignore accum))
   T)
 
 (defmethod connective-occurs?* ((expr negation) accum)
@@ -598,7 +597,6 @@
 ;	       (connective-occurs? (cdr expr)))))
 
 (defmethod connective-occurs?* ((expr binding-expr) accum)
-  (declare (ignore expr))
   (accum-connective-occurs?* accum))
   ;(connective-occurs? (expression expr))
 
@@ -613,7 +611,6 @@
    ;;NSH(6/2/99): changed from NIL to look inside for connectives.
 
 (defmethod connective-occurs?* ((expr expr) accum)
-  (declare (ignore expr))
   (accum-connective-occurs?* accum))
 
 ;;Separated connective-occurs? from update-or-connective-occurs?.
@@ -629,15 +626,14 @@
 
 
 (defmethod update-or-connective-occurs?* ((expr name-expr) accum)
-  (declare (ignore expr))
   (accum-update-or-connective-occurs?* accum))
 
 (defmethod update-or-connective-occurs?* ((expr branch) accum)
-  (declare (ignore expr accum))
+  (declare (ignore accum))
     T)
 
 (defmethod update-or-connective-occurs?* ((expr cases-expr) accum)
-  (declare (ignore expr accum))
+  (declare (ignore accum))
   T)
 
 (defmethod update-or-connective-occurs?* ((expr projection-application) accum)
@@ -662,7 +658,7 @@
     (update-or-connective-occurs?* argument accum)))
 
 (defmethod update-or-connective-occurs?* ((expr propositional-application) accum)
-  (declare (ignore expr accum))
+  (declare (ignore accum))
   T)
 
 (defmethod update-or-connective-occurs?* ((expr application) accum)
@@ -678,18 +674,16 @@
 	  nil)))
 
 (defmethod update-or-connective-occurs?* ((expr binding-expr) accum)
-  (declare (ignore expr))
   (accum-update-or-connective-occurs?* accum)
   )
 
 (defmethod update-or-connective-occurs?* ;;NSH(5.13.97) needed for updates
     ;;or the translations get HUGE.
     ((expr update-expr) accum)
-  (declare (ignore expr accum))
+  (declare (ignore accum))
   T)
 
 (defmethod update-or-connective-occurs?* ((expr expr) accum)
-  (declare (ignore expr))
   (accum-update-or-connective-occurs?* accum))
 
 
