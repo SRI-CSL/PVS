@@ -165,13 +165,13 @@
   (adt-map-theory :restore-as nil)
   (adt-reduce-theory :restore-as nil)
   (generated-file-date :restore-as nil)
-  (positive-types :restore-as nil)
   (semi :parse t :restore-as nil))
 
 (defcl recursive-type-with-subtypes (recursive-type)
   subtypes)
 
 (defcl inline-recursive-type (recursive-type)
+  module
   (generated :restore-as nil)
   (typechecked? :restore-as nil))
 
@@ -249,6 +249,13 @@
   (ppe-form :fetch-as nil)
   (tcc-form :fetch-as nil)
   (typecheck-time :restore-as nil))
+
+(defcl rectype-theory (module)
+  ;; The module instances generated from a non-inline recursive type
+  positive-types ; speeds up tc-eq, and allows restore-object* to work
+                 ; properly with store-print-types
+  single-constructor?)
+
 
 (defcl library-theory (module library-datatype-or-theory))
 
@@ -585,6 +592,8 @@
 
 (defcl adt-type-name (type-name)
   adt
+  single-constructor? ; Speeds things up slightly, and allows restore-object*
+		      ; to work for store-print-types
   (recognizer-names :ignore t :fetch-as nil)
   struct-name)
 
