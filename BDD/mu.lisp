@@ -20,6 +20,7 @@
 ;;;;;;;;;;;;;;;;;
 ;;;  Formula  ;;;
 ;;;;;;;;;;;;;;;;;
+
 (ff:defforeign 'mu_mk_false_formula)
 ;;; Formula mu_mk_false_formula (void)
 (ff:defforeign 'mu_mk_true_formula)
@@ -153,9 +154,7 @@
 		      (cdr x)))))
            (mu-output (run-pvsmu mu-formula dynamic-ordering?))
            (list-of-conjuncts (translate-from-bdd-list  
-			     (bdd_sum_of_cubes mu-output 1))) ;; Hassen: same as in bdd.lisp
-                                                              ;; based on the fact that the 
-                                                              ;; result is always a bdd.
+			     (bdd_sum_of_cubes mu-output 1))) 
             (lit-list (mapcar #'(lambda (conj)
 			       (mapcar #'(lambda (lit)
 					   (if (consp lit)
@@ -218,10 +217,9 @@
 ;;
 
 (defun convert-pvs-to-mu (expr) ;;expr must be of boolean type
- (setq *build-mu-term* nil) ;; Formula comes first
   (let* ((*bound-variables* nil)
 	 (*mu-nu-lambda-bindings-list* nil)
-	 (mu-expr (convert-pvs-to-mu-formula expr)))
+	 (mu-expr (convert-pvs-to-mu-formula expr))) ;; Formulas come first
  mu-expr)
 )
 
@@ -229,11 +227,18 @@
 ;;
 ;;  a mu-formula has the structure of: Formulas and Terms
 ;;  Formula ::=   Formula
+;;              | not Formula
+;;              | forall(List_vars) .Formula
+;;              | exists(List_vars) .Formula
+;;              | Formula {or,and,=>,<=>,cof} Formula           
 ;;              | Application
 ;;  Application ::= Term (List_Formula)
-;;  Term ::=  Term
+;;  Term ::=  Ter
+;;           | not term
+;;           | Term {or,and,=>,<=>,cof} Term                
 ;;           | Lambda (List_Vars). Formula
 ;;
+
 ;;convert-pvs-to-mu* is the real workhorse.
 ;; [P conn Q] ==> [P] conn [Q]
 ;; [NOT P] ==> NOT [P]
@@ -249,14 +254,14 @@
 ;;   [a = b] ==> [a(lo) = b(lo)] and ... and [a(hi) = b(hi)]
 ;;
 
-(defun convert-pvs-to-mu-formula (expr) ;;expr must be of boolean type
+(defun convert-pvs-to-mu-formula (expr) 
  (let ((*build-mu-term* nil) ;; building a Formula
        (mu-expr (convert-pvs-to-mu* expr)))
  mu-expr)
 )
 
 
-(defun convert-pvs-to-mu-term (expr) ;;expr must be of boolean type
+(defun convert-pvs-to-mu-term (expr) 
  (let ((*build-mu-term* t) ;; building a Term
        (mu-expr (convert-pvs-to-mu* expr)))
  mu-expr)
@@ -265,6 +270,325 @@
 
 (defvar *mu-nu-lambda-bindings-list* nil
   "lookup list containing vars that are bound by lambda operated on mu/nu")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;
+;; Convert PVS to MU
+;;
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;; convert-pvs-to-mu* ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmethod convert-pvs-to-mu* :around ((expr expr))
+  (let ((type (type expr)))
+    (when (and (subtype? type)
+	       (not (member expr *mu-subtype-list* :test #'tc-eq))
+	       (not (assoc expr *pvs-bdd-inclusivity-formulas*
+			   :test #'tc-eq)))
+      (let ((constraints (collect-type-constraints-step expr))
+	    (*mu-subtype-list* (cons expr *mu-subtype-list*)))
+	(loop for x in constraints do
+	      (push (cons expr (convert-pvs-to-mu* x))
+		    *pvs-bdd-inclusivity-formulas*))
+	(format t "~%Added constraints: ~a" constraints)))
+    (call-next-method)))
+
+
+(defmethod convert-pvs-to-mu* ((expr list))
+ (let ((lisp-list 
+  (loop for x in expr
+	append (let ((result (convert-pvs-to-mu* x)))
+		(if (listp result)
+		    result
+		    (list result))))))
+;; (form-lisp-list-to-c-list lisp-list)
+ lisp-list
+))
+
+
+(defmethod convert-pvs-to-mu* ((expr cases-expr))
+  (convert-pvs-to-mu* (translate-cases-to-if expr))
+)
+
+
+(defmethod convert-pvs-to-mu* ((expr expr))  ;;NSH(8.17.95) added find-supertype
+  (cond ((tc-eq expr *true*) (mu-mk-true))
+	((tc-eq expr *false*) (mu-mk-false))
+	((reachable? expr) (reach_pf))
+	((and (binding-expr? expr)
+	      (every #'(lambda (x)(mu-translateable? (find-supertype (type x))))
+		     (bindings expr)) ;;NSH(4.24.95)
+	      )
+             (convert-pvs-to-mu-binding-expr expr))
+        ((scalar-constant? expr)     (make-scalar-constant-bits expr)) ;;NSH(6.11.95)
+        ((scalar?  expr)  (uncurry-application-and-mu-convert expr))
+	((recordtype? (find-supertype (type expr))) ;;(break)
+	 (convert-pvs-to-mu*
+	  (loop for decl in (fields (find-supertype (type expr)))
+		       collect (beta-reduce
+				(make-field-application
+				 (id decl) expr))))) 
+	((and (funtype? (find-supertype (type expr)))
+	      (mu-translateable? (find-supertype (type expr))))
+               (convert-pvs-to-mu-funtype  (type expr))) 
+	(t (make-mu-variable expr)))
+)
+
+
+(defmethod convert-pvs-to-mu* ((expr application))
+  (let* ((old-expr expr)
+	 (*lift-if-updates* T)
+	 (expr (if (and (boolean? expr)
+			(equality? expr))
+		   (lift-if-expr expr)
+		   expr)))
+    (cond ((disjunction? expr) (convert-pvs-to-mu-disjunction expr))
+          ((conjunction? expr) (convert-pvs-to-mu-conjunction expr))  
+          ((iff? expr)  (convert-pvs-to-mu-iff expr))
+          ((implication? expr)  (convert-pvs-to-mu-implication expr))
+          ((not-expr? expr)   (convert-pvs-to-mu-negation expr))
+          ((branch? expr)  (convert-pvs-to-mu-branch  expr))
+          ((inequality? expr)  (convert-pvs-to-mu-inequality  expr))
+          ((equality? expr) (convert-pvs-to-mu-equality expr))
+          ((mu-nu-expr-application? expr) (convert-pvs-to-mu-nu-application  expr))
+          ((mu-nu-expr? expr) (convert-pvs-to-mu-nu-expression expr))
+          ((reachable-expr? expr) (convert-pvs-to-mu-reachable expr))
+          ((NOT (tc-eq (find-supertype (type expr)) *boolean*))
+            (call-next-method));;invoke expr case.
+          (t;; Other application like R(x,y)
+            (uncurry-application-and-mu-convert expr)) ;; for app and recognizers..Hassen.
+)))
+
+
+
+(defmethod convert-pvs-to-mu* ((expr number-expr))
+  (convert-number (number expr)))
+
+
+
+(defun convert-pvs-to-mu-binding-expr (expr)
+         (let* ((expr-bindings (bindings expr))
+		(expr-bindings
+		 (mapcar #'make-variable-expr expr-bindings))
+		(old-inclusivities *pvs-bdd-inclusivity-formulas*)
+		(boundvars (make-mu-list-arguments
+				 expr-bindings))
+		(*bound-variables* (append expr-bindings
+					   *bound-variables*))
+		(new-inclusivities
+		 (ldiff *pvs-bdd-inclusivity-formulas*
+			old-inclusivities))
+		(boundexpr
+		  (convert-pvs-to-mu* (expression expr))
+		))
+	   (setq *pvs-bdd-inclusivity-formulas*  ;;NSH(8.17.95): to collect
+		                            ;;subtypes from inside binding expr.
+		 (set-difference *pvs-bdd-inclusivity-formulas*
+				 new-inclusivities
+				 :key #'car
+				 :test #'tc-eq))
+      (cond ((forall-expr? expr) 
+                (convert-pvs-to-mu-forall boundvar boundexpr new-inclusivities))
+            ((exists-expr? expr) 
+                (convert-pvs-to-mu-exists boundvar boundexpr new-inclusivities))
+            ((lambda-expr? expr) (convert-pvs-to-mu-lambda boundvar boundexpr))
+            ))
+)
+
+
+
+
+(defun convert-pvs-to-mu-forall (expr boundvar boundexpr new-inclusivities)
+  (if new-inclusivities
+         (mu_mk_quantified_formula (mu_univ) boundvar
+                 (mu-mk-binary-formula 'IMPLIES
+                    (make-mu-conjunction  (mapcar #'cdr new-inclusivities)) boundexpr))
+         (mu_mk_quantified_formula (mu_univ) boundvar boundexpr)
+  ))
+
+
+(defun convert-pvs-to-mu-exists (expr boundvar boundexpr new-inclusivities)
+  (if new-inclusivities
+         (mu_mk_quantified_formula (mu_exist) boundvar
+                (mu-mk-binary-formula 'AND
+                     (make-mu-conjunction  (mapcar #'cdr new-inclusivities)) boundexpr)) 
+         (mu_mk_quantified_formula (mu_exist) boundvar boundexpr) 
+  ))
+
+
+(defun convert-pvs-to-mu-lambda (boundvar boundexpr )
+   (mu_mk_abstraction boundvar boundexpr)
+)
+
+
+(defun convert-pvs-to-mu-disjunction (expr)
+ (let ((fml1 (convert-pvs-to-mu* (args1 expr)))
+       (fml2 (convert-pvs-to-mu* (args2 expr))))
+ (mu-mk-binary-formula 'OR fml1 fml2))
+)
+
+(defun convert-pvs-to-mu-conjunction (expr) 
+ (let ((fml1 (convert-pvs-to-mu* (args1 expr)))
+       (fml2 (convert-pvs-to-mu* (args2 expr))))
+ (mu-mk-binary-formula 'AND fml1 fml2))
+)
+
+
+
+(defun convert-pvs-to-mu-iff (expr)
+ (let ((fml1 (convert-pvs-to-mu* (args1 expr)))
+       (fml2 (convert-pvs-to-mu* (args2 expr))))
+ (mu-mk-binary-formula 'EQUIV fml1 fml2))
+)
+
+(defun convert-pvs-to-mu-implication (expr)
+ (let ((fml1 (convert-pvs-to-mu* (args1 expr)))
+       (fml2 (convert-pvs-to-mu* (args2 expr))))
+ (mu-mk-binary-formula 'IMPLIES fml1 fml2))
+)
+
+
+(defun convert-pvs-to-mu-negation (expr)
+ (let ((fml1 (convert-pvs-to-mu* (args1 expr))))
+    (mu-mk-unary-formula 'NOT fml1))
+)
+
+
+
+(defun convert-pvs-to-mu-branch  (expr)
+ (let ((result (assert-test0 (condition expr))))
+	(cond ((eq result (mu-mk-true))
+	       (convert-pvs-to-mu* (then-part expr)))
+	      ((eq result (mu-mk-false))
+	       (convert-pvs-to-mu* (else-part expr)))
+	      (t 
+	       (let ((fml1 (convert-pvs-to-mu* (condition expr)))
+		     (fml2 (convert-pvs-to-mu* (then-part expr)))
+		     (fml3 (convert-pvs-to-mu* (else-part expr))))
+                  (mu_mk_ite_formula fml1 fml2 fml3)
+             ))))
+)
+
+
+(defun convert-pvs-to-mu-inequality  (expr)
+ (let ((fml1 (convert-pvs-to-mu* (make-equality (args1 expr)(args2 expr)))))
+                 (mu-mk-unary-formula 'NOT fml1))
+)
+
+
+
+(defun convert-pvs-to-mu-nu-application  (expr)
+      (let* ((exprargs (arguments expr))
+	     (argsstr (make-mu-list-arguments exprargs)) 
+	     (exprargs-enum-excl-incl-str
+	      (make-mu-conjunction
+	       (loop for entry in exprargs
+		     for entryencoding =
+		     (make-incl-excl-string-for-encoded-scalar entry)
+		     when entryencoding collect entryencoding)))
+	     (muop (operator expr))
+	     (mu-or-nu (string (id (operator muop))))
+	     (muargs1bindgs (bindings (args1 muop)))
+	     (*mu-nu-lambda-bindings-list*
+	      (append (bindings (args1 muop))
+		      *mu-nu-lambda-bindings-list*))
+	     (muarg1str (make-mu-list-arguments
+			 (mapcar #'make-variable-expr muargs1bindgs)))
+	     (muarg2expr (expression (args1 muop)))
+	     (muarg2exprbindgs (bindings muarg2expr))
+	     (muarg2str (convert-pvs-to-mu-term muarg2expr))
+	     (muexprfml
+               (mu_mk_application 
+                 (mu_mk_fixed_point (if (string= mu-or-nu "mu") 
+                         (mu_l_fixed_point) (mu_g_fixed_point))
+                        Ip  muarg1str muarg2str (int_max)) )
+          ))
+	muexprfml )
+)
+
+
+(defun convert-pvs-to-mu-nu-expression (expr)
+      (let* ((muop (operator expr))
+	     (mu-or-nu (string (id muop)))
+	     (muargs1bindgs (bindings (args1 expr)));;args1muop islambda-expr
+	     (muarg1str (make-mu-list-arguments
+			 (mapcar #'make-variable-expr muargs1bindgs)))
+	     (*mu-nu-lambda-bindings-list*;;NSH(6.23.95)
+	      (append muargs1bindgs
+		      *mu-nu-lambda-bindings-list*))
+	     (muarg2expr (expression (args1 expr)))
+	     (muarg2exprbindgs (bindings muarg2expr));; islambda expr
+	     (muarg2str (convert-pvs-to-mu-term muarg2expr))
+	     (muexprstr
+              (mu_mk_fixed_point (if (string= mu-or-nu "mu") 
+              (mu_l_fixed_point) (mu_g_fixed_point))
+                        Ip  muarg1str muarg2str (int_max))
+          ))
+	muexprstr)
+)
+
+
+
+(defun convert-pvs-to-mu-reachable (expr)
+  (let* ((mu-list-args (convert-pvs-to-mu-term (arguments* expr)))
+         (reach-list-arguments (car mu-list-args))
+                        ;; should be a list of terms
+         (other-arguments (cdr mu-list-args))
+         (nbofargs (length (arguments reach-list-arguments )))
+         (mu-reach-expr
+   (cond ((equal 2 nbofargs) (mu_mk_reach (nth 0 mu-list-args) 
+                             (nth 1 mu-list-args) (mu-mk-true) ))
+         ((equal 3 nbofargs) (mu_mk_reach (nth 0 mu-list-args) 
+                 (nth 1 mu-list-args) (nth 2 mu-list-args) ))
+              )))
+   (mu_mk_application mu-reach-expr other-arguments 0))
+)
+
+
+
+
+(defun convert-pvs-to-mu-equality (expr)
+ (cond
+   ((and (funtype? (find-supertype (type (args1 expr))))
+        (mu-translateable? (type (args1 expr))))
+    (convert-pvs-to-mu-equality-with-funtype-in-arg expr)) 
+   ((or (branch? (args1 expr));;NSH(2.2.96): added cases?
+       (cases-expr? (args1 expr)));;to this and next case, else      
+    (convert-pvs-to-mu-equality-with-case-args expr )) 
+   ((or (branch? (args2 expr))
+       (cases-expr? (args2 expr)))
+    (convert-pvs-to-mu-equality-with-case-arg (make-equality (args2 expr) (args1 expr)))) 
+   ((or (scalar-constant? (args1 expr))
+       (scalar-constant? (args2 expr)))           
+    (convert-pvs-to-mu-equality-with-scalarconstant-in-args expr)) 
+   ((scalar? (args1 expr))
+    (convert-pvs-to-mu-equality-with-scalar-arg expr)) 
+   ((recordtype? (find-supertype (type (args1 expr))))
+    (convert-pvs-to-mu-equality-with-recordtype-in-arg expr)) 
+   ((and (funtype? (find-supertype (type (args1 expr))))
+          (mu-translateable? (find-supertype (type (args1 expr)))))
+    (convert-pvs-to-mu-equality-with-funtype-mu-trans-supertype-in-arg expr)) 
+   ((sub-range? (type (args1 expr)))
+    (convert-pvs-to-mu-equality-with-subrangetype-in-arg expr)) 
+ )
+)                 
+
+
+(defmethod convert-number (number)
+  (let* ((len (max 1 (ceiling (log (1+ number) 2))))
+         (format-bitstring (format nil "~~~d,'0b" len)) 
+         (bit-string (format nil format-bitstring number))
+         (lisp-list-values (nreverse  ;lsb first: little-endian
+               (loop for i from 0 to (1- len)
+	             collect (if (eql (digit-char-p (elt bit-string i)) 1)
+		                   (mu-mk-true) (mu-mk-false))))))
+ (form-lisp-list-to-c-list lisp-list-values))
+)
+
 
 ;; given a pvs expr, it forms a basic expr-string that's bdd-isable and
 ;; a correspondng *recognizer-forms-(a? Hassen)list*: which is an assoc list such as:
@@ -365,53 +689,11 @@
 ;;
 ;;
 ;;
-;; determine if expr is of the form "mu(P,PP)(Q)" or "nu(P,PP)(Q)"
-;;  Hassen. 05/02/98
 ;;
-
-(defun mu-nu-expr-application? (expr)
-  (if (application? expr)
-      (let ((op (operator expr)))
-          (mu-nu-expr? op)
-      )
-    nil)
-)
-
-;; determine if expr is of the form "mu(P,PP)" or "nu(P,PP)"
-
-(defun mu-nu-expr? (expr)
-  (if (application? expr)
-      (let ((op (operator expr)))
-	(and (typep op 'name-expr)
-	     (find (string (id op)) '("mu" "nu") :test #'string=)
-	     (eq (id (module (declaration op))) '|mucalculus|)
-	     (let
-		 ((mu-actuals (actuals (module-instance
-					(resolution op)))))
-	       (and (singleton? mu-actuals)
-		    (or (mu-translateable?
-			 (type-value (car mu-actuals)))
-			(format t "~%Theory mucalculus with type ~a is not model-checkable."
-			  (type-value (car mu-actuals))))))))
-      nil))
-
-
-(defun reachable? (expr)
-  (and (name-expr? expr)
-	      (eq (id expr) '|Reachable|)
-	      (eq (id (module (declaration expr)))
-		  '|Reachable|)))
-
-(defun reachable-expr? (expr)
-  (and (application? expr)
-       (let ((op* (operator* expr)))
-	 (reachable? op*))))
-	 
-
-;;NSH(11.27.94) moved to assert.
-;(defun scalar? (expr)
-;  (and (enum-adt? (find-supertype (type expr))) expr))
-
+;; Hassen 05/06/1998
+;; reachable-expr? should be of the form Reachable(list-args1)(list-args2)
+;; where list-args1 is of length 2 or 3.
+;;
 ;;asserts len-bit bitvect bvar to be less than or equal to number num
 ;;this is added as a restriction to the BDD.
 
@@ -500,19 +782,6 @@
 	(higher-rep (make-leq-bdd bddvarid-list hi-rep)))
     (make-mu-conjunction (list lower-rep higher-rep))))
 	
-
-(defmethod convert-number (number)
-  (let* ((len (max 1 (ceiling (log (1+ number) 2))))
-         (format-bitstring (format nil "~~~d,'0b" len)) 
-         (bit-string (format nil format-bitstring number))
-         (lisp-list-values (nreverse  ;lsb first: little-endian
-               (loop for i from 0 to (1- len)
-	             collect (if (eql (digit-char-p (elt bit-string i)) 1)
-		                   (mu-mk-true) (mu-mk-false))))))
- (form-lisp-list-to-c-list lisp-list-values))
-)
-
-
 
 (defun make-subrange-names (expr &optional type)
   (let* ((type (if type type (type expr)))
@@ -760,16 +1029,16 @@
 		  (1- (number (expr (car (actuals (module-instance ptype)))))))))))
 		 
 
-(defun make-mu-list-arguments (list)
-  (let ((bvarlist (convert-pvs-to-mu* list)))
-    (if (null bvarlist)  null_list (make-mu-list bvarlist)))
-)
+;;(defun make-mu-list-arguments (list)
+;;  (let ((bvarlist (convert-pvs-to-mu* list)))
+;;    (if (null bvarlist)  null_list (make-mu-list bvarlist)))
+;;)
 
     
 
-(defun make-mu-list (bvarlist)
- ()
-)
+;;(defun make-mu-list (bvarlist)
+;; ()
+;;)
 
 
 (defun boolean? (term)
@@ -805,7 +1074,7 @@
 	 (old-expr expr)
 	 (expr (lift-if-expr expr)))
     (if (eq expr old-expr)
-	(if (recognizer-application? expr) ;; Hassen: Redundunt??
+	(if (recognizer-application? expr) 
 	    (make-mu-variable expr)
 	    (if (application? expr)
 		(let ((op* (get-op expr));;NSH(4.5.95) extensions to handle
@@ -825,8 +1094,8 @@
 			  (let* ((args-list (convert-pvs-to-mu* (argument expr)))
 				 (args-list (if (listp args-list) args-list
 					      (list args-list))))
-			    (decode-array (operator expr) (nreverse args-list)
-                             )
+			   ;; (decode-array (operator expr) (nreverse args-list))
+                              (make-mu-variable expr) ;; Hassen 05/07/98
 			  (make-mu-variable expr))))
 		(make-mu-variable expr)))
 	(convert-pvs-to-mu* expr))))
@@ -853,8 +1122,6 @@
 					oplist)))))
     ))
 					  
-    
-
 (defun decode-array-format (args)
   (if (consp args)
       (format nil "(~a ? ~a : ~a)" (car args)
@@ -863,41 +1130,7 @@
       "~a")
 )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;
-;; convert-pvs-to-mu* ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod convert-pvs-to-mu* :around ((expr expr))
-  (let ((type (type expr)))
-    (when (and (subtype? type)
-	       (not (member expr *mu-subtype-list* :test #'tc-eq))
-	       (not (assoc expr *pvs-bdd-inclusivity-formulas*
-			   :test #'tc-eq)))
-      (let ((constraints (collect-type-constraints-step expr))
-	    (*mu-subtype-list* (cons expr *mu-subtype-list*)))
-	(loop for x in constraints do
-	      (push (cons expr (convert-pvs-to-mu* x))
-		    *pvs-bdd-inclusivity-formulas*))
-	(format t "~%Added constraints: ~a" constraints)))
-    (call-next-method)))
-
-;;
-;;
-;;		 
-
-(defmethod convert-pvs-to-mu* ((expr list))
- (let ((lisp-list 
-  (loop for x in expr
-	append (let ((result (convert-pvs-to-mu* x)))
-		(if (listp result)
-		    result
-		    (list result))))))
- (form-lisp-list-to-c-list lisp-list)
-))
-
-
-(defmethod convert-pvs-to-mu* ((expr cases-expr))
-  (convert-pvs-to-mu* (translate-cases-to-if expr)))
 
 (defun bool-ineq? (expr);;assuming expr is application
   (let ((op (operator expr)))
@@ -913,174 +1146,6 @@
 ;;
 ;;
 ;;
-
-
-(defmethod convert-pvs-to-mu* ((expr application))
-  (let* ((old-expr expr)
-	 (*lift-if-updates* T)
-	 (expr (if (and (boolean? expr)
-			(equality? expr))
-		   (lift-if-expr expr)
-		   expr)))
-    (cond ((disjunction? expr) (convert-pvs-to-mu-disjunction expr))
-          ((conjunction? expr) (convert-pvs-to-mu-conjunction expr))  
-          ((iff? expr)  (convert-pvs-to-mu-iff expr))
-          ((implication? expr)  (convert-pvs-to-mu-implication expr))
-          ((not-expr? expr)   (convert-pvs-to-mu-negation expr))
-          ((branch? expr)  (convert-pvs-to-mu-branch  expr))
-          ((inequality? expr)  (convert-pvs-to-mu-inequality  expr))
-          ((equality? expr) (convert-pvs-to-mu-equality expr))
-          ((mu-nu-expr-application? expr) (convert-pvs-to-mu-nu-application  expr))
-          ((mu-nu-expr? expr) (convert-pvs-to-mu-nu-expression expr))
-          ((reachable-expr? expr) (convert-pvs-to-mu-reachable expr))
-          ((NOT (tc-eq (find-supertype (type expr)) *boolean*))
-            (call-next-method));;invoke expr case.
-          (t;; Other application like R(x,y)
-            (uncurry-application-and-mu-convert expr)) ;; for app and recognizers..Hassen.
-)))
-
-
-(defun convert-pvs-to-mu-disjunction (expr)
- (let ((fml1 (convert-pvs-to-mu* (args1 expr)))
-       (fml2 (convert-pvs-to-mu* (args2 expr))))
- (mu-mk-binary-formula 'OR fml1 fml2))
-)
-
-(defun convert-pvs-to-mu-conjunction (expr) 
- (let ((fml1 (convert-pvs-to-mu* (args1 expr)))
-       (fml2 (convert-pvs-to-mu* (args2 expr))))
- (mu-mk-binary-formula 'AND fml1 fml2))
-)
-
-(defun convert-pvs-to-mu-iff (expr)
- (let ((fml1 (convert-pvs-to-mu* (args1 expr)))
-       (fml2 (convert-pvs-to-mu* (args2 expr))))
- (mu-mk-binary-formula 'EQUIV fml1 fml2))
-)
-
-(defun convert-pvs-to-mu-implication (expr)
- (let ((fml1 (convert-pvs-to-mu* (args1 expr)))
-       (fml2 (convert-pvs-to-mu* (args2 expr))))
- (mu-mk-binary-formula 'IMPLIES fml1 fml2))
-)
-
-
-(defun convert-pvs-to-mu-negation (expr)
- (let ((fml1 (convert-pvs-to-mu* (args1 expr))))
-    (mu-mk-unary-formula 'NOT fml1))
-)
-
-
-(defun convert-pvs-to-mu-branch  (expr)
- (let ((result (assert-test0 (condition expr))))
-	(cond ((eq result (mu-mk-true))
-	       (convert-pvs-to-mu* (then-part expr)))
-	      ((eq result (mu-mk-false))
-	       (convert-pvs-to-mu* (else-part expr)))
-	      (t 
-	       (let ((fml1 (convert-pvs-to-mu* (condition expr)))
-		     (fml2 (convert-pvs-to-mu* (then-part expr)))
-		     (fml3 (convert-pvs-to-mu* (else-part expr))))
-                  (mu_mk_ite_formula fml1 fml2 fml3)
-             ))))
-)
-
-
-(defun convert-pvs-to-mu-inequality  (expr)
- (let ((fml1 (convert-pvs-to-mu* (make-equality (args1 expr)(args2 expr)))))
-                 (mu-mk-unary-formula 'NOT fml1))
-)
-
-
-(defun convert-pvs-to-mu-nu-application  (expr)
-      (let* ((exprargs (arguments expr))
-	     (argsstr (make-mu-list-arguments exprargs)) 
-	     (exprargs-enum-excl-incl-str
-	      (make-mu-conjunction
-	       (loop for entry in exprargs
-		     for entryencoding =
-		     (make-incl-excl-string-for-encoded-scalar entry)
-		     when entryencoding collect entryencoding)))
-	     (muop (operator expr))
-	     (mu-or-nu (string (id (operator muop))))
-	     (muargs1bindgs (bindings (args1 muop)))
-	     (*mu-nu-lambda-bindings-list*
-	      (append (bindings (args1 muop))
-		      *mu-nu-lambda-bindings-list*))
-	     (muarg1str (make-mu-list-arguments
-			 (mapcar #'make-variable-expr muargs1bindgs)))
-	     (muarg2expr (expression (args1 muop)))
-	     (muarg2exprbindgs (bindings muarg2expr))
-	     (muarg2str (convert-pvs-to-mu-term muarg2expr))
-	     (muexprfml
-               (mu_mk_application 
-                 (mu_mk_fixed_point (if (string= mu-or-nu "mu") 
-                         (mu_l_fixed_point) (mu_g_fixed_point))
-                        Ip  muarg1str muarg2str (int_max)) )
-          ))
-	muexprfml )
-)
-
-
-
-(defun convert-pvs-to-mu-nu-expression (expr)
-      (let* ((muop (operator expr))
-	     (mu-or-nu (string (id muop)))
-	     (muargs1bindgs (bindings (args1 expr)));;args1muop islambda-expr
-	     (muarg1str (make-mu-list-arguments
-			 (mapcar #'make-variable-expr muargs1bindgs)))
-	     (*mu-nu-lambda-bindings-list*;;NSH(6.23.95)
-	      (append muargs1bindgs
-		      *mu-nu-lambda-bindings-list*))
-	     (muarg2expr (expression (args1 expr)))
-	     (muarg2exprbindgs (bindings muarg2expr));; islambda expr
-	     (muarg2str (convert-pvs-to-mu-term muarg2expr))
-	     (muexprstr
-              (mu_mk_fixed_point (if (string= mu-or-nu "mu") (mu_l_fixed_point) (mu_g_fixed_point))
-                        Ip  muarg1str muarg2str (int_max))
-          ))
-	muexprstr)
-)
-
-
-
-(defun convert-pvs-to-mu-reachable (expr)
-  (let ((op-mu-fml    (convert-pvs-to-mu* (operator expr)))
-         (mu-list-args (make-mu-list-arguments (arguments expr)))  ;; should be a list of terms
-         (nbofargs (length (arguments expr))))
-   (cond ((equal 2 nbofargs) (mu_mk_reach () () (mu-mk-true) ))
-         ((equal 3 nbofargs) (mu_mk_reach () () () ))
-    ))
-)
-
-
-
-(defun convert-pvs-to-mu-equality (expr)
- (cond
-   ((and (funtype? (find-supertype (type (args1 expr))))
-        (mu-translateable? (type (args1 expr))))
-    (convert-pvs-to-mu-equality-with-funtype-in-arg expr)) 
-   ((or (branch? (args1 expr));;NSH(2.2.96): added cases?
-       (cases-expr? (args1 expr)));;to this and next case, else      
-    (convert-pvs-to-mu-equality-with-case-args expr )) 
-   ((or (branch? (args2 expr))
-       (cases-expr? (args2 expr)))
-    (convert-pvs-to-mu-equality-with-case-arg (make-equality (args2 expr) (args1 expr)))) 
-   ((or (scalar-constant? (args1 expr))
-       (scalar-constant? (args2 expr)))           
-    (convert-pvs-to-mu-equality-with-scalarconstant-in-args expr)) 
-   ((scalar? (args1 expr))
-    (convert-pvs-to-mu-equality-with-scalar-arg expr)) 
-   ((recordtype? (find-supertype (type (args1 expr))))
-    (convert-pvs-to-mu-equality-with-recordtype-in-arg expr)) 
-   ((and (funtype? (find-supertype (type (args1 expr))))
-          (mu-translateable? (find-supertype (type (args1 expr)))))
-    (convert-pvs-to-mu-equality-with-funtype-mu-trans-supertype-in-arg expr)) 
-   ((sub-range? (type (args1 expr)))
-    (convert-pvs-to-mu-equality-with-subrangetype-in-arg expr)) 
- )
-)                 
-
 
 (defun convert-pvs-to-mu-equality-with-funtype-in-arg (expr) 
       (let* ((dtype (domain (find-supertype (type (args1 expr)))))
@@ -1198,86 +1263,6 @@
 ;;
 ;;
 
-(defmethod convert-pvs-to-mu* ((expr expr))  ;;NSH(8.17.95) added find-supertype
-  (cond ((tc-eq expr *true*) (mu-mk-true))
-	((tc-eq expr *false*) (mu-mk-false))
-	((reachable? expr) (reach_pf))
-	((and (binding-expr? expr)
-	      (every #'(lambda (x)(mu-translateable? (find-supertype (type x))))
-		     (bindings expr)) ;;NSH(4.24.95)
-	      )
-             (convert-pvs-to-mu-binding-expr expr))
-        ((scalar-constant? expr)     (make-scalar-constant-bits expr)) ;;NSH(6.11.95)
-        ((scalar?  expr)  (uncurry-application-and-mu-convert expr))
-	((recordtype? (find-supertype (type expr))) ;;(break)
-	 (convert-pvs-to-mu*
-	  (loop for decl in (fields (find-supertype (type expr)))
-		       collect (beta-reduce
-				(make-field-application
-				 (id decl) expr))))) 
-	((and (funtype? (find-supertype (type expr)))
-	      (mu-translateable? (find-supertype (type expr))))
-               (convert-pvs-to-mu-funtype  (type expr))) 
-	(t (make-mu-variable expr)))
-)
-
-
-(defun convert-pvs-to-mu-binding-expr (expr)
-         (let* ((expr-bindings (bindings expr))
-		(expr-bindings
-		 (mapcar #'make-variable-expr expr-bindings))
-		(old-inclusivities *pvs-bdd-inclusivity-formulas*)
-		(boundvars (make-mu-list-arguments
-				 expr-bindings))
-		(*bound-variables* (append expr-bindings
-					   *bound-variables*))
-		(new-inclusivities
-		 (ldiff *pvs-bdd-inclusivity-formulas*
-			old-inclusivities))
-		(boundexpr
-		  (convert-pvs-to-mu* (expression expr))
-		))
-	   (setq *pvs-bdd-inclusivity-formulas*  ;;NSH(8.17.95): to collect
-		                            ;;subtypes from inside binding expr.
-		 (set-difference *pvs-bdd-inclusivity-formulas*
-				 new-inclusivities
-				 :key #'car
-				 :test #'tc-eq))
-      (cond ((forall-expr? expr) 
-                (convert-pvs-to-mu-forall boundvar boundexpr new-inclusivities))
-            ((exists-expr? expr) 
-                (convert-pvs-to-mu-exists boundvar boundexpr new-inclusivities))
-            ((lambda-expr? expr) (convert-pvs-to-mu-lambda boundvar boundexpr))
-            ))
-)
-
-(defun convert-pvs-to-mu-forall (expr boundvar boundexpr new-inclusivities)
-  (if new-inclusivities
-         (mu_mk_quantified_formula (mu_univ) boundvar
-                 (mu-mk-binary-formula 'IMPLIES
-                    (make-mu-conjunction  (mapcar #'cdr new-inclusivities)) boundexpr))
-         (mu_mk_quantified_formula (mu_univ) boundvar boundexpr)
-  ))
-
-
-(defun convert-pvs-to-mu-exists (expr boundvar boundexpr new-inclusivities)
-  (if new-inclusivities
-         (mu_mk_quantified_formula (mu_exist) boundvar
-                (mu-mk-binary-formula 'AND
-                     (make-mu-conjunction  (mapcar #'cdr new-inclusivities)) boundexpr)) 
-         (mu_mk_quantified_formula (mu_exist) boundvar boundexpr) 
-  ))
-
-
-(defun convert-pvs-to-mu-lambda (boundvar boundexpr )
-   (mu_mk_abstraction boundvar boundexpr)
-)
-
-
-(defmethod convert-pvs-to-mu* ((expr number-expr))
-  (convert-number (number expr)))
-
-
 ;;
 ;; Convertion of terms
 ;;
@@ -1351,11 +1336,6 @@
  (mu-mk-binary-formula 'COFACTOR mue-xpr1 mu-expr2)
 )
 
-;;
-;; Unlike the bool variables in bdd.lisp
-;; bdd variables in mu.lisp should have string names in order to call "mu_mk_bool_var".
-;; In mu.c,  "mu_mk_bool_var" calls "bdd_create_var(VAR_ID_2_BDD_IDX bddvarname)"
-;;
 
 (defun make-bdd-var-id ()
  (let ((indicevar (funcall *bdd-counter*)))
@@ -1382,8 +1362,62 @@
 
 
 (defun form-lisp-list-to-c-list (lisp-list &optional list-result)
- (if (null lisp-list) list-result
+ (if (null lisp-list) (null_list)
        ( append_cont (car list-fmls) (form-lisp-list-to-c-list (cdr list-fmls)))
  )
 )  
  
+;;
+;;
+;;
+;;
+
+;;
+;;
+;; determine if expr is of the form "mu(P,PP)(Q)" or "nu(P,PP)(Q)"
+;;  Hassen. 05/02/98
+;;
+
+(defun mu-nu-expr-application? (expr)
+  (if (application? expr)
+      (let ((op (operator expr)))
+          (mu-nu-expr? op)
+      )
+    nil)
+)
+
+
+;; determine if expr is of the form "mu(P,PP)" or "nu(P,PP)"
+
+(defun mu-nu-expr? (expr)
+  (if (application? expr)
+      (let ((op (operator expr)))
+	(and (typep op 'name-expr)
+	     (find (string (id op)) '("mu" "nu") :test #'string=)
+	     (eq (id (module (declaration op))) '|mucalculus|)
+	     (let
+		 ((mu-actuals (actuals (module-instance
+					(resolution op)))))
+	       (and (singleton? mu-actuals)
+		    (or (mu-translateable?
+			 (type-value (car mu-actuals)))
+			(format t "~%Theory mucalculus with type ~a is not model-checkable."
+			  (type-value (car mu-actuals))))))))
+      nil))
+
+
+(defun reachable? (expr)
+  (and (name-expr? expr)
+	      (eq (id expr) '|Reachable|)
+	      (eq (id (module (declaration expr)))
+		  '|Reachable|)))
+
+(defun reachable-expr? (expr)
+  (and (application? expr)
+       (let ((op* (operator* expr)))
+	 (reachable? op*))))
+;;
+;; Hassen 05/06/1998
+;; reachable-expr? should be of the form Reachable(list-args1)(list-args2)
+;; where list-args1 is of length 2 or 3.
+;;
