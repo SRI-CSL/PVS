@@ -49,6 +49,7 @@
 
 (defpackage "ILISP")
 (defpackage "DP")
+(defpackage "POLY")
 
 (unless (find-package "MAKE")
   (let ((*enable-package-locked-errors* nil))
@@ -322,7 +323,8 @@
 		  (:file "translate-from-dc")))
    (:module polylib
      :source-pathname "/src/decision-procedures/polylib"
-     :components ((:file "foreign"))
+     :components ((:file "foreign")
+		  (:file "dp-foreign"))
      :depends-on ("dc-structure"))
    (:module dc-prototypes
      :source-pathname "src/decision-procedures"
