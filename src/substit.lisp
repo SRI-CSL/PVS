@@ -386,7 +386,7 @@
 	    (copy texpr
 	      'supertype stype
 	      'predicate spred
-	      'print-type (print-type stype)))))))
+	      'print-type (substit* print-type alist)))))))
 
 (defmethod substit* ((texpr setsubtype) alist)
   (let ((nexpr (call-next-method)))
