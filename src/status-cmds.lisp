@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Sat Feb 19 21:23:43 1994
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Oct 30 11:40:40 1998
-;; Update Count    : 10
+;; Last Modified On: Thu Jul  1 18:50:38 1999
+;; Update Count    : 11
 ;; Status          : Alpha test
 ;; 
 ;; HISTORY
@@ -285,7 +285,7 @@
 (defmethod provable-formulas ((theory module))
   (provable-formulas (append (assuming theory) (theory theory))))
 
-(defmethod provable-formulas ((adt datatype))
+(defmethod provable-formulas ((adt recursive-type))
   nil)
 
 (defmethod provable-formulas ((decls list))
