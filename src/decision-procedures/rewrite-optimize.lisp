@@ -105,7 +105,7 @@
 
 (defun args-to-matching-automaton (args slot)
   (loop for arg from 1 below (length args)
-	do (node-to-matching-automaton (aref args arg) slot arg)))
+	do (node-to-matching-automaton (nth arg args) slot arg)))
 
 (defun ho-make-matching-automaton* (term slot arg)
   (declare (special max-slot))
@@ -123,7 +123,7 @@
 
 (defun ho-args-to-matching-automaton (args slot)
   (loop for arg from 0 below (length args)
-	do (node-to-matching-automaton (aref args arg) slot arg)))
+	do (node-to-matching-automaton (nth arg args) slot arg)))
 
 (defun constant-to-automaton-entry (constant slot arg)
   (make-automaton-entry :slot slot :arg arg :symbol constant))
