@@ -22,7 +22,7 @@
     (if theory
 	(let* ((decl (get-decl-at line t (list theory)))
 	       (pdecl (previous-decl decl theory))
-	       (date (file-write-date (make-specpath filename))))
+	       (date (file-write-time (make-specpath filename))))
 	  (cond ((or decl pdecl)
 		 (when *add-declaration-info*
 		   (pvs-message "Discarding previous add-declaration"))
@@ -59,36 +59,43 @@
 			     (list (sixth *add-declaration-info*)
 				   (starting-col (place pdecl)))))
 		 (assuming? (member odecl (assuming theory)))
-		 (decls (parse :file declfile
-			       :nt (if assuming?
-				       'assumings
-				       'theory-part)))
+		 (new-decls (parse :file declfile
+				   :nt (if assuming?
+					   'assumings
+					   'theory-part)))
 		 (typechecked? (typechecked-file? filename)))
 	    (when (or typechecked? update-theory?)
-	      (typecheck-new-decls decls pdecl))
+	      (typecheck-new-decls new-decls pdecl))
 	    (when update-theory?
 	      (when *in-checker*
 		(setq *context-modified* t))
 	      (let ((*current-context* (when typechecked? (context pdecl))))
-		(add-declarations-to-theory decls typechecked? assuming?))
-	      (add-new-decls-to-contexts pdecl decls theory)
-	      (reset-add-decl-places odecl decls theory filename)
+		(add-declarations-to-theory new-decls typechecked? assuming?))
+	      (add-new-decls-to-contexts pdecl new-decls theory)
+	      (reset-add-decl-places odecl new-decls theory filename)
+	      (pushnew 'modified (status theory))
 	      (let ((fe (get-context-file-entry filename)))
-		(ignore-errors (delete-file (make-binpath filename)))
 		(when fe
 		  (setf (ce-object-date fe) nil)
 		  (setq *pvs-context-changed* t))))
-	    (list filename oplace))
-	  (pvs-message "File has been modified"))
+	    (when *to-emacs*
+	      (let* ((*print-pretty* nil)
+		     (*output-to-emacs*
+		      (format nil ":pvs-addecl ~a&~a :end-pvs-addecl"
+			filename oplace)))
+		(to-emacs))))
+	    (pvs-message "File has been modified"))
       (pvs-message "Not adding declaration")))
 
-(defun add-new-decls-to-contexts (pdecl decls theory)
-  ;; First add to the contexts of the local theory
-  (dolist (elt (memq pdecl (all-decls theory)))
+(defun add-new-decls-to-contexts (pdecl new-decls theory)
+  ;; First add to the contexts of the local theory - must update the
+  ;; saved-contexts of any importing following pdecl, as well as the
+  ;; saved-context of the theory.
+  (dolist (elt (cdr (memq pdecl (all-decls theory))))
     (when (importing? elt)
-      (add-new-decls-to-context decls (saved-context elt)))
-    (add-new-decls-to-context decls (saved-context theory)))
-  ;; Now add to all other theory contexts
+      (add-new-decls-to-context new-decls (saved-context elt))))
+  (add-new-decls-to-context new-decls (saved-context theory))
+  ;; Now add to all other theory contexts that import theory
   (maphash #'(lambda (id th)
 	       (declare (ignore id))
 	       (unless (eq th theory)
@@ -98,22 +105,47 @@
 			      (get-importings
 			       theory
 			       (using-hash (saved-context elt))))
-		     (add-new-decls-to-context decls (saved-context elt))))
+		     (add-new-decls-to-context new-decls (saved-context elt))))
 		 (when (and (saved-context th)
 			    (get-importings theory
 					    (using-hash (saved-context th))))
-		   (add-new-decls-to-context decls (saved-context th)))))
+		   (add-new-decls-to-context new-decls (saved-context th)))))
 	   *pvs-modules*)
-  ;; Finally add to the prover/evaluator contexts
+  ;; Now add to the current prover/evaluator context
   (when (and *current-context*
 	     (if (eq theory (theory *current-context*))
 		 (memq (declaration *current-context*)
 		       (memq pdecl (all-decls theory)))
 		 (get-importings theory (using-hash *current-context*))))
     (cond (*in-checker*
-	   (add-new-decls-to-prover-contexts decls *top-proofstate*))
+	   (add-new-decls-to-prover-contexts new-decls *top-proofstate*))
 	  (*in-evaluator*
-	   (add-new-decls-to-context decls *current-context*)))))
+	   (add-new-decls-to-context new-decls *current-context*))))
+  ;; If there is an importing, we need to reset the all-importings
+  (when (some #'importing? new-decls)
+    ;; need to reset things up the importing chain
+    (reset-importing-chains theory)
+    (setq *pvs-context-changed* t)))
+
+(defun reset-importing-chains (theory)
+  (reset-importing-chains* theory)
+  (dolist (tid (find-all-usedbys theory))
+    (let ((th (get-theory tid)))
+      (when th
+	(reset-importing-chains* th)))))
+
+(defun reset-importing-chains* (theory)
+  (setf (all-imported-theories theory) 'unbound)
+  (setf (all-imported-names theory) 'unbound)
+  (setf (immediate-usings theory) 'unbound)
+  (setf (all-usings theory)
+	(let ((imps nil))
+	  (map-lhash #'(lambda (th thinsts)
+			 (unless (from-prelude? th)
+			   (push (cons th thinsts) imps)))
+		     (using-hash (saved-context theory)))
+	  imps)))
+
 
 (defun add-new-decls-to-prover-contexts (decls proofstate)
   (let ((*symbol-tables* nil))
@@ -131,7 +163,7 @@
   (let ((*current-context* context))
     (dolist (d decls)
       (typecase d
-	(importing nil)
+	(importing (add-to-using (theory-name d)))
 	(declaration (put-decl d (declarations-hash context)))))))
 
 (defun typecheck-new-decls (decls pdecl)
@@ -284,7 +316,7 @@
 				 (cons decl ttail))
 			 (cons decl ttail)))))
 	(setf (all-declarations thry) nil))
-      (assert (eq thry (module decl)))
+      (assert (or (importing? decl) (eq thry (module decl))))
       (assert (or (null *insert-add-decl*) (memq decl (all-decls thry))))
       (unless (or (importing? decl)
 		  (null *insert-add-decl*))
