@@ -989,43 +989,35 @@ is T) and disjunctively simplifies."
 		  (cdr subrange?)))))
 	   (bounded-int-type? (supertype type)))))
 
-(defun get-induction-domain-type (induction-name actual-type)
+(defun get-induction-domain-type (induction-name actual-type actual-var)
   (if induction-name  
       (let* ((name-expr (pc-parse induction-name 'name))
-	     (resolutions
-	      (resolve name-expr 'formula
-		       nil *current-context*)))
+	     (resolutions (resolve name-expr 'formula nil *current-context*)))
 	(if (singleton? resolutions)
-	    (let ((forms (create-formulas
-			  (car resolutions)
-			  *current-context*)))
+	    (let ((forms (create-formulas (car resolutions))))
 	      (if (and (singleton? forms)
 		       (forall-expr? (car forms))
-		       (predtype?
-			(type
-			 (car (bindings (car forms))))))
-		  (let
-		      ((type 
-			(domain
-			 (type  (car (bindings
-				      (car forms)))))))
+		       (predtype? (type (car (bindings (car forms))))))
+		  (let ((type (domain (type (car (bindings (car forms)))))))
 		    (if (compatible? type actual-type)
-			type
-			nil))
+			(if (fully-instantiated? type)
+			    type
+			    (instantiate-from type actual-type actual-var))
+			(progn
+			  (error-format-if
+			   "Induction predicate type: ~a~%~
+                            does not match type of variable: ~a"
+			   type actual-type)
+			  nil)))
 		  actual-type))
-	    actual-type)) 
-      (if (compatible? actual-type
+	    actual-type))
+      (if (compatible? actual-type *naturalnumber*)
+	  (when (tc-eq (compatible-type actual-type *naturalnumber*)
 		       *naturalnumber*)
-	  (if (tc-eq (compatible-type actual-type
-				      *naturalnumber*)
-		     *naturalnumber*)
-	      *naturalnumber*
-	      nil)
-	  (let ((supertype (find-supertype
-			    actual-type)))
-	    (if (adt? supertype)
-		supertype
-		nil)))))
+	    *naturalnumber*)
+	  (let ((supertype (find-supertype actual-type)))
+	    (when (adt? supertype)
+	      supertype)))))
 
 (defstep simple-induct (var fmla &optional name)
   (let ((var (pc-parse var 'expr));;get var name-expr
@@ -1078,7 +1070,7 @@ is T) and disjunctively simplifies."
 					 nil)
 				     nil)))))
 		    (type;;get domain type for induction predicate
-		     (get-induction-domain-type induction-name actual-type))
+		     (get-induction-domain-type induction-name actual-type actual-var))
 		    (new-bound-var
 		     (if (and type (not (tc-eq type actual-type)))
 			 (make-bind-decl (id actual-var) type)
@@ -1089,21 +1081,16 @@ is T) and disjunctively simplifies."
 			 (compatible-preds type actual-type new-var)
 			 nil));;compatible? has been checked above.
 		    (predicate
-		     (if type
-			 (if subtype-constraints
-			     (let* ((new-body (make-implication
-					       (make-conjunction
-						subtype-constraints)
-					       (substit
-						   body
-						 (list (cons actual-var
-							     new-var))))))
-			       (make-lambda-expr
-				   (list new-bound-var)
-				 new-body))
-			     (make-lambda-expr (list actual-var) body))
-			 nil))
-		    )
+		     (when type
+		       (if subtype-constraints
+			   (let* ((new-body
+				   (make-implication
+				    (make-conjunction subtype-constraints)
+				    (substit body
+				      (acons actual-var new-var nil)))))
+			     (make-lambda-expr (list new-bound-var)
+			       new-body))
+			   (make-lambda-expr (list actual-var) body)))))
 		(if induction-name
 		    (if predicate
 			(let ((rule `(then (lemma ,induction-name)(inst -1 ,predicate))))
