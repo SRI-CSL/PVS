@@ -232,7 +232,7 @@
 	      (setq nobj (lcopy nobj 'print-type pte))))
 	  (when (or (eq obj nobj)
 		    (and (null (freevars nobj))
-			 (null (free-params nobj))))
+			 (fully-instantiated? nobj)))
 	    (setf (gethash obj *subst-mod-params-cache*) nobj))
 	  #+pvsdebug
 	  (assert (every #'(lambda (fv)
