@@ -370,8 +370,8 @@
 
 
 (defun parsed-library-file? (mod)
-  (multiple-value-bind (lib path)
-      (get-library-pathname (library mod))
+  (let ((lib (library mod))
+	(path (library-path mod)))
     (and lib
 	 (let* ((impfiles (car (gethash lib *imported-libraries*)))
 		(prefiles (car (gethash lib *prelude-libraries*)))
@@ -596,30 +596,40 @@
 
 (defun get-library-pathname (libstr)
   (assert (stringp libstr))
-  (let* ((libdir (if (char= (schar libstr (1- (length libstr))) #\/)
-		     libstr
-		     (concatenate 'string libstr "/")))
-	 (libpath (namestring (merge-pathnames libdir *pvs-context-path*)))
-	 (lib-key (get-file-info libpath)))
-    (if lib-key
-	(let ((entry (assoc lib-key *library-alist* :test #'equal)))
-	  (cond (entry
-		 (values (cdr entry) libpath))
-		(t
-		 (push (cons lib-key libdir) *library-alist*)
-		 (values libdir libpath))))
-	(let* ((dlibpath (namestring
-			  (merge-pathnames libdir
-					   (format nil "~a/lib/" *pvs-path*))))
-	       (dlib-key (get-file-info dlibpath)))
-	  (if dlib-key
-	      (let ((entry (assoc dlib-key *library-alist* :test #'equal)))
-		(cond (entry
-		       (values (cdr entry) dlibpath))
-		      (t
-		       (push (cons dlib-key libdir) *library-alist*)
-		       (values libdir dlibpath))))
-	      (values nil nil "Library ~a does not exist"))))))
+  (let ((libdir (if (char= (schar libstr (1- (length libstr))) #\/)
+		    libstr
+		    (concatenate 'string libstr "/"))))
+    (multiple-value-bind (libpath condition)
+	(ignore-errors
+	  (namestring (merge-pathnames libdir *pvs-context-path*)))
+      (if condition
+	  (values nil nil (format nil "~a" condition))
+	  (let ((lib-key (get-file-info libpath)))
+	    (if lib-key
+		(let ((entry (assoc lib-key *library-alist* :test #'equal)))
+		  (cond (entry
+			 (values (cdr entry) libpath))
+			(t
+			 (push (cons lib-key libdir) *library-alist*)
+			 (values libdir libpath))))
+		(multiple-value-bind (dlibpath dcondition)
+		    (ignore-errors
+		      (namestring (merge-pathnames
+				   libdir (format nil "~a/lib/" *pvs-path*))))
+		  (if dcondition
+		      (values nil nil (format nil "~a" dcondition))
+		      (let ((dlib-key (get-file-info dlibpath)))
+			(if dlib-key
+			    (let ((entry (assoc dlib-key *library-alist*
+						:test #'equal)))
+			      (cond (entry
+				     (values (cdr entry) dlibpath))
+				    (t
+				     (push (cons dlib-key libdir)
+					   *library-alist*)
+				     (values libdir dlibpath))))
+			    (values nil nil
+				    "Library ~a does not exist")))))))))))
 
 
 (defun all-decls (theory)
