@@ -151,7 +151,8 @@ bind tighter.")
 		   :char-width *default-char-width*))))
 
 (defun pp (obj)
-  (pp* obj))
+  (let ((*disable-gc-printout* t))
+    (pp* obj)))
 
 ;(defmethod pp* :around ((syn syntax))
 ;  (call-next-method)
