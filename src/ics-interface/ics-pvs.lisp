@@ -138,7 +138,7 @@
 (defun ics-process (state atom)
   (assert (state-wrap? state))
   (assert (atom-wrap? atom))
-  (break)
+;  (break)
   (ics_process_wrapper (state-unwrap state) (atom-unwrap atom)))
 
 
