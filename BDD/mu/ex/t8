@@ -1,0 +1,30 @@
+domain = { x1, y1, w1, x2, y2, w2, x3, y3, w3, x4, y4, w4 };
+
+let N = L x1,x2,x3,x4,y1,y2,y3,y4 .
+          (x3 == (y1' + y2 + y4) & y3)
+        & (x4 == y2 + y4) ;
+
+let Nplus = mu Z . N + [ L x1,x2,x3,x4,y1,y2,y3,y4 .
+                         E w1,w2,w3,w4 .
+                           Z(x1,x2,x3,x4,w1,w2,w3,w4)
+                         & Z(w1,w2,w3,w4,y1,y2,y3,y4) ];
+
+let S0 = L x1,x2,x3,x4 . (x1' + x2 + x4) & x3;
+
+let F1 = N & [ L x1,x2,x3,x4,y1,y2,y3,y4 . x4 -> y2 ];
+
+let Fair = L x1,x2,x3,x4 . E y1,y2,y3,y4,w1,w2,w3,w4 .
+             Nplus(x1,x2,x3,x4,y1,y2,y3,y4)
+           &    F1(y1,y2,y3,y4,w1,w2,w3,w4)
+           & Nplus(w1,w2,w3,w4,y1,y2,y3,y4);
+
+E x1,x2,x3,x4 . S0(x1,x2,x3,x4) & Fair (x1,x2,x3,x4);
+
+write ("States reachable from initial state are:\n");
+S0(x1,x2,x3,x4) + ( E y1,y2,y3,y4 . S0 (y1,y2,y3,y4)
+  & Nplus(y1,y2,y3,y4,x1,x2,x3,x4));
+/*
+  x2 x3     
++ x3 x4     
++ x1' x3 . = 7 states
+*/

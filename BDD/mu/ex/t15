@@ -1,0 +1,44 @@
+/* Example of solving the satisfiability problem of a PTL formula
+   using a transformation to mu-calculus.
+*/
+
+domain = { x1, y1, w1, x2, y2, w2 };
+
+/* PTL formula f: <>a (~[]~a):
+
+   Set of elementary subformulas:
+   el (f) = {  a,  @[]a' }
+   coding:    x1, x2
+
+   alpha conversion for all subformulas:
+   a(~[]~a) = x1 + x2'
+   a([]a')  = x1' & x2
+
+   N is derived by and-ing the equivalence of all elementary formulas @f
+   with a(f):
+
+   N(x,y) = x2 == y1' & y2
+
+*/
+let N = L x1,x2,y1,y2 . x2 == y1' & y2;
+
+write ("Next state relation is N(x,y):\n");
+N(x1,x2,y1,y2);
+
+let Nplus = mu Z . N + [ L x1,x2,y1,y2 .
+ E w1,w2 . Z(x1,x2,w1,w2) & Z(w1,w2,y1,y2) ];
+
+write ("Transitive closure of Next state relation is N+(x,y):\n");
+Nplus(x1,x2,y1,y2);
+
+let S0 = L x1,x2 . x1 + x2';
+write ("S0(x1,x2) = ");
+S0(x1,x2);
+
+let Lasso = L x1,x2 . E y1,y2 . Nplus(x1,x2,y1,y2) & Nplus(y1,y2,y1,y2);
+
+write ("Reachable states that have fair paths are:\n");
+S0(x1,x2) & Lasso (x1,x2);
+
+write ("Is there a satisfiable initial state?\n");
+E x1,x2 . S0(x1,x2) & Lasso (x1,x2);

@@ -1,0 +1,70 @@
+Proposal for extension of MU to include vectors.
+(Not implemented yet)
+
+a vector is one-dimensional array
+
+The number of elements in a vector is called its length.
+
+special case: a vector of 1 element is treated like a scalar
+a scalar may also be treated like a 1-element vector
+(subscripting is allowed)
+
+all vectors have an implicit 0 index lowerbound.
+the index upperbound equals the number of elements minus 1
+
+It is an error when a vector is indexed outside its index range.
+
+a vectored constant/ constant-vector is a vector of all constant elements
+
+a vectored formula/ formula-vector is a vector of elements that are formulas
+
+anonymous vector construction:
+
+a list of comma separated elements enclosed in (square) brackets
+
+mu-calculus terms cannot be vectored.
+
+declaration
+
+construction
+
+subscription
+
+elements
+slices
+
+operations
+
+implicit type conversion:
+
+[ B ] = B
+
+[ B , B ] = B x B
+
+[ B , B x B ] = [ B , [ B , B ]] = [ B , B , B ]
+
+let f = L a, b . a' + b;
+
+E x . f(x)
+
+x must be vector of length >= 2
+
+E x1,x2,x3 . f(x1,x2,x3)
+
+= E x1,x2,x3 . f<a := x1, b := x2>
+
+in applications:
+
+argument list
+
+(x1, x2, x3, ...) = [ x1, x2, x3, ...] = x
+
+allow syntax for application:
+
+f x
+
+meaning: apply the n-ary function f (a term) to the vector x
+
+also allow for scalar case:
+
+f (a) = f a, with a scalar

@@ -1,0 +1,146 @@
+.TH double 3es
+.SH NAME
+D_cast (\|),
+D_exact (\|),
+D_add (\|),
+D_sub (\|),
+D_2up (\|),
+D_times2up (\|),
+D_divide2up (\|),
+D_compare (\|),
+D_sprintf (\|),
+D_fprintf (\|),
+D_printf (\|),
+\- operations on Double numbers
+.SH SYNOPSIS
+.C "#include <double.h>"
+.PP
+.C "Double D_cast (unsigned long n);"
+.PP
+.C "int D_exact (Double d);"
+.PP
+.C "Double D_add (Double d1, Double d2);"
+.PP
+.C "Double D_sub (Double d1, Double d2);"
+.PP
+.C "Double D_2up (unsigned long exp);"
+.PP
+.C "Double D_times2up (Double d, unsigned long exp);"
+.PP
+.C "Double D_divide2up (Double d, unsigned long exp);"
+.PP
+.C "long D_compare (Double d1, Double d2);"
+.PP
+.C "char *D_sprintf (char *buf, Double d, int maximize_exp);"
+.PP
+.C "void D_fprintf (FILE *fp, Double d);"
+.PP
+.C "void D_printf (Double d);"
+.SH DESCRIPTION
+The double package provides routines to manipulate Double numbers. Doubles
+with a capital D should not be confused with C language doubles; the only
+intentional similarity is that both are presented by the same number of bytes,
+i.e., sizeof (Double) == sizeof (double). A Double is an unsigned integer
+number with a extremely large exponent part, thus allowing for the
+representation of astronomically big integer numbers. Typically, the number of
+bits for the exponent is 16; the mantissa occupies 47 bits, and the remaining
+bit is reserved to indicate inexactness caused by rounding effects during the
+operations. Definitions of the type Double and some useful Double constants
+are found in the
+.RB < double.h >
+header file.
+The Double type looks like:
+
+ typedef unsigned long Word;
+
+ typedef struct {
+   Word inexact    : 1;
+   Word exp        : D_NR_EXP_BITS;
+   Word h_mantissa : D_NR_H_MANTISSA_BITS;
+   Word l_mantissa : D_NR_L_MANTISSA_BITS;
+ } Double;
+
+The following Double constants are available:
+
+ const Double Double_0;
+ const Double Double_1;
+ const Double Double_inf;
+
+Double_0 is the smallest Double number, representing 0; Double_1 represents 1;
+Double_inf is the largest Double, in case of a 16 bit exponent representing
+140737488355327*2^65535 which is approximately 1.41*10^19742.
+(or 8796093022207*2^1048575 which is approximately 2.782*10^315665, for a 20
+bits exponent).
+[ The number of bits of the exponent may be set at compile-time. ]
+.PP
+Double arguments to the routines must be in normalized form. If so, the Double
+results of routines with Double arguments are guaranteed to be normalized as
+well. A Double is in normalized form when its exponent is minimum, i.e., the
+mantissa has a maximum of significant bits.
+.TP 15
+.C D_cast()
+Creates a normalized Double number for its unsigned long argument.
+.TP
+.C D_exact()
+Tests whether the Double argument is still exact.
+.TP
+.C D_add()
+Adds its two Double arguments. Precision may be lost; this is indicated by the
+INEXACT bit of the result.
+.TP
+.C D_sub()
+Subtracts the second Double argument from the first.
+Since a Double can only represent non-negative numbers, this routine returns
+Double_0 when the second argument is greater than the first.
+Precision may be lost.
+.TP
+.C D_2up()
+Returns the 2-power of its unsigned long argument.
+No check is done on overflow.
+.TP
+.C D_times2up()
+Returns the product of its Double argument multiplied with the 2-power of the
+second argument.
+No check is done on overflow.
+.TP
+.C D_divide2up()
+Returns the quotient of its Double argument divided by the 2-power of the
+second argument.
+Precision may be lost.
+.TP
+.C D_compare()
+Returns -1 when the first Double is smaller than the second; returns 1 when
+the first Double is greater than the second; returns 0 when both arguments are
+equal.
+.TP
+.C D_sprintf()
+Returns a decimal representation for the Double argument in the character
+string buffer pointed to by
+.IR buf .
+The returned character string will be null terminated.
+The buffer argument is expected to be large enough to hold the representation
+for Double_inf + the string " (approx)" + the null terminator character
+(max 33 chars in all). It is safest to use D_BUFSIZ.
+Doubles that are smaller than 2^47 are represented without a 2-power exponent.
+Larger numbers consist of a decimal part followed by the multiplication
+operator "*", followed by the 2-power indicator "2^", followed by the exponent.
+A large number that is exactly a power of 2 will not have the leading "1*"
+factor.
+No signs or leading zeroes will ever occur.
+The argument "maximize_exp" when true, causes the exponent to be maximized without loss of significant digits in the mantissa.
+.TP
+.C D_fprintf()
+Like
+.C D_sprintf()
+but now the Double is printed to the open file referred to by the file pointer
+argument.
+.TP
+.C D_printf()
+Like
+.C D_fprintf()
+but now the Double is printed to stdout.
+.SH AUTHOR
+.C double
+was developed by Geert Janssen at the Eindhoven Technical University, the
+Netherlands.
+.SH SEE ALSO

@@ -1,0 +1,35 @@
+domain = { x1,y1,x0,y0 };
+
+let  N = L x1, x0, y1, y0 . (y1 == x1 * x0) & (y0 == x0');
+let S0 = L x1, x0 . x1' & x0';
+let Good = L x1,x0 . ~(x1 & x0);
+
+Reachable (0,0) (x1,x0);
+Reachable (0,1) (x1,x0);
+Reachable (1,0) (x1,x0);
+Reachable (1,1) (x1,x0);
+Reachable (0,S0) (x1,x0);
+Reachable (1,S0) (x1,x0);
+Reachable (N,0) (x1,x0);
+Reachable (N,1) (x1,x0);
+
+Reachable (0,0,0) (x1,x0);
+Reachable (0,1,0) (x1,x0);
+Reachable (1,0,0) (x1,x0);
+Reachable (1,1,0) (x1,x0);
+Reachable (0,S0,0) (x1,x0);
+Reachable (1,S0,0) (x1,x0);
+Reachable (N,0,0) (x1,x0);
+Reachable (N,1,0) (x1,x0);
+
+Reachable (0,0,Good) (x1,x0);
+Reachable (0,1,Good) (x1,x0);
+Reachable (1,0,Good) (x1,x0);
+Reachable (1,1,Good) (x1,x0);
+Reachable (0,S0,Good) (x1,x0);
+Reachable (1,S0,Good) (x1,x0);
+Reachable (N,0,Good) (x1,x0);
+Reachable (N,1,Good) (x1,x0);
+
+[ mu Z . Reachable (N,Z)] (x1, x0);
+[ mu Z . Reachable (N,Z + [L x,y. x' & y'])] (x1, x0);

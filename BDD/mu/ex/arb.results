@@ -1,0 +1,122 @@
+N-cell arbiter reachable state-space calculation
+(DVO on, exhaustive after every "let")
+
+HP9000/s755
+
+$aa$=   402653184
+$cc$=  7516192768
+$bb$=137438953472
+
+.TS
+center box;
+C | C | C | C S | C S | C S
+C | C | C | C C | C C | C C
+N | N | N | N N | N N | N N .
+$n$	#states	Tot	$S0$	Next-state	Reachability
+	($n mul 2 sup n$)	sec	msec	#nodes	msec	#nodes	msec	#nodes
+=
+8	2048	1.5	20	24	1480	60	50	15
+9	4608	2.0	40	27	1920	65	60	17
+10	10240	2.6	60	30	2480	75	100	19
+11	22528	3.2	60	33	3000	70	160	21
+12	49152	4.9	70	36	4680	90	170	23
+13	106496	7.3	80	39	6970	95	250	25
+14	229376	10.6	110	42	10120	105	430	27	
+15	491520	9.8	110	45	9370	110	340	29
+16	1048576	12.5	140	48	11940	80	450	31
+24	$aa$	52.7	310	72	41640	120	10810	47
+28	$cc$	66.2	390	84	59930	285	6100	55
+.T&
+N | N | N | N N | C S | N N .
+32	$bb$	-	480	96	Killed >120M	-	-
+.TE
+.sp -1
+.TB "Results of arbiter's reachable states calculation."
+
+30		480	90	>78M
+32		480	96 Killed >120M
+
+/* 26-6-1995 python
+   - grouping
+   - bdd_constrain uses computed_table
+*/
+*8	2048	1.4	30	24	1360	60	30	15
+9	4608	2.0	40	27	1920	65	60	17
+*10	10240	2.3	30	30	2220	75	90	19
+11	22528	3.2	60	33	3000	70	160	21
+12	49152	4.9	70	36	4680	90	170	23
+13	106496	7.3	80	39	6970	95	250	25
+*14	229376	10.1	50	42	9830	105	250	27	
+*15	491520	8.8	60	45	8450	110	340	29
+*16	1048576	10.6	60	48	10130	95	410	31
+24	$aa$	52.7	310	72	41640	120	10810	47
+*28	$cc$	52.4	180	84	46690	285	5570	55
+
+27-9-95 cobra (seems a little faster (10%) than python)
+-restrict (no USE_CACHE)
+n	BDD(N)	msec	BDD(R)	msec	tot sec
+8	50	600	15	70	0.7
+10	90	1480	19	130	1.6
+11	65	1700	21	130	1.9
+12	80	2070	23	200	2.3
+16	125	4540	31	870	5.5
+24	210	17020	47	7400	24.5
+28	165	29440	55	17970	47.7
+32	280	39290	63	25610	1:05.3
+48	560	557350	95	1339690	31:07.5	(viper)
+*** BDD Unique-Table Info (479 hash tables, 479 groups) ***
+Nodes: 7646730, use: 44245 (42994 alive,1251 dead,49 frozen); peak: 7644815.
+Memory: Nodes: 179264, U-tab: 821, C-tab: 12799, Tot: 192888, Peak: 205464 (kb).
+Top-Level ITE calls             : 20949396.
+Garbage Collection calls        :    164.
+Dynamic Variable Ordering calls :     68.
+*** BDD Computed Table Cache Info ***
+94174602 lookups, 30291987 hits, -13% success (43124229 collisions, 0% occ).
+*** MU Package Statistics ***
+Formula/Term Cache hits: 0.
+
+real    36:08.6
+user    31:07.5
+sys        32.7
+
+64					>200Mb viper
+-sr
+32	280	38680	63	27260	1:06.3
+-asr
+32	195	38030	63	32280	1:10.6
+
+27-9-95 cobra
+-constrain (no USE_CACHE)
+8	50	610	15	0	0.6
+10	90	1460	19	180	1.6
+11	65	1700	21	140	1.9
+12	80	2100	23	210	2.3
+16	125	4570	31	910	5.5
+24	210	17010	47	7790	24.9
+28	165	29590	55	19280	49.1
+32	280	39220	63	26820	1:06.4
+
+-constrain (new routine, no explicit switching off of DVO) no USE_CACHE
+8	50	600	15	30	0.6
+16	125	4530	31	920	5.5
+24	201	16880	47	7830	24.9
+32	280	39540	63	26830	1:06.6
+
+-constrain (new routine, no explicit switching off of DVO) + USE_CACHE
+8	60	1310	15	50	1.4
+10	75	2270	19	90	2.3
+11	70	2650	21	120	2.8
+12	90	4130	23	150	4.3
+16	95	10040	31	360	10.5
+24	180	33740	47	2630	36.5
+
+27-9-95 cobra
+-and (no USE_CACHE)
+8	50	620	15	50	0.7
+10	90	1460	19	200	1.7
+11	65	1690	21	140	1.9
+12	80	2090	23	170	2.2
+16	125	4550	31	980	5.6
+24	210	17080	47	12560	29.8
+28	165	29460	55	22710	52.5
+32	280	39350	63	40130	1:19.8

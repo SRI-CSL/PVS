@@ -1,0 +1,98 @@
+/*
+ DOCUMENTATION INFORMATION                                 module: MU CALCULUS
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ system    : Hewlett-Packard/Apollo HP425
+ file      : syntax (LL(1) grammar)
+ unit-title: MU-CALC GRAMMAR
+ ref.      : 
+ author(s) : Copyright (c) 1992-1995 G.L.J.M. Janssen
+ date      : 29-MAR-1995
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+*/
+/*$C+*/
+
+/* Conditional: */
+Formula : Formula_1 [ '?' Formula ':' Formula ]
+/* Substitution: */
+	| Formula_1 '[' Formula '/' B_Var ']'
+	| Formula_1 '[' B_Var ':=' Formula ']'
+
+        | Quantified_Formula
+        .
+
+/* Universal Quant., Derivative, Existential Quant.: */
+Quantified_Formula : ( 'A' | 'D' | 'E' ) { B_Var / ',' }+ '.' Formula .
+
+/* Implication, Equivalence, Exclusive-or: */
+Formula_1 : Formula_2 { ( '->' | '<-' | '<->' | XOR ) Formula_2 } .
+
+/* (Inclusive-) or: */
+Formula_2 : Formula_3 { OR Formula_3 } .
+
+/* And: */
+Formula_3 : Formula_4 { AND Formula_4 } .
+
+/* (Generalized) Cofactor: */
+Formula_4 : Formula_5 { '|' Formula_5 } .
+
+/* Complement: */
+Formula_5 : { NOT } Atomic_Formula .
+
+Atomic_Formula : Primitive_Formula
+               | '(' Formula ')'
+               .
+
+Primitive_Formula : FALSE
+                  | TRUE
+                  | B_Var [ '''' ]
+                  | Application
+                  .
+
+Application : ( Atomic_Term | 'one_of' | 'none_of' ) Arguments .
+
+Arguments : '(' { Formula / ',' }+ ')' .
+
+Term : Term_1
+     | Abstraction
+     | Fixed_Point
+     .
+
+Abstraction : 'L' { B_Var / ',' }+ '.' Formula .
+
+Fixed_Point : ( MU | NU ) [ '(' BOUND ')' ] R_Var '.' Term .
+
+Term_1 : Term_2 { ( '->' | '<-' | '<->' | XOR ) Term_2 } .
+
+Term_2 : Term_3 { OR Term_3 } .
+
+Term_3 : Term_4 { AND Term_4 } .
+
+Term_4 : { NOT } Atomic_Term .
+
+Atomic_Term : Primitive_Term
+	    | Predefined_Term
+            | '[' Term ']'
+/* Rudimentary form of curried application: */
+            | '[' Atomic_Term Arguments ']'
+            .
+
+Primitive_Term : NIL       /* generic empty relation */
+               | UNIVERSE  /* generic complete relation */
+               | R_Var [ '''' ]
+               .
+
+/* Meaning:
+   Reachable (Next, S0 [ , Inv ]) where
+   Next is a term L x,y . ---,
+   S0 is a term L x . ---, and
+   Inv is a term L x . ---.
+   Calculates R = mu Z . S0 + [ L y. E x. Z(x) & N(x,y) ] but attempts to do
+   this more efficiently than using the above formula directly.
+   If however Inv is present and R -> Inv is not a tautology then
+   the NIL term results.
+   Next is naturally interpreted to represent the next-state relation
+   of a FSM, S0 represents the set of initial states, and Inv is an invariant
+   that has to hold for all states reachable from the initial ones.
+*/
+Predefined_Term : 'Reachable' '(' Term ',' Term [ ',' Term ] ')'
+		;

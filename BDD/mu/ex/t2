@@ -1,0 +1,17 @@
+domain = { a, b, c, d };
+
+let B = L a, b . ( a' + b );
+
+B(c,d);
+
+let C = L a . a';
+
+C c;
+C C b;
+C (C (b));
+
+C C C (b , a);
+
+C (a+b);
+
+B (a, a, a);

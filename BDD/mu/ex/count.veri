@@ -1,0 +1,6 @@
+const N = 16;
+
+module incrementer (input Y[N-1:0]; output $Y[N-1:0])
+{
+  $Y = Y + 1;
+}

@@ -1,0 +1,22 @@
+/* 2-bit counter 1 */
+
+/* Next-state functions: */
+let D1[1] = L Y1[1], Y1[0], in . in & (Y1[1] * Y1[0]) + !in & Y1[1];
+let D1[0] = L Y1[1], Y1[0], in . in * Y1[0];
+
+let D2[1] = D1[1];
+let D2[0] = D1[0];
+
+/* Product machine: */
+
+let D[3] = L Y[3], Y[2], Y[1], Y[0], in . D2[1] (Y[3],Y[2],in);
+let D[2] = L Y[3], Y[2], Y[1], Y[0], in . D2[0] (Y[3],Y[2],in);
+let D[1] = L Y[3], Y[2], Y[1], Y[0], in . D1[1] (Y[1],Y[0],in);
+let D[0] = L Y[3], Y[2], Y[1], Y[0], in . D1[0] (Y[1],Y[0],in);
+
+/* Initial states for product machine: */
+Let S0 = L
+C1[1], C1[0], C2[1], C2[0] .
+C1[1]' & C1[0]' & C2[1]' & C2[0]';
+
+A Y[3], Y[2], Y[1], Y[0] . S0(Y[3], Y[2], Y[1], Y[0]) -> (Y[3] == Y[1]);

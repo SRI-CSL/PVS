@@ -1,0 +1,199 @@
+/* 4-bit Synchronous Arbiter */
+
+/* Init: */
+Let S0 = L
+tokenout[0],
+tokenout[1],
+tokenout[2],
+tokenout[3],
+W[0],
+W[1],
+W[2],
+W[3]
+.
+(
+  tokenout[0]  & tokenout[1]' & tokenout[2]' & tokenout[3]'
++ tokenout[0]' & tokenout[1]  & tokenout[2]' & tokenout[3]'
++ tokenout[0]' & tokenout[1]' & tokenout[2]  & tokenout[3]'
++ tokenout[0]' & tokenout[1]' & tokenout[2]' & tokenout[3]
+)
+& W[0]' & W[1]' & W[2]' & W[3]'
+;
+
+let N = L
+
+tokenout[0],
+tokenout[1],
+tokenout[2],
+tokenout[3],
+W[0],
+W[1],
+W[2],
+W[3],
+
+@tokenout[0],
+@tokenout[1],
+@tokenout[2],
+@tokenout[3],
+@W[0],
+@W[1],
+@W[2],
+@W[3]
+.
+
+E
+req[0],
+req[1],
+req[2],
+req[3]
+.
+  (@tokenout[1] == tokenout[0])
+& (@tokenout[2] == tokenout[1])
+& (@tokenout[3] == tokenout[2])
+& (@tokenout[0] == tokenout[3])
+& (@W[0] == (W[0] + tokenout[0]) & req[0])
+& (@W[1] == (W[1] + tokenout[1]) & req[1])
+& (@W[2] == (W[2] + tokenout[2]) & req[2])
+& (@W[3] == (W[3] + tokenout[3]) & req[3]);
+
+let Nplus =
+
+mu Z . N +
+
+[ L
+tokenout[0],
+tokenout[1],
+tokenout[2],
+tokenout[3],
+W[0],
+W[1],
+W[2],
+W[3],
+
+@tokenout[0],
+@tokenout[1],
+@tokenout[2],
+@tokenout[3],
+@W[0],
+@W[1],
+@W[2],
+@W[3]
+.
+E
+_tokenout[0],
+_tokenout[1],
+_tokenout[2],
+_tokenout[3],
+_W[0],
+_W[1],
+_W[2],
+_W[3]
+.
+Z (
+tokenout[0],
+tokenout[1],
+tokenout[2],
+tokenout[3],
+W[0],
+W[1],
+W[2],
+W[3],
+
+_tokenout[0],
+_tokenout[1],
+_tokenout[2],
+_tokenout[3],
+_W[0],
+_W[1],
+_W[2],
+_W[3]
+)
+&
+Z (
+_tokenout[0],
+_tokenout[1],
+_tokenout[2],
+_tokenout[3],
+_W[0],
+_W[1],
+_W[2],
+_W[3],
+
+@tokenout[0],
+@tokenout[1],
+@tokenout[2],
+@tokenout[3],
+@W[0],
+@W[1],
+@W[2],
+@W[3]
+)
+];
+
+write ("States reachable from initial state are:\n");
+
+S0 (
+tokenout[0],
+tokenout[1],
+tokenout[2],
+tokenout[3],
+W[0],
+W[1],
+W[2],
+W[3]
+)
++
+( E
+_tokenout[0],
+_tokenout[1],
+_tokenout[2],
+_tokenout[3],
+_W[0],
+_W[1],
+_W[2],
+_W[3]
+.
+S0 (
+_tokenout[0],
+_tokenout[1],
+_tokenout[2],
+_tokenout[3],
+_W[0],
+_W[1],
+_W[2],
+_W[3]
+)
+&
+Nplus (
+_tokenout[0],
+_tokenout[1],
+_tokenout[2],
+_tokenout[3],
+_W[0],
+_W[1],
+_W[2],
+_W[3],
+
+tokenout[0],
+tokenout[1],
+tokenout[2],
+tokenout[3],
+W[0],
+W[1],
+W[2],
+W[3]
+));
+
+/*
+(ack[0] = (W[0] & tokenout[0] | 1 & !(W[0] & tokenout[0] | W[1] & 
+	  tokenout[1] | W[2] & tokenout[2] | W[3] & tokenout[3])) & req[0])
+(ack[1] = (W[1] & tokenout[1] | !req[0] & !(W[0] & tokenout[0] | W[1] & 
+	  tokenout[1] | W[2] & tokenout[2] | W[3] & tokenout[3])) & req[1])
+(ack[2] = (W[2] & tokenout[2] | !req[0] & !req[1] & !(W[0] & tokenout[0]
+	   | W[1] & tokenout[1] | W[2] & tokenout[2] | W[3] & tokenout[3]))
+	   & req[2])
+(ack[3] = (W[3] & tokenout[3] | !req[0] & !req[1] & !req[2] & !(W[0] & 
+	  tokenout[0] | W[1] & tokenout[1] | W[2] & tokenout[2] | W[3] & 
+	  tokenout[3])) & req[3])
+)
+*/

@@ -1,0 +1,36 @@
+/* Iterative Squaring. */
+
+domain = { x, y, w };
+
+/* Predicate for state to be initial state: */
+let V0 = L x . x';
+
+/* Predicate for state pair connected by an edge: */
+let N = L x,y . x' & y' + x' & y;
+
+/* Predicate for states reachable from initial states:
+   (initial states are reachable by definition (reflexivity))
+*/
+let R = mu Q . L y . V0(y) + ( E x . Q(x) & N(x,y) );
+/* Simplification:
+let R = mu Q . L y . V0(y) + [ L y . ( E x . Q(x) & N(x,y) ) ];
+let R = mu Q . V0 + [ L y . E x . Q(x) & N(x,y) ];
+*/
+
+write ("R(x) = "); R(x);
+write ("R(0) = "); R(0);
+write ("R(1) = "); R(1);
+
+/* Predicate for state pair connected by non-empty path:
+   (transitive closure of N)
+*/
+let Nplus = mu Z . L x,y . N(x,y) + ( E w . Z(x,w) & Z(w,y) );
+
+write ("N+(x,y) = "); Nplus(x,y);
+
+/* Predicate for states reachable from initial states: */
+let Vstar = L y . V0(y) + ( E x . V0(x) & Nplus(x,y) );
+
+write ("V*(x) = "); Vstar(x);
+
+write ("R = V*: "); A x . [ R == Vstar ](x);

@@ -1,0 +1,11 @@
+let COUT1 = ((CARRYIN AND B[1]) OR (CARRYIN AND A[1]) OR (B[1] AND A[1])).
+let COUT2 = ((COUT1 AND B[2]) OR (COUT1 AND A[2]) OR (B[2] AND A[2])).
+let COUT3 = ((COUT2 AND B[3]) OR (COUT2 AND A[3]) OR (B[3] AND A[3])).
+let ACOUT = ((COUT3 AND B[4]) OR (COUT3 AND A[4]) OR (B[4] AND A[4])).
+
+let AO[1] = ((A[1] XOR B[1]) XOR CARRYIN).
+let AO[2] = ((A[2] XOR B[2]) XOR COUT1).
+let AO[3] = ((A[3] XOR B[3]) XOR COUT2).
+let AO[4] = ((A[4] XOR B[4]) XOR COUT3).
+
+[ AO[1], AO[2], AO[3], AO[4], ACOUT ].

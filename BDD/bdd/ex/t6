@@ -1,0 +1,122 @@
+write ("3: ite(v,ite(w,0,0),ite(w,0,X))\n").
+ite(v,ite(w,0,0),ite(w,0,X)).
+write ("6: ite(v,ite(w,0,0),ite(w,1,X))\n").
+ite(v,ite(w,0,0),ite(w,1,X)).
+write ("7: ite(v,ite(w,0,0),ite(w,X,0))\n").
+ite(v,ite(w,0,0),ite(w,X,0)).
+write ("8: ite(v,ite(w,0,0),ite(w,X,1))\n").
+ite(v,ite(w,0,0),ite(w,X,1)).
+write ("12: ite(v,ite(w,0,1),ite(w,0,X))\n").
+ite(v,ite(w,0,1),ite(w,0,X)).
+write ("15: ite(v,ite(w,0,1),ite(w,1,X))\n").
+ite(v,ite(w,0,1),ite(w,1,X)).
+write ("16: ite(v,ite(w,0,1),ite(w,X,0))\n").
+ite(v,ite(w,0,1),ite(w,X,0)).
+write ("17: ite(v,ite(w,0,1),ite(w,X,1))\n").
+ite(v,ite(w,0,1),ite(w,X,1)).
+write ("19: ite(v,ite(w,0,X),ite(w,0,0))\n").
+ite(v,ite(w,0,X),ite(w,0,0)).
+write ("20: ite(v,ite(w,0,X),ite(w,0,1))\n").
+ite(v,ite(w,0,X),ite(w,0,1)).
+write ("21: ite(v,ite(w,0,X),ite(w,0,X))\n").
+ite(v,ite(w,0,X),ite(w,0,X)).
+write ("22: ite(v,ite(w,0,X),ite(w,1,0))\n").
+ite(v,ite(w,0,X),ite(w,1,0)).
+write ("23: ite(v,ite(w,0,X),ite(w,1,1))\n").
+ite(v,ite(w,0,X),ite(w,1,1)).
+write ("24: ite(v,ite(w,0,X),ite(w,1,X))\n").
+ite(v,ite(w,0,X),ite(w,1,X)).
+write ("25: ite(v,ite(w,0,X),ite(w,X,0))\n").
+ite(v,ite(w,0,X),ite(w,X,0)).
+write ("26: ite(v,ite(w,0,X),ite(w,X,1))\n").
+ite(v,ite(w,0,X),ite(w,X,1)).
+write ("27: ite(v,ite(w,0,X),ite(w,X,X))\n").
+ite(v,ite(w,0,X),ite(w,X,X)).
+write ("30: ite(v,ite(w,1,0),ite(w,0,X))\n").
+ite(v,ite(w,1,0),ite(w,0,X)).
+write ("33: ite(v,ite(w,1,0),ite(w,1,X))\n").
+ite(v,ite(w,1,0),ite(w,1,X)).
+write ("34: ite(v,ite(w,1,0),ite(w,X,0))\n").
+ite(v,ite(w,1,0),ite(w,X,0)).
+write ("35: ite(v,ite(w,1,0),ite(w,X,1))\n").
+ite(v,ite(w,1,0),ite(w,X,1)).
+write ("39: ite(v,ite(w,1,1),ite(w,0,X))\n").
+ite(v,ite(w,1,1),ite(w,0,X)).
+write ("42: ite(v,ite(w,1,1),ite(w,1,X))\n").
+ite(v,ite(w,1,1),ite(w,1,X)).
+write ("43: ite(v,ite(w,1,1),ite(w,X,0))\n").
+ite(v,ite(w,1,1),ite(w,X,0)).
+write ("44: ite(v,ite(w,1,1),ite(w,X,1))\n").
+ite(v,ite(w,1,1),ite(w,X,1)).
+write ("46: ite(v,ite(w,1,X),ite(w,0,0))\n").
+ite(v,ite(w,1,X),ite(w,0,0)).
+write ("47: ite(v,ite(w,1,X),ite(w,0,1))\n").
+ite(v,ite(w,1,X),ite(w,0,1)).
+write ("48: ite(v,ite(w,1,X),ite(w,0,X))\n").
+ite(v,ite(w,1,X),ite(w,0,X)).
+write ("49: ite(v,ite(w,1,X),ite(w,1,0))\n").
+ite(v,ite(w,1,X),ite(w,1,0)).
+write ("50: ite(v,ite(w,1,X),ite(w,1,1))\n").
+ite(v,ite(w,1,X),ite(w,1,1)).
+write ("51: ite(v,ite(w,1,X),ite(w,1,X))\n").
+ite(v,ite(w,1,X),ite(w,1,X)).
+write ("52: ite(v,ite(w,1,X),ite(w,X,0))\n").
+ite(v,ite(w,1,X),ite(w,X,0)).
+write ("53: ite(v,ite(w,1,X),ite(w,X,1))\n").
+ite(v,ite(w,1,X),ite(w,X,1)).
+write ("54: ite(v,ite(w,1,X),ite(w,X,X))\n").
+ite(v,ite(w,1,X),ite(w,X,X)).
+write ("55: ite(v,ite(w,X,0),ite(w,0,0))\n").
+ite(v,ite(w,X,0),ite(w,0,0)).
+write ("56: ite(v,ite(w,X,0),ite(w,0,1))\n").
+ite(v,ite(w,X,0),ite(w,0,1)).
+write ("57: ite(v,ite(w,X,0),ite(w,0,X))\n").
+ite(v,ite(w,X,0),ite(w,0,X)).
+write ("58: ite(v,ite(w,X,0),ite(w,1,0))\n").
+ite(v,ite(w,X,0),ite(w,1,0)).
+write ("59: ite(v,ite(w,X,0),ite(w,1,1))\n").
+ite(v,ite(w,X,0),ite(w,1,1)).
+write ("60: ite(v,ite(w,X,0),ite(w,1,X))\n").
+ite(v,ite(w,X,0),ite(w,1,X)).
+write ("61: ite(v,ite(w,X,0),ite(w,X,0))\n").
+ite(v,ite(w,X,0),ite(w,X,0)).
+write ("62: ite(v,ite(w,X,0),ite(w,X,1))\n").
+ite(v,ite(w,X,0),ite(w,X,1)).
+write ("63: ite(v,ite(w,X,0),ite(w,X,X))\n").
+ite(v,ite(w,X,0),ite(w,X,X)).
+write ("64: ite(v,ite(w,X,1),ite(w,0,0))\n").
+ite(v,ite(w,X,1),ite(w,0,0)).
+write ("65: ite(v,ite(w,X,1),ite(w,0,1))\n").
+ite(v,ite(w,X,1),ite(w,0,1)).
+write ("66: ite(v,ite(w,X,1),ite(w,0,X))\n").
+ite(v,ite(w,X,1),ite(w,0,X)).
+write ("67: ite(v,ite(w,X,1),ite(w,1,0))\n").
+ite(v,ite(w,X,1),ite(w,1,0)).
+write ("68: ite(v,ite(w,X,1),ite(w,1,1))\n").
+ite(v,ite(w,X,1),ite(w,1,1)).
+write ("69: ite(v,ite(w,X,1),ite(w,1,X))\n").
+ite(v,ite(w,X,1),ite(w,1,X)).
+write ("70: ite(v,ite(w,X,1),ite(w,X,0))\n").
+ite(v,ite(w,X,1),ite(w,X,0)).
+write ("71: ite(v,ite(w,X,1),ite(w,X,1))\n").
+ite(v,ite(w,X,1),ite(w,X,1)).
+write ("72: ite(v,ite(w,X,1),ite(w,X,X))\n").
+ite(v,ite(w,X,1),ite(w,X,X)).
+write ("73: ite(v,ite(w,X,X),ite(w,0,0))\n").
+ite(v,ite(w,X,X),ite(w,0,0)).
+write ("74: ite(v,ite(w,X,X),ite(w,0,1))\n").
+ite(v,ite(w,X,X),ite(w,0,1)).
+write ("75: ite(v,ite(w,X,X),ite(w,0,X))\n").
+ite(v,ite(w,X,X),ite(w,0,X)).
+write ("76: ite(v,ite(w,X,X),ite(w,1,0))\n").
+ite(v,ite(w,X,X),ite(w,1,0)).
+write ("77: ite(v,ite(w,X,X),ite(w,1,1))\n").
+ite(v,ite(w,X,X),ite(w,1,1)).
+write ("78: ite(v,ite(w,X,X),ite(w,1,X))\n").
+ite(v,ite(w,X,X),ite(w,1,X)).
+write ("79: ite(v,ite(w,X,X),ite(w,X,0))\n").
+ite(v,ite(w,X,X),ite(w,X,0)).
+write ("80: ite(v,ite(w,X,X),ite(w,X,1))\n").
+ite(v,ite(w,X,X),ite(w,X,1)).
+write ("81: ite(v,ite(w,X,X),ite(w,X,X))\n").
+ite(v,ite(w,X,X),ite(w,X,X)).

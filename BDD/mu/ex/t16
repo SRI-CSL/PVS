@@ -1,0 +1,26 @@
+/* Example of solving the satisfiability problem of a PTL formula
+   using a transformation to mu-calculus.
+*/
+
+domain = { x1, y1, w1, x2, y2, w2, x3, y3, w3, x4, y4, w4 };
+
+/* PTL formula f: []P' & <>P ==> []P' & ~[]P'
+
+   Set of elementary subformulas:
+   el (f) = {  P,  @[]P', @[]P' }
+   coding:    x1,     x2,    x3
+
+*/
+let N = L x1,x2,x3,x4,y1,y2,y3,y4 .   (x3 == (y1' + y2 + y4) & y3)
+                                    & (x4 == y2 + y4) ;
+
+write ("Next state relation is N(x,y):\n");
+N(x1,x2,x3,x4,y1,y2,y3,y4);
+
+let Nplus = mu Z . N + [ L x1,x2,x3,y1,y2,y3 .
+ E w1,w2,w3 . Z(x1,x2,x3,w1,w2,w3) & Z(w1,w2,w3,y1,y2,y3) ];
+
+write ("Transitive closure of Next state relation is N+(x,y):\n");
+Nplus(x1,x2,x3,y1,y2,y3);
+
+let S0 = L x1,x2,x3 . x1' & ;

@@ -1,0 +1,9 @@
+/* Example BDD on cover of Brayton's Delft Lecture Notes.
+   Left/right ~ then/else orientation not sure.
+*/
+let order = a c e b d f.
+
+ite (a, ite (c, ite (e, 0, f'),
+                ite (e, d', ite (d, f', 1))),
+        ite (c, ite (e, b', ite (b, f', 1)),
+                ite (e, ite (b, d', 1), ite (b, ite (d, f', 1), 1)))).

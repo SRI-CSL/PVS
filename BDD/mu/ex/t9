@@ -1,0 +1,52 @@
+domain = { x1, y1, w1, x2, y2, w2, x3, y3, w3, x4, y4, w4 };
+
+/* PTL formula f: <>a & []a'
+
+   el (f) = {  a, @<>a, @[]a' }
+   coding:    x1,   x2,    x3
+
+*/
+let N = L x1,x2,x3,y1,y2,y3 . (x2 <-> y1 + y2) & (x3 <-> y1' & y3);
+
+/*
+let N = L x,y . (x[2] <-> y[1] + y[2]) & (x[3] <-> y[1]' & y[3]);
+*/
+
+write ("Next state relation is N(x,y):\n");
+N(x1,x2,x3,y1,y2,y3);
+
+/*
+N(0,0,0,y1,y2,y3);
+N(0,0,1,y1,y2,y3);
+N(0,1,0,y1,y2,y3);
+N(0,1,1,y1,y2,y3);
+N(1,0,0,y1,y2,y3);
+N(1,0,1,y1,y2,y3);
+N(1,1,0,y1,y2,y3);
+N(1,1,1,y1,y2,y3);
+*/
+
+let Nplus =
+mu Z . N + [ L x1,x2,x3,y1,y2,y3 .
+ E w1,w2,w3 . Z(x1,x2,x3,w1,w2,w3) & Z(w1,w2,w3,y1,y2,y3) ];
+
+write ("Transitive closure of Next state relation is N+(x,y):\n");
+Nplus(x1,x2,x3,y1,y2,y3);
+
+/* S0(x) = a(f)(x) = (x1 + x2) & (x1' & x3) */
+let S0 = L x1,x2,x3 . x1' & x2 & x3;
+
+let F1 = N & [ L x1,x2,x3,y1,y2,y3 . x2 -> x1 ];
+
+let Fair = L x1,x2,x3 .
+E y1,y2,y3,w1,w2,w3 .
+Nplus(x1,x2,x3,y1,y2,y3) & F1(y1,y2,y3,w1,w2,w3) & Nplus(w1,w2,w3,y1,y2,y3);
+
+write ("All states that have departing fair paths are:\n");
+Fair (x1,x2,x3);
+
+write ("States reachable from initial state are:\n");
+S0(y1,y2,y3) + ( E x1,x2,x3 . S0 (x1,x2,x3) & Nplus(x1,x2,x3,y1,y2,y3));
+
+write ("Is there a fair reachable state?\n");
+E x1,x2,x3 . S0(x1,x2,x3) & Fair (x1,x2,x3);

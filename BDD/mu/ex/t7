@@ -1,0 +1,371 @@
+/* minmax 5 */
+domain =
+{
+CLEAR, ENABLE, RESET,
+IN[4], LAST[4], @LAST[4], L[4], MIN[4], @MIN[4], MI[4], MAX[4], @MAX[4], MA[4],
+IN[3], LAST[3], @LAST[3], L[3], MIN[3], @MIN[3], MI[3], MAX[3], @MAX[3], MA[3],
+IN[2], LAST[2], @LAST[2], L[2], MIN[2], @MIN[2], MI[2], MAX[2], @MAX[2], MA[2],
+IN[1], LAST[1], @LAST[1], L[1], MIN[1], @MIN[1], MI[1], MAX[1], @MAX[1], MA[1],
+IN[0], LAST[0], @LAST[0], L[0], MIN[0], @MIN[0], MI[0], MAX[0], @MAX[0], MA[0]
+};
+
+/* Init: */
+Let S0 = L
+
+LAST[4], MIN[4], MAX[4],
+LAST[3], MIN[3], MAX[3],
+LAST[2], MIN[2], MAX[2],
+LAST[1], MIN[1], MAX[1],
+LAST[0], MIN[0], MAX[0] .
+
+(  MIN[4] & MAX[4]'
+ & MIN[3] & MAX[3]'
+ & MIN[2] & MAX[2]'
+ & MIN[1] & MAX[1]'
+ & MIN[0] & MAX[0]' );
+
+let N = L
+
+LAST[4], MIN[4], MAX[4],
+LAST[3], MIN[3], MAX[3],
+LAST[2], MIN[2], MAX[2],
+LAST[1], MIN[1], MAX[1],
+LAST[0], MIN[0], MAX[0],
+
+@LAST[4], @MIN[4], @MAX[4],
+@LAST[3], @MIN[3], @MAX[3],
+@LAST[2], @MIN[2], @MAX[2],
+@LAST[1], @MIN[1], @MAX[1],
+@LAST[0], @MIN[0], @MAX[0]
+
+.
+
+E CLEAR, ENABLE, RESET, IN[4], IN[3], IN[2], IN[1], IN[0] .
+
+(@LAST[0] <-> 
+  CLEAR' & ENABLE  & IN[0] 
+V CLEAR' & ENABLE' & LAST[0] 
+)
+&
+(@LAST[1] <-> 
+  CLEAR' & ENABLE  & IN[1] 
+V CLEAR' & ENABLE' & LAST[1] 
+)
+&
+(@LAST[2] <-> 
+  CLEAR' & ENABLE  & IN[2] 
+V CLEAR' & ENABLE' & LAST[2] 
+)
+&
+(@LAST[3] <-> 
+  CLEAR' & ENABLE  & IN[3] 
+V CLEAR' & ENABLE' & LAST[3] 
+)
+&
+(@LAST[4] <-> 
+  CLEAR' & ENABLE  & IN[4] 
+V CLEAR' & ENABLE' & LAST[4] 
+)
+&
+(@MIN[0] <-> 
+  CLEAR 
+V RESET 
+V IN[0] & MIN[0] 
+V IN[4] & IN[3] & IN[2] & IN[1] & MIN[1]' & MIN[0] 
+V MIN[4] & MIN[3] & MIN[2] & IN[1]' & MIN[1] & IN[0] 
+V IN[4] & IN[3] & IN[2] & MIN[2]' & MIN[0] 
+V MIN[4] & MIN[3] & IN[2]' & MIN[2] & IN[0] 
+V IN[4] & IN[3] & MIN[2]' & IN[1] & MIN[1]' & MIN[0] 
+V MIN[4] & MIN[3] & IN[2]' & IN[1]' & MIN[1] & IN[0] 
+V IN[4] & IN[3] & MIN[3]' & MIN[0] 
+V MIN[4] & IN[3]' & MIN[3] & IN[0] 
+V IN[4] & MIN[3]' & IN[2] & IN[1] & MIN[1]' & MIN[0] 
+V MIN[4] & IN[3]' & MIN[2] & IN[1]' & MIN[1] & IN[0] 
+V IN[4] & MIN[3]' & IN[2] & MIN[2]' & MIN[0] 
+V MIN[4] & IN[3]' & IN[2]' & MIN[2] & IN[0] 
+V IN[4] & MIN[3]' & MIN[2]' & IN[1] & MIN[1]' & MIN[0] 
+V MIN[4] & IN[3]' & IN[2]' & IN[1]' & MIN[1] & IN[0] 
+V IN[4] & MIN[4]' & MIN[0] 
+V IN[4]' & MIN[4] & IN[0] 
+V MIN[4]' & IN[3] & IN[2] & IN[1] & MIN[1]' & MIN[0] 
+V IN[4]' & MIN[3] & MIN[2] & IN[1]' & MIN[1] & IN[0] 
+V MIN[4]' & IN[3] & IN[2] & MIN[2]' & MIN[0] 
+V IN[4]' & MIN[3] & IN[2]' & MIN[2] & IN[0] 
+V MIN[4]' & IN[3] & MIN[2]' & IN[1] & MIN[1]' & MIN[0] 
+V IN[4]' & MIN[3] & IN[2]' & IN[1]' & MIN[1] & IN[0] 
+V MIN[4]' & IN[3] & MIN[3]' & MIN[0] 
+V IN[4]' & IN[3]' & MIN[3] & IN[0] 
+V MIN[4]' & MIN[3]' & IN[2] & IN[1] & MIN[1]' & MIN[0] 
+V IN[4]' & IN[3]' & MIN[2] & IN[1]' & MIN[1] & IN[0] 
+V MIN[4]' & MIN[3]' & IN[2] & MIN[2]' & MIN[0] 
+V IN[4]' & IN[3]' & IN[2]' & MIN[2] & IN[0] 
+V MIN[4]' & MIN[3]' & MIN[2]' & IN[1] & MIN[1]' & MIN[0] 
+V IN[4]' & IN[3]' & IN[2]' & IN[1]' & MIN[1] & IN[0] 
+V ENABLE'
+)
+&
+(@MIN[1] <-> 
+  CLEAR 
+V RESET 
+V IN[1] & MIN[1] 
+V IN[4] & IN[3] & IN[2] & MIN[2]' & MIN[1] 
+V MIN[4] & MIN[3] & IN[2]' & MIN[2] & IN[1] 
+V IN[4] & IN[3] & MIN[3]' & MIN[1] 
+V MIN[4] & IN[3]' & MIN[3] & IN[1] 
+V IN[4] & MIN[3]' & IN[2] & MIN[2]' & MIN[1] 
+V MIN[4] & IN[3]' & IN[2]' & MIN[2] & IN[1] 
+V IN[4] & MIN[4]' & MIN[1] 
+V IN[4]' & MIN[4] & IN[1] 
+V MIN[4]' & IN[3] & IN[2] & MIN[2]' & MIN[1] 
+V IN[4]' & MIN[3] & IN[2]' & MIN[2] & IN[1] 
+V MIN[4]' & IN[3] & MIN[3]' & MIN[1] 
+V IN[4]' & IN[3]' & MIN[3] & IN[1] 
+V MIN[4]' & MIN[3]' & IN[2] & MIN[2]' & MIN[1] 
+V IN[4]' & IN[3]' & IN[2]' & MIN[2] & IN[1] 
+V ENABLE'
+)
+&
+(@MIN[2] <-> 
+  CLEAR 
+V RESET 
+V IN[2] & MIN[2] 
+V IN[4] & IN[3] & MIN[3]' & MIN[2] 
+V MIN[4] & IN[3]' & MIN[3] & IN[2] 
+V IN[4] & MIN[4]' & MIN[2] 
+V IN[4]' & MIN[4] & IN[2] 
+V MIN[4]' & IN[3] & MIN[3]' & MIN[2] 
+V IN[4]' & IN[3]' & MIN[3] & IN[2] 
+V ENABLE'
+)
+&
+(@MIN[3] <-> 
+  CLEAR 
+V RESET 
+V IN[3] & MIN[3] 
+V IN[4] & MIN[4]' & MIN[3] 
+V IN[4]' & MIN[4] & IN[3] 
+V ENABLE'
+)
+&
+(@MIN[4] <-> 
+  CLEAR 
+V RESET 
+V IN[4] & MIN[4] 
+V ENABLE'
+)
+&
+(@MAX[0] <-> 
+  CLEAR' & ENABLE & RESET' & IN[4] & IN[3] & IN[2] & IN[1] & IN[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & MAX[3] & MAX[2] & MAX[1] & MAX[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & MAX[3] & MAX[2] & IN[1]' & MAX[0] 
+V CLEAR' & ENABLE & RESET' & IN[4] & IN[3] & IN[2] & MAX[1]' & IN[0] 
+V CLEAR' & ENABLE & RESET' & IN[4] & IN[3] & IN[2] & MAX[2]' & IN[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & MAX[3] & IN[2]' & MAX[2] & MAX[0] 
+V CLEAR' & ENABLE & RESET' & IN[4] & IN[3] & MAX[2]' & IN[1] & IN[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & MAX[3] & IN[2]' & MAX[1] & MAX[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & MAX[3] & IN[2]' & IN[1]' & MAX[0] 
+V CLEAR' & ENABLE & RESET' & IN[4] & IN[3] & MAX[2]' & MAX[1]' & IN[0] 
+V CLEAR' & ENABLE & RESET' & IN[4] & IN[3] & MAX[3]' & IN[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & IN[3]' & MAX[3] & MAX[0] 
+V CLEAR' & ENABLE & RESET' & IN[4] & MAX[3]' & IN[2] & IN[1] & IN[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & IN[3]' & MAX[2] & MAX[1] & MAX[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & IN[3]' & MAX[2] & IN[1]' & MAX[0] 
+V CLEAR' & ENABLE & RESET' & IN[4] & MAX[3]' & IN[2] & MAX[1]' & IN[0] 
+V CLEAR' & ENABLE & RESET' & IN[4] & MAX[3]' & IN[2] & MAX[2]' & IN[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & IN[3]' & IN[2]' & MAX[2] & MAX[0] 
+V CLEAR' & ENABLE & RESET' & IN[4] & MAX[3]' & MAX[2]' & IN[1] & IN[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & IN[3]' & IN[2]' & MAX[1] & MAX[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & IN[3]' & IN[2]' & IN[1]' & MAX[0] 
+V CLEAR' & ENABLE & RESET' & IN[4] & MAX[3]' & MAX[2]' & MAX[1]' & IN[0] 
+V CLEAR' & ENABLE & RESET' & IN[4] & MAX[4]' & IN[0] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & MAX[4] & MAX[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & IN[3] & IN[2] & IN[1] & IN[0] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & MAX[3] & MAX[2] & MAX[1] & MAX[0] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & MAX[3] & MAX[2] & IN[1]' & MAX[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & IN[3] & IN[2] & MAX[1]' & IN[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & IN[3] & IN[2] & MAX[2]' & IN[0] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & MAX[3] & IN[2]' & MAX[2] & MAX[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & IN[3] & MAX[2]' & IN[1] & IN[0] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & MAX[3] & IN[2]' & MAX[1] & MAX[0] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & MAX[3] & IN[2]' & IN[1]' & MAX[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & IN[3] & MAX[2]' & MAX[1]' & IN[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & IN[3] & MAX[3]' & IN[0] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & IN[3]' & MAX[3] & MAX[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & MAX[3]' & IN[2] & IN[1] & IN[0] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & IN[3]' & MAX[2] & MAX[1] & MAX[0] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & IN[3]' & MAX[2] & IN[1]' & MAX[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & MAX[3]' & IN[2] & MAX[1]' & IN[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & MAX[3]' & IN[2] & MAX[2]' & IN[0] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & IN[3]' & IN[2]' & MAX[2] & MAX[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & MAX[3]' & MAX[2]' & IN[1] & IN[0] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & IN[3]' & IN[2]' & MAX[1] & MAX[0] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & IN[3]' & IN[2]' & IN[1]' & MAX[0] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & MAX[3]' & MAX[2]' & MAX[1]' & IN[0] 
+)
+&
+(@MAX[1] <-> 
+  CLEAR' & ENABLE & RESET' & IN[4] & IN[3] & IN[2] & IN[1] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & MAX[3] & MAX[2] & MAX[1] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & MAX[3] & IN[2]' & MAX[1] 
+V CLEAR' & ENABLE & RESET' & IN[4] & IN[3] & MAX[2]' & IN[1] 
+V CLEAR' & ENABLE & RESET' & IN[4] & IN[3] & MAX[3]' & IN[1] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & IN[3]' & MAX[3] & MAX[1] 
+V CLEAR' & ENABLE & RESET' & IN[4] & MAX[3]' & IN[2] & IN[1] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & IN[3]' & MAX[2] & MAX[1] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & IN[3]' & IN[2]' & MAX[1] 
+V CLEAR' & ENABLE & RESET' & IN[4] & MAX[3]' & MAX[2]' & IN[1] 
+V CLEAR' & ENABLE & RESET' & IN[4] & MAX[4]' & IN[1] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & MAX[4] & MAX[1] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & IN[3] & IN[2] & IN[1] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & MAX[3] & MAX[2] & MAX[1] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & MAX[3] & IN[2]' & MAX[1] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & IN[3] & MAX[2]' & IN[1] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & IN[3] & MAX[3]' & IN[1] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & IN[3]' & MAX[3] & MAX[1] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & MAX[3]' & IN[2] & IN[1] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & IN[3]' & MAX[2] & MAX[1] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & IN[3]' & IN[2]' & MAX[1] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & MAX[3]' & MAX[2]' & IN[1] 
+)
+&
+(@MAX[2] <-> 
+  CLEAR' & ENABLE & RESET' & IN[4] & IN[3] & IN[2] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & MAX[3] & MAX[2] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & IN[3]' & MAX[2] 
+V CLEAR' & ENABLE & RESET' & IN[4] & MAX[3]' & IN[2] 
+V CLEAR' & ENABLE & RESET' & IN[4] & MAX[4]' & IN[2] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & MAX[4] & MAX[2] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & IN[3] & IN[2] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & MAX[3] & MAX[2] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & IN[3]' & MAX[2] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & MAX[3]' & IN[2] 
+)
+&
+(@MAX[3] <-> 
+  CLEAR' & ENABLE & RESET' & IN[4] & IN[3] 
+V CLEAR' & ENABLE & RESET' & MAX[4] & MAX[3] 
+V CLEAR' & ENABLE & RESET' & IN[4]' & MAX[3] 
+V CLEAR' & ENABLE & RESET' & MAX[4]' & IN[3] 
+)
+&
+(@MAX[4] <-> 
+  CLEAR' & ENABLE & RESET' & IN[4] 
+V CLEAR' & ENABLE & RESET' & MAX[4] 
+)
+;
+
+/*
+N (
+
+LAST[4], MIN[4], MAX[4],
+LAST[3], MIN[3], MAX[3],
+LAST[2], MIN[2], MAX[2],
+LAST[1], MIN[1], MAX[1],
+LAST[0], MIN[0], MAX[0],
+
+@LAST[4], @MIN[4], @MAX[4],
+@LAST[3], @MIN[3], @MAX[3],
+@LAST[2], @MIN[2], @MAX[2],
+@LAST[1], @MIN[1], @MAX[1],
+@LAST[0], @MIN[0], @MAX[0]
+);
+*/
+
+let Nplus =
+
+mu Z . N +
+
+[ L
+
+LAST[4], MIN[4], MAX[4],
+LAST[3], MIN[3], MAX[3],
+LAST[2], MIN[2], MAX[2],
+LAST[1], MIN[1], MAX[1],
+LAST[0], MIN[0], MAX[0],
+
+@LAST[4], @MIN[4], @MAX[4],
+@LAST[3], @MIN[3], @MAX[3],
+@LAST[2], @MIN[2], @MAX[2],
+@LAST[1], @MIN[1], @MAX[1],
+@LAST[0], @MIN[0], @MAX[0]
+.
+E
+L[4], MI[4], MA[4],
+L[3], MI[3], MA[3],
+L[2], MI[2], MA[2],
+L[1], MI[1], MA[1],
+L[0], MI[0], MA[0]
+.
+
+Z (
+LAST[4], MIN[4], MAX[4],
+LAST[3], MIN[3], MAX[3],
+LAST[2], MIN[2], MAX[2],
+LAST[1], MIN[1], MAX[1],
+LAST[0], MIN[0], MAX[0],
+
+L[4], MI[4], MA[4],
+L[3], MI[3], MA[3],
+L[2], MI[2], MA[2],
+L[1], MI[1], MA[1],
+L[0], MI[0], MA[0]
+
+)
+&
+Z (
+L[4], MI[4], MA[4],
+L[3], MI[3], MA[3],
+L[2], MI[2], MA[2],
+L[1], MI[1], MA[1],
+L[0], MI[0], MA[0],
+
+@LAST[4], @MIN[4], @MAX[4],
+@LAST[3], @MIN[3], @MAX[3],
+@LAST[2], @MIN[2], @MAX[2],
+@LAST[1], @MIN[1], @MAX[1],
+@LAST[0], @MIN[0], @MAX[0]
+)
+];
+
+write ("States reachable from initial state are:\n");
+S0
+(
+LAST[4], MIN[4], MAX[4],
+LAST[3], MIN[3], MAX[3],
+LAST[2], MIN[2], MAX[2],
+LAST[1], MIN[1], MAX[1],
+LAST[0], MIN[0], MAX[0]
+)
++
+(
+E
+@LAST[4], @MIN[4], @MAX[4],
+@LAST[3], @MIN[3], @MAX[3],
+@LAST[2], @MIN[2], @MAX[2],
+@LAST[1], @MIN[1], @MAX[1],
+@LAST[0], @MIN[0], @MAX[0]
+.
+S0
+(
+@LAST[4], @MIN[4], @MAX[4],
+@LAST[3], @MIN[3], @MAX[3],
+@LAST[2], @MIN[2], @MAX[2],
+@LAST[1], @MIN[1], @MAX[1],
+@LAST[0], @MIN[0], @MAX[0]
+)
+&
+Nplus
+(
+@LAST[4], @MIN[4], @MAX[4],
+@LAST[3], @MIN[3], @MAX[3],
+@LAST[2], @MIN[2], @MAX[2],
+@LAST[1], @MIN[1], @MAX[1],
+@LAST[0], @MIN[0], @MAX[0],
+
+LAST[4], MIN[4], MAX[4],
+LAST[3], MIN[3], MAX[3],
+LAST[2], MIN[2], MAX[2],
+LAST[1], MIN[1], MAX[1],
+LAST[0], MIN[0], MAX[0]
+));
+

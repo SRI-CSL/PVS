@@ -1,0 +1,1263 @@
+# inputs i1 i2 i3 i4 i5 i6 i7 i8
+# inputs i9 i10 i11 i12 i13 i14
+# outputs o1 o2 o3 o4 o5 o6 o7 o8
+# outputs o9 o10 o11 o12 o13 o14
+let o1 = i2 i3' i5 i6 i7 i8' i9 i10' i12 i13' i14
+      + i1 i2 i4 i5' i7 i9 i11 i12' i13 i14'
+      + i1' i2 i5 i7 i9 i11 i12' i13 i14'
+      + i1 i2 i4 i5' i7 i10 i11' i12 i13 i14'
+      + i1 i2 i4 i5' i7 i9' i10 i12 i13 i14'
+      + i1' i2 i5 i7 i10 i11' i12 i13 i14'
+      + i1' i2 i5 i7 i9' i10 i12 i13 i14'
+      + i1 i2 i4 i5' i7 i9 i10' i11 i13 i14'
+      + i2 i4' i5 i7 i9 i11 i12' i13 i14'
+      + i1' i2 i5 i7 i9 i10' i11 i13 i14'
+      + i2 i3' i5 i6 i7 i8' i9 i11 i13' i14
+      + i2 i4 i5' i6 i8 i9' i11 i13' i14
+      + i2 i3' i5 i6 i7 i8 i10 i11' i13' i14
+      + i2 i4' i5 i7 i10 i11' i12 i13 i14'
+      + i2 i4' i5 i7 i9' i10 i12 i13 i14'
+      + i3 i4 i5 i6' i8 i9' i11 i13' i14'
+      + i2 i3 i4' i7 i8 i9' i11 i13' i14
+      + i2 i4 i5' i6 i8 i10' i11 i13' i14
+      + i2 i5' i6 i7' i8 i9' i11 i13' i14
+      + i3 i4' i6 i8 i9' i11 i13' i14'
+      + i2 i4' i5 i6 i7 i8 i9' i11 i13' i14
+      + i1 i2 i4 i5' i7 i8 i10 i12' i13 i14'
+      + i2 i3 i5 i6' i8 i9' i11 i13' i14
+      + i2 i3' i4 i6 i8 i9' i11 i13' i14
+      + i2 i4' i5 i7 i9 i10' i11 i13 i14'
+      + i1' i2 i5 i7 i8 i10 i12' i13 i14'
+      + i1 i2 i4 i5' i7 i8 i9' i12 i13 i14'
+      + i3 i4 i5 i6' i8 i10' i11 i13' i14'
+      + i1' i2 i5 i7 i8 i9' i12 i13 i14'
+      + i2 i4 i5' i6 i8 i11 i12' i13' i14
+      + i2 i3 i4' i7 i8 i10' i11 i13' i14
+      + i2 i5' i6 i7' i8 i10' i11 i13' i14
+      + i3 i4' i6 i8 i10' i11 i13' i14'
+      + i3 i5' i6 i8 i9' i11 i13' i14'
+      + i2 i4' i5 i6 i7 i8 i10' i11 i13' i14
+      + i2 i3 i5 i6' i8 i10' i11 i13' i14
+      + i2 i3' i4 i6 i8 i10' i11 i13' i14
+      + i3 i4 i5 i6' i8 i11 i12' i13' i14'
+      + i2 i3 i4' i7 i8 i11 i12' i13' i14
+      + i2 i5' i6 i7' i8 i11 i12' i13' i14
+      + i3 i4' i6 i8 i11 i12' i13' i14'
+      + i2 i4' i5 i7 i8 i10 i12' i13 i14'
+      + i2 i4' i5 i6 i7 i8 i11 i12' i13' i14
+      + i2 i3 i5 i6' i8 i11 i12' i13' i14
+      + i2 i3' i4 i6 i8 i11 i12' i13' i14
+      + i3 i5' i6 i8 i10' i11 i13' i14'
+      + i2 i4' i5 i7 i8 i9' i12 i13 i14'
+      + i3 i5' i6 i8 i11 i12' i13' i14'
+      + i2 i3' i4 i6 i8' i9 i10' i12 i13' i14
+      + i2 i3 i5 i6' i8' i9 i10' i12 i13' i14
+      + i2 i4' i5 i7 i9' i10 i11' i13 i14'
+      + i2 i4' i5 i7' i8 i10' i12 i13 i14'
+      + i2 i3 i4' i7 i8' i9 i10' i12 i13' i14
+      + i2 i4' i5 i7 i8' i9 i12 i13 i14'
+      + i2 i4' i5 i7 i10' i11 i12' i13 i14'
+      + i1 i2 i4 i5' i7 i9' i10 i11' i13 i14'
+      + i3 i4 i5 i6' i8' i9 i10' i12 i13' i14'
+      + i2 i5' i6 i7' i8' i9 i10' i12 i13' i14
+      + i2 i3 i5' i6 i8' i9 i10' i12 i13'
+      + i1 i2 i4 i5' i7' i8 i10' i12 i13 i14'
+      + i2 i3' i4 i6 i8 i10 i11' i13' i14
+      + i2 i3' i4 i6 i8' i9 i11 i13' i14
+      + i1 i2 i4 i5' i7 i8' i9 i12 i13 i14'
+      + i2 i3 i5 i6' i8 i10 i11' i13' i14
+      + i2 i3 i5 i6' i8' i9 i11 i13' i14
+      + i1 i2 i4 i5' i7 i10' i11 i12' i13 i14'
+      + i2 i4' i5 i7' i8 i11 i13 i14'
+      + i2 i3 i4' i7 i8 i10 i11' i13' i14
+      + i3 i5' i6 i8' i9 i10' i12 i13' i14'
+      + i3 i4' i6 i8' i9 i10' i12 i13' i14'
+      + i2 i3 i4' i7 i8' i9 i11 i13' i14
+      + i3 i4 i5 i6' i8 i10 i11' i13' i14'
+      + i2 i5' i6 i7' i8 i10 i11' i13' i14
+      + i2 i3 i5' i6 i8 i10 i11' i13'
+      + i3 i4 i5 i6' i8' i9 i11 i13' i14'
+      + i2 i5' i6 i7' i8' i9 i11 i13' i14
+      + i2 i3 i5' i6 i8' i9 i11 i13'
+      + i1 i2 i4 i5' i7' i8 i11 i13 i14'
+      + i1' i2 i5 i7 i9' i10 i11' i13 i14'
+      + i1' i2 i5 i7' i8 i10' i12 i13 i14'
+      + i1' i2 i5 i7 i8' i9 i12 i13 i14'
+      + i3 i5' i6 i8 i10 i11' i13' i14'
+      + i3 i4' i6 i8 i10 i11' i13' i14'
+      + i3 i5' i6 i8' i9 i11 i13' i14'
+      + i3 i4' i6 i8' i9 i11 i13' i14'
+      + i1' i2 i5 i7 i10' i11 i12' i13 i14'
+      + i1' i2 i5 i7' i8 i11 i13 i14'.
+let o2 = i2 i3 i5 i6' i8 i11 i12' i13' i14
+      + i1 i2' i3 i5' i6 i7 i9' i10 i12 i13 i14'
+      + i1 i3' i4 i5' i7 i9' i10 i12 i13 i14'
+      + i1 i2' i3 i5' i6 i7 i9 i11 i12' i13 i14'
+      + i1 i3' i4 i6 i7' i8 i10' i12 i13 i14'
+      + i1 i3' i4 i5' i7 i9 i11 i12' i13 i14'
+      + i1 i2' i3 i5' i6 i7 i10 i11' i12 i13 i14'
+      + i3 i5' i6 i8 i11 i12' i13' i14
+      + i1' i2 i4 i5 i7 i9' i10 i12 i13 i14'
+      + i1 i3' i4 i6 i7 i9' i10 i12 i13 i14'
+      + i2 i3 i5 i6' i8 i10' i11 i13' i14
+      + i1 i3' i4 i5' i7 i10 i11' i12 i13 i14'
+      + i1 i2' i3 i4 i5 i7 i9' i10 i12 i13 i14'
+      + i1' i2 i4 i5 i7 i9 i11 i12' i13 i14'
+      + i4 i5' i6 i8' i9 i10' i12 i13' i14'
+      + i1 i3' i4 i6 i7 i9 i11 i12' i14'
+      + i1 i3' i4 i6 i7 i9' i10 i11' i13 i14'
+      + i1 i2' i3 i4 i5 i7 i9 i11 i12' i13 i14'
+      + i1 i2' i3 i5' i6 i7 i9 i10' i11 i13 i14'
+      + i1' i2 i4 i5 i7 i10 i11' i12 i13 i14'
+      + i1 i3' i4 i5' i7 i9 i10' i11 i13 i14'
+      + i1 i3' i4 i6 i7 i10 i11' i12 i13 i14'
+      + i1 i2' i3 i4 i5 i7 i10 i11' i12 i13 i14'
+      + i3 i5' i6 i8 i10' i11 i13' i14
+      + i1' i2 i4 i5 i7 i9 i10' i11 i13 i14'
+      + i1 i3' i4 i6 i7 i9 i10' i11 i14'
+      + i1 i2 i4 i5' i7 i9' i10 i12 i13 i14'
+      + i1 i2' i3 i4 i5 i7 i9 i10' i11 i13 i14'
+      + i1 i2 i4 i5' i7 i9 i11 i12' i13 i14'
+      + i2 i3 i5 i6' i8 i9' i11 i13' i14
+      + i2' i3 i6 i8 i11 i12' i13' i14
+      + i1 i2 i4 i5' i7 i10 i11' i12 i13 i14'
+      + i3 i4 i5 i6' i8 i11 i12' i13' i14'
+      + i1 i2 i4 i5' i7 i9 i10' i11 i13 i14'
+      + i3 i5' i6 i8 i9' i11 i13' i14
+      + i2' i3 i6 i8 i10' i11 i13' i14
+      + i1 i3' i4 i6 i7 i10' i11 i12' i13 i14'
+      + i1 i2' i3 i5' i6 i7 i8 i9' i12 i13 i14'
+      + i1 i2' i3 i5' i6 i7 i8 i10 i12' i13 i14'
+      + i1 i3' i4 i5' i7 i8 i9' i12 i13 i14'
+      + i1 i3' i4 i6 i7 i8' i9 i12 i13 i14'
+      + i4 i5' i6 i9 i11 i12' i13' i14'
+      + i1 i2' i3 i4 i5 i7 i8' i9 i12 i13 i14'
+      + i1 i3' i4 i5' i7 i8 i10 i12' i13 i14'
+      + i3 i4 i5 i6' i8 i10' i11 i13' i14'
+      + i1' i2 i4 i5 i7 i8 i9' i12 i13 i14'
+      + i1 i3' i4 i6 i7 i8 i9' i12 i13 i14'
+      + i1 i2' i3 i4 i5 i7 i8 i9' i12 i13 i14'
+      + i1' i2 i4 i5 i7 i8 i10 i12' i13 i14'
+      + i1 i3' i4 i6 i7 i8 i10 i12' i14'
+      + i1 i2' i3 i4 i5 i7 i8 i10 i12' i13 i14'
+      + i3' i4 i6 i9 i11 i12' i13' i14'
+      + i2' i3 i6 i8 i9' i11 i13' i14
+      + i4 i5' i6 i9 i10' i11 i13' i14'
+      + i1 i3' i4 i6 i7' i8 i11 i13 i14'
+      + i3 i4 i5 i6' i8 i9' i11 i13' i14'
+      + i1 i2 i4 i5' i7 i8 i9' i12 i13 i14'
+      + i1 i2 i4 i5' i7 i8 i10 i12' i13 i14'
+      + i4 i5' i6 i8 i10 i11' i13' i14'
+      + i4 i5' i6 i8' i9 i11 i13' i14'
+      + i3' i4 i6 i9 i10' i11 i13' i14'
+      + i4 i5' i6 i8 i9' i11 i13' i14'
+      + i3' i4 i6 i8 i9' i11 i13' i14'
+      + i3 i5' i6 i8' i9 i10' i12 i13' i14
+      + i2 i3 i5 i6' i8' i9 i10' i12 i13' i14
+      + i3 i5' i6 i8 i10 i11' i13' i14
+      + i3 i5' i6 i8' i9 i11 i13' i14
+      + i2 i3 i5 i6' i8 i10 i11' i13' i14
+      + i2 i3 i5 i6' i8' i9 i11 i13' i14
+      + i1 i2' i3 i4 i5 i7 i9' i10 i11' i13 i14'
+      + i1 i2' i3 i4 i5 i7' i8 i10' i12 i13 i14'
+      + i1 i2' i3 i4 i5 i7 i10' i11 i12' i13 i14'
+      + i1 i2' i3 i5' i6 i7 i9' i10 i11' i13 i14'
+      + i1 i2' i3 i5' i6 i7' i8 i10' i12 i13 i14'
+      + i1 i2 i4 i5' i7 i9' i10 i11' i13 i14'
+      + i1 i2 i4 i5' i7' i8 i10' i12 i13 i14'
+      + i2' i3 i6 i8' i9 i10' i12 i13' i14
+      + i3 i4 i5 i6' i8' i9 i10' i12 i13' i14'
+      + i1 i2' i3 i5' i6 i7 i8' i9 i12 i13 i14'
+      + i1' i2 i4 i5 i7 i9' i10 i11' i13 i14'
+      + i1 i2 i4 i5' i7 i8' i9 i12 i13 i14'
+      + i1' i2 i4 i5 i7' i8 i10' i12 i13 i14'
+      + i1 i2' i3 i4 i5 i7' i8 i11 i13 i14'
+      + i1 i2' i3 i5' i6 i7 i10' i11 i12' i13 i14'
+      + i1' i2 i4 i5 i7 i8' i9 i12 i13 i14'
+      + i1 i2 i4 i5' i7 i10' i11 i12' i13 i14'
+      + i1 i3' i4 i5' i7 i9' i10 i11' i13 i14'
+      + i1' i2 i4 i5 i7 i10' i11 i12' i13 i14'
+      + i1 i3' i4 i5' i7' i8 i10' i12 i13 i14'
+      + i3' i4 i6 i8' i9 i10' i12 i13' i14'
+      + i1 i3' i4 i5' i7 i8' i9 i12 i13 i14'
+      + i1 i3' i4 i5' i7 i10' i11 i12' i13 i14'
+      + i1 i2' i3 i5' i6 i7' i8 i11 i13 i14'
+      + i2' i3 i6 i8 i10 i11' i13' i14
+      + i1 i2 i4 i5' i7' i8 i11 i13 i14'
+      + i2' i3 i6 i8' i9 i11 i13' i14
+      + i3 i4 i5 i6' i8 i10 i11' i13' i14'
+      + i3 i4 i5 i6' i8' i9 i11 i13' i14'
+      + i1' i2 i4 i5 i7' i8 i11 i13 i14'
+      + i1 i3' i4 i5' i7' i8 i11 i13 i14'
+      + i3' i4 i6 i8 i10 i11' i13' i14'
+      + i3' i4 i6 i8' i9 i11 i13' i14'.
+let o3 = i1' i2 i4' i6 i7 i9 i11 i12' i13 i14'
+      + i1' i2 i4' i6 i7 i10 i11' i12 i13 i14'
+      + i1' i2 i4' i6 i7 i9' i10 i12 i13 i14'
+      + i2 i3' i4' i6 i7 i9' i10 i11' i13 i14'
+      + i1' i2 i4' i6 i7 i9 i10' i11 i13 i14'
+      + i1 i3 i4' i5 i6 i7 i9' i10 i11' i13 i14'
+      + i1 i2' i4 i6 i7 i9 i11 i12' i13 i14'
+      + i2 i3' i4 i6' i7 i8 i9' i11 i13' i14
+      + i2 i4' i5 i6' i8 i9' i11 i13' i14
+      + i2 i3' i5 i7 i8' i9 i10' i12 i13' i14
+      + i2 i3 i4' i5 i7 i8' i9 i10' i12 i13'
+      + i2 i3 i5 i6' i8 i9' i11 i13'
+      + i1 i2' i4 i6 i7 i10 i11' i12 i13 i14'
+      + i1 i2' i4 i6 i7 i9' i10 i12 i13 i14'
+      + i1 i4 i5' i6 i7 i9 i11 i12' i13 i14'
+      + i2 i3' i4' i6 i7' i8 i10' i12 i13 i14'
+      + i1 i3 i4' i5 i6 i7 i9 i11 i12' i14'
+      + i1 i2' i4 i6 i7 i9 i10' i11 i13 i14'
+      + i2 i3' i4 i6' i7 i8 i10' i11 i13' i14
+      + i2 i4' i5 i6' i8 i10' i11 i13' i14
+      + i1 i4 i5' i6 i7 i10 i11' i12 i13 i14'
+      + i1 i3 i4' i5 i6 i7' i8 i10' i12 i13 i14'
+      + i1 i4 i5' i6 i7 i9' i10 i12 i13 i14'
+      + i2 i3 i5 i6' i8 i10' i11 i13'
+      + i2 i3' i4 i5 i6 i8 i9' i11 i13'
+      + i1 i3 i4' i5 i6 i7 i9' i10 i12 i13 i14'
+      + i1' i2 i4' i6 i7 i8 i10 i12' i13 i14'
+      + i2 i3' i4' i6 i7 i10' i11 i12' i13 i14'
+      + i1' i2 i5 i6 i7 i9 i11 i12' i13 i14'
+      + i1 i4 i5' i6 i7 i9 i10' i11 i13 i14'
+      + i1' i2 i4' i6 i7 i8 i9' i12 i13 i14'
+      + i1 i3 i4' i5 i6 i7 i9 i10' i11 i14'
+      + i2 i3' i4 i6' i7 i8 i11 i12' i13' i14
+      + i2 i4' i5 i6' i8 i11 i12' i13' i14
+      + i1' i2 i5 i6 i7 i10 i11' i12 i13 i14'
+      + i2' i3 i5 i6 i8 i9' i11 i13' i14
+      + i2 i3 i5 i6' i8 i11 i12' i13'
+      + i2 i3' i4' i6 i7 i9' i10 i12 i13 i14'
+      + i1' i2 i5 i6 i7 i9' i10 i12 i13 i14'
+      + i1 i2' i4 i6 i7 i8' i9 i12 i13 i14'
+      + i2 i3' i4 i5 i6 i8 i10' i11 i13'
+      + i2 i3' i4' i6 i7 i9 i10' i11 i13 i14'
+      + i2 i3' i4' i6 i7 i8' i9 i12 i13 i14'
+      + i1' i2 i5 i6 i7 i9 i10' i11 i13 i14'
+      + i1 i2' i4 i6 i7 i8 i10 i12' i13 i14'
+      + i2 i3 i4' i5 i7 i8 i9' i11 i13'
+      + i2 i3' i5 i7 i8 i9' i11 i13' i14
+      + i2' i3 i5 i6 i8 i10' i11 i13' i14
+      + i1 i3 i4' i5 i6 i7 i8' i9 i12 i13 i14'
+      + i3' i4 i5 i6 i8 i9' i11 i13' i14'
+      + i2 i3' i4 i5 i6 i8 i11 i12' i13'
+      + i1 i2' i4 i6 i7 i8 i9' i12 i13 i14'
+      + i1 i3 i4' i5 i6 i7 i10' i11 i12' i13 i14'
+      + i1 i3 i4' i5 i6 i7 i10 i11' i12 i13 i14'
+      + i2 i3' i5 i7 i8' i9 i11 i13' i14
+      + i2 i3 i4' i5 i7 i8' i9 i11 i13'
+      + i3 i5 i6' i8 i9' i11 i13' i14'
+      + i1 i4 i5' i6 i7 i8 i10 i12' i13 i14'
+      + i2 i3' i5 i7 i8 i10 i11' i13' i14
+      + i2 i3 i4' i5 i7 i8 i10 i11' i13'
+      + i3 i4' i5 i8 i9' i11 i13' i14'
+      + i1 i3 i4' i5 i6 i7 i8 i10 i12' i14'
+      + i2 i3' i4' i6 i7' i8 i11 i13 i14'
+      + i2 i3 i4' i5 i7 i8 i10' i11 i13'
+      + i2 i3' i5 i7 i8 i10' i11 i13' i14
+      + i1 i4 i5' i6 i7 i8 i9' i12 i13 i14'
+      + i2' i3 i5 i6 i8 i11 i12' i13' i14
+      + i2 i3' i4' i6 i7 i10 i11' i12 i13 i14'
+      + i2 i3' i4' i6 i7 i9 i11 i12' i13 i14'
+      + i1 i3 i4' i5 i6 i7 i8 i9' i12 i13 i14'
+      + i3' i4 i5 i6 i8 i10' i11 i13' i14'
+      + i1 i3 i4' i5 i6 i7' i8 i11 i13 i14'
+      + i3 i5 i6' i8 i10' i11 i13' i14'
+      + i2 i3' i4' i6 i7 i8 i10 i12' i13 i14'
+      + i1' i2 i5 i6 i7 i8 i10 i12' i13 i14'
+      + i3 i4' i5 i8 i10' i11 i13' i14'
+      + i2 i3 i4' i5 i7 i8 i11 i12' i13'
+      + i2 i3' i5 i7 i8 i11 i12' i13' i14
+      + i2 i3' i4' i6 i7 i8 i9' i12 i13 i14'
+      + i1' i2 i5 i6 i7 i8 i9' i12 i13 i14'
+      + i3' i4 i5 i6 i8 i11 i12' i13' i14'
+      + i3 i5 i6' i8 i11 i12' i13' i14'
+      + i3 i4' i5 i8 i11 i12' i13' i14'
+      + i2 i3' i4 i5 i6 i8' i9 i10' i12 i13'
+      + i2 i3 i5 i6' i8' i9 i10' i12 i13'
+      + i2 i3' i4 i6' i7 i8' i9 i10' i12 i13' i14
+      + i2 i3' i4 i5 i6 i8 i10 i11' i13'
+      + i2 i3' i4 i5 i6 i8' i9 i11 i13'
+      + i2 i3 i5 i6' i8 i10 i11' i13'
+      + i2 i3 i5 i6' i8' i9 i11 i13'
+      + i2 i4' i5 i6' i8' i9 i10' i12 i13' i14
+      + i2' i3 i5 i6 i8' i9 i10' i12 i13' i14
+      + i2 i3' i4 i6' i7 i8 i10 i11' i13' i14
+      + i2 i3' i4 i6' i7 i8' i9 i11 i13' i14
+      + i1 i4 i5' i6 i7 i9' i10 i11' i13 i14'
+      + i1 i2' i4 i6 i7 i9' i10 i11' i13 i14'
+      + i1 i4 i5' i6 i7' i8 i10' i12 i13 i14'
+      + i1 i2' i4 i6 i7' i8 i10' i12 i13 i14'
+      + i1 i4 i5' i6 i7 i8' i9 i12 i13 i14'
+      + i3' i4 i5 i6 i8' i9 i10' i12 i13' i14'
+      + i3 i4' i5 i8' i9 i10' i12 i13' i14'
+      + i1' i2 i4' i6 i7 i9' i10 i11' i13 i14'
+      + i3 i5 i6' i8' i9 i10' i12 i13' i14'
+      + i1 i4 i5' i6 i7 i10' i11 i12' i13 i14'
+      + i1' i2 i4' i6 i7' i8 i10' i12 i13 i14'
+      + i1 i2' i4 i6 i7 i10' i11 i12' i13 i14'
+      + i2 i4' i5 i6' i8 i10 i11' i13' i14
+      + i1' i2 i4' i6 i7 i8' i9 i12 i13 i14'
+      + i1' i2 i5 i6 i7 i9' i10 i11' i13 i14'
+      + i2' i3 i5 i6 i8 i10 i11' i13' i14
+      + i1' i2 i5 i6 i7' i8 i10' i12 i13 i14'
+      + i2 i4' i5 i6' i8' i9 i11 i13' i14
+      + i2' i3 i5 i6 i8' i9 i11 i13' i14
+      + i1' i2 i4' i6 i7 i10' i11 i12' i13 i14'
+      + i1' i2 i5 i6 i7 i8' i9 i12 i13 i14'
+      + i1' i2 i5 i6 i7 i10' i11 i12' i13 i14'
+      + i1 i4 i5' i6 i7' i8 i11 i13 i14'
+      + i1 i2' i4 i6 i7' i8 i11 i13 i14'
+      + i3' i4 i5 i6 i8 i10 i11' i13' i14'
+      + i3' i4 i5 i6 i8' i9 i11 i13' i14'
+      + i3 i4' i5 i8 i10 i11' i13' i14'
+      + i3 i5 i6' i8 i10 i11' i13' i14'
+      + i3 i4' i5 i8' i9 i11 i13' i14'
+      + i3 i5 i6' i8' i9 i11 i13' i14'
+      + i1' i2 i4' i6 i7' i8 i11 i13 i14'
+      + i1' i2 i5 i6 i7' i8 i11 i13 i14'.
+let o4 = i1 i3 i5 i6' i7' i8 i9 i10' i12 i13 i14'
+      + i1 i3 i4' i5 i7' i8 i9 i10' i12 i13 i14'
+      + i1 i4 i5' i6 i7' i8 i9 i10' i12 i13 i14'
+      + i1 i2 i3' i6 i7' i8 i9 i10' i12 i13 i14'
+      + i1 i3' i4 i6 i7' i8 i9 i10' i12 i13 i14'
+      + i2 i5 i6' i7 i8' i9 i10' i12 i13' i14
+      + i3 i4' i5' i7 i8' i9 i10' i12 i13' i14
+      + i2' i3 i5' i7 i8 i11 i12' i13' i14
+      + i2 i4 i5' i6 i7 i8' i9 i10' i12 i13'
+      + i1 i3' i4 i5' i7 i9 i11 i12' i14'
+      + i1 i3' i4 i5' i7 i8 i9 i10 i11' i14'
+      + i1 i2 i4 i6' i7' i8 i9 i10' i12 i13 i14'
+      + i1 i3' i4 i5' i7 i8' i9 i12 i13 i14'
+      + i1' i2 i4' i6 i7 i9 i10' i11 i13 i14'
+      + i1 i3 i5 i6' i7 i9 i11 i12' i14'
+      + i1 i3 i5 i6' i7 i8 i9 i10 i11' i14'
+      + i1 i3 i5 i6' i7 i8' i9 i12 i13 i14'
+      + i1 i3 i4' i5 i7 i9 i11 i12' i14'
+      + i1 i3 i5 i6' i7' i8 i9 i11 i13 i14'
+      + i1 i3 i4' i5 i7 i8 i9 i10 i11' i14'
+      + i3 i5' i6 i7 i8' i9 i10' i12 i13'
+      + i2 i3' i5 i7 i8 i11 i12' i13' i14
+      + i1 i2 i3' i6 i7' i8 i9 i11 i13 i14'
+      + i2' i3 i5' i7 i8 i9' i11 i13' i14
+      + i2' i3 i5' i7 i8 i10' i11 i13' i14
+      + i1' i2 i4' i6 i7 i8 i9 i10 i11' i13 i14'
+      + i1 i3 i4' i5 i7 i8' i9 i12 i13 i14'
+      + i1 i3' i4 i5' i7 i9 i10' i11 i14'
+      + i1 i4 i5' i6 i7 i9 i11 i12' i14'
+      + i1 i3 i4' i5 i7' i8 i9 i11 i13 i14'
+      + i1 i4 i5' i6 i7 i8 i9 i10 i11' i14'
+      + i1 i4' i5 i6' i7 i9 i10' i11 i13 i14'
+      + i2 i4 i5' i6 i7 i8 i11 i12' i13'
+      + i3' i4 i5' i7 i9 i11 i12' i13' i14'
+      + i1 i3' i4 i6 i7 i9 i11 i12' i14'
+      + i1 i3' i4 i6 i7 i8 i9 i10 i11' i14'
+      + i1 i4 i5' i6 i7 i8' i9 i12 i13 i14'
+      + i2 i5 i6' i7 i8' i9 i11 i13' i14
+      + i3 i4' i5' i7 i8' i9 i11 i13' i14
+      + i3 i4' i6 i7 i8' i9 i10' i12 i13' i14'
+      + i1 i3 i5 i6' i7 i9 i10' i11 i14'
+      + i3 i5' i6 i7 i8' i9 i11 i13'
+      + i1 i4 i5' i6 i7' i8 i9 i11 i13 i14'
+      + i2 i5 i6' i7 i8 i11 i12' i13' i14
+      + i3 i4' i5' i7 i8 i11 i12' i13' i14
+      + i2 i5 i6' i7 i8 i10 i11' i13' i14
+      + i3 i4' i5' i7 i8 i10 i11' i13' i14
+      + i1 i3' i4 i6 i7' i8 i9 i11 i13 i14'
+      + i2 i3' i5 i7 i8 i9' i11 i13' i14
+      + i1 i3 i4' i5 i7 i9 i10' i11 i14'
+      + i1 i2' i3 i6 i7 i9 i10' i11 i13 i14'
+      + i1 i4' i5 i6' i7 i8 i9 i10 i11' i13 i14'
+      + i1' i2 i4' i6 i7 i9 i11 i12' i13 i14'
+      + i1 i2 i4 i6' i7' i8 i9 i11 i13 i14'
+      + i2 i3' i5 i7 i8 i10' i11 i13' i14
+      + i2' i3 i6 i7 i8 i11 i12' i13' i14
+      + i3 i5' i6 i7 i8 i9' i11 i13'
+      + i1' i2 i5 i7 i9 i10' i11 i13 i14'
+      + i3 i5' i6 i7 i9 i11 i12' i13'
+      + i1 i4 i5' i6 i7 i9 i10' i11 i14'
+      + i3' i4 i5' i7 i8 i9' i11 i13' i14'
+      + i3' i4 i5' i7 i9 i10' i11 i13' i14'
+      + i1 i3' i4 i6 i7 i9 i10' i11 i14'
+      + i1 i2 i3' i6 i7 i8' i9 i12 i13 i14'
+      + i1' i2 i4' i6 i7 i8' i9 i12 i13 i14'
+      + i1 i2 i4 i6' i7 i8 i9 i10 i11' i13 i14'
+      + i1 i2 i3' i6 i7 i8 i9 i10 i11' i13 i14'
+      + i1 i2' i3 i6 i7 i8 i9 i10 i11' i13 i14'
+      + i2 i5 i6' i7 i8 i9' i11 i13' i14
+      + i3' i4 i6 i7 i9 i11 i12' i13' i14'
+      + i1' i2 i5 i7 i8 i9 i10 i11' i13 i14'
+      + i3 i4' i5' i7 i8 i9' i11 i13' i14
+      + i3 i4' i6 i7 i9 i11 i12' i13' i14'
+      + i1 i2 i4 i6' i7 i8' i9 i12 i13 i14'
+      + i1 i3' i4 i6 i7 i8' i9 i12 i13 i14'
+      + i1 i2' i3 i6 i7 i8' i9 i12 i13 i14'
+      + i1 i4' i5 i6' i7 i9 i11 i12' i13 i14'
+      + i2' i3 i6 i7 i8 i9' i11 i13' i14
+      + i2 i4 i5' i6 i7 i8 i10' i11 i13'
+      + i2 i4 i5' i6 i7 i8' i9 i11 i13'
+      + i2' i3 i6 i7 i8 i10' i11 i13' i14
+      + i1 i2 i4 i6' i7 i9 i10' i11 i13 i14'
+      + i1 i2 i3' i6 i7 i9 i10' i11 i13 i14'
+      + i3 i4' i6 i7 i8' i9 i11 i13' i14'
+      + i2 i4 i5' i6 i7 i8 i10 i11' i13'
+      + i2 i5 i6' i7 i8 i10' i11 i13' i14
+      + i3 i4' i5' i7 i8 i10' i11 i13' i14
+      + i1 i2 i4 i6' i7 i9 i11 i12' i13 i14'
+      + i1 i2 i3' i6 i7 i9 i11 i12' i13 i14'
+      + i3 i5 i6' i7 i8 i9' i11 i13' i14'
+      + i2 i4 i5' i6 i7 i8 i9' i11 i13'
+      + i1 i2' i3 i6 i7 i9 i11 i12' i13 i14'
+      + i3 i5 i6' i7 i9 i10' i11 i13' i14'
+      + i3 i4' i5 i7 i8 i10 i11' i13' i14'
+      + i3 i5' i6 i7 i8 i10 i11' i13'
+      + i1' i2 i5 i7 i9 i11 i12' i13 i14'
+      + i3' i4 i6 i7 i8 i9' i11 i13' i14'
+      + i3' i4 i6 i7 i9 i10' i11 i13' i14'
+      + i3 i4' i6 i7 i8 i9' i11 i13' i14'
+      + i3 i5' i6 i7 i9 i10' i11 i13'
+      + i3 i4' i6 i7 i9 i10' i11 i13' i14'
+      + i1' i2 i4' i6 i7' i8 i9 i10' i12 i13 i14'
+      + i1 i4' i5 i6' i7' i8 i9 i10' i12 i13 i14'
+      + i1 i3' i4 i5' i7' i8 i9 i10' i12 i13 i14'
+      + i1 i2' i3 i6 i7' i8 i9 i10' i12 i13 i14'
+      + i2' i3 i5' i7 i8' i9 i10' i12 i13' i14
+      + i2' i3 i6 i7 i8' i9 i10' i12 i13' i14
+      + i2 i3' i5 i7 i8' i9 i10' i12 i13' i14
+      + i2' i3 i5' i7 i8 i10 i11' i13' i14
+      + i1' i2 i5 i7' i8 i9 i10' i12 i13 i14'
+      + i2' i3 i6 i7 i8 i10 i11' i13' i14
+      + i2 i3' i5 i7 i8 i10 i11' i13' i14
+      + i1' i2 i4' i6 i7' i8 i9 i11 i13 i14'
+      + i3' i4 i5' i7 i8' i9 i10' i12 i13' i14'
+      + i1 i4' i5 i6' i7' i8 i9 i11 i13 i14'
+      + i3 i5 i6' i7 i8' i9 i10' i12 i13' i14'
+      + i1 i3' i4 i5' i7' i8 i9 i11 i13 i14'
+      + i3' i4 i6 i7 i8' i9 i10' i12 i13' i14'
+      + i1 i2' i3 i6 i7' i8 i9 i11 i13 i14'
+      + i1 i4' i5 i6' i7 i8' i9 i12 i13 i14'
+      + i2' i3 i5' i7 i8' i9 i11 i13' i14
+      + i3' i4 i5' i7 i8 i10 i11' i13' i14'
+      + i3 i5 i6' i7 i8 i10 i11' i13' i14'
+      + i2' i3 i6 i7 i8' i9 i11 i13' i14
+      + i2 i3' i5 i7 i8' i9 i11 i13' i14
+      + i3' i4 i6 i7 i8 i10 i11' i13' i14'
+      + i1' i2 i5 i7' i8 i9 i11 i13 i14'
+      + i1' i2 i5 i7 i8' i9 i12 i13 i14'
+      + i3' i4 i5' i7 i8' i9 i11 i13' i14'
+      + i3 i5 i6' i7 i8' i9 i11 i13' i14'
+      + i3 i5 i6' i7 i9 i11 i12' i13' i14'
+      + i3' i4 i6 i7 i8' i9 i11 i13' i14'.
+let o5 = i1 i3' i4 i5' i7 i9' i10 i11 i12 i13 i14'
+      + i1' i2 i4' i6 i7 i9' i10 i11 i12 i13 i14'
+      + i1 i3' i4 i5' i7 i9 i10' i11 i13 i14'
+      + i2 i3' i4 i6 i8 i9 i10 i11' i13'
+      + i1' i2 i4' i6 i7 i9 i10' i11 i13 i14'
+      + i1 i4' i5 i6' i7 i9' i10 i11 i12 i13 i14'
+      + i1 i3 i5 i6' i7 i10' i11 i12' i13 i14'
+      + i2 i3' i4 i6 i8 i9' i11 i13'
+      + i2 i3' i5 i7 i8 i9 i10 i11' i13' i14
+      + i1 i3 i5 i6' i7 i9' i10 i11 i12 i13 i14'
+      + i1 i3 i5 i6' i7 i9 i10' i11 i13 i14'
+      + i1 i3 i5 i6' i7 i8 i9' i12 i13 i14'
+      + i1 i4 i5' i6 i7 i10' i11 i12' i13 i14'
+      + i1 i3 i5 i6' i7 i8' i9 i11 i13 i14'
+      + i1' i2 i5 i7 i9' i10 i11 i12 i13 i14'
+      + i2 i3' i4 i6 i8 i10' i11 i13'
+      + i2 i4' i5 i7 i10' i11 i12' i13 i14'
+      + i1 i3 i5 i6' i7 i8 i10 i11' i13 i14'
+      + i2 i3' i5 i7 i8 i9' i11 i13' i14
+      + i1 i2' i3 i6 i7 i9' i10 i11 i12 i13 i14'
+      + i1 i4 i5' i6 i7 i9' i10 i11 i12 i13 i14'
+      + i2 i3 i5 i6' i8 i9' i11 i13'
+      + i1 i2 i3' i6 i7 i9' i10 i11 i12 i13 i14'
+      + i1 i2 i3' i6 i7 i10' i11 i12' i13 i14'
+      + i1 i4' i5 i6' i7 i9 i10' i11 i13 i14'
+      + i1 i4 i5' i6 i7 i8 i9' i12 i13 i14'
+      + i1 i4 i5' i6 i7 i9 i10' i11 i13 i14'
+      + i1 i4 i5' i6 i7 i8' i9 i11 i13 i14'
+      + i2 i4' i5 i7 i9 i10' i11 i13 i14'
+      + i2 i4' i5 i7 i8 i9' i12 i13 i14'
+      + i3 i4' i6 i8 i9 i10 i11' i13'
+      + i1 i2' i3 i6 i7 i9 i10' i11 i13 i14'
+      + i1 i2 i3' i6 i7 i8 i9' i12 i13 i14'
+      + i2 i4' i5 i7 i8' i9 i11 i13 i14'
+      + i1 i4 i5' i6 i7 i8 i10 i11' i13 i14'
+      + i2 i3' i4 i7 i8 i9 i10 i11' i13' i14
+      + i2 i3 i4' i7 i8 i9 i10 i11' i13' i14
+      + i2 i3' i5 i7 i8 i10' i11 i13' i14
+      + i2 i4' i5 i7 i8 i10 i11' i13 i14'
+      + i2 i3 i5 i6' i8 i10' i11 i13'
+      + i1' i2 i5 i7 i9 i10' i11 i13 i14'
+      + i1 i2 i4 i6' i7 i10' i11 i12' i13 i14'
+      + i1 i2 i3' i6 i7 i8' i9 i11 i13 i14'
+      + i1 i2 i3' i6 i7 i8 i10 i11' i13 i14'
+      + i1 i2 i4 i6' i7 i8 i9' i12 i13 i14'
+      + i1 i2 i4 i6' i7 i9' i10 i11 i12 i13 i14'
+      + i1 i3' i4 i6 i7 i8' i10 i11 i12 i13 i14'
+      + i2 i3' i4 i7 i8 i9' i11 i13' i14
+      + i3 i4' i6 i8 i9' i11 i13'
+      + i3 i4' i5' i7 i8 i9' i11 i13' i14
+      + i3 i5' i6 i8 i9 i10 i11' i13'
+      + i3 i6 i7' i8 i9 i10 i11' i13'
+      + i1 i2 i3' i6 i7 i9 i10' i11 i13 i14'
+      + i1 i2 i4 i6' i7 i9 i10' i11 i13 i14'
+      + i1 i3' i4 i6 i7 i8 i10' i11 i14'
+      + i1 i2 i4 i6' i7 i8' i9 i11 i13 i14'
+      + i1 i2 i4 i6' i7 i8 i10 i11' i13 i14'
+      + i2 i4' i5 i7 i9' i10 i11 i12 i13 i14'
+      + i2 i3' i4 i7 i8 i10' i11 i13' i14
+      + i3 i4' i6 i8 i10' i11 i13'
+      + i3 i4' i5' i7 i8 i10' i11 i13' i14
+      + i3 i5' i6 i8 i9' i11 i13'
+      + i3 i6 i7' i8 i9' i11 i13'
+      + i3 i5' i6 i8 i10' i11 i13'
+      + i3 i6 i7' i8 i10' i11 i13'
+      + i2 i5' i6 i7' i8 i9 i10 i11' i13' i14
+      + i2 i4' i5 i6' i8 i9 i10 i11' i13' i14
+      + i2' i3 i5' i7 i8 i9 i10 i11' i13' i14
+      + i1' i2 i4' i6 i7 i8' i9 i11 i13 i14'
+      + i1 i3' i4 i5' i7 i8' i9 i11 i13 i14'
+      + i1 i4' i5 i6' i7 i8' i9 i11 i13 i14'
+      + i1 i2' i3 i6 i7 i8' i9 i11 i13 i14'
+      + i1 i2' i4 i6 i7 i8' i9 i11 i13 i14'
+      + i1' i2 i4' i6 i7 i8 i10 i11' i13 i14'
+      + i1' i2 i4' i6 i7 i8 i9' i12 i13 i14'
+      + i1 i3' i4 i5' i7 i8 i10 i11' i13 i14'
+      + i1 i3' i4 i5' i7 i8 i9' i12 i13 i14'
+      + i2' i3 i6 i8 i9 i10 i11' i13' i14
+      + i1 i4' i5 i6' i7 i8 i10 i11' i13 i14'
+      + i1 i4' i5 i6' i7 i8 i9' i12 i13 i14'
+      + i1 i2' i4 i6 i7 i8 i10 i11' i13 i14'
+      + i1 i2' i3 i6 i7 i8 i10 i11' i13 i14'
+      + i1 i2' i3 i6 i7 i8 i9' i12 i13 i14'
+      + i1 i2' i4 i6 i7 i8 i9' i12 i13 i14'
+      + i2 i5' i6 i7' i8 i10' i11 i13' i14
+      + i2 i5' i6 i7' i8 i9' i11 i13' i14
+      + i3' i4 i5' i7 i8 i9 i10 i11' i13' i14'
+      + i2 i4' i5 i6' i8 i10' i11 i13' i14
+      + i2 i4' i5 i6' i8 i9' i11 i13' i14
+      + i1' i2 i5 i7 i8' i9 i11 i13 i14'
+      + i2' i3 i5' i7 i8 i10' i11 i13' i14
+      + i2' i3 i5' i7 i8 i9' i11 i13' i14
+      + i1' i2 i4' i6 i7 i10' i11 i12' i13 i14'
+      + i1 i3' i4 i5' i7 i10' i11 i12' i13 i14'
+      + i1' i2 i5 i7 i8 i10 i11' i13 i14'
+      + i1' i2 i5 i7 i8 i9' i12 i13 i14'
+      + i2 i3 i5 i6' i8 i9 i10 i11' i13'
+      + i3 i5 i6' i8 i9 i10 i11' i13' i14'
+      + i1 i4' i5 i6' i7 i10' i11 i12' i13 i14'
+      + i1 i2' i3 i6 i7 i10' i11 i12' i13 i14'
+      + i1 i2' i4 i6 i7 i10' i11 i12' i13 i14'
+      + i3' i4 i6 i8 i9 i10 i11' i13' i14'
+      + i2' i3 i6 i8 i10' i11 i13' i14
+      + i2' i3 i6 i8 i9' i11 i13' i14
+      + i3' i4 i5' i7 i8 i10' i11 i13' i14'
+      + i3' i4 i5' i7 i8 i9' i11 i13' i14'
+      + i1' i2 i5 i7 i10' i11 i12' i13 i14'
+      + i3 i5 i6' i8 i10' i11 i13' i14'
+      + i3 i5 i6' i8 i9' i11 i13' i14'
+      + i3' i4 i6 i8 i10' i11 i13' i14'
+      + i3' i4 i6 i8 i9' i11 i13' i14'.
+let o6 = i1 i3 i5 i6' i7 i8 i10 i11' i13 i14'
+      + i1 i3 i5 i6' i7' i8 i11 i13 i14'
+      + i1 i3 i5 i6' i8 i10' i11 i13 i14'
+      + i2 i3' i4 i6 i8' i9 i11 i13'
+      + i1 i4 i5' i6 i7 i8 i10 i11' i13 i14'
+      + i2 i3' i4 i6 i8 i9 i10 i11' i13'
+      + i2 i4' i5 i7 i8 i10 i11' i13 i14'
+      + i1 i4 i5' i6 i7' i8 i11 i13 i14'
+      + i2 i4' i5 i7' i8 i11 i13 i14'
+      + i2 i3' i4 i7 i8' i9 i11 i13' i14
+      + i1 i2 i3' i6 i7 i8 i10 i11' i13 i14'
+      + i2 i3' i4 i7 i8 i9 i10 i11' i13' i14
+      + i2 i3' i4 i6 i9 i10' i11 i13'
+      + i1 i2 i3' i6 i7' i8 i11 i13 i14'
+      + i1 i4 i5' i6 i8 i10' i11 i13 i14'
+      + i2 i4' i5 i8 i10' i11 i13 i14'
+      + i3 i4' i6 i8' i9 i11 i13'
+      + i3 i4' i6 i8 i9 i10 i11' i13'
+      + i2 i3' i4 i7 i9 i10' i11 i13' i14
+      + i1 i2 i4 i6' i7 i8 i10 i11' i13 i14'
+      + i1 i2 i3' i6 i8 i10' i11 i13 i14'
+      + i1 i2 i4 i6' i7' i8 i11 i13 i14'
+      + i2 i3' i5 i7 i8' i9 i11 i13' i14
+      + i2 i3 i4' i7 i8' i9 i11 i13' i14
+      + i3 i4' i6 i9 i10' i11 i13'
+      + i2 i3' i5 i7 i8 i9 i10 i11' i13' i14
+      + i2 i3 i4' i7 i8 i9 i10 i11' i13' i14
+      + i1 i2 i4 i6' i8 i10' i11 i13 i14'
+      + i2 i3' i5 i7 i9 i10' i11 i13' i14
+      + i2 i3 i4' i7 i9 i10' i11 i13' i14
+      + i3 i5' i6 i8' i9 i11 i13'
+      + i3 i5' i6 i8 i9 i10 i11' i13'
+      + i3 i5' i6 i9 i10' i11 i13'
+      + i3 i6 i7' i8' i9 i11 i13'
+      + i3 i6 i7' i8 i9 i10 i11' i13'
+      + i3 i6 i7' i9 i10' i11 i13'
+      + i1' i2 i4' i6 i8 i10' i11 i13 i14'
+      + i1 i3' i4 i5' i8 i10' i11 i13 i14'
+      + i1 i4' i5 i6' i8 i10' i11 i13 i14'
+      + i1 i2' i3 i6 i8 i10' i11 i13 i14'
+      + i1 i2' i4 i6 i8 i10' i11 i13 i14'
+      + i1' i2 i4' i6 i7 i8 i10 i11' i13 i14'
+      + i1 i3' i4 i5' i7 i8 i10 i11' i13 i14'
+      + i2' i3 i5' i7 i8 i9 i10 i11' i13' i14
+      + i1' i2 i5 i8 i10' i11 i13 i14'
+      + i2 i4' i5 i6' i8 i9 i10 i11' i13' i14
+      + i1 i4' i5 i6' i7 i8 i10 i11' i13 i14'
+      + i2 i5' i6 i7' i8 i9 i10 i11' i13' i14
+      + i2' i3 i5' i7 i8' i9 i11 i13' i14
+      + i2 i4' i5 i6' i8' i9 i11 i13' i14
+      + i2 i5' i6 i7' i8' i9 i11 i13' i14
+      + i1 i2' i4 i6 i7 i8 i10 i11' i13 i14'
+      + i1 i2' i3 i6 i7 i8 i10 i11' i13 i14'
+      + i2' i3 i5' i7 i9 i10' i11 i13' i14
+      + i2 i4' i5 i6' i9 i10' i11 i13' i14
+      + i2 i5' i6 i7' i9 i10' i11 i13' i14
+      + i3' i4 i5' i7 i8 i9 i10 i11' i13' i14'
+      + i1' i2 i5 i7 i8 i10 i11' i13 i14'
+      + i3' i4 i5' i7 i8' i9 i11 i13' i14'
+      + i2' i3 i6 i8 i9 i10 i11' i13' i14
+      + i2' i3 i6 i8' i9 i11 i13' i14
+      + i3' i4 i5' i7 i9 i10' i11 i13' i14'
+      + i2' i3 i6 i9 i10' i11 i13' i14
+      + i2 i3 i5 i6' i8 i9 i10 i11' i13'
+      + i3 i5 i6' i8 i9 i10 i11' i13' i14'
+      + i1' i2 i4' i6 i7' i8 i11 i13 i14'
+      + i1 i3' i4 i5' i7' i8 i11 i13 i14'
+      + i3 i5 i6' i8' i9 i11 i13' i14'
+      + i2 i3 i5 i6' i8' i9 i11 i13'
+      + i3' i4 i6 i8 i9 i10 i11' i13' i14'
+      + i1 i4' i5 i6' i7' i8 i11 i13 i14'
+      + i3' i4 i6 i8' i9 i11 i13' i14'
+      + i3 i5 i6' i9 i10' i11 i13' i14'
+      + i2 i3 i5 i6' i9 i10' i11 i13'
+      + i1 i2' i3 i6 i7' i8 i11 i13 i14'
+      + i1 i2' i4 i6 i7' i8 i11 i13 i14'
+      + i3' i4 i6 i9 i10' i11 i13' i14'
+      + i1' i2 i5 i7' i8 i11 i13 i14'.
+let o7 = i1 i3 i5 i6' i7 i8' i9 i11' i12 i13 i14'
+      + i1 i3' i4 i5' i7 i9' i10 i12 i13 i14'
+      + i1 i3 i5 i6' i7 i9' i10 i11' i13 i14'
+      + i2 i3' i4 i6 i8' i9 i10 i11 i13'
+      + i1 i4 i5' i6 i7 i8' i9 i11' i12 i13 i14'
+      + i2 i4' i5 i7 i8' i9 i11' i12 i13 i14'
+      + i1 i3 i5 i6' i7 i8' i9 i10 i11 i14'
+      + i1 i3 i5 i6' i7 i8 i10 i11' i14'
+      + i2 i3' i5 i7 i8' i9 i10 i11 i13' i14
+      + i2 i3' i5 i7 i8 i9' i10 i13' i14
+      + i1 i3 i5 i6' i7' i8 i10 i11 i13 i14'
+      + i1 i4 i5' i6 i7 i9' i10 i11' i13 i14'
+      + i1 i2 i3' i6 i7 i8' i9 i11' i12 i13 i14'
+      + i1 i4' i5 i6' i7 i9' i10 i12 i13 i14'
+      + i1 i3' i4 i6 i7 i8' i9 i10 i11 i14'
+      + i1 i3' i4 i6 i7 i8 i10 i11' i14'
+      + i2 i4' i5 i7 i9' i10 i11' i13 i14'
+      + i2 i3 i4' i7 i8 i10 i11' i13' i14
+      + i2 i3 i5 i6' i8' i9 i10 i11 i13'
+      + i1' i2 i4' i6 i7 i8' i9 i10 i11 i13 i14'
+      + i1 i3 i5 i6' i7 i9' i10 i12 i13 i14'
+      + i1' i2 i4' i6 i7 i8 i10 i11' i13 i14'
+      + i2 i3 i5 i6' i8 i9' i10 i13'
+      + i1 i2 i3' i6 i7 i9' i10 i11' i13 i14'
+      + i1 i4 i5' i6 i7 i8' i9 i10 i11 i14'
+      + i1 i4 i5' i6 i7 i8 i10 i11' i14'
+      + i1 i3 i4' i5 i7 i8 i10 i11' i14'
+      + i2 i3' i5 i7 i8 i10 i11' i13' i14
+      + i1 i4 i5' i6 i7' i8 i10 i11 i13 i14'
+      + i1 i2 i4 i6' i7 i8' i9 i11' i12 i13 i14'
+      + i2 i4' i5 i7' i8 i10 i11 i13 i14'
+      + i1 i4 i5' i6 i7 i9' i10 i12 i13 i14'
+      + i2 i3 i5 i6' i8 i10 i11' i13'
+      + i1' i2 i4' i6 i7 i9' i10 i12 i13 i14'
+      + i1 i2 i3' i6 i7 i9' i10 i12 i13 i14'
+      + i1' i2 i5 i7 i9' i10 i12 i13 i14'
+      + i1 i2 i4 i6' i7 i9' i10 i11' i13 i14'
+      + i1 i2 i3' i6 i7' i8 i10 i11 i13 i14'
+      + i2 i3' i4 i7 i8' i9 i10 i11 i13' i14
+      + i3 i4' i5' i7 i8' i9 i10 i11 i13' i14
+      + i2 i3' i4 i6 i8 i9' i10 i13'
+      + i2 i3' i4 i7 i8 i9' i10 i13' i14
+      + i2 i3 i4' i7 i8 i9' i10 i13' i14
+      + i1 i2' i3 i6 i7 i9' i10 i12 i13 i14'
+      + i1 i3 i4' i5 i7 i8' i9 i10 i11 i14'
+      + i1 i2' i3 i6 i7 i8' i9 i10 i11 i13 i14'
+      + i1 i2' i3 i6 i7 i8 i10 i11' i13 i14'
+      + i1 i2 i4 i6' i7 i8' i9 i10 i11 i13 i14'
+      + i1 i2 i4 i6' i7 i8 i10 i11' i13 i14'
+      + i1 i2 i4 i6' i7' i8 i10 i11 i13 i14'
+      + i1 i2 i3' i6 i7 i8' i9 i10 i11 i13 i14'
+      + i1 i2 i3' i6 i7 i8 i10 i11' i13 i14'
+      + i2 i3' i4 i6 i8 i10 i11' i13'
+      + i2 i3' i4 i7 i8 i10 i11' i13' i14
+      + i1 i2 i4 i6' i7 i9' i10 i12 i13 i14'
+      + i1 i3' i4 i6 i7 i9' i10 i12 i13 i14'
+      + i3 i4' i6 i8' i9 i10 i11 i13'
+      + i3 i5' i6 i8' i9 i10 i11 i13'
+      + i3 i5' i6 i8 i9' i10 i13'
+      + i3 i6 i7' i8' i9 i10 i11 i13'
+      + i3 i6 i7' i8 i9' i10 i13'
+      + i3 i4' i6 i8 i9' i10 i13'
+      + i2 i4' i5 i7 i9' i10 i12 i13 i14'
+      + i3 i6 i7' i8 i10 i11' i13'
+      + i3 i5' i6 i8 i10 i11' i13'
+      + i3 i4' i6 i8 i10 i11' i13'
+      + i1 i3' i4 i5' i7 i8' i9 i10 i11 i14'
+      + i1 i4' i5 i6' i7 i8' i9 i10 i11 i13 i14'
+      + i1' i2 i4' i6 i7 i8' i9 i11' i12 i13 i14'
+      + i1 i3' i4 i5' i7 i8' i9 i11' i12 i13 i14'
+      + i1 i4' i5 i6' i7 i8' i9 i11' i12 i13 i14'
+      + i2 i5' i6 i7' i8' i9 i10 i11 i13' i14
+      + i2 i4' i5 i6' i8' i9 i10 i11 i13' i14
+      + i1 i2' i3 i6 i7 i8' i9 i11' i12 i13 i14'
+      + i1 i2' i4 i6 i7 i8' i9 i11' i12 i13 i14'
+      + i2 i5' i6 i7' i8 i9' i10 i13' i14
+      + i2 i4' i5 i6' i8 i9' i10 i13' i14
+      + i2' i3 i5' i7 i8' i9 i10 i11 i13' i14
+      + i2' i3 i5' i7 i8 i9' i10 i13' i14
+      + i1' i2 i5 i7 i8' i9 i10 i11 i13 i14'
+      + i1 i3' i4 i5' i7 i8 i10 i11' i14'
+      + i1 i4' i5 i6' i7 i8 i10 i11' i13 i14'
+      + i1' i2 i5 i7 i8' i9 i11' i12 i13 i14'
+      + i2' i3 i6 i8' i9 i10 i11 i13' i14
+      + i2' i3 i6 i8 i9' i10 i13' i14
+      + i1' i2 i4' i6 i7' i8 i10 i11 i13 i14'
+      + i3' i4 i5' i7 i8' i9 i10 i11 i13' i14'
+      + i2 i5' i6 i7' i8 i10 i11' i13' i14
+      + i1 i3' i4 i5' i7' i8 i10 i11 i13 i14'
+      + i2 i4' i5 i6' i8 i10 i11' i13' i14
+      + i3' i4 i5' i7 i8 i9' i10 i13' i14'
+      + i2' i3 i5' i7 i8 i10 i11' i13' i14
+      + i1 i4' i5 i6' i7' i8 i10 i11 i13 i14'
+      + i1 i2' i4 i6 i7' i8 i10 i11 i13 i14'
+      + i1 i2' i3 i6 i7' i8 i10 i11 i13 i14'
+      + i1' i2 i4' i6 i7 i9' i10 i11' i13 i14'
+      + i1' i2 i5 i7 i8 i10 i11' i13 i14'
+      + i1 i3' i4 i5' i7 i9' i10 i11' i13 i14'
+      + i1 i4' i5 i6' i7 i9' i10 i11' i13 i14'
+      + i1 i2' i4 i6 i7 i9' i10 i11' i13 i14'
+      + i1 i2' i3 i6 i7 i9' i10 i11' i13 i14'
+      + i3 i5 i6' i8' i9 i10 i11 i13' i14'
+      + i3 i5 i6' i8 i9' i10 i13' i14'
+      + i3' i4 i6 i8' i9 i10 i11 i13' i14'
+      + i3' i4 i6 i8 i9' i10 i13' i14'
+      + i1' i2 i5 i7' i8 i10 i11 i13 i14'
+      + i2' i3 i6 i8 i10 i11' i13' i14
+      + i3' i4 i5' i7 i8 i10 i11' i13' i14'
+      + i1' i2 i5 i7 i9' i10 i11' i13 i14'
+      + i3 i5 i6' i8 i10 i11' i13' i14'
+      + i3' i4 i6 i8 i10 i11' i13' i14'.
+let o8 = i1 i3 i5 i6' i7' i8 i10' i12 i13 i14'
+      + i1 i3' i4 i5' i7 i10 i11' i12 i13 i14'
+      + i3 i4' i5' i7 i8' i9 i11 i12 i13' i14
+      + i1 i3' i4 i5' i8 i9' i10' i12 i13 i14'
+      + i2 i4' i5 i7' i8 i10' i12 i13 i14'
+      + i2 i3' i4 i6 i8' i9 i10' i12 i13'
+      + i1 i4 i5' i6 i7' i8 i10' i12 i13 i14'
+      + i1' i2 i4' i6 i7 i10 i11' i12 i13 i14'
+      + i1 i3' i4 i5' i7 i9 i10' i11 i12 i14'
+      + i1 i3 i5 i6' i7 i10 i11' i12 i13 i14'
+      + i1' i2 i4' i6 i8 i9' i10' i12 i13 i14'
+      + i1 i2 i3' i6 i7' i8 i10' i12 i13 i14'
+      + i1 i3 i5 i6' i7 i9 i10' i11 i12 i14'
+      + i1 i3 i5 i6' i7 i8' i10 i12 i13 i14'
+      + i2 i3' i4 i7 i8' i9 i10' i12 i13' i14
+      + i2 i4' i5 i7 i10 i11' i12 i13 i14'
+      + i1 i4 i5' i6 i7 i10 i11' i12 i13 i14'
+      + i2 i3' i4 i6 i8' i9 i11 i12 i13'
+      + i2 i3 i5 i6' i8' i9 i10' i12 i13'
+      + i2 i3' i4 i6 i8 i10 i11' i12 i13'
+      + i2 i3 i5 i6' i8' i9 i11 i12 i13'
+      + i2' i3 i5' i7 i9 i10' i11 i12 i13' i14
+      + i1' i2 i4' i6 i7 i9 i10' i11 i12 i13 i14'
+      + i1 i3 i5 i6' i8 i9' i10' i12 i13 i14'
+      + i2 i4' i5 i6' i9 i10' i11 i12 i13' i14
+      + i1 i3 i5 i6' i7' i8 i11 i12 i13 i14'
+      + i1 i3 i4' i5 i7 i9 i10' i11 i12 i14'
+      + i2 i4' i5 i7 i8' i10 i12 i13 i14'
+      + i1 i4 i5' i6 i7 i9 i10' i11 i12 i14'
+      + i1 i4 i5' i6 i7 i8' i10 i12 i13 i14'
+      + i2 i5' i6 i7' i9 i10' i11 i12 i13' i14
+      + i1 i2 i4 i6' i7' i8 i10' i12 i13 i14'
+      + i1 i3' i4 i6 i7 i9 i10' i11 i12 i14'
+      + i2' i3 i5' i7 i8 i9' i11 i12 i13' i14
+      + i2 i4' i5 i6' i8 i9' i11 i12 i13' i14
+      + i2 i3' i4 i7 i9 i10' i11 i12 i13' i14
+      + i2' i3 i6 i9 i10' i11 i12 i13' i14
+      + i3' i4 i5' i7 i9 i10' i11 i12 i13' i14'
+      + i1 i2 i3' i6 i7 i8' i10 i12 i13 i14'
+      + i2 i3' i5 i7 i8' i9 i10' i12 i13' i14
+      + i3 i4' i5' i7 i8' i9 i10' i12 i13' i14
+      + i2 i5' i6 i7' i8 i9' i11 i12 i13' i14
+      + i2 i4' i5 i7' i8 i11 i12 i13 i14'
+      + i1 i4 i5' i6 i8 i9' i10' i12 i13 i14'
+      + i2 i3' i4 i7 i8 i10 i11' i12 i13' i14
+      + i2 i3' i4 i7 i8' i9 i11 i12 i13' i14
+      + i2 i3' i5 i7 i8' i9 i11 i12 i13' i14
+      + i1 i4 i5' i6 i7' i8 i11 i12 i13 i14'
+      + i1 i3 i4' i5 i8 i9' i10' i12 i13 i14'
+      + i1 i4' i5 i6' i8 i9' i10' i12 i13 i14'
+      + i2 i3 i5 i6' i8 i10 i11' i12 i13'
+      + i1 i2' i3 i6 i7 i10 i11' i12 i13 i14'
+      + i2 i3' i4 i7 i8 i9' i11 i12 i13' i14
+      + i2' i3 i6 i8 i9' i11 i12 i13' i14
+      + i3' i4 i5' i7 i8 i9' i11 i12 i13' i14'
+      + i2 i3 i4' i7 i8 i9' i11 i12 i13' i14
+      + i1 i2 i3' i6 i7 i10 i11' i12 i13 i14'
+      + i1 i4' i5 i6' i7 i9 i10' i11 i12 i13 i14'
+      + i3 i4' i5' i7 i9 i10' i11 i12 i13' i14
+      + i1 i3' i4 i6 i7 i10 i11' i12 i13 i14'
+      + i1 i2 i3' i6 i7' i8 i11 i12 i13 i14'
+      + i2 i3' i4 i6 i8 i9' i11 i12 i13'
+      + i1 i2 i4 i6' i7 i10 i11' i12 i13 i14'
+      + i1 i2' i3 i6 i8 i9' i10' i12 i13 i14'
+      + i3 i4' i6 i8 i10 i11' i12 i13'
+      + i2 i3' i4 i6 i9 i10' i11 i12 i13'
+      + i2 i3 i5 i6' i9 i10' i11 i12 i13'
+      + i1 i2' i3 i6 i7 i9 i10' i11 i12 i13 i14'
+      + i3 i6 i7' i8' i9 i11 i12 i13'
+      + i3 i4' i6 i8' i9 i11 i12 i13'
+      + i1 i2 i4 i6' i7 i9 i10' i11 i12 i13 i14'
+      + i1 i2 i4 i6' i7 i8' i10 i12 i13 i14'
+      + i3 i4' i6 i8' i9 i10' i12 i13'
+      + i3 i5' i6 i8' i9 i10' i12 i13'
+      + i1 i2 i3' i6 i7 i9 i10' i11 i12 i13 i14'
+      + i2 i3' i5 i7 i8 i10 i11' i12 i13' i14
+      + i3 i4' i5' i7 i8 i10 i11' i12 i13' i14
+      + i1' i2 i5 i8 i9' i10' i12 i13 i14'
+      + i1 i2 i3' i6 i8 i9' i10' i12 i13 i14'
+      + i2 i3' i5 i7 i8 i9' i11 i12 i13' i14
+      + i1' i2 i5 i7 i9 i10' i11 i12 i13 i14'
+      + i1 i3' i4 i6 i8 i9' i10' i12 i13 i14'
+      + i1 i2 i4 i6' i8 i9' i10' i12 i13 i14'
+      + i2 i3' i5 i7 i9 i10' i11 i12 i13' i14
+      + i1 i2 i4 i6' i7' i8 i11 i12 i13 i14'
+      + i3 i6 i7' i8' i9 i10' i12 i13'
+      + i3 i5' i6 i8' i9 i11 i12 i13'
+      + i3 i5 i6' i9 i10' i11 i12 i13' i14'
+      + i3' i4 i6 i9 i10' i11 i12 i13' i14'
+      + i3 i5' i6 i8 i10 i11' i12 i13'
+      + i3 i6 i7' i8 i9' i11 i12 i13'
+      + i3 i4' i6 i8 i9' i11 i12 i13'
+      + i2 i3 i5 i6' i8 i9' i11 i12 i13'
+      + i3 i5 i6' i8 i9' i11 i12 i13' i14'
+      + i3 i6 i7' i9 i10' i11 i12 i13'
+      + i3' i4 i6 i8 i9' i11 i12 i13' i14'
+      + i3 i6 i7' i8 i10 i11' i12 i13'
+      + i3 i5' i6 i8 i9' i11 i12 i13'
+      + i3 i4' i6 i9 i10' i11 i12 i13'
+      + i3 i5' i6 i9 i10' i11 i12 i13'
+      + i2' i3 i5' i7 i8' i9 i10' i12 i13' i14
+      + i2' i3 i5' i7 i8' i9 i11 i12 i13' i14
+      + i2 i4' i5 i6' i8' i9 i10' i12 i13' i14
+      + i2' i3 i5' i7 i8 i10 i11' i12 i13' i14
+      + i2 i4' i5 i6' i8' i9 i11 i12 i13' i14
+      + i1 i4' i5 i6' i7 i10 i11' i12 i13 i14'
+      + i2 i4' i5 i6' i8 i10 i11' i12 i13' i14
+      + i1 i3' i4 i5' i7 i8' i10 i12 i13 i14'
+      + i1 i4' i5 i6' i7 i8' i10 i12 i13 i14'
+      + i2 i5' i6 i7' i8' i9 i10' i12 i13' i14
+      + i2 i5' i6 i7' i8' i9 i11 i12 i13' i14
+      + i3' i4 i5' i7 i8' i9 i10' i12 i13' i14'
+      + i1' i2 i4' i6 i7 i8' i10 i12 i13 i14'
+      + i1 i3' i4 i5' i7' i8 i10' i12 i13 i14'
+      + i2 i5' i6 i7' i8 i10 i11' i12 i13' i14
+      + i3' i4 i5' i7 i8' i9 i11 i12 i13' i14'
+      + i1 i3' i4 i5' i7' i8 i11 i12 i13 i14'
+      + i1 i4' i5 i6' i7' i8 i10' i12 i13 i14'
+      + i3' i4 i5' i7 i8 i10 i11' i12 i13' i14'
+      + i1 i4' i5 i6' i7' i8 i11 i12 i13 i14'
+      + i1 i2' i3 i6 i7 i8' i10 i12 i13 i14'
+      + i1 i2' i4 i6 i7 i8' i10 i12 i13 i14'
+      + i1' i2 i4' i6 i7' i8 i10' i12 i13 i14'
+      + i1' i2 i4' i6 i7' i8 i11 i12 i13 i14'
+      + i1 i2' i4 i6 i7' i8 i10' i12 i13 i14'
+      + i1 i2' i3 i6 i7' i8 i10' i12 i13 i14'
+      + i1 i2' i4 i6 i7' i8 i11 i12 i13 i14'
+      + i1 i2' i3 i6 i7' i8 i11 i12 i13 i14'
+      + i2' i3 i6 i8' i9 i10' i12 i13' i14
+      + i2' i3 i6 i8' i9 i11 i12 i13' i14
+      + i2' i3 i6 i8 i10 i11' i12 i13' i14
+      + i1' i2 i5 i7 i10 i11' i12 i13 i14'
+      + i1' i2 i5 i7 i8' i10 i12 i13 i14'
+      + i3 i5 i6' i8' i9 i10' i12 i13' i14'
+      + i3 i5 i6' i8' i9 i11 i12 i13' i14'
+      + i3' i4 i6 i8' i9 i10' i12 i13' i14'
+      + i3 i5 i6' i8 i10 i11' i12 i13' i14'
+      + i3' i4 i6 i8' i9 i11 i12 i13' i14'
+      + i1' i2 i5 i7' i8 i10' i12 i13 i14'
+      + i1' i2 i5 i7' i8 i11 i12 i13 i14'
+      + i3' i4 i6 i8 i10 i11' i12 i13' i14'.
+let o9 = i1' i2 i3 i4' i6 i7 i9 i11 i12' i13 i14'
+      + i1' i2 i3 i4' i6 i7 i10 i11' i12 i13 i14'
+      + i1' i2 i3 i4' i6 i8 i10' i11 i13 i14'
+      + i1 i2 i3 i4 i5' i7' i8 i10' i12 i13 i14'
+      + i1 i3 i4' i5 i7 i9' i10 i11' i13 i14'
+      + i1 i2 i3 i4 i5' i7 i9' i10 i11' i13 i14'
+      + i1 i3 i4' i5 i7 i9 i11 i12' i13 i14'
+      + i1 i3 i4' i5 i7' i8 i10' i12 i13 i14'
+      + i1 i3 i4' i5 i7 i8 i9' i12 i13 i14'
+      + i1' i2 i3 i4' i6 i7 i8 i9' i12 i13 i14'
+      + i1 i2 i3 i4 i5' i7 i9 i11 i12' i13 i14'
+      + i1 i3 i4' i5 i7 i10' i11 i12' i13 i14'
+      + i1 i3 i5 i6' i7 i9' i10 i11' i13 i14'
+      + i1 i2 i3 i4 i5' i8 i10' i11 i13 i14'
+      + i1 i2' i3 i6 i7 i9 i11 i12' i13 i14'
+      + i1' i2 i3 i5 i7 i9 i11 i12' i13 i14'
+      + i1' i2 i3 i4' i6 i7 i8 i10 i12' i13 i14'
+      + i1 i3 i5 i6' i7 i9 i11 i12' i13 i14'
+      + i1 i3 i5 i6' i7' i8 i10' i12 i13 i14'
+      + i1 i2' i3 i6 i7 i10 i11' i12 i13 i14'
+      + i1 i3 i4' i5 i7' i8 i11 i13 i14'
+      + i1 i2' i3 i6 i8 i10' i11 i13 i14'
+      + i1' i2 i3 i5 i7 i10 i11' i12 i13 i14'
+      + i1' i2 i3 i5 i8 i10' i11 i13 i14'
+      + i1 i3 i5 i6' i8 i10' i11 i13 i14'
+      + i1 i2 i3 i4 i5' i7 i8 i9' i12 i13 i14'
+      + i1 i3 i4' i5 i7 i8' i9 i12 i13 i14'
+      + i1 i3 i4' i5 i7 i8' i10 i12 i13 i14'
+      + i1 i2' i3 i6 i7 i8 i9' i12 i13 i14'
+      + i1 i3 i4' i5 i7 i10 i11' i12 i13 i14'
+      + i1 i2 i3 i4 i5' i7 i10' i11 i12' i13 i14'
+      + i1 i2 i3 i4 i5' i7 i8' i9 i12 i13 i14'
+      + i1 i2 i3 i4 i5' i7 i8' i10 i12 i13 i14'
+      + i1 i3 i4' i5 i7 i8 i10 i12' i13 i14'
+      + i1' i2 i3 i5 i7 i8 i9' i12 i13 i14'
+      + i1 i2 i3 i4 i5' i7' i8 i11 i13 i14'
+      + i1 i3 i5 i6' i7 i8 i9' i12 i13 i14'
+      + i1 i3 i4' i5 i8 i10' i11 i13 i14'
+      + i1 i2 i3 i4 i5' i7 i10 i11' i12 i13 i14'
+      + i1 i2 i3 i4 i5' i7 i8 i10 i12' i13 i14'
+      + i1 i3 i5 i6' i7 i10' i11 i12' i13 i14'
+      + i1 i3 i5 i6' i7 i8' i9 i12 i13 i14'
+      + i1 i3 i5 i6' i7 i8' i10 i12 i13 i14'
+      + i1 i2' i3 i6 i7 i8 i10 i12' i13 i14'
+      + i1 i3 i5 i6' i7' i8 i11 i13 i14'
+      + i1' i2 i3 i5 i7 i8 i10 i12' i13 i14'
+      + i1 i3 i5 i6' i7 i10 i11' i12 i13 i14'
+      + i1 i3 i5 i6' i7 i8 i10 i12' i13 i14'
+      + i3' i4' i5 i6 i7 i8 i9 i10' i11' i12 i13' i14'
+      + i3' i4' i5 i6 i7 i8' i9' i10 i11 i12 i13' i14'
+      + i3' i4' i6' i7' i8' i9' i11' i12' i13' i14'
+      + i3' i4' i6' i7' i8 i9 i10 i11 i12 i13' i14'
+      + i1' i2 i3 i4' i6 i7' i8 i10' i12 i13 i14'
+      + i1' i2 i3 i4' i6 i7 i9' i10 i11' i13 i14'
+      + i1' i2 i3 i4' i6 i7 i8' i10 i12 i13 i14'
+      + i1' i2 i3 i4' i6 i7 i8' i9 i12 i13 i14'
+      + i1' i2 i3 i4' i6 i7 i10' i11 i12' i13 i14'
+      + i1' i2 i3 i5 i7' i8 i10' i12 i13 i14'
+      + i1' i2 i3 i4' i6 i7' i8 i11 i13 i14'
+      + i1 i2' i3 i6 i7' i8 i10' i12 i13 i14'
+      + i1' i2 i3 i5 i7 i9' i10 i11' i13 i14'
+      + i1' i2 i3 i5 i7 i8' i10 i12 i13 i14'
+      + i1' i2 i3 i5 i7 i8' i9 i12 i13 i14'
+      + i1' i2 i3 i5 i7 i10' i11 i12' i13 i14'
+      + i1 i2' i3 i6 i7 i9' i10 i11' i13 i14'
+      + i1 i2' i3 i6 i7 i8' i9 i12 i13 i14'
+      + i1 i2' i3 i6 i7 i8' i10 i12 i13 i14'
+      + i1 i2' i3 i6 i7 i10' i11 i12' i13 i14'
+      + i1' i2 i3 i5 i7' i8 i11 i13 i14'
+      + i1 i2' i3 i6 i7' i8 i11 i13 i14'.
+let o10 = i1 i3' i4 i5 i6 i7 i9' i10 i11' i13 i14'
+      + i1 i3' i4 i5 i6 i7' i8 i10' i12 i13 i14'
+      + i1 i3 i4' i5 i7 i9' i10 i11' i13 i14'
+      + i1 i3 i4' i5 i7' i8 i10' i12 i13 i14'
+      + i2 i4 i5' i6 i8' i9 i10' i12 i13' i14
+      + i1 i3' i4 i5 i6 i7 i10' i11 i12' i13 i14'
+      + i2' i3 i4 i5' i7 i8 i9' i11 i13' i14
+      + i2 i3 i4 i5 i6' i8' i9 i10' i12 i13' i14
+      + i1 i2 i3' i6 i7 i9 i11 i12' i13 i14'
+      + i2 i4 i6 i7' i8' i9 i10' i12 i13' i14
+      + i2' i3 i4 i5' i7 i8 i10' i11 i13' i14
+      + i1 i2' i3 i5 i7 i9 i11 i12' i13 i14'
+      + i1 i4' i5 i6' i8 i10' i11 i13 i14'
+      + i2 i4 i5' i6 i8 i9' i11 i13' i14
+      + i1 i2 i3' i6 i7 i10 i11' i12 i13 i14'
+      + i1 i3 i4' i5 i7 i10' i11 i12' i13 i14'
+      + i1 i4' i5 i6' i7 i9 i11 i12' i13 i14'
+      + i2 i3 i4 i5 i6' i8 i10' i11 i13' i14
+      + i2' i3 i4 i5' i7 i8 i11 i12' i13' i14
+      + i1 i2' i3 i5 i7 i10 i11' i12 i13 i14'
+      + i1 i2 i3' i6 i8 i10' i11 i13 i14'
+      + i1 i2 i4 i5' i7 i9 i11 i12' i13 i14'
+      + i1 i4' i5 i6' i7 i10 i11' i12 i13 i14'
+      + i1 i2' i3 i5 i8 i10' i11 i13 i14'
+      + i1 i3' i4 i5 i6 i7' i8 i11 i13 i14'
+      + i2 i4 i5' i6 i8 i10' i11 i13' i14
+      + i1 i3' i4 i5 i6 i7 i8' i9 i12 i13 i14'
+      + i2 i4 i5' i6 i8' i9 i11 i13' i14
+      + i1 i3' i4 i5 i6 i7 i8 i9' i12 i13 i14'
+      + i1 i3' i4 i5 i6 i7 i9 i11 i12' i13 i14'
+      + i1 i2 i3' i6 i7 i8 i9' i12 i13 i14'
+      + i1 i3 i4' i5 i7 i8' i9 i12 i13 i14'
+      + i2 i4 i6 i7' i8 i9' i11 i13' i14
+      + i2 i4 i5' i6 i8 i10 i11' i13' i14
+      + i1 i2 i4 i5' i7 i10 i11' i12 i13 i14'
+      + i2' i3 i4 i6 i8 i9' i11 i13' i14
+      + i2 i3 i4 i5 i6' i8 i9' i11 i13' i14
+      + i2 i3 i4 i5 i6' i8' i9 i11 i13' i14
+      + i1 i2' i3 i5 i7 i8 i9' i12 i13 i14'
+      + i1 i3 i4' i5 i7 i9' i10 i12 i13 i14'
+      + i1 i3 i4' i5 i8 i10' i11 i13 i14'
+      + i2 i4 i5' i6 i8 i11 i12' i13' i14
+      + i2 i3' i4 i7 i8 i9' i11 i13' i14
+      + i1 i2 i4 i5' i8 i10' i11 i13 i14'
+      + i2 i3 i4 i5 i6' i8 i10 i11' i13' i14
+      + i1 i4' i5 i6' i7 i8 i9' i12 i13 i14'
+      + i1 i3' i4 i5 i6 i7 i9' i10 i12 i13 i14'
+      + i1 i3 i4' i5 i7 i8 i9' i12 i13 i14'
+      + i1 i2 i3' i6 i7 i8 i10 i12' i13 i14'
+      + i1 i3 i4' i5 i7' i8 i11 i13 i14'
+      + i2 i3 i4 i5 i6' i8 i11 i12' i13' i14
+      + i1 i3 i4' i5 i7 i9 i11 i12' i13 i14'
+      + i1 i3 i4' i5 i7 i10 i11' i12 i13 i14'
+      + i2 i4 i6 i7' i8 i10' i11 i13' i14
+      + i2 i4 i6 i7' i8' i9 i11 i13' i14
+      + i1 i2 i4 i5' i7 i8 i9' i12 i13 i14'
+      + i2' i3 i4 i6 i8 i10' i11 i13' i14
+      + i1 i3 i4' i5 i7 i8 i10 i12' i13 i14'
+      + i1 i2' i3 i5 i7 i8 i10 i12' i13 i14'
+      + i1 i3' i4 i5 i6 i7 i10 i11' i12 i13 i14'
+      + i2 i4 i6 i7' i8 i10 i11' i13' i14
+      + i1 i4' i5 i6' i7 i8 i10 i12' i13 i14'
+      + i1 i3' i4 i5 i6 i7 i8 i10 i12' i13 i14'
+      + i2 i3' i4 i7 i8 i10' i11 i13' i14
+      + i2 i4 i6 i7' i8 i11 i12' i13' i14
+      + i2' i3 i4 i6 i8 i11 i12' i13' i14
+      + i1 i2 i4 i5' i7 i8 i10 i12' i13 i14'
+      + i2 i3' i4 i7 i8 i11 i12' i13' i14
+      + i1 i3' i4 i5 i6 i8 i10' i11 i13 i14'
+      + i2 i3 i4 i5 i6 i7 i8' i9' i10 i11' i12' i13'
+      + i2' i3 i4 i5 i6' i7 i8' i9' i10 i11 i12 i13' i14
+      + i2 i3 i4 i5' i6' i7 i8 i9 i10' i11' i12 i13'
+      + i2 i3 i4 i5' i6' i7 i8' i9' i10 i11 i12 i13'
+      + i3' i4' i5' i6' i7' i8' i9' i11' i12' i13' i14'
+      + i3' i4' i5' i6' i7' i8 i9 i10 i11 i12 i13' i14'
+      + i3' i4' i5 i6 i7 i8 i9 i10' i11' i12 i13' i14'
+      + i3 i4 i5 i6 i7 i8' i9' i10 i11' i12' i13' i14'
+      + i3 i4 i5' i6' i7 i8 i9 i10' i11' i12 i13' i14'
+      + i2' i3 i4 i5' i7 i8' i9 i10' i12 i13' i14
+      + i3 i4 i5' i6' i7 i8' i9' i10 i11 i12 i13' i14'
+      + i3' i4 i5 i6' i7 i8' i9' i10 i11 i12 i13' i14'
+      + i2' i3 i4 i6 i8' i9 i10' i12 i13' i14
+      + i2' i3 i4 i5' i7 i8' i9 i11 i13' i14
+      + i2' i3 i4 i5' i7 i8 i10 i11' i13' i14
+      + i1 i2' i3 i5 i7' i8 i10' i12 i13 i14'
+      + i2 i3' i4 i7 i8' i9 i10' i12 i13' i14
+      + i1 i2 i3' i6 i7' i8 i10' i12 i13 i14'
+      + i1 i2' i3 i5 i7 i9' i10 i11' i13 i14'
+      + i1 i2 i3' i6 i7 i9' i10 i11' i13 i14'
+      + i1 i2' i3 i5 i7 i8' i9 i12 i13 i14'
+      + i1 i2' i3 i5 i7 i8' i10 i12 i13 i14'
+      + i1 i2 i4 i5' i7' i8 i10' i12 i13 i14'
+      + i1 i2 i3' i6 i7 i8' i10 i12 i13 i14'
+      + i1 i2 i3' i6 i7 i8' i9 i12 i13 i14'
+      + i2' i3 i4 i6 i8' i9 i11 i13' i14
+      + i1 i2' i3 i5 i7 i10' i11 i12' i13 i14'
+      + i2' i3 i4 i6 i8 i10 i11' i13' i14
+      + i1 i2 i3' i6 i7 i10' i11 i12' i13 i14'
+      + i1 i2 i4 i5' i7 i9' i10 i11' i13 i14'
+      + i1 i2 i4 i5' i7 i8' i10 i12 i13 i14'
+      + i1 i2 i4 i5' i7 i8' i9 i12 i13 i14'
+      + i1 i4' i5 i6' i7' i8 i10' i12 i13 i14'
+      + i1 i2 i4 i5' i7 i10' i11 i12' i13 i14'
+      + i1 i4' i5 i6' i7 i9' i10 i11' i13 i14'
+      + i1 i2' i3 i5 i7' i8 i11 i13 i14'
+      + i2 i3' i4 i7 i8' i9 i11 i13' i14
+      + i2 i3' i4 i7 i8 i10 i11' i13' i14
+      + i1 i2 i3' i6 i7' i8 i11 i13 i14'
+      + i1 i4' i5 i6' i7 i8' i9 i12 i13 i14'
+      + i1 i4' i5 i6' i7 i8' i10 i12 i13 i14'
+      + i1 i4' i5 i6' i7 i10' i11 i12' i13 i14'
+      + i1 i2 i4 i5' i7' i8 i11 i13 i14'
+      + i1 i4' i5 i6' i7' i8 i11 i13 i14'.
+let o11 = i1' i2 i3 i4 i5' i6 i7' i8 i9 i10 i11' i12 i13 i14'
+      + i1' i2 i3 i4 i5' i6 i7 i8 i9 i10' i11' i12 i13 i14'
+      + i3' i4' i5 i6 i7 i8' i9' i10 i11 i12 i13' i14'
+      + i3' i4' i6' i7' i8' i9' i10' i11' i12' i13' i14'
+      + i2 i3 i4 i5' i6' i7 i8' i9' i10 i11 i12 i13'
+      + i3' i4' i5' i6' i7' i8 i9 i10 i11 i12 i13' i14'
+      + i2' i3 i4 i5 i6' i7 i8 i9 i10' i11' i12 i13' i14
+      + i2' i3 i4 i5 i6' i7 i8' i9 i10 i11' i12 i13' i14
+      + i2 i3 i4 i5' i6' i7 i8 i9 i10' i11' i12 i13'
+      + i3 i4 i5' i6' i7 i8' i9' i10 i11 i12 i13' i14'
+      + i3' i4 i5 i6' i7 i8 i9 i10' i11' i12 i13' i14'
+      + i3' i4 i5 i6' i7 i8' i9 i10 i11' i12 i13' i14'
+      + i3 i4 i5' i6' i7 i8 i9 i10' i11' i12 i13' i14'.
+let o12 = i1' i2 i3 i4 i5' i6 i7 i8 i9 i10' i11' i12 i13 i14'
+      + i3' i4' i5' i6' i7' i8' i9' i11' i12' i13' i14'
+      + i1 i2 i3 i4 i5 i6 i7 i8 i9 i10 i11 i12 i14'
+      + i2' i3 i4 i5 i6' i7 i8' i9' i10 i11 i12 i13' i14
+      + i3' i4' i5 i6 i7 i8' i9' i10 i11 i12 i13' i14'
+      + i2 i3 i4 i5' i6' i7 i8 i9 i10' i11' i12 i13'
+      + i3' i4' i5 i6' i7' i8 i9 i10 i11 i12 i13' i14'
+      + i2' i3 i4 i5 i6' i7 i8 i9 i10' i11' i12 i13' i14
+      + i2 i3 i4 i5 i6 i7 i8 i9 i10 i11 i12 i13'
+      + i3' i4 i5 i6' i7 i8' i9' i10 i11 i12 i13' i14'
+      + i3 i4 i5' i6' i7 i8 i9 i10' i11' i12 i13' i14'
+      + i3' i4 i5 i6' i7 i8 i9 i10' i11' i12 i13' i14'
+      + i3 i4 i5 i6 i7 i8 i9 i10 i11 i12 i13' i14'.
+let o13 = i1' i2 i3 i4' i5' i6' i7 i8' i9' i10' i11 i12 i13 i14'
+      + i1' i2 i3 i4 i5' i6 i7' i8 i9 i10 i11' i12 i13 i14'
+      + i1' i2 i3 i4 i5' i6 i7 i8 i9 i10' i11' i12 i13 i14'
+      + i1 i2 i3 i4 i5 i6 i7 i8 i9 i10 i11 i12 i14'
+      + i2' i3 i4 i5' i6' i7' i8 i9' i10' i11' i12 i13'
+      + i2 i3 i4 i5 i6 i7 i8' i9' i10 i11' i12' i13'
+      + i3' i4' i6' i7' i8' i9' i11' i12' i13' i14'
+      + i3' i4' i5 i6 i7 i8' i9' i10 i11 i12 i13' i14'
+      + i2 i3 i4 i5' i6' i7 i8' i9' i10 i11 i12 i13'
+      + i2' i3 i4 i5 i6' i7 i8' i9' i10 i11 i12 i13' i14
+      + i3' i4' i5 i6 i7 i8 i9 i10' i11' i12 i13' i14'
+      + i2 i3 i4 i5 i6 i7 i8 i9 i10 i11 i12 i13'
+      + i2 i3 i4 i5' i6' i7 i8 i9 i10' i11' i12 i13'
+      + i2' i3 i4 i5 i6' i7 i8 i9 i10' i11' i12 i13' i14
+      + i3' i4' i6' i7' i8 i9 i10 i11 i12 i13' i14'
+      + i2' i3 i4 i5 i6' i7 i8' i9 i10 i11' i12 i13' i14
+      + i3 i4 i5 i6 i7 i8' i9' i10 i11' i12' i13' i14'
+      + i3 i4 i5' i6' i7' i8 i9' i10' i11' i12 i13' i14'
+      + i3' i4 i5 i6' i7 i8' i9' i10 i11 i12 i13' i14'
+      + i3' i4 i5 i6' i7 i8 i9 i10' i11' i12 i13' i14'
+      + i3' i4 i5 i6' i7 i8' i9 i10 i11' i12 i13' i14'
+      + i3 i4 i5' i6' i7 i8' i9' i10 i11 i12 i13' i14'
+      + i3 i4 i5 i6 i7 i8 i9 i10 i11 i12 i13' i14'
+      + i3 i4 i5' i6' i7 i8 i9 i10' i11' i12 i13' i14'.
+let o14 = i1' i4 i5' i12' i13 i14'
+      + i1' i4 i5' i7' i10' i13 i14'
+      + i2' i5' i7 i8 i10' i11' i13' i14
+      + i1 i2 i3 i4 i5 i6 i10' i13 i14'
+      + i1 i2 i3 i4 i5 i6 i7' i13 i14'
+      + i1 i2 i3 i4 i5 i6 i11' i13 i14'
+      + i1 i2 i3 i4 i5 i6 i9' i13 i14'
+      + i3' i5 i6' i8' i9 i10' i13' i14'
+      + i3 i4 i5 i6 i7 i8 i12' i13' i14'
+      + i3 i4 i5 i6 i7 i8 i11' i13' i14'
+      + i2 i3 i4 i5' i6' i8 i11 i13'
+      + i3 i4 i5 i6 i7 i8 i9' i13' i14'
+      + i2 i6' i8' i10 i11' i13' i14
+      + i4' i5' i6' i9 i13 i14'
+      + i2 i3 i4 i5' i6' i8 i10 i13'
+      + i3' i5' i8' i9' i12 i13'
+      + i1 i2 i3 i4 i5 i6 i8' i13 i14'
+      + i1 i2 i3 i4 i5 i6 i12' i13 i14'
+      + i2 i3 i4 i5' i6' i8' i9 i13'
+      + i2 i3 i4 i5 i6 i7 i8 i12' i13'
+      + i2 i3 i4 i5 i6 i7 i8 i11' i13'
+      + i3 i5 i6' i8' i9' i13' i14'
+      + i2 i3 i4 i5 i6 i7 i8 i9' i13'
+      + i4' i7 i8 i9 i10' i11' i13 i14'
+      + i1 i7 i8 i9 i10' i11' i13 i14'
+      + i5 i7 i8 i9 i10' i11' i13 i14'
+      + i7' i8 i9 i10' i11' i13'
+      + i3' i5 i6' i8 i10 i11' i13' i14'
+      + i3 i5 i8 i10' i11' i13' i14'
+      + i3' i5 i6' i7 i8 i11 i13' i14'
+      + i3' i5 i6' i8' i9 i11 i13' i14'
+      + i1' i5' i6' i8 i13 i14'
+      + i4' i5' i6' i10 i13 i14'
+      + i2' i6 i8' i9' i13' i14
+      + i5' i8' i9 i10 i11' i13'
+      + i3 i6' i8 i9 i10 i11 i12 i13'
+      + i3' i4' i10' i11 i13' i14'
+      + i3' i8 i9 i10 i11 i12 i13' i14
+      + i3' i4' i6 i8 i11 i13' i14'
+      + i3' i4 i8 i9 i10 i11 i12 i13'
+      + i3 i7' i8 i9 i10 i11 i12 i13'
+      + i3' i4' i5' i6' i13 i14'
+      + i2' i6' i7' i8' i13' i14
+      + i2 i3 i5 i8 i10' i11' i13'
+      + i2 i7' i8 i10' i11' i13' i14
+      + i3' i4 i6 i8' i9' i13'
+      + i3' i4' i8 i9' i13' i14'
+      + i3' i4' i8 i10 i11' i13' i14'
+      + i4' i5' i6' i12' i13 i14'
+      + i3 i5' i6' i8 i10 i13' i14'
+      + i3 i8' i9 i10 i11' i13' i14'
+      + i3' i4' i8' i9 i13' i14'
+      + i3' i4' i8 i12' i13' i14'
+      + i4' i6' i8 i10' i11' i13'
+      + i6 i8' i9 i10 i11' i13'
+      + i3 i5' i6' i8 i11 i13' i14'
+      + i3 i5' i6' i8' i9 i13' i14'
+      + i4 i6 i8 i10' i11' i13'
+      + i3' i4' i6' i8' i12 i13' i14'
+      + i3 i4' i8' i9' i13'
+      + i8' i9' i11' i12 i13'
+      + i3 i6 i8' i9' i11 i13'
+      + i2 i5 i6' i8' i9' i13' i14
+      + i2' i4' i5 i6' i13' i14
+      + i8 i10' i11' i12' i13'
+      + i3 i6 i8 i10' i11' i13'
+      + i5' i6 i8' i9' i13'
+      + i7 i9' i10' i11' i13'
+      + i5 i8 i9' i10' i11' i13'
+      + i3' i7 i8' i9' i12' i13'
+      + i4' i8' i9' i13' i14
+      + i3 i4' i8 i9 i10 i11 i12 i13'
+      + i4' i7 i8 i9 i10 i11 i12 i14'
+      + i3 i5' i8 i9 i10 i11 i12 i13'
+      + i2 i3 i4 i5 i6 i7 i10' i13'
+      + i2 i3 i4 i5 i6 i7 i8' i9 i13'
+      + i6' i7 i8 i9 i10 i11 i12 i14'
+      + i1' i7 i8 i9 i10 i11 i12 i13 i14'
+      + i2' i7 i8 i9 i10 i11 i12 i13 i14'
+      + i5' i7 i8 i9 i10 i11 i12 i14'
+      + i3' i7 i8 i9 i10 i11 i12 i14'
+      + i6 i8' i9' i10' i12 i14'
+      + i4 i8' i9' i10' i12 i14'
+      + i1' i4 i5' i7 i10 i13 i14'
+      + i8' i9' i10' i12 i13'
+      + i5 i8' i9' i10' i12 i14'
+      + i2' i8 i9 i10 i11 i12 i13' i14
+      + i3 i4 i5 i6 i7 i10' i13' i14'
+      + i3 i4 i5 i6 i7 i8' i9 i13' i14'
+      + i1 i2 i3 i4' i5' i13 i14'
+      + i2' i3' i4 i5 i6' i13 i14'
+      + i3' i4' i5 i6 i7' i13'
+      + i2' i5 i6' i8 i10 i13' i14
+      + i3 i6' i8' i9' i12' i13'
+      + i8' i9' i10 i11 i12' i14'
+      + i2' i5 i6' i9 i11 i13' i14
+      + i5' i6' i7' i8' i13' i14
+      + i2' i5' i8' i9' i13' i14
+      + i2' i5 i6' i8' i10' i13' i14
+      + i8' i9' i10' i11' i13 i14'
+      + i2' i3' i4' i6 i13 i14'
+      + i3' i4 i6' i7' i13'
+      + i5' i6' i7' i8 i10 i11' i13'
+      + i4 i7' i8' i9' i13'
+      + i1' i4 i5' i11 i13 i14'
+      + i1' i4 i5' i9' i13 i14'
+      + i1' i3' i4 i5' i13 i14'
+      + i1' i4 i5' i8' i13 i14'
+      + i1 i7' i10 i11' i13 i14'
+      + i2' i3 i5' i6' i13 i14'
+      + i3' i4' i5' i7 i13'
+      + i4' i7' i10 i11' i13 i14'
+      + i7' i8' i13 i14'
+      + i5 i7' i10 i11' i13 i14'
+      + i8' i9 i11' i12' i13'
+      + i8' i9 i11' i12' i14'
+      + i10' i11' i12' i13 i14'
+      + i1' i2' i13 i14'
+      + i2' i3' i13' i14
+      + i5' i6' i7' i11 i13' i14
+      + i2' i5 i6' i8 i11 i13' i14
+      + i3' i5' i8 i10' i11' i13'
+      + i3' i8 i10' i11' i13' i14.
+
+o1.
+o2.
+o3.
+o4.
+o5.
+o6.
+o7.
+o8.
+o9.
+o10.
+o11.
+o12.
+o13.
+o14.

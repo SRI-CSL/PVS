@@ -1,0 +1,71 @@
+/* Example of solving the satisfiability problem of a PTL formula
+   using a transformation to mu-calculus.
+*/
+
+domain = { x1, y1, w1, x2, y2, w2, x3, y3, w3, x4, y4, w4 };
+
+/* PTL formula f: [](P -> <>Q):
+
+   Set of elementary subformulas:
+   el (f) = {  P,  Q, @[](P -> <>Q), @<>Q }
+   coding:    x1, x2,            x3,   x4
+
+   alpha conversion for all subformulas:
+   a([](P -> <>Q)) = a(P -> <>Q) & L x1,x2,x3,x4.x3
+   a((P -> <>Q))   = ~a(P) + a(<>Q)
+   a(P)            = L x1,x2,x3,x4.x1
+   a(<>Q)          = a(Q) + L x1,x2,x3,x4.x4
+   a(Q)            = L x1,x2,x3,x4.x2
+
+   N is derived by and-ing the equivalence of all elementary formulas @f
+   with a(f):
+
+   N(x,y) = (x3 == a([](P -> <>Q)(y))
+          & (x4 == a(<>Q)(y))
+
+	  = (x3 == a(P-><>Q)(y) & y3)
+          & (x4 == a(Q)(y) + y4)
+
+	  = (x3 == (a(P')(y) + a(<>Q)(y)) & y3)
+          & (x4 == y2 + y4)
+
+	  = (x3 == (y1' + y2 + y4) & y3)
+          & (x4 == y2 + y4)
+*/
+let N = L x1,x2,x3,x4,y1,y2,y3,y4 .   (x3 == (y1' + y2 + y4) & y3)
+                                    & (x4 == y2 + y4) ;
+
+write ("Next state relation is N(x,y):\n");
+N(x1,x2,x3,x4,y1,y2,y3,y4);
+
+write ("E inputs.N(x,y):\n");
+E x1,x2,y1,y2 . N(x1,x2,x3,x4,y1,y2,y3,y4);
+
+let Nplus =
+
+mu Z . N + [ L x1,x2,x3,x4,y1,y2,y3,y4 .
+ E w1,w2,w3,w4 . Z(x1,x2,x3,x4,w1,w2,w3,w4) & Z(w1,w2,w3,w4,y1,y2,y3,y4) ];
+
+write ("Transitive closure of Next state relation is N+(x,y):\n");
+Nplus(x1,x2,x3,x4,y1,y2,y3,y4);
+
+/* S0(x) = a(f)(x) = (x1' + x2 + x4) & x3 */
+let S0 = L x1,x2,x3,x4 . (x1' + x2 + x4) & x3;
+
+let F1 = N & [ L x1,x2,x3,x4,y1,y2,y3,y4 . x3 -> y2 ];
+
+let Fair = L x1,x2,x3,x4 . (
+E y1,y2,y3,y4,w1,w2,w3,w4 . (
+Nplus(x1,x2,x3,x4,y1,y2,y3,y4) & F1(y1,y2,y3,y4,w1,w2,w3,w4) &
+Nplus(w1,w2,w3,w4,y1,y2,y3,y4) ));
+
+write ("All states that have departing fair paths are:\n");
+Fair (x1,x2,x3,x4);
+
+write ("Reachable states that have fair paths are:\n");
+S0(x1,x2,x3,x4) & Fair (x1,x2,x3,x4);
+
+Fair (x1,x2,x3,x4) | S0(x1,x2,x3,x4);
+
+write ("Is there a satisfiable initial state?\n");
+E x1,x2,x3,x4 . S0(x1,x2,x3,x4) & Fair (x1,x2,x3,x4);

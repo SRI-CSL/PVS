@@ -1,0 +1,17 @@
+Set of free Boolean variables of a formula:
+
+Free ( "0" ) = {}
+Free ( "1" ) = {}
+Free ( bv ) = { bv }
+Free ( "[ t ] ( fl )" ) = Free ( "t" ) + Free ( "fl" )
+Free ( "fl, f" ) = Free ( "fl" ) + Free ( "f" )
+Free ( "~ ( f )" ) = Free ( "f" )
+Free ( "( f + g )" ) = Free ( "f" ) + Free ( "g" )
+Free ( "E bv.( f )" ) = Free ( "f" ) - { bv }
+
+T : 'L' BVL '.' '(' F ')'
+  | 'mu' RV '.' '[' T ']'
+  | '[' T '+' T ']'
+  | '~' '[' T ']'
+  | '0' | '1' | RV
+  ;

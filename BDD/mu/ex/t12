@@ -1,0 +1,21 @@
+domain = { x1, y1, w1, x2, y2, w2, x3, y3, w3, x4, y4, w4 };
+
+let N = L x1,x2,y1,y2 . x1' & x2' & y1' & y2
+                      + x1' & x2  & y1  & y2'
+                      + x1  & x2' & y1  & y2
+                      + x1  & x2  & y1' & y2;
+
+let I = L x1,x2,y1,y2 . (x1 <-> y1) & (x2 <-> y2);
+
+let P = mu Z . I + N
+      + [ L x1,x2,y1,y2 .
+          E w1,w2 . Z (x1,x2,w1,w2) & Z (w1,w2,y1,y2) ];
+
+P(0,0,y1,y2);
+P(0,1,y1,y2);
+P(1,0,y1,y2);
+P(1,1,y1,y2);
+
+
+
+

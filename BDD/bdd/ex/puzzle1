@@ -1,0 +1,276 @@
+/* Logigram puzzle
+
+1. Er zijn 5 huizen. Ieder huis heeft zijn eigen kleur. Alle huizen
+hebben een bewoner van een andere nationaliteit die allemaal weer hun
+eigen sigarettenmerk, huisdier en favoriete drankje hebben.
+
+1. There are 5 houses. Each house has its own colour. In every house lives
+a person with a distinct nationality. Each person has its favourite drink,
+brand of cigarettes, and pet.
+
+Vraag: Wie heeft een zebra?
+
+Question: Who keeps the zebra?
+
+Codering:
+Er zijn 5 huizen: H1, H2, H3, H4, H5.
+Ieder huis heeft zijn eigen kleur: rood, wit, geel, blauw, groen.
+In ieder huis woont een persoon van een andere nationaliteit:
+Engelsman, Deen, Zweed, Duitser, Noor.
+Elke persoon rookt zijn eigen merk cigaretten:
+Long, North_State, Cecil, Kings, Prince.
+In ieder huis is een huisdier:
+hond, kat, vogel, paard, zebra.
+Elke persoon heeft zijn favoriete drank:
+melk, thee, bier, water, koffie.
+
+Encoding:
+The 5 houses are denoted: H1, H2, H3, H4, H5.
+Each house has its own colour: rood(red), wit(white), geel(yellow),
+blauw(blue), groen(green).
+The nationalities of the persons are: Engelsman(English), Deen(Danish),
+Zweed(Swedish), Duitser(German), Noor(Norwegian).
+The brands of cigarettes are: Long, North_State, Cecil, Kings, Prince.
+The pets are: hond(dog), kat(cat), vogel(bird), paard(horse), zebra.
+The drinks are: melk(milk), thee(tea), bier(beer), water, koffie(coffee).
+
+Verder gegeven:
+
+2. De Engelsman woont in het rode huis.
+3. De Deen drinkt thee.
+4. De Zweed heeft een hond.
+5. Het groene huis staat rechts van het witte huis.
+6. De man die Long rookt, houdt vogels.
+7. In het gele huis wordt North State gerookt.
+8. In het middelste huis wordt melk gedronken.
+9. De man die Cecil rookt, woont naast het huis waar men een kat heeft.
+10. De Noor woont in het eerste huis.
+11. De man die Kings rookt, woont naast het huis waar men een paard heeft.
+12. De man die North State rookt, drinkt bier.
+13. De Duitser rookt Prince.
+14. De Noor woont naast het blauwe huis.
+15. De man die Cecil rookt, woont naast het huis waar water wordt gedronken.
+16. In het groene huis wordt koffie gedronken.
+
+Furthermore it is known that:
+
+2. The Englishman lives in the red house.
+3. The Dane drinks tea.
+4. The Swede has a dog.
+5. The green house is to the right of the white house.
+6. The man that smokes Long keeps birds.
+7. In the yellow house one smokes North State.
+8. In the middle house one drinks milk.
+9. Whoever smokes Cecil, lives next to the house with the cat.
+10. The Norwegian person lives in the first house.
+11. The person that smokes Kings, lives next to the house with the horse.
+12. The North State smoker drinks beer.
+13. The German smokes Prince.
+14. The Norwegian lives in the blue house.
+15. The person that smokes Cecil lives next door to the water drinker.
+16. One drinks coffee in the green house.
+
+You may assume that the houses are nicely aligned along a street; they do not
+stand in a circle!
+
+*/
+
+/* 1. */
+
+/* Each house has 1 color: */
+E! (H1_rood, H1_wit, H1_geel, H1_blauw, H1_groen)
+E! (H2_rood, H2_wit, H2_geel, H2_blauw, H2_groen)
+E! (H3_rood, H3_wit, H3_geel, H3_blauw, H3_groen)
+E! (H4_rood, H4_wit, H4_geel, H4_blauw, H4_groen)
+E! (H5_rood, H5_wit, H5_geel, H5_blauw, H5_groen)
+
+/* No two houses have the same color: */
+E! (H1_rood, H2_rood, H3_rood, H4_rood, H5_rood)
+E! (H1_wit, H2_wit, H3_wit, H4_wit, H5_wit)
+E! (H1_geel, H2_geel, H3_geel, H4_geel, H5_geel)
+E! (H1_blauw, H2_blauw, H3_blauw, H4_blauw, H5_blauw)
+E! (H1_groen, H2_groen, H3_groen, H4_groen, H5_groen)
+
+/* In each house lives 1 person: */
+E! (H1_Engelsman, H1_Deen, H1_Zweed, H1_Duitser, H1_Noor)
+E! (H2_Engelsman, H2_Deen, H2_Zweed, H2_Duitser, H2_Noor)
+E! (H3_Engelsman, H3_Deen, H3_Zweed, H3_Duitser, H3_Noor)
+E! (H4_Engelsman, H4_Deen, H4_Zweed, H4_Duitser, H4_Noor)
+E! (H5_Engelsman, H5_Deen, H5_Zweed, H5_Duitser, H5_Noor)
+
+/* No two houses board the same person: */
+E! (H1_Engelsman, H2_Engelsman, H3_Engelsman, H4_Engelsman, H5_Engelsman)
+E! (H1_Deen, H2_Deen, H3_Deen, H4_Deen, H5_Deen)
+E! (H1_Zweed, H2_Zweed, H3_Zweed, H4_Zweed, H5_Zweed)
+E! (H1_Duitser, H2_Duitser, H3_Duitser, H4_Duitser, H5_Duitser)
+E! (H1_Noor, H2_Noor, H3_Noor, H4_Noor, H5_Noor)
+
+/* In each house 1 drink: */
+E! (H1_melk, H1_thee, H1_bier, H1_water, H1_koffie)
+E! (H2_melk, H2_thee, H2_bier, H2_water, H2_koffie)
+E! (H3_melk, H3_thee, H3_bier, H3_water, H3_koffie)
+E! (H4_melk, H4_thee, H4_bier, H4_water, H4_koffie)
+E! (H5_melk, H5_thee, H5_bier, H5_water, H5_koffie)
+
+E! (H1_melk, H2_melk, H3_melk, H4_melk, H5_melk)
+E! (H1_thee, H2_thee, H3_thee, H4_thee, H5_thee)
+E! (H1_bier, H2_bier, H3_bier, H4_bier, H5_bier)
+E! (H1_water, H2_water, H3_water, H4_water, H5_water)
+E! (H1_koffie, H2_koffie, H3_koffie, H4_koffie, H5_koffie)
+
+/* In each house 1 cigarette: */
+E! (H1_Long, H1_North_State, H1_Cecil, H1_Kings, H1_Prince)
+E! (H2_Long, H2_North_State, H2_Cecil, H2_Kings, H2_Prince)
+E! (H3_Long, H3_North_State, H3_Cecil, H3_Kings, H3_Prince)
+E! (H4_Long, H4_North_State, H4_Cecil, H4_Kings, H4_Prince)
+E! (H5_Long, H5_North_State, H5_Cecil, H5_Kings, H5_Prince)
+
+E! (H1_Long, H2_Long, H3_Long, H4_Long, H5_Long)
+E! (H1_North_State, H2_North_State, H3_North_State, H4_North_State, H5_North_State)
+E! (H1_Cecil, H2_Cecil, H3_Cecil, H4_Cecil, H5_Cecil)
+E! (H1_Kings, H2_Kings, H3_Kings, H4_Kings, H5_Kings)
+E! (H1_Prince, H2_Prince, H3_Prince, H4_Prince, H5_Prince)
+
+/* In each house 1 animal: */
+E! (H1_hond, H1_kat, H1_vogels, H1_paard, H1_zebra)
+E! (H2_hond, H2_kat, H2_vogels, H2_paard, H2_zebra)
+E! (H3_hond, H3_kat, H3_vogels, H3_paard, H3_zebra)
+E! (H4_hond, H4_kat, H4_vogels, H4_paard, H4_zebra)
+E! (H5_hond, H5_kat, H5_vogels, H5_paard, H5_zebra)
+
+E! (H1_hond, H2_hond, H3_hond, H4_hond, H5_hond)
+E! (H1_kat, H2_kat, H3_kat, H4_kat, H5_kat)
+E! (H1_vogels, H2_vogels, H3_vogels, H4_vogels, H5_vogels)
+E! (H1_paard, H2_paard, H3_paard, H4_paard, H5_paard)
+E! (H1_zebra, H2_zebra, H3_zebra, H4_zebra, H5_zebra)
+
+/* 2. The Englishman lives in a red house: */
+(  (H1_rood <-> H1_Engelsman)
+ & (H2_rood <-> H2_Engelsman)
+ & (H3_rood <-> H3_Engelsman)
+ & (H4_rood <-> H4_Engelsman)
+ & (H5_rood <-> H5_Engelsman))
+
+/* 3. The Danish person drinks tea: */
+(  (H1_thee <-> H1_Deen)
+ & (H2_thee <-> H2_Deen)
+ & (H3_thee <-> H3_Deen)
+ & (H4_thee <-> H4_Deen)
+ & (H5_thee <-> H5_Deen))
+
+/* 4. The Swedish person has a dog: */
+(  (H1_hond <-> H1_Zweed)
+ & (H2_hond <-> H2_Zweed)
+ & (H3_hond <-> H3_Zweed)
+ & (H4_hond <-> H4_Zweed)
+ & (H5_hond <-> H5_Zweed))
+
+/* 5. The green house is to the right of the white house: */
+(  ~H1_groen /* Houses stand in line (not in a circle!) */
+ & (H2_groen <-> H1_wit)
+ & (H3_groen <-> H2_wit)
+ & (H4_groen <-> H3_wit)
+ & (H5_groen <-> H4_wit)
+)
+/* Interpret "to the right" as not necessarily next-door
+(  ~H1_groen
+ & (H2_groen -> H1_wit)
+ & (H3_groen -> (H1_wit V H2_wit))
+ & (H4_groen -> (H1_wit V H2_wit V H3_wit))
+ & (H5_groen -> (H1_wit V H2_wit V H3_wit V H4_wit))
+)
+*/
+
+/* 6. The person that smokes Long keeps birds: */
+(  (H1_Long <-> H1_vogels)
+ & (H2_Long <-> H2_vogels)
+ & (H3_Long <-> H3_vogels)
+ & (H4_Long <-> H4_vogels)
+ & (H5_Long <-> H5_vogels))
+
+/* 7. The person in the yellow house smokes North State: */
+(  (H1_geel <-> H1_North_State)
+ & (H2_geel <-> H2_North_State)
+ & (H3_geel <-> H3_North_State)
+ & (H4_geel <-> H4_North_State)
+ & (H5_geel <-> H5_North_State))
+
+/* 8. In the middle house one drinks milk: */
+H3_melk
+
+/* 9. The smoker of Cecil, lives next to the house with the cat: */
+(  (H1_Cecil -> H2_kat)
+ & (H2_Cecil -> (H1_kat V H3_kat))
+ & (H3_Cecil -> (H2_kat V H4_kat))
+ & (H4_Cecil -> (H3_kat V H5_kat))
+ & (H5_Cecil -> H4_kat)
+ & (H1_kat -> H2_Cecil)
+ & (H2_kat -> (H1_Cecil V H3_Cecil))
+ & (H3_kat -> (H2_Cecil V H4_Cecil))
+ & (H4_kat -> (H3_Cecil V H5_Cecil))
+ & (H5_kat -> H4_Cecil)
+)
+
+/* 10. The Norwegian lives in the first house: */
+H1_Noor
+
+/* 11. The Kings smoker, lives next to the house with the horse: */
+(  (H1_Kings -> H2_paard)
+ & (H2_Kings -> (H1_paard V H3_paard))
+ & (H3_Kings -> (H2_paard V H4_paard))
+ & (H4_Kings -> (H3_paard V H5_paard))
+ & (H5_Kings -> H4_paard)
+ & (H1_paard -> H2_Kings)
+ & (H2_paard -> (H1_Kings V H3_Kings))
+ & (H3_paard -> (H2_Kings V H4_Kings))
+ & (H4_paard -> (H3_Kings V H5_Kings))
+ & (H5_paard -> H4_Kings)
+)
+
+/* 12. The person who smokes North State, drinks beer: */
+(  (H1_North_State <-> H1_bier)
+ & (H2_North_State <-> H2_bier)
+ & (H3_North_State <-> H3_bier)
+ & (H4_North_State <-> H4_bier)
+ & (H5_North_State <-> H5_bier))
+
+/* 13. The German smokes Prince: */
+(  (H1_Prince <-> H1_Duitser)
+ & (H2_Prince <-> H2_Duitser)
+ & (H3_Prince <-> H3_Duitser)
+ & (H4_Prince <-> H4_Duitser)
+ & (H5_Prince <-> H5_Duitser))
+
+/* 14. The Norwegian lives next to the blue house: */
+(  (H1_Noor -> H2_blauw)
+ & (H2_Noor -> (H1_blauw V H3_blauw))
+ & (H3_Noor -> (H2_blauw V H4_blauw))
+ & (H4_Noor -> (H3_blauw V H5_blauw))
+ & (H5_Noor -> H4_blauw)
+ & (H1_blauw -> H2_Noor)
+ & (H2_blauw -> (H1_Noor V H3_Noor))
+ & (H3_blauw -> (H2_Noor V H4_Noor))
+ & (H4_blauw -> (H3_Noor V H5_Noor))
+ & (H5_blauw -> H4_Noor)
+)
+
+/* 15. The Cecil smoker, lives next to the water drinker: */
+(  (H1_Cecil -> H2_water)
+ & (H2_Cecil -> (H1_water V H3_water))
+ & (H3_Cecil -> (H2_water V H4_water))
+ & (H4_Cecil -> (H3_water V H5_water))
+ & (H5_Cecil -> H4_water)
+ & (H1_water -> H2_Cecil)
+ & (H2_water -> (H1_Cecil V H3_Cecil))
+ & (H3_water -> (H2_Cecil V H4_Cecil))
+ & (H4_water -> (H3_Cecil V H5_Cecil))
+ & (H5_water -> H4_Cecil)
+)
+
+/* 16. In the green house one drinks coffee: */
+(  (H1_groen <-> H1_koffie)
+ & (H2_groen <-> H2_koffie)
+ & (H3_groen <-> H3_koffie)
+ & (H4_groen <-> H4_koffie)
+ & (H5_groen <-> H5_koffie))
+.

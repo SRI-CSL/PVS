@@ -1,0 +1,33 @@
+domain = { x1, y1, w1, x2, y2, w2 };
+
+let N = L x1,x2,y1,y2 . x1' & x2' & y1' & y2
+                      + x1' & x2  & y1' & y2'
+                      + x1  & x2' & y1  & y2
+                      + x1  & x2  & y1  & y2';
+
+let Z = mu Z . N + Z;
+write ("Z:\n");
+Z(x1,x2,y1,y2);
+let Nplus = mu Z . N + [ L x1,x2,y1,y2 .
+                   E w1,w2 . Z(x1,x2,w1,w2) & Z(w1,w2,y1,y2) ]
+                   + [ mu Z . N + Z ];
+write ("Z:\n");
+Z(x1,x2,y1,y2);
+
+let Z = mu Q . [ Z + Q + K ];
+
+write ("N+(x,y):\n");
+Nplus(x1,x2,y1,y2);
+
+Nplus(0,0,y1,y2);
+
+let Nr = L x1,x2,y1,y2 . (x1 == y1) & (x2 == y2);
+/* Nstar = L x1,x2,y1,y2 . Nr(x1,x2,y1,y2) + Nplus(x1,x2,y1,y2); */
+let Nstar = Nr + Nplus;
+
+write ("Relexive transitive closure N*(x,y):\n");
+Nstar(x1,x2,y1,y2);
+
+let SCC = L x1,x2,y1,y2 . Nstar(x1,x2,y1,y2) & Nstar(y1,y2,x1,x2);
+write ("Strongly Connected Components:\n");
+SCC(x1,x2,y1,y2);

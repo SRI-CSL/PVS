@@ -1,0 +1,5 @@
+domain = { u, v, w };
+
+let N = L u,v.v;
+
+A u.[mu P.L u,v.N(u,v) + (E w.P(u,w) & P(w,v))](u,u);

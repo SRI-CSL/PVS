@@ -1,0 +1,39 @@
+/* Coloring Problem */
+
+/* 9 states, 0...8: x3, x2, x1, x0
+
+x <= 8 = x3' V x2' x1' x0'
+
+*/
+domain = { x3, y3, w3, x2, y2, w2, x1, y1, w1, x0, y0, w0 };
+
+let Valid = L x3,x2,x1,x0 . x3' V x2' & x1' & x0';
+let Edges = L x3,x2,x1,x0,y3,y2,y1,y0 .
+  x3' & x2' & x1' & x0' & y3' & y2 & y1 & y0'
+V x3' & x2' & x1' & x0' & y3' & y2' & y1' & y0
+V x3' & x2' & x1' & x0 & y3' & y2' & y1 & y0'
+V x3' & x2' & x1' & x0 & y3' & y2' & y1 & y0
+V x3' & x2' & x1' & x0 & y3' & y2 & y1 & y0'
+V x3' & x2' & x1 & x0' & y3' & y2 & y1' & y0'
+V x3' & x2' & x1 & x0 & y3' & y2 & y1 & y0'
+V x3' & x2 & x1' & x0' & y3' & y2 & y1' & y0
+V x3' & x2 & x1' & x0' & y3' & y2 & y1 & y0
+V x3' & x2 & x1' & x0 & y3 & y2' & y1' & y0'
+V x3' & x2 & x1 & x0 & y3 & y2' & y1' & y0'
+;
+
+let Es = Edges + [ L x3,x2,x1,x0,y3,y2,y1,y0.Edges (y3,y2,y1,y0,x3,x2,x1,x0)];
+
+/*
+Es(0,0,0,0,y3,y2,y1,y0);
+Es(0,0,0,1,y3,y2,y1,y0);
+Es(0,0,1,0,y3,y2,y1,y0);
+Es(0,0,1,1,y3,y2,y1,y0);
+Es(0,1,0,0,y3,y2,y1,y0);
+Es(0,1,0,1,y3,y2,y1,y0);
+Es(0,1,1,0,y3,y2,y1,y0);
+Es(0,1,1,1,y3,y2,y1,y0);
+Es(1,0,0,0,y3,y2,y1,y0);
+*/
+
+Es'(0,0,0,0,y3,y2,y1,y0) & Valid(y3,y2,y1,y0);

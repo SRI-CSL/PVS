@@ -1,0 +1,8 @@
+domain = { x[1], y[1], w[1], x[2], y[2], w[2], x[3], y[3], w[3] };
+
+let N = L x[1],x[2],x[3],y[1],y[2],y[3] .
+           (x[2] <-> y[1] + y[2]) & (x[3] <-> y[1]' & y[3]);
+
+write ("Next state relation is N(x,y):\n");
+
+N(x[1],x[2],x[3],y[1],y[2],y[3]);

@@ -1,0 +1,248 @@
+.TH MU 1es
+.SH NAME
+mu \- Boolean mu-Calculus Tool (version 1.4, February 1997)
+.SH SYNOPSIS
+.B mu
+[ -adeghiIl:M:N:osSt:vVw ] [ files [ - ]]
+.SH DESCRIPTION
+.B mu
+is a program that reads mu-calculus formulas and evaluates them.
+It accepts zero or more file name arguments optionally followed by a dash
+( - ) to indicate that after processing all files input is read from
+standard input: stdin.
+If no file arguments are present, input is read from stdin regardless of an
+explicit dash at the end of the command line.
+.PP
+The
+.B mu
+program uses a software package to manipulate so-called Reduced Ordered
+Binary Decision Diagrams (ROBDD or BDDs for short).
+These BDDs are expressed in terms of the domain variables of the mu-calculus.
+.PP
+.SH OPTIONS
+General options:
+.TP
+.B \-d
+prints debug info to stderr; implies -v ON. This is of no interest to
+a regular user.
+.TP
+.B \-h
+prints a one line description for each option to stdout and stops.
+.TP
+.B \-v
+verbose, prints action summary to stdout.
+.TP
+.B \-w
+supresses warning messages.
+.PP
+.B mu
+program specific options:
+.TP
+.B \-a
+uses and-smooth operation instead of explicit and-ing and existential
+quantification.
+.TP
+.B \-e
+echoes the input formulas to stdout using a minimum number of parentheses and
+brackets without violating the user's intended operator precedence.
+.TP
+.B \-s
+do frontier set simplification during Reachable calculation.
+.PP
+ROBDD package specific:
+.TP
+.B \-i
+don't use input inverters in the ROBDDs. The ROBDD package supports 2 ways of
+compressing the BDD data, one is using so-called inverted input edges and the
+other is using so-called complemented output edges. By default, the package
+uses both methods to ensure that the function graphs are compact. It is
+recommended not to use these options.
+.TP
+.B \-o
+don't use output inverters in the ROBDDs. See above.
+.TP
+.B \-t<n>
+set initial ROBDD unique table size to <n> (default n = 12799).
+The ROBDD package uses a hash table, called the unique table, to store all
+its BDD graph nodes. This option allows you to change its initial size.
+The package will always automatically increase the size by roughly a factor 2
+when necessary.
+.TP
+.B \-l<n>
+set load factor for ROBDD unique table to <n> (default n = 4).
+The unique table keeps nodes in clusters. When the average cluster size
+becomes too large the table size will be increased. This option allows you to
+change the default cluster size. The higher the value, the fewer times the
+table needs to be resized, but the more time consuming certain table
+operations become.
+.TP
+.B \-M<n>
+set the maximum allowed memory size in Kbytes to be used by the BDD package.
+This includes all space necessary for the shared BDD nodes and also their
+associated tables. The default limit is no limit. To properly get the package
+initialised at least some 300 Kbytes of memory are required.
+When the limit is exceeded a message is issued
+and the program exits with status value 1.
+.TP
+.B \-N<n>
+Set maximum number of BDD nodes to <n> (default no limit).
+When the limit is exceeded a message is issued
+and the program exits with status value 1.
+.TP
+.B \-g
+inhibits garbage collection. ROBDD graph nodes that are no longer in use by
+any of the functions are normally automatically reclaimed by a garbage
+collection routine. This option switches off that action, and will probably
+cause a lot more memory to be used by the program.
+.TP
+.B \-V
+switches dynamic variable ordering off.
+.SH INTRODUCTION TO MU-CALCULUS
+.PP
+The Boolean mu-calculus allows one to calculate functions and relations
+over the Boolean domain. A mu-calculus formula is a logic expression
+over a set of Boolean variables; given an assignment of truth values to
+these variables the Formula evaluates to either True or False.
+
+The Boolean variables of concern are introduced by an optional domain
+statement that when present must
+appear at the beginning of the input (first file argument). A domain statement
+looks like:
+
+domain = { x1, x2, x3, x4, ... };
+
+where "domain" is a reserved word and the "x"'s stand for allowable
+identifiers that name boolean variables.
+(The order of appearance of the variables in a domain statement determines
+the initial order of the variables for the BDDs).
+If not present, warning messages will be issued every time a new variable
+is encountered. (These messages may be switched off with the -w option.)
+After this, the mu program accepts formulas and "let"-statements.
+For a formula its associated logical expression is calculated using the BDD
+package to do all logical operations.
+A "let"-statement introduces a name for a term (= boolean relation or
+function).
+The output of the program is a logical expression in the form of a
+sum-of-products description in the same syntax as used for boolean expressions
+in formulas.
+Formulas are built from atoms that are combined using logical connectives,
+quantifications, and application. Here is an informal inductive definition of
+the syntax of formulas:
+
+.TP
+.B 0.
+The logical constant False, denoted by 0, is a formula;
+The logical constant True, denoted by 1, is a formula.
+.TP
+.B 1.
+a. A (declared) Boolean variable, say x1, is a formula.
+b. The negation of a (declared) Boolean variable, say x1', is a formula.
+.TP
+.B 2.
+If f, g, and h are formulas, so are ~f, f V g, f & g, f -> g, f <-> g,
+f xor g, f ? g : h, E z1, z2, .., zk . (f), D z1, z2, .., zk . (f),
+and A z1, z2, ..., zk . (f),
+where the z's must be (declared) (not-necessarily distinct) Boolean variables
+and k > 0.
+E indicates existential quantification, A means universal
+quantification, and D stands for boolean difference.
+.TP
+.B 3.
+R(f1, f2, f3, ..., fn) is a formula, denoting the application of
+a n-ary relational term R to the argument formulas f1, f2, f3, ..., fn
+(n > 0).
+
+.PP
+The syntax for n-ary relational terms is:
+
+.TP
+.B 0.
+The empty relation, denoted by 0, is a term;
+The complete relation, denoted by 1, is a term.
+.TP
+.B 1.
+A n-ary predicate variable is a term. These variables are introduced
+by fixed-point terms and the "let"-statement.
+A predicate variable's name must not clash with the names given to
+the Boolean variables.
+The negation of a predicate variable, say P', is a term.
+.TP
+.B 2.
+If P and Q are terms, so are ~P, P V Q, P & Q, P -> Q, P <-> Q, and
+P xor Q,
+.TP
+.B 3.
+The abstraction L z1, z2, z3, ..., zn . (f) is a term; here f must be
+a formula and z1, z2, ..., zn (n > 0) stand for distinct Boolean variables.
+.TP
+.B 4.
+a. The least fixed-point mu Z . R is a term; R must be a term itself.
+The fixed-point term is the defining point of the predicate variable Z.
+b. The greatest fixed-point nu Z . R is a term.
+
+.PP
+The "let"-statement introduces a name for a relational term. It has the form:
+
+let <identifier> = <term> ;
+
+It makes sense to ensure that the <identifier> is different from one used
+to denote a Boolean variable; however this not enforced.
+It is allowed that different let-statements have the same
+name appearing on the left-hand side: the old definition is simply discarded.
+Also, the same identifier may be used for a free variable and as a name for a
+term; the interpretation then depends on the context: for instance, in an
+application f(x), f must necessary be the name of a term.
+Note that predicate variables introduced by let-statements have global
+scope, starting right after the let-statement. Predicate variables introduced
+by fixed-point terms have a scope delimited by the term R they apply to.
+Such a predicate variable will shadow any other definitions of the same
+name.
+.SH EXAMPLE
+This example shows how the reflexive and transitive closures
+of a relation are expressed in the mu-calculus. We use 4-ary relations.
+
+.nf
+domain = { x1, y1, w1, x2, y2, w2 }; /* Optional */
+
+/* Some relation R subset B^2 x B^2, B = {0,1}: */
+let N = L x1,x2,y1,y2 . x1' & x2' & y1' & y2
+                      + x1' & x2  & y1  & y2'
+                      + x1  & x2' & y1  & y2
+                      + x1  & x2  & y1' & y2;
+
+let Nplus = mu Z . N
+  + [ L x1,x2,y1,y2 . E w1,w2 . Z(x1,x2,w1,w2) & Z(w1,w2,y1,y2) ];
+
+write ("Transitive closure N+(x,y):\\n");
+Nplus(x1,x2,y1,y2);
+
+let Nr = L x1,x2,y1,y2 . (x1 == y1) & (x2 == y2);
+let Nstar = Nr + Nplus;
+
+write ("Relexive transitive closure N*(x,y):\\n");
+Nstar(x1,x2,y1,y2);
+.fi
+.PP
+.SH FILES
+.TP
+/usr/es/bin/mu
+executable
+.SH "SEE ALSO"
+.SH AUTHOR
+(C) 1992-1997  Geert Janssen
+.br
+Dept. Electrical Engineering, EH 9.26
+.br
+Eindhoven University
+.br
+P.O. Box 513
+.br
+5600 MB Eindhoven
+.br
+The Netherlands
+.br
+Phone: (+31)-40-2473387
+.br
+E-mail: geert@ics.ele.tue.nl
+.SH "BUG REPORTS"
+Please report bugs to geert@ics.ele.tue.nl

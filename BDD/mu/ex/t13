@@ -1,0 +1,13 @@
+domain = { x1, y1, w1, x2, y2, w2 };
+
+let N = L x1,x2,y1,y2 . x1' & x2' & y1' & y2
+                      + x1' & x2  & y1  & y2'
+                      + x1  & x2' & y1  & y2
+                      + x1  & x2  & y1' & y2;
+
+let Nplus = mu Nplus . N + [ L x1,x2,y1,y2 .
+                   E w1,w2 . Nplus(x1,x2,w1,w2) & Nplus(w1,w2,y1,y2) ];
+
+write ("Hello: ");
+Nplus (x1,x2,y1,y2);
+

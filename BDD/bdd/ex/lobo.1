@@ -1,0 +1,81 @@
+/* Donald Lobo */
+
+#inputs C2exit0 C7cond0 C7cond1 C10exit0 C12cond0 C12cond1 C14exit0
+#inputs oldState0, oldState1, oldState2
+#outputs C5xact C16xact C19xact C21xact DNC0
+#outputs newState0, newState1, newState2
+#all other variables are internal variables ...
+
+let IV1 = oldState0 & ~oldState1 & ~oldState2.
+let IV2 = ~oldState0 & ~oldState1 & oldState2.
+let IV3 = oldState0 & ~oldState1 & oldState2.
+let IV4 = C7cond0 & C12cond0 & (~oldState0 & oldState1 & ~oldState2).
+let IV5 = (oldState0 & oldState1 & ~oldState2) + 
+          (C7cond1 & (~oldState0 & oldState1 & ~oldState2))+
+          (~oldState0 & ~oldState1 & oldState2).
+
+let C5xact  = IV1.
+let C21xact = IV2.
+let C19xact = IV3.
+let C17xact = IV4.
+
+let CS00  = fsmEN0 & C2exit0.
+let CS01  = ~(fsmEN0 & C2exit0).
+let T0CS0 = CS00  + ~(~CS00 & CS01).
+let T1CS0 = ~CS00 + ~(~CS00 & CS01).
+let T2CS0 = ~CS00 + ~(~CS00 & CS01).
+
+let CS10  = 1.
+let T0CS1 = ~CS10.
+let T1CS1 =  CS10.
+let T2CS1 = ~CS10.
+
+let CS20 = C7cond0 & ((C12cond0 & C14exit0) + C12cond1).
+let CS21 = C7cond1.
+let CS22 = ~(C7cond1 + (C7cond0 & ((C12cond0 & C14exit0) +
+				   C12cond1))).
+let T0CS2 =  CS20 + (~CS20 &  CS21) + (~CS20 & ~CS21 & ~CS22).
+let T1CS2 = ~CS20 + (~CS20 &  CS21) + (~CS20 & ~CS21 &  CS22).
+let T2CS2 =  CS20 + (~CS20 & ~CS21) + (~CS20 & ~CS21 & ~CS22).
+
+let CS30 =  C10exit0.
+let CS31 = ~C10exit0.
+let T0CS3 = ~CS30 + (~CS30 & ~CS31).
+let T1CS3 = ~CS30 + (~CS30 &  CS31).
+let T2CS3 =  CS30 + (~CS30 & ~CS31).
+
+let CS40  = 1.
+let T0CS4 =  CS10.
+let T1CS4 =  CS10.
+let T2CS4 = ~CS10.
+
+let C0 = ~oldState0 & ~oldState1 & ~oldState2.
+let C1 =  oldState0 & ~oldState1 & ~oldState2.
+let C2 = ~oldState0 &  oldState1 & ~oldState2.
+let C3 =  oldState0 & ~oldState1 &  oldState2.
+let C4 = ~oldState0 & ~oldState1 &  oldState2.
+let TC0 = C0 & T0CS0 + C1 & T0CS1 + C2 & T0CS2 + C3 & T0CS3 + C4 & T0CS4.
+let TC1 = C0 & T1CS0 + C1 & T1CS1 + C2 & T1CS2 + C3 & T1CS3 + C4 & T1CS4.
+let TC2 = C0 & T2CS0 + C1 & T2CS1 + C2 & T2CS2 + C3 & T2CS3 + C4 & T2CS4.
+
+let iDNC0  = IV5.
+let DNC0   = iDNC0.
+let iRESC0 = iDNC0 + RESC0.
+
+let I0  = vself_rst.
+let TI0 = ~vself_rst.
+let TI1 = ~vself_rst.
+let TI2 = ~vself_rst.
+
+let newState0 = I0 & TI0 + ~I0 & TC0.
+let newState1 = I0 & TI1 + ~I0 & TC1.
+let newState2 = I0 & TI2 + ~I0 & TC2.
+
+DNC0.
+C5xact.
+C17xact.
+C19xact.
+C21xact.
+newState0.
+newState1.
+newState2.

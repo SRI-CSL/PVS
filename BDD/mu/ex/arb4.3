@@ -1,0 +1,44 @@
+/* 4-bit Synchronous Arbiter */
+
+let dum =
+
+req[3]
+tokenout[3]
+W[3]
+$W[3]
+$tokenout[3]
+
+req[2]
+tokenout[2]
+W[2]
+$W[2]
+$tokenout[2]
+
+req[1]
+tokenout[1]
+W[1]
+$W[1]
+$tokenout[1]
+
+req[0]
+tokenout[0]
+W[0]
+$W[0]
+$tokenout[0]
+
+;
+
+
+let t =
+  ($tokenout[3] == tokenout[2])
+& ($tokenout[2] == tokenout[1])
+& ($tokenout[1] == tokenout[0])
+& ($tokenout[0] == tokenout[3])
+
+& ($W[3] == ((W[3] + tokenout[3]) & req[3]))
+& ($W[2] == ((W[2] + tokenout[2]) & req[2]))
+& ($W[1] == ((W[1] + tokenout[1]) & req[1]))
+& ($W[0] == ((W[0] + tokenout[0]) & req[0]))
+;
+
+t;

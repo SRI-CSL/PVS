@@ -1,0 +1,338 @@
+/* 24-bit Synchronous Arbiter */
+
+/* Init: */
+Let S0 = L
+tokenout[0],
+tokenout[1],
+tokenout[2],
+tokenout[3],
+tokenout[4],
+tokenout[5],
+tokenout[6],
+tokenout[7],
+tokenout[8],
+tokenout[9],
+tokenout[10],
+tokenout[11],
+tokenout[12],
+tokenout[13],
+tokenout[14],
+tokenout[15],
+tokenout[16],
+tokenout[17],
+tokenout[18],
+tokenout[19],
+tokenout[20],
+tokenout[21],
+tokenout[22],
+tokenout[23],
+W[0],
+W[1],
+W[2],
+W[3],
+W[4],
+W[5],
+W[6],
+W[7],
+W[8],
+W[9],
+W[10],
+W[11],
+W[12],
+W[13],
+W[14],
+W[15],
+W[16],
+W[17],
+W[18],
+W[19],
+W[20],
+W[21],
+W[22],
+W[23]
+.
+one_of (
+tokenout[0],
+tokenout[1],
+tokenout[2],
+tokenout[3],
+tokenout[4],
+tokenout[5],
+tokenout[6],
+tokenout[7],
+tokenout[8],
+tokenout[9],
+tokenout[10],
+tokenout[11],
+tokenout[12],
+tokenout[13],
+tokenout[14],
+tokenout[15],
+tokenout[16],
+tokenout[17],
+tokenout[18],
+tokenout[19],
+tokenout[20],
+tokenout[21],
+tokenout[22],
+tokenout[23]
+)
+&
+none_of (
+W[0],
+W[1],
+W[2],
+W[3],
+W[4],
+W[5],
+W[6],
+W[7],
+W[8],
+W[9],
+W[10],
+W[11],
+W[12],
+W[13],
+W[14],
+W[15],
+W[16],
+W[17],
+W[18],
+W[19],
+W[20],
+W[21],
+W[22],
+W[23]
+)
+;
+
+let N = L
+tokenout[0],
+tokenout[1],
+tokenout[2],
+tokenout[3],
+tokenout[4],
+tokenout[5],
+tokenout[6],
+tokenout[7],
+tokenout[8],
+tokenout[9],
+tokenout[10],
+tokenout[11],
+tokenout[12],
+tokenout[13],
+tokenout[14],
+tokenout[15],
+tokenout[16],
+tokenout[17],
+tokenout[18],
+tokenout[19],
+tokenout[20],
+tokenout[21],
+tokenout[22],
+tokenout[23],
+W[0],
+W[1],
+W[2],
+W[3],
+W[4],
+W[5],
+W[6],
+W[7],
+W[8],
+W[9],
+W[10],
+W[11],
+W[12],
+W[13],
+W[14],
+W[15],
+W[16],
+W[17],
+W[18],
+W[19],
+W[20],
+W[21],
+W[22],
+W[23],
+
+@tokenout[0],
+@tokenout[1],
+@tokenout[2],
+@tokenout[3],
+@tokenout[4],
+@tokenout[5],
+@tokenout[6],
+@tokenout[7],
+@tokenout[8],
+@tokenout[9],
+@tokenout[10],
+@tokenout[11],
+@tokenout[12],
+@tokenout[13],
+@tokenout[14],
+@tokenout[15],
+@tokenout[16],
+@tokenout[17],
+@tokenout[18],
+@tokenout[19],
+@tokenout[20],
+@tokenout[21],
+@tokenout[22],
+@tokenout[23],
+@W[0],
+@W[1],
+@W[2],
+@W[3],
+@W[4],
+@W[5],
+@W[6],
+@W[7],
+@W[8],
+@W[9],
+@W[10],
+@W[11],
+@W[12],
+@W[13],
+@W[14],
+@W[15],
+@W[16],
+@W[17],
+@W[18],
+@W[19],
+@W[20],
+@W[21],
+@W[22],
+@W[23]
+
+.
+
+E
+req[0],
+req[1],
+req[2],
+req[3],
+req[4],
+req[5],
+req[6],
+req[7],
+req[8],
+req[9],
+req[10],
+req[11],
+req[12],
+req[13],
+req[14],
+req[15],
+req[16],
+req[17],
+req[18],
+req[19],
+req[20],
+req[21],
+req[22],
+req[23]
+.
+  (@tokenout[1] == tokenout[0])
+& (@tokenout[2] == tokenout[1])
+& (@tokenout[3] == tokenout[2])
+& (@tokenout[4] == tokenout[3])
+& (@tokenout[5] == tokenout[4])
+& (@tokenout[6] == tokenout[5])
+& (@tokenout[7] == tokenout[6])
+& (@tokenout[8] == tokenout[7])
+& (@tokenout[9] == tokenout[8])
+& (@tokenout[10] == tokenout[9])
+& (@tokenout[11] == tokenout[10])
+& (@tokenout[12] == tokenout[11])
+& (@tokenout[13] == tokenout[12])
+& (@tokenout[14] == tokenout[13])
+& (@tokenout[15] == tokenout[14])
+& (@tokenout[16] == tokenout[15])
+& (@tokenout[17] == tokenout[16])
+& (@tokenout[18] == tokenout[17])
+& (@tokenout[19] == tokenout[18])
+& (@tokenout[20] == tokenout[19])
+& (@tokenout[21] == tokenout[20])
+& (@tokenout[22] == tokenout[21])
+& (@tokenout[23] == tokenout[22])
+& (@tokenout[0] == tokenout[23])
+
+& (@W[0] == (W[0] + tokenout[0]) & req[0])
+& (@W[1] == (W[1] + tokenout[1]) & req[1])
+& (@W[2] == (W[2] + tokenout[2]) & req[2])
+& (@W[3] == (W[3] + tokenout[3]) & req[3])
+& (@W[4] == (W[4] + tokenout[4]) & req[4])
+& (@W[5] == (W[5] + tokenout[5]) & req[5])
+& (@W[6] == (W[6] + tokenout[6]) & req[6])
+& (@W[7] == (W[7] + tokenout[7]) & req[7])
+& (@W[8] == (W[8] + tokenout[8]) & req[8])
+& (@W[9] == (W[9] + tokenout[9]) & req[9])
+& (@W[10] == (W[10] + tokenout[10]) & req[10])
+& (@W[11] == (W[11] + tokenout[11]) & req[11])
+& (@W[12] == (W[12] + tokenout[12]) & req[12])
+& (@W[13] == (W[13] + tokenout[13]) & req[13])
+& (@W[14] == (W[14] + tokenout[14]) & req[14])
+& (@W[15] == (W[15] + tokenout[15]) & req[15])
+& (@W[16] == (W[16] + tokenout[16]) & req[16])
+& (@W[17] == (W[17] + tokenout[17]) & req[17])
+& (@W[18] == (W[18] + tokenout[18]) & req[18])
+& (@W[19] == (W[19] + tokenout[19]) & req[19])
+& (@W[20] == (W[20] + tokenout[20]) & req[20])
+& (@W[21] == (W[21] + tokenout[21]) & req[21])
+& (@W[22] == (W[22] + tokenout[22]) & req[22])
+& (@W[23] == (W[23] + tokenout[23]) & req[23])
+;
+
+write ("States reachable from initial state are:\n");
+
+[ Reachable (N,S0) ] (
+tokenout[0],
+tokenout[1],
+tokenout[2],
+tokenout[3],
+tokenout[4],
+tokenout[5],
+tokenout[6],
+tokenout[7],
+tokenout[8],
+tokenout[9],
+tokenout[10],
+tokenout[11],
+tokenout[12],
+tokenout[13],
+tokenout[14],
+tokenout[15],
+tokenout[16],
+tokenout[17],
+tokenout[18],
+tokenout[19],
+tokenout[20],
+tokenout[21],
+tokenout[22],
+tokenout[23],
+W[0],
+W[1],
+W[2],
+W[3],
+W[4],
+W[5],
+W[6],
+W[7],
+W[8],
+W[9],
+W[10],
+W[11],
+W[12],
+W[13],
+W[14],
+W[15],
+W[16],
+W[17],
+W[18],
+W[19],
+W[20],
+W[21],
+W[22],
+W[23]
+);

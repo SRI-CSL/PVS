@@ -1,0 +1,250 @@
+Tue Jan 20 18:08:48 1998  Geert Janssen  <geert@cobra.ics.ele.tue.nl>
+
+	* bdd.c (print_unique_table_stats): local var max changed to maxk
+	avoiding clashes with the macro max in general.h.
+
+Tue Jan 13 16:26:50 1998  Geert Janssen  <geert@cobra.ics.ele.tue.nl>
+
+	* bdd.c: now using multiplicative hashing. No longer need for
+	modulo operation; also, hash tables have size that is power of 2.
+
+Mon Nov 17 23:28:33 1997  Geert Janssen  <geert@cobra.ics.ele.tue.nl>
+
+	* bdd_extern.h: moved define for BDD_VOID from bdd.h to bdd_extern.h.
+
+Thu Sep  4 14:06:18 1997  Geert Janssen  <geert@cobra.ics.ele.tue.nl>
+
+	* bdd_quant.c: fixed bug in bdd_quant_c_aux in case existential==2.
+	Used to inadvertently modify T and E vars.
+
+Tue May 27 12:57:31 1997  Geert Janssen  <geert@cobra.ics.ele.tue.nl>
+
+	* plot.c (bdd_prepare_for_plot_vec): intercepted NULL f_vec arg
+	and size <= 0.
+
+	* vfns.c (FreeBDDVec2): no action when NULL vector or size wrong.
+	(FreeBDDVec): same
+
+Tue Dec 17 14:07:15 1996  Geert Janssen  <geert@cobra.es.ele.tue.nl>
+
+	* bdd_fns.c (bdd_count_sat_assignments): changed interpretation
+	of domain: 1 now means empty domain, any other constant means universe.
+
+	* bdd_quant.c (bdd_quantify_c): vars_cube = 1 now means no quant!
+	(bdd_quantify_c_vec): same here.
+	(bdd_and_smooth_c): again.
+
+	* bdd_fns.c: Changed return value of bdd_support_as_cube in case
+	of constant argument BDD to bdd_1 (). This is more consistent with
+	bdd_support_as_list_of_vars.
+
+Mon Nov 18 15:21:22 1996  Geert Janssen  <geert@cobra.es.ele.tue.nl>
+
+	* bdd_quant.c: bdd_quantify_c_aux improperly handled "existential > 1"
+ 	case. Corrected and made sure that BDD_VOID is then returned for
+	top-level call. Caller must then explicitly extract real result
+	from the aux fields of the node.
+
+Tue Nov 12 12:37:53 1996  Geert Janssen  <geert@cobra.es.ele.tue.nl>
+
+	* bdd.c (bdd_traverse_pre_rec): uncommented this function.
+	Made externally visible in bdd_extern.h. Is now used by
+	draw/draw_backdraw.c.
+
+Thu Oct 31 12:00:21 1996  Geert Janssen  <geert@cobra.es.ele.tue.nl>
+
+	* bdd_extern.h: 
+	Added "extern int bdd_debug;"
+
+Mon Sep 16 14:58:06 1996  Geert Janssen  <geert@cobra.es.ele.tue.nl>
+
+	* Added the (read-only) variable "bdd_peak_nr_nodes_alive" on
+	request of Koen van Eijk. The original "bdd_peak_nr_nodes"
+	(still supported though) will possibly also count dead nodes.
+
+Tue Jun 11 12:13:37 1996  Geert Janssen  <geert@cobra.es.ele.tue.nl>
+
+	* bdd.c: modified dump/restore routines to use char array.
+	dump/restore to file still commented out.
+	Dump/restore BDD routines are currently used by Koen. The idea is
+	to dump intermediate BDDs and free them so that DVO can be more
+	effective on the BDDs that remain.
+
+	* main.c: commented out the longjmp stuff. Was only intended as
+	example; on some platforms not available (Solaris).
+
+Thu May  9 00:41:43 1996  Geert Janssen  <geert@cobra.es.ele.tue.nl>
+
+	* bdd.c (print_unique_table_stats): In calculating memory usage of
+	unique table "* sizeof (GROUP_REC)" of course has to be
+	"+ sizeof (GROUP_REC)". Thanks to Arjen Mets for pointing this out.
+
+Tue Apr 23 12:36:33 1996  Geert Janssen  <geert@cobra.es.ele.tue.nl>
+
+	* bdd_fns.c (bdd_rank_order_vars): Made naming of BDD_LIST args
+	in some functions more consistent.
+
+Wed Apr 10 15:34:31 1996  Geert Janssen  <geert@cobra.es.ele.tue.nl>
+
+	* bdd/src/*: Created aliases for all LIST related names.
+	This will ease to use of special BDD_LIST routines.
+	Many people already complained about the awkwardness of the
+	list.[ch] in utils. It is intended to get rid of that utils
+	package all together.
+
+Mon Mar 25 17:26:11 1996  Geert Janssen  <geert@cobra.es.ele.tue.nl>
+
+	* bdd_quant.[ch]: Added new function bdd_and_smooth_c.
+
+Mon Mar 18 09:46:39 1996  Geert Janssen  <geert@cobra.es.ele.tue.nl>
+
+	* bdd_quant.c: Added new function bdd_quantify_c_vec.
+
+Wed Feb 28 12:39:37 1996  Geert Janssen  <geert@cobra.es.ele.tue.nl>
+
+	* bdd_fns.c: bdd_count_sat_assignments again gave some trouble.
+	This because the constant nodes don't get a Double * assigned but
+	bdd_reset_aux1_and_aux2_action will be called on them.
+	Now if due to some malicious other routine the aux fields of the
+	constant nodes are not 0, bus error or segmentation violations
+	might result. (It happened because plotting a bdd did not cleanup
+	the aux fields; this has now also been corrected). Solution:
+	constant nodes are explicitly cleared.
+
+Fri Jan 26 13:24:20 1996  Geert Janssen  <geert@cobra.es.ele.tue.nl>
+
+	* bdd.c: changed return type of bdd_check_valid from void to int.
+	(suggested by Arjen Mets, so bdd_check_valid can be arg of assert).
+
+Sat Nov 18 20:37:04 1995  Geert Janssen  (geert@cobra.es.ele.tue.nl)
+
+	* bdd_fns.c: reconsidered bdd_count_sat_assignments using Double
+	numbers again. Too much loss of precision when doing D_sub.
+	Complete rewrite and now using two Doubles per BDD node, one to
+	count positive minterms, and one for negative minterms. This way
+	no subtractions are required. Performance is much better, but at
+	expensive of temporarily 8 words extra mem per BDD node.
+
+	* New functions to complement routines taking LIST argument.
+	Often more useful to be able to supply bdd cube argument.
+	Pertains to: bdd_quantify_c, bdd_subst_par_c.
+	Made bdd_smooth/consensus a lot simpler.
+
+	* Broke up large file bdd_fns.c in two. Separated all quantification
+	routines to bdd_quant.[ch].
+
+Wed Sep 27 09:39:14 1995  Geert Janssen  (geert@cobra.es.ele.tue.nl)
+
+	* bdd.c: disallow dynamic variable ordering during bdd_restrict.
+	Otherwise incorrect results and even stack overflows occur.
+	Don't know what's wrong yet.
+	No longer explicit switching off of DVO in bdd_constrain;
+	care is taken to avoid any bdd call that might cause DVO.
+
+	* bdd_fns.c: rank_less_or_equal must be real 3-way comparison
+	for mergeSort to work: changed "<=" to "-".
+
+Fri Jul  7 12:17:11 1995  Geert L.J.M. Janssen  <geert@enpassant.watson.ibm.com (Geert L.J.M. Janssen)>
+
+	* bdd_extern.h (bdd_apply): Moved traverse_post and null_action from
+	bdd.h to bdd_extern.h.
+
+Mon Jun 26 17:36:30 1995  Geert Janssen  (geert@cobra.es.ele.tue.nl)
+
+	* bdd.c (bdd_constrain_aux): moved this from vfns.[ch].
+	bdd_constrain now uses general-purpose computed table cache
+	instead of its own (small) cache.
+
+Sat Jun 24 18:15:34 1995  Geert Janssen  (geert@python.es.ele.tue.nl)
+
+	* bdd.c:
+	computed_table now more versatile. Can also be used as cache for
+	any binary operation R=f(a,b) by storing the quadruple (f,a,b,R).
+	For proper interpretation, f's most-significant will be set to
+	distinguish it from ite operation which is assumed when that bit
+	is 0.
+
+	* bdd.h: BDD_POSVAR_P ==> BDD_POSLIT_P
+                 BDD_NEGVAR_P ==> BDD_NEGLIT_P
+
+	* bdd.h: Changed BDD_MAXID to BDD_TERMID (more appropriate).
+
+Wed Jun 14 21:02:28 1995  Geert Janssen  (geert@cobra.es.ele.tue.nl)
+
+	* bdd.c (bdd_init): v1.3
+	Implemented partitioning of variables. Now variables may be
+	grouped and dynamic variable ordering will swapped whole groups
+	and conditionally will reorder the variables within a group.
+
+Sat Apr 29 00:44:54 1995  Geert Janssen  (geert@cobra.es.ele.tue.nl)
+
+	* bdd.c: Changes hash table sizes to powers of 2 and thereby easing
+	the hash function and the resizing, doesn't help at all. In fact,
+	the program performs slightly poorer.
+
+Thu Mar  2 02:38:49 1995  Geert Janssen  (geert@python.es.ele.tue.nl)
+
+	* Moved double.* files to ../utils
+
+Fri Oct 21 00:03:54 1994  Geert Janssen  (geert@python.es.ele.tue.nl)
+
+	* Made sure to always bdd_cleanup_sop_cache in bdd_dynamic_order.
+
+	* Added FILE *out field to bdd_factor_interface in bdd_factor.[ch].
+
+	* Substituted Koen's bdd_cube_factor algorithm by a newer and
+	more simpler version (although the new one might be a bit slower).
+
+Thu Oct  6 11:04:44 1994  Geert Janssen  (geert@krait.es.ele.tue.nl)
+
+	* Renamed the file fns.[ch] to bdd_fns.[ch].
+
+	* fns.c: new shortest path routines. Old ones did not guarantee
+	to really find the shortest satusfying path. Also new one uses
+	faster algorithm (linear in size of BDD).
+
+	* bdd_factor.[ch]: new files that implement a general interface
+	to extract logic expressions in factored form from A BDD.
+
+Fri Jun 24 14:50:15 1994  Geert Janssen  (geert@krait.es.ele.tue.nl)
+
+	* bdd.c: introduced shrinking for hash tables holding the
+	BDD nodes. Greatly improves memory use and seems to have
+	positive effect on run-time too.
+	bdd_extend_hash_table ==> bdd_resize_hash_table.
+
+Thu Apr 14 23:08:52 1994  Geert Janssen  (geert@cerastes.es.ele.tue.nl)
+
+	* fns.[ch]/bdd.[ch]: added bdd_subst_par.
+	Renaming of bdd_zero to bdd_0; bdd_one to bdd_1.
+
+Mon Mar 28 18:00:49 1994  Geert Janssen  (geert@cerastes.es.ele.tue.nl)
+
+	* fns.c: added bdd_diff for boolean difference calculation.
+
+Mon Mar 28 09:05:49 1994  Geert Janssen  (geert@krait.es.ele.tue.nl)
+
+	* yacc.y: made one_of and none_of public in fns.c
+
+Mon Mar 14 23:34:22 1994  Geert Janssen  (geert@cerastes.es.ele.tue.nl)
+
+	* fns.c: added bdd_quantify_vec
+
+	* appl.h, appl.c: made printing of BDDs a bit customizable.
+
+Wed Feb 16 14:12:29 1994  Geert Janssen  (geert@krait.es.ele.tue.nl)
+
+	* yacc.y: modified ONE_OF (E!) implementation
+	to be able to handle embedded calls, e.g. E!(a,b,E!(c,d)).
+
+Tue Nov  9 17:58:22 1993  Geert Janssen  (geert@krait.es.ele.tue.nl)
+
+	* fns.c: corrected bug in bdd_count_sat_assignments.
+	(wrong treatment of negated ELSE side).
+
+Mon Oct 25 14:35:33 1993  Geert Janssen  (geert@krait.es.ele.tue.nl)
+
+	* fns.c: corrected bugs in bdd_and_smooth.
+	(wrong arg to bdd_create_var; passing rank value instead of
+	varid).
+

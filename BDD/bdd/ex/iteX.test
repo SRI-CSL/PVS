@@ -1,0 +1,108 @@
+/* not F */
+ ite (X,0,1) = X.		/* not X = X */
+
+/* F and G */
+ ite (X,0,0) = 0.		/* X and 0 = 0 */
+ ite (0,X,0) = 0.		/* 0 and X = 0 */
+ ite (X,1,0) = X.		/* X and 1 = X */
+ ite (1,X,0) = X.		/* 1 and X = X */
+ ite (X,X,0) = X.		/* X and X = X */
+ ite (X,G,0) =
+ite (G,X,0).
+
+/* F < H = F'.H */
+ ite (X,0,0) = 0.		/* X' and 0 = 0 */
+ ite (0,0,X) = X.		/* 0' and X = X */
+ ite (X,0,1) = X.		/* X' and 1 = X */
+ ite (1,0,X) = 0.		/* 1' and X = 0 */
+ ite (X,0,X) = X.		/* X' and X = X (0 ?) */
+ ite (X,0,H) =
+ite (H',0,X).
+ite (F,0,X).
+
+/* F xor G */
+ ite (X,1,0) = X.		/* X xor 0 = X */
+ ite (0,X,X) = X.		/* 0 xor X = X */
+ ite (X,0,1) = X.		/* X xor 1 = X */
+ ite (1,X,X) = X.		/* 1 xor X = X */
+ ite (X,X,X) = X.		/* X xor X = X (0 ?) */
+ ite (X,G',G) = X.
+ ite (G,X,X) = X.
+
+/* F or G */
+ ite (X,1,0) = X.		/* X or 0 = X */
+ ite (0,1,X) = X.		/* 0 or X = X */
+ ite (X,1,1) = 1.		/* X or 1 = 1 */
+ ite (1,1,X) = 1.		/* 1 or X = 1 */
+ ite (X,1,X) = X.		/* X or X = X */
+ ite (X,1,H) =
+ite (H,1,X).
+
+/* F -> G = F' + G */
+ ite (X,0,1) = X.		/* X' or 0 = X */
+ ite (0,X,1) = 1.		/* 0' or X = 1 */
+ ite (X,1,1) = 1.		/* X' or 1 = 1 */
+ ite (1,X,1) = X.		/* 1' or X = X */
+ ite (X,X,1) = X.		/* X' or X = X (1 ?) */
+ ite (X,G,1) =
+ite (G',X,1).
+ite (F,X,1).
+
+/* */
+ ite (0,X,H) = H.
+ ite (0,G,X) = X.
+ ite (1,X,H) = X.
+ ite (1,G,X) = G.
+
+ ite (X,X,H) = X.		/* X.X + X'.H = X + H? */
+ ite (X,G,X) = X.
+ ite (X,G,G) = G.
+ite (X,G,H).
+ite (F,X,H) = F X + F' H.
+ite (F,G,X) = F G + F' X.
+
+/*-------------*/
+/* 37 different cases with X */
+
+ite (0,0,X) = X.		/* 0' and X = X */
+ite (0,1,X) = X.		/* 0 or X = X */
+ite (0,X,0) = 0.		/* 0 and X = 0 */
+ite (0,X,1) = 1.		/* 0' or X = 1 */
+ite (0,X,X) = X.		/* 0 xor X = X */
+ite (0,X,H) = H.
+ite (0,G,X) = X.
+
+ite (1,0,X) = 0.		/* 1' and X = 0 */
+ite (1,1,X) = 1.		/* 1 or X = 1 */
+ite (1,X,0) = X.		/* 1 and X = X */
+ite (1,X,1) = X.		/* 1' or X = X */
+ite (1,X,X) = X.		/* 1 xor X = X */
+ite (1,X,H) = X.
+ite (1,G,X) = G.
+
+ite (X,0,0) = 0.		/* X and 0 = 0 */
+ite (X,0,1) = X.		/* not X = X */
+ite (X,0,X) = X.		/* X' and X = X (0 ?) */
+ite (X,0,H).
+ite (X,1,0) = X.		/* X and 1 = X */
+ite (X,1,1) = 1.		/* X or 1 = 1 */
+ite (X,1,X) = X.		/* X or X = X */
+ite (X,1,H).
+ite (X,X,0) = X.		/* X and X = X */
+ite (X,X,1) = X.		/* X' or X = X (1 ?) */
+ite (X,X,X) = X.		/* X xor X = X (0 ?) */
+ite (X,X,H) = X.		/* X.X + X'.H = X + H? */
+ite (X,G,0).
+ite (X,G,1).
+ite (X,G,X) = X.
+ ite (X,G',G) = X.
+ ite (X,G,G) = G.
+ite (X,G,H).
+
+ite (F,0,X).
+ite (F,1,X).
+ite (F,X,0).
+ite (F,X,1).
+ite (F,X,X) = X.
+ite (F,X,H) = F X + F' H.
+ite (F,G,X) = F G + F' X.

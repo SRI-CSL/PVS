@@ -1,0 +1,36 @@
+let func =
+
+/* Xdim = 2, Ydim = 2, Ldim = 2, Ndim = 2, Bits = 2 */
+/* TERMINAL VERTEX(0,0,0) = 0 ALLOWED {E,S,D,} */
+v0b0 v0b1' 
+
+/* TERMINAL VERTEX(0,1,0) = 2 ALLOWED {N,E,D,} */
+v2b0 v2b1' 
+
+/* TERMINAL VERTEX(1,0,0) = 1 ALLOWED {S,W,D,} */
+v1b0' v1b1 
+
+/* TERMINAL VERTEX(1,1,0) = 3 ALLOWED {N,W,D,} */
+v3b0' v3b1 
+
+/* MIDDLE VERTEX(0,0,1) = 4 ALLOWED {E,S,U,} */
+(v4b0 v4b1)'((v4b0 + v4b1)'
+ + (v4b0 == v5b0) (v4b1 == v5b1) ((v4b0 == v6b0) (v4b1 == v6b1) + v4b0 v4b1' )
+ + (v4b0 == v6b0) (v4b1 == v6b1) (v4b0 v4b1' ))
+
+/* MIDDLE VERTEX(0,1,1) = 6 ALLOWED {N,E,U,} */
+(v6b0 v6b1)'((v6b0 + v6b1)'
+ + (v6b0 == v4b0) (v6b1 == v4b1) ((v6b0 == v7b0) (v6b1 == v7b1) + v6b0 v6b1' )
+ + (v6b0 == v7b0) (v6b1 == v7b1) (v6b0 v6b1' ))
+
+/* MIDDLE VERTEX(1,0,1) = 5 ALLOWED {S,W,U,} */
+(v5b0 v5b1)'((v5b0 + v5b1)'
+ + (v5b0 == v7b0) (v5b1 == v7b1) ((v5b0 == v4b0) (v5b1 == v4b1) + v5b0' v5b1 )
+ + (v5b0 == v4b0) (v5b1 == v4b1) (v5b0' v5b1 ))
+
+/* MIDDLE VERTEX(1,1,1) = 7 ALLOWED {N,W,U,} */
+(v7b0 v7b1)'((v7b0 + v7b1)'
+ + (v7b0 == v5b0) (v7b1 == v5b1) ((v7b0 == v6b0) (v7b1 == v6b1) + v7b0' v7b1 )
+ + (v7b0 == v6b0) (v7b1 == v6b1) (v7b0' v7b1 ))
+.
+func.

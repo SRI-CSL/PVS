@@ -1,0 +1,28 @@
+let f = a b c' + b' c + a' d.
+
+
+QA (0, 0). /* 0 */
+QA (1, 0). /* 1 */
+QA (X, 0). /* X */
+QA (0, 1). /* 0 */
+QA (1, 1). /* 1 */
+QA (X, 1). /* X */
+QA (0, X). /* 0 */
+QA (1, X). /* 1 */
+QA (X, X). /* X */
+QA (a, 0). /* a */
+QA (a, 1). /* a */
+QA (a, X). /* a */
+QA (a, a). /* 1 */
+QA (a, a'). /* 1 */
+QA (f, 0). /* f */
+QA (f, 1). /* f */
+QA (f, X). /* f */
+QA (f, a).
+QA (f, b).
+QA (f, c).
+QA (f, d).
+QA (f, e).
+sup (f).
+QA (f, sup (f)).
+QA (f, a b c d e g h i j k).

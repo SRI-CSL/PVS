@@ -1,0 +1,11 @@
+Thu Feb  6 12:35:41 1997  Geert Janssen  <geert@cobra.ics.ele.tue.nl>
+
+	* mu.c (mu_init): v1.4: cosmetic changes
+
+Mon Apr 15 00:03:48 1996  Geert Janssen  <geert@cobra.es.ele.tue.nl>
+
+	* mu.c (mu_init): Changed version to 1.3
+	New release available in ~ftp/pub/geert/mu.tar.Z;
+	Is not self-contained, needs bdd package (incl utils) in bdd.tar.Z
+
+
