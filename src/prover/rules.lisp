@@ -3,12 +3,11 @@
 ;; Author          : N. Shankar
 ;; Created On      : Sat Oct 31 03:06:11 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sat Oct 31 03:10:45 1998
-;; Update Count    : 1
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Last Modified On: Thu May 20 21:54:43 2004
+;; Update Count    : 2
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -37,7 +36,9 @@
 				'format-string ,format-string)
 			      *rulebase*)
 	    (push ,name *rulenames*)
-	    (push (cons ,name (cons has-rest? (make-prover-keywords
+	    (push (cons ,name
+			(cons has-rest?
+			      (make-prover-keywords
 			       (append ',required-args ',optional-args))))
 		  *prover-keywords*)
 	    #+lucid (record-source-file ,name 'strategy)
@@ -53,10 +54,15 @@
 						    ,body)))
 	    (let ((old (assoc ,name *prover-keywords*)))
 	      (if old
-		  (setf (cdr old) (cons has-rest? (make-prover-keywords
+		  (setf (cdr old)
+			(cons has-rest?
+			      (make-prover-keywords
 			       (append ',required-args ',optional-args))))
-		  (push (cons ,name (cons has-rest? (make-prover-keywords
-			       (append ',required-args ',optional-args))))
+		  (push (cons ,name
+			      (cons has-rest?
+				    (make-prover-keywords
+				     (append ',required-args
+					     ',optional-args))))
 			*prover-keywords*)))
 	    #+lucid (record-source-file ,name 'strategy)
 	    (format t "~%Changed rule ~a" ,name)))))
@@ -281,72 +287,83 @@ See also HIDE, REVEAL"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun apply-step (step &optional comment save? time?)
+(defun apply-step (step &optional comment save? time? timeout)
   #'(lambda (ps)
-      (apply-step-body ps step comment save? time?)))
+      (apply-step-body ps step comment save? time? timeout)))
 
-(defun apply-step-body (ps step comment save? time?)
+(defun apply-step-body (ps step comment save? time? timeout)
   (declare (ignore comment))
-  (let* ((*generate-tccs* 'none)
-	 (strat (let ((*in-apply* ps))
-		  (strat-eval* step ps))))
-    (cond ((or (typep strat 'strategy)
-	       (typep strat 'rule-instance))
-	   (let* ((new-strat
-		   (if (typep strat 'strategy)
-		       strat
-		       (make-instance 'strategy
-			 'topstep strat)))
-		  (newps0 (copy ps
-			    'strategy new-strat
-			    'parent-proofstate nil))
-		  (newps (if (typep newps0 'top-proofstate)
-			     (change-class newps0 'proofstate)
-			     newps0))
-		  (*noninteractivemode* t)
-		  (*suppress-printing* t)
-		  (*dependent-decls* nil)
-		  (init-time (get-internal-run-time))
-		  (result (let ((*in-apply* ps))
-			    (prove* newps)))
-		  (end-time (/ (- (get-internal-run-time) init-time)
-			       internal-time-units-per-second)))
-	     (declare (ignore result))
-	     (let* ((subgoals (collect-subgoals newps))
-		    (justif (collect-justification newps))
-		    (xrule `(apply
-				(rerun
-				 ,(editable-justification
-				   justif nil t)))))
-	       ;; (format t "~%step= ~a~%decls = ~a" step *dependent-decls*)
-	       (when time? (format t "~%;;;Used ~,2F seconds in ~s." end-time step))
-	       (if (eq (status-flag newps) 'XX)
-		   (values 'X nil nil)
-		   (if (or (eq (status-flag newps) 'X)
-			   (and (singleton? subgoals)
-				(or (and (not (consp (car subgoals)))
-					 (tc-eq (car subgoals)
-						  (current-goal ps)))
-				    (and (consp (car subgoals))
-					 (tc-eq (caar subgoals)
-						  (current-goal ps))
-					 (eq
-					  (getf (cdar subgoals)
-						'current-auto-rewrites)
-					  (current-auto-rewrites newps))))))
-		       (if save?
-			   (values '? (list (current-goal newps)) nil)
-			   (values 'X nil nil))
-		       (if (eq (status-flag newps) '!);;(null subgoals)
-			   (values '! nil
-				   (list 'dependent-decls
-					 *dependent-decls*
-					 'current-xrule
-					 xrule))
-			   (values '? subgoals
-				   (list 'current-xrule xrule
-					 'dependent-decls *dependent-decls*))))))))
-	  (t (values 'X nil nil)))))
+  (if (or (null timeout)
+	  (and (integerp timeout)
+	       (plusp timeout)))
+      (let* ((*generate-tccs* 'none)
+	     (strat (let ((*in-apply* ps))
+		      (strat-eval* step ps))))
+	(if (or (typep strat 'strategy)
+		(typep strat 'rule-instance))
+	    (let* ((new-strat
+		    (if (typep strat 'strategy)
+			strat
+			(make-instance 'strategy
+			  'topstep strat)))
+		   (newps0 (copy ps
+			     'strategy new-strat
+			     'parent-proofstate nil))
+		   (newps (if (typep newps0 'top-proofstate)
+			      (change-class newps0 'proofstate)
+			      newps0))
+		   (*noninteractivemode* t)
+		   (*suppress-printing* t)
+		   (*dependent-decls* nil)
+		   (init-time (get-internal-run-time))
+		   (result (let ((*in-apply* ps))
+			     (if timeout
+				 (mp:with-timeout (timeout nil)
+						  (prove* newps)
+						  newps)
+				 (prove* newps))))
+		   (end-time (/ (- (get-internal-run-time) init-time)
+				internal-time-units-per-second)))
+	      (if (and timeout
+		       (null result))
+		  (progn (clear-strategy-errors)
+			 (format t "Apply timed out: treated as skip")
+			 (values 'X nil nil))
+		  (let* ((subgoals (collect-subgoals newps))
+			 (justif (collect-justification newps))
+			 (xrule `(apply
+				     (rerun
+				      ,(editable-justification
+					justif nil t)))))
+		    ;; (format t "~%step= ~a~%decls = ~a" step *dependent-decls*)
+		    (when time?
+		      (format t "~%;;;Used ~,2F seconds in ~s." end-time step))
+		    (if (eq (status-flag newps) 'XX)
+			(values 'X nil nil)
+			(if (or (eq (status-flag newps) 'X)
+				(and (singleton? subgoals)
+				     (or (and (not (consp (car subgoals)))
+					      (tc-eq (car subgoals)
+						     (current-goal ps)))
+					 (and (consp (car subgoals))
+					      (tc-eq (caar subgoals)
+						     (current-goal ps))
+					      (eq
+					       (getf (cdar subgoals)
+						     'current-auto-rewrites)
+					       (current-auto-rewrites newps))))))
+			    (if save?
+				(values '? (list (current-goal newps)) nil)
+				(values 'X nil nil))
+			    (if (eq (status-flag newps) '!) ;;(null subgoals)
+				(values '! nil
+					(list 'dependent-decls *dependent-decls*
+					      'current-xrule xrule))
+				(values '? subgoals
+					(list 'dependent-decls *dependent-decls*
+					      'current-xrule xrule))))))))
+	    (values 'X nil nil)))
+      (error-format-if "~%Error: timeout must be a positive integer")))
 
 (defmethod collect-subgoals ((ps proofstate) &optional accum)
   (dolist (x (dependent-decls ps))
@@ -377,12 +394,16 @@ See also HIDE, REVEAL"
 			     (collect-subgoals (cdr pslist) accum)))))
 
 			    
-(addrule 'apply (strategy) (comment save? time?)
-  (apply-step strategy comment save? time?) 
+(addrule 'apply (strategy) (comment save? time? timeout)
+  (apply-step strategy comment save? time? timeout)
   "Applies STRATEGY as if it were a rule, and prints COMMENT string.
 If SAVE? is T, then the APPLY step is saved even if the strategy
 does nothing, e.g., (SKIP), which is useful for setting values of
 globals, e.g., (APPLY (LISP (setq *xx* ...)) \"recording value of *xx*\" T).
+If TIME? is t, prints the time used to apply the strategy.  TIMEOUT is
+the number of seconds for the strategy to complete, if it does not complete
+by then, it is treated as a (SKIP).  If it does complete, it is saved with
+the TIMEOUT removed.
 This is the basic way of converting a glass-box strategy into an
 atomic step so that internal execution of the strategy is hidden
 and only the resulting subgoals are returned.  E.g.,
@@ -673,13 +694,9 @@ flag is T, then any definition expansion occurs only if the RHS
 instance simplifies (using the decision procedures).  Note that the
 EXPAND step also applies simplification with decision procedures
 (i.e. SIMPLIFY with default options) to any sequent formulas where
-an expansion has occurred.  (In Release 1.x, ASSERT was applied to
-any formula affected by EXPAND, but this has changed in Release 2.0.
-To regain compatibility, the ASSERT? flag can be set to T.)
-ASSERT? can be either NONE (meaning no simplification),
-NIL (meaning simplify using SIMPLIFY), or T (meaning simplify using
-ASSERT).  Another change is that the HASH-REWRITES? flag has also been
-removed since all rewrites are now hashed for efficiency.)"
+an expansion has occurred.  ASSERT? can be either NONE (meaning no
+simplification), NIL (meaning simplify using SIMPLIFY), or T (meaning
+simplify using ASSERT)."
   "~%Expanding the definition of ~a,")
 
 
@@ -802,3 +819,27 @@ which eliminates all top-level disjuncts in the indicated FNUMS."
       (values 'X nil nil))
   "Sets the print depth."
   "~%Setting print depth to ~a")
+
+(addrule 'decide () ((fnums *))
+  (invoke-decide fnums)
+  "Invokes the decision procedure, without simplification."
+  "Invoking the decision procedure directly")
+
+(defun invoke-decide (sformnums)
+  #'(lambda (ps)
+      (let* ((goalsequent (current-goal ps))
+	     (*dp-state* (dp-state ps))
+	     (*top-dp-state* *dp-state*))
+	(multiple-value-bind (sig subgoal)
+	    (sequent-reduce
+	     goalsequent
+	     #'(lambda (sform)
+		 (let ((result (call-process (negate (formula sform))
+					     *dp-state*)))
+		   (cond ((false-p result)
+			  (values '! nil))
+			 ((dpi-state-changed? *top-dp-state* *dp-state*)
+			  (values '? sform))
+			 (t (values 'X sform)))))
+	     sformnums)
+	  (values sig (list subgoal))))))
