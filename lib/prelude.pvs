@@ -623,6 +623,16 @@ sets [T: TYPE]: THEORY
 
   rest(a): set = IF empty?(a) THEN a ELSE remove(choose(a), a) ENDIF
 
+  setofsets: TYPE = setof[setof[T]]
+  
+  A, B : Var setofsets
+
+  powerset(a): setofsets = {b | subset?(b, a)}
+
+  Union(A): set = {x | EXISTS (a: (A)): a(x)}
+
+  Intersection(A): set = {x | FORALL (a: (A)): a(x)}
+
   nonempty_singleton: JUDGEMENT (singleton?) SUBTYPE_OF (nonempty?)
   nonempty_union1: JUDGEMENT union(a: (nonempty?), b: set) HAS_TYPE (nonempty?)
   nonempty_union2: JUDGEMENT union(a: set, b: (nonempty?)) HAS_TYPE (nonempty?)
@@ -636,8 +646,9 @@ sets [T: TYPE]: THEORY
 sets_lemmas [T: TYPE]: THEORY
  BEGIN
 
-  a, b, c: VAR set[T]
   x, y: VAR T
+  a, b, c: VAR set[T]
+  A, B : Var setofsets[T]
 
   extensionality: LEMMA
       (FORALL x: member(x, a) IFF member(x, b)) IMPLIES (a = b)
@@ -819,6 +830,12 @@ sets_lemmas [T: TYPE]: THEORY
   union_disj_remove_right: LEMMA
     disjoint?(a, b) AND b(x) IMPLIES
       union(a, remove(x, b)) = remove(x, union(a, b))
+
+  subset_powerset: LEMMA subset?(a, b) IFF member(a, powerset(b))
+
+  empty_powerset: LEMMA empty?(a) IFF singleton?(powerset(a))
+
+  nonempty_powerset: JUDGEMENT powerset(a) HAS_TYPE (nonempty?[set[T]])
 
 END sets_lemmas
 
@@ -1098,6 +1115,40 @@ relation_props2 [T1, T2, T3, T4: TYPE]: THEORY
 
   assoc: LEMMA (R1 o R2) o R3 = R1 o (R2 o R3)
  END relation_props2
+
+
+indexed_sets[index, T: TYPE]: THEORY
+ BEGIN
+  i: VAR index
+  x: VAR T
+  A, B: VAR [index -> set[T]]
+  S: VAR set[T]
+
+  IUnion(A): set[T] = {x | EXISTS i: A(i)(x)}
+
+  IIntersection(A): set[T] = {x | FORALL i: A(i)(x)}
+
+  IUnion_Union: LEMMA
+    IUnion(A) = Union(image(A)(fullset[index]))
+
+  IIntersection_Intersection: LEMMA
+    IIntersection(A) = Intersection(image(A)(fullset[index]))
+
+  IUnion_union: LEMMA
+    IUnion(LAMBDA i: union(A(i), B(i))) = union(IUnion(A), IUnion(B))
+
+  IIntersection_intersection: LEMMA
+    IIntersection(LAMBDA i: intersection(A(i), B(i)))
+        = intersection(IIntersection(A), IIntersection(B))
+
+  IUnion_intersection: LEMMA
+    IUnion(LAMBDA i: intersection(A(i), S))
+        = intersection(IUnion(A), S)
+
+  IIntersection_union: LEMMA
+    IIntersection(LAMBDA i: union(A(i), S))
+        = union(IIntersection(A), S)
+ END indexed_sets
 
 
 % operator_defs
@@ -2955,8 +3006,8 @@ finite_sets_def[T: TYPE]: THEORY
 
   non_empty_finite_set: TYPE = {s: finite_set | NOT empty?(s)}
 
-  is_finite_surj: LEMMA (EXISTS (N: posnat), (f: [below[N] -> (S)]):
-                            surjective?(f)) IMPLIES is_finite(S) 
+  is_finite_surj: LEMMA (EXISTS (N: nat), (f: [below[N] -> (S)]):
+                            surjective?(f)) IFF is_finite(S) 
 
 
   A,B: VAR finite_set
@@ -3003,6 +3054,17 @@ finite_sets_def[T: TYPE]: THEORY
   finite_complement:   LEMMA is_finite_type IMPLIES is_finite(complement(S))
 
 END finite_sets_def
+
+
+finite_sets_of_sets[T: TYPE]: THEORY
+ BEGIN
+  A, B: VAR finite_set[T]
+  powerset_finite: JUDGEMENT
+    powerset(A) HAS_TYPE finite_set[set[T]]
+  powerset_finite_finite: JUDGEMENT
+    powerset(A) HAS_TYPE finite_set[finite_set[T]]
+  % Judgement forms are not expressive enough for Union, Intersection
+ END finite_sets_of_sets
 
 
 % function_iterate provides the iterate function, which composes a
