@@ -61,7 +61,7 @@
 (defun reset-typecheck-caches ()
   (dolist (fn *untypecheck-hook*)
     (funcall fn))
-  (clrhash *subst-type-hash*)
+  (when *subst-type-hash* (clrhash *subst-type-hash*))
   (reset-subst-mod-params-cache)
   (reset-pseudo-normalize-caches)
   ;;(reset-fully-instantiated-cache)
