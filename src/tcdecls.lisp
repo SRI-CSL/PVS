@@ -146,8 +146,9 @@
 
 (defmethod typecheck* ((decl formal-const-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (setf (type decl)
-	(typecheck* (declared-type decl) nil nil nil))
+  (let ((*generate-tccs* 'none))
+    (setf (type decl)
+	  (typecheck* (declared-type decl) nil nil nil)))
   (set-type (declared-type decl) nil)
   (if (free-params (type decl))
       (set-nonempty-type (type decl))
@@ -186,19 +187,18 @@
       (typecheck-named-theory* theory theory-name decl))))
 
 (defmethod typecheck-named-theory* ((theory module) theory-name decl)
-  (let ((thname theory-name)
-	(*typecheck-using* theory-name))
+  (let ((*typecheck-using* theory-name))
     (cond ((actuals theory-name)
 	   (unless (length= (formals-sans-usings theory) (actuals theory-name))
 	     (type-error theory-name "Wrong number of actuals in ~a"
 			 theory-name))
 	   (typecheck-actuals theory-name)
 	   (typecheck-mappings (mappings theory-name) theory-name)
-	   (setq thname (set-type-actuals theory-name))
+	   (set-type-actuals theory-name)
 	   (check-compatible-params (formals-sans-usings theory)
 				    (actuals theory-name) nil))
 	  (t (typecheck-mappings (mappings theory-name) theory-name)
-	     (setq thname (set-type-actuals theory-name))))
+	     (set-type-actuals theory-name)))
     (let ((local-ref (find-local-theory-reference theory-name)))
       (when local-ref
 	(type-error local-ref
@@ -291,6 +291,7 @@
 		(reverse (all-decls (current-theory))))))))
 
 (defmethod get-currently-imported-instance (x)
+  (declare (ignore x))
   nil)
 
 (defmethod get-currently-imported-instance ((imp importing))
@@ -536,7 +537,8 @@
   (declare (ignore expected kind arguments))
   (when (formals decl)
     (type-error decl "Formals are not allowed in ~(~a~)s" (type-of decl)))
-  (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
+  (let ((*generate-tccs* 'none))
+    (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
   (set-type (declared-type decl) nil)
   (assert (null (freevars (type decl))))
   (unless (fully-instantiated? (type decl))
@@ -556,7 +558,8 @@
     (typecheck* (formals decl) nil nil nil)
     (set-formals-types (apply #'append (formals decl))))
   (let* ((*bound-variables* (apply #'append (formals decl)))
-	 (rtype (typecheck* (declared-type decl) nil nil nil)))
+	 (rtype (let ((*generate-tccs* 'none))
+		  (typecheck* (declared-type decl) nil nil nil))))
     (set-type (declared-type decl) nil)
     (setf (type decl)
 	  (make-formals-funtype (formals decl) rtype))
@@ -667,7 +670,8 @@
   (typecheck* (formals decl) nil nil nil)
   (set-formals-types (apply #'append (formals decl)))
   (let* ((*bound-variables* (apply #'append (formals decl)))
-	 (rtype (typecheck* (declared-type decl) nil nil nil))
+	 (rtype (let ((*generate-tccs* 'none))
+		  (typecheck* (declared-type decl) nil nil nil)))
 	 (*recursive-subtype-term* nil))
     (set-type (declared-type decl) nil)
     (setf (type decl)
@@ -1066,7 +1070,8 @@
   (set-formals-types (apply #'append (formals decl)))
   (let* ((*bound-variables* (apply #'append (formals decl)))
 	 (*tcc-conditions* (add-formals-to-tcc-conditions (formals decl)))
-	 (rtype (typecheck* (declared-type decl) nil nil nil)))
+	 (rtype (let ((*generate-tccs* 'none))
+		  (typecheck* (declared-type decl) nil nil nil))))
     (set-type (declared-type decl) nil)
     (setf (type decl)
 	  (make-formals-funtype (formals decl) rtype))
@@ -1649,7 +1654,9 @@
     'declared-type (remove-defined-type-names* (declared-type ex))
     'type (remove-defined-type-names* (declared-type ex))))
 
-(defmethod remove-defined-type-name? (ex) nil)
+(defmethod remove-defined-type-name? (ex)
+  (declare (ignore ex))
+  nil)
 
 (defun handle-existence-assuming-on-formals (decl)
   (when (and (typep (definition decl) 'exists-expr)
@@ -2066,7 +2073,8 @@
 
 (defmethod typecheck* ((decl field-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (let ((type (typecheck* (declared-type decl) nil nil nil)))
+  (let ((type (let ((*generate-tccs* 'none))
+		(typecheck* (declared-type decl) nil nil nil))))
     (set-type (declared-type decl) nil)
     (setf (type decl) type))
   decl)
@@ -2074,7 +2082,8 @@
 
 (defmethod typecheck* ((db dep-binding) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (setf (type db) (typecheck* (declared-type db) nil nil nil))
+  (let ((*generate-tccs* 'none))
+    (setf (type db) (typecheck* (declared-type db) nil nil nil)))
   (set-type (declared-type db) nil)
   db)
 
@@ -2097,7 +2106,8 @@
   (let ((*bound-variables*
 	 (if (typep (declared-subtype decl) 'type-application)
 	     (append (parameters (declared-subtype decl)) *bound-variables*)
-	     *bound-variables*)))
+	     *bound-variables*))
+	(*generate-tccs* 'none))
     (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
   (set-type (declared-type decl) nil)
   (if (subtype-of? (subtype decl) (type decl))
@@ -2139,7 +2149,8 @@
 
 (defmethod typecheck* ((decl number-judgement) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
+  (let ((*generate-tccs* 'none))
+    (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
   (set-type (declared-type decl) nil)
   (let ((*compatible-pred-reason*
 	 (acons (number-expr decl) "judgement" *compatible-pred-reason*)))
@@ -2150,7 +2161,8 @@
 
 (defmethod typecheck* ((decl name-judgement) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
+  (let ((*generate-tccs* 'none))
+    (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
   (when (funtype? (find-supertype (type decl)))
     (pvs-warning "Judgement at line ~d may lead to unprovable TCCs~
                   ~%See language document for details."
@@ -2174,7 +2186,8 @@
 	  "May not use duplicate arguments in judgements")))
     (set-formals-types fmlist))
   (let* ((*bound-variables* (reverse (apply #'append (formals decl)))))
-    (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
+    (let ((*generate-tccs* 'none))
+      (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
     (set-type (declared-type decl) nil)
     (let* ((*no-conversions-allowed* t)
 	   (expr (mk-application-for-formals (name decl) (formals decl)))
@@ -2241,7 +2254,8 @@
 (defmethod typecheck* ((decl typed-conversion-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (unless (typechecked? decl)
-    (let ((type (typecheck* (declared-type decl) nil nil nil)))
+    (let ((type (let ((*generate-tccs* 'none))
+		  (typecheck* (declared-type decl) nil nil nil))))
       (set-type (declared-type decl) nil)
       (typecheck* (name decl) type 'expr nil)))
   (typecheck-conversion decl)
@@ -2352,7 +2366,8 @@
 
 (defmethod typecheck* ((rname constant-rewrite-name) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (setf (type rname) (typecheck* (declared-type rname) nil nil nil))
+  (let ((*generate-tccs* 'none))
+    (setf (type rname) (typecheck* (declared-type rname) nil nil nil)))
   (set-type (declared-type rname) nil)
   (let ((reses (definition-resolutions rname)))
     (setf (resolutions rname) reses))
