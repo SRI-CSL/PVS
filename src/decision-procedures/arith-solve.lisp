@@ -197,20 +197,17 @@
   (declare (ignore cong-state))
   (list eqn))
 
-(defun occurs-under-interp (term1 term2)
-  (cond
-   ((eq term1 term2) t)
-   ((constant-p term2) nil)
-   ((uninterp? term2) nil)
-   (t (some #'(lambda (x) (occurs-under-interp term1 x))
-	    (funargs term2)))))
-
 (defun good-equalities (equalities)
   (loop for eqn in equalities
 	unless (occurs-under-interp (lhs eqn) (rhs eqn))
 	collect eqn))
 
 (defun solve-normed-arith-eq (eqn cong-state)
+  "Takes a normineqed equality. Assume it is of the form:
+Sum(ci*vi). It checks whether all of the ci*vi* are >= 0.
+If they are then it returns forall i: vi=0. If at least one
+of the ci*vi is <= 0 it returns (list eqn). If one of the
+ci*vi is strictly > 0 it returns *false*."
   (let* ((head (lhs eqn))
 	 (headsgn (neg-sgn (term-sgn head)))
 	 (head-var (term-var head))
