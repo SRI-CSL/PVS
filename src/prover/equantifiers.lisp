@@ -1282,15 +1282,19 @@ is not of the form: (<var> <term>...)" subst)
   (find-templates* (argument expr) boundvars accum))
 
 (defmethod find-templates* ((expr projection-expr) boundvars &optional accum)
+  (declare (ignore boundvars))
   accum)
 
 (defmethod find-templates* ((expr injection-expr) boundvars &optional accum)
+  (declare (ignore boundvars))
   accum)
 
 (defmethod find-templates* ((expr injection?-expr) boundvars &optional accum)
+  (declare (ignore boundvars))
   accum)
 
 (defmethod find-templates* ((expr extraction-expr) boundvars &optional accum)
+  (declare (ignore boundvars))
   accum)
 
 (defmethod find-templates* ((expr projection-application) boundvars
