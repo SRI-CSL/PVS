@@ -3,19 +3,18 @@
 ;; Author          : Sam Owre
 ;; Created On      : Sat Oct 31 02:24:43 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sat Oct 31 02:30:29 1998
-;; Update Count    : 1
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Last Modified On: Thu May 20 21:19:22 2004
+;; Update Count    : 2
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
 (defcl s-formula ()
   formula
   (label :initform nil)
-  (new? :initform nil :ignorc t)
+  (new? :initform nil :ignore t)
   (asserted? :initform nil))
 
 
@@ -203,3 +202,11 @@
   (cond ((null list) list)
 	(t (cons (apply #'copy (car list) args)
 		 (apply #'copy (cdr list) args)))))
+
+(defun count-proofstates (ps &optional (num 0))
+  (count-proofstates* (children ps) (1+ num)))
+
+(defun count-proofstates* (list num)
+  (if list
+      (count-proofstates* (cdr list) (count-proofstates (car list) num))
+      num))
