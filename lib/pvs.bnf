@@ -29,7 +29,7 @@ Theory ::= id [TheoryFormals] ':' 'THEORY'
 
 TheoryFormals ::= '[' TheoryFormal++',' ']'
 
-TheoryFormal ::= ['(' LibDecl* Importing ')'] TheoryFormalDecl
+TheoryFormal ::= ['(' Importing ')'] TheoryFormalDecl
 
 TheoryFormalDecl ::= TheoryFormalType | TheoryFormalConst
 
