@@ -1916,10 +1916,16 @@
       (cons (shortname (make-specpath (filename theory)))
 	    (when (parsed? theory) (place-list (place theory)))))))
 
-(defun id-place (name)
+(defmethod id-place (name)
   (let* ((row (starting-row (place name)))
 	 (scol (starting-col (place name)))
 	 (ecol (+ scol (length (string (id name))))))
+    (vector row scol row ecol)))
+
+(defmethod id-place ((ex fieldappl))
+  (let* ((row (ending-row (place ex)))
+	 (ecol (ending-col (place ex)))
+	 (scol (- ecol (length (string (id ex))))))
     (vector row scol row ecol)))
 
 (defun get-name-at (filename pos)
