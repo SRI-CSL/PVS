@@ -608,11 +608,11 @@
 
 (defmethod pvs-sxhash* ((e1 conjunction) bindings)
   (with-slots (argument) e1
-    (pvs-sxhash-+ 43 (the positive-fixnum (pvs-sxhash* argument bindings)))))
+    (pvs-sxhash* (collect-conjuncts argument) bindings)))
 
 (defmethod pvs-sxhash* ((e1 disjunction) bindings)
   (with-slots (argument) e1
-    (pvs-sxhash-+ 47 (the positive-fixnum (pvs-sxhash* argument bindings)))))
+    (pvs-sxhash* (collect-disjuncts argument) bindings)))
 
 (defmethod pvs-sxhash* ((e1 implication) bindings)
   (with-slots (argument) e1
