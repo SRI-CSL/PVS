@@ -506,9 +506,10 @@ is not applied to such equalities."
 
 (addrule 'name (name expr) nil
   (add-name name expr)
-  "Introduces an EXPR = NAME premise.
-Useful for generalizing the goal, and replacing exprs with bound
-variables, so that the ground prover can be applied to them.
+  "Introduces an EXPR = NAME premise.  Useful for generalizing the goal, and
+replacing exprs with bound variables, so that the ground prover can be
+applied to them.  In addition to the new antecedent, a definition is generated
+for the NAME, which may subsequently be expanded or rewritten.
 See also NAME-REPLACE"
   "~%Letting ~a name ~a," )
 
