@@ -1663,6 +1663,12 @@
 			  (typep sty '(or funtype tupletype
 					  recordtype adt-type-name))))))
 	    (ptypes (expression expr)))))
+  (when (and (cdr (ptypes (expression expr)))
+	     (name-expr? (expression expr)))
+    (let ((res (find-best-name-resolution
+		(expression expr) (resolutions (expression expr)) nil)))
+      (setf (resolutions (expression expr)) (list res)
+	    (types (expression expr)) (list (type res)))))
   ;; The following may be relaxed in the future.
   (unless (singleton? (ptypes (expression expr)))
     (if (cdr (types (expression expr)))
