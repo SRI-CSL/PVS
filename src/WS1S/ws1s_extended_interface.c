@@ -3,7 +3,7 @@
  */
 
 #include <stdlib.h>
-#include "./mona-1.3/DFA/dfa.h"
+#include "dfa.h"
 
 int dfaCheck(DFA *a, int polarity)
 {
