@@ -67,6 +67,7 @@ bdd___bdd_and_smooth = bdd_and_smooth ;
 bdd___bdd_rank_order_vars = bdd_rank_order_vars ;
 bdd___bdd_quantify = bdd_quantify ;
 bdd___bdd_subst_par = bdd_subst_par ;
+bdd___bdd_subst_par_list = bdd_subst_par_list ;
 bdd___bdd_free_vec = bdd_free_vec ;
 bdd___bdd_get_output_string = bdd_get_output_string ;
 bdd___bdd_set_output_string = bdd_set_output_string ;
