@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Sat Oct 31 02:45:32 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sat Oct 31 02:59:09 1998
-;; Update Count    : 1
+;; Last Modified On: Fri Jan 29 17:23:37 1999
+;; Update Count    : 2
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -497,12 +497,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun branch?  (expr)
-  (and (typep expr 'if-expr)
-  (let ((op (operator expr)))
-    (and (typep op 'name-expr)
-	 (eq (id op) 'if)
-	 (eq (id (module-instance (resolution op))) '|if_def|)))))
+; (defun branch?  (expr)
+;   (and (typep expr 'if-expr)
+;   (let ((op (operator expr)))
+;     (and (typep op 'name-expr)
+; 	 (eq (id op) 'if)
+; 	 (eq (id (module-instance (resolution op))) '|if_def|)))))
 
 (defmethod top-collect-conds ((expr if-expr))
   (let ((if-conds (collect-conds (condition expr))))
