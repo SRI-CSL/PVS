@@ -84,11 +84,11 @@
 ; and the current symbol table; the result is an automaton or nil if the formula is not
 ; a translatable formula.
 
-(defun bool-to-dfa (fml symtab)
+(defun bool-to-dfa (fml)
   (unwind-protect
       (progn 
 	(symtab-init)
-	(bool-to-dfa* fml symtab))
+	(dfa-unrestrict (bool-to-dfa* fml (symtab-empty))))
     nil))
        
 (defmethod bool-to-dfa* ((fml expr) symtab)
@@ -169,7 +169,7 @@
       (bool-to-dfa* (args1 fml) symtab)
     (multiple-value-bind (dfa2 symtab2)
 	(bool-to-dfa* (args2 fml) symtab1)
-      (values (dfa-equivalence dfa1 dfa2) symtab2))))
+      (values (dfa-iff dfa1 dfa2) symtab2))))
 
 (defmethod bool-to-dfa* ((fmls null) symtab)
   (values nil symtab))
@@ -321,9 +321,9 @@
 		      (symtab-add-bound var symtab)           
 		    (let* ((idx2 (symtab-fresh-index))
 			   (cnstrnt2 (dfa-forall1 idx1
-						  (dfa-equivalence (dfa-in idx1 idx2)
+						  (dfa-iff (dfa-in idx1 idx2)
 								   (dfa-conjunction*
-								    (bool-to-dfa (cons (expression trm) preds) symtab))))))
+								    (bool-to-dfa* (cons (expression trm) preds) symtab))))))
 		      (values idx2
 			      (list idx2)
 			      cnstrnt2
@@ -344,7 +344,7 @@
 
 (defmethod nats-to-dfa* ((fml branch) symtab)
   (multiple-value-bind (c symtab1)
-      (bool-to-dfa (condition fml))
+      (bool-to-dfa* (condition fml))
     (cond ((dfa-true? c)                            
 	   (nats-to-dfa (then-part fml) symtab))
 	  ((dfa-false? c)
@@ -425,9 +425,9 @@
     (multiple-value-bind (idx0 symtab0)
 	(symtab-add-bound var symtab)
       (multiple-value-bind (dfa1 symtab1)
-	  (bool-to-dfa body symtab0)
+	  (bool-to-dfa* body symtab0)
 	(multiple-value-bind (dfas2 symtab2)
-	    (bool-to-dfa preds symtab1)
+	    (bool-to-dfa* preds symtab1)
 	(let ((symtab3 (symtab-make (symtab-boundvars symtab)
 				    (symtab-freevars symtab2))))
 	  (values idx0
@@ -574,7 +574,7 @@
   
 (defmethod index-to-dfa* ((expr branch) symtab)
   (multiple-value-bind (dfac symtab0)
-      (bool-to-dfa (condition expr) symtab)
+      (bool-to-dfa* (condition expr) symtab)
     (cond ((dfa-true? dfac)                            
 	   (index-to-dfa (then-part expr) symtab0))
 	  ((dfa-false? dfac)
