@@ -349,7 +349,7 @@
     (when (and (cdr (term-args idops)) formals)
       (parse-error formals ": expected here"))
     (case (sim-term-op decl)
-      ((lib-decl mod-decl type-decl datatype)
+      ((lib-decl theory-decl type-decl datatype)
        (let ((badid (find-if #'(lambda (tid)
 				 (assq (ds-id (term-arg0 tid))
 				       *pvs-operators*))
@@ -385,7 +385,7 @@
     (when (and (cdr (term-args idops)) pformals)
       (parse-error formals ": expected here"))
     (case (sim-term-op decl)
-      ((lib-decl mod-decl type-decl datatype)
+      ((lib-decl theory-decl type-decl datatype)
        (let ((badid (find-if #'(lambda (tid)
 				 (assq (ds-id (term-arg0 tid))
 				       *pvs-operators*))
@@ -444,12 +444,19 @@
 
 (defun xt-importing-elt (importing)
   (let ((importings
-	 (mapcar #'(lambda (thname)
-		     (make-instance 'importing
-		       'theory-name (xt-modname thname)
-		       'place (term-place thname)
-		       'semi (when (is-sop 'semic (term-arg1 importing)) t)
-		       'chain? t))
+	 (mapcar #'(lambda (item)
+		     (if (is-sop 'theory-abbreviation-decl item)
+			 (make-instance 'theory-abbreviation-decl
+			   'id (ds-id (term-arg1 item))
+			   'theory-name (xt-modname (term-arg0 item))
+			   'place (term-place item)
+			   'semi (when (is-sop 'semic (term-arg1 importing)) t)
+			   'chain? t)
+			 (make-instance 'importing
+			   'theory-name (xt-modname item)
+			   'place (term-place item)
+			   'semi (when (is-sop 'semic (term-arg1 importing)) t)
+			   'chain? t)))
 	   (term-args (term-arg0 importing)))))
     (setf (chain? (car (last importings))) nil)
     importings))
@@ -749,8 +756,9 @@
   (case (sim-term-op body)
     (ftype-decl (xt-ftype-decl body))
     (fconst-decl (xt-fconst-decl body))
+    (ftheory-decl (xt-ftheory-decl body))
     (lib-decl (xt-lib-decl body))
-    (mod-decl (xt-mod-decl body))
+    (theory-decl (xt-theory-decl body))
     (uninterp-type-decl (xt-uninterp-type-decl body))
     (type-decl (xt-type-decl body))
     (judgement (xt-judgement-decl body idops))
@@ -791,6 +799,13 @@
 	      'place (term-place fconst-decl))
 	    dtype)))
 
+(defun xt-ftheory-decl (ftheory-decl)
+  (let ((dmodname (term-arg0 ftheory-decl)))
+    (values (make-instance 'formal-theory-decl
+	      'theory-name (xt-modname dmodname)
+	      'place (term-place ftheory-decl))
+	    dmodname)))
+
 (defun xt-lib-decl (lib-decl)
   (let* ((libstr (coerce (ds-string (term-arg1 lib-decl)) 'string))
 	 (dirstr (if (char= (char libstr (1- (length libstr))) #\/)
@@ -803,10 +818,10 @@
       'library dirstr
       'place (term-place lib-decl))))
 
-(defun xt-mod-decl (mod-decl)
+(defun xt-theory-decl (theory-decl)
   (make-instance 'mod-decl
-    'modname (xt-modname (term-arg0 mod-decl))
-    'place (term-place mod-decl)))
+    'modname (xt-modname (term-arg0 theory-decl))
+    'place (term-place theory-decl)))
 
 (defun xt-uninterp-type-decl (utd)
   (let ((tkey (sim-term-op (term-arg0 utd)))
@@ -1028,12 +1043,19 @@
     (if (is-sop 'comp-type-expr-null-2 range)
 	(if (is-sop 'comp-type-expr-null-1 kind)
 	    (let ((dep-types (xt-dep-type-exprs dep-type-exprs)))
-	      (if (cdr dep-types)
-		  (make-instance 'tupletype
-		    'types dep-types
-		    'place (term-place funtype))
-		  (progn (incf (parens (car dep-types)))
-			 (car dep-types))))
+	      (if (is-sop 'cotupletype dep-type-exprs)
+		  (if (some #'dep-binding? dep-types)
+		      (parse-error dep-type-exprs
+			"Dependent types not allowed in cotuple types")
+		      (make-instance 'cotupletype
+			'types dep-types
+			'place (term-place funtype)))
+		  (if (cdr dep-types)
+		      (make-instance 'tupletype
+			'types dep-types
+			'place (term-place funtype))
+		      (progn (incf (parens (car dep-types)))
+			     (car dep-types)))))
 	    (parse-error funtype "Function type must have a range"))
 	(let* ((range (xt-not-enum-type-expr range))
 	       (dom (xt-dep-type-exprs dep-type-exprs))
@@ -1315,31 +1337,41 @@
   (let ((name (xt-name (term-arg0 expr))))
     (if (typep name 'number-expr)
 	name
-	(let* ((upid (intern (string-upcase (string (id name)))))
-	       (prindex (projection? upid)))
-	  (if prindex
-	      (cond ((actuals name)
-		     (parse-error expr "Projection may not have actuals"))
-		    ((mod-id name)
-		     (parse-error expr "Projection may not have a theory id"))
-		    ((library name)
-		     (parse-error expr "Projection may not have a library id"))
-		    ((zerop prindex)
-		     (parse-error expr "Projection index may not be zero"))
-		    (t (make-instance 'projection-expr
-			 'id upid
-			 'index prindex
-			 'place (term-place expr))))
-	      (progn (change-class name 'name-expr)
-		     (setf (place name) (term-place expr))
-		     name))))))
+	(let ((upid (intern (string-upcase (format nil "~a" (id name))))))
+	  (multiple-value-bind (prindex prkind)
+	      (projection? upid)
+	    (if prindex
+		(cond ((actuals name)
+		       (parse-error expr "Projection may not have actuals"))
+		      ((mod-id name)
+		       (parse-error expr "Projection may not have a theory id"))
+		      ((library name)
+		       (parse-error expr "Projection may not have a library id"))
+		      ((zerop prindex)
+		       (parse-error expr "Projection index may not be zero"))
+		      (t (if (eq prkind 'proj)
+			     (make-instance 'projection-expr
+			       'id upid
+			       'index prindex
+			       'place (term-place expr))
+			     (make-instance 'injection-expr
+			       'id upid
+			       'index prindex
+			       'place (term-place expr)))))
+		(progn (change-class name 'name-expr)
+		       (setf (place name) (term-place expr))
+		       name)))))))
 
 (defun projection? (id)
-  (let ((str (string-upcase (string id))))
-    (and (> (length str) 5)
-	 (string= str "PROJ_" :end1 5)
-	 (every #'digit-char-p (subseq str 5))
-	 (parse-integer str :start 5))))
+  (let ((str (string-upcase (format nil "~a" id))))
+    (cond ((and (> (length str) 5)
+		(string= str "PROJ_" :end1 5)
+		(every #'digit-char-p (subseq str 5)))
+	   (values (parse-integer str :start 5) 'proj))
+	  ((and (> (length str) 3)
+		(string= str "IN_" :end1 3)
+		(every #'digit-char-p (subseq str 3)))
+	   (values (parse-integer str :start 3) 'in)))))
 
 (defun xt-rec-expr (rec-expr)
   (make-instance 'record-expr
@@ -1454,16 +1486,22 @@
 	(args (term-args (term-arg1 expr))))
     (unless args
       (parse-error (term-arg1 expr) "argument expected here"))
-    (if (typep op 'projection-expr)
-	(make-instance 'projection-application
-	  'id (id op)
-	  'index (index op)
-	  'argument (xt-arg-expr args)
-	  'place (term-place expr))
-	(make-instance 'application
-	  'operator op
-	  'argument (xt-arg-expr args)
-	  'place (term-place expr)))))
+    (cond ((typep op 'projection-expr)
+	   (make-instance 'projection-application
+	     'id (id op)
+	     'index (index op)
+	     'argument (xt-arg-expr args)
+	     'place (term-place expr)))
+	  ((typep op 'injection-expr)
+	   (make-instance 'injection-application
+	     'id (id op)
+	     'index (index op)
+	     'argument (xt-arg-expr args)
+	     'place (term-place expr)))
+	  (t (make-instance 'application
+	       'operator op
+	       'argument (xt-arg-expr args)
+	       'place (term-place expr))))))
 
 
 (defun xt-bind-expr (bexpr)
@@ -1853,17 +1891,26 @@
   (let* ((selector (term-arg0 sel))
 	 (args (term-arg1 sel))
 	 (expr (term-arg2 sel))
-	 (constr (mk-name-expr (xt-idop selector))))
-    (setf (place constr) (term-place selector))
-    (make-instance 'selection
-      'constructor constr
-      'args (unless (is-sop 'selection-null-1 args)
-	      (mapcar #'(lambda (a) (make-instance 'bind-decl
-				      'id (xt-idop a)
-				      'place (term-place a)))
-		      (term-args args)))
-      'expression (xt-expr expr)
-      'place (term-place sel))))
+	 (id (xt-idop selector)))
+    (multiple-value-bind (index kind)
+	(projection? id)
+      (let ((constr (case kind
+		      (in (make-instance 'injection-expr
+			       'id id
+			       'index index
+			       'place (term-place expr)))
+		      (proj (parse-error sel "Projection illegal here"))
+		      (t (mk-name-expr id)))))
+	(setf (place constr) (term-place selector))
+	(make-instance 'selection
+	  'constructor constr
+	  'args (unless (is-sop 'selection-null-1 args)
+		  (mapcar #'(lambda (a) (make-instance 'bind-decl
+					  'id (xt-idop a)
+					  'place (term-place a)))
+		    (term-args args)))
+	  'expression (xt-expr expr)
+	  'place (term-place sel))))))
 
 (defun xt-cond-expr (expr)
   (let* ((cases (term-args (term-arg0 expr)))
