@@ -178,9 +178,10 @@
 		*displaying-proof-counter*))
 	     (pvs-long-wish
 	      (format nil "~a~%layout-proof ~a ~a 0~%"
-		(with-output-to-string (*standard-output*)
-		  (write-justification-status
-		   (justification fdecl) nil fid thid))
+		(let ((*disable-gc-printout* t))
+		  (with-output-to-string (*standard-output*)
+		    (write-justification-status
+		     (justification fdecl) nil fid thid)))
 		fid thid))))
 	  (t (pvs-message "Formula has no associated proof")))))
 
@@ -311,9 +312,10 @@
   (format nil "top~{.~a~}" path))
 
 (defun tcl-justification (just)
-  (with-output-to-string (*standard-output*)
-    (let ((*print-case* :downcase))
-      (tcl-just just))))
+  (let ((*disable-gc-printout* t))
+    (with-output-to-string (*standard-output*)
+      (let ((*print-case* :downcase))
+	(tcl-just just)))))
 
 (defun tcl-just (just)
   (format t "{{~a} {~s} {" (label just) (rule just))

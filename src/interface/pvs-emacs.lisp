@@ -608,7 +608,8 @@
   (let ((tmp-file (gensym)))
     `(progn
       (unless *pvs-tmp-file* (set-pvs-tmp-file))
-      (let ((,tmp-file (funcall *pvs-tmp-file*)))
+      (let ((,tmp-file (funcall *pvs-tmp-file*))
+	    (*disable-gc-printout* t))
 	(with-open-file (*standard-output* ,tmp-file :direction :output
 					   :if-exists :error)
 	  ,@body)

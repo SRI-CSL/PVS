@@ -1737,7 +1737,8 @@
 ;;; help-prover
 
 (defun help-prover (&optional name)
-  (let ((rule (if (stringp name) (intern (string-upcase name)) '*)))
+  (let ((rule (if (stringp name) (intern (string-upcase name)) '*))
+	(*disable-gc-printout* t))
     (pvs-buffer "Prover Help"
       (with-output-to-string (*standard-output*)
 	(funcall (help-rule-fun rule) nil))
@@ -1992,7 +1993,8 @@
   (if *last-proof*
       (pvs-buffer "Proof Display"
 	(with-output-to-string (*standard-output*)
-	  (let ((*prover-indent* *prover-indent*)
+	  (let ((*disable-gc-printout* t)
+		(*prover-indent* *prover-indent*)
 		(*report-mode* terse?)
 		(*top-proofstate* *last-proof*)
 		(ps (non-strat-subgoal-proofstate *last-proof*)))
@@ -2005,13 +2007,14 @@
 
 (defun show-expanded-sequent (&optional all?)
   (if (and *in-checker* *ps*)
-      (pvs-buffer "Expanded Sequent"
-	(with-output-to-string (*standard-output*)
+      (let ((*disable-gc-printout* t))
+	(pvs-buffer "Expanded Sequent"
+	  (with-output-to-string (*standard-output*)
 ;	  (unless all?
 ;	    (format t "%%% Prelude names are not expanded~%")
 ;	    (format t "%%%    use C-u M-x show-expanded-sequent to see them~2%"))
-	  (write (expanded-sequent all?)))
-	t)
+	    (write (expanded-sequent all?)))
+	t))
       (pvs-message "Not in prover")))
 
 (defun expanded-sequent (&optional all?)
@@ -2028,7 +2031,8 @@
 
 (defun show-skolem-constants ()
   (if *in-checker*
-      (let ((skoconsts (collect-skolem-constants)))
+      (let ((skoconsts (collect-skolem-constants))
+	    (*disable-gc-printout* t))
 	(if skoconsts
 	    (pvs-buffer "Proof Display"
 	      (with-output-to-string (*standard-output*)

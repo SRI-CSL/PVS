@@ -92,7 +92,8 @@
 (defun status-importchain (theory)
   (let ((te (get-context-theory-entry theory)))
     (if te
-	(let ((*modules-visited* nil))
+	(let ((*modules-visited* nil)
+	      (*disable-gc-printout* t))
 	  (pvs-buffer "PVS Status"
 	    (with-output-to-string (*standard-output*)
 	      (status-importchain* (id te)))
@@ -117,7 +118,8 @@
 ;;; Usedby Status
 
 (defun status-importbychain (theory)
-  (let ((*modules-visited* nil))
+  (let ((*modules-visited* nil)
+	(*disable-gc-printout* t))
     (pvs-buffer "PVS Status"
       (with-output-to-string (*standard-output*)
 	(status-importbychain* (ref-to-id theory)))
@@ -149,7 +151,8 @@
 
 (defun status-proof-theory (theoryname)
   (let ((theory (or (get-theory theoryname)
-		    (get-context-theory-entry theoryname))))
+		    (get-context-theory-entry theoryname)))
+	(*disable-gc-printout* t))
     (if theory
 	(pvs-buffer "PVS Status"
 	  (with-output-to-string (*standard-output*)
@@ -162,7 +165,8 @@
 ;;; Status Proof PVS File
 
 (defun status-proof-pvs-file (filename)
-  (let ((theories (get-context-theory-names filename)))
+  (let ((theories (get-context-theory-names filename))
+	(*disable-gc-printout* t))
     (if theories
 	(pvs-buffer "PVS Status"
 	  (with-output-to-string (*standard-output*)
@@ -173,17 +177,19 @@
 
 (defun status-proof-theories (theories)
   (if theories
-      (pvs-buffer "PVS Status"
-	(with-output-to-string (*standard-output*)
-	  (proof-summaries theories))
-	t)
+      (let ((*disable-gc-printout* t))
+	(pvs-buffer "PVS Status"
+	  (with-output-to-string (*standard-output*)
+	    (proof-summaries theories))
+	  t))
       (pvs-message "No theories given")))
 
 ;;; Status Proof Importchain
 
 (defun status-proof-importchain (theoryname)
   (update-pvs-context)
-  (let ((theories (context-usingchain theoryname)))
+  (let ((theories (context-usingchain theoryname))
+	(*disable-gc-printout* t))
     (if theories
 	(pvs-buffer "PVS Status"
 	  (with-output-to-string (*standard-output*)
@@ -307,7 +313,8 @@
   (if (or (gethash filename *pvs-files*)
 	  (and (member origin '("ppe" "tccs") :test #'string=)
 	       (get-theory filename)))
-      (let ((fdecl (formula-decl-to-prove filename line origin)))
+      (let ((fdecl (formula-decl-to-prove filename line origin))
+	    (*disable-gc-printout* t))
 	(if fdecl
 	    (let ((*current-theory* (slot-value fdecl 'module)))
 	      (pvs-buffer "PVS Status"
@@ -318,7 +325,8 @@
       (pvs-message "~a.pvs has not been typechecked" filename)))
 
 (defun status-proofchain-theory (theoryname)
-  (let ((theory (get-theory theoryname)))
+  (let ((theory (get-theory theoryname))
+	(*disable-gc-printout* t))
     (if theory
 	(pvs-buffer "PVS Status"
 	  (with-output-to-string (*standard-output*)
@@ -327,7 +335,8 @@
 	(pvs-message "~a has not been typechecked" theoryname))))
 
 (defun status-proofchain-pvs-file (filename)
-  (let ((theories (get-theories filename)))
+  (let ((theories (get-theories filename))
+	(*disable-gc-printout* t))
     (if theories
 	(pvs-buffer "PVS Status"
 	  (with-output-to-string (*standard-output*)
@@ -337,7 +346,8 @@
 
 (defun status-proofchain-importchain (theoryname)
   (if (get-theory theoryname)
-      (let ((theories (collect-theory-usings theoryname)))
+      (let ((theories (collect-theory-usings theoryname))
+	    (*disable-gc-printout* t))
 	(if theories
 	    (pvs-buffer "PVS Status"
 	      (with-output-to-string (*standard-output*)
@@ -349,7 +359,8 @@
 
 
 (defun full-status-theory (theoryname)
-  (let ((theory (get-theory theoryname)))
+  (let ((theory (get-theory theoryname))
+	(*disable-gc-printout* t))
     (if theory
 	(pvs-buffer "PVS Status"
 	  (with-output-to-string (*standard-output*)

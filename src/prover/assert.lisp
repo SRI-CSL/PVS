@@ -3792,9 +3792,10 @@ chronological order are:~3%")
 
 (defun show-auto-rewrites ()
   (if (and *in-checker* *ps*)
-      (pvs-buffer "*Auto-Rewrites*"
-	(with-output-to-string (*standard-output*)
-	   (collect-auto-rewrites))
-	t t)
+      (let ((*disable-gc-printout* t))
+	(pvs-buffer "*Auto-Rewrites*"
+	  (with-output-to-string (*standard-output*)
+	    (collect-auto-rewrites))
+	  t t))
       (pvs-message "No current proof")))
 
