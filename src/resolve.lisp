@@ -1893,13 +1893,15 @@
 	     (format nil
 		 "~v%Expecting a~a~%No resolution for ~a~
                   ~@[ with arguments of possible types: ~:{~%  ~<~a~3i : ~{~_ ~a~^,~}~>~}~]~
-                  ~@[~% Check the actual parameters; the following ~
+                  ~@[~2% Check the actual parameters; the following ~
                         instances are visible,~% but don't match the ~
-                        given actuals:~%   ~{~a~^, ~}~]
-                  ~:[~;~% There is a variable declaration with this name,~% ~
+                        given actuals:~%   ~{~a~^, ~}~]~
+                  ~:[~;~2% There is a variable declaration with this name,~% ~
                           but free variables are not allowed here.~]~
-                  ~:[~;~% There is a mapping for this name, but once mapped ~
-                          the name is not available.~]"
+                  ~:[~;~2% There is a mapping for this name, but once mapped ~
+                          the name is not available.~]~
+                  ~@[~2%If this is intended to be the record access~_ ~a, ~
+                        ~_then leave off everything but the id.~]"
 	       (if *in-checker* 1 0)
 	       (if *typechecking-actual*
 		   "n expression or type"
@@ -1920,7 +1922,10 @@
 		 reses)
 	       (some #'var-decl?
 		     (get-declarations (id name)))
-	       (some-matching-mapping-element? name))
+	       (some-matching-mapping-element? name)
+	       (when (and (or (null kind) (eq kind 'expr))
+			  (resolve (mk-name-expr (id name)) 'expr arguments))
+		 (format nil "~a~a" (id name) arguments)))
 	     name))
       (if (and (eq kind 'expr)
 	       (conversion-occurs-in? arguments))
