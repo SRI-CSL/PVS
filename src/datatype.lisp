@@ -1268,6 +1268,14 @@ generated")
 				   (tc-eq (type-value x) y)))))
 	 (formals (adt-theory adt))))
 
+(defun some-adt-type-is-positive (adt)
+  (some #'(lambda (fml)
+	    (and (typep fml 'type-decl)
+		 (member fml (positive-types adt)
+			 :test #'(lambda (x y)
+				   (tc-eq (type-value x) y)))))
+	 (formals (adt-theory adt))))
+
 (defun generate-adt-axioms (adt)
   (generate-adt-extensionalities (constructors adt) adt)
   (generate-adt-accessor-axioms (constructors adt) adt)
@@ -1505,8 +1513,9 @@ generated")
   (cond ((tc-eq te (adt-type-name adt))
 	 (mk-name-expr indvar))
 	((adt? te)
-	 (let* ((acts (remove-if-not #'type-value
-			(actuals (module-instance te))))
+	 (let* ((acts (actuals-corresponding-to-positive-types
+		       (actuals (module-instance te))
+		       (adt? te)))
 		(preds (mapcar #'(lambda (act)
 				   (acc-induction-hypothesis*
 				    (type-value act) indvar adt))
@@ -1521,6 +1530,22 @@ generated")
 		   preds acts)))))
 	(t ;;(mk-everywhere-true-function te)
 	 nil)))
+
+(defun actuals-corresponding-to-positive-types (acts adt)
+  (actuals-corresponding-to-positive-types*
+   acts (formals-sans-usings adt) (positive-types adt)))
+
+(defun actuals-corresponding-to-positive-types* (acts formals postypes
+						      &optional posacts)
+  (if (null acts)
+      (nreverse posacts)
+      (actuals-corresponding-to-positive-types*
+       (cdr acts)
+       (cdr formals)
+       postypes
+       (if (member (car formals) postypes :test #'same-id)
+	   (cons (car acts) posacts)
+	   posacts))))
 
 (defmethod acc-induction-hypothesis* ((te subtype) indvar adt)
   (acc-induction-hypothesis* (supertype te) indvar adt))
@@ -2087,10 +2112,10 @@ generated")
 (defun generate-adt-map-theory (adt)
   (when (and (some #'(lambda (ff) (typep ff 'formal-type-decl))
 		   (formals adt))
-	     (or (all-adt-types-are-positive adt)
+	     (or (some-adt-type-is-positive adt)
 		 (pvs-warning
-		     "No map is generated since some formal type parameter ~
-                      is not positive")))
+		     "No map is generated since the datatype has no strictly ~
+                      positive formal type parameters")))
     (build-adt-theory (makesym "~a_~a_map"
 			       (id adt)
 			       (if (datatype? adt) "adt" "codt"))
@@ -3229,7 +3254,9 @@ generated")
   (cond ((tc-eq te adt)
 	 (mk-application red (copy arg)))
 	((adt? te)
-	 (let* ((acts (actuals (module-instance te)))
+	 (let* ((acts (actuals-corresponding-to-positive-types
+		       (actuals (module-instance te))
+		       (adt? te)))
 		(facts (if (typep fdom 'datatype-subtype)
 			   (actuals (declared-type fdom))
 			   (actuals fdom)))
@@ -3376,7 +3403,9 @@ generated")
   (cond ((tc-eq te adt)
 	 red)
 	((adt? te)
-	 (let* ((acts (actuals (module-instance te)))
+	 (let* ((acts (actuals-corresponding-to-positive-types
+		       (actuals (module-instance te))
+		       (adt? te)))
 		(funs (acc-reduce-sel-acts acts (actuals (find-supertype fte))
 					   fname red adt)))
 	   (if (every #'identity-fun? funs)
