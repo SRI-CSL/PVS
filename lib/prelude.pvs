@@ -3115,14 +3115,51 @@ BEGIN
 
   n, m : VAR nat
 
-  injection_n_to_m : THEOREM
-	(EXISTS (f : [below[n] -> below[m]]) : injective?(f)) IMPLIES n <= m
+  injection_n_to_m: THEOREM
+	(EXISTS (f: [below(n) -> below(m)]): injective?(f)) IMPLIES n <= m
 
-  surjection_n_to_m : THEOREM
-	(EXISTS (f : [below[n] -> below[m]]) : surjective?(f)) IMPLIES m <= n
+  injection_n_to_m_var: THEOREM
+	(EXISTS (f: [below(n) -> below(m)]): injective?(f)) IFF n <= m
 
-  bijection_n_to_m : THEOREM
-	(EXISTS (f : [below[n] -> below[m]]) : bijective?(f)) IFF n = m
+  surjection_n_to_m: THEOREM
+	(EXISTS (f: [below(n) -> below(m)]): surjective?(f)) IMPLIES m <= n
+
+  surjection_n_to_m_var: THEOREM
+	(EXISTS (f: [below(n) -> below(m)]): surjective?(f)) IFF 
+	    (m > 0 AND m <= n) OR (m = 0 AND n = 0)
+
+  bijection_n_to_m: THEOREM
+	(EXISTS (f: [below(n) -> below(m)]): bijective?(f)) IFF n = m
+
+
+  injection_n_to_m2: THEOREM
+	(EXISTS (f: [upto(n) -> upto(m)]): injective?(f)) IFF n <= m
+
+  surjection_n_to_m2: THEOREM
+	(EXISTS (f: [upto(n) -> upto(m)]): surjective?(f)) IFF m <= n
+
+  bijection_n_to_m2: THEOREM
+	(EXISTS (f: [upto(n) -> upto(m)]): bijective?(f)) IFF n = m
+
+
+  surj_equiv_inj: THEOREM
+	FORALL (f: [below(n) -> below(n)]): surjective?(f) IFF injective?(f)
+	
+  inj_equiv_bij: THEOREM
+	FORALL (f: [below(n) -> below(n)]): bijective?(f) IFF injective?(f)
+
+  surj_equiv_bij: THEOREM
+	FORALL (f: [below(n) -> below(n)]): bijective?(f) IFF surjective?(f)
+
+
+  surj_equiv_inj2: THEOREM
+	FORALL (f: [upto(n) -> upto(n)]): surjective?(f) IFF injective?(f)
+	
+  inj_equiv_bij2: THEOREM
+	FORALL (f: [upto(n) -> upto(n)]): bijective?(f) IFF injective?(f)
+
+  surj_equiv_bij2: THEOREM
+	FORALL (f: [upto(n) -> upto(n)]): bijective?(f) IFF surjective?(f)
 
 END nat_fun_props
 
