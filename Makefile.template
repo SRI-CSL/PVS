@@ -263,7 +263,7 @@ all : makebdd makepolylib makews1s ${pvsfull} ${pvsrt} ${emacs}
 
 src/pvs-lexer.${LISPEXT} : ${pvs-make-files} ${ff-files} ${lisp-files}
 	$(LISP) -e '(load "pvs.system")' \
-		-e "(let ((code 1)) (unwind-protect (progn (operate-on-system 'pvs :lf) (setq code 0)) (excl:exit code)))"
+		-e "(let ((code 1)) (unwind-protect (multiple-value-bind (v err) (ignore-errors (operate-on-system 'pvs :lf)) (if err (let ((*print-readably* nil)) (format t \"~a\" err)) (setq code 0)))) (excl:exit code)))"
 	touch src/pvs-lexer.${LISPEXT}
 
 ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${fasl-files}
