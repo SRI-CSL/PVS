@@ -1,5 +1,0 @@
-(|bv_bitwise| (|bv_OR| "" (TCC) NIL)
-              (|bv_AND| "" (TCC) NIL)
-              (|bv_IFF| "" (TCC) NIL)
-              (|bv_XOR| "" (TCC) NIL)
-              (|bv_NOT| "" (TCC) NIL))

@@ -1,2 +1,0 @@
-(|bit| (|bit_cases| "" (GRIND) NIL) (|b2n_TCC1| "" (GRIND) NIL)
- (|b2n_TCC2| "" (SUBTYPE-TCC) NIL))
