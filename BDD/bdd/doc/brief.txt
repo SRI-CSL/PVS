@@ -1,0 +1,10 @@
+The BDD package is a routine library for the manipulation of logic functions.
+The functions are represented by so-called Reduced Ordered Binary Decision
+Diagrams ([RO]BDD). The implementation is based on the paper:
+"Efficient Implementation of a BDD Package" by Karl S. Brace, Richard L.
+Rudell, and Randal E. Bryant, (Proc. 27-th ACM/IEEE Design Automation
+Conference, Orlando, Florida, June 24-28, 1990, pp. 40-45).
+
+The package comes with a simple application program (main.c). This program
+accepts logic expressions and converts them to a BDD and outputs them
+in sum-of-cubes format.

@@ -1,0 +1,332 @@
+%T Finding the Optimal Variable Ordering for Binary Decision Diagrams
+%A Steven J. Friedman
+%A Kenneth J. Supowit
+%B Proc. 24th ACM/IEEE Design Automation Conference
+%D 28 June - 1 July, 1987
+%P 348-355
+
+%T An Implicit Enumeration Algorithm to Generate Tests for Combinational Logic
+Circuits
+%A Prabhakar Goel
+%J IEEE Trans. on Computers
+%V C-30
+%N 3
+%D March 1981
+%P 215-222
+
+%T An automata-theoretic approach to behavioural equivalence
+%A Srinivas Devadas
+%A Kurt Keutzer
+%J Integration, the VLSI journal
+%N 12
+%D 1991
+%P 109-129
+
+%T ATPG Aspects of FSM Verification
+%A Hyunwoo Cho
+%A Gary Hachtel
+%A Seh-Woong Jeong
+%A Bernard Plessier
+%A Eric Swartz
+%A Fabio Somenzi
+%J Proc. IEEE Int. Conf. on Computer-Aided Design
+%D 1990
+%C Santa Clara, CA
+%P 134-137
+
+%T An Exact Minimizer for Boolean Relations
+%A R.K. Brayton
+%A F. Somenzi
+%J Proc. IEEE Int. Conf. on Computer-Aided Design
+%D 1989
+%C Santa Clara, CA
+%P 316-319
+
+%T Mimimization of Symbolic Relations
+%A Bill Lin
+%A Fabio Somenzi
+%J Proc. IEEE Int. Conf. on Computer-Aided Design
+%D 1990
+%C Santa Clara, CA
+%P 88-91
+
+%T An Algorithm for Nearly-Minimal Collapsing of Finite-State Machine Networks
+%A Wayne Wolf
+%J Proc. IEEE Int. Conf. on Computer-Aided Design
+%D 1990
+%C Santa Clara, CA
+%P 80-83
+
+%T Implicit State Transition Graphs: Applications to Sequential Logic Synthesis
+and Test
+%A Pranav Ashar
+%A Abhijit Ghosh
+%A Srinivas Devadas
+%A A. Richard Newton
+%J Proc. IEEE Int. Conf. on Computer-Aided Design
+%D 1990
+%C Santa Clara, CA
+%P 84-87
+
+%T Verifying Temporal Properties of Sequential Machines Without Building
+their State Diagrams
+%A Olivier Coudert
+%A Jean Christophe Madre
+%A Christian Berthet
+%J Proc. 2-nd Int. Conf. on Computer-Aided Verification, Lecture Notes in Computer Science 531
+%I Springer-Verlag
+%D June 18-21, 1990
+%C New Brunswick, NJ, USA
+%P 23-32
+
+%T Verification of Sequential Machines Using Boolean Functional Vectors
+%A Olivier Coudert
+%A Christian Berthet
+%A Jean Christophe Madre
+%B Formal VLSI Correctness Verification, VLSI Design Methods-II
+%I Elsevier Science Publishers B.V. (North-Holland)
+%E L.J.M. Claesen
+%D IFIP, 1990
+%P 111-128
+
+%T Formal Boolean Manipulations for the Verification of Sequential Machines
+%A Olivier Coudert
+%A Christian Berthet
+%A Jean Christophe Madre
+%J Proc. European Design Automation Conference
+%C Glasgow, Scotland
+%D 12-15 March, 1990
+%P 57-61
+
+%T A Unified Framework for the Formal Verification of Sequential Circuits
+%A Olivier Coudert
+%A Jean Christophe Madre
+%J Proc. IEEE Int. Conf. on Computer-Aided Design
+%D 1990
+%C Santa Clara, CA
+%P 126-129
+
+%T Verification of Synchronous Sequential Machines based on Symbolic Execution
+%A Olivier Coudert
+%A Christian Berthet
+%A Jean Christophe Madre
+%J Proc. Workshop on Automatic Verification Methods for Finite State Machines
+%C Grenoble, France
+%E J. Sifakis
+%I Springer-Verlag
+%D June 12-14, 1989
+
+%T A New Method to Compute Prime and Essential Prime Implicants of Boolean
+%A Functions
+%A O. Coudert
+%A J.C. Madre
+%B Proceedings of the 1992 Brown/MIT Conference: Advanced Research in VLSI
+and Parallel Systems
+%E Thomas Knight, John Savage
+%P 113-128
+
+%T Don't Care Minimization of Multi-Level Sequential Logic Networks
+%A Bill Lin
+%A Herve J. Touati
+%A A. Richard Newton
+%J Proc. IEEE Int. Conf. on Computer-Aided Design
+%D 1990
+%C Santa Clara, CA
+%P 414-417
+
+%T Implicit State Enumeration of Finite State Machines using BDD's
+%A Herve J. Touati
+%A Hamid Savoj
+%A Bill Lin
+%A Robert K. Brayton
+%A Alberto Sangiovanni-Vincentelli
+%J Proc. IEEE Int. Conf. on Computer-Aided Design
+%D 1990
+%C Santa Clara, CA
+%P 130-133
+
+%T Extracting Local Don't Cares for Network Optimization
+%A Hamid Savoj
+%A Robert K. Brayton
+%A Herve J. Touati
+%J Proc. IEEE Int. Conf. on Computer-Aided Design
+%D 1991
+%C Santa Clara, CA
+%P 514-517
+
+%T Observability Relations and Observability Don't Cares
+%A Hamid Savoj
+%A Robert K. Brayton
+%J Proc. IEEE Int. Conf. on Computer-Aided Design
+%D 1991
+%C Santa Clara, CA
+%P 518-521
+
+%T Observability Don't Care Sets and Boolean Relations
+%A Maurizio Damiani
+%A Giovanni De Micheli
+%J Proc. IEEE Int. Conf. on Computer-Aided Design
+%D 1990
+%C Santa Clara, CA
+%P 502-505
+
+%T Extended BDD's: Trading off Canonicity for Structure in Verification
+Algorithms
+%A S.-W. Jeong
+%A B. Plessier
+%A G. Hachtel
+%A F. Somenzi
+%J Proc. IEEE Int. Conf. on Computer-Aided Design
+%D 11-14 Nov. 1991
+%C Santa Clara, CA
+%P 464-467
+
+%T Variable Ordering and Selection for FSM Traversal
+%A S.-W. Jeong
+%A B. Plessier
+%A G. Hachtel
+%A F. Somenzi
+%J Proc. IEEE Int. Conf. on Computer-Aided Design
+%D 11-14 Nov. 1991
+%C Santa Clara, CA
+%P 476-479
+
+%T Graph-Based Algorithms for Boolean Function Manipulation
+%A Randal E. Bryant
+%J IEEE Transactions on Computers
+%V C-35
+%N 8
+%D August 1986
+%P 677-691
+
+%T Binary Decision Diagrams
+%A Sheldon B. Akers
+%J IEEE Transactions on Computers
+%V C-27
+%N 6
+%D June 1978
+%P 509-516
+
+%T Binary-decision graphs for implementation of Boolean functions
+%A M. Silva, R. David
+%J IEE Proceedings
+%V 132, Part E
+%N 3
+%D May 1985
+%P 175-185
+
+%T Evaluation and Improvements of Boolean Comparison Method Based on Binary Decision Diagrams
+%A Masahiro Fujita
+%A Hisanori Fujisawa
+%A Nobuaki Kawato
+%J Proc. IEEE Int. Conf. on Computer-Aided Design
+%D 7-10 Nov. 1988
+%C Santa Clara
+%P 2-5
+
+%T Logic Verification using Binary Decision Diagrams in a Logic Synthesis Environment
+%A Sharad Malik
+%A Albert R. Wang
+%A Robert K. Brayton
+%A Alberto Sangiovanni-Vincentelli
+%J Proc. IEEE Int. Conf. on Computer-Aided Design
+%D 7-10 Nov. 1988
+%C Santa Clara
+%P 6-9
+
+%T Using If-then-else DAGs for Multi-Level Logic Minimization
+%A Kevin Karplus
+%J Advanced Research in VLSI, Proceedings of the Decennial Caltech Conference on VLSI
+%C Pasedena, CA
+%D March 1989
+%E Charles L. Seitz
+%I MIT Press, Cambridge, MA
+%P 101-117
+
+%T Proving Circuit Correctness using Formal Comparison Between Expected and Extracted Behaviour
+%A Jean-Christophe Madre
+%A Jean-Paul Billon
+%J Proc. 25-th ACM/IEEE Design Automation Conference
+%C Anaheim
+%D June 12-15, 1988
+%P 205-210
+
+%T A Class of Logic Functions Expressible by a Polynomial-Size Binary Decision Diagram
+%A Nagisa Ishiura
+%A Tetsuya Tohdo
+%A Shuzo Yajima
+%J 39-th National Convention Record of the Information Processing Society of Japan
+%V 7W-2
+%D Oct. 1989
+%P 1808-1809
+
+%T Shared Binary Decision Diagram with Attributed Edges for Efficient Boolean Function Manipulation
+%A Shin-ichi Minato
+%A Nagisa Ishiura
+%A Shuzo Yajima
+%J Submitted to 27-th ACM/IEEE Design Automation Conference
+%D 1990
+
+%T Efficient Implementation of a BDD Package
+%A Karl S. Brace
+%A Richard L. Rudell
+%A Randal E. Bryant
+%J Proc. 27-th ACM/IEEE Design Automation Conference
+%C Orlando, Florida
+%D June 24-28, 1990
+%P 40-45
+
+%T Symbolic Boolean Manipulation with Ordered Binary Decision Diagrams
+%A Randal E. Bryant
+%B CMU-CS-91-162
+%D July 1991
+
+%T Algorithms for Discrete Function Manipulation
+%A Arvind Srinivasan
+%A Timothy Kam
+%A Sharad Malik
+%A Robert K. Brayton
+%J Proc. IEEE Int. Conf. on Computer-Aided Design
+%D 11-15 Nov. 1990
+%C Santa Clara
+%P 92-95
+
+%T Improving the Performance of a BDD-based Tautology-Checker
+%A Stefan Hoereth
+%J Proc. Advanced Research Workshop on Correct Hardware Design Methodologies
+%C Turin, Italy
+%D 12-14 June, 1990
+
+%T Application of a BDD-Package to the Verification of HDL Descriptions
+%A D. Borrione
+%A D. Deharbe
+%A H. Eveking
+%A St. Hoereth
+%J Proc. Advanced Research Workshop on Correct Hardware Design Methodologies
+%C Turin, Italy
+%D 12-14 June, 1990
+
+%T Testing Language Containment for w-Automata using BDD's
+%A Herve J. Touati
+%A Robert K. Brayton
+%A Robert Kurshan
+
+%T On the OBDD-Representation of General Boolean Functions
+%A Heh-Tyan Liaw
+%A Chen-Shang Lin
+%J IEEE Transacton on Computers
+%V 41
+%N 6
+%D June, 1992
+%P 661-664
+
+%T Dynamic Variable Ordering for Ordered Binary Decision Diagrams
+%A Richard Rudell
+%B Workshop Notes International Workshop on Logic Synthesis
+%C Granlibakken Conference Center, Tahoe City, CA.
+%D May 23-26, 1993
+
+%T Dynamic Variable Ordering for Ordered Binary Decision Diagrams
+%A Richard Rudell
+%B Proc. ICCAD'93
+%D 1993

@@ -1,0 +1,429 @@
+ DOCUMENTATION INFORMATION				         module: BDD
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ system	   : Apollo DN3000, HP 9000/S500, IBM RS/6000
+ file	   : bdd_fns.doc
+ unit-title: 
+ ref.	   : Efficient Implementation of a BDD Package, Karl S. Brace. DAC'90
+ author(s) : Copyright (c) 1990-1996 G.L.J.M. Janssen
+ date	   : 17-DEC-1996
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Documentation for C functions and global variables and types in bdd_fns.[ch]
+----------------------------------------------------------------------------
+
+Useful constants:
+-----------------
+
+FALSE		/* 0 */
+TRUE		/* 1 */
+DONTCARE	/* 2 */
+
+C preprocessor macros:
+----------------------
+
+FOR_EACH_CUBE(list, c)
+END_FOR_EACH_CUBE
+bdd_cofactor_pos(f, var)
+bdd_cofactor_neg(f, var)
+bdd_cofactor_pos_vec(F,i,j,var)
+bdd_cofactor_neg_vec(F,i,j,var)
+
+The Routines:
+-------------
+
+The functions in bdd_fns.c are based on the functions and global variables
+of bdd.c. Therefore bdd_fns.h will cause bdd.h to be included if this was not
+already explicitly done.
+Typically the include files for an application of the bdd package are:
+
+#include <stdio.h>
+#include "alloc.h"
+#include "bdd_fns.h"
+
+Now follows a description of each function in bdd_fns.c:
+
+Double bdd_count_sat_assignments (BDDPTR f, BDDPTR domain)
+
+Returns the number of possible truth-assignments to the variables as specified
+by the domain argument that make the function f true.
+In other words, the number of minterms of the on-set of the function considered
+to be defined on the domain.
+It is assumed that the support of f is a sub-set of the domain variables.
+If not, the program will exit.
+The domain argument is supposed to be a BDD cube of positive variables, i.e.,
+the conjunction of a number of variables; this cube is treated like a set:
+BDD_1 represents the empty set, any other constant represents the universe,
+i.e., it implicitly specifies all variables currently present (there are
+bdd_nr_vars of them).
+Returns 0 when f is BDD_VOID.
+See also the Double package in double.[ch].
+
+Double bdd_count_X_terms (BDDPTR f)
+
+Returns the number of possible truth-assignments to the variables
+with BDD rank numbers 0 through n-1 (inclusive) that make the function f
+don't care, i.e., the functiuon value is BDD_X.
+It is required that f is indeed expressed as a function over the BDD rank
+domain { 0..bdd_nr_vars-1 }. Returns 0 when f is BDD_VOID.
+See also the Double package in double.[ch].
+
+int bdd_cube_p (BDDPTR f)
+
+Is f a bdd cube?
+A bdd cube is a bdd with the property that it denotes a product of literals,
+i.e. variables or their negation, in other words there exists only a single
+path in the bdd graph to the 1 terminal vertex and otherwise the paths lead
+to the 0 vertex (BDD_X may not appear). The 1 function is by definition a
+special case of a cube. For convenience we also define the 0 function to be
+a cube,
+Empty (BDD_VOID) and BDD_X bdd's are NOT considered to be a cube!
+A cube determines a sub-space in the Boolean n-space.
+
+int bdd_size_cube (BDDPTR cube)
+
+Returns size of cube, i.e. the number of literals in it.
+For an empty (BDD_VOID) or constant argument 0 is returned.
+This routine is not reentrant; it uses a static global int variable.
+
+int bdd_in_support (int var, BDDPTR f)
+
+Is the variable with id number `var' in the support of bdd f?
+If var is the id of a constant (BDD_0, BDD_1, or BDD_X) and/or f
+is BDD_VOID then in_support will return 0.
+Support is defined as the set of variables that the function depends on:
+support (f) = { x | f(x=0) != f(x=1) }
+
+LIST bdd_support_as_list_of_vars (BDDPTR f)
+
+Returns list of variable id's (in increasing order of their ranks)
+that constitute the support of the function f.
+If f is a constant or BDD_VOID, a NULL_LIST is returned.
+This result list should be freed using: free_list (list, 0).
+
+BDDPTR bdd_support_as_cube (BDDPTR f)
+
+Returns the support of the function f as a bdd cube of positive literals.
+If f is BDD_VOID, this is returned. If f is constant, bdd_1 () is returned.
+This routine uses bdd_support_as_list_of_vars.
+
+NOTE: Uses ite operations, therefore make sure to protect f
+      argument; result is guaranteed to be protected.
+
+LIST bdd_cube_as_list_of_vars (BDDPTR cube)
+
+Returns list of (possibly negative) variable id's (in increasing order of
+their ranks) that appear in the cube. The index will be negative when the
+corresponding variable is to be interpreted as a negative literal.
+If index 0 is used for a variable this causes a problem since -0 = 0.
+Therefore better start assigning bdd id's at 1.
+If cube is a constant or BDD_VOID, a NULL_LIST is returned.
+This routine is not reentrant; it uses a static global LIST variable.
+The routine's actions are not defined when the argument is not a bdd cube.
+
+BDDPTR bdd_subst (BDDPTR f, int var, BDDPTR g)
+
+Substitutes f for var in g. Also known as compose operation.
+Let g = g(x1, x2, x3, ...) then bdd_subst (f, x2, g) = g(x1, f, x3, ...).
+When g does not depend on var, g is returned.
+If either f or g is BDD_VOID, BDD_VOID is returned.
+If var is the id of a constant, g is returned.
+
+NOTE: Uses ite operations, therefore make sure to protect f and g
+      arguments; result is guaranteed to be protected.
+
+BDDPTR bdd_subst2 (BDDPTR h, BDDPTR g, BDDPTR f)
+
+Substitutes h for g in f. The intention is that g is a subfunction of
+f and that it is replaced by the function h.
+If g is not a subfunction of f then f is returned.
+If either of the arguments is BDD_VOID that is returned.
+
+NOTE: Uses ite operations, therefore make sure to protect f, g and h
+      arguments; result is guaranteed to be protected.
+
+BDDPTR bdd_compose (BDDPTR f, BDDPTR g, BDDPTR h)
+
+In function f replaces g with the function h. If one or more of the arguments
+is BDD_VOID this is immediately returned. Otherwise, when g is a constant
+`bdd_replace_consts' is used to change the constant g in f to h. Finally,
+if g is any non-constant function then returns
+`bdd_subst (h, BDD_TOP_VAR (g), f)'.
+
+NOTE: Uses ite operations, therefore make sure to protect f, g and h
+      arguments; result is guaranteed to be protected.
+
+int bdd_unate_in (BDDPTR f, int var)
+
+Is the function f unate in the variable with variable id var?
+If var is the id of a constant (BDD_0, BDD_1, or BDD_X) and/or f
+is BDD_VOID then unate_in will return 0. If f is constant or var is not
+in the support of f 1 is returned.
+
+A function is monotone or unate in a variable v iff either f is
+monotone non-decreasing in v or f is monotone non-increasing in v.
+A function is monotone non-decreasing in a variable v iff a change
+of v from 0 to 1 can under no circumstances (assignment to variables
+other than v) result in a change of f from 1 to 0.
+A function is monotone non-increasing in a variable v iff a change
+of v from 0 to 1 can under no circumstances (assignment to variables
+other than v) result in a change of f from 0 to 1.
+
+NOTE: Uses ite operations, therefore make sure to protect f argument.
+
+int bdd_has_dontcare (BDDPTR f)
+
+Can f take on the DONTCARE value?
+
+BDDPTR bdd_on_set (BDDPTR f)
+
+Interpret all X's (BDD_X) in f as being 0.
+If f is a proper (fully-specified) function then on_set (f) = f.
+
+NOTE: Uses ite operations, therefore make sure to protect f
+      argument; result is guaranteed to be protected.
+
+BDDPTR bdd_off_set (BDDPTR f)
+
+Interpret all X's in f as being 1, and then take complement.
+If f is a proper (fully-specified) function then off_set (f) = f'.
+
+NOTE: Uses ite operations, therefore make sure to protect f
+      argument; result is guaranteed to be protected.
+
+BDDPTR bdd_dontcare_set (BDDPTR f)
+
+Returns function that is 1 in precisely those cases where f would be
+don't care.
+If f is a proper function then dontcare_set (f) = 0.
+
+NOTE: Uses ite operations, therefore make sure to protect f
+      argument; result is guaranteed to be protected.
+
+BDDPTR bdd_replace_consts (BDDPTR f,
+	BDDPTR ONE_is, BDDPTR ZERO_is, BDDPTR X_is)
+
+Auxiliary function for calculation of various sets.
+In f, replace every reference to the 1 node with ONE_is,
+  and replace every reference to the 0 node with ZERO_is,
+  and replace every reference to the X node with X_is.
+All `changes' or better updates should be regarded as being executed in
+parallel. So doing a (0->1, 1->0) change will set an original 0 to 1 but
+NOT back to 0 again.
+
+Note that:
+
+   replace_consts (f,  BDD_1, BDD_0, BDD_X) = f
+   replace_consts (f,      g, BDD_0, BDD_X) = AND_BDD (f, g)
+   replace_consts (f, BDD_0,  BDD_1, BDD_X) = NOT_BDD (f)
+
+NOTE: Uses ite operations, therefore make sure to protect all
+      arguments; result is guaranteed to be protected.
+
+BDDPTR bdd_diff (BDDPTR f, LIST vars)
+
+Calculates the boolean difference of f with respect to the variables in vars.
+vars must be a list of BDD id's in ascending order of their ranks.
+Returns f if vars is an empty list, BDD_0 if f is a constant.
+Returns BDD_VOID if f is BDD_VOID.
+For a single variable x, bdd_diff (f, x) is defined by (f|x xor f|x');
+in case of more variables, this result generalizes to:
+D x1,x2,...xn.f = D x1,x2,...,xn-1 . (D xn.f).
+
+NOTE: Uses ite operations, therefore make sure to protect f
+      argument; result is guaranteed to be protected.
+
+BDDPTR bdd_none_of_list (LIST args)
+
+Say, args = (f1, f2, ..., fn). Calculates f1' & f2' ... & fn'.
+Processes list in reverse order; this is fastest for fi's that are variable
+BDDs in increasing rank order, which is quite often the case in some
+application. Returns BDD_1 for empty list argument.
+
+NOTE: Uses ite operations, therefore make sure to protect all args BDDs.
+      Result is guaranteed to be protected. Argument list is not
+      modified; should be explicitly freed by caller when no longer needed.
+
+BDDPTR bdd_none_of_vec (BDDPTR *args, int size)
+
+Same as bdd_none_of_list except argument is BDD vector.
+
+BDDPTR bdd_one_of_list (LIST args)
+
+Returns BDD expressing that precisely one of the arguments is true, i.e.,
+say, args = (f1, f2, ..., fn) then calculates
+f1 & none-of (rest) V f1' & one-of (rest).
+Returns BDD_0 for empty argument list.
+
+BDDPTR bdd_one_of_vec (BDDPTR *args, int size)
+
+Same as bdd_one_of_list except argument is BDD vector.
+
+NOTE: Uses ite operations, therefore make sure to protect all args BDDs.
+      Result is guaranteed to be protected. Argument list is not
+      modified; should be explicitly freed by caller when no longer needed.
+
+LIST bdd_shortest_path_to_1_as_list (BDDPTR f)
+
+Looks for satisfying truth-assignment for function f.
+If one exists, will return a list of bdd nodes that constitute the
+shortest satisfying path in the bdd graph for f.
+BDD_X vertices in the bdd graph for f are NOT interpreted.
+The root node of f is always the first node on the path and thus
+the first element of the list; the terminating constant node (BDD_0 or BDD_1)
+is the last node in the list.
+(NOTE: bdd pointers in the list directly refer to nodes of f.)
+If no satisfying truth-assignment exists, a NULL_LIST is returned.
+This routine is not reentrant; it uses a static global LIST variable.
+
+BDDPTR bdd_shortest_path_to_1_as_cube (BDDPTR f)
+
+Looks for satisfying truth-assignment for function f.
+If one exists, will return the bdd nodes that constitute the
+shortest satisfying path in the bdd graph for f as a cube.
+BDD_X vertices in the bdd graph for f are NOT interpreted.
+The root node of f is always the first node on the path and thus
+the first element of the cube. If f = 1 then 1 is returned.
+If no satisfying truth-assignment exists, BDD_0 is returned.
+This routine is not reentrant; it uses a static global LIST variable.
+
+NOTE: Uses ite operations, therefore make sure to protect f
+      argument; result is guaranteed to be protected.
+
+LIST bdd_sum_of_cubes_as_list (BDDPTR f)
+
+Converts the bdd representation of f to a sum-of-products representation,
+which is returned as a list of bdd cubes. The result consists of cubes that
+are prime but not-necessarily irredundant. Any X's in f are interpreted
+as 0, thus effectively computing the sum-of-products for the on_set of f.
+If f is BDD_VOID the NULL_LIST is returned.
+The bdd's in the list are all GC_PROTECT-ed. The list must thus be deleted
+with "free_list (list, free_bdd)".
+
+NOTE: Uses ite operations, therefore make sure to protect f
+      argument; result's list elements are guaranteed to be protected.
+
+LIST bdd_irredundant_sum_of_cubes_as_list (BDDPTR f)
+
+Converts the bdd representation of f to a sum-of-products representation,
+which is returned as a list of bdd cubes. The result is an irredundant sum
+of prime implicants expression for f. Any X's in f are interpreted
+as 0, thus effectively computing the sum-of-products for the on_set of f.
+If f is BDD_VOID the NULL_LIST is returned.
+The bdd's in the list are all GC_PROTECT-ed. The list must thus be deleted
+with "free_list (list, free_bdd)".
+
+NOTE: Uses ite operations, therefore make sure to protect f
+      argument; result's list elements are guaranteed to be protected.
+
+int bdd_traverse_cube (BDDPTR cube, void (*action) (int, int))
+
+Assumes cube is indeed a bdd cube and then the returned value is 1.
+If not, the actions are not defined, but it is guaranteed not to cause a crash
+or endless loop, and 0 is returned.
+For each variable in the cube (in the order of the overall variable
+ordering), the routine `action (var, neg)' is called, with
+var the variable id and neg is non-zero when the variable appears
+negated in the cube.
+If cube is a constant or BDD_VOID, no action is performed.
+
+BDDPTR bdd_prime_implicant (BDDPTR f)
+
+Computes a relatively small (in the sense of number of literals) prime
+implicant for f. Returns this as a BDD cube. Immediately returns BDD_VOID
+for BDD_VOID argument. This may be used as an alternative to
+bdd_shortest_path_to_1_as_cube. The latter finds the shortest path in the BDD
+but this not necessarily corresponds with the smallest prime implicant.
+
+BDDPTR bdd_eval (BDDPTR f, BDDPTR cube)
+
+f is evaluated for values of its supporting variables as determined by the
+cube argument. The rules are:
+  v := 0 when cube = 0 or v appears negative in the cube,
+         or doesn't appear at all;
+  v := 1 when cube = 1 or v appears positive in the cube,
+The (necessary) constant value f evaluates to, is returned as a bdd.
+If f is a constant or BDD_VOID, returns f, else
+if cube is BDD_VOID or BDD_X, returns cube.
+When cube is not a proper bdd cube, the actions are not defined, the
+result is some constant,
+but it is guaranteed not to cause a crash or endless loop.
+
+Examples: bdd_eval (a b + c', a c) = 0  [a=1,b=0,c=1]
+          bdd_eval (a b + c', c')  = 1  [a=0,b=0,c=0]
+          bdd_eval (a b + c', d)   = 1  [a=0,b=0,c=0]
+          bdd_eval (a b + c', 0)   = 1  [a=0,b=0,c=0]
+          bdd_eval (a b + c', 1)   = 1  [a=1,b=1,c=1]
+
+BDDPTR bdd_invert_input (BDDPTR f, int var)
+
+Returns function g such that g(x1, var', ...) = f(x1, var, ...).
+That is g is the function f with the variable var substituted by its
+negation. If f is a constant or BDD_VOID, f is returned.
+
+NOTE: Uses ite operations, therefore make sure to protect f
+      argument; result is guaranteed to be protected.
+
+BDDPTR bdd_invert_inputs (BDDPTR f)
+
+Returns function g such that g(x1', x2', ...) = f(x1, x2, ...).
+That is, g is the function f with all variables substituted by their
+negation. If f is a constant or BDD_VOID, f is returned.
+
+NOTE: Uses ite operations, therefore make sure to protect f
+      argument; result is guaranteed to be protected.
+
+int bdd_depth (BDDPTR f)
+
+Returns the depth of BDD f. The depth is defined as the length of the longest
+path starting at the root node, in fact it is the number of nodes (constant
+nodes exclusive) on that path. The depth of a constant or BDD_VOID is 0.
+
+void bdd_use_sop_cache_switch (int on)
+
+Determining a sum-of-cubes representation for a BDD f with
+bdd_sum_of_cubes_as_list (f) can be greatly speeded up when a cache is used
+for intermediate results. By default, the routine indeed uses such a cache
+and this cache will remain valid throughout the program unless
+bdd_cleanup_sop_cache () is explicitly called which will clear the cache
+entries.
+bdd_use_sop_cache_switch (on) allows control over the use of this cache: with
+a zero argument value use of the cache is inhibited and also the cache entry
+are cleaned up (implicit call to bdd_cleanup_sop_cache). A non-zero argument
+turns use of the cache on.
+
+void bdd_cleanup_sop_cache (void)
+
+Clears the cache that is used in holding intermediate results while
+determining the sum-of-cubes representation of a BDD. The use of the cache
+is not switched off however.
+Note: bdd_quit calls bdd_cleanup_sop_cache.
+
+BDDPTR bdd_cube_factor (BDDPTR f)
+
+Determines the maximum `core' cube in f, i.e., a cube with a
+maximum number of literals such that f -> c is a tautology.
+Structurally this means that every satisfying path in the BDD for
+f will pass through the core cube nodes.
+Thus the core cube may be interpreted as expressing the bit-wise xnor
+over all minterms (over the support variables) of f.
+In a truth-table this is found by listing all patterns that make f true
+and collecting those variables whose columns contain either all 0's or
+all 1's. In other words, assigning false to a literal in the core cube
+for sure implies that f will evaluate to false no matter how the other
+variables will be assigned.
+For a non-0 f the fact that the core cube consists of no literals
+will be represented by BDD_1.
+For the special case f = 0, we define the result to be BDD_0.
+(BDD_X nodes will be interpreted as BDD_1).
+Let c = bdd_cube_factor (f), then f may be written as f = c & g.
+g can be obtained either by cofactoring:
+
+  g = bdd_constrain (f, c);
+
+or using existential quantification:
+
+  LIST vars;
+
+  vars = bdd_support_as_list_of_vars (c);
+  g = bdd_quantify (1, f, vars);
+  free_list (vars, 0);

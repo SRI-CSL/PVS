@@ -1,0 +1,492 @@
+ DOCUMENTATION INFORMATION                                       module: BDD
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ system    : Apollo DN3000, HP 9000/S500, IBM RS/6000
+ file      : bdd.h
+ unit-title: 
+ ref.      : Efficient Implementation of a BDD Package, Karl S. Brace. DAC'90
+ author(s) : Copyright (c) 1990-1995 G.L.J.M. Janssen
+ date      : 27-JUN-1995
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Documentation for C functions and global variables and types in bdd.[ch]
+and bdd_extern.h
+------------------------------------------------------------------------
+
+Useful constants:
+-----------------
+
+				Current value, subject to change:
+BDD_TERMID			/* id value for terminal nodes */
+BDD_MAXVARID			/* BDD_TERMID-1 */
+BDD_MAXVARS			/* BDD_MAXVARID+1 */
+BDD_MAXREFCOUNT			/* Max. ref count value (frozen) */
+
+BDD_VOID
+The void BDD. That is the value of a BDDPTR variable that points nowhere.
+In fact BDD_VOID is identical to "(BDDPTR) NULL".
+
+The Types:
+----------
+
+typedef struct bdd BDD, *BDDPTR;
+
+BDD: struct that holds all the data for a bdd vertex.
+BDDPTR: pointer to a BDD struct.
+
+typedef unsigned char BYTE;
+
+The global variables that may be used strictly on a read-only basis:
+--------------------------------------------------------------------
+
+BDDPTR BDD_0;
+
+The 0-function, a bdd that represents the function that evaluates to false
+for any truth-assignment to its arguments.
+Also available as the function bdd_0 () but has as side-effect that the
+reference count to the BDD_0 node is incremented.
+When bdd_use_neg_edges is TRUE BDD_0 does not exist as a separate struct;
+it then is a pointer to the BDD_1 node with a special bit set to indicate
+that it is the complement of BDD_1.
+
+BDDPTR BDD_1;
+
+The 1-function, a bdd that represents the function that evaluates to true
+for any truth-assignment to its arguments.
+Also available as the function bdd_1 () but has as side-effect that the
+reference count to the BDD_1 node is incremented.
+
+BDDPTR BDD_X;
+
+The X-function, a bdd that represents the function that evaluates to dont'care
+for any truth-assignment to its arguments.
+Also available as the function bdd_X () but has as side-effect that the
+reference count to the BDD_X node is incremented.
+BDD_X pointers should never have their complemented edge bit set!
+It holds: bdd_not (BDD_X) = BDD_X.
+
+int bdd_nr_dead_nodes;
+
+The number of bdd nodes that are dead, and thus may be reused again.
+
+User settable program parameters:
+---------------------------------
+
+int bdd_do_gc;	            /* default 1 */
+int bdd_do_dynamic_ordering;/* default 1 */
+int bdd_verbose;            /* default 0 */
+int bdd_use_neg_edges;      /* default 1*/
+int bdd_use_inv_edges;      /* default 1; 0 when bdd_do_dynamic_ordering = 1 */
+int bdd_sizeof_user_data;   /* default 0 */
+int BDD_COMPUTED_TABLE_SIZE;/* default DEFAULT_BDD_COMPUTED_TABLE_SIZE */
+int BDD_HASHTAB_SIZE;	    /* default DEFAULT_BDD_HASHTAB_SIZE */
+int BDD_NR_RANKS;	    /* default DEFAULT_BDD_NR_RANKS */
+int BDD_LOAD_FACTOR;        /* default DEFAULT_BDD_LOAD_FACTOR */
+
+C preprocessor macros:
+----------------------
+
+Access to fields of BDD struct:
+
+BDD_VARID (F)
+BDD_THEN (F)
+BDD_ELSE (F)
+BDD_REFCOUNT (F)
+BDD_FLAG (F)
+BDD_MARK (F)
+
+Standard, there are 2 words (8 bytes) reserved for additional information to
+be attached to each bdd node. Many routines in bdd_fns.c already temporarily
+make use of one or both words. If a user wants to use them he has to be careful
+not to mix up the data. The data may not be assumed to be initialized.
+
+The following macro may be used to retrieve and store data:
+
+BDD_AUX_D(F)
+BDD_AUX1(F)
+BDD_AUX1_L(F)
+BDD_AUX1_BDD(F)
+BDD_AUX1_LIST(F)
+BDD_AUX1_STR(F)
+BDD_AUX1_PTR(F)
+BDD_AUX2(F)
+BDD_AUX2_L(F)
+BDD_AUX2_BDD(F)
+BDD_AUX2_LIST(F)
+BDD_AUX2_STR(F)
+BDD_AUX2_PTR(F)
+
+The extension have the following meaning:
+
+Extension:	Data is of type:
+
+       _D       double
+       _L	long int
+     _BDD	BDDPTR
+    _LIST	LIST
+     _STR	char *
+     _PTR	void *
+
+A user may reserve memory space in each bdd node for his/her own
+applications. The size of this accessory space must be stated by assigning
+the number of bytes required to the variable bdd_sizeof_user_data BEFORE
+bdd_init is called. To access this data you can use the macro
+BDD_USER_DATA_PTR.
+
+BDD_USER_DATA_PTR (F)
+Returns a pointer of type (char *) to the first byte in the user reserved
+data area of bdd node pointed to by `v'. The size of this area must
+have been told to the bdd package in the variable bdd_sizeof_user_data prior
+to the call to bdd_init. Here is an example of a typical use:
+
+We want to associate our own struct with each node:
+
+typedef struct my_struct {
+  int my_field1;
+  int my_field2;
+  char *my_name;
+} MINE, *MINEPTR;
+
+We tell the package how big this is:
+
+  bdd_sizeof_user_data = sizeof (MINE);
+  bdd_init ();
+
+Here is how we access our fields given a bdd pointer:
+
+#define MY_FIELD1(F)	((MINEPTR) BDD_USER_DATA_PTR (F))->my_field1
+#define MY_FIELD2(F)	((MINEPTR) BDD_USER_DATA_PTR (F))->my_field2
+#define MY_NAME(F)	((MINEPTR) BDD_USER_DATA_PTR (F))->my_name
+
+
+Test on terminal nodes:
+
+BDD_VOID_P (f)
+BDD_1_P (f)
+BDD_0_P (f)
+BDD_X_P (f)
+BDD_CONST_P (f)
+BDD_TERM_P (f)
+
+BDD_LIT_P (f)
+Is f a BDD representing a single variable
+(either positive or negative literal)?
+
+BDD_POSVAR_P (f)
+Is f a BDD for a positive variable?
+
+BDD_NEGVAR_P (f)
+Is f a BDD for a negative variable?
+
+Cofactor operations macros (with respect to f's top variable):
+BDD_COFACTOR_POS (f)
+BDD_COFACTOR_NEG (f)
+
+Logical operators:
+    BDD_NOT(F)                  /* ~F */
+   BDD_ZERO(F,G)                /* 0 */
+    BDD_AND(F,G)                /* F ^ G */
+BDD_GREATER(F,G)                /* F > G */
+  BDD_PROJ1(F,G)                /* F */
+   BDD_LESS(F,G)                /* F < G */
+  BDD_PROJ2(F,G)                /* G */
+    BDD_XOR(F,G)                /* F exor G */
+     BDD_OR(F,G)                /* F V G */
+    BDD_NOR(F,G)                /* ~(F V G) */
+  BDD_EQUIV(F,G)                /* ~(F exor G) */
+   BDD_NOT2(F,G)                /* ~G */
+BDD_IMPLIED(F,G)                /* F <- G */
+   BDD_NOT1(F,G)                /* ~F */
+BDD_IMPLIES(F,G)                /* F -> G */
+   BDD_NAND(F,G)                /* ~(F ^ G) */
+    BDD_ONE(F,G)                /* 1 */
+
+BDD_IMPLIES_TAUT(F,G)
+BDD_COVERS(F,G)
+BDD_CONTAINS(F,G)
+
+Reference count macros:
+
+BDD_GC_PROTECT(f) (synonymous to BDD_INCR_REF (f))
+BDD_DECR_REF (f)
+BDD_DEAD_P (f)
+
+The routines:
+-------------
+
+void bdd_reset_marks (BDDPTR f)
+
+f is a bdd, i.e. a rooted acyclic graph. Traversal of this graph will set
+mark bits in each vertex to indicate "vertex is visited". This routine
+resets all the mark bits in the vertices of f to their initial value (0).
+The above is not exactly true: bdd_reset_marks simply toggles the mark
+bits one more time, so when they were 1 they will become indeed all 0.
+
+void bdd_traverse_pre (register BDDPTR v, void (*pre_action)(BDDPTR))
+
+Pre-order depth-first traversal of the vertices of bdd v, calling
+"pre_action (v)" right after the vertex v was marked visited.
+
+NOTE: SHOULD NEVER DO ANY ITE OPERATIONS DURING bdd_traverse_pre AND
+      bdd_traverse_post, since they use pointer reversal and might thus
+      severely screw up any references to nodes in the bdd being traversed!
+      Also, this routine is not reentrant.
+
+void bdd_traverse_post (register BDDPTR v, void (*post_action)(BDDPTR))
+
+Post-order depth-first traversal of the vertices of bdd v, calling
+"post_action (v)" after the children bdd's of vertex have been handled.
+
+int bdd_size (BDDPTR f)
+
+Returns number of vertices comprising the graph of bdd f.
+Constants have size 1. BDD_VOID has size 0.
+
+int bdd_size_vec (BDDPTR *f_vec, int size)
+
+Returns total number of vertices comprising the graphs of the bdd vector
+f_vec. A bdd vector is an array of BDD pointers. Vertices that are shared
+are considered only once.
+
+int bdd_size_ceil (BDDPTR f, int ceiling)
+
+Returns number of labelled bdd nodes comprising f.
+Constants are not counted. `ceiling' argument limits the count:
+traversing the bdd stops as soon as this number of nodes are seen.
+BDD_VOID has size 0.
+
+void bdd_init (void)
+
+Initializes the bdd package. Sets up the constant nodes and creates empty
+unique and computed tables.
+
+void bdd_free (BDDPTR f)
+
+Decrements reference count of f, and when dead afterwards goes on doing this
+repeatedly for then and else formulas.
+
+int bdd_gc (void)
+
+Explicit garbage collection. Usually this function is called automatically
+whenever the package's criteria indicate that there are too many dead
+bdd nodes. The so-called unique_table that collects all nodes is searched
+for dead ones that are then removed and actually freed.
+Returns the number of bdd nodes that are freed.
+
+BDDPTR bdd_ite (BDDPTR F, BDDPTR G, BDDPTR H)
+
+Computes ITE (F, G, H), i.e. F AND G OR F' AND H.
+
+NOTE: make sure to protect all three arguments;
+      result is guaranteed to be protected.
+
+BDDPTR bdd_ite_const (BDDPTR F, BDDPTR G, BDDPTR H)
+
+Computes ITE_CONST (F, G, H). This is quick way to compute ite (F,G,H) when
+one is only interested whether the result is a constant. When it is determined
+that the result will surely not be a constant, BDD_VOID is directly returned.
+Either BDD_0, BDD_1, BDD_X, or BDD_VOID is returned.
+Here BDD_VOID is to be interpreted as NON-CONSTANT.
+
+NOTE: make sure to protect all three arguments;
+      result is guaranteed to be protected, but this function does not
+      increment the reference count of the returned value: so, one should not
+      bdd_free that result. (Anyway, only constant values can be returned.)
+
+void bdd_cofactors (BDDPTR f, BDDPTR *vp, BDDPTR *Tp, BDDPTR *Ep)
+
+Inverse of bdd_ite: given a BDD f its constituents are computed and returned.
+For instance, the call
+
+  bdd_cofactors (f, &v, &T, &E);
+
+assigns BDD's to v, T, and E such that f = bdd_ite (v, T, E), assuming that
+f is not BDD_VOID, in which case v = T = E = BDD_VOID.
+The BDD's returned are guaranteed to be protected, must thus be explicitly
+bdd_free-d when no longer necessary (this will not affect f).
+If f is a constant, that constant is returned via v and T = BDD_1 and
+E = BDD_0.
+
+BDDPTR bdd_invert_input_top (BDDPTR f)
+
+Returns function f with its top-variable inverted, i.e. say f = v.T + v'.E
+then result is v'.T + v.E where v = bdd_top_var (f).
+Returns f without change in case it is BDD_VOID or a constant.
+
+NOTE: Uses ite operations, therefore make sure to protect f
+      argument; result is guaranteed to be protected.
+
+   VARIABLE ID's AND RANK NUMBERS:
+
+   The BDD struct has a field called varid. This is meant to uniquely
+   identify a variable (propositional variable / primary input in the
+   logic circuit). Next to this there exists the notion of variable
+   ordering. This package offers to keep those things separate.
+   It allows for dynamically introducing variables in any order.
+   The macro BDD_RANK (f) will return the rank order number associated
+   with the variable in the bdd node f. This variable itself is identified
+   by the varid field in f accessible through the macro BDD_VARID (f).
+   If an application does not wish to use this feature and thus relies
+   on the fact that it has a statical variable ordering before hand,
+   then only the routine bdd_create_var should be used to introduce
+   new variables. It is then guaranteed that BDD_RANK and BDD_VARID
+   behave identically: a variable's identity is its rank number,
+   in fact, BDD_VAR_RANK (id) == id.
+   On the other hand, when an application wants to introduce variables
+   with non-consecutive rank numbers, the routines: bdd_create_var_first,
+   bdd_create_var_after, and bdd_create_var_last should be used.
+
+   Summarizing:
+   -----------
+   There are two ways to handle variable ordering:
+
+   1) The identification number of a variable is used as its rank order
+      number. Then variables may be created in any order, but once created
+      it is no longer possible to create arbitrary many new variables
+      before or after any existing variable. Once an id number is used
+      that rank number is used and cannot be changed.
+      Only the routine "bdd_create_var" must be used. This is checked
+      and when violated the package aborts.
+
+   2) Variables are identified by consecutive numbers starting from 0.
+      Each call to either "bdd_create_var_first", "bdd_create_var_after",
+      and "bdd_create_var_last" will create a NEW variable BDD, and
+      its id number will be 1 higher than the last created variable.
+      Given a id number of a variable it is always possible to get
+      its associated BDD by calling "bdd_create_var (id)" which checks
+      that indeed such a variable was already created before.
+
+BDDPTR bdd_create_var (int v)
+
+Creates a bdd for the variable identified by v.
+Variables are identified by non-negative integer numbers upto and
+including MAXVARID. When using this routine it is assumed that the id
+of a variable also functions as its rank number. Therefore, it is
+checked whether the so-called bdd_rank_table is not used, and if it is
+used, then the variable should have been created before. If not, this
+is considered a SEVERE error and the package aborts!
+Best is to let variable numbers start with 1, that way negative values
+may be used to denote the negative literal for that variable.
+Variable 0 should therefore not be used.
+Note that the `varid' field of a BDD vertex will always be positive.
+
+BDDPTR bdd_create_var_first	(void)
+BDDPTR bdd_create_var_after	(BDDPTR v)
+BDDPTR bdd_create_var_last	(void)
+
+These 3 routines offer the creation of new variables with a rank number
+that is relative to any existing variables. The variables that are created
+have `varid' fields counted from 0 for the first variable created, 1 for the
+second, et cetera. bdd_create_var_after creates a new variable that takes
+a place in the order right after the argument variable, all the others
+move up one place. The argument may be any BDD in which case its top-level
+variable's rank number is taken. When it is BDD_VOID the action is the same as
+bdd_create_var_last: create a new variable at the end of the order; when it is
+a constant the action is identical to bdd_create_var_first: create a new
+variable as first one in the order. bdd_create_var may still be used to get
+the BDD of a variable (or its complement) given its id value (or its
+negation). It is checked that a variable with that id was already created
+before; if not, the package aborts!
+
+void bdd_print (FILE *fp, BDDPTR f, char *s)
+
+Prints information about bdd f to the file pointer fp. The string s is used
+as a title that precedes the printing of f.
+
+void bdd_print_stats (FILE *fp)
+
+Prints statistics about the bdd package to the file pointer fp.
+
+void bdd_quit (void)
+
+Frees all memory allocated by the bdd package.
+Must again call bdd_init to continue using the package.
+
+int bdd_memsize (void)
+
+Returns the total memory space in bytes currently allocated by the package.
+This includes all space necessary for the shared bdd nodes and also their
+associated tables.
+
+int bdd_memsize_limit (void)
+
+Returns the current allowed total memory space in bytes.
+
+void bdd_set_memsize_limit_and_handler (int limit, void (*handler) (void))
+
+Specifies the maximum allowed memory size in bytes to be used by the package.
+This includes all space necessary for the shared bdd nodes and also their
+associated tables. Also sets up user handler routine to be called upon memory
+exhausted instead of the package default one. The default limit is no limit.
+This routine may be called prior to a call to bdd_init.
+
+int bdd_nodes_alive (void)
+
+Returns the number of bdd nodes that are alive, i.e. explicitly in use. This
+does not include the constant BDD's, and also excludes any nodes that are freed
+(so-called dead nodes).
+
+int bdd_nodes_allocated (void)
+
+Returns the number of bdd nodes currently allocated. This may be more than
+bdd_nodes_in_use since some nodes may have been freed.
+
+int bdd_nr_occurs_var (int id)
+
+Returns the current number of BDD nodes (dead, alive, or frozen) that
+have `id' in their variable id field.
+
+int bdd_compl_p (BDDPTR f, BDDPTR g)
+
+Returns 1 when f and g are each others complement, 0 otherwise.
+
+int bdd_equal_p (BDDPTR F, BDDPTR G)
+
+Returns 1 when f and g represent the same function, 0 otherwise.
+
+int bdd_implies_taut (BDDPTR F, BDDPTR G)
+
+BDDPTR bdd_not		(BDDPTR F)
+BDDPTR bdd_and		(BDDPTR F, BDDPTR G)
+BDDPTR bdd_greater	(BDDPTR F, BDDPTR G)
+BDDPTR bdd_less		(BDDPTR F, BDDPTR G)
+BDDPTR bdd_xor		(BDDPTR F, BDDPTR G)
+BDDPTR bdd_or		(BDDPTR F, BDDPTR G)
+BDDPTR bdd_nor		(BDDPTR F, BDDPTR G)
+BDDPTR bdd_equiv	(BDDPTR F, BDDPTR G)
+BDDPTR bdd_xnor		(BDDPTR F, BDDPTR G) /* equivalent to bdd_equiv */
+BDDPTR bdd_implied	(BDDPTR F, BDDPTR G)
+BDDPTR bdd_implies	(BDDPTR F, BDDPTR G)
+BDDPTR bdd_nand		(BDDPTR F, BDDPTR G)
+BDDPTR bdd_0 (void)
+BDDPTR bdd_1 (void)
+BDDPTR bdd_X (void)
+BDDPTR bdd_assign (BDDPTR f)
+
+BDDPTR bdd_top_var (BDDPTR f)
+
+Returns top variable of f as bdd.
+If f is a constant or BDD_VOID, returns f.
+
+int bdd_top_var_rank (BDDPTR f)
+
+Returns the rank number of f's top variable (rank(top(f)).
+Returns MAXID for constants, -1 when f is BDD_VOID.
+
+BDDPTR bdd_then (BDDPTR f)
+
+Assume top variable of f set to 1 and return function that results.
+In fact, returns restriction of f to top(f) = 1, also known as
+cofactor of f with respect to top(f).
+If f is a constant or BDD_VOID, returns f.
+
+BDDPTR bdd_else (BDDPTR f)
+
+Assume top variable of f set to 0 and return function that results.
+In fact, returns restriction of f to top(f) = 0, also known as
+cofactor of f with respect to top(f)'.
+If f is a constant or BDD_VOID, returns f.
+
+BDDPTR bdd_apply (BDDPTR (*f)(BDDPTR,BDDPTR),BDDPTR a,BDDPTR b)
+
+Computes f(a,b). Uses cache to store intermediate results and thereby
+trying to avoid unncessary duplicate computations.

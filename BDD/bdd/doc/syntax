@@ -1,0 +1,113 @@
+/*
+ DOCUMENTATION INFORMATION                         module: PROPOSITIONAL LOGIC
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ system    : Apollo DN3000
+ file      : syntax (LL(1) grammar)
+ unit-title: PL GRAMMAR
+ ref.      : 
+ author(s) : G.L.J.M. Janssen
+ date      : 29-JAN-1995
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+*/
+/*$C+*/
+
+PL_input : { Rule_or_Definition ( '.' | ';' ) }+ .
+
+Rule_or_Definition : Rule | Vector | Definition | Write_Statement .
+
+Vector : '[' { Expr / ',' }+ ']' .
+
+Definition : Definition_Expr .
+
+Definition_Expr : 'LET' IDENTIFIER '=' ( Expr | Definition_Expr ) .
+
+Write_Statement : 'WRITE' '(' STRING ')' .
+
+Rule : Head [ ':-' Body ] .
+
+Head : { Expr / ':' } .
+
+Body : { ( Expr | Definition_Expr ) / ',' } .
+
+Expr : Identity .
+
+Identity : PL_formula [ '=' PL_formula ] .
+
+PL_formula : PL_formula_1 .
+
+/* Conditional expression: */
+PL_formula : PL_formula_1 '?' PL_formula ':' PL_formula .
+
+/* Substitution: */
+PL_formula : PL_formula_1 '[' Body '/' Var ']' .
+
+/* Substitution; alternative notation: */
+PL_formula : PL_formula_1 '[' Var ':=' Body ']' .
+
+/* Universal quantification (consensus): */
+PL_formula : 'A' Body '.' PL_formula .
+
+/* Existential quantification (smooth): */
+PL_formula : 'E' Body '.' PL_formula .
+
+/* And-Smooth: */
+PL_formula : 'E' Body '.'
+               '(' cofactor AND cofactor ')' .
+
+/* Boolean difference (exor of cofactors): */
+PL_formula : 'D' Body '.' PL_formula .
+
+PL_formula_1 : { formula / implies_equiv_xor }+ .
+
+implies_equiv_xor : IMPLIES | EQUIV | XOR .
+
+formula : { term / OR }+ .
+
+term : { cofactor / opt_and }+ .
+
+opt_and : [ AND ] .
+
+cofactor : { factor / '|' }+ .
+
+factor : primary [ '''' ]
+       | NOT factor
+       .
+
+primary : atomic_formula
+        | '(' Body ')'
+        | predefined_function_call
+        .
+
+predefined_function_call :
+               'GC'                     /* explicit garbage collection */
+        |     'TOP' '(' Expr ')'        /* top variable */
+        |   'CUBE?' '(' Expr ')'        /* is this a cube */
+        |  'ON_SET' '(' Expr ')'        /* on-set, X's interpreted as 0 */
+        | 'OFF_SET' '(' Expr ')'        /* off-set, X's interpreted as 0 */
+        |   'X_SET' '(' Expr ')'        /* don't-care set */
+        |  'HAS_X?' '(' Expr ')'        /* are don't-cares present */
+        |     'SUP' '(' Expr ')'        /* true support as cube */
+        |     'SET' '(' Expr ')'        /* truth-assignment */
+        |    'CORE' '(' Expr ')'        /* cube factor */
+        |         'EVAL' '(' Expr ',' Cube ')'
+        |     'UNATE_IN' '(' Expr ',' Var ')'
+        |          'IN?' '(' Var ',' Expr ')'
+        |     'ITE' '(' Expr ','
+                        Expr ','
+                        Expr ')'
+        |   'SUBST' '(' Expr ','
+                        Var ','
+                        Expr ')'
+        | 'ONE_OF' '(' { Expr / ',' }+ ')'
+        |     'E!' '(' { Expr / ',' }+ ')'
+        .
+
+/*Cube : Expr .*/
+
+atomic_formula : FALSE
+               | TRUE
+               | 'X'
+               | Var
+               .
+
+Var : IDENTIFIER .

@@ -1,0 +1,126 @@
+ DOCUMENTATION INFORMATION				         module: BDD
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ system	   : Apollo DN3000, HP 9000/S500, IBM RS/6000
+ file	   : bdd_fns.h
+ unit-title: 
+ ref.	   : Efficient Implementation of a BDD Package, Karl S. Brace. DAC'90
+ author(s) : Copyright (c) 1990-1994 G.L.J.M. Janssen
+ date	   :  6-OCT-1994
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Documentation for C functions in vfns.c
+---------------------------------------
+
+The functions in vfns.c are based on the functions and global variables
+of bdd_fns.c and bdd.c. Therefore to use vfns.c one has to include both bdd.h,
+bdd_fns.h, and vfns.h in that order. vfns.c also uses list routines.
+Typically the include files for an application of the bdd package are:
+
+#include <stdio.h>
+#include "alloc.h"
+#include "bdd.h"
+/* This defines the type of list elements: */
+typedef BDDPTR USER_TYPE;
+#include "list.h"
+#include "bdd_fns.h"
+#include "vfns.h"
+
+BDDPTR bdd_cut (f, cut_point)
+     BDDPTR f;
+     int cut_point;
+
+Assume an ordering of variables y1,y2,...,x1,x2,....
+Calculates E x1,x2,.. f(y1, y2,..,x1,x2,..), i.e.
+the existential quantifier regarding the variables x1, x2,... where
+index(x1) >= cut_point is applied to the function f.
+The result is that f no longer depends on x1, x2,...
+
+NOTE: Uses ite operations, therefore make sure to protect f
+      argument; result is guaranteed to be protected.
+
+BDDPTR bdd_restrict (f, c)
+     BDDPTR f, c;
+
+Restricts a function f to the domain specified by the characteristic
+function c. Thus for values x1,x2,.. where c(x1,x2,...)=1, the result
+function returns the same value that f would have returned. For values
+outside the domain c, f is changed in such a way as to have `minimal' size.
+
+   Properties:
+   c != 0: c(x) = 1   then restrict(f,c)(x) = f(x).
+   c != 0: |= c -> f  then restrict(f,c) = 1.
+   c != 0: |= c -> f' then restrict(f,c) = 0.
+
+For BDD's it is not guaranteed that the result is smaller (in terms
+of number of vertices) than the original f.
+
+NOTE: Uses ite operations, therefore make sure to protect f and c
+      arguments; result is guaranteed to be protected.
+
+BDDPTR bdd_constrain (f, c)
+     BDDPTR f, c;
+
+Generalized cofactor.
+
+   constr (f, v ) = constr (fv , 1) = fv
+   constr (f, v') = constr (fv', 1) = fv'
+   constr (f, ab) = constr (fa, b) = constr (fab, 1) = fab
+
+For a vector function we have:
+The image set of [constr(f1,c),constr(f2,c),...,constr(fn,c)]
+is equal to the image set of [f1, f2,...,fn] with all fi's restricted
+to the domain c.
+
+Usually it will be the case that f and c are expressed over the same
+set of support variables. If, however, f and c have disjoint (true)
+support then constrain (f, c) will return f.
+
+NOTE: Uses ite operations, therefore make sure to protect f and c
+      arguments; result is guaranteed to be protected.
+
+BDDPTR *bdd_constrain_vec (F, size, c)
+     BDDPTR *F;
+     register int size;
+     register BDDPTR c;
+
+Applies constrain_bdd function to each component of BDD vector F.
+Destructively modifies F and returns it.
+Assumes all BDD's in F and also c to be protected. size > 0.
+Leaves protected result.
+
+BDDPTR Vec2Char (F, y1, n)
+     BDDPTR *F;
+     register int y1;
+     register int n;
+
+Converts a functional vector representation (F) for a set of points in
+Bn-space to a characteristic function (f) representation (return value).
+The argument F is a pointer to an array of BDDPTRs of length at least n.
+Usually, but not necessarily, the components of F will be defined over the
+variables y1, y2, ..., yn and perhaps some others too.
+The result will be defined over the variables y1, y2, ..., yn.
+Here it is assumed that the BDD variable ordering is such that
+y1 < y2 < ... yk < ... < yn; and that for k = 1 to k = n: yk = y1 + k - 1.
+The size argument must be n > 0.
+
+NOTE: Uses ite operations, therefore make sure to protect each component
+      of the F argument; result is guaranteed to be protected!
+
+BDDPTR *Char2Vec (f, F, y1, n)
+     register BDDPTR f;		/* assumed protected */
+     BDDPTR *F;			/* space for result */
+     register int y1;		/* top-var of f or smaller */
+     register int n;		/* size of vector returned */
+
+Converts a characteristic function (f) representation for a set of points in
+Bn-space to a functional vector representation (return value F).
+The argument F is a pointer to an array of BDDPTRs of length at least n.
+This space is used to store the fk components of the result. Char2Vec returns
+the pointer F. Let f be defined over the variables y1, y2, ..., yn.
+Then each component fk of F will be defined over the variables y1, y2, ..., yk.
+Here it is assumed that the BDD variable ordering is such that
+y1 < y2 < ... yk < ... < yn; and that for k = 1 to k = n: yk = y1 + k - 1.
+The size argument must be n > 0.
+
+NOTE: Uses ite operations, therefore make sure to protect f
+      argument; components of result vector F are guaranteed to be protected.

@@ -1,0 +1,24 @@
+Cases considered in bdd_ite and in this order:
+
+F  G  H  | ite(F,G,H)   | Condition
+---------+--------------+----------
+0  g  h  | h            |   
+1  g  h  | g            |
+X  X  h  | X            |
+f  f  h  | ite(f,1,h)   | f # X
+f  f' h  | ite(f,0,h)   |
+X  g  X  | X            |
+f  g  f  | ite(f,g,0)   | f # X
+f  g  f' | ite(f,g,1)   |
+f  1  0  | f            |
+X  0  1  | X            |
+f  0  1  | f'           | f # X
+f  g  g  | g            |
+f  1  h  | ite(h,1,f)   | h < f
+f  g  0  | ite(g,f,0)   | g < f
+f  g  1  | ite(g',f',1) | g < f
+f  0  h  | ite(h',0,f') | h < f
+X  g  g' | X            |
+f  g  g' | ite(g,f,f')  | g < f
+f~ g  h  | ite(f,h,g)   |
+f  g~ h  | ite(f,g,h')' |

@@ -1,0 +1,273 @@
+.TH BDD 1es
+.ad b
+.SH NAME
+bdd - Routine Package for Logic Function Manipulation
+.SH SYNOPSIS
+.B bdd
+[ -dghiIl:M:not:vw ] [ f1 f2 ... fn ]
+.SH OPTIONS
+.TP
+.B \-d
+prints debug info to stderr; implies -v ON. This is of no interest to
+a regular user.
+.TP
+.B \-h
+prints a one line description for each option to stdout and stops.
+.TP
+.B \-v
+verbose, prints action summary to stdout.
+.TP
+.B \-i
+don't use input inverters in the BDDs. The BDD package supports 2 ways of
+compressing the BDD data, one is using so-called inverted input edges and the
+other is using so-called complemented output edges. By default, the package
+uses both methods to ensure that the function graphs are compact. It is
+recommended not to use these options.
+.TP
+.B \-o
+don't use output inverters in the BDDs. See above.
+.TP
+.B \-t<n>
+set initial BDD unique table size to <n> (default n = 12799).
+The BDD package uses a hash table, called the unique table, to store all
+its BDD graph nodes. This option allows you to change its initial size.
+The package will always automatically increase the size by roughly a factor 2
+when necessary.
+.TP
+.B \-l<n>
+set load factor for BDD unique table to <n> (default n = 4).
+The unique table keeps nodes in clusters. When the average cluster size
+becomes too large the table size will be increased. This option allows you to
+change the default cluster size. The higher the value, the fewer times the
+table needs to be resized, but the more time consuming certain table
+operations become.
+.TP
+.B \-M<n>
+set the maximum allowed memory size in Kbytes to be used by the package.
+This includes all space necessary for the shared BDD nodes and also their
+associated tables. The default limit is no limit.
+.TP
+.B \-g
+inhibits garbage collection. BDD graph nodes that are no longer in use by
+any of the functions are normally automatically reclaimed by a garbage
+collection routine. This option switches off that action, and will probably
+cause a lot more memory to be used by the program.
+.SH DESCRIPTION
+.B bdd
+reads formulas in BDD syntax, builds a BDD graph and echoes it in sum-of-cubes
+representation to stdout.
+BDD's are graph representations of Boolean functions.
+The Boolean set of truth values is { false, true }, also denoted by 0 and 1
+respectively. A function is input as a formula built of variables and
+operators.
+Formulas in the files f1, f2, ..., fn are consecutively
+processed; if none are present, input is read from standard input.
+.PP
+The basic syntax of the formulas is expressed in the following diagrams:
+
+.in -1c
+.ft C
+.DS
+ PL_input :                             Rule_or_Definition :
+
+ -,->[ Rule_or_Definition ]-->( . )-.-> -.---->[ Rule ]----,->
+  |                                 |    |                 |
+  `----------------<----------------'    `->[ Definition ]-'
+.DE
+.DS
+ Definition :
+
+ -->( LET )-->[ IDENTIFIER ]-->( = )-->[ Body ]-->
+.DE
+.DS
+ Rule :
+
+ -->[ Head ]-.->( :- )-->[ Body ]-,->
+             |                    |
+             `---------->---------'
+.DE
+.DS
+ Head :                                 Body :
+
+ -.,->[ Expr ]-.,->                     -.,->[ Expr ]-.,->
+  ||           ||                        ||           ||
+  |`--( ; )<---'|                        |`--( , )<---'|
+  |             |                        |             |
+  `------>------'                        `------>------'
+.DE
+.DS
+ Expr :
+
+ -->[ Identity ]-->
+.DE
+.DS
+ Identity :
+
+ -->[ PL_formula ]-.->[ EQUAL ]-->[ PL_formula ]-,->
+                   |                             |
+                   `-------------->--------------'
+.DE
+.DS
+ PL_formula :
+
+ -->[ PL_formula_1 ]-.->( ? )-->[ PL_formula ]-->( : )-->[ PL_formula ]-,->
+                     |                                                  |
+                     `------------------------->------------------------'
+.DE
+.DS
+ PL_formula_1 :
+
+ -,------>[ formula ]------.->
+  |                        |
+  `-[ implies_equiv_xor ]<-'
+.DE
+.DS
+ implies_equiv_xor :                    formula :
+
+ -.->[ IMPLIES ]-,->                    -,->[ term ]-.->
+  |              |                       |           |
+  `-->[ EQUIV ]--'                       `--[ OR ]<--'
+  |              |
+  `--->[ XOR ]---'
+.DE
+.DS
+ term :                                 opt_and :
+
+ -,->[ cofactor ]-.->                   -.->[ AND ]-,->
+  |               |                      |          |
+  `-[ opt_and ]<--'                      `----->----'
+.DE
+.DS
+ cofactor :
+
+ -,->[ factor ]-.->
+  |             |
+  `---( | )<----'
+.DE
+.DS
+ factor :                               primary :
+
+ -.->[ primary ]-.->( ' )-,,->          -.------>[ atomic_formula ]------,->
+  |              |        ||             |                               |
+  |              `---->---'|             `--->( ( )-->[ Expr ]-->( ) )---'
+  |                        |             |                               |
+  `->[ NOT ]-->[ factor ]--'             `->[ predefined_function_call ]-'
+.DE
+.DS
+ atomic_formula :                       Var :
+
+ -.->[ FALSE ]-,->                      -->[ IDENTIFIER ]-->
+  |            |
+  `->[ TRUE ]--'
+  |            |
+  `--->( X )---'
+  |            |
+  `-->[ Var ]--'
+.DE
+.in +1c
+.ft P
+The order of evaluation of the various operators is from left to right,
+taking into account the following priority classes:
+
+1. predefined functions			(strongest binding)
+.br
+2. postfix not (')
+.br
+3. prefix not (~)
+.br
+4. cofactor
+.br
+5. and
+.br
+6. or
+.br
+7. implies, implied_by, equiv, xor
+.br
+8. if-then-else construction ('?'  ':')
+.br
+9. identity                              (weakest binding)
+
+Matching pairs of parentheses must be used in cases where the intended meaning
+conflicts with the rules above, and may otherwise be used freely to stress the
+grouping of certain constructs.
+White-space, i.e. blanks, tabs and newlines, may appear in any number between
+any two consecutive language tokens, and at the start and end of the input
+file. At least 1 blank, tab, or newline must be present between consecutive
+variable names and in cases that entail the 1-letter operator V.
+Otherwise they might get interpreted as identifiers.
+C-style comment may appear anywhere white-space is allowed.
+
+Variables are denoted by identifiers consisting of letters,
+digits and the underscore character. They should start with a letter. The
+letter case is significant. The operators have various alternatives to
+accommodate the various styles in use. Please adopt the preferred one as
+indicate in the table below. Identifiers that are reserved words cannot be
+used to name variables! Be aware of this, and that the 1-letter operator
+symbols can also not be used as variable names. Names introduced by the 'LET'
+construct reside in a separate symbol table. Upon evaluation these names have
+higher priority than ordinary variables with the same name, e.g. in
+
+	let x = a V b.
+
+	x & b == c.
+
+the 'x' in 'x & b' stands for 'a V b'.
+
+The constants 0 and 1 will be interpreted as false and
+true respectively.
+.PP
+
+Preferred:	Pronunciation:	Alternatives:
+.br
+	' (postfix)	not
+.br
+	~ (prefix)	not			!, not
+.br
+	^		and			and, &,(juxtaposition)
+.br
+	V		or			or, +
+.br
+	->		implies		implies
+.br
+	<-		implied by	implied_by
+.br
+	<->		equivalent	equiv, ==
+.br
+	*		exclusive or	><, xor
+.br
+	? :		if-then-else
+.br
+	=		equal, identical
+.br
+.PP
+Please read the documentation referred to under the heading FILES below.
+.SH EXAMPLE
+.SH CONDITIONS
+.SH FILES
+The executable file can be found in:
+.br
+/usr/es/bin
+
+Syntax, source and test programs can be found in:
+.br
+bdd/doc, bdd/src, bdd/ex
+
+.SH AUTHOR
+(C) 1990-1996  Geert Janssen
+.br
+Dept. Electrical Engineering, EH 7.27
+.br
+Eindhoven University
+.br
+P.O. Box 513
+.br
+5600 MB Eindhoven
+.br
+The Netherlands
+.br
+Phone: (+31)-40-2473387
+.br
+E-mail: geert@es.ele.tue.nl
+.SH STATUS
+preliminary
+.SH SEE ALSO
