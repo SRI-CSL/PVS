@@ -14,12 +14,16 @@
 
 (defun array-p (term) nil)
 
-;(defun bv-p (term)
-;  (bvec::is-bv? term))
+(defun bv-p (term)
+  nil
+  ;(bvec::is-bv? term)
+  )
 
-;(defun sigbvec (term cong-state)
-;  (declare (ignore cong-state))
-;  (bvec::fixed-sigma term))
+(defun sigbvec (term cong-state)
+  (declare (ignore cong-state))
+  term
+  ;(bvec::fixed-sigma term)
+  )
 
 (defun sigma (term cong-state)
   ;;; assumes immediate args are already in sigma-normal form.
@@ -195,11 +199,15 @@
       (bv (bv-solve eqn cong-state))
       (t (list eqn)))))
 
-;(defun bv-solve (eq cong-state)
-;  (bvec::fixed-bv-solve eq))
+(defun bv-solve (eq cong-state)
+  (list eq)
+  ;(bvec::fixed-bv-solve eq)
+  )
 
-;(defun bv-solve-neq (neq cong-state)
-;  (bvec::fixed-bv-solve neq))
+(defun bv-solve-neq (neq cong-state)
+  (list neq)
+  ;(bvec::fixed-bv-solve neq)
+  )
 
 (defun add-if-pure-to-theory (eqn cong-state)
   (let ((theory (pure-theory? eqn)))
