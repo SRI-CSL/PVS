@@ -20,7 +20,7 @@
 			  (make-binpath file))))
 
 (defmethod get-theories-to-save (file)
-  (mapcan #'get-theories-to-save (get-theories file)))
+  (mapcan #'get-theories-to-save (sort-theories (get-theories file))))
 
 (defmethod get-theories-to-save ((th module))
   (list th))
@@ -132,7 +132,7 @@
     (let* ((decl-pos (stored-word 2))
 	   (decl (nth decl-pos (all-decls theory))))
       (unless decl
-	(error "Declaration was not found"))
+	(break "Declaration was not found"))
       decl)))
 
 (defmethod store-object* :around ((obj type-name))
