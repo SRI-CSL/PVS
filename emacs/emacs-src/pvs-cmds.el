@@ -1285,7 +1285,7 @@ Provides an example specification, along with the PVS grammar."
 (defpvs pvs-release-notes help ()
   "Display the release notes."
   (interactive)
-  (info (concat pvs-path "/doc/release-notes/pvs3.0-release-notes.info")))
+  (info (concat pvs-path "/doc/release-notes/pvs-release-notes.info")))
 
 
 ;;; suspend-pvs
