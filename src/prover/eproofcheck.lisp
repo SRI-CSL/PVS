@@ -2874,9 +2874,10 @@ The rules in *rulebase* are: ~%"
 	fmla)))
 
 (defun unparse-sform (sform)
-  (unpindent (seq-formula sform)
-	     (+ 6 *prover-indent*)
-	     :string T))
+  (let ((*print-lines* *prover-lines*))
+    (unpindent (seq-formula sform)
+	       (+ 6 *prover-indent*)
+	       :string T)))
 
 (defun in-every-print-descendant? (sform)
   (every #'(lambda (ps)
@@ -2884,7 +2885,6 @@ The rules in *rulebase* are: ~%"
 		   (s-forms (current-goal ps))))
 	 *print-descendants*))
 
-;;NSH(5.11.94): display-sform has been modified to use unparse-sform.
 (defun display-sform (sform sfnum stream)
   (let ((par-sforms
 	 (when *print-ancestor*
@@ -2898,38 +2898,11 @@ The rules in *rulebase* are: ~%"
 	     (format stream "~%~V@T" *prover-indent*)
 	     (format stream "{~a}   ~a" sfnum
 		     (unparse-sform sform))))
-	  (t 
-	   (format stream "~%~V@T" *prover-indent*)
-	   (let ((old (memq sform par-sforms)))
-	     (format stream "~a~a" (if old "[" "{") sfnum)
-	     (when (label sform) (format stream "~{,~a~}"
-				(label sform))) 
-	     (format stream "~a" (if old "]" "}"))
-	     (if (label sform)
-		 (format stream "~%   ~a" (unparse-sform sform))
-		 (format stream "   ~a" (unparse-sform sform))))))))
-
-;(defun display-sform (sform sfnum stream)
-;  (let ((par-sforms
-;	 (when *print-ancestor*
-;	   (s-forms (current-goal *print-ancestor*)))))
-;    (cond (*report-mode*
-;	   (unless (memq sform par-sforms)
-;	     (format stream "~%~V@T" *prover-indent*)
-;	     (format stream "{~a}   ~a" sfnum
-;		     (unpindent (seq-formula sform)
-;				(+ 6 *prover-indent*)
-;				:string T))))
-;	  (t 
-;	   (format stream "~%~V@T" *prover-indent*)
-;	   (let ((old (memq sform par-sforms)))
-;	     (format stream "~a~a" (if old "[" "{") sfnum)
-;	     (when (label sform) (format stream ",~a"
-;				(label sform))) 
-;	     (format stream "~a   ~a" (if old "]" "}")
-;		     (unpindent (seq-formula sform)
-;				(+ 6 *prover-indent*)
-;				:string T)))))))
+	  (t
+	   (format stream "~%~V@T~6@<~:[{~a~@[,~a~]}~;[~a~@[,~a~]]~]~>~:[~;~%~6<~>~]"
+	     *prover-indent* (memq sform par-sforms) sfnum
+	     (label sform) (label sform))
+	   (unparse (seq-formula sform) :stream stream)))))
 
 (defmethod print-object ((sequent sequent) stream);;ignoring printing
   ;;skovars for
