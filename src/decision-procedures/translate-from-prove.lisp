@@ -35,34 +35,6 @@
     (push (cons id type) *pvs-typealist*)))
 
 (defun unique-prover-name (expr)
-  (cond ((constant? expr) ;;NSH(2.16.94): changed to deal with Ricky's
-	                  ;;soundness bug where actuals are ignored.
-	 (if (and (constructor? expr)
-		  (enum-adt? (find-supertype (type expr))))
-	     (position expr (constructors (find-supertype (type expr)))
-		       :test #'same-id)
-	     (let* ((norm-expr (normalize-name-expr-actuals expr))
-		    (id-hash (pvs-gethash norm-expr
-					  *translate-id-hash*))
-		    (newconst (or id-hash
-				  (when (tc-eq expr *true*) '(TRUE))
-				  (when (tc-eq expr *false*) '(FALSE))
-				  (list (intern (concatenate 'string
-						  (string (id expr))
-						  "_"
-						  (princ-to-string
-						   (funcall
-						    *translate-id-counter*))))))))
-	       (unless id-hash
-		 (setf (pvs-gethash norm-expr *translate-id-hash*)
-		       newconst)
-		 ;;(format t "~%adding ~a to typealist" (car newconst))
-		 (add-to-typealist (car newconst) expr))
-	       newconst)))
-	(t (add-to-local-typealist (id expr) expr)
-	   (id expr))))
-
-(defun unique-prover-name (expr)
   ;(when (equal (id expr) '|stall_issue|) (break))
   (cond ((constant? expr) ;;NSH(2.16.94): changed to deal with Ricky's
 	                  ;;soundness bug where actuals are ignored.
@@ -226,3 +198,19 @@
 (defun infix-fun (func)
   (or (cdr (assoc func *infix-trans-table*))
       func))
+
+(defun ground-arithsimp (term)
+  (cond
+   ((symbolp term) term)
+   ((integerp term) term)
+   ((interp term)
+    (let ((newterm
+	   (sigma (cons (funsym term)
+			(loop for arg in (argsof term)
+			      collect (ground-arithsimp arg) )))))
+      newterm ))
+   (T term) ))
+
+(defun arithsimp (expr)
+  (let ((ground-expr (top-translate-to-prove expr)))
+    (translate-from-prove (ground-arithsimp ground-expr))))
