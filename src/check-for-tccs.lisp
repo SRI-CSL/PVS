@@ -67,7 +67,7 @@
   (let* ((tact (type-value act))
 	 (texp (type-value formal))
 	 (vid (make-new-variable '|x| act))
-	 (vb (typecheck* (mk-bind-decl vid tact) nil nil nil))
+	 (vb (make!-bind-decl vid tact))
 	 (svar (mk-name-expr vid nil nil
 			     (make-resolution vb nil tact))))
     (check-for-subtype-tcc svar (supertype texp))))
