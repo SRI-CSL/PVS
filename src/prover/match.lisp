@@ -328,7 +328,7 @@
 			  collect
 			  (if (consp (cdr x))
 			      (cons (car x)
-				    (make-tuple-expr
+				    (make!-tuple-expr
 				     (mapcar #'(lambda (z)
 						 (let ((z1
 							(change-class
@@ -342,7 +342,7 @@
 		   (lhs (if (eq expr substituted-expr)
 			    expr
 			    (beta-reduce substituted-expr)))
-		   (equality (make-equality lhs instance))
+		   (equality (make!-equation lhs instance))
 ;;NSH(11.18.96): switching back to using assert-test0 over
 ;;tc-eq-norm-addition. 
 		   (result
@@ -735,7 +735,7 @@
 (defun make-lambda-expr-iter (args* instance)
   (if (null args*) instance
       (make-lambda-expr-iter (cdr args*)
-			     (make-lambda-expr (car args*)
+			     (make!-lambda-expr (car args*)
 			       instance))))
      
 (defun map-args*-with-bind-alist (args*  bind-alist)
@@ -757,18 +757,14 @@
 	     (if (number-expr? (args1 lhs))
 		 (let ((diff
 		       (make-assert-expr
-			(make-difference instance (args1 lhs)
-					 (compatible-type (type instance)
-							  *integer*)))))
+			(make!-difference instance (args1 lhs)))))
 		   (if diff
 		       (match* (args2 lhs) diff
 			      bind-alist subst)
 		       'fail))
 		 (if (number-expr? (args2 lhs))
 		     (let ((diff (make-assert-expr
-				  (make-difference instance (args2 lhs)
-						   (compatible-type (type instance)
-								    *integer*)))))
+				  (make!-difference instance (args2 lhs)))))
 		       (if diff (match* (args1 lhs) diff
 				       bind-alist subst)
 			   'fail))
