@@ -217,6 +217,7 @@
 
 ; addineq not in this file:  see arith.lsp
 
+
 ;;;DAC: 10/30/92: modified to check if inequality can refine bounds on terms.
 (defun addneq(neqn)
    (prog(fnsym term1 term2 number_ineq t1>t2 t2>t1)
@@ -236,9 +237,11 @@
 	       (equal t1>t2 'true)
 	       (equal t2>t1 'true)) (retfalse))
 	     ((equal t1>t2 'true)
-	      (setq s (append (solve `(greaterp ,term1 ,term2)) s)))
+	      (addneq2pot (solve `(greaterp ,term1 ,term2))))
+	      ;;was (setq s (append (solve `(greaterp ,term1 ,term2)) s)))
 	     ((equal t2>t1 'true)
-	      (setq s (append (solve `(greaterp ,term2 ,term1)) s)))))
+	      (addneq2pot (solve `(greaterp ,term1 ,term2))))
+;;was 	      (setq s (append (solve `(greaterp ,term2 ,term1)) s)))))
      (setq fnsym (cons term1 term2))
      (adduse (list fnsym term1) term1)
      (adduse (list fnsym term2) term2)
@@ -270,6 +273,8 @@
 ;;; This is necessary due to the simplification of applies of lambdas and
 ;;; applies of updates, which can make "u" uninterped, but newsig interped.
 
+
+
 (defun pr-merge(t1 t2)
 ;;  (when (and (consp t1)(eq (cadr t1) 's!1_56)) (break "pr-merge"))
 ;  (when (not (equal t1 (pr-find t1))) (break "pr-merge"))
@@ -283,6 +288,10 @@
 	  ;use2 (copy-list (use t2))    ; nil added by JMR 6/9/85 to fix  (set this value later  MES 6/22/88)
 	  )				; bug (append without nil is
 					; surely useless)
+    (when (and (consp t2)(eq (funsym t2) 'PLUS)
+	       (uninterp t1)
+	       (not (arithord-list t1 (cdr t2))))
+      (break "pr-merge"))
     (cond
      ((equal t1 t2) (return nil))
      ((and (integerp t1)(integerp t2)) ;;NSH(9.27.02): must be unequal
@@ -322,7 +331,8 @@
 		(eq (apply-operator u) t1))
 	   (setq newsig
 		 (sigma newsig))
-	   (setq s (append (solve `(equal ,(pr-find u) ,(canonsig-merge newsig))) s))
+	   (addprm2pot (solve `(equal ,(pr-find u) ,(canonsig-merge newsig))))
+	  ;;was (setq s (append (solve `(equal ,(pr-find u) ,(canonsig-merge newsig))) s))
 	   )
 	  ((uninterp newsig)		; SO 9/28/90 was u - is now newsig
 	   (putsig newsig u)
@@ -338,14 +348,16 @@
 			  (if (or (not (consp pr-u))
 				  (uninterp pr-u)
 				  (boolp (funsym pr-u)))
-			      (setq s
-				    (append
-				     (solve new-eqn)
-				     s ))
-			      (setq s
-				    (append
-				     (append (solve new-eqn) (list new-eqn))
-				     s)))))
+			      (addprm2pot (solve new-eqn))
+; 			      (setq s
+; 				    (append
+; 				     (solve new-eqn)
+; 				     s ))
+			      (addprm2pot (append (solve new-eqn) (list new-eqn))))))
+; 			      (setq s
+; 				    (append
+; 				     (append (solve new-eqn) (list new-eqn))
+; 				     s)))))
 
 					;(checkusealist "merge - before rplacd")
 					;(break "count")
@@ -363,8 +375,9 @@
 						 ;;a=b if a<=b and a>=b.
 						 ;;NSA's David Ritch
 						 ;;detected this anomaly.
-	     (let* ((args (loop for arg in (argsof u) collect
-					   (if (equal arg t1) t2 arg)))
+	     (let* ((args (loop for arg in (argsof u)
+				collect  ;;NSH(10.9.02): arg to (pr-find arg)
+				(if (equal arg t1) t2 (pr-find arg))))
 		    (solvelist (solve
 				(cons (funsym u) args))))
 ; 	       (loop for x in solvelist
@@ -383,9 +396,11 @@
 				      args)))
 			     
 			   *truecons*)
-			  (setq s (append (solve `(equal ,@args)) s))
+			  (addprm2pot (solve `(equal ,@args)))
+;;was			  (setq s (append (solve `(equal ,@args)) s))
 			                 ;;NSH(9-21-02) was solvecan
-			  (setq s (append solvelist s))))
+			  (addprm2pot solvelist)))
+;;was			  (setq s (append solvelist s))))
 		     (t (setq s (append solvelist s))))))
 	    ((or (isapplyupdate newsig) (isapplylambda newsig))
 					; DAC 13-AUG-90: This case is necessary
@@ -394,7 +409,9 @@
 					; and as apply`s of updates and lambdas.
 	     (setq newsig
 		   (sigma newsig))
-	     (push `(equal ,u ,(canonsig-merge newsig)) s))
+	     (addprm2pot (list `(equal ,u ,(canonsig-merge newsig))))
+	     ;;was (push `(equal ,u ,(canonsig-merge newsig)) s)
+	     )
 
 	    ((equal (pr-find u) (pr-find 'false))
 	     (break "Shostak")
@@ -409,15 +426,19 @@
 	     (let ((newsig (canonsig-merge newsig))
 		   (new-u (canonsig-merge (pr-find u))))
 	       ;;NSH(7/1/02) added canonsig-merge to avoid loop (bug252)
-	       (setq s (append (solve `(equal ,new-u
-					      ,newsig)) s)))))
+	       (addprm2pot (solve `(equal ,new-u
+					      ,newsig))))))
+	       ;;was (setq s (append (solve `(equal ,new-u
+               ;;			      ,newsig)) s)))))
 	  (t				; interpreted term
 	   ;(setq newsig
 		; (sigma newsig))
 	   ; 7-24-91: dac changed above sigma no longer needed due to change in canonsig.
 	   ; bug manifested itself in needing recursive call for sigupdate.
 	   (let ((newsig (canonsig-merge newsig)))
-	     (push `(equal ,u ,newsig) s)))))))
+	     (addprm2pot (list `(equal ,u ,newsig)))
+	     ;;was (push `(equal ,u ,newsig) s)
+	     ))))))
 
 ; ------------------------------------------------------------------------
 
@@ -675,7 +696,7 @@
 				((eq (arg1 atf) 'true)
 				 ;(break "solve")
 				 `(equal ,(arg2 atf) true))
-				(t atf)
+				 (t atf)
 				))
 		  ;;		   ((lessp nequal lesseqp greaterp greatereqp) atf) ;NSH
 		  (t      `(equal ,atf true)) )))
