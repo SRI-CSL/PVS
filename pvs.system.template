@@ -221,7 +221,7 @@
 		  (:file "pvs-lang-def")
 		  (:file "pvs-lexer")
 		  (:file "pvs-parser")
-		  ;;(:file "pvs-unparser")
+		  (:file "pvs-unparser")
 		  (:file "pvs-sorts")
 		  (:file "pvs-parse-fixes"))
      :depends-on (classes))
