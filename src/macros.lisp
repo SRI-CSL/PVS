@@ -205,6 +205,55 @@
 	      (set-working-directory ,orig-dir)))
 	  (pvs-message "Library ~a does not exist" ,dir)))))
 
+
+;;; The *imported libraries* hash table and (library-alist *current-context*)
+;;; are indexed from a relative reference.  They use this because the lib-ref
+;;; may ultimately be part of the .pvscontext, which should be portable if no
+;;; absolute pathnames are involved.
+;;;       
+;;; This macro temporarily changes the *imported-libraries* hash table,
+;;; allowing nested library references to work, then puts the new information
+;;; into the original hash table.
+;;; Note that the lib-ref slots of existing library-theories may be modified;
+;;; unwind-protect is used to ensure that they are put back correctly.
+;;; This macro is used by load-imported-library and
+;;; restore-imported-library-files - it is not needed for prelude-libraries.
+;;;
+;;; On entry, existing imported libraries need to be relativized, and on exit,
+;;; the changed ones need to be put back, and any new ones need to be
+;;; relativized.  So we copy the original, then make modifications to any
+;;; relative lib-refs (which are strings beginning with a '.').  The lib-ref
+;;; that is passed in may be one of the entries; it is removed.  Thus this
+;;; macro must be used AFTER the call to get-imported-files-and-theories.
+;;; *pvs-context-path* has thus already been modified.
+(defmacro relativize-imported-libraries (lib-ref orig-context-path &rest forms)
+  (let ((mods (gentemp))
+	(entry (gentemp))
+	(lref (gentemp))
+	(cpath (gentemp)))
+    `(let ((,lref ,lib-ref)
+	   (,cpath ,orig-context-path)
+	   (,mods nil)
+	   (,entry nil))
+       (unwind-protect
+	   (progn
+	     (setq ,entry (gethash ,lref *imported-libraries*))
+	     (remhash ,lref *imported-libraries*)
+	     (setq ,mods
+		   (relativize-imported-library ,cpath *pvs-context-path*))
+	     (maphash #'(lambda (id th)
+			  (declare (ignore id))
+			  (change-from-library-class th))
+		      (cadr ,entry))
+	     ,@forms)
+	 (relativize-imported-library
+	  *pvs-context-path* ,cpath ,mods)
+	 (maphash #'(lambda (id th)
+		      (declare (ignore id))
+		      (change-to-library-class th ,lref))
+		  (cadr ,entry))
+	 (setf (gethash ,lref *imported-libraries*) ,entry)))))
+
 (defmacro add-to-alist (key entry alist)
   (let ((vkey (gentemp))
 	(ventry (gentemp))
@@ -418,3 +467,12 @@
   (if using-hash
       `(pushnew ,inst (get-importings ,theory ,using-hash))
       `(pushnew ,inst (get-importings ,theory (current-using-hash)))))
+
+(defmacro ensure-trailing-slash (dirstring)
+  (let ((dstring (gentemp)))
+    `(let ((,dstring ,dirstring))
+       (assert (stringp ,dstring))
+       (if (or (string= ,dstring "")
+	       (char= (char ,dstring (1- (length ,dstring))) #\/))
+	   ,dstring
+	   (concatenate 'string ,dirstring "/")))))
