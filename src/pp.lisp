@@ -1763,3 +1763,71 @@
 
 (defmethod pp* ((ex symbol))
   (write ex))
+
+;;; Find the precedence of an expression.
+
+(defmethod precedence :around ((expr expr) ctx)
+  (declare (ignore ctx))
+  (if (plusp (parens expr))
+      most-positive-fixnum
+      (call-next-method)))
+
+;; Most types of expressions cannot be ambiguous (e.g. tuples, if-exprs).
+(defmethod precedence ((expr expr) ctx)
+  (declare (ignore ctx))
+  most-positive-fixnum)
+
+(defmethod precedence ((expr unary-application) ctx)
+  (if (and (typep (operator expr) 'name-expr)
+	   (member (id (operator expr)) *unary-operators*))
+      (case ctx
+	(left (gethash (sbst-symbol (id (operator expr)))
+		       (first *expr-prec-info*)))
+	(right most-positive-fixnum))
+      (call-next-method)))
+
+(defmethod precedence ((expr binding-expr) ctx)
+  (case ctx
+    (left (or (gethash (sbst-symbol '|\||)
+		       (third *expr-prec-info*))
+	      21))
+    (right (or (gethash (sbst-symbol '|\||)
+			(second *expr-prec-info*))
+	       20))))
+    
+(defmethod precedence ((expr let-expr) ctx)
+  (case ctx
+    (left (gethash (sbst-symbol 'in)
+		   (fourth *expr-prec-info*)))
+    (right most-positive-fixnum)))
+
+(defmethod precedence ((expr update-expr) ctx)
+  (case ctx
+    (left most-positive-fixnum)
+    (right (gethash (sbst-symbol 'with)
+		    (second *expr-prec-info*)))))
+    
+(defmethod precedence ((expr application) ctx)
+  (case ctx
+    (left most-positive-fixnum)
+    (right (gethash 'jux
+		    (second *expr-prec-info*)))))
+
+(defmethod precedence ((expr infix-application) ctx)
+  (if (and (typep (operator expr) 'name-expr)
+	   (member (id (operator expr)) *infix-operators*))
+      (case ctx
+	(left (min (gethash (sbst-symbol (id (operator expr)))
+			    (third *expr-prec-info*))
+		   (if (not (zerop (parens (args2 expr))))
+		       most-positive-fixnum
+		       (precedence (second (arguments expr)) 'left))))
+	(right (gethash (sbst-symbol (id (operator expr)))
+			(second *expr-prec-info*))))
+      (call-next-method)))
+
+(defmethod precedence ((expr name-expr) ctx)
+  (if (and (eq ctx 'left)
+	   (memq (id expr) *unary-operators*))
+      0
+      (call-next-method)))
