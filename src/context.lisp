@@ -701,7 +701,7 @@ pvs-strategies files.")
     (dolist (dep deps)
       (if (find #\/ dep)
 	  (let* ((pos (position #\/ dep :from-end t))
-		 (lib (subseq dep 0 (1+ pos)))
+		 (lib (subseq dep 0 pos))
 		 (file (subseq dep (1+ pos))))
 	    (multiple-value-bind (imports errcond)
 		(with-no-type-errors 
