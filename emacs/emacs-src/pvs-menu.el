@@ -363,3 +363,27 @@
 	  font-lock-use-maximal-decoration)
       pvs-font-lock-keywords-2
       pvs-font-lock-keywords-1))
+
+;; (defconst pvs-lisp-font-lock-keywords-1
+;;   (purecopy
+;;    (list
+;;     ("\\(Rule\\?\\|pvs([0-9]+):\\)" (0 font-lock-warning-face)
+;;      (cons "\{-?[0-9]+\}\\|\[-?[0-9]+\]" 'font-lock-builtin-face)
+;;     (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
+;;     ;; These have to come first or they will match too soon.
+;;     (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
+;; 	  1 'font-lock-function-name-face)
+;;     (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-pvs-record-parens-face)
+;;     (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-pvs-parens-face)
+;;     (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-pvs-table-face)
+;;     (list "\\({\\||\\|}\\)" 1 'font-lock-pvs-set-brace-face)
+;;     (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-pvs-function-type-face)
+;;     (list (concat "\\("
+;; 		  (mapconcat 'identity pvs-operators "\\|")
+;; 		  "\\)")
+;; 	  1 'font-lock-function-name-face))))
+
+;; (defconst pvs-lisp-font-lock-keywords-1
+;;   (purecopy
+;;    (list
+;;     (cons 'pvs-lisp-font-lock-matcher 'font-lock-warning-face))))
