@@ -65,9 +65,17 @@ do
 	      shift;;
      -decision-procedures)
         case $2 in
+	  new)  PVSDEFAULTDP=new;;
+	  old)  PVSDEFAULTDP=old;;
+	  *)    echo "The decision-procedures argument must be new or old"
+	        exit 1;;
+	esac
+	shift;;
+     -force-decision-procedures)
+        case $2 in
 	  new)  PVSFORCEDP=:new;;
 	  old)  PVSFORCEDP=:old;;
-	  *)    echo "The decision-procedures argument must be new or old"
+	  *)    echo "The force-decision-procedures argument must be new or old"
 	        exit 1;;
 	esac
 	shift;;
@@ -172,7 +180,8 @@ PVSVERBOSE=${PVSVERBOSE:-0}
 PVSIMAGE="$PVSLISP"
 
 export ALLEGRO_CL_HOME DISPLAY
-export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSPATCHLEVEL PVSMINUSQ PVSFORCEDP
+export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE
+export PVSPATCHLEVEL PVSMINUSQ PVSFORCEDP PVSDEFAULTDP
 
 pvsemacsinit="-load $PVSPATH/emacs/go-pvs.el"
 
