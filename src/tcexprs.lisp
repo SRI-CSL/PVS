@@ -1102,10 +1102,10 @@
   (let* ((var (find-if #'(lambda (v)
 			   (tc-eq (type v) (domain (range (type conv)))))
 		vars))
-	  (ac (make-instance 'argument-conversion
-	      'operator arg
-	      'argument var)))
-	(typecheck* ac nil nil nil)))
+	 (ac (make-instance 'argument-conversion
+	       'operator arg
+	       'argument var)))
+    (typecheck* ac nil nil nil)))
 
 (defmethod application-conversion-argument (arg conv vars)
   (declare (ignore conv vars))
