@@ -53,7 +53,7 @@ T if successful."
 	 (excl::who-references
 	  function
 	  #'(lambda (function)
-	      (push (excl::fn_symdef function) callers)))
+	      (push (excl::external-fn_symdef function) callers)))
 	 (do-all-symbols (symbol)
 	   (when (and (fboundp symbol)
 		      (not (compiled-function-p (symbol-function symbol)))
