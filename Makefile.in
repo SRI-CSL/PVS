@@ -118,7 +118,6 @@ pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
 
 ff-files = src/utils/$(PLATFORM)/file_utils.so \
            BDD/$(PLATFORM)/mu.so \
-           src/decision-procedures/polylib/$(PLATFORM)/polylib.so \
            src/WS1S/$(PLATFORM)/ws1s.so \
 	   src/ics-interface/$(PLATFORM)/ics_lisp_error.so \
 	   @ICSLIB@/libics.so
@@ -304,54 +303,11 @@ pvs-prover = src/prover/checker-macros.lisp \
 
 bddlisp = BDD/bdd.lisp BDD/mu.lisp
 
-decision-procedures = src/decision-procedures/types.lisp \
-                      src/decision-procedures/node-structures.lisp \
-                      src/decision-procedures/interpreted-node-structures.lisp \
-                      src/decision-procedures/cong-state.lisp \
-                      src/decision-procedures/translate-to-dc.lisp \
-                      src/decision-procedures/translate-from-dc.lisp \
-                      src/decision-procedures/integer.lisp \
-                      src/decision-procedures/arithmetic.lisp \
-                      src/decision-procedures/arrays.lisp \
-                      src/decision-procedures/bdd-solve.lisp \
-                      src/decision-procedures/sets.lisp \
-                      src/decision-procedures/shostak.lisp \
-                      src/decision-procedures/shostak-interp.lisp \
-                      src/decision-procedures/boolean.lisp \
-                      src/decision-procedures/arith-solve.lisp \
-                      src/decision-procedures/polyhedron.lisp \
-                      src/decision-procedures/fourier-motzkin.lisp \
-                      src/decision-procedures/rewrite.lisp \
-                      src/decision-procedures/rewrite-pvs.lisp \
-                      src/decision-procedures/datatypes-pvs.lisp \
-                      src/decision-procedures/datatypes.lisp \
-                      src/decision-procedures/records.lisp \
-                      src/decision-procedures/rewrite-optimize.lisp \
-                      src/decision-procedures/simplify.lisp \
-                      src/decision-procedures/forward-chain-pvs.lisp \
-                      src/decision-procedures/forward-chain.lisp \
-                      src/decision-procedures/bit-vectors/bvec_structure.lisp \
-                      src/decision-procedures/bit-vectors/bvec_arith.lisp \
-                      src/decision-procedures/bit-vectors/bvec_fixed_solver.lisp \
-                      src/decision-procedures/bit-vectors/bvec_bdd_solve.lisp \
-                      src/decision-procedures/bit-vectors/bvec_slicing.lisp \
-                      src/decision-procedures/polylib/foreign.lisp \
-                      src/decision-procedures/polylib/dp-foreign.lisp
-
 ws1slisp = src/WS1S/lisp/dfa-foreign.lisp src/WS1S/lisp/dfa.lisp \
            src/WS1S/lisp/pvs-utils.lisp src/WS1S/lisp/symtab.lisp \
            src/WS1S/lisp/signature.lisp src/WS1S/lisp/pvs2dfa.lisp \
            src/WS1S/lisp/ws1s-strategy.lisp \
            src/WS1S/lisp/presburger.lisp
-
-qelisp = src/qe/qe-utils.lisp \
-         src/qe/dp-interface.lisp \
-         src/qe/dnf.lisp \
-         src/qe/qe-core.lisp \
-         src/qe/qe.lisp
-
-follisp = src/fol/fol.lisp \
-          src/fol/fol-top.lisp
 
 abstractionlisp = src/abstraction/abstract.lisp
 
@@ -376,8 +332,8 @@ ics-c = src/ics-interface/ics_lisp_error.c
 
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
-	     ${decision-procedures} ${ws1slisp} ${groundevallisp} \
-             ${inst-by-unif-lisp} ${qelisp} ${follisp} ${abstractionlisp} \
+	     ${ws1slisp} ${groundevallisp} \
+             ${abstractionlisp} \
 	     ${ics-lisp}
 
 templatedeps = pvs src/make-allegro-pvs.lisp pvs.system \
@@ -436,9 +392,9 @@ ess/allegro-runtime.lisp : ess/allegro-runtime.lisp.in
 	@echo "Please run configure"
 	@exit -1
 
-full : makefileutils makebdd makepolylib makews1s ${pvsfull} ${emacs}
+full : makefileutils makebdd makews1s ${pvsfull} ${emacs}
 
-runtime : makefileutils makebdd makepolylib makews1s ${pvsrt} ${emacs}
+runtime : makefileutils makebdd makews1s ${pvsrt} ${emacs}
 
 ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files} \
              lib/prelude.pvs lib/prelude.prf
@@ -496,16 +452,13 @@ ${LISP} :
 	@echo "Need to set the LISP variable in Makefile to a valid"
 	@echo "allegro 6.0 lisp executable for this platform"
 
-.PHONY: all makefileutils makebdd makepolylib makews1s clean
+.PHONY: all makefileutils makebdd makews1s clean
 makefileutils :
 	umask 002; \
 	$(MAKE) -C src/utils/$(PLATFORM)
 makebdd :
 	umask 002; \
 	$(MAKE) -C BDD/$(PLATFORM)
-makepolylib :
-	umask 002; \
-	$(MAKE) -C src/decision-procedures/polylib/$(PLATFORM)
 makews1s :
 	umask 002; \
 	(cd src/WS1S ; rm -rf mona ; ln -s mona-1.4 mona);\
@@ -565,7 +518,6 @@ clean :
 	rm -f ${all-fasl-files}
 	$(MAKE) -C src/utils/$(PLATFORM) clean
 	$(MAKE) -C BDD/$(PLATFORM) clean
-	$(MAKE) -C src/decision-procedures/polylib/$(PLATFORM) clean
 	$(MAKE) -C src/WS1S/$(PLATFORM) clean
 
 pvs-emacs-src = $(wildcard emacs/emacs-src/*.el)
