@@ -888,6 +888,7 @@
 			    (cong-state*-forward-chains cs*)))
 		   (hash-table-count (cong-state*-schema-hash cs*)))))) ; added -h2 3/99
   (assertions nil)
+  (canon-hash (dp-make-eq-hash-table))
   (seen-hash (dp-make-eq-hash-table))
   (find-hash (dp-make-eq-hash-table))
   (use-hash (dp-make-eq-hash-table))
@@ -917,6 +918,7 @@
 
 (defun clear-cong-state* (cong-state*)
   (setf (cong-state*-assertions cong-state*) nil)
+  (dp-clrhash (cong-state*-canon-hash cong-state*))
   (dp-clrhash (cong-state*-seen-hash cong-state*))
   (dp-clrhash (cong-state*-find-hash cong-state*))
   (dp-clrhash (cong-state*-use-hash cong-state*))
@@ -1160,6 +1162,48 @@
    (t (call-next-method))))
 ||#
 
+
+(defun setf-canon-hash* (term cong-state* term-canon)
+  (declare (type node term)
+	   (type cong-state* cong-state*))
+  (setf (dp-gethash term (cong-state*-canon-hash cong-state*))
+	term-canon))
+
+(defsetf canon-hash* setf-canon-hash*)
+
+(defun canon-hash (term cong-state)
+  (declare (type node term)
+	   (type cong-state cong-state))
+  (canon-from-stack term (cong-state-stack cong-state)))
+
+(defun canon-from-stack (term cong-state-stack)
+  (declare (type node term)
+	   (type list cong-state-stack))
+  (if cong-state-stack
+      (multiple-value-bind (canon found)
+	  (canon-hash* term (top cong-state-stack))
+	(if found
+	    canon
+	    (setf (canon-hash* term (the cong-state* (top cong-state-stack)))
+		  (canon-from-stack
+		   term
+		   (rest cong-state-stack)))))
+      nil))
+
+(defun canon-hash* (term cong-state*)
+  (declare (type node term)
+	   (type cong-state* cong-state*))
+  (dp-gethash term (cong-state*-canon-hash cong-state*)))
+
+(defun setf-canon-hash (term cong-state term-canon)
+  (declare (special *dp-changed*)
+	   (type node term)
+	   (type cong-state cong-state))
+  (setq *dp-changed* t)
+  (setf (canon-hash* term (top (cong-state-stack cong-state)))
+	term-canon))
+
+(defsetf canon-hash setf-canon-hash)
 
 (defun setf-seen* (term cong-state* term-seen)
   (declare (type node term)
