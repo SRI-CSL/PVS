@@ -19,6 +19,38 @@
     '(lambda ()
        (add-submenu nil pvs-mode-menus ""))))
 
+; better history mode for the ilisp buffer
+;
+(defkey-ilisp "\C-\\s" 'comint-previous-matching-input-from-input)
+(defkey-ilisp "\M-s" 'comint-previous-matching-input-from-input)
+
+(add-hook 'comint-mode-hook
+    '(lambda ()
+       (defun comint-previous-input (arg)
+	 "Search backwards through input history for match for REGEXP.
+\(Previous history elements are earlier commands.)
+With prefix argument N, search for Nth previous match.
+If N is negative, find the next or Nth next match.
+Modified from original to not delete earlier command if some other command
+intervenes."
+	 (interactive "*p")
+	 (setq arg (comint-search-arg arg))
+	 (unless (memq last-command
+		       '(comint-previous-input
+			 comint-next-input))
+	   (set-marker comint-last-input-start (point)))
+	 (let ((pos (comint-previous-matching-input-string-position "." arg)))
+	   ;; Has a match been found?
+	   (if (null pos)
+	       (error "Not found")
+	       (setq comint-input-ring-index pos)
+	       (message "History item: %d" (1+ pos))
+	       (delete-region 
+		;; Can't use kill-region as it sets this-command
+		comint-last-input-start (point))
+	       (insert (ring-ref comint-input-ring pos)))))))
+  
+
 ;;; The following variables must be set correctly for the ilisp interface
 ;;; to work correctly:
 ;;;   comint-prompt-regexp
