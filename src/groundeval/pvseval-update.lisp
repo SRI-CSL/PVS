@@ -49,7 +49,7 @@
   (let* ((fname (gentemp "undefined"))
 	 (fbody `(defun ,fname (&rest x)
 		   (declare (ignore x))
-		   (throw 'undefined (values nil 
+		   (throw 'undefined (values 'cant-translate 
 			  (format nil "Hit uninterpreted term ~a during evaluation"
 			    (ref-to-id ,expr)))))))
     (eval fbody)
@@ -69,7 +69,7 @@
 	 result
 	 (progn ,restore
 		(throw 'no-defn
-		       (values nil 
+		       (values 'cant-translate
 			       (format nil "~%Definition of ~a failed.~%~a"
 				 ,expr error)))))))
 
@@ -518,7 +518,7 @@
   (declare (ignore livevars))
   (let ((result (assoc expr bindings)))
     (if result (cdr result)
-	(throw 'no-defn (values nil (format nil "No binding for ~a" expr))))))
+	(throw 'no-defn (values 'cant-translate (format nil "No binding for ~a" expr))))))
 
 (defun pvs2cl-declare-vars (vars exprs)
   (let ((decls (pvs2cl-declare-vars* vars exprs)))
@@ -640,7 +640,7 @@
 						       (append (updateable-vars expr)
 							       livevars))
 				       ,i))))
-		(t (throw 'no-defn (values nil 
+		(t (throw 'no-defn (values 'cant-translate
 					   "Cannot handle non-scalar/subrange quantifiers.")))))
 	(pvs2cl_up* body bindings livevars))))
 
@@ -685,7 +685,7 @@
 						       (append (updateable-vars expr)
 							       livevars))
 				       ,i))))
-		(t (throw 'no-defn (values nil
+		(t (throw 'no-defn (values 'cant-translate
 					   "Cannot handle non-scalar/subrange quantifiers.")))))
 	(pvs2cl_up* body bindings livevars))))
 			
@@ -703,7 +703,7 @@
 	(if (const-decl? decl)
 	    (pvs2cl-constant expr bindings livevars)
 	    (let ((str (format NIL "~%~a is not translateable." expr)))
-	      (throw 'no-defn (values nil str))
+	      (throw 'no-defn (values 'cant-translate str))
 	      )))))
 
 (defmethod pvs2cl_up* ((expr list) bindings livevars)

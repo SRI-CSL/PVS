@@ -125,7 +125,7 @@
 		     (throw 'abort t)))
 		 (multiple-value-bind (cl-input error)
 		     (catch 'no-defn (pvs2cl tc-input))
-		   (unless cl-input
+		   (when (eq cl-input 'cant-translate)
 		     (format t "~s could not be translated:~%~a" input error)
 		     (throw 'abort t))
 		   (when *evaluator-debug*
@@ -135,7 +135,7 @@
 			 (if *pvs-eval-do-timing*
 			     (time (eval cl-input))
 			     (eval cl-input)))
-		     (if cl-eval
+		     (if (not error)
 			 (let ((clval (if *convert-back-to-pvs*
 					  (catch 'cant-translate
 					    (cl2pvs cl-eval (type tc-input)))
