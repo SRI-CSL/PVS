@@ -385,23 +385,26 @@
 
 (defmethod judgement-types* ((ex application))
   (let* ((op (operator* ex)))
-    (when (typep op 'name-expr)
-      (let* ((decl (declaration op))
-	     (vector (gethash decl
-			      (application-judgements-hash
-			       (judgements *current-context*)))))
-	(when vector
-	  (let* ((currynum (argument-application-number ex))
-		 (entry (when (<= currynum (length vector))
-			  (aref vector (1- currynum)))))
-	    (when entry
-	      (let* (;;(argtypes (judgement-types+ (argument ex)))
-		     (gtypes (compute-application-judgement-types
-			      ex
-			      (judgements-graph entry)))
-		     (jtypes (generic-application-judgement-types
-			      ex (generic-judgements entry) gtypes)))
-		jtypes))))))))
+    (typecase op
+      (name-expr
+       (let* ((decl (declaration op))
+	      (vector (gethash decl
+			       (application-judgements-hash
+				(judgements *current-context*)))))
+	 (when vector
+	   (let* ((currynum (argument-application-number ex))
+		  (entry (when (<= currynum (length vector))
+			   (aref vector (1- currynum)))))
+	     (when entry
+	       (let* (;;(argtypes (judgement-types+ (argument ex)))
+		      (gtypes (compute-application-judgement-types
+			       ex
+			       (judgements-graph entry)))
+		      (jtypes (generic-application-judgement-types
+			       ex (generic-judgements entry) gtypes)))
+		 jtypes))))))
+      (lambda-expr
+       (judgement-types* (beta-reduce ex))))))
 
 (defmethod judgement-types* ((ex branch))
   (let ((then-types (judgement-types+ (then-part ex)))
