@@ -1090,13 +1090,19 @@ bind tighter.")
 						   'list)))))))))
 
 (defmethod pp* ((ex list-expr))
-  (pprint-logical-block (nil (exprs ex) :prefix "(: " :suffix " :)")
+  (pprint-logical-block (nil (list-arguments ex) :prefix "(: " :suffix " :)")
     (pprint-indent :current 0)
     (loop (pp* (pprint-pop))
 	  (pprint-exit-if-list-exhausted)
 	  (write-char #\,)
 	  (write-char #\space)
 	  (pprint-newline :linear))))
+
+(defmethod list-arguments ((ex list-expr))
+  (cons (args1 ex) (list-arguments (args2 ex))))
+
+(defmethod list-arguments ((ex null-expr))
+  nil)
 
 (defmethod pp* ((ex null-expr))
   (write "(: :)"))
