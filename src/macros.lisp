@@ -406,12 +406,12 @@
       (setq *empty-expression-types* (make-hash-table :test 'eq)))))
 
 (defmacro with-case-insensitive-lower (&rest forms)
-  #+(or allegro-v6.0 allegro-v6.2)
+  #+(and allegro (version>= 6))
   `(unwind-protect
        (progn (excl:set-case-mode :case-insensitive-lower)
 	      ,@forms)
      (excl:set-case-mode :case-sensitive-lower))
-  #-(or allegro-v6.0 allegro-v6.2)
+  #-(and allegro (version>= 6))
   `(progn ,@forms))
 
 (defmacro get-declarations (id &optional decl-hash)
