@@ -127,15 +127,17 @@
 
 (defun status-importbychain* (tid &optional (indent 0))
   (let ((th (get-theory tid)))
-    (if (member tid *modules-visited*)
-	(format t "~vT... ~a already described~%" indent tid)
-	(let ((usedbys (find-all-usedbys tid)))
-	  (push tid *modules-visited*)
-	  (format t "~vTTheory ~a~%~vT  It is used by ~?~%"
-	    indent (theory-status-string (id th))
-	    indent *andusingctl* usedbys)
-	  (mapc #'(lambda (m) (status-importbychain* m (+ indent 2)))
-		usedbys)))))
+    (cond ((null th)
+	   (format t "~a is not parsed" tid))
+	  ((member tid *modules-visited*)
+	   (format t "~vT... ~a already described~%" indent tid))
+	  (t (let ((usedbys (find-all-usedbys tid)))
+	       (push tid *modules-visited*)
+	       (format t "~vTTheory ~a~%~vT  It is used by ~?~%"
+		 indent (theory-status-string (id th))
+		 indent *andusingctl* usedbys)
+	       (mapc #'(lambda (m) (status-importbychain* m (+ indent 2)))
+		     usedbys))))))
 
 
 ;;; Proof Status
