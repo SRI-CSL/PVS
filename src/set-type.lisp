@@ -2833,8 +2833,8 @@ required a context.")
 (defmethod set-type* ((ex lambda-expr) expected)
   (let ((sexpected (find-supertype expected)))
     (unless (typep sexpected 'funtype)
-      (type-error ex "~a expected here" expected))
-
+      (type-error ex "Type ~a~_ expected for LAMBDA expression~_ ~w"
+		  expected ex))
     (let* ((edomain (if (dep-binding? (domain sexpected))
 			(type (domain sexpected))
 			(domain sexpected)))
