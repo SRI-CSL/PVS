@@ -1561,13 +1561,14 @@
 
 (defun occurs-in-scope-of-uninterp-p (x trm)
   (and (application-p trm)
-       (if (uninterp? (funsym trm))
+       (if (or (interpsym? (funsym trm))
+	       (equality-p trm))
 	   (some #'(lambda (arg)
-		     (occurs-p x arg))
+		     (occurs-in-scope-of-uninterp-p x arg))
 		 (funargs trm))
-	 (some #'(lambda (arg)
-		   (occurs-in-scope-of-uninterp-p x arg))
+         (some #'(lambda (arg)
+	           (occurs-p x arg))
 	       (funargs trm)))))
-       
+	
        
  
