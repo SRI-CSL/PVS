@@ -2318,16 +2318,24 @@ in B must occur among the free variables in the Ai."
 				      formlist formlist nil)))
 	      (if (eq sub 'fail)
 		  (chain-antecedent* rest-fnums)
-		  (let ((fsub (loop for var in
+		  (let ((check (loop for var in
+				      (bindings nfmla1)
+				      always
+				      (assoc var sub
+					     :test #'same-declaration)))
+						    
+			(fsub (loop for var in
 				    (bindings nfmla1)
 				    collect
 				    (cdr (assoc var sub
 						:test
 						#'same-declaration)))))
-		    (then* (inst  fnum :terms fsub)
-			   (let ((x (car *new-fmla-nums*)))
-			     (split x))
-			   (flatten)))))
+		    (if check
+			(then* (inst  fnum :terms fsub)
+			       (let ((x (car *new-fmla-nums*)))
+				 (split x))
+			       (flatten))
+			(skip-msg "Could not instantiate all the forward-chain variables")))))
 		  (chain-antecedent* rest-fnums)))
       (skip-msg "Could not find a matching forward-chaining antecedent
 formula."))
