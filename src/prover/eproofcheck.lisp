@@ -1774,7 +1774,7 @@
 (defun undo-proof (info ps)
   (if (eq info 'undo)
       (cond ((and *record-undone-proofstate*
-	       (eq ps (car *record-undone-proofstate*)))
+		  (eq ps (car *record-undone-proofstate*)))
 	     (let ((oldps (cadr *record-undone-proofstate*))
 		   (newps (caddr *record-undone-proofstate*)))
 	       (format t "~%Restoring the proof to state prior to UNDO, ")
@@ -1791,9 +1791,11 @@
 		     (strategy ps) (strategy oldps))
 	       (setf (strategy newps)(query*-step))
 	       newps))
-	  (t (format t "~% UNDO operations must be immediately undone.")
-	     (setf (strategy ps) (query*-step));;(NSH:5/8/99)
-	     ps))
+	    (t (if *record-undone-proofstate*
+		   (format t "~%Undo operations must be immediately undone.")
+		   (format t "~%No undo to undo."))
+	       (setf (strategy ps) (query*-step));;(NSH:5/8/99)
+	       ps))
       (let ((newps (findps info ps)))
 	(cond ((null newps)
 	       (format t "~%Sorry. Couldn't find such a proof state.")
@@ -1817,7 +1819,7 @@
 				(pending-subgoals newps) NIL
 				(done-subgoals newps) NIL
 				(current-subgoal newps) NIL
-				(dependent-decls newps) NIL ;;NSH(12.14.94)
+				(dependent-decls newps) NIL;;NSH(12.14.94)
 				;;d-d was commented, now uncommented(4.9.99)
 				(current-rule newps) NIL
 				(current-xrule newps) NIL
