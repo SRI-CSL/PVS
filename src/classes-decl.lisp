@@ -324,8 +324,6 @@
   def-axiom
   (eval-info :fetch-as nil))
 
-(defcl proj-decl (const-decl))
-
 (defcl adt-constructor-decl (const-decl)
   ordnum)
 
@@ -429,6 +427,17 @@
 
 (defcl typed-conversion-decl (conversion-decl)
   (declared-type :parse t))
+
+;;; Same as conversion-decl, but prints differently
+(defcl conversionplus-decl (conversion-decl))
+
+(defcl typed-conversionplus-decl (typed-conversion-decl))
+
+;;; Not only prints differently, but removes the conversion(s)
+(defcl conversionminus-decl (conversion-decl))
+
+(defcl typed-conversionminus-decl (typed-conversion-decl))
+
 
 ;;; Type Expressions
 
