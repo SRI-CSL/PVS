@@ -162,9 +162,7 @@
 (defun get-theory-aliases (name)
   (when (mod-id name)
     (let ((mod-decls (remove-if-not #'(lambda (d)
-					(typep d '(or mod-decl
-						      theory-abbreviation-decl
-						      formal-theory-decl)))
+					(typep d 'theory-abbreviation-decl))
 		       (gethash (mod-id name) (current-declarations-hash)))))
       (get-theory-aliases* mod-decls))))
 
@@ -313,7 +311,8 @@
 				      (singleton? args)))))
 		     (t nil))))
       (if (null acts)
-	  (if (and (or (eq dth (current-theory))
+	  (if (and (null mappings)
+		   (or (eq dth (current-theory))
 		       (and (null (formals-sans-usings dth))
 			    (every (complement #'mappings)
 				   (gethash dth (current-using-hash)))))
