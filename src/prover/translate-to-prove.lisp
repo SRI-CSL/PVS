@@ -192,8 +192,7 @@
   ;; Creates a dummy record and an update of it.
   (let* ((dummy (get-rec-type-dummy-name (type expr)))
 	 (decl (mk-const-decl dummy (type expr)))
-	 (res (make-resolution decl (mod-name *current-context*)
-			       (type expr)))
+	 (res (make-resolution decl (current-theory-name) (type expr)))
 	 (name (mk-name dummy nil nil res))
 	 (nexpr (mk-name-expr name nil nil nil 'CONSTANT)))
     (setf (type nexpr) (type expr))
