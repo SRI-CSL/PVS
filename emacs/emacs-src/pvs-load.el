@@ -83,7 +83,7 @@
 (load "pvs-abbreviations" nil noninteractive)
 (if (or (and (memq pvs-emacs-system '(xemacs19 xemacs20))
 	     (boundp 'emacs-major-version)
-	     (or (= emacs-major-version 20)
+	     (or (>= emacs-major-version 20)
 		 (and (= emacs-major-version 19)
 		      (>= emacs-minor-version 12))))
 	(and (eq pvs-emacs-system 'emacs19)

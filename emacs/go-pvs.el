@@ -4,10 +4,12 @@
 ;;; Try to determine the version of Emacs being run, setup the load-path,
 ;;; and load the real pvs-load file from the byte compiled directory.
 
-;;; (setq debug-on-error t)
+(setq debug-on-error t)
 
 (defconst pvs-emacs-system
-  (cond ((string-match "XEmacs 20" (emacs-version))
+  (cond ((string-match "Xemacs 21" (emacs-version))
+	 'xemacs20)
+	((string-match "XEmacs 20" (emacs-version))
 	 'xemacs20)
 	((string-match "XEmacs 19" (emacs-version))
 	 'xemacs19)
