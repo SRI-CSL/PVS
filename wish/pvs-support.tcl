@@ -17,13 +17,11 @@ proc pvs-send-and-wait {arg} {
     emacs-eval [format {(pvs-send-and-wait '%s)} $arg]
 }
 
-set proof_x_sep 10
-set proof_y_sep 20
-
 proc create-dag {win} {
     upvar #0 dag-$win dag
 
     catch {unset dag}
+    set dag(items) {}
 }
 
 proc dag-bind-move {win suffix modifier button update} {
@@ -83,11 +81,16 @@ proc dag-motion-drag {win x y update} {
 proc dag-add-item {win tag succs linetags} {
     upvar #0 dag-$win dag
 
+    # Warning...this isn't updated by deletes.
+    set dag(items) [concat $dag(items) $tag]
+
     set dag(succs,$tag) $succs
 
     foreach item [$win find withtag $tag] {
-	set dag(idtotag,$item) $tag
-	$win addtag dag-item withtag $item
+	if {![string match *dagline* [$win gettags $item]]} {
+	    set dag(idtotag,$item) $tag
+	    $win addtag dag-item withtag $item
+	}
     }
 
     set bbox [$win bbox $tag.real]
@@ -106,7 +109,7 @@ proc dag-add-item {win tag succs linetags} {
 	set lineid \
 	    [$win create line 0 0 0 0 \
 		 -tags "$s dagline$tag,$s dagline.from$tag dagline.to$s dagline $linetags" \
-		 -fill [get-option otherColor] \
+		 -fill [get-option foreground] \
 		 -width 0]
 	set dag(linefrom,$lineid) $tag
 	set dag(lineto,$lineid) $s
@@ -159,10 +162,10 @@ proc move-dag-item {win tag x y} {
     $win move $tag [expr $x-$curx] [expr $y-$cury]
 
     set dag(topx,$tag) $x
-    set dag(topy,$tag) $y
+    set dag(topy,$tag) [expr $y-1]
 
     set dag(botx,$tag) $x
-    set dag(boty,$tag) [expr $y+[lindex $bbox 3]-[lindex $bbox 1]]
+    set dag(boty,$tag) [expr $y+1+[lindex $bbox 3]-[lindex $bbox 1]]
 
     update-lines-to $win $tag
     update-lines-from $win $tag
@@ -190,10 +193,77 @@ proc update-line {win id} {
 	$dag(topy,$dag(lineto,$id))
 }
 
-proc dag-layout {top} {
+proc dag-layout {win top} {
+    upvar #0 dag-$win dag
+
+    set dag(layout) "dag-layout $win $top"
+
+    foreach item $dag(items) {
+	set dag(level,$item) 0
+    }
+
+    set maxlev 0
+
+    set change 1
+    while {$change} {
+	set change 0
+	foreach item $dag(items) {
+	    set lev $dag(level,$item)
+	    foreach succ $dag(succs,$item) {
+		if {$dag(level,$succ)<=$lev} {
+		    set dag(level,$succ) [expr 1+$lev]
+		    set change 1
+		    if {$lev==$maxlev} {
+			incr maxlev
+		    }
+		}
+	    }
+	}
+    }
+
+    set y 0
+    for {set lev 0} {$lev<=$maxlev} {incr lev} {
+	set wd -[get-option xSep $win]
+	set ht 0
+	foreach item $dag(items) {
+	    if {$dag(level,$item)==$lev} {
+		set bbox [$win bbox $item.real]
+		set w [expr [lindex $bbox 2]-[lindex $bbox 0]]
+		set h [expr [lindex $bbox 3]-[lindex $bbox 1]]
+		incr wd [get-option xSep $win]
+		incr wd $w
+		if {$h>$ht} {
+		    set ht $h
+		}
+	    }
+	}
+	set x [expr -int($wd/2)]
+	foreach item $dag(items) {
+	    if {$dag(level,$item)==$lev} {
+		set bbox [$win bbox $item.real]
+		set w [expr [lindex $bbox 2]-[lindex $bbox 0]]
+		move-dag-item $win $item [expr $x+int($w/2)] $y
+		incr x [get-option xSep $win]
+		incr x $w
+	    }
+	}
+	incr y [get-option ySep $win]
+	incr y $ht
+    }	    
+}
+
+proc dagwin-layout {win} {
+    upvar #0 dag-$win dag
+
+    eval $dag(layout)
+    canvas-set-scroll $win 1
 }
 
 proc tree-layout {win top} {
+    upvar #0 dag-$win dag
+
+    set dag(layout) "tree-layout $win $top"
+
     update-widths $win $top
     move-tree $win $top
 }
@@ -201,16 +271,14 @@ proc tree-layout {win top} {
 proc update-widths {win tag} {
     upvar #0 dag-$win dag
 
-    global proof_x_sep
-
     set bbox [$win bbox $tag.real]
     set width [expr [lindex $bbox 2]-[lindex $bbox 0]]
 
-    set kw -$proof_x_sep
+    set kw -[get-option xSep $win]
     foreach sub $dag(succs,$tag) {
 	update-widths $win $sub
 	incr kw $dag(width,$sub)
-	incr kw $proof_x_sep
+	incr kw [get-option xSep $win]
     }
 
     set dag(width,$tag) [expr {$kw>$width?$kw:$width}]
@@ -218,26 +286,24 @@ proc update-widths {win tag} {
 
 proc move-tree {win tag {x 0} {y 0}} {
     upvar #0 dag-$win dag
-    global proof_x_sep
-    global proof_y_sep
 
     move-dag-item $win $tag $x $y
 
     set bbox [$win bbox $tag.real]
 
-    set kw -$proof_x_sep
+    set kw -[get-option xSep $win]
     foreach succ $dag(succs,$tag) {
 	incr kw $dag(width,$succ)
-	incr kw $proof_x_sep
+	incr kw [get-option xSep $win]
     }
 
     set curx [expr round($x-$kw/2)]
     foreach succ $dag(succs,$tag) {
 	move-tree $win $succ \
 	    [expr $curx+$dag(width,$succ)/2] \
-	    [expr $proof_y_sep+[lindex $bbox 3]]
+	    [expr [get-option ySep $win]+[lindex $bbox 3]]
 	incr curx $dag(width,$succ)
-	incr curx $proof_x_sep
+	incr curx [get-option xSep $win]
     }
 }
 
@@ -296,7 +362,7 @@ proc proof-tcc {path} {
 }
 
 proc proof-show {path} {
-    global $path proofwin env proof_y_sep
+    global $path proofwin env
 
     if [info exists ${path}(sequent)] {
 	show-sequent $path
@@ -306,18 +372,18 @@ proc proof-show {path} {
 		 -bitmap @$env(PVSPATH)/wish/sequent.xbm \
 		 -tags "$path.sequent $path $path.real sequent [ancestors $path .desc]" \
 		 -anchor n \
-		 -foreground [get-option otherColor]]
+		 -foreground [get-option foreground]]
 	if [info exists ${path}(rule)] {
 	    set bbox [$proofwin bbox $seq]
 	    set seqbot [lindex $bbox 3]
-	    set linebot [expr $seqbot+$proof_y_sep]
+	    set linebot [expr $seqbot+[get-option ySep $proofwin]]
 	    $proofwin create line 0 $seqbot 0 $linebot \
 		-tags "$path.line $path $path.real [ancestors $path .desc]" \
-		-fill [get-option otherColor]
+		-fill [get-option foreground]
 	    $proofwin create text 0 $linebot -text [set ${path}(rule)] \
 		-tags "$path.rule $path $path.real rule [ancestors $path .desc]" \
 		-anchor n \
-		-fill [get-option otherColor]
+		-fill [get-option foreground]
 	}
     }
 
@@ -401,8 +467,22 @@ proc path-to-lisp-path {path} {
 }
 
 proc my-foreground {win tag color} {
-    my-foregroundconfig $win $tag -foreground $color
-    my-foregroundconfig $win $tag -fill $color
+    if {[string match @* $color]} {
+	if {![string match */* $color]} {
+	    global env
+	    set color @$env(PVSPATH)/wish/[string range $color 1 end].xbm
+	}
+	my-config $win line $tag -fill black
+	my-config $win line $tag -stipple $color
+	my-config $win text $tag -fill black
+	my-config $win text $tag -stipple $color
+    } else {
+	my-config $win bitmap $tag -foreground $color
+	my-config $win line $tag -stipple {}
+	my-config $win line $tag -fill $color
+	my-config $win text $tag -stipple {}
+	my-config $win text $tag -fill $color
+    }
 }
 
 proc update-color {path tag} {
@@ -434,14 +514,14 @@ proc update-color {path tag} {
 	return
     }
     
-    my-foreground $proofwin $tag [get-option otherColor]
+    my-foreground $proofwin $tag [get-option foreground]
 }
 
 
-proc my-foregroundconfig {win tag opt val} {
+proc my-config {win type tag opt val} {
     foreach id [$win find withtag $tag] {
-	if {!([$win type $id]=={oval} && $opt=={-foreground})} {
-	    catch {$win itemconfig $id $opt $val}
+	if {[$win type $id]==$type} {
+	    $win itemconfig $id $opt $val
 	}
     }
 }
@@ -450,10 +530,10 @@ proc layout-proof {} {
     global proofwin
 
     tree-layout $proofwin top
-    center-canvas $proofwin
+    canvas-set-scroll $proofwin
 }
 
-proc center-canvas {win} {
+proc canvas-set-scroll {win {recenter 0}} {
     set allbbox [$win bbox all]
     set allbbox [lreplace $allbbox 1 1 [expr [lindex $allbbox 1]-10]]
     set allbbox [lreplace $allbbox 3 3 [expr [lindex $allbbox 3]+10]]
@@ -462,7 +542,9 @@ proc center-canvas {win} {
     set winwid [winfo width $win]
     set bboxwid [expr [lindex $allbbox 2]-[lindex $allbbox 0]]
     set margin [expr ($winwid-$bboxwid)/2]
-#    $win xview [expr -$margin / [lindex [$win config -scrollincrement] 4]]
+    if {$recenter} {
+	$win xview [expr -$margin / [lindex [$win config -scrollincrement] 4]]
+    }
 }
 
 proc proof-current {path} {
@@ -532,36 +614,6 @@ proc proof-current {path} {
     set curpath $path
 }
 
-set proof(lastX) 0
-set proof(lastY) 0
-
-proc thingDown {w x y} {
-    global proof
-    $w dtag selected
-    $w addtag selected withtag current
-    $w raise current
-    set proof(lastX) $x
-    set proof(lastY) $y
-
-    foreach tag [$w gettags selected] {
-	if [regexp {^(.*)\.sequent} $tag whole path] {
-	    set proof(update) $path.sequpdate
-	    break
-	} elseif [regexp {^(.*)\.rule} $tag whole path] {
-	    set proof(update) $path.ruleupdate
-	    break
-	}
-    }
-}
-
-proc thingMove {w x y} {
-    global proof
-    $w move selected [expr $x-$proof(lastX)] [expr $y-$proof(lastY)]
-    set proof(lastX) $x
-    set proof(lastY) $y
-    update-lines $w $proof(update)
-}
-
 proc clear-message {top} {
     $top.message config -text ""
 }
@@ -571,13 +623,12 @@ proc show-message {top text} {
     after 5000 "clear-message $top"
 }
 
-proc gen-ps {top} {
-    global proof canvcolors
+proc gen-ps {top psfile} {
+    global canvcolors
 
     set w $top.fr.c
 
     set bbox [$w bbox all]
-    set psfile $proof(directory)$proof(file)_$proof(name).ps
 
     $w postscript \
 	-file $psfile \
@@ -589,42 +640,146 @@ proc gen-ps {top} {
     show-message $top "Saved PS to $psfile"
 }
 
-proc setup-proof {name file directory counter} {
-    global proof proofwin
-    set proof(name) $name
-    set proof(file) $file
-    set proof(directory) $directory
-    set proof(counter) $counter
-    catch {destroy .show-proof}
+proc setup-dag-win {title icon PSname win_name class} {
     reset-options
-    set top [toplevel .show-proof -geometry 400x400 -class Proof]
+    catch {destroy $win_name}
+    set top [toplevel $win_name -geometry 400x400 -class $class]
     pack propagate $top 0
-    wm title $top "Proof of $name in $directory$file"
-    wm iconname $top "PVS Proof"
+    wm title $top $title
+    wm iconname $top $icon
     wm minsize $top 100 100
     wm maxsize $top 10000 10000
     set fr [frame $top.fr]
     pack $fr -expand yes -fill both
     set c [canvas $fr.c -xscroll "$fr.hscroll set" -yscroll "$fr.vscroll set" \
 	      -height 1 -width 1]
-    set proofwin $c
     create-dag $c
-    dag-bind-move $c .desc Control 1 to
-    dag-bind-move $c {} Control 2 both
     scrollbar $fr.vscroll -relief sunken -command "$c yview"
     scrollbar $fr.hscroll -relief sunken -command "$c xview" -orient horiz
     pack $fr.vscroll -side right -fill y
     pack $fr.hscroll -side bottom -fill x
     pack $c -expand yes -fill both
-    $c bind sequent <1> {get-current-sequent}
     label $top.message -text ""
     pack $top.message -fill x -side bottom
-    button $top.dismiss -text "Dismiss" -command {destroy .show-proof}
+    button $top.dismiss -text "Dismiss" -command "destroy $win_name"
     pack $top.dismiss -side left -padx 2 -pady 2
-    button $top.ps -text "Gen PS" -command "gen-ps $top"
+    button $top.ps -text "Gen PS" -command "gen-ps $top $PSname"
     pack $top.ps -side left -padx 2 -pady 2
-    bind $top <Destroy> "pvs-send {(stop-displaying-proof $counter)}"
-    bind $top <Destroy> {+
+    menubutton $top.conf -text Config -menu $top.conf.menu -relief raised
+    pack $top.conf -side right -padx 2 -pady 2
+    menu $top.conf.menu
+    $top.conf.menu add cascade -label "Horiz. Separation" \
+	-command "set conf_menu_orient x" \
+	-menu $top.conf.menu.sep
+    $top.conf.menu add cascade -label "Vert. Separation" \
+	-command "set conf_menu_orient y" \
+	-menu $top.conf.menu.sep
+    menu $top.conf.menu.sep
+    $top.conf.menu.sep add command -label 5 \
+	-command "option add Tk$top*\${conf_menu_orient}Sep 5; dagwin-layout $c"
+    $top.conf.menu.sep add command -label 10 \
+	-command "option add Tk$top*\${conf_menu_orient}Sep 10; dagwin-layout $c"
+    $top.conf.menu.sep add command -label 20 \
+	-command "option add Tk$top*\${conf_menu_orient}Sep 20; dagwin-layout $c"
+    $top.conf.menu.sep add command -label 50 \
+	-command "option add Tk$top*\${conf_menu_orient}Sep 50; dagwin-layout $c"
+    $top.conf.menu.sep add command -label 100 \
+	-command "option add Tk$top*\${conf_menu_orient}Sep 100; dagwin-layout $c"
+    $top.conf.menu.sep add command -label 200 \
+	-command "option add Tk$top*\${conf_menu_orient}Sep 200; dagwin-layout $c"
+    $top.conf.menu.sep add command -label Custom... \
+	-command "make-setter $top \$conf_menu_orient"
+    return $c
+}
+
+proc make-setter {top orient} {
+    set win $top.${orient}Sep
+    catch {destroy $win}
+
+    toplevel $win -class Setter
+
+    if {$orient=={x}} {
+	wm title $win "Horizontal separation"
+	wm iconname $win "Horiz sep"
+    } else {
+	wm title $win "Vertical separation"
+	wm iconname $win "Vert sep"
+    }
+
+    label $win.lab -text Separation:
+    pack $win.lab -side left
+    entry $win.ent -width 10 -relief sunken
+    bind $win.ent <Return> "option add Tk$top*${orient}Sep \[%W get\]; dagwin-layout $top.fr.c; destroy $win"
+    pack $win.ent -side left
+}
+    
+
+proc module-hierarchy {name file directory dag} {
+    catch {frame .mod-hier}
+    set win \
+	[setup-dag-win \
+	     "Theory hierarchy for $name in $directory$file" \
+	     "Theory Hierarchy" \
+	     $directory${name}_hier.ps \
+	     [string tolower .mod-hier.$name] \
+	     TheoryHierarchy]
+    dag-bind-move $win {} Control 1 both
+    $win bind :theory <Enter> "module-highlight $win"
+    $win bind :theory <Leave> "module-unhighlight $win"
+    $win bind :theory <1> "select-theory $win"
+    foreach item $dag {
+	set th [lindex $item 0]
+	set succs [lindex $item 1]
+	$win create text 0 0 -text $th -tags "$th $th.real :theory" -anchor n
+	dag-add-item $win $th $succs {}
+    }
+    $win lower dagline
+    dag-layout $win $name
+    canvas-set-scroll $win 1
+}
+    
+proc select-theory {win} {
+    upvar #0 dag-$win dag
+
+    set id [$win find withtag current]
+    set item $dag(idtotag,$id)
+
+    emacs-eval "(find-theory \"$item\")"
+}
+
+proc module-highlight {win} {
+    upvar #0 dag-$win dag
+
+    set id [$win find withtag current]
+    set item $dag(idtotag,$id)
+
+    $win dtag :hier_highlight
+    $win addtag :hier_highlight withtag $item
+    $win addtag :hier_highlight withtag dagline.to$item
+    $win addtag :hier_highlight withtag dagline.from$item
+
+    my-foreground $win :hier_highlight [get-option highlight]
+}
+
+proc module-unhighlight {win} {
+    my-foreground $win :hier_highlight [get-option foreground]
+}
+    
+
+proc setup-proof {name file directory counter} {
+    global proofwin
+    set proofwin \
+	[setup-dag-win \
+	     "Proof of $name in $directory$file" \
+	     "PVS Proof" \
+	     $directory${file}_$name.ps \
+	     .proof \
+	     Proof]
+    dag-bind-move $proofwin .desc Control 1 to
+    dag-bind-move $proofwin {} Control 2 both
+    $proofwin bind sequent <1> {get-current-sequent}
+    bind $proofwin <Destroy> "pvs-send {(stop-displaying-proof $counter)}"
+    bind $proofwin <Destroy> {+
 	foreach kid [winfo children .] {
 	    if {[string match .sequent* $kid]} {
 		destroy $kid
@@ -638,23 +793,30 @@ proc reset-options {} {
     option add Tk.tccColor green4 startupFile
     option add Tk.doneColor blue startupFile
     option add Tk.ancestorColor firebrick startupFile
-    option add Tk.otherColor black startupFile
+    option add Tk.foreground black startupFile
 
     if {[tk colormodel .]=={color}} {
+	option add Tk.highlight red startupFile
 	option add Tk.currentColor DarkOrchid startupFile
 	option add Tk.circleCurrent no startupFile
     } else {
+	option add Tk.highlight @gray startupFile
 	option add Tk.currentColor black startupFile
 	option add Tk.circleCurrent yes startupFile
     }
 
     option add Tk.maxHeight 30 startupFile
+
+    option add Tk*proof*xSep 10 startupFile
+    option add Tk*proof*ySep 20 startupFile
+    option add Tk*mod-hier*xSep 50 startupFile
+    option add Tk*mod-hier*ySep 100 startupFile
 }
 
-proc get-option {opt} {
+proc get-option {opt {win .}} {
     set upper [string toupper [string range $opt 0 0]][string range $opt 1 end]
 
-    option get . $opt $upper
+    option get $win $opt $upper
 }
 
 proc parse-bool {str} {
