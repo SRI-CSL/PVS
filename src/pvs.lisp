@@ -3148,3 +3148,7 @@
 	    (if (eq (car (optional-args rule)) '&rest)
 		(optional-args rule)
 		(cons '&optional (optional-args rule))))))
+
+;;; Allows help to be used outside the prover.
+(defmacro help (&optional name)
+  `(progn (funcall (funcall #'help-rule-fun ',name) nil) nil))
