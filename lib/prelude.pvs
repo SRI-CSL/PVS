@@ -3104,6 +3104,154 @@ finite_sets_def[T: TYPE]: THEORY
 END finite_sets_def
 
 
+nat_fun_props : THEORY
+%------------------------------------------------------------------------
+%      Author:  Bruno Dutertre 
+%
+%      Special properties of injective/surgective functions over nats
+%------------------------------------------------------------------------
+
+BEGIN
+
+  n, m : VAR nat
+
+  injection_n_to_m : THEOREM
+	(EXISTS (f : [below[n] -> below[m]]) : injective?(f)) IMPLIES n <= m
+
+  surjection_n_to_m : THEOREM
+	(EXISTS (f : [below[n] -> below[m]]) : surjective?(f)) IMPLIES m <= n
+
+  bijection_n_to_m : THEOREM
+	(EXISTS (f : [below[n] -> below[m]]) : bijective?(f)) IFF n = m
+
+END nat_fun_props
+
+
+card_def[T: TYPE]: THEORY
+%------------------------------------------------------------------------
+%
+%  Fundamental definition of card
+%
+%      Authors:  Bruno Dutertre 
+%                Ricky W. Butler
+%------------------------------------------------------------------------
+
+BEGIN
+
+  IMPORTING finite_sets_def[T]
+
+  S, S2: VAR finite_set
+  n,m: VAR nat
+  x: VAR T
+  p : VAR posnat
+
+  inj_set(S): (nonempty?[nat]) = 
+                 { n | EXISTS (f : [(S)->below[n]]) : injective?(f) }
+
+  Card(S): nat = min(inj_set(S))
+
+  inj_Card    : LEMMA Card(S) = n IMPLIES 
+                          (EXISTS (f : [(S) -> below[n]]) : injective?(f))
+
+  reduce_inj  : LEMMA (FORALL (f : [(S)->below[p]]) :
+                          injective?(f) AND NOT surjective?(f) IMPLIES 
+                              (EXISTS (g: [(S)->below[p-1]]): injective?(g)))
+
+  Card_injection: LEMMA (EXISTS (f : [(S)->below[n]]) : injective?(f)) 
+                            IMPLIES Card(S) <= n
+  
+  Card_surjection : LEMMA (EXISTS (f : [(S)->below[n]]) : surjective?(f)) 
+                              IMPLIES n <= Card(S) 
+        
+  Card_bijection : THEOREM
+        Card(S) = n IFF (EXISTS (f : [(S)->below[n]]) : bijective?(f))
+
+  Card_disj_union: THEOREM disjoint?(S,S2) IMPLIES 
+                              Card(union(S,S2)) = Card(S) + Card(S2)
+
+% ------------------------------------------------------------------------
+  card(S): {n: nat| n = Card(S)}               % inhibit expansion
+
+  card_def        : THEOREM card(S) = Card(S)  % But if you really need to
+
+END card_def
+
+
+finite_sets[T: TYPE]: THEORY
+
+BEGIN
+
+  IMPORTING card_def[T] 
+
+  A, B, S: VAR finite_set
+  x: VAR T
+  n: VAR nat
+
+  card_emptyset   : THEOREM card(emptyset[T]) = 0
+
+  empty_card      : THEOREM empty?(S) IFF card(S) = 0
+
+  card_empty?     : THEOREM (card(S) = 0) = empty?(S)
+
+  card_is_0       : THEOREM (card(S) = 0) = (S = emptyset)
+
+  nonempty_card   : THEOREM nonempty?(S) IFF card(S) > 0
+
+  card_singleton  : THEOREM card(singleton(x)) = 1
+
+  card_one        : THEOREM card(S) = 1 IFF (EXISTS x : S = singleton(x))
+
+  card_disj_union : THEOREM disjoint?(A,B) IMPLIES 
+                              card(union(A,B)) = card(A) + card(B)
+
+  card_diff_subset: THEOREM subset?(A, B) IMPLIES 
+                                  card(difference(B, A)) = card(B) - card(A)
+
+  card_subset     : THEOREM subset?(A,B) IMPLIES card(A) <= card(B)
+
+  card_plus       : THEOREM card(A) + card(B) = 
+                                card(union(A, B)) + card(intersection(A,B))  
+
+  card_union      : THEOREM card(union(A,B)) = card(A) + card(B) -
+                                               card(intersection(A,B))
+
+  card_add        : THEOREM card(add(x, S)) = card(S) 
+                                                   + IF S(x) THEN 0 ELSE 1 ENDIF
+
+  card_remove     : THEOREM card(remove(x, S)) = card(S)
+                                                   - IF S(x) THEN 1 ELSE 0 ENDIF
+
+  card_rest       : THEOREM NOT empty?(S) IMPLIES card(rest(S)) = card(S) - 1
+
+  same_card_subset: THEOREM subset?(A, B) AND card(A) = card(B) 
+                               IMPLIES A = B
+
+  smaller_card_subset : THEOREM subset?(A, B) AND card(A) < card(B) IMPLIES
+                                 (EXISTS x : member(x, B) AND NOT member(x, A))
+
+  card_1_has_1    : THEOREM card(S) >= 1 IMPLIES (EXISTS (x: T): S(x))
+
+  card_2_has_2    : THEOREM card(S) >= 2 IMPLIES
+                              (EXISTS (x,y: T): x /= y AND S(x) AND S(y))
+
+  card_intersection_le: THEOREM card(intersection(A,B)) <= card(A) AND
+                              card(intersection(A,B)) <= card(B)
+
+  N: VAR nat
+  card_bij        : THEOREM card(S) = N
+                             IFF (EXISTS (f: [(S) -> below[N]]): bijective?(f))
+
+  bij_exists      : COROLLARY (EXISTS (f: [(S) -> below(card(S))]):
+                                       bijective?(f))
+
+%  card_n_has_n    : THEOREM card(S) >= n IMPLIES
+%                              (EXISTS (X: [below[N] -> T]):
+%                                   (FORALL (i: below[N]): S(X(i))) AND
+%                                   (FORALL (i,j: below[N]): X(i) /= X(j)))
+               
+END finite_sets
+
+
 % function_iterate provides the iterate function, which composes a
 % function with itself a specified number of times.  The function must
 % have the same domain and range.  Two useful properties of iterate are
@@ -4139,3 +4287,50 @@ BEGIN
                                bv ^ (i, j) ^ k = bv^(j+k))
 
 END bv_caret 
+
+
+finite_sets_of_sets[T: TYPE]: THEORY
+ BEGIN
+  A, B: VAR finite_set[T]
+
+  powerset_natfun_rec(A: finite_set[T],
+                      n: upto(card(A)),
+                      f: (bijective?[(A), below(card(A))]),
+                      B: (powerset(A))):
+        RECURSIVE nat =
+   IF n = 0 THEN 0
+   ELSE LET nval = exp2(n-1) * IF member(inverse(f)(n-1), B) THEN 1 ELSE 0 ENDIF
+         IN nval + powerset_natfun_rec(A, n-1, f, B)
+   ENDIF
+  MEASURE n
+
+  powerset_natfun_rec_bound: LEMMA
+   FORALL (A: finite_set[T],
+           n: upto(card(A)),
+           f: (bijective?[(A), below(card(A))]),
+           B: (powerset(A))):
+     powerset_natfun_rec(A, n, f, B) < exp2(n)
+
+  powerset_natfun(A: finite_set[T])(B: (powerset(A))): below(exp2(card(A))) =
+    LET f = choose(bijective?[(A), below(card(A))])
+     IN powerset_natfun_rec(A, card(A), f, B)
+
+  powerset_natfun_inj_rec: LEMMA
+   FORALL (A: finite_set[T],
+           n: upto(card(A)),
+           f: (bijective?[(A), below(card(A))]),
+           B1, B2: (powerset(A))):
+    powerset_natfun_rec(A, n, f, B1) = powerset_natfun_rec(A, n, f, B2)
+      <=> (FORALL (m: upto(card(A))):
+            (m < n) IMPLIES
+               (member(inverse(f)(m), B1) IFF member(inverse(f)(m), B2)))
+
+  powerset_natfun_inj: LEMMA
+    FORALL (A: finite_set[T]):
+      FORALL (B1, B2: (powerset(A))):
+        powerset_natfun(A)(B1) = powerset_natfun(A)(B2) IMPLIES B1 = B2
+
+  powerset_finite: JUDGEMENT
+    powerset(A) HAS_TYPE finite_set[set[T]]
+
+ END finite_sets_of_sets
