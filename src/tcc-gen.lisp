@@ -63,7 +63,7 @@
 			  tform
 			  (declaration *current-context*)))))
 	 (*no-expected* nil)
-	 (uform (universal-closure xform))
+	 (uform (expose-binding-types (universal-closure xform)))
 	 (*bound-variables* *keep-unbound*)
 	 (id (make-tcc-name expr)))
     (assert (tc-eq (find-supertype (type uform)) *boolean*))
@@ -436,7 +436,7 @@
 			(t (beta-reduce
 			    (subst-var-for-recs
 			     form (declaration *current-context*))))))
-	   (uform (universal-closure xform))
+	   (uform (expose-binding-types (universal-closure xform)))
 	   (id (make-tcc-name)))
       (push name *recursive-tcc-names*)
       (unless (tc-eq uform *true*)
@@ -651,7 +651,7 @@
 	 (var (make-new-variable '|x| type))
 	 (form (mk-exists-expr (list (mk-bind-decl var stype)) *true*))
 	 (tform (add-tcc-conditions (typecheck* form *boolean* nil nil)))
-	 (uform (universal-closure tform))
+	 (uform (expose-binding-types (universal-closure tform)))
 	 (id (make-tcc-name)))
     (typecheck* (if (eq fclass 'OBLIGATION)
 		    (mk-existence-tcc id uform)
@@ -733,7 +733,7 @@
 		      (t (beta-reduce (subst-var-for-recs
 				       tform
 				       (declaration *current-context*))))))
-	 (uform (universal-closure xform))
+	 (uform (expose-binding-types (universal-closure xform)))
 	 (id (make-tcc-name)))
     (unless (tc-eq uform *true*)
       (when (and *false-tcc-error-flag*
@@ -782,7 +782,7 @@
 		    (beta-reduce (subst-var-for-recs
 				  tform
 				  (declaration *current-context*)))))
-	 (uform (universal-closure xform))
+	 (uform (expose-binding-types (universal-closure xform)))
 	 (id (make-tcc-name)))
     (unless (tc-eq uform *true*)
       (when (and *false-tcc-error-flag*
@@ -818,7 +818,7 @@
 	 (xform (beta-reduce (subst-var-for-recs
 			      tform
 			      (declaration *current-context*))))
-	 (uform (universal-closure xform))
+	 (uform (expose-binding-types (universal-closure xform)))
 	 (*bound-variables* nil)
 	 (*old-tcc-name* nil)
 	 (ndecl (typecheck* (mk-cases-tcc id uform) nil nil nil)))
@@ -971,8 +971,10 @@
 	 (uform (cond ((tcc-evaluates-to-true conc form)
 		       *true*)
 		      (*simplify-tccs*
-		       (pseudo-normalize (universal-closure form)))
-		      (t (beta-reduce (universal-closure form)))))
+		       (pseudo-normalize (expose-binding-types
+					  (universal-closure form))))
+		      (t (beta-reduce (expose-binding-types
+				       (universal-closure form))))))
 	 (id (make-tcc-name)))
     (unless (tc-eq uform *true*)
       (when (and *false-tcc-error-flag*
@@ -1115,7 +1117,7 @@
 			      tform
 			      (declaration *current-context*)))))
 	     (*no-expected* nil)
-	     (uform (universal-closure xform))
+	     (uform (expose-binding-types (universal-closure xform)))
 	     (*bound-variables* *keep-unbound*)
 	     (id (make-tcc-name)))
 	(assert (tc-eq (find-supertype (type uform)) *boolean*))
@@ -1177,7 +1179,7 @@
 				       tform
 				       (declaration *current-context*))))))
 	 (*no-expected* nil)
-	 (uform (universal-closure xform))
+	 (uform (expose-binding-types (universal-closure xform)))
 	 (*bound-variables* *keep-unbound*)
 	 (id (make-tcc-name)))
     (assert (tc-eq (find-supertype (type uform)) *boolean*))
