@@ -5,9 +5,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Sun May 28 19:14:47 1995
 ;; Update Count    : 69
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -97,7 +95,7 @@
 			       (te-id te)))))
   id
   status
-  dependencies
+  dependencies ;; An alist ((lib-ref theory-id ...) ... (nil theory-id ...))
   formula-info)
 
 
@@ -285,7 +283,8 @@ pvs-strategies files.")
 
 (defun write-object-files (&optional force?)
   (update-stored-mod-depend)
-  (when (ensure-bin-subdirectory)
+  (when (and (> (hash-table-count *pvs-modules*))
+	     (ensure-bin-subdirectory))
     (if *testing-restore*
 	(maphash #'(lambda (id theory)
 		     (declare (ignore id))
@@ -883,6 +882,7 @@ pvs-strategies files.")
       (loop for (libref . theories) in (te-dependencies te)
 	    do (restore-theories* libref theories))
       (restore-theory (id te)))
+    (assert (null *adt-type-name-pending*))
     (let ((files nil))
       (dolist (th *theories-restored*)
 	(let ((file (filename th)))
@@ -1215,17 +1215,25 @@ pvs-strategies files.")
 		(if (string= type "[real -> real]")
 		    (cadr decls)
 		    (car decls))))
-	  (let ((theory (or (get-theory (mk-modname theory-id library))
-			    (and (null library)
-				 ;; Old proofs may not have library
-				 ;; set, so we look for a unique one
-				 (let ((theories (get-imported-theories
-						  theory-id)))
-				   (if (cdr theories)
-				       (pvs-message
-					   "Loading Proof Error: theory reference ambiguous - ~a"
-					   (id (car theories)))
-				       (car theories)))))))
+	  (let ((theory
+		 (or (and library
+			  (let ((prehash
+				 (cadr (gethash library
+						*prelude-libraries*))))
+			    (and prehash (gethash theory-id prehash))))
+		     (get-theory (mk-modname theory-id nil
+					     (when library
+					       (get-lib-id library))))
+		     (and (null library)
+			  ;; Old proofs may not have library
+			  ;; set, so we look for a unique one
+			  (let ((theories (get-imported-theories
+					   theory-id)))
+			    (if (cdr theories)
+				(pvs-message
+				    "Loading Proof Error: theory reference ambiguous - ~a"
+				  (id (car theories)))
+				(car theories)))))))
 	    (when theory
 	      (let ((decls (remove-if-not
 			       #'(lambda (d)
@@ -1487,7 +1495,7 @@ pvs-strategies files.")
       (let ((prfpath (make-prf-pathname filename)))
 	(when (file-exists-p prfpath)
 	  (multiple-value-bind (ignore error)
-	      (ignore-errors
+	      (ignore-lisp-errors
 		(with-open-file (input prfpath :direction :input)
 		  (restore-theory-proofs-from-file input prfpath theory)))
 	    (declare (ignore ignore))
@@ -1653,7 +1661,7 @@ pvs-strategies files.")
   (let ((prf-file (make-prf-pathname filename dir)))
     (when (file-exists-p prf-file)
       (multiple-value-bind (proofs error)
-	  (ignore-errors
+	  (ignore-lisp-errors
 	    (with-open-file (input prf-file :direction :input)
 	      (labels ((reader (proofs)
 			       (let ((nproof (read input nil 'eof)))
@@ -1959,7 +1967,7 @@ pvs-strategies files.")
 	(usedbys nil))
     (mapc #'(lambda (fe)
 	      (mapc #'(lambda (te)
-			(let ((deps (te-dependencies te)))
+			(let ((deps (cdr (assq nil (te-dependencies te)))))
 			  (when (memq tid deps)
 			    (pushnew (id te) usedbys))))
 		    (ce-theories fe)))
@@ -2124,3 +2132,20 @@ pvs-strategies files.")
 ;; 	   ("2" (INST + "n3!1+2" "n5!1-1") (("1" (ASSERT)) ("2" (ASSERT))))))))
 
 ;;(defun editable-justification-to-sexp (just)
+
+(defun maximal-theory-hierarchy-elements ()
+  (let ((max nil) (nonmax nil))
+    (dolist (ce (pvs-context-entries))
+      (dolist (te (ce-theories ce))
+	(loop for (libref . theories) in (te-dependencies te)
+	      do (when (null libref)
+		   (dolist (th theories)
+		     (unless (memq th nonmax)
+		       (when (memq th max)
+			 (setq max (remove th max)))
+		       (push th nonmax)))))
+	(unless (memq (te-id te) nonmax)
+	  (push (te-id te) max))))
+    (values max nonmax)))
+
+			   
