@@ -131,7 +131,7 @@ intervenes."
   (setq pvs-top-regexp
 	"^\\(\\[[0-9]+i?c?\\] \\|\\[step\\] \\)?\\(<?[-A-Za-z]* ?[0-9]*>\\|[-A-Za-z0-9]+([0-9]+):\\) ")
   (setq ilisp-error-regexp
-	"\\(Error:[^\n]*\\)\\|\\(Break:[^\n]*\\)")
+	"^\\(Error:[^\n]*\\)\\|\\(Break:[^\n]*\\)")
   (setq pvs-gc-end-regexp ";;; Finished GC"))
 
 (defun pvs-allegro-binary-extension ()
@@ -759,7 +759,8 @@ window."
 and output if there is an error or the output is multiple lines and
 let the user decide what to do."
   (if (and (stringp output)
-	   (string-match (ilisp-value 'ilisp-error-regexp) output))
+	   (let ((case-fold-search nil))
+	     (string-match (ilisp-value 'ilisp-error-regexp) output)))
       (if (and (or (not wait-p) error-p)
 	       (setq output (comint-remove-whitespace output))
 	       (or error-p (string-match "\n" output)))
