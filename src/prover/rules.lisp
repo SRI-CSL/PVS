@@ -203,8 +203,10 @@ used since the undo by (undo undo)")
 (defmethod negate ((formula negation))
   (argument formula))
 
+; following is conservative - try changing
+; to make!-negation for 3.0
 (defmethod negate (formula)
-  (make!-negation formula))
+  (make-negation formula))
 
 (defun check-prop-axiom (s-forms)
   (let ((forms (mapcar #'formula s-forms)))
