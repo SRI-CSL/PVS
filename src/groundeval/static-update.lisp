@@ -29,33 +29,15 @@
 
 ;;this is the only case where updateable? can be false, because
 ;;the given function type is not an array.  
-(defmethod updateable? ((texpr funtype)) 
+(defmethod updateable? ((texpr funtype)) ;;add enum types, subrange.
   (and (or (below? (domain texpr))(upto? (domain texpr)))
        (updateable? (range texpr))))
-
-
-;  (let ((lo-hi (sub-range? (domain texpr))))
-;    (and lo-hi
-;	 (zerop (car lo-hi))
-;	 (<= (cdr lo-hi) *eval-array-bound*)))
-
 
 (defmethod updateable? ((texpr recordtype))
   (updateable? (mapcar #'type (fields texpr))))
 
 (defmethod updateable? ((texpr subtype))
   (updateable? (find-supertype texpr)))
-
-;(defmethod updateable? ((texpr adt-type-name))
-;  (some #'(lambda (constr)
-;	    (and (funtype? (type constr))
-;		 (loop for ty in (types (domain (type constr)))
-;		       
-;		       thereis (and (not (tc-eq (find-supertype ty)
-;					texpr))
-;				    (updateable? ty)))))
-;	(constructors texpr)))
-
 
 (defmethod updateable? ((texpr list))
   (or (null texpr)
@@ -109,12 +91,6 @@
 (defmethod contains-updateable? ((texpr funtype))
   (or (below? (domain texpr))(upto? (domain texpr))
        (contains-updateable? (range texpr))))
-
-;  (let ((lo-hi (sub-range? (domain texpr))))
-;    (and lo-hi
-;	 (zerop (car lo-hi))
-;	 (<= (cdr lo-hi) *eval-array-bound*)))
-
 
 (defmethod contains-updateable? ((texpr recordtype))
   T)
@@ -208,67 +184,58 @@
 ;;since these cannot be updated if nothing is known
 ;;about their type.  
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;contains-possibly-updateable-or-closure? is used to check if
+;;the expression's type is such that some updateable structure might
+;;be saved in the result either because the type itself contained
+;;updateable structure or because it included a function type which
+;;would correspond to a closure value which might keep some variables
+;;live in the value.   Used in updateable-free-formal-vars.
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;free-lambda-vars is unused and should be deleted.
-;(defmethod free-lambda-vars ((expr application))
-;  (with-slots (operator argument)
-;      expr
-;    (union (free-lambda-vars operator)
-;	   (free-lambda-vars argument))))
+(defmethod contains-possibly-updateable-or-closure? ((texpr tupletype))
+  T)
 
-;(defmethod free-lambda-vars ((expr lambda-expr))
-;  (free-formal-vars expr))
+(defmethod contains-possibly-updateable-or-closure? ((texpr funtype))
+  T)
 
-;(defmethod free-lambda-vars ((expr binding-expr))
-;  (set-difference (free-lambda-vars (expression expr))
-;		  (bindings expr)
-;		  :test #'same-declaration))
+(defmethod contains-possibly-updateable-or-closure? ((texpr recordtype))
+  T)
 
-;(defmethod free-lambda-vars ((expr projection-expr))
-;  (free-lambda-vars (argument expr)))
+(defmethod contains-possibly-updateable-or-closure? ((texpr subtype))
+  (contains-possibly-updateable-or-closure? (find-supertype texpr)))
 
-;(defmethod free-lambda-vars ((expr field-application))
-;  (free-lambda-vars (argument expr)))
+(defmethod contains-possibly-updateable-or-closure? ((texpr adt-type-name))
+  (some #'(lambda (constr)
+	    (and (funtype? (type constr))
+		 (let* ((dom (domain (type constr)))
+			(types (if (tupletype? dom)
+				 (types dom)
+				 (list dom))))
+		 (loop for ty in types
+		       thereis (and (not (tc-eq (find-supertype ty)
+					texpr))
+				    (contains-possibly-updateable-or-closure? ty))))))
+	(constructors texpr)))
 
-;(defmethod free-lambda-vars ((expr list))
-;  (when (consp expr)
-;    (union (free-lambda-vars (car expr))
-;	   (free-lambda-vars (cdr expr)))))
 
-;(defmethod free-lambda-vars ((expr tuple-expr))
-;  (free-lambda-vars (exprs expr)))
+(defmethod contains-possibly-updateable-or-closure? ((texpr list))
+  (when (consp texpr)
+    (or (contains-possibly-updateable-or-closure? (car texpr))
+	(contains-possibly-updateable-or-closure? (cdr texpr)))))
 
-;(defmethod free-lambda-vars ((expr record-expr))
-;  (free-lambda-vars (assignments expr)))
+(defmethod contains-possibly-updateable-or-closure? ((texpr actual))
+  (contains-possibly-updateable-or-closure? (type-value texpr)))
 
-;(defmethod free-lambda-vars ((expr update-expr))
-;  (union (free-lambda-vars (expression expr))
-;	 (free-lambda-vars (assignments expr))))
+(defmethod contains-possibly-updateable-or-closure? ((texpr type-name))
+  (formal-type-decl? (declaration texpr)))
+;;In the context, formal type parameters can later become
+;;updateable.  
 
-;(defmethod free-lambda-vars ((expr assignment))
-;  (free-lambda-vars (expression expr)))
+(defmethod contains-possibly-updateable-or-closure? ((texpr T))
+  NIL) ;;It is okay to say not updateable? for uninterpreted
+;;since these cannot be updated if nothing is known
+;;about their type.  
 
-;(defmethod free-lambda-vars ((expr actual))
-;  (unless (type-value expr)
-;    (free-lambda-vars (expr expr))))
-
-;(defmethod free-lambda-vars ((expr T))
-;  NIL)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;(defmethod output-vars* ((expr name-expr))
-;  (cond ((variable? expr) expr)
-;	((pvs2cl-primitive? expr)
-;	 (output-prim-vars expr))
-;	((datatype-constant? expr)
-;	 (if (recognizer? expr)
-;	     nil
-;	     (loop for i from 0 to (1- (arity expr))
-;		   collect i)))
-;	((defined-constant? expr)
-;	 (
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -293,7 +260,7 @@
   (loop for ex in expr nconc (updateable-free-formal-vars ex)))
 
 (defmethod updateable-free-formal-vars ((expr T))
-  (when (contains-possibly-updateable? (type expr))
+  (when (contains-possibly-updateable-or-closure? (type expr))
     (updateable-vars expr)))  ;was free-formal-vars
 
 (defmethod updateable-output-vars ((expr list))

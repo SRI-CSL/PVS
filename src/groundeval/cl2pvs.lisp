@@ -1,7 +1,9 @@
 (in-package 'pvs)
 
 (defun cl2pvs (sexpr type &optional context)
-  (let ((pexpr (cl2pvs* sexpr type context)))
+  (let ((context (or context *current-context*))
+	(pexpr (cl2pvs* sexpr type context)))
+
     (typecheck pexpr :expected type :context context
 	       :tccs 'none)))
 

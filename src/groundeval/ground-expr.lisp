@@ -15,7 +15,11 @@
   (assert (type expr))
   (and (not (freevars expr))          ; no free variables
        (not (funtype? (type expr)))   ; not a closure
+       
        (ground-expr?* expr)))
+
+(defun ground-type? (type)
+  (not (funtype? type)))
 
 ; No quantification
 

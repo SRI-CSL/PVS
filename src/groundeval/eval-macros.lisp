@@ -1,12 +1,9 @@
 (in-package 'pvs)
 
-(defvar *eval-array-bound* 10000)
-(defvar *eval-verbose* nil)
+(defvar *eval-array-bound* 10000)    ;shouldn't be used
+(defvar *eval-verbose* nil)          ;turn on for verbose translation trace
 
-(defmacro compile-load (file)
-  `(progn (compile-file ,file)
-	  (load ,file)))
-
+;;unary primitives
 (defun pvs_= (x) (equalp (svref x 0)(svref x 1)))
 (defun pvs_/= (x)(not (equalp (svref x 0)(svref x 1))))
 (defun pvs_IMPLIES (x) (OR (NOT (svref x 0)) (svref x 1)))
@@ -39,6 +36,7 @@
 (defun pvs_|null?| (x) (null x))
 (defun pvs_|restrict| (f) f)
 
+;;multiary macro versions of primitives
 (defmacro pvs__= (x y)
   (let ((xx (gentemp))
 	(yy (gentemp)))
@@ -85,6 +83,7 @@
 
 (defmacro project (index tuple)
   (let ((ind (1- index)))
-    `(svref ,tuple ,ind)
-	 ))
+    `(let ((val (svref ,tuple ,ind)))
+       (if (eq val 'undefined)(undefined nil) val)   ;; what can we do here?
+	 )))
 
