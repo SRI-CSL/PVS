@@ -30,7 +30,7 @@
 ;;this is the only case where updateable? can be false, because
 ;;the given function type is not an array.  
 (defmethod updateable? ((texpr funtype)) ;;add enum types, subrange.
-  (and (or (below? (domain texpr))(upto? (domain texpr)))
+  (and (or (simple-below? (domain texpr))(simple-upto? (domain texpr)))
        (updateable? (range texpr))))
 
 (defmethod updateable? ((texpr recordtype))
@@ -76,7 +76,7 @@
       accum))
 
 (defmethod top-updateable-types ((type funtype) accum)
-  (if (or (below? (domain type))(upto? (domain type)))
+  (if (or (simple-below? (domain type))(simple-upto? (domain type)))
       (cons type accum) ;;no need to go into range since 
       accum))         ;;dest. updates stop with funtypes.
 
@@ -89,7 +89,7 @@
   T)
 
 (defmethod contains-updateable? ((texpr funtype))
-  (or (below? (domain texpr))(upto? (domain texpr))
+  (or (simple-below? (domain texpr))(simple-upto? (domain texpr))
        (contains-updateable? (range texpr))))
 
 (defmethod contains-updateable? ((texpr recordtype))
@@ -135,7 +135,7 @@
   T)
 
 (defmethod contains-possibly-updateable? ((texpr funtype))
-  (or (below? (domain texpr))(upto? (domain texpr))
+  (or (simple-below? (domain texpr))(simple-upto? (domain texpr))
        (contains-possibly-updateable? (range texpr))))
 
 

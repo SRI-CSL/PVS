@@ -16,14 +16,15 @@
     (unwind-protect
 	(if theory
 	    (let ((*current-theory* theory)
-		  (*generate-tccs* 'none)
+		  (*generate-tccs* 'all)
 		  (*current-context* (or (saved-context theory)
 					 (context nil)))
 		  (*in-evaluator* t)
 		  (*pvs-eval-do-timing* t)
 		  (*destructive?* t)
 		  (*convert-back-to-pvs* t))
-	      (format t "~%~%PVS Ground Evaluation.~%Enter a ground expression in quotes at the <GndEval> prompt~%Type help for a list of commands~%")
+	      (format t "~%~%PVS Ground Evaluation.~%Enter a ground expression in quotes at the <GndEval> prompt.~%Type help for a list of commands.~%")
+	      (format t "~%*CAVEAT*: evaluation of expressions which depend on unproven TCCs may be~%unsound, and result in the evaluator crashing into lisp, running out of~%stack, or worse.  If you crash into lisp, type (restore) to resume.~%")
 	      (evaluate))
 	    (pvs-message "Theory ~a is not typechecked" theoryname))
       (pvs-emacs-eval "(pvs-evaluator-ready)"))))
@@ -54,7 +55,7 @@
 	   (format t "  noconvert      : don't convert resulting expressions~%")
 	   (format t "  verbose        : enable verbose compilation messages~%")
 	   (format t "  quiet          : disable verbose compilation messages~%")
-	   (format t "~%Current values are:~%")
+	   (format t "~%Current values are: ")
 	   (unless *pvs-eval-do-timing* (format t "no"))
 	   (format t "timing, ")
 	   (unless *destructive?* (format t "non"))
@@ -104,7 +105,6 @@
 	  (t
 	   input))))
 
-
 (defun evaluate ()
   (let ((result
 	 (catch 'abort
@@ -112,31 +112,50 @@
 	     (catch 'tcerror
 	       (let* ((input (ignore-errors (gqread)))
 		      (pr-input (pc-parse input 'expr))
-		      (tc-input (pc-typecheck pr-input))
-		      (cl-input (pvs2cl tc-input))
-		      (cl-eval  (catch 'undefined
-				  (if *pvs-eval-do-timing*
-				      (time (eval cl-input))
-				      (eval cl-input)))))
-		 (if (stringp cl-eval)
-		     (format t "~a" cl-eval)
-		     (format t "~%==> ~% ~a"
-		       (if *convert-back-to-pvs*
-			   (if (ground-type? (type tc-input))
-			       (cl2pvs cl-eval (type tc-input))
-			       (progn
-				 (format nil
-				     "Not ground - cannot convert back to PVS~%~a"
-				   cl-eval)))
-			   cl-eval)))
+		      (*tccforms* nil)
+		      (tc-input (pc-typecheck pr-input)))
+		 (when *evaluator-debug*
+		   (format t "typechecks to:~%")
+		   (show tc-input))
+		 (when *tccforms*
+		   (format t "~%Typechecking ~s produced the following TCCs:~%" input)
+		   (evaluator-print-tccs *tccforms*)
+		   (format t "~%~%Evaluating in the presence of unproven TCCs may be unsound~%")
+		   (unless (pvs-y-or-n-p "Do you wish to proceed with evaluation?")
+		     (throw 'abort t)))
+		 (let ((cl-input (pvs2cl tc-input)))
+		   (when *evaluator-debug*
+		     (format t "~a translates to ~a~%" tc-input cl-input))
+		   (multiple-value-bind (cl-eval error)
+		       (catch 'undefined
+			 (if *pvs-eval-do-timing*
+			     (time (eval cl-input))
+			     (eval cl-input)))
+		     (if cl-eval
+			 (let ((clval (if *convert-back-to-pvs*
+					  (catch 'cant-translate
+					    (cl2pvs cl-eval (type tc-input)))
+					  cl-eval)))
+			   (format t "~%==> ~%")
+			   (cond ((and clval *convert-back-to-pvs*)
+				  (unparse clval))
+				 (t
+				  (when *convert-back-to-pvs*
+				    (format t "Result not ground.  Cannot convert back to PVS."))
+				  (format t "~%~a" cl-eval))))
+			 (format t "~%~a" error))))
 		 t))))))
     (when result
       (evaluate))))
 
-
-
-
-
+(defun evaluator-print-tccs (tccforms)
+  (when tccforms
+    (let ((tccform (car tccforms)))
+      (format t "~%~a TCC for ~a: ~a"
+	(tccinfo-kind tccform)
+	(tccinfo-expr tccform)
+	(tccinfo-formula tccform))
+      (evaluator-print-tccs (cdr tccforms)))))
 
 
 

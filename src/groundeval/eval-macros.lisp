@@ -3,6 +3,51 @@
 (defvar *eval-array-bound* 10000)    ;shouldn't be used
 (defvar *eval-verbose* nil)          ;turn on for verbose translation trace
 
+;; helpful macros
+(defmacro in-info (decl)
+  `(internal (eval-info ,decl)))
+
+(defmacro ex-info (decl)
+  `(external (eval-info ,decl)))
+
+(defmacro in-defn (decl)
+  `(unary (in-info ,decl)))
+
+(defmacro in-defn-m (decl)
+  `(multiary (in-info ,decl)))
+
+(defmacro in-defn-d (decl)
+  `(destructive (in-info ,decl)))
+
+(defmacro ex-defn (decl)
+  `(unary (ex-info ,decl)))
+
+(defmacro ex-defn-m (decl)
+  `(multiary (ex-info ,decl)))
+
+(defmacro ex-defn-d (decl)
+  `(destructive (ex-info ,decl)))
+
+(defmacro in-name (decl)
+  `(name (in-defn ,decl)))
+
+(defmacro in-name-m (decl)
+  `(name (in-defn-m ,decl)))
+
+(defmacro in-name-d (decl)
+  `(name (in-defn-d ,decl)))
+
+(defmacro ex-name (decl)
+  `(name (ex-defn ,decl)))
+
+(defmacro ex-name-m (decl)
+  `(name (ex-defn-m ,decl)))
+
+(defmacro ex-name-d (decl)
+  `(name (ex-defn-d ,decl)))
+
+
+
 ;;unary primitives
 (defun pvs_= (x) (equalp (svref x 0)(svref x 1)))
 (defun pvs_/= (x)(not (equalp (svref x 0)(svref x 1))))
@@ -40,7 +85,6 @@
 (defun pvs_|nth| (x) (nth (svref x 1) (svref x 0)))
 (defun pvs_|append| (x) (append (svref x 0) (svref x 1)))
 (defun pvs_|reverse| (x) (reverse x))
-
 
 
 ;;multiary macro versions of primitives

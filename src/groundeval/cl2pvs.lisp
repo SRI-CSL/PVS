@@ -1,18 +1,30 @@
 (in-package 'pvs)
 
 (defun cl2pvs (sexpr type &optional context)
-  (let ((context (or context *current-context*))
-	(pexpr (cl2pvs* sexpr type context)))
+  (let* ((context (or context *current-context*))
+	 (pexpr (cl2pvs* sexpr type context)))
+    pexpr))
 
-    (typecheck pexpr :expected type :context context
-	       :tccs 'none)))
+;;
+;; This needs to be put back in if we ever want to use the result of
+;; evaluation in any further computation.  It's pointless at the moment as
+;; we're just printing it:
+;;
+;;    (typecheck pexpr :expected type :context context
+;;	       :tccs 'none)))
 
+  
 (defmethod cl2pvs* (sexpr (type type-name) context)
+  (declare (ignore context))
   (if (tc-eq type *number*)
       (mk-number-expr sexpr)
       (if (tc-eq type *boolean*)
 	  (if sexpr *true* *false*)
-	  (break "Not translateable: ~a" sexpr))))
+	  (throw 'cant-translate nil))))
+
+(defmethod cl2pvs* (sexpr (type funtype) context)
+  (declare (ignore sexpr type context))
+  (throw 'cant-translate nil))
 
 (defmethod cl2pvs* (sexpr (type subtype) context)
   (cl2pvs* sexpr (find-supertype type) context))
@@ -25,63 +37,128 @@
 					context))))
 
 (defmethod cl2pvs* (sexpr (type recordtype) context)
-  (mk-record-expr
-   (loop for fld in (sorted-fields type)
-	 as i from 0
-	 collect (mk-assignment 'uni
-		   (list (list (mk-name-expr (id fld))))
-		   (cl2pvs* (svref sexpr i) (type fld) context)))))
+  (cond ((string-type? type)
+	 (cl2pvs*-string sexpr))
+	((finseq-type? type)
+	 (throw 'cant-translate nil))
+	(t
+	 (mk-record-expr
+	  (loop for fld in (sorted-fields type)
+		as i from 0
+		collect (mk-assignment 'uni
+			  (list (list (mk-name-expr (id fld))))
+			  (cl2pvs* (svref sexpr i) (type fld) context)))))))
+
+(defmethod string-type? ((type recordtype))
+  (let ((range (finseq-type? type)))
+    (and range
+	 (char-type? range))))
+  
+(defmethod string-type? (type)
+  (declare (ignore type))
+  nil)
+
+(defmethod finseq-type? ((type recordtype))
+  (with-slots (fields) type
+    (and (= (length fields) 2)
+	 (let ((lenfieldtype (type (car fields)))
+	       (seqfieldtype (type (cadr fields))))
+	   (and (tc-eq lenfieldtype *naturalnumber*)
+		(get-seq-range-type seqfieldtype lenfieldtype))))))
+
+(defmethod finseq-type? (type)
+  (declare (ignore type))
+  nil)
+
+(defmethod get-seq-range-type ((type funtype) domaindep)
+  (with-slots (domain range) type
+    (let ((domtype (simple-below? domain)))
+      (and (type domtype)
+	   (tc-eq (type domtype) domaindep)
+	   (range type)))))
+  
+(defun char-type? (type)
+  (eq (id (module-instance (resolution (find-supertype type)))) '|character_adt|))
+
+(defun char-list-type? (type)
+  (and (list-type? type)
+       (let ((act (type-value (car (actuals (find-supertype type))))))
+	 (and (eq (id act) '|character|)
+	      (module-instance act)
+	      (eq (id (module-instance act)) '|character_adt|)))))
+
+; this is a version of xt-string-expr that doesn't do anything
+; about places
+(defun cl2pvs*-string (str)
+  (let ((ne (mk-name-expr '|char?|)))
+    (setf (parens ne) 1)
+    (make-instance 'string-expr
+      'string-value str
+      'operator (mk-name-expr '|list2finseq| (list (mk-actual ne)))
+      'argument (cl2pvs*-string* (xt-string-to-codes str 0 (length str) '#(0 0 0 0) nil)))))
+
+(defun cl2pvs*-string* (codes)
+  (if (null codes)
+      (mk-name-expr '|null|)
+      (let* ((code (car codes))
+	     (head (mk-application (mk-name-expr '|char|) (mk-number-expr code)))
+	     (rest (cl2pvs*-string* (cdr codes))))
+	(make-instance 'application
+	  'operator (mk-name-expr '|cons|)
+	  'argument (make-instance 'arg-tuple-expr
+		      'exprs (list head rest))))))
+
+
+
+(defmethod cl2pvs* (sexpr (type dep-binding) context)
+  (cl2pvs* sexpr (type type) context))
 
 (defun list-type? (type)
-  (eq (id (module-instance (resolution type))) '|list_adt|))
+  (eq (id (module-instance (resolution (find-supertype type)))) '|list_adt|))
 
 (defmethod cl2pvs* (sexpr (type adt-type-name) context)
-  (if (list-type? type)
-      (if (listp sexpr)
-	  (cl2pvs*-list sexpr type context)
-	  (break "Expected list type but got a non list ~a" sexpr))
-      (let* ((recognizers (recognizers type))
-	     (recognizer-funs
-	      (if (list-type? type)
-		  (list #'null #'consp)
-		  (loop for rec in recognizers
-			collect (lisp-function (declaration rec)))))
-	     (recognizer (loop for recfun in recognizer-funs
-			       as rec in recognizers
-			       thereis
-			       (and recfun
-				    (funcall recfun
-					     sexpr)
-				    rec))))
-	(if recognizer
-	    (let* ((constructor (constructor recognizer))
-		   (accessors (accessors constructor))
-		   (accessor-funs
-					;	(if (list-type? type) (if (eq (id recognizer)
-					;	'|cons?|) (list #'car #'cdr) nil)
-		    (loop for acc in accessors
-			  collect (lisp-function (declaration acc))));;; )
-		   (args (loop for accfn in accessor-funs
-			       as acc in accessors
-			       collect 
-			       (cl2pvs*
-				(funcall accfn
-					 sexpr)
-				(range (type acc))
-				context))))
-	      (if accessors
-		  (mk-application* constructor args)
-		  constructor))
-	    (break "No recognizer for datatype expression ~a" sexpr)))))
+  (cond ((char-list-type? type)
+	 (cl2pvs*-string (coerce sexpr 'string)))
+	((list-type? type)
+	 (cl2pvs*-list sexpr (type-value (car (actuals (find-supertype type)))) context))
+	((char-type? type)
+	 (cl2pvs*-char sexpr type context))
+	(t
+	 (let* ((recognizers (recognizers type))
+		(recognizer-funs (loop for rec in recognizers
+				       collect (lisp-function (declaration rec))))
+		(recognizer (loop for recfun in recognizer-funs
+				  as rec in recognizers
+				  thereis
+				  (and recfun
+				       (funcall recfun sexpr)
+				       rec))))
+	   (assert recognizer)
+	   (let* ((constructor (constructor recognizer))
+		  (accessors (accessors constructor))
+		  (accessor-funs (loop for acc in accessors
+				       collect
+				       (lisp-function (declaration acc))))
+		  (args (loop for accfn in accessor-funs
+			      as acc in accessors
+			      collect 
+			      (cl2pvs* (funcall accfn sexpr) (range (type acc))
+				       context))))
+	     (if accessors
+		 (mk-application* constructor args)
+		 constructor))))))
 
-(defun cl2pvs*-list (exprs type context)
-  (let* ((eltype (type-value (car (actuals type)))))
-    (cl2pvs*-list* exprs eltype context)))
+(defun cl2pvs*-char (expr type context)
+  (declare (ignore type context))
+  (assert (standard-char-p expr))
+  (make-instance 'application
+		 'operator (make-instance 'constructor-name-expr 'id '|char|)
+		 'argument (make-instance 'number-expr 'number (char-code expr))))
 
-(defun cl2pvs*-list* (exprs eltype context)  
+(defun cl2pvs*-list (exprs eltype context)  
   (if exprs
       (let ((ex (cl2pvs* (car exprs) eltype context))
-	    (list (cl2pvs*-list* (cdr exprs) eltype context)))
+	    (list (cl2pvs*-list (cdr exprs) eltype context)))
 	(make-instance 'list-expr
 	  'operator (make-instance 'name-expr
 		      'id '|cons|)
@@ -89,6 +166,7 @@
 		      'exprs (list ex list))))
       (make-instance 'null-expr
 	'id '|null|)))
+
 
 
 
