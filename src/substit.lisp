@@ -287,7 +287,10 @@
 	  'parens 0))))
 
 (defun make-new-bindings (old-bindings alist)
-  (make-new-bindings* old-bindings (alist-freevars alist) alist))
+  (make-new-bindings* old-bindings
+		      (alist-freevars alist)
+		      (alist-boundvars alist)
+		      alist))
 
 (defun alist-freevars (alist)
   (delete-duplicates (mapappend #'alist-freevars* alist)))
@@ -307,14 +310,27 @@
 	   alist-freevars
 	   (cons (declaration (car freevars)) alist-freevars)))))
 
+(defun alist-boundvars (alist)
+  (let ((bvars nil))
+    (dolist (acons alist)
+      (mapobject #'(lambda (ex)
+		     (or (subtype? ex)
+			 (when (binding-expr? ex)
+			   (dolist (bd (bindings ex)) (pushnew bd bvars))
+			   nil)))
+		 (cdr acons)))
+    bvars))
+
 ;;freevars must be the free variables in alist.
 
-(defun make-new-bindings* (old-bindings freevars alist &optional nbindings)
+(defun make-new-bindings* (old-bindings freevars boundvars alist
+					&optional nbindings)
   (if (null old-bindings)
       (nreverse nbindings)
       (let* ((bind (car old-bindings))
 	     (btype (type bind))
-	     (check (member (id bind) freevars :key #'id))
+	     (check (or (member (id bind) freevars :key #'id)
+			(member (id bind) boundvars :key #'id)))
 	     (dec-type (declared-type bind))
 	     (new-binding
 	      (if (not check)
@@ -325,9 +341,13 @@
 		    'id (new-boundvar-id (id bind))
 		    'type (substit* btype alist)
 		    'declared-type (substit* dec-type alist)))))
+	(when (and (not (eq bind new-binding))
+		   (untyped-bind-decl? new-binding))
+	  (change-class new-binding 'bind-decl))
 	(make-new-bindings*
 	 (cdr old-bindings)
 	 (add-alist-freevars new-binding (mapcar #'car alist))
+	 boundvars
 	 (acons bind new-binding alist)
 	 (cons new-binding nbindings)))))
 
