@@ -15,41 +15,57 @@
   (let ((cuth *current-theory*)
 	(cuthstr (string (id cuth)))
 	(exclude (if (listp exclude) exclude (list exclude)))
-	(all-exclude (append exclude (list "sets.the"
-					   "sets.union"
-					   "sets.intersection"
-					   "sets.difference"
-					   "sets.emptyset"))))
-    (then* (install-rewrites :defs defs
+	(all-exclude (append exclude (list "sets[nat].singleton"
+			   "sets.the"
+			   "sets[nat].add"
+			   "sets[nat].remove"
+			   "sets[nat].union"
+			   "sets[nat].intersection"
+			   "sets[nat].difference"
+			   "sets[nat].emptyset"))))
+    (then* (auto-rewrite-theory cuthstr :defs defs :exclude exclude)
+	   (auto-rewrite-theory "sets[nat]" :defs defs)
+           (install-rewrites :defs defs
 			     :theories theories
 			     :rewrites rewrites
 			     :exclude all-exclude)
 	   (rewrite-msg-off)
+	   (expand* expand)
 	   (skip-msg "Expanding definitions..." :force-printing? T)
 	   (assert :cases-rewrite? T)
 	   (skip-msg "WS1S decision procedure..." :force-printing? T)
+	   (rewrite-msg-on)
 	   (ws1s-simp fnums examples automaton traces)))
-  "Expands definitions in the formulas specified by FNUMS and tries to decide them
-   using the WS1S decision procedures (based on the Mona package developed
-   at BRICS (http://www.brics.dk/~mona).
+  "Decision procedure for Weak Second-order monadic logic of 1 Successor (WS1S)
+   based on the Mona package developed at BRICS (http://www.brics.dk/~mona).
+   Expands definitions in the formulas specified by FNUMS, applies Boolean
+   abstraction for formulas outside the scope of WS1S, and constructs an
+   automata that recognizes the 'language' of interpretations of these formulas.
 
-   The supported fragment includes boolean expression, an arithmetic on the
+   The argument FNUMS restricts the focus of the strategy to the thereby specified sequent
+   formulas. If EXAMPLES is true, a witness and a counterexample are being displayed if these
+   formulas turn out to be satisfiable but not valid setting the flag AUTOMATON causes
+   the strategy to display the constructed automaton, TRACES displays a trace version of
+   the witness. For a description of the remaining flags DEFS, THEORIES, REWRITES, and
+   EXCLUDE see e.g. (help install-rewrites).
+
+   The supported fragment includes boolean expression, arithmetic on the
    natural numbers restricted to addition/subraction with/from a constant, and
-   operations on finite sets over the naturalas like union, intersection, and
-   difference.  Predicates include equality, disequality, subset?, and membership
-   in the form P(i), and there is quantification over the booleans, the natural
-   numbers, finite sets of naturals, and predicate subtypes of the aforementioned
-   types built from formulas in the set just being described. Furthermore,
-   this strategy tries to apply boolean abstraction for non-WS1S formulas, and
-   natural numbers, and sets may also be described using the 'the' operator.
-
-   FNUMS restricts the focus of the
-   strategy to the thereby specified sequent formulas. If EXAMPLES is true, a witness
-   and a counterexample are being displayed if these formulas turn out to be satisfiable
-   but not valid, setting the flag AUTOMATON causes the strategy to display the
-   constructed automaton, TRACES displays a trace version of the witness.
-   For a description of the remaining flags DEFS, THEORIES, REWRITES, and
-   EXCLUDE see (help install-rewrites)."
+   operations on finite sets over the naturals like union, intersection, set
+   difference, addition and removal of a natural.  Predicates include arithmetic
+   comparisons like <, <=, >, >=, equality, disequality, the subset relation,
+   and membership in the form P(i). There is quantification over the booleans,
+   the natural numbers, finite sets of naturals, and predicate subtypes of the
+   aforementioned types built from formulas in the set just being described.
+   Furthermore, this strategy tries to apply boolean abstraction for non-WS1S formulas,
+   and natural numbers, and finite sets of natural numbers may also be described
+   using the 'the' operator; e.g. ripple-carry addition may be defined as:
+     +(P, Q: finite_set[nat]): finite_set[nat] = 
+       the({R: finite_set[nat] | 
+         EXISTS (C: finite_set[nat]): NOT(C(0)) AND
+           FORALL (t: nat):
+             (C(t + 1) = ((P(t) AND Q(t)) OR (P(t) AND C(t)) OR (Q(t) AND C(t)))) AND
+                 (R(t) = P(t) = Q(t) = C(t))});"
   "By rewriting and WS1S decision procedure")
 
 (addrule 'ws1s-simp nil ((fnums *) (examples T) (automaton nil) (traces nil))
@@ -127,13 +143,12 @@
       (assertions (cdr symtab) newacc))))
  
 (defun ws1s-output (fmla newfmla)
-  (format t "~2%Formula (main) ~%    ~a" fmla)
+  (format t "~2%Formula ")
   (cond ((tc-eq newfmla *true*)
-	 (format t "~%is valid." fmla))
+	 (format t "is valid."))
 	((tc-eq newfmla *false*)
-	 (format t "~%is unsatisfiable." fmla))
-	(t
-	 (format t "~%is neither valid nor unsatisfiable." fmla))))
+	 (format t "is unsatisfiable."))
+	(t (format t "is neither valid nor unsatisfiable."))))
 
 (defun ws1s-example-output (str example length num types fvars)
   (declare (special *output-examples*))
@@ -174,3 +189,7 @@
     (format t "~2%Free vars:~2%" fvars)
     (dfa-print (address p) num fvars offsets)
     (format t "~%")))
+
+
+
+
