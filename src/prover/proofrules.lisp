@@ -1,14 +1,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; proofrules.lisp -- 
-;; Author          : Sam Owre
+;; Author          : N. Shankar and Sam Owre
 ;; Created On      : Sat Oct 31 02:45:32 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Jan 29 17:23:37 1999
-;; Update Count    : 2
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Last Modified On: Thu May 20 21:48:26 2004
+;; Update Count    : 3
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
+
+(in-package :pvs)
 
 ;; In proofrules-1-91.lisp, the rules are listed out without any
 ;; particular organization.  These rules include the propositional and
@@ -18,8 +19,6 @@
 ;; local replacements by transforming a sequent formula into one or more
 ;; disjuncts, and the others, mainly those that return modifications or
 ;; signals.   
-
-(in-package :pvs)
 
 
 (defun sform-search (sformlist pred pos neg)
@@ -782,7 +781,7 @@
 		  (rhs1 (caar rhs-typelists))
 		  (first-match
 		   (if match
-		       (tc-unify rhs1 (car lhs-types) match)
+		       (tc-match rhs1 (car lhs-types) match)
 		       (if (compatible? (car lhs-types) rhs1) t nil))))
 	     (if (null first-match)
 		 (tc-unify-over lhs-types
@@ -982,10 +981,6 @@ The following are not possible variables: ~{~a,~}" badnames)
 	    (error-format-if
 	     "~%The form of a substitution is: (<varn> <termn>...<varn> <termn>).")
 	    (values 'X nil))
-					;	  (subfreevars
-					;	   (format-if "~%Irrelevant free variables ~a in substitution."
-					;		      subfreevars)
-					;	   (values 'X nil))
 	   (t (let* ((all-possibilities
 		      (check-with-subst resolutions
 					subalist
@@ -1009,15 +1004,13 @@ The following are not possible variables: ~{~a,~}" badnames)
 			      (cons x
 				    (cdr (assoc x subalist
 						:test #'same-id)))))))
-					;	       (loop for (x . y) in newalist
-					;		     do (setf (type y) nil))
-		(when form;;NSH(10.20.94)(let ((*generate-tccs* 'all)))
+		(when form ;;NSH(10.20.94)(let ((*generate-tccs* 'all)))
 		  (typecheck (module-instance res)
 		    :tccs 'all)
-		  (tc-alist newalist);;does tccs all.
+		  (tc-alist newalist) ;;does tccs all.
 		  )
 		(let ((subfreevars (loop for (nil . y) in newalist
-					 append (freevars y))));;was nconc
+					 append (freevars y))))	;;was nconc
 		  (cond ((null resolutions)
 			 (error-format-if "~%Couldn't find a definition or lemma named ~a" name)
 			 (values 'X nil))
@@ -1039,8 +1032,8 @@ or supply more substitutions."
 				(mapcar #'car subalist)
 				subvars :test #'same-id))
 			      (bindalist newalist)
-			      ;;			      (make-bindalist subvars subalist ps)
-			      ;;(intermediate-body (forall-body* form))
+			      ;; (make-bindalist subvars subalist ps)
+			      ;; (intermediate-body (forall-body* form))
 			      (intermediate-form (if (forall? form)
 						     (if  (null remaining-vars)
 							  (expression form)
@@ -1049,10 +1042,10 @@ or supply more substitutions."
 							    (forall-body* form)))
 						     form))
 			      (subform
-			       (let ((*substit-dont-simplify* t));;NSH(11.27.02)
+			       (let ((*substit-dont-simplify* t)) ;;NSH(11.27.02)
 				 (substit intermediate-form bindalist)))
-			      (sform    (make-instance 's-formula
-					  'formula (negate subform)))
+			      (sform (make-instance 's-formula
+				       'formula (negate subform)))
 			      (newsequent (lcopy (current-goal ps)
 					    's-forms (cons sform
 							   (s-forms
@@ -1192,29 +1185,26 @@ or supply more substitutions."
 (defun case-rule-fun (fmlas)
   #'(lambda (ps)
       (let* ((fmlas (if (listp fmlas) fmlas (list fmlas)))
-	     ;;(*generate-tccs* 'all) ;;(NSH:10.20.94)
 	     (tc-fmlas (loop for fml in fmlas
-			    collect
-			    (internal-pc-typecheck (pc-parse fml 'expr)
-				       :expected *boolean*
-				       :tccs 'all 
-				       :context *current-context*)))
+			     collect
+			     (internal-pc-typecheck (pc-parse fml 'expr)
+			       :expected *boolean*
+			       :tccs 'all)))
 	     (freevars (freevars tc-fmlas)))
 	(cond ((null tc-fmlas)
 	       (error-format-if "~%No formulas given.")
 	       (values 'X nil nil))
 	      ((not (null freevars))
 	       (error-format-if
-		 "~%Irrelevant free variables ~{~a, ~} occur in formulas."
-		 freevars)
+		"~%Irrelevant free variables ~{~a, ~} occur in formulas."
+		freevars)
 	       (values 'X nil nil))
-	      (t ;;(format-if "~%Introducing case splits,")
-	       ;;(push-references tc-fmlas ps)
+	      (t 
 	       (multiple-value-bind
-		(subgoals dependent-decls)
-		(make-cases (current-goal ps) tc-fmlas
-			    nil);was (dependent-decls ps)
-	       (values '? subgoals (list 'dependent-decls dependent-decls))))))))
+		   (subgoals dependent-decls)
+		   (make-cases (current-goal ps) tc-fmlas nil)
+		 (values '? subgoals
+			 (list 'dependent-decls dependent-decls))))))))
 
 (defun make-cases (goal fmlas &optional references accum)
   (cond ((null fmlas) (values (cons goal accum)
@@ -1451,50 +1441,73 @@ which should be fully instantiated. Please supply actual parameters.")
 	   (values 'X nil)))))
 
 (defmethod extensionality-step ((texpr subtype) given ps)
-  (if (and (adt? (supertype texpr))
-	   (recognizer? (predicate texpr)))
-      (let* ((constructor (constructor (predicate texpr)))
-	     (fmla-decl (when constructor
-			  (get-formula (get-theory
-					(module-instance constructor))
-				       (intern
-					(format nil
-					    "~a_~a_extensionality"
-					  (id (supertype texpr))
-					  (id constructor)
-					  )))))
-	     ;;the 2nd fmla-decl binding is needed because the prelude as of
-	     ;;Nov. '93 is not consistent in its ADT conventions with that
-	     ;;of generated ADTs.
-	     (fmla-decl (if fmla-decl fmla-decl 
-			(when constructor
-			  (get-formula (get-theory
-					(module-instance constructor))
-				       (intern
-					(format nil
-					    "~a_extensionality"
-					  (id constructor)))))))    
-	     (new-fmla (when fmla-decl
-			 (subst-mod-params
-			  (definition fmla-decl)
-			  (module-instance
-			   (resolution constructor))))))
-	(cond (new-fmla
-	       (let* ((references nil))
-		 (push-references-list texpr references)
-		 (pushnew fmla-decl references)
-		 (values '?
-			  (list (copy (current-goal ps)
-				  's-forms
-				  (cons (make-instance 's-formula
-					  'formula
-					  (negate new-fmla))
-					(s-forms (current-goal ps)))))
-			  (list 'dependent-decls
-				references))))
-	      (t (error-format-if "~%Could not find ADT extensionality axiom for ~a." given)
-		 (values 'X nil))))
-      (extensionality-step (supertype texpr) (supertype texpr) ps)))
+  (cond ((and (adt? (supertype texpr))
+	      (recognizer? (predicate texpr)))
+	 (adt-extensionality-step texpr given ps))
+	((and (cotupletype? (supertype texpr))
+	      (injection?-expr? (predicate texpr)))
+	 (cotuple-extensionality-step texpr given ps))
+	(t (extensionality-step (supertype texpr) (supertype texpr) ps))))
+
+(defun adt-extensionality-step (texpr given ps)
+  (let* ((constructor (constructor (predicate texpr)))
+	 (theory (module (declaration constructor)))
+	 (fmla-decl (when constructor
+		      (get-formula theory
+				   (intern
+				    (format nil
+					"~a_~a_extensionality"
+				      (id (supertype texpr))
+				      (id constructor)
+				      )))))
+	 (new-fmla (when fmla-decl
+		     (subst-mod-params (definition fmla-decl)
+				       (module-instance
+					(resolution constructor))
+				       theory))))
+    (cond (new-fmla
+	   (let* ((references nil))
+	     (push-references-list texpr references)
+	     (pushnew fmla-decl references)
+	     (values '?
+		     (list (copy (current-goal ps)
+			     's-forms
+			     (cons (make-instance 's-formula
+				     'formula
+				     (negate new-fmla))
+				   (s-forms (current-goal ps)))))
+		     (list 'dependent-decls
+			   references))))
+	  (t (error-format-if "~%Could not find ADT extensionality axiom for ~a." given)
+	     (values 'X nil)))))
+
+(defun cotuple-extensionality-step (texpr given ps)
+  (let ((fmla (cotuple-extensionality-formula texpr)))
+    (values '?
+	    (list (copy (current-goal ps)
+		    's-forms
+		    (cons (make-instance 's-formula
+			    'formula
+			    (negate fmla))
+			  (s-forms (current-goal ps))))))))
+
+;;; Construct a formula of the form
+;;;  FORALL (x, y: (IN?_i)): OUT_i(x) = OUT_i(y) IMPLIES x = y
+(defun cotuple-extensionality-formula (texpr)
+  (let* ((index (index (predicate texpr)))
+	 (id1 (make-new-variable '|x| texpr))
+	 (id2 (make-new-variable '|y| texpr))
+	 (bd1 (make-bind-decl id1 texpr))
+	 (bd2 (make-bind-decl id2 texpr))
+	 (var1 (make-variable-expr bd1))
+	 (var2 (make-variable-expr bd2))
+	 (ext1 (make!-extraction-application index var1))
+	 (ext2 (make!-extraction-application index var2))
+	 (ante-eq (make!-equation ext1 ext2))
+	 (conc-eq (make!-equation var1 var2))
+	 (impl (make!-implication ante-eq conc-eq)))
+    (make!-forall-expr (list bd1 bd2) impl)))
+	
 
 (defmethod extensionality-step ((texpr type-expr) given ps)
   (declare (ignore ps))
@@ -1569,25 +1582,3 @@ which should be fully instantiated. Please supply actual parameters.")
 			      (list 'context context)))
 		       (list 'dependent-decls
 			     references)))))))
-
-(defun update-judgements-with-new-name (name expr context)
-  (let ((judgements-copied? nil)
-	(jtypes (judgement-types expr)))
-    (when jtypes
-      (let ((jthash (copy (judgement-types-hash (judgements context)))))
-	(setf (gethash name jthash) jtypes)
-	(setf (judgements context)
-	      (copy (judgements context) 'judgement-types-hash jthash))
-	(setq judgements-copied? t)))
-    (when (name-expr? expr)
-      (let* ((applhash (application-judgements-hash (judgements context)))
-	     (appl-judgements (gethash (declaration expr) applhash)))
-	(when appl-judgements
-	  (let ((capplhash (copy applhash)))
-	    (setf (gethash (declaration name) capplhash) appl-judgements)
-	    (if judgements-copied?
-		(setf (application-judgements-hash (judgements context))
-		      capplhash)
-		(setf (judgements context)
-		      (copy (judgements context)
-			'application-judgements-hash capplhash)))))))))
