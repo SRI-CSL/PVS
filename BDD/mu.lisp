@@ -232,6 +232,7 @@
   ;; Should we lift-if here rather than in convert-pvs-to-mu*?
   (let ((*bound-variables* nil)
 	(*mu-nu-lambda-bindings-list* nil)
+        (*list-of-relational-vars* nil)
 	(mu-expr (convert-pvs-to-mu-formula expr)));; Formulas come first
     mu-expr))
 
@@ -507,13 +508,27 @@
 
 
 (defun convert-pvs-to-mu-nu-application  (expr)
+<<<<<<< mu.lisp
+      (let* ((*expand-term* nil)
+             (exprargs (arguments expr))
+=======
       (let* ((*expand-term* nil)
 	     (exprargs (arguments expr))
+>>>>>>> 1.37
 	     (argsfml (let ((*build-arguments* t))
                      (lisp-to-c-list (convert-pvs-to-mu* exprargs))))
 	     (muop (operator expr))
 	     (mu-or-nu (string (id (operator muop))))
 	     (muargs1bindgs (bindings (args1 muop)))
+<<<<<<< mu.lisp
+	     (*mu-nu-lambda-bindings-list* (if muargs1bindgs
+	      (append muargs1bindgs
+		      *mu-nu-lambda-bindings-list*) 
+                    (pvs-error "Can not model-check" 
+                      (format nil "Expression ~a ~% of type ~a should be expanded"
+                           (unparse (args1 muop) :string t) 
+                           (unparse (type (args1 muop)) :string t)))))
+=======
 	     (*mu-nu-lambda-bindings-list*
 	      (if muargs1bindgs
 		  (append muargs1bindgs
@@ -522,6 +537,7 @@
 		    (format nil "Expression ~a ~% of type ~a should be expanded"
 		      (unparse (args1 muop) :string t) 
 		      (unparse (type (args1 muop)) :string t)))))
+>>>>>>> 1.37
 	     (muarg1fml (let ((*build-rel-var* t)) 
                                  (car (convert-pvs-to-mu*
 			 (mapcar #'make-variable-expr muargs1bindgs)))))
@@ -538,14 +554,28 @@
 
 
 (defun convert-pvs-to-mu-nu-expression (expr)
+<<<<<<< mu.lisp
+  (let* ((*expand-term* nil)
+         (muop (operator expr))
+=======
   (let* ((*expand-term* nil)
 	 (muop (operator expr))
+>>>>>>> 1.37
 	 (mu-or-nu (string (id muop)))
 	 (muargs1bindgs (bindings (args1 expr)));;args1muop islambda-expr
 	 (muarg1fml 
 	  (let ((*build-rel-var* t)) 
 	    (car (convert-pvs-to-mu*
 		  (mapcar #'make-variable-expr muargs1bindgs)))))
+<<<<<<< mu.lisp
+	 (*mu-nu-lambda-bindings-list* (if muargs1bindgs
+	      (append muargs1bindgs
+		      *mu-nu-lambda-bindings-list*) 
+                    (pvs-error "Can not model-check" 
+                      (format nil "Expression ~a ~% of type ~a should be expanded"
+                           (unparse (args1 muop) :string t) 
+                           (unparse (type (args1 muop)) :string t))))) 
+=======
 	 (*mu-nu-lambda-bindings-list*;;NSH(6.23.95)
 	  (if muargs1bindgs
 	      (append muargs1bindgs
@@ -554,6 +584,7 @@
 		(format nil "Expression ~a ~% of type ~a should be expanded"
 		  (unparse (args1 muop) :string t) 
 		  (unparse (type (args1 muop)) :string t)))))
+>>>>>>> 1.37
 	 (muarg2expr (expression (args1 expr)))
 	 (muarg2fml (convert-pvs-to-mu-term-expanded muarg2expr))
 	 (muexprstr
@@ -646,6 +677,44 @@
 ;;msb of the position bit string.  
 
 (defun make-mu-variable (expr);; new-make-variable
+<<<<<<< mu.lisp
+ (when (and *expand-term*
+	    (funtype? (find-supertype (type expr))))
+   ;; case where a variable is created for an expression that 
+   ;; is expected to be expanded
+   (pvs-error "Can not model-check" 
+     (format nil "Expession ~a should be expanded"
+       (unparse expr :string t))))
+ (let ((bddname (gethash expr *pvs-bdd-hash*)))
+   (if bddname
+       (if (consp bddname)
+	   (let ((new-bddname (cadr bddname)))
+	     (cond (*build-arguments*
+		    (make-argument-vars-scalar new-bddname))
+		   (*build-access-var*
+		    (make-binding-vars-scalar new-bddname))
+		   (t new-bddname)))
+	   (mu-create-bool-var (format nil "b~d" bddname)))
+       (cond ((sub-range? (type expr))
+	      (make-subrange-names expr))
+	     ((scalar? expr)
+	      (make-scalar-names expr))
+	     ((recognizer-application? expr)
+	      (make-mu-variable-recognizer-application expr))
+	     (t (let* ((bddhash-name (make-bdd-var-id))
+		       (mu-expression (mu-create-bool-var bddhash-name))
+		       (is-rel-var (and *build-rel-var*
+					(not *build-access-var*)))
+		       (is-access-var *build-access-var*))
+                  (setf (gethash expr *pvs-bdd-hash*) bddhash-name)
+		  (when (null (freevars expr))
+		   ;; (setf (gethash expr *pvs-bdd-hash*) bddhash-name)
+		    (setf (gethash bddhash-name *bdd-pvs-hash*) expr))
+		  (when is-rel-var ;;(or is-access-var is-rel-var)
+		    (push expr *list-of-relational-vars*))
+		  mu-expression))))))
+
+=======
   (when (and *expand-term*
 	     (funtype? (find-supertype (type expr))))
     ;; case where a variable is created for an expression that 
@@ -682,6 +751,7 @@
 
 
 
+>>>>>>> 1.37
 ;; negates a particular element in a list of boolean lits (symbols)
 ;; and forms a conjunction of the elements
 
@@ -870,10 +940,10 @@
 		   arg)))
     (convert-pvs-to-mu*
      (if rhs?
-	 (make!-if-expr (condition arg)
+	 (make!-if-expr (condition arg1)
 			(make!-equation (args1 expr) (then-part arg1))
 			(make!-equation (args1 expr) (else-part arg1)))
-	 (make!-if-expr (condition arg)
+	 (make!-if-expr (condition arg1)
 			(make!-equation (then-part arg1) (args2 expr))
 			(make!-equation (else-part arg1) (args2 expr)))))))
 
@@ -1291,10 +1361,15 @@
 
 
 (defun mu-create-bool-var (bvarid)
+<<<<<<< mu.lisp
+;;(pvs-message (format nil " ~% term? ~a   acc? ~a    rel-var? ~a   build-arg? ~a ~% " *build-mu-term* *build-access-var* *build-rel-var* *build-arguments* ))
+ (let ((bvarname (if (stringp bvarid) bvarid  (format nil "b~d" bvarid))))
+=======
   #+pvsdebug
   (pvs-message " ~% term? ~a   acc? ~a    rel-var? ~a   build-arg? ~a ~% "
     *build-mu-term* *build-access-var* *build-rel-var* *build-arguments*)
   (let ((bvarname (if (stringp bvarid) bvarid (format nil "b~d" bvarid))))
+>>>>>>> 1.37
     (if (and *build-rel-var* (not *build-access-var*)) 
 	(mu-mk-rel-var-dcl  bvarname)
 	(if *build-access-var* 
