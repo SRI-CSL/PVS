@@ -5,9 +5,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Thu Nov  5 15:16:57 1998
 ;; Update Count    : 45
-;; Status          : Beta test
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -838,7 +836,8 @@
 			    (declaration *top-proofstate*))
 		       (declaration *current-context*))))
 	(unless (and (member modinst (assuming-instances (current-theory))
-			     :test #'tc-eq)
+			     :test #'(lambda (x y)
+				       (not (eq (simple-match y x) 'fail))))
 		     (not (existence-tcc? cdecl)))
 	  (let ((assumptions (remove-if-not #'assumption? (assuming mod))))
 	    (check-assumption-subterm-visibility assumptions modinst)
@@ -847,7 +846,9 @@
 	    ;; prover
 	    (unless (or (or *in-checker* *in-evaluator*)
 			(mappings modinst)
-			*tcc-conditions*)
+			(some #'(lambda (tcc-cond)
+				  (not (typep tcc-cond '(or bind-decl list))))
+			      *tcc-conditions*))
 	      (push modinst (assuming-instances (current-theory))))
 	    (dolist (ass assumptions)
 	      (if (or (eq (kind ass) 'existence)
