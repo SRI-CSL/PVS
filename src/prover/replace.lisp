@@ -15,12 +15,12 @@
 
 
 (defun replace-rule-fun (sformnum &optional sformnums dir hide?
-				  actuals?) 
+				  actuals? keep?) 
   #'(lambda (ps)(replace-step sformnum sformnums dir hide?
-			      actuals? ps)))
+			      actuals?  keep? ps)))
 
 (defun replace-step (source-sformnum target-sformnums direction hide?
-			      actuals? ps)  
+			      actuals? keep? ps)  
   (let* ((goalsequent (current-goal ps))
 	 (sformnum (find-sform (s-forms goalsequent) source-sformnum))
 	 (selected-s-forms (select-seq (s-forms goalsequent)
