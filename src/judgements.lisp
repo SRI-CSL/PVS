@@ -867,7 +867,7 @@
   (let* ((jtypes (judgement-types ex))
 	 (*subtypes-seen* nil)
 	 (preds (type-constraints* (or jtypes (type ex)) ex nil all?)))
-    preds))
+    (delete-duplicates preds :test #'tc-eq)))
 
 (defmethod type-constraints* ((list cons) ex preds all?)
   (let ((car-preds (type-constraints* (car list) ex nil all?)))
@@ -880,8 +880,8 @@
 	 (nreverse preds))
 	(t (push te *subtypes-seen*)
 	   (let ((pred (make!-reduced-application (predicate te) ex)))
-	     (type-constraints* (supertype te) ex (nconc (and+ pred) preds)
-				all?)))))
+	     (type-constraints* (supertype te) ex
+				(nconc (and+ pred) preds) all?)))))
 
 (defmethod type-constraints* ((te dep-binding) ex preds all?)
   (type-constraints* (type te) ex preds all?))
