@@ -292,10 +292,14 @@ pvs-strategies files.")
 		       bindate
 		       (equal bindate (ce-object-date fe))
 		       (< specdate bindate)))
-	(pvs-log "Saving theories for ~a" file)
-	(save-theories file)
-	(setf (ce-object-date fe) (file-write-date binpath))
-	(setq *pvs-context-changed* t)))))
+	(cond ((circular-file-dependencies file)
+	       (pvs-message
+		   "Bin file for ~a.pvs not saved due to circularities"
+		 file))
+	      (t (pvs-log "Saving theories for ~a" file)
+		 (save-theories file)
+		 (setf (ce-object-date fe) (file-write-date binpath))
+		 (setq *pvs-context-changed* t)))))))
 			  
 
 (defun context-is-current ()
@@ -558,6 +562,38 @@ pvs-strategies files.")
 	(let ((entry (get-context-file-entry filename)))
 	  (when entry
 	    (mapcar #'string (delete-if #'null (ce-dependencies entry))))))))
+
+(defun circular-file-dependencies (filename)
+  (let ((deps (assoc filename *circular-file-dependencies* :test #'equal)))
+    (if deps
+	(cdr deps)
+	(let ((cdeps (circular-file-dependencies*
+		      (cdr (gethash filename *pvs-files*)))))
+	  (push (cons filename (car cdeps)) *circular-file-dependencies*)
+	  (car cdeps)))))
+
+(defun circular-file-dependencies* (theories &optional deps circs)
+  (if (null theories)
+      circs
+      (let ((th (car theories)))
+	(if (and (cdr deps)
+		 (equal (filename th) (filename (car (last deps))))
+		 (some #'(lambda (dep)
+			   (not (equal (filename th) (filename dep))))
+		       deps))
+	    ;; Found a circularity
+	    (circular-file-dependencies* (cdr theories) deps
+					 (cons (reverse (cons th deps))
+					       circs))
+	    (append (circular-file-dependencies*
+		     (delete-if #'from-prelude?
+		       (if (generated-by th)
+			   (list (get-theory (generated-by th)))
+			   (mapcar #'(lambda (th) (get-theory th))
+			     (get-immediate-usings th))))
+		     (cons th deps))
+		    (circular-file-dependencies* (cdr theories)
+						 deps circs))))))
 
 (defun dependencies (theory)
   (let ((*modules-visited* nil))

@@ -89,6 +89,7 @@
   (reset-typecheck-caches)
   (clrhash *pvs-modules*)
   (clrhash *pvs-files*)
+  (setq *circular-file-dependencies* nil)
   (when all?
     (clrhash *loaded-libraries*)
     (clrhash *prelude-libraries*)
@@ -631,8 +632,21 @@
                    ~d proved, ~d subsumed, ~d unproved~
                    ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
 		  (id theory) time tot prv mat obl
-		  (length (warnings theory)) (length (info theory)))))))
-    (setq *current-theory* (car (last theories)))))
+		  (length (warnings theory)) (length (info theory))))))))
+    (setq *current-theory* (car (last theories))))
+  (let ((dep (assoc filename *circular-file-dependencies* :test #'equal)))
+    (when dep
+      (setq *circular-file-dependencies*
+	    (delete dep *circular-file-dependencies*))))
+  (let ((deplist (mapcar #'(lambda (d)
+			     (list (id d) (filename d)))
+		   (circular-file-dependencies filename))))
+    (when deplist
+      (pvs-warning
+	  "Circularity detected in file dependencies:~%~
+           ~{  ~{~a from ~a.pvs~}~^, which imports~%~}~%~
+           bin files will not be generated for any of these pvs files."
+	deplist)))
   theories)
 
 (defun prove-unproved-tccs (theories &optional importchain?)
@@ -2109,7 +2123,7 @@
 					 *tccforms*)
 				       (list (definition fdecl)))))
 	       :string t)
-	     theory-name context)))
+	     theory-name)))
     (setq *to-emacs* nil)
     (setq *prove-formula-proof* nil)
     (unwind-protect
