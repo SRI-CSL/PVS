@@ -206,6 +206,18 @@
 	(format t "~3%%%% TCCs for ~a~%" (id th))
 	(show-tccs (id th))))))
 
+(defun prelude-duplicated-names ()
+  (maphash #'(lambda (id decls)
+	       (when (prelude-duplicates? decls)
+		 (format t "~%~a" id)))
+	   (declarations-hash *prelude-context*)))
+
+(defun prelude-duplicates? (decls)
+  (when (cdr decls)
+    (let ((rdecls (remove-if #'judgement? decls)))
+      (when (cdr rdecls)
+	t))))
+
 
 ;;; Library support
 
@@ -544,11 +556,13 @@
 					       (file-equal (lib-ref th)
 							   *pvs-current-context-path*))
 				    (setf (lib-ref th) lib-ref))))
-			    *pvs-modules*))
+			    *pvs-modules*)
+			   theories)
 			  (t
 			   (remhash filename *pvs-files*)
 			   (dolist (th theories)
-			     (remhash (id th) *pvs-modules*)))))))))))))
+			     (remhash (id th) *pvs-modules*))
+			   nil)))))))))))
 
 ;;; Load-imported-library loads imported libraries - called from
 ;;; get-parsed-theory when a library name is given in an IMPORTING clause.
