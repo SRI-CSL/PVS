@@ -1372,7 +1372,7 @@ required a context.")
 (defmethod set-type* ((ex extraction-application) expected)
   (unless (singleton? (ptypes (argument ex)))
     (type-ambiguity (argument ex)))
-  (let ((cotuptype (find-supertype (car (types (argument ex))))))
+  (let ((cotuptype (find-supertype (car (ptypes (argument ex))))))
     (assert (cotupletype? cotuptype))
     (let* ((inrec (make-instance 'injection?-expr
 		    'id (makesym "IN?_~d" (index ex))
