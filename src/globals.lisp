@@ -235,6 +235,9 @@ that gensubst does not try to pseudo-normalize inappropriately.")
 
 ;;; Prover-related variables
 
+(defvar *prover-lines* nil)
+(defvar *print-lines* nil)
+
 (defvar *context-modified* nil
   "Set by add-declaration and modify-declaration to indicate that the
 current proof is suspect.")
