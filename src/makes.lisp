@@ -46,16 +46,6 @@
     'exporting exporting
     'theory theory))
 
-(defun mk-context (mod decls using)
-  (break "mk-context")
-  (make-instance 'context
-    'theory mod
-    'theory-name (when mod (mk-modname (id mod)))
-    'declarations-hash (let ((ht (make-hash-table :test #'eq :size 10)))
-			 (mapc #'(lambda (d) (put-decl d ht)) decls)
-			 ht)
-    'using-hash using))
-
 (defun mk-type-decl (id &optional (class 'type-decl) type-expr)
   (if (eq class 'type-decl)
       (make-instance 'type-decl
@@ -252,7 +242,7 @@
 		(and (typep d 'dep-binding)
 		     (occurs-in (id d) range)))
 	    domain)
-      (break)
+      (break "strange call to mk-funtype")
       (mk-funtype (if (cdr domain)
 		      (mk-tupletype domain)
 		      (car domain))
@@ -325,29 +315,27 @@
 	'resolutions (list (mk-resolution obj
 			     (current-theory-name) (type obj))))))
 
+(defmethod mk-name-expr ((obj name) &optional actuals mod-id res kind)
+  (if (or res (resolution obj))
+      (make!-name-expr (id obj) actuals mod-id (or res (resolution obj))
+		       (or kind 'variable))
+      (make-instance 'name-expr
+	'id (id obj)
+	'mod-id mod-id
+	'actuals actuals
+	'type (when (expr? obj) (type obj))
+	'kind (or kind
+		  (when (name-expr? obj)
+		    (kind obj)))
+	'resolutions (when (name? obj) (resolutions obj)))))
+
 (defmethod mk-name-expr (obj &optional actuals mod-id res kind)
   (if res
       (make!-name-expr (id obj) actuals mod-id res kind)
-      (if (and (syntax? obj) (slot-exists-p obj 'resolutions))
-	  (break "mk-name-expr has resolutions")
-	  (make-instance 'name-expr
-	    'id (id obj)
-	    'mod-id mod-id
-	    'actuals actuals
-	    'type (cond (res
-			 (type res))
-			((and (syntax? obj)
-			      (slot-exists-p obj 'type))
-			 (type obj)))
-	    'kind (or kind
-		      (if (and (syntax? obj)
-			       (slot-exists-p obj 'kind))
-			  (kind obj)))
-	    'resolutions (if res
-			     (list res)
-			     (if (and (syntax? obj)
-				      (slot-exists-p obj 'resolutions))
-				 (resolutions obj)))))))
+      (make-instance 'name-expr
+	'id (id obj)
+	'mod-id mod-id
+	'actuals actuals)))
 
 (defun mk-number-expr (num)
   (make-instance 'number-expr
