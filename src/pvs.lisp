@@ -2076,7 +2076,7 @@
       (let ((fdecl (car (pc-parse formula-decl 'theory-elt))))
 	(unless (typep fdecl 'formula-decl)
 	  (type-error fdecl "Not a formula declaration"))
-	(typecheck* fdecl nil nil nil)
+	(typecheck-decl fdecl)
 	(setq *typecheck-formula-decl*
 	      (list formula-decl
 		    theory-name
@@ -2089,32 +2089,31 @@
 
 (defvar *prove-formula-proof* nil)
 
-(defun prove-formula-decl (formula-decl &optional theory-name context)
+(defun prove-formula-decl (formula-decl &optional theory-name strategy)
   (let* ((*current-theory* (if theory-name
 			       (get-typechecked-theory theory-name)
 			       (car (last *prelude-theories*))))
 	 (*current-context* (copy (context *current-theory*)))
-	 (fdecl (typecheck-formula-decl formula-decl theory-name context)))
-    (let ((*in-checker* t)
-	  (*generate-tccs* 'all)
-	  (*tccforms* nil))
-      (typecheck (definition fdecl) :expected *boolean*)
-      (when *tccforms*
-	(setq fdecl
-	      (typecheck-formula-decl
-	       (unparse
-		   (copy fdecl
-		     'definition (mk-conjunction
-				  (nconc (mapcar #'(lambda (tcc)
-						     (tccinfo-formula tcc))
-					   *tccforms*)
-					 (list (definition fdecl)))))
-		 :string t)
-	       theory-name context))))
+	 (fdecl (typecheck-formula-decl formula-decl theory-name))
+	 (*in-checker* t)
+	 (*tccforms* nil))
+    (typecheck (definition fdecl) :expected *boolean* :tccs 'all)
+    (when *tccforms*
+      (setq fdecl
+	    (typecheck-formula-decl
+	     (unparse
+		 (copy fdecl
+		   'definition (mk-conjunction
+				(nconc (mapcar #'(lambda (tcc)
+						   (tccinfo-formula tcc))
+					 *tccforms*)
+				       (list (definition fdecl)))))
+	       :string t)
+	     theory-name context)))
     (setq *to-emacs* nil)
     (setq *prove-formula-proof* nil)
     (unwind-protect
-	(progn (prove-decl fdecl :context *current-context*)
+	(progn (prove-decl fdecl :strategy strategy)
 	       (setq *prove-formula-proof*
 		     (extract-justification-sexp (justification fdecl))))
       (pvs-emacs-eval "(pvs-ready)"))))
