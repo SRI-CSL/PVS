@@ -496,11 +496,12 @@
                                     it becomes the expression ~%  ~a~%~
                                     and leads to the error:~%  ~a"
 				 obj error))
-			      (*no-conversions-allowed* t))
+			      (*no-conversions-allowed* t)
+			      (etype (type obj)))
 			 (untypecheck-theory obj)
-			 (typecheck obj))
+			 (typecheck obj :expected etype))
 		       (progn
-			 (format t "~a" error)
+			 (format t "~%~a" error)
 			 (error "Typecheck error")))))))))
 
 (defun conversion-occurs-in? (obj)
