@@ -2422,13 +2422,15 @@ space")
 ;;;   (argument-list e) ==> (f(1,2)(x)(a,b,c))
 
 (defmethod operator* ((expr application))
-  (operator* (operator expr)))
+  (with-slots (operator) expr
+    (operator* operator)))
 
 (defmethod operator* ((expr expr))
   expr)
 
 (defmethod argument* ((expr application) &optional args)
-  (argument* (operator expr) (cons (argument expr) args)))
+  (with-slots (operator argument) expr
+    (argument* operator (cons argument args))))
 
 (defmethod argument* ((expr expr) &optional args)
   args)
