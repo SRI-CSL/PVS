@@ -50,8 +50,7 @@
 
 (defun make-subtype-tcc-decl (expr incs)
   (assert (every #'type incs))
-  (let* ((gen-tccs *generate-tccs*)
-	 (*generate-tccs* 'none)
+  (let* ((*generate-tccs* 'none)
 	 (conc (make!-conjunction* incs))
 	 (tform (raise-actuals (add-tcc-conditions conc) nil))
 	 (xform (if *simplify-tccs*
@@ -389,8 +388,7 @@
     (when (null arguments)
       (type-error name
 	"Recursive definition occurrence ~a must have arguments" name))
-    (let* ((gen-tccs *generate-tccs*)
-	   (*generate-tccs* 'none)
+    (let* ((*generate-tccs* 'none)
 	   (meas (measure (declaration *current-context*)))
 	   (ordering (or (copy (ordering (declaration *current-context*)))
 			 '<))
@@ -690,8 +688,7 @@
   (type (car (bindings ex))))
 
 (defun make-assuming-tcc-decl (ass modinst)
-  (let* ((gen-tccs *generate-tccs*)
-	 (*generate-tccs* 'none)
+  (let* ((*generate-tccs* 'none)
 	 (expr (subst-mod-params (definition ass) modinst))
 	 (tform (add-tcc-conditions expr))
 	 (xform (if *simplify-tccs*
@@ -872,8 +869,7 @@
 	  (incf (tccs-simplified))))))
 
 (defun make-actuals-tcc-decl (act mact)
-  (let* ((gen-tccs *generate-tccs*)
-	 (*generate-tccs* 'none)
+  (let* ((*generate-tccs* 'none)
 	 (conc (typecheck* (make-actuals-equality act mact)
 			   *boolean* nil nil))
 	 (form (add-tcc-conditions conc))
@@ -997,8 +993,7 @@
 	(incf (tccs-simplified))))))
 
 (defun make-cond-disjoint-tcc (expr conditions values)
-  (let* ((gen-tccs *generate-tccs*)
-	 (*generate-tccs* 'none)
+  (let* ((*generate-tccs* 'none)
 	 (conc (make-disjoint-cond-property conditions values)))
     (when conc
       (let* ((tform (raise-actuals (add-tcc-conditions conc)))
@@ -1059,8 +1054,7 @@
 	(incf (tccs-simplified))))))
 
 (defun make-cond-coverage-tcc (expr conditions)
-  (let* ((gen-tccs *generate-tccs*)
-	 (*generate-tccs* 'none)
+  (let* ((*generate-tccs* 'none)
 	 (conc (make!-disjunction* conditions))
 	 (tform (raise-actuals (add-tcc-conditions conc)))
 	 (xform (if *simplify-tccs*
