@@ -9,6 +9,7 @@
 ;               --  no free variables
 ;
 
+(in-package 'pvs)
 
 (defun ground-expr? (expr)
   (assert (type expr))
