@@ -193,7 +193,7 @@
 (defcl mixfix-branch (if-expr branch))
 
 ;;; For an if-then-elsif-then-else form of an IF from the prelude.
-(defcl chained-branch (mixfix-branch))
+(defcl chained-branch (mixfix-branch chained-if-expr))
 
 (defcl let-expr (application))
 
