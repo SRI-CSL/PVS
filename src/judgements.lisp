@@ -444,6 +444,31 @@
 			      ex (generic-judgements entry) gtypes)))
 		jtypes))))))))
 
+(defmethod judgement-types* ((ex branch))
+  (let ((then-types (judgement-types+ (then-part ex)))
+	(else-types (judgement-types+ (else-part ex))))
+    (join-compatible-types then-types else-types)))
+
+(defun join-compatible-types (types1 types2 &optional compats)
+  (if (null types1)
+      compats
+      (join-compatible-types
+       (cdr types1)
+       types2
+       (join-compatible-types* (car types1) types2 compats))))
+
+(defun join-compatible-types* (type types compats)
+  (if (null types)
+      compats
+      (let ((ctype (compatible-type type (car types))))
+	(join-compatible-types*
+	 type (cdr types)
+	 (if (some #'(lambda (ty) (subtype-of? ty ctype)) compats)
+	     compats
+	     (cons ctype (delete-if #'(lambda (ty)
+					(subtype-of? ty ctype))
+			   compats)))))))
+
 (defun generic-application-judgement-types (ex gen-judgements jtypes)
   (if (null gen-judgements)
       jtypes
