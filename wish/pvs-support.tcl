@@ -790,19 +790,22 @@ proc setup-proof {name file directory counter} {
 
 proc reset-options {} {
     option clear
-    option add Tk.tccColor green4 startupFile
-    option add Tk.doneColor blue startupFile
-    option add Tk.ancestorColor firebrick startupFile
     option add Tk.foreground black startupFile
 
     if {[tk colormodel .]=={color}} {
 	option add Tk.highlight red startupFile
 	option add Tk.currentColor DarkOrchid startupFile
 	option add Tk.circleCurrent no startupFile
+	option add Tk.tccColor green4 startupFile
+	option add Tk.doneColor blue startupFile
+	option add Tk.ancestorColor firebrick startupFile
     } else {
 	option add Tk.highlight @gray startupFile
 	option add Tk.currentColor black startupFile
 	option add Tk.circleCurrent yes startupFile
+	option add Tk.tccColor black startupFile
+	option add Tk.doneColor black startupFile
+	option add Tk.ancestorColor black startupFile
     }
 
     option add Tk.maxHeight 30 startupFile
