@@ -53,13 +53,15 @@
   (let* ((*generate-tccs* 'none)
 	 (conc (make!-conjunction* incs))
 	 (tform (raise-actuals (add-tcc-conditions conc) nil))
-	 (xform (if *simplify-tccs*
-		    (pseudo-normalize (subst-var-for-recs
-				       tform
-				       (declaration *current-context*)))
-		    (subst-var-for-recs
-				  tform
-				  (declaration *current-context*))))
+	 (xform (cond ((tcc-evaluates-to-true conc tform)
+		       *true*)
+		      (*simplify-tccs*
+		       (pseudo-normalize (subst-var-for-recs
+					  tform
+					  (declaration *current-context*))))
+		      (t (subst-var-for-recs
+			  tform
+			  (declaration *current-context*)))))
 	 (*no-expected* nil)
 	 (uform (universal-closure xform))
 	 (*bound-variables* *keep-unbound*)
@@ -216,11 +218,7 @@
 
 (defun insert-tcc-decl1 (kind expr type ndecl)
   (let ((*generate-tccs* 'none))
-    (setf (tcc-disjuncts ndecl)
-	  (if (binding-expr? (definition ndecl))
-	      (cons (bindings (definition ndecl))
-		    (simplify-disjunct (expression (definition ndecl)) nil))
-	      (cons nil (simplify-disjunct (definition ndecl) nil))))
+    (setf (tcc-disjuncts ndecl) (get-tcc-disjuncts ndecl))
     (let ((match (car (member ndecl *tccdecls* :test #'subsumes)))
 	  (decl (declaration *current-context*)))
       (when (eq (spelling ndecl) 'OBLIGATION)
@@ -245,6 +243,31 @@
                           but generated anyway since it was given a name"
 	      (id decl) (id match)))
 	  (insert-tcc-decl* kind expr type decl ndecl))))))
+
+(defvar *simplify-disjunct-quantifiers* nil)
+(defvar *simplify-disjunct-bindings* nil)
+
+(defun get-tcc-disjuncts (tcc-decl)
+  (let* ((*simplify-disjunct-bindings* nil)
+	 (*simplify-disjunct-quantifiers* t)
+	 (disjuncts (simplify-disjunct (definition tcc-decl) nil)))
+    (cons *simplify-disjunct-bindings* disjuncts)))
+
+(defmethod simplify-disjunct ((formula forall-expr) depth)
+  (cond ((and *simplify-disjunct-quantifiers*
+	      (or (not (integerp depth))
+		  (not (zerop depth))))
+	 (setq *simplify-disjunct-bindings*
+	       (append *simplify-disjunct-bindings* (bindings formula)))
+	 (simplify-disjunct (expression formula) (when depth (1- depth))))
+	(t (call-next-method))))
+
+(defmethod simplify-disjunct* ((formula forall-expr) depth)
+  (cond (*simplify-disjunct-quantifiers*
+	 (setq *simplify-disjunct-bindings*
+	       (append *simplify-disjunct-bindings* (bindings formula)))
+	 (simplify-disjunct (expression formula) (when depth (1- depth))))
+	(t (list formula))))
 
 (defun insert-tcc-decl* (kind expr type decl ndecl)
   (let ((submsg (case kind
@@ -400,16 +423,19 @@
 	   (appl2 (mk-recursive-application
 		   meas
 		   arguments))
-	   (form (add-tcc-conditions
-		  (beta-reduce
-		   (typecheck* (mk-application ordering appl2 appl1)
-			       *boolean* nil nil))))
-	   (xform (if (and *simplify-tccs*
-			   (not (or *in-checker* *in-evaluator*)))
-		      (pseudo-normalize
-		       (subst-var-for-recs form (declaration *current-context*)))
-		      (beta-reduce
-		       (subst-var-for-recs form (declaration *current-context*)))))
+	   (relterm (beta-reduce
+		     (typecheck* (mk-application ordering appl2 appl1)
+				 *boolean* nil nil)))
+	   (form (add-tcc-conditions relterm))
+	   (xform (cond ((tcc-evaluates-to-true relterm form)
+			 *true*)
+			((and *simplify-tccs*
+			      (not (or *in-checker* *in-evaluator*)))
+			 (pseudo-normalize
+			  (subst-var-for-recs form (declaration *current-context*))))
+			(t (beta-reduce
+			    (subst-var-for-recs
+			     form (declaration *current-context*))))))
 	   (uform (universal-closure xform))
 	   (id (make-tcc-name)))
       (push name *recursive-tcc-names*)
@@ -460,10 +486,12 @@
 		     (mk-name-expr var1) (mk-name-expr var2))))
 	 (form (typecheck* (mk-application '|well_founded?| wfform)
 			   *boolean* nil nil))
-	 (xform (if (and *simplify-tccs*
-			 (not (or *in-checker* *in-evaluator*)))
-		    (pseudo-normalize form)
-		    (beta-reduce form)))
+	 (xform (cond ((tcc-evaluates-to-true form)
+		       *true*)
+		      ((and *simplify-tccs*
+			    (not (or *in-checker* *in-evaluator*)))
+		       (pseudo-normalize form))
+		      (t (beta-reduce form))))
 	 (id (make-tcc-name)))
     (unless (tc-eq xform *true*)
       (when (and *false-tcc-error-flag*
@@ -696,13 +724,15 @@
   (let* ((*generate-tccs* 'none)
 	 (expr (subst-mod-params (definition ass) modinst))
 	 (tform (add-tcc-conditions expr))
-	 (xform (if *simplify-tccs*
-		    (pseudo-normalize (subst-var-for-recs
+	 (xform (cond ((tcc-evaluates-to-true expr tform)
+		       *true*)
+		      (*simplify-tccs*
+		       (pseudo-normalize (subst-var-for-recs
+					  tform
+					  (declaration *current-context*))))
+		      (t (beta-reduce (subst-var-for-recs
 				       tform
-				       (declaration *current-context*)))
-		    (beta-reduce (subst-var-for-recs
-				  tform
-				  (declaration *current-context*)))))
+				       (declaration *current-context*))))))
 	 (uform (universal-closure xform))
 	 (id (make-tcc-name)))
     (unless (tc-eq uform *true*)
@@ -938,9 +968,11 @@
 	 (conc (typecheck* (make-actuals-equality act mact)
 			   *boolean* nil nil))
 	 (form (add-tcc-conditions conc))
-	 (uform (if *simplify-tccs*
-		    (pseudo-normalize (universal-closure form))
-		    (beta-reduce (universal-closure form))))
+	 (uform (cond ((tcc-evaluates-to-true conc form)
+		       *true*)
+		      (*simplify-tccs*
+		       (pseudo-normalize (universal-closure form)))
+		      (t (beta-reduce (universal-closure form)))))
 	 (id (make-tcc-name)))
     (unless (tc-eq uform *true*)
       (when (and *false-tcc-error-flag*
@@ -1073,13 +1105,15 @@
 	 (conc (make-disjoint-cond-property conditions values)))
     (when conc
       (let* ((tform (raise-actuals (add-tcc-conditions conc)))
-	     (xform (if *simplify-tccs*
-			(pseudo-normalize (subst-var-for-recs
-					   tform
-					   (declaration *current-context*)))
-			(subst-var-for-recs
-			 tform
-			 (declaration *current-context*))))
+	     (xform (cond ((tcc-evaluates-to-true conc)
+			   *true*)
+			  (*simplify-tccs*
+			   (pseudo-normalize (subst-var-for-recs
+					      tform
+					      (declaration *current-context*))))
+			  (t (subst-var-for-recs
+			      tform
+			      (declaration *current-context*)))))
 	     (*no-expected* nil)
 	     (uform (universal-closure xform))
 	     (*bound-variables* *keep-unbound*)
@@ -1133,13 +1167,15 @@
   (let* ((*generate-tccs* 'none)
 	 (conc (make!-disjunction* conditions))
 	 (tform (raise-actuals (add-tcc-conditions conc)))
-	 (xform (if *simplify-tccs*
-		    (pseudo-normalize (subst-var-for-recs
+	 (xform (cond ((tcc-evaluates-to-true conc tform)
+		       *true*)
+		      (*simplify-tccs*
+		       (pseudo-normalize (subst-var-for-recs
+					  tform
+					  (declaration *current-context*))))
+		      (t (beta-reduce (subst-var-for-recs
 				       tform
-				       (declaration *current-context*)))
-		    (beta-reduce (subst-var-for-recs
-				  tform
-				  (declaration *current-context*)))))
+				       (declaration *current-context*))))))
 	 (*no-expected* nil)
 	 (uform (universal-closure xform))
 	 (*bound-variables* *keep-unbound*)
@@ -1152,3 +1188,15 @@
 	  "Coverage TCC for this expression simplifies to false:~2%  ~a"
 	  tform))
       (typecheck* (mk-cond-coverage-tcc id uform) nil nil nil))))
+
+(defvar *evaluate-tccs* t)
+
+(defun tcc-evaluates-to-true (&rest exprs)
+  (when *evaluate-tccs*
+    (tcc-evaluates-to-true* exprs)))
+
+(defun tcc-evaluates-to-true* (exprs)
+  (and exprs
+       (or (and (ground-arithmetic-term? (car exprs))
+		(get-arithmetic-value (car exprs)))
+	   (tcc-evaluates-to-true* (cdr exprs)))))
