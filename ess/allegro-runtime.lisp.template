@@ -2,7 +2,7 @@
 (eval-when (eval load)
   (setq system:*load-search-list*
 	(list #p"" #p(:type "lfasl") #p(:type "cl") #p(:type "lisp"))))
-(defvar *ess-path* "/homes/owre/pvs2.3/ess")
+(defvar *ess-path* "")
 (load (format nil "~a/sys/ergolisp/rel/ergolisp" *ess-path*))
 (load (format nil "~a/sys/ergolisp/rel/ergolisp-exports" *ess-path*))
 ;;[Regenerating and Loading box #>B"ERGOMISC".]
