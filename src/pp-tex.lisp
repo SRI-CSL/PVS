@@ -574,7 +574,7 @@
       (pp-tex-keyword 'BY)
       (write-char #\space)
       (pp-tex* ordering))
-    (pprint-indent :block 2)))
+    (pprint-indent :block 0)))
 
 (defmethod pp-tex* ((decl adt-def-decl))
   (with-slots (declared-type definition) decl
@@ -588,7 +588,7 @@
       (write-char #\space)
       (pprint-newline :fill)
       (pp-tex* definition)
-      (pprint-indent :block 2))))
+      (pprint-indent :block 0))))
 
 (defmethod pp-tex* ((decl inductive-decl))
   (with-slots (declared-type definition) decl
