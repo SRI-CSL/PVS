@@ -719,7 +719,8 @@
 	      (:print-function
 	       (lambda (cs* s k)
 		 (declare (ignore k))
-		 (format s "<~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type, ~D rewrites, ~D forward-chains>"
+		 (format s "<~D: ~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type, ~D rewrites, ~D forward-chains>"
+		   (cong-state*-id cs*)
 		   (length (cong-state*-assertions cs*))
 		   (hash-table-count (cong-state*-use-hash cs*))
 		   (hash-table-count (cong-state*-find-hash cs*))
@@ -742,7 +743,8 @@
   (polyhedral-structure (initial-polyhedral-structure))
   (fourier-motzkin (initial-fourier-motzkin))
   (rewrite-rules (initial-rewrite-rules))
-  (forward-chains (initial-forward-chains)))
+  (forward-chains (initial-forward-chains))
+  (id 0))
 
 (defun print-cong-state* (cs* s)
   (format s "<~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type, ~D rewrites, ~D forward-chains>"
@@ -799,6 +801,9 @@
 
 (defun get-cong-state* (made-cong-states)
   (let* ((result (make-cong-state*)))
+    (setf (cong-state*-id result)
+	  (+ (length (made-cong-states-used made-cong-states))
+	     (length (made-cong-states-free made-cong-states))))
     (push result (made-cong-states-used made-cong-states))
     result))
 
