@@ -9,6 +9,7 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -60,7 +61,10 @@
   (unless dont-load-patches
     (load-pvs-patches))
   (pvs-init-globals)
-  (initialize-decision-procedures))
+  (initialize-decision-procedures)
+  (unless *pvs-context-path*
+    ;; Need to make sure this is set to something
+    (setq *pvs-context-path* (shortpath (working-directory)))))
 
 (defun pvs-init-globals ()
   (setq *pvs-modules* (make-hash-table :test #'eq :size 20 :rehash-size 10))
@@ -83,6 +87,7 @@
   (dolist (fn *untypecheck-hook*)
     (funcall fn))
   (when *subst-type-hash* (clrhash *subst-type-hash*))
+  (clrhash *subtype-of-hash*)
   (reset-subst-mod-params-cache)
   (reset-pseudo-normalize-caches)
   (clrhash *assert-if-arith-hash*)
@@ -303,12 +308,13 @@
 		 (typecheck-file dep forced? nil nil no-message?)))))
 	  (t (let ((fe (get-context-file-entry filename)))
 	       (when fe (setf (ce-object-date fe) nil)))
-	     (let ((theories (parse-file* filename file theories forced?)))
+	     (multiple-value-bind (theories changed-theories)
+		 (parse-file* filename file theories forced?)
 	       (when (eq forced? 'all)
 		 (parse-importchain theories))
 	       (dolist (th theories)
 		 (remove-associated-buffers (id th)))
-	       theories)))))
+	       (values theories nil changed-theories))))))
 
 (defun adt-generated-file? (filename)
   (and (> (length filename) 4)
@@ -343,20 +349,31 @@
 		 (let ((nth (parse-file (filename th) t nil)))
 		   (setq *parsed-theories* (append nth *parsed-theories*))
 		   (parse-importchain* nth)))))))))
-		     
-(defvar *dont-use-bin-files* nil)
 
+
+;;; A filename satisfies valid-binfile? if it has a context entry, the
+;;; write date matches, and for each theory of the file the bin file
+;;; date matches the corresponding date in ce-object-date.
 (defun valid-binfile? (filename)
-  (unless *dont-use-bin-files*
-    (let ((fe (get-context-file-entry filename)))
-      (and fe
-	   (ce-object-date fe)
-	   (let ((specdate (file-write-date (make-specpath filename)))
-		 (bindate (file-write-date (make-binpath filename))))
-	     (and bindate
-		  specdate
-		  (= bindate (ce-object-date fe))
-		  (<= specdate bindate)))))))
+  (let* ((ce (get-context-file-entry filename))
+	 (bin-dates (when ce (ce-object-date ce))))
+    (and ce
+	 (let ((spec-date (file-write-date (make-specpath filename)))
+	       (expected-spec-date (ce-write-date ce))
+	       (th-entries (ce-theories ce)))
+	   (and spec-date
+		expected-spec-date
+		(= spec-date expected-spec-date)
+		(every #'(lambda (te)
+			   (let ((bin-date (file-write-date
+					    (make-binpath (te-id te))))
+				 (expected-bin-date
+				  (cdr (assq (te-id te) bin-dates))))
+			     (and bin-date
+				  expected-bin-date
+				  (= bin-date expected-bin-date)
+				  (<= spec-date bin-date))))
+		       th-entries))))))
 
 (defun parse-file* (filename file theories forced?)
   ;;(save-context)
@@ -366,11 +383,13 @@
 	(parse :file file))
     (check-for-theory-clashes new-theories filename)
     ;;(check-import-circularities new-theories)
-    (update-parsed-file filename file theories new-theories forced?)
-    (pvs-message "~a parsed in ~,2,-3f seconds" filename time)
-    #+pvsdebug (assert (every #'(lambda (nth) (get-theory (id nth)))
-			      new-theories))
-    (mapcar #'(lambda (nth) (get-theory (id nth))) new-theories)))
+    (let ((changed
+	   (update-parsed-file filename file theories new-theories forced?)))
+      (pvs-message "~a parsed in ~,2,-3f seconds" filename time)
+      #+pvsdebug (assert (every #'(lambda (nth) (get-theory (id nth)))
+				new-theories))
+      (values (mapcar #'(lambda (nth) (get-theory (id nth))) new-theories)
+	      changed))))
 
 (defun check-for-theory-clashes (new-theories filename)
   (check-for-duplicate-theories new-theories)
@@ -459,64 +478,184 @@
 ;;; list if foo imports (an instance of) list.
 
 (defmethod all-importings ((theory datatype-or-module) &optional lib)
+  (assert (not *saving-theory*))
   (if (eq (all-imported-theories theory) 'unbound)
-      (let ((*current-context* (saved-context theory))
-	    (*current-theory* theory))
-	(setf (all-imported-theories theory)
-	      (delete theory (all-importings* theory lib))))
-      (all-imported-theories theory)))
+      (let* ((*current-context* (or (and (not (library-datatype-or-theory?
+					       theory))
+					 (saved-context theory))
+				    *current-context*))
+	     (*current-theory* (module *current-context*)))
+	(multiple-value-bind (imp-theories imp-names)
+	    (all-importings* theory lib)
+;; 	  (assert (every #'(lambda (th) (listp (all-imported-theories th)))
+;; 			 imp-theories))
+	  #+pvsdebug
+	  (maplist #'(lambda (theories)
+		       (assert (not (some #'(lambda (th)
+					      (let ((imps
+						     (all-imported-theories
+						      (car theories))))
+						(when (listp imps)
+						  (memq th imps))))
+					  (cdr theories)))))
+		   imp-theories)
+	  #+pvsdebug (assert (= (length imp-theories) (length imp-names)))
+	  (when (memq 'typechecked (status theory))
+	    #+pvsdebug (assert (or (null (get-immediate-usings theory))
+				   imp-theories))
+	    (setf (all-imported-theories theory) imp-theories)
+	    (setf (all-imported-names theory) imp-names))
+	  (values imp-theories imp-names)))
+      (values (all-imported-theories theory)
+	      (all-imported-names theory))))
+
+(defmethod all-importings ((theories list) &optional lib)
+  (if (null theories)
+      nil
+      (multiple-value-bind (imp-theories imp-names)
+	  (all-importings (car theories))
+	(all-importings-list (cdr theories)
+			     (reverse imp-theories) (reverse imp-names)))))
+
+(defun all-importings-list (theories imp-theories imp-names)
+  (if (null theories)
+      (values (reverse imp-theories) (reverse imp-names))
+      (multiple-value-bind (i-theories i-names)
+	  (all-importings (car theories))
+	#+pvsdebug (assert (= (length i-theories) (length i-names)))
+	(let ((u-theories (union i-theories imp-theories :test #'eq))
+	      (u-names (union i-names imp-names :test #'impname-eq)))
+	  #+pvsdebug (assert (= (length u-theories) (length u-names)))
+	  (all-importings-list (cdr theories) u-theories u-names)))))
+	   
 
 (defun all-importings* (theory &optional lib)
-  (let ((allimps nil))
-    (dolist (ith (get-immediate-usings theory))
-      (let* ((lib (or (library ith)
-		      (and (library-datatype-or-theory? theory)
-			   lib)))
-	     (itheory (get-theory* (id ith) lib))
-	     (imps (all-importings itheory lib)))
-	(dolist (th imps)
-	  (pushnew th allimps :test #'eq))
-	(pushnew itheory allimps :test #'eq)))))
+  (let* ((imp-theories nil)
+	 (imp-names nil)
+	 (imm-imps (get-immediate-usings theory))
+	 (imps (if (and nil (recursive-type? theory)
+			(adt-theory theory))
+		   (let ((th1 (adt-theory theory))
+			 (th2 (adt-map-theory theory))
+			 (th3 (adt-reduce-theory theory)))
+		     (append imm-imps
+			     (list (mk-modname (id th1)))
+			     (when th2 (list (mk-modname (id th2))))
+			     (when th3 (list (mk-modname (id th3))))))
+		   imm-imps)))
+    #+pvsdebug (assert (or (null (get-immediate-usings theory)) imps))
+    (dolist (ith imps)
+      (let* ((ith-nolib (get-theory (id ith)))
+	     (lib (unless ith-nolib
+		    (or (library ith)
+			(and (library-datatype-or-theory? theory)
+			     (libref-to-libid (lib-ref theory))))))
+	     (itheory (or ith-nolib
+			  (and lib
+			       (get-theory* (id ith) lib))))
+	     (iname (lcopy ith 'library lib 'actuals nil 'mappings nil)))
+	(when (and itheory
+		   (generated-by itheory)
+		   (not (theory-interpretation? itheory)))
+	  (setq iname (lcopy iname 'id (generated-by itheory)))
+	  (setq itheory (get-theory* (generated-by itheory) lib)))
+	(when itheory
+	  (multiple-value-bind (i-theories i-names)
+	      (all-importings itheory lib)
+	    #+pvsdebug (assert (= (length i-theories) (length i-names)) ()
+			       "Not equal 1")
+	    #+pvsdebug (assert (= (length imp-theories) (length imp-names)) ()
+			       "Not equal 2")
+	    #+pvsdebug (assert (or (null (get-immediate-usings itheory))
+				   i-theories))
+	    #+pvsdebug (assert (eq (not (memq itheory imp-theories))
+				   (not (member iname imp-names
+						:test #'impname-eq))))
+	    (let ((iths (copy-list imp-theories))
+		  (inms (copy-list imp-names)))
+	      (setf imp-theories (delete itheory iths :test #'eq))
+	      (setf imp-names (delete iname inms :test #'impname-eq))
+	      #+pvsdebug (assert (= (length imp-theories) (length imp-names)) ()
+				 "Not equal 3"))
+	    (push itheory imp-theories)
+	    (push iname imp-names)
+	    (loop for th in (reverse i-theories)
+		  as nm in (reverse i-names)
+		  do (progn
+		       #+pvsdebug (assert (or (not (library-datatype-or-theory?
+						    th))
+					      (library nm)
+					      lib))
+		       (when (and (library-datatype-or-theory? th)
+				  (not (library nm)))
+			 (setq nm
+			       (lcopy nm
+				 'library lib 'actuals nil 'mappings nil)))
+		       #+pvsdebug (assert (eq (not (memq th imp-theories))
+					      (not (member nm imp-names
+							   :test #'impname-eq))))
+		       (setf imp-theories (delete th imp-theories :test #'eq))
+		       (push th imp-theories)
+		       (setf imp-names (delete nm imp-names :test #'impname-eq))
+		       (push nm imp-names)))
+	    #+pvsdebug (assert (= (length imp-theories) (length imp-names)) ()
+			       "Not equal 4")))))
+    #+pvsdebug (assert (every #'datatype-or-module? imp-theories))
+    #+pvsdebug (assert (every #'modname? imp-names))
+    #+pvsdebug (assert (every #'same-id imp-theories imp-names))
+    (values imp-theories imp-names)))
+
+(defmethod all-importings-update-theories ((th module) theories lib)
+  (if (generated-by th)
+      (all-importings-update-theories (get-theory* (generated-by th) lib)
+				      theories lib)
+      (cons th (delete th theories :test #'eq))))
+
+(defmethod all-importings-update-theories ((th recursive-type) theories lib)
+  (dolist (ath (adt-generated-theories th))
+    (setf theories (cons ath (delete ath theories :test #'eq))))
+  (cons th (delete th theories :test #'eq)))
+
+(defmethod all-importings-update-names ((th module) names lib)
+  (if (generated-by th)
+      (all-importings-update-names (get-theory* (generated-by th) lib)
+				   names lib)
+      (cons th (delete th names :test #'impname-eq))))
+
+(defmethod all-importings-update-names ((th recursive-type) names lib)
+  (dolist (ath (adt-generated-theories th))
+    (setf names (cons ath (delete ath names :test #'eq))))
+  (cons th (delete th names :test #'eq)))
+
+(defun impname-eq (imp1 imp2)
+  (and (eq (id imp1) (id imp2))
+       (eq (library imp1) (library imp2))))
 
 
 (defun update-parsed-file (filename file theories new-theories forced?)
   (handle-deleted-theories filename new-theories)
   (when forced?
     (reset-typecheck-caches))
-  (let ((mth (update-parsed-theories filename file theories new-theories
-				     forced?)))
+  (multiple-value-bind (mth changed)
+      (update-parsed-theories filename file theories new-theories forced?)
     (setf (gethash filename *pvs-files*)
-	  (cons (file-write-date file) mth)))
-  (update-context filename))
+	  (cons (file-write-date file) mth))
+    (update-context filename)
+    changed))
 
 (defun update-parsed-theories (filename file oldtheories new-theories forced?
-					&optional result)
+					&optional result changed)
   (if (null new-theories)
-      (nreverse result)
+      (values (nreverse result) (nreverse changed))
       (let* ((nth (car new-theories))
 	     (oth (find nth oldtheories :test #'same-id))
-	     (kept? nil))
-	(unless (or (null (get-context-file-entry filename))
-		    (and (ce-write-date (get-context-file-entry filename))
-			 (= (file-write-date file)
-			    (ce-write-date (get-context-file-entry filename)))))
-	  (dolist (ce (pvs-context-entries))
-	    (when (and (member filename (ce-dependencies ce) :test #'string=)
-		       (not (gethash (ce-file ce) *pvs-files*)))
-	      (setf (ce-write-date ce) 0)
-	      (setf (ce-object-date ce) 0)
-	      (setq *pvs-context-changed* t))
-	    (dolist (te (ce-theories ce))
-	      (when (and (memq (id nth) (te-dependencies te))
-			 (not (get-theory (te-id te))))
-		(dolist (fe (te-formula-info te))
-		  (when (memq (fe-status fe)
-			      '(proved-complete proved-incomplete))
-		    (setf (fe-status fe) 'unchecked)
-		    (setq *pvs-context-changed* t)))))))
+	     (kept? nil)
+	     (changed? nil))
+	(invalidate-context-formula-proof-info filename file nth)
 	(setf (filename nth) filename)
 	(if (and oth (memq 'typechecked (status oth)))
-	    (let ((diffs (or forced? (compare oth nth))))
+	    (let* ((*current-context* (saved-context oth))
+		   (diffs (or forced? (compare oth nth))))
 	      (cond ((null diffs)
 		     (setq kept? t)
 		     (copy-lex oth nth))
@@ -535,13 +674,15 @@
 			     (ignore-file-errors
 			      (delete-file (namestring gen))))))
 		       (untypecheck-usedbys oth)
-		       (setf (gethash (id nth) *pvs-modules*) nth))))
+		       (setf (gethash (id nth) *pvs-modules*) nth)
+		       (setq changed? t))))
 	    ;; Don't need to do anything here, since oth was never typechecked.
 	    (setf (gethash (id nth) *pvs-modules*) nth))
 	(update-parsed-theories filename file
 				(remove oth oldtheories) (cdr new-theories)
 				forced?
-				(cons (if kept? oth nth) result)))))
+				(cons (if kept? oth nth) result)
+				(if changed? (cons oth changed) changed)))))
 
 (defun untypecheck-usedbys (theory)
   (dolist (tid (find-all-usedbys theory))
@@ -550,7 +691,11 @@
       (untypecheck-theory th))))
 
 (defun reset-proof-statuses (theory)
-  (invalidate-proofs theory))
+  (when theory
+    (let ((te (get-context-theory-entry (id theory))))
+      (when te
+	(pushnew 'invalid-proofs (te-status te))))
+    (invalidate-proofs theory)))
 
 
 ;;; collect-theory-clashes takes a list of theories and their associated
@@ -604,7 +749,7 @@
 
 (defun typecheck-file (filename &optional forced? prove-tccs? importchain?
 				nomsg?)
-  (multiple-value-bind (theories restored?)
+  (multiple-value-bind (theories restored? changed-theories)
       (parse-file filename forced? t)
     (let ((*current-file* filename)
 	  (*typechecking-module* nil)
@@ -648,7 +793,7 @@
 				      :test #'eq)
 		   t)
 		  (prove-unproved-tccs theories))))
-	theories))))
+	(values theories changed-theories)))))
 
 (defun delete-generated-adt-files (theories)
   (dolist (th theories)
@@ -665,7 +810,7 @@
 (defun typecheck-theories (filename theories)
   (let ((all-proofs (read-pvs-file-proofs filename))
 	(sorted-theories (sort-theories theories)))
-    (check-import-circularities sorted-theories)
+    ;;(check-import-circularities sorted-theories)
     (dolist (theory sorted-theories)
       (let ((start-time (get-internal-real-time))
 	    (*current-context* (make-new-context theory))
@@ -673,8 +818,9 @@
 	    (*old-tcc-names* nil))
 	(unless (typechecked? theory)
 	  (typecheck theory)
-	  #+pvsdebug (assert (typechecked? theory))
+	  (assert (typechecked? theory))
 	  (restore-from-context filename theory all-proofs)
+	  (set-default-proofs theory)
 	  ;;	(when (and *prove-tccs* (module? theory))
 	  ;;	  (prove-unproved-tccs (list theory))
 	  ;;	  (setf (tccs-tried? theory) t))
@@ -726,6 +872,25 @@
            bin files will not be generated for any of these pvs files."
 	  deplist))))
   theories)
+
+(defun set-default-proofs (theory)
+  (dolist (d (all-decls theory))
+    (when (and (tcc? d)
+	       (null (proofs d)))
+      (set-default-proof d))))
+
+(defun set-default-proof (tcc-decl)
+  (setf (proofs tcc-decl)
+	(list (mk-proof-info
+	       (makesym "~a-1" (id tcc-decl))
+	       nil (get-universal-time) nil
+	       (list "" (list (default-tcc-proof tcc-decl)) nil nil)
+	       nil nil nil nil nil)))
+  (setf (default-proof tcc-decl) (car (proofs tcc-decl))))
+
+(defmethod default-tcc-proof (tcc-decl)
+  (class-name (class-of tcc-decl)))
+      
 
 (defun prove-unproved-tccs (theories &optional importchain?)
   (read-strategies-files)
@@ -1162,9 +1327,10 @@
     (pvs-buffer (makesym "~a.pvs" filename)
       (format nil "~{~a~^~2%~}"
 	(mapcar #'(lambda (th)
-		    (unparse th
-		      :string t
-		      :char-width *default-char-width*))
+		    (let ((*current-context* (saved-context th)))
+		      (unparse th
+			:string t
+			:char-width *default-char-width*)))
 		theories))
       t)))
 
@@ -1173,23 +1339,49 @@
   (let* ((context-theory (when context-theoryname
 			   (get-typechecked-theory context-theoryname)))
 	 (*current-context* (context context-theory))
-	 (theoryname (pc-parse theoryname-string 'theory-decl-modname)))
-    (when (or (actuals theoryname) (mappings theoryname))
-      (let ((*generate-tccs* 'none)
-	    (*current-theory* (current-theory))
-	    (decl (make-instance 'mod-decl
-		    'id (makesym "~a_instance" (id theoryname))
-		    'modname theoryname)))
-	(typecheck-named-theory* (get-typechecked-theory theoryname)
-				 theoryname decl)
-	(pvs-buffer (makesym "~a.ppi" (id theoryname))
-	  (concatenate 'string
-	    (format nil
-		"% Theory instance for~%  %~a~%"
-	      (unpindent theoryname 2 :string t :comment? t))
-	    (unparse (generated-theory decl)
-	      :string t :char-width *default-char-width*))
-	  t)))))
+	 (theoryname (pc-parse theoryname-string 'modname))
+	 (*collecting-tccs* t)
+	 (*tccforms* nil))
+    (typecheck-using theoryname)
+    (let ((stheory (subst-mod-params (get-theory theoryname) theoryname)))
+      ;; Now print out the theory
+      (pvs-buffer (makesym "~a.ppi" (id theoryname))
+	(with-output-to-string (out)
+	  (format out
+	      "% This is a theory instance buffer, providing information about~
+             ~%% a given theory instance (with sustitutions made for given~
+             ~%% actuals and mappings).  There are three parts to this: the~
+             ~%% instance name, the TCCs that would be generated for this~
+             ~%% instance, and the substituted theory.  Note that the~
+             ~%% substituted theory may reference declarations of the context~
+             ~%% theory, so is not a real standalone theory.~2%")
+	  (format out
+	      "% This is the output of the theory instance for~%  %~a~%"
+	    (unpindent theoryname 2 :string t :comment? t))
+	  (let ((mapped-tccs-ctr 0))
+	    (dolist (tcc (reverse *tccforms*))
+	      (when (zerop mapped-tccs-ctr)
+		(format out
+		    "~%% Generates TCCs:~
+                       ~%%  Note: actual TCC formula names may not match,~
+                       ~%%        and not all AXIOMs get translated"))
+	      (format out
+		  "~2%  % ~a TCC~%  ~a: OBLIGATION~%    ~a"
+		(tccinfo-kind tcc)
+		(make-tccinfo-tcc-name tcc context-theory
+				       (incf mapped-tccs-ctr))
+		(unpindent (tccinfo-formula tcc) 4 :string t))))
+	  (format out
+	      "~2%% The instantiated theory is:~2%~a"
+	    (unparse stheory :string t :char-width *default-char-width*)))
+	t))))
+
+(defun make-tccinfo-tcc-name (tccinfo context-theory ctr)
+  (makesym "IMP_~a_~@[~a_~]TCC~d"
+	   (id context-theory)
+	   (when (eq (tccinfo-kind tccinfo) 'mapped-axiom)
+	     (id (tccinfo-type tccinfo)))
+	   ctr))
 
 ; (defmethod prettyprint (theory)
 ;   (let ((*no-comments* nil))
@@ -1355,9 +1547,13 @@
 
 (defmethod parsed?* ((mod datatype-or-module))
   (or (from-prelude? mod)
-      (and (filename mod)
-	   (eql (car (gethash (filename mod) *pvs-files*))
-		(file-write-date (make-specpath (filename mod)))))))
+      (if (generated-by mod)
+	  (let ((gth (get-theory (generated-by mod))))
+	    (and gth
+		 (parsed?* gth)))
+	  (and (filename mod)
+	       (eql (car (gethash (filename mod) *pvs-files*))
+		    (file-write-date (make-specpath (filename mod))))))))
 
 (defmethod parsed?* ((mod library-theory))
   (parsed-library-file? mod))
@@ -1961,8 +2157,8 @@
     (let ((*start-proof-display* display?))    
       (setq *last-proof*
 	    (if step?
-		(prove (id fdecl))
-		(prove (id fdecl) :strategy '(rerun)))))
+		(prove fdecl)
+		(prove fdecl :strategy '(rerun)))))
     ;; Save the proof.
     (unless (from-prelude? fdecl)
       (save-all-proofs *current-theory*)
@@ -2221,7 +2417,7 @@
 	(files-with-theoryref nil))
     (dolist (file pvs-files)
       (let ((fname (pathname-name file)))
-	(unless (gethash fname *pvs-files*)
+	(unless (parsed-file? fname)
 	  (let ((theories (ignore-errors (with-no-parse-errors
 					  (parse :file file)))))
 	    (when (member (ref-to-id theoryref) theories :key #'id)
@@ -2230,7 +2426,10 @@
 	      ;;       file2 has theories th2 and th3
 	      ;; and we're looking for th3 from file1.
 	      (if (some #'(lambda (th)
-			    (gethash (id th) *pvs-modules*))
+			    (let ((cth (gethash (id th) *pvs-modules*)))
+			      (and cth
+				   (filename cth)
+				   (not (string= fname (filename cth))))))
 			theories)
 		  (push fname files-with-clashes)
 		  (push fname files-with-theoryref)))))))
@@ -2296,6 +2495,7 @@
 (defun get-decl-at (line class theories)
   (when theories
     (let* ((theory (car theories))
+	   (*current-context* (saved-context theory))
 	   (decl (find-if #'(lambda (d)
 			      (and (typep d class)
 				   (place d)
@@ -2526,12 +2726,9 @@
 
 (defun collect-skolem-constants ()
   (let ((skoconsts nil))
-    (maphash #'(lambda (id decls)
-		 (declare (ignore id))
-		 (dolist (d decls)
-		   (when (typep d 'skolem-const-decl)
-		     (pushnew d skoconsts))))
-	     (current-declarations-hash))
+    (do-all-declarations #'(lambda (d)
+			     (when (typep d 'skolem-const-decl)
+			       (pushnew d skoconsts))))
     (sort skoconsts #'string-lessp :key #'id)))
 
 (defun get-patch-version ()
@@ -2555,7 +2752,9 @@
 (defun collect-strategy-names (&optional all?)
   (with-open-file (*standard-output* "/dev/null" :direction :output
 				     :if-exists :overwrite)
-    (read-strategies-files))
+    (with-open-file (*error-output* "/dev/null" :direction :output
+				    :if-exists :overwrite)
+      (read-strategies-files)))
   (let ((names nil))
     (maphash #'(lambda (n s)
 		 (push (string-downcase (string n)) names))
@@ -2622,6 +2821,7 @@
 			       (car (last *prelude-theories*))))
 	 (*current-context* (copy (context *current-theory*)))
 	 (fdecl (typecheck-formula-decl formula-decl theory-name))
+	 (*collecting-tccs* t)
 	 (*tccforms* nil))
     (typecheck (definition fdecl) :expected *boolean* :tccs 'all)
     (when *tccforms*
@@ -2716,3 +2916,65 @@
   (let ((file (ignore-errors (get-source-file (name strat) 'strategy))))
     (when file
       (format out "~2%Defined in file: ~s" (namestring file)))))
+
+(defun prelude-stats ()
+  (let ((consts 0) (defs 0) (recs 0) (inds 0) (coinds 0) (utdecls 0)
+	(tdecls 0) (tcc-decls 0) (ass-decls 0) (subjdgs 0) (jdgs 0) (convs 0)
+	(fdecls 0) (axioms 0) (postulates 0))
+    (do-all-declarations
+     #'(lambda (d)
+	 (typecase d
+	   (def-decl (incf recs))
+	   (inductive-decl (incf inds))
+	   (coinductive-decl (incf coinds))
+	   (const-decl (if (definition d)
+			   (incf defs)
+			   (incf consts)))
+	   (type-def-decl (incf tdecls))
+	   (type-decl (incf utdecls))
+	   (tcc-decl (incf tcc-decls))
+	   (assuming-decl (incf ass-decls))
+	   (formula-decl (case (spelling d)
+			   (AXIOM (incf axioms))
+			   (POSTULATE (incf postulates))
+			   (t (incf fdecls))))
+	   (subtype-judgement (incf subjdgs))
+	   (judgement (incf jdgs))
+	   (conversionminus-decl nil)
+	   (conversion-decl (incf convs))))
+     (declarations-hash *prelude-context*))
+    (format t "~%~10d uninterpreted type declarations~
+               ~%~10d defined type declarations~
+               ~%~10d uninterpreted constants~
+               ~%~10d defined constants~
+               ~%~10d recursive definitions~
+               ~%~10d inductive definitions~
+               ~%~10d coinductive definitions~
+               ~%~10d subtype judgements~
+               ~%~10d constant judgements~
+               ~%~10d conversions~
+               ~%~10d TCCs~
+               ~%~10d axioms~
+               ~%~10d postulates~
+               ~%~10d formulas"
+      utdecls tdecls consts defs recs inds coinds subjdgs jdgs convs
+      tcc-decls axioms postulates fdecls)))
+
+(defun collect-format-strings ()
+  (with-open-file (*standard-output* "/dev/null" :direction :output
+				     :if-exists :overwrite)
+    (read-strategies-files))
+  (let ((format-strings nil))
+    (maphash #'(lambda (n s)
+		 (unless (string= (format-string s) "")
+		   (push (format-string s) format-strings)))
+	     *rulebase*)
+    (maphash #'(lambda (n s)
+		 (unless (string= (format-string s) "")
+		   (push (format-string s) format-strings)))
+	     *rules*)
+    (maphash #'(lambda (n s)
+		 (unless (string= (format-string s) "")
+		   (push (format-string s) format-strings)))
+	     *steps*)
+    format-strings))
