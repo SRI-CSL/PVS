@@ -203,7 +203,8 @@
 		  ))
    (:module classes
      :source-pathname "src/"
-     :components ((:file "store-object")
+     :components ((:file "linked-hash-table")
+		  (:file "store-object")
 		  (:file "defcl")
 		  (:file "classes-expr"
 			 :depends-on ("defcl"))
@@ -239,7 +240,7 @@
 		  (:file "optimize")
 		  (:file "makes" :depends-on ("macros"))
 		  (:file "parse" :depends-on ("macros"))
-		  ;;(:file "unparse" :depends-on ("macros"))
+		  (:file "context")
 		  (:file "pp")
 		  (:file "print-object")
 		  (:file "equalities")
@@ -268,7 +269,6 @@
 		  (:file "judgements")
 		  (:file "xref")
 		  (:file "occurs-in")
-		  (:file "context")
 		  (:file "datatype")
 		  (:file "typecheck")
 		  (:file "tclib"))
