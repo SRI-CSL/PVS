@@ -9,6 +9,7 @@
 %% 
 %% HISTORY
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 Grammar PVS
 
@@ -31,7 +32,7 @@ Operators
 	'<<' '>>' '::' '#' '@' '@@' '##' '[|' '|]' '(|' '|)' '{|' '|}'
         '|[' ']|' '!'
         '<<=' '>>=' '`' '\''
-	'[||]' '(||)' '{||}' '||' '|-' '|=' '<|' '|>'
+	'[||]' '(||)' '{||}' '||' '|-' '|=' '<|' '|>' ':->'
 
 Lexical Terminals
 	id, number, string %, literal
@@ -478,13 +479,15 @@ simplebind ::= {idop pdformals* [':' type-expr]}
 
 modnames ::= {modname ++ ','} <modnames(modname+)>;
 
-modname ::= {[{id^1 '@'}]^p id [actuals] [mappings]^m}
+modname ::= {[{id^1 '@'}]^p id [actuals] [mappings]^m [':->' modname]^t}
 	    <modname(id,[nolib()|id^1]^p,[noactuals()|actuals],
-                        [nomap()|mappings]^m)>;
+                        [nomap()|mappings]^m, [notgt()|modname]^t)>;
 
-theory-decl-modname ::= {[{id^1 '@'}]^p id [actuals] [theory-decl-mappings]^m}
+theory-decl-modname ::= {[{id^1 '@'}]^p id [actuals]
+	    [theory-decl-mappings]^m [':->' theory-decl-modname]^t}
 	    <modname(id,[nolib()|id^1]^p,[noactuals()|actuals],
-                        [nomap()|theory-decl-mappings]^m)>;
+                        [nomap()|theory-decl-mappings]^m,
+                        [notgt()|theory-decl-modname]^t)>;
 
 names ::= {name ++ ','}	<names(name+)>;
 
@@ -507,9 +510,9 @@ typed-ids ::= {idops [':' type-expr]^t ['|' expr]^e}
 	      <{typed-ids(idops,[no-type-expr()|type-expr]^t,
 				[no-pred()|expr]^e)>;
 
-name ::= {[{id '@'}]^L idop [actuals] [mappings]^m [{'.' idop^1}]^1}
+name ::= {[{id '@'}]^L idop [actuals] [mappings]^m [':->' modname]^t [{'.' idop^1}]^1}
 	 <name(idop,[nolib()|id]^L,[noacts()|actuals],[nomod()|idop^1]^1,
-	       [nomap()|mappings]^m)>;
+	       [nomap()|mappings]^m, [notgt()|modname]^t)>;
 
 unique-name ::= {name [':' {'TYPE'|type-expr|formula-name}]}
 		<unique-name
