@@ -1186,7 +1186,7 @@
 		  (gethash (id theory-name) (current-declarations-hash)))))
     (cond ((null abbrs)
 	   (type-error theory-name
-	     "Theory ~a is not an abbreviation, not is it imported ~
+	     "Theory ~a is not an abbreviation, nor is it imported ~
               in the current context"
 	     (id theory-name)))
 	  ((singleton? abbrs)
