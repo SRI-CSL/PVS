@@ -15,6 +15,8 @@
 (export '(*num-keywords-skipped* *last-syntax* *last-newline-comment*
 				 *hold-a4* *hold-b4*))
 
+(defvar *end-place* nil)
+
 
 ;;; SBRT Parameters
 
@@ -77,17 +79,27 @@
     result))
 
 (defun get-end-place (sim-op args splace token?)
-  (if args
-      (let ((maxplace (maximal-endplace args)))
-	(sbrt::make-place
-	 :linenumber (svref maxplace 2)
-	 :charnumber (svref maxplace 3)))
-      (sbrt::make-place
-       :linenumber (sbrt::place-linenumber splace)
-       :charnumber (+ (the fixnum (sbrt::place-charnumber splace))
-		      (if token?
-			  (the fixnum (length (princ-to-string sim-op)))
-			  1)))))
+  (cond (sbrt::*end-place*
+	 (let ((eplace (caddr sbrt::*end-place*))
+	       (token (if (eq (cadr sbrt::*end-place*) :keyword-internal-flag)
+			  (car sbrt::*end-place*)
+			  (cadr sbrt::*end-place*))))
+	   ;;(format t "~%*end-place* = ~s" sbrt::*end-place*)
+	   (sbrt::make-place
+	    :linenumber (sbrt::place-linenumber eplace)
+	    :charnumber (+ (the fixnum (sbrt::place-charnumber eplace))
+			   (the fixnum (length (princ-to-string token)))))))
+	(args
+	 (let ((maxplace (maximal-endplace args)))
+	   (sbrt::make-place
+	    :linenumber (svref maxplace 2)
+	    :charnumber (svref maxplace 3))))
+	(t (sbrt::make-place
+	    :linenumber (sbrt::place-linenumber splace)
+	    :charnumber (+ (the fixnum (sbrt::place-charnumber splace))
+			   (if token?
+			       (the fixnum (length (princ-to-string sim-op)))
+			       1))))))
 
 (defun maximal-endplace (args &optional place)
   (cond ((null args)
@@ -128,6 +140,8 @@
 (defun reader ()
   (multiple-value-bind (token place comment)
       (lexical-read *lexical-stream* :eof)
+    ;;(format t "~%reader: token = ~s, place = ~s, comment = ~s"
+    ;;  token place comment)
     (cond ((consp token)
 	   (case (car token)
 	     (:literal
@@ -168,8 +182,8 @@
 				     (sbrt::place-linenumber place)
 				     (+ (the fixnum
 					  (sbrt::place-charnumber place))
-					(1- (the fixnum
-					      (length (string token))))))))
+					(the fixnum
+					  (length (string token)))))))
 		 (push (cons pvs-sym oplace) pvs::*operator-places*)))
 	     (values (intern upstr 'sbst)
 		     :keyword-internal-flag place comment)))
@@ -216,6 +230,9 @@ with the comment so as to put it in the proper place")
 	     (values (prog1 *hold-a1* (setf *hold-a1* nil))
 		     *hold-a2* *hold-a3* *hold-a4*))
 	    (t (funcall *reader-fun*)))
+    ;;(format t "~%gettoken: type = ~s, token = ~s, place = ~s, comment = ~s"
+    ;;  type token place comment)
+    (setq *end-place* (list type token place))
     (setq *last-newline-comment* (nconc *last-newline-comment* comment))
     ;;(format t "~%gettoken comment = ~s" comment)
     (cond (;; This branch of the COND is completely meaningless because
@@ -229,31 +246,29 @@ with the comment so as to put it in the proper place")
 		      type token place comment)))))
 
 
-;;; Consume a token from the input stream.
+;;; Consume a token from the input stream.  The *hold-a1*, etc., values
+;;; are the token type, token value, place, and comment, respectively.
 (defun gobble-token ()
   (let ((*collect-comments* t))
     (incf *num-keywords-skipped*)
     ;;(format t "~%Skipping ~a - skipped ~d"
     ;;  (peek-first) *num-keywords-skipped*)
-    (let ((cmt (cond (*hold-b1*
-		      (when (eq *hold-b1* 'sbst::elsif)
-			(push *hold-b3* pvs::*elsif-places*))
-		      (setq *hold-b1* ())
-		      *hold-b4*)
-		     (*hold-a1*
-		      (when (eq *hold-a1* 'sbst::elsif)
-			(push *hold-a3* pvs::*elsif-places*))
-		      (setq *hold-a1* ())
-		      *hold-a4*)
-		     (t (multiple-value-bind (v1 v2 v3 v4)
-			    (funcall *reader-fun*)
-			  (declare (ignore v2))
-			  (when (eq v1 'sbst::elsif)
-			    (push v3 pvs::*elsif-places*))
-			  v4)))))
-      (setq *last-newline-comment* (nconc *last-newline-comment* cmt)))
-      ;;(format t "~%gobble-token comment = ~s" cmt)
-      nil))
+    (multiple-value-bind (v1 v2 v3 v4)
+	(cond (*hold-b1*
+	       (values (prog1 *hold-b1* (setq *hold-b1* nil))
+		       *hold-b2* *hold-b3* *hold-b4*))
+	      (*hold-a1*
+	       (values (prog1 *hold-a1* (setq *hold-a1* nil))
+		       *hold-a2* *hold-a3* *hold-a4*))
+	      (t (funcall *reader-fun*)))
+      ;;(format t "~%gobble-token: type = ~s, token = ~s, place = ~s, comment = ~s"
+	;;v1 v2 v3 v4)
+      (when (eq v1 'sbst::elsif)
+	(push v3 pvs::*elsif-places*))
+      (setq *end-place* (list v1 v2 v3))
+      (setq *last-newline-comment*
+	    (nconc *last-newline-comment* v4))
+      nil)))
 
 
 ;;; This function comes from rt-format.  I changed it so that extra
@@ -398,8 +413,8 @@ with the comment so as to put it in the proper place")
 	(scol (place-charnumber splace))
 	(eline (place-linenumber eplace))
 	(ecol (place-charnumber eplace)))
-    ;;(format t "~%Term = ~s~%  Place = ~d, ~d, ~d, ~d"
-    ;;  term sline scol eline ecol)
+;     (format t "~%Term = ~s~%  Place = ~d, ~d, ~d, ~d"
+;       term sline scol eline ecol)
     (setf (getf (term:term-attr term) :place)
 	  (vector sline scol eline ecol))))
 
