@@ -56,6 +56,7 @@
 ;; Proof Search
 
 (defun fol-search (st fmlas &optional (k #'identity))
+  (declare (ignore st))                               ; for the time being
   (format t "~%Proof Search: ~%~{~a~^~%~}" fmlas)
   (let ((lfmlas (mapcar #'(lambda (fmla)
 			    (mk-fmla *start-label* fmla))
@@ -80,7 +81,7 @@
 			(try-to-unify1 ha1 ca labels unifier
 				      #'(lambda (new-unifier)
 					  (if (fail? new-unifier)
-					      (split ha1 hn1 h1
+					      (splitting ha1 hn1 h1
 						     ca1 cn1 c1
 						     labels unifier k)
 					      (funcall k new-unifier))))
@@ -119,11 +120,12 @@
 
 ;; Splitting a sequent
 
-(defun split (ha ho hn ca co cn labels unifier k)
+(defun splitting (ha ho hn ca co cn labels unifier k)
   (format t "~%Split")
   (split* ha ho hn ca co cn labels unifier k))
 
 (defun split* (ha ho hn ca co cn labels unifier k)
+  (declare (special *iterations*))
   (cond ((and (atom cn) (atom hn))
 	 (if (or (consp ho) (consp co))
 	     (if (> *iterations* 0)
@@ -169,6 +171,7 @@
     (funcall k *fail*))))
 
 (defun split- (ha ho hn ca co cn labels unifier k)
+  (declare (ignore cn))
   (let* ((c1 (car hn))
 	 (l  (label-of c1))
 	 (e  (fmla-of c1))
@@ -210,66 +213,6 @@
 	  (t
 	   (funcall k *fail*)))))
 
-;; Propositional flattening, relabeling, and categorization
-
-(defun flatten (ha hs hn ca cs cn)
-  (format t "~%Flatten")
-  (flatten* ha hs hn ca cs cn))
-
-(defun flatten* (ha hs hn ca cs cn)
-  (cond ((consp cn)
-	 (flatten+ ha hs hn ca cs cn))
-	((consp hn)
-	 (flatten- ha hs hn ca cs cn))
-	(t
-	 (values ha hs ca cs))))
-
-(defun flatten+ (ha hs hn ca cs cn)
-  (assert (consp cn))
-  (let* ((c1 (car cn))
-	 (c  (fmla-of c1))
-	 (l  (label-of c1))
-	 (cn (cdr cn)))
-    (cond ((negation-p c)
-	   (flatten* ha hs (cons (mk-fmla l (arg 1 c)) hn)
-		     ca cs cn))
-	  ((disjunction-p c)
-	   (flatten* ha hs hn
-		     ca cs (cons (mk-fmla (once l) (lhs c))
-				 (cons (mk-fmla (twice l) (rhs c))
-				       cn))))
-	  ((implication-p c)
-	   (flatten* ha hs (cons (mk-fmla (once l) (lhs c)) hn)
-		     ca cs (cons (mk-fmla (twice l) (rhs c)) cn)))
-	  ((conjunction-p c)
-	   (flatten* ha hs hn
-		     ca (cons c1 cs) cn))
-	  (t
-	   (flatten* ha hs hn
-		     (cons c1 ca) cs cn)))))
-
-(defun flatten- (ha hs hn ca cs cn)
-  (assert (consp hn))
-  (let* ((h1 (car hn))
-	 (h (fmla-of h1))
-	 (l (label-of h1))
-	 (hn (cdr hn)))
-    (cond ((negation-p h)
-	   (flatten* ha hs hn
-		     ca cs (cons (mk-fmla l (arg 1 h)) cn)))
-	  ((conjunction-p h)
-	   (flatten* ha hs (cons (mk-fmla (once l) (lhs h))
-				 (cons (mk-fmla (twice l) (rhs h))
-				      hn))
-		    ca cs cn))
-	  ((or (disjunction-p h)
-	       (implication-p h))
-	   (flatten* ha (cons h1 hs) hn
-		     ca cs cn))
-	  (t
-	   (flatten* (cons h1 ha) hs hn
-		     ca cs cn)))))
-
 ;; Search for Unifiers
 
 (defun try-to-unify1 (hyps concs labels unifier k)
@@ -307,11 +250,6 @@
 			     unifier)))
     (funcall k (if (fail? new-unifier) *fail*
 		   new-unifier))))
-
-(defvar *fail* :fail)
-
-(defun fail? (st)
-  (eq *fail* st))
 
 ;; Labelled Unifiers
 
@@ -371,6 +309,7 @@
     (unlabel* (fmla-of trm))))
 
 (defun unlabel* (trm)
+  (declare (special *label*))
   (cond ((dp-variable-p trm)
 	 (let ((x (mk-variable (pvs::makesym "~a~a" (constant-id trm) *label*))))
 	;   (when (frozen? *label*)
@@ -381,3 +320,64 @@
 			(mapcar #'unlabel* (funargs trm)))))
 	(t
 	 trm)))
+
+
+;; Propositional flattening, relabeling, and categorization
+
+(defun flatten (ha hs hn ca cs cn)
+  (flatten* ha hs hn ca cs cn))
+
+(defun flatten* (ha hs hn ca cs cn)
+  (cond ((consp cn)
+	 (flatten+ ha hs hn ca cs cn))
+	((consp hn)
+	 (flatten- ha hs hn ca cs cn))
+	(t
+	 (values ha hs ca cs))))
+
+(defun flatten+ (ha hs hn ca cs cn)
+  (assert (consp cn))
+  (let* ((c1 (car cn))
+	 (c  (fmla-of c1))
+	 (l  (label-of c1))
+	 (cn (cdr cn)))
+    (cond ((negation-p c)
+	   (flatten* ha hs (cons (mk-fmla l (arg 1 c)) hn)
+		     ca cs cn))
+	  ((disjunction-p c)
+	   (flatten* ha hs hn
+		     ca cs (cons (mk-fmla (once l) (lhs c))
+				 (cons (mk-fmla (twice l) (rhs c))
+				       cn))))
+	  ((implication-p c)
+	   (flatten* ha hs (cons (mk-fmla (once l) (lhs c)) hn)
+		     ca cs (cons (mk-fmla (twice l) (rhs c)) cn)))
+	  ((conjunction-p c)
+	   (flatten* ha hs hn
+		     ca (cons c1 cs) cn))
+	  (t
+	   (flatten* ha hs hn
+		     (cons c1 ca) cs cn)))))
+
+(defun flatten- (ha hs hn ca cs cn)
+  (assert (consp hn))
+  (let* ((h1 (car hn))
+	 (h (fmla-of h1))
+	 (l (label-of h1))
+	 (hn (cdr hn)))
+    (cond ((negation-p h)
+	   (flatten* ha hs hn
+		     ca cs (cons (mk-fmla l (arg 1 h)) cn)))
+	  ((conjunction-p h)
+	   (flatten* ha hs (cons (mk-fmla (once l) (lhs h))
+				 (cons (mk-fmla (twice l) (rhs h))
+				      hn))
+		    ca cs cn))
+	  ((or (disjunction-p h)
+	       (implication-p h))
+	   (flatten* ha (cons h1 hs) hn
+		     ca cs cn))
+	  (t
+	   (flatten* (cons h1 ha) hs hn
+		     ca cs cn)))))
+
