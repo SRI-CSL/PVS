@@ -183,6 +183,12 @@
    ((true-p eqn) cong-state)
    ((neq-p eqn) (add-neq eqn cong-state)
     cong-state)
+   ((negation-p eqn)
+    (cond
+     ((equality-p (arg 1 eqn))
+      (add-neq (mk-equality (arg 1 eqn) *false*) cong-state)
+      cong-state)
+     (t (dp-merge (arg 1 eqn) *false* cong-state))))
    ((false-p eqn) *false*)
    ((true-p eqn) cong-state)
    ((equality-p eqn)
