@@ -30,8 +30,10 @@
   (let ((*lvars* vars))
     (declare (special *lvars*))
     (multiple-value-bind (ha hn ca cn)
-	(flatten () () () () () trms)
+	(flatten-seq () () () () () trms)
       (let ((sequents (split1 ha hn ca cn)))
+	(format t "~%~a Sequences" (length sequents))
+        (assert (every #'sequent? sequents))
 	(filter-substs
 	 (gensubsts-sequents sequents))))))
 
@@ -59,7 +61,7 @@
 
 (defun gensubsts-sequents (sequents &optional (score-substs
 					       (list (empty-score-subst))))
-  #+dbg(assert (every #'sequent? sequents))
+  (assert (every #'sequent? sequents))
   (if (null sequents) score-substs
       (gensubsts-sequents (cdr sequents)
 			  (destructuring-bind (hyps concs) (car sequents)
@@ -71,9 +73,10 @@
 			      (gensubsts-sequent hyps concs score-substs))))))
 
 (defun gensubsts-sequent (hyps concs score-substs &optional acc)
-  #+dbg(assert (every #'node-p hyps))
-  #+dbg(assert (every #'node-p concs))
-  #+dbg(assert (every #'score-subst-p score-substs))
+  (assert (every #'node-p hyps))
+  (assert (every #'node-p concs))
+  (assert (every #'score-subst-p score-substs))
+  (format t "~2%Score Substs: ~a" score-substs)
   (if (null score-substs) (nreverse acc)
       (let* ((subst (subst-of (car score-substs)))
 	     (score (score-of (car score-substs)))
@@ -85,9 +88,12 @@
 					  (make-score-subst :score 1
 							    :subst subst))
 				 (gensubsts-sequent1 hyps concs nil)))
-	     (newacc (add-score-substs new-score-substs
-			  (add-score-substs ext-score-substs acc))))
+	     (newacc (remove-redundand-score-substs
+		       (cons (car score-substs) (append new-score-substs ext-score-substs)))))
 	(gensubsts-sequent hyps concs (cdr score-substs) newacc))))
+
+(defun remove-redundand-score-substs (score-substs)
+  (add-score-substs score-substs nil))
 
 (defun add-score-substs (score-substs1 score-substs2)
   (if (null score-substs1) score-substs2
@@ -97,21 +103,22 @@
 (defun add-score-subst (score-subst score-substs)
   (assert (score-subst-p score-subst))
   (assert (every #'score-subst-p score-substs))
-  (if (some #'(lambda (score-subst1)
-		(notbetter? score-subst score-subst1))
-	  score-substs)
-      score-substs
-    (cons score-subst score-substs)))
-	
-(defun notbetter? (score-subst1 score-subst2)
-  (assert (score-subst-p score-subst1))
-  (assert (score-subst-p score-subst2))
-  (and (subst= (subst-of score-subst1) (subst-of score-subst2))
-       (<= (score-of score-subst1) (score-of score-subst2))))
+  (multiple-value-bind (compatibles noncompatibles)
+      (pvs::partition score-substs #'(lambda (score-subst1)
+				       (subst= (subst-of score-subst)
+					       (subst-of score-subst1))))
+    (multiple-value-bind (worse notworse)
+	(pvs::partition compatibles #'(lambda (score-subst1)
+					(< (score-of score-subst1) (score-of score-subst))))
+      (if (null notworse)
+	  (cons score-subst noncompatibles)
+        score-substs))))
 
 (defun gensubsts-sequent1 (hyps concs subst)
   "Given a substitution list all substitutions generated from
    unifying complementary literals (involving variables)"
+  (assert (every #'node-p hyps))
+  (assert (every #'node-p concs))
     (let ((*insts* nil))
       (loop for hyp in hyps
 	    do (loop for conc in concs
@@ -136,7 +143,7 @@
 ;; Splitting
 
 (defun split1 (ha hn ca cn)
-  #+dbg(assert (every #'node-p (append ha hn ca cn)))
+  (assert (every #'node-p (append ha hn ca cn)))
   (split1* ha hn ca cn))
 
 (defun split1* (ha hn ca cn)
@@ -151,9 +158,9 @@
 (defun split1+ (ha hn ca e cn)
   (cond ((conjunction-p e)
 	 (multiple-value-bind (ha1 hn1 ca1 cn1)
-	     (flatten ha hn () ca cn (list (lhs e)))
+	     (flatten-seq ha hn () ca cn (list (lhs e)))
 	   (multiple-value-bind (ha2 hn2 ca2 cn2)
-	       (flatten ha hn () ca cn (list (rhs e)))
+	       (flatten-seq ha hn () ca cn (list (rhs e)))
 	     (append (split1* ha1 hn1 ca1 cn1)
 		     (split1* ha2 hn2 ca2 cn2)))))
 	(t
@@ -162,16 +169,16 @@
 (defun split1- (ha e hn ca cn)
   (cond ((disjunction-p e)
 	 (multiple-value-bind (ha1 hn1 ca1 cn1) 
-	     (flatten ha hn (list (args1 e)) ca cn ())
+	     (flatten-seq ha hn (list (args1 e)) ca cn ())
 	   (multiple-value-bind (ha2 hn2 ca2 cn2) 
-	       (flatten ha hn (list (args2 e)) ca cn ())
+	       (flatten-seq ha hn (list (args2 e)) ca cn ())
 	     (append (split1* ha1 hn1 ca1 cn1)
 		     (split1* ha2 hn2 ca2 cn2)))))
 	((implication-p e)
 	 (multiple-value-bind (ha1 hn1 ca1 cn1) 
-	     (flatten ha hn (list (rhs e)) ca cn ())
+	     (flatten-seq ha hn (list (rhs e)) ca cn ())
 	   (multiple-value-bind (ha2 hn2 ca2 cn2)
-	       (flatten ha hn () ca cn (list (lhs e)))
+	       (flatten-seq ha hn () ca cn (list (lhs e)))
 	     (append (split1* ha1 hn1 ca1 cn1)
 		     (split1* ha2 hn2 ca2 cn2)))))
 	(t
