@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'pvs)  
+(in-package :pvs)  
 
 (require :foreign)
 
@@ -414,7 +414,7 @@ time).  Verbose? set to T provides more information."
 
 
 (defmethod convert-pvs-to-mu* ((expr application))
-  (let* ((*lift-if-updates* T)
+  (let* ((*lift-if-updates* t)
 	 (expr (if (boolean-equation? expr)
 		   (lift-if-expr expr)
 		   expr)))
@@ -531,9 +531,9 @@ time).  Verbose? set to T provides more information."
 
 (defun convert-pvs-to-mu-branch  (expr)
  (let ((result (assert-test0 (condition expr))))
-	(cond ((eq result 'TRUE)
+	(cond ((eq result 'true)
 	       (convert-pvs-to-mu* (then-part expr)))
-	      ((eq result 'FALSE)
+	      ((eq result 'false)
 	       (convert-pvs-to-mu* (else-part expr)))
 	      (t 
 	       (let ((fml1 (convert-pvs-to-mu* (condition expr)))
@@ -830,7 +830,7 @@ time).  Verbose? set to T provides more information."
     
     
 (defun uncurry-application-and-mu-convert (expr)
-  (let* ((*lift-if-updates* T)
+  (let* ((*lift-if-updates* t)
 	 (old-expr expr)
 	 (expr (lift-if-expr expr)))
     (if (eq expr old-expr)
@@ -1446,18 +1446,18 @@ time).  Verbose? set to T provides more information."
 	    (mu-make-bool-var bvarname)))))
 
 (defun mu-mk-rel-var (bvarname)
-(mu_mk_rel_var_ (FF:STRING-TO-CHAR* bvarname)))
+(mu_mk_rel_var_ (ff:string-to-char* bvarname)))
 
 (defun mu-mk-rel-var-dcl (bvarname)
-(mu_mk_rel_var_dcl (FF:STRING-TO-CHAR* bvarname)))
+(mu_mk_rel_var_dcl (ff:string-to-char* bvarname)))
 
 (defun mu-check-bool-var (bvarname)
-(mu_check_bool_var (FF:STRING-TO-CHAR* bvarname)))
+(mu_check_bool_var (ff:string-to-char* bvarname)))
 
 (defun mu-make-bool-var (bvarname)
  (if *build-mu-term*
-  (mu_mk_rel_var_ (FF:STRING-TO-CHAR* bvarname))
-  (mu_check_mk_bool_var (FF:STRING-TO-CHAR* bvarname))
+  (mu_mk_rel_var_ (ff:string-to-char* bvarname))
+  (mu_check_mk_bool_var (ff:string-to-char* bvarname))
 ))
 
 ;;
@@ -1511,7 +1511,7 @@ time).  Verbose? set to T provides more information."
 
 (defun subrange!? (type)
   (let* ((subrange (type-value (declaration (subrange-res))))
-         (*modsubst* T)
+         (*modsubst* t)
          (subst (match subrange type nil nil))) ;(break)
     (when (and (not (eq subst 'fail))
                (every #'(lambda (x)(number-expr? (cdr x))) subst))
@@ -1521,7 +1521,7 @@ time).  Verbose? set to T provides more information."
 
 (defun below!? (type)
   (let* ((below (type-value (declaration (below-res))))
-         (*modsubst* T)
+         (*modsubst* t)
          (subst (match below type nil nil)))
     (when (and (not (eq subst 'fail))
                (every #'(lambda (x)(number-expr? (cdr x))) subst))
@@ -1530,7 +1530,7 @@ time).  Verbose? set to T provides more information."
 
 (defun upto!? (type)
   (let* ((upto (type-value (declaration (upto-res))))
-         (*modsubst* T)
+         (*modsubst* t)
          (subst (match upto type nil nil)))
     (when (and (not (eq subst 'fail))
                (every #'(lambda (x)(number-expr? (cdr x))) subst))
@@ -1552,7 +1552,7 @@ time).  Verbose? set to T provides more information."
 	   (mu-translateable? (adt type)))))
 
 (defmethod mu-translateable? ((type enumtype))
-  T)
+  t)
 
 (defmethod mu-translateable? ((type recordtype))
   (every #'(lambda (x) (mu-translateable? (type x)))
@@ -1566,7 +1566,7 @@ time).  Verbose? set to T provides more information."
   (or (sub-range? type)
       (mu-translateable? (supertype type))))
 
-(defmethod mu-translateable? ((type T))
+(defmethod mu-translateable? ((type t))
   nil)
  
 
@@ -1578,7 +1578,7 @@ time).  Verbose? set to T provides more information."
 	   (strict-mu-translateable? (adt type)))))
 
 (defmethod strict-mu-translateable? ((type enumtype))
-  T)
+  t)
 
 (defmethod strict-mu-translateable? ((type recordtype))
   (every #'(lambda (x) (strict-mu-translateable? (type x)))
@@ -1591,8 +1591,8 @@ time).  Verbose? set to T provides more information."
 (defmethod strict-mu-translateable? ((type subtype))
   (sub-range? type))
 
-(defmethod strict-mu-translateable? ((type T))
-  NIL)
+(defmethod strict-mu-translateable? ((type t))
+  nil)
 
 
 ;;
@@ -1721,7 +1721,7 @@ time).  Verbose? set to T provides more information."
 (defun mu_bdd_var_id  (bdd-id)
 (string-to-number  
     (string-left-trim "b" 
-        (FF:CHAR*-TO-STRING 
+        (ff:char*-to-string 
              (get_mu_bool_var_name  bdd-id))))
 )
 
