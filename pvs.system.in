@@ -3,11 +3,20 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec 23 14:43:02 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Wed Dec 30 23:49:59 1998
-;; Update Count    : 92
+;; Last Modified On: Thu May 20 22:37:06 2004
+;; Update Count    : 93
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :user)
+
+#+allegro
+(defun startup-pvs ()
+  (tpl:setq-default *package* (find-package :pvs))
+  (rplacd (assoc 'tpl::*saved-package*
+		 tpl:*default-lisp-listener-bindings*)
+	  'common-lisp:*package*)
+  )
 
 #+allegro
 (eval-when (eval load)
@@ -174,7 +183,8 @@
   :finally-do (progn
 		#+lucid (precompile-generic-functions)
 		#+lcl4.1 (clos::flush-pv-caches)
-		(load "@ICSOBJ@/ics.lisp")
+		(unless (string= "@ICSOBJ@" "")
+		  (load "@ICSOBJ@/ics.lisp"))
 		(pvs::bdd_init)
 		(pvs::load-prelude)
 		#+allegro
@@ -266,6 +276,7 @@
 		  (:file "check-for-tccs")
 		  (:file "tcexprs")
 		  (:file "tcdecls")
+		  (:file "conversions")
 		  (:file "judgements")
 		  (:file "xref")
 		  (:file "occurs-in")
@@ -285,7 +296,8 @@
 		  (:file "add-decl")
 		  (:file "list-decls")
 		  (:file "pp-tex")
-		  (:file "tex-support"))
+		  (:file "tex-support")
+		  (:file "pp-html"))
      :depends-on (basic))
    (:module proof-checker
      :source-pathname "src/prover/"
