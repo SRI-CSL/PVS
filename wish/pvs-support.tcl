@@ -371,6 +371,13 @@ proc proof-rule {name theory path rule} {
     set ${fullpath}(rule) $rule
 }
 
+proc proof-sequent {name theory path seqlabel sequent} {
+    set fullpath $theory-$name-$path
+    global $fullpath
+    set ${fullpath}(seqlabel) $seqlabel
+    set ${fullpath}(sequent) $sequent
+}
+
 proc proof-done {name theory path} {
     set fullpath $theory-$name-$path
     global $fullpath
@@ -392,39 +399,34 @@ proc proof-show {name theory path} {
     set fullpath $theory-$name-$path
     global $fullpath
     set proofwin .proof.$theory-$name.fr.c
-    if [info exists ${fullpath}(sequent)] {
-	show-sequent $proofwin $fullpath $top
-    } else {
-	set seq \
-	    [$proofwin create bitmap 0 0 \
-		 -bitmap @$env(PVSPATH)/wish/sequent.xbm \
-		 -tags "$fullpath.sequent $fullpath $fullpath.real sequent [ancestors $fullpath $top .desc]" \
-		 -anchor n \
-		 -foreground [get-option foreground]]
-	if [info exists ${fullpath}(rule)] {
-	    set bbox [$proofwin bbox $seq]
-	    set seqbot [lindex $bbox 3]
-	    set linebot [expr $seqbot+[get-option ySep $proofwin]]
-	    set rule [set ${fullpath}(rule)]
-	    set alen [get-option abbrevLen]
-	    if $alen {
-		if {[string length $rule]>$alen} {
-		    if {[regexp {^[^ ]* } $rule whole]} {
-			set rule "$whole...)"
-		    }
+    set seq \
+	[$proofwin create bitmap 0 0 \
+	     -bitmap @$env(PVSPATH)/wish/sequent.xbm \
+	     -tags "$fullpath.sequent $fullpath $fullpath.real sequent [ancestors $fullpath $top .desc]" \
+	     -anchor n \
+	     -foreground [get-option foreground]]
+    if [info exists ${fullpath}(rule)] {
+	set bbox [$proofwin bbox $seq]
+	set seqbot [lindex $bbox 3]
+	set linebot [expr $seqbot+[get-option ySep $proofwin]]
+	set rule [set ${fullpath}(rule)]
+	set alen [get-option abbrevLen]
+	if $alen {
+	    if {[string length $rule]>$alen} {
+		if {[regexp {^[^ ]* } $rule whole]} {
+		    set rule "$whole...)"
 		}
 	    }
-	    set ${fullpath}(rule_abbr) $rule
-	    $proofwin create line 0 $seqbot 0 $linebot \
-		-tags "$fullpath.line $fullpath $fullpath.real [ancestors $fullpath $top .desc]" \
-		-fill [get-option foreground]
-	    $proofwin create text 0 $linebot -text $rule \
-		-tags "$fullpath.rule $fullpath $fullpath.real rule [ancestors $fullpath $top .desc]" \
-		-anchor n \
-		-fill [get-option foreground]
 	}
+	set ${fullpath}(rule_abbr) $rule
+	$proofwin create line 0 $seqbot 0 $linebot \
+	    -tags "$fullpath.line $fullpath $fullpath.real [ancestors $fullpath $top .desc]" \
+	    -fill [get-option foreground]
+	$proofwin create text 0 $linebot -text $rule \
+	    -tags "$fullpath.rule $fullpath $fullpath.real rule [ancestors $fullpath $top .desc]" \
+	    -anchor n \
+	    -fill [get-option foreground]
     }
-
 
     dag-add-item $proofwin $fullpath [kids $fullpath [set ${fullpath}(kids)]] [ancestors $fullpath $top .desc]
     dag-add-destroy-cb $proofwin $fullpath "global $fullpath; catch {unset $fullpath}"
@@ -489,23 +491,26 @@ proc get-full-rule {proofwin top} {
 }
     
 
-proc get-current-sequent {proofwin} {
+# proc get-current-sequent {proofwin} {
+#     upvar #0 dag-$proofwin dag
+# 
+#     set path $dag(idtotag,[$proofwin find withtag current])
+# 
+#     set lisp_path [path-to-lisp-path $path]
+# 
+#     set file [lindex [pvs-send-and-wait "(request-sequent '($lisp_path))"] 0]
+#     source $file
+#     exec rm -f $file
+# }
+
+proc show-sequent {proofwin top} {    
+    global pathtolabel
     upvar #0 dag-$proofwin dag
 
     set path $dag(idtotag,[$proofwin find withtag current])
-
-    set lisp_path [path-to-lisp-path $path]
-
-    set file [lindex [pvs-send-and-wait "(request-sequent '($lisp_path))"] 0]
-    source $file
-    exec rm -f $file
-}
-
-proc show-sequent {name theory relpath seq_label text} {
-    global pathtolabel
-    set proofwin .proof.$theory-$name.fr.c
-    set top $theory-$name-top
-    set path $theory-$name-$relpath
+    global $path
+    set seq_label [set ${path}(seqlabel)]
+    set text [set ${path}(sequent)]
 
     for {set label 1} {[winfo exists .sequent$label]} {incr label} {
     }
@@ -513,12 +518,12 @@ proc show-sequent {name theory relpath seq_label text} {
     if [info exists pathtolabel($path)] {
 	return
     }
-    set pathtolabel($path) $label
 
     set win .sequent$label.sequent
     set bbox [$proofwin bbox $path.sequent]
     set x [lindex $bbox 2]
     set y [expr round(([lindex $bbox 1]+[lindex $bbox 3])/2)]
+
     $proofwin create text $x $y -anchor w \
 	-tags "$path $path.label $path.label$label label [ancestors $path $top .desc] label.$label" \
 	-text $label
@@ -557,6 +562,7 @@ proc show-sequent {name theory relpath seq_label text} {
     wm title $win "Sequent $label ($seq_label)"
 
     dag-add-destroy-cb $proofwin $path "disable-sequent $win"
+    set pathtolabel($path) $label
 }
 
 proc disable-sequent {win} {
@@ -896,6 +902,7 @@ proc module-unhighlight {win} {
 # Called from wish.lisp to set up a proof
 
 proc setup-proof {name theory directory counter interactive} {
+    global curpath
     catch {frame .proof}
     set pw \
 	[setup-dag-win \
@@ -907,13 +914,16 @@ proc setup-proof {name theory directory counter interactive} {
     .proof.$theory-$name configure -bg [get-option background]
 
     if {$interactive} {
+	if {[info exists curpath]} {
+	    unset curpath
+	}
 	set proofwin $pw
     }
 
     dag-bind-move $pw .desc Control 1 to
     dag-bind-move $pw {} Control 2 both
     if {$interactive} {
-	$pw bind sequent <1> "get-current-sequent $pw"
+	$pw bind sequent <1> "show-sequent $pw $theory-$name-top"
     }
     $pw bind rule <1> "get-full-rule $pw $theory-$name-top"
     bind $pw <Destroy> "+pvs-send {(stop-displaying-proof $counter)}"
