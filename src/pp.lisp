@@ -265,6 +265,11 @@ bind tighter.")
   (and (eq (class-of decl1) (class-of decl2))
        (ps-eq (modname decl1) (modname decl2))))
 
+(defmethod compatible-chain? ((decl1 theory-abbreviation-decl)
+			      (decl2 theory-abbreviation-decl))
+  (and (eq (class-of decl1) (class-of decl2))
+       (ps-eq (theoryu-name decl1) (theory-name decl2))))
+
 (defmethod compatible-chain? ((decl1 const-decl) (decl2 const-decl))
   (and (call-next-method)
        (ps-eq (definition decl1) (definition decl2))))
@@ -280,6 +285,16 @@ bind tighter.")
        (ps-eq (definition decl1) (definition decl2))))
 
 (defmethod compatible-chain? ((imp1 importing) (imp2 importing))
+  t)
+
+(defmethod compatible-chain? ((imp1 importing) (imp2 theory-abbreviation-decl))
+  t)
+
+(defmethod compatible-chain? ((imp1 theory-abbreviation-decl) (imp2 importing))
+  t)
+
+(defmethod compatible-chain? ((imp1 theory-abbreviation-decl)
+			      (imp2 theory-abbreviation-decl))
   t)
 
 (defmethod compatible-chain? (x y)
@@ -390,7 +405,7 @@ bind tighter.")
 	(pprint-newline :mandatory)
 	(loop (let ((*pretty-printed-prefix* nil)
 		    (decl (pprint-pop)))
-		(if (typep decl 'importing)
+		(if (typep decl '(or importing theory-abbreviation-decl))
 		    (let ((imps (list decl)))
 		      (loop while (chain? (car imps))
 			    do (setq decl (pprint-pop))
@@ -523,7 +538,9 @@ bind tighter.")
     (when (or *unparse-expanded*
 	      *adt*
 	      (not (generated-by decl)))
-      (cond ((and chain?
+      (cond ((theory-abbreviation-decl? decl)
+	     (call-next-method))
+	    ((and chain?
 		  *pretty-printing-decl-list*)
 	     (write id)
 	     (unless (typep decl '(or formal-decl adtdecl))
@@ -652,6 +669,17 @@ bind tighter.")
     (write-char #\space)
     (pprint-newline :fill)
     (pp* modname)))
+
+(defmethod pp* ((decl theory-abbreviation-decl))
+  (with-slots (id theory-name chain? semi) decl
+    (unless *pretty-printing-decl-list*
+      (write 'IMPORTING)
+      (write-char #\space))
+    (pp* theory-name)
+    (write-char #\space)
+    (write 'AS)
+    (write-char #\space)
+    (pp* id)))
 
 (defmethod pp* ((decl var-decl))
   (with-slots (declared-type) decl

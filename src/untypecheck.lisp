@@ -202,6 +202,10 @@
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (actuals (modname decl))))
 
+(defmethod untypecheck-theory ((decl theory-abbreviation-decl))
+  (when (next-method-p) (call-next-method))
+  (untypecheck-theory (actuals (theory-name decl))))
+
 (defmethod untypecheck-theory ((decl type-decl))
   (when (next-method-p) (call-next-method))
   (setf (type-value decl) nil))

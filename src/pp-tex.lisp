@@ -529,12 +529,23 @@
 
 (defmethod pp-tex* ((decl mod-decl))
   (with-slots (modname) decl
-    (pp-tex-keyword 'library)
-    (when (typep decl 'lib-eq-decl)
-      (write-char #\=))
+    (pp-tex-keyword 'theory)
+    (write-char #\space)
+    (write-char #\=)
     (write-char #\space)
     (pprint-newline :fill)
     (pp-tex* modname)))
+
+(defmethod pp-tex* ((decl theory-abbreviation-decl))
+  (with-slots (id theory-name) decl
+    (unless *pretty-printing-decl-list*
+      (pp-tex-keyword 'IMPORTING)
+      (write-char #\space))
+    (pp-tex* theory-name)
+    (write-char #\space)
+    (pp-tex-keyword 'AS)
+    (write-char #\space)
+    (pp-tex-id id)))
 
 (defmethod pp-tex* ((decl var-decl))
   (with-slots (declared-type) decl

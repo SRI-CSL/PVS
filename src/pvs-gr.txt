@@ -172,7 +172,7 @@ theory-elt ::= {importing [';']}
 	     ;
 
 importing ::= {'IMPORTING' {importing-item++ ','}}
-              <importing(importing-elt+)>;
+              <importing(importing-item+)>;
 
 importing-item ::= {modname ['AS' id]}
                   <[modname|theory-abbreviation-decl(modname,id)]>;

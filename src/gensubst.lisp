@@ -133,6 +133,9 @@
 (defmethod gensubst* ((decl mod-decl) substfn testfn)
   (lcopy decl 'modname (gensubst* (modname decl) substfn testfn)))
 
+(defmethod gensubst* ((decl theory-abbreviation-decl) substfn testfn)
+  (lcopy decl 'theory-name (gensubst* (theory-name decl) substfn testfn)))
+
 (defmethod gensubst* ((decl const-decl) substfn testfn)
   (lcopy (call-next-method)
     'definition (gensubst* (definition decl) substfn testfn)))

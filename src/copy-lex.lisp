@@ -91,6 +91,10 @@
 (defmethod copy-lex* ((old mod-decl) (new mod-decl))
   (copy-lex* (modname old) (modname new)))
 
+(defmethod copy-lex* ((old theory-abbreviation-decl)
+		      (new theory-abbreviation-decl))
+  (copy-lex* (theory-name old) (theory-name new)))
+
 (defmethod copy-lex* ((old type-def-decl) (new type-def-decl))
   (copy-lex* (type-expr old) (type-expr new))
   (copy-lex* (contains old) (contains new)))

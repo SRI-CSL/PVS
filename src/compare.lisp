@@ -67,7 +67,13 @@
   ;; used-by
   (compare-decl-lists (theory old) (theory new)))
 
-(defmethod compare* ((old datatype) (new datatype))
+(defmethod compare* ((old datatype) (new codatatype))
+  (push (list old new 'changed) *differences*))
+
+(defmethod compare* ((old codatatype) (new datatype))
+  (push (list old new 'changed) *differences*))
+
+(defmethod compare* ((old recursive-type) (new recursive-type))
   (cond ((and (importings old) (importings new))
 	 (compare-decl-lists (importings old) (importings new)))
 	((importings old)
@@ -82,7 +88,13 @@
 (defmethod compare* ((old datatype) (new module))
   (push (list old new 'changed) *differences*))
 
-(defmethod compare* ((old inline-datatype) (new inline-datatype))
+(defmethod compare* ((old inline-datatype) (new inline-codatatype))
+  (push (list old new 'changed) *differences*))
+
+(defmethod compare* ((old inline-codatatype) (new inline-datatype))
+  (push (list old new 'changed) *differences*))
+
+(defmethod compare* ((old inline-recursive-type) (new inline-recursive-type))
   (when (eq (id old) (id new))
     (cond ((and (importings old) (importings new))
 	   (compare* (importings old) (importings new)))
@@ -218,6 +230,11 @@
 (defmethod compare* ((old mod-decl) (new mod-decl))
   (and (call-next-method)
        (compare-sig (modname old) (modname new))))
+
+(defmethod compare* ((old theory-abbreviation-decl)
+		     (new theory-abbreviation-decl))
+  (and (call-next-method)
+       (compare-sig (theory-name old) (theory-name new))))
 
 ;(defmethod compare* ((old type-decl) (new type-decl))
 ;  (call-next-method))

@@ -84,6 +84,9 @@
 (defmethod generate-xref ((d mod-decl))
   nil)
 
+(defmethod generate-xref ((d theory-abbreviation-decl))
+  nil)
+
 (defmethod generate-xref ((d type-decl))
   (generate-xref (type-value d)))
 
