@@ -3248,3 +3248,14 @@ space")
 			     :test #'tc-eq)))))
      th)
     theory-instances))
+
+(defun expose-binding-types (expr)
+  (gensubst expr
+    #'(lambda (ex) 
+	(let ((dtype (or (declared-type ex)
+			 (and (type ex) (print-type (type ex)))
+			 (type ex))))
+	  (if dtype
+	      (change-class (copy ex 'declared-type dtype) 'bind-decl)
+	      ex)))
+    #'untyped-bind-decl?))
