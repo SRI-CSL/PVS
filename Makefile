@@ -467,8 +467,12 @@ ${emacs19-tar} : $(emacs19-files)
 
 install :
 	# Relocate PVSPATH in the \"pvs\" shell script to $(PVSPATH)
-	$(SED) -e "s,^PVSPATH=.*$$,PVSPATH=$(PVSPATH)," < pvs > /tmp/pvs.tmp
-	mv /tmp/pvs.tmp pvs
+	if [ -f pvs.template ]; then \
+	  $(SED) -e "s,^PVSPATH=.*$$,PVSPATH=$(PVSPATH)," < pvs.template > pvs; \
+	else \
+	  $(SED) -e "s,^PVSPATH=.*$$,PVSPATH=$(PVSPATH)," < pvs > /tmp/pvs.tmp; \
+	  mv /tmp/pvs.tmp pvs; \
+	fi
 	chmod a+x pvs
 	# Relocate *pvs-path* in src/make-allegro-pvs.lisp to $(PVSPATH)
 	if [ -f src/make-allegro-pvs.lisp.template ]; then \
