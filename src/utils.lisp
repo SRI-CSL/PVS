@@ -2844,6 +2844,9 @@ space")
   (declare (ignore x))
   nil)
 
+(defmethod constant? ((expr binding))
+  nil)
+
 (defmethod constant? ((expr name-expr))
   (not (variable? expr)))
 
@@ -2855,6 +2858,9 @@ space")
 
 (defmethod constant? ((expr T))
   nil)
+
+(defmethod variable? ((expr binding))
+  t)
 
 (defmethod variable? ((expr name-expr))
   (with-slots (resolutions) expr
@@ -2958,13 +2964,13 @@ space")
   (if (and (eq (args1 orig) arg1) (eq (args2 orig) arg2)) orig
     (make!-iff arg1 arg2)))
 
-(defun lcopy-equality (orig arg1 arg2)
+(defun lcopy-equation (orig arg1 arg2)
   (if (and (eq (args1 orig) arg1) (eq (args2 orig) arg2)) orig
-    (make!-equality arg1 arg2)))
+    (make!-equation arg1 arg2)))
 
-(defun lcopy-disequality (orig arg1 arg2)
+(defun lcopy-disequation (orig arg1 arg2)
   (if (and (eq (args1 orig) arg1) (eq (args2 orig) arg2)) orig
-    (make!-disequality arg1 arg2)))
+    (make!-disequation arg1 arg2)))
 
 ;; checks if argument expression is known to be an integer
 
