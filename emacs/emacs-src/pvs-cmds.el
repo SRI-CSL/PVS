@@ -153,7 +153,7 @@ old version."
   "Prettyprints all declarations contained in the current region.
 
 The prettyprint-region command prettyprints all the declarations that are
-(partially) contained in the specified region.  Use undo (C-x u or C-_) or
+partially contained in the specified region.  Use undo (C-x u or C-_) or
 M-x revert-buffer to return to the old version."
   (interactive "r")
   (pvs-bury-output)
@@ -237,7 +237,8 @@ instance."
 (defun complete-theory-instance-name (prompt)
   "Perform completion on PVS theory names"
   (let ((default (save-excursion
-		   (forward-word -1)
+		   (re-search-backward "[ \t\n]")
+		   (forward-char 1)
 		   (let ((start (point)))
 		     (forward-word 1)
 		     (when (looking-at "[ \t\n]*\\[")
@@ -1094,8 +1095,8 @@ for any reason, then the current PVS context is not changed."
 	    (pvs-current-directory t))
 	;; Update the PVS Welcome buffer (and force the display)
 	(unless noninteractive
-	  (pvs-welcome t))
-	(run-hooks 'change-context-hook))))
+	  (pvs-welcome t))))
+  (run-hooks 'change-context-hook))
 
 (defun pvs-remove-old-context-buffers ()
   (dolist (b (buffer-list))
@@ -1109,7 +1110,7 @@ for any reason, then the current PVS context is not changed."
   (setq dir (expand-file-name dir))
   (unless (string-match "/$" dir)
     (setq dir (concat dir "/")))
-  (let ((ndir (pvs-send-and-wait (format "(change-context \"%s\")" dir)
+  (let ((ndir (pvs-send-and-wait (format "(change-context \"%s\" t)" dir)
 				 nil nil 'dont-care)))
     (if (and (stringp ndir)
 	     (file-exists-p ndir))
@@ -1698,7 +1699,12 @@ was issued, either directly or through the ~/.pvsemacs or ~/.emacs files."
 The pvs-remove-bin-files command removes all the .bin files of the current
 context."
   (interactive)
-  (let ((files (directory-files *pvs-current-directory* t "\.bin$")))
+  (let ((files (append (directory-files *pvs-current-directory* t "\\.bin$")
+		       (when (file-directory-p
+			      (format "%s/pvsbin/" *pvs-current-directory*))
+			 (directory-files
+			  (format "%s/pvsbin/" *pvs-current-directory*)
+			  t "\\.bin$")))))
     (when noninteractive
       (princ "Removing all .bin files\n")
       (princ "Removing all .bin files\n" 'external-debugging-output))
@@ -1713,6 +1719,19 @@ context."
 	(when noninteractive
 	  (princ "No bin files found\n"))
 	(message "No bin files found"))))
+
+(defun pvs-remove-all-bin-files (dir)
+  (let ((files (append (directory-files dir t "\\.bin$")
+		       (when (file-directory-p (format "%s/pvsbin/" dir))
+			 (directory-files (format "%s/pvsbin/" dir)
+					  t "\\.bin$")))))
+    (when noninteractive
+      (princ "Removing all .bin files\n")
+      (princ "Removing all .bin files\n" 'external-debugging-output))
+    (dolist (file files)
+      (delete-file file))
+    (princ (format "%d files removed\n" (length files)))
+    (message "%d files removed" (length files))))
 	
 
 (defun pvs-find-lisp-file (filename)
