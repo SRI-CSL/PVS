@@ -1634,9 +1634,12 @@ pvs-strategies files.")
 	  (with-output-to-string (out)
 	    (format out ";;; Proof for formula ~a.~a~%"
 	      (cadr proof) (caddr proof))
-	    (write (editable-justification (cdddr proof))
-		   :stream out :pretty t :escape t :level nil :length nil
-		   :pprint-dispatch *proof-script-pprint-dispatch*))
+	    (let ((just (if (integerp (cadddr proof))
+			    (fifth (nth (cadddr proof) (cddddr proof)))
+			    (cdddr proof))))
+	      (write (editable-justification just)
+		     :stream out :pretty t :escape t :level nil :length nil
+		     :pprint-dispatch *proof-script-pprint-dispatch*)))
 	  t)
 	(pvs-message "Cannot find proof for this entry"))))
 
