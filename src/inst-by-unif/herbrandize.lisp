@@ -160,27 +160,3 @@
     (if (null xs) sym
 	(dp::mk-term (cons sym xs)))))
 
-		   (nonempty? (type bndng)))
-	 bndngs))
-
-(defun relativize-quantifier (fmla)
-  (lift-predicates-in-quantifier fmla
-				 (list *naturalnumber* *integer*)))
-
-(defun expand-iff (fmla)
-  (make!-conjunction (make!-implication (args1 fmla) (args2 fmla))
-		     (make!-implication (args2 fmla) (args1 fmla))))
-
-(defun mk-new-vars (bndngs)
-  (mapcar #'mk-new-var bndngs))
-
-(defun mk-new-var (bndng)
-  (let ((id (gentemp (makesym "~a?" (id bndng)))))
-    (dp::mk-new-variable id nil)))
-
-(defun mk-new-skofun (bndng xs)
-  (let* ((id (gentemp (makesym "~a!" (id bndng))))
-	 (sym (dp::mk-new-constant id nil)))
-    (if (null xs) sym
-	(dp::mk-term (cons sym xs)))))
-
