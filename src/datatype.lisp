@@ -11,7 +11,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(in-package 'pvs)
+(in-package :pvs)
 
 ;;; Generates the theory corresponding to the datatype.  The declarations
 ;;; generated are:
@@ -864,12 +864,32 @@ generated")
 	 (acc-type (make-accessor-funtype domain range (caddar entry)))
 	 (acc-decl (mk-adt-accessor-decl (id (caar entry)) acc-type)))
     (typecheck-adt-decl acc-decl)
+    (when (cddr entry)
+      (make-common-accessor-subtype-judgements (cdr entry) domain adt))
     acc-decl))
+
+(defun make-common-accessor-subtype-judgements (adtdecls domain adt)
+  (dolist (adtdecl adtdecls)
+    (make-common-accessor-subtype-judgement adtdecl domain adt)))
+
+(defun make-common-accessor-subtype-judgement (adtdecl domain adt)
+  (let* ((*generate-tccs* 'none)
+	 (constr (find adtdecl (constructors adt)
+		      :key #'arguments :test #'memq))
+	 (subtype (mk-expr-as-type (mk-name-expr (recognizer constr))))
+	 (tsubtype (typecheck* subtype nil nil nil)))
+    (unless (subtype-of? tsubtype domain)
+      (let ((jdecl (make-instance 'subtype-judgement
+		     'declared-subtype subtype
+		     'declared-type domain)))
+	(typecheck-adt-decl jdecl)
+	(put-decl jdecl (current-declarations-hash))))))
 
 (defun make-accessor-funtype (domain range deps)
   (if deps
       (let* ((dep-id (make-new-variable '|x| (list domain range)))
-	     (dep-binding (mk-dep-binding dep-id domain))
+	     (dtype (typecheck* domain nil nil nil))
+	     (dep-binding (mk-dep-binding dep-id dtype))
 	     (dep-name (make-variable-expr dep-binding))
 	     (*bound-variables* (cons dep-binding *bound-variables*))
 	     (subst-range (substit range
@@ -948,7 +968,13 @@ generated")
 		 out-accs
 		 adt
 		 subtypes
-		 (append recs (reverse subtype-recs)))))))))
+		 (append recs
+			 (mapcan #'(lambda (c)
+				     (when (some #'(lambda (acc)
+						     (memq acc in-accs))
+						 (arguments c))
+				       (list (recognizer c))))
+			   (constructors adt))))))))))
 
 (defun get-accessors-for-subtype (acc subtype constructors
 				      &optional accs recs (covered? t))
@@ -1190,7 +1216,8 @@ generated")
 
 (defun generate-adt-extensionality (c adt)
   (let* ((var (mk-name-expr (makesym "~a_var" (op-to-id (recognizer c)))))
-	 (var2 (copy var 'id (makesym "~a2" (id var)))))
+	 (var2 (copy var 'id (makesym "~a2" (id var))))
+	 (*generate-tccs* 'none))
     (typecheck-adt-decl
      (mk-formula-decl (makesym "~a_~a_extensionality"
 			       (id adt) (op-to-id (id c)))
@@ -1274,24 +1301,31 @@ generated")
 			       (acons (car bds) var nil))
 			     (cons nbd result)))))
 
+(defparameter *disjoint-axiom-expansion-maxsize* 100)
+
 (defun generate-disjoint-axiom (adt)
   (let* ((varid (makesym "~a_var" (id adt)))
 	 (bd (make-bind-decl varid (adt-type-name adt)))
 	 (var (make-variable-expr bd))
-	 (*generate-tccs* 'none))
+	 (*generate-tccs* 'none)
+	 (appls (mapcar #'(lambda (c)
+			    (let ((recname
+				   (mk-name-expr (recognizer c)
+				     nil nil
+				     (make-resolution (rec-decl c)
+				       (current-theory-name)
+				       (type (rec-decl c))))))
+			      (make!-application recname var)))
+		  (constructors adt))))
     (typecheck-adt-decl
      (mk-formula-decl (makesym "~a_disjoint" (id adt))
        (make!-forall-expr (list bd)
-	 (make!-conjunction*
-	  (make-disjoint-pairs
-	   (mapcar #'(lambda (c)
-		       (let ((recname
-			      (mk-name-expr (recognizer c)
-				nil nil
-				(make-resolution (rec-decl c)
-				  (current-theory-name) (type (rec-decl c))))))
-			 (make!-application recname var)))
-	       (constructors adt)))))
+	 (if (<= (length appls) *disjoint-axiom-expansion-maxsize*)
+	     (make!-conjunction* (make-disjoint-pairs appls))
+	     (let ((list-type (typecheck* (pc-parse "list[bool]" 'type-expr)
+					  nil nil nil)))
+	       (make-application (mk-name-expr '|pairwise_disjoint?|)
+		 (make-list-expr appls list-type)))))
        'AXIOM))))
 
 (defun make-disjoint-pairs (appls &optional result)
@@ -1455,7 +1489,7 @@ generated")
 	 (mapcan #'(lambda (fd pred)
 		     (when pred
 		       (list (mk-application pred
-			       (mk-application (id fd) rvar)))))
+			       (make-field-application (id fd) rvar)))))
 	   (fields te) preds))))))
 
 (defun acc-induction-fields (fields rvar indvar adt dep? &optional result)
@@ -2745,8 +2779,8 @@ generated")
 						     (op-to-id (recognizer c)))
 				(gen-adt-reduce-funtype2 c rtype adt adtinst)))
 			  (constructors adt)))))
-    (typecheck-adt-decl cdecl)
-    (typecheck-adt-decl rdecl)))
+    (typecheck-adt-decl cdecl t nil)
+    (typecheck-adt-decl rdecl t nil)))
 
 (defun gen-adt-reduce-domains (rtype adt adtinst)
   (mapcar #'(lambda (c)
@@ -3362,12 +3396,20 @@ generated")
 	     adt (mk-name-expr xid) (mk-name-expr yid))
 	    (list (mk-arg-bind-decl xid (adt-type-name adt))
 		  (mk-arg-bind-decl yid (adt-type-name adt)))))
+	 (wf-type (typecheck* (mk-expr-as-type
+			       (mk-name-expr '|well_founded?|
+				 (list (mk-actual (adt-type-name *adt*)))))
+			      nil nil nil))
 	 (<<-decl (mk-adt-def-decl '<<
-		    *boolean*
-		    (gen-adt-<<-definition
-		     adt (mk-name-expr xid) (mk-name-expr yid))
+		    (supertype wf-type)
+		    (mk-lambda-expr
+			(list (mk-bind-decl xid (adt-type-name adt))
+			      (mk-bind-decl yid (adt-type-name adt)))
+		      (gen-adt-<<-definition
+		       adt (mk-name-expr xid) (mk-name-expr yid)))
 		    (list (mk-arg-bind-decl xid (adt-type-name adt))
-			  (mk-arg-bind-decl yid (adt-type-name adt)))))
+			  (mk-arg-bind-decl yid (adt-type-name adt)))
+		    (print-type (supertype wf-type))))
 	 (<<-wf-decl (mk-formula-decl (makesym "~a_well_founded" (id adt))
 		       (mk-application
 			   (mk-name-expr '|well_founded?|
@@ -3376,7 +3418,9 @@ generated")
 		       'AXIOM)))
     (typecheck-adt-decl subterm-decl)
     (typecheck-adt-decl <<-decl)
-    (typecheck-adt-decl <<-wf-decl)))
+    (setf (type <<-decl) wf-type
+	  (declared-type <<-decl) (print-type wf-type))
+    (typecheck-adt-decl <<-wf-decl t nil)))
 
 (defun gen-adt-subterm-definition (adt xvar yvar)
   (if (every #'(lambda (c)
