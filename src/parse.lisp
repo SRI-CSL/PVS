@@ -2211,7 +2211,7 @@
     (if (and (null (cdr (term-args assign)))
 	     (memq (sim-term-op (term-arg0 assign))
 		   '(ASSIGN-ID ASSIGN-SKONAME ASSIGN-NUM)))
-	(if (eq sep 'ceq)
+	(if (eq sep 'CEQ)
 	    (make-instance 'uni-assignment
 	      'arguments (xt-assign assign)
 	      'expression (xt-expr expr)
@@ -2220,7 +2220,7 @@
 	      'arguments (xt-assign assign)
 	      'expression (xt-expr expr)
 	      'place (term-place ass)))
-	(if (eq sep 'ceq)
+	(if (eq sep 'CEQ)
 	    (make-instance 'assignment
 	      'arguments (xt-assign assign)
 	      'expression (xt-expr expr)
