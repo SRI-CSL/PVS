@@ -144,16 +144,16 @@
 (defun get-theory-aliases* (mod-decls &optional modnames)
   (if (null mod-decls)
       modnames
-      (let ((modname (modname (car mod-decls)))
-	    (usehash (gethash (module (car mod-decls)) (current-using-hash))))
+      (let* ((thname (modname (car mod-decls)))
+	     (instances (gethash (get-theory thname) (current-using-hash))))
 	(get-theory-aliases*
 	 (cdr mod-decls)
 	 (nconc modnames
 		(mapcar #'(lambda (inst)
 			    (if (actuals inst)
-				(subst-mod-params modname inst)
-				modname))
-		  usehash))))))
+				(subst-mod-params thname inst)
+				thname))
+		  instances))))))
 
 (defmethod get-binding-resolutions ((name name) kind args)
   (with-slots (mod-id library actuals id) name
@@ -1234,9 +1234,9 @@
       (let* ((rtype (find-supertype (car optypes)))
 	     (dtypes (when (typep rtype 'funtype)
 		       (domain-types rtype)))
-	     (dtypes-list (all-possible-instantiations dtypes arguments))
-	     (conversions (when (length= arguments dtypes)
-			    (argument-conversions* arguments dtypes-list))))
+	     (dtypes-list (all-possible-instantiations dtypes arguments)))
+	(when (length= arguments dtypes)
+	  (argument-conversions* arguments dtypes-list))
 	(argument-conversions (cdr optypes) arguments))
       *found-one*))
 
