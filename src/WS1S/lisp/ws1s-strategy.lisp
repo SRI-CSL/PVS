@@ -8,10 +8,11 @@
   (let ((cuth *current-theory*)
 	(cuthstr (string (id cuth))))
     (then* (skolem!)
-	   (auto-rewrite-defs cuthstr :always? !!)
-	   (stop-rewrite "the")
+	   (install-rewrites :defs ! :exclude "sets.the")
 	   (rewrite-msg-off)
+	   (skip-msg "Expanding definitions..." :force-printing? T)
 	   (assert :cases-rewrite? T)
+	   (skip-msg "WS1S decision procedure..." :force-printing? T)
 	   (ws1s-simp fnums examples automaton traces)))
   "Expands definitions in the formulas specified by FNUMS and tries to decide then
    using the WS1S decision procedures (based on the Mona package developed
