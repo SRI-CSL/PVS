@@ -815,7 +815,7 @@
 		 (progn (push (list :arg-length decl)
 			      *resolve-error-info*)
 			nil))
-	     (if (uninstantiated? modinst mod decl)
+	     (if (not (fully-instantiated? modinst))
 		 (compatible-uninstantiated? decl modinst dtypes args)
 		 (let* ((*generate-tccs* 'none)
 			(domtypes (mapcar #'(lambda (dt)
@@ -879,7 +879,7 @@
 		 (progn (push (list :arg-length decl)
 			      *resolve-error-info*)
 			nil))
-	     (if (uninstantiated? modinst mod decl)
+	     (if (not (fully-instantiated? modinst))
 		 (compatible-uninstantiated?
 		  decl
 		  modinst
@@ -904,18 +904,6 @@
 			   (and (formal-decl? d)
 				(not (member d (formals *current-theory*))))))
 		     (actuals modinst)))))))
-
-(defun uninstantiated? (modinst mod decl)
-  (and (not (binding? decl))
-       (not (eq mod (module decl)))
-       (formals (module decl))
-       (or (null (actuals modinst))
-	   (some #'(lambda (a)
-		     (let ((d (declaration a)))
-		       (and d
-			    (typep d 'formal-decl)
-			    (not (member d (formals mod))))))
-		 (actuals modinst)))))
 
 (defmethod compatible-uninstantiated? (decl modinst dtypes args)
   (let ((bindings (find-compatible-bindings
