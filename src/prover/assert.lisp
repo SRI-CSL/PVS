@@ -2867,11 +2867,13 @@
 	   (*local-typealist* *local-typealist*);;shadowing
 	   (typepreds (loop for x in bindings
 			    nconc
-			    (let ((y (change-class (copy x) 'name-expr))
+			    (let ((y (make!-name-expr
+				      (id x) nil nil
+				      (make-resolution x nil (type x))
+				      'VARIABLE))
 				  (*keep-unbound* *bound-variables*))
-			      ;;NSH(12.30.93)not sure if *keep-unbound* needs to
-			      ;;be set. 
-			      (setf (kind y) 'VARIABLE)
+			      ;; NSH(12.30.93)not sure if *keep-unbound*
+			      ;; needs to be set.
 			      (collect-type-constraints* y))))
 	   );;(break "binding")
       (multiple-value-bind (sig newexpr)

@@ -2550,12 +2550,10 @@ found. "
 		(new-bvars (make-new-detupled-binding-list
 			    bind1 types alist))
 		(new-vars (loop for x in new-bvars
-				collect
-				(let ((y
-				       (change-class (copy x)
-					      'name-expr)))
-				  (setf (kind y) 'VARIABLE)
-				  y)))
+				collect (make!-name-expr
+					 (id x) nil nil
+					 (make-resolution x nil (type x))
+					 'VARIABLE)))
 		(new-tuple (if (recordtype? type)
 			       (make-record-expr
 				(loop for fld in (fields type)

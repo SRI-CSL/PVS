@@ -330,11 +330,11 @@
 			      (cons (car x)
 				    (make!-tuple-expr
 				     (mapcar #'(lambda (z)
-						 (let ((z1
-							(change-class
-							 (copy z) 'name-expr)))
-						   (setf (kind z1) 'VARIABLE)
-						   z1)) ;;NSH(8.28.96)
+						 (make!-name-expr
+						  (id z) nil nil
+						  (make-resolution z
+						    nil (type z))
+						  'VARIABLE))
 					     (cdr x))))
 			      x)))
 		   (substituted-expr
