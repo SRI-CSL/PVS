@@ -804,7 +804,7 @@ proc reset-options {} {
 	option add Tk.currentColor black startupFile
 	option add Tk.circleCurrent yes startupFile
 	option add Tk.tccColor black startupFile
-	option add Tk.doneColor black startupFile
+	option add Tk.doneColor @gray startupFile
 	option add Tk.ancestorColor black startupFile
     }
 
