@@ -1,19 +1,37 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;; Alpha abstraction function.
-;; _____________
-;;
-;; Author: Hassen Saidi.
-;; Created On Sat Sep 19, 1998
-;; _____________
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; abstract.lisp --
+;; Author: Hassen Saidi
+;; Created On      : Sat Sep 19, 1998
+;; Last Modified By: Hassen Saidi
+;; Last Modified On: Sat Jun 1999
+;; Status          : Unknown, Use with caution!
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Abstract interpretation proof strategy.
-;; Given a state of record type and a set of state predicates,
-;; a PVS boolean formula is translated to a PVS boolean expression
-;; depending on a set of boolean variables correspanding to the given
-;; state predicates
+;; 
+;; Given a state of record type such as 
+;;      state : TYPE [#y1, y2: nat; location : bool #]
+;; and a set of state predicates such as
+;;      LAMBDA(s:state): y1(s)=0,  
+;;      LAMBDA(s:state): y2(s)=0 and 
+;;      LAMBDA(s:state): y1(s)<=y2(s)
+;;  
+;; an abstract state type abs_state is created
+;;      abs_state : TYPE [# B1,B2,B3:bool; location : bool #]
+;;
+;; where the components B1..B3 encode the value of the three predicates
+;; defined above and where the components of finite type in state are preserved
+;; 
+;; The proof command abstract translates any PVS boolean formula (proof-goal) 
+;; depending on the type state to a PVS boolean formula depending on the
+;; type abs_state. The resulting formula is stronger than the original one
+;; but depends only on finite types and can be discharged with model-check.
+;; 
+;;
+;; the strategy abstract-and-mc applies abstract and then model-checks
+;; the resulting formula.
+;;
 
 (in-package 'pvs)
 
@@ -70,8 +88,9 @@
 		       :exclusive? exclusive? :proof-counter proof-counter)
 	     (musimp)
 	     (skip)))
-  "interpret-and-prove."
-  "Interpret using boolean abstraction 
+  "Proof strategy that invokes abstract and then model-check.
+   Has the same arguments than abstract"
+  "Applies boolean abstraction 
    and prove by model-checking!")
 
 (defstep abstract (list-state-predicates
@@ -93,12 +112,11 @@
                (abs-simp list-state-predicates
 			 :exclusive? exclusive? :proof-counter proof-counter)
                (simplify)))
-  "Rewrites temporal operators into mu/nu expressions, and
-simplifies using mu-calculus checker.  If DYNAMIC-ORDERING? is T,
-the BDD package uses dynamic ordering to minimize the BDD size.
-If CASES-REWRITE is NIL, this turns off rewriting within the
-selections of unsimplified CASES expressions."
-  "By rewriting and abstracting")
+  "Rewrites temporal operators into mu/nu expressions, and rewrites
+   definitions just like model-check does. Then, Applies boolean abstraction.
+   (abstract list-state-predicates :exclusive? T): Applies boolean abstraction
+   using a list of predicates that are exclusive."
+  "Applying boolean abstraction after Rewriting and simplifying")
 
 
 (addrule 'abs-simp (list-state-predicates)
