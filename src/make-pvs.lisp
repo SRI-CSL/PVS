@@ -27,15 +27,16 @@
 	     :additional-plus-arguments nil
 	     :allow-existing-directory (not runtime?)
 	     :autoload-warning t
+	     #+allegro-v6.2 :build-debug #+allegro-v6.2 t
 	     :case-mode :case-sensitive-lower
-	     :debug-on-error t
+	     #-allegro-v6.2 :debug-on-error #-allegro-v6.2 t
 	     :discard-arglists nil
 	     :discard-compiler nil
 	     :discard-local-name-info nil
 	     :discard-source-file-info runtime?
 	     :discard-xref-info runtime?
 	     :dst t
-	     :exit-after-image-build t
+	     #-allegro-v6.2 :exit-after-image-build #-allegro-v6.2 t
 	     :generate-fonts nil
 	     :image-only (not runtime?)
 	     :include-clim nil

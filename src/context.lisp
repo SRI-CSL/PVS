@@ -1719,7 +1719,7 @@ pvs-strategies files.")
     (let ((fwd (file-write-date file)))
       (unless (= fwd (car dates))
 	(setf (car dates) fwd)
-	#+allegro-v6.0
+	#+(or allegro-v6.0 allegro-v6.2)
 	(unwind-protect
 	    (progn (excl:set-case-mode :case-insensitive-lower)
 		   (multiple-value-bind (v err)
@@ -1728,7 +1728,7 @@ pvs-strategies files.")
 		     (when err
 		       (pvs-message "Error in loading ~a:~%  ~a" file err))))
 	   (excl:set-case-mode :case-sensitive-lower))
-	#-allegro-v6.0
+	#-(or allegro-v6.0 allegro-v6.2)
 	(with-open-file (str file :direction :input)
 	  (multiple-value-bind (v err)
 	      (ignore-errors (load str :verbose nil))

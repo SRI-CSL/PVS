@@ -2,14 +2,14 @@
 #+allegro
 (preload-forms)
 
-#+(and allegro (not allegro-v6.0))
+#+(and allegro (not (or allegro-v6.0 allegro-v6.2)))
 (clos::preload-constructors (:user :lisp :pvs))
-#+allegro-v6.0
+#+(or allegro-v6.0 allegro-v6.2)
 (excl::preload-constructors (:user :lisp :pvs))
 
-#+(and allegro (not allegro-v6.0))
+#+(and allegro (not (or allegro-v6.0 allegro-v6.2)))
 (precache-generic-functions (:user :lisp :pvs))
-#+allegro-v6.0
+#+(or allegro-v6.0 allegro-v6.2)
 (excl::precache-generic-functions (:user :lisp :pvs))
 
 #+lucid

@@ -348,10 +348,10 @@
       (clrhash *empty-expression-types*))))
 
 (defmacro with-case-insensitive-lower (&rest forms)
-  #+allegro-v6.0
+  #+(or allegro-v6.0 allegro-v6.2)
   `(unwind-protect
        (progn (excl:set-case-mode :case-insensitive-lower)
 	      ,@forms)
      (excl:set-case-mode :case-sensitive-lower))
-  #-allegro-v6.0
+  #-(or allegro-v6.0 allegro-v6.2)
   `(progn ,@forms))

@@ -141,8 +141,8 @@
 		      (coerce buffer 'simple-string)))
 	     (intern (if *case-sensitive*
 			 str
-			 #+allegro-v6.0 (string-downcase str)
-			 #-allegro-v6.0 (string-upcase str))
+			 #+(or allegro-v6.0 allegro-v6.2) (string-downcase str)
+			 #-(or allegro-v6.0 allegro-v6.2) (string-upcase str))
 		     *sbst-package*))))))
 
 
