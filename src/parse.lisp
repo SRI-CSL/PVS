@@ -529,7 +529,8 @@
 				   (make-instance 'typed-conversion-decl
 				     'id (id name)
 				     'name (change-class name 'name-expr)
-				     'declared-type dtype
+				     'declared-type (xt-not-enum-type-expr
+						     ntype)
 				     'chain? t
 				     'place (term-place decl)))))
 			 enames)))
