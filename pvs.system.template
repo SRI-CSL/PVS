@@ -253,7 +253,9 @@
      :source-pathname "src/decision-procedures"
      :components ((:file "types")
 		  (:file "node-structures"
-			 :depends-on ("types"))))
+			 :depends-on ("types"))
+		  (:file "interpreted-node-structures"
+			 :depends-on ("node-structures"))))
    (:module emacs-interface
      :source-pathname "src/interface"
      :components ((:file "pvs-emacs")
@@ -332,18 +334,6 @@
      :components ((:file "foreign")
 		  (:file "dp-foreign"))
      :depends-on ("dc-structure"))
-   (:module dc-prototypes
-     :source-pathname "src/decision-procedures"
-     :components ((:file "integer")
-		  (:file "shostak")
-		  (:file "arithmetic" :depends-on ("shostak"))
-		  (:file "arrays")
-		  (:file "shostak-interp")
-		  (:file "arith-solve")
-		  (:file "sets")
-		  (:file "bdd-solve")
-		  (:file "polyhedron"))
-     :depends-on ("dc-structure"))
    (:module rewrite
      :source-pathname "src/decision-procedures"
      :components ((:file "rewrite")
@@ -355,6 +345,27 @@
 		  (:file "rewrite-optimize")
 		  (:file "simplify"))
      :depends-on ("dc-structure"))
+   (:module forward-chain
+     :source-pathname "src/decision-procedures"
+     :components ((:file "forward-chain-pvs")
+		  (:file "forward-chain"))
+     :depends-on ("dc-structure"))
+   (:module dc-prototypes
+     :source-pathname "src/decision-procedures"
+     :components ((:file "integer")
+		  (:file "fourier-motzkin")
+		  (:file "polyhedron")
+		  (:file "cong-state" :depends-on ("polyhedron"
+						   "fourier-motzkin"))
+		  (:file "shostak" :depends-on ("cong-state"))
+		  (:file "arithmetic" :depends-on ("shostak"))
+		  (:file "arrays")
+		  (:file "boolean")
+		  (:file "shostak-interp")
+		  (:file "arith-solve")
+		  (:file "sets")
+		  (:file "bdd-solve"))
+     :depends-on ("dc-structure"))
    (:module bvec
      :source-pathname "src/decision-procedures/bit-vectors"
      :components ((:file "bvec_structure")
@@ -362,11 +373,6 @@
 		  (:file "bvec_fixed_solver")
 		  (:file "bvec_bdd_solve")
 		  (:file "bvec_slicing"))
-     :depends-on ("dc-structure"))
-   (:module forward-chain
-     :source-pathname "src/decision-procedures"
-     :components ((:file "forward-chain-pvs")
-		  (:file "forward-chain"))
      :depends-on ("dc-structure"))
    (:module groundeval
      :source-pathname "src/groundeval"

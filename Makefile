@@ -276,6 +276,8 @@ bddlisp = BDD/bdd.lisp BDD/mu.lisp
 
 decision-procedures = src/decision-procedures/types.lisp \
                       src/decision-procedures/node-structures.lisp \
+                      src/decision-procedures/interpreted-node-structures.lisp \
+                      src/decision-procedures/cong-state.lisp \
                       src/decision-procedures/translate-to-dc.lisp \
                       src/decision-procedures/translate-from-dc.lisp \
                       src/decision-procedures/polylib/foreign.lisp \
@@ -284,8 +286,10 @@ decision-procedures = src/decision-procedures/types.lisp \
                       src/decision-procedures/arrays.lisp \
                       src/decision-procedures/shostak.lisp \
                       src/decision-procedures/shostak-interp.lisp \
+                      src/decision-procedures/boolean.lisp \
                       src/decision-procedures/arith-solve.lisp \
                       src/decision-procedures/polyhedron.lisp \
+                      src/decision-procedures/fourier-motzkin.lisp \
                       src/decision-procedures/rewrite.lisp \
                       src/decision-procedures/rewrite-pvs.lisp \
                       src/decision-procedures/datatypes-pvs.lisp \
