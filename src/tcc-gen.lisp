@@ -64,7 +64,7 @@
 	 (uform (universal-closure xform))
 	 (*bound-variables* *keep-unbound*)
 	 (id (make-tcc-name expr)))
-    (assert (tc-eq (type uform) *boolean*))
+    (assert (tc-eq (find-supertype (type uform)) *boolean*))
     (unless (tc-eq uform *true*)
       (when (and *false-tcc-error-flag*
 		 (tc-eq uform *false*))
@@ -240,7 +240,8 @@
 	(incf (tccs-matched))
 	(push match (refers-to decl)))
        (t (when match
-	    (pvs-warning "The judgement TCC ~a is subsumed by ~a,~%~
+	    (pvs-warning "The judgement TCC generated for and named ~a ~
+                          is subsumed by ~a,~%  ~
                           but generated anyway since it was given a name"
 	      (id decl) (id match)))
 	  (insert-tcc-decl* kind expr type decl ndecl))))))
@@ -730,12 +731,18 @@
 	  (dolist (ax (remove-if-not #'axiom? (theory mod)))
 	    (let* ((*old-tcc-name* nil)
 		   (ndecl (make-mapped-axiom-tcc-decl ax modinst)))
-		  (if ndecl
-		      (insert-tcc-decl 'mapped-axiom modinst ax ndecl)
-		      (incf (tccs-simplified))))))))))
+	      (if ndecl
+		  (let ((refs (collect-references (definition ndecl))))
+		    (if (some #'(lambda (d)
+				  (same-id (module d) modinst))
+			      refs)
+			(pvs-warning "Axiom ~a not translated" (id ax))
+			(insert-tcc-decl 'mapped-axiom modinst ax ndecl)))
+		  (incf (tccs-simplified))))))))))
 
 (defun make-mapped-axiom-tcc-decl (ax modinst)
   (let* ((*generate-tccs* 'none)
+	 (*generating-mapped-axiom-tcc* t)
 	 (expr (subst-mod-params (definition ax) modinst))
 	 (tform (add-tcc-conditions expr))
 	 (xform (if *simplify-tccs*
@@ -1077,7 +1084,7 @@
 	     (uform (universal-closure xform))
 	     (*bound-variables* *keep-unbound*)
 	     (id (make-tcc-name)))
-	(assert (tc-eq (type uform) *boolean*))
+	(assert (tc-eq (find-supertype (type uform)) *boolean*))
 	(unless (tc-eq conc *true*)
 	  (when (and *false-tcc-error-flag*
 		     (tc-eq uform *false*))
@@ -1137,7 +1144,7 @@
 	 (uform (universal-closure xform))
 	 (*bound-variables* *keep-unbound*)
 	 (id (make-tcc-name)))
-    (assert (tc-eq (type uform) *boolean*))
+    (assert (tc-eq (find-supertype (type uform)) *boolean*))
     (unless (tc-eq uform *true*)
       (when (and *false-tcc-error-flag*
 		 (tc-eq uform *false*))
