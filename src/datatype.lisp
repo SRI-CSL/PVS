@@ -3318,16 +3318,16 @@ generated")
 
 (defun gen-adt-subterm-selection (c adt xvar)
   (if (arguments c)
-      (mk-selection (mk-name-expr (id c))
-	(mapcar #'(lambda (a) (make-instance 'bind-decl
-				'id (id (get-adt-var a))))
-		(arguments c))
-	(mk-disjunction
-	 (mapcar #'(lambda (a)
-		     (acc-subterm-selection (make-instance 'name-expr
-					      'id (id (get-adt-var a)))
-					    (type a) xvar adt))
-		 (arguments c))))
+      (let ((subst (adt-subst-alist (arguments c))))
+	(mk-selection (mk-name-expr (id c))
+	  (mapcar #'(lambda (b) (declaration (cdr b))) subst)
+	  (mk-disjunction
+	   (mapcar #'(lambda (a)
+		       (acc-subterm-selection (make-instance 'name-expr
+						'id (id (get-adt-var a)))
+					      (substit (type a) subst)
+					      xvar adt))
+	     (arguments c)))))
       (mk-selection (mk-name-expr (id c)) nil *false*)))
 
 (defun acc-subterm-selection (arg type xvar adt)
@@ -3476,16 +3476,16 @@ generated")
 
 (defun gen-adt-<<-selection (c adt xvar)
   (if (arguments c)
-      (mk-selection (mk-name-expr (id c))
-	(mapcar #'(lambda (a) (make-instance 'bind-decl
-				'id (id (get-adt-var a))))
-		(arguments c))
-	(mk-disjunction
-	  (mapcar #'(lambda (a)
-		      (acc-<<-selection (make-instance 'name-expr
-					      'id (id (get-adt-var a)))
-					     (type a) xvar adt))
-		  (arguments c))))
+      (let ((subst (adt-subst-alist (arguments c))))
+	(mk-selection (mk-name-expr (id c))
+	  (mapcar #'(lambda (b) (declaration (cdr b))) subst)
+	  (mk-disjunction
+	   (mapcar #'(lambda (a)
+		       (acc-<<-selection (make-instance 'name-expr
+					   'id (id (get-adt-var a)))
+					 (substit (type a) subst)
+					 xvar adt))
+	     (arguments c)))))
       (mk-selection (mk-name-expr (id c)) nil *false*)))
 
 (defun acc-<<-selection (arg type xvar adt)
