@@ -55,11 +55,11 @@
   adt-type)
 
 (defcl constructor-name-expr (adt-name-expr)
-  recognizer-name
+  (recognizer-name :fetch-as nil :ignore t)
   (accessor-names :initform 'unbound))
 
 (defcl recognizer-name-expr (adt-name-expr)
-  constructor-name
+  (constructor-name :fetch-as nil :ignore t)
   (unit? :initform 'unbound))
 
 (defcl accessor-name-expr (adt-name-expr))
