@@ -672,6 +672,82 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	 (default-directory dir))
     (list (read-file-name prompt dir dir t))))
 
+;;; Provides completion for a library path.  The complication here is that
+;;; if the environment variable PVS_LIBRARY_PATH contains .:~/foo:/bar
+;;; then completion must allow for normal file completion as well as
+;;; things like "bar", where bar is a subdirectory of ., ~/foo, /bar, or
+;;; the pvs-path/lib.  The return value is an existing directory.
+
+(defvar pvs-library-path-completions nil)
+
+(defun pvs-complete-library-path (prompt)
+  (pvs-bury-output)
+  (let* ((pvs-library-path-completions
+	  (pvs-library-path-subdirs pvs-library-path))
+	 (value (completing-read prompt 'pvs-library-path-completion))
+	 (asdir (assoc value pvs-library-path-completions)))
+    (if asdir
+	(concat (cdr asdir) "/" (car asdir))
+	(if (file-directory-p value)
+	    value
+	    (error "Not a valid library directory")))))
+
+(defun pvs-library-path-completion (string predicate flag)
+  (cond ((eq flag 'nil)
+	 ;; `nil' specifies `try-completion'.  The completion function should
+	 ;; return the completion of the specified string, or `t' if the
+	 ;; string is an exact match already, or `nil' if the string matches
+	 ;; no possibility.
+	 (cond ((equal string "")
+		"")
+	       ((member (aref string 0) '(?. ?/ ?~))
+		(let* ((fstring (if (member string '("." ".." "~"))
+				    ""
+				    (file-name-nondirectory string)))
+		       (fdir (if (member string '("." ".." "~"))
+				 (concat string "/")
+				 (file-name-directory string)))
+		       (fname (file-name-completion fstring fdir)))
+		  (concat fdir fname)))
+	       (t (try-completion string pvs-library-path-completions
+				  predicate))))
+	((eq flag 't)
+	 ;; `t' specifies `all-completions'.  The completion function should
+	 ;; return a list of all possible completions of the specified string.
+	 (cond ((equal string "")
+		(list ""))
+	       ((member (aref string 0) '(?. ?/ ?~))
+		(let* ((fstring (if (member string '("." ".." "~"))
+				    ""
+				    (file-name-nondirectory string)))
+		       (fdir (if (member string '("." ".." "~"))
+				 (concat string "/")
+				 (file-name-directory string)))
+		       (fnames (file-name-all-completions fstring fdir)))
+		  (mapcar '(lambda (fname) (concat fdir fname)) fnames)))
+	       (t (all-completions string pvs-library-path-completions
+				   predicate))))
+	((eq flag 'lambda)
+	 ;; `lambda' specifies a test for an exact match.  The completion
+	 ;; function should return `t' if the specified string is an exact
+	 ;; match for some possibility; `nil' otherwise.
+	 (if (and (not (equal string ""))
+		  (if (member (aref string 0) '(?. ?/ ?~))
+		      (file-directory-p string)
+		      (assoc string pvs-library-path-completions)))
+	     t))))
+
+(defun pvs-library-path-subdirs (dirs)
+  (let ((dirname-paths nil))
+    (dolist (dir dirs)
+      (when (file-directory-p dir)
+	(dolist (subdir (directory-files dir))
+	  (unless (member subdir '("." ".."))
+	    (when (file-directory-p (concat dir "/" subdir))
+	      (unless (assoc subdir dirname-paths)
+		(push (cons subdir dir) dirname-paths)))))))
+    dirname-paths))
+
 (defun pvs-complete-library-name (prompt &optional distributed-p)
   (pvs-bury-output)
   (let* ((lfiles (relativize-pvs-filenames
