@@ -218,8 +218,7 @@
 
 (defmethod dpi-process* ((dp (eql 'ics)) (pvs-expr expr) state)
   (let* ((ics-expr (translate-to-ics pvs-expr))
-	 (ics-value (ics-process state ics-expr))
-	 (new-state nil))
+	 (ics-value (ics-process state ics-expr)))
     (cond ((not (zerop (ics_is_consistent ics-value)))
 	   (let ((nstate (ics-d-consistent ics-value)))
 	     (values nil nstate)))
@@ -229,8 +228,7 @@
 	   (values *true* state)))))
 
 (defmethod dpi-process* ((dp (eql 'ics)) ics-expr state)
-  (let* ((ics-value (ics_process_wrapper ics-expr))
-	 (new-state nil))
+  (let* ((ics-value (ics_process_wrapper ics-expr)))
     (cond ((not (zerop (ics_is_consistent ics-value)))
 	   (let ((nstate (ics-d-consistent ics-value)))
 	     (values nil nstate)))
@@ -256,7 +254,7 @@
   state)
 
 (defmethod dpi-state-changed?* ((dp (eql 'ics)) old-state new-state)
-  (not (eq old-state new-state)))
+  (not (eql old-state new-state)))
 
 ;;; Comparison interface
 
