@@ -2300,7 +2300,7 @@ required a context.")
 	(subst-rec-dep-type expr fld (cdr fields)
 			 (if (eq nfld (car fields))
 			     bindings
-			     (cons (cons (car fields) nfld) bindings))
+			     (acons (car fields) nfld bindings))
 			 (cons nfld result)))))
 
 
