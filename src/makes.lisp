@@ -1112,10 +1112,6 @@
 (defun mk-implies-operator ()
   (implies-operator))
 
-(defstruct decl-ref
-  mod-name
-  decl-pos)
-
 (defmethod make-assignment ((arg expr) expression)
   (mk-assignment 'uni (list (list arg)) expression))
 
