@@ -471,6 +471,9 @@
     (setf (operator ex) op)
     (untypecheck-theory ex)))
 
+(defmethod untypecheck-theory ((ex fieldappl))
+  (untypecheck-theory (argument ex)))
+
 (defmethod untypecheck-theory ((ex application))
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (operator ex))
