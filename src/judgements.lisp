@@ -200,8 +200,11 @@
 		    (minimal-judgements entry))))
       (cond (sjdecl
 	     (pvs-warning
-		 "Judgement ~a is not needed; it is subsumed by ~a"
-	       (id jdecl) (id sjdecl)))
+		 "Judgement ~a.~a (line ~d) is not needed;~%~
+                  it is subsumed by ~a.~a (line ~d)"
+	       (id (module jdecl)) (ref-to-id jdecl) (line-begin (place jdecl))
+	       (id (module sjdecl)) (ref-to-id sjdecl)
+	       (line-begin (place sjdecl))))
 	    (t (clrhash (judgement-types-hash (judgements *current-context*)))
 	       (setf (minimal-judgements entry)
 		     (cons jdecl
@@ -287,8 +290,10 @@
     (when sjdecl
       (unless quiet?
 	(pvs-warning
-	    "Judgement ~a is not needed; it is subsumed by ~a"
-	  (id jdecl) (id (car sjdecl))))
+	    "Judgement ~a.~a (line ~d) is not needed;~%~
+             it is subsumed by ~a.~a (line ~d)"
+	  (id (module jdecl)) (ref-to-id jdecl) (line-begin (place jdecl))
+	  (id (module sjdecl)) (ref-to-id sjdecl) (line-begin (place sjdecl))))
       t)))
 
 (defun show-judgements-graph (decl)
