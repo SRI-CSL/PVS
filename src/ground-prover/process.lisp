@@ -417,7 +417,7 @@
 	  ((find1 u) ;;NSH(6-12-02) was blank   ;(break "pr-merge")
 	            ;; This is needed to deal with nonlinear entries.
 	   (when (and (not (equal (find1 u) u))
-		      (not (linearp u)))
+		      (not (linear? u)))
 	     	       ;;NSH(9/4/02) added nonlinear restriction,
 	     ;;otherwise it loops bugs 695,696.
 	     (let ((newsig (canonsig-merge newsig))
