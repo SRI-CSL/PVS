@@ -80,8 +80,10 @@
 (load "pvs-file-list" nil noninteractive)
 (load "pvs-browser" nil noninteractive)
 (load "pvs-utils" nil noninteractive)
-(when start-pvs
-  (load "pvs-prelude-files-and-regions" nil noninteractive))
+(load "pvs-cmds" nil noninteractive)
+(condition-case ()
+    (load "pvs-prelude-files-and-regions" nil nil)
+  (error 0))
 (load "pvs-cmds" nil noninteractive)
 (load "pvs-print" nil noninteractive)
 (load "pvs-prover" nil noninteractive)
@@ -110,7 +112,6 @@
   (mail)
   (mail-to) (insert "pvs-bugs@csl.sri.com")
   (mail-subject))
-
 
 ; fancy PVS logo for Emacs startup
 
@@ -307,5 +308,4 @@ get to the same state."
       (unless noninteractive
 	(message "Ready"))))
 
-(when start-pvs
-  (pvs))
+(pvs)

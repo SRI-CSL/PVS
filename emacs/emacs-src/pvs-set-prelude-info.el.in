@@ -29,8 +29,6 @@
 		(concat pvs-path "/emacs/emacs-src")
 		(concat pvs-path "/emacs/emacs-src/ilisp"))
           load-path))
- 
-(load "pvs-load" nil nil nil)
 
 (defvar region-file
   "emacs/emacs-src/pvs-prelude-files-and-regions.el")
