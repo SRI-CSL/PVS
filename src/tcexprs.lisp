@@ -853,21 +853,72 @@
     (application-range-type-arg* arg domain range argtype)))
 
 (defmethod application-range-type-arg* (arg (domain dep-binding) range argtype)
-  (let* ((*generate-tccs* 'none)
-	 (*dont-worry-about-full-instantiations* t)
-	 (narg (if (type arg) ;;(fully-typed? arg)
-		   arg
-		   (typecheck* (copy-untyped arg)
-			       (if (and argtype (fully-instantiated? argtype))
-				   argtype
-				   domain)
-			       nil nil))))
-    (assert (fully-typed? narg))
-    (substit range (acons domain narg nil))))
+  (cond ((type arg)
+	 (substit range (acons domain arg nil)))
+ 	((fully-instantiated? argtype)
+ 	 (let* ((*generate-tccs* 'none)
+ 		(narg (typecheck* (copy-untyped arg) argtype nil nil)))
+ 	   #+pvsdebug (assert (fully-typed? narg))
+ 	   (substit range (acons domain narg nil))))
+	(t (if (freevars range)
+	       (find-supertype-without-freevars range)
+	       range))))
+
+(defmethod find-supertype-without-freevars ((type type-name))
+  (if (freevars type)
+      (break)
+      type))
+
+(defmethod find-supertype-without-freevars ((type funtype))
+  (if (freevars type)
+      (mk-funtype (find-supertype-without-freevars (domain type))
+		  (find-supertype-without-freevars (range type)))
+      type))
+
+(defmethod find-supertype-without-freevars ((type dep-binding))
+  (find-supertype-without-freevars (type type)))
+
+(defmethod find-supertype-without-freevars ((type subtype))
+  (find-supertype-without-freevars (supertype type)))
+
+(defmethod find-supertype-without-freevars ((type tupletype))
+  (if (freevars type)
+      (mk-tupletype (mapcar #'find-supertype-without-freevars (types type)))
+      type))
+
+(defmethod find-supertype-without-freevars ((type recordtype))
+  (if (freevars type)
+      (mk-recordtype (mapcar #'find-supertype-without-freevars (fields type))
+		     nil)
+      type))
+
+(defmethod find-supertype-without-freevars ((fld field-decl))
+  (if (freevars (type fld))
+      (mk-field-decl (id fld) (find-supertype-without-freevars (type fld)))
+      fld))
+
 
 (defmethod application-range-type-arg* (arg domain range argtype)
-  (declare (ignore arg domain argtype))
-  range)
+  (declare (ignore arg))
+  (if (or (fully-instantiated? range)
+	  (not (fully-instantiated? argtype)))
+      range
+      (let ((theories (delete (current-theory)
+			      (delete-duplicates (mapcar #'module
+						   (free-params range)))))
+	    (srange range))
+	(dolist (th theories)
+	  (let ((bindings (tc-match argtype domain
+				    (mapcar #'(lambda (x) (cons x nil))
+				      (formals-sans-usings th)))))
+	    (when (every #'cdr bindings)
+	      (setq srange
+		    (subst-mod-params
+		     srange
+		     (mk-modname (id th)
+		       (mapcar #'(lambda (a) (mk-res-actual (cdr a) th))
+			 bindings)))))))
+	srange)))
 
 (defmethod application-range-type (arg (optype subtype))
   (with-slots (supertype) optype
@@ -1116,10 +1167,8 @@
 	   (type (substit (if (typep dtype 'dep-binding)
 			      (type dtype)
 			      dtype)
-		   substs))
-	   (res (make-resolution bd (theory-name *current-context*) type)))
-      (setf (type bd) type
-	    (resolutions bd) (list res))
+		   substs)))
+      (setf (type bd) type)
       (unless (fully-instantiated? type)
 	(type-error (car bindings)
 	  "Could not determine the full theory instance"))
@@ -1608,14 +1657,12 @@
   (declare (ignore expected kind arguments))
   (if (declared-type decl)
       (let* ((*generate-tccs* 'none)
-	     (type (typecheck* (declared-type decl) nil nil nil))
-	     (res (make-resolution decl (current-theory-name) type)))
+	     (type (typecheck* (declared-type decl) nil nil nil)))
 	(unless (fully-instantiated? type)
 	  (type-error (declared-type decl)
 	    "Could not determine the full theory instance"))
 	(set-type (declared-type decl) nil)
-	(setf (type decl) type
-	      (resolutions decl) (list res)))
+	(setf (type decl) type))
       (let ((vdecls (remove-if-not #'var-decl?
 		      (gethash (id decl) (current-declarations-hash)))))
 	(cond ((null vdecls) 
@@ -1623,8 +1670,6 @@
 		 "Variable ~a not previously declared" (id decl)))
 	      ((singleton? vdecls)
 	       (setf (type decl) (type (car vdecls))
-		     (resolutions decl) (list (make-resolution decl
-						(theory-name *current-context*)
-						(type decl)))))
+		     (declared-type decl) (declared-type (car vdecls))))
 	      (t (type-error decl "Variable ~a is ambiguous" (id decl))))))
   decl)

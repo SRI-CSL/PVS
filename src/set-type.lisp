@@ -20,6 +20,8 @@
 
 (defvar *dont-worry-about-full-instantiations* nil)
 
+(defvar *ignore-for-tccs* nil)
+
 (defmethod set-type ((ex expr) expected)
   (assert *current-context*)
   (assert *generate-tccs*)
@@ -78,12 +80,12 @@
 required a context.")
 
 (defmethod set-type* :around ((ex expr) expected)
-  (assert (fully-typed? expected))
-  (assert (fully-instantiated? expected))
-  (assert (or (type ex) (types ex)))
-  (assert (not (and (type ex) (types ex))))
-  (assert (every #'type-expr? (types ex)))
-  (assert (or (null (type ex)) (fully-instantiated? ex)))
+  #+pvsdebug (assert (fully-typed? expected))
+  #+pvsdebug (assert (fully-instantiated? expected))
+  #+pvsdebug (assert (or (type ex) (types ex)))
+  #+pvsdebug (assert (not (and (type ex) (types ex))))
+  #+pvsdebug (assert (every #'type-expr? (types ex)))
+  #+pvsdebug (assert (or (null (type ex)) (fully-instantiated? ex)))
   (unless (type ex)
     (cond ((some #'(lambda (ty)
 		     (and (not (from-conversion ty))
@@ -99,9 +101,9 @@ required a context.")
 	     (unless (type ex)
 	       (type-incompatible ex (types ex) expected))))
     (setf (types ex) nil))
-  (assert (fully-typed? ex))
-  (assert (fully-instantiated? ex))
-  (unless (branch? ex)
+  #+pvsdebug (assert (fully-typed? ex))
+  #+pvsdebug (assert (fully-instantiated? ex))
+  (unless (or (branch? ex) (memq ex *ignore-for-tccs*))
     (check-for-subtype-tcc ex expected)))
 
 (defun look-for-conversion (expr expected)
@@ -365,7 +367,7 @@ required a context.")
     nmodinst))
 
 (defmethod set-type-actuals ((expr name))
-  ;;(assert (null *set-type-actuals-name*))
+  #+pvsdebug (assert (null *set-type-actuals-name*))
   (let* ((modinst (module-instance expr))
 	 (*typecheck-using* nil)
 	 (*set-type-actuals-name* expr))
@@ -440,7 +442,7 @@ required a context.")
 	 (vid (make-new-variable '|x| act))
 	 (vb (typecheck* (mk-bind-decl vid tact) nil nil nil))
 	 (svar (mk-name-expr vid nil nil
-			     (make-resolution vb nil tact)
+			     (make-resolution vb (current-theory-name) tact)
 			     'variable)))
     (check-for-subtype-tcc svar (supertype texp))))
 
@@ -572,9 +574,9 @@ required a context.")
   (setf (type ex) *number*))
 
 (defun check-for-subtype-tcc (ex expected)
-  (assert (fully-instantiated? expected))
-  (assert (fully-instantiated? ex))
-  (assert (fully-typed? ex))
+  #+pvsdebug (assert (fully-instantiated? expected))
+  #+pvsdebug (assert (fully-instantiated? ex))
+  #+pvsdebug (assert (fully-typed? ex))
   (unless (or (eq *generate-tccs* 'none)
 	      (subtype-of? (type ex) expected))
     (let ((*generate-tccs* 'none)
@@ -854,7 +856,7 @@ required a context.")
 			(change-to-propositional-class ex)
 			;;(check-for-subtype-tcc ex expected)
 			)
-		       (t (assert (fully-instantiated? optype))
+		       (t #+pvsdebug (assert (fully-instantiated? optype))
 			  (set-type* argument (domain optype))
 			  (setf type (application-range-type argument optype))
 			  (let ((*tcc-conditions*
@@ -870,7 +872,7 @@ required a context.")
 				 (setf (id ex) (id operator)))
 				(t (change-application-class-if-needed
 				    ex)))))))))
-    (assert (fully-instantiated? ex))
+    #+pvsdebug (assert (fully-instantiated? ex))
     (when (and (not *in-checker*)
 	       (not *generating-adt*)
 	       (not (eq *generate-tccs* 'none))
@@ -982,9 +984,8 @@ required a context.")
 			   operator optypes3 (argument* argument) expected)
 			  optypes3)))
 	(assert optypes)
-	(assert (null (duplicates? optypes :test #'tc-eq)))
+	#+pvsdebug (assert (null (duplicates? optypes :test #'tc-eq)))
 	(cond ((cdr optypes)
-	       
 	       (setf (types operator) optypes)
 	       (when (typep operator 'name-expr)
 		 (setf (resolutions operator)
@@ -995,9 +996,9 @@ required a context.")
 	       (type-ambiguity operator))
 	      ((fully-instantiated? (car optypes))
 	       (car optypes))
-	      (t (instantiate-operator-type
-		  (car optypes) operator (argument-list argument)
-		  expected))))))
+	      (t (instantiate-operator-type (car optypes) operator
+					    (argument-list argument)
+					    expected))))))
 
 (defmethod local-operator-types ((op name-expr) optypes argument)
   (let* ((reses (remove-if-not #'(lambda (r)
@@ -1081,15 +1082,14 @@ required a context.")
 	   (cdr exprs) (mapcar #'cdr dtypes-list) pos))))
 
 (defmethod optypes-for-local-arguments* ((ex application) domtypes)
-  (or (optypes-for-local-arguments*
-       (operator ex)
-       (mapcar #'(lambda (dtype)
-		   (find-if #'(lambda (opty)
-				(tc-eq (range (find-supertype opty))
-				       dtype))
-		     (types (operator ex))))
-	 domtypes))
-      (break "optypes-for-local-arguments*")))
+  (optypes-for-local-arguments*
+   (operator ex)
+   (mapcar #'(lambda (dtype)
+	       (find-if #'(lambda (opty)
+			    (tc-eq (range (find-supertype opty))
+				   dtype))
+		 (types (operator ex))))
+     domtypes)))
 
 (defun instantiable-operator-types (op optypes args expected &optional result)
   (if (null optypes)
@@ -1125,7 +1125,7 @@ required a context.")
     exprs))
 
 (defmethod get-arguments-list ((arg expr))
-  (assert (singleton? (types arg)))
+  #+pvsdebug (assert (singleton? (types arg)))
   (let ((*generate-tccs* 'none))
     (typecheck* arg (car (types arg)) nil nil)
     (if (typep (find-supertype (type arg)) 'tupletype)
@@ -1182,14 +1182,15 @@ required a context.")
 	   (setf (id expr) (id operator))
 	   (set-type* argument (domain otype))
 	   (setf (types expr) (list (application-range-type argument otype)))
-	   (assert (types expr))
+	   #+pvsdebug (assert (types expr))
 	   (set-expr-type expr expected))
 	  (t (set-type-application-arguments expr args argument
 					     expected otype optype)))))
 
 (defun set-type-application-arguments (expr args argument
 					    expected otype lambda?)
-  ;;(assert (every #'(lambda (a) (or (typep a 'binding) (types a))) args))
+  #+pvsdebug (assert (every #'(lambda (a) (or (typep a 'binding) (types a)))
+			    args))
   (cond ((or (conjunction? expr)
 	     (implication? expr))
 	 (set-type* (car args) *boolean*)
@@ -1346,7 +1347,9 @@ required a context.")
   (if (null modinsts)
       optype
       (instantiate-operator-from-bindings*
-       (subst-mod-params optype (car modinsts))
+       (let ((noptype (subst-mod-params optype (car modinsts))))
+	 (assert (fully-instantiated? noptype))
+	 noptype)
        (cdr modinsts))))
 
 (defun bindings-to-modinsts (bindings modinsts)
@@ -1446,7 +1449,7 @@ required a context.")
 (defvar *ignore-else-part-tccs* nil)
 
 (defmethod set-type* ((ex if-expr) expected)
-  ;;(assert (fully-typed? (operator ex)))
+  #+pvsdebug (assert (fully-typed? (operator ex)))
   (let* ((op (operator ex))
 	 (optype (determine-operator-type op (argument ex) expected)))
     (set-type* op optype)
@@ -1487,7 +1490,7 @@ required a context.")
 	      (unless (eq (id *current-theory*) '|if_def|)
 		(setf (actuals (module-instance op))
 		      (list (mk-actual iftype))))
-	      ;;(assert (fully-instantiated? op))
+	      #+pvsdebug (assert (fully-instantiated? op))
 	      (setf (type (argument ex))
 		    (mk-tupletype (list *boolean* iftype iftype)))
 	      (setf (type ex) iftype))
@@ -1523,7 +1526,7 @@ required a context.")
 (defun trivial-disjointness (dj-conds)
   (let ((right-hand-sides (collect-disjoint-values-from-equations dj-conds)))
     (when right-hand-sides
-      (assert (length= right-hand-sides dj-conds))
+      #+pvsdebug (assert (length= right-hand-sides dj-conds))
       (let ((dup (duplicates? right-hand-sides :test #'=)))
 	(if dup
 	    (let ((edup (args2 (find dup dj-conds
@@ -1628,13 +1631,6 @@ required a context.")
 (defmethod collect-cond-expr-conditions ((expr expr) conditions values)
   (values (nreverse conditions) (nreverse values) t))
 
-(defun generate-cond-disjoint-tcc (expr conditions values)
-  (let ((ndecl (make-cond-disjoint-tcc expr conditions values)))
-    (when ndecl
-      (insert-tcc-decl 'disjointness expr nil ndecl)
-      (unless *in-checker*
-	(incf (tccs-simplified))))))
-
 
 ;;; For lambda-exprs, we set the type of the body first, to the
 ;;; result-type if it is given, and to the range of the expected type
@@ -1670,9 +1666,11 @@ required a context.")
       (let ((*tcc-conditions* (add-bindings-to-tcc-conditions
 			       (bindings ex) *tcc-conditions*)))
 	(cond ((type-value ex)
-	       (assert (fully-instantiated? (type-value ex)))
+	       #+pvsdebug (assert (fully-instantiated? (type-value ex)))
 	       (set-type* (expression ex) (type-value ex)))
-	      (t (set-type* (expression ex) rng))))
+	      (t (let ((*ignore-for-tccs*
+			(cons (expression ex) *ignore-for-tccs*)))
+		   (set-type* (expression ex) rng)))))
       (let ((ftype (make-formals-funtype (list (bindings ex))
 					 (type (expression ex))))
 	    ;;(etype (make-formals-funtype (list (bindings ex))
@@ -2053,7 +2051,6 @@ required a context.")
 
 
 (defun make-assignment-lambda-expr (bindings vars args expr proj type)
-  (break)
   (typecheck* (make-assignment-lambda-expr* bindings vars args expr proj)
 	      type nil nil))
 
@@ -2229,12 +2226,6 @@ required a context.")
 ;;; arguments and the expected types, until there are no more arguments.
 ;;; The expr type is then set relative to the remaining expected type.
 
-(defmethod set-type* ((ass assignment) expected)
-  (break "Should no longer get here")
-  (with-slots (arguments expression) ass
-    (assert (typep expected '(or funtype recordtype tupletype)))
-    (set-assignment-types arguments expression expected)))
-
 (defun set-assignment-types (assignment expected expr)
   (let ((args (arguments assignment)))
     (set-assignment-types*
@@ -2377,7 +2368,7 @@ required a context.")
 
 (defmethod set-type* ((te type-name) expected)
   (declare (ignore expected))
-  (assert (resolution te))
+  #+pvsdebug (assert (resolution te))
   (when (and (actuals te)
 	     (not (actuals (module-instance te))))
     (if (same-id (module-instance te) *current-theory*)
@@ -2464,7 +2455,7 @@ required a context.")
 (defvar *instantiate-from-modinsts* nil)
 
 (defun instantiate-from (type expected expr)
-  (assert (fully-instantiated? expected))
+  #+pvsdebug (assert (fully-instantiated? expected))
   (let* ((bindings (tc-match expected type
 			     (instantiate-operator-bindings
 			      (free-params type)))))

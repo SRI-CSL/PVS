@@ -49,6 +49,28 @@
 	     (call-next-method)))
 	(t (call-next-method))))
 
+(defun lookup-subst-hash (expr alist hash)
+  (gethash (cons expr
+		 (pick-freevars-entries (freevars expr) alist))
+	   hash))
+
+(defun install-subst-hash (expr alist result hash)
+  (let* ((fv (freevars expr))
+	 (fv-subs (pick-freevars-entries fv alist)))
+    (setf (gethash (cons expr fv-subs) hash)
+	  result)
+    T))
+
+(defun pick-freevars-entries (freevars alist &optional entries)
+  (if (null freevars)
+      (nreverse entries)
+      (let ((entry (assq (declaration (car freevars)) alist)))
+	(pick-freevars-entries (cdr freevars) alist
+			       (if entry
+				   (cons (cdr entry) entries)
+				   entries)))))
+
+
 ;(defmethod substit* :around (expr alist)
 ;  (if (null (freevars expr)) ;; (substit-possible? expr alist)
 ;      expr
@@ -78,7 +100,7 @@
 		 'actuals (substit* actuals alist)
 		 'resolutions res)))
 	    ((typep (cdr binding) 'binding)
-	     (if (eq (car binding)(cdr binding))
+	     (if (eq (car binding) (cdr binding))
 		 expr
 		 (let ((nex (if (typep (cdr binding) 'field-decl)
 				(change-class (copy (cdr binding))
@@ -89,7 +111,7 @@
 		   (setf (kind nex) 'VARIABLE)
 		   (setf (resolutions nex)
 			 (list (make-resolution (cdr binding)
-				 (theory-name *current-context*)
+				 (current-theory-name)
 				 (type (cdr binding)))))
 		   nex)))
 	    (t (cdr binding))))))
@@ -239,23 +261,15 @@
 (defun substit*-list (expr alist result)
   (cond ((null expr)
 	 (nreverse result))
-	((typep (car expr) 'binding)
+	((binding? (car expr))
 	 (let* ((newtype (substit* (type (car expr)) alist))
 		(newcar (lcopy (car expr)
 			  'type newtype
-			  'declared-type
-			  (substit* (declared-type (car expr))
-				    alist))))
+			  'declared-type (substit* (declared-type (car expr))
+						   alist))))
 	   (cond ((eq newcar (car expr))
-		  (substit*-list (cdr expr)
-				 alist
-				 (cons newcar result)))
-		 (t (when (typep (car expr) '(or bind-decl dep-binding))
-		      (setf (resolutions newcar)
-			    (list (make-resolution newcar
-				    (substit* (module-instance (car expr)) alist)
-				    newtype))))
-		    (substit*-list (cdr expr)
+		  (substit*-list (cdr expr) alist (cons newcar result)))
+		 (t (substit*-list (cdr expr)
 				   (cons (cons (car expr) newcar) alist)
 				   (cons newcar result))))))
 	(t (substit*-list (cdr expr) alist
@@ -302,37 +316,23 @@
   (if (null old-bindings)
       (nreverse nbindings)
       (let* ((bind (car old-bindings))
-	     (res (resolution bind))
 	     (btype (type bind))
 	     (check (memq bind freevars))
-	     (dec-type (or (declared-type bind)
-			   (subst-mod-params
-			    (declared-type (declaration res))
-			    (declared-type-module-instance
-			     (module-instance res)))
-			   btype))
+	     (dec-type (declared-type bind))
 	     (new-binding
 	      (if (not check)
 		  (lcopy bind
 		    'type (substit* btype alist)
 		    'declared-type (substit* dec-type alist))
 		  (copy bind
-		    'id  (new-boundvar-id (id bind))
+		    'id (new-boundvar-id (id bind))
 		    'type (substit* btype alist)
 		    'declared-type (substit* dec-type alist)))))
-	(unless res
-	  (break "No resolution for binding"))
-	(when (not (eq bind new-binding))
-	  (setf (resolutions new-binding)
-		(list (make-resolution new-binding
-			(theory-name *current-context*)
-			(type new-binding)))))
 	(make-new-bindings*
 	 (cdr old-bindings)
 	 (add-alist-freevars new-binding alist)
 	 (acons bind new-binding alist)
 	 (cons new-binding nbindings)))))
-
 
 
 (defmethod substit* ((expr cases-expr) alist)
@@ -388,6 +388,7 @@
 	      'print-type (substit* print-type alist)))))))
 
 (defmethod substit* ((texpr setsubtype) alist)
+  (declare (ignore alist))
   (let ((nexpr (call-next-method)))
     (unless (or (not (typep nexpr 'setsubtype))
 		(eq (predicate texpr) (predicate nexpr)))
@@ -446,6 +447,7 @@
 	(lcopy db 'type ntype)))
 
 (defmethod substit* ((sym symbol) alist)
+  (declare (ignore alist))
   sym)
 
 (defun pseudo-normalize* (expr)

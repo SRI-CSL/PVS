@@ -55,6 +55,7 @@
 (defun reset-typecheck-caches ()
   (dolist (fn *untypecheck-hook*)
     (funcall fn))
+  (clrhash *subst-type-hash*)
   (reset-subst-mod-params-cache)
   (reset-pseudo-normalize-caches)
   ;;(reset-fully-instantiated-cache)
@@ -577,7 +578,8 @@
 
 (defun typecheck-theories (filename theories)
   (dolist (theory (sort-theories theories))
-    (let ((start-time (get-universal-time)))
+    (let ((start-time (get-universal-time))
+	  (*current-context* (make-new-context theory)))
       (mapc #'(lambda (u) (get-typechecked-theory u))
 	    (get-immediate-usings theory))
       (unless (typechecked? theory)
@@ -1001,8 +1003,12 @@
 		    (memq 'typechecked (status th))))
 	   importings)))
 
+(defmethod typechecked? ((theoryref string))
+  (let ((theory (get-theory (pc-parse theoryref 'modname))))
+    (and theory
+	 (typechecked? theory))))
+
 (defmethod typechecked? (theoryref)
-  (break "typechecked? being called with ~a" (type-of theoryref))
   (let ((theory (get-theory theoryref)))
     (and theory
 	 (typechecked? theory))))

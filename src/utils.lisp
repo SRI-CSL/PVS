@@ -367,7 +367,7 @@
 (defmethod resolution ((name name))
   (with-slots ((res resolutions)) name
     (unless (or (cdr res)
-		(not (typep (car res) 'resolution)))
+		(not (resolution? (car res))))
       (car res))))
 
 (defmethod declaration ((act actual))
@@ -1210,9 +1210,6 @@
       (declaration var)
       (let ((bind-decl (mk-bind-decl (id var)
 			 (get-declared-type var) (type var))))
-	(setf (resolutions bind-decl)
-	      (list (make-resolution bind-decl (theory-name *current-context*)
-				     (type var))))
 	(values bind-decl t))))
 
 (defun get-declared-type (var)
@@ -2026,9 +2023,7 @@
       (let* ((nmodinst (adt-modinst (module-instance te))))
 	(if (tc-eq nmodinst (module-instance te))
 	    te
-	    (let* ((res (make-instance 'resolution
-			  'module-instance nmodinst
-			  'declaration (declaration te)))
+	    (let* ((res (mk-resolution (declaration te) nmodinst nil))
 		   (nte (copy te
 			  'resolutions (list res)
 			  'actuals (actuals nmodinst))))
@@ -2042,9 +2037,9 @@
 
 (defun copy-all (obj)
   (let ((*copy-print-type* t)
-	(*gensubst-cache* nil)
+	;;(*gensubst-cache* nil)
 	(*parsing-or-unparsing* t))
-    (gensubst* obj #'copy-all! #'copy-all?)))
+    (gensubst obj #'copy-all! #'copy-all?)))
 
 (defmethod copy-all? ((ex name))
   t)
@@ -2211,7 +2206,14 @@ space")
 				 bindings))
 		   (nmi (mk-modname (id theory) acts))
 		   (*generate-tccs* 'none))
-	      (and (with-no-type-errors (subtypes-satisfied? acts fmls))
+	      (and (with-no-type-errors
+		    (let ((*current-context*
+			   (if (free-params type)
+			       (or (saved-context
+				    (module (car (free-params type))))
+				   *current-context*)
+			       *current-context*)))
+		      (subtypes-satisfied? acts fmls)))
 		   (check-conversion
 		    (subst-mod-params (name conversion) nmi))))))
 	(when (compatible? ctype type)
@@ -2317,6 +2319,9 @@ space")
 (defmethod untyped* ((expr expr))
   (values (not (type expr))
 	  expr))
+
+(defmethod untyped* ((expr bind-decl))
+  (values (not (type expr)) expr))
 
 (defmethod untyped* ((expr name-expr))
   (values (not (and (type expr) (resolution expr)))

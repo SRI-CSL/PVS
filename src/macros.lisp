@@ -133,7 +133,8 @@
 	    (,op ,operator)
 	    (,id (make-new-variable ,vsym (cons ,type ,op)))
 	    (,bd (typecheck* (mk-bind-decl ,id ,type ,type) nil nil nil))
-	    (,nvar (mk-name-expr ,id nil nil (make-resolution ,bd nil ,type)
+	    (,nvar (mk-name-expr ,id nil nil (make-resolution ,bd
+					       (current-theory-name) ,type)
 				 'variable)))
       (beta-reduce (make-lambda-expr (list ,bd)
 		     (if (listp ,op)

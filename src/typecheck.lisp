@@ -80,6 +80,11 @@
   (gethash ex *expression-types*))
 
 (defmethod (setf types) (types (ex expr))
+;   (when (some #'(lambda (ty)
+; 		  (not (subsetp (freevars ty) *bound-variables*
+; 				:test #'same-declaration)))
+; 	      types)
+;     (break "setf types has freevars"))
   (setf (gethash ex *expression-types*) types))
 
 (defmethod get-unique-type ((ex name-expr))
@@ -133,7 +138,9 @@
 	     (*tccs* nil)
 	     (*tccdecls* nil)
 	     (*tccforms* nil)
-	     (*current-context* (make-new-context m)))
+	     (*current-context* (if (eq (current-theory) m)
+				    *current-context*
+				    (make-new-context m))))
 	(tcdebug "~%  Processing formals")
 	(typecheck-decls (formals m))
 	(set-dependent-formals (formals-sans-usings m))
@@ -299,19 +306,18 @@
 ;;; theories.
 
 (defmethod get-immediate-usings ((theory module))
-  (with-slots (immediate-usings formals assuming (theory-part theory))
-      theory
-      (if (eq immediate-usings 'unbound)
-	  (setf immediate-usings
-		(mapcan #'(lambda (thname)
-			    (let ((th (get-theory thname)))
-			      (or (and (typep th 'datatype)
-				       (datatype-instances thname))
-				  (list thname))))
-		  (mapcar #'theory-name
-		    (remove-if-not #'mod-or-using?
-		      (all-decls theory)))))
-	  immediate-usings)))
+  (with-slots (immediate-usings formals assuming (theory-part theory)) theory
+    (if (eq immediate-usings 'unbound)
+	(setf immediate-usings
+	      (mapcan #'(lambda (thname)
+			  (let ((th (get-theory thname)))
+			    (or (and (typep th 'datatype)
+				     (datatype-instances thname))
+				(list thname))))
+		(mapcar #'theory-name
+		  (remove-if-not #'mod-or-using?
+		    (all-decls theory)))))
+	immediate-usings)))
 
 (defmethod theory-name ((mdecl mod-decl))
   (modname mdecl))

@@ -1108,7 +1108,7 @@
 			     (ending-row place) (ending-col place)))
 	     (scar (add-place
 		    (mk-application (add-place (mk-name-expr '|char|) cplace)
-		      (add-place (mk-number-expr (caar codes)) cplace))
+		      (add-place (mk-number-expr code) cplace))
 		    cplace))
 	     (scdr (xt-string-to-charlist* (cdr codes) place)))
 	 (make-instance 'application
@@ -1200,12 +1200,16 @@
 
 (defun xt-brack-expr (expr)
   (let ((args (term-args expr)))
-    (make-instance 'bracket-expr
-      'operator (make-instance 'name-expr
-		  'id '[\|\|]
-		  'place (term-place expr))
-      'argument (xt-arg-expr args)
-      'place (term-place expr))))
+    (if args
+	(make-instance 'bracket-expr
+	  'operator (make-instance 'name-expr
+		      'id '[\|\|]
+		      'place (term-place expr))
+	  'argument (xt-arg-expr args)
+	  'place (term-place expr))
+	(make-instance 'name-expr
+	  'id '[\|\|]
+	  'place (term-place expr)))))
 
 (defun xt-arg-expr (args)
   (if (cdr args)
@@ -1603,9 +1607,7 @@
       expr))
 
 (defun xt-set-expr (set-expr)
-  (let ((set-formals (term-arg0 set-expr))
-	(expr (term-arg1 set-expr)))
-    (make-xt-bind-expr 'set-expr set-expr set-expr)))
+  (make-xt-bind-expr 'set-expr set-expr set-expr))
 
 
 (defun xt-let-expr (lexpr)
@@ -1922,61 +1924,6 @@
     (tuple-expr (cons (mapcar #'xt-expr (term-args ass)) args))
     (t (parse-error ass "Parentheses expected here"))))
 
-(defun xt-assign-args (ass)
-  (mapcar #'(lambda (arg) (mapcar #'xt-expr (term-args arg)))
-	  (term-args ass)))
-
-(defun xt-assign-arg (assign-arg)
-  (or (xt-assign-arg* assign-arg)
-      (let ((expr (xt-expr assign-arg)))
-	(setf (parens expr) 0)
-	(if (typep expr 'tuple-expr)
-	    (list (exprs expr))
-	    (list (list expr))))))
-
-(defun xt-assign-arg* (assign-arg &optional args)
-  (cond ((is-id assign-arg)
-	 (list (list (make-instance 'name-expr
-		       'id (ds-id assign-arg)
-		       'place (term-place assign-arg)))))
-	((is-number assign-arg)
-	 (list (list (make-instance 'number-expr
-		       'number (ds-number assign-arg)
-		       'place (term-place assign-arg)))))
-	(t (case (sim-term-op assign-arg)
-	     (field-assign
-	      (list (list (make-instance 'field-assign
-			    'id (ds-id (term-arg0 assign-arg))
-			    'place (term-place (term-arg0 assign-arg))))))
-	     (proj-assign
-	      (list (list (make-instance 'proj-assign
-			    'number (ds-number (term-arg0 assign-arg))
-			    'place (term-place (term-arg0 assign-arg))))))
-	     (tuple-expr
-	      (cons (xt-expr assign-arg)
-		    (mapcar #'(lambda (a)
-				(cond ((is-id a)
-				       (list
-					(make-instance 'field-assign
-					  'id (ds-id a)
-					  'place (term-place a))))
-				      ((is-number a)
-				       (list
-					(make-instance 'proj-assign
-					  'number (ds-number a)
-					  'place (term-place a))))
-				      (t (mapcar #'xt-expr a))))
-		      args)))
-	     (application
-	      (xt-assign-arg* (term-arg0 assign-arg)
-			      (cons (term-args (term-arg1 expr)) args)))
-	     (fieldappl
-	      (xt-assign-arg* (term-arg0 assign-arg)
-			      (cons (term-arg1 assign-arg) args)))
-	     (projappl
-	      (xt-assign-arg* (term-arg0 assign-arg)
-			      (cons (term-arg1 assign-arg) args)))))))
-
 (defmethod separator ((ass assignment))
   'ceq)
 
@@ -1989,8 +1936,7 @@
 (defun xt-modname (modname)
   (let* ((id (term-arg0 modname))
 	 (lib (term-arg1 modname))
-	 (actuals (term-arg2 modname))
-	 (mappings (term-arg3 modname)))
+	 (actuals (term-arg2 modname)))
     (make-instance (if (is-sop 'noactuals actuals)
 		       'modname 'full-modname)
       'id (ds-vid id)
@@ -1998,12 +1944,7 @@
 		 (ds-vid lib))
       'actuals (unless (is-sop 'noactuals actuals)
 		 (xt-actuals actuals))
-      'mappings (unless (is-sop 'nomap mappings)
-		  (xt-mappings mappings))
       'place (term-place modname))))
-
-(defun xt-mappings (mappings)
-  (break))
 
 (defun xt-name (name)
   (let ((idop (term-arg0 name))
@@ -2057,7 +1998,6 @@
 (defun valid-pvs-id (symbol)
   (or (not *valid-id-check*)
       *in-checker*
-      sbrt::*sb-tex-mode*
       (or (assq symbol *pvs-operators*)
 	  (valid-pvs-id* (string symbol)))))
 

@@ -424,6 +424,7 @@
   (cons (bindings expr) (bindings* (expression expr))))
 
 (defmethod bindings* (expr)
+  (declare (ignore expr))
   nil)
 
 (defun outer-arguments* (bindings depth mtype &optional args)
@@ -443,7 +444,7 @@
 	(insert-tcc-decl 'well-founded (ordering decl) nil ndecl))))
 
 (defun make-well-founded-tcc-decl (decl mtype)
-  (let* ((meas (measure decl))
+  (let* (;;(meas (measure decl))
 	 (ordering (ordering decl))
 	 (var1 (make-new-variable '|x| ordering))
 	 (var2 (make-new-variable '|y| ordering))
@@ -615,6 +616,7 @@
 	 (tform (add-tcc-conditions (typecheck* form *boolean* nil nil)))
 	 (uform (universal-closure tform))
 	 (id (make-tcc-name)))
+    (unless (eq tform uform) (break))
     (typecheck* (if (eq fclass 'obligation)
 		    (mk-existence-tcc id uform)
 		    (mk-formula-decl id uform fclass))
@@ -753,9 +755,11 @@
 	    tcc-name))))
 
 (defmethod generating-judgement-tcc? ((decl number-judgement) expr)
+  (declare (ignore expr))
   (id decl))
 
 (defmethod generating-judgement-tcc? ((decl subtype-judgement) expr)
+  (declare (ignore expr))
   (id decl))
 
 (defmethod generating-judgement-tcc? ((decl name-judgement) expr)
@@ -767,6 +771,7 @@
        (eq (operator* expr) (name decl))))
 
 (defmethod generating-judgement-tcc? (decl expr)
+  (declare (ignore decl expr))
   nil)
 
 
@@ -927,8 +932,8 @@
 	     preds)))))
 
 
-(defun generate-cond-disjoint-tcc (expr conditions)
-  (let ((ndecl (make-cond-disjoint-tcc expr conditions)))
+(defun generate-cond-disjoint-tcc (expr conditions values)
+  (let ((ndecl (make-cond-disjoint-tcc expr conditions values)))
     (when ndecl
       (insert-tcc-decl 'disjointness expr nil ndecl)
       (unless *in-checker*

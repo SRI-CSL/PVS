@@ -145,10 +145,10 @@
 	(when bdecls
 	  (if args
 	      (let ((thinst (current-theory-name)))
-		(mapcar #'(lambda (bd)
+		(mapcan #'(lambda (bd)
 			    (when (compatible-arguments? bd thinst args
 							 (current-theory))
-			      (mk-resolution bd thinst (type bd))))
+			      (list (mk-resolution bd thinst (type bd)))))
 		  bdecls))
 	      (mapcar #'(lambda (bd)
 			  (mk-resolution bd (current-theory-name) (type bd)))
@@ -1001,8 +1001,7 @@
       reses))
 
 (defun filter-bindings (reses args)
-  (or (delete-if-not #'(lambda (r)
-			 (typep (declaration r) '(or bind-decl var-decl)))
+  (or (delete-if-not #'(lambda (r) (memq (declaration r) *bound-variables*))
 	reses)
       (and args
 	   (delete-if-not #'(lambda (r)
@@ -1044,7 +1043,7 @@
 (defmethod locality ((res resolution))
   (locality (declaration res)))
 
-(defmethod locality ((decl bind-decl))
+(defmethod locality ((decl binding))
   0)
 
 (defmethod locality ((decl declaration))
@@ -1118,51 +1117,6 @@
 	       (*get-all-resolutions* t))
 	  (resolve* nname kind args)))))
 
-
-;;; resolve-theory-name is called by the prover.  It returns a list of
-;;; instances of the specified theory that are visible in the current
-;;; context.
-;;;   IF generic input
-;;;   THEN IF the generic was imported,
-;;;        THEN return it as a singleton list
-;;;        ELSE return list of instances
-;;;   ELSE IF the instance was imported
-;;;        THEN return it as a singleton
-;;;        ELSE IF the generic was imported,
-;;;             THEN check the actuals, and return the singleton instance
-;;;             ELSE return nil
-
-(defun resolve-theory-name (modname)
-  (if (eq (id modname) (id (theory *current-context*)))
-      (if (actuals modname)
-	  (type-error modname "May not instantiate the current theory")
-	  modname)
-      (if (get-theory modname)
-	  (progn
-	    (typecheck* modname nil nil nil)
-	    (let* ((importings (gethash (get-theory modname)
-					(using-hash *current-context*))))
-	      (unless importings
-		(type-error modname
-		  "Theory ~a is not imported in the current context"
-		  (id modname)))
-	      (when (and (actuals modname)
-			 (not (member modname importings :test #'tc-eq))
-			 (not (find-if #'(lambda (mi) (null (actuals mi)))
-				importings)))
-		(type-error modname
-		  "Theory instance ~a is not imported in the current context"
-		  modname)))
-	    modname)
-	  (resolve-theory-abbreviation modname))))
-
-(defmethod imported-theory-abbreviation (decl)
-  (declare (ignore decl))
-  nil)
-
-(defmethod imported-theory-abbreviation ((decl mod-decl))
-  (visible? decl))
-  
 
 (defun argument-conversion (name arguments)
   (when arguments

@@ -90,33 +90,41 @@ where db is to replace db1 and db2")
 	       (new-tc-eq-list-bindings (car l1) (car l2) bindings))))
 
 (defmethod tc-eq* ((l1 null) (l2 cons) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((l1 cons) (l2 null) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((l1 null) (l2 null) bindings)
+  (declare (ignore bindings))
   t)
 
 (defmethod new-tc-eq-list-bindings ((b1 binding) (b2 binding) bindings)
   (acons b1 b2 bindings))
 
 (defmethod new-tc-eq-list-bindings (e1 e2 bindings)
+  (declare (ignore e1 e2))
   bindings)
 
 (defun type-binding? (te)
   (typep te '(or dep-binding field-decl)))
 
 (defmethod tc-eq* ((t1 dep-binding) (t2 dep-binding) bindings)
+  (declare (ignore bindings))
   (eq t1 t2))
 
 (defmethod tc-eq* ((t1 type-expr) (t2 dep-binding) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((t1 dep-binding) (t2 type-expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((t1 binding) (t2 binding) bindings)
+  (declare (ignore bindings))
   (eq t1 t2))
 
 
@@ -124,6 +132,7 @@ where db is to replace db1 and db2")
 ;;; the canonical form.
 
 (defmethod tc-eq* :around ((t1 type-expr) (t2 type-expr) bindings)
+  (declare (ignore bindings))
    (or (eq t1 t2)
        (call-next-method)))
 
@@ -217,15 +226,18 @@ where db is to replace db1 and db2")
 		  (tc-eq-fields (cdr flds1) (remove fld2 flds2) bindings))))))
 
 (defmethod tc-eq* ((f1 field-decl) (f2 field-decl) bindings)
+  (declare (ignore bindings))
   (eq f1 f2))
 
 
 ;;; Expressions
 
 (defmethod tc-eq* ((e1 field-name-expr) e2 bindings)
+  (declare (ignore bindings e2))
   nil)
 
 (defmethod tc-eq* ((e1 name-expr) (e2 field-name-expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((e1 field-name-expr) (e2 field-name-expr) bindings)
@@ -283,12 +295,12 @@ where db is to replace db1 and db2")
 (defmethod tc-eq* ((e1 tuple-expr) (e2 name-expr) bindings)
   (let ((bex (cdr (assoc e1 bindings :test #'tc-eq))))
     (and bex
-	 (tc-eq bex e2 bindings))))
+	 (tc-eq* bex e2 bindings))))
 
 (defmethod tc-eq* ((e1 name-expr) (e2 tuple-expr) bindings)
   (let ((bex (cdr (assoc e1 bindings :test #'tc-eq))))
     (and bex
-	 (tc-eq bex e2 bindings))))
+	 (tc-eq* bex e2 bindings))))
 
 (defmethod tc-eq* ((e1 cases-expr) (e2 cases-expr) bindings)
   (with-slots ((expr1 expression) (sel1 selections) (else1 else-part)) e1
@@ -332,9 +344,11 @@ where db is to replace db1 and db2")
 	  (tc-eq* arg1 arg2 bindings)))))
 
 (defmethod tc-eq* ((e1 negation) (e2 expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((e1 application) (e2 negation) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((e1 conjunction) (e2 conjunction) bindings)
@@ -344,9 +358,11 @@ where db is to replace db1 and db2")
 	  (tc-eq* arg1 arg2 bindings)))))
 
 (defmethod tc-eq* ((e1 conjunction) (e2 expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((e1 application) (e2 conjunction) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((e1 disjunction) (e2 disjunction) bindings)
@@ -356,9 +372,11 @@ where db is to replace db1 and db2")
 	  (tc-eq* arg1 arg2 bindings)))))
 
 (defmethod tc-eq* ((e1 disjunction) (e2 expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((e1 application) (e2 disjunction) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((e1 implication) (e2 implication) bindings)
@@ -368,9 +386,11 @@ where db is to replace db1 and db2")
 	  (tc-eq* arg1 arg2 bindings)))))
 
 (defmethod tc-eq* ((e1 implication) (e2 expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((e1 application) (e2 implication) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((e1 iff) (e2 iff) bindings)
@@ -380,9 +400,11 @@ where db is to replace db1 and db2")
 	  (tc-eq* arg1 arg2 bindings)))))
 
 (defmethod tc-eq* ((e1 iff) (e2 expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((e1 application) (e2 iff) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((e1 equation) (e2 equation) bindings)
@@ -392,9 +414,11 @@ where db is to replace db1 and db2")
 	  (tc-eq* arg1 arg2 bindings)))))
 
 (defmethod tc-eq* ((e1 equation) (e2 expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((e1 application) (e2 equation) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((e1 branch) (e2 branch) bindings)
@@ -404,9 +428,11 @@ where db is to replace db1 and db2")
 	  (tc-eq* arg1 arg2 bindings)))))
 
 (defmethod tc-eq* ((e1 branch) (e2 expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((e1 application) (e2 branch) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-eq* ((e1 application) (e2 application) bindings)
@@ -599,11 +625,6 @@ where db is to replace db1 and db2")
 	  (and (tc-eq* args1 args2 bindings)
 	       (tc-eq* ex1 ex2 bindings))))))
 
-(defmethod tc-eq* ((n1 binding) (n2 binding) bindings)
-  (declare (ignore bindings))
-  (eq n1 n2))
-
-
 ;;; Make sure we don't allow bindings and names to be tc-eq*
 
 (defmethod tc-eq* ((n1 binding) (n2 name) bindings)
@@ -641,13 +662,6 @@ where db is to replace db1 and db2")
 		   (null mi2)))
 	  ;;(tc-eq-operators decl1 decl2)
 	  ))))
-
-(defmethod tc-eq* ((tn1 modname) (tn2 modname) bindings)
-  (with-slots ((id1 id) (acts1 actuals)) tn1
-    (with-slots ((id2 id) (acts2 actuals)) tn2
-      (and (eq id1 id2)
-	   (tc-eq* acts1 acts2 bindings)))))
-
 
 (defun tc-eq-operators (decl1 decl2)
   (let ((id1 (id decl1))
@@ -751,6 +765,7 @@ where db is to replace db1 and db2")
 		 (compatible?* a1 a2))))))
 
 (defmethod compatible?* ((atype type-name) etype)
+  (declare (ignore etype))
   (or (declaration-outside-formals? atype)
       (call-next-method)))
 
@@ -759,6 +774,7 @@ where db is to replace db1 and db2")
       (call-next-method)))
 
 (defmethod compatible?* (atype (etype type-name))
+  (declare (ignore atype))
   (or (declaration-outside-formals? etype)
       (call-next-method)))
 
@@ -846,6 +862,7 @@ where db is to replace db1 and db2")
       (call-next-method)))
 
 (defmethod strict-compatible?* ((atype type-expr) (etype type-expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 ;;; We would like to use tc-eq for type-names, but since this can be
@@ -1028,16 +1045,6 @@ where db is to replace db1 and db2")
    (positive-types (adt t1))
    nil))
 
-(defun adt-compatible-preds (atype etype aexpr incs)
-  #+pvsdebug (assert (adt? etype))
-  (adt-compatible-pred-actuals
-   (actuals (module-instance (find-declared-adt-supertype atype)))
-   (actuals (module-instance (find-declared-adt-supertype etype)))
-   (formals-sans-usings (adt atype))
-   atype
-   (positive-types (adt atype))
-   aexpr
-   incs))
 
 ;;; An actual funtype is compatible with an expected funtype only if the
 ;;; actual is a subtype of the expected.  We don't distinguish the
@@ -1083,7 +1090,7 @@ where db is to replace db1 and db2")
 				(not (dependent? atype)))
 			    (cdr afields)
 			    (let* ((nres (make-resolution nfield
-					   (theory-name *current-context*)
+					   (current-theory-name)
 					   (type afld)))
 				   (fne (mk-field-name-expr (id afld) nres
 							    'variable)))
@@ -1107,7 +1114,8 @@ where db is to replace db1 and db2")
     (let ((*generate-tccs* 'none)
 	  (ex (if (typep aexpr 'binding)
 		  (mk-name-expr (id aexpr) nil nil
-				(make-resolution aexpr nil (type aexpr))
+				(make-resolution aexpr
+				  (current-theory-name) (type aexpr))
 				'variable)
 		  aexpr)))
       (delete-if #'(lambda (inc) (eq inc *true*))
@@ -1141,7 +1149,6 @@ where db is to replace db1 and db2")
 
 (defmethod compatible-preds* ((atype type-name) (etype type-name)
 			     aexpr incs)
-  (declare (ignore aexpr))
   (if (adt? atype)
       (adt-compatible-preds atype etype aexpr incs)
       (append (actual-equalities (actuals (module-instance atype))
@@ -1245,7 +1252,8 @@ where db is to replace db1 and db2")
 		      (bd (typecheck* (mk-bind-decl id stype stype)
 				      nil nil nil))
 		      (var (mk-name-expr id nil nil
-					 (make-resolution bd nil stype)
+					 (make-resolution bd
+					   (current-theory-name) stype)
 				 'variable))
 		      (aconj (make!-conjunction*
 			      (mapcar #'(lambda (o)
@@ -1345,7 +1353,9 @@ where db is to replace db1 and db2")
 (defun make-new-variable-name-expr (id type)
   (let* ((ty (if (typep type 'dep-binding) (type type) type))
 	 (bd (typecheck* (mk-bind-decl id ty ty) nil nil nil))
-	 (ne (mk-name-expr id nil nil (make-resolution bd nil ty) 'variable)))
+	 (ne (mk-name-expr id nil nil (make-resolution bd
+					(current-theory-name) ty)
+			   'variable)))
     (setf (kind ne) 'variable)
     ne))
 
@@ -1356,7 +1366,7 @@ where db is to replace db1 and db2")
 
 (defun compatible-funtype-pred (atype adom edom avar evar ;;apred epred
 				      aexpr arng erng incs)
-  (declare (ignore atype))
+  (declare (ignore atype evar))
   (let* ((dpreds (equality-predicates adom edom))
 	 (dpred (when dpreds
 		   (typecheck* dpreds *boolean* nil nil)))
@@ -1414,20 +1424,6 @@ where db is to replace db1 and db2")
 	     (substit (cdr aexprs) (acons adep aexp nil))
 	     (cdr aexprs))
 	 (append preds incs)))))
-
-
-(defun subst-var-projection (dep types tuptype var projnum)
-  (if (dep-binding? dep)
-      (let* ((ne (mk-name-expr var))
-	     (proj (mk-tup-accessor tuptype projnum))
-	     (appl (mk-application proj ne))
-	     (dtype (type decl))
-	     (dres (make-resolution dep (theory-name *current-context*) dtype))
-	     (pname (mk-name-expr (id dep) nil nil res 'variable)))
-	(setf (kind ne) 'VARIABLE)
-	(setf (type appl) (type dep))
-	(substit types (list (cons pname appl))))
-      types))
 
 (defmethod compatible-preds* ((atype tupletype) (etype list)
 			      (aexpr tuple-expr) incs)
@@ -1519,10 +1515,6 @@ where db is to replace db1 and db2")
 
 ;;; Strict-subtype-of?
 
-(defun strict-subtype-of? (t1 t2)
-  (unless (tc-eq t1 t2)
-    (strict-subtype-of*? t1 t2 0)))
-
 (defmethod strict-subtype-of*? ((l1 list) (l2 list) dist)
   (multiple-value-bind (ndist strict?)
       (subtype-of*? l1 l2 dist)
@@ -1555,6 +1547,7 @@ where db is to replace db1 and db2")
   (strict-subtype-of*? t1 (type t2) dist))
 
 (defmethod strict-subtype-of*? ((t1 type-expr) (t2 type-expr) dist)
+  (declare (ignore dist))
   nil)
 
 
@@ -1708,7 +1701,7 @@ where db is to replace db1 and db2")
   (let* ((vid (make-new-variable '|v| t2))
 	 (vb (typecheck* (mk-bind-decl vid t2 t2) nil nil nil))
 	 (svar (mk-name-expr vid nil nil
-			     (make-resolution vb nil t2)
+			     (make-resolution vb (current-theory-name) t2)
 			     'variable))
 	 (preds (compatible-preds t2 t1 svar)))
     (if preds
@@ -1742,7 +1735,8 @@ where db is to replace db1 and db2")
 	      (let* ((vid (make-new-variable '|v| t2))
 		     (vb (typecheck* (mk-bind-decl vid t2 t2) nil nil nil))
 		     (svar (mk-name-expr vid nil nil
-					 (make-resolution vb nil t2)
+					 (make-resolution vb
+					   (current-theory-name) t2)
 					 'variable))
 		     (lpred (make!-lambda-expr (list vb)
 			      (make!-conjunction*
@@ -1757,7 +1751,7 @@ where db is to replace db1 and db2")
 	 (bd (typecheck* (mk-bind-decl id t2 t2)
 			 nil nil nil))
 	 (var (mk-name-expr id nil nil
-			    (make-resolution bd nil t2)
+			    (make-resolution bd (current-theory-name) t2)
 			    'variable))
 	 (preds (adt-compatible-preds t2 t1 var nil)))
     (values t2
@@ -1785,12 +1779,14 @@ where db is to replace db1 and db2")
 		    (tupty (domain t2))
 		    (xb (typecheck* (mk-bind-decl xid tupty tupty) nil nil nil))
 		    (xvar (mk-name-expr xid nil nil
-					(make-resolution xb nil tupty)
+					(make-resolution xb
+					  (current-theory-name) tupty)
 					'variable))
 		    (vid (make-new-variable '|f| (list t1 t2)))
 		    (vb (typecheck* (mk-bind-decl vid t2 t2) nil nil nil))
 		    (var (mk-name-expr vid nil nil
-				       (make-resolution vb nil t2)
+				       (make-resolution vb
+					 (current-theory-name) t2)
 				       'variable))
 		    (npred (make!-lambda-expr (list vb)
 			     (make!-forall-expr (list xb)
@@ -1815,7 +1811,8 @@ where db is to replace db1 and db2")
     (let* ((vid (make-new-variable '|t| (list t1 t2)))
 	   (vb (typecheck* (mk-bind-decl vid t2 t2) nil nil nil))
 	   (var (mk-name-expr vid nil nil
-			      (make-resolution vb nil t2)
+			      (make-resolution vb
+				(current-theory-name) t2)
 			      'variable)))
       (multiple-value-bind (ty pred)
 	  (subtype-tuple-preds (types t1) (types t2) t2 vb var)
@@ -1860,7 +1857,8 @@ where db is to replace db1 and db2")
     (let* ((vid (make-new-variable '|t| (list t1 t2)))
 	   (vb (typecheck* (mk-bind-decl vid t2 t2) nil nil nil))
 	   (var (mk-name-expr vid nil nil
-			      (make-resolution vb nil t2)
+			      (make-resolution vb
+				(current-theory-name) t2)
 			      'variable)))
       (multiple-value-bind (ty pred)
 	  (subtype-record-preds (fields t1) (fields t2) t2 vb var
@@ -1916,7 +1914,7 @@ where db is to replace db1 and db2")
     (mk-name-expr (id dep)
       nil nil (make-resolution dep
 		(if (binding? dep)
-		    (mk-modname (id *current-theory*))
+		    (current-theory-name)
 		    (module-instance dep))
 		type)
       'variable)))
@@ -2030,7 +2028,8 @@ where db is to replace db1 and db2")
 (defun make-preds-with-same-binding (te predicates)
   (let* ((id (make-new-variable '|x| predicates))
 	 (bd (typecheck* (mk-bind-decl id te te) nil nil nil))
-	 (nvar (mk-name-expr id nil nil (make-resolution bd nil te)
+	 (nvar (mk-name-expr id nil nil (make-resolution bd
+					  (current-theory-name) te)
 			     'variable)))
     (values (make-preds-with-same-binding* nvar predicates)
 	    nvar)))
@@ -2090,7 +2089,7 @@ where db is to replace db1 and db2")
 			     (cons ntype ntypes)))))
 
 (defun subst-for-binding (binding nbinding obj)
-  (let* ((nres (make-resolution nbinding nil))
+  (let* ((nres (make-resolution nbinding (current-theory-name)))
 	 (nname (mk-name-expr nbinding nil nil nres 'variable)))
     (substit obj (list (cons binding nname)))))
 
@@ -2098,10 +2097,11 @@ where db is to replace db1 and db2")
   (let* ((id (make-new-variable '|x| predicates))
 	 (type (if (typep te 'dep-binding) (type te) te))
 	 (bd (typecheck* (mk-bind-decl id type type) nil nil nil))
-	 (nvar (mk-name-expr id nil nil (make-resolution bd nil type)
+	 (nvar (mk-name-expr id nil nil (make-resolution bd
+					  (current-theory-name) type)
 			     'variable))
 	 (conj (make!-conjunction* (gensubst (cdr predicates)
-				   #'(lambda (ex) nvar)
+				   #'(lambda (ex) (declare (ignore ex)) nvar)
 				   #'(lambda (ex)
 				       (tc-eq ex (car predicates)))))))
     (make-new-tupletype-pred conj bd nvar)))
@@ -2113,6 +2113,7 @@ where db is to replace db1 and db2")
       (make!-lambda-expr (list bd) conj)))
 
 (defmethod make-new-tupletype-pred ((conj expr) bd nvar)
+  (declare (ignore nvar))
   (make!-lambda-expr (list bd) conj))
 
 (defun partition-projection-predicates (var predicates &optional parts)
@@ -2214,9 +2215,10 @@ where db is to replace db1 and db2")
   (let* ((id (make-new-variable '|x| (cons field predicates)))
 	 (te (type field))
 	 (bd (typecheck* (mk-bind-decl id te te) nil nil nil))
-	 (nvar (mk-name-expr id nil nil (make-resolution bd nil te)
+	 (nvar (mk-name-expr id nil nil (make-resolution bd
+					  (current-theory-name) te)
 			     'variable)))
     (make!-lambda-expr (list bd)
       (make!-conjunction* (gensubst (cdr predicates)
-			  #'(lambda (ex) nvar)
+			  #'(lambda (ex) (declare (ignore ex)) nvar)
 			  #'(lambda (ex) (tc-eq ex (car predicates))))))))

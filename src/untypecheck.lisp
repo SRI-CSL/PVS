@@ -127,9 +127,10 @@
     (tcdebug "~%  Untypechecking ~a ~a!~a"
 	     (type-of decl) (id (module decl)) (id decl))
     (untypecheck-references decl)
-    (setf (theory (module decl))
-	  (delete-if #'(lambda (d) (memq d (generated decl)))
-	    (theory (module decl))))
+    (when (module? (module decl))
+      (setf (theory (module decl))
+	    (delete-if #'(lambda (d) (memq d (generated decl)))
+	      (theory (module decl)))))
     (mapc #'(lambda (rd)
 	      (unless (from-prelude? rd)
 		(setf (referred-by rd)

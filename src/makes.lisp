@@ -314,17 +314,16 @@
 	)))
 
 (defmethod mk-name-expr ((obj bind-decl) &optional actuals mod-id res kind)
-  (let ((bres (or res (resolution obj))))
-    (assert bres)
-    (if bres
-	(make!-name-expr (id obj) actuals mod-id bres (or kind 'variable))
-	(make-instance 'name-expr
-	  'id (id obj)
-	  'mod-id mod-id
-	  'actuals actuals
-	  'type (type obj)
-	  'kind 'variable
-	  'resolutions (resolutions obj)))))
+  (if res
+      (make!-name-expr (id obj) actuals mod-id res (or kind 'variable))
+      (make-instance 'name-expr
+	'id (id obj)
+	'mod-id mod-id
+	'actuals actuals
+	'type (type obj)
+	'kind 'variable
+	'resolutions (list (mk-resolution obj
+			     (current-theory-name) (type obj))))))
 
 (defmethod mk-name-expr (obj &optional actuals mod-id res kind)
   (if res
@@ -542,7 +541,8 @@
 (defun make-variable-expr (bd)
   (assert (typep bd 'binding))
   (let ((var (mk-name-expr bd nil nil
-			   (make-resolution bd nil (type bd)))))
+			   (make-resolution bd
+			     (current-theory-name) (type bd)))))
     (setf (kind var) 'variable)
     var))
   
@@ -585,18 +585,16 @@
 
 (defun mk-bind-decl (id dtype &optional type)
   (assert (symbolp id))
-  (assert (or (null type) *current-context*))
-  (let ((bd (make-instance 'bind-decl
-	      'id id
-	      'declared-type (when dtype (or (print-type dtype) dtype))
-	      'type type)))
-    (when type
-      (setf (resolutions bd)
-	    (list (make-resolution bd (theory-name *current-context*) type))))
-    bd))
+  (make-instance 'bind-decl
+    'id id
+    'declared-type (when dtype (or (print-type dtype) dtype))
+    'type type))
 
 (defun mk-arg-bind-decl (id dtype &optional type)
-  (change-class (mk-bind-decl id dtype type) 'arg-bind-decl))
+  (make-instance 'arg-bind-decl
+    'id id
+    'declared-type (when dtype (or (print-type dtype) dtype))
+    'type type))
 
 (defun mk-assignment (flag arguments expression)
   (if (eq flag 'uni)
@@ -888,12 +886,11 @@
 
 (defun make-equation (lhs rhs)
   (let* ((type (find-supertype (or (type lhs) (type rhs))))
-	 (res (make-instance 'resolution
-		'declaration (equality-decl)
-		'module-instance (make-instance 'modname
-				   'id '|equalities|
-				   'actuals (list (mk-actual type)))
-		'type (mk-funtype (list type type) *boolean*)))
+	 (res (mk-resolution (equality-decl)
+		(make-instance 'modname
+		  'id '|equalities|
+		  'actuals (list (mk-actual type)))
+		(mk-funtype (list type type) *boolean*)))
 	 (eqname (make-instance 'name-expr
 		   'id '=
 		   'type (type res)
@@ -1219,12 +1216,9 @@
   (assert (and (type lhs) (type rhs)))
   (assert (compatible? (type lhs) (type rhs)))
   (let* ((type (find-supertype (type lhs)))
-	 (res (make-instance 'resolution
-		'declaration (equality-decl)
-		'module-instance (make-instance 'modname
-				   'id '|equalities|
-				   'actuals (list (mk-actual type)))
-		'type (mk-funtype (list type type) *boolean*)))
+	 (res (mk-resolution (equality-decl)
+		(mk-modname '|equalities| (list (mk-actual type)))
+		(mk-funtype (list type type) *boolean*)))
 	 (eqname (make-instance 'name-expr
 		   'id '=
 		   'type (type res)
@@ -1250,12 +1244,9 @@
 		     'domain (make-instance 'tupletype
 			       'types (list *boolean* stype stype))
 		     'range stype))
-	 (if-res (make-instance 'resolution
-		   'declaration (if-declaration)
-		   'module-instance (make-instance 'modname
-				      'id '|if_def|
-				      'actuals (list (mk-actual stype)))
-		   'type ifoptype))
+	 (if-res (mk-resolution (if-declaration)
+		   (mk-modname '|if_def| (list (mk-actual stype)))
+		   ifoptype))
 	 (if-name (make-instance 'name-expr
 		    'id 'if
 		    'type ifoptype

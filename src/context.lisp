@@ -195,7 +195,6 @@ pvs-strategies files.")
   (setq *last-proof* nil)
   (clrhash *pvs-files*)
   (clrhash *pvs-modules*)
-  (setq *current-theory* nil)
   (setq *current-context* nil))
 
 (defun get-valid-context-directory (directory prompt)
@@ -545,8 +544,7 @@ pvs-strategies files.")
 	    (delete-if #'null (mapcar #'string (ce-dependencies entry))))))))
 
 (defun dependencies (theory)
-  (let ((*current-theory* theory)
-	(*modules-visited* nil))
+  (let ((*modules-visited* nil))
     (dependencies* theory)
     (remove theory *modules-visited*)))
 

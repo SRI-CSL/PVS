@@ -68,8 +68,7 @@
 			       :nt (if assuming?
 				       'assumings
 				       'theory-part)))
-		 (typechecked? (typechecked-file? filename))
-		 (*current-theory* theory))
+		 (typechecked? (typechecked-file? filename)))
 	    (when (or typechecked? update-theory?)
 	      (typecheck-new-decls decls pdecl))
 	    (when update-theory?
@@ -89,7 +88,7 @@
       (pvs-message "Not adding declaration")))
 
 (defun add-new-decls-to-context (pdecl decls theory)
-  (let ((context (saved-context theory)))
+  (let ((*current-context* (saved-context theory)))
     (dolist (d decls)
       (put-decl d (current-declarations-hash))))
   (when (and *in-checker*
@@ -316,13 +315,12 @@
 		 (decl (first *mod-declaration-info*))
 		 (theory (second *mod-declaration-info*))
 		 (filename (third *mod-declaration-info*))
-		 (pdecl (previous-decl decl theory))
+		 ;;(pdecl (previous-decl decl theory))
 		 (oplace (place-list (place decl)))
 		 (decls (parse :file declfile
 			       :nt (if (member decl (assuming theory))
 				       'assumings 'theory-part)))
-		 (typechecked? (typechecked-file? filename))
-		 (*current-theory* theory))
+		 (typechecked? (typechecked-file? filename)))
 	    (verify-mod-decl decl decls)
 	    (when (or typechecked? update-theory?)
 	      (typecheck-mod-decls decls decl)
@@ -340,6 +338,7 @@
 		    (id decl))))
 	      (when *create-formulas-cache*
 		(maphash #'(lambda (res body)
+			     (declare (ignore body))
 			     (when (eq (declaration res) decl)
 			       (remhash res *create-formulas-cache*)))
 			 *create-formulas-cache*))
@@ -367,9 +366,7 @@
 			   (memq (declaration *current-context*)
 				 (memq decl (append (assuming theory)
 						    (theory theory)))))
-		  (mapc #'(lambda (d)
-			    (put-decl d (current-declarations-hash)))
-			(generated decl))))
+		  (put-decl d (current-declarations-hash))))
 	      (when (and (typep decl 'formula-decl)
 			 (eq (proof-status decl) 'proved))
 		(setf (proof-status decl) 'unchecked))
@@ -449,6 +446,7 @@
   t)
 
 (defmethod same-decl-types (d1 d2)
+  (declare (ignore d1 d2))
   nil)
 
 (defun mod-declaration-info-current? ()

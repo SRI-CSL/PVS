@@ -107,10 +107,7 @@
   (let ((tn (mk-type-name (id decl))))
     (setf (uninterpreted? tn) t)
     (setf (resolutions tn)
-	  (list (make-instance 'resolution
-		  'declaration decl
-		  'module-instance (theory-name *current-context*)
-		  'type tn)))
+	  (list (mk-resolution decl (current-theory-name) tn)))
     (setf (type decl) tn)
     (setf (type-value decl) tn))
   decl)
@@ -127,10 +124,7 @@
   (declare (ignore expected kind arguments))
   (check-duplication decl)
   (let* ((tn (mk-type-name (id decl)))
-	 (res (make-instance 'resolution
-		'declaration decl
-		'module-instance (theory-name *current-context*)
-		'type tn))
+	 (res (mk-resolution decl (current-theory-name) tn))
 	 (tval (type-def-decl-value decl tn)))
     (setf (resolutions tn) (list res))
     (setf (uninterpreted? tn) t)
@@ -207,10 +201,7 @@
 	    ;;(setf (nonempty? tn) t)
 	    )
 	  (setf (resolutions tn)
-		(list (make-instance 'resolution
-			'declaration decl
-			'module-instance (theory-name *current-context*)
-			'type tn)))
+		(list (mk-resolution decl (current-theory-name) tn)))
 	  tn))
   (when *loading-prelude*
     (set-prelude-types (id decl) (type-value decl)))
@@ -242,10 +233,7 @@
   (check-type-application-formals decl)
   (check-duplication decl)
   (let* ((tn (mk-type-name (id decl)))
-	 (res (make-instance 'resolution
-		'declaration decl
-		'module-instance (theory-name *current-context*)
-		'type tn))
+	 (res (mk-resolution decl (current-theory-name) tn))
 	 (*bound-variables* (apply #'append (formals decl)))
 	 (*tcc-conditions* (add-formals-to-tcc-conditions (formals decl)))
 	 (ptype (if (formals decl)
@@ -1325,20 +1313,11 @@
 		       (list (formals type)))))
     (if (supertype type)
 	(if (singleton? bindings)
-	    (setf (type (car bindings)) stype
-		  ;;(declared-type (car bindings)) (supertype type)
-		  (resolutions (car bindings))
-		  (list (make-resolution (car bindings)
-			  (theory-name *current-context*)
-			  stype)))
+	    (setf (type (car bindings)) stype)
 	    (if (tupletype? (find-supertype stype))
 		(if (length= bindings (types (find-supertype stype)))
 		    (mapcar #'(lambda (b ty)
-				(setf (type b) ty
-				      (resolutions b)
-				      (list (make-resolution b
-					      (theory-name *current-context*)
-					      ty))))
+				(setf (type b) ty))
 			    bindings (types (find-supertype stype)))
 		    (type-error type "Wrong number of variables"))))
 	(progn

@@ -114,26 +114,25 @@
 ;;; The main entry point to subst-mod-params.
 
 (defun subst-mod-params (obj modinst)
-  (assert *current-context*)
-  ;;(assert *current-theory*)
-  (if (and modinst (free-params obj))
-      (with-slots (actuals) modinst
-	#+pvsdebug (assert (every #'(lambda (a) (not (null a))) actuals))
-	(if actuals
-	    (let* ((*generate-tccs* 'none)
-		   (*subst-mod-params-cache*
-		    (get-subst-mod-params-cache modinst))
-		   (formals (formals-sans-usings (get-theory modinst)))
-		   (bindings (make-subst-mod-params-bindings
-			      modinst formals actuals nil))
-		   (nobj (subst-mod-params* obj modinst bindings)))
-	      #+pvsdebug (assert (or (eq obj nobj) (not (tc-eq obj nobj))))
-	      #+pvsdebug (assert (equal bindings (pairlis formals actuals)))
-	      #+pvsdebug (assert (or (typep nobj 'modname)
-				     (fully-instantiated? nobj)))
-	      nobj)
-	    obj))
-      obj))
+  (with-slots (actuals) modinst
+    (assert *current-context*)
+    (assert (modname? modinst))
+    (let ((formals (formals-sans-usings (get-theory modinst))))
+      (if (and actuals
+	       (some #'(lambda (ofp) (memq ofp formals)) (free-params obj)))
+	  (let* ((*generate-tccs* 'none)
+		 (*subst-mod-params-cache*
+		  (get-subst-mod-params-cache modinst))
+		 (formals (formals-sans-usings (get-theory modinst)))
+		 (bindings (make-subst-mod-params-bindings
+			    modinst formals actuals nil))
+		 (nobj (subst-mod-params* obj modinst bindings)))
+	    #+pvsdebug (assert (or (eq obj nobj) (not (tc-eq obj nobj))))
+	    #+pvsdebug (assert (equal bindings (pairlis formals actuals)))
+	    #+pvsdebug (assert (or (typep nobj 'modname)
+				   (fully-instantiated? nobj)))
+	    nobj)
+	  obj))))
 
 (defun adt-modinst (modinst)
   (let* ((th (get-theory modinst))
@@ -346,9 +345,7 @@
 ;;; specified module instance
 (defun subst-mod-params-res (res modinst)
   (with-slots (declaration module-instance) res
-    (make-instance 'resolution
-      'declaration declaration
-      'module-instance modinst)))
+    (mk-resolution declaration modinst nil)))
 
 
 (defmethod subst-mod-params* ((type type-application) modinst bindings)
@@ -366,11 +363,8 @@
 	(let ((ndep (copy type
 		       'type ntype
 		       'declared-type ndeclared-type)))
-	  (setf (resolutions ndep)
-		(list (make-instance 'resolution
-			'declaration ndep
-			'module-instance (theory-name *current-context*)
-			'type ntype)))
+ 	  (setf (resolutions ndep)
+ 		(list (mk-resolution ndep (current-theory-name) ntype)))
 	  ndep))))
 
 (defmethod subst-mod-params* ((type expr-as-type) modinst bindings)
@@ -504,10 +498,7 @@
 		     'type ntype
 		     'declared-type ndeclared-type)))
 	  (setf (resolutions nbd)
-		(list (make-instance 'resolution
-			'declaration nbd
-			'module-instance (theory-name *current-context*)
-			'type ntype)))
+		(list (mk-resolution nbd (current-theory-name) ntype)))
 	  nbd))))
 
 (defmethod subst-mod-params* ((expr projection-application) modinst bindings)
@@ -525,20 +516,16 @@
 	  (copy expr
 	    'type (type fld)
 	    'resolutions (or (resolutions fld)
-			     (list (make-instance 'resolution
-				     'declaration fld
-				     'module-instance (theory-name *current-context*)
-				     'type (type fld)))))
+			     (list (mk-resolution fld
+				     (current-theory-name) (type fld)))))
 	  (let ((ntype (subst-mod-params* type modinst bindings)))
 	    #+pvsdebug (assert (fully-instantiated? ntype))
 	    (if (eq type ntype)
 		expr
 		(let* ((fields (fields (domain (find-supertype ntype))))
 		       (nfld (car (member decl fields :test #'same-id)))
-		       (nres (make-instance 'resolution
-			       'declaration nfld
-			       'module-instance (theory-name *current-context*)
-			       'type (type nfld))))
+		       (nres (mk-resolution nfld
+			       (current-theory-name) (type nfld))))
 		  (copy expr
 		    'type ntype
 		    'resolutions (list nres)))))))))
@@ -742,16 +729,11 @@
 		  (or (null acts)
 		      (actuals-are-formals? acts)))
 	     (let ((ntype (subst-mod-params* type modinst bindings)))
-	       (make-instance 'resolution
-		 'declaration decl
-		 'module-instance modinst
-		 'type ntype)))
+	       (mk-resolution decl modinst ntype)))
 	    (t (let* ((nacts (subst-mod-params* acts modinst bindings)))
 		 (if (eq nacts acts)
 		     res
-		     (make-instance 'resolution
-		       'declaration decl
-		       'module-instance
+		     (mk-resolution decl
 		       (mk-modname (id mi)
 			 (if (memq (id mi) '(|equalities| |notequal|))
 			     (list (mk-actual (find-supertype
@@ -761,32 +743,10 @@
 				    (get-theory* (id (module decl))
 						 (library modinst)))
 			   (library modinst)))
-		       'type (subst-mod-params* type modinst bindings)))))))))
+		       (subst-mod-params* type modinst bindings)))))))))
 
-(defun make-resolution* (decl modinst)
-  (let ((rtype (typecase decl
-		 ((or expname typed-declaration simple-decl)
-		  (subst-mod-params (type decl) modinst))
-		 (type-decl
-		  (with-slots (type-value) decl
-		    (if (and (typep type-value 'type-name)
-			     (eq (declaration type-value) decl))
-			(let ((nres (make-instance 'resolution
-				      'declaration decl
-				      'module-instance modinst
-				      'type (copy type-value))))
-			  (setf (resolutions (type nres)) (list nres))
-			  (type nres))
-			(subst-mod-params type-value modinst)))))))
-    #+pvsdebug (assert (fully-instantiated? rtype))
-    (make-instance 'resolution
-      'declaration decl
-      'module-instance (or modinst (theory-name *current-context*))
-      'type rtype)))
-
-
-;;; called from outside
 (defmethod make-resolution (decl modinst &optional type)
+  (assert (modname? modinst))
   (let* ((*smp-include-actuals* t)
 	 (rtype (if type
 		    (subst-mod-params type modinst)
@@ -798,10 +758,7 @@
 			 (subst-mod-params (type-value decl) modinst)))
 		      ((or expname typed-declaration simple-decl)
 		       (subst-mod-params (type decl) modinst))))))
-    (make-instance 'resolution
-      'declaration decl
-      'module-instance (or modinst (theory-name *current-context*))
-      'type rtype)))
+    (mk-resolution decl modinst rtype)))
 
 (defmethod make-resolution ((decl bind-decl) modinst &optional type)
   (declare (ignore modinst type))

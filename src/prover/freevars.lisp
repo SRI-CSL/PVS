@@ -76,6 +76,9 @@
 (defmethod declaration ((expr dep-binding))
   expr)
 
+(defmethod declaration ((expr bind-decl))
+  expr)
+
 (defmethod freevars* ((expr bind-decl))
   (freevars* (type expr)))
 

@@ -348,14 +348,9 @@
 		   (type ex)
 		   (gensubst* (type ex) substfn testfn)))
 	(ndeclared-type (gensubst* (declared-type ex) substfn testfn)))
-    (if (and (eq ntype (type ex))
-	     (eq ndeclared-type (declared-type ex)))
-	ex
-	(let ((nex (copy ex 'type ntype 'declared-type ndeclared-type
-			 'types (list ntype))))
-	  (setf (resolutions nex)
-		(list (copy (resolution ex) 'declaration nex 'type ntype)))
-	  nex))))
+    (lcopy ex
+      'type ntype
+      'declared-type ndeclared-type)))
 
 (defmethod gensubst* ((ex update-expr) substfn testfn)
   (let ((nexpr (gensubst* (expression ex) substfn testfn))
