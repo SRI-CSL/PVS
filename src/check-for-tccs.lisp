@@ -25,20 +25,19 @@
 (defun check-for-tccs (expr expected &optional skip-exprs)
   (unless (compatible? (type expr) expected)
     (type-incompatible expr (list (type expr)) expected))
-      (let ((*no-conversions-allowed* t)
-	    (*skip-tcc-check-exprs* skip-exprs))
-	(check-for-tccs* expr expected)))
+  (let ((*no-conversions-allowed* (not (memq expr *conversions-allowed*)))
+	(*skip-tcc-check-exprs* skip-exprs))
+    (check-for-tccs* expr expected)))
 
 (defvar *inner-check-for-tccs* nil)
 
 (defmethod check-for-tccs* :around (ex expected)
   (declare (ignore expected))
-  (let ((*generate-tccs* (reset-generate-tccs ex)))
-    (if (eq *generate-tccs* 'top)
-	(unless *inner-check-for-tccs*
-	  (let ((*inner-check-for-tccs* t))
-	    (call-next-method)))
-	(call-next-method))))
+  (if (eq *generate-tccs* 'top)
+      (unless *inner-check-for-tccs*
+	(let ((*inner-check-for-tccs* t))
+	  (call-next-method)))
+      (call-next-method)))
 
 (defmethod check-for-tccs* :around ((ex expr) expected)
    (call-next-method)
