@@ -35,12 +35,13 @@
 
 (defun previous-decl (decl theory)
   (if decl
-      (cadr (memq decl
-		  (delete-if #'(lambda (d)
-				 (or (typep d '(or importing field-decl))
-				     (generated-by d)))
-			     (reverse (append (assuming theory)
-					      (theory theory))))))
+      (let ((decls (delete-if #'(lambda (d)
+				  (or (typep d 'field-decl)
+				      (generated-by d)))
+		     (reverse (append (assuming theory)
+				      (theory theory))))))
+	(assert (memq decl decls))
+	(cadr (memq decl decls)))
       (if (theory theory)
 	  (car (last (theory theory)))
 	  (car (last (assuming theory))))))
@@ -244,7 +245,8 @@
 ;;;   (local-decls *current-context*)
 ;;;   (declarations (theory *current-context*))
 
-(defun add-decl (decl &optional (insert? t) (generated? t) (assuming? nil))
+(defun add-decl (decl &optional (insert? t) (generated? t) (assuming? nil)
+		      (after? nil))
   (when (or (adt-def-decl? decl)
 	    (importing? decl)
 	    (not (member decl
@@ -306,14 +308,20 @@
 	(cond (atail0
 	       (setf (assuming thry)
 		     (if cdecl
-			 (append (ldiff (assuming thry) atail)
-				 (cons decl atail))
+			 (if after?
+			     (append (ldiff (assuming thry) (cdr atail))
+				     (cons decl (cdr atail)))
+			     (append (ldiff (assuming thry) atail)
+				     (cons decl atail)))
 			 (cons decl atail))))
 	      (t ;;ttail
 	       (setf (theory thry)
 		     (if cdecl
-			 (append (ldiff (theory thry) ttail)
-				 (cons decl ttail))
+			 (if after?
+			     (append (ldiff (theory thry) (cdr ttail))
+				     (cons decl (cdr ttail)))
+			     (append (ldiff (theory thry) ttail)
+				     (cons decl ttail)))
 			 (cons decl ttail)))))
 	(setf (all-declarations thry) nil))
       (assert (or (importing? decl) (eq thry (module decl))))
