@@ -7,11 +7,9 @@
 @c %**end of header
 
 @ifinfo
-This file documents ...
+This file contains the release notes for PVS version 3.0
 
-Copyright YEAR COPYRIGHT-OWNER
-
-Permission is granted to ...
+Copyright 2002 SRI International
 @end ifinfo
 
 @c  This title page illustrates only one of the
@@ -19,7 +17,7 @@ Permission is granted to ...
 
 @titlepage
 @title PVS 3.0 release notes
-@author Sam Owre
+@author Sam Owre <owre@csl.sri.com>, SRI International 
 
 @end titlepage
 
