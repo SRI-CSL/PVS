@@ -907,16 +907,22 @@
     (application-range-type-arg* arg domain range argtype)))
 
 (defmethod application-range-type-arg* (arg (domain dep-binding) range argtype)
-  (cond ((type arg)
+  (cond ((null (freevars range))
+	 range)
+	((type arg)
 	 (substit range (acons domain arg nil)))
- 	((fully-instantiated? argtype)
- 	 (let* ((*generate-tccs* 'none)
- 		(narg (typecheck* (copy-untyped arg) argtype nil nil)))
- 	   #+pvsdebug (assert (fully-typed? narg))
- 	   (substit range (acons domain narg nil))))
-	(t (if (freevars range)
-	       (find-supertype-without-freevars range)
-	       range))))
+	(t (let ((atype (application-range-instantiated-argtype
+			 (type domain) argtype)))
+	     (when atype
+	       (let* ((*generate-tccs* 'none)
+		      (narg (typecheck* (copy-untyped arg) atype nil nil)))
+		 #+pvsdebug (assert (fully-typed? narg))
+		 (substit range (acons domain narg nil))))))))
+
+(defun application-range-instantiated-argtype (domain argtype)
+  (if (fully-instantiated? argtype)
+      argtype
+      (find-parameter-instantiation argtype domain)))
 
 (defmethod find-supertype-without-freevars ((type type-name))
   type)
