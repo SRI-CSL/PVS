@@ -426,6 +426,9 @@
 	(push-word (store-obj 'list))
 	(push-word (length obj))
 	(dolist (x obj)
+	  (when (and (not *saving-theory*)
+		     (typep x 'datatype-or-module))
+	    (remhash x *store-object-hash*))
 	  (push-word (store-obj x))))
       (reserve-space 3
 	(push-word (store-obj 'cons))
