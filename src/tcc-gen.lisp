@@ -437,7 +437,7 @@
 	    "May need to add an assuming clause to prove this.")))
       (when (eq (spelling ndecl) 'OBLIGATION)
 	(setf (kind ndecl) 'tcc))
-      (push ndecl (refers-to decl))
+      (pushnew ndecl (refers-to decl) :test #'eq)
       (when *old-tcc-name*
 	(push (cons (id ndecl) *old-tcc-name*) *old-tcc-names*))
 ;      (pvs-output "~2%~a~%"
