@@ -33,7 +33,9 @@
 	(parse-error place (parse-error-msg msg args)))
       (let* ((nt (cadr (member :nt keys)))
 	     (fn (if nt
-		     (makesym "xt-~(~a~)" (sim-term-op term))
+		     (makesym #+(version>=6) "xt-~(~a~)"
+			      #-(version>=6) "XT-~a"
+			      (sim-term-op term))
 		     #'xt-adt-or-modules))
 	     (*parsing-or-unparsing* t)
 	     (parsed-object (funcall fn term)))
@@ -1693,7 +1695,9 @@
   (let ((op (term-arg0 bexpr))
 	(body (term-arg1 bexpr)))
     (make-xt-bind-expr
+     #+(version>=6)
      (intern (string-downcase (symbol-name (sim-term-op op))) :pvs)
+     #-(version>=6) (sim-term-op op)
      body bexpr)))
 
 (defun xt-name-bind-expr (bexpr)

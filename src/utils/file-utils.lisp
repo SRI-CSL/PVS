@@ -5,33 +5,33 @@
 
 (ff:def-foreign-call fileutils___file_exists_p
     ((filename (* :char)))
-  :strings-convert t
+  #+(version>= 6) :strings-convert #+(version>= 6) t
   :returning :int)
 
 (ff:def-foreign-call fileutils___directory_p
     ((filename (* :char)))
-  :strings-convert t
+  #+(version>= 6) :strings-convert #+(version>= 6) t
   :returning :int)
 
 (ff:def-foreign-call fileutils___read_permission_p
     ((filename (* :char)))
-  :strings-convert t
+  #+(version>= 6) :strings-convert #+(version>= 6) t
   )
 
 (ff:def-foreign-call fileutils___write_permission_p
     ((filename (* :char)))
-  :strings-convert t
+  #+(version>= 6) :strings-convert #+(version>= 6) t
   )
 
 (ff:def-foreign-call fileutils___file_write_time
     ((filename (* :char)))
-  :strings-convert t
+  #+(version>= 6) :strings-convert #+(version>= 6) t
   :returning :int)
 
 (ff:def-foreign-call fileutils___getfileinfo
     ((filename (* :char))
      (stat (* :int) (array fixnum)))
-  :strings-convert t
+  #+(version>= 6) :strings-convert #+(version>= 6) t
   )
 
 ;;;
