@@ -1155,6 +1155,21 @@
 	    modname)
 	  (resolve-theory-abbreviation modname))))
 
+(defun resolve-theory-abbreviation (theory-name)
+  (let* ((abbrs (remove-if-not #'mod-decl?
+		  (gethash (id theory-name) (current-declarations-hash)))))
+    (cond ((null abbrs)
+	   (type-error theory-name
+	     "Theory ~a is not an abbreviation, not is it imported ~
+              in the current context"
+	     (id theory-name)))
+	  ((singleton? abbrs)
+	   (if (fully-instantiated? (modname (car abbrs)))
+	       (modname (car abbrs))
+	       (break "resolve-theory-abbreviation not fully-instantiated")))
+	  (t (break "resolve-theory-abbreviation too many abbreviations")))))
+    
+
 (defmethod imported-theory-abbreviation (decl)
   (declare (ignore decl))
   nil)
