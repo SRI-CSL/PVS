@@ -1519,3 +1519,9 @@
     'bindings bindings
     'expression expr
     'type (make-formals-funtype (list bindings) (type expr))))
+
+(defmethod make!-bind-decl (id (type type-expr))
+  (mk-bind-decl id (or (print-type type) type) type))
+
+(defmethod make!-bind-decl (id (type dep-binding))
+  (make!-bind-decl id (type type)))
