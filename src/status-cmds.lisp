@@ -545,7 +545,6 @@
   (let* ((te (get-context-theory-entry theory))
 	 (finfo (when te (te-formula-info te)))
 	 (th (get-theory theory)))
-    (break "show-all-proofs-theory")
     (cond (th
 	   (show-all-proofs-theory* outstr proofs (all-decls th) th))
 	  (finfo
