@@ -18,6 +18,8 @@
 
 (defvar *tccdecls* nil)
 
+(defvar *old-tcc-name* nil)
+
 (defmacro total-tccs () '(car (tcc-info *current-theory*)))
 (defmacro tccs-proved () '(cadr (tcc-info *current-theory*)))
 (defmacro tccs-matched () '(caddr (tcc-info *current-theory*)))
@@ -37,7 +39,8 @@
 	(if (numberp (tccs-simplified))
 	    (incf (tccs-simplified))
 	    (setf (tccs-simplified) 1)))
-      (let ((ndecl (make-subtype-tcc-decl expr incs)))
+      (let* ((*old-tcc-name* nil)
+	     (ndecl (make-subtype-tcc-decl expr incs)))
 	(if ndecl
 	    (insert-tcc-decl 'subtype expr expected ndecl)
 	    (unless *in-checker*
@@ -61,7 +64,7 @@
 	 (*no-expected* nil)
 	 (uform (universal-closure xform))
 	 (*bound-variables* *keep-unbound*)
-	 (id (make-tcc-name)))
+	 (id (make-tcc-name expr)))
     (assert (tc-eq (type uform) *boolean*))
     (unless (tc-eq uform *true*)
       (when (and (not (eq gen-tccs 'all!))
@@ -206,7 +209,7 @@
 (defun add-tcc-info (kind expr type ndecl)
   (push (make-tccinfo
 	 :formula (definition ndecl)
-	 :reason (car *compatible-pred-reason*)
+	 :reason (cdr (assq expr *compatible-pred-reason*))
 	 :kind kind
 	 :expr expr
 	 :type type)
@@ -263,10 +266,10 @@
 			(starting-row place) (starting-col place)))))
 	(add-comment ndecl
 	  "~@(~@[~a ~]~a~) TCC generated ~@[~a~]for~:[~;~%    %~]~a"
-	  (car *compatible-pred-reason*)
+	  (cdr (assq expr *compatible-pred-reason*))
 	  kind
 	  plstr
-	  (> (+ (length (car *compatible-pred-reason*))
+	  (> (+ (length (cdr (assq expr *compatible-pred-reason*)))
 		(length (string kind))
 		(length plstr)
 		(length str)
@@ -288,6 +291,8 @@
       (when (eq (spelling ndecl) 'OBLIGATION)
 	(setf (kind ndecl) 'tcc))
       (push ndecl (refers-to decl))
+      (when *old-tcc-name*
+	(push (cons (id ndecl) *old-tcc-name*) *old-tcc-names*))
       (add-decl ndecl))))
 
 (defun tcc-submsg-string (kind expr type decl)
@@ -368,7 +373,8 @@
 			   (if b2 leftovers (cons b1 leftovers))))))
 
 (defun generate-recursive-tcc (name arguments)
-  (let* ((ndecl (make-recursive-tcc-decl name arguments)))
+  (let* ((*old-tcc-name* nil)
+	 (ndecl (make-recursive-tcc-decl name arguments)))
     (if ndecl
 	(insert-tcc-decl 'termination name nil ndecl)
 	(incf (tccs-simplified)))))
@@ -439,7 +445,8 @@
 			  (cons nargs args)))))
 
 (defun generate-well-founded-tcc (decl mtype)
-  (let* ((ndecl (make-well-founded-tcc-decl decl mtype)))
+  (let* ((*old-tcc-name* nil)
+	 (ndecl (make-well-founded-tcc-decl decl mtype)))
     (if ndecl
 	(insert-tcc-decl 'well-founded (ordering decl) nil ndecl))))
 
@@ -603,7 +610,8 @@
     (set-nonempty-type (cdr list))))
 
 (defun generate-existence-tcc (type expr &optional (fclass 'OBLIGATION))
-  (let ((ndecl (make-existence-tcc-decl type fclass)))
+  (let* ((*old-tcc-name* nil)
+	 (ndecl (make-existence-tcc-decl type fclass)))
     (insert-tcc-decl 'existence expr type ndecl)
     ndecl))
 
@@ -665,7 +673,8 @@
 			(generate-existence-tcc atype expr)
 			(check-nonempty-type atype expr)))
 		  (check-nonempty-type atype expr)))
-	    (let ((ndecl (make-assuming-tcc-decl ass modinst)))
+	    (let* ((*old-tcc-name* nil)
+		   (ndecl (make-assuming-tcc-decl ass modinst)))
 	      (if ndecl
 		  (insert-tcc-decl 'assuming modinst ass ndecl)
 		  (incf (tccs-simplified)))))))))
@@ -729,29 +738,66 @@
 			      (declaration *current-context*))))
 	 (uform (universal-closure xform))
 	 (*bound-variables* nil)
+	 (*old-tcc-name* nil)
 	 (ndecl (typecheck* (mk-cases-tcc id uform) nil nil nil)))
     ;;(assert (tc-eq (type uform) *boolean*))
     (when *in-checker*
       (push uform *tccforms*))
     (insert-tcc-decl 'cases (expression expr) adt ndecl)))
 
-
-(defun make-tcc-name (&optional (num 1))
+(defun make-tcc-name (&optional expr)
+  (assert *current-context*)
   (if *in-checker*
       (gensym)
-      (let* ((decl-id (if (importing? (current-declaration))
-			  (make-tcc-using-id)
-			  (op-to-id
-			   (or (if (declaration?
-				    (generated-by
-				     (declaration *current-context*)))
-				   (generated-by (declaration *current-context*))
-				   (declaration *current-context*))))))
-	     (tcc-name (makesym "~a_TCC~d" decl-id num)))
-	(assert decl-id)
-	(if (gethash tcc-name (current-declarations-hash))
-	    (make-tcc-name (1+ num))
-	    tcc-name))))
+      (make-tcc-name* (current-declaration) expr)))
+
+(defmethod make-tcc-name* ((decl declaration) expr)
+  (declare (ignore expr))
+  (let ((decl-id (op-to-id
+		  (or (if (declaration? (generated-by (current-declaration)))
+			  (generated-by (current-declaration))
+			  (current-declaration))))))
+    (make-tcc-name** decl-id
+		     (remove-if-not #'declaration?
+		       (all-decls (current-theory)))
+		     1)))
+
+(defmethod make-tcc-name* ((decl subtype-judgement) expr)
+  (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
+	(id decl))
+      (call-next-method)))
+
+(defmethod make-tcc-name* ((decl number-judgement) expr)
+  (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
+	(id decl))
+      (call-next-method)))
+
+(defmethod make-tcc-name* ((decl name-judgement) expr)
+  (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
+	(id decl))
+      (call-next-method)))
+
+(defmethod make-tcc-name* ((decl application-judgement) expr)
+  (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
+	(id decl))
+      (call-next-method)))
+
+(defmethod make-tcc-name* ((imp importing) expr)
+  (declare (ignore expr))
+  (let ((old-id (make-tcc-using-id))
+	(new-id (make-tcc-importing-id)))
+    (setq *old-tcc-name* (make-tcc-name** old-id nil 1))
+    (make-tcc-name** new-id
+		     (remove-if-not #'declaration?
+		       (all-decls (current-theory)))
+		     1)))
+
+(defun make-tcc-name** (id decls num)
+  (let ((tcc-name (makesym "~a_TCC~d" id num)))
+    (if (or (member tcc-name decls :key #'id)
+	    (assq tcc-name *old-tcc-names*))
+	(make-tcc-name** id decls (1+ num))
+	tcc-name)))
 
 (defmethod generating-judgement-tcc? ((decl number-judgement) expr)
   (declare (ignore expr))
@@ -775,13 +821,22 @@
 
 
 (defun make-tcc-using-id ()
-  (let ((mod (theory *current-context*)))
-    (makesym "IMPORTING~d"
-	     (1+ (position (declaration *current-context*)
-			   (remove-if-not #'importing?
-					  (append (formals mod)
-						  (assuming mod)
-						  (theory mod))))))))
+  (let* ((theory (current-theory))
+	 (imp (current-declaration))
+	 (tdecls (all-decls theory))
+	 (decls (memq imp tdecls))
+	 (dimp (find-if #'(lambda (d)
+			    (and (importing? d) (not (chain? d))))
+		 decls))
+	 (remimps (remove-if-not #'(lambda (d)
+				     (and (importing? d)
+					  (not (chain? d))))
+		    tdecls)))
+    (makesym "IMPORTING~d" (1+ (position dimp remimps)))))
+
+(defun make-tcc-importing-id ()
+  (let ((imp (current-declaration)))
+    (makesym "IMP_~a" (id (theory-name imp)))))
 
 (defun subst-var-for-recs (expr recdecl)
   (if (and (def-decl? recdecl)
@@ -808,7 +863,8 @@
   (mapcar #'generate-actuals-tcc (actuals name1) (actuals name2)))
 
 (defun generate-actuals-tcc (act mact)
-  (let ((ndecl (make-actuals-tcc-decl act mact)))
+  (let* ((*old-tcc-name* nil)
+	 (ndecl (make-actuals-tcc-decl act mact)))
     (if ndecl
 	(insert-tcc-decl 'actuals act nil ndecl)
 	(unless *in-checker*
@@ -932,7 +988,8 @@
 
 
 (defun generate-cond-disjoint-tcc (expr conditions values)
-  (let ((ndecl (make-cond-disjoint-tcc expr conditions values)))
+  (let* ((*old-tcc-name* nil)
+	 (ndecl (make-cond-disjoint-tcc expr conditions values)))
     (when ndecl
       (insert-tcc-decl 'disjointness expr nil ndecl)
       (unless *in-checker*
@@ -993,7 +1050,8 @@
 		       (cdr values))))))
 
 (defun generate-cond-coverage-tcc (expr conditions)
-  (let ((ndecl (make-cond-coverage-tcc expr conditions)))
+  (let* ((*old-tcc-name* nil)
+	 (ndecl (make-cond-coverage-tcc expr conditions)))
     (when ndecl
       (insert-tcc-decl 'coverage expr nil ndecl)
       (unless *in-checker*
