@@ -178,7 +178,7 @@
       (type-error (theory-name decl)
 	"Formal theory declarations may not refer to the containing theory"))
     (unless (interpretable? (get-theory (theory-name decl)))
-      (type-error (theory-name decl)
+      (pvs-info
 	"Theory ~a has no interpretable types, constants, or theories"
 	(theory-name decl)))
     (let ((theory (get-typechecked-theory theory-name)))
