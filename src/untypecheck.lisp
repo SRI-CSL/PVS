@@ -226,7 +226,6 @@
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (definition decl))
   (setf (kind decl) nil)
-  (setf (tcc-disjuncts decl) nil)
   (setf (justification decl) nil)
   (setf (justification2 decl) nil)
   (setf (modified-proof? decl) nil)
