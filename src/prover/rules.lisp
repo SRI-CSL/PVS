@@ -552,8 +552,8 @@ level replacements."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(addrule 'beta ()((fnums *) rewrite-flag)
-  (beta-step fnums rewrite-flag)
+(addrule 'beta ()((fnums *) rewrite-flag (let-reduce? t))
+  (beta-step fnums rewrite-flag let-reduce?)
   "Beta-reduces chosen formulas. If REWRITE-FLAG is LR(RL), then
 left(right)-hand-side is left undisturbed for rewriting using
 REWRITE and REWRITE-LEMMA.  Example reduction steps are:
@@ -569,11 +569,11 @@ REWRITE and REWRITE-LEMMA.  Example reduction steps are:
 (addrule 'simplify ()
 	 ((fnums *) record? rewrite? 
 	  rewrite-flag flush? linear? cases-rewrite? (type-constraints? t)
-	  ignore-prover-output?)
+	  ignore-prover-output? let-reduce?)
   (invoke-simplification fnums record? rewrite?
 			 rewrite-flag flush? nil ;;NSH(10-26-01)was linear?
 			 cases-rewrite? type-constraints?
-			 ignore-prover-output?)
+			 ignore-prover-output? let-reduce?)
   "Uses the decision procedures to to simplify the formulas in
 FNUM and record them for further simplification.  The proof steps
 ASSERT, RECORD, SIMPLIFY, DO-REWRITE are instances of this primitive
