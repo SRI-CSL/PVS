@@ -2,9 +2,9 @@
 ;; pvs-mu.lisp -- Interface to the Mu-calculus model-checker
 ;; Author          : Sree, Shankar and Saidi
 ;; Created On      : Wed May  3 19:51:22 1995
-;; Last Modified By: Hassen Saidi
-;; Last Modified On: Fri Apr  3 14:22:30 1998
-;; Update Count    : 16
+;; Last Modified By: Sam Owre
+;; Last Modified On: Sat May 23 23:21:47 1998
+;; Update Count    : 17
 ;; Status          : Beta test
 ;; 
 ;; HISTORY
@@ -121,24 +121,27 @@
 
 
 (defun run-musimp (ps fnums dynamic-ordering?)
-(let* ((sforms (s-forms (current-goal ps)))
-	   (selected-sforms (select-seq sforms fnums))
-	   (remaining-sforms (delete-seq sforms fnums))
-	   (mu-formula
-	    (make-mu-restriction
-	       (convert-pvs-to-mu
-		(make-conjunction
-		 (mapcar #'(lambda (sf) (negate (formula sf)))
-		   selected-sforms)))
-	       (make-mu-conjunction
-		(loop for x in  *pvs-bdd-inclusivity-formulas*
-		      when (null (freevars (car x)));;NSH(8.17.95): subtypes
-		      collect
-		      (cdr x)))))
-           (mu-output (run-pvsmu mu-formula dynamic-ordering?))
-           (list-of-conjuncts (translate-from-bdd-list  
+  (let* ((*pvs-bdd-hash* (make-hash-table
+			  :hash-function 'pvs-sxhash :test 'tc-eq))
+	 (*bdd-pvs-hash* (make-hash-table))
+	 (sforms (s-forms (current-goal ps)))
+	 (selected-sforms (select-seq sforms fnums))
+	 (remaining-sforms (delete-seq sforms fnums))
+	 (mu-formula
+	  (make-mu-restriction
+	   (convert-pvs-to-mu
+	    (make-conjunction
+	     (mapcar #'(lambda (sf) (negate (formula sf)))
+	       selected-sforms)))
+	   (make-mu-conjunction
+	    (loop for x in  *pvs-bdd-inclusivity-formulas*
+		  when (null (freevars (car x)));;NSH(8.17.95): subtypes
+		  collect
+		  (cdr x)))))
+	 (mu-output (run-pvsmu mu-formula dynamic-ordering?))
+	 (list-of-conjuncts (translate-from-bdd-list  
 			     (bdd_sum_of_cubes mu-output 1))) 
-            (lit-list (mapcar #'(lambda (conj)
+	 (lit-list (mapcar #'(lambda (conj)
 			       (mapcar #'(lambda (lit)
 					   (if (consp lit)
 					       (gethash (car lit) *bdd-pvs-hash*)
@@ -146,10 +149,10 @@
 						(gethash lit *bdd-pvs-hash*))))
 				 conj))
 		     list-of-conjuncts))
-        )
-     (add-mu-subgoals ps sforms lit-list remaining-sforms)
+	 )
+    (add-mu-subgoals ps sforms lit-list remaining-sforms)
+    )
   )
-)
 
 
 ;;
@@ -1214,7 +1217,7 @@
 
 
 (defun make-bdd-incl-excl-var-id (bvarid index) 
-  (let ((new-index (+ 1 new-index))  ;; index may be 0
+  (let ((new-index (1+ index))  ;; index may be 0
         (update-bdd-counter (funcall *bdd-counter*)))
     (+ bvarid new-index))
 )
