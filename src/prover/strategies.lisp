@@ -2700,7 +2700,7 @@ or succedent formula in the sequent."
 		   (command (generate-instantiator-command if-match nil instantiator)))
 	       (then 
 		(beta fnum)
-		(repeat (command))))
+		(repeat command)))
 	     (skip)))
   "Introduces lemma LEMMA, then does BETA and INST? (repeatedly) on
  the lemma.  The INSTANTIATOR argument may be used to specify an alternative
