@@ -314,7 +314,7 @@
       (nreverse nbindings)
       (let* ((bind (car old-bindings))
 	     (btype (type bind))
-	     (check (memq bind freevars))
+	     (check (member bind freevars :key #'declaration))
 	     (dec-type (declared-type bind))
 	     (new-binding
 	      (if (not check)
@@ -327,7 +327,7 @@
 		    'declared-type (substit* dec-type alist)))))
 	(make-new-bindings*
 	 (cdr old-bindings)
-	 (add-alist-freevars new-binding alist)
+	 (add-alist-freevars new-binding (mapcar #'car alist))
 	 (acons bind new-binding alist)
 	 (cons new-binding nbindings)))))
 
