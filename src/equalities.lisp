@@ -689,11 +689,13 @@ where db is to replace db1 and db2")
 	    (make-compatible-bindings* b2 b1 bindings t))))))
 
 (defun make-compatible-bindings* (b1 b2 bindings rev?)
-  (let* ((projs (make!-projections (make-variable-expr (car b1))))
-	 (vars (mapcar #'make-variable-expr b2)))
+  (let* ((var (make-variable-expr (car b1)))
+	 (projs (make!-projections var))
+	 (vars (mapcar #'make-variable-expr b2))
+	 (tup (make!-tuple-expr vars)))
     (nconc (if rev?
-	       (pairlis vars projs)
-	       (pairlis projs vars))
+	       (acons tup var (pairlis vars projs))
+	       (acons var tup (pairlis projs vars)))
 	   bindings)))
 
 	  
