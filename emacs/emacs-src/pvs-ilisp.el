@@ -261,6 +261,14 @@ want to set this to nil for slow terminals, or connections over a modem.")
 	(if (string-match (ilisp-value 'comint-prompt-regexp)
 			  pvs-process-output)
 	    (progn
+	      (when (and noninteractive
+			 (string-match "(Y or N):\\|(Yes or No)"
+				       pvs-process-output))
+		(pvs-message "Answering yes to\n  %s" pvs-process-output)
+		(process-send-string
+		 (ilisp-process)
+		 (if (string-match "(Y or N):" pvs-process-output)
+		     "y\n" "yes\n")))
 	      (set-ilisp-value 'comint-fix-error
 			       (if pvs-in-checker "(restore)" pvs-fix-error))
 	      (when (and (string-match "(Y or N):\\|(Yes or No)"
