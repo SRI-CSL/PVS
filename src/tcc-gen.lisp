@@ -271,7 +271,7 @@
 		      (format nil "(at line ~d, column ~d) "
 			(starting-row place) (starting-col place)))))
 	(add-comment ndecl
-	  "~@(~@[~a ~]~a~) TCC generated ~@[~a~]for~:[~;~%    %~]~a"
+	  "~@(~@[~a ~]~a~) TCC generated ~@[~a~]for~:[ ~;~%    %~]~a"
 	  (cdr (assq expr *compatible-pred-reason*))
 	  kind
 	  plstr
