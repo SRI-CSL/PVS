@@ -799,12 +799,25 @@
 (defun inductive-pred-type (vars rtype)
   (if (null vars)
       rtype
-      (let ((dom-types (mapcar #'(lambda (var)
-				   (or (declared-type var)
-				       (print-type (type var))
-				       (type var)))
-			 vars)))
-	(typecheck* (mk-funtype dom-types rtype) nil nil nil))))
+      (inductive-pred-type* vars rtype)))
+
+(defun inductive-pred-type* (vars rtype &optional types)
+  (if (null vars)
+      (typecheck* (mk-funtype (nreverse types) rtype) nil nil nil)
+      (let* ((var (car vars))
+	     (vtype (or (declared-type var)
+			(print-type (type var))
+			(type var)))
+	     (dep? (or (member var (freevars (cdr vars)) :key #'declaration)
+		       (member var (freevars rtype) :key #'declaration))))
+	(if dep?
+	    (let* ((dep-type (mk-dep-binding (id var) vtype))
+		   (alist (acons var dep-type nil)))
+	      (inductive-pred-type*
+	       (substit (cdr vars) alist)
+	       (substit rtype alist)
+	       (cons dep-type types)))
+	    (inductive-pred-type* (cdr vars) rtype (cons vtype types))))))
 
 (defun check-inductive-occurrences (decl pred-type fixed-vars rem-vars)
   (unless (check-inductive-occurrences* (definition-body decl) decl 1)
