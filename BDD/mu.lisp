@@ -155,17 +155,17 @@ time)."
 	 (sforms (s-forms (current-goal ps)))
 	 (selected-sforms (select-seq sforms fnums))
 	 (remaining-sforms (delete-seq sforms fnums))
+	 (pvs-formula (make-conjunction
+			(mapcar #'(lambda (sf) (negate (formula sf)))
+			  selected-sforms)))
+	 (uniq-formula (uniquefy-bindings pvs-formula))
 	 (mu-formula
 	  (make-mu-restriction
-	   (convert-pvs-to-mu
-	    (make-conjunction
-	     (mapcar #'(lambda (sf) (negate (formula sf)))
-	       selected-sforms)))
+	   (convert-pvs-to-mu uniq-formula)
 	   (make-mu-conjunction
 	    (loop for x in  *pvs-bdd-inclusivity-formulas*
-		  when (null (freevars (car x)));;NSH(8.17.95): subtypes
-		  collect
-		  (cdr x)))))
+		  when (null (freevars (car x)))
+		  collect (cdr x)))))
 	 (mu-output (run-pvsmu mu-formula dynamic-ordering?))
 	 (sum-of-cubes (bdd_sum_of_cubes mu-output (if irredundant? 1 0)))
 	 (list-of-conjuncts (mu-translate-from-bdd-list sum-of-cubes))
@@ -1605,3 +1605,39 @@ time)."
 	  (list_next  clist)
            (cons (elem_contents clist)  result)))
 )
+
+(defvar *bindings-seen* nil)
+
+(defun uniquefy-bindings (ex)
+  (let ((*bindings-seen* nil))
+    (uniquefy-bindings* ex)))
+
+(defun uniquefy-bindings* (ex)
+  (gensubst ex #'uniquefy-bindings! #'uniquefy-bindings?))
+
+(defmethod uniquefy-bindings? (ex)
+  (declare (ignore ex))
+  nil)
+
+(defmethod uniquefy-bindings? ((ex binding-expr))
+  (cond ((some #'(lambda (bd) (memq bd *bindings-seen*)) (bindings ex))
+	 t)
+	(t (setq *bindings-seen* (append (bindings ex) *bindings-seen*))
+	   nil)))
+      
+
+(defun uniquefy-bindings! (ex)
+  (let* ((nexpr (uniquefy-bindings* (expression ex)))
+	 (nbindings (mapcar #'(lambda (bd)
+				(if (memq bd *bindings-seen*)
+				    (copy bd)
+				    bd))
+		      (bindings ex)))
+	 (alist (mapcan #'(lambda (bd nbd)
+			    (unless (eq bd nbd)
+			      (list (cons bd nbd))))
+		  (bindings ex) nbindings)))
+    (setq *bindings-seen* (nconc (mapcar #'car alist) *bindings-seen*))
+    (copy ex
+      'bindings nbindings
+      'expression (substit nexpr alist))))
