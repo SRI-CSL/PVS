@@ -14,10 +14,10 @@ lambda		key	1	\lambda
 =		id	2	=
 implies		id	2	\supset
 and		id	1	\wedge
-&		id	1	\wedge
+&		id	1	\&
 or		id	1	\vee
 not		id	1	\neg
-iff		id	2	\Leftrightarrow
+iff		id	2	\equiv
 <=>		id	2	\Leftrightarrow
 exists1		id	2	{\exists_1}
 *		id	1	\times
@@ -29,7 +29,9 @@ IMPLIES		id	1	\supset
 AND		id	1	\wedge
 OR		id	1	\vee
 NOT		id	1	\neg
-IFF		id	2	\Leftrightarrow
+IFF		id	2	\equiv
+FALSE		id	5	{\textsc{\textrm{false}}}
+TRUE		id	4	{\textsc{\textrm{true}}}
 
 /\		id	1	\wedge
 \/		id	1	\vee
