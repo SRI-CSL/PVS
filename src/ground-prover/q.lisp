@@ -24,7 +24,7 @@
 (defun qminus (x) 
   (cond 
    ((integerp x) (- x))				
-   (t (list 'quo (- (cadr x)) (caddr x)))))	
+   (t (list 'QUO (- (cadr x)) (caddr x)))))	
 
 (defun qeqp (x y)
   (cond
@@ -60,7 +60,7 @@
 (defun qgreatereqp (x y)
   (not (qlessp x y)))
 
-(defun qmake (n d) (list 'quo n d))
+(defun qmake (n d) (list 'QUO n d))
 
 (defun qneqp (x y) (not (qeqp x y)))
 
@@ -69,7 +69,7 @@
    (integerp x)					
    (and
     (consp x)					
-    (eq (car x) 'quo))))
+    (eq (car x) 'QUO))))
 
 
 (defun qzerop (x)
