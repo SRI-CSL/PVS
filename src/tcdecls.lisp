@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; tcdecls.lisp -- 
 ;; Author          : Sam Owre
 ;; Created On      : Mon Oct 18 22:45:21 1993
@@ -374,19 +374,22 @@
       (get-library-reference (lib-string decl))
     (when msg
       (type-error decl msg (lib-string decl)))
-    (setf (lib-ref decl) ref)
-    (dolist (d (gethash (id decl) (current-declarations-hash)))
-      (when (and (lib-decl? d)
-		 (not (string= ref (lib-ref d))))
-	(if (eq (module d) (current-theory))
-	    (type-error decl
-	      "Library id ~a declared earlier in this theory (~a) ~
+    (let ((ref-path (merge-pathnames ref *pvs-context-path*)))
+      (assert (file-exists-p ref-path))
+      (setf (lib-ref decl) ref)
+      (dolist (d (gethash (id decl) (current-declarations-hash)))
+	(when (and (lib-decl? d)
+		   ;; FIXME - Should refine this
+		   (not (string= ref (lib-ref d))))
+	  (if (eq (module d) (current-theory))
+	      (type-error decl
+		"Library id ~a declared earlier in this theory (~a) ~
                with a different path."
-	      (id decl) (id (current-theory)))
-	    (pvs-warning
-	      "Library id ~a declared in imported theory ~a ~
+		(id decl) (id (current-theory)))
+	      (pvs-warning
+		  "Library id ~a declared in imported theory ~a ~
                with a different path."
-	      (id decl) (id (module d))))))))
+		(id decl) (id (module d)))))))))
 
 
 ;;; Module declarations
@@ -1627,46 +1630,51 @@
     (handle-existence-assuming-on-formals decl))
   decl)
 
-(defun remove-defined-type-names (decl)
+(defun remove-defined-type-names (decl &optional (theory (current-theory)))
   (let ((refs (collect-references (definition decl))))
     (when (some #'(lambda (ref)
 		    (and (type-def-decl? ref)
-			 (eq (module ref) (current-theory))))
+			 (eq (module ref) theory)))
 		refs)
-      (change-class decl 'assuming-decl)
-      (setf (original-definition decl) (definition decl))
+      ;;(change-class decl 'assuming-decl)
+      ;;(setf (original-definition decl) (definition decl))
       (setf (definition decl)
 	    (remove-defined-type-names* (definition decl)))
       (setf (closed-definition decl)
 	    (remove-defined-type-names* (closed-definition decl))))))
 
-(defun remove-defined-type-names* (ex)
-  (gensubst ex
-    #'remove-defined-type-name!
-    #'remove-defined-type-name?))
+(defun remove-defined-type-names* (ex theory)
+  (let ((*in-theory* theory))
+    (declare (special *in-theory*))
+    (gensubst ex
+      #'remove-defined-type-name!
+      #'remove-defined-type-name?)))
 
 (defmethod remove-defined-type-name? ((ex type-expr))
+  (declare (special *in-theory*))
   (and (type-name? (print-type ex))
        (let ((tdecl (declaration (print-type ex))))
 	 (and (type-def-decl? tdecl)
-	      (eq (module tdecl) (current-theory))))))
+	      (eq (module tdecl) *in-theory*)))))
 
 (defmethod remove-defined-type-name! ((ex type-expr))
   (copy ex 'print-type nil))
 
 (defmethod remove-defined-type-name? ((ex type-name))
+  (declare (special *in-theory*))
   (let ((tdecl (declaration ex)))
     (and (type-def-decl? tdecl)
-	 (eq (module tdecl) (current-theory)))))
+	 (eq (module tdecl) *in-theory*))))
 
 (defmethod remove-defined-type-name! ((ex type-name))
   (copy-all (type-expr (declaration ex))))
 
 (defmethod remove-defined-type-name? ((ex simple-decl))
+  (declare (special *in-theory*))
   (and (type-name? (declared-type ex))
        (let ((tdecl (declaration (declared-type ex))))
 	 (and (type-def-decl? tdecl)
-	      (eq (module tdecl) (current-theory))))))
+	      (eq (module tdecl) *in-theory*)))))
 
 (defmethod remove-defined-type-name! ((ex simple-decl))
   (copy ex
@@ -2460,7 +2468,7 @@
   (case id
     (|boolean| (setq *boolean* type))
     (|number| (setq *number* type))
-    (number_field (setq *number_field* type))
+    (|number_field| (setq *number_field* type))
     (|real| (setq *real* type)
      (push-ignored-type-constraints *real*))
     (|rational| (setq *rational* type)
