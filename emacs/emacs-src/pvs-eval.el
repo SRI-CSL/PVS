@@ -3,7 +3,7 @@
 (defpvs pvs-lisp-theory typecheck (theoryname)
   "Generates the Lisp code for a given theory and displays it in a buffer"
   (interactive (complete-theory-name "Generate lisp for theory: "))
-  ;;(popper-bury-output t)
+  (ilisp-bury-output t)
   (message "Generating Lisp for theory...")
   (pvs-send-and-wait (format "(generate-lisp-for-theory \"%s\")"
 			 theoryname) nil nil 'dont-care)
@@ -24,19 +24,20 @@
       (find-file-read-only-other-window lisp-file))))
 
 
-(defpvs pvs-lisp-eval prove (theory)
+(defpvs pvs-ground-evaluator prove (theory)
   "Invokes the ground evaluator in the context of the given PVS theory"
   (interactive (complete-theory-name "Use context of theory: "))
   (confirm-not-in-checker)
   (pvs-evaluator-busy)
   (save-some-pvs-buffers)
-  ;;(popper-bury-output t)
+  (ilisp-bury-output t)
   (ilisp-send (format "(evaluation-mode \"%s\")" theory) nil 'pr t))
 
 (defvar pvs-in-evaluator nil)
 
 (defun confirm-not-in-checker ()
-  (when (or pvs-in-checker pvs-in-evaluator)
+  (when (or pvs-in-checker
+	    pvs-in-evaluator)
     (unless (equal (buffer-name) ilisp-buffer)
       (pop-to-buffer ilisp-buffer)
       (goto-char (point-max)))
