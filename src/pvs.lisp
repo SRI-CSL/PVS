@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Wed Dec  1 15:00:38 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Jan 28 16:58:59 1999
-;; Update Count    : 93
+;; Last Modified On: Thu Jul  1 18:50:39 1999
+;; Update Count    : 94
 ;; Status          : Alpha test
 ;; 
 ;; HISTORY
@@ -472,11 +472,11 @@
 		     (setq kept? t)
 		     (copy-lex oth nth))
 		    (t (reset-typecheck-caches)
-		       (unless (typep oth 'datatype)
+		       (when (module? oth)
 			 (dolist (ty (nonempty-types oth))
 			   (setf (nonempty? ty) nil)))
 		       (reset-proof-statuses oth)
-		       (when (typep oth 'datatype)
+		       (when (typep oth 'recursive-type)
 			 (let ((gen (make-specpath (id (adt-theory oth)))))
 			   (when
 			       #+allegro (file-exists-p gen)
@@ -734,7 +734,7 @@
   (not (memq (proof-status formula-decl)
 	     '(proved proved-complete proved-incomplete))))
 
-(defmethod tccs-tried? ((adt datatype))
+(defmethod tccs-tried? ((adt recursive-type))
   t)
 
 (defun prove-tcc (decl)
@@ -800,7 +800,7 @@
 		  (list (id tn)))))
     (remove-if-not #'mod-or-using? (all-decls theory))))
 
-(defmethod tcc-info ((d datatype))
+(defmethod tcc-info ((d recursive-type))
   '(0 0 0))
 
 (defun tc (modname &optional forced?)
@@ -944,7 +944,7 @@
 	     (thstring (unparse theory
 			 :string t
 			 :char-width *default-char-width*)))
-	(unless (datatype? theory)
+	(unless (recursive-type? theory)
 	  (setf (ppe-form theory) (parse :string thstring)))
 	thstring)
       t t)))

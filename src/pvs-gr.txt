@@ -88,14 +88,17 @@ theory ::= {'THEORY' [exporting]^e 'BEGIN' [assuming-part]^a
 		      [noass()|assuming-part]^a,
                       [notheory()|theory-part]^t,id)>;
 
-datatype ::= {'DATATYPE' ['WITH' 'SUBTYPES' {id^s ++ ','}]
+datatype ::= {{'DATATYPE'|'CODATATYPE'}^k ['WITH' 'SUBTYPES' {id^s ++ ','}]
 	      'BEGIN' [{importing [';']^u}
                         <importing-elt(importing,[nosemic()|semic()]^u)>]^2
               [assuming-part]^1
 	      adtcase+ 'END' id}
-	        <[datatype(opt^1,opt^2,adtcases(plus),id)
-		 |datatypes(subtypes(doubleplus),opt^1,opt^2,
-                            adtcases(plus),id)]>;
+	        <{[datatype(opt^1,opt^2,adtcases(plus),id)
+		  |datatypes(subtypes(doubleplus),opt^1,opt^2,
+                             adtcases(plus),id)]
+                 |[codatatype(opt^1,opt^2,adtcases(plus),id)
+		  |codatatypes(subtypes(doubleplus),opt^1,opt^2,
+                            adtcases(plus),id)]}^k>;
 
 adtcase ::= {constructor ':' idop [':' id]}
               <[adtcase(constructor,idop)
@@ -193,7 +196,7 @@ adformal ::= typed-id
 assuming-decl ::= theory-decl | assumption;
 
 theory-decl ::= lib-decl | mod-decl | type-decl | var-decl
-              | const-decl | def-decl | ind-decl
+              | const-decl | def-decl | ind-decl | corec-decl | coind-decl
               | formula-decl | datatype | judgement;
 
 lib-decl ::= {'LIBRARY' ['='] string} <lib-decl([noeq()|eq()],string)>;
@@ -226,6 +229,11 @@ def-decl ::= {'RECURSIVE' type-expr '=' expr 'MEASURE' expr^b ['BY' expr^r]}
 		<def-decl(type-expr,expr,expr^b, [noexpr()| expr^r])>;
 
 ind-decl ::= {'INDUCTIVE' type-expr '=' expr} <ind-decl(type-expr,expr)>;
+
+corec-decl ::= {'CORECURSIVE' type-expr '=' expr}
+                  <corec-decl(type-expr,expr)>;
+
+coind-decl ::= {'COINDUCTIVE' type-expr '=' expr} <coind-decl(type-expr,expr)>;
 		
 assumption ::= {'ASSUMPTION' expr} <assumption(expr)>;
 
