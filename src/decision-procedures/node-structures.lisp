@@ -1,7 +1,9 @@
 (in-package dp)
 
 (eval-when (eval compile load)
-  (defvar *develop* t))
+  (defvar *develop* t)
+  (defvar *node-type* 'array)
+  (defvar *argument-type* 'list))
 
 (declaim (special *dp-changed*))
 (defvar *dp-changed* nil)
@@ -10,18 +12,25 @@
 
 (defvar *max-node-index* 0)
 
-(defun extend-with-named-type (name-and-options)
-  (if (consp name-and-options)
-      (cons (car name-and-options)
-	    (append '((:type vector) (:named))
-		    (cdr name-and-options)))
-      (cons name-and-options
-	    '((:type vector) (:named)))))
 
-(defun name-from-name-and-options (name-and-options)
-  (if (consp name-and-options)
-      (car name-and-options)
-      name-and-options))
+(eval-when (eval compile load)
+  (defun extend-with-named-type (name-and-options)
+    (if (consp name-and-options)
+	(cons (car name-and-options)
+	      (append `((:type ,*node-type*) (:named))
+		      (cdr name-and-options)))
+	(cons name-and-options
+	      `((:type ,*node-type*) (:named)))))
+
+  (defun name-from-name-and-options (name-and-options)
+    (if (consp name-and-options)
+	(car name-and-options)
+	name-and-options))
+  
+  (defun across-or-in ()
+    (if (eq *argument-type* 'list)
+	'in
+	'across)))
 
 (defmacro defdpstruct (NAME-AND-OPTIONS &REST SLOT-DESCRIPTIONS)
   (if *develop*
@@ -30,7 +39,9 @@
 	 (defstruct ,(extend-with-named-type NAME-AND-OPTIONS)
 	   ,@SLOT-DESCRIPTIONS)
 	 (deftype ,(name-from-name-and-options NAME-AND-OPTIONS)
-	   () 'simple-vector))))
+	   () ,(if (eq *node-type* 'list)
+		   ''list
+		   ''simple-vector)))))
   
 
 (defdpstruct node
@@ -61,8 +72,10 @@
 			 (lambda (a s k)
 			   (declare (ignore k))
 			   (format s "~A"
-			     (array-to-list (application-arguments a))))))
-  (arguments nil :type simple-vector))
+			     (if (eq *argument-type* 'list)
+				 (application-arguments a)
+				 (array-to-list (application-arguments a)))))))
+  (arguments nil :type (or simple-vector list)))
 
 (defun print-application (a s)
   (format s "~A" (array-to-list (application-arguments a))))
@@ -87,6 +100,18 @@
   (loop for i from 0 below (length array)
 	collect (svref array i)))
 
+(defun node-to-list (node)
+  (cond
+   ((leaf-p node)
+    (leaf-id node))
+   (t (arguments-to-list (application-arguments node)))))
+
+(defun arguments-to-list (args)
+  (if (eq *argument-type* 'list)
+      (mapcar #'node-to-list args)
+      (loop for a across args
+	    collect (node-to-list a))))
+
 (defun equal-array (args1 args2)
   (or (eq args1 args2)
       (when (and (numberp args1) (numberp args2))
@@ -102,18 +127,35 @@
 				   (svref (the simple-vector args2)
 					  (the fixnum i)))))))))
 
+(defun equal-list (args1 args2)
+  (or (eq args1 args2)
+      (when (and (numberp args1) (numberp args2))
+	(= args1 args2))
+      (and (consp args1)
+	   (consp args2)
+	   (eq (car args1) (car args2))
+	   (equal-list (cdr args1) (cdr args2)))))
+
 (defun dp-eq-sxhash (term)
   (if (node-p term)
       (node-sxhash (the node term))
       (sxhash term)))
 
 (defun dp-sxhash (args)
-  (let ((result (if (arrayp args)
-		    (mod
-		     (loop for a across (the simple-vector args)
-			   sum (dp-eq-sxhash a))
-		     65536)
-		    (dp-eq-sxhash args))))
+  (let ((result (cond
+		 ((arrayp args)
+		  (mod
+		   (loop for a across (the simple-vector args)
+			 sum (dp-eq-sxhash a))
+		   65536))
+		 ((listp args)
+		  (mod
+		   (loop for a in (the list args)
+			 sum (dp-eq-sxhash a))
+		   65536))
+		 ((atom args) (dp-eq-sxhash args))
+		 (t (break)
+		  (dp-eq-sxhash args)))))
     result))
 
 (defvar *pvs-hash* nil)
@@ -147,7 +189,9 @@
 (defvar *term-hash*)
 
 (eval-when (load eval)
-  (setq *term-hash* (dp-make-hash-table :test 'equal-array
+  (setq *term-hash* (dp-make-hash-table :test (if (eq *argument-type* 'list)
+						  'equal-list
+						  'equal-array)
 					:hash-function 'dp-sxhash)))
 
 (defvar *mk-term-adduse* t)
@@ -158,8 +202,10 @@
 	      :initial-contents arguments))
 
 (defun mk-term (arguments &optional (type nil))
-  (let ((arg-array (mk-arg-array arguments)))
-    (mk-term-array arg-array type)))
+  (if (eq *argument-type* 'list)
+      (mk-term-list arguments type)
+      (let ((arg-array (mk-arg-array arguments)))
+	(mk-term-array arg-array type))))
 
 (defun mk-term-array (arg-array &optional (type nil))
   (let ((hashed-term (dp-gethash arg-array *term-hash*)))
@@ -171,11 +217,21 @@
 	(setf (dp-gethash arg-array *term-hash*)
 	      (mk-term* arg-array type)))))
 
-(defun mk-term* (arg-array type)
-  (let ((new-node (make-application :sxhash (dp-sxhash arg-array)
+(defun mk-term-list (arg-list &optional (type nil))
+  (let ((hashed-term (dp-gethash arg-list *term-hash*)))
+    (if hashed-term
+	(if type
+	    (progn (setf (node-type hashed-term) type)
+		   hashed-term)
+	    hashed-term)
+	(setf (dp-gethash arg-list *term-hash*)
+	      (mk-term* arg-list type)))))
+
+(defun mk-term* (arguments type)
+  (let ((new-node (make-application :sxhash (dp-sxhash arguments)
 				    :index (incf *max-node-index*)
 				    :initial-type type
-				    :arguments arg-array)))
+				    :arguments arguments)))
     new-node))
 
 (defun mk-constant (id &optional (type nil))
@@ -230,84 +286,154 @@
    (t (mk-constant list))))
 
 (defmacro arity (application)
-  `(1- (length (the simple-vector (application-arguments ,application)))))
+  `(1- (length (the ,*argument-type* (application-arguments ,application)))))
 
 (defmacro arg (num application)
-  `(svref (the simple-vector
-	    (application-arguments (the application ,application)))
-	 (the (integer 0 100) ,num)))
+  (if (eq *argument-type* 'list)
+      `(nth (the (integer 0 100) ,num)
+	    (the list
+	      (application-arguments (the application ,application))))
+      `(svref (the ,*argument-type*
+		(application-arguments (the application ,application)))
+	      (the (integer 0 100) ,num))))
 
 (defmacro map-args (fn application &rest more-args)
   `(declare (type application ,application)
 	    (type function ,fn))
-  `(loop with arguments = (the simple-vector
+  `(loop with arguments = (the ,*argument-type*
 			      (application-arguments ,application))
-	   for arg across (the simple-vector arguments)
+	   for arg ,(across-or-in) (the ,*argument-type* arguments)
 	   do (funcall ,fn arg .,more-args)))
 
 (defmacro map-args-args (fn application1 application2 &rest more-args)
   `(declare (type application ,application1)
 	    (type application ,application2)
 	    (type function ,fn))
-  `(loop with arguments1 = (the simple-vector
+  `(loop with arguments1 = (the ,*argument-type*
 			     (application-arguments ,application1))
-	 with arguments2 = (the simple-vector
+	 with arguments2 = (the ,*argument-type*
 			     (application-arguments ,application2))
-	 for arg1 across (the simple-vector arguments1)
-	 for arg2 across (the simple-vector arguments2)
+	 for arg1 ,(across-or-in) (the ,*argument-type* arguments1)
+	 for arg2 ,(across-or-in) (the ,*argument-type* arguments2)
 	 do (funcall ,fn arg1 arg2 .,more-args)))
 
 (defmacro map-args-list (fn application &rest more-args)
   `(declare (type application ,application)
 	    (type function ,fn))
-  `(loop with arguments = (the simple-vector
+  `(loop with arguments = (the ,*argument-type*
 			   (application-arguments ,application))
-	 for arg across (the simple-vector arguments)
+	 for arg ,(across-or-in) (the simple-vector arguments)
 	 collect (funcall ,fn arg .,more-args)))
 
 (defmacro map-args-array (fn application &rest more-args)
   `(declare (type application ,application)
 	    (type function ,fn))
-  `(loop with arguments = (the simple-vector
+  `(loop with arguments = (the ,*argument-type*
 			   (application-arguments ,application))
-	 with length = (length (the simple-vector arguments))
+	 with length = (length (the ,*argument-type* arguments))
 	 with array = (make-array (the fixnum length) :element-type 'node)
 	 for i from 0 below (the fixnum length)
 	 do (setf (svref (the simple-vector array)
 			 (the fixnum i))
-		  (funcall ,fn (svref (the simple-vector arguments)
-				      (the fixnum i))
+		  (funcall ,fn ,(if (eq *argument-type* 'list)
+				    `(nth (the fixnum i)
+					  (the list arguments))
+				    `(svref (the simple-vector arguments)
+					    (the fixnum i)))
 			   .,more-args))
 			 
 	 finally (return array)))
 
-(defun map-funargs (fn application &rest more-args)
-  (declare (type application application)
-	   (type function fn))
-  (loop with arguments = (the simple-vector
-			   (application-arguments application))
-	for i from 1 to (arity application)
-	do (apply fn (svref (the simple-vector arguments) i)
-		  more-args)))
+(defun expand-map-funargs (fn application more-args)
+  (if (eq *argument-type* 'list)
+      `(loop with arguments = (the list
+				(application-arguments ,application))
+	     for arg in (cdr arguments)
+	     do (funcall ,fn arg
+			 .,more-args))
+      `(loop with arguments = (the simple-vector
+				(application-arguments ,application))
+	     for i from 1 to (arity ,application)
+	     do (funcall ,fn (svref (the simple-vector arguments) i)
+			 .,more-args))))
 
-(defun map-funargs-list (fn application &rest more-args)
-  (declare (type application application)
-	   (type function fn))
-  (loop with arguments = (the simple-vector
-			   (application-arguments application))
-	for i from 1 to (arity application)
-	collect (apply fn (svref (the simple-vector arguments) i)
-		       more-args)))
+(defmacro map-funargs (fn application &rest more-args)
+  `(declare (type application ,application)
+	    (type function ,fn))
+  (expand-map-funargs fn application more-args))
+
+(defun expand-map-funargs-list (fn application more-args)
+  (if (eq *argument-type* 'list)
+      `(loop with arguments = (the list
+				(application-arguments ,application))
+	     for arg in (cdr arguments)
+	     collect (funcall ,fn arg
+		       .,more-args))
+      `(loop with arguments = (the simple-vector
+				(application-arguments ,application))
+	     for i from 1 to (arity ,application)
+	     collect (funcall ,fn (svref (the simple-vector arguments) i)
+			    .,more-args))))
+
+(defmacro map-funargs-list (fn application &rest more-args)
+  `(declare (type application ,application)
+	    (type function ,fn))
+  (expand-map-funargs-list fn application more-args))
+
+(defun expand-map-funargs-array (fn application more-args)
+  (if (eq *argument-type* 'list)
+      (expand-map-funargs-array-for-list fn application more-args)
+      (expand-map-funargs-array-for-array fn application more-args)))
+
+(defun expand-map-funargs-array-for-list (fn application more-args)
+  `(loop with arguments = (the ,*argument-type*
+			    (application-arguments ,application))
+	 with length = (length (the list arguments))
+	 with array = (make-array (the fixnum length) :element-type 'node)
+	 for i from 1 below (the fixnum length)
+	 for arg in (cdr (the list arguments))
+	 do (setf (svref (the simple-vector array)
+			 (the fixnum i))
+		  (funcall ,fn arg
+			   .,more-args))
+	 finally (setf (svref (the simple-vector array)
+			      0)
+		       (car arguments))
+	 (return array)))
+
+(defun expand-map-funargs-array-for-array (fn application more-args)
+  `(loop with arguments = (the ,*argument-type*
+			    (application-arguments ,application))
+	 with length = (length (the simple-vector arguments))
+	 with array = (make-array (the fixnum length) :element-type 'node)
+	 for i from 1 below (the fixnum length)
+	 do (setf (svref (the simple-vector array)
+			 (the fixnum i))
+		  (funcall ,fn (svref (the simple-vector arguments)
+				      (the fixnum i))
+			   .,more-args))			 
+	 finally (setf (svref (the simple-vector array)
+			      0)
+		       (svref (the simple-vector arguments)
+			      0))
+	 (return array)))
+
+(defmacro map-funargs-array (fn application &rest more-args)
+  `(declare (type application ,application)
+	    (type function ,fn))
+  (expand-map-funargs-array fn application more-args))
 
 (defmacro funsym (application)
   `(arg 0 (the application ,application)))
 
 (defun funargs (application)
   (declare (type application application))
-  (loop with arguments = (the simple-vector
-			   (application-arguments application))
-	for i from 1 below (length (the simple-vector arguments))
-	collect (svref (the simple-vector arguments) i)))
+  (if (eq *argument-type* 'list)
+      (cdr (application-arguments application))
+      (loop with arguments = (the simple-vector
+			       (application-arguments application))
+	    for i from 1 below (length (the simple-vector arguments))
+	    collect (svref (the simple-vector arguments) i))))
 
 (defun mk-predicate-sym (sym)
   (let ((result (mk-constant sym)))
@@ -580,6 +706,21 @@
   new-hash-table)
 
 (defun copy-array (new-array old-array)
+  (simple-copy-array new-array old-array))
+
+(defun simple-copy-array (new-array old-array)
+  (let* ((new-array-size (array-total-size new-array))
+	 (old-array-size (array-total-size old-array))
+	 (adjusted-new-array (if (< new-array-size old-array-size)
+				 (make-array  old-array-size)
+				 new-array)))
+    (loop for i from 0 below old-array-size
+	  do
+	  (setf (svref adjusted-new-array i)
+		(svref old-array i)))
+    adjusted-new-array))
+
+(defun general-copy-array (new-array old-array)
   (let* ((new-array-size (array-total-size new-array))
 	 (old-array-size (array-total-size old-array))
 	 (adjusted-new-array (if (< new-array-size old-array-size)
