@@ -23,13 +23,16 @@
 (defvar *pvs-to-ics-symtab* 
   (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
 
-(defvar *unique-name-counter* 0)
+(defvar *unique-name-ics-counter* 0)
+
+(defvar *ics-apply-name* "apply")
+
 
 (defun pvs-to-ics-reset ()
   (clrhash *pvs-to-ics-hash*)
   (clrhash *ics-to-pvs-hash*)
   (clrhash *pvs-to-ics-symtab*)
-  (setf *unique-name-counter* 0))
+  (setf *unique-name-ics-counter* 0))
 
 
 ;; Wrapping and unwrapping ICS values in order to finalize 
@@ -118,6 +121,8 @@
 ;; PVS decision procedure interface
 
 (defun ics-init (&optional full (verbose 0))
+  (declare (ignore full))
+  (declare (ignore verbose))
   (multiple-value-bind (ignore error)
       (ignore-errors (ics_caml_startup))
     (cond (error
@@ -142,7 +147,6 @@
 (defun ics-process (state atom)
   (assert (state-wrap? state))
   (assert (atom-wrap? atom))
-;  (break)
   (ics_process (state-unwrap state) (atom-unwrap atom)))
 
 
@@ -153,11 +157,6 @@
 
 
 ;; Return a unique name for an expression
-
-(defvar *pvs-to-ics-symtab* 
-  (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
-
-(defvar *unique-name-ics-counter* 0)
 	
 (defun unique-name-ics (expr)
   (or (gethash expr *pvs-to-ics-symtab*)
@@ -317,9 +316,9 @@
 			    (translate-term-to-ics* (args1 expr))
 			    (translate-term-to-ics* (args2 expr))))
 	  (t
-	   (let ((name (unique-name-ics op))
-		 (terms (translate-term-list-to-ics* (arguments expr))))
-	     (ics_term_mk_uninterp name terms))))))
+	   (let ((opterm (translate-term-to-ics* op))
+		 (argterms (translate-term-list-to-ics* (arguments expr))))
+	     (ics_term_mk_uninterp *ics-apply-name* (ics_cons opterm argterms)))))))
 	
 (defmethod translate-term-to-ics* ((expr let-expr))
   (with-slots (operator argument) expr
