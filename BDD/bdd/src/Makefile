@@ -9,8 +9,9 @@ INCLUDES   = -I. -I$(UTILS)
 ARS = $(UTILS)/libutils.a
 
 # specify appropriate C compiler flags here:
-CFLAGS=  -Aa -D_POSIX_SOURCE $(INCLUDES)
+#CFLAGS=  -Aa -D_POSIX_SOURCE $(INCLUDES)
 #CFLAGS= -D_POSIX_SOURCE $(INCLUDES)
+CFLAGS= -g -O $(INCLUDES)
 XCFLAGS= -O
 XLDFLAGS=-s
 
@@ -18,7 +19,7 @@ obj= bdd_factor.o bdd.o bdd_quant.o bdd_fns.o bdd_vfns.o appl.o y.tab.o \
      lex.yy.o main.o
 
 bdd : ${obj}
-	$(CC) ${XLDFLAGS} -o bdd ${obj} $(ARS) -ll -lm
+	$(CC) ${XLDFLAGS} -o bdd ${obj} $(ARS) -lfl -lm
 
 template : lib template.o
 	$(CC) -o template template.o libbdd.a $(ARS)
