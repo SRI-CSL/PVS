@@ -299,6 +299,9 @@
        (and (or (and (null (actuals old)) (null (actuals new)))
 		(and (actuals old) (actuals new)))
 	    (compare* (actuals old) (actuals new)))
+       (and (or (and (null (mappings old)) (null (mappings new)))
+		(and (mappings old) (mappings new)))
+	    (compare* (mappings old) (mappings new)))
        (compare* (id old) (id new))))
 
 (defmethod compare* ((old type-application) (new type-application))
@@ -454,6 +457,9 @@
        (and (or (and (null (actuals old)) (null (actuals new)))
 		(and (actuals old) (actuals new)))
 	    (compare* (actuals old) (actuals new)))
+       (and (or (and (null (mappings old)) (null (mappings new)))
+		(and (mappings old) (mappings new)))
+	    (compare* (mappings old) (mappings new)))
        (compare* (id old) (id new))))
 
 (defmethod compare* ((old expr) (new expr))
@@ -463,6 +469,17 @@
   nil)
 
 (defmethod compare* ((old actual) (new actual))
+  (and (or (and (zerop (parens (expr old)))
+		(zerop (parens (expr new))))
+	   (and (not (zerop (parens (expr old))))
+		(not (zerop (parens (expr new))))))
+       (compare* (expr old) (expr new))))
+
+(defmethod compare* ((old mapping) (new mapping))
+  (and (compare* (lhs old) (lhs new))
+       (compare* (rhs old) (rhs new))))
+
+(defmethod compare* ((old mapping-rhs) (new mapping-rhs))
   (and (or (and (zerop (parens (expr old)))
 		(zerop (parens (expr new))))
 	   (and (not (zerop (parens (expr old))))

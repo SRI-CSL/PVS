@@ -196,6 +196,12 @@
 	    (setq frees (pushnew x frees :test #'eq)))
 	  frees))))
 
+(defmethod free-params* ((map mapping-rhs) frees)
+  (with-slots (expr type-value) map
+    (if type-value
+	(free-params* type-value frees)
+	(free-params* expr frees))))
+
 (defmethod free-params* ((name name) frees)
   (with-slots (resolutions) name
     (free-params* (car resolutions) frees)))

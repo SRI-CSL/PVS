@@ -677,10 +677,11 @@ where db is to replace db1 and db2")
 
 (defmethod tc-eq* ((n1 modname) (n2 modname) bindings)
   (or (eq n1 n2)
-      (with-slots ((id1 id) (act1 actuals)) n1
-	(with-slots ((id2 id) (act2 actuals)) n2
+      (with-slots ((id1 id) (act1 actuals) (map1 mappings)) n1
+	(with-slots ((id2 id) (act2 actuals) (map2 mappings)) n2
 	  (and (eq id1 id2)
-	       (tc-eq* act1 act2 bindings))))))
+	       (tc-eq* act1 act2 bindings)
+	       (tc-eq* map1 map2 bindings))))))
 
 (defmethod tc-eq* ((a1 actual) (a2 actual) bindings)
   (or (eq a1 a2)
@@ -691,6 +692,20 @@ where db is to replace db1 and db2")
 		   (tc-eq* tv1 tv2 bindings))
 	      (and (not tv2)
 		   (tc-eq* ex1 ex2 bindings)))))))
+
+(defmethod tc-eq* ((map1 mapping) (map2 mapping) bindings)
+  (with-slots ((lhs1 lhs) (rhs1 rhs)) map1
+    (with-slots ((lhs2 lhs) (rhs2 rhs)) map2
+      (and (tc-eq* lhs1 lhs2 bindings)
+	   (tc-eq* rhs1 rhs2 bindings)))))
+
+(defmethod tc-eq* ((rhs1 mapping-rhs) (rhs2 mapping-rhs) bindings)
+  (with-slots ((ex1 expr) (ty1 type-value)) rhs1
+    (with-slots ((ex2 expr) (ty2 type-value)) rhs2
+      (if ty1
+	  (tc-eq* ty1 ty2 bindings)
+	  (and (null ty2)
+	       (tc-eq* ex1 ex2 bindings))))))
 
 
 ;;; Compatible? for types checks whether two types have a common
