@@ -37,6 +37,9 @@
   (append (list pvs-path
 	        (concat pvs-path "/emacs/"
 			(prin1-to-string pvs-emacs-system)))
+	  (when (file-exists-p (concat pvs-path "/emacs/emacs-src"))
+		(list (concat pvs-path "/emacs/emacs-src")
+		      (concat pvs-path "/emacs/emacs-src/ilisp")))
           load-path))
 
 ;;; Maybe check at this point for the correct byte compilation of
