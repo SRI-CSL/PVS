@@ -259,19 +259,27 @@
 ;; 				type-value))))))
 
 (defun ignore-self-reference-type-values (type-decl)
-  (unless (and (type-value type-decl)
-	       (or (and (type-name? (type-value type-decl))
-			(eq (declaration (type-value type-decl)) type-decl))
-		   (and (subtype? (type-value type-decl))
-			(type-name? (print-type (type-value type-decl)))
-			(eq (declaration
-			     (resolution (print-type (type-value type-decl))))
-			    type-decl))
-		   (and (type-application? (print-type (type-value type-decl)))
-			(eq (declaration
-			     (type (print-type (type-value type-decl))))
-			    type-decl))))
-    (type-value type-decl)))
+  (if (and (type-value type-decl)
+	   (or (and (type-name? (type-value type-decl))
+		    (eq (declaration (type-value type-decl)) type-decl))
+	       (and (subtype? (type-value type-decl))
+		    (type-name? (print-type (type-value type-decl)))
+		    (eq (declaration
+			 (resolution (print-type (type-value type-decl))))
+			type-decl))
+	       (and (type-application? (print-type (type-value type-decl)))
+		    (eq (declaration
+			 (type (print-type (type-value type-decl))))
+			type-decl))))
+      (cons (if (type-name? (type-value type-decl))
+		(class-name (class-of (type-value type-decl)))
+		'type-name)
+	    (typecase (type-value type-decl)
+	      (adt-type-name
+	       (list 'adt (id (adt (type-value type-decl)))
+		     'single-constructor? (single-constructor?
+					   (type-value type-decl))))))
+      (type-value type-decl)))
   
 (defmethod all-usings ((obj recursive-type))
   (cons (list (adt-theory obj) (mk-modname (id (adt-theory obj))))
@@ -827,13 +835,22 @@
   ;;(postrestore-declarations-hash (declarations-hash obj))
   ;;(postrestore-using-hash (using-hash obj))
   (postrestore-context-conversions (conversions obj))
-  ;;(postrestore-context-judgements (judgements obj))
+  (postrestore-context-judgements (judgements obj))
   ;;(postrestore-context-known-subtypes (known-subtypes obj))
   obj)
 
 (defun postrestore-context-conversions (convs)
   (dolist (conv convs)
     (restore-object* conv)))
+
+(defun postrestore-context-judgements (judgements)
+  (dolist (elt (number-judgements-alist judgements))
+    (restore-object* (cdr elt)))
+  (dolist (elt (name-judgements-alist judgements))
+    (restore-object* (cdr elt)))
+  (dolist (elt (application-judgements-alist judgements))
+    (dotimes (i (length (cdr elt)))
+      (restore-object* (svref (cdr elt) i)))))
 
 (defmethod restore-object* :around ((obj declaration))
   (unless (or (typep obj '(or mod-decl theory-abbreviation-decl
@@ -857,8 +874,10 @@
   (assert (not (store-print-type? (type-value obj))))
 ;;   (assert (or (not (subtype? (type-value obj)))
 ;; 	      (not (store-print-type? (supertype (type-value obj))))))
-  (unless (type-value obj)
-    (let* ((tn (mk-type-name (id obj)))
+  (when (listp (type-value obj))
+    (let* ((tn (apply #'make-instance (or (car (type-value obj))
+					  'type-name)
+		 'id (id obj) (cdr (type-value obj))))
 	   (res (mk-resolution obj (mk-modname (id (module obj))) tn)))
       (setf (resolutions tn) (list res))
       (let ((ptype (if (formals obj)
@@ -867,6 +886,17 @@
 			 'parameters (mapcar #'mk-name-expr
 				       (car (formals obj))))
 		       tn)))
+	(when (adt-type-name? tn)
+	  (let ((rec-type (when (symbolp (adt tn))
+			    (get-theory (adt tn)))))
+	    (if rec-type
+		(let ((atns (assq (adt tn) *adt-type-name-pending*)))
+		  (dolist (atn (cdr atns))
+		    (setf (adt atn) rec-type))
+		  (setf (adt tn) rec-type)
+		  (setf *adt-type-name-pending*
+			(delete atns *adt-type-name-pending*)))
+		(add-to-alist (adt tn) tn *adt-type-name-pending*))))
 	(if (type-def-decl? obj)
 	    (setf (type-value obj) (type-def-decl-saved-value obj ptype))
 	    (setf (type-value obj) tn))
@@ -1136,7 +1166,8 @@
 	 (decl (declaration res))
 	 (thinst (module-instance res))
 	 (mtype-expr (if (actuals thinst)
-			 (subst-mod-params (type-value decl) thinst)
+			 (subst-mod-params (type-value decl) thinst
+					   (module decl))
 			 (type-value decl)))
 	 (type-expr (if (every #'(lambda (x y)
 				   (and (name-expr? y)
