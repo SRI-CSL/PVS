@@ -1685,6 +1685,8 @@ Point will be on the offending delimiter."
 	   (pvs-valid-output-regexps (cdr output-regexps)))))
 
 (defun pvs-validate-handler (error-p wait-p message output prompt)
+;;   (message "pvs-validate-handler called: %s %s %s %s %s"
+;; 	   error-p wait-p message output prompt)
   (cond ((and (stringp output)
 	      (string-match (ilisp-value 'ilisp-error-regexp) output))
 	 (pvs-message "Lisp ERROR: %s\n" (comint-remove-whitespace output))
@@ -1818,7 +1820,17 @@ existence and time differences to be whitespace")
 	      (not (save-excursion
 		     ;; comint-status is buffer-local
 		     (set-buffer (ilisp-buffer))
+		     ;;(message "Waiting...%s %s %s"
+			;;      comint-status (process-status (ilisp-process))
+			;;      timeout)
 		     (member comint-status '(" :ready" " :error")))))
+;;     (when (and timeout (= timeout 90)
+;; 	       (eq (process-status (ilisp-process)) 'signal))
+;;       (comint-send (ilisp-process) ":bt\n")
+;;       (save-excursion
+;; 	(set-buffer "pvs")
+;; 	(goto-char (point-min))
+;; 	(message (buffer-string))))
     (when timeout (decf timeout))
     (sleep-for 1)))
 
@@ -1858,20 +1870,32 @@ existence and time differences to be whitespace")
 
 ;;; Can't use kill-emacs-hook instead, as in batch mode the hook is ignored.
 ;; (defadvice kill-emacs (before pvs-batch-control activate)
+;;   (fset 'pvs-handler 'pvs-validate-handler)
 ;;   (if (and ilisp-buffer
 ;; 	   (get-buffer ilisp-buffer)
 ;; 	   (ilisp-process)
 ;; 	   (eq (process-status (ilisp-process)) 'run))
-;;       (let ((ctr 10))
-;; 	(save-some-buffers nil t)
-;; 	(while (and (not (save-excursion
-;; 			   (set-buffer (ilisp-buffer))
-;; 			   (member comint-status '(" :ready" " :error"))))
-;; 		    (> ctr 0))
-;; 	  (setq ctr (- ctr 1))
-;; 	  (sleep-for 1)))
+;;       (progn
+;; 	(save-excursion
+;; 	  (set-buffer (ilisp-buffer))
+;; 	  (message "Status before: %s" comint-status))
+;; 	(comint-send (ilisp-process) "(save-context)")
+;; 	(message "Waiting for save-context...")
+;; 	(pvs-wait-for-it 100)
+;; 	(let ((ctr 10))
+;; 	  (save-some-buffers nil t)
+;; 	  (while (and (not (save-excursion
+;; 			     (set-buffer (ilisp-buffer))
+;; 			     (member comint-status '(" :ready" " :error"))))
+;; 		      (> ctr 0))
+;; 	    (setq ctr (- ctr 1))
+;; 	    (sleep-for 1))))
 ;;       (message "PVS not running - context not saved"))
 ;;   (message "PVS Exited"))
+
+;; (defadvice comint-log (around pvs-batch-control activate)
+;;   (message "comint-log %s" (ad-get-arg 1))
+;;   ad-do-it)
 )
 
 (defun trailing-components (directory num)
