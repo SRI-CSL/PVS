@@ -410,9 +410,10 @@
 	     )
 
 	    ((equal (pr-find u) (pr-find 'false))
-	     (break "Shostak")
-	     (print "msg from merge - this should not have occurred
-		       according to Rob Shostak ") )))
+	     ; (break "Shostak")
+; 	     (print "msg from merge - this should not have occurred
+; 		       according to Rob Shostak ")
+	     )))
 	  ((find1 u) ;;NSH(6-12-02) was blank   ;(break "pr-merge")
 	            ;; This is needed to deal with nonlinear entries.
 	   (when (and (not (equal (find1 u) u))
