@@ -344,18 +344,15 @@
 (defun list-declarations* (theory)
   (unless (member theory *modules-visited*)
     (if (typechecked? theory)
-	(maphash #'(lambda (id decls)
-		     (declare (ignore id))
-		     (setq *list-declarations*
-			   (append
-			    (mapcar #'(lambda (d) (cons d theory))
-				    (remove-if #'(lambda (x)
-						   (or (typep x '(or var-decl
-								  field-decl))
-						       (generated-by x)))
-					       decls))
-			    *list-declarations*)))
-		 (declarations theory))
+	(setq *list-declarations*
+	      (append
+	       (mapcar #'(lambda (d) (cons d theory))
+		 (remove-if #'(lambda (x)
+				(or (typep x '(or var-decl
+						  field-decl))
+				    (generated-by x)))
+		   (all-decls theory)))
+	       *list-declarations*))
 	(setq *list-declarations*
 	      (append (mapcar #'(lambda (d) (cons d theory))
 			      (remove-if #'(lambda (x)

@@ -605,10 +605,10 @@ generated")
 	  (put-decl ad (current-declarations-hash)))
 	(let* ((rng (subst-dependent-accessor-type vname pargs dtype))
 	       (ftype (mk-funtype (list dom) rng)))
-	  (dolist (ad accdecls)
-	    (setf (gethash (id ad) (declarations *current-theory*))
-		  (remove ad
-			  (gethash (id ad) (declarations *current-theory*)))))
+; 	  (dolist (ad accdecls)
+; 	    (setf (gethash (id ad) (declarations *current-theory*))
+; 		  (remove ad
+; 			  (gethash (id ad) (declarations *current-theory*)))))
 	  ftype))
       (mk-funtype (list rtype) dtype)))
 
@@ -2913,8 +2913,8 @@ generated")
     (copy arg)))
 
 
-(defmethod declarations ((adt datatype))
-  nil)
+; (defmethod declarations ((adt datatype))
+;   nil)
 
 
 (defun typecheck-adt-decl (decl &optional (add? t) (reduce? t))
