@@ -148,11 +148,11 @@
 					     "prelude.prf"))))
     (save-proofs prfile *prelude-theories*)))
 
-(defun prove-prelude (&optional retry?)
+(defun prove-prelude (&optional retry? use-default-dp?)
   (let ((theories *prelude-theories*)
 	(*loading-prelude* t)
 	(*proving-tcc* t))
-    (prove-theories "prelude" theories retry?)
+    (prove-theories "prelude" theories retry? use-default-dp?)
     (prelude-summary)))
 
 (defun prelude-summary ()
