@@ -2830,3 +2830,11 @@ space")
 
 (defmethod collect-predicates (subtype supertype expr)
   (compatible-preds supertype subtype expr))
+
+(defun always-true (x)
+  (declare (ignore x))
+  t)
+
+(defun always-false (x)
+  (declare (ignore x))
+  nil)
