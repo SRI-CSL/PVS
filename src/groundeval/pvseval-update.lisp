@@ -353,8 +353,6 @@
 		    ,(call-next-method))
 		 (call-next-method))))
 
-(defun check-op-args (formal-arg-pairs livevars)
-
 (defun pvs2cl-operator2 (op actuals arguments livevars bindings)
   (declare (ignore bindings))
   (pvs2cl-resolution2 op)
