@@ -284,7 +284,7 @@
   (from-theory :restore-as nil)
   (from-theory-name :restore-as nil)
   (generated-by-decl :fetch-as nil :restore-as nil)
-  (mapping :documentation
+  (theory-mapping :documentation
 	   "An alist mapping declarations of the from-theory to this theory"))
 
 (defcl exporting (syntax)
