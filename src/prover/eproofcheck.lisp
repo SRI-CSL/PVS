@@ -1197,14 +1197,15 @@
 (defun set-decision-procedure (name)
   (assert (or (stringp name) (symbolp name)))
   (let* ((id (if (stringp name)
-		 (intern (string-upcase name))
+		 (intern (string-downcase name))
 		 name))
 	 (dp (car (member id *decision-procedures*))))
     (if dp
 	(if (eq id *default-decision-procedure*)
 	    (pvs-message "~a is already the default decision procedure" id)
 	    (progn
-	      (pvs-message "~a is now the default decision procedure" id)
+	      (pvs-message "~a is now the default decision procedure"
+		(or (cdr (assoc id *decision-procedure-descriptions*)) id))
 	      (setq *default-decision-procedure* id)
 	      (when *in-checker*
 		(pvs-message
