@@ -120,7 +120,10 @@
 
 (defmethod translate-to-dc :around (obj)
   (if (or *bound-variables* *bindings*)
-      (call-next-method)
+      (let ((result (call-next-method)))
+	(when (dp::node-p result)
+	  (set-inverse-translation result obj))
+	result)
       (let ((hashed-value (gethash obj *translate-to-dc-hash*)))
 	(or hashed-value
 	    (let ((result (call-next-method)))
@@ -240,17 +243,18 @@
 	     (add-to-prtype-hash dc-expr expr))
 	   dc-expr))
 	((typep expr 'field-decl)
-	 (let* ((id-hash (gethash expr
-				      *dc-translate-id-hash*))
+	 (let* ((id (id expr))
+		(id-hash (gethash id
+				  *dc-translate-id-hash*))
 		(newconst
 		 (or id-hash
 		     (dp::mk-constant
 			    (intern (format nil "~a-~a"
-				      (id expr)
+				      id
 				      (funcall
 				       *dc-translate-id-counter*)))))))
 	   (unless id-hash
-	     (setf (gethash expr *dc-translate-id-hash*)
+	     (setf (gethash id *dc-translate-id-hash*)
 		   newconst))
 	   newconst))
 	(t ;(add-to-local-prtype-hash (id expr) expr)
@@ -728,10 +732,9 @@
 				      ntrbasis-type)))
 	 (args
 	  (if (dp::record-p trbasis)
-	      (let ((old-args (dp::funargs trbasis)))
-		(setf (nth position old-args)
-		      new-value)
-		old-args)
+	      (loop for i from 0
+		    for old-value in (dp::funargs trbasis)
+		    collect (if (= i position) new-value old-value))
 	      (translate-dc-record-name-to-record-args trbasis type
 						       position
 						       new-value))))
@@ -760,10 +763,9 @@
 						 ntrbasis-type)))
 	 (args
 	  (if (dp::tuple-p trbasis)
-	      (let ((old-args (dp::funargs trbasis)))
-		(setf (nth position old-args)
-		      new-value)
-		old-args)
+	      (loop for i from 0
+		    for old-value in (dp::funargs trbasis)
+		    collect (if (= i position) new-value old-value))
 	      (translate-dc-to-tuple-args trbasis type
 					  position
 					  new-value))))
