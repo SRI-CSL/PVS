@@ -158,11 +158,9 @@
     (dfa-exists1 (car is) (dfa-exists1* (cdr is) a))))
 
 (defun dfa-single (k i) ; P_k = {i}
-  (dfa-conjunction (dfa-singleton k)
-		   (dfa-in i k)))
-
-; (defun dfa-add (k i j) ; P_k = add(i, P_j)
-  
+  (dfa-minimize (dfa-product (dfa-singleton k)
+			     (dfa-in i k)
+			     *ANDmode*)))
 
 ;; Accessors, Recognizers
 
