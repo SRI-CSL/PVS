@@ -148,6 +148,39 @@ the formula.  With an argument, runs the proof in the background."
 	 nil 'pr (not background))
 	(setq *pvs-error* t))))
 
+(defpvs prove-next-unproved-formula prove ()
+  "Invokes the prover on the next unproved formula at or beyond the
+current cursor position.  If the formula already has a proof, you will
+be asked whether to go ahead and run it or to start anew.  Note that
+starting a new proof will not delete the old proof unless you allow the
+prover to overwrite it at the end of the proof session."
+  (interactive)
+  (confirm-not-in-checker)
+  (ilisp-bury-output)
+  (let* ((name-and-origin (pvs-formula-origin))
+	 (name (car name-and-origin))
+	 (origin (cadr name-and-origin))
+	 (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
+	 (line (+ (current-line-number) prelude-offset)))
+    (let ((*pvs-error* nil))
+      (cond ((equal origin "pvs")
+	     (save-some-pvs-buffers)
+	     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
+				    name)
+				nil 'tc 'dont-care))
+	    ((member origin '("ppe" "tccs"))
+	     (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" name)
+					nil 'tc nil)
+	       (error "%s is not typechecked" name))))
+      (unless *pvs-error*
+	(ilisp-send
+	 (format "(prove-next-unproved-formula \"%s\" %d %s \"%s\" \"%s\" %d)"
+	     name line (and current-prefix-arg t) origin (buffer-name)
+	     prelude-offset)
+	 nil 'pru t)
+	(unless *pvs-error*
+	  (switch-to-lisp t t))))))
+
 (defpvs prove-theory prove (theory)
   "Attempt to prove all the formulas of a theory.
 
@@ -164,6 +197,20 @@ all proof scripts, including those already proved."
 		  (format "\"%s\"" (current-pvs-file t))))
 	    nil 'prt))
 
+(defpvs prove-theories prove (&rest theories)
+  "Attempt to prove all formulas in each of the THEORIES
+
+With an argument (e.g., C-u or M-0) will rerun all proof scripts,
+including those already proved."
+  (interactive (complete-theory-name-list "Theory: "))
+  (if (null theories)
+      (message "No theories given")
+      (confirm-not-in-checker)
+      (save-some-pvs-buffers)
+      (pvs-send (format "(prove-pvs-theories '%s %s)"
+		    (mapcar '(lambda (x) (format "\"%s\"" x)) theories)
+		  (and current-prefix-arg t))
+		nil 'prts)))
 
 (defpvs prove-pvs-file prove (file)
   "Attempt to prove all the formulas in the specified PVS file.
@@ -195,6 +242,24 @@ proved."
 		theory (and current-prefix-arg t))
 	    nil 'pri))
 
+(defpvs prove-importchain-subtree prove (theory &rest exclude)
+  "Attempt to prove all formulas in the import chain of the theory,
+excluding those in the EXCLUDE list.
+
+Attempt to prove all unproved formulas in the theories of the transitive
+closure of the IMPORTs of the specified theory.  With an argument (e.g.,
+C-u or M-0) will rerun all proof scripts, including those already
+proved."
+  (interactive (append (complete-theory-name
+			"Prove theories in IMPORT of theory named: ")
+		       (complete-theory-name-list "Theory to exclude: ")))
+  (confirm-not-in-checker)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(prove-usingchain \"%s\" %s '%s)"
+		theory (and current-prefix-arg t)
+		(mapcar '(lambda (x) (format "\"%s\"" x)) exclude))
+	    nil 'pri))
+
 
 (defpvs prove-proofchain prove ()
   "Attempt to prove all formulas in the proof chain of the formula.
@@ -215,6 +280,104 @@ proof scripts, including those already proved."
 		  origin (and current-prefix-arg t))
 	      nil (pvs-get-abbreviation 'prove-proofchain))))
 
+(defpvs prove-theory-using-default-dp prove (theory)
+  "Attempt to prove all the formulas of a theory, using the current default
+decision procedures (see new-decision-procedures, old-decision-procedures).
+
+Attempts all unproved formulas in the specified theory which have an
+associated proof script.  With an argument (e.g., C-u or M-0) will rerun
+all proof scripts, including those already proved."
+  (interactive (complete-theory-name "Prove theory named: "))
+  (confirm-not-in-checker)
+  (save-some-pvs-buffers)
+  ;;; (ilisp-bury-output)
+  (pvs-send (format "(prove-theory \"%s\" %s %s t)"
+		theory (and current-prefix-arg t)
+		(when (equal theory (current-theory))
+		  (format "\"%s\"" (current-pvs-file t))))
+	    nil 'prt))
+
+(defpvs prove-theories-using-default-dp prove (&rest theories)
+  "Attempt to prove all formulas in each of the THEORIES
+
+With an argument (e.g., C-u or M-0) will rerun all proof scripts,
+including those already proved."
+  (interactive (complete-theory-name-list "Theory: "))
+  (if (null theories)
+      (message "No theories given")
+      (confirm-not-in-checker)
+      (save-some-pvs-buffers)
+      (pvs-send (format "(prove-pvs-theories '%s %s t)"
+		    (mapcar '(lambda (x) (format "\"%s\"" x)) theories)
+		  (and current-prefix-arg t))
+		nil 'prts)))
+
+(defpvs prove-pvs-file-using-default-dp prove (file)
+  "Attempt to prove all the formulas in the specified PVS file.
+
+Attempts all unproved formulas in the specified PVS file which have an
+associated proof script.  With an argument (e.g., C-u or M-0) will rerun
+all proof scripts, including those already proved."
+  (interactive (complete-pvs-file-name "Prove PVS file named: "))
+  (confirm-not-in-checker)
+  (ilisp-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(prove-pvs-file \"%s\" %s t)"
+		file (and current-prefix-arg t))
+	    nil 'prf))
+
+
+(defpvs prove-importchain-using-default-dp prove (theory)
+  "Attempt to prove all formulas in the import chain of the theory.
+
+Attempt to prove all unproved formulas in the theories of the transitive
+closure of the IMPORTs of the specified theory.  With an argument (e.g.,
+C-u or M-0) will rerun all proof scripts, including those already
+proved."
+  (interactive (complete-theory-name
+		"Prove theories in IMPORT of theory named: "))
+  (confirm-not-in-checker)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(prove-usingchain \"%s\" %s nil t)"
+		theory (and current-prefix-arg t))
+	    nil 'pri))
+
+(defpvs prove-importchain-subtree-using-default-dp prove (theory &rest exclude)
+  "Attempt to prove all formulas in the import chain of the theory,
+excluding those in the EXCLUDE list.
+
+Attempt to prove all unproved formulas in the theories of the transitive
+closure of the IMPORTs of the specified theory.  With an argument (e.g.,
+C-u or M-0) will rerun all proof scripts, including those already
+proved."
+  (interactive (append (complete-theory-name
+			"Prove theories in IMPORT of theory named: ")
+		       (complete-theory-name-list "Theory to exclude: ")))
+  (confirm-not-in-checker)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(prove-usingchain \"%s\" %s '%s t)"
+		theory (and current-prefix-arg t)
+		(mapcar '(lambda (x) (format "\"%s\"" x)) exclude))
+	    nil 'pri))
+
+(defpvs prove-proofchain-using-default-dp prove ()
+  "Attempt to prove all formulas in the proof chain of the formula.
+
+Attempt to prove all unproved formulas in the proof chain of the
+specified formula.  With an argument (e.g., C-u or M-0) will rerun all
+proof scripts, including those already proved."
+  (interactive)
+  (confirm-not-in-checker)
+  (ilisp-bury-output)
+  (let* ((name-and-origin (pvs-formula-origin))
+	 (name (car name-and-origin))
+	 (origin (cadr name-and-origin)))
+    (pvs-send (format "(prove-proofchain \"%s\" %d '%s %s t)"
+		  name (+ (current-line-number)
+			  (if (equal origin "prelude")
+			      (or pvs-prelude 0) 0))
+		  origin (and current-prefix-arg t))
+	      nil (pvs-get-abbreviation 'prove-proofchain))))
 
 ;;; pvs-formula-origin returns a list containing a name and the kind of
 ;;; buffer involved.  The name is the buffer file name (without the
@@ -976,6 +1139,26 @@ length."
     (pvs-send (format "(setq *prover-print-length* %s)"
 		  (when (plusp len) len)))))
 
+(defpvs set-print-lines edit-proof (lines)
+  "Set the print lines for formulas displayed in a sequent
+
+The set-print-lines command sets the number of lines to display for formulas
+in a sequent.  LINES should be a whole number.  If it is a positive number,
+then any lines after that number will be replaced by two periods (..).
+If it is 0 (zero), then the whole formula is printed."
+  (interactive "sEnter a number (default: 0 = print everything): ")
+  (let ((dep (cond ((natnump lines)
+		    lines)
+		   ((and (stringp lines)
+			 (string-match "^[ \t]*$" lines))
+		    nil)
+		   ((and (stringp lines)
+			 (string-match "^[ \t]*[0-9]+[ \t]*$" lines))
+		    (string-to-int lines))
+		   (t (error "set-print-lines: %s is not an integer" lines)))))
+    (pvs-send (format "(setq *prover-print-lines* %s)"
+		  (when (plusp dep) dep)))))
+
 (defun pvs-get-prove-input ()
   "Gets the proof input of the prove command.  This is used primarily for
 debugging."
@@ -1215,39 +1398,6 @@ a lot longer to generate.  By default, proof files are prettyprinted."
     (message "%s prettyprinting proof files"
 	     (if flag "Now" "No longer"))))
 
-(defpvs prove-importchain-subtree prove (theory &rest exclude)
-  "Attempt to prove all formulas in the import chain of the theory,
-excluding those in the EXCLUDE list.
-
-Attempt to prove all unproved formulas in the theories of the transitive
-closure of the IMPORTs of the specified theory.  With an argument (e.g.,
-C-u or M-0) will rerun all proof scripts, including those already
-proved."
-  (interactive (append (complete-theory-name
-			"Prove theories in IMPORT of theory named: ")
-		       (complete-theory-name-list "Theory to exclude: ")))
-  (confirm-not-in-checker)
-  (save-some-pvs-buffers)
-  (pvs-send (format "(prove-usingchain \"%s\" %s '%s)"
-		theory (and current-prefix-arg t)
-		(mapcar '(lambda (x) (format "\"%s\"" x)) exclude))
-	    nil 'pri))
-
-(defpvs prove-theories prove (&rest theories)
-  "Attempt to prove all formulas in each of the THEORIES
-
-With an argument (e.g., C-u or M-0) will rerun all proof scripts,
-including those already proved."
-  (interactive (complete-theory-name-list "Theory: "))
-  (if (null theories)
-      (message "No theories given")
-      (confirm-not-in-checker)
-      (save-some-pvs-buffers)
-      (pvs-send (format "(prove-pvs-theories '%s %s)"
-		    (mapcar '(lambda (x) (format "\"%s\"" x)) theories)
-		  (and current-prefix-arg t))
-		nil 'prts)))
-
 (defun complete-theory-name-list (prompt)
   (let* ((theories (pvs-collect-theories))
 	 (theory (completing-read prompt theories nil t))
@@ -1256,39 +1406,6 @@ including those already proved."
       (push theory list)
       (setq theory (completing-read prompt theories nil t)))
     (nreverse list)))
-
-(defpvs prove-next-unproved-formula prove ()
-  "Invokes the prover on the next unproved formula at or beyond the
-current cursor position.  If the formula already has a proof, you will
-be asked whether to go ahead and run it or to start anew.  Note that
-starting a new proof will not delete the old proof unless you allow the
-prover to overwrite it at the end of the proof session."
-  (interactive)
-  (confirm-not-in-checker)
-  (ilisp-bury-output)
-  (let* ((name-and-origin (pvs-formula-origin))
-	 (name (car name-and-origin))
-	 (origin (cadr name-and-origin))
-	 (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
-	 (line (+ (current-line-number) prelude-offset)))
-    (let ((*pvs-error* nil))
-      (cond ((equal origin "pvs")
-	     (save-some-pvs-buffers)
-	     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
-				    name)
-				nil 'tc 'dont-care))
-	    ((member origin '("ppe" "tccs"))
-	     (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" name)
-					nil 'tc nil)
-	       (error "%s is not typechecked" name))))
-      (unless *pvs-error*
-	(ilisp-send
-	 (format "(prove-next-unproved-formula \"%s\" %d %s \"%s\" \"%s\" %d)"
-	     name line (and current-prefix-arg t) origin (buffer-name)
-	     prelude-offset)
-	 nil 'pru t)
-	(unless *pvs-error*
-	  (switch-to-lisp t t))))))
 
 (defpvs dump-sequents edit-proof (flag)
   "Determines whether to dump the unproved sequents at the end of a proof"
@@ -1533,12 +1650,12 @@ foo.prf.~6~ is added."
 			   num)))))
     (pvs-send (format "(setq *number-of-proof-backups* %s)" n))))
 
-(defun new-decision-procedures ()
+(defpvs new-decision-procedures ()
   "Sets the default to the new decision procedures"
   (interactive)
   (pvs-send-and-wait "(new-decision-procedures)"))
 
-(defun old-decision-procedures ()
+(defpvs old-decision-procedures ()
   "Sets the default to the old decision procedures"
   (interactive)
   (pvs-send-and-wait "(old-decision-procedures)"))
