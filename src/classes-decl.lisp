@@ -168,7 +168,9 @@
             relative to the current context"
 	   :restore-as nil))
 
-(defcl library-datatype (datatype library-datatype-or-theory))
+(defcl library-recursive-type (library-datatype-or-theory))
+
+(defcl library-datatype (datatype library-recursive-type))
 
 (defcl inline-datatype-with-subtypes (inline-datatype datatype-with-subtypes))
 
@@ -180,7 +182,7 @@
 
 (defcl codatatype-with-subtypes (codatatype recursive-type-with-subtypes))
 
-(defcl library-codatatype (codatatype library-datatype-or-theory))
+(defcl library-codatatype (codatatype library-recursive-type))
 
 (defcl inline-codatatype-with-subtypes (inline-codatatype codatatype-with-subtypes))
 
