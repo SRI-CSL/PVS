@@ -118,17 +118,16 @@
 				    (1+ pos) neg)))))))
 
 	       
-(defun replace-expr (lhs rhs  sequent
-			     &optional  lastopinfix?)
+(defun replace-expr (lhs rhs sequent)
   (replace-expr* lhs rhs sequent nil))
 
-(defmethod replace-expr* (lhs rhs (sequent sequent)
-			      lastopinfix?)
+(defmethod replace-expr* (lhs rhs (sequent sequent) lastopinfix?)
+  (declare (ignore lastopinfix?))
   (lcopy sequent
 	's-forms (replace-expr* lhs rhs (s-forms sequent) nil)))
 
-(defmethod replace-expr* (lhs rhs (list list)
-			      lastopinfix?)
+(defmethod replace-expr* (lhs rhs (list list) lastopinfix?)
+  (declare (ignore lastopinfix?))
   (cond ((null list) NIL)
 	(t (let ((car-expr (replace-expr* lhs rhs (car list) nil))
 		 (cdr-expr (replace-expr* lhs rhs (cdr list) nil)))
@@ -137,8 +136,8 @@
 		 list
 		 (cons car-expr cdr-expr))))))
 
-(defmethod replace-expr* (lhs rhs (s-formula s-formula)
-			      lastopinfix?)
+(defmethod replace-expr* (lhs rhs (s-formula s-formula) lastopinfix?)
+  (declare (ignore lastopinfix?))
   (lcopy s-formula
 	'formula (replace-expr* lhs rhs (formula s-formula) nil)))
 
@@ -165,93 +164,68 @@
 		(change-application-class-if-necessary expr ex))
 	      ex)))))
 
-(defmethod replace-expr* (lhs rhs (expr field-application)
-			      lastopinfix?)
-  (if (replace-eq lhs expr)
-      (parenthesize rhs lastopinfix?)
-    (lcopy expr
-	  'argument (replace-expr* lhs rhs (argument expr)
-				  nil))))
-
-(defmethod replace-expr* (lhs rhs (expr projection-application)
-			      lastopinfix?)
-  (if (replace-eq lhs expr)
-      (parenthesize rhs lastopinfix?)
-    (lcopy expr
-	  'argument (replace-expr* lhs rhs (argument expr)
-				   nil))))
-
-(defmethod replace-expr* (lhs rhs (expr record-expr)
-			      lastopinfix?)
+(defmethod replace-expr* (lhs rhs (expr field-application) lastopinfix?)
   (if (replace-eq lhs expr)
       (parenthesize rhs lastopinfix?)
       (lcopy expr
-	    'assignments
-	    (replace-expr* lhs rhs (assignments expr)
-			    lastopinfix?))))
+	'argument (replace-expr* lhs rhs (argument expr) nil))))
 
-(defmethod replace-expr* (lhs rhs (expr tuple-expr)
-			      lastopinfix?)
+(defmethod replace-expr* (lhs rhs (expr projection-application) lastopinfix?)
   (if (replace-eq lhs expr)
       (parenthesize rhs lastopinfix?)
       (lcopy expr
-	    'exprs (replace-expr* lhs rhs (exprs expr)
-				  lastopinfix?))))
+	'argument (replace-expr* lhs rhs (argument expr)
+				 nil))))
 
-(defmethod replace-expr* (lhs rhs (expr update-expr)
-			      lastopinfix?)
+(defmethod replace-expr* (lhs rhs (expr record-expr) lastopinfix?)
   (if (replace-eq lhs expr)
       (parenthesize rhs lastopinfix?)
       (lcopy expr
-	    'expression (replace-expr* lhs rhs (expression expr)
-				       lastopinfix?)
-	    'assignments (replace-expr* lhs rhs (assignments expr)
-				       lastopinfix?))))
+	'assignments
+	(replace-expr* lhs rhs (assignments expr) lastopinfix?))))
 
-(defmethod replace-expr* (lhs rhs (expr assignment)
-			      lastopinfix?)
+(defmethod replace-expr* (lhs rhs (expr tuple-expr) lastopinfix?)
+  (if (replace-eq lhs expr)
+      (parenthesize rhs lastopinfix?)
+      (lcopy expr
+	'exprs (replace-expr* lhs rhs (exprs expr) lastopinfix?))))
+
+(defmethod replace-expr* (lhs rhs (expr update-expr) lastopinfix?)
+  (if (replace-eq lhs expr)
+      (parenthesize rhs lastopinfix?)
+      (lcopy expr
+	'expression (replace-expr* lhs rhs (expression expr) lastopinfix?)
+	'assignments (replace-expr* lhs rhs (assignments expr) lastopinfix?))))
+
+(defmethod replace-expr* (lhs rhs (expr assignment) lastopinfix?)
   (lcopy expr
-	'expression 
-	(replace-expr* lhs rhs (expression expr)
-		       lastopinfix?)
-	'arguments
-	(replace-expr* lhs rhs (arguments expr)
-		       lastopinfix?)))
+    'expression (replace-expr* lhs rhs (expression expr) lastopinfix?)
+    'arguments (replace-expr* lhs rhs (arguments expr) lastopinfix?)))
 
 
-(defmethod replace-expr* (lhs rhs (expr binding-expr)
-			      lastopinfix?)
+(defmethod replace-expr* (lhs rhs (expr binding-expr) lastopinfix?)
   (if (replace-eq lhs expr)
       (parenthesize rhs lastopinfix?)
-      (let ((*bound-variables* (append (bindings expr)
-				       *bound-variables*)))
+      (let ((*bound-variables* (append (bindings expr) *bound-variables*)))
 	(lcopy expr
-	  'expression (replace-expr* lhs rhs (expression expr)
-				     nil)))))
+	  'expression (replace-expr* lhs rhs (expression expr) nil)))))
 
-(defmethod replace-expr* (lhs rhs (expr cases-expr)
-			      lastopinfix?)
+(defmethod replace-expr* (lhs rhs (expr cases-expr) lastopinfix?)
   (if (replace-eq expr lhs)
       (parenthesize rhs lastopinfix?)
       (lcopy expr
-	    'expression (replace-expr* lhs rhs (expression expr)
-				      nil)
-	    'selections (replace-expr* lhs rhs (selections expr)
-				      nil)
-	    'else-part  (replace-expr* lhs rhs (else-part expr)
-				      nil))))
+	'expression (replace-expr* lhs rhs (expression expr) nil)
+	'selections (replace-expr* lhs rhs (selections expr) nil)
+	'else-part  (replace-expr* lhs rhs (else-part expr) nil))))
 
-(defmethod replace-expr* (lhs rhs (expr selection)
-			      lastopinfix?)
-  (let ((*bound-variables*
-	 (append (args expr) *bound-variables*)))
+(defmethod replace-expr* (lhs rhs (expr selection) lastopinfix?)
+  (declare (ignore lastopinfix?))
+  (let ((*bound-variables* (append (args expr) *bound-variables*)))
     (lcopy expr
-	  'expression (replace-expr* lhs rhs (expression expr)
-				     nil))))
+      'expression (replace-expr* lhs rhs (expression expr) nil))))
 	  
 
-(defmethod replace-expr* (lhs rhs (expr branch)
-			      lastopinfix?)
+(defmethod replace-expr* (lhs rhs (expr branch) lastopinfix?)
   (if (replace-eq expr lhs)
       (parenthesize rhs lastopinfix?)
       (let ((new-condition
@@ -279,8 +253,7 @@
       (parenthesize rhs lastopinfix?)
       expr))
 
-(defmethod replace-expr* (lhs rhs (expr name-expr)
-			      lastopinfix?)
+(defmethod replace-expr* (lhs rhs (expr name-expr) lastopinfix?)
   (if (replace-eq lhs expr)
       (parenthesize rhs lastopinfix?)
       (if *replace-in-actuals?*
@@ -292,20 +265,18 @@
 
 ;;NSH(2.26.95): replace no longer goes inside actuals in response
 ;;to Paul Miner's complaint.  
-;      (lcopy expr
-;	'actuals (replace-expr* lhs rhs (actuals expr) nil)
-;	'resolutions
-;	(replace-expr* lhs rhs (resolutions expr) nil))
 
 (defmethod replace-expr* (lhs rhs (expr resolution) lastopinfix?)
+  (declare (ignore lastopinfix?))
   (lcopy expr
-    'module-instance
-    (replace-expr* lhs rhs (module-instance expr) nil)))
+    'module-instance (replace-expr* lhs rhs (module-instance expr) nil)))
 
 (defmethod replace-expr* (lhs rhs (expr modname) lastopinfix?)
+  (declare (ignore lastopinfix?))
   (lcopy expr 'actuals (replace-expr* lhs rhs (actuals expr) nil)))
 
 (defmethod replace-expr* (lhs rhs (expr actual) lastopinfix?)
+  (declare (ignore lastopinfix?))
   (if (type-value expr) expr ;;NSH(7.15.94): no replace on types.
       (let ((nexpr (replace-expr* lhs rhs (expr expr) nil)))
 	(if (eq nexpr (expr expr))
@@ -317,7 +288,6 @@
 ;  (lcopy expr 'expression
 ;	 (replace-expr* lhs rhs (expression expr) nil)))
 			     
-(defmethod replace-expr* (lhs rhs (expr expr)
-			      lastopinfix?)
-  (declare (ignore lhs rhs))
+(defmethod replace-expr* (lhs rhs (expr expr) lastopinfix?)
+  (declare (ignore lhs rhs lastopinfix?))
   expr)

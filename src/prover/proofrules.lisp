@@ -248,6 +248,7 @@
 
 
 (defun lift-if (ps sform)
+  (declare (ignore ps))
   (let* ((formula (formula sform))
 	 (conds (top-collect-conds formula))
 	 (body (if (negation? formula) (args1 formula) formula))
@@ -433,7 +434,7 @@
 
 (defmethod simplify-ifs ((expr cases-expr) trueconds falseconds)
   (let* ((expression (simplify-ifs (expression expr) trueconds falseconds))
-	 (recs (recognizers (find-supertype (type expression))))
+	 ;;(recs (recognizers (find-supertype (type expression))))
 	 (selections
 	  (loop for sel in (selections expr)
 		when (not (member (make-application
@@ -723,7 +724,7 @@
   (if (null resolutions) nil
       (let* ((resolution (car resolutions))
 	     (mod-inst (module-instance resolution))
-	     (current-mod? (eq (get-theory mod-inst) *current-theory*))
+	     ;;(current-mod? (eq (get-theory mod-inst) *current-theory*))
 	     (res-params (external-free-params resolution))
 	     (forms (reverse (create-formulas resolution context)))
 	     (form (check-with-subst* forms subalist
@@ -775,7 +776,7 @@
 				#'(lambda (x y) (format-equal x (id y))))))
 	 (let ((formal-inst
 		(tc-unify-over
-		 (loop for (x . y) in subalist
+		 (loop for (x . nil) in subalist
 		       collect
 		       (type (find x
 				   (substitutable-vars
@@ -846,7 +847,7 @@
 
 (defun lemma-step (name substs ps)
   (let* ((name-expr (pc-parse name 'name))
-	 (resolutions (append ;;was nconc(nsh:10.18.94)
+	 (resolutions (append
 		       (resolve name-expr 'formula nil)
 		       (resolve name-expr 'expr nil)))
 	 (resolutions
@@ -855,21 +856,18 @@
 		 nil)
 		(t resolutions)))
 	 (pre-alist (make-alist substs))
-	 (badnames (loop for (x . y) in pre-alist
+	 (badnames (loop for (x . nil) in pre-alist
 			 when (not (typep (pc-parse x 'expr) 'name-expr))
 			 collect x))
 	 (subalist (loop for (x . y) in pre-alist
 			 collect (cons x (internal-pc-typecheck
-					  (pc-parse y  'expr)
+					  (pc-parse y 'expr)
 					  :context
 					  *current-context*
 					  :uniquely? NIL))))
-	                 ;;tccs ALL is checked in tc-alist below.
-	 ;;(dependent-decls nil)
+	 ;;tccs ALL is checked in tc-alist below.
 	 )
-    (cond (;; SO - 4/14/93: Added this case to protect against bad
-	   ;; substitution arguments (like numbers)
-	   (not (listp substs))
+    (cond ((not (listp substs))
 	   (error-format-if
 	    "~%The form of a substitution is: (<var1> <term1>...<varn> <termn>).")
 	   (values 'X nil))
@@ -916,7 +914,7 @@ The following are not possible variables: ~{~a,~}" badnames)
 			      :tccs 'ALL)
 			    (tc-alist newalist);;does tccs all.
 			    )
-	       (let ((subfreevars (loop for (x . y) in newalist
+	       (let ((subfreevars (loop for (nil . y) in newalist
 					append (freevars y)))) ;;was nconc
 		 (cond ((null resolutions)
 		      (error-format-if "~%Couldn't find a definition or lemma named ~a" name)
@@ -940,7 +938,7 @@ or supply more substitutions."
 			       subvars :test #'same-id))
 			     (bindalist newalist)
 ;;			      (make-bindalist subvars subalist ps)
-			     (intermediate-body (forall-body* form))
+			     ;;(intermediate-body (forall-body* form))
 			     (intermediate-form (if (forall? form)
 						    (if  (null remaining-vars)
 							 (expression form)
@@ -1060,6 +1058,7 @@ or supply more substitutions."
 	(values signal (list subgoal))))))
 
 (defun iff-sform (sform ps)
+  (declare (ignore ps))
   (let ((fmla (formula sform)))
     (cond ((and (negation? fmla)
 	       (equation? (args1 fmla))
@@ -1157,7 +1156,6 @@ or supply more substitutions."
 (defun generate-variable (id type context)
   (let ((var (pc-parse id 'expr)))
     (setf (type var) type
-	  (kind var) 'variable
 	  (resolutions var) 
 	  (list
 	   (make-resolution (mk-bind-decl id type type)
@@ -1410,6 +1408,7 @@ which should be fully instantiated. Please supply actual parameters.")
       (extensionality-step (supertype texpr) (supertype texpr) ps)))
 
 (defmethod extensionality-step ((texpr type-expr) given ps)
+  (declare (ignore ps))
   (error-format-if "~%Could not find extensionality axiom for ~a." given)
     (values 'X nil nil))
 
@@ -1426,16 +1425,6 @@ which should be fully instantiated. Please supply actual parameters.")
   #'(lambda (ps)
       (add-name-step name expr ps)))
 
-(defun get-prelude-decls (ref)
-  (let ((decls nil))
-    (maphash #'(lambda (mid mod)
-		 (declare (ignore mid))
-		 (when (module? mod)
-		   (setq decls (append (gethash (ref-to-id ref)
-						(declarations mod))
-				       decls))))
-	     *prelude*)
-    decls))
 
 ;; Changed to create a skolem-const-decl instead of a const-decl -- crw
 ;; (the name skolem-const-decl should be changed, but I didn't want

@@ -15,24 +15,19 @@
 (defmacro addrule (name required-args optional-args body docstring
 			&optional format-string)
   `(let* ((entry (gethash ,name *rulebase*))
-	  (form (cons ,name (append (quote ,required-args);;NSH(11.9.94)
-				    (if (consp (quote ,optional-args))
-					(if (eq (car (quote ,optional-args))
-						'&rest)
-					    (quote ,optional-args)
-					    (cons '&optional
-						  (quote ,optional-args)))
-					nil))))
-	  (docstr (format nil "~s: ~%    ~a" form
-			  ,docstring))
-	  )
+	  (form '(,name (append ',required-args
+				(when (consp ',optional-args)
+				  (if (eq (car ',optional-args) '&rest)
+				      ',optional-args
+				      '(&optional ',optional-args))))))
+	  (docstr (format nil "~s: ~%    ~a" form ,docstring)))
      (cond ((null entry)
 	    (add-symbol-entry ,name
 			      (make-instance 'rule-entry
 				'name ,name
-				'required-args (quote ,required-args)
-				'optional-args (quote ,optional-args)
-				'rule-function 
+				'required-args ',required-args
+				'optional-args ',optional-args
+				'rule-function
 				,(macroexpand
 				  `(make-lambda-macro ,required-args
 						      ,optional-args
@@ -42,27 +37,25 @@
 			      *rulebase*)
 	    (push ,name *rulenames*)
 	    (push (cons ,name (make-prover-keywords
-			       (append (quote ,required-args)
-				       (quote ,optional-args))))
-			*prover-keywords*)
+			       (append ',required-args ',optional-args)))
+		  *prover-keywords*)
 	    #+lucid (record-source-file ,name 'strategy)
 	    (format t "~%Added rule ~a.~%" ,name))
 	   (t
-	    (setf (required-args entry) (quote ,required-args)
-		  (optional-args entry) (quote ,optional-args)
+	    (setf (required-args entry) ',required-args
+		  (optional-args entry) ',optional-args
 		  (docstring entry) docstr
 		  (format-string entry) ,format-string
 		  (rule-function  entry)
-		  ,(macroexpand `(make-lambda-macro ,required-args ,optional-args
+		  ,(macroexpand `(make-lambda-macro ,required-args
+						    ,optional-args
 						    ,body)))
 	    (let ((old (assoc ,name *prover-keywords*)))
 	      (if old
 		  (setf (cdr old) (make-prover-keywords
-			       (append (quote ,required-args)
-				       (quote ,optional-args))))
+			       (append ',required-args ',optional-args)))
 		  (push (cons ,name (make-prover-keywords
-			       (append (quote ,required-args)
-				       (quote ,optional-args))))
+			       (append ',required-args ',optional-args)))
 			*prover-keywords*)))
 	    #+lucid (record-source-file ,name 'strategy)
 	    (format t "~%Changed rule ~a" ,name)))))
