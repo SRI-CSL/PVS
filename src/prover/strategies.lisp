@@ -3159,8 +3159,7 @@ invokes apply-extensionality.  Otherwise it decomposes the
    (let* ((id (make-new-variable '|x| (list te lhs rhs)))
 	  (dom (domain te))
 	  (bd (typecheck* (mk-bind-decl id dom dom) nil nil nil))
-	  (nvar (mk-name-expr id nil nil (make-resolution bd nil dom)
-			      'variable)))
+	  (nvar (mk-name-expr id nil nil (make-resolution bd nil dom))))
      (make!-forall-expr
       (list bd)
       (make-equality (make-application lhs nvar)
