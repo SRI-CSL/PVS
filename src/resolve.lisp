@@ -825,15 +825,16 @@
   (declare (ignore mod))
   (cond ((null args) (list modinst))
 	((memq decl *bound-variables*)
-	 (let ((stype (find-supertype (type decl))))
+	 (let* ((stype (find-supertype (type decl)))
+		(dtypes (when (funtype? stype)
+			  (domain-types stype))))
 	   (and (funtype? stype)
-		(or (length= (domain-types stype) args)
+		(or (length= dtypes args)
 		    (and (singleton? args)
 			 (some #'(lambda (ty)
 				   (let ((sty (find-supertype ty)))
 				     (and (tupletype? sty)
-					  (length= (types sty)
-						   (domain-types stype)))))
+					  (length= (types sty) dtypes))))
 			       (ptypes (car args)))))
 		(when (compatible-args?
 		       decl
@@ -844,11 +845,11 @@
 				     (if (actuals modinst)
 					 (subst-mod-params dt modinst)
 					 dt)))
-			       (domain-types stype)))
+			       dtypes))
 		  (list modinst)))))
 	(t
 	 (if (uninstantiated-theory? modinst)
-	     (compatible-uninstantiated? decl (copy modinst) args)
+	     (compatible-uninstantiated? decl (copy modinst) dtypes args)
 	     (list modinst)))))
 
 (defmethod compatible-arguments? ((decl type-decl) modinst args mod)
@@ -867,7 +868,12 @@
 			      *resolve-error-info*)
 			nil))
 	     (if (uninstantiated? modinst mod decl)
-		 (compatible-uninstantiated? decl modinst args)
+		 (compatible-uninstantiated?
+		  decl
+		  modinst
+		  (mapcar #'(lambda (fd) (find-supertype (type fd)))
+		    (car (formals decl)))
+		  args)
 		 (when (compatible-args?
 			decl args
 			(mapcar #'(lambda (fa)
@@ -1180,39 +1186,25 @@
 
 (defun argument-conversion (name arguments)
   (when arguments
-    (let ((*found-one* nil)
-	  (reses (remove-if-not #'(lambda (r)
+    (let ((reses (remove-if-not #'(lambda (r)
 				    (typep (find-supertype (type r)) 'funtype))
 		   (resolve name 'expr nil))))
-      (declare (special *found-one*))
       (when (argument-conversions (mapcar #'type reses) arguments)
 	(let ((nreses (resolve name 'expr arguments)))
 	  (when nreses
 	    (setf (resolutions name) nreses)))))))
 
-(defun argument-conversions (optypes arguments)
-  (declare (special *found-one*))
+(defun argument-conversions (optypes arguments &optional found-one)
   (if optypes
       (let* ((rtype (find-supertype (car optypes)))
 	     (dtypes (when (typep rtype 'funtype)
 		       (domain-types rtype)))
-	     (dtypes-list (all-possible-instantiations dtypes arguments))
 	     (conversions (when (length= arguments dtypes)
-			    (argument-conversions* arguments dtypes-list))))
-	(argument-conversions (cdr optypes) arguments))
-      *found-one*))
-
-(defun argument-conversions* (arguments dtypes-list &optional aconversions)
-  (declare (special *found-one*))
-  (if (null dtypes-list)
-      aconversions
-      (let ((conversions (argument-conversions1 arguments (car dtypes-list)))
-	    (found-one nil))
+			    (argument-conversions* arguments dtypes))))
 	(when conversions
 	  (mapc #'(lambda (arg convs)
 		    (when convs
-		      (setq found-one t)
-		      (setq *found-one* t)
+		      (setf found-one t)
 		      (setf (types arg)
 			    (remove-duplicates
 				(append (types arg)
@@ -1222,12 +1214,10 @@
 					  convs))
 			      :test #'tc-eq))))
 		arguments conversions))
-	(argument-conversions* arguments (cdr dtypes-list)
-			       (if found-one
-				   (cons conversions aconversions)
-				   aconversions)))))
-			       
-(defun argument-conversions1 (arguments dtypes &optional result)
+	(argument-conversions (cdr optypes) arguments found-one))
+      found-one))
+
+(defun argument-conversions* (arguments dtypes &optional result)
   (if (null arguments)
       (unless (every #'null result)
 	(nreverse result))
@@ -1239,7 +1229,7 @@
 						(car dtypes)))))
 				  atypes)
 		      (argument-conversions** atypes (car dtypes)))))
-	(argument-conversions1 (cdr arguments) (cdr dtypes)
+	(argument-conversions* (cdr arguments) (cdr dtypes)
 			       (cons convs result)))))
 
 (defun argument-conversions** (atypes etype &optional result)
@@ -1248,57 +1238,6 @@
       (let ((conv (find-conversions-for (car atypes) etype)))
 	(argument-conversions** (cdr atypes) etype
 				(append conv result)))))
-
-(defun all-possible-instantiations (dtypes arguments)
-  (if (free-params dtypes)
-      (let* ((bindings (instantiate-operator-bindings (free-params dtypes)))
-	     (bindings-list (all-possible-bindings dtypes arguments bindings)))
-	(or (all-possible-instantiations* dtypes bindings-list)
-	    (list dtypes)))
-      (list dtypes)))
-
-(defun all-possible-instantiations* (dtypes bindings-list &optional result)
-  (cond ((null bindings-list)
-	 (nreverse result))
-	(t (assert (every #'cdr (car bindings-list)))
-	   (let ((dtypes-inst (instantiate-operator-from-bindings
-			       dtypes (car bindings-list))))
-	     (all-possible-instantiations* dtypes (cdr bindings-list)
-					   (cons dtypes-inst result))))))
-      
-
-(defun all-possible-bindings (dtypes arguments bindings)
-  (cond ((every #'cdr bindings)
-	 (list bindings))
-	((null dtypes)
-	 nil)
-	(t (let ((abindings (all-possible-bindings*
-			     (car dtypes) (types (car arguments)) bindings)))
-	     (delete-duplicates
-	      (mapcan #'(lambda (bnd)
-			  (all-possible-bindings
-			   (cdr dtypes) arguments bnd))
-		(if (member bindings abindings :test #'equal)
-		    abindings
-		    (nconc abindings (list bindings))))
-	      :test #'equal)))))
-
-(defun all-possible-bindings* (dtype atypes bindings)
-  (if (free-params dtype)
-      (possible-bindings dtype atypes bindings)
-      (list bindings)))
-
-(defun possible-bindings (dtype atypes bindings &optional bindings-list)
-  (if (null atypes)
-      (nreverse bindings-list)
-      (let* ((nbindings (tc-match (car atypes) dtype (copy-tree bindings))))
-	(possible-bindings dtype (cdr atypes) bindings
-			   (if (and nbindings
-				    (not (member nbindings bindings-list
-						 :test #'equal)))
-			       (cons nbindings bindings-list)
-			       bindings-list)))))
-	
 
 ;;; This is called by typecheck* (name) when the resolution is nil.  If there
 ;;; are arguments, it first checks whether there is a conversion available that
