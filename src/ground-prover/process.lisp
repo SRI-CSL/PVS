@@ -240,7 +240,7 @@
 	      (addneq2pot (solve `(greaterp ,term1 ,term2))))
 	      ;;was (setq s (append (solve `(greaterp ,term1 ,term2)) s)))
 	     ((equal t2>t1 'true)
-	      (addneq2pot (solve `(greaterp ,term1 ,term2))))
+	      (addneq2pot (solve `(greaterp ,term1 ,term2))))))
 ;;was 	      (setq s (append (solve `(greaterp ,term2 ,term1)) s)))))
      (setq fnsym (cons term1 term2))
      (adduse (list fnsym term1) term1)
