@@ -251,11 +251,11 @@
 ;      (id-occurs-in id (type-value ex))))
 
 (defmethod id-occurs-in (id (ex projection-application))
-  (or (eq id (id ex))
+  (or (string= id (id ex))
       (id-occurs-in id (argument ex))))
 
 (defmethod id-occurs-in (id (ex field-application))
-  (or (eq id (id ex))
+  (or (string= id (id ex))
       (id-occurs-in id (argument ex))))
 
 (defmethod id-occurs-in (id (ex application))
@@ -285,7 +285,7 @@
       (id-occurs-in id (expression ass))))
 
 (defmethod id-occurs-in (id (nm name))
-  (or (eq id (id nm))
+  (or (string= id (id nm))
       (id-occurs-in id (actuals nm))))
 
 (defmethod id-occurs-in (id (act actual))
@@ -294,5 +294,5 @@
       (id-occurs-in id (expr act))))
 
 (defmethod id-occurs-in (id (bd bind-decl))
-  (or (eq id (id bd))
+  (or (string= id (id bd))
       (id-occurs-in id (declared-type bd))))
