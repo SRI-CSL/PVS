@@ -32,13 +32,32 @@
 (def-pvs-term rational_pred "rational_pred" "rationals")
 (def-pvs-term real_pred "real_pred" "reals")
 
-(def-pvs-term number-cross-number "[number, number]" "reals" :nt type-expr)
-
 (def-pvs-term upfrom-subtype "upfrom" "int_types" :nt type-expr)
 (def-pvs-term below-subtype "below" "nat_types" :nt type-expr)
 (def-pvs-term upto-subtype "upto" "nat_types" :nt type-expr)
 (def-pvs-term subrange-subtype "subrange" "subrange_type" :nt type-expr)
 (def-pvs-term above-subtype "above" "int_types" :nt type-expr)
+
+(def-pvs-term add-operator "add" "strings" :expected "[nat, set[nat] -> set[nat]]")
+(def-pvs-term remove-operator "remove" "strings" :expected "[nat, set[nat] -> set[nat]]")
+(def-pvs-term singleton-operator "singleton" "strings" :expected "[nat -> set[nat]]")
+(def-pvs-term union-operator "union" "strings" :expected "[set[nat], set[nat] -> set[nat]]")
+(def-pvs-term intersection-operator "intersection" "strings" :expected "[set[nat], set[nat] -> set[nat]]")
+(def-pvs-term set-difference-operator "difference" "strings" :expected "[set[nat], set[nat] -> set[nat]]")
+(def-pvs-term emptyset-operator "emptyset" "strings" :expected "set[nat]")
+(def-pvs-term fullset-operator "fullset" "strings" :expected "set[nat]")
+
+
+(def-pvs-term fset-of-nats "finite_set[nat]" "strings" :nt type-expr)
+
+(def-pvs-term empty-fset-of-nats "emptyset[nat]" "strings" :expected "finite_set[nat]")
+
+(def-pvs-term add-to-fset "add[nat]" "strings" :expected "[nat, finite_set[nat] -> finite_set[nat]]")
+
+(def-pvs-term minus1 "-" "naturalnumbers" :expected "[nat, nat -> nat]")
+(def-pvs-term plus1  "+" "naturalnumbers" :expected "[nat, nat -> nat]")
+
+(def-pvs-term number-cross-number "[number, number]" "reals" :nt type-expr)
 
 
 (let ((*one-constant* nil))
@@ -1828,3 +1847,23 @@
     'operator (unary-minus-operator)
     'argument ex
     'type (type ex)))
+
+(defun make!-less (ex1 ex2)
+  (assert (type ex1))
+  (assert (type ex2))
+  (assert (tc-eq (find-supertype (type ex1)) *number*))
+  (assert (tc-eq (find-supertype (type ex2)) *number*))
+  (make-instance 'infix-application
+    'operator (less-operator)
+    'argument (make!-arg-tuple-expr ex1 ex2)
+    'type *real*))
+
+(defun make!-lesseq (ex1 ex2)
+  (assert (type ex1))
+  (assert (type ex2))
+  (assert (tc-eq (find-supertype (type ex1)) *number*))
+  (assert (tc-eq (find-supertype (type ex2)) *number*))
+  (make-instance 'infix-application
+    'operator (lesseq-operator)
+    'argument (make!-arg-tuple-expr ex1 ex2)
+    'type *real*))
