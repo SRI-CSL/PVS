@@ -1682,15 +1682,15 @@ Letters do not insert themselves; instead, they are commands:
 		      "" 'pr t)))))
 
 (defpvs set-proof-backup-number prove (num)
-  "Set the proof backup number; should probably be put in the ~.pvsemacs file.
+  "Set the PVS proof backup number.
 
 The set-proof-backup-number command indicates the number of backups to
-keep for proof files.  If num is 0, then no backups are kept.  If it is 1,
-then a single backups is kept (e.g., foo.prf~).  If it a larger number,
-then that number of backup files will be kept.  For example, if it is 3,
-the backup files might be e.g., foo.prf.~3~, foo.prf.~4~, and foo.prf.~5~.
-When the next backup is created, the foo.prf.~3~ is removed and
-foo.prf.~6~ is added."
+keep for proof files.  This should probably be put in the ~.pvsemacs file.
+If NUM is 0, then no backups are kept.  If NUM is 1, then a single backups
+is kept (e.g., foo.prf~).  If NUM is a larger number, then that number of
+backup files will be kept.  For example, if it is 3, the backup files
+might be foo.prf.~3~, foo.prf.~4~, and foo.prf.~5~.  When the next backup
+is created, foo.prf.~3~ is removed and foo.prf.~6~ is added."
   (interactive "sEnter a number (default: 1): ")
   (let ((n (cond ((natnump num)
 		  num)
@@ -1703,6 +1703,14 @@ foo.prf.~6~ is added."
 		 (t (error "set-proof-backup-number: %s is not an integer"
 			   num)))))
     (pvs-send (format "(setq *number-of-proof-backups* %s)" n))))
+
+(defpvs show-proof-backup-number prove ()
+  "Show the PVS proof backup number.
+
+See \\[set-proof-backup-number] for details."
+  (interactive)
+  (message (format "The proof backup number is %s"
+	       (pvs-send-and-wait "*number-of-proof-backups*"))))
 
 (defpvs new-decision-procedures prove ()
   "Sets the default to the new decision procedures"

@@ -101,21 +101,22 @@ set-print-length            Set the print length for formulas of sequents
 set-print-lines		    Set the number of lines to print for seq. formulas
 set-rewrite-depth           Set the print depth for displaying rewrites
 set-rewrite-length          Set the print length for displaying rewrites
-set-proof-backup-number     Set the number of backups to keep for proof files
 dump-sequents		    Indicate that unproved sequents go to a file
 toggle-proof-prettyprinting Toggles whether to prettyprint proof files
 
 -----------------------Proof Information Commands-----------------------------
 
 show-current-proof          Display the proof in progress
-explain-tcc                 Explain why the TCC sequent was generated
 show-last-proof             Brief display of the most recent proof
+set-proof-backup-number     Set the number of backups to keep for proof files
+show-proof-backup-number    Show the proof backup number
 ancestry                    Display the ancestry of the current sequent
 siblings                    Display the siblings of the current sequent
 show-hidden-formulas        Display the hidden formulas of the current sequent
 show-auto-rewrites          Display the currently used auto-rewrite rules
 show-expanded-sequent       Display the expansion of the current sequent
 show-skolem-constants       Display Skolem constants with types of sequent
+explain-tcc                 Explain why the TCC sequent was generated
 usedby-proofs               Display formulas whose proofs refer to the
                               declaration at cursor
 
