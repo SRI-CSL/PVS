@@ -18,9 +18,10 @@
   "Set by Emacs")
 
 (defparameter *pvs-directories*
-  '("" "src" "ground-prover" "src/prover" "src/decision-procedures"
+  '("" "src" "src/prover" "src/decision-procedures" "src/interface"
     "src/decision-procedures/polylib" "src/utils" "BDD" "src/interface"
-    "src/prover/groundeval" "src/WS1S/lisp"))
+    "src/WS1S/lisp" "src/abstraction" "src/fol" "src/qe" 
+    "src/ground-prover" "src/groundeval" "src/inst-by-unif" ))
 
 (defparameter *pvs-version* "2.3 Beta")
 (defparameter *binfile-version* 16)
