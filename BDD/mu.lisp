@@ -9,9 +9,6 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; 
-;; 
-;; (compile-file "/project/pvs/pvs2.3/BDD/mu.lisp")(load"/project/pvs/pvs2.3/BDD/mu.lisp")(load"/project/pvs/pvs2.3/BDD/bdd.lisp")(load"/project/pvs/pvs2.3/BDD/Linux/bdd/bdd.so")(load"/project/pvs/pvs2.3/BDD/Linux/mu/mu.so")
 
 (in-package 'pvs)  
 
