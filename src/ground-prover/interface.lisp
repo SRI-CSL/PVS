@@ -83,7 +83,8 @@
 	       (substandard arg bindings depth))))))
 
 (defun isapplylambda (exp)
-  (and (listp (arg1 exp))
+  (and (consp exp)
+       (listp (arg1 exp))
        (eq (funsym (arg1 exp)) 'lambda)
        (let ((result (is-apply-n-x-n (car exp))))
 	 (and result (eq result (arg1 (arg1 exp)))))))
