@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; abstract.lisp --
 ;; Author: Hassen Saidi
 ;; Created On      : Sat Sep 19, 1998
@@ -49,7 +49,7 @@
 (defvar *use-context?* nil)
 (defvar *bool-hash-table* nil)
 (defvar *abstraction-strategy* nil)
-
+(defvar *known-invariant* nil)
 ;;
 
 (defvar *pvs-abstract-bdd-hash* nil)
@@ -77,18 +77,21 @@
 (defvar *abstract-cession* 0)
 (defvar *assoc-bindings* nil)
 (defvar *new-abstract-field-ids* nil)
-(defvar *automatic-abstraction* nil)
 
 ;;
 
 (defstep abstract-and-mc (list-state-predicates
-			  &optional (cases-rewrite? T) exclusive?
-			  ;; means that B1, ...,Bk are exclusive .
-					 (proof-counter 10))
- (apply (try (abstract list-state-predicates :cases-rewrite? cases-rewrite?
-		       :exclusive? exclusive? :proof-counter proof-counter)
-	     (musimp)
-	     (skip)))
+			  &optional 
+			  (cases-rewrite? T) 
+			  exclusive?  ;; means that B1, ...,Bk are exclusive .
+			  with-known-invariant
+			  (proof-counter 10))
+  (apply (try (abstract list-state-predicates :cases-rewrite? cases-rewrite?
+			:exclusive? exclusive? 
+			:with-known-invariant known-invariant
+			:proof-counter proof-counter)
+	      (musimp)
+	      (skip)))
   "Proof strategy that invokes abstract the boolean abstraction 
    proof command and and then model-checks the result.
    Has the same arguments as abstract."
@@ -96,25 +99,35 @@
    and prove by model-checking!")
 
 (defstep abstract (list-state-predicates
-		   &optional (cases-rewrite? T) exclusive?
-		   ;; means that B1, ...,Bk are exclusive .
+		   &optional 
+		   (cases-rewrite? T)
+		   known-invariant
+		   exclusive?  ;; means that B1, ...,Bk are exclusive .
+		   defs	; NIL, T, !, explicit, or explicit!
+		   theories
+		   rewrites
+		   exclude
 		   (proof-counter 10)
 		   )
   (let ((cuth *current-theory*)
         (cuthstr (string (id cuth)))
-	(automatic-abstraction *automatic-abstraction*)
+        (*known-invariant* known-invariant)
         )
-        (then* 
-               (auto-rewrite-theory cuthstr :always? T)
-               (auto-rewrite-theory "ctlops" :defs T :always? T)
-               (auto-rewrite "/=")
-               (rewrite-msg-off)
-               (assert :cases-rewrite? cases-rewrite?)
-               (expand "EX")
-               (assert :cases-rewrite? cases-rewrite?)
-	       (abs-simp list-state-predicates automatic-abstraction
-			      :exclusive? exclusive? :proof-counter proof-counter)
-		 (simplify)))
+    (then*  (install-rewrites$ :defs defs :theories theories
+			       :rewrites rewrites :exclude exclude)
+	    (auto-rewrite-theory cuthstr :always? T)
+	    (auto-rewrite-theory "ctlops" :defs T :always? !!)
+	    (auto-rewrite-theory "fairctlops" :defs T :always? !!)
+	    (auto-rewrite-theory "Fairctlops" :defs T :always? !!)
+	    (auto-rewrite "/=")
+	    (auto-rewrite "K_conversion")
+	    (stop-rewrite "mucalculus.mu" "mucalculus.nu"
+			  "Reachable.Reachable")
+	    (rewrite-msg-off)
+	    (assert :cases-rewrite? cases-rewrite?)
+	    (abs-simp list-state-predicates
+		      :exclusive? exclusive? :proof-counter proof-counter)
+	    (simplify)))
   "Rewrites temporal operators into mu/nu expressions, and rewrites
    definitions just like model-check does. Then, Applies boolean abstraction.
    The parameter cases-rewrite? can be set to nil to avoid rewriting and 
@@ -129,129 +142,19 @@
    predicates."
   "Applying boolean abstraction after Rewriting and simplifying")
 
-;;
-;;
-;; Automatic generation of abstraction predicates
-;;
 
-
-
-(defstep auto-abstract ( &optional (cases-rewrite? T) 
-				   ;; means that B1, ...,Bk are exclusive .
-				   (proof-counter 10)
-				   )
-  (let ((*automatic-abstraction* t))
-    (abstract nil :cases-rewrite? cases-rewrite?
-	      :exclusive? nil :proof-counter proof-counter))
-  "Generates automatically a set of predicates and applies abstract"
-  "Applying boolean abstraction after Rewriting and simplifying")
-
-
-
-(defun auto-generate-list-predicates ()
- (let* ((sforms (s-forms (current-goal *ps*)))
-	(selected-sforms (select-seq sforms '*))
-	(remaining-sforms (delete-seq sforms '*))
-	(formula-to-abstract 
-	 (make-conjunction
-	  (mapcar #'(lambda (sf) (formula sf))
-		  selected-sforms)))
-	(list-pred (auto-generate-preds-from-fml formula-to-abstract))
-	(list-string-pred (mapcar #'(lambda (pred) (format nil "lambda (s:~a) :~a"
-		     (unparse (type (car (freevars pred))) :string t)
-		     (unparse pred :string t))) list-pred)))
-   list-string-pred))
-
-
-(defun auto-generate-preds-from-fml (formula-to-abstract)
-  (let* ((list-fml (remove-duplicates
-		   (generate-preds-from-fml formula-to-abstract)))
-	(list-pred (remove nil (mapcar #'(lambda (fml) (make-pred-from-fml fml))
-				       list-fml))))
-    list-pred))
-
-
-(defun make-pred-from-fml (fml)
-  (let* ((freevrs (freevars fml))
-         (state-var? (if (cdr freevrs) nil (car freevrs)))
-	 (subst-list (when state-var?
-		       (list (cons (declaration state-var?)
-				   (make-bind-decl (make-new-variable  '|s| (type state-var?)) (type state-var?))
-
-                                    ))))
-	 (is-good? (if state-var? (is-a-good-state? (type state-var?)) nil))
-	 (infinite? (if is-good? (find-infinite-state-comp fml)  nil)))
-    (if infinite?
-	(substit fml subst-list)
-      nil)))
-
-
-(defun find-infinite-state-comp (fml)
-  (let* ((state-comp (free-infinite-state-components fml)))
-    state-comp))
-	
-	
-	
-
-(defmethod generate-preds-from-fml ((expr expr))
-  (cond  ((disjunction? expr) 
-	  (append (generate-preds-from-fml (args1 expr))
-		  (generate-preds-from-fml (args2 expr))))
-	 ((implication? expr) 
-	  (append (generate-preds-from-fml (args1 expr))
-		  (generate-preds-from-fml (args2 expr)))) 
-	 ((conjunction? expr) 
-	  (append (generate-preds-from-fml (args1 expr))
-		  (generate-preds-from-fml (args2 expr))))  
-	 ((negation? expr) 
-	  (generate-preds-from-fml (args1 expr)))
-	 
-	 ((iff-or-boolean-equation? expr) 
-	  (append (generate-preds-from-fml (args1 expr))
-		  (generate-preds-from-fml (args2 expr))))  
-	 ((branch? expr) 
-	  (append (generate-preds-from-fml (condition expr))
-		  (append (generate-preds-from-fml (then-part expr))
-			  (generate-preds-from-fml (else-part expr)))))
-	 ((any-mu-nu-expr-application? expr) 
-                (generate-preds-from-fml  (operator expr)))
-          ((any-mu-nu-expr? expr)
-	    (generate-preds-from-fml (expression (args1 expr))))
-	  ((binding-expr? expr) (generate-preds-from-fml (expression expr)))
-	   (t (when (tc-eq (type expr) *boolean*) (list expr)))               
-	 ))
-
-
-(defun display-generated-predicates (list-predicates)
-  (pvs-message "~% The following predicates are generated from the specification ~%")
-  (pvs-message 
-   (format nil "~% ~{~a~~%~} ~%" list-predicates)))
-
-; (addrule 'abs-simp (list-state-predicates)
-; 	 ((fnums *) (exclusive? nil) (proof-counter 10))
-;        (abstract-fun list-state-predicates fnums t exclusive? proof-counter)
-; 	 "Abstraction computation with respect a list of predicates.
-;           Computation uses over and under approximation of atoms"
-; 	 "~%Computing abstraction,")
+(addrule 'abs-simp (list-state-predicates)
+	 ((fnums *) (exclusive? nil) (proof-counter 10))
+       (abstract-fun list-state-predicates fnums t exclusive? proof-counter)
+	 "Abstraction computation with respect a list of predicates.
+          Computation uses over and under approximation of atoms"
+	 "~%Computing abstraction,")
 
 (defun abstract-fun (list-state-predicates
 		     &optional fnums use-context? exclusive? proof-counter)
   #'(lambda (ps)
       (run-abstraction ps fnums list-state-predicates use-context? exclusive?
 		       proof-counter)))
-
-(addrule 'abs-simp (list-state-predicates automatic-abstraction)
-	 ((fnums *) (exclusive? nil) (proof-counter 10))
- (if automatic-abstraction
-  (let ((list-state-predicates (auto-generate-list-predicates)))
-    (display-generated-predicates list-state-predicates)
-    (if (pvs-yes-or-no-p "Abstract with these predicates? ")
-	 (abstract-fun list-state-predicates fnums t exclusive? proof-counter)
-      (skip)))
-   (abstract-fun list-state-predicates fnums t exclusive? proof-counter))
- "Abstraction computation with respect a list of predicates.
-          Computation uses over and under approximation of atoms"
-	 "~%Computing abstraction,")
 
 
 (defun run-abstraction (ps fnums list-state-predicates use-context?
@@ -276,16 +179,16 @@
 	     (mapcar #'(lambda (sf) (formula sf))
 	       selected-sforms)))
          (abstract-formula 
-	  (typecheck (compute-abstract-formula formula-to-abstract
-					       list-state-predicates))))
-   (multiple-value-prog1
+	  (retypecheck (compute-abstract-formula formula-to-abstract
+						 list-state-predicates))))
+     (bdd_quit)
      (create-subgoal-with-new-formula 
-        ps sforms remaining-sforms abstract-formula)
-     (bdd_quit))))
+        ps sforms remaining-sforms abstract-formula)))
 
 (defun check-abstract-fun-arguments (ps list-state-predicates
 					   fnums use-context? exclusive?
 					   proof-counter)
+ (let ((known-invariant *known-invariant*))
   (unless (if (consp list-state-predicates)
 	      (every #'stringp list-state-predicates)
 	      (stringp list-state-predicates))
@@ -298,7 +201,7 @@
   (unless (memq exclusive? '(nil t))
     (error-format-if "EXCLUSIVE? must be NIL or T"))
   (unless (integerp proof-counter)
-    (error-format-if "PROOF-COUNTER must be an integer")))
+    (error-format-if "PROOF-COUNTER must be an integer"))))
 
 (defun create-subgoal-with-new-formula (ps 
               sforms remaining-sforms abstract-formula)
@@ -306,8 +209,8 @@
    (if computed-fml (add-abstract-subgoals ps sforms
                   (list (conjuncts abstract-formula))  remaining-sforms)
         (progn 	
-           (format t "~%Fail to abstract to finite state:")
-           (values 'X nil nil)))))
+           (format t "~%Failed to abstract to finite state:")
+           (values 'XX nil nil)))))
 
 
 (defun add-abstract-subgoals (ps 
@@ -374,14 +277,15 @@
 	  (t (let* ((all-type-pred-state (mapcar #'type all-expr-pred-states))
 		    (all-state-types (remove-duplicates (mapcar #'domain
 							  all-type-pred-state)
-				       :test 'tc-eq))
-		    (state-type (car all-state-types)))
+				       :test 'tc-eq)))
 	       (cond ((cdr all-state-types)
 		      (error-format-if
-		       "State predicates have different domains"))
-		     ((not (is-a-good-state? state-type))
-		       (error-format-if
-		       "State type must be a record type"))
+		       "State predicates have different domains")
+		      nil)
+		     ((not (is-a-good-state? (car all-state-types)))
+		      (error-format-if
+		       "State type must be a record type")
+		      nil)
 		     (t all-expr-pred-states)))))))
        
 
@@ -422,12 +326,12 @@
 			 (incf index)
 			 (mk-field-decl sym *boolean* *boolean*)))
 	     list-state-predicates)))
-        (abstract-fields (append 
+        (new-abstract-fields (append 
              good-remaining-state-components abstract-fields ))
         (abstract-type (typecheck (make-recordtype
-				   (copy-list abstract-fields)))))
+				   (copy-list new-abstract-fields)))))
    (setq *abs-state-type* abstract-type)
-   (setq *new-abstract-field-ids* (reverse (mapcar #'id abstract-fields)))
+   (setq *new-abstract-field-ids* (mapcar #'id abstract-fields))
    (print-abstract-state-type list-state-predicates)))
 
 
@@ -820,15 +724,15 @@
 (defun make-abstract-pred-state-var (concrete-var)
   (let* ((abstract-name-var (makesym "abs_~a"
 				     (id concrete-var) ))
-	 (new-var (mk-name-expr abstract-name-var)))
-    new-var
-    ))
+        (new-var (mk-name-expr abstract-name-var)))
+ new-var
+   ))
    
 (defun make-abstract-pred-state-bindings-var (concrete-bind-var)
-  (let* ((abstract-name-var (makesym  "abs_~a"
-				      (id concrete-bind-var)))
-	 (type-abstract-var (mk-predtype *abs-state-type*))
-	 (new-abs-var-decl (make-bind-decl abstract-name-var type-abstract-var)))
+   (let* ((abstract-name-var (makesym  "abs_~a"
+				       (id concrete-bind-var)))
+        (type-abstract-var (mk-predtype *abs-state-type*))
+        (new-abs-var-decl (make-bind-decl abstract-name-var type-abstract-var)))
     new-abs-var-decl)) 
 
 
@@ -844,8 +748,9 @@
  (let* ((free-vars (freevars expr))
         (free-state-vars (remove nil (mapcar #'(lambda (x) (if 
                             (compatible-type (type x) *state-type*) x nil)) free-vars)))
-        (*state-var-1* (let ((elem (updated-state-var expr)))
-                         (if elem elem (car free-state-vars))))
+       ;; (*state-var-1* (let ((elem (updated-state-var expr)))
+       ;;                  (if elem elem (car free-state-vars))))
+	(*state-var-1* (car (reverse free-state-vars)))
         (*state-var-2* (car (set-difference free-state-vars 
                    (list *state-var-1*) :test 'same-declaration )))
         (*abs-state-var-1* (if *state-var-1* 
@@ -1069,7 +974,8 @@
                             (null *dep-list-primed-indices*)))
         (primed? (depends-on-only-primed? predicate))
         (unprimed? (depends-on-only-unprimed? predicate))
-        (unchanged-expr (if (or primed? unprimed?) *true* 
+        (unchanged-expr (if (or primed? unprimed?)
+                                 *true* 
            (create-unchanged-expr *list-not-affected* predicate)))
         (decomposed-conj (conjuncts (normalize-equality-expr predicate)))
         (not-affec-assign (remove nil (mapcar #'(lambda (one-c) (let ((dep-i
@@ -1709,62 +1615,6 @@
                        ))
           (t nil)
        ))))
-
-
-(defun free-infinite-state-components (expr)
-  (let ((free-comp (get-infinite-free-state-components expr)))
-    free-comp))
-
-(defun get-infinite-free-state-components (expr) 
-  (if (consp expr)
-      (loop for x in expr
-	    append (let ((result (get-infinite-free-state-components x)))
-		     (if (listp result)
-			 result
-		       (list result))))
-    (let* ((*lift-if-updates* T)
-	   (expr (if (expr? expr) ;; boolean? can not be used with assignment..
-		     (if (and (boolean? expr)
-			      (equation? expr))
-			 (lift-if-expr expr)
-		       expr) expr )))
-      (cond ((disjunction? expr) (append 
-				  (get-infinite-free-state-components (args1 expr))
-				  (get-infinite-free-state-components (args2 expr))))
-	    ((conjunction? expr) (append 
-				  (get-infinite-free-state-components (args1 expr))
-				  (get-infinite-free-state-components (args2 expr))))
-	    ((iff-or-boolean-equation? expr)  (append 
-					       (get-infinite-free-state-components (args1 expr))
-					       (get-infinite-free-state-components (args2 expr))))
-	    ((implication? expr)  (append 
-				   (get-infinite-free-state-components (args1 expr))
-				   (get-infinite-free-state-components (args2 expr))))
-	    ((negation? expr)  (get-infinite-free-state-components (args1 expr)))
-	    ((branch? expr)  nil)
-	    ((disequation? expr)  (append 
-				   (get-infinite-free-state-components (args1 expr))
-				   (get-infinite-free-state-components (args2 expr))))
-	    ((equation? expr)    (append 
-				  (get-infinite-free-state-components (args1 expr))
-				  (get-infinite-free-state-components (args2 expr))))
-	    ((forall-expr? expr) (get-infinite-free-state-components (expression expr)))
-	    ((exists-expr? expr) (get-infinite-free-state-components (expression expr)))
-	    ((lambda-expr? expr) (get-infinite-free-state-components (expression expr)))
-	    ((application? expr) (append 
-				  (get-infinite-free-state-components (operator expr))
-				  (get-infinite-free-state-components (arguments expr))))
-	    ((field-application? expr)
-	     (if (not (mu-translateable? (find-supertype  (type expr))))
-	     (list expr) nil)) ;; basic case
-	    ((update-expr?  expr)  (append 
-				    (get-infinite-free-state-components (expression expr))
-				    (get-infinite-free-state-components (assignments  expr))))
-	    ((or (assignment? expr) (uni-assignment? expr))
-	     nil
-	     )
-	    (t nil)
-	    ))))
   
 (defun updated-state-var (expr)
  (let ((state-var (get-updated-state-var expr)))
@@ -1841,7 +1691,19 @@
  (make-negation expr))
 
 
+(defun create-unchanged (fml)
+   (let ((found-one nil))
+  (mapobject #'(lambda (ex)
+     (or (and (field-application? ex)
+	   (member (argument ex) (list *state-var-1* *state-var-2*) :test 'tc-eq))
+	 (when (and (name-expr? ex) (member ex (list *state-var-1* *state-var-2*) :test 'tc-eq))
+	    (setq found-one t)))) fml)
+  found-one))
+
+   
 (defun create-unchanged-expr (list-indices fml)
+     (if (not (create-unchanged fml))
+         *true*
   (let* ((abs-state-var-1 (unparse *abs-state-var-1* :string t))
 	 (abs-state-var-2 (unparse *abs-state-var-2* :string t))
 	 (remaning-comp (intersection 
@@ -1872,7 +1734,7 @@
 					    *new-abstract-field-ids*)
 				       abs-state-var-2) 'expr))))
 	    list-indices)))
-    (mk-conjunction (append unchange-comp unchanged-bool-vars))))
+    (mk-conjunction (append unchange-comp unchanged-bool-vars)))))
         
 
 (defun normalize-decompose-equality (expr)
@@ -1922,3 +1784,6 @@
 (defun do_bdd_and_list (list-bdd acc_bdd)
  (if (null list-bdd) acc_bdd
    (do_bdd_and_list (cdr list-bdd) (bdd_and (car list-bdd) acc_bdd))))
+
+(defun retypecheck (expr)
+  (typecheck (pc-parse (unparse expr :string t) 'expr)))
