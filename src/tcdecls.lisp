@@ -41,7 +41,8 @@
 
 (defun typecheck-decl (decl)
   (if (and (typechecked? decl)
-	   (not (typep decl '(or mod-decl conversion-decl judgement))))
+	   (not (typep decl '(or theory-abbreviation-decl
+			         mod-decl conversion-decl judgement))))
       (mapc #'(lambda (d) (add-decl d nil))
 	    (generated decl))
       (unwind-protect
@@ -158,10 +159,14 @@
   ;; If we have an existing formal-theory-decl or mod-decl of the same
   ;; theory, and it has uninterpreted types, constants, or theories, then
   ;; we must create a separate copy.
-  (when (get-theory (id decl))
-    (type-error decl
-      "Identifier ~a is already in use as a theory" (id decl)))
+  (let ((th (get-theory (id decl))))
+    (when (and th (gethash th (current-using-hash)))
+      (type-error decl
+	"Identifier ~a is already in use as a theory" (id decl))))
   (typecheck-named-theory decl)
+  (unless (fully-instantiated? (theory-name decl))
+    (type-error (theory-name decl)
+      "Actual parameters must be provided for theory declarations"))
   (put-decl decl (current-declarations-hash))
   (setf (saved-context decl) (copy-context *current-context*))
   decl)
@@ -254,13 +259,28 @@
 
 (defmethod typecheck* ((decl mod-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
+  (let ((th (get-theory (id decl))))
+    (when (and th (gethash th (current-using-hash)))
+      (type-error decl
+	"Identifier ~a is already in use as a theory" (id decl))))
+  (typecheck-named-theory decl)
+  (unless (fully-instantiated? (modname decl))
+    (type-error (modname decl)
+      "Actual parameters must be provided for theory declarations"))
+  (put-decl decl (current-declarations-hash))
+  (setf (saved-context decl) (copy-context *current-context*))
+  ;; Need to allow id to be used as abbreviation
+  )
+
+(defmethod typecheck* ((decl theory-abbreviation-decl) expected kind arguments)
+  (declare (ignore expected kind arguments))
   (check-duplication decl)
   (if (typechecked? decl)
-      (let* ((modinst (modname decl))
+      (let* ((modinst (theory-name decl))
 	     (mod (get-theory modinst)))
 	 (add-exporting-with-theories mod modinst)
 	 (add-to-using modinst))
-      (typecheck-using (modname decl)))
+      (typecheck-using (theory-name decl)))
   (put-decl decl (current-declarations-hash))
   (setf (saved-context decl) (copy-context *current-context*))
   ;; Need to allow id to be used as abbreviation

@@ -717,7 +717,7 @@
 	(lib-decl
 	 (check-for-importing-conflicts d)
 	 (put-decl d (current-declarations-hash)))
-	((or mod-decl formal-theory-decl)
+	((or mod-decl theory-abbreviation-decl formal-theory-decl)
 	 (put-decl d (current-declarations-hash))
 	 (let* ((thname (theory-name d))
 		(th (get-theory thname)))
