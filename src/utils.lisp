@@ -52,10 +52,13 @@
 (defmethod copy ((ht hash-table) &rest args)
   (let* ((test (hash-table-test ht))
 	 (size (hash-table-count ht))
+	 (weak? (excl:hash-table-weak-keys ht))
 	 (new-ht (if (memq test '(eq eql equal equalp))
-		     (make-hash-table :test test :size size)
 		     (make-hash-table :test test :size size
-				      :hash-function 'pvs-sxhash))))
+				      :weak-keys weak?)
+		     (make-hash-table :test test :size size
+				      :hash-function 'pvs-sxhash
+				      :weak-keys weak?))))
     (maphash #'(lambda (id data)
 		 (setf (gethash id (the hash-table new-ht)) data))
 	     (the hash-table ht))
@@ -558,6 +561,41 @@
 	  ((not (probe-file dirslash))
 	   (values nil (format nil "~a is not a directory." dir)))
 	  (t dirslash))))
+
+(defun subdirectoryp (dir1 dir2)
+  (when (and (directory-p dir1)
+	     (directory-p dir2))
+    (let* ((dirinfos (mapcar #'(lambda (d) (cons d (get-file-info d)))
+		       (directory-path dir1)))
+	   (tdir1 (caar (last dirinfos)))
+	   (tdir2+ (namestring (truename dir2)))
+	   (tdir2 (if (char= (char tdir2+ (1- (length tdir2+))) #\/)
+		      (subseq tdir2+ 0 (1- (length tdir2+)))
+		      tdir2+))
+	   (dirinfo2 (get-file-info tdir2))
+	   (comdir (car (find-if #'(lambda (d)
+				     (equal (cdr d) dirinfo2))
+			  dirinfos))))
+      (when comdir
+	(subseq tdir1 (length comdir))))))
+
+(defun directory-path (dir)
+  (let ((truedir (if (directory-p dir)
+		     (namestring (truename dir))
+		     dir)))
+    (if (char= (char truedir (1- (length truedir))) #\/)
+	(directory-path* (subseq truedir 0 (1- (length truedir))))
+	(directory-path* truedir)))))
+
+(defun directory-path* (dir &optional path)
+  (let ((pos (position #\/ dir :from-end t)))
+    (if pos
+	(directory-path* (subseq dir 0 pos)
+			 (cons dir path))
+	(if (string= dir "")
+	    path
+	    (cons dir path)))))
+
 
 (defun splice (new-elt after-elt list)
   (let ((tail (and after-elt (memq after-elt list))))
@@ -1204,7 +1242,8 @@
 		   (def-axiom decl)))))
 
 (defmethod def-axiom ((map mapping))
-  (full-name (def-axiom (declaration (expr (rhs map)))) 1 t))
+  (when (name-expr? (expr (rhs map)))
+    (full-name (def-axiom (declaration (expr (rhs map)))) 1 t)))
 
 (defmethod def-axiom (obj)
   (declare (ignore obj))
