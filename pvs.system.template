@@ -344,4 +344,7 @@
 ;		  (:file "static-update")
 ;		  (:file "pvseval-update")
 ;		  (:file "cl2pvs")))
-   ))
+   (:module ilisp
+     :source-pathname "emacs/emacs-src/ilisp"
+     :components ((:file "cl-ilisp")
+		  (:file "allegro")))))
