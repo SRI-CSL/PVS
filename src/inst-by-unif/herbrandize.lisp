@@ -1,6 +1,7 @@
 (in-package :pvs)
 
 (defun herbrandize (fmlas &optional xs renamings always-skolemize)
+  #+dbg(assert (every #'expr? fmlas))
   (let ((*always-skolemize* always-skolemize))
     (declare (special *always-skolemize*))
     (herbrandize* fmlas xs renamings)))
@@ -159,7 +160,7 @@
 	(type (if (subtype-of? (type bndng) *integer*)
 		  dp::*integer*
 	        nil)))
-    (dp::mk-new-variable id type)))
+    (dp::mk-variable id type)))
 
 (defun mk-new-skofun (bndng xs)
   (let* ((id (gentemp (makesym "~a!" (id bndng))))
