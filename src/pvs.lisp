@@ -242,6 +242,8 @@
 	   theories)
 	  (*in-checker*
 	   (pvs-message "Must exit the prover first"))
+	  (*in-evaluator*
+	   (pvs-message "Must exit the evaluator first"))
 	  ((and (null theories)
 		(not forced?)
 		(valid-binfile? filename)
