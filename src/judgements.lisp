@@ -855,6 +855,7 @@
 (defmethod type-constraints* ((te subtype) ex preds all?)
   (cond ((or (member te *subtypes-seen* :test #'tc-eq)
 	     (and (not all?)
+		  preds
 		  (ignored-type-constraint te)))
 	 (nreverse preds))
 	(t (push te *subtypes-seen*)
@@ -869,7 +870,9 @@
   (declare (ignore te ex all?))
   (nreverse preds))
 
-(let ((ignored-type-constraints nil))
+(let ((ignored-type-constraints
+       (when *naturalnumber*
+	 (list *naturalnumber* *integer* *rational* *real*))))
   (pushnew 'clear-ignored-type-constraints *load-prelude-hook*)
   (defun push-ignored-type-constraints (te)
     (pushnew te ignored-type-constraints))
@@ -877,7 +880,6 @@
     (member type ignored-type-constraints :test #'tc-eq))
   (defun clear-ignored-type-constraints ()
     (setq ignored-type-constraints nil)))
-
 
 (defun type-predicates (ex &optional all?)
   (let ((*subtypes-seen* nil))
@@ -890,6 +892,7 @@
 (defmethod type-predicates* ((te subtype) preds all?)
   (unless (or (member te *subtypes-seen* :test #'tc-eq)
 	      (and (not all?)
+		   preds
 		   (ignored-type-constraint te)))
     (push te *subtypes-seen*)
     (let ((pred (predicate te)))
@@ -916,7 +919,6 @@
 
 (defmethod make!-reduced-application (op arg)
   (make!-application op arg))
-
 
 (defmethod argument-application-number ((ex application) &optional (num 0))
   (argument-application-number (operator ex) (1+ num)))
