@@ -384,7 +384,7 @@
     (typecheck* ntheory nil nil nil)
     (setf (generated-by ntheory) (id theory))
     (setf (generated-by-decl ntheory) decl)
-    (setf (mapping ntheory)
+    (setf (theory-mapping ntheory)
 	  (get-interpreted-mapping theory ntheory theory-name))
     (setf (all-usings ntheory)
 	  (let ((imps nil))
