@@ -200,7 +200,8 @@ generated")
 	(setq *pvs-context-changed* t))
       (push 'typechecked (status adt))
       (dolist (th adt-theories)
-	(setf (filename th) adt-file))
+	(setf (filename th) adt-file)
+	(setf (path th) (make-specpath adt-file)))
       (setf (gethash adt-file *pvs-files*)
 	    (cons fdate (adt-generated-theories adt))))))
 
@@ -709,6 +710,7 @@ generated")
       (unless pos?
 	(let ((*current-theory* *adt*))
 	  (setf (filename *current-theory*) *current-file*)
+	  (setf (path *current-theory*) (make-specpath *current-file*))
 	  (type-error (or negocc (declared-type arg))
 	    "Recursive uses of the datatype ~a may not appear in:~%  ~
              the domain of a function type,~%  ~
