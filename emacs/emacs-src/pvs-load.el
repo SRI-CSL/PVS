@@ -12,7 +12,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(eval-when-compile (require 'pvs-macros))
+(eval-and-compile (require 'pvs-macros))
 
 ;;; Define this first, so we can start logging right away.
 
@@ -41,6 +41,7 @@
 	   (pvs-log-message 'MSG m)
 	   (message "%s" m)))))
 
+;;(find-file-noselect "~/PVS Log" t)
 (pvs-log-message 'LOG "Started loading Emacs files")
 
 (if (getenv "PVSIMAGE")
