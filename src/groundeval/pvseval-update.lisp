@@ -1370,6 +1370,15 @@
 			(compile id)
 			id)))))))))
 
+(defun pvs2cl-till-output-stable (expr bindings livevars)
+  (let ((old-outputvars (copy-list *output-vars*))
+	(cl-expr (pvs2cl_up* expr bindings livevars)))
+    (if (equal old-outputvars *output-vars*)
+	cl-expr
+	(pvs2cl-till-output-stable expr bindings livevars))))
+    
+	
+
 (defun pvs2cl-lisp-function (decl)
   (let* ((defax (def-axiom decl))
 	 (*external* nil)
@@ -1428,10 +1437,11 @@
 				  ,@(append (when declarations
 					      (list declarations))
 					    (list 
-					     (pvs2cl_up* defn-body
-							 (pairlis defn-bindings
-								  defn-binding-ids)
-							 nil)))))
+					     (pvs2cl-till-output-stable
+					      defn-body
+					      (pairlis defn-bindings
+						       defn-binding-ids)
+					      nil)))))
 			 (setf (output-vars (in-defn-d decl))
 			       *output-vars*))
 		       (eval (definition (in-defn-d decl)))
