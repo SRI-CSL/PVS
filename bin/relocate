@@ -3,11 +3,25 @@
 pvspath=`pwd`
 
 # Relocate PVSPATH and reset PVSALLEGRO in the pvs shell script.
-echo Relocating PVSPATH in the \"pvs\" shell script to $pvspath
-sed -e "s,^PVSPATH=.*$,PVSPATH=$pvspath," \
-    -e "s,allegro-full,allegro," \
-    pvs.template > pvs
-chmod a+x pvs
+if [ -e pvs.template ]
+ then
+  echo Relocating PVSPATH in the \"pvs\" shell script to $pvspath
+  sed -e "s,^PVSPATH=.*$,PVSPATH=$pvspath," \
+      -e "s,allegro-full,allegro," \
+      pvs.template > pvs
+  chmod a+x pvs
+elif [-e pvs ]
+ then 
+  echo Relocating PVSPATH in the \"pvs\" shell script to $pvspath
+  sed -e "s,^PVSPATH=.*$,PVSPATH=$pvspath," \
+      -e "s,allegro-full,allegro," \
+      pvs > /tmp/tmp.$$
+  mv /tmp/tmp.$$ pvs
+  chmod a+x pvs
+ else
+  echo No pvs shell script!  Check your installation
+  exit 1
+fi
 
 # Create the Makefile from Makefile.template, if it exists
 if [ -e Makefile.template -a ! -e Makefile ]
