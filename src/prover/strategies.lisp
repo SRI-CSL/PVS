@@ -66,8 +66,6 @@
 	  (t (nreverse lispexprs))))
   )
 
-;DAVESC
-
 	    
 (defun defgen* (name formals definition docstring format-string
 		     entry-type rules-or-steps)
@@ -234,17 +232,14 @@ E.g., (try (skip)(flatten)(skolem!)) is just (skolem!)
 computations.  E.g.,
   (let ((x (car *new-fmla-nums*)))
       (then (inst? x)(split x)))."
-
   "")
 
 
 (defstep assert  (&optional (fnums *) rewrite-flag
 			    flush? linear? cases-rewrite? (type-constraints? T)
-			    ignore-prover-output?
-			    ;(assert-connectives? T)
-			    ) 
+			    ignore-prover-output?) 
 	 (simplify
-	  fnums T T rewrite-flag flush? linear? cases-rewrite? type-constraints? ignore-prover-output?) ; assert-connectives?
+	  fnums T T rewrite-flag flush? linear? cases-rewrite? type-constraints? ignore-prover-output?) 
  "Simplifies/rewrites/records formulas in FNUMS using decision
 procedures.  Variant of SIMPLIFY with RECORD? and REWRITE? flags set
 to T. If REWRITE-FLAG is RL(LR) then only lhs(rhs) of equality
@@ -265,13 +260,10 @@ Examples:
 
 (defstep record (&optional (fnums *) rewrite-flag
 			    flush? linear? (type-constraints? T)
-			    ignore-prover-output?
-			    ;(assert-connectives? T)
-			    )
+			    ignore-prover-output?)
 	 (simplify
 	  fnums T NIL rewrite-flag flush? linear? type-constraints?
 	  ignore-prover-output?)
-	  ;;assert-connectives?
 	 "Uses decision procedures to simplify and record the formulas
 in FNUMS for further simplification.   Variant of SIMPLIFY with RECORD?
 flag set to T and REWRITE? flags set to NIL. If REWRITE-FLAG is
@@ -286,19 +278,17 @@ then multiplication and division are uninterpreted.  Example:
 	 (simplify
 	  fnums NIL T rewrite-flag flush? linear? cases-rewrite? type-constraints?) 
 	 "Uses decision procedures to rewrite the formulas in FNUMS.
-Variant of SIMPLIFY with RECORD? flag set to NIL and REWRITE? flags
-set to T. If REWRITE-FLAG is RL(LR) then only lhs(rhs) is simplified.
-If FLUSH? is T then the current asserted facts are deleted for
-efficiency.  If LINEAR? is T, then multiplication and division are
-uninterpreted.  If CASES-REWRITE? is T, then the selections and
-else parts of a CASES expression are simplified, otherwise, they
-are only simplified when simplification selects a case.
-Examples:
- (do-rewrite): Simplify every sequent formula with rewriting.
- (do-rewrite :rewrite-flag RL :linear? T): Apply rewriting only
- to left-hand sides of any equalities with uninterpreted nonlinear
- arithmetic." 
-	 "Simplifying and recording with decision procedures")
+Variant of SIMPLIFY with RECORD? flag set to NIL and REWRITE? flags set to
+T. If REWRITE-FLAG is RL(LR) then only lhs(rhs) is simplified.  If FLUSH?
+is T then the current asserted facts are deleted for efficiency.  If
+LINEAR? is T, then multiplication and division are uninterpreted.  If
+CASES-REWRITE? is T, then the selections and else parts of a CASES
+expression are simplified, otherwise, they are only simplified when
+simplification selects a case.
+Examples: (do-rewrite): Simplify every sequent formula with rewriting.
+(do-rewrite :rewrite-flag RL :linear? T): Apply rewriting only to left-hand
+          sides of any equalities with uninterpreted nonlinear arithmetic."
+ "Simplifying and recording with decision procedures")
 
 
 (defstep auto-rewrite!! (&rest names)
@@ -309,12 +299,12 @@ Examples:
 			       name (list name))
 			   (list (list name))))))
     (auto-rewrite :names names))
-	 "Similar to auto-rewrite! except that explicit (non-recursive)
+  "Similar to auto-rewrite! except that explicit (non-recursive)
 definitions are always expanded even when all the arguments
 do not occur in the expression.   Examples:
  (auto-rewrite!! \"compose\"):  Installs the rewrite so that compose(f, g)
   is expanded.  "
-	 "Installing !! rewrites from: ~@{~%  ~a~}")
+  "Installing !! rewrites from: ~@{~%  ~a~}")
 
 (defstep auto-rewrite! (&rest names)
   (let ((names
@@ -553,16 +543,8 @@ bddsimp, and assert, until nothing works.  DEFS is either
 ;;NSH(12.15.94): For backward compatibility.
 (defstep tcc-bdd (&optional (defs !))
   (grind$ :defs defs)
-  "Obsolete - subsumed by TCC. The guts of the tcc-strategy.
-Does auto-rewrite-explicit, then applies skolem!, inst?, lift-if,
-bddsimp, and assert, until nothing works.  DEFS is either
- NIL: The definitions in the statement are not installed as auto-rewrites
- T: All defns are installed as conditional rewrites
- !: All defns are installed, but with explicit defns as
-    unconditional rewrites
- explicit: Only explicit defns installed as conditional rewrites
- explicit!: Only explicit defns installed as unconditional rewrites."
-    "Trying repeated skolemization, instantiation, and if-lifting")
+  "Obsolete - subsumed by (TCC)."
+  "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defstep bash (&optional (if-match T)(updates? T) polarity?)
   (then (assert)(bddsimp)
@@ -652,16 +634,6 @@ EXCLUDE is a list of rewrite rules. "
   (then
    (install-rewrites$ :defs defs :theories theories
 		     :rewrites rewrites :exclude exclude)
-;    (if (eq defs '!)
-;	(auto-rewrite-defs :always? T)
-;	(if (eq defs 'explicit)
-;	    (auto-rewrite-defs :explicit? T)
-;	    (if (eq defs 'explicit!)
-;		(auto-rewrite-defs :always? T :explicit? T)
-;		(if defs (auto-rewrite-defs) (skip)))))
-;    (auto-rewrite-theories :theories theories)
-;    (auto-rewrite :names rewrites)
-;    (if exclude (stop-rewrite :names exclude)(skip))
     (then (bddsimp)(assert))
     (replace*)
     (reduce$ :if-match if-match :updates? updates? :polarity? polarity?))
@@ -715,28 +687,11 @@ assert, until nothing works. Here
   "Installs rewrites from statement (DEFS is either NIL, T, !, explicit,
 or explicit!), from THEORIES, and REWRITES, then applies (assert fnums), and
 then turns off all the installed rewrites.  Examples:
- (simplify-with-rewrites  + ! (\"real_props\" (\"sets[nat]\" :defs-only? T))
+ (simplify-with-rewrites  + ! (\"real_props\" (\"sets[nat]\"))
                          (\"assoc\"))
  (simplify-with-rewrites * nil :rewrites (\"assoc\" \"distrib\"))."
   "Installing rewrites, simplifying, and disabling installed rewrites")
     
-    
-
-
-;(defstep tcc-bdd ()
-;  (then*
-;    (auto-rewrite-defs :always? T)
-;    (then (bddsimp)(assert))
-;    (repeat* (try (then* (repeat* (then (flatten)(skolem!)))
-;			 (repeat* (then (flatten)(inst? :if-match all)))
-;			 (repeat* (lift-if)))
-;	      (apply (then* (bddsimp)(assert)(bddsimp)(assert)))
-;	      (skip))))
-;    "The guts of the tcc-strategy.  Does auto-rewrite-explicit,
-;then applies skolem!, inst?, lift-if, bddsimp,and assert, until
-;nothing works."
-;    "Trying repeated skolemization, instantiation, and if-lifting")
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The query strategy is the basic interactive strategy where the user
 ;; is alway queried.
@@ -744,7 +699,7 @@ then turns off all the installed rewrites.  Examples:
 (defun query*-step ()  '(if *proving-tcc* (quit)(query*)))
 
 (defstrat query* ()
-  (if (or *proving-tcc* *in-apply*);;NSH(8.22.94)
+  (if (or *proving-tcc* *in-apply*)
       (postpone)
       (let ((input (let ((input (qread "Rule? " t)))
 		     (setf (current-input *ps*)
@@ -777,12 +732,6 @@ then turns off all the installed rewrites.  Examples:
   (try step (repeat* step) (skip))
   "Successively apply STEP until it does nothing.")
 
-
-
-;(defstrat prop$ ()
-;  (try (flatten) (prop$) (try (split)(prop$) (skip)))
-;  "The propositional simplification strategy.")
-
 (defstep prop ()
   (try (flatten) (prop$) (try (split)(prop$) (skip)))
   "A black-box rule for propositional simplification."
@@ -795,7 +744,7 @@ then turns off all the installed rewrites.  Examples:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defstrat then (&rest steps) ;;NSH(12.14.94) then=then*
+(defstrat then (&rest steps)
   (let ((x (when steps (car steps)))
 	(y (when steps (cons 'then (cdr steps))))
 	(z steps))
@@ -804,11 +753,11 @@ then turns off all the installed rewrites.  Examples:
 
 (defstrat then* (&rest steps)
   (then :steps steps)
-  "Obsolete - Successively applies the steps in STEPS.")
+  "Obsolete -see (THEN).")
 
 
 (defstrat spread (step steplist)
-  (try  step
+  (try step
        (let ((goalnum (get-goalnum *ps*))
 	     (par-ps (parent-proofstate *ps*))
 	     ;;no dummy as opposed to spread@.
@@ -821,7 +770,7 @@ then turns off all the installed rewrites.  Examples:
   "Applies STEP and then pairs the steps in STEPLIST with the subgoals")
 
 (defstrat spread@ (step steplist)
-  (try  step
+  (try step
        (let ((goalnum (get-goalnum *ps*))
 	     (par-ps (parent-proofstate *ps*))
 	     (dummy
@@ -906,13 +855,6 @@ is applied.")
   "Like BRANCH, tries STEP and then pairs the steps in STEPLIST to the
 resulting subgoals.  The last step is used for any excess subgoals.
 If STEP does nothing, then ELSE-STEP is applied.")
-
-;;(ground) combines (prop$) and (assert)
-
-;(defstrat ground$ ()
-;  (try (flatten)(ground$) (try
-;			    (split)(ground$)(assert)))
-;  "Ground simplification strategy.")
 
 (defstep ground ()
   (try (flatten)(ground$)(try (split)(ground$)(assert)))
@@ -1254,16 +1196,6 @@ as the optional NAME argument.
   (then
    (install-rewrites$ :defs defs :theories theories
 		      :rewrites rewrites :exclude exclude)
-;   (if (eq defs '!)
-;	(auto-rewrite-defs :always? T)
-;	(if (eq defs 'explicit)
-;	    (auto-rewrite-defs :explicit? T)
-;	    (if (eq defs 'explicit!)
-;		(auto-rewrite-defs :always? T :explicit? T)
-;		(if defs (auto-rewrite-defs) (skip)))))
-;   (auto-rewrite-theories :theories theories)
-;   (auto-rewrite :names rewrites)
-;   (if exclude (stop-rewrite :names exclude) (skip))
    (try (induct var fnum name)
 	(then
 	 (skosimp*)
@@ -1808,25 +1740,6 @@ See also EXTENSIONALITY."
 See also ETA, APPLY-ETA."
   "Applying eta axiom scheme to ~a and does replace to eta-reduce")
 
-;;NSH(11.16.94): can't see the need for apply-eta.
-;(defstep apply-eta (term &optional type)
-;  (let ((type (if type
-;		(typecheck (pc-parse type 'type-expr))
-;		nil))
-;	(term (if type
-;		  (typecheck (pc-parse term 'expr)
-;		    :expected type)
-;		  (typecheck (pc-parse term 'expr))))
-;	(type (if type (pc-type type)
-;		  (if (type term) (pc-type (type term)) nil))))
-;    (if type
-;	(try (eta type)
-;	     (inst -1 term)
-;	     (skip-msg "No suitable eta axiom scheme found."))
-;	(skip-msg "Please supply optional type argument.")))
-;  "Instantiates eta axiom scheme for type TYPE or type of TERM with TERM"
-;  "Applying eta axiom scheme to ~a")
-
 
 (defstrat then@ (&rest steps)
   (if steps
@@ -1842,8 +1755,6 @@ steps to the first subgoal, postponing remaining subgoals.")
 (defstep case-replace (formula)
   (then@ (case formula)
 	 (replace -1))
-;  (spread (case formula)((let ((x (car *new-fmla-nums*)))(replace x))
-;			  (assert)))
   "Case splits on a given FORMULA lhs=rhs and replaces lhs by rhs.
 See also CASE, CASE*"
   "Assuming and applying ~a")
@@ -1872,14 +1783,6 @@ See also CASE, CASE*"
   "Apply left-to-right replacement with formulas in FNUMS."
   "Repeatedly applying the replace rule")
 				   
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;NSH(3.1.95)
-;(defstep dsimp (&rest (fnums *))
-;  (flatten fnums)
-;  "Disjunctively simplifies chosen formulas."
-; "Applying disjunctive simplification to flatten sequent")
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defstep skolem! (&optional (fnum *) keep-underscore? )
   (let ((sformnum (find-!quant fnum *ps*)))
     (let ((newterms (fill-up-terms sformnum nil *ps* keep-underscore?)))
@@ -3409,13 +3312,6 @@ See also ETA"
 	      (interpreted? op)
 	      (memq (id op) '(= < <= > >=))
 	      op))))
-
-; (defun propositional-application? (fmla)
-;   (and (application? fmla)
-;        (name-expr? (operator fmla))
-;        (eq (id (module-instance (resolution (operator fmla))))
-; 	   '|booleans|)))
-       
 
 (defun find-ineq-conjunction (fmla)
   (if (conjunction? fmla)

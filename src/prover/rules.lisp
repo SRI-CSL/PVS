@@ -19,7 +19,7 @@
 				    (when (consp ',optional-args)
 				      (if (eq (car ',optional-args) '&rest)
 					  ',optional-args
-					  '(&optional ',optional-args))))))
+					  '(&optional ,optional-args))))))
 	  (docstr (format nil "~s: ~%    ~a" form ,docstring)))
      (cond ((null entry)
 	    (add-symbol-entry ,name
@@ -114,7 +114,7 @@
 
 (addrule 'help () ((name *))
   (help-rule-fun name) 
-  "Describes rule or all the rules but behaves like SKIP otherwise.
+  "Describes rules and strategies, but behaves like SKIP otherwise.
  (HELP <rule-or-strategy-name>) returns the help information for the
      given rule or strategy;
  (HELP rules) returns help for all the primitive commands;
@@ -130,11 +130,6 @@
       (declare (ignore ps))
       (values 'XX nil nil)))
 
-(defun fail-rule ()
-  (make-instance 'rule
-    'rule-part #'failure-rule
-    ))
-
 (addrule 'fail nil nil
   (failure-rule)
   "Signals a failure.  This is primarily used within strategies.
@@ -149,75 +144,60 @@ See the prover manual for more details.")
       (declare (ignore ps))
       (values 'X nil nil)))
 
-(defun skip-rule ()
-  (make-instance 'rule
-    'rule-part #'skip))
-
 (addrule 'skip nil nil (skip) "Does nothing.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;The postpone rule
 (defun postpone (&optional print?)
-  (declare (ignore print?))
   #'(lambda (ps)
       (declare (ignore ps))
-      (format-if "~%Postponing ~a.~%" *label*)
+      (when print?
+	(format-if "~%Postponing ~a.~%" *label*))
       (values '* nil nil)))
 
-(defun postpone-rule ()
-  (make-instance 'rule
-    'rule-part #'postpone
-    ))
-
-(addrule 'postpone nil (print?)
+(addrule 'postpone nil ((print? t))
   (postpone print?)
   "Places current goal on parent's list of pending (unproved)
 subgoals, moving to the next one.  Repeated POSTPONEs cycle through the
-pending subgoals.  When PRINT? is T, commentary is suppressed." )
+pending subgoals.  When PRINT? is nil, commentary is suppressed." )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;The undo rule can take either a number, a label, or an input command
-;;and it undoes the proof back to the appropriate point, and queries the
-;;user.
-;;NSH(8-14): Should I add an optional arg. indicating the number of
-;;levels to be undone for a particular command input.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;The undo rule 
 (defun undo (to)
-  #'(lambda (ps) (undo1 to ps)))
-
-(defun undo1 (to ps)
-  (declare (ignore ps))
-  (if (or (numberp to)
-	  (stringp to)
-	  (let ((name (if (consp to)(car to) to)))
-	    (memq name (prover-commands)))) ;;NSH(7.25.94) using CRW's
-					    ;;prover-commands. 
-      (values to nil nil)
-      (values 'X nil nil)))
+  #'(lambda (ps) 
+      (declare (ignore ps))
+      (if (or (numberp to)
+	      (stringp to)
+	      (let ((name (if (consp to)(car to) to)))
+		(memq name (prover-commands))))
+	  (values to nil nil)
+	  (values 'X nil nil))))
 	    
 (addrule 'undo () ((to 1))
   (undo to)
-  "(undo <to[1]>): Undoes proof back n steps or to label,
-command name, command")
+  "Undoes proof back n steps or to label or command name.
+The last undo may be undone if no commands have been
+used since the undo by (undo undo)")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun lisp-rule (lexp)
-	 #'(lambda (ps)
-	     (declare (ignore ps))
-	     (format t "~%~s~%"  (eval lexp))
-	     (values 'X nil nil)))
+  #'(lambda (ps)
+      (declare (ignore ps))
+      (format t "~%~s~%"  (eval lexp))
+      (values 'X nil nil)))
 
 (addrule 'lisp (lexp) nil
   (lisp-rule lexp)
-  "(lisp <exp>):  Evaluates a Lisp expression.")
+  "Evaluates a Lisp expression.")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;The propositional axiom rule
 (defun prop-axiom-rule ()
   #'(lambda (ps)
-  (let ((s-forms (s-forms (current-goal ps))))
-    (if (eq (check-prop-axiom s-forms) '!)
-	(values '! nil) ;;( (substitution ps))
-	(values 'X nil)))))
+      (let ((s-forms (s-forms (current-goal ps))))
+	(if (eq (check-prop-axiom s-forms) '!)
+	    (values '! nil)
+	    (values 'X nil)))))
 
 (defun negate (formula)
   (if (and (typep formula 'application)
@@ -270,10 +250,9 @@ which case it considers the subgoal proved and moves to the next pending
 proof is complete.  Note that this rule is processed automatically after
 every proof step, and is rarely invoked by the user."
   "~%which is a propositional axiom.")
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;delete rule: deletes a sequent formula. (NSH: 1/22/91)
+;;delete rule: 
 
 (defun delete-rule-fun (sformnums)
   #'(lambda (ps)
@@ -282,14 +261,13 @@ every proof step, and is rarely invoked by the user."
 	      (loop for sf in sformnums
 		    nconc (if (consp sf) sf (list sf)))))
 	(multiple-value-bind
-	      (signal subgoal)
+	    (signal subgoal)
 	    (sequent-reduce goalsequent
 			    #'(lambda (sform)
 				(declare (ignore sform))
 				(values '? nil))
 			    sformnums)
-	  (values signal (list subgoal);;(substitution ps)
-		  )))))
+	  (values signal (list subgoal) )))))
 
 
 (addrule 'delete nil (&rest fnums)
@@ -309,8 +287,7 @@ See also HIDE, REVEAL"
 (defun apply-step-body (ps step comment save? time?)
   (declare (ignore comment))
   (let* ((*generate-tccs* 'NONE)
-	 (strat (let ((*in-apply* ps));;NSH(8.22.94)
-		  ;;otherwise (apply (query*)) misbehaves.
+	 (strat (let ((*in-apply* ps))
 		  (strat-eval* step ps))))
     (cond ((or (typep strat 'strategy)
 	       (typep strat 'rule-instance))
@@ -320,8 +297,7 @@ See also HIDE, REVEAL"
 		       (make-instance 'strategy
 			 'topstep strat)))
 		  (newps0 (copy ps
-			    'strategy
-			    new-strat
+			    'strategy new-strat
 			    'parent-proofstate nil))
 		  (newps (if (typep newps0 'top-proofstate)
 			     (change-class newps0 'proofstate)
@@ -330,17 +306,10 @@ See also HIDE, REVEAL"
 		  (*suppress-printing* t)
 		  (*dependent-decls* nil)
 		  (init-time (get-internal-run-time))
-		  (result		;catch 'abort-in-apply ;;NSH(8.22.94)
-		   (let ((*in-apply* ps)
-			 )
-		     (prove* newps)))
+		  (result (let ((*in-apply* ps))
+			    (prove* newps)))
 		  (end-time (/ (- (get-internal-run-time) init-time)
 			       internal-time-units-per-second)))
-                         ;;;;(break "in-apply")
-	     ;;		 if (null result);;when aborted ;;NSH(8.22.94)
-	     ;;		     if *in-apply*
-	     ;;			 (throw 'abort-in-apply nil)
-	     ;;			 (values 'X nil nil)
 	     (declare (ignore result))
 	     (let* ((subgoals (collect-subgoals newps))
 		    (justif (collect-justification newps))
@@ -351,7 +320,7 @@ See also HIDE, REVEAL"
 	       ;; (format t "~%step= ~a~%decls = ~a" step *dependent-decls*)
 	       (when time? (format t "~%;;;Used ~,2F seconds in ~s." end-time step))
 	       (if (eq (status-flag newps) 'XX)
-		   (values 'X nil nil);;was 'XX
+		   (values 'X nil nil)
 		   (if (or (eq (status-flag newps) 'X)
 			   (and (singleton? subgoals)
 				(or (and (not (consp (car subgoals)))
@@ -362,7 +331,6 @@ See also HIDE, REVEAL"
 						  (current-goal ps))
 					 (eq
 					  (nth 8 (car subgoals))
-					;(nth 6 (car subgoals))
 					  (current-auto-rewrites newps))))))
 		       (if save?
 			   (values '? (list (current-goal newps)) nil)
@@ -374,16 +342,12 @@ See also HIDE, REVEAL"
 					 'current-xrule
 					 xrule))
 			   (values '? subgoals
-				   (list;;NSH(4.20.95)
-				    ;;'dependent-decls
-				    ;; *dependent-decls*
-				    'current-xrule
-				    xrule))))))))
+				   (list 'current-xrule xrule))))))))
 	  (t (values 'X nil nil)))))
 
 (defmethod collect-subgoals ((ps proofstate) &optional accum)
   (mapcar #'(lambda (x) (pushnew x *dependent-decls*))
-			(dependent-decls ps))
+    (dependent-decls ps))
   (cond ((and (eq (status-flag ps) '*)
 	      (null (remaining-subgoals ps)))
 	 (cond ((null (pending-subgoals ps))
@@ -421,7 +385,7 @@ and only the resulting subgoals are returned.  E.g.,
   "~%Applying ~%   ~s,~@[~%~a~]")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(addrule 'split () ((fnum *) depth);; labels
+(addrule 'split () ((fnum *) depth)
   (split-rule-fun fnum depth)
   "Conjunctively splits formula FNUM.  If FNUM is -, + or *, then
 the first conjunctive sequent formula is chosen from the antecedent,
@@ -429,13 +393,6 @@ succedent, or the entire sequent.  Splitting eliminates any
 top-level conjunction, i.e., positive AND, IFF, or IF-THEN-ELSE, and
 negative OR, IMPLIES, or IF-THEN-ELSE."
   "~%Splitting conjunctions,")
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;(addrule 'flatten () (&rest fnums) (flatten fnums)
-; "Disjunctively simplifies chosen formulas.  It eliminates any
-;top-level antecedent conjunctions, equivalences, and negations, and
-;succedent disjunctions, implications, and negations from the sequent."
-; "~%Applying disjunctive simplification to flatten sequent,")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (addrule 'lift-if () (fnums (updates? T))
@@ -449,7 +406,7 @@ that takes f(IF A THEN b ELSE c ENDIF) to
 leftmost-innermost contiguous block of conditionals  so it might
 have to be applied repeatedly to lift all the conditionals. E.g.,
  (lift-if) : applies IF-lifting to every sequent formula.
- (lift-if - :updates? nil): lifts only antecedent IF that are not
+ (lift-if - :updates? nil) : lifts only antecedent IF that are not
   applications of updates."
   "~%Lifting IF-conditions to the top level,")
 
@@ -462,7 +419,7 @@ have to be applied repeatedly to lift all the conditionals. E.g.,
   "~%Applying ~a ~@[where ~{~%  ~a gets ~a,~}~]")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(addrule 'typepred ()(&rest exprs)
+(addrule 'typepred () (&rest exprs)
   (typepred-fun exprs nil)
   "Extract subtype constraints for EXPRS and add as antecedents.
  Note that subtype constraints are also automatically recorded by
@@ -470,7 +427,7 @@ the decision procedures. E.g.,
  (typepred \"abs(c)\"): Adds abs(c) > 0 to the antecedent."
   "~%Adding type constraints for ~@{ ~a,~}")
 
-(addrule 'typepred! (exprs)(all?)
+(addrule 'typepred! (exprs) (all?)
   (typepred-fun exprs all?)
   "Extract subtype constraints for EXPRS and add as antecedents.
 ALL? flag when T also brings in integer_pred, rational_pred,
@@ -605,15 +562,11 @@ REWRITE and REWRITE-LEMMA.  Example reduction steps are:
 (addrule 'simplify ()
 	 ((fnums *) record? rewrite? 
 	  rewrite-flag flush? linear? cases-rewrite? (type-constraints? T)
-	  ignore-prover-output?
-	  ;;(assert-connectives? T)
-	  )
+	  ignore-prover-output?)
   (invoke-simplification fnums record? rewrite?
 			 rewrite-flag flush? linear?
 			 cases-rewrite? type-constraints?
-			 ignore-prover-output?
-			 ;;assert-connectives?
-			 )
+			 ignore-prover-output?)
   "Uses the decision procedures to to simplify the formulas in
 FNUM and record them for further simplification.  The proof steps
 ASSERT, RECORD, SIMPLIFY, DO-REWRITE are instances of this primitive
@@ -674,21 +627,6 @@ always match any occurrence of the function.
   "~%Installing automatic rewrites from: ~@{~%  ~a~}")
 
 
-
-;(addrule 'auto-rewrite! () (&rest names)(auto-rewrite-step names T)
-;	 " Similar to auto-rewrite except that the rewrites of lemmas and
-;explicit (non-recursive) definitions always occur independent of the
-;righthand-side."
-;	 "~%Installing automatic rewrites: ~@{~%  ~a,~}")
-;
-;(addrule 'auto-rewrite-theory (name) (defs-only? always?)
-;	 (auto-rewrite-theory name defs-only? always?)
-;	 "Installs an entire theory (or only definition if DEF-ONLY? is T)
-;as rewriters.  If ALWAYS? is T the rewrites are installed
-;to so that any rewrite other than a recursive defn. always takes
-;effect (see auto-rewrite!)."
-;	 "~%Rewriting relative to the theory: ~a,")
-
 (addrule 'stop-rewrite () (&rest names)
   (stop-rewrite-step names)
   "Turns off automatic rewriting.  Disables all rewrites if no
@@ -696,10 +634,6 @@ arguments are given.  Disabled rewrites have to be enabled by
 AUTO-REWRITE, AUTO-REWRITE!, or AUTO-REWRITE-THEORY. E.g.,
  (stop-rewrite \"assoc\" \"delete\"). "
   "~%Turning off ~#[all auto-rewrites~;automatic rewriting for: ~@{~%   ~a,~}~]")
-
-;(addrule 'stop-rewrite-theory () (&rest names) (stop-rewrite-theory names)
-;	 "Turns off rewriting for a theory."
-;	 "~%Turning off automatic rewriting for theories: ~@{~%   ~a,~}")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
