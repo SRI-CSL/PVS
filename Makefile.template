@@ -148,7 +148,6 @@ pvs-src = src/store-object.lisp \
 	  src/unparse.lisp \
 	  src/pp.lisp \
           src/print-object.lisp \
-	  src/pvs-emacs.lisp \
 	  src/equalities.lisp \
           src/utils.lisp \
           src/gensubst.lisp \
@@ -176,7 +175,13 @@ pvs-src = src/store-object.lisp \
           src/status-cmds.lisp \
 	  src/add-decl.lisp \
 	  src/list-decls.lisp \
-	  src/tex-support.lisp \
+	  src/tex-support.lisp
+
+emacs-interface = src/interface/pvs-emacs.lisp \
+		  src/interface/emacs-calls.lisp \
+		  src/interface/cl-ilisp.lisp \
+		  src/interface/allegro.lisp \
+		  src/interface/ilisp-pkg.lisp
 
 pvs-prover = src/prover/checker-macros.lisp \
          src/prover/translate-to-prove.lisp \
@@ -217,12 +222,9 @@ decision-procedures = src/decision-procedures/types.lisp \
                       src/decision-procedures/forward-chain-pvs.lisp \
                       src/decision-procedures/forward-chain.lisp
 
-ilisp = emacs/emacs-src/ilisp/cl-ilisp.lisp \
-        emacs/emacs-src/ilisp/allegro.lisp \
-        emacs/emacs-src/ilisp/ilisp-pkg.lisp
-
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
-             ${pvs-prover} ${bddlisp} ${decision-procedures} ${ilisp}
+	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
+	     ${decision-procedures}
 
 fasl-files = $(lisp-files:.lisp=.$(LISPEXT))
 
@@ -259,9 +261,7 @@ ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${fasl-files}
 		-L src/make-pvs.lisp
 	touch ${pvsfull}
 
-${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${ess} ${pvs-parser-out} \
-           ${ground-prover} ${pvs-src} ${pvs-prover} ${bddlisp} \
-           ${decision-procedures} ${ilisp}
+${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${fasl-files}
 	rm -rf ${bindir}/runtime
 	$(LISP) -e '(defvar *runtime* t)' \
 		-L src/make-pvs.lisp
