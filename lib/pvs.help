@@ -232,6 +232,7 @@ context-path, cp           Display pathname of current context
 ---------------------------Library Commands-----------------------------------
 
 load-prelude-library       Extend the prelude with the specified library
+list-prelude-libraries     List the files loaded by load-prelude-library
 remove-prelude-library     Undoes load-prelude-library
 
 ---------------------------Browsing Commands----------------------------------
