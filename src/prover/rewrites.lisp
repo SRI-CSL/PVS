@@ -523,27 +523,32 @@
 		     bind-alist subst accum polarity))))
 
 (defmethod find-all-matches-polarity (lhs (expr binding-expr) bind-alist
-				 subst accum polarity)
+					  subst accum polarity)
       
-    (find-out-all-matches-polarity
-     lhs expr bind-alist subst
-     (let ((*bound-variables*
-	    (append (bindings expr)
-		    *bound-variables*)))
-       (find-all-matches-polarity lhs (expression expr)
-			 bind-alist
-			 subst accum polarity))
-     polarity))
+  (find-out-all-matches-polarity
+   lhs expr bind-alist subst
+   (let ((*bound-variables*
+	  (append (bindings expr)
+		  *bound-variables*)))
+     (find-all-matches-polarity lhs (expression expr)
+				bind-alist
+				subst accum polarity))
+   polarity))
 
-(defmethod find-all-matches-polarity (lhs (expr list) bind-alist subst accum polarity)
-  (cond ((null expr) accum)
-	(t (find-all-matches-polarity lhs (car expr)
-			   bind-alist
-			   subst
-			   (find-all-matches-polarity lhs (cdr expr)
-					     bind-alist subst accum
-					     polarity)
-			   polarity))))
+(defmethod find-all-matches-polarity (lhs (expr list) bind-alist subst
+					  accum polarity)
+  (if (null expr)
+      accum
+      (find-all-matches-polarity
+       lhs (car expr) bind-alist subst
+       (find-all-matches-polarity lhs (cdr expr) bind-alist subst accum
+				  polarity)
+       polarity)))
+
+(defmethod find-all-matches-polarity (lhs-template (expr T) bind-alist subst
+						   accum polarity)
+  (find-out-all-matches-polarity lhs-template expr bind-alist subst
+				 accum polarity))
 
 (defmethod find-match (lhs (expr  name-expr) bind-alist subst order)
   (declare (ignore order))
