@@ -22,7 +22,7 @@
 #include "hash.h"
 #include "bdd_fns.h"
 #include "appl.h"
-#include "vfns.h"
+#include "bdd_vfns.h"
 
 #include "mu.h"
 
@@ -442,11 +442,6 @@ static void print_var (FILE *fp, void *bdd_idx)
   fputs (B_VAR_NAME (BDD_IDX_2_VAR_ID ((int) bdd_idx)), fp);
 }
 
-/* Hassen */
-/* const int get_bdd_idx_2_var_id (int bdd_idx)
-{
-  return (BDD_IDX_2_VAR_ID bdd_idx) ;
-} */
 /* ------------------------------------------------------------------------ */
 /* FORMULA/TERM ALLOCATION & FREE                                           */
 /* ------------------------------------------------------------------------ */
