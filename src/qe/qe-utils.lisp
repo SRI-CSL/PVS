@@ -25,6 +25,9 @@
       (in-scope-of? bndng (arguments expr) op 'T)
     (in-scope-of? bndng (arguments expr) op inside)))
 
+(defmethod in-scope-of? ((bndng bind-decl) (expr projection-application) op &optional inside)
+  (in-scope-of? bndng (argument expr) op inside))
+
 (defmethod in-scope-of? ((bndng bind-decl) (expr binding-expr) op &optional inside)
   (in-scope-of? bndng (expression expr) op inside))
 
