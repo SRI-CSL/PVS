@@ -132,10 +132,11 @@
   #+pvsdebug (assert (every #'(lambda (b) (typep (car b) 'formal-decl))
 			    bindings)
 		     () "tc-match: bindings must be formal declarations")
-  (let* ((*formals-theory* (module (caar bindings)))
-	 (*tc-strict-matches* strict-matches))
-    (values (tc-match* t1 t2 bindings)
-	    *tc-strict-matches*)))
+  (when bindings
+    (let* ((*formals-theory* (module (caar bindings)))
+	   (*tc-strict-matches* strict-matches))
+      (values (tc-match* t1 t2 bindings)
+	      *tc-strict-matches*))))
 
 (defmethod tc-match* (t1 t2 bindings)
   (declare (ignore t1 t2 bindings))
