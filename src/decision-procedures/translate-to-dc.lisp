@@ -7,6 +7,25 @@
 
 (defvar *translate-rewrite-rule* nil)
 
+
+(defparameter *dc-interpreted-names*
+  (list (mk-name '= nil '|equalities|)
+	(mk-name '/= nil '|notequal|)
+	(mk-name 'IMPLIES nil '|booleans|)
+	(mk-name 'AND nil '|booleans|)
+	(mk-name '& nil '|booleans|)
+	(mk-name 'OR nil '|booleans|)
+	(mk-name 'NOT nil '|booleans|)
+	(mk-name '+ nil '|reals|)
+	(mk-name '- nil '|reals|)
+	(mk-name '* nil '|reals|)
+	(mk-name '/ nil '|reals|)
+	(mk-name '< nil '|reals|)
+	(mk-name '<= nil '|reals|)
+	(mk-name '> nil '|reals|)
+	(mk-name '>= nil '|reals|)
+	))
+
 (defvar *dc-interpretations*
   `((true . ,dp::*true*)
     (false . ,dp::*false*)
@@ -20,6 +39,11 @@
     (- . ,dp::*difference*) 
     (* . ,dp::*times*)
     (/ . ,dp::*divide*)
+    (and . ,dp::*and*)
+    (& . ,dp::*and*)
+    (or . ,dp::*or*)
+    (not . ,dp::*not*)
+    (if . ,dp::*if*)
     (update . ,dp::*update*)))
 
 (defvar *translate-to-dc-hash* (make-pvs-hash-table :hashfn #'pvs-sxhash
@@ -53,7 +77,22 @@
 	  (- . ,dp::*difference*) 
 	  (* . ,dp::*times*)
 	  (/ . ,dp::*divide*)
+	  (and . ,dp::*and*)
+	  (& . ,dp::*and*)
+	  (or . ,dp::*or*)
+	  (not . ,dp::*not*)
+	  (if . ,dp::*if*)
 	  (update . ,dp::*update*))))
+
+(defmethod interpreted? ((expr name-expr))
+  (member expr (if *newdc*
+		   *dc-interpreted-names*
+		   *interpreted-names*)
+	  :test #'(lambda (n i)
+		    (and (same-id n i)
+			 (module-instance n)
+			 (eq (mod-id i)
+			     (id (module-instance n)))))))
 
 (defun interpretation (name)
   (or (cdr (assoc (id name)
@@ -129,7 +168,7 @@
 	 (apos (position expr *bound-variables*
 			 :test #'same-declaration))
 	 (bpos (when apos (- (length *bound-variables*)
-			     apos)))) 
+			     apos))))
     (cond ((and (null pos)(null bpos))
 	   (dc-unique-prover-name expr))
 	  (bpos (let ((id (dp::mk-constant
@@ -266,7 +305,8 @@
 	 (tr-sorted-fields (mapcar #'translate-to-dc
 				   sorted-fields)))
     (dp::mk-term
-     (cons dp::*record* tr-sorted-fields))))
+     (cons dp::*record* tr-sorted-fields)
+     dp::'record-op)))
 
 (defun translate-dc-assignments-to-record (assignments type)
   (let* ((sorted-assignments (sort-assignments assignments))
@@ -340,10 +380,11 @@
 
 (defmethod translate-to-dc ((expr projection-application))
   (let ((arg (translate-to-dc (argument expr))))
-    (dp::mk-term
-     (list (dp::mk-constant 'TUPSELECT)  ;;might need to generate a unique one
-                            ;;according to the prtype and set prtype.
-      (dp::mk-constant (1- (index expr))) arg))))
+    (dp::sigproject
+     (dp::mk-term
+      (list dp::*project*  ;;might need to generate a unique one
+	    ;;according to the prtype and set prtype.
+	    (dp::mk-constant (1- (index expr))) arg)))))
 
 (defmethod translate-to-dc ((expr field-application))
   (with-slots (id argument type) expr
@@ -351,9 +392,10 @@
 	   (sfields (sort-fields fields))
 	   (pos (position id sfields
 			  :test #'(lambda (x y) (eq x (id y))))))
-      (dp::mk-term
-	  (list (translate-to-dc argument) ;;might need to set prtype.
-		(dp::mk-constant pos))))))
+      (dp::sigproject
+       (dp::mk-term
+	(list dp::*project* (dp::mk-constant pos);;might need to set prtype.
+	      (translate-to-dc argument)))))))
 
 ;;NSH(5.17.94): Complicated code to deal with tuple mismatch
 ;;between domain of operator and arguments.
@@ -365,27 +407,30 @@
   (with-slots (operator argument)
       expr
     (let* ((args (translate-to-dc (arguments expr))))
-	  (cond ((interpreted? operator)
-		 (let ((op (interpretation operator))
-		       )
-		   (cond ((and (eq op dp::*difference*) (singleton? args))
-			  (dp::mk-term (cons dp::*minus* args)))
-			 ((eq op dp::*nequal*)
-			  (dp::mk-term (list dp::*not*
-					     (dp::mk-equality (car args)
-							      (cadr args)))))
-			 ((and (eq op dp::*not*)
-			       (dp::negation-p (car args)))
-			  (dp::arg 1 (car args)))
-			 (t (dp::mk-term (cons op args))))))
-		((and (or (not (typep operator 'name-expr))
-			  (not (typep (declaration operator) 'const-decl)))
-		      (or (function-non-functional? operator)
-			  ;;(skolem-application? expr)
-			  ))
-		 (break))
-		(t (dc-mk-typed-term (cons (translate-to-dc operator) args)
-				  (dc-prover-type (type expr))))))))
+      (cond ((interpreted? operator)
+	     (let ((op (interpretation operator))
+		   )
+	       (cond ((and (eq op dp::*difference*) (singleton? args))
+		      (dp::mk-term (cons dp::*minus* args)))
+		     ((eq op dp::*nequal*)
+		      (dp::mk-term (list dp::*not*
+					 (dp::mk-equality (car args)
+							  (cadr args)))))
+		     ((and (eq op dp::*not*)
+			   (dp::negation-p (car args)))
+		      (dp::arg 1 (car args)))
+		     (*translate-rewrite-rule*
+		      (dp::sigma (dp::mk-term (cons op args))
+				 *init-dp-state*))
+		     (t (dp::mk-term (cons op args))))))
+	    ((and (or (not (typep operator 'name-expr))
+		      (not (typep (declaration operator) 'const-decl)))
+		  (or (function-non-functional? operator)
+		      ;;(skolem-application? expr)
+		      ))
+	     (break))
+	    (t (dc-mk-typed-term (cons (translate-to-dc operator) args)
+				 (dc-prover-type (type expr))))))))
 
 (defun dc-mk-typed-term (args dc-type)
   (let ((result (dp::mk-term args)))
@@ -526,7 +571,6 @@
 ;;;        (1) (APPLY int UPDATE g(1) (x' y') 1))
 
 (defmethod translate-to-dc ((expr update-expr))
-  (break)
   (translate-dc-assignments (assignments expr)
 			 (translate-to-dc (expression expr))
 			 (type expr)))
@@ -605,9 +649,9 @@
 
 (defun translate-dc-assign-args-record (args value trbasis type)
   (let* ((tr-record-constructor
-	  (if (dp::constant-p trbasis)
-	      (translate-dc-record-constructor type)
-	      (dp::funysm trbasis)))
+	  (if (dp::record-p trbasis)
+	      (dp::funsym trbasis)
+	      (translate-dc-record-constructor type)))
 	 (position (position (caar args) (dc-sort-fields (fields type))
 			     :test #'same-id))
 	 (new-value 
@@ -627,22 +671,23 @@
 				      ntrbasis
 				      ntrbasis-type)))
 	 (args
-	  (if (dp::constant-p trbasis)
-	      (translate-dc-record-name-to-record-args trbasis type
-						       position
-						       new-value)
+	  (if (dp::record-p trbasis)
 	      (let ((old-args (dp::funargs trbasis)))
 		(setf (nth position old-args)
 		      new-value)
-		old-args))))
+		old-args)
+	      (translate-dc-record-name-to-record-args trbasis type
+						       position
+						       new-value))))
     (dp::mk-term (cons tr-record-constructor args))))
 
 (defun translate-dc-record-name-to-record-args (trbasis type position value)
   (loop for i from 0 below (length (fields type))
 	collect (if (= i position)
 		    value
-		    (dp::mk-term (list trbasis
-				       (dp::mk-constant fieldnum))))))
+		    (dp::mk-term (list dp::*project*
+				       (dp::mk-constant i)
+				       trbasis)))))
 
 (defun translate-dc-assign-args-tuple (args value trbasis type)
       (dp::mk-term (list dp::*update*
@@ -687,13 +732,16 @@
 
 
 (defun make-dc-field-application (field-accessor-type fieldnum dc-expr)
-  (let ((appl (dp::mk-term (list dc-expr (dp::mk-constant fieldnum)))))
+  (let ((appl (dp::sigproject
+	       (dp::mk-term (list dp::*project*
+				  (dp::mk-constant fieldnum) dc-expr)))))
     ;;(setf (dp::node-type appl) field-accessor-type)
     appl))
 
 (defun make-dc-projection-application (type number expr)
-  (let ((appl (dp::mk-term `(,(dp::mk-constant 'tupcons)
-			     ,(dp::mk-constant (1- number)) ,expr))))
+  (let ((appl (dp::sigproject
+	       (dp::mk-term `(,dp::*project*
+			      ,(dp::mk-constant (1- number)) ,expr)))))
     ;;(setf (dp::node-type appl) (prover-type type))
     appl))
 
