@@ -494,8 +494,12 @@
     (tc-match* (argument arg) (argument farg) bindings)))
 
 (defmethod tc-match* ((arg application) (farg application) bindings)
-  (tc-match* (operator arg) (operator farg)
-	 (tc-match* (arguments arg) (arguments farg) bindings)))
+  (if (fully-instantiated? (operator farg))
+      (if (tc-eq (operator arg) (operator farg))
+	  (tc-match* (arguments arg) (arguments farg) bindings)
+	  bindings)
+      (tc-match* (operator arg) (operator farg)
+		 (tc-match* (arguments arg) (arguments farg) bindings))))
 
 (defvar *tc-match-boundvars* NIL) ;;NSH: see below.
 
