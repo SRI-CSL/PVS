@@ -159,6 +159,7 @@
   ;;;(check-duplication decl)
   (multiple-value-bind (path msg)
       (get-library-pathname (library decl))
+    (declare (ignore path))
     (when msg
       (type-error decl msg (lib-string decl)))))
 
@@ -1541,7 +1542,8 @@
     (unless (compatible? (subtype decl) (type decl))
       (type-error decl
 	"Types must be compatible."))
-    (let* ((*compatible-pred-reason* (list "judgement"))
+    (let* ((*compatible-pred-reason*
+	    (acons bvar "judgement" *compatible-pred-reason*))
 	   (incs (compatible-preds (subtype decl) (type decl) bvar)))
       (cond (incs
 	     (generate-subtype-tcc bvar (type decl) incs)
@@ -1552,7 +1554,9 @@
   (declare (ignore expected kind arguments))
   (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
   (set-type (declared-type decl) nil)
-  (typecheck* (number decl) (type decl) 'expr nil)
+  (let ((*compatible-pred-reason*
+	 (acons (number decl) "judgement" *compatible-pred-reason*)))
+    (typecheck* (number decl) (type decl) 'expr nil))
   (generic-judgement-warning decl)
   (add-judgement-decl decl))
 
@@ -1564,7 +1568,9 @@
                   ~%See language document for details."
       (starting-row (place decl))))
   (set-type (declared-type decl) nil)
-  (let ((*no-conversions-allowed* t))
+  (let ((*no-conversions-allowed* t)
+	(*compatible-pred-reason*
+	 (acons (name decl) "judgement" *compatible-pred-reason*)))
     (typecheck* (name decl) (type decl) nil nil))
   (add-judgement-decl decl))
 
@@ -1584,7 +1590,9 @@
     (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
     (set-type (declared-type decl) nil)
     (let* ((*no-conversions-allowed* t)
-	   (expr (mk-application-for-formals (name decl) (formals decl))))
+	   (expr (mk-application-for-formals (name decl) (formals decl)))
+	   (*compatible-pred-reason*
+	    (acons expr "judgement" *compatible-pred-reason*)))
       (typecheck* expr (type decl) nil nil)))
   (setf (judgement-type decl)
 	(make-formals-funtype (formals decl) (type decl)))
