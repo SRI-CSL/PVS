@@ -585,7 +585,7 @@
 		     dir)))
     (if (char= (char truedir (1- (length truedir))) #\/)
 	(directory-path* (subseq truedir 0 (1- (length truedir))))
-	(directory-path* truedir)))))
+	(directory-path* truedir))))
 
 (defun directory-path* (dir &optional path)
   (let ((pos (position #\/ dir :from-end t)))
