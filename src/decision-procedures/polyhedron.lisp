@@ -520,9 +520,10 @@
 (defun domain-to-equalities-intersect
   (current-eqs polyhedron ineq-var-index-array cong-state)
   (if (= (polyhedron-next polyhedron) 0)
-      (intersect current-eqs
-		(polyhedron-to-equalities polyhedron ineq-var-index-array
-					  cong-state))
+      (intersection
+       current-eqs
+       (polyhedron-to-equalities polyhedron ineq-var-index-array
+				 cong-state))
       (let* ((eqs1 (polyhedron-to-equalities polyhedron ineq-var-index-array
 					     cong-state))
 	     (rest-poly (polyhedron-next polyhedron))
