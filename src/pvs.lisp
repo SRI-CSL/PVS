@@ -727,6 +727,7 @@
 	       (justification decl))
     (unless (justification decl)
       (setf (justification decl) (tcc-strategy decl))
+      (setf (proof-status decl) nil)
       (setq *justifications-changed?* t))
     (let* ((*proving-tcc* 'TCC)
 	   (proof (rerun-prove decl)))
@@ -813,6 +814,7 @@
 		     (tcc? fmla)))
       (pvs-message "Proving untried formula ~a" (id fmla))
       (setf (justification fmla) just)
+      (setf (proof-status fmla) nil)
       (rerun-prove fmla))))
 
 
