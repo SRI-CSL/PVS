@@ -1,0 +1,385 @@
+<HTML>
+
+<HEAD>
+<TITLE>PVS Version 3.0 Release Notes</TITLE>
+</HEAD>
+<BODY
+      bgcolor ="FFFFFF"
+      text    ="000000"
+      vlink   ="AA00FF"
+      alink   ="FFFF00"
+      link    ="0000FF"
+>
+
+
+
+<!--  CSL BANNER GRAPHIC -->
+   <CENTER>
+   <IMG
+     SRC="images/csl_banner1.jpg"
+     ALT="SRI International Computer Science Laboratory"
+   >
+
+   </CENTER>
+
+<!-- END CSL BANNER GRAPHIC -->
+
+<HR NOSHADE SIZE=1>
+
+<P>
+<P>
+
+
+<!-- HEADER BLURB -->
+
+<TABLE BORDER=0 WIDTH="100%">
+<TR>
+<TD ALIGN=LEFT> <IMG ALIGN=LEFT SRC="images/pvslogo-icon.gif" ALT="">
+<TD ALIGN=CENTER> <FONT SIZE=10><B>PVS 3.0 Beta
+</B></FONT>
+<TD ALIGN=RIGHT> <IMG ALIGN=RIGHT SRC="images/pvslogo-icon.gif" ALT="">
+</TABLE>
+
+<!-- END HEADER BLURB -->
+<br clear=all>
+
+<P>
+
+<TABLE BORDER=0 WIDTH="100%">
+  <TR><TD ALIGN=LEFT BGCOLOR="0000FF" >
+    <A NAME="ABOUT"></A><FONT SIZE=5 COLOR=FFFFFF>
+    <B>&nbsp;PVS Version 3.0 beta Release Notes</B></FONT></TR>
+</TABLE>
+<p>
+<h2>Introduction</h2>
+PVS 3.0 beta is now available.  We are still working on updating the
+documentation, integration of the <a
+href="http://ics.csl.sri.com">ICS</a> decision procedures, and completing
+the validation tests, but we wanted to make it available so that others
+may try out some of the new features and provide feedback into the next
+release.  Please let us know of any bugs or suggestions you have by
+sending them to <a HREF="mailto:pvs-bugs@csl.sri.com">
+<it>pvs-bugs@csl.sri.com</it></a> <p>
+
+You can download it <a href="download.html">here</a>. <p> In addition to
+the usual bug fixes, there are quite a few changes to this release.  Most
+of these changes are backward compatible, but the new multiple proofs
+feature makes it difficult to run PVS 3.0 in a given context and then
+revert back to an earlier version.  For this reason we strongly suggest
+that you copy existing directories (especially the proof files) before
+running PVS 3.0 on existing specifications.
+<ul>
+  <li><a href="#allegro6.0">Allegro 6.0 Port</a>
+	 
+  <li><a href="#Interpretations">Theory interpretations</a>
+	 
+  <li><a href="#Multiple proofs">Multiple proofs</a>
+
+  <li><a href="#Library relative pathnames">Library relative pathnames</a>
+
+  <li><a href="#Cotuple types">Cotuple types</a>
+
+  <li><a href="#Coinductive definitions">Coinductive definitions</a>
+
+  <li><a href="#Datatype updates">Datatype updates</a>
+
+  <li><a href="#Datatype every relation">Datatype <tt>every</tt> relation</a>
+  
+  <li><a href="#Conversion messages">Conversion messages</a>
+
+  <li><a href="#More TCC information">More TCC information</a>
+
+  <li><a href="#Numbers as constants">Numbers as constants</a>
+
+  <li><a href="#Theory search">Theory search</a>
+	 
+</ul>
+
+<h2><a name="Allegro 6.0">Allegro 6.0 Port</a></h2>
+
+   PVS 3.0 has been ported to the case-sensitive version of Allegro
+   version 6.0.  This was done in order to be able to use the XML support
+   provided by Allegro 6.0.  We plan to both write and read XML abstract
+   syntax for PVS, which should make it easier to interact with other
+   systems.
+
+   <h2><a name="Interpretations">Theory Interpretations</a></h2>
+
+   Theory interpretations are described fully in <a
+   href="doc/interpretations.html">Theory Interpretations in PVS</a>
+   <p>
+   <h5>NOTES:</h5>
+   <ul>
+     <li> This introduces one backward incompatible change; theory
+	 abbreviations such as
+	 <pre>  foo: THEORY = bar[int, 3]</pre>
+	 should be changed to the new form
+	 <pre>  IMPORTING bar[int, 3] AS foo</pre>
+	 Note that `<tt>AS</tt>' is a new keyword, and may cause parse
+	 errors where none existed before.
+     <li> The stacks example doesn't work as given; in particular, the
+	 mappings for <tt>push</tt>, <tt>top</tt>, and <tt>pop</tt> should
+	 be changed to
+	 <pre>
+    push := LAMBDA (x: t, A: E[cstack, ce]):
+              equiv_class[cstack,ce](cpush(x)(rep(A))),
+    top := LAMBDA (A: E[cstack, ce] | cnonempty?(rep(A))):
+              ctop(rep(A)),
+    pop := LAMBDA (A: E[cstack, ce] | cnonempty?(rep(A))):
+              equiv_class[cstack,ce](cpop(rep(A)))
+	 </pre>
+	 Otherwise unprovable TCCs result (e.g., every stack is nonempty).
+   </ul>
+   
+
+<h2><a name="Multiple proofs">Multiple proofs</a></h2>
+
+PVS now supports multiple proofs for a given formula.  When a proof
+attempt is completed, either by quitting or successfully completing the
+proof, the proof is checked for changes.  If any changes have occured, the
+user is queried about whether to save the proof, and whether to overwrite
+the current proof or to create a new proof.  If a new proof is created,
+the user is prompted for a proof identifier and description. <p>
+
+   In addition to a proof identifier, description, and proof script, the proof
+objects contain the status, the date of creation, the date last run, and
+the run time.
+<p>
+
+   Every formula that has proofs has a default proof, which is
+used for most of the existing commands, such as prove, prove-theory,
+and status-proofchain.  Whenever a proof is saved, it automatically
+becomes the default.
+<p>
+
+   Three new Emacs commands allow for browsing and manipulating multiple
+proofs: <tt>display-proofs-formula</tt>, <tt>display-proofs-theory</tt>,
+and <tt>display-proofs-pvs-file</tt>.  These commands all pop up buffers
+with a table of proofs.  The default proof is marked with a `<tt>+</tt>'.
+Within such buffers, the following keys have the following effects.<p>
+
+   <table border align=center>
+     <tr>
+       <th>Key</th>
+       <th align=left>Effect</th>
+     </tr>
+     <tr>
+       <td><tt>c</tt></td>
+       <td> Change description: add or change the description for the proof</td>
+     </tr>
+     <tr>
+       <td><tt>d</tt></td>
+       <td> Default proof: set the default to the specified proof</td>
+     </tr>
+     <tr>
+       <td><tt>e</tt></td>
+       <td> Edit proof: bring up a Proof buffer for the specified proof;
+            the proof may then be applied to other formulas</td>
+     </tr>
+     <tr>
+       <td><tt>p</tt></td>
+       <td> Prove: rerun the specified proof (makes it the default)</td>
+     </tr>
+     <tr>
+       <td><tt>q</tt></td>
+       <td> Quit: exit the Proof buffer</td>
+     </tr>
+     <tr>
+       <td><tt>r</tt></td>
+       <td> Rename proof: rename the specified proof</td>
+     </tr>
+     <tr>
+       <td><tt>s</tt></td>
+       <td> Show proof: Show the specified proof in a Proof: \bkt{id} buffer</td>
+     </tr>
+     <tr>
+       <td><tt>DEL</tt></td>
+       <td> Delete proof: delete the specified proof from the formula</td>
+     </tr>
+   </table>
+   
+<h2><a name="Library relative pathnames">Library relative pathnames</a></h2>
+
+   The system now is careful to use relative pathnames instead of absolute
+   pathnames whenever possible in saving information in the
+   <tt>.pvscontext</tt> and <tt>.bin</tt> files.  The only reason this
+   wasn't done in the past is that the situation in which a theory refers
+   to a library with a relative pathname, which in turn refers to a
+   library with a relative pathname was difficult to resolve correctly.
+
+<h2><a name="Cotuple types">Cotuple types</a></h2>
+
+   PVS now supports cotuple types (also known as coproduct or sum types)
+   directly.  The syntax is similar to that for tuple types, but with the
+   `<tt>,</tt>' replaced with a `<tt>+</tt>'.  For example,
+   <pre>   cT: TYPE = [int + bool + [int -> int]]</pre>
+
+   Associated with a cotuple type are injections <tt>IN_</tt></it>i</it>,
+   predicates <tt>IN?_</tt></it>i</it>, and extractions
+   <tt>OUT_</tt></it>i</it> (none of these is case-sensitive).  For
+   example, in this case we have
+   
+   <pre>
+   IN_1:  [int -> cT]
+   IN?_1: [cT -> bool]
+   OUT_1: [(IN?_1) -> int]
+   </pre>
+
+   Thus <tt>IN_2(true)</tt> creates a <tt>cT</tt> element, and an
+   arbitrary <tt>cT</tt> element <tt>c</tt> is processed using
+   <tt>CASES</tt>, e.g.,
+
+   <pre>
+   CASES c OF
+     IN_1(i): i + 1,
+     IN_2(b): IF b THEN 1 ELSE 0 ENDIF,
+     IN_3(f): f(0)
+   ENDCASES
+   </pre>
+
+   This is very similar to using the <tt>union</tt> datatype defined in
+   the prelude, but allows for any number of arguments, and doesn't
+   generate a datatype theory.
+
+   Typechecking expressions such as <tt>IN_1(3)</tt> requires that
+   the context be known.  This is similar to the problem of a standalone
+   <tt>PROJ_1</tt>, and both are now supported:
+	 <pre>
+    F: [cT -> bool]
+    FF: FORMULA F(IN_1(3))
+    G: [[int -> [int, bool, [int -> int]]] -> bool]
+    GG: FORMULA G(PROJ_1)
+	 </pre>
+	 This means it is easy to write terms that are ambiguous:
+	 <pre>
+    HH: FORMULA IN_1(3) = IN_1(4)
+    HH: FORMULA PROJ_1 = PROJ_1
+	 </pre>
+	 This can be disambiguated by providing the type explicitly:
+	 <pre>
+    HH: FORMULA IN_1[cT](3) = IN_1(4)
+    HH: FORMULA PROJ_1 = PROJ_1[[int, int]]
+	 </pre>
+	 This uses the same syntax as for actual parameters, but doesn't
+   mean the same thing, as the projections, injections, etc., are builtin,
+   and not provided by any theories.  Note that coercions don't work in
+   this case, as <tt>PROJ_1::[[int, int] -> int]</tt> is the same as
+<pre>
+    (LAMBDA (x: [[int, int] -> int]): x)(PROJ_1)
+</pre>
+and not
+<pre>
+    LAMBDA (x: [int, int]): PROJ_1(x)
+</pre>
+
+The prover has been updated to handle extensionality and reduction rules
+as expected.
+
+<h2><a name="Coinductive definitions">Coinductive definitions</a></h2>
+
+Coinductive definitions are now supported.  They are like inductive
+definitions, but introduced with the keyword `<tt>COINDUCTIVE</tt>', and
+generate the greatest fixed point.
+
+<h2><a name="Datatype updates">Datatype updates</a></h2>
+
+Update expressions now work on datatypes, in much the same way they work
+on records.  For example, if <tt>lst: list[nat]</tt>, then <tt>lst WITH
+[`car := 0]</tt> returns the list with first element 0, and the rest the
+same as the cdr of <tt>lst</tt>.  In this case there is also a TCC of the
+form <tt>cons?(lst)</tt>, as it makes no sense to set the car of
+<tt>null</tt>.
+
+Complex datatypes with overloaded accessors and dependencies are also
+handled.  For example,
+<pre>
+  dt: DATATYPE
+  BEGIN
+   c0: c0?
+   c1(a: (even?), b: int): c1?
+   c2(a: nat, c: int): c2?
+  END dt
+
+  datatype_update: THEORY
+  BEGIN
+   IMPORTING dt
+   x: dt
+   y: int
+   f: dt = x WITH [a := y]
+  END datatype_update
+</pre>
+This generates the TCC
+<pre>
+f_TCC1: OBLIGATION
+  (c1?(x) AND IF c1?(x) THEN even?(y) ELSE y >= 0 ENDIF) OR
+   (c2?(x) AND IF c1?(x) THEN even?(y) ELSE y >= 0 ENDIF);
+</pre>
+
+<h2><a name="Datatype every relation">Datatype <tt>every</tt></h2>
+relation</a></h2>
+If a top level datatype generates a map theory, the theory also contains
+an every relation.  For lists, for example, it is defined as
+<pre>
+  every(R: [[T, T1] -> boolean])(x: list[T], y: list[T1]):  boolean =
+      null?(x) AND null?(y) OR
+       cons?(x) AND
+        cons?(y) AND R(car(x), car(y)) AND every(R)(cdr(x), cdr(y));
+</pre>
+Thus, for example, <tt>every(<)(x, y: list[nat])</tt> returns true if the
+lists x and y are of the same length, and each element of <tt>x</tt> is
+less than the corresponding element of <tt>y</tt>.
+
+<h2><a name="Conversion messages">Conversion messages</a></h2>
+Messages related to conversions have been separated out, so that if any
+are generated a message is produced such as
+<pre>
+  po_lems typechecked in 9.56s: 10 TCCs, 0 proved, 3 subsumed, 7 unproved; 4 conversions; 2 warnings; 3 msgs
+</pre>
+In addition, the commands <tt>M-x show-theory-conversions</tt> and <tt>M-x
+show-pvs-file-conversions</tt> have been added to view the conversions.
+
+<h2><a name="More TCC information">More TCC information</a></h2>
+Trivial TCCs of the form <tt>x /= 0 IMPLIES x /= 0</tt> and <tt>45 <
+256</tt> used to quietly be suppressed.  Now they are added to the
+messages associated with a theory, along with subsumed TCCs.  In addition,
+both trivial and subsumed TCCs are now displayed in commented form in the
+show-tccs buffer.
+
+<h2><a name="Numbers as constants">Numbers as constants</a></h2>
+Numbers may now be declared as constants, e.g.,
+<pre>  42: [int -> int] = LAMBDA (x: int): 42</pre>
+This is most useful in defining algebraic structures (groups, rings,
+etc.), where overloading 0 and 1 is common mathematical practice.
+It's usually a bad idea to declare a constant to be of a number type,
+e.g.,
+<pre>  42: int = 57</pre>
+Even if the typechecker doesn't get confused, most users would.
+
+<h2><a name="Theory search">Theory search</a></h2>
+
+   When the parser encounters an importing for a theory <tt>foo</tt> that
+has not yet been typechecked, it looks first in the <tt>.pvscontext</tt>
+file, then looks for <tt>foo.pvs</tt>. In previous versions, if the theory
+wasn't found at this point an error would result.  The problem is that
+file names often don't match the theory names, either because a given file
+may have multiple theories, or a naming convention (e.g., the file is
+lower case, but theories are capitalized)<p>
+   Now the system will parse every <tt>.pvs</tt> file in the current
+context, and if there is only one file with that theory id in it, it will
+be used.  If multiple files are found, a message is produced indicating
+which files contain a theory of that name, so that one of those may be
+selected and typechecked.<p>
+   <h5>NOTES</h5>
+   <ul>
+     <li>Once a file has been typechecked, the <tt>.pvscontext</tt> is
+updated accordingly, and this check is no longer needed.
+     <li><tt>.pvs</tt> files that contain parse errors will be ignored.
+   </ul>
+
+<hr>
+<address>Sam Owre: <a HREF="mailto:Owre@csl.sri.com">
+Owre@csl.sri.com</a></address>
+<!-- hhmts start -->
+Last modified: Fri Jul 19 20:48:02 PDT 2002
+<!-- hhmts end -->
+</body> </html>
