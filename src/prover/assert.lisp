@@ -112,7 +112,9 @@
       (sequent-reduce sequent
 		      #'(lambda (sform) (assert-sform sform rewrite-flag))
 		      other-sformnums)
-    (cond ((eq signal '!) (values '! nil
+    (cond ((eq signal '!) (when *new-ground?*
+			    (dp::npop-cong-state *dp-state*))
+			  (values '! nil
 				  (list 'dependent-decls *dependent-decls*)))
 	  (t (multiple-value-bind
 		   (newsignal newsubgoal)
@@ -128,6 +130,8 @@
 					T))
 		      simplifiable-sformnums))
 	       (cond ((eq newsignal '!)
+		      (when *new-ground?*
+			(dp::npop-cong-state *dp-state*))
 		      (values '! nil (list 'dependent-decls *dependent-decls*)))
 		     ((and (eq signal 'X)(eq newsignal 'X))
 		      (values 'X nil nil))
