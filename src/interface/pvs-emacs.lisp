@@ -491,18 +491,19 @@
 	(type-error obj
 	  "~a does not uniquely resolve - one of:~{~2%  ~a~^,~}"
 	  (unparse obj :string t) reses))
-      (type-error obj
-	"~a does not have a unique type - one of:~{~%  ~a~^,~}~% ~a"
-	(unparse obj :string t)
-	(mapcar #'(lambda (ty)
-		    (unparse ty :string t))
-		(ptypes obj))
-	(if (some #'fully-instantiated? (ptypes obj))
-	    (if (not (every #'fully-instantiated? (ptypes obj)))
-		"(Some of these are not fully instantiated)")
-	    (if (= (length (ptypes obj)) 2)
-		"(Neither of these is fully instantiated)"
-		"(None of these are fully instantiated)")))))
+      (let ((obstr (unparse obj :string t)))
+	(type-error obj
+	  "~a~:[ ~;~%~]does not have a unique type - one of:~{~%  ~a~^,~}~% ~a"
+	  obstr
+	  (or (> (length obstr) 20)
+	      (find #\newline obstr))
+	  (mapcar #'(lambda (ty) (unparse ty :string t)) (ptypes obj))
+	  (if (some #'fully-instantiated? (ptypes obj))
+	      (if (not (every #'fully-instantiated? (ptypes obj)))
+		  "(Some of these are not fully instantiated)")
+	      (if (= (length (ptypes obj)) 2)
+		  "(Neither of these is fully instantiated)"
+		  "(None of these are fully instantiated)"))))))
 
 (defun format-resolution (res)
   (format nil "~@[~a~]~@[~a~]~@[[~{~a~^,~}]~].~a~@[ : ~a~]"
