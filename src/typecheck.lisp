@@ -417,7 +417,8 @@
 	      (importings adt)))))
 
 (defun mod-or-using? (obj)
-  (typep obj '(or mod-decl theory-abbreviation-decl importing)))
+  (typep obj
+	 '(or mod-decl theory-abbreviation-decl formal-theory-decl importing)))
 
 (defmethod modules ((decl mod-decl))
   (list (modname decl)))
@@ -536,20 +537,35 @@
   (update-auto-rewrites-of-current-context theory theoryname))
 
 (defun update-conversions-of-current-context (theory theoryname)
-  (dolist (conversion (reverse
-		       (list-diff (conversions (saved-context theory))
-				  (conversions *current-context*))))
-    (if (eq (module conversion) theory)
-	(push (subst-params-decl conversion theoryname)
-	      (conversions *current-context*))
-	(push conversion (conversions *current-context*))))
-  (dolist (conversion (disabled-conversions (saved-context theory)))
-    (if (eq (module conversion) theory)
-	(pushnew (subst-params-decl conversion theoryname)
-		 (disabled-conversions *current-context*)
-		 :test #'eq)
-	(pushnew conversion (disabled-conversions *current-context*)
-		 :test #'eq))))
+  (unless (and (not *loading-prelude*)
+	       (from-prelude? theory))
+    (let ((new-convs (get-new-imported-conversions
+		      (conversions (saved-context theory))
+		      (conversions *current-context*))))
+      (dolist (conversion new-convs)
+	(if (eq (module conversion) theory)
+	    (push (subst-params-decl conversion theoryname)
+		  (conversions *current-context*))
+	    (push conversion (conversions *current-context*)))))
+    (dolist (conversion (disabled-conversions (saved-context theory)))
+      (if (eq (module conversion) theory)
+	  (pushnew (subst-params-decl conversion theoryname)
+		   (disabled-conversions *current-context*)
+		   :test #'eq)
+	  (pushnew conversion (disabled-conversions *current-context*)
+		   :test #'eq)))))
+
+;; Note that this returns the new conversions in reverse order
+(defun get-new-imported-conversions (imported-convs current-convs
+						    &optional new-convs)
+  (if (null imported-convs)
+      new-convs
+      (get-new-imported-conversions
+       (cdr imported-convs)
+       current-convs
+       (if (memq (car imported-convs) current-convs)
+	   new-convs
+	   (cons (car imported-convs) new-convs)))))
 
 (defun update-auto-rewrites-of-current-context (theory theoryname)
   (dolist (r (auto-rewrites (saved-context theory)))
