@@ -232,7 +232,6 @@
 	 (theories (get-theories file)))
     (cond ((not (file-exists-p file))
 	   (unless no-message?
-	     (break "Not found")
 	     (pvs-message "~a is not in the current context" filename)))
 	  ((and (not forced?)
 		(gethash filename *pvs-files*)
@@ -954,9 +953,9 @@
   (let* ((context-theory (when context-theoryname
 			   (get-typechecked-theory context-theoryname)))
 	 (*current-context* (context context-theory))
-	 (theoryname (pc-parse theoryname-string 'modname)))
+	 (theoryname (pc-parse theoryname-string 'theory-decl-modname)))
     (when (or (actuals theoryname) (mappings theoryname))
-      (let ((*generate-tccs* nil)
+      (let ((*generate-tccs* 'none)
 	    (*current-theory* (current-theory))
 	    (decl (make-instance 'mod-decl
 		    'id (makesym "~a_instance" (id theoryname))
@@ -1154,12 +1153,12 @@
 
 (defun prove-file-at (name line rerun?
 			   &optional origin buffer prelude-offset
-			   background? display?)
+			   background? display? unproved?)
   (let ((*to-emacs* background?))
     (if (or *in-checker* *in-evaluator*)
 	(pvs-message "Must exit the prover/evaluator first")
 	(multiple-value-bind (fdecl place)
-	    (formula-decl-to-prove name line origin)
+	    (formula-decl-to-prove name line origin unproved?)
 	  (if (and rerun?
 		   fdecl
 		   (null (justification fdecl)))
@@ -1209,13 +1208,18 @@
 					      (col-end place))
 				      place))))))))))
 
-(defun formula-decl-to-prove (name line origin)
+(deftype unproved-formula-decl () '(and formula-decl (satisfies unproved?)))
+
+(defun formula-decl-to-prove (name line origin &optional unproved?)
   (if (and (member origin '("ppe" "tccs") :test #'string=)
 	   (not (get-theory name)))
       (pvs-message "~a is not typechecked" name)
       (case (intern (string-upcase origin))
 	(ppe (let* ((theories (ppe-form (get-theory name)))
-		    (decl (get-decl-at line 'formula-decl theories)))
+		    (typespec (if unproved?
+				  'unproved-formula-decl
+				  'formula-decl))
+		    (decl (get-decl-at line typespec theories)))
 	       (values (find-if #'(lambda (d)
 				    (and (formula-decl? d)
 					 (eq (id d) (id decl))))
@@ -1224,7 +1228,9 @@
 	(tccs (let* ((theory (get-theory name))
 		     (decls (tcc-form theory))
 		     (decl (find-if #'(lambda (d)
-					(>= (line-end (place d)) line))
+					(and (>= (line-end (place d)) line)
+					     (or (null unproved?)
+						 (unproved? d))))
 				    decls)))
 		(values (find-if #'(lambda (d) (and (eq (module d) theory)
 						    (formula-decl? d)
@@ -1236,10 +1242,16 @@
 				      (list theory)
 				      (remove-if #'generated-by
 					*prelude-theories*)))
-			(decl (get-decl-at line 'formula-decl theories)))
+			(typespec (if unproved?
+				      'unproved-formula-decl
+				      'formula-decl))
+			(decl (get-decl-at line typespec theories)))
 		   (values decl (place decl))))
 	(t (let* ((theories (typecheck-file name nil nil nil t))
-		  (decl (get-decl-at line 'formula-decl theories)))
+		  (typespec (if unproved?
+				'unproved-formula-decl
+				'formula-decl))
+		  (decl (get-decl-at line typespec theories)))
 	     (values decl (when decl (place decl))))))))
 
 
@@ -1250,8 +1262,8 @@
 ;;; rerun, NO if the proof should not be rerun, and NIL if the formula
 ;;; declaration could not be found.
 
-(defun rerun-proof-at? (name line &optional origin rerun?)
-  (let ((fdecl (formula-decl-to-prove name line origin)))
+(defun rerun-proof-at? (name line &optional origin rerun? unproved?)
+  (let ((fdecl (formula-decl-to-prove name line origin unproved?)))
     (cond ((and fdecl rerun?)
 	   (if (justification fdecl)
 	       rerun?
@@ -1264,6 +1276,7 @@
 		    (if (pvs-y-or-n-p-with-timeout "Rerun Existing proof? ")
 			t 'NO))
 	       'NO))
+	  (unproved? (pvs-message "No more unproved formulas below"))
 	  (t (pvs-message "Not at a formula declaration")))))
 
 (defun prove-formula (modname formname rerun?)
@@ -1287,7 +1300,13 @@
     (and fdecl
 	 (justification fdecl)
 	 (pvs-y-or-n-p "Rerun Existing proof? "))))
-    
+
+(defun prove-next-unproved-formula (name line rerun?
+					 &optional origin buffer prelude-offset
+					 background? display?)
+  (prove-file-at name line rerun? origin buffer prelude-offset background?
+		 display? t))
+
 
 ;;; Non-interactive Proving
 
@@ -1680,9 +1699,12 @@
   (let ((theory (gethash (ref-to-id theoryref) *pvs-modules*)))
     (when theory
       (copy-theory-proofs-to-orphan-file theoryref)
+      (untypecheck-usedbys theory)
       (when (typechecked? theory)
 	(untypecheck-theory theory))
-      (remhash (id theory) *pvs-modules*))))
+      (remhash (id theory) *pvs-modules*)
+      (setf (gethash (filename theory) *pvs-files*)
+	    (remove theory (gethash (filename theory) *pvs-files*))))))
 
 
 ;;; List Theories
@@ -2234,9 +2256,8 @@
 	  (setf (justification fdecl) just))))
     (setq *to-emacs* nil)
     (unwind-protect
-	(let* ((*in-checker* t)
-	       (proof (prove-decl fdecl :strategy (when strategy
-						    '(then (rerun) (quit))))))
+	(let ((proof (prove-decl fdecl :strategy (when strategy
+						   '(then (rerun) (quit))))))
 	  (setq *prove-formula-proof*
 		(editable-justification
 		 (extract-justification-sexp (justification proof)))))
