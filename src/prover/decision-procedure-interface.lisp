@@ -200,22 +200,17 @@
 ;;; ICS interface
 
 (defmethod dpi-init* ((dp (eql 'ics)))
-  (ics-init 1))
+  (ics-init 0))
 
 (defmethod dpi-start* ((dp (eql 'ics)) prove-body)
   (let ((*pvs-to-ics-hash* (init-if-rec *pvs-to-ics-hash*))
-	(*ics-to-pvs-hash* (init-if-rec *ics-to-pvs-hash*))
-	(*ics-types-to-tags-hash* (init-if-rec *ics-types-to-tags-hash*))
-	(*ics-tags-to-types-hash* (init-if-rec *ics-tags-to-types-hash*))
-	(*ics-tags-to-types-counter* 0))
+	(*ics-to-pvs-hash* (init-if-rec *ics-to-pvs-hash*)))
     (funcall prove-body)))
 
 (defmethod dpi-end* ((dp (eql 'ics)) proofstate)
   (declare (ignore proofstate))
   (clrhash *pvs-to-ics-hash*)
   (clrhash *ics-to-pvs-hash*)
-  (clrhash *ics-types-to-tags-hash*)
-  (clrhash *ics-tags-to-types-hash*)
   (ics_reset))
 
 (defmethod dpi-empty-state* ((dp (eql 'ics)))
@@ -225,9 +220,6 @@
   (let* ((ics-expr (translate-to-ics pvs-expr))
 	 (ics-value (ics-process state ics-expr))
 	 (new-state nil))
-    ;;(format t "~%Processing ~a~%" pvs-expr)
-    ;;(ics_pp_state state)
-    ;;(ics_flush)
     (cond ((not (zerop (ics_is_consistent ics-value)))
 	   (let ((nstate (ics-d-consistent ics-value)))
 	     (values nil nstate)))
@@ -236,11 +228,8 @@
 	  (t (values *false* state)))))
 
 (defmethod dpi-process* ((dp (eql 'ics)) ics-expr state)
-  (let* ((ics-value (ics_process state ics-expr))
+  (let* ((ics-value (ics_process_wrapper ics-expr))
 	 (new-state nil))
-    ;;(format t "~%Processing ~a~%" pvs-expr)
-    ;;(ics_pp_state state)
-    ;;(ics_flush)
     (cond ((not (zerop (ics_is_consistent ics-value)))
 	   (let ((nstate (ics-d-consistent ics-value)))
 	     (values nil nstate)))
