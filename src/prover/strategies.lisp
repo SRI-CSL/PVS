@@ -3182,7 +3182,7 @@ invokes apply-extensionality.  Otherwise it decomposes the
 
 (defmethod component-equalities (lhs rhs (te funtype))
   (let* ((id (make-new-variable '|x| (list te lhs rhs)))
-	 (dom (domain te))
+	 (dom (if (dep-binding? (domain te)) (type (domain te)) (domain te)))
 	 (bd (typecheck* (mk-bind-decl id dom dom) nil nil nil))
 	 (nvar (mk-name-expr id nil nil (make-resolution bd nil dom))))
     (make!-forall-expr
