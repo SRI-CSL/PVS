@@ -289,6 +289,7 @@ decision-procedures = src/decision-procedures/types.lisp \
                       src/decision-procedures/rewrite.lisp \
                       src/decision-procedures/rewrite-pvs.lisp \
                       src/decision-procedures/datatypes-pvs.lisp \
+                      src/decision-procedures/datatypes.lisp \
                       src/decision-procedures/records.lisp \
                       src/decision-procedures/rewrite-optimize.lisp \
                       src/decision-procedures/simplify.lisp \
