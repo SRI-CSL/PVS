@@ -1178,6 +1178,7 @@
 	     (*no-comments* t)
 	     (*unparse-expanded* t)
 	     (*pp-new-projection-forms* t)
+	     (unparsed-a-tcc? nil)
 	     (str (string-trim
 		   '(#\Space #\Tab #\Newline)
 		   (with-output-to-string (out)
@@ -1189,12 +1190,15 @@
 				  (or (not unproved-only?)
 				      (unproved? decl)))
 			 (unparse decl :stream out)
-			 (terpri out) (terpri out))))))
+			 (terpri out) (terpri out)
+			 (setq unparsed-a-tcc? t))))))
 	     (buffer (format nil "~a.tccs" (id theory))))
 	(cond ((not (string= str ""))
 	       (let ((*valid-id-check* nil))
 		 (setf (tcc-form theory)
-		       (parse :string str :nt 'theory-part)))
+		       (if unparsed-a-tcc?
+			   (parse :string str :nt 'theory-part)
+			   str)))
 	       (pvs-buffer buffer str t t))
 	      (t (pvs-message "Theory ~a has no TCCs" theoryref)))))))
 
