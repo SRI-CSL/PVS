@@ -1447,17 +1447,12 @@
 	  
 
 (defun dependent-fields? (fields)
-  (when (cdr fields)
-    (or (let ((dep? nil))
-	  (mapobject #'(lambda (ex)
-			 (or dep?
-			     (when (and (name? ex)
-					(eq (declaration ex) (car fields)))
-			       (setq dep? t)
-			       t)))
-		     (cdr fields))
-	  dep?)
-	(dependent-fields? (cdr fields)))))
+  (some #'(lambda (fld)
+	    (some #'(lambda (fv)
+		      (memq (declaration fv) fields))
+		  (freevars (type fld))))
+	fields))
+
 
 ;;; The tricky part here is that a field has two identities:
 ;;;  1. Within a dependent record type, it appears as a simple name-expr,
@@ -1675,7 +1670,9 @@
   (when (projection? (id decl))
     (type-error decl "May not overload projection names"))
   (let* ((alldecls (all-decls (current-theory)))
-	 (decls (ldiff alldecls (memq decl alldecls))))
+	 (decls (ldiff alldecls (or (memq decl alldecls)
+				    (and (inline-datatype? *adt*)
+					 (memq *adt* alldecls))))))
     (mapc #'(lambda (d) (when (and (typep d 'declaration)
 				   (same-id decl d))
 			  (duplicate-decls decl d)))
