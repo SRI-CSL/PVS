@@ -7,6 +7,10 @@
 ;
 
 #-runtime
+(declare (special *dont-write-object-files* *pvs-verbose* *latex-linelength*
+		  *dump-sequents-to-file* *number-of-proof-backups*))
+
+#-runtime
 (defun pvs-browser-el ()
   (show-declaration nil nil nil)
   (goto-declaration nil nil nil)
