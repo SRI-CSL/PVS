@@ -368,10 +368,10 @@
 				    (t (setf (cdr binding) type))))
 			    bindings)
 			   (t nil)))))
-	  (or (tc-match* (supertype arg) (supertype farg)
+	  (or (tc-match* arg (supertype farg) bindings)
+	      (tc-match* (supertype arg) (supertype farg)
 			 (tc-match* (predicate arg) (predicate farg) bindings))
-	      (tc-match* (supertype arg) farg bindings)
-	      (tc-match* arg (supertype farg) bindings))))))
+	      (tc-match* (supertype arg) farg bindings)))))))
 
 (defmethod tc-match* ((arg funtype) (farg funtype) bindings)
   (unless (null bindings)
