@@ -95,9 +95,9 @@ extern void bdd_print_statistics(unsigned stat_index, char info[]);
 
 extern unsigned bdd_ifindex(bdd_manager *bbdm, bdd_ptr p);
 
-extern bdd_ptr bdd_then (bdd_manager *bbdm, bdd_ptr p);
+extern bdd_ptr ws1s___bdd_then (bdd_manager *bbdm, bdd_ptr p);
 
-extern bdd_ptr bdd_else(bdd_manager *bbdm, bdd_ptr p) ;
+extern bdd_ptr ws1s___bdd_else(bdd_manager *bbdm, bdd_ptr p) ;
 
 extern unsigned bdd_is_leaf(bdd_manager *bbdm, bdd_ptr p);
 

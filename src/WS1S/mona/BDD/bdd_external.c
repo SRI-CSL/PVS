@@ -53,12 +53,12 @@ void export(bdd_manager *bddm, unsigned p, Table *table)
     }
     else {
       e->idx = bdd_ifindex(bddm,p);
-      e->lo = bdd_else(bddm,p);
-      e->hi = bdd_then(bddm,p);
+      e->lo = ws1s___bdd_else(bddm,p);
+      e->hi = ws1s___bdd_then(bddm,p);
       tableInsert(table, e);
       bdd_set_mark(bddm,p,table->noelems); /* table index+1 put in mark */
-      export(bddm, bdd_then(bddm,p), table);
-      export(bddm, bdd_else(bddm,p), table);
+      export(bddm, ws1s___bdd_then(bddm,p), table);
+      export(bddm, ws1s___bdd_else(bddm,p), table);
     }
     free(e);
   }

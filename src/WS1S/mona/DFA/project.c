@@ -202,7 +202,7 @@ DFA *dfaProject(DFA *a, unsigned var_index)
   int i,*e; 
   DFA *res;
   sslist lnxt;  
-  unsigned size_estimate = 2 * bdd_size(a->bddm);
+  unsigned size_estimate = 2 * ws1s___bdd_size(a->bddm);
   
   bddm_res = bdd_new_manager(size_estimate, size_estimate/8 + 2);
   bdd_make_cache(bddm_res, size_estimate, size_estimate/8 + 2);    

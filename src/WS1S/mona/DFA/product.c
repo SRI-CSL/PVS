@@ -120,8 +120,8 @@ DFA *dfaProduct(DFA* a1, DFA* a2, dfaProductType ff)
   int make_a_loop;
   
   unsigned size_estimate = 4 + 4 *
-    (bdd_size(a1->bddm) > bdd_size(a2->bddm) ? 
-     bdd_size(a1->bddm) : bdd_size(a2->bddm)); 
+    (ws1s___bdd_size(a1->bddm) > ws1s___bdd_size(a2->bddm) ? 
+     ws1s___bdd_size(a1->bddm) : ws1s___bdd_size(a2->bddm)); 
   
   bdd_manager *bddm; 
   

@@ -40,7 +40,7 @@ unsigned transition_table_size(DFA *a)
 
 void dfaPrintVitals(DFA *a)
 {
-  unsigned i = bdd_size(a->bddm);
+  unsigned i = ws1s___bdd_size(a->bddm);
   unsigned t = transition_table_size(a);
   
   printf("\nConjunctive automaton has %d state%s, %d BDD-node%s and %d transition%s\n", 

@@ -84,13 +84,13 @@ unsigned bdd_ifindex(bdd_manager *bddm, unsigned p) {
   return (index);
 }
 
-unsigned bdd_then(bdd_manager *bddm, unsigned p) {
+unsigned ws1s___bdd_then(bdd_manager *bddm, unsigned p) {
   unsigned l, r, index;
   LOAD_lri(&bddm->node_table[p], l, r, index);
   return (r);
 }
 
-unsigned bdd_else(bdd_manager *bddm, unsigned p) {
+unsigned ws1s___bdd_else(bdd_manager *bddm, unsigned p) {
   unsigned l, r, index;
   LOAD_lri(&bddm->node_table[p], l, r, index);
   return (l);

@@ -14,7 +14,7 @@
 
 
 (def-pvs-term the1      "the[nat]" "naturalnumbers")
-(def-pvs-term the2      "the[finite_set[nat]]" "Fairctlops")
+(def-pvs-term the2      "the[finite_set[nat]]" "strings")
 (def-pvs-term minus1 "-" "naturalnumbers" :expected "[nat, nat -> nat]")
 (def-pvs-term plus1  "+" "naturalnumbers" :expected "[nat, nat -> nat]")
 
