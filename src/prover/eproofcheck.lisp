@@ -1767,7 +1767,8 @@
 				(pending-subgoals newps) NIL
 				(done-subgoals newps) NIL
 				(current-subgoal newps) NIL
-					;(dependent-decls newps) NIL ;;NSH(12.14.94)
+				(dependent-decls newps) NIL ;;NSH(12.14.94)
+				;;d-d was commented, now uncommented(4.9.99)
 				(current-rule newps) NIL
 				(current-xrule newps) NIL
 				(printout newps) NIL
@@ -1884,6 +1885,7 @@
 				goalnum))
 		    'subgoalnum (1- goalnum)
 		    'dependent-decls (dependent-decls proofstate)
+		    ;;d-d can be NIL but inheriting from parent is okay.
 		    'alists (copy (alists proofstate))
 		    'dp-state (when *new-ground?*
 				(dp::copy-cong-state (dp-state proofstate)))

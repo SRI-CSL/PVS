@@ -962,9 +962,11 @@ or supply more substitutions."
 						dependent-decls)
 			  (pushnew (declaration res)
 				   dependent-decls)
-			  (values '? (list (list newsequent
-						 'dependent-decls
-						 dependent-decls))))))))))))
+			  (values '? (list newsequent)
+					   ;NSH(4.9.99)
+					   ;changed d-d to update parent.
+					(list   'dependent-decls
+					   dependent-decls)))))))))))
    
 		     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1000,14 +1002,14 @@ or supply more substitutions."
 	   (mapcar #'formula new-sforms)
 	   references)
 	  (values '?
-		  (list (list
-			 (lcopy (current-goal ps)
-			   's-forms
-			   (append new-sforms
-				   (s-forms
-				    (current-goal ps))))
-			 'dependent-decls
-			 references)))))))
+		   (list
+		    (lcopy (current-goal ps)
+		      's-forms
+		      (append new-sforms
+			      (s-forms
+			       (current-goal ps)))))
+		   (list 'dependent-decls;;(NSH:4.9.98) now updates parent
+			 references))))))
 		
 
 (defun collect-typepreds (expr ps &optional all?)
@@ -1105,12 +1107,15 @@ or supply more substitutions."
 	       (values 'X nil nil))
 	      (t ;;(format-if "~%Introducing case splits,")
 	       ;;(push-references tc-fmlas ps)
-	       (values '? (make-cases (current-goal ps) tc-fmlas
-				      (dependent-decls ps))))))))
+	       (multiple-value-bind
+		(subgoals dependent-decls)
+		(make-cases (current-goal ps) tc-fmlas
+			    nil);was (dependent-decls ps)
+	       (values '? subgoals (list 'dependent-decls dependent-decls))))))))
 
 (defun make-cases (goal fmlas &optional references accum)
-  (cond ((null fmlas) (cons (list goal 'dependent-decls references)
-			    accum))
+  (cond ((null fmlas) (values (cons goal accum)
+			     references))
 	(t (let* ((neg-fmla (negate (car fmlas)))
 		  (pos-sform (make-instance 's-formula 'formula (car fmlas)))
 		  (neg-sform (make-instance 's-formula 'formula neg-fmla))
@@ -1122,11 +1127,10 @@ or supply more substitutions."
 		  )
 	     (push-references-list (car fmlas)
 				   references)
-	     (let ((pos-goal (list
-			     (copy goal 's-forms
-				   (cons pos-sform (s-forms goal)))
-			     'dependent-decls
-			     references)))
+	     (let ((pos-goal (copy goal 's-forms
+				   (cons pos-sform (s-forms goal)))))
+;			     'dependent-decls ;;NSH(4.9.99)updates parent
+;			     references
 	       (make-cases neg-goal (cdr fmlas) references
 			   (cons pos-goal accum)))))))
 
@@ -1302,7 +1306,6 @@ which should be fully instantiated. Please supply actual parameters.")
   (let* ((references NIL))
     (push-references-list texpr references)
     (values '?
-	    (list
 	     (list
 	      (copy (current-goal ps)
 		's-forms
@@ -1312,15 +1315,14 @@ which should be fully instantiated. Please supply actual parameters.")
 			 (function-extensionality
 			  texpr given
 			  *current-context*)))
-		      (s-forms (current-goal ps))))
-	      'dependent-decls
-	      references)))))
+		      (s-forms (current-goal ps)))))
+	     (list 'dependent-decls
+	      references))))
 
 (defmethod extensionality-step ((texpr tupletype) given ps)
   (let* ((references NIL))
     (push-references-list texpr references)
     (values '?
-	    (list
 	     (list (copy (current-goal ps)
 		     's-forms
 		     (cons (make-instance 's-formula
@@ -1329,15 +1331,14 @@ which should be fully instantiated. Please supply actual parameters.")
 			      (tuple-extensionality
 			       texpr given 
 			       *current-context*)))
-			   (s-forms (current-goal ps))))
-		   'dependent-decls
-		   references)))))
+			   (s-forms (current-goal ps)))))
+	     (list 'dependent-decls
+		   references))))
 
 (defmethod extensionality-step ((texpr recordtype) given ps)
   (let* ((references NIL))
     (push-references-list texpr references)
     (values '?
-	  (list
 	   (list (copy (current-goal ps)
 		   's-forms
 		   (cons (make-instance 's-formula
@@ -1346,8 +1347,8 @@ which should be fully instantiated. Please supply actual parameters.")
 			    (record-extensionality
 			     texpr given 
 			     *current-context*)))
-			 (s-forms (current-goal ps))))
-		 'dependent-decls references)))))
+			 (s-forms (current-goal ps)))))
+	   (list 'dependent-decls references))))
 
 (defmethod extensionality-step ((texpr type-name) given ps)
   (let ((tdecl (declaration texpr)))
@@ -1394,15 +1395,14 @@ which should be fully instantiated. Please supply actual parameters.")
 		 (push-references-list texpr references)
 		 (pushnew fmla-decl references)
 		 (values '?
-			 (list
 			  (list (copy (current-goal ps)
 				  's-forms
 				  (cons (make-instance 's-formula
 					  'formula
 					  (negate new-fmla))
-					(s-forms (current-goal ps))))
-				'dependent-decls
-				references)))))
+					(s-forms (current-goal ps)))))
+			  (list 'dependent-decls
+				references))))
 	      (t (error-format-if "~%Could not find ADT extensionality axiom for ~a." given)
 		 (values 'X nil))))
       (extensionality-step (supertype texpr) (supertype texpr) ps)))
@@ -1471,9 +1471,9 @@ which should be fully instantiated. Please supply actual parameters.")
 						 'formula
 						 (negate formula))
 					       (s-forms (current-goal ps))))
-				       (list 'context context
-					     'dependent-decls
-					     references)))))))))))
+				       (list 'context context)))
+				(list 'dependent-decls
+				 references)))))))))
 
 (defun update-judgements-with-new-name (name expr context)
   (let ((judgements-copied? nil)

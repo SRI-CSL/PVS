@@ -342,12 +342,16 @@ See also HIDE, REVEAL"
 					 'current-xrule
 					 xrule))
 			   (values '? subgoals
-				   (list 'current-xrule xrule))))))))
+				   (list 'current-xrule xrule
+					 'dependent-decls *dependent-decls*))))))))
 	  (t (values 'X nil nil)))))
 
 (defmethod collect-subgoals ((ps proofstate) &optional accum)
   (mapcar #'(lambda (x) (pushnew x *dependent-decls*))
     (dependent-decls ps))
+  (mapcar #'(lambda (x)(mapcar #'(lambda (y)(pushnew y *dependent-decls*))
+			 (dependent-decls x)))
+    (done-subgoals ps)) ;;NSH(4.9.99)
   (cond ((and (eq (status-flag ps) '*)
 	      (null (remaining-subgoals ps)))
 	 (cond ((null (pending-subgoals ps))
@@ -358,7 +362,8 @@ See also HIDE, REVEAL"
 			    'current-auto-rewrites (current-auto-rewrites ps)
 			    'subtype-hash (subtype-hash ps)
 			    'rewrite-hash (rewrite-hash ps)
-			    'dependent-decls *dependent-decls*
+			    'dependent-decls (dependent-decls ps)
+			    ;; was*dependent-decls*
 			    'comment (comment ps))
 		      accum))
 	       (t (collect-subgoals (nreverse (pending-subgoals ps))
