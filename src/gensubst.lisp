@@ -148,7 +148,8 @@
   (let ((ntype (if *visible-only*
 		   (type type)
 		   (gensubst* (type type) substfn testfn))))
-    (if (and (eq ntype (type type))
+    (if (and (not (null (type type)))
+	     (eq ntype (type type))
 	     (not *visible-only*))
 	type
 	(let ((dtype (gensubst* (declared-type type) substfn testfn)))
