@@ -186,7 +186,12 @@
 	   (cond
 	    ((eq exp 'true))
 	    ((eq exp 'false) (retfalse))
-	    (t 
+	    (t
+; 	     (when (or (not (ordered-ineq? exp))
+; 				     (and (consp exp)
+; 					  (not (ordered-ineq? (arg1 exp)))))
+; 	        (break "process1"))
+
 	     (case (funsym exp)
 	       (equal       (pr-merge (lside exp) (rside exp)))
 	       (nequal      (addneq exp))
@@ -240,22 +245,22 @@
      (when (eql term2 0)(reprocess-timesuse term1))))
 
 (defun timesuse (x)
-  (if (and (consp x)(eq (funsym x) 'times))
+  (if (and (consp x)(eq (funsym x) 'TIMES))
       (loop for u in (use (arg1 x))
-	    when (and (eq (funsym u) 'times)
+	    when (and (eq (funsym u) 'TIMES)
 		      (subsetp (cdr x)(cdr u) :test #'equal)
 		      (not (equal u x)))
 	    collect u)
       (loop for u in (use x)
-	    when (eq (funsym u) 'times)
+	    when (eq (funsym u) 'TIMES)
 	    collect u)))
 
 (defun reprocess-timesuse (term1)
   (let ((timesuse (timesuse term1)))
     (loop for u in timesuse
 	  when (not (equal (pr-find u) u))
-	  do (process1 (solvecan `(equal (times ,u ,term1)
-					 (times ,(pr-find u) ,term1)))))))
+	  do (process1 (solvecan `(equal (TIMES ,u ,term1)
+					 (TIMES ,(pr-find u) ,term1)))))))
 
 
 ;;; 11-AUG-90 DAC: Modified from process.lisp to make apply of updates and apply
@@ -266,6 +271,12 @@
 ;;; applies of updates, which can make "u" uninterped, but newsig interped.
 
 (defun pr-merge(t1 t2)
+;;  (when (and (consp t1)(eq (cadr t1) 's!1_56)) (break "pr-merge"))
+;  (when (not (equal t1 (pr-find t1))) (break "pr-merge"))
+;   (when (and (consp t1)
+; 	      (memq (funsym t1) *arithrels*)
+; 	      (eq t2 'false))
+; 	 (break "pr-merge"))
   (prog(use2 vptr newsig t2-is-lambda)
     (setq t1 (pr-find t1)
 	  t2 (pr-find t2)
@@ -274,6 +285,9 @@
 					; surely useless)
     (cond
      ((equal t1 t2) (return nil))
+     ((and (integerp t1)(integerp t2)) ;;NSH(9.27.02): must be unequal
+      (retfalse))
+     ((integerp t1) (return nil)) ;;must be a known equality
      ((and (consp t1) (consp (car t1)))    ;t1, t2 known to be unequal	
       (retfalse) ))
     (cond ((and (consp t1) (is-lambda-expr t1))  ; (SJ 5/13/86) added:
@@ -286,15 +300,18 @@
 	     (function-in t1 t2))	; lambda x. f(x) = f.
 	(pr-union t2 t1)
       (pr-union t1 t2))			;t2 is now pr-find(t1)
-    (loop for u in (use t1)
-	 when (or (and (numberp t2) (not (zerop t2))) ; 8-28-91 dac: Don't replace part of
-		  (not (eq (funsym u) 'quo))) do ; quo with a non-number.
+    (loop for u in (times-or-use t1)
+	 when ;(or (and (numberp t2) (not (zerop t2)))) ;NSH(6-12-02)
+					; 8-28-91 dac: Don't replace part of
+		  (not (eq (funsym u) 'quo)) do ; quo with a non-number.
       ; This check is necessary since the pr-find of t1 is 1 in some case. (is this ok?)
+		  ;;;NSH(6.12.02)  (format t "~%u = ~a" u)
 	 (setq newsig
 	       (cons
 		(funsym u)
 		(loop for arg in (argsof (sig u)) collect
-		     (cond ((equal arg t1) t2) (t arg)) )))	       
+		     (cond ((equal arg t1) t2) (t arg)) )))
+	 ;;(format t "~%newsig = ~a" newsig)
 	 (cond
 	  ;; (SJ 5/13/86) added:
 	  ;; checks if newsig will be a reducible applciation;
@@ -350,8 +367,13 @@
 					   (if (equal arg t1) t2 arg)))
 		    (solvelist (solve
 				(cons (funsym u) args))))
-	       (cond ((and (memq (funsym u) '(greatereqp lesseqp))
-			   (equal solvelist '(true)))
+; 	       (loop for x in solvelist
+; 			    when (or (not (ordered-ineq? x))
+; 				     (and (consp x)
+; 					  (not (ordered-ineq? (arg1 x)))))
+; 			    do (break "pr-merge"))
+	       (cond ((and (memq (funsym u) *eqarithrels*)
+			   (equal solvelist *truecons*))
 		      (if (equal
 			   (catch 'context
 			       (solve
@@ -360,8 +382,9 @@
 					  'greatereqp)
 				      args)))
 			     
-			   '(true))
-			  (setq s (append (solvecan `(equal ,@args)) s))
+			   *truecons*)
+			  (setq s (append (solve `(equal ,@args)) s))
+			                 ;;NSH(9-21-02) was solvecan
 			  (setq s (append solvelist s))))
 		     (t (setq s (append solvelist s))))))
 	    ((or (isapplyupdate newsig) (isapplylambda newsig))
@@ -374,15 +397,27 @@
 	     (push `(equal ,u ,(canonsig-merge newsig)) s))
 
 	    ((equal (pr-find u) (pr-find 'false))
+	     (break "Shostak")
 	     (print "msg from merge - this should not have occurred
 		       according to Rob Shostak ") )))
-	  ((find1 u))
+	  ((find1 u) ;;NSH(6-12-02) was blank   ;(break "pr-merge")
+	            ;; This is needed to deal with nonlinear entries.
+	   (when (and (not (equal (find1 u) u))
+		      (not (linearp u)))
+	     	       ;;NSH(9/4/02) added nonlinear restriction,
+	     ;;otherwise it loops bugs 695,696.
+	     (let ((newsig (canonsig-merge newsig))
+		   (new-u (canonsig-merge (pr-find u))))
+	       ;;NSH(7/1/02) added canonsig-merge to avoid loop (bug252)
+	       (setq s (append (solve `(equal ,new-u
+					      ,newsig)) s)))))
 	  (t				; interpreted term
 	   ;(setq newsig
 		; (sigma newsig))
 	   ; 7-24-91: dac changed above sigma no longer needed due to change in canonsig.
 	   ; bug manifested itself in needing recursive call for sigupdate.
-	   (push `(equal ,u ,(canonsig-merge newsig)) s))))))
+	   (let ((newsig (canonsig-merge newsig)))
+	     (push `(equal ,u ,newsig) s)))))))
 
 ; ------------------------------------------------------------------------
 
@@ -430,6 +465,37 @@
        (push lambda-body *already-applied*)
        (canon (lambdareduce term))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;NSH9.30.02: experimental attempt to use norm.
+; (defun canon-norm (term)  ;;NSH(9.30.02)
+;   (if (consp term)
+;       (if (interp term)
+; 	  (canonsig (signature term t) t)
+; 	  (canonsig term t))
+;       (canonsig term t)))
+
+; (defun canon-norm-atom (atom)
+;     (if (consp atom)
+; 	(if (eq (funsym atom) 'not)
+; 	    `(not ,(canon-norm-atom (arg1 atom)))
+; 	    `(,(funsym atom)
+; 	      ,(canon-norm (arg1 atom))
+; 	      ,(canon-norm (arg2 atom))))
+; 	atom))
+
+; (defun check-norm (atom)
+;   (if (consp atom)
+;       (if (eq (funsym atom) 'not)
+; 	  (check-norm (arg1 atom))
+; 	  (and (equal (canon-norm (arg1 atom)) (arg1 atom))
+; 	       (equal (canon-norm (arg2 atom))(arg2 atom))))
+;       t))
+	   
+; (defun check-norm-list (atomlist)
+;   (loop for atom in atomlist
+; 	do (or (check-norm atom)(break "check-norm"))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun canonsig(s &optional (dont-add-use nil))
    (catch 'found
      (cond
@@ -451,16 +517,17 @@
          )
        )
        (when (consp s) ;;; 7-26-91: dac sigma might have reduced s to a non list.
-	 (loop for u in (use (arg1 s))
-	       do (and (equal s (sig u)) (throw 'found (pr-find u)))
-	       )
-	 (when (eq (funsym s) 'times) 
+	 (when (eq (funsym s) 'TIMES) 
 	   (loop for arg in (cdr s)
+		 when (not (integerp arg))
 		 do (let* ((smatch (find-times-subset s (use arg)))
 			  (sdiff (subset-bag-difference (cdr s)
 							(cdr (sig smatch)))))
-		      (when smatch
-			(throw 'found (canonsig `(times ,(pr-find smatch) ,@sdiff)))))))
+		      (when (and smatch sdiff)
+			(throw 'found (canonsig `(TIMES ,(pr-find smatch) ,@sdiff)))))))
+	 (loop for u in (use (arg1 s))
+	       do (and (equal s (sig u)) (throw 'found (pr-find u)))
+	       )
 	 (unless dont-add-use
 	   (loop for arg in (argsof s) do (adduse s arg))))
        s
@@ -514,18 +581,26 @@
    ((is-apply-n-x (funsym term)) (sigapply term))
    ((is-tupsel-n (funsym term)) (sigtupsel term))
    (t (case (funsym term)
-	(plus       (sigplus term))
-	(times      (sigtimes term))
-	(divide     (sigdivide term))
-	(minus      (sigminus term))
-	(difference (sigdifference term))
+	(PLUS       (sigplus term))
+	(TIMES      (sigtimes term))
+	(DIVIDE     (sigdivide term))
+	(MINUS      (sigminus term))
+	(DIFFERENCE (sigdifference term))
 ;	(tupsel     (sigtupsel term))
 ;	(arraysel   (sigapply term))
 	(update     (sigupdate term))
 ;	(arrayrest  (sigarrayrest term))
-;	(floor      (sigfloor term))
+	(greaterp   (sigma-ineq term))
+	(greatereqp (sigma-ineq term))
+	(lessp (sigma-ineq term))
+	(lesseqp (sigma-ineq term))
+	(floor      (sigfloor term))
 	(t          term)
       ))))
+
+(defun sigma-ineq (term)
+  (let ((result (normineq term)))
+    (if (eq result 'ident) 'true result)))
 
 ; ------------------------------------------------------------------------
 
@@ -563,12 +638,12 @@
        (needed-if*
 	(ncons (lift-bools (liftif atf))))
        (t (ncons (lift-bools atf))))) 
-     ((memq (funsym atf) '(if if*))
+     ((memq (funsym atf) *ifops*)
       (if *split-on-if-in-solve*
 	  (let ((leftsolve (catch 'context (solve (arg2 atf))))
 		(rightsolve (catch 'context (solve (arg3 atf)))))
 	    (if (equal leftsolve rightsolve)
-		(if (member leftsolve '(false true))
+		(if (memq leftsolve *boolconstants*) ;NSH:was member
 					; Sept 14, 1990: DAC
 					; solve should always return a list
 					; but catching 'context might not.
@@ -578,7 +653,7 @@
 	(if (equal (arg2 atf) (arg3 atf))
 	    (solve (arg2 atf))
 	  (ncons atf))))
-     ((memq (funsym atf) '(lessp lesseqp greaterp greatereqp))
+     ((memq (funsym atf) *arithrels*)
       (arithsolve atf))
      (t
       ;; KLUDGE -- look at arg2 if arg1 is nil
@@ -590,9 +665,16 @@
 	  bool )
 	 (ncons (case (funsym atf)		
 		  (equal  (cond ((equal (arg1 atf) (arg2 atf)) 'true)
-				((and (memq (arg1 atf) '(true false))
-				      (not (memq (arg2 atf) '(true false))))
-				 `(equal ,(arg2 atf) ,(arg1 atf)))
+				;;NSH(9.27.02)
+				((and (eq (arg2 atf) 'false)
+				      (isineq? (arg1 atf)))
+				 `(equal ,(negineq (arg1 atf)) true))
+				((and (eq (arg1 atf) 'false)
+				      (isineq? (arg2 atf)))
+				 `(equal ,(negineq (arg2 atf)) true))
+				((eq (arg1 atf) 'true)
+				 ;(break "solve")
+				 `(equal ,(arg2 atf) true))
 				(t atf)
 				))
 		  ;;		   ((lessp nequal lesseqp greaterp greatereqp) atf) ;NSH
@@ -633,12 +715,12 @@
        (needed-if*
 	(ncons (list 'not (lift-bools (liftif atf)))))
        (t (ncons (list 'not (lift-bools atf))))))
-     ((memq (funsym atf) '(if if*))
+     ((memq (funsym atf) *ifops*)
       (if *split-on-if-in-solve*
 	  (let ((leftnsolve (catch 'context (nsolve (arg2 atf))))
 		(rightnsolve (catch 'context (nsolve (arg3 atf)))))
 	    (if (equal leftnsolve rightnsolve)
-		(if (member leftnsolve '(false true))
+		(if (memq leftnsolve *boolconstants*)
 					; Sept 14, 1990: DAC
 					; nsolve should always return a list
 					; but catching 'context might not.
@@ -648,7 +730,7 @@
 	(if (equal (arg2 atf) (arg3 atf))
 	    (nsolve (arg2 atf))
 	  (ncons (list 'not (liftif* atf))))))
-     ((memq (funsym atf) '(lessp lesseqp greaterp greatereqp))
+     ((memq (funsym atf) *arithrels*)
       (arithnsolve atf))
      (t
 					; KLUDGE -- look at arg2 if arg1 is nil
@@ -727,6 +809,20 @@
    (cdr (assoc v usealist :test #'equal))
 )
 
+(defun times-or-use (v)
+  (if (and (consp v)(eq (funsym v) 'TIMES))
+      (append (use v)(times-use v))
+      (use v)))
+
+(defun times-use (v) ;;assuming v is (times a ..)
+  (loop for u in (use (cadr v))
+	when (and (eq (funsym u) 'TIMES)
+		  (not (equalp u v))
+		  (bag-subsetp (cdr v) (cdr (sig u))
+			      :test #'equal))
+	collect u))
+  
+
 (defun putuse(ul v)
    (push (cons v ul) usealist)
 ;  (checkusealist "putuse")
@@ -740,9 +836,15 @@
 			:test test))
       t))
 
+; (defun find-times-subset (bigtimes uselist)
+;   (loop for u in uselist
+; 	thereis (and (eq (funsym u) 'TIMES)(not (equal (pr-find u) u))
+; 		      (bag-subsetp (cdr (sig u))(cdr bigtimes)
+; 				   :test #'equal) u)))
+
 (defun find-times-subset (bigtimes uselist)
   (loop for u in uselist
-	thereis (and (eq (funsym u) 'times)(not (equal (pr-find u) u))
+	thereis (and (eq (funsym u) 'TIMES)(not (equal (pr-find u) u))
 		      (bag-subsetp (cdr (sig u))(cdr bigtimes)
 				   :test #'equal) u)))
 
@@ -750,17 +852,17 @@
 (defun adduse(u v)
   (unless (and (consp u)
 	       (or (equal (car u) 'equal)
-		   (equal (car u) 'if)
-		   (equal (car u) 'if*)))
+		   (equal (car u) 'IF)
+		   (equal (car u) 'IF*)))
     (let ((ul (use v)))
       (cond ((member u ul :test #'equal))
 	     (t (push (cons v (cons u ul)) usealist)
 		(when (and (consp u)
-			   (eq (funsym u) 'times))
+			   (eq (funsym u) 'TIMES))
 		  (let* ((usub (find-times-subset u ul))
 			(udiff (when usub (subset-bag-difference (cdr u)
 						      (cdr (sig usub)))))
-			(umatch (when usub `(times ,(pr-find usub) ,@udiff))))
+			(umatch (when usub `(TIMES ,(pr-find usub) ,@udiff))))
 		    (when usub (process `(equal ,u ,umatch))))))))))
 
 (defun subset-bag-difference (x y) ;to be used when y is a subset of x.
@@ -785,7 +887,7 @@
    (or (qnumberp term)
        (and (consp term)
 	    (or (eq *printerpdivide* 'yes)
-		(not (eq (funsym term) 'divide)))
+		(not (eq (funsym term) 'DIVIDE)))
 	    (memq (funsym term) interpsyms)
        )
        (is-tupsel term)
@@ -812,8 +914,8 @@
    ((symbolp term) (getq term typealist))
    ((integerp term) 'integer)
    ((atom term) nil)
-   ((eq (funsym term) 'if*) (or (prtype (arg2 term)) (prtype (arg3 term))))
-   ((memq (funsym term) '(plus times difference minus))
+   ((eq (funsym term) 'IF*) (or (prtype (arg2 term)) (prtype (arg3 term))))
+   ((memq (funsym term) *arithops*)
     (if (loop for arg in (argsof term) always (eq (prtype arg) 'integer))
 	'integer
 	'number))
@@ -844,7 +946,7 @@
 
 (defun pushf (term)
   (cond ( (consp term)
-	  (cond ( (eq (funsym term) 'if*)  term)
+	  (cond ( (eq (funsym term) 'IF*)  term)
 		( t
 		  (pushf1 term)
 		)
@@ -872,9 +974,9 @@
 	  (setq newterm term) ; Exit the prog. No arg has if*.
 	)
       (setq firstif (pop rem))
-      (cond ( (and (consp firstif) (eq (funsym firstif) 'if*))
+      (cond ( (and (consp firstif) (eq (funsym firstif) 'IF*))
 	      (setq newterm (list
-			      'if*
+			      'IF*
 			      (arg1 firstif)
 			      (pushf1 (unwind rev (cons (arg2 firstif) rem)))
 			      (pushf1 (unwind rev (cons (arg3 firstif) rem)))
@@ -964,7 +1066,7 @@
   (if (eq flg t)
       (if (consp exp)
 	  (case (funsym exp)
-	    ((if* if)
+	    ((IF* IF)
 	     (collect-conditionals
 	      (arg3 exp)
 	      (collect-conditionals (arg2 exp)
@@ -983,8 +1085,8 @@
 (defun make-if*-exp (exp conds alist in-prover)
   (if (consp conds)
       `(,(if in-prover
-	     'if*
-	   'if)
+	     'IF*
+	   'IF)
 	,(liftif* (car conds)) ;; 6-Dec-90: DAC added lifitif* to lift ifs from conditional.
 	,(make-if*-exp exp (cdr conds)
 		       (cons (cons (car conds) 'true) alist) in-prover)
@@ -992,7 +1094,7 @@
 		       (cons (cons (car conds) 'false) alist) in-prover))
     (if (consp exp)
 	(case (funsym exp)
-	  ((if* if)
+	  ((IF* IF)
 	   (cond
 	    ((eq (cdr (assoc (arg1 exp) alist :test #'equal))
 		 'true)
@@ -1067,7 +1169,7 @@
 (defun needs-bool-lifting1 (exp)
   (cond
     ((atom exp) nil)
-    ((memq (funsym exp) '(and or implies not if iff))
+    ((memq (funsym exp) *boolops*)
      (throw 'bool-lifting t))
     ;; the next case probably wont occur -  need to check ***
     ;;((and (eq (funsym exp) 'equal) (eq (prtype (arg1 exp)) 'bool))
@@ -1089,7 +1191,7 @@
    ((= bool-level *max-lift-bools*) f)
    ((symbolp f) f)
    (t (case (funsym f)
-	((and or implies not if iff)  ; recurse into top-level prop structure
+	((and or implies not IF iff)  ; recurse into top-level prop structure
 	 (cons (funsym f)
 	       (loop for arg in (argsof f)
 		     collect (lift-bools arg (1+ bool-level)))))
@@ -1120,16 +1222,16 @@
    ((eq (prtype f) 'bool)
     (throw 'lift-embedded  
       (lift-bools
-       `(if ,f ,
+       `(IF ,f ,
 	    (subst-expr 'true f embeddedf)
 	    ,(subst-expr 'false f embeddedf))
        bool-level)))
    ((qnumberp f) f)
    ((symbolp f) f)
-   ((eq (funsym f) 'if)
+   ((eq (funsym f) 'IF)
     (throw 'lift-embedded
       (lift-bools
-      `(if ,(arg1 f)
+      `(IF ,(arg1 f)
 	   ,(subst-expr (arg2 f) f embeddedf)
 	   ,(subst-expr (arg3 f) f embeddedf))
       bool-level)))
