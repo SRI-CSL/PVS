@@ -1168,17 +1168,7 @@
 (defun typecheck-let-bindings* (bindings arg anum &optional substs)
   (when bindings
     (let* ((bd (car bindings))
-	   (dtype (cond ((declared-type bd)
-			 (typecheck* (declared-type bd) nil nil nil))
-			((let ((vdecl (find-if #'var-decl?
-					(gethash (id bd)
-						 (current-declarations-hash)))))
-			   (and vdecl
-				(some #'(lambda (ty)
-					  (compatible? (type vdecl) ty))
-				      (types arg))
-				(type vdecl))))
-			(t (get-let-binding-type-from-arg bindings arg anum))))
+	   (dtype (get-let-binding-type bd bindings arg anum))
 	   (type (substit (if (typep dtype 'dep-binding)
 			      (type dtype)
 			      dtype)
@@ -1191,6 +1181,36 @@
 			       (if (typep dtype 'dep-binding)
 				   (acons dtype bd substs)
 				   substs)))))
+
+(defun get-let-binding-type (bd bindings arg anum)
+  (if (declared-type bd)
+      (typecheck* (declared-type bd) nil nil nil)
+      (let ((vdecl (find-if #'var-decl?
+		     (gethash (id bd)
+			      (current-declarations-hash)))))
+	(cond ((and vdecl
+		    (some #'(lambda (ty)
+			      (compatible? (type vdecl) ty))
+			  (types arg)))
+	       (pvs-info "LET/WHERE variable ~a~@[~a~] is given ~
+                          type~%  ~a from a preceding variable declaration."
+		 (id bd)
+		 (when (place bd)
+		   (format nil " at line ~d, col ~d"
+		     (starting-row (place bd)) (starting-col (place bd))))
+		 (type vdecl))
+	       (type vdecl))
+	      (t (let ((type (get-let-binding-type-from-arg
+			      bindings arg anum)))
+		   (pvs-info "LET/WHERE variable ~a~@[~a~] is ~
+                              given type~%  ~a from its value expression."
+		     (id bd)
+		     (when (place bd)
+		       (format nil " at line ~d, col ~d"
+			 (starting-row (place bd)) (starting-col (place bd))))
+		     type)
+		   type))))))
+		    
 
 (defun get-let-binding-type-from-arg (bindings arg anum)
   (if (or (cdr bindings)
