@@ -237,7 +237,11 @@ BDDPTR modelcheck_formula (Formula fml)
  }
 
 void pvs_mu_print_formula (Formula fml)
-{mu_print_formula_infix (stdout, fml);}
+{mu_print_formula_infix (stdout, fml);
+ fflush (stdout);  
+}
 
 void pvs_mu_print_term (Term t)
-{mu_print_term_infix (stdout, t);}
+{mu_print_term_infix (stdout, t);
+ fflush (stdout);  
+}
