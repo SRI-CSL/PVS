@@ -235,6 +235,8 @@
     (setq *subgoals*
 	  (mapcar #'current-goal
 	    (collect-all-remaining-subgoals *top-proofstate*))))
+  (when *new-ground?*
+    (free-all-remaining-dp-states))
   (unless *recursive-prove-decl-call*
     (clear-proof-hashes)))
 
@@ -501,6 +503,7 @@
 		      ((eq (status-flag post-proofstate) '!);;rule-apply proved
 		       (format-printout post-proofstate)
 		       (wish-done-proof post-proofstate)
+		       (dp-done-proof post-proofstate)
 ;		       (when (printout post-proofstate)
 ;			 (format-if (printout post-proofstate)))
 		       post-proofstate)
@@ -934,6 +937,7 @@
 
 (defun success-step (proofstate)
   (wish-done-proof proofstate)
+  (dp-done-proof proofstate)
   (setf (status-flag proofstate) '!
 	(done-subgoals proofstate)
 	(sort (done-subgoals proofstate)
@@ -960,6 +964,17 @@
 	  (done-subgoals proofstate))
 ;;   (format t "~%decls = ~a" (dependent-decls proofstate))
   proofstate)
+
+(defun dp-done-proof (proofstate)
+  (when (and t *new-ground?*) ;(break)
+    (let* ((dp-state (dp-state proofstate))
+	   (dp-stack (dp::cong-state-stack dp-state))
+	   (done-subgoals (done-subgoals proofstate)))
+      (loop for ps in done-subgoals
+	    for subgoal-dp-state = (dp-state ps)
+	    for subgoal-stack = (dp::cong-state-stack subgoal-dp-state)
+	    unless (eq dp-stack subgoal-stack)
+	    do 	(dp::npop-cong-state subgoal-dp-state)))))
 
 (defun new-decision-procedures ()
   (cond (*in-checker*
@@ -1009,6 +1024,30 @@
 	      (sort subgoals #'<
 		    :key #'(lambda (x)(safe-parse-integer (label x)))))
 	    (list proofstate)))))
+
+(defun free-all-remaining-dp-states* (proofstate)
+  (if (eq (status-flag proofstate) '!) nil
+      (let* ((dp-state (dp-state proofstate))
+	     (dp-stack (dp::cong-state-stack dp-state))
+	     (subgoals  (append (pending-subgoals proofstate)
+				(remaining-subgoals proofstate)))
+	     (subgoals (if (current-subgoal proofstate)
+			   (cons (current-subgoal proofstate) subgoals)
+			   subgoals))
+	     (ssubgoals
+	      (sort subgoals #'<
+		    :key #'(lambda (x)(safe-parse-integer (label x))))))
+	(when subgoals
+	  (mapcar #'free-all-remaining-dp-states* ssubgoals)
+	  (loop for sg in ssubgoals
+		for sg-dp-state = (dp-state sg)
+		for sg-stack = (dp::cong-state-stack sg-dp-state)
+		unless (eq dp-stack sg-stack)
+		do (dp::npop-cong-state sg-dp-state))))))
+
+(defun free-all-remaining-dp-states ()
+  (free-all-remaining-dp-states* *top-proofstate*)
+  (dp::npop-cong-state (dp-state *top-proofstate*)))
 
 (defun bump-report-flag (flag ps)
   (if (printout ps)
