@@ -288,7 +288,7 @@
     (get-theory* id library)))
 
 (defmethod get-theory ((str string))
-  (get-theory* (intern str) nil))
+  (get-theory (pc-parse str 'modname)))
 
 (defmethod get-theory ((id symbol))
   (get-theory* id nil))
@@ -989,11 +989,7 @@
 		      (args1 (args2 equality))
 		      (args2 equality)))
 	     (rhs-bindings (if (lambda? rhs) (bindings rhs) nil))
-	     (varlist (mapcar #'(lambda (x)
-				  (let ((name (mk-name-expr x)))
-				    (setf (kind name) 'VARIABLE)
-				    name))
-				rhs-bindings))
+	     (varlist (mapcar #'mk-name-expr rhs-bindings))
 	     (newbindings (append forall-vars rhs-bindings))
 	     (*bound-variables* newbindings)
 	     (new-lhs (typecheck (mk-application* (args1 equality) varlist)
@@ -1027,7 +1023,7 @@
   (let* ((*generate-tccs* 'none)
 	 (def (make!-lambda-exprs (formals decl) (definition decl)))
 	 (res (mk-resolution decl (current-theory-name) (type decl)))
-	 (name (mk-name-expr (id decl) nil nil res 'constant))
+	 (name (mk-name-expr (id decl) nil nil res))
 	 (appl (make!-equation name def))
 	 (depth (lambda-depth decl)))
     (assert (eq (declaration name) decl))
@@ -1117,8 +1113,7 @@
 					     (freevar-substit form
 							      freevars-form
 							      newbindings)
-					     form)
-			     'parens 1))
+					     form)))
 		    (tform (typecheck* qform (unless *no-expected* *boolean*)
 				       'expr nil)))
 	       ;;(assert (null (freevars tform)))
@@ -1393,7 +1388,7 @@
 	     (rd (rec-decl con))
 	     (res (make-resolution rd (module-instance fn))))
 	(setf (recognizer-name fn)
-	      (mk-name-expr (id rd) nil nil res 'constant)))))
+	      (mk-name-expr (id rd) nil nil res)))))
 
 (defmethod accessors ((fn name-expr))
   (when (constructor? fn)
@@ -1401,7 +1396,7 @@
 			     :test #'same-id))))
        (mapcar #'(lambda (acc)
 		  (let ((res (make-resolution acc (module-instance fn))))
-		    (mk-name-expr (id acc) nil nil res 'constant)))
+		    (mk-name-expr (id acc) nil nil res)))
 	      (acc-decls con)))))
 
 (defmethod accessors ((fn constructor-name-expr))
@@ -1412,7 +1407,7 @@
 	      (mapcar #'(lambda (acc)
 			  (let ((res (make-resolution acc
 				       (module-instance fn))))
-			    (mk-name-expr (id acc) nil nil res 'constant)))
+			    (mk-name-expr (id acc) nil nil res)))
 		(acc-decls con))))
       (accessor-names fn)))
 
@@ -1429,7 +1424,7 @@
     (mapcar #'(lambda (con)
 		(let* ((cd (con-decl con))
 		       (res (make-resolution cd (module-instance fn))))
-		  (mk-name-expr (id cd) nil nil res 'constant)))
+		  (mk-name-expr (id cd) nil nil res)))
       cons)))
 
 (defmethod constructor ((fn name-expr))
@@ -1444,7 +1439,7 @@
     (when con
        (let* ((cd (con-decl con))
 	      (res (make-resolution cd (module-instance fn))))
-	 (mk-name-expr (id cd) nil nil res 'constant)))))
+	 (mk-name-expr (id cd) nil nil res)))))
 
 (defun part-of-constructor (fn con)
   (cond ((recognizer? fn)
@@ -1457,8 +1452,7 @@
   (when (adt? tn)
     (mapcar #'(lambda (cd)
 		(mk-name-expr (id cd) nil nil
-			      (make-resolution cd (module-instance tn))
-			      'constant))
+			      (make-resolution cd (module-instance tn))))
 	    (mapcar #'con-decl (constructors (adt tn))))))
 
 (defmethod constructors ((te subtype))
@@ -1502,7 +1496,6 @@
 			(list (make-resolution (mk-bind-decl (id fn) ty)
 				nil fty)))
 		  (setf (type fn) fty)
-		  (setf (kind fn) 'constant)
 		  fn))
 	    (types tuptype))))
 
@@ -1516,7 +1509,6 @@
 	  (list (make-resolution (mk-bind-decl (id fn) ty)
 		  nil fty)))
     (setf (type fn) fty)
-    (setf (kind fty) 'constant)
     fn))
 			 
 	      
@@ -2000,7 +1992,6 @@
   (mapcar #'(lambda (b)
 	      (let ((nexpr (mk-name-expr (id b))))
 		(setf (type nexpr) (type b))
-		(setf (kind nexpr) 'variable)
 		(setf (resolutions nexpr)
 		      (list (make-resolution
 				b (mk-modname (id (module decl))))))
@@ -2648,6 +2639,7 @@ space")
 (defun get-run-time ()
   (multiple-value-bind (rtuser rtsys gcuser gcsys)
       (excl::get-internal-run-times)
+    (declare (ignore rtsys gcsys))
     (- rtuser gcuser)))
 
 (defun runtime-since (time)
@@ -2797,6 +2789,7 @@ space")
 	ex)))
 
 (defmethod lift-predicates-in-quantifier ((ex expr) &optional exclude)
+  (declare (ignore exclude))
   ex)
 
 (defun collect-bindings-predicates (bindings exclude &optional nbindings preds)
@@ -2840,3 +2833,20 @@ space")
 (defun always-false (x)
   (declare (ignore x))
   nil)
+
+(defmethod constant? ((expr name-expr))
+  (not (variable? expr)))
+
+(defmethod constant? ((expr projection-expr))
+  T)
+
+(defmethod constant? ((expr field-assignment-arg))
+  T)
+
+(defmethod constant? ((expr T))
+  nil)
+
+(defmethod variable? ((expr name-expr))
+  (with-slots (resolutions) expr
+    (assert (singleton? resolutions))
+    (typep (declaration (car resolutions)) '(or var-decl binding))))
