@@ -1151,9 +1151,10 @@ is not of the form: (<var> <term>...)" subst)
 	       (boundvars-not-in-vars ;;NSH(10.21.96) non-occurring boundvars
 		(loop for x in boundvars
 		      when (not (member x vars :test #'same-declaration))
-		      collect (change-class
-			       (copy x 'kind 'VARIABLE)
-			       'name-expr))))
+		      collect (make!-name-expr
+			       (id x) nil nil
+			       (make-resolution x nil (type x))
+			       'VARIABLE))))
 	(nconc nonvars vars
 	       boundvars-not-in-vars
 	       ))
