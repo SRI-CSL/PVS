@@ -265,6 +265,7 @@ pvs-src = src/closopt.lisp \
           src/utils/hashfn.lisp \
           src/utils/file-utils.lisp \
           src/macros.lisp \
+          src/linked-hash-table.lisp \
           src/globals.lisp \
           src/optimize.lisp \
 	  src/makes.lisp \
