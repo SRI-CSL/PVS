@@ -237,11 +237,11 @@
 (require 'font-lock)
 
 (defvar pvs-keywords
-  '("AND" "ANDTHEN" "ARRAY" "ASSUMING" "ASSUMPTION" "AUTO_REWRITE"
+  '("AND" "ANDTHEN" "ARRAY" "AS" "ASSUMING" "ASSUMPTION" "AUTO_REWRITE"
     "AUTO_REWRITE+" "AUTO_REWRITE-" "AXIOM" "BEGIN" "BUT" "BY" "CASES"
-    "CHALLENGE" "CLAIM" "CLOSURE" "COND" "CONJECTURE" "CONTAINING"
-    "CONVERSION" "CONVERSION+" "CONVERSION-" "COROLLARY" "DATATYPE"
-    "ELSE" "ELSIF" "END" "ENDASSUMING" "ENDCASES" "ENDCOND" "ENDIF"
+    "CHALLENGE" "CLAIM" "CLOSURE" "COINDUCTIVE" "COND" "CONJECTURE"
+    "CONTAINING" "CONVERSION" "CONVERSION+" "CONVERSION-" "COROLLARY"
+    "DATATYPE" "ELSE" "ELSIF" "END" "ENDASSUMING" "ENDCASES" "ENDCOND" "ENDIF"
     "ENDTABLE" "EXISTS" "EXPORTING" "FACT" "FALSE" "FORALL" "FORMULA"
     "FROM" "FUNCTION" "HAS_TYPE" "IF" "IFF" "IMPLIES" "IMPORTING" "IN"
     "INDUCTIVE" "JUDGEMENT" "LAMBDA" "LAW" "LEMMA" "LET" "LIBRARY" "MACRO"
@@ -270,6 +270,10 @@
 
 (when (memq pvs-emacs-system '(emacs20 emacs19))
   (add-hook 'pvs-mode-hook
+    '(lambda ()
+       (make-local-variable 'font-lock-defaults)
+       (setq font-lock-defaults '(pvs-font-lock-keywords nil t))))
+  (add-hook 'pvs-view-mode-hook
     '(lambda ()
        (make-local-variable 'font-lock-defaults)
        (setq font-lock-defaults '(pvs-font-lock-keywords nil t)))))
