@@ -170,7 +170,6 @@
 			      (compiled-file-older-than-source?
 			       pfile bfile))))
 	   (compilation-error? nil)
-	   (tried-loading? nil)
 	   (bfile-loaded? nil))
       (when (and (not compile?)
 		 (file-exists-p bfile))
@@ -180,7 +179,6 @@
 	  (declare (ignore ignore))
 	  (cond (error
 		 ;; Likely due to a different lisp version
-		 (setq tried-loading? t)
 		 (when (file-exists-p pfile)
 		   (setq compile? t))
 		 (pvs-message "Error in loading ~a:~%  ~a"
@@ -325,9 +323,11 @@
 	   (unless no-message?
 	     (pvs-message "~a is already parsed" filename))
 	   theories)
-	  (*in-checker*
+	  ((and *in-checker*
+		(not *tc-add-decl*))
 	   (pvs-message "Must exit the prover first"))
-	  (*in-evaluator*
+	  ((and *in-evaluator*
+		(not *tc-add-decl*))
 	   (pvs-message "Must exit the evaluator first"))
 	  ((and (null theories)
 		(not forced?)
@@ -550,6 +550,7 @@
 	      (all-imported-names theory))))
 
 (defmethod all-importings ((theories list) &optional lib)
+  (declare (ignore lib))
   (if (null theories)
       nil
       (multiple-value-bind (imp-theories imp-names)
@@ -576,6 +577,7 @@
 	   
 
 (defun all-importings* (theory &optional lib)
+  (declare (ignore lib))
   (let* ((imp-theories nil)
 	 (imp-names nil)
 	 (imm-imps (get-immediate-usings theory))
@@ -658,6 +660,7 @@
       (cons th (delete th theories :test #'eq))))
 
 (defmethod all-importings-update-theories ((th recursive-type) theories lib)
+  (declare (ignore lib))
   (dolist (ath (adt-generated-theories th))
     (setf theories (cons ath (delete ath theories :test #'eq))))
   (cons th (delete th theories :test #'eq)))
@@ -669,6 +672,7 @@
       (cons th (delete th names :test #'impname-eq))))
 
 (defmethod all-importings-update-names ((th recursive-type) names lib)
+  (declare (ignore lib))
   (dolist (ath (adt-generated-theories th))
     (setf names (cons ath (delete ath names :test #'eq))))
   (cons th (delete th names :test #'eq)))
@@ -679,6 +683,7 @@
 
 ;;; Like all-importings, but returns only the immediate importings
 (defun immediate-importings (theory &optional lib)
+  (declare (ignore lib))
   (assert (not *saving-theory*))
   (let* ((*current-context* (or (and (not (library-datatype-or-theory?
 					   theory))
@@ -778,6 +783,9 @@
 	(reset-proof-statuses th)
 	(untypecheck-theory th)
 	(tcdebug "~%~a untypechecked" (id th)))))
+  (dolist (pair *tc-theories*)
+    (reset-proof-statuses (car pair))
+    (untypecheck-theory (car pair)))
   (reset-proof-statuses theory)
   (untypecheck-theory theory)
   (tcdebug "~%~a untypechecked" (id theory)))
@@ -860,9 +868,11 @@
 		   restored?
 		   (if (and prove-tccs? (not *in-checker*))
 		       " - attempting proofs of TCCs" ""))))
-	      (*in-checker*
+	      ((and *in-checker*
+		    (not *tc-add-decl*))
 	       (pvs-message "Must exit the prover first"))
-	      (*in-evaluator*
+	      ((and *in-evaluator*
+		    (not *tc-add-decl*))
 	       (pvs-message "Must exit the evaluator first"))
 	      (t (pvs-message "Typechecking ~a" filename)
 		 (when forced?
@@ -2147,6 +2157,7 @@
     (get-proofchain* (generated decl))))
 
 (defmethod get-proofchain* (decl)
+  (declare (ignore decl))
   nil)
 
 (defun prove-theories (name theories retry? &optional use-default-dp?)
@@ -2609,8 +2620,10 @@
 
 (defun reset-parsed-date (filename)
   (let ((path (make-specpath filename)))
-    (setf (car (gethash filename *pvs-files*))
-	  (file-write-date path))))
+    (when (gethash filename *pvs-files*)
+      (setf (car (gethash filename *pvs-files*))
+	    (file-write-time path)))
+    nil))
 
 (defun find-theory-at (file line)
   (let ((theories (get-theories file)))
@@ -2672,6 +2685,7 @@
 				 decls))))
 	     *prelude*)
     (maphash #'(lambda (lib files&theories)
+		 (declare (ignore lib))
 		 (maphash #'(lambda (mid mod)
 			      (declare (ignore mid))
 			      (when (module? mod)
@@ -2686,6 +2700,7 @@
 			  (cadr files&theories)))
 	     *prelude-libraries*)
     (maphash #'(lambda (lib files&theories)
+		 (declare (ignore lib))
 		 (maphash #'(lambda (mid mod)
 			      (declare (ignore mid))
 			      (when (module? mod)
@@ -3126,23 +3141,35 @@
     (read-strategies-files))
   (let ((format-strings nil))
     (maphash #'(lambda (n s)
+		 (declare (ignore n))
 		 (unless (string= (format-string s) "")
 		   (push (format-string s) format-strings)))
 	     *rulebase*)
     (maphash #'(lambda (n s)
+		 (declare (ignore n))
 		 (unless (string= (format-string s) "")
 		   (push (format-string s) format-strings)))
 	     *rules*)
     (maphash #'(lambda (n s)
+		 (declare (ignore n))
 		 (unless (string= (format-string s) "")
 		   (push (format-string s) format-strings)))
 	     *steps*)
     format-strings))
 
 (defun do-all-strategies (fn)
-  (maphash #'(lambda (id entry) (funcall fn entry)) *rulebase*)
-  (maphash #'(lambda (id entry) (funcall fn entry)) *rules*)
-  (maphash #'(lambda (id entry) (funcall fn entry)) *steps*))
+  (maphash #'(lambda (id entry)
+	       (declare (ignore id))
+	       (funcall fn entry))
+	   *rulebase*)
+  (maphash #'(lambda (id entry)
+	       (declare (ignore id))
+	       (funcall fn entry))
+	   *rules*)
+  (maphash #'(lambda (id entry)
+	       (declare (ignore id))
+	       (funcall fn entry))
+	   *steps*))
 
 (defmethod formals ((rule rule-entry))
   (append (required-args rule)
