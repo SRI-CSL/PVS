@@ -492,11 +492,36 @@
 	(constraint2equation constraints i ineq-var-index-array cong-state)))
 
 (defun polyhedral-structure-to-equalities (poly-s cong-state)
-  (when (= (polyhedron-next (polyhedral-structure-polyhedron poly-s)) 0)
-    (constraints2equalities
-     (polyhedron2constraints (polyhedral-structure-polyhedron poly-s))
-     (polyhedral-structure-ineq-var-index-array poly-s)
-     cong-state)))
+  (if (= (polyhedron-next (polyhedral-structure-polyhedron poly-s)) 0)
+      (polyhedron-to-equalities (polyhedral-structure-polyhedron poly-s)
+				(polyhedral-structure-ineq-var-index-array
+				 poly-s)
+				cong-state)
+      (domain-to-equalities (polyhedral-structure-polyhedron poly-s)
+			    (polyhedral-structure-ineq-var-index-array poly-s)
+			    cong-state)))
+
+(defun polyhedron-to-equalities (polyhedron ineq-var-index-array cong-state)
+  (constraints2equalities
+   (polyhedron2constraints polyhedron)
+   ineq-var-index-array
+   cong-state))
+
+(defun domain-to-equalities-list (polyhedron ineq-var-index-array cong-state)
+  (if (= (polyhedron-next polyhedron) 0)
+      (list (polyhedron-to-equalities polyhedron ineq-var-index-array
+				      cong-state))
+      (cons (polyhedron-to-equalities polyhedron ineq-var-index-array
+				      cong-state)
+	    (domain-to-equalities-list (polyhedron-next polyhedron)
+				       ineq-var-index-array
+				       cong-state))))
+
+(defun domain-to-equalities (polyhedron ineq-var-index-array cong-state)
+  (let ((equalities-list
+	 (domain-to-equalities-list polyhedron ineq-var-index-array
+				    cong-state)))
+    (reduce #'intersection equalities-list)))
 
 (defun constraints2equalities (constraints ineq-var-index-array cong-state)
   (loop for i from 0 below (matrix-NbRows constraints)
@@ -518,9 +543,14 @@
 	(constant
 	 (mk-dp-number
 	  (matrix_ref constraints row (1- (matrix-NbColumns constraints))))))
-    (sigma (mk-term (cons predicate (list (mk-plus (cons constant  monomials))
-					  *zero*)))
-	   cong-state)))
+    (let ((result
+	   (sigma (mk-term (cons predicate
+				 (list (mk-plus (cons constant
+						      monomials))
+				       *zero*)))
+		  cong-state)))
+      ;(when (true-p result) (break))
+      result)))
 
 (defun initial-epsilon-poly ()
   *epsilon-leq-0-poly*)
