@@ -374,9 +374,7 @@
 		  (:file "ws1s-strategy")))
     (:module inst-by-unif
       :source-pathname "src/inst-by-unif"
-      :components ((:file "inst-by-unif-utils")
-		   (:file "herbrandize")
-		   (:file "flatten")
+      :components ((:file "herbrandize")
 		   (:file "unify")
 		   (:file "gensubsts")
 		   (:file "inst-by-unif")))
