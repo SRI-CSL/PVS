@@ -14,10 +14,6 @@
 
 ;;(proclaim '(inline resolution))
 
-#+allegro
-(defun file-exists-p (file)
-  (excl::filesys-inode (namestring file)))
-
 #-allegro
 (defun file-exists-p (file)
   (probe-file file))
@@ -76,7 +72,7 @@
   (let* ((source (make-file-name file))
 	 (bin (make-pathname :type user::*pvs-binary-type*
 			     :defaults source)))
-    (unless (probe-file source)
+    (unless (file-exists-p source)
       (error "~%File ~a does not exist~%" source))
     (when (or (eq force t)
 	      (and (compiled-file-older-than-source? source bin)
@@ -97,12 +93,12 @@
     (let* ((defaults (or (probe-file (format nil "~a/~a/" *pvs-path* dir))
 			 (directory-p dir)))
 	   (path (make-pathname :name file :type "lisp" :defaults defaults)))
-      (when (probe-file path)
+      (when (file-exists-p path)
 	(return-from make-file-name path))))
   (error "File ~a.lisp cannot be found" file))
 
 (defun compiled-file-older-than-source? (sourcefile binfile)
-  (or (not (probe-file binfile))
+  (or (not (file-exists-p binfile))
       (file-older binfile sourcefile)))
 
 (defun load-parser-source ()
@@ -216,8 +212,8 @@
   (system (format nil "chmod ~a ~a" prot file)))
 
 (defun pvs-current-directory ()
-  (if (probe-file (working-directory))
-      (shortname (working-directory))
+  (if (file-exists-p *pvs-context-path*)
+      (shortname *pvs-context-path*)
       "/dev/null"))
 
 
@@ -230,10 +226,10 @@
   (defmethod pvs-truename ((file pathname))
     (let ((path (strip-pathname (truename file))))
       (or (gethash path canonical-pathnames)
-	  (let* ((attrs (pvs-stable-file-attributes path))
+	  (let* ((attrs (multiple-value-list (get-file-info path)))
 		 (pname (gethash attrs pathnames)))
 	    (if (and pname
-		     (probe-file pname))
+		     (file-exists-p pname))
 		(setf (gethash path canonical-pathnames) pname)
 		(progn (setf (gethash attrs pathnames) path)
 		       (setf (gethash path canonical-pathnames) path)))))))
@@ -245,7 +241,7 @@
 	    (let* ((attrs (pvs-stable-file-attributes path))
 		   (pname (gethash attrs pathnames)))
 	      (if (and pname
-		       (probe-file pname))
+		       (file-exists-p pname))
 		  (setf (gethash path canonical-pathnames) pname)
 		  (progn (setf (gethash attrs pathnames) path)
 			 (setf (gethash path canonical-pathnames) path))))))))
@@ -262,7 +258,7 @@
 (defun strip-pathname* (pathname dirs)
   (let ((npath (make-pathname :directory (cons :root dirs)
 			      :defaults pathname)))
-    (if (and (probe-file npath)
+    (if (and (file-exists-p npath)
 	     (equal (truename npath) (truename pathname)))
 	npath
 	pathname)))
@@ -447,7 +443,7 @@
 	  ((and (< 8 (length cdir))
 		(string= cdir "/tmp_mnt" :end1 8))
 	   (let ((ndir (subseq cdir 8)))
-	     (if (probe-file ndir)
+	     (if (file-exists-p ndir)
 		 ndir
 		 cdir)))
 	  (t cdir))))
@@ -455,6 +451,7 @@
 ;;; Checks if the dir is in fact a directory; returns the expanded
 ;;; pathname ending with a slash.
 
+#-allegro
 (defun directory-p (dir)
   (let* ((dirstr (namestring dir))
 	 (dirslash (merge-pathnames
@@ -525,7 +522,7 @@
 	  (unless err (close str) (delete-file path) (setq error nil)))))
     (not error)))
 
-#+(or lucid allegro harlequin-common-lisp)
+#+(or lucid harlequin-common-lisp)
 (defun write-permission? (&optional (dir *pvs-context-path*))
   (let* ((path (make-pathname :defaults dir :name "PVS" :type "tmp"))
 	 (str (ignore-errors (open path :direction :output
@@ -533,13 +530,6 @@
 				   :if-does-not-exist :create))))
     (when str (close str) (delete-file path) t)))
 
-#+(or lucid allegro harlequin-common-lisp)
-(defun file-write-permission? (file &optional (dir *pvs-context-path*))
-  (let* ((path (merge-pathnames file dir))
-	 (str (ignore-errors (open path :direction :output
-				   :if-exists :append
-				   :if-does-not-exist :create))))
-    (when str (close str) t)))
 
 ;(defmethod module-name ((n name)) (mod-id n))
 ;(defmethod actual-params ((n name)) (actuals n))
@@ -740,9 +730,7 @@
   (let ((modinst (car (importing-instance decl)))
 	(gdecl (generated-by decl)))
     (when (and modinst (typep gdecl 'importing))
-      (let ((rem (memq modinst (modules gdecl))))
-	(assert rem)
-	(add-usings-to-context (ldiff (modules gdecl) rem))))))
+      (add-usings-to-context (theory-name gdecl)))))
 
 (defun remove-disallowed-decls-from-context (decl prevdecls)
   (if (and (tcc? decl)
@@ -2597,14 +2585,13 @@ space")
     #'(lambda (ex) (typep ex 'coercion))))
 
 (defun file-equal (file1 file2)
-  (or (equal file1 file2)
-      (multiple-value-bind (inode1 idev1)
-	  (pvs-file-inode file1)
-	(and inode1
-	     (multiple-value-bind (inode2 idev2)
-		 (pvs-file-inode file2)
-	       (and (eql inode1 inode2)
-		    (eql idev1 idev2)))))))
+  (multiple-value-bind (inode1 idev1)
+      (get-file-info file1)
+    (and inode1
+	 (multiple-value-bind (inode2 idev2)
+	     (get-file-info file2)
+	   (and (eql inode1 inode2)
+		(eql idev1 idev2))))))
 
 
 (defmethod resolution ((te datatype-subtype))
