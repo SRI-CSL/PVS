@@ -3562,12 +3562,19 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
   "Expanding the definition(s) of ~a")
 
 (defhelper auto-rewrite-theory-always (thlist)
-  (if (null thlist)
-      (skip)
-      (let ((hd (car thlist))
-	    (tl (cdr thlist)))
-	(then
-	 (auto-rewrite-theory hd :always? T)
-	 (auto-rewrite-theory-always tl))))
+  (if (or (stringp thlist)
+	  (and (listp thlist)
+	       (every #'stringp thlist)))
+      (if (null thlist)
+	  (skip)
+	  (let ((hd (if (listp thlist) (car thlist) thlist))
+		(tl (if (listp thlist) (cdr thlist) nil)))
+	    (then
+	     (auto-rewrite-theory hd :always? T)
+	     (auto-rewrite-theory-always tl))))
+      (let ((dummy (error-format-if
+		    "Argument to auto-rewrite-theory-always must be a~%  ~
+                     theory name or list of theory names")))
+	(skip)))
   "Applies (auto-rewrite-theory :always? T) on a given list of theories."
   "Auto-rewriting given theories ~a with :always? T option")
