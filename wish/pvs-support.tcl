@@ -871,20 +871,22 @@ proc show-message {top text} {
     after 5000 "clear-message $top"
 }
 
-proc gen-ps {top psfile landscape} {
+proc gen-ps {top psfile landscape A4} {
     global canvcolors
 
     set w $top.fr.c
 
     set bbox [$w bbox all]
 
+    set ht [max 792 [expr [lindex $bbox 3]-[lindex $bbox 1]]]
+    set wd [max 595 [expr [lindex $bbox 2]-[lindex $bbox 0]]]
     $w postscript \
 	-file $psfile \
 	-x [lindex $bbox 0] \
-	-width [expr [lindex $bbox 2]-[lindex $bbox 0]] \
+	-width $wd \
 	-y [lindex $bbox 1] \
-	-height [expr [lindex $bbox 3]-[lindex $bbox 1]] \
-	-pageheight 8.5i \
+	-height $ht \
+	-pagewidth [expr {$A4 ? "595p" : "612p"}] \
 	-rotate [expr {$landscape ? "yes" : "no"}]
     show-message $top "Saved PS to $psfile"
 }
@@ -975,8 +977,10 @@ proc setup-dag-win {title icon PSname win_name class} {
 	    -text "Gen PS" -menu $top.ps.menu -relief raised
     }
     menu $top.ps.menu
-    $top.ps.menu add command -label Portrait -command "gen-ps $top $PSname 0"
-    $top.ps.menu add command -label Landscape -command "gen-ps $top $PSname 1"
+    $top.ps.menu add command -label "Portrait (Letter)" -command "gen-ps $top $PSname 0 0"
+    $top.ps.menu add command -label "Landscape (Letter)" -command "gen-ps $top $PSname 1 0"
+    $top.ps.menu add command -label "Portrait (A4)" -command "gen-ps $top $PSname 0 1"
+    $top.ps.menu add command -label "Landscape (A4)" -command "gen-ps $top $PSname 1 1"
     pack $top.ps -side left -padx 4 -pady 2
     if {$tk_version >= 4.0} {
 	button $top.help -bd 3 -highlightthickness 2 -relief raised \
