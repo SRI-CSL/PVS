@@ -193,7 +193,7 @@
 (defun ilisp-needed-buffer-height (buffer)
   (save-excursion
     (set-buffer buffer)
-    (let ((stdheight (1+ (count-lines (point-min) (point-max)))))
+    (let ((stdheight (1+ (count-screen-lines (point-min) (point-max)))))
       (if (string-match "XEmacs" emacs-version)
 	  (1+ stdheight)
 	  stdheight))))
