@@ -48,6 +48,10 @@
      ["edit-proof" edit-proof (pvs-valid-formula-buffer)]
      ["install-proof" install-proof (or (pvs-valid-formula-buffer)
 					(equal (buffer-name) "Proof"))]
+     ["display-proofs-formula" display-proofs-formula
+      (or (pvs-valid-formula-buffer) (equal (buffer-name) "Proof"))]
+     ["display-proofs-theory" display-proofs-theory (current-pvs-file t)]
+     ["display-proofs-pvs-file" display-proofs-pvs-file (current-pvs-file t)]
      ["revert-proof" revert-proof (pvs-valid-formula-buffer)]
      ["remove-proof" remove-proof (pvs-valid-formula-buffer)]
      ["show-proof-file" show-proof-file (current-pvs-file t)]
