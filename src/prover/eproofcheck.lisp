@@ -345,6 +345,8 @@
 		  ;;		      T T))
 		  ;;  (break)
 		  (print-proofstate-if proofstate)
+		  (unless *suppress-printing*
+		    (clear-strategy-errors))
 		  )
 		(let ((nextstate (proofstepper proofstate)))
 		  (cond  ((null (parent-proofstate proofstate))
@@ -393,7 +395,6 @@
         (check-command-arguments (car pcmd) keywords (cdr pcmd)))))
 
 (defun qread (prompt &optional checkargs)
-  (clear-strategy-errors)
   (format t "~%~a"  prompt)
   (force-output)
   (let ((input (ignore-errors (read))))
