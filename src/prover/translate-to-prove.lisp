@@ -480,7 +480,7 @@
 (defvar *top-translate-to-prove-hash*
   (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
 
-(defun top-translate-to-prove (expr)
+(defun top-translate-to-prove (expr &optional no-explicit?)
   (let ((*bindings* nil)
 	(*generate-tccs* 'none))
     (cond ((hash-table-p *translate-to-prove-hash*)
@@ -492,14 +492,16 @@
 	   (when (and *real*
 		      (subtype? *real*))
 	     (setq *real-pred* (translate-to-ground (predicate *real*))))
-	   (add-explicit-prover-type expr)
+	   (unless no-explicit?
+	     (add-explicit-prover-type expr))
 	   (translate-to-ground (unit-derecognize expr)))
 	  (t (translate-with-new-hash
 	       (unless *integer-pred*
 		 (setq *integer-pred*
 		       (when *integer*
 			 (translate-to-ground (predicate *integer*)))))
-	       (add-explicit-prover-type expr)
+	       (unless no-explicit?
+		 (add-explicit-prover-type expr))
 	       (translate-to-ground (unit-derecognize expr)))))))
 
 (defmethod translate-to-prove ((expr binding-expr))
