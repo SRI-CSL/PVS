@@ -1670,7 +1670,7 @@
 			   (id (module-instance op))))))
 
 (defmethod get-pp-tex-funsym (ex arglengths &optional theory-id)
-  (declare (ignore ex arglengths))
+  (declare (ignore ex arglengths theory-id))
   nil)
 
 (defmethod get-pp-tex-funsym ((symbol symbol) arglengths &optional theory-id)

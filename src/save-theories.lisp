@@ -50,7 +50,9 @@
 
 (defun list-of-modules ()
   (let ((theory-list nil))
-    (maphash #'(lambda (id mod) (push mod theory-list))
+    (maphash #'(lambda (id mod)
+		 (declare (ignore id))
+		 (push mod theory-list))
 	     *pvs-modules*)
     theory-list))
 
@@ -74,20 +76,6 @@
 				 (list (id m))))
 		   (all-importings mod))))))
 
-(defun get-bin-theory (modref)
-  (or (get-theory modref)
-      (restore-theory modref)))
-
-(defun restore-theories1 (file-id)
-  (mapc #'get-bin-theory (gethash file-id *stored-mod-depend*))
-  (let ((theories (fetch-object-from-file (make-binpath file-id))))
-    (dolist (theory theories)
-      (when (typep theory 'module)
-	(generate-xref theory))
-      (let ((diffs (compare theory (get-theory (id theory)))))
-	(when diffs
-	  (error "Restored theory doesn't match"))))
-    (setf (gethash file-id *pvs-modules*) theories)))
 
 ;; While we're saving a particular theory, we don't want to save any
 ;; other modules it might refer to, or any declarations that belong to
