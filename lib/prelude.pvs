@@ -312,11 +312,11 @@ extend_bool [T: TYPE, S: TYPE FROM T]: THEORY
 
 % The K combinator is used to trigger lambda conversions.
 
-K[T1, T2: TYPE]: THEORY
+K_conversion[T1, T2: TYPE]: THEORY
  BEGIN
  
-  K(x:T1)(y:T2): T1 = x
-  CONVERSION K
+  K_conversion(x:T1)(y:T2): T1 = x
+  CONVERSION K_conversion
   
  END K
 
