@@ -941,7 +941,9 @@
 		   ((<=> IFF) 3)
 		   (t (sxhash id)))))
       (pvs-sxhash-+ (the positive-fixnum dnum)
-		    (the positive-fixnum (pvs-sxhash* mi1 bindings))))))
+		    (if (binding? d1)
+			17
+			(the positive-fixnum (pvs-sxhash* mi1 bindings)))))))
 
 ;;; for testing:
 
