@@ -112,6 +112,8 @@
 ;   ((eq expr 'false) 'false)
 ;   (t expr)))
 
+(defvar *dp-print-incompatible-warning* t)
+
 (defmacro call-process (expr dp-state alists)
   (let ((g-expr (gentemp))
 	(g-dp-state (gentemp))
@@ -137,14 +139,20 @@
 			   (dp::invoke-process new-expr g-dp-state))))
        (when *old-ground?*
 	 (setq old-result (translate-from-prove-list
-			   (catch 'context (invoke-process old-expr))))
+			   (invoke-process old-expr)))
 	 (setf (dpinfo-sigalist g-alists) sigalist
 	       (dpinfo-findalist g-alists) findalist
 	       (dpinfo-usealist g-alists) usealist))
-       (assert (or (not *break-on-ground-diff*)
-		   (not (and *new-ground?* *old-ground?*))
-		   (and (compatible-dp-results new-result old-result)))
-	       (*break-on-ground-diff*))
+       (let ((not-incompatible
+	      (or (not (and *new-ground?* *old-ground?*))
+		  (and (compatible-dp-results new-result old-result)))))
+	 (when (and *dp-print-incompatible-warning*
+		    (not not-incompatible))
+	   (format t "~%***IncompatibleWarning*** expr: ~A,~%new-result: ~A, ~%old-result:~A"
+	     new-expr new-result old-result))
+	 (assert (or (not *break-on-ground-diff*)
+		     not-incompatible)
+		 (*break-on-ground-diff*)))
        (setq *break-on-ground-diff* t)
        (if *new-ground?*
 	   new-result
@@ -167,10 +175,13 @@
 
 (defun compatible-dp-results (new-result old-result)
   (or (tc-eq new-result old-result)
-      (and (eq new-result dp::*true*) (eq old-result TRUE))
-      (and (eq new-result dp::*false*) (eq old-result FALSE))
-      (and (or (listp old-result)
-	       (typep old-result 'syntax))
+      (and (true-p new-result) (true-p old-result))
+      (and (false-p new-result) (false-p old-result))
+      (and 
+	   (or (listp old-result)
+	       (and (not (or (true-p old-result)
+			     (false-p old-result)))
+		    (typep old-result 'syntax)))
 	   (null new-result))))
 
 (defvar *init-dp-state*
