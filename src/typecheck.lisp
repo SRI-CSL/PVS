@@ -682,8 +682,7 @@
 	    (push (car tres) (resolutions ex))
 	    (type-ambiguity ex))
 	  (progn
-	    (setf (type-value rhs) (type (car tres)))
-	    (push 'type (types ex)))))))
+	    (setf (type-value rhs) (type (car tres))))))))
 
 (defmethod typecheck-mapping-rhs* (ex rhs)
   (let ((typed-ex (typecheck* ex nil nil nil)))
