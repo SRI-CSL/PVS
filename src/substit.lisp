@@ -36,18 +36,21 @@
 ;      (setf (gethash obj *substit-hash*) nobj)
 ;      nobj)))
 
-(defmethod substit* :around ((expr T) alist)
-  (cond ((null (freevars expr))
-	 expr)
-	((type-expr? expr)
-	 (if *subst-type-hash*
-	     (let ((result (lookup-subst-hash expr alist *subst-type-hash*)))
-	       (if result result
-		   (let ((result (call-next-method)))
-		     (install-subst-hash expr alist result *subst-type-hash*)
-		     result)))
-	     (call-next-method)))
-	(t (call-next-method))))
+(defmethod substit* :around ((expr expr) alist)
+  (if (null (freevars expr))
+      expr
+      (call-next-method)))
+
+(defmethod substit* :around ((expr type-expr) alist)
+  (if (freevars expr)
+      (if *subst-type-hash*
+	  (let ((result (lookup-subst-hash expr alist *subst-type-hash*)))
+	    (if result result
+		(let ((result (call-next-method)))
+		  (install-subst-hash expr alist result *subst-type-hash*)
+		  result)))
+	  (call-next-method))
+      expr))
 
 (defun lookup-subst-hash (expr alist hash)
   (gethash (cons expr
@@ -176,7 +179,7 @@
 	       (eq arg argument))
 	  expr
 	  (let* ((stype (find-supertype (type op)))
-		 (nex (lcopy expr
+		 (nex (copy expr
 			'operator op
 			'argument arg
 			'type (if (typep (domain stype) 'dep-binding)
@@ -229,14 +232,26 @@
       'type ntype)))
 
 (defmethod substit* ((expr tuple-expr) alist)
-  (let* ((nexprs (substit* (exprs expr) alist))
-	 (ntype (if (every #'(lambda (nex ex) (eq (type nex) (type ex)))
-			   nexprs (exprs expr))
-		    (type expr)
-		    (mk-tupletype (mapcar #'type nexprs)))))
-    (lcopy expr
-      'exprs nexprs
-      'type ntype)))
+  (let ((nexprs (substit*-simple-list (exprs expr) alist)))
+    (if (eq nexprs (exprs expr))
+	expr
+	(let ((ntype (if (every #'(lambda (nex ex) (eq (type nex) (type ex)))
+				nexprs (exprs expr))
+			 (type expr)
+			 (mk-tupletype (mapcar #'type nexprs)))))
+	  (copy expr
+	    'exprs nexprs
+	    'type ntype)))))
+
+(defun substit*-simple-list (list alist)
+  (let ((slist (substit*-simple-list* list alist nil)))
+    (if (equal list slist) list slist)))
+
+(defun substit*-simple-list* (list alist result)
+  (if (null list)
+      (nreverse result)
+      (substit*-simple-list* (cdr list) alist
+			     (cons (substit* (car list) alist) result))))
 
 (defmethod substit* ((expr update-expr) alist)
   (let ((ntype (substit* (type expr) alist)))
@@ -335,19 +350,20 @@
 	     (btype (type bind))
 	     (check (or (member (id bind) freevars :key #'id)
 			(member (id bind) boundvars :key #'id)))
+	     (stype (substit* btype alist))
 	     (dec-type (declared-type bind))
 	     (new-binding
 	      (if (not check)
 		  (lcopy bind
-		    'type (substit* btype alist)
+		    'type stype
 		    'declared-type (substit* dec-type alist))
 		  (copy bind
 		    'id (new-boundvar-id (id bind))
-		    'type (substit* btype alist)
+		    'type stype
 		    'declared-type (substit* dec-type alist)))))
-	(when (and (not (eq bind new-binding))
-		   (untyped-bind-decl? new-binding))
-	  (change-class new-binding 'bind-decl))
+	(unless (or (eq bind new-binding)
+		    (declared-type new-binding))
+	  (setf (declared-type new-binding) (or (print-type stype) stype)))
 	(make-new-bindings*
 	 (cdr old-bindings)
 	 (add-alist-freevars new-binding (mapcar #'car alist))

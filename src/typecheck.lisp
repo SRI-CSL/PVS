@@ -13,6 +13,8 @@
 
 (in-package 'pvs)
 
+(export '(typecheck typecheck*))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Top level typechecking functions
@@ -254,8 +256,23 @@
     (add-to-using nmodinst)
     (unless (eq nmodinst inst)
       (pushnew inst (gethash (get-theory inst) (current-using-hash))))
+    (when (some #'formal-theory-decl? (formals mod))
+      (add-theory-parameters-importings mod nmodinst))
     (unless *ignore-exportings*
       (add-exporting-with-theories mod nmodinst))))
+
+(defun add-theory-parameters-importings (theory inst)
+  (when (and (formals-sans-usings theory)
+	     (actuals inst))
+    (mapc #'(lambda (fm act)
+	      (when (formal-theory-decl? fm)
+		(add-to-using (mk-modname (id (expr act))
+				(actuals (expr act))
+				(library (expr act))
+				(mappings (expr act)))
+			      (get-theory (expr act)))))
+	  (formals-sans-usings theory)
+	  (actuals inst))))
 
 (defmethod typecheck-using* ((adt recursive-type) inst)
   (let* ((th1 (adt-theory adt))
@@ -444,7 +461,11 @@
 	    (update-current-context theory theoryname))
 	  (progn (update-current-context theory theoryname)
 		 (dolist (decl (append (assuming theory) (theory theory)))
-		   (when (and (declaration? decl) (visible? decl))
+		   (when (and (declaration? decl)
+			      (visible? decl)
+			      (not (find decl (mappings theoryname)
+					 :key #'(lambda (m)
+						  (declaration (lhs m))))))
 		     (check-for-importing-conflicts decl)
 		     (put-decl decl (current-declarations-hash))))
 		 (setf (gethash theory (current-using-hash))
@@ -543,16 +564,21 @@
 		       assoc))))))
 
 (defun check-compatible-param (formal actual assoc)
-  (cond ((formal-type-decl? formal)
-	 (unless (type-value actual)
-	   (type-error actual "Expression provided where a type is expected"))
-	 (when (formal-subtype-decl? formal)
-	   (let ((type (subst-types (supertype (type-value formal)) assoc)))
-	     (unless (compatible? (type-value actual) type)
-	       (type-error actual "~a Should be a subtype of ~a"
-			   (type-value actual) type)))))
-	(t (let ((type (subst-types (type formal) assoc)))
-	     (typecheck* (expr actual) type nil nil))))
+  (typecase formal
+    (formal-type-decl
+     (unless (type-value actual)
+       (type-error actual "Expression provided where a type is expected"))
+     (when (formal-subtype-decl? formal)
+       (let ((type (subst-types (supertype (type-value formal)) assoc)))
+	 (unless (compatible? (type-value actual) type)
+	   (type-error actual "~a Should be a subtype of ~a"
+		       (type-value actual) type)))))
+    (formal-theory-decl
+     (unless (typep (declaration (expr actual))
+		    '(or module mod-decl formal-theory-decl))
+       (type-error actual "Theory name expected here")))
+    (t (let ((type (subst-types (type formal) assoc)))
+	 (typecheck* (expr actual) type nil nil))))
   t)
 
 (defun subst-types (type assoc)
@@ -563,40 +589,62 @@
 			    (assoc (declaration te) assoc))))
       type))
 
-(defun typecheck-mappings (mappings inst)
+(defmethod typecheck-mappings (mappings (inst modname))
   (when mappings
-    (let* ((lhs-theory (get-theory inst))
-	   (lhs-context (context lhs-theory)))
-      (dolist (mapping mappings)
-	(let* ((*current-theory* lhs-theory)
-	       (*current-context* lhs-context)
-	       (*generate-tccs* 'none)
-	       (tres (with-no-type-errors (resolve* (lhs mapping) 'type nil)))
-	       (eres (with-no-type-errors (resolve* (lhs mapping) 'expr nil))))
-	  (unless (or eres tres)
-	    (type-error (lhs mapping) "Map lhs does not resolve"))
-	  (if (cdr tres)
-	      (cond (eres
-		     (setf (resolutions (lhs mapping)) eres))
-		    (t (setf (resolutions (lhs mapping)) tres)
-		       (type-ambiguity (lhs mapping))))
-	      (setf (resolutions (lhs mapping)) (nconc tres eres)))
-	  (assert (resolutions (lhs mapping))))
-	(typecheck-mapping-rhs (rhs mapping))
-	(assert (ptypes (expr (rhs mapping))))))))
+    (let ((lhs-theory (get-theory inst)))
+      (unless lhs-theory
+	(type-error inst "Theory ~a not found" inst))
+      (let ((lhs-context (context lhs-theory)))
+	(dolist (mapping mappings)
+	  (let* ((*current-theory* lhs-theory)
+		 (*current-context* lhs-context)
+		 (*generate-tccs* 'none)
+		 (tres (with-no-type-errors
+			(resolve* (lhs mapping) 'type nil)))
+		 (eres (with-no-type-errors
+			(resolve* (lhs mapping) 'expr nil)))
+		 (thres (with-no-type-errors
+			 (resolve* (lhs mapping) 'module nil))))
+	    (unless (or eres tres thres)
+	      (type-error (lhs mapping) "Map lhs does not resolve"))
+	    (if (cdr tres)
+		(cond (eres
+		       (setf (resolutions (lhs mapping)) eres))
+		      (t (setf (resolutions (lhs mapping)) tres)
+			 (type-ambiguity (lhs mapping))))
+		(setf (resolutions (lhs mapping)) (nconc tres eres thres)))
+	    (assert (resolutions (lhs mapping))))
+	  (typecheck-mapping-rhs (rhs mapping))
+	  ;;(assert (ptypes (expr (rhs mapping))))
+	  )))))
+
+(defmethod typecheck-mappings (mappings (name name))
+  ;; Used with a name that has no mod-id - don't try to typecheck lhs in
+  ;; this case
+  (when mappings
+    (if (mod-id name)
+	(typecheck-mappings mappings (name-to-modname name))
+	(dolist (mapping mappings)
+	  (typecheck-mapping-rhs (rhs mapping))))))
+
+(defmethod typecheck-mappings (mappings (n number-expr))
+  nil)
 
 (defun typecheck-mapping-rhs (rhs)
   (typecheck-mapping-rhs* (expr rhs) rhs))
 
 (defmethod typecheck-mapping-rhs* ((ex name-expr) rhs)
   (let ((tres (with-no-type-errors (resolve* ex 'type nil)))
-	(eres (with-no-type-errors (resolve* ex 'expr nil))))
+	(eres (with-no-type-errors (resolve* ex 'expr nil)))
+	(thres (with-no-type-errors (resolve* ex 'module nil))))
     (if (cdr tres)
 	(cond (eres
 	       (setf (resolutions ex) eres))
 	      (t (setf (resolutions ex) tres)
 		 (type-ambiguity ex)))
-	(setf (resolutions ex) (nconc tres eres)))
+	(setf (resolutions ex) (nconc tres eres thres)))
+    (unless (resolutions ex)
+      (type-error ex "No resolution for ~a as a type, expr, or theory" ex))
     (when eres
       (setf (types ex) (mapcar #'type eres))
       (when (and (plusp (parens ex))
@@ -620,20 +668,36 @@
 (defmethod typecheck-mapping-rhs* (ex rhs)
   (typecheck* ex nil nil nil))
 
+(defun interpretable-declarations (theory)
+  (remove-if-not #'interpretable? (all-decls theory)))
+
+(defmethod interpretable? ((th module))
+  (some #'interpretable? (all-decls th)))
+
+(defmethod interpretable? ((d type-decl))
+  t)
+
+(defmethod interpretable? ((d type-def-decl))
+  nil)
+
+(defmethod interpretable? ((d mod-decl))
+  (interpretable? (get-theory (modname d))))
+
+(defmethod interpretable? ((d const-decl))
+  (null (definition d)))
+
+(defmethod interpretable? ((imp importing))
+  nil)
+
 (defmethod interpretable? ((res resolution))
   (interpretable? (declaration res)))
 
-(defmethod interpretable? ((decl type-decl))
-  t)
-
-(defmethod interpretable? ((decl type-def-decl))
+(defmethod interpretable? ((decl declaration))
   nil)
 
-(defmethod interpretable? ((decl const-decl))
-  (null (definition decl)))
-
-(defmethod interpretable? (decl)
-  nil)
+(defmethod interpretable? ((name name))
+  (and (resolutions name)
+       (interpretable? (car (resolutions name)))))
 
 (defun check-mapping-lhs (lhs)
   (unless (interpretable? (resolution lhs))
@@ -784,7 +848,7 @@
 			   #'(lambda (d)
 			       (or (not (eq (module d) (current-theory)))
 				   (typep d '(or formal-decl importing var-decl
-					      field-decl recursive-type))
+					      field-decl recursive-type module))
 				   (and (const-decl? d)
 					(formal-subtype-decl?
 					 (generated-by d)))

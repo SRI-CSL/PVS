@@ -90,7 +90,19 @@
 		      'module *current-theory*
 		      'spelling 'formula
 		      'definition cexpr))
-	 (*start-proof-display* display?))
+	 (*start-proof-display* display?)
+	 ;; The next section needed for translate-to-prove, which is used
+	 ;; by arith-order, make-prod, and arith-ord-translate.  This will
+	 ;; be removed once term-lt is written.
+	 (*translate-id-hash* (init-if-rec *translate-id-hash*))
+	 (*translate-id-counter* nil)
+	 (*subtype-names* nil)
+	 (*local-typealist* *local-typealist*)
+	 (*rec-type-dummies* nil)
+	 (*named-exprs* nil))
+    (newcounter *translate-id-counter*)
+    (initprover)
+    ;; remove above once term-lt is written
     (prove-decl expr-decl :strategy `(then (then ,strategy (postpone)) (quit))
 		:context *current-context*)
     (let ((mform (merge-subgoals *subgoals*)))
@@ -209,7 +221,19 @@
 	   'macro-names nil))
 	(*current-context* (or context (context decl)))
 	(*current-theory* (module decl))
-	(*current-decision-procedure* (determine-decision-procedure decl)))
+	(*current-decision-procedure* (determine-decision-procedure decl))
+	;; The next section needed for translate-to-prove, which is used
+	;; by arith-order, make-prod, and arith-ord-translate.  This will
+	;; be removed once term-lt is written.
+	(*translate-id-hash* (init-if-rec *translate-id-hash*))
+	(*translate-id-counter* nil)
+	(*subtype-names* nil)
+	(*local-typealist* *local-typealist*)
+	(*rec-type-dummies* nil)
+	(*named-exprs* nil))
+    (newcounter *translate-id-counter*)
+    (initprover)
+    ;; remove above once term-lt is written
     (newcounter *skovar-counter*)
     (newcounter *skofun-counter*)
     (newcounter *bind-counter*)
@@ -236,10 +260,11 @@
 	      'current-auto-rewrites auto-rewrites-info)))
       (before-prove*)
       (unwind-protect
-	   (dpi-init #'prove-decl-body)
-	(after-prove*))
-      (unless *recursive-prove-decl-call*
-	(save-proof-info decl init-real-time init-run-time))
+	   (dpi-start #'prove-decl-body)
+	(after-prove*)
+	(dpi-end *top-proofstate*)
+	(unless *recursive-prove-decl-call*
+	  (save-proof-info decl init-real-time init-run-time)))
       *top-proofstate*)))
 
 (defun determine-decision-procedure (decl)
@@ -326,12 +351,6 @@
   (clrhash *prtype-hash*)
   (clrhash *local-prtype-hash*)
   (clrhash *term-print-strings*)) 
-
-(defun make-dpinfo (sigalist findalist usealist)
-  (make-instance 'dpinfo
-    'dpinfo-sigalist sigalist
-    'dpinfo-findalist findalist
-    'dpinfo-usealist usealist))
 
 (defun save-proof-info (decl init-real-time init-run-time)
   (let ((prinfo (default-proof decl))
@@ -646,7 +665,7 @@
 		      ((eq (status-flag post-proofstate) '!);;rule-apply proved
 		       (format-printout post-proofstate)
 		       (wish-done-proof post-proofstate)
-		       (dpi-cleanup-proof post-proofstate)
+		       (dpi-end post-proofstate)
 ;		       (when (printout post-proofstate)
 ;			 (format-if (printout post-proofstate)))
 		       post-proofstate)
@@ -1079,7 +1098,7 @@
 
 (defun success-step (proofstate)
   (wish-done-proof proofstate)
-  (dpi-cleanup-proof proofstate)
+  (dpi-end proofstate)
   (setf (status-flag proofstate) '!
 	(done-subgoals proofstate)
 	(sort (done-subgoals proofstate)
@@ -3320,6 +3339,3 @@
 	 (#\newline (append '(#\n #\\) result))
 	 (t   (cons (char string pos) result))))
       (coerce (nreverse result) 'string)))
-
-(defun call-process (expr dp-state)
-  (dpi-process expr dp-state))

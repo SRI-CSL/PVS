@@ -555,13 +555,15 @@
 	 (progn ,@body)
        (dpi-pop-state ,new-state))))
 
-(defmacro copying-cong-state (((new-state old-state)) &body body)
-  `(let ((,new-state (dpi-copy-state ,old-state)))
-     ,@body))
-
 (defmacro protecting-cong-state (((new-state old-state)) &body body)
   `(let ((,new-state (dpi-push-state ,old-state)))
      ,@body))
+
+(defmacro call-process (expr dp-state)
+  (let ((result (gentemp)))
+    `(let ((,result (multiple-value-list (dpi-process ,expr ,dp-state))))
+       (setq ,dp-state (cadr ,result))
+       (car ,result))))
 
 (defmacro translate-to-ground (expr)
   `(if *newdc*

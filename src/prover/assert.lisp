@@ -157,12 +157,18 @@
 	 (values '! sequent)
 	 (values signal sequent)))))
 
+;;; Forms here is a list of terms of the underlying decision procedure
+;;; Hence dpi-process-term is invoked rather than call-process (which
+;;; invokes dpi-process).
+
 (defun process-assert (forms)
-  (if (null forms) nil
+  (if (null forms)
+      nil
       (let* ((fmla (car forms))
-	     (op (when (consp fmla) (car fmla))))
-	(cond ((eq op 'OR)
-	       (when (loop for x in (cdr fmla)
+	     ;;(op (when (consp fmla) (car fmla)))
+	     )
+	(cond ((dpi-disjunction? fmla) ;(eq op 'or)
+	       (when (loop for x in (dpi-term-arguments fmla) ;(cdr fmla)
 			   always (nprotecting-cong-state
 				   ((*dp-state* *dp-state*))
 				   (let* ((result
@@ -170,8 +176,8 @@
 					     (process-assert
 					      (cons x (cdr forms))))))
 				     (false-p result))))
-		   (retfalse)))
-	      ((memq op '(if if* implies not and iff))
+		 (retfalse)))
+	      ((dpi-proposition? fmla) ;(memq op '(if if* implies not and iff))
 	       (process-assert (cdr forms)))
 	      (t (let ((result (call-process fmla *dp-state*)))
 		   (if (false-p result)
@@ -211,142 +217,107 @@
       (cond ((eq signal '!)(values signal sform))
 	    ((or (eq signal '?) *assert-typepreds*)
 	     ;;(break "assert-typepreds")
-	     (if (some #'process-typepred
-		       *assert-typepreds*)
+	     (if (some #'process-typepred *assert-typepreds*)
 		 (values '! sform)
 		 (values '? sform)))
 	    (t (values signal sform))))))
 
 (defun process-typepred (fmla)
   (let* ((sign (not (negation? fmla)))
-	 (body (if sign fmla (args1 fmla)))
-	 ;;(*update-occurs?* T)
-	 )
-    ;;NSH(5.13.97): rearranged lets
-    ;;so translation avoided
-    ;;when there is a connective.
-    ;;want to check for connectives even if
-    ;;assert-connectives? is T
+	 (body (if sign fmla (args1 fmla))))
     (and (not (connective-occurs? body))
-	 (let* (
-		;;(translated-body
-		;; (top-translate-to-prove
-		;;  body))
-		;;(translated-fmla
-		;; (if sign translated-body
-		;;     (list 'NOT translated-body)))
-		(res (call-process fmla *dp-state*)))
+	 (let* ((res (call-process fmla *dp-state*)))
 	   (when (and (consp res)
-		      (not (update-or-connective-occurs?
-			    body)));;NSH(4.7.99)
+		      (not (update-or-connective-occurs? body)))
 	     (loop for x in res
 		   do (push x *process-output*)))
 	   (false-p res)))))
 
 (defun assert-typepreds (typepreds)
   (when (consp typepreds)
-      (let* ((fmla (car typepreds))
-	     (sign (not (negation? fmla)))
-	     (body (if sign
-		       fmla
-		       (args1 fmla)))
-	     ;;(*update-occurs?* T)
-	     )
-			     ;;NSH(5.13.97): rearranged lets
-			     ;;so translation avoided
-			     ;;when there is a connective.
-			     ;;want to check for connectives even if
-			     ;;assert-connectives? is T
-	(or (and (not (update-or-connective-occurs? body));;NSH(4.7.99)
-		 (let* (
-			;(translated-body
-			; (top-translate-to-prove
-			;  body))
-			;(translated-fmla
-			; (if sign translated-body
-			;     (list 'NOT
-			;	   translated-body)))
-			(res (call-process fmla *dp-state*)))
-		   (when (consp res)
-		     (loop for x in res
-			   do (push x *process-output*)))
-		   (false-p res)))
-	    (assert-typepreds (cdr typepreds))))))
+    (let* ((fmla (car typepreds))
+	   (sign (not (negation? fmla)))
+	   (body (if sign fmla (args1 fmla))))
+      (or (and (not (update-or-connective-occurs? body))
+	       (let* ((res (call-process fmla *dp-state*)))
+		 (when (consp res)
+		   (loop for x in res
+			 do (push x *process-output*)))
+		 (false-p res)))
+	  (assert-typepreds (cdr typepreds))))))
 
 (defun assert-sform* (sform &optional rewrite-flag simplifiable?)
   (let* ((fmla (formula sform))
 	 (sign (not (negation? fmla)))
 	 (body (if sign fmla (args1 fmla)))
 	 (*bound-variables* nil)
-	 (*top-rewrite-hash* *rewrite-hash*))
-    (copying-cong-state
-     ((*top-dp-state* *dp-state*))
-     ;;(break "0")
-     (cond (rewrite-flag
-	    (multiple-value-bind (sig newbodypart)
-		(if (or (iff? body)(equation? body))
-		    (if (eq rewrite-flag 'RL)
-			(assert-if (args1 body))
-			(assert-if (args2 body)))
-		    (values 'X body))
-	      (if (eq sig 'X)
-		  (if (or (and sign (tc-eq fmla *false*))
-			  (and (not sign)(tc-eq body *true*)))
-		      (values '? nil)
-		      (values 'X sform))
-		  (let ((newbody
-			 (copy body
-			   'argument
-			   (make!-arg-tuple-expr*
-			    (if (eq rewrite-flag 'RL)
-				(list newbodypart (args2 body))
-				(list (args1 body) newbodypart))))))
-		    (values '? (copy sform
-				 'formula
-				 (if sign newbody
-				     (copy fmla
-				       'argument
-				       newbody))))))))
-	   (simplifiable?		;(connective-occurs? body)
-	    (multiple-value-bind (sig newfmla)
-		;;NSH(7.27.96): I've been going back and forth
-		;;on  assert-if-inside vs. assert-if here.
-		;;assert-if fails because for an enum type
-		;;red?(expr) triggers check-all-recognizers
-		;;which causes self-simplification.  I don't
-		;;recall when assert-if-inside misbehaves.
-		(if (if sign (application? fmla)
-			(application? (args1 fmla)))
-		    (assert-if-inside fmla) 
-		    (assert-if fmla))
-	      (cond ((eq sig 'X)
-		     (if (or (and sign (tc-eq fmla *false*))
-			     (and (not sign)(tc-eq body *true*)))
-			 (values '? nil)
-			 (values 'X sform)))
-		    ((and (not (eq *assert-flag* 'simplify))
-			  (not (connective-occurs? newfmla)))
-		     (process-sform sform newfmla sig))
-		    (t (values '? (copy sform 'formula newfmla))))))
-	   (t				;(break "1")
-	    (multiple-value-bind (sig newfmla)
-		(assert-if-inside fmla)
+	 (*top-rewrite-hash* *rewrite-hash*)
+	 (*top-dp-state* *dp-state*))
+    ;;(break "0")
+    (cond (rewrite-flag
+	   (multiple-value-bind (sig newbodypart)
+	       (if (or (iff? body)(equation? body))
+		   (if (eq rewrite-flag 'RL)
+		       (assert-if (args1 body))
+		       (assert-if (args2 body)))
+		   (values 'X body))
+	     (if (eq sig 'X)
+		 (if (or (and sign (tc-eq fmla *false*))
+			 (and (not sign)(tc-eq body *true*)))
+		     (values '? nil)
+		     (values 'X sform))
+		 (let ((newbody
+			(copy body
+			  'argument
+			  (make!-arg-tuple-expr*
+			   (if (eq rewrite-flag 'RL)
+			       (list newbodypart (args2 body))
+			       (list (args1 body) newbodypart))))))
+		   (values '? (copy sform
+				'formula
+				(if sign newbody
+				    (copy fmla
+				      'argument
+				      newbody))))))))
+	  (simplifiable?		;(connective-occurs? body)
+	   (multiple-value-bind (sig newfmla)
+	       ;;NSH(7.27.96): I've been going back and forth
+	       ;;on  assert-if-inside vs. assert-if here.
+	       ;;assert-if fails because for an enum type
+	       ;;red?(expr) triggers check-all-recognizers
+	       ;;which causes self-simplification.  I don't
+	       ;;recall when assert-if-inside misbehaves.
+	       (if (if sign (application? fmla)
+		       (application? (args1 fmla)))
+		   (assert-if-inside fmla) 
+		   (assert-if fmla))
+	     (cond ((eq sig 'X)
+		    (if (or (and sign (tc-eq fmla *false*))
+			    (and (not sign)(tc-eq body *true*)))
+			(values '? nil)
+			(values 'X sform)))
+		   ((and (not (eq *assert-flag* 'simplify))
+			 (not (connective-occurs? newfmla)))
+		    (process-sform sform newfmla sig))
+		   (t (values '? (copy sform 'formula newfmla))))))
+	  (t				;(break "1")
+	   (multiple-value-bind (sig newfmla)
+	       (assert-if-inside fmla)
 					;(break "2")
-	      (if (or (connective-occurs? newfmla)
-		      (memq *assert-flag* '(simplify rewrite)))
-		  (values sig (if (eq sig '?) (copy sform
-						'formula newfmla)
-				  sform))
-		  (process-sform sform
-				 (if (eq sig '?) newfmla fmla)
-				 sig))))))))
+	     (if (or (connective-occurs? newfmla)
+		     (memq *assert-flag* '(simplify rewrite)))
+		 (values sig (if (eq sig '?) (copy sform
+					       'formula newfmla)
+				 sform))
+		 (process-sform sform
+				(if (eq sig '?) newfmla fmla)
+				sig)))))))
 
 (defun process-sform (sform newfmla sig)
-  ;(when (connective-occurs? newfmla)(break))
+  ;;(when (connective-occurs? newfmla)(break))
   (let* ((*bindings* nil)
-	 ;(transformula (top-translate-to-prove (negate newfmla)))
 	 (result (call-process (negate newfmla) *dp-state*)))
-    ;(break "cp")
+    ;;(break "cp")
     (when (and (consp result)
 	       (not (update-or-connective-occurs? newfmla)))
       (loop for x in result do (push x *process-output*)))
@@ -356,8 +327,8 @@
 	    (let ((new-sform (copy sform
 			       'formula newfmla)))
 	      (values '? new-sform))
-	     ;;;***Need a flag to check if *top-dp-state* was changed,
-	     ;;;namely, is the new stuff essentially empty.  
+	    ;; ***Need a flag to check if *top-dp-state* was changed,
+	    ;; namely, is the new stuff essentially empty.  
 	    (if (dpi-state-changed? *top-dp-state* *dp-state*)
 		(values '? sform) 
 		(values 'X sform))))))
@@ -758,11 +729,12 @@
 		      (operator arg)
 		      nil))))
     (if constructor
-	(loop for rec in recs
-	      collect
-	      (if (tc-eq-ops (recognizer constructor) rec)
-		  (cons rec *TRUE*)
-		  (cons rec *FALSE*)))	     
+	(let ((cons-rec (recognizer constructor)))
+	  (loop for rec in recs
+		collect
+		(if (same-id cons-rec rec)
+		    (cons rec *TRUE*)
+		    (cons rec *FALSE*))))	     
 	(loop for rec in recs
 	      collect
 	      (cons rec (assert-test (make!-application rec arg)))))))
@@ -2083,14 +2055,17 @@
 	((and (typep newop 'name-expr)
 	      (accessor? newop)
 	      (typep newargs 'application)
+	      (typep (operator newargs) 'name-expr)
 	      (member (operator newargs) (constructor newop)
-		      :test #'tc-eq-ops))
+		      :test #'same-id)) ;;NSH(9.29.00) was tc-eq-ops
+	                        ;;which is too strong.
 	 (values-assert-if
 	  '?
 	  (let ((accessors (accessors (operator newargs))))
 	    (if (cdr accessors)
 		(let ((args (arguments newargs))
-		      (pos (position newop accessors :test #'tc-eq-ops)))
+		      (pos (position newop accessors :test #'same-id)))
+		  ;;was tc-eq-ops
 		  (if (cdr args)
 		      (nth pos (arguments newargs))
 		      (make!-projection-application (1+ pos) (car args))))
@@ -2353,10 +2328,10 @@
 
 (defun do-auto-rewrite-memo* (expr op* decl sig hash-res)
   (assert (= (length hash-res) 5))
-  (let* ((hashed-result  (nth 0 hash-res))
+  (let* ((hashed-result (nth 0 hash-res))
 	 (hashed-dp-state (nth 1 hash-res))
-	 (hashed-rewrites  (nth 2 hash-res))
-	 (hashed-rewrites!  (nth 3 hash-res))
+	 (hashed-rewrites (nth 2 hash-res))
+	 (hashed-rewrites! (nth 3 hash-res))
 	 (hashed-macros (nth 4 hash-res))) ;;(break "memo")
 	(progn
 	  (incf *rewrite-hits*)

@@ -18,6 +18,8 @@
 
 (in-package 'pvs)
 
+(export '(untypecheck-theory))
+
 ;;; Untypechecking a theory removes all types and resolutions, and goes
 ;;; up the using chain recursively.  The used-by slot is used for this
 ;;; purpose; it is set in xref.lisp.
@@ -134,7 +136,7 @@
 	    (delete-if #'(lambda (d) (memq d (generated decl)))
 	      (theory (module decl)))))
     (mapc #'(lambda (rd)
-	      (unless (from-prelude? rd)
+	      (unless (or (module? rd) (from-prelude? rd))
 		(setf (referred-by rd)
 		      (remove decl (referred-by rd)))))
 	  (refers-to decl))
@@ -188,6 +190,10 @@
   (when (next-method-p) (call-next-method))
   (setf (type decl) nil)
   (untypecheck-theory (declared-type decl)))
+
+(defmethod untypecheck-theory ((decl formal-theory-decl))
+  (when (next-method-p) (call-next-method))
+  (untypecheck-theory (theory-name decl)))
 
 (defmethod untypecheck-theory ((decl lib-decl))
   nil)
@@ -246,6 +252,10 @@
   (setf (closed-definition decl) nil)
   (setf (default-proof decl) nil)
   (setf (proofs decl) nil))
+
+(defmethod untypecheck-theory ((decl assuming-decl))
+  (setf (definition decl) (original-definition decl))
+  (call-next-method))
 
 (defun reset-tccs-proof-status (decls)
   (dolist (d decls)

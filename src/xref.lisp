@@ -72,6 +72,9 @@
 (defmethod generate-xref ((d formal-const-decl))
   (generate-xref (declared-type d)))
 
+(defmethod generate-xref ((d formal-theory-decl))
+  (generate-xref (theory-name d)))
+
 (defmethod generate-xref ((d inline-datatype))
   nil)
 
@@ -254,10 +257,11 @@
   nil)
 
 (defmethod generate-xref ((n name-expr))
-  (assert (type n))
+  ;;(assert (type n))
   (unless (memq n *xref-names-seen*)
     (push n *xref-names-seen*)
-    (generate-xref (type n)))
+    (unless (typep (declaration n) '(or module mod-decl formal-theory-decl))
+      (generate-xref (type n))))
   (call-next-method))
 
 (defmethod generate-xref ((a actual))

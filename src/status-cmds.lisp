@@ -227,15 +227,14 @@
 	(let* ((fdecls (provable-formulas theory))
 	       (maxtime (/ (reduce #'max fdecls
 				   :key #'(lambda (d)
-					    (or (run-time (default-proof d))
-						0))
+					    (or (run-proof-time d) 0))
 				   :initial-value 0)
 			   internal-time-units-per-second))
 	       (timelength (length (format nil "~,2f" maxtime)))
 	       (idlength (- 48 timelength)))
 	  (dolist (decl fdecls)
-	    (let ((tm (if (run-time (default-proof decl))
-			  (/ (run-time (default-proof decl))
+	    (let ((tm (if (run-proof-time decl)
+			  (/ (run-proof-time decl)
 			     internal-time-units-per-second 1.0)
 			  0)))
 	      (incf tot)
@@ -251,7 +250,7 @@
 		(if (justification decl)
 		    (decision-procedure-used decl)
 		    "Untried")
-		(if (run-time (default-proof decl))
+		(if (run-proof-time decl)
 		    (format nil "~v,2f" timelength tm)
 		    (format nil "~v<n/a~>" timelength))))))
 	(let ((te (get-context-theory-entry theory-id)))
@@ -274,7 +273,7 @@
                (~,2f s)"
 	tot (+ proved unfin) proved
 	(/ (reduce #'+ (provable-formulas theory)
-		    :key #'(lambda (d) (or (run-time (default-proof d)) 0))
+		    :key #'(lambda (d) (or (run-proof-time d) 0))
 		    :initial-value 0)
 	    internal-time-units-per-second))
     (values tot proved unfin untried time)))
@@ -546,18 +545,6 @@
 	  (t
 	   (show-all-proofs-nostatus outstr theory proofs)))))
 
-(defun show-all-proofs-nostatus (outstr theoryid proofs)
-  (dolist (prf proofs)
-    (format outstr "~3%~a.~a~2%"
-      theoryid (car prf))
-    (write (editable-justification
-	    (if (and (listp (cadr prf))
-		     (keywordp (caadr prf)))
-		(cddr prf)
-		(cdr prf)))
-	   :stream outstr :pretty t :escape t :level nil :length nil
-	   :pprint-dispatch *proof-script-pprint-dispatch*)))
-
 (defun show-all-proofs-theory* (outstr proofs decls theory)
   (dolist (prf proofs)
     (let ((decl (find-if #'(lambda (d)
@@ -730,6 +717,9 @@
 	     (push decl *depending-chain*)
 	     (pc-analyze* (union (refers-to decl)
 				 (remove-if-not #'tcc? (generated decl))))))))
+
+(defmethod pc-analyze* ((theory module))
+  (break))
 
 (defmethod pc-analyze* ((list list))
   (cond ((null list)
@@ -1037,3 +1027,23 @@
       (editable-justification
        (fifth (nth (cadr prf) (cddr prf))))
       (editable-justification (cdr prf))))
+
+(defmethod formula-proof-dependencies ((decl formula-decl))
+  (let* ((*dependings* (init-symbol-table))
+	 (*proved-dependings* nil)
+	 (*unproved-dependings* nil)
+	 (*defn-dependings* nil)
+	 (*axiom-dependings* nil)
+	 (*assumption-dependings* nil)
+	 (*depending-chain* nil)
+	 (*depending-cycles* nil)
+	 (result nil))
+    (pc-analyze* (union (union (refers-to decl)
+			       (proof-refers-to decl))
+			(assuming-tccs decl)))
+    (maphash #'(lambda (x y) (push x result)) *dependings*)
+    (nreverse result)))
+
+(defmethod formula-unused-declarations ((decl formula-decl))
+  (set-difference (all-decls (module decl))
+		  (cons decl (formula-proof-dependencies decl))))

@@ -20,6 +20,8 @@
 
 (in-package 'pvs)
 
+(export '(typecheck-decls typecheck-decl))
+
 (defun typecheck-decls (decls)
   (when decls
     (let ((decl (car decls)))
@@ -150,6 +152,78 @@
       (check-nonempty-type (type decl) (id decl)))
   (check-duplication decl)
   decl)
+
+(defmethod typecheck* ((decl formal-theory-decl) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  ;; If we have an existing formal-theory-decl or mod-decl of the same
+  ;; theory, and it has uninterpreted types, constants, or theories, then
+  ;; we must create a separate copy.
+  (when (get-theory (id decl))
+    (type-error decl
+      "Identifier ~a is already in use as a theory" (id decl)))
+  (typecheck-named-theory decl)
+  (put-decl decl (current-declarations-hash))
+  (setf (saved-context decl) (copy-context *current-context*))
+  decl)
+
+(defun typecheck-named-theory (decl)
+  (let ((theory-name (theory-name decl)))
+    (when (and (null (library (theory-name decl)))
+	       (eq (id (theory-name decl)) (id (current-theory))))
+      (type-error (theory-name decl)
+	"Formal theory declarations may not refer to the containing theory"))
+    (unless (interpretable? (get-theory (theory-name decl)))
+      (type-error (theory-name decl)
+	"Theory ~a has no interpretable types, constants, or theories"
+	(theory-name decl)))
+    (let ((theory (get-typechecked-theory theory-name)))
+      (typecheck-named-theory* theory theory-name decl))))
+
+(defmethod typecheck-named-theory* ((theory module) theory-name decl)
+  (let ((thname theory-name)
+	(*typecheck-using* theory-name))
+    (cond ((actuals theory-name)
+	   (unless (length= (formals-sans-usings theory) (actuals theory-name))
+	     (type-error theory-name "Wrong number of actuals in ~a"
+			 theory-name))
+	   (typecheck-actuals theory-name)
+	   (typecheck-mappings (mappings theory-name) theory-name)
+	   (setq thname (set-type-actuals theory-name))
+	   (check-compatible-params (formals-sans-usings theory)
+				    (actuals theory-name) nil))
+	  (t (typecheck-mappings (mappings theory-name) theory-name)
+	     (setq thname (set-type-actuals theory-name))))
+    (let ((interpreted-copy (make-interpreted-copy theory theory-name decl)))
+      (push interpreted-copy (named-theories *current-context*))
+      (typecheck-using* interpreted-copy (mk-modname (id interpreted-copy)))
+      (setf (generated-theory decl) interpreted-copy))))
+
+(defun make-interpreted-copy (theory theory-name decl)
+  (let* ((stheory (subst-mod-params theory theory-name))
+	 (ntheory (pc-parse (unparse (copy stheory 'id (id decl)) :string t)
+		    'adt-or-theory))
+	 (*generate-tccs* 'none)
+	 (*current-context* (make-new-context ntheory)))
+    (change-class ntheory 'theory-interpretation
+		  'from-theory theory)
+    (push ntheory (named-theories *current-context*))
+    (typecheck* ntheory nil nil nil)
+    (setf (generated-by ntheory) (id theory))
+    (setf (mapping ntheory)
+	  (get-interpreted-mapping theory ntheory theory-name))
+    ntheory))
+
+(defun get-interpreted-mapping (theory interpretation theory-name)
+  (let ((mapping (make-subst-mod-params-map-bindings
+		  theory-name (mappings theory-name) nil))
+	(int-decls (all-decls interpretation)))
+    (dolist (decl (interpretable-declarations theory))
+      (unless (assq decl mapping)
+	(push (cons decl (find decl int-decls :test #'same-id))
+	      mapping)))
+    (assert (every #'cdr mapping))
+    mapping))
+		     
 
 
 ;;; Library Declarations
@@ -1295,18 +1369,89 @@
     (setf (declaration *current-context*) cdecl))
   (setf (closed-definition decl)
 	(universal-closure (definition decl)))
-  (handle-existence-assuming-on-formals decl)
+  (when (eq (spelling decl) 'ASSUMPTION)
+    (remove-defined-type-names decl)
+    (handle-existence-assuming-on-formals decl)
+    (check-assumption-visibility decl))
   decl)
 
+(defun remove-defined-type-names (decl)
+  (let ((refs (collect-references (definition decl))))
+    (when (some #'(lambda (ref)
+		    (and (type-def-decl? ref)
+			 (eq (module ref) (current-theory))))
+		refs)
+      (change-class decl 'assuming-decl)
+      (setf (original-definition decl) (definition decl))
+      (setf (definition decl)
+	    (remove-defined-type-names* (definition decl)))
+      (setf (closed-definition decl)
+	    (remove-defined-type-names* (closed-definition decl))))))
+
+(defun remove-defined-type-names* (ex)
+  (gensubst ex
+    #'remove-defined-type-name!
+    #'remove-defined-type-name?))
+
+(defmethod remove-defined-type-name? ((ex type-expr))
+  (and (type-name? (print-type ex))
+       (let ((tdecl (declaration (print-type ex))))
+	 (and (type-def-decl? tdecl)
+	      (eq (module tdecl) (current-theory))))))
+
+(defmethod remove-defined-type-name! ((ex type-expr))
+  (copy ex 'print-type nil))
+
+(defmethod remove-defined-type-name? ((ex type-name))
+  (let ((tdecl (declaration ex)))
+    (and (type-def-decl? tdecl)
+	 (eq (module tdecl) (current-theory)))))
+
+(defmethod remove-defined-type-name! ((ex type-name))
+  (copy-all (type-expr (declaration ex))))
+
+(defmethod remove-defined-type-name? ((ex simple-decl))
+  (and (type-name? (declared-type ex))
+       (let ((tdecl (declaration (declared-type ex))))
+	 (and (type-def-decl? tdecl)
+	      (eq (module tdecl) (current-theory))))))
+
+(defmethod remove-defined-type-name! ((ex simple-decl))
+  (copy ex
+    'declared-type (remove-defined-type-names* (declared-type ex))
+    'type (remove-defined-type-names* (declared-type ex))))
+
+(defmethod remove-defined-type-name? (ex) nil)
+
 (defun handle-existence-assuming-on-formals (decl)
-  (when (and (eq (spelling decl) 'ASSUMPTION)
-	     (typep (definition decl) 'exists-expr)
+  (when (and (typep (definition decl) 'exists-expr)
 	     (tc-eq (expression (definition decl)) *true*)
 	     (singleton? (bindings (definition decl)))
 	     (typep (type (car (bindings (definition decl)))) 'type-name)
 	     (memq (declaration (type (car (bindings (definition decl)))))
 		   (formals *current-theory*)))
     (set-nonempty-type (type (car (bindings (definition decl)))))))
+
+(defun check-assumption-visibility (decl)
+  (let ((badobj (find-local-nonparameter-reference decl)))
+    (when badobj
+      (type-error badobj
+	"Assumption refers to ~a, which is not visible prior to importing this theory"
+	badobj))))
+
+(defun find-local-nonparameter-reference (decl)
+  (let ((name nil))
+    (mapobject #'(lambda (ex)
+		   (or name
+		       (when (and (name? ex)
+				  (resolution ex)
+				  (not (formal-decl? (declaration ex)))
+				  (not (binding? (declaration ex)))
+				  (eq (module (declaration ex))
+				      (current-theory)))
+			 (setq name ex))))
+	       (closed-definition decl))
+    name))
 
 
 ;;;  TYPE EXPRESSIONS  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1589,6 +1734,14 @@
 				    (cons ntype *bound-variables*)
 				    *bound-variables*)))
 	(typecheck-tuples (cdr types) (cons ntype result)))))
+
+(defmethod typecheck* ((type cotupletype) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (let* ((types (typecheck-tuples (types type) nil))
+	 (cotuptype (if (equal types (types type))
+			type
+			(mk-cotupletype types))))
+    cotuptype))
 
 
 ;;;  C  |-  T1 type,  ... ,  C,f1:T1,...,fn-1:Tn-1 |- Tn type

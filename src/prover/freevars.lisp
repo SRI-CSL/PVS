@@ -30,7 +30,13 @@
 ;;	#'(lambda (x y) (occurs-in x (type y))))
   (freevars* obj))
 
+(defmethod freevars* ((theory datatype-or-module))
+  nil)
+
 (defmethod freevars* ((decl declaration))
+  nil)
+
+(defmethod freevars* ((exp exporting))
   nil)
 
 (defmethod freevars* :around ((expr expr))
@@ -208,6 +214,9 @@
 		    rfrees)))))
 
 (defmethod freevars* ((texpr tupletype))
+  (freevars* (types texpr)))
+
+(defmethod freevars* ((texpr cotupletype))
   (freevars* (types texpr)))
 
 (defmethod freevars* ((texpr recordtype))

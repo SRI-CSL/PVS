@@ -788,6 +788,19 @@
     ;;(assert (tc-eq (type uform) *boolean*))
     (insert-tcc-decl 'cases (expression expr) adt ndecl)))
 
+(defun generate-coselections-tccs (expr)
+  (unless (eq *generate-tccs* 'none)
+    (let* ((all-ins (dotimes (i (length (types (type (expression expr)))))
+		      (makesym "in_~d" (1+ i))))
+	   (unselected
+	    (remove-if-not
+		#'(lambda (in)
+		    (member in (selections expr)
+			    :key #'(lambda (s) (id (constructor s)))))
+	      all-ins)))
+      (when unselected
+	(break "generate-coselections-tccs")))))
+
 (defun make-tcc-name (&optional expr)
   (assert *current-context*)
   (if (or *in-checker* *in-evaluator*)

@@ -88,6 +88,10 @@
 	(assert types)
 	(setf (types expr) types)))))
 
+(defmethod typecheck* ((expr injection-application) expected kind argument)
+  (declare (ignore kind expected argument))
+  (typecheck* (argument expr) nil nil nil))
+
 (defun projection-application-types (ptypes expr)
   (mapcar #'(lambda (pty)
 	      (projection-application-type expr pty))
@@ -128,7 +132,12 @@
 (defmethod typecheck* ((expr number-expr) expected kind arguments)
   (declare (ignore expected kind arguments))
   ;;(assert (typep *number* 'type-expr))
-  (setf (types expr) (list *real*)))
+  (let ((reses (resolve* expr 'expr arguments)))
+    (when reses
+      (change-class expr 'name-expr
+		    'id (number expr)
+		    'resolutions reses))
+    (setf (types expr) (cons *real* (mapcar #'type reses)))))
 
 (defun available-numeric-type (num)
   (or (unless (zerop num) *posint*)
@@ -272,16 +281,22 @@
   (declare (ignore expected kind))
   (unless (type (expression expr))
     (typecheck* (expression expr) nil nil nil))
-  (let ((atypes	(remove-if-not #'(lambda (ty) (adt? (find-supertype ty)))
+  (let ((atypes	(remove-if-not #'(lambda (ty)
+				   (or (cotupletype? (find-supertype ty))
+				       (adt? (find-supertype ty))))
 		  (ptypes (expression expr)))))
     (unless (singleton? atypes)
       (if atypes
 	  (type-ambiguity (expression expr))
-	  (type-error (expression expr) "Expression type must be a datatype")))
+	  (type-error (expression expr)
+	    "Expression type must be a cotuple or datatype")))
     (setf (types (expression expr)) atypes)
-    (let ((type (car atypes)))
-      (typecheck-selections expr (adt (find-supertype type))
-			    (find-declared-adt-supertype type) arguments)))
+    (let* ((type (car atypes))
+	   (stype (find-supertype type)))
+      (if (adt? stype)
+	  (typecheck-selections expr (adt (find-supertype type))
+				(find-declared-adt-supertype type) arguments)
+	  (typecheck-coselections expr stype arguments))))
   (setf (types expr)
 	(compatible-types
 	 (nconc (mapcar #'(lambda (s) (ptypes (expression s)))
@@ -330,6 +345,45 @@
   (typecheck-selections* (selections expr) adt type args)
   (when (else-part expr)
     (typecheck* (else-part expr) nil nil args)))
+
+(defmethod typecheck-coselections (expr (type cotupletype) args)
+  (when (duplicates? (selections expr) :test #'same-id :key #'constructor)
+    (type-error expr "Selections must have a unique id"))
+  (when (and (length= (selections expr) (types type))
+	     (else-part expr))
+    (type-error (else-part expr) "ELSE part will never be evaluated"))
+  (typecheck-coselections* (selections expr) type args)
+  (when (else-part expr)
+    (typecheck* (else-part expr) nil nil args)))
+
+(defmethod typecheck-coselections* (selections (type cotupletype) args)
+  (when selections
+    (let* ((sel (car selections))
+	   (constr (constructor sel))
+	   (n (get-injection-number constr))
+	   (in-type (nth (1- n) (types type))))
+      (unless n
+	(type-error sel "No matching constructor found"))
+      (unless (<= n (length (types type)))
+	(type-error sel "Cotuple type only has ~d components"
+		    (length (types type))))
+      (unless (= (length (args sel)) 1)
+	(type-error sel "Only a single argument is allowed"))
+      (setf (declared-type (car (args sel))) in-type)
+      (typecheck* (car (args sel)) nil nil nil)
+      (let ((ctype (mk-funtype in-type type)))
+	(setf (type constr) ctype
+	      (types constr) (list ctype)))
+      (let* ((*bound-variables* (append (args sel) *bound-variables*)))
+	(typecheck* (expression sel) nil nil args)))
+    (typecheck-coselections* (cdr selections) type args)))
+
+(defun get-injection-number (name)
+  (let ((strid (string (id name))))
+    (when (and (> (length strid) 3)
+	       (string= "in_" strid :end2 3)
+	       (every #'digit-char-p (subseq strid 3)))
+      (parse-integer strid :start 3))))
 
 (defun typecheck-selections* (selections adt type args)
   (when selections

@@ -14,6 +14,8 @@
 
 ;;(proclaim '(inline resolution))
 
+(export '(make-new-context copy-context lf show))
+
 #-allegro
 (defun file-exists-p (file)
   (probe-file file))
@@ -273,6 +275,18 @@
 	  (get-lib-theory (sort lib-decls #'< :key #'locality) library id))
 	(get-theory* id library))))
 
+(defmethod get-theory ((name name))
+  (with-slots (mod-id library id) name
+    (unless mod-id
+      (if library
+	  (let ((lib-decls (remove-if-not #'lib-decl?
+			     (gethash library (current-declarations-hash)))))
+	    (get-lib-theory (sort lib-decls #'< :key #'locality) library id))
+	  (get-theory* id library)))))
+
+(defmethod get-theory ((name name-expr))
+  (call-next-method))
+
 (defun get-lib-theory (lib-decls library id)
   (if (null lib-decls)
       (get-theory* id (string library))
@@ -320,6 +334,7 @@
 	    (car (assoc id (prelude-libraries-uselist)
 			:test #'(lambda (x y) (eq x (id y)))))
 	    (gethash id *pvs-modules*)
+	    (find id (named-theories *current-context*) :key #'id)
 	    (let ((theories (get-imported-theories id)))
 	      (if (cdr theories)
 		  (pvs-message "Ambiguous theories - ~a"
@@ -666,9 +681,10 @@
   (let* ((*generate-tccs* 'none)
 	 (theory (module decl))
 	 (all-decls (reverse (all-decls theory)))
+	 (pdecls (or (memq decl all-decls) (cons decl all-decls)))
 	 (prev-decls (if include?
-			 (memq decl all-decls)
-			 (cdr (memq decl all-decls))))
+			 pdecls
+			 (cdr pdecls)))
 	 (prev-imp (find-if #'mod-or-using? prev-decls))
 	 (rem-decls (if (and prev-imp (saved-context prev-imp))
 			(ldiff prev-decls (memq prev-imp prev-decls))
@@ -701,7 +717,7 @@
 	(lib-decl
 	 (check-for-importing-conflicts d)
 	 (put-decl d (current-declarations-hash)))
-	(mod-decl
+	((or mod-decl formal-theory-decl)
 	 (put-decl d (current-declarations-hash))
 	 (let* ((thname (theory-name d))
 		(th (get-theory thname)))
@@ -2052,8 +2068,9 @@
 
 
 (defmethod find-supertype ((te subtype))
-  (with-slots (supertype) te
-    (find-supertype supertype)))
+  (with-slots (supertype top-type) te
+    (or top-type
+	(setf top-type (find-supertype supertype)))))
 
 (defmethod find-supertype ((te dep-binding))
   (with-slots (type) te
@@ -2278,7 +2295,8 @@ space")
 				     (mk-res-actual (cdr a) theory))
 				 bindings))
 		   (nmi (mk-modname (id theory) acts))
-		   (*generate-tccs* 'none))
+		   (*generate-tccs* 'none)
+		   (*smp-include-actuals* t))
 	      (and (with-no-type-errors
 		    (let ((*current-context*
 			   (if (free-params type)
@@ -2334,14 +2352,16 @@ space")
 
 (defun compatible-k-conversion (conversion type)
   (let* ((ctype (range (find-supertype (type conversion))))
-	 (fmls (formals-sans-usings (module conversion))))
+	 (ctheory (module conversion))
+	 (fmls (formals-sans-usings ctheory)))
     (if (and fmls
 	     (not (fully-instantiated? ctype)))
 	(let ((bindings (tc-match type ctype (mapcar #'list fmls))))
 	  (when (and bindings (every #'cdr bindings))
-	    (let ((nmi (mk-modname (id (module conversion))
+	    (let ((*smp-include-actuals* t)
+		  (nmi (mk-modname (id ctheory)
 			 (mapcar #'(lambda (a)
-				     (mk-res-actual (cdr a) (module conversion)))
+				     (mk-res-actual (cdr a) ctheory))
 				 bindings))))
 	      (subst-mod-params (name conversion) nmi))))
 	(when (compatible? ctype type)
@@ -3095,6 +3115,10 @@ space")
 	(when (typep (module decl) 'library-theory)
 	  (library (module decl)))))
 
+(defmethod sexp ((theory module))
+  (list (id theory)
+	'module))
+
 (defmethod update-instance-for-redefined-class :before
   ((fdecl formula-decl) added deleted plist &rest initargs)
   (declare (ignore added deleted))
@@ -3173,3 +3197,14 @@ space")
 	(next-proof-id fdecl (1+ num))
 	id)))
 
+(defmethod id ((ex number-expr)) (number ex))
+(defmethod mod-id ((ex number-expr)) nil)
+(defmethod actuals ((ex number-expr)) nil)
+(defmethod mappings ((ex number-expr)) nil)
+(defmethod library ((ex number-expr)) nil)
+
+(defun name-to-modname (name)
+  (mk-modname (or (mod-id name) (id name))
+    (actuals name)
+    (library name)
+    (mappings name)))
