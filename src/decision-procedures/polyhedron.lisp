@@ -156,57 +156,6 @@
 	    (cons neq
 		  brand-new-equalities)))))))
 
-(defun ineq-covered-by-polyhedral-structure (ineq cong-state)
-  (let ((diff (make-ineq-to-difference eqn))
-	(strict (ineq-strict? eqn))
-	(predicate (funsym eqn))
-	(poly-s (polyhedral-structure cong-state)))
-    (add-to-index-from-diff-terms diff poly-s)
-    (let* ((max-ineq-vars (polyhedral-structure-max-vars
-			   poly-s))
-	   (ineq-var-to-index-hash
-	    (polyhedral-structure-ineq-var-to-index-hash poly-s))
-	   (ineq-var-index-array
-	    (polyhedral-structure-ineq-var-index-array poly-s))
-	   (max-rays (polyhedral-structure-max-rays
-		      poly-s))
-	   (epsilon-leq-0-poly (polyhedral-structure-epsilon-poly
-				poly-s))
-	   (ineq-constraint (make-diff-constraint diff strict max-ineq-vars
-						  ineq-var-to-index-hash))
-	   (old-polyhedron (polyhedral-structure-polyhedron
-			    poly-s)))
-      ;(break)
-      ;;(when (eq eqn *beqn*) (break))
-      (cond
-      ((= (pol_status) 1) (setq new-polyhedron old-polyhedron)
-       (setf (polyhedral-structure-aux-input-eqns poly-s)
-		(cons eqn (polyhedral-structure-aux-input-eqns poly-s)))
-       (setq *dp-changed* t)
-       (list (mk-equality eqn *true*)))
-       ((= (mydomainincludes epsilon-leq-0-poly new-polyhedron) 1)
-	(setq *dp-changed* t)
-	(setq *contradiction* t)
-	(setf (polyhedral-structure-polyhedron poly-s)
-	      new-polyhedron)
-	(setf (polyhedral-structure-input-eqns poly-s)
-	      (cons eqn (polyhedral-structure-input-eqns poly-s)))
-	(list *false*))
-       ((= (mydomainincludes new-polyhedron old-polyhedron)  1)
-	(list *true*))
-       (t (setf (polyhedral-structure-polyhedron poly-s)
-		new-polyhedron)
-	  (setf (polyhedral-structure-input-eqns poly-s)
-		(cons eqn (polyhedral-structure-input-eqns poly-s)))
-	  (setq *dp-changed* t)
-	  (let* ((old-equalities (polyhedral-structure-equalities poly-s))
-		 (new-equalities (polyhedral-structure-to-equalities
-				  poly-s cong-state))
-		 (brand-new-equalities
-		  (set-difference new-equalities old-equalities :test #'eq)))
-	    (cons (mk-equality eqn *true*)
-		  brand-new-equalities))))))
-
 (defun add-ineq-constraint (eqn cong-state)
   (declare (special *dp-changed*))
   (declare (special *contradiction*))
