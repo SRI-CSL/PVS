@@ -2791,7 +2791,7 @@
       (lazy-assert-if-with-subst
        (expression (operator expr))
        (append (pairlis-args (bindings op)
-			     (substit (argument* arg) subst))
+			     (substit (argument-list arg) subst))
 	       subst)
        if-flag)
       (call-next-method))))
