@@ -3561,7 +3561,7 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
   "Expands all the given names and simplifies. "
   "Expanding the definition(s) of ~a")
 
-(defstep auto-rewrite-theory-always (thlist)
+(defhelper auto-rewrite-theory-always (thlist)
   (if (null thlist)
       (skip)
       (let ((hd (car thlist))
