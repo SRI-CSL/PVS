@@ -25,7 +25,7 @@
 
 (defvar *unique-name-ics-counter* 0)
 
-(defvar *ics-nonlin* nil)
+(defvar *ics-nonlin* t)
 
 (defvar *ics-debug* nil)
 
@@ -49,24 +49,24 @@
   address)
 
 (defun wrap (value)
-  (assert (integerp value))
+  #+icsdebug(assert (integerp value))
   (make-wrap value))
 
 (defun unwrap (w)
-  (assert (wrap? w))
+  #+icsdebug(assert (wrap? w))
   (wrap-address w))
 
 (defun wrap= (w1 w2)
-  (assert (wrap? w1))
-  (assert (wrap? w2))
+  #+icsdebug(assert (wrap? w1))
+  #+icsdebug(assert (wrap? w2))
   (= (wrap-address w1) (wrap-address w2)))
 
 (defun wrap-finalize! (w)
-  (assert (wrap? w))
+  #+icsdebug(assert (wrap? w))
   (excl:schedule-finalization w 'wrap-free!))
 
 (defun wrap-free! (w)
-  (assert (wrap? w))
+  #+icsdebug(assert (wrap? w))
   (ics_deregister (unwrap w)))
 
 (defstruct (term-wrap
@@ -79,11 +79,11 @@
 	       (format s "<#term: ~a>" (wrap-address p))))))
 
 (defun term-wrap (value)
-   (assert (integerp value))
+   #+icsdebug(assert (integerp value))
    (make-term-wrap value))
 
 (defun term-unwrap (w)
-  (assert (term-wrap? w))
+  #+icsdebug(assert (term-wrap? w))
   (wrap-address w))
 
 (defstruct (atom-wrap
@@ -96,11 +96,11 @@
 	       (format s "<#atom: ~a>" (wrap-address p))))))
 
 (defun atom-wrap (value)
-   (assert (integerp value))
+   #+icsdebug(assert (integerp value))
    (make-atom-wrap value))
 
 (defun atom-unwrap (w)
-  (assert (atom-wrap? w))
+   #+icsdebug(assert (atom-wrap? w))
   (wrap-address w))
 
 (defstruct (state-wrap
@@ -113,11 +113,11 @@
 	       (format s "<#state: ~a>" (wrap-address p))))))
 
 (defun state-wrap (value)
-   (assert (integerp value))
+    #+icsdebug(assert (integerp value))
    (make-state-wrap value))
 
 (defun state-unwrap (w)
-  (assert (state-wrap? w))
+   #+icsdebug(assert (state-wrap? w))
   (wrap-address w))
 
 
@@ -140,8 +140,9 @@
 (defun ics-init (&optional full (verbose 0))
   (declare (ignore full))
   (declare (ignore verbose))
-  (multiple-value-bind (ignore error)
+  (multiple-value-bind (dummy error)
       (ignore-errors (ics_caml_startup))
+    (declare (ignore dummy))
     (cond (error
 	   (setq *decision-procedures* (remove 'ics *decision-procedures*))
 	   (pvs-message "Trouble loading ICS, so it is not available"))
@@ -163,13 +164,14 @@
     empty))
 
 (defun ics-d-consistent (value)
-  (assert (integerp value))
+   #+icsdebug(assert (integerp value))
   (let ((state (state-wrap (ics_d_consistent value))))
     (wrap-finalize! state)
     state))
 
-
+#+icsdebug
 (defmethod ics-process :around (state atom)
+  (declare (ignore state))
   (when *ics-debug*
     (format t "~%assert ")
     (ics_atom_pp (atom-unwrap atom))
@@ -186,8 +188,8 @@
     result))
     
 (defmethod ics-process (state atom)
-  (assert (state-wrap? state))
-  (assert (atom-wrap? atom))
+   #+icsdebug(assert (state-wrap? state))
+   #+icsdebug(assert (atom-wrap? atom))
   (let ((result (ics_process (state-unwrap state) (atom-unwrap atom))))
     (cond ((not (zerop (ics_is_consistent result)))
 	   (ics-d-consistent result))
@@ -197,18 +199,18 @@
 	   :valid))))
 
 (defun ics-is-valid (state atom)
-  (assert (state-wrap? state))
-  (assert (atom-wrap? atom))
+   #+icsdebug(assert (state-wrap? state))
+   #+icsdebug(assert (atom-wrap? atom))
   (eql (ics-process state atom) :valid))
 
 (defun ics-is-unsat (state atom)
-  (assert (state-wrap? state))
-  (assert (atom-wrap? atom))
+   #+icsdebug(assert (state-wrap? state))
+   #+icsdebug(assert (atom-wrap? atom))
   (eql (ics-process state atom) :unsat))      
 
 (defun ics-state-unchanged? (state1 state2)
-   (assert (state-wrap? state1))
-   (assert (state-wrap? state2))
+    #+icsdebug(assert (state-wrap? state1))
+    #+icsdebug(assert (state-wrap? state2))
    (zerop (ics_context_eq (state-unwrap state1) (state-unwrap state2))))
 
 
@@ -225,16 +227,14 @@
 
 ;; Translating from PVS expressions to ICS terms
 
+
 ;; An atom is either an equality, disequality, an arithmetic
 ;; constraint, or some other expression of Boolean type
-
-(defmethod translate-to-ics :around (expr)
-  (call-next-method))
 
 (defmethod translate-to-ics (expr)
   (or (gethash expr *pvs-to-ics-hash*)
       (let ((atom (translate-posatom-to-ics* expr)))
-	(assert (integerp atom))
+	 #+icsdebug(assert (integerp atom))
 	(let ((wrapper (atom-wrap atom)))
 	  (wrap-finalize! wrapper)
 	  (setf (gethash expr *pvs-to-ics-hash*) wrapper)))))
@@ -242,7 +242,7 @@
 (defmethod translate-posatom-to-ics* ((expr expr))
   "Fallthrough method: Boolean expressions 'b' are translated as 'b = true'"
   (let ((ics-term (translate-term-to-ics* expr)))
-    (assert (integerp ics-term))
+     #+icsdebug(assert (integerp ics-term))
     (ics_atom_mk_equal ics-term (ics_term_mk_true))))
 
 (defmethod translate-posatom-to-ics* ((expr name-expr))
@@ -372,16 +372,13 @@
 	  ((tc-eq op (times-operator))
 	   (translate-mult-to-ics* (args1 expr) (args2 expr)))
 	  ((and *ics-nonlin*
-		(tc-eq op (floor-operator)))
-	   (ics_term_mk_floor (translate-term-to-ics* (args1 expr))))
-	  ((and *ics-nonlin*
 		(tc-eq op (divides-operator)))
 	   (ics_term_mk_div (translate-term-to-ics* (args1 expr))
 			    (translate-term-to-ics* (args2 expr))))
 	  (t
 	   (let ((opterm (translate-term-to-ics* op))
-		 (argterms (translate-term-list-to-ics* (arguments expr))))
-	     (ics_term_mk_apply opterm argterms))))))
+		 (argterm (translate-term-to-ics* (argument expr))))
+	     (ics_term_mk_apply opterm argterm))))))
 
 
 (defmethod translate-mult-to-ics* ((expr1 number-expr) (expr2 expr))
@@ -440,6 +437,18 @@
 	 (index (1- (index expr))))
     (ics_term_mk_proj index width (translate-term-to-ics* arg))))
 
+#+workinprogress
+(defmethod translate-term-to-ics* ((expr injection-application))
+  (let* ((arg (translate-to-prove (argument expr))))
+    (break)
+    (ics_term_mk_inj idx arg)))
+
+#+workinprogress
+(defmethod translate-term-to-ics* ((expr extraction-application))
+  (let* ((arg (translate-to-prove (argument expr))))
+    (break)
+    (ics_term_mk_out idx arg)))
+
 (defmethod translate-term-to-ics* ((expr field-application))
   (with-slots (id argument type) expr
     (let* ((fields (fields (find-supertype (type argument))))
@@ -450,6 +459,9 @@
 
 (defmethod width-of ((type tupletype))
   (length (types type)))
+
+(defmethod width-of ((type subtype))
+  (width-of (find-supertype type)))
 
 
 ;;; Update expressions
@@ -500,6 +512,8 @@
    (find-supertype type)))
 
 (defmethod translate-assign-args-to-ics* ((args null) value trbasis type)
+  (declare (ignore trbasis))
+  (declare (ignore type))
   (translate-term-to-ics* value))
 
 (defmethod translate-assign-args-to-ics* ((args cons) value trbasis type)
@@ -551,15 +565,15 @@
 (defun make-ics-field-application (field-accessor-type fieldnum length term)
   "Forget about the 'field-accessor-type' for now"
   (declare (ignore field-accessor-type))
-  (assert (integerp fieldnum))
-  (assert (integerp length))
+   #+icsdebug(assert (integerp fieldnum))
+   #+icsdebug(assert (integerp length))
   (ics_term_mk_proj fieldnum length term))
 
 (defun make-ics-projection-application (type number length term)
   "Forget about the 'type' for now"
   (declare (ignore type))
-  (assert (integerp number))
-  (assert (integerp length))
+   #+icsdebug(assert (integerp number))
+   #+icsdebug(assert (integerp length))
   (ics_term_mk_proj (1- number) length term))
 
 (defun make-ics-assign-application (fun-type term term-args)
