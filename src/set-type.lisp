@@ -166,7 +166,7 @@ required a context.")
 	(typecheck* expr expected nil nil)))
      (t
       #+pvsdebug (assert (typep (from-conversion ctype) 'expr))
-      
+
       (add-conversion-info (from-conversion ctype) expr)
       (let* ((nexpr (copy expr))
 	     (dom (domain (type (from-conversion ctype)))))
@@ -845,9 +845,9 @@ required a context.")
 	     (t (setf (resolutions (expr rhs)) threses)
 		(when (mappings (expr rhs))
 		  (set-type-mappings (name-to-modname (expr rhs))))))))
-    (t (let ((subst-type (subst-mod-params
-			  (type (declaration lhs))
-			  (lcopy modinst 'mappings mappings))))
+    (t (let* ((mapmodinst (lcopy modinst 'mappings mappings))
+	      (subst-type (subst-mod-params (type (declaration lhs))
+					    mapmodinst)))
 	 (set-type* (expr rhs) subst-type)))))
 
 (defun determine-best-mapping-lhs (lhs rhs)
