@@ -1,15 +1,70 @@
-(in-package 'pvs)
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
+
+(in-package :pvs)
 
 (defvar *pvs-eval-do-timing* nil)
 (defvar *convert-back-to-pvs* nil)
 
+(defun generate-lisp-for-prelude (&optional force?)
+  (with-open-file (output (format nil "~a/lib/prelude.lisp" *pvs-path*)
+			  :direction :output
+			  :if-exists :supersede
+			  :if-does-not-exist :create)
+    (format output ";;; Lisp file generated from PVS prelude~2%")
+    (format output "(in-package :pvs)~%")
+    (dolist (theory *prelude-theories*)
+      (pvs2cl-theory theory force?)
+      (dolist (decl (theory theory))
+	(when (and (const-decl? decl) (eval-info decl))
+	  (write-decl-symbol-table decl output)))
+      (dolist (decl (theory theory))
+	(when (and (const-decl? decl) (eval-info decl))
+	  (write-decl-defns decl output))))))
+
+(defun generate-lisp-for-pvs-file (filename &optional force?)
+  (let ((theories (cdr (gethash filename *pvs-files*))))
+    (with-open-file (output (format nil "~a.lisp" filename)
+			    :direction :output
+			    :if-exists :supersede
+			    :if-does-not-exist :create)
+      (format output ";;; Lisp file generated from ~a.pvs~2%" filename)
+      (format output
+	  ";;; In general for a definiton foo in an ~
+               unparameterized~%;;; theory th, the names are:~
+           ~%;;;    foo  - takes no arguments, returns a unary closure~
+           ~%;;;   _foo  - the nondestructive version of the function~
+           ~%;;;    foo! - the destructive version of the function")
+      (format output
+	  ";;; If the definition appears in a parameterized theory th, ~
+               additional functions are generated ~%;;; that take arguments ~
+               corresponding to the theory parameters, take names are:~
+           ~%;;;    th_foo  - takes no arguments, returns a unary closure~
+           ~%;;;   _th_foo  - the nondestructive version of the function~
+           ~%;;;    th_foo! - the destructive version of the function")
+      (format output
+	  "~%;;; Function names must be unique, so a number may be appended, ~
+            and the type~%;;; is included for functions associated with ~
+            datatypes.~%;;; For these functions, the mappings are given here.")
+      (dolist (theory theories)
+	(pvs2cl-theory theory force?))
+      (dolist (theory theories)
+	(dolist (decl (theory theory))
+	  (when (and (const-decl? decl) (eval-info decl))
+	    (write-decl-symbol-table decl output))))
+      (format output "(in-package :pvs)~%")
+      (dolist (theory theories)
+	(dolist (decl (theory theory))
+	  (when (and (const-decl? decl) (eval-info decl))
+	    (write-decl-defns decl output)))))))
+  
 
 (defun generate-lisp-for-theory (theoryname)
   (let ((theory (get-theory theoryname)))
     (cond ((null theory)
 	   (pvs-message "Theory ~a is not typechecked" theoryname))
 	  (t (pvs2cl-theory theory)
-	     (print-lisp-defns theoryname (format nil "~a.lisp" theoryname) t)))))
+	     (print-lisp-defns theoryname (format nil "~a.lisp" theoryname)
+			       t)))))
 
 (defun evaluation-mode (theoryname)
   (let ((theory (get-theory theoryname)))  
@@ -209,9 +264,3 @@
 			       (t (format out "~%Can't convert back to PVS.")
 				  (format out "Common Lisp value: ~s" cl-eval))))
 		       (format out "~%~a" error)))))))))
-
-
-
-
-
-
