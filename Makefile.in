@@ -271,6 +271,7 @@ pvs-src = src/closopt.lisp \
 	  src/parse.lisp \
 	  src/pp.lisp \
           src/pp-tex.lisp \
+          src/pp-html.lisp \
           src/print-object.lisp \
 	  src/equalities.lisp \
           src/utils.lisp \
