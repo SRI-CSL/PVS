@@ -48,9 +48,6 @@
       (caddr x)
       (cadr x)))
 
-(defun div-arithord-rep (x)
-  (if (qnumberp (cadr x))(caddr x)(cadr x)))
-
 (defun arithord1(u v)
     (cond
      ((null u) nil)
@@ -63,23 +60,15 @@
 		      (let ((v1 (times-arithord-rep v)))
 			(and (not (equal u v1))
 			     (arithord1 u v1)))
-		      (if (eq (car v) 'divide)
-			  (let ((rep (div-arithord-rep v)))
-			    (and (not (equal u rep))
-				 (arithord1 u rep)))
-		      t)))
+		      t))
        (t t)))
      ((symbolp v)
       (or (qnumberp u)
 	  (and (consp u)  ;;NSH(10-23-01)
-	       (or (and (eq (car u) 'times)
-			(let  ((u1 (times-arithord-rep u)))
-			  (or (equal u1 v)
-			      (arithord1 u1 v))))
-		   (and (eq (car u) 'divide)
-			(let ((rep (div-arithord-rep u)))
-			    (or (equal rep v)
-				(arithord1 rep v))))))))
+	       (eq (car u) 'times)
+	       (let  ((u1 (times-arithord-rep u)))
+		 (or (equal u1 v)
+		     (arithord1 u1 v))))))
      ((qnumberp u)
       (cond
        ((qnumberp v)(qlessp u v))
@@ -89,14 +78,8 @@
       (if (equal (car v) 'times)
 	  (arithord1 (cdr u) (cdr v))
 	  (arithord1 (times-arithord-rep u) v)))
-     ((equal (car u) 'divide)
-      (if (equal (car v) 'divide)
-	  (arithord1 (cdr u)(cdr v))
-	  (arithord1 (div-arithord-rep u) v)))
      ((equal (car v) 'times)
       (arithord1 u (times-arithord-rep v)))
-     ((equal (car v) 'divide)
-      (arithord1 u (div-arithord-rep v)))
      ((equal (car u)(car v))(arithord1 (cdr u)(cdr v)))
      (t (arithord1 (car u)(car v)))))
 
@@ -372,96 +355,6 @@
       (arg2 x)
       `(divide 1 ,x)))
 
-(defun cancel-reciprocal (lit divterms)
-  (if (consp lit)
-      (if (eq (funsym lit) 'plus)
-	  `(plus ,@(cancel-reciprocal-list (argsof lit) divterms))
-	  (if (eq (funsym lit) 'times)
-	      (cancel-times-reciprocal (argsof lit) divterms)
-	      (cancel-times-reciprocal (list lit) divterms)))
-      `(times ,lit ,@(loop for x in divterms collect (reciprocal x)))))
-
-(defun cancel-reciprocal-list (lit-list divterms)
-  (loop for a in lit-list collect (cancel-reciprocal a divterms)))
-
-(defun cancel-times-reciprocal (factors divterms)
-  (let ((result (cancel-times-reciprocal* factors divterms nil)))
-    (if (consp result)
-	(if (null (cdr result))
-	    (car result)
-	    `(times ,@result))
-	1)))
-
-(defun cancel-times-reciprocal* (factors divterms accum)
-  (if (consp factors)
-      (if (member (car factors) divterms :test #'equal)
-	  (cancel-times-reciprocal* (cdr factors)
-				   (remove (car factors) divterms
-					   :test #'equal
-					   :count 1)
-				   accum)
-	  (if (and (consp (car factors))
-		   (eq (funsym (car factors)) 'times))
-	      (cancel-times-reciprocal* (append (argsof (car factors))
-						(cdr factors))
-					divterms accum)
-	  (cancel-times-reciprocal* (cdr factors) divterms
-				   (cons (car factors) accum))))
-      (nconc (nreverse accum)
-	     (loop for x in divterms collect (reciprocal x)))))
-
-(defun common-factors (term)
-  (if (consp term)
-      (if (eq (car term) 'plus)
-	  (common-factors-list (cdr term))
-	  (if (eq (car term) 'times)
-	      (cdr term)))
-      (if (eql term 0)
-	  nil
-	  (list term))))
-
-(defun common-factors-list (terms)
-  (if (consp terms)
-      (let ((init (common-factors (car terms))))
-	(loop for x in init
-	      when (loop for tm in terms
-			 always (member x (common-factors tm)
-					:test #'equal))
-	      collect x))
-      nil))
-
-(defun divterms* (args factors accum)
-  (if (consp args)
-      (let ((a (car args)))
-	(if (or (and (isneqzero? a)
-		     (or (null factors)
-			 (member a factors :test #'equal)))
-		(and (consp a)
-		     (eq (funsym a) 'divide)))
-	    (divterms* (cdr args) factors (cons a accum))
-	    (divterms* (cdr args) factors accum)))
-      (nreverse accum)))
-
-(defun list-eq (x y)
-  (if (and (consp x)(consp y))
-      (if (eq (car x)(car y))
-	  (list-eq (cdr x)(cdr y))
-	  nil)
-      (eq x y)))
-
-(defun drop-nzterm (terms)
-  (if (consp terms)
-      (if (isneqzero? (car terms))
-	  (cdr terms)
-	  (cons (car terms)(drop-nzterm (cdr terms))))
-      terms))
-
-(defun divterms (args factors)
-  (let ((dterms (divterms* args factors nil)))
-    (if (list-eq args dterms)
-	(drop-nzterm dterms)
-	dterms)))
-
 (defun equalsolve (lit)
   (let ((norm (normineq lit)))
     (if (and t (consp norm))
@@ -470,24 +363,16 @@
 	  (if (and (consp head)
 		   (eq (funsym head) 'times))
 	      (let* ((args (argsof head))
-		     (divterms (divterms args (common-factors (arg2 norm))))
-		     (newhead (when divterms
-				  (cancel-reciprocal head divterms)))
-				  ;head
-		     (newarg2 (when divterms
-				   (cancel-reciprocal (arg2 norm) divterms)))
-				   ;(arg2 norm)
-		     (newlits (when divterms
-				  (solvecan `(equal ,newhead ,newarg2)))))
-		(if divterms
-		    (if (and (singleton? newlits)
-			     (eq (car newlits) 'true))
-			newlits
-			(cons norm newlits))
-		    (ncons norm)
-		    ;;(list `(lesseqp ,(arg1 norm) ,(arg2 norm))
-			;;  `(greatereqp ,(arg1 norm) ,(arg2 norm)))
-		    ))
+		     (nzarg-reciprocals
+		      (loop for a in args
+			    when (isneqzero? a)
+			    collect (reciprocal a))))
+		(if nzarg-reciprocals
+		    (solvecan `(equal (times ,head ,@nzarg-reciprocals)
+				      (times ,(arg2 norm)
+					     ,@nzarg-reciprocals)))
+		    (list `(lesseqp ,(arg1 norm) ,(arg2 norm))
+			  `(greatereqp ,(arg1 norm) ,(arg2 norm)))))
 	    (if (onlyoccurrencep head head all-terms t)
 		(ncons norm)
 	      (list `(lesseqp ,(arg1 norm) ,(arg2 norm))
@@ -704,14 +589,13 @@
 		    ((eq norm 'ident)
 		     (let ((new-eqn
 			    (if *tc-ehdm-test*
-				`(equal ,(arg1 ineq) ,(arg2 ineq)))
-				 (normineq `(equal ,(canonsig-arith (arg1 ineq))
-						  ,(canonsig-arith (arg2 ineq))))))
+				`(equal ,(arg1 ineq) ,(arg2 ineq))
+				(normineq `(equal ,(canonsig-arith (arg1 ineq))
+						  ,(canonsig-arith (arg2 ineq)))))))
 		       (unless (if *tc-ehdm-test*
 				   (subtermof (arg1 ineq) (arg2 ineq))
 				   (bad-eqn new-eqn))
-			 (loop for eqn in (equalsolve new-eqn)
-			       do (push eqn ineqpot))
+			 (push new-eqn ineqpot)
 			 (return nil))))
 		    (t (push norm ineqpot))))
 	     ;;; 11/17/92: DAC see note above about nrmineq.
@@ -753,19 +637,13 @@
 		   (eq (pr-find u) 'true))
 	 collect u)))
 
-;;added this because chain-square-ineq was only catching
-;;squares of the form (times x x) and missing (times x x y y).
-(defun square-list? (args) ;;NSH(6-13-02) assumes args is canonical
-  (if (and (consp args)(consp (cdr args)))
-      (and (equal (car args)(cadr args))
-	   (square-list? (cddr args)))
-      (null args)))
-
 (defun chain-square-ineq (ineq)
   (when (and (or (eq (funsym ineq) 'lesseqp) (eq (funsym ineq) 'lessp))
 	     (consp (arg1 ineq))
 	     (eq (funsym (arg1 ineq)) 'times)
-	     (square-list? (cdr (arg1 ineq))))
+	     (equal (arg1 (arg1 ineq))
+		    (arg2 (arg1 ineq)))
+	     (= (length (argsof (arg1 ineq))) 2))
     `((greatereqp ,(arg1 ineq) 0))))
 
 ; returns true if fnsym2 is an inequality operator with sense 

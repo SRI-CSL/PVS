@@ -286,12 +286,10 @@
 	     (function-in t1 t2))	; lambda x. f(x) = f.
 	(pr-union t2 t1)
       (pr-union t1 t2))			;t2 is now pr-find(t1)
-    (loop for u in (times-or-use t1)
-	 when ;(or (and (numberp t2) (not (zerop t2)))) ;NSH(6-12-02)
-					; 8-28-91 dac: Don't replace part of
-		  (not (eq (funsym u) 'quo)) do ; quo with a non-number.
+    (loop for u in (use t1)
+	 when (or (and (numberp t2) (not (zerop t2))) ; 8-28-91 dac: Don't replace part of
+		  (not (eq (funsym u) 'quo))) do ; quo with a non-number.
       ; This check is necessary since the pr-find of t1 is 1 in some case. (is this ok?)
-		  ;;;NSH(6.12.02)  (format t "~%u = ~a" u)
 	 (setq newsig
 	       (cons
 		(funsym u)
@@ -378,24 +376,13 @@
 	    ((equal (pr-find u) (pr-find 'false))
 	     (print "msg from merge - this should not have occurred
 		       according to Rob Shostak ") )))
-	  ((find1 u) ;;NSH(6-12-02) was blank   ;(break "pr-merge")
-	            ;; This is needed to deal with nonlinear entries.
-	   (when (and (not (equal (find1 u) u))
-		      (not (linearp u)))
-	     	       ;;NSH(9/4/02) added nonlinear restriction,
-	     ;;otherwise it loops bugs 695,696.
-	     (let ((newsig (canonsig-merge newsig))
-		   (new-u (canonsig-merge (pr-find u))))
-	       ;;NSH(7/1/02) added canonsig-merge to avoid loop (bug252)
-	       (setq s (append (solve `(equal ,new-u
-					      ,newsig)) s)))))
+	  ((find1 u))
 	  (t				; interpreted term
 	   ;(setq newsig
 		; (sigma newsig))
 	   ; 7-24-91: dac changed above sigma no longer needed due to change in canonsig.
 	   ; bug manifested itself in needing recursive call for sigupdate.
-	   (let ((newsig (canonsig-merge newsig)))
-	     (push `(equal ,u ,newsig) s)))))))
+	   (push `(equal ,u ,(canonsig-merge newsig)) s))))))
 
 ; ------------------------------------------------------------------------
 
@@ -464,17 +451,16 @@
          )
        )
        (when (consp s) ;;; 7-26-91: dac sigma might have reduced s to a non list.
-	 (when (eq (funsym s) 'times) 
-	   (loop for arg in (cdr s)
-		 when (not (integerp arg))
-		 do (let* ((smatch (find-times-subset s (use arg)))
-			  (sdiff (subset-bag-difference (cdr s)
-							(cdr (sig smatch)))))
-		      (when (and smatch sdiff)
-			(throw 'found (canonsig `(times ,(pr-find smatch) ,@sdiff)))))))
 	 (loop for u in (use (arg1 s))
 	       do (and (equal s (sig u)) (throw 'found (pr-find u)))
 	       )
+	 (when (eq (funsym s) 'times) 
+	   (loop for arg in (cdr s)
+		 do (let* ((smatch (find-times-subset s (use arg)))
+			  (sdiff (subset-bag-difference (cdr s)
+							(cdr (sig smatch)))))
+		      (when smatch
+			(throw 'found (canonsig `(times ,(pr-find smatch) ,@sdiff)))))))
 	 (unless dont-add-use
 	   (loop for arg in (argsof s) do (adduse s arg))))
        s
@@ -537,7 +523,7 @@
 ;	(arraysel   (sigapply term))
 	(update     (sigupdate term))
 ;	(arrayrest  (sigarrayrest term))
-	(floor      (sigfloor term))
+;	(floor      (sigfloor term))
 	(t          term)
       ))))
 
@@ -741,20 +727,6 @@
    (cdr (assoc v usealist :test #'equal))
 )
 
-(defun times-or-use (v)
-  (if (and (consp v)(eq (funsym v) 'times))
-      (append (use v)(times-use v))
-      (use v)))
-
-(defun times-use (v) ;;assuming v is (times a ..)
-  (loop for u in (use (cadr v))
-	when (and (eq (funsym u) 'times)
-		  (not (equalp u v))
-		  (bag-subsetp (cdr v) (cdr (sig u))
-			      :test #'equal))
-	collect u))
-  
-
 (defun putuse(ul v)
    (push (cons v ul) usealist)
 ;  (checkusealist "putuse")
@@ -767,12 +739,6 @@
 	   (bag-subsetp (cdr x) (remove (car x) y :test test :count 1)
 			:test test))
       t))
-
-; (defun find-times-subset (bigtimes uselist)
-;   (loop for u in uselist
-; 	thereis (and (eq (funsym u) 'times)(not (equal (pr-find u) u))
-; 		      (bag-subsetp (cdr (sig u))(cdr bigtimes)
-; 				   :test #'equal) u)))
 
 (defun find-times-subset (bigtimes uselist)
   (loop for u in uselist
