@@ -1,9 +1,10 @@
 (in-package :pvs)
 
-(defstep inst-by-unif (&optional (fnums *)
-				 (where *)
-				 copy?
-				 verbose?)
+(defstep inst! (&optional (fnums *)
+			  subst
+			  (where *)
+			  copy?
+			  (if-match :best))
   (let ((sforms (s-forms (current-goal *ps*)))
 	(inst-sforms (gather-seq sforms fnums nil
 				 (compose #'essentially-existential? #'formula)))
@@ -14,17 +15,16 @@
       (let ((inst-fmlas (mapcar #'formula inst-sforms))
 	    (where-fmlas (mapcar #'formula
 			   (select-seq sforms where)))
-	    (insts (let ((*verbose* verbose?)
-			 (*all*))
-		     (declare (special *verbose*)
-			      (special *all*))
-		       (search-for-instantiations inst-fnums
-						  inst-fmlas
-						  (remove-if #'(lambda (fmla)
-								 (member fmla
-									 inst-fmlas
-									 :test #'tc-eq))
-						    where-fmlas)))))
+	    (insts (search-for-instantiations inst-fnums
+					      subst
+					      inst-fmlas
+					      (remove-if #'(lambda (fmla)
+							     (member fmla
+								     inst-fmlas
+								     :test #'tc-eq))
+						where-fmlas)
+					      if-match
+					      copy?)))
 	(if insts
 	    (let ((inst-rule (make-inst-rules insts copy?)))
 	      inst-rule)
@@ -51,10 +51,90 @@
    in the future!"
   "Instantiating quantified variables")
 
+;; Splits a set of formulas into a list of arguments of negated
+;;   formulas (negative formulas, hypotheses) and a list of
+;;   (positive) formulas (conclusions)
+
+(defun search-for-instantiations (fnums initial-subst inst-fmlas where-fmlas if-match copy? &optional (state *dp-state*))
+   (let ((*start-state* state))
+     (declare (special *start-state*))
+     (multiple-value-bind (list-of-bndngs bodies renamings)
+	 (destructure-inst-fmlas inst-fmlas initial-subst)
+       (let ((lvars (mapcar #'cdr renamings))
+	     (all-bndngs (mapcan #'identity list-of-bndngs))
+	     (fmlas (union bodies where-fmlas :test #'tc-eq)))
+	 (let ((*bound-variables* (append all-bndngs *bound-variables*)))
+	   (declare (special *bound-variables*))
+	   (multiple-value-bind (trms new-lvars new-renamings)
+	       (herbrandize fmlas lvars renamings)
+	     (declare (ignore new-renamings))
+	     (let ((score-substs (dp::gensubsts new-lvars trms)))
+	       (if (null score-substs) nil
+		   (let ((substs (choose-substs score-substs if-match)))
+		     (construct-instantiate-input fnums list-of-bndngs substs renamings))))))))))
+
+(defun destructure-inst-fmlas (fmlas initial-subst &optional list-of-bndngs bodies renamings)
+  (if (null fmlas)
+      (values (nreverse list-of-bndngs) (nreverse bodies) (nreverse renamings))
+    (multiple-value-bind (bndngs body)
+	(destructure-existential (car fmlas))
+      (let ((*bound-variables* (append bndngs *bound-variables*)))
+	(declare (special *bound-variables*))
+	(let ((assocs (mapcar #'(lambda (bndng)
+				  (cons (top-translate-to-dc bndng)
+					(mk-new-var bndng)))
+			bndngs)))
+	  (destructure-inst-fmlas (cdr fmlas)
+				  (cons bndngs list-of-bndngs)
+				  (cons body bodies)
+				  (append assocs renamings)))))))
+
+;(defun construct-assocs (bndngs subst &optional assocs)
+;  (if (null bndng) assocs
+;      (let* ((bndng (car bndngs))
+;	     (x     (top-translate-to-dc bndng)))
+;	 (multiple-value-bind (trm subst1)
+;	     (if (symbol-name= (id bndng))
+;			  (mk-new-var bndng))))
+;      (construct-assocs (cdr bndngs) subst)))
+			
+(defun choose-substs (score-substs if-match)
+  (if (eq if-match :all)
+      (mapcar #'(lambda (score-subst)
+		   (dp::subst-of score-subst))
+	score-substs)
+    (choose-best-subst score-substs)))
+
+(defun choose-best-subst (score-substs &optional (best-score 0) best-subst)
+  (if (null score-substs)
+      best-subst
+      (let ((current-score  (dp::score-of (car score-substs)))
+	    (current-subst (dp::subst-of (car score-substs))))
+	(if (> current-score best-score)
+	    (choose-best-subst (cdr score-substs) current-score current-subst)
+	  (choose-best-subst (cdr score-substs) best-score best-subst)))))
+
+    
 ;; Construct a PVS rule from instantiations of the form;
 ;; e.g.  ((1 (e1 e2 e3)) (-4 (f1 f2))) indicates 3 instantiations
 ;; for the top-level bindings of the sequence formula numbered 1
 ;;  and two instantiations for the sequent formula -4.
+
+(defun construct-instantiate-input (fnums list-of-bndngs subst renamings)
+  (loop for fnum in fnums
+	as bndngs in list-of-bndngs
+	collect (list fnum (construct-terms bndngs renamings subst))))
+
+(defun construct-terms (bndngs renamings subst)
+  (let ((*bound-variables* (append bndngs *bound-variables*)))
+    (declare (special *bound-variables*))
+    (loop for bndng in (reverse bndngs)
+       collect (let ((lvar (cdr (assoc (top-translate-to-dc bndng) renamings))))
+		 (if lvar
+		     (let ((trm (translate-from-dc 
+				 (cdr (assoc lvar subst)))))
+		       (or trm "_"))
+		     "_")))))
 
 (defmethod make-inst-rules ((insts null) copy?)
   (declare (ignore copy?))
@@ -65,52 +145,10 @@
     `(then* (instantiate ,(car inst) ,@(cdr inst) :copy? ,copy?)
 	    ,(make-inst-rules (cdr insts) copy?))))
 
-;; Splits a set of formulas into a list of arguments of negated
-;;   formulas (negative formulas, hypotheses) and a list of
-;;   (positive) formulas (conclusions)
 
-(defun search-for-instantiations (fnums inst-fmlas where-fmlas &optional (state *dp-state*))
-  (break)
-   (let ((*start-state* state))
-     (declare (special *start-state*))
-     (multiple-value-bind (list-of-bndngs lvars bodies)
-	 (destructure-inst-fmlas inst-fmlas)
-       (let ((fmlas (union bodies where-fmlas :test #'tc-eq))
-	     (renamings (initial-renamings list-of-bndngs lvars)))
-	 (multiple-value-bind (trms new-lvars new-renamings)
-	     (herbrandize fmlas lvars renamings)
-	   (declare (ignore new-renamings))
-	   (let ((score-substs (dp::gensubsts new-lvars trms)))
-	     (break)
-	     (if (null score-substs) nil
-		 (let ((subst (choose-subst score-substs)))
-		   (construct-instantiate-input fnums list-of-bndngs subst renamings)))))))))
 
-(defun choose-score-subst (score-substs)
-  (translate-from-dc-subst (subst-of (first score-substs))))
-		   
-(defun initial-renamings (list-of-bndngs lvars)
-  (pairlis (mapcan #'identity list-of-bndngs) lvars))
 
-(defun destructure-inst-fmlas x(fmlas &optional list-of-bndngs lvars bodies)
-  (if (null fmlas)
-      (values (nreverse list-of-bndngs) (nreverse lvars) (nreverse bodies))
-    (multiple-value-bind (bndngs body)
-	(destructure-existential (car fmlas))
-      (let ((new-lvars (mk-new-lvars bndngs)))
-	(destructure-inst-fmlas  (cdr fmlas)
-				 (cons bndngs list-of-bndngs)
-				 (append new-lvars lvars)
-				 (cons body bodies))))))
 
-(defun construct-instantiate-input (fnums list-of-bndngs subst renamings)
-  (loop for fnum in fnums
-	as bndngs in list-of-bndngs
-	collect (list fnum
-		      (reverse
-		      (loop for bndng in bndngs
-			    collect (let ((lvar (cdr (assoc bndng renamings
-							    :test #'tc-eq))))
-				      (if lvar
-					  (cdr (assoc lvar subst :test #'tc-eq))
-					  "_")))))))
+
+
+
