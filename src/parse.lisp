@@ -2144,6 +2144,8 @@
 		  (xt-mappings mappings))
       'place (term-place modname))))
 
+;;; name! means create a name no matter what; otherwise numbers create
+;;; number-exprs
 (defun xt-name (name &optional name!)
   (let ((idop (term-arg0 name))
 	(lib (term-arg1 name))
@@ -2190,16 +2192,38 @@
   (mapcar #'xt-mapping (term-args mappings)))
 
 (defun xt-mapping (mapping)
-  (let ((rhs (term-arg1 mapping)))
-    (make-instance 'mapping
-      'lhs (xt-unique-name (term-arg0 mapping))
-      'rhs (make-instance 'mapping-rhs
-	     'expr (if (member (sim-term-op rhs)
-			       '(subtype expr-as-type enum-or-subtype
-					 funtype;; predtype
-					 recordtype))
-		       (xt-not-enum-type-expr rhs)
-		       (xt-expr rhs))))))
+  (let* ((lhs (term-arg0 mapping))
+	 (rhs (term-arg1 mapping))
+	 (kind (unless (is-sop 'noqual (term-arg2 lhs))
+		 (case (sim-term-op (term-arg2 lhs))
+		   (type 'type)
+		   (theory 'theory)
+		   (t 'expr))))
+	 (dtype (when (is-sop 'typed (term-arg2 lhs))
+		  (xt-not-enum-type-expr (term-arg0 (term-arg2 lhs)))))
+	 (expr (if (memq (sim-term-op rhs)
+			 '(subtype expr-as-type enum-or-subtype
+				   funtype recordtype))
+		   (xt-not-enum-type-expr rhs)
+		   (xt-expr rhs))))
+    (if (is-sop 'noformals (term-arg1 lhs))
+	(make-instance 'mapping
+	  'lhs (xt-mapping-lhs (term-arg0 mapping))
+	  'rhs (make-instance 'mapping-rhs 'expr expr)
+	  'kind kind
+	  'declared-type dtype)
+	(let ((formals (xt-pdf (term-arg1 lhs))))
+	  (make-instance 'mapping-with-formals
+	    'lhs (xt-mapping-lhs (term-arg0 mapping))
+	    'rhs (make-instance 'mapping-rhs
+		   'expr (mk-lambda-exprs formals expr))
+	    'formals formals
+	    'kind kind
+	    'declared-type dtype)))))
+
+(defun xt-mapping-lhs (lhs)
+  (make-instance 'name
+    'id (xt-idop (term-arg0 lhs))))
 
 (defun xt-unique-name (name)
   (let ((uname (xt-name (term-arg0 name) t))
