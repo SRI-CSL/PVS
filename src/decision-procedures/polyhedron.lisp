@@ -153,8 +153,10 @@
 				  poly-s cong-state))
 		 (brand-new-equalities
 		  (set-difference new-equalities old-equalities :test #'eq)))
+	    (setf (polyhedral-structure-equalities poly-s)
+		  (append brand-new-equalities old-equalities))
 	    (cons neq
-		  brand-new-equalities)))))))
+		  (good-equalities brand-new-equalities))))))))
 
 (defun poly-add-ineq-constraint (eqn cong-state)
   (declare (special *dp-changed*))
@@ -217,8 +219,10 @@
 				  poly-s cong-state))
 		 (brand-new-equalities
 		  (set-difference new-equalities old-equalities :test #'eq)))
+	    (setf (polyhedral-structure-equalities poly-s)
+		  (append brand-new-equalities old-equalities))
 	    (cons (mk-equality eqn *true*)
-		  brand-new-equalities)))))))
+		  (good-equalities brand-new-equalities))))))))
 
 (defun simplify-ineq-constraint (eqn cong-state)
   (declare (special *dp-changed*))
