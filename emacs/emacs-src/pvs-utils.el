@@ -680,6 +680,18 @@ The save-pvs-file command saves the PVS file of the current buffer."
 
 (defvar pvs-library-path-completions nil)
 
+(defun pvs-get-library-path (value)
+  ;; The noninteractive form, used when load-prelude-library is called
+  ;; directly from Emacs, rather than as a command
+  (let* ((pvs-library-path-completions
+	  (pvs-library-path-subdirs pvs-library-path))
+	 (asdir (assoc value pvs-library-path-completions)))
+    (if asdir
+	(concat (cdr asdir) "/" (car asdir))
+	(if (file-directory-p value)
+	    value
+	    (error "Not a valid library directory")))))
+  
 (defun pvs-complete-library-path (prompt)
   (pvs-bury-output)
   (let* ((pvs-library-path-completions
