@@ -13,8 +13,8 @@
 
 (defun evaluation-mode (theoryname)
   (let ((theory (get-theory theoryname)))  
-    (if theory
-	(unwind-protect
+    (unwind-protect
+	(if theory
 	    (let ((*current-theory* theory)
 		  (*generate-tccs* 'none)
 		  (*current-context* (or (saved-context theory)
@@ -24,8 +24,8 @@
 		  (*convert-back-to-pvs* t))
 	      (format t "~%~%PVS Ground Evaluation.~%Enter a ground expression in quotes at the <GndEval> prompt~%")
 	      (evaluate))
-	  (pvs-emacs-eval "(pvs-evaluator-ready)"))
-	(pvs-message "Theory ~a is not typechecked" theoryname))))
+	    (pvs-message "Theory ~a is not typechecked" theoryname))
+      (pvs-emacs-eval "(pvs-evaluator-ready)"))))
 
 (defun gqread ()
   (format t "~%<GndEval> ")
