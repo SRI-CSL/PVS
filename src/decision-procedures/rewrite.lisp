@@ -61,7 +61,7 @@
   (acons var term subst))
 
 (defun subst-in-application (appl subst)
-  (mk-term-array (map-args-array #'subst-in-node appl subst)))
+  (mk-term (map-args-list #'subst-in-node appl subst)))
 
 (defun subst-in-var (var subst)
   (sublis subst var))
@@ -345,7 +345,7 @@
 	      (setq change t)
 	      new-arg)
 	     (t arg)))))
-      (let ((new-term (mk-term-array (map-args-array #'normalize-arg term))))
+      (let ((new-term (mk-term (map-args-list #'normalize-arg term))))
 	(values new-term change)))))
 
 (defun big-size (term)
@@ -354,13 +354,14 @@
     (big-size* term)))
 
 (defun big-size* (term)
-  (let ((ass (assq term *size-alist*)))
+  (let ((ass (assoc term *size-alist* :test #'eq)))
     (declare (special *size-alist*))
     (cond
      (ass (cdr ass))
-     (t (let ((r (cond ((null term) 0)
-		       ((consp term) (+ 1 (big-size* (car term))
-					(big-size* (cdr term))))
+     (t (let ((r (cond ((leaf-p term) 1)
+		       ((application-p term)
+			(+ 1 (loop for a in (application-arguments term)
+				   sum (big-size* a))))
 		       (t 1))))
 	  (setq *size-alist* (acons term r *size-alist*))
 	  r)))))
