@@ -1125,15 +1125,27 @@
 		"Circularity found in importings of theor~@P:~%  ~{~a~^, ~}"
 		(length theories) theories))))))
 
-(defmethod get-immediate-using-ids (theory)
+(defun get-immediate-using-ids (theory)
   (mapcan #'(lambda (d)
-	      (let ((tn (theory-name d)))
-		(unless (library tn)
-		  (if (eq (id tn) (id theory))
-		      (type-error (theory-name d)
-			"Theory ~a may not import itself" (id theory))
-		      (list (id tn))))))
+	      (get-immediate-using-ids* (theory-name d) theory))
     (remove-if-not #'mod-or-using? (all-decls theory))))
+
+(defun get-immediate-using-ids* (tn theory &optional ids)
+  (if (null tn)
+      (nreverse ids)
+      (let ((id (unless (library tn)
+		   (if (eq (id tn) (id theory))
+		       (if ids
+			   (type-error tn
+			     "Target ~a may not reference itself" (id theory))
+			   (type-error tn
+			     "Theory ~a may not import itself" (id theory)))
+		       (id tn)))))
+	(get-immediate-using-ids*
+	 (target tn)
+	 theory
+	 (if id (cons id ids) ids)))))
+
 
 (defmethod tcc-info ((d recursive-type))
   '(0 0 0))
