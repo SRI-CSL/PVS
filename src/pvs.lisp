@@ -508,6 +508,7 @@
 
 (defun remove-associated-buffers (theoryid)
   (pvs-buffer (format nil "~a.tccs" theoryid) nil)
+  (pvs-buffer (format nil "~a.lisp" theoryid) nil)
   (pvs-buffer (format nil "~a.ppe" theoryid) nil))
 
 
