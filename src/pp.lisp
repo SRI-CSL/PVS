@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Oct 29 23:19:42 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Nov  5 15:14:07 1998
-;; Update Count    : 3
+;; Last Modified On: Mon Jan 25 19:00:19 1999
+;; Update Count    : 6
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -34,9 +34,7 @@
 				      *default-char-width*))
 	    (*print-pretty* (or (not (memq :pretty keys))
 				(cadr (memq :pretty keys)))))
-	(cond ((memq :sb-tex keys)
-	       (call-next-method))
-	      ((memq :string keys)
+	(cond ((memq :string keys)
 	       (with-output-to-string (*standard-output*)
 		 (pp obj)))
 	      ((memq :stream keys)
@@ -48,6 +46,27 @@
 		 (pp obj)))
 	      (t (pp obj))))
       (call-next-method)))
+
+(defun unpindent (inst indent &key (width *default-char-width*)
+		       string comment?)
+  (let* ((str (unparse inst
+		:string t
+		:char-width (- width indent (if comment? 2 0)))))
+    (if string
+	(with-output-to-string (*standard-output*)
+	  (unpindent* str indent 0 (position #\linefeed str) comment? nil))
+	(unpindent* str indent 0 (position #\linefeed str) comment? nil))))
+
+(defun unpindent* (str indent start end comment? notfirst?)
+  (format t "~v%~vT~:[~;% ~]~a"
+    (if notfirst? 1 0)
+    (if notfirst? indent 0)
+    (and comment? notfirst?)
+    (subseq str start end))
+  (if end
+      (unpindent* str indent (1+ end)
+		  (position #\linefeed str :start (1+ end))
+		  comment? t)))
 
 (defun pp (obj)
   (let ((*print-escape* nil)
@@ -917,8 +936,32 @@
 
 (defmethod pp* ((ex string-expr))
   (unless (string-value ex)
-    (setf (string-value ex) (xf-string-expr (argument ex))))
+    (setf (string-value ex) (pp-string-expr (argument ex))))
   (write (string-value ex) :escape t))
+
+(defun pp-string-expr (charlist &optional list)
+  (if (typep charlist 'name-expr)
+      (coerce (nreverse list) 'string)
+      (pp-string-expr (args2 charlist)
+		      (nconc (pp-string-char (number (args1 (args1 charlist))))
+			     list))))
+
+(defun pp-string-char (code)
+  (let ((char (code-char code)))
+    (case char
+      (#-gcl #\Bell #+gcl #\^G (list #\a #\\ #\\))
+      (#\Backspace (list #\b #\\ #\\))
+      (#\Page (list #\f #\\ #\\))
+      (#\Newline (list #\n #\\ #\\))
+      (#\Return (list #\r #\\ #\\))
+      (#\Tab (list #\t #\\ #\\))
+      (#-gcl #\VT #+gcl #\^K (list #\v #\\ #\\))
+      (#\" (list #\" #\\ #\\))
+      (#\\ (list #\\ #\\ #\\ #\\))
+      (t (if (graphic-char-p char)
+	     (list char)
+	     (nreverse (cons #\\ (cons #\\ (coerce (format nil "~o" code)
+						   'list)))))))))
 
 (defmethod pp* ((ex list-expr))
   (pprint-logical-block (nil (exprs ex) :prefix "(: " :suffix " :)")
@@ -1483,10 +1526,23 @@
 	       (pp-actuals actuals)))))))
 
 (defmethod pp* ((list list))
-  (let ((*pretty-printing-decl-list* t)
-	(*pretty-printed-prefix* nil))
-    (dolist (elt list)
-      (pp* elt))))
+  (if (and list
+	   (every #'declaration? list)
+	   (every #'module list))
+      (cond ((every #'(lambda (d)
+			(memq d (theory (module (car list)))))
+		    list)
+	     (pp-theory list))
+	    ((every #'(lambda (d)
+			(memq d (assuming (module (car list)))))
+		    list)
+	     (pp-assuming list))
+	    (t (dolist (elt list)
+		 (pp* elt))))
+      (let ((*pretty-printing-decl-list* t)
+	    (*pretty-printed-prefix* nil))
+	(dolist (elt list)
+	  (pp* elt)))))
 
 (defun pp-actuals (actuals)
   (pprint-logical-block (nil actuals :prefix "[" :suffix "]")

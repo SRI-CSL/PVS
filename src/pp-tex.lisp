@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Tue Jan 12 03:25:25 1999
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Jan 22 14:11:28 1999
-;; Update Count    : 5
+;; Last Modified On: Mon Jan 25 19:00:21 1999
+;; Update Count    : 6
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -1588,6 +1588,8 @@
 	  (setf (gethash str *pvs-tex-substitution-hash*) strans)
 	  str))))
 
+;;; Should do something useful with $ in names.
+
 (defun get-pp-tex-id* (symbol)
   (let ((str (string symbol)))
     (cond ((and (alpha-char-p (char str 0))
@@ -1688,3 +1690,20 @@
     (cond (counter (incf (cdr counter)))
 	  (t (push (cons length 0) *tex-symbol-counters*)
 	     0))))
+
+; (defun break-pvs-name (string)
+;   (let* ((bang-pos (position #\! string))
+; 	 (dollar-pos (position #\$ string))
+; 	 (namestr (cond (bang-pos (subseq string 0 bang-pos))
+; 			(dollar-pos (subseq string 0 dollar-pos))
+; 			(t string)))
+; 	 (subscr? (and (> (length namestr) 1)
+; 		       (alpha-char-p (char namestr 0))
+; 		       (every #'digit-char-p (subseq namestr 1))))
+; 	 (name1 (if subscr?
+; 		    (coerce (list (char namestr 0)) 'string)
+; 		    namestr))
+; 	 (sub (when subscr? (subseq namestr 1))))
+;     (values name1 sub
+; 	    (when bang-pos (parse-integer (subseq string (1+ bang-pos))))
+; 	    (when dollar-pos (parse-integer (subseq string (1+ dollar-pos)))))))
