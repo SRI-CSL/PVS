@@ -346,6 +346,9 @@
 	      (setq frees (pushnew x frees :test #'eq))))
 	  frees))))
 
+(defmethod free-params-res ((decl mapping) mi type frees)
+  (free-params* (lhs decl) (free-params* (rhs decl) frees)))
+
 (defmethod free-params* ((act actual) frees)
   (with-slots (expr type-value) act
     (if type-value
