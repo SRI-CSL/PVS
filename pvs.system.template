@@ -390,5 +390,5 @@
 		    (:file "fol-top")))
       (:module abstraction
 	:source-pathname "src/abstraction"
-	:components ((:file "abstraction")))
+	:components ((:file "abstract")))
       ))
