@@ -1,0 +1,2 @@
+.pvscontext Makefile autoloads.out *_adt.pvs orphaned-proofs.prf
+*.lfasl *.fasl *.elc pvs pvs.system
