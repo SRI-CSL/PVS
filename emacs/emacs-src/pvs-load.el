@@ -94,6 +94,7 @@
 (load "tcl" nil noninteractive)
 (load "pvs-tcl" nil noninteractive)
 (load "pvs-prover-helps" nil noninteractive)
+(load "pvs-eval" nil noninteractive)
 
 (put 'comment-region 'pvs-command 'editing)
 (global-set-key "\C-c;" 'comment-region)
