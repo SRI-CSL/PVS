@@ -223,7 +223,10 @@ decision-procedures = src/decision-procedures/types.lisp \
                       src/decision-procedures/forward-chain-pvs.lisp \
                       src/decision-procedures/forward-chain.lisp
 
-ws1slisp = dfa-foreign dfa pvs-utils symtab signature pvs2dfa ws1s-strategy
+ws1slisp = src/WS1S/lisp/dfa-foreign.lisp src/WS1S/lisp/dfa.lisp \
+           src/WS1S/lisp/pvs-utils.lisp src/WS1S/lisp/symtab.lisp \
+           src/WS1S/lisp/signature.lisp src/WS1S/lisp/pvs2dfa.lisp \
+           src/WS1S/lisp/ws1s-strategy.lisp
 
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
