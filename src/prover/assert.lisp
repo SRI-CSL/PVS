@@ -80,7 +80,10 @@
 	(clrhash *subst-type-hash*)))))
 
 (defun assert-sequent (sequent sformnums &optional rewrite-flag)
-  (let* ((simplifiable-sformnums
+  (let* ((quant-sformnums
+	  (find-all-sformnums (s-forms sequent) sformnums
+			      #'top-quant?))
+	 (simplifiable-sformnums
 	  (find-all-sformnums (s-forms sequent) sformnums
 			      #'(lambda (fmla)
 				  (if (negation? fmla)
@@ -88,7 +91,9 @@
 				      (connective-occurs? fmla)))))
 	 (other-sformnums
 	  (find-remaining-sformnums (s-forms sequent) sformnums
-				    simplifiable-sformnums)))
+
+				    (append quant-sformnums
+					    simplifiable-sformnums))))
   (multiple-value-bind
 	(signal subgoal)
       (sequent-reduce sequent
@@ -98,33 +103,42 @@
 	   (dpi-pop-state *dp-state*)
 	   (values '! nil (list 'dependent-decls *dependent-decls*)))
 	  (t (multiple-value-bind
-		   (newsignal newsubgoal)
-		 (if (eq *assert-flag* 'record)
-		     (values 'X
-			     (if (eq signal 'X) sequent subgoal))
-		     (sequent-reduce-around
-		      (if (eq signal 'X) sequent
-			  subgoal)
-		      #'(lambda (sform)
-			  (assert-sform sform
-					rewrite-flag
-					t))
-		      simplifiable-sformnums))
-	       (cond ((eq newsignal '!)
+		 (signal subgoal)
+		 (sequent-reduce-around
+		  (if (eq signal 'X) sequent subgoal)
+		  #'(lambda (sform) (assert-sform sform rewrite-flag))
+		  quant-sformnums)
+	       (cond ((eq signal '!)
 		      (dpi-pop-state *dp-state*)
 		      (values '! nil (list 'dependent-decls *dependent-decls*)))
-		     ((and (eq signal 'X)(eq newsignal 'X))
-		      (values 'X nil nil))
-		     (t 
-		      (values
-		       '?
-		       (list (cons (if (eq newsignal 'X)
-				       subgoal
-				       newsubgoal)
-				   (list 'rewrite-hash *rewrite-hash*
-					 'subtype-hash *subtype-hash*
-					 'dependent-decls *dependent-decls*
-					 'dp-state *dp-state*))))))))))))
+		     (t (multiple-value-bind
+			    (newsignal newsubgoal)
+			    (if (eq *assert-flag* 'record)
+				(values 'X
+					(if (eq signal 'X) sequent subgoal))
+				(sequent-reduce-around
+				 (if (eq signal 'X) sequent
+				     subgoal)
+				 #'(lambda (sform)
+				     (assert-sform sform
+						   rewrite-flag
+						   t))
+				 simplifiable-sformnums))
+			  (cond ((eq newsignal '!)
+				 (dpi-pop-state *dp-state*)
+				 (values '! nil (list 'dependent-decls *dependent-decls*)))
+				((and (eq signal 'X)(eq newsignal 'X))
+				 (values 'X nil nil))
+				(t 
+				 (values
+				  '?
+				  (list (cons (if (eq newsignal 'X)
+						  subgoal
+						  newsubgoal)
+					      (list 'rewrite-hash *rewrite-hash*
+						    'subtype-hash *subtype-hash*
+						    'dependent-decls *dependent-decls*
+						    'dp-state *dp-state*)))))))))))))))
 
 ;;this is needed to take care of the output from process.
 (defun sequent-reduce-around (sequent simplifier sformnums)
@@ -334,6 +348,16 @@
   (if (listp list)
       (mapcar #'translate-from-prove list)
       (translate-from-prove list)))
+
+(defmethod top-quant? ((expr negation))
+  (with-slots (argument) expr
+  (top-quant? argument)))
+
+(defmethod top-quant? ((expr quant-expr))
+  t)
+
+(defmethod top-quant? ((expr t))
+  nil)
 
 (defmethod quant-occurs? ((expr projection-expr))
   nil)
