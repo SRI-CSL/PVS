@@ -106,6 +106,8 @@ intervenes."
   (define-key ilisp-mode-map "]" 'self-insert-command)
   (define-pvs-key-bindings (ilisp-buffer))
   (setq *default-char-width* (window-width))
+  (add-hook 'kill-emacs-hook
+    '(lambda () (when (ilisp-process) (kill-process (ilisp-process)))))
   ;;(setq *pvs-initialized* t)
   )
 
@@ -1135,7 +1137,8 @@ accidentally; if not, the current command is aborted and the command queue
 is emptied."
   (interactive)
   (if (ilisp-process)
-      (if (not (y-or-n-p "Reset PVS? "))
+      (if (and (not noninteractive)
+	       (not (y-or-n-p "Reset PVS? ")))
 	  (message "")
 	  (pvs-bury-output)
 	  (message "Resetting PVS")
