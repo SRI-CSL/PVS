@@ -633,13 +633,14 @@
 
 (defun pvs-modify-buffer (dir name place contents)
   (if *to-emacs*
-      (let ((*output-to-emacs*
-	     (format nil ":pvs-mod ~a&~a&~a&~a :end-pvs-mod"
-	       (protect-emacs-output dir)
-	       name
-	       (place-list place)
-	       (when contents
-		 (write-to-temp-file contents)))))
+      (let* ((*print-pretty* nil)
+	     (*output-to-emacs*
+	      (format nil ":pvs-mod ~a&~a&~a&~a :end-pvs-mod"
+		(protect-emacs-output dir)
+		name
+		(place-list place)
+		(when contents
+		  (write-to-temp-file contents)))))
 	(to-emacs))
       (format t "~%~a~%" contents)))
 
