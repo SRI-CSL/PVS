@@ -962,7 +962,9 @@
 	  (subalist
 	   (loop for (x . y) in pre-alist
 		 collect (let* ((yex (pc-parse y 'expr))
-				(*in-typechecker* yex))
+				;; Want a copy in case yex has conversions
+				;; applied - faster to just reparse
+				(*in-typechecker* (pc-parse y 'expr)))
 			   (cons x (internal-pc-typecheck yex
 				     :context *current-context*
 				     :uniquely? nil)))))
