@@ -688,12 +688,31 @@
 	 (rem-decls (if prev-imp
 			(ldiff prev-decls (memq prev-imp prev-decls))
 			prev-decls)))
-    (assert (or (not prev-imp) (saved-context prev-imp)))
-    (copy-context (if prev-imp
-		      (saved-context prev-imp)
-		      *prelude-context*)
-		  (module decl)
-		  rem-decls)))
+    (if (or (not prev-imp) (saved-context prev-imp))
+	(copy-context (if prev-imp
+			  (saved-context prev-imp)
+			  *prelude-context*)
+		      (module decl)
+		      rem-decls)
+	(let ((*current-context* (make-new-context (module decl))))
+	  (dolist (d (reverse prev-decls))
+	    (typecase d
+	      (mod-decl
+	       (put-decl d (current-declarations-hash))
+	       (let* ((thname (theory-name d))
+		      (th (get-theory thname)))
+		 (add-exporting-with-theories th thname)
+		 (add-to-using thname))
+	       (setf (saved-context d) (copy-context *current-context*)))
+	      (importing
+	       (let* ((thname (theory-name d))
+		      (th (get-theory thname)))
+		 (add-usings-to-context* th thname))
+	       (setf (saved-context d) (copy-context *current-context*)))
+	      (declaration (put-decl d (current-declarations-hash)))
+	      (datatype nil)))
+	  *current-context*))))
+	      
 
 (defmethod add-imported-assumings ((decl assuming-tcc))
   (add-usings-to-context (list (theory-instance decl))))
