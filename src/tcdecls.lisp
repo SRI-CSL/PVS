@@ -1049,7 +1049,7 @@
 	      (application
 	       (make-inductive-conjunction
 		(copy ex)
-		nvar
+		(make-ind-pred-application nvar ex)
 		fmls
 		fixed-vars))
 	      (name-expr
@@ -1060,6 +1060,17 @@
 	     (partial-inductive-occurrence? ex stype decl))
 	    (name-expr
 	     (eq (declaration ex) decl)))))))
+
+(defun make-ind-pred-application (pred ex)
+  (make-ind-pred-application* pred ex (argument* ex)))
+
+(defun make-ind-pred-application* (pred ex args)
+  (if (tc-eq (type pred) (type ex))
+      pred
+      (make-ind-pred-application*
+       (make!-application pred (car args))
+       ex
+       (cdr args))))
 
 (defun collect-decl-formals (decl)
   (append (formals decl)
@@ -1085,17 +1096,17 @@
 				  (make-new-variable (id x) (list inddef pred))
 				  (or (declared-type x) (type x))))
 		    (car fmls)))
-	     (vars (mapcar #'make-variable-expr bds)))
+	     (bvars (mapcar #'make-variable-expr bds)))
 	(make!-set-expr bds
 	  (make-inductive-conjunction
-	   (make!-application* inddef vars)
+	   (make!-application* inddef bvars)
 	   pred
 	   (cdr fmls)
 	   fixed-vars
 	   (nconc vars (mapcan #'(lambda (x y)
 				   (unless (memq x fixed-vars)
 				     (list y)))
-			 (car fmls) vars)))))))
+			 (car fmls) bvars)))))))
 
 (defun make-inductive-conclusion (var rem-vars decl)
   (let* ((dname (mk-name-expr (id decl) nil nil
