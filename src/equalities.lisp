@@ -1816,6 +1816,28 @@ where db is to replace db1 and db2")
 		     expr
 		     (cons (car fields) nfields))))
 
+(defun subst-tuptypes (tuptype expr)
+  (if (some #'dep-binding? (types tuptype))
+      (subst-tuptypes* (types tuptype) expr)
+      (types tuptype)))
+
+(defun subst-tuptypes* (types expr &optional (index 1) ntypes)
+  (if (null types)
+      (nreverse ntypes)
+      (if (dep-binding? (car types))
+	  (let ((pappl (make-instance 'projappl
+			 'id (makesym "PROJ_~d" index)
+			 'index index
+			 'argument expr
+			 'type (type (car types)))))
+	    (subst-tuptypes* (substit (cdr types)
+			       (acons (car types) pappl nil))
+			     expr
+			     (1+ index)
+			     (cons (type (car types)) ntypes)))
+	  (subst-tuptypes* (cdr types) expr (1+ index)
+			   (cons (car types) ntypes)))))
+
 (defun compatible-recordtype-preds (aflds eflds aexpr incs)
   (assert (type aexpr))
   (cond ((null aflds)
@@ -1839,9 +1861,10 @@ where db is to replace db1 and db2")
   (make!-field-application (id field) expr))
 
 (defun subst-var-application (field fields aexpr)
-  (let* ((ne aexpr)
-	 (appl (make!-field-application (id field) ne)))
-    (substit fields (list (cons field appl)))))
+  (when fields
+    (let* ((ne aexpr)
+	   (appl (make!-field-application (id field) ne)))
+      (substit fields (list (cons field appl))))))
 
 
 ;;; Subtype-of? is used to determine if two types are in the subtype
