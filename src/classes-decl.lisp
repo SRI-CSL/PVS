@@ -235,6 +235,7 @@
   (chain? :parse t)
   refers-to
   generated
+  (tcc-form :fetch-as nil :ignore t)
   (saved-context :fetch-as nil))
 
 ;;; DECLARATION Classes.  Many of these have both a declared-type and a
@@ -254,6 +255,7 @@
   (generated :documentation "a list of declarations")
   (generated-by :documentation "a declaration instance")
   (semi :parse t)
+  (tcc-form :fetch-as nil :ignore t)
   typecheck-time)
 
 ;;; declared-type-string keeps the string of the declared type for
