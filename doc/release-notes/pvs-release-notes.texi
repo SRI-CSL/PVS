@@ -7,7 +7,7 @@
 @c %**end of header
 
 @ifinfo
-This file contains the release notes for PVS version 3.0
+This file contains the release notes for PVS versions 3.0 - 3.2
 
 Copyright 2002 SRI International
 @end ifinfo
@@ -17,7 +17,9 @@ Copyright 2002 SRI International
 
 @titlepage
 @title PVS Release Notes
-@author Sam Owre <owre@@csl.sri.com>, SRI International
+@author Sam Owre <owre@@csl.sri.com>
+@author SRI International
+@author November 4, 2004
 @page
 @end titlepage
 
