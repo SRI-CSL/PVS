@@ -564,7 +564,7 @@
 	     'chain? t
 	     'place place))))
     (JAPPLDECL (make-instance 'application-judgement
-		 'name (change-class (xt-name (term-arg0 jdecl)) 'name-expr)
+		 'name (change-class (xt-name (term-arg0 jdecl) nil) 'name-expr)
 		 'formals (xt-pdf (term-arg1 jdecl))
 		 'declared-type dtype
 		 'chain? t
