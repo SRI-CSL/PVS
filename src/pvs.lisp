@@ -1752,9 +1752,11 @@
 		      (t (let ((prinfo (make-proof-info
 					just
 					(next-proof-id fdecl)
-					(description
-					 (default-proof
-					   (car *edit-proof-info*))))))
+					(when (default-proof
+						(car *edit-proof-info*))
+					  (description
+					   (default-proof
+					     (car *edit-proof-info*)))))))
 			   (push prinfo (proofs fdecl))
 			   (setf (default-proof fdecl) prinfo)
 			   (unless (from-prelude? (module fdecl))
@@ -2360,6 +2362,9 @@
 	(subseq str 11 (- (length str) 2))))))
 
 (defun collect-strategy-names (&optional all?)
+  (with-open-file (*standard-output* "/dev/null" :direction :output
+				     :if-exists :overwrite)
+    (read-strategies-files))
   (let ((names nil))
     (maphash #'(lambda (n s)
 		 (push (string-downcase (string n)) names))
