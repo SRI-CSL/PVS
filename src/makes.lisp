@@ -176,12 +176,12 @@
     'definition expr
     'semi t))
 
-(defun mk-subtype-tcc (id expr)
+(defun mk-subtype-tcc (id def)
   (make-instance 'subtype-tcc
     'id id
     'spelling 'OBLIGATION
     'kind 'tcc
-    'definition expr
+    'definition def
     'semi t))
 
 (defun mk-termination-tcc (id expr)
