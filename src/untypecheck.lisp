@@ -56,6 +56,8 @@
     (setf (adt-theory adt) nil)
     (setf (adt-map-theory adt) nil)
     (setf (adt-reduce-theory adt) nil)
+    (when (inline-recursive-type? adt)
+      (setf (generated adt) nil))
     (setf (generated-file-date adt) nil)
     ;;(setf (positive-types adt) nil)
     ;;(setf (saved-context adt) nil)
