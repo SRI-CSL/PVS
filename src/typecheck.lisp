@@ -703,6 +703,9 @@
 (defmethod interpretable? ((d mod-decl))
   (interpretable? (get-theory (modname d))))
 
+(defmethod interpretable? ((d formal-type-decl))
+  nil)
+
 (defmethod interpretable? ((d const-decl))
   (null (definition d)))
 
