@@ -17,6 +17,8 @@
 
 (defvar *field-records* nil)
 
+(defvar *get-all-resolutions* nil)
+
 ;;; Name Resolution
 
 ;;; Typechecking a name means to resolve it in its context.  The kind
@@ -1142,11 +1144,16 @@
 	     reses))
       reses))
 
-(defun filter-local-expr-resolutions (reses &optional freses)
+(defun filter-local-expr-resolutions (reses)
+  (if *get-all-resolutions*
+      reses
+      (filter-local-expr-resolutions* reses nil)))
+
+(defun filter-local-expr-resolutions* (reses freses)
   (if (null reses)
       freses
       (let ((res (car reses)))
-	(filter-local-expr-resolutions
+	(filter-local-expr-resolutions*
 	 (cdr reses)
 	 (if (or (member res (cdr reses) :test #'same-type-but-less-local)
 		 (member res freses :test #'same-type-but-less-local))
@@ -1155,7 +1162,7 @@
 
 (defun same-type-but-less-local (res1 res2)
   (and (tc-eq (type res1) (type res2))
-       (< (locality res1) (locality res2))))
+       (< (locality res2) (locality res1))))
 
 (defmethod locality ((res resolution))
   (locality (declaration res)))
@@ -1230,7 +1237,8 @@
 	(let* ((*current-context* context)
 	       (nname (if (actuals name)
 			  (copy-untyped name)
-			  name)))
+			  name))
+	       (*get-all-resolutions* t))
 	  (resolve* nname kind args)))))
 
 
