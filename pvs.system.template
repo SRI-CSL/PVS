@@ -346,5 +346,6 @@
 ;		  (:file "cl2pvs")))
    (:module ilisp
      :source-pathname "emacs/emacs-src/ilisp"
-     :components ((:file "cl-ilisp")
+     :components ((:file "ilisp-pkg")
+		  (:file "cl-ilisp")
 		  (:file "allegro")))))
