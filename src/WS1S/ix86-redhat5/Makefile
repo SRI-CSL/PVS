@@ -18,11 +18,14 @@ obj  = analyze.o prefix.o product.o \
        bdd_manager.o hash.o bdd_dump.o \
        bdd_trace.o bdd_cache.o \
        dlmalloc.o mem.o \
-       ../ws1s_extended_interface.o 
+       ws1s_extended_interface.o 
 
 .SUFFIXES:
 .SUFFIXES: .c .o
 .c.o : ; $(CC) $(XCFLAGS) ${CFLAGS} -c $< -o $@
+
+ws1s_extended_interface.o : ../ws1s_extended_interface.c
+	$(CC) $(XCFLAGS) ${CFLAGS} -c $< -o $@
 
 all : ws1s.so
 
