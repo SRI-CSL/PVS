@@ -549,9 +549,11 @@
   (member (funsym ineq) (list *lessp* *greaterp*) :test #'eq))
 
 (defun normineq (ineq cong-state &optional (var nil))
-  (integercut (normineq-rational (integercut ineq cong-state)
-				 cong-state var)
-	      cong-state))
+  (let ((i-ineq (integercut ineq cong-state)))
+    (if (constant-p i-ineq) i-ineq
+	(integercut (normineq-rational i-ineq
+				       cong-state var)
+		    cong-state))))
 
 ;;canonizes inequalities a {<, <=, >, >=, =} b by
 ;;canonizing a - b and picking the head term as the lhs of
