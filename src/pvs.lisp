@@ -374,28 +374,35 @@
 	  (delete-file-from-context clfname))
 	(reset-typecheck-caches)))))
 
-(defun check-import-circularities (theories file)
-  (let ((alltheories (all-importings theories)))
-    (check-import-circularities* alltheories file)))
+(defun check-import-circularities (theories)
+  (let ((*modules-visited* nil))
+    (check-import-circularities* theories nil)))
 
-(defun check-import-circularities* (theories file)
-  (or (null (cdr theories))
-      (let ((theory
-             (find-if #'(lambda (th)
-                          (not (member (id th) theories
-                                       :test #'import-circularity-test)))
-	       theories)))
-        (if theory
-            (check-import-circularities* (remove theory theories) file)
-            (let* ((imports (get-immediate-usings (car theories)))
-                   (imp (find-if #'(lambda (i)
-                                     (member i theories :test #'same-id))
-			  imports)))
-              (parse-error imp "Circular IMPORTs are not allowed."))))))
-
-(defun import-circularity-test (x y)
-  (member x (get-immediate-usings y)
-	  :test #'(lambda (u v) (eq x (id v)))))
+(defun check-import-circularities* (theories chain)
+  (unless (null theories)
+    (cond ((memq (car theories) chain)
+	   (let ((dchain (cons (car theories)
+			       (ldiff chain (cdr (memq (car theories)
+						       chain)))))
+		 (*current-context*
+		  (make-instance 'context
+		    'theory (car theories))))
+	     (type-error (car theories)
+	       "Circularity found in importings of theor~@P:~
+                ~%  ~{~a~^ -> ~}"
+	       (length dchain)
+	       (mapcar #'id (nreverse dchain)))))
+	  (t (unless (or (library-theory? (car theories))
+			 (memq (car theories) *modules-visited*))
+	       (push (car theories) *modules-visited*)
+	       (let* ((imp-names (get-immediate-using-ids (car theories)))
+		      (imp-theories (mapcan #'(lambda (id)
+						(let ((th (get-theory id)))
+						  (when th (list th))))
+				      imp-names)))
+		 (check-import-circularities* imp-theories
+					      (cons (car theories) chain))))
+	     (check-import-circularities* (cdr theories) chain)))))
 
 
 ;;; All-importings (list) walks down the immediate-usings of the list of
@@ -594,15 +601,21 @@
 		  "Must exit the prover before running typecheck-prove")
 	      (if importchain?
 		  (prove-unproved-tccs
-		   (delete-duplicates (mapcan #'collect-theory-usings theories)
+		   (delete-duplicates (mapcan #'(lambda (th)
+						  (let* ((*current-theory* th)
+							 (*current-context* (saved-context th)))
+						    (collect-theory-usings th)))
+					theories)
 				      :test #'eq)
 		   t)
 		  (prove-unproved-tccs theories))))
 	theories))))
 
 (defun typecheck-theories (filename theories)
-  (let ((all-proofs (read-pvs-file-proofs filename)))
-    (dolist (theory (sort-theories theories))
+  (let ((all-proofs (read-pvs-file-proofs filename))
+	(sorted-theories (sort-theories theories)))
+    (check-import-circularities sorted-theories)
+    (dolist (theory sorted-theories)
       (let ((start-time (get-internal-real-time))
 	    (*current-context* (make-new-context theory))
 	    (*current-theory* theory)
@@ -2183,7 +2196,8 @@
     (setq *to-emacs* nil)
     (unwind-protect
 	(let* ((*in-checker* t)
-	       (proof (prove-decl fdecl :strategy (when strategy '(rerun)))))
+	       (proof (prove-decl fdecl :strategy (when strategy
+						    '(then (rerun) (quit))))))
 	  (setq *prove-formula-proof*
 		(editable-justification
 		 (extract-justification-sexp (justification proof)))))

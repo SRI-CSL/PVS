@@ -2,9 +2,9 @@
 #+allegro
 (preload-forms)
 #+allegro
-(preload-constructors)
+(clos::preload-constructors (:user :lisp :pvs))
 #+allegro
-(precache-generic-functions)
+(precache-generic-functions (:user :lisp :pvs))
 
 #+lucid
 (compile-all-dispatch-code)
