@@ -151,7 +151,7 @@
   (let ((theories *prelude-theories*))
     (pvs-buffer "PVS Status"
       (with-output-to-string (*standard-output*)
-	(proof-summaries theories nil "prelude"))
+	(proof-summaries theories "prelude"))
       t)))
 
 (defun prelude-proofchain ()
