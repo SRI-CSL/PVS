@@ -28,6 +28,9 @@
   "Invokes the ground evaluator in the context of the given PVS theory"
   (interactive (complete-theory-name "Use context of theory: "))
   (confirm-not-in-checker)
+  (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" theory)
+			     nil 'tc nil)
+    (error "%s is not typechecked" theory))
   (pvs-evaluator-busy)
   (save-some-pvs-buffers)
   (pvs-bury-output)

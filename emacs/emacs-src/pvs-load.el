@@ -262,6 +262,7 @@ get to the same state."
   ;; sets *pvs-current-directory* and pops up the welcome buffer
   (init-change-context *pvs-current-directory*)
   (setq pvs-in-checker nil)
+  (setq pvs-in-evaluator nil)
   (unless noninteractive
     (pvs-welcome))
   (when (boundp 'save-options-file)
