@@ -448,12 +448,13 @@
 		   (when thres
 		     ;; So far, nothing needed here for theory resolutions
 		     )))
+      ;; with-no-type-errors not needed here;
+      ;; the expr typechecks iff the subtype does.
       (set-expr (typecheck* (expr act) nil nil nil)
 		(let ((texpr (typecheck* (setsubtype-from-set-expr (expr act))
 					 nil nil nil)))
 		  (when texpr
-		    (setf (type-value act) texpr)
-		    (push 'type (types (expr act))))))
+		    (setf (type-value act) texpr))))
       (application (with-no-type-errors
 		    (typecheck* (expr act) nil nil nil))
 		   (cond ((and (zerop (parens (expr act)))
@@ -480,6 +481,8 @@
 		   (unless (or (ptypes (expr act))
 			       (type-value act))
 		     (type-error (expr act) "Actual does not resolve")))
+      ;; with-no-type-errors not needed here;
+      ;; the expr typechecks iff the expr-as-type does.
       (expr (typecheck* (expr act) nil nil nil)
 	    (when (and (plusp (parens (expr act)))
 		       (some #'(lambda (ty)
@@ -491,6 +494,7 @@
 		    (typecheck* (make-instance 'expr-as-type
 				  'expr (expr act))
 				nil nil nil))))
+      ;; Must be a type-expr
       (t (unless (type-value act)
 	   (setf (type-value act)
 		 (typecheck* (expr act) nil nil nil))))))
