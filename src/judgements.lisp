@@ -1141,7 +1141,7 @@
 	    (push ety (cdr entry)))))))
 
 (defun get-known-subtypes (aty)
-  (assoc aty (known-subtypes *current-context*) :test #'tc-eq-for-subtypes))
+  (assoc aty (known-subtypes *current-context*) :test #'tc-eq))
 
 (defun set-known-subtypes (type subtypes)
   (break "set-known-subtypes")

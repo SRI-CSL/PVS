@@ -297,7 +297,7 @@ will be shown.  If T, messages go to *standard-output*.  Otherwise
   (when *box-messages*
     (format *box-messages* "~&[~?]~%" format-string args))) 
 
-(defvar *box-warn* t
+(defvar *box-warn* nil
   "Stream of warnings from the box tool.  NIL means not to show
 warning.  T means the current value of *error-output*.")
 
@@ -643,7 +643,10 @@ but box ~S wants to take files ~S."
 
 (defun switch-arg-format (arglist)
   "Switches argument specs of the form (:key value ...) to :key '(value ...)"
-  (mapcan #'(lambda (argpair) `(,(car argpair) ',(cdr argpair)))
+  (mapcan #'(lambda (argpair)
+	      (if (eq (car argpair) :path)
+		  `(,(car argpair) ',(list (eval (cadr argpair))))
+		  `(,(car argpair) ',(cdr argpair))))
 	  arglist))
        
 (defun update-box (box &key (needs nil) (path nil) (generates nil)

@@ -1,0 +1,36 @@
+This is the root of the PVS 2.3 system.  It is under CVS control; the main
+repository is in /project/pvs2/cvsroot/pvs2.3 (on the machine fluid).
+To access this repository you must have the environment variable
+CVSROOT set to /project/pvs2/cvsroot.  It may also help to have CVSREAD
+set to true; this makes CVS behave more like RCS when in Emacs.
+Note: all directories have CVS subdirectories that should not be directly
+modified.
+
+The following files and directories make up pvs2.3:
+ Files:
+  README           - this file
+  pvs              - the shell script for invoking pvs
+  
+  pvs.system	   - used with src/defsystem.lisp to define the pvs system
+		     this shows what files are actually needed to load up
+		     a new system.  You can start up lisp and run
+		     (load "pvs.system") (operate-on-system 'pvs :lf)
+		     to do some debugging if make-pvs doesn't work.
+  make-pvs	   - a shell script for making the pvs lisp image
+  
+  patch2.lisp      - released patches (may not exist)
+  patch2-test.lisp - test patches (may not exist)
+  patch2-exp.lisp  - experimental patches (may not exist)
+  
+  pvs-tex.sub      - the default substitution file for generating LaTeX
+  pvs.sty	   - the style file supporting LaTeX output
+
+ Directories:
+  src   - the main lisp directory
+  emacs - the directory for Emacs source files.
+  wish  - the directory for Tcl/Tk files
+  BDD   - the bdd package; part lisp and part C
+  bin   - the directory for most of the shell scripts and executables
+  ess   - the directory for the Ergo parser generator system
+
+  

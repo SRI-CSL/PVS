@@ -1,0 +1,90 @@
+
+              Hello Obtainer of a copy of the BDD distribution!
+              -------------------------------------------------
+
+You are now reading the README file, and about to build your own version of
+the BDD package example program.
+
+The example BDD program tests whether Propositional formulas are
+tautologies, or with the -s option whether they are satisfiable, i.e. can be
+made true. This is a simple application of the use of BDDs to represent logic
+functions and manipulate them. (See also the manual page bdd.1).
+Most of the available functionality in the libbdd.a library can be accessed
+through this simple user-interface and might help in better understanding the
+semantics of the operations. Looking at the source files of main.c and the
+parser (yacc.y) gives you some idea what is involved in using the library
+routines in your own application.
+
+The file COPYRIGHT that comes with each distribution states the copyright of
+this software and the conditions of its use. Please read it.
+
+Here is a list of machines on which the program was successfully installed:
+  Apollo DN3000,
+  Hewlett-Packard HP 9000 / Series 800
+  Hewlett-Packard HP 9000 / Series 400 (425)
+  Hewlett-Packard HP 9000 / Series 700 (710) (720)
+  Alliant FX/8
+  IBM RS/6000 running AIX
+  Sun Sparc Station
+
+This distribution contains all the sources, Makefiles, and test examples,
+ordered in the following directories:
+
+  doc      - contains the manual page, program documentation, references
+[ o_src    - contains older BDD C source files without dyna var ordering ]
+  src      - contains the BDD C source files
+[ draw     - contains the C source files for drawing BDD's (optional)]
+  ex       - contains *.pl example files
+  utils    - files with utility routines for hash table, list, bitvector, etc.
+
+---- A ----
+
+This is how you get a executable copy of the "bdd" program:
+
+In the "bdd" directory where you also found this README file, type:
+  make
+
+This will do:
+
+1) go to the `utils' directory and execute:
+  make utils
+
+Afterwards you should get a libutils.a object archive. If so, you may safely
+remove all the *.o files (make clean).
+If something goes wrong, check the following:
+Are the compiler flags compatible with your C compiler?
+Is this BSD Unix you are using?
+The utils directory in the directory `bdd' might be a symbolic link. Make sure
+that you have also obtained a copy of utils.tar.Z.
+
+2) go to the `src' directory and execute:
+  make
+
+After a while you get a `bdd' executable. Put it in your bin directory.
+Type "make what" to see how to make various libraries if you are not interested
+in the application program. Usually you want the "libbdd.a" library to
+link with your own application program.
+
+---- B (optional) ----
+
+This is how you get a executable copy of the "bdd2X" program:
+
+1) go to the `utils' directory and type:
+  make utils
+
+2) go to the `draw' directory and type:
+  make
+
+After a while you get a `bdd2X' executable. Put it in your bin directory.
+
+Enjoy the program. If you like to make changes/modifications, be my guest.
+I am interested to learn about new applications and major additions to the
+program. Also, if you come across bugs, please let me know.
+
+                                Geert Janssen
+              Department of Electrical Engineering, room EH 9.26
+                      Technical University of Eindhoven
+                                 Den Dolech 2
+                                 P.O. Box 513
+                              5600 MB Eindhoven
+                         E-Mail: geert@ics.ele.tue.nl

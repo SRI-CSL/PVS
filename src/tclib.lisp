@@ -46,6 +46,7 @@
     (clrnumhash)
     (clear-ignored-type-constraints)
     (reset-all-operators)
+    (reset-equality-decl)
     (unwind-protect
 	(progn
 	  (set-working-directory (format nil "~a/lib/" *pvs-path*))

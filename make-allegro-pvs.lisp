@@ -1,5 +1,0 @@
-(eval-when (load eval)
-  (require 'tpl-debug)
-  (load "/project/pvs/pvs2.3/pvs.system"))
-(operate-on-system 'pvs :lf)
-(in-package "PVS")

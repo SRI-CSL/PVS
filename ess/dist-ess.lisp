@@ -7,10 +7,12 @@
 ;;;
 ;;; Last Modified Fri Oct 13 01:03:46 1989
 ;;;
-;;; Instructions:  see /project/pvs/pvs2.3/ess/README
+;;; Instructions:  see ess/README
 ;;;
 
 (in-package :user)
+
+(defvar *ess-path* "/homes/owre/pvs2.3/ess")
 
 #+(and allegro compiler)
 (setq comp:*cltl1-compile-file-toplevel-compatibility-p* t)
@@ -25,7 +27,7 @@
 ;;; (export '(build-ess use-production-compiler use-development-compiler))
 
 ;;; First load init-load, which includes box-defs.lisp
-(load "/project/pvs/pvs2.3/ess/init-load.lisp")
+(load (format nil "~a/init-load.lisp" *ess-path*))
 
 ;;; Why are these constants put into the tools package??
 

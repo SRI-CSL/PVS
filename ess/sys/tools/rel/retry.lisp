@@ -20,12 +20,12 @@
 ;;; to the ergolisp box.
 
 ;;; First a lucid 2.1 bug workaround.
-#+(or (and lucid (not lcl3.0)) :harlequin-common-lisp)
+#+(or (and lucid (not lcl3.0)) harlequin-common-lisp)
 (eval-when (load compile eval)
   (dolist (s '("*CATCHERS*" "RETRY" "RETRY-CATCH" "REINIT-RETRY-CATCH"))
     (export (list (intern s :lisp)) :lisp)))
 
-(export '(lisp::*catchers* lisp::retry
+(export '(lisp::*catchers* #-allegro lisp::retry
 			   lisp::retry-catch lisp::reinit-retry-catch)
 	:lisp)
 (export '(*catchers* retry retry-catch reinit-retry-catch))

@@ -1,0 +1,2913 @@
+% The PVS prelude.
+
+% The prelude consists of theories that are built in to the PVS system.
+% It is typechecked the same as any other PVS theory, but there are hooks
+% in the typechecker that require most of these theories to be available,
+% hence the order of the theories is important.  For example, no formulas
+% may be declared before the booleans are available, as the formula is
+% expected to have type bool.  Since definitions implicitly involve both
+% formulas and equality, the booleans theory may not include any
+% definitions.  Formulas are given below as AXIOMs, POSTULATEs, and LEMMAs.
+% POSTULATEs are formulas that can be proved using the decision procedures,
+% but would have to be given as axioms in a pure development of the theory.
+% AXIOMs are formulas that cannot be proved, and LEMMAS are formulas that
+% have been proved.
+
+% booleans declares the type boolean and its abbreviation bool, along
+% with the boolean constants true and false and the boolean connectives.
+% The properties of the connectives are given later, but the connectives
+% are built in to the typechecker so must be provided early on.
+% Note: the boolean type could be defined as the enumeration type {false,
+% true}, but booleans are primitive; the correct handling of enumeration
+% types requires the boolean type.
+
+booleans: THEORY
+ BEGIN
+
+  boolean: NONEMPTY_TYPE
+  bool: NONEMPTY_TYPE = boolean
+  FALSE, TRUE: bool
+  NOT: [bool -> bool]
+  AND, &, OR, IMPLIES, =>, WHEN, IFF, <=>: [bool, bool -> bool]
+
+ END booleans
+
+
+% equalities contains the declaration for =.  It has a single type
+% parameter.  Properties of equality are given in equality_props.
+
+equalities [T: TYPE]: THEORY
+ BEGIN
+
+  =: [T, T -> boolean]
+
+ END equalities
+
+
+notequal[T: TYPE]: THEORY
+ BEGIN
+  x, y: VAR T
+
+  /=(x, y): boolean = NOT (x = y)
+ END notequal
+
+
+% if_def provides the polymorphic declaration of the IF-THEN-ELSE
+% connective.  Note that the declaration for IF is for a 3-ary function,
+% and that the IF-THEN-ELSE form is simply an alternative.
+
+if_def [T: TYPE]: THEORY
+ BEGIN
+
+  IF:[boolean, T, T -> T]
+
+ END if_def
+
+
+% boolean_props provides lemmas about the boolean constants and
+% connectives.  The lemmas define them in terms of IF-THEN-ELSE, though
+% these lemmas should never be needed since the prover "knows" the
+% connectives as primitives.  WHEN is a special case - it is translated to
+% IMPLIES with the arguments reversed by the typechecker.
+
+boolean_props: THEORY
+ BEGIN
+  A, B: VAR bool
+
+  bool_exclusive: POSTULATE not (false = true)
+  bool_inclusive: POSTULATE A = false or A = true
+
+  not_def:       POSTULATE (not A) = IF A THEN false ELSE true ENDIF
+  and_def:       POSTULATE (A and B) = IF A THEN B ELSE false ENDIF
+  syand_def:     POSTULATE & = and
+  or_def:        POSTULATE (A or B) = IF A THEN true ELSE B ENDIF
+  implies_def:   POSTULATE (A implies B) = IF A THEN B ELSE true ENDIF
+  syimplies_def: POSTULATE => = implies
+  when_def:      POSTULATE (A when B) = (B implies A)
+  iff_def:       POSTULATE (A iff B) = ((A and B) or (not A and not B))
+  syiff_def:     POSTULATE <=> = iff
+
+  excluded_middle: LEMMA A OR NOT A  
+
+ END boolean_props
+
+
+% xor_def provides the definition for XOR.  Note that this is not built in
+% to the prover, so this definition will need to be expanded in order to use
+% it.
+
+xor_def: THEORY
+ BEGIN
+  A, B: VAR bool
+  XOR(A, B): bool = (A /= B)
+  
+  xor_def: LEMMA (A xor B) = IF A THEN NOT B ELSE B ENDIF
+ END xor_def
+
+
+% quantifier_props defines some useful properties of quantifiers.  Note
+% that these work well with the higher-order matching facility of the prover.
+
+quantifier_props [t: TYPE]: THEORY
+ BEGIN
+  x: VAR t
+  p, q: VAR [t -> bool]
+
+  not_exists: LEMMA (EXISTS x: p(x)) = NOT (FORALL x: NOT p(x))
+
+  exists_not: LEMMA (EXISTS x: NOT p(x)) = NOT (FORALL x: p(x))
+
+  exists_or: LEMMA
+    (EXISTS x: p(x) OR q(x)) = ((EXISTS x: p(x)) OR (EXISTS x: q(x)))
+
+  exists_implies: LEMMA
+    (EXISTS x: p(x) IMPLIES q(x)) = ((EXISTS x: NOT p(x)) OR (EXISTS x: q(x)))
+
+  exists_and: LEMMA
+    (EXISTS x: p(x) AND q(x)) IMPLIES ((EXISTS x: p(x)) AND (EXISTS x: q(x)))
+
+  not_forall: LEMMA (FORALL x: p(x)) = NOT (EXISTS x: NOT p(x))
+
+  forall_not: LEMMA (FORALL x: NOT p(x)) = NOT (EXISTS x: p(x))
+
+  forall_and: LEMMA
+    (FORALL x: p(x) AND q(x)) = ((FORALL x: p(x)) AND (FORALL x: q(x)))
+
+  forall_or: LEMMA
+    ((FORALL x: p(x)) OR (FORALL x: q(x))) IMPLIES (FORALL x: p(x) OR q(x))
+
+ END quantifier_props  
+
+
+% defined_types provides the declarations for types pred and setof
+
+defined_types [t: TYPE]: THEORY
+ BEGIN
+  pred: TYPE = [t -> bool]
+  PRED: TYPE = [t -> bool]
+  predicate: TYPE = [t -> bool]
+  PREDICATE: TYPE = [t -> bool]
+  setof: TYPE = [t -> bool]
+  SETOF: TYPE = [t -> bool]
+ END defined_types
+
+
+% exists1 provides a unique existence function; it takes a predicate
+% and asserts that there is one and only one element of the type that
+% satisfies the predicate.  The expression "exists1! (x:t): p(x)" is
+% translated to "exists1(LAMBDA (x:t): p(x))".
+
+exists1 [T: TYPE]: THEORY
+ BEGIN
+  x, y: VAR T
+  p, q: VAR pred[T]
+
+  unique?(p): bool = FORALL x, y: p(x) AND p(y) IMPLIES x = y
+
+  exists1(p): bool = (EXISTS x: p(x)) AND unique?(p)
+
+  unique_lem: LEMMA
+    (FORALL x: p(x) IMPLIES q(x)) IMPLIES (unique?(q) IMPLIES unique?(p))
+
+  exists1_lem: LEMMA (exists1! x: p(x)) IMPLIES (EXISTS x: p(x))
+
+ END exists1
+
+
+% equality_props provides the declaration for /= and some properties of
+% =.
+
+equality_props[T: TYPE]: THEORY
+ BEGIN
+
+  x, y, z: VAR T
+  b: VAR bool
+  
+  IF_true: POSTULATE IF true THEN x ELSE y ENDIF = x
+
+  IF_false: POSTULATE IF false THEN x ELSE y ENDIF = y
+
+  IF_same: LEMMA IF b THEN x ELSE x ENDIF = x
+
+  reflexivity_of_equals: POSTULATE x = x
+
+  transitivity_of_equals: POSTULATE x = y AND y = z IMPLIES x = z
+
+  symmetry_of_equals: POSTULATE x = y IMPLIES y = x
+
+ END equality_props
+
+
+% if_props
+
+if_props [s, t: TYPE]: THEORY
+ BEGIN
+  a, b, c: VAR bool
+  x, y: VAR s
+  f: VAR [s -> t]
+  
+  lift_if1: LEMMA
+    f(IF a THEN x ELSE y ENDIF) = IF a THEN f(x) ELSE f(y) ENDIF
+
+  lift_if2: LEMMA
+    IF (IF a THEN b ELSE c ENDIF) THEN x ELSE y ENDIF
+     = IF a THEN (IF b THEN x ELSE y ENDIF)
+            ELSE (IF c THEN x ELSE y ENDIF) ENDIF
+
+ END if_props
+
+
+% functions provides the basic properties of functions.  Because of the
+% type equivalence of [[t1,...,tn] -> t] and [t1,...,tn -> t], this
+% theory handles any function arity.  However, this doesn't handle
+% dependent function types, since the domain and range can't be separated.
+
+functions [D, R: TYPE]: THEORY
+ BEGIN
+  f, g: VAR [D -> R]
+  x, x1, x2: VAR D
+  y: VAR R
+  Drel: VAR PRED[[D, D]]
+  Rrel: VAR PRED[[R, R]]
+
+  extensionality: POSTULATE
+     (FORALL (x: D): f(x) = g(x)) IFF f = g
+
+%  function_prop: LEMMA f = g IMPLIES (FORALL x: f(x) = g(x))
+
+  congruence: POSTULATE f = g AND x1 = x2 IMPLIES f(x1) = g(x2)
+
+  eta: LEMMA (LAMBDA (x: D): f(x)) = f
+
+  fun_exists: LEMMA (EXISTS y: TRUE) OR (NOT EXISTS x: TRUE)
+                          IMPLIES (EXISTS f: TRUE)
+
+  injective?(f): bool = (FORALL x1, x2: (f(x1) = f(x2) => (x1 = x2)))
+
+  surjective?(f): bool = (FORALL y: (EXISTS x: f(x) = y))
+
+  bijective?(f): bool = injective?(f) & surjective?(f)
+
+  domain(f): TYPE = D
+
+  range(f): TYPE = R
+
+  graph(f)(x, y): bool = (f(x) = y)
+
+  preserves(f, Drel, Rrel): bool =
+      FORALL x1, x2: Drel(x1, x2) IMPLIES Rrel(f(x1), f(x2))
+
+  inverts(f, Drel, Rrel): bool =
+      FORALL x1, x2: Drel(x1, x2) IMPLIES Rrel(f(x2), f(x1))
+
+ END functions
+
+
+% restrict is the restriction operator on functions, allowing a
+% function defined on a supertype to be applied to a subtype.  Note
+% that it is a conversion, so will be inserted automatically when needed.
+
+restrict [T: TYPE, S: TYPE FROM T, R: TYPE]: THEORY
+ BEGIN
+
+  f: VAR [T -> R]
+  s: VAR S
+
+  restrict(f)(s): R = f(s)
+  CONVERSION restrict
+
+  injective_restrict: LEMMA
+    injective?(f) IMPLIES injective?(restrict(f))
+
+ END restrict
+
+
+% extend is the inverse of restrict.  The difference is that a default
+% value must be provided, which keeps it from being a conversion, in
+% general (but see extend_bool).
+
+extend [T: TYPE, S: TYPE FROM T, R: TYPE, d: R]: THEORY
+ BEGIN
+
+  f: VAR [S -> R]
+  t: VAR T
+
+  extend(f)(t): R = IF S_pred(t) THEN f(t) ELSE d ENDIF
+
+  restrict_extend: LEMMA restrict[T,S,R](extend(f)) = f
+
+ END extend
+
+
+% extend_bool provides a conversion for boolean valued extensions,
+% providing the default value of false.  Thus a set of nats "is" a set
+% of ints.
+
+extend_bool [T: TYPE, S: TYPE FROM T]: THEORY
+ BEGIN
+
+  CONVERSION extend[T, S, bool, false]
+
+ END extend_bool
+
+
+% identity simply defines the identity function.  The identity is used for
+% conversion expressions.  For example, "foo: T" is translated to
+% "(LAMBDA (x:T): x)(foo)"
+
+identity [T: TYPE]: THEORY
+ BEGIN
+  x: VAR T
+  I: (bijective?[T, T]) = (LAMBDA x: x)
+  id: (bijective?[T, T]) = (LAMBDA x: x)
+  identity: (bijective?[T, T]) = (LAMBDA x: x)
+ END identity
+
+
+% relations defines properties that are useful in specifying binary
+% relations.
+
+relations [T: TYPE]: THEORY
+ BEGIN
+
+  R: VAR PRED[[T, T]]
+  x, y, z: VAR T
+
+  eq: pred[[T, T]] = (LAMBDA x, y: x = y)
+
+  reflexive?(R): bool = FORALL x: R(x, x)
+
+  irreflexive?(R): bool = FORALL x: NOT R(x, x)
+
+  symmetric?(R): bool = FORALL x, y: R(x, y) IMPLIES R(y, x)
+
+  antisymmetric?(R): bool = FORALL x, y: R(x, y) & R(y, x) => x = y
+
+  connected?(R): bool = FORALL x, y: x /= y IMPLIES R(x, y) OR R(y, x)
+
+  transitive?(R): bool = FORALL x, y, z: R(x, y) & R(y, z) => R(x, z)
+
+  equivalence?(R): bool = reflexive?(R) AND symmetric?(R) AND transitive?(R)
+
+ END relations
+
+
+% orders defines the usual ordering relations.  Be careful not to read too
+% much into these definitions; < and <= are variables ranging over binary
+% relations, not actual orders.  Their use below is suggestive of the
+% defining properties.
+
+orders [T: TYPE]: THEORY
+ BEGIN
+  x, y: VAR T
+  <=, < : VAR pred[[T, T]]
+  p: VAR pred[T]
+
+  preorder?(<=): bool = reflexive?(<=) & transitive?(<=)
+
+  partial_order?(<=): bool = preorder?(<=) & antisymmetric?(<=)
+
+  strict_order?(<): bool = irreflexive?(<) & transitive?(<)
+
+  dichotomous?(<=): bool = (FORALL x, y: (x <= y OR y <= x))
+
+  total_order?(<=): bool = partial_order?(<=) & dichotomous?(<=)
+
+  linear_order?(<=): bool = total_order?(<=)
+
+  trichotomous?(<): bool = (FORALL x, y: x < y OR y < x OR x = y)
+
+  strict_total_order?(<): bool = strict_order?(<) & trichotomous?(<)
+
+  well_founded?(<): bool =
+     (FORALL p:
+        (EXISTS y: p(y))
+	   IMPLIES (EXISTS (y:(p)): (FORALL (x:(p)): (NOT x < y))))
+
+  well_ordered?(<): bool =
+     strict_total_order?(<) & well_founded?(<)
+
+  pe: VAR {p: pred[T] | EXISTS (x: T): p(x)}
+
+  upper_bound?(<)(x, pe): bool = FORALL (y: (pe)): y < x
+
+  lower_bound?(<)(x, pe): bool = FORALL (y: (pe)): x < y
+
+  least_upper_bound?(<)(x, pe): bool =
+    upper_bound?(<)(x, pe) AND
+      FORALL y: upper_bound?(<)(y, pe) IMPLIES (x < y OR x = y)
+
+  greatest_lower_bound?(<)(x, pe): bool =
+    lower_bound?(<)(x, pe) AND
+      FORALL y: lower_bound?(<)(y, pe) IMPLIES (y < x OR x = y)
+
+ END orders
+
+
+% wf_induction defines induction for any type that has a well-founded
+% relation.
+
+wf_induction [T: TYPE, <: (well_founded?[T])]: THEORY
+ BEGIN
+
+  wf_induction: LEMMA
+    (FORALL (p: pred[T]):
+      (FORALL (x: T):
+        (FORALL (y: T): y<x IMPLIES p(y))
+           IMPLIES p(x))
+    IMPLIES
+      (FORALL (x:T): p(x)))
+
+ END wf_induction
+
+
+% measure_induction builds on well-founded induction.  It allows
+% induction over a type T for which a measure function m is defined.
+
+measure_induction [T: TYPE, M: TYPE, m: [T -> M], <: (well_founded?[M])]: THEORY
+ BEGIN
+
+ measure_induction: LEMMA
+  (FORALL (p: pred[T]):
+     (FORALL (x: T): 
+         (FORALL (y: T): m(y) < m(x) IMPLIES  p(y))
+             IMPLIES p(x))
+    IMPLIES (FORALL (x: T): p(x)))
+
+ END measure_induction
+
+
+% epsilons provides a "choice" function that does not have a nonemptiness
+% requirement.  Given a predicate over the type t, epsilon produces an
+% element of satisfying that predicate if one exists, and otherwise
+% produces an arbitrary element of that type.
+% "epsilon! (x:t): p(x)" is translated to "epsilon(LAMBDA (x:t): p(x))".
+% Note that the type parameter is given as nonempty, whihc means that
+% there is an nonempty ASSUMPTION automatically generated for this theory.
+
+epsilons [T: NONEMPTY_TYPE]: THEORY
+ BEGIN
+  p: VAR pred[T]
+  x: VAR T
+
+  epsilon(p): T
+
+  epsilon_ax: AXIOM (EXISTS x: p(x)) => p(epsilon(p))
+
+ END epsilons
+
+
+% sets provides the polymorphic set type, along with the usual set
+% operations.  It is important to bear in mind that a set is just
+% a predicate.
+
+sets [T: TYPE]: THEORY
+ BEGIN
+
+  set: TYPE = setof[T]
+
+  x, y: VAR T
+
+  a, b, c: VAR set
+
+  p: VAR PRED[T]
+
+  member(x, a): bool = a(x)
+
+  empty?(a): bool = (FORALL x: NOT member(x, a))
+
+  emptyset: set = {x | false}
+
+  nonempty?(a): bool = NOT empty?(a)
+
+  full?(a): bool = (FORALL x: member(x, a))
+
+  fullset: set = {x | true}
+
+  subset?(a, b): bool = (FORALL x: member(x, a) => member(x, b))
+
+  strict_subset?(a, b): bool = subset?(a, b) & a /= b
+
+  union(a, b): set = {x | member(x, a) OR member(x, b)}
+
+  intersection(a, b): set = {x | member(x, a) AND member(x, b)}
+
+  disjoint?(a, b): bool = empty?(intersection(a, b))
+
+  complement(a): set = {x | NOT member(x, a)} 
+
+  difference(a, b): set = {x | member(x, a) AND NOT member(x, b)}
+
+  symmetric_difference(a, b): set =
+    union(difference(a, b), difference(b, a))
+
+  every(p)(a): bool = FORALL (x:(a)): p(x)
+
+  every(p, a): bool = FORALL (x:(a)): p(x)
+
+  some(p)(a): bool = EXISTS (x:(a)): p(x)
+
+  some(p, a): bool = EXISTS (x:(a)): p(x)
+
+  singleton?(a): bool = (EXISTS (x:(a)): (FORALL (y:(a)): x = y))
+
+  singleton(x): set = {y | y = x}
+
+  add(x, a): set = {y | x = y OR member(y, a)}
+
+  remove(x, a): set = {y | x /= y AND member(y, a)}
+
+  % A choice function for nonempty sets
+  choose(p: (nonempty?)): (p) = epsilon(p)
+
+  the(p: (singleton?)): (p) = epsilon(p)
+
+  rest(a): set = IF empty?(a) THEN a ELSE remove(choose(a), a) ENDIF
+
+ END sets
+
+
+% Lemmas about sets
+
+sets_lemmas [T: TYPE]: THEORY
+ BEGIN
+
+  a, b, c: VAR set[T]
+  x: VAR T
+
+  extensionality: LEMMA
+      (FORALL x: member(x, a) IFF member(x, b)) IMPLIES (a = b)
+
+  emptyset_is_empty?: LEMMA  empty?(a) IFF a = emptyset
+
+  empty_no_members: LEMMA NOT member(x, emptyset)
+
+  nonempty_member: LEMMA nonempty?(a) IFF EXISTS x: member(x, a)
+
+  fullset_member: LEMMA member(x, fullset)
+  
+  nonempty_exists: LEMMA nonempty?(a) IFF EXISTS (x: (a)): TRUE
+
+  subset_reflexive: LEMMA subset?(a, a)
+
+  subset_antisymmetric: LEMMA subset?(a, b) AND subset?(b, a) IMPLIES a = b
+
+  subset_transitive: LEMMA
+    subset?(a, b) AND subset?(b, c) IMPLIES subset?(a, c)
+
+  subset_partial_order: LEMMA partial_order?(subset?[T])
+
+  subset_emptyset: LEMMA subset?(emptyset, a)
+
+  subset_fullset: LEMMA subset?(a, fullset)
+
+  union_idempotent: LEMMA union(a, a) = a
+
+  union_commutative: LEMMA union(a, b) = union(b, a)
+
+  union_associative: LEMMA union(union(a, b), c) = union(a, union(b, c))
+
+  union_empty: LEMMA union(a, emptyset) = a
+
+  union_full: LEMMA union(a, fullset) = fullset
+
+  union_subset1: LEMMA subset?(a, union(a, b))
+
+  union_subset2: LEMMA subset?(a, b) IMPLIES union(a, b) = b
+
+  intersection_idempotent: LEMMA intersection(a, a) = a
+
+  intersection_commutative: LEMMA intersection(a, b) = intersection(b, a)
+
+  intersection_associative: LEMMA
+    intersection(intersection(a, b), c) = intersection(a, intersection(b, c))
+
+  intersection_empty: LEMMA intersection(a, emptyset) = emptyset
+
+  intersection_full: LEMMA intersection(a, fullset) = a
+
+  intersection_subset1: LEMMA subset?(intersection(a, b), a)
+
+  intersection_subset2: LEMMA subset?(a, b) IMPLIES intersection(a, b) = a
+
+  distribute_intersection_union: LEMMA
+    intersection(a, union(b, c))
+        = union(intersection(a, b), intersection(a, c))
+
+  distribute_union_intersection: LEMMA
+    union(a, intersection(b, c)) = intersection(union(a, b), union(a, c))
+
+  complement_emptyset: LEMMA complement(emptyset[T]) = fullset
+
+  complement_fullset: LEMMA complement(fullset[T]) = emptyset
+
+  complement_complement: LEMMA complement(complement(a)) = a
+
+  subset_complement: LEMMA
+    subset?(complement(a), complement(b)) IFF subset?(b, a)
+
+  demorgan1: LEMMA
+    complement(union(a, b)) = intersection(complement(a), complement(b))
+
+  demorgan2: LEMMA
+    complement(intersection(a, b)) = union(complement(a), complement(b))
+
+  difference_emptyset1: LEMMA difference(a, emptyset) = a
+
+  difference_emptyset2: LEMMA difference(emptyset, a) = emptyset
+
+  difference_fullset1: LEMMA difference(a, fullset) = emptyset
+
+  difference_fullset2: LEMMA difference(fullset, a) = complement(a)
+
+  difference_intersection: LEMMA
+    difference(a, b) = intersection(a, complement(b))
+
+  difference_difference1: LEMMA
+    difference(difference(a, b), c) = difference(a, union(b, c))
+
+  difference_difference2: LEMMA
+    difference(a, difference(b, c))
+      = union(difference(a, b), intersection(a, c))
+
+  member_add: LEMMA member(x, a) IMPLIES add(x, a) = a
+
+  member_remove: LEMMA NOT member(x, a) IMPLIES remove(x, a) = a
+
+  subset_add: LEMMA subset?(a, add(x, a))
+
+  subset_remove: LEMMA subset?(remove(x, a), a)
+
+  choose_rest: LEMMA NOT empty?(a) IMPLIES add(choose(a), rest(a)) = a
+
+  choose_member: LEMMA NOT empty?(a) IMPLIES member(choose(a), a)
+  
+  choose_not_member: LEMMA
+      NOT empty?(a) IMPLIES NOT member(choose(a), rest(a))
+  
+  rest_not_equal: LEMMA NOT empty?(a) IMPLIES rest(a) /= a
+
+  rest_member: LEMMA member(x,rest(a)) IMPLIES member(x,a)
+
+  choose_add: LEMMA choose(add(x, a)) = x OR member(choose(add(x, a)), a)
+
+  choose_rest_or: LEMMA
+    member(x,a) IMPLIES member(x,rest(a)) OR x = choose(a)
+
+  choose_singleton: LEMMA choose(singleton(x)) = x
+
+  rest_singleton: LEMMA rest(singleton(x)) = emptyset[T]
+
+  rest_empty_lem: LEMMA NOT empty?(a) AND empty?(rest(a))
+                          IMPLIES a = singleton(choose(a))
+
+END sets_lemmas
+
+
+% function_inverse.  In practice this definition will only be useful
+% for injective functions.  This is not defined in functions because the
+% epsilon! operator forces the domain type to be nonempty.  Note
+% that this theory may not be instantiated through dependent function
+% types.
+
+function_inverse[D: NONEMPTY_TYPE, R: TYPE]: THEORY
+ BEGIN
+  x: VAR D
+  y: VAR R
+  f: VAR [D -> R]
+  g: VAR [R -> D]
+
+  inverse(f)(y): D = (epsilon! x: f(x) = y)
+
+  unique_bijective_inverse: JUDGEMENT
+    inverse(f:(bijective?[D,R]))(y) HAS_TYPE {x:D | f(x) = y}
+
+  bijective_inverse_is_bijective: JUDGEMENT
+    inverse(f:(bijective?[D,R])) HAS_TYPE (bijective?[R,D])
+
+  inverse_lemma1: LEMMA inverse(f)(f(x)) = x
+
+  inverse_lemma2: LEMMA f(inverse(f)(y)) = y
+
+  surjective_inverse: LEMMA
+    (FORALL (f:(surjective?[D, R])):
+       inverse(f)(y) = x IMPLIES y = f(x))
+
+  injective_inverse: LEMMA
+    (FORALL (f:(injective?[D, R])):
+       y = f(x) IMPLIES inverse(f)(y) = x)
+
+  bijective_inverse: LEMMA
+    (FORALL (f:(bijective?[D, R])):
+       inverse(f)(y) = x IFF y = f(x))
+
+  bij_inv_is_bij: LEMMA
+    bijective?(f) IMPLIES bijective?(inverse(f))
+
+  left_inverse?(g, f): bool = (FORALL x: g(f(x)) = x)
+
+  right_inverse?(g, f): bool = (FORALL y: f(g(y)) = y)
+
+  surj_right: LEMMA surjective?(f) IFF right_inverse?(inverse(f), f)
+
+  inj_left: LEMMA injective?(f) IFF left_inverse?(inverse(f), f)
+
+  inj_inv: LEMMA surjective?(f) IMPLIES injective?(inverse(f))
+
+  surj_inv: LEMMA injective?(f) IMPLIES surjective?(inverse(f))
+
+%  comp_inverse_right : LEMMA
+%	bijective?(f) IMPLIES  f(inverse(f)(y)) = y
+
+  comp_inverse_left  : LEMMA
+	bijective?(f) IMPLIES  inverse(f)(f(x)) = x
+
+%  comp_inverse_right_inj : LEMMA
+%	injective?(f) IMPLIES  f(inverse(f)(y)) = y
+
+  comp_inverse_left_surj : LEMMA
+	surjective?(f) IMPLIES  inverse(f)(f(x)) = x
+
+ END function_inverse
+
+
+% function_image provides the image and inverse_image functions.
+% inverse_image is not the same as inverse; it is defined for all
+% functions, not just injections, and returns a set.
+
+function_image [D, R: TYPE]: THEORY
+ BEGIN
+  f: VAR [D -> R]
+  X, X1, X2: VAR set[D]
+  Y, Y1, Y2: VAR set[R]
+
+  image(f, X): set[R] = {y: R | (EXISTS (x:(X)): y = f(x))}
+
+  inverse_image(f, Y): set[D] = {x: D | member(f(x), Y)}
+
+  image_inverse_image: LEMMA
+    subset?(image(f, inverse_image(f, Y)), Y)
+
+  inverse_image_image: LEMMA
+    subset?(X, inverse_image(f, image(f, X)))
+
+  image_subset: LEMMA
+    subset?(X1, X2) IMPLIES subset?(image(f, X1), image(f, X2))
+
+  inverse_image_subset: LEMMA
+    subset?(Y1, Y2) IMPLIES subset?(inverse_image(f, Y1), inverse_image(f, Y2))
+
+  image_union: LEMMA
+    image(f, union(X1, X2)) = union(image(f, X1), image(f, X2))
+
+  image_intersection: LEMMA
+    subset?(image(f, intersection(X1, X2)),
+            intersection(image(f, X1), image(f, X2)))
+
+  inverse_image_union: LEMMA
+    inverse_image(f, union(Y1, Y2))
+      = union(inverse_image(f, Y1), inverse_image(f, Y2))
+
+  inverse_image_intersection: LEMMA
+    inverse_image(f, intersection(Y1, Y2))
+      = intersection(inverse_image(f, Y1), inverse_image(f, Y2))
+
+  inverse_image_complement: LEMMA
+    inverse_image(f, complement(Y)) = complement(inverse_image(f, Y))
+
+ END function_image
+
+
+% functions_props defines function composition.  It can't be defined in
+% functions because it involves three type parameters.
+
+function_props [T1, T2, T3: TYPE]: THEORY
+ BEGIN
+  x: VAR T1
+  f1: VAR [T1 -> T2]
+  f2: VAR [T2 -> T3]
+  X: VAR set[T1]
+  T1rel: VAR PRED[[T1, T1]]
+  T2rel: VAR PRED[[T2, T2]]
+  T3rel: VAR PRED[[T3, T3]]
+
+  o(f2, f1)(x): T3 = f2(f1(x))
+
+  image_composition: LEMMA
+    image(f2, image(f1, X)) = image(f2 o f1, X)
+
+  preserves_composition: LEMMA
+    preserves(f1, T1rel, T2rel) AND preserves(f2, T2rel, T3rel)
+      IMPLIES preserves(f2 o f1, T1rel, T3rel)
+
+  inverts_composition1: LEMMA
+    preserves(f1, T1rel, T2rel) AND inverts(f2, T2rel, T3rel)
+      IMPLIES inverts(f2 o f1, T1rel, T3rel)
+
+  inverts_composition2: LEMMA
+    inverts(f1, T1rel, T2rel) AND preserves(f2, T2rel, T3rel)
+      IMPLIES inverts(f2 o f1, T1rel, T3rel)
+
+ END function_props
+
+
+% function_props2 defines the associativity of function composition.  It
+% can't be defined in function_props because it involves four type
+% parameters.
+
+function_props2 [T1, T2, T3, T4: TYPE]: THEORY
+ BEGIN
+  f1: VAR [T1 -> T2]
+  f2: VAR [T2 -> T3]
+  f3: VAR [T3 -> T4]
+
+  assoc: LEMMA (f3 o f2) o f1 = f3 o (f2 o f1)
+ END function_props2
+
+
+% relation_defs defines operators on relations between possibly different
+% types.  Note that some of the names are overloaded with those given in
+% functions - in practice this should not cause any problems.
+
+relation_defs [T1, T2: TYPE]: THEORY
+ BEGIN
+  R: VAR pred[[T1, T2]]
+  X: VAR set[T1]
+
+  image(R, X): set[T2] = {y: T2 | (EXISTS (x: (X)): R(x, y))}
+
+  converse(R): pred[[T2, T1]] = (LAMBDA (y: T2), (x: T1): R(x, y))
+
+  isomorphism?(R): bool =
+    (EXISTS (f: (bijective?[T1, T2])): R = graph(f))
+
+  domain(R): TYPE = T1
+
+  range(R): TYPE = T2
+
+ END relation_defs
+
+
+% relational_composition
+
+relational_composition [T1, T2, T3: TYPE]: THEORY
+ BEGIN
+  R1: VAR pred[[T1, T2]]
+  R2: VAR pred[[T2, T3]]
+
+  o(R1, R2): pred[[T1, T3]] =
+    (LAMBDA (x: T1), (z: T3): (EXISTS (y: T2): R1(x, y) AND R2(y, z)))
+
+ END relational_composition
+
+
+% operator_defs
+
+operator_defs[T: TYPE]: THEORY
+ BEGIN
+  o, *: VAR [T, T -> T]
+  -: VAR [T -> T]
+  x, y, z: VAR T
+
+  commutative?(o):     bool = (FORALL x, y: x o y = y o x)
+
+  associative?(o):     bool = (FORALL x, y, z: (x o y) o z = x o (y o z))
+
+  left_identity?(o)(y): bool = (FORALL x: y o x = x)
+
+  right_identity?(o)(y): bool = (FORALL x: x o y = x)
+
+  identity?(o)(y):     bool = (FORALL x: x o y = x AND y o x = x)
+
+  has_identity?(o):    bool = (EXISTS y: identity?(o)(y))
+
+  zero?(o)(y):         bool = (FORALL x: x o y = y AND y o x = y)
+
+  has_zero?(o):        bool = (EXISTS y: zero?(o)(y))
+
+  inverses?(o)(-)(y):  bool = (FORALL x: x o -x = y AND (-x) o x = y)
+
+  has_inverses?(o):    bool = (EXISTS -, y: inverses?(o)(-)(y))
+
+  distributive?(*, o): bool = (FORALL x, y, z: x * (y o z) = (x * y) o (x * z))
+
+ END operator_defs
+
+
+% numbers provides the number type, which is the highest numeric type.
+% Though not explicitly specified, once the number type is declared all
+% numeric constants are known to be of type number.  We include the
+% postulate 0 /= 1 so that the nonzero subtypes declared later can be
+% shown to be nonempty.
+
+numbers: THEORY
+ BEGIN
+
+  number: NONEMPTY_TYPE
+
+  % Imagine the following declarations here
+  % 0, 1, 2, ... : number
+  % AXIOM 0 /= 1 AND 0 /= 2 AND 1 /= 2 AND ...
+
+ END numbers
+
+
+% reals defines the real numbers as an uninterpreted subtype of
+% number.  Note that / is defined only when the second argument is
+% nonzero.  This theory should not generally be used in auto-rewrite,
+% since the inequalities are already known to the decision procedures,
+% and tend to get rewritten to disjunctions, which are slightly harder
+% to work with.
+
+reals: THEORY
+ BEGIN
+
+  real: NONEMPTY_TYPE FROM number
+
+  real?(n:number): bool = real_pred(n)
+
+  % The following declarations, if they could be expanded, are built in to
+  %  the typechecker and prover:
+  % AXIOM real_pred(0) AND real_pred(1) AND real_pred(2) AND ...
+  % JUDGEMENT 0, 1, 2, ... HAS_TYPE real
+
+  nonzero_real: NONEMPTY_TYPE = {r: real | r /= 0} CONTAINING 1
+  nzreal: NONEMPTY_TYPE = nonzero_real
+
+  x, y: VAR real
+
+  +, -, *: [real, real -> real]
+  /: [real, nzreal -> real]
+  -: [real -> real]
+
+  <(x, y):  bool
+  <=(x, y): bool = x < y OR x = y;
+  >(x, y):  bool = y < x;
+  >=(x, y): bool = y <= x
+
+  reals_totally_ordered: POSTULATE strict_total_order?(<)
+
+  % Built in:
+  % AXIOM 0 < 1 AND 1 < 2 AND ...
+
+ END reals
+
+
+% real_axioms provides the usual commutativity, associativity, etc.
+% axioms about the real numbers.  Note that many of these properties
+% also hold for the rationals, integers, and natural numbers.  These
+% properties are all known to the decision procedures of PVS, so should
+% rarely need to be cited.  These axioms were taken from
+% Royden's "Real Analysis" pp.29-31
+
+real_axioms: THEORY
+ BEGIN
+  x, y, z: VAR real
+  n0x: VAR nzreal
+
+  % Field Axioms
+
+  commutative_add : POSTULATE x + y = y + x
+
+  associative_add : POSTULATE x + (y + z) = (x + y) + z
+
+  identity_add    : POSTULATE x + 0 = x
+
+  inverse_add     : POSTULATE x + -x = 0
+
+  minus_add       : POSTULATE x - y = x + -y
+
+  commutative_mult: POSTULATE x * y = y * x
+
+  associative_mult: POSTULATE x * (y * z) =  (x * y) * z
+
+  identity_mult   : POSTULATE 1 * x = x
+
+  inverse_mult    : POSTULATE n0x * (1/n0x) = 1
+
+  div_def         : POSTULATE y/n0x = y * (1/n0x)
+
+  distributive    : POSTULATE x * (y + z) = (x * y) + (x * z)
+
+
+  % Order Axioms
+
+  posreal_add_closed : POSTULATE x > 0 AND y > 0 IMPLIES x + y > 0
+
+  posreal_mult_closed: AXIOM x > 0 AND y > 0 IMPLIES x * y > 0
+
+  posreal_neg        : POSTULATE x > 0 IMPLIES NOT -x > 0
+
+  trichotomy         : POSTULATE x > 0 OR x = 0 OR 0 > x
+
+
+  % Completeness Axiom defined in bounded_reals
+
+ END real_axioms
+
+
+bounded_real_defs: THEORY
+BEGIN
+
+  x, y: VAR real
+
+  % Completeness Axiom
+
+  S: VAR (nonempty?[real])
+
+  upper_bound?(x, S): bool = FORALL (s: (S)): s < x
+
+  lower_bound?(x, S): bool = FORALL (s: (S)): x < s
+
+  least_upper_bound?(x, S): bool =
+    upper_bound?(x, S) AND
+      FORALL y: upper_bound?(y, S) IMPLIES (x <= y)
+
+  greatest_lower_bound?(x, S): bool =
+    lower_bound?(x, S) AND
+      FORALL y: lower_bound?(y, S) IMPLIES (y <= x)
+
+  real_complete: AXIOM
+    FORALL S:
+      (EXISTS y: upper_bound?(y, S)) IMPLIES
+        (EXISTS y: least_upper_bound?(y, S))
+
+  real_lower_complete: LEMMA
+    FORALL S:
+      (EXISTS y: lower_bound?(y, S)) IMPLIES 
+        (EXISTS x: greatest_lower_bound?(x, S))
+
+
+  % lub and glb
+
+  bounded_above?(S): bool = (EXISTS x: upper_bound?(x, S))
+
+  bounded_below?(S): bool = (EXISTS x: lower_bound?(x, S))
+
+  bounded?(S): bool = bounded_above?(S) AND bounded_below?(S)
+
+  bounded_set: TYPE = (bounded?)
+
+  SA: VAR (bounded_above?)
+
+  lub_exists: LEMMA (EXISTS x: least_upper_bound?(x, SA))
+
+  lub(SA): {x | least_upper_bound?(x, SA)}
+
+  lub_lem: LEMMA lub(SA) = x IFF least_upper_bound?(x, SA)
+
+  SB: VAR (bounded_below?)
+
+  glb_exists: LEMMA (EXISTS x: greatest_lower_bound?(x, SB))
+
+  glb(SB): {x | greatest_lower_bound?(x, SB)}
+
+  glb_lem: LEMMA glb(SB) = x IFF greatest_lower_bound?(x, SB)
+
+END bounded_real_defs
+
+
+% reals_types declares some useful subtypes of the reals and some
+% associated judgements.
+
+real_types: THEORY
+ BEGIN
+  x: VAR real
+
+  nonneg_real: NONEMPTY_TYPE = {x: real        | x >= 0} CONTAINING 0
+  nonpos_real: NONEMPTY_TYPE = {x: real        | x <= 0} CONTAINING 0
+  posreal:     NONEMPTY_TYPE = {x: nonneg_real | x > 0}  CONTAINING 1
+  negreal:     NONEMPTY_TYPE = {x: nonpos_real | x < 0}  CONTAINING -1
+  nnreal: TYPE = nonneg_real
+  npreal: TYPE = nonpos_real
+
+  posreal_is_nzreal: JUDGEMENT posreal SUBTYPE_OF nzreal
+  negreal_is_nzreal: JUDGEMENT negreal SUBTYPE_OF nzreal
+
+  nzx, nzy: VAR nzreal
+  px, py:   VAR posreal
+  nx, ny:   VAR negreal
+  nnx, nny: VAR nonneg_real
+  npx, npy: VAR nonpos_real
+
+  nonneg_real_add_closed: LEMMA nnx + nny >= 0
+  nonpos_real_add_closed: LEMMA npx + npy <= 0
+  negreal_add_closed    : LEMMA nx + ny < 0
+
+  nonneg_real_mult_closed: LEMMA nnx * nny >= 0
+
+  nzreal_times_nzreal_is_nzreal: JUDGEMENT *(x,y:nzreal) HAS_TYPE nzreal
+  nzreal_div_nzreal_is_nzreal:   JUDGEMENT /(x,y:nzreal) HAS_TYPE nzreal
+  minus_nzreal_is_nzreal:        JUDGEMENT -(x:nzreal)   HAS_TYPE nzreal
+
+  nnreal_plus_nnreal_is_nnreal:  JUDGEMENT +(x,y:nnreal) HAS_TYPE nnreal
+  nnreal_times_nnreal_is_nnreal: JUDGEMENT *(x,y:nnreal) HAS_TYPE nnreal
+  nnreal_div_posreal_is_nnreal:  JUDGEMENT
+    /(x:nnreal, y:posreal) HAS_TYPE nnreal
+  nnreal_div_negreal_is_npreal:  JUDGEMENT
+    /(x:nnreal,y:negreal) HAS_TYPE npreal
+
+  npreal_plus_npreal_is_npreal:  JUDGEMENT +(x,y:npreal) HAS_TYPE npreal
+  npreal_times_npreal_is_nnreal: JUDGEMENT *(x,y:npreal) HAS_TYPE nnreal
+  npreal_div_posreal_is_npreal:  JUDGEMENT
+    /(x:npreal,y:posreal) HAS_TYPE npreal
+  npreal_div_negreal_is_nnreal:  JUDGEMENT
+    /(x:npreal,y:negreal)  HAS_TYPE npreal
+
+  posreal_plus_posreal_is_posreal:  JUDGEMENT +(x,y:posreal) HAS_TYPE posreal
+  posreal_times_posreal_is_posreal: JUDGEMENT *(x,y:posreal) HAS_TYPE posreal
+  posreal_div_posreal_is_posreal:   JUDGEMENT /(x,y:posreal) HAS_TYPE posreal
+
+  negreal_plus_negreal_is_negreal:  JUDGEMENT +(x,y:negreal) HAS_TYPE negreal
+  negreal_times_negreal_is_posreal: JUDGEMENT *(x,y:negreal) HAS_TYPE posreal
+  negreal_div_negreal_is_negreal:   JUDGEMENT /(x,y:negreal) HAS_TYPE posreal
+
+ END real_types
+
+
+% rationals defines the rational numbers as an uninterpreted subtype of real.
+% The basic number operations are redeclared in order to specify that
+% they are closed, e.g. the sum of two rationals is a rational.
+
+rationals: THEORY
+ BEGIN
+
+  rational: NONEMPTY_TYPE FROM real
+  rat: NONEMPTY_TYPE = rational
+
+  rational?(n: number): bool = real_pred(n) AND rational_pred(n)
+
+  % The following declarations, if they could be expanded, are built in to
+  %  the typechecker:
+  % AXIOM rational_pred(0) AND rational_pred(1) AND rational_pred(2) AND ...
+  % JUDGEMENT 0, 1, 2, ... HAS_TYPE rational
+
+  nonzero_rational: NONEMPTY_TYPE = {r: rational | r /= 0} CONTAINING 1
+  nzrat: NONEMPTY_TYPE = nonzero_rational
+  nzrat_is_nzreal: JUDGEMENT nonzero_rational SUBTYPE_OF nonzero_real
+
+  x, y: VAR rat
+  n0z: VAR nzrat
+
+  closed_plus:    AXIOM rational_pred(x + y)
+  closed_minus:   AXIOM rational_pred(x - y)
+  closed_times:   AXIOM rational_pred(x * y)
+  closed_divides: AXIOM rational_pred(x / n0z)
+  closed_neg:     AXIOM rational_pred(-x)
+
+  rat_plus_rat_is_rat:  JUDGEMENT +(x,y) HAS_TYPE rat
+  rat_minus_rat_is_rat: JUDGEMENT -(x,y) HAS_TYPE rat
+  rat_times_rat_is_rat: JUDGEMENT *(x,y) HAS_TYPE rat
+  rat_div_nzrat_is_rat: JUDGEMENT /(x,n0z) HAS_TYPE rat
+
+  minus_rat_is_rat: JUDGEMENT -(x) HAS_TYPE rat
+
+  nonneg_rat: NONEMPTY_TYPE = {r: rational   | r >= 0} CONTAINING 0
+  nonpos_rat: NONEMPTY_TYPE = {r: rational   | r <= 0} CONTAINING 0
+  posrat:     NONEMPTY_TYPE = {r: nonneg_rat | r > 0}  CONTAINING 1
+  negrat:     NONEMPTY_TYPE = {r: nonpos_rat | r < 0}  CONTAINING -1
+  nnrat: NONEMPTY_TYPE = nonneg_rat
+  nprat: NONEMPTY_TYPE = nonpos_rat
+
+  nnx, nny: VAR nonneg_rat
+  npx, npy: VAR nonpos_rat
+  px, py: VAR posrat
+  nx, ny: VAR negrat
+  n0x, n0y: VAR nzrat
+
+  nnrat_is_nnreal:   JUDGEMENT nonneg_rat SUBTYPE_OF nonneg_real
+  posrat_is_posreal: JUDGEMENT posrat     SUBTYPE_OF posreal
+  posrat_is_nzrat:   JUDGEMENT posrat     SUBTYPE_OF nzrat
+
+  nzrat_times_nzrat_is_nzrat: JUDGEMENT *(n0x,n0y) HAS_TYPE nzrat
+  nzrat_div_nzrat_is_nzrat:   JUDGEMENT /(n0x,n0y) HAS_TYPE nzrat
+  minus_nzrat_is_nzrat:       JUDGEMENT -(n0x) HAS_TYPE nzrat
+
+  nnrat_plus_nnrat_is_nnrat:  JUDGEMENT +(nnx,nny) HAS_TYPE nonneg_rat
+  nnrat_times_nnrat_is_nnrat: JUDGEMENT *(nnx,nny) HAS_TYPE nonneg_rat
+  nnrat_div_posrat_is_nnrat:  JUDGEMENT /(nnx,py) HAS_TYPE nonneg_rat
+
+  posrat_plus_posrat_is_posrat:  JUDGEMENT +(px,py) HAS_TYPE posrat
+  posrat_times_posrat_is_posrat: JUDGEMENT *(px,py) HAS_TYPE posrat
+  posrat_div_posrat_is_posrat:   JUDGEMENT /(px,py) HAS_TYPE posrat
+
+ END rationals
+
+
+% integers defines the integers as an uninterpreted subtype of rational.
+% The basic number operations are redeclared in order to specify that
+% they are closed, e.g. the sum of two integers is an integer.
+
+integers: THEORY
+ BEGIN
+
+  integer: NONEMPTY_TYPE FROM rational
+  int: NONEMPTY_TYPE = integer
+
+  integer?(n:number): bool =
+    real_pred(n) AND rational_pred(n) AND integer_pred(n)
+
+  % The following declarations, if they could be expanded, are built in to
+  %  the typechecker:
+  % AXIOM integer_pred(0) AND integer_pred(1) AND integer_pred(2) AND ...
+  % JUDGEMENT 0, 1, 2, ... HAS_TYPE integer
+
+  nonzero_integer: NONEMPTY_TYPE = {i: int | i /= 0} CONTAINING 1
+  nzint: NONEMPTY_TYPE = nonzero_integer
+  nzint_is_nzrat: JUDGEMENT nonzero_integer SUBTYPE_OF nonzero_rational
+
+  i, j: VAR int
+  n0i, n0j: VAR nzint
+
+  closed_plus:  AXIOM integer_pred(i + j)
+  closed_minus: AXIOM integer_pred(i - j)
+  closed_times: AXIOM integer_pred(i * j)
+  closed_neg:   AXIOM integer_pred(-i)
+
+  upfrom(i): NONEMPTY_TYPE = {s: int | s >= i} CONTAINING i
+  above(i):  NONEMPTY_TYPE = {s: int | s > i} CONTAINING i + 1
+
+  int_plus_int_is_int:  JUDGEMENT +(i,j) HAS_TYPE int
+  int_minus_int_is_int: JUDGEMENT -(i,j) HAS_TYPE int
+  int_times_int_is_int: JUDGEMENT *(i,j) HAS_TYPE int
+
+  minus_int_is_int: JUDGEMENT -(i) HAS_TYPE int
+  minus_nzint_is_nzint: JUDGEMENT -(n0i) HAS_TYPE nzint
+ 
+  nonneg_int: NONEMPTY_TYPE = {i: int        | i >= 0} CONTAINING 0
+  nonpos_int: NONEMPTY_TYPE = {i: int        | i <= 0} CONTAINING 0
+  posint:     NONEMPTY_TYPE = {i: nonneg_int | i > 0}  CONTAINING 1
+  negint:     NONEMPTY_TYPE = {i: nonpos_int | i < 0}  CONTAINING -1
+
+  posnat: NONEMPTY_TYPE = posint
+
+  pi, pj: VAR posint
+
+  % Built in:
+  % JUDGEMENT 1, 2, 3, ... HAS_TYPE posint
+
+  nnint_is_nnrat:   JUDGEMENT nonneg_int SUBTYPE_OF nonneg_rat
+  posint_is_posrat: JUDGEMENT posint     SUBTYPE_OF posrat
+  posint_is_nzint:  JUDGEMENT posint     SUBTYPE_OF nzint
+
+  nzint_times_nzint_is_nzint:    JUDGEMENT *(n0i,n0j) HAS_TYPE nzint
+  posint_plus_posint_is_posint:  JUDGEMENT +(pi,pj) HAS_TYPE posint
+  posint_times_posint_is_posint: JUDGEMENT *(pi,pj) HAS_TYPE posint
+
+  % Note: subrange may be an empty type
+  subrange(i, j): TYPE = {k: int | i <= k AND k <= j}
+
+  even?(i): bool = EXISTS j: i = j * 2
+  odd?(i): bool  = EXISTS j: i = j * 2 + 1
+
+  even_int: NONEMPTY_TYPE = (even?) CONTAINING 0
+  odd_int:  NONEMPTY_TYPE = (odd?) CONTAINING 1
+
+  e1, e2: VAR even_int
+  o1, o2: VAR odd_int
+
+  odd_is_nzint: JUDGEMENT odd_int SUBTYPE_OF nzint
+
+  even_plus_even_is_even: JUDGEMENT +(e1,e2) HAS_TYPE even_int
+  even_minus_even_is_even: JUDGEMENT -(e1,e2) HAS_TYPE even_int
+  odd_plus_odd_is_even: JUDGEMENT +(o1,o2) HAS_TYPE even_int
+  odd_minus_odd_is_even: JUDGEMENT -(o1,o2) HAS_TYPE even_int
+  odd_plus_even_is_odd: JUDGEMENT +(o1,e2) HAS_TYPE odd_int
+  odd_minus_even_is_odd: JUDGEMENT -(o1,e2) HAS_TYPE odd_int
+  even_plus_odd_is_odd: JUDGEMENT +(e1,o2) HAS_TYPE odd_int
+  even_minus_odd_id_odd: JUDGEMENT -(e1,o2) HAS_TYPE odd_int
+  even_times_int_is_even: JUDGEMENT *(e1,i) HAS_TYPE even_int
+  int_times_even_is_even: JUDGEMENT *(i,e2) HAS_TYPE even_int
+  odd_times_odd_is_odd: JUDGEMENT *(o1,o2) HAS_TYPE odd_int
+  minus_even_is_even: JUDGEMENT -(e1) HAS_TYPE even_int
+  minus_odd_is_odd: JUDGEMENT -(o1) HAS_TYPE odd_int
+
+  % Note that there are no built-in judgements for 0, 1, 2, ...
+  % relating to even/odd types
+
+ END integers
+
+
+% naturalnumbers defines the natural numbers as a subtype of integer.
+% The sum and product operations are redeclared in order to specify that
+% they are closed, e.g. the sum of two natural numbers is a natural
+% number.  The successor and predecessor functions are defined here.
+
+naturalnumbers: THEORY
+ BEGIN
+
+  naturalnumber: TYPE = nonneg_int
+  nat: NONEMPTY_TYPE = naturalnumber
+
+  % The following declaration, if it could be expanded, is built in to
+  %  the typechecker:
+  % JUDGEMENT 0, 1, 2, ... HAS_TYPE naturalnumber
+
+  i, j, k: VAR nat
+  n: VAR posnat
+
+  upfrom_nat_is_nat:   JUDGEMENT upfrom(i) SUBTYPE_OF nat
+  above_nat_is_nat:    JUDGEMENT above(i) SUBTYPE_OF posnat
+  subrange_nat_is_nat: JUDGEMENT subrange(i,j) SUBTYPE_OF nat
+  subrange_posnat_is_posnat: JUDGEMENT subrange(n,j) SUBTYPE_OF posnat
+
+  upto(i):   NONEMPTY_TYPE = {s: nat | s <= i} CONTAINING i
+  below(i):  TYPE = {s: nat | s < i}  % may be empty
+
+  nat_plus_nat_is_nat: JUDGEMENT +(i,j) HAS_TYPE nat
+  nat_times_nat_is_nat: JUDGEMENT *(i,j) HAS_TYPE nat
+  
+  succ(i): nat = i + 1
+
+  pred(i): nat = IF i > 0 THEN i - 1 ELSE 0 ENDIF;
+
+  ~(i, j): nat = IF i > j THEN i - j ELSE 0 ENDIF
+
+  wf_nat: AXIOM well_founded?(LAMBDA i, j: i < j)
+
+  p: VAR pred[nat]
+
+  nat_induction: LEMMA
+    (p(0) AND (FORALL j: p(j) IMPLIES p(j+1)))
+        IMPLIES (FORALL i: p(i))
+
+  % Strong induction on naturals.
+
+  NAT_induction: LEMMA 
+    (FORALL j: (FORALL k: k < j IMPLIES p(k)) IMPLIES p(j))
+       IMPLIES (FORALL i: p(i))
+
+ END naturalnumbers
+
+
+% real_defs defines some useful real functions and
+% provides all the judgements for the subtypes nzreal, nonneg_real,
+% posreal, rat, nzrat, nonneg_rat, posrat, int, nzint, nat, and posint.
+% For abs, we don't declare all these possibilities, since abs is the
+% identity on the nonneg and pos number types.  Note that for abs, max,
+% and min the range type is dependent on the domain, providing information
+% in the type that is usually provided through separate lemmas.
+
+real_defs: THEORY
+ BEGIN
+  m, n: VAR real
+
+  sgn(m): int = IF m >= 0 THEN 1 ELSE -1 ENDIF
+
+  abs(m): {n: nonneg_real | n >= m}
+    = IF m < 0 THEN -m ELSE m ENDIF
+
+  nonzero_abs_is_pos: JUDGEMENT abs(x:nzreal) HAS_TYPE {y: posreal | y >= x}
+  rat_abs_is_nonneg: JUDGEMENT abs(q:rat) HAS_TYPE {r: nonneg_rat | r >= q}
+  nzrat_abs_is_pos: JUDGEMENT abs(q:nzrat) HAS_TYPE {r: posrat | r >= q}
+  int_abs_is_nonneg: JUDGEMENT abs(i:int) HAS_TYPE {j: nonneg_int | j >= i}
+  nzint_abs_is_pos: JUDGEMENT abs(i:nzint) HAS_TYPE {j: posint | j >= i}
+
+  max(m, n): {p: real | p >= m AND p >= n}
+    = IF m < n THEN n ELSE m ENDIF
+
+  min(m, n): {p: real | p <= m AND p <= n}
+    = IF m > n THEN n ELSE m ENDIF
+
+  % real subtype judgements
+
+  nzreal_max: JUDGEMENT
+    max(x,y:nzreal) HAS_TYPE {z: nzreal | z >= x AND z >= y}
+  nzreal_min: JUDGEMENT
+    min(x,y:nzreal) HAS_TYPE {z: nzreal | z <= x AND z <= y}
+
+  nonneg_real_max: JUDGEMENT
+    max(x,y:nonneg_real) HAS_TYPE {z: nonneg_real | z >= x AND z >= y}
+  nonneg_real_min: JUDGEMENT
+    min(x,y:nonneg_real) HAS_TYPE {z: nonneg_real | z <= x AND z <= y}
+
+  posreal_max: JUDGEMENT
+    max(x,y:posreal) HAS_TYPE {z: posreal | z >= x AND z >= y}
+  posreal_min: JUDGEMENT
+    min(x,y:posreal) HAS_TYPE {z: posreal | z <= x AND z <= y}
+
+  % rat subtype judgements
+
+  rat_max: JUDGEMENT
+    max(q,r:rat) HAS_TYPE {s: rat | s >= q AND s >= r}
+  rat_min: JUDGEMENT
+    min(q,r:rat) HAS_TYPE {s: rat | s <= q AND s <= r}
+
+  nzrat_max: JUDGEMENT
+    max(q,r:nzrat) HAS_TYPE {s: nzrat | s >= q AND s >= r}
+  nzrat_min: JUDGEMENT
+    min(q,r:nzrat) HAS_TYPE {s: nzrat | s <= q AND s <= r}
+
+  nonneg_rat_max: JUDGEMENT
+    max(q,r:nonneg_rat) HAS_TYPE {s: nonneg_rat | s >= q AND s >= r}
+  nonneg_rat_min: JUDGEMENT
+    min(q,r:nonneg_rat) HAS_TYPE {s: nonneg_rat | s <= q AND s <= r}
+
+  posrat_max: JUDGEMENT
+    max(q,r:posrat) HAS_TYPE {s: posrat | s >= q AND s >= r}
+  posrat_min: JUDGEMENT
+    min(q,r:posrat) HAS_TYPE {s: posrat | s <= q AND s <= r}
+
+  % int subtype judgements
+
+  int_max: JUDGEMENT
+    max(i,j:int) HAS_TYPE {k: int | i <= k AND j <= k}
+  int_min: JUDGEMENT
+    min(i,j:int) HAS_TYPE {k: int | k <= i AND k <= j}
+
+  nzint_max: JUDGEMENT
+    max(i,j:nzint) HAS_TYPE {k: nzint | i <= k AND j <= k}
+  nzint_min: JUDGEMENT
+    min(i,j:nzint) HAS_TYPE {k: nzint | k <= i AND k <= j}
+
+  nat_max: JUDGEMENT
+    max(i,j:nat) HAS_TYPE {k: nat | i <= k AND j <= k}
+  nat_min: JUDGEMENT
+    min(i,j:nat) HAS_TYPE {k: nat | k <= i AND k <= j}
+
+  posint_max: JUDGEMENT
+    max(i,j:posint) HAS_TYPE {k: posint | i <= k AND j <= k}
+  posint_min: JUDGEMENT
+    min(i,j:posint) HAS_TYPE {k: posint | k <= i AND k <= j}
+
+ END real_defs
+
+
+% real_props contains useful properties about real numbers.  Most of
+% these are known to the decision procedures of PVS, but there are some
+% nonlinear ones that cannot be gotten automatically.  Nonlinear
+% expressions are those that involve multiplication or division by two
+% non-numeric terms.  Thus x*y and x/c are nonlinear, while 2001*x + 39*z is
+% linear.  Note that it doesn't matter whether the terms are constants
+% or variables, only whether they are actual numbers.
+
+real_props: THEORY
+ BEGIN
+  w, x, y, z: VAR real
+  n0w, n0x, n0y, n0z: VAR nonzero_real
+  nnw, nnx, nny, nnz: VAR nonneg_real
+  pw, px, py, pz: VAR posreal
+  npw, npx, npy, npz: VAR nonpos_real
+  nw, nx, ny, nz: VAR negreal
+
+  inv_ne_0: LEMMA 1/n0x /= 0
+
+  % Cancellation Laws for equality
+
+  both_sides_plus1: LEMMA (x + z = y + z) IFF x = y
+
+  both_sides_plus2: LEMMA (z + x = z + y) IFF x = y
+
+  both_sides_minus1: LEMMA (x - z = y - z) IFF x = y
+
+  both_sides_minus2: LEMMA (z - x = z - y) IFF x = y
+
+  both_sides_times1: LEMMA (x * n0z = y * n0z) IFF x = y
+
+  both_sides_times2: LEMMA (n0z * x = n0z * y) IFF x = y
+
+  both_sides_div1: LEMMA (x/n0z = y/n0z) IFF x = y
+
+  both_sides_div2: LEMMA (n0z/n0x = n0z/n0y) IFF n0x = n0y
+
+  times_plus: LEMMA (x + y) * (z + w) = x*z + x*w + y*z + y*w
+
+  times_div1: LEMMA x * (y/n0z) = (x * y)/n0z
+
+  times_div2: LEMMA (x/n0z) * y = (x * y)/n0z
+
+  div_times: LEMMA (x/n0x) * (y/n0y) = (x*y)/(n0x*n0y)
+
+  div_eq_zero: LEMMA x/n0z = 0 IFF x = 0
+
+  div_simp: LEMMA n0x/n0x = 1
+
+  div_cancel1: LEMMA n0z * (x/n0z) = x
+
+  div_cancel2: LEMMA (x/n0z) * n0z = x
+
+  div_cancel3: LEMMA x/n0z = y IFF x = y * n0z
+
+  cross_mult: LEMMA (x/n0x = y/n0y) IFF (x * n0y = y * n0x)
+
+  add_div: LEMMA (x/n0x) + (y/n0y) = (x * n0y + y * n0x)/(n0x * n0y)
+
+  minus_div1: LEMMA (x/n0x) - (y/n0y) = (x * n0y - y * n0x)/(n0x * n0y)
+
+  minus_div2: LEMMA (x/n0x - y/n0x) = (x - y)/n0x
+
+  div_distributes: LEMMA (x/n0z) + (y/n0z) =  (x + y)/n0z
+
+  div_distributes_minus: LEMMA (x/n0z) - (y/n0z) =  (x - y)/n0z
+
+  div_div1: LEMMA (x / (n0y / n0z)) = ((x * n0z) / n0y)
+
+  div_div2: LEMMA ((x / n0y) / n0z) = (x / (n0y * n0z))
+
+  idem_add_is_zero: LEMMA x + x = x IMPLIES x = 0
+
+  zero_times1: LEMMA 0 * x = 0
+
+  zero_times2: LEMMA x * 0 = 0
+
+  zero_times3: LEMMA x * y = 0 IFF x = 0 OR y = 0
+
+  neg_times_neg: LEMMA (-x) * (-y) = x * y
+
+  zero_is_neg_zero: LEMMA -0 = 0
+
+
+  % Order lemmas for <
+
+  strict_lt : LEMMA strict_total_order?(<)
+
+  trich_lt: LEMMA x < y OR x = y OR y < x
+
+  tri_unique_lt1: LEMMA x < y IMPLIES (x /= y AND NOT(y < x))
+
+  tri_unique_lt2: LEMMA x = y IMPLIES (NOT(x < y) AND NOT(y < x))
+
+  zero_not_lt_zero: LEMMA NOT 0 < 0
+
+  neg_lt: LEMMA 0 < -x IFF x < 0
+
+  pos_times_lt: LEMMA 0 < x * y IFF (0 < x AND 0 < y) OR (x < 0 AND y < 0)
+
+  neg_times_lt: LEMMA x * y < 0 IFF (0 < x AND y < 0) OR (x < 0 AND 0 < y)
+
+  quotient_pos_lt: FORMULA 0 < 1/n0x IFF 0 < n0x
+  
+  quotient_neg_lt: FORMULA 1/n0x < 0 IFF n0x < 0
+
+  pos_div_lt: LEMMA 0 < x/n0y IFF (0 < x AND 0 < n0y) OR (x < 0 AND n0y < 0)
+
+  neg_div_lt: LEMMA x/n0y < 0 IFF (0 < x AND n0y < 0) OR (x < 0 AND 0 < n0y)
+
+  div_mult_pos_lt1: LEMMA z/py < x IFF z < x * py
+
+  div_mult_pos_lt2: LEMMA x < z/py IFF x * py < z
+
+  div_mult_neg_lt1: LEMMA z/ny < x IFF x * ny < z
+
+  div_mult_neg_lt2: LEMMA x < z/ny IFF z < x * ny
+  
+
+  % Cancellation laws for <
+
+  both_sides_plus_lt1: LEMMA x + z < y + z IFF x < y
+
+  both_sides_plus_lt2: LEMMA z + x < z + y IFF x < y
+
+  both_sides_minus_lt1: LEMMA x - z < y - z IFF x < y
+
+  both_sides_minus_lt2: LEMMA z - x < z - y IFF y < x
+
+  both_sides_times_pos_lt1: LEMMA x * pz < y * pz IFF x < y
+
+  both_sides_times_pos_lt2: LEMMA pz * x < pz * y IFF x < y
+
+  both_sides_times_neg_lt1: LEMMA x * nz < y * nz IFF y < x
+
+  both_sides_times_neg_lt2: LEMMA nz * x < nz * y IFF y < x
+
+  both_sides_div_pos_lt1: LEMMA x/pz < y/pz IFF x < y
+
+  both_sides_div_pos_lt2: LEMMA pz/px < pz/py IFF py < px
+
+  both_sides_div_pos_lt3: LEMMA nz/px < nz/py IFF px < py
+
+  both_sides_div_neg_lt1: LEMMA x/nz < y/nz IFF y < x
+
+  both_sides_div_neg_lt2: LEMMA pz/nx < pz/ny IFF ny < nx
+
+  both_sides_div_neg_lt3: LEMMA nz/nx < nz/ny IFF nx < ny
+
+%  lt_plus_lt: LEMMA x < y AND z < w IMPLIES x + z < y + w
+
+  lt_plus_lt1: LEMMA x <= y AND z < w IMPLIES x + z < y + w
+
+  lt_plus_lt2: LEMMA x < y AND z <= w IMPLIES x + z < y + w
+
+%  lt_minus_lt: LEMMA x < y AND w < z IMPLIES x - z < y - w
+
+  lt_minus_lt1: LEMMA x <= y AND w < z IMPLIES x - z < y - w
+
+  lt_minus_lt2: LEMMA x < y AND w <= z IMPLIES x - z < y - w
+
+%  lt_times_lt_pos: LEMMA nnx < y AND nnz < w IMPLIES nnx * nnz < y * w
+
+  lt_times_lt_pos1: LEMMA px <= y AND nnz < w IMPLIES px * nnz < y * w
+
+  lt_times_lt_pos2: LEMMA nnx < y AND pz <= w IMPLIES nnx * pz < y * w
+
+%  lt_div_lt_pos: LEMMA nnx < y AND pz < w IMPLIES nnx/w < y/pz
+
+  lt_div_lt_pos1: LEMMA px <= y AND pz < w IMPLIES px/w < y/pz
+
+  lt_div_lt_pos2: LEMMA nnx < y AND pz <= w IMPLIES nnx/w < y/pz
+
+%  lt_times_lt_neg: LEMMA x < npy AND z < npw IMPLIES npy * npw < x * z
+
+  lt_times_lt_neg1: LEMMA x <= ny AND z < npw IMPLIES ny * npw < x * z
+
+  lt_times_lt_neg2: LEMMA x < npy AND z <= nw IMPLIES npy * nw < x * z
+
+%  lt_div_lt_neg: LEMMA x < npy AND z < nw IMPLIES npy/z < x/nw
+
+  lt_div_lt_neg1: LEMMA x <= ny AND z < nw IMPLIES ny/z < x/nw
+
+  lt_div_lt_neg2: LEMMA x < npy AND z <= nw IMPLIES npy/z < x/nw
+
+
+  % Order lemmas for <=
+
+  total_le: LEMMA total_order?(<=)
+
+  dich_le: LEMMA x <= y OR y <= x
+
+  zero_le_zero: LEMMA 0 <= 0
+
+  neg_le: LEMMA 0 <= -x IFF x <= 0
+
+  pos_times_le: LEMMA 0 <= x * y IFF (0 <= x AND 0 <= y) OR (x <= 0 AND y <= 0)
+
+  neg_times_le: LEMMA x * y <= 0 IFF (0 <= x AND y <= 0) OR (x <= 0 AND 0 <= y)
+
+  quotient_pos_le: FORMULA 0 <= 1/n0x IFF 0 <= n0x
+  
+  quotient_neg_le: FORMULA 1/n0x <= 0 IFF n0x <= 0
+
+  pos_div_le: LEMMA
+    0 <= x/n0y IFF (0 <= x AND 0 <= n0y) OR (x <= 0 AND n0y <= 0)
+
+  neg_div_le: LEMMA
+    x/n0y <= 0 IFF (0 <= x AND n0y <= 0) OR (x <= 0 AND 0 <= n0y)
+
+  div_mult_pos_le1: LEMMA z/py <= x IFF z <= x * py
+
+  div_mult_pos_le2: LEMMA x <= z/py IFF x * py <= z
+
+  div_mult_neg_le1: LEMMA z/ny <= x IFF x * ny <= z
+
+  div_mult_neg_le2: LEMMA x <= z/ny IFF z <= x * ny
+
+
+  % Cancellation laws for <=
+
+  both_sides_plus_le1: LEMMA x + z <= y + z IFF x <= y
+
+  both_sides_plus_le2: LEMMA z + x <= z + y IFF x <= y
+
+  both_sides_minus_le1: LEMMA x - z <= y - z IFF x <= y
+
+  both_sides_minus_le2: LEMMA z - x <= z - y IFF y <= x
+
+  both_sides_times_pos_le1: LEMMA x * pz <= y * pz IFF x <= y
+
+% xxx  both_sides_times_pos_le11: LEMMA x * nnz <= y * nnz WHEN x <= y
+
+  both_sides_times_pos_le2: LEMMA pz * x <= pz * y IFF x <= y
+
+  both_sides_times_neg_le1: LEMMA x * nz <= y * nz IFF y <= x
+
+  both_sides_times_neg_le2: LEMMA nz * x <= nz * y IFF y <= x
+
+  both_sides_div_pos_le1: LEMMA x/pz <= y/pz IFF x <= y
+
+  both_sides_div_pos_le2: LEMMA pz/px <= pz/py IFF py <= px
+
+  both_sides_div_pos_le3: LEMMA nz/px <= nz/py IFF px <= py
+
+  both_sides_div_neg_le1: LEMMA x/nz <= y/nz IFF y <= x
+
+  both_sides_div_neg_le2: LEMMA pz/nx <= pz/ny IFF ny <= nx
+
+  both_sides_div_neg_le3: LEMMA nz/nx <= nz/ny IFF nx <= ny
+
+  le_plus_le: LEMMA x <= y AND z <= w IMPLIES x + z <= y + w
+
+  le_minus_le: LEMMA x <= y AND w <= z IMPLIES x - z <= y - w
+
+  le_times_le_pos: LEMMA nnx <= y AND nnz <= w IMPLIES nnx * nnz <= y * w
+
+  le_div_le_pos: LEMMA nnx <= y AND pz <= w IMPLIES nnx/w <= y/pz
+
+  le_times_le_neg: LEMMA x <= npy AND z <= npw IMPLIES npy * npw <= x * z
+
+  le_div_le_neg: LEMMA x <= npy AND z <= nw IMPLIES npy/z <= x/nw
+
+
+  % Order lemmas for >
+
+  strict_gt : LEMMA strict_total_order?(>)
+
+  trich_gt: LEMMA x > y OR x = y OR y > x
+
+  tri_unique_gt1: LEMMA x > y IMPLIES (x /= y AND NOT(y > x))
+
+  tri_unique_gt2: LEMMA x = y IMPLIES (NOT(x > y) AND NOT(y > x))
+
+  zero_not_gt_zero: LEMMA NOT 0 > 0
+
+  neg_gt: LEMMA 0 > -x IFF x > 0
+
+  pos_times_gt: LEMMA x * y > 0 IFF (0 > x AND 0 > y) OR (x > 0 AND y > 0)
+
+  neg_times_gt: LEMMA 0 > x * y IFF (0 > x AND y > 0) OR (x > 0 AND 0 > y)
+
+  quotient_pos_gt: FORMULA 1/n0x > 0 IFF n0x > 0
+  
+  quotient_neg_gt: FORMULA 0 > 1/n0x IFF 0 > n0x
+
+  pos_div_gt: LEMMA x/n0y > 0 IFF (0 > x AND 0 > n0y) OR (x > 0 AND n0y > 0)
+
+  neg_div_gt: LEMMA 0 > x/n0y IFF (0 > x AND n0y > 0) OR (x > 0 AND 0 > n0y)
+
+  div_mult_pos_gt1: LEMMA x > z/py IFF x * py > z
+
+  div_mult_pos_gt2: LEMMA z/py > x IFF z > x * py
+
+  div_mult_neg_gt1: LEMMA x > z/ny IFF z > x * ny
+
+  div_mult_neg_gt2: LEMMA z/ny > x IFF x * ny > z
+
+
+  % Cancellation laws for >
+
+  both_sides_plus_gt1: LEMMA x + z > y + z IFF x > y
+
+  both_sides_plus_gt2: LEMMA z + x > z + y IFF x > y
+
+  both_sides_minus_gt1: LEMMA x - z > y - z IFF x > y
+
+  both_sides_minus_gt2: LEMMA z - x > z - y IFF y > x
+
+  both_sides_times_pos_gt1: LEMMA x * pz > y * pz IFF x > y
+
+  both_sides_times_pos_gt2: LEMMA pz * x > pz * y IFF x > y
+
+  both_sides_times_neg_gt1: LEMMA x * nz > y * nz IFF y > x
+
+  both_sides_times_neg_gt2: LEMMA nz * x > nz * y IFF y > x
+
+  both_sides_div_pos_gt1: LEMMA x/pz > y/pz IFF x > y
+
+  both_sides_div_pos_gt2: LEMMA pz/px > pz/py IFF py > px
+
+  both_sides_div_pos_gt3: LEMMA nz/px > nz/py IFF px > py
+
+  both_sides_div_neg_gt1: LEMMA x/nz > y/nz IFF y > x
+
+  both_sides_div_neg_gt2: LEMMA pz/nx > pz/ny IFF ny > nx
+
+  both_sides_div_neg_gt3: LEMMA nz/nx > nz/ny IFF nx > ny
+
+%  gt_plus_gt: LEMMA x > y AND z > w IMPLIES x + z > y + w
+
+  gt_plus_gt1: LEMMA x >= y AND z > w IMPLIES x + z > y + w
+
+  gt_plus_gt2: LEMMA x > y AND z >= w IMPLIES x + z > y + w
+
+%  gt_minus_gt: LEMMA x > y AND w > z IMPLIES x - z > y - w
+
+  gt_minus_gt1: LEMMA x >= y AND w > z IMPLIES x - z > y - w
+
+  gt_minus_gt2: LEMMA x > y AND w >= z IMPLIES x - z > y - w
+
+%  gt_times_gt_pos: LEMMA x > nny AND z > nnw IMPLIES x * z > nny * nnw
+
+  gt_times_gt_pos1: LEMMA x >= py AND z > nnw IMPLIES x * z > py * nnw
+
+  gt_times_gt_pos2: LEMMA x > nny AND z >= pw IMPLIES x * z > nny * pw
+
+%  gt_div_gt_pos: LEMMA x > nny AND z > pw IMPLIES x/pw > nny/z
+
+  gt_div_gt_pos1: LEMMA x >= py AND z > pw IMPLIES x/pw > py/z
+
+  gt_div_gt_pos2: LEMMA x > nny AND z >= pw IMPLIES x/pw > nny/z
+
+%  gt_times_gt_neg: LEMMA npx > y AND npz > w IMPLIES y * w > npx * npz
+
+  gt_times_gt_neg1: LEMMA nx >= y AND npz > w IMPLIES y * w > nx * npz
+
+  gt_times_gt_neg2: LEMMA npx > y AND nz >= w IMPLIES y * w > npx * nz
+
+%  gt_div_gt_neg: LEMMA npx > y AND nz > w IMPLIES y/nz > npx/w
+
+  gt_div_gt_neg1: LEMMA nx >= y AND nz > w IMPLIES y/nz > nx/w
+
+  gt_div_gt_neg2: LEMMA npx > y AND nz >= w IMPLIES y/nz > npx/w
+
+
+  % Order lemmas for >=
+
+  strict_ge : LEMMA total_order?(>=)
+
+  dich_ge: LEMMA x >= y OR y >= x
+
+  zero_ge_zero: LEMMA 0 >= 0
+
+  neg_ge: LEMMA 0 >= -x IFF x >= 0
+
+  pos_times_ge: LEMMA x * y >= 0 IFF (0 >= x AND 0 >= y) OR (x >= 0 AND y >= 0)
+
+  neg_times_ge: LEMMA 0 >= x * y IFF (0 >= x AND y >= 0) OR (x >= 0 AND 0 >= y)
+
+  quotient_pos_ge: FORMULA 1/n0x >= 0 IFF n0x >= 0
+  
+  quotient_neg_ge: FORMULA 0 >= 1/n0x IFF 0 >= n0x
+
+  pos_div_ge: LEMMA
+    x/n0y >= 0 IFF (0 >= x AND 0 >= n0y) OR (x >= 0 AND n0y >= 0)
+
+  neg_div_ge: LEMMA
+    0 >= x/n0y IFF (0 >= x AND n0y >= 0) OR (x >= 0 AND 0 >= n0y)
+
+  div_mult_pos_ge1: LEMMA z/py >= x IFF z >= x * py
+
+  div_mult_pos_ge2: LEMMA x >= z/py IFF x * py >= z
+
+  div_mult_neg_ge1: LEMMA z/ny >= x IFF x * ny >= z
+
+  div_mult_neg_ge2: LEMMA x >= z/ny IFF z >= x * ny
+
+
+  % Cancellation laws for >=
+
+  both_sides_plus_ge1: LEMMA x + z >= y + z IFF x >= y
+
+  both_sides_plus_ge2: LEMMA z + x >= z + y IFF x >= y
+
+  both_sides_minus_ge1: LEMMA x - z >= y - z IFF x >= y
+
+  both_sides_minus_ge2: LEMMA z - x >= z - y IFF y >= x
+
+  both_sides_times_pos_ge1: LEMMA x * pz >= y * pz IFF x >= y
+
+  both_sides_times_pos_ge2: LEMMA pz * x >= pz * y IFF x >= y
+
+  both_sides_times_neg_ge1: LEMMA x * nz >= y * nz IFF y >= x
+
+  both_sides_times_neg_ge2: LEMMA nz * x >= nz * y IFF y >= x
+
+  both_sides_div_pos_ge1: LEMMA x/pz >= y/pz IFF x >= y
+
+  both_sides_div_pos_ge2: LEMMA pz/px >= pz/py IFF py >= px
+
+  both_sides_div_pos_ge3: LEMMA nz/px >= nz/py IFF px >= py
+
+  both_sides_div_neg_ge1: LEMMA x/nz >= y/nz IFF y >= x
+
+  both_sides_div_neg_ge2: LEMMA pz/nx >= pz/ny IFF ny >= nx
+
+  both_sides_div_neg_ge3: LEMMA nz/nx >= nz/ny IFF nx >= ny
+
+  ge_plus_ge: LEMMA x >= y AND z >= w IMPLIES x + z >= y + w
+
+  ge_minus_ge: LEMMA x >= y AND w >= z IMPLIES x - z >= y - w
+
+  ge_times_ge_pos: LEMMA x >= nny AND z >= nnw IMPLIES x * z >= nny * nnw
+
+  ge_div_ge_pos: LEMMA x >= nny AND z >= pw IMPLIES x/pw >= nny/z
+
+  ge_times_ge_neg: LEMMA npx >= y AND npz >= w IMPLIES y * w >= npx * npz
+
+  ge_div_ge_neg: LEMMA npx >= y AND nz >= w IMPLIES y/nz >= npx/w
+
+  %
+
+  nonzero_times1: LEMMA n0x * y = 0 IFF y = 0
+
+  nonzero_times2: LEMMA x * n0y = 0 IFF x = 0
+
+  nonzero_times3: LEMMA n0x * n0y = 0 IFF FALSE
+
+  % Useful lemmas about the multiplicative identity
+
+  eq1_gt: FORMULA x > 1 AND x * y = 1 IMPLIES y < 1
+
+  eq1_ge: FORMULA x >= 1 AND x * y = 1 IMPLIES y <= 1
+
+  eqm1_gt: FORMULA x > 1 AND x * y = -1 IMPLIES y > -1
+
+  eqm1_ge: FORMULA x >= 1 AND x * y = -1 IMPLIES y >= -1
+
+  eqm1_lt: FORMULA x < -1 AND x * y = -1 IMPLIES y < 1
+
+  eqm1_le: FORMULA x <= -1 AND x * y = -1 IMPLIES y <= 1
+
+  sqrt_1: LEMMA x * x = 1 IFF x = 1 OR x = -1
+
+  idem_mult: LEMMA x * x = x IFF x = 0 OR x = 1
+
+
+  i, j: VAR int
+
+  product_1: LEMMA i >= 0 AND j >= 0 AND i*j = 1 IMPLIES i = 1 AND j = 1
+
+  product_m1: LEMMA i >= 0 AND j <= 0 AND i*j = -1 IMPLIES i = 1 AND j = -1
+
+
+  % Properties of absolute value
+
+  triangle: LEMMA abs(x+y) <= abs(x) + abs(y)  
+
+  abs_mult: LEMMA abs(x * y) = abs(x) * abs(y)
+
+  abs_limits: LEMMA -(abs(x) + abs(y)) <= x + y AND x + y <= abs(x) + abs(y)
+
+
+  % Properties of min and max
+
+  min_is_le: LEMMA min(x, y) <= x
+
+  max_is_ge: LEMMA max(x, y) >= x
+
+  min_le_max: LEMMA min(x, y) <= max(x, y)
+
+
+%  % lub and glb
+%
+%  S: VAR (nonempty?[real])
+%
+%  bounded_above?(S): bool = (EXISTS x: upper_bound?(<=)(x, S))
+%
+%  bounded_below?(S): bool = (EXISTS x: lower_bound?(<=)(x, S))
+%
+%  bounded?(S): bool = bounded_above?(S) AND bounded_below?(S)
+%
+%  bounded_set: TYPE = (bounded?)
+%
+%  SA: VAR (bounded_above?)
+%
+%  lub_exists: LEMMA (EXISTS x: least_upper_bound?(<=)(x, SA))
+%
+%  lub(SA): {x | least_upper_bound?(<=)(x, SA)}
+%
+%  lub_lem: LEMMA lub(SA) = x IFF least_upper_bound?(<=)(x, SA)
+%
+%  SB: VAR (bounded_below?)
+%
+%  glb_exists: LEMMA (EXISTS x: greatest_lower_bound?(<=)(x, SB))
+%
+%  glb(SB): {x | greatest_lower_bound?(<=)(x, SB)}
+%
+%  glb_lem: LEMMA glb(SB) = x IFF greatest_lower_bound?(<=)(x, SB)
+
+
+  % The axiom of Archimedes 
+
+  axiom_of_archimedes: LEMMA EXISTS i: x < i
+
+ END real_props
+
+
+% rational_props contains the properties of rational numbers.  This mostly
+% consists of subtypes and judgements, as most of the properties given in
+% real_props are inherited.
+
+rational_props: THEORY
+ BEGIN
+  x, y: VAR real
+  i: VAR int
+  n0j: VAR nzint
+  r: VAR rat
+
+  rational_pred_ax: AXIOM EXISTS i, n0j: r = i/n0j
+
+  density: AXIOM x < y IMPLIES (EXISTS r: x < r AND r < y)
+
+ END rational_props
+
+
+% integer_props contains the properties of integers and naturalnumbers.
+
+integer_props: THEORY
+ BEGIN
+  m, n: VAR nat
+  i, j, k: VAR int
+  n0j: VAR nzint
+
+  N: VAR (nonempty?[nat])
+
+  I: VAR (nonempty?[int])
+
+  integer_pred_ax: LEMMA EXISTS n: i = n OR i = -n
+
+  div_simple: LEMMA (EXISTS k: i = k*n0j) = integer_pred(i/n0j)
+
+  % Are these needed now?
+
+  lub_nat: LEMMA
+    upper_bound?(m, N)
+      => EXISTS (n:(N)): least_upper_bound?(n, N)
+
+  lub_int: LEMMA
+    upper_bound?(i, I)
+      => EXISTS (j:(I)): least_upper_bound?(j, I)
+
+ END integer_props
+
+
+% The definitions for floor and ceiling, courtesy of
+%   Paul S. Miner   		           email: p.s.miner@larc.nasa.gov
+%   Mail Stop 130			     fax: (804) 864-4234
+%   NASA Langley Research Center	   phone: (804) 864-6201
+%   Hampton, Virginia 23681-0001
+
+floor_ceil: THEORY
+ BEGIN
+  
+  x, y: VAR real
+  j: VAR nonzero_integer
+  i, k: VAR integer
+  
+  floor_exists: LEMMA EXISTS i: i <= x & x < i + 1
+  
+  ceiling_exists: LEMMA EXISTS i: x <= i & i < x + 1
+  
+  floor(x): {i | i <= x & x < i + 1}
+  
+  fractional(x): {x | 0 <= x & x < 1} = x - floor(x)
+  
+  ceiling(x): {i | x <= i & i < x + 1}
+  
+  floor_def: LEMMA floor(x) <= x & x < floor(x) + 1
+  
+  ceiling_def: LEMMA x <= ceiling(x) & ceiling(x) < x + 1
+  
+  floor_ceiling_reflect1: LEMMA floor(-x) = -ceiling(x)
+  
+  floor_ceiling_reflect2: LEMMA ceiling(-x) = -floor(x)
+  
+  nonneg_floor_is_nat: JUDGEMENT floor(x:nonneg_real) HAS_TYPE nat
+  nonneg_ceiling_is_nat: JUDGEMENT ceiling(x:nonneg_real) HAS_TYPE nat
+  
+  floor_int: LEMMA floor(i) = i
+  
+  ceiling_int: LEMMA ceiling(i) = i
+  
+  floor_plus_int: LEMMA floor(x + i) = floor(x) + i
+  
+  ceiling_plus_int: LEMMA ceiling(x + i) = ceiling(x) + i
+  
+  floor_ceiling_nonint: LEMMA NOT integer?(x) => ceiling(x) - floor(x) = 1
+
+  floor_ceiling_int: lemma floor(i)=ceiling(i)
+  
+  floor_neg: LEMMA 
+        floor(x) = IF integer?(x) THEN -floor(-x) ELSE -floor(-x) - 1 ENDIF
+  
+  real_parts: LEMMA x = floor(x) + fractional(x)
+  
+  floor_plus: LEMMA 
+        floor(x + y) = floor(x) + floor(y) + floor(fractional(x) + fractional(y))
+  
+  ceiling_plus: LEMMA
+        ceiling(x + y) = floor(x) + floor(y) + ceiling(fractional(x) + fractional(y))
+  
+  floor_split: lemma i = floor(i/2)+ceiling(i/2)
+
+  floor_within_1: lemma x - floor(x) < 1
+
+  ceiling_within_1: lemma ceiling(x) - x < 1
+
+  floor_val:   LEMMA i >= k*j AND i < (k+1)*j IMPLIES floor(i/j) = k 
+
+  floor_small: LEMMA  abs(i) < abs(j) IMPLIES
+                         floor(i/j) = IF i/j >= 0 THEN 0 ELSE -1 ENDIF
+
+  floor_eq_0:  LEMMA floor(x) = 0 IMPLIES x >= 0 AND x < 1
+
+ END floor_ceil
+
+
+% exponentiation provides the definitions expt and ^.  expt multiplies a
+% real by itself the number of times specified, where 0 times returns a 1
+% (thus expt(0,0) = 1).  ^ is defined in terms of expt to work for
+% integers, but in this case if the integer negative then the real
+% argument must be nonzero; this leads to the dependent type given below.
+
+exponentiation: THEORY
+ BEGIN
+  r: VAR real
+  q: VAR rat
+  nnq: VAR nonneg_rat
+  m, n: VAR nat
+  pm, pn: VAR posnat
+  i, j: VAR int
+  n0i, n0j: VAR nzint
+  x, y: VAR real
+  px, py: VAR posreal
+  n0x, n0y: VAR nzreal
+  gt1x, gt1y: VAR {r: posreal | r > 1}
+  lt1x, lt1y: VAR {r: posreal | r < 1}
+  ge1x, ge1y: VAR {r: posreal | r >= 1}
+  le1x, le1y: VAR {r: posreal | r <= 1}
+
+  expt(r, n): RECURSIVE real =
+    IF n = 0 THEN 1
+    ELSE r * expt(r, n-1)
+    ENDIF
+   MEASURE n;
+
+  expt_pos_aux: LEMMA expt(px, n) > 0
+
+  expt_nonzero_aux: LEMMA expt(n0x, n) /= 0;
+
+  nnreal_expt:  JUDGEMENT expt(x:nnreal,  n:nat) HAS_TYPE nnreal
+  posreal_expt: JUDGEMENT expt(x:posreal, n:nat) HAS_TYPE posreal
+  rat_expt:     JUDGEMENT expt(x:rat,     n:nat) HAS_TYPE rat
+  nnrat_expt:   JUDGEMENT expt(x:nnrat,   n:nat) HAS_TYPE nnrat
+  posrat_expt:  JUDGEMENT expt(x:posrat,  n:nat) HAS_TYPE posrat
+  int_expt:     JUDGEMENT expt(x:int,     n:nat) HAS_TYPE int
+  nat_expt:     JUDGEMENT expt(x:nat,     n:nat) HAS_TYPE nat
+  posnat_expt:  JUDGEMENT expt(x:posnat,  n:nat) HAS_TYPE posnat
+
+  ^(r: real, i:{i:int | r /= 0 OR i >= 0}): real
+    = IF i >= 0 THEN expt(r, i) ELSE 1/expt(r, -i) ENDIF
+
+  expt_pos: LEMMA px^i > 0
+
+  expt_nonzero: LEMMA n0x^i /= 0
+
+  nnreal_exp:  JUDGEMENT ^(x:nnreal,  i:int | x/=0 OR i>=0) HAS_TYPE nnreal
+  posreal_exp: JUDGEMENT ^(x:posreal, i:int) HAS_TYPE posreal
+  rat_exp:     JUDGEMENT ^(x:rat,     i:int | x/=0 OR i>=0) HAS_TYPE rat
+  nnrat_exp:   JUDGEMENT ^(x:nnrat,   i:int | x/=0 OR i>=0) HAS_TYPE nnrat
+  posrat_exp:  JUDGEMENT ^(x:posrat,  i:int) HAS_TYPE posrat
+  int_exp:     JUDGEMENT ^(x:int, n:nat)    HAS_TYPE int
+  nat_exp:     JUDGEMENT ^(x:nat, n:nat)    HAS_TYPE nat
+  posint_exp:  JUDGEMENT ^(x:posint, n:nat) HAS_TYPE posint
+
+  % Properties of expt
+
+  expt_x0_aux: LEMMA expt(x, 0) = 1
+
+  expt_x1_aux: LEMMA expt(x, 1) = x
+
+  expt_1n_aux: LEMMA expt(1, n) = 1
+
+  increasing_expt_aux: LEMMA expt(gt1x, m+2) > gt1x
+
+  decreasing_expt_aux: LEMMA expt(lt1x, m+2) < lt1x
+
+  expt_1_aux: LEMMA expt(px, n + 1) = 1 IFF px = 1
+
+  expt_plus_aux: LEMMA expt(n0x, m + n) = expt(n0x, m) * expt(n0x, n)
+
+  expt_minus_aux: LEMMA
+    m >= n IMPLIES expt(n0x, m - n) = expt(n0x, m)/expt(n0x, n)
+
+  expt_times_aux: LEMMA expt(n0x, m * n) = expt(expt(n0x, m), n)
+
+  expt_divide_aux: LEMMA 1/expt(n0x, m * n) = expt(1/expt(n0x, m), n)
+
+  both_sides_expt1_aux: LEMMA expt(px, m+1) = expt(px, n+1) IFF m = n OR px = 1
+
+  both_sides_expt2_aux: LEMMA expt(px, pm) = expt(py, pm) IFF px = py
+
+  both_sides_expt_pos_lt_aux: LEMMA
+    expt(px, m+1) < expt(py, m+1) IFF px < py
+
+  both_sides_expt_gt1_lt_aux: LEMMA
+    expt(gt1x, m+1) < expt(gt1x, n+1) IFF m < n
+
+  both_sides_expt_lt1_lt_aux: LEMMA
+    expt(lt1x, m+1) < expt(lt1x, n+1) IFF n < m
+
+  both_sides_expt_pos_le_aux: LEMMA
+    expt(px, m+1) <= expt(py, m+1) IFF px <= py
+
+  both_sides_expt_gt1_le_aux: LEMMA
+    expt(gt1x, m+1) <= expt(gt1x, n+1) IFF m <= n
+
+  both_sides_expt_lt1_le_aux: LEMMA
+    expt(lt1x, m+1) <= expt(lt1x, n+1) IFF n <= m
+
+  both_sides_expt_pos_gt_aux: LEMMA
+    expt(px, m+1) > expt(py, m+1) IFF px > py
+
+  both_sides_expt_gt1_gt_aux: LEMMA
+    expt(gt1x, m+1) > expt(gt1x, n+1) IFF m > n
+
+  both_sides_expt_lt1_gt_aux: LEMMA
+    expt(lt1x, m+1) > expt(lt1x, n+1) IFF n > m
+
+  both_sides_expt_pos_ge_aux: LEMMA
+    expt(px, m+1) >= expt(py, m+1) IFF px >= py
+
+  both_sides_expt_gt1_ge_aux: LEMMA
+    expt(gt1x, m+1) >= expt(gt1x, n+1) IFF m >= n
+
+  both_sides_expt_lt1_ge_aux: LEMMA
+    expt(lt1x, m+1) >= expt(lt1x, n+1) IFF n >= m
+
+
+  % Properties of ^
+
+  expt_x0: LEMMA x^0 = 1
+
+  expt_x1: LEMMA x^1 = x
+
+  expt_1i: LEMMA 1^i = 1
+
+  expt_plus: LEMMA n0x^(i + j) = n0x^i * n0x^j
+
+  expt_times: LEMMA n0x^(i * j) = (n0x^i)^j
+
+  expt_inverse: LEMMA n0x^(-i) = 1/(n0x^i)
+
+  expt_div: LEMMA n0x^i/n0x^j = n0x^(i-j)
+
+  both_sides_expt1: LEMMA px ^ n0i = px ^ n0j IFF n0i = n0j OR px = 1
+
+  both_sides_expt2: LEMMA px ^ n0i = py ^ n0i IFF px = py
+
+  b: VAR above(1)
+
+  pos_expt_gt: LEMMA n < b^n
+
+  expt_ge1: LEMMA b^n >= 1
+
+  both_sides_expt_pos_lt: LEMMA px ^ pm < py ^ pm IFF px < py
+
+  both_sides_expt_gt1_lt: LEMMA gt1x ^ i < gt1x ^ j IFF i < j
+
+  both_sides_expt_lt1_lt: LEMMA lt1x ^ i < lt1x ^ j IFF j < i
+
+  both_sides_expt_pos_le: LEMMA px ^ pm <= py ^ pm IFF px <= py
+
+  both_sides_expt_gt1_le: LEMMA gt1x ^ i <= gt1x ^ j IFF i <= j
+
+  both_sides_expt_lt1_le: LEMMA lt1x ^ i <= lt1x ^ j IFF j <= i
+
+  both_sides_expt_pos_gt: LEMMA px ^ pm > py ^ pm IFF px > py
+
+  both_sides_expt_gt1_gt: LEMMA gt1x ^ i > gt1x ^ j IFF i > j
+
+  both_sides_expt_lt1_gt: LEMMA lt1x ^ i > lt1x ^ j IFF j > i
+
+  both_sides_expt_pos_ge: LEMMA px ^ pm >= py ^ pm IFF px >= py
+
+  both_sides_expt_gt1_ge: LEMMA gt1x ^ i >= gt1x ^ j IFF i >= j
+
+  both_sides_expt_lt1_ge: LEMMA lt1x ^ i >= lt1x ^ j IFF j >= i
+
+  expt_gt1_pos: LEMMA gt1x^pm >= gt1x
+
+  expt_gt1_neg: LEMMA gt1x^(-pm) < 1
+
+  expt_gt1_nonpos: LEMMA gt1x^(-m) <= 1
+
+  exponent_adjust: LEMMA b^i+b^(i-pm) < b^(i+1)
+
+  exp_of_exists: lemma exists i: b^i <= py & py < b^(i+1)
+
+ END exponentiation
+
+
+% subrange_induction defines induction schemas for subranges.  This is a
+% parameterized theory so that it may be used as a name to the prover
+% induction commands.  subrange_induction is the weak form, and
+% SUBRANGE_induction is the strong form of induction.
+
+subrange_inductions[i: int, j: upfrom(i)]: THEORY
+ BEGIN
+  k, m: VAR subrange(i, j)
+  p: VAR pred[subrange(i, j)]
+
+  subrange_induction: LEMMA
+    (p(i) AND (FORALL k: k < j AND p(k) IMPLIES p(k + 1)))
+        IMPLIES (FORALL k: p(k))
+
+  SUBRANGE_induction: LEMMA
+    (FORALL k: (FORALL m: m < k IMPLIES p(m)) IMPLIES p(k))
+      IMPLIES (FORALL k: p(k))
+
+ END subrange_inductions
+
+
+% bounded_int_inductions provides the weak and strong forms of induction for
+% the various bounded subtypes of int.
+
+bounded_int_inductions[m: int]: THEORY
+ BEGIN
+  pf: VAR pred[upfrom(m)]
+  jf, kf: VAR upfrom(m)
+
+  upfrom_induction: LEMMA
+    (pf(m) AND (FORALL jf: pf(jf) IMPLIES pf(jf + 1)))
+       IMPLIES (FORALL jf: pf(jf))
+
+  UPFROM_induction: LEMMA
+    (FORALL jf: (FORALL kf: kf < jf IMPLIES pf(kf)) IMPLIES pf(jf))
+      IMPLIES (FORALL jf: pf(jf))
+
+  pa: VAR pred[above(m)]
+  ja, ka: VAR above(m)
+
+  above_induction: LEMMA
+    (pa(m+1) AND (FORALL ja: pa(ja) IMPLIES pa(ja + 1)))
+      IMPLIES (FORALL ja: pa(ja))
+
+  ABOVE_induction: LEMMA
+    (FORALL ja: (FORALL ka: ka < ja IMPLIES pa(ka)) IMPLIES pa(ja))
+      IMPLIES (FORALL ja: pa(ja))
+
+ END bounded_int_inductions
+
+
+% bounded_nat_inductions provides the weak and strong forms of induction for
+% the various bounded subtypes of nat.
+
+bounded_nat_inductions[m: nat]: THEORY
+ BEGIN
+  pt: VAR pred[upto(m)]
+  jt, kt: VAR upto(m)
+
+  upto_induction: LEMMA
+    (pt(0) AND (FORALL jt: jt < m AND pt(jt) IMPLIES pt(jt + 1)))
+      IMPLIES (FORALL jt: pt(jt))
+
+  UPTO_induction: LEMMA
+    (FORALL jt: (FORALL kt: kt < jt IMPLIES pt(kt)) IMPLIES pt(jt))
+      IMPLIES (FORALL jt: pt(jt))
+
+  pb: VAR pred[below(m)]
+  jb, kb: VAR below(m)
+
+  below_induction: LEMMA
+    ((m > 0 IMPLIES pb(0))
+        AND (FORALL jb: jb < m - 1 AND pb(jb) IMPLIES pb(jb + 1)))
+      IMPLIES (FORALL jb: pb(jb))
+
+  BELOW_induction: LEMMA
+    (FORALL jb: (FORALL kb: kb < jb IMPLIES pb(kb)) IMPLIES pb(jb))
+      IMPLIES (FORALL jb: pb(jb))
+
+ END bounded_nat_inductions
+
+
+% int_types defines the subrange type as a parameterized type.
+
+subrange_type[m, n: int] : THEORY
+ BEGIN
+  subrange: TYPE = subrange(m, n)
+ END subrange_type
+
+
+% int_types defines some useful subtypes of the integers for
+% backward compatibility.
+
+int_types[m: int] : THEORY
+ BEGIN
+  upfrom: NONEMPTY_TYPE = upfrom(m)
+  above:  NONEMPTY_TYPE = above(m)
+ END int_types
+
+
+% nat_types defines some useful subtypes of the natural numbers for
+% backward compatibility.
+
+nat_types[m: nat] : THEORY
+ BEGIN
+  upto:   NONEMPTY_TYPE = upto(m)
+  below:  TYPE = below(m)
+ END nat_types
+
+
+% function_iterate provides the iterate function, which composes a
+% function with itself a specified number of times.  The function must
+% have the same domain and range.  Two useful properties of iterate are
+% also provided.
+
+function_iterate[T: TYPE]: THEORY
+ BEGIN
+  f: VAR [T -> T]
+  m, n: VAR nat
+  x: VAR T
+
+  iterate(f, n)(x): RECURSIVE T =
+    IF n = 0 THEN x ELSE f(iterate(f, n-1)(x)) ENDIF
+    MEASURE n
+
+  iterate_add: LEMMA
+    iterate(f, m) o iterate(f, n) = iterate(f, m + n)
+
+  iterate_add_applied: LEMMA 
+    iterate(f,m)(iterate(f, n)(x)) = iterate(f, m + n)(x)
+
+  iterate_add_one: LEMMA 
+    iterate(f, n)(f(x)) = iterate(f, n+1)(x)
+
+  iterate_mult: LEMMA
+    iterate(iterate(f, m), n) = iterate(f, m * n)
+
+  iterate_invariant: LEMMA
+    f(iterate(f, n)(x)) = iterate(f, n)(f(x))
+  
+ END function_iterate
+
+
+% sequences provides the polymorphic sequence type, as a function from
+% nat to the base type.  The usual sequence functions are also provided.
+% Note that these are infinite sequences, and do not contain finite
+% sequences as a subtype.
+
+sequences[T: TYPE]: THEORY
+ BEGIN
+
+  sequence: TYPE = [nat->T]
+  i, n: VAR nat
+  x: VAR T
+  p: VAR pred[T]
+  seq: VAR sequence
+  Trel: VAR PRED[[T, T]]
+
+  nth(seq, n): T = seq(n)
+
+  suffix(seq, n): sequence =
+    (LAMBDA i: seq(i+n))
+
+  first(seq): T = nth(seq, 0)
+
+  rest(seq): sequence = suffix(seq, 1)
+
+  delete(n, seq): sequence =
+    (LAMBDA i: (IF i < n THEN seq(i) ELSE seq(i + 1) ENDIF))
+
+  insert(x, n, seq): sequence =
+    (LAMBDA i: (IF i < n THEN seq(i)
+                ELSIF i = n THEN x
+                ELSE seq(i - 1) ENDIF))
+
+  add(x, seq): sequence = insert(x, 0, seq)
+
+  insert_delete: LEMMA insert(nth(seq, n), n, delete(n, seq)) = seq
+
+  add_first_rest: LEMMA add(first(seq), rest(seq)) = seq
+
+  every(p)(seq): bool = (FORALL n: p(nth(seq, n)))
+
+  every(p, seq): bool = (FORALL n: p(nth(seq, n)))
+
+  some(p)(seq): bool = (EXISTS n: p(nth(seq, n)))
+
+  some(p, seq): bool = (EXISTS n: p(nth(seq, n)))
+
+  sequence_induction: LEMMA
+    p(nth(seq, 0)) AND (FORALL n: p(nth(seq, n)) IMPLIES p(nth(seq, n + 1)))
+      IMPLIES every(p)(seq)
+
+  ascends?(seq, Trel): bool = preserves(seq, (LAMBDA i, n: i <= n), Trel)
+
+  descends?(seq, Trel): bool = inverts(seq, (LAMBDA i, n: i <= n), Trel)
+
+ END sequences
+
+
+% seq_functions defines the map function that generates the image of a
+% sequence under a function.
+
+seq_functions[D, R: TYPE]: THEORY
+ BEGIN
+  f: VAR [D -> R]
+  s: VAR sequence[D]
+  n: VAR nat
+
+  map(f)(s): sequence[R] = (LAMBDA n: f(nth(s, n)))
+
+  map(f, s): sequence[R] = (LAMBDA n: f(nth(s, n)))
+
+ END seq_functions
+
+
+% This theory defines finite sequences as a dependent type.  Two finite
+% sequences are concatenated with the operator 'o', and a subsequence can be
+% extracted with the operator '^'.  Note that ^ allows any natural numbers
+% m and n to define the range; if m > n then the empty sequence is returned
+
+finite_sequences [T: TYPE]: THEORY
+ BEGIN
+  finite_sequence: TYPE = [# length: nat, seq: [below[length] -> T] #]
+  finseq: TYPE = finite_sequence
+
+  fs, fs1, fs2, fs3: VAR finseq
+  m, n: VAR nat
+
+  empty_seq: finseq =
+    (# length := 0,
+       seq := (LAMBDA (x: below[0]): epsilon! (t:T): true) #)
+
+  finseq_appl(fs): [below[length(fs)] -> T] = seq(fs);
+
+  CONVERSION finseq_appl
+
+  o(fs1, fs2): finseq =
+     LET l1 = length(fs1),
+         lsum = l1 + length(fs2)
+      IN (# length := lsum,
+            seq := (LAMBDA (n:below[lsum]):
+                      IF n < l1
+                         THEN seq(fs1)(n)
+                         ELSE seq(fs2)(n-l1)
+                      ENDIF) #);
+
+  p: VAR [nat, nat]
+
+  ^(fs, p): finseq =
+    LET (m, n) = p
+     IN IF m > n OR m >= length(fs)
+        THEN empty_seq
+        ELSE LET len = min(n - m + 1, length(fs) - m)
+              IN (# length := len,
+                    seq := (LAMBDA (x: below[len]): seq(fs)(x + m)) #)
+        ENDIF
+
+  extract1(fs:{fs | length(fs) = 1}): T = seq(fs)(0)
+
+  CONVERSION extract1
+
+  o_assoc: LEMMA fs1 o (fs2 o fs3) = (fs1 o fs2) o fs3
+
+END finite_sequences
+
+
+% ordstruct provides the building blocks for defining the
+% ordinals up to epsilon_0.
+
+ordstruct: DATATYPE
+ BEGIN
+  zero: zero?
+  add(coef: posnat, exp: ordstruct, rest: ordstruct): nonzero?
+ END ordstruct
+
+
+% ordinals uses the ordstruct datatype to define the ordinals up to
+% epsilon_0, by providing an ordering on ordstruct and defining the
+% ordinals to be those elements of type ordstruct that are in a
+% Cantor normal form with respect to the ordering.  Thus
+%    add(i, u, v) = (omega^u)*i + v
+%    add(i, u, add(j, v, w)) = (omega^u)*i + (omega^v)*j + w, where u>v.  
+
+ordinals: THEORY
+ BEGIN
+  i, j, k: VAR posnat
+  m, n, o: VAR nat
+  u, v, w, x, y, z: VAR ordstruct
+  size: [ordstruct->nat] = reduce[nat](0, (LAMBDA i, m, n: 1 + m+n));
+
+  <(x, y): RECURSIVE bool =
+     CASES x OF
+        zero: NOT zero?(y),
+        add(i, u, v): CASES y OF
+                        zero: FALSE,
+                        add(j, z, w): (u<z) OR
+                                      (u=z) AND (i<j) OR
+                                      (u=z) AND (i=j) AND (v<w)
+                      ENDCASES
+     ENDCASES
+   MEASURE size(x);
+
+  >(x, y): bool = y < x;
+  <=(x, y): bool = x < y OR x = y;
+  >=(x, y): bool = y < x OR y = x
+
+  ordinal?(x): RECURSIVE bool =
+    CASES x OF
+      zero: TRUE,
+      add(i, u, v): (ordinal?(u) AND ordinal?(v) AND 
+                      CASES v OF
+                        zero: TRUE,
+                        add(k, r, s): r < u
+                      ENDCASES)
+    ENDCASES
+   MEASURE size
+
+  ordinal: NONEMPTY_TYPE = (ordinal?)
+
+  r, s, t: VAR ordinal
+  
+  ordinal_irreflexive: LEMMA NOT r < r
+
+  ordinal_antisym: LEMMA r < s IMPLIES NOT s < r
+
+  ordinal_antisymmetric: LEMMA r <= s AND s <= r IMPLIES r = s
+
+  ordinal_transitive: LEMMA r < s AND s < t IMPLIES r < t
+
+  ordinal_trichotomy: LEMMA r < s OR r = s OR s < r
+
+  p: VAR pred[ordinal]
+
+  ordinal_induction: AXIOM
+    (FORALL r: (FORALL s: s < r IMPLIES p(s)) IMPLIES p(r))
+      IMPLIES (FORALL r: p(r))
+
+  well_founded_le: LEMMA
+    well_founded?(LAMBDA (r, s: (ordinal?)): r < s)
+
+ END ordinals
+
+
+% lex2 provides a lexical ordering for pairs of natural numbers.
+% This illustrates the use of ordinals.
+
+lex2: THEORY
+  BEGIN
+
+  i, j, m, n: VAR nat
+
+  lex2(m, n): ordinal = 
+    (IF m=0
+       THEN IF n = 0
+               THEN zero
+               ELSE add(n, zero, zero)
+            ENDIF
+       ELSIF n = 0 THEN add(m, add(1,zero,zero),zero)
+       ELSE add(m, add(1,zero,zero), add(n,zero, zero))
+     ENDIF)
+
+  lex2_lt: LEMMA
+    lex2(i, j) < lex2(m, n) =
+     (i < m OR (i = m AND j < n))
+
+ END lex2
+
+
+% list provides the datatype definition for lists.
+
+list [T: TYPE]: DATATYPE 
+ BEGIN
+  null: null?
+  cons (car: T, cdr:list):cons?
+
+ END list
+
+
+% list_props provides the length, append, and reverse functions.
+% These could have been defined using the reduce function generated
+% for the list datatype, but this is harder to work with in an
+% interactive proof.
+
+list_props [T: TYPE]: THEORY
+ BEGIN
+  l, l1, l2, l3: VAR list[T]
+  x: VAR T
+
+  length(l): RECURSIVE nat =
+    CASES l OF
+      null: 0,
+      cons(x, y): length(y) + 1
+    ENDCASES
+   MEASURE reduce_nat(0, (LAMBDA (x: T), (n: nat): n + 1))
+
+  member(x, l): RECURSIVE bool =
+    CASES l OF
+      null: FALSE,
+      cons(hd, tl): x = hd OR member(x, tl)
+    ENDCASES
+   MEASURE length(l)
+
+  nth(l, (n:below[length(l)])): RECURSIVE T =
+    IF n = 0 THEN car(l) ELSE nth(cdr(l), n-1) ENDIF
+   MEASURE length(l)
+
+  append(l1, l2): RECURSIVE list[T] =
+    CASES l1 OF
+      null: l2,
+      cons(x, y): cons(x, append(y, l2))
+    ENDCASES
+    MEASURE length(l1)
+
+  reverse(l): RECURSIVE list[T] =
+    CASES l OF
+      null: l,
+      cons(x, y): append(reverse(y), cons(x, null))
+    ENDCASES
+    MEASURE length
+
+  append_null: LEMMA append(l, null) = l
+
+  append_assoc: LEMMA
+     append(append(l1, l2), l3) = append(l1, append(l2, l3))
+
+  reverse_append: LEMMA
+    reverse(append(l1, l2)) = append(reverse(l2), reverse(l1))
+
+  reverse_reverse: LEMMA reverse(reverse(l)) = l
+
+  length_append: LEMMA length(append(l1, l2)) = length(l1) + length(l2)
+
+  length_reverse: LEMMA length(reverse(l)) = length(l)
+
+  a, b, c: VAR T
+
+  list_rep: LEMMA (: a, b, c :) = cons(a, cons(b, cons(c, null)))
+
+ END list_props
+
+
+% map_props gives the commutativity properties of composition and map,
+% for both sequences and lists.
+
+map_props [T1, T2, T3: TYPE]: THEORY
+ BEGIN
+  f1: VAR [T1 -> T2]
+  f2: VAR [T2 -> T3]
+  s: VAR sequence[T1]
+  l: VAR list[T1]
+
+  map_list_composition: LEMMA map(f2)(map(f1)(l)) = map(f2 o f1)(l)
+
+  map_seq_composition: LEMMA map(f2)(map(f1)(s)) = map(f2 o f1)(s)
+
+ END map_props
+
+
+% filters defines filter functions for sets and lists, which take a set
+% (list) and a predicate and return the set (list) of those elements
+% that satisfy the predicate.  Both the curried and uncurried forms are
+% given.  Note that filter on lists could be defined using reduce, but
+% becomes harder to work with in an interactive proof.
+
+filters[T: TYPE]: THEORY
+ BEGIN
+  s: VAR set[T]
+  l: VAR list[T]
+  p: VAR pred[T]
+  
+  filter(s, p): set[T] = {x: T | s(x) & p(x)}
+
+  filter(p)(s): set[T] = {x: T | s(x) & p(x)}
+
+  filter(l, p): RECURSIVE list[T] =
+    CASES l OF
+      null: null,
+      cons(x, y): IF p(x) THEN cons(x, filter(y, p)) ELSE filter(y, p) ENDIF
+    ENDCASES
+    MEASURE length(l)
+
+  filter(p)(l): RECURSIVE list[T] =
+    CASES l OF
+      null: null,
+      cons(x, y): IF p(x) THEN cons(x, filter(p)(y)) ELSE filter(p)(y) ENDIF
+    ENDCASES
+    MEASURE length(l)
+ END filters
+
+
+% list2finseq
+
+list2finseq[T: TYPE]: THEORY
+ BEGIN
+  l: VAR list[T]
+  fs: VAR finseq[T]
+  n: VAR nat
+
+  list2finseq(l): finseq[T] =
+    (# length := length(l),
+       seq := (LAMBDA (x: below[length(l)]): nth(l, x)) #)
+
+  finseq2list_rec(fs, (n: nat | n <= length(fs))): RECURSIVE list[T] =
+    IF n = 0
+       THEN null
+       ELSE cons(seq(fs)(n-1), finseq2list_rec(fs, n-1))
+    ENDIF
+    MEASURE n
+
+  finseq2list(fs): list[T] = finseq2list_rec(fs, length(fs))
+
+  CONVERSION list2finseq, finseq2list
+
+ END list2finseq
+
+
+% list2set
+
+list2set[T:TYPE]: THEORY
+ BEGIN
+  l: VAR list[T]
+  x: VAR T
+
+  list2set(l) : RECURSIVE set[T] =
+    CASES l OF
+      null: emptyset[T],
+      cons(x, y): add(x, list2set(y))
+    ENDCASES
+   MEASURE length
+
+  CONVERSION list2set
+
+ END list2set
+
+
+% characters - this follows the ASCII control codes, of which only the
+% first 128 are defined:
+%
+%     |  0 NUL|  1 SOH|  2 STX|  3 ETX|  4 EOT|  5 ENQ|  6 ACK|  7 BEL|
+%     |  8 BS |  9 HT | 10 NL | 11 VT | 12 NP | 13 CR | 14 SO | 15 SI |
+%     | 16 DLE| 17 DC1| 18 DC2| 19 DC3| 20 DC4| 21 NAK| 22 SYN| 23 ETB|
+%     | 24 CAN| 25 EM | 26 SUB| 27 ESC| 28 FS | 29 GS | 30 RS | 31 US |
+%     | 32 SP | 33  ! | 34  " | 35  # | 36  $ | 37  % | 38  & | 39  ' |
+%     | 40  ( | 41  ) | 42  * | 43  + | 44  , | 45  - | 46  . | 47  / |
+%     | 48  0 | 49  1 | 50  2 | 51  3 | 52  4 | 53  5 | 54  6 | 55  7 |
+%     | 56  8 | 57  9 | 58  : | 59  ; | 60  < | 61  = | 62  > | 63  ? |
+%     | 64  @ | 65  A | 66  B | 67  C | 68  D | 69  E | 70  F | 71  G |
+%     | 72  H | 73  I | 74  J | 75  K | 76  L | 77  M | 78  N | 79  O |
+%     | 80  P | 81  Q | 82  R | 83  S | 84  T | 85  U | 86  V | 87  W |
+%     | 88  X | 89  Y | 90  Z | 91  [ | 92  \ | 93  ] | 94  ^ | 95  _ |
+%     | 96  ` | 97  a | 98  b | 99  c |100  d |101  e |102  f |103  g |
+%     |104  h |105  i |106  j |107  k |108  l |109  m |110  n |111  o |
+%     |112  p |113  q |114  r |115  s |116  t |117  u |118  v |119  w |
+%     |120  x |121  y |122  z |123  { |124  | |125  } |126  ~ |127 DEL|
+
+character: DATATYPE
+ BEGIN
+  char(code:below[256]):char?
+ END character
+
+
+% strings - the strings theory introduces the char type and represents
+% strings as a finite sequence of chars.  The string_rep lemma shows how
+% strings are represented internally.  The other lemmas are useful for
+% rewriting.  This theory is useful to auto-rewrite with, but make sure
+% that list2finseq is not also an auto-rewrite rule.
+%
+% strings are input as a sequence of characters between double
+% quotes.  The \ is an escape character, whose value depends on the
+% following character(s).  \" and \\ are used to embed a " and \ in a string.
+% A \ followed by a decimal number (< 256) or a \x or \X followed by a
+% hexidecimal number (< FF) represents that character number.  The other
+% possibilities are:
+%  \a  - 007 (C-g, Bell)
+%  \b  - 008 (C-h, Backspace)
+%  \t  - 009 (C-i, Tab)
+%  \n  - 010 (C-j, Newline)
+%  \v  - 011 (C-k, VT)
+%  \f  - 012 (C-l, Newpage)
+%  \r  - 013 (C-m, Return)
+
+strings: THEORY
+ BEGIN
+  char: TYPE = (char?)
+  string: TYPE = finite_sequence[char]
+
+  string_rep: LEMMA
+    "foo" = list2finseq(cons(char(102),
+                             cons(char(111),
+                                  cons(char(111), null))))
+
+  l1, l2: VAR list[char]
+
+  c1, c2: VAR char
+
+  fseq_lem: LEMMA
+    (list2finseq(l1) = list2finseq(l2)) = (l1 = l2)
+
+  cons_lem: LEMMA (cons(c1,l1) = cons(c2,l2)) = (c1 = c2 & l1 = l2)
+
+  char_lem: LEMMA (c1 = c2) = (code(c1) = code(c2))
+ END strings
+
+
+% The rest of the prelude contains examples meant to illustrate language
+% features not illustrated in the preceding theories.  Note that these
+% theories are not meant to be imported.
+
+% Tuples - this is just an example that both indicates what is known by
+% the theorem prover, and provides an example.
+
+tuple_prelude_example: THEORY
+ BEGIN
+  T_prelude: TYPE = [a: int, b: {x: int | x < a}]
+  t1, t2: VAR T_prelude
+
+  T_prelude_extensionality: POSTULATE
+    (PROJ_1(t1) = PROJ_1(t2) AND PROJ_2(t1) = PROJ_2(t2)) IMPLIES t1 = t2
+
+  t_prelude: T_prelude = (3, 2)
+
+  tupaccess_prelude: FORMULA PROJ_1(3,2) = PROJ_2((7,3))
+
+  tupform_prelude: FORMULA t_prelude WITH [1 := 4] = (4, 2)
+ END tuple_prelude_example
+
+
+% Records - this is just an example that both indicates what is known by
+% the theorem prover, and provides an example.
+
+record_prelude_example: THEORY
+ BEGIN
+  R_prelude: TYPE = [# a: int, b: {x: int | x < a} #]
+  r1, r2: VAR R_prelude
+
+  R_prelude_extensionality: POSTULATE
+    (a(r1) = a(r2) AND b(r1) = b(r2))
+   IMPLIES r1 = r2
+
+  r_prelude: R_prelude = (# a := 3, b := 2 #)
+
+  recform_prelude: FORMULA r_prelude WITH [a := 4] = (# a := 4, b := 2 #)
+ END record_prelude_example

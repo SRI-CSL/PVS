@@ -1,0 +1,94 @@
+Starting with pvs2.3, we are moving to the CVS system.  This is a set of
+notes that should get you started, and includes the most common CVS
+commands.
+
+The difference between CVS and RCS is that CVS works with an entire
+directory hierarchy, while RCS simply works with files.  The "real" files
+are kept in a repository.  For pvs, the repository is in
+/project/pvs2/cvsroot (on the machine fluid).  To access this repository
+you must have the environment variable CVSROOT set to
+/project/pvs2/cvsroot.  It may also help to have CVSREAD set to true; this
+makes CVS behave more like RCS when in Emacs.
+
+NOTE: if you just now edited your .cshrc and sourced it, only that shell
+window will see the new value.  You must exit Emacs/PVS and restart it
+from a shell with the right environment before you can properly use CVS.
+
+The /project/pvs/pvs2.3 directory is checked out from the repository, and
+for the most part works as before, except that you will see CVS
+subdirectories where before it was RCS.
+
+One of the advantages of CVS is that it allows the entire file system to
+be checked out.  This is useful for working from home without keeping your
+line up, or for taking the system with you when you travel.  This is
+explained below.
+
+Here are some of the most useful commands:
+ Shell commands (read the CVS info for options to these commands):
+
+  cvs update pvs2.3
+     Run this to update the entire directory.  It will fold in all the
+     changes that may have been made to the repository.
+  cvs commit
+     Commits all the changes you made; updating the repository so that
+     anybody that checks out a new copy of the repository can see your
+     changes.
+  cvs add DIRECTORY
+     Adds a new directory to the repository.
+  cvs add FILE; cvs commit FILE
+     Adds a new file to your local copy, and commits it to the repository.
+     Don't add binary files or files that are automatically generated.
+  cvs remove FILE
+     Removes a file.  Note that it is still in the repository, but will no
+     longer show up when later versions of repository are checked out.
+     
+ To rename a file from OLD to NEW, use
+  mv OLD NEW
+  cvs remove OLD
+  cvs add NEW
+  cvs commit -m "Renamed OLD to NEW" OLD NEW
+
+ Emacs commands:
+  Emacs versions 19.34 and later have built in understanding of CVS as
+  part of version control.  It works much like RCS, you use C-x C-q to
+  "check out" a file, edit it, and when you reach a point where you want
+  to check it back in, you run C-x C-q again, and you will be prompted for
+  a description of the change.  It isn't quite like RCS, the Emacs info
+  has more details (to get at it, use
+   C-h i              (Brings up the info buffer)
+   m Emacs            (Goes to the Emacs manual)
+   m Version Control  (Goes to the Version Control chapter)
+   m Version Systems  (Goes to the Version Systems section)
+   Middle click on "*Note CVS and VC::" to bring up the page on CVS notes.
+
+----------
+From the Emacs Version Control Info file:
+
+Options for VC Backends
+.......................
+
+   Under CVS, the default is not to use locking; anyone can change a
+work file at any time.  However, there are ways to restrict this,
+resulting in behavior that resembles locking.
+
+   For one thing, you can set the `CVSREAD' environment variable to an
+arbitrary value.  If this variable is defined, CVS makes your work
+files read-only by default.  In Emacs, you must type `C-x C-q' to make
+the file writeable, so that editing works in fact similar as if locking
+was used.  Note however, that no actual locking is performed, so
+several users can make their files writeable at the same time.  When
+setting `CVSREAD' for the first time, make sure to check out all your
+modules anew, so that the file protections are set correctly.
+
+   Another way to achieve something similar to locking is to use the
+"watch" feature of CVS.  If a file is being watched, CVS makes it
+read-only by default, and you must also use `C-x C-q' in Emacs to make
+it writable.  VC calls `cvs edit' to make the file writeable, and CVS
+takes care to notify other developers of the fact that you intend to
+change the file.  See the CVS documentation for details on using the
+watch feature.
+
+   You can turn off use of VC for CVS-managed files by setting the
+variable `vc-handle-cvs' to `nil'.  If you do this, Emacs treats these
+files as if they were not registered, and the VC commands are not
+available for them.  You must do all CVS operations manually.

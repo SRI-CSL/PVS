@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec 23 14:43:02 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sun Apr  5 03:31:14 1998
-;; Update Count    : 91
+;; Last Modified On: Wed Dec 30 23:49:59 1998
+;; Update Count    : 92
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (in-package "USER")
@@ -17,7 +17,7 @@
 	*ignore-package-name-case* t))
 
 (eval-when (eval load)
-  (defparameter *pvs-path* "/project/pvs/pvs2.3")
+  (defparameter *pvs-path* "/homes/owre/pvs2.3")
   #+allegro (chdir *pvs-path*))
 
 (eval-when (eval load)
@@ -45,37 +45,12 @@
 
 (setq *cltl1-in-package-compatibility-p* t)
 
+(defpackage "ILISP")
+(defpackage "DP")
+
 (unless (find-package "MAKE")
   (let ((*enable-package-locked-errors* nil))
     (load (format nil "~a/src/defsystem" *pvs-path*))))
-
-(defpackage "ILISP")
-
-;;; Stuff for the new decision procedures
-
-(defpackage "DP")
-
-(defvar *dp-path* (concatenate 'string *pvs-path* "/src/decision-procedures"))
-
-(defvar dp::*dp-path* *dp-path*)
-
-;#+allegro
-;(require :ffcompat)
-
-(defvar *poly-path*
-  (concatenate 'string "/polylib/"
-	       #+(and allegro sun4 sunos4) "SunOS4"
-	       #+(and allegro sun4 (not sunos4)) "SunOS5"
-	       #+(and allegro x86) "Linux"))
-
-(defvar dp::*poly-path* *poly-path*)
-
-(defvar dp::*develop* t)
-
-#+allegro
-(defun dp::string-append (&rest args)
-  (apply #'clos::string-append args))
-
 
 (in-package "MAKE")
 
@@ -173,58 +148,31 @@
 				 "SB-RUNTIME" "LANG" "NEWATTR"))
 		  #+gcl (defmacro ignore-errors (&body forms)
 			  `(progn ,@forms))
-		  (let ((bddpath
-			 (concatenate 'string
-			   *pvs-path* "/BDD/"
-			   #+(and allegro sun4 sunos4) "SunOS4"
-			   #+(and allegro sun4 (not sunos4)) "SunOS5"
-			   #+(and allegro x86 redhat5) "redhat5"
-			   #+(and allegro x86 redhat4) "Linux")))
-		    #+(and allegro dlfcn)
-		    (load (format nil "~a/bdd/bdd.so" bddpath))
-		    #+(and allegro dlfcn)
-		    (load (format nil "~a/mu/mu.so" bddpath))
-		    #+(and allegro (not dlfcn))
-		    (load ""
-			  :foreign-files
-			  (append
-			   (mapcar #'(lambda (obj)
-				       (format nil "~a/bdd/~a" bddpath obj))
-			     '("bdd_interface.o" "bdd.o" "bdd_factor.o"
-			       "bdd_quant.o" "bdd_fns.o" "vfns.o"))
-			   (list (format nil "~a/utils/list.o" bddpath)
-				 (format nil "~a/utils/libutils.a" bddpath)))
-			  :system-libraries
-			  '("m"
-			    "/pkg/gcc/lib/gcc-lib/sparc-sun-sunos4.1.3/2.7.2/libgcc.a"))
-		    #+(and allegro (not dlfcn))
-		    (load ""
-			  :foreign-files
-			  (append
-			   (mapcar #'(lambda (obj)
-				       (format nil "~a/mu/~a" bddpath obj))
-			     '("mu_interface.o" "mu.o"))
-			   (list (format nil "~a/utils/list.o" bddpath)
-				 (format nil "~a/utils/libutils.a" bddpath)))
-			  :system-libraries
-			  '("m"
-			    "/pkg/gcc/lib/gcc-lib/sparc-sun-sunos4.1.3/2.7.2/libgcc.a")))
+		  #+(and allegro dlfcn)
+		  (let* ((platform #+(and sun4 sunos4) "sun4-SunOS4"
+				   #+(and sun4 (not sunos4)) "sun4-SunOS5"
+				   #+(and x86 redhat5) "ix86-redhat5"
+				   #+(and x86 redhat4) "ix86-redhat4")
+			 (bddpath (concatenate 'string
+				    *pvs-path* "/BDD/" platform))
+			 (polypath (concatenate 'string
+				     *pvs-path*
+				     "/src/decision-procedures/polylib/"
+				     platform)))
+		    (load (format nil "~a/bdd.so" bddpath))
+		    (load (format nil "~a/mu.so" bddpath))
+		    (load (format nil "~a/polylib.so" polypath)))
 		  (setq *pvs-system-loaded* t))
-  :finally-do (let* ((patchsrc (format nil "~a/patch2-build.lisp" *pvs-path*))
-		     (patchbin (make-pathname :type *pvs-binary-type*
-					      :defaults patchsrc)))
-		(when (probe-file patchsrc)
-		  (when (pvs::compiled-file-older-than-source?
-			 patchsrc patchbin)
-		    (compile-file patchsrc :output-file patchbin))
-		  (load patchbin))
-		#+allegro
-		(load (format nil "~a/src/closopt2" *pvs-path*))
-		(pvs::remove-typecheck-caches)
+  :finally-do (progn
 		#+lucid (precompile-generic-functions)
 		#+lcl4.1 (clos::flush-pv-caches)
 		(pvs::bdd_init)
-		(pvs::load-prelude))
+		(pvs::load-prelude)
+		#+allegro
+		(let ((optfile (format nil "~a/src/closopt" *pvs-path*)))
+		  (compile-file optfile)
+		  (load optfile))
+		(pvs::remove-typecheck-caches))
   :components
   ((:module ground-prover
      :source-pathname "src/ground-prover/"

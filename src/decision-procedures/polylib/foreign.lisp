@@ -5,15 +5,15 @@
 (use-package :ff) ;; use foreign function package
 (require :foreign)
 
-;; load polyhedral library files
+; ;; load polyhedral library files
 
-(defvar *polylib-directory* (concatenate 'string *dp-path* *poly-path*))
+; (defvar *polylib-directory* (concatenate 'string *dp-path* *poly-path*))
 
-#-dlfcn(load (string-append *polylib-directory* "/foreign_funcs.o")
-	     :foreign-files
-	     `(,(string-append *polylib-directory* "/vector.o")
-	       ,(string-append *polylib-directory* "/polyhedron.o")))
-#+dlfcn(load (string-append *polylib-directory* "/polylib.so"))
+; #-dlfcn(load (string-append *polylib-directory* "/foreign_funcs.o")
+; 	     :foreign-files
+; 	     `(,(string-append *polylib-directory* "/vector.o")
+; 	       ,(string-append *polylib-directory* "/polyhedron.o")))
+; #+dlfcn(load (string-append *polylib-directory* "/polylib.so"))
 
 
 ;; Datatypes for polyhedral library

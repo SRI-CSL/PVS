@@ -377,13 +377,18 @@ Currently only #'get-universal-time is supported.")
 
 (defconstant *lisp-source-extension* "lisp")
 (defconstant *lisp-compiled-extension*
-  #+(and lucid (not lcl3.0)) (first system:*load-binary-pathname-types*)
-  #+(and lucid lcl3.0) (first lcl:*load-binary-pathname-types*)
-  #+allegro "fasl"
-  #+cmu "fasl"
-  #+(or ibcl kcl) "o"
+  #+(and allegro sparc) "fasl"		; Sun4
+  #+(and allegro rios) "rfasl"		; PowerPC/RS6000
+  #+(and allegro hpux) "hfasl"		; HP 9000
+  #+(and allegro x86) "lfasl"		; Intel x86
+  #+(and lucid lcl4.1 sparc) "sbin"	; Sun4 new Lucid
+  #+(and lucid (not lcl4.1) sparc) "obin" ; Sun4 old Lucid
+  #+(and lucid rios) "rbin"		; PowerPC/RS6000
+  #+(and lucid mips) "mbin"		; DEC
+    ;;; These are experimental
+  #+gcl "o"
+  #+cmu "sparcf"
   #+harlequin-common-lisp "wfasl"
-  #-(or lucid allegro cmu ibcl kcl harlequin-common-lisp) "bin"
   )
 
 #-(or lucid allegro cmu ibcl kcl harlequin-common-lisp)
