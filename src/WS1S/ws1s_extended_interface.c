@@ -1,39 +1,27 @@
 /*
- * Extracted from Mona Code... (hr 11/98)
+ * Extracted from Mona Code... (hr 11/98) and adjusted to Mona-14 (hr 7/01)
  */
 
 #include <stdlib.h>
 #include "dfa.h"
 
-int dfaCheck(DFA *a, int polarity)
+DFA* dfaConjunction(DFA *a1, DFA *a2)
 {
-  int i, j, min_dist = -1, minv;
-  int *dist, *prev;
-
-  dist = (int *) mem_alloc(a->ns * (sizeof(int))); /* distance from start */
-  prev = (int *) mem_alloc(a->ns * (sizeof(int))); /* previous in path */
-
-  bfs(a, dist, prev); /* breadth-first-search */
-
-  for (i = 0, minv = -1; i < a->ns; i++)
-    if (a->f[i] == polarity)
-      if ((minv == -1 || dist[i] < min_dist) && dist[i] >= 1) {
-	minv = i;
-	min_dist = dist[i];
-      }
-
-   free(dist);
-   free(prev);
-
-   return (min_dist == -1)? 0 : 1;
+  return (DFA*) dfaProduct(a1,a2,dfaAND);
 }
 
-int dfaIsFull(DFA *a)
+DFA* dfaDisjunction(DFA *a1, DFA *a2)
 {
-  return dfaCheck(a, -1) != 0;   /* no counterexample */
+  return (DFA*) dfaProduct(a1,a2,dfaOR);
 }
 
-int dfaIsEmpty(DFA *a)
+DFA* dfaImplication(DFA *a1, DFA *a2)
 {
-  return dfaCheck(a, 1) != 0;   /* no witness */
+  return (DFA*) dfaProduct(a1,a2,dfaIMPL);
 }
+
+DFA* dfaIff(DFA *a1, DFA *a2)
+{
+  return (DFA*) dfaProduct(a1,a2,dfaBIIMPL);
+}
+
