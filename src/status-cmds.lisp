@@ -720,7 +720,7 @@
 
 (defmethod pc-analyze* ((decl declaration) )
   (let ((*depending-chain* *depending-chain* ))
-    (cond ((and (not (def-decl? decl))
+    (cond ((and (not (typep decl '(or def-decl fixpoint-decl)))
 		(memq decl *depending-chain*))
 	   (pushnew decl *depending-cycles*)
 	   *dependings*)
@@ -729,9 +729,7 @@
 	  (t (setf (gethash decl *dependings*) decl)
 	     (push decl *depending-chain*)
 	     (pc-analyze* (union (refers-to decl)
-				 (remove-if-not
-				     #'tcc?
-				   (generated decl))))))))
+				 (remove-if-not #'tcc? (generated decl))))))))
 
 (defmethod pc-analyze* ((list list))
   (cond ((null list)
