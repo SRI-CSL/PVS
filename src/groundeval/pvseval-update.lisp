@@ -1735,9 +1735,9 @@
 		 `(integer ,@sub)
 		 (pvs2cl-lisp-type* (supertype type)))))))
 
-(defcl adt-type-name (type-name)
-  recognizer-names
-  struct-name)
+;(defcl adt-type-name (type-name)
+;  recognizer-names
+;  struct-name)
 
 
 (defmethod pvs2cl-lisp-type* ((type adt-type-name))
