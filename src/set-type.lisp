@@ -1268,12 +1268,16 @@ required a context.")
       rank
       (argtype-conversion-ranking
        (cdr argtypes)
-       (max rank (argtype-conversion-ranking* (car argtypes))))))
+       (max rank (argtype-conversion-ranking*
+		  (car argtypes) (1- (length argtypes)))))))
 
-(defun argtype-conversion-ranking* (argtypes)
+(defun argtype-conversion-ranking* (argtypes num)
   (if (every #'from-conversion argtypes)
-      (reduce #'min (mapcar #'(lambda (aty) (locality (from-conversion aty)))
-		      argtypes))
+      (* (expt 5 num)
+	 (reduce #'min
+		 (mapcar #'(lambda (aty)
+			     (locality (from-conversion aty)))
+		   argtypes)))
       0))
 
 (defmethod set-type-application (expr (operator lambda-expr) argument expected)
