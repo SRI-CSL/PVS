@@ -71,8 +71,8 @@
 (defun pvs_>= (x) (>= (svref x 0)(svref x 1)))
 (defun pvs_|floor| (x) (floor x))
 (defun pvs_|ceiling| (x) (ceiling x))
-(defun pvs_|rem| (x) (rem (svref x 0)(svref x 1)))
-(defun pvs_|div| (x) (let ((z (/ (svref x 0)(svref x 1))))
+(defun pvs_|rem| (x) #'(lambda (y)(rem y x))) ;;(svref x 0)(svref x 1)))
+(defun pvs_|ndiv| (x) (let ((z (/ (svref x 0)(svref x 1))))
 		     (if (< z 0)(ceiling z)(floor z))))
 (defun pvs_|cons| (x) (cons (svref x 0)(svref x 1)))
 (defun pvs_|car| (x) (car x))
@@ -116,13 +116,15 @@
 (defmacro pvs__>= (x y) `(>= ,x ,y))
 (defmacro pvs__|floor| (x) `(floor ,x))
 (defmacro pvs__|ceiling| (x) `(ceiling ,x))
-(defmacro pvs__|rem| (x y)
+(defmacro pvs__|rem| (y)
   (let ((xx (gentemp))
 	(yy (gentemp)))
-    `(let ((,xx (the integer ,x))
-	   (,yy (the integer ,y)))
-       (if (< ,xx ,yy) ,xx (rem ,xx ,yy)))))
-(defmacro pvs__|div| (x y)
+    `(function
+      (lambda (x)
+	(let ((,xx (the integer ,x))
+	      (,yy (the integer ,y)))
+       (if (< ,xx ,yy) ,xx (rem ,xx ,yy)))))))
+(defmacro pvs__|ndiv| (x y)
   (let ((xx (gentemp))
 	(yy (gentemp)))
     `(let ((,xx ,x)
@@ -141,5 +143,3 @@
     `(let ((val (svref ,tuple ,ind)))
        (if (eq val 'undefined)(undefined nil) val)   ;; what can we do here?
 	 )))
-
-
