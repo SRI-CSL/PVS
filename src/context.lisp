@@ -78,16 +78,17 @@
   file
   write-date
   proofs-date
-  object-date
+  ;; object-date
   dependencies
   theories
-  extension) ;; Added in 2.0 Beta
+  extension)
 
 (defstruct (theory-entry (:conc-name te-))
   id
   status
   dependencies
-  formula-info)
+  formula-info
+  object-date)
 
 
 ;;; The formula-entry keeps track of the proof status and the references
@@ -112,7 +113,7 @@
   (and (equal (ce-file ce1) (ce-file ce2))
        (equal (ce-write-date ce1) (ce-write-date ce2))
        (equal (ce-proofs-date ce1) (ce-proofs-date ce2))
-       (equal (ce-object-date ce1) (ce-object-date ce2))
+       ;;(equal (ce-object-date ce1) (ce-object-date ce2))
        (length= (ce-dependencies ce1) (ce-dependencies ce2))
        (null (set-difference (ce-dependencies ce1) (ce-dependencies ce2)
 			     :test #'equal))
@@ -266,42 +267,38 @@ pvs-strategies files.")
 (defun write-object-files (&optional force?)
   (update-stored-mod-depend)
   (if *testing-restore*
-      (maphash #'(lambda (file theories)
-		    (declare (ignore theories))
-		    (write-object-file file force?))
-		*pvs-files*)
+      (maphash #'(lambda (id theory)
+		    (declare (ignore id))
+		    (write-object-file theory force?))
+		*pvs-modules*)
       (multiple-value-bind (value condition)
 	  (ignore-file-errors
-	   (maphash #'(lambda (file theories)
-			(declare (ignore theories))
-			(write-object-file file force?))
-		    *pvs-files*))
+	   (maphash #'(lambda (id theory)
+		    (declare (ignore id))
+		    (write-object-file theory force?))
+		*pvs-modules*))
 	(declare (ignore value))
 	(when condition
 	  (pvs-message "~a" condition)))))
 
-(defun write-object-file (file &optional force?)
-  (let* ((binpath (make-binpath file))
+(defun write-object-file (theory &optional force?)
+  (let* ((file (filename theory))
+	 (binpath (make-binpath (id theory)))
 	 (bindate (file-write-date binpath))
 	 (specpath (make-specpath file))
 	 (specdate (file-write-date specpath))
-	 (fe (get-context-file-entry file)))
+	 (te (get-context-theory-entry theory (get-context-file-entry file))))
     ;;(assert (and fe specdate) () "Error in writing binfile")
-    (when (and fe specdate)
-      (unless (or (not (typechecked-file? file))
-		  (every #'generated-by (cdr (gethash file *pvs-files*)))
+    (when (and te specdate)
+      (unless (or (not (typechecked? theory))
 		  (and (not force?)
 		       bindate
-		       (equal bindate (ce-object-date fe))
+		       (equal bindate (te-object-date te))
 		       (< specdate bindate)))
-	(cond ((circular-file-dependencies file)
-	       (pvs-message
-		   "Bin file for ~a.pvs not saved due to circularities"
-		 file))
-	      (t (pvs-log "Saving theories for ~a" file)
-		 (save-theories file)
-		 (setf (ce-object-date fe) (file-write-date binpath))
-		 (setq *pvs-context-changed* t)))))))
+	(pvs-log "Saving bin file for theory ~a" (id theory))
+	(save-theory theory)
+	(setf (te-object-date te) (file-write-date binpath))
+	(setq *pvs-context-changed* t)))))
 			  
 
 (defun context-is-current ()
@@ -404,7 +401,7 @@ pvs-strategies files.")
     (make-context-entry
      :file filename
      :write-date (car theories)
-     :object-date (when file-entry (ce-object-date file-entry))
+     ;; :object-date (when file-entry (ce-object-date file-entry))
      :extension nil
      :proofs-date proofs-write-date
      :dependencies fdeps
