@@ -73,6 +73,7 @@
 (defvar *bdd-pvs-hash* nil)
 (defvar *pvs-bdd-inclusivity-formulas* nil)
 (defvar *bdd-counter* (let ((x 0)) #'(lambda ()  (incf x))))
+(defvar *bdd-initialized* nil)
 (defvar *recognizer-forms-alist* nil)
 (defvar *local-typealist* nil)
 (defvar *recording-type-constraints* nil)
