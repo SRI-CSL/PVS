@@ -121,7 +121,9 @@
 (defun arith-solve-neq (neq cong-state)
   (let ((eqn (arg 1 neq)))
     (if (and (integer-equality-p eqn)
-	     (dp-numberp (rhs eqn)))
+	     (or (dp-numberp (rhs eqn))
+		 (floor-p (lhs eqn))
+		 (floor-p (rhs eqn))))
 	(add-neq-constraint neq cong-state)
 	(list neq))))
 
