@@ -1542,7 +1542,12 @@ pvs-strategies files.")
 				       p)))
 		       (cddr prf-entry))))
 	     (setf (default-proof decl)
-		   (nth (cadr prf-entry) (proofs decl))))
+		   (nth (cadr prf-entry) (proofs decl)))
+	     (let ((fe (get-context-formula-entry decl)))
+	       (setf (status (default-proof decl))
+		     (if fe
+			 (fe-status fe)
+			 'unchecked))))
 	    (prf-entry
 	     ;; Need to convert from old form
 	     (let ((proof (if (consp (car (cdr prf-entry)))
