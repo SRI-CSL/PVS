@@ -178,9 +178,11 @@
     `(let ((,dir (directory-p ,directory)))
       (if (pathnamep ,dir)
 	  (let ((,curdir (working-directory))
+		(*pvs-context-path* nil)
 		(*pvs-context* nil))
 	    (unwind-protect
 		 (progn (set-working-directory ,dir)
+			(setq *pvs-context-path* (working-directory))
 			,@forms)
 	      (set-working-directory ,curdir)))
 	  (pvs-message "Library ~a does not exist" ,dir)))))
