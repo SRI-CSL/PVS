@@ -529,10 +529,24 @@
   (untypecheck-theory (expr act))
   (setf (type-value act) nil))
 
+(defmethod untypecheck-theory ((map mapping-with-formals))
+  (when (next-method-p) (call-next-method))
+  (untypecheck-theory (formals map)))
+
 (defmethod untypecheck-theory ((map mapping))
   (when (next-method-p) (call-next-method))
+  (untypecheck-theory (declared-type map))
+  (setf (type map) nil)
   (untypecheck-theory (lhs map))
   (untypecheck-theory (rhs map)))
+
+(defmethod untypecheck-theory ((map mapping-def))
+  (when (next-method-p) (call-next-method))
+  (setf (mapped-decl map) nil))
+
+(defmethod untypecheck-theory ((map mapping-rename))
+  (when (next-method-p) (call-next-method))
+  (setf (mapped-decl map) nil))
 
 (defmethod untypecheck-theory ((rhs mapping-rhs))
   (when (next-method-p) (call-next-method))
