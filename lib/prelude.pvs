@@ -392,6 +392,8 @@ relations [T: TYPE]: THEORY
 
   equivalence?(R): bool = reflexive?(R) AND symmetric?(R) AND transitive?(R)
 
+  equivalence: TYPE = (equivalence?)
+
   equiv_is_reflexive:  JUDGEMENT (equivalence?) SUBTYPE_OF (reflexive?)
   equiv_is_symmetric:  JUDGEMENT (equivalence?) SUBTYPE_OF (symmetric?)
   equiv_is_transitive: JUDGEMENT (equivalence?) SUBTYPE_OF (transitive?)
@@ -3175,9 +3177,7 @@ card_def[T: TYPE]: THEORY
 
 BEGIN
 
-  IMPORTING finite_sets_def[T]
-
-  S, S2: VAR finite_set
+  S, S2: VAR finite_set[T]
   n,m: VAR nat
   x: VAR T
   p : VAR posnat
@@ -3218,9 +3218,7 @@ finite_sets[T: TYPE]: THEORY
 
 BEGIN
 
-  IMPORTING card_def[T] 
-
-  A, B, S: VAR finite_set
+  A, B, S: VAR finite_set[T]
   x: VAR T
   n: VAR nat
 
@@ -3414,7 +3412,7 @@ finite_sequences [T: TYPE]: THEORY
 
   finseq_appl(fs): [below[length(fs)] -> T] = fs`seq;
 
-  CONVERSION finseq_appl
+  CONVERSION finseq_appl;
 
   o(fs1, fs2): finseq =
      LET l1 = fs1`length,
