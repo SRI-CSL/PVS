@@ -774,10 +774,6 @@
 	 (refs (nconc librefs
 		      (when csubref (list csubref))
 		      (when lsubref (list lsubref)))))
-;;     (when (cdr refs)
-;;       (pvs-warning "Library id ~a is ambiguous, ~
-;;                     the first one of the following is used:~
-;;                     ~{~^  ~%~{~a  ~a~}~}" libid refs))
     (or (car refs)
 	(values nil (format nil "Library id ~a cannot be resolved to a library declaration, a subdirectory of the current context, a subdirectory of PVS_LIBRARY_PATH, nor a subdirectory of ~a/lib/"
 		      libid *pvs-path*)))))
