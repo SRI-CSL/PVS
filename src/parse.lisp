@@ -9,6 +9,7 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 
 (in-package :pvs)
@@ -693,6 +694,8 @@
 		   (not (eq (sim-term-op dtype) 'NO-TYPE-EXPR))
 		   (not (typep decl 'pred-bind-decl)))
 	  (assert dtype)
+	  (assert (declared-type ndecl))
+	  ;; Make sure a copy is created unless it's the last (or only) one
 	  (setf (declared-type ndecl)
 		(xt-not-enum-type-expr dtype)))
 	(let* ((idpos (position-if #'(lambda (tm)
@@ -1269,8 +1272,7 @@
 
 (defun xt-string-expr (expr)
   (let ((string (ds-string (term-arg0 expr)))
-	(ne (mk-name-expr '|character|)))
-    (setf (parens ne) 1)
+	(ne (mk-name-expr '|char|)))
     (make-instance 'string-expr
       'string-value string
       'operator (mk-name-expr '|list2finseq| (list (mk-actual ne)))
@@ -1338,7 +1340,8 @@
 		(#\\ (values (char-code #\\) (+ pos 2)))
 		((#\x #\X)
 		 (if (digit-char-p (char string (+ pos 2)) 16)
-		     (parse-integer string :radix 16 :start (+ pos 2))
+		     (parse-integer string :radix 16 :start (+ pos 2)
+				    :end (min (+ pos 4) len) :junk-allowed t)
 		     (let ((cplace (vector (svref place 0)
 					   (+ (svref place 1) pos 2)
 					   (svref place 0)
@@ -1346,8 +1349,40 @@
 		       (parse-error cplace
 			 "Illegal character after '\\X': must be a hex digit"
 			 ))))
+		(#\0
+		 (if (digit-char-p (char string (+ pos 2)) 8)
+		     (multiple-value-bind (chcode npos)
+			 (parse-integer string :radix 8 :start (+ pos 2)
+					:end (min (+ pos 5) len)
+					:junk-allowed t)
+		       (if (< chcode 256)
+			   (values chcode npos)
+			   (let ((cplace (vector (svref place 0)
+						 (+ (svref place 1) pos 2)
+						 (svref place 0)
+						 (+ (svref place 1) pos 2))))
+			     (parse-error cplace
+			       "Octal code must be less than 0400"))))
+		     (let ((cplace (vector (svref place 0)
+					   (+ (svref place 1) pos 2)
+					   (svref place 0)
+					   (+ (svref place 1) pos 2))))
+		       (parse-error cplace
+			 "Illegal character after '\\0': must be a octal digit"
+			 ))))
 		(t (if (digit-char-p echar)
-		       (parse-integer string :radix 8 :start (1+ pos))
+		       (multiple-value-bind (chcode npos)
+			   (parse-integer string :radix 10 :start (1+ pos)
+					  :end (min (+ pos 4) len)
+					  :junk-allowed t)
+			 (if (< chcode 256)
+			     (values chcode npos)
+			     (let ((cplace (vector (svref place 0)
+						   (+ (svref place 1) pos 1)
+						   (svref place 0)
+						   (+ (svref place 1) pos 1))))
+			       (parse-error cplace
+				 "Decimal code must be less than 256"))))
 		       (let ((cplace (vector (svref place 0)
 					     (+ (svref place 1) pos 1)
 					     (svref place 0)
@@ -2325,7 +2360,8 @@
   (let* ((id (term-arg0 modname))
 	 (lib (term-arg1 modname))
 	 (actuals (term-arg2 modname))
-	 (mappings (term-arg3 modname)))
+	 (mappings (term-arg3 modname))
+	 (target (term-arg4 modname)))
     (make-instance (if (is-sop 'NOACTUALS actuals)
 		       'modname 'full-modname)
       'id (ds-vid id)
@@ -2335,6 +2371,8 @@
 		 (xt-actuals actuals))
       'mappings (unless (is-sop 'NOMAP mappings)
 		  (xt-mappings mappings))
+      'target (unless (is-sop 'NOTGT target)
+		(xt-modname target))
       'place (term-place modname))))
 
 ;;; name! means create a name no matter what; otherwise numbers create
@@ -2344,12 +2382,14 @@
 	(lib (term-arg1 name))
 	(actuals (term-arg2 name))
 	(idop2 (term-arg3 name))
-	(mappings (term-arg4 name)))
+	(mappings (term-arg4 name))
+	(target (term-arg5 name)))
     (if (and (not name!)
 	     (is-sop 'NOMOD idop2)
 	     (is-sop 'NOLIB lib)
 	     (is-sop 'NOACTS actuals)
 	     (is-sop 'NOMAP mappings)
+	     (is-sop 'NOTGT target)
 	     (is-number (term-arg0 idop)))
 	(make-instance 'number-expr
 	  'number (ds-number (term-arg0 idop))
@@ -2366,6 +2406,8 @@
 		      (xt-mappings mappings))
 	  'mod-id (unless (is-sop 'NOMOD idop2)
 		    (xt-idop idop))
+	  'target (unless (is-sop 'NOTGT target)
+		    (xt-modname target))
 	  'place (term-place name)))))
 
 (defun xt-actuals (actuals)
