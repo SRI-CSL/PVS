@@ -588,7 +588,7 @@
 (defmethod connective-occurs?* ((expr binding-expr) accum)
   (accum-connective-occurs?* accum))
   ;(connective-occurs? (expression expr))
-  )
+
 
 (defmethod connective-occurs?* 
     ((expr update-expr) accum)
