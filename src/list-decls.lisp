@@ -22,33 +22,53 @@
 
 (defvar *list-declarations* nil)
 
+;;; Called by Emacs - show-expanded-form command
+
+(defun show-expanded-form (oname origin pos1 &optional (pos2 pos1) all?)
+  (if (or (equal origin "Declaration")
+	  (typechecked-origin? oname origin))
+      (multiple-value-bind (object *current-theory*)
+	  (get-object-at oname origin pos1 pos2)
+	(let ((*disable-gc-printout* t)
+	      (*current-context* (context *current-theory*)))
+	  (pvs-buffer "Expanded Form"
+	    (unparse (full-name object nil (not all?)) :string t)
+	    t))
+	(place-list (place object)))))
+
 ;;; Called by Emacs - show-declaration command
 
-(defvar *show-declaration* nil)
+(defvar *containing-type* nil)
 
 (defun show-declaration (oname origin pos &optional x?)
   (if (or (equal origin "Declaration")
 	  (typechecked-origin? oname origin))
-      (let* ((object (get-id-object-at oname origin pos))
-	     (decl (get-decl-associated-with object)))
-	(if decl
-	    (let* ((declstr (unparse-decl decl))
-		   (ndecl (pc-parse declstr 'theory-elt)))
-	      (copy-lex (copy-all decl) ndecl)
-	      (setf *show-declaration* decl)
-	      (if x?
-		  (let ((declstr (unparse-decl decl)))
+      (multiple-value-bind (object *containing-type*)
+	  (get-id-object-at oname origin pos)
+	(let ((decl (get-decl-associated-with object)))
+	  (if decl
+	      (let* ((declstr (format nil "~a~@[ ~a~]"
+				(unparse-decl decl)
+				(when *containing-type*
+				  (let ((kind (typecase decl
+						(field-decl "field")
+						(dep-binding "declaration"))))
+				    (when kind
+				      (format nil "(~a in ~a)" kind
+					      *containing-type*)))))))
+		(if x?
 		    (pvs-wish-source
 		     (with-output-to-temp-file
 		      (format t "show-declaration ~a ~a ~a {~a}~%"
 			(id object)
 			(min (length declstr) *default-char-width*)
 			(count #\Newline declstr)
-			declstr))))
-		  (pvs-buffer "Declaration"
-		    (unparse-decl decl)
-		    'temp t)))
-	    (pvs-message "Could not find associated declaration")))
+			declstr)))
+		    (pvs-buffer "Declaration"
+		      declstr
+		      'temp t)))
+	      ;;(pvs-message "Could not find associated declaration")
+	      )))
       (pvs-message "~a is not typechecked" oname)))
 
 
@@ -100,15 +120,15 @@
   nil)
 
 (defmethod get-decl-associated-with ((obj field-application))
-  (let ((pt (print-type (find-supertype (type (argument obj))))))
-	(cond (pt
-	       (declaration pt))
-	      (t (pvs-message "No print type for field application ~a" obj)
-		 nil))))
+  (setq *containing-type* (find-supertype (type (argument obj))))
+  (find (id obj) (fields *containing-type*) :key #'id))
 
 (defmethod get-decl-associated-with ((obj field-assignment-arg))
-  (pvs-message "Declaration information presently not available for field assignment arguments")
-  nil)
+  (if (and *containing-type*
+	   (recordtype? *containing-type*))
+      (find (id obj) (fields *containing-type*) :key #'id)
+      (progn (pvs-message "Can't find associated record type")
+	     nil)))
 
 (defmethod get-decl-associated-with ((obj projection-application))
   (pvs-message "Projections do not have an associated declaration")
@@ -118,8 +138,60 @@
   (pvs-message "Not at a valid id")
   nil)
 
+(defun get-object-at (oname origin pos1 pos2)
+  (multiple-value-bind (objects theories)
+      (get-syntactic-objects-for oname origin)
+    (let ((theory (find-element-containing-pos theories pos1)))
+      (if (or (equal pos1 pos2)
+	      (within-place pos2 (place theory)))
+	  (values (get-object-in-theory-at objects theory pos1 pos2) theory)
+	  (pvs-message "Region may not cross theory boundaries")))))
+
+(defun get-object-in-theory-at (objects theory pos1 pos2)
+  (let* ((decls (all-decls theory))
+	 (decl (find-element-containing-pos decls pos1)))
+      (if (or (equal pos1 pos2)
+	      (within-place pos2 (place decl)))
+	  (get-object-in-declaration-at objects pos1 pos2)
+	  (let ((decl2 (find-element-containing-pos decls pos2)))
+	    (ldiff (memq decl decls) (cdr (memq decl2 decls)))))))
+
+(defun find-element-containing-pos (list pos)
+  (when list
+    (if (within-place pos (place (car list)))
+	(car list)
+	(find-element-containing-pos (cdr list) pos))))
+
+(defun get-object-in-declaration-at (decl pos1 pos2)
+  (let ((object nil)
+	(*parsing-or-unparsing* t))
+    (mapobject #'(lambda (ex)
+		   (or (and (syntax? ex)
+			    ;;(or (place ex) (break "Place not set"))
+			    (place ex)
+			    (within-place pos1 (place ex))
+			    (or (equal pos1 pos2)
+				(within-place pos2 (place ex)))
+			    (unless (and (infix-application? object)
+					 (arg-tuple-expr? ex))
+			      (setq object ex))
+			    nil)
+		       (when (and (place ex)
+				  (typep ex '(and syntax
+						  (not assignment)
+						  (or funtype
+						      tupletype
+						      recordtype)))
+				  (within-place pos1 (place ex))
+				  (or (equal pos1 pos2)
+				      (within-place pos2 (place ex))))
+			 nil)))
+	       decl)
+    object))
+
 (defun get-id-object-at (oname origin pos)
   (let ((objects (get-syntactic-objects-for oname origin))
+	(containing-type nil)
 	(object nil)
 	(*parsing-or-unparsing* t))
     (mapobject #'(lambda (ex)
@@ -130,17 +202,38 @@
 			    (slot-exists-p ex 'id)
 			    (within-place pos (id-place ex))
 			    (setq object ex)
-			    t)))
+			    t)
+		       (when (and (typep ex '(and syntax
+						  (not assignment)
+						  (or funtype
+						      tupletype
+						      recordtype)))
+				  (within-place pos (place ex)))
+			 (typecase ex
+			   (expr (setq containing-type
+				       (find-supertype (type ex))))
+			   ((or funtype tupletype recordtype)
+			    (setq containing-type ex)))
+			 nil)
+		       (when object t)))
 	       objects)
-    object))
+    (values object containing-type)))
 
 (defun get-syntactic-objects-for (name origin)
   (case (intern (string-upcase origin))
-    (ppe (ppe-form (get-theory name)))
-    (tccs (tcc-form (get-theory name)))
-    (prelude (remove-if #'generated-by *prelude-theories*))
-    (prelude-theory (list (get-theory name)))
-    (t (typecheck-file name nil nil nil t))))
+    (ppe (let ((theory (get-theory name)))
+	   (when theory
+	     (values (ppe-form theory) (list theory)))))
+    (tccs (let ((theory (get-theory name)))
+	    (when theory
+	      (values (tcc-form theory) (list theory)))))
+    (prelude (let ((theories (remove-if #'generated-by *prelude-theories*)))
+	       (values theories theories)))
+    (prelude-theory (let ((theory (get-theory name)))
+		      (when theory
+			(values theory (list theory)))))
+    (t (let ((theories (typecheck-file name nil nil nil t)))
+	 (values theories theories)))))
 
 
 ;;; Called by Emacs - find-declaration command
@@ -240,62 +333,31 @@
 
 (defun format-decl-list (decl type theory)
   (assert (or (place decl) (from-prelude? decl)))
-  (let ((*default-char-width* 1000000))
-    (list (format nil "~25A ~25A ~25A"
-	    (struncate (if (typep decl 'importing)
-			   (unparse decl :string t)
-			   (id decl))
-		       25)
-	    (struncate type 25)
-	    (struncate (id theory) 25))
-	  (if (typep decl 'importing)
-	      (unparse decl :string t)
-	      (string (id decl)))
-	  (string (id theory))
-	  (when (filename theory)
-	    (pvs-filename theory))
-	  (place-list (place decl))
-	  (unparse-decl decl))))
+  (list (format nil "~25A ~25A ~25A"
+	  (struncate (if (typep decl 'importing)
+			 (unparse decl :string t)
+			 (id decl))
+		     25)
+	  (struncate type 25)
+	  (struncate (id theory) 25))
+	(if (typep decl 'importing)
+	    (unparse decl :string t)
+	    (string (id decl)))
+	(string (id theory))
+	(when (filename theory)
+	  (pvs-filename theory))
+	(place-list (place decl))
+	(unparse-decl decl)))
 
 (defmethod pvs-filename ((theory datatype-or-module))
   (namestring (filename theory)))
 
 (defmethod pvs-filename ((theory library-theory))
-  (let* ((dirstr (or (cdr (assoc (library theory) *library-alist*
-				 :test #'equal))
-		     (namestring (library theory))))
-	 (dir (if (char= (char dirstr (1- (length dirstr))) #\/)
-			 (subseq dirstr 0 (1- (length dirstr)))
-			 dirstr)))
-    (namestring (format nil "~a/~a" dir (filename theory)))))
+  (namestring (format nil "~a~a" (library-path theory) (filename theory))))
 
 (defmethod pvs-filename ((theory library-datatype))
-  (let* ((dirstr (or (cdr (assoc (library theory) *library-alist*
-				 :test #'equal))
-		     (namestring (library theory))))
-	 (dir (if (char= (char dirstr (1- (length dirstr))) #\/)
-			 (subseq dirstr 0 (1- (length dirstr)))
-			 dirstr)))
-    (namestring (format nil "~a/~a" dir (filename theory)))))
+  (namestring (format nil "~a~a" (library-path theory) (filename theory))))
 
-
-;(defun list-declarations (theoryref)
-;  (let ((theory (get-parsed-theory theoryref))
-;	(*list-declarations* nil)
-;	(*modules-visited* nil))
-;    (list-declarations* theory)
-;    (setq *list-declarations*
-;	  (sort *list-declarations* #'string< :key #'id))
-;    (pvs-buffer "Declarations"
-;      (with-output-to-string (*standard-output*)
-;	(format t "Cross reference of declarations in descendents of theory ~a:"
-;		(id theory))
-;	(format t "~%~%~25A ~10A ~25A~%"
-;		"Identifier" "Declaration" "Theory")
-;	(dolist (decl *list-declarations*)
-;	  (format t "~%~25A ~10A ~25A"
-;		  (id decl) (ptype-of decl) (id (module decl)))))
-;      t)))
 
 (defun ptype-of (decl)
   (let ((*default-char-width* 1000000))
