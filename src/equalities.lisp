@@ -5,9 +5,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Sun Apr  5 00:03:50 1998
 ;; Update Count    : 77
-;; Status          : Beta test
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -845,9 +843,10 @@ where db is to replace db1 and db2")
 
 (defmethod tc-eq* ((n1 modname) (n2 modname) bindings)
   (or (eq n1 n2)
-      (with-slots ((id1 id) (act1 actuals) (map1 mappings)) n1
-	(with-slots ((id2 id) (act2 actuals) (map2 mappings)) n2
+      (with-slots ((id1 id) (lib1 library) (act1 actuals) (map1 mappings)) n1
+	(with-slots ((id2 id) (lib2 library) (act2 actuals) (map2 mappings)) n2
 	  (and (eq id1 id2)
+	       (eq lib1 lib2)
 	       (tc-eq* act1 act2 bindings)
 	       (tc-eq* map1 map2 bindings))))))
 
@@ -964,6 +963,12 @@ where db is to replace db1 and db2")
   t)
 
 (defmethod compatible?* ((etype type-name) (atype type-variable))
+  t)
+
+(defmethod compatible?* ((atype rec-type-variable) (etype recordtype))
+  t)
+
+(defmethod compatible?* ((etype recordtype) (atype rec-type-variable))
   t)
 
 (defmethod compatible?* ((atype tup-type-variable) (etype tupletype))
@@ -1217,7 +1222,19 @@ where db is to replace db1 and db2")
 (defmethod compatible-type* ((atype type-expr) (etype type-variable))
   atype)
 
+(defmethod compatible-type* ((atype dep-binding) (etype type-variable))
+  atype)
+
 (defmethod compatible-type* ((atype subtype) (etype type-variable))
+  atype)
+
+(defmethod compatible-type* ((atype rec-type-variable) (etype recordtype))
+  etype)
+
+(defmethod compatible-type* ((atype recordtype) (etype rec-type-variable))
+  atype)
+
+(defmethod compatible-type* ((atype dep-binding) (etype rec-type-variable))
   atype)
 
 (defmethod compatible-type* ((atype tup-type-variable) (etype tupletype))
@@ -1226,10 +1243,16 @@ where db is to replace db1 and db2")
 (defmethod compatible-type* ((atype tupletype) (etype tup-type-variable))
   atype)
 
+(defmethod compatible-type* ((atype dep-binding) (etype tup-type-variable))
+  atype)
+
 (defmethod compatible-type* ((atype cotup-type-variable) (etype cotupletype))
   etype)
 
 (defmethod compatible-type* ((atype cotupletype) (etype cotup-type-variable))
+  atype)
+
+(defmethod compatible-type* ((atype dep-binding) (etype cotup-type-variable))
   atype)
 
 
@@ -1238,7 +1261,17 @@ where db is to replace db1 and db2")
 (defmethod compatible-type* ((atype type-name) (etype type-name))
   (let* ((a1 (actuals atype))
 	 (a2 (actuals etype)))
-    (if (or a1 (not a2)) atype etype)))
+    (cond ((and a1 a2)
+	   (if (fully-instantiated? atype)
+	       atype
+	       etype))
+	  ((or a1 a2)
+	   (if a1 atype etype))
+	  ((declaration-outside-formals? atype)
+	   (if (declaration-outside-formals? etype)
+	       atype
+	       etype))
+	  (t atype))))
 
 (defmethod compatible-type* ((atype type-name) etype)
   (if (declaration-outside-formals? atype)
@@ -1310,7 +1343,7 @@ where db is to replace db1 and db2")
       (let* ((ainst? (or (fully-instantiated? adom)
 			 (not (fully-instantiated? edom))))
 	     (dom (cond ((or (type-var? adom) (type-var? edom))
-			 (compatible-type adom edom))
+			 (compatible-type* adom edom))
 			(ainst? adom)
 			(t edom))))
 	(if ainst?
