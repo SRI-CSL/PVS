@@ -480,11 +480,17 @@ proof scripts, including those already proved."
   "Mode for the \"Proof\" buffer, used for editing and installing proofs
 
 The \"Proof\" buffer is used to edit proofs and install them on formulas.
+In addition to the following, all of the browsing and prover emacs (TAB)
+commands are available.
 \\<edit-proof-mode-map>
-install-proof (\\[install-proof])
-install-and-step-proof (\\[install-and-step-proof])
-install-and-x-step-proof (\\[install-and-x-step-proof])
-quit (C-c q)"
+  install-proof (\\[install-proof])
+  install-and-step-proof (\\[install-and-step-proof])
+  install-and-x-step-proof (\\[install-and-x-step-proof])
+  add-proof-checkpoint (\\[add-proof-checkpoint])
+  install-proof-checkpoint (\\[install-proof-checkpoint])
+  remove-proof-checkpoint (\\[remove-proof-checkpoint])
+  remove-all-proof-checkpoints (\\[remove-all-proof-checkpoints])
+  quit (C-c q)"
   (use-local-map edit-proof-mode-map)
     ;; fix up comment handling
   (make-local-variable 'comment-start)
