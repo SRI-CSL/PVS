@@ -300,7 +300,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
 
 (defun pvs-output-filter (output)
   (if (string-match
-       ":pvs-\\(msg\\|log\\|warn\\|out\\|err\\|qry\\|buf\\|yn\\|bel\\|loc\\|mod\\|pmt\\|dis\\|wish\\|eval\\) "
+       ":pvs-\\(msg\\|log\\|warn\\|out\\|err\\|qry\\|buf\\|yn\\|bel\\|loc\\|mod\\|pmt\\|dis\\|wish\\|eval\\|addecl\\) "
        output)
       (let* ((orig-string-end (match-beginning 0))
 	     (beg (match-end 0))
@@ -354,6 +354,8 @@ want to set this to nil for slow terminals, or connections over a modem.")
 		     (tcl-send-string* (car (parse-pvs-message out))))
 		    ((string-equal kind "eval")
 		     (apply 'pvs-emacs-eval (parse-pvs-message out)))
+		    ((string-equal kind "addecl")
+		     (apply 'add-declaration-to-file (parse-pvs-message out)))
 		    (t (error "%s not handled" kind))
 		    )
 	      (sit-for 0)
