@@ -1730,3 +1730,16 @@ See \\[set-proof-backup-number] for details."
     (completing-read (format "Set decision procedure (currently %s) to: "
 			 (car dps))
       (mapcar 'list (cdr dps)) nil 't nil)))
+
+(defpvs pvs-set-proof-parens prove (show-p)
+  "Set a flag indicating that formulas in proofs should be fully parenthesized.
+
+Set a flag indicating whether expressions in displayed proofs should be
+fully parenthesized.  If show-p is t, then all infix expressions are
+parenthesized, otherwise only those provided by the user or needed because
+of precedence rules are provided.  This is mostly useful for proofs
+involving large arithmetic terms, where it may be otherwise difficult to
+figure out whether a given rewrite rule should apply."
+  (interactive (list (y-or-n-p "Show parentheses in proofs? ")))
+  (pvs-send-and-wait (format "(setq *show-parens-in-proof* %s)" show-p)
+		     nil nil nil))
