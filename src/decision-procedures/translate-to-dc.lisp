@@ -605,40 +605,38 @@
       (translate-to-dc value)))
 
 (defun translate-dc-assign-args-record (args value trbasis type)
-  (if ((dp::constant-p trbasis)
-       (translate-dc-assign-args-base-record args value trbasis type))
-      (let* ((tr-record-constructor
-	      (if (constant-p trbasis)
-		  (translate-dc-record-constructor type)
-		  (dp::funysm trbasis)))
-	     (position (position (caar args) (dc-sort-fields (fields type))
-				 :test #'same-id))
-	     (new-value 
-	      (let* ((ntrbasis-type
-		      (find-supertype 
-		       (type (find (caar args)(fields type)
-				   :test #'same-id))))
-		     (ntrbasis
-		      (make-dc-field-application
-		       (mk-funtype type ntrbasis-type)
-		       (position (caar args)
-				 (sort-fields (fields type))
-				 :test #'same-id)
-		       trbasis)))
-		(translate-dc-assign-args (cdr args)
-					  value
-					  ntrbasis
-					  ntrbasis-type)))
-	     (args
-	      (if (dp::constant-p trbasis)
-		  (translate-dc-record-name-to-record-args trbasis type
-							   position
-							   new-value)
-		  (let ((old-args (dp::funargs trbasis)))
-		    (setf (nth position old-args)
-			  new-value)
-		    old-args))))
-	(dp::mk-term (cons tr-record-constructor args)))))
+  (let* ((tr-record-constructor
+	  (if (dp::constant-p trbasis)
+	      (translate-dc-record-constructor type)
+	      (dp::funysm trbasis)))
+	 (position (position (caar args) (dc-sort-fields (fields type))
+			     :test #'same-id))
+	 (new-value 
+	  (let* ((ntrbasis-type
+		  (find-supertype 
+		   (type (find (caar args)(fields type)
+			       :test #'same-id))))
+		 (ntrbasis
+		  (make-dc-field-application
+		   (mk-funtype type ntrbasis-type)
+		   (position (caar args)
+			     (sort-fields (fields type))
+			     :test #'same-id)
+		   trbasis)))
+	    (translate-dc-assign-args (cdr args)
+				      value
+				      ntrbasis
+				      ntrbasis-type)))
+	 (args
+	  (if (dp::constant-p trbasis)
+	      (translate-dc-record-name-to-record-args trbasis type
+						       position
+						       new-value)
+	      (let ((old-args (dp::funargs trbasis)))
+		(setf (nth position old-args)
+		      new-value)
+		old-args))))
+    (dp::mk-term (cons tr-record-constructor args))))
 
 (defun translate-dc-record-name-to-record-args (trbasis type position value)
   (loop for i from 0 below (length (fields type))
