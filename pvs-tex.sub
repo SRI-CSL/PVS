@@ -109,3 +109,19 @@ sets.complement		1       1       {\overline{#1}}
 sets.difference		2       1       {(#1 \setminus #2)}
 sets.add		2	2	{(#2 \cup \{#1\})}
 sets.remove		2	2	{(#2 \setminus \{#1\})}
+[       id      1       {\pvsbracketl}
+]       id      1       {\pvsbracketr}
+[#      id      2       {\pvsrectypel}
+#]      id      2       {\pvsrectyper}
+\(       id      1       {\pvsparenl}
+\)       id      1       {\pvsparenr}
+[|      id      1       {\pvsbrackvbarl}
+|]      id      1       {\pvsbrackvbarr}
+\(|      id      1       {\pvsparenvbarl}
+|\)      id      1       {\pvsparenvbarr}
+{|      id      1       {\pvsbracevbarl}
+|}      id      1       {\pvsbracevbarr}
+\(:      id      1       {\pvslistl}
+:\)      id      1       {\pvslistr}
+\(#      id      2       {\pvsrecexprl}
+#\)      id      2       {\pvsrecexprr}
