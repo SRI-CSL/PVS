@@ -19,7 +19,7 @@ Date: 05/09/98
 #include "mu.h"
 
 #include <setjmp.h> /* For interrupt handling */
-#ifdef SIGNALS_LINUX
+#ifdef LINUX_REDHAT4
 #include <bsd/signal.h> /* For interrupt handling */
 #else
 #include <signal.h>
@@ -161,9 +161,17 @@ BDDPTR mu___modelcheck_formula (Formula fml)
      bdd_interrupted = 1;
      return BDD_0;
    }
+#ifdef SIGNALS_LINUX
    old_handler = signal(SIGINT, &new_handler);
+#else /* solaris */
+   old_handler = sigset(SIGINT, &new_handler);
+#endif
    mcvalue = modelcheck_formula(fml);
+#ifdef SIGNALS_LINUX
    signal(SIGINT, old_handler);
+#else
+   sigset(SIGINT, old_handler);
+#endif
    return mcvalue;
  }
 
@@ -178,16 +186,27 @@ BDD_LIST bdd___bdd_sum_of_cubes (BDDPTR f, int irredundant)
      bdd_interrupted = 1;
      return NULL_LIST;
    }
+#ifdef SIGNALS_LINUX
    old_handler = signal(SIGINT, &new_handler);
+#else
+   old_handler = sigset(SIGINT, &new_handler);
+#endif
    mcvalue = bdd_sum_of_cubes (f, irredundant);
+#ifdef SIGNALS_LINUX
    signal(SIGINT, old_handler);
+#else
+   sigset(SIGINT, old_handler);
+#endif
    return mcvalue;
  }
 
 void new_handler(int sig)
  {
+#ifdef SIGNALS_LINUX
    signal(SIGINT, old_handler);
-   fprintf(stderr, "IN NEW HANDLER\n");
+#else
+   sigset(SIGINT, old_handler);
+#endif
    longjmp(catch, -1);
  }
 
