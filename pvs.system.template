@@ -340,6 +340,8 @@
 		  (:file "arrays")
 		  (:file "shostak-interp")
 		  (:file "arith-solve")
+		  (:file "sets")
+		  (:file "bdd-solve")
 		  (:file "polyhedron"))
      :depends-on ("dc-structure"))
    (:module rewrite
@@ -393,8 +395,8 @@
      (:module qe
        :source-pathname "src/qe"
        :components ((:file "qe-utils")
-		    (:file "dp-interface")
 		    (:file "dnf")
+		    (:file "qe-core")
 		    (:file "qe")))
       (:module fol
        :source-pathname "src/fol"
