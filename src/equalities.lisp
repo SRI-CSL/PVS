@@ -1469,7 +1469,7 @@ where db is to replace db1 and db2")
 			 (get-field-application afld aexpr)))
 		  (preds (when aex
 			   (compatible-preds*
-			    (type afld) (type efld) aex nil)))
+			    (type afld) (type efld) aex nil))))
 	     (compatible-recordtype-preds
 	      (remove afld aflds :test #'eq)
 	      (cdr eflds)
