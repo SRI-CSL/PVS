@@ -165,6 +165,10 @@
   (and (typep (operator formula) 'name-expr)
        (simplify-disjunct-neg* formula depth)))
 
+(defmethod simplify-disjunct-neg (formula depth)
+  (declare (ignore formula depth))
+  nil)
+
 (defmethod simplify-disjunct-neg* ((formula conjunction) depth)
   (loop for arg in (arguments formula)
 	nconc (simplify-disjunct (negate arg) depth)))
