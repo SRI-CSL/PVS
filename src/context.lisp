@@ -723,7 +723,7 @@ pvs-strategies files.")
 
 (defmethod update-restored-theories ((adt datatype))
   (setf (formals-sans-usings adt)
-	(remove-if #'(lambda (d) (typep d 'using))
+	(remove-if #'(lambda (d) (typep d 'importing))
 	  (formals adt)))
   (mapc #'update-restored-theories (adt-generated-theories adt)))
 
