@@ -437,7 +437,7 @@ comint-send or comint-default-send, or results will be mixed up."
 	 (message (car messagep))
 	 (wait-p (car wait-p))
 	 (sync (stringp wait-p)))
-    (comint-log process output t)
+    ;;; (comint-log process output t)   ;; leave logging up to PVS
     ;; Remove leading whitespace
     (if (and (null old-result)
 	     (save-excursion (goto-char (process-mark process)) (bolp))
