@@ -273,7 +273,7 @@
 ;;; ICS interface
 
 (defmethod dpi-init* ((dp (eql 'ics)))
-  (ics-init))
+  (ics-init 1))
 
 (defmethod dpi-start* ((dp (eql 'ics)) prove-body)
   (let ((*pvs-to-ics-hash* (init-if-rec *pvs-to-ics-hash*))
