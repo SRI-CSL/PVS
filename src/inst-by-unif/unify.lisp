@@ -170,18 +170,17 @@
     (declare (special *cs*))
     (null (vars-of (instance* e)))))
 
-(defun subst= (xs cs1 cs2)
-  (every #'(lambda (x)
-	     (eq (instance x cs1)
-		 (instance x cs2)))
-	 xs))
-
 (defun assert-eqn! (e1 e2 cs)
   (dp::dp-union e1 e2 cs))
 
+(defun subst= (subst1 subst2)
+  (every #'(lambda (x)
+	     (eq (cdr (assoc x subst1))
+		 (cdr (assoc x subst2))))
+	 (union (dom subst1) (dom subst2))))
 
-
-
+(defun dom (subst)
+  (mapcar #'car subst))
 
 
 

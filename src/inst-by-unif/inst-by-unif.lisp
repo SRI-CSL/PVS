@@ -3,13 +3,12 @@
 (defstep inst-by-unif (&optional (fnums *)
 				 (where *)
 				 copy?
-				 verbose?
-				 (inst? T))
+				 verbose?)
   (let ((sforms (s-forms (current-goal *ps*)))
 	(inst-sforms (gather-seq sforms fnums nil
-				 (compose #'existential? #'formula)))
+				 (compose #'essentially-existential? #'formula)))
 	(inst-fnums (gather-fnums sforms fnums nil
-				  (compose #'existential? #'formula))))
+				  (compose #'essentially-existential? #'formula))))
     (if (null inst-sforms)
 	(skip-msg "Could not find a suitable quantified formula.")
       (let ((inst-fmlas (mapcar #'formula inst-sforms))
@@ -19,22 +18,17 @@
 			 (*all*))
 		     (declare (special *verbose*)
 			      (special *all*))
-		     (ignore-errors
 		       (search-for-instantiations inst-fnums
 						  inst-fmlas
 						  (remove-if #'(lambda (fmla)
 								 (member fmla
 									 inst-fmlas
 									 :test #'tc-eq))
-						    where-fmlas))))))
+						    where-fmlas)))))
 	(if insts
 	    (let ((inst-rule (make-inst-rules insts copy?)))
 	      inst-rule)
-	  (if inst?
-	      (inst? :fnums fnums
-		     :where where
-		     :copy? copy?)
-	    (skip-msg "No suitable instantiation found"))))))
+	    (skip-msg "No suitable instantiation found")))))
   "Tries to find instantiations for the top-level, existentially
    quantifying variables in the formulas specified by 'fnums'.
    First, a full case split for the formulas specified by 'fnums' and
@@ -76,6 +70,7 @@
 ;;   (positive) formulas (conclusions)
 
 (defun search-for-instantiations (fnums inst-fmlas where-fmlas &optional (state *dp-state*))
+  (break)
    (let ((*start-state* state))
      (declare (special *start-state*))
      (multiple-value-bind (list-of-bndngs lvars bodies)
@@ -85,17 +80,19 @@
 	 (multiple-value-bind (trms new-lvars new-renamings)
 	     (herbrandize fmlas lvars renamings)
 	   (declare (ignore new-renamings))
-	   (let* ((*lvars* new-lvars))
-	     (declare (special *lvars*))
-	     (let ((subst (search-for-subst new-lvars hfmlas))) 
-	       (if (or (fail? subst) (null subst))
-		   nil
+	   (let ((score-substs (dp::gensubsts new-lvars trms)))
+	     (break)
+	     (if (null score-substs) nil
+		 (let ((subst (choose-subst score-substs)))
 		   (construct-instantiate-input fnums list-of-bndngs subst renamings)))))))))
+
+(defun choose-score-subst (score-substs)
+  (translate-from-dc-subst (subst-of (first score-substs))))
 		   
 (defun initial-renamings (list-of-bndngs lvars)
   (pairlis (mapcan #'identity list-of-bndngs) lvars))
 
-(defun destructure-inst-fmlas (fmlas &optional list-of-bndngs lvars bodies)
+(defun destructure-inst-fmlas x(fmlas &optional list-of-bndngs lvars bodies)
   (if (null fmlas)
       (values (nreverse list-of-bndngs) (nreverse lvars) (nreverse bodies))
     (multiple-value-bind (bndngs body)
@@ -117,6 +114,3 @@
 				      (if lvar
 					  (cdr (assoc lvar subst :test #'tc-eq))
 					  "_")))))))
-
-
-
