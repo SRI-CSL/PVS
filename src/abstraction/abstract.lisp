@@ -308,7 +308,8 @@
 	     list-state-predicates)))
         (abstract-fields (append 
              good-remaining-state-components abstract-fields ))
-        (abstract-type (typecheck (make-recordtype abstract-fields))))
+        (abstract-type (typecheck (make-recordtype
+				   (copy-list abstract-fields)))))
    (setq *abs-state-type* abstract-type)
    (setq *new-abstract-field-ids* (mapcar #'id abstract-fields))
    (print-abstract-state-type list-state-predicates)))
