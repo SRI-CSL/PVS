@@ -2443,9 +2443,10 @@
 		  'argument (if (eq sigargs '?) newargs
 				(argument expr))))
 	       (result			;(nil)
-		(when (and (not (connective-occurs? expr))
-			   (tc-eq (type expr) *boolean*)
-			   (not (eq *top-assert-flag* 'rewrite)))
+		(when (and (tc-eq (type expr) *boolean*)
+			   (not (eq *top-assert-flag* 'rewrite))
+			   (not (connective-occurs? expr)))
+
 		  (assert-test expr))
 		))			;(break "assert-if-ap2")
 	  (cond ((true-p result) (values '? *true*))
