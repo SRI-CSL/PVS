@@ -129,6 +129,7 @@
   (not (eq obj (gethash (id obj) *pvs-modules*))))
 
 (defmethod external-library-reference? (obj)
+  (declare (ignore obj))
   nil)
 
 (defmethod store-object* :around ((obj mod-decl))
@@ -882,17 +883,17 @@
 	    (restore-object* (svref (cdr elt) i))))))))
 
 (defmethod restore-object* :around ((obj declaration))
-  (if (and (module obj)
-	   (eq (module obj) *restoring-theory*))
-      (if (boundp '*restoring-declaration*)
-	  nil
-;; 	  (unless (or (eq *restoring-declaration* obj)
-;; 		      (memq *restoring-declaration*
-;; 			    (memq obj (all-decls (module obj)))))
-;; 	    (break "trying to look ahead"))
-	  (let ((*restoring-declaration* obj))
-	    (call-next-method)))
-      (call-next-method)))
+  (if (gethash obj *restore-object-hash*)
+      (call-next-method)
+      (if (and (module obj)
+	       (eq (module obj) *restoring-theory*))
+	  (unless (boundp '*restoring-declaration*)
+	    (let ((*restoring-declaration* obj))
+	      (call-next-method)
+	      (when (and (eq *restoring-theory* (theory *current-context*))
+			 (not (typep obj 'adtdecl)))
+		(put-decl obj))))
+	  (call-next-method))))
 
 (defmethod restore-object* :around ((obj type-decl))
   (call-next-method)
@@ -1125,6 +1126,7 @@
 	     (copy tval 'print-type tn)))))
 
 (defmethod true-type-expr? (obj)
+  (declare (ignore obj))
   nil)
 
 (defmethod true-type-expr? ((obj type-expr))
