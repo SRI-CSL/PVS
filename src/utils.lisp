@@ -61,6 +61,18 @@
 	nex
 	(change-application-class-if-necessary ex nex))))
 
+;; Function composition
+
+(defun compose (&rest fns)
+  (if fns
+      (let ((fn1 (car (last fns)))
+	    (fns (butlast fns)))
+	#'(lambda (&rest args)
+	    (reduce #'funcall fns
+		    :from-end t
+		    :initial-value (apply fn1 args))))
+    #'identity))
+
 ;;; The following allows slot-exists-p to be called on anything.
 ;#+gcl
 ;(defmethod pcl::find-slot-definition (obj slot)
