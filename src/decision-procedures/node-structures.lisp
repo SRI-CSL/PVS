@@ -1554,7 +1554,7 @@
   (and (application-p trm)
        (if (uninterp? (funsym trm))
 	   (some #'(lambda (arg)
-		     (occurs-in x arg))
+		     (occurs-p x arg))
 		 (funargs trm))
 	 (some #'(lambda (arg)
 		   (occurs-in-scope-of-uninterp-p x arg))
