@@ -729,7 +729,7 @@ identifiers" name1 name2)
   "Labels a collection of formulas given by FNUMS by the
 string  LABEL.  If PUSH? is T, then the new label is added to any existing
 ones.  Otherwise, the new labels replaces all existing ones."
-  "Labelling formulas ~a by ~a")
+  "Using ~a to label formula(s) ~a")
 
 (addrule 'just-install-proof (proof) ()
   #'(lambda (ps)
