@@ -450,11 +450,10 @@
 
 (defun substituted-map-decl (d bindings)
   (or (tcc? d)
-      ;;(generated-by d)
-;       (and (axiom? d)
-; 	   (find d (collect-tccs (current-theory))
-; 		 :key #'(lambda (tcc) (and (mapped-axiom-tcc? tcc)
-; 					   (generating-axiom tcc)))))
+      (and (formula-decl? d)
+	   (nonempty-type-decl? (generated-by d))
+	   (exists-expr? (definition d))
+	   (tc-eq (expression (definition d)) *true*))
       (and (assq d bindings)
 	   (not (mod-decl? d))
 	   (find d *smp-mappings*
@@ -620,6 +619,7 @@
 		     (not (some #'(lambda (d)
 				    (same-id (module d) modinst))
 				refs))))
+	
 	(lcopy decl
 	  'definition ndef
 	  'generated-by nil)))))
