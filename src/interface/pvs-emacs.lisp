@@ -387,6 +387,7 @@
 
 
 (defvar *type-error* nil)
+(defvar *type-error-argument* nil)
 
 (defun type-error (obj message &rest args)
   (let ((error (type-error-for-conversion obj message args)))
@@ -418,18 +419,29 @@
   (let ((error (format nil
 		   "~?~@[~%~a~]~:[~;~%You may need to add a semicolon (;) ~
                     to the end of the previous declaration~]"
-		 message args *type-error* *in-coercion*)))
-    (if (conversion-occurs-in? obj)
-	(let* ((*type-error*
+		 message args *type-error* *in-coercion*))
+	(obj-conv? (conversion-occurs-in? obj)))
+    (if (or obj-conv?
+	    (and *type-error-argument*
+		 (conversion-occurs-in? *type-error-argument*)))
+	(let* ((ex (if obj-conv?
+		       obj
+		       (mk-application* obj
+			 (argument-list *type-error-argument*))))
+	       (*type-error*
 		(format nil
 		    "--------------~%With conversions, ~
                                     it becomes the expression ~%  ~a~%~
                                     and leads to the error:~%  ~a"
-		  obj error))
+		  ex error))
 	       (*no-conversions-allowed* t)
-	       (etype (type obj)))
-	  (untypecheck-theory obj)
-	  (typecheck obj :expected etype))
+	       (etype (if obj-conv?
+			  (type obj)
+			  (when  (and (type obj)
+				      (not (dep-binding? (domain (type obj)))))
+			    (range (type obj))))))
+	  (untypecheck-theory ex)
+	  (typecheck ex :expected etype))
 	error)))
 
 (defun conversion-occurs-in? (obj)
@@ -533,11 +545,13 @@
     (when (type-expr? (type res))
       (unparse (type res) :string t))))
 
-(defun type-incompatible (expr types expected)
-  (let ((rtypes (remove-if #'symbolp types)))
+(defun type-incompatible (expr types expected &optional argument)
+  (let ((rtypes (remove-if #'symbolp types))
+	(*type-error-argument* argument))
     (if rtypes
 	(type-error expr
-	  "Incompatible types~%     Found: ~{~a~%~^~12T~}  Expected: ~a"
+	  "Incompatible types for ~a~%     Found: ~{~a~%~^~12T~}  Expected: ~a"
+	  expr
 	  (mapcar #'(lambda (fn) (unpindent fn 12 :string t))
 		  (full-name types 1))
 	  (unpindent (full-name expected 1) 12 :string t))
