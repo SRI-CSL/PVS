@@ -47,11 +47,12 @@
   (setq *loaded-libraries* (make-hash-table :test #'equal))
   (setq *imported-libraries* (make-hash-table :test #'equal))
   (setq *prelude-libraries* (make-hash-table :test #'equal))
+  (setq *prelude-library-context* nil)
   (reset-typecheck-caches)
   (setq *current-theory* nil)
   (setq *last-proof* nil)
   (clrnumhash)
-  (setq *pvs-context-writable* (write-permission?))
+  (setq *pvs-context-writable* (write-permission? (working-directory)))
   ;;(restore-context)
   (setq *pvs-initialized* t)
   (when *to-emacs*
@@ -116,8 +117,8 @@
 			 (user-pvs-lisp-file)))
     (let* ((bfile (make-pathname :defaults pfile :type *pvs-binary-type*))
 	   (compile? (and #+runtime nil
-			  (probe-file pfile)
-			  (or (not (probe-file bfile))
+			  (file-exists-p pfile)
+			  (or (not (file-exists-p bfile))
 			      (compiled-file-older-than-source? pfile bfile)))))
       (multiple-value-bind (ignore error)
 	  (ignore-file-errors
@@ -163,8 +164,8 @@
   (unless *started-with-minus-q*
     (let ((home-lisp-file (make-pathname :defaults "~/" :name ".pvs" :type "lisp"))
 	  (home-fasl-file (make-pathname :defaults "~/" :name ".pvs" :type *pvs-binary-type*)))
-      (when (or (probe-file home-lisp-file)
-		(probe-file home-fasl-file))
+      (when (or (file-exists-p home-lisp-file)
+		(file-exists-p home-fasl-file))
 	(list home-lisp-file)))))
 
 (defun pvs-patch-files-for (ext)
@@ -176,8 +177,8 @@
 			 (major-version) ext (pvs-image-suffix))
 		 :type "lisp"))
 	 (bfile (make-pathname :defaults pfile :type *pvs-binary-type*)))
-    (when (or (probe-file pfile)
-	      (probe-file bfile))
+    (when (or (file-exists-p pfile)
+	      (file-exists-p bfile))
       (list pfile))))
 
 (defun get-pvs-version-information ()
@@ -227,7 +228,7 @@
   (let* ((file (make-specpath filename))
 	 (*current-file* filename)
 	 (theories (get-theories file)))
-    (cond ((not (probe-file file))
+    (cond ((not (file-exists-p file))
 	   (unless no-message?
 	     (pvs-message "~a is not in the current context" filename)))
 	  ((and (not forced?)
@@ -287,7 +288,7 @@
 	  (cond ((null th)
 		 (let* ((filename (context-file-of thname))
 			(nth (if (and filename
-				      (probe-file (make-specpath filename)))
+				      (file-exists-p (make-specpath filename)))
 				 (parse-file filename t nil)
 				 (parse-file thname t nil))))
 		   (setq *parsed-theories* (append nth *parsed-theories*))
@@ -471,7 +472,7 @@
 		       (when (typep oth 'datatype)
 			 (let ((gen (make-specpath (id (adt-theory oth)))))
 			   (when
-			       #+allegro (excl::filesys-inode (namestring gen))
+			       #+allegro (file-exists-p gen)
 			       #-allegro (probe-file gen)
 			     (ignore-errors
 			       (chmod "a+w" (namestring gen)))
@@ -1617,7 +1618,7 @@
 	(sort theories #'string<))
       (let ((path (make-pathname :defaults context
 				 :name "context" :type "cxt")))
-	(if (probe-file path)
+	(if (file-exists-p path)
 	    (let ((ctx (with-open-file (in path) (read in))))
 	      (if (and (consp ctx)
 		       (equal (car ctx) *pvs-version*))
@@ -1671,7 +1672,7 @@
 
 (defun batch (infile &optional outfile)
   (let ((*in-pvs-batch* t))
-    (if (probe-file infile)
+    (if (file-exists-p infile)
 	(if outfile
 	    (with-open-file (*standard-output* outfile :direction :output
 					       :if-exists :append
@@ -1733,7 +1734,7 @@
 	   (parse-file (filename mod) nil t)
 	   (get-theory theoryref))
 	  (t (let ((filename (context-file-of theoryref)))
-	       (if (and filename (probe-file (make-specpath filename)))
+	       (if (and filename (file-exists-p (make-specpath filename)))
 		   (parse-file filename nil nil)
 		   (parse-file theoryref nil nil))
 	       (let ((pmod (get-theory theoryref)))
@@ -2176,7 +2177,7 @@
 	 (theory *current-theory*)
 	 (file (format nil "~a-~a.sequents" (id theory) (id decl))))
     (if (eq (status-flag *top-proofstate*) '!)
-	(when (probe-file file)
+	(when (file-exists-p file)
 	  (delete-file file))
 	(with-open-file (out file
 			     :direction :output
