@@ -531,7 +531,9 @@
 	  'expr (if (or *parsing-or-unparsing*
 			*visible-only*
 			(eq nexpr (expr act))
-			(not (typep nexpr 'expr)))
+			(not (typep nexpr 'expr))
+			(and (name-expr? (expr act))
+			     (module? (declaration (expr act)))))
 		    nexpr
 		    (pseudo-normalize nexpr))))))
 
