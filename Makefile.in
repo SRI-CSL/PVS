@@ -489,7 +489,7 @@ src/pvs-methods.lisp : src/make-pvs-methods.lisp src/defcl.lisp \
 
 ${LISP} :
 	@echo "Need to set the LISP variable in Makefile to a valid"
-	@echo "allegro 5.0 lisp executable for this platform"
+	@echo "allegro 6.0 lisp executable for this platform"
 
 .PHONY: all makefileutils makebdd makepolylib makews1s clean
 makefileutils :
@@ -503,7 +503,7 @@ makepolylib :
 	$(MAKE) -C src/decision-procedures/polylib/$(PLATFORM)
 makews1s :
 	umask 002; \
-	(cd src/WS1S ; ln -s mona-1.4 mona);\
+	(cd src/WS1S ; rm -rf mona ; ln -s mona-1.4 mona);\
 	$(MAKE) -C src/WS1S/$(PLATFORM)
 
 runtime-image-tar = pvs-$(PLATFORM).tgz
