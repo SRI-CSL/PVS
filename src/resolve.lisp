@@ -345,11 +345,6 @@
 	       (or (eq dth (current-theory))
 		   (visible? decl))
 	       (not (disallowed-free-variable? decl))
-	       (or (null acts)
-		   (not (eq dth (current-theory)))
-		   (progn (push (list :current-theory-actuals decl)
-				*resolve-error-info*)
-			  nil))
 	       (or (null args)
 		   (case kind
 		     (type (and (formals decl)
@@ -1902,7 +1897,7 @@
                   ~@[ with arguments of possible types: ~:{~%  ~<~a~3i : ~{~_ ~a~^,~}~>~}~]~
                   ~@[~2% Check the actual parameters; the following ~
                         instances are visible,~% but don't match the ~
-                        given actuals:~%   ~{~a~^, ~}~]~
+                        given actuals:~%   ~:I~{~a~^, ~_~}~]~
                   ~:[~;~2% May not instantiate the current theory~]~
                   ~:[~;~2% There is a variable declaration with this name,~% ~
                           but free variables are not allowed here.~]~
