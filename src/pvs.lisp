@@ -839,7 +839,7 @@
 (defun prettyprint-decl (d theory)
   (let* ((place (place (if (consp d) (car d) d)))
 	 (indent (- *default-char-width* (col-begin place)))
-	 (dstr (unpindent d indent :string t :comment? t))
+	 (dstr (unpindent d indent :string t))
          (dfinal (string-trim '(#\Space #\Tab #\Newline) dstr)))
     (pvs-modify-buffer (shortname *pvs-context-path*)
                        (filename theory)
