@@ -624,7 +624,9 @@
 	  (make-formals-funtype* (car formals) nrange)))))
 
 (defun make-formals-funtype* (formals range)
-  (if (some #'(lambda (ff) (occurs-in ff range)) formals)
+  (if (some #'(lambda (ff)
+		(member ff (freevars range) :test #'same-declaration))
+	    formals)
       (let* ((ndom (make-formals-domain formals))
 	     (nvar (if (cdr formals)
 		       (make-new-variable '|d| range)
