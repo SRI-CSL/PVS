@@ -90,6 +90,15 @@ where db is to replace db1 and db2")
 
 ;;; If two objects aren't tc-eq* by more specific methods, then try eq.
 
+;; (defmethod tc-eq* :around ((x syntax) (y syntax) bindings)
+;;   (with-slots ((xhash pvs-sxhash-value)) x
+;;     (with-slots ((yhash pvs-sxhash-value)) y
+;;       (when (or (null xhash)
+;; 		(null yhash)
+;; 		(= xhash yhash))
+;; 	(call-next-method)))))
+    
+
 (defmethod tc-eq* (x y bindings)
   (declare (ignore bindings))
   (eq x y))
@@ -156,6 +165,17 @@ where db is to replace db1 and db2")
       (and (tc-eq* st1 st2 bindings)
 	   (tc-eq-ops p1 p2 bindings)))))
 
+(defmethod tc-eq* ((t1 subtype) (t2 type-name) bindings)
+  (when (or (everywhere-true? (predicate t1))
+	    (and (adt-type-name? (supertype t1))
+		 (singleton? (constructors (supertype t1)))))
+    (tc-eq* (supertype t1) t2 bindings)))
+
+(defmethod tc-eq* ((t1 type-name) (t2 subtype) bindings)
+  (when (or (everywhere-true? (predicate t2))
+	    (and (adt-type-name? (supertype t2))
+		 (singleton? (constructors (supertype t2)))))
+    (tc-eq* t1 (supertype t2) bindings)))
 
 ;;; This is needed since expr-as-type is used as a print-type, in which
 ;;; case the supertype slot will not be set and we need to look at the
