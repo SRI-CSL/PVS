@@ -89,6 +89,8 @@ required a context.")
   #+pvsdebug (assert (every #'type-expr? (types ex)))
   #+pvsdebug (assert (or (null (type ex)) (fully-instantiated? ex)))
   (cond ((type ex)
+	 (unless (compatible? (type ex) expected)
+	   (type-incompatible ex (list (type ex)) expected))
 	 (when (eq *generate-tccs* 'all)
 	   (check-for-tccs ex expected (list ex))))
 	(t (cond ((some #'(lambda (ty)
@@ -2061,8 +2063,22 @@ required a context.")
   (every #'ground-arithmetic-term? (exprs expr)))
 
 (defmethod ground-arithmetic-term? ((expr application))
-  (and (arithmetic-op? (operator expr))
-       (ground-arithmetic-term? (argument expr))))
+  (or (and (arithmetic-op? (operator expr))
+	   (ground-arithmetic-term? (argument expr)))
+      (and (arithmetic-rel-op? (operator expr))
+	   (ground-arithmetic-term? (argument expr)))))
+
+(defmethod ground-arithmetic-term? ((expr propositional-application))
+  (ground-arithmetic-term? (argument expr)))
+
+(defmethod ground-arithmetic-term? ((expr equation))
+  (ground-arithmetic-term? (argument expr)))
+
+(defmethod ground-arithmetic-term? ((expr disequation))
+  (ground-arithmetic-term? (argument expr)))
+
+(defmethod ground-arithmetic-term? ((expr branch))
+  (ground-arithmetic-term? (argument expr)))
 
 (defmethod arithmetic-op? ((ex name-expr))
   (and (memq (id ex) '(+ - * /))
@@ -2070,6 +2086,13 @@ required a context.")
 
 (defmethod arithmetic-op? (ex)
   (declare (ignore ex))
+  nil)
+
+(defmethod arithmetic-rel-op? ((ex name-expr))
+  (and (memq (id ex) '(< <= > >=))
+       (eq (id (module-instance (car (resolutions ex)))) '|reals|)))
+
+(defmethod arithmetic-rel-op? (ex)
   nil)
 
 (defmethod get-arithmetic-value ((expr number-expr))
@@ -2083,7 +2106,43 @@ required a context.")
       (+ (+ a1 a2))
       (- (if a2 (- a1 a2) (- a1)))
       (* (* a1 a2))
-      (/ (/ a1 a2)))))
+      (/ (/ a1 a2))
+      (< (< a1 a2))
+      (<= (<= a1 a2))
+      (> (> a1 a2))
+      (>= (>= a1 a2)))))
+
+(defmethod get-arithmetic-value ((expr conjunction))
+  (and (get-arithmetic-value (args1 expr))
+       (get-arithmetic-value (args2 expr))))
+
+(defmethod get-arithmetic-value ((expr disjunction))
+  (or (get-arithmetic-value (args1 expr))
+      (get-arithmetic-value (args2 expr))))
+
+(defmethod get-arithmetic-value ((expr negation))
+  (not (get-arithmetic-value (args1 expr))))
+
+(defmethod get-arithmetic-value ((expr implication))
+  (or (not (get-arithmetic-value (args1 expr)))
+      (get-arithmetic-value (args2 expr))))
+
+(defmethod get-arithmetic-value ((expr iff))
+  (eq (get-arithmetic-value (args1 expr))
+      (get-arithmetic-value (args2 expr))))
+
+(defmethod get-arithmetic-value ((expr equation))
+  (eql (get-arithmetic-value (args1 expr))
+       (get-arithmetic-value (args2 expr))))
+
+(defmethod get-arithmetic-value ((expr disequation))
+  (eql (get-arithmetic-value (args1 expr))
+       (get-arithmetic-value (args2 expr))))
+
+(defmethod get-arithmetic-value ((expr branch))
+  (if (get-arithmetic-value (condition expr))
+      (get-arithmetic-value (then-part expr))
+      (get-arithmetic-value (else-part expr))))
 
 (defun trivial-cond-coverage (conditions)
   (let ((last-cond (car (last conditions))))
@@ -2255,6 +2314,8 @@ required a context.")
   (set-binding-expr-types (append (bindings ex) (list (expression ex)))
 			  (nconc (mapcar #'type (bindings ex))
 				 (list expected)))
+  (unless (compatible? *boolean* expected)
+    (type-incompatible ex (list *boolean*) expected))
   (setf (type ex) *boolean*))
 
 
