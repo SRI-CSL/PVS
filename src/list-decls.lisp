@@ -236,6 +236,7 @@
 						  (or funtype
 						      tupletype
 						      recordtype)))
+				  (place ex)
 				  (within-place pos (place ex)))
 			 (typecase ex
 			   (expr (setq containing-type
