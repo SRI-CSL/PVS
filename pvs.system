@@ -1,0 +1,317 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; pvs.system -- 
+;; Author          : Sam Owre
+;; Created On      : Thu Dec 23 14:43:02 1993
+;; Last Modified By: Sam Owre
+;; Last Modified On: Sun Apr  5 03:31:14 1998
+;; Update Count    : 91
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#+allegro
+(eval-when (eval load)
+  (setq *record-source-file-info* t
+	*load-source-file-info* t
+	*record-xref-info* t))
+
+(eval-when (eval load)
+  (defparameter *pvs-path* "/project/pvs/pvs2.3")
+  #+allegro (chdir *pvs-path*))
+
+(eval-when (eval load)
+  (defvar *pvs-binary-type*
+    #+(and allegro sparc) "fasl"	; Sun4
+    #+(and allegro rios) "rfasl"	; PowerPC/RS6000
+    #+(and allegro hpux) "hfasl"	; HP 9000
+    #+(and allegro x86) "lfasl"         ; Intel x86
+    #+(and lucid lcl4.1 sparc) "sbin"	; Sun4 new Lucid
+    #+(and lucid (not lcl4.1) sparc) "obin" ; Sun4 old Lucid
+    #+(and lucid rios) "rbin"		; PowerPC/RS6000
+    #+(and lucid mips) "mbin"		; DEC
+    ;;; These are experimental
+    #+gcl "o"
+    #+cmu "sparcf"
+    #+harlequin-common-lisp "wfasl"
+    ))
+
+#+allegro
+(eval-when (eval load)
+  (setq system:*load-search-list*
+	(list #p"" (make-pathname :type *pvs-binary-type*)
+	      #p(:type "cl") #p(:type "lisp"))))
+
+(setq *cltl1-in-package-compatibility-p* t)
+
+(unless (find-package "MAKE")
+  (let ((*enable-package-locked-errors* nil))
+    (load (format nil "~a/src/defsystem" *pvs-path*))))
+
+(defpackage "ILISP" (:use "LISP"))
+
+(in-package "MAKE")
+
+(component-operation :lf 'load-and-compile-if-needed-operation)
+(component-operation 'lf 'load-and-compile-if-needed-operation)
+
+(defun load-and-compile-if-needed-operation (component force)
+  (let ((changed (compile-file-operation component
+					 :new-source-and-dependents)))
+    (load-file-operation component :all)
+    changed))
+
+#+gcl
+(in-package :pcl)
+#+gcl
+(defun structure-slotd-reader-function (structure-slot-description)
+  (second structure-slot-description))
+#+gcl
+(compile 'structure-slotd-reader-function)
+
+(in-package 'user)
+
+(unless (or (find-package "CLOS") (find-package "PCL"))
+  #+(and lcl4.0 (not lcl4.1)) (load "/usr/subsys/lisp/clos")
+  #+lcl4.1 (load "/usr/global/lisp/lucid/dbcs/clos"))
+
+#-gcl
+(defpackage pvs (:use #+lucid "LUCID-COMMON-LISP" "LISP"
+		      #-gcl "CLOS" #+gcl "PCL" "MAKE"))
+
+#+gcl
+(unless (find-package :pvs)
+  (make-package :pvs :use '("LISP" "PCL" "MAKE")))
+
+#+gcl
+(eval-when (eval compile load)
+  (unless (fboundp 'pcl::structure-slotd-reader-function)
+    (defun pcl::structure-slotd-reader-function (slotd)
+      (second slotd))))
+
+(defvar pvs::*pvs-path* *pvs-path*)
+
+(defvar *pvs-system-loaded* nil)
+
+(defvar *load-pvs-classes* #-allegro nil #+allegro t)
+
+(defsystem pvs
+  :source-pathname *pvs-path*
+  :source-extension "lisp"
+  :binary-extension #.*pvs-binary-type*
+  :initially-do (unless *pvs-system-loaded*
+		  #+(and lcl4.0 (not lcl4.1))
+		  (when (probe-file "/usr/subsys/lisp/patches/")
+		    (load-patches :directory "/usr/subsys/lisp/patches/"))
+		  #+lcl4.1
+		  (when (probe-file "/usr/global/lisp/lucid/dbcs/patches")
+		    (load-patches :directory
+				  "/usr/global/lisp/lucid/dbcs/patches")
+		    (load "/usr/global/lisp/lucid/dbcs/patches/bug-7186.sbin"))
+		  #-gcl
+		  (proclaim '(optimize (compilation-speed 0) (space 1)
+				       (safety 1) (speed 3)
+				       #+allegro (debug 1)))
+		  #+gcl
+		  (proclaim '(optimize (compilation-speed 0) (space 1)
+				       (safety 3) (speed 0)))
+		  #+lucid
+		  (change-memory-management
+		   :expand 128
+		   :growth-limit 4092	; # of 64Kb segments
+		   :growth-rate 100	; # segs added when memory is expanded
+		   :reclamation-ratio 0.33
+		   )
+		  #+gcl (setq compiler::*split-files* 100000)
+		  #+(and lcl4.0 (not lcl4.1))
+		  (setq *load-binary-pathname-types*
+			(list user::*pvs-binary-type*))
+		  (unless (boundp '*print-pprint-dispatch*)
+		    #-gcl
+		    (load (format nil "~a/src/xp" *pvs-path*))
+		    #+gcl
+		    (load "/homes/owre/lisp/xp/xp-code")
+		    (apply (find-symbol "INSTALL" :xp) :package :pvs nil))
+		  (load (format nil "~a/ess/dist-ess.lisp" *pvs-path*))
+		  #-gcl
+		  (generate-ess ergolisp)
+		  ;;#+gcl
+		  ;;(load (format nil "~a/ess/allegro-runtime.lisp" *pvs-path*))
+		  #+allegro (require :loop)
+		  #+gcl (load (format nil "~a/src/loop" *pvs-path*))
+		  (in-package 'pvs)
+		  (use-package '("ERGOLISP" "OPER" "OCC" "TERM" "SORT"
+				 "SB-RUNTIME" "LANG" "NEWATTR"))
+		  #+gcl (defmacro ignore-errors (&body forms)
+			  `(progn ,@forms))
+		  (let ((bddpath
+			 (concatenate 'string
+			   *pvs-path* "/BDD/"
+			   #+(and allegro sun4 sunos4) "SunOS4"
+			   #+(and allegro sun4 (not sunos4)) "SunOS5"
+			   #+(and allegro x86) "Linux")))
+		    #+(and allegro dlfcn)
+		    (load (format nil "~a/bdd/bdd.so" bddpath))
+		    ;;#+(and allegro dlfcn)
+		    ;;(load (format nil "~a/mu/mu.so" bddpath))
+		    #+(and allegro (not dlfcn))
+		    (load ""
+			  :foreign-files
+			  (append
+			   (mapcar #'(lambda (obj)
+				       (format nil "~a/bdd/~a" bddpath obj))
+			     '("bdd_interface.o" "bdd.o" "bdd_factor.o"
+			       "bdd_quant.o" "bdd_fns.o" "vfns.o"))
+			   (list (format nil "~a/utils/list.o" bddpath)
+				 (format nil "~a/utils/libutils.a" bddpath)))
+			  :system-libraries
+			  '("m"
+			    "/pkg/gcc/lib/gcc-lib/sparc-sun-sunos4.1.3/2.7.2/libgcc.a"))
+		    #+(and allegro (not dlfcn))
+		    (load ""
+			  :foreign-files
+			  (append
+			   (mapcar #'(lambda (obj)
+				       (format nil "~a/mu/~a" bddpath obj))
+			     '("mu_interface.o" "mu.o"))
+			   (list (format nil "~a/utils/list.o" bddpath)
+				 (format nil "~a/utils/libutils.a" bddpath)))
+			  :system-libraries
+			  '("m"
+			    "/pkg/gcc/lib/gcc-lib/sparc-sun-sunos4.1.3/2.7.2/libgcc.a")))
+		  (setq *pvs-system-loaded* t))
+  :finally-do (let* ((patchsrc (format nil "~a/patch2-build.lisp" *pvs-path*))
+		     (patchbin (make-pathname :type *pvs-binary-type*
+					      :defaults patchsrc)))
+		(when (probe-file patchsrc)
+		  (when (pvs::compiled-file-older-than-source?
+			 patchsrc patchbin)
+		    (compile-file patchsrc :output-file patchbin))
+		  (load patchbin))
+		#+allegro
+		(load (format nil "~a/src/closopt2" *pvs-path*))
+		(pvs::remove-typecheck-caches)
+		#+lucid (precompile-generic-functions)
+		#+lcl4.1 (clos::flush-pv-caches)
+		(pvs::bdd_init)
+		(pvs::load-prelude))
+  :components
+  ((:module ground-prover
+     :source-pathname "ground-prover/"
+     :components ((:file "prmacros")
+		  (:file "interface"
+			 :depends-on ("prmacros"))
+		  (:file "prglobals"
+			 :depends-on ("prmacros"))
+		  (:file "process"
+			 :depends-on ("prmacros"))
+		  (:file "arrays"
+			 :depends-on ("prmacros"))
+		  (:file "tuples"
+			 :depends-on ("prmacros"))
+		  (:file "arith"
+			 :depends-on ("prmacros"))
+		  (:file "q"
+			 :depends-on ("prmacros"))
+		  (:file "nonlin"
+			 :depends-on ("prmacros"))
+		  (:file "pvs-patch"
+			 :depends-on ("prmacros"))))
+   (:module classes
+     :source-pathname "src/"
+     :components ((:file "store-object")
+		  (:file "defcl")
+		  (:file "classes-expr"
+			 :depends-on ("defcl"))
+		  (:file "classes-decl"
+			 :depends-on ("defcl"))
+		  (:file "prover/estructures"
+			 :depends-on ("defcl"))
+		  (:file "pvs-methods"
+			 :initially-do
+			 (pvs::write-deferred-methods-to-file))))
+   (:module utils
+     :source-pathname "src/utils"
+     :components (#-allegro-v4.3 (:file "hash")
+		  (:file "hashfn")))
+   (:module language
+     :source-pathname "src/"
+     :components ((:file "ergo-runtime-fixes")
+		  (:file "ergo-tex-fixes")
+		  (:file "pvs-lang-def")
+		  (:file "pvs-lexer")
+		  (:file "pvs-parser")
+		  (:file "pvs-unparser")
+		  (:file "pvs-sorts")
+		  (:file "pvs-parse-fixes"))
+     :depends-on (classes))
+   (:module basic
+     :source-pathname "src/"
+     :components ((:file "macros")
+		  (:file "prover/checker-macros")
+		  (:file "globals")
+		  (:file "optimize")
+		  (:file "makes" :depends-on ("macros"))
+		  (:file "parse" :depends-on ("macros"))
+		  (:file "unparse" :depends-on ("macros"))
+		  (:file "pp")
+		  (:file "print-object")
+		  (:file "pvs-emacs")
+		  (:file "equalities")
+		  (:file "utils")
+		  (:file "gensubst")
+		  (:file "substit"))
+     :depends-on (language))
+   (:module typechecker
+     :source-pathname "src/"
+     :components ((:file "freeparams")
+		  (:file "subst-mod-params")
+		  (:file "tc-unify")
+		  (:file "resolve")
+		  (:file "tcc-gen")
+		  (:file "set-type")
+		  ;;(:file "check-for-tccs")
+		  (:file "tcexprs")
+		  (:file "tcdecls")
+		  (:file "xref")
+		  (:file "occurs-in")
+		  (:file "context")
+		  (:file "datatype")
+		  (:file "typecheck")
+		  (:file "tclib"))
+     :depends-on (basic))
+   (:module user-interface
+     :source-pathname "src/"
+     :components (;;(:file "restore-types")
+		  (:file "compare")
+		  (:file "untypecheck")
+		  (:file "copy-lex")
+		  (:file "save-theories")
+		  (:file "pvs")
+		  (:file "status-cmds")
+		  (:file "add-decl")
+		  (:file "list-decls")
+		  (:file "tex-support"))
+     :depends-on (basic))
+   (:module proof-checker
+     :source-pathname "src/prover/"
+     :components ((:file "translate-to-prove")
+		  (:file "eproofcheck")
+		  (:file "proofrules")
+		  (:file "equantifiers")
+		  (:file "freevars")
+		  (:file "rewrites")
+		  (:file "assert")
+		  (:file "beta-reduce")
+		  (:file "replace")
+		  (:file "expand")
+		  (:file "match")
+		  (:file "rules")
+		  (:file "strategies")
+		  (:file "wish"))
+     :depends-on (typechecker))
+   (:module bdd
+     :source-pathname "BDD"
+     :components ((:file "bdd")))
+   (:module mu-simplifier
+     :source-pathname "MU"
+     :components ((:file "pvs-mu")
+		  (:file "strategies")))
+   ))
