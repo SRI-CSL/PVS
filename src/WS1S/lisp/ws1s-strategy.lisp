@@ -111,7 +111,7 @@
       (fmla-to-dfa fmla)
     (if (not dfa)
 	(progn
-	  (ws1s-msg (format nil "Not WS1S translatable ~a" fmla))
+	  (ws1s-msg (format nil "~%Not WS1S translatable ~a" fmla))
 	  fmla)
       (let* ((status (dfa-status dfa))
 	     (newfmla (cond ((eq status :valid) *true*)
