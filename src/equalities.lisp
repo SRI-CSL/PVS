@@ -822,7 +822,8 @@ where db is to replace db1 and db2")
 
 
 ;;; Compatible? for types checks whether two types have a common
-;;; supertype.
+;;; supertype.  Note that this is used during typechecking, and tends to
+;;; succeed for types involving free parameters.
 
 (defmethod compatible? ((atype list) (etype list))
   (cond ((null atype) (null etype))
@@ -873,27 +874,6 @@ where db is to replace db1 and db2")
 		 (actuals-are-outside-formals? a2)
 		 (compatible?* a1 a2))))))
 
-(defmethod compatible?* ((atype type-variable) (etype type-expr))
-  t)
-
-(defmethod compatible?* ((etype type-expr) (atype type-variable))
-  t)
-
-(defmethod compatible?* ((etype type-name) (atype type-variable))
-  t)
-
-(defmethod compatible?* ((atype tup-type-variable) (etype tupletype))
-  t)
-
-(defmethod compatible?* ((etype tupletype) (atype tup-type-variable))
-  t)
-
-(defmethod compatible?* ((atype cotup-type-variable) (etype cotupletype))
-  t)
-
-(defmethod compatible?* ((etype cotupletype) (atype cotup-type-variable))
-  t)
-
 (defmethod compatible?* ((atype type-name) etype)
   (declare (ignore etype))
   (or (declaration-outside-formals? atype)
@@ -920,6 +900,27 @@ where db is to replace db1 and db2")
       (and (typep ex 'name)
 	   (typep (declaration ex) 'formal-decl)
 	   (not (memq (declaration ex) (formals (current-theory))))))))
+
+(defmethod compatible?* ((atype type-variable) (etype type-expr))
+  t)
+
+(defmethod compatible?* ((etype type-expr) (atype type-variable))
+  t)
+
+(defmethod compatible?* ((etype type-name) (atype type-variable))
+  t)
+
+(defmethod compatible?* ((atype tup-type-variable) (etype tupletype))
+  t)
+
+(defmethod compatible?* ((etype tupletype) (atype tup-type-variable))
+  t)
+
+(defmethod compatible?* ((atype cotup-type-variable) (etype cotupletype))
+  t)
+
+(defmethod compatible?* ((etype cotupletype) (atype cotup-type-variable))
+  t)
 
 (defmethod compatible?* ((l1 list) (l2 list))
   (and (length= l1 l2)
@@ -1751,20 +1752,20 @@ where db is to replace db1 and db2")
 (defmethod subtype-of*? :around (t1 t2)
   (or (tc-eq t1 t2)
       (if *subtype-of-hash*
-	  (let ((subhash (gethash t1 *subtype-of-hash*)))
+	  (let ((subhash (gethash t1 (the hash-table *subtype-of-hash*))))
 	    (if subhash
 		(multiple-value-bind (st? there?)
-		    (gethash t2 subhash)
+		    (gethash t2 (the hash-table subhash))
 		  (if there?
 		      st?
 		      (let ((nvalue (or (call-next-method)
 					(known-subtype-of? t1 t2))))
-			(setf (gethash t2 subhash) nvalue))))
+			(setf (gethash t2 (the hash-table subhash)) nvalue))))
 		(let ((ht (make-hash-table :test #'eq)))
-		  (setf (gethash t1 *subtype-of-hash*) ht)
+		  (setf (gethash t1 (the hash-table *subtype-of-hash*)) ht)
 		  (let ((nvalue (or (call-next-method)
 				    (known-subtype-of? t1 t2))))
-		    (setf (gethash t2 ht) nvalue)))))
+		    (setf (gethash t2 (the hash-table ht)) nvalue)))))
 	  (or (call-next-method)
 	      (known-subtype-of? t1 t2)))))
 	 
