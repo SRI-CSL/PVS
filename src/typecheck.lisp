@@ -510,9 +510,9 @@
 
 (defun update-current-context (theory theoryname)
   (assert (saved-context theory))
+  (update-library-alist theory)
   (update-usings-hash theory theoryname)
   (update-declarations-hash theory theoryname)
-  (update-library-alist theory)
   (update-known-subtypes theory theoryname)
   (update-judgements-of-current-context theory theoryname)
   (update-conversions-of-current-context theory theoryname)
@@ -1236,19 +1236,21 @@
 (defun check-exported-external-completeness (expnames exptheories expdecls)
   (unless (null expdecls)
     (let ((decl (car expdecls)))
-      (mapobject #'(lambda (ex)
-		     (when (and (external-name ex)
-				(not (member (module-instance ex) exptheories
-					     :test #'tc-eq)))
-		       (let ((expname (if (consp expnames)
-					  (car (member decl expnames
-						       :test #'same-id))
-					  decl)))
-			 (type-error expname
-			   "~a refers to ~a~@[[~{~a~^, ~}]~].~a, which must be exported"
-			   (id decl) (id (module-instance ex))
-			   (actuals (module-instance ex)) (id ex)))))
-		 decl))
+      (unless (and (judgement? decl)
+		   (generated-by decl))
+	(mapobject #'(lambda (ex)
+		       (when (and (external-name ex)
+				  (not (member (module-instance ex) exptheories
+					       :test #'tc-eq)))
+			 (let ((expname (if (consp expnames)
+					    (car (member decl expnames
+							 :test #'same-id))
+					    decl)))
+			   (type-error expname
+			     "~a refers to~_ ~w~@[[~{~w~^, ~}]~].~w,~_ which must be exported"
+			     (id decl) (id (module-instance ex))
+			     (actuals (module-instance ex)) (id ex)))))
+		   decl)))
     (check-exported-external-completeness expnames exptheories (cdr expdecls))))
 
 (defun external-name (ex)
