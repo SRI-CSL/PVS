@@ -2196,6 +2196,18 @@ naturalnumbers: THEORY
   x: VAR int
   even_or_odd: THEOREM even?(x) IFF NOT odd?(x)
 
+  odd_iff_not_even:  LEMMA odd?(x)  IFF NOT even?(x)
+  even_iff_not_odd:  LEMMA even?(x) IFF NOT odd?(x)
+  odd_or_even_int:   LEMMA odd?(x)  OR even?(x)
+  odd_iff_even_succ: LEMMA odd?(x)  IFF even?(x+1)
+  even_iff_odd_succ: LEMMA even?(x) IFF odd?(x+1)
+
+  even_plus1:        LEMMA even?(x) IFF NOT even?(x+1)
+  odd_plus1:         LEMMA odd?(x) IFF NOT odd?(x+1)
+
+  even_div2:         LEMMA even?(x) IMPLIES integer_pred(x/2)
+  odd_div2:          LEMMA odd?(x)  IMPLIES integer_pred((x-1)/2)
+
  END naturalnumbers
 
 
@@ -2303,6 +2315,30 @@ real_defs: THEORY
     max(i,j:posint) HAS_TYPE {k: posint | i <= k AND j <= k}
   posint_min: JUDGEMENT
     min(i,j:posint) HAS_TYPE {k: posint | k <= i AND k <= j}
+
+  % Useful facts about maximum and minimum of two reals
+  %
+  % Author : Alfons Geser, National Institute of Aerospace
+  % Date   : Aug 26, 2003
+  a,b,c : VAR real
+
+  min_le : LEMMA min(a,b) <= c IFF (a <= c OR b <= c)
+  min_lt : LEMMA min(a,b) < c IFF (a < c OR b < c)
+  min_ge : LEMMA min(a,b) >= c IFF (a >= c AND b >= c)
+  min_gt : LEMMA min(a,b) > c IFF (a > c AND b > c)
+  le_min : LEMMA a <= min(b,c) IFF (a <= b AND a <= c)
+  lt_min : LEMMA a < min(b,c) IFF (a < b AND a < c)
+  ge_min : LEMMA a >= min(b,c) IFF (a >= b OR a >= c)
+  gt_min : LEMMA a > min(b,c) IFF (a > b OR a > c)
+
+  max_le : LEMMA max(a,b) <= c IFF (a <= c AND b <= c)
+  max_lt : LEMMA max(a,b) < c IFF (a < c AND b < c)
+  max_ge : LEMMA max(a,b) >= c IFF (a >= c OR b >= c)
+  max_gt : LEMMA max(a,b) > c IFF (a > c OR b > c)
+  le_max : LEMMA a <= max(b,c) IFF (a <= b OR a <= c)
+  lt_max : LEMMA a < max(b,c) IFF (a < b OR a < c)
+  ge_max : LEMMA a >= max(b,c) IFF (a >= b AND a >= c)
+  gt_max : LEMMA a > max(b,c) IFF (a > b AND a > c)
 
  END real_defs
 
@@ -2863,6 +2899,7 @@ floor_ceil: THEORY
  BEGIN
   
   x, y: VAR real
+  py:  VAR posreal
   j: VAR nonzero_integer
   i, k: VAR integer
   
@@ -2922,6 +2959,12 @@ floor_ceil: THEORY
                          floor(i/j) = IF i/j >= 0 THEN 0 ELSE -1 ENDIF
 
   floor_eq_0:  LEMMA floor(x) = 0 IMPLIES x >= 0 AND x < 1
+
+  fractional_plus: LEMMA
+        fractional(x+y) = fractional(fractional(x) + fractional(y))
+
+  floor_div: LEMMA floor(x/py) = i IFF py*i <= x AND x < py*(i+1)
+  floor_0:   LEMMA floor(x)    = 0 IFF 0    <= x AND x < 1
 
  END floor_ceil
 
@@ -3064,8 +3107,13 @@ exponentiation: THEORY
   expt_x0: LEMMA x^0 = 1
 
   expt_x1: LEMMA x^1 = x
+  expt_x2: LEMMA x^2 = x*x
+  expt_x3: LEMMA x^3 = x*x*x
+  expt_x4: LEMMA x^4 = x*x*x*x
 
   expt_1i: LEMMA 1^i = 1
+
+  expt_eq_0: LEMMA x^pn = 0 IFF x = 0
 
   expt_plus: LEMMA n0x^(i + j) = n0x^i * n0x^j
 
@@ -3122,6 +3170,12 @@ exponentiation: THEORY
   inv_expt : LEMMA (1 / n0x)^i = 1 / n0x^i
 
   abs_expt: LEMMA abs(n0x)^i = abs(n0x^i)
+
+  abs_hat_nat : LEMMA abs(x)^n = abs(x^n)
+
+  expt_minus1_abs:   LEMMA abs((-1)^i) = 1
+  even_m1_pow: LEMMA even?(i) IMPLIES (-1)^i = 1
+  not_even_m1_pow: LEMMA NOT even?(i) IMPLIES (-1)^i = -1
 
   expt_lt1_bound1: LEMMA  expt(lt1x, n) <= 1
 
@@ -3781,6 +3835,9 @@ finite_sets[T: TYPE]: THEORY
   card_bij        : THEOREM card(S) = N
                              IFF (EXISTS (f: [(S) -> below[N]]): bijective?(f))
 
+  card_bij_inv    : THEOREM card(S) = N
+                             IFF (EXISTS (f: [below[N] -> (S)]): bijective?(f))
+
   bij_exists      : COROLLARY (EXISTS (f: [(S) -> below(card(S))]):
                                        bijective?(f))
 
@@ -3788,6 +3845,24 @@ finite_sets[T: TYPE]: THEORY
 %                              (EXISTS (X: [below[N] -> T]):
 %                                   (FORALL (i: below[N]): S(X(i))) AND
 %                                   (FORALL (i,j: below[N]): X(i) /= X(j)))
+
+  P, P1, P2: VAR pred[T]
+
+  finite_pred: LEMMA is_finite(fullset[T]) IMPLIES
+                        is_finite[T]({x: T | P(x)})
+
+  finite_pred2:  LEMMA is_finite(P) IMPLIES
+                         is_finite[T]({x: T | P(x)})
+
+  card_implies: LEMMA is_finite(fullset[T]) AND
+                      (FORALL (x: T): P1(x) IMPLIES P2(x)) 
+             IMPLIES card({x: T | P1(x)}) <= card({x: T | P2(x)})
+
+  finite_induction: THEOREM
+    FORALL (p: pred[set[T]]):
+      (FORALL (n: nat), (S: set[T]):
+         (EXISTS (f: [(S) -> below[n]]): injective?(f)) => p(S))
+       => (FORALL (FS: finite_set): p(FS))
                
 END finite_sets
 
