@@ -749,7 +749,7 @@ and pvs-tex.sub files from your home directory."
     (use-local-map lkeymap)))
 
 (defun pvs-mail-send-and-exit (cmd)
-  (let ((homedir (pvs-copy-home-directory-files)))
+  (let ((homedir (or (pvs-copy-home-directory-files) "")))
     (goto-char (point-min))
     (when (search-forward pvs-email-info-string nil t)
       (delete-region (match-beginning 0) (match-end 0)))
