@@ -1,7 +1,7 @@
 /* 
 
 Interface for the Mu-calculus model-checker.
-Author: Hassen Saidi and Sam Owre
+Author: Hassen Saidi, Sam Owre, and Dave Stringer-Calvert
 Date: 05/09/98
 
 */
@@ -15,19 +15,53 @@ Date: 05/09/98
 #include "hash.h"  */
 
 #include "bdd_fns.h" 
-
 #include "mu.h"
 
 #include <setjmp.h> /* For interrupt handling */
-#ifdef LINUX_REDHAT4
-#include <bsd/signal.h> /* For interrupt handling */
-#else /* solaris and redhat 5 */
-#include <signal.h>
-#endif
 
-#ifdef LINUX_REDHAT5
-#define signal bsd_signal
+#include <signal.h>
+
+int bdd_interrupted;
+sigjmp_buf catch;
+struct sigaction lisp_handler;
+void restore_sigint(void);
+
+void new_handler(int sig)
+{
+  restore_sigint();
+  siglongjmp(catch, -1);
+}
+
+void
+set_sigint(void)		   
+{
+  struct sigaction new;
+  sigset_t mask;
+
+  /* setup new signal handling struct */
+  new.sa_handler = new_handler;
+  new.sa_flags = 0;
+#ifdef SA_RESTART
+  new.sa_flags |= SA_RESTART;
 #endif
+#ifdef SA_INTERRUPT
+  new.sa_flags &= ~ SA_INTERRUPT;
+#endif
+  sigemptyset(&mask); 
+  new.sa_mask = mask;
+
+  /* install our signal handler, saving detail of lisp one */
+  if (sigaction(SIGINT, &new, &lisp_handler) < 0)
+    perror("sigaction in set_sigint");
+}
+
+void
+restore_sigint(void)
+{
+  if (sigaction(SIGINT, &lisp_handler, NULL) < 0)
+    perror("sigaction in restore_sigint");
+}
+
 
 int debug;
 int warnings;
@@ -150,68 +184,38 @@ Main function
   extern int yyparse ();
 /*  extern int yylineno = 0;  */
 
-int bdd_interrupted;
-jmp_buf catch;
-void (*old_handler)();
-
 BDDPTR mu___modelcheck_formula (Formula fml)
  { auto int return_value;
-   extern void new_handler();
    extern BDDPTR modelcheck_formula();
    BDDPTR mcvalue;
 
    bdd_interrupted = 0;
-   if ((return_value = setjmp(catch)) != 0) {
+   if ((return_value = sigsetjmp(catch,1)) != 0) {
      bdd_interrupted = 1;
      return BDD_0;
    }
-#ifdef SIGNALS_LINUX
-   old_handler = signal(SIGINT, &new_handler);
-#else /* solaris */
-   old_handler = sigset(SIGINT, &new_handler);
-#endif
+
+   set_sigint();
    mcvalue = modelcheck_formula(fml);
-#ifdef SIGNALS_LINUX
-   signal(SIGINT, old_handler);
-#else
-   sigset(SIGINT, old_handler);
-#endif
+   restore_sigint();
    return mcvalue;
  }
 
 BDD_LIST bdd___bdd_sum_of_cubes (BDDPTR f, int irredundant)
  { auto int return_value;
-   extern void new_handler();
    extern BDD_LIST bdd_sum_of_cubes();
    BDD_LIST mcvalue;
 
    bdd_interrupted = 0;
-   if ((return_value = setjmp(catch)) != 0) {
+   if ((return_value = sigsetjmp(catch,1)) != 0) {
      bdd_interrupted = 1;
      return NULL_LIST;
    }
-#ifdef SIGNALS_LINUX
-   old_handler = signal(SIGINT, &new_handler);
-#else
-   old_handler = sigset(SIGINT, &new_handler);
-#endif
+   
+   set_sigint();
    mcvalue = bdd_sum_of_cubes (f, irredundant);
-#ifdef SIGNALS_LINUX
-   signal(SIGINT, old_handler);
-#else
-   sigset(SIGINT, old_handler);
-#endif
+   restore_sigint();
    return mcvalue;
- }
-
-void new_handler(int sig)
- {
-#ifdef SIGNALS_LINUX
-   signal(SIGINT, old_handler);
-#else
-   sigset(SIGINT, old_handler);
-#endif
-   longjmp(catch, -1);
  }
 
 BDDPTR modelcheck_formula (Formula fml)
