@@ -1489,7 +1489,7 @@ proc reset-options {} {
 	    option add $pvs.displaybackground white startupFile
 	    option add $pvs.displayforeground black startupFile
 	    option add $pvs.activedisplaybackground black startupFile
-	    option add $pvs.activedisplayforeground white startupFile
+	    option add $pvs.activedisplayforeground steelblue startupFile
 	    option add $pvs.buttonbackground lightblue startupFile
 	    option add $pvs.buttonforeground black startupFile
 	    option add $pvs.activebuttonbackground steelblue startupFile
