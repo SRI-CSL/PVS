@@ -686,8 +686,8 @@
 
 (defun make-lambda-expr-iter (args* instance)
   (if (null args*) instance
-      (make!-lambda-expr (car args*) ;;NSH(10.1.99) swapped order
-	    (make-lambda-expr-iter (cdr args*)
+      (make-lambda-expr-iter (cdr args*)
+			     (make!-lambda-expr (car args*)
 			       instance))))
      
 (defun map-args*-with-bind-alist (args*  bind-alist)
