@@ -1020,11 +1020,38 @@
 		      treses)))
 	(if (eq kind 'expr)
 	    (if (cdr res)
-		(filter-local-expr-resolutions
-		 (filter-bindings res args))
+		(filter-equality-resolutions
+		 (filter-local-expr-resolutions
+		  (filter-bindings res args)))
 		res)
 	    (remove-outsiders (remove-generics res))))
       reses))
+
+(defun filter-equality-resolutions (reses)
+  (if (and (cdr reses)
+	   (memq (id (module-instance (car reses)))
+		 '(|equalities| |notequal|)))
+      (filter-equality-resolutions* reses)
+      reses))
+
+(defun filter-equality-resolutions* (reses &optional result)
+  (if (null reses)
+      (nreverse result)
+      (multiple-value-bind (creses nreses)
+	  (split-on #'(lambda (res)
+			(compatible? (type res) (type (car reses))))
+		    reses)
+	(filter-equality-resolutions*
+	 nreses
+	 (if (null creses)
+	     (cons (car reses) result)
+	     (cons (let ((ctype (reduce #'compatible-type creses :key #'type)))
+		     (or (find-if #'(lambda (res) (tc-eq (type res) ctype))
+			   creses)
+			 (make-resolution (declaration (car reses))
+			   (copy (module-instance (car reses))
+			     'actuals (list (mk-actual ctype))))))
+		   result))))))
 
 (defun remove-smaller-types-of-same-theories (reses &optional result)
   (if (null reses)
