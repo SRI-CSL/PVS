@@ -1941,10 +1941,11 @@ introduce a duplicate formula."
 		(let ((current-terms (loop for x in terms as nil in bindings
 					   collect x))
 		      (remaining-terms (nthcdr (length bindings) terms)))
-		  (try (instantiate-one$ fnum current-terms)
-		       (try (inst fnum :terms remaining-terms)
+		  (try-branch (instantiate-one$ fnum current-terms)
+		       ((try (inst fnum :terms remaining-terms)
 			    (skip)
 			    (fail))
+			(skip))
 		       (skip)))
 		(skip-msg "Not enough terms given.")))
 	(skip-msg "No quantified formula matching given number of terms.")))
