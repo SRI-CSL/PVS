@@ -20,7 +20,7 @@
 
 (defcl syntax ()
   ;;newline-comment
-  (place :ignore t :restore-as nil)
+  (place :restore-as nil)
   (pvs-sxhash-value :fetch-as nil :ignore t))
 
 ;;; Expressions
@@ -532,6 +532,7 @@
    :initform (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq
 			      :weak-keys t)
    :fetch-as nil)
+  judgement-declarations ;;keeps track of all the judgement declarations
   number-judgements-alist
   name-judgements-alist
   application-judgements-alist)
