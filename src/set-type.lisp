@@ -1394,7 +1394,8 @@ required a context.")
 	 (reduce #'min
 		 (mapcar #'(lambda (aty)
 			     (locality (from-conversion aty)))
-		   argtypes)))
+		   argtypes)
+		 :initial-value 0))
       0))
 
 (defmethod set-type-application (expr (operator lambda-expr) argument expected)
