@@ -258,6 +258,7 @@ emacs-interface = src/interface/pvs-emacs.lisp \
 		  src/interface/ilisp-pkg.lisp
 
 pvs-prover = src/prover/checker-macros.lisp \
+         src/prover/decision-procedure-interface.lisp \
          src/prover/translate-to-prove.lisp \
          src/prover/eproofcheck.lisp \
          src/prover/proofrules.lisp \
