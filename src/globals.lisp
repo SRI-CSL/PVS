@@ -10,8 +10,7 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; provide
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -45,7 +44,7 @@
   (let ((end (position #\space excl::cl-release-date :from-end t)))
     (subseq excl::cl-release-date 0 end)))
 
-(defparameter *pvs-version* "3.1")
+(defparameter *pvs-version* "3.2")
 
 (defparameter *binfile-version* 20)
 
@@ -361,7 +360,7 @@ current proof is suspect.")
 (defvar *subtype-names* nil)
 
 ;;; Used to speed up subtype-of? calculations
-(defvar *subtype-of-hash* (make-hash-table :test #'eq))
+(defvar *subtype-of-hash* (make-hash-table :test #'equal))
 
 (defvar *subtypes-matched* nil)
 
