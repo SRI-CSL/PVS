@@ -1710,8 +1710,8 @@
 	((eq (id expr) '|null|) nil)
 	((and (eq (id expr) '-) ;;hard to distinguish unary,binary.
 	      (tupletype? (domain (find-supertype (type expr)))))
-	 (intern (format nil "PVS_--")))
-	(t (intern (format nil "PVS_~a" (id expr))))))
+	 (intern (format nil "pvs_--")))
+	(t (intern (format nil "pvs_~a" (id expr))))))
 
 (defun pvs2cl-primitive2 (expr) ;;assuming expr is an id
   (let* ((id (id expr))
@@ -1721,7 +1721,7 @@
 	     (eq (id modinst) '|equalities|)
 	     (tc-eq  (type-value (car acts)) *number*))
 	'=
-	(intern (format nil "PVS__~a" id)))))
+	(intern (format nil "pvs__~a" id)))))
 
 ;;;
 ;;; this clearing is now done automatically by untypecheck
