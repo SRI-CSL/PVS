@@ -388,12 +388,6 @@
   (let ((*newdc* nil))
     (top-translate-to-prove expr)))
 
-(defun translate-from-dc (expr)
-  (cond
-   ((eq expr dp::*true*) *true*)
-   ((eq expr dp::*false*) *false*)
-   (t expr)))
-
 (defun translate-from-prove (expr)
   (cond
    ((true-p expr) *true*)
