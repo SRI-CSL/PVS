@@ -5,32 +5,40 @@
 (defvar *output-traces* nil)
 
 
-(addrule 'ws1s nil ((fnums '*) (examples 'T) (automaton nil) (traces nil))
+(addrule 'ws1s nil ((fnums *) (examples T) (automaton nil) (traces nil))
 	   (ws1s-step fnums examples automaton traces)
 	   "WS1S Decision Procedure.")
 
 (defun ws1s-step (fnums examples automaton traces)
   #'(lambda (ps)
-      (let ((*output-examples* examples)
-	    (*output-automaton* automaton)
-	    (*output-traces* traces))
-	(declare (special *output-examples* *output-automaton* *output-traces*))
-	(multiple-value-bind (signal subgoal)
-	    (sequent-reduce (current-goal ps) #'ws1s-sform fnums)
-	  (values signal (list subgoal))))))
+      (let* ((*output-examples* examples)
+	     (*output-automaton* automaton)
+	     (*output-traces* traces)
+	     (sforms (s-forms (current-goal ps)))
+	     (selected-sforms (select-seq sforms fnums))
+	     (remaining-sforms (delete-seq sforms fnums)))
+	(declare (special *output-examples* *output-automaton*
+			  *output-traces*))
+	(multiple-value-bind (signal newform)
+	    (ws1s-sforms selected-sforms)
+	  (case signal
+	    (! (values '! nil))
+	    (X (values 'X (current-goal ps)))
+	    (? (values '? (list
+			   (lcopy (current-goal ps)
+			     's-forms (cons newform remaining-sforms))))))))))
 
-(defun ws1s-sform (sform)
-  (let* ((fmla    (formula sform))
+(defun ws1s-sforms (sforms)
+  (let* ((fmla (make!-disjunction* (mapcar #'formula sforms)))
 	 (newfmla (ws1s-simplify fmla))
-	 (new-sform (if (or (tc-eq fmla newfmla)
-			    (tc-eq newfmla *false*)
-			    (and (negation? newfmla)
-				 (tc-eq (args1 newfmla) *true*)))
-			sform
-		      (lcopy sform 'formula newfmla))))
-    (if (s-form-equal? sform new-sform)
-	(values 'X sform)
-      (values '? new-sform))))
+	 (new-sform (unless (or (tc-eq fmla newfmla)
+				(tc-eq newfmla *false*)
+				(and (negation? newfmla)
+				     (tc-eq (args1 newfmla) *true*)))
+		      (make-instance 's-formula 'formula newfmla))))
+    (if new-sform
+	(values '? new-sform)
+	(values 'X nil))))
 
 (defun ws1s-simplify (fmla)
   (unwind-protect
