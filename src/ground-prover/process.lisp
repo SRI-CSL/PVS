@@ -288,10 +288,6 @@
 	  ;use2 (copy-list (use t2))    ; nil added by JMR 6/9/85 to fix  (set this value later  MES 6/22/88)
 	  )				; bug (append without nil is
 					; surely useless)
-    (when (and (consp t2)(eq (funsym t2) 'PLUS)
-	       (uninterp t1)
-	       (not (arithord-list t1 (cdr t2))))
-      (break "pr-merge"))
     (cond
      ((equal t1 t2) (return nil))
      ((and (integerp t1)(integerp t2)) ;;NSH(9.27.02): must be unequal
