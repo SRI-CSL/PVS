@@ -140,8 +140,8 @@
 
 ;;; Proof Status
 
-(defun proof-status-at (filename line &optional (origin "pvs"))
-  (let ((fdecl (formula-decl-to-prove filename line origin)))
+(defun proof-status-at (filename declname line &optional (origin "pvs"))
+  (let ((fdecl (formula-decl-to-prove filename declname line origin)))
     (if fdecl
 	(pvs-message "~a is ~a." (id fdecl) (proof-status-string fdecl))
 	(pvs-message "Unable to find formula declaration"))))
@@ -318,11 +318,11 @@
 ;;; ProofChain Status, Module ProofChain Status, Formula Status and
 ;;; Module Formula Status
 
-(defun proofchain-status-at (filename line &optional (origin "pvs"))
+(defun proofchain-status-at (filename declname line &optional (origin "pvs"))
   (if (or (gethash filename *pvs-files*)
 	  (and (member origin '("ppe" "tccs") :test #'string=)
 	       (get-theory filename)))
-      (let ((fdecl (formula-decl-to-prove filename line origin))
+      (let ((fdecl (formula-decl-to-prove filename declname line origin))
 	    (*disable-gc-printout* t))
 	(if fdecl
 	    (let ((*current-theory* (slot-value fdecl 'module)))
@@ -818,8 +818,8 @@
 
 (defvar *show-proofs-info* nil)
 
-(defun display-proofs-formula-at (name origin line)
-  (let ((fdecl (formula-decl-to-prove name line origin)))
+(defun display-proofs-formula-at (name declname origin line)
+  (let ((fdecl (formula-decl-to-prove name declname line origin)))
     (cond ((null fdecl)
 	   (pvs-message "Not at a formula declaration"))
 	  ((null (proofs fdecl))
