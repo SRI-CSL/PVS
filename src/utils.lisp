@@ -644,7 +644,7 @@
 	 (prev-decls (if include?
 			 (memq decl all-decls)
 			 (cdr (memq decl all-decls))))
-	 (prev-imp (find-if #'importing? prev-decls))
+	 (prev-imp (find-if #'mod-or-using? prev-decls))
 	 (rem-decls (if (and prev-imp (saved-context prev-imp))
 			(ldiff prev-decls (memq prev-imp prev-decls))
 			prev-decls))
@@ -1936,11 +1936,13 @@
 		   (list (list (make-instance 'field-assignment-arg
 				 'id (id fld))))
 		   (if fargs
-		       (translate-update-to-if!*
-			(type fld)
-			(make-update-field-application fld ex)
-			(mapcar #'cdr fargs)
-			fexprs)
+		       (if (some #'cdr args)
+			   (translate-update-to-if!*
+			    (type fld)
+			    (make-update-field-application fld ex)
+			    (mapcar #'cdr fargs)
+			    fexprs)
+			   (car (last fexprs)))
 		       (make-update-field-application fld ex)))))
      (fields type))
    type))
@@ -1978,11 +1980,13 @@
 		 (multiple-value-bind (fargs fexprs)
 		     (matching-update-args-and-exprs cnt args exprs)
 		   (if fargs
-		       (translate-update-to-if!*
-			ty
-			(make-projection-application cnt ex)
-			(mapcar #'cdr fargs)
-			fexprs)
+		       (if (some #'cdr fargs)
+			   (translate-update-to-if!*
+			    ty
+			    (make-projection-application cnt ex)
+			    (mapcar #'cdr fargs)
+			    fexprs)
+			   (car (last fexprs)))
 		       (make-projection-application cnt ex))))
        (types type)))))
 
@@ -2136,7 +2140,9 @@ space")
 					     t))
 		   (*subtype-hash* (when include-typepreds?
 				     (clrhash *pseudo-normalize-subtype-hash*)))
+		   (*beta-cache* (make-hash-table :test #'eq))
 		   (*generate-tccs* 'none)
+		   (*assert-typepreds* nil)
 		   ;;(typealist primtypealist);;NSH(2.16.94)
 		   (*assert-flag* 'simplify)
 		   (*process-output* nil)
@@ -2182,6 +2188,17 @@ space")
 (defun find-conversions-for (atype etype)
   (find-conversions* (conversions *current-context*)
 		     (mk-funtype atype etype)))
+
+(defvar *ignored-conversions* nil)
+
+(defmethod conversions :around ((context context))
+  (let ((convs (call-next-method)))
+    (if *ignored-conversions*
+	(remove-if #'(lambda (x)
+		       (member (string (id x)) *ignored-conversions*
+			       :test #'string=))
+	  convs)
+	convs)))
 
 (defun find-conversions* (conversions ftype &optional result)
   (if (null conversions)
@@ -2572,7 +2589,7 @@ space")
 		  (format t ";;; Finished GC~%")
 		  (setq *pvs-gc-count* 0)
 		  (setq *prevent-gc-recursion* nil)))))))
-#+(or allegro-v4.3 allegro-v5.0)
+#+(and allegro (not allegro-v4.2))
 (defun pvs-gc-after-hook (global-p to-new to-old eff to-be-allocated)
   (declare (ignore eff to-new to-be-allocated))
   (unless *prevent-gc-recursion*
@@ -2649,7 +2666,7 @@ space")
     (declare (ignore dst time-zone))
     (format nil "~a ~a ~d ~2,'0d:~2,'0d:~2,'0d ~d"
       (nth day-of-week '("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun"))
-      (nth month '("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul"
+      (nth (1- month) '("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul"
 		 "Aug" "Sep" "Oct" "Nov" "Dec"))
       date hour min sec year)))
 
@@ -3001,3 +3018,5 @@ space")
       (some #'(lambda (type)
 		(subtype-of? type *real*))
 	    (judgement-types+ expr))))
+
+(defmethod formals ((decl field-decl)) nil)

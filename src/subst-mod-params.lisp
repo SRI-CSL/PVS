@@ -113,17 +113,16 @@
 
 ;;; The main entry point to subst-mod-params.
 
-(defun subst-mod-params (obj modinst)
+(defun subst-mod-params (obj modinst &optional theory)
   (with-slots (actuals) modinst
     (assert *current-context*)
     (assert (modname? modinst))
-    (let ((formals (formals-sans-usings (get-theory modinst))))
+    (let ((formals (formals-sans-usings (or theory (get-theory modinst)))))
       (if (and actuals
 	       (some #'(lambda (ofp) (memq ofp formals)) (free-params obj)))
 	  (let* ((*generate-tccs* 'none)
 		 (*subst-mod-params-cache*
 		  (get-subst-mod-params-cache modinst))
-		 (formals (formals-sans-usings (get-theory modinst)))
 		 (bindings (make-subst-mod-params-bindings
 			    modinst formals actuals nil))
 		 (nobj (subst-mod-params* obj modinst bindings)))
@@ -157,9 +156,11 @@
 	    (change-class (copy modinst 'actuals actuals)
 			  'datatype-modname)))
       (adt-modinst* postypes (cdr acts) (cdr formals) modinst
-		    (cons (if (member (car formals) postypes
-				      :test #'same-id
-				      :key #'(lambda (x) (or (print-type x) x)))
+		    (cons (if (and (not (formal-subtype-decl? (car formals)))
+				   (member (car formals) postypes
+					   :test #'same-id
+					   :key #'(lambda (x)
+						    (or (print-type x) x))))
 			      (supertype-actual (car acts))
 			      (car acts))
 			  nacts))))
@@ -510,7 +511,9 @@
 	bd
 	(let ((nbd (copy bd
 		     'type ntype
-		     'declared-type ndeclared-type)))
+		     'declared-type (or ndeclared-type
+					(print-type ntype)
+					ntype))))
 	  (setf (resolutions nbd)
 		(list (mk-resolution nbd (current-theory-name) ntype)))
 	  nbd))))
@@ -759,16 +762,19 @@
 (defmethod make-resolution (decl modinst &optional type)
   (assert (modname? modinst))
   (let* ((*smp-include-actuals* t)
+	 (theory (when (and (module decl)
+			    (eq (id (module decl)) (id modinst)))
+		   (module decl)))
 	 (rtype (if type
-		    (subst-mod-params type modinst)
+		    (subst-mod-params type modinst theory)
 		    (typecase decl
 		      (type-decl
 		       (let ((*free-bindings*
 			      (append (apply #'append (formals decl))
 				      *free-bindings*)))
-			 (subst-mod-params (type-value decl) modinst)))
+			 (subst-mod-params (type-value decl) modinst theory)))
 		      ((or expname typed-declaration simple-decl)
-		       (subst-mod-params (type decl) modinst))))))
+		       (subst-mod-params (type decl) modinst theory))))))
     (mk-resolution decl modinst rtype)))
 
 (defmethod make-resolution ((decl bind-decl) modinst &optional type)

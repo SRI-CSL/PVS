@@ -147,7 +147,7 @@
   (set-type (declared-type decl) nil)
   (if (free-params (type decl))
       (set-nonempty-type (type decl))
-      (check-nonempty-type (type decl) decl))
+      (check-nonempty-type (type decl) (id decl)))
   (check-duplication decl)
   decl)
 
@@ -1761,7 +1761,8 @@
   (let ((*compatible-pred-reason*
 	 (acons (number-expr decl) "judgement" *compatible-pred-reason*)))
     (typecheck* (number-expr decl) (type decl) 'expr nil))
-  (generic-judgement-warning decl)
+  (when (formals-sans-usings (current-theory))
+    (generic-judgement-warning decl))
   (add-judgement-decl decl))
 
 (defmethod typecheck* ((decl name-judgement) expected kind arguments)
@@ -1776,6 +1777,8 @@
 	(*compatible-pred-reason*
 	 (acons (name decl) "judgement" *compatible-pred-reason*)))
     (typecheck* (name decl) (type decl) nil nil))
+  (when (formals-sans-usings (current-theory))
+    (generic-judgement-warning decl))
   (add-judgement-decl decl))
 
 (defmethod typecheck* ((decl application-judgement) expected kind arguments)
@@ -1800,29 +1803,35 @@
       (typecheck* expr (type decl) nil nil)))
   (setf (judgement-type decl)
 	(make-formals-funtype (formals decl) (type decl)))
+  (when (formals-sans-usings (current-theory))
+    (generic-judgement-warning decl))
   (add-judgement-decl decl))
 
 (defmethod generic-judgement-warning ((decl number-judgement))
   (when (free-parameters (type decl))
     (pvs-warning
-	"This judgement will not be used if ~a is only imported generically,~%~
-         as the type cannot be determined from the number."
-      (id (module decl)))))
+	"Judgement ~@[~a ~]at line ~d will not be used if theory ~a~%  ~
+         is only imported generically, as the theory instance cannot be~%  ~
+         determined from the number."
+      (id decl) (starting-row (place decl)) (id (module decl)))))
 
 (defmethod generic-judgement-warning ((decl name-judgement))
-  (unless (subsetp (free-parameters (type decl))
-		   (free-parameters (name decl)))
+  (unless (subsetp (free-params (type decl))
+		   (free-params (name decl)))
     (pvs-warning
-	"This judgement will not be used if ~a is only imported generically,~%~
-         as the type cannot be determined from the name."
-      (id (module decl)))))
+	"Judgement ~@[~a ~]at line ~d will not be used if theory ~a~%  ~
+         is only imported generically, as the theory instance cannot be~%  ~
+         determined from the name ~a."
+      (id decl) (starting-row (place decl)) (id (module decl)) (name decl))))
 
 (defmethod generic-judgement-warning ((decl application-judgement))
-  (when (free-parameters (type decl))
+  (unless (subsetp (free-params (type decl))
+		   (free-params (name decl)))
     (pvs-warning
-	"This judgement will not be used if ~a is only imported generically,~%~
-         as the type cannot be determined from the name."
-      (id (module decl)))))
+	"Judgement ~@[~a ~]at line ~d will not be used if theory ~a~%  ~
+         is only imported generically, as the theory instance cannot be~%  ~
+         determined from the name ~a."
+      (id decl) (starting-row (place decl)) (id (module decl)) (name decl))))
 
 
 (defun mk-application-for-formals (expr formals)

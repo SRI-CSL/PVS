@@ -232,15 +232,21 @@
     'semi t))
 
 (defun mk-type-name (id &optional actuals mod-id resolution)
-  (if (name? id)
-      (let ((nname (change-class (copy id) 'type-name)))
-	;;(setf (abstract-syntax nname) nil)
-	nname)
-      (make-instance 'type-name
-	'id id
-	'actuals actuals
-	'mod-id mod-id
-	'resolutions (when resolution (list resolution)))))
+  (cond ((type-name? id)
+	 (copy id))
+	((name? id)
+	 (make-instance 'type-name
+	   'id (id id)
+	   'actuals (actuals id)
+	   'mod-id (mod-id id)
+	   'parens (parens id)
+	   'library (library id)
+	   'place (place id)))
+	(t (make-instance 'type-name
+	     'id id
+	     'actuals actuals
+	     'mod-id mod-id
+	     'resolutions (when resolution (list resolution))))))
 
 (defun mk-dep-binding (id &optional type dtype)
   (assert (or dtype type))
