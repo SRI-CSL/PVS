@@ -255,28 +255,29 @@
   (let* ((impinstances (get-currently-imported-instances))
 	 (thinstances (collect-mapping-rhs-imported-instances
 		       theory-name impinstances)))
-    (when thinstances
-      (let ((imps (mapcar #'(lambda (thinst)
-			      (make-instance 'importing
-				'theory-name thinst))
-		    thinstances)))
-	(if (assuming stheory)
-	    (copy stheory
-	      'assuming
-	      (append imps
-		      (remove-if #'(lambda (x)
-				     (and (importing? x)
-					  (member (theory-name x) thinstances
-						  :test #'tc-eq)))
-			(assuming stheory))))
-	    (copy stheory
-	      'theory
-	      (append imps
-		      (remove-if #'(lambda (x)
-				     (and (importing? x)
-					  (member (theory-name x) thinstances
-						  :test #'tc-eq)))
-			(theory stheory)))))))))
+    (if thinstances
+	(let ((imps (mapcar #'(lambda (thinst)
+				(make-instance 'importing
+				  'theory-name thinst))
+		      thinstances)))
+	  (if (assuming stheory)
+	      (copy stheory
+		'assuming
+		(append imps
+			(remove-if #'(lambda (x)
+				       (and (importing? x)
+					    (member (theory-name x) thinstances
+						    :test #'tc-eq)))
+			  (assuming stheory))))
+	      (copy stheory
+		'theory
+		(append imps
+			(remove-if #'(lambda (x)
+				       (and (importing? x)
+					    (member (theory-name x) thinstances
+						    :test #'tc-eq)))
+			  (theory stheory))))))
+	stheory)))
 
 (defun get-currently-imported-instances ()
   (mapcan #'get-currently-imported-instance
@@ -309,7 +310,8 @@
 			      (not (from-prelude-library? (declaration ex))))
 		     (pushnew (module-instance ex) thinstances :test #'tc-eq)
 		     nil))
-	       (mapcar #'rhs (mappings theory-name)))
+	       (append (actuals theory-name)
+		       (mapcar #'rhs (mappings theory-name))))
     ;; Now remove from impinstances those not in thinstances
     ;; We do this because we want the minimal set, otherwise might bring in
     ;; references to local decls that are not actually needed.
@@ -330,7 +332,10 @@
 	(int-decls (all-decls interpretation)))
     (dolist (decl (interpretable-declarations theory))
       (unless (assq decl mapping)
-	(push (cons decl (find decl int-decls :test #'same-id))
+	(push (cons decl (find decl int-decls
+			       :test #'(lambda (x y)
+					 (and (declaration? y)
+					      (same-id x y)))))
 	      mapping)))
     (assert (every #'cdr mapping))
     mapping))
