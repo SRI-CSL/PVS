@@ -624,7 +624,7 @@
 ;;;      a. There is a visible library declaration in the current context
 ;;;         of the form foo: LIBRARY = ...
 ;;;      b. There is a foo subdirectory of the current directory
-;;;      c. There is a <PVS>/lib/foo directory.
+;;;      c. There is a <PVS_LIBRARY_PATH>/foo directory.
 ;;;      Note that if the string ends in "/", then a. is not possible.
 ;;;      If the name starts with ".", "..", or "/" then it is a
 ;;;      relative or absolute pathname, and there is no ambiguity.
@@ -632,7 +632,7 @@
 ;;;   2. A libkey, which is a string that is the canonical libref
 ;;;      This is used to look up the library in hash tables, and to
 ;;;      store information in the .pvscontext and .bin files.
-;;;      a. If the libref is to <PVS>/lib/foo, then this is "$PVSPATH/lib/foo/"
+;;;      a. If the libref is to <PVS_LIBRARY_PATH>/foo, then this is "foo/"
 ;;;      b. This is a relative pathname if the directory is  a subdirectory
 ;;;         of the directory two levels above the current directory.
 ;;;         In this case the string always starts with "./" or "../"
@@ -675,9 +675,11 @@
 			     (file-exists-p
 			      (merge-pathnames csubdir *pvs-context-path*)))
 		    csubdir))
-	 (lsubref (when (file-exists-p (format nil "~a/lib/~a"
-					 *pvs-path* libid))
-		    (format nil "~a/" libid)))
+	 (lsubref (when (some #'(lambda (lpath)
+				  (file-exists-p (concatenate 'string
+						   lpath "/" (string libid))))
+			      *pvs-library-path*)
+		    (concatenate 'string (string libid) "/")))
 	 (refs (nconc librefs
 		      (when csubref (list csubref))
 		      (when lsubref (list lsubref)))))
@@ -686,7 +688,7 @@
 ;;                     the first one of the following is used:~
 ;;                     ~{~^  ~%~{~a  ~a~}~}" libid refs))
     (or (car refs)
-	(values nil (format nil "Library id ~a cannot be resolved to a library declaration, a subdirectory of the current context, nor a subdirectory of ~a/lib/"
+	(values nil (format nil "Library id ~a cannot be resolved to a library declaration, a subdirectory of the current context, a subdirectory of PVS_LIBRARY_PATH, nor a subdirectory of ~a/lib/"
 		      libid *pvs-path*)))))
 
 (defmethod get-library-reference ((ldecl lib-decl))
@@ -813,11 +815,19 @@
 		      lib-ref
 		      ;; Otherwise it's a PVS library ref (e.g., finite_sets)
 		      ;; Prepend "*pvs-path*/lib/"
-		      (format nil "~a/lib/~a" *pvs-path* lib-ref))))
+		      ;;(format nil "~a/lib/~a" *pvs-path* lib-ref)
+		      (pvs-library-path-ref lib-ref))))
     (assert (file-exists-p lib-path))
     (if (file-exists-p lib-path)
 	lib-path
 	(values nil (format nil "Library ~a does not exist" lib-path)))))
+
+(defun pvs-library-path-ref (lib-ref &optional (libs *pvs-library-path*))
+  (when libs
+    (let ((lib-path (concatenate 'string (car libs) "/" lib-ref)))
+      (if (directory-p lib-path)
+	  lib-path
+	  (pvs-library-path-ref lib-ref (cdr libs))))))
 
 (defun pathname-to-libref (lib-path)
   (if (and (file-exists-p lib-path)
@@ -832,9 +842,12 @@
 			      (concatenate 'string lib-string "/")))
 	     (dir-list (pathname-directory lib-string/)))
 	(if (and (> (length dir-list) 2)
-		 (string= (car (last (butlast dir-list))) "lib")
-		 (file-equal (make-pathname :directory (butlast (butlast dir-list)))
-			     *pvs-path*))
+		 ;;(string= (car (last (butlast dir-list))) "lib")
+		 ;;(file-equal (make-pathname :directory (butlast (butlast dir-list)))
+			;;     *pvs-path*)
+		 (let ((dpath (make-pathname :directory (butlast dir-list))))
+		   (some #'(lambda (libpath) (file-equal dpath libpath))
+			 *pvs-library-path*)))
 	    ;; We match a PVS library
 	    (concatenate 'string (car (last dir-list)) "/")
 	    ;; Otherwise, try for a relative library
@@ -856,7 +869,7 @@
       ;; Finally, look for PVSLIB, e.g., foo/
       (and (not (member (char lib-ref 0) '(#\/ #\~ #\.) :test #'char=))
 	   (= (count #\/ lib-ref) 1)
-	   (file-exists-p (format nil "~a/lib/~a" *pvs-path* lib-ref))
+	   (pvs-library-path-ref lib-ref)
 	   (intern (subseq lib-ref 0 (1- (length lib-ref)))))))
 
 (defun libref-to-lib-decl-id (lib-ref)
@@ -864,16 +877,31 @@
     (maphash #'(lambda (id decls)
 		 (declare (ignore id))
 		 (setq lib-decls
-		       (append (remove-if
-				   (complement
-				    #'(lambda (d)
-					(and (lib-decl? d)
-					     (string= lib-ref (lib-ref d)))))
-				 decls)
-			       lib-decls)))
+		       (nconc (mapcan
+				  #'(lambda (d)
+				      (when (and (lib-decl? d)
+						 (string= lib-ref (lib-ref d)))
+					(list d)))
+				decls)
+			      lib-decls)))
 	     (current-declarations-hash))
     (when lib-decls
-      (id (car (sort lib-decls #'< :key #'locality))))))
+      (get-most-local-reference lib-decls))))
+
+(defun get-most-local-reference (list &optional (min 1)
+				      most-local most-local-num)
+  (if (null list)
+      most-local
+      (let ((lnum (locality (car list))))
+	(if (<= lnum min)
+	    (car list)
+	    (if (or (null most-local)
+		    (< lnum most-local-num))
+		(get-most-local-reference
+		 (cdr list) min (car list) lnum)
+		(get-most-local-reference
+		 (cdr list) most-local most-local-num))))))
+		 
 
 (defun get-all-lib-decls ()
   (let ((lib-decls nil))
