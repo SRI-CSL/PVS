@@ -3628,3 +3628,256 @@ Fairctlops[state : TYPE]: THEORY
 	    AND FairAF(N,g)(Fflist)
 
  END Fairctlops
+
+
+bit: THEORY
+% -----------------------------------------------------------------------
+% The bit theory defines bits and their properties. Bits are interpreted
+% as the natural numbers 0 and 1.
+% -----------------------------------------------------------------------
+BEGIN
+
+  bit  : TYPE = bool
+  nbit : TYPE = below(2)  %  could be {n: nat | n = 0 OR n = 1}
+
+  b: VAR bit
+
+  bit_cases: LEMMA b = FALSE OR b = TRUE
+
+  b0: [below(1) -> bit] = (LAMBDA (i: below(1)): FALSE)
+  b1: [below(1) -> bit] = (LAMBDA (i: below(1)): TRUE)
+
+  b2n(b:bool)     : nbit = IF b THEN 1 ELSE 0 ENDIF 
+  n2b(nb: nbit)   : bool = (nb = 1)
+
+  CONVERSION b2n
+
+END bit
+
+
+%------------------------------------------------------------------------
+%
+% Definition of a bitvector
+% -----------------------------------------
+%
+%   Defines:
+%  
+%       bvec: TYPE = [below(N) -> bit]
+%
+%       ^(bv, (i: below(N))): bit
+%
+%   Establishes:
+%  
+%
+%------------------------------------------------------------------------
+bv[N: nat]: THEORY
+BEGIN
+
+  bvec : TYPE = [below(N) -> bit]
+
+  fill(b: bit): bvec = (LAMBDA (n: below(N)): b) ;
+
+  %-----------------------------------------------------------------------    
+  % The implementation of the bitvector can be hidden through use of
+  % the ^ function below.
+  %-----------------------------------------------------------------------  
+    
+  ^(bv: bvec, (i: below(N))): bit = bv(i)
+
+END bv
+
+
+exp2: THEORY
+BEGIN
+
+  n,m, x1, x2: VAR nat
+  
+  exp2(n: nat): RECURSIVE posnat = IF n = 0 THEN 1 ELSE 2 * exp2(n - 1) ENDIF
+    MEASURE n
+
+  JUDGEMENT exp2(n: nat) HAS_TYPE above(n)
+
+% === Properties of exp2 ===================================================
+
+  exp2_def	 : LEMMA exp2(n) = 2^n
+ 
+  exp2_pos	 : LEMMA exp2(n) > 0
+ 
+  exp2_n	 : LEMMA exp2(n+1) = 2*exp2(n)
+ 
+  exp2_sum	 : LEMMA exp2(n + m) = exp2(n) * exp2(m)
+ 
+  exp2_minus	 : LEMMA (FORALL n,(k:upto(n)): exp2(n-k)=exp2(n)/exp2(k))
+ 
+  exp2_strictpos : LEMMA n > 0 IMPLIES exp2(n) > 1
+ 
+  exp2_lt	 : LEMMA n < m IMPLIES exp2(n) < exp2(m)
+
+  exp_prop       : LEMMA x1 < exp2(n) AND  x2 < exp2(m) 
+                           IMPLIES x1 * exp2(m) + x2 < exp2(n + m)
+
+END exp2
+
+
+bv_cnv: THEORY
+
+BEGIN
+
+  CONVERSION fill[1]
+
+END bv_cnv
+
+
+bv_concat_def [n:nat, m:nat ]: THEORY
+%------------------------------------------------------------------------
+% This theory defines the concatenation operator o for bitvectors:
+%
+%   o: [bvec[n], bvec[m] -> bvec[n+m]] 
+%
+% The theory is instantiated with the sizes of the input bit vectors.
+%------------------------------------------------------------------------
+
+BEGIN
+
+  o(bvn: bvec[n], bvm: bvec[m]): bvec[n+m] =
+       (LAMBDA (nm: below(n+m)): IF nm < m THEN bvm(nm)
+                                 ELSE bvn(nm - m)
+                                 ENDIF)
+
+END bv_concat_def
+
+
+bv_bitwise [N: nat] : THEORY
+% -----------------------------------------------------------------------
+% Defines bit-wise logical operations on bit vectors.
+%
+%    Introduces:
+%       OR : bv1 OR bv2
+%       &  : bv1 & bv2
+%       IFF: bv1 IFF bv2
+%       NOT: NOT bv1
+%       XOR: bv1 XOR bv2
+% -----------------------------------------------------------------------  
+BEGIN
+
+  i: VAR below(N) 
+  OR(bv1,bv2: bvec[N]) : bvec[N] = (LAMBDA i: bv1(i) OR bv2(i));
+  
+  AND(bv1,bv2: bvec[N]): bvec[N] = (LAMBDA i: bv1(i) AND bv2(i)) ;
+
+  IFF(bv1,bv2: bvec[N]): bvec[N] = (LAMBDA i: bv1(i) IFF bv2(i)) ;
+
+  NOT(bv: bvec[N])     : bvec[N] = (LAMBDA i: NOT bv(i)) ;
+
+  XOR(bv1,bv2: bvec[N]): bvec[N] = (LAMBDA i: XOR(bv1(i),bv2(i))) ;
+
+% === The following lemmas can be used to hide the implementation
+%     details of the bitvector
+
+  bv, bv1, bv2: VAR bvec[N]
+
+  bv_OR  : LEMMA (bv1 OR bv2)^i = (bv1^i OR bv2^i)
+
+  bv_AND : LEMMA (bv1 AND bv2)^i = (bv1^i AND bv2^i)
+
+  bv_IFF : LEMMA (bv1 IFF bv2)^i = (bv1^i IFF bv2^i)
+
+  bv_XOR : LEMMA XOR(bv1,bv2)^i = XOR(bv1^i,bv2^i)
+
+  bv_NOT : LEMMA (NOT bv)^i = NOT(bv^i)
+
+END bv_bitwise
+
+
+%------------------------------------------------------------------------
+%
+% Interpretation of a bitvector as a natural number
+% -------------------------------------------------
+%
+%   Defines:
+%  
+%       bv2nat: function[bvec[N] -> below(exp2(N))] 
+%       nat2bv: function[below(exp2(N)) -> bvec[N]]
+%
+%   Establishes:
+%  
+%       bv2nat_bij: THEOREM bijective?(bv2nat)
+%       bv2nat_inv: THEOREM bv2nat(nat2bv(val)) = val  
+%
+%  
+%   See note at end of theory for reasons why nat2bv should be avoided
+%   in specifications.
+%
+%------------------------------------------------------------------------
+bv_nat[N: nat]: THEORY
+BEGIN
+
+% === Interpretation of a bit vector as a natural number ================
+
+  bv2nat_rec(n: upto(N), bv:bvec[N]): RECURSIVE nat =
+      IF n = 0 THEN 0
+      ELSE exp2(n-1) * bv^(n-1) + bv2nat_rec(n - 1, bv)
+      ENDIF
+    MEASURE n
+
+  bv_lem: LEMMA FORALL (n: below(N), bv: bvec[N]): bv(n) = FALSE OR bv(n) = TRUE 
+
+  bv2nat_rec_bound: LEMMA FORALL (n: upto(N), bv: bvec[N]): 
+                                  bv2nat_rec(n, bv) < exp2(n)
+
+  bv2nat(bv:bvec[N]): below(exp2(N)) = bv2nat_rec(N, bv)
+
+% ===== Properties of bv2nat ===================================
+
+  n           : VAR upto(N)
+  val         : VAR below(exp2(N))
+  bv, bv1, bv2: VAR bvec[N]
+
+  bv2nat_inj_rec: LEMMA
+      bv2nat_rec(n, bv1) = bv2nat_rec(n, bv2)
+        <=>  (FORALL (m: below(N)): (m < n) IMPLIES bv1(m) = bv2(m))
+
+  bv2nat_surj_rec: LEMMA FORALL (y:below(exp2(n))): 
+                                   EXISTS bv:bv2nat_rec(n, bv) = y
+
+  bv2nat_inj     : THEOREM % injective?(bv2nat)
+                            (FORALL (x, y: bvec[N]): (bv2nat(x) = bv2nat(y) 
+                                      IMPLIES (x = y)))
+
+  bv2nat_surj    : THEOREM % surjective?(bv2nat)
+                              (FORALL (y: below(exp2(N))): 
+                                     (EXISTS (x: bvec[N]): bv2nat(x) = y))
+
+
+  bv2nat_bij        : THEOREM bijective?(bv2nat)    
+
+  bv2nat_rec_fill_F : LEMMA bv2nat_rec(n, fill[N](FALSE)) = 0
+  bv2nat_rec_fill_T : LEMMA bv2nat_rec(n, fill[N](TRUE)) = exp2(n)-1
+
+  bv2nat_fill_F     : LEMMA bv2nat(fill[N](FALSE)) = 0
+  bv2nat_fill_T     : LEMMA bv2nat(fill[N](TRUE)) = exp2(N)-1
+
+  bv2nat_eq0        : LEMMA bv2nat(bv) = 0     IMPLIES (bv = fill[N](FALSE))
+  bv2nat_eq_max     : LEMMA bv2nat(bv) = exp2(N)-1 IMPLIES bv = (fill[N](TRUE)) 
+
+  bv2nat_top_bit    : THEOREM N > 0 IMPLIES
+                             IF bv2nat(bv) < exp2(N-1) THEN bv^(N-1) = FALSE
+                                                       ELSE bv^(N-1) = TRUE ENDIF
+
+  bv2nat_topbit    : THEOREM N > 0 IMPLIES bv^(N-1) = (bv2nat(bv) >= exp2(N-1))
+
+% =================== Properties of nat2bv ===================================
+
+  nat2bv(val: below(exp2(N))): {bv: bvec[N] | bv2nat(bv) = val}
+
+  nat2bv_def       : LEMMA  nat2bv = inverse(bv2nat)
+
+  nat2bv_bij       : THEOREM bijective?[below(exp2(N)),bvec[N]](nat2bv)
+
+  nat2bv_inv       : THEOREM nat2bv(bv2nat(bv)) = bv
+
+  nat2bv_rew       : LEMMA nat2bv(val) = bv IFF bv2nat(bv) = val
+
+  bv2nat_inv       : THEOREM bv2nat(nat2bv(val)) = val
+
+END bv_nat
