@@ -1029,7 +1029,8 @@
 	 (nreverse preds))
 	(t (push te *subtypes-seen*)
 	   (let ((pred (make!-reduced-application (predicate te) ex)))
-	     (type-constraints* (if (tc-eq te *real*)
+	     (type-constraints* (if (and (not all?)
+					 (tc-eq te *real*))
 				    (find-supertype te)
 				    (supertype te))
 				ex
