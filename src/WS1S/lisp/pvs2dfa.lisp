@@ -159,7 +159,7 @@
 					 (t
 					  (error-format-if "~%Type ~a not WS1S translatable in ~a"
 							   type fml)
-					  (throw 'not-ws1s-translatable))))
+					  (throw 'not-ws1s-translatable nil))))
 			 types)))
 	  (dfa-forall* levels
 		       indices
@@ -179,7 +179,7 @@
 					 (t
 					  (error-format-if "~%Type ~a not WS1S translatable in ~a"
 							   type fml)
-					  (throw 'not-ws1s-translatable))))
+					  (throw 'not-ws1s-translatable nil))))
 			 types)))
 	  (dfa-exists* levels
 		       indices
