@@ -94,7 +94,7 @@
     (remove-associated-buffers (id theory))
     (setf (ppe-form theory) nil)
     (setf (tcc-form theory) nil)
-    (setf (saved-context theory) nil)))o
+    (setf (saved-context theory) nil)))
 
 (defmethod untypecheck-theory ((exp exporting))
   (if (memq (kind exp) '(all closure default))
