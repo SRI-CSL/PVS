@@ -27,7 +27,7 @@
 ;;;; are calle, and if any differences are found either 'signature or 'body is
 ;;; pushed onto *decl-diffs*, and is later added to *differences*.
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (defvar *differences* nil)
 (defvar *decl-diffs* nil)
@@ -289,11 +289,30 @@
 
 (defmethod compare* ((old conversion-decl) (new conversion-decl))
   (and (call-next-method)
+       (typecase old
+	 (typed-conversionminus-decl (typed-conversionminus-decl? new))
+	 (typed-conversion-decl (and (typed-conversion-decl? new)
+				     (not (conversionminus-decl? new))))
+	 (conversionminus-decl (and (conversionminus-decl? new)
+				    (not (typed-conversion-decl? new))))
+	 (conversion-decl (not (or (conversionminus-decl? new)
+				   (typed-conversion-decl? new)))))
        (compare-sig (name old) (name new))))
 
 (defmethod compare* ((old typed-conversion-decl) (new typed-conversion-decl))
   (and (call-next-method)
        (compare-sig (declared-type old) (declared-type new))))
+
+(defmethod compare* ((old auto-rewrite-decl) (new auto-rewrite-decl))
+  (and (call-next-method)
+       (typecase old
+	 (auto-rewrite-minus-decl (auto-rewrite-minus-decl? new))
+	 (auto-rewrite-decl (not (or (auto-rewrite-minus-decl? new)))))
+       (compare-sig (rewrite-names old) (rewrite-names new))))
+
+(defmethod compare* ((old rewrite-name) (new rewrite-name))
+  (and (call-next-method)
+       (eq (class-of old) (class-of new))))
 
 (defmethod compare* ((old field-decl) (new field-decl))
   (call-next-method))
