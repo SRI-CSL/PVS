@@ -1373,7 +1373,7 @@
 (defmethod simple-match* ((ex projection-application)
 			  (inst projection-application)
 			  bindings subst)
-  (if (eq (id ex) (id inst))
+  (if (= (index ex) (index inst))
       (simple-match* (argument ex) (argument inst) bindings subst)
       'fail))
 
