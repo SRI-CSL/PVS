@@ -1730,14 +1730,15 @@ required a context.")
       (let ((atype (make-formals-funtype (list (bindings ex))
 					 (type (expression ex)))))
 	(setf (type ex) atype)
-	(unless (tc-eq adomain edomain)
-	  (or (find-funtype-conversion atype sexpected ex)
-	      (let ((epreds (equality-predicates adomain edomain)))
-		(when epreds
-		  (generate-subtype-tcc ex expected (list epreds)))))))
-	(let ((toppreds (compatible-preds sexpected expected ex)))
-	  (when toppreds
-	    (generate-subtype-tcc ex expected toppreds))))))
+	(unless (eq *generate-tccs* 'none)
+	  (unless (tc-eq adomain edomain)
+	    (or (find-funtype-conversion atype sexpected ex)
+		(let ((epreds (equality-predicates adomain edomain)))
+		  (when epreds
+		    (generate-subtype-tcc ex expected (list epreds))))))
+	  (let ((toppreds (compatible-preds sexpected expected ex)))
+	    (when toppreds
+	      (generate-subtype-tcc ex expected toppreds))))))))
 
 
 (defun get-lambda-expr-domain (ex)
