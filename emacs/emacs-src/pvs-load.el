@@ -80,7 +80,8 @@
 (load "pvs-file-list" nil noninteractive)
 (load "pvs-browser" nil noninteractive)
 (load "pvs-utils" nil noninteractive)
-(load "pvs-prelude-files-and-regions" nil noninteractive)
+(when start-pvs
+  (load "pvs-prelude-files-and-regions" nil noninteractive))
 (load "pvs-cmds" nil noninteractive)
 (load "pvs-print" nil noninteractive)
 (load "pvs-prover" nil noninteractive)

@@ -26,8 +26,8 @@
 
 (setq load-path
   (append (list pvs-path
-	        (concat pvs-path "/emacs/"
-			(prin1-to-string pvs-emacs-system)))
+		(concat pvs-path "/emacs/emacs-src")
+		(concat pvs-path "/emacs/emacs-src/ilisp"))
           load-path))
  
 (load "pvs-load" nil nil nil)
