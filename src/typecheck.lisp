@@ -532,7 +532,8 @@
   (assert (saved-context theory))
   (update-known-subtypes theory theoryname)
   (update-judgements-of-current-context theory theoryname)
-  (update-conversions-of-current-context theory theoryname))
+  (update-conversions-of-current-context theory theoryname)
+  (update-auto-rewrites-of-current-context theory theoryname))
 
 (defun update-conversions-of-current-context (theory theoryname)
   (dolist (conversion (reverse
@@ -549,6 +550,12 @@
 		 :test #'eq)
 	(pushnew conversion (disabled-conversions *current-context*)
 		 :test #'eq))))
+
+(defun update-auto-rewrites-of-current-context (theory theoryname)
+  (dolist (r (auto-rewrites (saved-context theory)))
+    (pushnew r (auto-rewrites *current-context*)))
+  (dolist (r (disabled-auto-rewrites (saved-context theory)))
+    (pushnew r (disabled-auto-rewrites *current-context*))))
 
 (defun list-diff (l1 l2 &optional elts)
   (if (or (null l1) (equal l1 l2))
