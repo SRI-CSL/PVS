@@ -49,6 +49,7 @@
     (reset-all-operators)
     (reset-equality-decl)
     (reset-if-declaration)
+    (reset-boolean-aliases)
     (unwind-protect
 	(progn
 	  (set-working-directory (format nil "~a/lib/" *pvs-path*))
@@ -120,8 +121,6 @@
 				    nil))))))
 	  (format t "~%Done typechecking the prelude; restoring the proofs")
 	  (restore-prelude-proofs))
-      (setq *prelude-types* (list *boolean* *number* *real* *rational*
-				  *integer* *naturalnumber* *ordinal*))
       (set-working-directory cdir))))
 
 (defun restore-prelude-proofs ()

@@ -74,9 +74,10 @@
 	((member decl (assuming *current-theory*))
 	 (setf (assuming *current-theory*)
 	       (remove decl (assuming *current-theory*)))))
-  (setf (gethash (id decl) (declarations *current-theory*))
-	(remove decl
-		(gethash (id decl) (declarations *current-theory*)))))
+;   (setf (gethash (id decl) (declarations *current-theory*))
+; 	(remove decl
+; 		(gethash (id decl) (declarations *current-theory*))))
+  )
 
 (defun cleanup-typecheck-decls (decl)
   (cond ((and (type-def-decl? decl)
