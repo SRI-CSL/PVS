@@ -95,10 +95,18 @@
 			  (results '(TRUE))
 			  (result) )
 			 ((null rcols) results)
-		       (let ((eqn `(EQUAL (,(make-tupsel
-					     (prtype (car rcols)))
-					   ,selnum ,leftside)
-					  ,(car rcols) )))
+		       ;;; DAC 6/12/98: Reversed the orientation of
+		       ;;; the generated equation. See bug 182.
+		       (let* ((newrhs (car rcols))
+			      (newlhs `(,(make-tupsel
+					  (prtype (car rcols)))
+					,selnum ,leftside))
+			      (eqn (if (or (qnumberp newrhs)
+					   (subtermof newrhs newlhs))
+				       `(EQUAL ,newlhs
+					       ,newrhs)
+				       `(EQUAL ,newrhs
+					       ,newlhs))))
 			 (setq result
 			       (newcontext
 				(process eqn)))
