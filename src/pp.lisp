@@ -667,8 +667,6 @@ bind tighter.")
       (pp* definition)
       (pprint-indent :block 0))))
 
-;; (defmethod pp* ((decl proj-decl)) )
-
 (defmethod pp* ((decl def-decl))
   (with-slots (declared-type definition declared-measure ordering) decl
     (write 'RECURSIVE)
@@ -710,7 +708,7 @@ bind tighter.")
 
 (defmethod pp* ((decl fixpoint-decl))
   (with-slots (declared-type definition) decl
-    ;;(write-char #\space)
+    (write-char #\space)
     (if (inductive-decl? decl)
 	(write 'INDUCTIVE)
 	(write 'COINDUCTIVE))
@@ -1038,6 +1036,17 @@ bind tighter.")
 	    (write-char #\space)
 	    (pprint-newline :fill)))))
 
+(defmethod pp* ((te cotupletype))
+  (with-slots (types) te
+    (pprint-logical-block (nil types :prefix "[" :suffix "]")
+      (pprint-indent :current 0)
+      (loop (pp* (pprint-pop))
+	    (pprint-exit-if-list-exhausted)
+	    (write-char #\space)
+	    (write-char #\+)
+	    (write-char #\space)
+	    (pprint-newline :fill)))))
+
 
 ;;; Expressions
 
@@ -1148,6 +1157,12 @@ bind tighter.")
 	  (write id)
 	  (pp-arguments (argument-list argument))))))
 
+(defmethod pp* ((ex injection-application))
+  (with-slots (id argument) ex
+    (pprint-logical-block (nil nil)
+      (write id)
+      (pp-arguments (argument-list argument)))))
+
 (defmethod pp* ((ex projappl))
   (pprint-logical-block (nil nil)
     (pp* (argument ex))
@@ -1172,6 +1187,21 @@ bind tighter.")
     (pp* (argument ex))
     (write-char #\`)
     (write (id ex))))
+
+(defmethod pp* ((ex implicit-conversion))
+  (if *show-conversions*
+      (call-next-method)
+      (pp* (argument ex))))
+
+(defmethod pp* ((ex argument-conversion))
+  (if *show-conversions*
+      (call-next-method)
+      (pp* (operator ex))))
+
+(defmethod pp* ((ex lambda-conversion))
+  (if *show-conversions*
+      (call-next-method)
+      (pp* (expression ex))))
 
 (defmethod pp* ((ex application))
   (let ((operator (get-pp-operator* (operator ex)))
@@ -1264,6 +1294,47 @@ bind tighter.")
 		       (write-char #\)))
 		(pp* rhs))))
 	(call-next-method))))
+
+(defmethod pp* ((ex infix-conjunction))
+  (let ((conjuncts (collect-infix-conjuncts ex)))
+    (if (<= (length conjuncts) 4)
+	(call-next-method)
+	(let ((op (id (operator ex))))
+	  (pprint-logical-block (nil conjuncts)
+	    (write "   ")
+	    (when (eq op 'AND)
+	      (write "  "))
+	    (loop (pp* (pprint-pop))
+		  (pprint-exit-if-list-exhausted)
+		  (pprint-newline :fill)
+		  (write " ")
+		  (write op)
+		  (write " ")))))))
+
+(defmethod pp* ((ex infix-disjunction))
+  (let ((disjuncts (collect-infix-disjuncts ex)))
+    (if (<= (length disjuncts) 4)
+	(call-next-method)
+	(pprint-logical-block (nil disjuncts)
+	  (write "    ")
+	  (loop (pp* (pprint-pop))
+		(pprint-exit-if-list-exhausted)
+		(pprint-newline :fill)
+		(write " OR "))))))
+
+(defmethod collect-infix-conjuncts ((ex infix-conjunction))
+  (nconc (collect-infix-conjuncts (args1 ex))
+	 (collect-infix-conjuncts (args2 ex))))
+
+(defmethod collect-infix-conjuncts (ex)
+  (list ex))
+
+(defmethod collect-infix-disjuncts ((ex infix-disjunction))
+  (nconc (collect-infix-disjuncts (args1 ex))
+	 (collect-infix-disjuncts (args2 ex))))
+
+(defmethod collect-infix-disjuncts (ex)
+  (list ex))
 
 (defun sbst-symbol (sym)
   (or (get sym 'sbst-symbol)
