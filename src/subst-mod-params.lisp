@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec  9 13:10:41 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Oct 30 12:41:54 1998
-;; Update Count    : 70
+;; Last Modified On: Fri Oct 30 14:02:45 1998
+;; Update Count    : 71
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -572,12 +572,20 @@
 
 (defmethod subst-mod-params* ((expr application) modinst bindings)
   (let* ((op (subst-mod-params* (operator expr) modinst bindings))
-	 (arg (subst-mod-params* (argument expr) modinst bindings))
-	 (type (subst-mod-params* (type expr) modinst bindings)))
-    (lcopy expr
-      'operator op
-      'argument arg
-      'type type)))
+	 (arg (subst-mod-params* (argument expr) modinst bindings)))
+    (if (and (eq op (operator expr))
+	     (eq arg (argument expr)))
+	expr
+	(let* ((optype (find-supertype (type op)))
+	       (rtype (if (and (not (eq arg (argument expr)))
+			       (typep (domain optype) 'dep-binding))
+			  (substit (range optype)
+			    (acons (domain optype) arg nil))
+			  (range optype))))
+	  (lcopy expr
+	    'operator op
+	    'argument arg
+	    'type rtype)))))
 
 (defmethod subst-mod-params* :around ((expr table-expr) modinst bindings)
   (let ((nexpr (call-next-method)))
