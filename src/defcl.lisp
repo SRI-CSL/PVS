@@ -45,7 +45,7 @@ unignored slots, saved-slots, and unsaved-slots.")
 			    (remove-keyword
 			     :ignore
 			     (remove-keyword
-			      :gnorc
+			      :ignorc
 			      (remove-keyword
 			       :fetch-as a)))))
 		   (append a (list :accessor (car a)
