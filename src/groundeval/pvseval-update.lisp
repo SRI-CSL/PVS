@@ -1466,7 +1466,9 @@
 (defun make-binding-ids-without-dups (bindings aux)
   (if (consp bindings)
       (let ((id (id (car bindings))))
-	(if (memq id aux)
+	(if (or (memq id aux)
+		(constantp id)) ; SO 2002-07-31 - lisp constants are also
+					; problematic (e.g., t or nil).
 	    (make-binding-ids-without-dups
 	     (cdr bindings)
 	     (cons (gentemp id) aux))
