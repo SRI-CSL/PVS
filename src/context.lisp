@@ -91,7 +91,7 @@
   id
   status
   proof-refers-to
-  new-ground?
+  decision-procedure-used
   proof-time)
 
 (defstruct (declaration-entry (:conc-name de-))
@@ -470,9 +470,10 @@ pvs-strategies files.")
 			  (unfinished 'unfinished)
 			  (t 'untried))))
 		   (t 'untried))
-     :new-ground? (cond ((typechecked? decl)
-			 (new-ground? decl))
-			(fentry (fe-new-ground? fentry)))
+     :decision-procedure-used (cond ((typechecked? decl)
+				     (decision-procedure-used decl))
+				    (fentry
+				     (fe-decision-procedure-used fentry)))
      :proof-time (cond ((typechecked? decl)
 			(let ((dpr (default-proof decl)))
 			  (when dpr

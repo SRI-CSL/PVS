@@ -1779,7 +1779,7 @@ bind tighter.")
 	(pp* declared-type)))))
 
 (defmethod pp* ((ex name))
-  (with-slots (library mod-id actuals id) ex
+  (with-slots (library mod-id actuals id mappings) ex
     (pprint-logical-block (nil (list ex))
       (when library
 	(write library)
@@ -1788,12 +1788,32 @@ bind tighter.")
 	     (write mod-id)
 	     (when actuals
 	       (pp-actuals actuals))
+	     (when mappings
+	       (pp-mappings mappings))
 	     (write-char #\.)
 	     (write id))
 	    (t
 	     (write id)
 	     (when actuals
-	       (pp-actuals actuals)))))))
+	       (pp-actuals actuals))
+	     (when mappings
+	       (pp-mappings mappings)))))))
+
+(defun pp-mappings (mappings)
+  (pprint-logical-block (nil mappings :prefix "{{ " :suffix " }}")
+    (loop (pp* (pprint-pop))
+	  (pprint-exit-if-list-exhausted)
+	  (write ", ")
+	  (pprint-newline :fill))))
+
+(defmethod pp* ((map mapping))
+  (pprint-logical-block (nil nil)
+    (pp* (lhs map))
+    (write-char #\space)
+    (pprint-newline :fill)
+    (write ":=")
+    (write-char #\space)
+    (pp* (rhs map))))
 
 (defmethod pp* ((list list))
   (if (and list

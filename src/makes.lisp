@@ -691,7 +691,7 @@
 
 (defun mk-proof-info (id description create-date run-date script status
 			 refers-to real-time run-time interactive?
-			 &optional new-ground?)
+			 &optional decision-procedure)
   (make-instance 'proof-info
     'id id
     'description description
@@ -710,7 +710,7 @@
     'real-time real-time
     'run-time run-time
     'interactive? interactive?
-    'new-ground? new-ground?))
+    'decision-procedure-used decision-procedure))
 
 (defun make-proof-info (script &optional id description)
   (assert (symbolp id))

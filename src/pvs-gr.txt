@@ -26,7 +26,7 @@ Operators
 %  
 	'('  ')'  '-'  '+'  '*' '/' ':=' '|->'  ';'  ','  '='  '/='
 	'<'  '<='  '>'  '>=' '{' '}' '[' ']' '.' '&' '<=>'
-	'->' ':' '=>' '[#' '#]' '(#' '#)' '(:' ':)' '|'
+	'->' ':' '=>' '[#' '#]' '(#' '#)' '(:' ':)' '{{' '}}' '|'
         '^' '/\\' '\\/' '[]' '<>' '~' '==' '++' '**' '//' '^^'
 	'<<' '>>' '::' '#' '@' '@@' '##' '[|' '|]' '|[' ']|' '!'
         '<<=' '>>=' '`' '\''
@@ -441,10 +441,6 @@ modname ::= {[{id^1 '@'}]^p id [actuals] [mappings]^m}
 	    <modname(id,[nolib()|id^1]^p,[noactuals()|actuals],
                         [nomap()|mappings]^m)>;
 
-mappings ::= {'{' mapping++ ',' '}'} <mappings(mapping+)>;
-
-mapping ::= {idop '<-' expr} <mapping(idop,expr)>;
-
 names ::= {name ++ ','}	<names(name+)>;
 
 fun-arguments ::= {'(' {expr ** ','} ')'} <fun-arguments(expr*)>;
@@ -464,10 +460,11 @@ typed-ids ::= {idops [':' type-expr]^t ['|' expr]^e}
 	      <{typed-ids(idops,[no-type-expr()|type-expr]^t,
 				[no-pred()|expr]^e)>;
 
-name ::= {[{id '@'}]^L idop [actuals] [{'.' idop^1}]^1}
-	 <name(idop,[nolib()|id]^L,[noacts()|actuals],[nomod()|idop^1]^1)>;
+name ::= {[{id '@'}]^L idop [actuals] [mappings]^m [{'.' idop^1}]^1}
+	 <name(idop,[nolib()|id]^L,[noacts()|actuals],[nomod()|idop^1]^1,
+	       [nomap()|mappings]^m)>;
 
-unique-name ::= {name [':' {type-expr|formula-name}]}
+unique-name ::= {name [':' {'TYPE'|type-expr|formula-name}]}
 		<unique-name
                   (name,[noqual()|{typed(type-expr)|formula(formula-name)}])>;
 
@@ -495,6 +492,12 @@ opsym ::= '+' <`+()> | '-' <`-()> | '*' <`*()> | '/' <`\/()>
 actuals ::= {'[' {actual ++ ','} ']'} <actuals(actual+)>;
 
 actual ::= expr | comp-type-expr;
+
+mappings ::= {'{{' mapping++ ',' '}}'} <mappings(mapping+)>;
+
+mapping ::= {unique-name ':=' mapping-rhs} <mapping(unique-name,mapping-rhs)>;
+
+mapping-rhs ::= expr | comp-type-expr;
 
 formula-name	::= 'AXIOM' <`AXIOM()> | 'CHALLENGE' <`CHALLENGE()>
 		|   'CLAIM' <`CLAIM()> | 'CONJECTURE' <`CONJECTURE()>

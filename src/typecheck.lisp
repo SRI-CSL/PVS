@@ -249,6 +249,8 @@
 	   (check-compatible-params (formals-sans-usings mod)
 				    (actuals inst) nil))
 	  (t (setq nmodinst (set-type-actuals inst))))
+    (when (mappings inst)
+      (typecheck-mappings (mappings inst) inst))
     (add-to-using nmodinst)
     (unless (eq nmodinst inst)
       (pushnew inst (gethash (get-theory inst) (current-using-hash))))
@@ -556,6 +558,54 @@
 			    (assoc (declaration te) assoc))))
       type))
 
+(defun typecheck-mappings (mappings inst)
+  (let* ((lhs-theory (get-theory inst))
+	 (lhs-context (context lhs-theory)))
+    (dolist (mapping mappings)
+      (let* ((*current-theory* lhs-theory)
+	     (*current-context* lhs-context)
+	     (*generate-tccs* 'none)
+	     (tres (with-no-type-errors (resolve* (lhs mapping) 'type nil)))
+	     (eres (with-no-type-errors (resolve* (lhs mapping) 'expr nil))))
+	(unless (or eres tres)
+	  (type-error (lhs mapping) "Map lhs does not resolve"))
+	(when (or (cdr tres)
+		  (cdr eres)
+		  (and tres eres))
+	  (type-ambiguity name))
+	(setf (resolutions (lhs mapping)) (nconc tres eres)))
+      (check-mapping-lhs (lhs mapping))
+      (typecheck-mapping-rhs (rhs mapping)
+			     (if (type-decl? (declaration (lhs mapping)))
+				 'type 'expr)))))
+
+(defmethod typecheck-mapping-rhs ((rhs name-expr) kind)
+  (if (eq kind 'type)
+      (typecheck (change-class rhs 'type-name))
+      (typecheck-uniquely rhs)))
+
+(defmethod typecheck-mapping-rhs (rhs kind)
+  (typecheck rhs))
+
+(defmethod interpretable? ((res resolution))
+  (interpretable? (declaration res)))
+
+(defmethod interpretable? ((decl type-decl))
+  t)
+
+(defmethod interpretable? ((decl type-def-decl))
+  nil)
+
+(defmethod interpretable? ((decl const-decl))
+  (null (definition decl)))
+
+(defmethod interpretable? (decl)
+  nil)
+
+(defun check-mapping-lhs (lhs)
+  (unless (interpretable? (resolution lhs))
+    (type-error lhs "Must be uninterpreted to be used in a mapping.")))
+	      
 
 ;;; check-exporting checks the names and theory instances being exported.
 
