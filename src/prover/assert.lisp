@@ -243,7 +243,11 @@
 					 (res (call-process fmla
 							    *dp-state*
 							    *alists*)))
-				    (when (consp res)
+				    (when
+					(and
+					 (consp res)
+					 (not (update-or-connective-occurs?
+					       body)));;NSH(4.7.99)
 				      (loop for x in res
 					    do (push x *process-output*)))
 				    (false-p res)))))
@@ -266,7 +270,7 @@
 			     ;;when there is a connective.
 			     ;;want to check for connectives even if
 			     ;;assert-connectives? is T
-	(or (and (not (connective-occurs? body))
+	(or (and (not (update-or-connective-occurs? body));;NSH(4.7.99)
 		 (let* (
 			;(translated-body
 			; (top-translate-to-prove
@@ -357,7 +361,8 @@
 	 ;(transformula (top-translate-to-prove (negate newfmla)))
 	 (result (call-process (negate newfmla) *dp-state* *alists*)))
     ;(break "cp")
-    (when (consp result)
+    (when (and (consp result)
+	       (not (update-or-connective-occurs? newfmla)))
       (loop for x in result do (push x *process-output*)))
     (if (false-p result)
 	(values '! sform)
@@ -577,6 +582,58 @@
 
 (defmethod connective-occurs? ((expr expr))
   NIL)
+
+;;Separated connective-occurs? from update-or-connective-occurs?.
+;;The latter is used for typepreds and process-assert, and the
+;;former is used everywhere else. 
+
+(defmethod update-or-connective-occurs? ((expr name-expr))
+  NIL)
+
+(defmethod update-or-connective-occurs? ((expr branch))
+    T)
+
+(defmethod update-or-connective-occurs? ((expr cases-expr))
+  T)
+
+(defmethod update-or-connective-occurs? ((expr projection-application))
+  (update-or-connective-occurs? (argument expr)))
+
+(defmethod update-or-connective-occurs? ((expr tuple-expr))
+  (update-or-connective-occurs? (exprs expr)))
+
+(defmethod update-or-connective-occurs? ((expr record-expr))
+  (update-or-connective-occurs? (assignments expr)))
+
+(defmethod update-or-connective-occurs? ((expr assignment))
+  (or (update-or-connective-occurs? (arguments expr))
+      (update-or-connective-occurs? (expression expr))))
+
+(defmethod update-or-connective-occurs? ((expr field-application))
+  (update-or-connective-occurs? (argument expr)))
+
+(defmethod update-or-connective-occurs? ((expr application))
+    (or ;;NSH(4.8.96) (negation? expr)
+	(implication? expr)(conjunction? expr)
+	(disjunction? expr)(iff? expr)
+	(update-or-connective-occurs? (operator expr))
+	(update-or-connective-occurs? (argument expr))))
+
+(defmethod update-or-connective-occurs? ((expr list))
+  (some #'update-or-connective-occurs? expr))
+
+(defmethod update-or-connective-occurs? ((expr binding-expr))
+  nil
+  )
+
+(defmethod update-or-connective-occurs? ;;NSH(5.13.97) needed for updates
+    ;;or the translations get HUGE.
+    ((expr update-expr))
+  T)
+
+(defmethod update-or-connective-occurs? ((expr expr))
+  NIL)
+
 
 (defun cond-assert-if (expr &optional conditions)
   (if (number-expr? expr)  ;;NSH(4.7.96)
@@ -906,7 +963,7 @@
 ;;for pseudo-normalize.
 (defun record-type-constraints (expr)
   (unless (or *assert-typepreds-off*
-	      (connective-occurs? expr))
+	      (update-or-connective-occurs? expr))
     (let ((constraints (collect-type-constraints expr)))
       (when (and *subtype-hash* constraints)
 	(setq *assert-typepreds* (nconc constraints *assert-typepreds*))
