@@ -127,8 +127,7 @@
     (if (and module (not (eq module *saving-theory*)))
 	(reserve-space 3
 	  (unless (or (from-prelude? module)
-		      (assq module *prelude-libraries-uselist*)
-		      (assq module *visible-libraries-uselist*)
+		      (typep module '(or library-theory library-datatype))
 		      (memq (id module)
 			    (gethash (id *saving-theory*) *stored-mod-depend*)))
 	    (error "Attempt to store declaration in illegal theory"))
