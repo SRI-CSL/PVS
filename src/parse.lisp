@@ -2364,7 +2364,7 @@
 
 ;;; name! means create a name no matter what; otherwise numbers create
 ;;; number-exprs
-(defun xt-name (name name!)
+(defun xt-name (name &optional name!)
   (let ((idop (term-arg0 name))
 	(lib (term-arg1 name))
 	(actuals (term-arg2 name))
