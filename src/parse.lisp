@@ -616,7 +616,8 @@
 
 (defun xt-auto-rewrite-elt (decl)
   (let ((adecl (xt-auto-rewrite (term-arg0 decl))))
-    (setf (semi adecl) (when (is-sop 'SEMIC (term-arg1 decl)) t))
+    (setf (semi adecl) (when (is-sop 'SEMIC (term-arg1 decl)) t)
+	  (place adecl) (term-place decl))
     (list adecl)))
 
 (defun xt-auto-rewrite (decl)
@@ -1134,7 +1135,7 @@
 	(let* ((ran (xt-not-enum-type-expr range))
 	       (dom (xt-dep-type-exprs dep-type-exprs))
 	       (tvar (make-new-variable '|t| (cons ran dom)))
-	       (domain (xt-funtype-domain dom tvar)))
+	       (domain (xt-funtype-domain dom ran tvar)))
 	  (make-instance (case (sim-term-op kind)
 			   (COMP-TYPE-EXPR-NULL-1 'funtype)
 			   (FUNCTION 'functiontype)
@@ -1163,35 +1164,42 @@
 		   (assq (id ex) bindings)))))
       range))
 
-(defun xt-funtype-domain (type-exprs tvar)
+(defun xt-funtype-domain (type-exprs ran tvar)
   (if (cdr type-exprs)
-      (if (some #'(lambda (te) (typep te 'dep-binding)) type-exprs)
-	  (xt-funtype-dep-domain type-exprs tvar)
+      (if (some #'dep-binding? type-exprs)
+	  (let ((need-dep? (some #'(lambda (te)
+				     (and (dep-binding? te)
+					  (id-occurs-in (id te) ran)))
+				 type-exprs)))
+	    (xt-funtype-dep-domain type-exprs tvar need-dep?))
 	  (make-instance 'domain-tupletype
 	    'types type-exprs))
       (car type-exprs)))
 
-(defun xt-funtype-dep-domain (type-exprs tvar &optional (index 0)
+(defun xt-funtype-dep-domain (type-exprs tvar need-dep? &optional (index 0)
 					 types var-bindings)
   (if (null type-exprs)
-      (make-instance 'dep-binding
-	'id tvar
-	'declared-type (make-instance 'dep-domain-tupletype
-			 'types (nreverse types)
-			 'var-bindings (nreverse var-bindings)))
+      (if need-dep?
+	  (make-instance 'dep-binding
+	    'id tvar
+	    'declared-type (make-instance 'dep-domain-tupletype
+			     'types (nreverse types)
+			     'var-bindings (nreverse var-bindings)))
+	  (make-instance 'domain-tupletype
+	    'types (nreverse types)))
       (if (typep (car type-exprs) 'dep-binding)
 	  (let* ((id (id (car type-exprs)))
 		 (var-binding (cons id (1+ index)))
 		 (occurs? (id-occurs-in id (cdr type-exprs))))
 	    (xt-funtype-dep-domain
-	     (cdr type-exprs) tvar (1+ index)
+	     (cdr type-exprs) tvar need-dep? (1+ index)
 	     (cons (if occurs?
 		       (car type-exprs)
 		       (declared-type (car type-exprs)))
 		   types)
 	     (cons var-binding var-bindings)))
 	  (xt-funtype-dep-domain
-	   (cdr type-exprs) tvar (1+ index)
+	   (cdr type-exprs) tvar need-dep? (1+ index)
 	   (cons (car type-exprs) types)
 	   var-bindings))))
 	   
