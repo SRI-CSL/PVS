@@ -46,16 +46,18 @@
 
 (defconstant pvs-sxhash-byte (byte 29 0))
 
+(deftype positive-fixnum () `(integer 0 ,most-positive-fixnum))
+
 (defmacro pvs-sxhash-+ (i j)
-  `(ldb pvs-sxhash-byte (+ (the fixnum ,i) (the fixnum ,j))))
+  `(ldb pvs-sxhash-byte (+ (the positive-fixnum ,i) (the positive-fixnum ,j))))
 
 (defmacro pvs-sxhash-* (i j)
-  `(ldb pvs-sxhash-byte (* (the fixnum ,i) (the fixnum ,j))))
+  `(ldb pvs-sxhash-byte (* (the positive-fixnum ,i) (the positive-fixnum ,j))))
 
 (defmacro pvs-sxhash-1+ (i)
-  `(ldb pvs-sxhash-byte (1+ (the fixnum ,i))))
+  `(ldb pvs-sxhash-byte (1+ (the positive-fixnum ,i))))
 
-(proclaim '(ftype (function (t list) fixnum) pvs-sxhash*))
+(proclaim '(ftype (function (t list) positive-fixnum) pvs-sxhash*))
 
 (defun pvs-sxhash (x &optional bindings)
   (pvs-sxhash* x bindings))
@@ -75,7 +77,7 @@
 
 (defmethod pvs-sxhash* (x bindings)
   (declare (ignore bindings))
-  (the fixnum (sxhash x)))
+  (the positive-fixnum (sxhash x)))
 
 (defconstant nil-sxhash (sxhash nil))
 
@@ -116,52 +118,58 @@
 ;			    bindings)))))
 
 (defun pvs-sxhash-lists-a (l1 bindings hnum)
-  (declare (fixnum hnum))
+  (declare (type positive-fixnum hnum))
   (if (null l1)
       hnum
       (if (listp l1)
 	  (pvs-sxhash-lists-a
 	   (cdr l1)
 	   bindings
-	   (the fixnum
-	     (pvs-sxhash-+ (the fixnum
-			     (ldb pvs-sxhash-byte (ash (the fixnum hnum) 1)))
-			   (the fixnum
+	   (the positive-fixnum
+	     (pvs-sxhash-+ (the positive-fixnum
+			     (ldb pvs-sxhash-byte
+				  (ash (the positive-fixnum hnum) 1)))
+			   (the positive-fixnum
 			     (pvs-sxhash* (car l1) bindings)))))
-	  (pvs-sxhash-+ (the fixnum
-			  (ldb pvs-sxhash-byte (ash (the fixnum hnum) 1)))
-			(the fixnum
+	  (pvs-sxhash-+ (the positive-fixnum
+			  (ldb pvs-sxhash-byte
+			       (ash (the positive-fixnum hnum) 1)))
+			(the positive-fixnum
 			  (pvs-sxhash* l1 bindings))))))
 
 (defun pvs-sxhash-lists-b (l1 bindings num hnum)
-  (declare (fixnum num hnum))
+  (declare (type positive-fixnum num hnum))
   (if (null l1)
       hnum
       (if (listp l1)
 	  (pvs-sxhash-lists-b
 	   (cdr l1)
 	   (cons (cons (car l1) num) bindings)
-	   (pvs-sxhash-1+ (the fixnum num))
-	   (pvs-sxhash-+ (the fixnum
-			   (ldb pvs-sxhash-byte (ash (the fixnum hnum) 1)))
-			 (the fixnum (pvs-sxhash* (car l1) bindings))))
-	  (pvs-sxhash-+ (the fixnum
-			  (ldb pvs-sxhash-byte (ash (the fixnum hnum) 1)))
-			(the fixnum (pvs-sxhash* l1 bindings))))))
+	   (pvs-sxhash-1+ (the positive-fixnum num))
+	   (pvs-sxhash-+ (the positive-fixnum
+			   (ldb pvs-sxhash-byte
+				(ash (the positive-fixnum hnum) 1)))
+			 (the positive-fixnum
+			   (pvs-sxhash* (car l1) bindings))))
+	  (pvs-sxhash-+ (the positive-fixnum
+			  (ldb pvs-sxhash-byte
+			       (ash (the positive-fixnum hnum) 1)))
+			(the positive-fixnum
+			  (pvs-sxhash* l1 bindings))))))
 
 ;(defmethod pvs-sxhash* ((n1 type-name) bindings)
 ;  (with-slots (id resolutions) n1
 ;    (let ((decl1 (when resolutions
 ;		   (slot-value (car resolutions) 'declaration))))
 ;      (pvs-sxhash-+
-;       (the fixnum (sxhash id))
+;       (the positive-fixnum (sxhash id))
 ;       (let ((mi1 (when resolutions
 ;		    (slot-value (car resolutions) 'module-instance))))
 ;	 (if mi1
-;	     (the fixnum
-;	       (pvs-sxhash-+ (the fixnum (sxhash (id mi1)))
-;			     (the fixnum (pvs-sxhash* (actuals mi1) bindings))))
-;	     (the fixnum (sxhash nil))))))))
+;	     (the positive-fixnum
+;	       (pvs-sxhash-+ (the positive-fixnum (sxhash (id mi1)))
+;			     (the positive-fixnum (pvs-sxhash* (actuals mi1) bindings))))
+;	     (the positive-fixnum (sxhash nil))))))))
 
 ;(defun type-binding? (te)
 ;  (typep te '(or dep-binding field-decl)))
@@ -193,8 +201,8 @@
 
 (defmethod pvs-sxhash* ((t1 subtype) bindings)
   (with-slots ((st1 supertype) (p1 predicate)) t1
-    (pvs-sxhash-+ (the fixnum (pvs-sxhash* st1 bindings))
-		  (the fixnum (pvs-sxhash* p1 bindings)))))
+    (pvs-sxhash-+ (the positive-fixnum (pvs-sxhash* st1 bindings))
+		  (the positive-fixnum (pvs-sxhash* p1 bindings)))))
 
 ;(defmethod tc-eq* ((t1 funtype) (t2 funtype) bindings)
 ;  (or (eq t1 t2)
@@ -269,7 +277,7 @@
 ;	       (typep (car dom2) 'dep-binding))
 ;	  (list (cons (car dom1) (car dom2)))
 ;	  (let ((num 0))
-;	    (declare (fixnum num))
+;	    (declare (positive-fixnum num))
 ;	    (mapcan #'(lambda (ty)
 ;			(incf (the integer num))
 ;			(when (typep ty 'dep-binding)
@@ -620,8 +628,8 @@
 
 (defmethod pvs-sxhash* ((e1 application) bindings)
   (with-slots ((op1 operator) (arg1 argument)) e1
-    (pvs-sxhash-+ (the fixnum (pvs-sxhash-ops op1 bindings))
-		  (the fixnum (pvs-sxhash* arg1 bindings)))))
+    (pvs-sxhash-+ (the positive-fixnum (pvs-sxhash-ops op1 bindings))
+		  (the positive-fixnum (pvs-sxhash* arg1 bindings)))))
 
 ;(defmethod tc-eq-ops ((op1 field-name-expr) (op2 field-name-expr) bindings)
 ;  (with-slots ((id1 id) (ty1 type)) op1
@@ -662,14 +670,14 @@
 (defmethod pvs-sxhash* ((e1 binding-expr) ibindings)
   (with-slots ((b1 bindings) (ex1 expression)) e1
     (pvs-sxhash-+
-     (the fixnum (pvs-sxhash-binding-op e1))
+     (the positive-fixnum (pvs-sxhash-binding-op e1))
      (multiple-value-bind (hash abindings)
 	 (pvs-sxhash-bindings-eq b1 ibindings
 				 (pvs-sxhash-1+ (length ibindings)))
-       (the fixnum
+       (the positive-fixnum
 	 (pvs-sxhash-+
-	  (the fixnum hash)
-	  (the fixnum (pvs-sxhash* ex1 (append abindings ibindings)))))))))
+	  (the positive-fixnum hash)
+	  (the positive-fixnum (pvs-sxhash* ex1 (append abindings ibindings)))))))))
 
 ;(defun bindings-eq (b1 b2 bindings)
 ;  (declare (list b1 b2))
@@ -894,8 +902,8 @@
 
 (defmethod pvs-sxhash* ((n1 modname) bindings)
   (with-slots (id actuals) n1
-    (pvs-sxhash-+ (the fixnum (sxhash id))
-		  (the fixnum (pvs-sxhash* actuals bindings)))))
+    (pvs-sxhash-+ (the positive-fixnum (sxhash id))
+		  (the positive-fixnum (pvs-sxhash* actuals bindings)))))
 
 ;(defmethod tc-eq* ((a1 actual) (a2 actual) bindings)
 ;  (or (eq a1 a2)
@@ -932,8 +940,8 @@
 		   ((=> IMPLIES) 2)
 		   ((<=> IFF) 3)
 		   (t (sxhash id)))))
-      (pvs-sxhash-+ (the fixnum dnum)
-		    (the fixnum (pvs-sxhash* mi1 bindings))))))
+      (pvs-sxhash-+ (the positive-fixnum dnum)
+		    (the positive-fixnum (pvs-sxhash* mi1 bindings))))))
 
 ;;; for testing:
 
