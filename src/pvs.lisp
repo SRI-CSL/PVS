@@ -1247,17 +1247,63 @@
 		 (dolist (cmt (cdr (assq decl (tcc-comments theory))))
 		   (write cmt :stream out :escape nil)
 		   (terpri out) (terpri out)))))
-	 (buffer (format nil "~a.~a.tccs"
-		   (id theory) (op-to-id decl))))
+	 (theory-decl (format nil "~a.~a" (id theory) (decl-to-declname decl)))
+	 (buffer (format nil "~a.~a.tccs" (id theory) (decl-to-declname decl))))
     (cond ((not (string= str ""))
 	   (let ((*valid-id-check* nil))
 	     (setf (tcc-form decl)
 		   (if unparsed-a-tcc?
 		       (parse :string str :nt 'theory-part)
 		       str)))
-	   (pvs-buffer buffer str t t))
+	   (pvs-buffer buffer str t t)
+	   theory-decl)
 	  (t (pvs-message "Declaration ~a.~a has no TCCs"
-	       (id theory) (op-to-id decl))))))
+	       (id theory) (decl-to-declname decl))))))
+
+;;; Given a declaration, returns a declname, used to create the
+;;; show-declaration-tccs buffer.  For a declaration with an id, this is
+;;; the string of the id itself, if it is the only declaration of the
+;;; theory with that id.  If there is more than one, then it is suffixed
+;;; with "-D", where D is a number.  For importings, the name is simply
+;;; IMPORTING-D, etc.
+(defmethod decl-to-declname ((decl declaration))
+  (let* ((theory (module decl))
+	 (decls (remove-if (complement #'(lambda (d)
+					   (and (declaration? d)
+						(eq (id d) (id decl)))))
+		  (all-decls theory)))
+	 (pos (when (cdr decls)
+		(position decl decls))))
+    (assert decls)
+    (assert (or (null (cdr decls)) pos))
+    (if pos
+	(format nil "~a-~d" (id decl) (1+ pos))
+	(string (id decl)))))
+
+(defmethod decl-to-declname ((imp importing))
+  (let* ((theory (module imp))
+	 (imps (remove-if (complement #'importing?) (all-decls theory)))
+	 (pos (position decl imps)))
+    (assert pos)
+    (format nil "IMPORTING-~d" (1+ pos))))
+
+(defun declname-to-decl (declname theory)
+  (let ((decl-and-pos
+	 (excl:split-regexp "-" declname)))
+    (if (string= (car decl-and-pos) "IMPORTING")
+	(let ((pos (parse-integer (cdr decl-and-pos)))
+	      (imps (remove-if (complement #'importing? (all-decls theory)))))
+	  (nth (1- pos) imps))
+	(let* ((declid (intern (car decl-and-pos)))
+	       (pos (if (cadr decl-and-pos)
+			(1- (parse-integer (cadr decl-and-pos)))
+			0))
+	       (decls (remove-if (complement
+				  #'(lambda (d)
+				      (and (declaration? d)
+					   (eq (id d) declid))))
+			(all-decls theory))))
+	  (nth pos decls)))))
 
 (defun tcc? (decl)
   (and (formula-decl? decl)
@@ -1396,14 +1442,25 @@
 ;;; include the PVS file, a tccs or ppe buffer, the prelude file itself,
 ;;; or a view-prelude-theory buffer.
 
-(defun prove-file-at (name line rerun?
+(defun prove-file-at (name declname line rerun?
 			   &optional origin buffer prelude-offset
 			   background? display? unproved?)
+  ;; Check for old style input - there was no declname then
+  (unless (integerp line)
+    (setq unproved? display?
+	  display? background?
+	  background? prelude-offset
+	  prelude-offset buffer
+	  buffer origin
+	  origin rerun?
+	  rerun? line
+	  line declname
+	  declname nil))
   (let ((*to-emacs* background?))
     (if (or *in-checker* *in-evaluator*)
 	(pvs-message "Must exit the prover/evaluator first")
 	(multiple-value-bind (fdecl place)
-	    (formula-decl-to-prove name line origin unproved?)
+	    (formula-decl-to-prove name declname line origin unproved?)
 	  (if (and rerun?
 		   fdecl
 		   (null (justification fdecl)))
@@ -1455,7 +1512,7 @@
 
 (deftype unproved-formula-decl () '(and formula-decl (satisfies unproved?)))
 
-(defun formula-decl-to-prove (name line origin &optional unproved?)
+(defun formula-decl-to-prove (name declname line origin &optional unproved?)
   (if (and (member origin '("ppe" "tccs") :test #'string=)
 	   (not (get-theory name)))
       (pvs-message "~a is not typechecked" name)
@@ -1471,12 +1528,15 @@
 			 (all-decls (get-theory name)))
 		       (place decl))))
 	(tccs (let* ((theory (get-theory name))
-		     (decls (tcc-form theory))
+		     (decls
+		      (if declname
+			  (tcc-form (declname-to-decl declname theory))
+			  (tcc-form theory)))
 		     (decl (find-if #'(lambda (d)
 					(and (>= (line-end (place d)) line)
 					     (or (null unproved?)
 						 (unproved? d))))
-				    decls)))
+			     decls)))
 		(values (find-if #'(lambda (d) (and (eq (module d) theory)
 						    (formula-decl? d)
 						    (eq (id d) (id decl))))
@@ -1525,8 +1585,8 @@
 ;;; rerun, NO if the proof should not be rerun, and NIL if the formula
 ;;; declaration could not be found.
 
-(defun rerun-proof-at? (name line &optional origin rerun? unproved?)
-  (let ((fdecl (formula-decl-to-prove name line origin unproved?)))
+(defun rerun-proof-at? (name declname line &optional origin rerun? unproved?)
+  (let ((fdecl (formula-decl-to-prove name declname line origin unproved?)))
     (cond ((and fdecl rerun?)
 	   (if (justification fdecl)
 	       rerun?
@@ -1564,11 +1624,11 @@
 	 (justification fdecl)
 	 (pvs-y-or-n-p "Rerun Existing proof? "))))
 
-(defun prove-next-unproved-formula (name line rerun?
+(defun prove-next-unproved-formula (name declname line rerun?
 					 &optional origin buffer prelude-offset
 					 background? display?)
-  (prove-file-at name line rerun? origin buffer prelude-offset background?
-		 display? t))
+  (prove-file-at name declname line rerun? origin buffer prelude-offset
+		 background? display? t))
 
 
 ;;; Non-interactive Proving
@@ -1612,8 +1672,9 @@
     (status-proof-importchain theoryname)))
 
 
-(defun prove-proofchain (filename line origin retry? &optional use-default-dp?)
-  (let ((fdecl (formula-decl-to-prove filename line origin)))
+(defun prove-proofchain (filename declname line origin retry?
+				  &optional use-default-dp?)
+  (let ((fdecl (formula-decl-to-prove filename declname line origin)))
     (cond ((null fdecl)
 	   (pvs-message "Unable to find formula declaration"))
 	  ((null (justification fdecl))
@@ -1741,9 +1802,10 @@
 ;	  (write (pprint-pop) :stream s)
 ;	  (pprint-newline :linear s))))
 
-(defun edit-proof-at (filename line origin buffer prelude-offset full-label)
+(defun edit-proof-at (filename declname line origin buffer
+			       prelude-offset full-label)
   (multiple-value-bind (fdecl place)
-      (formula-decl-to-prove filename line origin)
+      (formula-decl-to-prove filename declname line origin)
     (when fdecl
       (setq *edit-proof-info* (list fdecl place buffer prelude-offset)))
     (cond ((and fdecl (justification fdecl))
@@ -1768,7 +1830,7 @@
 	  (t (pvs-message "Unable to find formula declaration")))))
 
 
-(defun install-proof (tmpfilename name line origin buffer prelude-offset)
+(defun install-proof (tmpfilename name declname line origin buffer prelude-offset)
   ;; If the origin is supplied, simply install the proof.  Otherwise the
   ;; proof is being installed from the Proof buffer, and the declaration
   ;; is gotten from *edit-proof-info*, in this case ask before installing.
@@ -1789,7 +1851,7 @@
 			 (complete-checkpointed-proof sexpr))))
 	      (multiple-value-bind (fdecl place)
 		  (if origin
-		      (formula-decl-to-prove name line origin)
+		      (formula-decl-to-prove name declname line origin)
 		      (car *edit-proof-info*))
 		(when (and origin fdecl)
 		  (setq *edit-proof-info*
@@ -1867,8 +1929,8 @@
 		      place)))))
 		   
 
-(defun remove-proof-at (name line origin)
-  (let ((fdecl (formula-decl-to-prove name line origin)))
+(defun remove-proof-at (name declname line origin)
+  (let ((fdecl (formula-decl-to-prove name declname line origin)))
     (cond ((and fdecl (default-proof fdecl))
 	   (let ((prf (default-proof fdecl)))
 	     (setf (proofs fdecl) (delete prf (proofs fdecl)))
