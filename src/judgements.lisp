@@ -1540,24 +1540,28 @@
 
 (defmethod simple-match* ((ex projection-expr) (inst projection-expr)
 			  bindings subst)
+  (declare (ignore bindings))
   (if (= (index ex) (index inst))
       subst
       'fail))
 
 (defmethod simple-match* ((ex injection-expr) (inst injection-expr)
 			  bindings subst)
+  (declare (ignore bindings))
   (if (= (index ex) (index inst))
       subst
       'fail))
 
 (defmethod simple-match* ((ex injection?-expr) (inst injection?-expr)
 			  bindings subst)
+  (declare (ignore bindings))
   (if (= (index ex) (index inst))
       subst
       'fail))
 
 (defmethod simple-match* ((ex extraction-expr) (inst extraction-expr)
 			  bindings subst)
+  (declare (ignore bindings))
   (if (= (index ex) (index inst))
       subst
       'fail))

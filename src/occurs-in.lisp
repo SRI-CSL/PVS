@@ -118,6 +118,7 @@
   (when (= (number obj) (number ex)) ex))
 
 (defmethod occurs-in (obj (ex number-expr))
+  (declare (ignore obj))
   nil)
 
 (defmethod occurs-in ((obj record-expr) (ex record-expr))
