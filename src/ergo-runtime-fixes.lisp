@@ -79,16 +79,20 @@
     result))
 
 (defun get-end-place (sim-op args splace token?)
-  (cond (sbrt::*end-place*
+  (declare (special last-end-place last-end-value))
+  (cond ((eq last-end-place sbrt::*end-place*)
+	 last-end-value)
+	(sbrt::*end-place*
 	 (let ((eplace (caddr sbrt::*end-place*))
 	       (token (if (eq (cadr sbrt::*end-place*) :keyword-internal-flag)
 			  (car sbrt::*end-place*)
 			  (cadr sbrt::*end-place*))))
-	   ;;(format t "~%*end-place* = ~s" sbrt::*end-place*)
-	   (sbrt::make-place
-	    :linenumber (sbrt::place-linenumber eplace)
-	    :charnumber (+ (the fixnum (sbrt::place-charnumber eplace))
-			   (the fixnum (length (princ-to-string token)))))))
+	   (setq last-end-place sbrt::*end-place*)
+	   (setq last-end-value
+		 (sbrt::make-place
+		  :linenumber (sbrt::place-linenumber eplace)
+		  :charnumber (+ (the fixnum (sbrt::place-charnumber eplace))
+				 (the fixnum (length (princ-to-string token))))))))
 	(args
 	 (let ((maxplace (maximal-endplace args)))
 	   (sbrt::make-place
