@@ -158,6 +158,10 @@
 		    'dpinfo-sigalist sigalist
 		    'dpinfo-findalist findalist
 		    'dpinfo-usealist usealist))
+	(*top-alists* (make-instance 'dpinfo
+			'dpinfo-sigalist sigalist
+			'dpinfo-findalist findalist
+			'dpinfo-usealist usealist))
 	(*current-context* (context decl))
 	(*current-theory* (module decl)))
     (initprover)			;initialize prover
@@ -210,6 +214,8 @@
       (pvs-message "Using ~:[old~;new~] decision procedures" *new-ground?*)
       (setf (new-ground? decl) *new-ground?*)
       (let ((*dp-state* (when *new-ground?*
+			  (dp::push-new-cong-state *init-dp-state*)))
+	    (*top-dp-state* (when *new-ground?*
 			  (dp::push-new-cong-state *init-dp-state*))))
 	(setf (dp-state *top-proofstate*) *dp-state*)
 	(before-prove*)
