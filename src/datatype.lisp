@@ -1610,6 +1610,32 @@ generated")
        tvar indvar adt (1+ index)
        (cons (acc-induction-hypothesis* (car types) indvar adt) result))))
 
+(defmethod acc-induction-hypothesis* ((te cotupletype) indvar adt)
+  (let* ((tid (make-new-variable '|t| te))
+	 (tbd (make-bind-decl tid te))
+	 (tvar (mk-name-expr tid nil nil
+			     (make-resolution tbd
+			       (current-theory-name) te)))
+	 (preds (acc-induction-tuples (types te) tvar indvar adt)))
+    (unless (every #'null preds)
+      (mk-lambda-expr (list tbd)
+	(let ((num 0)
+	      (varid (make-new-variable 'x adt)))
+	  (mk-cases-expr tvar
+	    (mapcar #'(lambda (pred type)
+			(incf num)
+			(let* ((bd (make-bind-decl varid type))
+			       (var (make-variable-expr bd))
+			       (in-expr (make-instance 'injection-expr
+					  'id (makesym "IN_~d" num)
+					  'index num))
+			       (sel-expr (if pred
+					     (mk-application pred var)
+					     *true*)))
+			  (mk-selection in-expr (list bd) sel-expr)))
+	      preds (types te))
+	    nil))))))
+
 (defmethod acc-induction-hypothesis* ((te dep-binding) indvar adt)
   (acc-induction-hypothesis* (type te) indvar adt))
 
@@ -1849,6 +1875,32 @@ generated")
 				   'argument (copy arg))))))
 	     preds))))))
 
+(defmethod acc-predicate-selection (arg (te cotupletype) pvars ptypes adt
+					funid curried?)
+  (declare (ignore curried?))
+  (let ((preds (acc-predicate-types (types te) arg pvars ptypes adt funid)))
+    (if (if (eq funid '|every|)
+	    (every #'everywhere-true? preds)
+	    (every #'everywhere-false? preds))
+	(call-next-method)
+	(let ((num 0)
+	      (varid (make-new-variable 'x adt)))
+	  (mk-cases-expr arg
+	    (mapcar #'(lambda (pred type)
+			(incf num)
+			(let* ((bd (make-bind-decl varid type))
+			       (var (make-variable-expr bd))
+			       (in-expr (make-instance 'injection-expr
+					  'id (makesym "IN_~d" num)
+					  'index num))
+			       (sel-expr (if pred
+					     (mk-application pred var)
+					     (if (eq funid '|every|)
+						 *true* *false*))))
+			  (mk-selection in-expr (list bd) sel-expr)))
+	      preds (types te))
+	    nil)))))
+
 (defun acc-predicate-types (types arg pvars ptypes adt funid
 				  &optional (index 1) result)
   (if (null types)
@@ -1972,6 +2024,36 @@ generated")
 				     'index num
 				     'argument tvar)))))
 	       preds)))))))
+
+(defmethod acc-predicate-selection* ((te cotupletype) pvars ptypes adt funid)
+  (let* ((tid (make-new-variable '|t| te))
+	 (tbd (make-bind-decl tid te))
+	 (tvar (mk-name-expr tid nil nil
+			     (make-resolution tbd
+			       (current-theory-name) te)))
+	 (preds (acc-predicate-types (types te) tvar pvars ptypes adt funid)))
+    (if (if (eq funid '|every|)
+	    (every #'everywhere-true? preds)
+	    (every #'everywhere-false? preds))
+	(call-next-method)
+	(mk-lambda-expr (list tbd)
+	  (let ((num 0)
+		(varid (make-new-variable 'x adt)))
+	    (mk-cases-expr tvar
+	      (mapcar #'(lambda (pred type)
+			  (incf num)
+			  (let* ((bd (make-bind-decl varid type))
+				 (var (make-variable-expr bd))
+				 (in-expr (make-instance 'injection-expr
+					    'id (makesym "IN_~d" num)
+					    'index num))
+				 (sel-expr (if pred
+					       (mk-application pred var)
+					       (if (eq funid '|every|)
+						   *true* *false*))))
+			    (mk-selection in-expr (list bd) sel-expr)))
+		preds (types te))
+	      nil))))))
 
 (defmethod acc-predicate-selection* ((te dep-binding) pvars ptypes adt funid)
   (acc-predicate-selection* (type te) pvars ptypes adt funid))
@@ -2409,6 +2491,35 @@ generated")
 			     (mk-application map proj))))
 	     maps))))))
 
+(defmethod acc-map-selection (arg (te cotupletype) pvars ptypes fpairs
+				  adt curried?)
+  (declare (ignore curried?))
+  (let ((maps (acc-map-selection-types
+	       (types te) arg pvars ptypes fpairs adt)))
+    (if (every #'identity-fun? maps)
+	(copy arg)
+	(mk-cases-expr arg
+	  (let ((num 0)
+		(varid (make-new-variable 'x adt)))
+	    (mapcar #'(lambda (map type)
+			(incf num)
+			(let* ((bd (make-bind-decl varid type))
+			       (var (make-variable-expr bd))
+			       (in-expr (make-instance 'injection-expr
+					  'id (makesym "IN_~d" num)
+					  'index num))
+			       (sel-expr (make-instance 'injection-application
+					   'id (makesym "IN_~d" num)
+					   'index num
+					   'actuals (subst-map-actuals
+						     (list (mk-actual te))
+						     fpairs)
+					   'argument (mk-application map
+						       var))))
+			  (mk-selection in-expr (list bd) sel-expr)))
+	      maps (types te)))
+	  nil)))))
+
 (defmethod acc-map-selection (arg (te type-expr) pvars ptypes fpairs
 				  adt curried?)
   (declare (ignore pvars ptypes fpairs adt curried?))
@@ -2504,6 +2615,39 @@ generated")
 			       proj
 			       (mk-application map proj))))
 	       maps)))))))
+
+(defmethod acc-map-selection* ((te cotupletype) pvars ptypes fpairs adt)
+  (let* ((tid (make-new-variable '|t| te))
+	 (tbd (make-bind-decl tid te))
+	 (tvar (mk-name-expr tid nil nil
+			     (make-resolution tbd
+			       (current-theory-name) te)))
+	 (maps (acc-map-selection-types
+		(types te) tvar pvars ptypes fpairs adt)))
+    (if (every #'identity-fun? maps)
+	(mk-identity-fun te)
+	(mk-lambda-expr (list tbd)
+	  (mk-cases-expr tvar
+	    (let ((num 0)
+		  (varid (make-new-variable 'x adt)))
+	      (mapcar #'(lambda (map type)
+			  (incf num)
+			  (let* ((bd (make-bind-decl varid type))
+				 (var (make-variable-expr bd))
+				 (in-expr (make-instance 'injection-expr
+					    'id (makesym "IN_~d" num)
+					    'index num))
+				 (sel-expr (make-instance 'injection-application
+					     'id (makesym "IN_~d" num)
+					     'index num
+					     'actuals (subst-map-actuals
+						       (list (mk-actual te))
+						       fpairs)
+					     'argument (mk-application map
+							 var))))
+			    (mk-selection in-expr (list bd) sel-expr)))
+		maps (types te)))
+	    nil)))))
 
 (defun acc-map-selection-types (types tvar pvars ptypes fpairs adt
 				      &optional (index 1) result)
@@ -2808,6 +2952,39 @@ generated")
 	 (cons (adt-every-rel
 		(car types) pvars pavar pbvar ptypes fpairs adt)
 	       everys)))))
+
+(defmethod adt-every-rel ((te cotupletype) pvars avar bvar ptypes fpairs adt)
+  (let ((num 0)
+	(mpairs (mapcar #'(lambda (fp) (cons (find (car fp) (formals adt)
+						   :test #'same-id)
+					     (car fp)))
+		  fpairs)))
+    (mk-disjunction
+     (mapcar #'(lambda (type)
+		 (incf num)
+		 (let* ((inid (makesym "IN?_~d" num))
+			(ain? (make-instance 'injection?-application
+				'id inid
+				'index num
+				'argument avar))
+			(bin? (make-instance 'injection?-application
+				'id inid
+				'index num
+				'argument bvar))
+			(outid (makesym "OUT_~d" num))
+			(atype (typecheck (subst-map-actuals type mpairs)))
+			(btype (subst-map-actuals atype fpairs))
+			(aout (typecheck (make-instance 'extraction-application
+					   'id outid
+					   'index num
+					   'argument avar)))
+			(bout (typecheck (make-instance 'extraction-application
+					   'id outid
+					   'index num
+					   'argument bvar)))
+			(every-sub (adt-every-rel type pvars aout bout ptypes fpairs adt)))
+		   (mk-conjunction (list ain? bin? every-sub))))
+       (types te)))))
 
 (defun every-rel-types-subst (dep var1 var2 types)
   (let ((alist1 (acons dep var1 nil))
@@ -3123,6 +3300,31 @@ generated")
 			     (mk-application fun proj))))
 	     funs))))))
 
+(defmethod acc-reduce-selection (arg (te cotupletype) red fname fdom adt)
+  (assert (typep fdom 'cotupletype))
+  (let ((funs (acc-reduce-selection-types
+	       (types te) (types fdom) arg red fname adt)))
+    (if (every #'identity-fun? funs)
+	(copy arg)
+	(mk-cases-expr arg
+	  (let ((num 0)
+		(varid (make-new-variable 'x adt)))
+	    (mapcar #'(lambda (fun type)
+			(incf num)
+			(let* ((bd (make-bind-decl varid type))
+			       (var (make-variable-expr bd))
+			       (in-expr (make-instance 'injection-expr
+					  'id (makesym "IN_~d" num)
+					  'index num))
+			       (sel-expr (make-instance 'injection-application
+					   'id (makesym "IN_~d" num)
+					   'index num
+					   'argument (mk-application fun
+						       var))))
+			  (mk-selection in-expr (list bd) sel-expr)))
+	      funs (types te)))
+	  nil))))
+
 (defmethod acc-reduce-selection (arg (te type-expr) red fname fdom adt)
   (declare (ignore red fname fdom adt))
   (copy arg))
@@ -3207,20 +3409,49 @@ generated")
 		(types te) (types fdom) tvar red fname adt)))
     (if (every #'identity-fun? funs)
 	(mk-identity-fun te)
-	(let* ()
-	  (mk-lambda-expr (list tbd)
-	    (mk-tuple-expr
-	     (let ((num 0))
-	       (mapcar #'(lambda (fun)
-			   (incf num)
-			   (let ((proj (make-instance 'projappl
-					 'id (makesym "PROJ_~d" num)
-					 'index num
-					 'argument tvar)))
-			     (if (identity-fun? fun)
-				 proj
-				 (mk-application fun proj))))
-		 funs))))))))
+	(mk-lambda-expr (list tbd)
+	  (mk-tuple-expr
+	   (let ((num 0))
+	     (mapcar #'(lambda (fun)
+			 (incf num)
+			 (let ((proj (make-instance 'projappl
+				       'id (makesym "PROJ_~d" num)
+				       'index num
+				       'argument tvar)))
+			   (if (identity-fun? fun)
+			       proj
+			       (mk-application fun proj))))
+	       funs)))))))
+
+(defmethod acc-reduce-selection* ((te cotupletype) red fname fdom adt)
+  (let* ((tid (make-new-variable '|t| te))
+	 (tbd (make-bind-decl tid te))
+	 (tvar (mk-name-expr tid nil nil
+			     (make-resolution tbd
+			       (current-theory-name) te)))
+	 (funs (acc-reduce-selection-types
+		(types te) (types fdom) tvar red fname adt)))
+    (if (every #'identity-fun? funs)
+	(mk-identity-fun te)
+	(mk-lambda-expr (list tbd)
+	  (mk-cases-expr tvar
+	    (let ((num 0)
+		  (varid (make-new-variable 'x adt)))
+	      (mapcar #'(lambda (fun type)
+			  (incf num)
+			  (let* ((bd (make-bind-decl varid type))
+				 (var (make-variable-expr bd))
+				 (in-expr (make-instance 'injection-expr
+					    'id (makesym "IN_~d" num)
+					    'index num))
+				 (sel-expr (make-instance 'injection-application
+					     'id (makesym "IN_~d" num)
+					     'index num
+					     'argument (mk-application fun
+							 var))))
+			    (mk-selection in-expr (list bd) sel-expr)))
+		funs (types te)))
+	    nil)))))
 
 (defun acc-reduce-selection-types (types dtypes tvar red fname adt
 					 &optional (index 1) result)
@@ -3691,6 +3922,31 @@ generated")
 	  (setf (parens le) 1)
 	  le))))
 
+(defmethod acc-subterm-selection* ((te cotupletype) xvar adt)
+  (let* ((tid (make-new-variable '|t| te))
+	 (tbd (make-bind-decl tid te))
+	 (tvar (mk-name-expr tid nil nil
+			     (make-resolution tbd
+			       (current-theory-name) te)))
+	 (subs (acc-subterm-types (types te) xvar tvar adt)))
+    (if (every #'everywhere-false? subs)
+	(call-next-method)
+	(mk-lambda-expr (list tbd)
+	  (let ((num 0)
+		(varid (make-new-variable 'w adt)))
+	    (mk-cases-expr tvar
+	      (mapcar #'(lambda (sub type)
+			  (incf num)
+			  (let* ((bd (make-bind-decl varid type))
+				 (var (make-variable-expr bd))
+				 (in-expr (make-instance 'injection-expr
+					    'id (makesym "IN_~d" num)
+					    'index num))
+				 (sel-expr (mk-application sub var)))
+			    (mk-selection in-expr (list bd) sel-expr)))
+		subs (types te))
+	      nil))))))
+
 (defun acc-subterm-types (types xvar tvar adt &optional (index 1) result)
   (if (null types)
       (nreverse result)
@@ -3847,6 +4103,31 @@ generated")
 			 subs))))))
 	  (setf (parens le) 1)
 	  le))))
+
+(defmethod acc-<<-selection* ((te cotupletype) xvar adt)
+  (let* ((tid (make-new-variable '|t| te))
+	 (tbd (make-bind-decl tid te))
+	 (tvar (mk-name-expr tid nil nil
+			     (make-resolution tbd
+			       (current-theory-name) te)))
+	 (subs (acc-<<-types (types te) xvar tvar adt)))
+    (if (every #'everywhere-false? subs)
+	(call-next-method)
+	(mk-lambda-expr (list tbd)
+	  (let ((num 0)
+		(varid (make-new-variable 'w adt)))
+	    (mk-cases-expr tvar
+	      (mapcar #'(lambda (sub type)
+			  (incf num)
+			  (let* ((bd (make-bind-decl varid type))
+				 (var (make-variable-expr bd))
+				 (in-expr (make-instance 'injection-expr
+					    'id (makesym "IN_~d" num)
+					    'index num))
+				 (sel-expr (mk-application sub var)))
+			    (mk-selection in-expr (list bd) sel-expr)))
+		subs (types te))
+	      nil))))))
 
 (defun acc-<<-types (types xvar tvar adt &optional (index 1) result)
   (if (null types)
@@ -4008,6 +4289,9 @@ function, tuple, or record type")
        (occurs-positively?* type (domain te) t)))
 
 (defmethod occurs-positively?* (type (te tupletype) none)
+  (occurs-positively?* type (types te) (or *simple-pos* none)))
+
+(defmethod occurs-positively?* (type (te cotupletype) none)
   (occurs-positively?* type (types te) (or *simple-pos* none)))
 
 (defmethod occurs-positively?* (type (te recordtype) none)
@@ -4557,6 +4841,11 @@ function, tuple, or record type")
 	    value)))))
 
 (defmethod generate-coreduce-funtype-selection-value* ((te tupletype) (ste tupletype) var op codt struct type-alist)
+  (generate-coreduce-funtype-selection-tup-value*
+   (types te) (types ste) var op codt struct type-alist))
+
+(defmethod generate-coreduce-funtype-selection-value* ((te cotupletype) (ste cotupletype) var op codt struct type-alist)
+  (break "generate-coreduce-funtype-selection-value* (cotuple)")
   (generate-coreduce-funtype-selection-tup-value*
    (types te) (types ste) var op codt struct type-alist))
 
