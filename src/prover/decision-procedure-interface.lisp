@@ -280,7 +280,7 @@
     (multiple-value-bind (ics-result ics-nstate)
 	(dpi-process* 'ics expr (cdr state))
       (unless (tc-eq shostak-result ics-result)
-	(format t "~%ICS-PROBLEM: dpi-process*: shostak and ICS differ on ~a"
+	(format t "~%ICS-SHOSTAK-DIFFERENCE dpi-process*: shostak and ICS differ on ~a"
 	  expr))
       (values shostak-result (cons shostak-nstate ics-nstate)))))
 
@@ -288,7 +288,7 @@
   (let ((shostak-result (dpi-valid?* 'shostak (car state) pvs-expr))
 	(ics-result (dpi-valid?* 'ics (cdr state) pvs-expr)))
     (unless (tc-eq shostak-result ics-result)
-      (format t "~%ICS-PROBLEM: dpi-valid?* shostak and ICS differ on ~a"
+      (format t "~%ICS-SHOSTAK-DIFFERENCE dpi-valid?* shostak and ICS differ on ~a"
 	expr))
     shostak-result))
 
@@ -312,5 +312,5 @@
 	(ics-result (dpi-state-changed?* 'ics
 					 (cdr old-state) (cdr new-state))))
     (unless (eq shostak-result ics-result)
-      (format t "~%ICS-PROBLEM: dpi-state-changed?* shostak and ICS differ"))
+      (format t "~%ICS-SHOSTAK-DIFFERENCE dpi-state-changed?* shostak and ICS differ"))
     shostak-result))
