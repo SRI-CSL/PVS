@@ -213,6 +213,7 @@ Emacs session.  Note that you will still need to retypecheck your files to
 get to the same state."
   (interactive)
   (setq debug-on-error t)
+  (setq window-min-height 2)
   (when current-prefix-arg
     (let ((num (prefix-numeric-value current-prefix-arg)))
       (if (and (<= 0 num) (<= num 3))
