@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec  2 13:42:15 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Oct 30 01:33:15 1998
-;; Update Count    : 9
+;; Last Modified On: Sat Oct 31 04:06:38 1998
+;; Update Count    : 10
 ;; Status          : Beta test
 ;; 
 ;; HISTORY
@@ -201,13 +201,6 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod kind-of ((decl formula-decl)) 'formula)
 (defmethod kind-of ((decl judgement)) 'judgement)
 (defmethod kind-of ((decl conversion-decl)) 'conversion)
-
-(defmethod print-object ((prinfo proof-info) stream)
-  (if *debugging-print-object*
-      (call-next-method)
-      (format stream "<#PROOF-INFO~@[ ~a:~] ~a>"
-	(id prinfo) (if (run-date prinfo)
-			(date-string (run-date prinfo))))))
 
 (defmethod print-object ((ht ht) stream)
   (format stream "<pvs-hash-table with ~d element~:p>"
