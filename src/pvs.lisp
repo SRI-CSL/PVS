@@ -329,7 +329,8 @@
 	   (pvs-message "Must exit the evaluator first"))
 	  ((and (null theories)
 		(not forced?)
-		(valid-binfile? filename)
+		(check-binfiles filename)
+		;;(valid-binfile? filename)
 		(restore-theories filename))
 	   (let ((theories (get-theories filename)))
 	     (dolist (th theories)
@@ -550,7 +551,10 @@
   (if (null theories)
       nil
       (multiple-value-bind (imp-theories imp-names)
-	  (all-importings (car theories))
+	  (let ((*current-context* (or *current-context*
+				       (saved-context (car theories)))))
+	    (assert *current-context*)
+	    (all-importings (car theories)))
 	(all-importings-list (cdr theories)
 			     (reverse imp-theories) (reverse imp-names)))))
 
@@ -558,7 +562,10 @@
   (if (null theories)
       (values (reverse imp-theories) (reverse imp-names))
       (multiple-value-bind (i-theories i-names)
-	  (all-importings (car theories))
+	  (let ((*current-context* (or *current-context*
+				       (saved-context (car theories)))))
+	    (assert *current-context*)
+	    (all-importings (car theories)))
 	#+pvsdebug (assert (= (length i-theories) (length i-names)))
 	(let ((u-theories (union i-theories imp-theories :test #'eq))
 	      (u-names (union i-names imp-names :test #'impname-eq)))
@@ -668,6 +675,46 @@
   (and (eq (id imp1) (id imp2))
        (eq (library imp1) (library imp2))))
 
+;;; Like all-importings, but returns only the immediate importings
+(defun immediate-importings (theory &optional lib)
+  (assert (not *saving-theory*))
+  (let* ((*current-context* (or (and (not (library-datatype-or-theory?
+					   theory))
+				     (saved-context theory))
+				*current-context*))
+	 (*current-theory* (theory *current-context*))
+	 (imp-theories nil)
+	 (imp-names nil)
+	 (imm-imps (get-immediate-usings theory))
+	 (imps (if (and nil (recursive-type? theory)
+			(adt-theory theory))
+		   (let ((th1 (adt-theory theory))
+			 (th2 (adt-map-theory theory))
+			 (th3 (adt-reduce-theory theory)))
+		     (append imm-imps
+			     (list (mk-modname (id th1)))
+			     (when th2 (list (mk-modname (id th2))))
+			     (when th3 (list (mk-modname (id th3))))))
+		   imm-imps)))
+    (dolist (ith imps)
+      (let* ((ith-nolib (get-theory (id ith)))
+	     (lib (unless ith-nolib
+		    (or (library ith)
+			(and (library-datatype-or-theory? theory)
+			     (libref-to-libid (lib-ref theory))))))
+	     (itheory (or ith-nolib
+			  (and lib
+			       (get-theory* (id ith) lib))))
+	     (iname (lcopy ith 'library lib 'actuals nil 'mappings nil)))
+	(when (and itheory
+		   (generated-by itheory)
+		   (not (theory-interpretation? itheory)))
+	  (setq iname (lcopy iname 'id (generated-by itheory)))
+	  (setq itheory (get-theory* (generated-by itheory) lib)))
+	(when itheory
+	  (push itheory imp-theories)
+	  (push iname imp-names))))
+      (values imp-theories imp-names)))
 
 (defun update-parsed-file (filename file theories new-theories forced?)
   (handle-deleted-theories filename new-theories)
@@ -1674,12 +1721,6 @@
     (and theory
 	 (typechecked? theory))))
 
-(defmethod typechecked? ((theory library-theory))
-  (call-next-method))
-
-(defmethod typechecked? ((theory library-datatype))
-  (call-next-method))
-
 (defun get-theories (filename)
   (let ((fn (if (pathnamep filename)
 		(pathname-name filename)
@@ -2546,7 +2587,8 @@
 	    (unless (or *in-checker*
 			(typechecked? theory)
 			(memq theory theories))
-	      (let ((*generating-adt* nil))
+	      (let ((*generating-adt* nil)
+		    (*insert-add-decl* t))
 		(if (library theoryname)
 		    (load-imported-library (library theoryname) theoryname)
 		    (typecheck-file (filename theory))))))
