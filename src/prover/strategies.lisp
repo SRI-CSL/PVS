@@ -3,8 +3,8 @@
 ;; Author          : N. Shankar
 ;; Created On      : Thu Jan  8 15:02:25 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sat Oct 31 03:27:26 1998
-;; Update Count    : 2
+;; Last Modified On: Fri Jan 29 17:24:08 1999
+;; Update Count    : 3
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -3407,11 +3407,11 @@ See also ETA"
 	      (memq (id op) '(= < <= > >=))
 	      op))))
 
-(defun propositional-application? (fmla)
-  (and (application? fmla)
-       (name-expr? (operator fmla))
-       (eq (id (module-instance (resolution (operator fmla))))
-	   '|booleans|)))
+; (defun propositional-application? (fmla)
+;   (and (application? fmla)
+;        (name-expr? (operator fmla))
+;        (eq (id (module-instance (resolution (operator fmla))))
+; 	   '|booleans|)))
        
 
 (defun find-ineq-conjunction (fmla)
