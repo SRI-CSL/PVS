@@ -542,7 +542,8 @@
 	  (mapcar #'(lambda (ty) (unparse ty :string t)) (ptypes obj))
 	  (if (some #'fully-instantiated? (ptypes obj))
 	      (if (not (every #'fully-instantiated? (ptypes obj)))
-		  "(Some of these are not fully instantiated)")
+		  "(Some of these are not fully instantiated)"
+		  "")
 	      (if (= (length (ptypes obj)) 2)
 		  "(Neither of these is fully instantiated)"
 		  "(None of these are fully instantiated)"))))))
