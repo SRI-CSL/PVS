@@ -5,10 +5,29 @@
 (defun initial-rewrite-rules ()
   *empy-rewrite-rules*)
 
-(defdpstruct (rewrite-rule (:conc-name "RR-"))
+(defdpstruct (rewrite-rule
+	      (:conc-name "RR-")
+	      (:print-function
+	       (lambda (rr s k)
+		 (declare (ignore k))
+		 (if (rr-condition rr)
+		     (format s "<rr ~A: ~A IMPLIES ~A --> ~A>"
+		       (rr-name rr) (rr-condition rr)
+		       (rr-lhs rr) (rr-rhs rr))
+		     (format s "<rr ~A: ~A --> ~A>"
+		       (rr-name rr) (rr-lhs rr) (rr-rhs rr))))))
+  name
   lhs
   rhs
   condition)
+
+(defun print-rewrite-rule (rr s)
+  (if (rr-condition rr)
+      (format s "<rr ~A: ~A IMPLIES ~A --> ~A>"
+	(rr-name rr) (rr-condition rr)
+	(rr-lhs rr) (rr-rhs rr))
+      (format s "<rr ~A: ~A --> ~A>"
+	(rr-name rr) (rr-lhs rr) (rr-rhs rr))))
 
 (defun clr-rewrite-rules (rewrite-rules)
   (setf (rewrite-rules-rules! rewrite-rules) nil)
