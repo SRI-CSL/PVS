@@ -761,11 +761,12 @@
     (mk-resolution decl modinst rtype)))
 
 (defmethod make-resolution ((decl bind-decl) modinst &optional type)
-  (declare (ignore modinst type))
-  (let ((res (resolution decl)))
-    (if (and res (eq (declaration res) decl))
-	(copy res)
-	(call-next-method))))
+  (assert (or modinst type))
+  (mk-resolution decl
+    (or modinst (current-theory-name))
+    (if (and type modinst (not (eq modinst (current-theory-name))))
+	(subst-mod-params type modinst)
+	type)))
 
 (defun theories-of-param-alist (alist)
   (let ((theories nil))
