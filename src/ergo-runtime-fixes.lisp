@@ -709,12 +709,6 @@ with the comment so as to put it in the proper place")
 ;(defvar *flatten-uterms* nil)		; Check texify macro if this changes
 ;(defvar *flatten-new-uterms* nil)	; Check texify macro if this changes
 
-(defconstant length-ellipsis-token
-  (make-token :kind :lt :subkind :string :value "..."))
-
-(defconstant depth-ellipsis-token
-  (make-token :kind :lt :subkind :string :value ".."))
-
 (defmacro unp-rept (as body each-iter-slot bp-ws)
   `(let ((*pat-nesting* (1+ *pat-nesting*))
 	 (*current-print-length* 1))
