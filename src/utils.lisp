@@ -669,9 +669,16 @@
 			prev-decls))
 	 (*current-context*
 	  (if (or (not prev-imp) (saved-context prev-imp))
-	      (copy-context (if prev-imp
-				(saved-context prev-imp)
-				*prelude-context*)
+	      (copy-context (cond (prev-imp
+				   (saved-context prev-imp))
+				  ((from-prelude? decl)
+				   (let ((ptheories
+					  (cdr (memq (module decl)
+						     (reverse
+						      *prelude-theories*)))))
+				     (saved-context
+				      (find-if #'module? ptheories))))
+				  (t *prelude-context*))
 			    (module decl)
 			    (reverse rem-decls)
 			    (or (car rem-decls) decl))
