@@ -15,6 +15,8 @@ sources = language.tex ../makebnf.sty ../pvstex.tex intro.tex lexical.tex \
           conversions.tex libraries.tex tables.tex \
           ${bnf-sources} ${alltt-sources}
 
+grammar-tables = keywords.tex operator-table.tex opsym-table.tex
+
 all : language.dvi language.ps language.ps.gz language.pdf
 
 keywords.tex : pvs-doc.el ${pvs-grammar-file}
@@ -26,7 +28,7 @@ operator-table.tex : pvs-doc.el ${pvs-grammar-file}
 opsym-table.tex : pvs-doc.el ${pvs-grammar-file}
 	emacs -batch -q -l pvs-doc.el -f pvs-opsym-table-6 > opsym-table.tex 2>&1 
 
-language.dvi : ${sources} keywords.tex
+language.dvi : ${sources} ${grammar-tables}
 	latex $<;
 	makeindex -c language.idx;
 	bibtex language || echo;
@@ -39,7 +41,7 @@ language.ps.gz : language.ps
 language.ps : language.dvi
 	dvips -o $@ $<
 
-language.pdf : ${sources} keywords.tex
+language.pdf : ${sources} ${grammar-tables}
 	pdflatex $<
 
 .PHONY: clean
