@@ -556,7 +556,8 @@ level replacements."
   (beta-step fnums rewrite-flag let-reduce?)
   "Beta-reduces chosen formulas. If REWRITE-FLAG is LR(RL), then
 left(right)-hand-side is left undisturbed for rewriting using
-REWRITE and REWRITE-LEMMA.  Example reduction steps are:
+REWRITE and REWRITE-LEMMA.  If LET-REDUCE? is t, then LET expressions
+are reduced.  Example reduction steps are:
  (LAMBDA x, y: x + y)(2, 3) to 2 + 3
  (LET x := 1, y := 2 in x + y) to 1 + 2
  b((# a:=1, b:= 2 #)) to 2
@@ -609,7 +610,9 @@ effect:
          RECORD? set to T, PVS tries to show that the conjunction of these
          disjunctions is unsatisfiable using the ground prover.  This step
          can sometimes be expensive and fruitless, and setting
-         IGNORE-PROVER-OUTPUT? to T, cases this step to be skipped." 
+         IGNORE-PROVER-OUTPUT? to T, cases this step to be skipped.
+ LET-REDUCE?: LET expressions are normally beta-reduced, unless LET-REDUCE?
+          is NIL."
   "~%Simplifying with decision procedures,")
 
 (addrule 'auto-rewrite () (&rest names)
