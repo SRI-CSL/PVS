@@ -701,7 +701,7 @@ and using your favorite mailer, copy the files to the new directory with
 extensions corresponding to the message order, e.g., mail.01, mail.02,
 etc.  If there is just one file, leave the extension off.  Then invoke
 M-x rmail-pvs-files and give the root file name when prompted (e.g., mail)."
-  (interactive "fRoot name of PVS mail files: ")
+  (interactive "FRoot name of PVS mail files: ")
   (let ((default-directory (pathname-directory file)))
     (shell-command (format "untarmail %s*"
 		       (file-name-nondirectory file)))))
