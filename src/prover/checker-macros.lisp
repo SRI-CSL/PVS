@@ -576,6 +576,17 @@
 	 (restore-old-cs ,new-cong-state))
        (values-list ,resultsym))))
 
+(defmacro copying-cong-state (((new-cong-state old-cong-state)
+			       (new-alists old-alists))
+			      &body body)
+  (let ((resultsym (gensym)))
+    `(let ((,new-alists (copy ,old-alists))
+	   (,new-cong-state (copy-cs ,old-cong-state))
+	   (,resultsym nil))
+       (setq ,resultsym
+	     (multiple-value-list (progn ,@body)))
+       (values-list ,resultsym))))
+
 (defmacro protecting-cong-state (((new-cong-state old-cong-state)
 				  (new-alists old-alists))
 				 &body body)
