@@ -584,13 +584,12 @@ required a context.")
 (defmethod compatible-predicates (types expected ex &optional incs)
   (if (null types)
       incs
-      (compatible-predicates
-       (cdr types) expected ex
-       (let ((npreds (compatible-preds (car types) expected ex)))
-	 (if incs
-	     (or (nintersection incs npreds :test #'tc-eq)
-		 npreds)
-	     npreds)))))
+      (let ((npreds (compatible-preds (car types) expected ex)))
+	(when npreds
+	  (compatible-predicates
+	   (cdr types) expected ex
+	   (or (nintersection incs npreds :test #'tc-eq)
+	       npreds))))))
 
 
 (defun find-funtype-conversion (type expected expr)
