@@ -25,10 +25,12 @@
 (declaim (special *dp-changed* *alists* *dp-state*
 		  *top-alists* *top-dp-state*))
 
+(defvar *print-expanded-dpinfo* t)
+
 (defmethod print-object ((alists dpinfo) stream)
-  (if *debugging-print-object*
+  (if (or (not *print-expanded-dpinfo*) *debugging-print-object*)
       (call-next-method)
-      (format stream "~a" (dpinfo-findalist alists))))
+      (format stream "<#dpinfo:~a>" (dpinfo-findalist alists))))
 
 (defun new-ground ()
   (setq *newdc* t
@@ -44,6 +46,10 @@
   (setq *newdc* nil
 	*new-ground?* t
 	*old-ground?* t))
+
+(defun dp::restore ()
+  (in-package pvs)
+  (restore))
 
 (defmacro nprotecting-cong-state (((new-cong-state old-cong-state)
 				  (new-alists old-alists))
@@ -106,11 +112,11 @@
    ((eq expr dp::*false*) *false*)
    (t expr)))
 
-;(defun translate-from-prove (expr)
-;  (cond
-;   ((eq expr 'true) 'true)
-;   ((eq expr 'false) 'false)
-;   (t expr)))
+(defun translate-from-prove (expr)
+  (cond
+   ((eq expr 'true) 'true)
+   ((eq expr 'false) 'false)
+   (t expr)))
 
 (defvar *dp-print-incompatible-warning* t)
 
@@ -169,13 +175,22 @@
   (when *new-ground?*
     (dp::npop-cong-state new-cs)))
 
-(defun init-dp ()
+(defun init-dp (&optional strong)
   (when *new-ground?*
-    (dp::init-dp-0)))
+    (dp::init-dp-0 strong)))
+
+(defun compatible-dp-results (new-result old-result)
+  (or (tc-eq new-result old-result)
+      (and (eq new-result dp::*true*) (eq old-result TRUE))
+      (and (eq new-result dp::*false*) (eq old-result FALSE))
+      (and (or (listp old-result)
+	       (typep old-result 'syntax))
+	   (null new-result))))
 
 (defun compatible-dp-results (new-result old-result)
   (or (tc-eq new-result old-result)
       (and (true-p new-result) (true-p old-result))
+      (and (true-p new-result) (null old-result))
       (and (false-p new-result) (false-p old-result))
       (and 
 	   (or (listp old-result)
@@ -185,66 +200,13 @@
 	   (null new-result))))
 
 (defvar *init-dp-state*
-  (when *new-ground?*
+  (when nil
     (init-cong-state)))
 
-(defun init-dc ()
-  (init-dp)
+(defun init-dc (&optional strong)
+  (init-dp strong)
   (dp::return-all-cong-states dp::*made-cong-states*)
   (setq *init-dp-state* (init-cong-state))
+  (reset-translate-from-dc)
   (reset-translate-to-dc))
 
-(defun sigma (term)
-  (cond
-   ((symbolp term) term)
-   ((qnumberp term) term)
-   ;; (SJ 5/14/86) added following clause.
-   ((and *canon-beta-reduce-on* (isapplylambda term))
-    (canon-beta-reduce term))
-   ;; JMR 5/30/90.  Why was following clause missing from Stan's code? FIXME
-   ((and (boolp term)
-	 (is-apply-n-x (funsym term))
-	 (memq (arg1 term)
-	       (append *rational-pred*
-		       *real-pred*
-		       *integer-pred*)))
-    TRUE)
-   ((is-apply-n-x (funsym term)) (sigapply term))
-   ((is-tupsel-n (funsym term)) (sigtupsel term))
-   (t (case (funsym term)
-	(PLUS       (sigplus term))
-	(TIMES      (sigtimes term))
-	(DIVIDE     (sigdivide term))
-	(MINUS      (sigminus term))
-	(DIFFERENCE (sigdifference term))
-;	(TUPSEL     (sigtupsel term))
-;	(ARRAYSEL   (sigapply term))
-	(UPDATE     (sigupdate term))
-;	(ARRAYREST  (sigarrayrest term))
-	(FLOOR      (sigfloor term))
-	(t          term)
-      ))))
-
-;(defun dp::dp-changed (old-cong-state new-cong-state)
-;  (break "Should not reach here.~%It should be safe to continue, but please report this to pvs-bugs@csl.sri.com."))
-;
-;(defun dp::invoke-process (eqn cong-state)
-;  (break "Should not reach here.~%It should be safe to continue, but please report this to pvs-bugs@csl.sri.com."))
-;
-;(defun dp::null-single-cong-state ()
-;  (break "Should not reach here.~%It should be safe to continue, but please report this to pvs-bugs@csl.sri.com."))
-;
-;(defun dp::push-new-cong-state (cong-state)
-;  (break "Should not reach here.~%It should be safe to continue, but please report this to pvs-bugs@csl.sri.com."))
-;
-;(defun dp::npop-cong-state (cong-state)
-;  (break "Should not reach here.~%It should be safe to continue, but please report this to pvs-bugs@csl.sri.com."))
-;
-;(defun dp::init-dp-0 ()
-;  (break "Should not reach here.~%It should be safe to continue, but please report this to pvs-bugs@csl.sri.com."))
-;
-;(defun dp::return-all-cong-states (made-cong-states)
-;  (break "Should not reach here.~%It should be safe to continue, but please report this to pvs-bugs@csl.sri.com."))
-;
-;(defun dp::copy-cong-state (cong-state)
-;  (break "Should not reach here.~%It should be safe to continue, but please report this to pvs-bugs@csl.sri.com."))

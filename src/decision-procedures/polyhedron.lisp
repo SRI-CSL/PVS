@@ -20,6 +20,13 @@
 	  do (matrix_set constraint 0 i 0))
     constraint))
 
+(defun make-empty-constraints (nb-constraints max-ineq-vars)
+  (let ((constraint (matrix_alloc nb-constraints (+ max-ineq-vars 3))))
+    (loop for i from 0 below nb-constraints do
+	  (loop for j from 0 below (+ max-ineq-vars 3)
+		do (matrix_set constraint i j 0)))
+    constraint))
+
 (defun make-epsilon-constraint (epsilon max-ineq-vars)
   (let ((constraint (make-empty-constraint max-ineq-vars)))
     (matrix_set constraint 0 0 1) ;;; For inequality
@@ -33,7 +40,7 @@
     (prog1
 	(domainaddconstraints pol epsilon-constraint max-rays)
       (matrix_free epsilon-constraint)
-      (matrix_free pol))))
+      (domain_free pol))))
 
 (defun make-epsilon-leq-0-polyhedron (max-ineq-vars max-rays)
   (let ((constraint (make-empty-constraint max-ineq-vars)))
@@ -121,6 +128,7 @@
 			     (universal-polyhedral-domain)
 			     neq-constraint max-rays))
 	   (new-domain (DomainDifference old-domain neq-polyhedron max-rays)))
+      (when (= (pol_status) 1) (break))
       ;(break)
       (cond
        ((= (mypolyhedronincludes epsilon-leq-0-poly new-domain) 1)
@@ -129,16 +137,16 @@
 	(setq *contradiction* t)
 	(setf (polyhedral-structure-polyhedron poly-s)
 	      new-domain)
-	(setf (polyhedral-structure-input-eqns poly-s)
-	      (cons neq (polyhedral-structure-input-eqns poly-s)))
+	(setf (polyhedral-structure-input-neqs poly-s)
+	      (cons neq (polyhedral-structure-input-neqs poly-s)))
 	(list *false*))
        ((= (mydomainincludes new-domain old-domain) 1)
 	(list *true*))
        (t (setf (polyhedral-structure-polyhedron poly-s)
 		new-domain)
-	  (setf (polyhedral-structure-input-eqns poly-s)
+	  (setf (polyhedral-structure-input-neqs poly-s)
 		(cons neq
-		      (polyhedral-structure-input-eqns poly-s)))
+		      (polyhedral-structure-input-neqs poly-s)))
 	  (setq *dp-changed* t)
 	  (let* ((old-equalities (polyhedral-structure-equalities poly-s))
 		 (new-equalities (polyhedral-structure-to-equalities
@@ -170,12 +178,26 @@
 						  ineq-var-to-index-hash))
 	   (old-polyhedron (polyhedral-structure-polyhedron
 			    poly-s))
+;;;	   (new-polyhedron (loop for np =
+;;;                                 (mydomainaddconstraints
+;;;                                  old-polyhedron ineq-constraint max-rays)
+;;;                                 for ps = (pol_status)
+;;;                                 for max-rays = (+ max-rays *max-rays*)
+;;;                                 until (= ps 0)
+;;;                                 finally (return np)))
 	   (new-polyhedron (mydomainaddconstraints
 			    old-polyhedron ineq-constraint max-rays)))
+      (setf (polyhedral-structure-max-rays poly-s)
+	    max-rays)
+      ;(break)
       ;;(when (eq eqn *beqn*) (break))
       (cond
+      ((= (pol_status) 1) (setq new-polyhedron old-polyhedron)
+       (setf (polyhedral-structure-aux-input-eqns poly-s)
+		(cons eqn (polyhedral-structure-aux-input-eqns poly-s)))
+       (setq *dp-changed* t)
+       (list (mk-equality eqn *true*)))
        ((= (mydomainincludes epsilon-leq-0-poly new-polyhedron) 1)
-	;(break)
 	(setq *dp-changed* t)
 	(setq *contradiction* t)
 	(setf (polyhedral-structure-polyhedron poly-s)
@@ -198,6 +220,50 @@
 	    (cons (mk-equality eqn *true*)
 		  brand-new-equalities)))))))
 
+(defun simplify-ineq-constraint (eqn cong-state)
+  (declare (special *dp-changed*))
+  (declare (special *contradiction*))
+  (let ((diff (make-ineq-to-difference eqn))
+	(strict (ineq-strict? eqn))
+	(predicate (funsym eqn))
+	(poly-s (polyhedral-structure cong-state)))
+    (if (all-vars-in-poly diff poly-s)
+	(let* ((max-ineq-vars (polyhedral-structure-max-vars
+			       poly-s))
+	       (ineq-var-to-index-hash
+		(polyhedral-structure-ineq-var-to-index-hash poly-s))
+	       (ineq-var-index-array
+		(polyhedral-structure-ineq-var-index-array poly-s))
+	       (max-rays (polyhedral-structure-max-rays
+			  poly-s))
+	       (epsilon-leq-0-poly (polyhedral-structure-epsilon-poly
+				    poly-s))
+	       (ineq-constraint (make-diff-constraint diff strict max-ineq-vars
+						      ineq-var-to-index-hash))
+	       (old-polyhedron (polyhedral-structure-polyhedron
+				poly-s))
+;;;	   (new-polyhedron (loop for np =
+;;;                                 (mydomainaddconstraints
+;;;                                  old-polyhedron ineq-constraint max-rays)
+;;;                                 for ps = (pol_status)
+;;;                                 for max-rays = (+ max-rays *max-rays*)
+;;;                                 until (= ps 0)
+;;;                                 finally (return np)))
+	       (ineq-polyhedron (constraints2polyhedron ineq-constraint
+							max-rays)))
+	  ;;(when (eq eqn *beqn*) (break))
+	  (cond
+	   ((= (mydomainincludes epsilon-leq-0-poly
+				 (domainintersection old-polyhedron
+						     ineq-polyhedron
+						     max-rays))
+	       1)
+	    *false*)
+	   ((= (mydomainincludes old-polyhedron ineq-polyhedron) 1)
+	    *true*)
+	   (t eqn)))
+	eqn)))
+
 (defun add-constraint (constraint cong-state)
   (domainaddconstraints
    (polyhedral-structure-polyhedron (polyhedral-structure cong-state))
@@ -213,23 +279,25 @@
     (when strict (matrix_set constraint 0 1 -1))
     constraint))
 
-(defun matrix-set-coef-from-term (term constraint &optional (mult 1))
-  (let ((coef (* (constant-id (term-coef term)) mult))
-	(var (term-var term)))
-    (if (eq var *one*)
-	(matrix_set constraint 0 (+ *max-ineq-vars* 2)
-		    (* (constant-id term) mult))
-	(matrix_set constraint 0 (1+ (ineq-constant-index var)) coef))
-    constraint))
-
-(defun matrix-set-coef-from-node (term constraint ineq-var-to-index-hash
+(defun matrix-set-coef-from-term (term constraint max-ineq-vars
 				       &optional (mult 1))
   (let ((coef (* (constant-id (term-coef term)) mult))
 	(var (term-var term)))
     (if (eq var *one*)
-	(matrix_set constraint 0 (+ *max-ineq-vars* 2)
+	(matrix_set constraint 0 (+ max-ineq-vars 2)
 		    (* (constant-id term) mult))
-	(matrix_set constraint 0 (1+ (dp-gethash var ineq-var-to-index-hash))
+	(matrix_set constraint 0 (1+ (ineq-constant-index var)) coef))
+    constraint))
+
+(defun matrix-set-coef-from-node (term constraint max-ineq-vars
+				    ineq-var-to-index-hash
+				    &optional (i 0) (mult 1))
+  (let ((coef (* (constant-id (term-coef term)) mult))
+	(var (term-var term)))
+    (if (eq var *one*)
+	(matrix_set constraint i (+ max-ineq-vars 2)
+		    (* (constant-id term) mult))
+	(matrix_set constraint i (1+ (dp-gethash var ineq-var-to-index-hash))
 		    coef))
     constraint))
 
@@ -238,8 +306,8 @@
 	(dif (sigdifference (mk-difference (lhs eqn) (rhs eqn)))))
     (matrix_set constraint 0 0 0)
     (if (plus-p dif)
-	(matrix-set-coef-from-plus-dif dif constraint)
-	(matrix-set-coef-from-term dif constraint))
+	(matrix-set-coef-from-plus-dif dif constraint max-ineq-vars)
+	(matrix-set-coef-from-term dif constraint max-ineq-vars))
     constraint))
 
 (defun add-ineq-var (var poly-s)
@@ -259,6 +327,21 @@
 		  new-ineq-var-count)
 	    new-ineq-var)
       new-ineq-var)))
+
+(defun all-vars-in-poly (diff poly-s)
+  (if (plus-p diff)
+      (let ((missing-var nil))
+	(labels ((check-var
+		  (var poly-s)
+		  (unless (or missing-var
+			   (dp-gethash
+			    var
+			    (polyhedral-structure-ineq-var-to-index-hash
+			     poly-s)))
+		    (setq missing-var t))))
+	  (map-funargs #'check-var diff poly-s))
+	(not missing-var))
+      (dp-gethash diff (polyhedral-structure-ineq-var-to-index-hash poly-s))))
 
 (defun add-to-index-from-diff-terms (diff poly-s)
   (if (plus-p diff)
@@ -286,9 +369,10 @@
     (matrix_set constraint 0 0 1)
     (when strict (matrix_set constraint 0 1 -1))
     (if (plus-p diff)
-	(matrix-set-coef-from-node-plus-dif diff constraint
+	(matrix-set-coef-from-node-plus-dif diff constraint max-ineq-vars
 					    ineq-var-to-index-hash)
-	(matrix-set-coef-from-node diff constraint ineq-var-to-index-hash))
+	(matrix-set-coef-from-node diff constraint max-ineq-vars
+				   ineq-var-to-index-hash))
     constraint))
 
 (defun make-diff-neq-constraint (diff max-ineq-vars ineq-var-to-index-hash)
@@ -301,15 +385,48 @@
 (defun make-ineq-constraint (eqn poly-s)
   (let ((constraint (make-empty-constraint max-ineq-vars))
 	(dif (make-ineq-to-difference eqn))
+	(max-ineq-vars
+	 (polyhedral-structure-max-vars poly-s))
+	(ineq-var-to-index-hash
+	 (polyhedral-structure-ineq-var-to-index-hash poly-s))
 	(strict (ineq-strict? eqn)))
     (if (eq (funsym eqn) *=*)
 	(matrix_set constraint 0 0 0)
 	(matrix_set constraint 0 0 1))
     (when strict (matrix_set constraint 0 1 -1))
     (if (plus-p dif)
-	(matrix-set-coef-from-node-plus-dif dif constraint)
-	(matrix-set-coef-from-node dif constraint))
+	(matrix-set-coef-from-node-plus-dif dif constraint max-ineq-vars
+					    ineq-var-to-index-hash)
+	(matrix-set-coef-from-node dif constraint max-ineq-vars
+				   ineq-var-to-index-hash))
     constraint))
+
+(defun make-ineq-constraints (eqns poly-s)
+  (let ((constraint (make-empty-constraints
+		     (length eqns)
+		     (polyhedral-structure-max-vars poly-s))))
+    (loop for i from 0 below (length eqns)
+	  for eqn in eqns
+	  do (set-ineq-constraint i eqn constraint poly-s))
+    constraint))
+
+(defun set-ineq-constraint (i eqn constraint poly-s)
+  (let ((dif (make-ineq-to-difference eqn))
+	(max-ineq-vars (polyhedral-structure-max-vars poly-s))
+	(ineq-var-to-index-hash
+	 (polyhedral-structure-ineq-var-to-index-hash poly-s))
+	(strict (ineq-strict? eqn)))
+    (if (eq (funsym eqn) *=*)
+	(matrix_set constraint i 0 0)
+	(matrix_set constraint i 0 1))
+    (when strict (matrix_set constraint i 1 -1))
+    (if (plus-p dif)
+	(matrix-set-coef-from-node-plus-dif dif constraint max-ineq-vars
+					    ineq-var-to-index-hash i)
+	(matrix-set-coef-from-node dif constraint max-ineq-vars
+				   ineq-var-to-index-hash i))
+    constraint))
+    
 
 (defun make-ineq-to-difference (eqn)
   (if (member (funsym eqn) (list *lessp* *lesseqp*) :test #'eq)
@@ -328,15 +445,17 @@
 (defun plus-denoms (expr)
   (map-funargs-list #'number-term-denominator expr))
 
-(defun matrix-set-coef-from-plus-dif (dif constraint)
+(defun matrix-set-coef-from-plus-dif (dif constraint max-ineq-vars i)
   (let ((lcm (apply #'lcm (plus-denoms dif))))
-    (map-funargs #'matrix-set-coef-from-term dif constraint lcm)))
+    (map-funargs #'matrix-set-coef-from-term dif constraint max-ineq-vars
+		 lcm)))
 
-(defun matrix-set-coef-from-node-plus-dif (dif constraint
-					       ineq-var-to-index-hash)
+(defun matrix-set-coef-from-node-plus-dif (dif constraint max-ineq-vars
+					     ineq-var-to-index-hash
+					     &optional (i 0))
   (let ((lcm (apply #'lcm (plus-denoms dif))))
-    (map-funargs #'matrix-set-coef-from-node dif constraint
-		 ineq-var-to-index-hash lcm)))
+    (map-funargs #'matrix-set-coef-from-node dif constraint max-ineq-vars
+		 ineq-var-to-index-hash i lcm)))
   
 (defun make-diagonal-matrix (max-vars)
   (let ((dimension (+ 2 max-vars)))
@@ -356,6 +475,9 @@
 
 (defun initial-projection-matrix ()
   *initial-projection-matrix*)
+
+(defun extend-projection-matrix (max-vars)
+  (make-diagonal-matrix (1+ max-vars)))
 
 (defun polyhedral-structure-to-equations (poly-s cong-state)
   (when (= (polyhedron-next (polyhedral-structure-polyhedron poly-s)) 0)
@@ -454,6 +576,7 @@
 			  (polyhedral-structure-polyhedron poly-s)
 			  new-max-vars
 			  max-rays)))
+    ;(break)
     (setf (polyhedral-structure-max-vars poly-s) new-max-vars
 	  (polyhedral-structure-projection-matrix poly-s) new-projection-matrix
 	  (polyhedral-structure-ineq-var-index-array poly-s) new-index-array

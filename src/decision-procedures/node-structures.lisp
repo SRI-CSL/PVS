@@ -33,6 +33,7 @@
   
 
 (defdpstruct node
+  (interpreted? nil :type boolean)
   (initial-type nil :type symbol)
   (type initial-type :type symbol)
   (external-info nil :type list)
@@ -63,6 +64,21 @@
 
 (defun print-application (a s)
   (format s "~A" (array-to-list (application-arguments a))))
+
+(defmacro defdpfield (name)
+  (let ((accessor (intern (concatenate 'string "NODE-" (string name))))
+	(setter (intern (concatenate 'string ".INV-NODE-" (string name))))
+	(key (intern name :keyword)))
+    `(progn
+       (defun ,accessor (node) (cdr (assoc ,key (node-external-info node))))
+       (progn (defun ,setter (node value)
+		(let* ((external-info (node-external-info node))
+		       (item (assoc ,key external-info)))
+		  (if item
+		      (setf (cdr item) value)
+		      (setf (node-external-info node)
+			    (acons ,key value external-info)))))
+	      (defsetf ,accessor ,setter)))))
 
 (defun array-to-list (array)
   (declare (type simple-vector array))
@@ -98,17 +114,17 @@
 		    (dp-eq-sxhash args))))
     result))
 
-(defvar *pvs-hash*)
+(defvar *pvs-hash* nil)
 
 
 (eval-when (compile load eval)
   ;(setq pvs::*fast-hash-copy* nil)
-  #+allegro-v4.3(setq *pvs-hash* nil)
-  #-allegro-v4.3(setq *pvs-hash* t))
+  #+(or allegro-v4.3 allegro-v5.0) (setq *pvs-hash* nil)
+  #-(or allegro-v4.3 allegro-v5.0) (setq *pvs-hash* t))
 
 (defmacro dp-make-hash-table (&rest args)
   (if *pvs-hash*
-      `(pvs::make-pvs-hash-table ,@(subst ':hashfn ':hash-function args))
+      `(make-hash-table ,@(subst ':hashfn ':hash-function args))
       `(make-hash-table ,@args)))
 
 (defmacro dp-make-eq-hash-table ()
@@ -145,7 +161,11 @@
 
 (defun mk-term-array (arg-array &optional (type nil))
   (let ((hashed-term (dp-gethash arg-array *term-hash*)))
-    (or hashed-term; (break)
+    (if hashed-term
+	(if type
+	    (progn (setf (node-type hashed-term) type)
+		   hashed-term)
+	    hashed-term)
 	(setf (dp-gethash arg-array *term-hash*)
 	      (mk-term* arg-array type)))))
 
@@ -158,7 +178,11 @@
 
 (defun mk-constant (id &optional (type nil))
   (let ((hashed-constant (dp-gethash id *term-hash*)))
-    (or hashed-constant
+    (if hashed-constant
+	(if type
+	    (progn (setf (node-type hashed-constant) type)
+		   hashed-constant)
+	    hashed-constant)
 	(setf (dp-gethash id *term-hash*)
 	      (mk-constant* id type)))))
 
@@ -171,7 +195,11 @@
 
 (defun mk-variable (id &optional (type nil))
   (let ((hashed-variable (dp-gethash id *term-hash*)))
-    (or hashed-variable
+    (if hashed-variable
+	(if type
+	    (progn (setf (node-type hashed-variable) type)
+		   hashed-variable)
+	    hashed-variable)
 	(setf (dp-gethash id *term-hash*)
 	      (mk-variable* id type)))))
 
@@ -181,6 +209,17 @@
 					:initial-type type
 					:id id)))
     new-variable))
+
+(defun mk-interpreted-constant (sym &optional type)
+  (let ((result (mk-constant sym type)))
+    (setf (node-interpreted? result) t)
+    result))
+
+(defun lisp-to-dp (list)
+  (cond
+   ((consp list)
+    (mk-term (loop for l in list collect (lisp-to-dp l))))
+   (t (mk-constant list))))
 
 (defmacro arity (application)
   `(1- (length (the simple-vector (application-arguments ,application)))))
@@ -265,6 +304,7 @@
 (defun mk-predicate-sym (sym)
   (let ((result (mk-constant sym)))
     (setf (node-type result) 'predicate)
+    (setf (node-interpreted? result) t)
     result))
 
 (defvar *=* (mk-predicate-sym '=))
@@ -295,6 +335,7 @@
   (let ((result (mk-constant sym)))
     (setf (node-type result)
 	  'arith-op)
+    (setf (node-interpreted? result) t)
     result))
 
 (defun arith-op-p (constant)
@@ -319,6 +360,7 @@
   (let ((result (mk-constant sym)))
     (setf (node-type result)
 	  'arith-pred)
+    (setf (node-interpreted? result) t)
     result))
 
 (defvar *lesseqp* (mk-arith-pred 'lesseqp))
@@ -350,8 +392,13 @@
 (defvar *not* (mk-predicate-sym 'not))
 (defvar *nequal* (mk-predicate-sym 'nequal))
 
+(defvar *and* (mk-predicate-sym 'and))
+(defvar *or* (mk-predicate-sym 'or))
+
+
 (defvar *preds*
-  (list *not* *nequal* *lesseqp* *lessp* *greaterp* *greatereqp*))
+  (list *not* *and* *or* *nequal*
+	*lesseqp* *lessp* *greaterp* *greatereqp*))
 
 (defun bool-p (term)
   (declare (type node term))
@@ -396,6 +443,32 @@
   (and (application-p term)
        (eq (funsym (the application term)) *nequal*)))
 
+(defvar *if* (mk-interpreted-constant 'if))
+
+(defun mk-if-then-else (cond then else)
+  (mk-term (list *IF* cond then else)))
+
+(defun if-p (term)
+  (and (application-p term)
+       (eq (funsym term) *if*)))
+
+(defun if-cond (term)
+  (arg 1 term))
+
+(defun if-then (term)
+  (arg 2 term))
+
+(defun if-else (term)
+  (arg 3 term))
+
+(defun and-p (term)
+  (and (application-p term)
+       (eq (funsym term) *and*)))
+
+(defun or-p (term)
+  (and (application-p term)
+       (eq (funsym term) *or*)))
+
 (defun dp-numberp (term)
   (declare (type node term))
   (and (constant-p term)
@@ -421,6 +494,7 @@
   (let ((result (mk-constant sym)))
     (setf (node-type result)
 	  'array-op)
+    (setf (node-interpreted? result) t)
     result))
 
 (defun array-op-p (constant)
@@ -429,17 +503,33 @@
 
 (defvar *update* (mk-array-operator 'update))
 
-(defvar *tuple* (mk-constant 'tuple 'tuple-op))
+(defvar *tuple* (mk-interpreted-constant 'tuple 'tuple-op))
 
 (defun tuple-op-p (constant)
   (declare (type node constant))
   (eq (node-type constant) 'tuple-op))
 
-(defvar *record* (mk-constant 'record 'record-op))
+(defvar *record* (mk-interpreted-constant 'record 'record-op))
 
 (defun record-op-p (constant)
   (declare (type node constant))
   (eq (node-type constant) 'record-op))
+
+(defvar *project* (mk-interpreted-constant 'project 'project-op))
+
+(defun project-op-p (constant)
+  (declare (type node constant))
+  (eq (node-type constant) 'project-op))
+
+(defvar *th-app* (mk-interpreted-constant 'th-app 'th-app-op))
+
+(defun th-app-op-p (constant)
+  (declare (type node constant))
+  (eq (node-type constant) 'th-app-op))
+
+(defun th-app-p (term)
+  (and (application-p term)
+       (th-app-op-p (funsym term))))
 
 (defvar *print-polyhedron* nil)
 
@@ -464,6 +554,9 @@
   (epsilon-poly (initial-epsilon-poly) :type integer)
   (polyhedron (universal-polyhedral-domain) :type integer)
   (input-eqns nil :type list)
+  (input-neqs nil :type list)
+  (aux-polyhedrons nil :type list)
+  (aux-input-eqns nil :type list)
   (equalities nil :type list))
 
 (defun copy-hash-table (new-hash-table old-hash-table)
@@ -496,17 +589,76 @@
 	(polyhedral-structure-projection-matrix old-poly-s))
   (copy-hash-table (polyhedral-structure-ineq-var-to-index-hash new-poly-s)
 		   (polyhedral-structure-ineq-var-to-index-hash old-poly-s))
-  (copy-array (polyhedral-structure-ineq-var-index-array new-poly-s)
-	      (polyhedral-structure-ineq-var-index-array old-poly-s))
+  (setf (polyhedral-structure-ineq-var-index-array new-poly-s)
+	(copy-array (polyhedral-structure-ineq-var-index-array new-poly-s)
+		    (polyhedral-structure-ineq-var-index-array old-poly-s)))
   (setf (polyhedral-structure-epsilon-poly new-poly-s)
 	(polyhedral-structure-epsilon-poly old-poly-s))
   (setf (polyhedral-structure-polyhedron new-poly-s)
 	(polyhedral-structure-polyhedron old-poly-s))
+  (setf (polyhedral-structure-aux-polyhedrons new-poly-s)
+	(polyhedral-structure-aux-polyhedrons old-poly-s))
   (setf (polyhedral-structure-input-eqns new-poly-s)
 	(polyhedral-structure-input-eqns old-poly-s))
+  (setf (polyhedral-structure-aux-input-eqns new-poly-s)
+	(polyhedral-structure-aux-input-eqns old-poly-s))
   (setf (polyhedral-structure-equalities new-poly-s)
 	(polyhedral-structure-equalities old-poly-s))
+  ;(break)
   new-poly-s)
+
+(defdpstruct (fourier-motzkin
+	      (:print-function
+	       (lambda (ps s k)
+		 (declare (ignore k))
+		 (if *print-polyhedron*
+		     (domain_print (polyhedral-structure-polyhedron ps))
+		     (format s "<~A slack variables, ~A dimension>"
+		       (polyhedral-structure-ineq-var-count ps)
+		       (polyhedron-dimension
+			(polyhedral-structure-polyhedron ps)))))))
+  (max-vars *max-ineq-vars* :type fixnum)
+  (ineq-var-count 0 :type fixnum)
+  (ineq-var-to-index-hash (dp-make-eq-hash-table)
+			  :type hash-table)
+  (ineq-var-index-array (make-ineq-var-index-array *max-ineq-vars*)
+			:type array)
+  (ineq-vars nil :type list)
+  (use (dp-make-eq-hash-table) :type hash-table)
+  (input-eqns nil :type list)
+  (input-neqs nil :type list)
+  (inequalities nil :type list)
+  (equalities nil :type list))
+
+(defun copy-fourier-motzkin (new-f-m old-f-m)
+  (setf (fourier-motzkin-max-vars new-f-m)
+	(fourier-motzkin-max-vars old-f-m))
+  (setf (fourier-motzkin-ineq-var-count new-f-m)
+	(fourier-motzkin-ineq-var-count old-f-m))
+  (copy-hash-table (fourier-motzkin-ineq-var-to-index-hash new-f-m)
+		   (fourier-motzkin-ineq-var-to-index-hash old-f-m))
+  (setf (fourier-motzkin-ineq-var-index-array new-f-m)
+	(copy-array (fourier-motzkin-ineq-var-index-array new-f-m)
+		    (fourier-motzkin-ineq-var-index-array old-f-m)))
+  (setf (fourier-motzkin-input-eqns new-f-m)
+	(fourier-motzkin-input-eqns old-f-m))
+  (setf (fourier-motzkin-inequalities new-f-m)
+	(fourier-motzkin-inequalities old-f-m))
+  (setf (fourier-motzkin-equalities new-f-m)
+	(fourier-motzkin-equalities old-f-m))
+  ;(break)
+  new-f-m)
+
+(defun initial-fourier-motzkin ()
+  (make-fourier-motzkin))
+
+(defun clr-fourier-motzkin (f-m)
+  (clrhash (fourier-motzkin-ineq-var-to-index-hash f-m))
+  (setf (fourier-motzkin-input-eqns f-m) nil)
+  (setf (fourier-motzkin-inequalities f-m) nil)
+  (setf (fourier-motzkin-equalities f-m) nil)
+  ;(break)
+  f-m)
 
 (defdpstruct (rewrite-rules
 	      (:print-function
@@ -517,13 +669,51 @@
 		      (length (rewrite-rules-rules! rr)))))))
   (rules nil)
   (rules! nil)
-  (hash (dp-make-eq-hash-table)))
+  (hash (dp-make-eq-hash-table))
+  (index-hash (dp-make-eq-hash-table)))
+
+(defun copy-rewrite-rules-and-hash (new-rewrite-rules old-rewrite-rules)
+  (setf (rewrite-rules-rules new-rewrite-rules)
+	(rewrite-rules-rules old-rewrite-rules))
+  (setf (rewrite-rules-rules! new-rewrite-rules)
+	(rewrite-rules-rules! old-rewrite-rules))
+  (copy-hash-table (rewrite-rules-index-hash new-rewrite-rules)
+		   (rewrite-rules-index-hash old-rewrite-rules))
+  new-rewrite-rules)
+
+(defdpstruct (forward-chains)
+  (orig-rules nil :type list)
+  (partial-rules nil :type list)
+  (pred-use (dp-make-eq-hash-table) :type hash-table)
+  (term-use (dp-make-eq-hash-table) :type hash-table))
+
+
+(defvar *initial-forward-chains* (make-forward-chains))
+
+(defun initial-forward-chains ()
+  (make-forward-chains))
+
+(defun clr-forward-chains (fcs)
+  (setf (forward-chains-orig-rules fcs) nil)
+  (setf (forward-chains-partial-rules fcs) nil)
+  (clrhash (forward-chains-pred-use fcs))
+  (clrhash (forward-chains-term-use fcs))
+  fcs)
+
+(defun copy-forward-chains-and-hash (new-forward-chains old-forward-chains)
+  (setf (forward-chains-orig-rules new-forward-chains)
+	(forward-chains-orig-rules old-forward-chains))
+  (setf (forward-chains-partial-rules new-forward-chains)
+	(forward-chains-partial-rules old-forward-chains))
+  ;(copy-hash-table (forward-chains-hash new-forward-chains)
+;		   (forward-chains-hash old-forward-chains))
+  new-forward-chains)
 
 (defdpstruct (cong-state*
 	      (:print-function
 	       (lambda (cs* s k)
 		 (declare (ignore k))
-		 (format s "<~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type, ~D rewrites>"
+		 (format s "<~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type, ~D rewrites, ~D forward-chains>"
 		   (length (cong-state*-assertions cs*))
 		   (hash-table-count (cong-state*-use-hash cs*))
 		   (hash-table-count (cong-state*-find-hash cs*))
@@ -533,7 +723,9 @@
 		   (+ (length (rewrite-rules-rules!
 			       (cong-state*-rewrite-rules cs*)))
 		      (length (rewrite-rules-rules
-			       (cong-state*-rewrite-rules cs*))))))))
+			       (cong-state*-rewrite-rules cs*))))
+		   (length (forward-chains-orig-rules
+			    (cong-state*-forward-chains cs*)))))))
   (assertions nil)
   (seen-hash (dp-make-eq-hash-table))
   (find-hash (dp-make-eq-hash-table))
@@ -542,10 +734,12 @@
   (neq-list nil)
   (type-hash (dp-make-eq-hash-table))
   (polyhedral-structure (initial-polyhedral-structure))
-  (rewrite-rules (initial-rewrite-rules)))
+  (fourier-motzkin (initial-fourier-motzkin))
+  (rewrite-rules (initial-rewrite-rules))
+  (forward-chains (initial-forward-chains)))
 
 (defun print-cong-state* (cs* s)
-  (format s "<~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type, ~D rewrites>"
+  (format s "<~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type, ~D rewrites, ~D forward-chains>"
     (length (cong-state*-assertions cs*))
     (hash-table-count (cong-state*-use-hash cs*))
     (hash-table-count (cong-state*-find-hash cs*))
@@ -553,7 +747,9 @@
     (length (cong-state*-neq-list cs*))
     (hash-table-count (cong-state*-type-hash cs*))
     (+ (length (rewrite-rules-rules! (cong-state*-rewrite-rules cs*)))
-       (length (rewrite-rules-rules (cong-state*-rewrite-rules cs*))))))
+       (length (rewrite-rules-rules (cong-state*-rewrite-rules cs*))))
+    (length (forward-chains-orig-rules
+	     (cong-state*-forward-chains cs*)))))
 
 (defun clear-cong-state* (cong-state*)
   (setf (cong-state*-assertions cong-state*) nil)
@@ -564,7 +760,9 @@
   (setf (cong-state*-neq-list cong-state*) nil)
   (dp-clrhash (cong-state*-type-hash cong-state*))
   (clr-polyhedral-structure (cong-state*-polyhedral-structure cong-state*))
+  (clr-fourier-motzkin (cong-state*-fourier-motzkin cong-state*))
   (clr-rewrite-rules (cong-state*-rewrite-rules cong-state*))
+  (clr-forward-chains (cong-state*-forward-chains cong-state*))
   cong-state*)
 
 (defdpstruct (made-cong-states
@@ -732,7 +930,18 @@
 	(copy-latest-polyhedral-structure
 	 (cong-state*-polyhedral-structure cong-state*)
 	 (polyhedral-structure cong-state)))
-  (setf (cong-state*-rewrite-rules cong-state*) (copy-rewrite-rules (rewrite-rules cong-state)))
+  (setf (cong-state*-fourier-motzkin cong-state*)
+	(copy-fourier-motzkin
+	 (cong-state*-fourier-motzkin cong-state*)
+	 (fourier-motzkin cong-state)))
+  (setf (cong-state*-rewrite-rules cong-state*)
+	(copy-rewrite-rules-and-hash
+	 (cong-state*-rewrite-rules cong-state*)
+	 (rewrite-rules cong-state)))
+  (setf (cong-state*-forward-chains cong-state*)
+	(copy-forward-chains-and-hash
+	 (cong-state*-forward-chains cong-state*)
+	 (forward-chains cong-state)))
   ;(format t "~%**(setf (cong-state*-polhedral-domain ~A) ~A)**"
   ;   cong-state*
   ;  (polyhedral-domain cong-state))
@@ -853,6 +1062,24 @@
 
 (defsetf polyhedral-structure setf-polyhedral-structure)
 
+(defun fourier-motzkin (cong-state)
+  (declare (type cong-state cong-state))
+  (fourier-motzkin-from-stack (cong-state-stack cong-state)))
+
+(defun fourier-motzkin-from-stack (cong-state-stack)
+  (if cong-state-stack
+      (fourier-motzkin* (top cong-state-stack))
+      (initial-fourier-motzkin)))
+
+(defun fourier-motzkin* (cong-state*)
+  (cong-state*-fourier-motzkin cong-state*))
+
+(defun setf-fourier-motzkin (cong-state new-fourier-motzkin)
+  (setf (cong-state*-fourier-motzkin (top (cong-state-stack cong-state)))
+	new-fourier-motzkin))
+
+(defsetf fourier-motzkin setf-fourier-motzkin)
+
 (defun rewrite-rules (cong-state)
   (declare (type cong-state cong-state))
   (rewrite-rules-from-stack (cong-state-stack cong-state)))
@@ -870,6 +1097,24 @@
 	new-rewrite-rules))
 
 (defsetf rewrite-rules setf-rewrite-rules)
+
+(defun forward-chains (cong-state)
+  (declare (type cong-state cong-state))
+  (forward-chains-from-stack (cong-state-stack cong-state)))
+
+(defun forward-chains-from-stack (cong-state-stack)
+  (if cong-state-stack
+      (forward-chains* (top cong-state-stack))
+      (initial-forward-chains)))
+
+(defun forward-chains* (cong-state*)
+  (cong-state*-forward-chains cong-state*))
+
+(defun setf-forward-chains (cong-state new-forward-chains)
+  (setf (cong-state*-forward-chains (top (cong-state-stack cong-state)))
+	new-forward-chains))
+
+(defsetf forward-chains setf-forward-chains)
 
 (defvar *reverse-find* nil)
 
@@ -1137,10 +1382,11 @@
 	     (typealist-from-stack (rest cong-state-stack)))
       nil))
 
-(defun init-dp-0 ()
-  ;(dp-clrhash *term-hash*)
+(defun init-dp-0 (&optional strong)
+  (when strong
+    (dp-clrhash *term-hash*)
   ;(setq *max-node-index* 0)
-  ;(setq *made-cong-states* (make-made-cong-states :all nil :free nil))
+    (setq *made-cong-states* (make-made-cong-states :used nil :free nil)))
   ;(return-all-cong-states *made-cong-states*)
   (setq *ineq-var-count* 0)
   (setq *epsilon* (make-epsilon))
@@ -1168,11 +1414,17 @@
 	(list *lesseqp* *lessp* *greaterp* *greatereqp*))
   (setq *not* (mk-predicate-sym 'not))
   (setq *nequal* (mk-predicate-sym 'nequal))
+  (setq *if* (mk-interpreted-constant 'if))
+  (setq *and* (mk-predicate-sym 'and))
+  (setq *or* (mk-predicate-sym 'or))
   (setq *preds*
-	(list *not* *nequal* *lesseqp* *lessp* *greaterp* *greatereqp*))
+	(list *not* *and* *or* *nequal*
+	      *lesseqp* *lessp* *greaterp* *greatereqp*))
   (setq *zero* (mk-dp-number 0))
   (setq *one* (mk-dp-number 1))
   (setq *neg-one* (mk-dp-number -1))
   (setq *update* (mk-array-operator 'update))
-  (setq *tuple* (mk-constant 'tuple 'tuple-op))
-  (setq *record* (mk-constant 'record 'record-op)))
+  (setq *tuple* (mk-interpreted-constant 'tuple 'tuple-op))
+  (setq *record* (mk-interpreted-constant 'record 'record-op))
+  (setq *project* (mk-interpreted-constant 'project 'project-op))
+  (setq *th-app* (mk-interpreted-constant 'th-app 'th-app-op)))

@@ -23,12 +23,14 @@
 		       do (cond
 			   ((member (res rewrite)
 				    *auto-rewrites-names*)
-			    (setq rewrites (cons (translate-to-dc rewrite)
-						 rewrites)))
+			    (setq rewrites
+				  (cons (top-translate-to-prove rewrite)
+					rewrites)))
 			   ((member (res rewrite)
 				    *auto-rewrites!-names*)
-			    (setq rewrites! (cons (translate-to-dc rewrite)
-						  rewrites!)))
+			    (setq rewrites!
+				  (cons (top-translate-to-prove rewrite)
+					rewrites!)))
 			   (t nil))))
 	     *auto-rewrites*)
     (dp::make-rewrite-rules
@@ -39,29 +41,36 @@
   #'(lambda (ps)
       (let ((rewrites! nil)
 	    (rewrites nil))
-	(maphash #'(lambda (key val)
-		     (loop for rewrite in val
-			   do (cond
-			       ((member (res rewrite)
-					*auto-rewrites-names*)
-				(setq rewrites (cons (translate-to-dc rewrite)
-						     rewrites)))
-			       ((member (res rewrite)
-					*auto-rewrites!-names*)
-				(setq rewrites! (cons (translate-to-dc rewrite)
-						      rewrites!)))
-			       (t nil))))
-		 *auto-rewrites*)
-	(protecting-cong-state
-	 ((*dp-state* (dp-state ps))
-	  (*alists* *alists*))
-	 (setf (dp::rewrite-rules *dp-state*)
-	       (dp::make-rewrite-rules
-		:rules! rewrites!
-		:rules rewrites))
-	 (values '? (list (cons (current-goal ps)
-				(list 'dp-state
-				      *dp-state*))))))))
+	(maphash
+	 #'(lambda (key val)
+	     (loop for rewrite in val
+		   do (cond
+		       ((member (res rewrite)
+				*auto-rewrites-names*)
+			(let ((ground-rewrite
+			       (top-translate-to-prove rewrite)))
+			  (setf (dp::rr-always? ground-rewrite) nil)
+			  (setq rewrites
+				(cons ground-rewrite
+				      rewrites))))
+		       ((member (res rewrite)
+				*auto-rewrites!-names*)
+			(let ((ground-rewrite
+			       (top-translate-to-prove rewrite)))
+			  (setf (dp::rr-always? ground-rewrite) t)
+			  (setq rewrites!
+				(cons ground-rewrite
+				      rewrites!))))
+		       (t nil))))
+		   *auto-rewrites*)
+	     (protecting-cong-state
+	      ((*dp-state* (dp-state ps))
+	       (*alists* *alists*))
+	      (dp::add-rewrite-rules
+	       rewrites rewrites! *dp-state*)
+	      (values '? (list (cons (current-goal ps)
+				     (list 'dp-state
+					   *dp-state*))))))))
 
 (addrule 'install-ground-rewrite nil nil (install-ground-rewrite-step)
 	 "Install's the current set of auto-rewrites into the ground prover.")
@@ -89,9 +98,10 @@ Should be proceeded by an install-ground-rewrites.")
   (let* ((simplifiable-sformnums
 	  (find-all-sformnums (s-forms sequent) sformnums
 			      #'(lambda (fmla)
+				  (and nil
 				  (if (not-expr? fmla)
 				      (connective-occurs? (args1 fmla))
-				      (connective-occurs? fmla)))))
+				      (connective-occurs? fmla))))))
 	 (other-sformnums
 	  (find-remaining-sformnums (s-forms sequent) sformnums
 				    simplifiable-sformnums)))
@@ -105,7 +115,8 @@ Should be proceeded by an install-ground-rewrites.")
 	    (t (values
 		'?
 		(list (cons subgoal
-			    nil)))))))))
+			    (list 'dp-state
+				  *dp-state*)))))))))
 
 (defun ground-rewrite-sform (sform replace?)
   (multiple-value-bind (signal new-sform)
@@ -136,9 +147,8 @@ Should be proceeded by an install-ground-rewrites.")
 
 (defun ground-rewrite-fmla (fmla)
   (let ((ground-fmla (top-translate-to-prove fmla)))
-    (break)
     (multiple-value-bind (new-fmla change?)
-	(dp::normalize-term ground-fmla *dp-state*)
+	(dp::normalize-term-top ground-fmla *dp-state*)
       (if change?
 	  (values '? (translate-from-dc new-fmla))
 	  (values 'X fmla)))))
