@@ -511,6 +511,15 @@
     'lhs (gensubst* (lhs map) substfn testfn)
     'rhs (gensubst* (rhs map) substfn testfn)))
 
+(defmethod gensubst* ((map mapping-with-formals) substfn testfn)
+  (lcopy map
+    'declared-type (let ((*dont-expand-adt-subtypes* t))
+		     (gensubst* (declared-type map) substfn testfn))
+    'type (gensubst* (type map) substfn testfn)
+    'lhs (gensubst* (lhs map) substfn testfn)
+    'rhs (gensubst* (rhs map) substfn testfn)
+    'formals (gensubst* (formals map) substfn testfn)))
+
 (defmethod gensubst* ((res resolution) substfn testfn)
   (let ((nmi (gensubst* (module-instance res) substfn testfn)))
     (if (eq nmi (module-instance res))
@@ -665,6 +674,11 @@
   (unless *parsing-or-unparsing*
     (mapobject* fn (supertype te)))
   (mapobject* fn (predicate te)))
+
+(defmethod mapobject* (fn (te type-application))
+  (call-next-method)
+  (mapobject* fn (type te))
+  (mapobject* fn (parameters te)))
 
 (defmethod mapobject* (fn (te setsubtype))
   (call-next-method)
