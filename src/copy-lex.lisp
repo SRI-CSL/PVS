@@ -7,8 +7,9 @@
 ;; Update Count    : 10
 ;; Status          : Unknown, Use with caution!
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (defvar *copy-lex-exact* nil)
 
@@ -17,7 +18,7 @@
 
 (defmethod copy-lex* :around ((old syntax) (new syntax))
   (call-next-method)
-  (setf (newline-comment old) (newline-comment new))
+  ;;(setf (newline-comment old) (newline-comment new))
   ;;(setf (abstract-syntax old) (abstract-syntax new))
   (setf (place old) (place new)))
 
