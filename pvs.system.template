@@ -297,11 +297,13 @@
      :depends-on (typechecker))
    (:module bdd
      :source-pathname "BDD"
-     :components ((:file "bdd")))
+     :components ((:file "bdd"))
+     :depends-on (proof-checker))
    (:module mu-simplifier
      :source-pathname "BDD"
      :components ((:file "mu")
-		  (:file "strategies")))
+		  (:file "strategies"))
+     :depends-on (proof-checker))
    (:module dc-structure
      :source-pathname "src/decision-procedures"
      :components ((:file "types")
