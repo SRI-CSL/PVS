@@ -41,6 +41,10 @@
 				'format-string ,format-string)
 			      *rulebase*)
 	    (push ,name *rulenames*)
+	    (push (cons ,name (make-prover-keywords
+			       (append (quote ,required-args)
+				       (quote ,optional-args))))
+			*prover-keywords*)
 	    #+lucid (record-source-file ,name 'strategy)
 	    (format t "~%Added rule ~a.~%" ,name))
 	   (t;;NSH(8-5)(y-or-n-p "Do you really want to change rule ~a?" ,name)
@@ -51,6 +55,15 @@
 		  (rule-function  entry)
 		  ,(macroexpand `(make-lambda-macro ,required-args ,optional-args
 						    ,body)))
+	    (let ((old (assoc ,name *prover-keywords*)))
+	      (if old
+		  (setf (cdr old) (make-prover-keywords
+			       (append (quote ,required-args)
+				       (quote ,optional-args))))
+		  (push (cons ,name (make-prover-keywords
+			       (append (quote ,required-args)
+				       (quote ,optional-args))))
+			*prover-keywords*)))
 	    #+lucid (record-source-file ,name 'strategy)
 	    (format t "~%Changed rule ~a.~%" ,name))
 	   (t (format t "~%No change.~%")))))

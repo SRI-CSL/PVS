@@ -12,6 +12,20 @@
 
 (in-package 'pvs)
 
+; DAVESC
+(defvar *prover-keywords* nil)
+(defun make-prover-keywords (formals &optional result)
+  (if (null formals)
+      result
+      (let* ((formal (car formals))
+	     (nresult (if (memq formal '(&optional &rest))
+			  result
+		          (cons (excl::make-keyword (if (consp formal)
+						        (car formal)
+						        formal))
+				result))))
+	(make-prover-keywords (cdr formals) nresult))))
+
 (defvar *skovar-counter* (let ((x 0)) #'(lambda ()  (incf x))))
 (defvar *skofun-counter* (let ((x 0)) #'(lambda ()  (incf x))))
 (defvar *bind-counter* (let ((x 0)) #'(lambda ()  (incf x))))

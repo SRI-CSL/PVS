@@ -331,7 +331,26 @@ Would you like to rerun the proof?~%")))
 
 ;;12/16: need to fix prove* to save the proof, etc.
 
-(defun qread (prompt)
+(defun check-command-arguments (cmd keywords arguments)
+  (or (null arguments)
+      (if (keywordp (car arguments))
+	  (if (not (member (car arguments) keywords))
+	      (progn (format-if "~%~a is not a valid keyword for ~a"
+			  (car arguments) cmd)
+	             nil)
+	      (;;;; here check the argument to the keyword
+	       ;;;; is in the appropriate domain
+	       check-command-arguments cmd keywords (cddr arguments)))
+          (check-command-arguments cmd keywords (cdr arguments)))))
+
+(defun check-arguments (pcmd)
+  (let ((keywords (cdr (assoc (car pcmd) *prover-keywords*))))
+    (or (null keywords)
+        (singleton? pcmd)
+        (check-command-arguments (car pcmd) keywords (cdr pcmd)))))
+
+; optional until I've checked if qread is used elsewhere.
+(defun qread (prompt &optional checkargs)
   (format t "~%~a"  prompt)
   (force-output)
   (let ((input (ignore-errors (read))))
@@ -345,7 +364,12 @@ Would you like to rerun the proof?~%")))
 	       (throw 'abort nil)
 	       (qread prompt)))
 	  (t (auto-save-proof)
-	     input))))
+	     (if (and (consp input)
+		      checkargs)
+		 (if (check-arguments input)
+		     input
+		     (qread prompt))
+	         input)))))
 
 (defmethod proofstepper ((proofstate proofstate))
 
@@ -2191,23 +2215,27 @@ The rules in *rulebase* are: ~%"
 		    collect (editable-justification
 			       justif nil xflag full-label))))))
 
+; DAVESC
 (defun check-edited-justification (ejustif &optional label)
-  (if (null ejustif) nil
-      (if (null label)
-	  (if (and (stringp (car ejustif))
-		   (every #'digit-char-p (car ejustif)))
-	      (check-edited-justification (cdr ejustif)
-					  (car ejustif))
-	      (values "Label must be a string of numbers." (car ejustif)))
-	  (if (and (consp (car ejustif))
-		   (consp (caar ejustif)))
-	      (some #'check-edited-justification (car ejustif))
-	      (if (consp (car ejustif))
-		  (check-edited-justification (cdr ejustif)
-					      label)
-		  (values "A rule application must be a list."
-			  (car ejustif)))))))
-
+  (cond ((null ejustif)
+	 nil)
+	((not (consp ejustif))
+	 (values "Proof must be a list" ejustif))
+	((null label)
+	 (if (and (stringp (car ejustif))
+		  (every #'digit-char-p (car ejustif)))
+	     (check-edited-justification (cdr ejustif)
+					 (car ejustif))
+	     (values "Label must be a string of numbers." (car ejustif))))
+	(t
+	 (if (and (consp (car ejustif))
+		  (consp (caar ejustif)))
+	     (some #'check-edited-justification (car ejustif))
+	     (if (consp (car ejustif))
+		 (check-edited-justification (cdr ejustif)
+					     label)
+		 (values "A rule application must be a list."
+			 (car ejustif)))))))
 
 (defun revert-justification (ejustif &optional label)
   (unless (null ejustif)

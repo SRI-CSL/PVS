@@ -33,7 +33,9 @@
 	
 
 
+;DAVESC
 
+	    
 (defun defgen* (name formals definition docstring format-string
 		     entry-type rules-or-steps)
   (let ((primitive (gethash name *rulebase*))
@@ -52,6 +54,11 @@
 	      (if rule (remhash name *rules*))
 	      (if strat (remhash name *steps*))
 	      #+lucid (record-source-file name 'strategy)
+	      (let ((old (assoc name *prover-keywords*)))
+		(if old
+		    (setf (cdr old) (make-prover-keywords formals))
+		    (push (cons name (make-prover-keywords formals))
+				*prover-keywords*)))
 	      (add-symbol-entry name
 				(make-instance entry-type
 				  'name name
@@ -699,7 +706,7 @@ then turns off all the installed rewrites.  Examples:
 
 (defstrat query* nil (if (or *proving-tcc* *in-apply*) ;;NSH(8.22.94)
 			(postpone)
-			(let ((input (let ((input (qread "Rule? ")))
+			(let ((input (let ((input (qread "Rule? " t)))
 				       (setf (current-input *ps*)
 					     input)
 				       input))
