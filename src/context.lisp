@@ -285,7 +285,7 @@ pvs-strategies files.")
   (update-stored-mod-depend)
   (when (and (> (hash-table-count *pvs-modules*))
 	     (ensure-bin-subdirectory))
-    (if *testing-restore*
+    (if t ; *testing-restore*
 	(maphash #'(lambda (id theory)
 		     (declare (ignore id))
 		     (dolist (imp (all-usings theory))
