@@ -2015,9 +2015,11 @@ generated")
 		  (t '|reduce|)))
 	 (fdoms (gen-adt-reduce-domains rtype adt adtinst))
 	 (thinst (when adtinst (module-instance adtinst)))
+	 (fran (mk-funtype (list atype) (mk-type-name ran)))
 	 (cdecl (mk-adt-def-decl fname
 		  (mk-funtype (list atype) rtype)
-		  (pc-parse (unparse (gen-adt-reduce-definition adt fname fdoms thinst)
+		  (pc-parse (unparse (gen-adt-reduce-definition
+				      adt fname fdoms fran thinst)
 			      :string t) 'expr)
 		  (mapcar #'(lambda (c)
 			      (mk-arg-bind-decl (makesym "~a_fun"
@@ -2030,7 +2032,8 @@ generated")
 		  (t '|REDUCE|)))
 	 (rdecl (mk-adt-def-decl fname2
 		  (mk-funtype (list atype) rtype)
-		  (pc-parse (unparse (gen-adt-reduce-definition2 adt fname2 fdoms thinst)
+		  (pc-parse (unparse (gen-adt-reduce-definition2
+				      adt fname2 fdoms fran thinst)
 			      :string t) 'expr)
 		  (mapcar #'(lambda (c)
 			      (mk-arg-bind-decl (makesym "~a_fun"
@@ -2072,22 +2075,27 @@ generated")
 				 *bound-variables*)))
       (set-adt-reduce-dom-types (cdr dom)))))
 
-(defun gen-adt-reduce-definition (adt fname fdoms adtinst)
-  (let ((avar (mk-name-expr (makesym "~a_adtvar" (id adt))))
-	(funlist (mapcar #'(lambda (c)
-			     (let ((rid (op-to-id (recognizer c))))
-			       (mk-name-expr (makesym "~a_fun" rid))))
-			 (constructors adt))))
-    (mk-lambda-expr (list (mk-bind-decl (id avar)
-			      (mk-type-name (id adt))))
-      (mk-cases-expr avar
-	(mapcar #'(lambda (c fdom)
-		    (gen-adt-reduce-selection c adt funlist fname fdom
-					      adtinst))
-		(constructors adt) fdoms)
-	nil))))
+(defun gen-adt-reduce-definition (adt fname fdoms ran adtinst)
+  (let* ((avar (mk-name-expr (makesym "~a_adtvar" (id adt))))
+	 (funlist (mapcar #'(lambda (c)
+			      (let ((rid (op-to-id (recognizer c))))
+				(mk-name-expr (makesym "~a_fun" rid))))
+		    (constructors adt)))
+	 (redid (make-new-variable '|red| adt))
+	 (redvar (mk-name-expr redid))
+	 (red (mk-application* fname funlist)))
+    (mk-lambda-expr (list (mk-bind-decl (id avar) (mk-type-name (id adt))))
+      (make-instance 'let-expr
+	'operator (mk-lambda-expr (list (mk-bind-decl redid ran))
+		    (mk-cases-expr avar
+		      (mapcar #'(lambda (c fdom)
+				  (gen-adt-reduce-selection
+				   c adt redvar fname fdom adtinst))
+			(constructors adt) fdoms)
+		      nil))
+	'argument red))))
 
-(defun gen-adt-reduce-selection (c adt funlist fname fdom adtinst)
+(defun gen-adt-reduce-selection (c adt red fname fdom adtinst)
   (if (arguments c)
       (let* ((bindings (mapcar #'(lambda (a)
 				   (make-bind-decl (id (get-adt-var a))
@@ -2108,7 +2116,7 @@ generated")
 			 (if adtinst
 			     (subst-mod-params (type v) adtinst)
 			     (type v))
-			 funlist fname
+			 red fname
 			 (if (typep fd 'dep-binding)
 			     (type fd)
 			     fd)
@@ -2120,15 +2128,15 @@ generated")
 	  (mk-name-expr (id c)) nil
 	  (mk-name-expr (makesym "~a_fun" (op-to-id (recognizer c)))))))
 
-(defmethod acc-reduce-selection (arg (te type-name) funlist fname fdom adt)
+(defmethod acc-reduce-selection (arg (te type-name) red fname fdom adt)
   (cond ((tc-eq te adt)
-	 (mk-application (mk-application* fname funlist) (copy arg)))
+	 (mk-application red (copy arg)))
 	((adt? te)
 	 (let* ((acts (actuals (module-instance te)))
 		(facts (if (typep fdom 'datatype-subtype)
 			   (actuals (declared-type fdom))
 			   (actuals fdom)))
-		(funs (acc-reduce-sel-acts acts facts fname funlist adt)))
+		(funs (acc-reduce-sel-acts acts facts fname red adt)))
 	   (if (every #'identity-fun? funs)
 	       (copy arg)
 	       (let* ((appname (mk-name-expr '|map|
@@ -2138,26 +2146,26 @@ generated")
 		   (copy arg))))))
 	(t (copy arg))))
 
-(defun acc-reduce-sel-acts (acts facts fname funlist adt &optional result)
+(defun acc-reduce-sel-acts (acts facts fname red adt &optional result)
   (if (null acts)
       (nreverse result)
       (if (type-value (car acts))
 	  (let ((nfun (acc-reduce-selection*
 		       (type-value (car acts))
-		       funlist fname (type-value (car facts)) adt)))
-	    (acc-reduce-sel-acts (cdr acts) (cdr facts) fname funlist adt
+		       red fname (type-value (car facts)) adt)))
+	    (acc-reduce-sel-acts (cdr acts) (cdr facts) fname red adt
 				 (cons nfun result)))
-	  (acc-reduce-sel-acts (cdr acts) (cdr facts) fname funlist adt
+	  (acc-reduce-sel-acts (cdr acts) (cdr facts) fname red adt
 			       result))))
 
-(defmethod acc-reduce-selection (arg (te subtype) funlist fname fdom adt)
-  (acc-reduce-selection arg (supertype te) funlist fname
+(defmethod acc-reduce-selection (arg (te subtype) red fname fdom adt)
+  (acc-reduce-selection arg (supertype te) red fname
 			(if (typep fdom '(and subtype (not datatype-subtype)))
 			    (supertype fdom)
 			    fdom)
 			adt))
 
-(defmethod acc-reduce-selection (arg (te funtype) funlist fname fdom adt)
+(defmethod acc-reduce-selection (arg (te funtype) red fname fdom adt)
   (let* ((fid (make-new-variable '|x| te))
 	 (fbd (make-bind-decl fid (domain fdom)))
 	 (fvar (mk-name-expr fid nil nil
@@ -2167,7 +2175,7 @@ generated")
 	       (if (typep (domain te) 'dep-binding)
 		   (substit (range te) (acons (domain te) fvar nil))
 		   (range te))
-	       funlist fname
+	       red fname
 	       (if (typep (domain fdom) 'dep-binding)
 		   (substit (range fdom) (acons (domain fdom) fvar nil))
 		   (range fdom))
@@ -2180,10 +2188,10 @@ generated")
 	      (mk-application fun
 		(mk-application (copy arg) fvar)))))))
 
-(defmethod acc-reduce-selection (arg (te recordtype) funlist fname fdom adt)
+(defmethod acc-reduce-selection (arg (te recordtype) red fname fdom adt)
   (assert (typep fdom 'recordtype))
   (let ((funs (acc-reduce-selection-fields
-	       (fields te) (fields fdom) arg funlist fname fdom adt
+	       (fields te) (fields fdom) arg red fname fdom adt
 	       (dependent? te) (dependent? fdom))))
     (if (every #'identity-fun? funs)
 	(copy arg)
@@ -2197,7 +2205,7 @@ generated")
 			     (mk-application (id fd) (copy arg))))))
 	   (fields fdom) funs)))))
 
-(defun acc-reduce-selection-fields (fields dfields rvar funlist fname fdom adt
+(defun acc-reduce-selection-fields (fields dfields rvar red fname fdom adt
 					   dep1? dep2? &optional result)
   (if (null fields)
       (nreverse result)
@@ -2214,15 +2222,15 @@ generated")
 		    (make-field-application (car dfields) rvar)
 		    nil))
 	   (cdr dfields))
-       rvar funlist fname fdom adt dep1? dep2?
+       rvar red fname fdom adt dep1? dep2?
        (cons (acc-reduce-selection*
-	      (type (car fields)) funlist fname (type (car dfields)) adt)
+	      (type (car fields)) red fname (type (car dfields)) adt)
 	     result))))
 
-(defmethod acc-reduce-selection (arg (te tupletype) funlist fname fdom adt)
+(defmethod acc-reduce-selection (arg (te tupletype) red fname fdom adt)
   (assert (typep fdom 'tupletype))
   (let ((funs (acc-reduce-selection-types
-	       (types te) (types fdom) arg funlist fname adt)))
+	       (types te) (types fdom) arg red fname adt)))
     (if (every #'identity-fun? funs)
 	(copy arg)
 	(mk-tuple-expr
@@ -2238,27 +2246,27 @@ generated")
 			     (mk-application fun proj))))
 	     funs))))))
 
-(defmethod acc-reduce-selection (arg (te type-expr) funlist fname fdom adt)
-  (declare (ignore funlist fname fdom adt))
+(defmethod acc-reduce-selection (arg (te type-expr) red fname fdom adt)
+  (declare (ignore red fname fdom adt))
   (copy arg))
 
-(defmethod acc-reduce-selection* ((te type-name) funlist fname fte adt)
+(defmethod acc-reduce-selection* ((te type-name) red fname fte adt)
   (cond ((tc-eq te adt)
-	 (mk-application* fname funlist))
+	 red)
 	((adt? te)
 	 (let* ((acts (actuals (module-instance te)))
 		(funs (acc-reduce-sel-acts acts (actuals fte)
-					   fname funlist adt)))
+					   fname red adt)))
 	   (if (every #'identity-fun? funs)
 	       (mk-identity-fun te)
 	       (mk-application* '|map| funs))))
 	(t (mk-identity-fun fte))))
 
-(defmethod acc-reduce-selection* ((te subtype) funlist fname fdom adt)
-  (acc-reduce-selection* (find-supertype te) funlist fname
+(defmethod acc-reduce-selection* ((te subtype) red fname fdom adt)
+  (acc-reduce-selection* (find-supertype te) red fname
 			 (find-declared-adt-supertype fdom) adt))
 
-(defmethod acc-reduce-selection* ((te funtype) funlist fname fdom adt)
+(defmethod acc-reduce-selection* ((te funtype) red fname fdom adt)
   (let* ((fid (make-new-variable '|x| te))
 	 (fbd (make-bind-decl fid (domain fdom)))
 	 (fvar (mk-name-expr fid nil nil
@@ -2268,7 +2276,7 @@ generated")
 	       (if (typep (domain te) 'dep-binding)
 		   (substit (range te) (acons (domain te) fvar nil))
 		   (range te))
-	       funlist fname
+	       red fname
 	       (if (typep (domain fdom) 'dep-binding)
 		   (substit (range fdom) (acons (domain fdom) fvar nil))
 		   (range fdom))
@@ -2277,7 +2285,7 @@ generated")
 	   (mk-identity-fun fdom))
 	  ((sequence? te)
 	   (mk-application '|map|
-	     (mk-application* fun funlist)))
+	     red))
 	  (t
 	   (let* ((aid (make-new-variable '|a| (list te fun adt)))
 		  (abd (make-bind-decl aid te))
@@ -2289,7 +2297,7 @@ generated")
 		 (mk-application fun
 		   (mk-application avar fvar)))))))))
 
-(defmethod acc-reduce-selection* ((te recordtype) funlist fname fdom adt)
+(defmethod acc-reduce-selection* ((te recordtype) red fname fdom adt)
   (assert (typep fdom 'recordtype))
   (let* ((rid (make-new-variable '|r| te))
 	 (rbd (make-bind-decl rid te))
@@ -2297,7 +2305,7 @@ generated")
 			     (make-resolution rbd
 			       (current-theory-name) te)))
 	 (funs (acc-reduce-selection-fields
-		(fields te) (fields fdom) rvar funlist fname fdom adt
+		(fields te) (fields fdom) rvar red fname fdom adt
 		(dependent? te) (dependent? fdom))))
     (if (every #'identity-fun? funs)
 	(mk-identity-fun fdom)
@@ -2312,14 +2320,14 @@ generated")
 			       (mk-application (id fd) (copy rvar))))))
 	     (fields fdom) funs))))))
 
-(defmethod acc-reduce-selection* ((te tupletype) funlist fname fdom adt)
+(defmethod acc-reduce-selection* ((te tupletype) red fname fdom adt)
   (let* ((tid (make-new-variable '|t| te))
 	 (tbd (make-bind-decl tid te))
 	 (tvar (mk-name-expr tid nil nil
 			     (make-resolution tbd
 			       (current-theory-name) te)))
 	 (funs (acc-reduce-selection-types
-		(types te) (types fdom) tvar funlist fname adt)))
+		(types te) (types fdom) tvar red fname adt)))
     (if (every #'identity-fun? funs)
 	(mk-identity-fun te)
 	(let* ()
@@ -2337,7 +2345,7 @@ generated")
 				 (mk-application fun proj))))
 		 funs))))))))
 
-(defun acc-reduce-selection-types (types dtypes tvar funlist fname adt
+(defun acc-reduce-selection-types (types dtypes tvar red fname adt
 					 &optional (index 1) result)
   (if (null types)
       (nreverse result)
@@ -2360,11 +2368,11 @@ generated")
 		    (make-projection-application index tvar)
 		    nil))
 	   (cdr dtypes))
-       tvar funlist fname adt (1+ index)
-       (cons (acc-reduce-selection* ty1 funlist fname ty2 adt) result)))))
+       tvar red fname adt (1+ index)
+       (cons (acc-reduce-selection* ty1 red fname ty2 adt) result)))))
 
-(defmethod acc-reduce-selection* ((te type-expr) funlist fname fdom adt)
-  (declare (ignore funlist fname fdom adt))
+(defmethod acc-reduce-selection* ((te type-expr) red fname fdom adt)
+  (declare (ignore red fname fdom adt))
   (mk-identity-fun te))
 
 
@@ -2468,21 +2476,28 @@ generated")
   (declare (ignore ex adt-type))
   nil)
 
-(defun gen-adt-reduce-definition2 (adt fname fdoms adtinst)
-  (let ((avar (mk-name-expr (makesym "~a_adtvar" (id adt))))
-	(funlist (mapcar #'(lambda (c)
-			     (let ((rid (op-to-id (recognizer c))))
-			       (mk-name-expr (makesym "~a_fun" rid))))
-			 (constructors adt))))
+(defun gen-adt-reduce-definition2 (adt fname fdoms ran adtinst)
+  (let* ((avar (mk-name-expr (makesym "~a_adtvar" (id adt))))
+	 (funlist (mapcar #'(lambda (c)
+			      (let ((rid (op-to-id (recognizer c))))
+				(mk-name-expr (makesym "~a_fun" rid))))
+		    (constructors adt)))
+	 (redid (make-new-variable '|red| adt))
+	 (redvar (mk-name-expr redid))
+	 (red (mk-application* fname funlist)))
     (mk-lambda-expr (list (mk-bind-decl (id avar)
 			      (mk-type-name (id adt))))
-      (mk-cases-expr avar
-	(mapcar #'(lambda (c fdom)
-		    (gen-adt-reduce-selection2 c adt funlist fname avar fdom adtinst))
-		(constructors adt) fdoms)
-	nil))))
+      (make-instance 'let-expr
+	'operator (mk-lambda-expr (list (mk-bind-decl redid ran))
+		    (mk-cases-expr avar
+		      (mapcar #'(lambda (c fdom)
+				  (gen-adt-reduce-selection2
+				   c adt redvar fname avar fdom adtinst))
+			(constructors adt) fdoms)
+		      nil))
+	'argument red))))
 
-(defun gen-adt-reduce-selection2 (c adt funlist fname avar fdom adtinst)
+(defun gen-adt-reduce-selection2 (c adt red fname avar fdom adtinst)
   (if (arguments c)
       (let* ((bindings (mapcar #'(lambda (a)
 				   (make-bind-decl (id (get-adt-var a))
@@ -2503,7 +2518,7 @@ generated")
 				(if adtinst
 				    (subst-mod-params (type v) adtinst)
 				    (type v))
-				funlist fname
+				red fname
 				(if (typep fd 'dep-binding)
 				    (type fd)
 				    fd)
@@ -2518,9 +2533,9 @@ generated")
 					       (op-to-id (recognizer c))))
 		      (copy avar)))))
 
-(defmethod acc-reduce-selection2 (arg (te type-name) funlist fname adt)
+(defmethod acc-reduce-selection2 (arg (te type-name) red fname adt)
   (cond ((tc-eq te (adt-type-name adt))
-	 (mk-application (mk-application* fname funlist) (copy arg)))
+	 (mk-application red (copy arg)))
 ;	((member te ptypes :test #'corresponding-formals)
 ;	 (let* ((pos (position te ptypes :test #'corresponding-formals))
 ;		(fun (nth pos funlist)))
@@ -2529,35 +2544,34 @@ generated")
 	 (let ((acts (actuals (module-instance (find-supertype te)))))
 	   (mk-application
 	       (mk-application* '|map|
-		 (acc-reduce-sel-acts2 (adt-type-name adt) acts fname funlist))
+		 (acc-reduce-sel-acts2 (adt-type-name adt) acts fname red))
 	     (copy arg))))
 	(t (copy arg))))
 
-(defun acc-reduce-sel-acts2 (adt-type acts fname funlist &optional result)
+(defun acc-reduce-sel-acts2 (adt-type acts fname red &optional result)
   (if (null acts)
       (nreverse result)
       (if (type-value (car acts))
 	  (let ((nfun (if (tc-eq (type-value (car acts)) adt-type)
-			  (mk-application* fname funlist)
+			  red
 			  (mk-name-expr '|id|
 			    (list (mk-actual (type-value (car acts))))))))
-	    (acc-reduce-sel-acts2 adt-type (cdr acts) fname funlist
+	    (acc-reduce-sel-acts2 adt-type (cdr acts) fname red
 				 (cons nfun result)))
-	  (acc-reduce-sel-acts2 adt-type (cdr acts) fname funlist result))))
+	  (acc-reduce-sel-acts2 adt-type (cdr acts) fname red result))))
 
-(defmethod acc-reduce-selection2 (arg (te subtype) funlist fname adt)
-  (acc-reduce-selection2 arg (supertype te) funlist fname adt))
+(defmethod acc-reduce-selection2 (arg (te subtype) red fname adt)
+  (acc-reduce-selection2 arg (supertype te) red fname adt))
 
-(defmethod acc-reduce-selection2 (arg (te funtype) funlist fname adt)
+(defmethod acc-reduce-selection2 (arg (te funtype) red fname adt)
   (if (sequence-adt? (adt-type-name adt) te)
       (mk-application
-	  (mk-application '|map|
-	    (mk-application* fname funlist))
+	  (mk-application '|map| red)
 	arg)
       (copy arg)))
 
-(defmethod acc-reduce-selection2 (arg (te type-expr) funlist fname adt)
-  (declare (ignore funlist fname adt))
+(defmethod acc-reduce-selection2 (arg (te type-expr) red fname adt)
+  (declare (ignore red fname adt))
   (copy arg))
 
 (defun gen-adt-reduce-funtype2 (c rtype adt adtinst)
