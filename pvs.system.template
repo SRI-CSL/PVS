@@ -166,16 +166,20 @@
 				     "/src/decision-procedures/polylib/"
 				     platform))
 			 (ws1spath (concatenate 'string
-				     *pvs-path* "/src/WS1S/" platform)))
+				     *pvs-path* "/src/WS1S/" platform))
+			 (icspath (concatenate 'string
+				    *pvs-path* "/src/ics/" platform)))
 		    (load (format nil "~a/file_utils.so" utilpath))
 		    (load (format nil "~a/mu.so" bddpath))
 		    (load (format nil "~a/polylib.so" polypath))
-		    (load (format nil "~a/ws1s.so" ws1spath)))
+		    (load (format nil "~a/ws1s.so" ws1spath))
+		    (load (format nil "~a/ics.so" icspath)))
 		  (setq *pvs-system-loaded* t))
   :finally-do (progn
 		#+lucid (precompile-generic-functions)
 		#+lcl4.1 (clos::flush-pv-caches)
 		(pvs::bdd_init)
+		(pvs::shostak-init)
 		(pvs::load-prelude)
 		#+allegro
 		(let ((optfile (format nil "~a/src/closopt" *pvs-path*)))
@@ -411,4 +415,8 @@
       (:module abstraction
 	:source-pathname "src/abstraction"
 	:components ((:file "abstract")))
+      (:module ics
+	:source-pathname "src/ics"
+	:components ((:file "ics")
+		     (:file "shostak")))
       ))

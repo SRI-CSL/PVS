@@ -113,7 +113,8 @@ pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
 ff-files = src/utils/$(PLATFORM)/file_utils.so \
            BDD/$(PLATFORM)/mu.so \
            src/decision-procedures/polylib/$(PLATFORM)/polylib.so \
-           src/WS1S/$(PLATFORM)/ws1s.so
+           src/WS1S/$(PLATFORM)/ws1s.so \
+	   src/ics/$(PLATFORM)/ics.so
 
 ess = ess/dist-ess.lisp \
 	ess/init-load.lisp \
@@ -332,12 +333,15 @@ groundevallisp = src/groundeval/eval-macros.lisp \
 inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
                     src/inst-by-unif/herbrandize.lisp \
                     src/inst-by-unif/gensubsts.lisp \
-                    src/inst-by-unif/inst-by-unif.lisp                   
+                    src/inst-by-unif/inst-by-unif.lisp
+
+ics-lisp = src/ics/ics.lisp src/ics/shostak.lisp
 
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
 	     ${decision-procedures} ${ws1slisp} ${groundevallisp} \
-             ${inst-by-unif-lisp} ${qelisp} ${follisp} ${abstractionlisp}
+             ${inst-by-unif-lisp} ${qelisp} ${follisp} ${abstractionlisp} \
+	     ${ics-lisp}
 
 templatedeps = pvs src/make-allegro-pvs.lisp pvs.system \
                ess/dist-ess.lisp ess/allegro-runtime.lisp
@@ -465,7 +469,7 @@ ${LISP} :
 	@echo "Need to set the LISP variable in Makefile to a valid"
 	@echo "allegro 5.0 lisp executable for this platform"
 
-.PHONY: all makefileutils makebdd makepolylib makews1s install clean
+.PHONY: all makefileutils makebdd makepolylib makews1s makeics install clean
 makefileutils :
 	umask 002; \
 	$(MAKE) -C src/utils/$(PLATFORM)
@@ -478,6 +482,10 @@ makepolylib :
 makews1s :
 	umask 002; \
 	$(MAKE) -C src/WS1S/$(PLATFORM)
+
+makeics :
+	umask 002; \
+	$(MAKE) -C src/ics/$(PLATFORM)
 
 image-tar = pvs-$(PLATFORM).tgz
 
@@ -546,6 +554,7 @@ clean :
 	$(MAKE) -C BDD/$(PLATFORM) clean
 	$(MAKE) -C src/decision-procedures/polylib/$(PLATFORM) clean
 	$(MAKE) -C src/WS1S/$(PLATFORM) clean
+	$(MAKE) -C src/ics/$(PLATFORM) clean
 
 pvs-emacs-src = $(wildcard emacs/emacs-src/*.el)
 ilisp-emacs-src = $(wildcard emacs/emacs-src/ilisp/*.el)
