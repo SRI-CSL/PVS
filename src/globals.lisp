@@ -113,6 +113,12 @@ prelude libraries")
   "A flag indicating whether we are typechecking a module - used to control
    TCC generation")
 
+;;; *circular-file-dependencies* is an alist associating each filename
+;;; with a list of circularities.  It is computed after typechecking a
+;;; file, and bin files are not generated for any files involved in a
+;;; circularity.  It has the form ((file th1 th2 ...) ...)
+(defvar *circular-file-dependencies* nil)
+
 (defvar *in-typechecker* nil
   "A flag indicating that we are in the typechecker")
 
