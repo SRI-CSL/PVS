@@ -458,6 +458,9 @@
 (defmethod place ((obj vector))
   obj)
 
+(defmethod place ((obj string))
+  nil)
+
 (defun place-list (obj)
   (coerce (place obj) 'list))
 
