@@ -12,26 +12,40 @@
 
 (in-package 'pvs)
 
-(defun check-formals (formals &optional opt-flag)
-  (or (null formals)
-      (if (eq (car formals) '&optional)
-	  (if (member '&optional (cdr formals))
-	      (format t "~%'&optional occurs twice")
-	      (check-formals (cdr formals) t))
-	  (if (eq (car formals) '&rest)
-	      (if (not (singleton? (cdr formals)))
-		  (format t "~%Exactly one &rest argument allowed.")
-		  (if (not (symbolp (cadr formals)))
-		      (format t "~%&rest argument should be a symbol.")
-		      t))
-	      (and (or (symbolp (car formals))
-		       (and (consp (car formals))
-			    opt-flag
-			    (symbolp (caar formals)))
-		       (format t "~%Formals must be symbols or pairs (when optional)"))
-		   (check-formals (cdr formals) opt-flag))))))
-	
-
+(eval-when (eval compile load)
+  (defun check-formals (formals &optional opt-flag)
+    (or (null formals)
+	(if (eq (car formals) '&optional)
+	    (if (member '&optional (cdr formals))
+		(format t "~%'&optional occurs twice")
+		(check-formals (cdr formals) t))
+	    (if (eq (car formals) '&rest)
+		(if (not (singleton? (cdr formals)))
+		    (format t "~%Exactly one &rest argument allowed.")
+		    (if (not (symbolp (cadr formals)))
+			(format t "~%&rest argument should be a symbol.")
+			t))
+		(and (or (symbolp (car formals))
+			 (and (consp (car formals))
+			      opt-flag
+			      (symbolp (caar formals)))
+			 (format t "~%Formals must be symbols or pairs (when optional)"))
+		     (check-formals (cdr formals) opt-flag))))))
+  (defun check-prover-macro-args (name args body doc format)
+    (declare (ignore body))
+    (cond ((not (symbolp name))
+	   (error "Name ~a must be a symbol." name))
+	  ((not (check-formals args))
+	   (error "Arguments ~a must be a list of the form~
+                 ~%  (arg1 arg2... &optional... &rest argn)."
+		  args))
+	  ((not (stringp doc))
+	   (error "Documentation ~a is not a string (in double quotes)."
+		  doc))
+	  ((not (stringp format))
+	   (error "Format-string ~a is not a string (in double quotes)."
+		  format))))
+  )
 
 ;DAVESC
 
@@ -97,80 +111,113 @@
 
 
 (defmacro defrule (name args body doc format)
-  `(cond ((not (symbolp (quote ,name)))
-	  (format T "~%Name ~a must be a symbol." (quote ,name)))
-         ((not (check-formals (quote ,args)))
-	  (format T "~%Arguments ~a must be a list of the form
-    (arg1 arg2... &optional... &rest argn)." (quote ,args)))
-         ((not (stringp ,doc))
-	  (format T "~%Documentation ~a is not a string (in double quotes)."
-	    ,doc))
-         ((not (stringp ,format))
-          (format T "~%Format-string ~a is not a string (in double quotes)."
-	    ,format))
-         (t (defrule* (quote ,name) (quote ,args) (quote ,body)
-		      (format nil "~s:~%    ~a" (cons (quote ,name)(quote ,args)) ,doc)
-		      (format nil "~%~a," ,format))
-	  )))
+  (check-prover-macro-args name args body doc format)
+  (let ((lbody (extract-lisp-exprs-from-strat-body body)))
+    (if lbody
+	(let ((largs (mapcar #'(lambda (a) (if (consp a) (car a) a))
+		       (remove-if #'(lambda (a)
+				      (memq a '(&optional &rest)))
+			 args))))
+	  `(progn (defun ,(makesym "(DEFRULE) ~a" name) ,largs
+		    ,@lbody
+		    (list ,@largs))
+		  (defrule* ',name ',args ',body
+		    (format nil "~s :~%    ~a"
+		      (cons ',(makesym "~a/$" name) ',args)
+		      ,doc)
+		    (format nil "~%~a," ,format))))
+	`(defrule* ',name ',args
+	   ',body
+	   (format nil "~s:~%    ~a" (cons ',name ',args) ,doc)
+	   (format nil "~%~a," ,format)))))
 
 (defmacro defstrat (name args body doc &optional format)
-  `(cond ((not (symbolp (quote ,name)))
-	  (format T "~%Name ~a must be a symbol." (quote ,name)))
-         ((not (check-formals (quote ,args)))
-	  (format T "~%Arguments ~a must be a list of the form
-    (arg1 arg2... &optional... &rest argn)." (quote ,args)))
-         ((not (stringp ,doc))
-	  (format T "~%Documentation ~a is not a string (in double quotes)."
-	    ,doc))
-         (t (defstrat*  (intern (format nil "~a" (quote ,name)))
-                (quote ,args) (quote ,body)
-		(format nil "~s:~%    ~a" (cons (quote ,name)(quote ,args)) ,doc)
-		(format nil "~%~a," ,format)))))
+  (check-prover-macro-args name args body doc (or format ""))
+  (let ((lbody (extract-lisp-exprs-from-strat-body body)))
+    (if lbody
+	(let ((largs (mapcar #'(lambda (a) (if (consp a) (car a) a))
+		       (remove-if #'(lambda (a)
+				      (memq a '(&optional &rest)))
+			 args))))
+	  `(progn (defun ,(makesym "(DEFSTRAT) ~a" name) ,largs
+		    ,@lbody
+		    (list ,@largs))
+		  (defstrat* ',name ',args ',body
+		    (format nil "~s :~%    ~a"
+		      (cons ',(makesym "~a/$" name) ',args)
+		      ,doc)
+		    (format nil "~%~a," ,format))))
+	`(defstrat* ',name ',args
+	   ',body
+	   (format nil "~s:~%    ~a" (cons ',name ',args) ,doc)
+	   (format nil "~%~a," ,format)))))
 
 (defmacro defstep (name args body doc format)
-  `(cond ((not (symbolp (quote ,name)))
-	  (format T "~%Name ~a must be a symbol." (quote ,name)))
-         ((not (check-formals (quote ,args)))
-	  (format T "~%Arguments ~a must be a list of the form
-    (arg1 arg2... &optional... &rest argn)." (quote ,args)))
-         ((not (stringp ,doc))
-	  (format T "~%Documentation ~a is not a string (in double quotes)."
-	    ,doc))
-         ((not (stringp ,format))
-          (format T "~%Format-string ~a is not a string (in double quotes)."
-	    ,format))
-         (t (defstep* (quote ,name) (quote ,args) (quote ,body)
-		      (format nil "~s :~%    ~a"
-			(cons (quote ,(intern (format nil "~a/$" name)))
-			      (quote ,args))
-			 ,doc)
-			(format nil "~%~a," ,format)))))
+  (check-prover-macro-args name args body doc format)
+  (let ((lbody (extract-lisp-exprs-from-strat-body body)))
+    (if lbody
+	(let ((largs (mapcar #'(lambda (a) (if (consp a) (car a) a))
+		       (remove-if #'(lambda (a)
+				      (memq a '(&optional &rest)))
+			 args))))
+	  `(progn (defun ,(makesym "(DEFSTEP) ~a" name) ,largs
+		    ,@lbody
+		    (list ,@largs))
+		  (defstep* ',name ',args ',body
+		    (format nil "~s :~%    ~a"
+		      (cons ',(makesym "~a/$" name) ',args)
+		      ,doc)
+		    (format nil "~%~a," ,format))))
+	`(defstep* ',name ',args ',body
+	   (format nil "~s :~%    ~a"
+	     (cons ',(makesym "~a/$" name) ',args)
+	     ,doc)
+	   (format nil "~%~a," ,format)))))
+
+(defun extract-lisp-exprs-from-strat-body (body &optional lispexprs)
+  (cond ((null body)
+	 (nreverse lispexprs))
+	((consp body)
+	 (cond ((eq (car body) 'if)
+		(extract-lisp-exprs-from-strat-body
+		 (cddr body) (cons (cadr body) lispexprs)))
+	       ((eq (car body) 'let)
+		(let ((nexprs (extract-lisp-exprs-from-strat-body
+			       (cddr body))))
+		  (nreverse (cons `(let* ,(cadr body)
+				     ,@(cons `(list ,@(mapcar #'car
+							(cadr body)))
+					     nexprs))
+				  lispexprs))))
+	       (t (extract-lisp-exprs-from-strat-body
+		   (cdr body)
+		   (extract-lisp-exprs-from-strat-body (car body) lispexprs)))))
+	(t (nreverse lispexprs))))
+						    
 
 
 (defmacro defhelper (name args body doc format)
-  `(cond ((not (symbolp (quote ,name)))
-	  (format T "~%Name ~a must be a symbol." (quote ,name)))
-         ((not (check-formals (quote ,args)))
-	  (format T "~%Arguments ~a must be a list of the form
-    (arg1 arg2... &optional... &rest argn)." (quote ,args)))
-         ((not (stringp ,doc))
-	  (format T "~%Documentation ~a is not a string (in double quotes)."
-	    ,doc))
-         ((not (stringp ,format))
-          (format T "~%Format-string ~a is not a string (in double quotes)."
-	    ,format))
-         (t (defhelper* (quote ,name) (quote ,args) (quote ,body)
-		      (format nil "~s :~%    ~a"
-			(cons  (quote ,(intern (format nil "~a/$" name)))
-			      (quote ,args))
-			,doc)
-			(format nil "~%~a," ,format)))))
-
-;(let ((sname (intern (format nil "~a$" (quote ,name)))))
-;           (defstrat*  sname
-;                (quote ,args) (quote ,body)
-;		(format nil "~s:~%    ~a" (cons sname (quote ,args)) ,doc)
-;		(format nil "~%~a,"  ,format)))
+  (check-prover-macro-args name args body doc format)
+  (let ((lbody (extract-lisp-exprs-from-strat-body body)))
+    (if lbody
+	(let ((largs (mapcar #'(lambda (a) (if (consp a) (car a) a))
+		       (remove-if #'(lambda (a)
+				      (memq a '(&optional &rest)))
+			 args))))
+	  `(progn (defun ,(makesym "(DEFHELPER) ~a" name) ,largs
+		    ,@lbody
+		    (list ,@largs))
+		  (defhelper* ',name ',args ',body
+		    (format nil "~s :~%    ~a"
+		      (cons ',(makesym "~a/$" name) ',args)
+		      ,doc)
+		    (format nil "~%~a," ,format))))
+	`(defhelper* ',name ',args
+	   ',body
+	   (format nil "~s :~%    ~a"
+	     (cons ',(makesym "~a/$" name) ',args)
+	     ,doc)
+	   (format nil "~%~a," ,format)))))
 
 
 (defstrat try (strategy then else)
@@ -447,12 +494,6 @@ AUTO-REWRITE-THEORY, or AUTO-REWRITE-THEORIES. E.g.,
   "~%Turning off automatic rewriting for theories: ~{~%   ~a~}")
 
 
-;(defstrat tcc-strategy (&optional (defs !))
-;  (then*
-;    (tcc :defs defs)
-;    (fail))
-;  "The strategy used to prove TCCs when M-x tcp.")
-
 (defhelper subtype-tcc ()
   (tcc$ explicit)
   "The strategy used for subtype TCCs"
@@ -704,17 +745,18 @@ then turns off all the installed rewrites.  Examples:
 
 (defun query*-step ()  '(if *proving-tcc* (quit)(query*)))
 
-(defstrat query* nil (if (or *proving-tcc* *in-apply*) ;;NSH(8.22.94)
-			(postpone)
-			(let ((input (let ((input (qread "Rule? " t)))
-				       (setf (current-input *ps*)
-					     input)
-				       input))
-			      (rule (retypecheck-sexp
-				     (unformat-rule input)
-				     *ps*)))
-			  (try rule (query*) (query*))))
-	 "The basic strategy that queries the user for the next step." )
+(defstrat query* ()
+  (if (or *proving-tcc* *in-apply*);;NSH(8.22.94)
+      (postpone)
+      (let ((input (let ((input (qread "Rule? " t)))
+		     (setf (current-input *ps*)
+			   input)
+		     input))
+	    (rule (retypecheck-sexp
+		   (unformat-rule input)
+		   *ps*)))
+	(try rule (query*) (query*))))
+  "The basic strategy that queries the user for the next step.")
 
 
 ;;The else strategy
@@ -1829,7 +1871,7 @@ See also CASE, CASE*"
 (defstep replace* (&rest fnums)
   (let ((fnums (find-all-sformnums (s-forms *goal*)
 				   (if (null fnums) '* fnums)
-				   #'(lambda (x) T)))
+				   #'always-true))
 	(x `(then* ,@(loop for y in fnums collect `(replace ,y)))))
     x)
   "Apply left-to-right replacement with formulas in FNUMS."
@@ -1913,7 +1955,7 @@ introduce a duplicate formula."
 	(if (eql (length terms)(length bindings))
 	    (instantiate-one$ fnum terms)
 	    (if (< (length bindings)(length terms))
-		(let ((current-terms (loop for x in terms as y in bindings
+		(let ((current-terms (loop for x in terms as nil in bindings
 					   collect x))
 		      (remaining-terms (nthcdr (length bindings) terms)))
 		  (try (instantiate-one$ fnum current-terms)
@@ -1945,7 +1987,7 @@ quantified formula."
 	(if (eql (length terms)(length bindings))
 	    (instantiate-one$ fnum terms T)
 	    (if (< (length bindings)(length terms))
-		(let ((current-terms (loop for x in terms as y in bindings
+		(let ((current-terms (loop for x in terms as nil in bindings
 					   collect x))
 		      (remaining-terms (nthcdr (length bindings) terms)))
 			  (try (instantiate-one$ fnum current-terms T)
@@ -2185,10 +2227,9 @@ corresponding to dir (left-to-right when LR, and right-to-left when RL)."
 				 (list (car sforms)))
 				fnums-sforms))
 	      (out-subst (if (equal in-subst 'fail) 'fail
-			     (multiple-value-bind (lhs rhs hyp)
-				 (split-rewrite form
-						(mapcar #'car in-subst)
-						dir)
+			     (let ((lhs (split-rewrite form
+						       (mapcar #'car in-subst)
+						       dir)))
 			       (find-match-list lhs 
 						(mapcar #'formula
 						  fnums-sforms)
@@ -2860,10 +2901,12 @@ or succedent formula in the sequent."
 		 (newform (when term
 			    (if subterms-only?
 				(termsubst form
-					   #'(lambda (x) var)
+					   #'(lambda (x)
+					       (declare (ignore x))
+					       var)
 					   #'(lambda (x) (tc-eq x term)))
 				(gensubst form
-				  #'(lambda (x) var)
+				  #'(lambda (x) (declare (ignore x)) var)
 				  #'(lambda (x) (tc-eq x term))))))
 		 (newform (when term (universal-closure newform)))
 		 (subst (when term (list var term))))
