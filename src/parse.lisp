@@ -1412,16 +1412,9 @@
   (let* ((set-expr? (is-sop 'set-expr body))
 	 (commas? (xt-lambda-formals-check (term-arg0 body)))
 	 (bindings (xt-lambda-formals (term-arg0 body) commas?))
-	 (rterm (unless set-expr? (term-arg1 body)))
-	 (rtype (when (and rterm
-			   (not (is-sop 'noreturntype rterm)))
-		  (xt-not-enum-type-expr rterm)))
-	 (expr (xt-expr (if set-expr?
-			    (term-arg1 body)
-			    (term-arg2 body)))))
+	 (expr (xt-expr (term-arg1 body))))
     (make-instance class
       'bindings (xt-flatten-bindings (car bindings) (if set-expr? 1 0))
-      'result-type rtype
       'expression (make-xt-bind-expr* (cdr bindings) class expr)
       'commas? commas?
       'place (term-place save-as))))

@@ -468,11 +468,10 @@
 	    (cons (mk-application op (car args)(cadr args))
 		  (cddr args))))))
 
-(defun mk-lambda-expr (vars expr &optional result-type)
+(defun mk-lambda-expr (vars expr)
   (make-instance 'lambda-expr
     'bindings (mk-bindings vars)
-    'expression expr
-    'result-type result-type))
+    'expression expr))
 
 (defun mk-let-expr (bindings expr)
   (change-class
@@ -991,13 +990,10 @@
 	(assert *current-context*)
 	(typecheck expr :expected *boolean*))))
 
-(defun make-lambda-expr (vars expr &optional result-type context)
-  (let ((nexpr (mk-lambda-expr vars expr result-type))
-	(*current-context* (or context *current-context*)))
+(defun make-lambda-expr (vars expr)
+  (let ((nexpr (mk-lambda-expr vars expr)))
     (assert *current-context*)
-    (cond (result-type
-	   (typecheck nexpr :expected result-type))
-	  ((and (type expr)
+    (cond ((and (type expr)
 		(every #'type (bindings nexpr)))
 	   (typecheck nexpr
 		      :expected (mk-funtype (mapcar #'type

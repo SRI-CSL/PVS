@@ -425,8 +425,6 @@
 (defmethod untypecheck-theory ((ex binding-expr))
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (bindings ex))
-  (untypecheck-theory (result-type ex))
-  (setf (type-value ex) nil)
   (untypecheck-theory (expression ex)))
 
 (defmethod untypecheck-theory ((ex update-expr))
@@ -559,8 +557,7 @@
 
 (defmethod copy-slots ((ex1 binding-expr) (ex2 binding-expr))
   (setf (bindings ex1) (bindings ex2)
-	(expression ex1) (expression ex2)
-	(result-type ex1) (result-type ex2)))
+	(expression ex1) (expression ex2)))
 
 (defmethod copy-slots ((ex1 update-expr) (ex2 update-expr))
   (setf (expression ex1) (expression ex2)

@@ -407,8 +407,7 @@
 
 (defmethod update ((oexpr lambda-expr) (nexpr lambda-expr) &optional ign)
   (declare (ignore ign))
-  (call-next-method)
-  (update (result-type oexpr) (result-type nexpr)))
+  (call-next-method))
 
 (defmethod update ((oexpr quant-expr) (nexpr quant-expr) &optional ign)
   (declare (ignore ign))

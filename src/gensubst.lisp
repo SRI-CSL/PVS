@@ -599,10 +599,7 @@
 
 (defmethod mapobject* (fn (ex binding-expr))
   (mapobject* fn (bindings ex))
-  (mapobject* fn (result-type ex))
-  (mapobject* fn (expression ex))
-  (unless *parsing-or-unparsing*
-    (mapobject* fn (type-value ex))))
+  (mapobject* fn (expression ex)))
 
 (defmethod mapobject* (fn (ex update-expr))
   (mapobject* fn (expression ex))

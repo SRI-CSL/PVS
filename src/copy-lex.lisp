@@ -247,8 +247,7 @@
   (unless (eq (class-of old) (class-of new))
     (change-class old (class-of new)))
   (copy-lex* (bindings old) (bindings new))
-  (copy-lex* (expression old) (expression new))
-  (copy-lex* (result-type old) (result-type new)))
+  (copy-lex* (expression old) (expression new)))
 
 (defmethod copy-lex* ((old update-expr) (new update-expr))
   (copy-lex* (assignments old) (assignments new))
