@@ -118,22 +118,7 @@
 				   bind-alist subst)
 			   (call-next-method)))))))
 
-;(defmethod match* :around ((texpr type-expr)(instance type-expr)
-;			  bind-alist subst)
-;	   (if (eq subst 'fail) 'fail
-;	       (if (no-freevars? texpr)
-;		   (let ((newmodsubst
-;			  (tc-eq-or-unify texpr
-;					  instance
-;					  *modsubst*)))
-;		     (cond (newmodsubst
-;			    (setq *modsubst* newmodsubst)
-;			    subst)
-;			   (t 'fail)))
-;		   (call-next-method))))
-
-(defmethod match* ((texpr type-name) (instance type-expr) bind-alist
-		   subst)
+(defmethod match* ((texpr type-name) (instance type-expr) bind-alist subst)
   (if (and (consp *modsubst*)
 	   (assoc texpr *modsubst* :test #'same-declaration))
       (let ((newmodsubst (tc-unify instance texpr *modsubst*)))
@@ -151,8 +136,7 @@
 		  'fail)))
 	  'fail)))
 
-(defmethod match* ((expr resolution)(instance resolution) bind-alist
-		   subst)
+(defmethod match* ((expr resolution)(instance resolution) bind-alist subst)
 ;;  (break)
   (if (and (eq expr instance)(null (freevars expr))) subst
   (with-slots ((d1 declaration) (m1 module-instance)) expr
@@ -222,25 +206,6 @@
     (with-slots ((st2 supertype) (p2 predicate)) instance
       (match* st1 st2 bind-alist (match* p1 p2 bind-alist subst)))))
 
-;(defmethod match* ((expr subtype)(instance subtype) bind-alist subst)
-;  (with-slots ((st1 supertype) (p1 predicate)) expr
-;    (with-slots ((st2 supertype) (p2 predicate)) instance
-;      (let ((res (match* p1 p2 bind-alist subst)))
-;	(if (eq res 'fail)
-;	    (let ((res (match* st1 instance bind-alist subst)))
-;	      (if (eq res 'fail)
-;		  (match* expr st2 bind-alist subst)
-;		  res))
-;	    res)))))
-
-;(defmethod match* ((expr subtype)(instance type-expr) bind-alist subst)
-;  (with-slots ((supertype supertype)) expr
-;    (match* supertype instance bind-alist subst)))
-;
-;(defmethod match* ((expr type-expr)(instance subtype) bind-alist subst)
-;  (with-slots ((supertype supertype)) instance
-;  (match* expr supertype  bind-alist subst)))
-
 (defmethod match* ((expr funtype)(instance funtype) bind-alist subst)
   (with-slots ((d1 domain) (r1 range)) expr
     (with-slots ((d2 domain) (r2 range))  instance
@@ -281,10 +246,10 @@
     (with-slots ((ty2 type)) instance
       (match* ty1 ty2 bind-alist subst))))
 
-(defmethod match* ((expr type-expr)(instance type-expr) bind-alist
-		   subst)
-  (declare (ignore  bind-alist subst))
-  (if (tc-eq expr instance) subst
+(defmethod match* ((expr type-expr)(instance type-expr) bind-alist subst)
+  (declare (ignore bind-alist))
+  (if (tc-eq expr instance)
+      subst
       'fail))
 
 (defmethod match* ((expr type-expr)(instance dep-binding) bind-alist subst)
@@ -336,8 +301,7 @@
 						 (make!-name-expr
 						  (id z) nil nil
 						  (make-resolution z
-						    nil (type z))
-						  'VARIABLE))
+						    nil (type z))))
 					     (cdr x))))
 			      x)))
 		   (substituted-expr
@@ -415,16 +379,16 @@
 				      
 		   
 		   
-(defmethod match* ((lhs expr)(instance coercion) bind-alist subst)
+(defmethod match* ((lhs expr) (instance coercion) bind-alist subst)
   (match* lhs (args1 instance) bind-alist subst))
 
-(defmethod match* ((lhs coercion)(instance expr) bind-alist subst)
+(defmethod match* ((lhs coercion) (instance expr) bind-alist subst)
   (match* (args1 lhs)  instance bind-alist subst))
 
-(defmethod match* ((lhs name-expr)(instance coercion) bind-alist subst)
+(defmethod match* ((lhs name-expr) (instance coercion) bind-alist subst)
   (match* lhs (args1 instance) bind-alist subst))
 
-(defmethod match* ((lhs field-name-expr)(instance field-name-expr)
+(defmethod match* ((lhs field-name-expr) (instance field-name-expr)
 		   bind-alist subst)
   (with-slots ((id1 id)(ty1 type)) lhs
     (with-slots ((id2 id)(ty2 type)) instance
@@ -443,21 +407,6 @@
 	  'fail))))
 
 
-	       
-
-;(defmethod match* :around ((lhs name-expr)(instance expr) bind-alist
-;			   subst)
-;	   (with-slots ((ty1 type)) lhs
-;	     (with-slots ((ty2 type)) instance
-;	       (let ((res (call-next-method)))
-;;;;		 res
-;		 (if (eq res 'fail)
-;		     'fail
-;		     (if (no-freevars? ty1)
-;			 res
-;			 (match* ty1 ty2 bind-alist res)))))))
-
-
 ;;NSH(7.13.94): Several changes: since match* is used by replace, it
 ;;should do an exact check on the type of non-free variables but
 ;;only require a compatibility check on the type of freevar/instance
@@ -473,12 +422,12 @@
 	     binding)
       (same-declaration x binding)))
 
-(defmethod match* ((lhs name-expr)(instance expr) bind-alist subst)
+(defmethod match* ((lhs name-expr) (instance expr) bind-alist subst)
   (cond					;((eq subst 'fail) 'fail)
    ((variable? lhs)
     (let ((bind-entry (assoc-decl lhs bind-alist))
 	  (instance-bindings
-	   (loop for (x . y) in bind-alist
+	   (loop for (nil . y) in bind-alist
 		 append (if (consp y) y (list y))))
 	  (subst-entry (or (assoc lhs subst :test #'same-declaration)
 			   (assoc lhs subst
@@ -504,64 +453,54 @@
 			    subst
 			    'fail)))
        (subst-entry
-	(let ((subst-term (cdr subst-entry)))
-	  (multiple-value-bind
-	      (newmodsubst type)
-	      (tc-eq-or-unify* (substit (type lhs) subst)
-			       (if (type subst-term)
-				   (list (type subst-term))
-				   (types subst-term))
-			       *modsubst*)
-	    (cond (newmodsubst
-		   (let ((newsubst-term (if (type subst-term)
-					    subst-term
-					    (copy-all subst-term))))
-		     (unless (type newsubst-term)
-		       (set-type newsubst-term (type instance)
-				 *current-context*))
-		     (if (tc-eq newsubst-term instance)
-			 (let* ((subst
+	(let* ((subst-term (cdr subst-entry))
+	       (newmodsubst
+		(tc-eq-or-unify* (substit (type lhs) subst)
 				 (if (type subst-term)
-				     subst
-				     (acons (declaration lhs)
-					    newsubst-term
-					    (remove subst-entry subst))))
-				(typesubst (match* (type lhs)
-						   (type instance)
-						   bind-alist
-						   subst)))
-			   (setq *modsubst* newmodsubst)
-			   (if (eq typesubst 'fail)
-			       subst
-			       typesubst))
-			 'fail)))
-		  (t (let ((typesubst (match* (type lhs)(type instance)
-					      bind-alist subst)))
-		       (if (eq typesubst 'fail)
-			   'fail
-			   typesubst)))))))
+				     (list (type subst-term))
+				     (types subst-term))
+				 *modsubst*)))
+	  (cond (newmodsubst
+		 (let ((newsubst-term (if (type subst-term)
+					  subst-term
+					  (copy-all subst-term))))
+		   (unless (type newsubst-term)
+		     (set-type newsubst-term (type instance)
+			       *current-context*))
+		   (if (tc-eq newsubst-term instance)
+		       (let* ((subst
+			       (if (type subst-term)
+				   subst
+				   (acons (declaration lhs)
+					  newsubst-term
+					  (remove subst-entry subst))))
+			      (typesubst (match* (type lhs)
+						 (type instance)
+						 bind-alist
+						 subst)))
+			 (setq *modsubst* newmodsubst)
+			 (if (eq typesubst 'fail)
+			     subst
+			     typesubst))
+		       'fail)))
+		(t (let ((typesubst (match* (type lhs)(type instance)
+					    bind-alist subst)))
+		     (if (eq typesubst 'fail)
+			 'fail
+			 typesubst))))))
        (;;(and (null bind-entry)(null subst-entry) ;(variable? lhs)
 	(let ((freevars (freevars instance)))
-	  (assert (subsetp instance-bindings
-			   *bound-variables*
-			   :test
-			   #'same-declaration
-			   ))
-	  (and (null (intersection freevars
-				   instance-bindings
-				   :test
-				   #'same-declaration))
+	  (assert (subsetp instance-bindings *bound-variables*
+			   :test #'same-declaration))
+	  (and (null (intersection freevars instance-bindings
+				   :test #'same-declaration))
 	       (or (null *no-bound-variables-in-match*)
-		   (null (intersection freevars
-				       *bound-variables*
+		   (null (intersection freevars *bound-variables*
 				       :test #'same-declaration)))))
 	(let* ((stype (substit (type lhs) subst))
-	       (newmodsubst
-		(tc-eq-or-unify stype
-				(type instance)
-				*modsubst*))
-	       (newsubst (acons (declaration lhs) instance
-			       subst)));;(break "match:name-expr")
+	       (newmodsubst (tc-eq-or-unify stype (type instance) *modsubst*))
+	       (newsubst (acons (declaration lhs) instance subst)))
+	  ;;(break "match:name-expr")
 	  (cond (newmodsubst
 		 (setq *modsubst* newmodsubst)
 		 (let ((typesubst (match* (type lhs)(type instance)
@@ -935,45 +874,50 @@
 
 (defmethod match* ((lhs field-assignment-arg) (instance field-assignment-arg)
 		   bind-alist subst)
+  (declare (ignore bind-alist))
   (if (eq (id lhs) (id instance))
       subst
       'fail))
 
 (defmethod match* ((lhs field-assignment-arg) instance bind-alist subst)
+  (declare (ignore instance bind-alist subst))
   'fail)
 
 (defmethod match* ((lhs name-expr) (instance field-assignment-arg)
 		   bind-alist subst)
+  (declare (ignore bind-alist subst))
   'fail)
 
 (defmethod match* ((lhs application) (instance field-assignment-arg)
 		   bind-alist subst)
+  (declare (ignore bind-alist subst))
   'fail)
 
-(defmethod match* ((lhs list)(instance list) bind-alist subst)
-  (cond ;((eq subst 'fail) 'fail)
-	((and (null lhs)(null instance)) subst)
-	((= (length lhs)(length instance))
-	 (if (dep-binding? (car lhs))
-	     (if (dep-binding? (car instance))
-		 (let ((car-result (match* (car lhs) ;;NSH(7.26.94)
-					   (car instance)
-					   bind-alist
-					   subst))
-		       (*bound-variables* (cons (car instance)
-						*bound-variables*)))
-		   (match* (cdr lhs)(cdr instance)
-			   (cons (cons (car lhs)(car instance))
-				 bind-alist)
-			   car-result))
-		 'fail)
-	     (if (dep-binding? (car instance))
-		 'fail
-		 (match* (cdr lhs)(cdr instance) bind-alist
-			 (match* (car lhs)(car instance) bind-alist subst)))))
-	(t 'fail)))
+(defmethod match* ((lhs list) (instance list) bind-alist subst)
+  (cond					;((eq subst 'fail) 'fail)
+   ((and (null lhs)(null instance)) subst)
+   ((= (length lhs)(length instance))
+    (if (dep-binding? (car lhs))
+	(if (dep-binding? (car instance))
+	    (let ((car-result (match* (car lhs);;NSH(7.26.94)
+				      (car instance)
+				      bind-alist
+				      subst))
+		  (*bound-variables* (cons (car instance)
+					   *bound-variables*)))
+	      (match* (cdr lhs)(cdr instance)
+		      (cons (cons (car lhs)(car instance))
+			    bind-alist)
+		      car-result))
+	    'fail)
+	(if (dep-binding? (car instance))
+	    'fail
+	    (match* (cdr lhs)(cdr instance) bind-alist
+		    (match* (car lhs)(car instance) bind-alist subst)))))
+   (t 'fail)))
 
-(defmethod match* ((lhs expr)(instance expr) bind-alist subst)
-  (declare (ignore bind-alist subst))
-  (if (exequal lhs instance) subst
+(defmethod match* ((lhs expr) (instance expr) bind-alist subst)
+  (declare (ignore bind-alist))
+  (if (tc-eq lhs instance)
+      subst
       'fail))
