@@ -164,11 +164,14 @@
 		    (if formals
 			(let* ((*tc-match-exact* t)
 			       (newmodsubst
-				(or (tc-match-acts act2 formals *modsubst*)
-				    (tc-match-acts act2 formals
-						   (mapcar #'(lambda (s)
-							       (list (car s)))
-						     *modsubst*)))))
+				(and (consp *modsubst*)
+				     (or (tc-match-acts
+					  act2 formals *modsubst*)
+					 (tc-match-acts
+					  act2 formals
+					  (mapcar #'(lambda (s)
+						      (list (car s)))
+					    *modsubst*))))))
 			  (cond (newmodsubst
 				 (setq *modsubst* newmodsubst)
 				 subst)

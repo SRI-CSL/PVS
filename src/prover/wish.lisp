@@ -195,26 +195,36 @@
      (with-output-to-temp-file
       (format t "show-proof-commands {~{~a ~}}" commands)))))
 
-(defun x-module-hierarchy (theoryname)
-  (let ((theory (get-typechecked-theory theoryname)))
-    (let ((*modules-visited* nil))
-      (pvs-wish-source
-       (with-output-to-temp-file
-	 (format t "module-hierarchy ~a ~a ~a {~%"
-	   (id theory)
-	   (filename theory)
-	   (shortname (working-directory)))
-	 (module-hierarchy* theory)
-	 (format t "}"))))))
+(defun x-module-hierarchy (theoryname &optional include-libraries?)
+  (let* ((*current-theory* (get-typechecked-theory theoryname))
+	 (*current-context* (context *current-theory*))
+	 (*modules-visited* nil))
+    (pvs-wish-source
+     (with-output-to-temp-file
+      (format t "module-hierarchy ~a ~a ~a {~%"
+	(id (current-theory))
+	(filename (current-theory))
+	(shortname (working-directory)))
+      (module-hierarchy* (current-theory) include-libraries?)
+      (format t "}")))))
 
-(defun module-hierarchy* (theory)
+(defun module-hierarchy* (theory include-libraries?)
   (unless (member theory *modules-visited*)
     (push theory *modules-visited*)
-    (let ((deps (delete-if #'null
-		  (mapcar #'get-theory
-			  (get-immediate-usings theory)))))
+    (let* ((imps (get-immediate-usings theory))
+	   (deps (delete-if #'null
+		   (mapcar #'(lambda (tname)
+			       (let ((th (get-theory tname)))
+				 (when th
+				   (if (generated-by th)
+				       (get-theory (generated-by th))
+				       th))))
+		     (if include-libraries?
+			 imps
+			 (remove-if #'library imps))))))
       (format t "{~a {~{~a ~}}}~%" (id theory) (mapcar #'id deps))
-      (mapc #'module-hierarchy* deps))))
+      (mapc #'(lambda (dep) (module-hierarchy* dep include-libraries?))
+	    deps))))
 
 (defun write-proof-status (ps path)
   (let* ((tcl-path (path-to-tcl-path path))

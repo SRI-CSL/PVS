@@ -943,33 +943,48 @@ is T) and disjunctively simplifies."
 ;(def-pvs-term subrange-subtype "subrange" "subrange_type" :nt type-expr)
 ;(def-pvs-term above-subtype "above" "int_types" :nt type-expr)
 
+(defun upfrom-res ()
+  (car (resolve (mk-type-name '|upfrom| nil '|integers|) 'type nil)))
+
+(defun below-res ()
+  (car (resolve (mk-type-name '|below| nil '|naturalnumbers|) 'type nil)))
+
+(defun upto-res ()
+  (car (resolve (mk-type-name '|upto|  nil '|naturalnumbers|) 'type nil)))
+
+(defun subrange-res ()
+  (car (resolve (mk-type-name '|subrange| nil '|integers|) 'type nil)))
+
+(defun above-res ()
+  (car (resolve (mk-type-name '|above| nil '|integers|) 'type nil)))
+
 (defun upfrom? (type)
-  (let ((subst (match! (upfrom-subtype)
+  (let ((subst (match! (type-value (declaration (upfrom-res)))
 		       type nil nil)))
     (when (not (eq subst 'fail))
       (cdr (assoc '|i| subst :test #'same-id)))))
 
 (defun upto? (type)
-  (let ((subst (match! (upto-subtype)
+  (let ((subst (match! (type-value (declaration (upto-res)))
 		      type nil nil)))
     (when (not (eq subst 'fail))
       (cdr (assoc '|i| subst :test #'same-id)))))
 
 (defun below? (type)
-  (let ((subst (match! (below-subtype)
+  (let ((subst (match! (type-value (declaration (below-res)))
 		      type nil nil)))
     (when (not (eq subst 'fail))
       (cdr (assoc '|i| subst :test #'same-id)))))
 
 (defun subrange? (type)
-  (let ((subst (match! (subrange-subtype)
+  (let ((subst (match! (type-value (declaration (subrange-res)))
 		      type nil nil)))
     (when (not (eq subst 'fail))
       (cons (cdr (assoc '|i| subst :test #'same-id))
 	    (cdr (assoc '|j| subst :test #'same-id))))))
 
 (defun above? (type)
-  (let ((subst (match! (above-subtype)
+  (let ((subst (match! (type-value (declaration (above-res)))
 		      type nil nil)))
     (when (not (eq subst 'fail))
       (cdr (assoc '|i| subst :test #'same-id)))))
@@ -1143,20 +1158,21 @@ See also INDUCT."
 			 nil)))
     (if fmla
 	(try (simple-induct var fmla name)
-	     (if *new-fmla-nums*;;NSH(4.25.97) record fnum here
+	     (if *new-fmla-nums*  ;;NSH(4.25.97) record fnum here
 		 (let ((fnum (find-sform (s-forms (current-goal *ps*))
 					 '+
 					 #'(lambda (sform)
 					     (eq (formula sform)
-						 fmla))))
-		       (x (car *new-fmla-nums*)))
+						 fmla)))))
 		   (then (beta)
-			 (let ((fmla (let ((sforms (select-seq
-						    (s-forms (current-goal *ps*))
-						    (list fnum))))
-				       (when sforms (formula (car sforms))))))
-			   (then (inst? x)
-				 (split x)
+			 (let ((fmla ;;NSH(4.25.97) record fmla here
+				(let ((sforms (select-seq
+					       (s-forms (current-goal *ps*))
+					       (list fnum))))
+				  (when sforms (formula (car sforms))))))
+			   (then (let ((x (car *new-fmla-nums*)))
+				   (then (inst? x)
+					 (split x)))
 				 (let ((num (find-sform
 					     (s-forms (current-goal *ps*))
 					     '+
@@ -1415,9 +1431,9 @@ See also SIMPLE-MEASURE-INDUCT."
   (try-branch (simple-measure-induct$ measure vars fnum order)
 	      ((if *new-fmla-nums*
 		   (branch
-		    (let ((x (car *new-fmla-nums*)))
-		      (beta)
-		      (split x))
+		    (then (beta)
+			  (let ((x (car *new-fmla-nums*)))
+			    (split x)))
 		    ((then (let ((skoterms
 				  (fill-up-terms fnum nil *ps*))
 				 (bndvars (bindings
@@ -1447,7 +1463,7 @@ See also SIMPLE-MEASURE-INDUCT."
 							  :test #'same-id))
 					collect skosymb))
 				 (inst-rule1 `(inst -
-						    ,var-skoterm))
+					      ,var-skoterm))
 				 (inst-rule2 `(inst -
 						    ,@rest-skoterms)))
 			     (then (skolem fnum skoterms)
@@ -1457,7 +1473,7 @@ See also SIMPLE-MEASURE-INDUCT."
 				   (prop)
 				   ))
 			   (skip))
-		     (let ((incfnum;;NSH(5.23.99)
+		     (let ((incfnum ;;NSH(5.23.99)
 			    (length (loop for x in *new-fmla-nums*
 					  when (and (> x 0)
 						    (<= x fnum))
@@ -1470,7 +1486,7 @@ See also SIMPLE-MEASURE-INDUCT."
 				 (skip))))))
 		   (skip))
 	       (skip))
-	      (skip-msg "Could not find suitable induction scheme,"))
+    (skip-msg "Could not find suitable induction scheme,"))
   "This is a helper strategy; use MEASURE-INDUCT+ instead."
   "Inducting on ~a")
 
@@ -3114,17 +3130,49 @@ invokes apply-extensionality.  Otherwise it decomposes the
 		      (make-application rhs nvar)))));)
 
 (defmethod component-equalities (lhs rhs (te type-name))
-  (make-disjunction
-   (mapcar #'(lambda (r c)
-	       (make-conjunction
-		(cons (make-application r lhs)
-		      (cons (make-application r rhs)
-			    (mapcar #'(lambda (a)
-					(make-equality
-					 (make-application a lhs)
-					 (make-application a rhs)))
-			      (accessors c))))))
-     (recognizers te) (constructors te))))
+  (let* ((rec-subtypes (mapcar #'(lambda (r)
+				   (typecheck (mk-recognizer-type (id r) te)))
+			 (recognizers te)))
+	 (lhs-subtype (find-if #'(lambda (rst)
+				   (subtype-of? (type lhs) rst))
+			rec-subtypes)))
+    (if lhs-subtype
+	(let ((accessors (accessors (constructor (predicate lhs-subtype)))))
+	  (if (subtype-of? (type rhs) lhs-subtype)
+	      (mapcar #'(lambda (a)
+			  (make-equality
+			   (make-application a lhs)
+			   (make-application a rhs)))
+		accessors)
+	      (cons (make-application (predicate lhs-subtype) rhs)
+		    (mapcar #'(lambda (a)
+				(make-equality
+				 (make-application a lhs)
+				 (make-application a rhs)))
+		      accessors))))
+	(let ((rhs-subtype (find-if #'(lambda (rst)
+					(subtype-of? (type rhs) rst))
+			     rec-subtypes)))
+	  (if rhs-subtype
+	      (let ((accessors
+		     (accessors (constructor (predicate rhs-subtype)))))
+		(cons (make-application (predicate rhs-subtype) lhs)
+		      (mapcar #'(lambda (a)
+				  (make-equality
+				   (make-application a lhs)
+				   (make-application a rhs)))
+			accessors)))
+	      (make-disjunction
+	       (mapcar #'(lambda (r c)
+			   (make-conjunction
+			    (cons (make-application r lhs)
+				  (cons (make-application r rhs)
+					(mapcar #'(lambda (a)
+						    (make-equality
+						     (make-application a lhs)
+						     (make-application a rhs)))
+					  (accessors c))))))
+		 (recognizers te) (constructors te))))))))
 
 ;;checks if formula is a well-formed induction scheme
 ;;returns p(x, y, z) where p is the induction predicate.

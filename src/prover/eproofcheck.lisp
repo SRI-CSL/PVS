@@ -238,11 +238,12 @@
     (pvs-emacs-eval "(setq pvs-in-checker t)")))
 
 (defun after-prove* ()
-  (unless *proving-tcc*
-    (pvs-emacs-eval "(setq pvs-in-checker nil)")
-    (display-proofstate nil))
-  (when *dump-sequents-to-file*
-    (dump-sequents-to-file *top-proofstate*))
+  (unless *recursive-prove-decl-call*
+    (unless *proving-tcc*
+      (pvs-emacs-eval "(setq pvs-in-checker nil)")
+      (display-proofstate nil))
+    (when *dump-sequents-to-file*
+      (dump-sequents-to-file *top-proofstate*)))
   (when *subgoals*
     (setq *subgoals*
 	  (mapcar #'current-goal
@@ -1569,15 +1570,16 @@
        (not (symbolp x))))
 
 (defun assert-tccforms (tccforms ps)
-  (let* ((dp-state (dp-state ps))
-	 (alists (alists ps)))
-    (nprotecting-cong-state
-     ((*dp-state* dp-state)
-      (*alists* alists))
-     ;(break "atc")
-     (let ((*rewrite-hash* (copy (rewrite-hash ps)))
-	   (*subtype-hash* (copy (subtype-hash ps))))
-       (assert-tccforms* tccforms ps)))))
+  (when tccforms
+    (let* ((dp-state (dp-state ps))
+	   (alists (alists ps)))
+      (nprotecting-cong-state
+       ((*dp-state* dp-state)
+	(*alists* alists))
+       ;;(break "atc")
+       (let ((*rewrite-hash* (copy (rewrite-hash ps)))
+	     (*subtype-hash* (copy (subtype-hash ps))))
+	 (assert-tccforms* tccforms ps))))))
 
 (defun assert-tccforms* (tccforms ps)
   (if (null tccforms) nil

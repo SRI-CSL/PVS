@@ -217,13 +217,10 @@
 ;  (translate-to-prove (expression expr)))
 
 (defmethod translate-to-prove ((expr branch))
-  (if (eq (id (module-instance (resolution (operator expr))))
-	  '|if_def|)
-      (list 'IF
-	    (translate-to-prove (condition expr))
-	    (translate-to-prove (then-part expr))
-	    (translate-to-prove (else-part expr)))
-      (call-next-method)))
+  (list 'IF
+	(translate-to-prove (condition expr))
+	(translate-to-prove (then-part expr))
+	(translate-to-prove (else-part expr))))
 
 (defmethod translate-to-prove ((expr cases-expr))
   (let ((name (cdr (assoc expr *named-exprs* :test #'tc-eq))))
@@ -497,61 +494,58 @@
        type)
       trbasis))
 
-(defun translate-assignment (assign ;basis
-			     trbasis type)
+(defun translate-assignment (assign trbasis type)
   (translate-assign-args (arguments assign)
 			 (expression assign)
-			 ;basis
 			 trbasis
 			 (find-supertype type)))
 
-(defun translate-assign-args (args value ;basis
-				   trbasis type)
+(defun translate-assign-args (args value trbasis type)
   (if args
-      (list 'UPDATE
-	    trbasis
-	    (typecase type
-	      (recordtype
-	       (position (id (caar args)) (sort-fields (fields type))
-			 :test #'eq :key #'id))
-	      (tupletype
-	       (1- (number (caar args))))
-	      (t (if (singleton? (car args))
-		     (translate-to-prove (caar args))
-		     (cons 'tupcons (translate-to-prove (car args))))))
-	    (let* ((ntrbasis-type
-		    (find-supertype 
-		     (typecase type
-		       (recordtype
-			(type (find (id (caar args)) (fields type)
-				    :test #'eq :key #'id)))
-		       (tupletype
-			(nth (1- (number (caar args)))
-				(types type)))
-		       (t (range type)))))
-		    (ntrbasis
-		     (typecase type
-		       (recordtype
-			(make-tr-field-application
-			 (mk-funtype type ntrbasis-type)
-			 (position (id (caar args))
-				   (sort-fields (fields type))
-				   :test #'eq :key #'id)
-			 trbasis))
-		       (tupletype
-			(make-tr-projection-application
-			 ntrbasis-type (number (caar args)) trbasis))
-		       (t (make-tr-assign-application
-			   type
-			   trbasis
-			   (if (singleton? (car args))
-			       (translate-to-prove (caar args))
-			       (cons 'TUPCONS (translate-to-prove (car args)))))))))
-	      (translate-assign-args (cdr args)
-				     value
-				     ;nbasis
-				     ntrbasis
-				     ntrbasis-type)))
+      (let ((sorted-fields (when (recordtype? type)
+			     (sort-fields (fields type)))))
+	(list 'UPDATE
+	      trbasis
+	      (typecase type
+		(recordtype
+		 (position (id (caar args)) sorted-fields
+			   :test #'eq :key #'id))
+		(tupletype
+		 (1- (number (caar args))))
+		(t (if (singleton? (car args))
+		       (translate-to-prove (caar args))
+		       (cons 'tupcons (translate-to-prove (car args))))))
+	      (let* ((ntrbasis-type
+		      (find-supertype 
+		       (typecase type
+			 (recordtype
+			  (type (find (id (caar args)) (fields type)
+				      :test #'eq :key #'id)))
+			 (tupletype
+			  (nth (1- (number (caar args)))
+			       (types type)))
+			 (t (range type)))))
+		     (ntrbasis
+		      (typecase type
+			(recordtype
+			 (make-tr-field-application
+			  (mk-funtype type ntrbasis-type)
+			  (position (id (caar args)) sorted-fields
+				    :test #'eq :key #'id)
+			  trbasis))
+			(tupletype
+			 (make-tr-projection-application
+			  ntrbasis-type (number (caar args)) trbasis))
+			(t (make-tr-assign-application
+			    type
+			    trbasis
+			    (if (singleton? (car args))
+				(translate-to-prove (caar args))
+				(cons 'TUPCONS (translate-to-prove (car args)))))))))
+		(translate-assign-args (cdr args)
+				       value
+				       ntrbasis
+				       ntrbasis-type))))
       (translate-to-prove value)))
 
 (defun make-tr-field-application (field-accessor-type fieldnum tr-expr)
