@@ -40,7 +40,7 @@ pvsrt = ${bindir}/runtime/pvs-${lisp}
 pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
 		 src/closopt.lisp
 
-ff-files = BDD/$(PLATFORM)/bdd.so BDD/$(PLATFORM)/mu.so \
+ff-files = BDD/$(PLATFORM)/mu.so \
            src/decision-procedures/polylib/$(PLATFORM)/polylib.so \
            src/WS1S/$(PLATFORM)/ws1s.so
 
