@@ -24,11 +24,15 @@
 
 ;; Top-Level
 
-(defun gensubsts (vars trms)
+(defun gensubsts (vars trms &optional verbose?)
   "Generate a list of substitutions (for all variables in vars)
    together with scores"
-  (let ((*lvars* vars))
-    (declare (special *lvars*))
+  #+dbg(assert (every #'dp-variable-p vars))
+  #+dbg(assert (every #'node-p trms))
+  (let ((*lvars* vars)
+	(*verbose* verbose?))
+    (declare (special *lvars*)
+	     (special *verbose*))
     (multiple-value-bind (ha hn ca cn)
 	(flatten-seq () () () () () trms)
       (let ((sequents (split1 ha hn ca cn)))
@@ -38,21 +42,33 @@
 	 (gensubsts-sequents sequents))))))
 
 (defun display-sequents (sequents)
-  (pvs::error-format-if "~%Splits: ~a " (length sequents)))
+  (declare (special *verbose*))
+  (when *verbose*
+    (format t "~%Splits: ~a " (length sequents))))
 
-(defun filter-substs (score-substs)
-  (remove-if #'(lambda (score-subst)
-		       (incomplete? (substitution-of score-subst)))
-	  score-substs))
+(defun filter-substs (score-substs &optional acc)
+  (if (null score-substs) (nreverse acc)
+    (let* ((score-subst (car score-substs))
+	   (score (score-of score-subst))
+	   (subst (subst-of score-subst))
+	   (newacc (if (null subst) acc
+		       (cons (variable-free-part-of score-subst) acc))))
+      (filter-substs (cdr score-substs) newacc))))
+
+(defun variable-free-part-of (score-subst)
+  (make-score-subst :score (score-of score-subst)
+		    :subst (remove-if #'(lambda (pair)
+					  (var-occurs-p (cdr pair)))
+			     (substitution-of score-subst))))
 	  
-(defun incomplete? (subst)
-  (declare (special *lvars*))
-  (some #'(lambda (x)
-	    (or (not (member x (dom subst)))
-		(some #'(lambda (trm)
-			  (and trm (occurs-p x trm)))
-		      (mapcar #'cdr subst))))
-	*lvars*))
+;(defun incomplete? (subst)
+;  (declare (special *lvars*))
+;  (some #'(lambda (x)
+;	    (or ; (not (member x (dom subst)))   ; now also deal with partial substs
+;		(some #'(lambda (trm)
+;			  (and trm (occurs-p x trm)))
+;		      (mapcar #'cdr subst))))
+;	*lvars*))
 
 ;; Collect all possible substitutions for a given set of sequents
 
@@ -158,7 +174,8 @@
 ;; Splitting
 
 (defun split1 (ha hn ca cn)
-  #+dbg(assert (every #'node-p (append ha hn ca cn)))
+  #+dbg(assert (every #'node-p
+		      (append ha hn ca cn)))
   (split1* ha hn ca cn))
 
 (defun split1* (ha hn ca cn)
@@ -171,6 +188,7 @@
 	 (split1- ha (car hn) (cdr hn) ca cn))))
 
 (defun split1+ (ha hn ca e cn)
+  (assert (node-p e))
   (cond ((conjunction-p e)
 	 (multiple-value-bind (ha1 hn1 ca1 cn1)
 	     (flatten-seq ha hn () ca cn (list (lhs e)))
@@ -217,41 +235,41 @@
 (defun flatten-seq+ (ha hs hn ca cs cn)
   #+dbg(assert (consp cn))
   (let* ((c (car cn))
-	 (cn (cdr cn)))
+	 (rst (cdr cn)))
     (cond ((negation-p c)
 	   (flatten-seq* ha hs (cons (arg 1 c) hn)
-			 ca cs cn))
+			 ca cs rst))
 	  ((disjunction-p c)
 	   (flatten-seq* ha hs hn
 			 ca cs (cons (lhs c)
-				     (cons (rhs c) cn))))
+				     (cons (rhs c) rst))))
 	  ((implication-p c)
 	   (flatten-seq* ha hs (cons (lhs c) hn)
-			 ca cs (cons (rhs c) cn)))
+			 ca cs (cons (rhs c) rst)))
 	  ((conjunction-p c)
 	   (flatten-seq* ha hs hn
-			 ca (cons c cs) cn))
+			 ca (cons c cs) rst))
 	  (t
 	   (flatten-seq* ha hs hn
-			 (cons c ca) cs cn)))))
+			 (cons c ca) cs rst)))))
 
 (defun flatten-seq- (ha hs hn ca cs cn)
   #+dbg(assert (consp hn))
   (let* ((h (car hn))
-	 (hn (cdr hn)))
+	 (rst (cdr hn)))
     (cond ((negation-p h)
-	   (flatten-seq* ha hs hn
+	   (flatten-seq* ha hs rst
 			 ca cs (cons (arg 1 h) cn)))
 	  ((conjunction-p h)
 	   (flatten-seq* ha hs (cons (lhs h)
-				     (cons (rhs h) hn))
+				     (cons (rhs h) rst))
 			 ca cs cn))
 	  ((or (disjunction-p h)
 	       (implication-p h))
-	   (flatten-seq* ha (cons h hs) hn
+	   (flatten-seq* ha (cons h hs) rst
 			 ca cs cn))
 	  (t
-	   (flatten-seq* (cons h ha) hs hn
+	   (flatten-seq* (cons h ha) hs rst
 			 ca cs cn)))))
 
 (defun init-dp-state (&optional eqns)
@@ -260,7 +278,4 @@
 	  do (when (equality-p eqn)
 	       (assert-eqn! (lhs eqn) (rhs eqn) state)))
     state))
-
-
-
 
