@@ -23,15 +23,15 @@
        (let (holdchar)
          (setf holdchar
                (lexical-read-char stream :eof))
-         (if (and pvs-escape-char
-                  (eql holdchar pvs-escape-char))
+         (if (and PVS-ESCAPE-CHAR
+                  (eql holdchar PVS-ESCAPE-CHAR))
              (setf holdchar
                    (lexical-read-char stream :eof)))
          (cond ((eql holdchar #\-)
                 (setf holdchar
                       (lexical-read-char stream :eof))
-                (if (and pvs-escape-char
-                         (eql holdchar pvs-escape-char))
+                (if (and PVS-ESCAPE-CHAR
+                         (eql holdchar PVS-ESCAPE-CHAR))
                     (setf holdchar
                           (lexical-read-char stream :eof)))
                 (cond ((eql holdchar #\>) 'sbst::\|->)
@@ -51,8 +51,8 @@
        (let (holdchar)
          (setf holdchar
                (lexical-read-char stream :eof))
-         (if (and pvs-escape-char
-                  (eql holdchar pvs-escape-char))
+         (if (and PVS-ESCAPE-CHAR
+                  (eql holdchar PVS-ESCAPE-CHAR))
              (setf holdchar
                    (lexical-read-char stream :eof)))
          (cond ((and (eql holdchar #\|)
