@@ -322,7 +322,7 @@
   (pvs-yn (apply #'format nil msg args) t t))
 
 (defun pvs-yn (msg full? timeout?)
-  (cond (*in-pvs-batch* t)
+  (cond (*noninteractive* t)
 	((and *pvs-emacs-interface* *to-emacs*)
 	 (let* ((*print-pretty* nil)
 		(*output-to-emacs*
