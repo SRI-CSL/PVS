@@ -211,11 +211,13 @@ decision-procedures = src/decision-procedures/types.lisp \
                       src/decision-procedures/forward-chain-pvs.lisp \
                       src/decision-procedures/forward-chain.lisp
 
+ilisp : emacs/emacs-src/ilisp/cl-ilisp.lisp emacs/emacs-src/ilisp/allegro.lisp
+
 all : makebdd makepolylib ${pvsfull} ${pvsrt}
 
 ${pvsfull} : ${pvs-make-files} ${ff-files} ${ess} ${pvs-parser-out} \
              ${ground-prover} ${pvs-src} ${pvs-prover} ${bddlisp} \
-             ${decision-procedures}
+             ${decision-procedures} ${ilisp}
 	rm -rf ${bindir}/full
 	$(LISP) -e '(defvar *runtime* nil)' \
 		-L src/make-pvs.lisp
@@ -223,7 +225,7 @@ ${pvsfull} : ${pvs-make-files} ${ff-files} ${ess} ${pvs-parser-out} \
 
 ${pvsrt} : ${pvs-make-files} ${ff-files} ${ess} ${pvs-parser-out} \
            ${ground-prover} ${pvs-src} ${pvs-prover} ${bddlisp} \
-           ${decision-procedures}
+           ${decision-procedures} ${ilisp}
 	rm -rf ${bindir}/runtime
 	$(LISP) -e '(defvar *runtime* t)' \
 		-L src/make-pvs.lisp
