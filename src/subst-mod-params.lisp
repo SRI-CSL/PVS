@@ -157,10 +157,14 @@
     (assert (modname? modinst))
     (let* ((th (or theory (get-theory modinst)))
 	   (formals (formals-sans-usings th)))
-      (if (or (and actuals
-		   (some #'(lambda (ofp) (memq ofp formals))
-			 (free-params obj)))
-	      (mappings modinst))
+      (if (or (mappings modinst)
+	      (and actuals
+		   (or (some #'(lambda (ofp) (memq ofp formals))
+			     (free-params obj))
+		       (some #'(lambda (a)
+				 (and (name-expr? (expr a))
+				      (module? (declaration (expr a)))))
+			 actuals))))
 	  (let* ((*generate-tccs* 'none)
 		 (caches (get-subst-mod-params-caches modinst))
 		 (*subst-mod-params-cache* (car caches))
