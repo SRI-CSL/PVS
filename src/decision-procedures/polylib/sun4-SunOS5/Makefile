@@ -2,7 +2,7 @@ INCLUDES = -I../
 CC = gcc
 CFLAGS = -fPIC -DCHECK_OVERFLOW
 LD = $(CC)
-LDFLAGS = -shared
+LDFLAGS = -G
 
 VPATH = ../
 obj = vector.o polyhedron.o foreign_funcs.o
