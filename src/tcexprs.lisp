@@ -228,31 +228,46 @@
     (unless (cotupletype? (find-supertype (type-value (car (actuals expr)))))
       (type-error expr
 	"Extraction expression actual must be a cotupletype")))
-  (let ((cotype (when (actuals expr)
-		  (find-supertype (type-value (car (actuals expr)))))))
-    (typecheck* (argument expr) cotype nil nil))
-  (let ((cotypes (if (actuals expr)
-		     (types (argument expr))
-		     (remove-if (complement
-				 #'(lambda (ty)
-				     (cotupletype? (find-supertype ty))))
-		       (types (argument expr))))))
-    (if cotypes
-	(let ((lcotypes (remove-if
-			    (complement
-			     #'(lambda (ty)
-				 (<= (index expr)
-				     (length (types (find-supertype ty))))))
-			  cotypes)))
-	  (if lcotypes
-	      (setf (types (argument expr)) lcotypes)
-	      (type-error expr "Index is out of bounds")))
-	(type-error expr
-	  "Extraction argument must be a (known) cotuple type - may need to provide the type, e.g., OUT[[int + bool]](x)"))
-    (setf (types expr)
-	  (mapcar #'(lambda (ty)
-		      (nth (1- (index expr)) (types (find-supertype ty))))
-	    cotypes))))
+  (cond ((type (argument expr))
+	 (let ((cotype (find-supertype (type (argument expr)))))
+	   (unless (or (null (actuals expr))
+		       (tc-eq (find-supertype
+			       (type-value (car (actuals expr))))
+			      cotype))
+	     (type-error expr
+	       "Extraction expression actual must match the argument type"))
+	   (unless (<= (index expr) (length (types cotype)))
+	     (type-error expr "Index is out of bounds"))
+	   (setf (types expr) (list (nth (1- (index expr)) (types cotype))))))
+	(t (let ((cotype (when (actuals expr)
+			   (find-supertype
+			    (type-value (car (actuals expr)))))))
+	     (typecheck* (argument expr) cotype nil nil))
+	   (let ((cotypes (if (actuals expr)
+			      (types (argument expr))
+			      (remove-if (complement
+					  #'(lambda (ty)
+					      (cotupletype?
+					       (find-supertype ty))))
+				(types (argument expr))))))
+	     (if cotypes
+		 (let ((lcotypes (remove-if
+				     (complement
+				      #'(lambda (ty)
+					  (<= (index expr)
+					      (length
+					       (types (find-supertype ty))))))
+				   cotypes)))
+		   (if lcotypes
+		       (setf (types (argument expr)) lcotypes)
+		       (type-error expr "Index is out of bounds")))
+		 (type-error expr
+		   "Extraction argument must be a (known) cotuple type - may need to provide the type, e.g., OUT[[int + bool]](x)"))
+	     (setf (types expr)
+		   (mapcar #'(lambda (ty)
+			       (nth (1- (index expr))
+				    (types (find-supertype ty))))
+		     cotypes))))))
 
 (defmethod typecheck* ((expr injection?-application) expected kind argument)
   (declare (ignore kind expected argument))
