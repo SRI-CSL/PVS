@@ -242,9 +242,6 @@ functions [D, R: TYPE]: THEORY
 
   eta: LEMMA (LAMBDA (x: D): f(x)) = f
 
-  fun_exists: LEMMA (EXISTS y: TRUE) OR (NOT EXISTS x: TRUE)
-                          IMPLIES (EXISTS f: TRUE)
-
   injective?(f): bool = (FORALL x1, x2: (f(x1) = f(x2) => (x1 = x2)))
 
   surjective?(f): bool = (FORALL y: (EXISTS x: f(x) = y))
@@ -753,10 +750,6 @@ function_inverse[D: NONEMPTY_TYPE, R: TYPE]: THEORY
   bijective_inverse_is_bijective: JUDGEMENT
     inverse(f:(bijective?[D,R])) HAS_TYPE (bijective?[R,D])
 
-  inverse_lemma1: LEMMA inverse(f)(f(x)) = x
-
-  inverse_lemma2: LEMMA f(inverse(f)(y)) = y
-
   surjective_inverse: LEMMA
     (FORALL (f:(surjective?[D, R])):
        inverse(f)(y) = x IMPLIES y = f(x))
@@ -784,14 +777,14 @@ function_inverse[D: NONEMPTY_TYPE, R: TYPE]: THEORY
 
   surj_inv: LEMMA injective?(f) IMPLIES surjective?(inverse(f))
 
-%  comp_inverse_right : LEMMA
-%	bijective?(f) IMPLIES  f(inverse(f)(y)) = y
+  comp_inverse_right : LEMMA
+	bijective?(f) IMPLIES  f(inverse(f)(y)) = y
 
   comp_inverse_left  : LEMMA
 	bijective?(f) IMPLIES  inverse(f)(f(x)) = x
 
-%  comp_inverse_right_inj : LEMMA
-%	injective?(f) IMPLIES  f(inverse(f)(y)) = y
+  comp_inverse_right_inj : LEMMA
+	injective?(f) IMPLIES  f(inverse(f)(y)) = y
 
   comp_inverse_left_surj : LEMMA
 	surjective?(f) IMPLIES  inverse(f)(f(x)) = x
@@ -806,8 +799,13 @@ function_inverse[D: NONEMPTY_TYPE, R: TYPE]: THEORY
 function_image [D, R: TYPE]: THEORY
  BEGIN
   f: VAR [D -> R]
+  x: VAR D
+  y: VAR R
   X, X1, X2: VAR set[D]
   Y, Y1, Y2: VAR set[R]
+
+  fun_exists: LEMMA (EXISTS y: TRUE) OR (NOT EXISTS x: TRUE)
+                          IMPLIES (EXISTS f: TRUE)
 
   image(f, X): set[R] = {y: R | (EXISTS (x:(X)): y = f(x))}
 
