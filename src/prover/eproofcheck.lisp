@@ -12,7 +12,7 @@
 
 (in-package 'pvs)
 
-(defun prove (name &key  strategy)
+(defmethod prove (name &key  strategy)
   (let ((decl (get-formula *current-theory*
 			   (if (stringp name)(intern name) name))))
     (if decl
@@ -21,6 +21,12 @@
 		     :strategy
 		     (when strategy `(then ,strategy (query*)))))
 	(format-if "~%No such formula.  Try again."))))
+
+(defmethod prove ((decl formula-decl) &key  strategy)
+  (timeprover
+   (prove-decl decl
+	       :strategy
+	       (when strategy `(then ,strategy (query*))))))
 
 (defvar *steps* (init-symbol-table))
 (defvar *rules* (init-symbol-table))
