@@ -2,10 +2,16 @@
 
 (defmethod translate-to-dc ((rewrite rewrite))
   (let ((*translate-rewrite-rule* t))
-    (let ((dc-lhs (translate-to-dc (lhs rewrite)))
-	  (dc-rhs (translate-to-dc (rhs rewrite)))
-	  (dc-condition (translate-to-dc (hyp rewrite))))
-      (dp::make-rewrite-rule :lhs dc-lhs
+    (let* ((dc-lhs (translate-to-dc (lhs rewrite)))
+	   (dc-rhs (translate-to-dc (rhs rewrite)))
+	   (dc-condition (translate-to-dc (hyp rewrite)))
+	   (res (res rewrite))
+	   (name (make-instance 'name
+		   'id (id (declaration res))
+		   'actuals (actuals (module-instance res))))
+	   (name-string (unparse name :string t)))
+      (dp::make-rewrite-rule :name name-string
+			     :lhs dc-lhs
 			     :rhs dc-rhs
 			     :condition dc-condition))))
 
@@ -130,6 +136,7 @@ Should be proceeded by an install-ground-rewrites.")
 
 (defun ground-rewrite-fmla (fmla)
   (let ((ground-fmla (top-translate-to-prove fmla)))
+    (break)
     (multiple-value-bind (new-fmla change?)
 	(dp::normalize-term ground-fmla *dp-state*)
       (if change?
