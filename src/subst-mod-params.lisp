@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec  9 13:10:41 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Oct 30 14:02:45 1998
-;; Update Count    : 71
+;; Last Modified On: Fri Oct 30 14:19:51 1998
+;; Update Count    : 72
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -571,21 +571,22 @@
       'type type)))
 
 (defmethod subst-mod-params* ((expr application) modinst bindings)
-  (let* ((op (subst-mod-params* (operator expr) modinst bindings))
-	 (arg (subst-mod-params* (argument expr) modinst bindings)))
-    (if (and (eq op (operator expr))
-	     (eq arg (argument expr)))
-	expr
-	(let* ((optype (find-supertype (type op)))
-	       (rtype (if (and (not (eq arg (argument expr)))
-			       (typep (domain optype) 'dep-binding))
-			  (substit (range optype)
-			    (acons (domain optype) arg nil))
-			  (range optype))))
-	  (lcopy expr
-	    'operator op
-	    'argument arg
-	    'type rtype)))))
+  (with-slots (operator argument) expr
+    (let* ((op (subst-mod-params* operator modinst bindings))
+	   (arg (subst-mod-params* argument modinst bindings)))
+      (if (and (eq op operator)
+	       (eq arg argument))
+	  expr
+	  (let* ((optype (find-supertype (type op)))
+		 (rtype (if (and (not (eq arg argument))
+				 (typep (domain optype) 'dep-binding))
+			    (substit (range optype)
+			      (acons (domain optype) arg nil))
+			    (range optype)))
+		 (nex (lcopy expr 'operator op 'argument arg 'type rtype)))
+	    (unless (eq op operator)
+	      (change-application-class-if-necessary expr nex))
+	    nex)))))
 
 (defmethod subst-mod-params* :around ((expr table-expr) modinst bindings)
   (let ((nexpr (call-next-method)))
