@@ -885,6 +885,18 @@ required a context.")
 		(not (typep ex 'branch)))
 	   (change-class ex 'branch)))))
 
+(defmethod change-to-propositional-class ((ex propositional-application))
+  nil)
+
+(defmethod change-to-propositional-class ((ex equation))
+  nil)
+
+(defmethod change-to-propositional-class ((ex disequation))
+  nil)
+
+(defmethod change-to-propositional-class ((ex branch))
+  nil)
+
 (defmethod change-to-propositional-class ((ex unary-application))
   (case (id (operator ex))
     ((NOT) (change-class ex 'unary-negation))))
