@@ -76,8 +76,10 @@
 (ff:defforeign 'bdd_term_p :entry-point '"bdd___bdd_term_p")
 ;;; BDD_LIT_P (f)
 (ff:defforeign 'bdd_lit_p :entry-point '"bdd___bdd_lit_p")
-;;; BDD_POSVAR_P (f)
-;;; BDD_NEGVAR_P (f)
+;;; BDD_POSLIT_P (f)
+(ff:defforeign 'bdd_poslit_p :entry-point '"bdd___bdd_poslit_p")
+;;; BDD_NEGLIT_P (f)
+(ff:defforeign 'bdd_neglit_p :entry-point '"bdd___bdd_neglit_p")
 ;;; BDD_COFACTOR_POS (f)
 (ff:defforeign 'bdd_cofactor_pos_ :entry-point '"bdd___bdd_cofactor_pos_")
 ;;; BDD_COFACTOR_NEG (f)
@@ -131,6 +133,7 @@
 ;;; int bdd_nr_occurs_var (int id)
 ;;; int bdd_compl_p (BDDPTR f, BDDPTR g)
 ;;; int bdd_equal_p (BDDPTR F, BDDPTR G)
+(ff:defforeign 'bdd_equal_p :entry-point '"bdd___bdd_equal_p")
 ;;; int bdd_implies_taut (BDDPTR F, BDDPTR G)
 ;;; BDDPTR bdd_not (BDDPTR F)
 (ff:defforeign 'bdd_not :entry-point '"bdd___bdd_not")
@@ -174,6 +177,8 @@
 (ff:defforeign 'bdd_constrain :entry-point '"bdd___bdd_constrain")
 ;;; BDDPTR bdd_constrain (BDDPTR f, BDDPTR c)
 
+(ff:defforeign 'bdd_top_var :entry-point '"bdd___bdd_top_var")
+
 (ff:defforeign 'bdd_sum_of_cubes :entry-point '"bdd___bdd_sum_of_cubes")
 
 (ff:def-foreign-variable bdd_interrupted)
@@ -186,6 +191,13 @@
 (defmacro bdd-0? (bdd) `(= (bdd_0_p ,bdd) 1))
 (defmacro bdd-x? (bdd) `(= (bdd_x_p ,bdd) 1))
 (defmacro bdd-term? (bdd) `(= (bdd_term_p ,bdd) 1))
+
+(defmacro bdd-lit? (bdd) `(= (bdd_lit_p ,bdd) 1))
+(defmacro bdd-poslit? (bdd) `(= (bdd_poslit_p ,bdd) 1))
+(defmacro bdd-neglit? (bdd) `(= (bdd_neglit_p ,bdd) 1))
+
+(defmacro bdd-equal? (bdd1 bdd2)
+  `(/= (bdd_equal_p ,bdd1 ,bdd2) 0))
 
 (defmacro bdd-or (bdd1 bdd2)
   (let ((mbdd1 (gensym)) (mbdd2 (gensym)))
