@@ -15,7 +15,7 @@ endif
 .SUFFIXES: .c .o
 SHELL=/bin/sh
 ifeq ($(origin PVSPATH), undefined)
-  PVSPATH = $(LISPDIR)/sol24/lisp
+  PVSPATH = `pwd`
 endif
 
 LISPDIR = /pkg/allegro5.0
