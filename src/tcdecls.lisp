@@ -1106,8 +1106,10 @@
 	 (make-inductive-conjunction inddef pred (cdr args) (cdr fmls)))
 	(t (let* ((c (list inddef pred))
 		  (bds (mapcar #'(lambda (x)
-				   (make-bind-decl (make-new-variable (id x) c)
-				     (or (declared-type x) (type x))))
+				   (typecheck* (mk-bind-decl (id x)
+						 (or (declared-type x)
+						     (type x)))
+					       nil nil nil))
 			 (car fmls)))
 		  (bvars (mapcar #'make-variable-expr bds)))
 	     (make!-set-expr bds
