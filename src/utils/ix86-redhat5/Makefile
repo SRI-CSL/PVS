@@ -1,5 +1,5 @@
 LD = ld
-LDFLAGS = -Bsymbolic -shared -L./
+LDFLAGS = -shared -L./
 CC=gcc
 CFLAGS=-fPIC
 WFLAGS=-Wall
@@ -14,7 +14,7 @@ obj=file_utils.o
 all : file_utils.so
 
 file_utils.so: ${obj}
-	$(LD) ../utils-ld-table $(LDFLAGS) -o file_utils.so ${obj}
+	$(LD) ../utils-ld-table $(LDFLAGS) -o file_utils.so ${obj} -lc
 
 clean :
 	rm -f *.o *.a *.so
