@@ -332,7 +332,8 @@
 
 (defun get-theory* (id library)
   ;;(assert (symbolp library))
-  (let ((*current-context* (or *current-context*
+  (let ((have-cc *current-context*)
+	(*current-context* (or *current-context*
 			       *prelude-library-context*
 			       *prelude-context*)))
     (if library
@@ -356,13 +357,15 @@
 	    (car (assoc id (prelude-libraries-uselist)
 			:test #'eq :key #'id))
 	    (find id (named-theories *current-context*) :key #'id)
-	    (unless *current-context*
+	    (unless have-cc
 	      ;; We only allow this from top-level calls, in effect,
 	      ;; when there is no context.
 	      (let ((theories (get-imported-theories id)))
 		(if (cdr theories)
-		    (pvs-message "Ambiguous theories: need to include library - ~a"
-		      (id (car theories)))
+		    (progn (pvs-message
+			       "Ambiguous theories: should include library - ~a"
+			     (id (car theories)))
+			   theories)
 		    (car theories))))
 	    ))))
 
