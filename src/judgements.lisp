@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Oct 29 22:40:53 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Nov  5 17:40:56 1998
-;; Update Count    : 7
+;; Last Modified On: Thu Jan 28 18:16:43 1999
+;; Update Count    : 10
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -399,14 +399,31 @@
   (let ((entry (name-judgements ex)))
     (when entry
       (if (generic-judgements entry)
-	  (let* ((thinst (module-instance (resolution ex)))
-		 (inst-types (mapcar #'(lambda (jd)
-					 (subst-mod-params (type jd) thinst))
-			       (generic-judgements entry))))
+	  (let ((inst-types (instantiate-generic-judgement-types
+			     ex (generic-judgements entry))))
 	    (assert (every #'fully-instantiated? inst-types))
 	    (minimal-types (nconc inst-types
 				  (mapcar #'type (minimal-judgements entry)))))
 	  (mapcar #'type (minimal-judgements entry))))))
+
+(defun instantiate-generic-judgement-types (name judgements &optional types)
+  (if (null judgements)
+      types
+      (let ((type (instantiate-generic-judgement-type name (car judgements))))
+	(instantiate-generic-judgement-types
+	 name
+	 (cdr judgements)
+	 (if type (cons type types) types)))))
+
+(defun instantiate-generic-judgement-type (name judgement)
+  (let ((bindings (tc-match name (name judgement)
+			    (mapcar #'list
+			      (formals-sans-usings (module judgement))))))
+    (assert (every #'cdr bindings))
+    (let ((jthinst (mk-modname (id (module judgement))
+		     (mapcar #'(lambda (a) (mk-actual (cdr a)))
+		       bindings))))
+      (subst-mod-params (type judgement) jthinst))))))
 
 (defmethod judgement-types* ((ex application))
   (let* ((op (operator* ex)))
@@ -431,7 +448,42 @@
 (defun generic-application-judgement-types (ex gen-judgements jtypes)
   (if (null gen-judgements)
       jtypes
-      (break "generic-application-judgement-types")))
+      (let* ((jdecl (car gen-judgements))
+	     (jtype (instantiate-generic-appl-judgement-type ex jdecl))
+	     (arguments (argument* ex))
+	     (argtypes (mapcar #'judgement-types* arguments))
+	     (domains (operator-domain* jtype arguments nil))
+	     (range (operator-range* jtype arguments))
+	     (rdomains (operator-domain ex))
+	     (jrange (when (length= argtypes (formals jdecl))
+		       (compute-appl-judgement-range-type
+			arguments argtypes rdomains domains range))))
+	(if (or (null jrange)
+		(some #'(lambda (jty) (subtype-of? jty jrange)) jtypes))
+	    jtypes
+	    (cons jrange
+		  (delete-if #'(lambda (jty)
+				 (subtype-of? jrange jty)) jtypes))))))
+
+(defun instantiate-generic-appl-judgement-types (ex judgements &optional types)
+  (if (null judgements)
+      types
+      (let ((type (instantiate-generic-appl-judgement-type
+		   ex (car judgements))))
+	(instantiate-generic-appl-judgement-types
+	 ex
+	 (cdr judgements)
+	 (if type (cons type types) types)))))
+
+(defun instantiate-generic-appl-judgement-type (ex judgement)
+  (let ((bindings (tc-match (operator ex) (name judgement)
+			    (mapcar #'list
+			      (formals-sans-usings (module judgement))))))
+    (assert (every #'cdr bindings))
+    (let ((jthinst (mk-modname (id (module judgement))
+		     (mapcar #'(lambda (a) (mk-actual (cdr a)))
+		       bindings))))
+      (subst-mod-params (judgement-type judgement) jthinst))))
 
 (defmethod no-dep-bindings ((te funtype))
   (no-dep-bindings (domain te)))
@@ -921,8 +973,10 @@
 		      (delete-if #'(lambda (jd)
 				     (subtype-of? (type jdecl) (type jd)))
 			(minimal-judgements to-judgements)))))
-	(unless (some #'(lambda (jd) (subtype-of? (type jd) (type jdecl)))
-		      (generic-judgements to-judgements))
+	(unless (or (memq jdecl (generic-judgements to-judgements))
+		    (judgement-uninstantiable? jdecl)
+		    (some #'(lambda (jd) (subtype-of? (type jd) (type jdecl)))
+			  (generic-judgements to-judgements)))
 	  (setq *judgements-added* t)
 	  (setf (generic-judgements to-judgements)
 		(cons jdecl
@@ -995,17 +1049,25 @@
 			       :test #'eq :key #'car))
 	    (if (fully-instantiated? (judgement-type sjdecl))
 		(add-judgement-decl-to-graph sjdecl to-entry t)
-		(unless (or (some #'(lambda (jd) (judgement-subsumes jd jdecl))
+		(unless (or (memq jdecl (generic-judgements to-entry))
+			    (some #'(lambda (jd) (judgement-subsumes jd jdecl))
 				  (generic-judgements to-entry))
-			    (judgement-uninstantiable? decl sjdecl))
+			    (judgement-uninstantiable? sjdecl))
 		  (cons sjdecl
 			(delete-if #'(lambda (jd)
 				       (judgement-subsumes jdecl jd))
 			  (generic-judgements to-entry)))))))))
     (merge-judgement-graphs decl to-entry (cdr from-graph) theory theoryname)))
 
-(defun judgement-uninstantiable? (decl jdecl)
-  nil)
+
+;;; A judgement declaration is uninstantiable if it's name does not
+;;; include all the formal parameters of the judgement declarations'
+;;; theory.
+
+(defun judgement-uninstantiable? (jdecl)
+  (let ((nfrees (free-params (name jdecl)))
+	(tfrees (formals-sans-usings (module jdecl))))
+    (some #'(lambda (tf) (not (memq tf nfrees))) tfrees)))
   
 
 ;;; Copying judgement structures
@@ -1077,8 +1139,8 @@
 				 (fully-instantiated? (judgement-type jd)))
 		(car graph))
 	      (judgements-graph appl-judgement))
-	(unless (judgement-uninstantiable? (declaration (name (caar graph)))
-					   (caar graph))
+	(unless (or (memq (caar graph) (generic-judgements appl-judgement))
+		    (judgement-uninstantiable? (caar graph)))
 	  (push (caar graph) (generic-judgements appl-judgement))))
     (copy-judgements-graph (cdr graph) appl-judgement)))
 
