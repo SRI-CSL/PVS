@@ -501,11 +501,14 @@ char *D_sprintf (char *buf, Double d, int maximize_exp)
     unsigned long exp;
 
     D_convert2C (d, &g, &exp);
+/*      fprintf (stdout, "d: inexact = %u, exp = %u, h_mantissa = %u, l_mantissa = %u\n", D_INEXACT(d), D_EXP(d), D_H_MANTISSA(d), D_L_MANTISSA(d)); */
+/*      fprintf (stdout, "D_convert: g = %u, exp = %u\n", d, g, exp); */
 
     /* Note: on some UNIX sprintf does not return #chars transferred!
        Then use:  sprintf (p, "%.0f", g); while (*p) p++, etc.
     */
-    p += sprintf (p, "%.0f", g);
+    /* p += sprintf (p, "%.0f", g); */
+    sprintf (p, "%.0f", g); while (*p) p++;
 
     mantissa1 = 0;
   }
@@ -514,10 +517,12 @@ char *D_sprintf (char *buf, Double d, int maximize_exp)
        don't output 1*, just the 2-power.
     */
     if (!(mantissa1 = D_L_MANTISSA (d) == 1) || !D_EXP (d))
-      p += sprintf (p, "%u", D_L_MANTISSA (d));
+      /* p += sprintf (p, "%u", D_L_MANTISSA (d)); */
+      sprintf (p, "%u", D_L_MANTISSA (d)); while (*p) p++;
 
   if (D_EXP (d))
-    p += sprintf (p, "%s2^%u", mantissa1 ? "" : "*", D_EXP (d));
+    /* p += sprintf (p, "%s2^%u", mantissa1 ? "" : "*", D_EXP (d)); */
+    sprintf (p, "%s2^%u", mantissa1 ? "" : "*", D_EXP (d)); while (*p) p++;
 
 /*
   p += sprintf (p, " Hex: ");
@@ -525,7 +530,8 @@ char *D_sprintf (char *buf, Double d, int maximize_exp)
   p += sprintf (p, "%0X", D_L_MANTISSA (d));
 */
 
-  p += sprintf (p, "%s", D_INEXACT (d) ? " (approx)" : "");
+  /* p += sprintf (p, "%s", D_INEXACT (d) ? " (approx)" : ""); */
+  sprintf (p, "%s", D_INEXACT (d) ? " (approx)" : ""); while (*p) p++;
 
   return buf;
 }
