@@ -2182,7 +2182,8 @@ space")
 		   (*old-ground?* t))
 	      (nprotecting-cong-state
 	       ((*dp-state* *init-dp-state*)
-		(*alists* *init-alists*))
+		(*alists* *init-alists*)
+		(*ics-state* (ics_empty_state)))
 	       (let ((result (if *translate-id-counter*
 				 (assert-if-simplify expr)
 				 (let* ((*translate-id-hash*
@@ -2216,16 +2217,22 @@ space")
   (find-conversions* (conversions *current-context*)
 		     (mk-funtype atype etype)))
 
+(defvar *only-use-conversions* nil)
 (defvar *ignored-conversions* nil)
 
 (defmethod conversions :around ((context context))
   (let ((convs (call-next-method)))
-    (if *ignored-conversions*
-	(remove-if #'(lambda (x)
-		       (member (string (id x)) *ignored-conversions*
-			       :test #'string=))
-	  convs)
-	convs)))
+    (cond (*only-use-conversions*
+	   (remove-if-not #'(lambda (x)
+			      (member (string (id x)) *only-use-conversions*
+				      :test #'string=))
+	     convs))
+	  (*ignored-conversions*
+	   (remove-if #'(lambda (x)
+			  (member (string (id x)) *ignored-conversions*
+				  :test #'string=))
+	     convs))
+	  (t convs))))
 
 (defun find-conversions* (conversions ftype &optional result)
   (if (null conversions)
