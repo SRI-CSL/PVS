@@ -988,7 +988,7 @@ with the comment so as to put it in the proper place")
 (defun initial-error (fs-list &aux (formatstr
 				    "~&Initial error.~%~
 				    Found ~A when looking for ~A here:~%~A"))
-  (clet* (((first ignore place) (peek-first))
+  (clet* (((first IGNORE place) (peek-first))
 	  (temp (assoc first fs-list)))
 	 (if (null temp)
 	     (do-syntax-error formatstr
