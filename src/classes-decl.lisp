@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec  2 13:40:37 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Nov  5 15:09:31 1998
-;; Update Count    : 53
+;; Last Modified On: Thu Jul  1 18:50:34 1999
+;; Update Count    : 56
 ;; Status          : Beta test
 ;; 
 ;; HISTORY
@@ -116,31 +116,52 @@
 
 ;;; Datatypes and related classes
 
-(defcl datatype (datatype-or-module)
+(defcl recursive-type (datatype-or-module)
   (importings :parse t)
   (constructors :documentation "a list of constructors"
 		:parse t)
+  positive-types
+  generated-file-date
   adt-type-name
   adt-theory
   adt-map-theory
   adt-reduce-theory
-  generated-file-date
-  positive-types
   (semi :parse t))
 
-(defcl inline-datatype (datatype)
+(defcl recursive-type-with-subtypes (recursive-type)
+  subtypes)
+
+(defcl inline-recursive-type (recursive-type)
   generated
   typechecked?)
 
-(defcl datatype-with-subtypes (datatype)
-  subtypes)
+;;; Datatypes
+
+(defcl datatype (recursive-type))
+
+(defcl inline-datatype (inline-recursive-type datatype))
+
+(defcl datatype-with-subtypes (recursive-type-with-subtypes datatype))
 
 (defcl library-datatype (datatype)
   library
   library-path)
 
-
 (defcl inline-datatype-with-subtypes (inline-datatype datatype-with-subtypes))
+
+;;; Codatatypes
+
+(defcl codatatype (recursive-type))
+
+(defcl inline-codatatype (inline-recursive-type codatatype))
+
+(defcl codatatype-with-subtypes (codatatype recursive-type-with-subtypes))
+
+(defcl library-codatatype (codatatype)
+  library
+  library-path)
+
+(defcl inline-codatatype-with-subtypes (inline-codatatype codatatype-with-subtypes))
 
 (defcl adt-constructor (syntax)
   (recognizer :type symbol :parse t)
@@ -319,9 +340,15 @@
   measure
   measure-depth)
 
-(defcl inductive-decl (const-decl)) 
+(defcl fixpoint-decl (const-decl))
+
+(defcl inductive-decl (fixpoint-decl)) 
 
 (defcl adt-def-decl (def-decl))
+
+(defcl corecursive-decl (const-decl))
+
+(defcl coinductive-decl (fixpoint-decl))
 
 (defcl formula-decl (declaration)
   (spelling :documentation "One of formula, axiom, lemma, etc." :parse t)
