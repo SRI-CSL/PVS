@@ -1460,7 +1460,7 @@
 (defmethod body* ((expr lambda-expr))
   (body* (expression expr)))
 
-(defmethod body* ((expr T))
+(defmethod body* ((expr t))
   expr)
 
 (defun make-binding-ids-without-dups (bindings aux)
