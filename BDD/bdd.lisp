@@ -1,3 +1,4 @@
+;;   Copyright 2002 SRI International
 (in-package :pvs)
 (eval-when (compile)
   (require :foreign))

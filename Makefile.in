@@ -5,7 +5,8 @@
 ## Last Modified By: Sam Owre
 ## Last Modified On: Sun Jan  3 03:00:40 1999
 ## Update Count    : 21
-## Status          : Alpha test
+## Status          : OK
+##   Copyright 2002 SRI International
 ###############################################################################
 ifneq (,)
 This makefile requires GNU Make.
