@@ -182,7 +182,7 @@
   (proofs-edit-proof nil)
   (prove-with-checkpoint nil) ;; ilisp-send
   (install-proof nil nil nil nil nil nil)  
-  (let ((foo *number-of-proof-backups* nil)) nil)
+  (let ((foo *number-of-proof-backups*)) nil)
   (prove-proof-at nil nil nil)  ;; ilisp-send
   (prove-file-at nil nil nil nil nil nil nil nil) ;; ilisp-send
   (let ((foo *number-of-proof-backups* nil)) nil))
