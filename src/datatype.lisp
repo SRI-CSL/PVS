@@ -65,8 +65,6 @@ generated")
 	    (*generating-adt* ,vadt)
 	    (*current-theory* (make-instance 'module
 				'id ,vtid
-				'declarations (make-hash-table
-					       :test #'eq :size 20)
 				'exporting (make-instance 'exporting
 					     'kind 'DEFAULT)))
 	    (*current-context* (make-new-context *current-theory*))
@@ -85,14 +83,18 @@ generated")
 		    (let ((ndecls (remove-if #'formal-decl? decls)))
 		      (when ndecls
 			(mapc #'set-visibility ndecls)
-			(setf (gethash id (declarations *current-theory*))
+			(setf (gethash id (current-declarations-hash))
 			      ndecls))))
-		(local-decls *current-context*))
+		(current-declarations-hash))
        (generate-xref *current-theory*)
        (check-exporting *current-theory*)
        (setf (all-usings *current-theory*)
-	     (remove-if #'(lambda (mu) (assoc (car mu) *prelude-names*))
-	       (using *current-context*)))
+	     (let ((imps nil))
+	       (maphash #'(lambda (th thinsts)
+			    (unless (from-prelude? th)
+			      (push (cons th thinsts) imps)))
+			(using-hash *current-context*))
+	       imps))
        (setf (saved-context *current-theory*) *current-context*)
        *current-theory*)))
 
@@ -125,7 +127,7 @@ generated")
   (let ((*generating-adt* adt)
 	(*last-adt-decl* (declaration *current-context*)))
     (generate-inline-adt adt))
-  (put-decl adt (local-decls *current-context*))
+  (put-decl adt (current-declarations-hash))
   (setf (typechecked? adt) t))
 
 (defun generate-inline-adt (adt)
@@ -367,12 +369,12 @@ generated")
     (let* ((pred-decl (mk-adt-subtype-pred subtype (constructors adt)))
 	   (*adt-decl* pred-decl))
       (typecheck-adt-decl pred-decl)
-      (put-decl pred-decl (local-decls *current-context*))
+      (put-decl pred-decl (current-declarations-hash))
       (let* ((sdecl (mk-adt-subtype-decl
 		     subtype (mk-adt-subtype subtype (constructors adt))))
 	     (*adt-decl* sdecl))
 	(typecheck-adt-decl sdecl)
-	(put-decl sdecl (local-decls *current-context*))
+	(put-decl sdecl (current-declarations-hash))
 	(typecheck* subtype nil nil nil)))))
 
 (defun mk-adt-subtype-pred (subtype constructors &optional preds)
@@ -423,7 +425,7 @@ generated")
   (let* ((rdecl (mk-adt-recognizer-decl rec ptype (ordnum constr)))
 	 (*adt-decl* rdecl))
     (typecheck-adt-decl rdecl)
-    (put-decl rdecl (local-decls *current-context*))
+    (put-decl rdecl (current-declarations-hash))
     (setf (rec-decl constr) rdecl)))
 
 
@@ -456,7 +458,9 @@ generated")
 					    (type (rec-decl constr))))))
 
 (defun mk-unique-name-expr (id type)
-  (if (cdr (gethash id (local-decls *current-context*)))
+  (if (> (count-if #'(lambda (d) (eq (module d) (current-theory)))
+		   (gethash id (current-declarations-hash)))
+	 1)
       (make-instance 'coercion
 	'operator (mk-lambda-expr (list (mk-bind-decl '|x| type))
 		    (mk-name-expr '|x|))
@@ -537,7 +541,10 @@ generated")
 
 (defun mk-recognizer-type (rec-id adt)
   (let* ((rname (mk-name-expr rec-id))
-	 (rpred (if (cdr (gethash rec-id (local-decls *current-context*)))
+	 (rpred (if (> (count-if #'(lambda (d)
+				     (eq (module d) (current-theory)))
+				 (gethash rec-id (current-declarations-hash)))
+		       1)
 		    (make-instance 'coercion
 		      'operator (mk-lambda-expr
 				    (list (mk-bind-decl '|x|
@@ -588,7 +595,7 @@ generated")
 				  (make-resolution dom nil rtype)
 				  'variable)))
 	(dolist (ad accdecls)
-	  (put-decl ad (local-decls *current-context*)))
+	  (put-decl ad (current-declarations-hash)))
 	(let* ((rng (subst-dependent-accessor-type vname pargs dtype))
 	       (ftype (mk-funtype (list dom) rng)))
 	  (dolist (ad accdecls)
@@ -609,9 +616,11 @@ generated")
        (member (id ex) pargs :test #'same-id)))
 
 (defmethod subst-dependent-accessor-type? (ex var pargs)
+  (declare (ignore ex var pargs))
   nil)
 
 (defmethod subst-dependent-accessor-type! ((ex name-expr) var pargs)
+  (declare (ignore pargs))
   (typecheck* (pc-parse (unparse (mk-application ex var) :string t) 'expr)
 	      (type ex) nil nil))
 
@@ -839,8 +848,11 @@ generated")
     (dolist (a (arguments c))
       (let* ((vars (mapcar #'get-adt-var (arguments c)))
 	     (cappl (mk-application* (id c) vars))
-	     (consappl (if (cdr (gethash (id c)
-					 (local-decls *current-context*)))
+	     (consappl (if (> (count-if #'(lambda (d)
+					    (eq (module d) (current-theory)))
+					(gethash (id c)
+						 (current-declarations-hash)))
+			      1)
 			   (make-instance 'coercion
 			     'operator (mk-lambda-expr
 					   (list (mk-bind-decl '|x|
@@ -2435,6 +2447,7 @@ generated")
   (same-declaration ex adt-type))
 
 (defmethod gen-adt-reduce-dom! ((ex type-name) rtype adt-type)
+  (declare (ignore adt-type))
   (copy rtype))
 
 (defmethod gen-adt-reduce-dom? ((ex expr-as-type) adt-type)
@@ -2445,6 +2458,7 @@ generated")
   (subtype-of? ex adt-type))
 
 (defmethod gen-adt-reduce-dom! ((ex subtype) rtype adt-type)
+  (declare (ignore adt-type))
   (copy rtype))
 
 (defmethod gen-adt-reduce-dom? ((ex datatype-subtype) adt-type)
@@ -2454,6 +2468,7 @@ generated")
   (gen-adt-reduce-dom* (supertype ex) rtype adt-type))
 
 (defmethod gen-adt-reduce-dom? (ex adt-type)
+  (declare (ignore ex adt-type))
   nil)
 
 (defun gen-adt-reduce-definition2 (adt fname fdoms adtinst)
@@ -2536,7 +2551,6 @@ generated")
   (acc-reduce-selection2 arg (supertype te) funlist fname adt))
 
 (defmethod acc-reduce-selection2 (arg (te funtype) funlist fname adt)
-  (declare (ignore adt))
   (if (sequence-adt? (adt-type-name adt) te)
       (mk-application
 	  (mk-application '|map|
@@ -2910,13 +2924,13 @@ generated")
     (when *last-adt-decl*
       (setq *last-adt-decl* decl)))
   (typecase decl
-    (declaration (setf (module decl) (module *current-context*))
+    (declaration (setf (module decl) (theory *current-context*))
 		 (typecheck* decl nil nil nil)
 		 (setf (typechecked? decl) t)
 		 (unless (or (eq add? 'no)
 			     (and (typep decl 'type-def-decl)
 				  (typep (type-expr decl) 'enumtype)))
-		   (put-decl decl (local-decls *current-context*)))
+		   (put-decl decl (current-declarations-hash)))
 		 (when (and reduce?
 			    (typep decl '(or const-decl formula-decl)))
 		   (setf (definition decl)
@@ -2929,7 +2943,7 @@ generated")
 (defun add-adt-decl (decl)
   (unless (and (typep decl 'type-def-decl)
 	       (typep (type-expr decl) 'enumtype))
-    (put-decl decl (local-decls *current-context*)))
+    (put-decl decl (current-declarations-hash)))
   (setf (theory *current-theory*)
 	  (if *last-adt-decl*
 	      (let* ((theory-part (theory *current-theory*))
@@ -2964,13 +2978,13 @@ function, tuple, or record type")
 	   (occurs-positively?* type (cdr list) none))))
 
 (defmethod occurs-positively?* (type (con simple-constructor) none)
-  (declare (ignore none))
   (occurs-positively?* type
 		       (mapcar #'(lambda (ac) (range (type ac)))
 			       (acc-decls con))
 		       none))
 
 (defmethod occurs-positively?* (type (fm formal-type-decl) none)
+  (declare (ignore type none))
   t)
 
 (defmethod occurs-positively?* (type (fm formal-const-decl) none)
@@ -3076,6 +3090,7 @@ function, tuple, or record type")
 				      postypes none))))
 
 (defmethod occurs-positively?* (type (ex number-expr) none)
+  (declare (ignore type none))
   t)
 
 (defmethod occurs-positively?* (type (ex record-expr) none)
@@ -3225,7 +3240,7 @@ function, tuple, or record type")
 
 (defmethod subst-map-actuals! ((res resolution) fpairs)
   (let ((ndecl (cdr (assoc (declaration res) fpairs :test #'same-id))))
-    (make-resolution ndecl (mod-name *current-context*))))
+    (make-resolution ndecl (theory-name *current-context*))))
 
 (defun positive-actuals (type-name)
   (let ((adt (adt? type-name)))

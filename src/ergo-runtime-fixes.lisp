@@ -86,7 +86,7 @@
        :linenumber (sbrt::place-linenumber splace)
        :charnumber (+ (the fixnum (sbrt::place-charnumber splace))
 		      (if token?
-			  (the fixnum (length (format nil "~a" sim-op)))
+			  (the fixnum (length (princ-to-string sim-op)))
 			  1)))))
 
 (defun maximal-endplace (args &optional place)

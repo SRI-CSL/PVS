@@ -90,7 +90,7 @@
 		   (setf (kind nex) 'VARIABLE)
 		   (setf (resolutions nex)
 			 (list (make-resolution (cdr binding)
-				 (mod-name *current-context*)
+				 (theory-name *current-context*)
 				 (type (cdr binding)))))
 		   nex)))
 	    (t (cdr binding))))))
@@ -326,7 +326,7 @@
 	(when (not (eq bind new-binding))
 	  (setf (resolutions new-binding)
 		(list (make-resolution new-binding
-			(mod-name *current-context*)
+			(theory-name *current-context*)
 			(type new-binding)))))
 	(make-new-bindings*
 	 (cdr old-bindings)

@@ -145,18 +145,22 @@
 	(typecheck-decls (assuming m))
 	(tcdebug "~%  Processing theory")
 	(typecheck-decls (theory m))
-	(maphash #'(lambda (id decls)
-		     (let ((ndecls (remove-if #'formal-decl? decls)))
-		       (when ndecls
-			 (setf (gethash id (declarations m)) ndecls))))
-		 (local-decls *current-context*))
+;	(maphash #'(lambda (id decls)
+;		     (let ((ndecls (remove-if #'formal-decl? decls)))
+;		       (when ndecls
+;			 (setf (gethash id (declarations m)) ndecls))))
+;		 (local-decls *current-context*))
 	(tcdebug "~%  Processing exporting")
 	(generate-xref m)
 	(assert (eq *current-theory* m))
 	(check-exporting m)
-	(setf (all-usings m)
-	      (remove-if #'(lambda (mu) (assoc (car mu) *prelude-names*))
-		(using *current-context*)))
+       (setf (all-usings m)
+	     (let ((imps nil))
+	       (maphash #'(lambda (th thinsts)
+			    (unless (from-prelude? th)
+			      (push (cons th thinsts) imps)))
+			(using-hash *current-context*))
+	       imps))
 	(setf (saved-context m) *current-context*)
 	;;(reset-fully-instantiated-cache)
 	)
@@ -240,9 +244,9 @@
 ;      (pushnew nmodinst
 ;	       (instances-used *current-theory*)
 ;	       :test #'tc-eq))
-    (add-to-using nmodinst)
     (unless *ignore-exportings*
-      (add-exporting-with-theories mod nmodinst))))
+      (add-exporting-with-theories mod nmodinst))
+    (add-to-using nmodinst)))
 
 (defmethod typecheck-using* ((adt datatype) inst)
   (let* ((th1 (adt-theory adt))
@@ -271,26 +275,25 @@
 
 (defun add-exporting-with-theories (theory inst)
   (when (exporting theory)
-    (let ((cusing (using (context theory))))
-      (dolist (ename (closure (exporting theory)))
-	(let* ((itheory (car (assoc ename cusing :test #'same-id)))
-	       (lname (if (typep itheory 'library-theory)
-			  (copy ename
-			    'library
-			    (makesym "~a"
-				     (cdr (assoc (library itheory)
-						 *library-alist*
-						 :test #'equal))))
-			  ename))
-	       (iname (if (actuals inst)
-			  (subst-mod-params lname inst)
-			  lname)))
-	  (assert itheory)
-	  (unless (and (formals-sans-usings itheory) (null (actuals iname)))
-	    ;; Add this to the assuming-instances list if fully instantiated
-	    (pushnew iname (assuming-instances *current-theory*)
-		     :test #'tc-eq))
-	  (add-to-using iname itheory))))))
+    (dolist (ename (closure (exporting theory)))
+      (let* ((itheory (get-theory ename))
+	     (lname (if (typep itheory 'library-theory)
+			(copy ename
+			  'library
+			  (makesym "~a"
+				   (cdr (assoc (library itheory)
+					       *library-alist*
+					       :test #'equal))))
+			ename))
+	     (iname (if (actuals inst)
+			(subst-mod-params lname inst)
+			lname)))
+	(assert itheory)
+	(unless (and (formals-sans-usings itheory) (null (actuals iname)))
+	  ;; Add this to the assuming-instances list if fully instantiated
+	  (pushnew iname (assuming-instances *current-theory*)
+		   :test #'tc-eq))
+	(add-to-using iname itheory)))))
 
 
 ;;; Returns all of the theorynames directly used by the specified
@@ -379,30 +382,42 @@
 
 (defun add-to-using (theoryname &optional itheory)
   (assert *current-context*)
-  (let* ((entry (assoc theoryname (using *current-context*)
-		       :test #'theoryname-in-context-using))
-	 (tname (remove-coercions
-		 (remove-indirect-formals-of-name theoryname))))
-    (if entry
-	(unless (member tname (cdr entry) :test #'tc-eq)
-	  (when (actuals tname)
-	    (let ((imps (immediate-usings *current-theory*)))
-	      (setf (cdr entry)
-		    (delete-if #'(lambda (imp)
-				   (and (actuals imp)
-					(not (fully-instantiated? imp))
-					(member (id imp) imps :key #'id)
-					(not (member imp imps :test #'tc-eq))))
-		    (cdr entry)))))
-	  (nconc entry (list tname))
-	  (update-current-context (car entry) theoryname))
-	(let ((theory (or itheory (get-typechecked-theory tname))))
-	  (unless theory
-	    (type-error theoryname "Theory ~a not found" (id theoryname)))
-	  (update-current-context theory theoryname)
-	  (setf (using *current-context*)
-		(nconc (using *current-context*)
-		       (list (list theory tname))))))))
+  (let ((theory (or itheory (get-typechecked-theory theoryname))))
+    (unless theory
+      (type-error theoryname "Theory ~a not found" (id theoryname)))
+    (let ((entry (gethash theory (current-using-hash)))
+	  ;; :test #'theoryname-in-context-using
+	  (tname (remove-coercions
+		  (remove-indirect-formals-of-name theoryname))))
+      (when entry
+	(assert (every #'(lambda (d)
+			   (if (and (declaration? d) (visible? d))
+			       (memq d (gethash (id d)
+						(current-declarations-hash)))
+			       t))
+		       (theory theory))))
+      (if entry
+	  (unless (member tname entry :test #'tc-eq)
+	    (if (actuals tname)
+		(let ((imps (immediate-usings *current-theory*)))
+		  (setf (gethash theory (current-using-hash))
+			(nconc (delete-if
+				   #'(lambda (imp)
+				       (and (actuals imp)
+					    (not (fully-instantiated? imp))
+					    (member (id imp) imps :key #'id)
+					    (not (member imp imps
+							 :test #'tc-eq))))
+				 entry)
+			       (list tname))))
+		(nconc entry (list tname)))
+	    (update-current-context theory theoryname))
+	  (progn (update-current-context theory theoryname)
+		 (dolist (decl (append (assuming theory) (theory theory)))
+		   (when (and (declaration? decl) (visible? decl))
+		     (put-decl decl (current-declarations-hash))))
+		 (setf (gethash theory (current-using-hash))
+		       (list tname)))))))
 
 (defun update-current-context (theory theoryname)
   (assert (saved-context theory))
@@ -703,14 +718,17 @@
        (not (from-prelude? (declaration ex)))))
 
 (defun set-visibility (decl)
-  (unless (typep decl '(or var-decl field-decl))
+  (unless (or (typep decl '(or var-decl field-decl))
+	      (and (type-def-decl? decl)
+		   (enumtype? (type-expr decl))))
     (setf (visible? decl) t)))
 
 (defun check-exported-theories (theories)
   (unless (symbolp theories);; Handles NIL, ALL, and CLOSURE
     (when (actuals (car theories))
       (typecheck-actuals (car theories)))
-    (unless (member (car theories) (using *current-context*)
+    (break)
+    (unless (member (car theories) (using-hash *current-context*)
 		    :test #'(lambda (x y)
 			      (member x (cdr y)
 				      :test #'(lambda (u v)

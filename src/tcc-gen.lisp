@@ -533,13 +533,13 @@
 	 (id (make-tcc-name))
 	 (decl (typecheck* (mk-existence-tcc id tform) nil nil nil)))
     (setf (spelling decl) 'ASSUMPTION)
-    (unless (member decl (assuming (module *current-context*))
+    (unless (member decl (assuming (theory *current-context*))
 		    :test #'(lambda (d1 d2)
 			      (and (formula-decl? d2)
 				   (eq (spelling d2) 'ASSUMPTION)
 				   (tc-eq (definition d1) (definition d2)))))
-      (setf (assuming (module *current-context*))
-	    (append (assuming (module *current-context*)) (list decl))))
+      (setf (assuming (theory *current-context*))
+	    (append (assuming (theory *current-context*)) (list decl))))
     (add-decl decl nil)
     decl))
     
@@ -746,7 +746,7 @@
 			       (declaration *current-context*))))))
 	 (tcc-name (makesym "~a_TCC~d" decl-id num)))
     (assert decl-id)
-    (if (gethash tcc-name (local-decls *current-context*))
+    (if (gethash tcc-name (current-declarations-hash))
 	(make-tcc-name (1+ num))
 	tcc-name)))
 
@@ -769,7 +769,7 @@
 
 
 (defun make-tcc-using-id ()
-  (let ((mod (module *current-context*)))
+  (let ((mod (theory *current-context*)))
     (makesym "IMPORTING~d"
 	     (1+ (position (declaration *current-context*)
 			   (remove-if-not #'using?

@@ -162,8 +162,7 @@
   (case (intern (string-upcase origin))
     (ppe (ppe-form (get-theory name)))
     (tccs (tcc-form (get-theory name)))
-    (prelude (remove-if #'generated-by
-	       (nreverse (mapcar #'car *prelude-names*))))
+    (prelude (remove-if #'generated-by *prelude-theories*))
     (prelude-theory (list (get-theory name)))
     (t (typecheck-file name nil nil nil t))))
 

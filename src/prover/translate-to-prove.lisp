@@ -104,8 +104,9 @@
 	                  ;;soundness bug where actuals are ignored.
 	 (if (and (constructor? expr)
 		  (enum-adt? (find-supertype (type expr))))
-	     (position expr (constructors (find-supertype (type expr)))
-		       :test #'same-id)
+	     (position (id expr)
+		       (constructors (adt (find-supertype (type expr))))
+		       :test #'eq :key #'id)
 	     (let* ((norm-expr (normalize-name-expr-actuals expr))
 		    (id-hash (gethash norm-expr *translate-id-hash*))
 		    (newconst (or id-hash
@@ -301,7 +302,7 @@
   (if op?
       (call-next-method)
       (let* ((adt (adt (adt ex)))
-	     (constr (find ex (constructors adt) :test #'same-id)))
+	     (constr (find (id ex) (constructors adt) :test #'eq :key #'id)))
 	(if (arguments constr)
 	    ex
 	    (call-next-method ex t)))))
@@ -335,7 +336,7 @@
 (defmethod interpreted? ((expr name-expr))
   (member expr *interpreted-names*
 	  :test #'(lambda (n i)
-		    (and (same-id n i)
+		    (and (eq (id n) (id i))
 			 (module-instance n)
 			 (eq (mod-id i)
 			     (id (module-instance n)))))))
@@ -498,8 +499,8 @@
 	    trbasis
 	    (typecase type
 	      (recordtype
-	       (position (caar args) (sort-fields (fields type))
-			 :test #'same-id))
+	       (position (id (caar args)) (sort-fields (fields type))
+			 :test #'eq :key #'id))
 	      (tupletype
 	       (1- (number (caar args))))
 	      (t (if (singleton? (car args))
@@ -509,8 +510,8 @@
 		    (find-supertype 
 		     (typecase type
 		       (recordtype
-			(type (find (caar args)(fields type)
-				    :test #'same-id)))
+			(type (find (id (caar args)) (fields type)
+				    :test #'eq :key #'id)))
 		       (tupletype
 			(nth (1- (number (caar args)))
 				(types type)))
@@ -520,9 +521,9 @@
 		       (recordtype
 			(make-tr-field-application
 			 (mk-funtype type ntrbasis-type)
-			 (position (caar args)
+			 (position (id (caar args))
 				   (sort-fields (fields type))
-				   :test #'same-id)
+				   :test #'eq :key #'id)
 			 trbasis))
 		       (tupletype
 			(make-tr-projection-application

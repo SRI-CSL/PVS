@@ -409,10 +409,10 @@
 ;  (make-specpath (id mod)))
 
 (defmethod make-specpath ((name symbol) &optional (ext "pvs"))
-  (make-pathname :defaults (working-directory) :name name :type ext))
+  (make-pathname :defaults *pvs-context-path* :name name :type ext))
 
 (defmethod make-specpath ((name string) &optional (ext "pvs"))
-  (make-pathname :defaults (working-directory) :name name :type ext))
+  (make-pathname :defaults *pvs-context-path* :name name :type ext))
 
 (defmethod make-specpath ((name name) &optional (ext "pvs"))
   (make-specpath (id name) ext))
@@ -658,14 +658,14 @@
 					(not (and (type-def-decl? d)
 						  (enumtype? (type-expr d))))))
 		  adecls))
-	 (prelude-names (if (and (not *generating-adt*)
-				 decl
-				 (from-prelude? decl))
-			    (copy-tree
-			     (cdr (memq (assq (module decl)
-					      *prelude-names*)
-					*prelude-names*)))
-			    (copy-tree *prelude-names*)))
+;	 (prelude-names (if (and (not *generating-adt*)
+;				 decl
+;				 (from-prelude? decl))
+;			    (copy-tree
+;			     (cdr (memq (assq (module decl)
+;					      *prelude-names*)
+;					*prelude-names*)))
+;			    (copy-tree *prelude-names*)))
 	 (ctx (mk-context
 	       theory
 	       (if nil;;(gethash (id theory) *prelude*)
@@ -770,21 +770,25 @@
 		  *prelude-context*)))
     (if pctx
 	(make-instance 'context
-	  'module theory
-	  'mod-name (mk-modname (id theory))
-	  'using (copy-tree (using pctx))
+	  'theory theory
+	  'theory-name (mk-modname (id theory))
+	  'using-hash (copy (using-hash pctx))
+	  'declarations-hash (copy (declarations-hash pctx))
 	  'judgements (copy-judgements (judgements pctx))
 	  'known-subtypes (copy-tree (known-subtypes pctx))
 	  'conversions (copy-list (conversions pctx)))
 	(make-instance 'context
-	  'module theory
-	  'mod-name (mk-modname (id theory))))))
+	  'theory theory
+	  'theory-name (mk-modname (id theory))
+	  'using-hash (make-hash-table)
+	  'declarations-hash (make-hash-table)))))
 
 (defun copy-context (context)
   (copy context
-    'local-decls (copy (local-decls context))
-    'local-proof-decls (make-hash-table :test #'eq)
-    'using (copy-tree (using context))
+;    'local-decls (copy (local-decls context))
+;    'local-proof-decls (make-hash-table :test #'eq)
+    'declarations-hash (copy (declarations-hash context))
+    'using-hash (copy (using-hash context))
     'judgements (copy-judgements (judgements context))
     'conversions (copy-list (conversions context))
     'known-subtypes (copy-tree (known-subtypes context))))
@@ -792,7 +796,7 @@
 (defun copy-prover-context (&optional (context *current-context*))
   (assert *in-checker*)
   (copy context
-    'local-proof-decls (copy (local-proof-decls context))
+;    'local-proof-decls (copy (local-proof-decls context))
     'judgements (copy (judgements context)
 		  'judgement-types-hash
 		  (copy (judgement-types-hash (judgements context))))))
@@ -800,7 +804,7 @@
 
 (defmethod context (ignore)
   (declare (ignore ignore))
-  (let* ((mod (or *current-theory* (caar *prelude-names*)))
+  (let* ((mod (or *current-theory* (car (last *prelude-theories*))))
 	 (ctx (mk-context mod nil
 			  (append (prelude-libraries-uselist)
 				  (copy-tree *prelude-names*)))))
@@ -999,7 +1003,8 @@
 (defun make-def-axiom (decl)
   (let* ((*generate-tccs* 'none)
 	 (def (make!-lambda-exprs (formals decl) (definition decl)))
-	 (name (typecheck* (mk-name-expr (id decl)) (type decl) nil nil))
+	 (res (mk-resolution decl (current-theory-name) (type decl)))
+	 (name (mk-name-expr (id decl) nil nil res 'constant))
 	 (appl (make!-equation name def))
 	 (depth (lambda-depth decl)))
     (assert (eq (declaration name) decl))
@@ -1191,7 +1196,7 @@
       (let ((bind-decl (mk-bind-decl (id var)
 			 (get-declared-type var) (type var))))
 	(setf (resolutions bind-decl)
-	      (list (make-resolution bind-decl (mod-name *current-context*)
+	      (list (make-resolution bind-decl (theory-name *current-context*)
 				     (type var))))
 	(values bind-decl t))))
 
@@ -2257,12 +2262,14 @@ space")
 	  (name conversion)))))
 
 (defun get-all-k-conversions ()
+  (break)
   (append (remove-if-not #'k-combinator? (conversions *current-context*))
 	  (mapappend #'(lambda (th)
 			 (remove-if-not #'k-combinator? (conversions (car th))))
 		     (using *current-context*))))
 
 (defun get-all-conversions ()
+  (break)
   (append (conversions *current-context*)
 	  (mapappend #'(lambda (th) (conversions (car th)))
 		     (using *current-context*))))
@@ -2460,7 +2467,7 @@ space")
 	 (mn (if (typep th 'datatype)
 		 (copy modname 'id (id (adt-theory th)))
 		 modname))
-	 (usings (cdr (assq theory (using *current-context*)))))
+	 (usings (gethash theory (using-hash *current-context*))))
     (or (some #'(lambda (u) (not (actuals u))) usings)
 	(member mn usings :test #'tc-eq))))
 
@@ -2480,9 +2487,41 @@ space")
 	  (split-on* pred (cdr list) (cons (car list) match) rest)
 	  (split-on* pred (cdr list) match (cons (car list) rest)))))
 
-(defun current-decl ()
-  (and *current-context*
-       (declaration *current-context*)))
+(defun current-theory ()
+  (assert *current-context*)
+  (theory *current-context*))
+
+(defsetf current-theory () (theory)
+  `(setf (theory *current-context*) ,theory))
+
+(defun current-theory-name ()
+  (assert *current-context*)
+  (theory-name *current-context*))
+
+(defsetf current-theory-name () (name)
+  `(setf (theory-name *current-context*) ,name))
+
+(defun current-declaration ()
+  (assert *current-context*)
+  (declaration *current-context*))
+
+(defsetf current-declaration () (decl)
+  `(setf (declaration *current-context*) ,decl))
+
+(defun current-declarations-hash ()
+  (assert *current-context*)
+  (declarations-hash *current-context*))
+
+(defsetf current-declarations-hash () (decl-hash)
+  `(setf (declarations-hash *current-context*) ,decl-hash))
+
+(defun current-using-hash ()
+  (assert *current-context*)
+  (using-hash *current-context*))
+
+(defsetf current-using-hash () (using-hash)
+  `(setf (using-hash *current-context*) ,using-hash))
+
 
 (defun current-decl-is (string)
   (when *current-context*

@@ -91,15 +91,15 @@
 (defun add-new-decls-to-context (pdecl decls theory)
   (let ((context (saved-context theory)))
     (dolist (d decls)
-      (put-decl d (local-decls context))))
+      (put-decl d (current-declarations-hash))))
   (when (and *in-checker*
 	     *current-context*
-	     (eq theory (module *current-context*))
+	     (eq theory (theory *current-context*))
 	     (memq (declaration *current-context*)
 		   (cdr (memq pdecl (append (assuming theory)
 					    (theory theory))))))
     (dolist (d decls)
-      (put-decl d (local-decls *current-context*)))))
+      (put-decl d (current-declarations-hash)))))
 
 (defun typecheck-new-decls (decls pdecl)
   (let ((*insert-add-decl* nil)
@@ -165,21 +165,23 @@
 ;;; the context.
 
 ;;; Side effects:
-;;;   (module decl)
+;;;   (theory decl)
 ;;;   (generated-by decl)
 ;;;   (generated (declaration *current-context*))
-;;;   (assuming (module *current-context*))
-;;;   (theory (module *current-context*))
+;;;   (assuming (theory *current-context*))
+;;;   (theory (theory *current-context*))
 ;;;   (local-decls *current-context*)
-;;;   (declarations (module *current-context*))
+;;;   (declarations (theory *current-context*))
 
 (defun add-decl (decl &optional (insert? t) (generated? t) (assuming? nil))
   (when (or (adt-def-decl? decl)
 	    (using? decl)
 	    (not (member decl
-			 (gethash (id decl) (local-decls *current-context*))
+			 (remove-if-not #'(lambda (d)
+					    (eq (module d) (current-theory)))
+			   (gethash (id decl) (current-declarations-hash)))
 			 :test #'add-decl-test)))
-    (let* ((thry (module *current-context*))
+    (let* ((thry (theory *current-context*))
 	   (curdecl (declaration *current-context*))
 	   (cdecl (when curdecl
 		    (if (tcc? decl)
@@ -241,8 +243,7 @@
 			 (cons decl ttail))))))
       (unless (or (using? decl)
 		  (null *insert-add-decl*))
-	(put-decl decl (local-decls *current-context*))
-	(put-decl decl (declarations thry)))
+	(put-decl decl (current-declarations-hash)))
       decl)))
 
 (defun remove-previous-formal-tccs (decl decls)
@@ -352,21 +353,19 @@
 					 (declarations theory))))
 		(when (and *in-checker*
 			   *current-context*)
-		  (setf (gethash (id d)
-				 (local-decls *current-context*))
+		  (setf (gethash (id d) (current-declarations-hash))
 			(remove d (gethash (id d)
-					   (local-decls
-					    *current-context*))))))
+					   (current-declarations-hash))))))
 	      (dolist (d (generated decl))
 		(put-decl d (declarations theory))
 		(when (and *in-checker*
 			   *current-context*
-			   (eq theory (module *current-context*))
+			   (eq theory (theory *current-context*))
 			   (memq (declaration *current-context*)
 				 (memq decl (append (assuming theory)
 						    (theory theory)))))
 		  (mapc #'(lambda (d)
-			    (put-decl d (local-decls *current-context*)))
+			    (put-decl d (current-declarations-hash)))
 			(generated decl))))
 	      (when (and (typep decl 'formula-decl)
 			 (eq (proof-status decl) 'proved))

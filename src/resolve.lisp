@@ -78,7 +78,7 @@
 	;; generated (see lemma-step).
 	(unless (every #'typed? (actuals name))
 	  (typecheck-actuals name))
-	(unless (member name (assq theory (using *current-context*))
+	(unless (member name (gethash theory (using-hash *current-context*))
 			:test #'tc-eq)
 	  (set-type-actuals name)
 	  (check-compatible-params (formals-sans-usings theory)
@@ -90,29 +90,158 @@
 
 (defun resolve* (name kind args)
   (typecheck-actuals name kind)
-  (filter-preferences
-   name
-   (let* ((lmodinsts (get-modinsts-list name (using *current-context*)))
-	  (res (delete-duplicates
-		(nconc (match-record-arg-decls name kind args)
-		       (match-local-decls name kind args)
-		       (matching-decls name lmodinsts kind args nil))
-		:test #'tc-eq))
-	  (fres (delete-if #'disallowed-free-variable? res)))
-     (if fres
-	 (if (actuals name)
-	     (let ((ares (delete-if #'(lambda (r)
-					(eq (id (module-instance r))
-					    (id *current-theory*)))
-				    fres)))
-	       (or ares
-		   (type-error name
-		     "May not provide actuals for entities defined locally")))
-	     fres)
-	 (when res
-	   (type-error name "Free variables not allowed here"))))
-   kind args))
+  (filter-preferences name (get-resolutions name kind args) kind args))
 
+;;(type-error name "May not provide actuals for entities defined locally")
+;;(type-error name "Free variables not allowed here")
+
+(defun get-resolutions (name kind args)
+  (if (library name)
+      (break "get-resolutions")
+      (let* ((adecls (gethash (id name) (current-declarations-hash)))
+	     (decls (if (mod-id name)
+			(remove-if-not #'(lambda (d)
+					   (eq (id (module d)) (mod-id name)))
+			  adecls)
+			adecls)))
+	(nconc (get-binding-resolutions name kind args)
+	       (get-record-arg-resolutions name kind args)
+	       (get-decls-resolutions decls (actuals name) kind args)))))
+
+(defmethod get-binding-resolutions ((name name) kind args)
+  (with-slots (mod-id library actuals id) name
+    (when (and (eq kind 'expr)
+	       (null library)
+	       (null mod-id)
+	       (null actuals))
+      (let ((bdecls (remove-if-not #'(lambda (bd) (eq (id bd) id))
+		      *bound-variables*)))
+	(when bdecls
+	  (if args
+	      (let ((thinst (current-theory-name)))
+		(mapcar #'(lambda (bd)
+			    (when (compatible-arguments? bd thinst args
+							 (current-theory))
+			      (mk-resolution bd thinst (type bd))))
+		  bdecls))
+	      (mapcar #'(lambda (bd)
+			  (mk-resolution bd (current-theory-name) (type bd)))
+		bdecls)))))))
+
+(defmethod get-record-arg-resolutions ((name name) kind args)
+  (with-slots (mod-id library actuals id) name
+    (when (and (eq kind 'expr)
+	       (null library)
+	       (null mod-id)
+	       (null actuals)
+	       (singleton? args))
+      (let ((rtypes (get-arg-record-types (car args))))
+	(when rtypes
+	  (mapcan #'(lambda (rtype)
+		      (let ((fdecl (find-if #'(lambda (fd)
+						(eq (id fd) (id name)))
+				     (fields rtype))))
+			(when fdecl
+			  (let ((ftype
+				 (if (and (dependent? rtype)
+					  (some #'(lambda (x)
+						    (and (not (eq x fdecl))
+							 (occurs-in x fdecl)))
+						(fields rtype)))
+				     (let* ((db (mk-dep-binding
+						 (make-new-variable '|r| rtype)
+						 rtype))
+					    (ne (make-dep-field-name-expr
+						 db rtype))
+					    (ftype (field-application-type
+						    (id fdecl) rtype ne)))
+				       (mk-funtype db ftype))
+				     (mk-funtype (list rtype) (type fdecl)))))
+			  (list (make-resolution fdecl (current-theory-name)
+						 ftype))))))
+	    rtypes))))))
+
+(defun get-arg-record-types (arg)
+  (get-arg-record-types* (ptypes arg)))
+
+(defun get-arg-record-types* (types &optional rtypes)
+  (if (null types)
+      rtypes
+      (let ((stype (find-supertype (car types))))
+	(get-arg-record-types* (cdr types)
+			       (if (typep stype 'recordtype)
+				   (cons stype rtypes)
+				   rtypes)))))
+
+(defun get-decls-resolutions (decls acts kind args &optional reses)
+  (if (null decls)
+      reses
+      (let ((dreses (get-decl-resolutions (car decls) acts kind args)))
+	(get-decls-resolutions (cdr decls) acts kind args
+			       (nconc dreses reses)))))
+
+(defun get-decl-resolutions (decl acts kind args)
+  (let ((dth (module decl)))
+    (when (and (kind-match (kind-of decl) kind)
+	       (or (eq dth (current-theory))
+		   (and (visible? decl)
+			(can-use-for-assuming-tcc? decl)))
+	       (not (disallowed-free-variable? decl))
+	       (or (null args)
+		   (case kind
+		     (type (and (formals decl)
+				(or (length= (formals decl) args)
+				    (singleton? (formals decl))
+				    (singleton? args))))
+		     (expr (let ((ftype (find-supertype (type decl))))
+			     (and (typep ftype 'funtype)
+				  (or (length= (domain-types ftype) args)
+				      (singleton? args)))))
+		     (t nil))))
+      (if (null acts)
+	  (if (or (null (formals-sans-usings dth))
+		  (eq dth (current-theory)))
+	      (if (null args)
+		  (list (mk-resolution decl (mk-modname (id (module decl)))
+				       (case kind
+					 (expr (type decl))
+					 (type (type-value decl)))))
+		  (let ((modinsts (decl-args-compatible? decl args)))
+		    (mapcar #'(lambda (thinst)
+				(make-resolution decl thinst))
+		      modinsts)))
+	      (let ((modinsts (decl-args-compatible? decl args)))
+		(mapcar #'(lambda (thinst)
+			    (make-resolution decl thinst))
+		  modinsts)))
+	  (when (length= acts (formals-sans-usings dth))
+	    (let* ((thinsts (gethash dth (current-using-hash)))
+		   (genthinst (find-if-not #'actuals thinsts)))
+	      (if genthinst
+		  (when (and (decl-args-compatible? decl args)
+			     (compatible-parameters?
+			      acts (formals-sans-usings dth)))
+		    (let* ((nacts (copy-actuals acts))
+			   (dthi (mk-modname-no-tccs (id dth) nacts))
+			   (*generate-tccs* 'none))
+		      (set-type-actuals dthi)
+		      #+pvsdebug (assert (fully-typed? dthi))
+		      (list (make-resolution decl dthi))))
+		  (let ((modinsts (decl-args-compatible? decl args)))
+		    (mapcar #'(lambda (thinst)
+				(make-resolution decl thinst))
+		      modinsts)))))))))
+
+(defun copy-actuals (acts)
+  acts)
+
+(defun decl-args-compatible? (decl args)
+  (if (eq (module decl) (current-theory))
+      (compatible-arguments? decl (current-theory-name) args (current-theory))
+      (let ((thinsts (gethash (module decl) (current-using-hash))))
+	(mapcan #'(lambda (thinst)
+		    (compatible-arguments? decl thinst args (current-theory)))
+	  thinsts))))
 
 ;;; This will set the types of the actual paramters.
 ;;; Name-exprs are typechecked twice; once as an expression and once as
@@ -249,8 +378,8 @@
 	  (type-error name "Library ~a not found" (library name)))))
   (if (mod-id name)
       (or (module-synonym-instance name)
-	  (let* ((modalist (acons (module *current-context*)
-				  (mod-name *current-context*)
+	  (let* ((modalist (acons (theory *current-context*)
+				  (theory-name *current-context*)
 				  using-list))
 		 (modinsts (or (assoc (mod-id name) modalist :test #'eq-id)
 			       (let ((dt (get-theory (mod-id name))))
@@ -271,7 +400,7 @@
   (when (mod-id name)
     (let ((mdecl (find-if #'(lambda (d) (typep d 'mod-decl))
 		   (gethash (mod-id name)
-			    (local-decls *current-context*)))))
+			    (current-declarations-hash)))))
       (if mdecl
 	  (list (list (get-theory (modname mdecl)) (modname mdecl)))
 	  (used-mod-syn (mod-id name) (using *current-context*))))))
@@ -304,7 +433,7 @@
   (let ((mod (car modinsts)))
     ;; If it is in the current context, it will be handled by
     ;; match-local-decls
-    (unless (eq mod (module *current-context*))
+    (unless (eq mod (theory *current-context*))
       (and (gethash id (declarations mod))
 	   (if acts
 	       (let ((minsts (or (remove-if #'actuals (cdr modinsts))
@@ -642,7 +771,7 @@
 				      (push (cons fdecl sty) *field-records*)
 				      (list fdecl))))))
 			  (ptypes (car args))))
-	  (modinsts (list (mod-name *current-context*))))
+	  (modinsts (list (theory-name *current-context*))))
       ;;; FIXME - create resolutions here
       (matching-decls* name fdecls modinsts args nil))))
 
@@ -662,7 +791,7 @@
 
 (defun match-local-decls (name kind args)
   (when (and (or (null (mod-id name))
-		 (eq (mod-id name) (id (mod-name *current-context*))))
+		 (eq (mod-id name) (id (theory-name *current-context*))))
 	     (null (library name))
 	     (null (actuals name)))
     #+pvsdebug (assert (every #'binding? *bound-variables*))
@@ -675,7 +804,7 @@
 		      (append bvars (remove-if #'var-decl? ldecls))
 		      ldecls))
 	   (pdecls (possible-decls (id name) decls kind))
-	   (modinsts (list (mod-name *current-context*))))
+	   (modinsts (list (theory-name *current-context*))))
       (matching-decls* name pdecls modinsts args nil))))
 
 (defun get-distinct-bound-variables (bvars name &optional result)
@@ -708,7 +837,7 @@
 			(if (and (kind-match (kind-of d) kind)
 				 (or (memq d *bound-variables*)
 				     ;; (typep d 'binding)
-				     (eq (module d) (module *current-context*))
+				     (eq (module d) (theory *current-context*))
 				     (and (visible? d)
 					  (can-use-for-assuming-tcc? d))))
 			    (cons d result)
@@ -738,7 +867,7 @@
   (if (null modinsts)
       result
       (let ((res (matching-decl decl (car modinsts) args
-				(module *current-context*))))
+				(theory *current-context*))))
 	(match-decl name decl (cdr modinsts) args (nconc res result)))))
 
 ;;; Returns a resolution or nil, depending on whether the provided decl matches.
@@ -774,7 +903,7 @@
 	(mk-funtype (list rectype) (type field-decl)))))
 
 (defun make-dep-field-name-expr (db rectype)
-  (let ((dres (make-resolution db (mod-name *current-context*) rectype)))
+  (let ((dres (make-resolution db (theory-name *current-context*) rectype)))
     (mk-name-expr (id db) nil nil dres 'variable)))
 
 (defmethod compatible-arguments? (decl modinst args mod)
@@ -804,19 +933,18 @@
 			nil))
 	     (if (uninstantiated? modinst mod decl)
 		 (compatible-uninstantiated? decl modinst dtypes args)
-		 (let ((*generate-tccs* 'none))
+		 (let* ((*generate-tccs* 'none)
+			(domtypes (mapcar #'(lambda (dt)
+					      (let ((*smp-include-actuals* t)
+						    (*smp-dont-cache* t))
+						(if (actuals modinst)
+						    (subst-mod-params
+						     dt modinst))
+						dt))
+				    dtypes)))
 		   (assert (fully-instantiated? modinst))
 		   ;;(set-type-actuals modinst)
-		   (when (compatible-args?
-			  decl
-			  args
-			  (mapcar #'(lambda (dt)
-				      (let ((*smp-include-actuals* t)
-					    (*smp-dont-cache* t))
-					(if (actuals modinst)
-					    (subst-mod-params dt modinst))
-					dt))
-			    dtypes))
+		   (when (compatible-args? decl args domtypes)
 		     (list modinst))))))))
 
 (defmethod compatible-arguments? ((decl field-decl) modinst args mod)
@@ -969,13 +1097,10 @@
 		 etype))
       (compatible? atype etype)))
 
-(defun disallowed-free-variable? (res)
-  (assert (every #'binding? *bound-variables*))
+(defun disallowed-free-variable? (decl)
   (and (not *allow-free-variables*)
-       ;;(not *generating-tcc*)
-       (typep (declaration res) 'var-decl)
-       (not (typep (declaration *current-context*) 'formula-decl))
-       (not (memq (declaration res) *bound-variables*))))
+       (typep decl 'var-decl)
+       (not (typep (declaration *current-context*) 'formula-decl))))
 
 
 ;;; Filter-preferences returns a subset of the list of decls, filtering
@@ -992,14 +1117,61 @@
 		 reses)))
     (if (eq kind 'expr)
 	(if (cdr res)
-	    (filter-bindings res)
+	    (filter-local-expr-resolutions
+	     (filter-bindings res args))
 	    res)
 	(remove-outsiders (remove-generics res)))))
 
-(defun filter-bindings (reses)
+(defun filter-bindings (reses args)
   (or (delete-if-not #'(lambda (r) (typep (declaration r) 'bind-decl))
 	reses)
+      (and args
+	   (delete-if-not #'(lambda (r)
+			      (let* ((stype (find-supertype (type r)))
+				     (dtypes (if (cdr args)
+						 (domain-types stype)
+						 (list (if (dep-binding?
+							    (domain stype))
+							   (type (domain stype))
+							   (domain stype))))))
+				(every #'(lambda (a dt)
+					   (some #'(lambda (aty)
+						     (tc-eq aty dt))
+						 (types a)))
+				       args dtypes)))
+	     reses))
       reses))
+
+(defun filter-local-expr-resolutions (reses &optional freses)
+  (if (null reses)
+      freses
+      (let ((res (car reses)))
+	(filter-local-expr-resolutions
+	 (cdr reses)
+	 (if (or (member res (cdr reses) :test #'same-type-but-less-local)
+		 (member res freses :test #'same-type-but-less-local))
+	     freses
+	     (cons res freses))))))
+
+(defun same-type-but-less-local (res1 res2)
+  (and (tc-eq (type res1) (type res2))
+       (< (locality res1) (locality res2))))
+
+(defmethod locality ((res resolution))
+  (locality (declaration res)))
+
+(defmethod locality ((decl bind-decl))
+  0)
+
+(defmethod locality ((decl declaration))
+  (with-slots (module) decl
+    (cond ((eq module (current-theory))
+	   1)
+	  ((from-prelude? module)
+	   4)
+	  ((typep module '(or library-theory library-datatype))
+	   3)
+	  (t 2))))
 
 (defun partition-on-same-ranges (reses partition)
   (if (null reses)
@@ -1024,7 +1196,7 @@
 					   (expr a))))
 			     (or (not (name? name))
 				 (eq (module (declaration name))
-				     (module *current-context*)))))
+				     (theory *current-context*)))))
 		       (actuals (module-instance r))))
        resolutions)
       resolutions))
@@ -1076,15 +1248,15 @@
 ;;;             ELSE return nil
 
 (defun resolve-theory-name (modname)
-  (if (eq (id modname) (id (module *current-context*)))
+  (if (eq (id modname) (id (theory *current-context*)))
       (if (actuals modname)
 	  (type-error modname "May not instantiate the current theory")
 	  modname)
       (if (get-theory modname)
 	  (progn
 	    (typecheck* modname nil nil nil)
-	    (let* ((importings (cdr (or (assq (get-theory modname)
-					      (using *current-context*))
+	    (let* ((importings (cdr (or (gethash (get-theory modname)
+						 (using-hash *current-context*))
 					(assoc modname
 					       (using *current-context*)
 					       :test #'same-id)))))
@@ -1104,14 +1276,14 @@
 
 (defun resolve-theory-abbreviation (modname)
   (let ((thabbr (find-if #'(lambda (d) (typep d 'mod-decl))
-		  (gethash (id modname) (local-decls *current-context*)))))
+		  (gethash (id modname) (current-declarations-hash)))))
     (if thabbr
 	(if (actuals modname)
 	    (type-error modname
 	      "May not provide actuals for entities defined locally")
 	    (modname thabbr))
 	(resolve-imported-theory-abbreviation modname
-					      (using *current-context*)))))
+					      (using-hash *current-context*)))))
 
 (defun resolve-imported-theory-abbreviation (modname importings)
   (when importings

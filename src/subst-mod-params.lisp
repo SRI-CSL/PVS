@@ -369,7 +369,7 @@
 	  (setf (resolutions ndep)
 		(list (make-instance 'resolution
 			'declaration ndep
-			'module-instance (mod-name *current-context*)
+			'module-instance (theory-name *current-context*)
 			'type ntype)))
 	  ndep))))
 
@@ -503,7 +503,7 @@
 	  (setf (resolutions nbd)
 		(list (make-instance 'resolution
 			'declaration nbd
-			'module-instance (mod-name *current-context*)
+			'module-instance (theory-name *current-context*)
 			'type ntype)))
 	  nbd))))
 
@@ -524,7 +524,7 @@
 	    'resolutions (or (resolutions fld)
 			     (list (make-instance 'resolution
 				     'declaration fld
-				     'module-instance (mod-name *current-context*)
+				     'module-instance (theory-name *current-context*)
 				     'type (type fld)))))
 	  (let ((ntype (subst-mod-params* type modinst bindings)))
 	    #+pvsdebug (assert (fully-instantiated? ntype))
@@ -534,7 +534,7 @@
 		       (nfld (car (member decl fields :test #'same-id)))
 		       (nres (make-instance 'resolution
 			       'declaration nfld
-			       'module-instance (mod-name *current-context*)
+			       'module-instance (theory-name *current-context*)
 			       'type (type nfld))))
 		  (copy expr
 		    'type ntype
@@ -776,7 +776,7 @@
     #+pvsdebug (assert (fully-instantiated? rtype))
     (make-instance 'resolution
       'declaration decl
-      'module-instance (or modinst (mod-name *current-context*))
+      'module-instance (or modinst (theory-name *current-context*))
       'type rtype)))
 
 
@@ -795,7 +795,7 @@
 		       (subst-mod-params (type decl) modinst))))))
     (make-instance 'resolution
       'declaration decl
-      'module-instance (or modinst (mod-name *current-context*))
+      'module-instance (or modinst (theory-name *current-context*))
       'type rtype)))
 
 (defmethod make-resolution ((decl bind-decl) modinst &optional type)

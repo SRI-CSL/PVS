@@ -31,6 +31,8 @@
 
 (defvar *pvs-context* nil)
 
+(defvar *pvs-context-path* nil)
+
 (defvar *pvs-initialized* nil)
 (defvar *pvs-files* nil)
 
@@ -62,6 +64,10 @@ parsing or typechecking - used by pvs-error.")
 (defvar *prelude* (make-hash-table :test #'eq :rehash-size 1)
   "The hash-table of prelude")
 
+(defvar *prelude-theories* nil
+  "A list of the prelude theories; more useful than *prelude* when the
+order is important")
+  
 (defvar *prelude-library-context* nil
   "Provides the context associated with the current prelude libraries")
 
@@ -84,9 +90,6 @@ prelude libraries")
 (defvar *loaded-libraries* nil)
 
 (defvar *library-alist* nil)
-
-(defvar *prelude-names* nil "List of prelude names to be added to
-                               the using list")
 
 (defvar *pvs-modules* nil
   "The hash-table of modules known to the system in this session")

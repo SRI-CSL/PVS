@@ -13,15 +13,15 @@
 
 (in-package 'pvs)
 
-;;; Load-prelude initializes the *prelude* and
-;;; *prelude-names* variables
+;;; Load-prelude initializes the *prelude*, *prelude-context*, and
+;;; *prelude-theories* variables
 
 (defparameter *prelude-filename* "prelude.pvs")
 
 (defun load-prelude ()
   (setq sbrt::*disable-caching* t)
   (setq *pvs-context* nil)
-  (setq *prelude-names* nil
+  (setq *prelude-theories* nil
 	*boolean* nil
 	*number* nil
 	*real* nil
@@ -68,23 +68,45 @@
 		      (length (warnings m)) (length (info m)))))
 	      ;; No need to have saved-context set for prelude contexts
 	      (assert (typep m '(or datatype module)))
-	      (let ((imps (if (typep m 'datatype)
-			      (delete-if #'null
-				(mapcar #'(lambda (th)
-					    (when th
-					      (list th (mk-modname (id th)))))
-				  (list (adt-reduce-theory m)
-					(adt-map-theory m)
-					(adt-theory m))))
-			      (list (list m (mk-modname (id m)))))))
-		(setq *prelude-names* (append imps *prelude-names*))
-		(let* ((th (if (typep m 'datatype)
-			       (adt-theory m)
-			       m))
-		       (ctx (saved-context th)))
-		  (setq *prelude-context*
-			(copy ctx
-			  'using (append imps (using ctx))))))
+	      (setq *prelude-theories*
+		    (nconc *prelude-theories* (cons m nil)))
+	      (let* ((th (if (typep m 'datatype)
+			     (adt-theory m)
+			     m))
+		     (ctx (saved-context th))
+		     (ndecls-hash (copy (declarations-hash ctx)))
+		     (nusing-hash (copy (using-hash ctx))))
+		(typecase m
+		  (datatype
+		   (setf (gethash (adt-theory m) nusing-hash)
+			 (list (mk-modname (id (adt-theory m)))))
+		   (when (adt-map-theory m)
+		     (setf (gethash (adt-map-theory m) nusing-hash)
+			   (list (mk-modname (id (adt-map-theory m)))))
+		     (dolist (decl (append (assuming (adt-map-theory m))
+					   (theory (adt-map-theory m))))
+		       (when (and (declaration? decl) (visible? decl))
+			 (put-decl decl ndecls-hash))))
+		   (when (adt-reduce-theory m)
+		     (setf (gethash (adt-reduce-theory m) nusing-hash)
+			   (list (mk-modname (id (adt-reduce-theory m)))))
+		     (dolist (decl (append (assuming (adt-reduce-theory m))
+					   (theory (adt-reduce-theory m))))
+		       (when (and (declaration? decl) (visible? decl))
+			 (put-decl decl ndecls-hash)))))
+		  (t (setf (gethash m nusing-hash)
+			   (list (mk-modname (id m))))))
+		(maphash #'(lambda (id decls)
+			     (setf (gethash id ndecls-hash)
+				   (remove-if #'(lambda (d)
+						  (typep d '(or formal-decl
+								var-decl)))
+				     decls)))
+			 ndecls-hash)
+		(setq *prelude-context*
+		      (copy ctx
+			'declarations-hash ndecls-hash
+			'using-hash nusing-hash)))
 	      (when (eq (id m) '|booleans|)
 		(let ((*current-context* (saved-context m)))
 		  (setq *true*
@@ -114,24 +136,24 @@
 (defun save-prelude-proofs ()
   (let ((prfile (namestring (merge-pathnames (format nil "~a/lib/" *pvs-path*)
 					     "prelude.prf"))))
-    (save-proofs prfile (mapcar #'car *prelude-names*))))
+    (save-proofs prfile *prelude-theories*)))
 
 (defun prove-prelude (&optional retry?)
-  (let ((theories (reverse (mapcar #'car *prelude-names*)))
+  (let ((theories *prelude-theories*)
 	(*loading-prelude* t)
 	(*proving-tcc* t))
     (prove-theories "prelude" theories retry?)
     (prelude-summary)))
 
 (defun prelude-summary ()
-  (let ((theories (reverse (mapcar #'car *prelude-names*))))
+  (let ((theories *prelude-theories*))
     (pvs-buffer "PVS Status"
       (with-output-to-string (*standard-output*)
 	(proof-summaries theories nil "prelude"))
       t)))
 
 (defun prelude-proofchain ()
-  (let ((theories (reverse (mapcar #'car *prelude-names*))))
+  (let ((theories *prelude-theories*))
     (mapc #'(lambda (th)
 	      (mapc #'(lambda (d)
 			(when (and (formula-decl? d)
@@ -142,11 +164,11 @@
 	  theories)))
 
 (defun prelude-tccs ()
-  (dolist (th (reverse *prelude-names*))
-    (let ((tccs (collect-tccs (car th))))
+  (dolist (th *prelude-theories*)
+    (let ((tccs (collect-tccs th)))
       (when tccs
-	(format t "~3%%%% TCCs for ~a~%" (id (car th)))
-	(show-tccs (id (car th)))))))
+	(format t "~3%%%% TCCs for ~a~%" (id th))
+	(show-tccs (id th))))))
 
 
 ;;; Library support
@@ -522,7 +544,7 @@
   (assert *current-context*)
   (nconc (get-prelude-libraries* (all-decls (module *current-context*))
 				 (declaration *current-context*))
-	 (get-using-prelude-libraries (using *current-context*))))
+	 (get-using-prelude-libraries (using-hash *current-context*))))
 
 (defun get-prelude-libraries* (decls &optional end-decl libs)
   (if (or (null decls)
@@ -550,9 +572,9 @@
 
 (defun get-visible-libraries ()
   (assert *current-context*)
-  (nconc (get-visible-libraries* (all-decls (module *current-context*))
+  (nconc (get-visible-libraries* (all-decls (theory *current-context*))
 				 (declaration *current-context*))
-	 (get-using-visible-libraries (using *current-context*))))
+	 (get-using-visible-libraries (using-hash *current-context*))))
 
 (defun get-visible-libraries* (decls &optional end-decl libs)
   (if (or (null decls)

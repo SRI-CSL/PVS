@@ -1481,8 +1481,7 @@ which should be fully instantiated. Please supply actual parameters.")
 	 (expr (internal-pc-typecheck (pc-parse expr 'expr)
 		  :tccs 'ALL
 		  :context *current-context*))
-	  (context (copy *current-context*
-		     'local-proof-decls (copy (local-proof-decls *current-context*))))) 
+	  (context (copy-prover-context)))
      (cond ((not (valid-pvs-id* name))
 	    (format-if "~%Error: ~a is not a valid symbol." name)
 	    (values 'X nil nil))

@@ -83,13 +83,17 @@
     'theory theory))
 
 (defun mk-context (mod decls using)
+  (break "mk-context")
   (make-instance 'context
-    'module mod
-    'mod-name (when mod (mk-modname (id mod)))
-    'local-decls (let ((ht (make-hash-table :test #'eq :size 10)))
-		   (mapc #'(lambda (d) (put-decl d ht)) decls)
-		   ht)
-    'using using))
+    'theory mod
+    'theory-name (when mod (mk-modname (id mod)))
+;    'local-decls (let ((ht (make-hash-table :test #'eq :size 10)))
+;		   (mapc #'(lambda (d) (put-decl d ht)) decls)
+;		   ht)
+    'declarations-hash (let ((ht (make-hash-table :test #'eq :size 10)))
+			 (mapc #'(lambda (d) (put-decl d ht)) decls)
+			 ht)
+    'using-hash using))
 
 (defun mk-type-decl (id &optional (class 'type-decl) type-expr)
   (if (eq class 'type-decl)
@@ -328,56 +332,62 @@
     'type type
     'declared-type dtype))
 
-(defmethod mk-name-expr :around (obj &optional actuals mod res kind)
-  (let* ((nex (call-next-method))
-	 (nres (or res (car (resolutions nex)))))
-    (when nres
-      (change-name-expr-class-if-needed (declaration nres) nex))
-    nex))
+;(defmethod mk-name-expr :around (obj &optional actuals mod res kind)
+;  (let* ((nex (call-next-method))
+;	 (nres (or res (car (resolutions nex)))))
+;    (when nres
+;      (change-name-expr-class-if-needed (declaration nres) nex))
+;    nex))
 
-(defmethod mk-name-expr ((obj symbol) &optional actuals mod res kind)
+(defmethod mk-name-expr ((id symbol) &optional actuals mod-id res kind)
   (assert (or (null res) kind))
-  (make-instance 'name-expr
-    'id obj
-    'mod-id mod
-    'actuals actuals
-    'type (when res (type res))
-    'resolutions (when res (list res))
-    'kind kind))
+  (if res
+      (make!-name-expr id actuals mod-id res kind)
+      (make-instance 'name-expr
+	'id id
+	'mod-id mod-id
+	'actuals actuals
+	;;'type (when res (type res))
+	;;'resolutions (when res (list res))
+	'kind kind
+	)))
 
-(defmethod mk-name-expr ((obj bind-decl) &optional actuals mod res kind)
-  (make-instance 'name-expr
-    'id (id obj)
-    'mod-id mod
-    'actuals actuals
-    'type (if res
-	      (type res)
-	      (type obj))
-    'kind 'variable
-    'resolutions (if res
-		     (list res)
-		     (resolutions obj))))
+(defmethod mk-name-expr ((obj bind-decl) &optional actuals mod-id res kind)
+  (let ((bres (or res (resolution obj))))
+    (assert bres)
+    (if bres
+	(make!-name-expr (id obj) actuals mod-id bres (or kind 'variable))
+	(make-instance 'name-expr
+	  'id (id obj)
+	  'mod-id mod-id
+	  'actuals actuals
+	  'type (type obj)
+	  'kind 'variable
+	  'resolutions (resolutions obj)))))
 
-(defmethod mk-name-expr (obj &optional actuals mod res kind)
-  ;;(assert (or (null res) kind))
-  (make-instance 'name-expr
-    'id (id obj)
-    'mod-id mod
-    'actuals actuals
-    'type (cond (res
-		 (type res))
-		((and (syntax? obj)
-		      (slot-exists-p obj 'type))
-		 (type obj)))
-    'kind (or kind
-	      (if (and (syntax? obj)
-		       (slot-exists-p obj 'kind))
-		  (kind obj)))
-    'resolutions (if res
-		     (list res)
-		     (if (and (syntax? obj)
-			      (slot-exists-p obj 'resolutions))
-			 (resolutions obj)))))
+(defmethod mk-name-expr (obj &optional actuals mod-id res kind)
+  (if res
+      (make!-name-expr (id obj) actuals mod-id res kind)
+      (if (and (syntax? obj) (slot-exists-p obj 'resolutions))
+	  (break "mk-name-expr has resolutions")
+	  (make-instance 'name-expr
+	    'id (id obj)
+	    'mod-id mod-id
+	    'actuals actuals
+	    'type (cond (res
+			 (type res))
+			((and (syntax? obj)
+			      (slot-exists-p obj 'type))
+			 (type obj)))
+	    'kind (or kind
+		      (if (and (syntax? obj)
+			       (slot-exists-p obj 'kind))
+			  (kind obj)))
+	    'resolutions (if res
+			     (list res)
+			     (if (and (syntax? obj)
+				      (slot-exists-p obj 'resolutions))
+				 (resolutions obj)))))))
 
 (defun mk-number-expr (num)
   (make-instance 'number-expr
@@ -621,7 +631,7 @@
 	      'type type)))
     (when type
       (setf (resolutions bd)
-	    (list (make-resolution bd (mod-name *current-context*) type))))
+	    (list (make-resolution bd (theory-name *current-context*) type))))
     bd))
 
 (defun mk-arg-bind-decl (id dtype &optional type)
@@ -725,6 +735,12 @@
 
 (defun make-predtype (type)
   (mk-predtype type))
+
+(defun mk-resolution (decl modinst type)
+  (make-instance 'resolution
+    'declaration decl
+    'module-instance modinst
+    'type type))
 
 ;;; The following typecheck the results
 
@@ -938,7 +954,9 @@
     (defun equality-decl ()
       (or equality-decl
 	  (setq equality-decl
-		(car (gethash '= (declarations (get-theory "equalities")))))))
+		(find-if #'(lambda (d)
+			     (eq (id (module d)) '|equalities|))
+		  (gethash '= (current-declarations-hash))))))
     (defun reset-equality-decl ()
       (setq equality-decl nil)))
 
@@ -1107,72 +1125,19 @@
 ;  (make-arg-tuple-expr* args))
 
 (defun mk-sum (a1 a2)
-  (mk-application (mk-plusop) a1 a2))
-
-(let ((plusop nil))
-  (defun mk-plusop ()
-    (if plusop
-	(copy plusop)
-	(let ((plop (mk-name-expr '+ nil '|reals|)))
-	  (typecheck plop)
-	  (setf (mod-id plop) nil)
-	  (setq plusop plop)
-	  (copy plop))))
-  (defun reset-plusop ()
-    (setq plusop nil)))
-
+  (make!-plus a1 a2))
 
 (defun mk-difference (a1 a2)
-  (mk-application (mk-diffop) a1 a2))
-
-(let ((diffop nil))
-  (defun mk-diffop ()
-    (if diffop
-	(copy diffop)
-	(let ((diop (mk-name-expr '- nil '|reals|))
-	      (expected (mk-funtype (list *real* *real*) *real*)))
-	  (typecheck diop :expected expected)
-	  (setf (mod-id diop) nil)
-	  (setq diffop diop)
-	  (copy diop))))
-  (defun reset-diffop ()
-    (setq diffop nil)))
+  (make!-difference a1 a2))
 
 (defun mk-product (a1 a2)
-  (mk-application (mk-prodop) a1 a2))
-
-(let ((prodop nil))
-  (defun mk-prodop ()
-    (if prodop
-	(copy prodop)
-	(let ((prop (mk-name-expr '* nil '|reals|)))
-	  (typecheck prop)
-	  (setf (mod-id prop) nil)
-	  (setq prodop prop)
-	  (copy prop))))
-  (defun reset-prodop ()
-    (setq prodop nil)))
+  (make!-times a1 a2))
 
 (defun mk-division (a1 a2)
-  (mk-application (mk-divop) a1 a2))
-
-(let ((divop nil))
-  (defun mk-divop ()
-    (if divop
-	(copy divop)
-	(let ((dop (mk-name-expr '/ nil '|reals|)))
-	  (typecheck dop)
-	  (setf (mod-id dop) nil)
-	  (setq divop dop)
-	  (copy dop))))
-  (defun reset-divop ()
-    (setq divop nil)))
+  (make!-divides a1 a2))
 
 (defun mk-implies-operator ()
-  (let ((op (mk-name-expr 'implies nil '|booleans|)))
-    (typecheck op)
-    (setf (mod-id op) nil)
-    op))
+  (implies-operator))
 
 (defstruct decl-ref
   mod-name
@@ -1222,6 +1187,48 @@
   (make-instance 'number-expr
     'number num
     'type *number*))
+
+(defun make!-name-expr (id actuals mod-id res kind)
+  (assert res)
+  (typecase (declaration res)
+    (field-decl (make-instance 'field-name-expr
+		  'id id
+		  'actuals actuals
+		  'mod-id mod-id
+		  'type (type res)
+		  'resolutions (list res)
+		  'kind (if (memq (declaration res) *bound-variables*)
+			    'variable 'constant)))
+    (adt-constructor-decl (make-instance 'constructor-name-expr
+			    'id id
+			    'actuals actuals
+			    'mod-id mod-id
+			    'type (type res)
+			    'resolutions (list res)
+			    'kind 'constant))
+    (adt-recognizer-decl (make-instance 'recognizer-name-expr
+			   'id id
+			   'actuals actuals
+			   'mod-id mod-id
+			   'type (type res)
+			   'resolutions (list res)
+			   'kind 'constant))
+    (adt-accessor-decl (make-instance 'accessor-name-expr
+			   'id id
+			   'actuals actuals
+			   'mod-id mod-id
+			   'type (type res)
+			   'resolutions (list res)
+			   'kind 'constant))
+    (t (assert kind)
+       (make-instance 'name-expr
+	 'id id
+	 'actuals actuals
+	 'mod-id mod-id
+	 'type (type res)
+	 'resolutions (list res)
+	 'kind kind))))
+    
 
 (defun make!-equation (lhs rhs)
   (assert (and (type lhs) (type rhs)))
@@ -1444,12 +1451,52 @@
     'argument (make!-arg-tuple-expr ex1 ex2)
     'type *boolean*))
 
+(defun make!-plus (ex1 ex2)
+  (assert (type ex1))
+  (assert (type ex2))
+  (assert (tc-eq (find-supertype (type ex1)) *number*))
+  (assert (tc-eq (find-supertype (type ex2)) *number*))
+  (make-instance 'infix-application
+    'operator (plus-operator)
+    'argument (make!-arg-tuple-expr ex1 ex2)
+    'type *real*))
+
+(defun make!-difference (ex1 ex2)
+  (assert (type ex1))
+  (assert (type ex2))
+  (assert (tc-eq (find-supertype (type ex1)) *number*))
+  (assert (tc-eq (find-supertype (type ex2)) *number*))
+  (make-instance 'infix-application
+    'operator (difference-operator)
+    'argument (make!-arg-tuple-expr ex1 ex2)
+    'type *real*))
+
 (defun make!-minus (ex)
   (assert (type ex))
   (assert (tc-eq (find-supertype (type ex)) *number*))
   (make-instance 'unary-application
     'operator (minus-operator)
     'argument ex
+    'type *real*))
+
+(defun make!-times (ex1 ex2)
+  (assert (type ex1))
+  (assert (type ex2))
+  (assert (tc-eq (find-supertype (type ex1)) *number*))
+  (assert (tc-eq (find-supertype (type ex2)) *number*))
+  (make-instance 'infix-application
+    'operator (times-operator)
+    'argument (make!-arg-tuple-expr ex1 ex2)
+    'type *real*))
+
+(defun make!-divides (ex1 ex2)
+  (assert (type ex1))
+  (assert (type ex2))
+  (assert (tc-eq (find-supertype (type ex1)) *number*))
+  (assert (tc-eq (find-supertype (type ex2)) *number*))
+  (make-instance 'infix-application
+    'operator (divides-operator)
+    'argument (make!-arg-tuple-expr ex1 ex2)
     'type *real*))
 
 (defun make!-forall-expr (bindings expr)

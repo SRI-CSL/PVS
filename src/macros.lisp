@@ -34,12 +34,9 @@
   `(eq (class-name (class-of ,inst)) ,class-name))
 
 (defmacro put-decl (decl hashtable)
-  (let ((decls (gensym)))
-    `(let ((,decls (gethash (id ,decl) ,hashtable)))
-      (if ,decls
-	  (unless (member ,decl ,decls :test #'eq)
-	  (nconc ,decls (list ,decl)))
-	(setf (gethash (id ,decl) ,hashtable) (list ,decl))))))
+  (let ((gdecl (gensym)))
+    `(let ((,gdecl ,decl))
+       (pushnew ,gdecl (gethash (id ,gdecl) ,hashtable)))))
 
 (defmacro add-comment (decl ctl &rest args)
   (let ((cdecl (gensym)))

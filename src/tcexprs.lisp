@@ -172,7 +172,7 @@
       reses
       (let* ((fld (find arg (fields (car rectypes)) :test #'same-id))
 	     (res (make-resolution fld
-		    (mod-name *current-context*)
+		    (theory-name *current-context*)
 		    (mk-funtype (list (car rectypes))
 				(type fld)))))
 	(possible-assignment-resolutions arg (cdr rectypes)
@@ -1037,7 +1037,7 @@
   (mapcar #'(lambda (bd)
 	      (mk-name-expr (id bd) nil nil
 			    (make-resolution bd
-			      (mod-name *current-context*) (type bd))
+			      (theory-name *current-context*) (type bd))
 			    'variable))
 	  bindings))
 
@@ -1105,8 +1105,7 @@
 			 (typecheck* (declared-type bd) nil nil nil))
 			((let ((vdecl (find-if #'var-decl?
 					(gethash (id bd)
-						 (local-decls
-						  *current-context*)))))
+						 (current-declarations-hash)))))
 			   (and vdecl
 				(some #'(lambda (ty)
 					  (compatible? (type vdecl) ty))
@@ -1117,7 +1116,7 @@
 			      (type dtype)
 			      dtype)
 		   substs))
-	   (res (make-resolution bd (mod-name *current-context*) type)))
+	   (res (make-resolution bd (theory-name *current-context*) type)))
       (setf (type bd) type
 	    (resolutions bd) (list res))
       (unless (fully-instantiated? type)
@@ -1159,7 +1158,7 @@
 			       (list (cons (mk-name-expr (id (car types))
 					     nil nil
 					     (make-resolution (car types)
-					       (mod-name *current-context*))
+					       (theory-name *current-context*))
 					     'variable)
 					   (car projections))))
 			     (cdr types)))))
@@ -1609,23 +1608,22 @@
   (if (declared-type decl)
       (let* ((*generate-tccs* 'none)
 	     (type (typecheck* (declared-type decl) nil nil nil))
-	     (res (make-resolution decl (mod-name *current-context*) type)))
+	     (res (make-resolution decl (current-theory-name) type)))
 	(unless (fully-instantiated? type)
 	  (type-error (declared-type decl)
 	    "Could not determine the full theory instance"))
 	(set-type (declared-type decl) nil)
 	(setf (type decl) type
 	      (resolutions decl) (list res)))
-      (let ((vdecls (remove-if-not #'(lambda (d) (typep d 'var-decl))
-		      (gethash (id decl)
-			       (local-decls *current-context*)))))
+      (let ((vdecls (remove-if-not #'var-decl?
+		      (gethash (id decl) (current-declarations-hash)))))
 	(cond ((null vdecls) 
 	       (type-error decl
 		 "Variable ~a not previously declared" (id decl)))
 	      ((singleton? vdecls)
 	       (setf (type decl) (type (car vdecls))
 		     (resolutions decl) (list (make-resolution decl
-						(mod-name *current-context*)
+						(theory-name *current-context*)
 						(type decl)))))
 	      (t (type-error decl "Variable ~a is ambiguous" (id decl))))))
   decl)

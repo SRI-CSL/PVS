@@ -319,12 +319,13 @@
   conversion)
 
 (defcl context ()
-  module
+  theory ; was module
+  theory-name ; was mod-name
   declaration
-  mod-name
-  (local-decls :type hash-table :initform (make-hash-table :test #'eq))
-  (local-proof-decls :type hash-table :initform (make-hash-table :test #'eq))
-  using
+  declarations-hash ; new
+  ;;(local-decls :type hash-table :initform (make-hash-table :test #'eq))
+  ;;(local-proof-decls :type hash-table :initform (make-hash-table :test #'eq))
+  using-hash ; was using
   (judgements :initform (make-instance 'judgements))
   (known-subtypes :initform nil)
   (conversions :initform nil))

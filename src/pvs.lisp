@@ -1117,7 +1117,7 @@
 			(theories (if (and theory (generated-by theory))
 				      (list theory)
 				      (remove-if #'generated-by
-					(nreverse (mapcar #'car *prelude-names*)))))
+					*prelude-theories*)))
 			(decl (get-decl-at line 'formula-decl theories)))
 		   (values decl (place decl))))
 	(t (let* ((theories (typecheck-file name nil nil nil t))
@@ -1858,7 +1858,12 @@
     (when *current-context*
       (maphash #'(lambda (id declarations)
 		   (when (eq id (ref-to-id ref))
-		     (setq decls (append declarations decls))))
+		     (setq decls
+			   (append (remove-if-not
+				       #'(lambda (d)
+					   (eq (module d) (current-theory)))
+				     declarations)
+				   decls))))
 	       (local-decls *current-context*)))
     (delete-duplicates decls :test #'eq)))
 
@@ -2045,7 +2050,7 @@
 		 (dolist (d decls)
 		   (when (typep d 'skolem-const-decl)
 		     (pushnew d skoconsts))))
-	     (local-proof-decls *current-context*))
+	     (current-declarations-hash))
     (sort skoconsts #'string-lessp :key #'id)))
 
 (defun get-patch-version ()
@@ -2093,7 +2098,7 @@
 				 (caddr *typecheck-formula-decl*)))))))
     (let* ((*current-theory* (if theory-name
 				 (get-typechecked-theory theory-name)
-				 (caar *prelude-names*)))
+				 (car (last *prelude-theories*))))
 	   (*current-context* (copy (context *current-theory*)))
 	   (*generate-tccs* 'none)
 	   (*from-buffer* "Formula Decl"))
@@ -2117,7 +2122,7 @@
 (defun prove-formula-decl (formula-decl &optional theory-name context)
   (let* ((*current-theory* (if theory-name
 			       (get-typechecked-theory theory-name)
-			       (caar *prelude-names*)))
+			       (car (last *prelude-theories*))))
 	 (*current-context* (copy (context *current-theory*)))
 	 (fdecl (typecheck-formula-decl formula-decl theory-name context)))
     (let ((*in-checker* t)

@@ -43,9 +43,9 @@
 	    (generated decl))
       (unwind-protect
 	  (progn
-	    (assert (typep (module *current-context*)
+	    (assert (typep (theory *current-context*)
 			   '(or module datatype)))
-	    (setf (module decl) (module *current-context*))
+	    (setf (module decl) (theory *current-context*))
 	    (tcdebug "~%    Typechecking ~a" decl)
 	    (let ((stime (get-internal-run-time)))
 	      (typecheck* decl nil nil nil)
@@ -57,7 +57,7 @@
 	  (cleanup-typecheck-decls decl))))
   (unless (and (type-def-decl? decl)
 	       (enumtype? (type-expr decl)))
-    (put-decl decl (local-decls *current-context*))))
+    (put-decl decl (current-declarations-hash))))
 
 (defun cleanup-datatype (adt)
   (unless (typechecked? adt)
@@ -108,7 +108,7 @@
     (setf (resolutions tn)
 	  (list (make-instance 'resolution
 		  'declaration decl
-		  'module-instance (mod-name *current-context*)
+		  'module-instance (theory-name *current-context*)
 		  'type tn)))
     (setf (type decl) tn)
     (setf (type-value decl) tn))
@@ -117,7 +117,7 @@
 (defmethod typecheck* ((decl formal-nonempty-type-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (call-next-method)
-  (put-decl decl (local-decls *current-context*))
+  (put-decl decl (current-declarations-hash))
   (make-nonempty-assumption (type-value decl))
   (set-nonempty-type (type-value decl))
   decl)
@@ -128,7 +128,7 @@
   (let* ((tn (mk-type-name (id decl)))
 	 (res (make-instance 'resolution
 		'declaration decl
-		'module-instance (mod-name *current-context*)
+		'module-instance (theory-name *current-context*)
 		'type tn))
 	 (tval (type-def-decl-value decl tn)))
     (setf (resolutions tn) (list res))
@@ -139,7 +139,7 @@
 (defmethod typecheck* ((decl formal-nonempty-subtype-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (call-next-method)
-  (put-decl decl (local-decls *current-context*))
+  (put-decl decl (current-declarations-hash))
   (make-nonempty-assumption (type-value decl))
   (set-nonempty-type (type-value decl))
   decl)
@@ -207,7 +207,7 @@
 	  (setf (resolutions tn)
 		(list (make-instance 'resolution
 			'declaration decl
-			'module-instance (mod-name *current-context*)
+			'module-instance (theory-name *current-context*)
 			'type tn)))
 	  tn))
   (when *loading-prelude*
@@ -219,7 +219,7 @@
   (call-next-method)
   (set-nonempty-type (type-value decl))
   (unless (eq (id *current-theory*) '|booleans|)
-    (put-decl decl (local-decls *current-context*))
+    (put-decl decl (current-declarations-hash))
     (generate-existence-axiom decl))
   decl)
 
@@ -242,7 +242,7 @@
   (let* ((tn (mk-type-name (id decl)))
 	 (res (make-instance 'resolution
 		'declaration decl
-		'module-instance (mod-name *current-context*)
+		'module-instance (theory-name *current-context*)
 		'type tn))
 	 (*bound-variables* (apply #'append (formals decl)))
 	 (*tcc-conditions* (add-formals-to-tcc-conditions (formals decl)))
@@ -260,10 +260,10 @@
     (setf (uninterpreted? tn) t)
     (setf (type-value decl) tval))
   (typecase (type-expr decl)
-    (enumtype ;;(put-decl decl (local-decls *current-context*))
+    (enumtype ;;(put-decl decl (current-declarations-hash))
 	      (typecheck* (type-expr decl) nil nil nil))
     (subtype (when (typep (predicate (type-expr decl)) 'expr)
-	       (put-decl decl (local-decls *current-context*)))))
+	       (put-decl decl (current-declarations-hash)))))
   (when *loading-prelude*
     (set-prelude-types (id decl) (type-value decl)))
   decl)
@@ -311,7 +311,7 @@
 (defmethod check-nonempty-type-of ((decl nonempty-type-from-decl))
   (check-nonempty-type (supertype (type-value decl)) decl)
   (set-nonempty-type (type-value decl))
-  (put-decl decl (local-decls *current-context*))
+  (put-decl decl (current-declarations-hash))
   (generate-existence-axiom decl))
 
 (defun type-def-decl-value (decl tn)
@@ -380,7 +380,7 @@
       (let ((*tcc-conditions* (add-formals-to-tcc-conditions (formals decl))))
 	(typecheck* (definition decl) rtype nil nil))
       #+pvsdebug (assert (fully-instantiated? (definition decl)))
-      (put-decl decl (local-decls *current-context*))
+      (put-decl decl (current-declarations-hash))
       (make-def-axiom decl)))
   decl)
 
@@ -422,7 +422,7 @@
 	     (ndep (mk-dep-binding nvar ndom))
 	     (nvar (mk-name-expr nvar nil nil
 				 (make-resolution ndep
-				   (mod-name *current-context*) ndom)
+				   (theory-name *current-context*) ndom)
 				 'variable))
 	     (nrange (subst-formals-funtype formals range ndep nvar)))
 	(mk-funtype ndep nrange))
@@ -457,7 +457,7 @@
 					   (declared-type (car formals))))
 		 (nvar (mk-name-expr (id (car formals)) nil nil
 				     (make-resolution dbinding
-				       (mod-name *current-context*)
+				       (theory-name *current-context*)
 				       (type (car formals)))
 				     'variable)))
 	    (make-formals-domain* (substit (cdr formals)
@@ -490,7 +490,7 @@
     (unless (typep decl 'adt-def-decl)
       (typecheck-measure decl))
     (set-nonempty-type rtype)
-    (put-decl decl (local-decls *current-context*))
+    (put-decl decl (current-declarations-hash))
     (let ((*recursive-tcc-names* nil)
 	  (*tcc-conditions* (add-formals-to-tcc-conditions (formals decl))))
       (typecheck* (definition decl) rtype nil nil)
@@ -794,7 +794,7 @@
       (type-error decl
 	"Inductive definitions must have (eventual) range type boolean"))
     (set-nonempty-type rtype)
-    (put-decl decl (local-decls *current-context*))
+    (put-decl decl (current-declarations-hash))
     (typecheck* (definition decl) rtype nil nil)
     (let* ((all-vars (ind-def-formals decl))
 	   (fixed-vars (fixed-inductive-variables decl all-vars))
@@ -1074,7 +1074,7 @@
 (defun make-inductive-conclusion (var rem-vars decl)
   (let* ((dname (mk-name-expr (id decl) nil nil
 			      (make-resolution decl
-				(mod-name *current-context*)
+				(theory-name *current-context*)
 				(type decl))
 			      'constant))
 	 (dargs (mapcar #'(lambda (blist)
@@ -1327,7 +1327,7 @@
 		  ;;(declared-type (car bindings)) (supertype type)
 		  (resolutions (car bindings))
 		  (list (make-resolution (car bindings)
-			  (mod-name *current-context*)
+			  (theory-name *current-context*)
 			  stype)))
 	    (if (tupletype? (find-supertype stype))
 		(if (length= bindings (types (find-supertype stype)))
@@ -1335,7 +1335,7 @@
 				(setf (type b) ty
 				      (resolutions b)
 				      (list (make-resolution b
-					      (mod-name *current-context*)
+					      (theory-name *current-context*)
 					      ty))))
 			    bindings (types (find-supertype stype)))
 		    (type-error type "Wrong number of variables"))))
@@ -1697,8 +1697,12 @@
 (defun check-duplication (decl)
   (when (projection? (id decl))
     (type-error decl "May not overload projection names"))
-  (let ((decls (gethash (id decl) (local-decls *current-context*))))
-    (mapc #'(lambda (d) (duplicate-decls decl d)) decls)))
+  (let* ((alldecls (all-decls (current-theory)))
+	 (decls (ldiff alldecls (memq decl alldecls))))
+    (mapc #'(lambda (d) (when (and (typep d 'declaration)
+				   (same-id decl d))
+			  (duplicate-decls decl d)))
+	  decls)))
 
 (defun duplicate-decls (x y)
   (when (eq (kind-of x) (kind-of y))

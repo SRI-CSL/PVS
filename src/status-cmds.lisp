@@ -726,8 +726,7 @@
 			(theories (if (and theory (generated-by theory))
 				      (list theory)
 				      (remove-if #'generated-by
-					(nreverse (mapcar #'car
-						    *prelude-names*)))))
+					*prelude-theories*)))
 			(decl (get-decl-at line T theories)))
 		   (values decl (place decl))))
 	(t (let* ((theories (list (get-theory bufname)))

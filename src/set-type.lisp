@@ -259,21 +259,6 @@ required a context.")
 ;;; order).  If a unique resolution is determined that way, then find the
 ;;; best resolution from the resolution and its associated judgements and
 ;;; return it.  Otherwise an ambiguity error is invoked.
-
-;(defun find-best-name-resolution (expr resolutions expected)
-;  (or (bound-variable-resolution resolutions)
-;      (let* ((mreses (find-tc-matching-resolutions resolutions expected))
-;	     (lreses (filter-local-resolutions (or mreses resolutions))))
-;	(if (cdr lreses)
-;	    (let ((dreses (remove-if-not #'fully-instantiated? lreses)))
-;	      (cond ((cdr dreses)
-;		     (setf (resolutions expr) dreses)
-;		     (type-ambiguity expr))
-;		    (t (find-best-name-resolution-judgement
-;			expr (car dreses) (get-judgements (car dreses))
-;			expected))))
-;	    (find-best-name-resolution-judgement
-;	     expr (car lreses) (get-judgements (car lreses)) expected)))))
 	
 (defun bound-variable-resolution (resolutions)
   (let ((breses (remove-if-not #'(lambda (r)
@@ -323,13 +308,13 @@ required a context.")
 
 (defun instantiated-importing? (res)
   (find-if #'(lambda (x) (tc-eq x (module-instance res)))
-    (cdr (assq (get-theory (module-instance res))
-	       (using *current-context*)))))
+    (gethash (get-theory (module-instance res))
+	     (using-hash *current-context*))))
 
 (defun from-datatype-modname? (res)
   (typep (find-if #'(lambda (x) (tc-eq x (module-instance res)))
-	   (cdr (assq (get-theory (module-instance res))
-		      (using *current-context*))))
+	   (gethash (get-theory (module-instance res))
+		    (using-hash *current-context*)))
 	 'datatype-modname))
 
 (defun find-tc-matching-resolutions (resolutions expected &optional mreses)
@@ -839,8 +824,10 @@ required a context.")
     (assert (or (type argument) (types argument)))
     (assert (not (and (type argument) (types argument))))
     (let* ((types (types ex))
-	   (ptypes (remove-if-not #'(lambda (ty) (compatible? ty expected))
-		     types))
+	   (ptypes1 (remove-if-not #'(lambda (ty) (tc-eq ty expected)) types))
+	   (ptypes (or ptypes1
+		       (remove-if-not #'(lambda (ty) (compatible? ty expected))
+			 types)))
 	   (ftypes (or (remove-if-not #'fully-instantiated? ptypes) ptypes)))
       (cond ((null ftypes)
 	     (type-incompatible ex types expected))
@@ -1021,27 +1008,43 @@ required a context.")
   (let* ((reses (local-resolutions (resolutions ex))))
     (when (singleton? reses)
       (let* ((rtype (type (car reses)))
-	     (dtypes (member rtype domtypes :test #'compatible?)))
-	(unless (member rtype (cdr dtypes) :test #'compatible?)
-	  (position (car dtypes) domtypes))))))
+	     (dtypes (member rtype domtypes :test #'tc-eq)))
+	(unless (member rtype (cdr dtypes) :test #'tc-eq)
+	  (position (car dtypes) domtypes :test #'tc-eq))))))
 
 (defmethod optypes-for-local-arguments* ((ex tuple-expr) domtypes)
-  (let ((dtypes-list (mapcar #'domain-types domtypes)))
+  (let ((dtypes-list (mapcar #'types domtypes)))
     (optypes-for-local-arguments-list (exprs ex) dtypes-list)))
+
+(defun dtypes-list (types-list)
+  (when (car types-list)
+    (cons (mapcar #'car types-list)
+	  (dtypes-list (mapcar #'cdr types-list)))))
 
 (defun optypes-for-local-arguments-list (exprs dtypes-list &optional pos)
   (if (null exprs)
       pos
-      (let ((apos (optypes-for-local-arguments*
-		   (car exprs) (mapcar #'car dtypes-list))))
-	(when (or (null apos)
-		  (null pos)
-		  (= pos apos))
+      (if (length= (types (car exprs)) dtypes-list)
+	  (let ((apos (optypes-for-local-arguments*
+		       (car exprs) (mapcar #'car dtypes-list))))
+	    (when (or (null apos)
+		      (null pos)
+		      (= pos apos))
+	      (optypes-for-local-arguments-list
+	       (cdr exprs) (mapcar #'cdr dtypes-list) (or apos pos))))
 	  (optypes-for-local-arguments-list
-	   (cdr exprs) (mapcar #'cdr dtypes-list) (or apos pos))))))
+	   (cdr exprs) (mapcar #'cdr dtypes-list) pos))))
 
 (defmethod optypes-for-local-arguments* ((ex application) domtypes)
-  (break "optypes-for-local-arguments*"))
+  (or (optypes-for-local-arguments*
+       (operator ex)
+       (mapcar #'(lambda (dtype)
+		   (find-if #'(lambda (opty)
+				(tc-eq (range (find-supertype opty))
+				       dtype))
+		     (types (operator ex))))
+	 domtypes))
+      (break "optypes-for-local-arguments*")))
 
 (defun instantiable-operator-types (op optypes args expected &optional result)
   (if (null optypes)
@@ -1193,7 +1196,7 @@ required a context.")
     (subst-dep-range supertype expr)))
 
 (defmethod subst-dep-range* ((domain dep-binding) range expr)
-  (let* ((nres (make-resolution domain (mod-name *current-context*)))
+  (let* ((nres (make-resolution domain (theory-name *current-context*)))
 	 (nname (mk-name-expr (id domain) nil nil nres 'variable)))
     #+pvsdebug (assert (fully-typed? expr))
     (substit range (list (cons nname expr)))))
@@ -1356,7 +1359,7 @@ required a context.")
       (resolutions-of-current-theory*
        (cdr resolutions)
        (if (eq (module-instance (car resolutions))
-	       (mod-name *current-context*))
+	       (theory-name *current-context*))
 	   (cons (car resolutions) result)
 	   result))))
 
@@ -2121,7 +2124,7 @@ required a context.")
   (let* ((ftype (make-field-type field))
 	 (apptype (field-application-type field (type expr) expr))
 	 (res (make-resolution field
-		(mod-name *current-context*) ftype))
+		(theory-name *current-context*) ftype))
 	 (name (mk-name-expr (id field) nil nil res 'constant))
 	 (appl (make-instance 'field-application
 		 'id (id field)
