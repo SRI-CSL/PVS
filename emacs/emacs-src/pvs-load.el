@@ -54,6 +54,8 @@
 (defvar *pvs-current-directory* default-directory
   "Pathname of the current PVS context.")
 
+(defvar start-pvs t)
+
 (require 'cl)
 (require 'comint)
 (setq comint-log t)
@@ -304,4 +306,5 @@ get to the same state."
       (unless noninteractive
 	(message "Ready"))))
 
-(pvs)
+(when start-pvs
+  (pvs))
