@@ -247,8 +247,7 @@
 (defmethod untypecheck-theory ((decl application-judgement))
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (name decl))
-  (untypecheck-theory (formals decl))
-  (setf (formal-types decl) nil))
+  (untypecheck-theory (formals decl)))
 
 (defmethod untypecheck-theory ((decl conversion-decl))
   (when (next-method-p) (call-next-method))
