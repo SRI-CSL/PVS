@@ -76,17 +76,7 @@
 
 (defmethod typecheck :around (obj &key expected context tccs)
   (declare (ignore expected context tccs))
-  (unwind-protect
-      (let ((*expression-types* (if *in-typechecker*
-				    *expression-types*
-				    *empty-expression-types*))
-	    (*in-typechecker* (or *in-typechecker*
-				  (if (or *in-checker* *in-evaluator*)
-				      obj
-				      t))))
-	(call-next-method))
-    (unless *in-typechecker*
-      (clrhash *empty-expression-types*))))
+  (protect-types-hash obj (call-next-method)))
 
 (defmethod types ((ex expr))
   (gethash ex *expression-types*))
@@ -468,12 +458,12 @@
 		"Library id ~a declared in imported theory ~a and ~a ~
                with a different path.~%References to this library id will ~
                lead to ambiguity errors."
-	      (id decl) (id (module d)))
+	      (id decl) (id (module d)) (id (module decl)))
 	    (pvs-warning 
 		"Library id ~a declared in imported theories ~a and ~a ~
                with a different path.~%References to this library id will ~
                use the path~%  ~a"
-	      (id decl) (id (current-theory))
+	      (id decl) (id (module d)) (id (module decl))
 	      (if (< (locality d) (locality decl))
 		  (library d)
 		  (library decl))))))))

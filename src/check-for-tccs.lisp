@@ -145,7 +145,7 @@
 
 (defmethod check-for-tccs* ((ex conjunction) expected)
   (check-for-tccs* (args1 ex) expected)
-  (let ((*tcc-conditions* (append (and+ (args1 ex)) *tcc-conditions*)))
+  (let ((*tcc-conditions* (append (and!+ (args1 ex)) *tcc-conditions*)))
     (check-for-tccs* (args2 ex) expected)))
 
 (defmethod check-for-tccs* ((ex disjunction) expected)
@@ -155,7 +155,7 @@
 
 (defmethod check-for-tccs* ((ex implication) expected)
   (check-for-tccs* (args1 ex) expected)
-  (let ((*tcc-conditions* (append (and+ (args1 ex)) *tcc-conditions*)))
+  (let ((*tcc-conditions* (append (and!+ (args1 ex)) *tcc-conditions*)))
     (check-for-tccs* (args2 ex) expected)))
 
 (defmethod check-for-tccs* ((expr branch) expected)
@@ -163,7 +163,7 @@
 	(ethen (then-part expr))
 	(eelse (else-part expr)))
     (check-for-tccs* econd *boolean*)
-    (let ((*tcc-conditions* (append (and+ econd) *tcc-conditions*)))
+    (let ((*tcc-conditions* (append (and!+ econd) *tcc-conditions*)))
       (check-for-tccs* ethen expected))
     (let ((*tcc-conditions* (cons (make!-negation econd) *tcc-conditions*)))
       (check-for-tccs* eelse expected))))

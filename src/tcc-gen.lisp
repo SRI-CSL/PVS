@@ -231,7 +231,8 @@
 		       (id decl)
 		       (assq expr *compatible-pred-reason*))))
 	(assert (declaration? match))
-	(pvs-info "~@(~a~) TCC for ~a:~%  ~a~%is subsumed by earlier TCC ~a~%~
+	(pvs-info "~@(~a~) TCC for ~a:~%    ~a~%  ~
+                   is subsumed by earlier TCC ~a~%  ~
                    so is not generated"
 	  kind (or expr type)
 	  (unpindent (definition ndecl) 2 :string t)
@@ -741,8 +742,6 @@
 	 (*old-tcc-name* nil)
 	 (ndecl (typecheck* (mk-cases-tcc id uform) nil nil nil)))
     ;;(assert (tc-eq (type uform) *boolean*))
-    (when (or *in-checker* *in-evaluator*)
-      (push uform *tccforms*))
     (insert-tcc-decl 'cases (expression expr) adt ndecl)))
 
 (defun make-tcc-name (&optional expr)

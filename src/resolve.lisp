@@ -46,11 +46,13 @@
 		   (argument-list argument)
 		   argument))
 	 (res (resolve* name k args)))
+    (when (and (null res)
+	       args
+	       (eq k 'expr))
+      (setq res (append (function-conversion name args)
+			(argument-conversion name args))))
     (cond ((null res)
-	   (or (and (eq k 'expr)
-		    (or (argument-conversion name args)
-			(function-conversion name args)))
-	       (resolution-error name k args)))
+	   (resolution-error name k args))
 	  ((and (cdr res)
 		(not (eq k 'expr)))
 	   (let* ((nres (if argument
@@ -1060,7 +1062,8 @@
 							 (domain stype))))))
 			      (every #'(lambda (a dt)
 					 (some #'(lambda (aty)
-						   (tc-eq aty dt))
+						   (or (not (funtype? dt))
+						       (tc-eq aty dt)))
 					       (types a)))
 				     args dtypes)))
 	   reses)))
@@ -1245,16 +1248,13 @@
 
 
 (defun argument-conversion (name arguments)
-  (when arguments
-    (let ((*found-one* nil)
-	  (reses (remove-if-not #'(lambda (r)
-				    (typep (find-supertype (type r)) 'funtype))
-		   (resolve name 'expr nil))))
-      (declare (special *found-one*))
-      (when (argument-conversions (mapcar #'type reses) arguments)
-	(let ((nreses (resolve name 'expr arguments)))
-	  (when nreses
-	    (setf (resolutions name) nreses)))))))
+  (let ((*found-one* nil)
+	(reses (remove-if-not #'(lambda (r)
+				  (typep (find-supertype (type r)) 'funtype))
+		 (resolve name 'expr nil))))
+    (declare (special *found-one*))
+    (when (argument-conversions (mapcar #'type reses) arguments)
+      (resolve name 'expr arguments))))
 
 (defun argument-conversions (optypes arguments)
   (declare (special *found-one*))
@@ -1374,13 +1374,9 @@
 ;;; arguments.
 
 (defun function-conversion (name arguments)
-  (when arguments
-    (let ((creses (append (simple-function-conversion name arguments)
-			  (let* ((resolutions (resolve name 'expr nil)))
-			    (resolutions-with-argument-conversions
-			     resolutions arguments)))))
-      (when creses
-	(setf (resolutions name) creses)))))
+  (append (simple-function-conversion name arguments)
+	  (resolutions-with-argument-conversions
+	   (resolve (copy name 'resolutions nil) 'expr nil) arguments)))
 
 (defun resolutions-with-argument-conversions (resolutions arguments
 							  &optional result)
@@ -1431,9 +1427,12 @@
 
 (defun compatible-arg-conversions? (rtype arguments)
   (and (typep rtype 'funtype)
-       (let ((dtypes (domain-types rtype)))
+       (let* ((dtypes (domain-types rtype))
+	      (dtypes-list (all-possible-instantiations dtypes arguments)))
 	 (and (length= dtypes arguments)
-	      (compatible-arguments-k-conversions dtypes arguments)))))
+	      (mapcan #'(lambda (dty)
+			  (compatible-arguments-k-conversions dty arguments))
+		dtypes-list)))))
 
 (defun compatible-arguments-k-conversions (dtypes arguments &optional result)
   (if (null dtypes)

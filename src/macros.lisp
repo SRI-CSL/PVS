@@ -325,3 +325,16 @@
 		       (declare (ignore mid))
 		       (funcall ,fn theory))
 		   *prelude*)))
+
+(defmacro protect-types-hash (obj &rest forms)
+  `(unwind-protect
+      (let ((*expression-types* (if *in-typechecker*
+				    *expression-types*
+				    *empty-expression-types*))
+	    (*in-typechecker* (or *in-typechecker*
+				  (if (or *in-checker* *in-evaluator*)
+				      ,obj
+				      t))))
+	,@forms)
+    (unless *in-typechecker*
+      (clrhash *empty-expression-types*))))
