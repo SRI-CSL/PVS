@@ -323,7 +323,7 @@
 (defun mk-funcall (fun args)
   `(pvs-funcall ,fun ,@args))
 
-(defun check-output-vars (output-vars alist)
+(defun check-output-vars (output-vars alist livevars)
   (if (consp output-vars)
       (let* ((var (caar output-vars))
 	     (lvars (cdar output-vars))
@@ -331,11 +331,13 @@
 	     (lterms (mapcar #'(lambda (x) (cdr (assoc x alist :test #'same-declaration)))
 		       lvars))
 	     (vterm-updateables (updateable-output-vars vterm))
-	     (lterm-updateables (updateable-free-formal-vars lterms)))
+	     ;;NSH(6.10.99) livevars should also be checked (g5 in arrays.pvs)
+	     (lterm-updateables (append (updateable-free-formal-vars lterms)
+					livevars)))
 	(cond ((and (null (intersection vterm-updateables
 					lterm-updateables
 					:test #'same-declaration))
-		    (check-output-vars (cdr output-vars) alist))
+		    (check-output-vars (cdr output-vars) alist livevars))
 	       (push-output-vars vterm-updateables lterm-updateables)
 			;	 *output-vars*
 	       T)
@@ -351,7 +353,9 @@
 		    ,(call-next-method))
 		 (call-next-method))))
 
-(defun pvs2cl-operator2 (op actuals arguments bindings)
+(defun check-op-args (formal-arg-pairs livevars)
+
+(defun pvs2cl-operator2 (op actuals arguments livevars bindings)
   (declare (ignore bindings))
   (pvs2cl-resolution2 op)
   (let ((decl (declaration op)))
@@ -373,11 +377,13 @@
 			      (ex-defn-d (declaration op))
 			      (in-defn-d (declaration op))))
 	       (output-vars (output-vars eval-defn))
-	       (check (check-output-vars output-vars
-					 (pairlis
-					  formals
-					  (append actuals
-						  arguments)))))
+	       (check (check-output-vars
+		       output-vars 
+		       (pairlis
+			formals
+			(append actuals
+				arguments))
+		       livevars)))
 	  (when (and (null check)
 		     *eval-verbose*)
 	    (format t "~%Destructive update check failed on ~a[~{~a,~}](~{~a,~})" op actuals arguments))
@@ -423,7 +429,8 @@
 	 (args-free-formals (updateable-vars arguments))
 	 (args-livevars (append args-free-formals livevars)))
     (if internal-actuals
-	(mk-funapp (pvs2cl-operator2 op actuals arguments bindings)
+	(mk-funapp (pvs2cl-operator2 op actuals arguments
+				     livevars bindings)
 	     (append (pvs2cl_up* internal-actuals
 				     bindings
 				     args-livevars)
@@ -433,7 +440,8 @@
 					 ;;parameters of already evaluated
 					 ;;exprs needed.
 					 livevars))))
-	(mk-funapp (pvs2cl-operator2 op NIL arguments bindings)  ;;(pvs2cl-resolution2 op)
+	(mk-funapp (pvs2cl-operator2 op NIL arguments livevars bindings)
+		   ;;(pvs2cl-resolution2 op)
 		   (pvs2cl_up* arguments  bindings livevars)))))
 
 ;;If primitive app, use pvs2cl-primitive-app.
@@ -539,7 +547,8 @@
 					       livevars))
 		    (check (check-output-vars
 			    *output-vars*
-			    let-pairs))
+			    let-pairs
+			    livevars))
 		    (output-vars
 		     (loop for (x . y) in *output-vars*
 			   when (not (member x let-bindings
@@ -1202,7 +1211,8 @@
 				   (if actuals
 				       (external-lisp-function (declaration expr))
 				       (lisp-function (declaration expr)))
-				   (pvs2cl-operator2 expr actuals nil bindings))
+				   (pvs2cl-operator2 expr actuals nil
+						     livevars bindings))
 			       (if actuals
 				   (external-lisp-function (declaration expr))
 				   (lisp-function (declaration expr))))))
