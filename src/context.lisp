@@ -575,9 +575,9 @@ pvs-strategies files.")
       circs
       (let ((th (car theories)))
 	(if (and (cdr deps)
-		 (equal (filename th) (filename (car (last deps))))
+		 (equal (dep-filename th) (dep-filename (car (last deps))))
 		 (some #'(lambda (dep)
-			   (not (equal (filename th) (filename dep))))
+			   (not (equal (dep-filename th) (dep-filename dep))))
 		       deps))
 	    ;; Found a circularity
 	    (circular-file-dependencies* (cdr theories) deps
@@ -593,6 +593,14 @@ pvs-strategies files.")
 		     (cons th deps))
 		    (circular-file-dependencies* (cdr theories)
 						 deps circs))))))
+
+(defmethod dep-filename ((th module))
+  (if (generated-by th)
+      (filename (get-theory (generated-by th)))
+      (filename th)))
+
+(defmethod dep-filename ((adt datatype))
+  (filename adt))
 
 (defun dependencies (theory)
   (let ((*current-context* (or *current-context*
@@ -1298,7 +1306,8 @@ pvs-strategies files.")
 			    ((listp (cadr prf-entry))
 			     (cddr prf-entry))
 			    (t (cdr prf-entry))))
-	      (new-ground? (and (listp (cadr prf-entry))
+	      (new-ground? (and (true-listp (cadr prf-entry))
+				(evenp (length (cadr prf-entry)))
 				(getf (cadr prf-entry) :new-ground?))))
 	  (if (justification decl)
 	      (unless (equal (extract-justification-sexp
@@ -1339,7 +1348,8 @@ pvs-strategies files.")
 		     (unless (member prf oprfs
 				     :test #'(lambda (x y) (equal x (cdr y))))
 		       (write (cons filename (cons (car tproofs) prf))
-			      :length nil :level nil :escape t :stream orph))))
+			      :length nil :level nil :escape t :pretty nil
+			      :stream orph))))
 	       (cdr tproofs)))))))
 
 (defun copy-proofs-to-orphan-file (theoryid proofs)
@@ -1362,7 +1372,8 @@ pvs-strategies files.")
 				     :test #'(lambda (x y) (equal x (cddr y))))
 		       (incf count)
 		       (write (cons filename (cons theoryid prf))
-			      :length nil :level nil :escape t :stream orph))))
+			      :length nil :level nil :escape t :pretty nil
+			      :stream orph))))
 	       proofs)))
       (unless (zerop count)
 	(pvs-message "Found ~d orphaned proof~:p from theory ~a"
@@ -1506,7 +1517,8 @@ pvs-strategies files.")
 				      :if-exists :supersede
 				      :if-does-not-exist :create)
 		  (dolist (prf *displayed-proofs*)
-		    (write prf :length nil :escape t :stream orph))))
+		    (write prf :length nil :escape t :pretty nil
+			   :stream orph))))
 	       (pvs-buffer "Proofs"
 		 (when *displayed-proofs*
 		   (format nil "~{~a~^~%~}"
@@ -1697,7 +1709,8 @@ pvs-strategies files.")
 	   (with-open-file (asave auto-saved-file :direction :input)
 	     (let ((proof (read asave)))
 	       (write (cons (subseq (pathname-name auto-saved-file) 1) proof)
-		      :length nil :level nil :escape t :stream orph)
+		      :length nil :level nil :escape t :pretty nil
+		      :stream orph)
 	       (push proof proofs)))
 	   (delete-file auto-saved-file))))
       (pvs-buffer "PVS Info"
