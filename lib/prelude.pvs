@@ -3402,7 +3402,6 @@ mucalculus[T:TYPE]: THEORY
   pp: VAR predtt
   setofpred: VAR pred[pred[T]]
 
-  IMPORTING orders[pred[T]]
   <=(p1,p2): bool = FORALL s: p1(s) IMPLIES p2(s)
 
   ismono(pp): bool =
@@ -3438,9 +3437,6 @@ mucalculus[T:TYPE]: THEORY
 
 ctlops[state : TYPE]: THEORY
  BEGIN
-
-  IMPORTING mucalculus[state]
-
   u,v,w: VAR state
   f,g,Q,P,p1,p2: VAR pred[state]
   Z: VAR pred[[state, state]]
@@ -3474,7 +3470,6 @@ ctlops[state : TYPE]: THEORY
 
 fairctlops  [ state : TYPE ]: THEORY
  BEGIN
-  IMPORTING ctlops[state]
   u,v,w: VAR state
   f,g,Q,P,p1,p2: VAR pred[state]
   N: VAR [state, state->bool]
@@ -3510,7 +3505,6 @@ fairctlops  [ state : TYPE ]: THEORY
 
 Fairctlops[state : TYPE]: THEORY
  BEGIN
-  IMPORTING ctlops[state]
   u,v,w: VAR state
   f,g,Q,P,p1,p2: VAR pred[state]
   N: VAR [state, state->bool]
