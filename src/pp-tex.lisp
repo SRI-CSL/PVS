@@ -77,29 +77,30 @@
 
 (defmethod pp-tex* ((mod module))
   (with-slots (id formals exporting assuming theory) mod
-    (pprint-logical-block (nil nil)
-      (pp-tex-id id)
-      (pp-tex-theory-formals formals)
-      (write ": ")
-      (pprint-indent :block 2)
-      (pp-tex-keyword 'THEORY)
-      (pprint-indent :block 1)
-      (pprint-newline :mandatory)
-      (pp-tex* exporting)
-      (pp-tex-keyword 'BEGIN)
-      (pprint-indent :block 2)
-      ;;(pprint-newline :mandatory)
-      (pp-tex-assuming (if *unparse-expanded*
-			   assuming
-			   (remove-if #'generated-by assuming)))
-      (pp-tex-theory (if *unparse-expanded*
-		     theory
-		     (remove-if #'generated-by theory)))
-      (pprint-indent :block 1)
-      (pprint-newline :mandatory)
-      (pp-tex-keyword 'END)
-      (write-char #\space)
-      (pp-tex-id id))))
+    (let ((*current-context* (saved-context mod)))
+      (pprint-logical-block (nil nil)
+	(pp-tex-id id)
+	(pp-tex-theory-formals formals)
+	(write ": ")
+	(pprint-indent :block 2)
+	(pp-tex-keyword 'THEORY)
+	(pprint-indent :block 1)
+	(pprint-newline :mandatory)
+	(pp-tex* exporting)
+	(pp-tex-keyword 'BEGIN)
+	(pprint-indent :block 2)
+	;;(pprint-newline :mandatory)
+	(pp-tex-assuming (if *unparse-expanded*
+			     assuming
+			     (remove-if #'generated-by assuming)))
+	(pp-tex-theory (if *unparse-expanded*
+			   theory
+			   (remove-if #'generated-by theory)))
+	(pprint-indent :block 1)
+	(pprint-newline :mandatory)
+	(pp-tex-keyword 'END)
+	(write-char #\space)
+	(pp-tex-id id)))))
 
 (defun pp-tex-theory-formals (formals)
   (when formals
@@ -371,7 +372,7 @@
       (cond ((and chain?
 		  *pretty-printing-decl-list*)
 	     (pp-tex-id id)
-	     (unless (typep decl 'formal-decl)
+	     (unless (typep decl '(or formal-decl adtdecl))
 	       (write-char #\,)
 	       (write-char #\space)
 	       (pprint-newline :fill)))
@@ -382,7 +383,9 @@
 	       (when (and *comment-on-proof-status*
 			  (tcc? decl))
 		 (format t "  % ~a~%" (proof-status-string decl)))
-	       (pp-tex-const-decl id formals (id module))
+	       (pp-tex-const-decl id formals (if module
+						 (id module)
+						 (id (current-theory))))
 	       (write-char #\:)
 	       (write-char #\space)
 	       (pprint-newline :fill)
@@ -1228,7 +1231,7 @@
       (write "::")
       (write-char #\space)
       (pprint-newline :fill)
-      (pp-tex* (declared-type (car (bindings operator)))))))
+      (pp-tex* (coercion-declared-type operator)))))
 
 (defmethod pp-tex* ((ex binding-expr))
   (let ((*pretty-printing-decl-list* t))

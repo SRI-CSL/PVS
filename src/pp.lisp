@@ -108,7 +108,8 @@ bind tighter.")
 	 (*print-pretty* pretty)
 	 (*print-escape* nil)
 	 (*print-right-margin* (or char-width *default-char-width*)))
-     (cond (string 
+     (cond (string
+	    (decf *print-right-margin* 4)
 	    (with-output-to-string (*standard-output*)
 	      (pp obj)))
 	   (stream
@@ -117,7 +118,8 @@ bind tighter.")
 	   (file
 	    (with-open-file (*standard-output* file :direction :output)
 	      (pp obj)))
-	   (t (pp obj)))))
+	   (t (decf *print-right-margin* 4)
+	      (pp obj)))))
 
 (defun unpindent (inst indent &key (width *default-char-width*)
 		       length level lines string comment?)
@@ -1372,7 +1374,13 @@ bind tighter.")
       (write "::")
       (write-char #\space)
       (pprint-newline :fill)
-      (pp* (declared-type (car (bindings operator)))))))
+      (pp* (coercion-declared-type operator)))))
+
+(defmethod coercion-declared-type ((ex lambda-expr))
+  (declared-type (car (bindings ex))))
+
+(defmethod coercion-declared-type ((ex implicit-conversion))
+  (coercion-declared-type (argument ex)))
 
 (defmethod pp* ((ex binding-expr))
   (let ((*pretty-printing-decl-list* t))
@@ -1817,12 +1825,14 @@ bind tighter.")
 
 (defmethod get-let-bindings* ((ex chained-let-expr) bindings arg lbindings)
   (with-slots (operator argument) ex
-    (get-let-bindings* (expression operator)
-		       (bindings operator)
-		       argument
-		       (multiple-value-bind (formals arg-expr)
-			   (get-let-formals-and-arg arg)
-			 (cons (list bindings formals arg-expr) lbindings)))))
+    (if (lambda-expr? operator)
+	(get-let-bindings* (expression operator)
+			   (bindings operator)
+			   argument
+			   (multiple-value-bind (formals arg-expr)
+			       (get-let-formals-and-arg arg)
+			     (cons (list bindings formals arg-expr) lbindings)))
+	(call-next-method))))
 
 (defmethod get-let-bindings* (ex bindings arg lbindings)
   (multiple-value-bind (formals arg-expr)
@@ -1949,6 +1959,9 @@ bind tighter.")
 	    (write-char #\,)
 	    (write-char #\space)
 	    (pprint-newline :fill)))))
+
+(defmethod parens ((fd field-decl))
+  0)
 
 (defun pp-paren-adformals* (b &optional (parens (parens (car b))))
   (if (zerop parens)

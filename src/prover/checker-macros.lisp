@@ -437,7 +437,9 @@
      (every #'integerp ,sformnums))))
 
 (defmacro restore ()
-  `(throw 'abort *in-evaluator*))
+  `(progn (when *in-evaluator*
+	    (clear-dependent-theories *current-theory*))
+	  (throw 'abort *in-evaluator*)))
 ;NSH(8.22.94): modified catch-restore to catch only outside apply.
 ;  `(if *in-apply*
 ;    (throw 'abort-in-apply nil)
