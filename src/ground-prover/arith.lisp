@@ -643,11 +643,11 @@
   (cond
    ((and (listp term)(eq (funsym term) 'TIMES))
     (cond
-     ((qnumberp (arg1 term))(occursin var (arg2 term))
+     ((qnumberp (arg1 term))(occursin var (arg2 term)))
      (t (if *jmr-mult*
 	    (or (equal var term)
 		(member-or-div-member var (argsof term)))
-	    (member var (argsof term)))))))
+	    (member var (argsof term))))))
    ((and (listp term)(eq (funsym term) 'DIVIDE))
     (cond
      ((qnumberp (arg1 term))(interp-subtermof var (arg2 term)))
