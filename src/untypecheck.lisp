@@ -43,8 +43,8 @@
   (setf (all-declarations dorm) nil)
   (setf (all-imported-theories dorm) 'unbound))
 
-(defmethod untypecheck-theory ((adt datatype))
-  (let ((*untypechecking-theory* (if (inline-datatype? adt)
+(defmethod untypecheck-theory ((adt recursive-type))
+  (let ((*untypechecking-theory* (if (inline-recursive-type? adt)
 				     *untypechecking-theory*
 				     (current-theory))))
     (untypecheck-theory (importings adt))
@@ -382,7 +382,7 @@
   )
 
 (defmethod untypecheck-theory ((te adt-type-name))
-  (setf (adt te) nil))
+  (call-next-method (change-class te 'type-name)))
 
 (defmethod untypecheck-theory ((te type-application))
   (when (next-method-p) (call-next-method))
