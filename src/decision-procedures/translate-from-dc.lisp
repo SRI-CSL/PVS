@@ -132,7 +132,7 @@
 	 (index (translate-from-dc-index (nth 1 translated-args)
 					 array-type))
 	 (value (nth 2 translated-args)))
-    (make-update-expr array index value)))
+    (make-simple-update-expr array index value)))
 
 (defun translate-from-dc-type (expr)
   (cond
@@ -344,12 +344,11 @@
   (let ((find (cdr (assoc func *dc-infix-trans-table*))))
     find))
 
-(defun make-update-expr (expression index value &optional expected)
+(defun make-simple-update-expr (expression index value &optional expected)
   (let* ((assignments (list (make-assignment index value)))
 	 (type (or expected (type expression)))
 	 (nexpr (make-instance 'update-expr
 		  'expression expression
 		  'assignments assignments
-		  'type type
-		  'types (list type))))
+		  'type type)))
     (typecheck nexpr :expected type)))
