@@ -33,6 +33,11 @@ print object produces an error, and won't allow inspection of the object.")
       (call-next-method)
       (format stream "#<Datatype ~a>" (id dt))))
 
+(defmethod print-object ((dt codatatype) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (format stream "#<CoDatatype ~a>" (id dt))))
+
 (defmethod print-object ((mod library-datatype) stream)
   (if *debugging-print-object*
       (call-next-method)
