@@ -251,20 +251,8 @@
 	       (clrhash (judgement-types-hash (judgements *current-context*)))
 	       (setf (aref vector (1- currynum))
 		     (make-instance 'application-judgements
-		       'judgements-graph (list (list jdecl))
-;		       'argtype-hash (when (and (no-dep-bindings
-;						 (judgement-type jdecl))
-;						(no-dep-bindings
-;						 (type decl)))
-;				       (make-hash-table
-;					:hash-function 'pvs-sxhash
-;					:test 'tc-eq))
-		       )))
-	      (t (add-judgement-decl-to-graph jdecl entry)
-;		 (when (and (argtype-hash entry)
-;			    (no-dep-bindings (judgement-type jdecl)))
-;		   (clrhash (argtype-hash entry)))
-		 ))))))
+		       'judgements-graph (list (list jdecl)))))
+	      (t (add-judgement-decl-to-graph jdecl entry)))))))
 
 (defun add-judgement-decl-to-graph (jdecl entry &optional quiet?)
   (unless (some-judgement-subsumes jdecl (judgements-graph entry) quiet?)
@@ -1320,9 +1308,10 @@
   (dotimes (i (length from-vector))
     (when (aref from-vector i)
       (if (aref to-vector i)
-	  (merge-appl-judgements-entries
-	   (aref from-vector i) (aref to-vector i)
-	   theory theoryname)
+	  (setf (aref to-vector i)
+		(merge-appl-judgements-entries
+		 (aref from-vector i) (aref to-vector i)
+		 theory theoryname))
 	  (setf (aref to-vector i)
 		(subst-appl-judgements
 		 (aref from-vector i) theory theoryname)))))
@@ -1373,12 +1362,13 @@
 			       (assoc subst-from-jdecl to-graph
 				      :test #'judgement-eq))
 			  (merge-appl-judgement-graphs
-			   (cdr from-graph)
-			   (add-application-judgement from-jdecl to-graph)
-			   to-gens theory theoryname)
-			  (merge-appl-judgement-graphs
 			   (cdr from-graph) to-graph to-gens
-			   theory theoryname))
+			   theory theoryname)
+			  (merge-appl-judgement-graphs
+			   (cdr from-graph)
+			   (add-application-judgement
+			    subst-from-jdecl to-graph)
+			   to-gens theory theoryname))
 		      (merge-appl-judgement-graphs
 		       (cdr from-graph) to-graph
 		       (if (member subst-from-jdecl to-gens
