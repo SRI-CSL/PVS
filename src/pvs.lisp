@@ -95,6 +95,7 @@
     (clrhash *prelude-libraries*)
     (clrhash *imported-libraries*)
     (setf (cadr *pvs-context*) nil)
+    (setq *pvs-library-ref-paths* nil)
     (setq *prelude-libraries-uselist* nil)
     (setq *prelude-library-context* nil)
     (setq *prelude-libraries-files* nil)))
