@@ -32,6 +32,7 @@ help-pvs-prover-strategy, pvs-help-prover-strategy (C-c C-h s)
                             - Display the specified strategy
 help-pvs-prover-emacs, pvs-help-prover-emacs (C-c C-h e)
                             - Display help for the PVS prover Emacs commands
+x-prover-commands           - Display prover commands in a popup window
 
 ---------------------------Editing PVS Files----------------------------------
 
@@ -147,10 +148,10 @@ show-tccs,            tccs (C-c C-q s) Show the TCCs of the indicated theory
 
 find-pvs-file, ff (C-c C-f) Find buffer containing named PVS file
 find-theory, ft             Find buffer containing named theory
-view-library-file,vlf       View named library file
-view-library-theory,vlt     View named library theory
 view-prelude-file, vpf      View the prelude file
 view-prelude-theory, vpt    View the specified prelude theory
+view-library-file,vlf       View named library file
+view-library-theory,vlt     View named library theory
 new-pvs-file, nf            Create PVS buffer containing named theory
 new-theory, nt              Create named theory in current buffer
 import-pvs-file, imf        Import a text file as a PVS file
@@ -158,8 +159,8 @@ import-theory, imt          Import a theory from another PVS file
 delete-pvs-file, df         Delete PVS file
 delete-theory, dt           Delete theory from PVS file
 save-pvs-file, (C-x C-s)    Save file in current buffer
-save-pvs-buffer             Save buffer in file, without renaming
 save-some-pvs-files, ssf    Save modified PVS files
+save-pvs-buffer             Save buffer in file, without renaming
 smail-pvs-files             Mail files in IMPORT chain to specified address
 rmail-pvs-files             Read files sent by smail-pvs-files
 dump-pvs-files              Write files in IMPORT chain to file
@@ -191,7 +192,6 @@ latex-set-linelength, lts (C-c C-l s)  Set the linelength for LaTeX text
 x-theory-hierarchy         Display the theory hierarchy
 x-show-proof               Display proof of formula at cursor
 x-show-current-proof       Display proof in progress
-x-prover-commands          Display the prover commands
 
 ----------------------------Context Commands----------------------------------
 
