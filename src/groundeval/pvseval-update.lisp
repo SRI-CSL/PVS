@@ -1,3 +1,5 @@
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
+
 (in-package :pvs)
 
 
@@ -1173,6 +1175,16 @@
 	(mk-newsymb x (1+ counter))
 	(intern str))))
 
+(defun mk-newfsymb (x &optional counter)
+  (let ((fsym (intern (format nil "~a~@[_~a~]" x counter))))
+    (if (fboundp fsym)
+	(mk-newfsymb x (if counter (1+ counter) 0))
+	fsym)))
+
+(defun pvs2cl-id (x)
+  (if (eq (id x) 'O)
+      'o
+      (id x)))
 
 (defun pvs2cl-external-lisp-function (decl)
   (let* ((defax (def-axiom decl))
@@ -1185,19 +1197,18 @@
 		 (ex-name-m decl) undef
 		 (ex-name-d decl) undef)
 	   undef)
-	  (t (let
-		 ((formals (loop for x in (formals (module decl))
-				 when (formal-const-decl? x)
-				 collect x)))
+	  (t (let ((formals (loop for x in (formals (module decl))
+				  when (formal-const-decl? x)
+				  collect x)))
 	       (if (null formals)
 		   (or (lisp-function decl)
 		       (pvs2cl-lisp-function decl))
-		   (let* ((id (mk-newsymb (format nil "~a_~a"
-					    (id (module decl))
-					    (id decl))))
-			  (id-d (mk-newsymb (format nil "~a!~a"
-					      (id (module decl))
-					      (id decl))))
+		   (let* ((id (mk-newfsymb (format nil "~a_~a"
+					     (id (module decl))
+					     (pvs2cl-id decl))))
+			  (id-d (mk-newfsymb (format nil "~a!~a"
+					       (id (module decl))
+					       (pvs2cl-id decl))))
 			  (formal-ids (loop for x in formals
 					    collect (lisp-id (id x))))
 			  (bindings (pairlis formals formal-ids))
@@ -1216,9 +1227,9 @@
 						(append formals defn-bindings))))
 		     (make-eval-info decl)
 		     (setf (ex-name decl) id)
-		     (let ((id2 (mk-newsymb (format nil "~a__~a"
-					      (id (module decl))
-					      (id decl)))))
+		     (let ((id2 (mk-newfsymb (format nil "~a__~a"
+					       (id (module decl))
+					       (pvs2cl-id decl)))))
 		       (setf (ex-name-m decl) id2)
 		       (let ((*destructive?* nil))
 			 (setf (definition (ex-defn-m decl))
@@ -1244,13 +1255,13 @@
 				,@(append (when declarations
 					    (list declarations))
 					  (list 
-						   (pvs2cl-till-output-stable
-						    (ex-defn-d decl)
-						    defn-expr
-						    (append (pairlis defn-bindings
-								     defn-binding-ids)
-							    bindings)
-						    nil)))))
+					   (pvs2cl-till-output-stable
+					    (ex-defn-d decl)
+					    defn-expr
+					    (append (pairlis defn-bindings
+							     defn-binding-ids)
+						    bindings)
+					    nil)))))
 		       ;;setf output-vars already in
 		       ;;pvs2cl-till-output-stable
 		       (setf (output-vars (ex-defn-d decl)) *output-vars*))
@@ -1308,21 +1319,25 @@
 		 (in-name-m decl) undef
 		 (in-name-d decl) undef)
 	   undef)
-	  (t (let* 
-		 ((id (mk-newsymb  (id decl)))
-		  (id-d (mk-newsymb (format nil "~a!" (id decl))))
-		  (defn (args2 (car (last (def-axiom decl)))))
-		  (defn-bindings (when (lambda-expr? defn)
-				   (loop for bnd in
-					 (bindings* defn)
-					 append bnd)))
-		  (defn-body (body* defn))
-		  (defn-binding-ids
-		    (make-binding-ids-without-dups defn-bindings nil))
-		  (declarations (pvs2cl-declare-vars defn-binding-ids
-						     defn-bindings)))
+	  (t (let* ((id (mk-newfsymb (format nil "~@[~a_~]~a"
+				       (generated-by decl) (pvs2cl-id decl))))
+		    (id-d (mk-newfsymb (format nil "~@[~a_~]~a!"
+					 (generated-by decl)
+					 (pvs2cl-id decl))))
+		    (defn (args2 (car (last (def-axiom decl)))))
+		    (defn-bindings (when (lambda-expr? defn)
+				     (loop for bnd in
+					   (bindings* defn)
+					   append bnd)))
+		    (defn-body (body* defn))
+		    (defn-binding-ids
+		      (make-binding-ids-without-dups defn-bindings nil))
+		    (declarations (pvs2cl-declare-vars defn-binding-ids
+						       defn-bindings)))
 	       (setf (in-name decl) id)
-	       (let ((id2 (mk-newsymb (format nil "_~a" (id decl)))))
+	       (let ((id2 (mk-newfsymb (format nil "_~@[~a_~]~a"
+					 (generated-by decl)
+					 (pvs2cl-id decl)))))
 		 (when *eval-verbose*
 		   (format t "~%~a <internal_app> ~a" (id decl) id2))
 		 (setf (in-name-m decl) id2)
@@ -1372,7 +1387,7 @@
 	       (assert id)
 	       (compile id))))))
 
-(defun pvs2cl-theory (theory)
+(defun pvs2cl-theory (theory &optional force?)
   (let* ((theory (get-theory theory))
 	 (*current-theory* theory)
 	 (*current-context* (context theory)))
@@ -1402,7 +1417,6 @@
 				     (pvs2cl-lisp-function decl)))))
 			    (t nil)))))))
 
-
 (defun pvs2cl-datatype (expr)
   (let* ((dt (adt expr))
 	 (constructors (constructors dt)))
@@ -1418,7 +1432,7 @@
 (defun mk-newconstructor (id accessor-ids &optional (counter 0))
   (let* ((const-str (format nil "~a_~a" id counter))
 	 (const-str? (find-symbol const-str))
-	 (mk-str? (find-symbol (format nil "MAKE-~a" const-str)))
+	 (mk-str? (find-symbol (format nil "make-~a" const-str)))
 	 (rec-str? (find-symbol (format nil "~a?" const-str)))
 	 (acc-strs? (loop for acc in accessor-ids
 			 thereis
@@ -1537,6 +1551,9 @@
    (member expr *pvs2cl-primitives*
 	       :test #'same-primitive?))
 
+(defmethod pvs2cl-primitive? ((expr expr))
+  nil)
+
 ;
 ; This is sound as we've already gone through pvs2cl-primitve?
 ; by this point.  However - should do it properly at some point
@@ -1601,19 +1618,42 @@
 
 (defun write-defn (defn output)
   (when defn
-    (format output "~%")
     (cond (output 
+	   (format output "~%")
 	   (write defn :level nil :length nil
 	       :pretty t :stream output))
 	  (t (terpri)(terpri) (ppr defn)))))
 
 (defun write-decl-defns (dec output)
   (write-defn (definition (in-defn dec)) output)
-    (write-defn (definition (in-defn-m dec)) output)
-      (write-defn (definition (in-defn-d dec)) output)
-        (write-defn (definition (ex-defn dec)) output)
-	  (write-defn (definition (ex-defn-m dec)) output)
-	    (write-defn (definition (ex-defn-d dec)) output))
+  (write-defn (definition (in-defn-m dec)) output)
+  (write-defn (definition (in-defn-d dec)) output)
+  (write-defn (definition (ex-defn dec)) output)
+  (write-defn (definition (ex-defn-m dec)) output)
+  (write-defn (definition (ex-defn-d dec)) output))
+
+(defun write-decl-symbol-table (dec output)
+  (when (and (definition (in-defn dec))
+	     (not (eq (id dec) (name (in-defn dec)))))
+    (format output "~%;;;   ~a - ~a" (id dec) (name (in-defn dec))))
+  (when (and (definition (in-defn-m dec))
+	     (not (eq (makesym "_~a" (id dec)) (name (in-defn-m dec)))))
+    (format output "~%;;;   ~a - ~a" (id dec) (name (in-defn-m dec))))
+  (when (and (definition (in-defn-d dec))
+	     (not (eq (makesym "~a!" (id dec)) (name (in-defn-d dec)))))
+    (format output "~%;;;   ~a - ~a" (id dec) (name (in-defn-d dec))))
+  (when (and (definition (ex-defn dec))
+	     (not (eq (id dec) (name (ex-defn dec)))))
+    (break "ex")
+    (format output "~%;;;   ~a - ~a" (id dec) (name (ex-defn dec))))
+  (when (and (definition (ex-defn-m dec))
+	     (not (eq (id dec) (name (ex-defn-m dec)))))
+    (break "ex-m")
+    (format output "~%;;;   ~a - ~a" (id dec) (name (ex-defn-m dec))))
+  (when (and (definition (ex-defn-d dec))
+	     (not (eq (id dec) (name (ex-defn-d dec)))))
+    (break "ex-d")
+    (format output "~%;;;   ~a - ~a" (id dec) (name (ex-defn-d dec)))))
 
 (defun print-lisp-defns (theory &optional file-string supersede?)
   (if file-string
