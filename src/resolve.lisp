@@ -597,7 +597,8 @@
 	       (if (typep nfml 'formal-type-decl)
 		   (compatible-parameters?* (cdr actuals) (cdr formals) nalist)
 		   (some #'(lambda (ty)
-			     (let ((nact (copy-untyped (car actuals))))
+			     (let ((nact (copy-untyped (car actuals)))
+				   (*generate-tccs* 'none))
 			       (typecheck* nact nil nil nil)
 			       (set-type (expr nact) ty)
 			       (compatible-parameters?*
