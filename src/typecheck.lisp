@@ -374,8 +374,10 @@
 	      (append (formals adt)
 		      (assuming adt))))
 	  (when (importings adt)
-	    (mapcar #'theory-name
-	      (remove-if #'library (importings adt))))))
+	    (mapcan #'(lambda (imp)
+			(unless (library (theory-name imp))
+			  (list (theory-name imp))))
+	      (importings adt)))))
 
 (defun mod-or-using? (obj)
   (typep obj '(or mod-decl importing)))
