@@ -18,9 +18,6 @@
 	(cuthstr (string (id cuth)))
 	(exclude (if (listp exclude) exclude (list exclude)))
 	(all-exclude (append exclude (list "sets[nat].singleton"
-			   "sets.the"
-			   "sets[nat].add"
-			   "sets[nat].remove"
 			   "sets[nat].union"
 			   "sets[nat].intersection"
 			   "sets[nat].difference"

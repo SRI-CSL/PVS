@@ -21,11 +21,6 @@
       (when *verbose*
         (format t ,str ,@args))))
 
-(defun abort-translation (expr)
-  (ws1s-msg (format nil  "Not translatable: ~a" expr))
-  (throw 'not-ws1s-translatable nil))
-
-
 ;; WS1S type declarations
 
 (defun ws1s-types ()
@@ -141,9 +136,9 @@
       (values (funcall operator dfa1 dfa2) free2))))
 
 (defmethod fmla-to-dfa* ((fml disequation) free)
-  (multiple-value-bind (dfa1 free1)
-      (fmla-to-dfa* (make!-equation (args1 fml) (args2 fml)) free)
-    (values (dfa-negation dfa1) free1)))
+  (fmla-to-dfa*
+   (make!-negation (make!-equation (args1 fml) (args2 fml)))
+   free))
 
 (defmethod fmla-to-dfa* ((fml forall-expr) free)
   (fmla-to-dfa*
@@ -164,8 +159,7 @@
 	    (levels (loop for type in types
 			  collect (cond ((tc-eq type *boolean*) 0)
 					((tc-eq type *naturalnumber*) 1)
-					((tc-eq type (fset-of-nats)) 2)
-					(t (break))))))
+					((tc-eq type (fset-of-nats)) 2)))))
 	(setf *boundvars* (append (pairlis vars indices) *boundvars*))
 	(multiple-value-bind (dfa-body new-free)
 	    (fmla-to-dfa* (make!-conjunction (make!-conjunction* preds)
@@ -214,27 +208,30 @@
 	   (call-next-method)))))
 
 (defun var1-eq-term1-to-dfa* (i term1 free)
-  (cond ((number-expr? term1)                               ; p_i = n
+  (cond ((natural-number-expr? term1)                       ; p_i = n
 	 (values (dfa-const (number term1) i) free))
 	((var1? term1 free)                                 ; p_i = p_j
 	 (multiple-value-bind (j new-free)
 	     (lookup-var1 term1 free)
 	   (values (dfa-eq1 i j) new-free)))
-	((and (tc-eq (operator term1) (plus-operator))      ; p_i = p_j + n
+	((and (application? term1)                          ; p_i = p_j + n
+              (tc-eq (operator term1) (plus-operator))    
 	      (var1? (args1 term1) free)
-	      (number-expr? (args2 term1)))
+	      (natural-number-expr? (args2 term1)))
 	 (multiple-value-bind (j new-free)
 	     (lookup-var1 (args1 term1) free)
 	   (values (dfa-plus1 i j (number (args2 term1))) new-free)))
-	((and (tc-eq (operator term1) (plus-operator))      ; p_i = n + p_j
+	((and (application? term1)
+              (tc-eq (operator term1) (plus-operator))      ; p_i = n + p_j
 	      (var1? (args2 term1) free)
-	      (number-expr? (args1 term1)))
+	      (natural-number-expr? (args1 term1)))
 	 (multiple-value-bind (j new-free)
 	     (lookup-var1 (args2 term1) free)
 	   (values (dfa-plus1 i j (number (args1 term1))) new-free)))
-	((and (tc-eq (operator term1) (minus-operator))     ; p_i = p_j - n
+	((and (application? term1)
+              (tc-eq (operator term1) (minus-operator))     ; p_i = p_j - n
 	      (var1? (args1 term1) free)
-	      (number-expr? (args2 term1)))
+	      (natural-number-expr? (args2 term1)))
 	 (multiple-value-bind (j new-free)
 	     (lookup-var1 (args1 term1) free)
 	   (values (dfa-minus1 i j (number (args2 term1))) new-free)))
@@ -243,13 +240,14 @@
   
   
 (defun var2-eq-term2-to-dfa* (i term2 free)
-  (cond ((tc-eq (emptyset-operator) term2)                    ; P_i = empty
+  (cond ((tc-eq (emptyset-operator) term2)                    ; P_i = emptyset
 	 (values (dfa-empty i) free))
-	((var2? term2 free)                             ; P_i = P_j
+	((var2? term2 free)                                   ; P_i = P_j
 	 (multiple-value-bind (j new-free)
 	     (lookup-var2 term2 free)
 	   (values (dfa-eq2 i j) new-free)))
-	((tc-eq (union-operator) (operator term2))             ; P_i = P_j union P_k
+	((and (application? term2)
+	      (tc-eq (union-operator) (operator term2)))      
 	 (let ((lhs (args1 term2))
 	       (rhs (args2 term2)))
 	   (cond ((and (tc-eq (emptyset-operator) lhs)         ; P_i = empty union empty
@@ -265,7 +263,7 @@
 		  (multiple-value-bind (j new-free)
 		      (lookup-var2 lhs free)
 		    (values (dfa-eq2 i j) new-free)))
-		 ((and (var2? lhs free)
+		 ((and (var2? lhs free)                        ; P_i = P_j union P_k
 		       (var2? rhs free))
 		  (multiple-value-bind (j new-free)                    
 		      (lookup-var2 lhs free)
@@ -274,13 +272,14 @@
 		      (values (dfa-union i j k) new-new-free))))
 		 (t
 		  (throw 'not-ws1s-translatable nil)))))
-	((tc-eq (intersection-operator) (operator term2))
+	((and (application? term2)
+	      (tc-eq (intersection-operator) (operator term2)))
 	 (let ((lhs (args1 term2))
 	       (rhs (args2 term2)))
 	   (cond ((or (tc-eq (emptyset-operator) lhs)       ; P_i = _ inter empty, P_i = empty inter _  
 		      (tc-eq (emptyset-operator) rhs)) 
 		  (values (dfa-empty i) free))
-		 ((and (var2? (args1 term2) free)     ; P_i = P_j inter P_k
+		 ((and (var2? (args1 term2) free)           ; P_i = P_j inter P_k
 		       (var2? (args2 term2) free))
 		  (multiple-value-bind (j new-free)
 		      (lookup-var2 (args1 term2) free)
@@ -295,7 +294,7 @@
 (defmethod atom-to-dfa* ((fml application) free)
   (let ((op (operator fml))
 	(args (arguments fml)))
-    (cond ((= (length args) 1)                                  ; p_i in P_j
+    (cond ((= (length args) 1)                                  ; P_j(p_i)
 	   (term1-in-term2-to-dfa* (first args) op free))
 	  ((tc-eq op (less-operator))                           ; p_i < p_j
 	   (term1-binrel-term1-to-dfa* (args1 fml) (args2 fml) #'dfa-less free))
@@ -318,7 +317,7 @@
 	 (multiple-value-bind (j new-free)
 	     (lookup-var2 var2 free)
 	   (let* ((i (fresh-index))
-		  (dfa (dfa-exists1 i
+		  (dfa (dfa-exists1 i                    ; exists1 p_i. p_i = n & p_i in P_j
 			(dfa-conjunction
 			 (dfa-const (number var1) i)
 			 (dfa-in i j)))))
@@ -332,7 +331,7 @@
 	     (lookup-var1 (args1 var1) free)
 	   (multiple-value-bind (j new-new-free)
 	       (lookup-var2 var2 new-free)
-	     (let* ((k (fresh-index))
+	     (let* ((k (fresh-index))                    ; exists1 p_k. p_k = p_i + n & p_k in P_j
 		    (dfa (dfa-exists1 k
 				      (dfa-conjunction
 				       (dfa-plus1 k i (number (args2 var1)))
@@ -353,7 +352,7 @@
 				       (dfa-plus1 k i (number (args1 var1)))
 				       (dfa-in k j)))))
 	       (values dfa new-new-free)))))
-        ((and (var2? var2 free)                    ; p_i in P_j
+        ((and (var2? var2 free)                           ; p_i in P_j
 	      (var1? var1 free))
 	 (multiple-value-bind (i new-free)
 	     (lookup-var1 var1 free)
@@ -366,10 +365,22 @@
 (defun term1-binrel-term1-to-dfa* (arg1 arg2 binrel free)
   (cond ((and (natural-number-expr? arg1)                               ; n binrel p_j
 	      (var1? arg2 free))
-	 (const1-binrel-var1-to-dfa* (number arg1) arg2 binrel free))
-	((and (natural-number-expr? arg2)                               ; n binrel p_j
+	 (multiple-value-bind (j new-free)
+	     (lookup-var1 arg2 free)       
+	   (let* ((i (fresh-index))          ; exists1 p_i. p_i = n & p_i binrel p_j
+		  (dfa (dfa-exists1 i
+				    (dfa-conjunction (dfa-const (number arg1) i)
+						     (funcall binrel i j)))))
+	     (values dfa new-free))))
+	((and (natural-number-expr? arg2)                               ; p_j binrel n
 	      (var1? arg1 free))
-	 (const1-binrel-var1-to-dfa* (number arg2) arg1 binrel free))
+	 (multiple-value-bind (j new-free)
+	     (lookup-var1 arg1 free)
+	   (let* ((i (fresh-index))        ; exists1 p_i. p_i = n & p_j binrel p_i
+		  (dfa (dfa-exists1 i
+				    (dfa-conjunction (dfa-const (number arg2) i)
+						     (funcall binrel j i)))))
+	     (values dfa new-free))))
         ((and (var1? arg1 free)                                         ; p_i binrel p_j
 	      (var1? arg2 free))
 	 (multiple-value-bind (i new-free)
@@ -379,19 +390,6 @@
 	     (values (funcall binrel i j) new-new-free))))
 	(t
 	 (throw 'not-ws1s-translatable nil))))
-
-(defun const1-binrel-var1-to-dfa* (const1 var1 binrel free)
-  (assert (and (integerp const1) (>= const1 0)))
-  (assert (var1? var1 free))
-  (multiple-value-bind (j new-free)
-      (lookup-var1 var1 free)
-    (let* ((i (fresh-index))
-	   (dfa (dfa-exists1 i
-			     (dfa-conjunction (dfa-const const1 i)
-					      (funcall binrel i j)))))
-      (values dfa new-free))))
-
-
 
 
 
