@@ -88,6 +88,7 @@
 (pvs-abbreviate 'status-proofchain-pvs-file 'spcf)
 (pvs-abbreviate 'status-proofchain-importchain 'spci)
 (pvs-abbreviate 'help-pvs 'pvs-help)
+(pvs-abbreviate 'help-pvs-bnf 'pvs-help-bnf)
 (pvs-abbreviate 'help-pvs-language 'pvs-help-language)
 (pvs-abbreviate 'help-pvs-prover 'pvs-help-prover)
 (pvs-abbreviate 'help-pvs-prover-command 'pvs-help-prover-command)
