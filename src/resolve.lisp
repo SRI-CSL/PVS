@@ -1089,6 +1089,10 @@
   (and (tc-eq (type res1) (type res2))
        (< (locality res2) (locality res1))))
 
+(defmethod locality ((ex name-expr))
+  (assert (resolution ex))
+  (locality (resolution ex)))
+
 (defmethod locality ((res resolution))
   (locality (declaration res)))
 
@@ -1326,7 +1330,7 @@
 	     (delete-duplicates
 	      (mapcan #'(lambda (bnd)
 			  (all-possible-bindings
-			   (cdr dtypes) arguments bnd))
+			   (cdr dtypes) (cdr arguments) bnd))
 		(if (member bindings abindings :test #'equal)
 		    abindings
 		    (nconc abindings (list bindings))))
