@@ -64,9 +64,6 @@
 (defvar *pvs-context-path* nil
   "The current context path - this can change when loading libraries")
 
-(defvar *pvs-current-context-path* nil
-  "The current context path - this one only changes with change-context")
-
 (defvar *pvs-initialized* nil)
 (defvar *pvs-files* nil)
 
@@ -356,6 +353,11 @@ that gensubst does not try to pseudo-normalize inappropriately.")
 (defvar *context-modified* nil
   "Set by add-declaration and modify-declaration to indicate that the
 current proof is suspect.")
+
+(defvar *insert-add-decl* t
+  "Flag used for the add-declaration and modify-declaration commands to
+   allow typechecking without side effects.")
+
 
 ;;; Set when typechecking add- and mod-decls
 (defvar *tc-add-decl* nil)
