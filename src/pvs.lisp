@@ -1011,7 +1011,9 @@
   (let ((fn (if (pathnamep filename)
 		(pathname-name filename)
 		filename)))
-    (cdr (gethash fn *pvs-files*))))
+    (or (cdr (gethash fn *pvs-files*))
+	(and (equal fn "prelude")
+	     *prelude-theories*))))
 
 (defun tca (theory &optional forced?)
   (typecheckall theory forced?))
