@@ -273,8 +273,7 @@
 		       (directory-p (merge-pathnames
 				     (string libname)
 				     (format nil "~a/lib/" *pvs-path*))))
-		  (merge-pathnames (string libname)
-				   (working-directory))))
+		  (merge-pathnames (string libname) *pvs-context-path*)))
 	  (cond (condition
 		 (values nil (format nil "~a" condition)))
 		((not (file-exists-p lib))
@@ -309,8 +308,9 @@
     (if lib-decl
 	(let ((path (if (typep theory 'library-theory)
 			(merge-pathnames (library lib-decl) (library theory))
-			(library lib-decl))))
-	  (if (probe-file path)
+			(merge-pathnames (library lib-decl)
+					 *pvs-context-path*))))
+	  (if (file-exists-p path)
 	      (pvs-truename path)
 	      (progn (setf (module lib-decl) *current-theory*)
 		     (type-error lib-decl "Library directory ~s does not exist"
