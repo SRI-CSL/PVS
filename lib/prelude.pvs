@@ -1197,6 +1197,60 @@ numbers: THEORY
  END numbers
 
 
+% number-fields provides the field axioms.  This allows development of,
+% for example, complex numbers or nonstandard reals as subtypes, without
+% having to extend the field operators.  Extended reals are not a subtype
+% of number_field, as division by zero is allowed in the extended reals.
+% Note that order relations are not defined here.
+
+number_fields: THEORY
+ BEGIN
+  number_field: NONEMPTY_TYPE FROM number
+  numfield: NONEMPTY_TYPE = number_field
+  number_field?(n: number): bool = number_field_pred(n)
+
+  % The following declarations, if they could be expanded, are built in to
+  %  the typechecker and prover:
+  % 0, 1, 2, ... : number_field
+  % AXIOM 0 /= 1 AND 0 /= 2 AND 1 /= 2 AND ...
+
+  nonzero_number: NONEMPTY_TYPE = {r: number_field | r /= 0} CONTAINING 1
+  nznum: NONEMPTY_TYPE = nonzero_number
+
+  +, -, *: [numfield, numfield -> numfield]
+  /: [numfield, nznum -> numfield]
+  -: [numfield -> numfield]
+
+  % Field Axioms
+
+  x, y, z: VAR numfield
+  n0x: VAR nznum
+
+  commutative_add : POSTULATE x + y = y + x
+
+  associative_add : POSTULATE x + (y + z) = (x + y) + z
+
+  identity_add    : POSTULATE x + 0 = x
+
+  inverse_add     : POSTULATE x + -x = 0
+
+  minus_add       : POSTULATE x - y = x + -y
+
+  commutative_mult: POSTULATE x * y = y * x
+
+  associative_mult: POSTULATE x * (y * z) =  (x * y) * z
+
+  identity_mult   : POSTULATE 1 * x = x
+
+  inverse_mult    : POSTULATE n0x * (1/n0x) = 1
+
+  div_def         : POSTULATE y/n0x = y * (1/n0x)
+
+  distributive    : POSTULATE x * (y + z) = (x * y) + (x * z)
+
+ END number_fields
+  
+
 % reals defines the real numbers as an uninterpreted subtype of number.
 % Though not explicitly specified, all numeric constants are known to be
 % of type real (hence number). Note that / is defined only when the second
@@ -1208,23 +1262,34 @@ numbers: THEORY
 reals: THEORY
  BEGIN
 
-  real: NONEMPTY_TYPE FROM number
+  real: NONEMPTY_TYPE FROM number_field
 
-  real?(n:number): bool = real_pred(n)
+  real?(n:number): bool = number_field_pred(n) AND real_pred(n)
 
   % The following declarations, if they could be expanded, are built in to
-  %  the typechecker and prover:
-  % 0, 1, 2, ... : real
-  % AXIOM 0 /= 1 AND 0 /= 2 AND 1 /= 2 AND ...
+  %  the typechecker:
+  % AXIOM real_pred(0) AND real_pred(1) AND real_pred(2) AND ...
+  % JUDGEMENT 0, 1, 2, ... HAS_TYPE real
 
   nonzero_real: NONEMPTY_TYPE = {r: real | r /= 0} CONTAINING 1
   nzreal: NONEMPTY_TYPE = nonzero_real
+  nzreal_is_nznum: JUDGEMENT nonzero_real SUBTYPE_OF nonzero_number
 
   x, y: VAR real
+  n0z: VAR nzreal
 
-  +, -, *: [real, real -> real]
-  /: [real, nzreal -> real]
-  -: [real -> real]
+  closed_plus:    AXIOM real_pred(x + y)
+  closed_minus:   AXIOM real_pred(x - y)
+  closed_times:   AXIOM real_pred(x * y)
+  closed_divides: AXIOM real_pred(x / n0z)
+  closed_neg:     AXIOM real_pred(-x)
+
+  real_plus_real_is_real:  JUDGEMENT +(x,y) HAS_TYPE real
+  real_minus_real_is_real: JUDGEMENT -(x,y) HAS_TYPE real
+  real_times_real_is_real: JUDGEMENT *(x,y) HAS_TYPE real
+  real_div_nzreal_is_real: JUDGEMENT /(x,n0z) HAS_TYPE real
+
+  minus_real_is_real: JUDGEMENT -(x) HAS_TYPE real
 
   <(x, y):  bool
   <=(x, y): bool = x < y OR x = y;
@@ -1251,30 +1316,7 @@ real_axioms: THEORY
   x, y, z: VAR real
   n0x: VAR nzreal
 
-  % Field Axioms
-
-  commutative_add : POSTULATE x + y = y + x
-
-  associative_add : POSTULATE x + (y + z) = (x + y) + z
-
-  identity_add    : POSTULATE x + 0 = x
-
-  inverse_add     : POSTULATE x + -x = 0
-
-  minus_add       : POSTULATE x - y = x + -y
-
-  commutative_mult: POSTULATE x * y = y * x
-
-  associative_mult: POSTULATE x * (y * z) =  (x * y) * z
-
-  identity_mult   : POSTULATE 1 * x = x
-
-  inverse_mult    : POSTULATE n0x * (1/n0x) = 1
-
-  div_def         : POSTULATE y/n0x = y * (1/n0x)
-
-  distributive    : POSTULATE x * (y + z) = (x * y) + (x * z)
-
+  % Field Axioms are now in number_fields
 
   % Order Axioms
 
@@ -1444,7 +1486,8 @@ rationals: THEORY
   rational: NONEMPTY_TYPE FROM real
   rat: NONEMPTY_TYPE = rational
 
-  rational?(n: number): bool = real_pred(n) AND rational_pred(n)
+  rational?(n: number): bool =
+    number_field_pred(n) AND real_pred(n) AND rational_pred(n)
 
   % The following declarations, if they could be expanded, are built in to
   %  the typechecker:
@@ -1528,7 +1571,8 @@ integers: THEORY
   int: NONEMPTY_TYPE = integer
 
   integer?(n:number): bool =
-    real_pred(n) AND rational_pred(n) AND integer_pred(n)
+    number_field_pred(n) AND real_pred(n)
+      AND rational_pred(n) AND integer_pred(n)
 
   % The following declarations, if they could be expanded, are built in to
   %  the typechecker:
@@ -3621,13 +3665,15 @@ mucalculus[T:TYPE]: THEORY
   s: VAR T
   p, p1, p2: VAR pred[T]
   predicate_transformer: TYPE = [pred[T]->pred[T]]
-  pp: VAR predicate_transformer
+  pt: VAR predicate_transformer
   setofpred: VAR pred[pred[T]]
 
   <=(p1,p2): bool = FORALL s: p1(s) IMPLIES p2(s)
 
-  monotonic?(pp): bool =
-      FORALL p1, p2: p1 <= p2 IMPLIES pp(p1) <= pp(p2)
+  monotonic?(pt): bool =
+      FORALL p1, p2: p1 <= p2 IMPLIES pt(p1) <= pt(p2)
+
+  pp: VAR (monotonic?)
 
   fixpoint?(pp, p): bool = (pp(p) = p)
 
