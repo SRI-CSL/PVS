@@ -2865,3 +2865,102 @@ space")
 
 (defmethod variable? ((expr T))
   nil)
+
+
+;; Destructuring of curried applications
+;; e.g. f(a)(b, c)(d) ==> f (a b c d)
+
+(defun destructure-application (e &optional acc)
+  (if (application? e)
+      (destructure-application (operator e)
+			       (append (arguments e) acc))
+    (values e acc)))
+
+;; Destructering of universal and existential-strength quantifications
+;; in a list of bindings and the body
+
+(defmethod destructure-existential ((fml exists-expr) &optional bndngs negative?)
+  (destructure-existential (expression fml)
+			   (append (bindings fml) bndngs)
+			   negative?))
+
+(defmethod destructure-existential ((fml negation) &optional bndngs negative?)
+  (destructure-universal (args1 fml) bndngs negative?))
+
+(defmethod destructure-existential ((fml expr) &optional bndngs negative?)
+  (values (nreverse bndngs)
+	  (if negative? (make!-negation fml) fml)))
+
+(defmethod destructure-universal ((fml forall-expr) &optional bndngs negative?)
+  (destructure-universal (expression fml)
+			 (append (bindings fml) bndngs)
+			 negative?))
+
+(defmethod destructure-universal ((fml negation) &optional bndngs negative?)
+  (destructure-universal (args1 fml) bndngs negative?))
+
+(defmethod destructure-universal ((fml expr) &optional bndngs negative?)
+  (values (nreverse bndngs)
+	  (if negative? (make!-negation fml) fml)))
+
+;; Tests if a quantified formula is of universal or
+;; of existential strengths
+
+(defmethod essentially-universal? ((fml forall-expr))
+  fml)
+
+(defmethod essentially-universal? ((fml negation))
+  (essentially-existential? (args1 fml)))
+
+(defmethod essentially-universal? ((fml expr))
+  nil)
+
+(defmethod essentially-existential? ((fml exists-expr))
+  fml)
+
+(defmethod essentially-existential? ((fml negation))
+  (essentially-universal? (args1 fml)))
+
+(defmethod essentially-existential? ((fml expr))
+  nil)
+
+;; Lazy copying for some built-in predicates
+
+(defun lcopy-negation (orig arg)
+  (if (eq (args1 orig) arg) orig
+    (make!-negation arg)))
+
+(defun lcopy-conjunction (orig arg1 arg2)
+  (if (and (eq (args1 orig) arg1)
+	   (eq (args2 orig) arg2))
+      orig
+    (make!-conjunction arg1 arg2)))
+
+(defun lcopy-disjunction (orig arg1 arg2)
+  (if (and (eq (args1 orig) arg1)
+	   (eq (args2 orig) arg2))
+      orig
+    (make!-disjunction arg1 arg2)))
+
+(defun lcopy-implication (orig arg1 arg2)
+  (if (and (eq (args1 orig) arg1) (eq (args2 orig) arg2)) orig
+    (make!-implication arg1 arg2)))
+
+(defun lcopy-iff (orig arg1 arg2)
+  (if (and (eq (args1 orig) arg1) (eq (args2 orig) arg2)) orig
+    (make!-iff arg1 arg2)))
+
+(defun lcopy-equality (orig arg1 arg2)
+  (if (and (eq (args1 orig) arg1) (eq (args2 orig) arg2)) orig
+    (make!-equality arg1 arg2)))
+
+(defun lcopy-disequality (orig arg1 arg2)
+  (if (and (eq (args1 orig) arg1) (eq (args2 orig) arg2)) orig
+    (make!-disequality arg1 arg2)))
+
+
+
+
+
+
+		    
