@@ -127,7 +127,8 @@ reparsing and retypechecking of the entire importchain."
 
 (defun pvs-typecheck-file (filename prove-tccs-p importchain-p cmd)
   (save-some-pvs-buffers)
-  (cond ((file-exists-p (pvs-file-name filename))
+  (cond ((or (get-pvs-file-buffer filename)
+	     (file-exists-p (pvs-file-name filename)))
 	 (pvs-bury-output)
 	 (pvs-send (format "(typecheck-file \"%s\" %s %s %s)"
 		       filename (and current-prefix-arg t)
