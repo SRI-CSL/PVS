@@ -7,13 +7,13 @@
 (setq debug-on-error t)
 
 (defconst pvs-emacs-system
-  (cond ((string-match "Xemacs 21" (emacs-version))
+  (cond ((string-match "XEmacs 21" (emacs-version))
 	 'xemacs21)
 	((string-match "XEmacs 20" (emacs-version))
 	 'xemacs20)
 	((string-match "XEmacs 19" (emacs-version))
 	 'xemacs19)
-	((string-match "Emacs 20" (emacs-version))
+	((string-match "Emacs 2" (emacs-version))
 	 'emacs20)
 	((string-match "Emacs 19" (emacs-version))
 	 'emacs19)
