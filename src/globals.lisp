@@ -23,6 +23,8 @@
     "src/prover/groundeval" "src/WS1S/lisp"))
 
 (defparameter *pvs-version* "2.3 Alpha")
+(defparameter *binfile-version* 11)
+
 (defparameter *context-name* ".pvscontext")
 
 (defvar *pvs-global-tables* nil)
