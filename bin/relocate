@@ -1,8 +1,10 @@
 #! /bin/sh
 
+pvspath=`pwd`
+
 # Relocate PVSPATH and reset PVSALLEGRO in the pvs shell script.
-echo Relocating PVSPATH in the \"pvs\" shell script to $PWD
-sed -e "s,^PVSPATH=.*$,PVSPATH=$PWD," \
+echo Relocating PVSPATH in the \"pvs\" shell script to $pvspath
+sed -e "s,^PVSPATH=.*$,PVSPATH=$pvspath," \
     -e "s,allegro-full,allegro," \
     pvs.template > pvs
 chmod a+x pvs
@@ -17,30 +19,30 @@ fi
 # Relocate *pvs-path* in make-allegro-pvs.lisp, if it exists
 if [ -e src/make-allegro-pvs.lisp.template ]
  then
-  echo Relocating *pvs-path* in src/make-allegro-pvs.lisp to $PWD
-  sed -e "/^(defvar \*pvs-path\*/s,\"[^\"]*\",\"$PWD\"," \
+  echo Relocating *pvs-path* in src/make-allegro-pvs.lisp to $pvspath
+  sed -e "/^(defvar \*pvs-path\*/s,\"[^\"]*\",\"$pvspath\"," \
       src/make-allegro-pvs.lisp.template > src/make-allegro-pvs.lisp
 fi
 
 # Relocate *pvs-path* in pvs.system if it exists
 if [ -e pvs.system.template ]
  then
-  echo Relocating *pvs-path* in pvs.system to $PWD
-  sed -e "/(defparameter \*pvs-path\*/s,\"[^\"]*\",\"$PWD\"," \
+  echo Relocating *pvs-path* in pvs.system to $pvspath
+  sed -e "/(defparameter \*pvs-path\*/s,\"[^\"]*\",\"$pvspath\"," \
       pvs.system.template > pvs.system
 fi
 
 # Relocate *ess-path* in ess/dist-ess.lisp and ess/allegro-runtime.lisp
 if [ -e ess/dist-ess.lisp.template ]
  then
-  echo Relocating *ess-path* in ess/dist-ess.lisp to $PWD/ess
-  sed -e "/(defvar \*ess-path\*/s,\"[^\"]*\",\"$PWD/ess\"," \
+  echo Relocating *ess-path* in ess/dist-ess.lisp to $pvspath/ess
+  sed -e "/(defvar \*ess-path\*/s,\"[^\"]*\",\"$pvspath/ess\"," \
       ess/dist-ess.lisp.template > ess/dist-ess.lisp
 fi
 
 if [ -e ess/allegro-runtime.lisp.template ]
  then
-  echo Relocating *ess-path* in ess/allegro-runtime.lisp to $PWD/ess
-  sed -e "/(defvar \*ess-path\*/s,\"[^\"]*\",\"$PWD/ess\"," \
+  echo Relocating *ess-path* in ess/allegro-runtime.lisp to $pvspath/ess
+  sed -e "/(defvar \*ess-path\*/s,\"[^\"]*\",\"$pvspath/ess\"," \
       ess/allegro-runtime.lisp.template > ess/allegro-runtime.lisp
 fi
