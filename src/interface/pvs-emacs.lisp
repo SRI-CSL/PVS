@@ -446,6 +446,8 @@
 ;;; lisp, depending on the value of *to-emacs*.
 ;;; If *type-error-catch* is set, then it is thrown to instead.
 
+(defvar *type-error* nil)
+
 (defun type-error (obj message &rest args)
   (if *type-error-catch*
       (throw *type-error-catch*
@@ -454,15 +456,26 @@
 	(cond ((and *to-emacs*
 		    (or (not *in-checker*)
 			*tc-add-decl*))
-	       (pvs-error "Typecheck error"
-		 (format nil
-		     "~?~:[~;~%You may need to add a semicolon (;) ~
-                      to the end of the previous declaration~]"
-		   message args *in-coercion*)
-		 (or (and (current-theory)
-			  (filename (current-theory)))
-		     *current-file*)
-		 place))
+	       (let ((error (format nil
+				"~?~@[~%~a~]~:[~;~%You may need to add a semicolon (;) ~
+                                 to the end of the previous declaration~]"
+			      message args *type-error* *in-coercion*)))
+		 (if (conversion-occurs-in? obj)
+		     (let* ((*type-error*
+			     (format nil
+				   "--------------~%With conversions, ~
+                                    it becomes the expression ~%  ~a~%~
+                                    and leads to the error:~%  ~a"
+				 obj error))
+			    (*no-conversions-allowed* t))
+		       (untypecheck-theory obj)
+		       (typecheck obj))
+		     (pvs-error "Typecheck error"
+		       error
+		       (or (and (current-theory)
+				(filename (current-theory)))
+			   *current-file*)
+		       place))))
 	      ((and *in-checker* (not *tcdebug*))
 	       (format t "~%~?" message args)
 	       (format t "~%Restoring the state.")
@@ -471,10 +484,34 @@
 	       (format t "~%~?" message args)
 	       (format t "~%Try again.")
 	       (throw 'tcerror t))
-	      (t (format t "~%~?~:[~;~%You may need to add a semicolon (;) ~
-                      to the end of the previous declaration~]"
-		   message args *in-coercion*)
-		 (error "Typecheck error"))))))
+	      (t (let ((error
+			(format nil
+			    "~?~@[~%~a~]~:[~;~%You may need to add a semicolon (;) ~
+                             to the end of the previous declaration~]"
+			  message args *type-error* *in-coercion*)))
+		   (if (conversion-occurs-in? obj)
+		       (let* ((*type-error*
+			       (format nil
+				   "--------------~%With conversions, ~
+                                    it becomes the expression ~%  ~a~%~
+                                    and leads to the error:~%  ~a"
+				 obj error))
+			      (*no-conversions-allowed* t))
+			 (untypecheck-theory obj)
+			 (typecheck obj))
+		       (progn
+			 (format t "~a" error)
+			 (error "Typecheck error")))))))))
+
+(defun conversion-occurs-in? (obj)
+  (let ((conv? nil))
+    (mapobject #'(lambda (ex)
+		   (when (typep ex '(or argument-conversion
+					implicit-conversion
+					lambda-conversion))
+		     (setq conv? t)))
+	       obj)
+    conv?))
 
 (defmethod place ((obj cons))
   (let ((start (place (car obj)))
