@@ -727,7 +727,7 @@
 	       (lhs-bindings (nreverse *lhs-args*))
 	       (new-expr-body `(let ((,rhsvar ,rhs)
 				     (,exprvar ,cl-expr))
-				 (declare (simple-array ,exprvar))
+				 (declare ((simple-array t) ,exprvar))
 				 ,new-cl-expr
 				 ,exprvar))
 	       (newexpr-with-let
@@ -1687,7 +1687,7 @@
   nil)
 
 (defmethod pvs2cl-lisp-type* ((type tupletype))
-  '(simple-array *))
+  '(simple-array t))
 
 (defmethod pvs2cl-lisp-type* ((type cotupletype))
   nil)
@@ -1695,7 +1695,7 @@
 (defmethod pvs2cl-lisp-type*  ((type recordtype))
   (if (string-type? type)
       'string
-      '(simple-array *)))
+      '(simple-array t)))
 
 (defun subrange-index (type)
   (let ((below (simple-below? type)))
