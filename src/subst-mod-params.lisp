@@ -638,16 +638,9 @@
       'generated-by nil)))
 
 (defmethod subst-mod-params* ((decl conversion-decl) modinst bindings)
-  (with-slots (name) decl
+  (with-slots (expr) decl
     (lcopy decl
-      'name (subst-mod-params* name modinst bindings)
-      'generated-by nil)))
-
-(defmethod subst-mod-params* ((decl typed-conversion-decl) modinst bindings)
-  (with-slots (name declared-type) decl
-    (lcopy decl
-      'name (subst-mod-params* name modinst bindings)
-      'declared-type (subst-mod-params* declared-type modinst bindings)
+      'expr (subst-mod-params* expr modinst bindings)
       'generated-by nil)))
 
 
@@ -1007,7 +1000,10 @@
 
 (defmethod subst-mod-params* ((expr application) modinst bindings)
   (with-slots (operator argument) expr
-    (let* ((op (subst-mod-params* operator modinst bindings))
+    (let* ((op (let ((*smp-include-actuals*
+		      (and *smp-include-actuals*
+			   (not (valid-infix-application? expr)))))
+		 (subst-mod-params* operator modinst bindings)))
 	   (arg (subst-mod-params* argument modinst bindings)))
       (if (and (eq op operator)
 	       (eq arg argument))
