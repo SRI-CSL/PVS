@@ -416,14 +416,6 @@ proof scripts, including those already proved."
 		  (member-equal ext '("ppe" "tccs")))))
       pvs-valid-formula-buffer))
 
-(defun confirm-not-in-checker ()
-  (when pvs-in-checker
-    (unless (equal (buffer-name) ilisp-buffer)
-      (pop-to-buffer ilisp-buffer)
-      (goto-char (point-max)))
-    (error "Must exit the prover first")))
-
-
 ;;; Editing proofs
 
 (defvar edit-proof-mode-map nil)
