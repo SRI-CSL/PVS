@@ -63,6 +63,7 @@
   (when *subst-type-hash* (clrhash *subst-type-hash*))
   (reset-subst-mod-params-cache)
   (reset-pseudo-normalize-caches)
+  (clrhash *assert-if-arith-hash*)
   ;;(reset-fully-instantiated-cache)
   (reset-beta-cache) ;;; PDL added Nov23 1994
   (reset-type-canon-cache)
@@ -1519,9 +1520,7 @@
       (pvs-message "~a is not typechecked" name)
       (case (intern (string-downcase origin))
 	(ppe (let* ((theories (ppe-form (get-theory name)))
-		    (typespec (if unproved?
-				  'unproved-formula-decl
-				  'formula-decl))
+		    (typespec (formula-typespec unproved?))
 		    (decl (get-decl-at line typespec theories)))
 	       (values (find-if #'(lambda (d)
 				    (and (formula-decl? d)
@@ -1577,14 +1576,10 @@
 		       (values decl (when decl (place decl))))
 		     (pvs-message "Library ~a is not imported" name)))
 	       (let* ((theories (typecheck-file name nil nil nil t))
-		      (typespec (if unproved?
-				    'unproved-formula-decl
-				    'formula-decl))
+		      (typespec (formula-typespec unproved?))
 		      (decl-at (get-decl-at line typespec theories))
 		      (decl (if (judgement? decl-at)
-				(let ((jtcc (find-if #'(lambda (d)
-							 (eq (id d)
-							     (id decl-at)))
+				(let ((jtcc (find-if #'judgement-tcc?
 					      (generated decl-at))))
 				  (unless (place jtcc)
 				    (setf (place jtcc) (place decl-at)))
@@ -1596,15 +1591,15 @@
   (if unproved?
       '(or unproved-formula-decl
 	   (and judgement
-		(satisfies id)
 		(satisfies (lambda (jd)
 			     (some #'(lambda (d)
-				       (and (tcc? d)
-					    (eq (id d) (id jd))
+				       (and (judgement-tcc? d)
 					    (unproved? d)))
 				   (generated jd))))))
       '(or formula-decl
-	   (and judgement (satisfies id)))))
+	   (and judgement
+		(satisfies (lambda (jd)
+			     (some #'judgement-tcc? (generated jd))))))))
 
 
 ;;; This function is invoked from Emacs by pvs-prove-formula.  It provides
