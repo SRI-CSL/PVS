@@ -312,8 +312,8 @@
 (defun frozen-vars-init ()
   (if *frozen-vars* (clrhash *frozen-vars*)
       (setf *frozen-vars*
-	    (dp-make-hash-table :test 'equal-array
-				:hash-function 'dp-sxhash))))
+	    (make-hash-table :test 'equal-array
+			     :hash-function 'dp-sxhash))))
 
 (defun unlabel (trm)
   (assert (fmla-p trm))
