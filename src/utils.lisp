@@ -61,6 +61,16 @@
 	nex
 	(change-application-class-if-necessary ex nex))))
 
+(defmethod copy :around ((ex equation) &rest args)
+  (declare (ignore args))
+  (let ((nex (call-next-method)))
+    (if (or (not (type ex))
+	    (not (type nex))
+	    (iff-or-boolean-equation? nex)
+	    (not (tc-eq (type (args1 nex)) *boolean*)))
+	nex
+	(change-class nex 'infix-boolean-equation))))
+
 ;; Function composition
 
 (defun compose (&rest fns)
@@ -2000,29 +2010,32 @@
 
 
 (defmethod find-supertype ((te subtype))
-  (find-supertype (supertype te)))
+  (with-slots (supertype) te
+    (find-supertype supertype)))
 
 (defmethod find-supertype ((te dep-binding))
-  (find-supertype (type te)))
+  (with-slots (type) te
+    (find-supertype type)))
 
 (defmethod find-supertype ((te type-expr))
   te)
 
 (defmethod find-supertype ((te type-name))
   #+lucid (restore-adt te)
-  (if (and (adt te)
-	   (positive-types (adt te))
-	   (not (every #'null (positive-types (adt te)))))
-      (let* ((nmodinst (adt-modinst (module-instance te))))
-	(if (tc-eq nmodinst (module-instance te))
-	    te
-	    (let* ((res (mk-resolution (declaration te) nmodinst nil))
-		   (nte (copy te
-			  'resolutions (list res)
-			  'actuals (actuals nmodinst))))
-	      (setf (type res) nte)
-	      nte)))
-      te))
+  (let ((adt (adt te)))
+    (if (and adt
+	     (positive-types adt)
+	     (not (every #'null (positive-types adt))))
+	(let* ((nmodinst (adt-modinst (module-instance te))))
+	  (if (tc-eq nmodinst (module-instance te))
+	      te
+	      (let* ((res (mk-resolution (declaration te) nmodinst nil))
+		     (nte (copy te
+			    'resolutions (list res)
+			    'actuals (actuals nmodinst))))
+		(setf (type res) nte)
+		nte)))
+	te)))
 
 ;;; copy-all makes copies all the way down the object.  Because it uses
 ;;; gensubst, this function may only be used when the object has been
@@ -2436,13 +2449,16 @@ space")
   args)
 
 (defmethod arguments ((expr projection-application))
-  (argument-list (argument expr)))
+  (with-slots (argument) expr
+    (argument-list argument)))
 
 (defmethod arguments ((expr application))
-  (argument-list (argument expr)))
+  (with-slots (argument) expr
+    (argument-list (argument expr))))
 
 (defmethod argument-list ((expr tuple-expr))
-  (exprs expr))
+  (with-slots (exprs) expr
+    exprs))
 
 (defmethod argument-list ((expr expr))
   (list expr))
