@@ -478,7 +478,7 @@ system-tar = pvs-system.tgz
 
 emacs19-tar = pvs-emacs19.tgz
 
-tarfiles : ${runtime-image-tar} ${full-image-tar} ${system-tar} ${emacs19-tar}
+tarfiles : make-release-notes ${runtime-image-tar} ${full-image-tar} ${system-tar} ${emacs19-tar}
 
 runtime-image-files = $(wildcard ${bindir}/runtime/*)
 
