@@ -1671,7 +1671,9 @@
   (let ((dom (if (dep-binding? (domain te))
 		 (type (domain te))
 		 (domain te))))
-    (if (subtype? dom)
+    (if (or (subtype? dom)
+	    (and (tupletype? dom)
+		 (some #'subtype? (types dom))))
 	(update-expr-type-funtype assignments expr te)
 	te)))
 
@@ -1731,13 +1733,14 @@
 
 (defmethod update-expr-type-for-maplet (arguments value expr (te funtype))
   (let* ((dtype (extend-domain-types (car arguments) (domain te) expr))
+	 (arg (mk-arg-tuple-expr* (car arguments)))
 	 (rtype (update-expr-type-for-maplet
 		 (cdr arguments) value
-		 (make-application* expr (car arguments))
+		 (make-application expr arg)
 		 (if (or (eq dtype (domain te))
 			 (not (typep (domain te) 'dep-binding)))
 		     (range te)
-		     (substit (range te) (acons (domain te) dtype nil))))))
+		     (substit (range te) (acons (domain te) arg nil))))))
     (if (and (eq dtype (domain te))
 	     (eq rtype (range te)))
 	te
@@ -1745,8 +1748,13 @@
 
 (defmethod extend-domain-types (args (te tupletype) expr)
   (if (cdr args)
-      (extend-domain-types* args (types te) expr)
+      (if (some #'dep-binding? (types te))
+	  (extend-domain-type (mk-arg-tuple-expr* args) te expr)
+	  (extend-domain-types* args (types te) expr))
       (extend-domain-type (car args) te expr)))
+
+(defmethod extend-domain-types (args (te dep-binding) expr)
+  (extend-domain-types args (type te) expr))
 
 (defmethod extend-domain-types (args te expr)
   (if (cdr args)
@@ -1806,6 +1814,27 @@
     (if (eq ntype (type type))
 	type
 	(mk-dep-binding (id type) ntype))))
+
+(defmethod extend-domain-type (arg (type tupletype) expr)
+  (if (some #'(lambda (ty)
+		(or (subtype-of? ty type)
+		    (and (fully-instantiated? ty)
+			 (let ((*generate-tccs* 'none)
+			       (narg (typecheck* (copy-untyped arg)
+						 ty nil nil)))
+			   (some #'(lambda (jty) (subtype-of? jty type))
+				 (judgement-types+ narg))))))
+	    (types arg))
+      type
+      (let* ((*generate-tccs* 'none)
+	     (vid (make-new-variable '|x| expr))
+	     (vb (make-bind-decl vid type))
+	     (var (make-variable-expr vb))
+	     (carg (typecheck* (copy arg) type nil nil))
+	     (upred (make!-lambda-expr (list vb)
+		      (make!-equation var carg))))
+	     (tpred (beta-reduce upred)))
+	(mk-subtype stype tpred)))
 
 (defmethod extend-domain-type (arg type expr)
   (declare (ignore arg expr))
