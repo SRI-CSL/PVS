@@ -88,8 +88,9 @@
 		       :exclusive? exclusive? :proof-counter proof-counter)
 	     (musimp)
 	     (skip)))
-  "Proof strategy that invokes abstract and then model-check.
-   Has the same arguments than abstract"
+  "Proof strategy that invokes abstract the boolean abstraction 
+   proof command and and then model-checks the result.
+   Has the same arguments as abstract."
   "Applies boolean abstraction 
    and prove by model-checking!")
 
@@ -114,8 +115,16 @@
                (simplify)))
   "Rewrites temporal operators into mu/nu expressions, and rewrites
    definitions just like model-check does. Then, Applies boolean abstraction.
-   (abstract list-state-predicates :exclusive? T): Applies boolean abstraction
-   using a list of predicates that are exclusive."
+   The parameter cases-rewrite? can be set to nil to avoid rewriting and 
+   simplification within unresolved selections within CASES expressions 
+   for the sake of efficiency.
+   The parameter exclusive? indicates weather the abstraction predicates
+   are exclusive. This allows a more efficient computation of the abstraction.
+   The parameter proof-counter indicates the maximal number of calls to the
+   decision procedure  when abstracting each atom of the sequent.  Any number 
+   allows to compute a faithful abstraction. However, it is preferable 
+   that the number is at least equal twice the length of the list of 
+   predicates."
   "Applying boolean abstraction after Rewriting and simplifying")
 
 
