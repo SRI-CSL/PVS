@@ -131,6 +131,8 @@ prelude libraries")
 
 (defvar *loaded-libraries* nil)
 
+(defvar *pvs-library-ref-paths* nil)
+
 (defvar *pvs-modules* nil
   "The hash-table of modules known to the system in this session")
 
