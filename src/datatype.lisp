@@ -2641,12 +2641,17 @@ generated")
 				      fpairs))))))
 
 (defun generate-adt-every-rel-case (c pvars avar bvar ptypes fpairs adt)
-  (let ((arec (mk-application (mk-name-expr (recognizer c)) avar))
-	(brec (mk-application (mk-name-expr (recognizer c)) bvar))
-	(vals (mapcar #'(lambda (a)
-			  (let* ((atype (typecheck (copy-untyped
-						    (declared-type a))))
-				 (btype (subst-map-actuals atype fpairs)))
+  (let* ((arec (mk-application (mk-name-expr (recognizer c)) avar))
+	 (brec (mk-application (mk-name-expr (recognizer c)) bvar))
+	 (mpairs (mapcar #'(lambda (fp) (cons (find (car fp) (formals adt)
+						    :test #'same-id)
+					      (car fp)))
+		   fpairs))
+	 (vals (mapcar #'(lambda (a)
+			   (let* ((atype (typecheck
+					     (subst-map-actuals
+					      (declared-type a) mpairs)))
+				  (btype (subst-map-actuals atype fpairs)))
 			    (adt-every-rel
 			     (type a) pvars
 			     (typecheck (mk-application (id a) avar)
