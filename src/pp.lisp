@@ -1076,6 +1076,11 @@
 		    (gethash oper (third *expr-prec-info*))))
 	(setf (parens rhs) 1)))))
 
+(defun sbst-symbol (sym)
+  (or (get sym 'sbst-symbol)
+      (setf (get sym 'sbst-symbol)
+	    (intern (symbol-name sym) 'sbst))))
+
 (defmethod pp* ((ex unary-application))
   (with-slots (operator argument) ex
     (if (and (typep operator 'name-expr)
