@@ -31,7 +31,7 @@
 				       verbose?)))
 	(if rule rule
 	    (skip-msg "No suitable instantiation found")))))
-  "Tries to find instantiations for the top-level, existential strength
+  "Tries to find instantiations for the toplevel, existential strength
    bindings in the sequent formulas specified by FNUMS.
    First, a full case split for the formulas specified by FNUMS and
    WHERE is computed; e.g. a formula in the hypothesis of the form
@@ -41,9 +41,13 @@
    respectively. If there are several such candidates, the procedure uses
    some supposedly best substitution if flat IF-MATCH is set to BEST.
    For the other choices of the IF-MATCH flag refer to the help text
-   of INST?.
+   of INST?. If the COMPLETE? flag is set then only full instantiations
+   of the toplevel bindings are being considered. Finally, the VERBOSE?
+   flag causes the strategy to display some additional information
+   like the number of sequences in the full case split or the
+   score of the selected instantiation.
 
-   CAVEAT: This strategy is only included for experimental purposes
+   CAVEAT: This strategy is included for experimental purposes only
    and its functionality (and speed!) is most likely to change in future
    releases. Thus, proof scripts that are using it are likely to break
    in the future!"
@@ -66,7 +70,7 @@
      (multiple-value-bind (list-of-toplevel-bndngs bodies renamings)
 	 (destructure-inst-fmlas inst-fmlas initial-subst)
        (let ((lvars (collect-vars renamings))
-	     (all-bndngs (mapcan #'identity list-of-toplevel-bndngs))
+	     (all-bndngs (reduce #'append list-of-toplevel-bndngs))
 	     (fmlas (union bodies where-fmlas :test #'tc-eq)))
 	 (let ((*bound-variables* (append all-bndngs *bound-variables*)))
 	   (declare (special *bound-variables*))
@@ -92,7 +96,7 @@
 (defun destructure-inst-fmlas (fmlas initial-subst &optional list-of-bndngs bodies renamings)
   (assert (listp fmlas))
   (if (null fmlas)
-      (values (nreverse list-of-bndngs) (nreverse bodies) (nreverse renamings))
+      (values (reverse list-of-bndngs) (reverse bodies) (reverse renamings))
       (multiple-value-bind (bndngs body)
 	  (destructure-toplevel-existential (car fmlas))
 	(let ((*bound-variables* (append bndngs *bound-variables*)))
@@ -120,7 +124,7 @@
    of a binding and trm is either a new variable or a term constructed from
    the initial substitution."
   (if (null bndngs)
-      (values (nreverse assocs) subst)
+      (values (reverse assocs) subst)
       (let* ((bndng (car bndngs))
 	     (x1    (top-translate-to-dc bndng)))
 	(multiple-value-bind (trm1 subst1)
