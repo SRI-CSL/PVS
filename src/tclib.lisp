@@ -243,7 +243,7 @@
 ;;; (and any libloaded file), and pvs-lib.el.  Note that pvs-strategies is
 ;;; not loaded here, but when the prover is invoked.
 (defun load-prelude-library (lib &optional force?)
-  (declare (global loading-libraries))
+  (declare (special loading-libraries))
   (multiple-value-bind (lib-ref lib-path err-msg)
       (get-prelude-library-refs lib)
     (cond (err-msg
@@ -343,7 +343,7 @@
 	(format t "~%~a/ - ~a" (file-namestring lib) lib)))))
 
 (defun libload (filestr)
-  (declare (global libloads))
+  (declare (special libloads))
   (let* ((lib (directory-namestring filestr))
 	 (filename (file-namestring filestr))
 	 (libpath (libref-to-pathname lib))
