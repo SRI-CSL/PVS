@@ -1649,7 +1649,7 @@
 			(if (some #'(lambda (tccf)
 				      (tc-eq (tccinfo-formula tccf) *false*))
 				  tccforms)
-			    (values 'X nil)
+			    nil
 			    (let* ((tcc-subgoals
 				    (mapcar
 					#'(lambda (x)
