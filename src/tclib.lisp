@@ -253,7 +253,8 @@
 			      (if (module? th)
 				  (change-class th 'library-theory)
 				  (change-class th 'library-datatype))
-			      (setf (library th) lib)
+			      (setf (library th) lib
+				    (library-path th) (namestring libpath))
 			      (update-prelude-library-context th))
 			  *pvs-modules*)
 		 (setf (gethash lib *prelude-libraries*)
@@ -300,7 +301,8 @@
 				      (if (typep th 'module)
 					  (change-class th 'library-theory)
 					  (change-class th 'library-datatype))
-				      (setf (library th) lib))
+				      (setf (library th) lib
+					    (library-path th) (namestring path)))
 				  *pvs-modules*))
 			(t
 			 (remhash filename *pvs-files*)
@@ -345,16 +347,19 @@
 			 (theory (find theoryname theories :test #'same-id)))
 		    (cond (theory
 			   (save-context)
-			   (maphash #'(lambda (id th)
-					(declare (ignore id))
-					(if (typep th 'module)
-					    (change-class th 'library-theory)
-					    (change-class th 'library-datatype))
-					(setf (library th) lib))
+			   (maphash
+			    #'(lambda (id th)
+				(declare (ignore id))
+				(if (typep th 'module)
+				    (change-class th 'library-theory)
+				    (change-class th 'library-datatype))
+				(setf (library th) lib
+				      (library-path th) (namestring path)))
 				    *pvs-modules*)
 			   theory)
 			  (t (type-error lib
-			       "Theory ~a could  not be found in the PVS context of library ~a"
+			       "Theory ~a could  not be found in the ~
+                                PVS context of library ~a"
 			       theoryname lib))))
 		  (type-error lib
 		    "Theory ~a not found in the PVS context of library ~a"
