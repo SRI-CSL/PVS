@@ -172,21 +172,21 @@ inductive_fixpoint: THEORY
   % Assume a non-wellfounded element
   nwf_exists: AXIOM EXISTS n: n = S(n)
 
-  Nind(n):     INDUCTIVE bool = n = 0 OR Nind(S(n))
-  Ncoind(n): COINDUCTIVE bool = n = 0 OR Ncoind(S(n))
+  Nind(n):     INDUCTIVE bool = n = 0 OR EXISTS m: n = S(m) & Nind(m)
+  Ncoind(n): COINDUCTIVE bool = n = 0 OR EXISTS m: n = S(m) & Ncoind(m)
 
   % NN is the predicate transformer corresponding to the (co)inductive defs
-  NN(p: pred[N])(n): bool = n = 0 OR p(S(n))
+  NN(p: pred[N])(n): bool = n = 0 OR EXISTS m: n = S(m) & p(m)
 
   % These use the lfp and gfp defs from the prelude mucalculus theory
   ind_lfp: FORMULA Nind = lfp(NN)
   coind_gfp: FORMULA Ncoind = gfp(NN)
 
   % Repeat Nind_weak_induction, which is proved from lfp_induction
-  Nind_weak_induction_repeated: FORMULA 
+  Nind_weak_induction_repeated: FORMULA
     FORALL (P: [N -> boolean]):
-      (FORALL n: n = 0 OR P(S(n)) IMPLIES P(n)) IMPLIES
-       (FORALL n: Nind(n) IMPLIES P(n));
+      (FORALL (n): (n = 0 OR (EXISTS m: n = S(m) & P(m))) IMPLIES P(n))
+       IMPLIES (FORALL (n): Nind(n) IMPLIES P(n));
 
   % Inductive definitions are a subset of coinductive
   ind_sub_co: FORMULA Nind(n) => Ncoind(n)
