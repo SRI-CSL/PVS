@@ -376,10 +376,6 @@
 	   (error "Parse error"))))
 
 
-;;; type-error gets called on a type error and formats a message for Emacs or
-;;; lisp, depending on the value of *to-emacs*.
-;;; If *type-error-catch* is set, then it is thrown to instead.
-
 (defvar *type-error* nil)
 
 (defun type-error (obj message &rest args)
