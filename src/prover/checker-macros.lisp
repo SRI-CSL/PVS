@@ -132,7 +132,8 @@
 (defvar - '-)
 (defvar *macro-names* nil)
 (defvar *subst-type-hash* ;;used in assert-sformnums
-  (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+  ;;(make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq)
+  nil) ;; Make this NIL till we can analyze this further.
 (defvar *checkpointed-branches* nil)
 (defvar *dp-print-incompatible-warning* t)
 (defvar *print-expanded-dpinfo* t)
