@@ -507,6 +507,9 @@
 (defmacro false-p (term)
   `(eq ,term *false*))
 
+(defmacro true-or-false-p (term)
+  `(or (eq ,term *false*) (eq ,term *true*)))
+
 (defun mk-arith-operator (sym)
   (let ((result (mk-constant sym)))
     (setf (node-type result)
@@ -572,10 +575,10 @@
 
 (defvar *and* (mk-predicate-sym 'and))
 (defvar *or* (mk-predicate-sym 'or))
-
+(defvar *implies* (mk-predicate-sym 'implies))
 
 (defvar *preds*
-  (list *not* *and* *or* *nequal*
+  (list *not* *and* *or* *nequal* *implies*
 	*lesseqp* *lessp* *greaterp* *greatereqp*))
 
 (defun bool-p (term)
@@ -647,6 +650,16 @@
 (defun or-p (term)
   (and (application-p term)
        (eq (funsym term) *or*)))
+
+(defmacro conjunction-p (trm)
+  `(and-p ,trm))
+ 
+(defmacro disjunction-p (trm)
+  `(or-p ,trm))
+
+(defun implication-p (term)
+  (and (application-p term)
+       (eq (funsym term) *implies*)))
 
 (defun dp-numberp (term)
   (declare (type node term))
@@ -1888,11 +1901,11 @@
 
 (defun vars-of (trm)
   (cond ((dp-variable-p trm)
-        (list trm))
-       ((application-p trm)
-	(mapcan #'vars-of
-	  (application-arguments trm)))
-       (t nil)))
+	 (list trm))
+	((application-p trm)
+	 (mapcan #'vars-of
+	   (application-arguments trm)))
+	(t nil)))
 
 (defun occurs-p (x trm)
   (cond ((dp-variable-p trm)
@@ -1905,10 +1918,9 @@
 		   (application-arguments trm)))
 	(t nil)))
 
-(defun replace-by (trm subst)
-  (let ((*subst* subst))
-    (declare (special *subst*))
-    (replace-by* trm)))
+(defun replace-by (trm *subst*)
+  (declare (special *subst*))
+  (replace-by* trm))
 
 (defun replace-by* (trm)
   (declare (special *subst*))
@@ -1942,13 +1954,19 @@
 
 ;; Additional Symbols, Recognizers etc.
 
-(defvar *implies* (mk-predicate-sym 'implies))
-
-(setf *preds* (cons *implies* *preds*))
-
 (defun mk-conjunction (trm1 trm2)
   (declare (type node trm))
   (mk-term (list *and* trm1 trm2)))
+
+(defun mk-conjunction* (trms &optional (acc *true*))
+  (if (null trms) acc
+      (let ((trm (car trms)))
+	(cond ((true-p trm)
+	       (mk-conjunction* (cdr trms) acc))
+	      ((false-p trm)
+	       *false*)
+	      (t (mk-conjunction* (cdr trms)
+				  (mk-conjunction trm acc)))))))
 
 (defun mk-disjunction (trm1 trm2)
   (mk-term (list *or* trm1 trm2)))
@@ -1956,15 +1974,26 @@
 (defun mk-implication (trm1 trm2)
   (mk-term (list *implies* trm1 trm2)))
 
-(defun conjunction-p (term)
-  (and (application-p term)
-       (eq (funsym term) *and*)))
+(defun disequality-p (trm)
+  (and (equality-p trm)
+       (equality-p (lhs trm))
+       (false-p (rhs trm))))
 
-(defun disjunction-p (term)
-  (and (application-p term)
-       (eq (funsym term) *or*)))
+(defun mk-disequality (trm1 trm2)
+  (mk-equality (mk-equality trm1 trm2) *false*))
 
-(defun implication-p (term)
-  (and (application-p term)
-       (eq (funsym term) *implies*)))
+(defun destructure-disequality (trm)
+  #+dbg(assert (disequality-p trm))
+  (let ((arg (lhs trm)))
+    (values (lhs arg) (rhs arg))))
+ 
+(defun destructure-application (trm &optional args)
+  (if (and (application-p trm)
+	   (not (record-p (funsym trm))))
+      (destructure-application (funsym trm)
+                               (append (funargs trm) args))
+    (values trm args)))
+
+
+
 
