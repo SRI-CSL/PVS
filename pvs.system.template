@@ -162,7 +162,7 @@
 				     "/src/decision-procedures/polylib/"
 				     platform))
 			 (ws1spath (concatenate 'string
-				     *pvs-path* "/WS1S/" platform)))
+				     *pvs-path* "/src/WS1S/" platform)))
 		    (load (format nil "~a/bdd.so" bddpath))
 		    (load (format nil "~a/mu.so" bddpath))
 		    (load (format nil "~a/polylib.so" polypath))
