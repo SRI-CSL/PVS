@@ -649,9 +649,6 @@
 	    (*current-context* (make-new-context theory))
 	    (*current-theory* theory)
 	    (*old-tcc-names* nil))
-	(dolist (u (get-immediate-context-usings theory))
-	  (unless (library u)
-	    (get-typechecked-theory u theories)))
 	(unless (typechecked? theory)
 	  (typecheck theory)
 	  #+pvsdebug (assert (typechecked? theory))
@@ -1327,6 +1324,9 @@
 
 (defmethod parsed? ((modref modname))
   (parsed?* (get-theory modref)))
+
+(defmethod parsed? ((mod theory-interpretation))
+  t)
 
 (defmethod parsed?* ((mod datatype-or-module))
   (or (from-prelude? mod)
