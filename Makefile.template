@@ -239,7 +239,7 @@ all : makebdd makepolylib ${pvsfull} ${pvsrt}
 
 ${fasl-files} : ${pvs-make-files} ${ff-files} ${lisp-files}
 	$(LISP) -e '(load "pvs.system")' \
-		-e '(operate-on-system \'pvs :lf)' \
+		-e "(operate-on-system 'pvs :lf)" \
 		-e '(excl:exit)'
 
 ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${fasl-files}
