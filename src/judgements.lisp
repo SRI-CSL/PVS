@@ -1239,8 +1239,6 @@
 							      ety))
 		 (cdr subtype)))))))
 
-(defvar *subtypes-seen* nil)
-
 (defun known-subtype-of? (t1 t2)
   (let ((it (cons t1 t2)))
     (unless (member it *subtypes-seen* :test #'tc-eq)
