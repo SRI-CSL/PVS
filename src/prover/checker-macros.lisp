@@ -81,6 +81,7 @@
 (defvar *bdd-initialized* nil)
 (defvar *recognizer-forms-alist* nil)
 (defvar *local-typealist* nil)
+(defvar *sequent-typealist*)   ; Put e.g., integer_pred(x) in typealist
 (defvar *recording-type-constraints* nil)
 (defvar *top-simplify-ifs-hash* nil)
 (defvar *local-simplify-ifs-hash* nil)
@@ -508,7 +509,8 @@
 (defmacro print-proofstate-if (ps)
   `(let ((*sb-print-depth* *prover-print-depth*)
 	 (*sb-print-length* *prover-print-length*))
-     (unless (eq (car (current-input ,ps)) 'lisp)
+     (unless (and (consp (current-input ,ps))
+		  (eq (car (current-input ,ps)) 'lisp))
        (format-if "~a" ,ps))))
 
 (defmacro safe-parse-integer (string)
