@@ -504,37 +504,41 @@ Please provide skolem constants for these variables." overlap)
 		 (let* ((*tccforms* (remove-duplicates *tccforms*
 				      :test #'tc-eq
 				      :key #'tccinfo-formula))
-			(tccforms (assert-tccforms *tccforms* ps))
-			(tcc-subgoals
-			 (loop for tccinfo in tccforms
-			       collect
-			       (let ((newgoal
-				      (change-class
-				       (copy subgoal
-					 's-forms
-					 (cons (make-instance 's-formula
-						 'formula
-						 (tccinfo-formula tccinfo))
-					       other-sforms))
-				       'tcc-sequent))
-				     (references NIL))
-				 (setf (tcc newgoal)(tccinfo-formula tccinfo)
-				       (reason newgoal)(tccinfo-reason tccinfo)
-				       (expr newgoal)(tccinfo-expr tccinfo)
-				       (kind newgoal)(tccinfo-kind tccinfo)
-				       (type newgoal)(tccinfo-type tccinfo))
-				 (list newgoal
-				       'dependent-decls
-				       (push-references-list
-					(tccinfo-formula tccinfo)
-					references)))
-				 ))
-			);(break "quant-step")
-		   ;;(push-references-list *tccforms* dependent-decls*)
-		   (values signal (cons (list subgoal
-					      'dependent-decls
-					      *dependent-decls*)
-					tcc-subgoals)))))))))
+			(tccforms (assert-tccforms *tccforms* ps)))
+		   (if (some #'(lambda (tccf)
+				 (tc-eq (tccinfo-formula tccf) *false*))
+			     tccforms)
+		       (values 'X nil)
+		       (let* ((tcc-subgoals
+			       (loop for tccinfo in tccforms
+				     collect
+				     (let ((newgoal
+					    (change-class
+					     (copy subgoal
+					       's-forms
+					       (cons (make-instance 's-formula
+						       'formula
+						       (tccinfo-formula tccinfo))
+						     other-sforms))
+					     'tcc-sequent))
+					   (references NIL))
+				       (setf (tcc newgoal)(tccinfo-formula tccinfo)
+					     (reason newgoal)(tccinfo-reason tccinfo)
+					     (expr newgoal)(tccinfo-expr tccinfo)
+					     (kind newgoal)(tccinfo-kind tccinfo)
+					     (type newgoal)(tccinfo-type tccinfo))
+				       (list newgoal
+					     'dependent-decls
+					     (push-references-list
+					      (tccinfo-formula tccinfo)
+					      references)))
+				     ))
+			      );(break "quant-step")
+			 ;;(push-references-list *tccforms* dependent-decls*)
+			 (values signal (cons (list subgoal
+						    'dependent-decls
+						    *dependent-decls*)
+					      tcc-subgoals)))))))))))
 
 (defun skolem-step (sformnum ps &optional terms copy?)
   (declare (ignore copy?))

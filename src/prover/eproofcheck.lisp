@@ -1514,13 +1514,17 @@
 (defun assert-tccforms* (tccforms ps)
   (if (null tccforms) nil
       (multiple-value-bind (sig value)
-	      (assert-if (tccinfo-formula (car tccforms)))
+	  (assert-if (tccinfo-formula (car tccforms)))
 	(cond ((tc-eq value *true*)
 	       (assert-tccforms* (cdr tccforms) ps))
 	      ((eq sig 'X) (cons (car tccforms)
 				 (assert-tccforms*
 				  (cdr tccforms) ps)))
-	      (t (setf (tccinfo-formula (car tccforms)) value)
+	      (t (when (tc-eq value *false*)
+		   (error-format-if
+		    "~%*WARNING*: TCC ~a ~%~11Tsimplifies to FALSE"
+		    (tccinfo-formula (car tccforms))))
+		 (setf (tccinfo-formula (car tccforms)) value)
 		 (cons (car tccforms)
 		       (assert-tccforms* (cdr tccforms) ps)))))))
 
