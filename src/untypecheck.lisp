@@ -335,10 +335,9 @@
   (untypecheck-theory (actuals ex))
   (setf (resolutions ex) nil))
 
-(defmethod untypecheck-theory ((ex name-expr))
-  ;;(when (eq (id ex) '|real_pred|) (break))
-  (when (next-method-p) (call-next-method))
-  (setf (kind ex) nil))
+; (defmethod untypecheck-theory ((ex name-expr))
+;   ;;(when (eq (id ex) '|real_pred|) (break))
+;   (when (next-method-p) (call-next-method)))
 
 (defmethod untypecheck-theory ((ex constructor-name-expr))
   (setf (accessor-names ex) nil)
@@ -497,8 +496,7 @@
 (defmethod untypecheck* ((ex name-expr))
   (call-next-method)
   (setf (type ex) nil
-	(types ex) nil
-	(kind ex) nil)
+	(types ex) nil)
   nil)
 
 (defmethod untypecheck* ((n name))

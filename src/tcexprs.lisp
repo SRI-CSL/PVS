@@ -381,8 +381,7 @@
 	 (if (occurs-in bd (cdr arg-decls))
 	     (let* ((ntype (typecheck* dtype nil nil nil))
 		    (narg (mk-name-expr (id (car selargs))
-			    nil nil (make-resolution (car selargs) nil ntype)
-			    'variable))
+			    nil nil (make-resolution (car selargs) nil ntype)))
 		    (alist (acons bd narg nil)))
 	       (mapcar #'(lambda (a)
 			   (let ((stype (substit (type a) alist)))
@@ -1090,8 +1089,7 @@
   (mapcar #'(lambda (bd)
 	      (mk-name-expr (id bd) nil nil
 			    (make-resolution bd
-			      (theory-name *current-context*) (type bd))
-			    'variable))
+			      (theory-name *current-context*) (type bd))))
 	  bindings))
 
 (defun application-conversion-arguments (arguments conversions vars)
@@ -1218,16 +1216,16 @@
 	  (if (dep-binding? (car types))
 	      (type (car types))
 	      (car types)))
-    (set-dep-projections (cdr projections)
-			 (if (dep-binding? (car types))
-			     (substit (cdr types)
-			       (list (cons (mk-name-expr (id (car types))
-					     nil nil
-					     (make-resolution (car types)
-					       (theory-name *current-context*))
-					     'variable)
-					   (car projections))))
-			     (cdr types)))))
+    (set-dep-projections
+     (cdr projections)
+     (if (dep-binding? (car types))
+	 (substit (cdr types)
+	   (list (cons (mk-name-expr (id (car types))
+			 nil nil
+			 (make-resolution (car types)
+			   (theory-name *current-context*)))
+		       (car projections))))
+	 (cdr types)))))
     
 
 (defun subst-range-type (rtype dtypes args)
