@@ -86,119 +86,6 @@ useful if more than one specification is to be included in one document")
 				 show-subst))
 	  (t (pvs-message "Theory ~a has not been typechecked" theoryname)))))
 
-(defun latex-theory-view (theoryname filename viewer &optional show-subst)
-  (let ((theory (get-theory theoryname)))
-    (cond ((not *pvs-context-writable*)
-	   (pvs-message "You do not have write permission in this context"))
-	  ((and theory (typechecked? theory))
-	   (latex-theory theoryname show-subst)
-	   (let ((errstr (run-latex "pvs-files")))
-	     (if errstr
-		 (pvs-error "LaTeX error" errstr)
-		 (run-latex-viewer viewer))))
-	  (t (pvs-message "Theory ~a has not been typechecked" theoryname)))))
-
-(defun latex-proof-view (texfile viewer &optional terse? show-subst)
-  (cond (*last-proof*
-	 (latex-proof texfile terse?)
-	 (let ((errstr (run-latex "pvs-files")))
-	   (if errstr
-	       (pvs-error "LaTeX error" errstr)
-	       (run-latex-viewer viewer))))
-	(t (pvs-message "No proof has been run yet"))))
-
-#+lucid
-(defun run-latex-viewer (latex-viewer)
-  (if latex-viewer
-      (if (lucid::find-file-in-path latex-viewer)
-	  (let ((status nil)
-		(tmp-file (funcall *pvs-tmp-file*)))
-	    (with-open-file (out tmp-file
-				 :direction :output :if-exists :supersede)
-	      (multiple-value-bind (stream errstream stat process-id)
-		  (run-program latex-viewer
-			       :arguments '("pvs-files")
-			       :output out
-			       :error-output out
-			       :wait nil
-			       )
-		(declare (ignore stream errstream process-id))
-		(setq status stat)))
-	    (delete-file tmp-file))
-	  (pvs-message "Cannot find ~a in your path." latex-viewer))
-      (pvs-message "No viewer provided")))
-
-#+lucid
-(defun run-latex (filename)
-  (unless *pvs-tmp-file* (set-pvs-tmp-file))
-  (let ((status nil)
-	(tmp-file (funcall *pvs-tmp-file*)))
-    (with-open-file (out tmp-file
-			 :direction :output :if-exists :supersede)
-      (multiple-value-bind (stream errstream stat process-id)
-	  (run-program "latex"
-		       :arguments (list filename)
-		       :input "//dev//null"
-		       :output out)
-	(declare (ignore stream errstream process-id))
-	(setq status stat)))
-    (let ((result (unless (zerop status)
-		    (file-contents tmp-file))))
-      (delete-file tmp-file)
-      result)))
-
-#+allegro
-(defun run-latex-viewer (latex-viewer)
-  (if latex-viewer
-      (if t ;(find-file-in-path latex-viewer)
-	  (let ((status nil)
-		(tmp-file (funcall *pvs-tmp-file*)))
-	    (with-open-file (out tmp-file
-				 :direction :output :if-exists :supersede)
-	      (setq status
-		    (excl:run-shell-command
-		     (format nil "~a pvs-files" latex-viewer)
-		     :output out
-		     :error-output :output
-		     :wait nil)))
-	    (delete-file tmp-file))
-	  (pvs-message "Cannot find ~a in your path." latex-viewer))
-      (pvs-message "No viewer provided")))
-
-#+allegro
-(defun run-latex (filename)
-  (unless *pvs-tmp-file* (set-pvs-tmp-file))
-  (let ((status nil)
-	(tmp-file (funcall *pvs-tmp-file*)))
-    (with-open-file (out tmp-file
-			 :direction :output :if-exists :supersede)
-      (setq status (excl:run-shell-command
-		    (format nil "latex ~a" filename)
-		    :input "//dev//null"
-		    :output out
-		    :error-output :output)))
-    (let ((result (unless (zerop status)
-		    (file-contents tmp-file))))
-      (delete-file tmp-file)
-      result)))
-
-(defun file-contents (filename)
-  (with-output-to-string (out)
-    (with-open-file (in filename)
-      (labels ((in2out ()
-		 (let ((ch (read-char in nil 'eof)))
-		   (unless (eq ch 'eof)
-		     (write-char ch out)
-		     (in2out)))))
-	(in2out)))))
-
-(defun latex-viewer ()
-  "xdvi")
-
-
-;;; End of interface functions
-
-
 (defun latex-print-theories (theories &optional show-subst)
   (get-tex-substitutions show-subst)
   (maplist #'(lambda (thlist)
@@ -221,190 +108,22 @@ useful if more than one specification is to be included in one document")
 	(old-ids *latex-id-macro-list*))
     (read-tex-substitutions (working-directory) (id theory))
     (push (string (id theory)) *latex-files*)
-    (let ((*tex-mode* t))
-      (unparse (latex-translate theory)
-	:file file
-	:char-width *latex-linelength*
-	:sb-tex t
-	:style :sb-tex))
+    (with-open-file (stream file :direction :output :if-exists :supersede)
+      (when *insert-newcommands-into-output*
+	(dolist (nc *latex-newcommands-list*)
+	  (princ nc stream)
+	  (terpri stream)))
+      (format stream "\\begin{alltt}~%")
+      (pp-tex theory stream)
+      (format stream "\\end{alltt}~%"))
     (when gen-subst
       (generate-latex-chart (string (id theory))
 			    (format nil "~a-sub" (id theory))
-			    (ldiff *latex-id-macro-list*
-				   old-ids)))
+			    (ldiff *latex-id-macro-list* old-ids)))
     (pvs-message
 	"Generated ~a~:[~;~:* - generating ~a~]"
       (shortname file) (when next (id next)))))
 
-(defvar *latex-infixes* nil)
-(defvar *latex-unaries* nil)
-
-;;; Currently latex-translate simply looks for applications of the form
-;;; foo.bar(x,...), where bar has a translation, and removes the foo.  In the
-;;; long run, I envision more of the latex processing to occur here.
-
-(defmethod latex-translate ((theory module))
-  (let ((*current-context* (context theory))
-	(*current-theory* theory)
-	(*latex-infixes* nil)
-	(*latex-unaries* nil))
-    (lcopy theory
-      'exporting (latex-translate (exporting theory))
-      'formals (latex-translate (formals theory))
-      'assuming (latex-translate (assuming theory))
-      'theory (latex-translate (theory theory))
-      ;;'abstract-syntax nil
-      )))
-
-(defmethod latex-translate (obj)
-  (let ((*parsing-or-unparsing* t)
-	(*generate-tccs* 'none))
-    (gensubst obj #'latex-translate! #'latex-translate?)))
-
-(defmethod latex-translate? ((ex lib-decl))
-  t)
-
-(defmethod latex-translate! ((ex lib-decl))
-  (let ((ch (find-verb-char (lib-string ex))))
-    (copy ex 'lib-string (format nil "\\symbol{34}$\\verb~c~a~c$\\symbol{34}"
-			   ch (lib-string ex) ch))))
-
-(defun find-verb-char (str)
-  (dotimes (i 127)
-    (let ((ch (character i)))
-      (when (and (graphic-char-p ch)
-		 (not (alphanumericp ch))
-		 (not (char= ch #\space))
-		 (not (find ch str)))
-	(return ch)))))
-
-(defmethod latex-translate? ((ex string-expr))
-  t)
-
-(defmethod latex-translate! ((ex string-expr))
-  (let* ((ch (find-verb-char (string-value ex)))
-	 (nex (copy ex)))
-    (setf (string-value nex)
-	  (format nil "\\symbol{34}$\\verb~c~a~c$\\symbol{34}"
-	    ch (string-value ex) ch))
-    nex))
-
-(defmethod latex-translate? ((ex application))
-  (and (typep (operator ex) 'name-expr)
-       (mod-id (operator ex))
-       (let ((fn (list (id (operator ex)) (length (arguments ex)))))
-	 (or (assoc fn *latex-fun-sym-macro-list* :test #'equal)
-	     (assoc fn *latex-id-macro-list* :test #'equal)
-	     (assoc fn *latex-fun-sym-length-list* :test #'equal)))))
-
-(defmethod latex-translate? ((ex infix-application))
-  (or (assoc (list (id (operator ex)) 2)
-	     *latex-fun-sym-macro-list*
-	     :test #'equal)
-      (call-next-method)))
-
-(defmethod latex-translate? ((ex unary-application))
-  (or (assoc (list (id (operator ex)) 1)
-	     *latex-fun-sym-macro-list*
-	     :test #'equal)
-      (call-next-method)))
-
-(defmethod latex-translate? (obj)
-  nil)
-
-(defmethod id ((ex implicit-conversion))
-  (id (argument ex)))
-
-(defmethod latex-translate! ((ex application))
-  (lcopy ex 'operator (lcopy (operator ex) 'mod-id nil)))
-
-(defmethod latex-translate! ((ex infix-application))
-  (let ((op (cdr (assoc (operator ex) *latex-infixes* :test #'same-id))))
-    (if op
-	(copy (change-class (copy ex) 'application)
-	  'operator op
-	  'argument (latex-translate (argument ex)))
-	(let ((fun (assoc (list (id (operator ex)) 2)
-			  *latex-fun-sym-macro-list*
-			  :test #'equal))
-	      (len (assoc (list (id (operator ex)) 2)
-			  *latex-fun-sym-length-list*
-			  :test #'equal)))
-	  (if fun
-	      (let ((newop (lcopy (operator ex)
-			     'id (gentemp "op") 'actuals nil 'mod-id nil)))
-		(push (cons (operator ex) newop) *latex-infixes*)
-		(push (cons (list (id newop) 2) (cdr fun))
-		      *latex-fun-sym-macro-list*)
-		(push (cons (list (id newop) 2) (cdr len))
-		      *latex-fun-sym-length-list*)
-		(copy (change-class (copy ex) 'application)
-		  'operator newop
-		  'argument (latex-translate (argument ex))))
-	      (call-next-method))))))
-
-(defmethod latex-translate! ((ex unary-application))
-  (let ((op (cdr (assoc (operator ex) *latex-unaries* :test #'same-id))))
-    (if op
-	(copy (change-class (copy ex) 'application)
-	  'operator op
-	  'argument (latex-translate (argument ex)))
-	(let ((fun (assoc (list (id (operator ex)) 1)
-			  *latex-fun-sym-macro-list*
-			  :test #'equal))
-	      (len (assoc (list (id (operator ex)) 1)
-			  *latex-fun-sym-length-list*
-			  :test #'equal)))
-	  (if fun
-	      (let ((newop (lcopy (operator ex) 'id (gentemp "op"))))
-		(push (cons (operator ex) newop) *latex-unaries*)
-		(push (cons (list (id newop) 1) (cdr fun))
-		      *latex-fun-sym-macro-list*)
-		(push (cons (list (id newop) 1) (cdr len))
-		      *latex-fun-sym-length-list*)
-		(copy (change-class (copy ex) 'application)
-		  'operator newop
-		  'argument (latex-translate (argument ex))))
-	      (call-next-method))))))
-
-(defmethod latex-translate? ((ex implicit-conversion))
-  t)
-
-(defmethod latex-translate! ((ex implicit-conversion))
-  (argument ex))
-
-(defmethod latex-translate? ((ex cond-table-expr))
-  t)
-
-(defmethod latex-translate! ((ex cond-table-expr))
-  (lcopy ex
-    'row-expr (latex-translate (row-expr ex))
-    'col-expr (latex-translate (col-expr ex))
-    'row-headings (latex-translate (row-headings ex))
-    'col-headings (latex-translate (col-headings ex))
-    'table-entries (latex-translate (table-entries ex))))
-
-(defmethod latex-translate? ((ex cases-table-expr))
-  t)
-
-(defmethod latex-translate! ((ex cases-table-expr))
-  (lcopy ex
-    'row-expr (latex-translate (row-expr ex))
-    'col-expr (latex-translate (col-expr ex))
-    'row-headings (latex-translate (row-headings ex))
-    'col-headings (latex-translate (col-headings ex))
-    'table-entries (latex-translate (table-entries ex))))
-
-(defmethod latex-translate? ((ex let-table-expr))
-  t)
-
-(defmethod latex-translate! ((ex let-table-expr))
-  (lcopy ex
-    'row-expr (latex-translate (row-expr ex))
-    'col-expr (latex-translate (col-expr ex))
-    'row-headings (latex-translate (row-headings ex))
-    'col-headings (latex-translate (col-headings ex))
-    'table-entries (latex-translate (table-entries ex))))
 
 (defun latex-print-finish (&optional file)
   (with-open-file (mods (merge-pathnames "pvs-files.tex" file)
@@ -493,7 +212,7 @@ useful if more than one specification is to be included in one document")
     (when (probe-file file)
       (let ((newsubs nil))
 	(let ((*latex-newcommands-list* nil))
-	  (push "\\setlength{\\fboxsep}{1pt} " *latex-newcommands-list*)
+	  ;;(push "\\setlength{\\fboxsep}{1pt} " *latex-newcommands-list*)
 	  (with-open-file (str file)
 	    (read-tex-subs str))
 	  (push (format nil "%   ~a" (namestring file))
@@ -537,7 +256,7 @@ useful if more than one specification is to be included in one document")
 			      "Illegal length ~a for ~a" width id)))
 	(cond
 	  ((string-equal type "key")
-	   (let ((sym (intern (string-upcase id) (find-package 'sbst))))
+	   (let ((sym (intern (string-upcase id))))
 	     (when tex (push (cons sym tex) *latex-keyword-list*))
 	     (push (cons sym nwidth) *latex-keyword-length-list*)))
 	  ((or (string-equal type "id")
@@ -658,7 +377,6 @@ useful if more than one specification is to be included in one document")
       (let ((*report-mode* terse?)
 	    (*current-context* (context *last-proof*))
 	    (*current-theory* (module (declaration *last-proof*)))
-	    (*latex-infixes* nil)
 	    (*latex-unaries* nil)
 	    (*tex-mode* t))
 	(get-tex-substitutions show-subst)
@@ -720,8 +438,7 @@ useful if more than one specification is to be included in one document")
   (mapcar #'latex-proof-printout-exprs args))
 
 (defmethod latex-proof-printout-exprs ((arg string))
-  (let ((sbrt::*sb-tex-mode* t))
-    (latex-print (pc-parse arg 'expr) nil)))
+  (latex-print (pc-parse arg 'expr) nil))
 
 (defmethod latex-proof-printout-exprs (arg)
   (if (eq arg '_)
@@ -796,10 +513,119 @@ useful if more than one specification is to be included in one document")
 (defmethod latex-print ((expr expr) stream)
   (cond (stream
 	 (format stream "\\begin{minipage}[t]{6in}{")
-	 (unparse (latex-translate expr)
-	   :stream stream :char-width *pplinelength*
-	   :sb-tex t :style (list :sb-tex))
+	 (pp-tex expr stream)
 	 (format stream "}\\end{minipage}")
 	 (format stream "\\\\"))
 	(t (with-output-to-string (str)
-	     (latex-print (latex-translate expr) str)))))
+	     (pp-tex expr str)))))
+
+;;; 
+
+(defun latex-theory-view (theoryname filename viewer &optional show-subst)
+  (let ((theory (get-theory theoryname)))
+    (cond ((not *pvs-context-writable*)
+	   (pvs-message "You do not have write permission in this context"))
+	  ((and theory (typechecked? theory))
+	   (latex-theory theoryname show-subst)
+	   (let ((errstr (run-latex "pvs-files")))
+	     (if errstr
+		 (pvs-error "LaTeX error" errstr)
+		 (run-latex-viewer viewer))))
+	  (t (pvs-message "Theory ~a has not been typechecked" theoryname)))))
+
+(defun latex-proof-view (texfile viewer &optional terse? show-subst)
+  (cond (*last-proof*
+	 (latex-proof texfile terse?)
+	 (let ((errstr (run-latex "pvs-files")))
+	   (if errstr
+	       (pvs-error "LaTeX error" errstr)
+	       (run-latex-viewer viewer))))
+	(t (pvs-message "No proof has been run yet"))))
+
+#+lucid
+(defun run-latex-viewer (latex-viewer)
+  (if latex-viewer
+      (if (lucid::find-file-in-path latex-viewer)
+	  (let ((status nil)
+		(tmp-file (funcall *pvs-tmp-file*)))
+	    (with-open-file (out tmp-file
+				 :direction :output :if-exists :supersede)
+	      (multiple-value-bind (stream errstream stat process-id)
+		  (run-program latex-viewer
+			       :arguments '("pvs-files")
+			       :output out
+			       :error-output out
+			       :wait nil
+			       )
+		(declare (ignore stream errstream process-id))
+		(setq status stat)))
+	    (delete-file tmp-file))
+	  (pvs-message "Cannot find ~a in your path." latex-viewer))
+      (pvs-message "No viewer provided")))
+
+#+lucid
+(defun run-latex (filename)
+  (unless *pvs-tmp-file* (set-pvs-tmp-file))
+  (let ((status nil)
+	(tmp-file (funcall *pvs-tmp-file*)))
+    (with-open-file (out tmp-file
+			 :direction :output :if-exists :supersede)
+      (multiple-value-bind (stream errstream stat process-id)
+	  (run-program "latex"
+		       :arguments (list filename)
+		       :input "//dev//null"
+		       :output out)
+	(declare (ignore stream errstream process-id))
+	(setq status stat)))
+    (let ((result (unless (zerop status)
+		    (file-contents tmp-file))))
+      (delete-file tmp-file)
+      result)))
+
+#+allegro
+(defun run-latex-viewer (latex-viewer)
+  (if latex-viewer
+      (if t ;(find-file-in-path latex-viewer)
+	  (let ((status nil)
+		(tmp-file (funcall *pvs-tmp-file*)))
+	    (with-open-file (out tmp-file
+				 :direction :output :if-exists :supersede)
+	      (setq status
+		    (excl:run-shell-command
+		     (format nil "~a pvs-files" latex-viewer)
+		     :output out
+		     :error-output :output
+		     :wait nil)))
+	    (delete-file tmp-file))
+	  (pvs-message "Cannot find ~a in your path." latex-viewer))
+      (pvs-message "No viewer provided")))
+
+#+allegro
+(defun run-latex (filename)
+  (unless *pvs-tmp-file* (set-pvs-tmp-file))
+  (let ((status nil)
+	(tmp-file (funcall *pvs-tmp-file*)))
+    (with-open-file (out tmp-file
+			 :direction :output :if-exists :supersede)
+      (setq status (excl:run-shell-command
+		    (format nil "latex ~a" filename)
+		    :input "//dev//null"
+		    :output out
+		    :error-output :output)))
+    (let ((result (unless (zerop status)
+		    (file-contents tmp-file))))
+      (delete-file tmp-file)
+      result)))
+
+(defun file-contents (filename)
+  (with-output-to-string (out)
+    (with-open-file (in filename)
+      (labels ((in2out ()
+		 (let ((ch (read-char in nil 'eof)))
+		   (unless (eq ch 'eof)
+		     (write-char ch out)
+		     (in2out)))))
+	(in2out)))))
+
+(defun latex-viewer ()
+  "xdvi")
