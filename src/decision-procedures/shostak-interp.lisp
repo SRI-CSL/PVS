@@ -156,6 +156,8 @@
     (sigineq (negineq (arg 1 term)) cong-state))
    ((true-p (arg 1 term)) *false*)
    ((false-p (arg 1 term)) *true*)
+   ((negation-p (arg 1 term))
+    (arg 1 (arg 1 term)))
    (t term)))
 
 (defun sigequal (term cong-state)
