@@ -923,8 +923,11 @@
   (equality-predicates* t1 (type t2) p1 p2 bindings))
 
 (defmethod equality-predicates* ((t1 type-name) (t2 type-name) p1 p2 bindings)
-  (declare (ignore p1 p2 bindings))
-  (break "Something's wrong with equality-predicates*"))
+  (assert (eq (declaration t1) (declaration t2)))
+  (let ((npred (make-equality-between-predicates t1 p1 p2)))
+    (equality-predicates-list (actuals (module-instance t1))
+			      (actuals (module-instance t2))
+			      npred bindings)))
 
 (defmethod equality-predicates* ((t1 subtype) (t2 type-expr) p1 p2 bindings)
   (equality-predicates*
@@ -982,6 +985,14 @@
 	 (if npred
 	     (cons npred preds)
 	     preds)))))
+
+(defmethod equality-predicates* ((a1 actual) (a2 actual) p1 p2 bindings)
+  (if (type-value a1)
+      (equality-predicates* (type-value a1) (type-value a2) p1 p2 bindings)
+      (let ((npred (equality-predicates* p1 p2 nil nil bindings)))
+	(if npred
+	    (make!-conjunction npred (make-equation (expr a1) (expr a2)))
+	    (make-equation (expr a1) (expr a2))))))
 
 
 (defun generate-cond-disjoint-tcc (expr conditions values)
