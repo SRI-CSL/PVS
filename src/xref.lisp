@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec  2 13:44:28 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Oct 30 19:15:36 1998
-;; Update Count    : 13
+;; Last Modified On: Wed Jun 30 17:28:43 1999
+;; Update Count    : 14
 ;; Status          : Beta test
 ;; 
 ;; HISTORY
@@ -298,7 +298,7 @@
 (defmethod from-prelude? ((th module))
   (gethash (id th) *prelude*))
 
-(defmethod from-prelude? ((th datatype))
+(defmethod from-prelude? ((th recursive-type))
   (gethash (id th) *prelude*))
 
 (defmethod from-prelude? ((decl declaration))
