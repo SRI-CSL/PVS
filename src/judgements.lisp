@@ -207,13 +207,11 @@
   ;; Note that this can be called by prove-decl before *in-checker* is t
   (assert (not *in-checker*))
   (let* ((decl (declaration (name jdecl)))
-	 (entry (name-judgements decl)))
-    (unless entry
-      (setq entry
-	    (setf (name-judgements decl)
-		  (make-instance 'name-judgements))))
-    (let ((sjdecl (find-if #'(lambda (jd) (subtype-of? (type jd) (type jdecl)))
-		    (minimal-judgements entry))))
+	 (entry (assq decl (name-judgements-alist (current-judgements)))))
+    (let ((sjdecl (when entry
+		    (find-if #'(lambda (jd)
+				 (subtype-of? (type jd) (type jdecl)))
+		      (minimal-judgements (cdr entry))))))
       (cond (sjdecl
 ;; 	     (pvs-warning
 ;; 		 "Judgement ~a.~a (line ~d) is not needed;~%~
@@ -223,12 +221,25 @@
 ;; 	       (line-begin (place sjdecl)))
 	     )
 	    (t (clrhash (judgement-types-hash (current-judgements)))
-	       (setf (minimal-judgements entry)
-		     (cons jdecl
-			   (delete-if
-			       #'(lambda (jd)
-				   (subtype-of? (type jdecl) (type jd)))
-			     (minimal-judgements entry)))))))))
+	       ;; Need to copy the entry - can assume (current-judgements)
+	       ;; is already a copy, but name-judgements-alist may be eq to
+	       ;; prelude.
+	       (setf (name-judgements-alist (current-judgements))
+		     (acons decl
+			    (if entry
+				(copy (cdr entry)
+				  'minimal-judgements
+				  (cons jdecl
+					(delete-if
+					    #'(lambda (jd)
+						(subtype-of? (type jdecl)
+							     (type jd)))
+					  (minimal-judgements (cdr entry)))))
+				(make-instance 'name-judgements
+				  'minimal-judgements (list jdecl)))
+			    (remove* entry
+				     (name-judgements-alist
+				      (current-judgements))))))))))
 
 ;;; Invoked from typecheck* (application-judgement)
 
@@ -1410,6 +1421,7 @@
 		     (minimal-judgements to-name-judgements)))
 	   (to-gen (when to-name-judgements
 		     (generic-judgements to-name-judgements))))
+      (assert (every #'fully-instantiated? to-min))
       (unless (and to-name-judgements
 		   (eq from-min to-min)
 		   (fully-instantiated? to-min)
@@ -1418,6 +1430,7 @@
 	    (merge-name-judgements* (append from-min from-gen) to-min to-gen)
 	  (unless (and (eq new-min to-min)
 		       (eq new-gen to-gen))
+	    (assert (every #'fully-instantiated? new-min))
 	    (setq to-alist
 		  (acons decl
 			 (make-instance 'name-judgements
@@ -1434,15 +1447,19 @@
 ;;; to become generic.  That's why we have a single list of
 ;;; from-name-judgements.
 (defun merge-name-judgements* (from-name-judgements to-min to-gen)
+  (assert (every #'fully-instantiated? to-min) () "Bah!")
   (dolist (jdecl from-name-judgements)
     (if (fully-instantiated? (type jdecl))
 	(unless (some #'(lambda (jd) (subtype-of? (type jd) (type jdecl)))
 		      to-min)
-	  (setq to-min
-		(cons jdecl
-		      (remove-if #'(lambda (jd)
-				     (subtype-of? (type jdecl) (type jd)))
-			to-min))))
+	  (let ((new-to-min
+		 (cons jdecl
+		       (remove-if #'(lambda (jd)
+				      (subtype-of? (type jdecl) (type jd)))
+			 to-min))))
+	    (assert (every #'fully-instantiated? to-min))
+	    (assert (every #'fully-instantiated? new-to-min))
+	    (setq to-min new-to-min)))
 	(unless (or (memq jdecl to-gen)
 		    (judgement-uninstantiable? jdecl)
 		    (some #'(lambda (jd) (subtype-of? (type jd) (type jdecl)))
