@@ -466,7 +466,7 @@ name ::= {[{id '@'}]^L idop [actuals] [mappings]^m [{'.' idop^1}]^1}
 
 unique-name ::= {name [':' {'TYPE'|type-expr|formula-name}]}
 		<unique-name
-                  (name,[noqual()|{typed(type-expr)|formula(formula-name)}])>;
+                  (name,[noqual()|{type()|typed(type-expr)|formula(formula-name)}])>;
 
 opsym ::= '+' <`+()> | '-' <`-()> | '*' <`*()> | '/' <`\/()>
 	| '=' <`=()> | '/=' <`\/=()> | '==' <`==()> | '<' <`\<()>

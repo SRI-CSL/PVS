@@ -153,6 +153,16 @@ print object produces an error, and won't allow inspection of the object.")
       (let ((*no-comments* t))
 	(unparse obj :stream stream))))
 
+(defmethod print-object ((mapping mapping) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (unparse mapping :stream stream)))
+
+(defmethod print-object ((rhs mapping-rhs) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (unparse (expr rhs) :stream stream)))
+
 (defmethod print-object ((obj expname) stream)
   (if *debugging-print-object*
       (call-next-method)

@@ -185,6 +185,16 @@
     'generating-assumption assuming-decl
     'semi t))
 
+(defun mk-mapped-axiom-tcc (id expr theory-instance axiom-decl)
+  (make-instance 'mapped-axiom-tcc
+    'id id
+    'spelling 'obligation
+    'kind 'tcc
+    'definition expr
+    'theory-instance theory-instance
+    'generating-axiom axiom-decl
+    'semi t))
+
 (defun mk-cases-tcc (id expr)
   (make-instance 'cases-tcc
     'id id

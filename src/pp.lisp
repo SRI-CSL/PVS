@@ -1813,7 +1813,7 @@ bind tighter.")
     (pprint-newline :fill)
     (write ":=")
     (write-char #\space)
-    (pp* (rhs map))))
+    (pp* (expr (rhs map)))))
 
 (defmethod pp* ((list list))
   (if (and list

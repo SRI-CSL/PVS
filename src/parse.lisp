@@ -2107,7 +2107,7 @@
 (defun xt-mapping (mapping)
   (make-instance 'mapping
     'lhs (xt-unique-name (term-arg0 mapping))
-    'rhs (xt-expr (term-arg1 mapping))))
+    'rhs (make-instance 'mapping-rhs 'expr (xt-expr (term-arg1 mapping)))))
 
 (defun xt-unique-name (name)
   (let ((uname (xt-name (term-arg0 name)))
