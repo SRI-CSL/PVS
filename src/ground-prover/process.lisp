@@ -464,7 +464,7 @@
 	       (append *rational-pred*
 		       *real-pred*
 		       *integer-pred*)))
-    TRUE)
+    term)
    ((is-apply-n-x (funsym term)) (sigapply term))
    ((is-tupsel-n (funsym term)) (sigtupsel term))
    (t (case (funsym term)
