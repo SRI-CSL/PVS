@@ -45,6 +45,7 @@
   nil)
 
 (defmethod free-params* ((jdecl subtype-judgement) frees)
+  (declare (ignore frees))
   (with-slots (free-parameters) jdecl
     (if (eq free-parameters 'unbound)
 	(setf free-parameters
@@ -52,9 +53,10 @@
 		(free-params* (declared-subtype jdecl)
 		  (free-params* (declared-type jdecl)
 		    (free-params* (type jdecl) nil))))))
-	free-parameters)))
+	free-parameters))
 
 (defmethod free-params* ((jdecl number-judgement) frees)
+  (declare (ignore frees))
   (with-slots (free-parameters) jdecl
     (if (eq free-parameters 'unbound)
 	(setf free-parameters
@@ -63,6 +65,7 @@
 	free-parameters)))
 
 (defmethod free-params* ((jdecl name-judgement) frees)
+  (declare (ignore frees))
   (with-slots (free-parameters) jdecl
     (if (eq free-parameters 'unbound)
 	(setf free-parameters
@@ -72,6 +75,7 @@
 	free-parameters)))
 
 (defmethod free-params* ((jdecl application-judgement) frees)
+  (declare (ignore frees))
   (with-slots (free-parameters) jdecl
     (if (eq free-parameters 'unbound)
 	(setf free-parameters
@@ -83,6 +87,7 @@
 	free-parameters)))
 
 (defmethod free-params* ((cdecl conversion-decl) frees)
+  (declare (ignore frees))
   (with-slots (free-parameters) cdecl
     (if (eq free-parameters 'unbound)
 	(setf free-parameters
