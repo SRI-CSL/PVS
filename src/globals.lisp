@@ -148,6 +148,8 @@ prelude libraries")
 
 (defvar *place-error-flag* nil)
 
+(defvar *disable-gc-printout* nil)
+
 ;;; An association list of operators and their places.  The problem is
 ;;; that operators are thrown away, and later make-sb-term is called with
 ;;; just an id.  We thus keep all possible places associated with an id,
