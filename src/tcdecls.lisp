@@ -711,6 +711,7 @@
       (nth-domain (range ftype) (cdr doms))))
 
 (defmethod nth-domain (ftype doms)
+  (declare (ignore ftype doms))
   nil)
 
 (defmethod measure-incompatible (decl type (meas lambda-expr) mtypes)
@@ -1108,8 +1109,7 @@
 	 (make!-conjunction inddef pred))
 	(args
 	 (make-inductive-conjunction inddef pred (cdr args) (cdr fmls)))
-	(t (let* ((c (list inddef pred))
-		  (bds (mapcar #'(lambda (x)
+	(t (let* ((bds (mapcar #'(lambda (x)
 				   (typecheck* (mk-bind-decl (id x)
 						 (or (declared-type x)
 						     (type x)))
