@@ -19,9 +19,9 @@
 
 (defun build-pvs (builddir runtime?)
   (excl:generate-application
-	     "pvs-@LISP@"
+	     (format nil "~a-@LISP@" (or (sys:getenv "SYSTEM") "pvs"))
 	     builddir	     
-	     (list :list2 "./src/make-allegro-pvs.lisp")
+	     (list :list2 "@PVSPATH@/src/make-allegro-pvs.lisp")
 	     :additional-arguments nil
 	     :additional-forms nil
 	     :additional-plus-arguments nil

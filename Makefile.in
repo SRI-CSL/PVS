@@ -22,9 +22,11 @@ ETAGS = @ETAGS@
 TAR = @TAR@
 TARFLAGS = -cvohz --mode="u+rw" --atime-preserve --exclude=CVS
 
-PLATFORM := $(shell bin/pvs-platform)
+PLATFORM := $(shell $(PVSPATH)bin/pvs-platform)
 ICSPLATFORM := $(shell @ICSPATH@/config.guess)
 export PLATFORM ICSPLATFORM
+
+SYSTEM ?= pvs
 
 LISP=@LISP@
 ALLEGRODIR= @ALLEGRODIR@
@@ -120,9 +122,9 @@ endif
 endif
 endif
 
-bindir = bin/$(PLATFORM)
-pvsfull = ${bindir}/full/pvs-${LISP}
-pvsrt = ${bindir}/runtime/pvs-${LISP}
+bindir = $(TARGETPATH)bin/$(PLATFORM)
+pvsfull = ${bindir}/full/$(SYSTEM)-${LISP}
+pvsrt = ${bindir}/runtime/$(SYSTEM)-${LISP}
 
 pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
 		 src/make-allegro-pvs.lisp src/closopt.lisp
@@ -130,9 +132,9 @@ pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
 ff-files = src/utils/$(PLATFORM)/file_utils.so \
            BDD/$(PLATFORM)/mu.so \
            src/WS1S/$(PLATFORM)/ws1s.so	\
-           src/ics-interface/$(PLATFORM)/ics_lisp.so \
-	   @ICSLIB@/libics.so
+           src/ics-interface/$(PLATFORM)/ics_lisp.so
 
+libics-file = @ICSLIB@/libics.so
 
 ess = ess/dist-ess.lisp \
 	ess/init-load.lisp \
@@ -334,9 +336,10 @@ inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
                     src/inst-by-unif/gensubsts.lisp \
                     src/inst-by-unif/inst-by-unif.lisp
 
-ics-lisp = @ICSOBJ@/ics.lisp \
-           src/ics-interface/ics-pvs.lisp \
+ics-lisp = src/ics-interface/ics-pvs.lisp \
            src/ics-interface/ics-strategies.lisp
+
+ics-lisp-file = @ICSOBJ@/ics.lisp
 
 ics-c = src/ics-interface/ics_lisp_error.c
 
@@ -344,10 +347,30 @@ lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
 	     ${ws1slisp} ${groundevallisp} \
              ${abstractionlisp} \
-	     ${ics-lisp}
+	     ${ics-lisp} ${ics-lisp-file}
 
 templatedeps = pvs src/make-allegro-pvs.lisp pvs.system \
                ess/dist-ess.lisp ess/allegro-runtime.lisp
+
+ifneq ($(PVSPATH),)
+pvs-make-files := $(patsubst %,$(PVSPATH)%,$(pvs-make-files))
+ff-files := $(patsubst %,$(PVSPATH)%,$(ff-files))
+ess := $(patsubst %,$(PVSPATH)%,$(ess))
+pvs-parser-in := $(patsubst %,$(PVSPATH)%,$(pvs-parser-in))
+pvs-parser-out := $(patsubst %,$(PVSPATH)%,$(pvs-parser-out))
+ground-prover := $(patsubst %,$(PVSPATH)%,$(ground-prover))
+pvs-src := $(patsubst %,$(PVSPATH)%,$(pvs-src))
+emacs-interface := $(patsubst %,$(PVSPATH)%,$(emacs-interface))
+pvs-prover := $(patsubst %,$(PVSPATH)%,$(pvs-prover))
+bddlisp := $(patsubst %,$(PVSPATH)%,$(bddlisp))
+ws1slisp := $(patsubst %,$(PVSPATH)%,$(ws1slisp))
+abstractionlisp := $(patsubst %,$(PVSPATH)%,$(abstractionlisp))
+groundevallisp := $(patsubst %,$(PVSPATH)%,$(groundevallisp))
+inst-by-unif-lisp := $(patsubst %,$(PVSPATH)%,$(inst-by-unif-lisp))
+ics-lisp := $(patsubst %,$(PVSPATH)%,$(ics-lisp))
+ics-c := $(patsubst %,$(PVSPATH)%,$(ics-c))
+templatedeps := $(patsubst %,$(PVSPATH)%,$(templatedeps))
+endif
 
 all-lisp-files = ${ess} ${pvs-parser-in} ${lisp-files}
 
@@ -357,32 +380,32 @@ all-fasl-files = $(filter %.$(LISPEXT), $(all-lisp-files:.lisp=.$(LISPEXT)))
 
 ifneq ($(strip $(EMACS21)),)
 emacs20-elc = $(pvs-emacs20-src:.el=.elc) $(ilisp-emacs20-src:.el=.elc)
-emacs += emacs/emacs20/pvs-load.elc
+emacs += $(PVSPATH)emacs/emacs20/pvs-load.elc
 endif
 
 ifneq ($(strip $(EMACS20)),)
 emacs20-elc = $(pvs-emacs20-src:.el=.elc) $(ilisp-emacs20-src:.el=.elc)
-emacs += emacs/emacs20/pvs-load.elc
+emacs += $(PVSPATH)emacs/emacs20/pvs-load.elc
 endif
 
 ifneq ($(strip $(EMACS19)),)
 emacs19-elc = $(pvs-emacs19-src:.el=.elc) $(ilisp-emacs19-src:.el=.elc)
-emacs += emacs/emacs19/pvs-load.elc
+emacs += $(PVSPATH)emacs/emacs19/pvs-load.elc
 endif
 
 ifneq ($(strip $(XEMACS21)),)
 xemacs21-elc = $(pvs-xemacs21-src:.el=.elc) $(ilisp-xemacs21-src:.el=.elc)
-emacs += emacs/xemacs21/pvs-load.elc
+emacs += $(PVSPATH)emacs/xemacs21/pvs-load.elc
 endif
 
 ifneq ($(strip $(XEMACS20)),)
 xemacs20-elc = $(pvs-xemacs20-src:.el=.elc) $(ilisp-xemacs20-src:.el=.elc)
-emacs += emacs/xemacs20/pvs-load.elc
+emacs += $(PVSPATH)emacs/xemacs20/pvs-load.elc
 endif
 
 ifneq ($(strip $(XEMACS19)),)
 xemacs19-elc = $(pvs-xemacs19-src:.el=.elc) $(ilisp-xemacs19-src:.el=.elc)
-emacs += emacs/xemacs19/pvs-load.elc
+emacs += $(PVSPATH)emacs/xemacs19/pvs-load.elc
 endif
 
 all : ${templatedeps} full
@@ -391,11 +414,11 @@ full : makefileutils makebdd makews1s ${pvsfull} ${emacs}
 
 runtime : makefileutils makebdd makews1s ${pvsrt} ${emacs}
 
-${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files} \
-             lib/prelude.pvs lib/prelude.prf
+${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
+             $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
 	rm -rf ${bindir}/full
 	umask 002; \
-	$(PVSLISP) -e '(load "pvs.system")' \
+	$(PVSLISP) -e '(load "$(PVSPATH)pvs.system")' \
 		-e "(let ((code 1)) \
                       (unwind-protect \
                           (multiple-value-bind (v err) \
@@ -406,17 +429,17 @@ ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files} \
                                    (setq code 0)))) \
                         (excl:exit code)))"
 	umask 002; $(ETAGS) ${lisp-files} ${pvs-emacs-src}
-	touch src/pvs-lexer.${LISPEXT}
+	touch $(PVSPATH)src/pvs-lexer.${LISPEXT}
 	umask 002; \
 	$(PVSLISP) -e '(defvar *runtime* nil)' \
-		-L src/make-pvs.lisp
+		-L $(PVSPATH)src/make-pvs.lisp
 	touch ${pvsfull}
 
-${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files} \
-           lib/prelude.pvs lib/prelude.prf
+${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
+           $(PVSPATH)lib/prelude.pvs $(PVSPATH)lib/prelude.prf
 	rm -rf ${bindir}/runtime
 	umask 002; \
-	$(PVSLISP) -e '(load "pvs.system")' \
+	$(PVSLISP) -e '(load "$(PVSPATH)pvs.system")' \
 		-e "(let ((code 1)) \
                       (unwind-protect \
                           (multiple-value-bind (v err) \
@@ -427,21 +450,23 @@ ${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files} \
                                    (setq code 0)))) \
                         (excl:exit code)))"
 	umask 002; $(ETAGS) ${lisp-files} ${pvs-emacs-src}
-	touch src/pvs-lexer.${LISPEXT}
+	touch $(PVSPATH)src/pvs-lexer.${LISPEXT}
 	umask 002; \
 	$(PVSLISP) -e '(defvar *runtime* t)' \
-		-L src/make-pvs.lisp
+		-L $(PVSPATH)src/make-pvs.lisp
 	touch ${pvsrt}
 
-src/pvs-lexer.lisp : ${pvs-parser-in}
+$(PVSPATH)src/pvs-lexer.lisp : ${pvs-parser-in}
 	umask 002; \
-	$(PVSLISP) -L src/make-pvs-parser
+	$(PVSLISP) -L $(PVSPATH)src/make-pvs-parser
 
-src/pvs-methods.lisp : src/make-pvs-methods.lisp src/defcl.lisp \
-                       src/classes-expr.lisp src/classes-decl.lisp
+$(PVSPATH)src/pvs-methods.lisp : $(PVSPATH)src/make-pvs-methods.lisp \
+                       $(PVSPATH)src/defcl.lisp \
+                       $(PVSPATH)src/classes-expr.lisp \
+                       $(PVSPATH)src/classes-decl.lisp
 	umask 002; \
 	$(PVSLISP) -e '(defvar *pvs-path* "@PVSPATH@")' \
-		-L src/make-pvs-methods.lisp
+		-L $(PVSPATH)src/make-pvs-methods.lisp
 
 ${LISP} :
 	@echo "Need to set the LISP variable in Makefile to a valid"
@@ -450,27 +475,27 @@ ${LISP} :
 .PHONY: all makefileutils makebdd makews1s make-release-notes clean
 makefileutils :
 	umask 002; \
-	$(MAKE) -C src/utils/$(PLATFORM)
+	$(MAKE) -C $(PVSPATH)src/utils/$(PLATFORM)
 makebdd :
 	umask 002; \
-	$(MAKE) -C BDD/$(PLATFORM)
+	$(MAKE) -C $(PVSPATH)BDD/$(PLATFORM)
 makews1s :
 	umask 002; \
-	(cd src/WS1S ; rm -rf mona ; ln -s mona-1.4 mona);\
-	$(MAKE) -C src/WS1S/$(PLATFORM)
+	(cd $(PVSPATH)src/WS1S ; rm -rf mona ; ln -s mona-1.4 mona);\
+	$(MAKE) -C $(PVSPATH)src/WS1S/$(PLATFORM)
 
-src/ics-interface/$(PLATFORM)/ics_lisp.so : src/ics-interface/$(PLATFORM)/ics_lisp_error.o @ICSLIB@/libics.a
+$(PVSPATH)src/ics-interface/$(PLATFORM)/ics_lisp.so : $(PVSPATH)src/ics-interface/$(PLATFORM)/ics_lisp_error.o @ICSLIB@/libics.a
 	umask 002; \
 	$(LD) -G -o $@ $< -L@ALLEGRODIR@ -l@ALLEGROLIB@ \
 	      --whole-archive @ICSLIB@/libics.a --no-whole-archive
 
-src/ics-interface/$(PLATFORM)/ics_lisp_error.o : src/ics-interface/ics_lisp_error.c
+$(PVSPATH)src/ics-interface/$(PLATFORM)/ics_lisp_error.o : $(PVSPATH)src/ics-interface/ics_lisp_error.c
 	umask 002; \
-	mkdir -p src/ics-interface/$(PLATFORM); \
+	mkdir -p $(PVSPATH)src/ics-interface/$(PLATFORM); \
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 make-release-notes : 
-	$(MAKE) -C doc/release-notes
+	$(MAKE) -C $(PVSPATH)doc/release-notes
 
 runtime-image-tar = pvs-$(PLATFORM).tgz
 
@@ -531,87 +556,87 @@ clean :
 	$(MAKE) -C BDD/$(PLATFORM) clean
 	$(MAKE) -C src/WS1S/$(PLATFORM) clean
 
-pvs-emacs-src = $(wildcard emacs/emacs-src/*.el) \
-                emacs/emacs-src/pvs-prelude-files-and-regions.el
-ilisp-emacs-src = $(wildcard emacs/emacs-src/ilisp/*.el)
+pvs-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/*.el) \
+                $(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el
+ilisp-emacs-src = $(wildcard $(PVSPATH)emacs/emacs-src/ilisp/*.el)
 
-pvs-emacs20-src = $(addprefix emacs/emacs20/,$(notdir ${pvs-emacs-src}))
-pvs-emacs19-src = $(addprefix emacs/emacs19/,$(notdir ${pvs-emacs-src}))
-pvs-xemacs21-src = $(addprefix emacs/xemacs21/,$(notdir ${pvs-emacs-src}))
-pvs-xemacs20-src = $(addprefix emacs/xemacs20/,$(notdir ${pvs-emacs-src}))
-pvs-xemacs19-src = $(addprefix emacs/xemacs19/,$(notdir ${pvs-emacs-src}))
+pvs-emacs20-src = $(addprefix $(PVSPATH)emacs/emacs20/,$(notdir ${pvs-emacs-src}))
+pvs-emacs19-src = $(addprefix $(PVSPATH)emacs/emacs19/,$(notdir ${pvs-emacs-src}))
+pvs-xemacs21-src = $(addprefix $(PVSPATH)emacs/xemacs21/,$(notdir ${pvs-emacs-src}))
+pvs-xemacs20-src = $(addprefix $(PVSPATH)emacs/xemacs20/,$(notdir ${pvs-emacs-src}))
+pvs-xemacs19-src = $(addprefix $(PVSPATH)emacs/xemacs19/,$(notdir ${pvs-emacs-src}))
 
-ilisp-emacs20-src = $(addprefix emacs/emacs20/,$(notdir ${ilisp-emacs-src}))
-ilisp-emacs19-src = $(addprefix emacs/emacs19/,$(notdir ${ilisp-emacs-src}))
-ilisp-xemacs21-src = $(addprefix emacs/xemacs21/,$(notdir ${ilisp-emacs-src}))
-ilisp-xemacs20-src = $(addprefix emacs/xemacs20/,$(notdir ${ilisp-emacs-src}))
-ilisp-xemacs19-src = $(addprefix emacs/xemacs19/,$(notdir ${ilisp-emacs-src}))
+ilisp-emacs20-src = $(addprefix $(PVSPATH)emacs/emacs20/,$(notdir ${ilisp-emacs-src}))
+ilisp-emacs19-src = $(addprefix $(PVSPATH)emacs/emacs19/,$(notdir ${ilisp-emacs-src}))
+ilisp-xemacs21-src = $(addprefix $(PVSPATH)emacs/xemacs21/,$(notdir ${ilisp-emacs-src}))
+ilisp-xemacs20-src = $(addprefix $(PVSPATH)emacs/xemacs20/,$(notdir ${ilisp-emacs-src}))
+ilisp-xemacs19-src = $(addprefix $(PVSPATH)emacs/xemacs19/,$(notdir ${ilisp-emacs-src}))
 
-emacs/emacs-src/pvs-prelude-files-and-regions.el : lib/prelude.pvs ${pvsfull}
+$(PVSPATH)emacs/emacs-src/pvs-prelude-files-and-regions.el : lib/prelude.pvs ${pvsfull}
 	-./pvs -batch -l emacs/emacs-src/pvs-set-prelude-info.el \
                         -f set-prelude-files-and-regions
 
-emacs/emacs20/%.el : emacs/emacs-src/%.el
+$(PVSPATH)emacs/emacs20/%.el : emacs/emacs-src/%.el
 	mkdir -p emacs/emacs20
 	(cd emacs/emacs20; ln -sf ../emacs-src/$(@F) .)
 
-emacs/emacs19/%.el : emacs/emacs-src/%.el
+$(PVSPATH)emacs/emacs19/%.el : emacs/emacs-src/%.el
 	mkdir -p emacs/emacs19
 	(cd emacs/emacs19; ln -sf ../emacs-src/$(@F) .)
 
-emacs/xemacs21/%.el : emacs/emacs-src/%.el
+$(PVSPATH)emacs/xemacs21/%.el : emacs/emacs-src/%.el
 	mkdir -p emacs/xemacs21
 	(cd emacs/xemacs21; ln -sf ../emacs-src/$(@F) .)
 
-emacs/xemacs20/%.el : emacs/emacs-src/%.el
+$(PVSPATH)emacs/xemacs20/%.el : emacs/emacs-src/%.el
 	mkdir -p emacs/xemacs20
 	(cd emacs/xemacs20; ln -sf ../emacs-src/$(@F) .)
 
-emacs/xemacs19/%.el : emacs/emacs-src/%.el
+$(PVSPATH)emacs/xemacs19/%.el : emacs/emacs-src/%.el
 	mkdir -p emacs/xemacs19
 	(cd emacs/xemacs19; ln -sf ../emacs-src/$(@F) .)
 
-emacs/emacs20/%.el : emacs/emacs-src/ilisp/%.el
+$(PVSPATH)emacs/emacs20/%.el : emacs/emacs-src/ilisp/%.el
 	mkdir -p emacs/emacs20
 	(cd emacs/emacs20; ln -sf ../emacs-src/ilisp/$(@F) .)
 
-emacs/emacs19/%.el : emacs/emacs-src/ilisp/%.el
+$(PVSPATH)emacs/emacs19/%.el : emacs/emacs-src/ilisp/%.el
 	mkdir -p emacs/emacs19
 	(cd emacs/emacs19; ln -sf ../emacs-src/ilisp/$(@F) .)
 
-emacs/xemacs21/%.el : emacs/emacs-src/ilisp/%.el
+$(PVSPATH)emacs/xemacs21/%.el : emacs/emacs-src/ilisp/%.el
 	mkdir -p emacs/xemacs21
 	(cd emacs/xemacs21; ln -sf ../emacs-src/ilisp/$(@F) .)
 
-emacs/xemacs20/%.el : emacs/emacs-src/ilisp/%.el
+$(PVSPATH)emacs/xemacs20/%.el : emacs/emacs-src/ilisp/%.el
 	mkdir -p emacs/xemacs20
 	(cd emacs/xemacs20; ln -sf ../emacs-src/ilisp/$(@F) .)
 
-emacs/xemacs19/%.el : emacs/emacs-src/ilisp/%.el
+$(PVSPATH)emacs/xemacs19/%.el : emacs/emacs-src/ilisp/%.el
 	mkdir -p emacs/xemacs19
 	(cd emacs/xemacs19; ln -sf ../emacs-src/ilisp/$(@F) .)
 
 ifeq ($(shell if [ -x ${emacs20} ] ; then echo OK ; fi), OK)
-emacs/emacs20/pvs-load.elc : ${pvs-emacs20-src} ${ilisp-emacs20-src}
+$(PVSPATH)emacs/emacs20/pvs-load.elc : ${pvs-emacs20-src} ${ilisp-emacs20-src}
 	(cd emacs/emacs20; $(EMACS20) -batch -l pvs-byte-compile.el)
 endif
 
 ifeq ($(shell if [ -x ${emacs19} ] ; then echo OK ; fi), OK)
-emacs/emacs19/pvs-load.elc : ${pvs-emacs19-src} ${ilisp-emacs19-src}
+$(PVSPATH)emacs/emacs19/pvs-load.elc : ${pvs-emacs19-src} ${ilisp-emacs19-src}
 	(cd emacs/emacs19; $(EMACS19) -batch -l pvs-byte-compile.el)
 endif
 
 ifeq ($(shell if [ -x ${xemacs21} ] ; then echo OK ; fi), OK)
-emacs/xemacs21/pvs-load.elc : ${pvs-xemacs21-src} ${ilisp-xemacs21-src}
+$(PVSPATH)emacs/xemacs21/pvs-load.elc : ${pvs-xemacs21-src} ${ilisp-xemacs21-src}
 	(cd emacs/xemacs21; $(XEMACS21) -batch -l pvs-byte-compile.el)
 endif
 
 ifeq ($(shell if [ -x ${xemacs20} ] ; then echo OK ; fi), OK)
-emacs/xemacs20/pvs-load.elc : ${pvs-xemacs20-src} ${ilisp-xemacs20-src}
+$(PVSPATH)emacs/xemacs20/pvs-load.elc : ${pvs-xemacs20-src} ${ilisp-xemacs20-src}
 	(cd emacs/xemacs20; $(XEMACS20) -batch -l pvs-byte-compile.el)
 endif
 
 ifeq ($(shell if [ -x ${xemacs19} ] ; then echo OK ; fi), OK)
-emacs/xemacs19/pvs-load.elc : ${pvs-xemacs19-src} ${ilisp-xemacs19-src}
+$(PVSPATH)emacs/xemacs19/pvs-load.elc : ${pvs-xemacs19-src} ${ilisp-xemacs19-src}
 	(cd emacs/xemacs19; $(XEMACS19) -batch -l pvs-byte-compile.el)
 endif
