@@ -381,7 +381,8 @@
 		 (collect-justification *top-proofstate*))))
     (cond ((null (script prinfo))
 	   (setf (script prinfo) script))
-	  ((and (not *proving-tcc*);; interactive
+	  ((and (not *proving-tcc*)
+		(not *noninteractive*)
 		script
 		(not (equal script '("" (postpone) nil nil)))
 		(not (equal (script prinfo) script))
