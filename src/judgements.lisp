@@ -607,8 +607,12 @@
 (defun judgement-arguments-match*? (argtypes rdomain jdomain)
   (if (listp argtypes)
       (judgement-list-arguments-match? argtypes rdomain jdomain)
-      (judgement-vector-arguments-match?
-       argtypes (types rdomain) (types jdomain) 0)))
+      (if (recordtype? rdomain)
+	  (judgement-record-arguments-match?
+	   (delete-duplicates (coerce argtypes 'list) :from-end t :key #'car)
+	   (fields rdomain) (fields jdomain))
+	  (judgement-vector-arguments-match?
+	   argtypes (types rdomain) (types jdomain) 0))))
 
 (defmethod types ((te dep-binding))
   (types (type te)))
@@ -617,6 +621,16 @@
   (when argtypes
     (or (subtype-wrt? (car argtypes) jdomain rdomain)
 	(judgement-list-arguments-match? (cdr argtypes) rdomain jdomain))))
+
+(defun judgement-record-arguments-match? (argflds rfields jfields)
+  (or (null rfields)
+      (let ((atypes (cdr (assq (id (car rfields)) argflds))))
+	(and atypes
+	     (eq (id (car rfields)) (id (car jfields)))
+	     (judgement-arguments-match?
+	      nil atypes (type (car rfields)) (type (car jfields)))
+	     (judgement-record-arguments-match?
+	      argflds (cdr rfields) (cdr jfields))))))
 
 (defun judgement-vector-arguments-match? (argtypes rdomain jdomain num
 						   &optional bindings)
@@ -651,7 +665,14 @@
       (judgement-types* (beta-reduce ex))
       (let ((atypes (judgement-types* (argument ex))))
 	(when atypes
-	  (field-application-types atypes ex)))))
+	  (if (vectorp atypes)
+	      (let ((ftypes nil))
+		(dotimes (i (length atypes))
+		  (let ((entry (svref atypes i)))
+		    (when (eq (car entry) (id ex))
+		      (setq ftypes (cdr entry)))))
+		ftypes)
+	      (field-application-types atypes ex))))))
 
 (defmethod judgement-types* ((ex projection-application))
   (let ((atypes (judgement-types* (argument ex))))
@@ -674,14 +695,16 @@
 
 (defmethod judgement-types* ((ex record-expr))
   (let* ((exprs (mapcar #'expression (assignments ex)))
+	 (args (mapcar #'arguments (assignments ex)))
 	 (jtypes (mapcar #'judgement-types* exprs)))
     (unless (every #'null jtypes)
       (let* ((len (length exprs))
 	     (vec (make-array len)))
 	(dotimes (i len)
 	  (setf (aref vec i)
-		(or (nth i jtypes)
-		    (list (type (nth i exprs))))))
+		(cons (id (caar (nth i args)))
+		      (or (nth i jtypes)
+			  (list (type (nth i exprs)))))))
 	vec))))
 
 (defmethod judgement-types* ((ex quant-expr))
@@ -1085,7 +1108,7 @@
 	(let ((sjdecl (subst-params-decl jdecl theoryname)))
 	  (unless (and (not (eq sjdecl jdecl))
 		       (member sjdecl (judgements-graph to-entry)
-			       :test #'eq :key #'car))
+			       :test #'judgement-eq :key #'car))
 	    (if (fully-instantiated? (judgement-type sjdecl))
 		(add-judgement-decl-to-graph sjdecl to-entry t)
 		(unless (or (memq jdecl (generic-judgements to-entry))
@@ -1201,6 +1224,7 @@
   (let ((aty (if (typep atype 'dep-binding) (type atype) atype))
 	(ety (if (typep etype 'dep-binding) (type etype) etype)))
     (unless (subtype-of? aty ety)
+      (clrhash *subtype-of-hash*)
       (let ((entry (get-known-subtypes aty)))
 	(if (null entry)
 	    (push (list aty ety) (known-subtypes *current-context*))
