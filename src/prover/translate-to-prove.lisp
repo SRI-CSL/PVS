@@ -257,7 +257,7 @@
 			      upto (1- (length expected))
 			      collect
 			      `(,(intern (concatenate 'string
-					   "tupsel-"
+					   "TUPSEL-"
 					   (string
 					    (or (prover-type
 					       (nth i (types (type
@@ -303,7 +303,7 @@
 (defmethod translate-to-prove ((expr projection-application))
   (let ((arg (translate-to-prove (argument expr))))
     `(,(intern (concatenate 'string
-		 "tupsel-" (string (or (prover-type (type expr)) '||))))
+		 "TUPSEL-" (string (or (prover-type (type expr)) '||))))
       ,(1- (index expr)) ,arg)))
 
 (defmethod translate-to-prove ((expr injection-application))
@@ -350,7 +350,7 @@
 			     (arguments expr))))
 	     (let ((op (interpretation operator)))
 	       (cond ((and (eq op 'difference) (singleton? args))
-		      (cons 'minus args))
+		      (cons 'MINUS args))
 		     ((eq op '/=)
 		      (list 'not (cons 'equal args)))
 		     ((and (eq op 'not)
@@ -477,7 +477,7 @@
 		       (*bindings*
 			(let* ((apname (intern
 					(concatenate 'string
-					  "apply-"
+					  "APPLY-"
 					  (princ-to-string (length tr-vars))
 					  "-"
 					  (string (or prtype '||)))))
@@ -503,7 +503,7 @@
 				(list
 				 (intern
 				  (concatenate 'string
-				    "apply-"
+				    "APPLY-"
 				    (princ-to-string (length tr-bndvars))
 				    "-"))
 				 tr-operator
@@ -512,7 +512,7 @@
 	tr-lambda-expr
 	 (list (intern
 		(concatenate 'string
-		  "apply-1-" (or (string prtype) "")))
+		  "APPLY-1-" (or (string prtype) "")))
 	       tr-operator
 	       tr-lambda-expr))))
 
@@ -645,7 +645,7 @@
 
 (defun make-tr-projection-application (type number expr)
   `(,(intern (concatenate 'string
-	       "tupsel-" (string (or (prover-type type) '||))))
+	       "TUPSEL-" (string (or (prover-type type) '||))))
     ,(1- number) ,expr))
 
 (defun make-tr-assign-application (fun-type expr args)
@@ -655,7 +655,7 @@
 (defmethod make-apply-name ((te type-expr))
   (let* ((type (find-supertype te))
 	 (name (intern (concatenate 'string
-			 "apply-"
+			 "APPLY-"
 			 (princ-to-string (length (domain-types type)))
 			 "-" (string (or (prover-type (range type)) '||)))))
 	 (prtype (prover-type (range type))))
@@ -715,10 +715,10 @@
     (<= . lesseqp)
     (> . greaterp)
     (>= . greatereqp)
-    (+ . plus)
-    (- . difference)
-    (* . times)
-    (/ . divide)
+    (+ . PLUS)
+    (- . DIFFERENCE)
+    (* . TIMES)
+    (/ . DIVIDE)
     (AND . and)
     (OR . or)
     (NOT . not)
