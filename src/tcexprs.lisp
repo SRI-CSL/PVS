@@ -1044,7 +1044,8 @@
 			  (some #'(lambda (r)
 				    (typep r 'lambda-conversion-resolution))
 				(resolutions (operator expr)))))
-  (unless *in-application-conversion*
+  (unless (or *no-conversions-allowed*
+	      *in-application-conversion*)
     (let* ((*in-application-conversion* t)
 	   (op (operator expr))
 	   (oexpr (copy expr))
