@@ -3,8 +3,8 @@
 ## Author          : Sam Owre
 ## Created On      : Wed Dec 30 19:29:47 1998
 ## Last Modified By: Sam Owre
-## Last Modified On: Thu Dec 31 21:48:23 1998
-## Update Count    : 17
+## Last Modified On: Thu Dec 31 21:49:57 1998
+## Update Count    : 18
 ## Status          : Alpha test
 ###############################################################################
 .SUFFIXES:
@@ -213,7 +213,7 @@ decision-procedures = src/decision-procedures/types.lisp \
 
 all : makebdd makepolylib ${pvsfull} ${pvsrt}
 
-${pvsfull} : ${pvs-make-files} ${ff-files} ${ess} ${pvs-parser} \
+${pvsfull} : ${pvs-make-files} ${ff-files} ${ess} ${pvs-parser-out} \
              ${ground-prover} ${pvs-src} ${pvs-prover} ${bddlisp} \
              ${decision-procedures}
 	rm -rf ${bindir}/full
@@ -221,7 +221,7 @@ ${pvsfull} : ${pvs-make-files} ${ff-files} ${ess} ${pvs-parser} \
 		-L src/make-pvs.lisp
 	touch ${pvsfull}
 
-${pvsrt} : ${pvs-make-files} ${ff-files} ${ess} ${pvs-parser} \
+${pvsrt} : ${pvs-make-files} ${ff-files} ${ess} ${pvs-parser-out} \
            ${ground-prover} ${pvs-src} ${pvs-prover} ${bddlisp} \
            ${decision-procedures}
 	rm -rf ${bindir}/runtime
