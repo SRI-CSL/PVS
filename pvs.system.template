@@ -359,7 +359,7 @@
 ;		  (:file "pvseval-update")
 ;		  (:file "cl2pvs")))
    (:module ws1s
-     :source-pathname "src/WS1S"
+     :source-pathname "src/WS1S/lisp"
      :components ((:file "dfa-foreign")
 		  (:file "dfa")
 		  (:file "pvs-utils")
