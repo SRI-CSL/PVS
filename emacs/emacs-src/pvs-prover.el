@@ -397,7 +397,8 @@ documentation for edit-proof-mode for more information."
 	    (indent-line-ilisp)))
 	(delete-char -1))
       (goto-char (point-min))
-      (forward-char 3)
+      (while (looking-at ";;;")
+	(forward-line 1))
       (while (re-search-forward ";;;" nil t)
 	(unless (eq (point) (point-min))
 	  (forward-char -2)
@@ -1532,13 +1533,12 @@ foo.prf.~6~ is added."
 			   num)))))
     (pvs-send (format "(setq *number-of-proof-backups* %s)" n))))
 
+(defun new-decision-procedures ()
+  "Sets the default to the new decision procedures"
+  (interactive)
+  (pvs-send-and-wait "(new-decision-procedures)"))
 
-
-
-
-
-
-
-
-
-
+(defun old-decision-procedures ()
+  "Sets the default to the old decision procedures"
+  (interactive)
+  (pvs-send-and-wait "(old-decision-procedures)"))
