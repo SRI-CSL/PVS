@@ -393,7 +393,7 @@ lambda-formals ::= {lambda-formal [[',']^c lambda-formals]}
 					 [nocomma()|comma()]^c,
 					 lambda-formals)]>;
 
-lambda-formal ::= idop | pdformals ;
+lambda-formal ::= idop-not-number | pdformals ;
 
 set-formals ::= {set-formal [[',']^c set-formals]}
 		<[set-formal|
@@ -462,6 +462,8 @@ arguments ::= {'(' {expr ++ ','} ')'} <arguments(expr+)>;
 idops ::= {idop ++ ','} <idops(idop+)>;
 
 idop ::=  id  <idop(id)> | opsym <idop(opsym)> | number <idop(number)> ;
+
+idop-not-number ::= id  <idop(id)> | opsym <idop(opsym)> ;
 
 ids ::= {id ++ ','} <ids(id+)>;
 
