@@ -45,6 +45,44 @@
   (declare (ignore frees))
   nil)
 
+(defmethod free-params* ((jdecl subtype-judgement) frees)
+  (with-slots (free-parameters) jdecl
+    (if (eq free-parameters 'unbound)
+	(setf free-parameters
+	      (free-params* (subtype jdecl)
+		(free-params* (declared-subtype jdecl)
+		  (free-params* (declared-type jdecl)
+		    (free-params* (type jdecl) nil))))))
+	free-parameters)))
+
+(defmethod free-params* ((jdecl number-judgement) frees)
+  (with-slots (free-parameters) jdecl
+    (if (eq free-parameters 'unbound)
+	(setf free-parameters
+	      (free-params* (type jdecl)
+		(free-params* (declared-type jdecl) nil)))
+	free-parameters)))
+
+(defmethod free-params* ((jdecl name-judgement) frees)
+  (with-slots (free-parameters) jdecl
+    (if (eq free-parameters 'unbound)
+	(setf free-parameters
+	      (free-params* (name jdecl)
+		(free-params* (type jdecl)
+		  (free-params* (declared-type jdecl) nil))))
+	free-parameters)))
+
+(defmethod free-params* ((jdecl application-judgement) frees)
+  (with-slots (free-parameters) jdecl
+    (if (eq free-parameters 'unbound)
+	(setf free-parameters
+	      (free-params* (name jdecl)
+		(free-params* (formals jdecl) 
+		  (free-params* (type jdecl)
+		    (free-params* (declared-type jdecl)
+		      (free-params* (judgement-type jdecl) nil))))))
+	free-parameters)))
+
 ;;; Type expressions
 
 (defmethod free-params* :around ((texpr type-expr) frees) 
