@@ -925,7 +925,7 @@ pvs-strategies files.")
     (restore-from-context (filename theory) theory))
   (assert (saved-context theory)))
 
-(defmethod update-restored-theories ((adt datatype))
+(defmethod update-restored-theories ((adt recursive-type))
   (setf (formals-sans-usings adt)
 	(remove-if #'(lambda (d) (typep d 'importing))
 	  (formals adt)))
@@ -1164,7 +1164,6 @@ pvs-strategies files.")
 
 ;;; Called from typecheck-theories in pvs.lisp and from
 ;;; update-restored-theories
-;;; First restores the proofs, then 
 
 (defun restore-from-context (filename theory &optional proofs)
   (restore-proofs filename theory proofs))

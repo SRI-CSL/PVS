@@ -26,6 +26,7 @@ Copyright 2002 SRI International
 @top PVS Release Notes
 @end ifinfo
 
+@c @node Introduction
 @chapter Introduction
 
 The PVS release notes are given here, for each version, going back to
@@ -41,9 +42,9 @@ are available in the @code{doc/release-notes} subdirectory of the PVS
 distribution.
 
 @menu
-* PVS 3.2 Release Notes:: PVS 3.2 Release Notes
-* PVS 3.1 Release Notes:: PVS 3.1 Release Notes
-* PVS 3.0 Release Notes:: PVS 3.0 Release Notes
+* PVS 3.2 Release Notes::
+* PVS 3.1 Release Notes::
+* PVS 3.0 Release Notes::
 @end menu
 
 @include pvs3.2-release-notes.texi

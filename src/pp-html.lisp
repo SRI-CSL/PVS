@@ -23,7 +23,8 @@
 
 (defun html-pvs-file (file-name
 		      &optional include-prelude-operators? all? force?)
-    (cond ((not *pvs-context-writable*)
+    (cond ((and (null *pvs-url-mapping*)
+		(not *pvs-context-writable*))
 	   (pvs-message "You do not have write permission in this context"))
 	  ((typechecked-file? file-name)
 	   (check-pvs-url-mapping)

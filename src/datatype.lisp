@@ -1469,7 +1469,7 @@ generated")
   ;; numbers are distinct, and hence provides this.
   )
   
-(defparameter *disjoint-axiom-expansion-maxsize* 100)
+;;(defparameter *disjoint-axiom-expansion-maxsize* 100)
 
 ;; (defun generate-disjoint-axiom (adt)
 ;;   (let* ((varid (makesym "~a_var" (id adt)))

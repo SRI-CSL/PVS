@@ -43,7 +43,8 @@
 (defvar *default-decision-procedure* 'shostak)
 
 (defvar *decision-procedures*
-  (list 'shostak 'ics))
+  (list 'shostak ;;'ics
+	))
 
 (defvar *decision-procedure-descriptions*
   '())
@@ -142,6 +143,7 @@
     'dpinfo-usealist *init-usealist*))
 
 (defmethod dpi-process* ((dp (eql 'shostak)) (pvs-expr expr) state)
+  (assert (boundp '*sequent-typealist*))
   (let* ((sigalist (dpinfo-sigalist state))
 	 (findalist (dpinfo-findalist state))
 	 (usealist (dpinfo-usealist state))
