@@ -79,55 +79,55 @@ unignored slots, saved-slots, and unsaved-slots.")
     ))
 
 
-(defmacro defcl* (name classes &rest args)
-  (let ((cl (macroexpand `(defcl ,name ,classes ,@args))))
-    (eval (second cl))
-    (eval (sixth cl))   ;; updates *slot-info*
-    (append cl
-	    (generate-defcl-methods (list name))
-	    (generate-update-fetched-methods (list name)))))
+; (defmacro defcl* (name classes &rest args)
+;   (let ((cl (macroexpand `(defcl ,name ,classes ,@args))))
+;     (eval (second cl))
+;     (eval (sixth cl))   ;; updates *slot-info*
+;     (append cl
+; 	    (generate-defcl-methods (list name))
+; 	    (generate-update-fetched-methods (list name)))))
 
-(defvar *classes-done* nil)
-(defvar *methods-collected* nil)
+; (defvar *classes-done* nil)
+; (defvar *methods-collected* nil)
 
-(defun generate-defcl-methods (names)
-  (let ((*classes-done* nil)
-	(*methods-collected* nil))
-    (generate-defcl-methods* names)
-    *methods-collected*))
+; (defun generate-defcl-methods (names)
+;   (let ((*classes-done* nil)
+; 	(*methods-collected* nil))
+;     (generate-defcl-methods* names)
+;     *methods-collected*))
 
-(defun generate-defcl-methods* (names)
-  (when names
-    (let* ((name (car names))
-	   (class (find-class name)))
-      (unless (memq name *classes-done*)
-	(push name *classes-done*)
-	(setq *methods-collected*
-	      (nconc *methods-collected*
-		     (list (generate-copy-method name)
-			   (generate-store-object*-method name)
-			   ;;(generate-update-fetched-method name)
-			   )))
-	(generate-defcl-methods* (mapcar #'class-name
-				   (class-direct-subclasses class)))))
-    (generate-defcl-methods* (cdr names))))
+; (defun generate-defcl-methods* (names)
+;   (when names
+;     (let* ((name (car names))
+; 	   (class (find-class name)))
+;       (unless (memq name *classes-done*)
+; 	(push name *classes-done*)
+; 	(setq *methods-collected*
+; 	      (nconc *methods-collected*
+; 		     (list (generate-copy-method name)
+; 			   (generate-store-object*-method name)
+; 			   ;;(generate-update-fetched-method name)
+; 			   )))
+; 	(generate-defcl-methods* (mapcar #'class-name
+; 				   (class-direct-subclasses class)))))
+;     (generate-defcl-methods* (cdr names))))
 
-(defun generate-update-fetched-methods (names)
-  (let ((*classes-done* nil)
-	(*methods-collected* nil))
-    (generate-update-fetched-methods* names)
-    (nreverse *methods-collected*)))
+; (defun generate-update-fetched-methods (names)
+;   (let ((*classes-done* nil)
+; 	(*methods-collected* nil))
+;     (generate-update-fetched-methods* names)
+;     (nreverse *methods-collected*)))
 
-(defun generate-update-fetched-methods* (names)
-  (when names
-    (let* ((name (car names))
-	   (class (find-class name)))
-      (unless (memq name *classes-done*)
-	(push name *classes-done*)
-	(push (generate-update-fetched-method name) *methods-collected*)
-	(generate-update-fetched-methods* (mapcar #'class-name
-					    (class-direct-subclasses class)))))
-    (generate-update-fetched-methods* (cdr names))))
+; (defun generate-update-fetched-methods* (names)
+;   (when names
+;     (let* ((name (car names))
+; 	   (class (find-class name)))
+;       (unless (memq name *classes-done*)
+; 	(push name *classes-done*)
+; 	(push (generate-update-fetched-method name) *methods-collected*)
+; 	(generate-update-fetched-methods* (mapcar #'class-name
+; 					    (class-direct-subclasses class)))))
+;     (generate-update-fetched-methods* (cdr names))))
 
 
 ;;; lcopy is a lazy copy that only makes a copy if there is a difference
