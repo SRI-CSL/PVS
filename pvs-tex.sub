@@ -31,12 +31,6 @@ OR		id	1	\vee
 NOT		id	1	\neg
 IFF		id	2	\Leftrightarrow
 
-Implies		id	2	\supset
-And		id	1	\wedge
-Or		id	1	\vee
-Not		id	1	\neg
-Iff		id	2	\Leftrightarrow
-
 /\		id	1	\wedge
 \/		id	1	\vee
 ^		id	1	{}^{\scriptscriptstyle\wedge}
@@ -90,8 +84,10 @@ OMEGA		id	1	\Omega
 
 +		2	1	{#1+#2}
 -		2	1	{#1-#2}
+-		1	1	{-#1}
 *		2	1	{#1\times#2}
 /		2	1	{#1/#2}
+O		2	1	{#1\circ#2}
 member		2	1	{(#1 \in #2)}
 member		0	4	{(\star1 \in \star2)}
 emptyset        0       1       {\emptyset}
