@@ -139,9 +139,21 @@
   (when (mod-id name)
     (let ((mod-decls (remove-if-not #'mod-decl?
 		       (gethash (mod-id name) (current-declarations-hash)))))
-      (assert (every #'(lambda (md) (fully-instantiated? (modname md)))
-		     mod-decls))
-      (mapcar #'modname mod-decls))))
+      (get-theory-aliases* mod-decls))))
+
+(defun get-theory-aliases* (mod-decls &optional modnames)
+  (if (null mod-decls)
+      modnames
+      (let ((modname (modname (car mod-decls)))
+	    (usehash (gethash (module (car mod-decls)) (current-using-hash))))
+	(get-theory-aliases*
+	 (cdr mod-decls)
+	 (nconc modnames
+		(mapcar #'(lambda (inst)
+			    (if (actuals inst)
+				(subst-mod-params modname inst)
+				modname))
+		  usehash))))))
 
 (defmethod get-binding-resolutions ((name name) kind args)
   (with-slots (mod-id library actuals id) name
