@@ -13,8 +13,8 @@
 
 (export '(unparse pp* pp-chained-decls check-chained-syntax simple-name?))
 
-;; The variable excl:*enclose-printer-errors* is supposed to allow
-;; errors to be seen when they happen.
+;; The variable excl:*enclose-printer-errors* when set to nil is supposed to
+;; allow errors to be caught when they happen, but I've never seen this work.
 
 (defvar *use-pp* t)
 
@@ -162,7 +162,8 @@ bind tighter.")
 (defun pp (obj)
   (let ((*disable-gc-printout* t)
 	(*pretty-printing-decl-list* nil)
-	(*pretty-printed-prefix* nil))
+	(*pretty-printed-prefix* nil)
+	(excl:*enclose-printer-errors* nil))
     (pprint-logical-block (nil nil)
       (pp* obj))))
 

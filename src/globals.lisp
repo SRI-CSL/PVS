@@ -52,7 +52,7 @@
     (subseq excl::cl-release-date 0 end)))
 
 (eval-when (eval compile load)
-  (defparameter *pvs-version* "3.2")
+  (defparameter *pvs-version* "3.3 Beta")
 
   ;; Not used in PVS sources, but may be useful for patches, strategies, etc.
   ;;(pushnew (intern (format nil "pvs~a" *pvs-version*) :keyword) *features*)
@@ -64,8 +64,6 @@
 (defparameter *context-name* ".pvscontext")
 
 (defvar *pvs-global-tables* nil)
-
-(defvar *bin-theories-set* nil)
 
 (defvar *adt-type-name-pending*)
 
