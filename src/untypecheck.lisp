@@ -41,7 +41,8 @@
   (setf (tcc-comments dorm) nil)
   (setf (info dorm) nil)
   (setf (warnings dorm) nil)
-  (setf (conversion-messages dorm) nil))
+  (setf (conversion-messages dorm) nil)
+  (setf (all-declarations dorm) nil))
 
 (defmethod untypecheck-theory ((adt datatype))
   (untypecheck-theory (importings adt))
@@ -188,18 +189,21 @@
 
 (defmethod untypecheck-theory ((decl formal-theory-decl))
   (when (next-method-p) (call-next-method))
-  (untypecheck-theory (theory-name decl)))
+  (untypecheck-theory (theory-name decl))
+  (setf (saved-context decl) nil))
 
 (defmethod untypecheck-theory ((decl lib-decl))
   nil)
 
 (defmethod untypecheck-theory ((decl mod-decl))
   (when (next-method-p) (call-next-method))
-  (untypecheck-theory (actuals (modname decl))))
+  (untypecheck-theory (actuals (modname decl)))
+  (setf (saved-context decl) nil))
 
 (defmethod untypecheck-theory ((decl theory-abbreviation-decl))
   (when (next-method-p) (call-next-method))
-  (untypecheck-theory (actuals (theory-name decl))))
+  (untypecheck-theory (actuals (theory-name decl)))
+  (setf (saved-context decl) nil))
 
 (defmethod untypecheck-theory ((decl type-decl))
   (when (next-method-p) (call-next-method))
