@@ -1211,7 +1211,6 @@
 	 'type (type res)
 	 'resolutions (list res)))))
     
-
 (defun make!-equation (lhs rhs)
   (assert (and (type lhs) (type rhs)))
   (assert (compatible? (type lhs) (type rhs)))
@@ -1233,6 +1232,23 @@
 	  'operator eqname
 	  'argument arg
 	  'type *boolean*))))
+
+(defun make!-disequation (lhs rhs)
+  (assert (and (type lhs) (type rhs)))
+  (assert (compatible? (type lhs) (type rhs)))
+  (let* ((type (find-supertype (type lhs)))
+	 (res (mk-resolution (equality-decl)
+		(mk-modname '|notequal| (list (mk-actual type)))
+		(mk-funtype (list type type) *boolean*)))
+	 (diseqname (make-instance 'name-expr
+		      'id '/=
+		      'type (type res)
+		      'resolutions (list res)))
+	 (arg (make!-arg-tuple-expr lhs rhs)))
+    (make-instance 'infix-disequation
+      'operator diseqname
+      'argument arg
+      'type *boolean*)))
 
 (defun make!-if-expr (cond then else)
   (make!-if-expr* cond then else nil))
