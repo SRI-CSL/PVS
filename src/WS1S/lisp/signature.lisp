@@ -16,10 +16,6 @@
 (def-pvs-term the2      "the[finite_set[nat]]" "record_prelude_example")
 (def-pvs-term minus1 "-" "naturalnumbers" :expected "[nat, nat -> nat]")
 (def-pvs-term plus1  "+" "naturalnumbers" :expected "[nat, nat -> nat]")
-(def-pvs-term gt1  ">"  "naturalnumbers" :expected "[nat, nat -> boolean]")
-(def-pvs-term ge1    ">=" "naturalnumbers" :expected "[nat, nat -> boolean]")
-(def-pvs-term lt1   "<" "naturalnumbers" :expected "[nat, nat -> boolean]")
-(def-pvs-term le1    "<=" "naturalnumbers" :expected "[nat, nat -> boolean]")
 
 (def-pvs-term union-operator    "union[nat]" "record_prelude_example"
                                     :expected "[set[nat], set[nat] -> set[nat]]")
@@ -29,6 +25,9 @@
                                     :expected "[set[nat], set[nat] -> set[nat]]")
 (def-pvs-term emptyset-operator "emptyset[nat]" "record_prelude_example"
                                     :expected "set[nat]")
+(def-pvs-term singleton-operator "singleton[nat]" "record_prelude_example"
+                                    :expected "[nat -> set[nat]]")
+
 
 (defun ws1s-types ()
   (list *boolean*
