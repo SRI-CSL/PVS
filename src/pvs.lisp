@@ -612,7 +612,7 @@
       (let* ((adt-file (concatenate 'string (string (id th)) "_adt"))
 	     (adt-path (make-specpath adt-file)))
 	(when (file-exists-p adt-path)
-	  (let ((sname (shortname adt-file)))
+	  (let ((sname (shortname adt-path)))
 	    (multiple-value-bind (ignore error)
 		(ignore-errors (delete-file adt-path))
 	      (if error
