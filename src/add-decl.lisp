@@ -241,7 +241,7 @@
 	   (atail (if (or (null cdecl)
 			  (tcc? decl)
                           (and (formula-decl? decl)
-                               (eq (spelling decl) 'assumption)))
+                               (eq (spelling decl) 'ASSUMPTION)))
                        atail0 (cdr atail0)))
 	   (ttail0 (if cdecl
 		       (if (formal-decl? cdecl)
@@ -252,7 +252,7 @@
 	   (ttail (if (or (null cdecl)
 			  (tcc? decl)
                           (and (formula-decl? decl)
-                               (eq (spelling decl) 'assumption)))
+                               (eq (spelling decl) 'ASSUMPTION)))
                       ttail0 (cdr ttail0))))
       #+pvsdebug (assert (or cdecl (not generated?)))
       #+pvsdebug (assert (or atail0 ttail0 (not insert?)
