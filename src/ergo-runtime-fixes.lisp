@@ -361,6 +361,8 @@ with the comment so as to put it in the proper place")
   "Used by lex-newline-comment to return the latest comments to
    lexical-read.")
 
+(defvar *holding-char* nil)
+
 ;;; From rt-structs.lisp - only difference is that it sets *end-of-last-token*
 
 (defun lexical-read (self eofval &aux char place
@@ -372,11 +374,14 @@ with the comment so as to put it in the proper place")
     (loop
      ;; Scan till we hit non-whitespace or eof
      (loop
-      (setq char (lexical-read-char self :eof))
+      (if *holding-char*
+	  (setq char *holding-char*)
+	  (setq char (lexical-read-char self :eof)))
       (when (or (equal char :eof)
 		(not (null (elt readtable (char-code char)))))
 	(return)))
-     (lexical-unread-char self)
+     (unless *holding-char*
+       (lexical-unread-char self))
      (setq place (curplace (lexical-stream-stream self))
 	   char (multiple-value-list
 		 (cond ((equal char :eof) eofval)
@@ -413,7 +418,10 @@ with the comment so as to put it in the proper place")
 			      (alpha-lexer self char))))
 		       (t (funcall (elt readtable (char-code char))
 				   self
-				   (lexical-read-char self nil))))))
+				   (if *holding-char*
+				       (prog1 *holding-char*
+					 (setq *holding-char* nil))
+				       (lexical-read-char self nil)))))))
      (when char (return)))
     (values (car char) place *newline-comments*)))
 
