@@ -350,6 +350,15 @@
   (declare (ignore expr))
   nil)
 
+(defmethod interpreted? ((expr name-expr))
+  (with-slots (id resolutions) expr
+    (let ((interp (cdr (assq id (if *newdc*
+				    *dc-interpreted-alist*
+				    *interpreted-alist*)))))
+      (and interp
+	   (let ((mi (module-instance (car resolutions))))
+	     (and mi (eq (mod-id interp) (id mi))))))))
+
 (defmethod function-non-functional? (expr)
   (declare (ignore expr))
   nil)
