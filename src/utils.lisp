@@ -69,7 +69,7 @@
     (if (or (not (type ex))
 	    (not (type nex))
 	    (iff-or-boolean-equation? nex)
-	    (not (tc-eq (type (args1 nex)) *boolean*)))
+	    (not (tc-eq (find-supertype (type (args1 nex))) *boolean*)))
 	nex
 	(change-class nex 'infix-boolean-equation))))
 
@@ -613,7 +613,8 @@
     (and (eq id '=)
 	 (let ((mi (module-instance (car resolutions))))
 	   (and (eq (id mi) '|equalities|)
-		(tc-eq (type-value (car (actuals mi))) *boolean*))))))
+		(tc-eq (find-supertype (type-value (car (actuals mi))))
+		       *boolean*))))))
 
 (defmethod boolean-equality-op? (op)
   (declare (ignore op))
@@ -621,7 +622,7 @@
 
 (defmethod relation-type? ((te funtype))
   (with-slots (domain range) te
-    (and (tc-eq range *boolean*)
+    (and (tc-eq (find-supertype range) *boolean*)
 	 (relation-type-domain? domain))))
 
 (defmethod relation-type? ((te subtype))
@@ -644,7 +645,7 @@
 
 (defmethod boolean-binop-type? ((te funtype))
   (with-slots (domain range) te
-    (and (tc-eq range *boolean*)
+    (and (tc-eq (find-supertype range) *boolean*)
 	 (boolean-binop-domain-type? domain))))
 
 (defmethod boolean-binop-type? (te)
@@ -652,7 +653,7 @@
 
 (defmethod boolean-binop-domain-type? ((te tupletype))
   (with-slots (types) te
-    (every #'(lambda (ty) (tc-eq ty *boolean*))
+    (every #'(lambda (ty) (tc-eq (find-supertype ty) *boolean*))
 	   types)))
 
 (defmethod boolean-binop-domain-type? (te)
@@ -1678,9 +1679,12 @@
   nil)
 
 (defmethod raise-actuals? ((x name))
-  (unless (and (eq (id x) '=)
-	       (module-instance x)
-	       (eq (id (module-instance x)) '|equalities|))
+  (unless (or (and (eq (id x) '=)
+		   (module-instance x)
+		   (eq (id (module-instance x)) '|equalities|))
+	      (and (eq (id x) '/=)
+		   (module-instance x)
+		   (eq (id (module-instance x)) '|notequal|)))
     (raise-actuals-name? x)))
 
 (defmethod raise-actuals? ((a actual))
@@ -2285,9 +2289,11 @@ space")
 	     result)))))
 
 (defun compatible-conversion (conversion type)
-  (let* ((theory (module conversion))
+  (let* (;;(theory (module conversion))
 	 (ctype (find-supertype (type conversion)))
-	 (fmls (formals-sans-usings theory)))
+	 (fmls (free-params ctype) ;(formals-sans-usings theory)
+	       )
+	 (theory (when fmls (module (car fmls)))))
     (if (and fmls
 	     (not (eq theory (current-theory)))
 	     (not (fully-instantiated? ctype)))
@@ -2355,8 +2361,10 @@ space")
 
 (defun compatible-k-conversion (conversion type)
   (let* ((ctype (range (find-supertype (type conversion))))
-	 (ctheory (module conversion))
-	 (fmls (formals-sans-usings ctheory)))
+	 ;;(ctheory (module (declaration (name conversion))))
+	 (fmls (free-params ctype) ;;(formals-sans-usings ctheory)
+	       )
+	 (ctheory (when fmls (module (car fmls)))))
     (if (and fmls
 	     (not (fully-instantiated? ctype)))
 	(let ((bindings (tc-match type ctype (mapcar #'list fmls))))
@@ -3211,3 +3219,12 @@ space")
     (actuals name)
     (library name)
     (mappings name)))
+
+(defun equality? (obj)
+  (equation? obj))
+
+(defmethod negate! ((formula negation))
+  (argument formula))
+
+(defmethod negate! (formula)
+  (make!-negation formula))
