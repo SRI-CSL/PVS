@@ -14,13 +14,13 @@ Type C-v for next page, M-v for previous one, M-< to go to top, M-> to end.
 
 --------------------------------Exiting PVS-----------------------------------
 
-suspend-pvs (C-x C-z)       Suspend PVS
 exit-pvs (C-x C-c)          Terminate the PVS session
+suspend-pvs (C-x C-z)       Suspend PVS
 
 ------------------------------Getting Help------------------------------------
 
 help-pvs, pvs-help (C-c h)  - Display help for the PVS system commands
-help-pvs-bnf                - Display help for the PVS grammar
+help-pvs-bnf (C-c C-h b)    - Display help for the PVS grammar
 help-pvs-language, pvs-help-language (C-c C-h l)
                             - Display help for the PVS language
 help-pvs-prover, pvs-help-prover (C-c C-h p)
@@ -34,14 +34,14 @@ help-pvs-prover-emacs, pvs-help-prover-emacs (C-c C-h e)
 
 ---------------------------Editing PVS Files----------------------------------
 
-forward-theory, (M-})       Move forward to the beginning of the next theory
-backward-theory, (M-{)      Move backward to the beginning of previous theory
+forward-theory (M-})       Move forward to the beginning of the next theory
+backward-theory (M-{)      Move backward to the beginning of previous theory
 find-unbalanced-pvs (C-c ]) Find unbalanced PVS delimiters
 comment-region (C-c ;)      Comment out all lines in the current region
                             With arg, uncomments region
 
 ------------------------Parsing and Typechecking------------------------------
-With an argument, these will force reparsing/retypechecking.
+  With an argument, these will force reparsing/retypechecking.
 
 parse, pa                   Parse the PVS file in the current buffer
 typecheck, tc (C-c t)       Typecheck the PVS file in the current buffer
@@ -65,8 +65,8 @@ prove-theory,     prt (C-c C-p t)  Do all proofs in specified theory
 prove-theories			   Do all proofs in specified theories
 prove-pvs-file,   prf (C-c C-p f)  Do all the proofs in current file
 prove-importchain,pri (C-c C-p i)  Do all proofs in IMPORT chain
-prove-importchain-subtree          Do proofs in subtree of IMPORT chain
-prove-proofchain, prp (C-c C-p p)  Do all proofs in proofchain of formula
+prove-importchain-subtree,pris     Do proofs in subtree of IMPORT chain
+prove-proofchain, prp (C-c C-p c)  Do all proofs in proofchain of formula
 prove-theory-using-default-dp      Do proofs with default decision procedures
 prove-theories-using-default-dp    Do proofs with default decision procedures
 prove-pvs-file-using-default-dp    Do proofs with default decision procedures
@@ -75,14 +75,16 @@ prove-importchain-subtree-using-default-dp Do proofs with default dec. procs.
 prove-proofchain-using-default-dp  Do proofs with default decision procedures
 prove-untried-theory               Try untried proofs with specified strategy
 prove-untried-pvs-file             Try untried proofs with specified strategy
+new-decision-procedures		   Use the new decision procedures by default
+old-decision-procedures		   Use the old decision procedures by default
 
 ------------------------Proof Editing Commands--------------------------------
 
 edit-proof, show-proof      Edit the proof of the formula at cursor
 			      (C-c C-i) offers to rerun the proof
 install-proof, (C-c C-i)    Install the current proof at formula
-install-and-step-proof      Install the current proof at formula and step
-install-and-x-step-proof    Install the current proof at formula and step
+install-and-step-proof (C-c s)   Install the current proof at formula and step
+install-and-x-step-proof (C-c x) Install the current proof at formula and step
 revert-proof                Reverts the proof of the formula at cursor
                               to the previous one (toggles)
 remove-proof                Removes the proof of the formula at cursor
@@ -143,8 +145,8 @@ show-tccs,            tccs (C-c C-q s) Show the TCCs of the indicated theory
 
 find-pvs-file, ff (C-c C-f) Find buffer containing named PVS file
 find-theory, ft             Find buffer containing named theory
-view-library-file           View named library file
-view-library-theory         View named library theory
+view-library-file,vlf       View named library file
+view-library-theory,vlt     View named library theory
 view-prelude-file, vpf      View the prelude file
 view-prelude-theory, vpt    View the specified prelude theory
 new-pvs-file, nf            Create PVS buffer containing named theory
@@ -178,11 +180,11 @@ latex-pvs-file, ltf (C-c C-l f)    Generate LaTeX text for PVS file
 latex-importchain, lti (C-c C-l i) Generate LaTeX text for IMPORT chain
 latex-proof, ltp (C-c C-l p)       Generate LaTeX text for last proof 
 latex-theory-view, ltv (C-c C-l v) Generates and views LaTeX for theory
-latex-proof-view                   Generates and views LaTeX for last proof
-latex-set-linelength               Set the linelength for LaTeX text
+latex-proof-view, lpv (C-c C-l P)  Generates and views LaTeX for last proof
+latex-set-linelength, lts (C-c C-l s)  Set the linelength for LaTeX text
 
 ----------------------------Display Commands----------------------------------
-All of these commands pop up a Tcl/Tk window
+  All of these commands pop up a Tcl/Tk window
 
 x-theory-hierarchy         Display the theory hierarchy
 x-show-proof               Display proof of formula at cursor
@@ -224,7 +226,7 @@ show-theory-warnings                Show warnings for theory
 show-pvs-file-warnings              Show warnings for PVS file
 show-theory-messages                Show informational messages for theory
 show-pvs-file-messages              Show informational messages for PVS file
-status-proof, sp                    Status of formula at cursor
+status-proof, sp (C-c C-s p)        Status of formula at cursor
 status-proof-theory, spt            Status of all formulas in theory
 status-proof-pvs-file, spf          Status of all formulas in PVS file
 status-proof-importchain, spi       Status of all formulas on IMPORT chain
@@ -235,18 +237,17 @@ status-proofchain-importchain, spci Analyze proof chain of import chain
 
 --------------------------Environment Commands--------------------------------
 
-whereis-pvs                 Display the root PVS directory
-pvs-version                 Display current version of PVS
-pvs-mode                    Put current buffer in PVS mode
-pvs-log                     Display the PVS Log buffer
-status-display              Display the PVS Status buffer
-pvs-status                  Find out if Lisp is busy
-remove-popup-buffer (C-z 1) Remove the popup buffer
-pvs                         Start the PVS process
-pvs-load-patches            Load new PVS patches
-pvs-interrupt-subjob        Interrupt PVS lisp process
-reset-pvs                   Interrupt PVS and resynchronize
-report-pvs-bug              Mail a bug report to pvs-bugs@csl.sri.com
+whereis-pvs                         Display the root PVS directory
+pvs-version                         Display current version of PVS
+pvs-mode                            Put current buffer in PVS mode
+pvs-log                             Display the PVS Log buffer
+status-display                      Display the PVS Status buffer
+pvs-status                          Find out if Lisp is busy
+pvs                                 Start the PVS process
+pvs-load-patches, load-pvs-patches  Load new PVS patches
+pvs-interrupt-subjob (C-c C-c)      Interrupt PVS lisp process
+reset-pvs                           Interrupt PVS and resynchronize
+report-pvs-bug, pvs-report-bug      Mail a bug report to pvs-bugs@csl.sri.com
 
 
 ========================LaTeX Substitution Files==============================
@@ -268,11 +269,11 @@ the last entry translates, e.g., f4(G)(1,n).  Length is an estimation of
 the size of the translation in ens, ignoring the size of the arguments.
 Further examples may be found in pvs-tex.sub in the main PVS directory.
 
-Identifier  Type  Length  Substitution
-----------  ----  ------  ------------
-THEORY      key     9     {\large\bf Theory}
-f1          id      3     {\rm bar}
-f2          id[2]   2     {#2_{#1}^{f}}
-f3          2       2     {#1^#2}
-f4          (1 2)   3     {\sum_{i=#2}^{#3}#1(i,#2)}
+	Identifier  Type  Length  Substitution
+	----------  ----  ------  ------------
+	THEORY      key     9     {\large\bf Theory}
+	f1          id      3     {\rm bar}
+	f2          id[2]   2     {#2_{#1}^{f}}
+	f3          2       2     {#1^#2}
+	f4          (1 2)   3     {\sum_{i=#2}^{#3}#1(i,#2)}
 
