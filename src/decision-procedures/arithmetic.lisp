@@ -365,7 +365,7 @@
 		       (t (car product))))
 		(cond
 		 ((equal coef 1) product)
-		 (t (mk-times `(,(mk-constant coef) ,product)))))
+		 (t (sigtimes (mk-times `(,(mk-constant coef) ,product))))))
 	       (t (mk-constant coef))))))))
 
 ;;makes reciprocal.
