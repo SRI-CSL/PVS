@@ -10,14 +10,15 @@ ARS =  $(BDD)/libbdd2.a $(UTILS)/libutils.a
 
 # specify appropriate C compiler flags here:
 #CFLAGS= -W0,-opt,4 -DHAVE_ALLOCA $(INCLUDES)
-CFLAGS= -O -Aa -D_XOPEN_SOURCE $(INCLUDES)
+#CFLAGS= -O -Aa -D_XOPEN_SOURCE $(INCLUDES)
+CFLAGS= -g $(INCLUDES)
 #CFLAGS= -O -D_XOPEN_SOURCE $(INCLUDES)
 LDFLAGS= -s
 
 obj=	mu.o y.tab.o lex.yy.o main.o
 
 mu : ${obj}
-	$(CC) ${LDFLAGS} -o mu ${obj} $(ARS) -ll
+	$(CC) ${LDFLAGS} -o mu ${obj} $(ARS) -lfl
 
 .c.o : ; $(CC) ${CFLAGS} -c $*.c
 
