@@ -348,6 +348,10 @@
   (with-slots (argument) expr
     (structure* argument)))
 
+(defmethod structure* ((expr injection-application))
+  (with-slots (argument) expr
+    (structure* argument)))
+
 (defmethod structure* ((expr field-application))
   (with-slots (argument) expr
     (structure* argument)))
@@ -367,6 +371,12 @@
 
 
 (defmethod check-update-argument ((expr projection-application)
+				  updated-variables)
+  (with-slots (argument) expr
+    (or (not (contains-possible-closure? (type expr)))
+	(check-update-argument argument updated-variables))))
+
+(defmethod check-update-argument ((expr injection-application)
 				  updated-variables)
   (with-slots (argument) expr
     (or (not (contains-possible-closure? (type expr)))
@@ -421,9 +431,3 @@
   (null (intersection (updateable-vars expr)
 		      updated-variables
 		      :test #'same-declaration)))
-
-    
-
-
-
-

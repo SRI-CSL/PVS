@@ -36,7 +36,7 @@
 			sformnum
 		       (list sformnum)))
 	 (sforms (s-forms goalsequent))
-	 (name (pc-parse name 'name))
+	 (name (pc-parse name 'bname))
 	 (occurrence (if (numberp occurrence)
 			 (list occurrence)
 			 occurrence))
@@ -137,6 +137,14 @@ list of positive numbers" occurrence)
 ;;; SO 9/2/94 - Added methods for projection-application and field-application
 
 (defmethod expand-defn (name (expr projection-application) occurrence)
+  (if (and (plusp *max-occurrence*)
+	   (< *max-occurrence* *count-occurrences*))
+      expr
+      (let* ((arg (argument expr))
+	     (newarg (expand-defn name arg occurrence)))
+	(lcopy expr 'argument newarg))))
+
+(defmethod expand-defn (name (expr injection-application) occurrence)
   (if (and (plusp *max-occurrence*)
 	   (< *max-occurrence* *count-occurrences*))
       expr

@@ -229,6 +229,10 @@
   (with-slots ((ty1 types)) t1
     (pvs-sxhash-lists-b ty1 bindings (pvs-sxhash-1+ (length bindings)) 127)))
 
+(defmethod pvs-sxhash* ((t1 cotupletype) bindings)
+  (with-slots ((ty1 types)) t1
+    (pvs-sxhash-lists-b ty1 bindings (pvs-sxhash-1+ (length bindings)) 237)))
+
 ;(defmethod pvs-sxhash* ((t1 tupletype) bindings)
 ;  (declare (ignore bindings))
 ;  3)
@@ -519,6 +523,12 @@
   (with-slots (index argument) e1
     (pvs-sxhash-+ (the positive-fixnum index)
 		  (pvs-sxhash* argument bindings))))
+
+(defmethod pvs-sxhash* ((e1 injection-application) bindings)
+  (with-slots (index argument) e1
+    (ash (pvs-sxhash-+ (the positive-fixnum index)
+		       (pvs-sxhash* argument bindings))
+	 2)))
 
 ;(defmethod tc-eq* ((e1 field-application) (e2 field-application)
 ;		   bindings)

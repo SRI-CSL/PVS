@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'pvs)
+(in-package :pvs)
 
 ;;; This file provides the basic commands of PVS.  It provides the
 ;;; functions invoked by pvs-cmds.el, as well as the functions used in
@@ -258,7 +258,7 @@
 			    (list (adt-generated-file? filename)))))
 	     (when deps
 	       (dolist (dep deps)
-		 (typecheck-file dep forced? no-message?)))))
+		 (typecheck-file dep forced? nil nil no-message?)))))
 	  (t (let ((fe (get-context-file-entry filename)))
 	       (when fe (setf (ce-object-date fe) nil)))
 	     (let ((theories (parse-file* filename file theories forced?)))
@@ -613,12 +613,11 @@
       (let* ((adt-file (concatenate 'string (string (id th)) "_adt"))
 	     (adt-path (make-specpath adt-file)))
 	(when (file-exists-p adt-path)
-	  (let ((sname (shortname adt-path)))
-	    (multiple-value-bind (ignore error)
-		(ignore-errors (delete-file adt-path))
-	      (if error
-		  (pvs-message "Error in removing file ~a:~% ~" sname error)
-		  (pvs-message "Deleted file ~a" sname)))))))))
+	  (let ((sname (shortname adt-path))
+		(error (nth-value 1 (ignore-errors (delete-file adt-path)))))
+	    (if error
+		(pvs-message "Error in removing file ~a:~% ~" sname error)
+		(pvs-message "Deleted file ~a" sname))))))))
 
 (defun typecheck-theories (filename theories)
   (let ((all-proofs (read-pvs-file-proofs filename))
@@ -831,20 +830,108 @@
   (typecheck-file modname forced? t))
 
 
+;;; prove-untried commands
+
+(defun prove-untried-importchain (theoryname
+				  &optional (strategy '(grind)) tccs? exclude)
+  (prove*-formulas-importchain theoryname strategy tccs? exclude 'untried))
+
 (defun prove-untried-pvs-file (filename &optional (strategy '(grind)) tccs?)
+  (prove*-formulas-pvs-file filename strategy tccs? 'untried))
+
+(defun prove-untried-theory (theoryname &optional (strategy '(grind))
+					tccs? filename)
+  (prove*-formulas-theory theoryname strategy tccs? filename 'untried))
+
+;;; prove-formulas commands
+
+(defun prove-formulas-importchain (theoryname
+				   &optional (strategy '(grind))
+				   also-proved? exclude)
+  (prove*-formulas-importchain theoryname strategy
+			       also-proved? exclude 'formulas))
+
+(defun prove-formulas-pvs-file (filename
+				&optional (strategy '(grind)) also-proved?)
+  (prove*-formulas-pvs-file filename strategy also-proved? 'formulas))
+
+(defun prove-formulas-theory (theoryname &optional (strategy '(grind))
+					 also-proved? filename)
+  (prove*-formulas-theory theoryname strategy also-proved? filename 'formulas))
+
+;;; prove-tccs commands
+
+(defun prove-tccs-importchain (theoryname
+			       &optional (strategy '(grind))
+			       also-proved? exclude)
+  (prove*-formulas-importchain theoryname strategy also-proved? exclude 'tccs))
+
+(defun prove-tccs-pvs-file (filename
+			    &optional (strategy '(grind)) also-proved?)
+  (prove*-formulas-pvs-file filename strategy also-proved? 'tccs))
+
+(defun prove-tccs-theory (theoryname
+			  &optional (strategy '(grind)) also-proved? filename)
+  (prove*-formulas-theory theoryname strategy also-proved? filename 'tccs))
+
+;;; The generic prove*-formulas- functions
+
+(defun prove*-formulas-importchain (theoryname
+				    &optional (strategy '(grind))
+				    flag exclude kind)
   (let ((just `("" ,strategy)))
     (multiple-value-bind (msg subjust)
 	(check-edited-justification just)
       (when subjust
 	(justification-error subjust just msg)))
-    (dolist (theory (typecheck-file filename))
-      (if (prove-untried-formulas theory just tccs?)
-	  (save-all-proofs theory)
-	  (pvs-message "No untried formulas in theory ~a" (id theory))))
-    (status-proof-pvs-file filename)))
+    (let ((root-theory (get-typechecked-theory theoryname)))
+      (if root-theory
+	  (let ((*current-context* (context root-theory))
+		(*current-theory* root-theory)
+		(imports (remove-if #'(lambda (th)
+				       (or (from-prelude? th)
+					   (typep th '(or library-datatype
+							  library-theory))))
+			   (collect-theory-usings theoryname exclude)))
+		(total-tried 0)
+		(total-proved 0))
+	    (dolist (th imports)
+	      (multiple-value-bind (tried proved)
+		  (prove-formulas th just (get-formula-pred kind flag))
+		(incf total-tried tried)
+		(incf total-proved proved)))
+	    (if (zerop total-tried)
+		(pvs-message "No formulas attempted")
+		(progn
+		  (status-proof-importchain theoryname)
+		  (pvs-message "~d formulas attempted, ~d proved"
+		    total-tried total-proved))))
+	  (pvs-message "Can't find theory ~a in the current context"
+	    theoryname)))))
 
-(defun prove-untried-theory (theoryname &optional (strategy '(grind))
-					tccs? filename)
+(defun prove*-formulas-pvs-file (filename
+				 &optional (strategy '(grind)) flag kind)
+  (let ((just `("" ,strategy)))
+    (multiple-value-bind (msg subjust)
+	(check-edited-justification just)
+      (when subjust
+	(justification-error subjust just msg)))
+    (let ((total-tried 0)
+	  (total-proved 0))
+      (dolist (theory (typecheck-file filename))
+	(multiple-value-bind (tried proved)
+	    (prove-formulas theory just (get-formula-pred kind flag))
+	  (incf total-tried tried)
+	  (incf total-proved proved)))
+      (if (zerop total-tried)
+	  (pvs-message "No formulas attempted")
+	  (progn
+	    (status-proof-pvs-file filename)
+	    (pvs-message "~d formulas attempted, ~d proved"
+	      total-tried total-proved))))))
+
+(defun prove*-formulas-theory (theoryname &optional (strategy '(grind))
+					  flag filename kind)
   (when filename
     (typecheck-file filename))
   (let ((just `("" ,strategy)))
@@ -854,24 +941,85 @@
 	(justification-error subjust just msg)))
     (let ((theory (get-typechecked-theory theoryname)))
       (when theory
-	(if (prove-untried-formulas theory just tccs?)
-	    (save-all-proofs theory)
-	    (pvs-message "No untried formulas in theory ~a" (id theory)))
-	(status-proof-theory theory)))))
+	(multiple-value-bind (total-tried total-proved)
+	    (prove-formulas theory just (get-formula-pred kind flag))
+	  (if (zerop total-tried)
+	      (pvs-message "No formulas attempted")
+	      (progn
+		(status-proof-theory theory)
+		(pvs-message "~d formulas attempted, ~d proved"
+		  total-tried total-proved))))))))
 
-(defun prove-untried-formulas (theory &optional just tccs?)
+(defun prove-formulas (theory just &optional formula-pred)
   (read-strategies-files)
-  (let ((tried-proofs nil))
-    (dolist (fmla (provable-formulas theory))
-      (unless (or (justification fmla)
-		  (and (not tccs?)
-		       (tcc? fmla)))
-	(setq tried-proofs t)
-	(pvs-message "Proving untried formula ~a" (id fmla))
-	(setf (justification fmla) just)
-	(setf (proof-status fmla) nil)
-	(rerun-prove fmla)))
-    tried-proofs))
+  (let ((save-proofs nil)
+	(tried-proofs 0)
+	(proved-proofs 0))
+    (dolist (fmla (provable-formulas (all-decls theory)))
+      (when (funcall formula-pred fmla)
+	(let ((orig-just (extract-justification-sexp (justification fmla)))
+	      (orig-status (proof-status fmla))
+	      (orig-new-ground? (new-ground? fmla))
+	      (orig-proof-refers-to (proof-refers-to fmla))
+	      (orig-proof-time (proof-time fmla)))
+	  (pvs-message "Proving formula ~a" (id fmla))
+	  (incf tried-proofs)
+	  (setf (justification fmla) just)
+	  (setf (proof-status fmla) nil)
+	  (rerun-prove fmla)
+	  (cond ((proved? fmla)
+		 (pvs-message "~a proved - changing strategy to ~a"
+		   (id fmla) just)
+		 (setq save-proofs t)
+		 (incf proved-proofs)
+		 (copy-proofs-to-orphan-file
+		  (id theory) (list (cons (id fmla) orig-just))))
+		(orig-just
+		 (pvs-message "~a unproved - keeping original strategy"
+		   (id fmla))
+		 (setf (justification fmla) orig-just
+		       (proof-status fmla) orig-status
+		       (new-ground? fmla) orig-new-ground?
+		       (proof-refers-to fmla) orig-proof-refers-to
+		       (proof-time fmla) orig-proof-time))
+		(t (pvs-message
+		       "~a unproved - no current strategy so adding new one"
+		     (id fmla))
+		   (setq save-proofs t))))))
+    (cond (save-proofs
+	   (save-all-proofs theory))
+	  (tried-proofs
+	   (pvs-message "Every attempted formula of theory ~a has an existing proof and failed to prove with the given strategy"
+	     (id theory)))
+	  (t (pvs-message "No formulas attempted from theory ~a"
+	       (id theory))))
+    (values tried-proofs proved-proofs)))
+
+(defun get-formula-pred (kind flag)
+  (case kind
+    (untried (if flag #'formula-without-proof? #'nontcc-without-proof?))
+    (formulas (if flag #'nontcc? #'unproved-nontcc?))
+    (tccs (if flag #'tcc? #'unproved-tcc?))
+    (t (error "get-formula-pred: unknown kind ~a" kind))))
+
+(defun formula-without-proof? (fdecl)
+  (null (justification fdecl)))
+
+(defun nontcc-without-proof? (fdecl)
+  (and (not (tcc? fdecl))
+       (null (justification fdecl))))
+
+(defun nontcc? (fdecl)
+  (not (tcc? fdecl)))
+
+(defun unproved-nontcc? (fdecl)
+  (and (not (tcc? fdecl))
+       (not (proved? fdecl))))
+
+(defun unproved-tcc? (fdecl)
+  (and (tcc? fdecl)
+       (not (proved? fdecl))))
+
 
 
 ;;; Prettyprinting
@@ -880,7 +1028,8 @@
   (parse-file filename nil t)
   (let ((start-reg (car pos1))
 	(end-reg (car pos2))
-	(*no-comments* nil))
+	(*no-comments* nil)
+	(*ppmacros* t))
     (dolist (theory (reverse (get-theories filename)))
       (let ((start-theory (line-begin (place theory)))
 	    (end-theory (line-end (place theory))))
@@ -892,7 +1041,9 @@
 	      (t (prettyprint-decls theory pos1 pos2)))))))
 
 (defun prettyprint-decls (theory pos1 pos2)
-  (let ((*no-comments* nil))
+  (let ((*no-comments* nil)
+	(*show-conversions* nil)
+	(*ppmacros* t))
     (mapc #'(lambda (d) (prettyprint-decl d theory))
 	  (nreverse
 	   (chained-decls-list
@@ -924,10 +1075,12 @@
 			      (cons (nreverse ldecls) decls-list)))))
 
 (defun prettyprint-decl (d theory)
-  (let* ((place (place (if (consp d) (car d) d)))
+  (let* ((*show-conversions* nil)
+	 (place (place (if (consp d) (car d) d)))
 	 (indent (col-begin place))
 	 (dstr (unpindent d indent :string t))
-         (dfinal (string-trim '(#\Space #\Tab #\Newline) dstr)))
+         (dfinal (string-trim '(#\Space #\Tab #\Newline) dstr))
+	 (*ppmacros* t))
     (pvs-modify-buffer (shortname *pvs-context-path*)
                        (filename theory)
                        place dfinal)))
@@ -938,7 +1091,9 @@
     (when file
       (parse-file file nil t)))
   (let* ((theory (get-parsed?-theory theoryname))
-	 (*no-comments* nil))
+	 (*no-comments* nil)
+	 (*show-conversions* nil)
+	 (*ppmacros* t))
     (when theory
       (let ((string (unparse theory
 		      :string t
@@ -951,7 +1106,9 @@
 
 (defun prettyprint-pvs-file (filename)
   (let ((theories (parse-file filename nil t))
-	(*no-comments* nil))
+	(*no-comments* nil)
+	(*show-conversions* nil)
+	(*ppmacros* t))
     (pvs-buffer (makesym "~a.pvs" filename)
       (format nil "~{~a~^~2%~}"
 	(mapcar #'(lambda (th)
@@ -1066,14 +1223,20 @@
 
 #-gcl
 (defmethod parsed?* ((path pathname))
-  (eql (parsed-date path)
-       (file-write-date path)))
+  (let ((pdate (parsed-date path))
+	(fdate (file-write-date path)))
+    (and pdate fdate
+	 (eql (parsed-date path)
+	      (file-write-date path)))))
 
 #+gcl
 (defmethod parsed?* (path)
   (assert (pathnamep path))
-  (eql (parsed-date path)
-       (file-write-date path)))
+  (let ((pdate (parsed-date path))
+	(fdate (file-write-date path)))
+    (and pdate fdate
+	 (eql (parsed-date path)
+	      (file-write-date path)))))
 
 (defmethod parsed?* ((x null))
   nil)
@@ -1177,7 +1340,8 @@
 		   (null (justification fdecl)))
 	      (pvs-message "Formula ~a has no proof to rerun." (id fdecl))
 	      (if fdecl
-		  (let ((*current-theory* (module fdecl))
+		  (let ((*current-context* (context fdecl))
+			(*current-theory* (module fdecl))
 			(*current-system* (if (member origin '("tccs" "ppe"))
 					      'pvs
 					      (intern (string-upcase
@@ -1426,7 +1590,8 @@
 	      (or retry?
 		  (unproved? decl)))
 	 (let ((*rerunning-proof* (format nil "Proving ~a.~a"
-				    (id *current-theory*) (id decl))))
+				    (id *current-theory*) (id decl)))
+	       (*rerunning-proof-message-time* (get-internal-real-time)))
 	   (setf (proof-status decl) 'unproved)
 	   (cond ((justification decl)
 		  (pvs-message "Rerunning proof of ~a" (id decl))
@@ -1781,42 +1946,10 @@
   (save-context)
   (bye))
 
-;;; Pvs Version
+;;; PVS Version
 
 (defun pvs-version ()
   (pvs-message "PVS Version ~a" *pvs-version*))
-
-;;; Source
-
-(defun batch (infile &optional outfile)
-  (let ((*in-pvs-batch* t))
-    (if (file-exists-p infile)
-	(if outfile
-	    (with-open-file (*standard-output* outfile :direction :output
-					       :if-exists :append
-					       :if-does-not-exist :create)
-	      (with-open-file (in infile)
-		(batch* in)))
-	    (with-open-file (in infile)
-	      (batch* in)))
-	(pvs-message "Batch error: file ~a does not exist" infile))))
-
-(defun batch* (in)
-  (let ((cmdline (read-line in nil 'eof)))
-    (unless (eq cmdline 'eof)
-      (execute-cmd (parse-cmd cmdline))
-      (batch* in))))
-
-(defun execute-cmd (cmd)
-  (format t "~&> ~(~a~) ~{~a ~}~%" (car cmd) (cdr cmd))
-  (apply (car cmd) (cdr cmd)))
-
-(defun parse-cmd (cmdline &optional (index 0) result)
-  (multiple-value-bind (obj ind)
-      (read-from-string cmdline nil 'eof? :start index)
-    (if (eq obj 'eof?)
-	(nreverse result)
-	(parse-cmd cmdline ind (cons obj result)))))
 
 
 ;;; help-prover
@@ -2263,11 +2396,13 @@
 	      strategy)
 	(let ((just (unless err
 		      (or (revert-justification strat)
+			  (revert-justification (list "" strat))
 			  strat))))
 	  (unless just
 	    (type-error strategy "Bad form for strategy~%  ~s" strategy))
 	  (setf (justification fdecl) just))))
     (setq *to-emacs* nil)
+    (read-strategies-files)
     (unwind-protect
 	(let ((proof (prove-decl fdecl :strategy (when strategy
 						   '(then (rerun) (quit))))))

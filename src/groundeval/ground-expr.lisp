@@ -19,7 +19,32 @@
        (ground-expr?* expr)))
 
 (defun ground-type? (type)
-  (not (funtype? type)))
+  (ground-type?* type))
+
+;;;was   (not (funtype? type)))
+
+
+(defmethod ground-type?* ((type funtype))
+  (let ((ab (array-bound type)))
+    (and ab (ground-expr? ab))))
+
+(defmethod ground-type?* ((type tupletype))
+  (ground-type?* (types type)))
+
+(defmethod ground-type?* ((type cotupletype))
+  (ground-type?* (types type)))
+
+(defmethod ground-type?* ((type recordtype))
+  (ground-type?* (fields type)))
+
+(defmethod ground-type?* ((type subtype))
+  (ground-type?* (find-supertype type)))
+
+(defmethod ground-type?* ((type type-name))
+  nil) ;;this must be an undefined type.
+
+(defmethod ground-type?* ((type type-expr))
+  t)  
 
 ; No quantification
 
@@ -30,7 +55,7 @@
 ; No higher-order equality
 
 (defmethod ground-expr?* ((expr equation))
-  (and (not (funtype? (find-supertype (args1 expr))))
+  (and (not (ground-type? (find-supertype (args1 expr))))
        (call-next-method)))
 
 ; No higher-order disequality
@@ -70,6 +95,9 @@
   (ground-expr?* (argument expr)))
 
 (defmethod ground-expr?* ((expr projection-application))
+  (ground-expr?* (argument expr)))
+
+(defmethod ground-expr?* ((expr injection-application))
   (ground-expr?* (argument expr)))
 
 (defmethod ground-expr?* ((expr record-expr))
@@ -117,11 +145,3 @@
 (defmethod ground-expr?* (expr)
   (format t "~%DEBUG: fell through ground-expr on ~a" expr)
   (break))
-
-
-
-
-
-
-
-

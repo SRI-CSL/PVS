@@ -59,6 +59,11 @@
 	te)
       (occurs-in obj (types te))))
 
+(defmethod occurs-in (obj (te cotupletype))
+  (or (when (tc-eq obj te)
+	te)
+      (occurs-in obj (types te))))
+
 (defmethod occurs-in (obj (te recordtype))
   (or (when (tc-eq obj te)
 	te)
@@ -113,6 +118,10 @@
 ;      (occurs-in obj (type-value ex))))
 
 (defmethod occurs-in (obj (ex projection-application))
+  (or (when (tc-eq obj ex) ex)
+      (occurs-in obj (argument ex))))
+
+(defmethod occurs-in (obj (ex injection-application))
   (or (when (tc-eq obj ex) ex)
       (occurs-in obj (argument ex))))
 
@@ -219,6 +228,9 @@
 (defmethod id-occurs-in (id (te tupletype))
   (id-occurs-in id (types te)))
 
+(defmethod id-occurs-in (id (te cotupletype))
+  (id-occurs-in id (types te)))
+
 (defmethod id-occurs-in (id (te recordtype))
   (id-occurs-in id (fields te)))
 
@@ -252,6 +264,10 @@
 ;      (id-occurs-in id (type-value ex))))
 
 (defmethod id-occurs-in (id (ex projection-application))
+  (or (string= id (id ex))
+      (id-occurs-in id (argument ex))))
+
+(defmethod id-occurs-in (id (ex injection-application))
   (or (string= id (id ex))
       (id-occurs-in id (argument ex))))
 

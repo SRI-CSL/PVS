@@ -27,6 +27,19 @@
 (defvar *output-vars* nil)
 (defvar *external* nil)
 
+;;lisp-id generates a Lisp identifier for a PVS identifier that
+;;doesn't clash with existing Lisp constants and globals.
+
+(defvar *lisp-id-hash* (make-hash-table :test #'eq))
+(defun lisp-id (id) ;;id must be a symbol
+  (if (special-variable-p id) 
+      (let ((lid (gethash id *lisp-id-hash*)))
+	(or lid
+	    (let ((new-lid (intern (gensym (string id)))))
+	      (setf (gethash id *lisp-id-hash*) new-lid)
+	      new-lid)))
+      id))
+
 
 ;need to exploit the fact that at most one makes sense
 ;if external needs actuals, then internal will crash.
@@ -366,7 +379,7 @@
 			 collect (make-constant-from-decl x)))))
 	 (args-free-formals (updateable-vars arguments))
 	 (args-livevars (append args-free-formals livevars))
-	 (args (if (= (length (bindings (car (def-axiom decl))))
+	 (args (if (= (length (bindings (car (last (butlast (def-axiom decl))))))
 		      (length arguments))
 		   arguments
 		   (list (make!-tuple-expr* arguments)))))
@@ -758,6 +771,9 @@
 (defmethod pvs2cl_up* ((expr projection-application) bindings livevars)
     `(project ,(index expr) ,(pvs2cl_up* (argument expr) bindings livevars)))
 
+(defmethod pvs2cl_up* ((expr injection-application) bindings livevars)
+    `(inject ,(index expr) ,(pvs2cl_up* (argument expr) bindings livevars)))
+
 (defun sorted-fields (typ)                
   (let ((restructure   (copy-list (fields typ))))     
     (sort restructure                            
@@ -854,6 +870,7 @@
 	       (lhs-bindings (nreverse *lhs-args*))
 	       (new-expr-body `(let ((,rhsvar ,rhs)
 				     (,exprvar ,cl-expr))
+				 (declare (simple-array ,exprvar))
 				 ,new-cl-expr
 				 ,exprvar))
 	       (newexpr-with-let
@@ -879,7 +896,9 @@
 	     (bound (array-bound type))
 	     (cl-bound (pvs2cl_up* bound
 				   bindings livevars))
-	     (cl-expr `(mk-fun-array ,cl-expr ,cl-bound))
+	     (cl-expr (if (symbolp cl-expr)
+			  cl-expr
+			  `(mk-fun-array ,cl-expr ,cl-bound)))
 	     (cl-expr-var (gentemp "E"))
 	     (newexpr `(svref ,cl-expr-var ,lhsvar))
 	     (newrhs (if (null (cdr args))
@@ -889,6 +908,7 @@
 		      bindings livevars))))
 	(push (list lhsvar cl-args1) *lhs-args*)
 	`(let ((,cl-expr-var ,cl-expr))
+	   (declare (simple-array ,cl-expr-var))
 	   (setf ,newexpr ,newrhs)
 	   ,cl-expr-var)))
 
@@ -921,6 +941,7 @@
 			   field-type newexpr (cdr args) rhs
 			   bindings livevars)))))
     `(let ((,cl-expr-var ,cl-expr))
+       (declare (simple-array ,cl-expr-var))
        (setf ,newexpr ,newrhs)
        ,cl-expr-var)))
 
@@ -948,6 +969,7 @@
 		       tupsel-type newexpr (cdr args) rhs
 		       bindings livevars)))))
     `(let ((,cl-expr-var ,cl-expr))
+       (declare (simple-array ,cl-expr-var))
        (setf ,newexpr ,newrhs)
        ,cl-expr-var)))
 	      
@@ -1177,7 +1199,7 @@
       (let* ((bb (car bind-decls))
 	     (id (id bb))
 	     (newid (if (null (rassoc id bindings))
-			id
+			(lisp-id id)
 			(pvs2cl-newid (id bb) bindings))))
 	(cons newid (pvs2cl-make-bindings (cdr bind-decls) bindings)))
       nil))
@@ -1189,12 +1211,12 @@
 	     (newid
 	      (if (rassoc bind bindings)
 		  (pvs2cl-newid (id bind) bindings)
-		  (id bind))))
+		  (lisp-id (id bind)))))
 	(pvs2cl-bindings (cdr bind-decls)
 		      (cons (cons bind newid) bindings)))
       bindings))
 
-(defparameter *primitive-constants* '(true false |null|))
+(defparameter *primitive-constants* '(TRUE FALSE |null|))
 
 (defun pvs2cl-constant (expr bindings livevars)
   (cond ((pvs2cl-primitive? expr)
@@ -1324,7 +1346,7 @@
 					      (id (module decl))
 					      (id decl))))
 			  (formal-ids (loop for x in formals
-					    collect (id x)))
+					    collect (lisp-id (id x))))
 			  (bindings (pairlis formals formal-ids))
 			  (defn (args2 (car (last defax))))
 			  (defn-bindings (when (lambda-expr? defn)
@@ -1719,6 +1741,9 @@
 (defmethod pvs2cl-lisp-type* ((type tupletype))
   '(simple-array *))
 
+(defmethod pvs2cl-lisp-type* ((type cotupletype))
+  nil)
+
 (defmethod pvs2cl-lisp-type*  ((type recordtype))
   (if (string-type? type)
       'string
@@ -1794,5 +1819,5 @@
 	(t nil)))
 
 (defmethod pvs2cl-lisp-type* ((type t))
-  (cond ((eq type *boolean*) 'boolean)
+  (cond ((tc-eq (find-supertype type) *boolean*) 'boolean)
 	(t nil)));;was T, but need to distinguish proper types.

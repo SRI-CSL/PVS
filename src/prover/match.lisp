@@ -236,6 +236,11 @@
   (with-slots ((ty1 types)) expr
       (match* ty1 instance bind-alist subst)))
 
+(defmethod match* ((expr cotupletype)(instance cotupletype) bind-alist subst)
+  (with-slots ((ty1 types)) expr
+    (with-slots ((ty2 types)) instance
+      (match* ty1 ty2 bind-alist subst))))
+
 (defmethod match* ((expr recordtype) (instance recordtype) bind-alist
 		  subst)
   (with-slots ((fields1 fields)) expr
@@ -646,6 +651,14 @@
 	  (match* arg1 arg2 bind-alist subst)
 	  'fail))))
 
+(defmethod match* ((lhs injection-application)(rhs injection-application)
+		   bind-alist subst)
+  (with-slots ((ind1 index)(arg1 argument)) lhs
+    (with-slots ((ind2 index)(arg2 argument)) rhs
+      (if (eql ind1 ind2)
+	  (match* arg1 arg2 bind-alist subst)
+	  'fail))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;NSH(4.28.94) : code for higher-order matching.
 
@@ -945,3 +958,17 @@
   (if (tc-eq lhs instance)
       subst
       'fail))
+
+(defmethod match* ((lhs disjunction) (instance disjunction) bind-alist subst)
+  (let ((dmatch (call-next-method)))
+    (if (eq dmatch 'fail)
+	(match* (collect-disjuncts lhs) (collect-disjuncts instance)
+		bind-alist subst)
+	dmatch)))
+
+(defmethod match* ((lhs conjunction) (instance conjunction) bind-alist subst)
+  (let ((cmatch (call-next-method)))
+    (if (eq cmatch 'fail)
+	(match* (collect-conjuncts lhs) (collect-conjuncts instance)
+		bind-alist subst)
+	cmatch)))

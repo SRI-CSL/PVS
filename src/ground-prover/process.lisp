@@ -180,7 +180,6 @@
 ; by accessing it non-locally.  See merge and addineq (and others?).
 
 (defun process1(s)
-  (when (and *development-mode* (not (consp s))) (break))
   (prog(bools exp)
     (loop while s do
 	   (setq exp (pop s))
@@ -237,9 +236,28 @@
 	      (setq s (append (solve `(greaterp ,term2 ,term1)) s)))))
      (setq fnsym (cons term1 term2))
      (adduse (list fnsym term1) term1)
-     (adduse (list fnsym term2) term2)))
+     (adduse (list fnsym term2) term2)
+     (when (eql term2 0)(reprocess-timesuse term1))))
 
- 
+(defun timesuse (x)
+  (if (and (consp x)(eq (funsym x) 'times))
+      (loop for u in (use (arg1 x))
+	    when (and (eq (funsym u) 'times)
+		      (subsetp (cdr x)(cdr u) :test #'equal)
+		      (not (equal u x)))
+	    collect u)
+      (loop for u in (use x)
+	    when (eq (funsym u) 'times)
+	    collect u)))
+
+(defun reprocess-timesuse (term1)
+  (let ((timesuse (timesuse term1)))
+    (loop for u in timesuse
+	  when (not (equal (pr-find u) u))
+	  do (process1 (solvecan `(equal (times ,u ,term1)
+					 (times ,(pr-find u) ,term1)))))))
+
+
 ;;; 11-AUG-90 DAC: Modified from process.lisp to make apply of updates and apply
 ;;; of lambdas interpreted.
 
@@ -292,19 +310,25 @@
 	  ((uninterp newsig)		; SO 9/28/90 was u - is now newsig
 	   (putsig newsig u)
 	   (setq use2 (copy-list (use t2))) ; MES 6/22/88 (CANONSIG call in interpreted term case below can add to (USE T2))
-	   (setq vptr (push u use2)) ;;;DAC 2/15/94: Changed (push u use2) to (push newsig use2) since u would not contain t2.
-	   ;;; DAC 2/28/94: Undid previous change: It is ok for u to not
-	   ;;; contain t2 as long as sig(u) does.
+	   (setq vptr (push u use2))
 	   (loop while (cdr vptr) do
 		  (cond
 		   ((equal newsig (sig (cadr vptr)))
 		    (or (equal u (cadr vptr))
-			(setq s 
-			      (append
-			       (solve
-				`(equal ,(pr-find u) 
-					,(pr-find (cadr vptr))))
-			       s )))
+			(let* ((pr-u (pr-find u))
+			       (new-eqn `(EQUAL ,pr-u
+					  ,(pr-find (cadr vptr)))))
+			  (if (or (not (consp pr-u))
+				  (uninterp pr-u)
+				  (boolp (funsym pr-u)))
+			      (setq s
+				    (append
+				     (solve new-eqn)
+				     s ))
+			      (setq s
+				    (append
+				     (append (solve new-eqn) (list new-eqn))
+				     s)))))
 
 					;(checkusealist "merge - before rplacd")
 					;(break "count")
@@ -430,6 +454,12 @@
 	 (loop for u in (use (arg1 s))
 	       do (and (equal s (sig u)) (throw 'found (pr-find u)))
 	       )
+	 (when (eq (funsym s) 'times) 
+	   (loop for arg in (cdr s)
+		 do (let* ((smatch (find-times-subset s (use arg)))
+			  (sdiff (subset-bag-difference (cdr s)
+							(cdr (sig smatch)))))
+		      (when smatch (throw 'found (canonsig `(times ,(pr-find smatch) ,@sdiff)))))))
 	 (unless dont-add-use
 	   (loop for arg in (argsof s) do (adduse s arg))))
        s
@@ -700,23 +730,42 @@
 )
 
 
+(defun bag-subsetp (x y &key (test #'eq))
+  (if (consp x)
+      (and (member (car x) y :test test)
+	   (bag-subsetp (cdr x) (remove (car x) y :test test :count 1)
+			:test test))
+      T))
+
+(defun find-times-subset (bigtimes uselist)
+  (loop for u in uselist
+	thereis (and (eq (funsym u) 'times)(not (equal (pr-find u) u))
+		      (bag-subsetp (cdr (sig u))(cdr bigtimes)
+				   :test #'equal) u)))
+
 ;;;DAC 2/15/94 added check for equal if if* so as not to put funny things on usealist.
 (defun adduse(u v)
   (unless (and (consp u)
 	       (or (equal (car u) 'equal)
 		   (equal (car u) 'if)
 		   (equal (car u) 'if*)))
-    (prog(ul)
-       (or (member u (setq ul (use v)) :test #'equal)
-	   (push (cons v (cons u ul)) usealist)
-	   )
-	;  (checkusealist "adduse")
-       )
-    )
-)
+    (let ((ul (use v)))
+      (cond ((member u ul :test #'equal))
+	     (t (push (cons v (cons u ul)) usealist)
+		(when (and (consp u)
+			   (eq (funsym u) 'times))
+		  (let* ((usub (find-times-subset u ul))
+			(udiff (when usub (subset-bag-difference (cdr u)
+						      (cdr (sig usub)))))
+			(umatch (when usub `(times ,(pr-find usub) ,@udiff))))
+		    (when usub (process `(equal ,u ,umatch))))))))))
 
+(defun subset-bag-difference (x y) ;to be used when y is a subset of x.
+  (if (consp y)
+      (subset-bag-difference (remove (car y) x :test #'equal :count 1)
+			     (cdr y))
+      x))
 
-
 ; ------------------------------------------------------------------------
 ; Various utility defuns
 

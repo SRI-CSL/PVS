@@ -22,8 +22,18 @@
 ;;; modified.  Note that the formula must be typechecked, as this is the
 ;;; only way to determine whether a name is a variable.
 
+;;; This is faster than simple union, as (in allegro)
+;;;   (union '(a b c) nil) returns '(c b a)
 (defmacro fv-union (fv1 fv2)
-  `(union ,fv1 ,fv2 :test #'same-declaration))
+  (let ((efv1 (gentemp))
+	(efv2 (gentemp)))
+    `(let ((,efv1 ,fv1)
+	   (,efv2 ,fv2))
+       (if ,efv1
+	   (if ,efv2
+	       (union ,efv1 ,efv2 :test #'same-declaration)
+	       ,efv1)
+	   ,efv2))))
 
 (defun freevars (obj)
 ;;  (sort (freevars* obj  frees)
@@ -54,6 +64,9 @@
 (defmethod freevars* ((expr projection-application))
   (freevars* (argument expr)))
 
+(defmethod freevars* ((expr injection-application))
+  (freevars* (argument expr)))
+
 (defmethod freevars* ((expr field-application))
   (freevars* (argument expr)))
 
@@ -63,18 +76,21 @@
     (fv-union ofrees afrees)))
 
 (defmethod freevars* ((list list))
-  (freevars-list list))
+  (freevars-list (reverse list) nil))
 
-(defun freevars-list (list)
-  (when list
-    (let* ((frees-car (freevars* (car list)))
-	   (frees-cdr (freevars-list (cdr list)))
-	   (ufrees (fv-union frees-car frees-cdr)))
-      (if (and (typep (car list) '(or binding field-decl))
-	       (not (member (car list) frees-car
-			    :test #'same-declaration)))
-	  (remove (car list) ufrees :test #'same-declaration)
-	  ufrees))))
+(defun freevars-list (list result)
+  (if (null list)
+      result
+      (let* ((frees-car (freevars* (car list)))
+	     (ufrees (fv-union frees-car result)))
+	(assert (not (and (binding? (car list))
+			  (member (car list) frees-car
+				  :test #'same-declaration))))
+	(freevars-list
+	 (cdr list)
+	 (if (binding? (car list))
+	     (remove (car list) ufrees :test #'same-declaration)
+	     ufrees)))))
 
 (defmethod declaration ((expr field-decl))
   expr)

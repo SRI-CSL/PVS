@@ -134,6 +134,10 @@
   (pvs-message "Projections do not have an associated declaration")
   nil)
 
+(defmethod get-decl-associated-with ((obj injection-application))
+  (pvs-message "Injections do not have an associated declaration")
+  nil)
+
 (defmethod get-decl-associated-with ((obj null))
   (pvs-message "Not at a valid id")
   nil)
@@ -472,6 +476,9 @@
 (defmethod whereis (sym (te tupletype))
   (whereis sym (types te)))
 
+(defmethod whereis (sym (te cotupletype))
+  (whereis sym (types te)))
+
 (defmethod whereis (sym (te recordtype))
   (whereis sym (fields te)))
 
@@ -532,6 +539,10 @@
       (whereis sym (expression e))))
 
 (defmethod whereis (sym (e projection-application))
+  (or (eq sym (id e))
+      (whereis sym (argument e))))
+
+(defmethod whereis (sym (e injection-application))
   (or (eq sym (id e))
       (whereis sym (argument e))))
 

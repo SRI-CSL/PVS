@@ -81,7 +81,7 @@
 (defun pvs_|null?| (x) (null x))
 (defun pvs_|restrict| (f) f)
 (defun pvs_|length| (x) (length x))   ;; should this be list-length?
-(defun pvs_|member| (x) (member (svref x 0) (svref x 1)))
+(defun pvs_|member| (x) (not (null (member (svref x 0) (svref x 1) :test #'equalp))))
 (defun pvs_|nth| (x) (nth (svref x 1) (svref x 0)))
 (defun pvs_|append| (x) (append (svref x 0) (svref x 1)))
 (defun pvs_|reverse| (x) (reverse x))
@@ -89,14 +89,13 @@
 
 ;;multiary macro versions of primitives
 (defmacro pvs__= (x y)
-  (let ((xx (gentemp))
-	(yy (gentemp)))
-    `(let ((,xx ,x)
-	   (,yy ,y))
-       (cond ((symbolp ,xx)
-	      (eq ,xx ,yy))
-	     ((numberp ,xx) (= ,xx ,yy))
-	     (t (equalp ,xx ,yy))))))
+  `(equalp ,x ,y))
+
+(defun pvs_equalp (x y)
+  (cond ((symbolp x)
+	      (eq x y))
+	     ((numberp x) (= x y))
+	     (t (equalp x y))))
 (defmacro pvs__/= (x y) `(not (equalp ,x ,y)))
 (defmacro pvs__IMPLIES (x y) `(or (not ,x) ,y))
 (defmacro pvs__when (x y) `(or (not ,y) ,x))
@@ -134,7 +133,7 @@
 	   (ceiling ,xx ,yy)))))
 (defmacro pvs__|cons| (x y) `(cons ,x ,(the list y)))
 
-(defmacro pvs__|member| (x y) `(member ,x ,y))
+(defmacro pvs__|member| (x y) `(not (null (member ,x ,y :test #'equalp))))
 (defmacro pvs__|nth| (x y) `(nth ,y ,x))
 (defmacro pvs__|append| (x y) `(append ,x ,y))
 

@@ -101,6 +101,9 @@
 (defmethod beta-reduce* ((te tupletype))
   (lcopy te 'types (beta-reduce* (types te))))
 
+(defmethod beta-reduce* ((te cotupletype))
+  (lcopy te 'types (beta-reduce* (types te))))
+
 (defmethod beta-reduce* ((te recordtype))
   (let ((fields (beta-reduce* (fields te))))
     (if (eq fields (fields te))
@@ -265,6 +268,11 @@
 	  (if (typep narg 'update-expr)
 	      (beta-reduce-tuple-update-redex index narg)
 	  (lcopy expr 'argument narg))))))
+
+(defmethod beta-reduce* ((expr injection-application))
+  (with-slots (index argument) expr
+    (let ((narg (beta-reduce* argument)))
+      (lcopy expr 'argument narg))))
 
 (defun beta-reduce-record-update-redex (op arg)
   (let ((updates

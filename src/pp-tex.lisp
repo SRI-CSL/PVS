@@ -13,16 +13,15 @@
 (in-package :pvs)
 
 (defvar *latex-id-strings* (make-hash-table :test 'eq))
-
 (defvar *latex-keyword-strings* (make-hash-table :test 'eq))
-
 (defvar *latex-funsym-strings* (make-hash-table :test 'eq))
-
 (defvar *pvs-tex-substitution-hash* (make-hash-table :test 'equal))
-
 (defvar *tex-symbol-counters* nil)
-
 (defvar *in-tex-math-mode* nil)
+(defvar *pp-tex-column* nil)
+(defvar *pp-tex-spaces-to-delete* nil)
+(defvar *pp-tex-newline-list* nil)
+(defvar *pp-tex-newline-element* nil)
 
 (defun pp-tex (obj stream)
   (let ((*print-pretty* t)
@@ -32,19 +31,86 @@
 	(*disable-gc-printout* t))
     ;;(setf (slot-value *standard-output* 'excl::charpos) 0)
     (unwind-protect
-	(let ((str (with-output-to-string (*standard-output*)
-		     (pp-tex* obj))))
-	  (write-string-with-tex-substitutions str 0 (length str) stream))
+	(let* ((str (with-output-to-string (*standard-output*)
+		      (pp-tex* obj)))
+	       (*in-tex-math-mode* nil)
+	       (*pp-tex-column* 0)
+	       (*pp-tex-spaces-to-delete* 0)
+	       (len (length str))
+	       (*pp-tex-newline-list* (tex-get-math-newline-info str 0 len))
+	       (*pp-tex-newline-element* nil))
+	  (write-string-with-tex-substitutions str 0 len stream))
       (clrhash *latex-id-strings*)
       (clrhash *latex-keyword-strings*)
       (clrhash *latex-funsym-strings*)
       (clrhash *pvs-tex-substitution-hash*))))
 
-(defun write-string-with-tex-substitutions (str pos len stream)
+(defun tex-get-math-newline-info (str pos len &optional cur-info info)
   (if (< pos len)
       (let ((char (char str pos)))
-	(cond ((< (char-code (char str pos)) 127)
-	       (write-char char stream)
+	(case char
+	  (#\( (unless (zerop pos)
+		 (if (char= (char str (1- pos)) #\\)
+		     (tex-get-math-newline-info str (1+ pos) len
+						(list pos) info)
+		     (tex-get-math-newline-info str (1+ pos) len
+						cur-info info))))
+	  (#\) (unless (zerop pos)
+		 (if (char= (char str (1- pos)) #\\)
+		     (if (cdr cur-info)
+			 (tex-get-math-newline-info
+			  str (1+ pos) len
+			  nil (cons (nreverse (cons pos cur-info)) info))
+			 (tex-get-math-newline-info
+			  str (1+ pos) len nil info))
+		     (tex-get-math-newline-info str (1+ pos) len
+						cur-info info))))
+	  (#\newline (if cur-info
+			 (tex-get-math-newline-info str (1+ pos) len
+						    (cons pos cur-info) info)
+			 (tex-get-math-newline-info str (1+ pos) len
+						    cur-info info)))
+	  (t (tex-get-math-newline-info str (1+ pos) len cur-info info))))
+      (nreverse info)))
+
+(defun write-string-with-tex-substitutions (str pos len stream)
+  (if (< pos len)
+      (let ((char (char str pos))
+	    (wrote-char nil))
+	(case char
+	  (#\( (let ((elt (assoc pos *pp-tex-newline-list*)))
+		 (when elt
+		   (setq *pp-tex-newline-element* (cdr elt)))))
+	  (#\) (when (and *pp-tex-newline-element*
+			  (= pos (car *pp-tex-newline-element*)))
+		 (setq *pp-tex-newline-element* nil)))
+	  (#\newline (if *pp-tex-newline-element*
+			 (progn
+			   (pop *pp-tex-newline-element*)
+			   (if (cdr *pp-tex-newline-element*)
+			       (write "}\\)}\\zbox{\\({" :stream stream)
+			       (write "}\\)}\\hbox{\\({" :stream stream))
+			   (setq wrote-char t)
+			   (setq *pp-tex-spaces-to-delete*
+				 (+ *pp-tex-column* 3)))
+			 (setq *pp-tex-column* 0)))
+	  (#\{ (when *pp-tex-newline-element*
+		 (if (cdr *pp-tex-newline-element*)
+		     (write "{\\vbox{\\zbox{\\(" :stream stream)
+		     (write "{\\vbox{\\hbox{\\(" :stream stream))))
+	  (#\} (when *pp-tex-newline-element*
+		 (write "}\\)}}" :stream stream)))
+	  (#\space (unless (zerop *pp-tex-spaces-to-delete*)
+		     (decf *pp-tex-spaces-to-delete*)
+		     (setq wrote-char t))
+	   (unless *pp-tex-newline-element*
+	     (incf *pp-tex-column*)))
+	  (t (unless *pp-tex-newline-element*
+	       (incf *pp-tex-column*))
+	     (setq *pp-tex-spaces-to-delete* 0)))
+	(cond ((< (char-code char) 127)
+	       (unless wrote-char
+		 (write-char char stream))
 	       (write-string-with-tex-substitutions str (1+ pos) len stream))
 	      (t (let* ((npos (or (position-if #'(lambda (ch)
 						   (< (char-code ch) 127))
@@ -529,9 +595,10 @@
 
 (defmethod pp-tex* ((decl mod-decl))
   (with-slots (modname) decl
-    (pp-tex-keyword 'theory)
-    (write-char #\space)
-    (write-char #\=)
+    (pp-tex-keyword 'library)
+    (when (typep decl 'lib-eq-decl)
+      (write-char #\space)
+      (write-char #\=))
     (write-char #\space)
     (pprint-newline :fill)
     (pp-tex* modname)))
@@ -897,19 +964,23 @@
 	(let* ((types (types declared-type))
 	       (bindings (var-bindings declared-type))
 	       (tbindings bindings)
+	       (ctr 0)
 	       (*parsing-or-unparsing* t))
 	  (pprint-logical-block (nil types)
 	    (pprint-indent :current 0)
-	    (loop (let ((nty (pprint-pop))
-			(nbd (pop tbindings)))
+	    (loop (let ((nty (pprint-pop)))
+		    (incf ctr)
 		    (if (typep nty 'dep-binding)
 			(pp-tex* nty)
-			(pprint-logical-block (nil nil)
-			  (pp-tex* (car nbd))
-			  (write-char #\:)
-			  (write-char #\space)
-			  (pprint-newline :fill)
-			  (pp-tex* nty))))
+			(let ((var (car (rassoc ctr bindings))))
+			  (if var
+			      (pprint-logical-block (nil nil)
+				(pp-tex* (car nbd))
+				(write-char #\:)
+				(write-char #\space)
+				(pprint-newline :fill)
+				(pp-tex* nty))
+			      (pp-tex* nty)))))
 		  (pprint-exit-if-list-exhausted)
 		  (write-char #\,)
 		  (write-char #\space)
@@ -938,6 +1009,17 @@
       (loop (pp-tex* (pprint-pop))
 	    (pprint-exit-if-list-exhausted)
 	    (write-char #\,)
+	    (write-char #\space)
+	    (pprint-newline :fill)))))
+
+(defmethod pp-tex* ((te cotupletype))
+  (with-slots (types) te
+    (pprint-logical-block (nil types :prefix "[" :suffix "]")
+      (pprint-indent :current 0)
+      (loop (pp-tex* (pprint-pop))
+	    (pprint-exit-if-list-exhausted)
+	    (write-char #\space)
+	    (write-char #\+)
 	    (write-char #\space)
 	    (pprint-newline :fill)))))
 
@@ -1019,6 +1101,12 @@
 	(pprint-logical-block (nil nil)
 	  (pp-tex-id id)
 	  (pp-tex-arguments (argument-list argument))))))
+
+(defmethod pp-tex* ((ex injection-application))
+  (with-slots (id argument) ex
+    (pprint-logical-block (nil nil)
+      (pp-tex-id id)
+      (pp-tex-arguments (argument-list argument)))))
 
 (defmethod pp-tex* ((ex projappl))
   (pprint-logical-block (nil nil)
@@ -1423,20 +1511,32 @@
       
 (defmethod pp-tex* ((sel selection))
   (with-slots (constructor args expression) sel
-    (pprint-logical-block (nil nil)
-      (pprint-indent :current 2)
-      (pp-tex-id (id constructor))
-      (when args
-	(pprint-logical-block (nil args :prefix "(" :suffix ")")
-	  (loop (pp-tex-id (id (pprint-pop)))
-		(pprint-exit-if-list-exhausted)
-		(write-char #\,)
-		(write-char #\space)
-		(pprint-newline :fill))))
-      (write-char #\:)
-      (write-char #\space)
-      (pprint-newline :fill)
-      (pp-tex* expression))))
+    (let ((appltrans (get-pp-tex-funsym constructor (list (length args)))))
+      (pprint-logical-block (nil nil)
+	(pprint-indent :current 2)
+	(cond (appltrans
+	       (unless *in-tex-math-mode*
+		 (write "\\("))
+	       (let ((*in-tex-math-mode* t))
+		 (write appltrans)
+		 (dolist (arg args)
+		   (write "{")
+		   (pp-tex-id (id arg))
+		   (write "}")))
+	       (unless *in-tex-math-mode*
+		 (write "\\)")))
+	    (t (pp-tex-id (id constructor))
+	       (when args
+		 (pprint-logical-block (nil args :prefix "(" :suffix ")")
+		   (loop (pp-tex-id (id (pprint-pop)))
+			 (pprint-exit-if-list-exhausted)
+			 (write-char #\,)
+			 (write-char #\space)
+			 (pprint-newline :fill))))))
+	(write-char #\:)
+	(write-char #\space)
+	(pprint-newline :fill)
+	(pp-tex* expression)))))
 
 (defmethod pp-tex* ((ass assignment))
   (with-slots (arguments expression) ass

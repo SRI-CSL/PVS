@@ -17,7 +17,7 @@
 
 (defun rewrite-step (lemma fnums &optional subst target-fnums
 			       dir order)
-  (let* ((lemmaname-expr (pc-parse lemma 'name))
+  (let* ((lemmaname-expr (pc-parse lemma 'bname))
 	 (resolutions (formula-or-definition-resolutions lemmaname-expr))
 	 (sforms (select-seq (s-forms *goal*)
 			     (if (numberp fnums) (list fnums)
@@ -285,7 +285,7 @@
 	   ((is-minus? op)
 	    (find-match-arith-polarity
 	     lhs-template
-	     (argument op) bind-alist subst order (toggle polarity)))
+	     (argument expr) bind-alist subst order (toggle polarity)))
 	   (t 'fail))
 	'fail)  
     (find-out-match-polarity lhs-template
@@ -570,6 +570,12 @@
       (find-match lhs (argument expr) bind-alist subst order)
     (find-out-match lhs expr bind-alist subst order insub inmodsubst)))
 
+(defmethod find-match (lhs (expr injection-application) bind-alist 
+			   subst order)
+  (multiple-value-bind (insub inmodsubst)
+      (find-match lhs (argument expr) bind-alist subst order)
+    (find-out-match lhs expr bind-alist subst order insub inmodsubst)))
+
 (defmethod find-match (lhs (expr field-application) bind-alist subst order)
   (multiple-value-bind (insub inmodsubst)
       (find-match lhs (argument expr) bind-alist subst order)
@@ -671,6 +677,12 @@
 
 ;;NSH(10.18.94)
 (defmethod find-all-matches (lhs (expr projection-application)
+				 bind-alist subst accum)
+  (find-out-all-matches lhs expr bind-alist subst
+			(find-all-matches lhs (argument expr)
+					  bind-alist subst accum)))
+
+(defmethod find-all-matches (lhs (expr injection-application)
 				 bind-alist subst accum)
   (find-out-all-matches lhs expr bind-alist subst
 			(find-all-matches lhs (argument expr)

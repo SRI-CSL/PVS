@@ -11,7 +11,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (export '(*debugging-print-object*))
 
@@ -240,3 +240,4 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod kind-of ((decl formula-decl)) 'formula)
 (defmethod kind-of ((decl judgement)) 'judgement)
 (defmethod kind-of ((decl conversion-decl)) 'conversion)
+(defmethod kind-of ((decl auto-rewrite-decl)) 'auto-rewrite)

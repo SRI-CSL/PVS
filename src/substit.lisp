@@ -127,21 +127,39 @@
 (defmethod substit* ((expr projection-application) alist)
   (with-slots (argument type index) expr
     (let ((narg (substit* argument alist)))
-      (if (eq argument narg)
-	  expr
-	  (let ((ntype (projection-type* (types (find-supertype (type narg)))
-					 index 1 narg (type narg))))
-	    (lcopy expr
-	      'argument narg
-	      'type ntype))))))
+      (cond ((and (not *substit-dont-simplify*)
+		  (tuple-expr? narg))
+	     (nth (1- index) (exprs narg)))
+	    ((eq argument narg)
+	     expr)
+	    (t (let ((ntype (projection-type*
+			     (types (find-supertype (type narg)))
+			     index 1 narg (type narg))))
+		 (lcopy expr
+		   'argument narg
+		   'type ntype)))))))
+
+(defmethod substit* ((expr injection-application) alist)
+  (with-slots (argument type index) expr
+    (let ((narg (substit* argument alist))
+	  (ntype (substit* type alist)))
+      (lcopy expr
+	'argument narg
+	'type ntype))))
 
 (defmethod substit* ((expr field-application) alist)
-  (with-slots (argument type) expr
+  (with-slots (id argument type) expr
     (let ((narg (substit* argument alist)))
-      (if (eq argument narg)
-	  expr
-	  (let ((ntype (substit* type alist)))
-	    (copy expr 'argument narg 'type ntype))))))
+      (cond ((and (not *substit-dont-simplify*)
+		  (record-expr? narg))
+	     (let ((ass (find id (assignments narg)
+			      :key #'(lambda (a) (id (caar (arguments a)))))))
+	       (assert ass)
+	       (expression ass)))
+	    ((eq argument narg)
+	     expr)
+	    (t (let ((ntype (substit* type alist)))
+		 (copy expr 'argument narg 'type ntype)))))))
 
 (defmethod substit* ((expr resolution) alist)
   (lcopy expr
@@ -175,27 +193,110 @@
   (with-slots (operator argument) expr
     (let ((op (substit* operator alist))
 	  (arg (substit* argument alist)))
-      (if (and (eq op operator)
-	       (eq arg argument))
-	  expr
-	  (let* ((nop (if (and (implicit-conversion? op)
-			       (name-expr? (operator op))
-			       (eq (id (operator op)) '|restrict|)
-			       (eq (id (module-instance (resolution (operator op))))
-				   '|restrict|))
-			  (argument op)
-			  op))
-		 (stype (find-supertype (type op)))
-		 (nex (copy expr
-			'operator nop
-			'argument arg
-			'type (if (typep (domain stype) 'dep-binding)
-				  (substit (range stype)
-				    (acons (domain stype) arg alist))
-				  (range stype)))))
-	    ;; Note: the copy :around (application) method takes care of
-	    ;; changing the class if it is needed.
-	    nex)))))
+      (cond ((and (not *substit-dont-simplify*)
+		  (lambda-expr? op)
+		  (not (let-expr? expr)))
+	     (make!-reduced-application op arg))
+	    ((and (eq op operator)
+		  (eq arg argument))
+	     expr)
+	    (t (let* ((stype (find-supertype (type op)))
+		      (nex (copy expr
+			     'operator op
+			     'argument arg
+			     'type (if (typep (domain stype) 'dep-binding)
+				       (substit (range stype)
+					 (acons (domain stype) arg alist))
+				       (range stype)))))
+		 ;; Note: the copy :around (application) method takes care of
+		 ;; changing the class if it is needed.
+		 nex))))))
+
+(defmethod substit* ((expr equation) alist)
+  (if *substit-dont-simplify*
+      (call-next-method)
+      (let* ((result (call-next-method))
+	     (arg1 (args1 result))
+	     (arg2 (args2 result)))
+	(if (tc-eq arg1 arg2)
+	    *true*
+	    (if (iff-or-boolean-equation? result)
+		(if (tc-eq arg1 *true*)
+		    arg2
+		    (if (tc-eq arg2 *true*)
+			arg1
+			result))
+		result)))))
+
+
+(defmethod substit* ((expr conjunction) alist)
+  (if *substit-dont-simplify*
+      (call-next-method)
+      (let ((result (call-next-method)))
+	(let ((arg1 (args1 result))
+	      (arg2 (args2 result)))
+	  (if (tc-eq arg1 *true*)
+	      arg2
+	      (if (tc-eq arg2 *true*)
+		  arg1
+		  (if (or (tc-eq arg1 *false*)
+			  (tc-eq arg2 *false*))
+		      *false*
+		      result)))))))
+
+(defmethod substit* ((expr disjunction) alist)
+  (if *substit-dont-simplify*
+      (call-next-method)
+      (let ((result (call-next-method)))
+	(let ((arg1 (args1 result))
+	      (arg2 (args2 result)))
+	  (if (tc-eq arg1 *false*)
+	      arg2
+	      (if (tc-eq arg2 *false*)
+		  arg1
+		  (if (or (tc-eq arg1 *true*)
+			  (tc-eq arg2 *true*))
+		      *true*
+		      result)))))))
+
+(defmethod substit* ((expr implication) alist)
+  (if *substit-dont-simplify*
+      (call-next-method)
+      (let ((result (call-next-method)))
+	(let ((arg1 (args1 result))
+	      (arg2 (args2 result)))
+	  (if (tc-eq arg1 *true*)
+	      arg2
+	      (if (or (tc-eq arg1 *false*)
+		      (tc-eq arg2 *true*))
+		  *true*
+		  (if (tc-eq arg2 *false*)
+		      (negate! arg1)
+		      result)))))))
+
+(defmethod substit* ((expr negation) alist)
+  (if *substit-dont-simplify*
+      (call-next-method)
+      (let ((result (call-next-method)))
+	(let ((arg (argument result)))
+	  (if (tc-eq arg *true*)
+	      *false*
+	      (if (tc-eq arg *false*)
+		  *true*
+		  result))))))
+
+(defmethod substit* ((expr branch) alist)
+  (if *substit-dont-simplify*
+      (call-next-method)
+      (let ((result (call-next-method)))
+	(let ((cond (condition result))
+	      (then (then-part result))
+	      (else (else-part result)))
+	  (if (tc-eq cond *true*)
+	      then
+	      (if (tc-eq cond *false*)
+		  else
+		  result))))))
 
 (defmethod change-to-infix-appl? ((expr infix-application))
   nil)
@@ -225,12 +326,14 @@
   (let ((nexpr (call-next-method)))
     (if (eq expr nexpr)
 	expr
-	(lcopy nexpr
-	  'row-expr (substit* (row-expr nexpr) alist)
-	  'col-expr (substit* (col-expr nexpr) alist)
-	  'row-headings (substit* (row-headings nexpr) alist)
-	  'col-headings (substit* (col-headings nexpr) alist)
-	  'table-entries (substit* (table-entries nexpr) alist)))))
+	(if (table-expr? nexpr)
+	    (lcopy nexpr
+	      'row-expr (substit* (row-expr nexpr) alist)
+	      'col-expr (substit* (col-expr nexpr) alist)
+	      'row-headings (substit* (row-headings nexpr) alist)
+	      'col-headings (substit* (col-headings nexpr) alist)
+	      'table-entries (substit* (table-entries nexpr) alist))
+	    nexpr))))
 
 (defmethod substit* ((expr record-expr) alist)
   (let ((ntype (substit* (type expr) alist)))
@@ -373,7 +476,7 @@
 	  (setf (declared-type new-binding) (or (print-type stype) stype)))
 	(make-new-bindings*
 	 (cdr old-bindings)
-	 (add-alist-freevars new-binding (mapcar #'car alist))
+	 (add-alist-freevars new-binding freevars)
 	 boundvars
 	 (acons bind new-binding alist)
 	 (cons new-binding nbindings)))))
@@ -464,6 +567,11 @@
       'print-type (substit* (print-type texpr) alist))))
 
 (defmethod substit* ((texpr tupletype) alist)
+  (lcopy texpr
+    'types (substit* (types texpr) alist)
+    'print-type (substit* (print-type texpr) alist)))
+
+(defmethod substit* ((texpr cotupletype) alist)
   (lcopy texpr
     'types (substit* (types texpr) alist)
     'print-type (substit* (print-type texpr) alist)))

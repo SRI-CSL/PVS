@@ -16,7 +16,7 @@
 
 ;;; For now the entire theory will be untypechecked.
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (export '(untypecheck-theory))
 
@@ -257,6 +257,15 @@
   (setf (default-proof decl) nil)
   (setf (proofs decl) nil))
 
+(defmethod untypecheck-theory ((decl conversion-decl))
+  (when (next-method-p) (call-next-method))
+  (setf (k-combinator? decl) nil)
+  (untypecheck-theory (name decl)))
+
+(defmethod untypecheck-theory ((decl typed-conversion-decl))
+  (when (next-method-p) (call-next-method))
+  (untypecheck-theory (declared-type decl)))
+
 (defmethod untypecheck-theory ((decl assuming-decl))
   (setf (definition decl) (original-definition decl))
   (call-next-method))
@@ -287,13 +296,9 @@
   (untypecheck-theory (name decl))
   (untypecheck-theory (formals decl)))
 
-(defmethod untypecheck-theory ((decl conversion-decl))
+(defmethod untypecheck-theory ((decl auto-rewrite-decl))
   (when (next-method-p) (call-next-method))
-  (untypecheck-theory (name decl)))
-
-(defmethod untypecheck-theory ((decl typed-conversion-decl))
-  (when (next-method-p) (call-next-method))
-  (untypecheck-theory (declared-type decl)))
+  (untypecheck-theory (rewrite-names decl)))
 
 
 ;;; Type Expressions
@@ -348,6 +353,11 @@
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (types te)))
 
+(defmethod untypecheck-theory ((te cotupletype))
+  (assert (not (generated? te)))
+  (when (next-method-p) (call-next-method))
+  (untypecheck-theory (types te)))
+
 (defmethod untypecheck-theory ((te recordtype))
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (fields te))
@@ -355,6 +365,15 @@
 
 
 ;;; Expressions
+
+(defmethod untypecheck-theory :around ((ex expr))
+  (if (from-macro ex)
+      (let ((macro (from-macro ex)))
+	(change-class ex (class-of macro))
+	(copy-slots ex macro)
+	(setf (from-macro ex) nil)
+	(untypecheck-theory ex))
+      (call-next-method)))
 
 (defmethod untypecheck-theory ((ex expr))
   (when (next-method-p) (call-next-method))
@@ -424,6 +443,10 @@
   (untypecheck-theory (expression ex)))
 
 (defmethod untypecheck-theory ((ex projection-application))
+  (call-next-method)
+  (untypecheck-theory (argument ex)))
+
+(defmethod untypecheck-theory ((ex injection-application))
   (call-next-method)
   (untypecheck-theory (argument ex)))
 
@@ -569,13 +592,19 @@
   (setf (mod-id ex1) (mod-id ex2)
 	(library ex1) (library ex2)
 	(actuals ex1) (actuals ex2)
-	(id ex1) (id ex2)))
+	(id ex1) (id ex2)
+	(resolutions ex1) (resolutions ex2)))
 
 (defmethod copy-slots ((ex1 projection-expr) (ex2 projection-expr))
   (break "shouldn't happen")
   (setf (index ex1) (index ex2)))
 
 (defmethod copy-slots ((ex1 projection-application) (ex2 projection-application))
+  (setf (id ex1) (id ex2)
+	(index ex1) (index ex2)
+	(argument ex1) (argument ex2)))
+
+(defmethod copy-slots ((ex1 injection-application) (ex2 injection-application))
   (setf (id ex1) (id ex2)
 	(index ex1) (index ex2)
 	(argument ex1) (argument ex2)))

@@ -28,12 +28,10 @@ Operators
 	'<'  '<='  '>'  '>=' '{' '}' '[' ']' '.' '&' '<=>'
 	'->' ':' '=>' '[#' '#]' '(#' '#)' '(:' ':)' '{{' '}}' '|'
         '^' '/\\' '\\/' '[]' '<>' '~' '==' '++' '**' '//' '^^'
-	'<<' '>>' '::' '#' '@' '@@' '##' '[|' '|]' '|[' ']|' '!'
+	'<<' '>>' '::' '#' '@' '@@' '##' '[|' '|]' '(|' '|)' '{|' '|}'
+        '|[' ']|' '!'
         '<<=' '>>=' '`' '\''
-      % '$' '!' '!!' '$$'
-	'[||]' '||' '|-' '|=' '<|' '|>'
-      % '(|' '|)'
-      % '<-' '==' '==>'
+	'[||]' '(||)' '{||}' '||' '|-' '|=' '<|' '|>'
 
 Lexical Terminals
 	id, number, string %, literal
@@ -61,9 +59,9 @@ Precedence Information
 		'<|' medial left, '|>' medial left
 	'WITH' medial left
 	'WHERE' medial left, 'IN' medial left
-	'@' medial left, '#' medial left %, '$' medial left %, '!' medial left
-	'@@' medial left, '##' medial left, % '$$' medial left,
-		'||' medial left %, '!!' medial left
+	'@' medial left, '#' medial left 
+	'@@' medial left, '##' medial left, 
+		'||' medial left 
 	'+' medial left, '-' medial left, '++' medial left, '~' medial left
 	'*' medial left, '/' medial left, '**' medial left, '//' medial left
 	'-' initial
@@ -155,6 +153,8 @@ assuming ::= {importing [';']}
                  <judgement-elt(judgement,[nosemic()|semic()])>
 	   | {conversion [';']}
 		 <conversion-elt(conversion,[nosemic()|semic()])>
+	   | {auto-rewrite [';']}
+		 <auto-rewrite-elt(auto-rewrite,[nosemic()|semic()])>
 	   | {idops pdformals* ':' assuming-decl [';']}
 		<assuming(idops,pdf(star),assuming-decl,[nosemic()|semic()])>
 	   ;
@@ -167,6 +167,8 @@ theory-elt ::= {importing [';']}
                  <judgement-elt(judgement,[nosemic()|semic()])>
 	     | {conversion [';']}
 		 <conversion-elt(conversion,[nosemic()|semic()])>
+	     | {auto-rewrite [';']}
+		 <auto-rewrite-elt(auto-rewrite,[nosemic()|semic()])>
 	     | {idops [pdformals+] ':' theory-declaration [';']^s}
 		 <theory(idops,[noformals()|pdf(plus)],
                          theory-declaration,[nosemic()|semic()]^s)>
@@ -192,6 +194,26 @@ ename ::= {name [':' type-expr]} <ename(name,[notype()|type-expr])>;
 conversion ::= {{'CONVERSION'|'CONVERSION+'|'CONVERSION-'} {ename++','}}
           <{conversion(ename+)|conversionplus(ename+)|conversionminus(ename+)}>;
 
+auto-rewrite ::= {{'AUTO_REWRITE'|'AUTO_REWRITE+'|'AUTO_REWRITE-'}
+                  {rewrite-name++','}}
+	         <{auto-rewrite(rewrite-name+)
+                  |auto-rewriteplus(rewrite-name+)
+                  |auto-rewriteminus(rewrite-name+)}> ;
+
+rewrite-name-or-fnum ::= {fnum ['!' ['!']^m]^e}
+                         <rewrite-fnum(fnum,
+                                       [lazy()|[eager()|macro()]^m]^e)>
+                       | rewrite-name
+                       ;
+
+fnum ::= {'-' number} <fnum(number,`-())> ;
+
+rewrite-name ::= {name ['!' ['!']^m]^e [':' {type-expr|formula-name}]}
+                 <{rewrite-name(name,
+                                [lazy()|[eager()|macro()]^m]^e,
+                                [noqual()|
+                                 {type(type-expr)|formula(formula-name)}])}> ;
+
 pdformals ::= {'(' adformals ')'} <adformals>;
 
 adformals ::= {adformal++','} <adformals(adformal+)>;
@@ -203,8 +225,8 @@ adformal ::= typed-id
 assuming-decl ::= theory-declaration | assumption;
 
 theory-declaration ::= lib-decl | theory-decl | type-decl | var-decl
-              | const-decl | def-decl | ind-decl | corec-decl | coind-decl
-              | formula-decl | datatype | judgement;
+              | const-decl | macro-decl | def-decl | ind-decl | corec-decl
+              | coind-decl | formula-decl | datatype | judgement;
 
 lib-decl ::= {'LIBRARY' ['='] string} <lib-decl([noeq()|eq()],string)>;
 
@@ -235,6 +257,8 @@ const-value ::= {'=' expr} <expr>;
 
 def-decl ::= {'RECURSIVE' type-expr '=' expr 'MEASURE' expr^b ['BY' expr^r]}
 		<def-decl(type-expr,expr,expr^b, [noexpr()| expr^r])>;
+
+macro-decl ::= {'MACRO' type-expr '=' expr} <macro-decl(type-expr,expr)>;
 
 ind-decl ::= {'INDUCTIVE' type-expr '=' expr} <ind-decl(type-expr,expr)>;
 
@@ -292,6 +316,8 @@ expr ::= string <string-expr(string)>
        | name <name-expr(name)>
        | {'(:' {expr ** ','} ':)'} <list-expr(expr*)>
        | {'[|' {expr ** ','} '|]'} <brack-expr(expr*)>
+       | {'(|' {expr ** ','} '|)'} <paren-vbar-expr(expr*)>
+       | {'{|' {expr ** ','} '|}'} <brace-vbar-expr(expr*)>
        | {'(#' {assignment ++ ','} '#)'} <rec-expr(assignments(assignment+))>
        | {'(' {expr ** ','} ')'} <tuple-expr(expr*)>
        | {expr '`' {id | number}} <{fieldappl(expr,id)|projappl(expr,number)}>
@@ -488,6 +514,8 @@ unique-name ::= {name [':' {'TYPE'|type-expr|formula-name}]}
 		<unique-name
                   (name,[noqual()|{type()|typed(type-expr)|formula(formula-name)}])>;
 
+bname ::= {name ['!' number]} <[name|bname(name,number)]>;
+
 opsym ::= '+' <`+()> | '-' <`-()> | '*' <`*()> | '/' <`\/()>
 	| '=' <`=()> | '/=' <`\/=()> | '==' <`==()> | '<' <`\<()>
 	| '<=' <`\<=()> | '>' <`\>()> | '>=' <`\>=()>
@@ -501,12 +529,11 @@ opsym ::= '+' <`+()> | '-' <`-()> | '*' <`*()> | '/' <`\/()>
 	| '++' <`++()> | '**' <`**()> | '//' <`\/\/()>
 	| '^^' <`\^\^()> | '<<' <`\<\<()> | '>>' <`\>\>()>
         | '<<=' <`\<\<=()> | '>>=' <`\>\>=()>
-        % | '::' <`\:\:()> | '@' <`@()>
-	| '#' <`#()> % | '$' <`$()> % | '!' <`\!()>
-	| '@@' <`\@\@()> | '##' <`\#\#()> % | '$$' <`$$()> | '!!' <`\!\!()>
-	% | '||' <`\|\|()>
+	| '#' <`#()> 
+	| '@@' <`\@\@()> | '##' <`\#\#()> 
 	| '|-' <`\|-()> | '|=' <`\|=()> | '<|' <`\<\|()>
-	| '|>' <`\|\>()> | '[||]' <`\[\|\|\]()>
+	| '|>' <`\|\>()> | '[||]' <`\[\|\|\]()> | '(||)' <`\(\|\|\)()>
+        | '{||}' <`\{\|\|\}()>
 	;
 
 actuals ::= {'[' {actual ++ ','} ']'} <actuals(actual+)>;

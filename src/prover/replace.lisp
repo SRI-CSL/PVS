@@ -143,6 +143,78 @@
   (lcopy s-formula
     'formula (replace-expr* lhs rhs (formula s-formula) nil)))
 
+(defmethod replace-expr* (lhs rhs (expr equation) lastopinfix?)
+  (if (replace-eq lhs expr)
+      (parenthesize rhs lastopinfix?)
+      (let* ((newarg (replace-expr* lhs rhs (argument expr)
+				    (infix-equation? expr)))
+	     (newexprs (exprs newarg)))
+	(if (tc-eq (car newexprs)(cadr newexprs))
+	    *true*
+	    (if (iff-or-boolean-equation? expr)
+		(if (tc-eq (car newexprs) *true*)
+		    (cadr newexprs)
+		    (if (tc-eq (cadr newexprs) *true*)
+			(car newexprs)
+			(lcopy expr 'argument newarg)))
+		(lcopy expr 'argument newarg))))))
+
+(defmethod replace-expr* (lhs rhs (expr conjunction) lastopinfix?)
+  (if (replace-eq lhs expr)
+      (parenthesize rhs lastopinfix?)
+      (let* ((newarg (replace-expr* lhs rhs (argument expr)
+				    (infix-conjunction? expr)))
+	     (newexprs (exprs newarg)))
+	(if (tc-eq (car newexprs) *true*)
+	    (cadr newexprs)
+	    (if (tc-eq (cadr newexprs) *true*)
+		(car newexprs)
+		(if (or (tc-eq (car newexprs) *false*)
+			(tc-eq (cadr newexprs) *false*))
+		    *false*
+		    (lcopy expr 'argument newarg)))))))
+
+(defmethod replace-expr* (lhs rhs (expr disjunction) lastopinfix?)
+  (if (replace-eq lhs expr)
+      (parenthesize rhs lastopinfix?)
+      (let* ((newarg (replace-expr* lhs rhs (argument expr)
+				    (infix-disjunction? expr)))
+	     (newexprs (exprs newarg)))
+	(if (tc-eq (car newexprs) *false*)
+	    (cadr newexprs)
+	    (if (tc-eq (cadr newexprs) *false*)
+		(car newexprs)
+		(if (or (tc-eq (car newexprs) *true*)
+			(tc-eq (cadr newexprs) *true*))
+		    *true*
+		    (lcopy expr 'argument newarg)))))))
+
+(defmethod replace-expr* (lhs rhs (expr implication) lastopinfix?)
+  (if (replace-eq lhs expr)
+      (parenthesize rhs lastopinfix?)
+      (let* ((newarg (replace-expr* lhs rhs (argument expr)
+				    (infix-implication? expr)))
+	     (newexprs (exprs newarg)))
+	(if (tc-eq (car newexprs) *true*)
+	    (cadr newexprs)
+	    (if (or (tc-eq (car newexprs) *false*)
+		    (tc-eq (cadr newexprs) *true*))
+		*true*
+		(if (tc-eq (cadr newexprs) *false*)
+		    (negate! (car newexprs))
+		    (lcopy expr 'argument newarg)))))))
+
+(defmethod replace-expr* (lhs rhs (expr negation) lastopinfix?)
+  (if (replace-eq lhs expr)
+      (parenthesize rhs lastopinfix?)
+      (let* ((newarg (replace-expr* lhs rhs (argument expr)
+				    nil)))
+	(if (tc-eq newarg *true*)
+	    *false*
+	    (if (tc-eq newarg *false*)
+		*true*
+		(lcopy expr 'argument newarg))))))
+
 (defmethod replace-expr* (lhs rhs (expr application) lastopinfix?)
   (if (replace-eq lhs expr)
       (parenthesize rhs lastopinfix?)
@@ -172,6 +244,12 @@
 	'argument (replace-expr* lhs rhs (argument expr) nil))))
 
 (defmethod replace-expr* (lhs rhs (expr projection-application) lastopinfix?)
+  (if (replace-eq lhs expr)
+      (parenthesize rhs lastopinfix?)
+      (lcopy expr
+	'argument (replace-expr* lhs rhs (argument expr) nil))))
+
+(defmethod replace-expr* (lhs rhs (expr injection-application) lastopinfix?)
   (if (replace-eq lhs expr)
       (parenthesize rhs lastopinfix?)
       (lcopy expr

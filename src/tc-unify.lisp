@@ -25,61 +25,92 @@
 
 (defun find-compatible-bindings (arguments formals binding)
   (let ((types-lists (cartesian-product
-		      (mapcar #'types* arguments))))
+		      (mapcar #'get-compatible-binding-types arguments))))
     (find-compatible-bindings* types-lists formals binding nil)))
 
-(defun types* (obj)
-  (if (type obj) (list (type obj)) (types obj)))
+(defun get-compatible-binding-types (obj)
+  (if (type obj)
+      (list (lift-constructor-type obj))
+      (lift-constructor-types obj)))
 
-(defvar *tc-fixed-types* nil)
+(defmethod lift-constructor-type ((obj constructor-name-expr))
+  (supertype (type obj)))
+
+(defmethod lift-constructor-type ((obj application))
+  (if (constructor-name-expr? (operator obj))
+      (supertype (type obj))
+      (type obj)))
+
+(defmethod lift-constructor-type (obj)
+  (type obj))
+
+(defmethod lift-constructor-types ((obj name-expr))
+  (let ((creses (remove-if (complement #'no-argument-constructor-resolution?)
+		  (resolutions obj))))
+    (if creses
+	(delete-duplicates
+	 (nconc (mapcar #'(lambda (r) (supertype (type r))) creses)
+		(remove-if #'(lambda (ty)
+			       (some #'(lambda (r) (tc-eq ty (type r)))
+				     creses))
+		  (types obj)))
+	 :test #'tc-eq)
+	(types obj))))
+
+(defmethod lift-constructor-types ((obj application))
+  (if (name-expr? (operator obj))
+      (let ((creses (remove-if (complement #'constructor-resolution?)
+		      (resolutions (operator obj)))))
+	(if creses
+	    (delete-duplicates
+	     (nconc (mapcar #'(lambda (r) (supertype (range (type r))))
+		      creses)
+		    (mapcan #'(lambda (r)
+				(unless (memq r creses)
+				  (list (range (type r)))))
+		      (resolutions (operator obj))))
+	     :test #'tc-eq)
+	    (types obj)))
+      (types obj)))
+
+(defmethod lift-constructor-types (obj)
+  (types obj))
+
+(defun constructor-resolution? (res)
+  (adt-constructor-decl? (declaration res)))
+
+(defun no-argument-constructor-resolution? (res)
+  (and (adt-constructor-decl? (declaration res))
+       (not (funtype? (type res)))))
 
 (defun find-compatible-bindings* (types-lists formals binding result)
   (if (null types-lists)
       result
-      (let* ((*simple-pos* nil)
-	     (nbinding (copy-tree binding))
-	     (btypes (mapcar #'(lambda (b)
-				 (when (typep (car b) 'formal-type-decl)
-				   (type-value (car b))))
-			     nbinding))
-	     (*tc-fixed-types*
-	      (remove-if-not #'(lambda (ty)
-				 (and ty
-				      (occurs-pos-and-neg? ty formals)))
-		btypes))
+      (let* ((nbinding (copy-tree binding))
 	     (nbind (find-compatible-binding (car types-lists) formals
 					     nbinding)))
 	(find-compatible-bindings* (cdr types-lists) formals binding
 				   (if nbind (cons nbind result) result)))))
 
-(defun occurs-pos-and-neg? (ty formals &optional pos? neg?)
-  (or (and pos? neg?)
-      (when formals
-	(if (occurs-in ty (car formals))
-	    (if (occurs-positively? ty (car formals))
-		(occurs-pos-and-neg? ty (cdr formals) t neg?)
-		(occurs-pos-and-neg? ty (cdr formals) pos? t))
-	    (occurs-pos-and-neg? ty (cdr formals) pos? neg?)))))
+(defvar *tc-match-strictly* nil)
 
-(defvar *strict-tc-match* '(%))
-
-(defvar *tc-matching-domain* nil)
-
-(defvar *tc-domain-matches* nil)
+(defvar *tc-strict-matches* nil)
 
 (defvar *formals-theory* nil)
 
+(defvar *tc-match-boundvars* nil) ;;NSH: see below.
+
 (defun find-compatible-binding (types formals binding)
+  (let ((*formals-theory* (module (caar binding)))
+	(*tc-strict-matches* nil))
+    (find-compatible-binding* types formals binding)))
+
+(defun find-compatible-binding* (types formals binding)
   (if (or (null types) (null binding))
-      (if (memq *strict-tc-match* binding)
-	  (cdr binding)
-	  binding)
-      (let* ((*formals-theory* (module (caar binding)))
-	     (*tc-domain-matches* nil)
-	     (*tc-matching-domain* nil ;;(and postypes (null (car postypes)))
-				   )
+      binding
+      (let* ((*tc-match-strictly* nil)
 	     (nbinding (tc-match* (car types) (car formals) binding)))
-	(find-compatible-binding (cdr types) (cdr formals) nbinding))))
+	(find-compatible-binding* (cdr types) (cdr formals) nbinding))))
 
 ;;; A marker to keep track of when an exact match is found; i.e., when a
 ;;; name provides all the actuals.  This is to stop tc-match from using
@@ -94,17 +125,8 @@
 			    bindings)
 		     () "tc-match: bindings must be formal declarations")
   (let* ((*formals-theory* (module (caar bindings)))
-	 (*tc-domain-matches* nil)
-	 (nbindings (tc-match* t1 t2 bindings)))
-    (if (memq *strict-tc-match* nbindings)
-	(cdr nbindings)
-	nbindings)))
-
-(defun tc-match-acts (acts formals bindings)
-  (let ((nbindings (tc-match-acts1 acts formals bindings)))
-    (if (memq *strict-tc-match* nbindings)
-	(cdr nbindings)
-	nbindings)))
+	 (*tc-strict-matches* nil))
+    (tc-match* t1 t2 bindings)))
 
 (defmethod tc-match* (t1 t2 bindings)
   (declare (ignore t1 t2 bindings))
@@ -157,30 +179,26 @@
   (let ((binding (assq (declaration farg) bindings)))
     (cond ((null binding)
 	   nil)
-	  ((and (null (cdr binding))
-		;;(tc-match-formal-subtype-check (car binding) arg bindings)
-		)
+	  ((null (cdr binding))
 	   (unless (dependent-type? arg)
-	     (when (or *tc-matching-domain*
-		       (member farg *tc-fixed-types* :test #'same-declaration))
-	       (push arg *tc-domain-matches*))
+	     (when *tc-match-strictly*
+	       (push arg *tc-strict-matches*))
 	     (setf (cdr binding) arg))
 	   bindings)
-	  (t (let ((type (compatible-type (cdr binding) arg)))
-	       (cond ((and type (memq *strict-tc-match* bindings))
-		      bindings)
-		     (type
-		      (unless (or (dependent-type? type)
-				  (memq (cdr binding) *tc-domain-matches*))
-			(cond ((or *tc-matching-domain*
-				   (member farg *tc-fixed-types*
-					   :test #'same-declaration))
-			       (push arg *tc-domain-matches*)
-			       (setf (cdr binding) arg))
-			      (t (setf (cdr binding) type))))
-		      bindings)
-		     (t (tc-match-last-attempt (cdr binding) arg
-					       binding bindings))))))))
+	  (t (set-tc-match-binding binding arg bindings)))))
+
+(defun set-tc-match-binding (binding arg bindings &optional (last-attempt? t))
+  (let ((type (compatible-type (cdr binding) arg)))
+    (cond (type
+	   (unless (or (dependent-type? type)
+		       (memq (cdr binding) *tc-strict-matches*))
+	     (cond (*tc-match-strictly*
+		    (push arg *tc-strict-matches*)
+		    (setf (cdr binding) arg))
+		   (t (setf (cdr binding) type))))
+	   bindings)
+	  (t (when last-attempt?
+	       (tc-match-last-attempt (cdr binding) arg binding bindings))))))
 
 (defun tc-match-last-attempt (arg1 arg2 binding bindings)
   (if (fully-instantiated? arg1)
@@ -216,21 +234,29 @@
     (or (call-next-method)
 	(if (tc-eq arg farg)
 	    bindings
-	    (if (and (eq (id arg) (id farg))
-		     (actuals arg))
-		(or (if (actuals farg)
-			(or (tc-match* (actuals arg) (actuals farg) bindings)
-			    bindings)
-			(tc-match-acts1 (actuals arg)
-				       (formals-sans-usings
-					(get-theory (module-instance
-						     (resolution farg))))
-				       bindings))
-		    (tc-match-names arg farg bindings))
-		(or (and (formal-type-decl? (declaration farg))
-			 (not (assq (declaration farg) bindings))
-			 bindings)
-		    (tc-match-names arg farg bindings)))))))
+	    (let ((a1 (actuals arg))
+		  (a2 (actuals farg)))
+	      (if (eq (id arg) (id farg))
+		  (or (cond ((and a1 a2)
+			     (or (tc-match* a1 a2 bindings)
+				 bindings))
+			    (a1
+			     (tc-match-acts1
+			      a1 (formals-sans-usings
+				  (get-theory (module-instance
+					       (resolution farg))))
+			      bindings))
+			    (a2
+			     (tc-match-acts1
+			      a2 (formals-sans-usings
+				  (get-theory (module-instance
+					       (resolution arg))))
+			      bindings))
+			    (t (tc-match-names arg farg bindings)))
+		      (or (and (formal-type-decl? (declaration farg))
+			       (not (assq (declaration farg) bindings))
+			       bindings)
+			  (tc-match-names arg farg bindings)))))))))
 
 (defmethod tc-match* ((arg type-application) (farg type-application) bindings)
   (unless (null bindings)
@@ -239,18 +265,10 @@
 	     (tc-match* (parameters arg) (parameters farg) bindings))
 	bindings)))
 
-;(defun tc-match-other-formals (arg farg bindings)
-;  (when (typep (declaration arg) 'formal-type-decl)
-;    (let ((bind (assoc (declaration arg)
-;		       *tc-match-extra-bindings*
-;		       :test #'(lambda (x y)
-;				 (eq x (declaration y))))))
-;      (cond (bind
-;	     (when (tc-eq (cdr bind) farg)
-;	       bindings))
-;	    (t (push (cons arg farg)
-;		     *tc-match-extra-bindings*)
-;	       bindings)))))
+;;; Called by match* (modname modname)
+(defun tc-match-acts (acts formals bindings)
+  (let ((*tc-match-strictly* t))
+    (tc-match-acts1 acts formals bindings)))
 
 (defun tc-match-acts1 (acts formals bindings)
   (when (length= acts formals)
@@ -260,7 +278,7 @@
   (cond ((null bindings)
 	 nil)
 	((null acts)
-	 (pushnew *strict-tc-match* bindings))
+	 bindings)
 	(t (tc-match-acts* (cdr acts) (cdr formals)
 			   (tc-match-act (car acts) (car formals) bindings)))))
 
@@ -303,29 +321,15 @@
 
 (defmethod tc-match* ((arg datatype-subtype) farg bindings)
   (when bindings
-    (let ((nbindings (if (and (typep farg 'type-name)
-			      (let ((bind (cdr (assq (declaration farg)
-						     bindings))))
-				(and bind
-				     (fully-instantiated? bind))))
-			 (let* ((binding (assq (declaration farg) bindings))
-				(type (compatible-type (cdr binding) arg)))
-			   (cond ((memq *strict-tc-match* bindings)
-				  bindings)
-				 (type
-				  (unless (or (dependent-type? type)
-					      (memq (cdr binding)
-						    *tc-domain-matches*))
-				    (cond ((or *tc-matching-domain*
-					       (member farg *tc-fixed-types*
-						       :test #'same-declaration))
-					   (push arg *tc-domain-matches*)
-					   (setf (cdr binding) arg))
-					  (t (setf (cdr binding) type))))
-				  bindings)
-				 (t (tc-match-last-attempt (cdr binding) arg
-							   binding bindings))))
-			 (tc-match* (declared-type arg) farg bindings))))
+    (let ((nbindings
+	   (if (and (typep farg 'type-name)
+		    (let ((bind (cdr (assq (declaration farg)
+					   bindings))))
+		      (and bind
+			   (fully-instantiated? bind))))
+	       (let ((binding (assq (declaration farg) bindings)))
+		 (set-tc-match-binding binding arg bindings))
+	       (tc-match* (declared-type arg) farg bindings))))
       (when nbindings
 	(mapc #'(lambda (b)
 		  (let ((cdrb (gensubst (cdr b)
@@ -347,9 +351,8 @@
 	     (or (call-next-method)
 		 (tc-match* arg (supertype farg) bindings)))
 	    ((null (cdr fsubtype-binding))
-	     (when (or *tc-matching-domain*
-		       (member farg *tc-fixed-types* :test #'same-declaration))
-	       (push arg *tc-domain-matches*))
+	     (when *tc-match-strictly*
+	       (push arg *tc-strict-matches*))
 	     (setf (cdr fsubtype-binding) arg)
 	     bindings)
 	    ((tc-eq arg (cdr fsubtype-binding))
@@ -364,26 +367,11 @@
 					 (tc-eq x (type-value y)))))))
       (if binding
 	  (cond ((null (cdr binding))
-		 (when (or *tc-matching-domain*
-			   (member farg *tc-fixed-types* :test #'tc-eq))
-		   (push arg *tc-domain-matches*))
+		 (when *tc-match-strictly*
+		   (push arg *tc-strict-matches*))
 		 (setf (cdr binding) arg)
 		 bindings)
-		(t (let ((type (compatible-type (cdr binding) arg)))
-		     (cond ((memq *strict-tc-match* bindings)
-			    bindings)
-			   (type
-			    (unless (or (dependent-type? type)
-					(memq (cdr binding)
-					      *tc-domain-matches*))
-			      (cond ((or *tc-matching-domain*
-					 (member farg *tc-fixed-types*
-						 :test #'tc-eq))
-				     (push arg *tc-domain-matches*)
-				     (setf (cdr binding) arg))
-				    (t (setf (cdr binding) type))))
-			    bindings)
-			   (t nil)))))
+		(t (set-tc-match-binding binding arg bindings nil)))
 	  (or (let ((nbind (tc-match* (supertype arg) (supertype farg)
 				      (tc-match* (predicate arg)
 						 (predicate farg)
@@ -394,18 +382,19 @@
 	      (tc-match* (supertype arg) farg bindings))))))
 
 (defun completed-tc-match-bindings (nbind)
-  (when (every #'cdr (if (equal (car nbind) *strict-tc-match*)
-			 (cdr nbind)
-			 nbind))
+  (when (every #'cdr nbind)
     nbind))
 
 (defmethod tc-match* ((arg funtype) (farg funtype) bindings)
   (unless (null bindings)
     (tc-match* (range arg) (range farg)
-	       (let ((*tc-matching-domain* t))
+	       (let ((*tc-match-strictly* t))
 		 (tc-match* (domain arg) (domain farg) bindings)))))
 
 (defmethod tc-match* ((arg tupletype) (farg tupletype) bindings)
+  (tc-match* (types arg) (types farg) bindings))
+
+(defmethod tc-match* ((arg cotupletype) (farg cotupletype) bindings)
   (tc-match* (types arg) (types farg) bindings))
 
 (defmethod tc-match* ((arg recordtype) (farg recordtype) bindings)
@@ -503,6 +492,11 @@
   (when (= (index arg) (index farg))
     (tc-match* (argument arg) (argument farg) bindings)))
 
+(defmethod tc-match* ((arg injection-application)
+		      (farg injection-application) bindings)
+  (when (= (index arg) (index farg))
+    (tc-match* (argument arg) (argument farg) bindings)))
+
 (defmethod tc-match* ((arg field-application)
 		      (farg field-application) bindings)
   (when (eq (id arg) (id farg))
@@ -516,10 +510,18 @@
       (tc-match* (operator arg) (operator farg)
 		 (tc-match* (arguments arg) (arguments farg) bindings))))
 
-(defvar *tc-match-boundvars* nil) ;;NSH: see below.
+(defmethod tc-match* ((arg binding-expr) (farg binding-expr) bindings)
+  (and (eq (operator arg) (operator farg))
+       (let ((bind-bindings
+	      (tc-match-bindings (bindings arg) (bindings farg) bindings)))
+	 (when bind-bindings
+	   (let ((*tc-match-boundvars*  
+		  (nconc (pairlis (bindings arg)(bindings farg))
+			 *tc-match-boundvars*)))
+	     (tc-match* (expression arg) (expression farg)
+		       bind-bindings))))))
 
 (defun tc-match-bindings (argbinds fargbinds bindings)
-  ;;NSH: introduced for handling bound variables.
   (cond ((null bindings) nil)
 	((and (null argbinds)(null fargbinds)) bindings)
 	((not (or  (null argbinds)(null fargbinds)))
@@ -531,18 +533,6 @@
 					(type (car fargbinds))
 					bindings))))
 	(t nil)))
-
-(defmethod tc-match* ((arg binding-expr) (farg binding-expr) bindings)
-  (and (eq (operator arg) (operator farg))
-       (let ((bind-bindings
-	      (tc-match-bindings (bindings arg)(bindings farg)
-				 bindings)))
-	 (when bind-bindings ;;NSH: corrected this code.
-	   (let ((*tc-match-boundvars*  
-		  (nconc (pairlis (bindings arg)(bindings farg))
-			 *tc-match-boundvars*)))
-	     (tc-match* (expression arg) (expression farg)
-		       bind-bindings))))))
 
 (defmethod tc-match* ((arg update-expr) (farg update-expr) bindings)
   (tc-match* (expression arg) (expression farg)
@@ -559,9 +549,7 @@
 		     (declaration (cdr bound?)))
 	     bindings))
 	  ((and (null (assq (declaration n2) bindings)) ;NSH: needs this.
-		(same-id n1 n2)
-		;;(not (typep n1 'projection-expr))
-		)
+		(same-id n1 n2))
 	   (let* ((m1 (module-instance (resolution n1)))
 		  (m2 (module-instance (resolution n2)))
 		  (a1 (actuals m1))
@@ -584,7 +572,7 @@
 
 (defun tc-match-actuals* (actuals formals bindings)
   (if (null actuals)
-      (pushnew *strict-tc-match* bindings)
+      bindings
       (let ((binding (assq (car formals) bindings)))
 	(cond ((null binding)
 	       nil)

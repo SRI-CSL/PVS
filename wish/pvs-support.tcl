@@ -605,6 +605,8 @@ proc show-sequent {proofwin top} {
     pack $seqwin.fr.text -expand yes -fill both
     button $seqwin.dismiss -text Dismiss -bd 2 -command "destroy .sequent$label"
     pack $seqwin.dismiss -side left -padx 2 -pady 2
+    button $seqwin.print -text "Print" -bd 2 -command "print-text $seqwin.fr.text"
+    pack $seqwin.print -side left -padx 2 -pady 2
     button $seqwin.stick -text Stick -bd 2 -command "stick $seqwin $path"
     pack $seqwin.stick -side left -padx 2 -pady 2
     button $seqwin.help -text Help -bd 2 -command "help-sequent"
@@ -619,6 +621,11 @@ proc show-sequent {proofwin top} {
     catch {unset sticky_seqs($seqwin)}
     dag-add-destroy-cb $proofwin $path "destroy-sequent $seqwin"
     set pathtolabel($path) $label
+}
+
+proc print-text {textwin} {
+    set text [$textwin get 1.0 end]
+    exec cat << $text | lpr
 }
 
 proc stick {win path} {
@@ -894,6 +901,10 @@ proc setup-dag-win {title icon PSname win_name class} {
 	set top [toplevel $win_name -geometry 400x400 \
 		     -class $class -bd 2 -relief raised]
     }
+    set geom [get-option geometry $top]
+    if {$geom != {}} {
+	wm geometry $top $geom
+    }
     pack propagate $top 0
     wm title $top $title
     wm iconname $top $icon
@@ -1063,6 +1074,11 @@ proc show-prover-commands {commands} {
     reset-options
     toplevel $win -relief flat
     wm maxsize $win 2000 2000
+    set geom [get-option geometry $win]
+    puts $geom
+    if {$geom != {}} {
+	wm geometry $win $geom
+    }
     frame $win.fr
     button $win.fr.dismiss -text Dismiss -bd 3 -command "destroy $win"
     pack $win.fr.dismiss -side left -padx 2 -pady 2
@@ -1344,9 +1360,9 @@ proc show-declaration {id width height decl} {
 # Theory hierarchy support
 
 proc module-hierarchy {name file directory dag} {
-    catch {frame .th-hier}
+    catch {frame .theory-hierarchy}
     # put the u_ in in case $name starts with an uppercase letter
-    set thwin .th-hier.u_$name
+    set thwin .theory-hierarchy.u_$name
     set win \
 	[setup-dag-win \
 	     "Theory hierarchy for $name in $directory$file" \
@@ -1469,7 +1485,7 @@ proc reset-options {} {
 	    option add $pvs.displaybackground white startupFile
 	    option add $pvs.displayforeground black startupFile
 	    option add $pvs.activedisplaybackground black startupFile
-	    option add $pvs.activedisplayforeground steelblue startupFile
+	    option add $pvs.activedisplayforeground white startupFile
 	    option add $pvs.buttonbackground lightblue startupFile
 	    option add $pvs.buttonforeground black startupFile
 	    option add $pvs.activebuttonbackground steelblue startupFile
@@ -1503,8 +1519,8 @@ proc reset-options {} {
 	option add $pvs.maxHeight 30 startupFile
 	option add $pvs*proof*xSep 10 startupFile
 	option add $pvs*proof*ySep 20 startupFile
-	option add $pvs*th-hier*xSep 50 startupFile
-	option add $pvs*th-hier*ySep 100 startupFile
+	option add $pvs*theory-hierarchy*xSep 50 startupFile
+	option add $pvs*theory-hierarchy*ySep 100 startupFile
     } else {
 	option add Tk.displayfont 7x13bold startupFile
 	option add Tk.buttonfont 6x9 startupFile
@@ -1547,14 +1563,14 @@ proc reset-options {} {
 	option add Tk.maxHeight 30 startupFile
 	option add Tk*proof*xSep 10 startupFile
 	option add Tk*proof*ySep 20 startupFile
-	option add Tk*th-hier*xSep 50 startupFile
-	option add Tk*th-hier*ySep 100 startupFile
+	option add Tk*theory-hierarchy*xSep 50 startupFile
+	option add Tk*theory-hierarchy*ySep 100 startupFile
     }
 }
 
 proc get-option {opt {win .}} {
     set cap [string toupper [string range $opt 0 0]][string range $opt 1 end]
-    option get $win $opt $cap
+    option get [resource-window $win] $opt $cap
 }
 
 proc set-dag-window-options {win} {
@@ -1784,4 +1800,14 @@ proc tkcatch {script {varname novar}} {
     rename tkerror {}
     catch {rename tkerror.orig tkerror}
     return $value
+}
+
+proc resource-window {path} {
+    if {$path == "."} {
+	return $path
+    } elseif {[winfo parent $path] == "."} {
+	return $path
+    } else {
+	resource-window [winfo parent $path]
+    }
 }

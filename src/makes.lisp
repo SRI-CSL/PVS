@@ -812,6 +812,9 @@
 (defun make-tupletype (types)
   (make-instance 'tupletype 'types types 'generated? t))
 
+(defun make-cotupletype (types)
+  (make-instance 'cotupletype 'types types 'generated? t))
+
 (defun make-domain-type-from-bindings (vars)
   (if (cdr vars)
       (make-tupletype-from-bindings vars)
@@ -1213,6 +1216,9 @@
 	 'range (make-declared-type (range te))))
 
 (defmethod make-declared-type ((te tupletype))
+  (lcopy te 'types (make-declared-type (types te))))
+
+(defmethod make-declared-type ((te cotupletype))
   (lcopy te 'types (make-declared-type (types te))))
 
 (defmethod make-declared-type ((list list))

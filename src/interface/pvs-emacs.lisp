@@ -17,17 +17,42 @@
 
 (defvar *to-emacs* nil)
 (defvar *output-to-emacs* "")
+(defvar *prover-invoking-commands*
+  '(prove-formulas-importchain
+    prove-formulas-importchain-subtree
+    prove-formulas-pvs-file
+    prove-formulas-theory 
+    prove-usingchain
+    prove-file-at
+    prove-proofchain
+    prove-pvs-file
+    prove-tccs-importchain
+    prove-tccs-pvs-file
+    prove-tccs-theory
+    prove-pvs-theories
+    prove-theory
+    prove-untried-importchain
+    prove-untried-pvs-file
+    prove-untried-theory
+    prove-with-checkpoint))
 
 #-(or akcl harlequin-common-lisp)
 (defmacro pvs-errors (form)
-  "Handle Pvs errors when evaluating form"
+  "Handle PVS errors when evaluating form"
   `(progn
     (princ " ")				; Make sure we have output
     (handler-case
 	(let ((*to-emacs* t))
 	  (setq *print-length* nil)
 	  (setq *print-level* nil)
-	  ,form)
+	  (if (and *noninteractive*
+		   *noninteractive-timeout*
+		   ,(not (and (listp form)
+			      (memq (car form) *prover-invoking-commands*))))
+	      (mp:with-timeout (*noninteractive-timeout*
+				(format t "Timed out!"))
+			       ,form)
+	      ,form))
 	(string (error)
 		(with-output-to-string (string)
 		  (format string "PVS: ~a" error))))))
@@ -177,6 +202,17 @@
 	  (to-emacs))
 	(format t "~%~?" ctl args))))
 
+(defun pvs-output (ctl &rest args)
+  (unless *suppress-msg*
+    (if *to-emacs*
+	(when *noninteractive*
+	  (let* ((*print-pretty* nil)
+		 (*output-to-emacs*
+		  (format nil ":pvs-out ~a :end-pvs-out"
+		    (write-to-temp-file (format nil "~?" ctl args)))))
+	    (to-emacs)))
+	(format t "~?" ctl args))))
+
 (defun pvs-error (msg err &optional itheory iplace)
   ;; Indicates an error; no recovery possible.
   (if *rerunning-proof*
@@ -235,7 +271,7 @@
 
 (defun pvs-yn (msg full? timeout?)
   (cond (*in-pvs-batch* t)
-	(*to-emacs*
+	((and *pvs-emacs-interface* *to-emacs*)
 	 (let* ((*print-pretty* nil)
 		(*output-to-emacs*
 		 (format nil ":pvs-yn ~a&~a&~a :end-pvs-yn"
@@ -266,7 +302,7 @@
       (query theory msg query place)))
 
 (defun pvs-prompt (type msg &rest args)
-  (if *to-emacs*
+  (if (and *pvs-emacs-interface* *to-emacs*)
       (let* ((*print-pretty* nil)
 	     (*output-to-emacs*
 	      (format nil ":pvs-pmt ~a&~? :end-pvs-pmt"
@@ -277,11 +313,12 @@
 	     (read))))
 
 (defun pvs-emacs-eval (form)
-  (let* ((*print-pretty* nil)
-	 (*output-to-emacs*
-	  (format nil ":pvs-eval ~a :end-pvs-eval" form)))
-    (to-emacs)
-    (read)))
+  (when *pvs-emacs-interface*
+    (let* ((*print-pretty* nil)
+	   (*output-to-emacs*
+	    (format nil ":pvs-eval ~a :end-pvs-eval" form)))
+      (to-emacs)
+      (read))))
 
 (defmacro pvs-eval (form)
   `(list :pvs-value ,form))
@@ -348,6 +385,7 @@
        (case (char string pos)
 	 (#\& (append '(#\& #\\) result))
 	 (#\\ (append '(#\\ #\\) result))
+	 (#\" (append '(#\" #\\) result))
 	 (#\newline (append '(#\n #\\) result))
 	 (t   (cons (char string pos) result))))
       (coerce (nreverse result) 'string)))
@@ -411,8 +449,14 @@
   (let ((error (type-error-for-conversion obj message args)))
     (cond (*type-error-catch*
 	   (throw *type-error-catch*
-		  (values nil (set-strategy-errors
-			       (format nil "~%~a" error)))))
+		  (values nil
+			  (if (and (not *typechecking-actual*)
+				   (or *in-checker*
+				       *in-evaluator*))
+			      (set-strategy-errors
+			       (format nil "~a" error))
+			      (format nil "~a" error))
+			  obj)))
 	  ((and *to-emacs*
 		(or (not *in-checker*)
 		    *tc-add-decl*))
@@ -442,32 +486,55 @@
 		     (protect-format-string message))
 		 args *type-error* *in-coercion*))
 	(obj-conv? (conversion-occurs-in? obj)))
-    (if (and *typechecking-module*
-	     (null *type-error-catch*)
-	     (or obj-conv?
-		 (and *type-error-argument*
-		      (conversion-occurs-in? *type-error-argument*))))
-	(let* ((ex (if obj-conv?
-		       obj
-		       (mk-application* obj
-			 (argument-list *type-error-argument*))))
-	       (*type-error*
-		(format nil
-		    "--------------~%With conversions, ~
+    (cond ((and *typechecking-module*
+		(null *type-error-catch*)
+		(or obj-conv?
+		    (and *type-error-argument*
+			 (conversion-occurs-in? *type-error-argument*))))
+	   (let* ((ex (if obj-conv?
+			  obj
+			  (mk-application* obj
+			    (argument-list *type-error-argument*))))
+		  (*type-error*
+		   (format nil
+		       "--------------~%With conversions, ~
                                     it becomes the expression ~%  ~a~%~
                                     and leads to the error:~%  ~a"
-		  ex error))
-	       (*no-conversions-allowed* t)
-	       (etype (if obj-conv?
-			  (type obj)
-			  (when  (and (type obj)
-				      (not (dep-binding? (domain (type obj)))))
-			    (range (type obj))))))
-	  (untypecheck-theory ex)
-	  (if etype
-	      (typecheck ex :expected etype)
-	      (typecheck-uniquely ex)))
-	error)))
+		     ex error))
+		  (*no-conversions-allowed* t)
+		  (etype (if obj-conv?
+			     (type obj)
+			     (when  (and (type obj)
+					 (not (dep-binding? (domain (type obj)))))
+			       (range (type obj))))))
+	     (untypecheck-theory ex)
+	     (if etype
+		 (typecheck ex :expected etype)
+		 (typecheck-uniquely ex))))
+	  ((check-if-k-conversion-would-work obj nil)
+	   (format nil
+	       "~a~%Enabling K_conversion before this declaration might help"
+	     error))
+	  (t error))))
+
+(defvar *already-checked-for-k-conversion* nil)
+
+(defun check-if-k-conversion-would-work (ex arguments)
+  (and (not *already-checked-for-k-conversion*)
+       *typechecking-module*
+       (null *type-error-catch*)
+       (not (some #'k-combinator? (conversions *current-context*)))
+       (let ((*type-error-catch* 'type-error)
+	     (*current-context* (copy-context *current-context*))
+	     (cdecl (make-instance 'conversion-decl
+		      'id '|K_conversion|
+		      'module (get-theory "K_conversion")
+		      'k-combinator? t
+		      'name (mk-name-expr '|K_conversion|))))
+	 (typecheck* cdecl nil nil nil)
+	 (push cdecl (conversions *current-context*))
+	 (catch 'type-error
+	   (typecheck* ex nil nil arguments)))))
 
 (defun conversion-occurs-in? (obj)
   (let ((conv? nil))

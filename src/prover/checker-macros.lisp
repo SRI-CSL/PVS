@@ -47,6 +47,7 @@
 (defvar *prover-indent* 0)
 (defvar *ignore-prover-output?* nil)
 (defvar *rerunning-proof* nil)
+(defvar *rerunning-proof-message-time* nil)
 (defvar *top-label* nil)
 (defvar *max-occurrence* 0)
 (defvar *rechecking-proof* nil)
@@ -585,13 +586,6 @@
 (defmacro match! (pattern expr bind-alist subst)
   `(let ((*modsubst* t))
     (match ,pattern ,expr ,bind-alist ,subst)))
-
-(defmacro with-zero-context (lisp-expr)
-  `(nprotecting-cong-state
-    ((*dp-state* *init-dp-state*)
-     (*alists* *init-alists*)
-     (*ics-state* *init-ics-state*))
-    ,lisp-expr))
 
 (defmacro inc-fnum (fnum)
   `(if (< ,fnum 0)

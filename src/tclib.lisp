@@ -255,7 +255,8 @@
 				  (change-class th 'library-theory)
 				  (change-class th 'library-datatype))
 			      (let ((rlib (enough-namestring
-					   path *pvs-current-context-path*)))
+					   libpath
+					   *pvs-current-context-path*)))
 				(setf (library th) lib
 				      (library-path th) rlib))
 			      (update-prelude-library-context th))
@@ -268,8 +269,26 @@
 (defun update-prelude-library-context (th)
   (unless *prelude-library-context*
     (setq *prelude-library-context* (copy-context (saved-context th))))
-  (let ((*current-context* *prelude-library-context*)
-	(thname (mk-modname (id th))))
+  (unless (eq (theory *prelude-library-context*) th)
+    (setf (theory *prelude-library-context*) th)
+    (setf (theory-name *prelude-library-context*) (mk-modname (id th)))
+    (let* ((*current-theory* th)
+	   (*current-context* *prelude-library-context*)
+	   (judgements (judgements *prelude-library-context*))
+	   (name-judgements-hash (name-judgements-hash judgements))
+	   (appl-judgements-hash (application-judgements-hash judgements)))
+      (setf (name-judgements-hash judgements) (make-hash-table :test 'eq))
+      (setf (application-judgements-hash judgements)
+	    (make-hash-table :test 'eq))
+      (merge-name-judgements name-judgements-hash
+			     (name-judgements-hash judgements)
+			     th (mk-modname (id th)))
+      (merge-application-judgements appl-judgements-hash
+				    (application-judgements-hash judgements)
+				    th (mk-modname (id th)))))
+  (let* ((*current-theory* th)
+	 (*current-context* *prelude-library-context*)
+	 (thname (mk-modname (id th))))
     (update-current-context th thname)
     (dolist (decl (append (assuming th) (theory th)))
       (when (and (declaration? decl) (visible? decl))
@@ -582,6 +601,20 @@
 	     *prelude-libraries*)
     (sort libs #'string<)))
 
+(defun current-library-pathnames ()
+  (let ((libs nil))
+    (maphash #'(lambda (lib files&theories)
+		 (declare (ignore files&theories))
+		 (pushnew (namestring lib) libs :test #'equal))
+	     *imported-libraries*)
+    (maphash #'(lambda (lib files&theories)
+		 (declare (ignore files&theories))
+		 (pushnew (namestring lib) libs :test #'equal))
+	     *prelude-libraries*)
+    (mapcar #'(lambda (lib)
+		(nth-value 1 (get-library-pathname lib)))
+      (nreverse libs))))
+
 (defun library-file? (pvsfile)
   (let ((lib (get-library-pathname
 	      (namestring (make-pathname
@@ -626,38 +659,45 @@
 		     (string libname)))
 	 (libdir (if (char= (schar libstr (1- (length libstr))) #\/)
 		     libstr
-		     (concatenate 'string libstr "/"))))
-    (multiple-value-bind (libpath condition)
-	(ignore-errors
-	  (namestring (merge-pathnames libdir *pvs-context-path*)))
-      (if condition
-	  (values nil nil (format nil "~a" condition))
-	  (let ((lib-key (get-file-info libpath)))
-	    (if lib-key
-		(let ((entry (assoc lib-key *library-alist* :test #'equal)))
-		  (cond (entry
-			 (values (cdr entry) libpath))
-			(t
-			 (push (cons lib-key libdir) *library-alist*)
-			 (values libdir libpath))))
-		(multiple-value-bind (dlibpath dcondition)
-		    (ignore-errors
-		      (namestring (merge-pathnames
-				   libdir (format nil "~a/lib/" *pvs-path*))))
-		  (if dcondition
-		      (values nil nil (format nil "~a" dcondition))
-		      (let ((dlib-key (get-file-info dlibpath)))
-			(if dlib-key
-			    (let ((entry (assoc dlib-key *library-alist*
-						:test #'equal)))
-			      (cond (entry
-				     (values (cdr entry) dlibpath))
-				    (t
-				     (push (cons dlib-key libdir)
-					   *library-alist*)
-				     (values libdir dlibpath))))
-			    (values nil nil
-				    "Library ~a does not exist")))))))))))
+		     (concatenate 'string libstr "/")))
+	 (lib-decls (when *current-context*
+		      (remove-if-not #'lib-decl?
+			(gethash (intern libstr) (current-declarations-hash))))))
+    (if lib-decls
+	(values (library-pathname (car (sort lib-decls #'< :key #'locality)))
+		(library-pathname (car (sort lib-decls #'< :key #'locality))))
+	(multiple-value-bind (libpath condition)
+	    (ignore-errors
+	      (namestring (merge-pathnames libdir *pvs-context-path*)))
+	  (if condition
+	      (values nil nil (format nil "~a" condition))
+	      (let ((lib-key (get-file-info libpath)))
+		(if lib-key
+		    (let ((entry (assoc lib-key *library-alist* :test #'equal)))
+		      (cond (entry
+			     (values (cdr entry) libpath))
+			    (t
+			     (push (cons lib-key libdir) *library-alist*)
+			     (values libdir libpath))))
+		    (multiple-value-bind (dlibpath dcondition)
+			(ignore-errors
+			  (namestring (merge-pathnames
+				       libdir (format nil "~a/lib/" *pvs-path*))))
+		      (if dcondition
+			  (values nil nil (format nil "~a" dcondition))
+			  (let ((dlib-key (get-file-info dlibpath)))
+			    (if dlib-key
+				(let ((entry (assoc dlib-key *library-alist*
+						    :test #'equal)))
+				  (cond (entry
+					 (values (cdr entry) dlibpath))
+					(t
+					 (push (cons dlib-key libdir)
+					       *library-alist*)
+					 (values libdir dlibpath))))
+				(values nil nil
+					(format nil "Library ~a does not exist"
+					  libname)))))))))))))
 
 
 (defun all-decls (theory)

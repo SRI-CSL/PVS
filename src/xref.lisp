@@ -11,7 +11,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (defvar *generate-xref-declaration* nil)
 
@@ -117,6 +117,9 @@
 (defmethod generate-xref ((te tupletype))
   (generate-xref (types te)))
 
+(defmethod generate-xref ((te cotupletype))
+  (generate-xref (types te)))
+
 (defmethod generate-xref ((te recordtype))
   (generate-xref (fields te)))
 
@@ -170,6 +173,8 @@
   (call-next-method)
   (generate-xref (declared-type d)))
 
+(defmethod generate-xref ((d auto-rewrite-decl))
+  (generate-xref (rewrite-names d)))
 
 ;;; Expressions
 
@@ -218,6 +223,10 @@
   (assert (type e))
   (generate-xref (argument e)))
 
+(defmethod generate-xref ((e injection-application))
+  (assert (type e))
+  (generate-xref (argument e)))
+
 (defmethod generate-xref ((e field-application))
   (assert (type e))
   (generate-xref (argument e)))
@@ -255,12 +264,15 @@
   (break "shouldn't happen")
   nil)
 
+(defmethod generate-xref ((p injection-expr))
+  nil)
+
 (defmethod generate-xref ((n field-name-expr))
   (assert (type n))
   nil)
 
 (defmethod generate-xref ((n name-expr))
-  ;;(assert (type n))
+  (assert (type n))
   (unless (memq n *xref-names-seen*)
     (push n *xref-names-seen*)
     (unless (typep (declaration n) '(or module mod-decl formal-theory-decl))

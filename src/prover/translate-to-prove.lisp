@@ -282,6 +282,11 @@
 		 "tupsel-" (string (or (prover-type (type expr)) '||))))
       ,(1- (index expr)) ,arg)))
 
+(defmethod translate-to-prove ((expr injection-application))
+  (let ((arg (translate-to-prove (argument expr))))
+    (list (make-apply-name (mk-funtype (type (argument expr)) (type expr)))
+	  arg)))
+
 (defmethod translate-to-prove ((expr field-application))
   (with-slots (id argument type) expr
     (let* ((fields (fields (find-supertype (type argument))))
@@ -391,7 +396,8 @@
 	   (when *rational*
 	     (setq *rational-pred*
 		   (translate-to-ground (predicate *rational*))))
-	   (when *real*
+	   (when (and *real*
+		      (subtype? *real*))
 	     (setq *real-pred* (translate-to-ground (predicate *real*))))
 	   (translate-to-ground (unit-derecognize expr)))
 	  (t (translate-with-new-hash
@@ -608,7 +614,7 @@
     name))
 
 (defmethod prover-type ((type type-expr))
-  (cond ((tc-eq type *boolean*) 'bool)
+  (cond ((tc-eq (find-supertype type) *boolean*) 'bool)
 	((member type `(,*integer* ,*naturalnumber*) :test #'tc-eq) 'integer)
 	((tc-eq type *number*) 'number)
 ;;	((typep type 'tupletype) 'tuple)

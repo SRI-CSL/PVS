@@ -42,7 +42,8 @@
 (defun typecheck-decl (decl)
   (if (and (typechecked? decl)
 	   (not (typep decl '(or theory-abbreviation-decl
-			         mod-decl conversion-decl judgement))))
+			         mod-decl conversion-decl auto-rewrite-decl
+				 judgement))))
       (mapc #'(lambda (d) (add-decl d nil))
 	    (generated decl))
       (unwind-protect
@@ -378,6 +379,9 @@
 
 (defun check-type-application-formals (decl)
   (when (formals decl)
+    (when (type-from-decl? decl)
+      (type-error decl
+	"Uninterpreted types may not have parameters"))
     (when (cdr (formals decl))
       (type-error (cdar (formals decl))
 	"Type applications may not be curried"))
@@ -564,7 +568,8 @@
   (typecheck* (formals decl) nil nil nil)
   (set-formals-types (apply #'append (formals decl)))
   (let* ((*bound-variables* (apply #'append (formals decl)))
-	 (rtype (typecheck* (declared-type decl) nil nil nil)))
+	 (rtype (typecheck* (declared-type decl) nil nil nil))
+	 (*recursive-subtype-term* nil))
     (set-type (declared-type decl) nil)
     (setf (type decl)
 	  (make-formals-funtype (formals decl) rtype))
@@ -573,14 +578,21 @@
     (unless (funtype? (find-supertype (type decl)))
       (type-error decl "Recursive definition must be a function type"))
     (unless (typep decl 'adt-def-decl)
-      (typecheck-measure decl))
+      (typecheck-measure decl)
+      (setf (recursive-signature decl) (compute-recursive-signature decl)))
     (set-nonempty-type rtype)
     (put-decl decl (current-declarations-hash))
-    (let ((*recursive-tcc-names* nil)
+    (let ((*recursive-calls-without-enough-args*
+	   (unless (adt-def-decl? decl)
+	     (recursive-calls-without-enough-args decl)))
 	  (*tcc-conditions* (add-formals-to-tcc-conditions (formals decl))))
-      (typecheck* (definition decl) rtype nil nil)
-      (unless (typep decl 'adt-def-decl)
-	(check-recursive-tcc-completeness (definition decl))))
+      (if *recursive-calls-without-enough-args*
+	  (let ((cdef (copy-all (definition decl))))
+	     (typecheck* (definition decl) rtype nil nil)
+	     (let ((*generate-tccs* 'none))
+	       (setf (definition decl) cdef)
+	       (typecheck* (definition decl) rtype nil nil)))
+	  (typecheck* (definition decl) rtype nil nil)))
     (make-def-axiom decl))
   decl)
 
@@ -592,25 +604,97 @@
       (set-formals-types (cdr formals)))))
 
 
-;;; This is not quite correct; it doesn't bother to check on recursive calls
-;;; in a type, e.g.
-;;;  foo(n): RECURSIVE nat =
-;;;     if n = 0 then 0
-;;;     elsif (FORALL (m:{i: i<foo(n-1)}) foo(m) = 1) then 1
-;;;     else 2
-;;; This hasn't yet come up - I want to do the termination differently
-;;; anyway, and will fix this then.
+;;; Given a recursive function of the form
+;;; f(x1:X1,..,xk:Xk)(y1:Y1,..,ym:Ym)(z1:Z1,..,zn:Zn): RECURSIVE R =
+;;;    ...
+;;;  MEASURE M BY <
+;;; Computes
+;;;  [a:[X1,..,Xk] -> [b:[Y1,..,Ym] ->
+;;;     [{c:[Z1,..,Zn] | M(a)(b)(c) < M(x1,..,xk)(y1,..,ym)(z1,..,zn)} -> R]]]
+;;; In general, of course, there may be dependencies that we need to take
+;;; care of.
+(defun compute-recursive-signature (decl)
+  (assert (measure-depth decl))
+  (compute-recursive-signature* (type decl) (measure-depth decl) decl))
 
-(defun check-recursive-tcc-completeness (expr)
-  (mapobject #'(lambda (ex)
-		 (or (typep ex 'type-expr)
-		     (when (and (name-expr? ex)
-				(eq (declaration ex)
-				    (declaration *current-context*))
-				(not (memq ex *recursive-tcc-names*)))
-		       (type-error ex
-			 "Termination TCC could not be generated"))))
-	     expr))
+(defun compute-recursive-signature* (type depth decl &optional domtypes)
+  (if (= depth 0)
+      (let* ((dom (domain type))
+	     (vid (make-new-variable '|z| (cons decl domtypes)))
+	     (bd (make-bind-decl vid dom))
+	     (var (make-variable-expr bd))
+	     (arg1 (make-lhs-measure-application
+		    (measure decl) domtypes var decl))
+	     (arg2 (make-rhs-measure-application decl))
+	     (appl (if (ordering decl)
+		       (make!-application (copy (ordering decl)) arg1 arg2)
+		       (typecheck* (mk-application '< arg1 arg2)
+				   *boolean* nil nil)))
+	     (pred (make!-lambda-expr (list bd) appl))
+	     (subtype (mk-setsubtype dom pred))
+	     (fvars (mapcar #'declaration
+		      (freevars (cons subtype (cons (range type) domtypes)))))
+	     (clean-domtypes (mapcar #'(lambda (dtype)
+					 (if (memq dtype fvars)
+					     dtype
+					     (type dtype)))
+			       domtypes)))
+	(setq *recursive-subtype-term* arg2)
+	(if (dep-binding? dom)
+	    (let ((dsubtype (mk-dep-binding (make-new-variable (id dom)
+					      (freevars (range type)))
+					    subtype)))
+	      (mk-funtype* (cons dsubtype clean-domtypes)
+			   (substit (range type)
+			     (acons dom dsubtype nil))))
+	    (mk-funtype* (cons subtype clean-domtypes) (range type))))
+      (if (dep-binding? (domain type))
+	  (let ((ndep (mk-dep-binding (make-new-variable (id (domain type))
+					(freevars (range type)))
+				      (type (domain type)))))
+	    (compute-recursive-signature*
+	     (substit (range type) (acons (domain type) ndep nil))
+	     (1- depth) decl
+	     (cons ndep domtypes)))
+	  (compute-recursive-signature*
+	   (range type) (1- depth) decl
+	   (cons (mk-dep-binding (make-new-variable '|z| (cons decl domtypes))
+				 (domain type))
+		 domtypes)))))
+
+(defun make-lhs-measure-application (meas domtypes var decl)
+  (if (null domtypes)
+      (make!-application meas var)
+      (make-lhs-measure-application
+       (let ((dvar (make-variable-expr (car domtypes))))
+	 (make!-application meas dvar))
+       (cdr domtypes) var decl)))
+
+(defun make-rhs-measure-application (decl)
+  (make!-recursive-application (measure decl) (outer-arguments decl)))
+
+(defun recursive-calls-without-enough-args (decl)
+  (let ((depth (measure-depth decl))
+	(processed-names nil)
+	(impoverished-names nil))
+    (mapobject #'(lambda (ex)
+		   (typecase ex
+		     (name-expr
+		      (when (and (eq (id ex) (id decl))
+				 (not (memq ex processed-names)))
+			(push ex impoverished-names)))
+		     (application
+		      (let ((op (operator* ex))
+			    (args (argument* ex)))
+			(when (and (name-expr? op)
+				   (eq (id op) (id decl))
+				   (not (memq op processed-names)))
+			  (push op processed-names)
+			  (unless (> (length args) depth)
+			    (push op impoverished-names))))))
+		   nil)
+	       (definition decl))
+    impoverished-names))
 
 (defun typecheck-measure (decl)
   (let ((*bound-variables* (apply #'append (formals decl)))
@@ -728,42 +812,52 @@
 ;;; We want to go down the measure until we hit the domain type of the
 ;;; ordering.
 
+;;; decl is the def-decl
+;;; type is the type of the decl (recurses on the range)
+;;; meas is the measure of the decl (recurses on the expression if lambda-expr)
+;;; mtypes is the possible types of the meas (recurses on the ranges)
+;;; ordering is the ordering of the decl
+;;; doms is the domains collected as we recurse on the ranges
+
 (defun typecheck-measure-with-ordering (decl type meas mtypes ordering
 					     &optional doms)
-  (unless (funtype? type)
-    (type-error (measure decl)
-      "Wrong number of arguments in measure"))
-  (let* ((pranges (mapcar #'(lambda (pty)
-			      (let ((sty (find-supertype pty)))
-				(mk-funtype* doms
-					     (copy type
-					       'range (car (types
-							    (domain sty)))))))
-			  (ptypes ordering)))
-	 (ctypes (remove-if-not #'(lambda (rty)
-				    (some #'(lambda (ty) (compatible? ty rty))
-					  pranges))
-		   mtypes)))
-    (cond ((singleton? ctypes)
-	   (setf (measure-depth decl) (length doms))
-	   (typecheck (measure decl) :expected (car ctypes) :tccs 'all)
-	   (typecheck-ordering decl))
-	  ((funtype? type)
-	   (let ((ptypes (remove-if-not
-			     #'(lambda (mty)
-				 (and (typep mty 'funtype)
-				      (compatible? (domain type) (domain mty))))
-			   mtypes)))
-	     (if ptypes
-		 (typecheck-measure-with-ordering
-		  decl (range type)
-		  (when (lambda-expr? meas) (expression meas)) 
-		  mtypes
-		  ordering
-		  (cons (domain type) doms))
-		 (measure-incompatible decl type meas mtypes))))
-	  (t (type-error (measure decl)
-	       "Measure must have range compatible with the domain of the ordering")))))
+  (let ((ftype (find-supertype type)))
+    (unless (funtype? ftype)
+      (type-error (measure decl)
+	"Wrong number of arguments in measure"))
+    (let* ((pranges
+	    (mapcar #'(lambda (pty)
+			(let ((sty (find-supertype pty)))
+			  (copy ftype 'range (car (types (domain sty))))))
+	      (ptypes ordering)))
+	   (ctypes
+	    (remove-if-not #'(lambda (rty)
+			       (some #'(lambda (ty) (compatible? ty rty))
+				     pranges))
+	      mtypes)))
+      (cond ((singleton? ctypes)
+	     (setf (measure-depth decl) (length doms))
+	     (typecheck (measure decl)
+	       :expected (mk-funtype* doms (car ctypes))
+	       :tccs 'all)
+	     (typecheck-ordering decl))
+	    ((funtype? ftype)
+	     (let ((ptypes
+		    (remove-if-not
+			#'(lambda (mty)
+			    (and (typep mty 'funtype)
+				 (compatible? (domain ftype) (domain mty))))
+		      mtypes)))
+	       (if ptypes
+		   (typecheck-measure-with-ordering
+		    decl (range ftype)
+		    (when (lambda-expr? meas) (expression meas)) 
+		    (mapcar #'range mtypes)
+		    ordering
+		    (cons (domain ftype) doms))
+		   (measure-incompatible decl type meas mtypes))))
+	    (t (type-error (measure decl)
+		 "Measure must have range compatible with the domain of the ordering"))))))
 
 (defun typecheck-ordering (decl)
   (let* ((ordering (ordering decl))
@@ -880,7 +974,7 @@
     (check-duplication decl)
     (unless (funtype? (find-supertype (type decl)))
       (type-error decl "(Co)Inductive definition must be a function type"))
-    (unless (tc-eq (range* (type decl)) *boolean*)
+    (unless (tc-eq (find-supertype (range* (type decl))) *boolean*)
       (type-error decl
 	"(Co)Inductive definitions must have (eventual) range type boolean"))
     (set-nonempty-type rtype)
@@ -911,7 +1005,7 @@
 	     (dep? (or (member var (freevars (cdr vars)) :key #'declaration)
 		       (member var (freevars rtype) :key #'declaration))))
 	(if dep?
-	    (let* ((dep-type (mk-dep-binding (id var) vtype))
+	    (let* ((dep-type (mk-dep-binding (id var) (type var) vtype))
 		   (alist (acons var dep-type nil)))
 	      (inductive-pred-type*
 	       (substit (cdr vars) alist)
@@ -1250,15 +1344,15 @@
 	  pred)
       (make-ind-pred-application*
        pred (cdr args) fixed-vars (cdr formals)
-       (nconc (mapcan #'(lambda (arg fml)
+       (nconc pargs
+	      (mapcan #'(lambda (arg fml)
 			  (unless (memq fml fixed-vars)
 			    (list arg)))
 		(if (and (cdr (car formals))
 			 (tuple-expr? (car args)))
 		    (exprs (car args))
 		    (list (car args)))
-		(car formals))
-	      pargs))))
+		(car formals))))))
 
 (defun collect-decl-formals (decl)
   (append (formals decl)
@@ -1392,12 +1486,12 @@
     (setf (declaration *current-context*) decl)
     (typecheck* (definition decl) *boolean* nil nil)
     (setf (declaration *current-context*) cdecl))
-  (setf (closed-definition decl)
-	(universal-closure (definition decl)))
+  (let ((*generate-tccs* 'none))
+    (setf (closed-definition decl)
+	  (universal-closure (definition decl))))
   (when (eq (spelling decl) 'ASSUMPTION)
     ;;(remove-defined-type-names decl)
-    (handle-existence-assuming-on-formals decl)
-    (check-assumption-visibility decl))
+    (handle-existence-assuming-on-formals decl))
   decl)
 
 (defun remove-defined-type-names (decl)
@@ -1456,30 +1550,6 @@
 	     (memq (declaration (type (car (bindings (definition decl)))))
 		   (formals *current-theory*)))
     (set-nonempty-type (type (car (bindings (definition decl)))))))
-
-(defun check-assumption-visibility (decl)
-  (let ((badobj (find-local-nonparameter-reference decl)))
-    (when badobj
-      (type-error badobj
-	"Error: assumption refers to ~a, which would not be visible in the associated TCC"
-	badobj))))
-
-(defun find-local-nonparameter-reference (decl)
-  (let ((name nil))
-    (mapobject #'(lambda (ex)
-		   (or name
-		       (when (and (name? ex)
-				  (resolution ex)
-				  (not (formal-decl? (declaration ex)))
-				  (not (and (const-decl? (declaration ex))
-					    (formal-subtype-decl?
-					     (generated-by (declaration ex)))))
-				  (not (binding? (declaration ex)))
-				  (eq (module (declaration ex))
-				      (current-theory)))
-			 (setq name ex))))
-	       (closed-definition decl))
-    name))
 
 
 ;;;  TYPE EXPRESSIONS  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1871,7 +1941,7 @@
     (if (and (eq dom (domain type))
 	     (eq rng (range type)))
 	type
-	(let ((tval (copy type 'domain dom 'range rng)))
+	(let ((tval (mk-funtype dom rng)))
 	  tval))))
 
 (defun get-funtype-dependencies (funtype types)
@@ -1922,7 +1992,7 @@
   (set-type (declared-type decl) nil)
   (if (subtype-of? (subtype decl) (type decl))
       (pvs-warning
-	  "In judgement ~:[at~;~:*~a,~] Line ~d: ~a is already known to be a subtype of ~a"
+	  "In judgement ~:[at~;~:*~a,~] Line ~d: ~a is already known to be a subtype of~%  ~a"
 	(id decl) (line-begin (place decl))
 	(declared-subtype decl) (declared-type decl))
       (let* ((bd (make-new-bind-decl (subtype decl)))
@@ -2053,23 +2123,21 @@
 
 (defmethod typecheck* ((decl conversion-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (cond ((typechecked? decl)
-	 (pushnew decl (conversions *current-context*)))
-	(t (typecheck* (name decl) nil 'expr nil)
-	   (unless (singleton? (resolutions (name decl)))
-	     (type-ambiguity (name decl)))
-	   (setf (type (name decl)) (type (resolution (name decl))))
-	   (typecheck-conversion decl)))
+  (unless (typechecked? decl)
+    (typecheck* (name decl) nil 'expr nil)
+    (unless (singleton? (resolutions (name decl)))
+      (type-ambiguity (name decl)))
+    (setf (type (name decl)) (type (resolution (name decl)))))
+  (typecheck-conversion decl)
   decl)
 
 (defmethod typecheck* ((decl typed-conversion-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (if (typechecked? decl)
-      (pushnew decl (conversions *current-context*))
-      (let ((type (typecheck* (declared-type decl) nil nil nil)))
-	(set-type (declared-type decl) nil)
-	(typecheck* (name decl) type 'expr nil)
-	(typecheck-conversion decl)))
+  (unless (typechecked? decl)
+    (let ((type (typecheck* (declared-type decl) nil nil nil)))
+      (set-type (declared-type decl) nil)
+      (typecheck* (name decl) type 'expr nil)))
+  (typecheck-conversion decl)
   decl)
 
 (defun typecheck-conversion (decl)
@@ -2098,6 +2166,17 @@
 ;;; Disabling conversions
 
 (defmethod typecheck* ((decl conversionminus-decl) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (unless (typechecked? decl)
+    (typecheck* (name decl) nil 'expr nil)
+    (unless (singleton? (resolutions (name decl)))
+      (type-ambiguity (name decl)))
+    (setf (type (name decl)) (type (resolution (name decl)))))
+  (disable-conversion decl)
+  decl)
+
+(defmethod typecheck* ((decl typed-conversionminus-decl)
+		       expected kind arguments)
   (declare (ignore expected kind arguments))
   (unless (typechecked? decl)
     (typecheck* (name decl) nil 'expr nil)
@@ -2141,6 +2220,42 @@
 				 (same-declaration (name decl) (name cd)))
 		    (conversions *current-context*)))))))
     
+
+;;; auto-rewrite-decls
+
+(defmethod typecheck* ((decl auto-rewrite-decl) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (unless (typechecked? decl)
+    (typecheck* (rewrite-names decl) nil nil nil))
+  (pushnew decl (auto-rewrites *current-context*))
+  decl)
+
+(defmethod typecheck* ((decl auto-rewrite-minus-decl) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (unless (typechecked? decl)
+    (typecheck* (rewrite-names decl) nil nil nil))
+  (pushnew decl (disabled-auto-rewrites *current-context*))
+  decl)
+
+(defmethod typecheck* ((rname rewrite-name) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (let ((reses (formula-or-definition-resolutions rname)))
+    (setf (resolutions rname) reses))
+  rname)
+
+(defmethod typecheck* ((rname constant-rewrite-name) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (setf (type rname) (typecheck* (declared-type rname) nil nil nil))
+  (set-type (declared-type rname) nil)
+  (let ((reses (definition-resolutions rname)))
+    (setf (resolutions rname) reses))
+  rname)
+
+(defmethod typecheck* ((rname formula-rewrite-name) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (let ((reses (formula-resolutions rname)))
+    (setf (resolutions rname) reses))
+  rname)
 
 (defun check-duplication (decl)
   (when (projection? (id decl))

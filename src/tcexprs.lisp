@@ -331,10 +331,26 @@
   (mapcan #'(lambda (t1)
 	      (mapcan #'(lambda (t2)
 			  (when (compatible? t1 t2)
-			    (list (compatible-type t1 t2))))
+			    (let ((ty (compatible-type-match t1 t2)))
+			      (when ty (list ty)))))
 		      types2))
 	  types1))
 
+
+(defun compatible-type-match (t1 t2)
+  (if (fully-instantiated? t1)
+      (if (fully-instantiated? t2)
+	  (compatible-type t1 t2)
+	  (let ((type (find-parameter-instantiation t2 t1)))
+	    (assert (fully-instantiated? type))
+	    (when (and type (compatible? type t1))
+	      (compatible-type t1 type))))
+      (if (fully-instantiated? t2)
+	  (let ((type (find-parameter-instantiation t1 t2)))
+	    (assert (fully-instantiated? type))
+	    (when (and type (compatible? type t2))
+	      (compatible-type t2 type)))
+	  (ignore-errors (compatible-type t1 t2)))))
 
 (defun typecheck-selections (expr adt type args)
   (when (duplicates? (selections expr) :test #'same-id :key #'constructor)
@@ -825,20 +841,25 @@
   (cond ((null optypes)
 	 (setf (types arg) result))
 	((typep (find-supertype (car optypes)) 'funtype)
-	 (let ((dtypes (domain-types (car optypes))))
-	   (if (length= dtypes (exprs arg))
+	 (let ((dtypes (domain-types (car optypes)))
+	       (exprs (if (tuple-expr? arg)
+			  (exprs arg)
+			  (list arg))))
+	   (if (length= dtypes exprs)
 	       (let ((atypes (mapcar #'(lambda (dty a)
 					 (remove-if-not
 					     #'(lambda (aty)
 						 (compatible? aty dty))
-					   (ptypes a)))
-			       dtypes (exprs arg))))
+					   (possible-types a dty)))
+			       dtypes exprs)))
 		 (set-possible-argument-types*
 		  (cdr optypes)
 		  arg
 		  (nconc result
-			 (mapcar #'mk-tupletype
-			   (cartesian-product atypes)))))
+			 (if (cdr atypes)
+			     (mapcar #'mk-tupletype
+			       (cartesian-product atypes))
+			     (car atypes)))))
 	       (set-possible-argument-types*
 		(cdr optypes)
 		arg
@@ -861,6 +882,16 @@
 			  result))
 		    result)))))
 	(t (set-possible-argument-types* (cdr optypes) arg result))))
+
+(defmethod possible-types (a type)
+  (ptypes a))
+
+(defmethod possible-types ((a injection-application) type)
+  (or (ptypes a)
+      (let ((cotuptype (find-supertype type)))
+	(when (and (cotupletype? cotuptype)
+		   (<= (index a) (length (types cotuptype))))
+	  (list cotuptype)))))
 
 
 ;;; Application-range-types takes an application and returns the list of
@@ -942,6 +973,11 @@
 (defmethod find-supertype-without-freevars ((type tupletype))
   (if (freevars type)
       (mk-tupletype (mapcar #'find-supertype-without-freevars (types type)))
+      type))
+
+(defmethod find-supertype-without-freevars ((type cotupletype))
+  (if (freevars type)
+      (mk-cotupletype (mapcar #'find-supertype-without-freevars (types type)))
       type))
 
 (defmethod find-supertype-without-freevars ((type recordtype))
@@ -1164,13 +1200,18 @@
 	  arguments conversions))
 
 (defmethod application-conversion-argument (arg (conv name-expr) vars)
-  (let* ((var (find-if #'(lambda (v)
+  (let ((var1 (find-if #'(lambda (v)
 			   (tc-eq (type v) (domain (range (type conv)))))
-		vars))
-	 (ac (make-instance 'argument-conversion
-	       'operator arg
-	       'argument var)))
-    (typecheck* ac nil nil nil)))
+		vars)))
+    (if (some #'(lambda (ty)
+		  (and (funtype? (find-supertype ty))
+		       (compatible? (domain (find-supertype ty)) (type var1))))
+	      (ptypes arg))
+	(let ((ac (make-instance 'argument-conversion
+		    'operator arg
+		    'argument var1)))
+	  (typecheck* ac nil nil nil))
+	arg)))
 
 (defmethod application-conversion-argument (arg conv vars)
   (declare (ignore conv vars))

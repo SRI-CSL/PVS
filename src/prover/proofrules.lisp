@@ -283,7 +283,7 @@
 		      if-expr))))))
 
 (defun truecond? (cond trueconds falseconds)   ;;NSH(9.27.95)
-  (or (equal cond *true*)
+  (or (tc-eq cond *true*)
       (member cond trueconds :test #'tc-eq)
       (and (equation? cond)
 	   (tc-eq (args1 cond)(args2 cond)))
@@ -291,7 +291,7 @@
 	   (member (args1 cond) falseconds :test #'tc-eq))))
 
 (defun falsecond? (cond trueconds falseconds)  ;;NSH(9.27.95)
-  (or (equal cond *false*)
+  (or (tc-eq cond *false*)
       (member cond falseconds :test #'tc-eq)
       (and (negation? cond)
 	   (or (member (args1 cond) trueconds :test #'tc-eq)
@@ -346,8 +346,7 @@
 		 (let* ((result (call-next-method))
 			(result
 			 (if (and (type result)
-				  (tc-eq (type result) ;was (expensive)
-					 ;;;;;;(find-supertype (type result))
+				  (tc-eq (find-supertype (type result))
 					 *boolean*))
 			     (truefalsecond-reduce result
 						   trueconds
@@ -410,6 +409,21 @@
 	    (copy expr
 	      'argument arg
 	      'type projtype))))))
+
+(defmethod simplify-ifs ((expr injection-application) trueconds falseconds)
+  (with-slots (index argument) expr
+    (let ((arg (simplify-ifs argument trueconds falseconds)))
+      (if (eq arg argument)
+	  expr
+	  (if (tc-eq (type arg) (type argument))
+	      (copy expr 'argument arg)
+	      (let* ((stype (find-supertype (type expr)))
+		     (ntypes (copy-list (types stype))))
+		(setf (nth (1- index) ntypes) (type arg))
+		(let ((injtype (copy stype 'types ntypes)))
+		  (copy expr
+		    'argument arg
+		    'type injtype))))))))
 
 (defmethod simplify-ifs ((expr field-application) trueconds falseconds)
   (with-slots (id argument) expr
@@ -558,7 +572,12 @@
 	if-conds)))
 
 (defmethod top-collect-conds ((expr cases-expr))
-  (top-collect-conds (translate-cases-to-if expr)))
+  (with-slots (expression selections else-part) expr
+      (let ((expr-conds (collect-conds expression)))
+	(or expr-conds
+	    (let ((selection-conds (collect-conds selections)))
+	      (or selection-conds
+		  (collect-conds else-part)))))))
 
 (defmethod top-collect-conds ((expr application))
   (let ((nexpr (if *lift-if-updates*
@@ -593,6 +612,9 @@
 
 ;;; SO 9/5/94 - Added methods for projection-application and field-application
 (defmethod collect-conds ((expr projection-application) &optional boundvars)
+  (collect-conds (argument expr) boundvars))
+
+(defmethod collect-conds ((expr injection-application) &optional boundvars)
   (collect-conds (argument expr) boundvars))
 
 (defmethod collect-conds ((expr field-application) &optional boundvars)
@@ -1114,8 +1136,8 @@ or supply more substitutions."
   (let ((fmla (formula sform)))
     (cond ((and (negation? fmla)
 	       (equation? (args1 fmla))
-	       (tc-eq (type (args1 (args1 fmla))) *boolean*)
-	       (tc-eq (type (args2 (args1 fmla))) *boolean*))
+	       (tc-eq (find-supertype (type (args1 (args1 fmla)))) *boolean*)
+	       (tc-eq (find-supertype (type (args2 (args1 fmla)))) *boolean*))
 	  (values '? (lcopy sform
 			   'formula
 			   (typecheck
@@ -1124,8 +1146,8 @@ or supply more substitutions."
 			    :expected *boolean*
 			    :context *current-context*))))
 	  ((and (equation? fmla)
-		(tc-eq (type  (args1 fmla)) *boolean*)
-	       (tc-eq (type (args2  fmla)) *boolean*))
+		(tc-eq (find-supertype (type (args1 fmla))) *boolean*)
+	       (tc-eq (find-supertype (type (args2 fmla))) *boolean*))
 	   (values '? (lcopy sform 'formula
 			    (typecheck
 			     (mk-iff (args1 fmla)(args2 fmla))
@@ -1493,6 +1515,10 @@ which should be fully instantiated. Please supply actual parameters.")
 	   ((resolve pc-name 'expr nil)
 	    (error-format-if "~%Error: ~a is already declared." name)
 	    (values 'X nil nil))
+	   ((freevars tc-expr)
+	   (error-format-if "~%Free variables ~a in expr = name"
+			    (freevars tc-expr))
+	   (values 'X nil nil))
 	   (t (setf (declarations-hash context)
 		    (copy (declarations-hash context)))
 	      (put-decl (make-instance
@@ -1501,29 +1527,37 @@ which should be fully instantiated. Please supply actual parameters.")
 			  'type (car (judgement-types+ tc-expr))
 			  'module (module context))
 			(declarations-hash context))
+	      (let ((decl (make-instance
+			     'skolem-const-decl
+			   'definition tc-expr
+			   'id name
+			   'type (car (judgement-types+ tc-expr))
+			   'module (module context))))
+	       (make-def-axiom decl)
+	       (put-decl decl (declarations-hash context)))
 	      (let* ((name (typecheck (pc-parse name 'expr)
 			     :tccs 'all
 			     :context context))
 		     (formula (make-equality tc-expr name))
 		     (references nil)
 		     (fvars (freevars formula)))
-	       (cond (fvars
-		      (error-format-if "~%Free variables ~a in expr = name" fvars)
-		      (values 'X nil nil))
-	       ;;(push-references expr ps)
-		     (t (update-judgements-with-new-name name tc-expr context)
-			(push-references-list formula references)
-			(values '?
-				(list
-				 (cons (copy (current-goal ps)
-					 's-forms
-					 (cons (make-instance 's-formula
-						 'formula
-						 (negate formula))
-					       (s-forms (current-goal ps))))
-				       (list 'context context)))
-				(list 'dependent-decls
-				 references)))))))))
+		(update-judgements-with-new-name name tc-expr context)
+		(push-references-list formula references)
+		(setf (disabled-auto-rewrites context)
+		     (push (make-instance 'auto-rewrite-minus-decl
+			     'rewrite-names (list name))
+			   (disabled-auto-rewrites context)))
+		(values '?
+		       (list
+			(cons (copy (current-goal ps)
+				's-forms
+				(cons (make-instance 's-formula
+					'formula
+					(negate formula))
+				      (s-forms (current-goal ps))))
+			      (list 'context context)))
+		       (list 'dependent-decls
+			     references)))))))
 
 (defun update-judgements-with-new-name (name expr context)
   (let ((judgements-copied? nil)

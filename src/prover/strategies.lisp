@@ -245,8 +245,8 @@ computations.  E.g.,
 procedures.  Variant of SIMPLIFY with RECORD? and REWRITE? flags set
 to T. If REWRITE-FLAG is RL(LR) then only lhs(rhs) of equality
 is simplified. If FLUSH? is T then the current asserted facts are
-deleted for efficiency.  If LINEAR? is T, then multiplication and
-division are uninterpreted.  If CASES-REWRITE? is T, then
+deleted for efficiency.  LINEAR? is currently ignored.
+  If CASES-REWRITE? is T, then
 the selections and else parts of a CASES expression are simplified,
 otherwise, they are only simplified when simplification selects
 a case.  See also SIMPLIFY, RECORD, DO-REWRITE.
@@ -254,8 +254,7 @@ Examples:
  (assert):  Simplifies, rewrites, and records all formulas.
  (assert -1 :rewrite-flag RL): Apply assert to formula -1 leaving
     RHS untouched if the formula is an equality.
- (assert :flush? T :linear? T): Apply assert with fully uninterpreted
-  nonlinear arithmetic after flushing existing decision procedure
+ (assert :flush? T): Apply assert after flushing existing decision procedure
   database."
 "Simplifying, rewriting, and recording with decision procedures")
 
@@ -269,8 +268,8 @@ Examples:
 in FNUMS for further simplification.   Variant of SIMPLIFY with RECORD?
 flag set to T and REWRITE? flags set to NIL. If REWRITE-FLAG is
 RL(LR) then only lhs(rhs) is simplified.  If FLUSH? is T then the
-current asserted facts are deleted for efficiency.  If LINEAR? is T,
-then multiplication and division are uninterpreted.  Example:
+current asserted facts are deleted for efficiency.  LINEAR? is ignored.
+Example:
  (record - :flush? T): flushes database and records antecedent formulas."
 	 "Simplifying and recording with decision procedures")
 
@@ -330,6 +329,10 @@ righthand-side.  Examples:
 	(theory (get-theory theory-name))
 	(exclude (if (listp exclude) exclude (list exclude)))
 	(exclude (mapcar #'(lambda (x) (pc-parse x 'name)) exclude))
+	(exclude (append exclude
+			 (mapappend #'rewrite-names
+				    (disabled-auto-rewrites
+				     *current-context*))))
 	(okay?  (and theory
 		     (or (not current?)
 			 (null (actuals theory-name))))))
@@ -360,13 +363,7 @@ righthand-side.  Examples:
 					    exclude
 					    :test #'same-id)))
 			 collect
-			 (let ((name (mk-name (id decl)
-				       (actuals theory-name)
-				       (id theory-name))
-				       ))
-			   (if (eq always? '!!)
-			       (list (list name))
-			       (if always? (list name) name)))))
+			 (mk-auto-rewrite-name decl theory-name always?)))
 		  (exclude-names
 		   (loop for name in exclude
 			 collect
@@ -942,7 +939,7 @@ is T) and disjunctively simplifies."
 
 (defmethod predtype? ((te funtype))
   (with-slots (range) te
-    (tc-eq range *boolean*)))
+    (tc-eq (find-supertype range) *boolean*)))
 
 (defmethod predtype? ((te dep-binding))
   (with-slots (type) te
@@ -1442,12 +1439,12 @@ Example: (simple-measure-induct \"i+j\" (\"i\" \"j\")).
 See also SIMPLE-MEASURE-INDUCT."  
   "Inducting with measure ~a on ~a")
 
-(defhelper measure-induct (measure vars &optional (fnum 1) order)
+(defhelper measure-induct (measure vars &optional (fnum 1) order skolem-typepreds?)
   (try-branch (simple-measure-induct$ measure vars fnum order)
 	      ((if *new-fmla-nums*
 		   (branch
-		    (then (beta)
-			  (let ((x (car *new-fmla-nums*)))
+		    (let ((x (car *new-fmla-nums*)))
+		      (then (beta)
 			    (split x)))
 		    ((then (let ((skoterms
 				  (fill-up-terms fnum nil *ps*))
@@ -1481,7 +1478,8 @@ See also SIMPLE-MEASURE-INDUCT."
 					      ,var-skoterm))
 				 (inst-rule2 `(inst -
 						    ,@rest-skoterms)))
-			     (then (skolem fnum skoterms)
+			     (then (skolem fnum skoterms
+					   :skolem-typepreds? skolem-typepreds?)
 				   inst-rule1
 				   inst-rule2
 				   (beta)
@@ -1505,55 +1503,56 @@ See also SIMPLE-MEASURE-INDUCT."
   "This is a helper strategy; use MEASURE-INDUCT+ instead."
   "Inducting on ~a")
 
-(defstep measure-induct+ (measure vars &optional (fnum 1) order)
-  (then (measure-induct$ measure vars fnum order)
-	(skosimp)
-	(let ((ihnum (if *new-fmla-nums*
-			 (apply #'min *new-fmla-nums*)
-			 0))
-	      (ih (unless (>= ihnum 0)
-		    (args1
-		     (formula
-		      (car (select-seq (s-forms *goal*) (lisp ihnum))))))))
-	  (if ih
-	      (let ((outerbvars (when (forall-expr? ih)
-				  (bindings ih)))
-		    (body (when (forall-expr? ih)
-			    (expression ih)))
-		    (measure-ineq (when (implication? body)
-				    (args1 body)))
-		    (innerbvars (when (and measure-ineq
-					   (forall-expr? (args2 body)))
-				  (bindings (args2 body))))
-		    (innerbody (when innerbvars (expression (args2 body)))))
-		(if innerbvars
-		    (let 
-			((new-outers (make-new-bindings outerbvars nil))
-			 (new-measure-ineq (substit measure-ineq
-					     (pairlis new-outers
-						      outerbvars)))
-			 (new-ih (make-forall-expr new-outers
-				   (make-forall-expr innerbvars
-				     (make-implication new-measure-ineq
-						       innerbody)))))
-		      (branch (case new-ih)
-			      ((let ((ihfnum (1- ihnum)))
-				 (hide ihfnum))
-			       (let ((outer-skonames
-				      (fill-up-terms 1 nil *ps*)))
-				 (then (skolem 1 outer-skonames)
-				       (instantiate ihnum
-						    outer-skonames)
-				       (let ((inner-skonames
-					      (fill-up-terms 1 nil *ps*)))
-					 (then
-					  (skolem 1 inner-skonames)
-					  (branch (split ihnum)
-						  ((instantiate ihnum inner-skonames)
-						   (skip)))
-					  (prop))))))))
-		    (skip)))
-	      (skip))))
+(defstep measure-induct+ (measure vars &optional (fnum 1) order skolem-typepreds?)
+  (try (measure-induct$ measure vars fnum order skolem-typepreds?)
+       (then (skosimp :preds? skolem-typepreds?)
+	     (let ((ihnum (if *new-fmla-nums*
+			      (apply #'min *new-fmla-nums*)
+			      0))
+		   (ih (unless (>= ihnum 0)
+			 (args1
+			  (formula
+			   (car (select-seq (s-forms *goal*) (lisp ihnum))))))))
+	       (if ih
+		   (let ((outerbvars (when (forall-expr? ih)
+				       (bindings ih)))
+			 (body (when (forall-expr? ih)
+				 (expression ih)))
+			 (measure-ineq (when (implication? body)
+					 (args1 body)))
+			 (innerbvars (when (and measure-ineq
+						(forall-expr? (args2 body)))
+				       (bindings (args2 body))))
+			 (innerbody (when innerbvars (expression (args2 body)))))
+		     (if innerbvars
+			 (let 
+			     ((new-outers (make-new-bindings outerbvars nil))
+			      (new-measure-ineq (substit measure-ineq
+						  (pairlis new-outers
+							   outerbvars)))
+			      (new-ih (make-forall-expr new-outers
+					(make-forall-expr innerbvars
+					  (make-implication new-measure-ineq
+							    innerbody)))))
+			   (branch (case new-ih)
+				   ((let ((ihfnum (1- ihnum)))
+				      (hide ihfnum))
+				    (let ((outer-skonames
+					   (fill-up-terms 1 nil *ps*)))
+				      (then (skolem 1 outer-skonames skolem-typepreds?)
+					    (instantiate ihnum
+							 outer-skonames)
+					    (let ((inner-skonames
+						   (fill-up-terms 1 nil *ps*)))
+					      (then
+					       (skolem 1 inner-skonames skolem-typepreds?)
+					       (branch (split ihnum)
+						       ((instantiate ihnum inner-skonames)
+							(skip)))
+					       (prop))))))))
+			 (skip)))
+		   (skip))))
+       (skip))
   "Uses MEASURE-INDUCT but recasts induction hypothesis in a more usable form,
 i.e. (FORALL x, w: m(x) < m(y) IMPLIES p(x, w)) rather than
      (FORALL x: m(x) < m(y) IMPLIES (FORALL w: p(x, w))).
@@ -1564,6 +1563,7 @@ PVS prelude.  Selects an instance of measure induction with measure
 MEASURE containing only free variables from VARS using formula FNUM to
 formulate an induction predicate.   Uses ORDER as the well-founded
 relation; if not specified defaults to < on nats or ordinals.
+Adds typepreds of the introduced skolem constants if SKOLEM-TYPEPREDS? is T.
 Simplifies out the result to yield the induction goal.
 
 Example:  (measure-induct+ \"length(x) + length(y)\" (\"x\" \"y\"))."
@@ -1576,11 +1576,11 @@ Example:  (measure-induct+ \"length(x) + length(y)\" (\"x\" \"y\"))."
 	   rewrites
 	   exclude
 	   (instantiator inst?)
-	   )
+	   skolem-typepreds?)
   (then
    (install-rewrites$ :defs defs :theories theories
 		      :rewrites rewrites :exclude exclude)
-   (try (measure-induct+$ measure vars fnum order)
+   (try (measure-induct+$ measure vars fnum order skolem-typepreds?)
 	(then
 	 (let ((expands
 		(if (consp expand)
@@ -1589,14 +1589,14 @@ Example:  (measure-induct+ \"length(x) + length(y)\" (\"x\" \"y\"))."
 		    `((expand ,expand :fnum +))))
 	       (command `(then ,@expands)))
 	   command)
-	 (skosimp*)
+	 (skosimp* skolem-typepreds?)
 	 (assert);;To expand the functions in the induction conclusion
 	 (repeat (lift-if));;To lift the embedded ifs,
 	 ;;then simplify, split, then instantiate
 	 ;;the induction hypothesis.  
 	 (repeat* (then (assert)
 			(bddsimp)
-			(skosimp*)
+			(skosimp* skolem-typepreds?)
 			(if if-match
 			    (let ((command (generate-instantiator-command
 					    if-match nil instantiator)))
@@ -1627,6 +1627,8 @@ REWRITES, instantiates, and lifts IFs.
  EXCLUDE is a list of rewrite rules on which rewriting must be stopped.
  INSTANTIATOR argument can be used to specify use of an alternative
        instantiation mechanism.  This defaults to the (INST?) strategy.
+ SKOLEM-TYPEPREDS? when T indicates that typepreds should be generated for
+       the introduced skolem constants.
 
 Example:
     (measure-induct-and-simplify \"size(x)\" (\"x\") :expand \"unfold\" :if-match all)."
@@ -1696,7 +1698,7 @@ See also EXTENSIONALITY."
 	    (if (recognizer? (predicate type))
 		(let ((name (format nil "~a_~a_eta~@[[~a]~]"
 			 (id (find-supertype type))
-			 (id (constructor (predicate type)))
+			 (op-to-id (constructor (predicate type)))
 			 (actuals (module-instance (supertype type))))))
 		  ;;NSH(2.25.97):was find-supertype but that
 		  ;;now finds list[number] rather than list[nat].
@@ -1760,9 +1762,10 @@ See also EXTENSIONALITY."
 				  (domain type)
 				*current-context*))
 	 (lhs (quant-to-lambda
-	       (close-freevars (make-application var bvar)
+	       (let ((*no-expected* T)) ;shadowing (NSH:10-29-01)
+		 (close-freevars (make-application var bvar)
 			       *current-context*
-			       (list bvar)))))
+			       (list bvar))))))
     (close-freevars (make-equality lhs var) *current-context*
 		    (list var))))
 
@@ -1807,12 +1810,20 @@ See also ETA, APPLY-ETA."
 steps to the first subgoal, postponing remaining subgoals.")
 
 
-(defstep case-replace (formula)
+(defstep case-replace (formula &optional hide?)
   (then@ (case formula)
-	 (replace -1))
+	 (replace -1 :hide? hide?))
   "Case splits on a given FORMULA lhs=rhs and replaces lhs by rhs.
-See also CASE, CASE*"
+See also CASE, CASE*.  Hides FORMULA when HIDE? is T."
   "Assuming and applying ~a")
+
+(defstep name-case-replace (a b x)
+  (let ((a (pc-typecheck (pc-parse a 'expr)))
+	(b (pc-typecheck (pc-parse b 'expr)))
+	(eq (make-equality a b)))
+    (then@ (case-replace eq :hide? t)(name-replace x b))) 
+  "Replace A with B, then name B as X" 
+  "Replacing ~a with ~a which is then named ~a")
 
 ;;NSH(8.20.93): Strategy for timing proof steps.
 (defstrat time (strat)
@@ -2083,15 +2094,11 @@ empty, and for the named rewrite rules, otherwise.  Behaves like (SKIP) otherwis
 					  exclude-theories))
 	   (rule-list (loop for decl in decls
 			    collect
-			    (let ((name (mk-name-expr (id decl)
-					  nil
-					  (id (module decl)))))
-			      (if (eq always? '!!)
-				  `(auto-rewrite!! ,name)
-				  (if (and always?
-					   (const-decl? decl))
-				      `(auto-rewrite! ,name)
-				      `(auto-rewrite ,name))))))
+			    (let ((name (mk-auto-rewrite-name
+					 decl
+					 (mk-modname (id (module decl)))
+					 always?)))
+			      `(auto-rewrite ,name))))
 	   (rule `(then* ,@rule-list)))
       rule)
 	 "Installs all the definitions used directly or indirectly in the
@@ -2537,6 +2544,10 @@ found. "
 	       (nth (1- (index expr))
 		    (exprs result))
 	       (lcopy expr 'argument result))))
+
+(defmethod detuple* ((expr projection-application))
+  (let ((result (detuple* (argument expr))))
+    (lcopy expr 'argument result)))
 
 (defmethod detuple* ((expr field-application))
   (cond ((record-expr? (argument expr))
@@ -3114,15 +3125,20 @@ in the given fnums."
 	    (branch (case comp-equalities)
 		    ((then (let ((fnums *new-fmla-nums*))
 			     (simplify fnums))
-			   (let ((fnums (find-all-sformnums
-					 (s-forms (current-goal *ps*))
-					 '* #'(lambda (x) (eq x ffm))))
-				 (fnum (if fnums (car fnums) nil)))
-			     (if (and hide? fnum
-				      (/= (length (s-forms (current-goal *ps*)))
-					  fnum-count))
-				 (delete fnum)
-				 (skip)))
+			   (if (null *new-fmla-nums*)
+			       (let ((msg (format nil
+					      "Generated equation simplifies to true:~%  ~a"
+					    comp-equalities)))
+				 (then (skip-msg msg) (fail)))
+			       (let ((fnums (find-all-sformnums
+					     (s-forms (current-goal *ps*))
+					     '* #'(lambda (x) (eq x ffm))))
+				     (fnum (if fnums (car fnums) nil)))
+				 (if (and hide? fnum
+					  (/= (length (s-forms (current-goal *ps*)))
+					      fnum-count))
+				     (delete fnum)
+				     (skip))))
 			   (flatten))
 		     (then (flatten) (replace*)
 			   (grind :defs nil :if-match nil)))))
@@ -3162,8 +3178,7 @@ invokes apply-extensionality.  Otherwise it decomposes the
 		      (make-application rhs nvar)))));)
 
 (defmethod component-equalities (lhs rhs (te type-name))
-  (let* ((rec-subtypes (mapcar #'(lambda (r)
-				   (typecheck (mk-recognizer-type (id r) te)))
+  (let* ((rec-subtypes (mapcar #'(lambda (r) (typecheck (mk-expr-as-type r)))
 			 (recognizers te)))
 	 (lhs-subtype (find-if #'(lambda (rst)
 				   (subtype-of? (type lhs) rst))
@@ -3366,7 +3381,7 @@ skolem constants for the induction scheme to make sense."
 				       :subst ind-subst)
 				(beta)
 				(branch (prop)
-					((then (inst?)(prop))
+					((then (inst? :polarity? t)(prop))
 					 (let ((old-fmlas (append all-antec-fmlas conseq-fmlas))
 					       (fnums (find-all-sformnums
 						       (s-forms (current-goal *ps*))
@@ -3571,7 +3586,7 @@ then each formula fij is labelled with label lij.  As usual, any of
 the lists can be replaced a single label, and if there are not enough
 labels in a list, then the last label is applied to the remaining
 fnums."
-  "Applying ~a and labelling new subgoal formulas with ~a")
+  "Applying ~a and labelling new subgoal formulas with~_ ~a")
 
 (defstep hide-all-but (&optional keep-fnums (fnums *))
   (let ((fnums (gather-fnums (s-forms (current-goal *ps*))

@@ -1992,14 +1992,24 @@
 
 (defun xt-cases-expr (cexpr)
   (let ((expr (term-arg0 cexpr))
-	(selections (term-arg1 cexpr))
+	(selections (xt-selections (term-arg1 cexpr)))
 	(else (term-arg2 cexpr)))
-    (make-instance 'cases-expr
-      'expression (xt-expr expr)
-      'selections (xt-selections selections)
-      'else-part (unless (is-sop 'EXPR-NULL-1 else)
-		   (xt-expr else))
-      'place (term-place cexpr))))
+    (if (some #'in-selection? selections)
+	(if (every #'in-selection? selections)
+	    (make-instance 'unpack-expr
+	      'expression (xt-expr expr)
+	      'selections selections
+	      'else-part (unless (is-sop 'EXPR-NULL-1 else)
+			   (xt-expr else))
+	      'place (term-place cexpr))
+	    (parse-error cexpr
+	      "Can't mix constructors and IN selections"))
+	(make-instance 'cases-expr
+	  'expression (xt-expr expr)
+	  'selections selections
+	  'else-part (unless (is-sop 'EXPR-NULL-1 else)
+		       (xt-expr else))
+	  'place (term-place cexpr)))))
 
 (defun xt-selections (sels)
   (mapcar #'xt-selection (term-args sels)))
@@ -2019,15 +2029,27 @@
 		      (proj (parse-error sel "Projection illegal here"))
 		      (t (mk-name-expr id)))))
 	(setf (place constr) (term-place selector))
-	(make-instance 'selection
-	  'constructor constr
-	  'args (unless (is-sop 'SELECTION-NULL-1 args)
-		  (mapcar #'(lambda (a) (make-instance 'bind-decl
-					  'id (xt-idop a)
-					  'place (term-place a)))
-		    (term-args args)))
-	  'expression (xt-expr expr)
-	  'place (term-place sel))))))
+	(if (eq kind 'in)
+	    (make-instance 'in-selection
+	      'constructor constr
+	      'args (if (is-sop 'SELECTION-NULL-1 args)
+			(parse-error constr "Must provide an argument")
+			(mapcar #'(lambda (a) (make-instance 'bind-decl
+						'id (xt-idop a)
+						'place (term-place a)))
+			  (term-args args)))
+	      'index index
+	      'expression (xt-expr expr)
+	      'place (term-place sel))
+	    (make-instance 'selection
+	      'constructor constr
+	      'args (unless (is-sop 'SELECTION-NULL-1 args)
+		      (mapcar #'(lambda (a) (make-instance 'bind-decl
+					      'id (xt-idop a)
+					      'place (term-place a)))
+			(term-args args)))
+	      'expression (xt-expr expr)
+	      'place (term-place sel)))))))
 
 (defun xt-cond-expr (expr)
   (let* ((cases (term-args (term-arg0 expr)))

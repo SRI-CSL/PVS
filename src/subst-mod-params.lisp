@@ -63,8 +63,6 @@
 
 (defvar *free-bindings* nil)
 
-(defvar *smp-mappings* nil)
-
 ;;; This resets the *all-subst-mod-params-caches* hash table.  It is
 ;;; called from the parser whenever a newly parsed theory replaces the old
 ;;; theory, to ensure that the garbage collector can remove the objects.
@@ -95,7 +93,8 @@
     (maphash #'(lambda (modname hash)
 		 (setf (gethash modname new-hash)
 		       (copy hash)))
-	     *all-subst-mod-params-caches*)))
+	     *all-subst-mod-params-caches*)
+    new-hash))
 
 
 ;;; Gets the cache associated with the given modinst, or creates a new one
@@ -111,6 +110,39 @@
 				:test 'strong-tc-eq)))
 	  (setf (gethash modinst *all-subst-mod-params-caches*) ncache)
 	  ncache))))
+
+(defmethod subst-theory-params (term (alist cons))
+  (assert (every #'(lambda (elt) (formal-decl? (car elt))) alist))
+  (let ((new-alist (mapcar #'(lambda (elt)
+			       (cons (car elt)
+				     (if (actual? (cdr elt))
+					 (cdr elt)
+					 (mk-actual (cdr elt)))))
+		     alist))
+	(theories (delete *current-theory*
+			  (delete-duplicates
+			   (mapcar #'(lambda (elt) (module (car elt)))
+			     alist))))
+	(sterm term))
+    (dolist (th theories)
+      (let ((formals (remove-if #'(lambda (fp) (not (assq fp alist)))
+		       (formals-sans-usings th))))
+	(setf sterm
+	      (subst-mod-params
+	       sterm
+	       (mk-modname (id th)
+		 (mapcar #'(lambda (fp)
+			     (or (cdr (assq fp new-alist))
+				 (mk-res-actual
+				  (mk-name-expr (id fp)
+				    nil nil
+				    (make-resolution fp (mk-modname (id th))))
+				  th)))
+		   (formals-sans-usings th)))))))
+    sterm))
+
+(defmethod subst-theory-params (term (modinst modname))
+  (subst-mod-params term modinst))
 
 
 ;;; The main entry point to subst-mod-params.
@@ -128,7 +160,6 @@
 	  (let* ((*generate-tccs* 'none)
 		 (*subst-mod-params-cache*
 		  (get-subst-mod-params-cache modinst))
-		 (*smp-mappings* (mappings modinst))
 		 (bindings (make-subst-mod-params-bindings
 			    modinst formals actuals (mappings modinst) nil))
 		 (nobj (subst-mod-params* obj modinst bindings)))
@@ -738,6 +769,12 @@
 	type
 	(copy type 'types ntypes))))
 
+(defmethod subst-mod-params* ((type cotupletype) modinst bindings)
+  (let ((ntypes (subst-mod-params-type-list (types type) modinst bindings)))
+    (if (equal ntypes (types type))
+	type
+	(copy type 'types ntypes))))
+
 (defun subst-mod-params-type-list (types modinst bindings &optional ntypes)
   (if types
       (let ((ntype (subst-mod-params* (car types) modinst bindings)))
@@ -838,6 +875,13 @@
 	  nbd))))
 
 (defmethod subst-mod-params* ((expr projection-application) modinst bindings)
+  (with-slots (argument type) expr
+    (let ((narg (subst-mod-params* argument modinst bindings))
+	  (ntype (subst-mod-params* type modinst bindings)))
+	    #+pvsdebug (assert (fully-instantiated? ntype))
+	    (lcopy expr 'argument narg 'type ntype))))
+
+(defmethod subst-mod-params* ((expr injection-application) modinst bindings)
   (with-slots (argument type) expr
     (let ((narg (subst-mod-params* argument modinst bindings))
 	  (ntype (subst-mod-params* type modinst bindings)))
@@ -971,7 +1015,8 @@
 (defmethod subst-mod-params* ((sel selection) modinst bindings)
   (with-slots (constructor expression args) sel
     (let* ((name (subst-mod-params* constructor modinst bindings))
-	   (nargs (subst-mod-params* args modinst bindings))
+	   (nbindings (subst-mod-params-bindings args modinst bindings))
+	   (nargs (if (equal nbindings args) args nbindings))
 	   (alist (unless (eq nargs args)
 		    (pairlis args nargs)))
 	   (nexpr (subst-mod-params* (if alist

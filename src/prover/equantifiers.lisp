@@ -364,9 +364,9 @@ Please provide skolem constants for these variables." overlap)
 					 (args1 (formula sform))))
 				(length terms)))))))
 
-(defun skolem-rule-fun (&optional sformnum  terms)
+(defun skolem-rule-fun (&optional sformnum terms skolem-typepreds?)
   #'(lambda (ps)
-	(skolem-step sformnum ps terms)))
+	(skolem-step sformnum ps terms skolem-typepreds?)))
 
 (defun make-alist (substs)
   (if (and (consp substs)(consp (cdr substs)))
@@ -536,8 +536,7 @@ Please provide skolem constants for these variables." overlap)
 						    *dependent-decls*)
 					      tcc-subgoals)))))))))))
 
-(defun skolem-step (sformnum ps &optional terms copy?)
-  (declare (ignore copy?))
+(defun skolem-step (sformnum ps &optional terms skolem-typepreds?)
   (let* ((*assert-typepreds* nil)
 	 (*subtype-hash* (copy (subtype-hash ps)))
 	 (*dp-state* (dp-state ps))
@@ -545,17 +544,7 @@ Please provide skolem constants for these variables." overlap)
 	 (terms (if (consp terms) terms (list terms)))
 	 (sformnum (find-sform (s-forms (current-goal ps)) sformnum
 			       #'(lambda (sform)
-				   (or (and (forall-expr? (formula sform))
-					    (eql (length (bindings
-							  (formula sform)))
-						 (length terms)))
-				       (and (negation? (formula sform))
-					    (exists-expr?
-					     (args1 (formula sform)))
-					    (eql (length (bindings
-							  (args1
-							   (formula sform))))
-						 (length terms))))))))
+				   (skolem-step-sform? sform terms)))))
     (protecting-cong-state
      ((*dp-state* *dp-state*))
      (cond ((null sformnum)
@@ -569,27 +558,61 @@ Please provide skolem constants for these variables." overlap)
 							 terms))
 				  (list sformnum))
 		(if (eq signal 'X)(values 'X nil nil)
-		    (if (some #'(lambda (fmla)
-				  (let* ((sign (not (negation? fmla)))
-					 (body (if sign
-						   fmla
-						   (args1 fmla))))
-				    (and (not (connective-occurs? body))
-					 (let ((res (call-process fmla
-								  *dp-state*)))
-					   (when (consp res)
-					     (loop for x in res
-						   do (push x *process-output*)))
-					   (false-p res)))))
-			      *assert-typepreds*)
+		    (if (some #'skolem-step-assert-typepred *assert-typepreds*)
 			(values '! sformnum) ; SO - changed from sform
-			(values signal
-				(list
-				 (cons subgoal
-				       (list 'context new-context
-					     'subtype-hash *subtype-hash*
-					     'dp-state *dp-state*))))))))))))
+			(multiple-value-bind (nsubgoal references)
+			    (let ((*current-context* new-context))
+			      (skolem-typepreds-subgoal subgoal terms ps
+							skolem-typepreds?))
+			  (values
+			   signal
+			   (list
+			    (cons nsubgoal
+				  (list 'context new-context
+					'subtype-hash *subtype-hash*
+					'dp-state *dp-state*
+					'references references)))))))))))))
 		      
+(defun skolem-step-assert-typepred (fmla)
+  (let* ((sign (not (negation? fmla)))
+	 (body (if sign
+		   fmla
+		   (args1 fmla))))
+    (top-translate-to-prove body)
+    (and (not (connective-occurs? body))
+	 (let ((res (call-process fmla *dp-state*)))
+	   (when (consp res)
+	     (loop for x in res
+		   do (push x *process-output*)))
+	   (false-p res)))))
+
+(defun skolem-step-sform? (sform terms)
+  (or (and (forall-expr? (formula sform))
+	   (= (length (bindings (formula sform))) (length terms)))
+      (and (negation? (formula sform))
+	   (exists-expr? (args1 (formula sform)))
+	   (= (length (bindings (args1 (formula sform)))) (length terms)))))
+
+(defun skolem-typepreds-subgoal (subgoal terms ps skolem-typepreds?)
+  (if skolem-typepreds?
+      (let ((preds (loop for expr in terms
+			 append (collect-typepreds expr ps))))
+	(if preds
+	    (let* ((new-sforms
+		    (mapcar #'(lambda (fmla)
+				(make-instance 's-formula
+				  'formula (negate fmla)))
+		      preds))
+		   (references nil))
+	      (push-references-list
+	       (mapcar #'formula new-sforms)
+	       references)
+	      (copy subgoal
+		's-forms (append new-sforms
+				 (s-forms subgoal))))
+	    subgoal))
+      subgoal))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -729,6 +752,57 @@ Please provide skolem constants for these variables." overlap)
 	    (cons entry (order-subst subst (cdr boundvars)))
 	    (order-subst subst (cdr boundvars))))))
 
+(defun filter-subst-false-tccs (subst-list boundvars)
+  (if (consp subst-list)
+      (let ((*tccforms* nil)
+	    (*evaluate-tccs* nil))
+	(tc-alist (order-subst (cdr (car subst-list)) boundvars))
+	(let ((tccforms (assert-tccforms *tccforms* *ps*)))
+	  (if (some #'(lambda (tccf)
+			(tc-eq (tccinfo-formula tccf) *false*))
+		    tccforms)
+	      (filter-subst-false-tccs (cdr subst-list) boundvars)
+	      (cons (car subst-list)
+		    (filter-subst-false-tccs (cdr subst-list) boundvars)))))
+      nil))
+
+(defun filter-best (tcc-all-subst boundvars i)
+  (if (consp tcc-all-subst)
+      (if (eql (length (caar tcc-all-subst)) i)
+	  (let ((*tccforms* nil)
+		(y (cdar tcc-all-subst))
+		(*evaluate-tccs* nil))
+	    (tc-alist (order-subst (cdr y) boundvars))
+	    (let ((tccforms (assert-tccforms *tccforms* *ps*)))
+	      (if (some #'(lambda (tccf)
+			    (tc-eq (tccinfo-formula tccf) *false*))
+			tccforms)
+		  (filter-best (cdr tcc-all-subst) boundvars i)
+		  y)))
+	  (filter-best (cdr tcc-all-subst) boundvars i))
+      nil))
+
+(defun filter-subst-all-or-best-false-tccs
+  (subst-list tcc-all-subst boundvars if-match tcc?) 
+  (if tcc?
+      (let* ((tcc-lengths (loop for (x . nil) in tcc-all-subst
+				collect (length x)))
+	     (min (if tcc-lengths (apply #'min tcc-lengths) 0))
+	     (max (if tcc-lengths (apply #'max tcc-lengths) 0)))
+	(if (eq if-match 'best)
+	    (loop for i from min to max
+		  thereis
+		  (filter-best tcc-all-subst boundvars i)
+		  )
+	    (filter-subst-false-tccs subst-list boundvars)))
+      (let ((all-non-tcc-substs
+	     (loop for (x . y) in tcc-all-subst
+		   when (null x)
+		   collect y)))
+	(if (eq if-match 'best)
+	    (and all-non-tcc-substs (car all-non-tcc-substs))
+	    all-non-tcc-substs))))
+
 (defun filter-subst (fmla subst sign boundvars if-match tcc?)
   (if (all-or-best-or-first*? if-match)
       (let ((subst (rem-dups
@@ -736,30 +810,27 @@ Please provide skolem constants for these variables." overlap)
 		    :test #'tc-eq
 		    :key #'(lambda (sub) (quant-subs* fmla sub sign nil)))))
 	(if (and tcc? (all-or-first*? if-match))
-	    subst
+	    (filter-subst-false-tccs subst boundvars)
 	  (let (
 		(tcc-all-subst
 		 (loop for sub in subst
 		       collect
-		       (let ((*tccforms* nil))
+		       (let ((*tccforms* nil)
+			     (*evaluate-tccs* nil))
 			 (tc-alist (order-subst (cdr sub) boundvars))
-			 (cons (length *tccforms*)
-			       sub)))))
-	    (if (eq if-match 'best)
-		(let* ((tccnums (mapcar #'car tcc-all-subst))
-		      (min-tccnums (if tccnums (apply #'min tccnums) 0))
-		      (best-sub (loop for (x . y) in tcc-all-subst
-				      thereis (when (equal x min-tccnums)
-						y))))
-		  (and (or tcc? (eql min-tccnums 0))
-		       best-sub))
-		(loop for (x . y) in tcc-all-subst
-		      when (eql x 0)
-		      collect y)))))
-	  (if tcc? subst
-	      (let* ((*tccforms* nil))
-		(tc-alist (order-subst (cdr subst) boundvars))
-		(if *tccforms* nil subst)))))
+			 (cons *tccforms* sub)))))
+	    (filter-subst-all-or-best-false-tccs subst tcc-all-subst
+						 boundvars if-match tcc?))))
+	  (let ((*tccforms* nil)
+		(*evaluate-tccs* nil))
+	    (tc-alist (order-subst (cdr subst) boundvars))
+	    (let ((tccforms (assert-tccforms *tccforms* *ps*)))
+	      (if (some #'(lambda (tccf)
+			    (tc-eq (tccinfo-formula tccf) *false*))
+			tccforms)
+		  nil
+		  (if tcc? subst
+		      (if *tccforms* nil subst)))))))
 
 (defun quant-subs* (fmla subst sign if-match)
   (if (all-or-first*? if-match)
@@ -1252,6 +1323,10 @@ is not of the form: (<var> <term>...)" subst)
 
 (defmethod find-templates* ((expr projection-application) boundvars
 			    &optional accum) 
+  (find-templates* (argument expr) boundvars accum))
+
+(defmethod find-templates* ((expr injection-application) boundvars
+			    &optional accum) 
   (find-templates* (argument expr) boundvars accum)) 
 
 
@@ -1468,9 +1543,9 @@ is not of the form: (<var> <term>...)" subst)
 
 (defun hide-step (sformnums)
   #'(lambda (ps)
-      (let* ((sformnums
-	      (loop for sf in sformnums
-		    append (if (consp sf) sf (list sf))))
+      (let* ((sformnums (if (singleton? sformnums)
+			    (car sformnums)
+			    sformnums))
 	     (sforms (select-seq (s-forms (current-goal ps))
 				 sformnums))
 	     (remaining-sforms (delete-seq (s-forms (current-goal ps))
@@ -1633,6 +1708,9 @@ is not of the form: (<var> <term>...)" subst)
 (defmethod args1 ((expr projection-application))
   (args1* (argument expr)))
 
+(defmethod args1 ((expr injection-application))
+  (args1* (argument expr)))
+
 (defmethod args1* ((expr tuple-expr))
   (car (exprs expr)))
 
@@ -1645,15 +1723,12 @@ is not of the form: (<var> <term>...)" subst)
 (defmethod args2 ((expr projection-application))
   (args2* (argument expr)))
 
+(defmethod args2 ((expr injection-application))
+  (args2* (argument expr)))
+
 (defmethod args2* ((expr tuple-expr))
   (cadr (exprs expr)))
 
 (defmethod args2* (expr)
   (declare (ignore expr))
   nil)
-
-
-
-;(defmethod declaration ((expr name-expr))
-;  (declaration (car (resolutions (name expr)))))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

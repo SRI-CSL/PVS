@@ -42,7 +42,12 @@
       (let* ((*old-tcc-name* nil)
 	     (ndecl (make-subtype-tcc-decl expr incs)))
 	(if ndecl
-	    (insert-tcc-decl 'subtype expr expected ndecl)
+	    (if (termination-tcc? ndecl)
+		(insert-tcc-decl 'termination-subtype
+				 expr
+				 (recursive-signature (current-declaration))
+				 ndecl)
+		(insert-tcc-decl 'subtype expr expected ndecl))
 	    (unless (or *in-checker* *in-evaluator*)
 	      (incf (tccs-simplified)))))))
 
@@ -72,7 +77,11 @@
 		 (tc-eq uform *false*))
 	(type-error expr "Subtype TCC for ~a simplifies to FALSE~@[:~2%  ~a~]"
 		    expr (unless (tc-eq tform *false*) tform)))
-      (typecheck* (mk-subtype-tcc id uform) nil nil nil))))
+      (typecheck* (if (and *recursive-subtype-term*
+			   (occurs-in-eq *recursive-subtype-term* incs))
+		      (mk-termination-tcc id uform)
+		      (mk-subtype-tcc id uform))
+		  nil nil nil))))
 
 (defvar *substitute-let-bindings* nil)
 
@@ -228,13 +237,26 @@
 	     (not (and (declaration? decl)
 		       (id decl)
 		       (assq expr *compatible-pred-reason*))))
-	(assert (declaration? match))
-	(pvs-info "~@(~a~) TCC for ~a:~%    ~a~%  ~
-                   is subsumed by earlier TCC ~a~%  ~
-                   so is not generated"
-	  kind (or expr type)
-	  (unpindent (definition ndecl) 2 :string t)
-	  (id match))
+	(let* ((place (or (place *set-type-actuals-name*)
+			  (place expr) (place type)))
+	       (plstr (when place
+			(format nil "(at line ~d, column ~d) "
+			  (starting-row place) (starting-col place)))))
+	  (assert (declaration? match))
+	  (pvs-info "The following ~@(~@[~a ~]~a~) TCC ~@[~a~]for~
+                     ~:[ ~;~%    ~]~a~% is subsumed by ~a:~%  ~a"
+	    (cdr (assq expr *compatible-pred-reason*))
+	    kind plstr
+	    (> (+ (length (cdr (assq expr *compatible-pred-reason*)))
+		  (length (string kind))
+		  (length plstr)
+		  (length (unpindent (or *set-type-actuals-name* expr type)
+				     4 :string t :comment? t))
+		  25)
+	       *default-char-width*)
+	    (or *set-type-actuals-name* expr type)
+	    (id match)
+	    (unpindent (definition ndecl) 2 :string t)))
 	(incf (tccs-matched))
 	(push match (refers-to decl)))
        (t (when match
@@ -271,14 +293,20 @@
 
 (defun insert-tcc-decl* (kind expr type decl ndecl)
   (let ((submsg (case kind
-		  (subtype (format nil "coercing ~a to ~a"
-			     (unparse expr :string t) type))
-		  (termination (format nil "for ~a" (id decl)))
-		  (existence (format nil "for type ~a" type))
-		  (assuming (format nil "for assumption ~a on instance ~a"
-			      (id type) (unparse expr :string t)))
-		  (cases (format nil "for missing ELSE of datatype ~a"
-			   (id type)))
+		  (actuals nil)
+		  (assuming (format nil "generated from assumption ~a.~a"
+			      (id (module type)) (id type)))
+		  (cases
+		   (format nil
+		       "for missing ELSE of CASES expression over datatype ~a"
+		     (id type)))
+		  (coverage nil)
+		  (disjointness nil)
+		  (existence nil)
+		  ((subtype termination-subtype)
+		   (format nil "expected type ~a"
+		     (unpindent type 19 :string t :comment? t)))
+		  (termination nil)
 		  (well-founded (format nil "for ~a" (id decl))))))
     (when (and *typecheck-using*
 	       (typep (declaration *current-context*) 'importing))
@@ -290,12 +318,13 @@
       (let* ((str (unpindent (or *set-type-actuals-name* expr type)
 			     4 :string t :comment? t))
 	     (place (or (place *set-type-actuals-name*)
-			(place expr) (place type)))
+			(place* expr) (place type)))
 	     (plstr (when place
 		      (format nil "(at line ~d, column ~d) "
 			(starting-row place) (starting-col place)))))
 	(add-comment ndecl
-	  "~@(~@[~a ~]~a~) TCC generated ~@[~a~]for~:[ ~;~%    %~]~a"
+	  "~@(~@[~a ~]~a~) TCC generated ~@[~a~]for~:[ ~;~%    %~]~a~
+           ~@[~%    % ~a~]"
 	  (cdr (assq expr *compatible-pred-reason*))
 	  kind
 	  plstr
@@ -323,6 +352,11 @@
       (push ndecl (refers-to decl))
       (when *old-tcc-name*
 	(push (cons (id ndecl) *old-tcc-name*) *old-tcc-names*))
+      (pvs-output "~2%~a~%"
+		  (let ((*no-comments* t)
+			(*unparse-expanded* t))
+		    (string-trim '(#\Space #\Tab #\Newline)
+				 (unparse ndecl :string t))))
       (add-decl ndecl))))
 
 (defun tcc-submsg-string (kind expr type decl)
@@ -406,7 +440,8 @@
   (let* ((*old-tcc-name* nil)
 	 (ndecl (make-recursive-tcc-decl name arguments)))
     (if ndecl
-	(insert-tcc-decl 'termination name nil ndecl)
+	(insert-tcc-decl 'termination
+			 (make!-applications name arguments) nil ndecl)
 	(incf (tccs-simplified)))))
 
 (defun make-recursive-tcc-decl (name arguments)
@@ -438,7 +473,6 @@
 			     form (declaration *current-context*))))))
 	   (uform (expose-binding-types (universal-closure xform)))
 	   (id (make-tcc-name)))
-      (push name *recursive-tcc-names*)
       (unless (tc-eq uform *true*)
 	(when (and *false-tcc-error-flag*
 		   (tc-eq uform *false*))
@@ -451,6 +485,12 @@
   (if (null args)
       op
       (mk-recursive-application (mk-application* op (car args)) (cdr args))))
+
+(defun make!-recursive-application (op args)
+  (if (null args)
+      op
+      (make!-recursive-application (make!-application* op (car args))
+				   (cdr args))))
 
 (defun outer-arguments (decl)
   (outer-arguments* (append (formals decl)
@@ -476,30 +516,39 @@
 	(insert-tcc-decl 'well-founded (ordering decl) nil ndecl))))
 
 (defun make-well-founded-tcc-decl (decl mtype)
-  (let* (;;(meas (measure decl))
-	 (ordering (ordering decl))
-	 (var1 (make-new-variable '|x| ordering))
-	 (var2 (make-new-variable '|y| ordering))
-	 (wfform (mk-lambda-expr (list (mk-bind-decl var1 mtype)
-				       (mk-bind-decl var2 mtype))
-		   (mk-application ordering
-		     (mk-name-expr var1) (mk-name-expr var2))))
-	 (form (typecheck* (mk-application '|well_founded?| wfform)
-			   *boolean* nil nil))
-	 (xform (cond ((tcc-evaluates-to-true form)
-		       *true*)
-		      ((and *simplify-tccs*
-			    (not (or *in-checker* *in-evaluator*)))
-		       (pseudo-normalize form))
-		      (t (beta-reduce form))))
-	 (id (make-tcc-name)))
-    (unless (tc-eq xform *true*)
-      (when (and *false-tcc-error-flag*
-		 (tc-eq xform *false*))
-	(type-error ordering
-	  "TCC for this expression simplifies to false:~2%  ~a"
-	  form))
-      (typecheck* (mk-well-founded-tcc id xform) nil nil nil))))
+  (unless (well-founded-type? (type (ordering decl)))
+    (let* ((ordering (ordering decl))
+	   (var1 (make-new-variable '|x| ordering))
+	   (var2 (make-new-variable '|y| ordering))
+	   (wfform (mk-lambda-expr (list (mk-bind-decl var1 mtype)
+					 (mk-bind-decl var2 mtype))
+		     (mk-application ordering
+		       (mk-name-expr var1) (mk-name-expr var2))))
+	   (form (typecheck* (mk-application '|well_founded?| wfform)
+			     *boolean* nil nil))
+	   (xform (cond ((tcc-evaluates-to-true form)
+			 *true*)
+			((and *simplify-tccs*
+			      (not (or *in-checker* *in-evaluator*)))
+			 (pseudo-normalize form))
+			(t (beta-reduce form))))
+	   (id (make-tcc-name)))
+      (unless (tc-eq xform *true*)
+	(when (and *false-tcc-error-flag*
+		   (tc-eq xform *false*))
+	  (type-error ordering
+	    "TCC for this expression simplifies to false:~2%  ~a"
+	    form))
+	(typecheck* (mk-well-founded-tcc id xform) nil nil nil)))))
+
+(defmethod well-founded-type? ((otype subtype))
+  (or (and (name-expr? (predicate otype))
+	   (eq (id (module-instance (predicate otype))) '|orders|)
+	   (eq (id (declaration (predicate otype))) '|well_founded?|))
+      (well-founded-type? (supertype otype))))
+
+(defmethod well-founded-type? ((otype type-expr))
+  nil)
 
 (defun check-nonempty-type (type expr)
   (unless (or (nonempty? type)
@@ -537,6 +586,9 @@
 
 (defmethod possibly-empty-type? ((te tupletype))
   (possibly-empty-type? (types te)))
+
+(defmethod possibly-empty-type? ((te cotupletype))
+  (every #'possibly-empty-type? (types te)))
 
 (defmethod possibly-empty-type? ((te funtype))
   (possibly-empty-type? (range te)))
@@ -618,11 +670,18 @@
 (defmethod set-nonempty-type ((te type-name))
   nil)
 
+(defmethod set-nonempty-type ((te type-application))
+  nil)
+
 (defmethod set-nonempty-type ((te subtype))
   (set-nonempty-type (supertype te)))
 
 (defmethod set-nonempty-type ((te tupletype))
   (set-nonempty-type (types te)))
+
+(defmethod set-nonempty-type ((te cotupletype))
+  ;; Can't propagate, as [S + T] nonempty implies S or T nonempty
+  )
 
 (defmethod set-nonempty-type ((te funtype))
   )
@@ -695,21 +754,63 @@
 	  (unless (or (or *in-checker* *in-evaluator*)
 		      *tcc-conditions*)
 	    (push modinst (assuming-instances *current-theory*)))
-	  (dolist (ass (remove-if-not #'assumption? (assuming mod)))
-	    (if (eq (kind ass) 'existence)
-		(let ((atype (subst-mod-params (existence-tcc-type ass)
-					       modinst)))
-		  (if (typep cdecl 'existence-tcc)
-		      (let ((dtype (existence-tcc-type cdecl)))
-			(if (tc-eq atype dtype)
-			    (generate-existence-tcc atype expr)
-			    (check-nonempty-type atype expr)))
-		      (check-nonempty-type atype expr)))
-		(let* ((*old-tcc-name* nil)
-		       (ndecl (make-assuming-tcc-decl ass modinst)))
-		  (if ndecl
-		      (insert-tcc-decl 'assuming modinst ass ndecl)
-		      (incf (tccs-simplified)))))))))))
+	  (let ((assumptions (remove-if-not #'assumption? (assuming mod))))
+	    (check-assumption-subterm-visibility assumptions modinst)
+	    (dolist (ass assumptions)
+	      (if (eq (kind ass) 'existence)
+		  (let ((atype (subst-mod-params (existence-tcc-type ass)
+						 modinst)))
+		    (if (typep cdecl 'existence-tcc)
+			(let ((dtype (existence-tcc-type cdecl)))
+			  (if (tc-eq atype dtype)
+			      (generate-existence-tcc atype expr)
+			      (check-nonempty-type atype expr)))
+			(check-nonempty-type atype expr)))
+		  (let* ((*old-tcc-name* nil)
+			 (ndecl (make-assuming-tcc-decl ass modinst)))
+		    (if ndecl
+			(insert-tcc-decl 'assuming modinst ass ndecl)
+			(incf (tccs-simplified))))))))))))
+
+(defun check-assumption-subterm-visibility (assumptions modinst)
+  (dolist (ass assumptions)
+    (let* ((subassdef (subst-mod-params (closed-definition ass) modinst))
+	   (badobj (find-nonvisible-assuming-reference subassdef)))
+      (when badobj
+	(type-error badobj
+	"Error: assumption refers to ~%  ~a,~%~
+         which is not visible in the current theory"
+	(full-name badobj 1))))))
+
+(defun find-nonvisible-assuming-reference (subassdef)
+  (let ((name nil))
+    (mapobject #'(lambda (ex)
+		   (or name
+		       (when (nonvisible-assuming-reference? ex)
+			 (setq name ex))))
+	       subassdef)
+    name))
+
+(defmethod nonvisible-assuming-reference? ((ex name))
+  (and (resolution ex)
+       (let ((decl (declaration ex)))
+	 (unless (eq (module decl) (current-theory))
+	   (and (not (formal-decl? decl))
+		(not (and (const-decl? decl)
+			  (formal-subtype-decl? (generated-by decl))))
+		(not (binding? decl))
+		(not (skolem-const-decl? decl))
+		(or (not (memq decl (gethash (id decl)
+					     (current-declarations-hash))))
+		    (let ((importings (gethash (module decl)
+					       (current-using-hash))))
+		      (not (or (some #'(lambda (imp) (null (actuals imp)))
+				     importings)
+			       (member (module-instance ex) importings
+				       :test #'tc-eq))))))))))
+
+(defmethod nonvisible-assuming-reference? (ex)
+  nil)
 
 (defmethod existence-tcc-type ((decl existence-tcc))
   (existence-tcc-type (definition decl)))
@@ -933,13 +1034,19 @@
 
 (defun subst-var-for-recs (expr recdecl)
   (if (and (def-decl? recdecl)
-	   (type recdecl))
+	   (recursive-signature recdecl))
       (let* ((vid (make-new-variable '|v| expr))
-	     (vname (make-new-variable-name-expr vid (type recdecl))))
-	(gensubst expr
-	  #'(lambda (x) (declare (ignore x)) (copy vname))
-	  #'(lambda (x) (and (name-expr? x)
-			     (eq (declaration x) recdecl)))))
+	     (vname (make-new-variable-name-expr
+		     vid (recursive-signature recdecl)))
+	     (sexpr (gensubst expr
+		      #'(lambda (x) (declare (ignore x)) (copy vname))
+		      #'(lambda (x) (and (name-expr? x)
+					 (eq (declaration x) recdecl))))))
+	(if (and (not (eq sexpr expr))
+		 (forall-expr? sexpr))
+	    (copy sexpr
+	      'bindings (append (bindings sexpr) (list (declaration vname))))
+	    sexpr))
       expr))
 
 (defun make-new-variable (base expr &optional num)
@@ -1059,6 +1166,11 @@
 			      (when npred (list npred)))))
 
 (defmethod equality-predicates* ((t1 tupletype) (t2 tupletype) p1 p2 bindings)
+  (let ((npred (make-equality-between-predicates t1 p1 p2)))
+    (equality-predicates-list (types t1) (types t2) bindings
+			      (when npred (list npred)))))
+
+(defmethod equality-predicates* ((t1 cotupletype) (t2 cotupletype) p1 p2 bindings)
   (let ((npred (make-equality-between-predicates t1 p1 p2)))
     (equality-predicates-list (types t1) (types t2) bindings
 			      (when npred (list npred)))))

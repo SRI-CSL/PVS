@@ -510,10 +510,11 @@ are to be left uninstantiated.
   "~%Instantiating the top quantifier in ~a with the terms: ~% ~a,")
 
 
-(addrule 'skolem  (fnum constants) ()
-  (skolem-rule-fun fnum constants)
+(addrule 'skolem  (fnum constants) (skolem-typepreds?)
+  (skolem-rule-fun fnum constants skolem-typepreds?)
   "Replaces the universally quantified variables in FNUM with new
-skolem constants in CONSTANTS.
+skolem constants in CONSTANTS.  If SKOLEM-TYPEPREDS? is T, then typepreds
+will be generated for the introduced constants.
 Example: (skolem 1 (\"A\" \"B\"))
 See also SKOLEM!, SKOSIMP, SKOSIMP*."
   "~%For the top quantifier in ~a, we introduce Skolem constants: ~a,")
@@ -570,7 +571,7 @@ REWRITE and REWRITE-LEMMA.  Example reduction steps are:
 	  rewrite-flag flush? linear? cases-rewrite? (type-constraints? t)
 	  ignore-prover-output?)
   (invoke-simplification fnums record? rewrite?
-			 rewrite-flag flush? linear?
+			 rewrite-flag flush? nil ;;NSH(10-26-01)was linear?
 			 cases-rewrite? type-constraints?
 			 ignore-prover-output?)
   "Uses the decision procedures to to simplify the formulas in
@@ -597,7 +598,7 @@ effect:
  REWRITE-FLAG: If RL(LR) then only lhs(rhs) is simplified.
  FLUSH?: If T, then the current asserted facts are deleted for
          efficiency.
- LINEAR?: If T, then multiplication and division are uninterpreted.
+ LINEAR?: Ignored.
  CASES-REWRITE: If T, then the selections and else parts of a
          CASES expression are simplified, otherwise, they are only
          simplified when simplification selects a case.
@@ -613,23 +614,34 @@ effect:
 
 (addrule 'auto-rewrite () (&rest names)
   (auto-rewrite-step names)
-  "Installs automatic rewrite rules given in the NAMES list.
-The rewrites are applied by the ASSERT and DO-REWRITE commands.
-Each entry in the list NAMES is either an antecedent formula number or
-names a definition, assumption or
-lemma/theorem/formula/proposition/conjecture, or a list of such
-to indicate eager and macro rewrites (as explained below).
-In (AUTO-REWRITE A (B C) D ((E F))), B and C are eager rewrites,
-E and F are macro rewrites, and A and D are lazy rewrites. 
-Rewrites only take effect if relevant conditions and TCCs simplify to T.
-For lazy rewrites, if there is an IF or CASES at the outermost part of the
-righthand-side, then it is treated as a condition.  When a function
-definition is curried, lazy and eager rewrites only match when
-the most applied form of the function is used, whereas macros
-always match any occurrence of the function. 
+  "Installs automatic rewrite rules given in the NAMES list.  The rewrites
+are applied by the ASSERT and DO-REWRITE commands.  Each entry in the list
+NAMES is either an antecedent formula number or names a definition,
+assumption or formula.  The complete syntax is
+  rewrite-name-or-fnum ::= fnum | rewrite-name
+
+  fnum ::= ['-'] number ['!' ['!']]
+
+  rewrite-name ::= name ['!' ['!']] [':' {type-expr|formula-name}]
+
+With no exclamation points, the rewrite is lazy, with one it is eager, and
+with two it is a macro.  Rewrites only take effect if relevant conditions
+and TCCs simplify to T.  For lazy rewrites, if there is an IF or CASES at
+the outermost part of the righthand-side, then it is treated as a
+condition.  When a function definition is curried, lazy and eager rewrites
+only match when the most applied form of the function is used, whereas
+macros always match any occurrence of the function.  For example, in
+(AUTO-REWRITE A B! 1! C -3!! D!!), A and C are lazy rewrites, B and
+formula number 1 are eager rewrites, and formula number -3 and D are macro
+rewrites.
+
+Eager and macro rewrites may also be indicated by the level of
+parenthesization - the above example is equivalent to
+(AUTO-REWRITE A (B 1) C ((-3 D))).  This older form is deprecated, but
+still supported for backward compatibility.
   E.g.,
-  (auto-rewrite \"assoc\" (\"delete\" \"union\") -3 (-4 -5))
-  (auto-rewrite :names (\"assoc\" (\"delete\" \"union\"))). "
+  (auto-rewrite \"assoc\" \"delete!\" \"union!\" -3 -4! -5!)
+  (auto-rewrite :names (\"assoc\" \"delete!\" \"union!\")). "
   "~%Installing automatic rewrites from: ~@{~%  ~a~}")
 
 
@@ -673,7 +685,7 @@ This is used to indicate that names are equal even if their actuals are
 not syntactically equal.  TYPE can be given to disambiguate NAME1 and
 NAME2.
 Example: (same-name \"bvec0[i + j]\" \"bvec0[j + i]\")."
-  "By checking name equality between  ~a and ~a")
+  "~%By checking name equality between  ~a and ~a")
 	 
 
 (defun same-name (name1 name2 &optional type)
@@ -729,13 +741,13 @@ identifiers" name1 name2)
   "Labels a collection of formulas given by FNUMS by the
 string  LABEL.  If PUSH? is T, then the new label is added to any existing
 ones.  Otherwise, the new labels replaces all existing ones."
-  "Using ~a to label formula(s) ~a")
+  "~%Using ~a to label formula(s) ~a")
 
-(addrule 'unlabel () (fnums)
-  (unlabel-step fnums)
-  "Removes all labels from the formulas FNUMS, or when FNUMS
-is not specified, from all formulas."
-  "Removing labels")
+(addrule 'unlabel () (fnums label)
+  (unlabel-step fnums label)
+  "Removes specified label (or all labels if none specified)
+   from the formulas FNUMS (or when FNUMS is not specified,  all formulas)."
+  "~%Removing labels")
 	 
 
 (addrule 'just-install-proof (proof) ()
@@ -744,12 +756,12 @@ is not specified, from all formulas."
   "Installs an edited PROOF without actually checking it,
 declares the subgoal as finished, but then marks the proof as
 unfinished."
-  "Installing without checking, the proof ~a")
+  "~%Installing without checking, the proof ~a")
 
 (addrule 'comment (string) ()
   (comment-step string)
   "Adds a comment to the sequent."
-  "Adding comment: ~a")
+  "~%Adding comment: ~a")
 
 (addrule 'flatten-disjunct () (fnums depth)
   (flatten fnums depth)
@@ -767,7 +779,7 @@ which eliminates all top-level disjuncts in the indicated FNUMS."
       (setq *prover-print-lines* (unless (zerop lines) lines))
       (values 'X nil nil))
   "Sets the number of lines to print to LINES."
-  "Setting print lines to ~a")
+  "~%Setting print lines to ~a")
 
 (addrule 'set-print-length () (length)
   #'(lambda (ps)
@@ -775,7 +787,7 @@ which eliminates all top-level disjuncts in the indicated FNUMS."
       (setq *prover-print-length* (unless (zerop length) length))
       (values 'X nil nil))
   "Sets the print length"
-  "Setting print length to ~a")
+  "~%Setting print length to ~a")
 
 (addrule 'set-print-depth () (depth)
   #'(lambda (ps)
@@ -783,4 +795,4 @@ which eliminates all top-level disjuncts in the indicated FNUMS."
       (setq *prover-print-depth* (unless (zerop depth) depth))
       (values 'X nil nil))
   "Sets the print depth."
-  "Setting print depth to ~a")
+  "~%Setting print depth to ~a")

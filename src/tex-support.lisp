@@ -231,13 +231,16 @@ useful if more than one specification is to be included in one document")
 	      (nconc *latex-newcommands-list* newsubs))))))
 
 (defun read-tex-subs (str)
-  (let ((line (read-line str nil 'eof)))
-    (unless (eq line 'eof)
-      (if (string= line "---")
-	  (read-inline-subst str)
-	  (progn
-	    (parse-tex-subs line)
-	    (read-tex-subs str))))))
+  (let ((rline (read-line str nil 'eof)))
+    (unless (eq rline 'eof)
+      (let ((line (string-left-trim '(#\space #\tab) rline)))
+	(if (string= line "---")
+	    (read-inline-subst str)
+	    (progn
+	      (unless (or (string= line "")
+			  (char= (char line 0) #\%))
+		(parse-tex-subs line))
+	      (read-tex-subs str)))))))
 
 (defun read-inline-subst (str &optional result)
   (let ((line (read-line str nil 'eof)))
@@ -261,6 +264,10 @@ useful if more than one specification is to be included in one document")
 	  (pvs-error "TeX substitution error"
 		      (format nil
 			      "Illegal length ~a for ~a" width id)))
+	(unless (plusp nwidth)
+	  (pvs-error "TeX substitution error"
+		      (format nil
+			      "Illegal length ~a for ~a:~% must be a positive integer" width id)))
 	(cond
 	  ((string-equal type "key")
 	   (let ((sym (intern (string-upcase id))))

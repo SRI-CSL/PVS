@@ -19,6 +19,8 @@
 
 (defvar *get-all-resolutions* nil)
 
+(defvar *typechecking-actual* nil)
+
 ;;; Name Resolution
 
 ;;; Typechecking a name means to resolve it in its context.  The kind
@@ -51,6 +53,11 @@
 	       (eq k 'expr))
       (setq res (append (function-conversion name args)
 			(argument-conversion name args))))
+    (when (memq name *recursive-calls-without-enough-args*)
+      (dolist (r res)
+	(when (eq (declaration r) (current-declaration))
+	  (change-class r 'recursive-function-resolution
+			'type (recursive-signature (current-declaration))))))
     (cond ((null res)
 	   (resolution-error name k args))
 	  ((and (cdr res)
@@ -111,7 +118,8 @@
 			   (remove-if-not
 			       #'(lambda (d)
 				   (and (library-theory? (module d))
-					(equal lib (library (module d)))))
+					(equal lib (directory-namestring
+						    (path (module d))))))
 			     adecls)
 			   (type-error name "~a is an unknown library"
 				       (library name))))
@@ -413,48 +421,48 @@
   #+pvsdebug (when (type (expr act)) (break "Type set already???"))
   (unless (typed? act)
     (typecase (expr act)
-      (name-expr (let* ((name (expr act))
-			(tres (with-no-type-errors (resolve* name 'type nil)))
-			(eres (with-no-type-errors (resolve* name 'expr nil)))
-			(thres (unless (mod-id name)
-				 (with-no-type-errors
-				  (resolve* (name-to-modname name)
-					    'module nil)))))
-		   (unless (or tres eres thres)
-		     (type-error (expr act) "Actual does not resolve"))
-		   (if (cdr tres)
-		       (cond (eres
-			      (setf (resolutions name) eres))
-			     (t (setf (resolutions name) tres)
-				(type-ambiguity name)))
-		       (setf (resolutions name) (nconc tres eres thres)))
-		   (when eres
-		     (setf (types (expr act)) (mapcar #'type eres))
-		     (when (and (plusp (parens (expr act)))
-				(some #'(lambda (ty)
-					  (let ((sty (find-supertype ty)))
-					    (and (funtype? sty)
-						 (tc-eq (find-supertype
-							 (range sty))
-							*boolean*))))
-				      (ptypes (expr act))))
-		       (setf (type-value act)
-			     (typecheck* (make-instance 'expr-as-type
-					   'expr (copy-untyped (expr act)))
-					 nil nil nil))))
-		   (when tres
-		     (if (type-value act)
-			 (unless (compatible? (type-value act) (type (car tres)))
-			   (push (car tres) (resolutions (expr act)))
-			   (type-ambiguity (expr act)))
-			 (progn
-			   (when (and (mod-id (expr act))
-				      (typep (type (car tres)) 'type-name)
-				      (same-id (expr act) (type (car tres))))
-			     (setf (mod-id (type (car tres)))
-				   (mod-id (expr act))))
-			   (setf (type-value act) (type (car tres)))
-			   (push 'type (types (expr act))))))))
+      (name-expr
+       (let* ((name (expr act))
+	      (tres (let ((*typechecking-actual* t))
+		      (with-no-type-errors (resolve* name 'type nil)))))
+	 (multiple-value-bind (eres error obj)
+	     (let ((*typechecking-actual* t))
+	       (with-no-type-errors (resolve* name 'expr nil)))
+	   (unless (or tres eres)
+	     (resolution-error name 'expr-or-type nil))
+	   (if (cdr tres)
+	       (cond (eres
+		      (setf (resolutions name) eres))
+		     (t (setf (resolutions name) tres)
+			(type-ambiguity name)))
+	       (setf (resolutions name) (nconc tres eres)))
+	   (when eres
+	     (setf (types (expr act)) (mapcar #'type eres))
+	     (when (and (plusp (parens (expr act)))
+			(some #'(lambda (ty)
+				  (let ((sty (find-supertype ty)))
+				    (and (funtype? sty)
+					 (tc-eq (find-supertype
+						 (range sty))
+						*boolean*))))
+			      (ptypes (expr act))))
+	       (setf (type-value act)
+		     (typecheck* (make-instance 'expr-as-type
+				   'expr (copy-untyped (expr act)))
+				 nil nil nil))))
+	   (when tres
+	     (if (type-value act)
+		 (unless (compatible? (type-value act) (type (car tres)))
+		   (push (car tres) (resolutions (expr act)))
+		   (type-ambiguity (expr act)))
+		 (progn
+		   (when (and (mod-id (expr act))
+			      (typep (type (car tres)) 'type-name)
+			      (same-id (expr act) (type (car tres))))
+		     (setf (mod-id (type (car tres)))
+			   (mod-id (expr act))))
+		   (setf (type-value act) (type (car tres)))
+		   (push 'type (types (expr act)))))))))
       ;; with-no-type-errors not needed here;
       ;; the expr typechecks iff the subtype does.
       (set-expr (typecheck* (expr act) nil nil nil)
@@ -463,34 +471,36 @@
 		  (when texpr
 		    (setf (type-value act) texpr)
 		    (push 'type (types (expr act))))))
-      (application (with-no-type-errors
-		    (typecheck* (expr act) nil nil nil))
-		   (cond ((and (zerop (parens (expr act)))
-			       (typep (operator (expr act)) 'name))
-			  (with-no-type-errors
-			   (let* ((tn (mk-type-name (operator (expr act))))
-				  (args (arguments (expr act)))
-				  (tval (typecheck*
-					 (make-instance 'type-application
-					   'type tn
-					   'parameters args)
-					 nil nil nil)))
-			     (setf (type-value act) tval))))
-			 ((and (plusp (parens (expr act)))
-			       (some #'(lambda (ty)
-					 (let ((sty (find-supertype ty)))
-					   (and (funtype? sty)
-						(tc-eq (find-supertype
-							(range sty))
-						       *boolean*))))
-				     (ptypes (expr act))))
-			  (setf (type-value act)
-				(typecheck* (make-instance 'expr-as-type
-					      'expr (expr act))
-					    nil nil nil))))
-		   (unless (or (ptypes (expr act))
-			       (type-value act))
-		     (type-error (expr act) "Actual does not resolve")))
+      (application
+       (multiple-value-bind (ex error obj)
+	   (let ((*typechecking-actual* t))
+	     (with-no-type-errors (typecheck* (expr act) nil nil nil)))
+	 (cond ((and (zerop (parens (expr act)))
+		     (typep (operator (expr act)) 'name))
+		(with-no-type-errors
+		 (let* ((tn (mk-type-name (operator (expr act))))
+			(args (arguments (expr act)))
+			(*typechecking-actual* t)
+			(tval (typecheck*
+			       (make-instance 'type-application
+				 'type tn
+				 'parameters args)
+			       nil nil nil)))
+		   (setf (type-value act) tval))))
+	       ((and (plusp (parens (expr act)))
+		     (some #'(lambda (ty)
+			       (let ((sty (find-supertype ty)))
+				 (and (funtype? sty)
+				      (tc-eq (find-supertype (range sty))
+					     *boolean*))))
+			   (ptypes (expr act))))
+		(setf (type-value act)
+		      (typecheck* (make-instance 'expr-as-type
+				    'expr (expr act))
+				  nil nil nil))))
+	 (unless (or (ptypes (expr act))
+		     (type-value act))
+	   (type-error (or obj (expr act)) error))))
       ;; with-no-type-errors not needed here;
       ;; the expr typechecks iff the expr-as-type does.
       (expr (typecheck* (expr act) nil nil nil)
@@ -700,6 +710,27 @@
     (and bind
 	 (matching-actual-expr* (cdr bind) e2 nil))))
 
+(defmethod matching-actual-expr* ((e1 injection-application)
+				  (e2 injection-application)
+				  bindings)
+  (or (eq e1 e2)
+      (with-slots ((id1 index) (arg1 argument)) e1
+	(with-slots ((id2 index) (arg2 argument)) e2
+	  (and (= id1 id2)
+	       (matching-actual-expr* arg1 arg2 bindings))))))
+
+(defmethod matching-actual-expr* ((e1 injection-application) (e2 name-expr)
+				  bindings)
+  (let ((bind (assoc e1 bindings :test #'tc-eq)))
+    (and bind
+	 (matching-actual-expr* (cdr bind) e2 nil))))
+
+(defmethod matching-actual-expr* ((e1 name-expr) (e2 injection-application)
+				  bindings)
+  (let ((bind (assoc e1 bindings :test #'tc-eq)))
+    (and bind
+	 (matching-actual-expr* (cdr bind) e2 nil))))
+
 (defmethod matching-actual-expr* ((e1 application) (e2 field-application)
 				  bindings)
   (with-slots ((op1 operator) (arg1 argument)) e1
@@ -833,6 +864,13 @@
 (defmethod matching-actual-expr* ((n1 modname) (n2 name) bindings)
   (declare (ignore bindings))
   nil)
+
+(defmethod matching-actual-expr* ((n1 name-expr) (n2 name-expr) bindings)
+  (some #'(lambda (ty1)
+	    (some #'(lambda (ty2)
+		      (compatible? ty1 ty2))
+		  (remove-if #'symbolp (ptypes n2))))
+	(remove-if #'symbolp (ptypes n1))))
 
 (defmethod matching-actual-expr* ((n1 name) (n2 name) bindings)
   (with-slots ((res1 resolutions)) n1
@@ -1127,22 +1165,30 @@
 
 (defun compatible-args*? (decl args types argnum)
   (or (null args)
-      (if (some #'(lambda (ptype)
-		    (compatible-args**? ptype (car types)))
-		(ptypes (car args)))
-	  (compatible-args*? decl (cdr args) (cdr types) (1+ argnum))
-	  (progn (push (list :arg-mismatch decl argnum args types)
-		       *resolve-error-info*)
-		 nil))))
+      (cond ((and (injection-application? (car args))
+		  (cotupletype? (find-supertype (car types))))
+	     (let ((intype (nth (1- (index (car args)))
+				(types (find-supertype (car types))))))
+	       (when (and intype
+			  (some #'(lambda (ptype)
+				    (compatible-args**? ptype intype))
+				(ptypes (argument (car args)))))
+		 (pushnew (find-supertype (car types)) (types (car args))
+			  :test #'tc-eq)
+		 t)))
+	    ((some #'(lambda (ptype)
+		       (compatible-args**? ptype (car types)))
+		   (ptypes (car args)))
+	     (compatible-args*? decl (cdr args) (cdr types) (1+ argnum)))
+	    (t (push (list :arg-mismatch decl argnum args types)
+		     *resolve-error-info*)
+	       nil))))
 
 (defun compatible-args**? (atype etype)
-  (if (and (recognizer? atype) (recognizer? etype)
-	   (fully-instantiated? atype) (fully-instantiated? etype))
-      (tc-eq atype
-	     (if (typep etype 'dep-binding)
-		 (type etype)
-		 etype))
-      (compatible? atype etype)))
+  (and (compatible? atype etype)
+       (or (not (fully-instantiated? atype))
+	   (not (fully-instantiated? etype))
+	   (not (disjoint-types? atype etype)))))
 
 (defun disallowed-free-variable? (decl)
   (and (typep decl 'var-decl)
@@ -1368,7 +1414,21 @@
     (or reses
 	(resolution-error name 'expr-or-formula nil nil))))
 
+(defun definition-resolutions (name)
+  (let* ((*resolve-error-info* nil)
+	 (reses (remove-if-not #'(lambda (r)
+				   (and (const-decl? (declaration r))
+					(definition (declaration r))))
+		  (resolve name 'expr nil))))
+    (or reses
+	(resolution-error name 'expr nil nil))))
 
+(defun formula-resolutions (name)
+  (let* ((*resolve-error-info* nil)
+	 (reses (resolve name 'formula nil)))
+    (or reses
+	(resolution-error name 'formula nil nil))))
+	  
 
 ;;; resolve-theory-name is called by the prover.  It returns a list of
 ;;; instances of the specified theory that are visible in the current
@@ -1811,7 +1871,8 @@
 		      (acons (domain ctype) nexpr nil))
 		    (range ctype)))
 	 (cconv (copy conv)))
-    (change-name-expr-class-if-needed (declaration conv) cconv)
+    (when (name-expr? conv)
+      (change-name-expr-class-if-needed (declaration conv) cconv))
     (copy rtype 'from-conversion cconv)))
 
 
@@ -1832,19 +1893,23 @@
 	    (values
 	     name
 	     (format nil
-		 "~%Expecting a~a~%No resolution for ~a~
+		 "~v%Expecting a~a~%No resolution for ~a~
                   ~@[ with arguments of possible types: ~:{~%  ~<~a~3i : ~{~_ ~a~^,~}~>~}~]~
                   ~@[~% Check the actual parameters; the following ~
                         instances are visible,~% but don't match the ~
                         given actuals:~%   ~{~a~^, ~}~]
                   ~:[~;~% There is a variable declaration with this name,~% ~
                           but free variables are not allowed here.~]"
-	       (case kind
-		 (expr "n expression")
-		 (type " type")
-		 (formula " formula")
-		 (expr-or-formula " formula or constant")
-		 (t kind))
+	       (if *in-checker* 1 0)
+	       (if *typechecking-actual*
+		   "n expression or type"
+		   (case kind
+		     (expr "n expression")
+		     (type " type")
+		     (formula " formula")
+		     (expr-or-formula " formula or constant")
+		     (expr-or-type "n expression or type")
+		     (t kind)))
 	       name
 	       (mapcar #'(lambda (a) (list a (full-name (ptypes a) 1)))
 		 arguments)
@@ -1867,10 +1932,17 @@
 		 (*no-conversions-allowed* t))
 	    (untypecheck-theory appl)
 	    (typecheck appl))
+	  (progn
+	    (when (check-if-k-conversion-would-work name arguments)
+	      (setq error
+		    (format nil
+			"~a~%Enabling K_conversion before this declaration might help"
+		      error)))
 	  (if type-error?
-	      (type-error obj error)
+	      (let ((*already-checked-for-k-conversion* t))
+		  (type-error obj error))
 	      (progn (set-strategy-errors error)
-		     nil))))))
+		     nil)))))))
 
 (defun resolution-args-error (infolist name arguments)
   (let ((info (car (best-guess-resolution-error infolist arguments))))
