@@ -1230,6 +1230,10 @@
     (let ((tval (substit te (pairlis (car (formals (declaration (type type))))
 				     (parameters type)))))
       (setf (print-type tval) type)
+      (when (or (nonempty-type-decl? (declaration (type type)))
+		(nonempty? type))
+	(setf (nonempty? tval) t)
+	(setf (nonempty? type) t))
       tval)))
 
 (defun make-formals-type-app (formals)
