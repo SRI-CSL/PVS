@@ -232,7 +232,7 @@ unignored slots, saved-slots, and unsaved-slots.")
 				`(when ,(car a)
 				   (let ((*restore-object-parent-slot*
 					  ',(car a)))
-				     (restore-object* (,(car a) obj)))))
+				     (restore-object* ,(car a)))))
 		      restored-slots)
 		  obj)))
 	   :stream out :level nil :length nil :pretty t)
