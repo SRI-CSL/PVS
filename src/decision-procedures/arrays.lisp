@@ -34,6 +34,9 @@
 	 (norm-equality (sigma equality cong-state)))
     norm-equality))
 
+(defun expr-< (term1 term2)
+  (arith-term-< term1 term2))
+
 (defun sigapplyupdate (term cong-state)
   (let* ((update (applyupdate-array term))
 	 (apply-index (applyupdate-index term))
@@ -46,3 +49,29 @@
 	    ((false-p update-index_eq_apply-index)
 	     (sigma (mk-term (list array1 apply-index)) cong-state))
 	    (t term)))))
+
+(defun sigupdate (term cong-state)
+  (let ((array0 (update-array term))
+        (index0 (update-index term)))
+    (cond ((update-p array0)
+	   (let* ((array1 (update-array array0))
+		  (index1 (update-index array0))
+		  (val1  (update-value array0))
+		  (index1_eq_index0 (test-equality index1 index0 cong-state)))
+	     (cond ((true-p index1_eq_index0)
+		    (mk-update array1 index0 (update-value term)))
+		   ((false-p index1_eq_index0)
+		    ;; DAC: 3-18-91
+		    ;; when index1 > index0 have to call sigupdate recursively
+		    ;; so that if there is an index' in array1
+		    ;; s.t. index0 = index', that value at index'
+		    ;; will be removed.
+		    (if (expr-< index1 index0)
+			term
+			(mk-update
+			 (sigupdate
+			  (mk-update array1 index0 (update-value term))
+			  cong-state)
+			 index1 val1)))
+		   (t term))))
+	  (t term))))
