@@ -1588,6 +1588,10 @@
 		      (make-updates updates ps)
 		      ps)
 		     ((eq signal '?);;subgoals generated
+		      (make-updates updates ps)
+		      ;;(NSH:5/1/99)make-updates should be above
+		      ;;make-subgoal-proofstates
+		      ;;so that the proof-dependent-decls can be computed.
 		      (let* ((*tccforms* (remove-duplicates *tccforms*
 					   :test #'tc-eq
 					   :key #'tccinfo-formula))
@@ -1680,7 +1684,6 @@
 			      (remaining-subgoals ps) subgoal-proofstates)
 			(unless (typep ps 'top-proofstate)
 			  (setf (strategy ps) nil))
-			(make-updates updates ps)
 			ps))
 		     ((eq signal 'X)
 		      (when (memq name *ruletrace*)
@@ -1863,7 +1866,10 @@
 ;  (when (and (tcc-proofstate? proofstate)
 ;	     (not (tcc-sequent? (current-goal proofstate))))
 ;    (break "bad ps"))
-  (let ((allsubgoals (append subgoals tcc-subgoals)))
+  (let ((allsubgoals (append subgoals tcc-subgoals))
+	(proof-dependent-decls
+	 (append (dependent-decls proofstate)
+		 (proof-dependent-decls proofstate))))
 ;;    (cond ((consp allsubgoals)))
     (loop for goal in allsubgoals
 	  as goalnum from 1
@@ -1901,6 +1907,7 @@
 			(format nil "~a.~a" (label proofstate)
 				goalnum))
 		    'subgoalnum (1- goalnum)
+		    'proof-dependent-decls proof-dependent-decls
 		    'dependent-decls (dependent-decls proofstate)
 		    ;;d-d can be NIL but inheriting from parent is okay.
 		    'alists (copy (alists proofstate))
