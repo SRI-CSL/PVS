@@ -191,20 +191,31 @@
 ;;; ICS interface
 
 (defmethod dpi-init* ((dp (eql 'ics)) prove-body)
-  (let* ()
+  (let* ((*pvs-to-ics-hash* (init-if-rec *pvs-to-ics-hash*))
+	 (*ics-to-pvs-hash* (init-if-rec *ics-to-pvs-hash*)))
     (funcall prove-body)))
 
 (defmethod dpi-reset* ((dp (eql 'ics)))
-  )
+  (shostak-init))
 
 (defmethod dpi-empty-state* ((dp (eql 'ics)))
-  )
+  (ics_empty))
 
 (defmethod dpi-process* ((dp (eql 'ics)) pvs-expr state)
-  )
+  (let* ((ics-expr (translate-to-ics pvs-expr))
+	 (ics-value (ics_process state ics-expr))
+	 (new-state nil))
+    ;;(format t "~%Processing ~a~%" pvs-expr)
+    ;;(ics_pp_state state)
+    ;;(ics_flush)
+    (cond ((not (zerop (ics_is_consistent ics-value)))
+	   (values *true* (ics_d_consistent ics-value)))
+	  ((not (zerop (ics_is_redundant ics-value)))
+	   (values nil state))
+	  (t (values *false* state)))))
 
 (defmethod dpi-valid?* ((dp (eql 'ics)) state pvs-expr)
-  )
+  (not (zerop (ics_is_valid state (ics_process state ics-expr)))))
 
 (defmethod dpi-push-state* ((dp (eql 'ics)) state)
   state)
@@ -213,7 +224,7 @@
   state)
 
 (defmethod dpi-copy-state* ((dp (eql 'ics)) state)
-  )
+  state)
 
 (defmethod dpi-restore-state* ((dp (eql 'ics)) state)
   state)
