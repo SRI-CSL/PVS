@@ -1641,3 +1641,15 @@ context."
 ;  (function (lambda ()
 ;	      (ensure-pvs-wish)
 ;	      (tcl-eval "pvs-ready"))))
+
+(defun pvs-garbage-collect ()
+  "Forces PVS to perform a global garbage collection.
+With an argument, only performs a scavenge and not a full gc."
+  (interactive)
+  (message "Forcing garbage collection")
+  (pvs-send-and-wait
+   (format "(excl:gc %s)" (and current-prefix-arg t))
+   nil nil 'dont-care)
+  (message "Garbage collection completed"))
+
+
