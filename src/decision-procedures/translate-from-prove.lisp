@@ -17,11 +17,11 @@
 (defvar *translate-from-prove-hash* (make-hash-table :test #'equal))
 
 (defmethod translate-to-prove :around (obj)
-  (let ((hashed-value (pvs-gethash obj *translate-to-prove-hash*)))
+  (let ((hashed-value (gethash obj *translate-to-prove-hash*)))
     (or hashed-value
 	(let ((result (call-next-method)))
 	  (unless (or *bound-variables* *bindings*)
-	    (setf (pvs-gethash obj *translate-to-prove-hash*) result))
+	    (setf (gethash obj *translate-to-prove-hash*) result))
 	  (setf (gethash result *translate-from-prove-hash*) obj)
 	  result))))
 
@@ -38,7 +38,7 @@
   ;(when (equal (id expr) '|stall_issue|) (break))
   (cond ((constant? expr) ;;NSH(2.16.94): changed to deal with Ricky's
 	                  ;;soundness bug where actuals are ignored.
-	 (let* ((id-hash (pvs-gethash (normalize-name-expr-actuals expr)
+	 (let* ((id-hash (gethash (normalize-name-expr-actuals expr)
 				      *translate-id-hash*))
 		(newconst (or id-hash
 			      (when (true-p expr) 'TRUE)
@@ -53,7 +53,7 @@
 	     (add-to-reverse-prover-name (car newconst) expr)
 	     (add-to-pvs-typealist (car newconst) expr))
 	   (unless id-hash
-	     (setf (pvs-gethash expr *translate-id-hash*)
+	     (setf (gethash expr *translate-id-hash*)
 		   newconst)
 	     ;;(format t "~%adding ~a to typealist" (car newconst))
 	     (when (consp newconst)
