@@ -2212,7 +2212,7 @@ real_props: THEORY
 
   % Order lemmas for >=
 
-  strict_ge : LEMMA total_order?(>=)
+  total_ge : LEMMA total_order?(>=)
 
   dich_ge: LEMMA x >= y OR y >= x
 
