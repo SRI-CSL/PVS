@@ -378,7 +378,6 @@ useful if more than one specification is to be included in one document")
       (let ((*report-mode* terse?)
 	    (*current-context* (context *last-proof*))
 	    (*current-theory* (module (declaration *last-proof*)))
-	    (*latex-unaries* nil)
 	    (*tex-mode* t)
 	    (texpath (make-pathname :defaults (working-directory)
 				    :name (pathname-name texfile)
@@ -589,19 +588,17 @@ useful if more than one specification is to be included in one document")
 #+allegro
 (defun run-latex-viewer (latex-viewer)
   (if latex-viewer
-      (if t ;(find-file-in-path latex-viewer)
-	  (let ((status nil)
-		(tmp-file (funcall *pvs-tmp-file*)))
-	    (with-open-file (out tmp-file
-				 :direction :output :if-exists :supersede)
-	      (setq status
-		    (excl:run-shell-command
-		     (format nil "~a pvs-files" latex-viewer)
-		     :output out
-		     :error-output :output
-		     :wait nil)))
-	    (delete-file tmp-file))
-	  (pvs-message "Cannot find ~a in your path." latex-viewer))
+      (let ((status nil)
+	    (tmp-file (funcall *pvs-tmp-file*)))
+	(with-open-file (out tmp-file
+			     :direction :output :if-exists :supersede)
+	  (setq status
+		(excl:run-shell-command
+		 (format nil "~a pvs-files" latex-viewer)
+		 :output out
+		 :error-output :output
+		 :wait nil)))
+	(delete-file tmp-file))
       (pvs-message "No viewer provided")))
 
 #+allegro

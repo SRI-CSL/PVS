@@ -15,21 +15,6 @@
 
 (defvar *to-emacs* nil)
 (defvar *output-to-emacs* "")
-(in-package 'ilisp)
-(defun ilisp-restore ()
-  "Restore the old result history."
-  (declare (special / // /// + ++ +++ * ** - ilisp::*ilisp-old-result*))
-  (setq // (pop ilisp::*ilisp-old-result*)
-	** (first //)
-	/  (pop ilisp::*ilisp-old-result*)
-	*  (first /)
-	++  (pop ilisp::*ilisp-old-result*)
-	+   (pop ilisp::*ilisp-old-result*)
-        -   (pop ilisp::*ilisp-old-result*))
-  (when pvs::*to-emacs* 
-    (pop ilisp::*ilisp-old-result*))
-  (values-list (pop ilisp::*ilisp-old-result*)))
-(in-package 'pvs)
 
 #-(or akcl harlequin-common-lisp)
 (defmacro pvs-errors (form)
@@ -382,12 +367,12 @@
   (if *to-emacs*
       (format t ":pvs-bel :end-pvs-bel~%")))
 
-#-akcl
-(define-condition pvs-error (error)
-  (place)
-  (:report (lambda (condition stream)
-	     (format stream "There is a PVS error at ~a"
-		     (pvs-error-place condition)))))
+; #-akcl
+; (define-condition pvs-error (error)
+;   (place)
+;   (:report (lambda (condition stream)
+; 	     (format stream "There is a PVS error at ~a"
+; 		     (pvs-error-place condition)))))
 
 (defun protect-emacs-output (string)
   (if (stringp string)

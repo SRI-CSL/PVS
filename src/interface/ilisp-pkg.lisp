@@ -20,7 +20,7 @@
 ;;; ILISP is freely redistributable under the terms found in the file
 ;;; COPYING.
 
-
+(in-package "PVS")
 
 ;;; CLtL2 defpackage definition for ILISP.
 ;;;

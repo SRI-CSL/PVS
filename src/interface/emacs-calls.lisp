@@ -6,6 +6,8 @@
 ; call functions in the PVS lisp image.
 ;
 
+(in-package "PVS")
+
 #-runtime
 (declaim (special *dont-write-object-files* *pvs-verbose* *latex-linelength*
 		  *dump-sequents-to-file* *number-of-proof-backups*))
@@ -43,7 +45,7 @@
   (remove-prelude-library nil)
   (prelude-libraries)
   (exit-pvs)
-  (let ((foo *pvs-version*)) nil)
+  (let ((foo *pvs-version*)) (declare (ignore foo))  nil)
   (get-patch-version)
   (when (fboundp 'get-patch-test-version)
     (get-patch-test-version))
@@ -51,14 +53,14 @@
     (get-patch-exp-version))
   (lisp-implementation-type)
   (lisp-implementation-version)
-  (let ((foo *pvs-version*)) nil)
+  (let ((foo *pvs-version*)) (declare (ignore foo)) nil)
   (status-theory nil)
   (status-pvs-file nil)
   (status-importchain nil)
   (status-importbychain nil)
   (proof-status-at nil nil nil)
-  (status-proof-theory nil nil)
-  (status-proof-pvs-file nil nil)
+  (status-proof-theory nil)
+  (status-proof-pvs-file nil)
   (proofchain-status-at nil nil nil)
   (status-proofchain-theory nil)
   (status-proofchain-pvs-file nil)
@@ -66,14 +68,14 @@
   (load-pvs-patches)
   (change-declaration-name nil nil nil)
   (x-module-hierarchy nil)
-  (let ((foo *dont-write-object-files*)) nil)
+  (let ((foo *dont-write-object-files*)) (declare (ignore foo)) nil)
   (typecheck-formula-decl nil nil)
   (prove-formula-decl nil nil nil)  ;; ilisp-send
   (get-prove-formula-proof))
 
 #-runtime
 (defun pvs-ilisp-el ()
-  (let ((foo *default-char-width*)) nil))
+  (let ((foo *default-char-width*)) (declare (ignore foo)) nil))
 
 #-runtime
 (defun pvs-file-list-el ()
@@ -83,11 +85,12 @@
 
 #-runtime
 (defun pvs-load-el ()
-  (in-package "PVS")
-  (let ((foo *pvs-path*)) nil)
+  (let ((foo *pvs-path*)) (declare (ignore foo)) nil)
   (pvs-init)
   (let ((foo *noninteractive*)
-	(bar *pvs-varbose*)) nil))
+	(bar *pvs-verbose*))
+    (declare (ignore foo bar))
+    nil))
 		 
 #-runtime
 (defun pvs-print-el ()
@@ -106,7 +109,7 @@
   (when *last-proof*
     (label *last-proof*))
   (latex-proof nil nil)
-  (let ((foo *latex-linelength*)) nil))
+  (let ((foo *latex-linelength*)) (declare (ignore foo)) nil))
 
 #-runtime
 (defun pvs-prover-el ()
@@ -122,10 +125,10 @@
   (prove-proofchain nil nil nil nil)
   (typecheck-file nil nil nil nil nil)
   (typechecked? nil)
-  (let ((foo *in-checker*)) nil)
+  (let ((foo *in-checker*)) (declare (ignore foo)) nil)
   (edit-proof-at nil nil nil nil nil nil)
   (prove-file-at nil nil nil nil nil nil nil nil) ;; ilisp-send
-  (let ((foo *in-checker*)) nil)
+  (let ((foo *in-checker*)) (declare (ignore foo)) nil)
   (remove-proof-at nil nil nil)
   (revert-proof-at nil nil nil)
   (install-pvs-proof-file nil)
@@ -149,7 +152,9 @@
   (let ((foo *rewrite-print-depth*)
 	(bar *rewrite-print-length*)
 	(taz *prover-print-depth*)
-	(baz *prover-print-length*)) nil)
+	(baz *prover-print-length*))
+    (declare (ignore foo bar taz baz))
+    nil)
   (typecheck-file nil nil nil nil nil)
   (typechecked? nil)
   (prove-next-unproved-formula nil nil nil nil nil nil)  ;; ilisp-send
@@ -173,7 +178,7 @@
   (prove-pvs-theories nil nil)
   (typecheck-file nil nil nil nil nil)
   (typechecked? nil)
-  (let ((foo *dump-sequents-to-file*)) nil)
+  (let ((foo *dump-sequents-to-file*)) (declare (ignore foo)) nil)
   (display-proofs-formula-at nil nil nil) 
   (display-proofs-theory nil)
   (display-proofs-pvs-file nil)
@@ -186,7 +191,7 @@
   (proofs-edit-proof nil)
   (prove-with-checkpoint nil) ;; ilisp-send
   (install-proof nil nil nil nil nil nil)  
-  (let ((foo *number-of-proof-backups*)) nil)
+  (let ((foo *number-of-proof-backups*)) (declare (ignore foo)) nil)
   (prove-proof-at nil nil nil)  ;; ilisp-send
   (prove-file-at nil nil nil nil nil nil nil nil) ;; ilisp-send
   )
@@ -206,7 +211,7 @@
   (collect-file-usings nil)
   (get-pvs-file-dependedcies nil)
   (get-using-chain nil)
-  (let ((foo *pvs-verbose*)) nil)
+  (let ((foo *pvs-verbose*)) (declare (ignore foo)) nil)
   (pvs-emacs-eval "(setq pvs-waiting nil)")
   (list-lisp-entities-of-file nil nil)
   (print-duplicate-lisp-entities nil nil nil))
