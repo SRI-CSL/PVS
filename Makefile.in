@@ -3,11 +3,11 @@
 ## Author          : Sam Owre
 ## Created On      : Wed Dec 30 19:29:47 1998
 ## Last Modified By: Sam Owre
-## Last Modified On: Sun Jan  3 03:00:40 1999
-## Update Count    : 21
-## Status          : OK
-##   Copyright (C) 2002 SRI International
+## Last Modified On: Thu May 20 22:26:02 2004
+## Update Count    : 23
+## Status          : Stable
 ###############################################################################
+##   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 ifneq (,)
 This makefile requires GNU Make.
 endif
@@ -23,8 +23,7 @@ TAR = @TAR@
 TARFLAGS = -cvohz --mode="u+rw" --atime-preserve --exclude=CVS
 
 PLATFORM := $(shell $(PVSPATH)bin/pvs-platform)
-ICSPLATFORM := $(shell @ICSPATH@/config.guess)
-export PLATFORM ICSPLATFORM
+export PLATFORM
 
 SYSTEM ?= pvs
 
@@ -131,10 +130,23 @@ pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
 
 ff-files = src/utils/$(PLATFORM)/file_utils.so \
            BDD/$(PLATFORM)/mu.so \
-           src/WS1S/$(PLATFORM)/ws1s.so	\
+           src/WS1S/$(PLATFORM)/ws1s.so
+
+ifneq (@ICSPATH@,)
+ff-files = $(ff-files) \
            src/ics-interface/$(PLATFORM)/ics_lisp.so
 
 libics-file = @ICSLIB@/libics.so
+
+ics-lisp = src/ics-interface/ics-pvs.lisp \
+           src/ics-interface/ics-strategies.lisp
+
+ics-lisp-file = @ICSOBJ@/ics.lisp
+
+ics-c = src/ics-interface/ics_lisp_error.c
+ics-lisp := $(patsubst %,$(PVSPATH)%,$(ics-lisp))
+ics-c := $(patsubst %,$(PVSPATH)%,$(ics-c))
+endif
 
 ess = ess/dist-ess.lisp \
 	ess/init-load.lisp \
@@ -273,6 +285,7 @@ pvs-src = src/closopt.lisp \
 	  src/check-for-tccs.lisp \
           src/tcexprs.lisp \
 	  src/tcdecls.lisp \
+	  src/conversions.lisp \
 	  src/judgements.lisp \
 	  src/xref.lisp \
 	  src/occurs-in.lisp \
@@ -336,18 +349,15 @@ inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
                     src/inst-by-unif/gensubsts.lisp \
                     src/inst-by-unif/inst-by-unif.lisp
 
-ics-lisp = src/ics-interface/ics-pvs.lisp \
-           src/ics-interface/ics-strategies.lisp
-
-ics-lisp-file = @ICSOBJ@/ics.lisp
-
-ics-c = src/ics-interface/ics_lisp_error.c
-
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
 	     ${ws1slisp} ${groundevallisp} \
-             ${abstractionlisp} \
+             ${abstractionlisp}
+
+ifneq (@ICSPATH@,)
+lisp-files = ${lisp-files} \
 	     ${ics-lisp} ${ics-lisp-file}
+endif
 
 templatedeps = pvs src/make-allegro-pvs.lisp pvs.system \
                ess/dist-ess.lisp ess/allegro-runtime.lisp
@@ -367,8 +377,6 @@ ws1slisp := $(patsubst %,$(PVSPATH)%,$(ws1slisp))
 abstractionlisp := $(patsubst %,$(PVSPATH)%,$(abstractionlisp))
 groundevallisp := $(patsubst %,$(PVSPATH)%,$(groundevallisp))
 inst-by-unif-lisp := $(patsubst %,$(PVSPATH)%,$(inst-by-unif-lisp))
-ics-lisp := $(patsubst %,$(PVSPATH)%,$(ics-lisp))
-ics-c := $(patsubst %,$(PVSPATH)%,$(ics-c))
 templatedeps := $(patsubst %,$(PVSPATH)%,$(templatedeps))
 endif
 
@@ -486,6 +494,7 @@ makews1s :
 	(cd $(PVSPATH)src/WS1S ; rm -rf mona ; ln -s mona-1.4 mona);\
 	$(MAKE) -C $(PVSPATH)src/WS1S/$(PLATFORM)
 
+ifneq (@ICSPATH@,)
 $(PVSPATH)src/ics-interface/$(PLATFORM)/ics_lisp.so : $(PVSPATH)src/ics-interface/$(PLATFORM)/ics_lisp_error.o @ICSLIB@/libics.a
 	umask 002; \
 	$(LD) -G -o $@ $< -L@ALLEGRODIR@ -l@ALLEGROLIB@ \
@@ -495,6 +504,7 @@ $(PVSPATH)src/ics-interface/$(PLATFORM)/ics_lisp_error.o : $(PVSPATH)src/ics-int
 	umask 002; \
 	mkdir -p $(PVSPATH)src/ics-interface/$(PLATFORM); \
 	$(CC) $(CFLAGS) -o $@ -c $<
+endif
 
 make-release-notes : 
 	$(MAKE) -C $(PVSPATH)doc/release-notes
