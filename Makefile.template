@@ -114,13 +114,11 @@ ess = ess/dist-ess.lisp \
 pvs-parser-in = src/make-pvs-parser.lisp \
              src/pvs-gr.txt \
              src/ergo-runtime-fixes.lisp \
-             src/ergo-tex-fixes.lisp \
              src/pvs-lang-def.lisp \
              src/pvs-parse-fixes.lisp
 
 pvs-parser-out = src/pvs-lexer.lisp \
              src/pvs-parser.lisp \
-             src/pvs-unparser.lisp \
              src/pvs-sorts.lisp
 
 ground-prover = src/ground-prover/prmacros.lisp \
@@ -146,7 +144,6 @@ pvs-src = src/store-object.lisp \
           src/optimize.lisp \
 	  src/makes.lisp \
 	  src/parse.lisp \
-	  src/unparse.lisp \
 	  src/pp.lisp \
           src/print-object.lisp \
 	  src/equalities.lisp \
