@@ -353,7 +353,7 @@
 				 (mk-modname-no-tccs (id dth) nacts)))
 			 (*generate-tccs* 'none))
 		    (when dthi
-		      (set-type-actuals dthi)
+		      (set-type-actuals dthi dth)
 		      #+pvsdebug (assert (fully-typed? dthi))
 		      (when (compatible-arguments? decl dthi args
 						   (current-theory))
@@ -1226,7 +1226,8 @@
 		 (let* ((*generate-tccs* 'none)
 			(*smp-include-actuals* t)
 			(*smp-dont-cache* t)
-			(domtypes (subst-mod-params dtypes modinst)))
+			(domtypes (subst-mod-params
+				   dtypes modinst (module decl))))
 		   (assert (fully-instantiated? domtypes))
 		   ;;(set-type-actuals modinst)
 		   (when (compatible-args? decl args domtypes)
@@ -1420,13 +1421,18 @@
 
 ;;; If both the generic and several (2 or more) instantiated resolutions
 ;;; are available, throw away the instantiated ones.
-(defun filter-nonlocal-module-instances (res &optional freses)
+(defun filter-nonlocal-module-instances (res)
+  (if *get-all-resolutions*
+      res
+      (filter-nonlocal-module-instances1 res)))
+
+(defun filter-nonlocal-module-instances1 (res &optional freses)
   (if (null res)
       freses
       (multiple-value-bind (mreses rest)
 	  (split-on #'(lambda (r) (same-declaration r (car res)))
 		    res)
-	(filter-nonlocal-module-instances
+	(filter-nonlocal-module-instances1
 	 rest (nconc (filter-nonlocal-module-instances* mreses) freses)))))
 
 (defun filter-nonlocal-module-instances* (mreses)
@@ -1471,7 +1477,7 @@
       (nreverse result)
       (multiple-value-bind (creses nreses)
 	  (split-on #'(lambda (res)
-			(compatible? (type res) (type (car reses))))
+			(strict-compatible? (type res) (type (car reses))))
 		    reses)
 	(filter-equality-resolutions*
 	 nreses
