@@ -110,7 +110,8 @@
 	     (not *in-evaluator*))
     (let ((warning (format nil "~?" ctl args)))
       (if (warnings (current-theory))
-	  (nconc (warnings (current-theory)) (list warning))
+	  (unless (member warning (warnings (current-theory)) :test #'string=)
+	    (nconc (warnings (current-theory)) (list warning)))
 	  (setf (warnings (current-theory)) (list warning)))))
   nil)
 
