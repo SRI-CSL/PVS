@@ -5,10 +5,12 @@
 # Last Modified By: Sam Owre
 # Last Modified On: Thu May  4 19:04:20 1995
 # Update Count    : 14
-# Status          : Unknown, Use with caution!
+# Status          : Alpha test
 
 
 wm withdraw .
+
+set mono 0
 
 proc emacs-eval {arg} {
     puts stdout ":pvs-eval $arg :end-pvs-eval"
@@ -120,7 +122,7 @@ proc dag-add-item {win tag succs linetags} {
 	set lineid \
 	    [$win create line 0 0 0 0 \
 		 -tags "$s dagline$tag,$s dagline.from$tag dagline.to$s dagline $linetags" \
-		 -fill [get-option foreground] \
+		 -fill [get-option displayforeground] \
 		 -width 0]
 	set dag(linefrom,$lineid) $tag
 	set dag(lineto,$lineid) $s
@@ -348,7 +350,7 @@ proc kids {path nkids} {
 }
 
 proc delete-proof-subtree {name theory relpath} {
-    set proofwin .proof.$theory-$name.fr.c
+    set proofwin .proof.u_$theory-$name-i.fr.c
     set path $theory-$name-$relpath
     catch {move-dag-item $proofwin $path 0 0}
 
@@ -377,10 +379,14 @@ proc proof-sequent {name theory path seqlabel sequent} {
     set ${fullpath}(sequent) $sequent
 }
 
-proc proof-done {name theory path} {
+proc proof-done {name theory path interactive} {
     set fullpath $theory-$name-$path
     global $fullpath
-    set pwin .proof.$theory-$name.fr.c
+    if {$interactive} {
+	set pwin .proof.u_$theory-$name-i.fr.c
+    } else {
+	set pwin .proof.u_$theory-$name.fr.c
+    }
     set ${fullpath}(done) 1
 
     my-foreground $pwin $fullpath [get-option doneColor]
@@ -392,18 +398,22 @@ proc proof-tcc {path} {
     set ${path}(tcc) 1
 }
 
-proc proof-show {name theory path} {
+proc proof-show {name theory path interactive} {
     global env
     set top $theory-$name-top
     set fullpath $theory-$name-$path
     global $fullpath
-    set proofwin .proof.$theory-$name.fr.c
+    if {$interactive} {
+	set proofwin .proof.u_$theory-$name-i.fr.c
+    } else {
+	set proofwin .proof.u_$theory-$name.fr.c
+    }
     set seq \
 	[$proofwin create bitmap 0 0 \
 	     -bitmap @$env(PVSPATH)/wish/sequent.xbm \
 	     -tags "$fullpath.sequent $fullpath $fullpath.real sequent [ancestors $fullpath $top .desc]" \
 	     -anchor n \
-	     -foreground [get-option foreground]]
+	     -foreground [get-option displayforeground]]
     if [info exists ${fullpath}(rule)] {
 	set bbox [$proofwin bbox $seq]
 	set seqbot [lindex $bbox 3]
@@ -411,7 +421,7 @@ proc proof-show {name theory path} {
 	# I don't know why it happens, but sometimes get-option returns {}
 	# here.  get-option works fine after this function.
 	if {$ysep == {}} {
-	    set ysep 20
+	    set ysep 5
 	}
 	set linebot [expr $seqbot+$ysep]
 	set rule [set ${fullpath}(rule)]
@@ -430,13 +440,15 @@ proc proof-show {name theory path} {
 	    }
 	}
 	set ${fullpath}(rule_abbr) $rule
+	set anc [ancestors $fullpath $top .desc]
 	$proofwin create line 0 $seqbot 0 $linebot \
-	    -tags "$fullpath.line $fullpath $fullpath.real [ancestors $fullpath $top .desc]" \
-	    -fill [get-option foreground]
+	    -tags "$fullpath.line $fullpath $fullpath.real $anc" \
+	    -fill [get-option displayforeground]
 	$proofwin create text 0 $linebot -text $rule \
-	    -tags "$fullpath.rule $fullpath $fullpath.real rule [ancestors $fullpath $top .desc]" \
+	    -font [get-option displayfont] \
+	    -tags "$fullpath.rule $fullpath $fullpath.real rule $anc" \
 	    -anchor n \
-	    -fill [get-option foreground] -stipple $rulebitmap
+	    -fill [get-option displayforeground] -stipple $rulebitmap
     }
 
     dag-add-item $proofwin $fullpath [kids $fullpath [set ${fullpath}(kids)]] [ancestors $fullpath $top .desc]
@@ -582,13 +594,13 @@ proc show-sequent {proofwin top} {
 	$seqwin.fr.text config -yscrollcommand "$seqwin.fr.s set"
 	pack $seqwin.fr.s -fill y -side right
 	wm minsize $seqwin 80 2
-	wm maxsize $seqwin 80 $height
+	wm maxsize $seqwin 2000 2000
 	if {$height>[get-option maxHeight]} {
 	    set height [get-option maxHeight]
 	}
     } else {
 	wm minsize $seqwin 80 $height
-	wm maxsize $seqwin 80 $height
+	wm maxsize $seqwin 2000 2000
     }
     pack $seqwin.fr.text -expand yes -fill both
     button $seqwin.dismiss -text Dismiss -bd 2 -command "destroy .sequent$label"
@@ -679,7 +691,7 @@ proc update-color {proofwin path tag} {
 	return
     }
     
-    my-foreground $proofwin $tag [get-option foreground]
+    my-foreground $proofwin $tag [get-option displayforeground]
 }
 
 
@@ -691,14 +703,19 @@ proc my-config {win type tag opt val} {
     }
 }
 
-proc layout-proof {name theory} {
-    set proofwin .proof.$theory-$name.fr.c
+proc layout-proof {name theory interactive} {
+    if {$interactive} {
+	set proofwin .proof.u_$theory-$name-i.fr.c
+    } else {
+	set proofwin .proof.u_$theory-$name.fr.c
+    }
     set top $theory-$name-top
     tree-layout $proofwin $top
     canvas-set-scroll $proofwin
 }
 
 proc canvas-set-scroll {win {recenter 0}} {
+    global tk_version
     set allbbox [$win bbox all]
     set allbbox [lreplace $allbbox 1 1 [expr [lindex $allbbox 1]-10]]
     set allbbox [lreplace $allbbox 3 3 [expr [lindex $allbbox 3]+10]]
@@ -708,13 +725,19 @@ proc canvas-set-scroll {win {recenter 0}} {
     set bboxwid [expr [lindex $allbbox 2]-[lindex $allbbox 0]]
     set margin [expr ($winwid-$bboxwid)/2]
     if {$recenter} {
-	$win xview [expr -$margin / [lindex [$win config -scrollincrement] 4]]
+	if {$tk_version >= 4.0} {
+	    $win xview scroll [expr -$margin] units
+	} else {
+	    set den [lindex [$win config -scrollincrement] 4]
+	    $win xview [expr -$margin / $den]
+	}
     }
 }
 
 proc proof-current {name theory relpath} {
+    global tk_version
     global curpath
-    set proofwin .proof.$theory-$name.fr.c
+    set proofwin .proof.u_$theory-$name-i.fr.c
     set ptop $theory-$name-top
     set path $theory-$name-$relpath
 
@@ -741,30 +764,76 @@ proc proof-current {name theory relpath} {
 
 	set hget [$hscroll get]
 	set vget [$vscroll get]
+	if {$tk_version >= 4.0} {
+	    set units [lindex [$proofwin config -xscrollincrement] 4]
+	} else {
+	    set units [lindex [$proofwin config -scrollincrement] 4]
+	}
 
-	set units [lindex [$proofwin config -scrollincrement] 4]
-
+	# allbbox is the size of the entire proof tree
 	set allbbox [lindex [$proofwin config -scrollregion] 4]
 
 	set width [winfo width $proofwin]
 	set height [winfo height $proofwin]
 
-	set left [expr $units*[lindex $hget 2]+[lindex $allbbox 0]]
-	set top [expr $units*[lindex $vget 2]+[lindex $allbbox 1]]
+	if {$tk_version >= 4.0} {
+	    set hdiff [expr [lindex $allbbox 2] - [lindex $allbbox 0]]
+	    set vdiff [expr [lindex $allbbox 3] - [lindex $allbbox 1]]
+	    set left [expr [lindex $hget 0]*$hdiff + [lindex $allbbox 0]]
+	    set top [expr [lindex $vget 0]*$vdiff + [lindex $allbbox 1]]
+	} else {
+	    set left [expr $units*[lindex $hget 2]+[lindex $allbbox 0]]
+	    set top [expr $units*[lindex $vget 2]+[lindex $allbbox 1]]
+	}
 	set right [expr $left+$width]
 	set bottom [expr $top+$height]
 
-	if {[lindex $bbox 3]+10>$bottom} {
-	    $proofwin yview [expr ([lindex $bbox 3]+10-$height-[lindex $allbbox 1])/$units]
-	} elseif {[lindex $bbox 1]-10<$top} {
-	    $proofwin yview [expr ([lindex $bbox 1]-10-[lindex $allbbox 1])/$units]
+	if {$tk_version >= 4.0} {
+	    if {$height >= $vdiff} {
+		$proofwin yview moveto 0
+	    } elseif {[lindex $bbox 3]+10>$top} {
+		set e [expr double([lindex $bbox 3]+10 - [lindex $allbbox 1] - $height)/$vdiff]
+		$proofwin yview moveto $e
+	    } elseif {[lindex $bbox 1]-10<$bottom} {
+		set e [expr double([lindex $bbox 3]+10 - [lindex $allbbox 1] - $height)/$vdiff]
+		$proofwin yview moveto $e
+	    }
+	    if {$width >= $hdiff} {
+		$proofwin xview moveto -0.5
+	    } elseif {[lindex $bbox 2]+10>$right} {
+		set e [expr ([lindex $bbox 2] + 10 - [lindex $allbbox 0] - (.5 * $width))/$hdiff]
+		$proofwin xview moveto $e
+	    } elseif {[lindex $bbox 0]-10<$left} {
+		set e [expr double([lindex $bbox 2]+ 10 - [lindex $allbbox 0] - (.5 * $width))/$hdiff]
+		$proofwin xview moveto $e
+	    }
+	} else {		      
+	    if {[lindex $bbox 3]+10>$bottom} {
+		set e [expr ([lindex $bbox 3]+10-$height-[lindex $allbbox 1])/$units]
+		$proofwin yview $e
+	    } elseif {[lindex $bbox 1]-10<$top} {
+		set e [expr ([lindex $bbox 1]-10-[lindex $allbbox 1])/$units]
+		$proofwin yview $e
+	    }
 	}
 
-	if {[lindex $bbox 2]+10>$right} {
-	    $proofwin xview [expr ([lindex $bbox 2]+10-$width-[lindex $allbbox 0])/$units]
-	} elseif {[lindex $bbox 0]-10<$left} {
-	    $proofwin xview [expr ([lindex $bbox 0]-10-[lindex $allbbox 0])/$units]
-	}				      
+	if {$tk_version >= 4.0} {
+	    if {[lindex $bbox 2]+10>$right} {
+		set e [expr ([lindex $bbox 2] + 10 - [lindex $allbbox 0] - (.5 * $width))/$hdiff]
+		$proofwin xview moveto $e
+	    } elseif {[lindex $bbox 0]-10<$left} {
+		set e [expr double([lindex $bbox 2]+ 10 - [lindex $allbbox 0] - (.5 * $width))/$hdiff]
+		$proofwin xview moveto $e
+	    }
+	} else {
+	    if {[lindex $bbox 2]+10>$right} {
+		set e [expr ([lindex $bbox 2]+10-$width-[lindex $allbbox 0])/$units]
+		$proofwin xview $e
+	    } elseif {[lindex $bbox 0]-10<$left} {
+		set e [expr ([lindex $bbox 0]-10-[lindex $allbbox 0])/$units]
+		$proofwin xview $e
+	    }
+	}		      
 
 	set pwid [expr [lindex $bbox 2]-[lindex $bbox 0]]
 	set phit [expr [lindex $bbox 3]-[lindex $bbox 1]]
@@ -815,9 +884,16 @@ proc gen-ps {top psfile landscape} {
 
 
 proc setup-dag-win {title icon PSname win_name class} {
+    global tk_version
     reset-options
     catch {destroy $win_name}
-    set top [toplevel $win_name -geometry 400x400 -class $class -bd 2 -relief raised]
+    if {$tk_version >= 4.0} {
+	set top [toplevel $win_name -width 400 -height 400 \
+		     -class $class -bd 2 -relief raised]
+    } else {
+	set top [toplevel $win_name -geometry 400x400 \
+		     -class $class -bd 2 -relief raised]
+    }
     pack propagate $top 0
     wm title $top $title
     wm iconname $top $icon
@@ -825,61 +901,129 @@ proc setup-dag-win {title icon PSname win_name class} {
     wm maxsize $top 10000 10000
     set fr [frame $top.fr]
     pack $fr -expand yes -fill both
-    set sbwidth 12
+    set sbwidth 15
     frame $fr.bottom -width $sbwidth
-    set c [canvas $fr.c -xscroll "$fr.bottom.hscroll set" -yscroll "$fr.vscroll set" \
-	      -height 1 -width 1 -bd 3 -relief ridge]
+    if {$tk_version >= 4.0} {
+	set c [canvas $fr.c -height 1 -width 1 -bd 1 -relief sunken \
+		   -xscrollcommand "$fr.bottom.hscroll set" \
+		   -yscrollcommand "$fr.vscroll set" \
+		   -xscrollincrement 1 -yscrollincrement 1 \
+		   -highlightthickness 4]
+    } else {
+	set c [canvas $fr.c -height 1 -width 1 -bd 1 -relief sunken \
+		   -xscrollcommand "$fr.bottom.hscroll set" \
+		   -yscrollcommand "$fr.vscroll set" \
+		   -scrollincrement 1]
+    }
     create-dag $c
-    frame $fr.bottom.right -height 18 -width 18 -bd 3 -relief flat
-    scrollbar $fr.vscroll -width $sbwidth -bd 3 -relief ridge \
-	-command "$c yview"
-    scrollbar $fr.bottom.hscroll -width $sbwidth -bd 3 -relief ridge \
-	-command "$c xview" -orient horiz
+    if {$tk_version >= 4.0} {
+	frame $fr.bottom.right -height 18 -width 18 -bd 3 -relief flat
+	scrollbar $fr.vscroll -width $sbwidth -bd 1 -relief sunken \
+	    -elementborderwidth 3 -highlightthickness 4 \
+	    -command "$c yview"
+	scrollbar $fr.bottom.hscroll -width $sbwidth -bd 1 -relief sunken \
+	    -elementborderwidth 3 -highlightthickness 4 \
+	    -command "$c xview" -orient horiz
+    } else {
+	frame $fr.bottom.right -height 18 -width 25 -bd 3 -relief flat
+	scrollbar $fr.vscroll -width $sbwidth -bd 2 -relief sunken \
+	    -command "$c yview"
+	scrollbar $fr.bottom.hscroll -width $sbwidth -bd 2 -relief sunken \
+	    -command "$c xview" -orient horiz
+    }
     pack $fr.bottom -side bottom -fill x
     pack $fr.bottom.right -side right
-    pack $fr.bottom.hscroll -side bottom -fill x
-    pack $fr.vscroll -side right -fill y
-    pack $c -expand yes -fill both
+    if {$tk_version >= 4.0} {
+	pack $fr.bottom.hscroll -side bottom -fill x
+	pack $fr.vscroll -side right -fill y
+	pack $c -expand yes -fill both
+    } else {
+	pack $fr.bottom.hscroll -side bottom -fill x -padx 4 -pady 4
+	pack $fr.vscroll -side right -fill y -padx 4 -pady 4
+	pack $c -expand yes -fill both -padx 4 -pady 4
+    }
     label $top.message -text ""
     pack $top.message -fill x -side bottom
-    button $top.dismiss -text "Dismiss" -command "destroy $win_name" -bd 2
-    pack $top.dismiss -side left -padx 2 -pady 2
-    menubutton $top.ps -text "Gen PS" -menu $top.ps.menu -relief raised -bd 2
+    if {$tk_version >= 4.0} {
+	button $top.dismiss -bd 3 -highlightthickness 2 -relief raised \
+	    -padx 4 -pady 4 \
+	    -text "Dismiss" -command "destroy $win_name"
+    } else {
+	button $top.dismiss -bd 3 \
+	    -padx 4 -pady 4 \
+	    -text "Dismiss" -command "destroy $win_name"
+    }
+    pack $top.dismiss -side left -padx 4 -pady 2
+    if {$tk_version >= 4.0} {
+	menubutton $top.ps -bd 3 -highlightthickness 2 -relief raised \
+	    -padx 4 -pady 5 \
+	    -text "Gen PS" -menu $top.ps.menu
+    } else {
+	menubutton $top.ps -bd 3 \
+	    -padx 4 -pady 5 \
+	    -text "Gen PS" -menu $top.ps.menu -relief raised
+    }
     menu $top.ps.menu
     $top.ps.menu add command -label Portrait -command "gen-ps $top $PSname 0"
     $top.ps.menu add command -label Landscape -command "gen-ps $top $PSname 1"
-    pack $top.ps -side left -padx 2 -pady 2
-    button $top.help -text "Help" -bd 2 \
-	-command "help-$class"
-    pack $top.help -side right -padx 2 -pady 2
-    menubutton $top.conf -text Config -menu $top.conf.menu -relief raised -bd 2
-    pack $top.conf -side right -padx 2 -pady 2
+    pack $top.ps -side left -padx 4 -pady 2
+    if {$tk_version >= 4.0} {
+	button $top.help -bd 3 -highlightthickness 2 -relief raised \
+	    -padx 4 -pady 4 \
+	    -text "Help" -command "help-$class"
+    } else {
+	button $top.help -bd 3 -relief raised \
+	    -padx 4 -pady 4 \
+	    -text "Help" -command "help-$class"
+    }
+    pack $top.help -side right -padx 4 -pady 2
+    if {$tk_version >= 4.0} {
+	menubutton $top.conf -bd 3 -highlightthickness 2 -relief raised \
+	    -padx 4 -pady 5 \
+	    -text Config -menu $top.conf.menu
+    } else {
+	menubutton $top.conf -bd 3 -relief raised \
+	    -padx 4 -pady 5 \
+	    -text Config -menu $top.conf.menu
+    }
+    pack $top.conf -side right -padx 4 -pady 2
     menu $top.conf.menu
     $top.conf.menu add cascade -label "Horiz. Separation" \
-	-command "set conf_menu_orient x" \
-	-menu $top.conf.menu.sep
+	-menu $top.conf.menu.sepx
     $top.conf.menu add cascade -label "Vert. Separation" \
-	-command "set conf_menu_orient y" \
-	-menu $top.conf.menu.sep
-    menu $top.conf.menu.sep
-    $top.conf.menu.sep add command -label 5 \
-	-command "option add Tk$top*\${conf_menu_orient}Sep 5; dagwin-layout $c"
-    $top.conf.menu.sep add command -label 10 \
-	-command "option add Tk$top*\${conf_menu_orient}Sep 10; dagwin-layout $c"
-    $top.conf.menu.sep add command -label 20 \
-	-command "option add Tk$top*\${conf_menu_orient}Sep 20; dagwin-layout $c"
-    $top.conf.menu.sep add command -label 50 \
-	-command "option add Tk$top*\${conf_menu_orient}Sep 50; dagwin-layout $c"
-    $top.conf.menu.sep add command -label 100 \
-	-command "option add Tk$top*\${conf_menu_orient}Sep 100; dagwin-layout $c"
-    $top.conf.menu.sep add command -label 200 \
-	-command "option add Tk$top*\${conf_menu_orient}Sep 200; dagwin-layout $c"
-    $top.conf.menu.sep add command -label Custom... \
-	-command "make-setter $top \$conf_menu_orient"
+	-menu $top.conf.menu.sepy
+    menu $top.conf.menu.sepx
+    menu $top.conf.menu.sepy
+    foreach i {5 10 20 50 100 200} {
+	if {$tk_version >= 4.0} {
+	    $top.conf.menu.sepx add command -label $i \
+		-command "option add Pvs$top*xSep $i; dagwin-layout $c"
+	    $top.conf.menu.sepy add command -label $i \
+		-command "option add Pvs$top*ySep $i; dagwin-layout $c"
+	} else {
+	    $top.conf.menu.sepx add command -label $i \
+		-command "option add Tk$top*xSep $i; dagwin-layout $c"
+	    $top.conf.menu.sepy add command -label $i \
+		-command "option add Tk$top*ySep $i; dagwin-layout $c"
+	}
+    }
+    if {$tk_version >= 4.0} {
+	$top.conf.menu.sepx add command -label Custom... \
+	    -command "make-setter $top x"
+	$top.conf.menu.sepy add command -label Custom... \
+	    -command "make-setter $top y"
+    } else {
+	$top.conf.menu.sepx add command -label Custom... \
+	    -command "make-setter $top x"
+	$top.conf.menu.sepy add command -label Custom... \
+	    -command "make-setter $top y"
+    }
+    set-dag-window-options $win_name
     return $c
 }
 
 proc make-setter {top orient} {
+    global tk_version
     set win $top.${orient}Sep
     catch {destroy $win}
 
@@ -896,7 +1040,11 @@ proc make-setter {top orient} {
     label $win.lab -text Separation:
     pack $win.lab -side left
     entry $win.ent -width 10 -relief sunken
-    bind $win.ent <Return> "option add Tk$top*${orient}Sep \[%W get\]; dagwin-layout $top.fr.c; destroy $win"
+    if {$tk_version >= 4.0} {
+	bind $win.ent <Return> "option add Pvs$top*${orient}Sep \[%W get\]; dagwin-layout $top.fr.c; destroy $win"
+    } else {
+	bind $win.ent <Return> "option add Tk$top*${orient}Sep \[%W get\]; dagwin-layout $top.fr.c; destroy $win"
+    }
     pack $win.ent -side left
     focus $win.ent
 }
@@ -905,30 +1053,257 @@ proc make-setter {top orient} {
 # Proof Command Support
 
 proc show-proof-commands {commands} {
-    set win .proof-commands
+    show-prover-commands $commands
+}
+
+proc show-prover-commands {commands} {
+    global tk_version
+    set win .prover-commands
     catch {destroy $win}
-    toplevel $win -relief raised -bd 2
+    reset-options
+    toplevel $win -relief flat
     wm maxsize $win 2000 2000
     frame $win.fr
-    button $win.fr.dismiss -text Dismiss -command "destroy $win"
+    button $win.fr.dismiss -text Dismiss -bd 3 -command "destroy $win"
     pack $win.fr.dismiss -side left -padx 2 -pady 2
-    button $win.fr.help -text Help -bd 2 -command "help-commands-window"
+    button $win.fr.help -text Help -bd 3 -command "help-commands-window"
     pack $win.fr.help -side right -padx 2 -pady 2
     pack $win.fr -side bottom -padx 2 -pady 2 -fill x
-    scrollbar $win.scrollbar -command "$win.text yview"
-    pack $win.scrollbar -side right -fill y
-    listbox $win.text -bd 2 -relief raised -geometry 25x25\
-	-yscrollcommand "$win.scrollbar set"
-    bind $win.text <Button-1> "send-command $win.text %y"
-    bind $win.text <Button-2> "help-command $win.text %y"
-    bind $win.text <Button-3> "help-strategy $win.text %y"
-    tk_listboxSingleSelect $win.text
-    pack $win.text -side left -fill both -expand 1
+    if {$tk_version >= 4.0} {
+	scrollbar $win.scrollbar -command "$win.text yview" -width 15 \
+	    -elementborderwidth 3 -highlightthickness 4 -bd 1 -relief sunken
+    } else {
+	scrollbar $win.scrollbar -command "$win.text yview" -width 15 \
+	    -bd 2 -relief sunken
+    }
+    if {$tk_version >= 4.0} {
+	pack $win.scrollbar -side right -fill y
+    } else {
+	pack $win.scrollbar -side right -fill y -padx 4 -pady 4
+    }
+    if {$tk_version >= 4.0} {
+	listbox $win.text -selectmode single -bd 1 -relief sunken \
+	    -height 25 -width 27 -highlightthickness 4 \
+	    -font [get-option displayfont] \
+	    -yscrollcommand "$win.scrollbar set"
+    } else {
+	listbox $win.text -bd 1 -relief sunken -geometry 25x27 \
+	    -font [get-option displayfont] \
+	    -yscrollcommand "$win.scrollbar set"
+    }
+    bind $win.text <Enter> "focus %W"
+    bind $win.text <Motion> "prover-command-select %W %y"
+    if {$tk_version >= 4.0} {
+	bind $win.text <Leave> "%W selection clear 0 end"
+    } else {
+	bind $win.text <Leave> "%W select clear"
+    }
+    if {$tk_version >= 4.0} {
+	bind $win.text <Button-1> {
+	    send-command %W %y
+	    break
+	}
+    } else {
+	bind $win.text <Button-1> "send-command %W %y"
+    }
+    bind $win.text <Shift-Button-1> "nop"
+    bind $win.text <B1-Motion> "nop"
+    bind $win.text <Shift-B1-Motion> "nop"
+    bind $win.text <Button-2> "help-command %W %y"
+    bind $win.text <B2-Motion> "nop"
+    bind $win.text <Button-3> "help-strategy %W %y"
+    if {$tk_version >= 4.0} {
+	bind $win.text <space> {
+	    prover-commands-page-down %y
+	    break
+	}
+    } else {
+	bind $win.text <space> "prover-commands-page-down %y"
+    }
+    bind $win.text d "prover-commands-page-down %y"
+    bind $win.text <Delete> "prover-commands-page-up %y"
+    bind $win.text u "prover-commands-page-up %y"
+    bind $win.text c "send-command %W %y"
+    bind $win.text h "help-command %W %y"
+    bind $win.text s "help-strategy %W %y"
+    if {$tk_version < 4.0} {
+	tk_listboxSingleSelect $win.text
+    }
+    pack $win.text -side left -fill both -expand 1 -padx 4 -pady 4
     foreach cmd $commands {
 	$win.text insert end $cmd
     }
+    set-prover-commands-options
     wm iconname $win {PVS Prover Commands}
     wm title $win "PVS Prover Commands"
+}
+
+proc set-prover-commands-options {} {
+    set-prover-commands-windowbackground [get-option windowbackground]
+    set-prover-commands-displaybackground [get-option displaybackground]
+    set-prover-commands-displayforeground [get-option displayforeground]
+    set-prover-commands-activedisplaybackground \
+	[get-option activedisplaybackground]
+    set-prover-commands-activedisplayforeground \
+	[get-option activedisplayforeground]
+    set-prover-commands-displayfont [get-option displayfont]
+    set-prover-commands-buttonbackground [get-option buttonbackground]
+    set-prover-commands-buttonforeground [get-option buttonforeground]
+    set-prover-commands-activebuttonbackground \
+	[get-option activebuttonbackground]
+    set-prover-commands-activebuttonforeground \
+	[get-option activebuttonforeground]
+    set-prover-commands-troughcolor [get-option troughcolor]
+    set-prover-commands-buttonfont [get-option buttonfont]
+}
+
+proc set-prover-commands-windowbackground {color} {
+    global tk_version
+    .prover-commands config -background $color
+    .prover-commands.fr config -background $color
+    if {$tk_version >= 4.0} {
+	.prover-commands.text config -highlightbackground $color
+	.prover-commands.text config -highlightcolor $color
+	.prover-commands.scrollbar config -highlightbackground $color
+    }
+}
+
+proc set-prover-commands-displaybackground {color} {
+    .prover-commands.text config -background $color
+}
+
+proc set-prover-commands-displayforeground {color} {
+    .prover-commands.text config -foreground $color
+}
+
+proc set-prover-commands-activedisplaybackground {color} {
+    .prover-commands.text config -selectbackground $color
+}
+
+proc set-prover-commands-activedisplayforeground {color} {
+    .prover-commands.text config -selectforeground $color
+}
+
+proc set-prover-commands-displayfont {font} {
+    .prover-commands.text config -font $font
+}
+
+proc set-prover-commands-buttonbackground {color} {
+    global tk_version
+    if {$tk_version >= 4.0} {
+	.prover-commands.scrollbar config -background $color
+    } else {
+	.prover-commands.scrollbar config -foreground $color
+    }
+    foreach btn [winfo children .prover-commands.fr] {
+	$btn config -background $color
+    }
+}
+
+proc set-prover-commands-buttonforeground {color} {
+    foreach btn [winfo children .prover-commands.fr] {
+	$btn config -foreground $color
+    }
+}
+
+proc set-prover-commands-activebuttonbackground {color} {
+    global tk_version
+    if {$tk_version >= 4.0} {
+	.prover-commands.scrollbar config -activebackground $color
+    }
+    foreach btn [winfo children .prover-commands.fr] {
+	$btn config -activebackground $color
+    }
+}
+
+proc set-prover-commands-activebuttonforeground {color} {
+    foreach btn [winfo children .prover-commands.fr] {
+	$btn config -activeforeground $color
+    }
+}
+
+proc set-prover-commands-troughcolor {color} {
+    global tk_version
+    if {$tk_version >= 4.0} {
+	.prover-commands.scrollbar config -troughcolor $color
+	foreach btn [winfo children .prover-commands.fr] {
+	    $btn config -highlightbackground $color
+	}
+    } else {
+	.prover-commands.scrollbar config -background $color
+    }
+}
+
+proc set-prover-commands-buttonfont {font} {
+    foreach btn [winfo children .prover-commands.fr] {
+	$btn config -font $font
+    }
+}
+
+
+proc prover-command-select {win y} {
+    global tk_version
+    if {$tk_version >= 4.0} {
+	$win selection clear 0 end
+	$win selection set [$win nearest $y]
+    } else {
+	$win select from [$win nearest $y]
+    }
+}
+
+proc prover-commands-page-down {y} {
+    global tk_version
+    set val [.prover-commands.scrollbar get]
+    if {$tk_version >= 4.0} {
+	set first [lindex $val 0]
+	set last [lindex $val 1]
+	set nfirst $last
+	set nlast [expr $last + $last - $first]
+	if {$nlast > 1.0} {
+	    .prover-commands.text yview moveto 1.0
+	} else {
+	    .prover-commands.text yview moveto $nfirst
+	}
+	prover-command-select .prover-commands.text $y
+    } else {
+	set v0 [lindex $val 0]
+	set v1 [lindex $val 1]
+	set v2 [lindex $val 2]
+	set v3 [lindex $val 3]
+	set nv3 [min $v3 [expr $v0 - $v1]]
+	set cur [lindex [.prover-commands.text curselection] 0]
+	set ny [expr $nv3 + $cur - $v2]
+	.prover-commands.scrollbar set $v0 $v1 $nv3 [expr $nv3 + $v1 -1]
+	.prover-commands.text yview $nv3
+	.prover-commands.text select from $ny
+    }
+}
+
+proc prover-commands-page-up {y} {
+    global tk_version
+    set val [.prover-commands.scrollbar get]
+    if {$tk_version >= 4.0} {
+	set first [lindex $val 0]
+	set last [lindex $val 1]
+	set nfirst [expr $first - ($last - $first)]
+	if {$nfirst < 0.0} {
+	    .prover-commands.text yview moveto 0.0
+	} else {
+	    .prover-commands.text yview moveto $nfirst
+	}
+	prover-command-select .prover-commands.text $y
+    } else {
+	set v0 [lindex $val 0]
+	set v1 [lindex $val 1]
+	set v2 [lindex $val 2]
+	set v3 [lindex $val 3]
+	set nv2 [max 0 [expr $v2 - $v1 + 1]]
+	set cur [lindex [.prover-commands.text curselection] 0]
+	set ny [expr $cur - $v2 + $nv2]
+	.prover-commands.scrollbar set $v0 $v1 $nv2 [expr $nv2 + $v1 - 1]
+	.prover-commands.text yview [expr $nv2]
+	.prover-commands.text select from $ny
+    }
 }
 
 proc send-command {win y} {
@@ -950,20 +1325,35 @@ proc help-strategy {win y} {
     emacs-evaln "(help-pvs-prover-strategy \"$cmd\")"
 }
 
+
+proc show-declaration {id width height decl} {
+    set win .declaration-$id
+    catch {destroy $win}
+    toplevel $win -relief raised -bd 2
+    text $win.text -width $width -height $height
+    $win.text insert end $decl
+    button $win.dismiss -text Dismiss -command "destroy $win"
+    pack $win.text -side top
+    pack $win.dismiss -side left -padx 2 -pady 2
+    wm iconname $win {PVS Declaration}
+    wm title $win "Declaration $id"
+}
+
     
 
 # Theory hierarchy support
 
 proc module-hierarchy {name file directory dag} {
     catch {frame .th-hier}
+    # put the u_ in in case $name starts with an uppercase letter
+    set thwin .th-hier.u_$name
     set win \
 	[setup-dag-win \
 	     "Theory hierarchy for $name in $directory$file" \
 	     "Theory Hierarchy" \
 	     $directory${name}_hier.ps \
-	     [string tolower .th-hier.$name] \
+	     $thwin \
 	     TheoryHierarchy]
-    .th-hier.$name configure -bg [get-option background]
     dag-bind-move $win {} Control 1 both
     $win bind :theory <Enter> "module-highlight $win"
     $win bind :theory <Leave> "module-unhighlight $win"
@@ -990,6 +1380,8 @@ proc select-theory {win} {
 
 proc module-highlight {win} {
     upvar #0 dag-$win dag
+    global tk_version
+    global mono
 
     set id [$win find withtag current]
     set item $dag(idtotag,$id)
@@ -999,11 +1391,25 @@ proc module-highlight {win} {
     $win addtag :hier_highlight withtag dagline.to$item
     $win addtag :hier_highlight withtag dagline.from$item
 
-    my-foreground $win :hier_highlight [get-option highlight]
+    if {$tk_version >= 4.0} {
+	if {[winfo depth .]==1 || $mono} {
+	    my-foreground $win :hier_highlight @gray
+	} else {
+	    my-foreground $win :hier_highlight \
+		[get-option activedisplayforeground]
+	}
+    } else {
+	if {[tk colormodel .]!={color} || $mono} {
+	    my-foreground $win :hier_highlight @gray
+	} else {
+	    my-foreground $win :hier_highlight \
+		[get-option activedisplayforeground]
+	}
+    }
 }
 
 proc module-unhighlight {win} {
-    my-foreground $win :hier_highlight [get-option foreground]
+    my-foreground $win :hier_highlight [get-option displayforeground]
 }
 
 
@@ -1012,15 +1418,18 @@ proc module-unhighlight {win} {
 proc setup-proof {name theory directory counter interactive} {
     global curpath
     catch {frame .proof}
+    if {$interactive} {
+	set win .proof.u_$theory-$name-i
+    } else {
+	set win .proof.u_$theory-$name
+    }
     set pw \
 	[setup-dag-win \
 	     "Proof of $name in $theory" \
 	     "PVS Proof" \
 	     $directory${theory}_$name.ps \
-	     .proof.$theory-$name \
+	     $win \
 	     Proof]
-    .proof.$theory-$name configure -bg [get-option background]
-
     if {$interactive} {
 	if {[info exists curpath]} {
 	    unset curpath
@@ -1032,6 +1441,9 @@ proc setup-proof {name theory directory counter interactive} {
     dag-bind-move $pw {} Control 2 both
     if {$interactive} {
 	$pw bind sequent <1> "show-sequent $pw $theory-$name-top"
+    } else {
+	set text "Sequent is only available for interactive proofs"
+	$pw bind sequent <1> "show-message $win \"$text\""
     }
     $pw bind rule <1> "get-full-rule $pw $theory-$name-top"
     bind $pw <Destroy> "+pvs-send {(stop-displaying-proof $counter)}"
@@ -1042,42 +1454,219 @@ proc setup-proof {name theory directory counter interactive} {
 	    }
 	}
     }
-}    
+}
 
 proc reset-options {} {
+    global tk_version
+    global mono
     option clear
-    option add Tk.foreground black startupFile
-    option add Tk.background white startupFile
-
-    if {[tk colormodel .]=={color}} {
-	option add Tk.highlight red startupFile
-	option add Tk.currentColor DarkOrchid startupFile
-	option add Tk.circleCurrent no startupFile
-	option add Tk.tccColor green4 startupFile
-	option add Tk.doneColor blue startupFile
-	option add Tk.ancestorColor firebrick startupFile
-    } else {
-	option add Tk.highlight @gray startupFile
-	option add Tk.currentColor black startupFile
-	option add Tk.circleCurrent yes startupFile
-	option add Tk.tccColor black startupFile
-	option add Tk.doneColor @gray startupFile
-	option add Tk.ancestorColor black startupFile
+    if {$tk_version >= 4.0} {
+	set pvs [winfo name .]
+	option add $pvs.displayfont \
+	    -adobe-courier-bold-r-normal--12-120-75-75-m-70-iso8859-1 \
+	    startupFile
+	option add $pvs.buttonfont \
+	    -adobe-courier-bold-r-normal--10-100-75-75-m-60-iso8859-1 \
+	    startupFile
+	if {[winfo depth .] > 1 && !$mono} {
+	    option add $pvs.windowbackground wheat startupFile
+	    option add $pvs.displaybackground white startupFile
+	    option add $pvs.displayforeground black startupFile
+	    option add $pvs.activedisplaybackground mediumslateblue startupFile
+	    option add $pvs.activedisplayforeground red startupFile
+	    option add $pvs.buttonbackground lightblue startupFile
+	    option add $pvs.buttonforeground black startupFile
+	    option add $pvs.activebuttonbackground steelblue startupFile
+	    option add $pvs.activebuttonforeground white startupFile
+	    option add $pvs.troughcolor sienna3 startupFile
+	    # sequent colors
+	    option add $pvs.currentColor DarkOrchid startupFile
+	    option add $pvs.circleCurrent yes startupFile
+	    option add $pvs.tccColor green4 startupFile
+	    option add $pvs.doneColor blue startupFile
+	    option add $pvs.ancestorColor firebrick startupFile
+	} else {
+	    option add $pvs.windowbackground white startupFile
+	    option add $pvs.displaybackground white startupFile
+	    option add $pvs.displayforeground black startupFile
+	    option add $pvs.activedisplaybackground black startupFile
+	    option add $pvs.activedisplayforeground @gray startupFile
+	    option add $pvs.buttonbackground white startupFile
+	    option add $pvs.buttonforeground black startupFile
+	    option add $pvs.activebuttonbackground black startupFile
+	    option add $pvs.activebuttonforeground white startupFile
+	    option add $pvs.troughcolor black startupFile
+	    # sequent colors
+	    option add $pvs.currentColor black startupFile
+	    option add $pvs.circleCurrent yes startupFile
+	    option add $pvs.tccColor black startupFile
+	    option add $pvs.doneColor @gray startupFile
+	    option add $pvs.ancestorColor black startupFile
     }
-
-    option add Tk.abbrevLen 35 startupFile
-
-    option add Tk.maxHeight 30 startupFile
-
-    option add Tk*proof*xSep 10 startupFile
-    option add Tk*proof*ySep 20 startupFile
-    option add Tk*th-hier*xSep 50 startupFile
-    option add Tk*th-hier*ySep 100 startupFile
+	option add $pvs.abbrevLen 35 startupFile
+	option add $pvs.maxHeight 30 startupFile
+	option add $pvs*proof*xSep 10 startupFile
+	option add $pvs*proof*ySep 20 startupFile
+	option add $pvs*th-hier*xSep 50 startupFile
+	option add $pvs*th-hier*ySep 100 startupFile
+    } else {
+	option add Tk.displayfont \
+	    -adobe-courier-bold-r-normal--12-120-75-75-m-70-iso8859-1 \
+	    startupFile
+	option add Tk.buttonfont \
+	    -adobe-courier-bold-r-normal--10-100-75-75-m-60-iso8859-1 \
+	    startupFile
+	if {[tk colormodel .]=={color} && !$mono} {
+	    option add Tk.windowbackground wheat startupFile
+	    option add Tk.displaybackground white startupFile
+	    option add Tk.displayforeground black startupFile
+	    option add Tk.activedisplaybackground mediumslateblue startupFile
+	    option add Tk.activedisplayforeground red startupFile
+	    option add Tk.buttonbackground lightblue startupFile
+	    option add Tk.buttonforeground black startupFile
+	    option add Tk.activebuttonbackground steelblue startupFile
+	    option add Tk.activebuttonforeground white startupFile
+	    option add Tk.troughcolor sienna3 startupFile
+	    # sequent colors
+	    option add Tk.currentColor DarkOrchid startupFile
+	    option add Tk.circleCurrent yes startupFile
+	    option add Tk.tccColor green4 startupFile
+	    option add Tk.doneColor blue startupFile
+	    option add Tk.ancestorColor firebrick startupFile
+	} else {
+	    option add Tk.windowbackground white startupFile
+	    option add Tk.displaybackground white startupFile
+	    option add Tk.displayforeground black startupFile
+	    option add Tk.activedisplaybackground black startupFile
+	    option add Tk.activedisplayforeground @gray startupFile
+	    option add Tk.buttonbackground white startupFile
+	    option add Tk.buttonforeground black startupFile
+	    option add Tk.activebuttonbackground black startupFile
+	    option add Tk.activebuttonforeground white startupFile
+	    option add Tk.troughcolor black startupFile
+	    # sequent colors
+	    option add Tk.currentColor black startupFile
+	    option add Tk.circleCurrent yes startupFile
+	    option add Tk.tccColor black startupFile
+	    option add Tk.doneColor @gray startupFile
+	    option add Tk.ancestorColor black startupFile
+	}
+	option add Tk.abbrevLen 35 startupFile
+	option add Tk.maxHeight 30 startupFile
+	option add Tk*proof*xSep 10 startupFile
+	option add Tk*proof*ySep 20 startupFile
+	option add Tk*th-hier*xSep 50 startupFile
+	option add Tk*th-hier*ySep 100 startupFile
+    }
 }
 
 proc get-option {opt {win .}} {
-    set upper [string toupper [string range $opt 0 0]][string range $opt 1 end]
-    option get $win $opt $upper
+    set cap [string toupper [string range $opt 0 0]][string range $opt 1 end]
+    option get $win $opt $cap
+}
+
+proc set-dag-window-options {win} {
+    set-dag-window-windowbackground $win [get-option windowbackground]
+    set-dag-window-displaybackground $win [get-option displaybackground]
+    set-dag-window-buttonbackground $win [get-option buttonbackground]
+    set-dag-window-buttonforeground $win [get-option buttonforeground]
+    set-dag-window-activebuttonbackground $win [get-option activebuttonbackground]
+    set-dag-window-activebuttonforeground $win [get-option activebuttonforeground]
+    set-dag-window-troughcolor $win [get-option troughcolor]
+    set-dag-window-buttonfont $win [get-option buttonfont]
+}
+
+proc set-dag-window-windowbackground {win color} {
+    global tk_version
+    $win config -background $color
+    $win.fr config -background $color
+    $win.fr.bottom config -background $color
+    $win.fr.bottom.right config -background $color
+    $win.message config -background $color
+    if {$tk_version >= 4.0} {
+	$win.fr.c config -highlightbackground $color
+	$win.fr.bottom.hscroll config -highlightbackground $color
+	$win.fr.vscroll config -highlightbackground $color
+    }
+}
+
+proc set-dag-window-displaybackground {win color} {
+    $win.fr.c config -background $color
+}
+
+proc set-dag-window-buttonbackground {win color} {
+    global tk_version
+    if {$tk_version >= 4.0} {
+	$win.fr.vscroll config -background $color
+	$win.fr.bottom.hscroll config -background $color
+    } else {
+	$win.fr.vscroll config -foreground $color
+	$win.fr.bottom.hscroll config -foreground $color
+    }
+    foreach ch [winfo children $win] {
+	set cl [winfo class $ch]
+	if {$cl == "Button" || $cl == "Menubutton"} {
+	    $ch config -background $color
+	}
+    }
+}
+
+proc set-dag-window-buttonforeground {win color} {
+    foreach ch [winfo children $win] {
+	set cl [winfo class $ch]
+	if {$cl == "Button" || $cl == "Menubutton"} {
+	    $ch config -foreground $color
+	}
+    }
+}
+
+proc set-dag-window-activebuttonbackground {win color} {
+    global tk_version
+    if {$tk_version >= 4.0} {
+	$win.fr.vscroll config -activebackground $color
+	$win.fr.bottom.hscroll config -activebackground $color
+    }
+    foreach ch [winfo children $win] {
+	set cl [winfo class $ch]
+	if {$cl == "Button" || $cl == "Menubutton"} {
+	    $ch config -activebackground $color
+	}
+    }
+}
+
+proc set-dag-window-activebuttonforeground {win color} {
+    foreach ch [winfo children $win] {
+	set cl [winfo class $ch]
+	if {$cl == "Button" || $cl == "Menubutton"} {
+	    $ch config -activeforeground $color
+	}
+    }
+}
+
+proc set-dag-window-troughcolor {win color} {
+    global tk_version
+    if {$tk_version >= 4.0} {
+	$win.fr.vscroll config -troughcolor $color
+	$win.fr.bottom.hscroll config -troughcolor $color
+	foreach ch [winfo children $win] {
+	    set cl [winfo class $ch]
+	    if {$cl == "Button" || $cl == "Menubutton"} {
+		$ch config -highlightbackground $color
+	    }
+	}
+    } else {
+	$win.fr.vscroll config -background $color
+	$win.fr.bottom.hscroll config -background $color
+    }
+}
+
+proc set-dag-window-buttonfont {win font} {
+    foreach ch [winfo children $win] {
+	set cl [winfo class $ch]
+	if {$cl == "Button" || $cl == "Menubutton"} {
+	    $ch config -font $font
+	}
+    }    
 }
 
 proc parse-bool {str} {
@@ -1155,11 +1744,13 @@ proc help-commands-window {} {
     message $win.text -aspect 390 -text \
 	"This displays all of the prover commands, including user-defined ones.
 
-The mouse has the following bindings on a command name:
+The following mouse and key bindings are available:
 
-Left   - sends command to the prover window
-Middle - provides help for that command
-Right  - provides the strategy description"
+Space, d  - page down
+Delete, u - page up
+Left, c   - sends selected command to the prover window
+Middle, h - provides help for selected command
+Right, s  - provides strategy description for selected command"
     button $win.dismiss -text Dismiss -command "destroy $win"
     pack $win.text -side top
     pack $win.dismiss -side left -padx 2 -pady 2
@@ -1167,3 +1758,38 @@ Right  - provides the strategy description"
     wm title $win "Prover Command Help"
 }
 
+
+proc nop {} {
+}
+
+proc min {x y} {
+    if {$x < $y} then {return $x} else {return $y}
+}
+
+proc max {x y} {
+    if {$x < $y} then {return $y} else {return $x}
+}
+
+proc allinfo {win} {
+    ppr $win
+    foreach c [winfo children $win] {
+	allinfo $c
+    }
+}
+
+proc ppr {win} {
+    puts "\n$win"
+    foreach opt [$win config] {
+	puts "  $opt"
+    }
+}
+
+proc tkcatch {script {varname novar}} {
+    global $varname
+    catch {rename tkerror tkerror.orig}
+    proc tkerror {err} {error $err}
+    set value [eval catch {$script} $varname]
+    rename tkerror {}
+    catch {rename tkerror.orig tkerror}
+    return $value
+}
