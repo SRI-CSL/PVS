@@ -9,10 +9,6 @@
 	     (lambda (p s k)
 	       (declare (ignore k))
 	       (format s "~a" (dfa-ptr-address p)))))
-	    ;   (format s "#<S: ~a, N: ~a, T: ~a>"
-		;       (number-of-states p)
-		;       (number-of-bdd-nodes p)
-		;       (number-of-transitions p)))))
   address)
 
 (defun dfa-ptr= (p1 p2)
@@ -160,6 +156,13 @@
 (defun dfa-exists1* (is a)
   (if (null is) a
     (dfa-exists1 (car is) (dfa-exists1* (cdr is) a))))
+
+(defun dfa-single (k i) ; P_k = {i}
+  (dfa-conjunction (dfa-singleton k)
+		   (dfa-in i k)))
+
+; (defun dfa-add (k i j) ; P_k = add(i, P_j)
+  
 
 ;; Accessors, Recognizers
 
