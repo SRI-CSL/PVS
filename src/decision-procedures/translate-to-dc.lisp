@@ -268,6 +268,13 @@
 (defmethod translate-to-dc ((expr cases-expr))
   (translate-to-dc (translate-cases-to-if expr)))
 
+(defmethod translate-to-dc ((expr let-expr))
+  (with-slots (operator argument) expr
+    (let ((reduced-expr (substit (expression operator)
+			  (pairlis-args (bindings operator)
+					(argument* argument)))))
+      (translate-to-dc reduced-expr))))
+
 ;(defun translate-dc-args (arguments expected)
 ;  (if (eql (length expected)
 ;	   (length arguments));;no tuple mismatch
