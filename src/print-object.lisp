@@ -169,13 +169,14 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod print-object ((res resolution) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "#<Resolution ~a~@[[~{~a~^, ~}]~].~a:~a>"
-	      (and (module-instance res) (id (module-instance res)))
-	      (and (module-instance res) (actuals (module-instance res)))
-	      (id (declaration res))
-	      (if (eq (kind-of (declaration res)) 'expr)
-		  (or (type res) (type (declaration res)))
-		  (kind-of (declaration res))))))
+      (format stream
+	  "#<Resolution ~@<~a~@[~I~<[~;~@{~W~^, ~:_~}~;]~:>~].~a~:_:~a~:>>"
+	(and (module-instance res) (id (module-instance res)))
+	(and (module-instance res) (actuals (module-instance res)))
+	(id (declaration res))
+	(if (eq (kind-of (declaration res)) 'expr)
+	    (or (type res) (type (declaration res)))
+	    (kind-of (declaration res))))))
 
 (defmethod print-object ((alists dpinfo) stream)
   (if (or (not *print-expanded-dpinfo*) *debugging-print-object*)
