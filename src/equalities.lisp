@@ -78,6 +78,16 @@ where db is to replace db1 and db2")
   (or (eq x y)
       (tc-eq* x y bindings)))
 
+;;; strong-tc-eq is the same as tc-eq, except that it checks the types of
+;;; projection and field application operators, not just the argument.
+;;; See tc-eq* (application application).
+
+(defvar *strong-tc-eq-flag* nil)
+
+(defun strong-tc-eq (x y)
+  (let ((*strong-tc-eq-flag* t))
+    (tc-eq* x y nil)))
+
 ;;; If two objects aren't tc-eq* by more specific methods, then try eq.
 
 (defmethod tc-eq* (x y bindings)
@@ -132,9 +142,11 @@ where db is to replace db1 and db2")
 ;;; the canonical form.
 
 (defmethod tc-eq* :around ((t1 type-expr) (t2 type-expr) bindings)
-  (declare (ignore bindings))
    (or (eq t1 t2)
-       (call-next-method)))
+       (and (call-next-method)
+	    (or (not *strong-tc-eq-flag*)
+		(and (tc-eq* (print-type t1) (print-type t2) bindings)
+		     (eq (from-conversion t1) (from-conversion t2)))))))
 
 (defmethod tc-eq* ((t1 subtype) (t2 subtype) bindings)
   (with-slots ((st1 supertype) (p1 predicate)) t1
@@ -1259,27 +1271,8 @@ where db is to replace db1 and db2")
 (defmethod compatible-preds* ((atype subtype) (etype subtype) aexpr incs)
   (if (subtype-of? atype etype)
       incs
-      (multiple-value-bind (ty preds)
-	  (subtype-preds etype atype)
-	(if ty
-	    (append (mapcar #'(lambda (p) (mk-red-appl p aexpr)) preds)
-		    incs)
-	    (compatible-preds* (supertype atype) (supertype etype)
-			       aexpr
-			       (cons (mk-red-appl (predicate etype) aexpr)
-				     incs))))))
-
-(defmethod compatible-preds* ((atype subtype) (etype datatype-subtype) aexpr incs)
-  (if (subtype-of? atype etype)
-      incs
-      (multiple-value-bind (ty preds)
-	  (subtype-preds etype atype)
-	(if ty
-	    (append (mapcar #'(lambda (p) (mk-red-appl p aexpr)) preds)
-		    incs)
-	    (compatible-preds* (supertype atype) etype
-			       aexpr
-			       incs)))))
+      (compatible-preds* atype (supertype etype) aexpr
+			 (cons (mk-red-appl (predicate etype) aexpr) incs))))
 
 (defmethod compatible-preds* ((atype datatype-subtype) (etype datatype-subtype)
 			      aexpr incs)
