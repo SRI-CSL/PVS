@@ -22,7 +22,7 @@
 		  (*in-evaluator* t)
 		  (*pvs-eval-do-timing* nil)
 		  (*convert-back-to-pvs* t))
-	      (format t "~%~%PVS Ground Evaluation.~%Enter a ground expression in quotes at the <GndEval> prompt~%")
+	      (format t "~%~%PVS Ground Evaluation.~%Enter a ground expression in quotes at the <GndEval> prompt~%Type help for a list of commands~%")
 	      (evaluate))
 	    (pvs-message "Theory ~a is not typechecked" theoryname))
       (pvs-emacs-eval "(pvs-evaluator-ready)"))))
