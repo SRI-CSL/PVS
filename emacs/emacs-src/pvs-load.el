@@ -4,12 +4,11 @@
 ;; Author          : Sam Owre
 ;; Created On      : Fri Dec 17 13:32:31 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Tue Nov 21 17:34:14 1995
-;; Update Count    : 60
-;; Status          : Beta test
-;; 
-;; HISTORY
+;; Last Modified On: Thu May 20 22:44:54 2004
+;; Update Count    : 61
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 
 (eval-and-compile (require 'pvs-macros))
@@ -307,7 +306,7 @@ get to the same state."
       (setq pvs-in-evaluator nil)
       (unless noninteractive
 	(pvs-auto-set-linelength (selected-frame))
-	(pvs-welcome (not (equal (buffer-name) "*pvs*"))))
+	(pvs-welcome (equal (buffer-name) "*scratch*")))
       (when (boundp 'save-options-file)
 	(setq save-options-file "~/.pvsxemacs-options")
 	(setq save-options-init-file "~/.pvsemacs"))
