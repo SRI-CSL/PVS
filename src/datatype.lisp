@@ -279,10 +279,13 @@ generated")
   (generate-adt-subterm adt)
   (unless (or (enumtype? adt)
 	      (every #'(lambda (c) (null (arguments c))) (constructors adt)))
-    (generate-adt-reduce adt '|nat|)
-    (when (and (not (eq (id adt) '|ordstruct|))
+    (generate-adt-reduce adt 'nat)
+    (when (and (not (eq (id adt) 'ordstruct))
 	       (get-theory "ordstruct_adt"))
-      (generate-adt-reduce adt '|ordinal|))))
+      (generate-adt-reduce adt 'ordinal))))
+
+(defmethod positive-types ((adt inline-recursive-type))
+  nil)
 
 (defmethod generate-remaining-adt-sections ((codt codatatype))
   (generate-bisimulation codt)
@@ -305,8 +308,8 @@ generated")
 					    (mk-type-name (id adt)))))))))
 	 (rbd (make-bind-decl rvid rtype))
 	 (rvar (make-variable-expr rbd))
-	 (avid (make-new-variable '|x| adt))
-	 (bvid (make-new-variable '|y| adt))
+	 (avid (make-new-variable 'x adt))
+	 (bvid (make-new-variable 'y adt))
 	 (atype (typecheck (mk-type-name (id adt))))
 	 (btype (typecheck (mk-type-name (id adt))))
 	 (abd (make-bind-decl avid atype))
@@ -321,15 +324,15 @@ generated")
 		    (mapcar #'(lambda (c)
 				(bisimulation-case c avar bvar rvar adt))
 		      (constructors adt))))))
-	 (cdecl (mk-adt-def-decl '|bisimulation?|
+	 (cdecl (mk-adt-def-decl 'bisimulation?
 		  *boolean*
 		  (pc-parse (unparse cform :string t) 'expr)
 		  (list (list rbd))))
 	 (bivid (make-new-variable 'B adt))
-	 (bitype (mk-expr-as-type (mk-name-expr '|bisimulation?|)))
+	 (bitype (mk-expr-as-type (mk-name-expr 'bisimulation?)))
 	 (bibd (mk-bind-decl bivid bitype))
 	 (bivar (mk-name-expr bivid))
-	 (fdecl (mk-formula-decl '|coinduction|
+	 (fdecl (mk-formula-decl 'coinduction
 		  (mk-forall-expr (list bibd abd bbd)
 		    (mk-application '=>
 		      (mk-application bivar avar bvar)
@@ -343,10 +346,19 @@ generated")
 	     (mapcar #'(lambda (a)
 			 (bisimulation-arg-value
 			  (type a)
-			  (mk-application (id a) avar)
+			  (if (some #'(lambda (cc)
+					(and (not (eq cc c))
+					     (some #'(lambda (aa)
+						       (same-id aa a))
+						   (arguments cc))))
+				    (constructors adt))
+			      (mk-application (id a)
+				(mk-coercion avar
+					     (mk-expr-as-type
+					      (mk-name-expr (recognizer c)))))
+			      (mk-application (id a) avar))
 			  (mk-application (id a) bvar)
-			  rvar
-			  adt))
+			  rvar adt))
 	       (arguments c))))
 	(mk-conjunction (cons (mk-application (mk-name-expr (recognizer c))
 				avar)
@@ -363,7 +375,8 @@ generated")
 	 (mk-application rvar (copy avar) (copy bvar)))
 	((adt? te)
 	 (let ((rels (mapcar #'(lambda (act)
-				 (bisimulation-rel (type-value act) rvar adt))
+				 (bisimulation-rel (type-value act)
+						   rvar adt))
 		       (positive-actuals te))))
 	   (if (every #'(lambda (x) (and (name-expr? x) (eq (id x) '=)))
 		      rels)
@@ -376,7 +389,7 @@ generated")
   (bisimulation-arg-value (supertype te) avar bvar rvar adt))
 
 (defmethod bisimulation-arg-value ((te funtype) avar bvar rvar adt)
-  (let* ((fid (make-new-variable '|x| (list adt avar bvar rvar)))
+  (let* ((fid (make-new-variable 'x (list adt avar bvar rvar)))
 	 (fbd (make-bind-decl fid (domain te)))
 	 (*bound-variables* (cons fbd *bound-variables*))
 	 (fvar (mk-name-expr fid nil nil
@@ -458,7 +471,7 @@ generated")
 	((adt? te)
 	 (let ((rels (mapcar #'(lambda (act)
 				   (bisimulation-rel (type-value act)
-							    rvar adt))
+						     rvar adt))
 			 (positive-actuals te))))
 	   (if (every #'(lambda (x) (and (name-expr? x) (eq (id x) '=))) rels)
 	       (mk-name-expr '=)
@@ -469,7 +482,7 @@ generated")
   (bisimulation-rel (supertype te) rvar adt))
 
 (defmethod bisimulation-rel ((te funtype) rvar adt)
-  (let* ((fid (make-new-variable '|x| te))
+  (let* ((fid (make-new-variable 'x te))
 	 (fbd (make-bind-decl fid (domain te)))
 	 (fvar (mk-name-expr fid nil nil
 			     (make-resolution fbd
@@ -482,7 +495,7 @@ generated")
 	       rvar adt)))
     (if (and (name-expr? rel) (eq (id rel) '=))
 	rel
-	(let* ((lid (make-new-variable '|f| (list te rel)))
+	(let* ((lid (make-new-variable 'f (list te rel)))
 	       (lbd (make-bind-decl lid te))
 	       (lvar (mk-name-expr lid nil nil
 				   (make-resolution lbd
@@ -493,10 +506,10 @@ generated")
 		(mk-application lvar fvar))))))))
 
 (defmethod bisimulation-rel ((te recordtype) rvar adt)
-  (let* ((rxid (make-new-variable '|rx| te))
+  (let* ((rxid (make-new-variable 'rx te))
 	 (rxbd (make-bind-decl rxid te))
 	 (rxvar (make-variable-expr rxbd))
-	 (ryid (make-new-variable '|ry| te))
+	 (ryid (make-new-variable 'ry te))
 	 (rybd (make-bind-decl ryid te))
 	 (ryvar (make-variable-expr rybd))
 	 (*bound-variables* (cons rxbd (cons rybd *bound-variables*)))
@@ -506,15 +519,15 @@ generated")
 	(mk-lambda-expr (list rxbd rybd)
 	  (mk-conjunction rels)))))
 
-(defun bisimulation-rel-fields (fields rxvar ryvar rvar adt &optional rels)
+(defun bisimulation-rel-fields (fields rxvar ryvar rvar adt
+				       &optional rels)
   (if (null fields)
       (nreverse rels)
       (let ((rel (bisimulation-arg-value
 		  (type (car fields))
 		  (make-field-application (car fields) rxvar)
 		  (make-field-application (car fields) ryvar)
-		  rvar
-		  adt)))
+		  rvar adt)))
 	(bisimulation-rel-fields (cdr fields) rxvar ryvar rvar adt
 				 (cons rel rels)))))
 
@@ -532,15 +545,15 @@ generated")
 	(mk-lambda-expr (list txbd tybd)
 	  (mk-conjunction rels)))))
 
-(defun bisimulation-rel-types (types rxvar ryvar rvar adt num &optional rels)
+(defun bisimulation-rel-types (types rxvar ryvar rvar adt num
+				     &optional rels)
   (if (null types)
       (nreverse rels)
       (let ((rel (bisimulation-arg-value
 		  (car types)
 		  (make-projection-application num rxvar)
 		  (make-projection-application num ryvar)
-		  rvar
-		  adt)))
+		  rvar adt)))
 	(bisimulation-rel-types (cdr types) rxvar ryvar rvar adt (1+ num)
 				(cons rel rels)))))
 
@@ -5056,12 +5069,8 @@ function, tuple, or record type")
 	    (substit value (acons (domain ste) dbd nil))
 	    value)))))
 
-(defmethod generate-coreduce-funtype-selection-value* ((te tupletype) (ste tupletype) var op codt struct type-alist)
-  (generate-coreduce-funtype-selection-tup-value*
-   (types te) (types ste) var op codt struct type-alist))
-
-(defmethod generate-coreduce-funtype-selection-value* ((te cotupletype) (ste cotupletype) var op codt struct type-alist)
-  (break "generate-coreduce-funtype-selection-value* (cotuple)")
+(defmethod generate-coreduce-funtype-selection-value*
+    ((te tupletype) (ste tupletype) var op codt struct type-alist)
   (generate-coreduce-funtype-selection-tup-value*
    (types te) (types ste) var op codt struct type-alist))
 
@@ -5083,6 +5092,30 @@ function, tuple, or record type")
 		 (make-conjunction (list result aval))
 		 aval)
 	     result)))))
+
+(defmethod generate-coreduce-funtype-selection-value*
+    ((te cotupletype) (ste cotupletype) var op codt struct type-alist)
+  (let ((sel-var-id (make-new-variable 'x codt)))
+    (generate-coreduce-funtype-selection-cotup-value*
+     (types te) (types ste) te var op codt struct sel-var-id type-alist)))
+
+(defun generate-coreduce-funtype-selection-cotup-value*
+  (types stypes cotup var op codt struct sel-var-id type-alist
+	 &optional (num 1) result)
+  (if (null types)
+      (unless (every #'(lambda (sel) (tc-eq (expression sel) *true*)) result)
+	(make!-unpack-expr var (nreverse result)))
+      (let* ((bd (make-bind-decl sel-var-id (car types)))
+	     (sel-var (make-variable-expr bd))
+	     (in-ex (make!-injection-application num sel-var cotup))
+	     (aval (generate-coreduce-funtype-selection-value*
+		    (car types) (car stypes) sel-var op codt struct type-alist))
+	     (sel (mk-selection in-ex (list bd) (or aval *true*))))
+	(generate-coreduce-funtype-selection-cotup-value*
+	 (cdr types)
+	 (cdr stypes)
+	 cotup var op codt struct sel-var-id type-alist (1+ num)
+	 (cons sel result)))))
 
 (defmethod generate-coreduce-funtype-selection-value* ((te dep-binding) (ste dep-binding) var op codt struct type-alist)
   (generate-coreduce-funtype-selection-value* (type te) (type ste) var op codt struct type-alist))
