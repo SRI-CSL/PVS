@@ -1344,11 +1344,12 @@
     (unless (length= (car (formals (declaration (type type))))
 		     (parameters type))
       (type-error type "Wrong number of actuals in ~a" type))
-    (let ((typeslist (make-formals-type-app
+    (let ((*generate-tccs* 'none)
+	  (typeslist (make-formals-type-app
 		      (subst-mod-params (formals (declaration (type type)))
 					(module-instance
 					 (resolution (type type)))))))
-      (mapc #'set-type (parameters type) (car typeslist)))
+      (set-type-for-application-parameters (parameters type) (car typeslist)))
     (let ((tval (substit te (pairlis (car (formals (declaration (type type))))
 				     (parameters type)))))
       (setf (print-type tval) type)
@@ -1357,6 +1358,16 @@
 	(setf (nonempty? tval) t)
 	(setf (nonempty? type) t))
       tval)))
+
+(defun set-type-for-application-parameters (parameters types)
+  (when parameters
+    (set-type (car parameters) (car types))
+    (set-type-for-application-parameters
+     (cdr parameters)
+     (if (dep-binding? (car types))
+	 (substit (cdr types)
+	   (acons (car types) (car parameters) nil))
+	 (cdr types)))))
 
 (defun make-formals-type-app (formals)
   (let ((typeslist (mapcar #'(lambda (fm)
