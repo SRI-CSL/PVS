@@ -176,6 +176,9 @@ prelude libraries")
 (defvar *tex-mode* nil)
 ;(defvar *id-to-modinsts* nil)
 
+(defvar *parse-error-catch* nil
+  "Set to a value to throw to when trying to control parsing.")
+
 (defvar *type-error-catch* nil
   "Set to a value to throw to when trying to control typechecking.")
 
