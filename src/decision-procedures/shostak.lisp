@@ -132,12 +132,12 @@
 	    *false*
 	    (make-nequality new-lhs new-rhs cong-state)))))
 
-(defvar *use-t-c* nil)
+(defvar *use-t-c* t)
 
 (defun check-and-canonize-neqs (cong-state)
   (let ((false-eq?
 	 (loop for neq in (nequals cong-state)
-	       for find-neq = (find-neq neq cong-state)
+	       ;for find-neq = (find-neq neq cong-state)
 	       for canon-neq = (canon-neq neq cong-state)
 	       unless (true-p canon-neq) collect canon-neq into new-neqs
 	       when (and (not *use-t-c*)
@@ -231,7 +231,10 @@
 		;;(break "interp")
 		(cond
 		 ((true-p u-find) ;(when (false-p u_sigma) (break))
-		  (process* (canon (mk-equality u_sigma u-find) cong-state)
+		  (process* (canonsig
+			     (sigma
+			     (mk-equality u_sigma u-find) cong-state)
+			     cong-state)
 			    cong-state))
 		 ((eq u-find u)
 		  (dp-merge u u_sigma cong-state))
@@ -271,9 +274,11 @@
   (let ((canon-hash (canon-hash term cong-state)))
     (cond
      (canon-hash
-      (let ((t-f (find-top canon-hash cong-state))
-	    (t-c (canon* term cong-state no-mod)))
+      (let (;(t-f (find-top canon-hash cong-state))
+	    (t-c (canon* term cong-state no-mod))
+	    )
 	(cond
+	 (t t-c)
 	 ((eq t-f t-c) t-f)
 	 (*use-t-c* t-c)
 	 (t (break "Please contact Cyrluk and do a :cont 0 to continue")
