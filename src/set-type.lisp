@@ -529,33 +529,35 @@ required a context.")
 		      (set-type-mappings (mappings (expr rhs))
 					 (name-to-modname
 					  (expr rhs))))))))
-	(t (let* ((ptypes (remove-if-not #'type-expr? (ptypes (expr rhs))))
-		  (types (get-compatible-rhs-types
-			  (type (declaration lhs))
-			  ptypes rhs modinst mappings)))
-	     (cond ((null types)
-		    (type-error (expr rhs) "Expr expected here"))
-		   ((cdr types)
-		    (type-ambiguity (expr rhs)))
-		   ((fully-instantiated? (car types))
-		    (set-type* (expr rhs) (car types)))
-		   (t (type-error (expr rhs)
-			"Could not determine the full theory instance for ~a"
-			(expr rhs))))))))
-
-(defun get-compatible-rhs-types (lhs-type rhs-types rhs modinst mappings)
-  (let ((subst-type (subst-mod-params lhs-type
-				      (lcopy modinst
-					'mappings mappings))))
-    (or (remove-if-not #'(lambda (ty) (compatible? ty subst-type)) rhs-types)
-	(type-incompatible (expr rhs) rhs-types subst-type))))
+	(t (let ((subst-type (subst-mod-params
+			      (type (declaration lhs))
+			      (lcopy modinst 'mappings mappings))))
+	     (set-type* (expr rhs) subst-type)))))
 
 (defun determine-best-mapping-lhs (lhs rhs)
   (unless (singleton? (resolutions lhs))
-    (let ((locals (filter-local-resolutions (resolutions lhs))))
-      (if (singleton? locals)
-	  (setf (resolutions lhs) locals)
-	  (break)))))
+    (let ((reses (determine-best-mapping-lhs-resolutions
+		  (resolutions lhs) rhs)))
+      (unless reses (break "No reses?"))
+      (setf (resolutions lhs) reses)
+      (unless (singleton? reses)
+	(type-ambiguity lhs)))))
+
+(defun determine-best-mapping-lhs-resolutions (lhs-reses rhs)
+  (filter-local-resolutions
+   (remove-if-not
+       #'(lambda (r) (determine-best-mapping-lhs-resolutions* r rhs))
+     lhs-reses)))
+
+(defun determine-best-mapping-lhs-resolutions* (lhs-res rhs)
+  (case (kind-of (declaration lhs-res))
+    (type (type-value rhs))
+    (module (and (name-expr? (expr rhs))
+		 (some #'(lambda (r) (eq (kind-of (declaration r)) 'module))
+		       (resolutions (expr rhs)))))
+    (expr (ptypes (expr rhs)))
+    (t (break "Strange kind-of"))))
+
 
 (defvar *simplify-actuals* t)
 
