@@ -252,9 +252,10 @@ E.g., (try (skip)(flatten)(skolem!)) is just (skolem!)
 
 (defstep assert (&optional (fnums *) rewrite-flag
 			   flush? linear? cases-rewrite? (type-constraints? t)
-			   ignore-prover-output? (let-reduce? t) quant-simp?)
+			   ignore-prover-output? (let-reduce? t) quant-simp?
+			   implicit-typepreds?)
   (simplify
-   fnums t t rewrite-flag flush? linear? cases-rewrite? type-constraints? ignore-prover-output? let-reduce? quant-simp?) 
+   fnums t t rewrite-flag flush? linear? cases-rewrite? type-constraints? ignore-prover-output? let-reduce? quant-simp? implicit-typepreds?) 
   "Simplifies/rewrites/records formulas in FNUMS using decision
 procedures.  Variant of SIMPLIFY with RECORD? and REWRITE? flags set
 to T. If REWRITE-FLAG is RL(LR) then only lhs(rhs) of equality
@@ -511,6 +512,12 @@ definitions as auto-rewrites."
 definitions as auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
+(defhelper judgement-tcc ()
+  (tcc$ explicit)
+  "The strategy used for judgement TCCs - invokes GRIND with non-recursive
+definitions as auto-rewrites"
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
 (defhelper assuming-tcc ()
   (tcc$ explicit)
   "The strategy used for assuming TCCs - invokes GRIND with non-recursive
@@ -594,8 +601,10 @@ defined, it looks for 'context-strategy', and if that is not found, it
 invokes 'grind'."
   "")
 
-(defstep bash (&optional (if-match t)(updates? t) polarity? (instantiator inst?) (let-reduce? t) quant-simp?)
-  (then (assert :let-reduce? let-reduce? :quant-simp? quant-simp?)(bddsimp)
+(defstep bash (&optional (if-match t)(updates? t) polarity? (instantiator inst?) (let-reduce? t) quant-simp? implicit-typepreds?)
+  (then (assert :let-reduce? let-reduce? :quant-simp? quant-simp?
+		:implicit-typepreds? implicit-typepreds?)
+	(bddsimp)
 	(if if-match (let ((command (generate-instantiator-command
 				     if-match polarity? instantiator)))
 		       command)(skip))
@@ -638,11 +647,12 @@ reasoning, quantifier instantiation, skolemization, if-lifting.")
 	 
 (defstep reduce (&optional (if-match t)(updates? t) polarity?
 			   (instantiator inst?) (let-reduce? t) quant-simp?
-			   no-replace?)
+			   no-replace? implicit-typepreds?)
     (repeat* (try (bash$ :if-match if-match :updates? updates?
 			 :polarity? polarity? :instantiator instantiator
 			 :let-reduce? let-reduce?
-			 :quant-simp? quant-simp?)
+			 :quant-simp? quant-simp?
+			 :implicit-typepreds? implicit-typepreds?)
                (if no-replace? (skip)(replace*))
                (skip)))
 "Core of GRIND (ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, FLATTEN,
@@ -652,8 +662,10 @@ See BASH for more explanation."
   propositional reasoning, quantifier instantiation, skolemization,
  if-lifting and equality replacement")
 
-(defstep smash (&optional (updates? t) (let-reduce? t) quant-simp?)
-  (repeat* (then (bddsimp)(assert :let-reduce? let-reduce? :quant-simp? quant-simp?)
+(defstep smash (&optional (updates? t) (let-reduce? t) quant-simp? implicit-typepreds?)
+  (repeat* (then (bddsimp)
+		 (assert :let-reduce? let-reduce? :quant-simp? quant-simp?
+			 :implicit-typepreds? implicit-typepreds?)
 		 (lift-if :updates? updates?)))
   "Repeatedly tries BDDSIMP, ASSERT, and LIFT-IF.  If the UPDATES?
 option is NIL, update applications are not if-lifted."
@@ -715,16 +727,18 @@ EXCLUDE is a list of rewrite rules. "
 			  (instantiator inst?)
 			  (let-reduce? t)
 			  quant-simp?
-			  no-replace?)
+			  no-replace?
+			  implicit-typepreds?)
   (then
    (install-rewrites$ :defs defs :theories theories
-		     :rewrites rewrites :exclude exclude)
-    (then (bddsimp)(assert :let-reduce? let-reduce?))
-    (replace*)
-    (reduce$ :if-match if-match :updates? updates?
-	     :polarity? polarity? :instantiator instantiator
-	     :let-reduce? let-reduce? :quant-simp? quant-simp?
-	     :no-replace? no-replace?))
+		      :rewrites rewrites :exclude exclude)
+   (then (bddsimp)(assert :let-reduce? let-reduce?))
+   (replace*)
+   (reduce$ :if-match if-match :updates? updates?
+	    :polarity? polarity? :instantiator instantiator
+	    :let-reduce? let-reduce? :quant-simp? quant-simp?
+	    :no-replace? no-replace?
+	    :implicit-typepreds? implicit-typepreds?))
     "A super-duper strategy.  Does auto-rewrite-defs/theories,
 auto-rewrite then applies skolem!, inst?, lift-if, bddsimp, and
 assert, until nothing works. Here
@@ -950,8 +964,13 @@ is applied.")
 resulting subgoals.  The last step is used for any excess subgoals.
 If STEP does nothing, then ELSE-STEP is applied.")
 
-(defstep ground (&optional (let-reduce? t) quant-simp?)
-  (try (flatten)(ground$)(try (split)(ground$)(assert :let-reduce? let-reduce? :quant-simp? quant-simp?)))
+(defstep ground (&optional (let-reduce? t) quant-simp? implicit-typepreds?)
+  (try (flatten)
+       (ground$)
+       (try (split)
+	    (ground$)
+	    (assert :let-reduce? let-reduce? :quant-simp? quant-simp?
+		    :implicit-typepreds? implicit-typepreds?)))
   "Does propositional simplification followed by the use of decision procedures."
   "Applying propositional simplification and decision procedures")
 
@@ -1990,7 +2009,9 @@ x_1!n rather than x!n, for some number n."
 		(if (subsetp new-sforms rest
 			       :test #'tc-eq
 			       :key #'formula)
-		    (then (skip-msg "Avoiding duplicate instantiation")(fail))
+		    (then (skip-msg
+			   "Avoiding instantiation leading to duplicate formulas")
+			  (fail))
 		  (skip)))
 	     (skip))
 	(skip))
@@ -3336,18 +3357,19 @@ invokes apply-extensionality.  Otherwise it decomposes the
 	       (= (index lhs) (index rhs)))
 	  (make-equality (make!-extraction-application (index lhs) lhs)
 			 (make!-extraction-application (index rhs) rhs))
-	  (make-conjunction*
+	  (make!-conjunction
 	   (make!-injection?-application (index lhs) rhs)
 	   (make-equality (make!-extraction-application (index lhs) lhs)
 			  (make!-extraction-application (index lhs) rhs))))
       (if (injection-application? rhs)
-	  (make-conjunction*
+	  (make!-conjunction
 	   (make!-injection?-application (index rhs) lhs)
 	   (make-equality (make!-extraction-application (index rhs) lhs)
 			  (make!-extraction-application (index rhs) rhs)))
 	  (let ((index 0))
 	    (make-disjunction
 	     (mapcar #'(lambda (type)
+			 (declare (ignore type))
 			 (incf index)
 			 (apply #'make-conjunction
 			   (make!-injection?-application index lhs)
@@ -3421,6 +3443,12 @@ invokes apply-extensionality.  Otherwise it decomposes the
       (and (implication? formula)
 	   (inductive-conclusion? (args2 formula)))))
 
+(defun coinductive-scheme? (formula)
+  (if (forall-expr? formula)
+      (coinductive-scheme? (expression formula))
+      (and (implication? formula)
+	   (coinductive-conclusion? (args2 formula)))))
+
 ;;checks if conclusion of formula is induction conclusion.
 (defun inductive-conclusion? (formula)
   (if (forall-expr? formula)
@@ -3429,9 +3457,19 @@ invokes apply-extensionality.  Otherwise it decomposes the
 	   (inductive-predicate? (operator* (args1 formula)))
 	   (args1 formula))))
 
+(defun coinductive-conclusion? (formula)
+  (if (forall-expr? formula)
+      (coinductive-conclusion? (expression formula))
+      (and (implication? formula)
+	   (coinductive-predicate? (operator* (args2 formula)))
+	   (args2 formula))))
+
 ;;checks if name is an inductively defined predicate.
 (defun inductive-predicate? (name)
   (inductive-decl? (declaration name)))
+
+(defun coinductive-predicate? (name)
+  (coinductive-decl? (declaration name)))
 
 ;;Returns resolution for inductive induction scheme given
 ;;rel or induction name.
@@ -3447,6 +3485,18 @@ invokes apply-extensionality.  Otherwise it decomposes the
 	    (resolutions (resolve name 'formula nil *current-context*)))
 	(car resolutions))))
 
+(defun get-coinductive-scheme-res (rel coinduction)
+  (if coinduction
+      (let* ((name (pc-parse coinduction 'name))
+	     (resolutions (resolve name 'formula nil *current-context*)))
+	(car resolutions))
+      (let* ((name (pc-parse (format nil "~a.~a_weak_coinduction"
+			      (module-instance (resolution rel))
+			      (id rel))
+		    'name))
+	    (resolutions (resolve name 'formula nil *current-context*)))
+	(car resolutions))))
+
 ;;returns flattened (uncurried) list of arguments
 (defun arguments! (expr)
   (apply #'append (arguments* expr)))
@@ -3456,38 +3506,47 @@ invokes apply-extensionality.  Otherwise it decomposes the
   (format nil "~a.~a" (module-instance res) (id res)))
 
 ;;checks if a formula is of the form rel(....).
-(defun inductive-antecedent? (rel)
+(defun inductive-antecedent-or-coinductive-consequent? (rel)
   #'(lambda (x)
       (let ((xf (formula x)))
-	(and (negation? xf)
-	     (name-expr? (operator* (args1 xf)))
-	     (same-id (operator* (args1 xf))
-		      rel)
-	     (inductive-predicate?
-	      (operator* (args1 xf)))))))
+	(if (negation? xf)
+	    (and (name-expr? (operator* (args1 xf)))
+		 (same-id (operator* (args1 xf))
+			  rel)
+		 (inductive-predicate? (operator* (args1 xf))))
+	    (and (name-expr? (operator* xf))
+		 (same-id (operator* xf) rel)
+		 (coinductive-predicate? (operator* xf)))))))
 
-(defstep rule-induct-step (rel &optional (fnum -) name)
+(defstep rule-induct-step (rel &optional (fnum *) name)
   (let ((sforms (s-forms (current-goal *ps*)))
 	(rel (pc-parse rel 'expr))
 	(pred-sforms
 	 (gather-seq sforms
 		     fnum nil
-		     (inductive-antecedent? rel))))
+		     (inductive-antecedent-or-coinductive-consequent? rel))))
     (if (null pred-sforms)
-	(skip-msg "No appropriate inductive antecedent in the goal sequent.")
-	(let ((pred-sform  (car pred-sforms))
-	      (pred-application (args1 (formula pred-sform)))
+	(skip-msg "No appropriate (co)inductive formula in the goal sequent.")
+	(let ((pred-sform (car pred-sforms))
+	      (pred-application (if (negation? (formula pred-sform))
+				    (args1 (formula pred-sform))
+				    (formula pred-sform)))
 	      (rel (operator* pred-application))
 	      (ind-res (when rel
-			 (get-inductive-scheme-res rel name)))
+			 (if (inductive-predicate? rel)
+			     (get-inductive-scheme-res rel name)
+			     (get-coinductive-scheme-res rel name))))
 	      (ind-scheme-name (print-resolution ind-res))
 	      (ind-scheme (car (create-formulas ind-res)))
-	      (ind-pred (inductive-scheme? ind-scheme))
-	      (ind-scheme (when (inductive-scheme? ind-scheme)
-			    ind-scheme)))
+	      (ind-pred (if (inductive-predicate? rel)
+			    (inductive-scheme? ind-scheme)
+			    (coinductive-scheme? ind-scheme)))
+	      (ind-scheme (when ind-pred ind-scheme)))
 	  (if (null ind-scheme)
 	      (let ((format-string
-		     (format nil "No induction scheme associated with relation ~a" rel)))
+		     (format nil
+			 "No (co)induction scheme associated with relation ~a"
+		       rel)))
 		(skip-msg format-string))
 	      (let ((ind-bindings (apply #'append (bindings* ind-scheme)))
 		    (pred-fixed
@@ -3505,41 +3564,60 @@ invokes apply-extensionality.  Otherwise it decomposes the
 		(if (not (every #'skolem-constant? pred-varying))
 		    (let ((format-string
 			   (format nil
-			       "Inductive relation:~%~a~%must be over ~
-skolem constants for the induction scheme to make sense."
+			       "(Co)Inductive relation:~%~a~%must be over ~
+skolem constants for the (co)induction scheme to make sense."
 			     pred-application)))
 		      (skip-msg format-string))
 		    (if (duplicates? pred-varying :test #'tc-eq)
 			(let ((format-string
-			       (format nil "Duplicates in induction parameters: ~a"
+			       (format nil
+				   "Duplicates in (co)induction parameters: ~a"
 				 pred-varying)))
 			  (skip-msg format-string))
-			(let ((pred-constants 
+			(let ((pred-constants
 			       (sort pred-varying
 				     #'(lambda (x y)
 					 (member x
 						 (collect-subterms
 						  y #'constant?)))))
 			      (all-antec-fmlas
-			       (loop for sf in sforms
-				     when (and (negation? (formula sf))
-					       (intersection
-						pred-constants
-						(collect-subterms (formula sf)
-								  #'constant?)
-						:test #'tc-eq))
-				     collect (args1 (formula sf))))
+			       (if (inductive-predicate? rel)
+				   (loop for sf in sforms
+					 when (and (negation? (formula sf))
+						   (intersection
+						    pred-constants
+						    (collect-subterms (formula sf)
+								      #'constant?)
+						    :test #'tc-eq))
+					 collect (args1 (formula sf)))
+				   (loop for sf in sforms
+					 when (and (not (negation? (formula sf)))
+						   (intersection
+						    pred-constants
+						    (collect-subterms (formula sf)
+								      #'constant?)
+						    :test #'tc-eq))
+					 collect (formula sf))))
 			      (antec-fmlas (delete pred-application
 						   all-antec-fmlas))
 			      (conseq-fmlas
-			       (loop for sf in sforms
-				     when (and (not (negation? (formula sf)))
-					       (intersection
-						pred-constants
-						(collect-subterms (formula sf)
-								  #'constant?)
-						:test #'tc-eq))
-				     collect (formula sf)))
+			       (if (inductive-predicate? rel)
+				   (loop for sf in sforms
+					 when (and (not (negation? (formula sf)))
+						   (intersection
+						    pred-constants
+						    (collect-subterms
+						     (formula sf) #'constant?)
+						    :test #'tc-eq))
+					 collect (formula sf))
+				   (loop for sf in sforms
+					 when (and (negation? (formula sf))
+						   (intersection
+						    pred-constants
+						    (collect-subterms
+						     (formula sf) #'constant?)
+						    :test #'tc-eq))
+					 collect (args1 (formula sf)))))
 			      (form (if antec-fmlas
 					(make-implication
 					 (make-conjunction antec-fmlas)
@@ -3586,18 +3664,20 @@ skolem constants for the induction scheme to make sense."
 								    old-fmlas))
 							 (memq x old-fmlas))))))
 					   (hide :fnums fnums)))))))))))))
-  "Applies rule induction over an inductive relation REL in
-   order to prove a sequent of the form
-     ..., REL(x1,...,xn) ... |-- ... .
-   RULE-INDUCT-STEP searches for an antecedent formula of this form
-   but this can also be given explicitly as FNUM.  The induction
-   predicate is formulated using all the sequent formulas containing
-   x1,...,xn.   The strategy uses the default induction scheme but can be
-   told to use weak induction by giving REL_weak_induction as the NAME
-   argument."
+  "Applies rule (co)induction over a (co)inductive relation REL in order to
+prove a sequent of the form
+     ..., REL(x1,...,xn) ... |-- ... for an inductive REL, or
+     ... |-- ..., REL(x1,...,xn) ... for a coinductive REL.
+RULE-INDUCT-STEP searches for an antecedent (for inductive REL) or
+consequent (for coinductive REL) formula of this form but this can also be
+given explicitly as FNUM.  The (co)induction predicate is formulated using
+all the sequent formulas containing x1,...,xn.   The strategy uses the
+weak (co)induction scheme by default but can be told to use an alternative 
+scheme by giving a different NAME argument, e.g., REL_induction or
+REL_coinduction."
   "Applying rule induction over ~a")
 
-(defstep rule-induct (rel &optional (fnum +) name)
+(defstep rule-induct (rel &optional (fnum *) name)
   (let ((relname (pc-parse rel 'expr)))
     (if (name-expr? relname)
 	(then (repeat (skolem! fnum))
@@ -3605,19 +3685,22 @@ skolem constants for the induction scheme to make sense."
 		   (let ((fnum *new-fmla-nums*))
 		     ;;note rule-induct recursively, not rule-induct-step
 		     ;;to deal with embedded induction predicates.
-		     (rule-induct$ rel :fnum + :name name))
-		   (rule-induct-step$ rel :fnum - :name name)))
-	(skip-msg "Expected the name of an inductive relation for the REL argument to rule-induct")))
-  "Applies rule induction over an inductive relation REL in
-   order to prove a sequent of the form
+		     (rule-induct$ rel :fnum * :name name))
+		   (rule-induct-step$ rel :fnum * :name name)))
+	(skip-msg "Expected the name of an (co)inductive relation for the REL argument to rule-induct")))
+  "Applies rule (co)induction over an inductive relation REL in order to
+prove a sequent of the form
+      ...|- (FORALL ...: REL(...) IMPLIES ... or
+     ..., REL(x1,...,xn) ... |-- ...
+   or, for coinductive REL,
       ...|- (FORALL ...: REL(...) IMPLIES ... or
      ..., REL(x1,...,xn) ... |-- ... 
-   RULE-INDUCT first applies repeated skolemization  and flattening
-   to the specified FNUM (or the first positive, skolemizable consequent)
-   before invoking RULE-INDUCT-STEP.   The strategy uses the default
-   weak induction scheme but can be told to use strong induction by giving
-   REL_strong_induction as the NAME argument."
-  "Applying rule induction over ~a")
+RULE-INDUCT first applies repeated skolemization  and flattening to the
+specified FNUM (or the first skolemizable formula) before invoking
+RULE-INDUCT-STEP.   The strategy uses the default weak (co)induction scheme
+but can be told to use strong (co)induction by giving REL_induction
+or REL_coinduction as the NAME argument."
+  "Applying rule (co)induction over ~a")
 
 
 (defmethod bindings* ((expr binding-expr))
@@ -3863,11 +3946,12 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
 
 (defstep lazy-grind  (&optional (if-match t) (defs !) rewrites
                                 theories exclude (updates? t) (let-reduce? t)
-				quant-simp?)
+				quant-simp? implicit-typepreds?)
   (then
    (grind$ :if-match nil :defs defs :rewrites rewrites 
 	   :theories theories :exclude exclude :updates? updates?
-	   :let-reduce? let-reduce? :quant-simp? quant-simp?)
+	   :let-reduce? let-reduce? :quant-simp? quant-simp?
+	   :implicit-typepreds? implicit-typepreds?)
    (reduce$ :if-match if-match :updates? updates? :let-reduce? let-reduce?))
   "Equiv. to (grind) with the instantiations postponed until after simplification."
   "By skolemization, if-lifting, simplification and instantiation")
@@ -3906,29 +3990,32 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
 			  (instantiator inst?)
 			  (let-reduce? t)
 			  quant-simp?
-			  no-replace?)
+			  no-replace?
+			  implicit-typepreds?)
   (then
    (install-rewrites$ :defs defs :theories theories
-		     :rewrites rewrites :exclude exclude)
+		      :rewrites rewrites :exclude exclude)
    (then (bddsimp) (assert :let-reduce? let-reduce?))
    (replace*)
    (reduce-with-ext$ :if-match if-match :updates? updates?
 		     :polarity? polarity? :instantiator instantiator
 		     :let-reduce? let-reduce? :quant-simp? quant-simp?
-		     :no-replace? no-replace?))
+		     :no-replace? no-replace?
+		     :implicit-typepreds? implicit-typepreds?))
   "Like GRIND, but calls REDUCE-EXT, which also uses APPLY-EXTENSIONALITY.  See GRIND for an explanation of the arguments."
   "Trying repeated skolemization, instantiation, if-lifting, and extensionality")
 
 (defstep reduce-with-ext (&optional (if-match t)(updates? t) polarity?
 				    (instantiator inst?) (let-reduce? t)
-				    quant-simp? no-replace?)
-  (repeat* (try (bash$ :if-match if-match :updates? updates?
+				    quant-simp? no-replace?
+				    implicit-typepreds?)
+  (repeat* (then (bash$ :if-match if-match :updates? updates?
 		       :polarity? polarity? :instantiator instantiator
 		       :let-reduce? let-reduce?
-		       :quant-simp? quant-simp?)
-		(then (apply-extensionality$ :hide? t)
-		      (if no-replace? (skip) (replace*)))
-		(skip)))
+		       :quant-simp? quant-simp?
+		       :implicit-typepreds? implicit-typepreds?)
+		 (apply-extensionality$ :hide? t)
+		 (if no-replace? (skip) (replace*))))
   "Core of GRIND-WITH-EXT (ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, FLATTEN,
 LIFT-IF, i.e., BASH then REPLACE*), like REDUCE, but includes
 APPLY-EXTENSIONALITY.  See reduce for an explanation of the arguments."
@@ -3984,3 +4071,310 @@ APPLY-EXTENSIONALITY.  See reduce for an explanation of the arguments."
 ;; Don't go down: (or type-expr field-decl symbol lambda-expr)
 ;; Collect if: (and (or name-expr application field-application)
 ;;                  (not boolean?))
+
+;;; Called from typepred-step for typepred! :implicit? t
+(defun collect-implicit-type-constraints (exprs ps all? &optional quiet?)
+  (let* ((texprs
+	  (if (eq exprs t)
+	      t
+	      (mapcar #'(lambda (ex)
+			  (let ((*generate-tccs* 'none)
+				(tex (pc-typecheck (pc-parse ex 'expr))))
+			    (when (freevars tex)
+			      (error-format-if "~%Free variables in expr ~a" tex))
+			    tex))
+		exprs)))
+	 (sforms (s-forms (current-goal ps)))
+	 (preds (implicit-type-constraints sforms texprs)))
+    (or (if all?
+	    preds
+	    (remove-if #'ignored-type-constraint-pred preds))
+	(progn (unless quiet?
+		 (error-format-if "No top-level occurrences of any of the terms in ~:_~
+                          ~w~_ yielded type constraints" exprs))
+	       nil))))
+
+(defun ignored-type-constraint-pred (pred)
+  (let ((ignored (mapcar #'predicate
+		   (remove-if #'null
+		     (list *integer* *rational* *real* *number_field*)))))
+    (and (application? pred)
+	 (or (member (operator pred) ignored :test #'tc-eq)
+	     ;; Special test for *naturalnumber*
+	     (and (tc-eq (operator pred) (greatereq-operator))
+		  (number-expr? (args2 pred))
+		  (= (number (args2 pred)) 0))))))
+
+(defun implicit-type-constraints (ex exprs)
+  (implicit-type-constraints* ex exprs nil nil))
+
+(defmethod implicit-type-constraints* ((ex s-formula) exprs parity preds)
+  (implicit-type-constraints* (formula ex) exprs parity preds))
+
+(defmethod implicit-type-constraints* ((ex negation) exprs parity preds)
+  (implicit-type-constraints* (argument ex) exprs (not parity) preds))
+  
+(defmethod implicit-type-constraints* ((ex conjunction) exprs parity preds)
+  (if parity
+      (implicit-type-constraints* (argument ex) exprs parity preds)
+      preds))
+
+(defmethod implicit-type-constraints* ((ex disjunction) exprs parity preds)
+  (if parity
+      preds
+      (implicit-type-constraints* (argument ex) exprs parity preds)))
+
+(defmethod implicit-type-constraints* ((ex implication) exprs parity preds)
+  (if parity
+      preds
+      (implicit-type-constraints*
+       (args2 ex) exprs parity
+       (implicit-type-constraints* (args1 ex) exprs (not parity) preds))))
+
+(defmethod implicit-type-constraints* ((ex branch) exprs parity preds)
+  (declare (ignore exprs parity))
+  preds)
+
+(defmethod implicit-type-constraints* ((ex binding-expr) exprs parity preds)
+  (declare (ignore exprs parity))
+  preds)
+
+(defmethod implicit-type-constraints* ((ex cases-expr) exprs parity preds)
+  (implicit-type-constraints* (expression ex) exprs parity preds))
+
+(defmethod implicit-type-constraints* ((ex application) exprs parity preds)
+  (let ((npreds (implicit-type-predicates ex exprs preds)))
+    (implicit-type-constraints*
+     (operator ex) exprs parity
+     (implicit-type-constraints* (argument ex) exprs parity npreds))))
+
+(defmethod implicit-type-constraints* ((ex record-expr) exprs parity preds)
+  (implicit-type-constraints* (assignments ex) exprs parity preds))
+
+(defmethod implicit-type-constraints* ((ex assignment) exprs parity preds)
+  (implicit-type-constraints*
+   (expression ex) exprs parity
+   (implicit-type-constraints* (arguments ex) exprs parity preds)))
+
+(defmethod implicit-type-constraints* ((ex list) exprs parity preds)
+  (if (null ex)
+      preds
+      (implicit-type-constraints*
+       (cdr ex) exprs parity
+       (implicit-type-constraints* (car ex) exprs parity preds))))
+
+(defmethod implicit-type-constraints* ((ex tuple-expr) exprs parity preds)
+  (implicit-type-constraints* (exprs ex) exprs parity preds))
+
+(defmethod implicit-type-constraints* ((ex projection-application)
+				       exprs parity preds)
+  (implicit-type-constraints* (argument ex) exprs parity preds))
+
+(defmethod implicit-type-constraints* ((ex injection-application)
+				       exprs parity preds)
+  (implicit-type-constraints* (argument ex) exprs parity preds))
+
+(defmethod implicit-type-constraints* ((ex injection?-application)
+				       exprs parity preds)
+  (implicit-type-constraints* (argument ex) exprs parity preds))
+
+(defmethod implicit-type-constraints* ((ex extraction-application)
+				       exprs parity preds)
+  (implicit-type-constraints* (argument ex) exprs parity preds))
+
+(defmethod implicit-type-constraints* ((ex field-application)
+				       exprs parity preds)
+  (implicit-type-constraints* (argument ex) exprs parity preds))
+
+(defmethod implicit-type-constraints* ((ex update-expr) exprs parity preds)
+  (implicit-type-constraints*
+   (assignments ex) exprs parity
+   (implicit-type-constraints* (expression ex) exprs parity preds)))
+
+(defmethod implicit-type-constraints* ((ex expr) exprs parity preds)
+  (declare (ignore exprs parity))
+  preds)
+
+;; add to assert
+;; check!!
+
+(defmethod implicit-type-predicates ((expr application) exprs preds)
+  (let* ((op (operator expr))
+	 (arg-list (arguments expr))
+	 (optype (type op))
+	 (domtypes (if (singleton? arg-list)
+		       (list (if (dep-binding? (domain optype))
+				 (type (domain optype))
+				 (domain optype)))
+		       (domain-types optype)))
+	 (args (if (singleton? domtypes)
+		   (list (argument expr))
+		   arg-list)))
+    (assert (= (length domtypes) (length args)))
+    (let ((npreds (when (and (cdr args)	;; ow done in implicit-type-predicates*
+			     (or (eq exprs t)
+				 (member (argument expr) exprs :test #'tc-eq)))
+		    (compatible-preds
+		     (type (argument expr))
+		     (if (dep-binding? (domain optype))
+			 (type (domain optype))
+			 (domain optype))
+		     (argument expr)))))
+      (implicit-type-predicates* domtypes args exprs
+				 (nunion npreds preds :test #'tc-eq)))))
+
+(defun implicit-type-predicates* (domtypes args exprs preds)
+  (if (null domtypes)
+      preds
+      (let ((apreds (when (or (eq exprs t)
+			      (member (car args) exprs :test #'tc-eq))
+		      (compatible-preds
+		       (type (car args)) (car domtypes) (car args)))))
+	(implicit-type-predicates*
+	 (if (dep-binding? (car domtypes))
+	     (substit (cdr domtypes) (acons (car domtypes) (car args) nil))
+	     (cdr domtypes))
+	 (cdr args)
+	 exprs
+	 (nunion apreds preds :test #'tc-eq)))))
+
+(defmethod implicit-type-predicates (expr exprs preds)
+  (declare (ignore expr exprs))
+  preds)
+
+;;;
+
+(defstep all-implicit-typepreds (&optional (fnums *))
+  (let ((sforms (select-seq (s-forms (current-goal *ps*)) fnums))
+        (cmd (make-implicit-typepreds-cmd sforms)))
+    cmd)
+  ""
+  "Adding type information on subexpressions")
+
+(defun make-implicit-typepreds-cmd (sforms)
+  (let* ((exprlis (collect-all-subexprs-with-implicit-typepreds sforms))
+         (cmd (list 'typepred! exprlis :implicit? t)))
+    (format t "Generating implicit typepreds for expressions:~{~%  ~a~^~}"
+      exprlis)
+    cmd))
+
+(defun collect-all-subexprs-with-implicit-typepreds (sforms)
+  (subexprs-with-implicit-type-constraints sforms))
+
+(defun subexprs-with-implicit-type-constraints (ex)
+  (subexprs-with-implicit-type-constraints* ex nil nil))
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex s-formula) parity subexprs)
+  (subexprs-with-implicit-type-constraints* (formula ex) parity subexprs))
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex negation) parity subexprs)
+  (subexprs-with-implicit-type-constraints* (argument ex) (not parity) subexprs))
+  
+(defmethod subexprs-with-implicit-type-constraints* ((ex conjunction) parity subexprs)
+  (if parity
+      (subexprs-with-implicit-type-constraints* (argument ex) parity subexprs)
+      subexprs))
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex disjunction) parity subexprs)
+  (if parity
+      subexprs
+      (subexprs-with-implicit-type-constraints* (argument ex) parity subexprs)))
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex implication) parity subexprs)
+  (if parity
+      subexprs
+      (subexprs-with-implicit-type-constraints*
+       (args2 ex) parity
+       (subexprs-with-implicit-type-constraints* (args1 ex) (not parity) subexprs))))
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex branch) parity subexprs)
+  (declare (ignore parity))
+  subexprs)
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex binding-expr) parity subexprs)
+  (declare (ignore parity))
+  subexprs)
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex cases-expr) parity subexprs)
+  (subexprs-with-implicit-type-constraints* (expression ex) parity subexprs))
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex record-expr) parity subexprs)
+  (subexprs-with-implicit-type-constraints* (assignments ex) parity subexprs))
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex assignment) parity subexprs)
+  (subexprs-with-implicit-type-constraints*
+   (expression ex) parity
+   (subexprs-with-implicit-type-constraints* (arguments ex) parity subexprs)))
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex list) parity subexprs)
+  (if (null ex)
+      subexprs
+      (subexprs-with-implicit-type-constraints*
+       (cdr ex) parity
+       (subexprs-with-implicit-type-constraints* (car ex) parity subexprs))))
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex tuple-expr) parity subexprs)
+  (subexprs-with-implicit-type-constraints* (exprs ex) parity subexprs))
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex projection-application)
+				       parity subexprs)
+  (subexprs-with-implicit-type-constraints* (argument ex) parity subexprs))
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex injection-application)
+				       parity subexprs)
+  (subexprs-with-implicit-type-constraints* (argument ex) parity subexprs))
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex injection?-application)
+				       parity subexprs)
+  (subexprs-with-implicit-type-constraints* (argument ex) parity subexprs))
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex extraction-application)
+				       parity subexprs)
+  (subexprs-with-implicit-type-constraints* (argument ex) parity subexprs))
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex field-application)
+				       parity subexprs)
+  (subexprs-with-implicit-type-constraints* (argument ex) parity subexprs))
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex update-expr) parity subexprs)
+  (subexprs-with-implicit-type-constraints*
+   (assignments ex) parity
+   (subexprs-with-implicit-type-constraints* (expression ex) parity subexprs)))
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex expr) parity subexprs)
+  (declare (ignore parity))
+  subexprs)
+
+(defmethod subexprs-with-implicit-type-constraints* ((ex application) parity subexprs)
+  (let ((nsubexprs (implicit-typepred-args ex subexprs)))
+    (subexprs-with-implicit-type-constraints*
+     (operator ex) parity
+     (subexprs-with-implicit-type-constraints* (argument ex) parity nsubexprs))))
+
+(defun implicit-typepred-args (ex subexprs)
+  (let* ((op (operator ex))
+	 (optype (find-supertype (type op)))
+	 (domain (domain optype))
+	 (args (if (tupletype? domain)
+		   (arguments ex)
+		   (list (argument ex))))
+	 (domtypes (if (cdr args)
+		       (domain-types optype)
+		       (list (domain optype))))
+	 (argtypes (mapcar #'type args)))
+    (assert (= (length domtypes) (length args)))
+    (implicit-typepred-args* domtypes argtypes args subexprs)))
+
+(defun implicit-typepred-args* (domtypes argtypes args subexprs)
+  (if (null domtypes)
+      subexprs
+      (let ((apreds (compatible-preds
+		     (car argtypes) (car domtypes) (car args))))
+	(implicit-typepred-args*
+	 (cdr domtypes)
+	 (cdr argtypes)
+	 (cdr args)
+	 (if (and apreds
+		  (not (member (car args) subexprs :test #'tc-eq)))
+	     (cons (car args) subexprs)
+	     subexprs)))))
