@@ -27,6 +27,7 @@
 (let ((pvsfiles '(pvs-abbreviations
 		  pvs-browser
 		  pvs-cmds
+		  pvs-eval
 		  pvs-file-list
 		  pvs-ilisp
 		  pvs-load
