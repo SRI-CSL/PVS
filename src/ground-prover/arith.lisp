@@ -463,7 +463,10 @@
 		   (member a (common-factors-list rest-terms)
 			   :test #'equal))
 	      (cons a (divterms (cdr args) rest-terms))
-	    (divterms* (cdr args) nil))))
+	      (if (and (consp (cdr args))
+		       (equal (cadr args) a))
+		  (divterms (cdr args) rest-terms)
+		  (divterms* (cdr args) nil)))))
     nil))
 
 ;   (let ((dterms (divterms* args factors nil)))
