@@ -22,7 +22,7 @@
 ;;; there will be an error.
 
 (defmethod typecheck* :around ((ex expr) expected kind arguments)
-  (declare (ignore kind))
+  (declare (ignore kind arguments))
   (cond ((and (eq *generate-tccs* 'none)
 	      (type ex)))
 	((type ex)
@@ -249,6 +249,7 @@
 ;;; identity.  Thus a:T is changed to id[T](a) in parse.lisp.
 
 (defmethod typecheck* ((expr coercion) expected kind arguments)
+  (declare (ignore expected kind arguments))
   (let ((*in-coercion* expr))
     (call-next-method)))
 
@@ -394,14 +395,14 @@
 ;;; Table-exprs will be transformed into one of these three, which will
 ;;; then call the appropriate method.
 
-(defmethod typecheck* ((expr cond-table-expr) expected kind arguments)
-  (call-next-method))
-
-(defmethod typecheck* ((expr cases-table-expr) expected kind arguments)
-  (call-next-method))
-
-(defmethod typecheck* ((expr let-table-expr) expected kind arguments)
-  (call-next-method))
+;(defmethod typecheck* ((expr cond-table-expr) expected kind arguments)
+;  (call-next-method))
+;
+;(defmethod typecheck* ((expr cases-table-expr) expected kind arguments)
+;  (call-next-method))
+;
+;(defmethod typecheck* ((expr let-table-expr) expected kind arguments)
+;  (call-next-method))
 
 
 ;;; table-exprs - first typecheck the row and column exprs; these are used
@@ -889,13 +890,14 @@
     (if (or (argument-conversions (types op) args)
 	    (argument-conversions (types op) (list arg)))
 	(set-possible-argument-types op (argument expr))
-	(let ((conversions (find-operator-conversions (types op) op args)))
+	(let ((conversions (find-operator-conversions (types op) args)))
 	  (if conversions
 	      (let* ((conv (car conversions))
 		     (ctype (type (name conv)))
 		     (dom (domain (find-supertype ctype)))
-		     (ran (range (find-supertype ctype)))
+		     ;;(ran (range (find-supertype ctype)))
 		     (nop (copy op)))
+		(break)
 		(add-conversion-info (name conv) op)
 		(change-class op 'implicit-conversion)
 		(setf (argument op) nop)
@@ -906,15 +908,15 @@
 		(typecheck* op nil nil nil))
 	      (type-mismatch-error expr))))))
 
-(defun find-operator-conversions (optypes op args &optional conversions)
+(defun find-operator-conversions (optypes args &optional conversions)
   (if (null optypes)
       conversions
       (find-operator-conversions
-       (cdr optypes) op args
-       (append (find-operator-conversion* (car optypes) op args)
+       (cdr optypes) args
+       (append (find-operator-conversion* (car optypes) args)
 	       conversions))))
 
-(defun find-operator-conversion* (optype op args)
+(defun find-operator-conversion* (optype args)
   (let ((conversions nil))
     (dolist (conv (conversions *current-context*))
       (let ((nconv (compatible-operator-conversion conv optype args)))
@@ -1028,6 +1030,7 @@
 	(typecheck* (mk-bind-decl vid type type) nil nil nil)))))
 
 (defmethod make-arg-conversion-binding (nonconv expr bindings)
+  (declare (ignore nonconv expr bindings))
   nil)
 
 (defun make-arg-conversion-variables (bindings)
@@ -1053,6 +1056,7 @@
 	(typecheck* ac nil nil nil)))
 
 (defmethod application-conversion-argument (arg conv vars)
+  (declare (ignore conv vars))
   arg)
 
 (defun type-mismatch-error (expr)
@@ -1595,7 +1599,7 @@
       (typecheck-ass-args (cdr args) (range ftype) maplet?))))
 
 (defmethod typecheck-ass-args (args type maplet?)
-  (declare (ignore type))
+  (declare (ignore type maplet?))
   (type-error (caar args)
     "The expression type is inconsistent with this set of arguments"))
 
