@@ -1304,7 +1304,7 @@ Has no effect under X windows."
       (error "Cannot suspend Emacs running in X-windows")
       (when (y-or-n-p "Save context first? ")
 	(save-context))
-      (if (getenv "IN_EMACSTOOL")		; Set by emacstool
+      (if (pvs-getenv "IN_EMACSTOOL")		; Set by emacstool
 	  (suspend-emacstool)
 	  (suspend-emacs))))
 
@@ -1329,10 +1329,9 @@ Exit PVS, saving the context."
 		 (condition-case ()
 		     (progn
 		       (pvs-send "(exit-pvs)")
-		       (while (and (equal (process-status process) 'run)
-				   (not (string-match (ilisp-value
-						       'comint-prompt-regexp)
-						      pvs-process-output)))
+		       (while (and (ilisp-process)
+				   (equal (ilisp-value 'comint-status)
+					  " :run"))
 			 (sit-for 1)))
 		   (error
 		    (sleep-for 1)
@@ -1669,7 +1668,7 @@ Tcl/Tk, click on the Help button at the bottom of the display for more
 information."
   (interactive (complete-theory-name "Show theory hierarchy from theory:"))
   (unless (interactive-p) (pvs-collect-theories))
-  (if (getenv "DISPLAY")
+  (if (pvs-getenv "DISPLAY")
       (pvs-send (format "(x-module-hierarchy \"%s\" %s)"
 		    theoryname (and current-prefix-arg t)))
       (message
