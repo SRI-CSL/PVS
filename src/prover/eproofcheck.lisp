@@ -378,7 +378,10 @@
   (let ((prinfo (default-proof decl))
 	(script (extract-justification-sexp
 		 (collect-justification *top-proofstate*))))
-    (cond ((null (script prinfo))
+    (cond ((or (null (script prinfo))
+	       (equal (script prinfo) '("" (postpone) nil nil))
+	       (and (tcc-decl? decl)
+		    (equal (script prinfo) (tcc-strategy decl))))
 	   (setf (script prinfo) script))
 	  ((and (not *proving-tcc*)
 		(not *noninteractive*)
@@ -406,6 +409,8 @@
     (setf (real-time prinfo) (- (get-internal-real-time) init-real-time))
     (setf (run-time prinfo) (- (get-run-time) init-run-time))
     (setf (run-date prinfo) (get-universal-time))
+    (when *use-default-dp?*
+      (setf (decision-procedure-used prinfo) *default-decision-procedure*))
     (setf (proof-status decl)
 	  (if (and (eq (status-flag *top-proofstate*) '!)
 		   (not *context-modified*))
