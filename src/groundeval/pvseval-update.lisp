@@ -1386,7 +1386,9 @@
 			      :if-exists
 			      (if supersede? :supersede :append)
 			      :if-does-not-exist :create)
-	(when supersede? (format output "(in-package 'PVS)~%"))
+	(when supersede?
+	  (format output "; Generated from theory ~a~%(in-package 'PVS)~%"
+	    theory))
 	(loop for dec in (theory (get-theory theory))
 	      when (and (const-decl? dec)(eval-info dec))
 	      do (write-decl-defns dec output)))
