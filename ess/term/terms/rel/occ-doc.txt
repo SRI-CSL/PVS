@@ -1,0 +1,71 @@
+
+The occurrence ADT for the uniform term implementation, that is structures used
+to represent paths from root to subterm. 
+
+Scott Dietzen, Mon Jun 22 17:35:11 1987
+
+
+The easiest way to build occurrencees is to evaluate their printed forms: Any
+sexp which is preceded by `#p' (for Path) is an occurrence (or an error).  The
+printed forms are as follows:
+
+	  #p( 1 2 0 3 ) 
+
+It represents the path from root to term by naming the branches taken from the
+root down to selected subterm. 
+
+
+
+
+	  ADT Occ
+	    WITH
+	      nil-occ : --> Occ
+	      null-occ : Occ  -->  Boolean
+	      occ-push : Int # Occ  -->  Occ
+	      occ-top : Occ  -->  Int
+	      occ-rest : Occ  -->  Occ
+	    AXIOMS
+	      null-occ(nil-occ)
+	      ~null-occ(occ-push(i,o))
+	      occ-top(occ-push(i,o)) = i
+	      occ-rest(occ-push(i,o)) = o
+	    AUX
+	      occ-equal : Occ # Occ  -->  Boolean
+
+
+      Other types, macros, functions:
+
+	  occ			   The type of occurences.
+
+	  occp(x)		   Is X an occurrence?
+
+	  ck-occ-type(x)	   Makes sure x is an occ, else give error
+				   message.
+
+	  occ-push<n>(O)	   occ-push(n,O) for n in 0..9.
+
+	  occ-to-list(o)	   Convert occurrence O to a list.
+
+	  list-to-occ(l)	   Convert list L to an occurrence.
+
+	
+
+	  occ-path 		   same as occ-to-list
+
+	  occ-parent 		   synonym of occ-rest
+
+	  make-empty-occ	   same as nil-occ
+
+	  is-empty-occ		   same as null-occ
+
+
+
+Implementation Notes:
+
+For the sake of efficiency, occurrences are not represented as simple lists,
+and hence the need for special structure and operations.  For further details,
+see the source code documentation. 
+
+
+
+

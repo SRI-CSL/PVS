@@ -1,0 +1,85 @@
+
+Includes routines for the uniform term ADT which rely on the operator ADT as
+well. 
+
+Scott Dietzen, Thu Jul  9 15:02:50 1987
+
+The majority of the routines manufacture the leaf terms used by the SB (and
+it's clients) under the term ADT. 
+
+
+The following take the arguments you would expect (symbols for id, literal, and
+keyword; numbers for number; strings for cid and string) and produce terms of
+that type.  Ths "is-" prefixed routines discriminate those terms from arbitrary
+lisp values.  The "ds-" routines return the arguments used in constructing the
+term. 
+
+	  mk-id is-id ds-id 
+	  mk-cid is-cid ds-cid 
+	  mk-number is-number ds-number 
+	  mk-string is-string ds-string 
+	  mk-literal is-literal ds-literal 
+	  mk-keyword is-keyword ds-keyword 
+
+Because the user may add other leaf term types (i.e. lexical terminals to the
+grammars), generic leaf routines are necessary:
+
+	  mk-leaf-term is-leaf-term leaf-term-kind leaf-term-value.
+
+Mk-leaf-term takes two arguments:
+	  kind -- which should be a keyword (e.g. :id, :cid, :num) used to
+		  identify the type
+	  value -- arbitrary lisp value. 
+
+
+
+
+Standard terms for internal tree nodes are built by 
+
+	  mk-sim-term : symbol , term*  -> term
+
+which makes an operator from symbol and then a term from the operator and sons.
+Auxiliary routines include 
+
+	  is-sim-term   sim-term-op 
+
+but not sim-term-args as that would just duplicate term-args. 
+
+
+
+
+Other functions: 	
+
+	term-equal(t1,t2)
+		-- Are t1 and t2 equivalent?
+
+	search-list-for-term(term*, funct: term --> bool)
+		-- Return the first term of list such that funct is true.
+	
+	search-list-for-term-with-subterm(term*, funct: term --> bool, n)
+		-- Return the first term of list such that
+		   funct(term-argn(t,n)) is true. 
+		
+
+	is-op(op, term)  
+		-- If term-op(term) = op return term (nil otherwise).
+
+	ck-term(funct, term)
+		-- Signal an error if not (funct term), otherwise return term.
+	
+	ck-term-op(op, term)
+		-- Signal an error if not (is-op op term), otherwise return
+		   term. 
+	
+	is-sop(symbol, term)
+		-- If term has a simple operator which is eq to symbol, return
+		   term. 
+
+	ck-term-sop(symbol term)
+		-- If not (is-sop symbol term) signal an error, otherwise
+		   return term.
+
+	memq-sop(term symbol*)
+		-- Is the symbol operator of term a member of symbol*?
+
+ 

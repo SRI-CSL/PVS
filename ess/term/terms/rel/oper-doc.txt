@@ -1,0 +1,122 @@
+
+The operator ADT for the uniform term implementation, that is structures used
+to fill the operator field of terms.  (Nothing else may occupy that position in
+the Syntax Box).
+
+Scott Dietzen, Sat Apr 25 19:06:04 1987
+
+The operator ADT was designed for the syntax box, but I expect it is general
+enough to satisfy other clients (if not, we should extend it). 
+
+
+
+The easiest way to build operators is to evaluate there printed forms: Any sexp
+which is preceded by `#^' is an operator (or an error).  The printed forms are
+as follows: 
+
+  Base Cases: 
+	#^SYMBOL 		basic simple operator (e.g. plus, if)
+
+	#^(:id SYMBOL)		leaf operator - identifier
+	#^(:cid STRING)		leaf operator - case sensitive identifier 
+					(not yet available in the SB)
+	#^(:num NUMBER)		leaf operator - number
+	#^(:str STRING)		leaf operator - string
+	#^(:lit SYMBOL)		leaf operator - literal
+	#^(:key SYMBOL)		leaf operator - keyword 
+					(used only in meta grammar)
+
+	(Other SB lexical terminals are handled in the same way.)
+
+
+
+
+The operator ADT: BOX "operator"
+
+	Package: "oper", File: "oper.lisp".  Implements the ADT
+
+   ADT oper with
+
+		{Base cases.}
+
+#^SYMBOL
+	mk-sim-op :	Symbol 		-> Oper
+	is-sim-op :	Oper		-> Boolean
+	ds-sim-op : 	Oper		-> Symbol
+
+
+
+#^(:id SYMBOL) --
+	mk-id-op :	Symbol		-> Oper
+	is-id-op :	Oper		-> Boolean
+	ds-id-op : 	Oper		-> Symbol
+
+#^(:cid STRING) -- ( @@@ Not yet implemented in the SB. ) 
+	mk-cid-op :	String		-> Oper
+	is-cid-op :	Oper		-> Boolean
+	ds-cid-op : 	Oper		-> String
+
+#^(:num NUMBER) --
+	mk-num-op :	Number		-> Oper
+	is-num-op :	Oper		-> Boolean
+	ds-num-op : 	Oper		-> Number
+
+#^(:str STRING) --
+	mk-str-op :	String		-> Oper
+	is-str-op :	Oper		-> Boolean
+	ds-str-op : 	Oper		-> String
+
+#^(:lit SYMBOL) --
+	mk-lit-op :	Symbol		-> Oper
+	is-lit-op :	Oper		-> Boolean
+	ds-lit-op :	Oper		-> Symbol
+
+#^(:key SYMBOL) --
+	mk-key-op :	Symbol		-> Oper
+	is-key-op :	Oper		-> Boolean
+	ds-key-op :	Oper		-> Symbol
+
+
+(The following work for any base value {id,cid,num,str,lit,key} or other
+lexical terminals defined for a particular language.)
+
+	mk-leaf-op :   	Kind, Value	-> Oper
+	is-leaf-op : 	X		-> Boolean
+	ds-leaf-op : 	Oper		-> (Kind Value)       {multipl values}
+	leaf-op-kind :  Oper		-> Kind (Lisp-value)
+	leaf-op-value : Oper		-> Value (Lisp-value)
+
+
+
+	oper-p, operp : check to see the object is an operator	
+	ck-oper : if not an operator, signal an error
+	oper-to-sexp : map the operator to the sexp form which is displayed. 
+	sexp-to-oper : map an sexp (display form) to an operator.
+
+
+
+	oper-equal :	Oper x Oper	-> Boolean
+
+		Are the two operators equivalent.
+
+
+
+
+
+	The following underlying functions are not exported because I do not
+        expect them to be used by the standard client:
+
+		mk-oper : Kind x Arg 	-> Oper
+		oper-kind : Oper	-> Kind
+		oper-arg :  Oper	-> Arg
+
+	The reason for restricted use is that the operator ADT relies
+        on other commitments than are enforced in by these functions.  In 
+	particular using mk-oper and oper-arg should probably be ruled out. The
+	function oper-kind is perhaps useful for case statements, but I suggest
+	using cond and the standard discriminators instead.
+
+	       
+
+
+

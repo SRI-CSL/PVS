@@ -1,0 +1,117 @@
+
+The term ADT for the uniform term implementation.  
+
+Scott Dietzen, Thu Jul  9 14:29:35 1987
+
+This ADT was designed for the SB, but clients using the SB are committed to it
+as well.  There are further term routines in termop.lisp.
+
+
+The easiest way to build terms is to evaluate there printed forms: Any sexp
+which is proceded by `#!' represents a term.  The sexp representation consists
+of a list whose first cell is the operator field.  The remaining fields are
+descendents.  For example, 
+
+	#!(#^plus #^(:num 3) #^(:id scott))
+
+represents a term with operator plus, and two sons (see the operator ADT for
+more information). 
+
+
+If you do not want to use the above representation, You can now define your own
+printing function.  Just define a function called "term:print-term-hook"
+(taking term,stream,depth as usual).  It may decide call the standard function
+"term:standard-print-term" to do the work, e.g. if the term is not in your
+language, or if *print-escape* is on and you don't want to override it.
+(-- Conal)
+
+
+
+
+If no speical print routine is defined and the sb-support system is loaded,
+print term will attempt to unparse the term according to the language in
+which it is defined.  There are two forms of this unparsing:
+   1.  (which may be reread by lisp to produce a term-equal term)
+      
+	#u ( (language-name . sort-name) string )
+
+		e.g. #u((pascal . pascal::exp) "scott * (richard + 12)")
+
+   2.  Simply the string alone.  This form is used when *print-escape* is nil
+      (that is, when reparsing is not important). 
+
+Should the unparsing fail because the sort is unparsable or if the unparser is
+not loaded, the standard term printing is provided. 
+
+Setting term:*disable-auto-unparsing* non nil will turn this feature off. 
+
+
+
+
+
+
+
+      Package: "TERM", file: "terms.lisp".  Implements the ADT
+
+	  ADT Term
+	    WITH
+	      mk-term : Op # Term*  -->  Term
+	      term-op : Term  -->  Op
+	      term-args : Term  -->  Term*
+	    AXIOMS
+	      term-op(mk-term(op,args)) = op
+	      term-args(mk-term(op,args)) = args
+	    AUX
+	      term-argn : Term # Int  -->  Term
+	      term-arity : Term --> Int
+	      term-equal : Term # Term  -->  Boolean
+	      replace-argn : Term # Int # Term  -->  Term
+		       (makes a new copy of term with argn replaced by the last
+			argument)
+	      get-subterm : Term # Occ  -->  Term
+		       (return the subterm assoc with the occurrence.)
+	      replace-subterm : Term # Occ # Term  -->  Term
+		       (build a new term with the subterm defined by the
+			occurrence replaced; like a setf of get-subterm but
+			non-side-effecting.)
+	    AXIOMS
+	      get-subterm(t,nil-occ) = t
+	      0<i<n ==> subterm-at(mk-term(op,<t0,...tn-1>),occ-push(i,occ)) =
+			  subterm-at(ti,occ)
+
+
+
+      Other types, macros, functions:
+
+          term		    The type of terms.
+
+	  termp(x)	    Is X a term?
+
+	  term-arg<N>(x)    (e.g. term-arg2) is equivalent to (term-argn x N)
+			    Note: This indexing is zero based. 
+
+	  term-arity<N>?(x)
+			    (e.g term-arity2?) is the same as
+			    (= (term-arity x) N).
+	         
+	  ck-term-type(x)   Make sure X is a term, else give error message.
+
+	  term-to-sexp  
+          sexp-to-term
+
+	  
+
+
+
+      The "Term*" types mentioned in the ADT "Term" are taken to be
+      "sequences" of terms (see ch. 1 of Steele), i.e. either lists or simple
+      vectors. The client may use either for arguments, and everything works.
+      However, client code should only use general sequence functions on
+      resulting sequences , e.g. "elt" instead of "nth" or "svref".  [Does
+      this seems like a good idea?]
+
+
+
+
+      There is an internal field of term called attr which is used by the 
+      Term ABox.  It is accessed and set via "term-attr".
