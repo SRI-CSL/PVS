@@ -167,13 +167,18 @@ required a context.")
   (let ((conv-name (if (typep conversion 'name-expr)
 		       conversion
 		       (name conversion))))
-    (pvs-info "In declaration ~a:~
+    (pvs-info "In ~a:~
              ~%  added conversion ~a~
              ~%  to ~a, converting~
              ~%     ~a~%  to ~a"
-      (if (typep (declaration *current-context*) 'declaration)
-	  (id (declaration *current-context*))
-	  (unparse (declaration *current-context*) :string t))
+      (if (or *in-checker* *in-evaluator*)
+	  (if *in-typechecker*
+	      (format nil "input ~s" *in-typechecker*)
+	      "input")
+	  (format nil "declaration ~a"
+	    (if (typep (declaration *current-context*) 'declaration)
+		(id (declaration *current-context*))
+		(unparse (declaration *current-context*) :string t))))
       (raise-actuals conversion 1)
       expr
       (domain (find-supertype (type conv-name)))
