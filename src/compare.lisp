@@ -393,7 +393,6 @@
 
 (defmethod compare* ((old binding-expr) (new binding-expr))
   (and (same-binding-op? old new)
-       (compare* (result-type old) (result-type new))
        (compare* (bindings old) (bindings new))
        (compare* (expression old) (expression new))))
 
