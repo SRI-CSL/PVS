@@ -115,13 +115,17 @@
      (t (mk-equality new-eq *false*)))))
 
 (defun canon-neq (neq cong-state)
-  (if (false-p neq) neq
-      (let* ((eq (lhs neq))
-	     (new-lhs (canon (lhs eq) cong-state 'nomod))
-	     (new-rhs (canon (rhs eq) cong-state 'nomod)))
-	(if (eq new-lhs new-rhs)
-	    *false*
-	    (make-nequality new-lhs new-rhs cong-state)))))
+  (cond
+   ((false-p neq) neq)
+   (t
+    (let* ((eq (lhs neq))
+	   (lhs (if (equality-p eq) (lhs eq) eq))
+	   (rhs (if (equality-p eq) (rhs eq) *true*))
+	   (new-lhs (canon lhs cong-state 'nomod))
+	   (new-rhs (canon rhs cong-state 'nomod)))
+      (if (eq new-lhs new-rhs)
+	  *false*
+	  (make-nequality new-lhs new-rhs cong-state))))))
 
 (defun find-neq (neq cong-state)
   (if (false-p neq) neq
