@@ -1997,7 +1997,7 @@ generated")
     (set-dependent-formals (formals-sans-usings *current-theory*))))
 
 (defmethod copy-adt-formals ((formal importing))
-  (pc-parse (unparse formal :string t) 'using))
+  (car (pc-parse (unparse formal :string t) 'theory-elt)))
 
 (defmethod copy-adt-formals ((formal formal-type-decl))
   (car (pc-parse (unparse formal :string t) 'theory-formal)))
