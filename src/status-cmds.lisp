@@ -542,7 +542,11 @@
   (dolist (prf proofs)
     (format outstr "~3%~a.~a~2%"
       theoryid (car prf))
-    (write (editable-justification (cdr prf))
+    (write (editable-justification
+	    (if (and (listp (cadr prf))
+		     (keywordp (caadr prf)))
+		(cddr prf)
+		(cdr prf)))
 	   :stream outstr :pretty t :escape t :level nil :length nil
 	   :pprint-dispatch *proof-script-pprint-dispatch*)))
 
@@ -555,7 +559,11 @@
       (when decl
 	(format outstr "~3%~a.~a: ~a~2%"
 	  (id theory) (id decl) (proof-status-string decl))
-	(write (editable-justification (cdr prf))
+	(write (editable-justification
+		(if (and (listp (cadr prf))
+			 (keywordp (caadr prf)))
+		    (cddr prf)
+		    (cdr prf)))
 	       :stream outstr :pretty t :escape t :level nil
 	       :length nil :pprint-dispatch *proof-script-pprint-dispatch*)))))
 
@@ -566,7 +574,11 @@
 	   (status (or (and fe (fe-proof-status-string fe valid?))
 		       "unchecked")))
       (format outstr "~3%~a.~a: ~a~2%" thid (car prf) status)
-      (write (editable-justification (cdr prf))
+      (write (editable-justification
+	      (if (and (listp (cadr prf))
+		       (keywordp (caadr prf)))
+		  (cddr prf)
+		  (cdr prf)))
 	     :stream outstr :pretty t :escape t :level nil :length nil
 	     :pprint-dispatch *proof-script-pprint-dispatch*))))
   
