@@ -39,10 +39,8 @@
   (cond ((shielding? fml)
 	 (error-format-if "~%Formula ~a is shielding. Giving up..." fml)
 	 (throw 'not-ws1s-translatable nil))
-	(t (multiple-value-bind (i signal)
-	       (symtab-index fml)
-	     (when (eq signal :new)
-	       (error-format-if "~%New Boolean parameter for ~a" fml))
+	(t (let ((i (symtab-index fml)))
+	     (error-format-if "~%New Boolean parameter for ~a" fml)
 	     (dfa-var0 i)))))
 
 (defmethod fml-to-dfa* ((fml name-expr))
@@ -222,10 +220,8 @@
 	(error-format-if "~%2nd-order term ~a
                             is shielding and can thus not be abstracted. Giving up..." trm)
 	(throw 'not-ws1s-translatable nil))
-      (multiple-value-bind (i signal)
-	  (symtab-index trm)
-	(when (eq signal :new)
-	  (error-format-if "~%New 2nd-order parameter for ~a" trm))
+      (let ((i (symtab-index trm)))
+	(error-format-if "~%New 2nd-order parameter for ~a" trm)
 	(values i nil (dfa-true-val)))))
 
 (defmethod fset-to-dfa* ((trm lambda-expr))
@@ -249,11 +245,17 @@
 	(symtab-unshadow)))))
 
 (defmethod fset-to-dfa* ((trm name-expr))
-  (if (var2? trm)
-      (values (symtab-index trm) nil (dfa-true-val))
-    (progn
-      (error-format-if "~a is not a 2nd-order variable" trm)
-      (call-next-method))))
+  (cond ((var2? trm)
+	 (values (symtab-index trm) nil (dfa-true-val)))
+	((emptyset2? trm)
+	 (let ((i (symtab-index trm)))
+	   (values i  (list i) (dfa-op #'dfa-empty i))))
+	(t
+	 (error-format-if "~a is not a 2nd-order variable" trm)
+	 (call-next-method))))
+
+(defun emptyset2? (trm)
+  (tc-eq trm (emptyset-operator)))
 
 (defmethod fset-to-dfa* ((fml branch))
   (let ((c (fml-to-dfa (condition fml))))
@@ -288,10 +290,52 @@
 		       (bs (mapcar #'fml-to-dfa preds)))			   
 		   (values j (list j) (dfa-conjunction* (cons a bs))))
 	       (symtab-unshadow)))))
+	((union2? trm)
+	 (multiple-value-bind (i xs a1)
+	     (fset-to-dfa* (args1 trm))
+	   (multiple-value-bind (j ys a2)
+	       (fset-to-dfa* (args2 trm))
+	     (let* ((k (symtab-new-index))
+		    (a (dfa-op #'dfa-union k i j)))
+		 (values k
+			 (cons k (union xs ys :test #'=))
+			 (dfa-conjunction* (list a a1 a2)))))))
+	((intersection2? trm)
+	 (multiple-value-bind (i xs a1)
+	     (fset-to-dfa* (args1 trm))
+	   (multiple-value-bind (j ys a2)
+	       (fset-to-dfa* (args2 trm))
+	     (let* ((k (symtab-new-index))
+		    (a (dfa-op #'dfa-intersection k i j)))
+		 (values k
+			 (cons k (union xs ys :test #'=))
+			 (dfa-conjunction* (list a a1 a2)))))))
+	((difference2? trm)
+	 (multiple-value-bind (i xs a1)
+	     (fset-to-dfa* (args1 trm))
+	   (multiple-value-bind (j ys a2)
+	       (fset-to-dfa* (args2 trm))
+	     (let* ((k (symtab-new-index))
+		    (a (dfa-op #'dfa-difference k i j)))
+		 (values k
+			 (cons k (union xs ys :test #'=))
+			 (dfa-conjunction* (list a a1 a2)))))))
 	(t
 	 (error-format-if "Application ~a is not 2nd-order" trm)
 	 (call-next-method))))
 
+(defun union2? (trm)
+  (and (tc-eq (operator trm) (union-operator))
+       (2nd-order? trm)))
+
+(defun intersection2? (trm)
+  (and (tc-eq (operator trm) (intersection-operator))
+       (2nd-order? trm)))
+
+(defun difference2? (trm)
+  (and (tc-eq (operator trm) (difference-operator))
+       (2nd-order? trm)))
+  
 (defun the2? (trm)
   (and (is? (operator trm) '|the| '|sets|)
        (2nd-order? trm)
@@ -308,10 +352,8 @@
 	 (error-format-if "~%2nd-order term ~a is shielding and can thus not be abstracted.
                          Giving up..." trm)
 	 (throw 'not-ws1s-translatable nil))
-	(t (multiple-value-bind (i signal)
-	       (symtab-index trm)
-	     (when (eq signal :new)
-	       (error-format-if "~%New 1st-order parameter for ~a" trm))
+	(t (let ((i (symtab-index trm)))
+	     (error-format-if "~%New 1st-order parameter for ~a" trm)
 	     (values i (list i) (dfa-var1 i))))))
 
 (defmethod nat-to-dfa* ((trm name-expr))
@@ -408,4 +450,6 @@
   (and (typep expr 'number-expr)
        (integerp (number expr))
        (>= (number expr) 0)))
+
+
 
