@@ -1393,7 +1393,7 @@ where db is to replace db1 and db2")
       (let* ((adep (car atypes))
 	     (edep (car etypes))
 	     (aexp (car aexprs))
-	     (aty (if (dep-binding? adep) (type adep) adep))
+	     ;;(aty (if (dep-binding? adep) (type adep) adep))
 	     (ety (if (dep-binding? edep) (type edep) edep))
 	     (preds (compatible-predicates (judgement-types+ aexp) ety aexp)))
 	(compatible-tupletype-preds
