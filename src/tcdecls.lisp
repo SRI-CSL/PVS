@@ -374,22 +374,20 @@
       (get-library-reference (lib-string decl))
     (when msg
       (type-error decl msg (lib-string decl)))
-    (let ((ref-path (merge-pathnames ref *pvs-context-path*)))
-      (assert (file-exists-p ref-path))
-      (setf (lib-ref decl) ref)
-      (dolist (d (gethash (id decl) (current-declarations-hash)))
-	(when (and (lib-decl? d)
-		   ;; FIXME - Should refine this
-		   (not (string= ref (lib-ref d))))
-	  (if (eq (module d) (current-theory))
-	      (type-error decl
-		"Library id ~a declared earlier in this theory (~a) ~
+    (setf (lib-ref decl) ref)
+    (dolist (d (gethash (id decl) (current-declarations-hash)))
+      (when (and (lib-decl? d)
+		 ;; FIXME - Should refine this
+		 (not (string= ref (lib-ref d))))
+	(if (eq (module d) (current-theory))
+	    (type-error decl
+	      "Library id ~a declared earlier in this theory (~a) ~
                with a different path."
-		(id decl) (id (current-theory)))
-	      (pvs-warning
-		  "Library id ~a declared in imported theory ~a ~
+	      (id decl) (id (current-theory)))
+	    (pvs-warning
+		"Library id ~a declared in imported theory ~a ~
                with a different path."
-		(id decl) (id (module d)))))))))
+	      (id decl) (id (module d))))))))
 
 
 ;;; Module declarations
