@@ -204,6 +204,10 @@
   (let ((types (gensubst* (types te) substfn testfn)))
     (lcopy te 'types types)))
 
+(defmethod gensubst* ((te cotupletype) substfn testfn)
+  (let ((types (gensubst* (types te) substfn testfn)))
+    (lcopy te 'types types)))
+
 (defmethod gensubst* ((te recordtype) substfn testfn)
   (let ((fields (gensubst* (fields te) substfn testfn)))
     (if (eq fields (fields te))
