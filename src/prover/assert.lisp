@@ -22,14 +22,16 @@
 (defun invoke-simplification (sformnums record? rewrite?
 				   rewrite-flag flush? linear?
 				   cases-rewrite? type-constraints?
-				   ignore-prover-output? let-reduce?)
+				   ignore-prover-output? let-reduce?
+				   quant-simp?)
 				   ;;assert-connectives?
   #'(lambda (ps)
       (let ((*cases-rewrite* cases-rewrite?)
 	    ;;(*assert-connectives?* assert-connectives?)
 	    (*false-tcc-error-flag* nil)
 	    (*ignore-prover-output?* ignore-prover-output?)
-	    (*let-reduce?* let-reduce?))
+	    (*let-reduce?* let-reduce?)
+	    (*quant-simp?* quant-simp?))
 	(if record?
 	    (if rewrite?
 		(assert-sformnums
@@ -3224,7 +3226,9 @@
 				  always (nonempty? (type bd))))))
 	    (if check (values '? *true*)
 		(do-auto-rewrite (lcopy expr 'expression newbody) sig)))
-	  (assert-if-exists expr sig newbody))))
+	  (if *quant-simp?*
+	      (assert-if-exists expr sig newbody)
+	      (do-auto-rewrite (lcopy expr 'expression newbody) sig)))))
 
 (defun collect-subst-equalities (conjuncts bindings)
   (if (consp conjuncts)
@@ -3363,7 +3367,9 @@
 			     always (nonempty? (type bd)))))
 	    (if check (values '? *false*)
 		(do-auto-rewrite (lcopy expr 'expression newbody) sig)))
-	  (assert-if-forall expr sig newbody))))
+	  (if *quant-simp?*
+	      (assert-if-forall expr sig newbody)
+	      (do-auto-rewrite (lcopy expr 'expression newbody) sig)))))
 
 (defun assert-if-forall (expr sig newbody)
   (let* ((disjuncts (simplify-disjunct newbody nil))

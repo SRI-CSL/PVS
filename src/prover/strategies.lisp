@@ -238,9 +238,9 @@ computations.  E.g.,
 
 (defstep assert  (&optional (fnums *) rewrite-flag
 			    flush? linear? cases-rewrite? (type-constraints? t)
-			    ignore-prover-output? (let-reduce? t))
+			    ignore-prover-output? (let-reduce? t) quant-simp?)
 	 (simplify
-	  fnums t t rewrite-flag flush? linear? cases-rewrite? type-constraints? ignore-prover-output? let-reduce?) 
+	  fnums t t rewrite-flag flush? linear? cases-rewrite? type-constraints? ignore-prover-output? let-reduce? quant-simp?) 
  "Simplifies/rewrites/records formulas in FNUMS using decision
 procedures.  Variant of SIMPLIFY with RECORD? and REWRITE? flags set
 to T. If REWRITE-FLAG is RL(LR) then only lhs(rhs) of equality
@@ -558,8 +558,8 @@ bddsimp, and assert, until nothing works.  DEFS is either
   "Obsolete - subsumed by (TCC)."
   "Trying repeated skolemization, instantiation, and if-lifting")
 
-(defstep bash (&optional (if-match t)(updates? t) polarity? (instantiator inst?) (let-reduce? t))
-  (then (assert :let-reduce? let-reduce?)(bddsimp)
+(defstep bash (&optional (if-match t)(updates? t) polarity? (instantiator inst?) (let-reduce? t) quant-simp?)
+  (then (assert :let-reduce? let-reduce? :quant-simp? quant-simp?)(bddsimp)
 	(if if-match (let ((command (generate-instantiator-command
 				     if-match polarity? instantiator)))
 		       command)(skip))
@@ -601,10 +601,11 @@ reasoning, quantifier instantiation, skolemization, if-lifting.")
 
 	 
 (defstep reduce (&optional (if-match t)(updates? t) polarity?
-			   (instantiator inst?) (let-reduce? t))
+			   (instantiator inst?) (let-reduce? t) quant-simp?)
     (repeat* (try (bash$ :if-match if-match :updates? updates?
 			 :polarity? polarity? :instantiator instantiator
-			 :let-reduce? let-reduce?)
+			 :let-reduce? let-reduce?
+			 :quant-simp? quant-simp?)
                (replace*)
                (skip)))
 "Core of GRIND (ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, FLATTEN,
@@ -614,8 +615,9 @@ See BASH for more explanation."
   propositional reasoning, quantifier instantiation, skolemization,
  if-lifting and equality replacement")
 
-(defstep smash (&optional (updates? t) (let-reduce? t))
-  (repeat* (then (bddsimp)(assert :let-reduce? let-reduce?)(lift-if :updates? updates?)))
+(defstep smash (&optional (updates? t) (let-reduce? t) quant-simp?)
+  (repeat* (then (bddsimp)(assert :let-reduce? let-reduce? :quant-simp? quant-simp?)
+		 (lift-if :updates? updates?)))
   "Repeatedly tries BDDSIMP, ASSERT, and LIFT-IF.  If the UPDATES?
 option is NIL, update applications are not if-lifted."
   "Repeatedly simplifying with BDDs, decision procedures, rewriting,
@@ -674,7 +676,8 @@ EXCLUDE is a list of rewrite rules. "
 			  (updates? t)
 			  polarity?
 			  (instantiator inst?)
-			  (let-reduce? t))
+			  (let-reduce? t)
+			  quant-simp?)
   (then
    (install-rewrites$ :defs defs :theories theories
 		     :rewrites rewrites :exclude exclude)
@@ -682,7 +685,7 @@ EXCLUDE is a list of rewrite rules. "
     (replace*)
     (reduce$ :if-match if-match :updates? updates?
 	     :polarity? polarity? :instantiator instantiator
-	     :let-reduce? let-reduce?))
+	     :let-reduce? let-reduce? :quant-simp? quant-simp?))
     "A super-duper strategy.  Does auto-rewrite-defs/theories,
 auto-rewrite then applies skolem!, inst?, lift-if, bddsimp, and
 assert, until nothing works. Here
@@ -907,8 +910,8 @@ is applied.")
 resulting subgoals.  The last step is used for any excess subgoals.
 If STEP does nothing, then ELSE-STEP is applied.")
 
-(defstep ground (&optional (let-reduce? t))
-  (try (flatten)(ground$)(try (split)(ground$)(assert :let-reduce? let-reduce?)))
+(defstep ground (&optional (let-reduce? t) quant-simp?)
+  (try (flatten)(ground$)(try (split)(ground$)(assert :let-reduce? let-reduce? :quant-simp? quant-simp?)))
   "Does propositional simplification followed by the use of decision procedures."
   "Applying propositional simplification and decision procedures")
 
@@ -3701,11 +3704,12 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
   "Auto-rewriting given theories ~a with :always? T option")
 
 (defstep lazy-grind  (&optional (if-match t) (defs !) rewrites
-                                theories exclude (updates? t) (let-reduce? t))
+                                theories exclude (updates? t) (let-reduce? t)
+				quant-simp?)
   (then
    (grind$ :if-match nil :defs defs :rewrites rewrites 
 	   :theories theories :exclude exclude :updates? updates?
-	   :let-reduce? let-reduce?)
+	   :let-reduce? let-reduce? :quant-simp? quant-simp?)
    (reduce$ :if-match if-match :updates? updates? :let-reduce? let-reduce?))
   "Equiv. to (grind) with the instantiations postponed until after simplification."
   "By skolemization, if-lifting, simplification and instantiation")

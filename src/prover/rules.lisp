@@ -571,11 +571,11 @@ are reduced.  Example reduction steps are:
 (addrule 'simplify ()
 	 ((fnums *) record? rewrite? 
 	  rewrite-flag flush? linear? cases-rewrite? (type-constraints? t)
-	  ignore-prover-output? let-reduce?)
+	  ignore-prover-output? let-reduce? quant-simp?)
   (invoke-simplification fnums record? rewrite?
 			 rewrite-flag flush? nil ;;NSH(10-26-01)was linear?
 			 cases-rewrite? type-constraints?
-			 ignore-prover-output? let-reduce?)
+			 ignore-prover-output? let-reduce? quant-simp?)
   "Uses the decision procedures to to simplify the formulas in
 FNUM and record them for further simplification.  The proof steps
 ASSERT, RECORD, SIMPLIFY, DO-REWRITE are instances of this primitive
@@ -613,7 +613,9 @@ effect:
          can sometimes be expensive and fruitless, and setting
          IGNORE-PROVER-OUTPUT? to T, cases this step to be skipped.
  LET-REDUCE?: LET expressions are normally beta-reduced, unless LET-REDUCE?
-          is NIL."
+          is NIL.
+ QUANT-SIMP?: Carries out quantifier simplifications like reducing
+         (EXISTS x: x = t AND P(x)) to P(t)."
   "~%Simplifying with decision procedures,")
 
 (addrule 'auto-rewrite () (&rest names)
