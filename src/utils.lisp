@@ -180,13 +180,14 @@
   obj)
 
 (defun special-variable-p (obj)
-  #+lucid (system:proclaimed-special-p obj)
-  #+kcl (system:specialp obj)
-  #+(and allegro (not (or allegro-v6.0 allegro-v6.2))) (clos::variable-special-p obj nil)
-  #+(or allegro-v6.0 allegro-v6.2) (excl::variable-special-p obj nil)
-  #+harlequin-common-lisp (system:declared-special-p obj)
-  #-(or lucid kcl allegro harlequin-common-lisp)
-  (error "Need to handle special variables for this version of lisp"))
+  (and (symbolp obj)
+       #+lucid (system:proclaimed-special-p obj)
+       #+kcl (system:specialp obj)
+       #+(and allegro (version>= 6)) (excl::variable-special-p obj nil)
+       #+(and allegro (not (version>= 6))) (clos::variable-special-p obj nil)
+       #+harlequin-common-lisp (system:declared-special-p obj)
+       #-(or lucid kcl allegro harlequin-common-lisp)
+       (error "Need to handle special variables for this version of lisp")))
 
 
 #+allegro
@@ -842,8 +843,9 @@
     *current-context*))
 
 (defmethod update-context-importing-for-mapped-tcc ((decl mapped-axiom-tcc))
-  (let* ((thname (theory-name (generated-by decl)))
-	 (th (module (generating-axiom decl)))
+  (assert (theory-instance decl))
+  (let* ((thname (theory-instance decl))
+	 (th (get-theory thname))
 	 (thdecls (all-decls th))
 	 (prev-decls (ldiff thdecls (memq decl thdecls))))
     ;;; Want something like add-usings-to-context*, but only for those
@@ -1161,7 +1163,7 @@
 	     (new-rhs (expression rhs))
 	     (new-appl (make!-equation new-lhs new-rhs))
 	     (def-form (close-freevars new-appl *current-context*
-				       newbindings nil nil)))o
+				       newbindings nil nil)))
 	(assert (equation? (expression def-form)))
 	def-form)))
 
@@ -1444,7 +1446,9 @@
 (defmethod adt? ((te type-name))
   #+lucid (restore-adt te)
   (when (adt te)
-    (change-class te 'adt-type-name)
+    (change-class te 'adt-type-name
+      'adt (adt te)
+      'single-constructor? (singleton? (constructors (adt te))))
     (adt te)))
 
 (defmethod adt? ((te adt-type-name))
@@ -1460,7 +1464,8 @@
       (if (adt-type-name? te)
 	  (setf (adt te) adt)
 	  (change-class te 'adt-type-name
-			'adt adt)))))
+	    'adt adt
+	    'single-constructor? (singleton? (constructors adt)))))))
 
 (defun get-adt-slot-value (te)
   ;; te must be a type-name
@@ -1558,6 +1563,7 @@
 (defmethod adt ((fn recognizer-name-expr))
   (or (adt-type fn)
       (let ((adt (find-declared-adt-supertype (domain (type fn)))))
+	(assert (adt-type-name? (find-supertype adt)))
 	(setf (adt-type fn) adt))))
 
 (defmethod adt ((fn accessor-name-expr))
@@ -1583,7 +1589,8 @@
     (let ((adt-sub (if (typep (type (declaration fn)) 'funtype)
 		       (range (type (declaration fn)))
 		       (type (declaration fn)))))
-      (subst-mod-params adt-sub (module-instance fn)))))
+      (subst-mod-params adt-sub (module-instance fn)
+			(module (declaration fn))))))
 
 (defmethod recognizer ((fn name-expr))
   nil)
@@ -1817,9 +1824,13 @@
        (or (null (current-theory))
 	   (not (eq (id (module-instance (resolution x)))
 		    (id (current-theory))))
-	   (actuals (module-instance (resolution x))))
+	   (actuals (module-instance (resolution x)))
+	   (integerp (id x))
+	   (mappings (module-instance (resolution x))))
        (or (not *exclude-prelude-names*)
-	   (not (from-prelude? (declaration x))))))
+	   (not (from-prelude? (declaration x)))
+	   (integerp (id x))
+	   (mappings (module-instance (resolution x))))))
 
 (defmethod full-name? ((x type-expr))
   (if (print-type x)
@@ -1837,12 +1848,14 @@
 (defmethod full-name! ((x name))
   (copy x
     'mod-id (when (or (null (current-theory))
+		      (integerp (id x))
 		      (not (eq (id (module-instance (resolution x)))
 			       (id (current-theory)))))
 	      (id (module-instance (resolution x))))
     'actuals (full-name (actuals (module-instance (resolution x)))
 			(when *full-name-depth*
-			  (1- *full-name-depth*)))))
+			  (1- *full-name-depth*)))
+    'mappings (mappings (module-instance (resolution x)))))
 
 (defmethod full-name! ((te type-expr))
   (assert (print-type te))
@@ -2021,7 +2034,8 @@
 			    (module-instance stype)))
 		  (rec (if thinst
 			   (subst-mod-params (recognizer (constructor sel))
-					     thinst)
+					     thinst
+					     (module (declaration stype)))
 			   (recognizer (constructor sel))))
 		  (cond (make!-application rec expr))
 		  (then ;(subst-mod-params
@@ -2039,7 +2053,8 @@
 	 (thinst (unless (cotupletype? stype)
 		   (module-instance stype)))
 	 (accs (if thinst
-		   (subst-mod-params (accessors (constructor sel)) thinst)
+		   (subst-mod-params (accessors (constructor sel)) thinst
+				     (module (declaration stype)))
 		   (accessors (constructor sel))))
 	 (vars (args sel))
 	 (selexpr (expression sel)))
@@ -2362,14 +2377,16 @@
 (defmethod find-supertype ((te type-name))
   #+lucid (restore-adt te)
   (let ((adt (adt te))
+	(dth (module (declaration te)))
 	(modinst (module-instance te)))
+    (assert (or (null adt) (inline-recursive-type? adt) (rectype-theory? dth)))
     (if (and adt
+	     (not (inline-recursive-type? adt))
 	     (actuals modinst)
-	     (positive-types adt)
-	     (not (every #'null (positive-types adt))))
-	(let* ((nmodinst (adt-modinst (module-instance te)
-				      (module (declaration te)))))
-	  (if (tc-eq nmodinst (module-instance te))
+	     (positive-types dth)
+	     (not (every #'null (positive-types dth))))
+	(let* ((nmodinst (adt-modinst (module-instance te) dth)))
+	  (if (tc-eq nmodinst modinst)
 	      te
 	      (let* ((res (mk-resolution (declaration te) nmodinst nil))
 		     (nte (copy te
@@ -2487,6 +2504,7 @@ space")
 		   (*beta-cache* (make-hash-table :test #'eq))
 		   (*generate-tccs* 'none)
 		   (*assert-typepreds* nil)
+		   (*sequent-typealist* nil)
 		   ;;(typealist primtypealist);;NSH(2.16.94)
 		   (*assert-flag* 'simplify)
 		   (*process-output* nil)
