@@ -92,7 +92,8 @@
   (copy-lex* (modname old) (modname new)))
 
 (defmethod copy-lex* ((old type-def-decl) (new type-def-decl))
-  (copy-lex* (type-expr old) (type-expr new)))
+  (copy-lex* (type-expr old) (type-expr new))
+  (copy-lex* (contains old) (contains new)))
 
 (defmethod copy-lex* ((old const-decl) (new const-decl))
   (copy-lex* (definition old) (definition new)))
@@ -149,10 +150,6 @@
 (defmethod copy-lex* ((old type-application) (new type-application))
   (copy-lex* (type old) (type new))
   (copy-lex* (parameters old) (parameters new)))
-
-(defmethod copy-lex* :around ((old subtype) (new subtype))
-  (call-next-method)
-  (copy-lex* (contains old) (contains new)))
 
 (defmethod copy-lex* ((old subtype) (new subtype))
   (when (supertype new)

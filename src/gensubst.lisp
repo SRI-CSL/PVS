@@ -122,7 +122,8 @@
 (defmethod gensubst* ((decl type-def-decl) substfn testfn)
   (lcopy decl
     'type-value (gensubst* (type-value decl) substfn testfn)
-    'type-expr  (gensubst* (type-expr decl) substfn testfn)))
+    'type-expr  (gensubst* (type-expr decl) substfn testfn)
+    'contains   (gensubst* (contains decl) substfn testfn)))
 
 (defmethod gensubst* ((decl formal-subtype-decl) substfn testfn)
   (lcopy decl
@@ -495,6 +496,7 @@
 
 (defmethod mapobject* (fn (obj type-def-decl))
   (mapobject* fn (type-expr obj))
+  (mapobject* fn (contains te))
   (call-next-method))
 
 (defmethod mapobject* (fn (obj const-decl))
@@ -520,8 +522,7 @@
 (defmethod mapobject* (fn (te subtype))
   (unless *parsing-or-unparsing*
     (mapobject* fn (supertype te)))
-  (mapobject* fn (predicate te))
-  (mapobject* fn (contains te)))
+  (mapobject* fn (predicate te)))
 
 (defmethod mapobject* (fn (te setsubtype))
   (call-next-method)
@@ -831,9 +832,8 @@
       'nonempty? nil)))
 
 (defmethod copy-untyped* ((ex subtype))
-  (with-slots (contains supertype predicate) ex
+  (with-slots (supertype predicate) ex
     (copy ex
-      'contains (copy-untyped* contains)
       'supertype (copy-untyped* supertype)
       'predicate (copy-untyped* predicate)
       'print-type nil
@@ -841,9 +841,8 @@
       'nonempty? nil)))
 
 (defmethod copy-untyped* ((ex setsubtype))
-  (with-slots (contains supertype predicate formals formula) ex
+  (with-slots (supertype predicate formals formula) ex
     (copy ex
-      'contains (copy-untyped* contains)
       'supertype (copy-untyped* supertype)
       'predicate (copy-untyped* predicate)
       'formals (copy-untyped* formals)
@@ -853,9 +852,8 @@
       'nonempty? nil)))
 
 (defmethod copy-untyped* ((ex expr-as-type))
-  (with-slots (contains supertype predicate expr) ex
+  (with-slots (supertype predicate expr) ex
     (copy ex
-      'contains (copy-untyped* contains)
       'supertype (copy-untyped* supertype)
       'predicate (copy-untyped* predicate)
       'expr (copy-untyped* expr)
