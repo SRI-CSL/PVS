@@ -230,52 +230,6 @@
       "/dev/null"))
 
 
-;;; pvs-truename does what truename should do in the first place; it
-;;; returns a cononical pathname.
-
-(let ((canonical-pathnames (make-hash-table :test #'equal))
-      (pathnames (make-hash-table :test #'equal)))
-  #-gcl
-  (defmethod pvs-truename ((file pathname))
-    (let ((path (strip-pathname (truename file))))
-      (or (gethash path canonical-pathnames)
-	  (let* ((attrs (multiple-value-list (get-file-info path)))
-		 (pname (gethash attrs pathnames)))
-	    (if (and pname
-		     (file-exists-p pname))
-		(setf (gethash path canonical-pathnames) pname)
-		(progn (setf (gethash attrs pathnames) path)
-		       (setf (gethash path canonical-pathnames) path)))))))
-  #+gcl
-  (defmethod pvs-truename (file)
-    (when (pathnamep file)
-      (let ((path (strip-pathname (truename file))))
-	(or (gethash path canonical-pathnames)
-	    (let* ((attrs (pvs-stable-file-attributes path))
-		   (pname (gethash attrs pathnames)))
-	      (if (and pname
-		       (file-exists-p pname))
-		  (setf (gethash path canonical-pathnames) pname)
-		  (progn (setf (gethash attrs pathnames) path)
-			 (setf (gethash path canonical-pathnames) path))))))))
-  (defmethod pvs-truename ((file string))
-    (pvs-truename (pathname file))))
-
-(defun strip-pathname (pathname)
-  (let ((dirs (pathname-directory pathname)))
-    (if (and (consp dirs)
-	     (eq (car dirs) :root))
-	(strip-pathname* pathname (cddr dirs))
-	pathname)))
-
-(defun strip-pathname* (pathname dirs)
-  (let ((npath (make-pathname :directory (cons :root dirs)
-			      :defaults pathname)))
-    (if (and (file-exists-p npath)
-	     (equal (truename npath) (truename pathname)))
-	npath
-	pathname)))
-
 (defun get-formula (theory id)
   (or (find-if #'(lambda (decl)
 		   (and (typep decl 'formula-decl)
@@ -294,7 +248,18 @@
 
 (defmethod get-theory ((name modname))
   (with-slots (library id) name
-    (get-theory* id library)))
+    (if library
+	(let ((lib-decls (remove-if-not #'lib-decl?
+			   (gethash library (current-declarations-hash)))))
+	  (get-lib-theory (sort lib-decls #'< :key #'locality) library id))
+	(get-theory* id library))))
+
+(defun get-lib-theory (lib-decls library id)
+  (if (null lib-decls)
+      (get-theory* id (string library))
+      (or (get-theory* id (lib-string (car lib-decls)))
+	  (get-lib-theory (cdr lib-decls) library id))))
+      
 
 (defmethod get-theory ((str string))
   (get-theory (pc-parse str 'modname)))
@@ -320,16 +285,16 @@
 (defun get-theory* (id library)
   (let ((*current-context* (or *current-context* *prelude-context*)))
     (if library
-	(let* ((libpath (get-library-pathname library))
-	       (imphash (cadr (gethash libpath *imported-libraries*)))
-	       (prehash (cadr (gethash libpath *prelude-libraries*))))
-	  (if (and libpath
-		   (equal (pvs-truename libpath)
-			  (pvs-truename *pvs-context-path*)))
-	      (gethash id *pvs-modules*)
-	      (or (and imphash (gethash id imphash))
-		  (and prehash (gethash id prehash))
-		  (gethash id *prelude*))))
+	(multiple-value-bind (lib path)
+	    (get-library-pathname library)
+	  (and lib
+	       (let* ((imphash (cadr (gethash lib *imported-libraries*)))
+		      (prehash (cadr (gethash lib *prelude-libraries*))))
+		 (if (file-equal path *pvs-context-path*)
+		     (gethash id *pvs-modules*)
+		     (or (and imphash (gethash id imphash))
+			 (and prehash (gethash id prehash))
+			 (gethash id *prelude*))))))
 	(or (gethash id *prelude*)
 	    ;;(gethash id *pvs-modules*)
 	    (car (assoc id (prelude-libraries-uselist)
@@ -648,10 +613,12 @@
 (defmethod context ((theory module))
   (if (saved-context theory)
       (copy-context (saved-context theory))
-      (decl-context (car (last (or (theory theory)
+      (let ((last-decl (car (last (or (theory theory)
 				   (assuming theory)
-				   (formals theory))))
-		    t)))
+				   (formals theory))))))
+	(if last-decl
+	    (decl-context last-decl t)
+	    (make-new-context theory)))))
 
 (defmethod context ((using importing))
   (decl-context using))
@@ -692,6 +659,9 @@
 	      (make-new-context (module decl)))))
     (dolist (d (reverse rem-decls))
       (typecase d
+	(lib-decl
+	 (check-for-importing-conflicts d)
+	 (put-decl d (current-declarations-hash)))
 	(mod-decl
 	 (put-decl d (current-declarations-hash))
 	 (let* ((thname (theory-name d))
@@ -725,6 +695,10 @@
 		(list (mk-modname (id pth)))))))
     (setf (declaration *current-context*) decl)
     *current-context*))
+
+(defmethod saved-context ((adt datatype))
+  (when (adt-theory adt)
+    (saved-context (adt-theory adt))))
 	      
 
 (defmethod add-imported-assumings ((decl assuming-tcc))
@@ -2619,14 +2593,9 @@ space")
     #'(lambda (ex) (typep ex 'coercion))))
 
 (defun file-equal (file1 file2)
-  (multiple-value-bind (inode1 idev1)
-      (get-file-info file1)
-    (and inode1
-	 (multiple-value-bind (inode2 idev2)
-	     (get-file-info file2)
-	   (and (eql inode1 inode2)
-		(eql idev1 idev2))))))
-
+  (let ((finfo1 (get-file-info file1)))
+    (and finfo1
+	 (equal finfo1 (get-file-info file2)))))
 
 (defmethod resolution ((te datatype-subtype))
   (resolution (declared-type te)))
