@@ -21,8 +21,12 @@ Date: 05/09/98
 #include <setjmp.h> /* For interrupt handling */
 #ifdef LINUX_REDHAT4
 #include <bsd/signal.h> /* For interrupt handling */
-#else
+#else /* solaris and redhat 5 */
 #include <signal.h>
+#endif
+
+#ifdef LINUX_REDHAT5
+#define signal bsd_signal
 #endif
 
 int debug;
