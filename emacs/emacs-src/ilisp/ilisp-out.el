@@ -533,3 +533,41 @@ split windows, set pop-up-windows to NIL."
 	  (setq ilisp-last-buffer (current-buffer)))
       (lisp-pop-to-buffer (ilisp-buffer))
       (cond (eob-p (goto-char (point-max))))))
+
+(unless (fboundp 'count-screen-lines)
+(defun count-screen-lines (&optional beg end count-final-newline window)
+  "Return the number of screen lines in the region.
+The number of screen lines may be different from the number of actual lines,
+due to line breaking, display table, etc.
+
+Optional arguments BEG and END default to `point-min' and `point-max'
+respectively.
+
+If region ends with a newline, ignore it unless optional third argument
+COUNT-FINAL-NEWLINE is non-nil.
+
+The optional fourth argument WINDOW specifies the window used for obtaining
+parameters such as width, horizontal scrolling, and so on.  The default is
+to use the selected window's parameters.
+
+Like `vertical-motion', `count-screen-lines' always uses the current buffer,
+regardless of which buffer is displayed in WINDOW.  This makes possible to use
+`count-screen-lines' in any buffer, whether or not it is currently displayed
+in some window."
+  (unless beg
+    (setq beg (point-min)))
+  (unless end
+    (setq end (point-max)))
+  (if (= beg end)
+      0
+    (save-excursion
+      (save-restriction
+        (widen)
+        (narrow-to-region (min beg end)
+                          (if (and (not count-final-newline)
+                                   (= ?\n (char-before (max beg end))))
+                              (1- (max beg end))
+                            (max beg end)))
+        (goto-char (point-min))
+        (1+ (vertical-motion (buffer-size) window))))))
+)
