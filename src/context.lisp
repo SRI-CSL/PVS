@@ -1400,17 +1400,18 @@ pvs-strategies files.")
 	      (pvs-log (format nil "  ~a" error))))))))
 
 (defun restore-theory-proofs-from-file (input filestring theory)
-  (let ((theory-proofs (read input nil nil)))
-    (when theory-proofs
-      (let* ((theoryid (car theory-proofs))
-	     (proofs (cdr theory-proofs)))
-	(unless (every #'consp proofs)
-	  (pvs-message "Proofs file ~a is corrupted, will try to keep going."
-	    filestring)
-	  (setq proofs (remove-if-not #'consp proofs)))
-	(if (eq theoryid (id theory))
-	    (restore-theory-proofs theory proofs)
-	    (restore-theory-proofs-from-file input filestring theory))))))
+  (with-case-insensitive-lower
+   (let ((theory-proofs (read input nil nil)))
+     (when theory-proofs
+       (let* ((theoryid (car theory-proofs))
+	      (proofs (cdr theory-proofs)))
+	 (unless (every #'consp proofs)
+	   (pvs-message "Proofs file ~a is corrupted, will try to keep going."
+	     filestring)
+	   (setq proofs (remove-if-not #'consp proofs)))
+	 (if (eq theoryid (id theory))
+	     (restore-theory-proofs theory proofs)
+	     (restore-theory-proofs-from-file input filestring theory)))))))
 
 (defun restore-theory-proofs (theory proofs)
   (let ((restored (mapcar #'(lambda (decl)
@@ -1424,12 +1425,14 @@ pvs-strategies files.")
   (when (formula-decl? decl)
     (let ((prf-entry (find-associated-proof-entry decl proofs)))
       (cond ((integerp (cadr prf-entry))
+	     ;; Already in multiple-proof form
 	     (setf (proofs decl)
 		   (mapcar #'(lambda (p) (apply #'mk-proof-info p))
 		     (cddr prf-entry)))
 	     (setf (default-proof decl)
 		   (nth (cadr prf-entry) (proofs decl))))
 	    (prf-entry
+	     ;; Need to convert from old form
 	     (unless (some #'(lambda (prinfo)
 			       (equal (script prinfo) (cdr prf-entry)))
 			   (proofs decl))
