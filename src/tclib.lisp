@@ -41,7 +41,7 @@
 	(*imported-libraries* (make-hash-table :test #'equal))
 	(*pvs-context* nil)
 	(*loading-prelude* t)
-	(*generate-tccs* 'all!)
+	(*generate-tccs* 'all)
 	(mods (parse :file (format nil "~a/lib/~a"
 			     *pvs-path* *prelude-filename*))))
     (reset-typecheck-caches)
@@ -372,8 +372,8 @@
 
 
 (defun library-exists? (lib)
-  (and (probe-file lib)
-       (probe-file (context-pathname lib))))
+  (and (file-exists-p lib)
+       (file-exists-p (context-pathname lib))))
 
 (defun prelude-library-loaded? (lib)
   (gethash lib *prelude-libraries*))
@@ -460,7 +460,7 @@
 	    (let* ((*prelude-libraries* (make-hash-table :test #'equal))
 		   (filename (context-file-of theoryname)))
 	      (unless (or filename
-			  (not (probe-file (make-specpath theoryname))))
+			  (not (file-exists-p (make-specpath theoryname))))
 		(setq filename (string (id theoryname))))
 	      (if filename
 		  (let* ((theories (typecheck-file filename))
