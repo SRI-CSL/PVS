@@ -824,6 +824,8 @@
 	   'using-hash (copy (using-hash context))
 	   'conversions (copy-list (conversions context))
 	   'known-subtypes (copy-tree (known-subtypes context)))))
+    (setf (judgements *current-context*)
+	  (copy-judgements (judgements context)))
     (dolist (d decls)
       (typecase d
 	(mod-decl
@@ -845,8 +847,6 @@
 			 (put-decl d (current-declarations-hash))))
 	(declaration (put-decl d (current-declarations-hash)))
 	(datatype nil)))
-    (setf (judgements *current-context*)
-	  (copy-judgements (judgements context)))
     *current-context*))
 
 
