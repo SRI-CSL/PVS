@@ -33,7 +33,7 @@
 			    'argument
 			    (lcopy (args1 fmla)
 			      'argument
-			      (make-arg-tuple-expr
+			      (make!-arg-tuple-expr
 			       (if (eq rewrite-flag 'RL)
 				   (list (beta-reduce (args1
 						       (args1 fmla)))
@@ -209,11 +209,11 @@
 	 (pairlis formals actuals))
 	((and (singleton? actuals)
 	      (typep (find-supertype (type (car actuals))) 'tupletype))
-	 (pairlis formals (make-projections (car actuals))))
+	 (pairlis formals (make!-projections (car actuals))))
 	((and (singleton? formals)
 	      (typep (find-supertype (type (car formals))) 'tupletype))
 	 (list (cons (car formals)
-		     (make-tuple-expr actuals (type (car formals))))))
+		     (make!-tuple-expr actuals (type (car formals))))))
 	(t (break "~%pairlis-args invoked with unsuitable formals/actuals."))))
 
 ;;; SO 8/31/94 - added following two methods, extracted from application
@@ -245,14 +245,14 @@
 		   (if (cdr (arguments update-field))
 		       (beta-reduce*
 			(make-update-expr
-			 (make-field-application id
+			 (make!-field-application id
 						 (expression arg))
 			 (list (lcopy update-field 'arguments
 				      (cdr (arguments update-field))))
 			 (type expr)))
 	       (beta-reduce* (expression update-field)))
 		   (beta-reduce*
-		    (make-field-application id (expression arg))))))
+		    (make!-field-application id (expression arg))))))
 	    (t (lcopy expr 'argument arg))))))
 
 ;;NSH(10.27.94): needed to avoid betareducing lets in TCCs.
