@@ -1,8 +1,10 @@
 (in-package :pvs)
 
-;(addrule 'fol () ((fnums *) (iterations 3))
-;  (fol-step fnums iterations)
-;  "First-Order Proof Search.")
+#-runtime
+
+(addrule 'fol () ((fnums *) (iterations 3))
+  (fol-step fnums iterations)
+  "First-Order Proof Search.")
 
 (defun fol-step (fnums iterations)
   #'(lambda (ps)
