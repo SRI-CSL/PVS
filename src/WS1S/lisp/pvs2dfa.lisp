@@ -216,7 +216,7 @@
 (defun var1-eq-term1-to-dfa* (i term1 free)
   (cond ((number-expr? term1)                               ; p_i = n
 	 (values (dfa-const (number term1) i) free))
-	((var1? term1 free)                           ; p_i = p_j
+	((var1? term1 free)                                 ; p_i = p_j
 	 (multiple-value-bind (j new-free)
 	     (lookup-var1 term1 free)
 	   (values (dfa-eq1 i j) new-free)))
@@ -370,7 +370,7 @@
 	((and (natural-number-expr? arg2)                               ; n binrel p_j
 	      (var1? arg1 free))
 	 (const1-binrel-var1-to-dfa* (number arg2) arg1 binrel free))
-        ((and (var1? arg1 free)
+        ((and (var1? arg1 free)                                         ; p_i binrel p_j
 	      (var1? arg2 free))
 	 (multiple-value-bind (i new-free)
 	     (lookup-var1 arg1 free)
