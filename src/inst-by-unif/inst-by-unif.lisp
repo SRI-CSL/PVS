@@ -169,10 +169,18 @@
 
 (defun inst!-rule (fnum bndngs)
   (declare (special *copy*) (special *if-match*))
-  (let* ((insts (construct-insts bndngs)))
-    (display-substitution fnum bndngs insts)
-    (make-inst?-rule fnum insts *copy* *if-match*)))
+  (let* ((insts (construct-insts bndngs))
+	 (insts1 (if (and (listp insts)          ; patch
+			 (= (length insts) 1)
+			 (listp (first insts))
+			 (= (length (first insts)) 1)
+			 (listp (first (first insts))))
+		    (first insts)
+		  insts)))
+    (display-substitution fnum bndngs insts1)
+    (make-inst?-rule fnum insts1 *copy* *if-match*)))
          ; e.g. (make-inst?-rule -2 '(((x)) ((a 1))) nil 'all)
+         ; but: (make-inst?-rule -1 '((t1 b(t1))) NIL NIL)
 
 (defun construct-insts (bndngs)
   (declare (special *substs*))
