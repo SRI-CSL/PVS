@@ -29,9 +29,9 @@
 (defmacro applyupdate-index (term)
   `(arg 1 ,term))
 
-(defun test-equality (term1 term2 *dp-state*)
+(defun test-equality (term1 term2 cong-state)
   (let* ((equality (mk-equality term1 term2))
-	 (norm-equality (sigma equality *dp-state*)))
+	 (norm-equality (sigma equality cong-state)))
     norm-equality))
 
 (defun sigapplyupdate (term cong-state)
