@@ -29,7 +29,7 @@ Theory ::= id [TheoryFormals] ':' 'THEORY'
 
 TheoryFormals ::= '[' TheoryFormal++',' ']'
 
-TheoryFormal ::= ['(' Importing ')'] TheoryFormalDecl
+TheoryFormal ::= ['(' LibDecl* Importing ')'] TheoryFormalDecl
 
 TheoryFormalDecl ::= TheoryFormalType | TheoryFormalConst
 
@@ -185,7 +185,7 @@ IfExpr ::= 'IF' Expr 'THEN' Expr
                {'ELSIF' Expr 'THEN' Expr}*
                'ELSE' Expr 'ENDIF'
 
-BindingExpr ::= BindingOp LambdaBindings ['->' TypeExpr] ':' Expr
+BindingExpr ::= BindingOp LambdaBindings ':' Expr
 
 BindingOp ::= 'LAMBDA' | 'FORALL' | 'EXISTS' | {IdOp '!'}
 
