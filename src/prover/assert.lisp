@@ -553,7 +553,7 @@
       (connective-occurs? expression)))
 
 (defmethod connective-occurs? ((expr field-application))
-  (with-slots (argument)
+  (with-slots (argument) expr
       (connective-occurs? argument)))
 
 (defmethod connective-occurs? ((expr propositional-application))
@@ -1947,7 +1947,7 @@
 	(assert-equality equality newargs sig)
       (if (eq sig '?)
 	  (let ((disequality (negate newequality)))
-	    (assert-if-application disequality
+	    (assert-if-application* disequality
 				   (operator disequality)
 				   newequality '?))
 	  (do-auto-rewrite expr sig)))))
@@ -1988,35 +1988,110 @@
 			    (values '? *true*))
 			   (t (do-auto-rewrite expr sig))))))))))
 
-(defun assert-if-application (expr newop newargs sig)
+(defmethod assert-if-application* (expr newop (newargs branch) sig)
+  (if  (negation? expr)
+       (do-auto-rewrite expr sig)
+       (let ((thenval (nth-value 1
+			(assert-if-application*
+			 (make!-application newop (then-part newargs))
+			 newop (then-part newargs) '?)))
+	     (elseval (nth-value 1
+			(assert-if-application*
+			 (make!-application newop (else-part newargs))
+			 newop (else-part newargs) '?))))
+	 (values-assert-if
+	  '?
+	  (make!-if-expr (condition newargs) thenval elseval)
+	  expr))))
+
+(defmethod assert-if-application* (expr (newop branch) newargs sig)
+  (let ((thenval (nth-value 1
+		   (assert-if-application*
+		    (make!-application (then-part newop) newargs)
+		    (then-part newop) newargs '?)))
+	(elseval (nth-value 1
+		   (assert-if-application*
+		    (make!-application (else-part newop) newargs)
+		    (else-part newop) newargs '?))))
+    (values-assert-if
+     '?
+     (make!-if-expr (condition newop) thenval elseval)
+     expr)))
+
+(defmethod assert-if-application* (expr (newop lambda-expr) newargs sig)
+  (let ((val (nth-value 1
+		      (assert-if (substit (expression newop)
+				   (pairlis-args (bindings newop)
+						 (argument-list newargs)))))))
+	   (values-assert-if '? val expr)))
+
+(defmethod assert-if-application* ((expr negation) newop  newargs sig)
+  (if (tc-eq newargs *true*)
+	     (values '? *false*)
+	     (if (tc-eq newargs *false*)
+		 (values '? *true*)
+		 (if (negation? newargs)
+		     (values '? (args1 newargs))
+		     (do-auto-rewrite expr sig)))))
+
+(defmethod assert-if-application* ((expr implication) newop  newargs sig)
+  (let ((nargs (argument-list newargs)))
+	   (cond ((or (tc-eq (car nargs) *false*)
+		      (tc-eq (cadr nargs) *true*))
+		  (values '? *true*))
+		 ((tc-eq (car nargs) *true*)
+		  (values '? (cadr nargs)))
+		 ((tc-eq (cadr nargs) *false*)
+		  (values '? (make!-negation (car nargs))))
+		 (t (do-auto-rewrite expr sig)))))
+
+(defmethod assert-if-application* ((expr conjunction) newop  newargs sig)
+  (let ((nargs (argument-list newargs)))
+	   (cond ((tc-eq (car nargs) *true*)
+		  (values '? (cadr nargs)))
+		 ((or (tc-eq (car nargs) *false*)
+		      (tc-eq (cadr nargs) *false*))
+		  (values '? *false*))
+		 ((tc-eq (cadr nargs) *true*)
+		  (values '? (car nargs)))
+		 (t (do-auto-rewrite expr sig)))))
+
+(defmethod assert-if-application* ((expr disjunction) newop  newargs sig)
+  (let ((nargs (argument-list newargs)))
+	   (cond ((or (tc-eq (car nargs) *true*)
+		      (tc-eq (cadr nargs) *true*))
+		  (values '? *true*))
+		 ((tc-eq (car nargs) *false*)
+		  (values '? (cadr nargs)))
+		 ((tc-eq (cadr nargs) *false*)
+		  (values '? (car nargs)))
+		 (t (do-auto-rewrite expr sig)))))
+
+(defmethod assert-if-application* ((expr iff-or-boolean-equation)
+				   newop  newargs sig)
+  (let* ((nargs (argument-list newargs))
+		(left (car nargs))
+		(right (cadr nargs)))
+	   (cond ((tc-eq left *true*)
+		  (values '? right))
+		 ((tc-eq right *true*)
+		  (values '? left))
+		 ((tc-eq left *false*) ;;NSH(1.20.96) added
+		  (values '? (negate right)))
+		 ((tc-eq right *false*)
+		  (values '? (negate left)))
+		 ((tc-eq (car nargs)(cadr nargs))
+		  (values '? *true*))
+		 (t (do-auto-rewrite expr sig)))))
+
+(defmethod assert-if-application* ((expr equation) newop  newargs sig)
+  (assert-equality expr newargs sig))
+
+(defmethod assert-if-application* ((expr disequation) newop  newargs sig)
+  (assert-disequality expr newargs sig))
+
+(defmethod assert-if-application* ((expr application) newop  newargs sig)
   (cond ((eq *assert-flag* 'rewrite) (do-auto-rewrite expr sig))
-	((and (not (negation? expr))
-	      (branch? newargs))
-	 (let ((thenval (nth-value 1
-			  (assert-if-application
-			   (make!-application newop (then-part newargs))
-			   newop (then-part newargs) '?)))
-	       (elseval (nth-value 1
-			  (assert-if-application
-			   (make!-application newop (else-part newargs))
-			   newop (else-part newargs) '?))))
-	   (values-assert-if
-	    '?
-	    (make!-if-expr (condition newargs) thenval elseval)
-	    expr)))
-	((branch? newop)
-	 (let ((thenval (nth-value 1
-			  (assert-if-application
-			   (make!-application (then-part newop) newargs)
-			   (then-part newop) newargs '?)))
-	       (elseval (nth-value 1
-			  (assert-if-application
-			   (make!-application (else-part newop) newargs)
-			   (else-part newop) newargs '?))))
-	   (values-assert-if
-	    '?
-	    (make!-if-expr (condition newop) thenval elseval)
-	    expr)))
 	((or (is-addition? expr) (is-subtraction? expr))
 	 (assert-if-addition  expr newargs sig))
 	((is-multiplication? expr)
@@ -2034,69 +2109,6 @@
 		     (arguments newargs))
 		(argument newargs)))
 	  expr))
-	((lambda? newop)
-	 (let ((val (nth-value 1
-		      (assert-if (substit (expression newop)
-				   (pairlis-args (bindings newop)
-						 (argument-list newargs)))))))
-	   (values-assert-if '? val expr)))
-	((negation? expr)
-	 (if (tc-eq newargs *true*)
-	     (values '? *false*)
-	     (if (tc-eq newargs *false*)
-		 (values '? *true*)
-		 (if (negation? newargs)
-		     (values '? (args1 newargs))
-		     (do-auto-rewrite expr sig)))))
-	((implication? expr)
-	 (let ((nargs (argument-list newargs)))
-	   (cond ((or (tc-eq (car nargs) *false*)
-		      (tc-eq (cadr nargs) *true*))
-		  (values '? *true*))
-		 ((tc-eq (car nargs) *true*)
-		  (values '? (cadr nargs)))
-		 ((tc-eq (cadr nargs) *false*)
-		  (values '? (make!-negation (car nargs))))
-		 (t (do-auto-rewrite expr sig)))))
-	((conjunction? expr)
-	 (let ((nargs (argument-list newargs)))
-	   (cond ((tc-eq (car nargs) *true*)
-		  (values '? (cadr nargs)))
-		 ((or (tc-eq (car nargs) *false*)
-		      (tc-eq (cadr nargs) *false*))
-		  (values '? *false*))
-		 ((tc-eq (cadr nargs) *true*)
-		  (values '? (car nargs)))
-		 (t (do-auto-rewrite expr sig)))))
-	((disjunction? expr)
-	 (let ((nargs (argument-list newargs)))
-	   (cond ((or (tc-eq (car nargs) *true*)
-		      (tc-eq (cadr nargs) *true*))
-		  (values '? *true*))
-		 ((tc-eq (car nargs) *false*)
-		  (values '? (cadr nargs)))
-		 ((tc-eq (cadr nargs) *false*)
-		  (values '? (car nargs)))
-		 (t (do-auto-rewrite expr sig)))))
-	((iff-or-boolean-equation? expr)
-	 (let* ((nargs (argument-list newargs))
-		(left (car nargs))
-		(right (cadr nargs)))
-	   (cond ((tc-eq left *true*)
-		  (values '? right))
-		 ((tc-eq right *true*)
-		  (values '? left))
-		 ((tc-eq left *false*) ;;NSH(1.20.96) added
-		  (values '? (negate right)))
-		 ((tc-eq right *false*)
-		  (values '? (negate left)))
-		 ((tc-eq (car nargs)(cadr nargs))
-		  (values '? *true*))
-		 (t (do-auto-rewrite expr sig)))))
-	((equation? expr)
-	 (assert-equality expr newargs sig)) ;;NSH(8.9.95) newop gone
-	((disequation? expr)
-	 (assert-disequality expr newargs sig))
 	((function-update-redex? expr)
 	 (let ((result
 		(simplify-function-update-redex expr)))
@@ -2104,6 +2116,126 @@
 	       (do-auto-rewrite expr sig)
 	       (values '? result))))
 	(t (do-auto-rewrite expr sig))))
+	
+  
+
+(defun assert-if-application (expr newop newargs sig)
+  (assert-if-application* expr newop newargs sig))
+;  (cond ((eq *assert-flag* 'rewrite) (do-auto-rewrite expr sig))
+;	((and (not (negation? expr))
+;	      (branch? newargs))
+;	 (let ((thenval (nth-value 1
+;			  (assert-if-application
+;			   (make!-application newop (then-part newargs))
+;			   newop (then-part newargs) '?)))
+;	       (elseval (nth-value 1
+;			  (assert-if-application
+;			   (make!-application newop (else-part newargs))
+;			   newop (else-part newargs) '?))))
+;	   (values-assert-if
+;	    '?
+;	    (make!-if-expr (condition newargs) thenval elseval)
+;	    expr)))
+;	((branch? newop)
+;	 (let ((thenval (nth-value 1
+;			  (assert-if-application
+;			   (make!-application (then-part newop) newargs)
+;			   (then-part newop) newargs '?)))
+;	       (elseval (nth-value 1
+;			  (assert-if-application
+;			   (make!-application (else-part newop) newargs)
+;			   (else-part newop) newargs '?))))
+;	   (values-assert-if
+;	    '?
+;	    (make!-if-expr (condition newop) thenval elseval)
+;	    expr)))
+;	((or (is-addition? expr) (is-subtraction? expr))
+;	 (assert-if-addition  expr newargs sig))
+;	((is-multiplication? expr)
+;	 (assert-if-multiplication expr newargs sig))
+;	((and (typep newop 'name-expr)
+;	      (accessor? newop)
+;	      (typep newargs 'application)
+;	      (member (operator newargs) (constructor newop)
+;		      :test #'tc-eq-ops))
+;	 (values-assert-if
+;	  '?
+;	  (let ((accessors (accessors (operator newargs))))
+;	    (if (cdr accessors)
+;		(nth (position newop accessors :test #'tc-eq-ops)
+;		     (arguments newargs))
+;		(argument newargs)))
+;	  expr))
+;	((lambda? newop)
+;	 (let ((val (nth-value 1
+;		      (assert-if (substit (expression newop)
+;				   (pairlis-args (bindings newop)
+;						 (argument-list newargs)))))))
+;	   (values-assert-if '? val expr)))
+;	((negation? expr)
+;	 (if (tc-eq newargs *true*)
+;	     (values '? *false*)
+;	     (if (tc-eq newargs *false*)
+;		 (values '? *true*)
+;		 (if (negation? newargs)
+;		     (values '? (args1 newargs))
+;		     (do-auto-rewrite expr sig)))))
+;	((implication? expr)
+;	 (let ((nargs (argument-list newargs)))
+;	   (cond ((or (tc-eq (car nargs) *false*)
+;		      (tc-eq (cadr nargs) *true*))
+;		  (values '? *true*))
+;		 ((tc-eq (car nargs) *true*)
+;		  (values '? (cadr nargs)))
+;		 ((tc-eq (cadr nargs) *false*)
+;		  (values '? (make!-negation (car nargs))))
+;		 (t (do-auto-rewrite expr sig)))))
+;	((conjunction? expr)
+;	 (let ((nargs (argument-list newargs)))
+;	   (cond ((tc-eq (car nargs) *true*)
+;		  (values '? (cadr nargs)))
+;		 ((or (tc-eq (car nargs) *false*)
+;		      (tc-eq (cadr nargs) *false*))
+;		  (values '? *false*))
+;		 ((tc-eq (cadr nargs) *true*)
+;		  (values '? (car nargs)))
+;		 (t (do-auto-rewrite expr sig)))))
+;	((disjunction? expr)
+;	 (let ((nargs (argument-list newargs)))
+;	   (cond ((or (tc-eq (car nargs) *true*)
+;		      (tc-eq (cadr nargs) *true*))
+;		  (values '? *true*))
+;		 ((tc-eq (car nargs) *false*)
+;		  (values '? (cadr nargs)))
+;		 ((tc-eq (cadr nargs) *false*)
+;		  (values '? (car nargs)))
+;		 (t (do-auto-rewrite expr sig)))))
+;	((iff-or-boolean-equation? expr)
+;	 (let* ((nargs (argument-list newargs))
+;		(left (car nargs))
+;		(right (cadr nargs)))
+;	   (cond ((tc-eq left *true*)
+;		  (values '? right))
+;		 ((tc-eq right *true*)
+;		  (values '? left))
+;		 ((tc-eq left *false*) ;;NSH(1.20.96) added
+;		  (values '? (negate right)))
+;		 ((tc-eq right *false*)
+;		  (values '? (negate left)))
+;		 ((tc-eq (car nargs)(cadr nargs))
+;		  (values '? *true*))
+;		 (t (do-auto-rewrite expr sig)))))
+;	((equation? expr)
+;	 (assert-equality expr newargs sig)) ;;NSH(8.9.95) newop gone
+;	((disequation? expr)
+;	 (assert-disequality expr newargs sig))
+;	((function-update-redex? expr)
+;	 (let ((result
+;		(simplify-function-update-redex expr)))
+;	   (if (tc-eq result expr)
+;	       (do-auto-rewrite expr sig)
+;	       (values '? result))))
+;	(t (do-auto-rewrite expr sig)))
 
 (defmethod assert-if ((expr projection-application))
   (with-slots (index argument) expr
