@@ -457,17 +457,18 @@ argument they are expanded as well."
 		      bufname origin pos1 pos2
 		      (and current-prefix-arg t))
 		  nil 'expanded-form 'list)))
-      (when place
-	(let ((tbeg (save-excursion
-		      (goto-line (- (car place) prelude-offset))
-		      (forward-char (cadr place))
-		      (point)))
-	      (tend (save-excursion
-		      (goto-line (- (caddr place) prelude-offset))
-		      (forward-char (cadddr place))
-		      (point))))
-	  (setq expanded-form-overlay (make-overlay tbeg tend))
-	  (overlay-put expanded-form-overlay 'face 'expanded-form-face))))))
+      (unless noninteractive
+	(when place
+	  (let ((tbeg (save-excursion
+			(goto-line (- (car place) prelude-offset))
+			(forward-char (cadr place))
+			(point)))
+		(tend (save-excursion
+			(goto-line (- (caddr place) prelude-offset))
+			(forward-char (cadddr place))
+			(point))))
+	    (setq expanded-form-overlay (make-overlay tbeg tend))
+	    (overlay-put expanded-form-overlay 'face 'expanded-form-face)))))))
 
 (defvar *pvs-popup-windows* nil
   "Controls behavior of browser functions.
