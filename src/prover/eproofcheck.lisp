@@ -2425,7 +2425,7 @@
 (defun revert-justification (ejustif &optional label)
   (unless (null ejustif)
     (if (null label)
-	(if (consp (cadr ejustif))	; Not a comment
+	(if (listp (cadr ejustif))	; Not a comment
 	    (list (car ejustif)		; Assumes this is a label
 		  (unformat-rule (cadr ejustif))
 		  (revert-justification (cddr ejustif) (car ejustif)))
