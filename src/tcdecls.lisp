@@ -1739,6 +1739,9 @@
   (declare (ignore expected kind arguments))
   (setf (subtype decl) (typecheck* (declared-subtype decl) nil nil nil))
   (set-type (declared-subtype decl) nil)
+  (when (print-type (subtype decl))
+    (setf (print-type (subtype decl))
+	  (copy-judgement-subtype-without-types (declared-subtype decl))))
   (let ((*bound-variables*
 	 (if (typep (declared-subtype decl) 'type-application)
 	     (append (parameters (declared-subtype decl)) *bound-variables*)
@@ -1767,6 +1770,19 @@
 		       "~@[In judgement ~a, ~]Line ~d: ~
                         Subtype judgement is superfluous."
 		     (id decl) (line-begin (place decl)))))))))
+
+(defmethod copy-judgement-subtype-without-types ((te type-application))
+  (lcopy te
+    'parameters (mapcar #'(lambda (p)
+			    (if (and (bind-decl? p)
+				     (not (untyped-bind-decl? p)))
+				(change-class (copy p) 'untyped-bind-decl)
+				p))
+		  (parameters te))))
+
+(defmethod copy-judgement-subtype-without-types (te)
+  te)
+  
 
 (defmethod typecheck* ((decl number-judgement) expected kind arguments)
   (declare (ignore expected kind arguments))
