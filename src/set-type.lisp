@@ -121,11 +121,14 @@ required a context.")
 
 
 (defun change-to-conversion (expr expected &optional convtype)
-  (let ((ctype (or convtype
-		   (find-if #'(lambda (ty)
-				(and (from-conversion ty)
-				     (compatible? ty expected)))
-		     (types expr)))))
+  (let* ((ctype1 (or convtype
+		     (find-if #'(lambda (ty)
+				  (and (from-conversion ty)
+				       (compatible? ty expected)))
+		       (types expr))))
+	 (ctype (if (fully-instantiated? ctype1)
+		    ctype1
+		    (instantiate-from ctype1 expected expr))))
     (assert ctype)
     (cond
      ((and (typep expr 'application)
@@ -142,6 +145,7 @@ required a context.")
       expr)
      (t
       #+pvsdebug (assert (typep (from-conversion ctype) 'expr))
+      
       (add-conversion-info (from-conversion ctype) expr)
       (let* ((nexpr (copy expr))
 	     (dom (domain (type (from-conversion ctype)))))
