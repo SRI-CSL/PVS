@@ -98,6 +98,9 @@
 (defmethod contains-updateable? ((texpr subtype))
   (contains-updateable? (find-supertype texpr)))
 
+(defmethod types ((texpr type-expr))
+  (list texpr))
+
 (defmethod contains-updateable? ((texpr adt-type-name))
   (some #'(lambda (constr)
 	    (and (funtype? (type constr))
@@ -335,18 +338,92 @@
 	when (contains-updateable? (type var))
 	collect var))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defvar *closure-vars* nil)
+;;structure* gets at the underlying structure (array, record, or tuple)
+;; after peeling away the accesses.  
+(defmethod structure* ((expr application))
+  (with-slots (operator) expr
+    (structure* operator)))
 
-(defun closure-vars (expr)
-  (let* ((*closure-vars* nil)
-	 (closure-vars
-	  (mapobject
-	   #'(lambda (x)
-	       (when (binding-expr? x)(break)
-		 (loop for y
-		       in (updateable-vars x)
-		       do (pushnew y *closure-vars*
-				   :test #'tc-eq))
-		 T))
-	   expr)))
-    *closure-vars*))
+(defmethod structure* ((expr projection-application))
+  (with-slots (argument) expr
+    (structure* argument)))
+
+(defmethod structure* ((expr field-application))
+  (with-slots (argument) expr
+    (structure* argument)))
+
+(defmethod structure* ((expr T))
+  expr)
+
+
+(defmethod check-update-argument ((expr application) updated-variables)
+  (with-slots (operator argument) expr
+    (or (not (contains-possible-closure? (type expr)))
+	(null (intersection (updateable-free-formal-vars
+			     (arguments expr))
+			    updated-variables
+			    :test #'same-declaration))
+	(check-update-argument operator updated-variables))))
+
+
+(defmethod check-update-argument ((expr projection-application)
+				  updated-variables)
+  (with-slots (argument) expr
+    (or (not (contains-possible-closure? (type expr)))
+	(check-update-argument argument updated-variables))))
+
+(defmethod check-update-argument ((expr field-application)
+				  updated-variables)
+  (with-slots (argument) expr
+    (or (not (contains-possible-closure? (type expr)))
+	(check-update-argument argument updated-variables))))
+
+(defmethod check-update-argument ((expr record-expr)
+				  updated-variables)
+  (with-slots (fields) expr
+    (check-update-argument fields updated-variables)))
+
+(defmethod check-update-argument ((expr tuple-expr)
+				  updated-variables)
+  (with-slots (exprs) expr
+    (check-update-argument exprs updated-variables)))
+
+(defmethod check-update-argument ((expr lambda-expr)
+				  updated-variables)
+  (null (intersection (updateable-vars expr)
+		      updated-variables
+		      :test #'same-declaration)))
+
+(defmethod check-update-argument ((expr binding-expr)
+				  updated-variables)
+  (with-slots (expression) expr
+    (check-update-argument expression updated-variables)))
+
+(defmethod check-update-argument ((expr update-expr)
+				  updated-variables)
+  (with-slots (expression assignments) expr
+    (and (check-update-argument expression updated-variables)
+	 (check-update-argument assignments updated-variables))))
+
+(defmethod check-update-argument ((expr assignment)
+				  updated-variables)
+  (with-slots (expression) expr
+    (check-update-argument expression updated-variables)))
+
+(defmethod check-update-argument ((expr list) updated-variables)
+  (loop for x in expr
+	always (check-update-argument x updated-variables)))
+
+(defmethod check-update-argument ((expr name-expr) updated-variables)
+  T)
+
+(defmethod check-update-argument ((expr T) updated-variables)
+  (null (intersection (updateable-vars expr)
+		      updated-variables
+		      :test #'same-declaration)))
+
+    
+
+
+
+
