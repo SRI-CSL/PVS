@@ -221,7 +221,28 @@
     (unless (member neq nequals :test #'eq)
       (setq *dp-changed* t)
       (setf (nequals cong-state)
-	    (cons neq (nequals cong-state))))))
+	    (cons neq (nequals cong-state)))
+      (when (equality-p neq)
+	(process-neq-users neq cong-state)))))
+
+(defun process-neq-users (neq cong-state)
+  (let* ((eqn (arg 1 neq))
+	 (t1 (lhs (lhs neq)))
+	 (t2 (rhs (lhs neq))))
+    (when (number-equality-p eqn)
+      (let ((t1-gt-t2 (simplify-ineq-constraint
+		       (mk-term `(,*greatereqp* ,t1 ,t2)) cong-state))
+	    (t1-lt-t2 (simplify-ineq-constraint
+		       (mk-term `(,*lesseqp* ,t1 ,t2)) cong-state)))
+	(cond
+	 ((and (true-p t1-gt-t2)
+	       (true-p t1-lt-t2)) (setq *contradiction* t) *false*)
+	 ((true-p t1-gt-t2)
+	  (process* (sigma (mk-term `(,*greaterp* ,t1 ,t2)) cong-state)
+		    cong-state))
+	 ((true-p t1-lt-t2)
+	  (process* (sigma (mk-term `(,*lessp* ,t1 ,t2)) cong-state)
+		    cong-state)))))))
 
 (defun pure-theory? (eqn) ;(break)
   (simple-pure-theory? eqn))
@@ -236,16 +257,19 @@
 
 (defun number-theory-p (term)
   (or (arith-p term)
-      (memq (node-initial-type term)
-	    (list *integer* *number*))))
+      (member (node-initial-type term)
+	      (list *integer* *number*))))
 	    
+
+(defun number-equality-p (eqn)
+  (and
+   (equality-p eqn)
+   (number-theory-p (lhs eqn))
+   (number-theory-p (rhs eqn))))
 
 (defun more-pure-theory? (eqn)
   (cond
    ((arith-bool-p eqn) 'number)
-   ((and
-     (equality-p eqn)
-     (number-theory-p (lhs eqn))
-     (number-theory-p (rhs eqn)))
+   ((number-equality-p eqn)
     'number)
    (t nil)))
