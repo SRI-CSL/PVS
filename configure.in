@@ -25,7 +25,7 @@ if ! test -f $with_ics/src/ics.ml ; then
    echo
    AC_MSG_ERROR(ICS file $with_ics/src/ics.ml not found)
 fi
-if ! test -f $with_ics/bin/config.guess ; then
+if ! test -f $with_ics/config.guess ; then
    echo
    AC_MSG_ERROR(ICS file $with_ics/bin/config.guess not found)
 fi
