@@ -229,10 +229,20 @@
 		      (set-type-actuals dthi)
 		      #+pvsdebug (assert (fully-typed? dthi))
 		      (list (make-resolution decl dthi))))
-		  (let ((modinsts (decl-args-compatible? decl args)))
-		    (mapcar #'(lambda (thinst)
-				(make-resolution decl thinst))
-		      modinsts)))))))))
+		  (let* ((modinsts (decl-args-compatible? decl args))
+			 (thinst (or (find-if
+					 #'(lambda (thinst)
+					     (tc-eq acts (actuals thinst)))
+				       modinsts)
+				     (find-if
+					 #'(lambda (thinst)
+					     (matching-actuals
+					      acts (actuals thinst)
+					      (formals-sans-usings dth) nil))
+				       modinsts))))
+		    (unless thinst (break "No matching thinst"))
+		    (when thinst
+		      (list (make-resolution decl thinst)))))))))))
 
 (defun copy-actuals (acts)
   acts)
