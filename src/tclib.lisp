@@ -601,11 +601,13 @@
 ;;; default library.  If a library is not found, it returns a third value
 ;;; indicating the problem with the library.
 
-(defun get-library-pathname (libstr)
-  (assert (stringp libstr))
-  (let ((libdir (if (char= (schar libstr (1- (length libstr))) #\/)
-		    libstr
-		    (concatenate 'string libstr "/"))))
+(defun get-library-pathname (libname)
+  (let* ((libstr (if (stringp libname)
+		     libname
+		     (string libname)))
+	 (libdir (if (char= (schar libstr (1- (length libstr))) #\/)
+		     libstr
+		     (concatenate 'string libstr "/"))))
     (multiple-value-bind (libpath condition)
 	(ignore-errors
 	  (namestring (merge-pathnames libdir *pvs-context-path*)))
