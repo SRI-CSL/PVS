@@ -1440,20 +1440,23 @@ pvs-strategies files.")
 		   (nth (cadr prf-entry) (proofs decl))))
 	    (prf-entry
 	     ;; Need to convert from old form
-	     (unless (some #'(lambda (prinfo)
-			       (equal (script prinfo) (cdr prf-entry)))
+	     (let ((proof (if (consp (car (cdr prf-entry)))
+			      (cddr prf-entry)
+			      (cdr prf-entry))))
+	       (unless (some #'(lambda (prinfo)
+				 (equal (script prinfo) proof))
 			   (proofs decl))
-	       (let ((prinfo (make-proof-info (convert-proof-form-to-lowercase
-					       (cdr prf-entry))
-					      (next-proof-id decl)))
-		     (fe (get-context-formula-entry decl)))
-		 (when fe
-		   (dolist (dref (fe-proof-refers-to fe))
-		     (pushnew (get-declaration-entry-decl dref)
-			      (refers-to prinfo)))
-		   (setf (status prinfo) (fe-status fe)))
-		 (push prinfo (proofs decl))
-		 (setf (default-proof decl) prinfo)))))
+		 (let ((prinfo (make-proof-info (convert-proof-form-to-lowercase
+						 proof)
+						(next-proof-id decl)))
+		       (fe (get-context-formula-entry decl)))
+		   (when fe
+		     (dolist (dref (fe-proof-refers-to fe))
+		       (pushnew (get-declaration-entry-decl dref)
+				(refers-to prinfo)))
+		     (setf (status prinfo) (fe-status fe)))
+		   (push prinfo (proofs decl))
+		   (setf (default-proof decl) prinfo))))))
       prf-entry)))
 
 (defun convert-proof-form-to-lowercase (proof-form)
