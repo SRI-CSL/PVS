@@ -27,7 +27,7 @@
   ;(bvec::fixed-sigma term)
   )
 
-(defun sigma (term cong-state)
+(defun sigma (term cong-state &optional (after-solve nil))
   ;;; assumes immediate args are already in sigma-normal form.
   ;(break)
   (cond
@@ -36,9 +36,9 @@
    ((update-p term) (sigupdate term cong-state))
    ((applyupdate-p term) (sigapplyupdate term cong-state))
    ((project-p term) (sigproject term cong-state))
-   ((equality-p term) (sigequal term cong-state))
+   ((equality-p term) (sigequal term cong-state after-solve))
    ((if-p term) (sigif term cong-state))
-   ((bool-p term) (sigbool term cong-state))
+   ((bool-p term) (sigbool term cong-state after-solve))
    ((bv-p term) (sigbvec term cong-state))
    (t term)))
 
@@ -89,7 +89,7 @@
 	     *integer*))))
   (list (mk-equality term *true*)))
 
-(defun sigbool (term cong-state)
+(defun sigbool (term cong-state &optional (after-solve nil))
   (cond
    ((equality-p term)
     (let ((lhs (lhs term))
@@ -104,10 +104,10 @@
 	(cond
 	 ((eq lhs *true*) *false*)
 	 ((eq lhs *false*) *true*)
-	 (t (sigma (mk-term (list *not* lhs)) cong-state))))
+	 (t (sigma (mk-term (list *not* lhs)) cong-state after-solve))))
        ((eq lhs *true*) rhs)
        ((eq lhs *false*)
-	(sigma (mk-term (list *not* rhs)) cong-state))
+	(sigma (mk-term (list *not* rhs)) cong-state after-solve))
        ((arith-term-< lhs rhs) term)
        (t (mk-equality rhs lhs)))))
    ((ineq-p term) (sigineq term cong-state))
@@ -118,7 +118,8 @@
    ((or-p term)
     (sigor term cong-state))
    ((nequal-p term)
-    (sigma (mk-negation (mk-equality (lhs term) (rhs term))) cong-state))
+    (sigma (mk-negation (mk-equality (lhs term) (rhs term)))
+	   cong-state after-solve))
    (t term)))
 
 (defun sigand (term cong-state)
@@ -161,14 +162,14 @@
     (arg 1 (arg 1 term)))
    (t term)))
 
-(defun sigequal (term cong-state)
+(defun sigequal (term cong-state &optional (after-solve nil))
   (let ((lhs (lhs term))
 	(rhs (rhs term)))
     (cond
      ((eq lhs rhs) *true*)
      ((or (bool-p lhs)
 	  (bool-p rhs))
-      (sigbool term cong-state))
+      (sigbool term cong-state after-solve))
      ((eq (dp-theory term) 'arith)
       (normineq term cong-state))
      ((and (node-constructor? lhs)
@@ -179,7 +180,7 @@
 		     (member rhs distinct-list :test #'eq)))
 	    *distinct-lists*)
       *false*)
-     (t term)
+     (after-solve term)
      ((arith-term-< lhs rhs) term)
      (t (mk-equality rhs lhs)))))
 
@@ -206,8 +207,8 @@
    ((equality-p seqn)
     (let ((new-lhs (dp-find (lhs seqn) cong-state))
 	  (new-rhs (dp-find (rhs seqn) cong-state)))	
-      (sigma (mk-equality new-lhs new-rhs) cong-state)))
-   (t (sigma seqn cong-state))))
+      (sigma (mk-equality new-lhs new-rhs) cong-state t)))
+   (t (sigma seqn cong-state t))))
 
 (defun canon-after-solve (eqn cong-state)
   (if (or (false-p eqn) (true-p eqn)) eqn
