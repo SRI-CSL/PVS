@@ -776,8 +776,7 @@
 	 (list-of-conjuncts (translate-from-bdd-list
 			     (bdd_sum_of_cubes sforms-bdd
 					       (if irredundant? 1 0)))))
-       (from-bdd-list-to-pvs-list list-of-conjuncts))
-)
+    (from-bdd-list-to-pvs-list list-of-conjuncts)))
 
 
 (defvar *ignore-boolean-equalities?* nil)
@@ -801,19 +800,66 @@
 	     expr))))
 
 (defun from-bdd-list-to-pvs-list (list-of-conjuncts)
-   (init-hash-tables) ;; definition in mu.lisp
-  (let* ((lit-list (mapcar #'(lambda (conj)
-			     (mapcar #'(lambda (lit)
-				         (if (consp lit)
-					     (gethash (car lit) *bdd-pvs-hash*)
-					     (make-negation
-				      	(gethash lit *bdd-pvs-hash*))))
-		      	 conj))
-		   list-of-conjuncts)))
-  (assert (hash-table-p *pvs-bdd-hash*))
-    lit-list)
-)
+  (init-hash-tables) ;; definition in mu.lisp
+  (let* ((nconjuncts (simplify-rec-conjuncts list-of-conjuncts))
+	 (lit-list (mapcar #'(lambda (conj)
+			       (mapcar
+				   #'(lambda (lit)
+				       (if (consp lit)
+					   (gethash (car lit) *bdd-pvs-hash*)
+					   (make-negation
+					    (gethash lit *bdd-pvs-hash*))))
+				 conj))
+		     nconjuncts)))
+    (assert (hash-table-p *pvs-bdd-hash*))
+    lit-list))
 
+;;; With enum types (and simple datatypes), the list-of-conjuncts
+;;; returns negative information.  For example, if the enumeration type is
+;;; {a, b, c}, the conjuncts will have the form
+;;; NOT a?(x)
+;;; NOT b?(x)  a?(x)
+;;; a?(x)  b?(x)
+;;; In the second line, the a?(x) is not needed, and the third line should be
+;;; NOT c?(x)
+(defun simplify-rec-conjuncts (list-of-conjuncts)
+  (mapcar #'simplify-rec-conjuncts* list-of-conjuncts))
+
+(defun simplify-rec-conjuncts* (conjuncts)
+  ;; We use *recognizer-forms-alist* to simplify the conjuncts
+  (dolist (rec-form *recognizer-forms-alist*)
+    (let* ((rec-lits (mapcar #'cdr (cdr rec-form)))
+	   (pos-lit (find-if #'(lambda (x) (memq x conjuncts)) rec-lits)))
+      (if pos-lit
+	  (setq conjuncts
+		(remove-if #'(lambda (x)
+			       (and (consp x) (memq (car x) rec-lits)))
+		  conjuncts))
+	  ;; No pos-lits, see if we cover all but one neg-lit
+	  (let ((neg-lits (remove-if (complement
+				      #'(lambda (x)
+					  (and (consp x)
+					       (memq (car x) rec-lits))))
+			    conjuncts)))
+	    (when (= (length neg-lits) (1- (length rec-lits)))
+	      (let ((pos-lit (find-if #'(lambda (x)
+					  (not (assq x neg-lits)))
+			       rec-lits)))
+		(assert pos-lit)
+		(setq conjuncts
+		      (replace-neg-lits-with-pos-lit
+		       conjuncts neg-lits pos-lit))))))))
+  conjuncts)
+
+(defun replace-neg-lits-with-pos-lit (conjuncts neg-lits pos-lit &optional new)
+  (if (null conjuncts)
+      (nreverse new)
+      (if (and (consp (car conjuncts))
+	       (memq (car conjuncts) neg-lits))
+	  (replace-neg-lits-with-pos-lit
+	   (cdr conjuncts) neg-lits nil (if pos-lit (cons pos-lit new) new))
+	  (replace-neg-lits-with-pos-lit
+	   (cdr conjuncts) neg-lits pos-lit (cons (car conjuncts) new)))))
 
 (defun add-bdd-subgoals (ps sforms conjuncts remaining-sforms)
   (let ((subgoals
@@ -883,8 +929,11 @@
 	     bdd-disj)))))
 
 (defun make-enum-inclusive-bdd (rec-alist)
-  (let ((enum-size (length (constructors
-			    (adt (find-supertype (type (car rec-alist))))))))
+  (let* ((type (find-supertype (type (car rec-alist))))
+	 (enum-size (typecase type
+		      (adt-type-name (length (constructors (adt type))))
+		      (cotupletype (length (types type)))
+		      (t (error "bad rec-alist element")))))
     (when (= enum-size (length (cdr rec-alist)))
       (bdd-or* (mapcar #'(lambda (e) (bdd_create_var (cdr e)))
 		 (cdr rec-alist))))))
@@ -930,16 +979,16 @@
   ;;expr should be normalized otherwise a?(x) and x = a get different variables
   ;;and exclusivity asserts NOT(a?(x) & x = a) which is unsound.
   (let* ((rec-appln? (recognizer-application? expr)) ;;
-	 (expr (if rec-appln? rec-appln? expr))      ;;normalized.
+	 (expr (if rec-appln? rec-appln? expr))	;;normalized.
 	 (varid (gethash expr *pvs-bdd-hash*)))
     (cond ((null varid)
 	   (let ((new-varid (funcall *bdd-counter*)))
-	       (setf (gethash expr *pvs-bdd-hash*)
-		     new-varid)
-	       (setf (gethash new-varid *bdd-pvs-hash*)
-		     expr)
-	       (enter-into-recognizer-form-alist expr new-varid)
-	       (bdd_create_var new-varid)))
+	     (setf (gethash expr *pvs-bdd-hash*)
+		   new-varid)
+	     (setf (gethash new-varid *bdd-pvs-hash*)
+		   expr)
+	     (enter-into-recognizer-form-alist expr new-varid)
+	     (bdd_create_var new-varid)))
 	  (t (enter-into-recognizer-form-alist expr varid)
 	     (bdd_create_var varid)))))
 
@@ -947,25 +996,34 @@
   (and (constructor? expr)
        (null (accessors expr))))
 
-(defun recognizer-application? (expr)
-  (if (and (application? expr)
-	   (recognizer? (operator expr)))
-      expr
-      (if (equation? expr)
-	  (if (unit-constructor? (args1 expr))
-	      (make-application (recognizer (args1 expr)) (args2 expr))
-	      (if (unit-constructor? (args2 expr))
-		  (make-application (recognizer (args2 expr)) (args1 expr))
-		  nil))
+(defmethod recognizer-application? ((expr application))
+  (when (recognizer? (operator expr))
+    expr))
+
+;; Note that this doesn't work for cotuples, as they are never
+;; unit-constructors.
+(defmethod recognizer-application? ((expr equation))
+  (if (unit-constructor? (args1 expr))
+      (make-application (recognizer (args1 expr)) (args2 expr))
+      (if (unit-constructor? (args2 expr))
+	  (make-application (recognizer (args2 expr)) (args1 expr))
 	  nil)))
+
+(defmethod recognizer-application? ((expr injection?-application))
+  expr)
+
+(defmethod recognizer-application? (expr)
+  nil)
 
 (defun enter-into-recognizer-form-alist (expr name)
   (let ((recexpr (recognizer-application? expr)))
     (when (not (null recexpr))
-      (let* ((op (operator recexpr))
+      (let* ((op (if (injection?-application? expr)
+		     (id expr)
+		     (operator recexpr)))
 	     (arg (args1 recexpr))
-	     (entry (assoc  arg *recognizer-forms-alist*
-			    :test #'tc-eq)))
+	     (entry (assoc arg *recognizer-forms-alist*
+			   :test #'tc-eq)))
 	(if (null entry)
 	    (push (cons arg (list (cons op name))) *recognizer-forms-alist*)
 	    (pushnew (cons op name) (cdr entry) :test #'eql :key #'cdr))))))
