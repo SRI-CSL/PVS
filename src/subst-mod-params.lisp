@@ -390,8 +390,33 @@
       (lcopy th
 	'formals (subst-mod-params* rformals modinst bindings)
 	'assuming (subst-mod-params* rassuming modinst bindings)
-	'theory (subst-mod-params* rtheory modinst bindings)
+	'theory (append (create-importings-for-bindings bindings)
+			(subst-mod-params* rtheory modinst bindings))
 	'exporting (subst-mod-params* exporting modinst bindings)))))
+
+(defun create-importings-for-bindings (bindings &optional importings)
+  (if (null bindings)
+      (nreverse importings)
+      (let ((importing (create-importing-for-binding
+			(caar bindings) (cdar bindings))))
+	(create-importings-for-bindings
+	 (cdr bindings)
+	 (if (and importing
+		  (not (member importing importings :test #'tc-eq)))
+	     (cons importing importings)
+	     importings)))))
+
+(defmethod create-importing-for-binding ((decl formal-theory-decl) theory-name)
+  (make-instance 'importing
+    'theory-name theory-name))
+
+(defmethod create-importing-for-binding ((decl mod-decl) theory-name)
+  (make-instance 'importing
+    'theory-name theory-name))
+
+(defmethod create-importing-for-binding (decl expr)
+  nil)
+  
 
 (defmethod subst-mod-params* ((exp exporting) modinst bindings)
   (with-slots (names but-names) exp
