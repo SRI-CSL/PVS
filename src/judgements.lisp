@@ -1089,10 +1089,11 @@
 			    (some #'(lambda (jd) (judgement-subsumes jd jdecl))
 				  (generic-judgements to-entry))
 			    (judgement-uninstantiable? sjdecl))
-		  (cons sjdecl
-			(delete-if #'(lambda (jd)
-				       (judgement-subsumes jdecl jd))
-			  (generic-judgements to-entry)))))))))
+		  (setf (generic-judgements to-entry)
+			(cons sjdecl
+			      (delete-if #'(lambda (jd)
+					     (judgement-subsumes jdecl jd))
+				(generic-judgements to-entry))))))))))
     (merge-judgement-graphs decl to-entry (cdr from-graph) theory theoryname)))
 
 
