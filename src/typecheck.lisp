@@ -580,10 +580,18 @@
       (list-diff (cdr l1) l2 (cons (car l1) elts))))
 
 (defmethod subst-params-decl ((c conversion-decl) modinst theory)
-  (lcopy c
-    'module (current-theory)
-    'expr (subst-mod-params (expr c) modinst theory)))
-
+  (if (or (mappings modinst)
+	  (memq theory (free-params-theories c)))
+      (let ((nc (lcopy c
+		  'expr (subst-mod-params (expr c) modinst theory))))
+	(unless (eq c nc)
+	  (setf (module nc)
+		(if (fully-instantiated? modinst)
+		    (current-theory)
+		    (module c))))
+	nc)
+      c))
+		    
 ;;; Remove formals that are not a part of the current module.  This
 ;;; handles the following circumstance:
 ;;;
@@ -1026,7 +1034,7 @@
        (not (from-prelude? (declaration ex)))))
 
 (defun set-visibility (decl)
-  (unless (or (typep decl '(or var-decl field-decl))
+  (unless (or (typep decl '(or var-decl field-decl inline-recursive-type))
 	      (and (type-def-decl? decl)
 		   (enumtype? (type-expr decl))))
     (setf (visible? decl) t)))
