@@ -13,7 +13,7 @@
 (defun reset-translate-from-dc ()
   (setq *dc-reverse-prover-name* nil)
   (setq *dc-pvs-typealist* nil)
-  (dp::dp-clrhash *translate-from-dc-hash*))
+  (dp::clrhash *translate-from-dc-hash*))
 
 (defun dc-add-to-reverse-prover-name (const expr)
   (when (symbolp expr) (break))

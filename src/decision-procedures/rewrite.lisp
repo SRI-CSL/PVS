@@ -81,8 +81,8 @@
 (defun clr-rewrite-rules (rewrite-rules)
   (setf (rewrite-rules-rules! rewrite-rules) nil)
   (setf (rewrite-rules-rules rewrite-rules) nil)
-  (dp-clrhash (rewrite-rules-hash rewrite-rules))
-  (dp-clrhash (rewrite-rules-index-hash rewrite-rules))
+  (clrhash (rewrite-rules-hash rewrite-rules))
+  (clrhash (rewrite-rules-index-hash rewrite-rules))
   rewrite-rules)
 
 (defun extend-subst (subst var term)
