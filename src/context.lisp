@@ -1116,22 +1116,23 @@ pvs-strategies files.")
 			     (if (consp fi)
 				 (eq (id decl) (car fi))
 				 (same-id decl fi)))
-			 finfolist))
+		  finfolist))
 	 (stat (when finfo
 		 (if (consp finfo)
 		     (cadr finfo)
 		     (fe-status finfo)))))
-    (setf (proof-status decl)
-	  (if (and stat
-		   (justification decl)
-		   (not valid?))
-	      'unchecked
-	      (if (eq stat t) 'proved stat)))
-    (when finfo
-      (unless (consp finfo)
-	(dolist (dref (fe-proof-refers-to finfo))
-	  (pushnew (get-declaration-entry-decl dref)
-		   (proof-refers-to decl)))))))
+    (when (proofs decl)
+      (setf (proof-status decl)
+	    (if (and stat
+		     (justification decl)
+		     (not valid?))
+		'unchecked
+		(if (eq stat t) 'proved stat)))
+      (when finfo
+	(unless (consp finfo)
+	  (dolist (dref (fe-proof-refers-to finfo))
+	    (pushnew (get-declaration-entry-decl dref)
+		     (proof-refers-to decl))))))))
 
 (defun get-declaration-entry-decl (de)
   (get-referenced-declaration*
