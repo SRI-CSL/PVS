@@ -336,7 +336,7 @@ inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
                     src/inst-by-unif/gensubsts.lisp \
                     src/inst-by-unif/inst-by-unif.lisp
 
-ics-lisp = src/ics/ics.lisp src/ics/shostak.lisp
+ics-lisp = src/ics/ics.lisp src/ics/ics-pvs.lisp
 
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \

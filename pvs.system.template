@@ -179,7 +179,6 @@
 		#+lucid (precompile-generic-functions)
 		#+lcl4.1 (clos::flush-pv-caches)
 		(pvs::bdd_init)
-		(pvs::shostak-init)
 		(pvs::load-prelude)
 		#+allegro
 		(let ((optfile (format nil "~a/src/closopt" *pvs-path*)))
@@ -419,5 +418,5 @@
       (:module ics
 	:source-pathname "src/ics"
 	:components ((:file "ics")
-		     (:file "shostak")))
+		     (:file "ics-pvs")))
       ))
