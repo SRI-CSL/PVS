@@ -41,10 +41,12 @@ are available in the @code{doc/release-notes} subdirectory of the PVS
 distribution.
 
 @menu
+* PVS 3.2 Release Notes:: PVS 3.2 Release Notes
 * PVS 3.1 Release Notes:: PVS 3.1 Release Notes
 * PVS 3.0 Release Notes:: PVS 3.0 Release Notes
 @end menu
 
+@include pvs3.2-release-notes.texi
 @include pvs3.1-release-notes.texi
 @include pvs3.0-release-notes.texi
 
