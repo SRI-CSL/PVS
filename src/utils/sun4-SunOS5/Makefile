@@ -1,4 +1,6 @@
-LD = ld
+# Makke sure ld --version returns >= 2.13.1
+# LD = /homes/owre/sunos/bin/ld
+LD=ld
 LDFLAGS = -Bsymbolic -G -L./
 CC=gcc
 CFLAGS=-fPIC
