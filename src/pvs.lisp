@@ -304,9 +304,10 @@
     ;;(check-import-circularities new-theories filename)
     (update-parsed-file filename file theories new-theories forced?)
     (pvs-message "~a parsed in ~d seconds" filename time)
-    #+pvsdebug (assert (every #'(lambda (nth) (get-theory (id nth)))
+    #+pvsdebug (assert (every #'(lambda (nth)
+				  (get-theory (mk-modname (id nth))))
 			      new-theories))
-    (mapcar #'(lambda (nth) (get-theory (id nth))) new-theories)))
+    (mapcar #'(lambda (nth) (get-theory (mk-modname (id nth)))) new-theories)))
 
 (defun check-for-theory-clashes (new-theories filename)
   (check-for-duplicate-theories new-theories)
@@ -375,9 +376,6 @@
   (member x (get-immediate-usings y)
 	  :test #'(lambda (u v) (eq x (id v)))))
 
-(defmethod all-importings ((theory datatype-or-module))
-  (delete theory (all-importings (list theory))))
-
 
 ;;; All-importings (list) walks down the immediate-usings of the list of
 ;;; theories/datatypes, returning the transitive closure of the
@@ -385,28 +383,28 @@
 ;;; a theory imports the generated theories of a datatype by importing the
 ;;; datatype.  Thus we want to substitute the generated theories in place
 ;;; of the datatype, but only if we are not getting the importings for the
-;;; datatype itself.  Thus (all-importings "list") ==> NIL, 
-;;; (all-importings "list_adt") ==> (#<Theory list>), and
-;;; (all-importings "foo") contains list, list_adt, list_adt_map,
-;;; list_adt_reduce, and list if foo imports (an instance of) list.
+;;; datatype itself.  Thus (all-importings "list") ==> NIL,
+;;; (all-importings "list_adt") ==> (#<Theory list>), and (all-importings
+;;; "foo") contains list, list_adt, list_adt_map, list_adt_reduce, and
+;;; list if foo imports (an instance of) list.
+
+(defmethod all-importings ((theory datatype-or-module))
+  (delete theory (all-importings (list theory))))
 
 (defmethod all-importings ((list list))
-  (let ((*modules-visited* nil))
+  (let ((*theories-visited* nil))
+    (declare (special *theories-visited*))
     (mapc #'all-importings* list)
     (remove-if-not #'datatype-or-module?
-      (mapcar #'(lambda (id)
-                  (or (car (member id list
-                                   :test #'(lambda (x y) (eq x (id y)))))
-                      (get-theory id)))
-              *modules-visited*))))
+      *theories-visited*)))
 
 (defun all-importings* (theory)
-  (let ((*current-theory*  theory))
-    (unless (or (null theory)
-		(memq (id theory) *modules-visited*))
-      (push (id theory) *modules-visited*)
-      (dolist (m (get-immediate-usings theory))
-	(all-importings* (get-theory m))))))
+  (declare (special *theories-visited*))
+  (unless (or (null theory)
+	      (memq theory *theories-visited*))
+    (push theory *theories-visited*)
+    (dolist (m (get-immediate-usings theory))
+      (all-importings* (get-theory m)))))
 
 
 (defun update-parsed-file (filename file theories new-theories forced?)
@@ -883,15 +881,6 @@
 
 (defun ppe (theory)
   (prettyprint-expanded theory))
-
-;(defun view-theory (theoryref &optional all?)
-;  (let* ((theory (get-theory! theoryref t))
-;	 (buffer (when theory (format nil "~a.ppe" (id theory)))))
-;    (when theory
-;      (dolist (decl (reverse (append (assuming theory) (theory theory))))
-;	(when (and (generated-by decl)
-;		   (to-be-displayed? decl))
-;	  (pvs-insert-declaration decl (generated-by decl) buffer))))))
 
 (defun show-tccs (theoryref &optional unproved-only?)
   (let* ((theory (get-typechecked-theory theoryref))
@@ -1885,13 +1874,19 @@
 ;;; of the specified theoryname.  The theory must be typechecked.
 
 (defun collect-theory-usings (theoryname &optional exclude)
-  (let ((theory (get-theory! theoryname t)))
-    (when theory
-      (let* ((excl-theories (mapcar #'get-theory exclude))
-	     (*modules-visited* excl-theories))
-	(collect-theory-usings* theory)
-	(nreverse (remove-if #'(lambda (x) (memq x excl-theories))
-		    *modules-visited*))))))
+  (let ((theory (get-theory theoryname)))
+    (if theory
+	(if (typechecked? theory)
+	    (let* ((excl-theories (mapcar #'get-theory exclude))
+		   (*modules-visited* excl-theories))
+	      (collect-theory-usings* theory)
+	      (nreverse (remove-if #'(lambda (x) (memq x excl-theories))
+			  *modules-visited*)))
+	    (pvs-message "Theory ~a has not been typechecked" theoryname))
+	(if (get-context-theory-entry theoryname)
+	    (pvs-message "Theory ~a has not been parsed" theoryname)
+	    (pvs-message "Theory ~a is not in the current context"
+	      theoryname)))))
 
 (defun collect-theory-usings* (theory)
   (unless (memq theory *modules-visited*)
