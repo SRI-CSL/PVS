@@ -187,7 +187,7 @@
 	      'declaration decl
 	      'current-auto-rewrites auto-rewrites-info)))
       (unless (or (eq *new-ground?* (new-ground? decl))
-		  *proving-tcc*
+		  (and *proving-tcc* *use-default-dp?*)
 		  (not
 		   (pvs-yes-or-no-p
 		    "~%This proof was originally done with the ~:[old~;new~] ~
@@ -2767,10 +2767,12 @@ Would you like to rerun the proof?~%")))
 	fmla)))
 
 (defun unparse-sform (sform)
-  (let ((*print-lines* *prover-lines*))
-    (unpindent (seq-formula sform)
-	       (+ 6 *prover-indent*)
-	       :string T)))
+  (unpindent (seq-formula sform)
+	     (+ 6 *prover-indent*)
+	     :string T
+	     :length *prover-print-length*
+	     :level *prover-print-depth*
+	     :lines *prover-print-lines*))
 
 (defun in-every-print-descendant? (sform)
   (every #'(lambda (ps)
@@ -2779,9 +2781,8 @@ Would you like to rerun the proof?~%")))
 	 *print-descendants*))
 
 (defun display-sform (sform sfnum stream)
-  (let ((par-sforms
-	 (when *print-ancestor*
-	   (s-forms (current-goal *print-ancestor*)))))
+  (let ((par-sforms (when *print-ancestor*
+		      (s-forms (current-goal *print-ancestor*)))))
     (cond (*report-mode*
 	   (unless (and (memq sform par-sforms)
 			(every #'(lambda (ps)
@@ -2792,10 +2793,11 @@ Would you like to rerun the proof?~%")))
 	     (format stream "{~a}   ~a" sfnum
 		     (unparse-sform sform))))
 	  (t
-	   (format stream "~%~V@T~6@<~:[{~a~@[,~a~]}~;[~a~@[,~a~]]~]~>~:[~;~%~6<~>~]"
+	   (format stream
+	       "~%~V@T~6@<~:[{~a~@[,~a~]}~;[~a~@[,~a~]]~]~>~:[~;~%~6<~>~]"
 	     *prover-indent* (memq sform par-sforms) sfnum
 	     (label sform) (label sform))
-	   (unparse (seq-formula sform) :stream stream)))))
+	   (write (unparse-sform sform) :stream stream)))))
 
 (defmethod print-object ((sequent sequent) stream);;ignoring printing
   ;;skovars for
