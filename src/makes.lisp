@@ -12,53 +12,17 @@
 
 (in-package 'pvs)
 
-(defmacro make-operator-name (opsym theory-id &optional (opname opsym)
-				    (first t))
-  (let ((operator (gensym))
-	(decl (gensym))
-	(res (gensym)))
-    `(let ((,operator nil))
-       (defun ,(intern (concatenate 'string (string opname) "-OPERATOR")) ()
-	 (or ,operator
-	     (let* ((,decl (find ',opsym (theory (get-theory ',theory-id))
-				 :key #'id
-				 ,@(unless first (list :from-end t))))
-		    (,res (make-instance 'resolution
-			    'declaration ,decl
-			    'module-instance (make-instance 'modname
-					       'id ',theory-id)
-			    'type (type ,decl))))
-	       (setq ,operator (make-instance 'name-expr
-				 'id ',opsym
-				 'resolutions (list ,res)
-				 'type (type ,decl)
-				 'kind 'constant)))))
-       (defun ,(intern (concatenate 'string
-			 "RESET-" (string opname) "-OPERATOR")) ()
-	 (setq ,operator nil)))))
+(def-pvs-term not-operator "NOT" "booleans")
+(def-pvs-term and-operator "AND" "booleans")
+(def-pvs-term or-operator "OR" "booleans")
+(def-pvs-term implies-operator "IMPLIES" "booleans")
+(def-pvs-term iff-operator "IFF" "booleans")
+(def-pvs-term plus-operator "+" "reals")
+(def-pvs-term difference-operator "-" "reals" :expected "[real, real -> real]")
+(def-pvs-term minus-operator "-" "reals" :expected "[real -> real]")
+(def-pvs-term times-operator "*" "reals")
+(def-pvs-term divides-operator "/" "reals")
 
-(make-operator-name not |booleans|)
-(make-operator-name and |booleans|)
-(make-operator-name or |booleans|)
-(make-operator-name implies |booleans|)
-(make-operator-name iff |booleans|)
-(make-operator-name + |reals| plus)
-(make-operator-name - |reals| difference)
-(make-operator-name - |reals| minus nil)
-(make-operator-name * |reals| times)
-(make-operator-name / |reals| divides)
-
-(defun reset-all-operators ()
-  (reset-not-operator)
-  (reset-and-operator)
-  (reset-or-operator)
-  (reset-implies-operator)
-  (reset-iff-operator)
-  (reset-plus-operator)
-  (reset-difference-operator)
-  (reset-minus-operator)
-  (reset-times-operator)
-  (reset-divides-operator))
   
 ;;; This file provides make-class for the useful classes in classes.
 ;;; For each such class, it basically provides a nicer syntax to replace
@@ -1051,6 +1015,7 @@
     (typecheck nexpr :expected *boolean*)))
 
 (let ((numhash (make-hash-table :test #'eql)))
+  (pushnew 'clrnumhash *load-prelude-hook*)
   (defun make-number-expr (number)
     (or (gethash number numhash)
 	(let ((expr (if (< number 0)
@@ -1061,7 +1026,7 @@
 	  (setf (gethash number numhash) expr)
 	  expr)))
   (defun clrnumhash ()
-    (setq numhash (make-hash-table :test #'eql)))
+    (clrhash numhash))
   (defun show-numhash ()
     (ppr numhash)))
 
