@@ -9,6 +9,10 @@
 ;;         (.... (catch 'not-ws1s-translatable (fml-to-dfa ....)))
 ;;      (fml-to-dfa-init))
 
+(defmacro ws1s-msg (str &rest args)
+  `(locally (declare (special *verbose*))
+      (when *verbose*
+        (format t ,str ,@args))))
 ; Initialization
 
 (defun fml-to-dfa-init ()
@@ -37,10 +41,10 @@
        
 (defmethod fml-to-dfa* ((fml expr))
   (cond ((shielding? fml)
-	 (error-format-if "~%Formula ~a is shielding. Giving up..." fml)
+	 (ws1s-msg "~%Not abstractable: ~a" fml)
 	 (throw 'not-ws1s-translatable nil))
 	(t (let ((i (symtab-index fml)))
-	     (error-format-if "~%New Boolean parameter for ~a" fml)
+	     (ws1s-msg "~%Abstracting boolean ~a" fml)
 	     (dfa-var0 i)))))
 
 (defmethod fml-to-dfa* ((fml name-expr))
@@ -51,7 +55,6 @@
 	((var0? fml)              
 	 (dfa-var0 (symtab-index fml)))
 	(t
-	 (error-format-if "Name ~a not translatable" fml)
 	 (call-next-method))))
 
 (defmethod fml-to-dfa* ((fml negation))
@@ -108,7 +111,6 @@
 	  ((and (2nd-order? lhs) (2nd-order? rhs))
 	   (process-binrel2 lhs rhs #'dfa-eq2))
 	  (t
-	   (error-format-if "Equation ~a not translatable" fml)
 	   (call-next-method)))))
 
 (defmethod fml-to-dfa* ((fml disequation))
@@ -119,7 +121,6 @@
 	  ((and (2nd-order? lhs) (2nd-order? rhs))
 	   (dfa-negation (process-binrel2 lhs rhs #'dfa-eq2)))
 	  (t
-	   (error-format-if "Disequation ~a not translatable" fml)
 	   (call-next-method)))))
 
 (defmethod fml-to-dfa* ((fml application))
@@ -141,10 +142,8 @@
 		 ((tc-eq op (greatereq-operator))
 		  (process-binrel1 (second args) (first args) #'dfa-lesseq))
 		 (t
-		  (error-format-if "1st-order application ~a not translatable" fml)
 		  (call-next-method))))
 	  (t
-	   (error-format-if "Application ~a not translatable" fml)
 	   (call-next-method)))))
 
 (defmethod fml-to-dfa* ((fml forall-expr))
@@ -157,7 +156,7 @@
 					 ((tc-eq type *naturalnumber*) 1)
 					 ((tc-eq type (fset-of-nats)) 2)
 					 (t
-					  (error-format-if "~%Type ~a not WS1S translatable in ~a"
+					  (ws1s-msg "~%Not in ws1s: ~a in ~a"
 							   type fml)
 					  (throw 'not-ws1s-translatable nil))))
 			 types)))
@@ -177,7 +176,7 @@
 					 ((tc-eq type *naturalnumber*) 1)
 					 ((tc-eq type (fset-of-nats)) 2)
 					 (t
-					  (error-format-if "~%Type ~a not WS1S translatable in ~a"
+					  (ws1s-msg "~%Not in ws1s: ~a in ~a"
 							   type fml)
 					  (throw 'not-ws1s-translatable nil))))
 			 types)))
@@ -223,21 +222,18 @@
 (defmethod fset-to-dfa* ((trm expr))
   (if (shielding? trm)
       (progn
-	(error-format-if "~%2nd-order term ~a
-                            is shielding and can thus not be abstracted. Giving up..." trm)
+	(ws1s-msg "~%Not abstractable: ~a." trm)
 	(throw 'not-ws1s-translatable nil))
       (let ((i (symtab-index trm)))
-	(error-format-if "~%New 2nd-order parameter for ~a" trm)
+	(ws1s-msg "~%Abstracting set ~a" trm)
 	(values i nil (dfa-true-val)))))
 
 (defmethod fset-to-dfa* ((trm lambda-expr))
   (unless (= (length (bindings trm)) 1)
-    (error-format-if "~a has more than one binder" trm)
     (call-next-method))
   (multiple-value-bind (x supertype preds)
       (destructure-binding (car (bindings trm)) :exclude (list *naturalnumber*))
     (unless (tc-eq supertype *naturalnumber*)
-      (error-format-if "Binding ~a is not first-order" trm)
 	(call-next-method))
     (let ((i (symtab-shadow x)))
       (unwind-protect              
@@ -257,7 +253,6 @@
 	 (let ((i (symtab-new-index)))
 	   (values i  (list i) (dfa-op #'dfa-empty i))))
 	(t
-	 (error-format-if "~a is not a 2nd-order variable" trm)
 	 (call-next-method))))
 
 (defun emptyset2? (trm)
@@ -362,7 +357,6 @@
 		  (a (dfa-op #'dfa-single k i)))
 	     (values k xs (dfa-conjunction* (list a a1))))))
 	(t
-	 (error-format-if "Application ~a is not 2nd-order" trm)
 	 (call-next-method))))
 
 (defun add2? (trm)
@@ -402,28 +396,23 @@
 
 (defmethod nat-to-dfa* ((trm expr))
   (cond ((shielding? trm)
-	 (error-format-if "~%2nd-order term ~a is shielding and can thus not be abstracted.
-                         Giving up..." trm)
+	 (ws1s-msg "~%Not abstractable: ~a." trm)
 	 (throw 'not-ws1s-translatable nil))
 	(t (let ((i (symtab-index trm)))
-	     (error-format-if "~%New 1st-order parameter for ~a" trm)
+	     (ws1s-msg "~%Abstracting natural ~a" trm)
 	     (values i (list i) (dfa-var1 i))))))
 
 (defmethod nat-to-dfa* ((trm name-expr))
   (if (var1? trm)
       (values (symtab-index trm) nil (dfa-true-val))
-    (progn
-      (error-format-if "Variable ~a is not 1st-order" trm)
-      (call-next-method))))
+      (call-next-method)))
 
 (defmethod nat-to-dfa* ((trm number-expr))
   (if (natural-number-expr? trm) 
       (let ((i (symtab-new-index)))
 	(values i (list i) (dfa-op #'dfa-const (number trm) i)))
-    (progn
-      (error-format-if "Number ~a is not a natural" trm)
-      (call-next-method))))
-
+    (call-next-method)))
+  
 (defmethod nat-to-dfa* ((trm branch))
   (let ((c (fml-to-dfa (condition trm))))
     (cond ((dfa-true? c)                            
@@ -458,9 +447,7 @@
 		   (let*  ((i (symtab-new-index))
 			   (a (dfa-conjunction* (list (dfa-op #'dfa-minus1 i j (number rhs)) b))))
 		     (values i (cons i xs) a)))
-	       (progn
-		 (error-format-if "Subtraction ~a not 1st-order" trm)
-		 (call-next-method)))))
+		 (call-next-method))))
 	  ((tc-eq op (plus1))
 	   (let* ((ntrm (pseudo-normalize trm))   ; now of the form p_i =  n + p_j   
 		  (lhs (args1 ntrm))
@@ -472,16 +459,13 @@
 		   (let*  ((i (symtab-new-index))
 			   (a (dfa-conjunction* (list (dfa-op #'dfa-plus1 i j (number lhs)) b))))
 		     (values i (cons i xs) a)))
-		 (progn
-		 (error-format-if "Addition ~a not 1st-order" trm)
-		 (call-next-method)))))
+		 (call-next-method))))
 	  ((the1? trm)
 	   (let ((bndng (car (bindings (argument trm))))
 		 (expr  (expression (argument trm))))
 	     (multiple-value-bind (x supertype preds)
 		 (destructure-binding bndng :exclude *naturalnumber*)
 	       (unless (tc-eq supertype *naturalnumber*)
-		 (error-format-if "Choice ~a is not 1st-order" trm)
 		 (call-next-method))
 	       (let ((j (symtab-shadow x)))
 		 (unwind-protect
@@ -490,7 +474,6 @@
 		       (values j (list j) a))
 		   (symtab-unshadow))))))
 	  (t
-	   (error-format-if "Application ~a not translatable" trm)
 	   (call-next-method)))))
 
 (defun the1? (trm)
@@ -503,6 +486,4 @@
   (and (typep expr 'number-expr)
        (integerp (number expr))
        (>= (number expr) 0)))
-
-
 
