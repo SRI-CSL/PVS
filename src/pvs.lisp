@@ -580,6 +580,8 @@
 		       " - attempting proofs of TCCs" ""))))
 	      (*in-checker*
 	       (pvs-message "Must exit the prover first"))
+	      (*in-evaluator*
+	       (pvs-message "Must exit the evaluator first"))
 	      (t (pvs-message "Typechecking ~a" filename)
 		 (typecheck-theories filename theories)
 		 ;;(assert (every #'typechecked? theories))
@@ -1098,8 +1100,8 @@
 			   &optional origin buffer prelude-offset
 			   background? display?)
   (let ((*to-emacs* background?))
-    (if *in-checker*
-	(pvs-message "Must exit the current proof first")
+    (if (or *in-checker* *in-evaluator*)
+	(pvs-message "Must exit the prover/evaluator first")
 	(multiple-value-bind (fdecl place)
 	    (formula-decl-to-prove name line origin)
 	  (if (and rerun?
