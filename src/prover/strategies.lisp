@@ -2645,8 +2645,12 @@ found. "
 
 
 (defmethod detuple* ((expr tuple-expr))
-  (lcopy expr
-    'exprs (detuple* (exprs expr))))
+  (let ((dexprs (detuple* (exprs expr))))
+    (if (eq dexprs (exprs expr))
+	expr
+	(copy expr
+	  'exprs dexprs
+	  'type (mk-tupletype (mapcar #'type dexprs))))))
 
 
 (defmethod detuple* ((expr cases-expr))
