@@ -389,6 +389,10 @@
   theory-instance
   generating-assumption)
 
+(defcl mapped-axiom-tcc (tcc-decl)
+  theory-instance
+  generating-axiom)
+
 (defcl cases-tcc (tcc-decl))
 
 (defcl well-founded-tcc (tcc-decl))
@@ -568,7 +572,7 @@
   real-time
   run-time
   interactive?
-  new-ground?)
+  decision-procedure-used)
 
 (defcl decl-reference ()
   id
