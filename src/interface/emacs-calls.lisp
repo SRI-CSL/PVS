@@ -7,7 +7,7 @@
 ;
 
 #-runtime
-(declare (special *dont-write-object-files* *pvs-verbose* *latex-linelength*
+(declaim (special *dont-write-object-files* *pvs-verbose* *latex-linelength*
 		  *dump-sequents-to-file* *number-of-proof-backups*))
 
 #-runtime
