@@ -2885,7 +2885,7 @@ space")
 			   negative?))
 
 (defmethod destructure-existential ((fml negation) &optional bndngs negative?)
-  (destructure-universal (args1 fml) bndngs negative?))
+  (destructure-universal (args1 fml) bndngs (not negative?)))
 
 (defmethod destructure-existential ((fml expr) &optional bndngs negative?)
   (values (nreverse bndngs)
@@ -2897,7 +2897,7 @@ space")
 			 negative?))
 
 (defmethod destructure-universal ((fml negation) &optional bndngs negative?)
-  (destructure-universal (args1 fml) bndngs negative?))
+  (destructure-universal (args1 fml) bndngs (not negative?)))
 
 (defmethod destructure-universal ((fml expr) &optional bndngs negative?)
   (values (nreverse bndngs)
