@@ -1245,7 +1245,7 @@
 	  (t (let ((*use-default-dp?* use-default-dp?))
 	       (prove-proofchain-decl fdecl retry?))))))
 
-(defun prove-proofchain-decl (fdecl retry? &optional use-default-dp?)
+(defun prove-proofchain-decl (fdecl retry?)
   (let ((decls-tried nil) (total 0) (proved 0) (time 0) (unfin 0))
     (read-strategies-files)
     (labels ((ppd (decl)
@@ -1254,7 +1254,7 @@
 		   (push decl decls-tried)
 		   (incf total)
 		   (incf time (nth-value 1
-				(pvs-prove-decl decl retry? use-default-dp?)))
+				(pvs-prove-decl decl retry?)))
 		   (if (unproved? decl) (incf unfin) (incf proved))
 		   (when *justifications-changed?*
 		     (save-all-proofs (module decl))))
@@ -1310,13 +1310,14 @@
   (union (refers-to fdecl) (proof-refers-to fdecl)))
 
 (defun prove-theories (name theories retry? &optional use-default-dp?)
-  (let ((total 0) (proved 0) (time 0))
+  (let ((total 0) (proved 0) (time 0)
+	(*use-default-dp?* use-default-dp?))
     (read-strategies-files)
     (dolist (theory theories)
       (let ((*justifications-changed?* nil))
 	(dolist (d (provable-formulas theory))
 	  (incf total)
-	  (incf time (nth-value 1 (pvs-prove-decl d retry? use-default-dp?)))
+	  (incf time (nth-value 1 (pvs-prove-decl d retry?)))
 	  (unless (unproved? d) (incf proved)))
 	(when *justifications-changed?*
 	  (save-all-proofs *current-theory*))))
