@@ -486,32 +486,32 @@
 	     (let ((*typechecking-actual* t))
 	       (with-no-type-errors (resolve* name 'expr nil)))
 	   (declare (ignore error obj))
-	   (unless (or tres eres)
-	     (resolution-error name 'expr-or-type nil))
-	   (when (cdr tres)
-	     (setf tres
-		   (or (remove-if (complement #'fully-instantiated?) tres)
-		       tres)))
-	   (if (cdr tres)
-	       (cond (eres
-		      (setf (resolutions name) eres))
-		     (t (setf (resolutions name) tres)
-			(type-ambiguity name)))
-	       (setf (resolutions name) (nconc tres eres)))
-	   (when eres
-	     (setf (types (expr act)) (mapcar #'type eres))
-	     (when (and (plusp (parens (expr act)))
-			(some #'(lambda (ty)
-				  (let ((sty (find-supertype ty)))
-				    (and (funtype? sty)
-					 (tc-eq (find-supertype
-						 (range sty))
-						*boolean*))))
-			      (ptypes (expr act))))
-	       (setf (type-value act)
-		     (typecheck* (make-instance 'expr-as-type
-				   'expr (copy-untyped (expr act)))
-				 nil nil nil))))
+	   (let ((thres (unless (mod-id name)
+			  (with-no-type-errors
+			   (resolve* (name-to-modname name)
+				     'module nil)))))
+	     (unless (or tres eres thres)
+	       (resolution-error name 'expr-or-type nil))
+	     (if (cdr tres)
+		 (cond (eres
+			(setf (resolutions name) eres))
+		       (t (setf (resolutions name) tres)
+			  (type-ambiguity name)))
+		 (setf (resolutions name) (nconc tres eres thres)))
+	     (when eres
+	       (setf (types (expr act)) (mapcar #'type eres))
+	       (when (and (plusp (parens (expr act)))
+			  (some #'(lambda (ty)
+				    (let ((sty (find-supertype ty)))
+				      (and (funtype? sty)
+					   (tc-eq (find-supertype
+						   (range sty))
+						  *boolean*))))
+				(ptypes (expr act))))
+		 (setf (type-value act)
+		       (typecheck* (make-instance 'expr-as-type
+				     'expr (copy-untyped (expr act)))
+				   nil nil nil))))
 	   (when tres
 	     (if (type-value act)
 		 (unless (compatible? (type-value act) (type (car tres)))
@@ -524,7 +524,7 @@
 		     (setf (mod-id (type (car tres)))
 			   (mod-id (expr act))))
 		   (setf (type-value act) (type (car tres)))
-		   (push 'type (types (expr act)))))))))
+		   (push 'type (types (expr act))))))))))
       ;; with-no-type-errors not needed here;
       ;; the expr typechecks iff the subtype does.
       (set-expr (typecheck* (expr act) nil nil nil)
