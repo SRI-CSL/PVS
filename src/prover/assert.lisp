@@ -2091,8 +2091,7 @@
   (assert-disequality expr newargs sig))
 
 (defmethod assert-if-application* ((expr application) newop  newargs sig)
-  (cond ((eq *assert-flag* 'rewrite) (do-auto-rewrite expr sig))
-	((or (is-addition? expr) (is-subtraction? expr))
+  (cond ((or (is-addition? expr) (is-subtraction? expr))
 	 (assert-if-addition  expr newargs sig))
 	((is-multiplication? expr)
 	 (assert-if-multiplication expr newargs sig))
@@ -2120,7 +2119,8 @@
   
 
 (defun assert-if-application (expr newop newargs sig)
-  (assert-if-application* expr newop newargs sig))
+  (cond ((eq *assert-flag* 'rewrite) (do-auto-rewrite expr sig))
+	(t (assert-if-application* expr newop newargs sig))))
 ;  (cond ((eq *assert-flag* 'rewrite) (do-auto-rewrite expr sig))
 ;	((and (not (negation? expr))
 ;	      (branch? newargs))
