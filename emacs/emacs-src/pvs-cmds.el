@@ -356,6 +356,23 @@ to be proved and invoking the prove command."
 		     (pvs-get-abbreviation 'show-pvs-file-warnings)
 		     'dont-care))
 
+(defpvs show-theory-conversions theory-status (theoryname)
+  "Displays the conversions associated with THEORYNAME"
+  (interactive (complete-theory-name "Show conversions of theory named: "))
+  (unless (interactive-p) (pvs-collect-theories))
+  (pvs-bury-output)
+  (pvs-send-and-wait (format "(show-theory-conversions \"%s\")" theoryname) nil
+		     (pvs-get-abbreviation 'show-theory-conversions)
+		     'dont-care))
+
+(defpvs show-pvs-file-conversions theory-status (filename)
+  "Displays the conversions associated with FILENAME"
+  (interactive (complete-pvs-file-name "Show conversions of PVS file named: "))
+  (pvs-bury-output)
+  (pvs-send-and-wait (format "(show-pvs-file-conversions \"%s\")" filename) nil
+		     (pvs-get-abbreviation 'show-pvs-file-conversions)
+		     'dont-care))
+
 
 ;;; View Prelude
 

@@ -304,7 +304,7 @@ Returns to Declaration List when done."
   (pop-to-buffer "Browse"))
 
 (defun mouse-show-declaration (event)
-  "Show declaration of symbol at mouse pointer
+  "Show declaration of symbol at mouse pointer.
 
 The mouse-show-declaration command is used to determine the declaration
 associated with a name.  Positioning the mouse pointer on a name in the
@@ -312,17 +312,26 @@ specification and typing S-mouse-2 yields a pop-up buffer displaying the
 declaration.  This command is useful to determine the type of a name,
 or the resolution determined by the typechecker for an overloaded name."
   (interactive "e")
-  (mouse-minibuffer-check event)
-  ;; Use event-end in case called from mouse-drag-region.
-  ;; If EVENT is a click, event-end and event-start give same value.
-  (let ((posn (event-end event)))
-    (if (not (windowp (posn-window posn)))
-	(error "Cursor not in text area of window"))
-    (select-window (posn-window posn))
-    (if (numberp (posn-point posn))
-	(save-excursion
-	  (goto-char (posn-point posn))
-	  (call-interactively 'show-declaration)))))
+  (cond ((memq pvs-emacs-system '(xemacs21 xemacs20 xemacs19))
+	 ;; This code is courtesy Jerry James (james@ittc.ku.edu)
+	 (if (and (mouse-event-p event) (event-over-text-area-p event))
+	     (progn
+	       (select-window (event-window event))
+	       (save-excursion
+		 (goto-char (event-point event) (event-buffer event))
+		 (call-interactively 'show-declaration)))
+	     (error "Cursor not in text area of window")))
+	(t (mouse-minibuffer-check event)
+	   ;; Use event-end in case called from mouse-drag-region.
+	   ;; If EVENT is a click, event-end and event-start give same value.
+	   (let ((posn (event-end event)))
+	     (if (not (windowp (posn-window posn)))
+		 (error "Cursor not in text area of window"))
+	     (select-window (posn-window posn))
+	     (if (numberp (posn-point posn))
+		 (save-excursion
+		   (goto-char (posn-point posn))
+		   (call-interactively 'show-declaration)))))))
 
 (defpvs usedby-proofs browse (bufname origin line column)
   "Show a list of formulas whose proofs refer to the declaration at point"
