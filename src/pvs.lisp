@@ -593,14 +593,13 @@
 		   imm-imps)))
     #+pvsdebug (assert (or (null (get-immediate-usings theory)) imps))
     (dolist (ith imps)
-      (let* ((ith-nolib (get-theory (id ith)))
-	     (lib (unless ith-nolib
-		    (or (library ith)
-			(and (library-datatype-or-theory? theory)
-			     (libref-to-libid (lib-ref theory))))))
-	     (itheory (or ith-nolib
-			  (and lib
-			       (get-theory* (id ith) lib))))
+      (let* ((gtheory (get-theory ith))
+	     (lib (or (library ith)
+		      (and (null gtheory)
+			   (library-datatype-or-theory? theory)
+			   (libref-to-libid (lib-ref theory)))))
+	     (itheory (or gtheory
+			  (and lib (get-theory* (id ith) lib))))
 	     (iname (lcopy ith 'library lib 'actuals nil 'mappings nil)))
 	(when (and itheory
 		   (generated-by itheory)
@@ -919,6 +918,7 @@
 	    (*old-tcc-names* nil))
 	(unless (typechecked? theory)
 	  (typecheck theory)
+	  (assert (saved-context theory))
 	  (assert (typechecked? theory) nil
 		  "Theory ~a not typechecked?" (id theory))
 	  (restore-from-context filename theory all-proofs)
@@ -1360,7 +1360,8 @@
 (defun prettyprint-decls (theory pos1 pos2)
   (let ((*no-comments* nil)
 	(*show-conversions* nil)
-	(*ppmacros* t))
+	(*ppmacros* t)
+	(*current-context* (saved-context theory)))
     (mapc #'(lambda (d) (prettyprint-decl d theory))
 	  (nreverse
 	   (chained-decls-list
@@ -1408,6 +1409,7 @@
     (when file
       (parse-file file nil t)))
   (let* ((theory (get-parsed?-theory theoryname))
+	 (*current-context* (when theory (saved-context theory)))
 	 (*no-comments* nil)
 	 (*show-conversions* nil)
 	 (*ppmacros* t))
@@ -1923,14 +1925,16 @@
       '(or unproved-formula-decl
 	   (and judgement
 		(satisfies (lambda (jd)
-			     (some #'(lambda (d)
-				       (and (judgement-tcc? d)
-					    (unproved? d)))
-				   (generated jd))))))
+			     (and (not (generated-by jd))
+				  (some #'(lambda (d)
+					    (and (judgement-tcc? d)
+						 (unproved? d)))
+					(generated jd)))))))
       '(or formula-decl
 	   (and judgement
 		(satisfies (lambda (jd)
-			     (some #'judgement-tcc? (generated jd))))))))
+			     (and (not (generated-by jd))
+				  (some #'judgement-tcc? (generated jd)))))))))
 
 
 ;;; This function is invoked from Emacs by pvs-prove-formula.  It provides
@@ -2487,8 +2491,15 @@
     (bye)))
 
 (defun exit-pvs ()
-  (save-context)
-  (bye))
+  (multiple-value-bind (ignore condition)
+      (ignore-errors (save-context))
+    (if condition
+	(progn
+	  (if (pvs-yes-or-no-p "Problem saving context - ~a~%Exit anyway? "
+			       condition)
+	      (bye)
+	      (error "Exit aborted")))
+	(bye))))
 
 ;;; PVS Version
 
