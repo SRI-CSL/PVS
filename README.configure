@@ -3,14 +3,15 @@ As of PVS 3.0, building the system is somewhat different.  After a
 checkout from the CVS repository, do:
 
 autoconf
-sh configure --with-ics=/project/pvs/ics [--with-pvspath=/project/pvs/pvs3.0]
+sh configure [--with-pvspath=/project/pvs/pvs3.0]
 make
 
-The configure takes care of the things that used to get performed 
-by "make install".  The path to a version of ICS (--with-ics) must 
-be given, and the path to the current directory (--with-pvspath) can 
-optionally be specified if the result of "pwd" isn't what you want,
-as is typically the case with automounted directories.
+The configure takes care of the things that used to get performed by "make
+install".  The path to the current directory (--with-pvspath) can
+optionally be specified if the result of "pwd" isn't what you want, as is
+typically the case with automounted directories.
+
+ICS (or a link) is now in the bin/<platform>/ directory.
 
 DaveSC
 2/5/01
