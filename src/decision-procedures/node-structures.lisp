@@ -411,6 +411,18 @@
 (defmacro dp-minusp (const)
   `(minusp (constant-id (the constant ,const))))
 
+(defun mk-array-operator (sym)
+  (let ((result (mk-constant sym)))
+    (setf (node-type result)
+	  'array-op)
+    result))
+
+(defun update-op-p (constant)
+  (declare (type node constant))
+  (eq (node-type constant) 'array-op))
+
+(defvar *update* (mk-array-operator 'update))
+
 (defvar *print-polyhedron* nil)
 
 (defdpstruct (polyhedral-structure
@@ -1136,9 +1148,9 @@
 	(list *lesseqp* *lessp* *greaterp* *greatereqp*))
   (setq *not* (mk-predicate-sym 'not))
   (setq *nequal* (mk-predicate-sym 'nequal))
-
   (setq *preds*
 	(list *not* *nequal* *lesseqp* *lessp* *greaterp* *greatereqp*))
   (setq *zero* (mk-dp-number 0))
   (setq *one* (mk-dp-number 1))
-  (setq *neg-one* (mk-dp-number -1)))
+  (setq *neg-one* (mk-dp-number -1))
+  (setq *update* (mk-array-operator 'update)))
