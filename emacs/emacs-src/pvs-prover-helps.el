@@ -906,7 +906,7 @@ statement a substring of the form ([a-zA-Z][a-zA-Z] or (|."
 		(goto-char (1+ (point-min)))
 		(pvs-prover-goto-next-step)
 		(message "No earlier proof statements.")))))
-      (if (looking-at "(PROPAX)")
+      (if (looking-at "(\\(PROPAX\\|propax\\))")
 	  (pvs-prover-goto-prev-step undop))))
 
 (defun pvs-prover-goto-prev-step (&optional undop)
