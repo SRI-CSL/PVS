@@ -223,8 +223,12 @@
     'expression  (beta-reduce* (expression expr))))
 
 (defmethod beta-reduce* ((expr tuple-expr))
-  (lcopy expr 
-	 'exprs (beta-reduce* (exprs expr))))
+  (let ((bexprs (beta-reduce* (exprs expr))))
+    (if (eq bexprs (exprs expr))
+	expr
+	(lcopy expr 
+	  'exprs bexprs
+	  'type (mk-tupletype (mapcar #'type bexprs))))))
 
 (defmethod beta-reduce* ((expr update-expr))
   (lcopy expr
