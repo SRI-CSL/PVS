@@ -607,7 +607,7 @@ pvs-strategies files.")
       (filename (get-theory (generated-by th)))
       (filename th)))
 
-(defmethod dep-filename ((adt datatype))
+(defmethod dep-filename ((adt recursive-type))
   (filename adt))
 
 (defun dependencies (theory)
