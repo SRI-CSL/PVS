@@ -28,6 +28,9 @@
 	(mk-name '|floor| nil '|floor_ceil|)
 	))
 
+(defparameter *dc-interpreted-alist*
+  (mapcar #'(lambda (x) (cons (id x) x)) *dc-interpreted-names*))
+
 (defvar *dc-interpretations*
   `((true . ,dp::*true*)
     (false . ,dp::*false*)
@@ -89,14 +92,13 @@
 	  (|floor| . ,dp::*floor*))))
 
 (defmethod interpreted? ((expr name-expr))
-  (member expr (if *newdc*
-		   *dc-interpreted-names*
-		   *interpreted-names*)
-	  :test #'(lambda (n i)
-		    (and (same-id n i)
-			 (module-instance n)
-			 (eq (mod-id i)
-			     (id (module-instance n)))))))
+  (with-slots (id resolutions) expr
+    (let ((interp (cdr (assq id (if *newdc*
+				    *dc-interpreted-alist*
+				    *interpreted-alist*)))))
+      (and interp
+	   (let ((mi (module-instance (car resolutions))))
+	     (and mi (eq (mod-id interp) (id mi))))))))
 
 (defun interpretation (name)
   (or (cdr (assoc (id name)
