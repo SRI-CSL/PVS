@@ -672,7 +672,7 @@
 		    (setf (gethash bddhash-name *bdd-pvs-hash*) expr))
 		  (when (or is-access-var is-rel-var)
 		    (push expr *list-of-relational-vars*))
-		  mu-expression)))))))
+		  mu-expression))))))
 
 
 
