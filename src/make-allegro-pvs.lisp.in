@@ -1,5 +1,5 @@
 (in-package "USER")
-(defvar *pvs-path* "")
+(defvar *pvs-path* "@PVSPATH@")
 (eval-when (load eval)
   (require 'tpl-debug)
   #+(or runtime-standard runtime-dynamic)

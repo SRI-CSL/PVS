@@ -10,87 +10,104 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+; Note - the call to (excl::translate-shlib-filenames t) was the result
+; of large conversations with Franz Inc under SPR 23653.  As a non-exported
+; symbol from excl, it's technically not supported.
+
 (defvar *runtime* nil)
 
-(let ((exitcode 1))
-  (unwind-protect
-      (multiple-value-bind (v err)
-	  (ignore-errors
-	    (excl:generate-application
-	     "pvs-allegro5.0"
-	     (format nil "./bin/~a/~a/"
-	       (or (sys:getenv "PLATFORM") "ix86-redhat5")
-	       (if *runtime* "runtime" "full"))
-	     (list "./src/make-allegro-pvs.lisp")
+(defun build-pvs (builddir runtime?)
+  (excl:generate-application
+	     "pvs-allegro6.0"
+	     builddir	     
+	     (list :list2 "./src/make-allegro-pvs.lisp")
 	     :additional-arguments nil
 	     :additional-forms nil
 	     :additional-plus-arguments nil
+	     :allow-existing-directory (not runtime?)
 	     :autoload-warning t
-	     ;; :bundle-file nil
-	     ;; :c-heap-size nil
-	     ;; :c-heap-start nil
 	     :case-mode :case-insensitive-upper
-	     ;; :copy-shared-libraries nil
 	     :debug-on-error t
-	     ;; :destination-directory nil
 	     :discard-arglists nil
 	     :discard-compiler nil
 	     :discard-local-name-info nil
-	     :discard-source-file-info *runtime*
-	     :discard-xref-info *runtime*
-	     ;; :dribble-file nil
+	     :discard-source-file-info runtime?
+	     :discard-xref-info runtime?
 	     :dst t
 	     :exit-after-image-build t
 	     :generate-fonts nil
+	     :image-only (not runtime?)
 	     :include-clim nil
-	     ;; :include-common-graphics nil ;Windows
 	     :include-compiler t
 	     :include-composer nil
-	     :include-debugger (not *runtime*)
-	     :include-devel-env (not *runtime*)
-	     ;; :include-ide nil ;Windows
+	     :include-debugger (not runtime?)
+	     :include-devel-env (not runtime?)
 	     :include-tpl t
 	     :include-xcw nil
 	     :internal-debug nil
 	     :lisp-heap-size 20000000
 	     :lisp-heap-start nil
-	     ;; :lisp-files nil
 	     :load-local-names-info nil
-	     :load-source-file-info (not *runtime*)
-	     :load-xref-info (not *runtime*)
+	     :load-source-file-info (not runtime?)
+	     :load-xref-info (not runtime?)
 	     :newspace 4000000
 	     :oldspace 512000
 	     :opt-debug 1
 	     :opt-safety 1
 	     :opt-space 1
 	     :opt-speed 3
-	     ;; :pll-file nil
-	     ;; :pll-from-sys nil
-	     :post-load-form nil
+	     :post-load-form (unless runtime?
+				'(excl::translate-shlib-filenames t))
 	     :pre-dump-form nil
 	     :pre-load-form nil
 	     :preserve-documentation-strings t
 	     :presto nil
 	     :presto-flush-to-code-file nil
-	     ;; :presto-lib nil
-	     ;; :print-startup-message t
 	     :read-init-files nil
-	     :record-source-file-info (not *runtime*)
-	     :record-xref-info (not *runtime*)
+	     :record-source-file-info (not runtime?)
+	     :record-xref-info (not runtime?)
 	     :restart-app-function nil
 	     :restart-init-function nil
-	     :runtime (when *runtime* :dynamic)
+	     :runtime (when runtime? :dynamic)
+	     :runtime-bundle runtime?
 	     :server-name nil
-	     ;; :show-window nil ;Windows
-	     ;; :splash-from-file nil ;Windows
 	     :temporary-directory "/usr/tmp/"
 	     :us-government nil
-	     ;;    :user-shared-libraries t
-	     :verbose t
-	     ;; :wait nil ;Windows
-	     ))
-	(if err
-	    (let ((*print-readably* nil))
-	      (format t "~a" err))
-	    (setq exitcode 0)))
-    (excl:exit exitcode)))
+	     :verbose t ))
+
+(defun copy-devel-license (targetdir)
+  (sys:copy-file (format nil "~adevel.lic" (translate-logical-pathname "sys:"))
+		 (format nil "~adevel.lic" targetdir)))
+  
+
+(let* ((exitcode 1)
+       (platform (or (sys:getenv "PLATFORM") "ix86-redhat5"))
+       (runtimedir (format nil "./bin/~a/runtime/" platform))
+       (fulldir (format nil "./bin/~a/full/" platform)))
+ (unwind-protect
+     (multiple-value-bind (v err)
+	 (ignore-errors
+	   (if *runtime*
+	       (build-pvs runtimedir t)
+	       (progn
+		 (build-pvs fulldir t)
+		 (build-pvs fulldir nil)
+		 (copy-devel-license fulldir))))
+       (if err
+	   (let ((*print-readably* nil))
+	     (format t "~a" err))
+	   (setq exitcode 0)))
+   (excl:exit exitcode)))
+
+
+
+
+
+
+
+
+
+
+
+

@@ -19,7 +19,7 @@
 	*print-pretty* t))
 
 (eval-when (eval load)
-  (defparameter *pvs-path* "")
+  (defparameter *pvs-path* "@PVSPATH@")
   #+allegro (chdir *pvs-path*))
 
 (eval-when (eval load)
@@ -155,7 +155,7 @@
 		  #+(and allegro dlfcn)
 		  (let* ((platform #+(and sun4 sunos4) "sun4-SunOS4"
 				   #+(and sun4 (not sunos4)) "sun4-SunOS5"
-				   #+(and x86 redhat5) "ix86-redhat5"
+				   #+(and x86 (not redhat4)) "ix86-redhat5"
 				   #+(and x86 redhat4) "ix86-redhat4")
 			 (utilpath (concatenate 'string
 				     *pvs-path* "/src/utils/" platform))
@@ -166,18 +166,18 @@
 				     "/src/decision-procedures/polylib/"
 				     platform))
 			 (ws1spath (concatenate 'string
-				     *pvs-path* "/src/WS1S/" platform))
-			 (icspath (concatenate 'string
-				    *pvs-path* "/src/ics/" platform)))
+				     *pvs-path* "/src/WS1S/" platform)))
 		    (load (format nil "~a/file_utils.so" utilpath))
 		    (load (format nil "~a/mu.so" bddpath))
 		    (load (format nil "~a/polylib.so" polypath))
 		    (load (format nil "~a/ws1s.so" ws1spath))
-		    (load (format nil "~a/ics.so" icspath)))
+		    (load "@ICSLIB@/libics.so"))
 		  (setq *pvs-system-loaded* t))
   :finally-do (progn
 		#+lucid (precompile-generic-functions)
 		#+lcl4.1 (clos::flush-pv-caches)
+                (load "@ICSOBJ@/ics-pvs.lisp")
+                (load "@ICSOBJ@/ics.lisp")
 		(pvs::bdd_init)
 		(pvs::load-prelude)
 		#+allegro
@@ -415,8 +415,4 @@
       (:module abstraction
 	:source-pathname "src/abstraction"
 	:components ((:file "abstract")))
-      (:module ics
-	:source-pathname "src/ics"
-	:components ((:file "ics")
-		     (:file "ics-pvs")))
       ))

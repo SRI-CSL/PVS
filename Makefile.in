@@ -1,4 +1,3 @@
-# Generated automatically from Makefile.in by configure.
 ########################### -*- Mode: Makefile -*- ###########################
 ## Makefile -- Main Makefile for PVS; requires GNU Make
 ## Author          : Sam Owre
@@ -18,15 +17,15 @@ SHELL=/bin/sh
 
 # Should test for existence of platform dependent Makefiles
 
-ETAGS = etags
-TAR = tar
+ETAGS = @ETAGS@
+TAR = @TAR@
 TARFLAGS = -cvohz --mode="u+rw" --atime-preserve --exclude=CVS
 
 PLATFORM := $(shell bin/pvs-platform)
-ICSPLATFORM := $(shell /project/pvs/ics/bin/config.guess)
+ICSPLATFORM := $(shell @ICSPATH@/bin/config.guess)
 export PLATFORM ICSPLATFORM
 
-PVSLISP= allegro6.0
+PVSLISP= @ALLEGRO@
 ifeq ($(PLATFORM),sun4-SunOS5)
 	LISPEXT=fasl
 else
@@ -107,19 +106,20 @@ ff-files = src/utils/$(PLATFORM)/file_utils.so \
            BDD/$(PLATFORM)/mu.so \
            src/decision-procedures/polylib/$(PLATFORM)/polylib.so \
            src/WS1S/$(PLATFORM)/ws1s.so \
-	   /project/pvs/ics/lib/$(ICSPLATFORM)/libics.so
+	   @ICSPATH@/lib/$(ICSPLATFORM)/libics.so
 
 ess = ess/dist-ess.lisp \
 	ess/init-load.lisp \
 	ess/sys/ergolisp/rel/ergolisp.lisp \
 	ess/sys/ergolisp/rel/ergolisp-exports.lisp \
 	ess/sys/ergolisp/rel/ergo-system.lisp \
+	ess/sys/ergolisp/rel/ergo-types.lisp \
+	ess/sys/ergolisp/rel/type-check.lisp \
+	ess/sys/ergolisp/rel/tdefun.lisp \
 	ess/sys/tools/rel/retry.lisp \
 	ess/sys/tools/rel/box-system.lisp \
 	ess/sys/tools/rel/box.lisp \
 	ess/box-defs.lisp \
-	ess/sys/ergolisp/rel/ergo-types.lisp \
-	ess/sys/ergolisp/rel/type-check.lisp \
 	ess/sys/tools/rel/regression-test.lisp \
 	ess/sys/tools/rel/clet.lisp \
 	ess/sys/tools/rel/box-lib.lisp \
@@ -135,6 +135,24 @@ ess = ess/dist-ess.lisp \
 	ess/term/terms/rel/terms.lisp \
 	ess/term/terms/rel/termop.lisp \
 	ess/lang/sb-term/rel/access.lisp \
+	ess/lang/sb-term/rel/access-par.lisp \
+	ess/lang/sb-term/rel/aux-funs.lisp \
+	ess/lang/sb-term/rel/sb-lexer.lisp \
+	ess/lang/sb-term/rel/sb-parser.lisp \
+	ess/lang/sb-term/rel/sb-sorts.lisp \
+	ess/lang/sb-term/rel/sb-unparser.lisp \
+	ess/lang/sb-term/rel/sb-unparsing-aux.lisp \
+	ess/lang/sb-term/rel/pre-process.lisp \
+	ess/lang/sb-term/rel/inter-phase.lisp \
+	ess/lang/sb-term/rel/sort-gen.lisp \
+	ess/lang/sb-term/rel/lexer-gen.lisp \
+	ess/lang/sb-term/rel/flatten.lisp \
+	ess/lang/sb-term/rel/look-ahead.lisp \
+	ess/lang/sb-term/rel/compare.lisp \
+	ess/lang/sb-term/rel/phase-three.lisp \
+	ess/lang/sb-term/rel/top-parse.lisp \
+	ess/lang/sb-term/rel/unp-code-revise.lisp \
+	ess/lang/sb-term/rel/unparse-gen.lisp \
 	ess/lang/sb-term/rel/sbrt-lang-def.lisp \
 	ess/lang/sb-term/rel/sbrt-sorting.lisp \
 	ess/lang/sb-term/rel/rt-structs.lisp \
@@ -144,6 +162,7 @@ ess = ess/dist-ess.lisp \
 	ess/lang/sb-term/rel/rt-parse-mac.lisp \
 	ess/lang/sb-term/rel/rt-parse.lisp \
 	ess/lang/sb-term/rel/rt-unparse.lisp \
+	ess/lang/sb-term/rel/top.lisp \
 	ess/term/attr/rel/attr-lang-lib.lisp \
 	ess/term/attr/rel/attr-sort.lisp \
 	ess/term/attr/rel/attr-lang.lisp \
@@ -174,8 +193,7 @@ ess = ess/dist-ess.lisp \
 	ess/sys/constr/rel/constr-sorts.lisp \
 	ess/sys/constr/rel/constr-lexer.lisp \
 	ess/sys/constr/rel/constr-parser.lisp \
-	ess/sys/constr/rel/defsconstr.lisp \
-	ess/sys/ergolisp/rel/tdefun.lisp
+	ess/sys/constr/rel/defsconstr.lisp
 
 pvs-parser-in = src/make-pvs-parser.lisp \
              src/pvs-gr.txt \
@@ -277,7 +295,6 @@ decision-procedures = src/decision-procedures/types.lisp \
                       src/decision-procedures/cong-state.lisp \
                       src/decision-procedures/translate-to-dc.lisp \
                       src/decision-procedures/translate-from-dc.lisp \
-                      src/decision-procedures/polylib/foreign.lisp \
                       src/decision-procedures/integer.lisp \
                       src/decision-procedures/arithmetic.lisp \
                       src/decision-procedures/arrays.lisp \
@@ -303,6 +320,7 @@ decision-procedures = src/decision-procedures/types.lisp \
                       src/decision-procedures/bit-vectors/bvec_fixed_solver.lisp \
                       src/decision-procedures/bit-vectors/bvec_bdd_solve.lisp \
                       src/decision-procedures/bit-vectors/bvec_slicing.lisp \
+                      src/decision-procedures/polylib/foreign.lisp \
                       src/decision-procedures/polylib/dp-foreign.lisp
 
 ws1slisp = src/WS1S/lisp/dfa-foreign.lisp src/WS1S/lisp/dfa.lisp \
@@ -334,8 +352,8 @@ inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
                     src/inst-by-unif/gensubsts.lisp \
                     src/inst-by-unif/inst-by-unif.lisp
 
-ics-lisp = /project/pvs/ics/obj/$(ICSPLATFORM)/ics.lisp \
-	   /project/pvs/ics/obj/$(ICSPLATFORM)/ics-pvs.lisp
+ics-lisp = @ICSPATH@/obj/$(ICSPLATFORM)/ics.lisp \
+	   @ICSPATH@/obj/$(ICSPLATFORM)/ics-pvs.lisp
 
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \

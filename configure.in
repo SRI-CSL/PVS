@@ -1,0 +1,88 @@
+dnl PVS autoconf input
+dnl davesc Feb 2001
+
+dnl This file must exist for configure to run
+AC_MSG_CHECKING(for existence of src/pvs.lisp)
+AC_INIT(src/pvs.lisp)
+
+dnl Check user has given icspath.  
+AC_MSG_CHECKING(path to ics decision procedure)
+AC_ARG_WITH(ics, [ --with-ics=/path/to/ics ])
+if ! test -f $with_ics/src/ics.ml ; then 
+  echo
+  AC_MSG_ERROR(Please specify --with-ics=/path/to/ics)
+fi
+ICSPATH=$with_ics
+AC_MSG_RESULT($ICSPATH)
+ICSARCH=`$ICSPATH/bin/config.guess`
+ICSLIB=$ICSPATH/lib/$ICSARCH
+ICSOBJ=$ICSPATH/obj/$ICSARCH
+AC_SUBST(ICSPATH)
+AC_SUBST(ICSLIB)
+AC_SUBST(ICSOBJ)
+
+dnl Giving pvspath is optional
+AC_MSG_CHECKING(pvspath)
+AC_ARG_WITH(pvspath, [ --with-pvspath=/path/to/pvs ])
+if test "x$with_pvspath" = "x"; then
+  PVSPATH=`pwd`
+else
+  PVSPATH=$with_pvspath
+fi
+if ! test -f $PVSPATH/pvs.in; then
+  AC_MSG_ERROR(Invalid pvspath)
+fi
+AC_MSG_RESULT($PVSPATH)
+AC_SUBST(PVSPATH)
+
+dnl Check for programs required to build PVS
+AC_CHECK_PROG(ALLEGRO,allegro6.0,allegro6.0,no)
+if test "$ALLEGRO" = no ; then
+	AC_MSG_ERROR(Cannot find allegro6.0)
+fi
+
+AC_CHECK_PROG(GCC,gcc,gcc,no)
+if test "$GCC" = no ; then
+	AC_MSG_ERROR(Cannot find gcc)
+fi
+
+AC_CHECK_PROG(AR,ar,ar,no)
+if test "$AR" = no ; then
+	AC_MSG_ERROR(Cannot find gcc)
+fi
+
+AC_CHECK_PROG(RANLIB,ranlib,ranlib,echo)
+if test "$RANLIB" = echo ; then
+	AC_MSG_WARN(Cannot find ranlib - assuming not required for this platform)
+fi
+
+AC_CHECK_PROG(EMACS,emacs,emacs,no)
+if test "$EMACS" = no ; then
+	AC_MSG_ERROR(Cannot find emacs)
+fi
+
+AC_CHECK_PROG(ETAGS,etags,etags,no)
+if test "$ETAGS" = no ; then
+	AC_MSG_ERROR(Cannot find etags)
+fi
+
+AC_CHECK_PROG(TAR,tar,tar,no)
+if test "$TAR" = no ; then
+	AC_MSG_ERROR(Cannot find tar)
+fi
+dnl should check it's GNU tar
+
+AC_CHECK_PROG(RM,rm,rm,no)
+if test "$RM" = no ; then
+	AC_MSG_ERROR(Cannot find rm)
+fi
+
+dnl Get the platform to determine relevant Makefiles to update
+
+PLATFORM=`./bin/pvs-platform`
+export PLATFORM
+
+# Finally create all the generated files
+AC_OUTPUT(Makefile pvs src/make-allegro-pvs.lisp pvs.system ess/dist-ess.lisp ess/allegro-runtime.lisp )
+
+chmod a+x pvs

@@ -12,7 +12,7 @@
 
 (in-package :user)
 
-(defvar *ess-path* "")
+(defvar *ess-path* "@PVSPATH@/ess")
 
 #+(and allegro compiler)
 (setq comp:*cltl1-compile-file-toplevel-compatibility-p* t)
