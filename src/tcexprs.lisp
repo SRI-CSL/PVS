@@ -1676,7 +1676,9 @@
 	    "Could not determine the full theory instance"))
 	(set-type (declared-type decl) nil)
 	(setf (type decl) type))
-      (let ((vdecls (remove-if-not #'var-decl?
+      (let ((vdecls (remove-if-not #'(lambda (d)
+				       (and (var-decl? d)
+					    (eq (module d) (current-theory))))
 		      (gethash (id decl) (current-declarations-hash)))))
 	(cond ((null vdecls) 
 	       (type-error decl
