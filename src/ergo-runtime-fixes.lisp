@@ -78,17 +78,19 @@
     ;;(assert (type-of result))
     result))
 
+(defvar *last-end-place* nil)
+(defvar *last-end-value* nil)
+
 (defun get-end-place (sim-op args splace token?)
-  (declare (special last-end-place last-end-value))
-  (cond ((eq last-end-place sbrt::*end-place*)
-	 last-end-value)
+  (cond ((eq *last-end-place* sbrt::*end-place*)
+	 *last-end-value*)
 	(sbrt::*end-place*
 	 (let ((eplace (caddr sbrt::*end-place*))
 	       (token (if (eq (cadr sbrt::*end-place*) :keyword-internal-flag)
 			  (car sbrt::*end-place*)
 			  (cadr sbrt::*end-place*))))
-	   (setq last-end-place sbrt::*end-place*)
-	   (setq last-end-value
+	   (setq *last-end-place* sbrt::*end-place*)
+	   (setq *last-end-value*
 		 (sbrt::make-place
 		  :linenumber (sbrt::place-linenumber eplace)
 		  :charnumber (+ (the fixnum (sbrt::place-charnumber eplace))
