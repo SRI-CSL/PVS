@@ -45,8 +45,10 @@
 			'destructive (make-instance 'eval-defn))))))
 
 
-(defun undefined (expr)
+(defun undefined (expr &optional message)
   (let* ((fname (gentemp "undefined"))
+	 (msg-fmt (or message
+		      "Hit uninterpreted term ~a during evaluation"))
 	 (fbody `(defun ,fname (&rest x)
 		   (declare (ignore x))
 		   (if *evaluator-debug-undefined*
@@ -54,7 +56,7 @@
 		       (throw 'undefined
 			      (values
 			       'cant-translate 
-			       (format nil "Hit uninterpreted term during evaluation: ~a"
+			       (format nil ,msg-fmt
 				 (if (declaration? ,expr)
 				     (format nil "~a.~a" (id (module ,expr)) (id ,expr))
 				     ,expr))))))))
@@ -64,20 +66,6 @@
 
 (defmacro trap-undefined (expr)
   `(catch 'undefined ,expr))
-
-(defun trap-undefined-list (list)
-  (loop for x in list collect `(trap-undefined ,x)))
-
-(defmacro install-definition (expr restore body)
-  `(multiple-value-bind (result error)
-       (catch 'no-defn ,body)
-     (if result
-	 result
-	 (progn ,restore
-		(throw 'no-defn
-		       (values 'cant-translate
-			       (format nil "~%Definition of ~a failed.~%~a"
-				 ,expr error)))))))
 
 (defstruct pvs-array
   contents diffs size)
@@ -377,22 +365,26 @@
 			 when (formal-const-decl? x)
 			 collect (make-constant-from-decl x)))))
 	 (args-free-formals (updateable-vars arguments))
-	 (args-livevars (append args-free-formals livevars)))
+	 (args-livevars (append args-free-formals livevars))
+	 (args (if (= (length (bindings (car (def-axiom decl))))
+		      (length arguments))
+		   arguments
+		   (list (make!-tuple-expr* arguments)))))
     (if internal-actuals
-	(mk-funapp (pvs2cl-operator2 op actuals arguments
-				     livevars bindings)
-	     (append (pvs2cl_up* internal-actuals
-				     bindings
-				     args-livevars)
-		      (pvs2cl_up* arguments bindings
-				 (append (mapcan #'updateable-free-formal-vars
-					   actuals);;only updateable
-					 ;;parameters of already evaluated
-					 ;;exprs needed.
-					 livevars))))
-	(mk-funapp (pvs2cl-operator2 op NIL arguments livevars bindings)
+	(mk-funapp
+	 (pvs2cl-operator2 op actuals args livevars bindings)
+	 (append (pvs2cl_up* internal-actuals
+			     bindings
+			     args-livevars)
+		 (pvs2cl_up* args bindings
+			     (append (mapcan #'updateable-free-formal-vars
+				       actuals);;only updateable
+				     ;;parameters of already evaluated
+				     ;;exprs needed.
+				     livevars))))
+	(mk-funapp (pvs2cl-operator2 op NIL args livevars bindings)
 		   ;;(pvs2cl-resolution2 op)
-		   (pvs2cl_up* arguments  bindings livevars)))))
+		   (pvs2cl_up* args  bindings livevars)))))
 
 ;;If primitive app, use pvs2cl-primitive-app.
 ;;If datatype constant, then ignore actuals and use pvs2cl-resolution.
@@ -523,8 +515,10 @@
 (defmethod pvs2cl_up* ((expr formal-const-decl) bindings livevars)
   (declare (ignore livevars))
   (let ((result (assoc expr bindings)))
-    (if result (cdr result)
-	(throw 'no-defn (values 'cant-translate (format nil "No binding for ~a" expr))))))
+    (if result
+	(cdr result)
+	(let ((undef (undefined expr "Hit untranslatable term: no binding for ~a")))
+	  `(funcall ',undef)))))
 
 (defun pvs2cl-declare-vars (vars exprs)
   (let ((decls (pvs2cl-declare-vars* vars exprs)))
@@ -618,27 +612,32 @@
 				  bind-rest
 				body)
 			      body)))
-	  (cond ((enum-adt? typ1)
-		 `(every ,(pvs2cl-lambda (list bind1)
-					 expr-rest
-					 bindings
-					 (append (updateable-vars expr)
-						 livevars))
-			 (list ,@(pvs2cl_up* (constructors typ1)
-					     bindings livevars))))
-		((car sub)
+	  (cond ((enum-adt? (find-supertype typ1))
+		 (if (subtype? typ1)
+		     (pvs2cl_up* (lift-predicates-in-quantifier expr (list (find-supertype typ1)))
+				 bindings livevars)
+		     `(every ,(pvs2cl-lambda (list bind1)
+					     expr-rest
+					     bindings
+					     (append (updateable-vars expr)
+						     livevars))
+			     (list ,@(pvs2cl_up* (constructors typ1)
+						 bindings livevars)))))
+		(sub
 		 (if (and (subtype? typ1)
-			  (car (simple-subrange? (supertype typ1))))
+			  (simple-subrange? (supertype typ1)))
 		     (pvs2cl_up* (lift-predicates-in-quantifier expr (list (supertype typ1)))
 				 bindings livevars)
 		     (let  ((lfrom (if (number-expr? (car sub))
 				       (number (car sub))
 				       (or (pvs2cl_up* (cdr sub) bindings livevars)
-					   (undef (car sub)))))
+					   (let ((undef (undefined (car sub))))
+					     `(funcall ',undef)))))
 			    (lto (if (number-expr? (cdr sub))
 				     (number (cdr sub))
 				     (or (pvs2cl_up* (cdr sub) bindings livevars)
-					 (undef (cdr sub)))))
+					 (let ((undef (undefined (cdr sub))))
+					   `(funcall ',undef)))))
 			    (i (gentemp)))
 		       `(loop for ,i
 			      from ,lfrom
@@ -650,8 +649,8 @@
 							   (append (updateable-vars expr)
 								   livevars))
 					   ,i)))))
-		(t (throw 'no-defn (values 'cant-translate
-					   "Cannot handle non-scalar/subrange quantifiers.")))))
+		(t (let ((undef (undefined expr "Hit non-scalar/subrange quantifier in ~a")))
+		   `(funcall ',undef)))))
 	(pvs2cl_up* body bindings livevars))))
 
 (defmethod pvs2cl_up* ((expr exists-expr) bindings livevars)
@@ -667,27 +666,32 @@
 				  bind-rest
 				body)
 			      body)))
-	  (cond ((enum-adt? typ1)
-		 `(some ,(pvs2cl-lambda (list bind1)
-					expr-rest
-					bindings
-					(append (updateable-vars expr)
-						livevars))
-			(list ,@(pvs2cl_up* (constructors typ1)
-					    bindings livevars))))
-		((car sub)
+	  (cond ((enum-adt? (find-supertype typ1))
+		 (if (subtype? typ1)
+		     (pvs2cl_up* (lift-predicates-in-quantifier expr (list (find-supertype typ1)))
+				 bindings livevars)
+		     `(some ,(pvs2cl-lambda (list bind1)
+					    expr-rest
+					    bindings
+					    (append (updateable-vars expr)
+						    livevars))
+			    (list ,@(pvs2cl_up* (constructors typ1)
+						bindings livevars)))))
+		(sub
 		 (if (and (subtype? typ1)
-			  (car (simple-subrange? (supertype typ1))))
+			  (simple-subrange? (supertype typ1)))
 		     (pvs2cl_up* (lift-predicates-in-quantifier expr (list (supertype typ1)))
 				 bindings livevars)
 		     (let ((lfrom (if (number-expr? (car sub))
 				      (number (car sub))
 				      (or (pvs2cl_up* (cdr sub) bindings livevars)
-					  (undef (car sub)))))
+					  (let ((undef (undefined (car sub))))
+					    `(funcall ',undef)))))
 			   (lto (if (number-expr? (cdr sub))
 				    (number (cdr sub))
 				    (or (pvs2cl_up* (cdr sub) bindings livevars)
-					(undef (cdr sub)))))
+					(let ((undef (undefined (cdr sub))))
+					  `(funcall ',undef)))))
 			   (i (gentemp)))
 		       `(loop for ,i
 			      from ,lfrom
@@ -699,8 +703,9 @@
 							   (append (updateable-vars expr)
 								   livevars))
 					   ,i)))))
-		(t (throw 'no-defn (values 'cant-translate
-					   "Cannot handle non-scalar/subrange quantifiers.")))))
+		(t
+		 (let ((undef (undefined expr "Hit non-scalar/subrange quantifier in ~a")))
+		   `(funcall ',undef)))))
 	(pvs2cl_up* body bindings livevars))))
 			
 
@@ -711,14 +716,13 @@
     (if bnd
 	(if (const-decl? decl)
 	    (mk-funapp (cdr bnd)
-			(pvs2cl-actuals (expr-actuals (module-instance expr))
-					bindings livevars))
+		       (pvs2cl-actuals (expr-actuals (module-instance expr))
+				       bindings livevars))
 	    (cdr bnd)) 
 	(if (const-decl? decl)
 	    (pvs2cl-constant expr bindings livevars)
-	    (let ((str (format NIL "~%~a is not translateable." expr)))
-	      (throw 'no-defn (values 'cant-translate str))
-	      )))))
+	    (let ((undef (undefined expr "Hit untranslateable expression ~a")))
+	      `(funcall ',undef))))))
 
 (defmethod pvs2cl_up* ((expr list) bindings livevars)
   (if (consp expr)
@@ -775,16 +779,28 @@
 	nonstr)))
 
 
-(defmethod no-livevars? ((expr update-expr) livevars)
-  (no-livevars? (expression expr) livevars))
+(defmethod no-livevars? ((expr update-expr) livevars assignments)
+  (no-livevars? (expression expr) livevars
+		(append (assignments expr) assignments)))
 
-(defmethod no-livevars? ((expr T) livevars)
-  (let ((updateable-outputs
-	 (updateable-outputs expr)))
-    (and (null (intersection  updateable-outputs
-			 livevars
-			 :test #'same-declaration))
-	 (cons updateable-outputs livevars))))
+(defmethod no-livevars? ((expr T) livevars assignments)
+  (let* ((updateable-outputs
+	  (updateable-outputs expr))
+	 (check-updateables
+	  (null (intersection  updateable-outputs
+			       livevars
+			       :test #'same-declaration)))
+	 (rhs-list (loop for asgn in assignments
+			 collect (expression asgn)))
+	 (check-rhs (check-update-argument rhs-list updateable-outputs))
+	 (rhs-updateables (updateable-free-formal-vars rhs-list))
+	 (live-rhs-updateables
+	  (set-difference rhs-updateables updateable-outputs
+			  :test #'same-declaration)))
+    (and check-updateables
+	 check-rhs
+	 (cons updateable-outputs (append live-rhs-updateables
+					  livevars)))))
 
 (defvar *fun-lhs* nil)
 (defvar *update-args-bindings* nil)
@@ -794,8 +810,9 @@
   (and (funtype? type)
        (let ((x (simple-below? (domain type))))
 	 (or x
-	     (let ((y (upto? (domain type))))
-	       (or (and y (1+ y) )
+	     (let ((y (simple-upto? (domain type))))
+	       (or (and y
+			(make!-succ y))
 		   (let ((stype (find-supertype type)))
 		     (and (enum-adt? stype)
 			  (1- (length (constructors stype)))))))))))
@@ -1092,15 +1109,16 @@
 	  (let* ((expression (expression expr))
 		 (assignments (assignments expr))
 		 (updateable-livevars
-		  (no-livevars? expression livevars))
-		 (check-assign-types
-		  (loop for assgn in assignments
-			always
-			(not (contains-possible-closure?
-			      (type (expression assgn)))))))
+		  (no-livevars? expression livevars assignments))
+; 		 (check-assign-types
+; 		  (loop for assgn in assignments
+; 			always
+; 			(not (contains-possible-closure?
+; 			      (type (expression assgn))))))
+		 )
 	    ;;very unrefined: uses all
 	    ;;freevars of eventually updated expression.
-	    (cond ((and updateable-livevars check-assign-types)
+	    (cond (updateable-livevars ;; check-assign-types
 		   (push-output-vars (car updateable-livevars)
 				     (cdr updateable-livevars))
 		   (pvs2cl-update expression
@@ -1110,10 +1128,10 @@
 		   (when (and *eval-verbose* (not updateable-livevars))
 		     (format t "~%Update ~s translated nondestructively.
  Live variables ~s present" expr livevars))
-		   (when (and *eval-verbose* (not check-assign-types))
-		     (format t "~%Update ~s translated nondestructively.
-Assignment right-hand sides contain possible function types that can
-trap references." expr))
+; 		   (when (and *eval-verbose* (not check-assign-types))
+; 		     (format t "~%Update ~s translated nondestructively.
+; Assignment right-hand sides contain possible function types that can
+; trap references." expr))
 		   (pvs2cl-update-nondestructive  expr
 						    bindings livevars))))
 	  (pvs2cl-update-nondestructive expr bindings livevars))
@@ -1263,11 +1281,9 @@ trap references." expr))
 	(if (or (eq (module decl) *external*)
 		(expr-actuals (module-instance expr)));;datatype-subtype?
 	    (or (external-lisp-function (declaration expr))
-		(catch 'no-defn
-		  (pvs2cl-external-lisp-function (declaration expr))))
+		(pvs2cl-external-lisp-function (declaration expr)))
 	    (or (lisp-function (declaration expr))
-		(catch 'no-defn (pvs2cl-lisp-function (declaration expr)))))
-	)))
+		(pvs2cl-lisp-function (declaration expr)))))))
 
 (defun mk-newsymb (x &optional (counter 0))
   (let ((str (format nil "~a_~a" x counter)))
@@ -1316,45 +1332,36 @@ trap references." expr))
 			  (declarations
 			   (pvs2cl-declare-vars formal-ids2
 						(append formals defn-bindings))))
-						    
 		     (make-eval-info decl)
 		     (setf (ex-name decl) id)
 		     (let ((id2 (mk-newsymb (format nil "~a__~a"
 					      (id (module decl))
-					      (id decl))))
-			   )
-		       (install-definition
-			(id decl)
-			(setf (ex-name-m decl) undef)
-			(progn (setf (ex-name-m decl) id2)
-			       (let ((*destructive?* nil))
-				 (setf (definition (ex-defn-m decl))
-				       `(defun ,id2 ,formal-ids2
-					  ,@(append (when declarations
-						      (list declarations))
-						    (list 
-						     (pvs2cl_up* defn-expr
-								 (append (pairlis
-									  defn-bindings
-									  defn-binding-ids)
-									 bindings)
-								 nil))))))
-			       (eval (definition (ex-defn-m decl)))
-			       (assert id2)
-			       (compile id2)
-			       id2)))
-		     (install-definition
-		      (id decl)
-		      (setf (ex-name-d decl) undef)
-		      (progn (setf (ex-name-d decl) id-d)
-			     (let ((*destructive?* T)
-				   (*output-vars* NIL))
-			       (setf (definition (ex-defn-d decl))
-				     `(defun ,id-d ,formal-ids2
-					,declarations
-					,@(append (when declarations
-						    (list declarations))
-						  (list 
+					      (id decl)))))
+		       (setf (ex-name-m decl) id2)
+		       (let ((*destructive?* nil))
+			 (setf (definition (ex-defn-m decl))
+			       `(defun ,id2 ,formal-ids2
+				  ,@(append (when declarations
+					      (list declarations))
+					    (list 
+					     (pvs2cl_up* defn-expr
+							 (append (pairlis
+								  defn-bindings
+								  defn-binding-ids)
+								 bindings)
+							 nil))))))
+		       (eval (definition (ex-defn-m decl)))
+		       (assert id2)
+		       (compile id2))
+		     (setf (ex-name-d decl) id-d)
+		     (let ((*destructive?* T)
+			   (*output-vars* NIL))
+		       (setf (definition (ex-defn-d decl))
+			     `(defun ,id-d ,formal-ids2
+				,declarations
+				,@(append (when declarations
+					    (list declarations))
+					  (list 
 						   (pvs2cl-till-output-stable
 						    (ex-defn-d decl)
 						    defn-expr
@@ -1362,30 +1369,23 @@ trap references." expr))
 								     defn-binding-ids)
 							    bindings)
 						    nil)))))
-			       ;;setf output-vars already in
-			       ;;pvs2cl-till-output-stable
-			       (setf (output-vars (ex-defn-d decl))
-				     *output-vars*))
-			     (eval (definition (ex-defn-d decl)))
-			     (assert id-d)
-			     (compile id-d)
-			     id-d))
-		     (install-definition
-		      (id decl)
-		      (setf (ex-name decl) undef)
-		      (progn
-			(let ((*destructive?* NIL)
-			      (declarations (pvs2cl-declare-vars formal-ids formals)))
-			  (setf (definition (ex-defn decl))
-				`(defun ,id ,formal-ids
-				   ,@(append (when declarations
-					       (list declarations))
-					     (list 
-					      (pvs2cl_up* defn  bindings nil))))))
-			(eval (definition (ex-defn decl)))
-			(assert id)
-			(compile id)
-			id)))))))))
+		       ;;setf output-vars already in
+		       ;;pvs2cl-till-output-stable
+		       (setf (output-vars (ex-defn-d decl)) *output-vars*))
+		     (eval (definition (ex-defn-d decl)))
+		     (assert id-d)
+		     (compile id-d)
+		     (let ((*destructive?* NIL)
+			   (declarations (pvs2cl-declare-vars formal-ids formals)))
+		       (setf (definition (ex-defn decl))
+			     `(defun ,id ,formal-ids
+				,@(append (when declarations
+					    (list declarations))
+					  (list 
+					   (pvs2cl_up* defn  bindings nil))))))
+		     (eval (definition (ex-defn decl)))
+		     (assert id)
+		     (compile id))))))))
 
 (defun pvs2cl-till-output-stable (defn-slot expr bindings livevars)
   (let ((old-outputvars (copy-list *output-vars*))
@@ -1419,70 +1419,55 @@ trap references." expr))
 		  (declarations (pvs2cl-declare-vars defn-binding-ids
 						     defn-bindings)))
 	       (setf (in-name decl) id)
-	       (let ((id2 (mk-newsymb (format nil "_~a" (id decl))))
-		     )
-		 (install-definition
-		  (id decl)
-		  (setf (in-name-m decl) undef)
-		  (progn
-		    (when *eval-verbose*
-		      (format t "~%~a <internal_app> ~a" (id decl) id2))
-		    (setf (in-name-m decl) id2)
-		    (let ((*destructive?* nil))
-		      (setf (definition (in-defn-m decl))
-			    `(defun ,id2 ,defn-binding-ids
-			       ,@(append (when declarations
-					   (list declarations))
-					 (list 
-					  (pvs2cl_up* defn-body
-						      (pairlis defn-bindings
-							       defn-binding-ids)
-						      nil))))))
-		    (eval (definition (in-defn-m decl)))
-		    (assert id2)
-		    (compile id2)
-		    id2)))
-	       (install-definition
-		(id decl)
-		(setf (in-name-d decl) undef)
-		(progn (when *eval-verbose*
-			 (format t "~%~a <internal_dest> ~a" (id decl) id-d))
-		       (setf (in-name-d decl) id-d)
-		       (let ((*destructive?* T)
-			     (*output-vars* NIL))
-			 (setf (definition (in-defn-d decl))
-			       `(defun ,id-d ,defn-binding-ids
-				  ,@(append (when declarations
-					      (list declarations))
-					    (list 
+	       (let ((id2 (mk-newsymb (format nil "_~a" (id decl)))))
+		 (when *eval-verbose*
+		   (format t "~%~a <internal_app> ~a" (id decl) id2))
+		 (setf (in-name-m decl) id2)
+		 (let ((*destructive?* nil))
+		   (setf (definition (in-defn-m decl))
+			 `(defun ,id2 ,defn-binding-ids
+			    ,@(append (when declarations
+					(list declarations))
+				      (list 
+				       (pvs2cl_up* defn-body
+						   (pairlis defn-bindings
+							    defn-binding-ids)
+						   nil))))))
+		 (eval (definition (in-defn-m decl)))
+		 (assert id2)
+		 (compile id2))
+	       (when *eval-verbose*
+		 (format t "~%~a <internal_dest> ~a" (id decl) id-d))
+	       (setf (in-name-d decl) id-d)
+	       (let ((*destructive?* T)
+		     (*output-vars* NIL))
+		 (setf (definition (in-defn-d decl))
+		       `(defun ,id-d ,defn-binding-ids
+			  ,@(append (when declarations
+				      (list declarations))
+				    (list 
 					     (pvs2cl-till-output-stable
 					      (in-defn-d decl)
 					      defn-body
 					      (pairlis defn-bindings
 						       defn-binding-ids)
 					      nil)))))
-			 ;;setf output-vars already in
-			 ;;pvs2cl-till-output-stable
-			 (setf (output-vars (in-defn-d decl))
-			       *output-vars*))
-		       (eval (definition (in-defn-d decl)))
-		       (assert id-d)
-		       (compile id-d)
-		       id-d))
-	       (install-definition
-		(id decl)
-		(setf (in-name decl) undef)
-		(progn
-		  (when *eval-verbose*
-		    (format t "~%~a <internal_0> ~a" (id decl) id))
-		  (let ((*destructive?* NIL))
-		    (setf (definition (in-defn decl))
-			  `(defun ,id ()
-			     ,(pvs2cl_up* defn nil nil))))
-		  (eval (definition (in-defn decl)))
-		  (assert id)
-		  (compile id)
-		  id)))))))
+		 ;;setf output-vars already in
+		 ;;pvs2cl-till-output-stable
+		 (setf (output-vars (in-defn-d decl))
+		       *output-vars*))
+	       (eval (definition (in-defn-d decl)))
+	       (assert id-d)
+	       (compile id-d)
+	       (when *eval-verbose*
+		 (format t "~%~a <internal_0> ~a" (id decl) id))
+	       (let ((*destructive?* NIL))
+		 (setf (definition (in-defn decl))
+		       `(defun ,id ()
+			  ,(pvs2cl_up* defn nil nil))))
+	       (eval (definition (in-defn decl)))
+	       (assert id)
+	       (compile id))))))
 
 (defun pvs2cl-theory (theory)
   (let* ((theory (get-theory theory))
@@ -1493,17 +1478,15 @@ trap references." expr))
 		    (let ((dt (find-supertype (type-value decl))))
 		      (when (adt-type-name? dt)
 			(pvs2cl-constructors (constructors dt) dt))))
-		    ((const-decl? decl)
-		     (unless (eval-info decl)
-		       (progn
-			 (make-eval-info decl)
-			 (catch 'no-defn
-			   (or (external-lisp-function decl)
-			       (pvs2cl-external-lisp-function decl)))
-			 (catch 'no-defn
-			   (or (lisp-function decl)
-			       (pvs2cl-lisp-function decl))))))
-		    (t nil)))))
+		   ((const-decl? decl)
+		    (unless (eval-info decl)
+		      (progn
+			(make-eval-info decl)
+			(or (external-lisp-function decl)
+			    (pvs2cl-external-lisp-function decl))
+			(or (lisp-function decl)
+			    (pvs2cl-lisp-function decl)))))
+		   (t nil)))))
 
 
 (defun pvs2cl-datatype (expr)
@@ -1609,8 +1592,8 @@ trap references." expr))
 	(mk-name '>= nil '|reals|)
 	(mk-name '|floor| nil '|floor_ceil|)
 	(mk-name '|ceiling| nil '|floor_ceil|)
-	(mk-name '|rem| nil '|rem|)
-	(mk-name '|div| nil '|div|)
+	(mk-name '|rem| nil '|modulo_arithmetic|)
+	(mk-name '|ndiv| nil '|modulo_arithmetic|)
 	(mk-name '|cons| nil '|list_adt|)
 	(mk-name '|car| nil '|list_adt|)
 	(mk-name '|cdr| nil '|list_adt|)
@@ -1660,29 +1643,35 @@ trap references." expr))
 (defun my-unintern (name)
   (when (and name (symbolp name)) (unintern name)))
 
-(defun clear-dependent-theories (theory)
+(defmethod clear-dependent-theories ((theory module))
+  (clear-theory theory)
+  (loop for (th . nil) in (all-usings theory)
+	do (clear-theory th))
+  (loop for inst in (assuming-instances theory)
+	do (clear-theory inst)))
+
+(defmethod clear-dependent-theories (theory)
   (let ((module  (get-theory theory)))
     (when module
-      (clear-theory theory)
-      (loop for (th . insts) in (all-usings module)
-	    do (clear-theory th))
-      (loop for inst in (assuming-instances module)
-	    do (clear-theory inst)))))
+      (clear-dependent-theories module))))
 
-(defun clear-theory (theory)
+(defmethod clear-theory ((theory module))
+  (loop for dec in (theory theory)
+	when (and (const-decl? dec)
+		  (eval-info dec))
+	do
+	(progn (my-unintern (in-name dec))
+	       (my-unintern (in-name-m dec))
+	       (my-unintern (in-name-d dec))
+	       (my-unintern (ex-name dec))
+	       (my-unintern (ex-name-m dec))
+	       (my-unintern (ex-name-d dec))
+	       (setf (eval-info dec) nil))))
+
+(defmethod clear-theory (theory)
   (let ((module (get-theory theory)))
     (when module
-      (loop for dec in (theory module)
-	    when (and (const-decl? dec)
-		      (eval-info dec))
-	    do
-	    (progn (my-unintern (in-name dec))
-		   (my-unintern (in-name-m dec))
-		   (my-unintern (in-name-d dec))
-		   (my-unintern (ex-name dec))
-		   (my-unintern (ex-name-m dec))
-		   (my-unintern (ex-name-d dec))
-		   (setf (eval-info dec) nil))))))
+      (clear-theory module))))
 
 (defun write-defn (defn output)
   (when defn
@@ -1761,11 +1750,20 @@ trap references." expr))
 	 (subst (tc-match type (below-subtype) bindings)))
     (cdr (assoc '|m| subst :test #'same-id))))
 
+; here we want to treat below and upto as special cases of subranges
 (defun simple-subrange? (type)
   (let* ((bindings (make-empty-bindings (free-params (subrange-subtype))))
-	 (subst (tc-match type (subrange-subtype) bindings)))
-    (cons (cdr (assoc '|m| subst :test #'same-id))
-	  (cdr (assoc '|n| subst :test #'same-id)))))
+	 (subst (tc-match type (subrange-subtype) bindings))
+	 (from (cdr (assoc '|m| subst :test #'same-id)))
+	 (to (cdr (assoc '|n| subst :test #'same-id))))
+    (if from
+	(cons from to)
+	(let ((upto (simple-upto? type)))
+	  (if upto
+	      (cons (mk-number-expr 0) upto)
+	      (let ((below (simple-below? type)))
+		(when below
+		  (cons (mk-number-expr 0) (mk-number-expr (1- (number below)))))))))))
 
 (defun simple-above? (type)
   (let* ((bindings (make-empty-bindings (free-params (above-subtype))))
@@ -1791,8 +1789,3 @@ trap references." expr))
 (defmethod pvs2cl-lisp-type* ((type T))
   (cond ((eq type *boolean*) 'boolean)
 	(t nil)));;was T, but need to distinguish proper types.
-
-
-
-
-

@@ -77,6 +77,9 @@
 	   (tc-eq (type domtype) domaindep)
 	   (range type)))))
   
+(defmethod get-seq-range-type ((type T) domaindep)
+  nil)
+
 (defun char-type? (type)
   (eq (id (module-instance (resolution (find-supertype type)))) '|character_adt|))
 
@@ -167,8 +170,3 @@
 		      'exprs (list ex list))))
       (make-instance 'null-expr
 	'id '|null|)))
-
-
-
-
-
