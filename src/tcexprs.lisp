@@ -1308,7 +1308,7 @@
 			 (check-compatible-params
 			  (formals-sans-usings theory) acts nil))
 			(check-operator-conversion
-			 (subst-params-decl conversion nmi) args)))))
+			 (subst-params-decl conversion nmi theory) args)))))
 	     (when (compatible? optype (domain ctype))
 	       (check-operator-conversion conversion args))))))
 
