@@ -289,6 +289,7 @@ theories are only untypechecked after the importing.
 * Prettyprinting Theory Instances::
 * Assuming and Mapped Axiom TCC Visibility Rules::
 * Better handling of TCCs in Proofs::
+* expand Rule uses Full Name::
 @end menu
 
 @node Referencing Library Theories
