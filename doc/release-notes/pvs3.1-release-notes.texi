@@ -28,8 +28,8 @@ were easily repaired.  If you have difficulties understanding why a
 proof has failed, or repairing an existing proof, send it to us at
 @uref{mailto:pvs-bugs@@csl.sri.com, @emph{pvs-bugs@@csl.sri.com}}.
 
-Thanks to Jerry James @uref{mailto:jamesj@acm.org,
-@emph{jamesj@acm.org}}, a number of new theories and declarations have
+Thanks to Jerry James @uref{mailto:jamesj@@acm.org,
+@emph{jamesj@@acm.org}}, a number of new theories and declarations have
 been added to the prelude.  Several judgments have been added, that
 generally result in fewer TCCs, and could affect proofs as noted
 above.
