@@ -113,6 +113,9 @@ show-proofs-theory	    Show the proof scripts of the specified theory
 show-proofs-pvs-file        Show the proof scripts of the specified file
 show-proofs-importchain     Show proof scripts of IMPORT chain of theory
 install-pvs-proof-file      Install a new proof file
+display-proofs-formula      Display the multiple proofs of formula
+display-proofs-theory       Display the multiple proofs of formulas of theory
+display-proofs-pvs-file     Display the multiple proofs of formulas of PVS file
 load-pvs-strategies         Load the pvs-strategies file(s)
 set-print-depth             Set the print depth for formulas of sequents
 set-print-length            Set the print length for formulas of sequents
@@ -211,6 +214,8 @@ latex-proof, ltp (C-c C-l p)       Generate LaTeX text for last proof
 latex-theory-view, ltv (C-c C-l v) Generates and views LaTeX for theory
 latex-proof-view, lpv (C-c C-l P)  Generates and views LaTeX for last proof
 latex-set-linelength, lts (C-c C-l s)  Set the linelength for LaTeX text
+html-pvs-file                      Generates HTML for PVS file
+html-pvs-files                     Generates HTML for PVS file and dependencies
 
 ----------------------------Display Commands----------------------------------
   All of these commands pop up a Tcl/Tk window
@@ -251,13 +256,14 @@ show-expanded-form       (C-.)   Show expanded form of term containing region
 status-theory, stt (C-c C-s t)      Status of specified theory (parsed etc.)
 status-pvs-file, stf (C-c C-s f)    Status of theories of current file
 status-importchain, sti (C-c C-s i) Status of theories in import chain
+                                    With arg, prints just theory names
 status-importbychain, stb (C-c C-s b) Status of theories in imported-by chain
-show-theory-conversions             Show conversion messages for theory
-show-pvs-file-conversions           Show conversion messages for PVS file
 show-theory-warnings                Show warnings for theory
 show-pvs-file-warnings              Show warnings for PVS file
 show-theory-messages                Show informational messages for theory
 show-pvs-file-messages              Show informational messages for PVS file
+show-theory-conversions             Show conversion messages for theory
+show-pvs-file-conversions           Show conversion messages for PVS file
 status-proof, sp (C-c C-s p)        Status of formula at cursor
 status-proof-theory, spt            Status of all formulas in theory
 status-proof-pvs-file, spf          Status of all formulas in PVS file
