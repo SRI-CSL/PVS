@@ -1,30 +1,33 @@
 (in-package dp)
 
-(defun dp-integer-atom-p (l)
+(defun dp-integer-atom-p (l cong-state)
   (or (eq (node-initial-type l) *integer*)
+      (eq (dp-type l cong-state) *integer*)
       (dp-integerp l)
       (floor-p l)
       (and (times-p l)
-	   (integer-times-p l))))
+	   (integer-times-p l cong-state))))
 
-(defun integer-times-p (l)
+(defun integer-times-p (l cong-state)
   (loop for a in (funargs l)
-	always (dp-integer-atom-p a)))
+	always (dp-integer-atom-p a cong-state)))
 
-(defun integer-equality-p (lit)
+(defun integer-equality-p (lit cong-state)
   (let ((fract (and (or (arith-bool-p lit)
 			(equality-p lit))
-		    (dp-integer-atom-p (lhs lit))
-		    (fractpt (rhs lit)))))
+		    (dp-integer-atom-p (lhs lit) cong-state)
+		    (fractpt (rhs lit) cong-state))))
     (and fract (zerop fract))))
-  
-  
 
-(defun integercut (lit)
+(defun integer-inequality-p (lit cong-state)
+  (and (not (equality-p lit))
+       (integer-equality-p lit cong-state)))  
+
+(defun integercut (lit cong-state)
   (let ((fract (and (or (arith-bool-p lit)
 			(equality-p lit))
-		    (dp-integer-atom-p (lhs lit))
-		    (fractpt (rhs lit)))))
+		    (dp-integer-atom-p (lhs lit) cong-state)
+		    (fractpt (rhs lit) cong-state))))
     (cond
      ((null fract) lit)
      ((zerop fract) (zerocut lit))
@@ -89,21 +92,21 @@
 (defun dp-fractpt (constant)
   (num-fractpt (constant-id constant)))
 
-(defun fractpt (l)
+(defun fractpt (l cong-state)
   (cond
-   ((dp-integer-atom-p l) 0)
+   ((dp-integer-atom-p l cong-state) 0)
    ((dp-numberp l) (dp-fractpt l))
-   ((plus-p l) (plusfractpt l))
-   ((times-p l) (timesfractpt l))
+   ((plus-p l) (plusfractpt l cong-state))
+   ((times-p l) (timesfractpt l cong-state))
    (t nil)))
 
 ; fractpt for a plus expression
 
-(defun plusfractpt (l)
+(defun plusfractpt (l cong-state)
   (let ((fract-sum 0))
     (labels ((sum-fract-pt
 	      (atom)
-	      (let ((atom-fract (fractpt atom)))
+	      (let ((atom-fract (fractpt atom cong-state)))
 		(if atom-fract
 		    (setq fract-sum (+ atom-fract fract-sum))
 		    (throw 'fastexit nil)))))
@@ -113,19 +116,19 @@
 
 ; fractpt for a times expression
 
-(defun timesfractpt (l)
+(defun timesfractpt (l cong-state)
   (labels ((times-fract-pt
 	    (atom)
-	    (let ((atom-fract (fractpt atom)))
+	    (let ((atom-fract (fractpt atom cong-state)))
 	      (unless (and atom-fract (zerop atom-fract))
 		(throw 'fastexit nil)))))
     (catch 'fastexit
       (map-funargs #'times-fract-pt l)
       0)))
 
-(defun ineq-initial-type (ineq)
-  (if (dp-integer-atom-p (lhs ineq))
-      (let ((frac (fractpt (rhs ineq))))
+(defun ineq-initial-type (ineq cong-state)
+  (if (dp-integer-atom-p (lhs ineq) cong-state)
+      (let ((frac (fractpt (rhs ineq) cong-state)))
 	(if (and frac (zerop frac))
 	    *integer*
 	    *number*))

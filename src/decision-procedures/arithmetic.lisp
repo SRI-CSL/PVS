@@ -463,9 +463,9 @@
     (sigplus (mk-plus (map-funargs-list #'sigminus1 u))))
    (t (sigtimes (mk-times `(,*neg-one* ,u))))))
 
-(defun sigfloor (u)
+(defun sigfloor (u cong-state)
   (multiple-value-bind (number-args integer-args)
-      (split-args-num-int (arg 1 u))
+      (split-args-num-int (arg 1 u) cong-state)
     (cond
      ((and number-args integer-args)
       (sigplus (mk-plus (cons (mk-floor (sigplus (mk-plus number-args)))
@@ -474,7 +474,7 @@
      (integer-args (sigplus (mk-plus integer-args)))
      (t *zero*))))
 
-(defun split-args-num-int (arg)
+(defun split-args-num-int (arg cong-state)
   (let ((args (cond
 	       ((plus-p arg)
 		(funargs arg))
@@ -485,7 +485,7 @@
 	  with number-args = nil
 	  with const = 0
 	  for a in args
-	  for integer? = (dp-integer-atom-p a)
+	  for integer? = (dp-integer-atom-p a cong-state)
 	  do (cond
 	      ((dp-numberp a) (setq const (+ (constant-id a) const)))
 	      (integer?
@@ -548,7 +548,8 @@
   (member (funsym ineq) (list *lessp* *greaterp*) :test #'eq))
 
 (defun normineq (ineq cong-state &optional (var nil))
-  (integercut (normineq-rational ineq cong-state var)))
+  (integercut (normineq-rational ineq cong-state var)
+	      cong-state))
 
 ;;canonizes inequalities a {<, <=, >, >=, =} b by
 ;;canonizing a - b and picking the head term as the lhs of
@@ -811,5 +812,5 @@
    ((difference-p term) (sigdifference term))
    ((minus-p term) (sigminus term))
    ((divide-p term) (sigdivide term))
-   ((floor-p term) (sigfloor term))
+   ((floor-p term) (sigfloor term cong-state))
    (t term)))
