@@ -34,14 +34,21 @@
 
 ;; Constants
 
-(defvar *dfa-true*  (mk-dfa-ptr (dfa-true)))
-(defvar *dfa-false* (mk-dfa-ptr (dfa-false)))
+(let ((dfa-true-val nil))
+  (defun dfa-true-val ()
+    (or dfa-true-val
+	(setq dfa-true-val (mk-dfa-ptr (dfa-true))))))
+
+(let ((dfa-false-val nil))
+  (defun dfa-false-val ()
+    (or dfa-false-val
+	(setq dfa-false-val (mk-dfa-ptr (dfa-false))))))
 
 (defun dfa-true? (p)
-  (dfa-ptr= p *dfa-true*))
+  (dfa-ptr= p (dfa-true-val)))
 
 (defun dfa-false? (p)
-  (dfa-ptr= p *dfa-false*))
+  (dfa-ptr= p (dfa-false-val)))
 
 ;; Variable
 
@@ -88,7 +95,7 @@
 (defun dfa-implication (p1 p2) (dfa-cross-product p1 p2 *IMPLmode*))
 
 (defun dfa-equivalence (p1 p2)
-  (if (dfa-ptr= p1 p2) *dfa-true*
+  (if (dfa-ptr= p1 p2) (dfa-true-val)
     (dfa-cross-product p1 p2 *BIMPLmode*)))
 
 (defun dfa-ite (c p1 p2)
@@ -100,18 +107,18 @@
 	     (if (null l) acc
 	       (let ((a (car l)))
 		 (if (dfa-false? a)
-		     (return-from dfa-conjunction* *dfa-false*)
+		     (return-from dfa-conjunction* (dfa-false-val))
 		   (loop* (cdr l) (dfa-conjunction acc a)))))))
-    (loop* as *dfa-true*)))
+    (loop* as (dfa-true-val))))
 
 (defun dfa-disjunction* (as)
   (labels ((loop* (l acc)
 	     (if (null l) acc
 	       (let ((a (car l)))
 		 (if (dfa-true? a)
-		     (return-from dfa-disjunction* *dfa-true*)
+		     (return-from dfa-disjunction* (dfa-true-val))
 		   (loop* (cdr l) (dfa-disjunction acc a)))))))
-    (loop* as *dfa-false*)))
+    (loop* as (dfa-false-val))))
 
 (defun dfa-exists2 (i a &optional b)
   (let ((a1 (if (null b) a (dfa-conjunction b a))))
