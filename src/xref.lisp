@@ -273,16 +273,16 @@
 (defmethod generate-xref ((b bind-decl))
   (generate-xref (type b)))
 
-(defmethod generate-xref ((p projection-expr))
+(defmethod generate-xref ((e projection-expr))
   (generate-xref (actuals e)))
 
-(defmethod generate-xref ((p injection-expr))
+(defmethod generate-xref ((e injection-expr))
   (generate-xref (actuals e)))
 
-(defmethod generate-xref ((p injection?-expr))
+(defmethod generate-xref ((e injection?-expr))
   (generate-xref (actuals e)))
 
-(defmethod generate-xref ((p extraction-expr))
+(defmethod generate-xref ((e extraction-expr))
   (generate-xref (actuals e)))
 
 (defmethod generate-xref ((n field-name-expr))
