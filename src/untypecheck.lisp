@@ -201,8 +201,8 @@
 (defmethod untypecheck-theory ((decl type-def-decl))
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (type-expr decl))
-  (when (contains te)
-    (untypecheck-theory (contains te))))
+  (when (contains decl)
+    (untypecheck-theory (contains decl))))
 
 ;; var-decl is a typed-declaration
 
