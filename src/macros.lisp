@@ -186,17 +186,12 @@
 	(curdir (gentemp)))
     `(let ((,dir (directory-p (libref-to-pathname ,lib-ref))))
       (if (pathnamep ,dir)
-	  (let ((,curdir (working-directory))
-		(*default-pathname-defaults* *default-pathname-defaults*)
+	  (let ((*default-pathname-defaults* *default-pathname-defaults*)
 		(*pvs-context-path* nil)
 		(*pvs-context* nil))
-	    (unwind-protect
-		 (progn (set-working-directory ,dir)
-			(setq *pvs-context-path*
-			      (shortpath (working-directory)))
-			(setq *default-pathname-defaults* *pvs-context-path*)
-			,@forms)
-	      (set-working-directory ,curdir)))
+	    (setq *pvs-context-path* (shortpath ,dir))
+	    (setq *default-pathname-defaults* *pvs-context-path*)
+	    ,@forms)
 	  (pvs-message "Library ~a does not exist" ,dir)))))
 
 (defmacro add-to-alist (key entry alist)
