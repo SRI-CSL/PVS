@@ -182,6 +182,7 @@
       T))
 
 (defun makeskoconst (id type context)
+  (setf (declarations-hash context) (copy (declarations-hash context)))
   (put-decl (make-instance
 	     'skolem-const-decl
 	     'id (id id)
