@@ -415,15 +415,12 @@
 	       (unwind-protect
 		   (progn
 		     (dolist (ce (pvs-context-entries))
-		       (typecheck-file (ce-file ce)))
+		       (typecheck-file (ce-file ce) nil nil nil t))
 		     (save-context)
 		     (maphash
 		      #'(lambda (id th)
 			  (cond ((typechecked? th)
-				 (unless (library-datatype-or-theory? th)
-				   (if (module? th)
-				       (change-class th 'library-theory)
-				       (change-class th 'library-datatype)))
+				 (change-to-library-class th)
 				 (setf (lib-ref th) lib-ref)
 				 (update-prelude-library-context th)
 				 (when (filename th)
@@ -556,9 +553,7 @@
 			   (dolist (th theories)
 			     (when (typechecked? th)
 			       (unless (library-datatype-or-theory? th)
-				 (if (typep th 'module)
-				     (change-class th 'library-theory)
-				     (change-class th 'library-datatype))
+				 (change-to-library-class th)
 				 (setf (all-imported-theories th) 'unbound))
 			       (unless (and (lib-ref th)
 					    (file-equal
@@ -614,7 +609,7 @@
 		(if filename
 		    (unwind-protect
 			(multiple-value-bind (theories changed)
-			    (typecheck-file filename)
+			    (typecheck-file filename nil nil nil t)
 			  (setq changed-theories changed)
 			  (let ((theory (find theory-name theories
 					      :test #'same-id)))
@@ -627,9 +622,7 @@
 					(declare (ignore id))
 					(when (typechecked? th)
 					  (unless (library-datatype-or-theory? th)
-					    (if (typep th 'module)
-						(change-class th 'library-theory)
-						(change-class th 'library-datatype)))
+					    (change-to-library-class th))
 					  (setf (lib-ref th) lib-ref)))
 				    *pvs-modules*)
 				   (setq value theory))
@@ -669,7 +662,7 @@
 				    prefiles)
 				   (t *pvs-files*))))
 	   (if (generated-by th)
-	       (let ((gth (get-theory (generated-by th))))
+	       (let ((gth (get-theory* (generated-by th) lib)))
 		 (and gth
 		      (parsed? gth)))
 	       (and (filename th)
@@ -1003,7 +996,7 @@
 			((char= (char lib-ref 0) #\.)
 			 (namestring
 			  (merge-pathnames lib-ref
-					   *pvs-current-context-path*)))
+					   *pvs-context-path*)))
 			(t 
 			 ;; Otherwise it's a PVS library ref
 			 ;; (e.g., finite_sets) in the PVS_LIBRARY_PATH
@@ -1123,3 +1116,19 @@
 
 (defun libref-directory (pvs-file-string)
   (subseq pvs-file-string 0 (1+ (position #\/ pvs-file-string :from-end t))))
+
+(defmethod change-to-library-class (th)
+  (typecase th
+    (library-datatype-or-theory th)
+    (rectype-theory
+     (change-class th 'library-rectype-theory))
+    (module
+     (change-class th 'library-theory))
+    (datatype-with-subtypes
+     (change-class th 'library-datatype-with-subtypes))
+    (datatype
+     (change-class th 'library-datatype))
+    (codatatype-with-subtypes
+     (change-class th 'library-codatatype-with-subtypes))
+    (codatatype
+     (change-class th 'library-codatatype))))
