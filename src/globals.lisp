@@ -23,7 +23,7 @@
     "src/prover/groundeval" "src/WS1S/lisp"))
 
 (defparameter *pvs-version* "2.3 Alpha")
-(defparameter *binfile-version* 12)
+(defparameter *binfile-version* 13)
 
 (defparameter *context-name* ".pvscontext")
 
