@@ -18,14 +18,9 @@
 
 (defparameter *prelude-filename* "prelude.pvs")
 
-(defvar *typecheck-tables* (make-pvs-tables))
-(defvar *prover-tables* (make-pvs-tables))
-
 (defun load-prelude ()
   (setq sbrt::*disable-caching* t)
   (setq *pvs-context* nil)
-  (reset-pvs-tables *typecheck-tables*)
-  (setq *pvs-global-tables* (list *typecheck-tables*))
   (setq *prelude-names* nil
 	*boolean* nil
 	*number* nil
