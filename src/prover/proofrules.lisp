@@ -1488,12 +1488,14 @@ which should be fully instantiated. Please supply actual parameters.")
 	   ((resolve pc-name 'expr nil)
 	    (format-if "~%Error: ~a is already declared." name)
 	    (values 'X nil nil))
-	   (t (put-decl (make-instance
-			   'skolem-const-decl
-			 'id name
-			 'type (type expr)
-			 'module (module context))
-		       (local-proof-decls context))
+	   (t (setf (declarations-hash context)
+		    (copy (declarations-hash context)))
+	      (put-decl (make-instance
+			    'skolem-const-decl
+			  'id name
+			  'type (type expr)
+			  'module (module context))
+			(declarations-hash context))
 	      (let* ((name (typecheck (pc-parse name 'expr)
 			     :tccs 'ALL
 			     :context context))
