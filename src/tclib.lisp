@@ -503,32 +503,30 @@
 		(let ((path (probe-file (pvs-file-path th))))
 		  (parsed?* path)))))))
 
-(defun remove-prelude-library (lib-path)
-  (multiple-value-bind (lib-ref err-msg)
-      (pathname-to-libref lib-path)
-    (if err-msg
-	(pvs-message err-msg)
-	(let ((libhash (gethash lib-ref *prelude-libraries*)))
-	  (cond (libhash
-		 (remhash lib-ref *prelude-libraries*)
-		 (maphash #'(lambda (id theory)
-			      (declare (ignore id))
-			      (setf *prelude-libraries-uselist*
-				    (delete (assq theory
-						  *prelude-libraries-uselist*)
-					    *prelude-libraries-uselist*)))
-			  (cadr libhash))
-		 (setq *pvs-context-changed* t)
-		 (reset-context)
-		 (pvs-message "Library ~a has been removed, and the context reset"
-		   lib-path))
-		(t (pvs-message "Library ~a is not loaded" lib-path)))))))
+(defun remove-prelude-library (lib-ref)
+  (let ((libhash (gethash lib-ref *prelude-libraries*)))
+    (cond (libhash
+	   (remhash lib-ref *prelude-libraries*)
+	   (maphash #'(lambda (id theory)
+			(declare (ignore id))
+			(setf *prelude-libraries-uselist*
+			      (delete (assq theory
+					    *prelude-libraries-uselist*)
+				      *prelude-libraries-uselist*)))
+		    (cadr libhash))
+	   (setq *pvs-context-changed* t)
+	   (reset-context)
+	   (setf (cadr *pvs-context*)
+		 (remove lib-ref (cadr *pvs-context*) :test #'string=))
+	   (pvs-message "Library ~a has been removed, and the context reset"
+	     lib-ref))
+	  (t (pvs-message "Library ~a is not loaded" lib-ref)))))
 
 (defun prelude-libraries ()
   (let ((libs nil))
     (maphash #'(lambda (lib theories)
 		 (declare (ignore theories))
-		 (push (shortname lib) libs))
+		 (push lib libs))
 	     *prelude-libraries*)
     libs))
 
