@@ -240,6 +240,7 @@
      :source-pathname "src/"
      :components ((:file "macros")
 		  (:file "prover/checker-macros")
+		  (:file "prover/decision-procedure-interface")
 		  (:file "groundeval/eval-macros")
 		  (:file "globals")
 		  (:file "optimize")
