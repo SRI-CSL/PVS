@@ -372,4 +372,12 @@
 		  (:file "signature")
 		  (:file "pvs2dfa")
 		  (:file "ws1s-strategy")))
+    (:module inst-by-unif
+     :source-pathname "src/inst-by-unif"
+     :components ((:file "utils")
+		  (:file "lvars-and-skofuns")
+		  (:file "translate-to-dc-lvars")
+		  (:file "unify")
+		  (:file "herbrandize")
+		  (:file "inst-by-unif")))
    ))
