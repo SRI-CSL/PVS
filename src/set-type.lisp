@@ -174,7 +174,10 @@ required a context.")
              ~%     ~a~%  to ~a"
       (if (or *in-checker* *in-evaluator*)
 	  (if *in-typechecker*
-	      (format nil "input ~s" (unparse *in-typechecker* :string t))
+	      (format nil "input ~s"
+		(if (stringp *in-typechecker*)
+		    *in-typechecker*
+		    (unparse *in-typechecker* :string t)))
 	      "input")
 	  (format nil "declaration ~a"
 	    (if (typep (declaration *current-context*) 'declaration)
