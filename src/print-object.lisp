@@ -67,12 +67,6 @@ print object produces an error, and won't allow inspection of the object.")
       (let ((*no-comments* t))
 	(unparse expr :stream stream))))
 
-(defmethod print-object ((expr string-expr) stream)
-  (if *debugging-print-object*
-      (call-next-method)
-      (let ((*no-comments* t))
-	(format stream "<String-expr ~a>" (unparse expr :string t)))))
-
 (defmethod print-object ((te type-expr) stream)
   (if *debugging-print-object*
       (call-next-method)
