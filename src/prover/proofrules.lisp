@@ -968,6 +968,10 @@
 			   (cons x (internal-pc-typecheck yex
 				     :context *current-context*
 				     :uniquely? nil)))))
+	  (*conversions-allowed* (loop for (nil . y) in pre-alist
+				       as (nil . yex) in subalist
+				       when (stringp y)
+				       collect yex))
 	  ;;tccs ALL is checked in tc-alist below.
 	  )
      (cond ((not (listp substs))
@@ -1078,15 +1082,17 @@ or supply more substitutions."
 ;		 'rule-part (typepred-fun expr)
 ;		 'rule-input `(lemma ,expr)))
 
-(defun typepred-fun (exprs all?)
+(defun typepred-fun (exprs all? &optional implicit?)
   #'(lambda (ps)
       (if (listp exprs)
-	  (typepred-step exprs all? ps)
-	  (typepred-step (list exprs) all? ps))))
+	  (typepred-step exprs all? implicit? ps)
+	  (typepred-step (list exprs) all? implicit? ps))))
 
-(defun typepred-step (exprs all? ps);;(6.18.96) added all?
-  (let ((preds (loop for expr in exprs
-		     append (collect-typepreds expr ps all?))))
+(defun typepred-step (exprs all? implicit? ps);;(2004-09-14) added implicit?
+  (let ((preds (if implicit?
+		   (collect-implicit-type-constraints exprs ps all?)
+		   (loop for expr in exprs
+			 append (collect-typepreds expr ps all?)))))
     (if (null preds)
 	(values 'X nil nil)
 	(let* ((new-sforms
