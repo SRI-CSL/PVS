@@ -20,8 +20,7 @@
 					   "sets.intersection"
 					   "sets.difference"
 					   "sets.emptyset"))))
-    (then* (skolem!)
-	   (install-rewrites :defs defs
+    (then* (install-rewrites :defs defs
 			     :theories theories
 			     :rewrites rewrites
 			     :exclude all-exclude)
@@ -30,15 +29,27 @@
 	   (assert :cases-rewrite? T)
 	   (skip-msg "WS1S decision procedure..." :force-printing? T)
 	   (ws1s-simp fnums examples automaton traces)))
-  "Expands definitions in the formulas specified by FNUMS and tries to decide then
+  "Expands definitions in the formulas specified by FNUMS and tries to decide them
    using the WS1S decision procedures (based on the Mona package developed
-   at BRICS (http://www.brics.dk/~mona). FNUMS restricts the focus of the
-   strategy to the thereby specified sequent formulas. If EXAMPLES is true a witness
+   at BRICS (http://www.brics.dk/~mona).
+
+   The supported fragment includes boolean expression, an arithmetic on the
+   natural numbers restricted to addition/subraction with/from a constant, and
+   operations on finite sets over the naturalas like union, intersection, and
+   difference.  Predicates include equality, disequality, subset?, and membership
+   in the form P(i), and there is quantification over the booleans, the natural
+   numbers, finite sets of naturals, and predicate subtypes of the aforementioned
+   types built from formulas in the set just being described. Furthermore,
+   this strategy tries to apply boolean abstraction for non-WS1S formulas, and
+   natural numbers, and sets may also be described using the 'the' operator.
+
+   FNUMS restricts the focus of the
+   strategy to the thereby specified sequent formulas. If EXAMPLES is true, a witness
    and a counterexample are being displayed if these formulas turn out to be satisfiable
    but not valid, setting the flag AUTOMATON causes the strategy to display the
    constructed automaton, TRACES displays a trace version of the witness.
    For a description of the remaining flags DEFS, THEORIES, REWRITES, and
-   EXCLUDE see (help install-rewrites)"
+   EXCLUDE see (help install-rewrites)."
   "By rewriting and WS1S decision procedure")
 
 (addrule 'ws1s-simp nil ((fnums *) (examples T) (automaton nil) (traces nil))
@@ -125,6 +136,7 @@
 	 (format t "~%is neither valid nor unsatisfiable." fmla))))
 
 (defun ws1s-example-output (str example length num types fvars)
+  (declare (special *output-examples*))
   (when (and *output-examples* (not (eq example :null)) (> num 0))
     (format t "~2%~a~%" str)
     (loop for i from 0 below num do
@@ -157,6 +169,7 @@
     (loop* 0 (empty-fset-of-nats))))
 
 (defun ws1s-automaton-output (p num fvars offsets)
+  (declare (special *output-automaton*))
   (when *output-automaton*
     (format t "~2%Free vars:~2%" fvars)
     (dfa-print (address p) num fvars offsets)
