@@ -11,7 +11,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 
 ;; 
-;; (compile-file "/project/pvs/pvs2.2/BDD/mu.lisp")(load"/project/pvs/pvs2.2/BDD/mu.fasl")(load"/project/pvs/pvs2.2/BDD/Linux/bdd/bdd.so")(load"/project/pvs/pvs2.2/BDD/Linux/mu/mu.so")
+;; (compile-file "/project/pvs/pvs2.2/BDD/mu.lisp")(load"/project/pvs/pvs2.2/BDD/mu.lisp")(load"/project/pvs/pvs2.2/BDD/bdd.lisp")(load"/project/pvs/pvs2.2/BDD/Linux/bdd/bdd.so")(load"/project/pvs/pvs2.2/BDD/Linux/mu/mu.so")
 
 (in-package 'pvs)  
 
@@ -74,7 +74,7 @@
 (ff:defforeign 'mu_mk_implies_term) ;; (fml1 fml2)
 (ff:defforeign 'mu_mk_xor_term) ;; (fml1 fml2)
 
-
+(ff:defforeign 'get_bdd_var_id) ;; (int)
 
 ;;;;;;;;;;;;;;;;;;;
 ;;;  Lists      ;;;
@@ -120,6 +120,8 @@
 
 
 (defun run-musimp (ps fnums dynamic-ordering?)
+ (bdd_init)
+ (mu_init)
   (let* ((*pvs-bdd-hash* (make-hash-table
 			  :hash-function 'pvs-sxhash :test 'tc-eq))
 	 (*bdd-pvs-hash* (make-hash-table))
@@ -142,25 +144,33 @@
 		  collect
 		  (cdr x)))))
 	 (mu-output (run-pvsmu mu-formula dynamic-ordering?))
-	 (list-of-conjuncts (translate-from-bdd-list  
+	 (list-of-conjuncts (mu-translate-from-bdd-list  
 			     (bdd_sum_of_cubes mu-output 1)))
          (lit-list (from-bdd-list-to-pvs-list list-of-conjuncts)))
+    (mu_quit)
+    (bdd_quit)
     (add-bdd-subgoals ps sforms lit-list remaining-sforms)
     )
   )
 
 ;;
-;; Initialization of hashtables with *true* and *false*
+;; Initialization of hashtables with *true* 
 ;; 
 
 (defun init-bdd-pvs-hash ()
  (setf (gethash *true* *bdd-pvs-hash*) *true*)
- (setf (gethash *false* *bdd-pvs-hash*) *false*)
+ (setf (gethash *false* *bdd-pvs-hash*) *false*) ;; not used
 )
 
 (defun init-hash-tables ()
  (init-bdd-pvs-hash)
+ (setq zozo *bdd-pvs-hash*)
 )
+
+;;
+;;
+;;
+
 
 ;;
 ;;
@@ -1230,16 +1240,16 @@
  (pvs-message (format nil "~d " bvarid))
  (let ((bvarname (format nil "b~a" bvarid)))
     (if *build-rel-var*  
-            (mu_mk_rel_var_dcl bvarname)
+            (mu_mk_rel_var_dcl (FF:STRING-TO-CHAR* bvarname))
           (if *build-access-var* 
-              (mu_check_bool_var bvarname)
-              (mu-make-bool-var bvarname))
-       ))
+              (mu_check_bool_var (FF:STRING-TO-CHAR* bvarname))
+              (mu-make-bool-var bvarname)
+       )))
 )
 
 
 (defun mu-make-bool-var (bvarname)
-  (mu_check_mk_bool_var bvarname)
+  (mu_check_mk_bool_var (FF:STRING-TO-CHAR* bvarname))
 )
 
 ;;
@@ -1425,3 +1435,41 @@
        (append_cont (car lisp-list) (from-lisp-list-to-c-list (cdr lisp-list))
   ))
 )
+
+;;
+;;
+;;
+;;
+
+
+(defun mu-translate-from-bdd-list (bddlist)
+  (let ((bdds (unless (zerop bddlist)
+		(mu-translate-from-bdd-list* (list_first bddlist)))))
+    (mapcar #'mu-translate-bdd-cube bdds)))
+
+(defun mu-translate-from-bdd-list* (bddlist &optional result)
+  (if (zerop bddlist)
+      (nreverse result)
+      (mu-translate-from-bdd-list*
+       (list_next bddlist)
+       (cons (elem_contents bddlist) result))))
+
+(defun mu-translate-bdd-cube (cube)
+  (cond ((or (bdd-void? cube)
+	     (bdd-x? cube))
+	 nil)
+	((bdd-term? cube)
+	 (list *true*))
+	(t (mu-translate-bdd-cube* cube))))
+
+(defun mu-translate-bdd-cube* (cube &optional result)
+  (if (bdd-term? cube)
+      (nreverse result)
+      (let ((bdd-t (bdd_cofactor_pos_ cube))
+	    (bdd-e (bdd_cofactor_neg_ cube))
+	    (varid (get_bdd_var_id cube)))
+	(cond ((bdd-0? bdd-e)
+	       (mu-translate-bdd-cube* bdd-t (cons varid result)))
+	      ((bdd-0? bdd-t)
+	       (translate-bdd-cube* bdd-e (cons (list varid) result)))
+	      (t (mu-translate-bdd-cube* bdd-t (cons varid result)))))))
