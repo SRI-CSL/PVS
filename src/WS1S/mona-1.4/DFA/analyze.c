@@ -245,3 +245,52 @@ void dfaAnalyze(DFA *dfa, int no_free_vars,
 		  no_free_vars, free_variables, offsets, types, treestyle);
   }
 }
+
+/* added -hr 7/01 */
+
+int dfaIsExample(DFA *a, int polarity)
+{
+  int i, j, min_dist = -1, minv;
+  int *dist, *prev;
+
+  dist = (int *) mem_alloc(a->ns * (sizeof(int))); /* distance from start */
+  prev = (int *) mem_alloc(a->ns * (sizeof(int))); /* previous in path */
+
+  automaton_bfs(a, dist, prev); /* breadth-first-search */
+  /* dist[a->s]==0 iff initial state not reachable on path of length >0 */
+
+  for (i = 0, minv = -1; i < a->ns; i++)
+    if (a->f[i] == polarity)
+      if ((minv == -1 || dist[i] < min_dist) && dist[i] >= 1) {
+	minv = i;
+	min_dist = dist[i];
+      }
+
+ 
+  if (min_dist == -1) { 
+    mem_free(dist);
+    mem_free(prev);
+    return 0;       /* there is no example */
+  }
+  else {
+    mem_free(dist);
+    mem_free(prev);
+    return 1;         /* there exists an example */
+  }
+}
+
+int dfaStatus(DFA *dfa)
+{
+  int isCounterexample;
+  int isSatisfyingexample;
+
+  isCounterexample = dfaIsExample(dfa, -1);
+  isSatisfyingexample = dfaIsExample(dfa, 1);
+
+  if (!isCounterexample && isSatisfyingexample)
+    return 1;     /* Formula is valid */
+  else if (!isSatisfyingexample)
+    return -1;    /* Formula is unsatisfiable */
+  else
+    return 0;     /* Formula is satisfiable but not valid */
+}
