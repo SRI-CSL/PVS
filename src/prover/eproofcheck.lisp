@@ -173,6 +173,7 @@
 (defvar *force-dp* nil)
 
 (defvar *dump-sequents-to-file* nil)
+(defvar *show-parens-in-proof* nil)
 
 (defmethod prove-decl ((decl formula-decl) &key strategy context)
   (ensure-default-proof decl)
@@ -2862,7 +2863,8 @@
   (let* ((*ps* ps)
 	 (*print-ancestor* (if *print-ancestor*
 			       *print-ancestor*
-			       (parent-proofstate *ps*))))
+			       (parent-proofstate *ps*)))
+	 (*pp-print-parens* *show-parens-in-proof*))
   (if *debugging-print-object*
       (call-next-method)
       (if (comment ps)
@@ -2877,7 +2879,8 @@
   (let* ((*ps* ps)
 	 (*print-ancestor* (if *print-ancestor*
 			       *print-ancestor*
-			       (parent-proofstate *ps*))))
+			       (parent-proofstate *ps*)))
+	 (*pp-print-parens* *show-parens-in-proof*))
   (if *debugging-print-object*
       (call-next-method)
       (format stream "~%~a (TCC):   ~%~a"  (label ps)
@@ -2916,7 +2919,8 @@
 (defmethod print-object ((sform s-formula) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "~a" (formula sform))))
+      (let ((*pp-print-parens* *show-parens-in-proof*))
+	(format stream "~a" (formula sform)))))
 
 
 (defun seq-formula (sform)
@@ -2960,7 +2964,8 @@
 (defmethod print-object ((sequent sequent) stream)
   (let ((par-sforms
 	 (when *print-ancestor*
-	   (s-forms (current-goal *print-ancestor*)))))
+	   (s-forms (current-goal *print-ancestor*))))
+	(*pp-print-parens* *show-parens-in-proof*))
     (cond (*debugging-print-object*
 	   (call-next-method))
 	  (t (let ((neg-s-forms (neg-s-forms sequent))
