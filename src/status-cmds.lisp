@@ -545,7 +545,7 @@
     (nreverse aproofs)))
 
 (defun theory-formula-alist (file)
-  (let* ((theories (cdr (gethash file *pvs-modules*)))
+  (let* ((theories (cdr (gethash file *pvs-files*)))
 	 (ce (unless theories (context-entry-of file))))
     (cond (theories
 	   (mapcar #'(lambda (th)
