@@ -5,11 +5,9 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Fri Oct 30 16:54:32 1998
 ;; Update Count    : 6
-;; Status          : Beta test
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -223,8 +221,10 @@
 		 (copy expr 'argument narg 'type ntype)))))))
 
 (defmethod substit* ((expr resolution) alist)
-  (lcopy expr
-    'module-instance (substit* (module-instance expr) alist)))
+  (let ((new-modinst (substit* (module-instance expr) alist)))
+    (if (eq new-modinst (module-instance expr))
+	expr
+	(make-resolution (declaration expr) new-modinst))))
 
 (defmethod substit* ((expr modname) alist)
   (lcopy expr 'actuals (substit* (actuals expr) alist)))
@@ -374,7 +374,8 @@
 	    (let ((cond (condition result))
 		  (then (then-part result))
 		  (else (else-part result)))
-	      (if (tc-eq cond *true*)
+	      (if (or (tc-eq cond *true*)
+		      (tc-eq then else))
 		  then
 		  (if (tc-eq cond *false*)
 		      else
@@ -480,7 +481,9 @@
   (let* ((newtype (substit* (type expr) alist))
 	 (newdtype (if (tc-eq (print-type (type expr))
 			      (declared-type expr))
-		       (declared-type expr)
+		       (if (eq (print-type (type expr)) (print-type newtype))
+			   (declared-type expr)
+			   (print-type newtype))
 		       (substit* (declared-type expr) alist))))
     (lcopy expr
       'type newtype
@@ -597,7 +600,7 @@
 (defmethod substit* ((expr selection) alist)
   (let ((new-bindings (make-new-bindings (args expr) alist (expression expr))))
     (lcopy expr
-      'constructor (constructor expr)
+      'constructor (substit* (constructor expr) alist)
       'args new-bindings
       'expression (substit* (expression expr)
 			    (nconc (pairlis (args expr)
