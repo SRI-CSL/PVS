@@ -1722,10 +1722,7 @@
 		    (id (current-theory))))
 	   (actuals (module-instance (resolution x))))
        (or (not *exclude-prelude-names*)
-	   (not (and (from-prelude? (declaration x))
-		     (or (null (actuals (module-instance (resolution x))))
-			 (eq (id (module-instance (resolution x)))
-			     '|equalities|)))))))
+	   (not (from-prelude? (declaration x))))))
 
 (defmethod full-name? ((x type-expr))
   (if (print-type x)
@@ -2197,6 +2194,11 @@
     (or top-type
 	(setf top-type (find-supertype supertype)))))
 
+(defmethod find-supertype ((te expr-as-type))
+  (if (supertype te)
+      (call-next-method)
+      (domain (type (expr te)))))
+
 (defmethod find-supertype ((te dep-binding))
   (with-slots (type) te
     (find-supertype type)))
@@ -2306,7 +2308,7 @@ space")
   (if (or *pseudo-normalizing*		; Don't allow recursion
 	  (typep (declaration *current-context*)
 		 '(or adt-constructor-decl adt-recognizer-decl
-		      adt-accessor-decl))
+		      adt-accessor-decl adt-def-decl))
 	  (not (fully-instantiated? expr)))
       expr
       (let* ((fvars (freevars expr))
@@ -2491,12 +2493,14 @@ space")
 		  (when dconv
 		    (make!-application dconv davar))))
 	 (ratype (if (dep-binding? (domain atype))
-		     (substit (range atype) (acons (domain atype) arg nil))
+		     (when arg
+		       (substit (range atype) (acons (domain atype) arg nil)))
 		     (range atype)))
 	 (retype (if (dep-binding? (domain etype))
 		     (substit (range etype) (acons (domain etype) davar nil))
 		     (range etype)))
-	 (rconv (unless (tc-eq ratype retype)
+	 (rconv (unless (or (null ratype)
+			    (tc-eq ratype retype))
 		  ;; covariant
 		  (car (find-conversions-for ratype retype))))
 	 (fconvs (when arg
