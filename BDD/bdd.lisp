@@ -235,17 +235,20 @@
       (run-bddsimp ps fnums dynamic-ordering? irredundant?)))
 
 (defun run-bddsimp (ps fnums dynamic-ordering? irredundant?)
-  (bdd_init)
-  (if dynamic-ordering?
-      (set_bdd_do_dynamic_ordering 1)
-      (set_bdd_do_dynamic_ordering 0))
   (let* ((sforms (s-forms (current-goal ps)))
-	 (selected-sforms (select-seq sforms fnums))
-	 (remaining-sforms (delete-seq sforms fnums))
-	 (conjuncts (bddsimp-conjuncts selected-sforms irredundant?)))
-    (multiple-value-prog1
-     (add-bdd-subgoals ps sforms conjuncts remaining-sforms)
-     (bdd_quit))))
+	 (selected-sforms (select-seq sforms fnums)))
+    (cond ((null selected-sforms)
+	   (values 'X nil nil))
+	  (t (bdd_init)
+	     (if dynamic-ordering?
+		 (set_bdd_do_dynamic_ordering 1)
+		 (set_bdd_do_dynamic_ordering 0))
+	     (let* ((remaining-sforms (delete-seq sforms fnums))
+		    (conjuncts (bddsimp-conjuncts selected-sforms
+						  irredundant?)))
+	       (multiple-value-prog1
+		(add-bdd-subgoals ps sforms conjuncts remaining-sforms)
+		(bdd_quit)))))))
 
 (defun bddsimp-conjuncts (selected-sforms irredundant?)
   (let* ((*pvs-bdd-hash* (make-hash-table
