@@ -2556,17 +2556,81 @@ where db is to replace db1 and db2")
 			  #'(lambda (ex) (declare (ignore ex)) nvar)
 			  #'(lambda (ex) (tc-eq ex (car predicates))))))))
 
-(defun lift-subtype-predicates (type)
-  (lift-subtype-predicates* type))
+;; lifts dependent subtype predicates to the top, e.g.,
+;; [x: int, {y:int | y < x}] ==> {z: [int, int] | z`2 < z`1}
+;; [# x: int, y: {y:int | y < x} #] ==> {r: [# x, y: int #] | r`y < r`x}
+;;   recursive-types?
+;; We cannot lift function types, nor dependencies involving the domain of a
+;; function type, e.g., [x: int, [below(x) -> int]].
+;; In these cases we return the type lifted as much as possible, e.g.,
+;; [x: int, {y:int | y < x}, [below(x) -> int]] ==>
+;;     {z: [x: int, int, [below(x) -> int]] | z`2 < z`1}
+;; Returns two values: the lifted type, and a flag indicating whether the
+;; lifting was complete (no dependencies left in the result).
+
+(defvar *dependencies-removed*)
+
+(defun lift-dependent-subtype-predicates (type)
+  (let ((*dependencies-removed* t))
+    (multiple-value-bind (lifted-type pred)
+	(lift-dependent-subtype-predicates* type)
+      (values (mk-subtype lifted-type pred)
+	      *dependencies-removed*))))
+
+(defmethod lift-dependent-subtype-predicates* :around (te)
+  (if (some #'(lambda (x) (dep-binding? (declaration x))) (freevars te))
+      (call-next-method)
+      (values te nil)))
 
 ;;; [{x: T1 | p1(x)}, ... , {x: Tn | pn(x)} ==>
 ;;;   {z: [T1, ..., Tn] | p1(z`1) & ... & pn(z`n)}
-(defmethod lift-subtype-predicates* ((te tupletype))
-  (or (lift-subtype-predicates-tuptype (types te))
-      te))
+(defmethod lift-dependent-subtype-predicates* ((te tupletype))
+  (lift-dependent-subtype-predicates-tuptype (types te)))
 
-;; (defun lift-subtype-predicates-tuptype (types &optional stypes preds)
-;;   (if (null types)
-;;       (unless (null pred)
-;; 	(mk-subtype (mk-tupletype types)
-;; 	  (preds
+(defun lift-dependent-subtype-predicates-tuptype (types &optional stypes preds)
+  (if (null types)
+      (if (null preds)
+	  (mk-tupletype (nreverse stypes))
+	  (let* ((tuptype (mk-tuptype (nreverse stypes)))
+		 (vid (make-new-variable '|z| preds))
+		 (vb (make-bind-decl vid tuptype))
+		 (var (make-variable-expr vb))
+		 (tpred (foo preds)))
+	    (values tuptype tpred)))
+      (multiple-value-bind (ltype pred)
+	  (lift-dependent-subtype-predicates* (car types))
+	(lift-dependent-subtype-predicates-tuptype
+	 (cdr types)
+	 (cons ltype stypes)
+	 (cons pred preds)))))
+
+(defmethod lift-dependent-subtype-predicates* ((te recordtype))
+  (lift-dependent-subtype-predicates-tuptype (fields te)))
+
+(defun lift-dependent-subtype-predicates-tuptype (fields &optional sfields preds)
+  (if (null types)
+      (if (null preds)
+	  (mk-recordtype (nreverse sfields))
+	  (let* ((rectype (mk-recordtype (nreverse sfields)))
+		 (vid (make-new-variable '|r| preds))
+		 (vb (make-bind-decl vid rectype))
+		 (var (make-variable-expr vb))
+		 (rpred (foo preds)))
+	    (values rectype rpred)))
+      (multiple-value-bind (l pred)
+	  (lift-dependent-subtype-predicates* (car types))
+	(lift-dependent-subtype-predicates-tuptype
+	 (cdr types)
+	 (cons ltype stypes)
+	 (cons pred preds)))))
+
+(defmethod lift-dependent-subtype-predicates* ((te subtype))
+  (cond ((some #'(lambda (x) (dep-binding? (declaration x)))
+	       (freevars (supertype te)))
+	 (multiple-value-bind (ltype pred)
+	     (lift-dependent-subtype-predicates* (supertype te))
+	   (values ltype (conjoin-predicates pred (predicate te)))))
+	((some #'(lambda (x) (dep-binding? (declaration x)))
+	       (freevars (predicate te)))
+	 (values (supertype te) (predicate te)))
+	(t (values te nil))))
