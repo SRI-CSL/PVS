@@ -854,7 +854,7 @@
     (add-preceding-importings prev-decls th thname)))
 
 (defmethod update-context-importing-for-mapped-tcc ((decl assuming-tcc))
-  (let* ((thname (theory-name (generated-by decl)))
+  (let* ((thname (theory-instance decl))
 	 (th (module (generating-assumption decl)))
 	 (thdecls (all-decls th))
 	 (prev-decls (ldiff thdecls (memq decl thdecls))))
