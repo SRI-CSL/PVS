@@ -321,6 +321,10 @@
   (assert (and (listp types) (cdr types)))
   (make-instance 'tupletype 'types types))
 
+(defun mk-cotupletype (types)
+  (assert (and (listp types) (cdr types)))
+  (make-instance 'cotupletype 'types types))
+
 (defun mk-recordtype (field-decls dependent?)
   (make-instance 'recordtype
     'fields (sort-fields field-decls dependent?)
@@ -1517,14 +1521,16 @@
 	     'argument (make!-arg-tuple-expr ex1 ex2)
 	     'type *boolean*))))
 
-(defun make!-conjunction* (exprs &optional conj)
-  (cond ((null exprs)
-	 (or conj *true*))
-	((null conj)
-	 (make!-conjunction* (cdr exprs) (car exprs)))
-	(t (make!-conjunction*
-	    (cdr exprs)
-	    (make!-conjunction conj (car exprs))))))
+
+(defun make!-conjunction* (exprs)
+  (make!-conjunction** (reverse exprs) *true*))
+
+(defun make!-conjunction** (exprs conj)
+  (if (null exprs)
+      conj
+      (make!-conjunction**
+       (cdr exprs)
+       (make!-conjunction (car exprs) conj))))
 
 (defun make!-disjunction (ex1 ex2)
   (assert (and (type ex1) (type ex2)
@@ -1542,14 +1548,15 @@
 	     'argument (make!-arg-tuple-expr ex1 ex2)
 	     'type *boolean*))))
 
-(defun make!-disjunction* (exprs &optional disj)
-  (cond ((null exprs)
-	 (or disj *false*))
-	((null disj)
-	 (make!-disjunction* (cdr exprs) (car exprs)))
-	(t (make!-disjunction*
-	    (cdr exprs)
-	    (make!-disjunction disj (car exprs))))))
+(defun make!-disjunction* (exprs)
+  (make!-disjunction** (reverse exprs) *false*))
+
+(defun make!-disjunction** (exprs disj)
+  (if (null exprs)
+      disj
+      (make!-disjunction**
+       (cdr exprs)
+       (make!-disjunction (car exprs) disj))))
 
 (defun make!-implication (ex1 ex2)
   (assert (and (type ex1) (type ex2)
