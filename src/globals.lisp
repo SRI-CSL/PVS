@@ -232,12 +232,6 @@ that gensubst does not try to pseudo-normalize inappropriately.")
 
 ;;; Prover-related variables
 
-;;; Used in type-constraints to control which type-constraints are ignored
-;;; Set by ignored-type-constraints to (list *integer* *rational* *real*)
-;;; Including *naturalnumbers* leads to problems.
-
-(defvar *ignored-type-constraints* nil)
-
 (defvar *context-modified* nil
   "Set by add-declaration and modify-declaration to indicate that the
 current proof is suspect.")
