@@ -288,8 +288,9 @@
       (type-value type-decl)))
   
 (defmethod all-usings ((obj recursive-type))
-  (cons (list (adt-theory obj) (mk-modname (id (adt-theory obj))))
-	(all-usings (adt-theory obj))))
+  (when (adt-theory obj)
+    (cons (list (adt-theory obj) (mk-modname (id (adt-theory obj))))
+	  (all-usings (adt-theory obj)))))
 
 (defmethod store-object* :around ((obj context))
   (reserve-space 14
