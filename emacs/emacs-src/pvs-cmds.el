@@ -1670,21 +1670,21 @@ processing other commands."
       (switch-to-buffer-other-window "PVS Status")
       (error "The PVS Status buffer does not exist")))
 
-(defun change-declaration-name (from-name to-id root-theory)
-  "Changes the specified declaration name from from-name to to-name"
-  (interactive (list (complete-declaration-name "Change name: ")
-		     (complete-symbol "To id: ")
-		     (complete-theory-name "Root Theory: ")))
-  (unless (interactive-p) (pvs-collect-theories))
-  (let ((change-info (pvs-send-file-and-wait
-		      (format "(change-declaration-name \"%s\" \"%s\" \"%s\")"
-			  from-name to-id root-theory)
-		      nil nil 'list)))
-    (when change-info
-      (pop-to-buffer "Change Info")
-      (insert change-info)
-      (goto-char (point-min))
-      (toggle-read-only))))
+;; (defun change-declaration-name (from-name to-id root-theory)
+;;   "Changes the specified declaration name from from-name to to-name"
+;;   (interactive (list (complete-declaration-name "Change name: ")
+;; 		     (complete-symbol "To id: ")
+;; 		     (complete-theory-name "Root Theory: ")))
+;;   (unless (interactive-p) (pvs-collect-theories))
+;;   (let ((change-info (pvs-send-file-and-wait
+;; 		      (format "(change-declaration-name \"%s\" \"%s\" \"%s\")"
+;; 			  from-name to-id root-theory)
+;; 		      nil nil 'list)))
+;;     (when change-info
+;;       (pop-to-buffer "Change Info")
+;;       (insert change-info)
+;;       (goto-char (point-min))
+;;       (toggle-read-only))))
 
 (defpvs x-theory-hierarchy x-display (theoryname)
   "Show the theory hierarchy starting from THEORYNAME
