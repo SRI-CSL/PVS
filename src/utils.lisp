@@ -593,7 +593,7 @@
 
 (defmethod boolean-when-expr? ((expr application))
   (with-slots ((op operator)) expr
-    (boolean-op? op '(when))))
+    (boolean-op? op '(WHEN))))
 
 (defmethod boolean-when-expr? (expr)
   (declare (ignore expr))
@@ -2289,11 +2289,10 @@ space")
 	     result)))))
 
 (defun compatible-conversion (conversion type)
-  (let* (;;(theory (module conversion))
-	 (ctype (find-supertype (type conversion)))
-	 (fmls (free-params ctype) ;(formals-sans-usings theory)
-	       )
-	 (theory (when fmls (module (car fmls)))))
+  (let* ((ctype (find-supertype (type conversion)))
+	 (fparams (free-params ctype))
+	 (theory (when fparams (module (car fparams))))
+	 (fmls (when theory (formals-sans-usings theory))))
     (if (and fmls
 	     (not (eq theory (current-theory)))
 	     (not (fully-instantiated? ctype)))
@@ -2320,13 +2319,12 @@ space")
 
 (defun subtypes-satisfied? (actuals formals &optional alist)
   (or (notany #'(lambda (fm) (typep fm 'formal-subtype-decl)) formals)
-      (with-no-type-errors
-       (multiple-value-bind (nfml nalist)
-	   (subst-actuals-in-next-formal (car actuals) (car formals) alist)
-	 (and (or (not (typep nfml 'formal-subtype-decl))
-		  (subtype-of? (type-canon (type-value (car actuals)))
-			       (type-canon (type-value nfml))))
-	      (subtypes-satisfied? (cdr actuals) (cdr formals) nalist))))))
+      (multiple-value-bind (nfml nalist)
+	  (subst-actuals-in-next-formal (car actuals) (car formals) alist)
+	(and (or (not (typep nfml 'formal-subtype-decl))
+		 (subtype-of? (type-canon (type-value (car actuals)))
+			      (type-canon (type-value nfml))))
+	     (subtypes-satisfied? (cdr actuals) (cdr formals) nalist)))))
 
 (defun check-conversion (name)
   (let ((type (find-supertype (type name))))
@@ -2361,10 +2359,9 @@ space")
 
 (defun compatible-k-conversion (conversion type)
   (let* ((ctype (range (find-supertype (type conversion))))
-	 ;;(ctheory (module (declaration (name conversion))))
-	 (fmls (free-params ctype) ;;(formals-sans-usings ctheory)
-	       )
-	 (ctheory (when fmls (module (car fmls)))))
+	 (fparams (free-params ctype))
+	 (ctheory (when fparams (module (car fparams))))
+	 (fmls (formals-sans-usings ctheory)))
     (if (and fmls
 	     (not (fully-instantiated? ctype)))
 	(let ((bindings (tc-match type ctype (mapcar #'list fmls))))
@@ -2954,12 +2951,12 @@ space")
   (not (variable? expr)))
 
 (defmethod constant? ((expr projection-expr))
-  T)
+  t)
 
 (defmethod constant? ((expr field-assignment-arg))
-  T)
+  t)
 
-(defmethod constant? ((expr T))
+(defmethod constant? ((expr t))
   nil)
 
 (defmethod variable? ((expr binding))
@@ -2973,7 +2970,7 @@ space")
 (defmethod variable? ((expr field-assignment-arg))
   nil)
 
-(defmethod variable? ((expr T))
+(defmethod variable? ((expr t))
   nil)
 
 
@@ -3146,7 +3143,7 @@ space")
       (setf (proofs fdecl) (list prinfo))
       (setf (default-proof fdecl) prinfo)
       (setf (decision-procedure-used prinfo)
-	    (if (getf plist 'new-ground?) 'CYRLUK 'SHOSTAK)))))
+	    (if (getf plist 'new-ground?) 'cyrluk 'shostak)))))
 
 (defmethod justification ((decl formula-decl))
   (when (proofs decl)
@@ -3171,8 +3168,8 @@ space")
   (cond ((proofs decl)
 	 (ensure-default-proof decl)
 	 (or (decision-procedure-used (default-proof decl))
-	     'SHOSTAK))
-	(t 'SHOSTAK)))
+	     'shostak))
+	(t 'shostak)))
 
 (defmethod (setf decision-procedure-used) (dp (decl formula-decl))
   (ensure-default-proof decl)
