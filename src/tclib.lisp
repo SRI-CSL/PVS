@@ -227,13 +227,23 @@
 ;;; load-prelude-libraries is called from restore-context
 (defun load-prelude-libraries (lib-refs)
   (dolist (lib-ref lib-refs)
-    (load-prelude-library (libref-to-pathname lib-ref) t)))
+    (multiple-value-bind (lib-path err-msg)
+	(libref-to-pathname lib-ref)
+      (if lib-path
+	  (load-prelude-library lib-path t)
+	  (pvs-error err-msg
+	    (format nil
+		"Library reference ~a not found~
+                 ~%  check the PVS_LIBRARY_PATH environment variable and restart PVS,~
+                 ~%  or run M-x remove-prelude-library and remove this library."
+	      lib-ref))))))
 
 ;;; This is called from the Emacs load-prelude-library command as well.
 (defun load-prelude-library (lib-path &optional restoring?)
   (multiple-value-bind (lib-ref err-msg)
       (pathname-to-libref lib-path)
     (cond (err-msg
+	   (break)
 	   (pvs-message err-msg))
 	  ((prelude-library-loaded? lib-ref)
 	   (pvs-message "Library ~a is already loaded." lib-path))
@@ -894,10 +904,9 @@
 		      ;; Prepend "*pvs-path*/lib/"
 		      ;;(format nil "~a/lib/~a" *pvs-path* lib-ref)
 		      (pvs-library-path-ref lib-ref))))
-    (assert (file-exists-p lib-path))
     (if (file-exists-p lib-path)
 	lib-path
-	(values nil (format nil "Library ~a does not exist" lib-path)))))
+	(values nil (format nil "Library ~a does not exist" lib-ref)))))
 
 (defun pvs-library-path-ref (lib-ref &optional (libs *pvs-library-path*))
   (when libs
