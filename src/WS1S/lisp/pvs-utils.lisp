@@ -76,6 +76,21 @@
 (defmethod destructure-type* (texpr preds)
   (values texpr (nreverse preds)))
 
+;; Type definitions
+
+(defun natural-number-expr? (expr)
+  (and (typep expr 'number-expr)
+       (integerp (number expr))
+       (>= (number expr) 0)))
+
+(defun natural-expr? (expr)
+  (assert (typep expr 'expr))
+  (or (subtype-of? (type expr) *naturalnumber*)
+      (natural-number-expr? expr)
+      (and (application? expr)
+	   (or (tc-eq (operator expr) (plus1))
+	       (tc-eq (operator expr) (minus1))))
+      (some #'(lambda (type) (subtype-of? type *naturalnumber*)) (judgement-types+ expr))))
 
 ;; (incomplete) check if the expression is a finite set of 
 ;; natural numbers
