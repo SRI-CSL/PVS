@@ -197,6 +197,8 @@
 
 (defcl inline-datatype-with-subtypes (inline-datatype datatype-with-subtypes))
 
+(defcl library-datatype-with-subtypes (library-datatype datatype-with-subtypes))
+
 ;;; Codatatypes
 
 (defcl codatatype (recursive-type))
@@ -208,6 +210,8 @@
 (defcl library-codatatype (codatatype library-recursive-type))
 
 (defcl inline-codatatype-with-subtypes (inline-codatatype codatatype-with-subtypes))
+
+(defcl library-codatatype-with-subtypes (library-codatatype codatatype-with-subtypes))
 
 (defcl adt-constructor (syntax)
   (recognizer :type symbol :parse t)
@@ -258,6 +262,8 @@
 
 
 (defcl library-theory (module library-datatype-or-theory))
+
+(defcl library-rectype-theory (library-theory rectype-theory))
 
 (defcl theory-interpretation (module)
   (from-theory :restore-as nil)
