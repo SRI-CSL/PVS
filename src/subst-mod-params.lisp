@@ -495,6 +495,9 @@
 		  (let ((fconv (subst-mod-params* (from-conversion obj)
 						  modinst bindings)))
 		    (setq nobj (lcopy nobj 'from-conversion fconv)))))
+	      (unless (or (not (eq (id modinst) 'alloc))
+			  (fully-instantiated? nobj))
+		(break "Not fully-instantiated?"))
 	      (if (and (null (freevars nobj))
 		       (relatively-fully-instantiated? nobj))
 		  (setf (gethash obj *subst-mod-params-cache*) nobj)
@@ -1119,7 +1122,6 @@
   (with-slots (argument type) expr
     (let ((narg (subst-mod-params* argument modinst bindings))
 	  (ntype (subst-mod-params* type modinst bindings)))
-      (assert (recordtype? (find-supertype ntype)))
       #+pvsdebug (assert (fully-instantiated? ntype))
       (lcopy expr 'argument narg 'type ntype))))
 
@@ -1370,8 +1372,8 @@
 			  (null (mappings modinst)))
 		     res
 		     (let ((ntype (subst-mod-params* type modinst bindings)))
-		       (if (and (tc-eq type ntype)
-				(tc-eq nacts acts)
+		       (if (and (strong-tc-eq type ntype)
+				(strong-tc-eq nacts acts)
 				(not (memq (id mi) '(|equalities| |notequal|)))
 				(not (library-datatype-or-theory?
 				      (module decl))))
