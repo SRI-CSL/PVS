@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec  2 13:41:18 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Nov  5 14:51:55 1998
-;; Update Count    : 28
+;; Last Modified On: Fri Jan 29 19:35:03 1999
+;; Update Count    : 31
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -117,16 +117,58 @@
 (defcl bracket-expr (application)
   ;;"Used for expressions of the form [| |]"
   )
-  
-(defcl if-expr (application))
-
-(defcl chained-if-expr (if-expr))
 
 (defcl infix-application (application))
 
 (defcl unary-application (application))
 
-(defcl when-expr (infix-application))
+(defcl propositional-application (application))
+
+(defcl negation (propositional-application))
+(defcl unary-negation (negation unary-application))
+
+(defcl conjunction (propositional-application))
+(defcl infix-conjunction (conjunction infix-application))
+
+(defcl disjunction (propositional-application))
+(defcl infix-disjunction (disjunction infix-application))
+
+(defcl implication (propositional-application))
+(defcl infix-implication (implication infix-application))
+(defcl when-expr (implication))
+(defcl infix-when-expr (infix-implication))
+
+(defcl iff-or-boolean-equation (application))
+
+(defcl iff (iff-or-boolean-equation propositional-application))
+(defcl infix-iff (iff infix-application))
+
+(defcl equation (application))
+(defcl infix-equation (equation infix-application))
+
+(defcl boolean-equation (iff-or-boolean-equation equation))
+(defcl infix-boolean-equation (boolean-equation infix-equation))
+
+(defcl disequation (application))
+(defcl infix-disequation (disequation infix-application))
+
+  
+(defcl if-expr (application))
+
+(defcl chained-if-expr (if-expr))
+
+;;; A branch is an application of the form IF(a,b,c)
+;;; where the IF is the one defined in the prelude.
+(defcl branch (application))
+
+;;; This is an application of the form IF a THEN b ELSE c ENDIF
+;;; where the IF is the one defined in the prelude.
+;;; Used strictly for unparsing, other methods should only be defined over
+;;; if-conditionals.
+(defcl mixfix-branch (if-expr branch))
+
+;;; For an if-then-elsif-then-else form of an IF from the prelude.
+(defcl chained-branch (mixfix-branch))
 
 (defcl let-expr (application))
 
