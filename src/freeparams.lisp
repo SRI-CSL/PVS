@@ -34,8 +34,8 @@
 (defmethod free-params* :around ((texpr type-expr) frees) 
   (with-slots (free-parameters print-type) texpr
     (when (eq free-parameters 'unbound)
-      (let ((pfrees (free-params* print-type nil))
-	    (tfrees (call-next-method)))
+      (let ((pfrees (free-params* print-type nil)))
+	(call-next-method)
 	(dolist (pf pfrees)
 	  (pushnew pf free-parameters :test #'eq))))
     (union free-parameters frees :test #'eq)))
@@ -125,7 +125,7 @@
 
 (defmethod free-params* ((expr name-expr) frees)
   (let ((nfrees (free-params* (type expr)
-		  (when (eq (kind expr) 'constant)
+		  (when (constant? expr)
 		    (call-next-method expr nil)))))
     (setf (free-parameters expr) nfrees)
     (union nfrees frees :test #'eq)))
@@ -204,11 +204,13 @@
     (free-params-res decl mi frees)))
 
 (defmethod free-params-res ((decl formal-decl) mi frees)
+  (declare (ignore mi))
   (if (memq decl frees)
       frees
       (cons decl frees)))
 
 (defmethod free-params-res (decl (mi modname) frees)
+  (declare (ignore decl))
   (with-slots (actuals) mi
     (if actuals
 	(let ((afrees (free-params* actuals nil)))

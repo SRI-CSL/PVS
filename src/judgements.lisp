@@ -105,63 +105,6 @@
 	    (cons (car graph) new-graph)
 	    ignore))))
 
-(defun add-appl-judgement-link (new-node nodes lnodes)
-  (if (null nodes)
-      lnodes
-      (let ((lt? (and (not (memq (car nodes) lnodes))
-		      (judgement-lt new-node (car nodes)))))
-	(when lt?
-	  (pushnew (car nodes) (parents new-node) :test #'eq))
-	(add-appl-judgement-link
-	 new-node (cdr nodes)
-	 (if lt?
-	     (collect-judgement-predecessors (car nodes) lnodes)
-	     (if (memq (car nodes) lnodes)
-		 lnodes
-		 (add-appl-judgement-link
-		  new-node
-		  (parents (car nodes))
-		  (cons (car nodes) lnodes))))))))
-
-(defun collect-judgement-predecessors (node &optional preds)
-  (collect-judgement-predecessors* (parents node) preds))
-
-(defun collect-judgement-predecessors* (nodes preds)
-  (if (null nodes)
-      preds
-      (collect-judgement-predecessors*
-       (cdr nodes)
-       (if (memq (car nodes) preds)
-	   preds
-	   (collect-judgement-predecessors*
-	    (parents (car nodes))
-	    (cons (car nodes) preds))))))
-	   
-
-(defun collect-immediate-children (jdecl graph &optional children ignore)
-  (cond ((null graph)
-	 (nreverse children))
-	((or (memq (caar graph) ignore)
-	     (not (judgement-lt (caar graph) jdecl))
-	     (some #'(lambda (jd) (judgement-lt jd jdecl))
-		   (cdar graph)))
-	 (collect-immediate-children jdecl (cdr graph) children ignore))
-	(t (collect-immediate-children
-	    jdecl (cdr graph)
-	    (cons (caar graph) children)
-	    (append (cdar graph) ignore)))))
-
-(defun collect-immediate-parents (jdecl graph &optional parents ignore)
-  (cond ((null graph)
-	 (nreverse parents))
-	((or (memq (caar graph) ignore)
-	     (not (judgement-lt jdecl (caar graph))))
-	 (collect-immediate-parents jdecl (cdr graph) parents ignore))
-	(t (collect-immediate-parents
-	    jdecl (cdr graph)
-	    (cons (caar graph) parents)
-	    (append (cdar graph) ignore)))))
-
 (defmethod judgement-eq ((d1 application-judgement) (d2 application-judgement))
   (tc-eq (judgement-type d1) (judgement-type d2)))
 
@@ -268,6 +211,7 @@
 			     (minimal-judgements entry)))))))))
 
 (defmethod add-judgement-decl (decl)
+  (declare (ignore decl))
   (assert (not *in-checker*))
   nil)
 
@@ -446,7 +390,7 @@
 		 (entry (when (<= currynum (length vector))
 			  (aref vector (1- currynum)))))
 	    (when entry
-	      (let* ((argtypes (judgement-types+ (argument ex)))
+	      (let* (;;(argtypes (judgement-types+ (argument ex)))
 		     (gtypes (compute-application-judgement-types
 			      ex
 			      (judgements-graph entry)))
@@ -678,6 +622,7 @@
 
 (defmethod judgement-vector-arguments-match*? ((argtypes vector)
 					       rtype jtype bindings)
+  (declare (ignore bindings))
   (let ((stype (find-supertype rtype)))
     (when (and (tupletype? stype)
 	       (length= argtypes (types stype)))
@@ -738,6 +683,7 @@
   nil)
 
 (defun subst-params-decls (jdecls theory theoryname)
+  (declare (ignore theory))
   (mapcar #'(lambda (jd)
 	      (subst-params-decl jd theoryname))
     jdecls))
@@ -819,55 +765,13 @@
 	 (minimal-types (cdr types) mintypes))
 	(t (minimal-types (cdr types) (cons (car types) mintypes)))))
 
-(defun judgement-argtypes (judgement)
-  (or (formal-types judgement)
-      (setf (formal-types judgement)
-	    (judgement-argtypes* (formals judgement)))))
-
-(defun judgement-argtypes* (formals-list &optional argtypes bindings)
-  (if (null formals-list)
-      (nreverse argtypes)
-      (multiple-value-bind (nargs nbindings)
-	  (judgement-argtypes** (car formals-list) (cdr formals-list) bindings)
-	(judgement-argtypes*
-	 (cdr formals-list)
-	 (cons nargs argtypes)
-	 nbindings))))
-
-(defun judgement-argtypes** (formals formals-list bindings &optional argtypes)
-  (if (null formals)
-      (values (nreverse argtypes) bindings)
-      (let ((argtype (judgement-argtype formals formals-list bindings)))
-	(judgement-argtypes**
-	 (cdr formals)
-	 formals-list
-	 (if (typep argtype 'dep-binding)
-	     (acons (car formals) argtype bindings)
-	     bindings)
-	 (cons argtype argtypes)))))
-
-(defun judgement-argtype (formals formals-list bindings)
-  (if (or (some #'(lambda (fm)
-		    (member (car formals) (freevars fm)
-			    :test #'same-declaration))
-		(cdr formals))
-	  (some #'(lambda (fmlist)
-		    (some #'(lambda (fm)
-			      (member (car formals) (freevars fm)
-				      :test #'same-declaration))
-			  fmlist))
-		formals-list))
-      (mk-dep-binding (id (car formals))
-		      (substit (type (car formals)) bindings)
-		      (substit (declared-type (car formals)) bindings))
-      (substit (type (car formals)) bindings)))
-
 (defmethod all-domain-types ((ex application) &optional domtypes)
   (all-domain-types
    (operator ex)
    (cons (domain-types (type (operator ex))) domtypes)))
 
 (defmethod all-domain-types (ex &optional domtypes)
+  (declare (ignore ex))
   (nreverse domtypes))
 
 (defmethod argument-types ((ex application) &optional argtypes)
@@ -890,10 +794,8 @@
       (list (cons (type arg) (judgement-types arg)))))
 
 (defmethod argument-types (ex &optional argtypes)
+  (declare (ignore ex))
   (nreverse argtypes))
-
-(defun op-judgement-types (res)
-  (get-judgements res))
 
 (defvar *subtypes-seen* nil)
 
@@ -921,6 +823,7 @@
   (type-constraints* (type te) ex preds all?))
 
 (defmethod type-constraints* (te ex preds all?)
+  (declare (ignore te ex all?))
   (nreverse preds))
 
 (let ((ignored-type-constraints nil))
@@ -953,6 +856,7 @@
   (type-predicates* (type te) preds all?))
 
 (defmethod type-predicates* (te preds all?)
+  (declare (ignore te all?))
   (nreverse preds))
 
 (defmethod make!-reduced-application ((op lambda-expr) (arg tuple-expr))
@@ -1331,7 +1235,7 @@
   (simple-match* ex inst nil nil))
 
 (defmethod simple-match* ((ex type-name) (inst type-name) bindings subst)
-  (if (tc-eq ex inst)
+  (if (tc-eq-with-bindings ex inst bindings)
       subst
       'fail))
 
@@ -1407,17 +1311,18 @@
 (defmethod simple-match* ((ex field-application) (inst field-application)
 			  bindings subst)
   (if (eq (id ex) (id inst))
-      (simple-match* (argument ex) (argument inst))
+      (simple-match* (argument ex) (argument inst) bindings subst)
       'fail))
 
 (defmethod simple-match* ((ex projection-application)
 			  (inst projection-application)
 			  bindings subst)
   (if (eq (id ex) (id inst))
-      (simple-match* (argument ex) (argument inst))
+      (simple-match* (argument ex) (argument inst) bindings subst)
       'fail))
 
 (defmethod simple-match* ((ex number-expr) (inst number-expr) bindings subst)
+  (declare (ignore bindings))
   (if (= (number ex) (number inst))
       subst
       'fail))
@@ -1490,4 +1395,5 @@
 	  (simple-match* (expr ex) (expr inst) bindings subst))))
 
 (defmethod simple-match* (ex inst bindings subst)
+  (declare (ignore ex inst bindings subst))
   'fail)

@@ -200,6 +200,7 @@
 ;;; Called by Emacs - whereis-declaration-used command
 
 (defun whereis-declaration-used (oname origin pos &optional x?)
+  (declare (ignore x?))
   (if (or (equal origin "Declaration")
 	  (typechecked-origin? oname origin))
       (let* ((object (get-id-object-at oname origin pos))

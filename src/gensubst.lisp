@@ -152,6 +152,7 @@
 	  (lcopy type 'type ntype 'declared-type dtype)))))
 
 (defmethod gensubst* ((te type-name) substfn testfn)
+  (declare (ignore substfn testfn))
   (let ((nte (call-next-method)))
     (if (adt-expand-positive-subtypes? nte)
 	(adt-expand-positive-subtypes! nte)
@@ -183,7 +184,6 @@
 		     (pseudo-normalize pred)))))
 
 (defmethod gensubst* ((te setsubtype) substfn testfn)
-  (declare (ignore substfn testfn))
   (if (predicate te)
       (let ((nte (call-next-method)))
 	(unless (or (eq nte te)
@@ -229,6 +229,7 @@
 ;;; Expressions
 
 (defmethod gensubst* ((ex name-expr) substfn testfn)
+  (declare (ignore substfn testfn))
   (let ((nex (call-next-method)))
     (if (or *parsing-or-unparsing*
 	    *visible-only*
