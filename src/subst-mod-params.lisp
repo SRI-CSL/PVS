@@ -85,8 +85,11 @@
   (setq *subst-mod-params-cache* nil))
 
 (defun copy-subst-mod-params-cache ()
-  (let ((new-hash (make-hash-table :hash-function 'pvs-sxhash
-				   :test 'tc-eq)))
+  (let ((new-hash (make-hash-table
+		   :hash-function 'pvs-sxhash
+		   :test 'tc-eq
+		   :size (floor (hash-table-size *all-subst-mod-params-caches*)
+				1.5384616))))
     (maphash #'(lambda (modname hash)
 		 (setf (gethash modname new-hash)
 		       (copy hash)))
