@@ -187,6 +187,7 @@ prelude libraries")
 (defvar *ordinal* nil)
 
 (defvar *tcdebug* nil)
+(defvar *evaluator-debug* nil)
 
 ;;(defvar *generating-tcc* nil)
 
