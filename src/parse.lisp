@@ -25,7 +25,7 @@
 (defun parse (&rest keys)
   (let* ((*current-file* (or (cadr (member :file keys))
 			     *current-file*))
-	 (start-time (when *current-file* (get-universal-time))))
+	 (start-time (when *current-file* (get-internal-real-time))))
     (init-parser)
     (multiple-value-bind (term error? place msg args)
 	(apply #'pvs-parse :return-errors t keys)
@@ -38,9 +38,11 @@
 	     (*parsing-or-unparsing* t)
 	     (parsed-object (funcall fn term)))
 	;;(assert-places-set)
-	(values parsed-object (if *current-file*
-				  (- (get-universal-time) start-time)
-				  0))))))
+	(values parsed-object
+		(if *current-file*
+		    (/ (- (get-internal-real-time) start-time)
+		       internal-time-units-per-second 1.0)
+		    0))))))
 
 (defun init-parser ()
   (setq sbrt:*last-syntax* nil)
