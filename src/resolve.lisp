@@ -98,20 +98,29 @@
 ;;(type-error name "Free variables not allowed here")
 
 (defun get-resolutions (name kind args)
-  (if (library name)
-      (break "get-resolutions")
-      (let* ((adecls (gethash (id name) (current-declarations-hash)))
-	     (decls (if (mod-id name)
-			(remove-if-not
-			    #'(lambda (d) (eq (id (module d)) (mod-id name)))
-			  adecls)
-			adecls))
-	     (theory-aliases (get-theory-aliases name)))
-	(nconc (get-binding-resolutions name kind args)
-	       (get-record-arg-resolutions name kind args)
-	       (get-decls-resolutions decls (actuals name) kind args)
-	       (get-theory-alias-decls-resolutions theory-aliases adecls
-						   kind args)))))
+  (let* ((adecls (gethash (id name) (current-declarations-hash)))
+	 (ldecls (if (library name)
+		     (let ((lpath (get-library-pathname (library name))))
+		       (if lpath
+			   (remove-if-not
+			       #'(lambda (d)
+				   (and (library-theory? (module d))
+					(equal lpath (library (module d)))))
+			     adecls)
+			   (type-error name "~a is an unknown library"
+				       (library name))))
+		     adecls))
+	 (decls (if (mod-id name)
+		    (remove-if-not
+			#'(lambda (d) (eq (id (module d)) (mod-id name)))
+		      ldecls)
+		    ldecls))
+	 (theory-aliases (get-theory-aliases name)))
+    (nconc (get-binding-resolutions name kind args)
+	   (get-record-arg-resolutions name kind args)
+	   (get-decls-resolutions decls (actuals name) kind args)
+	   (get-theory-alias-decls-resolutions theory-aliases adecls
+					       kind args)))))
 
 (defun get-theory-alias-decls-resolutions (theory-aliases adecls kind args
 							  &optional reses)
