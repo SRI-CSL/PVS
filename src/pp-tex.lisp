@@ -1109,7 +1109,7 @@
     (pprint-logical-block (nil nil)
       (pprint-indent :current 2)
       (pp-tex* argument)
-      (write-char #\:)
+      (write "::")
       (write-char #\space)
       (pprint-newline :fill)
       (pp-tex* (declared-type (car (bindings operator)))))))
