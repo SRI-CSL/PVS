@@ -1039,7 +1039,9 @@
 (defun filter-bindings (reses args)
   (or (remove-if-not #'(lambda (r) (memq (declaration r) *bound-variables*))
 	reses)
-      (remove-if-not #'(lambda (r) (var-decl? (declaration r))) reses)
+      (and (not *in-checker*)
+	   (not *in-evaluator*)
+	   (remove-if-not #'(lambda (r) (var-decl? (declaration r))) reses))
       (and args
 	   (filter-res-exact-matches reses args))
       reses))
