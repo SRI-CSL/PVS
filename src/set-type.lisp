@@ -1846,16 +1846,18 @@ required a context.")
 	     (cons (car optypes) result))))))
 
 (defmethod explicit-importings ((op name-expr) optypes)
-  (let ((reses (resolutions op)))
-    (or (remove-if-not #'(lambda (oty)
-			   (let ((res (find-if #'(lambda (r)
-						   (tc-eq (type r) oty))
-					reses)))
-			     (and res
-				  (member (module-instance res)
-					  (gethash (module (declaration res))
-						   (current-using-hash))
-					  :test #'tc-eq))))
+  (let ((reses (remove-if
+		   (complement
+		    #'(lambda (res)
+			(member (module-instance res)
+				(gethash (module (declaration res))
+					 (current-using-hash))
+				:test #'tc-eq)))
+		 (resolutions op))))
+    (or (remove-if
+	    (complement
+	     #'(lambda (oty)
+		 (member oty reses :test #'tc-eq :key #'type)))
 	  optypes)
 	optypes)))
 
