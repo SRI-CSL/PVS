@@ -310,7 +310,8 @@
 (defun ilisp-display-buffer-in-typeout-window (buffer)
   "Display buffer in a window at the top of the screen."
   (let ((window (get-buffer-window buffer)))
-    (when window
+    (when (and window
+	       (> (count-windows) 1))
       (delete-window window)))
 
   ;; Otherwise, find a window to split.
