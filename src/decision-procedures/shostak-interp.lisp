@@ -40,7 +40,7 @@
    ((bv-p term) (sigbvec term cong-state))
    (t term)))
 
-(defvar *process-types* nil)
+(defvar *process-types* t)
 
 (defun sigtype (term cong-state)
   (if *process-types*
