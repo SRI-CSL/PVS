@@ -521,7 +521,7 @@
 					       theory))
 					 (saved-context theory))
 				    *current-context*))
-	     (*current-theory* (module *current-context*)))
+	     (*current-theory* (theory *current-context*)))
 	(multiple-value-bind (imp-theories imp-names)
 	    (all-importings* theory lib)
 ;; 	  (assert (every #'(lambda (th) (listp (all-imported-theories th)))
@@ -1386,13 +1386,14 @@
 	 (*collecting-tccs* t)
 	 (*tccforms* nil))
     (typecheck-using theoryname)
-    (let ((stheory (subst-mod-params (get-theory theoryname) theoryname)))
+    (let* ((theory (get-theory theoryname))
+	   (stheory (subst-mod-params theory theoryname theory)))
       ;; Now print out the theory
       (pvs-buffer (makesym "~a.ppi" (id theoryname))
 	(with-output-to-string (out)
 	  (format out
 	      "% This is a theory instance buffer, providing information about~
-             ~%% a given theory instance (with sustitutions made for given~
+             ~%% a given theory instance (with substitutions made for given~
              ~%% actuals and mappings).  There are three parts to this: the~
              ~%% instance name, the TCCs that would be generated for this~
              ~%% instance, and the substituted theory.  Note that the~
@@ -2534,20 +2535,23 @@
 	  (t (pvs-message "~a has not been parsed." theoryref)))))
 
 (defun get-typechecked-theory (theoryref &optional theories)
-  (or (and (or *in-checker*
-	       *generating-adt*)
-	   (get-theory theoryref))
-      (let ((theory (get-parsed-theory theoryref)))
-	(when theory
-	  (unless (or *in-checker*
-		      (typechecked? theory)
-		      (memq theory theories))
-	    (let ((*generating-adt* nil))
-	      (if (library theoryref)
-		  (load-imported-library (library theoryref) theoryref)
-		  (typecheck-file (filename theory))))))
-	#+pvsdebug (assert (typechecked? theory))
-	theory)))
+  (let ((theoryname (if (modname? theoryref)
+			theoryref
+			(pc-parse theoryref 'modname))))
+    (or (and (or *in-checker*
+		 *generating-adt*)
+	     (get-theory theoryname))
+	(let ((theory (get-parsed-theory theoryname)))
+	  (when theory
+	    (unless (or *in-checker*
+			(typechecked? theory)
+			(memq theory theories))
+	      (let ((*generating-adt* nil))
+		(if (library theoryname)
+		    (load-imported-library (library theoryname) theoryname)
+		    (typecheck-file (filename theory))))))
+	  #+pvsdebug (assert (typechecked? theory))
+	  theory))))
 
 (defun parsed-date (filename)
   (car (gethash (pathname-name filename) *pvs-files*)))

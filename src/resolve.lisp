@@ -6,8 +6,6 @@
 ;; Last Modified On: Mon Apr 12 16:10:32 2004
 ;; Update Count    : 40
 ;; Status          : Stable
-;; 
-;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -110,8 +108,7 @@
 	   (set-type-actuals name)))
     name))
 
-(defmethod module (binding)
-  (declare (ignore binding))
+(defmethod module ((binding binding))
   *current-theory*)
 
 (defun resolve* (name kind args)
@@ -187,14 +184,15 @@
       (delete-duplicates modnames :test #'tc-eq)
       (get-theory-aliases*
        (cdr mod-decls)
-       (let ((thname (theory-name (car mod-decls))))
-	 (if (eq (module (car mod-decls)) (current-theory))
+       (let ((thname (theory-name (car mod-decls)))
+	     (theory (module (car mod-decls))))
+	 (if (eq theory (current-theory))
 	     (nconc (list thname) modnames)
-	     (let ((instances (get-importings (module (car mod-decls)))))
+	     (let ((instances (get-importings theory)))
 	       (nconc modnames
 		      (mapcar #'(lambda (inst)
 				  (if (actuals inst)
-				      (subst-mod-params thname inst)
+				      (subst-mod-params thname inst theory)
 				      thname))
 			instances))))))))
 
@@ -294,6 +292,7 @@
 ;;; theory-decl could be built on a theory-decl.  We look for the first
 ;;; set of mappings with a matching LHS.
 (defun get-mapping-lhs-resolutions (name kind args)
+  (declare (ignore args kind))
   (when (mod-id name)
     (if (assoc (id name) (mappings name) :key #'id)
 	(break "In given mappings")
@@ -1261,8 +1260,7 @@
 				       (not (member decl *bound-variables*)))
 			      (assert args)
 			      (subst-mod-params
-			       (make-field-type decl)
-			       mi))))
+			       (make-field-type decl) mi mod))))
 		  (make-resolution decl mi type))) 
 	    modinsts)))
 
@@ -1291,7 +1289,8 @@
 			 (library modinst)))
   (if (null args)
       (list modinst)
-      (let* ((stype (subst-mod-params (find-supertype (type decl)) modinst))
+      (let* ((stype (subst-mod-params (find-supertype (type decl))
+				      modinst (module decl)))
 	     (dtypes (when (typep stype 'funtype)
 		       (if (singleton? args)
 			   (list (domain stype))
@@ -1327,7 +1326,6 @@
 		     (list modinst))))))))
 
 (defmethod compatible-arguments? ((decl field-decl) modinst args mod)
-  (declare (ignore mod))
   (cond ((null args) (list modinst))
 	((memq decl *bound-variables*)
 	 (let* ((stype (find-supertype (type decl)))
@@ -1348,7 +1346,7 @@
 				   (let ((*smp-include-actuals* t)
 					 (*smp-dont-cache* t))
 				     (if (actuals modinst)
-					 (subst-mod-params dt modinst)
+					 (subst-mod-params dt modinst mod)
 					 dt)))
 			 dtypes))
 		  (list modinst)))))
@@ -1385,7 +1383,8 @@
 		 (when (compatible-args?
 			decl args
 			(mapcar #'(lambda (fa)
-				    (subst-mod-params (type fa) modinst))
+				    (subst-mod-params (type fa) modinst
+						      (module decl)))
 				fargs))
 		   (list modinst)))))))
 
@@ -1681,7 +1680,7 @@
 (defmethod locality ((ex rectype-conversion))
   (locality* (conversions ex)))
 
-(defmethod locality ((ex rectype-conversion))
+(defmethod locality ((ex tuptype-conversion))
   (locality* (conversions ex)))
 
 (defun locality* (conversions &optional min)
