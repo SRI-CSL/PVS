@@ -268,6 +268,17 @@
        (make-local-variable 'font-lock-defaults)
        (setq font-lock-defaults '(pvs-font-lock-keywords nil t)))))
 
+;;; facep works differently in XEmacs - always returns nil for a symbol
+;;; find-face is used there instead, but red and blue faces are already
+;;; defined anyway.
+(when (memq pvs-emacs-system '(emacs20 emacs19))
+  (unless (facep 'red)
+    (make-face 'red)
+    (set-face-foreground 'red "red"))
+  (unless (facep 'blue)
+    (make-face 'blue)
+    (set-face-foreground 'blue "blue")))
+
 (defvar font-lock-pvs-record-parens-face 'font-lock-pvs-record-parens-face)
 (make-face 'font-lock-pvs-record-parens-face)
 ;;(set-face-background 'font-lock-pvs-record-parens-face "lightcyan")
