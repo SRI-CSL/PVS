@@ -318,13 +318,6 @@
 		       (setf (resolutions name) (nconc tres eres)))
 		   (when eres
 		     (setf (types (expr act)) (mapcar #'type eres))
-		     (setf (kind (expr act))
-			   (if (or (memq (declaration (car eres))
-					 *bound-variables*)
-				   (typep (declaration (car eres))
-					  '(and (or binding var-decl)
-						(not field-decl))))
-			       'VARIABLE 'CONSTANT))
 		     (when (and (plusp (parens (expr act)))
 				(some #'(lambda (ty)
 					  (let ((sty (find-supertype ty)))
@@ -787,10 +780,11 @@
 
 (defun make-dep-field-name-expr (db rectype)
   (let ((dres (make-resolution db (theory-name *current-context*) rectype)))
-    (mk-name-expr (id db) nil nil dres 'variable)))
+    (mk-name-expr (id db) nil nil dres)))
 
 (defmethod compatible-arguments? (decl modinst args mod)
   (declare (type list args))
+  (declare (ignore mod))
   (if (null args)
       (list modinst)
       (let* ((stype (find-supertype (type decl)))
@@ -864,6 +858,7 @@
 	       (list modinst)))))
 
 (defmethod compatible-arguments? ((decl type-decl) modinst args mod)
+  (declare (ignore mod))
   (if (null args)
       (list modinst)
       (let ((fargs (car (formals decl))))
@@ -1488,12 +1483,7 @@
 	 (nname (when dep?
 		  (copy name
 		    'type (type res)
-		    'resolutions (list res)
-		    'kind (if (or (memq (declaration res) *bound-variables*)
-				  (typep (declaration res)
-					 '(or var-decl bind-decl dep-binding)))
-			      'variable
-			      'constant))))
+		    'resolutions (list res))))
 	 (rtype (if dep?
 		    (substit (range ctype)
 		      (acons (domain ctype) nname nil))
