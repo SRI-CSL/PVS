@@ -4,7 +4,7 @@
 ;; _____________
 ;;
 ;; Author: Hassen Saidi.
-;; Created On Sat Sep 19
+;; Created On Sat Sep 19, 1998
 ;; _____________
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27,7 +27,6 @@
 (defvar *state-var-2* nil)
 (defvar *abs-state-var-1* nil)
 (defvar *abs-state-var-2* nil)
-(defvar *concretize?* nil)
 (defvar *make-abs-rec-app* nil)
 (defvar *use-context?* nil)
 (defvar *bool-hash-table* nil)
@@ -56,17 +55,16 @@
 (defvar *primed-exclusive* nil)
 (defvar *unprimed-exclusive* nil)
 
+
+(defvar *abstract-cession* 0)
+(defvar *assoc-bindings* nil)
+(defvar *new-abstract-field-ids* nil)
+
 ;;
 
-(defstep abstract-and-mc (list-state-predicates &optional  (cases-rewrite? T)
-                                        ;; static?   ;; static analysis
-                                        ;; invariant ;; use invariant
-                                        ;; record?)  ;; record the
-                                                   ;; abstarction of
-                                                   ;; a formula
-                                        ;; exclusive? means that
-                                         exclusive?
-                                        ;; B1, ...,Bk are exclusive .
+(defstep abstract-and-mc (list-state-predicates
+			  &optional (cases-rewrite? T) exclusive?
+			  ;; means that B1, ...,Bk are exclusive .
 					 (proof-counter 10))
  (apply (try (abstract list-state-predicates :cases-rewrite? cases-rewrite?
 		       :exclusive? exclusive? :proof-counter proof-counter)
@@ -76,24 +74,17 @@
   "Interpret using boolean abstraction 
    and prove by model-checking!")
 
-(defstep abstract (list-state-predicates &optional  (cases-rewrite? T)
-                                        ;; static?   ;; static analysis
-                                        ;; invariant ;; use invariant
-                                        ;; record?)  ;; record the
-                                                   ;; abstarction of
-                                                   ;; a formula
-                                        ;; exclusive? means that
-                                         exclusive?
-                                        ;; B1, ...,Bk are exclusive .
-					 (proof-counter 10)
-                                          )
+(defstep abstract (list-state-predicates
+		   &optional (cases-rewrite? T) exclusive?
+		   ;; means that B1, ...,Bk are exclusive .
+		   (proof-counter 10)
+		   )
   (let ((cuth *current-theory*)
         (cuthstr (string (id cuth)))
         )
         (then* 
                (auto-rewrite-theory cuthstr :always? T)
                (auto-rewrite-theory "ctlops" :defs T :always? T)
-               (auto-rewrite-theory "connectives" :defs T :always? T)
                (auto-rewrite "/=")
                (rewrite-msg-off)
                (assert :cases-rewrite? cases-rewrite?)
@@ -111,48 +102,64 @@ selections of unsimplified CASES expressions."
 
 
 (addrule 'abs-simp (list-state-predicates)
-	 ((fnums *) (exclusive? exclusive?) (proof-counter 10))
+	 ((fnums *) (exclusive? nil) (proof-counter 10))
        (abstract-fun list-state-predicates fnums t exclusive? proof-counter)
 	 "Abstraction computation with respect a list of predicates.
           Computation uses over and under approximation of atoms"
 	 "~%Computing abstraction,")
 
-(defun abstract-fun (list-state-predicates fnums use-context? exclusive? proof-counter)
+(defun abstract-fun (list-state-predicates
+		     &optional fnums use-context? exclusive? proof-counter)
   #'(lambda (ps)
- (run-abstraction ps fnums list-state-predicates use-context? exclusive? proof-counter))))
+      (run-abstraction ps fnums list-state-predicates use-context? exclusive?
+		       proof-counter)))
 
 
-(defun run-abstraction 
-   (ps fnums  list-state-predicates 
-                     use-context? 
-                     exclusive? proof-counter)
+(defun run-abstraction (ps fnums list-state-predicates use-context?
+			   exclusive? proof-counter)
   (bdd_init)
-;;  (setq *zozo* list-state-predicates) ;; to remove later...
-  (let* (;;(*current-theory* *current-theory*)
-         ;;(*current-context* (context *current-theory*))
-	 (*bdd-initialized* t)
+  (check-abstract-fun-arguments ps list-state-predicates fnums
+				use-context? exclusive? proof-counter)
+  (let* ((*bdd-initialized* t)
+         (*bound-variables* nil)
+         (*assoc-bindings* nil)
          (*generate-tccs* 'NONE)
          (*abstraction-strategy* nil)
          (*max-proof-counter* proof-counter)
-         (*use-context?* use-context?) 
+         (*use-context?* use-context?)
          (*exclusive?* exclusive?)
+	 (*new-abstract-field-ids* nil)
          (sforms (s-forms (current-goal ps)))
 	 (selected-sforms (select-seq sforms fnums))
 	 (remaining-sforms (delete-seq sforms fnums))
          (formula-to-abstract 
            (make-conjunction
-	     (mapcar #'(lambda (sf) ;;(make-negation 
-                                   (formula sf));;) ;; make-negation??
+	     (mapcar #'(lambda (sf) (formula sf))
 	       selected-sforms)))
-         (abstract-formula ;;(make-negation ;; make-negation??
-              (compute-abstract-formula formula-to-abstract
-                         list-state-predicates )));;)
+         (abstract-formula 
+	  (typecheck (compute-abstract-formula formula-to-abstract
+					       list-state-predicates))))
    (multiple-value-prog1
      (create-subgoal-with-new-formula 
         ps sforms remaining-sforms abstract-formula)
      (bdd_quit))))
 
-
+(defun check-abstract-fun-arguments (ps list-state-predicates
+					   fnums use-context? exclusive?
+					   proof-counter)
+  (unless (if (consp list-state-predicates)
+	      (every #'stringp list-state-predicates)
+	      (stringp list-state-predicates))
+    (error-format-if
+     "LIST-STATE-PREDICATES should be a string or list of strings"))
+  (unless (select-seq (s-forms (current-goal ps)) fnums)
+    (error-format-if "~a is not a valid FNUMS reference" fnums))
+  (unless (memq use-context? '(nil t))
+    (error-format-if "USE-CONTEXT? must be NIL or T"))
+  (unless (memq exclusive? '(nil t))
+    (error-format-if "EXCLUSIVE? must be NIL or T"))
+  (unless (integerp proof-counter)
+    (error-format-if "PROOF-COUNTER must be an integer")))
 
 (defun create-subgoal-with-new-formula (ps 
               sforms remaining-sforms abstract-formula)
@@ -209,41 +216,6 @@ selections of unsimplified CASES expressions."
         nil )))
   
 
-(defun make-list-of-indices (maxnumber)
-  (make-list-from-1-to-max maxnumber 1 nil))
-
-(defun make-list-from-1-to-max (maxnumber current list-elem)
-  (if (> current maxnumber) (reverse list-elem)
-       (make-list-from-1-to-max maxnumber (+ 1 current)
-            (cons current list-elem))))
-
-(defstep abstraction-strategy ()
-(apply  (try (then*
-     (skosimp*) (branch (prop) ((assert))))) (fail) (fail))
- "Simple strategy."
- "
-    Trying to apply propositional simplification
-    and invoking decision procedure 
-")
-
-(defstep abstraction-strategy ()
-(apply  (then*
-     (skosimp*) (branch (prop) ((assert)))))
- "Simple strategy."
- "
-    Trying to apply propositional simplification
-    and invoking decision procedure 
-")
-
-;;(defstep abstraction-strategy ()
-;;(apply (grind))
-;; "Simple strategy."
-;; "
-;;    Trying to apply propositional simplification
-;;    and invoking decision procedure 
-;;")
-
-
 (defun is-a-good-list-of-pred? (list-state-predicates)
   (let* ((list-stringstate-predicates (if (listp list-state-predicates) 
 					  list-state-predicates
@@ -267,9 +239,6 @@ selections of unsimplified CASES expressions."
 	       (cond ((cdr all-state-types)
 		      (error-format-if
 		       "State predicates have different domains"))
-;		     ((not (is-a-good-state? (car all-state-types)))
-;		      (error-format-if
-;		       "State type is not a record type"))
 		     (t all-expr-pred-states)))))))
        
 
@@ -282,8 +251,7 @@ selections of unsimplified CASES expressions."
 ;;
 
 (defun create-abstract-state (list-state-predicates)
- (let* ((nb-abstract-vars (length list-state-predicates))
-        (state-type *state-type*)
+ (let* ((state-type *state-type*)
         (pred-expressions (mapcar #'(lambda (pred) (expression pred))
                                 list-state-predicates))
         (abstracted-state-components
@@ -301,22 +269,22 @@ selections of unsimplified CASES expressions."
                  (mapcar #'(lambda (ff) 
                   (if (mu-translateable? (find-supertype (type ff))) ff nil))
                    remaining-state-components)))
-        (abstract-fields (mapcar #'(lambda (x) (mk-field-decl 
-                          (makesym (format nil "Abvar_~d"
-                                                    x)) *boolean* *boolean*))
-                     (make-list-of-indices nb-abstract-vars)))
+        (abstract-fields
+	 (let ((index 1))
+	   (mapcar #'(lambda (avar)
+		       (declare (ignore avar))
+		       (let ((sym (makesym "B_~d" index)))
+			 (loop while (member sym (fields state-type) :key #'id)
+			       do (setq sym (makesym "B_~d" (incf index))))
+			 (incf index)
+			 (mk-field-decl sym *boolean* *boolean*)))
+	     list-state-predicates)))
         (abstract-fields (append 
              good-remaining-state-components abstract-fields ))
-        (abstract-type (make-recordtype abstract-fields)))
+        (abstract-type (typecheck (make-recordtype abstract-fields))))
    (setq *abs-state-type* abstract-type)
-;;   (dolist (one-field-decl abstract-fields1)  
-;;             (abstraction-add-decl one-field-decl))
-   (print-abstract-state-type list-state-predicates)
-   (abstraction-add-decl
-   (mk-type-decl (makesym (format nil "A_~a" (unparse state-type :string 't)))
-          'type-decl  abstract-type))
-   ;; (setq *current-context* (context *current-theory*)) ;; must update ctxt
-     ))
+   (setq *new-abstract-field-ids* (mapcar #'id abstract-fields))
+   (print-abstract-state-type list-state-predicates)))
 
 
 (defun print-abstract-state-type (list-state-predicates)
@@ -355,27 +323,42 @@ selections of unsimplified CASES expressions."
 (defun alpha-image (expr &optional invariant) ;; boolean expression
  (let ((time-now (get-universal-time)))
  (pvs-message (format nil "Starting computation of abstraction" ))
-  (let* ((*concretize?* t)
-         (context (if invariant (encode-into-bdd-pvs-expr invariant)
-                                  (bdd_1)))
+  (let* ((context (or invariant *true*))
          (computed-alpha-image (alpha-image-expr nil expr context)))
    (pvs-message (format nil "abstraction computed in ~d seconds~%" 
                   (- (get-universal-time) time-now )))
    (pvs-message (format nil 
-  "calls to the decision procedure:~% possible: ~d   performed: ~d~%" 
+  "calls to the decision procedure:~% possible: ~d   performed: ~d~2%"
    *counter-possible-prf* *counter-attempt*))
-   (if (expr? computed-alpha-image) computed-alpha-image
-             (gamma-image computed-alpha-image))
-)))
+   computed-alpha-image)))
 
 
 ;; Should be broken into methods
 (defun alpha-image-expr (sign expr context)
- (let*   ((expr (lift-state-bindings expr)))
-        ;; ((expr expr))
-        ;; ((expr (normalize-equality-expr  expr)))
-        ;; ((expr (normalize-decompose-equality expr)))
+   (let ((expr (lift-state-bindings expr)))
+       (alpha-image-expr* sign expr context)))
+
+(defmethod alpha-image-expr*  (sign (expr expr) context)
  (let ((alpha-image-e
+   (cond  ((any-mu-nu-expr-application? expr) 
+                    (alpha-image-mu-nu-application sign expr  context))
+          ((any-mu-nu-expr? expr) (alpha-image-mu-nu sign expr  context))
+          ((mu-var-application? expr) 
+                     (alpha-image-mu-var-application sign expr context))
+          ((skolem-constant-state-expr? expr) 
+                      (alpha-image-skolem-constant sign expr context))
+          ((state-expr? expr) (alpha-image-state sign expr context))
+          ((pred-state-expr? expr) (alpha-image-atom sign expr context))
+          ((constant? expr) (alpha-image-constant sign expr context))
+          (t 
+               (if sign (alpha-image-atom t expr context)
+                      (make-negation 
+               (alpha-image-atom t (make-negation-with-p expr) context))
+                  )))))
+   alpha-image-e))
+
+(defmethod alpha-image-expr* (sign (expr propositional-application) context)
+  (let ((alpha-image-e
    (cond  ((disjunction? expr) 
                (alpha-image-disjunction sign expr  context))
           ((implication? expr) 
@@ -388,23 +371,21 @@ selections of unsimplified CASES expressions."
                (alpha-image-iff sign expr  context))
           ((branch? expr) 
                (alpha-image-branch sign expr  context))
-          ((binding-state-expr? expr) (alpha-image-binding sign expr  context))
-          ((any-mu-nu-expr-application? expr) 
-                    (alpha-image-mu-nu-application sign expr  context))
-          ((any-mu-nu-expr? expr) (alpha-image-mu-nu sign expr  context))
-          ((mu-var-application? expr) 
-                     (alpha-image-mu-var-application sign expr context))
-          ((skolem-constant-state-expr? expr) 
-                      (alpha-image-skolem-constant sign expr context))
-          ((state-expr? expr) (alpha-image-state sign expr context))
-          ((pred-state-expr? expr) (alpha-image-pred-state sign expr context))
-          ((constant? expr) (alpha-image-constant sign expr context))
-          (t 
-               (if sign (alpha-image-atom t expr context)
-                      (bdd_not  
-                             (alpha-image-atom t (make-negation-with-p expr) context))
-                  )))))
-   alpha-image-e)))
+          (t (call-next-method) )               
+            )))
+   alpha-image-e))
+
+(defmethod alpha-image-expr* (sign (expr iff-or-boolean-equation) context)
+ (alpha-image-iff sign expr  context))
+
+(defmethod alpha-image-expr* (sign (expr branch) context)
+ (alpha-image-branch sign expr  context))
+
+(defmethod alpha-image-expr* (sign (expr binding-expr) context)
+ (if (binding-state-expr? expr) 
+                 (alpha-image-binding sign expr  context)
+                 (call-next-method)   ))
+
 
 
 (defun binding-state-expr? (expr)
@@ -462,29 +443,9 @@ selections of unsimplified CASES expressions."
 ;;
 
 (defun  alpha-image-disjunction (sign expr context)
-  (let* ((bdd-args1   (let* ((*concretize?* nil))
-			(alpha-image-expr sign (args1 expr)  context)))
-	 ;;      (updated-context (bdd_and context (bdd-not 
-	 ;;               (encode-into-bdd-pvs-expr (args1 expr)))))
-	 (bdd-args2  (let* ((*concretize?* nil)) 
-		       (alpha-image-expr sign (args2 expr) 
-					 context))));; updated-context is too much
-    (if  *concretize?* 
-	 (gamma-image (bdd_or bdd-args1 bdd-args2))
-	 (bdd_or bdd-args1 bdd-args2))))   
-
-; (defun  alpha-image-implication (sign expr context)
-;  (let* ((bdd-args1  (let* ((*concretize?* nil))
-;                      (alpha-image-expr sign (args1 expr)  context)))
-;         (bdd-args2  (let* ((*concretize?* nil))
-;                          (alpha-image-expr sign (args2 expr) 
-;                                 context)))
-;         (concrete-expr (make-implication  
-;              (gamma-image bdd-args1) (gamma-image bdd-args2)))
-;                  (bddvarid (fresh-bdd-varid))
-;          (bdd-variable (bdd_create_var bddvarid)))
-;  (setf (gethash bddvarid  *bdd-pvs-hash*) concrete-expr)
-;   (if  *concretize?* concrete-expr bdd-variable)))
+  (let* ((bdd-args1  (alpha-image-expr* sign (args1 expr) context))
+	 (bdd-args2  (alpha-image-expr* sign (args2 expr) context)))
+   (make-disjunction (list bdd-args1 bdd-args2))))   
  
 (defun  alpha-image-implication (sign expr context)
   (let ((fml (make-disjunction 
@@ -492,67 +453,33 @@ selections of unsimplified CASES expressions."
          (alpha-image-disjunction  sign fml context)))
  
 (defun  alpha-image-conjunction (sign expr context)
- (let* ((bdd-args1  (let* ((*concretize?* nil))
-                     (alpha-image-expr sign (args1 expr)  context)))
-        (updated-context (bdd_and context (encode-into-bdd-pvs-expr (args1 expr))))
-        (bdd-args2  (let* ((*concretize?* nil))
-                         (alpha-image-expr sign (args2 expr) 
-                                updated-context))))
-   (if  *concretize?* 
-     (gamma-image (bdd_and bdd-args1  bdd-args2))
-       (bdd_and bdd-args1 bdd-args2))))
+ (let* ((bdd-args1  (alpha-image-expr* sign (args1 expr)  context))
+        (updated-context 
+             (mk-conjunction (list context  (args1 expr))))
+        (bdd-args2  (alpha-image-expr* sign (args2 expr) 
+                                updated-context)))
+   (mk-conjunction (list bdd-args1 bdd-args2))))
 
 (defun  alpha-image-negation (sign expr context)
- (let ((bdd-args1  (let* ((*concretize?* nil))
-             (alpha-image-expr (not (expr-is-atom? expr)) (args1 expr) context))))
-  (if  *concretize?* 
-    (make-negation-with-p (gamma-image bdd-args1))
-  (bdd-not bdd-args1)))) 
+ (let ((bdd-args1 (alpha-image-expr* (not sign) (args1 expr) context)))
+  (make-negation-with-p  bdd-args1))) 
     
-(defun  alpha-image-negation (sign expr context)
- (let ((bdd-args1  (let* ((*concretize?* nil))
-             (alpha-image-expr (not sign) (args1 expr) context))))
-  (if  *concretize?*  (make-negation-with-p (gamma-image bdd-args1))
-       (bdd-not bdd-args1))))
-
 (defun  alpha-image-iff (sign expr context)
-  (let ((fml1 (make-implication (args1 expr) (args2 expr)))
-        (fml2 (make-implication (args2 expr) (args1 expr))))
+  (let ((fml1 (make!-implication (args1 expr) (args2 expr)))
+        (fml2 (make!-implication (args2 expr) (args1 expr))))
   (alpha-image-conjunction 
-          sign (make-conjunction (list fml1 fml2)) context)))
-     
-(defun  alpha-image-branch (sign expr context)
-  (let* ((bdd-cond  (let* ((*concretize?* nil))
-                      (alpha-image-expr sign (condition expr) context)))
-         (bdd-then  (let* ((*concretize?* nil))
-                      (alpha-image-expr sign (then-part expr) 
-                   (bdd_and context (encode-into-bdd-pvs-expr 
-                       (condition expr))) 
-           )))
-         (bdd-else  (let* ((*concretize?* nil))
-                      (alpha-image-expr sign (else-part expr) 
-                   (bdd_and context (bdd-not (encode-into-bdd-pvs-expr 
-         (condition expr))))
-           )))
-         (concrete-expr (make-if-expr  (gamma-image bdd-cond)
-                       (gamma-image bdd-then)
-                       (gamma-image bdd-else)))
-         (bddvarid (fresh-bdd-varid))
-         (bdd-variable (bdd_create_var bddvarid)))
- (setf (gethash bddvarid  *bdd-pvs-hash*) concrete-expr)
-  (if  *concretize?* concrete-expr bdd-variable)))
-           
+          sign (make!-conjunction fml1 fml2) context)))
+
 (defun  alpha-image-branch (sign expr context)
    (let* ((bdd-cond (condition expr))
           (bdd-then (then-part expr))
           (bdd-else (else-part expr))
           (dis-expr (make-disjunction
-            (list (make-conjunction (list bdd-cond bdd-then)) 
-                  (make-conjunction (list (make-negation bdd-cond)
+            (list (mk-conjunction (list bdd-cond bdd-then)) 
+                  (mk-conjunction (list (make-negation bdd-cond)
                                               bdd-else)))))) 
-    (alpha-image-expr sign dis-expr context)))
-     
-
+    (alpha-image-expr* sign dis-expr context)))
+           
 (defun alpha-image-binding (sign expr  context)
  (let ((good-type-bindings (every #'(lambda (x) (compatible-type (type x) 
                                   *state-type*)) (bindings  expr))))
@@ -605,99 +532,27 @@ selections of unsimplified CASES expressions."
      expr))
 
 
-;;(defun alpha-image-forall (sign expr context)
-;; (if sign (alpha-image-forall-pos sign expr context)
-;;          (alpha-image-forall-neg sign expr context)))
- 
-;;(defun alpha-image-exists (sign expr context)
-;; (if sign (alpha-image-exists-pos sign expr context)
-;;          (alpha-image-exists-neg sign expr context)))
- 
-
-;;(defun alpha-image-forall-neg (sign expr context)
-;;  (let* ((exprargs (expression expr))
-;;         (state-bindings (remove nil (mapcar #'(lambda (x) (if 
-;;                 (compatible-type (type x) 
-;;                                  *state-type*) x nil)) (bindings  expr))))
-;;         (abs-state-bindings (mapcar #'(lambda (x) 
-;;               (make-abstract-state-bindings-var x)) state-bindings))
-;;         (absract-expr (let ((*concretize?* t))
-;;               (gamma-image (alpha-image-expr sign                   
-;;                              exprargs context))))
-;;         (concrete-expr (retypecheck  
-;;                 (make-forall-expr abs-state-bindings  
-;;                                absract-expr)))
-;;         (encode-bool-var (encode-into-bdd-pvs-expr concrete-expr)))
-;;    encode-bool-var))
-
-;;(defun alpha-image-exists-neg (sign expr context)
-;;  (let* ((exprargs (expression expr))
-;;         (state-bindings (remove nil (mapcar #'(lambda (x) (if 
-;;                 (compatible-type (type x) 
-;;                                  *state-type*) x nil)) (bindings  expr))))
-;;         (abs-state-bindings (mapcar #'(lambda (x) 
-;;               (make-abstract-state-bindings-var x)) state-bindings))
-;;         (absract-expr (let ((*concretize?* t))
-;;               (gamma-image (alpha-image-expr sign                           ;; 
-;;                              exprargs context))))
-;;         (concrete-expr (retypecheck
-;;                  (make-exists-expr abs-state-bindings  
-;;                                absract-expr)))
-;;         (encode-bool-var (encode-into-bdd-pvs-expr concrete-expr)))
-;;    encode-bool-var))
-
-
-;;(defun alpha-image-forall-pos (sign expr context)
-;;  (let* ((exprargs (expression expr))
-;;         (state-bindings (remove nil (mapcar #'(lambda (x) (if 
-;;                 (compatible-type (type x) 
-;;                                  *state-type*) x nil)) (bindings  expr))))
-;;         (abs-state-bindings (mapcar #'(lambda (x) 
-;;               (make-abstract-state-bindings-var x)) state-bindings));;
-;;         (absract-expr (let ((*concretize?* t))
-;;               (gamma-image (alpha-image-expr sign (make-negation-with-p
-;;                              exprargs) context))))
-;;         (concrete-expr ;;(retypecheck
-          ;;  (make-negation          
-;;               (make-negation-with-p
-;;                 (make-exists-expr abs-state-bindings  
-;;                                absract-expr)));;)
-;;         (encode-bool-var (encode-into-bdd-pvs-expr concrete-expr)))
-;;    encode-bool-var))
-
-;;(defun alpha-image-exists-pos (sign expr context)
-;;  (let* ((exprargs (expression expr))
-;;         (state-bindings (remove nil (mapcar #'(lambda (x) (if 
-;;                 (compatible-type (type x) 
-;;                                  *state-type*) x nil)) (bindings  expr))))
-;;         (abs-state-bindings (mapcar #'(lambda (x) 
-;;               (make-abstract-state-bindings-var x)) state-bindings))
-;;         (absract-expr (let ((*concretize?* t))
-;;               (gamma-image (alpha-image-expr sign (make-negation-with-p 
-;;                              exprargs) context))))
-;;         (concrete-expr ;;(retypecheck
-         ;; (make-negation    
-;;                 (make-negation-with-p 
-;;                  (make-forall-expr abs-state-bindings  
-;;                                absract-expr)));;)
-;;         (encode-bool-var (encode-into-bdd-pvs-expr concrete-expr)))
-;;    encode-bool-var))
-
 (defun alpha-image-forall (sign expr context)
   (let* ((exprargs (expression expr))
-         (state-bindings (remove nil (mapcar #'(lambda (x) (if 
-                 (compatible-type (type x) 
-                                  *state-type*) x nil)) (bindings  expr))))
+         (state-bindings
+	  (remove nil
+		  (mapcar #'(lambda (x)
+			      (if (compatible-type (type x) 
+						   *state-type*) x nil))
+		    (bindings  expr))))
          (abs-state-bindings (mapcar #'(lambda (x) 
-               (make-abstract-state-bindings-var x)) state-bindings))
-         (absract-expr (let ((*concretize?* t))
-               (gamma-image (alpha-image-expr sign                   
-                              exprargs context))))
-         (concrete-expr (retypecheck  
-                 (make-forall-expr abs-state-bindings  
-                                absract-expr)))
-         (encode-bool-var (encode-into-bdd-pvs-expr concrete-expr)))
-    encode-bool-var))
+					 (make-abstract-state-bindings-var x))
+			       state-bindings))
+         (*bound-variables* (append abs-state-bindings *bound-variables*))
+         (*assoc-bindings* 
+	  (append (pairlis state-bindings abs-state-bindings)
+		  *assoc-bindings*))
+         (abstract-expr (alpha-image-expr* sign                   
+					   exprargs context))
+         (concrete-expr (typecheck  
+			    (mk-forall-expr abs-state-bindings  
+			      abstract-expr))))
+    concrete-expr))
 
 (defun alpha-image-exists (sign expr context)
   (let* ((exprargs (expression expr))
@@ -706,114 +561,93 @@ selections of unsimplified CASES expressions."
                                   *state-type*) x nil)) (bindings  expr))))
          (abs-state-bindings (mapcar #'(lambda (x) 
                (make-abstract-state-bindings-var x)) state-bindings))
-         (absract-expr (let ((*concretize?* t))
-               (gamma-image (alpha-image-expr sign                            
-                              exprargs context))))
-         (concrete-expr (retypecheck
-                  (make-exists-expr abs-state-bindings  
-                                absract-expr)))
-         (encode-bool-var (encode-into-bdd-pvs-expr concrete-expr)))
-    encode-bool-var))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;;
-;;
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;
+         (*bound-variables* (append abs-state-bindings *bound-variables*))
+         (*assoc-bindings* 
+	  (append (pairlis state-bindings abs-state-bindings) *assoc-bindings*))
+         (abstract-expr (alpha-image-expr* sign                            
+                              exprargs context))
+         (concrete-expr (typecheck
+                  (mk-exists-expr abs-state-bindings  
+                                abstract-expr))))
+    concrete-expr))
 
 (defun alpha-image-lambda (sign expr context)
   (let* ((exprargs (expression expr))
-         (state-bindings (remove nil (mapcar #'(lambda (x) (if 
-             (compatible-type (type x) 
-                                  *state-type*) x nil)) (bindings  expr))))
+         (state-bindings
+	  (remove nil
+		  (mapcar #'(lambda (x)
+			      (when (compatible? (type x) *state-type*)
+				x))
+		    (bindings  expr))))
          (abs-state-bindings (mapcar #'(lambda (x) 
-               (make-abstract-state-bindings-var x)) state-bindings)))
-         (retypecheck (mk-lambda-expr  abs-state-bindings  
-           (let* ((*concretize?* t)) 
-              (alpha-image-expr sign exprargs context))))))
+               (make-abstract-state-bindings-var x)) state-bindings))
+         (*bound-variables* (append abs-state-bindings *bound-variables*))
+         (*assoc-bindings* 
+	  (append (pairlis state-bindings abs-state-bindings) *assoc-bindings*)))
+        (typecheck (mk-lambda-expr  abs-state-bindings   
+              (alpha-image-expr* sign exprargs context)))))
 
 
 
 (defun alpha-image-mu-nu-application (sign expr  context)
   (let* ((exprargs (args1 expr))
          (munuop (operator expr))
-         (muargs1bindgs (bindings (args1 (operator expr))))
-	 (*mu-nu-lambda-bindings-list*
-	    (append (bindings (args1 munuop))
-		      *mu-nu-lambda-bindings-list*))
-         (concrete-expr (retypecheck
-           (mk-application (alpha-image-mu-nu sign munuop  context) 
-                              (alpha-image-expr sign exprargs  context))))
-         (encode-bool-var (encode-into-bdd-pvs-expr concrete-expr)))
-    encode-bool-var))
-
-  
-
+         (concrete-expr (make-application (alpha-image-mu-nu sign munuop  context)
+			  (alpha-image-expr* sign exprargs  context))))
+    concrete-expr))
 
 (defun alpha-image-mu-nu (sign expr context)
   (let* ((muargs1bindgs (bindings (args1 expr))) 
-         (munuop (operator expr))
+         (munuop (mk-name-expr (id (operator expr))))
          (*mu-nu-lambda-bindings-list*
 	      (append muargs1bindgs
 		      *mu-nu-lambda-bindings-list*))
-         (lambda-e (retypecheck (mk-lambda-expr 
-           (mapcar #'make-abstract-pred-state-bindings-var muargs1bindgs) 
-                     (alpha-image-expr sign (expression (args1 expr))
-                              context ))))
-         (concrete-expr (retypecheck 
-               (mk-application munuop lambda-e))))
+         (mu-abs-bindings 
+           (mapcar #'make-abstract-pred-state-bindings-var muargs1bindgs))
+         (*bound-variables* (append  mu-abs-bindings *bound-variables*))
+         (lambda-e (typecheck (mk-lambda-expr  mu-abs-bindings 
+				(alpha-image-expr* sign
+						   (expression (args1 expr))
+						   context))))
+         (concrete-expr (typecheck 
+			    (mk-application munuop lambda-e))))
    concrete-expr))
 
-
 (defun mu-var-application? (expr)
- (if (application? expr)
-  (let* ((op (operator expr))
-         (is-mu-var? (member op *mu-nu-lambda-bindings-list* 
-                          :test #'same-declaration)) 
-         (muvarargs (arguments expr)))
-  (and is-mu-var? (and (variable? (car muvarargs)) 
-         (compatible-type *state-type* (type (car muvarargs))))))
- nil))
-
-(defun mu-var-application? (expr)
- (if (application? expr)
-  (let* ((op (operator expr))
-         (is-mu-var? (member (id op) (mapcar #'id *mu-nu-lambda-bindings-list*) 
-                          :test #'tc-eq)) 
-         (muvarargs (arguments expr)))
-  (and is-mu-var? (and (variable? (car muvarargs)) 
-         (compatible-type *state-type* (type (car muvarargs))))))
- nil))
+  (when (and (application? expr)
+	     (name-expr? (operator expr)))
+    (let* ((op (operator expr))
+	   (is-mu-var? (memq (declaration op) *mu-nu-lambda-bindings-list*))
+	   (muvarargs (arguments expr)))
+      (and is-mu-var?
+	   (variable? (car muvarargs)) 
+	   (compatible? *state-type* (type (car muvarargs)))))))
 
 
 (defun alpha-image-mu-var-application (sign expr context)
- (let* ((op (operator expr))
-        (muvarargs (car (arguments expr)))
-        (new-op (make-abstract-pred-state-var op))
-        (new-var (make-abstract-state-var muvarargs))
-        (concrete-expr (retypecheck (mk-application new-op new-var)))
-        (encode-bool-var (encode-into-bdd-pvs-expr concrete-expr)))
-    encode-bool-var))
-
-
+  (declare (ignore sign context))
+  (let* ((op (operator expr))
+	 (muvarargs (car (arguments expr)))
+	 (new-op (make-abstract-pred-state-var op))
+	 (new-var (make-abstract-state-var muvarargs))
+	 (concrete-expr (mk-application new-op new-var)))
+    concrete-expr))
         
 (defun alpha-image-state (sign expr context)
- (cond ((variable? expr)  (make-abstract-state-var expr))
+ (cond ((variable? expr) (id-substit nil nil expr))
        ((record-expr? expr) (alpha-image-record sign expr context))))
 
 (defun alpha-image-skolem-constant (sign expr context)
+  (declare (ignore sign context))
  (let* ((new-id (makesym (format nil "sko_~a" (string-right-trim "!1" 
                            (string (id expr))))))
          (type-abstract-var *abs-state-type*)
          (new-abs-var-decl (mk-const-decl new-id type-abstract-var))
          (new-sko-var (mk-name-expr new-abs-var-decl)))
-   (abstraction-add-decl new-abs-var-decl)
- ;; (setq  *abs-skolem-var* (cons new-sko-var *abs-skolem-var*)) 
- new-sko-var))
+   new-sko-var))
     
-(defun alpha-image-record (sign expr context) ;; to abstract record expressions
-  expr)
+(defun alpha-image-record (sign expr context)
+  (alpha-image-atom sign expr context))
 
 (defun alpha-image-constant (sign expr context)
  (alpha-image-atom sign expr context))
@@ -826,46 +660,32 @@ selections of unsimplified CASES expressions."
 
 
 (defun make-abstract-state-var (concrete-var)
-  (let* ((abstract-name-var (makesym (format nil "abs_~a"
-             (string (id concrete-var) ))))
-        (type-abstract-var *abs-state-type*)
-        (new-abs-var-decl (mk-var-decl abstract-name-var type-abstract-var))
-        (new-var (mk-name-expr new-abs-var-decl)))
-   (abstraction-add-decl new-abs-var-decl)
- new-var
-   ))
+  (let* ((abstract-name-var (makesym "abs_~a" (id concrete-var)))
+	 (new-var (mk-name-expr abstract-name-var)))
+    new-var))
 
 
 (defun make-abstract-state-bindings-var (concrete-bind-var)
-   (let* ((abstract-name-var (makesym (format nil "abs_~a"
-             (string (id concrete-bind-var)))))
-        (type-abstract-var *abs-state-type*)
-        (new-abs-var-decl (make-bind-decl abstract-name-var type-abstract-var))
-        (new-pure-variable (mk-var-decl abstract-name-var type-abstract-var))
-        (new-bind-var (mk-name-expr new-abs-var-decl)))
-   (abstraction-add-decl new-pure-variable)
-    new-bind-var)) 
+  (let* ((abstract-name-var (makesym "abs_~a"
+				     (id concrete-bind-var)))
+	 (type-abstract-var *abs-state-type*)
+	 (new-abs-var-decl (make-bind-decl abstract-name-var type-abstract-var)))
+    new-abs-var-decl))
 
 
 (defun make-abstract-pred-state-var (concrete-var)
-  (let* ((abstract-name-var (makesym (format nil "abs_~a"
-             (string (id concrete-var) ))))
-        (type-abstract-var (mk-predtype *abs-state-type*))
-        (new-abs-var-decl (mk-var-decl abstract-name-var type-abstract-var))
-        (new-var (mk-name-expr new-abs-var-decl)))
-   (abstraction-add-decl new-abs-var-decl)
+  (let* ((abstract-name-var (makesym "abs_~a"
+				     (id concrete-var) ))
+        (new-var (mk-name-expr abstract-name-var)))
  new-var
    ))
    
 (defun make-abstract-pred-state-bindings-var (concrete-bind-var)
-   (let* ((abstract-name-var (makesym (format nil "abs_~a"
-             (string (id concrete-bind-var)))))
+   (let* ((abstract-name-var (makesym  "abs_~a"
+				       (id concrete-bind-var)))
         (type-abstract-var (mk-predtype *abs-state-type*))
-        (new-abs-var-decl (make-bind-decl abstract-name-var type-abstract-var))
-        (new-pure-variable (mk-var-decl abstract-name-var type-abstract-var))
-        (new-bind-var (mk-name-expr new-abs-var-decl)))
-   (abstraction-add-decl new-pure-variable)
-    new-bind-var)) 
+        (new-abs-var-decl (make-bind-decl abstract-name-var type-abstract-var)))
+    new-abs-var-decl)) 
 
 
 ;;
@@ -880,16 +700,6 @@ selections of unsimplified CASES expressions."
  (let* ((free-vars (freevars expr))
         (free-state-vars (remove nil (mapcar #'(lambda (x) (if 
                             (compatible-type (type x) *state-type*) x nil)) free-vars)))
-        (others (remove nil (mapcar #'(lambda (x) (not
-                            (compatible-type (type x) *state-type*))) free-vars)))
-        (ll (length free-state-vars))
-        (simple-atom? (and (equal 1 ll)
-                           (null others)))
-        (mixed-atom? (and (equal 2 ll)
-                           (null others)))
-       ;; (*state-var-1* (car free-state-vars))
-       ;; (*state-var-2* (if mixed-atom?  (car (cdr free-state-vars)) 
-       ;;                                     nil ))
         (*state-var-1* (let ((elem (updated-state-var expr)))
                          (if elem elem (car free-state-vars))))
         (*state-var-2* (car (set-difference free-state-vars 
@@ -911,16 +721,15 @@ selections of unsimplified CASES expressions."
 
 
 (defun normalize-equality-expr (expr)
- (if (and (application? expr) (equation? expr))
-      (let* ((op (operator expr))
-             (args (arguments expr))
+  (if (equation? expr)
+      (let* ((args (arguments expr))
              (fml-update (member-if  #'(lambda (x) (update-expr? x)) args))
              (fml-no-u (member-if  #'(lambda (x) (not(update-expr? x))) args))
              (fml-update (if fml-update (car fml-update) nil))
              (fml-no-u (if fml-no-u (car fml-no-u) nil)))
         (if (or (null fml-update) (null fml-no-u)) expr
-           (normalize-update-expr fml-no-u fml-update)))
-    expr))
+	    (normalize-update-expr fml-no-u fml-update)))
+      expr))
 
 (defun normalize-update-expr (fml-no-u fml-update)
  (let* ((exp (expression fml-update))
@@ -933,7 +742,8 @@ selections of unsimplified CASES expressions."
 
 
 (defun alpha-image-atom-constant (over? expr context)
-         (encode-into-bdd-pvs-expr expr))
+  (declare (ignore over? context))
+  expr)
 
 (defun create-current-list-pred (state-var)
  (if (null state-var) nil
@@ -951,17 +761,10 @@ selections of unsimplified CASES expressions."
 (defun struc-substit (new-var state-var expr)
  (substit expr (acons (declaration state-var) new-var nil)))
 
+(defun id-substit (new-var state-var expr)
+  (declare (ignore new-var state-var))
+ (substit (typecheck expr) *assoc-bindings*))
 
-;; (defmethod gensubst* :around (obj substfn testfn)
-;;  (or (gethash obj *gensubst-cache*)
-;;      (let ((nobj (if (funcall testfn obj)
-;;		      (funcall substfn obj)
-;;		      (call-next-method))))
-;;	(setf (gethash obj *gensubst-cache*) nobj))))
-
-;;
-;;
-;;             
 ;;;;;;;;;;;;;;;;;;
 ;;
 ;; gamma image
@@ -980,7 +783,7 @@ selections of unsimplified CASES expressions."
      (real-gamma-image bdd-expr)))
 
 (defun gamma-image-contex (bdd-expr)
- (if *use-context?*  (gamma-image bdd-expr) *true*))
+  bdd-expr)
 
 ;; new relative to the new handeling of contex.
 ;;
@@ -989,24 +792,27 @@ selections of unsimplified CASES expressions."
 ;;
 
 (defun real-gamma-image (bdd-expr) 
-(if (expr? bdd-expr) bdd-expr
- (let ((bdd-expr bdd-expr)) 
- (if (bdd-1? bdd-expr) *true*
-  (let* ((pvs-list-expressions (gamma-translate-bdd-to-pvs bdd-expr))
-         (pvs-list-of-disj (mapcar #'(lambda (list-conj) 
-           (make-conjunction list-conj)) pvs-list-expressions ))
-         (pvs-expression (make-disjunction pvs-list-of-disj)))
-    pvs-expression))))) ;; make-negation????
+  (if (expr? bdd-expr) bdd-expr
+      (let ((bdd-expr bdd-expr)) 
+	(if (bdd-1? bdd-expr) *true*
+	    (let* ((pvs-list-expressions (gamma-translate-bdd-to-pvs bdd-expr))
+		   (pvs-list-of-disj (mapcar #'(lambda (list-conj) 
+						 (mk-conjunction list-conj))
+				       pvs-list-expressions ))
+		   (pvs-expression (make-disjunction pvs-list-of-disj)))
+	      pvs-expression)))))
 
 (defun real-local-gamma-image (bdd-expr) 
-(if (expr? bdd-expr) bdd-expr
- (let ((bdd-expr bdd-expr)) 
- (if (bdd-1? bdd-expr) *true*
-  (let* ((pvs-list-expressions (local-gamma-translate-bdd-to-pvs bdd-expr))
-         (pvs-list-of-disj (mapcar #'(lambda (list-conj) 
-           (make-conjunction list-conj)) pvs-list-expressions ))
-         (pvs-expression (make-disjunction pvs-list-of-disj)))
-    pvs-expression))))) ;; make-negation????
+  (if (expr? bdd-expr) bdd-expr
+      (let ((bdd-expr bdd-expr)) 
+	(if (bdd-1? bdd-expr) *true*
+	    (let* ((pvs-list-expressions (local-gamma-translate-bdd-to-pvs
+					  bdd-expr))
+		   (pvs-list-of-disj (mapcar #'(lambda (list-conj) 
+						 (mk-conjunction list-conj))
+				       pvs-list-expressions ))
+		   (pvs-expression (make-disjunction pvs-list-of-disj)))
+	      pvs-expression)))))
 
 (defun gamma-translate-bdd-to-pvs (bdd-expr)
    (let ((list-of-conjuncts 
@@ -1032,49 +838,39 @@ selections of unsimplified CASES expressions."
     lit-list))
 
 (defun local-gamma-from-bdd-list-to-pvs-list (list-of-conjuncts)
-(let* ((abstract-bdd-pvs-hash *bool-hash-table*)
-       (lit-list 
-            (mapcar #'(lambda (conj)
-	       (mapcar #'(lambda (lit)
-	           (if (consp lit)
-		       (make-negation 
-                           (gethash (car lit) abstract-bdd-pvs-hash))
-                           (gethash lit abstract-bdd-pvs-hash)))
-		      	   conj))
-		   list-of-conjuncts)))
-    lit-list))
-
-(defun local-gamma-from-bdd-list-to-pvs-list (list-of-conjuncts)
-(let* ((abstract-bdd-pvs-hash *bool-hash-table*)
-       (lit-list 
-            (mapcar #'(lambda (conj)
-	       (mapcar #'(lambda (lit)
-	           (get-abstract-encoding lit abstract-bdd-pvs-hash))
-		      	   conj))
-		   list-of-conjuncts)))
+  (let* ((abstract-bdd-pvs-hash *bool-hash-table*)
+	 (lit-list 
+	  (mapcar #'(lambda (conj)
+		      (mapcar #'(lambda (lit)
+				  (get-abstract-encoding
+				   lit abstract-bdd-pvs-hash))
+			conj))
+	    list-of-conjuncts)))
     lit-list))
 
 (defun get-abstract-encoding (lit abstract-bdd-pvs-hash)
-;; (pvs-message (format nil "var1: ~a    var2: ~a"
-;; (unparse *abs-state-var-1* :string t)
-;; (unparse *abs-state-var-2* :string t)))
- (if (or (not *make-abs-rec-app*)
-         (> (if (consp lit) (car lit) lit)
+  ;; (pvs-message (format nil "var1: ~a    var2: ~a"
+  ;; (unparse *abs-state-var-1* :string t)
+  ;; (unparse *abs-state-var-2* :string t)))
+  (if (or (not *make-abs-rec-app*)
+	  (> (if (consp lit) (car lit) lit)
              (* 2 (length *list-indices*))))
       (if (consp lit)
-		       (make-negation 
-                           (gethash (car lit) abstract-bdd-pvs-hash))
-                           (gethash lit abstract-bdd-pvs-hash))
+	  (make-negation 
+	   (gethash (car lit) abstract-bdd-pvs-hash))
+	  (gethash lit abstract-bdd-pvs-hash))
       (let* ((neg? (consp lit))
              (ll (length *list-indices*))
              (lit (if (consp lit) (car lit) lit))
-             (recgnzr (format nil "~a (Abvar_~d(~a))" 
-                          (if neg? "not" "")  
-                          (if (< ll lit) (- lit ll) lit)
-                          (if (< ll lit) (unparse *abs-state-var-2* :string t)
-                                         (unparse *abs-state-var-1* :string t))
+             (recgnzr (format nil "~a (~a(~a))" 
+			(if neg? "not" "")  
+			(nth (1- (if (< ll lit) (- lit ll) lit))
+			     *new-abstract-field-ids*)
+			(if (< ll lit)
+			    (unparse *abs-state-var-2* :string t)
+			    (unparse *abs-state-var-1* :string t))
                         )))
-     (typecheck(pc-parse recgnzr 'expr ) :expected *boolean*))))
+	(typecheck(pc-parse recgnzr 'expr ) :expected *boolean*))))
      
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1118,7 +914,7 @@ selections of unsimplified CASES expressions."
    (init-primed-unprimed-variables list-predicates list-primed-predicates)
    (setq *proof-counter* 0) 
    (let*   ((bdd_alpha_image (let ((already-computed (already-abs? predicate)))
- (if already-computed (cons already-computed *true*)
+ (if already-computed already-computed
  (let* ((list-primed-unprimed-dep-list 
                   (get-list-of-dependent-indices predicate))
         (*list-not-affected* (set-difference *list-indices*
@@ -1137,10 +933,10 @@ selections of unsimplified CASES expressions."
                         (if (and (null (car dep-i)) (null (cdr dep-i)))
                               one-c nil)))   decomposed-conj)))
         (bdd_image_abs_var_not_aff (if (and (not (or primed? unprimed?))
-            (not not-affected?))  (bdd_and_list
+            (not not-affected?))  (mk-conjunction
                 (mapcar #'(lambda (one-c) 
                    (alpha-image-atom-not-affected over? one-c context))
-                 not-affec-assign)) (bdd_1) ))
+                 not-affec-assign)) *true* ))
         (computed-image
  (if not-affected? (alpha-image-atom-not-affected over? predicate context)
  (if over?
@@ -1154,18 +950,15 @@ selections of unsimplified CASES expressions."
         (unprimed? ;; under
             (real-compute-alpha-image-atom-under predicate nil context))
         (t (real-compute-mixed-alpha-image-atom-under predicate context))))))
-         (computed-image (bdd_and computed-image bdd_image_abs_var_not_aff))
+         (computed-image (mk-conjunction 
+			  (list  computed-image bdd_image_abs_var_not_aff)))
          (computed-image (cons computed-image unchanged-expr))   
           )
   (setf (gethash predicate *history-bdd-hash-encoding*) 
-                (local-concretize (car computed-image)))
+	computed-image)
   computed-image ))))
-          (abstract-image (if (expr? (car bdd_alpha_image)) (car bdd_alpha_image)
-                 (local-concretize (car bdd_alpha_image)))))
-;;      (encode-into-bdd-pvs-expr (make-conjunction (list (cdr bdd_alpha_image) abstract-image)))
- (bdd_and
- (encode-into-bdd-pvs-expr abstract-image)
- (encode-expr-with-one-bool-var (cdr bdd_alpha_image)))
+          (abstract-image (car bdd_alpha_image)))
+     (mk-conjunction  (list abstract-image (cdr bdd_alpha_image)))
 )))
 
 
@@ -1199,70 +992,24 @@ selections of unsimplified CASES expressions."
 (defun create-hash-tables-for-bool-vars 
     (list-predicates list-primed-predicates)
  (let ((list-unprimed-pair (pairlis *list-indices* list-predicates))
-       (list-primed-pair 
-           (pairlis *list-primed-indices* list-primed-predicates)))
+       (list-primed-pair
+	(when list-primed-predicates
+	  (pairlis *list-primed-indices* list-primed-predicates))))
   (dolist (one-pair list-unprimed-pair) ;; unprimed-predicates
      (let ((varid (car one-pair))
            (predicate (cdr one-pair)))
              (setf (gethash predicate *pvs-abstract-bdd-hash*) varid)
-             (setf (gethash varid *abstract-bdd-pvs-hash*) predicate)
-             (create-pvs-abstract-bool-var varid) ;; create B_i for phi_i
-            ))
+             (setf (gethash varid *abstract-bdd-pvs-hash*) predicate)))
   (dolist (one-pair list-primed-pair) ;; primed-predicates
      (let ((varid (car one-pair))
            (predicate (cdr one-pair)))
              (setf (gethash predicate *pvs-abstract-bdd-hash*) varid)
-             (setf (gethash varid *abstract-bdd-pvs-hash*) predicate)
-             (create-pvs-abstract-bool-var varid)  ;; create B_i' for phi_i'
-            ))
+             (setf (gethash varid *abstract-bdd-pvs-hash*) predicate)))
  (setf (gethash *true* *pvs-abstract-bdd-hash*) *true*)))
 
-(defun create-hash-tables-for-bool-vars 
-    (list-predicates list-primed-predicates)
- (let ((list-unprimed-pair (pairlis *list-indices* list-predicates))
-       (list-primed-pair (if (null list-primed-predicates) nil
-           (pairlis *list-primed-indices* list-primed-predicates))))
-  (dolist (one-pair list-unprimed-pair) ;; unprimed-predicates
-     (let ((varid (car one-pair))
-           (predicate (cdr one-pair)))
-             (setf (gethash predicate *pvs-abstract-bdd-hash*) varid)
-             (setf (gethash varid *abstract-bdd-pvs-hash*) predicate)
-             (create-pvs-abstract-bool-var varid) ;; create B_i for phi_i
-            ))
-  (dolist (one-pair list-primed-pair) ;; primed-predicates
-     (let ((varid (car one-pair))
-           (predicate (cdr one-pair)))
-             (setf (gethash predicate *pvs-abstract-bdd-hash*) varid)
-             (setf (gethash varid *abstract-bdd-pvs-hash*) predicate)
-             (create-pvs-abstract-bool-var varid)  ;; create B_i' for phi_i'
-            ))
- (setf (gethash *true* *pvs-abstract-bdd-hash*) *true*)))
-
-
-
-(defun create-pvs-abstract-bool-var (varid)
- (let* ((bool-name-string (format nil "B_~d" varid))
-        (bool-var-name (intern bool-name-string))
-        (bool-var-decl (mk-var-decl bool-var-name *boolean*)))
-    (abstraction-add-decl bool-var-decl)
-    (setf (gethash varid *abstract-bool-var-hash*) 
-             (typecheck (pc-parse bool-name-string 'expr )))))
-
-
-(defun abstraction-add-decl (decl)
- (add-decl decl)
-)
-
-;;
-;;
-;;
-;;
-;;
-;;
 
 (defun alpha-image-atom-not-affected (over? predicate context)
-;; (setq *zozo* predicate)
-;; (break)
+  (declare (ignore context))
  (let* ((vars (freevars predicate))
         (state-var (if (null vars) nil (car vars)))
         (pair-state-vars (if (cdr vars) (list (car vars) (car(cdr vars)))
@@ -1275,31 +1022,28 @@ selections of unsimplified CASES expressions."
                                       :test #'equal))
         (all-comp-finite? (null all-comp-finite))
         (bdd-varid (fresh-bdd-varid))
-        (bdd-variable (bdd_create_var bdd-varid))
         (new-expression 
-           (if (null state-var) 
-               predicate
-                  (if (not all-comp-finite?)
-                   ;;   *true* ;; true...
-                   (if over? *true* *false*) ;; what about the hash value??
-            (if (null pair-state-vars)
-                 (let* ((new-var (make-abstract-state-var state-var))
-                        (new-expr (struc-substit new-var state-var predicate))
-                        (new-expr (retypecheck new-expr)))
-         new-expr)
-                 (let* ((predicate (decompose-assign-predicate predicate))
-                        (new-var1 (make-abstract-state-var 
-                                           (nth 0 pair-state-vars)))
-                        (new-var2 (make-abstract-state-var 
-                                           (nth 1 pair-state-vars))) 
-                       (new-expr (struc-substit new-var1 state-var1 predicate))
-                       (new-expr (struc-substit new-var2 state-var2 new-expr))                        (new-expr (retypecheck new-expr)))
-         new-expr))
-       ))))
- (setf (gethash bdd-varid *abstract-bdd-pvs-hash*) new-expression)
- (if (and (not (null state-var)) (not all-comp-finite?)) ;;(bdd_1) 
-           (if over? (bdd_1) (bdd_0))  ;; what about the hash value??
-  bdd-variable )))
+	 (if (null state-var) 
+	     predicate
+	     (if (not all-comp-finite?)
+		 (if over? *true* *false*);; what about the hash value??
+		 (if (null pair-state-vars)
+		     (let* ((new-var (make-abstract-state-var state-var))
+			    (new-expr (id-substit new-var state-var predicate)))
+		       new-expr)
+		     (let* ((predicate (decompose-assign-predicate predicate))
+			    (new-var1 (make-abstract-state-var 
+				       (nth 0 pair-state-vars)))
+			    (new-var2 (make-abstract-state-var 
+				       (nth 1 pair-state-vars))) 
+			    (new-expr (id-substit new-var1 state-var1 predicate))
+			    (new-expr (id-substit new-var2 state-var2 new-expr)))
+		       new-expr))))))
+   (bdd_create_var bdd-varid)
+   (setf (gethash bdd-varid *abstract-bdd-pvs-hash*) new-expression)
+   (if (and (not (null state-var)) (not all-comp-finite?)) ;;(bdd_1) 
+       (if over? *true* *false*)  ;; what about the hash value??
+       new-expression)))
                                
 
 (defun decompose-assign-predicate (predicate)  
@@ -1356,7 +1100,7 @@ selections of unsimplified CASES expressions."
                   (setq bdd_alpha (bdd_and bdd_alpha one_bool_expr))
                   )
           (if  (call-decision-procedure-and-prove 
-                         (make-conjunction (list context-expr predicate))
+                         (mk-conjunction (list context-expr predicate))
                                   pvs-expr)
                 (setq bdd_alpha (bdd_and bdd_alpha one_bool_expr))
                 (setq bdd_list_current_fail 
@@ -1375,10 +1119,10 @@ selections of unsimplified CASES expressions."
         (setq bdd_list_previous_fail bdd_list_current_fail)
         (setq bdd_list_current_fail nil)
       )))
- bdd_alpha))
+ (local-concretize bdd_alpha)))
 
 (defun real-compute-alpha-image-atom-under (predicate primed? context)
-  (bdd_not (real-compute-alpha-image-atom-over 
+  (make-negation (real-compute-alpha-image-atom-over 
 	    (make-negation-with-p predicate) primed? context)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1424,8 +1168,9 @@ selections of unsimplified CASES expressions."
 ;;
 ;;
 
-(defun generate-possible-disj-bool-expr 
-                 (bdd_alpha previous-list current-list primed?)
+(defun generate-possible-disj-bool-expr (bdd_alpha previous-list
+						   current-list primed?)
+  (declare (ignore previous-list))
    (let* ((list-literals (make-list-of-all-literals primed?))
          (dis-with-lit list-literals)
          (dis-with-neg-lit (mapcar #'(lambda (bdd) (bdd-not bdd)) 
@@ -1453,8 +1198,9 @@ selections of unsimplified CASES expressions."
 ;;
 ;;
 
-(defun generate-possible-conj-bool-expr 
-                 (bdd_alpha previous-list current-list primed?)
+(defun generate-possible-conj-bool-expr (bdd_alpha previous-list
+						   current-list primed?)
+  (declare (ignore previous-list))
    (let* ((list-literals (make-list-of-all-literals primed?))
          (dis-with-lit list-literals)
          (dis-with-neg-lit (mapcar #'(lambda (bdd) (bdd-not bdd)) 
@@ -1489,7 +1235,7 @@ selections of unsimplified CASES expressions."
  (let* ((new_bdd (bdd_or bdd one-old-bool-expr)) ;; new expr to test
         (impl_alpha_new (bdd_implies bdd_alpha new_bdd)) ;; subsumed by alpha
         (impl_alpha_old (bdd_implies bdd_alpha one-old-bool-expr))
-        (old_implies_new (bdd_implies one-old-bool-expr new_bdd)) ;; redunduncy
+        ;;(old_implies_new (bdd_implies one-old-bool-expr new_bdd)) ;; redunduncy
         (equiv_and_new (bdd_equiv (bdd_and new_bdd bdd_alpha)
                                   (bdd_and bdd bdd_alpha)))
         (equiv_old_new (bdd_equiv impl_alpha_new impl_alpha_old)))
@@ -1506,7 +1252,7 @@ selections of unsimplified CASES expressions."
  (let* ((new_bdd (bdd_and bdd one-old-bool-expr)) ;; new expr to test
         (impl_alpha_new (bdd_implies new_bdd bdd_alpha)) ;; subsumed by alpha
         (impl_alpha_old (bdd_implies one-old-bool-expr bdd_alpha))
-        (old_implies_new (bdd_implies new_bdd one-old-bool-expr )) ;; redunduncy
+        ;;(old_implies_new (bdd_implies new_bdd one-old-bool-expr )) ;; redunduncy
         (equiv_and_new (bdd_equiv (bdd_or new_bdd bdd_alpha)
                                   (bdd_or bdd bdd_alpha)))
         (equiv_old_new (bdd_equiv impl_alpha_new impl_alpha_old)))
@@ -1533,8 +1279,8 @@ selections of unsimplified CASES expressions."
           (bdd_alpha (bdd_and *unprimed-exclusive* *primed-exclusive*))
           (primed_bdd_list_previous_fail (list (bdd_0)))  ;; initialize fail with false
           (primed_bdd_list_current_fail nil)
-          (unprimed_bdd_list_previous_fail (list (bdd_1)))  ;; initialize fail with true
-          (unprimed_bdd_list_current_fail nil)
+          ;;(unprimed_bdd_list_previous_fail (list (bdd_1)))  ;; initialize fail with true
+          ;;(unprimed_bdd_list_current_fail nil)
           (history_list_of_failed_primed_disj nil)
           (generated_primed_bool_exprs (reverse ;; no reverse !
               (generate-possible-disj-bool-expr bdd_alpha 
@@ -1553,7 +1299,7 @@ selections of unsimplified CASES expressions."
             (let ((pvs-expr (local-gamma-image one_bool_expr))
                   (context-expr (gamma-image-contex context)))
           (if  (call-decision-procedure-and-prove 
-                         (make-conjunction (list context-expr predicate)) 
+                         (mk-conjunction (list context-expr predicate)) 
                                   pvs-expr)
                 (setq bdd_alpha (bdd_and bdd_alpha one_bool_expr))
                 (setq primed_bdd_list_current_fail 
@@ -1564,7 +1310,7 @@ selections of unsimplified CASES expressions."
          (let ((generated_unprimed_bool_exprs 
                   (only-antecedants-in-context 
                      generated_unprimed_bool_exprs context))
-                (context-expr (gamma-image-contex context))
+                ;;(context-expr (gamma-image-contex context))
                 (add-primed_bdd_list_current_fail (remove nil
                 (mapcar #'(lambda(one-bdd) (if 
                  (subsumed-by-alpha one-bdd (bdd_0)  bdd_alpha) nil one-bdd))
@@ -1574,7 +1320,7 @@ selections of unsimplified CASES expressions."
           (let ((pvs-ant-expr (local-gamma-image one-antecedant))
                 (pvs-expr (local-gamma-image one-fail)))
             (if (call-decision-procedure-and-prove 
-              (make-conjunction (list pvs-ant-expr ;;context-expr ;; to check if
+              (mk-conjunction (list pvs-ant-expr ;;context-expr ;; to check if
                                                                 ;; reachable
                      predicate)) pvs-expr)
                 (setq bdd_alpha (bdd_and bdd_alpha 
@@ -1590,7 +1336,7 @@ selections of unsimplified CASES expressions."
       )
   ;; test "unprimed conjunctiosn => failed primed disjunction"
   ;; failed are stored in history_list_of_failed_primed_disj
- bdd_alpha))
+ (local-concretize bdd_alpha)))
 ;;
 
 ;;
@@ -1604,15 +1350,16 @@ selections of unsimplified CASES expressions."
    (let* ((bdd_alpha (bdd_0)) ;; initialize alpha with false
           (primed_bdd_list_previous_fail (list (bdd_1)))  ;; initialize fail with true
           (primed_bdd_list_current_fail nil)
-          (unprimed_bdd_list_previous_fail (list (bdd_0)))  ;; initialize fail with false
-          (unprimed_bdd_list_current_fail nil)
+          ;;(unprimed_bdd_list_previous_fail (list (bdd_0)))  ;; initialize fail with false
+          ;;(unprimed_bdd_list_current_fail nil)
           (history_list_of_failed_primed_disj nil)
          (generated_primed_bool_exprs (reverse ;; no reverse !
               (generate-possible-conj-bool-expr bdd_alpha 
                primed_bdd_list_previous_fail (list (bdd_1))  t)))
-         (generated_unprimed_bool_exprs (reverse
-              (generate-possible-disj-bool-expr bdd_alpha 
-                 unprimed_bdd_list_previous_fail (list (bdd_0))  nil))))
+         ;;(generated_unprimed_bool_exprs (reverse
+           ;;   (generate-possible-disj-bool-expr bdd_alpha 
+             ;;    unprimed_bdd_list_previous_fail (list (bdd_0))  nil)))
+	 )
  ;; test "primed disjunctions"
    (loop while (not (null generated_primed_bool_exprs)) do
        (dolist (one_bool_expr generated_primed_bool_exprs)
@@ -1623,7 +1370,7 @@ selections of unsimplified CASES expressions."
             (let ((pvs-expr (local-gamma-image one_bool_expr))
                   (context-expr (gamma-image-contex context)))
           (if  (call-decision-procedure-and-prove 
-                         (make-conjunction (list context-expr predicate)) 
+                         (mk-conjunction (list context-expr predicate)) 
                                   pvs-expr)
                 (setq bdd_alpha (bdd_and bdd_alpha one_bool_expr))
                 (setq primed_bdd_list_current_fail 
@@ -1640,35 +1387,22 @@ selections of unsimplified CASES expressions."
       )
   ;; test "unprimed conjunctiosn => failed primed disjunction"
   ;; failed are stored in history_list_of_failed_primed_disj
- bdd_alpha))
+ (local-concretize bdd_alpha)))
 ;;
 
 ;;
 ;;
 ;;
-
-;;(defun test-unprimed-antecedants (generated_unprimed_bool_exprs
-;;                                   primed_bdd_list_current_fail 
-;;                                    one_bool_expr predicate)
-;; (let ((pvs-expr (local-gamma-image one_bool_expr)))
-;; (dolist (one-antecedant generated_unprimed_bool_exprs)
-;;   (let ((pvs-ant-expr (local-gamma-image one-antecedant)))
-;;  (if (call-decision-procedure-and-prove 
-;;              (make-conjunction (list pvs-ant-expr predicate)) pvs-expr)
-;;       (setq bdd_alpha (bdd_and bdd_alpha 
-;;                    (bdd_implies one-antecedant one_bool_expr)))
-;;       (setq primed_bdd_list_current_fail 
-;;               (cons one_bool_expr primed_bdd_list_current_fail)))))))
 
 (defun only-antecedants-in-context (generated_unprimed_bool_exprs context)
  (let* ((pvs-context-expr (gamma-image-contex context))
-        (pvs-bdd-context-expr (encode-into-bdd-pvs-expr pvs-context-expr))
+        (pvs-bdd-context-expr pvs-context-expr)
         (new-list (remove nil (mapcar #'(lambda (one-ant) 
                (let* ((pvs-ant-expr (local-gamma-image one-ant))
-                      (bdd-ant-expr (encode-into-bdd-pvs-expr pvs-ant-expr))
-                      (bdd-to-check (bdd_implies pvs-bdd-context-expr 
-                                        (bdd_not bdd-ant-expr))))
-         (if (bdd-1? bdd-to-check) nil
+                      (bdd-ant-expr pvs-ant-expr)
+                      (bdd-to-check (make-implication pvs-bdd-context-expr 
+                                        (negate bdd-ant-expr))))
+         (if (tc-eq *true* bdd-to-check) nil
               (if 
                (call-decision-procedure-and-prove 
                     pvs-context-expr (make-negation pvs-ant-expr))
@@ -1697,6 +1431,7 @@ selections of unsimplified CASES expressions."
     (member (bdd_or bdd_alpha bool_expr) bdd_list_previous_fail))
 
 (defun not-exclusive? (bdd excl_bdd)
+  (declare (ignore bdd excl_bdd))
   ())
 
 ;;
@@ -1711,25 +1446,20 @@ selections of unsimplified CASES expressions."
 (defun call-decision-procedure-and-prove (pvs-hyp-formula pvs-concl-formula)
  (setq *counter-possible-prf* (+ 1 *counter-possible-prf*))
  (setq *proof-counter* (+ 1 *proof-counter*))
-;; (pvs-message (format nil " prove " ))
  (let* ((free-vars-hyp (free-state-components pvs-hyp-formula))
        (free-vars-concl (free-state-components pvs-concl-formula))
        (common-vars? (intersection free-vars-hyp free-vars-concl)))
  (if (null common-vars?) nil
  (let ((*suppress-printing* T)
+       (*suppress-msg* T)
        (proof-obligation  
               (mk-formula-decl (makesym (format nil "abstraction"))
-                   (retypecheck (mk-implication pvs-hyp-formula pvs-concl-formula)))))
- ;;  (make-implication pvs-hyp-formula pvs-concl-formula))))
+                   (typecheck (mk-implication pvs-hyp-formula pvs-concl-formula)))))
   (update-context-with-new-stuff proof-obligation)
   (setq *counter-attempt* (+ 1 *counter-attempt*))
-;;  (setq *zozo* proof-obligation ) 
- ;; (break) ;; (break)
-;;   (pvs-message (format nil "." ))
   (prove-decl  proof-obligation  
             :strategy `(try (apply (then*
-      (skosimp*) (branch (prop) ((then*  (assert)))))) (fail) (fail))
-    ;;  *abstraction-strategy*
+      (skosimp*) (branch (bddsimp) ((then*  (assert)))))) (fail) (fail))
     )
   (if (proved? proof-obligation )
       t nil))
@@ -1791,8 +1521,7 @@ selections of unsimplified CASES expressions."
 		(if (listp result)
 		    result
 		    (list result))))
-  (let* ((old-expr expr)
-	 (*lift-if-updates* T)
+  (let* ((*lift-if-updates* T)
 	 (expr (if (expr? expr) ;; boolean? can not be used with assignment..
                     (if (and (boolean? expr)
 			(equation? expr))
@@ -1848,8 +1577,7 @@ selections of unsimplified CASES expressions."
 		(if (listp result)
 		    result
 		    (list result))))
-  (let* ((old-expr expr)
-	 (*lift-if-updates* T)
+  (let* ((*lift-if-updates* T)
 	 (expr (if (expr? expr) ;; boolean? can not be used with assignment..
                     (if (and (boolean? expr)
 			(equation? expr))
@@ -1897,7 +1625,7 @@ selections of unsimplified CASES expressions."
  (funcall *bdd-counter*))
 
 (defun encode-into-bdd-pvs-expr (pvs-expr)
- (translate-to-bdd pvs-expr))
+  pvs-expr)
 
 (defun encode-expr-with-one-bool-var (pvs-expr)
  (let*  ((bddvarid (fresh-bdd-varid))
@@ -1905,72 +1633,47 @@ selections of unsimplified CASES expressions."
    (setf (gethash bddvarid  *bdd-pvs-hash*) pvs-expr)
   bdd-variable))
 
-(defun retypecheck (expr)
-  (typecheck (pc-parse (unparse expr :string t) 'expr)))
-
-
 (defun same-expression (e1 e2)
- (tc-eq (retypecheck e1) (retypecheck e2)))
+ (tc-eq (typecheck e1) (typecheck e2)))
 
           
 (defun make-negation-with-p (expr)
- (pvs-message (format nil "start parsing"))
- (let ((time-now (get-universal-time))
-       (str (format nil "not (~a)" (unparse expr :string t))))
-  (pvs-message (format nil "end parsing after ~d seconds"
-          (- (get-universal-time) time-now )))
-   (typecheck (pc-parse str 'expr))))
-
-
-(defun make-negation-with-p (expr)
- (let  ((str (format nil "not (~a)" (unparse expr :string t))))
-   (typecheck (pc-parse str 'expr))))
+ (make-negation expr))
 
 
 (defun create-unchanged-expr (list-indices fml)
- (let* ((abs-state-var-1 (unparse *abs-state-var-1* :string t))
-        (abs-state-var-2 (unparse *abs-state-var-2* :string t))
-        (remaning-comp (intersection 
-                    (mapcar #'string  (mapcar #'id (fields *abs-state-type*)))
-                    (mapcar #'string  (mapcar #'id (fields *state-type*)))))
-        (free-comp (mapcar #'string (get-free-state-components fml)))
-        (unchange-comp (set-difference remaning-comp free-comp))
-        (unchange-comp (mapcar #'(lambda (one-field)
-           (make-equality 
-         (typecheck(pc-parse (format nil "~a(~a)" 
-                                   one-field abs-state-var-1) 'expr))
-         (typecheck(pc-parse (format nil "~a(~a)" 
-                                   one-field abs-state-var-2) 'expr))
-                  )) unchange-comp))
-        (unchanged-bool-vars   (mapcar #'(lambda (one-indice) 
-               (make-equality 
-         (typecheck(pc-parse (format nil "Abvar_~d(~a)" 
-                                   one-indice abs-state-var-1) 'expr))
-         (typecheck(pc-parse (format nil "Abvar_~d(~a)" 
-                                   one-indice abs-state-var-2) 'expr))
-                  )) list-indices)))
- (make-conjunction (append unchange-comp unchanged-bool-vars))))
+  (let* ((abs-state-var-1 (unparse *abs-state-var-1* :string t))
+	 (abs-state-var-2 (unparse *abs-state-var-2* :string t))
+	 (remaning-comp (intersection 
+			 (mapcar #'string  (mapcar #'id (fields *abs-state-type*)))
+			 (mapcar #'string  (mapcar #'id (fields *state-type*)))))
+	 (free-comp (mapcar #'string (get-free-state-components fml)))
+	 (unchange-comp (set-difference remaning-comp free-comp))
+	 (unchange-comp
+	  (mapcar #'(lambda (one-field)
+		      (make-equality 
+		       (typecheck(pc-parse (format nil "~a(~a)" 
+					     one-field abs-state-var-1) 'expr))
+		       (typecheck(pc-parse (format nil "~a(~a)" 
+					     one-field abs-state-var-2) 'expr))
+		       ))
+	    unchange-comp))
+	 (unchanged-bool-vars
+	  (mapcar #'(lambda (one-indice) 
+		      (make-equality 
+		       (typecheck(pc-parse
+				     (format nil "~a(~a)" 
+				       (nth (1- one-indice)
+					    *new-abstract-field-ids*)
+				       abs-state-var-1) 'expr))
+		       (typecheck(pc-parse
+				     (format nil "~a(~a)" 
+				       (nth (1- one-indice)
+					    *new-abstract-field-ids*)
+				       abs-state-var-2) 'expr))))
+	    list-indices)))
+    (mk-conjunction (append unchange-comp unchanged-bool-vars))))
         
-
-
-;;
-;;
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;; From Sam's decompose equality...
-;;
-
-(defun disequality? (expr)(disequation? expr))
-
-(defun decomposable-equality? (fmla)
-  (and (or (equation? fmla)
-	   (disequality? fmla))
-       (or (typep (find-supertype
-		   (type (args1 fmla)))
-		  '(or funtype recordtype tupletype))
-	   (adt? (find-supertype
-		  (type (args1 fmla)))))))
 
 (defun normalize-decompose-equality (expr)
  (if (not (or (decomposable-equality? expr)
@@ -1981,68 +1684,18 @@ selections of unsimplified CASES expressions."
 			(and (negation? expr)
 			     (decomposable-equality? (args1 expr)))))
 	(ffm (when fm expr))
-	(equation? (when fm
-		     (or (equation? ffm)
-			 (and (negation? ffm)
-			      (disequation? (args1 ffm))))))
 	(fmla (when fm
 		(if (negation? ffm)
 		    (args1 ffm)
 		    ffm)))
 	(lhs (when fmla (args1 fmla)))
 	(rhs (when fmla (args2 fmla)))
-	(comp-equalities (when (and fmla t ;;(not equality?)
-                                        )
+	(comp-equalities (when fmla
 			   (component-equalities
 			    lhs rhs
 			    (find-declared-adt-supertype (type lhs))))))
  (if (and (variable? lhs) (variable? rhs)) expr
   (beta-reduce comp-equalities) ))))
-
-
-
-
-(defmethod component-equalities (lhs rhs (te recordtype))
-   (make-conjunction
-    (mapcar #'(lambda (fld)
-		(make-equality (make-field-application fld lhs)
-			       (make-field-application fld rhs)))
-      (fields te))))
-
-(defmethod component-equalities (lhs rhs (te tupletype))
-   (make-conjunction
-    (loop for i from 1 to (length (types te))
-	  collect (make-equality (make-projection-application i lhs)
-				 (make-projection-application i rhs)))))
-
-(defmethod component-equalities (lhs rhs (te funtype))
-   (let* ((id (make-new-variable '|x| (list te lhs rhs)))
-	  (dom (domain te))
-	  (bd (typecheck* (mk-bind-decl id dom dom) nil nil nil))
-	  (nvar (mk-name-expr id nil nil (make-resolution bd nil dom)
-			      'variable)))
-     (make-typechecked-forall-expr
-      (list bd)
-      (make-equality (make-application lhs nvar)
-		      (make-application rhs nvar)))))
-
-(defmethod component-equalities (lhs rhs (te type-name))
-  (make-disjunction
-   (mapcar #'(lambda (r c)
-	       (make-conjunction
-		(cons (make-application r lhs)
-		      (cons (make-application r rhs)
-			    (mapcar #'(lambda (a)
-					(make-equality
-					 (make-application a lhs)
-					 (make-application a rhs)))
-			      (accessors c))))))
-     (recognizers te) (constructors te))))
-
-;;
-;;
-;;
-;;
 
 (defun make-bdd-exclusivity (list-indices)
  (if *exclusive?* (do-make-bdd-exclusivity list-indices list-indices (bdd_1))
@@ -2069,15 +1722,3 @@ selections of unsimplified CASES expressions."
 (defun do_bdd_and_list (list-bdd acc_bdd)
  (if (null list-bdd) acc_bdd
    (do_bdd_and_list (cdr list-bdd) (bdd_and (car list-bdd) acc_bdd))))
-
-
-;;
-;;
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;;
-;;
-
-;;(defun push-negation-inside-fml (expr)
- 
