@@ -905,12 +905,13 @@ generated")
 	     (*bound-variables* (cons dtype *bound-variables*))
 	     (subst-range (substit range
 			    (pairlis
-			     (mapcar #'declaration deps)
-			     (mapcar #'(lambda (dep)
-					 (typecheck* (mk-application (id dep)
-						       dep-name)
-						     (type dep) nil nil))
-			       deps)))))
+			     (cons domain (mapcar #'declaration deps))
+			     (cons dtype
+				   (mapcar #'(lambda (dep)
+					       (typecheck* (mk-application (id dep)
+							     dep-name)
+							   (type dep) nil nil))
+				     deps))))))
 	(mk-funtype dtype subst-range))
       (mk-funtype domain range)))
 
