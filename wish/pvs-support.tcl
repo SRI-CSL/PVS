@@ -45,8 +45,21 @@ proc dag-add-item {win tag succs} {
     }
 }
 
-proc dag-delete-item {tag} {
-    error "You can't delete items yet"
+proc dag-delete-item {win tag suffix} {
+    $win delete $tag$suffix
+}
+
+proc dag-delete-subtree {win tag {suffix .real}} {
+    upvar #0 dag-$win dag
+
+    set succs {}
+    catch {set succs $dag(succs,$tag)}
+
+    foreach i $succs {
+	dag-delete-subtree $win $i {}
+    }
+
+    dag-delete-item $win $tag $suffix
 }
 
 proc move-dag-item {win tag x y} {
@@ -160,6 +173,12 @@ proc kids {path nkids} {
     return $kids
 }
 
+proc delete-proof-subtree {path} {
+    global proofwin
+
+    dag-delete-subtree $proofwin $path
+}
+
 proc proof-num-children {path kids} {
     global $path
 
@@ -204,6 +223,20 @@ proc proof-show {path} {
     }
 
     dag-add-item $proofwin $path [kids $path [set ${path}(kids)]]
+    if [info exists ${path}(done)] {
+	my-foreground $proofwin $path blue
+    }
+}
+
+proc my-foreground {win tag color} {
+    my-itemconfig $win $tag -foreground $color
+    my-itemconfig $win $tag -fill $color
+}
+
+proc my-itemconfig {win tag opt val} {
+    foreach id [$win find withtag $tag] {
+	catch {$win itemconfig $id $opt $val}
+    }
 }
 
 proc layout-proof {} {
@@ -222,6 +255,18 @@ proc center-canvas {win} {
     set bboxwid [expr [lindex $allbbox 2]-[lindex $allbbox 0]]
     set margin [expr ($winwid-$bboxwid)/2]
     $win xview [expr -$margin / [lindex [$win config -scrollincrement] 4]]
+}
+
+proc proof-current {path} {
+    global proofwin
+
+    my-foreground $proofwin current black
+    $proofwin dtag current
+    $proofwin addtag current withtag $path
+    foreach tag [ancestors $path] {
+	$proofwin addtag current withtag $tag
+    }
+    my-foreground $proofwin current firebrick
 }
 
 set proof(lastX) 0
