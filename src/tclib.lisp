@@ -330,20 +330,17 @@
 		     (if (typep th 'datatype)
 			 (datatype-instances imp)
 			 (list imp)))))
-	     (apply #'append
-		    (mapcar #'modules
-			    (remove-if-not #'mod-or-using?
-			      (all-decls theory))))))
+	     (mapcar #'theory-name
+	       (remove-if-not #'mod-or-using?
+		 (all-decls theory)))))
 
 (defmethod get-immediate-nonlibrary-usings ((adt datatype))
   (remove-if #'library
-    (append (apply #'append
-		   (mapcar #'modules
-			   (remove-if-not #'mod-or-using?
-			     (append (formals adt)
-				     (assuming adt)))))
-	  (when (importings adt)
-	    (mapcar #'theory-name (importings adt))))))
+    (append (mapcar #'theory-name
+	      (remove-if-not #'mod-or-using?
+		(append (formals adt) (assuming adt))))
+	    (when (importings adt)
+	      (mapcar #'theory-name (importings adt))))))
 
 (defun all-decls (theory)
   (append (formals theory)

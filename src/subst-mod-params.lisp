@@ -118,7 +118,7 @@
 
 (defun subst-mod-params (obj modinst)
   (assert *current-context*)
-  (assert *current-theory*)
+  ;;(assert *current-theory*)
   (let ((*current-library* (when modinst (library modinst))))
     (if (and modinst (free-params obj))
 	(with-slots (actuals) modinst
@@ -719,7 +719,7 @@
 	(and (typep ex 'name)
 	     (typep (declaration ex) 'formal-decl)
 	     #+pvsdebug (null (assert (memq (declaration ex)
-					    (formals *current-theory*))))
+					    (formals (current-theory)))))
 	     ;; If the first one is, the rest should also be.
 	     #+pvsdebug (actuals-are-formals? (cdr actuals))))))
 

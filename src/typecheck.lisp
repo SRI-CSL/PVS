@@ -152,7 +152,7 @@
 ;		 (local-decls *current-context*))
 	(tcdebug "~%  Processing exporting")
 	(generate-xref m)
-	(assert (eq *current-theory* m))
+	(assert (eq (current-theory) m))
 	(check-exporting m)
        (setf (all-usings m)
 	     (let ((imps nil))
@@ -286,7 +286,7 @@
 	(assert itheory)
 	(unless (and (formals-sans-usings itheory) (null (actuals iname)))
 	  ;; Add this to the assuming-instances list if fully instantiated
-	  (pushnew iname (assuming-instances *current-theory*)
+	  (pushnew iname (assuming-instances (current-theory))
 		   :test #'tc-eq))
 	(add-to-using iname itheory)))))
 
@@ -394,7 +394,7 @@
       (if entry
 	  (unless (member tname entry :test #'tc-eq)
 	    (if (actuals tname)
-		(let ((imps (immediate-usings *current-theory*)))
+		(let ((imps (immediate-usings (current-theory))))
 		  (setf (gethash theory (current-using-hash))
 			(nconc (delete-if
 				   #'(lambda (imp)
@@ -442,7 +442,7 @@
 	   (and (typep theory '(or library-theory library-datatype))
 		(equal (pvs-truename (library theory))
 		       (pvs-truename (get-library-pathname (library typename)
-							   *current-theory*))))
+							   (current-theory)))))
 	   (not (typep theory '(or library-theory library-datatype))))))
 
 (defun modname-equal (m1 m2)
@@ -457,7 +457,7 @@
 ;  (dolist (rtype (visible-records theory))
 ;    (when t ;;(visible? rtype)
 ;      (pushnew (subst-mod-params rtype theoryname)
-;	       (visible-records *current-theory*) :test #'tc-eq))))
+;	       (visible-records (current-theory)) :test #'tc-eq))))
 
 
 ;;; Remove formals that are not a part of the current module.  This
@@ -477,7 +477,7 @@
 			(and (name? aval)
 			       (formal-decl? (declaration aval))
 			       (not (eq (module (declaration aval))
-					*current-theory*)))))
+					(current-theory))))))
 		  (actuals theoryname)))
       (copy theoryname 'actuals nil)
       theoryname))
@@ -567,7 +567,7 @@
 				      (typep d '(or var-decl field-decl)))
 				  kdecls)))
 	  (unless edecls
-	    (if (member expname (formals *current-theory*) :test #'same-id)
+	    (if (member expname (formals (current-theory)) :test #'same-id)
 		(type-error expname "May not export formal parameters")
 		(type-error expname "Name ~a is not declared in this theory"
 			    expname)))
@@ -592,7 +592,7 @@
     ((all default)
      (setf (closure exporting)
 	   (collect-all-exporting-with-theories
-	    (get-immediate-usings *current-theory*))))
+	    (get-immediate-usings (current-theory)))))
     (closure
      (setf (closure exporting)
 	   (let ((insts nil))
@@ -662,7 +662,7 @@
   (mapc #'(lambda (edecl)
 	    (let ((rdecls (remove-if
 			   #'(lambda (d)
-			       (or (not (eq (module d) *current-theory*))
+			       (or (not (eq (module d) (current-theory)))
 				   (typep d '(or formal-decl importing var-decl
 					      field-decl datatype))
 				   (and (const-decl? d)
@@ -709,7 +709,7 @@
        (not (freevars ex))
        (module-instance ex)
        (not (eq (module (declaration ex))
-		*current-theory*))
+		(current-theory)))
        (not (from-prelude? (declaration ex)))))
 
 (defun set-visibility (decl)
