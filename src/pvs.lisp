@@ -949,6 +949,29 @@
 		theories))
       t)))
 
+(defun prettyprint-theory-instance (theoryname-string
+				    &optional context-theoryname)
+  (let* ((context-theory (when context-theoryname
+			   (get-typechecked-theory context-theoryname)))
+	 (*current-context* (context context-theory))
+	 (theoryname (pc-parse theoryname-string 'modname)))
+    (when (or (actuals theoryname) (mappings theoryname))
+      (let ((*generate-tccs* nil)
+	    (*current-theory* (current-theory))
+	    (decl (make-instance 'mod-decl
+		    'id (makesym "~a_instance" (id theoryname))
+		    'modname theoryname)))
+	(typecheck-named-theory* (get-typechecked-theory theoryname)
+				 theoryname decl)
+	(pvs-buffer (makesym "~a.ppi" (id theoryname))
+	  (concatenate 'string
+	    (format nil
+		"% Theory instance for~%  %~a~%"
+	      (unpindent theoryname 2 :string t :comment? t))
+	    (unparse (generated-theory decl)
+	      :string t :char-width *default-char-width*))
+	  t)))))
+
 ; (defmethod prettyprint (theory)
 ;   (let ((*no-comments* nil))
 ;     (prettyprint (get-parsed-theory theory))))
