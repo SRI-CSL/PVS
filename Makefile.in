@@ -120,7 +120,9 @@ ff-files = src/utils/$(PLATFORM)/file_utils.so \
            BDD/$(PLATFORM)/mu.so \
            src/decision-procedures/polylib/$(PLATFORM)/polylib.so \
            src/WS1S/$(PLATFORM)/ws1s.so \
+	   src/ics-interface/$(PLATFORM)/ics_lisp_error.so \
 	   @ICSLIB@/libics.so
+         
 
 ess = ess/dist-ess.lisp \
 	ess/init-load.lisp \
@@ -339,7 +341,8 @@ decision-procedures = src/decision-procedures/types.lisp \
 ws1slisp = src/WS1S/lisp/dfa-foreign.lisp src/WS1S/lisp/dfa.lisp \
            src/WS1S/lisp/pvs-utils.lisp src/WS1S/lisp/symtab.lisp \
            src/WS1S/lisp/signature.lisp src/WS1S/lisp/pvs2dfa.lisp \
-           src/WS1S/lisp/ws1s-strategy.lisp
+           src/WS1S/lisp/ws1s-strategy.lisp \
+           src/WS1S/lisp/presburger.lisp
 
 qelisp = src/qe/qe-utils.lisp \
          src/qe/dp-interface.lisp \
@@ -368,6 +371,8 @@ inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
 ics-lisp = @ICSOBJ@/ics.lisp \
 	   src/ics-interface/ics-pvs.lisp \
            src/ics-interface/ics-strategies.lisp
+
+ics-c = src/ics-interface/ics_lisp_error.c
 
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
@@ -505,6 +510,15 @@ makews1s :
 	umask 002; \
 	(cd src/WS1S ; rm -rf mona ; ln -s mona-1.4 mona);\
 	$(MAKE) -C src/WS1S/$(PLATFORM)
+
+src/ics-interface/$(PLATFORM)/ics_lisp_error.so : src/ics-interface/$(PLATFORM)/ics_lisp_error.o
+	umask 002; \
+	$(LD) -G -o $@ $< /csl/allegro/allegro6.0/libacli601.so
+
+src/ics-interface/$(PLATFORM)/ics_lisp_error.o : src/ics-interface/ics_lisp_error.c
+	umask 002; \
+	mkdir -p src/ics-interface/$(PLATFORM); \
+	$(CC) $(CFLAGS) -o $@ -c $<
 
 runtime-image-tar = pvs-$(PLATFORM).tgz
 
