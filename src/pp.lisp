@@ -25,6 +25,8 @@
 
 (defvar *pp-table-hrules* t)
 
+(defvar *pp-print-parens* nil)
+
 (defvar pvs-prec-info (make-hash-table :test #'eq))
 
 (mapc #'(lambda (nt) (init-prec-info nt pvs-prec-info)) '(type-expr expr))
@@ -1087,11 +1089,20 @@ bind tighter.")
 (defmethod pp* :around ((ex expr))
   (if (typep ex 'binding)
       (call-next-method)
-      (progn (dotimes (p (parens ex))
-	       (write-char #\())
-	     (call-next-method)
-	     (dotimes (p (parens ex))
-	       (write-char #\))))))
+      (let ((paren-count (parens ex)))
+	(progn (dotimes (p paren-count)
+		 (write-char #\())
+	       (call-next-method)
+	       (dotimes (p paren-count)
+		 (write-char #\)))))))
+
+(defmethod pp* :around ((ex infix-application))
+  (cond ((and *pp-print-parens*
+	      (zerop (parens ex)))
+	 (write-char #\()
+	 (call-next-method)
+	 (write-char #\)))
+	(t (call-next-method))))
 
 (defmethod pp* ((ex number-expr))
   (write (number ex)))
