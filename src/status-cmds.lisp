@@ -613,10 +613,13 @@
 	 (*axiom-dependings* nil)
 	 (*assumption-dependings* nil)
 	 (*depending-chain* nil)
-	 (*depending-cycles* nil))
-    (pc-analyze* (union (union (refers-to decl)
+	 (*depending-cycles* nil)
+	 (*current-context* (context decl))
+	 (fdecls (union (union (refers-to decl)
 			       (proof-refers-to decl))
 			(assuming-tccs decl)))
+	 (decls (union fdecls (possible-judgements fdecls))))
+    (pc-analyze* decls)
     (maphash #'(lambda (x y)
 		 (declare (ignore x))
 		 (cond ((typep y 'formula-decl)
@@ -683,6 +686,48 @@
     (remove-if-not #'assuming-tcc?
       (ldiff theory-decls (cdr (memq decl theory-decls))))))
 
+(defun possible-judgements (decls)
+  ;;; We collect all judgements of the current context that might be
+  ;;; involved in the proof of the decl.  This includes all subtype and
+  ;;; number judgements, as well as any name or application judgements
+  ;;; whose decl is in decls.
+  (let ((jtccs nil))
+    (maphash #'(lambda (id pdecls)
+		 (declare (ignore id))
+		 (dolist (decl pdecls)
+		   (let ((tcc (get-judgement-tcc decl decls)))
+		     (when tcc (push tcc jtccs)))))
+	     (current-declarations-hash))
+    jtccs))
+
+(defmethod get-judgement-tcc ((jdecl subtype-judgement) &optional decls)
+  (if (generated-by jdecl)
+      (get-judgement-tcc (generated-by jdecl) decls)
+      (find-if #'judgement-tcc? (generated jdecl))))
+
+(defmethod get-judgement-tcc ((jdecl number-judgement) &optional decls)
+  (if (generated-by jdecl)
+      (get-judgement-tcc (generated-by jdecl) decls)
+      (find-if #'judgement-tcc? (generated jdecl))))
+
+(defmethod get-judgement-tcc ((jdecl name-judgement) &optional decls)
+  (if (generated-by jdecl)
+      (get-judgement-tcc (generated-by jdecl) decls)
+      (when (memq (declaration (name jdecl)) decls)
+	(find-if #'judgement-tcc? (generated jdecl)))))
+
+(defmethod get-judgement-tcc ((jdecl application-judgement) &optional decls)
+  (if (generated-by jdecl)
+      (get-judgement-tcc (generated-by jdecl) decls)
+      (when (memq (declaration (name jdecl)) decls)
+	(find-if #'judgement-tcc? (generated jdecl)))))
+
+(defmethod get-judgement-tcc ((jtcc judgement-tcc) &optional decls)
+  (get-judgement-tcc (generated-by jtcc) decls))
+  
+(defmethod get-judgement-tcc (decl &optional decls)
+  nil)
+  
 (defmethod pc-analyze ((decl t))
   nil)
 
