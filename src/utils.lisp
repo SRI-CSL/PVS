@@ -2395,7 +2395,7 @@ space")
 		(let ((class (find-class type nil)))
 		  (when class
 		    (mapc #'(lambda (s) (tof (class-name s)))
-			  (direct-superclasses class)))))))
+			  (class-direct-superclasses class)))))))
       (tof (type-of obj)))
     (nreverse types)))
 
