@@ -572,7 +572,7 @@ proc show-sequent {proofwin top} {
 	wm maxsize $seqwin 80 $height
     }
     pack $seqwin.fr.text -expand yes -fill both
-    button $seqwin.dismiss -text Dismiss -command "destroy $seqwin"
+    button $seqwin.dismiss -text Dismiss -command "destroy .sequent$label"
     pack $seqwin.dismiss -side left -padx 2 -pady 2
     button $seqwin.stick -text Stick -command "stick $seqwin $path"
     pack $seqwin.stick -side left -padx 2 -pady 2
