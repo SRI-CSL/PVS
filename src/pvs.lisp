@@ -1854,7 +1854,7 @@
 	       *generating-adt*)
 	   (get-theory theoryref))
       (let ((th (get-theory theoryref)))
-	(when (generated-by th)
+	(when (and th (generated-by th))
 	  th))
       (let* ((theory (get-parsed-theory theoryref)))
 	(when theory
