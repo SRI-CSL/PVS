@@ -958,10 +958,6 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	  (setq fdir (file-name-directory (substring fdir 0 -1)))))
     (nreverse dchain)))
 
-(defun pvs-using-chain (theory)
-  (pvs-send-and-wait (format "(get-using-chain \"%s\")" theory)
-		     nil nil 'list))
-
 (defun pvs-region (place)
   (save-excursion
     (goto-line (car place))
