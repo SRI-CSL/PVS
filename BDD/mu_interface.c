@@ -162,3 +162,9 @@ BDDPTR modelcheck_formula (Formula fml)
  return R;
  }
 
+
+void pvs_mu_print_formula (Formula fml)
+{mu_print_formula_infix (stdout, fml);}
+
+void pvs_mu_print_term (Formula fml)
+{mu_print_term_infix (stdout, fml);}
