@@ -3,7 +3,7 @@ MU = ../mu/src
 UTILS = ../bdd/utils
 INCLUDES = -I$(BDD) -I$(UTILS) -I$(MU)
 LD = $(CC)
-LDFLAGS = ../bdd-ld-table -shared -L./
+LDFLAGS = -shared -L./
 CC = gcc
 CFLAGS = -D_POSIX_SOURCE -DSYSV $(INCLUDES)
 XCFLAGS = -O
@@ -24,7 +24,7 @@ utilobj = double.o list.o hash.o alloc.o
 all : bdd.so mu.so
 
 bdd.so : libutils.a ${bddobj}
-	$(LD) $(LDFLAGS) -o bdd.so ${bddobj} -lutils -lm
+	$(LD) ../bdd-ld-table $(LDFLAGS) -o bdd.so ${bddobj} -lutils -lm
 
 mu.so : ${muobj}
 	$(LD) $(LDFLAGS) -o  mu.so  ${obj} -lutils  -lm 
