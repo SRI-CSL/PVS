@@ -283,7 +283,8 @@
 (defcl lib-eq-decl (lib-decl))
 
 (defcl mod-decl (declaration)
-  (modname :parse t))
+  (modname :parse t)
+  saved-context)
 
 (defcl var-decl (typed-declaration))
 
