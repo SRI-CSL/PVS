@@ -15,7 +15,8 @@
 	*load-source-file-info* t
 	*record-xref-info* t
 	*ignore-package-name-case* t
-	excl:*enclose-printer-errors* nil))
+	excl:*enclose-printer-errors* nil
+	*print-pretty* t))
 
 (eval-when (eval load)
   (defparameter *pvs-path* "")
@@ -216,11 +217,11 @@
    (:module language
      :source-pathname "src/"
      :components ((:file "ergo-runtime-fixes")
-		  (:file "ergo-tex-fixes")
+		  ;;(:file "ergo-tex-fixes")
 		  (:file "pvs-lang-def")
 		  (:file "pvs-lexer")
 		  (:file "pvs-parser")
-		  (:file "pvs-unparser")
+		  ;;(:file "pvs-unparser")
 		  (:file "pvs-sorts")
 		  (:file "pvs-parse-fixes"))
      :depends-on (classes))
@@ -232,7 +233,7 @@
 		  (:file "optimize")
 		  (:file "makes" :depends-on ("macros"))
 		  (:file "parse" :depends-on ("macros"))
-		  (:file "unparse" :depends-on ("macros"))
+		  ;;(:file "unparse" :depends-on ("macros"))
 		  (:file "pp")
 		  (:file "print-object")
 		  (:file "equalities")
@@ -282,6 +283,7 @@
 		  (:file "status-cmds")
 		  (:file "add-decl")
 		  (:file "list-decls")
+		  (:file "pp-tex")
 		  (:file "tex-support"))
      :depends-on (basic))
    (:module proof-checker
