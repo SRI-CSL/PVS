@@ -573,7 +573,7 @@ generated")
       (set-nonempty-type (type (con-decl constructor)))))
 
 (defun set-adt-positive-formal-types (adt)
-  (setf (positive-types adt)
+  (setf (positive-types (current-theory))
 	(mapcar #'type-value
 		(remove-if-not #'(lambda (ff)
 				   (and (typep ff 'formal-type-decl)
@@ -612,7 +612,7 @@ generated")
 	    "Datatype name should not be used as an accessor name"))))))
 
 (defun check-adt-positive-types (adt)
-  (setf (positive-types adt)
+  (setf (positive-types (current-theory))
 	(mapcar #'type-value
 		(remove-if-not #'(lambda (ff)
 				   (and (typep ff 'formal-type-decl)
