@@ -989,7 +989,8 @@
 	(format out "Id: ~a~%Description: ~a~%Status: ~a~%~
                      Formula Declaration: ~a~%Decision Procedures: ~a~%~
                      Creation Date: ~a~%~
-                     Date Last Run: ~a~%Run Time: ~,2,-3f seconds~%Proof:~%"
+                     Date Last Run: ~a~%~
+                     Run Time: ~:[Unknown~;~:*~,2,-3f seconds~]~%Proof:~%"
 	  (id prf)
 	  (or (description prf) "None")
 	  (string-downcase (status prf))
@@ -1001,8 +1002,7 @@
 	  (if (run-date prf)
 	      (date-string (run-date prf))
 	      "Unknown")
-	  (or (run-time prf)
-	      "Unknown"))
+	  (run-time prf))
 	(write (editable-justification (script prf))
 	       :stream out :pretty t :escape t
 	       :level nil :length nil
