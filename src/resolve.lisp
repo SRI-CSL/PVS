@@ -49,12 +49,8 @@
     (when (and (null res)
 	       args
 	       (eq k 'expr))
-      (let* ((fres (function-conversion name args))
-	     (*ignored-conversions* (if fres
-					(cons "K_conversion"
-					      *ignored-conversions*)
-					*ignored-conversions*)))
-	(setq res (append fres (argument-conversion name args)))))
+      (setq res (append (function-conversion name args)
+			(argument-conversion name args))))
     (cond ((null res)
 	   (resolution-error name k args))
 	  ((and (cdr res)
@@ -1282,10 +1278,17 @@
   (let ((*found-one* nil)
 	(reses (remove-if-not #'(lambda (r)
 				  (typep (find-supertype (type r)) 'funtype))
-		 (resolve name 'expr nil))))
+		 (resolve name 'expr nil)))
+	)
     (declare (special *found-one*))
-    (when (argument-conversions (mapcar #'type reses) arguments)
-      (resolve name 'expr arguments))))
+    (if (let ((*ignored-conversions*
+	       (cons "K_conversion" *ignored-conversions*)))
+	  (argument-conversions (mapcar #'type reses) arguments))
+	(resolve name 'expr arguments)
+	(unless (member "K_conversion" *ignored-conversions* :test #'string=)
+	  (let ((*only-use-conversions* (list "K_conversion")))
+	    (when (argument-conversions (mapcar #'type reses) arguments)
+	      (resolve name 'expr arguments)))))))
 
 (defun argument-conversions (optypes arguments)
   (declare (special *found-one*))
