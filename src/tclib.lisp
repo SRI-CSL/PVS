@@ -565,65 +565,64 @@
 	  (load-library-theory lib-ref theory-name)))))
 
 (defun load-library-theory (lib-ref theory-name)
-  (let ((rel-lib-ref (get-relative-library-reference lib-ref)))
-    (if (or (gethash rel-lib-ref *prelude-libraries*)
-	    (file-equal rel-lib-ref *pvs-context-path*))
-	(get-theory (copy theory-name 'library nil))
-	(let ((value nil))
-	  (with-pvs-context lib-ref
-	    (let ((*current-theory* *current-theory*)
-		  (*pvs-context-writable*
-		   (write-permission? *pvs-context-path*))
-		  (*pvs-context-changed* nil))
-	      (restore-context)
-	      (multiple-value-bind (*pvs-files* *pvs-modules*)
-		  (get-imported-files-and-theories rel-lib-ref)
-		(let* ((*prelude-libraries* (make-hash-table :test #'equal))
-		       (filename (context-file-of theory-name)))
-		  (unless filename
-		    (if (file-exists-p (make-specpath theory-name))
-			(setq filename (string (id theory-name)))
-			(setq filename (look-for-theory-in-directory-files
-					theory-name))))
-		  (if filename
-		      (unwind-protect
-			  (let* ((theories (typecheck-file filename))
-				 (theory (find theory-name theories :test #'same-id)))
-			    (cond (theory
-				   (let ((*current-context* (context theory))
-					 (*current-theory* theory))
-				     (save-context))
-				   (maphash
-				    #'(lambda (id th)
-					(declare (ignore id))
-					(when (typechecked? th)
-					  (unless (library-datatype-or-theory? th)
-					    (if (typep th 'module)
-						(change-class th 'library-theory)
-						(change-class th 'library-datatype)))
-					  (setf (lib-ref th) rel-lib-ref)))
-				    *pvs-modules*)
-				   (setq value theory))
-				  (t (setq value
-					   (format nil
-					       "Theory ~a could  not be found in ~
+  (if (or (gethash lib-ref *prelude-libraries*)
+	  (file-equal lib-ref *pvs-context-path*))
+      (get-theory (copy theory-name 'library nil))
+      (let ((value nil))
+	(with-pvs-context lib-ref
+	  (let ((*current-theory* *current-theory*)
+		(*pvs-context-writable*
+		 (write-permission? *pvs-context-path*))
+		(*pvs-context-changed* nil))
+	    (restore-context)
+	    (multiple-value-bind (*pvs-files* *pvs-modules*)
+		(get-imported-files-and-theories lib-ref)
+	      (let* ((*prelude-libraries* (make-hash-table :test #'equal))
+		     (filename (context-file-of theory-name)))
+		(unless filename
+		  (if (file-exists-p (make-specpath theory-name))
+		      (setq filename (string (id theory-name)))
+		      (setq filename (look-for-theory-in-directory-files
+				      theory-name))))
+		(if filename
+		    (unwind-protect
+			(let* ((theories (typecheck-file filename))
+			       (theory (find theory-name theories :test #'same-id)))
+			  (cond (theory
+				 (let ((*current-context* (context theory))
+				       (*current-theory* theory))
+				   (save-context))
+				 (maphash
+				  #'(lambda (id th)
+				      (declare (ignore id))
+				      (when (typechecked? th)
+					(unless (library-datatype-or-theory? th)
+					  (if (typep th 'module)
+					      (change-class th 'library-theory)
+					      (change-class th 'library-datatype)))
+					(setf (lib-ref th) lib-ref)))
+				  *pvs-modules*)
+				 (setq value theory))
+				(t (setq value
+					 (format nil
+					     "Theory ~a could  not be found in ~
                                           the PVS context of library ~a"
-					     theory-name lib-ref)))))
-			(maphash #'(lambda (thid theory)
-				     (unless (library-datatype-or-theory?
-					      theory)
-				       (remhash thid *pvs-modules*)
-				       (remhash (filename theory)
-						*pvs-files*)))
-				 *pvs-modules*))
-		      (setq value
-			    (format nil
-				"Theory ~a not found in the PVS context of ~
+					   theory-name lib-ref)))))
+		      (maphash #'(lambda (thid theory)
+				   (unless (library-datatype-or-theory?
+					    theory)
+				     (remhash thid *pvs-modules*)
+				     (remhash (filename theory)
+					      *pvs-files*)))
+			       *pvs-modules*))
+		    (setq value
+			  (format nil
+			      "Theory ~a not found in the PVS context of ~
                                library ~a"
-			      theory-name lib-ref)))))))
-	  (if (stringp value)
-	      (type-error theory-name value)
-	      value)))))
+			    theory-name lib-ref)))))))
+	(if (stringp value)
+	    (type-error theory-name value)
+	    value))))
 
 
 (defun parsed-library-file? (th)
@@ -840,10 +839,18 @@
   (let ((dirstr (if (char= (char libstr (1- (length libstr))) #\/)
 		    libstr
 		    (concatenate 'string libstr "/"))))
-    (if (file-exists-p dirstr)
-	(pathname-to-libref dirstr)
-	(or (get-library-reference (intern libstr))
-	    (values nil (format nil "Directory ~a does not exist" libstr))))))
+    (cond ((member (char dirstr 0) '(#\/ #\~) :test #'char=)
+	   (if (file-exists-p dirstr)
+	       (pathname-to-libref dirstr)
+	       (values nil (format nil "Directory ~a does not exist" libstr))))
+	  ((char= (char dirstr 0) #\.)
+	   (if (file-exists-p (merge-pathnames dirstr *pvs-context-path*))
+	       (relative-path (merge-pathnames dirstr *pvs-context-path*)
+			      *pvs-current-context-path*)
+	       (values nil (format nil "Directory ~a does not exist" libstr))))
+	  (t (or (get-library-reference (intern libstr))
+		 (values nil (format nil
+				 "Directory ~a does not exist" libstr)))))))
 
 
 (defmethod get-library-reference ((libid symbol))
@@ -870,21 +877,21 @@
 		      libid *pvs-path*)))))
 
 (defmethod get-library-reference ((ldecl lib-decl))
-  (if (library-datatype-or-theory? (module ldecl))
-      (let* ((ldecl-lib-ref (lib-ref ldecl))
-	     (theory-lib-ref (lib-ref (module ldecl)))
-	     (theory-lib-path (libref-to-pathname theory-lib-ref)))
-	(if (string= ldecl-lib-ref theory-lib-ref)
-	    theory-lib-ref
-	    ;; Need to create lib-ref from current-context to ldecl-lib-ref
-	    ;; Do this by temporarily changing the working directory to
-	    ;; theory-lib-path, and getting the real path, then relativizing
-	    ;; it to the current context
-	    (if (member (char ldecl-lib-ref 0) '(#\/ #\. #\~))
-		(relative-path (merge-pathnames ldecl-lib-ref theory-lib-path)
-			       *pvs-current-context-path*)
-		theory-lib-ref)))
-      (lib-ref ldecl)))
+  (if (and (eq *pvs-current-context-path* *pvs-context-path*)
+	   (not (library-datatype-or-theory? (module ldecl))))
+      (lib-ref ldecl)
+      (let* ((ldecl-lib-ref (lib-ref ldecl)))
+	(cond ((member (char ldecl-lib-ref 0) '(#\/ #\~))
+	       ldecl-lib-ref)
+	      ((char= (char ldecl-lib-ref 0) #\.)
+	       (let ((cpath (if (eq *pvs-current-context-path*
+				    *pvs-context-path*)
+				(merge-pathnames (lib-ref (module ldecl))
+						 *pvs-context-path*)
+				*pvs-context-path*)))
+		 (relative-path (merge-pathnames ldecl-lib-ref cpath)
+				*pvs-current-context-path*)))
+	      (t ldecl-lib-ref)))))
 
 ;;; Given a lib-ref from a separate library (that is relative to the
 ;;; *pvs-context-path*), returns a library relative to
@@ -895,7 +902,7 @@
       lib-ref
       (let ((lib-path (merge-pathnames lib-ref *pvs-context-path*)))
 	(assert (file-exists-p lib-path))
-	(relative-path lib-path *pvs-current-context-path*))))
+	(relative-path lib-path *pvs-context-path*))))
 
 (defun get-lib-decls (libid)
   (assert *current-context*)
@@ -931,16 +938,18 @@
 (defun libref-to-pathname (lib-ref)
   (assert (stringp lib-ref))
   (assert (char= (char lib-ref (- (length lib-ref) 1)) #\/))
-  (let ((lib-path (if (member (char lib-ref 0) '(#\~ #\. #\/) :test #'char=)
-		       ;; It's already a real pathname
-		       lib-ref
-		       ;; Otherwise it's a PVS library ref (e.g., finite_sets)
-		       ;; in the PVS_LIBRARY_PATH
-		       (pvs-library-path-ref lib-ref))))
+  (let ((lib-path (cond ((member (char lib-ref 0) '(#\~ #\/) :test #'char=)
+			 ;; It's already a full pathname
+			 lib-ref)
+			((char= (char lib-ref 0) #\.)
+			 (merge-pathnames lib-ref *pvs-current-context-path*))
+			(t 
+			 ;; Otherwise it's a PVS library ref
+			 ;; (e.g., finite_sets) in the PVS_LIBRARY_PATH
+			 (pvs-library-path-ref lib-ref)))))
     (if (file-exists-p lib-path)
 	lib-path
-	(progn (break)
-	(values nil (format nil "Library ~a does not exist" lib-ref))))))
+	(values nil (format nil "Library ~a does not exist" lib-ref)))))
 
 (defun pvs-library-path-ref (lib-ref &optional (libs *pvs-library-path*))
   (let ((lib-path (cdr (assoc lib-ref *pvs-library-ref-paths*
@@ -949,7 +958,7 @@
 	(when libs
 	  (let ((lib-path (concatenate 'string (car libs) lib-ref)))
 	    (cond ((file-exists-p lib-path)
-		   (push (cons lib-ref lib-path) *pvs-library-paths*)
+		   (push (cons lib-ref lib-path) *pvs-library-ref-paths*)
 		   lib-path)
 		  (t (pvs-library-path-ref lib-ref (cdr libs)))))))))
 

@@ -371,7 +371,7 @@
   (declare (ignore expected kind arguments))
   ;;;(check-duplication decl)
   (multiple-value-bind (ref msg)
-      (get-library-reference (lib-string decl))
+      (get-lib-decl-lib-ref (lib-string decl))
     (when msg
       (type-error decl msg (lib-string decl)))
     (setf (lib-ref decl) ref)
@@ -389,6 +389,21 @@
                with a different path."
 	      (id decl) (id (module d))))))))
 
+(defun get-lib-decl-lib-ref (libstr)
+  (let ((dirstr (if (char= (char libstr (1- (length libstr))) #\/)
+		    libstr
+		    (concatenate 'string libstr "/"))))
+    (cond ((member (char dirstr 0) '(#\/ #\~) :test #'char=)
+	   (if (file-exists-p dirstr)
+	       dirstr
+	       (values nil (format nil "Directory ~a does not exist" libstr))))
+	  ((char= (char dirstr 0) #\.)
+	   (if (file-exists-p (merge-pathnames dirstr *pvs-context-path*))
+	       dirstr
+	       (values nil (format nil "Directory ~a does not exist" libstr))))
+	  (t (or (get-library-reference (intern libstr))
+		 (values nil (format nil
+				 "Directory ~a does not exist" libstr)))))))
 
 ;;; Module declarations
 
@@ -1637,9 +1652,9 @@
       ;;(change-class decl 'assuming-decl)
       ;;(setf (original-definition decl) (definition decl))
       (setf (definition decl)
-	    (remove-defined-type-names* (definition decl)))
+	    (remove-defined-type-names* (definition decl) theory))
       (setf (closed-definition decl)
-	    (remove-defined-type-names* (closed-definition decl))))))
+	    (remove-defined-type-names* (closed-definition decl) theory)))))
 
 (defun remove-defined-type-names* (ex theory)
   (let ((*in-theory* theory))
@@ -1675,9 +1690,10 @@
 	      (eq (module tdecl) *in-theory*)))))
 
 (defmethod remove-defined-type-name! ((ex simple-decl))
+  (declare (special *in-theory*))
   (copy ex
-    'declared-type (remove-defined-type-names* (declared-type ex))
-    'type (remove-defined-type-names* (declared-type ex))))
+    'declared-type (remove-defined-type-names* (declared-type ex) *in-theory*)
+    'type (remove-defined-type-names* (declared-type ex) *in-theory*)))
 
 (defmethod remove-defined-type-name? (ex)
   (declare (ignore ex))
@@ -2344,7 +2360,6 @@
 		 ;;; Three possibilities in this case
 	(let ((similar-convs
 	       (remove-if-not #'(lambda (cd)
-				  (break)
 				  (same-declaration (expr decl)
 						    (expr cd)))
 		 (conversions *current-context*))))

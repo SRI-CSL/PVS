@@ -302,8 +302,9 @@
 			       *prelude-library-context*
 			       *prelude-context*)))
     (if library
-	(let* ((lref (get-library-reference library))
-	       (lib-ref (when lref (get-relative-library-reference lref))))
+	(let* ((lib-ref (get-library-reference library))
+	       ;;(lib-ref (when lref (get-relative-library-reference lref)))
+	       )
 	  (and lib-ref
 	       (let* ((imphash (cadr (gethash lib-ref *imported-libraries*)))
 		      (prehash (cadr (gethash lib-ref *prelude-libraries*))))
@@ -1492,7 +1493,6 @@
   nil)
 
 (defmethod recognizer ((fn constructor-name-expr))
-  ;;(when (recognizer-name fn) (break))
   (or (recognizer-name fn)
       (let* ((con (car (member fn (constructors (adt (adt fn)))
 			       :test #'same-id)))
