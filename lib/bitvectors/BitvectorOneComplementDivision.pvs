@@ -1,0 +1,302 @@
+%
+%  BitvectorOneComplementDivision
+%  ==============================
+%
+%  for Translating Java Classes into the Higher Order Logic of PVS.
+%
+%  All integral types are interpreted as PVS integers, without 
+%  taking bounds into account
+%
+%  Author: Bart Jacobs
+%  Integrated with the bitvector library by Sam Owre <owre@csl.sri.com>
+
+BitvectorOneComplementDivision[N : posnat] : THEORY
+BEGIN
+
+  ASSUMING
+     N_size: ASSUMPTION N >= 2
+  ENDASSUMING
+
+  IMPORTING DivisionUtil,
+            BitvectorMultiplication[N]
+
+  bv, bv1, bv2, bv3 : VAR bvec[N]
+  dvs, dvd, rem, quot, aux : VAR bvec[N]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% The next function implements 1-complement division-remainder
+% computation, following for instance: Stallings, Computer Organization
+% and Architecture (4th ed., 1996), Section 8.3: Integer arithmetic.
+%
+% Basically, it follows the standard paper-and-pencil approach.
+%
+% The function should be called with rem = fill[N](FALSE), n = N,
+% see the subsequent definitions of div and rem.
+%
+% Names: dvs = divisor, 
+%        dvd = dividend (as in dividend/divisor), 
+%        rem = remainder, 
+%        n   = counter
+% 
+% An output tuple should be interpreted as (dvd/dvs, dvd%dvs), see
+% the subsequent definitions of div and rem.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  divrem(dvd, dvs, rem : bvec[N], n : nat) : RECURSIVE [bvec[N], bvec[N]] =
+    IF n = 0
+    THEN (dvd, rem)
+    ELSE LET 
+             rem1 = left_shift(1, rem) WITH [(0) := dvd(N-1)],
+             dvd1 = left_shift(1, dvd)
+         IN
+             IF bv2nat[N](dvs) <= bv2nat[N](rem1)
+             THEN divrem(dvd1 WITH [(0) := TRUE], dvs, rem1-dvs, n-1)
+             ELSE divrem(dvd1, dvs, rem1, n-1)
+             ENDIF
+    ENDIF
+    MEASURE n;
+
+% div
+
+  div(dvd, dvs) : bvec[N] = divrem(dvd, dvs, fill[N](FALSE), N)`1;
+
+% rem
+
+  rem(dvd, dvs) : bvec[N] = divrem(dvd, dvs, fill[N](FALSE), N)`2
+
+% Some easy results about div and rem
+
+  divrem_dvd : LEMMA % :-)
+    FORALL(n:below(N+1), k:below(N-n)) :
+      divrem(dvd, dvs, rem, n)`1(k+n) = dvd(k)
+
+  divrem_dvs0 : LEMMA % :-)
+    FORALL(n:below(N+1)) :
+      divrem(dvd, fill[N](FALSE), rem, n) = 
+        ((LAMBDA(i:below(N)) : IF i < n
+                               THEN TRUE
+                               ELSE dvd(i-n)
+                               ENDIF),
+
+         (LAMBDA(i:below(N)) : IF i < n
+                               THEN dvd(N-n+i)
+                               ELSE rem(i-n)
+                               ENDIF))
+
+% A couple of auxiliary results needed for the key invariant
+% property of divrem below.
+
+  bv2nat_left_false_inc : LEMMA % :-)
+    FORALL(n:below(N)) :
+      bv2nat[N](LAMBDA(i:below(N)) :
+                  IF i < n+1
+                  THEN bv(i)
+                  ELSE FALSE
+                  ENDIF)
+      =
+      bv2nat[N](LAMBDA(i:below(N)) :
+                  IF i < n
+                  THEN bv(i)
+                  ELSE FALSE
+                  ENDIF) + exp2(n) * b2n(bv(n))
+
+  bv2nat_right_false_inc : LEMMA % :-)
+    FORALL(n:below(N)) :
+      bv2nat[N](LAMBDA(i:below(N)) :
+                  IF i < n
+                  THEN FALSE
+                  ELSE bv(i)
+                  ENDIF) 
+      =
+      bv2nat[N](LAMBDA(i:below(N)) :
+                  IF i < n+1
+                  THEN FALSE
+                  ELSE bv(i)
+                  ENDIF) + exp2(n) * b2n(bv(n))
+
+  bv2nat_left_false_dec : LEMMA % :-)
+    FORALL(n:below(N)) :
+      bv2nat[N](LAMBDA(i:below(N)) :
+                  IF i < N-n
+                  THEN bv(i+n)
+                  ELSE FALSE
+                  ENDIF)
+      =
+      bv2nat[N](LAMBDA(i:below(N)) :
+                  IF i < N-n-1
+                  THEN bv(i+n)
+                  ELSE FALSE
+                  ENDIF) + exp2(N-n-1) * b2n(bv(N-1))
+
+  bv2nat_split : LEMMA % :-)
+    FORALL(m:below(N+1)) :
+      bv2nat[N](LAMBDA(i:below(N)) :
+                  IF i < m
+                  THEN bv1(i+N-m)
+                  ELSE bv2(i-m)
+                  ENDIF)
+      =
+      bv2nat[N](LAMBDA(i:below(N)) :
+                  IF i < m
+                  THEN bv1(i+N-m)
+                  ELSE FALSE
+                  ENDIF)
+      + exp2(m) * bv2nat[N](LAMBDA(i:below(N)) :
+                              IF i < N-m
+                              THEN bv2(i)
+                              ELSE FALSE
+                              ENDIF)
+
+  bv2nat_left_false_minus : LEMMA % :-)
+    FORALL(n:below(N)) :
+      bv2nat[N](LAMBDA (i: below(N)):
+                  IF i < N - n
+                  THEN bv(i + n)
+                  ELSE FALSE
+                  ENDIF)
+      =
+      2 * bv2nat[N](LAMBDA (i: below(N)):
+                  IF i < N - n - 1
+                  THEN bv(1 + i + n)
+                  ELSE FALSE
+                  ENDIF)
+      + b2n(bv(n))
+
+  bv2nat_leftshift_exp : LEMMA % :-)
+    bv2nat(bv) = bv2nat(left_shift(1, bv))/2 + exp2(N-1) * b2n(bv(N-1))
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% The above divrem function is too compact. For instance, it overwrites
+% the argument dvd from the left, which becomes the intended quotient.
+% In this way we cannot formulate the intended invariant property.
+% Therefore we introduce a more explicit auxiliary variation `divrem_mem' 
+% with ``memory'', which keeps the dvd argument.
+% Also, in its cycles it considers only the appropriate part of the
+% remainder argument.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  divrem_mem(aux, dvs, quot, rem : bvec[N], n : below(N+1)) : 
+    RECURSIVE [bvec[N], bvec[N], bvec[N]] =
+      IF n = 0
+      THEN (aux, quot, rem)
+      ELSE LET 
+               aux1  = left_shift(1, aux) WITH [(0) := quot(N-1)],
+               rem1  = left_shift(1, rem) WITH [(0) := quot(N-1)],
+               quot1 = left_shift(1, quot)
+           IN
+               IF bv2nat[N](dvs) <= bv2nat[N](LAMBDA(i:below(N)) : IF i < N-n+1
+                                                                   THEN rem1(i)
+                                                                   ELSE FALSE
+                                                                   ENDIF)
+               THEN divrem_mem(aux1, dvs, quot1 WITH [(0) := TRUE], 
+                               (LAMBDA(i:below(N)) : IF i < N-n+1
+                                                     THEN rem1(i)
+                                                     ELSE FALSE
+                                                     ENDIF) - dvs, n-1)
+               ELSE divrem_mem(aux1, dvs, quot1, rem1, n-1)
+               ENDIF
+      ENDIF
+      MEASURE n;
+
+% The next three results relate divrem_mem with divrem, and with div and rem.
+
+  divrem_mem_first_second_third : LEMMA % :-)
+    FORALL(n:below(N+1)) :
+      LET
+          drm = divrem_mem(aux, dvs, quot, rem, n),
+          dr  = divrem(quot, dvs, (LAMBDA(i:below(N)) : IF i < N-n
+                                                        THEN rem(i)
+                                                        ELSE FALSE
+                                                        ENDIF), n)
+      IN 
+          drm`1 = (LAMBDA(i:below(N)) : IF i < n
+                                        THEN quot(N-n+i)
+                                        ELSE aux(i-n)
+                                        ENDIF)
+            AND
+          drm`2 = dr`1
+            AND
+          drm`3 = dr`2
+
+  divrem_mem_rem : LEMMA % :-)
+    FORALL(n:below(N+1)) :
+      (LAMBDA(i:below(N)) : IF i < N-n
+                            THEN rem(i)
+                            ELSE FALSE
+                            ENDIF) < dvs 
+        IMPLIES 
+      divrem_mem(aux, dvs, dvd, rem, n)`3 < dvs
+
+  div_divrem_mem : LEMMA % :-)
+    div(dvd, dvs) = divrem_mem(fill[N](FALSE), dvs, dvd, fill[N](FALSE), N)`2
+
+  rem_divrem_mem : LEMMA % :-)
+    rem(dvd, dvs) = divrem_mem(fill[N](FALSE), dvs, dvd, fill[N](FALSE), N)`3
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% The key invariant property of divrem_mem. The parameter n should be
+% interpreted as the number of cycles that still need to be performed
+% to complete the computation.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  divrem_mem_invariant : LEMMA % :-)
+    FORALL(n:below(N+1)) : 
+      LET 
+          start_n = (LAMBDA(i:below(N)) : IF i < n
+                                          THEN quot(N-n+i)
+                                          ELSE aux(i-n)
+                                          ENDIF),
+          quot_n =  (LAMBDA(i:below(N)) : IF i < N-n
+                                          THEN quot(i)
+                                          ELSE FALSE
+                                          ENDIF),
+          rem_n =   (LAMBDA(i:below(N)) : IF i < n
+                                          THEN quot(N-n+i)
+                                          ELSE rem(i-n)
+                                          ENDIF),
+          drm = divrem_mem(aux, dvs, quot, rem, n)
+      IN
+          bv2nat[N](start_n) = 
+            exp2(n) * bv2nat[N](dvs) * bv2nat[N](quot_n) + bv2nat[N](rem_n)
+            IMPLIES
+          bv2nat[N](drm`1) = 
+            bv2nat[N](dvs) * bv2nat[N](drm`2) + bv2nat[N](drm`3)
+
+% Key properties of div and rem, including: 
+%     (a/b)*b+(a%b) = a and a%b < b
+% The `1' in the names of the lemmas refers to the 1-complement interpretation.
+
+  divrem1_eq : LEMMA % :-)
+    bv2nat(div(dvd, dvs)) * bv2nat(dvs) + bv2nat(rem(dvd, dvs)) = bv2nat(dvd)
+
+  rem1_below_dvs : LEMMA % :-)
+    bv2nat(dvs) /= 0 IMPLIES bv2nat(rem(dvd, dvs)) < bv2nat(dvs)
+
+  rem1_dvs0 : LEMMA % :-)
+    rem(dvd, fill[N](FALSE)) = dvd
+
+  div1_dvs0 : LEMMA % :-)
+    div(dvd, fill[N](FALSE)) = fill[N](TRUE)
+
+  div1_below_dvd : LEMMA % :-)
+    bv2nat(dvs) /= 0 IMPLIES bv2nat(div(dvd, dvs)) <= bv2nat(dvd)
+
+  divrem1_uniqueness : LEMMA % :-)
+    FORALL(q,r:nat) : 
+      r < bv2nat(dvs) AND q * bv2nat(dvs) + r = bv2nat(dvd)
+        IMPLIES
+      q = bv2nat(div(dvd, dvs)) AND r = bv2nat(rem(dvd, dvs));
+
+  divrem1_dvs1 : LEMMA % :-)
+    div(dvd, one) = dvd AND rem(dvd, one) = fill[N](FALSE)
+
+  div1_eq0 : LEMMA % :-)
+    (bv2nat(div(dvd, dvs)) = 0) = (bv2nat(dvd) < bv2nat(dvs))
+
+END BitvectorOneComplementDivision

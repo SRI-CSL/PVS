@@ -1,0 +1,229 @@
+%
+%  BitvectorTwoComplementDivision
+%  ==============================
+%
+%  for Translating Java Classes into the Higher Order Logic of PVS.
+%
+%  All integral types are interpreted as PVS integers, without 
+%  taking bounds into account
+%
+%  Author: Bart Jacobs
+%  Integrated with the bitvector library by Sam Owre <owre@csl.sri.com>
+
+BitvectorTwoComplementDivision[N:posnat] : THEORY
+BEGIN
+
+  ASSUMING
+     N_size: ASSUMPTION N >= 2
+  ENDASSUMING
+
+  IMPORTING BitvectorOneComplementDivision[N],
+            BitvectorOneComplementDivision[2*N],
+            BitvectorMultiplicationWidenNarrow[N]
+
+  dvd, dvs, bv : VAR bvec[N]
+  DVD, DVS, BV : VAR bvec[2*N]
+
+% First some additional results about one-complement division,
+% requiring parameter 2*N.
+
+  DIVREM1_eq : LEMMA % :-)
+    div(DVD, DVS) * DVS + rem(DVD, DVS) = DVD
+
+  div1_cancel : LEMMA % :-)
+    bv2nat(BV) * bv2nat(DVD) < exp2(2*N)
+      AND
+    bv2nat(BV) * bv2nat(DVS) < exp2(2*N)
+      AND
+    bv2nat(BV) /= 0
+      IMPLIES
+    div(BV * DVD, BV * DVS) = div(DVD, DVS)
+      AND
+    (bv2nat(DVS) /= 0 IMPLIES 
+       rem(BV * DVD, BV * DVS) = BV * rem(DVD, DVS));
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Definitions for 2-complement interpretation
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  /(dvd, dvs) : bvec[N] =
+    IF bv2int[N](dvd) >= 0
+    THEN IF bv2int[N](dvs) >= 0
+         THEN div[N](dvd, dvs)
+         ELSE -div[N](dvd, -dvs)
+         ENDIF
+    ELSE IF bv2int[N](dvs) >= 0
+         THEN -div[N](-dvd, dvs)
+         ELSE div[N](-dvd, -dvs)
+         ENDIF
+    ENDIF;
+
+  //(dvd, dvs) : bvec[N] =
+    IF bv2int[N](dvd) >= 0
+    THEN IF bv2int[N](dvs) >= 0
+         THEN rem[N](dvd, dvs)
+         ELSE rem[N](dvd, -dvs)
+         ENDIF
+    ELSE IF bv2int[N](dvs) >= 0
+         THEN -rem[N](-dvd, dvs)
+         ELSE -rem[N](-dvd, -dvs)
+         ENDIF
+    ENDIF
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Below the relevant texts from the Java Language Specification (2nd ed.)
+% are included. All the stated properties about divisition and remainder
+% are proven below (plus of few more, like divrem_widens).
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% JLS 15.17.2 Division Operator
+%
+% The binary / operator performs division, producing the quotient of its
+% operands. The left-hand operand is the dividend and the right-hand
+% operand is the divisor. Integer division rounds toward 0. That is, the
+% quotient produced for operands n and d that are integers after binary
+% numeric promotion (Åß5.6.2) is an integer value q whose magnitude is as
+% large as possible while satisfying |d * q| <= |n|; moreover, q is
+% positive when and n and d have the same sign, but q is negative when
+% and n and d have opposite signs. There is one special case that does
+% not satisfy this rule: if the dividend is the negative integer of
+% largest possible magnitude for its type, and the divisor is -1, then
+% integer overflow occurs and the result is equal to the
+% dividend. Despite the overflow, no exception is thrown in this
+% case. On the other hand, if the value of the divisor in an integer
+% division is 0, then an ArithmeticException is thrown. 
+%
+%
+% JLS 15.17.3 Remainder Operator 
+%
+% The binary % operator is said to yield the remainder of its operands
+% from an implied division; the left-hand operand is the dividend and
+% the right-hand operand is the divisor. In C and C++, the remainder
+% operator accepts only integral operands, but in the Java programming
+% language, it also accepts floating-point operands. The remainder
+% operation for operands that are integers after binary numeric
+% promotion (Åß5.6.2) produces a result value such that (a/b)*b+(a%b) is
+% equal to a. This identity holds even in the special case that the
+% dividend is the negative integer of largest possible magnitude for its
+% type and the divisor is -1 (the remainder is 0). It follows from this
+% rule that the result of the remainder operation can be negative only
+% if the dividend is negative, and can be positive only if the dividend
+% is positive; moreover, the magnitude of the result is always less than
+% the magnitude of the divisor. If the value of the divisor for an
+% integer remainder operator is 0, then an ArithmeticException is
+% thrown. 
+%
+% Examples: 
+%	5%3 produces 2 (note that 5/3 produces 1) 
+%	5%(-3) produces 2 (note that 5/(-3) produces -1) 
+%	(-5)%3 produces -2 (note that (-5)/3 produces -1) 
+%	(-5)%(-3) produces -2 (note that (-5)/(-3) produces 1) 
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%  div_minus_dvd : LEMMA
+%    (-dvd) / dvs = -(dvd / dvs)
+
+  rem_dvs0 : LEMMA % :-)
+    dvd // fill[N](FALSE) = dvd
+
+  div_dvs0 : LEMMA % :-)
+    dvd / fill[N](FALSE) = IF bv2int[N](dvd) >= 0
+                           THEN fill[N](TRUE)  % -1
+                           ELSE one[N]         % 1
+                           ENDIF
+
+  divrem_dvs1 : LEMMA % :-)
+    dvd / one = dvd AND dvd // one = fill[N](FALSE)
+
+  rem_below_dvs : LEMMA % :-)
+    bv2int(dvs) /= 0
+      IMPLIES
+    abs(bv2int(dvd // dvs)) < abs(bv2int(dvs))
+
+  divrem_eq : LEMMA % :-)
+    NOT (bv2int(dvd) = -exp2(N-1) AND bv2int(dvs) = -1)
+      IMPLIES
+    bv2int[N](dvd / dvs) * bv2int[N](dvs) + bv2int[N](dvd // dvs) 
+      = bv2int[N](dvd)
+
+  divrem_overflow : LEMMA % :-)
+    bv2int(dvd) = -exp2(N-1) AND bv2int(dvs) = -1
+      IMPLIES
+    bv2int[N](dvd / dvs) = -exp2(N-1) AND bv2int[N](dvd // dvs) = 0
+
+  div_sgn : LEMMA % :-)
+    NOT (bv2int(dvd) = -exp2(N-1) AND bv2int(dvs) = -1)
+      AND
+    bv2int(dvs) /= 0
+      IMPLIES
+    ((bv2int(dvd / dvs) > 0) = 
+        ((bv2int(dvd) >= bv2int(dvs) AND bv2int(dvs) > 0)
+         OR
+         (bv2int(dvd) <= bv2int(dvs) AND bv2int(dvs) < 0)))
+      AND
+    ((bv2int(dvd / dvs) = 0) = 
+        (abs(bv2int(dvd)) < abs(bv2int(dvs))))
+      AND
+    ((bv2int(dvd / dvs) < 0) = 
+        ((bv2int(dvd) >= -bv2int(dvs) AND bv2int(dvs) < 0)
+         OR
+         (bv2int(dvd) <= -bv2int(dvs) AND bv2int(dvs) > 0)))
+
+  rem_sgn : LEMMA % :-)
+    ((bv2int(dvd) > 0) IMPLIES (bv2int(dvd // dvs) >= 0))
+       AND
+    ((bv2int(dvd) < 0) IMPLIES (bv2int(dvd // dvs) <= 0))
+
+  divrem_uniqueness : LEMMA % :-)
+    FORALL(q,r:int) : 
+      (NOT (bv2int(dvd) = -exp2(N-1) AND bv2int(dvs) = -1))
+        AND
+      bv2int(dvs) /= 0
+        AND
+      ((q > 0) = 
+        ((bv2int(dvd) >= bv2int(dvs) AND bv2int(dvs) > 0)
+         OR
+         (bv2int(dvd) <= bv2int(dvs) AND bv2int(dvs) < 0)))
+        AND
+      ((q = 0) = 
+         (abs(bv2int(dvd)) < abs(bv2int(dvs))))
+        AND
+      ((q < 0) = 
+         ((bv2int(dvd) >= -bv2int(dvs) AND bv2int(dvs) < 0)
+          OR
+          (bv2int(dvd) <= -bv2int(dvs) AND bv2int(dvs) > 0)))
+        AND
+      ((bv2int(dvd) > 0) IMPLIES (r >= 0))
+        AND
+      ((bv2int(dvd) < 0) IMPLIES (r <= 0))
+        AND
+      abs(r) < abs(bv2int(dvs)) 
+        AND 
+      q * bv2int(dvs) + r = bv2int(dvd)
+        IMPLIES
+      q = bv2int(dvd / dvs) AND r = bv2int(dvd // dvs)
+
+
+% from JLS: division ... is an integer value q whose magnitude is as
+% large as possible while satisfying |d * q| <= |n|
+
+  div_largest : LEMMA % :-)
+    FORALL(q:int) : 
+      bv2int(dvs) /= 0
+        AND
+      abs(bv2int(dvs) * q) <= abs(bv2int(dvd)) 
+        IMPLIES 
+      abs(q) <= abs(bv2int(dvd/dvs))
+
+END BitvectorTwoComplementDivision

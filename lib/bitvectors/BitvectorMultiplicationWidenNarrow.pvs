@@ -1,0 +1,100 @@
+%
+%  BitvectorMultiplicationWidenNarrow
+%  ==================================
+%
+%  for Translating Java Classes into the Higher Order Logic of PVS.
+%
+%  All integral types are interpreted as PVS integers, without 
+%  taking bounds into account
+%
+%  Author: Bart Jacobs
+%  Integrated with the bitvector library by Sam Owre <owre@csl.sri.com>
+
+BitvectorMultiplicationWidenNarrow[N : posnat] : THEORY
+BEGIN
+  ASSUMING
+     N_size: ASSUMPTION N >= 2
+  ENDASSUMING
+
+  IMPORTING BitvectorMultiplication[N],
+            BitvectorMultiplication[2*N]
+
+  bv, bv1, bv2 : VAR bvec[N]
+  BV, BV1, BV2 : VAR bvec[2*N]
+
+  bv2nat_narrow : LEMMA % :-)
+    bv2nat(BV) < exp2(N) IMPLIES bv2nat(narrow(BV)) = bv2nat(BV)
+
+  bv2nat_times_rec : LEMMA % :-)
+    bv2nat(BV1) < exp2(N) AND bv2nat(BV2) < exp2(N)
+      IMPLIES
+    bv2nat(times_rec[2*N](BV1, BV2, 2*N)) = bv2nat(BV1) * bv2nat(BV2)
+
+  bv2nat_times : LEMMA % :-)
+    bv2nat(BV1) * bv2nat(BV2) < exp2(2*N)
+      IMPLIES
+    bv2nat(BV1 * BV2) = bv2nat(BV1) * bv2nat(BV2)
+
+  bv2int_times : LEMMA % :-)
+   -exp2(2*N-1) < bv2int(BV1) * bv2int(BV2) 
+     AND 
+   bv2int(BV1) * bv2int(BV2) < exp2(2*N-1)
+      IMPLIES
+    bv2int(BV1 * BV2) = bv2int(BV1) * bv2int(BV2)
+
+% main results for computing outcomes of multiplications:
+
+  bv2int_times_widens : LEMMA % :-)
+    bv2int(widen(bv1) * widen(bv2)) = bv2int(bv1) * bv2int(bv2)
+
+  bv2int_times_int2bv_first : LEMMA % :-)
+    FORALL(k:int) :
+     -exp2(2*N-1) < k * bv2int(BV) AND k * bv2int(BV) < exp2(2*N-1)      
+       AND
+     -exp2(2*N-1) <= k AND k < exp2(2*N-1)      
+       IMPLIES
+     bv2int[2*N](int2bv[2*N](k) * BV) = k * bv2int(BV)
+
+  bv2int_times_int2bv_second : LEMMA % :-)
+    FORALL(k:int) :
+     -exp2(2*N-1) < k * bv2int(BV) AND k * bv2int(BV) < exp2(2*N-1)      
+       AND
+     -exp2(2*N-1) <= k AND k < exp2(2*N-1)      
+       IMPLIES
+     bv2int[2*N](BV * int2bv[2*N](k)) = k * bv2int(BV)
+
+% narrow and multiplication
+
+  narrow_iterate : LEMMA % :-)
+    FORALL(n:nat) :
+      narrow(iterate[bvec[2*N]](LAMBDA(b:bvec[2*N]) : b + BV1, n)
+                               (fill[2*N](FALSE)))
+      =
+      iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + narrow(BV1), n)(fill[N](FALSE))
+
+  bv2nat_split : LEMMA % :-)
+    bv2nat(BV) = exp2(N) * bv2nat(BV^(2*N-1,N)) + bv2nat(BV^(N-1,0))
+
+  narrow_times : LEMMA % :-)
+    narrow(BV1 * BV2) = narrow(BV1) * narrow(BV2)
+
+
+% JLS, 15.17.1:
+%
+% The binary * operator performs multiplication, producing the product
+% of its operands. Multiplication is a commutative operation if the
+% operand expressions have no side effects. While integer multiplication
+% is associative when the operands are all of the same type,
+% floating-point multiplication is not associative. If an integer
+% multiplication overflows, then the result is the low-order bits of the
+% mathematical product as represented in some sufficiently large
+% two's-complement format. As a result, if overflow occurs, then the sign
+% of the result may not be the same as the sign of the mathematical
+% product of the two operand values.
+%
+% This is formalised in the following way:
+
+  times_is_java_times : LEMMA % :-)
+    bv1 * bv2 = narrow(widen(bv1) * widen(bv2))
+
+END BitvectorMultiplicationWidenNarrow

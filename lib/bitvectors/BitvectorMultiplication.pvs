@@ -1,0 +1,220 @@
+%
+%  BitvectorMultiplication
+%  =======================
+%
+%  for Translating Java Classes into the Higher Order Logic of PVS.
+%
+%  All integral types are interpreted as PVS integers, without 
+%  taking bounds into account
+%
+%  Author: Bart Jacobs
+%  Integrated with the bitvector library by Sam Owre <owre@csl.sri.com>
+
+BitvectorMultiplication[N : posnat] : THEORY
+BEGIN
+
+  ASSUMING
+     N_size: ASSUMPTION N >= 2
+  ENDASSUMING
+
+  IMPORTING BitvectorUtil[N]
+
+  bv, bv1, bv2, bv3 : VAR bvec[N]
+
+  times_rec(bv1:bvec[N], bv2:bvec[N], n:nat) : RECURSIVE bvec[N] =
+    IF n = 0
+    THEN fill[N](FALSE)
+    ELSIF bv1(0)
+    THEN bv2 + left_shift(1, times_rec(right_shift(1, bv1), bv2, n-1))
+    ELSE left_shift(1, times_rec(right_shift(1, bv1), bv2, n-1))
+    ENDIF
+    MEASURE n;
+
+  *(bv1, bv2) : bvec[N] = times_rec(bv1, bv2, N)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% auxiliary results
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  times_rec_zero_right : LEMMA % :-)
+    FORALL(n:nat) : 
+      times_rec(bv, fill[N](FALSE), n) = fill[N](FALSE)
+
+  times_rec_zero_left : LEMMA % :-)
+    FORALL(n:nat) : 
+      times_rec(fill[N](FALSE), bv, n) = fill[N](FALSE)
+
+  times_rec_repeat : LEMMA % :-)
+    FORALL(n,m:nat) : 
+      bv2nat(bv1) < exp2(n)
+        IMPLIES
+      times_rec(bv1, bv2, n+m) = times_rec(bv1, bv2, n)
+
+% Distributivity of zero
+
+  times_zero_first : LEMMA % :-)
+    fill[N](FALSE) * bv = fill[N](FALSE)
+
+  times_zero_second : LEMMA % :-)
+    bv * fill[N](FALSE) = fill[N](FALSE)
+
+% inc-right
+
+  times_rec_inc_right : LEMMA % :-)
+    FORALL(n:below(N+1)) : 
+      times_rec(bv1, bv2+1, n) = 
+        times_rec(bv1, bv2, n) + (IF n = 0
+                                  THEN fill[N](FALSE)
+                                  ELSE (fill[N-n](FALSE) o bv1 ^ (n-1, 0))
+                                  ENDIF)
+
+  times_rec_max_inc_right : LEMMA % :-)
+    times_rec(bv1, bv2+1, N) = 
+      times_rec(bv1, bv2, N) + bv1
+
+  times_rec_max_inc_n_right : LEMMA % :-)
+    FORALL(n:nat) : 
+      times_rec(bv1, bv2+n, N) =
+        iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv1, n)
+                        (times_rec(bv1, bv2, N))
+
+  times_rec_iterate : LEMMA % :-)
+    times_rec(bv1, bv2, N) =
+      iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv1, bv2nat(bv2))
+                      (fill[N](FALSE))
+
+% two crucial auxiliary results, on which much of the subsequent reasoning
+% depends:
+
+  bv2nat_iterate : LEMMA % :-)
+    FORALL(n:nat) :
+      n * bv2nat(bv1) < exp2(N) 
+        IMPLIES
+      bv2nat(iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv1, n)(fill[N](FALSE)))
+        = n * bv2nat(bv1)
+
+  bv2int_iterate : LEMMA % :-)
+    FORALL(n:nat) :
+      -exp2(N-1) <= n * bv2int(bv1) AND n * bv2int(bv1) < exp2(N-1) 
+        IMPLIES
+      bv2int(iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv1, n)(fill[N](FALSE)))
+        = n * bv2int(bv1)
+
+% towards commutativity, proved by bitvector induction
+
+  iterate_inc : LEMMA % :-)
+    FORALL(n:nat) :
+      iterate[bvec[N]](LAMBDA (b:bvec[N]): b + (bv1 + 1), n)
+                      (fill[N](FALSE))
+      =
+      iterate[bvec[N]](LAMBDA (b:bvec[N]): b + bv1, n)
+                    (fill[N](FALSE)) + n
+
+  iterate_inc_m : LEMMA % :-)
+    FORALL(n,m:nat) :
+      iterate[bvec[N]](LAMBDA (b:bvec[N]): b + (bv1 + m), n)
+                      (fill[N](FALSE))
+      =
+      iterate[bvec[N]](LAMBDA (b:bvec[N]): b + bv1, n)
+                    (fill[N](FALSE)) + (n * m)
+
+  iterate_modulo : LEMMA % :-)
+    FORALL(i:nat) : 
+      iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv2, i * exp2(N))
+                      (fill[N](FALSE))    
+      = 
+      fill[N](FALSE)
+
+  iterate_comm : LEMMA % :-)
+    iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv1, bv2nat(bv2))
+                    (fill[N](FALSE))    
+    =
+    iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv2, bv2nat(bv1))
+                    (fill[N](FALSE))    
+
+  times_rec_comm : LEMMA % :-)
+    times_rec(bv1, bv2, N) = times_rec(bv2, bv1, N)
+
+  times_comm : LEMMA % :-)
+    bv1 * bv2 = bv2 * bv1
+
+% commutation with min
+
+  iterate_min_second : LEMMA % :-)
+    FORALL(n:nat) : 
+      iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + (-bv), n)
+                      (fill[N](FALSE))    
+      =
+      -iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv, n)
+                      (fill[N](FALSE))    
+
+  times_rec_min_first : LEMMA % :-)
+    times_rec(-bv1, bv2, N) = -times_rec(bv1, bv2, N)
+      
+  times_rec_min_second : LEMMA % :-)
+    times_rec(bv1, -bv2, N) = -times_rec(bv1, bv2, N)
+
+  times_min_first : LEMMA % :-)
+    (-bv1) * bv2 = -(bv1 * bv2)
+
+  times_min_second : LEMMA % :-)
+    bv1 * (-bv2) = -(bv1 * bv2)
+
+% multiplicative unit
+
+  one : bvec[N] = (LAMBDA(k:below(N)) : k=0)
+
+  bv2nat_one : LEMMA % :-)
+    bv2nat[N](one) = 1
+
+  bv2int_one : LEMMA % :-)
+    bv2int[N](one) = 1
+
+  times_one_first : LEMMA % :-)
+    one * bv = bv
+
+  times_one_second : LEMMA % :-)
+    bv * one = bv
+
+% distributivity over +
+
+  iterate_zero_add : LEMMA % :-)
+    FORALL(n:nat) : 
+      iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv1, n)
+                      (bv2)    
+      =
+      iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv1, n)
+                      (fill[N](FALSE)) + bv2
+
+  times_rec_distr : LEMMA % :-)
+    times_rec(bv1, bv2 + bv3, N)
+    =
+    times_rec(bv1, bv2, N) + times_rec(bv1, bv3, N)
+
+  times_distr_right : LEMMA % :-)
+    bv1 * (bv2 + bv3) = (bv1 * bv2) + (bv1 * bv3)
+    
+  times_distr_left : LEMMA % :-)
+    (bv1 + bv2) * bv3 = (bv1 * bv3) + (bv2 * bv3)
+    
+  times_distr_iterate : LEMMA % :-)
+    FORALL(n:nat) :
+      bv2 * iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + bv1, n)(fill[N](FALSE))
+      =
+      iterate[bvec[N]](LAMBDA(b:bvec[N]) : b + (bv2 * bv1), n)(fill[N](FALSE))
+
+% associativity
+
+  times_assoc : LEMMA % :-)
+    (bv1 * bv2) * bv3 = bv1 * (bv2 * bv3)
+
+% Now we can say that bvec[N] carries a commutative group structure
+% (0, +, -) and a commutative monoid structure (*, one), and that
+% the latter preserves the group structure. More formally, (*, one)
+% is a commutative monoid in the category of commutative groups,
+% see MacLane, Categories for the Working Mathematician (1972), 
+% Chapter VII, section 3.
+
+END BitvectorMultiplication

@@ -1,0 +1,55 @@
+%
+%  BitvectorTwoComplementDivisionWidenNarrow
+%  =========================================
+%
+%  for Translating Java Classes into the Higher Order Logic of PVS.
+%
+%  All integral types are interpreted as PVS integers, without 
+%  taking bounds into account
+%
+%  Author: Bart Jacobs
+%  Integrated with the bitvector library by Sam Owre <owre@csl.sri.com>
+
+BitvectorTwoComplementDivisionWidenNarrow[N:posnat] : THEORY
+BEGIN
+
+  ASSUMING
+     N_size: ASSUMPTION N >= 2
+  ENDASSUMING
+
+  IMPORTING BitvectorTwoComplementDivision[N],
+            BitvectorTwoComplementDivision[2*N]
+
+  dvd, dvs, bv : VAR bvec[N]
+  DVD, DVS, BV : VAR bvec[2*N]
+
+  DIVREM_eq : LEMMA % :-)
+    (DVD / DVS) * DVS + (DVD // DVS) = DVD
+
+  divrem_widens : LEMMA % :-)
+    NOT (bv2int(dvd) = -exp2(N-1) AND bv2int(dvs) = -1)
+      IMPLIES
+    widen(dvd) / widen(dvs) = widen(dvd / dvs)
+      AND
+    widen(dvd) // widen(dvs) = widen(dvd // dvs)
+
+  div_cancel : LEMMA % :-)
+   -exp2(2*N-1) < bv2int(BV) * bv2int(DVD) 
+     AND 
+    bv2int(BV) * bv2int(DVD) < exp2(2*N-1)
+      AND
+   -exp2(2*N-1) < bv2int(BV) * bv2int(DVS) 
+     AND 
+    bv2int(BV) * bv2int(DVS) < exp2(2*N-1)
+      AND
+    bv2int(BV) /= 0
+      AND
+    bv2int(DVS) /= 0
+      AND
+    NOT (bv2int(DVD) = -exp2(2 * N - 1) AND bv2int(DVS) = -1)
+      IMPLIES
+    (BV * DVD) / (BV * DVS) = DVD / DVS
+      AND
+    (BV * DVD) // (BV * DVS) = BV * (DVD // DVS)
+
+END BitvectorTwoComplementDivisionWidenNarrow
