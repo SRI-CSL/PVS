@@ -11,8 +11,17 @@
    ((record-p term) 'record)
    ((tuple-p term) 'tuple)
    ((update-p term) 'array)
+   ((adt-p term) 'adt)
    ((bv-p term) 'bv)
    (t nil)))
+
+(defun occurs-under-interp (term1 term2)
+  (cond
+   ((eq term1 term2) t)
+   ((constant-p term2) nil)
+   ((uninterp? term2) nil)
+   (t (some #'(lambda (x) (occurs-under-interp term1 x))
+	    (funargs term2)))))
 
 (defun array-p (term) nil)
 
@@ -36,6 +45,8 @@
    ((update-p term) (sigupdate term cong-state))
    ((applyupdate-p term) (sigapplyupdate term cong-state))
    ((project-p term) (sigproject term cong-state))
+   ((constructor-p term) (sig-constructor term cong-state))
+   ((accessor-p term) (sig-accessor term cong-state))
    ((equality-p term) (sigequal term cong-state after-solve))
    ((if-p term) (sigif term cong-state))
    ((bool-p term) (sigbool term cong-state after-solve))
@@ -172,6 +183,8 @@
       (sigbool term cong-state after-solve))
      ((eq (dp-theory term) 'arith)
       (normineq term cong-state))
+     ((eq (dp-theory term) 'adt)
+      (sig-adt term cong-state))
      ((and (node-constructor? lhs)
 	   (node-constructor? rhs))
       *false*)
@@ -272,6 +285,7 @@
       (record (record-solve eqn cong-state))
       (tuple (tuple-solve eqn cong-state))
       (array (array-solve eqn cong-state))
+      (adt (adt-solve eqn cong-state))
       (bv (bv-solve eqn cong-state))
       (t (list eqn)))))
 
