@@ -80,13 +80,13 @@
 
 (defun map-lhash* (function lhash)
   (let ((ht (lhash-table lhash)))
-    (if (hash-table-p ht)
-	(maphash #'(lambda (x y)
-		     (unless (member x *map-lhash-keys-visited*
-				     :test (hash-table-test ht))
-		       (when (lhash-next lhash)
-			 (push x *map-lhash-keys-visited*))
-		       (funcall function x y)))
-		 (lhash-table lhash))
-	(when (lhash-next lhash)
-	  (map-lhash* function (lhash-next lhash))))))
+    (when (hash-table-p ht)
+      (maphash #'(lambda (x y)
+		   (unless (member x *map-lhash-keys-visited*
+				   :test (hash-table-test ht))
+		     (when (lhash-next lhash)
+		       (push x *map-lhash-keys-visited*))
+		     (funcall function x y)))
+	       (lhash-table lhash)))
+    (when (lhash-next lhash)
+      (map-lhash* function (lhash-next lhash)))))
