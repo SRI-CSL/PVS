@@ -350,8 +350,7 @@ expr ::= number <number-expr(number)>
        | table-expr
        ;
 
-set-expr ::= {'{' set-formals ['|' expr] '}'}
-	     <[eset-expr(set-formals)|set-expr(set-formals,expr)]>;
+set-expr ::= {'{' set-formals '|' expr '}'} <set-expr(set-formals,expr)>;
 
 cond-case ::= {expr^l '->' expr^r} <cond-case(expr^l,expr^r)>;
 
