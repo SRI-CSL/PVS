@@ -21,10 +21,8 @@ utilobj = double.o list.o hash.o alloc.o
 
 all : mu.so
 
-mu.so : ${muobj} utils
+mu.so : ${muobj} libutils.a
 	$(LD) ../bdd-ld-table ../mu-ld-table $(LDFLAGS) -o  mu.so  ${muobj} -lutils  -lm 
-
-utils : libutils.a
 
 libutils.a : ${utilobj}
 	ar r libutils.a ${utilobj}
