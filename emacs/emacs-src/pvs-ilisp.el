@@ -404,13 +404,19 @@ want to set this to nil for slow terminals, or connections over a modem.")
 	(concat (substring string 0 start) (substring string end))))))
 
 (defun pvs-log-log (msg)
-  (save-excursion
-    (set-buffer (get-buffer-create "PVS Log"))
-    (define-pvs-key-bindings (current-buffer))
-    (goto-char (point-max))
-    (insert (format "LOG(%s): %s\n"
-		(substring (current-time-string) 4 19)
-	      msg))))
+  (let ((buf (current-buffer)))
+    (unwind-protect
+	 (let* ((cpoint (point))
+		(at-end (= cpoint (point-max))))
+	   (set-buffer (get-buffer-create "PVS Log"))
+	   (define-pvs-key-bindings (current-buffer))
+	   (goto-char (point-max))
+	   (insert (format "LOG(%s): %s\n"
+		       (substring (current-time-string) 4 19)
+		     msg))
+	   (unless at-end
+	     (goto-char cpoint)))
+      (set-buffer buf))))
 
 (defun pvs-warning (msg)
   (save-excursion
