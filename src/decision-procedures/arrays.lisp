@@ -37,7 +37,7 @@
 	norm-equality)))
 
 (defun expr-< (term1 term2)
-  (arith-term-< term1 term2))
+  (monom-< term1 term2))
 
 (defun sigapplyupdate (term cong-state)
   (let* ((update (applyupdate-array term))
