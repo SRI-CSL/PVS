@@ -89,7 +89,9 @@
 
 ;;multiary macro versions of primitives
 (defmacro pvs__= (x y)
-  `(equalp ,x ,y))
+  (let ((xx (gentemp)))
+    `(let ((,xx ,x))
+       (if (stringp ,xx) (string= ,xx ,y) (equalp ,xx ,y)))))
 
 (defun pvs_equalp (x y)
   (cond ((symbolp x)
