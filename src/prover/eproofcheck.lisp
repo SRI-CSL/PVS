@@ -14,6 +14,8 @@
 
 (defvar *subgoals* nil)
 
+(defvar *multiple-proof-default-behavior* :ask)
+
 (defmethod prove (name &key  strategy)
   (let ((decl (get-formula *current-theory*
 			   (if (stringp name)(intern name) name))))
@@ -397,9 +399,13 @@
                        as ~{~a~^, ~}~%~]~
                     Would you like the proof to be saved~@[ anyway~]? "
 		   ids ids)))
-	   (cond ((pvs-yes-or-no-p
-		   "Would you like to overwrite the current proof (named ~a)? "
-		   (id prinfo))
+	   (cond ((or (eq *multiple-proof-default-behavior* :overwrite)
+		      (and (eq *multiple-proof-default-behavior* :ask)
+			   (pvs-yes-or-no-p
+			    "Would you like to overwrite the current proof (named ~a)? "
+			    (id prinfo))))
+		  (when (eq *multiple-proof-default-behavior* :overwrite)
+		    (format t "Overwriting proof named ~a" (id prinfo)))
 		  (setf (script prinfo) script))
 		 (t (let ((id (read-proof-id (next-proof-id decl)))
 			  (description (read-proof-description)))
@@ -428,12 +434,15 @@
 	  (prove-decl decl :strategy '(then (rerun) (query*))))))))
 
 (defun read-proof-id (default)
-  (format t "Please enter an id (default ~a): " default)
-  (let ((id (read-line)))
-    (cond ((equal id "") default)
-	  ((valid-proof-id id) (intern id))
-	  (t (format t "~a is not a legal proof identifier:~%" id)
-	     (read-proof-id default)))))
+  (cond ((eq *multiple-proof-default-behavior* :ask)
+	 (format t "Please enter an id (default ~a): " default)
+	 (let ((id (read-line)))
+	   (cond ((equal id "") default)
+		 ((valid-proof-id id) (intern id))
+		 (t (format t "~a is not a legal proof identifier:~%" id)
+		    (read-proof-id default)))))
+	(t (format t "Saving proof as ~a" default)
+	   default)))
 
 (defun valid-proof-id (str)
   (and (alpha-char-p (char str 0))
@@ -444,8 +453,10 @@
 	      (subseq str 1))))
 
 (defun read-proof-description ()
-  (format t "Please enter a description: ")
-  (read-line))
+  (cond ((eq *multiple-proof-default-behavior* :ask)
+	 (format t "Please enter a description: ")
+	 (read-line))
+	(t "")))
 
 (defun rerun-prove (decl)
   (if (and *noninteractive*
