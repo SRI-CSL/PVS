@@ -117,6 +117,7 @@ rotated output, add the following to your ~/.emacs file:
 The print-theory command prints the specified theory using the
 pvs-print-region command."
   (interactive (complete-theory-name "Print theory named: " nil t))
+  (unless (interactive-p) (pvs-collect-theories))
   (let* ((filename (cadr (assoc theoryname *pvs-theories*))))
     (cond (filename
 	   (save-excursion
@@ -183,6 +184,7 @@ pvs-print-buffer command."
 The print-pvs-importchain command prints the importchain of the specified
 theory using the pvs-print-buffer command."
   (interactive (complete-theory-name "Print theories in imports of: "))
+  (unless (interactive-p) (pvs-collect-theories))
   (let ((print-buffer (get-buffer-create " *pvs-temp-buffer*"))
 	(theories
 	 (pvs-send-and-wait
@@ -215,6 +217,7 @@ The alltt-theory command generates a LaTeX file in alltt format for the
 specified theory.  If the theory name is foo, the name of the generated
 file is foo-alltt.tex."
   (interactive (complete-theory-name "Generate alltt file for theory named: "))
+  (unless (interactive-p) (pvs-collect-theories))
   (let* ((buf (get-theory-buffer theoryname))
 	 (reg (save-excursion (set-buffer buf) (theory-region theoryname)))
 	 (file (format "%s%s-alltt.tex" *pvs-current-directory* theoryname))
@@ -304,6 +307,7 @@ each theory in the importchain of the specified theory.  If a theory name
 is foo, the name of the corresponding generated file is foo-alltt.tex."
   (interactive (complete-theory-name
 		"Generate alltt file for IMPORT chain of theory named: "))
+  (unless (interactive-p) (pvs-collect-theories))
   (let ((theories (pvs-send-and-wait
 		   (format "(context-usingchain \"%s\")" theoryname)
 		   nil nil 'list)))
@@ -369,6 +373,7 @@ pvs-files.tex file in the current directory.  This file may be LaTeXed and
 printed or viewed, or it may serve as an example for including
 THEORYNAME.tex in a document."
   (interactive (complete-theory-name "Generate LaTeX for theory named: "))
+  (unless (interactive-p) (pvs-collect-theories))
   (let ((file (when (member-equal theoryname (buffer-theories))
 		(current-pvs-file))))
     (pvs-send (format "(latex-theory \"%s\" %s)"
@@ -401,6 +406,7 @@ file.  Automatically generates pvs-files.tex in the current directory.
 This file may be LaTeXed and printed or viewed, or it may serve as an
 example for including <theory>.tex in a document."
   (interactive (complete-theory-name "Name of root theory: "))
+  (unless (interactive-p) (pvs-collect-theories))
   (let ((file (when (member-equal theoryname (buffer-theories))
 		(current-pvs-file))))
     (pvs-send (format "(latex-usingchain \"%s\" %s)"
@@ -421,6 +427,7 @@ theory, LaTeXs it, and previews it using the viewer given by the Emacs
 variable pvs-latex-viewer.  If this is not set, you will be prompted for a
 viewer."
   (interactive (complete-theory-name "LaTeX and view theory named: "))
+  (unless (interactive-p) (pvs-collect-theories))
   (unless (and pvs-latex-viewer
 	       (or (and (pathname-directory pvs-latex-viewer)
 			(file-exists-p pvs-latex-viewer))

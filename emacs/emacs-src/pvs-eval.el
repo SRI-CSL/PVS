@@ -3,6 +3,7 @@
 (defpvs pvs-lisp-theory typecheck (theoryname)
   "Generates the Lisp code for a given theory and displays it in a buffer"
   (interactive (complete-theory-name "Generate lisp for theory: "))
+  (unless (interactive-p) (pvs-collect-theories))
   (pvs-bury-output)
   (message "Generating Lisp for theory...")
   (pvs-send-and-wait (format "(generate-lisp-for-theory \"%s\")"
@@ -27,6 +28,7 @@
 (defpvs pvs-ground-evaluator prove (theory)
   "Invokes the ground evaluator in the context of the given PVS theory"
   (interactive (complete-theory-name "Use context of theory: "))
+  (unless (interactive-p) (pvs-collect-theories))
   (confirm-not-in-checker)
   (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" theory)
 			     nil 'tc nil)
