@@ -72,7 +72,7 @@
       (clrhash *all-subst-mod-params-caches*)
       (setq *all-subst-mod-params-caches*
 	    (make-hash-table :hash-function 'pvs-sxhash
-				 :test 'tc-eq)))
+				 :test 'strong-tc-eq)))
 ;  (if *subst-mod-params-cache*
 ;      (clrhash *subst-mod-params-cache*)
 ;      (setq *subst-mod-params-cache*
@@ -106,7 +106,7 @@
     (or cache
 	(let ((ncache
 	       (make-hash-table :hash-function 'pvs-sxhash
-				:test 'tc-eq)))
+				:test 'strong-tc-eq)))
 	  (setf (gethash modinst *all-subst-mod-params-caches*) ncache)
 	  ncache))))
 
