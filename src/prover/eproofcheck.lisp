@@ -2368,64 +2368,6 @@
 	       (load-module-proofs input filestring))))))
 			 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;(defstep 'split$ nil
-;  '(let ((index (find-and-form (s-forms *goal*))))
-;    (if (null index) (skip) (split index))))
-;(addrulefun 'split$ nil nil (split$-rulefun)
-;	    "(split$), split$: Searches for a conjunction and splits into subgoals.")
-;
-;(defun split$-rulefun ()
-;  #'(lambda (ps)
-;      (let ((index (find-and-form
-;		    (s-forms  (current-goal ps)))))
-;	(cond ((null index)
-;	       `(skip))
-;	      (t `(split ,index))))))
-;
-;					;(defun split$-rule ()
-;					;  (make-instance 'rule
-;					;    'rule-part
-;					;    #'split$-rule-part
-;					;    'rule-input '(split$)))
-
-(defun find-and-form (s-forms)
-  (let ((ans (find-pos-and-form s-forms 1)))
-    (if ans ans
-	(find-neg-and-form s-forms -1))))
-
-(defun find-pos-and-form (s-forms index)
-  (if (consp s-forms)
-      (if  (not (negation? (formula (car s-forms))))
-	   (if (and+form? (formula (car s-forms)))
-	       index
-	       (find-pos-and-form (cdr s-forms) (1+ index)))
-	   (find-pos-and-form (cdr s-forms) index))
-      NIL))
-
-(defun find-neg-and-form (s-forms index)
-  (if (consp s-forms)
-      (if  (negation? (formula (car s-forms)))
-	   (if (and+form? (formula (car s-forms)))
-	       index
-	       (find-neg-and-form (cdr s-forms) (1- index)))
-	   (find-neg-and-form (cdr s-forms) index))
-      NIL))
-	  
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;(defun opt-default (optional)
-;  (if (and (consp optional)(consp (cdr optional)))
-;    (cadr optional)
-;    nil))
-;
-;(defun opt-name (optional)
-;  (if  (consp optional)
-;    (car optional)
-;    optional))
-
 (defun keyword? (key optionals)
   (and (keywordp key)
        (find key optionals
