@@ -492,6 +492,10 @@
 	   (declare (ignore error obj))
 	   (unless (or tres eres)
 	     (resolution-error name 'expr-or-type nil))
+	   (when (cdr tres)
+	     (setf tres
+		   (or (remove-if (complement #'fully-instantiated?) tres)
+		       tres)))
 	   (if (cdr tres)
 	       (cond (eres
 		      (setf (resolutions name) eres))
