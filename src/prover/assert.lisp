@@ -1991,9 +1991,11 @@
 	(assert-equality equality newargs sig)
       (if (eq sig '?)
 	  (let ((disequality (negate newequality)))
-	    (assert-if-application* disequality
-				   (operator disequality)
-				   newequality '?))
+	    (if (application? disequality)
+		(assert-if-application* disequality
+					(operator disequality)
+					newequality '?)
+		(values '? (nth-value 1 (assert-if disequality)))))
 	  (do-auto-rewrite expr sig)))))
 
 ;;NSH(10.21.94)
