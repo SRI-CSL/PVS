@@ -5,9 +5,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Thu Jan 28 18:16:43 1999
 ;; Update Count    : 10
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -1406,8 +1404,7 @@
       (setq to-alist prelude-alist))
     (dolist (from-entry from-alist)
       (unless (memq from-entry prelude-alist)
-	(let* ((from-entry (car from-alist))
-	       (decl (car from-entry))
+	(let* ((decl (car from-entry))
 	       (from-vector (cdr from-entry))
 	       (to-entry (assq decl to-alist))
 	       (to-vector (cdr to-entry)))
@@ -1813,31 +1810,32 @@
 ;;; T.  If it does match, then for each Ti the same substitution is done,
 ;;; and it is checked if this is a subtype-of*? tt2.
 (defun subtype-of-test (tt1 tt2 ksubtypes)
-  (if (compatible? tt1 (car ksubtypes))
-      (let* ((frees (when (fully-instantiated? tt1)
-		      (mapcar #'list
-			(remove-if #'(lambda (x)
-				       (eq (module x) (current-theory)))
-			  (free-params (car ksubtypes))))))
-	     (bindings (when frees (tc-match tt1 (car ksubtypes) frees)))
-	     (thinst (subst-theory-inst-from-free-params bindings))
-	     (kt (if frees
-		     (when thinst
-		       (subst-mod-params (car ksubtypes) thinst))
-		     (car ksubtypes))))
-	(when kt
-	  (let ((subst (when (freevars kt) (simple-match kt tt1))))
-	    (when (if subst
-		      (not (eq subst 'fail))
-		      (tc-eq tt1 kt))
-	      (some #'(lambda (ks)
-			(subtype-of*?
-			 (substit (if thinst
-				      (subst-mod-params ks thinst)
-				      ks)
-			   subst)
-			 tt2))
-		    (cdr ksubtypes))))))))
+  (when (compatible? tt1 (car ksubtypes))
+    (let* ((frees (when (fully-instantiated? tt1)
+		    (mapcar #'list
+		      (remove-if #'(lambda (x)
+				     (eq (module x) (current-theory)))
+			(free-params (car ksubtypes))))))
+	   (bindings (when frees (tc-match tt1 (car ksubtypes) frees))))
+      (multiple-value-bind (thinst theory)
+	  (subst-theory-inst-from-free-params bindings)
+	(let ((kt (if frees
+		      (when thinst
+			(subst-mod-params (car ksubtypes) thinst theory))
+		      (car ksubtypes))))
+	  (when kt
+	    (let ((subst (when (freevars kt) (simple-match kt tt1))))
+	      (when (if subst
+			(not (eq subst 'fail))
+			(tc-eq tt1 kt))
+		(some #'(lambda (ks)
+			  (subtype-of*?
+			   (substit (if thinst
+					(subst-mod-params ks thinst theory)
+					ks)
+			     subst)
+			   tt2))
+		      (cdr ksubtypes))))))))))
 
 (defun subst-theory-inst-from-free-params (bindings)
   (when (and bindings
@@ -1859,7 +1857,7 @@
 				      th)))
 		       (formals-sans-usings th)))))
       (when (fully-instantiated? thinst)
-	thinst))))
+	(values thinst th)))))
     
 
 (defun simple-match (ex inst)
