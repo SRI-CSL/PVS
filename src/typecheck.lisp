@@ -658,7 +658,7 @@
   (typecheck-mapping-rhs* (expr (rhs mapping))
 			  (kind mapping)
 			  (type mapping)
-			  rhs))
+			  (rhs mapping)))
 
 (defmethod typecheck-mapping-rhs* ((ex name-expr) kind type rhs)
   (let ((tres (unless (and kind
