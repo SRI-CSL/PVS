@@ -227,7 +227,7 @@ ws1slisp = src/WS1S/lisp/dfa-foreign.lisp src/WS1S/lisp/dfa.lisp \
 
 groundevallisp = src/groundeval/eval-macros.lisp \
 		 src/groundeval/eval-utils.lisp \
-		 src/groundeval/groundp.lisp \
+		 src/groundeval/ground-expr.lisp \
 		 src/groundeval/static-update.lisp \
 		 src/groundeval/pvseval-update.lisp \
 		 src/groundeval/cl2pvs.lisp \

@@ -353,7 +353,7 @@
      :source-pathname "src/groundeval"
      :components ((:file "eval-macros")
 		  (:file "eval-utils")
-		  (:file "groundp")
+		  (:file "ground-expr")
 		  (:file "static-update")
 		  (:file "pvseval-update")
 		  (:file "cl2pvs")
