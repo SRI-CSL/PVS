@@ -2183,6 +2183,10 @@
 	(unless (typep fdecl 'formula-decl)
 	  (type-error fdecl "Not a formula declaration"))
 	(typecheck-decl fdecl)
+	(let ((*generate-xref-declaration* fdecl)
+	      (*xref-names-seen* nil)
+	      (*xref-types-seen* nil))
+	  (generate-xref fdecl))
 	(setq *typecheck-formula-decl*
 	      (list formula-decl
 		    theory-name
@@ -2222,7 +2226,9 @@
 	  (if (stringp strategy)
 	      (ignore-errors (values (read-from-string strategy)))
 	      strategy)
-	(let ((just (unless err (revert-justification strat))))
+	(let ((just (unless err
+		      (or (revert-justification strat)
+			  strat))))
 	  (unless just
 	    (type-error strategy "Bad form for strategy~%  ~s" strategy))
 	  (setf (justification fdecl) just))))
