@@ -89,9 +89,8 @@ required a context.")
   (cond ((type ex)
 	 (unless (compatible? (type ex) expected)
 	   (type-incompatible ex (list (type ex)) expected))
-	 (let ((*generate-tccs* (reset-generate-tccs ex)))
-	   (when (eq *generate-tccs* 'all)
-	     (check-for-tccs ex expected (list ex)))))
+	 (when (eq *generate-tccs* 'all)
+	   (check-for-tccs ex expected (list ex))))
 	(t (cond ((some #'(lambda (ty)
 			    (and (type-expr? ty)
 				 (not (from-conversion ty))
@@ -113,23 +112,7 @@ required a context.")
   #+pvsdebug (assert (fully-typed? ex))
   #+pvsdebug (assert (fully-instantiated? ex))
   (unless (typep ex '(or branch lambda-expr update-expr))
-    (let ((*generate-tccs* (reset-generate-tccs ex)))
-      (check-for-subtype-tcc ex expected))))
-
-(defmethod reset-generate-tccs ((ex expr))
-  (if (or (eq *generate-tccs* 'none)
-	  (and *in-checker*
-	       *ps*
-	       ;;(tc-eq (find-supertype (type ex)) *boolean*)
-	       (member ex (collect-all-subexprs-with-implicit-typepreds
-			   (s-forms (current-goal *ps*)))
-		       :test #'tc-eq)))
-      'none
-      *generate-tccs*))
-
-(defmethod reset-generate-tccs (ex)
-  (declare (ignore ex))
-  *generate-tccs*)
+    (check-for-subtype-tcc ex expected)))
 
 
 ;;; expand1 expands the top-level constant or application; it either
@@ -625,8 +608,21 @@ required a context.")
 	(when (mappings modinst)
 	  (generate-mapped-axiom-tccs nmodinst))
 	;; Compare the given actuals with those determined by the typechecker
-	(generate-actuals-tccs (actuals expr) (actuals nmodinst)))
+	(if (and (eq theory (current-theory))
+		 (actuals expr)
+		 (null (actuals nmodinst)))
+	    (check-local-actuals (actuals expr) (formals-sans-usings theory))
+	    (generate-actuals-tccs (actuals expr) (actuals nmodinst))))
       nmodinst)))
+
+(defun check-local-actuals (actuals formals)
+  (when actuals
+    (let ((ex (or (type-value (car actuals)) (expr (car actuals)))))
+      (unless (and (name? ex)
+		   (eq (declaration ex) (car formals)))
+	(type-error (car actuals)
+	  "May not instantiate current theory except with corresponding formals")))
+    (check-local-actuals (cdr actuals) (cdr formals))))
 
 
 ;;; Sets the types of the actuals.
@@ -650,12 +646,13 @@ required a context.")
 	 (when (and (typep (expr act) 'name)
 		    (zerop (parens (expr act)))
 		    (actuals (expr act)))
-	   (setf (resolutions (expr act))
-		 (remove-if-not #'(lambda (res)
-				    (typep (declaration res) 'type-decl))
-		   (resolutions (expr act))))
-	   (setf (module-instance (resolution (expr act)))
-		 (set-type-actuals (expr act))))
+	   (let ((reses (remove-if-not #'(lambda (res)
+					   (type-decl? (declaration res)))
+			  (resolutions (expr act)))))
+	     (setf (resolutions (expr act)) reses)
+	     (setf (module-instance (resolution (expr act)))
+		   (set-type-actuals (expr act)
+				     (module (declaration (car reses)))))))
 	 #+pvsdebug (assert (fully-typed? act)))
 	(t (type-error act
 	     "Expression provided where a type is expected"))))
@@ -1157,7 +1154,15 @@ required a context.")
 
 (defmethod compatible-predicates (types expected ex &optional incs)
   (if (null types)
-      incs
+      (if *ps*
+	  (let ((implicit-constraints
+		 (collect-implicit-type-constraints (list ex) *ps* nil t)))
+	    (if implicit-constraints
+		(delete-if #'(lambda (inc)
+			       (member inc implicit-constraints :test #'tc-eq))
+		  incs)
+		incs))
+	  incs)
       (let ((npreds (compatible-preds (car types) expected ex)))
 	(when npreds
 	  (compatible-predicates
