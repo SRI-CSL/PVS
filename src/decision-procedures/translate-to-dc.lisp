@@ -804,12 +804,15 @@
 (defmethod dc-prover-type ((te dep-binding))
   (dc-prover-type (type te)))
 
+(defvar *translate-iff-to-implies* nil)
 
 (defmethod translate-to-dc ((expr iff-or-boolean-equation))
-  (let ((lhs (translate-to-dc (args1 expr)))
-	(rhs (translate-to-dc (args2 expr))))
-    (dp::mk-conjunction (dp::mk-implication lhs rhs)
-			(dp::mk-implication rhs lhs))))
+  (if *translate-iff-to-implies*
+      (let ((lhs (translate-to-dc (args1 expr)))
+	    (rhs (translate-to-dc (args2 expr))))
+	(dp::mk-conjunction (dp::mk-implication lhs rhs)
+			    (dp::mk-implication rhs lhs)))
+      (call-next-method)))
 
 (defmethod translate-to-dc ((expr implication))
   (dp::mk-implication (translate-to-dc (args1 expr))
