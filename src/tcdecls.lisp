@@ -283,7 +283,7 @@
 	     (set-type-actuals theory-name)))
     (let ((local-ref (find-local-theory-reference theory-name)))
       (when local-ref
-	(type-error theory-name
+	(plain-type-error theory-name
 	  "Illegal reference to ~a~%May not use theory declarations with ~
       actuals or mappings that reference~%entities declared in this theory."
 	  local-ref)))
