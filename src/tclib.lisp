@@ -943,11 +943,15 @@
 	(values nil (format nil "Library ~a does not exist" lib-ref))))))
 
 (defun pvs-library-path-ref (lib-ref &optional (libs *pvs-library-path*))
-  (when libs
-    (let ((lib-path (concatenate 'string (car libs) lib-ref)))
-      (if (file-exists-p lib-path)
-	  lib-path
-	  (pvs-library-path-ref lib-ref (cdr libs))))))
+  (let ((lib-path (cdr (assoc lib-ref *pvs-library-ref-paths*
+			      :test #'string=))))
+    (or lib-path
+	(when libs
+	  (let ((lib-path (concatenate 'string (car libs) lib-ref)))
+	    (cond ((file-exists-p lib-path)
+		   (push (cons lib-ref lib-path) *pvs-library-paths*)
+		   lib-path)
+		  (t (pvs-library-path-ref lib-ref (cdr libs)))))))))
 
 (defun pathname-to-libref (lib-path)
   (if (and (file-exists-p lib-path)
