@@ -238,7 +238,7 @@
 	(let ((ntype (type (resolution nex))))
 	  (if (eq ntype (type ex))
 	      nex
-	      (lcopy nex 'type ntype 'types (list ntype)))))))
+	      (lcopy nex 'type ntype))))))
 
 (defmethod gensubst* ((ex adt-name-expr) substfn testfn)
   (let ((nex (call-next-method)))
@@ -666,7 +666,6 @@
   (with-slots (actuals) ex
     (copy ex
       'type nil
-      'types nil
       'actuals (copy-untyped* actuals)
       'resolutions nil)))
 
@@ -683,7 +682,6 @@
   (with-slots (actuals) ex
     (copy ex
       'type nil
-      'types nil
       'actuals (copy-untyped* actuals)
       'resolutions nil)))
 
@@ -703,34 +701,29 @@
   (with-slots (declared-type) ex
     (copy ex
       'type nil
-      'types nil
       'declared-type (copy-untyped* declared-type)
       'resolutions nil)))
 
 (defmethod copy-untyped* ((ex number-expr))
   (copy ex
-    'type nil
-    'types nil))
+    'type nil))
 
 (defmethod copy-untyped* ((ex tuple-expr))
   (with-slots (exprs) ex
     (copy ex
       'type nil
-      'types nil
       'exprs (copy-untyped* exprs))))
 
 (defmethod copy-untyped* ((ex record-expr))
   (with-slots (assignments) ex
     (copy ex
       'type nil
-      'types nil
       'assignments (copy-untyped* assignments))))
 
 (defmethod copy-untyped* ((ex cases-expr))
   (with-slots (expression selections else-part) ex
     (copy ex
       'type nil
-      'types nil
       'expression (copy-untyped* expression)
       'selections (copy-untyped* selections)
       'else-part (copy-untyped* else-part))))
@@ -746,7 +739,6 @@
   (with-slots (argument) ex
     (copy ex
       'type nil
-      'types nil
       'argument (copy-untyped* argument))))
 
 (defmethod copy-untyped* ((ex field-application))
@@ -759,7 +751,6 @@
   (with-slots (operator argument) ex
     (copy ex
       'type nil
-      'types nil
       'operator (copy-untyped* operator)
       'argument (copy-untyped* argument))))
 
@@ -767,7 +758,6 @@
   (with-slots (bindings expression) ex
     (copy ex
       'type nil
-      'types nil
       'bindings (copy-untyped* bindings)
       'expression (copy-untyped* expression))))
 
@@ -775,7 +765,6 @@
   (with-slots (expression assignments) ex
     (copy ex
       'type nil
-      'types nil
       'expression (copy-untyped* expression)
       'assignments (copy-untyped* assignments))))
 
