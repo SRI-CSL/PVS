@@ -3191,8 +3191,10 @@
   (if (tc-eq newbody *false*)
       (values '? *false*)
       (if (tc-eq newbody *true*)
-	  (let ((check (loop for bd in (bindings expr)
-			     always (nonempty? (type bd)))))
+	  (let ((check (and (not (existence-tcc? (declaration
+						  *top-proofstate*)))
+			    (loop for bd in (bindings expr)
+				  always (nonempty? (type bd))))))
 	    (if check (values '? *true*)
 		(do-auto-rewrite (lcopy expr 'expression newbody) sig)))
 	  (assert-if-exists expr sig newbody))))
