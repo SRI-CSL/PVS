@@ -1,3 +1,15 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; makes.lisp -- 
+;; Author          : Harald Ruess
+;; Created On      : Tue Jan  4 23:17:39 1999
+;; Last Modified By: Harald Ruess
+;; Last Modified On: Thu Nov  5 15:11:36 2001
+;; Update Count    : 27
+;; Status          : Unknown, Use with caution!
+;; 
+;; HISTORY
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (in-package :pvs)
 
 ;; Translation of PVS formulas to deterministic finite automata;
@@ -9,6 +21,10 @@
       (when *verbose*
         (format t ,str ,@args))))
 
+(defun abort-translation (expr)
+  (ws1s-msg (format nil  "Not translatable: ~a" expr))
+  (throw 'not-ws1s-translatable nil))
+
 
 ;; WS1S type declarations
 
@@ -18,520 +34,344 @@
 (defun ws1s-type? (type)
   (member type (ws1s-types) :test #'tc-eq))
 
+(defun first-order? (expr)
+  (some #'(lambda (type)
+	    (subtype-of? type *naturalnumber*))
+	(judgement-types+ expr)))
 
-;; Recognizing Variables
+(defun second-order? (expr)
+  (some #'(lambda (type)
+	    (subtype-of? type (fset-of-nats)))
+	(judgement-types+ expr)))
 
-(defun var? (expr) 
-  (and (name-expr? expr)
-    ;   (member (kind expr) '(variable constant))
-    ;   (typep (declaration expr) '(and const-decl (not def-decl)))
-       (not (def-axiom (declaration expr)))))
-
-
-;; Assign level according to type information
-
-(defun level (type)
-  (cond ((tc-eq type *boolean*) 0)
-	((subtype-of? type *number*) 1)
-	(t
-	 2)))
-	;((subtype-of? type (fset-of-nats)) 2)
-	;(t (break))))
+(defun level (expr)
+  (cond ((tc-eq (type expr) *boolean*) 0)
+	((first-order? expr) 1)
+	((second-order? expr) 2)))
 
 
-;; Processing of binary relations
+;; Generating new indices
 
-(defun combine-binary (trans-lhs lhs trans-rhs rhs combine symtab)
-  (multiple-value-bind (idx1 exs1 dfa1 symtab1)
-      (funcall trans-lhs lhs symtab)
-    (assert (typep idx1 'integer))
-    (multiple-value-bind (idx2 exs2 dfa2 symtab2)
-	(funcall trans-rhs rhs symtab1)
-      (assert (typep idx2 'integer))
-      (let ((level-lhs (level (type lhs)))
-	    (level-rhs (level (type rhs))))
-      (values (dfa-exists*
-	       (mapcar #'(lambda (x) level-lhs) exs1)
-	       exs1
-	       (dfa-exists*
-		(mapcar #'(lambda (x) level-rhs) exs2)
-		exs2
-		(dfa-conjunction
-		 (funcall combine idx1 idx2)
-		 (dfa-conjunction dfa1 dfa2))))
-		symtab2)))))
+(let ((*index* 0))
+
+  (defun fresh-index ()
+    (setf *index* (1+ *index*)))
+
+  (defun reset-index ()
+    (setf *index* 0)))
+
+;; Lookup from substitutions for both bound and free variables
+
+(defun lookup (expr bound free)
+  (cdr (or (assoc expr bound :test #'tc-eq)
+	   (assoc expr free :test #'tc-eq))))
+
+(defun var1? (expr bound free)
+  (and (first-order? expr)
+       (or (lookup expr bound free)
+	   (name-expr? expr))))
+
+(defun lookup-var1 (expr bound free)
+  (let ((index (lookup expr bound free)))
+    (if index
+	(values index free)
+      (let ((index (fresh-index)))
+	(values index (acons expr index free))))))
+
+(defun var2? (expr bound free)
+  (and (second-order? expr)
+       (or (lookup expr bound free)
+	   (name-expr? expr))))
+
+(defun lookup-var2 (expr bound free)
+  (let ((index (lookup expr bound free)))
+    (if index
+	(values index free)
+      (let ((index (fresh-index)))
+	(values index (acons expr index free))))))
 
 
-; Translation of formulas has a formula argument, the currently set of bound variables,
-; and the current symbol table; the result is an automaton or nil if the formula is not
-; a translatable formula.
+;; Translation of formulas has a formula argument, the currently set of bound variables,
+;; and the current symbol table; the result is an automaton or nil if the formula is not
+;; a translatable formula.
 
-(defun bool-to-dfa (fml)
-  (unwind-protect
-      (progn 
-	(symtab-init)
-	(multiple-value-bind (dfa symtab)
-	    (bool-to-dfa* fml (symtab-empty))
-	  (values (dfa-unrestrict dfa) symtab)))
-    nil))
+(defun fmla-to-dfa (fml)
+  (catch 'not-ws1s-translatable
+    (progn 
+      (multiple-value-bind (dfa free)
+	  (fmla-to-dfa* fml nil nil)
+	(values (dfa-unrestrict dfa) free)))))
        
-(defmethod bool-to-dfa* ((fml expr) symtab)
-  (cond ((symtab-shielding? fml symtab)
-	 (ws1s-msg "~%Not abstractable: ~a" fml)
-	 (throw 'not-ws1s-translatable nil))
-	(t
-	 (let ((idx0 (symtab-index fml symtab)))
-	   (if idx0
-	       (values (dfa-var0 idx0) symtab)
-	       (multiple-value-bind (idx0 symtab0)
-		   (symtab-add-free fml symtab)
-		 (ws1s-msg "~%Abstracting boolean ~a" fml)   
-		 (values (dfa-var0 idx0) symtab0)))))))
+(defmethod fmla-to-dfa* ((fml expr) bound free)
+  (atom-to-dfa* fml bound free))
 
-(defmethod bool-to-dfa* ((fml name-expr) symtab)
+(defmethod fmla-to-dfa* ((fml name-expr) bound free)
   (cond ((tc-eq fml *true*)
-	 (values (dfa-true) symtab))
+	 (values (dfa-true) free))
 	((tc-eq fml *false*)
-	 (values (dfa-false) symtab))
+	 (values (dfa-false) free))
 	(t
-	 (let ((idx0 (symtab-index fml symtab)))
-	   (if (not idx0)
-	       (call-next-method)
-	       (values (dfa-var0 idx0) symtab))))))
+	 (call-next-method))))
 
-(defmethod bool-to-dfa* ((fml negation) symtab)
-  (multiple-value-bind (dfa1 symtab1)
-      (bool-to-dfa* (args1 fml) symtab)
-    (values (dfa-negation dfa1) symtab1)))
+(defmethod fmla-to-dfa* ((fml negation) bound free)
+  (multiple-value-bind (dfa new-free)
+      (fmla-to-dfa* (args1 fml) bound free)
+    (values (dfa-negation dfa) new-free)))
 
-(defmethod bool-to-dfa* ((fml conjunction) symtab)
-  (multiple-value-bind (dfa1 symtab1)
-      (bool-to-dfa* (args1 fml) symtab)
-    (cond ((dfa-true? dfa1)
-	   (bool-to-dfa* (args2 fml) symtab1))
-	  ((dfa-false? dfa1)
-	   (values (dfa-false) symtab1))            
-	  (t (multiple-value-bind (dfa2 symtab2)
-		 (bool-to-dfa* (args2 fml) symtab1)
-	       (values (dfa-conjunction dfa1 dfa2) symtab2))))))
+(defmethod fmla-to-dfa* ((fml conjunction) bound free)
+   (fmla-binary-connective-to-dfa* fml #'dfa-conjunction bound free))
 
-(defmethod bool-to-dfa* ((fml disjunction) symtab)
-  (multiple-value-bind (dfa1 symtab1)
-      (bool-to-dfa* (args1 fml) symtab)
-    (cond ((dfa-false? dfa1)
-	   (bool-to-dfa* (args2 fml)) symtab1) 
-	  ((dfa-true? dfa1)
-	   (values (dfa-true) symtab1))
-	  (t (multiple-value-bind (dfa2 symtab2)
-		 (bool-to-dfa* (args2 fml) symtab1)
-	       (values (dfa-disjunction dfa1 dfa2) symtab2))))))
+(defmethod fmla-to-dfa* ((fml disjunction) bound free)
+   (fmla-binary-connective-to-dfa* fml #'dfa-disjunction bound free))
 
-(defmethod bool-to-dfa* ((fml implication) symtab)
-  (multiple-value-bind (dfa1 symtab1)
-      (bool-to-dfa* (args1 fml) symtab)
-    (if (dfa-false? dfa1)
-	(values (dfa-true) symtab1)
-	(multiple-value-bind (dfa2 symtab2)
-	    (bool-to-dfa* (args2 fml) symtab1)          
-	  (values (dfa-implication dfa1 dfa2) symtab2)))))
+(defmethod fmla-to-dfa* ((fml implication) bound free)
+   (fmla-binary-connective-to-dfa* fml #'dfa-implication bound free))
 
-(defmethod bool-to-dfa* ((fml branch) symtab)
-  (multiple-value-bind (dfa0 symtab0)
-      (bool-to-dfa* (condition fml) symtab)
-    (cond ((dfa-true? dfa0)                      
-	   (bool-to-dfa* (then-part fml) symtab))
-	  ((dfa-false? dfa0)                
-	   (bool-to-dfa* (else-part fml) symtab))
-	  (t (multiple-value-bind (dfa1 symtab1)
-		 (bool-to-dfa* (then-part fml) symtab0)
-	       (multiple-value-bind (dfa2 symtab2)
-		   (bool-to-dfa* (else-part fml) symtab1)
-		 (values (dfa-ite dfa0 dfa1 dfa2) symtab2)))))))
+(defmethod fmla-to-dfa* ((fml iff-or-boolean-equation) bound free)
+   (fmla-binary-connective-to-dfa* fml #'dfa-iff bound free))
 
-(defmethod bool-to-dfa* ((fml iff-or-boolean-equation) symtab)
-  (multiple-value-bind (dfa1 symtab1)
-      (bool-to-dfa* (args1 fml) symtab)
-    (multiple-value-bind (dfa2 symtab2)
-	(bool-to-dfa* (args2 fml) symtab1)
-      (values (dfa-iff dfa1 dfa2) symtab2))))
+(defun fmla-binary-connective-to-dfa* (fml operator bound free)
+  (multiple-value-bind (dfa1 free1)
+      (fmla-to-dfa* (args1 fml) bound free)
+    (multiple-value-bind (dfa2 free2)
+	(fmla-to-dfa* (args2 fml) bound free1)
+      (values (funcall operator dfa1 dfa2) free2))))
 
-(defmethod bool-to-dfa* ((fmls null) symtab)
-  (values nil symtab))
+(defmethod fmla-to-dfa* ((fml disequation) bound free)
+  (multiple-value-bind (dfa1 free1)
+      (fmla-to-dfa* (make!-equation (args1 fml) (args2 fml))
+		    bound
+		    free)
+    (values (dfa-negation dfa1) free1)))
 
-(defmethod bool-to-dfa* ((fmls cons) symtab)
-  (multiple-value-bind (dfa1 symtab1)
-      (bool-to-dfa* (first fmls) symtab)
-    (multiple-value-bind (dfas2 symtab2)
-	(bool-to-dfa* (rest fmls) symtab1)
-      (values (cons dfa1 dfas2) symtab2))))
+(defmethod fmla-to-dfa* ((fml forall-expr) bound free)
+  (fmla-to-dfa*
+   (make!-negation
+    (make!-exists-expr (bindings fml)
+		       (make!-negation (expression fml))))
+   bound
+   free))
+
+(defmethod fmla-to-dfa* ((fml exists-expr) bound free)
+  (multiple-value-bind (vars types preds)
+      (destructure-bindings (bindings fml) :exclude (ws1s-types))
+    (if (some #'(lambda (type)
+		   (not (member type (ws1s-types) :test #'tc-eq)))
+	       types)
+	(call-next-method)
+      (let ((indices (loop for var in vars collect (fresh-index)))
+	    (levels (loop for type in types
+			  collect (cond ((tc-eq type *boolean*) 0)
+					((tc-eq type *naturalnumber*) 1)
+					((tc-eq type (fset-of-nats)) 2)
+					(t (break))))))
+	(multiple-value-bind (dfa-body new-free)
+	    (fmla-to-dfa* (make!-conjunction (make!-conjunction* preds)
+					     (expression fml))
+			  (append (pairlis vars indices) bound)
+			  free)
+	  (values (dfa-exists* levels indices dfa-body)
+		  new-free))))))
 
 ; Each atom is translated by first translating its arguments. Translation
 ; of an arithmetic arguments yields an index, a set of variables to be
 ; quantified existentially, a set of constraints, and a set of new substitutions.
 
+(defmethod atom-to-dfa* ((atom expr) bound free)
+  (declare (ignore bound)
+	   (ignore free))
+  (ws1s-msg (format nil "Not translatable: ~a" atom))
+  (throw 'not-ws1s-translatable nil))
 
-(defmethod bool-to-dfa* ((fml equation) symtab)
-  (let ((lhs (args1 fml))
-	(rhs (args2 fml)))
-    (cond ((or (boolean? lhs)
-	       (boolean? rhs))
-	   (bool-to-dfa* (make!-equivalence lhs rhs) symtab))
-	  ((or (natural-expr? lhs)
-	       (natural-expr? rhs))
-	   (combine-binary #'index-to-dfa lhs
-			   #'index-to-dfa rhs
-			   #'dfa-eq1
-			   symtab))
-	  ((or (finite-set-of-nat? lhs)
-	       (finite-set-of-nat? rhs))
-	   (combine-binary #'nats-to-dfa lhs
-			   #'nats-to-dfa rhs
-			   #'dfa-eq2
-			   symtab))
+(defmethod atom-to-dfa* ((atom name-expr) bound free)
+  (let ((index (lookup atom bound free)))
+    (if index
+	(values (dfa-var0 index) free)
+      (let ((index (fresh-index)))
+	(values (dfa-var0 index)
+		(acons atom index free))))))
+
+(defmethod atom-to-dfa* ((atom equation) bound free)
+  (let ((lhs (args1 atom))
+	(rhs (args2 atom)))
+    (cond ((var1? lhs bound free)
+	   (multiple-value-bind (i new-free)
+	       (lookup-var1 lhs bound free)
+	     (var1-eq-term1-to-dfa* i rhs bound new-free)))
+	  ((var1? rhs bound free)
+	   (multiple-value-bind (i new-free)
+	       (lookup-var1 rhs bound free)
+	     (var1-eq-term1-to-dfa* i lhs bound new-free)))
+	  ((var2? lhs bound free)
+	   (multiple-value-bind (i new-free)
+	       (lookup-var2 lhs bound free)
+	     (var2-eq-term2-to-dfa* i rhs bound new-free)))
+	  ((var2? rhs bound free)
+	   (multiple-value-bind (i new-free)
+	       (lookup-var2 rhs bound free)
+	     (var2-eq-term2-to-dfa* i lhs bound new-free)))
 	  (t
 	   (call-next-method)))))
 
-(defmethod bool-to-dfa* ((fml disequation) symtab)
-  (multiple-value-bind (dfa1 symtab1)
-      (bool-to-dfa* (args1 fml) symtab)
-    (values (dfa-negation dfa1) symtab1)))
+(defun var1-eq-term1-to-dfa* (i term1 bound free)
+  (cond ((number-expr? term1)                               ; p_i = n
+	 (values (dfa-const (number term1) i) free))
+	((var1? term1 bound free)                           ; p_i = p_j
+	 (multiple-value-bind (j new-free)
+	     (lookup-var1 term1 bound free)
+	   (values (dfa-eq1 i j) new-free)))
+	((and (tc-eq (operator term1) (plus-operator))      ; p_i = p_j + n
+	      (var1? (args1 term1) bound free)
+	      (number-expr? (args2 term1)))
+	 (multiple-value-bind (j new-free)
+	     (lookup-var1 (args1 term1) bound free)
+	   (values (dfa-plus1 i j (number (args2 term1))) new-free)))
+	((and (tc-eq (operator term1) (plus-operator))      ; p_i = n + p_j
+	      (var1? (args2 term1) bound free)
+	      (number-expr? (args1 term1)))
+	 (multiple-value-bind (j new-free)
+	     (lookup-var1 (args2 term1) bound free)
+	   (values (dfa-plus1 i j (number (args1 term1))) new-free)))
+	((and (tc-eq (operator term1) (minus-operator))     ; p_i = p_j - n
+	      (var1? (args1 term1) bound free)
+	      (number-expr? (args2 term1)))
+	 (multiple-value-bind (j new-free)
+	     (lookup-var1 (args1 term1) bound free)
+	   (values (dfa-minus1 i j (number (args2 term1))) new-free)))
+	(t
+	 (throw 'not-ws1s-translatable nil))))
+  
+  
+(defun var2-eq-term2-to-dfa* (i term2 bound free)
+  (cond ((tc-eq (emptyset-operator) term2)                    ; P_i = empty
+	 (values (dfa-empty i) free))
+	((var2? term2 bound free)                             ; P_i = P_j
+	 (multiple-value-bind (j new-free)
+	     (lookup-var2 term2 bound free)
+	   (values (dfa-eq2 i j) new-free)))
+	((tc-eq (union-operator) (operator term2))             ; P_i = P_j union P_k
+	 (let ((lhs (args1 term2))
+	       (rhs (args2 term2)))
+	   (cond ((and (tc-eq (emptyset-operator) lhs)         ; P_i = empty union empty
+		       (tc-eq (emptyset-operator) rhs))
+		  (values (dfa-empty i) free))
+		 ((and (tc-eq (emptyset-operator) lhs)         ; P_i = empty union P_k
+		       (var2? rhs bound free))
+		  (multiple-value-bind (k new-free)
+		      (lookup-var2 rhs bound free)
+		    (values (dfa-eq2 i k) new-free)))
+		 ((and (tc-eq (emptyset-operator) rhs)         ; P_i = P_j union empty
+		       (var2? lhs bound free))
+		  (multiple-value-bind (j new-free)
+		      (lookup-var2 lhs bound free)
+		    (values (dfa-eq2 i j) new-free)))
+		 ((and (var2? lhs bound free)
+		       (var2? rhs bound free))
+		  (multiple-value-bind (j new-free)                    
+		      (lookup-var2 lhs bound free)
+		    (multiple-value-bind (k new-new-free)
+			(lookup-var2 rhs bound new-free)
+		      (values (dfa-union i j k) new-new-free))))
+		 (t
+		  (throw 'not-ws1s-translatable nil)))))
+	((tc-eq (intersection-operator) (operator term2))
+	 (cond ((or (tc-eq (emptyset-operator) lhs)       ; P_i = _ inter empty, P_i = empty inter _  
+		    (tc-eq (emptyset-operator) rhs)) 
+		(values (dfa-empty i) free))
+	       ((and (var2? (args1 term2) bound free)     ; P_i = P_j inter P_k
+		     (var2? (args2 term2) bound free))
+		(multiple-value-bind (j new-free)
+		    (lookup-var2 (args1 term2) bound free)
+		  (multiple-value-bind (k new-new-free)
+		      (lookup-var2 (args2 term2) bound new-free)
+		    (values (dfa-intersection i j k) new-new-free))))
+	       (t
+		(throw 'not-ws1s-translatable nil))))
+	(t
+	 (throw 'not-ws1s-translatable nil))))
 
-(defmethod bool-to-dfa* ((fml application) symtab)
+(defmethod atom-to-dfa* ((fml application) bound free)
   (let ((op (operator fml))
 	(args (arguments fml)))
-    (cond ((and (= (length args) 1)   ; membership
-		(finite-set-of-nat? op)
-		(natural-expr? (first args)))
-	   (combine-binary #'index-to-dfa (args1 fml)
-			   #'nats-to-dfa op
-			   #'dfa-in
-			   symtab))
-	  ((tc-eq op (less-operator))
-	   (combine-binary #'index-to-dfa (args1 fml)
-			   #'index-to-dfa (args2 fml)
-			   #'dfa-less
-			   symtab))
-	  ((tc-eq op (greater-operator))
-	   (combine-binary #'index-to-dfa (args1 fml)
-			   #'index-to-dfa (args2 fml)
-			   #'(lambda (i j) (dfa-less j i))
-			   symtab))
-	  ((tc-eq op (lesseq-operator))
-	   (combine-binary #'index-to-dfa (args1 fml)
-			   #'index-to-dfa (args2 fml)
-			   #'dfa-lesseq
-			   symtab))
-	  ((tc-eq op (greatereq-operator))
-	   (combine-binary #'index-to-dfa (args1 fml)
-			   #'index-to-dfa (args2 fml)
-			   #'(lambda (i j) (dfa-lesseq j i))
-			   symtab))
+    (cond ((= (length args) 1)                                  ; p_i in P_j
+	   (term1-in-term2-to-dfa* (first args) op bound free))
+	  ((tc-eq op (less-operator))                           ; p_i < p_j
+	   (term1-binrel-term1-to-dfa* (args1 fml) (args2 fml) #'dfa-less bound free))
+	  ((tc-eq op (lesseq-operator))                         ; p_i <= p_j
+	   (term1-binrel-term1-to-dfa* (args1 fml) (args2 fml) #'dfa-lesseq bound free))
+	  ((tc-eq op (greater-operator))                        ; p_i > p_j
+	   (term1-binrel-term1-to-dfa* (args1 fml) (args2 fml) #'dfa-greater bound free))
+	  ((tc-eq op (greatereq-operator))                      ; p_i >= p_j
+	   (term1-binrel-term1-to-dfa* (args1 fml) (args2 fml) #'dfa-greatereq bound free)) 
 	  (t
 	   (call-next-method)))))
 
-
-(defmethod bool-to-dfa* ((fml forall-expr) symtab)
-  (bool-to-dfa*
-   (make!-negation
-    (make!-exists-expr (bindings fml)
-		       (make!-negation (expression fml))))
-   symtab))
-
-(defmethod bool-to-dfa* ((fml exists-expr) symtab)
-  (assert (consp symtab))
-  (multiple-value-bind (vars types preds)
-      (destructure-bindings (bindings fml) :exclude (ws1s-types))
-    (multiple-value-bind (indices symtab1)
-	(symtab-add-bounds vars symtab)
-      (assert (consp symtab1))
-      (multiple-value-bind (dfa-body symtab2)
-	  (bool-to-dfa* (expression fml) symtab1)
-	(multiple-value-bind (dfa-preds symtab3)
-	    (bool-to-dfa* preds symtab2)
-	  (values (dfa-exists* (mapcar #'level types)
-			       indices
-			       (dfa-conjunction* (cons dfa-body dfa-preds)))
-		  (symtab-make (symtab-boundvars symtab)
-			       (symtab-freevars symtab3))))))))
-
-
-;; Translation of finite set of naturals
-
-(defun nats-to-dfa (expr symtab)
-  (nats-to-dfa* expr symtab))
-
-(defmethod nats-to-dfa* ((expr expr) symtab)
-  (when (symtab-shielding? expr symtab)
-    (ws1s-msg "~%Not abstractable: ~a." expr)
-    (throw 'not-ws1s-translatable nil))
-  (multiple-value-bind (idx new-symtab)
-      (symtab-add-free expr symtab)
-    (ws1s-msg "~%Abstracting set ~a" expr)
-    (values idx
-	    nil
-	    (dfa-true)
-	    new-symtab)))
-
-(defmethod nats-to-dfa* ((trm lambda-expr) symtab)
-  (cond ((not (= (length (bindings trm)) 1))
-	 (call-next-method))
+(defun term1-in-term2-to-dfa* (var1 var2 bound free)
+  (cond ((tc-eq (emptyset-operator) var2)                ; x in emptyset
+	 (values (dfa-false) free))
+	((tc-eq (fullset-operator) var2)                 ; x in fullset
+	 (values (dfa-true) free))
+        ((and (natural-number-expr? var1)                ; n in P_j
+	      (var2? var2 bound free))
+	 (multiple-value-bind (j new-free)
+	     (lookup-var2 var2 bound free)
+	   (let* ((i (fresh-index))
+		  (dfa (dfa-exists1 i
+			(dfa-conjunction
+			 (dfa-const (number var1) i)
+			 (dfa-in i j)))))
+	     (values dfa new-free))))
+	((and (tc-eq (plus-operator) (operator var1))    ; (p_i + n) in P_j
+	      (var1? (args1 var1))
+	      (natural-number-expr? (args2 var1))
+	      (var2? var2))
+	 (multiple-value-bind (i new-free)
+	     (lookup-var1 (args1 var1) bound free)
+	   (multiple-value-bind (j new-new-free)
+	       (lookup-var2 var2 new-free)
+	     (let* ((k (fresh-index))
+		    (dfa (dfa-exists1 k
+				      (dfa-conjunction
+				       (dfa-plus1 k i (number (args2 var1)))
+				       (dfa-in k j)))))
+	       (values dfa new-new-free)))))
+        ((and (var2? var2 bound free)                    ; p_i in P_j
+	      (var1? var1 bound free))
+	 (multiple-value-bind (i new-free)
+	     (lookup-var1 var1 bound free)
+	   (multiple-value-bind (j new-new-free)
+	       (lookup-var2 var2 bound new-free)
+	     (values (dfa-in i j) new-new-free))))
 	(t
-	 (multiple-value-bind (var supertype preds)
-	     (destructure-binding (car (bindings trm)) :exclude (list *naturalnumber*))
-	   (cond ((not (tc-eq supertype *naturalnumber*))
-		  (call-next-method))
-		 (t
-		  (multiple-value-bind (idx1 symtab1)
-		      (symtab-add-bound var symtab)           
-		    (let* ((idx2 (symtab-fresh-index))
-			   (cnstrnt2 (dfa-forall1 idx1
-						  (dfa-iff (dfa-in idx1 idx2)
-								   (dfa-conjunction*
-								    (bool-to-dfa* (cons (expression trm) preds) symtab))))))
-		      (values idx2
-			      (list idx2)
-			      cnstrnt2
-			      (symtab-make (symtab-boundvars symtab)
-					   (symtab-freevars symtab1)))))))))))
-	
-(defmethod nats-to-dfa* ((expr name-expr) symtab)
-  (cond ((var? expr)
-	 (let ((idx (symtab-index expr symtab)))
-	   (if (null idx)
-	       (call-next-method)
-	       (values idx nil (dfa-true) symtab))))
-	((tc-eq expr (emptyset-operator))
-	 (let ((idx (symtab-fresh-index)))
-	   (values idx  (list idx) (dfa-empty idx) symtab)))
+	 (throw 'not-ws1s-translatable nil))))
+
+(defun term1-binrel-term1-to-dfa* (arg1 arg2 binrel bound free)
+  (cond ((and (natural-number-expr? arg1)                               ; n binrel p_j
+	      (var1? arg2 bound free))
+	 (const1-binrel-var1-to-dfa* (number arg1) arg2 binrel bound free))
+	((and (natural-number-expr? arg2)                               ; n binrel p_j
+	      (var1? arg1 bound free))
+	 (const1-binrel-var1-to-dfa* (number arg2) arg1 binrel bound free))
+        ((and (var1? arg1 bound free)
+	      (var1? arg2 bound free))
+	 (multiple-value-bind (i new-free)
+	     (lookup-var1 arg1 bound free)
+	   (multiple-value-bind (j new-new-free)
+	       (lookup-var1 arg2 bound new-free)
+	     (values (funcall binrel i j) new-new-free))))
 	(t
-	 (call-next-method))))
+	 (throw 'not-ws1s-translatable nil))))
 
-(defmethod nats-to-dfa* ((fml branch) symtab)
-  (multiple-value-bind (c symtab1)
-      (bool-to-dfa* (condition fml))
-    (cond ((dfa-true? c)                            
-	   (nats-to-dfa (then-part fml) symtab))
-	  ((dfa-false? c)
-	   (nats-to-dfa (else-part fml) symtab))
-	  (t
-	   (multiple-value-bind (idx1 exs1 cnstrnt1 symtab1)
-	       (nats-to-dfa (then-part fml) symtab)
-	     (multiple-value-bind (idx2 exs2 cnstrnt2 symtab2)
-		 (nats-to-dfa (else-part fml) symtab1)
-	       (let* ((idx (symtab-fresh-index))
-		      (cnstrnt (dfa-ite c (dfa-eq2 idx idx1) (dfa-eq2 idx idx2))))
-		 (values idx
-			 (cons idx (append exs1 exs2))
-			 (dfa-conjunction cnstrnt (dfa-conjunction cnstrnt1 cnstrnt2))
-			 symtab2))))))))
-    
-(defmethod nats-to-dfa* ((expr application) symtab)
-  (assert (consp symtab))
-  (let ((op (operator expr)))
-    (cond ((tc-eq op (the2))
-	   (the2-to-dfa (car (bindings (argument expr)))
-			(expression (argument expr))
-			symtab))
-	  ((tc-eq op (union-operator))
-	   (process-fset-binop (args1 expr)
-			       (args2 expr)
-			       #'dfa-union symtab))
-	  ((tc-eq op (intersection-operator))
-	   (process-fset-binop (args1 expr)
-			       (args2 expr)
-			       #'dfa-intersection symtab))
-	  ((tc-eq op (set-difference-operator))
-	   (process-fset-binop (args1 expr)
-			       (args2 expr)
-			       #'dfa-difference symtab)) 
-	  ((tc-eq op (add-operator))
-	   (process-nat-fset-binop (args1 expr)
-				   (args2 expr)
-				   #'dfa-union symtab))
-	  ((tc-eq op (remove-operator))
-	   (process-nat-fset-binop (args1 expr)
-				   (args2 expr)
-				   #'dfa-difference symtab))
-	  ((tc-eq op (singleton-operator))
-	   (singleton-to-dfa (argument expr) symtab))
-	  (t
-	   (call-next-method)))))
-
-(defun singleton-to-dfa (expr symtab)
-  (multiple-value-bind (idx1 exs1 cnstrnt1 symtab1)
-      (index-to-dfa expr symtab)
-    (let* ((idx (symtab-fresh-index))
-	   (cnstrnt (dfa-single idx idx1)))
-      (values idx
-	      (cons idx exs1)
-	      (dfa-conjunction cnstrnt cnstrnt1)
-	      symtab1))))
-	   
-(defun process-nat-fset-binop (lhs rhs combine symtab)
-  (multiple-value-bind (idx1 exs1 cnstrnt1 symtab1)
-      (index-to-dfa lhs symtab)
-    (multiple-value-bind (idx2 exs2 cnstrnt2 symtab2)
-	(nats-to-dfa* rhs symtab1)
-      (let* ((idx (symtab-fresh-index))
-	     (idx3 (symtab-fresh-index))
-	     (cnstrnt (dfa-conjunction (funcall combine idx idx3 idx2)
-				       (dfa-single idx3 idx1))))
-	(values idx
-		(cons idx (cons idx3 (append exs1 exs2)))
-		(dfa-conjunction cnstrnt (dfa-conjunction cnstrnt1 cnstrnt2))
-		symtab2)))))
-
-(defun the2-to-dfa (bndng body symtab)
-  (assert (consp symtab))
-  (multiple-value-bind (var supertype preds)
-      (destructure-binding bndng :exclude (fset-of-nats))
-    (assert (tc-eq supertype (fset-of-nats)))
-    (multiple-value-bind (idx0 symtab0)
-	(symtab-add-bound var symtab)
-      (multiple-value-bind (dfa1 symtab1)
-	  (bool-to-dfa* body symtab0)
-	(multiple-value-bind (dfas2 symtab2)
-	    (bool-to-dfa* preds symtab1)
-	(let ((symtab3 (symtab-make (symtab-boundvars symtab)
-				    (symtab-freevars symtab2))))
-	  (values idx0
-		  (list idx0)
-		  (dfa-conjunction dfa1 (dfa-conjunction* dfas2))
-		  symtab3)))))))
-
-(defun process-fset-binop (lhs rhs combine symtab)
-  (multiple-value-bind (idx1 exs1 cnstrnt1 symtab1)
-      (nats-to-dfa lhs symtab)
-    (multiple-value-bind (idx2 exs2 cnstrnt2 symtab2)
-	(nats-to-dfa rhs symtab1)
-      (let* ((idx (symtab-fresh-index))
-	     (cnstrnt (funcall combine idx idx1 idx2)))
-	(values idx
-		(cons idx (append exs1 exs2))
-		(dfa-conjunction cnstrnt (dfa-conjunction cnstrnt1 cnstrnt2))
-		symtab2)))))
-
-
-
-
-;; Translation of index terms
-
-(defun index-to-dfa (expr symtab)
-  (index-to-dfa* expr symtab))
-
-(defmethod index-to-dfa* ((expr expr) symtab)
-  (when (symtab-shielding? expr symtab)
-    (ws1s-msg "~%Not abstractable: ~a." expr)
-    (throw 'not-ws1s-translatable nil))
-  (multiple-value-bind (idx1 symtab1)
-      (symtab-add-free expr symtab)
-    (ws1s-msg "~%Abstracting natural ~a" expr)
-    (assert (typep idx1 'integer))
-    (values idx1
-	    nil
-	    (dfa-var1 idx1)
-	    symtab1)))
-
-(defmethod index-to-dfa* ((expr name-expr) symtab)
-  (cond ((not (var? expr))
-	 (call-next-method))
-	(t
-	 (let ((idx (symtab-index expr symtab)))
-	   (if (null idx)
-	       (call-next-method)
-	       (values idx
-		       nil
-		       (dfa-true)
-		       symtab))))))
-
-(defmethod index-to-dfa* ((expr number-expr) symtab)
-  (cond ((not (natural-number-expr? expr))
-	 (call-next-method))
-	(t
-	 (let ((idx (symtab-fresh-index)))
-	   (values idx
-		   (list idx)
-		   (dfa-const (number expr) idx)
-		   symtab)))))
-  
-(defmethod index-to-dfa* ((expr branch) symtab)
-  (multiple-value-bind (dfac symtab0)
-      (bool-to-dfa* (condition expr) symtab)
-    (cond ((dfa-true? dfac)                            
-	   (index-to-dfa (then-part expr) symtab0))
-	  ((dfa-false? dfac)
-	   (index-to-dfa (else-part expr) symtab0))
-	  (t
-	   (multiple-value-bind (idx1 exs1 cnstrnts1 symtab1)
-	       (index-to-dfa (then-part expr) symtab0)
-	     (multiple-value-bind (idx2 exs2 cnstrnts2 symtab2)
-		 (index-to-dfa (else-part expr) symtab1)
-	       (let* ((idx (symtab-fresh-index))
-		      (cnstrnt (dfa-ite dfac (dfa-eq1 idx idx1) (dfa-eq1 idx idx2))))
-		 (values idx
-			 (cons idx (append exs1 exs2))
-			 (dfa-conjunction cnstrnt
-					  (dfa-conjunction cnstrnts1 cnstrnts2))
-			 symtab2))))))))
-
-(defmethod index-to-dfa* ((expr application) symtab)
-  (let ((op (operator expr)))
-    (cond ((tc-eq op (minus1))
-	   (let ((nexpr (make!-minus
-			 (pseudo-normalize (args1 expr)))))    ; now hopefully of the form p_i =  n + p_j
-	     (cond ((not (natural-number-expr? (args1 nexpr)))
-		    (call-next-method))
-		   (t
-		    (process-index-binop (number (args1 nexpr))
-					 (args2 nexpr)
-					 #'dfa-minus1
-					 symtab)))))
-	  ((tc-eq op (plus1))
-	   (let ((nexpr (make!-plus
-			 (pseudo-normalize (args1 expr))
-			 (pseudo-normalize (args2 expr)))))
-	     (cond ((not (natural-number-expr? (args1 nexpr)))
-		    (call-next-method))
-		   (t
-		    (process-index-binop (number (args1 nexpr))
-					   (args2 nexpr)
-					   #'dfa-plus1
-					   symtab)))))
-	  ((and (tc-eq op (the1))
-		(typep (argument expr) 'lambda-expr)
-		(= (length (bindings (argument expr)) 1)))
-	   (the1-to-dfa (car (bindings (argument expr)))
-			(expression (argument expr))
-			symtab))
-	  (t
-	   (call-next-method)))))
-
-(defun the1-to-dfa (bndng body symtab)
-  (multiple-value-bind (var supertype preds)
-      (destructure-binding bndng :exclude *naturalnumber*)
-    (cond ((not (tc-eq supertype *naturalnumber*))
-	   (call-next-method))
-	  (t
-	   (multiple-value-bind (idx1 symtab1)
-	       (symtab-add-bound var symtab)
-	     (multiple-value-bind (dfas symtab2)
-		 (fmla-to-dfa (cons body preds) symtab1)
-	       (values idx1
-		       (list idx1)
-		       (dfa-conjunction* dfas)
-		       (symtab-make (symtab-boundvars symtab)
-				    (symtab-freevars symtab2)))))))))
-
-(defun process-index-binop (num expr combine symtab)
-  (multiple-value-bind (idx1 exs1 cnstrnts1 symtab1)
-      (index-to-dfa expr symtab)
-    (let* ((idx (symtab-fresh-index))
-	   (cnstrnt (funcall combine idx idx1 num)))
-      (values idx
-	      (cons idx exs1)
-	      (dfa-conjunction cnstrnt cnstrnts1)
-	      symtab1))))
-
+(defun const1-binrel-var1-to-dfa* (const1 var1 binrel bound free)
+  (assert (and (integerp const1) (>= const1 0)))
+  (assert (var1? var1 bound free))
+  (multiple-value-bind (j new-free)
+      (lookup-var1 var1 bound free)
+    (let* ((i (fresh-index))
+	   (dfa (dfa-exists1 i
+			     (dfa-conjunction (dfa-const const1 i)
+					      (funcall binrel i j)))))
+      (values dfa new-free))))
 
 
 
