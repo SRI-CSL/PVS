@@ -265,12 +265,12 @@
 	     (type-error inst "Wrong number of actuals in ~a" inst))
 	   (typecheck-actuals inst)
 	   (typecheck-mappings (mappings inst) inst)
-	   (setq nmodinst (set-type-actuals inst))
+	   (setq nmodinst (set-type-actuals inst mod))
 	   (check-compatible-params (formals-sans-usings mod)
 				    (actuals inst) nil))
 	  ((mappings inst)
 	   (typecheck-mappings (mappings inst) inst)
-	   (setq nmodinst (set-type-actuals inst))))
+	   (setq nmodinst (set-type-actuals inst mod))))
     (add-to-using nmodinst mod)
     (unless (eq nmodinst inst)
       (let ((theory (get-theory inst)))
@@ -282,6 +282,8 @@
       (add-theory-mappings-importings mod nmodinst))
     (when (some #'formal-theory-decl? (formals mod))
       (add-theory-parameters-importings mod nmodinst))
+    (when (mappings nmodinst)
+      (generate-mapped-axiom-tccs nmodinst))
     ))
 
 (defun add-theory-parameters-importings (theory inst)
@@ -533,7 +535,13 @@
 	   (lhash-table (using-hash (saved-context theory)))))
 
 (defun subst-theory-importings (th thinsts theoryname theory)
-  (let* ((lib-id (when (library-datatype-or-theory? th)
+  (let* ((mthinsts (if (mappings theoryname)
+		       (mapcar #'(lambda (thinst)
+				   (copy thinst
+				     'mappings (mappings theoryname)))
+			 thinsts)
+		       thinsts))
+	 (lib-id (when (library-datatype-or-theory? th)
 		   (car (rassoc (lib-ref th) (current-library-alist)
 				:test #'equal))))
 	 (lthinsts (if (library-datatype-or-theory? th)
@@ -542,8 +550,8 @@
 				       thinst
 				       (copy thinst
 					 'library (library theoryname))))
-			 thinsts)
-		       thinsts)))
+			 mthinsts)
+		       mthinsts)))
     (if (fully-instantiated? theoryname)
 	(mapcar #'(lambda (thinst)
 		    (subst-theory-importing thinst theoryname theory))
@@ -783,10 +791,12 @@
 			    (assoc (declaration te) assoc))))
       type))
 
-(defmethod typecheck-mappings (mappings (inst modname))
+(defmethod typecheck-mappings (mappings (thinst modname))
   (unless (or (not mappings)
 	      (already-typed? mappings))
-    (let ((lhs-theory (get-theory inst)))
+    (let* ((aliases (get-theory-aliases thinst))
+	   (inst (or (car aliases) thinst))
+	   (lhs-theory (get-theory inst)))
       (unless lhs-theory
 	(type-error inst "Theory ~a not found" inst))
       (let ((lhs-context (context lhs-theory))
@@ -818,19 +828,29 @@
 					    (compatible? type (type r)))))
 			     (with-no-type-errors
 			      (resolve* (lhs mapping) 'expr nil)))))
+		   (nres (unless (and (kind mapping)
+				      (not (eq (kind mapping) 'expr)))
+			   (when (and (integerp (id (lhs mapping)))
+				      (or (null (mod-id (lhs mapping)))
+					  (eq (mod-id (lhs mapping))
+					      'numbers)))
+			     (list (mk-resolution
+				       (number-declaration (id (lhs mapping)))
+				     (mk-modname 'numbers) *number*)))))
 		   (thres (unless (and (kind mapping)
 				       (not (eq (kind mapping) 'theory)))
 			    (with-no-type-errors
 			     (resolve* (lhs mapping) 'module nil)))))
-	      (unless (or eres tres thres)
+	      (unless (or eres nres tres thres)
 		(type-error (lhs mapping)
-		  "Map lhs does not resolve to an uninterpreted type or constant"))
+		  "Map lhs ~a does not resolve to an uninterpreted type or constant"
+		  (lhs mapping)))
 	      (if (cdr tres)
-		  (cond (eres
-			 (setf (resolutions (lhs mapping)) eres))
+		  (cond ((or eres nres)
+			 (setf (resolutions (lhs mapping)) (nconc eres nres)))
 			(t (setf (resolutions (lhs mapping)) tres)
 			   (type-ambiguity (lhs mapping))))
-		  (setf (resolutions (lhs mapping)) (nconc tres eres thres)))
+		  (setf (resolutions (lhs mapping)) (nconc tres eres nres thres)))
 	      (assert (resolutions (lhs mapping)))
 	      (when (mapping-rename? mapping)
 		(if (cdr (resolutions (lhs mapping)))
@@ -888,21 +908,24 @@
 (defmethod typecheck-mapping-rhs* ((ex name-expr) kind type rhs)
   (assert (or (null (type ex)) (null type) (compatible? (type ex) type)))
   (unless (type ex)
-    (let ((tres (unless (and kind
-			     (not (eq kind 'type)))
-		  (with-no-type-errors (resolve* ex 'type nil))))
-	  (eres (unless (and kind
-			     (not (eq kind 'expr)))
-		  (with-no-type-errors (resolve* ex 'expr nil))))
-	  (thres (unless (and kind
-			      (not (eq kind 'theory)))
-		   (with-no-type-errors (unless (mod-id ex)
-					  (with-no-type-errors
-					   (resolve* (name-to-modname ex)
-						     'module nil)))))))
-      (when type
-	(setf eres (delete-if-not #'(lambda (r) (compatible? (type r) type))
-		     eres)))
+    (let* ((tres (unless (and kind
+			      (not (eq kind 'type)))
+		   (with-no-type-errors (resolve* ex 'type nil))))
+	   (eres (unless (and kind
+			      (not (eq kind 'expr)))
+		   (if (or tres (null (mod-id ex)))
+		       (with-no-type-errors (resolve* ex 'expr nil))
+		       (resolve* ex 'expr nil))))
+	   (thres (unless (or (mod-id ex)
+			      (and kind
+				   (not (eq kind 'theory))))
+		    (if (or tres eres)
+			(with-no-type-errors (resolve* (name-to-modname ex)
+						       'module nil))
+			(resolve* (name-to-modname ex) 'module nil)))))
+;;       (when type
+;; 	(setf eres (delete-if-not #'(lambda (r) (compatible? (type r) type))
+;; 		     eres)))
       (if (cdr tres)
 	  (cond (eres
 		 (setf (resolutions ex) eres))
@@ -968,6 +991,9 @@
   (interpretable? (declaration res)))
 
 (defmethod interpretable? ((decl declaration))
+  nil)
+
+(defmethod interpretable? ((bd binding))
   nil)
 
 (defmethod interpretable? ((name name))
