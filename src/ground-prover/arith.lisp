@@ -847,7 +847,7 @@
 
 (defun normineq(lit)
   (integercut (normineq1 lit)))
-
+  
 ; normalization other than Gomery cut
 
 ;;; DAC 10-26-90 Added EXP to PRARITHERROR. (now *printerpmult* - SO 5/26/91)
