@@ -11,13 +11,13 @@
 
 (in-package :pvs)
 
+(export '(typecheck-decls typecheck-decl set-visibility add-judgement-decl))
+
 ;;; Typecheck* methods for declarations - all of these methods have a
 ;;; declaration instance and a context for input, and they all check for
 ;;; duplication, set the type or type-value of the decl as appropriate,
 ;;; and return the decl.  Any other behavior is specific to the decl
 ;;; class, and described with the corresponding method below.
-
-(export '(typecheck-decls typecheck-decl))
 
 (defun typecheck-decls (decls)
   (when decls
@@ -1795,16 +1795,6 @@
     (setf (closed-definition decl)
 	  (universal-closure (definition decl))))
   (when (eq (spelling decl) 'ASSUMPTION)
-    ;;(remove-defined-type-names decl)
-    ;; Check that no local decls are used in definition
-    (let ((local-ref (find-local-theory-reference
-		      (definition decl)
-		      (formals-sans-usings (current-theory)))))
-      (when local-ref
-	(type-error local-ref
-	  "Illegal reference to ~a~%May not use assumptions that reference ~
-           entities declared in this theory."
-	  local-ref)))
     (handle-existence-assuming-on-formals decl))
   decl)
 
