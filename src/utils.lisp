@@ -2928,7 +2928,7 @@ space")
 ;; Lazy copying for some built-in predicates
 
 (defun lcopy-negation (orig arg)
-  (if (eq (args1 orig) arg) orig
+  (if (eq (argument orig) arg) orig
     (make!-negation arg)))
 
 (defun lcopy-conjunction (orig arg1 arg2)
@@ -2946,6 +2946,13 @@ space")
 (defun lcopy-implication (orig arg1 arg2)
   (if (and (eq (args1 orig) arg1) (eq (args2 orig) arg2)) orig
     (make!-implication arg1 arg2)))
+
+(defun lcopy-branch (orig cond-expr then-expr else-expr)
+  (if (and (eq (condition orig) cond-expr)
+	   (eq (then-part orig) then-expr)
+	   (eq (else-part orig) else-expr))
+      orig
+    (make!-if-expr cond-expr then-expr else-expr)))
 
 (defun lcopy-iff (orig arg1 arg2)
   (if (and (eq (args1 orig) arg1) (eq (args2 orig) arg2)) orig
@@ -2970,9 +2977,11 @@ space")
 		(subtype-of? type *integer*))
 	    (judgement-types+ expr))))
 
-
-
-
-
-
-
+(defun real? (expr)
+  (or (and (type expr)
+	   (subtype-of? (type expr) *real*))
+      (and (number-expr? expr)
+	   (rationalp (number expr)))
+      (some #'(lambda (type)
+		(subtype-of? type *real*))
+	    (judgement-types+ expr))))
