@@ -1278,15 +1278,16 @@ pvs-strategies files.")
 			(nconc proofs (list (car oldproofs)))))))
 
 (defun restore-proofs (filestring theory)
-  (multiple-value-bind (ignore error)
-      (ignore-errors
-	(with-open-file (input filestring :direction :input)
-	  (restore-theory-proofs input filestring theory)))
-    (declare (ignore ignore))
-    (when error
-      (pvs-message "Error reading proof file ~a"
-	(namestring filestring))
-      (pvs-log (format nil "  ~a" error)))))
+  (unless *loading-prelude*
+    (multiple-value-bind (ignore error)
+	(ignore-errors
+	  (with-open-file (input filestring :direction :input)
+	    (restore-theory-proofs input filestring theory)))
+      (declare (ignore ignore))
+      (when error
+	(pvs-message "Error reading proof file ~a"
+	  (namestring filestring))
+	(pvs-log (format nil "  ~a" error))))))
 
 (defun restore-theory-proofs (input filestring theory)
   (let ((theory-proofs (read input NIL NIL)))
