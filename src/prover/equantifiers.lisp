@@ -3,10 +3,11 @@
 ;; Author          : Natarajan Shankar
 ;; Created On      : Fri Oct  8 12:57:34 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sat Oct 31 02:23:17 1998
-;; Update Count    : 34
-;; Status          : Beta
+;; Last Modified On: Thu May 20 21:17:17 2004
+;; Update Count    : 35
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -173,7 +174,7 @@
   (some #'(lambda (d)
 	     (and (not (var-decl? d))
 		  (eq (module d) (current-theory))))
-	(gethash id (declarations-hash context))))
+	(get-declarations id (declarations-hash context))))
 
 (defun one-to-one (alist)
   (if (consp alist)
