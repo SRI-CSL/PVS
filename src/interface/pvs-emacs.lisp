@@ -9,9 +9,9 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
-
-(in-package 'pvs)
+(in-package :pvs)
 
 (export '(pvs-message pvs-error))
 
@@ -96,7 +96,8 @@
 		(protect-emacs-output
 		 (format nil ":pvs-msg ~? :end-pvs-msg" ctl args))))
 	  (to-emacs))
-	(format t "~%~?" ctl args))))
+	(format t "~%~?" ctl args)))
+  nil)
 
 
 ;;; Collect messages until the end of parsing/typechecking, and provide
@@ -144,13 +145,16 @@
 	(pvs-message "~a.pvs has not been typechecked" filename))))
 
 (defun pvs-info (ctl &rest args)
-  (if *noninteractive*
-      (pvs-message "~% ~?~%" ctl args)
-      (format t "~% ~?~%" ctl args))
-  (when (and (current-theory)
-	     (not *in-checker*)
-	     (not *in-evaluator*))
-    (let ((info (format nil "~?" ctl args)))
+  (let ((info (if args
+		  (format nil "~?" ctl args)
+		  ctl)))
+    (when *noninteractive*
+      (pvs-message "~% ~a~%" info)
+      ;;(format t "~% ~a~%" info)
+      )
+    (when (and (current-theory)
+	       (not *in-checker*)
+	       (not *in-evaluator*))
       (if (info (current-theory))
 	  (nconc (info (current-theory)) (list info))
 	  (setf (info (current-theory)) (list info)))))
@@ -189,9 +193,10 @@
 ;;; Conversions are treated separately
 
 (defun pvs-conversion-msg (ctl &rest args)
-  (if *noninteractive*
-      (pvs-message "~% ~?~%" ctl args)
-      (format-if "~% ~?~%" ctl args))
+  (when *noninteractive*
+    (pvs-message "~% ~?~%" ctl args)
+    ;;(format-if "~% ~?~%" ctl args)
+    )
   (when (and (current-theory)
 	     (not *in-checker*)
 	     (not *in-evaluator*))
@@ -426,7 +431,14 @@
 
 (defun protect-emacs-output (string)
   (if (stringp string)
-      (protect-emacs-output* string 0)
+      (with-output-to-string (str)
+	(loop for ch across string
+	      do (case ch
+		   ((#\& #\" #\\)
+		    (write-char #\\ str) (write-char ch str))
+		   (#\newline
+		    (write-char #\\ str) (write-char #\n str))
+		   (t (write-char ch str)))))
       string))
 
 (defun protect-emacs-output* (string pos &optional result)
@@ -444,7 +456,12 @@
 
 (defun protect-string-output (string)
   (if (stringp string)
-      (protect-string-output* string 0)
+      (with-output-to-string (str)
+	(loop for ch across string
+	      do (case ch
+		   (#\\ (write-char #\\ str) (write-char #\\ str))
+		   (#\" (write-char #\\ str) (write-char #\" str))
+		   (t   (write-char ch str)))))
       string))
 
 (defun protect-string-output* (string pos &optional result)
@@ -606,17 +623,20 @@
        (null *type-error-catch*)
        (not (some #'k-combinator? (conversions *current-context*)))
        (let ((*type-error-catch* 'type-error)
-	     (*current-context* (copy-context *current-context*))
 	     (cdecl (make-instance 'conversion-decl
 		      'id '|K_conversion|
 		      'module (get-theory "K_conversion")
 		      'k-combinator? t
 		      'expr (mk-name-expr '|K_conversion|))))
 	 (typecheck* cdecl nil nil nil)
-	 (push cdecl (conversions *current-context*))
-	 (let ((tex (catch 'type-error
-		      (ignore-errors (typecheck* ex nil nil arguments)))))
-	   (and tex (conversion-occurs-in? tex))))))
+	 (unwind-protect
+	     (progn
+	       (push cdecl (conversions *current-context*))
+	       (let ((tex (catch 'type-error
+			    (ignore-errors
+			      (typecheck* ex nil nil arguments)))))
+		 (and tex (conversion-occurs-in? tex))))
+	   (pop (conversions *current-context*))))))
 
 (defun conversion-occurs-in? (obj)
   (let ((conv? nil))
@@ -708,7 +728,7 @@
 		  "(None of these are fully instantiated)"))))))
 
 (defun format-resolution (res)
-  (format nil "~@[~a~]~@[~a~]~@[[~{~a~^,~}]~].~a~@[ : ~a~]"
+  (format nil "~@[~a@~]~@[~a~]~@[[~{~a~^,~}]~].~a~@[ : ~a~]"
     (let ((th (module (declaration res))))
       (when (typep th 'library-theory)
 	(libref-to-libid (lib-ref th))))
