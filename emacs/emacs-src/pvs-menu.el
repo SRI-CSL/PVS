@@ -18,6 +18,7 @@
     ("Getting Help"
      ["help-pvs" help-pvs t]
      ["help-pvs-language" help-pvs-language t]
+     ["help-pvs-bnf" help-pvs-bnf t]
      ["help-pvs-prover" help-pvs-prover t]
      ["help-pvs-prover-command" help-pvs-prover-command t]
      ["help-pvs-prover-strategy" help-pvs-prover-strategy t]
@@ -41,6 +42,7 @@
      ["x-step-proof" x-step-proof (pvs-valid-formula-buffer)]
      ["redo-proof" redo-proof (pvs-valid-formula-buffer)]
      ["prove-theory" prove-theory (current-pvs-file t)]
+     ["prove-theories" prove-theories (current-pvs-file t)]
      ["prove-pvs-file" prove-pvs-file (current-pvs-file t)]
      ["prove-importchain" prove-importchain (current-pvs-file t)]
      ["prove-proofchain" prove-proofchain (pvs-valid-formula-buffer)])
@@ -61,6 +63,7 @@
      ["show-proofs-importchain" show-proofs-importchain (current-pvs-file t)]
      ["install-pvs-proof-file" install-pvs-proof-file t]
      ["load-pvs-strategies" load-pvs-strategies t]
+     ["toggle-proof-prettyprinting" toggle-proof-prettyprinting t]
      ["set-print-depth" set-print-depth t]
      ["set-print-length" set-print-length t]
      ["set-rewrite-depth" set-rewrite-depth t]
@@ -124,7 +127,9 @@
      ["latex-importchain" latex-importchain (current-pvs-file t)]
      ["latex-proof" latex-proof t]
      ["latex-theory-view" latex-theory-view (current-pvs-file t)]
-     ["latex-set-linelength" latex-set-linelength t])
+     ["latex-set-linelength" latex-set-linelength t]
+     ["html-pvs-file" html-pvs-file t]
+     ["html-pvs-files" html-pvs-files t])
     ("Display Commands"
      ["x-theory-hierarchy" x-theory-hierarchy (current-pvs-file t)]
      ["x-show-proof" x-show-proof (pvs-valid-formula-buffer)]
@@ -144,7 +149,9 @@
      ["find-declaration" find-declaration (current-pvs-file t)]
      ["whereis-declaration-used" whereis-declaration-used (current-pvs-file t)]
      ["list-declarations" list-declarations (current-pvs-file t)]
-     ["show-expanded-form" show-expanded-form (current-pvs-file t)])
+     ["show-expanded-form" show-expanded-form (current-pvs-file t)]
+     ["unusedby-proof-of-formula" unusedby-proof-of-formula (current-pvs-file t)]
+     ["unusedby-proofs-of-formulas" unusedby-proofs-of-formulas (current-pvs-file t)])
     ("Status"
      ["status-theory" status-theory (current-pvs-file t)]
      ["status-pvs-file" status-pvs-file (current-pvs-file t)]
