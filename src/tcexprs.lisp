@@ -590,9 +590,11 @@
     (let* ((sel (car selections))
 	   (constr (constructor sel))
 	   (n (get-injection-number constr))
-	   (in-type (nth (1- n) (types type))))
+	   (in-type (when n (nth (1- n) (types type)))))
       (unless n
-	(type-error sel "No matching constructor found"))
+	(type-error sel
+	  "~a should be of the form IN_i (or in_i) for some integer i."
+	  (constructor sel)))
       (unless (<= n (length (types type)))
 	(type-error sel "Cotuple type only has ~d components"
 		    (length (types type))))
