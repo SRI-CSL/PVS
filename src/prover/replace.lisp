@@ -95,8 +95,7 @@
 
 
 (defun replace-loop (lhs rhs sformnum sformnums sforms pos neg dont-delete?)
-  (let ((*replace-cache*
-	 (make-hash-table :test #'eq)))
+  (let ((*replace-cache* (make-hash-table :test #'eq)))
     (if (null sforms) nil
 	(if (negation? (formula (car sforms)))
 	    (if (or (eq sformnum neg)
@@ -153,6 +152,11 @@
   (declare (ignore lastopinfix?))
   (lcopy s-formula
     'formula (replace-expr* lhs rhs (formula s-formula) nil)))
+
+(defmethod replace-expr* :around (lhs rhs (expr expr) lastopinfix?)
+  (or (gethash expr *replace-cache*)
+      (let ((rexpr (call-next-method)))
+	(setf (gethash expr *replace-cache*) rexpr))))
 
 (defmethod replace-expr* (lhs rhs (expr equation) lastopinfix?)
   (if (replace-eq lhs expr)
