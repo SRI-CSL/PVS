@@ -3020,3 +3020,107 @@ space")
 	    (judgement-types+ expr))))
 
 (defmethod formals ((decl field-decl)) nil)
+
+;;; sexp converts a given object to a list; 
+
+(defmethod sexp ((prinfo proof-info))
+  (with-slots (id description create-date run-date script status refers-to
+		  real-time run-time interactive? new-ground?)
+      prinfo
+    (list id description create-date run-date script status (sexp refers-to)
+	  real-time run-time interactive? new-ground?)))
+
+(defmethod sexp ((list list))
+  (mapcar #'sexp list))
+
+(defmethod sexp ((dref decl-reference))
+  (with-slots (id class type theory-id library) dref
+    (list id class type theory-id library)))
+
+(defmethod sexp ((decl declaration))
+  (list (id decl)
+	(type-of decl)
+	(when (and (typed-declaration? decl)
+		   (not (typep decl 'formal-type-decl)))
+	  (or (declared-type-string decl)
+	      (setf (declared-type-string decl)
+		    (unparse (or (declared-type decl)
+				 (type decl)) :string t))))    ;; dave_sc fix for skolem-const-decl
+	(when (module decl) (id (module decl)))
+	(when (typep (module decl) 'library-theory)
+	  (library (module decl)))))
+
+(defmethod update-instance-for-redefined-class :before
+  ((fdecl formula-decl) added deleted plist &rest initargs)
+  (declare (ignore added deleted))
+  (when (and plist
+	     (getf plist 'justification))
+    (let ((prinfo (make-proof-info (getf plist 'justification)
+				   (next-proof-id fdecl))))
+      (setf (refers-to prinfo) (getf plist 'proof-refers-to))
+      (when (getf plist 'proof-time)
+	(setf (run-time prinfo) (car (getf plist 'proof-time)))
+	(setf (real-time prinfo) (cadr (getf plist 'proof-time)))
+	(setf (interactive? prinfo) (caddr (getf plist 'proof-time))))
+      (setf (status prinfo) (getf plist 'proof-status))
+      (setf (proofs fdecl) (list prinfo))
+      (setf (default-proof fdecl) prinfo))))
+
+(defmethod justification ((decl formula-decl))
+  (when (proofs decl)
+    (ensure-default-proof decl)
+    (script (default-proof decl))))
+
+(defmethod (setf justification) (just (decl formula-decl))
+  (ensure-default-proof decl)
+  (setf (script (default-proof decl))
+	(extract-justification-sexp just)))
+
+(defmethod proof-status ((decl formula-decl))
+  (when (proofs decl)
+    (ensure-default-proof decl)
+    (status (default-proof decl))))
+
+(defmethod (setf proof-status) (stat (decl formula-decl))
+  (ensure-default-proof decl)
+  (setf (status (default-proof decl)) stat))
+
+(defmethod new-ground? ((decl formula-decl))
+  (when (proofs decl)
+    (ensure-default-proof decl)
+    (new-ground? (default-proof decl))))
+
+(defmethod (setf new-ground?) (new? (decl formula-decl))
+  (ensure-default-proof decl)
+  (setf (new-ground? (default-proof decl)) new?))
+
+(defmethod proof-refers-to ((decl formula-decl))
+  (when (proofs decl)
+    (ensure-default-proof decl)
+    (refers-to (default-proof decl))))
+
+(defmethod (setf proof-refers-to) (refs (decl formula-decl))
+  (ensure-default-proof decl)
+  (setf (refers-to (default-proof decl)) refs))
+
+(defun ensure-default-proof (fdecl &optional script id description)
+  (unless (default-proof fdecl)
+    (if (proofs fdecl)
+	(setf (default-proof fdecl) (car (proofs fdecl)))
+	(make-default-proof fdecl script id description))))
+
+(defun make-default-proof (fdecl script &optional id description)
+  (let* ((pid (or id (next-proof-id fdecl)))
+	 (prinfo (make-proof-info script pid description)))
+    (setf (new-ground? prinfo) *new-ground?*)
+    (push prinfo (proofs fdecl))
+    (setf (default-proof fdecl) prinfo)))
+
+(defun next-proof-id (fdecl &optional (num 1))
+  (let ((id (makesym "~a-~d" (id fdecl) num)))
+    (if (and (slot-boundp fdecl 'proofs)
+	     (member id (proofs fdecl)
+		     :test #'(lambda (x y) (eq x (id y)))))
+	(next-proof-id fdecl (1+ num))
+	id)))
+
