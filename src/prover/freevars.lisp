@@ -30,6 +30,9 @@
 ;;	#'(lambda (x y) (occurs-in x (type y))))
   (freevars* obj nil))
 
+(defmethod freevars* ((decl declaration) frees)
+  frees)
+
 (defmethod freevars* :around ((expr expr) frees)
   (with-slots (free-variables) expr
     (if (eq free-variables 'unbound)
