@@ -507,7 +507,8 @@
 (defmacro print-proofstate-if (ps)
   `(let ((*sb-print-depth* *prover-print-depth*)
 	 (*sb-print-length* *prover-print-length*))
-    (format-if "~a" ,ps)))
+     (unless (eq (car (current-input ,ps)) 'lisp)
+       (format-if "~a" ,ps))))
 
 (defmacro safe-parse-integer (string)
   `(if (every #'digit-char-p ,string) (parse-integer ,string) 0))
