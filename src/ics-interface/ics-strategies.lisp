@@ -5,6 +5,26 @@
       (dp-state ps)
     (ics-empty-state)))
 
+; Satisfiability
+
+(addrule 'sat nil ((fnums *))
+  (sat-step fnums)
+  "Satisfiability Solver")
+
+(defun sat-step (fnums)
+  #'(lambda (ps)
+      (let* ((sforms (s-forms (current-goal ps)))
+	     (selected-sforms (select-seq sforms fnums))
+	     (fmla (make!-negation (make!-disjunction* (mapcar #'formula sforms))))
+	     (result (ics-sat (ics-current-state ps) fmla)))
+	(cond ((eq result :unsat)
+	       (values '! nil))
+	      ((eq (car result) :sat)
+	       (values 'X (current-goal ps)))
+	      (t
+	       (error "Unknown result of SAT solver"))))))
+
+
 ;; Replace formula with a simplified version
 
 ; (addrule 'sigmatize nil ((fnums *))
