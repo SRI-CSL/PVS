@@ -172,26 +172,19 @@
 			 (application-judgements-alist (current-judgements))))
 	      (1- currynum))))))
 
-;(defsetf application-judgements (application) (entry)
-;  `(let ((op (operator* application)))
-;     (when (typep op 'name-expr)
-;       (pushnew ,entry
-;		(gethash ,(declaration op)
-;			 (application-judgements-hash
-;			  (judgements *current-context*)))
-;		:key #'type :test #'same-application-judgement-entry))))
-
 
 ;;; add-judgement-decl (subtype-judgement) is invoked from
 ;;; typecheck* (subtype-judgement)
 
 (defmethod add-judgement-decl ((decl subtype-judgement))
+  ;; Note that this can be called by prove-decl before *in-checker* is t
   (assert (not *in-checker*))
   (add-to-known-subtypes (subtype decl) (type decl)))
 
 ;;; Invoked from typecheck* (number-judgement)
 
 (defmethod add-judgement-decl ((decl number-judgement))
+  ;; Note that this can be called by prove-decl before *in-checker* is t
   (assert (not *in-checker*))
   (clrhash (judgement-types-hash (current-judgements)))
   (let* ((num (number (number-expr decl)))
@@ -211,6 +204,7 @@
 ;;; Invoked from typecheck* (name-judgement)
 
 (defmethod add-judgement-decl ((jdecl name-judgement))
+  ;; Note that this can be called by prove-decl before *in-checker* is t
   (assert (not *in-checker*))
   (let* ((decl (declaration (name jdecl)))
 	 (entry (name-judgements decl)))
@@ -236,14 +230,10 @@
 				   (subtype-of? (type jdecl) (type jd)))
 			     (minimal-judgements entry)))))))))
 
-(defmethod add-judgement-decl (decl)
-  (declare (ignore decl))
-  (assert (not *in-checker*))
-  nil)
-
 ;;; Invoked from typecheck* (application-judgement)
 
 (defmethod add-judgement-decl ((jdecl application-judgement))
+  ;; Note that this can be called by prove-decl before *in-checker* is t
   (assert (not *in-checker*))
   (let* ((decl (declaration (name jdecl)))
 	 (currynum (length (formals jdecl)))
@@ -906,7 +896,8 @@
 					:test #'add-decl-test))))
 		  (cond (oj oj)
 			(t (add-decl nj)
-			   (assert (memq nj (all-decls (current-theory))))
+			   (assert (or (null *insert-add-decl*)
+				       (memq nj (all-decls (current-theory)))))
 			   nj))))
 	    (let* ((nj (lcopy j
 			 'declared-type (subst-mod-params (declared-type j)
@@ -951,7 +942,8 @@
 					:test #'add-decl-test))))
 		  (cond (oj oj)
 			(t (add-decl nj)
-			   (assert (memq nj (all-decls (current-theory))))
+			   (assert (or (null *insert-add-decl*)
+				       (memq nj (all-decls (current-theory)))))
 			   nj))))
 	    (let* ((nj (lcopy j
 			 'declared-type (subst-mod-params (declared-type j)
@@ -999,7 +991,8 @@
 			 (assert (memq oj (all-decls (current-theory))))
 			 oj)
 			(t (add-decl nj)
-			   (assert (memq nj (all-decls (current-theory))))
+			   (assert (or (null *insert-add-decl*)
+				       (memq nj (all-decls (current-theory)))))
 			   nj))))
 	    (let* ((nj (lcopy j
 			 'declared-type (subst-mod-params (declared-type j)
@@ -1021,15 +1014,14 @@
 		    (t (setf (gethash j smphash) nj)
 		       (unless (eq j nj)
 			 (add-decl nj)
-			 (assert (memq nj (all-decls (current-theory))))
+			 (assert (or (null *insert-add-decl*)
+				     (memq nj (all-decls (current-theory)))))
 			 (setf (module nj)
 			       (if (fully-instantiated? thname)
 				   (current-theory)
 				   (module j)))
 			 (setf (generated-by nj) (or (generated-by j) j))
-			 (assert (eq (module nj) (current-theory)))
-			 (assert (memq nj (all-decls (module nj))))
-			 )
+			 (assert (eq (module nj) (current-theory))))
 		       nj)))))
       j))
 
