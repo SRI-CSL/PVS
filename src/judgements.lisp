@@ -796,7 +796,8 @@
   ;; returns true when type1 is a subtype of type2, given that it must be
   ;; of type reltype, e.g., (subtype-wrt? rat nzrat nzreal) is true.
   (or (subtype-of? type1 type2)
-      (and (same-predicate? type2 reltype bindings)
+      (and (subtype? type2)
+	   (same-predicate? type2 reltype bindings)
 	   (subtype-of? type1 (supertype type2)))))
 
 (defmethod same-predicate? ((t1 subtype) (t2 subtype) bindings)
