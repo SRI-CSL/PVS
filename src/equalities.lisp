@@ -1465,8 +1465,11 @@ where db is to replace db1 and db2")
 	((null eflds) nil)
 	(t (let* ((efld (car eflds))
 		  (afld (find efld aflds :test #'same-id))
-		  (aex (get-field-application afld aexpr))
-		  (preds (compatible-preds* (type afld) (type efld) aex nil)))
+		  (aex (unless (tc-eq (type afld) (type efld))
+			 (get-field-application afld aexpr)))
+		  (preds (when aex
+			   (compatible-preds*
+			    (type afld) (type efld) aex nil)))
 	     (compatible-recordtype-preds
 	      (remove afld aflds :test #'eq)
 	      (cdr eflds)
