@@ -80,9 +80,7 @@ generated")
        (maphash #'(lambda (id decls)
 		    (let ((ndecls (remove-if #'formal-decl? decls)))
 		      (when ndecls
-			(dolist (decl ndecls)
-			  (when (declaration? decl)
-			    (set-visibility decl)))
+			(mapc #'set-visibility ndecls)
 			(setf (gethash id (current-declarations-hash))
 			      ndecls))))
 		(current-declarations-hash))
@@ -3407,8 +3405,7 @@ generated")
 			      (mk-bind-decl yid (adt-type-name adt)))
 		      (gen-adt-<<-definition
 		       adt (mk-name-expr xid) (mk-name-expr yid)))
-		    (list (mk-arg-bind-decl xid (adt-type-name adt))
-			  (mk-arg-bind-decl yid (adt-type-name adt)))
+		    nil
 		    (print-type (supertype wf-type))))
 	 (<<-wf-decl (mk-formula-decl (makesym "~a_well_founded" (id adt))
 		       (mk-application
@@ -3935,6 +3932,9 @@ function, tuple, or record type")
   (occurs-positively?* type (exprs ex) none))
 
 (defmethod occurs-positively?* (type (ex projection-application) none)
+  (occurs-positively?* type (argument ex) none))
+
+(defmethod occurs-positively?* (type (ex injection-application) none)
   (occurs-positively?* type (argument ex) none))
 
 (defmethod occurs-positively?* (type (ex field-application) none)
