@@ -1748,8 +1748,7 @@ See also EXTENSIONALITY."
 			    (mk-assignment 'uni
 			      (list (list (mk-field-name-expr
 					   (id fld)
-					   (resolution fld)
-					   'CONSTANT)))
+					   (resolution fld))))
 			      (make-field-application
 			       (id fld) var))))
 	 (record-expr (make-record-expr assignments type)))
@@ -2589,8 +2588,7 @@ found. "
 		(new-vars (loop for x in new-bvars
 				collect (make!-name-expr
 					 (id x) nil nil
-					 (make-resolution x nil (type x))
-					 'VARIABLE)))
+					 (make-resolution x nil (type x)))))
 		(new-tuple (if (recordtype? type)
 			       (make-record-expr
 				(loop for fld in (fields type)
@@ -2599,8 +2597,7 @@ found. "
 				      (mk-assignment 'uni
 					(list (list (mk-field-name-expr
 						     (id fld)
-						     (resolution fld)
-						     'CONSTANT)))
+						     (resolution fld))))
 					var))
 				type)
 			       (make-tuple-expr new-vars type))))
