@@ -160,10 +160,13 @@
 			 (polypath (concatenate 'string
 				     *pvs-path*
 				     "/src/decision-procedures/polylib/"
-				     platform)))
+				     platform))
+			 (ws1spath (concatenate 'string
+				     *pvs-path* "/WS1S/" platform)))
 		    (load (format nil "~a/bdd.so" bddpath))
 		    (load (format nil "~a/mu.so" bddpath))
-		    (load (format nil "~a/polylib.so" polypath)))
+		    (load (format nil "~a/polylib.so" polypath))
+		    (load (format nil "~a/ws1s.so" ws1spath)))
 		  (setq *pvs-system-loaded* t))
   :finally-do (progn
 		#+lucid (precompile-generic-functions)
@@ -355,4 +358,13 @@
 ;		  (:file "static-update")
 ;		  (:file "pvseval-update")
 ;		  (:file "cl2pvs")))
+   (:module ws1s
+     :source-pathname "src/WS1S"
+     :components ((:file "dfa-foreign")
+		  (:file "dfa")
+		  (:file "pvs-utils")
+		  (:file "symtab")
+		  (:file "signature")
+		  (:file "pvs2dfa")
+		  (:file "ws1s-strategy")))
    ))
