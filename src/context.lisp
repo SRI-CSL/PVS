@@ -171,6 +171,8 @@ pvs-strategies files.")
 ;;; working-directory is set, and the context is restored.
 
 (defun change-context (directory)
+  (unless *pvs-context-path*
+    (setq *pvs-context-path* (working-directory)))
   (let ((dir (get-valid-context-directory directory nil)))
     (when *pvs-initialized*
       (save-context))
