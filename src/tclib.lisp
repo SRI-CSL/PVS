@@ -349,15 +349,15 @@
 ;;; *default-pathname-defaults*.
 (defun libload (filestr)
   (declare (special libloads))
-  (let* ((lib (directory-namestring filestr))
+  (let* ((libloads (if (boundp 'libloads) libloads nil))
+	 (lib (directory-namestring filestr))
 	 (filename (file-namestring filestr))
-	 (libpath (libref-to-pathname lib))
-	 (*default-pathname-defaults* (if (string= libpath "./")
-					  *default-pathname-defaults*
-					  libpath))
+	 (libpath (unless (string= lib "./") (libref-to-pathname lib)))
+	 (*default-pathname-defaults* (or libpath
+					  *default-pathname-defaults*))
 	 (file (namestring
 		(merge-pathnames filename *default-pathname-defaults*))))
-    (cond ((member file libloads :test #'string=)
+    (cond ((and (boundp 'libloads) (member file libloads :test #'string=))
 	   (pvs-error "Error in libload"
 	     "Detected circular calls to libload,~%check files in ~{~a~^, ~}"
 	     libloads))
@@ -652,6 +652,10 @@
 	(let ((libhash (gethash lib-ref *prelude-libraries*)))
 	  (cond (libhash
 		 (remhash lib-ref *prelude-libraries*)
+		 (setq *prelude-libraries-files*
+		       (remove (assoc lib-ref *prelude-libraries-files*
+				      :test #'string=)
+			       *prelude-libraries-files*))
 		 (maphash #'(lambda (id theory)
 			      (declare (ignore id))
 			      (setf *prelude-libraries-uselist*
