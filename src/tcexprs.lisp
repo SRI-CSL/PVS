@@ -865,9 +865,7 @@
 	       range))))
 
 (defmethod find-supertype-without-freevars ((type type-name))
-  (if (freevars type)
-      (break)
-      type))
+  type)
 
 (defmethod find-supertype-without-freevars ((type funtype))
   (if (freevars type)
@@ -965,15 +963,15 @@
       conversions
       (find-operator-conversions
        (cdr optypes) args
-       (append (find-operator-conversion* (car optypes) args)
-	       conversions))))
+       (append conversions
+	       (find-operator-conversion* (car optypes) args)))))
 
 (defun find-operator-conversion* (optype args)
   (let ((conversions nil))
     (dolist (conv (conversions *current-context*))
       (let ((nconv (compatible-operator-conversion conv optype args)))
 	(when nconv (push nconv conversions))))
-    conversions))
+    (nreverse conversions)))
 
 (defun compatible-operator-conversion (conversion optype args)
   (let* ((theory (module conversion))
@@ -1046,9 +1044,9 @@
 				(resolutions (operator expr)))))
   (unless (or *no-conversions-allowed*
 	      *in-application-conversion*)
+    (add-conversion-info (find-if #'expr? conversions) expr)
     (let* ((*in-application-conversion* t)
 	   (op (operator expr))
-	   (oexpr (copy expr))
 	   (conversions (conversion
 			 (find-if #'(lambda (r)
 				      (typep r 'lambda-conversion-resolution))
@@ -1061,7 +1059,6 @@
       (change-class expr 'lambda-conversion)
       (setf (bindings expr) bindings
 	    (expression expr) (mk-application* op args))
-      (add-conversion-info (find-if #'expr? conversions) oexpr)
       (typecheck* expr nil nil nil))))
 
 (defun make-arg-conversion-bindings (conversions expr &optional bindings)
@@ -1706,6 +1703,7 @@
 		 "Variable ~a not previously declared" (id decl)))
 	      ((singleton? vdecls)
 	       (setf (type decl) (type (car vdecls))
-		     (declared-type decl) (declared-type (car vdecls))))
+		     ;;(declared-type decl) (declared-type (car vdecls))
+		     ))
 	      (t (type-error decl "Variable ~a is ambiguous" (id decl))))))
   decl)

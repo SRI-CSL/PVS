@@ -333,40 +333,47 @@
   (if (or (gethash lib *prelude-libraries*)
 	  (file-equal lib *pvs-context-path*))
       (get-theory (copy theoryname 'library nil))
-      (with-pvs-context path
-	(let ((*current-theory* *current-theory*)
-	      (*pvs-context-writable* (write-permission? path))
-	      (*pvs-context-changed* nil))
-	  (restore-context)
-	  (multiple-value-bind (*pvs-files* *pvs-modules*)
-	      (get-imported-files-and-theories lib)
-	    (let* ((*prelude-libraries* (make-hash-table :test #'equal))
-		   (filename (context-file-of theoryname)))
-	      (unless (or filename
-			  (not (file-exists-p (make-specpath theoryname))))
-		(setq filename (string (id theoryname))))
-	      (if filename
-		  (let* ((theories (typecheck-file filename))
-			 (theory (find theoryname theories :test #'same-id)))
-		    (cond (theory
-			   (save-context)
-			   (maphash
-			    #'(lambda (id th)
-				(declare (ignore id))
-				(if (typep th 'module)
-				    (change-class th 'library-theory)
-				    (change-class th 'library-datatype))
-				(setf (library th) lib
-				      (library-path th) (namestring path)))
-				    *pvs-modules*)
-			   theory)
-			  (t (type-error lib
-			       "Theory ~a could  not be found in the ~
-                                PVS context of library ~a"
-			       theoryname lib))))
-		  (type-error lib
-		    "Theory ~a not found in the PVS context of library ~a"
-		    theoryname lib))))))))
+      (let ((value nil))
+	(with-pvs-context path
+	  (let ((*current-theory* *current-theory*)
+		(*pvs-context-writable* (write-permission? path))
+		(*pvs-context-changed* nil))
+	    (restore-context)
+	    (multiple-value-bind (*pvs-files* *pvs-modules*)
+		(get-imported-files-and-theories lib)
+	      (let* ((*prelude-libraries* (make-hash-table :test #'equal))
+		     (filename (context-file-of theoryname)))
+		(unless (or filename
+			    (not (file-exists-p (make-specpath theoryname))))
+		  (setq filename (string (id theoryname))))
+		(if filename
+		    (let* ((theories (typecheck-file filename))
+			   (theory (find theoryname theories :test #'same-id)))
+		      (cond (theory
+			     (save-context)
+			     (maphash
+			      #'(lambda (id th)
+				  (declare (ignore id))
+				  (if (typep th 'module)
+				      (change-class th 'library-theory)
+				      (change-class th 'library-datatype))
+				  (setf (library th) lib
+					(library-path th) (namestring path)))
+			      *pvs-modules*)
+			     (setq value theory))
+			    (t (setq value
+				     (format nil
+					 "Theory ~a could  not be found in ~
+                                          the PVS context of library ~a"
+				       theoryname lib)))))
+		    (setq value
+			  (format nil
+			      "Theory ~a not found in the PVS context of ~
+                               library ~a"
+			    theoryname lib)))))))
+	(if (stringp value)
+	    (type-error theoryname value)
+	    value))))
 
 
 (defun parsed-library-file? (mod)
@@ -636,7 +643,7 @@
   (append (formals theory)
 	  (mapcan #'(lambda (d)
 		      (when (typep d 'formal-subtype-decl)
-			(list (car (generated d)))))
+			(remove-if #'tcc? (generated d))))
 		  (formals theory))
 	  (assuming theory)
 	  (theory theory)))

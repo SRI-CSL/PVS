@@ -626,6 +626,34 @@
 ;	  (and (tc-eq-ops op1 op2 bindings)
 ;	       (tc-eq* arg1 arg2 bindings))))))
 
+(defmethod pvs-sxhash* ((e1 negation) bindings)
+  (with-slots (argument) e1
+    (pvs-sxhash-+ 41 (the positive-fixnum (pvs-sxhash* argument bindings)))))
+
+(defmethod pvs-sxhash* ((e1 conjunction) bindings)
+  (with-slots (argument) e1
+    (pvs-sxhash-+ 43 (the positive-fixnum (pvs-sxhash* argument bindings)))))
+
+(defmethod pvs-sxhash* ((e1 disjunction) bindings)
+  (with-slots (argument) e1
+    (pvs-sxhash-+ 47 (the positive-fixnum (pvs-sxhash* argument bindings)))))
+
+(defmethod pvs-sxhash* ((e1 implication) bindings)
+  (with-slots (argument) e1
+    (pvs-sxhash-+ 53 (the positive-fixnum (pvs-sxhash* argument bindings)))))
+
+(defmethod pvs-sxhash* ((e1 iff) bindings)
+  (with-slots (argument) e1
+    (pvs-sxhash-+ 59 (the positive-fixnum (pvs-sxhash* argument bindings)))))
+
+(defmethod pvs-sxhash* ((e1 equation) bindings)
+  (with-slots (argument) e1
+    (pvs-sxhash-+ 61 (the positive-fixnum (pvs-sxhash* argument bindings)))))
+
+(defmethod pvs-sxhash* ((e1 branch) bindings)
+  (with-slots (argument) e1
+    (pvs-sxhash-+ 71 (the positive-fixnum (pvs-sxhash* argument bindings)))))
+
 (defmethod pvs-sxhash* ((e1 application) bindings)
   (with-slots ((op1 operator) (arg1 argument)) e1
     (pvs-sxhash-+ (the positive-fixnum (pvs-sxhash-ops op1 bindings))
