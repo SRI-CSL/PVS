@@ -257,8 +257,10 @@
 	 (sforms-bdd (make-sforms-bdd selected-sforms))
 	 (list-of-conjuncts (translate-from-bdd-list
 			     (bdd_sum_of_cubes sforms-bdd
-					       (if irredundant? 1 0))))
-	 (lit-list (mapcar #'(lambda (conj)
+					       (if irredundant? 1 0)))))
+         (init-hash-tables)
+         (let*
+	 ((lit-list (mapcar #'(lambda (conj)
 			       (mapcar #'(lambda (lit)
 					   (if (consp lit)
 					       (gethash (car lit) *bdd-pvs-hash*)
@@ -267,7 +269,7 @@
 				 conj))
 		     list-of-conjuncts)))
     (assert (hash-table-p *pvs-bdd-hash*))
-    lit-list))
+    lit-list)))
 
 (defun add-bdd-subgoals (ps sforms conjuncts remaining-sforms)
   (let ((subgoals
