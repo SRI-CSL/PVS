@@ -536,7 +536,7 @@ system-files = README pvs pvs-tex.sub pvs.sty bin/relocate bin/pvs-platform \
 	       lib/union_adt.pvs lib/lift_adt.pvs \
                lib/pvs-language.help lib/pvs-prover.help lib/pvs.help \
                lib/pvs.grammar lib/pvs.bnf wish/pvs-support.tcl \
-               lib/strategies.lisp $(release-notes) \
+               lib/strategies.lisp lib/pvs-style.css $(release-notes) \
                wish/gray.xbm wish/sequent.xbm \
                emacs/README emacs/go-pvs.el $(pvs-emacs-src) \
                emacs/emacs-src/pvs.xpm \
