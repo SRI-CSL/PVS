@@ -86,7 +86,8 @@
   (setf (tcc-info theory) (list 0 0 0 0))
   (remove-associated-buffers (id theory))
   (setf (ppe-form theory) nil)
-  (setf (tcc-form theory) nil))
+  (setf (tcc-form theory) nil)
+  (setf (saved-context theory) nil))
 
 (defun reset-tccs-proof-status (decls)
   (dolist (d decls)
@@ -111,7 +112,8 @@
 (defmethod untypecheck-theory ((using importing))
   (setf (refers-to using) nil)
   (untypecheck-theory (theory-name using))
-  (setf (generated using) nil))
+  (setf (generated using) nil)
+  (setf (saved-context using) nil))
 
 (defmethod untypecheck-theory ((list list))
   (mapc #'untypecheck-theory list))
