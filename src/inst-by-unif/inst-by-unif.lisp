@@ -269,7 +269,8 @@
       (incomplete-inst? (cdr inst))))
 
 (defun display-substitution (fnum bndngs trms)
-  (format-if "~%Substitution:")
-  (format-if "~%   ~a: ~{~a~^, ~} --> ~{~a~^, ~}" fnum bndngs trms))
+  (unless (null trms)
+    (format-if "~%Substitution:")
+    (format-if "~%   ~a: ~{~a~^, ~} --> ~{~a~^, ~}" fnum bndngs trms)))
 
 
