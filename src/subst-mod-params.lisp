@@ -1386,8 +1386,9 @@
 				      (module decl))
 				 (get-lib-id (module decl)))
 			       (unless (or (eq type ntype)
-					   (memq (id mi)
-						 '(|equalities| |notequal|)))
+					   (not (eq (id mi) (id modinst)))
+					   (not (eq (library mi)
+						    (library modinst))))
 				 (mappings modinst)))
 			     ntype))))))))))
 
