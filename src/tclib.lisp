@@ -269,15 +269,12 @@
 		     nil))))
 	(multiple-value-bind (lib condition)
 	    (ignore-errors
-	      (if (valid-pvs-id* rawlibname)
-		  (or (directory-p (make-pathname
-				    :directory libname
-				    :defaults (format nil "~a/lib/"
-						*pvs-path*)))
-		      (make-pathname :directory libname
-				     :defaults *pvs-context-path*))
-		  (make-pathname :directory libname
-				     :defaults *pvs-context-path*)))
+	      (or (and (valid-pvs-id* rawlibname)
+		       (directory-p (merge-pathnames
+				     (string libname)
+				     (format nil "~a/lib/" *pvs-path*))))
+		  (merge-pathnames (string libname)
+				   (working-directory))))
 	  (cond (condition
 		 (values nil (format nil "~a" condition)))
 		((not (file-exists-p lib))
