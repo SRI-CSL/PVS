@@ -314,14 +314,22 @@
 ;    (lcopy ex 'expression nexpr 'type-value ntype)))
 
 (defmethod gensubst* ((ex cases-expr) substfn testfn)
-  (let ((nexpr (gensubst* (expression ex) substfn testfn))
-	(sels (gensubst* (selections ex) substfn testfn))
-	(else (gensubst* (else-part ex) substfn testfn))
-	(ntype (if (or *parsing-or-unparsing*
-		       *visible-only*)
-		   (type ex)
-		   (gensubst* (type ex) substfn testfn))))
-    (lcopy ex 'expression nexpr 'selections sels 'else-part else 'type ntype)))
+  (let ((nexpr (gensubst* (expression ex) substfn testfn)))
+    (if (or (eq nexpr (expression ex))
+	    *parsing-or-unparsing*
+	    (compatible? (type nexpr) (type (expression ex))))
+	(let ((sels (gensubst* (selections ex) substfn testfn))
+	      (else (gensubst* (else-part ex) substfn testfn))
+	      (ntype (if (or *parsing-or-unparsing*
+			     *visible-only*)
+			 (type ex)
+			 (gensubst* (type ex) substfn testfn))))
+	  (lcopy ex
+	    'expression nexpr
+	    'selections sels
+	    'else-part else
+	    'type ntype))
+	(gensubst* (translate-cases-to-if ex) substfn testfn))))
 
 (defmethod gensubst* ((ex projection-expr) substfn testfn)
   (let ((ntype (if (or *parsing-or-unparsing*
@@ -528,14 +536,16 @@
 		    (pseudo-normalize nexpr))))))
 
 (defmethod gensubst* ((name modname) substfn testfn)
-  (let ((nacts (gensubst* (actuals name) substfn testfn)))
+  (let ((nacts (gensubst* (actuals name) substfn testfn))
+	(nmaps (gensubst* (mappings name) substfn testfn)))
     (lcopy name
       'actuals (if (and nacts
 			(not (eq nacts (actuals name)))
 			(memq (id name) '(|equalities| |notequal|)))
 		   (list (mk-actual (find-supertype
 				     (type-value (car nacts)))))
-		   nacts))))
+		   nacts)
+      'mappings nmaps)))
 
 (defmethod gensubst* ((obj symbol) substfn testfn)
   (declare (ignore substfn testfn))
