@@ -5,7 +5,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Thu Oct 29 22:50:42 1998
 ;; Update Count    : 9
-;; Status          : Unknown, Use with caution!
+;; Status          : Beta
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -82,9 +82,6 @@
   (or (when (same-declaration obj ex)
 	ex)
       (call-next-method)))
-
-(defmethod occurs-in (obj (ex name-expr))
-  (call-next-method))
 
 (defmethod occurs-in ((decl field-decl) (ex name-expr))
   (when (eq decl (declaration ex))
@@ -169,81 +166,6 @@
       (if (type-value act)
 	  (occurs-in obj (type-value act))
 	  (occurs-in obj (expr act)))))
-
-;;; ps-occurs-in method
-
-(defmethod ps-occurs-in (type1 (list list))
-  (some@ #'(lambda (ty) (ps-occurs-in type1 ty)) list))
-
-(defmethod ps-occurs-in (type1 (type2 type-name))
-  (or (ps-eq type1 type2)
-      (ps-occurs-in type1 (actuals type2))))
-
-(defmethod ps-occurs-in (type1 (type2 expr-as-type))
-  (or (ps-eq type1 type2)
-      (ps-occurs-in type1 (expr type2))))
-
-(defmethod ps-occurs-in (type1 (type2 subtype))
-  (or (ps-eq type1 type2)
-      (ps-occurs-in type1 (supertype type2))))
-
-(defmethod ps-occurs-in (type1 (type2 funtype))
-  (or (ps-eq type1 type2)
-      (ps-occurs-in type1 (domain type2))
-      (ps-occurs-in type1 (range type2))))
-
-(defmethod ps-occurs-in (type1 (type2 tupletype))
-  (or (ps-eq type1 type2)
-      (ps-occurs-in type1 (types type2))))
-
-(defmethod ps-occurs-in (type1 (type2 recordtype))
-  (or (ps-eq type1 type2)
-      (some@ #'(lambda (fld) (ps-occurs-in type1 (type fld)))
-	    (fields type2))))
-
-(defmethod ps-occurs-in (type1 (act actual))
-  (ps-occurs-in type1 (expr act)))
-
-;;; Expressions
-
-(defmethod ps-occurs-in (type1 (expr number-expr))
-  nil)
-
-(defmethod ps-occurs-in (type1 (expr record-expr))
-  (ps-occurs-in type1 (assignments expr)))
-
-(defmethod ps-occurs-in (type1 (expr tuple-expr))
-  (ps-occurs-in type1 (exprs expr)))
-
-(defmethod ps-occurs-in (type1 (expr projection-application))
-  (ps-occurs-in type1 (argument expr)))
-
-(defmethod ps-occurs-in (type1 (expr field-application))
-  (ps-occurs-in type1 (argument expr)))
-
-(defmethod ps-occurs-in (type1 (expr application))
-  (or (ps-occurs-in type1 (operator expr))
-      (ps-occurs-in type1 (argument expr))))
-
-(defmethod ps-occurs-in (type1 (ex binding-expr))
-  (or (ps-occurs-in type1 (bindings ex))
-      (ps-occurs-in type1 (expression ex))))
-
-(defmethod ps-occurs-in (type1 (ex update-expr))
-  (or (ps-occurs-in type1 (expression ex))
-      (ps-occurs-in type1 (assignments ex))))
-
-(defmethod ps-occurs-in (type1 (ass assignment))
-  (or (ps-occurs-in type1 (arguments ass))
-      (ps-occurs-in type1 (expression ass))))
-
-(defmethod ps-occurs-in (type1 (expr name-expr))
-  (or (and (type-name? type1)
-	   (eq (id type1) (id expr))
-	   (ps-eq (actuals type1) (actuals expr))
-	   (eq (mod-id type1) (mod-id expr)))
-      (ps-occurs-in type1 (actuals expr))))
-
 
 (defmethod id-occurs-in (x y)
   (eql x y))
