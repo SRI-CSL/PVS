@@ -2343,43 +2343,60 @@ generated")
 	(mk-selection (mk-name-expr (id c))
 	  bindings
 	  (mk-application* (id c)
-	    (mapcar #'(lambda (a)
-			(acc-map-selection a
-					   (subst-mod-params 
-					    (type a)
-					    (module-instance adtinst))
-					   pvars ptypes fpairs adt curried?))
-	      vars))))
+	    (acc-map-selections vars (arguments c) pvars ptypes fpairs
+				adt adtinst curried?))))
       (mk-selection (mk-name-expr (id c)) nil
 	(mk-name-expr (id c)))))
 
-(defun instantiate-adt-types (type adtinst)
-  (let ((*parsing-or-unparsing* t))
-    (gensubst type
-      #'(lambda (x) (instantiate-adt-types! x adtinst))
-      #'(lambda (x) (instantiate-adt-types? x adtinst)))))
+(defun acc-map-selections (vars accs pvars ptypes fpairs adt adtinst curried?
+				&optional sels)
+  (if (null vars)
+      (nreverse sels)
+      (let ((sel (acc-map-selection (car vars)
+				    (subst-mod-params 
+				     (type (car vars))
+				     (module-instance adtinst))
+				    pvars ptypes fpairs adt curried?))
+	    (nvars (mapcar #'(lambda (v)
+			       (lcopy v
+				 'type (gensubst (type v)
+					 #'(lambda (ex) (car vars))
+					 #'(lambda (ex)
+					     (and (name-expr? ex)
+						  (eq (declaration ex)
+						      (bind-decl (car accs))))))))
+		     (cdr vars))))
+	(acc-map-selections nvars (cdr accs) pvars ptypes fpairs
+			    adt adtinst curried? (cons sel sels)))))
+  
 
-(defmethod instantiate-adt-types? ((type type-name) adtinst)
-  (same-id type adtinst))
+;; (defun instantiate-adt-types (type adtinst)
+;;   (let ((*parsing-or-unparsing* t))
+;;     (gensubst type
+;;       #'(lambda (x) (instantiate-adt-types! x adtinst))
+;;       #'(lambda (x) (instantiate-adt-types? x adtinst)))))
 
-(defmethod instantiate-adt-types? ((act actual) adtinst)
-  (and (type-value act)
-       (instantiate-adt-types? (type-value act) adtinst)))
+;; (defmethod instantiate-adt-types? ((type type-name) adtinst)
+;;   (same-id type adtinst))
 
-(defmethod instantiate-adt-types? (obj adtinst)
-  (declare (ignore obj adtinst)))
+;; (defmethod instantiate-adt-types? ((act actual) adtinst)
+;;   (and (type-value act)
+;;        (instantiate-adt-types? (type-value act) adtinst)))
 
-(defmethod instantiate-adt-types! ((type type-name) adtinst)
-  (copy-all adtinst))
+;; (defmethod instantiate-adt-types? (obj adtinst)
+;;   (declare (ignore obj adtinst)))
 
-(defmethod instantiate-adt-types! ((act actual) adtinst)
-  (let* ((ntype (instantiate-adt-types! (type-value act) adtinst))
-	 (nexpr (mk-name-expr (id ntype) (actuals ntype))))
-    (setf (types nexpr) (list 'type)
-	  (resolutions nexpr) (list (resolution ntype)))
-    (make-instance 'actual
-      'type-value ntype
-      'expr nexpr)))
+;; (defmethod instantiate-adt-types! ((type type-name) adtinst)
+;;   (copy-all adtinst))
+
+;; (defmethod instantiate-adt-types! ((act actual) adtinst)
+;;   (let* ((ntype (instantiate-adt-types! (type-value act) adtinst))
+;; 	 (nexpr (mk-name-expr (id ntype) (actuals ntype))))
+;;     (setf (types nexpr) (list 'type)
+;; 	  (resolutions nexpr) (list (resolution ntype)))
+;;     (make-instance 'actual
+;;       'type-value ntype
+;;       'expr nexpr)))
 
 (defmethod acc-map-selection (arg (te type-name) pvars ptypes fpairs
 				  adt curried?)
@@ -2812,20 +2829,36 @@ generated")
 						    :test #'same-id)
 					      (car fp)))
 		   fpairs))
-	 (vals (mapcar #'(lambda (a)
-			   (let* ((atype (typecheck
-					     (subst-map-actuals
-					      (declared-type a) mpairs)))
-				  (btype (subst-map-actuals atype fpairs)))
-			    (adt-every-rel
-			     (type a) pvars
-			     (typecheck (mk-application (id a) avar)
-			       :expected atype)
-			     (typecheck (mk-application (id a) bvar)
-			       :expected btype)
-			     ptypes fpairs adt)))
-		(arguments c))))
+	 (abds (mapcar #'bind-decl (arguments c)))
+	 (*bound-variables* (cons avar *bound-variables*))
+	 (vals (generate-every-rel-conjuncts
+		abds pvars avar bvar ptypes fpairs mpairs adt)))
     (mk-conjunction (cons arec (cons brec vals)))))
+
+(defun generate-every-rel-conjuncts (abds pvars avar bvar ptypes fpairs mpairs
+					  adt &optional conjuncts)
+  (if (null abds)
+      (nreverse conjuncts)
+      (let* ((atype (typecheck
+			(subst-map-actuals
+			 (subst-mod-params (declared-type (car abds))
+					   (module-instance (type avar)))
+			 mpairs)))
+	     (btype (subst-map-actuals atype fpairs))
+	     (aex (typecheck (mk-application (id (car abds)) avar)
+		    :expected atype))
+	     (bex (typecheck (mk-application (id (car abds)) bvar)
+		     :expected btype))
+	     (conjunct (adt-every-rel
+			(type (car abds)) pvars aex bex ptypes fpairs adt))
+	     (nabds (gensubst (cdr abds)
+		      #'(lambda (ex) aex)
+		      #'(lambda (ex)
+			  (and (name-expr? ex)
+			       (eq (declaration ex) (car abds)))))))
+	(generate-every-rel-conjuncts nabds pvars avar bvar
+				 ptypes fpairs mpairs adt
+				 (cons conjunct conjuncts)))))
 
 (defmethod adt-every-rel ((te type-name) pvars avar bvar ptypes fpairs adt)
   (cond ((member te ptypes :test #'corresponding-formals)
@@ -2871,7 +2904,7 @@ generated")
    (supertype te) pvars avar bvar ptypes fpairs adt))
 
 (defmethod adt-every-rel ((te funtype) pvars avar bvar ptypes fpairs adt)
-  (let* ((fid (make-new-variable '|x| te))
+  (let* ((fid (make-new-variable '|z| (list te avar bvar)))
 	 (fbd (make-bind-decl fid (domain te)))
 	 (fvar (mk-name-expr fid nil nil
 			     (make-resolution fbd
