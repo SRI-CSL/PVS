@@ -31,7 +31,7 @@
   (copy-lex-decls (theory old) (theory new)))
 
 (defmethod copy-lex* ((old datatype) (new datatype))
-  (copy-lex* (using new) (using new))
+  (copy-lex* (importings old) (importings new))
   (copy-lex* (constructors old) (constructors new)))
 
 ;;; inline-datatype not needed
