@@ -322,7 +322,9 @@ inst-by-unif-lisp = src/inst-by-unif/lvars-and-skofuns.lisp \
                     src/inst-by-unif/unify.lisp \
                     src/inst-by-unif/herbrandize.lisp \
                     src/inst-by-unif/inst-by-unif.lisp \
-                    src/inst-by-unif/utils.lisp
+                    src/inst-by-unif/utils.lisp \
+                    src/inst-by-unif/herbrandize.lisp \
+                    src/inst-by-unif/flatten.lisp
 
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
