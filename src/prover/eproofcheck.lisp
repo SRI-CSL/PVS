@@ -658,23 +658,42 @@
 (defun primitive-rule (name)
   (gethash name *rulebase*))
 
-;(defun formals-part (def)
-;  (cadr def))
-;
-;(defun defn-part (def)
-;  (caddr def))
+;(defun new-formula-nums (sforms par-sforms &optional (pos 1) (neg -1))
+;  (when sforms
+;    (let* ((sign (not (negation? (formula (car sforms)))))
+;	   (result
+;	    (if sign
+;		(new-formula-nums (cdr sforms) par-sforms (1+ pos) neg)
+;		(new-formula-nums (cdr sforms) par-sforms pos (1- neg)))))
+;      (if (memq (car sforms) par-sforms)
+;	  result
+;	  (if sign (cons pos result)
+;	      (cons neg result))))))
 
-(defun new-formula-nums (sforms par-sforms &optional (pos 1) (neg -1))
-  (when sforms
-    (let* ((sign (not (negation? (formula (car sforms)))))
-	   (result
-	    (if sign
-		(new-formula-nums (cdr sforms) par-sforms (1+ pos) neg)
-		(new-formula-nums (cdr sforms) par-sforms pos (1- neg)))))
-      (if (memq (car sforms) par-sforms)
+(defun new-formula-nums (goal par-goal &optional (pos 1) (neg -1))
+  (when goal
+    (let ((pos-s-forms (pos-s-forms goal))
+	  (parent-pos-s-forms (pos-s-forms par-goal))
+	  (neg-s-forms (neg-s-forms goal))
+	  (parent-neg-s-forms (neg-s-forms par-goal)))
+      (nconc (new-pos-formula-nums pos-s-forms parent-pos-s-forms pos)
+	     (new-neg-formula-nums neg-s-forms parent-neg-s-forms neg)))))
+
+(defun new-pos-formula-nums (pos-s-forms parent-pos-s-forms pos)
+  (when pos-s-forms
+    (let ((result (new-pos-formula-nums (cdr pos-s-forms)
+					parent-pos-s-forms (1+ pos))))
+      (if (memq (car pos-s-forms) parent-pos-s-forms)
 	  result
-	  (if sign (cons pos result)
-	      (cons neg result))))))
+	  (cons pos result)))))
+	      
+(defun new-neg-formula-nums (neg-s-forms parent-neg-s-forms neg)
+  (when neg-s-forms
+    (let ((result (new-neg-formula-nums (cdr neg-s-forms)
+					parent-neg-s-forms (1- neg))))
+      (if (memq (car neg-s-forms) parent-neg-s-forms)
+	  result
+	  (cons neg result)))))
 	  
 (defun strat-eval* (strat ps)
   (let* ((*ps* ps)
@@ -692,8 +711,7 @@
 	 ;(label (parent-proofstate ps))
 	 (*par-goal* (when *par-ps*
 		       (current-goal *par-ps*)))
-	 (*new-fmla-nums* (new-formula-nums (s-forms *goal*)
-					    (when *par-goal* (s-forms *par-goal*))))
+	 (*new-fmla-nums* (new-formula-nums *goal* *par-goal*))
 	 (*current-context* *current-context*)
 	 (*module-context* (copy-prover-context))
 	 (*current-theory* *current-theory*))
