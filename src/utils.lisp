@@ -1695,7 +1695,7 @@
 
 (defmethod ref-to-id ((ref number-judgement))
   (or (id ref)
-      (makesym "~r" (number (number ref)))))
+      (makesym "~r" (number (number-expr ref)))))
 
 (defmethod ref-to-id ((ref name-judgement))
   (or (id ref)

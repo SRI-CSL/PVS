@@ -250,7 +250,7 @@
 
 (defmethod compare* ((old number-judgement) (new number-judgement))
   (and (call-next-method)
-       (compare-sig (number old) (number new))))
+       (compare-sig (number-expr old) (number-expr new))))
 
 (defmethod compare* ((old name-judgement) (new name-judgement))
   (and (call-next-method)

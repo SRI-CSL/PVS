@@ -520,8 +520,8 @@
 (defun xt-const-judgement* (jdecl dtype place)
   (case (sim-term-op jdecl)
     (jnumberdecl (make-instance 'number-judgement
-		   'number (make-instance 'number-expr
-			     'number (ds-number (term-arg0 jdecl)))
+		   'number-expr (make-instance 'number-expr
+				  'number (ds-number (term-arg0 jdecl)))
 		   'declared-type dtype
 		   'chain? t
 		   'place place))

@@ -241,7 +241,7 @@
 
 (defmethod untypecheck-theory ((decl number-judgement))
   (when (next-method-p) (call-next-method))
-  (untypecheck-theory (number decl)))
+  (untypecheck-theory (number-expr decl)))
 
 (defmethod untypecheck-theory ((decl name-judgement))
   (when (next-method-p) (call-next-method))

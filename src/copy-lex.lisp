@@ -111,7 +111,7 @@
 
 (defmethod copy-lex* ((old number-judgement) (new number-judgement))
   (call-next-method)
-  (copy-lex* (number old) (number new)))
+  (copy-lex* (number-expr old) (number-expr new)))
 
 (defmethod copy-lex* ((old name-judgement) (new name-judgement))
   (call-next-method)

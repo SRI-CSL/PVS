@@ -128,7 +128,7 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod print-object ((obj number-judgement) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "#<Judgement ~a~@[: ~a~]>" (number obj) (type obj))))
+      (format stream "#<Judgement ~a~@[: ~a~]>" (number-expr obj) (type obj))))
 
 (defmethod print-object ((obj name-judgement) stream)
   (if *debugging-print-object*

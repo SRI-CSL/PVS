@@ -762,7 +762,7 @@ bind tighter.")
 	     (setq *pretty-printed-prefix* nil)))))
 
 (defmethod pp* :around ((decl number-judgement))
-  (with-slots (id number chain? declared-type semi) decl
+  (with-slots (id number-expr chain? declared-type semi) decl
     (when (or (not *pretty-printing-decl-list*)
 	      (not *pretty-printed-prefix*))
       (when *pretty-printing-decl-list*
@@ -775,7 +775,7 @@ bind tighter.")
       (write 'JUDGEMENT)
       (write-char #\space)
       (pprint-newline :miser))
-    (pp* number)
+    (pp* number-expr)
     (cond ((and chain?
 		*pretty-printing-decl-list*)
 	   (write-char #\,)

@@ -1555,8 +1555,8 @@
   (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
   (set-type (declared-type decl) nil)
   (let ((*compatible-pred-reason*
-	 (acons (number decl) "judgement" *compatible-pred-reason*)))
-    (typecheck* (number decl) (type decl) 'expr nil))
+	 (acons (number-expr decl) "judgement" *compatible-pred-reason*)))
+    (typecheck* (number-expr decl) (type decl) 'expr nil))
   (generic-judgement-warning decl)
   (add-judgement-decl decl))
 

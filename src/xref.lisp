@@ -145,7 +145,7 @@
   (generate-xref (declared-subtype d)))
 
 (defmethod generate-xref ((d number-judgement))
-  (generate-xref (number d))
+  (generate-xref (number-expr d))
   (generate-xref (declared-type d)))
 
 (defmethod generate-xref ((d name-judgement))

@@ -241,7 +241,7 @@
 
 (defmethod add-judgement-decl ((decl number-judgement))
   (assert (not *in-checker*))
-  (setf (number-judgements (number (number decl))) decl))
+  (setf (number-judgements (number (number-expr decl))) decl))
 
 ;;; Invoked from typecheck* (name-judgement)
 
@@ -390,8 +390,9 @@
   nil)
 
 (defmethod judgement-types* ((ex number-expr))
-  (append (gethash (number ex)
-		   (number-judgements-hash (judgements *current-context*)))
+  (append (mapcar #'type
+	    (gethash (number ex)
+		     (number-judgements-hash (judgements *current-context*))))
 	  (list (available-numeric-type (number ex)))))
 
 (defmethod judgement-types* ((ex name-expr))

@@ -639,7 +639,7 @@
 	     (setq *pretty-printed-prefix* nil)))))
 
 (defmethod pp-tex* :around ((decl number-judgement))
-  (with-slots (number chain? declared-type semi) decl
+  (with-slots (number-expr chain? declared-type semi) decl
     (when (or (not *pretty-printing-decl-list*)
 	      (not *pretty-printed-prefix*))
       (when *pretty-printing-decl-list*
@@ -647,7 +647,7 @@
       (pp-tex-keyword 'JUDGEMENT)
       (write-char #\space)
       (pprint-newline :miser))
-    (pp-tex* number)
+    (pp-tex* number-expr)
     (cond ((and chain?
 		*pretty-printing-decl-list*)
 	   (write-char #\,)
