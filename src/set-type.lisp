@@ -1273,7 +1273,7 @@ required a context.")
 
 (defun argtype-conversion-ranking* (argtypes num)
   (if (every #'from-conversion argtypes)
-      (* (expt 5 num)
+      (+ (* num .1)
 	 (reduce #'min
 		 (mapcar #'(lambda (aty)
 			     (locality (from-conversion aty)))
@@ -1517,7 +1517,7 @@ required a context.")
       optype
       (instantiate-operator-from-bindings*
        (let ((noptype (subst-mod-params optype (car modinsts))))
-	 (assert (fully-instantiated? noptype))
+	 #+pvsdebug (assert (fully-instantiated? noptype))
 	 noptype)
        (cdr modinsts))))
 
