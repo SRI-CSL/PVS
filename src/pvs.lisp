@@ -94,8 +94,7 @@
     (clrhash *prelude-libraries*)
     (clrhash *imported-libraries*)
     (setq *prelude-libraries-uselist* nil)
-    (setq *prelude-library-context* nil)
-    (setq *library-alist* nil)))
+    (setq *prelude-library-context* nil)))
 
 (defvar *pvs-patches-loaded* nil)
 

@@ -120,8 +120,6 @@ prelude libraries")
 
 (defvar *loaded-libraries* nil)
 
-(defvar *library-alist* nil)
-
 (defvar *pvs-modules* nil
   "The hash-table of modules known to the system in this session")
 
