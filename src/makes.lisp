@@ -404,6 +404,10 @@
 		  (make-instance 'infix-application
 		    'operator operator
 		    'argument argument))
+		 (if-expr
+		  (make-instance 'if-expr
+		    'operator operator
+		    'argument argument))
 		 (application
 		  (make-instance 'application
 		    'operator operator
@@ -428,6 +432,10 @@
 		(null (cddr args))
 		(memq id *infix-operators*))
 	   'infix-application)
+	  ((and (symbolp id)
+		(eq id 'if)
+		(= (length args) 3))
+	   'if-expr)
 	  (t 'application))))
 
 (defun mk-if-expr (cond then else)
