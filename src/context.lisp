@@ -586,7 +586,8 @@ pvs-strategies files.")
 					 (cons (reverse (cons th deps))
 					       circs))
 	    (append (circular-file-dependencies*
-		     (delete-if #'from-prelude?
+		     (delete-if #'(lambda (ith)
+				    (or (null ith) (from-prelude? ith)))
 		       (if (generated-by th)
 			   (list (get-theory (generated-by th)))
 			   (mapcar #'(lambda (th) (get-theory th))
