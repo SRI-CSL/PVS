@@ -124,7 +124,7 @@
 (defmethod replace-expr* (lhs rhs (sequent sequent) lastopinfix?)
   (declare (ignore lastopinfix?))
   (lcopy sequent
-	's-forms (replace-expr* lhs rhs (s-forms sequent) nil)))
+    's-forms (replace-expr* lhs rhs (s-forms sequent) nil)))
 
 (defmethod replace-expr* (lhs rhs (list list) lastopinfix?)
   (declare (ignore lastopinfix?))
@@ -139,7 +139,7 @@
 (defmethod replace-expr* (lhs rhs (s-formula s-formula) lastopinfix?)
   (declare (ignore lastopinfix?))
   (lcopy s-formula
-	'formula (replace-expr* lhs rhs (formula s-formula) nil)))
+    'formula (replace-expr* lhs rhs (formula s-formula) nil)))
 
 (defmethod replace-expr* (lhs rhs (expr application) lastopinfix?)
   (if (replace-eq lhs expr)
@@ -154,8 +154,7 @@
 		   (rtype (if (typep (domain stype) 'dep-binding)
 			      (substit (range stype)
 				(acons (domain stype) arg nil))
-			      ;;(range stype)
-			      (type expr)))
+			      (range stype)))
 		   (ex (lcopy expr
 			 'operator op
 			 'argument arg
@@ -174,21 +173,23 @@
   (if (replace-eq lhs expr)
       (parenthesize rhs lastopinfix?)
       (lcopy expr
-	'argument (replace-expr* lhs rhs (argument expr)
-				 nil))))
+	'argument (replace-expr* lhs rhs (argument expr) nil))))
 
 (defmethod replace-expr* (lhs rhs (expr record-expr) lastopinfix?)
   (if (replace-eq lhs expr)
       (parenthesize rhs lastopinfix?)
       (lcopy expr
-	'assignments
-	(replace-expr* lhs rhs (assignments expr) lastopinfix?))))
+	'assignments (replace-expr* lhs rhs (assignments expr) lastopinfix?))))
 
 (defmethod replace-expr* (lhs rhs (expr tuple-expr) lastopinfix?)
   (if (replace-eq lhs expr)
       (parenthesize rhs lastopinfix?)
-      (lcopy expr
-	'exprs (replace-expr* lhs rhs (exprs expr) lastopinfix?))))
+      (let ((nexprs (replace-expr* lhs rhs (exprs expr) lastopinfix?)))
+	(if (equal (exprs expr) nexprs)
+	    expr
+	    (lcopy expr
+	      'exprs nexprs
+	      'type (mk-tupletype (mapcar #'type nexprs)))))))
 
 (defmethod replace-expr* (lhs rhs (expr update-expr) lastopinfix?)
   (if (replace-eq lhs expr)
