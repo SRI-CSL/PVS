@@ -148,7 +148,7 @@ int	MyDomainIncludes(Dom1, Dom2)
      else return 1;
 }
 
-Polyhedron *MyDomainAddConstraints(Pol1, Mat2, NbMaxRays)
+Polyhedron *OldMyDomainAddConstraints(Pol1, Mat2, NbMaxRays)
      Polyhedron *Pol1;
      Matrix *Mat2;
      unsigned   NbMaxRays;
@@ -188,6 +188,70 @@ Polyhedron *MyDomainAddConstraints(Pol1, Mat2, NbMaxRays)
 	}
      }
   }
+  return PolA;
+} /* OldMyDomainAddConstraints */
+
+Polyhedron *MyDomainAddConstraints(Pol1, Mat2, NbMaxRays)
+     Polyhedron *Pol1;
+     Matrix *Mat2;
+     unsigned   NbMaxRays;
+{ Polyhedron *PolA, *PolEndA, *p1, *p2, *p3, *p2A, *p2Next;
+  int Redundant;
+
+    if (!Pol1 ) return (Polyhedron*) 0;
+    if (!Mat2 ) return Pol1;
+    if (Pol1->Dimension != Mat2->NbColumns-2)
+    {
+#ifndef NO_MESSAGES
+ fprintf(stderr,"? DomainAddConstraints: operation on different dimensions\n");
+#endif
+        Pol_status = 1;
+        return (Polyhedron*) 0;
+    }
+
+  /* copy Pol1 to PolA */
+  PolA = PolEndA = (Polyhedron *)0;
+  for (p1=Pol1; p1; p1=p1->next)
+    {  p3 = AddConstraints(Mat2->p_Init, Mat2->NbRows, p1, NbMaxRays);
+    /* does any component of PolA cover it or is covered by it? */
+    Redundant = 0;
+    p2A = (Polyhedron *)0;
+    p2 = PolA;
+    while (p2) /* for(p2=PolA; p2; p2=p2Next) */
+      {
+      if ( PolyhedronIncludes(p3, p2) ) /* p3 covers p2 */
+	{
+	{if (!p2A)
+	  PolA = p2->next;
+	else
+	  p2A->next = p2->next;
+	if (PolEndA = p2) PolEndA = p2A;
+	p2Next = p2->next;
+	Polyhedron_Free(p2);
+	p2 = p2Next;
+	}}
+      else
+	{
+	if ( PolyhedronIncludes(p2, p3) ) /* p2 covers p3 */
+	  {   Redundant = 1;
+	  Polyhedron_Free(p3);
+	  break;
+	  }
+	else p2 = p2->next;
+	}
+      }
+    if (!Redundant)
+      {   /* add p3 to PolA */
+	if (!PolEndA)
+	  {
+	  PolEndA = PolA = p3;}
+  	else
+	  { /* My_Polyhedron_Print(PolEndA); */
+	    PolEndA->next = p3;
+	    PolEndA = PolEndA->next;
+	  }
+      }
+    }
   return PolA;
 } /* MyDomainAddConstraints */
 
