@@ -69,7 +69,8 @@
 	 (*proving-tcc* T)
 	 (*generate-tccs* T)
 	 (*subgoals* T)
-	 (*current-context* (context (get-theory module-name)))
+	 (*current-theory* (get-theory module-name))
+	 (*current-context* (context *current-theory*))
 	 (expr (typecheck (pc-parse expr 'expr)
 		 :expected *boolean*))
 	 (closed-expr (universal-closure expr))
@@ -81,6 +82,22 @@
 	 (*start-proof-display* display?))
     (prove-decl expr-decl :strategy `(then (then ,strategy (postpone)) (quit)))
     *subgoals*))
+
+(defun merge-subgoals (subgoals)
+  (make!-conjunction*
+   (mapcar #'(lambda (subgoal)
+	       (let ((antes (mapcar #'(lambda (x)
+					(negate (formula x)))
+			      (neg-s-forms subgoal)))
+		     (succs (mapcar #'formula (pos-s-forms subgoal))))
+		 (if (null antes)
+		     (make!-disjunction* succs)
+		     (if (null succs)
+			 (make!-conjunction* antes)
+			 (make!-implication
+			  (make!-conjunction* antes)
+			  (make!-disjunction* succs))))))
+     (reverse subgoals))))
 
 (defvar *force-dp* nil)
 
