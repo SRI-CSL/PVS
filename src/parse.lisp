@@ -1411,6 +1411,32 @@
 	  'id '[\|\|]
 	  'place (term-place expr)))))
 
+(defun xt-paren-expr (expr)
+  (let ((args (term-args expr)))
+    (if args
+	(make-instance 'paren-vbar-expr
+	  'operator (make-instance 'name-expr
+		      'id '|(\|\|)|
+		      'place (term-place expr))
+	  'argument (xt-arg-expr args)
+	  'place (term-place expr))
+	(make-instance 'name-expr
+	  'id '|(\|\|)|
+	  'place (term-place expr)))))
+
+(defun xt-brace-expr (expr)
+  (let ((args (term-args expr)))
+    (if args
+	(make-instance 'brace-vbar-expr
+	  'operator (make-instance 'name-expr
+		      'id '{\|\|}
+		      'place (term-place expr))
+	  'argument (xt-arg-expr args)
+	  'place (term-place expr))
+	(make-instance 'name-expr
+	  'id '{\|\|}
+	  'place (term-place expr)))))
+
 (defun xt-paren-vbar-expr (expr)
   (let ((args (term-args expr)))
     (if args
