@@ -834,12 +834,7 @@
 
 (defmethod context (ignore)
   (declare (ignore ignore))
-  (let* ((mod (or *current-theory* (car (last *prelude-theories*))))
-	 (ctx (mk-context mod nil
-			  (append (prelude-libraries-uselist)
-				  (copy-tree *prelude-names*)))))
-    (setf (declaration ctx) nil)
-    ctx))
+  (copy-context *prelude-context*))
 
 (defun add-usings-to-context (modinsts)
   (when modinsts
