@@ -286,7 +286,7 @@
 		     nil))))
 	(multiple-value-bind (lib condition)
 	    (ignore-errors
-	      (or (and (valid-pvs-id* libname)
+	      (or (and (valid-pvs-id* (subseq libname 0 (1- (length libname))))
 		       (directory-p (merge-pathnames
 				     (string libname)
 				     (format nil "~a/lib/" *pvs-path*))))
