@@ -1010,14 +1010,16 @@ statement a substring of the form ([a-zA-Z][a-zA-Z] or (|."
 				'current-proof-step-face)))))))
 
 (defun hilit-proof-region (start end)
-  (delete-all-overlays)
+  (delete-hilit-overlays)
   (overlay-put (make-overlay start end) 'face 'highlight))
 
-(defun delete-all-overlays ()
+(defun delete-hilit-overlays ()
   (let ((start 0)
 	(endb (point-max)))
     (while (< start endb)
-      (mapcar 'delete-overlay (overlays-at start))
+      (dolist (overlay (overlays-at start))
+	(when (eq (plist-get (overlay-properties overlay) 'face) 'highlight)
+	  (delete-overlay overlay)))
       (setq start (1+ start)))))
 
 ;;
