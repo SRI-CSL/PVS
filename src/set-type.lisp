@@ -3032,14 +3032,20 @@ required a context.")
 (defun set-type-update-expr-datatype (expr expected)
   (let ((etypes (collect-compatible-adt-types (ptypes expr) expected)))
     (check-unique-type etypes expr expected)
-    (let* ((stype (find-update-supertype (car etypes)))
+    (let* ((stype (car etypes))
 	   (atype (if (fully-instantiated? stype)
 		      stype
 		      (instantiate-from stype expected expr)))
 	   (args-list (mapcar #'arguments (assignments expr)))
-	   (values (mapcar #'expression (assignments expr))))
-      (set-type* (expression expr) atype)
-      (set-assignment-arg-types args-list values (expression expr) expected)
+	   (values (mapcar #'expression (assignments expr)))
+	   (dtypes (collect-compatible-adt-types (ptypes (expression expr))
+						 expected))
+	   (dtype (if (fully-instantiated? (car dtypes))
+		      (car dtypes)
+		      (instantiate-from (car dtypes) expected
+					(expression expr)))))
+      (set-type* (expression expr) dtype)
+      (set-assignment-arg-types args-list values (expression expr) atype)
       (setf (type expr) atype))))
 
 (defmethod set-type* ((expr update-expr) (expected subtype))
@@ -3053,6 +3059,15 @@ required a context.")
 				(acons bd (copy expr 'parens 1) nil)))))
       (when incs
 	(generate-subtype-tcc expr expected incs)))))
+
+(defmethod find-update-supertype ((te datatype-subtype))
+  te)
+
+(defmethod find-update-supertype ((te subtype))
+  (find-update-supertype (supertype te)))
+
+(defmethod find-update-supertype ((te type-expr))
+  te)
 
 (defmethod set-type* ((expr update-expr) (expected dep-binding))
   (set-type* expr (type expected)))
