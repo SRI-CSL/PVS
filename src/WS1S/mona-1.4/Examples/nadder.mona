@@ -1,0 +1,85 @@
+var1 $;
+defaultwhere1(p) = p <= $;
+defaultwhere2(P) = P sub {0,...,$};
+
+pred at_least_two(var0 A,var0 B,var0 C) = 
+        (A & B) | (A & C) | (B & C);
+pred mod_two(var0 A,var0 B,var0 C,var0 @d) = (A <=> B <=> C <=> @d);
+
+# "high-level" description of the addition of Cin (carry in) and vectors X
+# and Y with result Z and Cout (carry out); all vectors have length $+1
+# and LSB is in position 0 (so LSB is set in X iff 0 in X) 
+
+pred add(var2 X, var2 Y, var2 Result, var0 Cin, var0 Cout) = 
+ex2 C1: (0 in C1 <=> Cin)
+      & (all1 p: 
+           mod_two(p in X, p in Y, p in C1, p in Result)
+        & (p < $ =>  ((p+1 in C1) 
+                  <=> at_least_two(p in X, p in Y, p in C1))))
+      & (Cout <=> at_least_two($ in X, $ in Y, $ in C1));
+
+# Circuit constructors as functions
+pred not(var0 A) = ~A;
+pred and(var0 A,var0 B) = A & B;
+pred or(var0 A,var0 B) =  A | B;
+pred xor(var0 A,var0 B) = or(and(not(A),B),and(A,not(B)));
+pred nor(var0 A,var0 B) = not(or(A,B));
+pred nand(var0 A,var0 B) = not(and(A,B));
+
+# Circut constructors as relations
+pred notrel(var0 A,var0 B) = not(A) <=> B;
+pred andrel(var0 A,var0 B,var0 C) = and(A,B) <=> C;
+pred orrel(var0 A,var0 B,var0 C) = or(A,B) <=> C;
+pred xorrel(var0 A,var0 B,var0 C) = xor(A,B) <=> C;
+pred norrel(var0 A,var0 B,var0 C) = nor(A,B) <=> C;
+pred nandrel(var0 A,var0 B,var0 C) = nand(A,B) <=> C;
+
+# classical one-bit full adder circuit
+pred full_adder(var0 A,var0 B,var0 @out,var0 Cin,var0 Cout) = 
+  ex0 W1, W2, W3:  
+         xorrel(A,B,W1) & xorrel(W1,Cin,@out) &
+              andrel(A,B,W2) & andrel(Cin,W1,W3) & orrel(W3,W2,Cout) ;
+
+# an n-bit adder is strung together from 1-bit adders
+pred n_bit_adder(var2 X, var2 Y, var2 Z, var0 Cin, var0 Cout) = 
+ex2 C, D: all1 p: 
+        full_adder(p in X, p in Y, p in Z, p in C, p in D)
+      & (all1 p: (p < $) => (p in D <=> (p+1 % ($+1) in C)))
+      & (0 in C <=> Cin)
+      & ($ in D <=> Cout);
+
+# theorems
+
+var2  X, Y, Z;
+assert X sub {0,...,$}; # restrict X to represent a bit-vectorsof length $+1
+assert Y sub {0,...,$};
+assert Z sub {0,...,$}; 
+var0 Cin, Cout;
+
+# is an n-bit-adder equivalent to the abstract specification of add?
+#
+add(X,Y,Z,Cin,Cout) <=> n_bit_adder(X,Y,Z,Cin,Cout);
+
+# what is 7 + 12 ? 7 is 111 and 12 is 0011 (with LSB at left);
+# so answer should be Z=11001 (19)
+#
+X = {0,1,2} & Y = {2,3} & (Cin <=> false) & add(X,Y,Z,Cin,Cout);
+
+# can output values always be calculated? (this might not be the case
+# if the circuit was overconstrained)
+#
+# all2 X, Y, Z: all0 Cin: ex0 Cout: n_bit_adder(X,Y,Z,Cin,Cout);
+
+# same question as above, but we omit the leading universal
+# quantifiers, relying instead on global variables X, Y, and Cin
+# ex2 Z: ex0 Cout: n_bit_adder(X,Y,Z,Cin,Cout);
+# 
+# all2 X, Y: all0 Cin: ex2 Z: ex0 Cout: add(X,Y,Z,Cin,Cout);
+
+# are these values unique? that is, does n_bit_adder denote a function
+# of the input values?
+#
+#   all2 X, Y: all0 Cin: ex2 Z: ex0 Cout: n_bit_adder(X,Y,Z,Cin,Cout) 
+#        &  all2 Z' : all0 Cout': 
+#              n_bit_adder(X,Y,Z',Cin,Cout') => (Z = Z' & (Cout<=> Cout'));
+

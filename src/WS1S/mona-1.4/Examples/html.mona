@@ -1,0 +1,354 @@
+# Module is html
+
+ws2s;
+
+guide a->(dummy,b), b->(b,b), dummy->(dummy,dummy);	
+universe UNI_H:1, u_dummy:0;
+
+# Skeleton
+
+var2 [UNI_H] $ where all1 p: (p in $) => (p^ in $);
+defaultwhere1(p) = p in $;
+
+
+# Type environment
+
+var2 T0,T1;
+var2 G0,G1,G2;
+
+# Type predicates
+
+macro NULL(var1 p) = 
+   (p notin T0) & (p notin T1) &
+   (p notin G0) & (p notin G1) & (p notin G2);
+
+macro TYPE_Bool(var1 p) =
+   (p notin T0) & (p notin T1);
+
+macro TYPE0_Bool(var0 t0,t1) =
+   ~t0 & ~t1;
+
+macro TYPE_HTML(var1 p) =
+   (p in T0) & (p notin T1);
+
+macro TYPE0_HTML(var0 t0,t1) =
+   t0 & ~t1;
+
+macro TYPE_LIST(var1 p) =
+   (p notin T0) & (p in T1);
+
+macro TYPE0_LIST(var0 t0,t1) =
+   ~t0 & t1;
+
+macro TYPE_URL(var1 p) =
+   (p in T0) & (p in T1);
+
+macro TYPE0_URL(var0 t0,t1) =
+   t0 & t1;
+
+macro GROUP_HTML_word(var1 p,var2 G0,G1,G2) =
+   (p notin G0) & (p notin G1) & (p notin G2);
+
+macro GROUP0_HTML_word(var0 g0,g1,g2) =
+   ~g0 & ~g1 & ~g2;
+
+macro GROUP_HTML_anchor(var1 p,var2 G0,G1,G2) =
+   (p in G0) & (p notin G1) & (p notin G2);
+
+macro GROUP0_HTML_anchor(var0 g0,g1,g2) =
+   g0 & ~g1 & ~g2;
+
+macro GROUP_HTML_bold(var1 p,var2 G0,G1,G2) =
+   (p notin G0) & (p in G1) & (p notin G2);
+
+macro GROUP0_HTML_bold(var0 g0,g1,g2) =
+   ~g0 & g1 & ~g2;
+
+macro GROUP_HTML_italic(var1 p,var2 G0,G1,G2) =
+   (p in G0) & (p in G1) & (p notin G2);
+
+macro GROUP0_HTML_italic(var0 g0,g1,g2) =
+   g0 & g1 & ~g2;
+
+macro GROUP_HTML_paragraph(var1 p,var2 G0,G1,G2) =
+   (p notin G0) & (p notin G1) & (p in G2);
+
+macro GROUP0_HTML_paragraph(var0 g0,g1,g2) =
+   ~g0 & ~g1 & g2;
+
+macro GROUP_HTML_rule(var1 p,var2 G0,G1,G2) =
+   (p in G0) & (p notin G1) & (p in G2);
+
+macro GROUP0_HTML_rule(var0 g0,g1,g2) =
+   g0 & ~g1 & g2;
+
+macro GROUP_HTML_list(var1 p,var2 G0,G1,G2) =
+   (p notin G0) & (p in G1) & (p in G2);
+
+macro GROUP0_HTML_list(var0 g0,g1,g2) =
+   ~g0 & g1 & g2;
+
+macro GROUP_HTML(var1 p,var2 G0,G1,G2) =
+   GROUP_HTML_word(p,G0,G1,G2) | GROUP_HTML_anchor(p,G0,G1,G2) | GROUP_HTML_bold(p,G0,G1,G2) | GROUP_HTML_italic(p,G0,G1,G2) | GROUP_HTML_paragraph(p,G0,G1,G2) | GROUP_HTML_rule(p,G0,G1,G2) | GROUP_HTML_list(p,G0,G1,G2);
+
+macro GROUP0_HTML(var0 g0,g1,g2) =
+   GROUP0_HTML_word(g0,g1,g2) | GROUP0_HTML_anchor(g0,g1,g2) | GROUP0_HTML_bold(g0,g1,g2) | GROUP0_HTML_italic(g0,g1,g2) | GROUP0_HTML_paragraph(g0,g1,g2) | GROUP0_HTML_rule(g0,g1,g2) | GROUP0_HTML_list(g0,g1,g2);
+
+macro GROUP_LIST_empty(var1 p,var2 G0) =
+   (p notin G0);
+
+macro GROUP0_LIST_empty(var0 g0) =
+   ~g0;
+
+macro GROUP_LIST_entity(var1 p,var2 G0) =
+   (p in G0);
+
+macro GROUP0_LIST_entity(var0 g0) =
+   g0;
+
+macro GROUP_LIST(var1 p,var2 G0) =
+   GROUP_LIST_empty(p,G0) | GROUP_LIST_entity(p,G0);
+
+macro GROUP0_LIST(var0 g0) =
+   GROUP0_LIST_empty(g0) | GROUP0_LIST_entity(g0);
+
+macro SCALAR_Bool_false_true(var1 p, var2 S0) =
+   true;
+
+macro SCALAR0_Bool_false_true(var0 s0) =
+   true;
+
+macro SCALAR_Bool(var1 p, var2 S0) =
+   SCALAR_Bool_false_true(p,S0);
+
+macro SCALAR0_Bool(var0 s0) =
+   SCALAR0_Bool_false_true(s0);
+
+macro SUCC_HTML_word(var1 p) =
+   (p.0 notin $) & (p.1 notin $);
+
+macro SUCC_HTML_anchor(var1 p) =
+   (p.11 notin $) &   
+   (p.1 in $) & NULL(p.1) & (p.0 in $) & TYPE_URL(p.0) & (p.10 in $) & TYPE_HTML(p.10);
+
+macro SUCC_HTML_bold(var1 p) =
+   (p.1 notin $) &   (p.0 in $) & TYPE_HTML(p.0);
+
+macro SUCC_HTML_italic(var1 p) =
+   (p.1 notin $) &   (p.0 in $) & TYPE_HTML(p.0);
+
+macro SUCC_HTML_paragraph(var1 p) =
+   (p.0 notin $) & (p.1 notin $);
+
+macro SUCC_HTML_rule(var1 p) =
+   (p.0 notin $) & (p.1 notin $);
+
+macro SUCC_HTML_list(var1 p) =
+   (p.1 notin $) &   (p.0 in $) & TYPE_LIST(p.0);
+
+macro SUCC_LIST_empty(var1 p) =
+   (p.0 notin $) & (p.1 notin $);
+
+macro SUCC_LIST_entity(var1 p) =
+   (p.11 notin $) &   
+   (p.1 in $) & NULL(p.1) & (p.0 in $) & TYPE_HTML(p.0) & (p.10 in $) & TYPE_LIST(p.10);
+
+macro SUCC_URL_url(var1 p) =
+   (p.0 notin $) & (p.1 notin $);
+
+macro EQ0_HTML(var0 g0_l,g1_l,g2_l,g0_r,g1_r,g2_r) = (
+   (g0_l <=> g0_r) & (g1_l <=> g1_r) & (g2_l <=> g2_r)
+);
+
+macro WF_HTML(var1 p,var2 G0,G1,G2) = TYPE_HTML(p) & (
+   (GROUP_HTML_word(p,G0,G1,G2) & SUCC_HTML_word(p))
+  |
+   (GROUP_HTML_anchor(p,G0,G1,G2) & SUCC_HTML_anchor(p))
+  |
+   (GROUP_HTML_bold(p,G0,G1,G2) & SUCC_HTML_bold(p))
+  |
+   (GROUP_HTML_italic(p,G0,G1,G2) & SUCC_HTML_italic(p))
+  |
+   (GROUP_HTML_paragraph(p,G0,G1,G2) & SUCC_HTML_paragraph(p))
+  |
+   (GROUP_HTML_rule(p,G0,G1,G2) & SUCC_HTML_rule(p))
+  |
+   (GROUP_HTML_list(p,G0,G1,G2) & SUCC_HTML_list(p))
+);
+
+macro WF0_HTML(var0 t0,t1,g0,g1,g2) =
+   TYPE0_HTML(t0,t1) & (
+   (GROUP0_HTML_word(g0,g1,g2))
+  |
+   (GROUP0_HTML_anchor(g0,g1,g2))
+  |
+   (GROUP0_HTML_bold(g0,g1,g2))
+  |
+   (GROUP0_HTML_italic(g0,g1,g2))
+  |
+   (GROUP0_HTML_paragraph(g0,g1,g2))
+  |
+   (GROUP0_HTML_rule(g0,g1,g2))
+  |
+   (GROUP0_HTML_list(g0,g1,g2))
+);
+
+macro EQ0_LIST(var0 g0_l,g0_r) = (
+   (g0_l <=> g0_r)
+);
+
+macro WF_LIST(var1 p,var2 G0) = TYPE_LIST(p) & (
+   (GROUP_LIST_empty(p,G0) & SUCC_LIST_empty(p))
+  |
+   (GROUP_LIST_entity(p,G0) & SUCC_LIST_entity(p))
+);
+
+macro WF0_LIST(var0 t0,t1,g0) =
+   TYPE0_LIST(t0,t1) & (
+   (GROUP0_LIST_empty(g0))
+  |
+   (GROUP0_LIST_entity(g0))
+);
+
+macro WF_URL(var1 p) = TYPE_URL(p) & (
+   (SUCC_URL_url(p))
+);
+
+macro WF0_URL(var0 t0,t1) =
+   TYPE0_URL(t0,t1);
+
+macro TREE_HTML(var1 p,var2 G0,G1,G2) =
+   TYPE_HTML(p) & (all1 [p] q: (p<=q) => (NULL(q) | WF_HTML(q,G0,G1,G2) | WF_LIST(q,G0) | WF_URL(q)));
+
+macro SKEL_HTML(var1 p,var2 G0_f,G1_f,G2_f) =
+   all1 [p] q: (p<=q) => (
+   (TYPE_HTML(q) => (
+      (GROUP_HTML_word(q,G0,G1,G2) <=> GROUP_HTML_word(q,G0_f,G1_f,G2_f)) &
+      (GROUP_HTML_anchor(q,G0,G1,G2) <=> GROUP_HTML_anchor(q,G0_f,G1_f,G2_f)) &
+      (GROUP_HTML_bold(q,G0,G1,G2) <=> GROUP_HTML_bold(q,G0_f,G1_f,G2_f)) &
+      (GROUP_HTML_italic(q,G0,G1,G2) <=> GROUP_HTML_italic(q,G0_f,G1_f,G2_f)) &
+      (GROUP_HTML_paragraph(q,G0,G1,G2) <=> GROUP_HTML_paragraph(q,G0_f,G1_f,G2_f)) &
+      (GROUP_HTML_rule(q,G0,G1,G2) <=> GROUP_HTML_rule(q,G0_f,G1_f,G2_f)) &
+      (GROUP_HTML_list(q,G0,G1,G2) <=> GROUP_HTML_list(q,G0_f,G1_f,G2_f))
+   )) &
+   (TYPE_LIST(q) => (
+      (GROUP_LIST_empty(q,G0) <=> GROUP_LIST_empty(q,G0_f)) &
+      (GROUP_LIST_entity(q,G0) <=> GROUP_LIST_entity(q,G0_f))
+   )) &
+   (TYPE_URL(q) => (
+      true
+   ))
+);
+
+macro TREE_LIST(var1 p,var2 G0,G1,G2) =
+   TYPE_LIST(p) & (all1 [p] q: (p<=q) => (NULL(q) | WF_LIST(q,G0) | WF_HTML(q,G0,G1,G2) | WF_URL(q)));
+
+macro SKEL_LIST(var1 p,var2 G0_f,G1_f,G2_f) =
+   all1 [p] q: (p<=q) => (
+   (TYPE_LIST(q) => (
+      (GROUP_LIST_empty(q,G0) <=> GROUP_LIST_empty(q,G0_f)) &
+      (GROUP_LIST_entity(q,G0) <=> GROUP_LIST_entity(q,G0_f))
+   )) &
+   (TYPE_HTML(q) => (
+      (GROUP_HTML_word(q,G0,G1,G2) <=> GROUP_HTML_word(q,G0_f,G1_f,G2_f)) &
+      (GROUP_HTML_anchor(q,G0,G1,G2) <=> GROUP_HTML_anchor(q,G0_f,G1_f,G2_f)) &
+      (GROUP_HTML_bold(q,G0,G1,G2) <=> GROUP_HTML_bold(q,G0_f,G1_f,G2_f)) &
+      (GROUP_HTML_italic(q,G0,G1,G2) <=> GROUP_HTML_italic(q,G0_f,G1_f,G2_f)) &
+      (GROUP_HTML_paragraph(q,G0,G1,G2) <=> GROUP_HTML_paragraph(q,G0_f,G1_f,G2_f)) &
+      (GROUP_HTML_rule(q,G0,G1,G2) <=> GROUP_HTML_rule(q,G0_f,G1_f,G2_f)) &
+      (GROUP_HTML_list(q,G0,G1,G2) <=> GROUP_HTML_list(q,G0_f,G1_f,G2_f))
+   )) &
+   (TYPE_URL(q) => (
+      true
+   ))
+);
+
+macro TREE_URL(var1 p) =
+   TYPE_URL(p) & (all1 [p] q: (p<=q) => (NULL(q) | WF_URL(q)));
+
+macro SKEL_URL(var1 p) =
+   all1 [p] q: (p<=q) => (
+   (TYPE_URL(q) => (
+      true
+   ))
+);
+
+macro DOT_u(var1 p,var1 q) =
+   (TYPE_HTML(p) & GROUP_HTML_word(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_anchor(p,G0,G1,G2) & (q=p.0))
+ | (TYPE_HTML(p) & GROUP_HTML_bold(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_italic(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_paragraph(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_rule(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_list(p,G0,G1,G2) & (q=p));
+
+macro DOT_a(var1 p,var1 q) =
+   (TYPE_HTML(p) & GROUP_HTML_word(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_anchor(p,G0,G1,G2) & (q=p.10))
+ | (TYPE_HTML(p) & GROUP_HTML_bold(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_italic(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_paragraph(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_rule(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_list(p,G0,G1,G2) & (q=p));
+
+macro DOT_b(var1 p,var1 q) =
+   (TYPE_HTML(p) & GROUP_HTML_word(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_anchor(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_bold(p,G0,G1,G2) & (q=p.0))
+ | (TYPE_HTML(p) & GROUP_HTML_italic(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_paragraph(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_rule(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_list(p,G0,G1,G2) & (q=p));
+
+macro DOT_i(var1 p,var1 q) =
+   (TYPE_HTML(p) & GROUP_HTML_word(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_anchor(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_bold(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_italic(p,G0,G1,G2) & (q=p.0))
+ | (TYPE_HTML(p) & GROUP_HTML_paragraph(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_rule(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_list(p,G0,G1,G2) & (q=p));
+
+macro DOT_l(var1 p,var1 q) =
+   (TYPE_HTML(p) & GROUP_HTML_word(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_anchor(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_bold(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_italic(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_paragraph(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_rule(p,G0,G1,G2) & (q=p))
+ | (TYPE_HTML(p) & GROUP_HTML_list(p,G0,G1,G2) & (q=p.0));
+
+macro DOT_h(var1 p,var1 q) =
+   (TYPE_LIST(p) & GROUP_LIST_empty(p,G0) & (q=p))
+ | (TYPE_LIST(p) & GROUP_LIST_entity(p,G0) & (q=p.0));
+
+macro DOT_next(var1 p,var1 q) =
+   (TYPE_LIST(p) & GROUP_LIST_empty(p,G0) & (q=p))
+ | (TYPE_LIST(p) & GROUP_LIST_entity(p,G0) & (q=p.10));
+
+macro DOT(var1 p,var1 q) =
+   DOT_u(p,q) | DOT_a(p,q) | DOT_b(p,q) | DOT_i(p,q) | DOT_l(p,q) | DOT_h(p,q) | DOT_next(p,q);
+
+macro UP(var1 p,var1 q) =
+   (root(p,[p]) & p=q) | DOT(q,p);
+
+# Free variables
+
+assert ex1 [UNI_H] p: root(p,[p]) & TREE_HTML(p,G0,G1,G2);
+
+# Functions
+
+pred FUNC_NoNestedAnchors(universe UNI_h,var2 G0_h,G1_h,G2_h) =
+(all1 [UNI_h] POS_p: (TYPE_HTML(POS_p)) => ((ex0 t0_1,t1_1,g0_1,g1_1,g2_1: ex0 t0_4,t1_4,g0_4,g1_4,g2_4: 
+(ex1  [UNI_h] POS3: (POS3=POS_p) & (t1_1<=>(POS3 in T1)) & (t0_1<=>(POS3 in T0)) & 
+(g2_1<=>(POS3 in G2)) & (g1_1<=>(POS3 in G1)) & (g0_1<=>(POS3 in G0))) & ((TYPE0_HTML(t0_4,t1_4) 
+& g0_4 & ~g1_4 & ~g2_4)) & EQ0_HTML(g0_1,g1_1,g2_1,g0_4,g1_4,g2_4)) => (~(ex1 [UNI_h] 
+POS_q: (TYPE_HTML(POS_q)) & ((ex1 [UNI_h] POS6: ex1 [UNI_h] POS8: (POS6=POS_p) & 
+(POS8=POS_q) & (POS6 < POS8)) & (ex0 t0_9,t1_9,g0_9,g1_9,g2_9: ex0 t0_12,t1_12,g0_12,g1_12,g2_12: 
+(ex1 [UNI_h] POS11: (POS11=POS_q) & (t1_9<=>(POS11 in T1)) & (t0_9<=>(POS11 in T0)) 
+& (g2_9<=>(POS11 in G2)) & (g1_9<=>(POS11 in G1)) & (g0_9<=>(POS11 in G0))) & ((TYPE0_HTML(t0_12,t1_12) 
+& g0_12 & ~g1_12 & ~g2_12)) & EQ0_HTML(g0_9,g1_9,g2_9,g0_12,g1_12,g2_12)))))));
+
+# Main formula
+
+export("html.gta",(ex2 G0_13,G1_13,G2_13: ((G0_13=G0) & (G1_13=G1) & (G2_13=G2)) & FUNC_NoNestedAnchors(UNI_H,G0_13,G1_13,G2_13)));

@@ -1,0 +1,105 @@
+#pragma interface
+#pragma interface
+ast.o: ast.cpp ast.h ident.h deque.h codetable.h code.h signature.h \
+  st_dfa.h ../DFA/dfa.h ../BDD/bdd.h printline.h st_gta.h ../GTA/gta.h \
+  string.h symboltable.h predlib.h lib.h
+#pragma interface
+#pragma interface
+code.o: code.cpp codetable.h code.h deque.h signature.h ident.h st_dfa.h \
+  ../DFA/dfa.h ../BDD/bdd.h printline.h st_gta.h ../GTA/gta.h string.h \
+  offsets.h predlib.h ast.h symboltable.h env.h lib.h ../Mem/mem.h
+offsets.o: offsets.cpp offsets.h deque.h
+#pragma interface
+#pragma interface
+st_dfa.o: st_dfa.cpp st_dfa.h ../DFA/dfa.h ../BDD/bdd.h ident.h deque.h \
+  printline.h env.h offsets.h timer.h codetable.h code.h signature.h \
+  st_gta.h ../GTA/gta.h string.h
+#pragma interface
+#pragma interface
+predlib.o: predlib.cpp offsets.h deque.h predlib.h ast.h ident.h \
+  codetable.h code.h signature.h st_dfa.h ../DFA/dfa.h ../BDD/bdd.h \
+  printline.h st_gta.h ../GTA/gta.h string.h symboltable.h
+signature.o: signature.cpp signature.h ident.h deque.h offsets.h
+#pragma interface
+#pragma interface
+symboltable.o: symboltable.cpp symboltable.h deque.h ast.h ident.h \
+  codetable.h code.h signature.h st_dfa.h ../DFA/dfa.h ../BDD/bdd.h \
+  printline.h st_gta.h ../GTA/gta.h string.h offsets.h
+#pragma interface
+#pragma interface
+untyped.o: untyped.cpp untyped.h ast.h ident.h deque.h codetable.h code.h \
+  signature.h st_dfa.h ../DFA/dfa.h ../BDD/bdd.h printline.h st_gta.h \
+  ../GTA/gta.h string.h symboltable.h predlib.h env.h
+#pragma interface
+#pragma interface
+printline.o: printline.cpp printline.h deque.h
+timer.o: timer.cpp timer.h
+#pragma interface
+#pragma interface
+st_gta.o: st_gta.cpp st_gta.h ../GTA/gta.h ../BDD/bdd.h ident.h deque.h \
+  printline.h env.h offsets.h timer.h code.h signature.h st_dfa.h \
+  ../DFA/dfa.h string.h symboltable.h ast.h codetable.h
+#pragma interface
+#pragma interface
+#pragma interface "new"
+#pragma interface "exception"
+mona.o: mona.cpp env.h untyped.h ast.h ident.h deque.h codetable.h code.h \
+  signature.h st_dfa.h ../DFA/dfa.h ../BDD/bdd.h printline.h st_gta.h \
+  ../GTA/gta.h string.h symboltable.h predlib.h offsets.h timer.h lib.h \
+  ../Mem/mem.h
+#pragma interface
+#pragma interface
+ident.o: ident.cpp ident.h deque.h offsets.h symboltable.h ast.h \
+  codetable.h code.h signature.h st_dfa.h ../DFA/dfa.h ../BDD/bdd.h \
+  printline.h st_gta.h ../GTA/gta.h string.h
+#pragma interface
+#pragma interface
+#pragma interface
+lib.o: lib.cpp lib.h ident.h deque.h signature.h symboltable.h ast.h \
+  codetable.h code.h st_dfa.h ../DFA/dfa.h ../BDD/bdd.h printline.h \
+  st_gta.h ../GTA/gta.h string.h env.h
+#pragma interface
+#pragma interface
+reduce.o: reduce.cpp codetable.h code.h deque.h signature.h ident.h \
+  st_dfa.h ../DFA/dfa.h ../BDD/bdd.h printline.h st_gta.h ../GTA/gta.h \
+  string.h env.h
+#pragma interface
+#pragma interface
+freevars.o: freevars.cpp ast.h ident.h deque.h codetable.h code.h \
+  signature.h st_dfa.h ../DFA/dfa.h ../BDD/bdd.h printline.h st_gta.h \
+  ../GTA/gta.h string.h symboltable.h predlib.h
+#pragma interface
+#pragma interface
+astdump.o: astdump.cpp ast.h ident.h deque.h codetable.h code.h \
+  signature.h st_dfa.h ../DFA/dfa.h ../BDD/bdd.h printline.h st_gta.h \
+  ../GTA/gta.h string.h symboltable.h
+#pragma interface
+#pragma interface
+codetable.o: codetable.cpp codetable.h code.h deque.h signature.h ident.h \
+  st_dfa.h ../DFA/dfa.h ../BDD/bdd.h printline.h st_gta.h ../GTA/gta.h \
+  string.h env.h ../Mem/mem.h
+#pragma interface
+#pragma interface
+codedump.o: codedump.cpp code.h deque.h signature.h ident.h st_dfa.h \
+  ../DFA/dfa.h ../BDD/bdd.h printline.h st_gta.h ../GTA/gta.h string.h \
+  offsets.h symboltable.h ast.h codetable.h env.h ../Mem/mem.h
+#pragma interface
+#pragma interface
+makeguide.o: makeguide.cpp untyped.h ast.h ident.h deque.h codetable.h \
+  code.h signature.h st_dfa.h ../DFA/dfa.h ../BDD/bdd.h printline.h \
+  st_gta.h ../GTA/gta.h string.h symboltable.h ../Mem/mem.h
+#pragma interface
+#pragma interface
+codesubst.o: codesubst.cpp codetable.h code.h deque.h signature.h ident.h \
+  st_dfa.h ../DFA/dfa.h ../BDD/bdd.h printline.h st_gta.h ../GTA/gta.h \
+  string.h
+#pragma interface
+#pragma interface
+scanner.o: scanner.cpp untyped.h ast.h ident.h deque.h codetable.h code.h \
+  signature.h st_dfa.h ../DFA/dfa.h ../BDD/bdd.h printline.h st_gta.h \
+  ../GTA/gta.h string.h symboltable.h parser.h lib.h env.h
+#pragma interface
+#pragma interface
+parser.o: parser.cpp untyped.h ast.h ident.h deque.h codetable.h code.h \
+  signature.h st_dfa.h ../DFA/dfa.h ../BDD/bdd.h printline.h st_gta.h \
+  ../GTA/gta.h string.h symboltable.h env.h

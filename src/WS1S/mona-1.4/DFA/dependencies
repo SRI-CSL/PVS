@@ -1,0 +1,13 @@
+dfa.o: dfa.c dfa.h ../BDD/bdd.h ../BDD/hash.h ../Mem/mem.h
+basic.o: basic.c dfa.h ../BDD/bdd.h ../Mem/mem.h
+printdfa.o: printdfa.c dfa.h ../BDD/bdd.h ../Mem/mem.h
+makebasic.o: makebasic.c dfa.h ../BDD/bdd.h ../BDD/bdd_internal.h \
+  ../Mem/mem.h
+external.o: external.c dfa.h ../BDD/bdd.h ../BDD/bdd_external.h \
+  ../Mem/mem.h
+product.o: product.c dfa.h ../BDD/bdd.h ../BDD/hash.h ../Mem/mem.h
+project.o: project.c dfa.h ../BDD/bdd.h ../BDD/hash.h ../Mem/mem.h
+minimize.o: minimize.c dfa.h ../BDD/bdd.h ../BDD/hash.h ../Mem/mem.h
+quotient.o: quotient.c dfa.h ../BDD/bdd.h ../BDD/hash.h ../Mem/mem.h
+prefix.o: prefix.c dfa.h ../BDD/bdd.h ../Mem/mem.h
+analyze.o: analyze.c dfa.h ../BDD/bdd.h ../Mem/mem.h

@@ -1,0 +1,2 @@
+dlmalloc.o: dlmalloc.c dlmalloc.h
+mem.o: mem.c dlmalloc.h

@@ -1,0 +1,36 @@
+VERSION	= 1.4
+RELEASE = 3
+
+# If DEVEL=yes, debugging informations, warnings and assertions are enabled
+DEVEL	= no
+
+# If PURIFY=yes, compilation will go through purify
+PURIFY	= no
+
+# If GPROF=yes, compilation will include profiler information
+GPROF	= no
+
+# Choice of C++ and C compilers and archiver
+CXX	= g++
+CC	= gcc
+AR	= ar
+
+
+ifeq ($(DEVEL),yes)
+ # Compiler flags in development mode 
+ CFLAGS	= -ggdb -Wall
+# CFLAGS += -DDEBUG
+else
+ # Compiler flags in release mode
+ CFLAGS	= -O3 -DNDEBUG
+endif  
+
+ifeq ($(GPROF),yes)
+ # Compiler flags for profiling
+ CFLAGS	+= -pg -O3
+endif  
+
+ifeq ($(shell uname -s),IRIX)
+ # Special linker flags for SGI/IRIX
+ LDFLAGS += -Wl,-woff,131,-woff,84
+endif

@@ -1,0 +1,23 @@
+external.o: external.c gta.h ../BDD/bdd.h ../BDD/bdd_external.h \
+  ../Mem/mem.h
+analyze.o: analyze.c ../Mem/mem.h ../BDD/bdd.h gta.h
+negation.o: negation.c gta.h ../BDD/bdd.h
+copy.o: copy.c ../Mem/mem.h gta.h ../BDD/bdd.h
+replace_indices.o: replace_indices.c gta.h ../BDD/bdd.h
+printgta.o: printgta.c gta.h ../BDD/bdd.h
+gta.o: gta.c ../Mem/mem.h gta.h ../BDD/bdd.h
+product.o: product.c ../Mem/mem.h gta.h ../BDD/bdd.h dyn.h pairhash.h
+pairhash.o: pairhash.c pairhash.h ../Mem/mem.h gta.h ../BDD/bdd.h
+project.o: project.c ../Mem/mem.h gta.h ../BDD/bdd.h dyn.h projset.h \
+  subsets.h
+minimize.o: minimize.c ../Mem/mem.h gta.h ../BDD/bdd.h
+subsets.o: subsets.c ../Mem/mem.h subsets.h gta.h ../BDD/bdd.h
+projset.o: projset.c ../Mem/mem.h projset.h gta.h ../BDD/bdd.h
+basic.o: basic.c ../Mem/mem.h gta.h ../BDD/bdd.h
+makebasic.o: makebasic.c ../Mem/mem.h gta.h ../BDD/bdd.h
+reachable.o: reachable.c ../Mem/mem.h gta.h ../BDD/bdd.h dyn.h
+dyn.o: dyn.c ../Mem/mem.h dyn.h gta.h ../BDD/bdd.h ../BDD/bdd_dump.h
+restrict.o: restrict.c gta.h ../BDD/bdd.h
+analyze_acceptance.o: analyze_acceptance.c ../Mem/mem.h gta.h \
+  ../BDD/bdd.h
+types.o: types.c gta.h ../BDD/bdd.h ../Mem/mem.h

@@ -1,0 +1,100 @@
+#  while true do begin
+#       <noncritical section>
+#        b_i := true;
+#       while k != i do begin
+#            while b_j do skip;
+#            k := i;
+#       end;
+#       <critical section>
+#       b_i := false;
+#  end;
+
+var1 $;
+var2 PC1', PC1'', PC1''', PC2', PC2'', PC2''', b1, b2, K;
+
+pred p1_at_line_1(var1 t) = t notin PC1' & t notin PC1'' & t notin PC1''';
+pred p1_at_line_2(var1 t) = t notin PC1' & t notin PC1'' & t in PC1''';
+pred p1_at_line_3(var1 t) = t notin PC1' & t in PC1'' & t notin PC1''';
+pred p1_at_line_4(var1 t) = t notin PC1' & t in PC1'' & t in PC1''';
+pred p1_at_line_5(var1 t) = t in PC1' & t notin PC1'' & t notin PC1''';
+pred p1_at_line_6(var1 t) = t in PC1' & t notin PC1'' & t in PC1''';
+pred p1_at_line_7(var1 t) = t in PC1' & t in PC1'' & t notin PC1''';
+
+pred p2_at_line_1(var1 t) = t notin PC2' & t notin PC2'' & t notin PC2''';
+pred p2_at_line_2(var1 t) = t notin PC2' & t notin PC2'' & t in PC2''';
+pred p2_at_line_3(var1 t) = t notin PC2' & t in PC2'' & t notin PC2''';
+pred p2_at_line_4(var1 t) = t notin PC2' & t in PC2'' & t in PC2''';
+pred p2_at_line_5(var1 t) = t in PC2' & t notin PC2'' & t notin PC2''';
+pred p2_at_line_6(var1 t) = t in PC2' & t notin PC2'' & t in PC2''';
+pred p2_at_line_7(var1 t) = t in PC2' & t in PC2'' & t notin PC2''';
+
+pred b1_false(var1 t) = t notin b1;
+pred b1_true(var1 t) = t in b1;
+
+pred b2_false(var1 t) = t notin b2;
+pred b2_true(var1 t) = t in b2;
+
+pred K_is_2(var1 t) = t notin K;
+pred K_is_1(var1 t) = t in K;
+
+pred unchanged(var1 t, var2 Track) = t in Track <=> t+1 in Track;
+pred unchanged_PC1(var1 t)   = unchanged(t, PC1') & 
+		     unchanged(t, PC1'') & 
+		     unchanged(t, PC1''');
+pred unchanged_PC2(var1 t)   = unchanged(t, PC2') & 
+		     unchanged(t, PC2'') & 
+		     unchanged(t, PC2''');
+pred unchanged_K(var1 t)     = unchanged(t, K);
+pred unchanged_b1(var1 t)    = unchanged(t, b1);
+pred unchanged_b2(var1 t)    = unchanged(t, b2);
+pred unchanged_vars(var1 t)  = unchanged_K(t) & unchanged_b1(t) & unchanged_b2(t);
+
+pred p1_proc_step(var1 t)      = 
+                     (p1_at_line_1(t) => p1_at_line_2(t+1) & unchanged_vars(t)) &
+		     (p1_at_line_2(t) => p1_at_line_3(t+1) & b1_true(t+1) & 
+				  unchanged_K(t) & unchanged_b2(t)) &
+		     (p1_at_line_3(t) => (unchanged_vars(t) &
+                                  (K_is_1(t) =>
+			          p1_at_line_6(t+1)) &
+                                  (K_is_2(t) =>
+			          p1_at_line_4(t+1)))) &
+		     (p1_at_line_4(t) => (unchanged_vars(t) &
+                                  (b2_false(t) =>
+		                  p1_at_line_5(t+1)) &
+                                  (~b2_false(t) =>
+			          p1_at_line_4(t+1)))) &
+		     (p1_at_line_5(t) => K_is_1(t+1) &
+				  unchanged_b1(t) & unchanged_b2(t) &
+                                  p1_at_line_3(t+1)) &
+		     (p1_at_line_6(t) => p1_at_line_7(t+1) & unchanged_vars(t)) &
+		     (p1_at_line_7(t) => p1_at_line_1(t+1) & b1_false(t+1) &
+				  unchanged_K(t) & unchanged_b2(t));
+
+pred p2_proc_step(var1 t)      = 
+                     (p2_at_line_1(t) => p2_at_line_2(t+1) & unchanged_vars(t)) &
+		     (p2_at_line_2(t) => p2_at_line_3(t+1) & b2_true(t+1) & 
+				  unchanged_K(t) & unchanged_b1(t)) &
+		     (p2_at_line_3(t) => (unchanged_vars(t) &
+                                  (K_is_2(t) =>
+			          p2_at_line_6(t+1)) &
+                                  (K_is_1(t) =>
+			          p2_at_line_4(t+1)))) &
+		     (p2_at_line_4(t) => (unchanged_vars(t) &
+                                  (b1_false(t) =>
+			          p2_at_line_5(t+1)) &
+                                  (~b1_false(t) =>
+                                  p2_at_line_4(t+1)))) &
+		     (p2_at_line_5(t) => K_is_2(t+1) &
+				  unchanged_b1(t) & unchanged_b2(t) &
+                                  p2_at_line_3(t+1)) &
+		     (p2_at_line_6(t) => p2_at_line_7(t+1) & unchanged_vars(t)) &
+		     (p2_at_line_7(t) => p2_at_line_1(t+1) & b2_false(t+1) &
+				  unchanged_K(t) & unchanged_b1(t));
+
+pred Valid =   p1_at_line_1(0) & p2_at_line_1(0) & b1_false(0) & b2_false(0) & K_is_2(0) &
+	       (all1 t: t < $ =>  
+		            ((p1_proc_step(t) & unchanged_PC2(t)) 
+			   | (p2_proc_step(t) & unchanged_PC1(t))));
+
+#Mutual exclusion
+Valid => all1 p: (p<=$ => ~(p1_at_line_6(p) & p2_at_line_6(p)));

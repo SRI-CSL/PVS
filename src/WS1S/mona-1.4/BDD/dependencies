@@ -1,0 +1,8 @@
+bdd.o: bdd.c bdd.h bdd_internal.h ../Mem/mem.h
+bdd_manager.o: bdd_manager.c bdd.h bdd_internal.h ../Mem/mem.h
+bdd_cache.o: bdd_cache.c bdd.h bdd_internal.h ../Mem/mem.h
+bdd_double.o: bdd_double.c bdd.h bdd_internal.h ../Mem/mem.h
+bdd_trace.o: bdd_trace.c bdd.h bdd_internal.h ../Mem/mem.h
+hash.o: hash.c ../Mem/mem.h hash.h
+bdd_external.o: bdd_external.c bdd_external.h bdd.h ../Mem/mem.h
+bdd_dump.o: bdd_dump.c bdd_dump.h bdd.h

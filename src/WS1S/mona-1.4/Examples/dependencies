@@ -1,0 +1,5 @@
+presburger_transduction.o: presburger_transduction.c ../DFA/dfa.h \
+  ../BDD/bdd.h
+presburger_analysis.o: presburger_analysis.c ../DFA/dfa.h ../BDD/bdd.h
+gta_example.o: gta_example.c ../GTA/gta.h ../BDD/bdd.h
+bdd_example.o: bdd_example.c ../BDD/bdd.h
