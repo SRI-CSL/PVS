@@ -178,8 +178,8 @@
 
 (defmethod translate-posatom-to-ics* ((expr expr))
   "Fallthrough method: Boolean expressions 'b' are translated as 'b = true'"
-  (let ((var (ics_term_mk_var (unique-name-ics expr))))
-    (ics_atom_mk_equal var (ics_term_mk_true))))
+  (let ((ics-term (translate-term-to-ics* expr)))
+    (ics_atom_mk_equal ics-term (ics_term_mk_true))))
 
 (defmethod translate-posatom-to-ics* ((expr name-expr))
   (declare (special *true*))
@@ -229,8 +229,8 @@
 
 (defmethod translate-negatom-to-ics* ((expr expr))
   "Fallthrough method: Negations of Boolean expressions 'b' are translated as 'b = false'"
-  (let ((var (ics_term_mk_var (unique-name-ics expr))))
-    (ics_atom_mk_equal var (ics_term_mk_false))))
+  (let ((ics-term (translate-term-to-ics* expr))))
+    (ics_atom_mk_equal ics-term (ics_term_mk_false))))
 
 (defmethod translate-negatom-to-ics* ((expr name-expr))
   (declare (special *true*))
