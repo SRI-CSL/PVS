@@ -261,6 +261,7 @@ get to the same state."
       (pvs-mode)
       (unless noninteractive
 	(switch-to-buffer (get-buffer-create "PVS Welcome"))))
+  (setq debug-on-error nil)
   (unless noninteractive
     (message "Ready")))
 
