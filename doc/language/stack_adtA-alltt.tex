@@ -1,5 +1,3 @@
-%%% ADT file generated from stack
-
 stack_adt[T: TYPE]: THEORY
  BEGIN
 
@@ -14,6 +12,12 @@ stack_adt[T: TYPE]: THEORY
   top: [(nonempty?) -> T]
 
   pop: [(nonempty?) -> stack]
+
+  stack_ord: [stack -> upto(1)]
+
+  stack_ord_defaxiom: AXIOM
+    stack_ord(empty) = 0 AND
+     (FORALL (top: T, pop: stack): stack_ord(push(top, pop)) = 1);
 
   ord(x: stack): upto(1) =
       CASES x OF empty: 0, push(push1_var, push2_var): 1 ENDCASES

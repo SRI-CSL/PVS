@@ -27,4 +27,9 @@ stack_adt_map[T: TYPE, T1: TYPE]: THEORY
         OF empty: empty,
            push(push1_var, push2_var): push(f(push1_var), map(f, push2_var))
         ENDCASES;
+
+  every(R: [[T, T1] -> boolean])(x: stack[T], y: stack[T1]):  boolean =
+      empty?(x) AND empty?(y) OR
+       nonempty?(x) AND
+        nonempty?(y) AND R(top(x), top(y)) AND every(R)(pop(x), pop(y));
  END stack_adt_map

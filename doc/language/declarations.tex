@@ -290,7 +290,7 @@ subtype is marked nonempty.
 provides a witness.
 
 \item Interpreted type declarations introduced with the keyword
-\keyword{TYPE} may be nonempty, depending on the type definition.
+\keyword{TYPE} may be non\-emp\-ty, depending on the type definition.
 
 \item Any interpreted type declaration with a \keyword{CONTAINING} clause
 is marked nonempty, and the \keyword{CONTAINING} expression is typechecked
@@ -578,7 +578,7 @@ type constrains the domain to satisfy the measure, and the termination
 Termination-subtype \tccs\ are recognized as such by the occurrence of the
 order in the goal of the \tcc.  For example, we could define a
 substitution function for terms as follows.
-\begin{pvsex}
+\begin{session}
   term: DATATYPE
   BEGIN
    mk_var(index: nat): var?
@@ -593,7 +593,7 @@ substitution function for terms as follows.
       mk_apply(t, ss): mk_apply(subst(x, y)(t), map(subst(x, y))(ss))
      ENDCASES)
   MEASURE s BY <<
-\end{pvsex}
+\end{session}
 Now the first recursive occurrence of \texttt{subst} has all arguments
 provided, so the termination TCC is as expected.  The second occurrence
 does not have enough arguments.  The recursive signature of that
@@ -605,9 +605,9 @@ Hence the signature of \texttt{subst(x, y)} is \texttt{[\setb{}z1:\ term | z1 <<
 s\sete -> term]}, and map is instantiated to \texttt{map[\setb{}z1:\ term | z1 <<
 s\sete, term]}, which leads to the TCC
 \begin{pvsex}
-subst_TCC2: OBLIGATION
-  FORALL (ss: list[term], t: term, s: term, x: (var?)):
-    s = mk_apply(t, ss) IMPLIES every[term](LAMBDA (z: term): z << s)(ss);
+ subst_TCC2: OBLIGATION
+   FORALL (ss: list[term], t: term, s: term, x: (var?)):
+     s = mk_apply(t, ss) IMPLIES every[term](LAMBDA (z: term): z << s)(ss);
 \end{pvsex}
 Note that this \texttt{map} instance could be given directly, just don't
 make the mistake of providing \texttt{map[term, term]}, as this leads to a
@@ -615,7 +615,7 @@ TCC that says every \texttt{term} is \texttt{<<} \texttt{s}.
 For the same reason, if the uncurried form of this definition is given,
 then a lambda expression will have to be provided and the type will have
 to include the measure, for example,
-\begin{pvsex}
+\begin{session}
    subst(x: (var?), y, s: term): RECURSIVE term =
      (CASES s OF
        mk_var(i): (IF index(x) = i THEN y ELSE s ENDIF),
@@ -625,7 +625,8 @@ to include the measure, for example,
                                        subst(x, y, s1))(ss))
       ENDCASES)
    MEASURE s BY <<
-\end{pvsex}
+\end{session}
+\renewcommand{\textfraction}{.1}
 
 The recursive signature is generated based on the type of the recursive
 function and the measure.  For curried functions, it may be that the
@@ -672,9 +673,10 @@ the TCC states.
 
 When a doubly recursive call is found, the inner recursive calls are
 replaced by variables in the termination \tccs\ generated for the outer
-calls.  For example, given the theory of Figure~\ref{f91-alltt} the
-termination \tcc\ is
+calls.  For example, the theory of Figure~\ref{f91-alltt} generates the
+termination TCC of Figure~\ref{f91-tcc}
 
+\begin{figure}[ht]
 \begin{session}
 f91_TCC5: OBLIGATION
   FORALL (i: nat,
@@ -686,6 +688,8 @@ f91_TCC5: OBLIGATION
     NOT i > 100 IMPLIES
      IF i > 100 THEN v(v(i + 11)) = i - 10 ELSE v(v(i + 11)) = 91 ENDIF;
 \end{session}
+\caption{Termination TCC for \texttt{f91}}\label{f91-tcc}
+\end{figure}
 where the inner calls to \texttt{f91} have been replaced by the
 higher-order variable \texttt{v}, with the recursive signature as shown.
 Since the obligation forces us to prove the termination condition for all
@@ -695,6 +699,8 @@ discussed in Section~\ref{dependent-types}.
 
 \pvstheory{ackerman-alltt}{Theory \texttt{ackerman}}{ackerman-alltt}
 \index{ackerman@{\texttt{ackerman}}}
+
+\renewcommand{\textfraction}{.01}
 
 In some cases the natural numbers are not a convenient measure; PVS
 also provides the \texttt{ordinal}s, which allow recursion with measures up

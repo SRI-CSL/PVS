@@ -13,6 +13,10 @@ id.  The syntax for theories is shown in Figure~\ref{bnf-theory}.
 
 \pvsbnf{bnf-theory}{Theory Syntax}
 
+\pvsbnf{bnf-assuming}{Assuming Syntax}
+
+\pvsbnf{bnf-theory-part}{Theory Part Syntax}
+
 Everything is optional except the identifiers and the keywords.  Thus
 the simplest theory has the form
 \begin{pvsex}
@@ -66,16 +70,17 @@ signaled.
 The theory parameters allow theory schemas to be specified.  This
 provides support for \emph{universal polymorphism}\index{polymorphism}
 
-Theory parameters may be types, subtypes, or constants, and importings may
-be interspersed.  Theory parameters must have unique identifiers.  The
-parameters are ordered, allowing later parameters to refer to earlier
-ones.  This is another form of dependency, akin to dependent types (see
-Section~\ref{dependent-types}).  A theory is \emph{ instantiated} from
-within another theory by providing \emph{actual parameters}\index{actual
-parameters} to substitute for the formals.  Actual parameters may occur in
-importings, exportings, theory declarations, and names.  In each case they
-are enclosed in braces (\texttt{[} and \texttt{]}) and separated with
-commas.
+Theory parameters may be types, subtypes, constants, or
+theories,\footnote{This is discussed in Chapter~\ref{interpretations}.}
+interspersed with importings.  Theory parameters must have unique
+identifiers.  The parameters are ordered, allowing later parameters to
+refer to earlier parameters or imported entities.  This is another form of
+dependency, akin to dependent types (see Section~\ref{dependent-types}).
+A theory is \emph{ instantiated} from within another theory by providing
+\emph{actual parameters}\index{actual parameters} to substitute for the
+formals.  Actual parameters may occur in importings, exportings, theory
+declarations, and names.  In each case they are enclosed in braces
+(\texttt{[} and \texttt{]}) and separated with commas.
 
 The actuals must match the formals in number, kind, and (where
 applicable) type.  In this matching process the importings, which
@@ -155,7 +160,7 @@ example, given the following declarations
 \end{alltt}
 it would be illegal to export \texttt{someconst} without also exporting
 \texttt{sometype}.  Note that this check is unnecessary if exporting
-\texttt{ALL} without \texttt{BUT}.
+\texttt{ALL} without the \texttt{BUT} keyword.
 
 In some cases it is desirable (or necessary for completeness) to
 export some of the instances of the theories which are used by the
@@ -192,11 +197,13 @@ assuming part, or the theory part of a theory.  In addition, theory
 abbreviations implicitly import the theory name that they abbreviate (see
 Section~\ref{theory-abbreviations}).
 
-The names appearing in an \texttt{IMPORTING} or theory abbreviation specifies a
-theory and optionally gives an instance of that theory, by providing
-actual parameters corresponding to the formal parameters of the theory
-used.  \texttt{IMPORTING}s are cumulative; entities made visible at some point
-in a theory are visible to every declaration following.
+The names appearing in an \texttt{IMPORTING} or theory abbreviation
+specifies a theory and optionally gives an instance of that theory, by
+providing actual parameters corresponding to the formal parameters of the
+theory used or mappings for the uninterpreted types and constants (see
+Chapter~/ref{interpretations}).  \texttt{IMPORTING}s are cumulative;
+entities made visible at some point in a theory are visible to every
+declaration following.
 
 An \texttt{IMPORTING} with actual parameters provided is said to be a \emph{
 theory instance}.\index{theory instance} We use the same terminology for
@@ -219,60 +226,46 @@ theory may not end up importing itself, directly or indirectly.
 \index{importings|)}
 
 
-\section{Theory Abbreviations}\label{theory-abbreviations}
+\subsubsection{Theory Abbreviations}\label{theory-abbreviations}
 \index{theory abbreviations}
 
-A theory abbreviation introduces a new name for a theory instance,
-providing an alternate means for referring to the instance.  For
-example, given the declaration
+A theory abbreviation is a form of importing that introduces a new name
+for a theory instance, providing an alternate means for referring to the
+instance.  For example, given the importing\footnote{Prior to the
+introduction of theory interpretations, this was written as
+\texttt{fsets:\ THEORY = sets[[integer -> integer]].}}
 \begin{pvsex}
-  fsets: THEORY = sets[[integer -> integer]]
+  IMPORTING sets[[integer -> integer]] AS fsets
 \end{pvsex}
 where \texttt{sets} is a theory in which the function \texttt{member} is
 declared, the name \texttt{sets[[integer -> integer]].member} may instead
-be written as \texttt{fsets.member}.  The body of a theory abbreviation
-must refer to a theory of the current context or the prelude, and the
-actual parameters must be compatible (in number, kind, and type) with
-the corresponding theory parameters\index{theory parameters}.
-
-In addition to providing an abbreviation, such declarations do an
-implicit \texttt{IMPORTING}\index{IMPORTING@\texttt{IMPORTING}} of the theory instance.
-Theory abbreviations may not be exported.
+be written as \texttt{fsets.member}.
 
 
 \section{Assuming Part}\label{assuming}
 
-The assuming part consists of top-level declarations and \texttt{IMPORTING}s.
-The assuming part precedes the theory part, so the
+The assuming part consists of top-level declarations and
+\texttt{IMPORTING}s.  The assuming part precedes the theory part, so the
 theory part may refer to entities declared in the assuming part.  The
 grammar for the assuming part is given in Figure~\ref{bnf-assuming}.
-
-\pvsbnf{bnf-assuming}{Assuming Syntax}
 
 The primary purpose of the assuming part is to provide constraints on the
 use of the theory, by means of \texttt{ASSUMPTION}s.  These are formulas
 expressing properties that are expected to hold of any instance of the
 theory.  They are generally stated in terms of the formal parameters, and
-when instantiated they become \emph{assuming} \tccs\ \index{assuming
-TCC}\index{TCC!assuming} \texttt{OBLIGATION}s which must be discharged.  For
-example, given the theory \texttt{groups} above, the importing
+when instantiated they become \emph{assuming} \tccs.\index{assuming
+TCC}\index{TCC!assuming} For example, given the theory \texttt{groups}
+above, the importing
 \begin{pvsex}
   IMPORTING groups[int, 0, +, -]
 \end{pvsex}
 generates the following obligations
 \begin{pvsex}
-  % Assuming TCC generated for  groups[int, 0, +, -]
-  IMPORTING1_TCC1: OBLIGATION
-    (FORALL (a: int), (b: int), (c: int):
-         +(a, (+(b, c))) = +((+(a, b)), c))
-  
-  % Assuming TCC generated for  groups[int, 0, +, -]
-  IMPORTING1_TCC2: OBLIGATION (FORALL (a: int):
-         +(0, a) = a AND +(a, 0) = a)
-  
-  % Assuming TCC generated for  groups[int, 0, +, -]
-  IMPORTING1_TCC3: OBLIGATION (FORALL (a: int):
-         +(-(a), a) = 0 AND +(a, -(a)) = 0)
+  IMP_groups_TCC1: OBLIGATION FORALL (a, b, c: int): a + (b + c) = (a + b) + c;
+
+  IMP_groups_TCC2: OBLIGATION FORALL (a: int): 0 + a = a AND a + 0 = a;
+
+  IMP_groups_TCC3: OBLIGATION FORALL (a: int): (-)(a) + a = 0 AND a + (-)(a) = 0;
 \end{pvsex}
 
 Except for the variable declarations, the declarations of the assumings
@@ -293,7 +286,7 @@ assuming \tccs\ precede the importing in the dynamic semantics.  Note that
 this may not make sense, as the assumings may refer to entities that are
 not visible until after the theory is imported.  Thus the following is
 illegal.
-\begin{pvsex}
+\begin{session}
   assuming_test[n: nat, m: {x:int | x < n}]: THEORY
   BEGIN
    ASSUMING
@@ -306,7 +299,7 @@ illegal.
   BEGIN
    IMPORTING assuming_test[4, 2]
   END assimp
-\end{pvsex}
+\end{session}
 And leads to the following error message.
 \begin{pvsex}
   Error: assumption refers to 
@@ -333,7 +326,7 @@ recursive or inductive definition.
 Another solution is to provide the declaration in a theory that is
 imported in both the theory with the assuming and the theory importing
 that theory.
-\begin{pvsex}
+\begin{session}
   rel_prime[y:int]: THEORY
   BEGIN
    rel_prime?(x: int): bool = EXISTS (a, b: int): x*a + y*b = 1
@@ -351,7 +344,7 @@ that theory.
   BEGIN
    IMPORTING rel_prime[2], assuming_test[4, 2]
   END assuming_imp
-\end{pvsex}
+\end{session}
 Now the reference to \texttt{rel\_prime?} in the assuming \tcc\ associated
 with \texttt{assuming\_test[4, 2]} is the same as the previously imported
 instance, so there is no problem.  In the theory \texttt{assuming\_imp},
@@ -368,5 +361,3 @@ which occur later in the theory.  The theory part usually contains the
 main body of the theory.  Assuming declarations are not allowed in the
 theory part.  The grammar for the theory part is given in
 Figure~\ref{bnf-theory-part}.
-
-\pvsbnf{bnf-theory-part}{Theory Part Syntax}

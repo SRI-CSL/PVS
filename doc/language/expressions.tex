@@ -596,8 +596,8 @@ expression generates a \tcc\ obligation to prove that \texttt{lst} is a
   dt: DATATYPE
   BEGIN
    c0: c0?
-   c1(x: int, a: \{z: (even?) | z > x\}, b: int): c1?
-   c2(x: int, a: \{n: nat | n > x\}, c: int): c2?
+   c1(x: int, a: \setb{}z: (even?) | z > x\sete, b: int): c1?
+   c2(x: int, a: \setb{}n: nat | n > x\sete, c: int): c2?
   END dt
 \end{pvsex}
 If \texttt{d} is of type \texttt{dt}, the update expression \texttt{d WITH

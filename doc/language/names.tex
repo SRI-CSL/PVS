@@ -3,7 +3,7 @@
 
 \chapter{Name Resolution}\label{names}\label{resolution}
 
-Names in \pvs\ are used to denote theories, variables, constants, and
+Names in PVS are used to denote theories, variables, constants, and
 formulas.  New names are introduced by declarations.  The syntax of names
 is given in Figure~\ref{bnf-names}.
 
@@ -20,37 +20,41 @@ distinguished by prefixing them with the theory name.  Within a theory,
 all names of the same kind must be unique, except for expression kinds;
 which need only be unique up to the signature.  This is because the
 signature is enough to distinguish these declarations.  For example, if
-{\tt <} is declared to have signature {\tt [bool,int -> bool]}, the system
-will recognize from the context that {\tt TRUE < 3} contains a reference
-to this declaration, whereas {\tt 2 < 3} does not.\footnote{Of course,
-this assumes that \texttt{TRUE} has not itself been overloaded.}  If the
-use of the name is not enough to distinguish, coercion may be used to
-specify the signature directly (see page~\pageref{coercions}).  Theory
-parameters must be unique across all kinds.
+\texttt{<} is declared to have signature \texttt{[bool,int -> bool]}, the
+system will recognize from the context that \texttt{TRUE < 3} contains a
+reference to this declaration, whereas \texttt{2 < 3} does
+not.\footnote{Of course, this assumes that \texttt{TRUE} has not itself
+been overloaded.}  If the use of the name is not enough to distinguish,
+coercion may be used to specify the signature directly (see
+page~\pageref{coercions}).  Theory parameters must be unique across all
+kinds.
 
 There are three possible forms for names (two for theory names, which
-appear in {\tt IMPORTING}s, {\tt EXPORTING} {\tt WITH}s, and theory
-declarations).  Given a theory named {\em theoryid\/}, with formal
-parameters $f_1,\ldots,f_n$, that contains a declaration named {\em
-id\/}, the following three forms may be used to reference the
-declaration in a theory that imports {\em theoryid\/}:
+appear in \texttt{IMPORTING}s, \texttt{EXPORTING} \texttt{WITH}s, and
+theory declarations).  Given a theory named \emph{theoryid}, with formal
+parameters $f_1,\ldots,f_n$, that contains a declaration named \emph{id},
+the following three forms may be used to reference the declaration in a
+theory that imports \emph{theoryid}:
 \begin{itemize}
-\item {\em theoryid\/}{\tt [$a_1,\ldots,a_n$]}.{\em id\/}
+\item \emph{theoryid}\texttt{[$a_1,\ldots,a_n$]}.\emph{id}
 
-\item {\em id\/}{\tt [$a_1,\ldots,a_n$]}
+\item \emph{id}\texttt{[$a_1,\ldots,a_n$]}
 
-\item {\em id}
-
+\item \emph{id}
 \end{itemize}
 where the $a_i$ are expressions or type expressions that are compatible
-with the formal parameters as described in Section~\ref{parameters}.
-These forms are listed in order of increasing ambiguity---that is, names
-that are given with just an id are far more likely to produce an ambiguity
-than those further up.  Note that even the top form may be
-ambiguous, as {\em id\/} may be declared more than once in {\em theoryid\/}.
-If this is the case, then either the context will disambiguate the name or
-a type will have to be supplied in the form of a coercion expression, \eg\
-{\tt {\em id\/}:~nat}.  This kind of ambiguity is allowed only for
+with the formal parameters as described in Section~\ref{parameters}.  Note
+that any of these forms may have \emph{mappings} immediately after the
+actual parameters.  As described in Section~\ref{mappings}, these can be
+viewed as an extension of the actuals.  Note also that theory names allow
+different kinds of mappings.  The forms above are listed in order of
+increasing likelihood of ambiguity---that is, names that are given with
+just an \emph{id} are far more likely to produce an ambiguity than those
+further up.  Note that even the top form may be ambiguous, as \emph{id}
+may be declared more than once in \emph{theoryid}.  If this is the case,
+then either the context will disambiguate the name or a type will have to
+be supplied in the form of a coercion expression, \eg\
+\texttt{\emph{id}::~nat}.  This kind of ambiguity is allowed only for
 constants (including functions and recursive functions) and variables.
 
 Names are resolved based on the expected type and the number and types of
@@ -77,7 +81,6 @@ expected type, which is determined from the context of the expression.
 The expected type is used to resolve ambiguities, but otherwise does not
 contribute to the type of an expression.  Thus if \texttt{2 + 3}
 typechecks, and \texttt{+} has not been redeclared, then it has type
-\texttt{real} regardless of its context.  However, for the purpose of
-checking for TCCs, it may be treated as having a different type depending
-on the expected type and the available judgements.
-
+\texttt{number\_field} regardless of its context.  However, for the purpose
+of checking for TCCs, it may be treated as having a different type
+depending on the expected type and the available judgements.

@@ -1,10 +1,6 @@
   stack_inclusive: AXIOM
     FORALL (stack_var: stack): empty?(stack_var) OR nonempty?(stack_var);
 
-  stack_disjoint: AXIOM
-    FORALL (stack_var: stack):
-      NOT (empty?(stack_var) AND nonempty?(stack_var));
-
   stack_induction: AXIOM
     FORALL (p: [stack -> boolean]):
       (p(empty) AND

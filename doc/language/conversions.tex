@@ -156,6 +156,37 @@ the forms
              > x(x2))(x3))
 \end{session}
 
+\subsection{Conversions on Type Constructors}\label{type-conversions}
+\index{conversions!type constructor}\index{type constructor conversiona}
+\index{componentwise conversions}
+
+Conversions for record, tuple, and function types may be found
+componentwise, without having to create the corresponding conversion
+declaration.  Here is an example.
+\begin{session}
+  bi: [bool -> int]
+  ib: [int -> bool]
+  CONVERSION+ bi, ib
+  t: [int, int, int] = (true, false, 3)
+  r: [# a, b: int #] = (# a := true, b := false #)
+  f: [int, int -> int] = AND
+\end{session}
+With conversions displayed, this becomes the following.
+\begin{session}
+  t: [int, int, int] = (b2n(TRUE), b2n(FALSE), 3)
+
+  r: [# a: int, b: int #] =
+      (LAMBDA (x: [# a: bool, b: bool #]): (# a := bi(x`a), b := bi(x`b) #))
+          ((# a := TRUE, b := FALSE #))
+
+  f: [int, int -> int] =
+      (LAMBDA (f: [[bool, bool] -> bool]):
+         LAMBDA (x: [int, int]): bi(f(ib(x`1), ib(x`2))))
+          (AND)
+\end{session}
+Note that for \texttt{f}, both a tuple conversion and a function
+conversion are used.
+
 
 \subsection{Conversion Processing}
 
@@ -256,10 +287,10 @@ They may be disabled within any theory by using the \texttt{CONVERSION-}
 form.
 
 When theories containing conversion declarations are imported, the
-conversions are imported as well.  Thus if \texttt{t2} has the
-\texttt{CONVERSION+ c} declaration but no \texttt{CONVERSION-}
-declaration, then \texttt{IMPORTING t1, t2} would enable the conversion,
-but \texttt{IMPORTING t2, t1} would leave it disabled.
+conversions are imported as well.  Thus if \texttt{t2} enables the
+\texttt{c} declaration without subsequently disabling it, then
+\texttt{IMPORTING t1, t2} would enable the conversion, but
+\texttt{IMPORTING t2, t1} would leave it disabled.
 
 Conversion declarations may be generic or instantiated.  This
 allows, for example, enabling the generic form of a conversion while

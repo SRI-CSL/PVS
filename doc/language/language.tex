@@ -26,6 +26,8 @@
 % {}{\PackageWarning{language}{Package hyperref too old (older than v6.70a).}%
 % \makeatother
 
+\input{../pvstex}
+
 \topmargin -10pt
 \textheight 8.5in
 \textwidth 6.0in
@@ -38,12 +40,10 @@
 \setcounter{bottomnumber}{9}
 \renewcommand{\bottomfraction}{.99}
 \setcounter{totalnumber}{10}
-\renewcommand{\textfraction}{.01}
-\renewcommand{\floatpagefraction}{.01}
+\renewcommand{\textfraction}{.5}
+\renewcommand{\floatpagefraction}{.1}
 
 \raggedbottom
-
-\input{../pvstex}
 
 %\setcounter{secnumdepth}{1}
 
@@ -54,6 +54,7 @@
 \begin{document}
 
 \begin{titlepage}
+\renewcommand{\thepage}{title}
 \vspace*{1in}
 \noindent
 \rule[1pt]{\textwidth}{2pt}
@@ -62,7 +63,7 @@
 \textbf{\pvstitle PVS Language Reference}
 \end{center}
 \begin{flushright}
-{\Large Version 3.0 {\smaller$\bullet$} January 2003}
+{\Large Version 3.0 {\smaller$\bullet$} February 2003}
 \end{flushright}
 \rule[1in]{\textwidth}{2pt}
 \vspace*{2in}
@@ -87,17 +88,19 @@ Computer Science Laboratory $\bullet$ 333 Ravenswood Avenue $\bullet$ Menlo Park
 %\cfoot{\protect\small\bf \fbox{PVS 2.3 DRAFT}}
 \cfoot{}
 \rhead[\leftmark]{\thepage}
-\pagenumbering{roman}
 \thispagestyle{empty}
 
 \newpage
+\renewcommand{\thepage}{ack}
 \vspace*{6in}\noindent
 The initial development of PVS was funded by SRI International.
 Subsequent enhancements were partially funded by SRI and by NASA
 Contracts NAS1-18969 and NAS1-20334, NRL Contract N00014-96-C-2106,
 NSF Grants CCR-9300044, CCR-9509931, and CCR-9712383, AFOSR contract
 F49620-95-C0044, and DARPA Orders E276, A721, D431, D855, and E301.
-\newpage\setcounter{page}{1}
+\newpage
+\pagenumbering{roman}
+\setcounter{page}{1}
 
 \tableofcontents
 %\listoffigures
