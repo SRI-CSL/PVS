@@ -43,6 +43,8 @@
                ((eql holdchar #\|) 'sbst::\|\|)
                ((eql holdchar #\=) 'sbst::\|=)
                ((eql holdchar #\>) 'sbst::\|>)
+	       ((eql holdchar #\)) 'sbst::\|\))
+	       ((eql holdchar #\}) 'sbst::\|\})
                (t (lexical-unread-char stream) 'sbst::\|))))
 
 (defun LEX-]
