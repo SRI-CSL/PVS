@@ -1,0 +1,45 @@
+bv_shift [N: nat ] : THEORY
+%-----------------------------------------------------------------------  
+%  Defines shift operations.
+%  Introduces:
+%     left_shift(i: nat, bv: bvec[N]): bvec[N]
+%     right_shift(i: nat, bv: bvec[N]): bvec[N] 
+%     left_shift_with(k: upto(N), bvk: bvec[k], bv: bvec[N]): bvec[N]
+%     right_shift_with(k: upto(N), bvk: bvec[k], bv: bvec[N]): bvec[N]
+%-----------------------------------------------------------------------  
+
+BEGIN
+
+  IMPORTING bv_concat, bv_caret
+
+  %------------------------------------------------------------------------
+  % right_shift (left_shift) shifts a bit vector by a given number of
+  % positions to the right (left) filling 0's to the shifted bits
+  %------------------------------------------------------------------------
+
+  right_shift(i: nat, bv: bvec[N]): bvec[N] =
+    IF i = 0 THEN bv
+    ELSIF i < N THEN fill[i](FALSE) o bv^(N-1, i) 
+    ELSE fill[N](FALSE) ENDIF
+ 
+    
+  left_shift(i: nat, bv: bvec[N]): bvec[N] =
+    IF i = 0 THEN bv
+    ELSIF i < N THEN bv^(N-i-1, 0) o fill[i](FALSE) 
+    ELSE fill[N](FALSE) ENDIF
+
+  %------------------------------------------------------------------------    
+  % left_shift_with (right_shift_with) shifts a bit vector by a given
+  % number of positions to the left (right) replacing the shifted bits
+  % by the bit vector given as the second argument.
+  %------------------------------------------------------------------------
+
+  left_shift_with(k: upto(N), bvk: bvec[k], bv: bvec[N]): bvec[N] =
+     IF k = N THEN bvk
+     ELSE bv^(N-k-1, 0) o bvk ENDIF
+
+  right_shift_with(k: upto(N), bvk: bvec[k], bv: bvec[N]): bvec[N] =
+     IF k = N THEN bvk
+     ELSE bvk o bv^(N-1, k) ENDIF
+
+END bv_shift

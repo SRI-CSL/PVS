@@ -1,0 +1,20 @@
+bv_arith_caret_concat_rules: THEORY
+BEGIN
+
+  IMPORTING bv_arith_caret
+
+
+  N,m: VAR posnat
+  i1,i: VAR int
+  n1: VAR nat
+
+%  bv_caret_concat_over_addition_1: THEOREM FORALL (bvn:bvec[N], bvm:bvec[m]):
+%                                  n1 >= m AND  n1 < m+N =>
+%        ((bvn o bvm + i1)^(n1,m) o (bvm + i1)) = (bvn^(n1-m,0) o bvm + i1)
+%
+%  superrange_addition: THEOREM FORALL (bv: bvec[N], n2,n3,n4 : nat):
+%      (N > n4 & n4 >= n3 & n3 = n2 + 1 & n2 >= 0) => 
+%        ((bv + i)^(n4,n3) o (bv^(n2,0) + i)) = (bv^(n4,0) + i)
+
+END bv_arith_caret_concat_rules 
+  

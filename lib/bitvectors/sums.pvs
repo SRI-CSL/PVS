@@ -1,0 +1,54 @@
+sums: THEORY
+%------------------------------------------------------------------------------
+% The summations theory introduces and defines properties of the sigma 
+% function that sums an arbitrary function F: [nat -> nat] over a range
+% from low to high
+%
+%  		          high
+%		          ----
+%  sigma(low, high, F) =  \     F(j)
+%		          /
+%		          ----
+%		         j = low
+%
+%------------------------------------------------------------------------------
+
+BEGIN
+
+  low, high, rng, l, h, n, m, x: VAR nat
+
+  F, G: VAR function[nat -> nat]
+
+  sigma(low, high, F): RECURSIVE nat
+      = IF low > high THEN 0
+        ELSIF high = low THEN F(low) 
+        ELSE  F(high) + sigma(low, high-1, F)
+        ENDIF
+   MEASURE (LAMBDA low, high, F: high)
+
+%  sigma_rec(high, F): RECURSIVE nat
+%      = IF high = 0 THEN F(0)
+%        ELSE F(high) + sigma_rec(high-1, F)
+%        ENDIF
+%   MEASURE high
+%
+%  sigma(low, high, F): nat
+%      = IF low > high THEN 0
+%        ELSE sigma_rec(high - low, (LAMBDA n: F(n + low)))
+%        ENDIF
+
+  sigma_mult:  THEOREM sigma(low, high, (LAMBDA n: x * F(n)))
+                         = x * sigma(low, high, F)
+
+  sigma_split: THEOREM m >= low AND high > m 
+          IMPLIES sigma(low, high, F) = sigma(low, m, F) + sigma(m+1, high, F)
+
+  sigma_shift: THEOREM sigma(low+m,high+m,F) = sigma(low,high, (LAMBDA n: F(n+m)))
+
+  restrict(F, low, high): function[nat -> nat] = 
+     (LAMBDA n: IF n < low OR n > high THEN 0 ELSE F(n) ENDIF )
+
+  sigma_restrict_eq: THEOREM restrict(F,low,high) = restrict(G,low,high) 
+                        IMPLIES sigma(low,high,F) = sigma(low,high,G) 
+
+END sums

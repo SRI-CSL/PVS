@@ -1,0 +1,24 @@
+bit: THEORY
+% -----------------------------------------------------------------------
+% The bit theory defines bits and their properties. Bits are interpreted
+% as the natural numbers 0 and 1.
+% -----------------------------------------------------------------------
+BEGIN
+
+  bit  : TYPE = bool
+  nbit : TYPE = below(2)  %  could be {n: nat | n = 0 OR n = 1}
+
+  b: VAR bit
+
+  bit_cases: LEMMA b = FALSE OR b = TRUE
+
+  b0: [below(1) -> bit] = (LAMBDA (i: below(1)): FALSE)
+  b1: [below(1) -> bit] = (LAMBDA (i: below(1)): TRUE)
+
+  b2n(b:bool)     : nbit = IF b THEN 1 ELSE 0 ENDIF 
+  n2b(nb: nbit)   : bool = (nb = 1)
+
+  CONVERSION b2n
+
+END bit
+

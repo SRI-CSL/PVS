@@ -1,0 +1,58 @@
+bv_constants: THEORY
+%------------------------------------------------------------------------
+%
+%  Bitvector constants
+%  -------------------
+%
+%    This theory enables one to build bitvector constants using
+%    the hexadecimal constants h0 through HF and the o concatentation
+%    operator.  The user is urged to avoid using nat2bv or int2bv to
+%    construct bitvector constants.  If this is impossible and bitvector
+%    constants such as nat2bv[16](1) are present in a specification, it is
+%    often prudent to quickly rewrite them to the corresponding LAMBDA
+%    expressions easily defined using the hexadecimal constants and 
+%    concatentation.
+%
+%------------------------------------------------------------------------   
+
+BEGIN
+
+   IMPORTING bv[4], bv_concat
+
+   h0: bvec[4] = (LAMBDA (i: below[4]): FALSE)
+   h1: bvec[4] = (LAMBDA (i: below[4]): i = 0 )
+   h2: bvec[4] = (LAMBDA (i: below[4]): i = 1 )
+   h3: bvec[4] = (LAMBDA (i: below[4]): i = 0 OR i = 1)
+   h4: bvec[4] = (LAMBDA (i: below[4]): i = 2)
+   h5: bvec[4] = (LAMBDA (i: below[4]): i = 0 OR i = 2)
+   h6: bvec[4] = (LAMBDA (i: below[4]): i = 1 OR i = 2)
+   h7: bvec[4] = (LAMBDA (i: below[4]): NOT i = 3 )
+   h8: bvec[4] = (LAMBDA (i: below[4]): i = 3 )
+   h9: bvec[4] = (LAMBDA (i: below[4]): i = 0 OR i = 3 )
+   hA: bvec[4] = (LAMBDA (i: below[4]): i = 1 OR i = 3 )
+   hB: bvec[4] = (LAMBDA (i: below[4]): NOT i = 2)
+   hC: bvec[4] = (LAMBDA (i: below[4]): i = 2 OR i = 3 )
+   hD: bvec[4] = (LAMBDA (i: below[4]): NOT (i = 1))
+   hE: bvec[4] = (LAMBDA (i: below[4]): NOT (i = 0))
+   hF: bvec[4] = (LAMBDA (i: below[4]): TRUE)
+
+
+   h0_lem: LEMMA h0  = b0 o b0 o b0 o b0
+   h1_lem: LEMMA h1 = b0 o b0 o b0 o b1
+   h2_lem: LEMMA h2 = b0 o b0 o b1 o b0
+   h3_lem: LEMMA h3 = b0 o b0 o b1 o b1
+   h4_lem: LEMMA h4 = b0 o b1 o b0 o b0
+   h5_lem: LEMMA h5 = b0 o b1 o b0 o b1
+   h6_lem: LEMMA h6 = b0 o b1 o b1 o b0
+   h7_lem: LEMMA h7 = b0 o b1 o b1 o b1
+   h8_lem: LEMMA h8 = b1 o b0 o b0 o b0
+   h9_lem: LEMMA h9 = b1 o b0 o b0 o b1
+   hA_lem: LEMMA hA = b1 o b0 o b1 o b0
+   hB_lem: LEMMA hB = b1 o b0 o b1 o b1
+   hC_lem: LEMMA hC = b1 o b1 o b0 o b0
+   hD_lem: LEMMA hD = b1 o b1 o b0 o b1
+   hE_lem: LEMMA hE = b1 o b1 o b1 o b0
+   hF_lem: LEMMA hF = b1 o b1 o b1 o b1
+
+END bv_constants
+

@@ -1,0 +1,33 @@
+bv_arith_extend: THEORY
+
+BEGIN
+
+  IMPORTING bv_extend, bv_arithmetic, bv_arith_int_concat, bv_bitwise
+
+  n: VAR posnat    
+
+  zero_extend_lem  : THEOREM (FORALL (bv: bvec[n], k: above(n)):
+                        bv2nat[k](zero_extend[n](k)(bv)) = bv2nat(bv))
+
+  sign_to_zero     : THEOREM (FORALL (bv: bvec[n], k: above(n)):
+                              sign_extend[n](k)(bv) =
+			         IF bv(n-1) THEN 
+                                    NOT(zero_extend[n](k)(NOT(bv)))
+			         ELSE zero_extend[n](k)(bv)
+			         ENDIF)
+
+  sign_extend_lem  : THEOREM (FORALL (bv: bvec[n], k: above(n)):
+                               bv2int[k](sign_extend[n](k)(bv)) = bv2int(bv))
+
+  zero_extend_lsend: THEOREM (FORALL (bv: bvec[n], k: above(n)):
+                                bv2nat(zero_extend_lsend[n](k)(bv)) 
+                                   = bv2nat(bv) * exp2(k-n))
+
+  pos_nat_below(n) : TYPE = {nn: nat | nn > 0 AND nn < n} 
+  bv2int_elim_gen  : LEMMA (FORALL (m: pos_nat_below(n),
+                                    bv1: bvec[n],bv2: bvec[m]):
+                        bv1 + sign_extend[m](n)(bv2) = bv1 + bv2int[m](bv2))
+
+
+
+END bv_arith_extend

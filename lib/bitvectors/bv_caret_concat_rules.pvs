@@ -1,0 +1,47 @@
+bv_caret_concat_rules: THEORY
+
+BEGIN
+
+  IMPORTING bv_caret_concat
+  n,m: VAR posnat
+  i,j: VAR nat
+  b: VAR bit
+
+  bv_concat_bottom     : LEMMA FORALL (bvn: bvec[n], bvm: bvec[m]):
+                                (bvn o bvm)^((m-1), 0) = bvm
+ 
+  bv_concat_top	       : LEMMA FORALL (bvn: bvec[n], bvm: bvec[m]):
+                                 (bvn o bvm)^((n+m-1), m) = bvn
+
+  bv_caret_concat_low  : LEMMA FORALL (bvn: bvec[n], bvm: bvec[m]):
+                                 (i < m) AND (j <= i) =>  
+                                   (bvn o bvm)^(i, j) = bvm^(i, j) 
+
+  bv_caret_concat_high : LEMMA FORALL (bvn: bvec[n], bvm: bvec[m]):
+			          i < n+m AND m <= j AND j <= i 
+				    IMPLIES (bvn o bvm)^(i,j) = bvn^(i-m, j-m)
+
+
+  bv_caret_concat_split: LEMMA FORALL (bvn: bvec[n], bvm: bvec[m]):
+                                 (i < n+m) AND (i >= m) AND
+                                  (j < m) AND (j <= i) =>
+                             (bvn o bvm)^(i,j) = bvn^(i-m, 0) o bvm^(m-1,j)
+
+
+  bv_caret_recomp      : LEMMA FORALL (n: posnat, bvn: bvec[n], 
+                                      i1,j1,i2,j2: below[n]):
+                             (i1 >= j1) AND (i2 >= j2) AND (j1=i2+1) =>
+                                (bvn^(i1,j1) o bvn^(i2,j2) =  bvn^(i1,j2));
+
+  bv_ucaret_concat_1   : LEMMA FORALL (bvn: bvec[n], bvm: bvec[m]):
+                                  i < m => (bvn o bvm)^i = bvm^i
+
+  bv_ucaret_concat_2   : LEMMA FORALL (bvn: bvec[n], bvm: bvec[m]): 
+                                 (i < n+m) AND (i >= m) => 
+                                    (bvn o bvm)^i = bvn^(i-m)  
+
+  bv_caret_fill        : LEMMA FORALL (i: below(n), j: upto(i)): 
+			      fill[n](b)^(i,j) = fill[i-j+1](b)
+ 
+
+END bv_caret_concat_rules

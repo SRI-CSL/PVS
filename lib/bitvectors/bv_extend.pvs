@@ -1,0 +1,64 @@
+bv_extend [N: posnat] : THEORY
+% -----------------------------------------------------------------------  
+%    Introduces:
+%	zero_extend: [k: above(N) -> [bvec[N] -> bvec[l]]] =
+%	sign_extend: [k: above(N) -> [bvec[N] -> bvec[l]]] =
+%	zero_extend_lsend: [k: above(N) -> [bvec[N] -> bvec[l]]]
+%	lsb_extend: [k: above(N) -> [bvec[N] -> bvec[l]]] =
+%   
+% -----------------------------------------------------------------------  
+
+BEGIN
+
+  IMPORTING bv_caret, bv_concat
+    
+  bv: VAR bvec[N]
+  k: VAR above(N)
+  
+  %------------------------------------------------------------------------
+  % zero_extend returns a function that extends a bit vector to length k 
+  % such that its interpretation as a natural number remains unchanged.
+  % That is, it fills 0's at the most significant positions.
+  %------------------------------------------------------------------------
+
+  zero_extend(k: above(N)): [bvec[N] -> bvec[k]] =
+       (LAMBDA bv: fill[k-N](FALSE) o bv )
+
+  %------------------------------------------------------------------------
+  % sign_extend returns a function that extends a bit vector to length k
+  % by repeating the most significant bit of the given bit vector.
+  % The set above(N) contains nat numbers greater than n.
+  %------------------------------------------------------------------------
+
+  sign_extend(k: above(N)): [bvec[N] -> bvec[k]] =
+       (LAMBDA bv:  fill[k-N](bv^(N-1)) o bv )
+  %------------------------------------------------------------------------
+  % zero_extend_lsend returns a function that extends a bit vector to
+  % length k by padding 0's at the least significant end of bvec.
+  % That is, the bv2nat interpretation of the argument increases by 2**(k-N)
+  %------------------------------------------------------------------------
+    
+  zero_extend_lsend(k: above(N)): [bvec[N] -> bvec[k]] =
+        (LAMBDA bv:  bv o fill[k-N](FALSE))
+  
+  %------------------------------------------------------------------------
+  % lsb_extend returns a function that extends a bit vector to
+  % length k by repeating the lsb of the bit vector at its
+  % least significant end.
+  %------------------------------------------------------------------------
+    
+  lsb_extend(k: above(N)): [bvec[N] -> bvec[k]] =
+       (LAMBDA bv: bv o fill[k-N](bv^0)) 
+
+  zero_extend_def       : LEMMA zero_extend(k)(bv)  = fill[k-N](FALSE) o bv
+  
+  sign_extend_def       : LEMMA sign_extend(k)(bv)  = fill[k-N](bv^(N-1)) o bv 
+  
+  zero_extend_lsend_def : LEMMA zero_extend_lsend(k)(bv) = bv o fill[k-N](FALSE)
+  
+  lsb_extend__def       : LEMMA lsb_extend(k)(bv)        = bv o fill[k-N](bv^0)
+
+END bv_extend
+
+
+

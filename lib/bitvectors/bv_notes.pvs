@@ -1,0 +1,56 @@
+bv_notes: THEORY
+BEGIN
+
+% 1. Nat2bv Considered Harmful: The use of nat2bv should be minimized.
+%    The function nat2bv is necessary in order to build up the library, but
+%    its use should be minimized in practice.  There are several reasons
+%    for this:
+%  
+%      (a) If all specification is accomplished with bv2nat, the
+%	   reasoning is driven toward arithmetic over nats where 
+%	   the built-in decision procedures can help
+% 
+%      (b) For every bv2nat theorem there is a corresponding nat2bv
+%	   theorem, which will DOUBLE the SIZE of the library.  E.G.
+% 
+%		 bv2nat_fill0: LEMMA bv2nat(fill[N](0)) = 0
+% 
+%		 nat2bv_fill0: LEMMA nat2bv[N](0) = fill[N](0)
+% 
+%      (c) It leads to complex formulas involving BOTH bv2nat and
+%	   nat2bv
+% 
+%      (d) bv constants can constructed with o and
+%	   the h0 .. hF hexadecimal bytes:
+%	      
+%		 h0: bvec[4] = (LAMBDA (i: below(4)): 0)
+%			.
+%			.
+%			.
+% 
+%		 hF: bvec[4] = (LAMBDA (i: below(4)): 1)
+%   
+% 2. Bitvector add is defined using a singleton return type:          
+% 
+%     +(bv1: bvec, bv2: bvec): {bv: bvec | bv2nat(bv) =
+%				   IF bv2nat(bv1) + bv2nat(bv2) < exp2(N)
+%				   THEN bv2nat(bv1) + bv2nat(bv2)
+%				   ELSE bv2nat(bv1) + bv2nat(bv2) - exp2(N) 
+%				   ENDIF}
+% 
+%    rather than through use of nat2bv.  The resulting existence TCC is 
+%    proved using nat2bv.                         
+% 
+% 3. The function nat2bv has been defined as follows 
+% 
+%	nat2bv(val: below(exp2(N))): {bv: bvec[N] | bv2nat(bv) = val}
+% 
+%    rather than using the prelude's inverse.  This prevents GRIND from
+%    opening up "epsilon" ugliness.
+% 
+% 
+% 
+%    Note the lemma "nat2bv(bv2nat(bv)) = bv" is provable by ASSERT when
+%    defined in this manner.  
+ 
+END bv_notes

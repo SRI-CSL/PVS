@@ -1,0 +1,36 @@
+bv_caret_rules: THEORY
+%-----------------------------------------------------------------------
+%  
+%-----------------------------------------------------------------------  
+BEGIN
+
+  IMPORTING bv_caret
+
+  N, n, m : VAR nat
+  i, j, i1, j1, i2, j2, k : VAR nat
+  b: VAR bit
+
+  bv_caret_remove     : LEMMA FORALL (bv: bvec[N]): 
+                                i=N-1 AND j=0 => bv^(i,j) = bv
+
+  bv_caret_ii_0_rule  : LEMMA FORALL (bv: bvec[N]): 
+                                i < N => bv^(i,i)^0 = bv^i
+
+  bv_caret_elim_rule  : LEMMA FORALL (bv: bvec[N]): 
+                                i < N AND j <= i AND k < i-j+1 => 
+                                    bv ^ (i, j) ^ k = bv^(j+k)
+
+  bv_caret_denormalize: LEMMA FORALL (n: posnat, bvn: bvec[n]):
+                                i1 < n         AND   j1 <= i1 AND 
+                                i2 < i1-j1+1   AND   j2 <= i2 AND 
+                                i2-j2+1 <= i1-j1+1 =>
+                                   (bvn^(i1, j1))^(i2, j2) = bvn^(i2+j1, j2+j1)
+
+
+  bv_fill_caret       : LEMMA n < m AND k < m AND k <= n =>
+                                   (fill[m](b))^(n, k) = fill[n-k+1](b)
+
+  bv_fill_caret_unary : LEMMA n < m => (fill[m](b))^n = b
+
+END bv_caret_rules 
+  

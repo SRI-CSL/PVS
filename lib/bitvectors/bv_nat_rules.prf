@@ -1,0 +1,8 @@
+(|bv_nat_rules| (|bv2nat_fill_F| "" (SKOSIMP*) (("" (REWRITE "bv2nat_fill_F") NIL)))
+ (|bv2nat_fill_T| "" (SKOSIMP*) (("" (REWRITE "bv2nat_fill_T") NIL)))
+ (|bv2nat_top_bit_F_TCC1| "" (SUBTYPE-TCC) NIL) (|bv2nat_top_bit_F_TCC2| "" (SUBTYPE-TCC) NIL)
+ (|bv2nat_top_bit_F| "" (SKOSIMP*) (("" (REWRITE "bv2nat_topbit") (("" (ASSERT) NIL)))))
+ (|bv2nat_top_bit_T_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|bv2nat_top_bit_T| "" (SKOSIMP*) (("" (REWRITE "bv2nat_topbit") (("" (ASSERT) NIL)))))
+ (|bv2nat_inj_rule| "" (SKOSIMP*) (("" (REWRITE "bv2nat_inj") NIL)))
+ (|bv_fill_unit_nat| "" (SKOSIMP*) (("" (GRIND) NIL))))

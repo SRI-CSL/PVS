@@ -1,0 +1,49 @@
+bv_overflow[N:posnat]: THEORY
+
+BEGIN
+
+  IMPORTING bv_arithmetic[N]
+
+  bv,bv1,bv2: var bvec[N]
+
+  overflow(bv1,bv2): bool = NOT in_rng_2s_comp(bv2int(bv1) + bv2int(bv2))
+
+  overflow_then_eq: LEMMA overflow(bv1,bv2) IMPLIES 
+                              bv1 ^ (N - 1) = bv2 ^ (N - 1)
+  
+  i: VAR int  
+
+  bv2int_overflow_nat : LEMMA NOT in_rng_2s_comp(bv2int(bv1) + bv2int(bv2))
+                                    IMPLIES bv2int(bv1 + bv2) = 
+                                      bv2nat(bv1) + bv2nat(bv2) - exp2(N)
+
+  bv_not_in_rng_int   : LEMMA NOT in_rng_2s_comp(bv2int(bv1) + bv2int(bv2))
+                                    IMPLIES bv2int(bv1 + bv2) =
+                                        bv2int(bv1) + bv2int(bv2) 
+                                              + exp2(N) * b2n(bv1(N - 1))
+                                              + exp2(N) * b2n(bv2(N - 1))
+                                              - exp2(N)
+
+  bv2int_add_overflow : THEOREM NOT in_rng_2s_comp(bv2int(bv1) + bv2int(bv2))
+                           IMPLIES bv2int(bv1 + bv2) =
+            		       IF bv2int(bv1) >= 0 AND bv2int(bv2) >= 0
+            			  THEN bv2int(bv1) + bv2int(bv2) - exp2(N)
+            		       ELSE bv2int(bv1) + bv2int(bv2) + exp2(N) 
+                               ENDIF
+
+
+  bv_sum_limits       : LEMMA bv2int(bv1) + bv2int(bv2) <= 2 * maxint AND
+                              bv2int(bv1) + bv2int(bv2) >= 2 * minint  
+
+  bv_bits_for_overflow: LEMMA (bv1 ^ (N - 1) = bv2 ^ (N - 1)
+                              AND bv1 ^ (N - 1) /= (bv1 + bv2) ^ (N - 1))
+                                  IMPLIES overflow(bv1, bv2)
+
+  bv_overflow_bits_ne : LEMMA overflow(bv1,bv2) IMPLIES 
+                                      (bv1 ^ (N - 1) /= (bv1 + bv2) ^ (N - 1))
+
+  bv_overflow_def     : THEOREM overflow(bv1, bv2) =
+                                   ((bv1 ^ (N - 1) = bv2 ^ (N - 1))
+                                   AND (bv1 ^ (N - 1) /= (bv1 + bv2) ^ (N - 1)))
+
+END bv_overflow

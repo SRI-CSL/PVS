@@ -1,0 +1,25 @@
+bv_arith_concat: THEORY
+  
+%  EXPORTING ALL WITH bit, bv_concat, bv_bitwise, exp2
+
+BEGIN
+
+  IMPORTING bv_concat
+
+  m,n,p: VAR nat
+
+
+  IMPORTING bv_bitwise
+
+  not_over_concat    : LEMMA FORALL (a: bvec[m], b: bvec[n]):
+                                 (NOT (a o b)) = (NOT a) o (NOT b)
+
+  IMPORTING bv_sum % For Proof Only
+
+
+  bv2nat_concat: THEOREM FORALL (bvn: bvec[n], bvm: bvec[m]):
+                    bv2nat[n+m](bvn o bvm) 
+                               = bv2nat[n](bvn) * exp2(m) + bv2nat[m](bvm)
+
+
+END bv_arith_concat

@@ -1,0 +1,26 @@
+bv_nat_rules: THEORY
+
+BEGIN
+
+  IMPORTING bv_nat
+
+  n: VAR nat
+
+  bv2nat_fill_F   : LEMMA bv2nat(fill[n](FALSE)) = 0
+  bv2nat_fill_T   : LEMMA bv2nat(fill[n](TRUE)) = exp2(n)-1
+
+  bv2nat_top_bit_F: LEMMA FORALL (bvn: bvec[n]):
+                             n > 0 AND bv2nat(bvn) < exp2(n-1) 
+                                  IMPLIES bvn^(n-1) = FALSE
+
+  bv2nat_top_bit_T: LEMMA FORALL (bvn: bvec[n]): 
+                             n > 0 AND bv2nat(bvn) >= exp2(n-1) 
+                                  IMPLIES bvn^(n-1) = TRUE 
+
+  bv2nat_inj_rule : LEMMA FORALL (bv1, bv2: bvec[n]): bv2nat(bv1) = bv2nat(bv2) 
+                                                        IMPLIES bv1 = bv2
+
+  b: VAR bit
+  bv_fill_unit_nat: LEMMA n = 1 => bv2nat[n](fill[n](b)) = b2n(b)
+
+END bv_nat_rules

@@ -1,0 +1,42 @@
+bv_caret_concat: THEORY
+
+BEGIN
+
+  IMPORTING bv_arith_concat, bv_caret
+
+  n,m: VAR posnat
+  b  : VAR bit
+
+  caret_fill	   : THEOREM FORALL (i: below(n), j: upto(i)): 
+			        fill[n](b)^(i,j) = fill[i-j+1](b)
+ 
+  caret_concat_bot : THEOREM FORALL (i: below(n+m), j: upto(i),
+                                     bvn: bvec[n], bvm: bvec[m]):
+			         i < m IMPLIES (bvn o bvm)^(i,j) = bvm^(i,j)
+ 
+  caret_concat_top : THEOREM FORALL (i: below(n+m), j: upto(i),
+                                     bvn: bvec[n], bvm: bvec[m]):
+			        j >= m 
+				  IMPLIES (bvn o bvm)^(i,j) = bvn^(i-m, j-m)
+ 
+  caret_concat_all : THEOREM FORALL (i: below(n+m), j: upto(i), 
+                                     bvn: bvec[n], bvm: bvec[m]):
+			        i >= m AND j < m 
+				   IMPLIES (bvn o bvm)^(i,j) = 
+                                      bvn^(i-m,0) o bvm^(m-1,j) 
+
+  bv_decomposition : THEOREM FORALL (N: above(1), k: below(N-1), bvn: bvec[N]):
+                                bvn^(N-1,k+1) o bvn^(k,0) = bvn
+ 
+  caret_concat_join: THEOREM FORALL (bvn: bvec[n], i1,i2: below[n],
+                                         j1: upto[i1], j2: upto[i2]):
+                               (j1=i2+1) =>
+                                   (bvn^(i1,j1) o bvn^(i2,j2) =  bvn^(i1,j2));
+
+  concat_bottom	   : THEOREM FORALL (bvn: bvec[n], bvm: bvec[m]):
+                                (bvn o bvm)^(m-1,0) = bvm
+ 
+  concat_top	   : THEOREM FORALL (bvn: bvec[n], bvm: bvec[m]):
+                                 (bvn o bvm)^((n+m-1),m) = bvn
+
+END bv_caret_concat

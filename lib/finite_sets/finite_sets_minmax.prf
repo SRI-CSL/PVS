@@ -1,0 +1,381 @@
+(|finite_sets_minmax|
+ (|minrec_TCC1| "" (SKOSIMP*) (("" (REWRITE "card_rest") (("" (ASSERT) NIL)))))
+ (|lt_reflexive| "" (SKOSIMP*)
+  (("" (TYPEPRED "finite_sets_minmax.<=")
+    (("" (EXPAND "total_order?")
+      (("" (EXPAND "partial_order?")
+        (("" (FLATTEN)
+          (("" (HIDE -2 3)
+            (("" (EXPAND "preorder?")
+              (("" (FLATTEN)
+                (("" (EXPAND "reflexive?") (("" (INST?) NIL)))))))))))))))))))
+ (|lt_transitive| "" (SKOSIMP*)
+  (("" (TYPEPRED "finite_sets_minmax.<=")
+    (("" (EXPAND "total_order?")
+      (("" (EXPAND "partial_order?")
+        (("" (FLATTEN)
+          (("" (HIDE -2 3)
+            (("" (EXPAND "preorder?")
+              (("" (FLATTEN)
+                (("" (HIDE -1 -3)
+                  (("" (EXPAND "transitive?")
+                    (("" (INST -1 "x!1" "y!1" "z!1")
+                      (("" (ASSERT) NIL)))))))))))))))))))))))
+ (|lt_total| "" (SKOSIMP*)
+  (("" (TYPEPRED "finite_sets_minmax.<=")
+    (("" (EXPAND "total_order?")
+      (("" (EXPAND "partial_order?")
+        (("" (FLATTEN)
+          (("" (HIDE -1 -2)
+            (("" (EXPAND "dichotomous?")
+              (("" (INST?) (("" (ASSERT) NIL)))))))))))))))))
+ (|lt_antisymmetric| "" (SKOSIMP*)
+  (("" (TYPEPRED "finite_sets_minmax.<=")
+    (("" (EXPAND "total_order?")
+      (("" (EXPAND "partial_order?")
+        (("" (FLATTEN)
+          (("" (HIDE -1 -3)
+            (("" (EXPAND "antisymmetric?")
+              (("" (INST?) (("" (ASSERT) NIL)))))))))))))))))
+ (|min_TCC1| "" (INST 1 "(LAMBDA SS: minrec(SS))")
+  (("" (INDUCT "SS" 1 "finite_set_induction_rest")
+    (("1" (TYPEPRED "SS!1") (("1" (PROPAX) NIL)))
+     ("2" (TYPEPRED "SS!1") (("2" (PROPAX) NIL)))
+     ("3" (ASSERT) (("3" (AUTO-REWRITE-THEORY "sets[T]") (("3" (ASSERT) NIL)))))
+     ("4" (SKOSIMP*)
+      (("4" (EXPAND "minrec" +)
+        (("4" (SPLIT 2)
+          (("1" (ASSERT) NIL)
+           ("2" (FLATTEN)
+            (("2" (AUTO-REWRITE-THEORY "sets[T]")
+              (("2" (ASSERT)
+                (("2" (SKOSIMP*)
+                  (("2" (EXPAND "min")
+                    (("2" (ASSERT)
+                      (("2" (SPLIT)
+                        (("1" (FLATTEN)
+                          (("1" (LEMMA "epsilon_ax[T]")
+                            (("1" (INST?)
+                              (("1" (ASSERT) (("1" (INST 1 "x!1") NIL)))))))))
+                         ("2" (ASSERT) NIL)))))))))))))))
+           ("3" (SKOSIMP*)
+            (("3" (LIFT-IF)
+              (("3" (SPLIT 1)
+                (("1" (HIDE -2)
+                  (("1" (FLATTEN)
+                    (("1" (LEMMA "choose_rest_or[T]")
+                      (("1" (INST?)
+                        (("1" (EXPAND "member")
+                          (("1" (INST?)
+                            (("1" (ASSERT)
+                              (("1" (SPLIT -1)
+                                (("1" (EXPAND "empty?")
+                                  (("1" (INST?)
+                                    (("1" (EXPAND "member")
+                                      (("1" (PROPAX) NIL)))))))
+                                 ("2" (REPLACE -1)
+                                  (("2" (HIDE -1)
+                                    (("2" (REWRITE "lt_reflexive")
+                                      NIL)))))))))))))))))))))
+                 ("2" (FLATTEN)
+                  (("2" (ASSERT)
+                    (("2" (FLATTEN)
+                      (("2" (EXPAND "min")
+                        (("2" (LIFT-IF)
+                          (("2" (ASSERT)
+                            (("2" (GROUND)
+                              (("1" (LEMMA "choose_rest_or[T]")
+                                (("1" (EXPAND "member")
+                                  (("1" (INST -1 "SS!1" "x!1")
+                                    (("1" (ASSERT)
+                                      (("1" (SPLIT -1)
+                                        (("1"
+                                          (INST -5 "x!1")
+                                          (("1"
+                                            (ASSERT)
+                                            (("1"
+                                              (HIDE -1 -3 -4 2 3)
+                                              (("1"
+                                                (LEMMA "lt_transitive")
+                                                (("1"
+                                                  (INST
+                                                   -1
+                                                   "choose(SS!1)"
+                                                   " minrec(rest(SS!1))"
+                                                   "x!1")
+                                                  (("1" (ASSERT) NIL)))))))))))
+                                         ("2"
+                                          (REPLACE -1)
+                                          (("2"
+                                            (HIDE -1)
+                                            (("2"
+                                              (HIDE -1 -2 -3 -4)
+                                              (("2"
+                                                (REWRITE "lt_reflexive")
+                                                NIL)))))))))))))))))
+                               ("2" (INST -3 "x!1")
+                                (("2" (SPLIT -3)
+                                  (("1" (PROPAX) NIL)
+                                   ("2" (CASE-REPLACE "x!1 = choose(SS!1)")
+                                    (("1" (HIDE -1 -2 -3 1 4 5)
+                                      (("1" (LEMMA "lt_total")
+                                        (("1" (INST?) (("1" (GROUND) NIL)))))))
+                                     ("2" (HIDE 3 4 5 6)
+                                      (("2" (LEMMA "choose_rest_or[T]")
+                                        (("2"
+                                          (INST?)
+                                          (("2"
+                                            (EXPAND "member")
+                                            (("2"
+                                              (GROUND)
+                                              NIL)))))))))))))))))))))))))))))))))))))))))))))
+ (|max_TCC1| "" (INST 1 "(LAMBDA SS: maxrec(SS))")
+  (("" (INDUCT "SS" 1 "finite_set_induction_rest")
+    (("1" (TYPEPRED "SS!1") (("1" (PROPAX) NIL)))
+     ("2" (TYPEPRED "SS!1") (("2" (PROPAX) NIL)))
+     ("3" (ASSERT) (("3" (AUTO-REWRITE-THEORY "sets[T]") (("3" (ASSERT) NIL)))))
+     ("4" (SKOSIMP*)
+      (("4" (EXPAND "maxrec" +)
+        (("4" (SPLIT 2)
+          (("1" (ASSERT) NIL)
+           ("2" (FLATTEN)
+            (("2" (AUTO-REWRITE-THEORY "sets[T]")
+              (("2" (ASSERT)
+                (("2" (SKOSIMP*)
+                  (("2" (EXPAND "max")
+                    (("2" (ASSERT)
+                      (("2" (SPLIT 2)
+                        (("1" (ASSERT) NIL)
+                         ("2" (FLATTEN)
+                          (("2" (LEMMA "epsilon_ax[T]")
+                            (("2" (INST?)
+                              (("2" (ASSERT)
+                                (("2" (INST 1 "x!1") NIL)))))))))))))))))))))))
+           ("3" (SKOSIMP*)
+            (("3" (LIFT-IF)
+              (("3" (SPLIT 1)
+                (("1" (HIDE -2)
+                  (("1" (FLATTEN)
+                    (("1" (CASE-REPLACE "x!1=choose(SS!1)")
+                      (("1" (REWRITE "lt_reflexive") NIL)
+                       ("2" (HIDE 2)
+                        (("2" (LEMMA "choose_rest_or[T]")
+                          (("2" (EXPAND "member")
+                            (("2" (INST?)
+                              (("2" (ASSERT)
+                                (("2" (EXPAND "empty?")
+                                  (("2" (EXPAND "member")
+                                    (("2" (INST?) NIL)))))))))))))))))))))
+                 ("2" (FLATTEN)
+                  (("2" (ASSERT)
+                    (("2" (FLATTEN)
+                      (("2" (EXPAND "max")
+                        (("2" (LIFT-IF)
+                          (("2" (ASSERT)
+                            (("2" (PROP)
+                              (("1" (HIDE -4)
+                                (("1" (LEMMA "choose_rest_or[T]")
+                                  (("1" (EXPAND "member")
+                                    (("1" (INST -1 "SS!1" "x!1")
+                                      (("1" (ASSERT)
+                                        (("1"
+                                          (REVEAL -2)
+                                          (("1"
+                                            (INST -1 "x!1")
+                                            (("1" (ASSERT) NIL)))))))))))))))
+                               ("2" (ASSERT)
+                                (("2" (INST -3 "x!1")
+                                  (("2" (SPLIT -3)
+                                    (("1" (HIDE -2 -3 3 4)
+                                      (("1" (LEMMA "lt_total")
+                                        (("1"
+                                          (INST
+                                           -1
+                                           "maxrec(rest(SS!1))"
+                                           "choose(SS!1) ")
+                                          (("1"
+                                            (PROP)
+                                            (("1"
+                                              (LEMMA "lt_transitive")
+                                              (("1"
+                                                (INST
+                                                 -1
+                                                 "x!1"
+                                                 "maxrec(rest(SS!1))"
+                                                 "choose(SS!1)")
+                                                (("1" (ASSERT) NIL)))))))))))))
+                                     ("2" (LEMMA "choose_rest_or[T]")
+                                      (("2" (EXPAND "member")
+                                        (("2"
+                                          (INST?)
+                                          (("2"
+                                            (ASSERT)
+                                            (("2"
+                                              (REPLACE -1)
+                                              (("2"
+                                                (HIDE -1)
+                                                (("2"
+                                                  (REWRITE "lt_reflexive")
+                                                  NIL)))))))))))))))))))))))))))))))))))))))))))))))))
+ (|min_lem| "" (SKOSIMP*)
+  (("" (TYPEPRED "min(SS!1)")
+    (("" (PROP)
+      (("1" (ASSERT) NIL)
+       ("2" (SKOSIMP*)
+        (("2" (REPLACE -1)
+          (("2" (HIDE -1)
+            (("2" (TYPEPRED "x!1") (("2" (INST?) (("2" (ASSERT) NIL)))))))))))
+       ("3" (INST -4 "a!1")
+        (("3" (ASSERT)
+          (("3" (INST -2 "min(SS!1)")
+            (("3" (ASSERT)
+              (("3" (HIDE -1 -3)
+                (("3" (REWRITE "lt_antisymmetric") NIL)))))))))))))))))
+ (|max_lem| "" (SKOSIMP*)
+  (("" (TYPEPRED "max(SS!1)")
+    (("" (PROP)
+      (("1" (ASSERT) NIL)
+       ("2" (SKOSIMP*)
+        (("2" (REPLACE -1)
+          (("2" (HIDE -1)
+            (("2" (TYPEPRED "x!1") (("2" (INST?) (("2" (ASSERT) NIL)))))))))))
+       ("3" (INST -4 "a!1")
+        (("3" (ASSERT)
+          (("3" (INST -2 "max(SS!1)")
+            (("3" (ASSERT)
+              (("3" (HIDE -1 -3)
+                (("3" (REWRITE "lt_antisymmetric") NIL)))))))))))))))))
+ (|min_union| "" (SKOSIMP*)
+  (("" (AUTO-REWRITE "member" "union")
+    (("" (LEMMA "min_lem")
+      (("" (INST-CP -1 "A!1" "x!1")
+        (("" (INST -1 "B!1" "y!1")
+          (("" (ASSERT)
+            (("" (LEMMA "min_lem")
+              (("" (INST -1 "union(A!1,B!1)" "min(x!1, y!1)")
+                (("" (FLATTEN)
+                  (("" (HIDE -1)
+                    (("" (ASSERT)
+                      (("" (HIDE 2)
+                        (("" (SPLIT 1)
+                          (("1" (FLATTEN)
+                            (("1" (EXPAND "min")
+                              (("1" (CASE "x!1 <= y!1")
+                                (("1" (ASSERT) NIL) ("2" (ASSERT) NIL)))))))
+                           ("2" (SKOSIMP*)
+                            (("2" (TYPEPRED "x!2")
+                              (("2" (EXPAND "union")
+                                (("2" (EXPAND "min")
+                                  (("2" (EXPAND "member")
+                                    (("2" (LIFT-IF)
+                                      (("2" (SPLIT 1)
+                                        (("1"
+                                          (FLATTEN)
+                                          (("1"
+                                            (SPLIT -2)
+                                            (("1" (INST -4 "x!2") NIL)
+                                             ("2"
+                                              (INST -3 "x!2")
+                                              (("2"
+                                                (HIDE -1 -4 -5 -6)
+                                                (("2"
+                                                  (LEMMA "lt_transitive")
+                                                  (("2"
+                                                    (INST -1 "x!1" "y!1" "x!2")
+                                                    (("2"
+                                                      (ASSERT)
+                                                      NIL)))))))))))))
+                                         ("2"
+                                          (FLATTEN)
+                                          (("2"
+                                            (SPLIT -1)
+                                            (("1"
+                                              (INST -3 "x!2")
+                                              (("1"
+                                                (ASSERT)
+                                                (("1"
+                                                  (HIDE -1 -2 -4 -5)
+                                                  (("1"
+                                                    (LEMMA "lt_transitive")
+                                                    (("1"
+                                                      (INST
+                                                       -1
+                                                       "x!1"
+                                                       "x!2"
+                                                       "y!1")
+                                                      (("1"
+                                                        (ASSERT)
+                                                        (("1"
+                                                          (HIDE -1 2)
+                                                          (("1"
+                                                            (LEMMA "lt_total")
+                                                            (("1"
+                                                              (INST?)
+                                                              (("1"
+                                                                (ASSERT)
+                                                                NIL)))))))))))))))))))
+                                             ("2"
+                                              (INST -2 "x!2")
+                                              NIL)))))))))))))))))))))))))))))))))))))))))))))
+ (|max_union| "" (SKOSIMP*)
+  (("" (AUTO-REWRITE "member" "union")
+    (("" (LEMMA "max_lem")
+      (("" (INST-CP -1 "A!1" "x!1")
+        (("" (INST -1 "B!1" "y!1")
+          (("" (ASSERT)
+            (("" (LEMMA "max_lem")
+              (("" (INST -1 "union(A!1,B!1)" "max(x!1, y!1)")
+                (("" (FLATTEN)
+                  (("" (HIDE -1)
+                    (("" (ASSERT)
+                      (("" (HIDE 2)
+                        (("" (SPLIT 1)
+                          (("1" (FLATTEN)
+                            (("1" (EXPAND "max")
+                              (("1" (CASE "x!1 <= y!1")
+                                (("1" (ASSERT) NIL) ("2" (ASSERT) NIL)))))))
+                           ("2" (SKOSIMP*)
+                            (("2" (TYPEPRED "x!2")
+                              (("2" (EXPAND "union")
+                                (("2" (EXPAND "max")
+                                  (("2" (EXPAND "member")
+                                    (("2" (LIFT-IF)
+                                      (("2" (SPLIT 1)
+                                        (("1"
+                                          (FLATTEN)
+                                          (("1"
+                                            (SPLIT -2)
+                                            (("1"
+                                              (INST -4 "x!2")
+                                              (("1"
+                                                (HIDE -1 -3 -5 -6)
+                                                (("1"
+                                                  (LEMMA "lt_transitive")
+                                                  (("1"
+                                                    (INST -1 "x!2" "x!1" "y!1")
+                                                    (("1" (ASSERT) NIL)))))))))
+                                             ("2" (INST -3 "x!2") NIL)))))
+                                         ("2"
+                                          (FLATTEN)
+                                          (("2"
+                                            (SPLIT -1)
+                                            (("1" (INST -3 "x!2") NIL)
+                                             ("2"
+                                              (INST -2 "x!2")
+                                              (("2"
+                                                (HIDE -1 -3 -4 -5)
+                                                (("2"
+                                                  (LEMMA "lt_transitive")
+                                                  (("2"
+                                                    (INST -1 "x!2" "y!1" "x!1")
+                                                    (("2"
+                                                      (ASSERT)
+                                                      (("2"
+                                                        (HIDE -1 3)
+                                                        (("2"
+                                                          (LEMMA "lt_total")
+                                                          (("2"
+                                                            (INST?)
+                                                            (("2"
+                                                              (ASSERT)
+                                                              NIL))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))

@@ -1,0 +1,16 @@
+finite_sets_pred[T: TYPE]: THEORY
+BEGIN
+
+  IMPORTING finite_sets
+
+  P, P1, P2: VAR pred[T]
+
+  finite_pred: LEMMA is_finite(fullset[T]) IMPLIES
+                        is_finite[T]({x: T | P(x)})
+
+
+  card_implies: LEMMA is_finite(fullset[T]) AND
+                      (FORALL (x: T): P1(x) IMPLIES P2(x)) 
+             IMPLIES card({x: T | P1(x)}) <= card({x: T | P2(x)})
+
+END finite_sets_pred

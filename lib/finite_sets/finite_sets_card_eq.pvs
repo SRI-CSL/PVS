@@ -1,0 +1,37 @@
+finite_sets_card_eq[T1, T2 : TYPE] : THEORY
+%-------------------------------------------------------------------------
+%
+%      by Bruno Dutertre    Royal Holloway & Bedford New College
+% 
+% Establishes:
+%
+%       card_eq_bij : LEMMA card(E) = card(F) IFF 
+%                                  EXISTS (f: [(E)->(F)]): bijective?(f)
+%
+%-------------------------------------------------------------------------
+
+BEGIN
+
+  IMPORTING finite_sets, func_composition
+
+  E: VAR finite_set[T1]
+  F: VAR finite_set[T2]
+
+  N: VAR nat
+  card_injection         : LEMMA (EXISTS (f : [(E)->below[N]]) : injective?(f)) 
+                                     IMPLIES card(E) <= N
+  
+  card_surjection        : LEMMA (EXISTS (f : [(E)->below[N]]) : surjective?(f)) 
+                                     IMPLIES N <= card(E) 
+  
+
+  injection_and_cardinal : LEMMA (EXISTS (f : [(E)->(F)]): injective?(f))
+                                            IMPLIES card(E) <= card(F)
+
+  surjection_and_cardinal: LEMMA (EXISTS (f: [(E)->(F)]): surjective?(f))
+                                            IMPLIES card(F) <= card(E)
+
+  card_eq_bij            : LEMMA card(E) = card(F) IFF 
+                                          EXISTS (f: [(E)->(F)]): bijective?(f)
+
+END finite_sets_card_eq

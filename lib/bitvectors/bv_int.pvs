@@ -1,0 +1,88 @@
+%------------------------------------------------------------------------
+%
+% Integer interpretation of a bitvector (twos-complement interpretation)
+% ----------------------------------------------------------------------
+%
+%   Defines:
+%
+%      minint: int = -exp2(N-1)
+%      maxint: int =  exp2(N-1) - 1
+%      rng_2s_comp: TYPE = {i: int | minint <= i AND i <= maxint}
+%      bv2int : [bvec[N] -> rng_2s_comp] 
+%      int2bv : [rng_2s_comp  -> bvec[N]]
+%  
+%   Establishes:
+%  
+%      bv2int_bij : THEOREM bijective?(bv2int)
+%      bv2int_inv : THEOREM bv2int(int2bv(iv))=iv
+%
+%   Note.  The int2bv should be avoided in practice.  It is necessary
+%          for the development of the library.
+%
+%------------------------------------------------------------------------
+bv_int[N: posnat]: THEORY
+BEGIN
+
+  IMPORTING bv_nat[N]
+
+  minint: int = -exp2(N-1)
+  maxint: int =  exp2(N-1) - 1
+
+  bv_maxint_to_minint:    LEMMA maxint = -minint - 1
+  bv_minint_to_maxint:    LEMMA minint = -maxint - 1
+
+  in_rng_2s_comp(i: int): bool = (minint <= i AND i <= maxint)
+  rng_2s_comp: TYPE = {i: int | minint <= i AND i <= maxint}
+
+  bv2int(bv: bvec[N]): rng_2s_comp = IF bv2nat(bv) < exp2(N-1) THEN bv2nat(bv)
+                                     ELSE bv2nat(bv) - exp2(N) ENDIF
+
+  i           : VAR below(N)
+  iv,ii       : VAR rng_2s_comp
+  bv, bv1, bv2: VAR bvec[N]
+
+    
+  bv2int_inj    : THEOREM % injective?(bv2int)
+                               bv2int(bv1) = bv2int(bv2) IMPLIES (bv1 = bv2)
+
+  bv2int_surj   : THEOREM % surjective?(bv2int)
+                              (EXISTS (bv: bvec[N]): bv2int(bv) = iv)
+
+  bv2int_bij    : THEOREM bijective?(bv2int)
+
+  bv2int_lem    : THEOREM bv2int(bv) = bv2nat(bv) - exp2(N) * bv^(N - 1)
+
+  bv2int_fill_F : THEOREM bv2int(fill[N](FALSE)) = 0
+
+  bv2int_fill_T : THEOREM bv2int(fill[N](TRUE)) = -1
+
+  bv2int_top_bit: THEOREM IF bv2int(bv) >= 0 THEN bv^(N-1) = FALSE 
+                          ELSE bv^(N-1) = TRUE ENDIF
+
+  bv2int_topbit : THEOREM bv^(N-1) IFF (bv2int(bv) < 0)
+
+% ---------- Properties of int2bv ----------------------------
+
+
+  int2bv(iv: rng_2s_comp): {bv | bv2int(bv) = iv}
+
+  int2bv_def : THEOREM int2bv = inverse(bv2int) 
+
+  int2bv_bij : THEOREM bijective?[rng_2s_comp,bvec[N]](int2bv)
+
+  bv2int_inv : THEOREM bv2int(int2bv(iv))=iv
+
+  int2bv_inv : THEOREM int2bv(bv2int(bv)) = bv
+
+  int2bv_2nat: THEOREM  int2bv(ii) = IF ii >= 0 THEN nat2bv[N](ii)
+                                   ELSE nat2bv[N](ii+exp2(N)) ENDIF
+
+
+END bv_int
+
+
+
+
+
+
+

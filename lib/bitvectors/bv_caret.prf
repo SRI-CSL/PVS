@@ -1,0 +1,8 @@
+(|bv_caret| (|caret_TCC1| "" (SUBTYPE-TCC) NIL) (|caret_TCC2| "" (SUBTYPE-TCC) NIL)
+ (|caret_TCC3| "" (SAME-NAME-TCC) NIL) (|caret_TCC4| "" (SUBTYPE-TCC) NIL)
+ (|bv_caret_all_TCC1| "" (SUBTYPE-TCC) NIL) (|bv_caret_all_TCC2| "" (SUBTYPE-TCC) NIL)
+ (|bv_caret_all| "" (SKOSIMP*) (("" (EXPAND "^") (("" (APPLY-EXTENSIONALITY 1 :HIDE? T) NIL)))))
+ (|bv_caret_ii_0_TCC1| "" (SUBTYPE-TCC) NIL) (|bv_caret_ii_0_TCC2| "" (SUBTYPE-TCC) NIL)
+ (|bv_caret_ii_0| "" (SKOSIMP*) (("" (EXPAND "^") (("" (PROPAX) NIL))))) (|bv_caret_elim_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|bv_caret_elim_TCC2| "" (SUBTYPE-TCC) NIL) (|bv_caret_elim_TCC3| "" (SUBTYPE-TCC) NIL)
+ (|bv_caret_elim| "" (SKOSIMP*) (("" (EXPAND "^") (("" (PROPAX) NIL))))))

@@ -1,0 +1,76 @@
+finite_sets_sum[T, R: TYPE, zero:R, +:[R,R -> R] ]: THEORY
+%----------------------------------------------------------------------
+%  
+%                                              ----
+%                                              \     
+%  sum(S: finite_set[T], f:[T->R]) = zero +       f(i) 
+%                                              /
+%                                              ----
+%                                              member(i,S)
+%  
+%----------------------------------------------------------------------
+BEGIN
+
+  ASSUMING
+     r,r1,r2,r3 : VAR R
+     zero_identity: ASSUMPTION identity?(+)(zero)
+     plus_ac:       ASSUMPTION associative?(+) AND commutative?(+)
+  ENDASSUMING
+
+  plus_zero_right: LEMMA r + zero = r 
+  plus_zero_left : LEMMA zero + r = r
+  plus_assoc     : LEMMA (r1 + r2) + r3 = r1 + (r2 + r3) 
+  plus_comm      : LEMMA r1 + r2 = r2 + r1
+
+  IMPORTING finite_sets[T], finite_sets_inductions[T], sets_lemmas[T]
+
+  f,g: VAR [T -> R]
+  S, A, B: VAR finite_set
+  x: VAR T
+
+  sum(S,f) : RECURSIVE R = 
+    IF (empty?(S)) THEN zero
+    ELSE f(choose(S)) + sum(rest(S),f)
+    ENDIF MEASURE (LAMBDA S,f: card(S))
+
+  sum_emptyset  : THEOREM sum(emptyset[T],f) = zero
+
+  sum_singleton : THEOREM sum(singleton(x),f) = f(x) + zero ;
+
+  sum_x         : THEOREM (FORALL (x: (S)): 
+                              sum(S, f) = f(x) + sum(remove(x, S), f))
+
+  sum_x1_x2     : LEMMA (FORALL (x1,x2: (S)): f(x1) + sum(remove(x1,S),f) 
+                              = f(x2) + sum(remove(x2,S),f))
+
+  sum_add       : THEOREM sum(add(x,S),f) 
+                          = sum(S,f) + IF member(x,S) THEN zero ELSE f(x) ENDIF
+
+  sum_remove    : THEOREM sum(remove(x,S),f) 
+                          + IF member(x,S) THEN f(x) ELSE zero ENDIF = sum(S,f)
+
+  sum_rest      : THEOREM NOT empty?(S) IMPLIES
+                            f(choose(S)) + sum(rest(S),f) = sum(S,f)
+ 
+  sum_disj_union: THEOREM disjoint?(A,B) IMPLIES 
+                            sum(union(A,B),f) = sum(A,f) + sum(B,f) 
+
+  sum_diff_subset: THEOREM subset?(A, B) IMPLIES 
+		            sum(difference(B, A), f) + sum(A, f) = sum(B, f) 
+
+  sum_union      : THEOREM sum(union(A,B),f) + sum(intersection(A,B),f) =
+                                         sum(A,f) + sum(B,f) 
+
+  sum_diff_intersection: THEOREM sum(A,f) = 
+                            sum(difference(A,B),f) + sum(intersection(A,B),f) 
+
+  sum_f_g         : LEMMA (FORALL (x: (S)): f(x) = g(x)) 
+                               IMPLIES sum(S, f) = sum(S, g)
+
+  sum_particular  : THEOREM sum(S,f) = sum(S, f WITH [x := zero])
+			       + IF S(x) THEN f(x) ELSE zero ENDIF 
+
+  sum_distributive: THEOREM sum(A,f) + sum(A,g) = 
+                                sum(A,(LAMBDA x: f(x) + g(x))) 
+
+END finite_sets_sum

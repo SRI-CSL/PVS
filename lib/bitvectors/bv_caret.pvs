@@ -1,0 +1,53 @@
+bv_caret[N: nat]: THEORY
+%-----------------------------------------------------------------------
+% An extractor operation decomposes a bvec into smaller
+% bit vectors.  In the following, we define a number of
+% extractors for bvec. 
+%
+%    Introduces:
+%       bv^(m,n) creates bv[m-n+1] from bits m through n
+%    
+%       bv^^(m,n) can return an empty bitvector if n > m
+%  
+%-----------------------------------------------------------------------  
+BEGIN
+
+  IMPORTING bv, empty_bv
+
+  %-----------------------------------------------------------------------  
+  % The following operator (^) extracts a contiguous fragment of
+  % a bit vector between two given positions.
+  %-----------------------------------------------------------------------  
+
+%  ^(bv: bvec[N], p:[m: below(N), upto(m)]): bvec[LET (m, n) = p IN m - n + 1] =
+%             LET (m, n) = p IN
+%                (LAMBDA  (ii: below(m - n + 1)): bv(ii + n)) ;
+
+
+   ^(bv: bvec[N], sp:[i1: below(N), upto(i1)]): bvec[proj_1(sp)-proj_2(sp)+1] =
+       (LAMBDA  (ii: below(proj_1(sp) - proj_2(sp) + 1)):
+		  bv(ii + proj_2(sp))) ;
+
+%  ^^(bv: bvec[N], p:[m:below[N],nat]): bvec[LET (m, n) = p IN 
+%                                        IF m < n THEN 0 ELSE m - n + 1 ENDIF] =
+%      LET (m, n) = p IN
+%        IF m < n THEN empty_bv 
+%        ELSE (LAMBDA (ii: below[m-n+1]): bv(ii + n))
+%        ENDIF
+
+
+% === Useful Lemmas and Theorems =========================================
+
+  bv: VAR bvec[N]
+
+  bv_caret_all  : LEMMA N > 0 IMPLIES bv^(N-1, 0) = bv
+
+%    dcaret_lem : LEMMA (FORALL (i: below(N), j: upto(i)): bv^^(i,j) = bv^(i,j))
+
+  bv_caret_ii_0 : LEMMA (FORALL (i: below(N)): bv^(i,i)^0 = bv^i)
+
+  bv_caret_elim : LEMMA (FORALL (i: below(N), j: upto(i), k: below(i-j+1)): 
+                               bv ^ (i, j) ^ k = bv^(j+k))
+
+END bv_caret 
+  

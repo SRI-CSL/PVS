@@ -1,0 +1,131 @@
+(|bv_adder|
+ (|oba_correct| "" (SKOSIMP*)
+  (("" (EXPAND "oba_cout")
+    (("" (EXPAND "oba_sum") (("" (EXPAND "XOR") (("" (GRIND) NIL)))))))))
+ (|n_cout_rec_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|n_cout_rec_TCC2| "" (SUBTYPE-TCC) NIL)
+ (|n_cout_rec_TCC3| "" (TERMINATION-TCC) NIL)
+ (|adder_correct_rec_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|adder_correct_rec| "" (INDUCT "n" 1 "below_induction[N]")
+  (("1" (SKOSIMP*)
+    (("1" (EXPAND "bv2nat_rec")
+      (("1" (EXPAND "bv2nat_rec")
+        (("1" (EXPAND "exp2")
+          (("1" (EXPAND "exp2")
+            (("1" (EXPAND "bv_adder") (("1" (GRIND) NIL)))))))))))))
+   ("2" (SKOSIMP*)
+    (("2" (EXPAND "bv2nat_rec" 1)
+      (("2" (INST?)
+        (("2" (REWRITE "commutative_add" 1 :SUBST ("x" "1" "y" "jb!1"))
+          (("2"
+            (REWRITE "commutative_add" 1 :SUBST
+             ("x" "b2n(a_cin!1)" "y"
+              "bv2nat_rec(1 + jb!1, x!1) + bv2nat_rec(1 + jb!1, y!1)"))
+            (("2"
+              (NAME-REPLACE AA
+               "b2n(a_cin!1) + bv2nat_rec(1 + jb!1, x!1) + bv2nat_rec(1 + jb!1, y!1)")
+              (("2" (EXPAND "n_cout_rec" 1)
+                (("2" (EXPAND "exp2" 1 2)
+                  (("2" (EXPAND "bv_adder" 1 2)
+                    (("2" (EXPAND "^" 1 3)
+                      (("2"
+                        (LEMMA "oba_correct" :SUBST
+                         ("a" "x!1 ^ (1 + jb!1)" "b" "y!1 ^ (1 + jb!1)" "cin"
+                          "n_cout_rec(jb!1, x!1, y!1, a_cin!1)"))
+                        (("1"
+                          (NAME-REPLACE BB
+                           "oba_cout(x!1 ^ (1 + jb!1), y!1 ^ (1 + jb!1),
+                      n_cout_rec(jb!1, x!1, y!1, a_cin!1))")
+                          (("1"
+                            (NAME-REPLACE CC
+                             "oba_sum(x!1 ^ (1 + jb!1), y!1 ^ (1 + jb!1),
+                   n_cout_rec(jb!1, x!1, y!1, a_cin!1))")
+                            (("1"
+                              (NAME-REPLACE DD
+                               "bv2nat_rec(1 + jb!1, bv_adder(x!1, y!1, a_cin!1))")
+                              (("1"
+                                (NAME-REPLACE EE
+                                 "b2n(n_cout_rec(jb!1, x!1, y!1, a_cin!1))")
+                                (("1"
+                                  (LEMMA "associative_mult" :SUBST
+                                   ("x" "2" "y" "b2n(BB)" "z"
+                                    "exp2(1 + jb!1)"))
+                                  (("1" (REPLACE -1 1)
+                                    (("1" (HIDE -1)
+                                      (("1"
+                                        (LEMMA
+                                         "commutative_mult"
+                                         :SUBST
+                                         ("x"
+                                          "(2 * b2n(BB))"
+                                          "y"
+                                          "exp2(1 + jb!1)"))
+                                        (("1"
+                                          (REPLACE -1 1)
+                                          (("1"
+                                            (HIDE -1)
+                                            (("1"
+                                              (CASE-REPLACE
+                                               "DD + exp2(1 + jb!1) * (2 * b2n(BB)) + (exp2(1 + jb!1) * b2n(CC)) = 
+DD + (exp2(1 + jb!1) * ((2 * b2n(BB)) +  b2n(CC)))")
+                                              (("1"
+                                                (HIDE -1)
+                                                (("1"
+                                                  (REPLACE -1 1 RL)
+                                                  (("1"
+                                                    (HIDE -1)
+                                                    (("1"
+                                                      (REPLACE -2 1 RL)
+                                                      (("1"
+                                                        (ASSERT)
+                                                        NIL)))))))))
+                                               ("2"
+                                                (HIDE 2)
+                                                (("2"
+                                                  (REWRITE "distributive")
+                                                  (("2"
+                                                    (REWRITE
+                                                     "commutative_mult"
+                                                     :SUBST
+                                                     ("x"
+                                                      "(2 * b2n(BB))"
+                                                      "y"
+                                                      "exp2(1 + jb!1)"))
+                                                    (("2"
+                                                      (ASSERT)
+                                                      NIL)))))))))))))))))))))))))))))
+                         ("2" (HIDE 2 -2)
+                          (("2" (ASSERT) NIL)))))))))))))))))))))))))))
+ (|adder_correct_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|adder_correct| "" (SKOSIMP*)
+  (("" (EXPAND "bv2nat")
+    ((""
+      (REWRITE "adder_correct_rec" 1 :SUBST
+       ("n" "N-1" "x" "x!1" "y" "y!1" "a_cin" "a_cin!1"))
+      NIL)))))
+ (|adder_is_add| "" (SKOSIMP*)
+  (("" (TYPEPRED "bv1!1 + bv2!1")
+    (("" (REWRITE "bv2nat_inj")
+      (("" (REPLACE -1 1)
+        (("" (HIDE -1)
+          ((""
+            (LEMMA "adder_correct" :SUBST
+             ("a_cin" "false" "x" "bv1!1" "y" "bv2!1"))
+            ((""
+              (NAME-REPLACE AA "b2n(n_cout_rec(N - 1, bv1!1, bv2!1, FALSE))")
+              (("" (EXPAND "b2n" -1)
+                (("" (REPLACE -1 1 RL)
+                  (("" (HIDE -1)
+                    (("" (HIDE 2)
+                      (("" (TYPEPRED "bv2nat(bv_adder(bv1!1, bv2!1, FALSE))")
+                        (("" (CASE "AA=0 OR AA=1")
+                          (("1" (PROP)
+                            (("1" (REPLACE -1 1) (("1" (ASSERT) NIL)))
+                             ("2" (REPLACE -1 1) (("2" (ASSERT) NIL)))))
+                           ("2" (TYPEPRED "AA")
+                                (("2" (HIDE -3 2)
+                                  (("2" (GRIND)
+                                    NIL))))))))))))))))))))))))))))))))
+
+
+

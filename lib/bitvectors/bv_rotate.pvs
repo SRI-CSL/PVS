@@ -1,0 +1,45 @@
+bv_rotate [N: posnat ] : THEORY
+%-----------------------------------------------------------------------  
+%  Defines rotate operations.
+%  Introduces:
+%      rotate_right(k: upto(N), bv: bvec[N]): bvec[N] 
+%      rotate_left(k: upto(N), bv: bvec[N]): bvec[N] 
+%      rot_r1(bv: bvec[N]): bvec[N] 
+%      rot_l1(bv: bvec[N]): bvec[N] 
+%-----------------------------------------------------------------------  
+
+BEGIN
+
+  IMPORTING bv_concat, bv_caret
+
+  rotate_right(k: upto(N), bv: bvec[N]): bvec[N] = 
+     IF (k = 0) OR (k = N) THEN bv 
+     ELSE bv^(k-1,0) o bv^(N-1, k) ENDIF
+
+  rotate_left(k: upto(N), bv: bvec[N]): bvec[N] =
+     IF (k=0) OR (k = N) THEN bv 
+     ELSE bv^(N-k-1, 0) o bv^(N-1,N-k) ENDIF
+
+  rot_r1(bv: bvec[N]): bvec[N] = rotate_right(1,bv)
+
+  rot_l1(bv: bvec[N]): bvec[N] = rotate_left(1,bv)
+
+  i:  VAR below(N)
+  k:  VAR upto(N)
+  bv: VAR bvec[N]
+
+  rotate_right_0   : LEMMA rotate_right(0,bv)= bv
+
+  rotate_right_lem : LEMMA rotate_right(k,bv)^i =
+                             IF i+k < N THEN bv^(i+k) ELSE bv^(i+k-N) ENDIF
+
+  rotate_left_0    : LEMMA rotate_left(0,bv)= bv
+
+  rotate_left_lem  : LEMMA rotate_left(k,bv)^i = 
+                             IF i-k >= 0 THEN bv^(i-k) ELSE bv^(N+i-k) ENDIF
+
+  iterate_rot_r1   : LEMMA iterate(rot_r1,k)(bv) = rotate_right(k,bv)
+
+  iterate_rot_l1   : LEMMA iterate(rot_l1,k)(bv) = rotate_left(k,bv)
+
+END bv_rotate

@@ -1,0 +1,75 @@
+%------------------------------------------------------------------------
+%  Foundation of bit-vectors theory.
+%  --------------------------------
+%    Authors:  Paul Miner
+%              Ricky W. Butler
+%              Mandayam Srivas
+%              Steve Miller
+%              Dave Greve
+%     
+%    Index:
+%    ------
+%      bv                  -- basic definition of bitvector type "bvec"
+%      bv_nat              -- interpretes bvec as a natural number
+%      bv_int              -- interpretes bvec as an integer
+%      bv_arithmetic       -- defines basic operators (i.e. + - >) over
+%                             bitvectors
+%      bv_arith_nat        -- defines bv + i, bv - i, etc
+%      bv_adder            -- operational defn of bitvector addition
+%      bv_arith_caret      -- arithmetic over caret 
+%      bv_caret            -- defines extractor operator ^ that
+%      bv_concat           -- defines concatenation operator o
+%      bv_arith_concat     -- calculates bv2nat(bv1 o bv2)
+%      bv_constants        -- defines some useful bitvector constants
+%      bv_caret_concat     -- lemmas concerning ^ and o
+%      bv_bitwise          -- defines bit-wise logical operations on bitvectors
+%      bv_caret_bitwise    -- lemmas about bit-wise logical operations and ^
+%      bv_shift            -- defines shift operations
+%      bv_extend           -- zero and sign extend operations
+%      bv_arith_extend     -- lemmas about extend operations
+%      bv_fract            -- defines fractional interpretation of a bitvector
+%      bv_overflow         -- relates overflow to top bits
+%      bv_arith_int_caret  -- lemmas with bv2int and ^
+%      bv_arith_int_concat -- lemmas with bv2int and o
+%
+%
+%                               bv
+%                               |
+%       ------------------------------------------------------------
+%       |        |                 |               |               |
+%  bv_bitwise  bv_nat          bv_concat       bv_fract        bv_caret
+%  |   |         |                 |                               |
+%  |   |    --------        ---------------------|                 |        
+%  |   |    |      |        |                    |                 |
+%  |   |  bv_int   |    bv_arith_concat          |                 |      
+%  |   |    |      |        |                    |                 |          
+%  |   |    |      |        | _______==========================================
+%  |   |    | bv_arith_nat  | |      ||        ||           ||               ||
+%  |   |    |      |        | | bv_shift  bv_extend bv_caret_concat    bv_rotate
+%  |   |    |      |        | |     |         |
+%  |   |    |      |        | |     |         |
+%  |   |    |      |        | |     |         |
+%  |   |    |      |        | |     |         |
+%  |   |    |    bv_arith_caret     |         |
+%  |   |    |      |        |       |         |
+%  |   bv_arithmetic       bv_arith_shift     |    
+%  |            |                             |
+%  |            ------------------------      |
+%  |                    |         |    |      |
+% bv_caret_bitwise  bv_overflow   |    bv_arith_extend
+%                                 |
+%                          bv_arith_int_caret
+%----------------------------------------------------------------------------
+bv_core: THEORY
+  
+ BEGIN
+
+  IMPORTING bv, bv_bitwise, bv_nat, bv_concat, bv_fract, bv_caret, 
+            bv_int,  bv_arith_concat, bv_shift, bv_rotate,
+            bv_caret_concat,  bv_extend,  bv_arith_extend, 
+            bv_arith_nat, bv_adder, bv_arith_caret,
+            bv_arithmetic, bv_overflow, bv_caret_bitwise, bv_constants,
+            bv_arith_concat,
+            bv_arith_int_caret, bv_arith_int_concat
+
+END bv_core

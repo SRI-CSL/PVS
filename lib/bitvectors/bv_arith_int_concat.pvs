@@ -1,0 +1,15 @@
+bv_arith_int_concat: THEORY
+
+BEGIN
+
+  IMPORTING bv_arith_nat, bv_int,
+            bv_arith_concat % For proofs only
+
+
+
+  bv2int_concat      : LEMMA FORALL (n, m: posnat, bvn: bvec[n], bvm: bvec[m]):
+                                bv2int(bvn o bvm) = bv2int(bvn) * exp2(m) 
+                                                    + bv2int(bvm) 
+                                                    + b2n(bvm^(m-1)) * exp2(m)
+
+END bv_arith_int_concat

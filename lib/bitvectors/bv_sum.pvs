@@ -1,0 +1,32 @@
+bv_sum[N: nat]: THEORY
+%------------------------------------------------------------------------------
+% The bv_sum theory defines bv2nat as a summation over the bits in bv:
+%
+%		       N-1
+%		      ----
+%   bv2nat_rec(bv) =  \      exp2(n) * bv(n)  
+%		      /
+%		      ----
+%		      n = 0
+%
+%------------------------------------------------------------------------------
+BEGIN
+
+  IMPORTING bv_nat, sums
+
+  bv: VAR bvec[N]
+
+  nn: VAR nat
+  n, ii: VAR below(N)
+
+  F: VAR function[below(N) -> nat]
+  extend(F): function[nat -> nat] = 
+     (LAMBDA nn: IF nn < N THEN F(nn) ELSE 0 ENDIF)
+
+  bv2nat_rec_as_sum: LEMMA bv2nat_rec(n+1,bv) = 
+     sigma(0,n, extend((LAMBDA ii: exp2(ii) * bv(ii))))
+
+  bv2nat_as_sum: THEOREM bv2nat(bv) = IF N = 0 THEN 0
+         ELSE sigma(0,N-1, extend((LAMBDA ii: exp2(ii) * bv(ii)))) ENDIF
+
+END bv_sum

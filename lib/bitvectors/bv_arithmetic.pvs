@@ -1,0 +1,102 @@
+%------------------------------------------------------------------------
+%
+% Defines functions over bit vectors interpreted as natural numbers.
+%
+%    Introduces:
+%
+%         - :  bv1 - bv2
+%         - : [bvec -> bvec] 
+%         - : [bvec, bvec -> bvec]
+%         overflow    : [bvec, bvec -> bool]  
+%         underflow   : [bvec, bvec -> bool]  
+%   
+%------------------------------------------------------------------------
+bv_arithmetic[N: posnat]: THEORY
+BEGIN
+
+  IMPORTING bv_int[N], bv_arith_caret
+
+  bv, bv1, bv2 : VAR bvec[N]
+
+
+% ---------- 2's complement negation of a bit vector ----------
+    
+  -(bv: bvec[N]): { bvn: bvec[N] | bv2int(bvn) = 
+                              IF bv2int(bv) = minint THEN bv2int(bv)
+                              ELSE -(bv2int(bv)) ENDIF}
+
+% ---------- 2's complement subtraction of two bit vectors ----------
+    
+  -(bv1, bv2): bvec[N] = (bv1 + (-bv2))
+
+% ---------- Define conditions for 2's complement overflow  ----------
+
+    
+  overflow(bv1,bv2): bool = (bv2int(bv1) + bv2int(bv2)) > maxint
+                             OR (bv2int(bv1) + bv2int(bv2)) < minint 
+
+% === Properties of these additional functions ================================
+
+  % ----------------------------------------------------------------------
+  % If the result is in the range of 2s complement integers, addition of
+  % two bit vectors is the same as for a natural number interpretation
+  % ----------------------------------------------------------------------
+   
+  bv_top_bit_0: LEMMA  bv^(N-1) = FALSE IFF bv2nat(bv) < exp2(N-1)
+
+  bv2int_add  : THEOREM in_rng_2s_comp(bv2int(bv1) + bv2int(bv2))
+                         IMPLIES bv2int(bv1 + bv2) = bv2int(bv1) + bv2int(bv2)  
+    
+  bv2int_neg : LEMMA bv2int(-bv) = IF bv2int(bv) = minint THEN bv2int(bv)
+                                   ELSE -(bv2int(bv)) ENDIF 
+
+  bv2int_minus_1  : LEMMA bv2int(bv1) > minint AND bv2int(bv) = 1 
+                       IMPLIES bv2int(bv1 - bv) = bv2int(bv1) - 1
+
+  bv2int_plus_1: LEMMA bv2int(bv + 1) = IF bv2int(bv) = maxint[N] THEN minint[N]
+                                       ELSE bv2int(bv) + 1 ENDIF 
+
+  bv2int_elim    : LEMMA bv1 + bv2int(bv2) = bv1 + bv2
+
+  i: VAR int
+  bv2int_plus_i: LEMMA bv2int(bv+i) =
+                       mod(bv2int(bv) + exp2(N) * b2n(bv^(N - 1)) + i, exp2(N))
+                         - exp2(N) * b2n((bv + i)^(N - 1))
+
+  bv2int_maxint : LEMMA bv2int(bv) = maxint IFF bv = b0 o fill[N-1](TRUE)
+    
+  bv2int_minint : LEMMA bv2int(bv) = minint IFF bv = b1 o fill[N-1](FALSE)
+
+  IMPORTING bv_bitwise[N]
+ 
+  n          : VAR upto(N)
+   
+  bv2nat_compl_max  : THEOREM bv2nat_rec(n, bv) + bv2nat_rec(n, NOT bv) 
+                          = exp2(n) - 1
+
+  % ----------------------------------------------------------------------
+  % The 2s complement of a number is its 1s complement + 1
+  % ----------------------------------------------------------------------
+
+  bv_twos_compl     : THEOREM -bv2int(bv) = bv2int(NOT bv) + 1;
+
+  bv_unary_minus    : THEOREM (-bv) = (NOT bv) + 1
+
+  bv2nat_NOT     : COROLLARY bv2nat(NOT bv) = exp2(N) - bv2nat(bv) - 1  
+ 
+
+  bv2int_NOT     : COROLLARY bv2int(NOT bv) = -bv2int(bv) - 1
+
+  bv2nat_minus_bv: COROLLARY bv2nat(-bv) = IF bv2nat(bv) = 0 THEN 0
+                                           ELSE exp2(N) - bv2nat(bv) ENDIF
+
+  bv_is_minint   : COROLLARY bv2int(-bv) = bv2int(bv) 
+                               IMPLIES bv2int(bv) = minint OR bv2int(bv) = 0
+ 
+  bv_neg_distrib : THEOREM -(bv1 + bv2) = -bv1 + -bv2
+
+  bv_double_neg  : THEOREM -(-(bv1)) = bv1
+
+
+END bv_arithmetic
+

@@ -1,0 +1,44 @@
+%------------------------------------------------------------------------
+%
+%  Top of finite sets theory   Version 2.2    5/22/97
+%  --------------------------------------------------------------
+%      Authors: Ricky W. Butler   NASA Langley Research Center
+%               Bruno Dutertre    Royal Holloway & Bedford New College
+%               Damir Jamsek      Odyssey Research Associates
+%               Sam Owre          SRI International
+%               David Griffioen   CWI and KUN (Catholic University 
+%                                 Nijmegen), the Netherlands.
+%   
+%      Index:
+%      ------
+%        finite_sets            -- main theory that is imported
+%                                  (provides basic type and cardinality)
+%        finite_sets_sum        -- summation over a set
+%        finite_sets_minmax     -- min and max over a set
+%        finite_sets_inductions -- induction schemes
+%        finite_sets_sum_real   -- additional properties for summations
+%                                  over real-valued functions
+%        finite_sets_int        -- special properties of integer sets
+%        finite_sets_nat        -- special properties of natural sets
+%        finite_sets_pred       -- lemmas involving predicate subtypes
+%        finite_sets_below      -- lemmas involving sets of below and upto
+%        finite_sets_eq         -- lemmas to show set is finite via mappings
+%        finite_sets_card_eq    -- equal cardinality of two dissimilar sets
+%        finite_sets_rules      -- experimental AUTO-REWRITE-THEORY rules
+%
+%
+%  This theory was designed for making libraries and is not intended
+%  for importing.  One should directly import one of the above listed
+%  theories.
+%
+%------------------------------------------------------------------------
+top: THEORY
+BEGIN
+
+  IMPORTING finite_sets, finite_sets_sum, 
+             finite_sets_minmax, 
+             finite_sets_inductions, finite_sets_sum_real, 
+             finite_sets_int, finite_sets_nat, finite_sets_pred,
+             finite_sets_below, finite_sets_card_eq, finite_sets_eq
+
+END top

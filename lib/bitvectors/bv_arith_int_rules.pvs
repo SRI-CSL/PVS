@@ -1,0 +1,43 @@
+bv_arith_int_rules: THEORY
+BEGIN
+
+  IMPORTING bv_arithmetic, bv_overflow, bv_arith_extend, bv_arith_caret
+
+  n,N: VAR posnat
+
+  singleton_int: LEMMA FORALL (bv: bvec[n], i: below[n]):
+                            bv2int[1](bv^(i,i)) = - b2n(bv^i)
+
+  bv2int_add_combined_rule: LEMMA FORALL (bv1, bv2: bvec[n]):
+       bv2int(bv1 + bv2) =
+         IF in_rng_2s_comp[n](bv2int(bv1) + bv2int(bv2)) THEN 
+              bv2int(bv1) + bv2int(bv2)
+         ELSIF bv2int(bv1) >= 0 AND bv2int(bv2) >= 0 THEN 
+              bv2int(bv1) + bv2int(bv2) - exp2(n)
+         ELSE 
+             bv2int(bv1) + bv2int(bv2) + exp2(n) 
+         ENDIF
+
+   bv2int_add_no_overflow: LEMMA FORALL (bv1, bv2: bvec[n]):
+                      in_rng_2s_comp[n](bv2int(bv1) + bv2int(bv2)) =>
+                         bv2int(bv1 + bv2) = bv2int(bv1) + bv2int(bv2)
+
+   bv2int_add_overflow: LEMMA FORALL (bv1, bv2: bvec[n]):
+                     (NOT in_rng_2s_comp[n](bv2int(bv1) + bv2int(bv2))) =>
+          		   bv2int(bv1 + bv2) =
+          		     IF bv2int(bv1) >= 0 & bv2int(bv2) >= 0
+          			THEN bv2int(bv1) + bv2int(bv2) - exp2(n)
+          		     ELSE bv2int(bv1) + bv2int(bv2) + exp2(n) ENDIF
+
+
+   sign_bit_of_unary_minus: LEMMA FORALL (bv: bvec[n]):
+             (-bv)^(n-1) = IF bv2int(bv) = minint[n] THEN TRUE
+                           ELSIF NOT bv^(n-1) THEN 
+                               IF bv2int(bv) = 0 THEN FALSE 
+                               ELSE TRUE ENDIF
+                           ELSE FALSE ENDIF
+
+END bv_arith_int_rules
+
+
+

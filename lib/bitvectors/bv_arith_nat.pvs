@@ -1,0 +1,152 @@
+
+%------------------------------------------------------------------------
+%
+% Natural arithmetic over bitvectors
+% -----------------------------------------
+%
+%   Defines:
+%  
+%         > :  bv1 > bv2
+%         >=:  bv1 >= bv2
+%         < :  bv1 < bv2
+%         <=:  bv1 <= bv1
+%         + :  bv1 + i
+%         - :  bv1 - i
+%         + :  bv1 + bv2
+%         * :  bv1 * bv2
+%
+%   Establishes:
+%   
+%     bv_plus    : LEMMA bv2nat(bv + i) = mod(bv2nat(bv) + i, exp2(N))) 
+%					       
+%     bv_add     : LEMMA bv2nat(bv1 + bv2) =
+%			       IF bv2nat(bv1) + bv2nat(bv2) < exp2(N)
+%			       THEN bv2nat(bv1) + bv2nat(bv2)
+%			       ELSE bv2nat(bv1) + bv2nat(bv2) - exp2(N) ENDIF
+%   
+%	
+%  Note that + has been defined in a manner that avoids the introduction of 
+%  nat2bv.  Also nat2bv has been defined in a manner that prevents GRIND from
+%  expanding nat2bv into an expression involving "epsilon".  The needed
+%  property about nat2bv is available in its type.
+% 
+%------------------------------------------------------------------------
+bv_arith_nat[N: nat]: THEORY
+BEGIN
+
+  IMPORTING bv_nat[N], mod
+
+% ----- Definition of inequalities over the bit vectors.
+
+  < (bv1: bvec[N], bv2: bvec[N]): bool = bv2nat(bv1) <  bv2nat(bv2) ;
+  <=(bv1: bvec[N], bv2: bvec[N]): bool = bv2nat(bv1) <= bv2nat(bv2) ;
+
+  > (bv1: bvec[N], bv2: bvec[N]): bool = bv2nat(bv1) >  bv2nat(bv2) ;
+  >=(bv1: bvec[N], bv2: bvec[N]): bool = bv2nat(bv1) >= bv2nat(bv2) ;
+
+
+% ----- Increments a bit vector by a integer modulo 2**N 
+
+
+  +(bv: bvec[N], i: int): {bvn: bvec[N] | 
+                             bv2nat(bvn) = mod(bv2nat(bv) + i, exp2(N))}
+
+  bv_plus : LEMMA (FORALL (bv: bvec[N], i: int):
+                         bv2nat(bv + i) = mod(bv2nat(bv) + i, exp2(N))) ;
+
+% ----- Decrements a bit vector by a integer modulo 2**N.
+
+  -(bv: bvec[N], i: int): bvec[N] = bv + (-i) ;
+
+  bv_minus     : LEMMA (FORALL (bv: bvec[N], i: int):
+                    bv2nat(bv - i) = mod(bv2nat(bv) - i, exp2(N))) ;
+
+
+% ----- Addition of two bit vectors interpreted as natural numbers.
+
+  +(bv1: bvec[N], bv2: bvec[N]): {bv: bvec[N] | bv2nat(bv) = 
+                              IF bv2nat(bv1) + bv2nat(bv2) < exp2(N)
+                              THEN bv2nat(bv1) + bv2nat(bv2)
+                              ELSE bv2nat(bv1) + bv2nat(bv2) - exp2(N) 
+                              ENDIF}
+                                           
+  bv_add     : LEMMA (FORALL (bv1,bv2: bvec[N]):
+                        bv2nat(bv1 + bv2) =
+                           IF bv2nat(bv1) + bv2nat(bv2) < exp2(N)
+                           THEN bv2nat(bv1) + bv2nat(bv2)
+                           ELSE bv2nat(bv1) + bv2nat(bv2) - exp2(N) ENDIF)
+
+% ========= Properties of these functions ================================
+
+  i                 : VAR int
+  n                 : VAR below(N)
+  bv, bv1, bv2, bv3 : VAR bvec[N]
+
+  bv_smallest  : LEMMA (FORALL bv: bv >= fill[N](FALSE))
+  bv_greatest  : LEMMA (FORALL bv: bv <= fill[N](TRUE))
+
+
+  bv_plus0     : LEMMA i = 0 IMPLIES bv + i = bv
+
+  bv_plus_mod  : LEMMA FORALL (bv: bvec[N]): bv + i = bv + mod(i, exp2(N))
+
+
+  bv_minus_mod : LEMMA (FORALL (bv: bvec[N], i: int):
+                                   bv - i = bv - mod(i,exp2(N)))
+  
+  bv_minus_plus : LEMMA (FORALL (bv: bvec[N], i: int):
+                                  bv - i = bv + mod(exp2(N) - i, exp2(N))) ;
+
+
+  bv_add_fill_F : LEMMA bv + fill[N](FALSE) = bv
+
+  bv_plus_wrap : LEMMA bv + i*exp2(N) = bv
+
+  bv_plus1     : LEMMA bv2nat(bv + 1) = IF bv2nat(bv) = (exp2(N)-1) THEN 0
+                                        ELSE bv2nat(bv) + 1 ENDIF 
+
+  bv_minus1    : LEMMA bv2nat(bv - 1) = IF bv2nat(bv) = 0 THEN exp2(N)-1
+                                        ELSE bv2nat(bv) - 1 ENDIF
+
+  bv_add_mod   : LEMMA bv2nat(bv1+bv2) = mod(bv2nat(bv1) + bv2nat(bv2),exp2(N))
+
+  bv_fill_F_plus: LEMMA bv2nat(fill[N](FALSE) + i) = mod(i,exp2(N))
+
+
+
+  n1,n2: VAR below(exp2(N))
+
+  bv_add_comm  : THEOREM bv1 + bv2 = bv2 + bv1
+
+  bv_both_sides: THEOREM (bv1 + bv3 = bv2 + bv3) IFF bv1 = bv2
+
+  bv_add_assoc : THEOREM  bv1 + (bv2 + bv3) = (bv1 + bv2) + bv3 
+
+  bv_plus_inj  : THEOREM (bv + n1 = bv + n2) = (n1 = n2)
+
+  bv2nat_elim  : THEOREM bv1 + bv2nat(bv2) = bv1 + bv2
+
+  % ------------------------------------------------------------------------  
+
+  bv_fill_T_plus1   : LEMMA fill[N](TRUE) + 1 = fill[N](FALSE)
+
+  k,k1,k2: VAR int
+
+  bv_plus_nat2bv    : THEOREM bv+k = bv+nat2bv[N](mod(k,exp2(N)))
+
+  bv_add_const_assoc: THEOREM bv1 + (bv2 + k) = (bv1 + bv2) + k 
+
+  bv_add_2_consts   : THEOREM (bv + k1) + k2 = bv + (k1+k2)
+
+  bv_add_two_consts : THEOREM (bv1 + k1) + (bv2 + k2) = (bv1 + bv2) + (k1 + k2) 
+
+% ----- bv multiplication ----
+
+  IMPORTING bv_nat
+
+  *(bv1: bvec[N], bv2: bvec[N]): {bv: bvec[2*N] | bv2nat(bv) = 
+                                          bv2nat(bv1) * bv2nat(bv2)} ;
+
+  bv_mult      : LEMMA bv2nat[2*N](bv1 * bv2) = bv2nat(bv1) * bv2nat(bv2) 
+
+END bv_arith_nat

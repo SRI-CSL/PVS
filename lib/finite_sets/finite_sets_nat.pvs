@@ -1,0 +1,39 @@
+finite_sets_nat: THEORY
+ BEGIN
+  IMPORTING finite_sets[nat]
+
+  n, N: VAR nat
+  i, j: VAR nat
+  p: VAR pred[nat]
+
+  finite_bounded       : LEMMA is_finite({j: nat | j < N })
+
+  card_bounded         : LEMMA card({j: nat | j < N}) = N    
+
+  finite_bounded_subset: LEMMA is_finite({j: nat | j < N AND p(j)})
+
+  card_bounded_subset  : LEMMA card({j: nat | j < N AND p(j)}) <= N
+
+% ------------------------------------------------------------------------
+% The following lemmas apply is_finite[nat] and card[nat] to subtype
+% sets.  This should be avoided if possible.  See finite_subint for
+% preferred lemmas.
+% ------------------------------------------------------------------------
+
+  finite_nat_below   : LEMMA is_finite[nat]({x: below(n) | TRUE})
+
+  card_nat_below     : LEMMA card[nat]({x: below(n) | TRUE}) = n
+
+  finite_nat_upto    : LEMMA is_finite[nat]({x: upto(n) | TRUE})
+
+  card_nat_upto      : LEMMA card[nat]({x: upto(n) | TRUE}) = n + 1
+
+  finite_nat_subrange: LEMMA
+      is_finite[nat](restrict[int, nat, bool]({x: subrange(i, j) | TRUE}))
+
+  card_nat_subrange  : LEMMA
+      card[nat](restrict[int, nat, bool]({x: subrange(i, j) | TRUE})) =
+                               IF i <= j THEN j - i + 1 ELSE 0 ENDIF
+
+
+END finite_sets_nat

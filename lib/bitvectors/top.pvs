@@ -1,0 +1,36 @@
+%------------------------------------------------------------------------
+% 
+%  Library: bitvectors
+%
+%  Authors:
+%
+%         Ricky W. Butler       NASA Langley
+%         Paul Miner            NASA Langley
+%         Mandayam Srivas       SRI International
+%         Steve Miller          Rockwell Collins
+%         Dave Greve            Rockwell Collins
+%         Victor Carreno        NASA Langley
+%
+%  Version 2.0           Last modified 12/30/96
+%
+%  Maintained by:
+%
+%     Rick Butler        NASA Langley Research Center   
+%                        R.W.Butler@larc.nasa.gov
+%
+%
+%  The library consists of two components:
+%
+%      bv_core  -- The fundamental theories for bitvectors.
+%
+%      bv_rules -- Theories designed for automatic rewriting.
+%                  These follow trivially from theorems in bv_core.    
+%
+%------------------------------------------------------------------------
+top: THEORY
+BEGIN
+
+  IMPORTING bv_core, 
+            bv_rules,
+            bv_notes              %  some notes about the library
+END top

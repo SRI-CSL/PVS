@@ -1,0 +1,41 @@
+bv_concat_rules: THEORY
+
+BEGIN
+
+  IMPORTING bv_arith_concat, bv_bitwise
+
+  m,n,p: VAR nat
+  b: VAR bit
+
+
+%  -------- concatenation normalization -------- 
+
+
+   bv_concat_null_r      : LEMMA FORALL (bvn:bvec[n], bv0: bvec[0]):
+                                   (bvn o bv0 = bvn)
+ 
+   bv_concat_null_l      : LEMMA FORALL (bvn:bvec[n], bv0: bvec[0]):
+                                   (bv0 o bvn = bvn)
+
+   bv_concat_associative : LEMMA FORALL (bvm:bvec[m], bvn:bvec[n], bvp:bvec[p]):
+                                   (bvm o (bvn o bvp)) = ((bvm o bvn) o bvp) 
+
+%  -------- fill concatenation -------- 
+
+   n1, n2, n3: VAR nat
+  
+   bv_concat_fill_fill : LEMMA fill[n1](b) o fill[n2](b) = fill[n1+n2](b)
+
+   bv_concat_2fill     : LEMMA FORALL (bv: bvec[n]): 
+                                     (fill[n1](b) o (fill[n2](b)) o bv) 
+                                         = (fill[n1+n2](b) o bv);
+
+% ---------- miscellaneous --------
+
+  bv_concat_top_rule  : LEMMA FORALL (N: posnat, bvn: bvec[N], bvm: bvec[m]):
+                                         (bvn o bvm)^(N+m-1) = bvn^(N-1)
+
+  bv_not_over_concat  : LEMMA FORALL (bvm: bvec[m], bvn: bvec[n]):
+                                      (NOT (bvm o bvn)) = (NOT bvm) o (NOT bvn)
+
+END bv_concat_rules

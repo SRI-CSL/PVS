@@ -1,0 +1,53 @@
+%------------------------------------------------------------------------
+%  bit-vectors rules
+%  --------------------------------
+%       
+%      Index:
+%      ------
+%
+%                                    syntactic objects/mneumonic
+%
+%        theory             |   +   | bv2nat | bv2int |       |   o    | AND
+%                           | arith |  nat   |   int  | caret | concat | bitwise
+%  -------------------------|-------|--------|--------|-------------------------
+%  mod_rules                |       |        |        |       |	       |
+%  bv_nat_rules             |       |   x    |        |       |	       |
+%  bv_bitwise_rules         |       |        |        |       |	       |  x    
+%  bv_caret_rules           |       |        |        |  x    |	       |    
+%  bv_caret_bitwise_rules   |       |        |        |  x    |	       |  x    
+%  bv_concat_rules          |       |        |        |       |	  x    |     
+%  bv_arith_nat_rules       |   x   |   x    |        |       |	       |      
+%  bv_arith_caret_rules     |       |   x    |        |  x    |	       |      
+%  bv_caret_concat_rules    |       |        |        |  x    |	  x    |      
+%  bv_arith_rules           |   x   |        |        |       |	       |      
+%  bv_arith_minus_rules     |   x   |        |        |       |	       |      
+%  bv_arith_nat_rules       |   x   |   x    |        |       |	       |      
+%  bv_arith_int_rules       |   x   |        |   x    |       |        |      
+%  bv_arith_caret_rules     |   x   |        |        |  x    |	       |       
+%  bv_arith_nat_caret_rules |   x   |        |        |  x    |	       | 
+%  bv_arith_int_caret_rules |   x   |        |   x    |  x    |        |      
+%
+%
+% NOTE: the presence of bv1 - bv2 or -bv indicates the need for bv2int
+%
+%------------------------------------------------------------------------
+bv_rules: THEORY
+BEGIN
+
+  IMPORTING
+     mod_rules,               % -- rules about mod function
+     bv_nat_rules,            % -- rules involving only bv2nat
+     bv_bitwise_rules,        % -- rules involving bitwise ops
+     bv_caret_rules,          % -- rules involving ^
+     bv_caret_bitwise_rules,  % -- rules involving ^ and bitwise ops
+     bv_concat_rules,         % -- rules involving o
+     bv_arith_rules,          % -- rules involving + 
+     bv_arith_minus_rules,     % -- rules involving + and -
+     bv_arith_nat_rules,      % -- rules involving bv2nat and +
+     bv_arith_int_rules,      % -- rules involving bv2int and +
+     bv_caret_concat_rules,   % -- rules involving ^ and o
+     bv_arith_caret_rules,    % -- rules involving ^ and +          
+     bv_arith_nat_caret_rules, % -- rules involving ^ and + and bv2nat         
+     bv_arith_caret_concat_rules
+
+END bv_rules

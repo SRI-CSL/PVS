@@ -1,0 +1,115 @@
+finite_sets_sum_real[T: TYPE]: THEORY
+%------------------------------------------------------------------------
+%
+% finite sum over real-valued functions   
+%
+%   Authors: Ricky W. Butler
+%            David Griffioen
+%
+%   NOTES:
+%      -- there are several theorems which are virtually idential to
+%         theorems in finite_sets_sum.  They are repeated here to prevent
+%         the need for commands such as (LEMMA sum_emptyset[T,real,0,+])
+%      -- the theorems with names ending in "_rew" are especially useful
+%         for rewriting.  Some of these take advantage of the fact that
+%         since we have real-valued functions we have a "-" available.
+%------------------------------------------------------------------------
+BEGIN
+
+
+  IMPORTING finite_sets_sum[T,real,0,+], prelude_aux
+
+  S, A, B: VAR finite_set[T]
+  t: VAR T
+  c,N: VAR real
+  f,g: VAR function[T -> real]
+
+  sum_const        : THEOREM sum(S, (LAMBDA t: c)) = c*card(S) 
+
+  sum_1_is_card    : COROLLARY sum(S,(LAMBDA t: 1)) = card(S)
+
+  sum_mult         : THEOREM sum(S,(LAMBDA t: c*f(t))) = c*sum(S,f) 
+
+% ----------- Some rewrite rules using "-" ------------------
+
+  sum_empty?       : THEOREM empty?(S) IMPLIES sum(S,f) = 0
+
+  sum_emptyset_rew : THEOREM S = emptyset[T] IMPLIES sum(S,f) = 0
+
+  sum_singleton_rew: THEOREM card(S) = 1 AND S(t) IMPLIES sum(S,f) = f(t)
+
+  sum_remove_rew   : THEOREM sum(remove(t,S),f) = sum(S,f) -
+                                IF member(t,S) THEN f(t) ELSE 0 ENDIF 
+
+
+  sum_rest_rew     : THEOREM NOT empty?(S) IMPLIES
+                                sum(rest(S),f) = sum(S,f) - f(choose(S))
+
+  sum_union_rew    : THEOREM sum(union(A,B),f) = sum(A,f) + sum(B,f)
+                                 - sum(intersection(A,B),f) 
+
+
+% -------- sums of slightly modified functions ----------
+
+  sum_eq_funs       : THEOREM (FORALL (t: (S)): f(t) = g(t)) 
+                               IMPLIES sum(S, f) = sum(S, g)
+
+  sum_particular_gen: THEOREM sum(S,f) = sum(S, f WITH [t := c])
+			       + IF S(t) THEN f(t) - c ELSE 0 ENDIF 
+
+
+% ----- some order relationships involving sum -----
+
+  sum_bound    : THEOREM (FORALL (t: (S)): f(t) <= N) 
+                             IMPLIES sum(S,f) <= N*card(S)
+
+  sum_order    : THEOREM (FORALL (t:T): f(t) <= g(t)) IMPLIES
+                           sum(S,f) <= sum(S,g)
+
+  sum_nonneg   : LEMMA (FORALL (t: (S)): f(t) >= 0) IMPLIES sum(S,f) >= 0
+
+  sum_pos      : LEMMA (FORALL (t: (S)): f(t) > 0) IMPLIES sum(S,f) > 0 OR
+                                                    S = emptyset[T]
+
+  JUDGEMENT sum(A: non_empty_finite_set[T], f: [T -> posreal])
+            HAS_TYPE posreal
+
+  JUDGEMENT sum(A: finite_set[T], f: [T -> int]) HAS_TYPE int
+
+  JUDGEMENT sum(A: finite_set[T], f: [T -> nat]) HAS_TYPE nat
+
+% ----- Special properties non-negative valued functions -----
+
+  fnr,gnr: VAR [T -> nonneg_real]
+
+  sum_subset   : THEOREM subset?(A,B) IMPLIES sum(A,fnr) <= sum(B,fnr)
+
+  sum_order_sub: THEOREM subset?(A,B) AND (FORALL (t:T): fnr(t) <= gnr(t))
+                           IMPLIES sum(A,fnr) <= sum(B,gnr)
+
+  gn:  VAR function[T -> nat]
+  gi:  VAR function[T -> nonneg_int]
+
+  sum_0_nat       : THEOREM sum(S,gn) = 0 IMPLIES  S = emptyset[T] OR
+                                          (FORALL (t:(S)): gn(t) = 0)
+
+  sum_is_null     : COROLLARY sum(S,gn) = 0 => (S(t) => gn(t) = 0)
+
+  sum_0_int       : THEOREM sum(S,gi) = 0 IMPLIES S = emptyset[T]
+                                               OR (FORALL (t:(S)): gi(t) = 0)
+
+  sum_0_non_neg   : THEOREM sum(S,f) = 0 AND (FORALL (t: (S)): f(t) >= 0) 
+                             IMPLIES S = emptyset[T] 
+                                      OR (FORALL (t:(S)): f(t) = 0)
+
+  JUDGEMENT sum(A: finite_set[T], f: [T -> nonneg_real])
+            HAS_TYPE nonneg_real
+  JUDGEMENT sum(A: finite_set[T], f: [T -> nonneg_int]) HAS_TYPE nonneg_int
+  JUDGEMENT sum(A: non_empty_finite_set[T], f: [T->posnat]) HAS_TYPE posnat
+
+%  JUDGEMENT sum(A: non_empty_finite_set[T], f: [T->negreal]) HAS_TYPE negreal
+%  JUDGEMENT sum(A: finite_set[T], f: [T -> nonpos_real]) HAS_TYPE nonpos_real
+%  JUDGEMENT sum(A: finite_set[T], f: [T -> negint]) HAS_TYPE negint
+
+END finite_sets_sum_real
+

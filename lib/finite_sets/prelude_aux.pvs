@@ -1,0 +1,11 @@
+prelude_aux[T: TYPE]: THEORY
+
+BEGIN
+
+  % these lemmas should go in prelude
+
+  rest_emptyset: LEMMA (FORALL (S: set[T], t:T): rest(S) = emptyset[T]
+                           AND S(t) IMPLIES choose(S) = t)
+
+
+END prelude_aux

@@ -1,0 +1,8 @@
+(|bv_concat_rules| (|bv_concat_null_r| "" (SKOSIMP*) (("" (REWRITE "bvconcat_bot0") NIL)))
+ (|bv_concat_null_l| "" (SKOSIMP*) (("" (REWRITE "bvconcat_top0") NIL)))
+ (|bv_concat_associative| "" (SKOSIMP*) (("" (REWRITE "bv_concat_assoc") NIL)))
+ (|bv_concat_fill_fill| "" (SKOSIMP*) (("" (APPLY-EXTENSIONALITY :HIDE? T) (("" (GRIND) NIL)))))
+ (|bv_concat_2fill| "" (SKOSIMP*) (("" (APPLY-EXTENSIONALITY :HIDE? T) (("" (GRIND) NIL))))) (|bv_concat_top_rule_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|bv_concat_top_rule_TCC2| "" (SUBTYPE-TCC) NIL)
+ (|bv_concat_top_rule| "" (SKOSIMP*) (("" (EXPAND "^") (("" (EXPAND "o ") (("" (PROPAX) NIL)))))))
+ (|bv_not_over_concat| "" (SKOSIMP*) (("" (APPLY-EXTENSIONALITY :HIDE? T) (("" (GRIND) NIL))))))

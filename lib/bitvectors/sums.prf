@@ -1,0 +1,204 @@
+(|sums| (|sigma_TCC1| "" (TCC) NIL)
+        (|sigma_TCC2| "" (TCC) NIL)
+        (|sigma_mult| ""
+                      (INDUCT "high")
+                      (("1" (SKOSIMP*)
+                            (("1" (EXPAND "sigma")
+                                  (("1" (LIFT-IF)
+                                        (("1" (GROUND) NIL)))))))
+                        ("2" (SKOSIMP*)
+                             (("2" (EXPAND "sigma" 1)
+                                   (("2" (ASSERT)
+                                         (("2" (INST?)
+                                               (("2" (REPLACE -1)
+                                                     (("2" (HIDE -1)
+                                                           (("2" (LIFT-IF)
+                                                                 (("2"
+                                                                    (GROUND)
+                                                                    NIL)))))))))))))))))
+        (|sigma_split| ""
+                       (INDUCT "high")
+                       (("1" (SKOSIMP*)
+                             (("1" (EXPAND "sigma")
+                                   (("1" (LIFT-IF)
+                                         (("1" (GROUND) NIL)))))))
+                         ("2" (SKOSIMP*)
+                              (("2" (EXPAND "sigma" 1 1)
+                                    (("2" (EXPAND "sigma" 1 2)
+                                          (("2" (ASSERT)
+                                                (("2" (CASE "j!1=m!1")
+                                                      (("1" (REPLACE -1)
+                                                            (("1" (HIDE -1)
+                                                                  (("1"
+                                                                     (ASSERT)
+                                                                     NIL)))))
+                                                        ("2"
+                                                          (INST -1
+                                                                "F!1"
+                                                                "low!1"
+                                                                "m!1")
+                                                          (("2" (ASSERT)
+                                                                NIL)))))))))))))))
+        (|sigma_shift| ""
+                       (INDUCT "high")
+                       (("1" (SKOSIMP*)
+                             (("1" (EXPAND "sigma")
+                                   (("1" (LIFT-IF)
+                                         (("1" (GROUND) NIL)))))))
+                         ("2" (SKOSIMP*)
+                              (("2" (EXPAND "sigma" 1)
+                                    (("2" (LIFT-IF)
+                                          (("2" (LIFT-IF)
+                                                (("2" (ASSERT)
+                                                      (("2" (INST?)
+                                                            (("2" (GROUND)
+                                                                  NIL)))))))))))))))
+        (|sigma_restrict_eq| ""
+                             (INDUCT "high")
+                             (("1" (SKOSIMP*)
+                                   (("1" (EXPAND "sigma")
+                                         (("1" (EXPAND "restrict")
+                                               (("1" (LIFT-IF)
+                                                     (("1" (GROUND)
+                                                           (("1"
+                                                              (CASE
+                                                                "(LAMBDA (n: nat): IF n > 0 THEN 0 ELSE F!1(n) ENDIF)(low!1)
+        = (LAMBDA (n: nat): IF n > 0 THEN 0 ELSE G!1(n) ENDIF)(low!1)")
+                                                              (("1" (HIDE -2)
+                                                                    (("1"
+                                                                      (BETA -1)
+                                                                      (("1"
+                                                                      (LIFT-IF)
+                                                                      (("1"
+                                                                      (GROUND)
+                                                                      NIL)))))))
+                                                                ("2"
+                                                                  (HIDE 2 3)
+                                                                  (("2"
+                                                                     (REPLACE
+                                                                      -1)
+                                                                     (("2"
+                                                                      (PROPAX)
+                                                                      NIL)))))))))))))))))
+                               ("2" (SKOSIMP*)
+                                    (("2" (EXPAND "sigma" 1)
+                                          (("2" (LIFT-IF)
+                                                (("2" (GROUND)
+                                                      (("1" (REPLACE -1)
+                                                            (("1" (HIDE -1)
+                                                                  (("1"
+                                                                     (HIDE -1)
+                                                                     (("1"
+                                                                      (EXPAND
+                                                                      "restrict")
+                                                                      (("1"
+                                                                      (CASE
+                                                                      "  (LAMBDA (n: nat): IF n < low!1 OR n > low!1 THEN 0 ELSE F!1(n) ENDIF)(low!1)
+        = (LAMBDA (n: nat): IF n < low!1 OR n > low!1 THEN 0 ELSE G!1(n) ENDIF)(low!1)")
+                                                                      (("1"
+                                                                      (HIDE
+                                                                      -2)
+                                                                      (("1"
+                                                                      (BETA
+                                                                      -1)
+                                                                      (("1"
+                                                                      (GROUND)
+                                                                      NIL)))))
+                                                                      ("2"
+                                                                      (HIDE
+                                                                      2
+                                                                      3)
+                                                                      (("2"
+                                                                      (REPLACE
+                                                                      -1)
+                                                                      (("2"
+                                                                      (PROPAX)
+                                                                      NIL)))))))))))))))
+                                                        ("2"
+                                                          (INST -1
+                                                                "F!1"
+                                                                "G!1"
+                                                                "low!1")
+                                                          (("2" (SPLIT -1)
+                                                                (("1" (ASSERT)
+                                                                      (("1"
+                                                                      (HIDE
+                                                                      -1)
+                                                                      (("1"
+                                                                      (EXPAND
+                                                                      "restrict")
+                                                                      (("1"
+                                                                      (CASE
+                                                                      "  (LAMBDA (n: nat): IF n < low!1 OR n > j!1 + 1 THEN 0 ELSE F!1(n) ENDIF)(j!1+1)
+        =
+        (LAMBDA
+         (n: nat): IF n < low!1 OR n > j!1 + 1 THEN 0 ELSE G!1(n) ENDIF)(j!1+1)")
+                                                                      (("1"
+                                                                      (BETA
+                                                                      -1)
+                                                                      (("1"
+                                                                      (HIDE
+                                                                      -2)
+                                                                      (("1"
+                                                                      (LIFT-IF)
+                                                                      (("1"
+                                                                      (GROUND)
+                                                                      NIL)))))))
+                                                                      ("2"
+                                                                      (REPLACE
+                                                                      -1)
+                                                                      (("2"
+                                                                      (HIDE
+                                                                      -1
+                                                                      2
+                                                                      3
+                                                                      4)
+                                                                      (("2"
+                                                                      (BETA
+                                                                      1)
+                                                                      (("2"
+                                                                      (LIFT-IF)
+                                                                      (("2"
+                                                                      (GROUND)
+                                                                      NIL)))))))))))))))))
+                                                                  ("2"
+                                                                    (HIDE 3)
+                                                                    (("2"
+                                                                      (EXPAND
+                                                                      "restrict")
+                                                                      (("2"
+                                                                      (HIDE
+                                                                      3)
+                                                                      (("2"
+                                                                      (APPLY-EXTENSIONALITY
+                                                                      1)
+                                                                      (("2"
+                                                                      (LIFT-IF)
+                                                                      (("2"
+                                                                      (GROUND)
+                                                                      (("2"
+                                                                      (CASE
+                                                                      " (LAMBDA (n: nat): IF n < low!1 OR n > j!1 + 1 THEN 0 ELSE F!1(n) ENDIF)(x!1)
+        =
+        (LAMBDA
+         (n: nat): IF n < low!1 OR n > j!1 + 1 THEN 0 ELSE G!1(n) ENDIF)(x!1)")
+                                                                      (("1"
+                                                                      (HIDE
+                                                                      -2)
+                                                                      (("1"
+                                                                      (BETA
+                                                                      -1)
+                                                                      (("1"
+                                                                      (LIFT-IF)
+                                                                      (("1"
+                                                                      (GROUND)
+                                                                      NIL)))))))
+                                                                      ("2"
+                                                                      (REPLACE
+                                                                      -1)
+                                                                      (("2"
+                                                                      (BETA
+                                                                      1)
+                                                                      (("2"
+                                                                      (ASSERT)
+                                                                      NIL))))))))))))))))))))))))))))))))))

@@ -1,0 +1,81 @@
+%------------------------------------------------------------------------
+%
+% Rules derived from bv_arith_nat
+% -------------------------------
+%
+%
+%   o The association rules move bitvectors to the left and integers to the
+%     right.
+%
+%   o Rules collapse bv2nat(expressions) into expressions involving
+%     bv2nat of individual bitvectors 
+%
+%------------------------------------------------------------------------
+bv_arith_nat_rules: THEORY
+BEGIN
+
+  IMPORTING bv_arith_nat
+
+  N: VAR posnat
+  n: VAR nat
+  i,i1,i2: VAR int
+  b: VAR bit
+
+% ---------- rules involving addition of two bitvectors ----------
+
+  bv_add_rule              : LEMMA FORALL (bv1,bv2: bvec[N]):
+                               bv2nat(bv1) + bv2nat(bv2) < exp2(N) IMPLIES
+                                  bv2nat(bv1 + bv2) = bv2nat(bv1) + bv2nat(bv2)
+
+  bv_add_overflow     : LEMMA FORALL (bv1,bv2: bvec[N]):
+                               bv2nat(bv1) + bv2nat(bv2) >= exp2(N) IMPLIES
+                        bv2nat(bv1 + bv2) = bv2nat(bv1) + bv2nat(bv2) - exp2(N)
+
+
+% ------- rules involving bitvector plus a constant
+
+  bv_fill_F_plus_i : LEMMA bv2nat(fill[N](FALSE) + i) = mod(i,exp2(N))
+
+  bv_plus_fill_T   : LEMMA FORALL (bv: bvec[N]): bv2nat(bv) /= 0 IMPLIES
+                                     bv2nat(bv + fill[N](TRUE)) = bv2nat(bv) - 1
+
+  bv2nat_elim_rule : LEMMA FORALL (bv1,bv2: bvec[N]): 
+                                       bv1 + bv2nat(bv2) = bv1 + bv2
+
+  bv2nat_plus: LEMMA FORALL (bv: bvec[N]): n < (exp2(N) - bv2nat(bv)) =>
+                                             bv2nat(bv + n) = bv2nat(bv) + n
+
+  bv2nat_plus2: LEMMA FORALL (bv: bvec[N]): n < exp2(N) AND 
+                                            bv2nat(bv) + n >= exp2(N) =>
+                         bv2nat(bv +  n) = bv2nat(bv) - (exp2(N) - n)
+
+
+  bv2nat_minus : LEMMA FORALL (bv: bvec[N]):  n <= bv2nat(bv) =>
+                                               bv2nat(bv - n) = bv2nat(bv) - n
+
+  bv2nat_minus2 : LEMMA FORALL (bv: bvec[N]):  n > bv2nat(bv) AND n < exp2(N) =>
+                                 bv2nat(bv - n) = bv2nat(bv) - n + exp2(N)
+
+
+  bv2nat_neg : LEMMA FORALL (bv: bvec[N]):  i < 0 AND (-i) <= bv2nat(bv) =>
+                                               bv2nat(bv + i) = bv2nat(bv) + i
+
+  bv2nat_neg2: LEMMA FORALL (bv: bvec[N]): i < 0 AND (-i) > bv2nat(bv) AND
+                                             (-i) < exp2(N) =>
+                                bv2nat(bv + i) = bv2nat(bv) + i + exp2(N)
+
+% if the above rewrites fail, reduce magnitude via mod:
+
+  bv2nat_neg_modulo: LEMMA FORALL (bv: bvec[N]): i <= -exp2(N) =>
+                            bv2nat(bv + i) = bv2nat(bv + (-mod(-i, exp2(N))))
+
+
+% ----------- miscellaneous rules ----------
+
+  singleton_nat_alt   : LEMMA FORALL (bv: bvec[N]):
+                                N = 1 => bv2nat[N](bv) = b2n(bv^0)
+
+END bv_arith_nat_rules
+
+
+

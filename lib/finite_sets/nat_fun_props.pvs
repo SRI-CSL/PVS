@@ -1,0 +1,21 @@
+nat_fun_props : THEORY
+%------------------------------------------------------------------------
+%      Author:  Bruno Dutertre 
+%
+%      Special properties of injective/surgective functions over nats
+%------------------------------------------------------------------------
+
+BEGIN
+
+  n, m : VAR nat
+
+  injection_n_to_m : THEOREM
+	(EXISTS (f : [below[n] -> below[m]]) : injective?(f)) IMPLIES n <= m
+
+  surjection_n_to_m : THEOREM
+	(EXISTS (f : [below[n] -> below[m]]) : surjective?(f)) IMPLIES m <= n
+
+  bijection_n_to_m : THEOREM
+	(EXISTS (f : [below[n] -> below[m]]) : bijective?(f)) IFF n = m
+
+END nat_fun_props

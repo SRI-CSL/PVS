@@ -1,0 +1,137 @@
+
+%------------------------------------------------------------------------
+%
+% Interpretation of a bitvector as a natural number
+% -------------------------------------------------
+%
+%   Defines:
+%  
+%       bv2nat: function[bvec[N] -> below(exp2(N))] 
+%       nat2bv: function[below(exp2(N)) -> bvec[N]]
+%
+%   Establishes:
+%  
+%       bv2nat_bij: THEOREM bijective?(bv2nat)
+%       bv2nat_inv: THEOREM bv2nat(nat2bv(val)) = val  
+%
+%  
+%   See note at end of theory for reasons why nat2bv should be avoided
+%   in specifications.
+%
+%------------------------------------------------------------------------
+bv_nat[N: nat]: THEORY
+BEGIN
+
+   IMPORTING bv, exp2
+
+% === Interpretation of a bit vector as a natural number ================
+
+  bv2nat_rec(n: upto(N), bv:bvec[N]): RECURSIVE nat =
+      IF n = 0 THEN 0
+      ELSE exp2(n-1) * bv^(n-1) + bv2nat_rec(n - 1, bv)
+      ENDIF
+    MEASURE n
+
+  bv_lem: LEMMA FORALL (n: below(N), bv: bvec[N]): bv(n) = FALSE OR bv(n) = TRUE 
+
+  bv2nat_rec_bound: LEMMA FORALL (n: upto(N), bv: bvec[N]): 
+                                  bv2nat_rec(n, bv) < exp2(n)
+
+  bv2nat(bv:bvec[N]): below(exp2(N)) = bv2nat_rec(N, bv)
+
+% ===== Properties of bv2nat ===================================
+
+  n           : VAR upto(N)
+  val         : VAR below(exp2(N))
+  bv, bv1, bv2: VAR bvec[N]
+
+  bv2nat_inj_rec: LEMMA
+      bv2nat_rec(n, bv1) = bv2nat_rec(n, bv2)
+        <=>  (FORALL (m: below(N)): (m < n) IMPLIES bv1(m) = bv2(m))
+
+  bv2nat_surj_rec: LEMMA FORALL (y:below(exp2(n))): 
+                                   EXISTS bv:bv2nat_rec(n, bv) = y
+
+  bv2nat_inj     : THEOREM % injective?(bv2nat)
+                            (FORALL (x, y: bvec[N]): (bv2nat(x) = bv2nat(y) 
+                                      IMPLIES (x = y)))
+
+  bv2nat_surj    : THEOREM % surjective?(bv2nat)
+                              (FORALL (y: below(exp2(N))): 
+                                     (EXISTS (x: bvec[N]): bv2nat(x) = y))
+
+
+  bv2nat_bij        : THEOREM bijective?(bv2nat)    
+
+  bv2nat_rec_fill_F : LEMMA bv2nat_rec(n, fill[N](FALSE)) = 0
+  bv2nat_rec_fill_T : LEMMA bv2nat_rec(n, fill[N](TRUE)) = exp2(n)-1
+
+  bv2nat_fill_F     : LEMMA bv2nat(fill[N](FALSE)) = 0
+  bv2nat_fill_T     : LEMMA bv2nat(fill[N](TRUE)) = exp2(N)-1
+
+  bv2nat_eq0        : LEMMA bv2nat(bv) = 0     IMPLIES (bv = fill[N](FALSE))
+  bv2nat_eq_max     : LEMMA bv2nat(bv) = exp2(N)-1 IMPLIES bv = (fill[N](TRUE)) 
+
+  bv2nat_top_bit    : THEOREM N > 0 IMPLIES
+                             IF bv2nat(bv) < exp2(N-1) THEN bv^(N-1) = FALSE
+                                                       ELSE bv^(N-1) = TRUE ENDIF
+
+  bv2nat_topbit    : THEOREM N > 0 IMPLIES bv^(N-1) = (bv2nat(bv) >= exp2(N-1))
+
+% =================== Properties of nat2bv ===================================
+
+  nat2bv(val: below(exp2(N))): {bv: bvec[N] | bv2nat(bv) = val}
+
+  nat2bv_def       : LEMMA  nat2bv = inverse(bv2nat)
+
+  nat2bv_bij       : THEOREM bijective?[below(exp2(N)),bvec[N]](nat2bv)
+
+  nat2bv_inv       : THEOREM nat2bv(bv2nat(bv)) = bv
+
+  nat2bv_rew       : LEMMA nat2bv(val) = bv IFF bv2nat(bv) = val
+
+  bv2nat_inv       : THEOREM bv2nat(nat2bv(val)) = val
+
+END bv_nat
+%------------------------------------------------------------------------
+%
+%                  nat2bv Considered Harmful
+%                  -------------------------
+%
+%  The use of nat2bv should be minimized.  The function nat2bv is 
+%  necessary in order to build up the library, but its use should be 
+%  minimized in practice.   There are several reasons for this:
+% 
+%     (1) If all specification is accomplished with bv2nat, the
+%         reasoning is driven toward arithmetic over nats where 
+%         the built-in decision procedures can help
+%
+%     (2) For every bv2nat theorem there is a corresponding nat2bv
+%         theorem, which will DOUBLE the SIZE of the library.  E.G.
+%
+%               bv2nat_fill_F: LEMMA bv2nat(fill[N](0)) = 0
+%
+%               nat2bv_fill_F: LEMMA nat2bv[N](0) = fill[N](0)
+%
+%     (3) It leads to complex formulas involving BOTH bv2nat and
+%         nat2bv
+%
+%     (4) bv constants can be constructed with o and
+%         the following constants:
+%            
+%               h0: bvec[4] = (LAMBDA (i: below(4)): 0)
+%               h1: bvec[4] = (LAMBDA (i: below(4)): IF i = 0 THEN 1 
+%                                                    ELSE 0 ENDIF)
+%               h2: bvec[4] = (LAMBDA (i: below(4)): IF i = 1 THEN 1 
+%                                                    ELSE 0 ENDIF)
+%                      .
+%                      .
+%                      .
+%
+%               hF: bvec[4] = (LAMBDA (i: below(4)): 1)
+%     
+%         GRIND can handle operations on constants defined this
+%         way whereas bv constants defined using nat2bv usually
+%         result in expressions too complex for GRIND.
+%           
+%------------------------------------------------------------------------

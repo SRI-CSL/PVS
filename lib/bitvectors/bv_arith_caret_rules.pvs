@@ -1,0 +1,33 @@
+bv_arith_caret_rules: THEORY
+BEGIN
+
+  IMPORTING bv_arith_caret
+
+  n,N: VAR posnat
+  i: VAR int
+  m,nn: VAR nat
+
+  bv_add_caret       : THEOREM FORALL (bv1, bv2:bvec[N]): nn < N => 
+                                    (bv1 + bv2)^(nn,0) = bv1^(nn,0) + bv2^(nn,0)
+
+
+  bv_caret_over_plus : THEOREM FORALL (bvn:bvec[N]): nn < N => 
+                                    (bvn + i)^(nn,0) = bvn^(nn,0) + i
+
+  bv_odd_even_pc     : THEOREM FORALL (bv: bvec[N]):
+                                    (bv + nn)^0 = NOT (bv + (nn-1))^0
+
+  bv_even_odd_pc     : THEOREM FORALL (bv: bvec[N]):
+                                    (bv + (-n))^0 = NOT ((bv + (-n+1))^0)
+
+
+%  PCp1              : LEMMA FORALL (bv: bvec[N]): N > 1 IMPLIES
+%                                   (NOT bv^0) => (bv + 1)^(N-1, 1) = bv^(N-1, 1)
+
+
+  bv_plus_caret_rule : LEMMA FORALL (bv1, bv2 : bvec[N]):
+                             m <= nn AND nn + 1 < N => 
+                         (bv1 + bv2) ^ (nn, m) = (bv1^(nn,0) + bv2^(nn,0))^(nn,m)
+
+
+END bv_arith_caret_rules

@@ -1,0 +1,42 @@
+bv_arith_minus_rules: THEORY
+BEGIN
+
+  IMPORTING bv_arithmetic
+
+  N: VAR posnat
+
+  bv_assoc_obliviation : LEMMA FORALL (bv1,bv2: bvec[N]):
+                                bv1 + (-(bv1) + bv2) = bv2
+
+  bv_neg_identity      : LEMMA FORALL (bv1: bvec[N]): -(-(bv1)) = bv1
+  
+  bv_sub_normalization : LEMMA FORALL (bv1,bv2: bvec[N]):
+                                 (bv1 - bv2) = bv1 + (-bv2)
+  
+  bv_neg_distribution  : LEMMA FORALL (bv1,bv2: bvec[N]):
+                                 -(bv1 + bv2) = -bv1 + -bv2
+  
+  
+  bv_plus_neg_distrib  : LEMMA FORALL (i: int, bv: bvec[N]):
+                                    -(bv + i) = -bv + (-i)
+
+  bv_sub_identity_R    : LEMMA FORALL (bv1: bvec[N]):
+                                bv1 + -(fill[N](FALSE)) = bv1
+  
+  bv_sub_identity_L    : LEMMA FORALL (bv1: bvec[N]):
+                                -(fill[N](FALSE)) + bv1 = bv1
+  
+  bv_fill_increment_R  : LEMMA FORALL (bv1: bvec[N]):
+                                (bv1 + -(fill[N](TRUE))) = bv1 + 1
+  
+  bv_fill_increment_L  : LEMMA FORALL (bv1: bvec[N]):
+                                (-(fill[N](TRUE)) + bv1) = bv1 + 1
+  
+  bv_not_normalization : LEMMA FORALL (bv1,bv2: bvec[N]):
+                                (NOT (bv1)) = -(bv1) + (-1)
+
+
+END bv_arith_minus_rules
+
+
+

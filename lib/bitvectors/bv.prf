@@ -1,0 +1,7 @@
+(|bv| (|bvec1_TCC1| "" (TCC) NIL) (|bvec0_TCC1| "" (TCC) NIL)
+ (|fill_lem_TCC1| "" (SUBTYPE-TCC) NIL)
+ (|fill_lem_TCC2| "" (SUBTYPE-TCC) NIL)
+ (|fill_lem| "" (EXPAND "fill")
+  (("" (EXPAND "bvec0")
+    (("" (EXPAND "bvec1") (("" (PROPAX) NIL)))))))
+ (|unspecified_bit_TCC1| "" (INST 1 "0") NIL))

@@ -1,0 +1,43 @@
+func_composition  [ T1, T2, T3 : TYPE ] : THEORY
+%------------------------------------------------------------------------
+%      Author:  Bruno Dutertre 
+%
+%      Composition of injective, surjective, bijective functions
+%------------------------------------------------------------------------
+
+  BEGIN
+
+  f1 : VAR [T1 -> T2]
+  f2 : VAR [T2 -> T3]
+
+  composition_injective : LEMMA injective?(f1) AND injective?(f2) 
+                                   IMPLIES injective?(f2 o f1)
+
+  composition_surjective: LEMMA surjective?(f1) AND surjective?(f2) 
+                                   IMPLIES surjective?(f2 o f1)
+
+  composition_bijective : LEMMA bijective?(f1) AND bijective?(f2) 
+                                   IMPLIES bijective?(f2 o f1)
+
+  %  ---------------- Cancellation laws ----------------
+
+  f, g : VAR [T1 -> T2]
+  h, k : VAR [T2 -> T3]
+
+  composition_def          : LEMMA (FORALL (x : T1) : h(f(x)) = (h o f)(x))
+  
+  composition_left_cancel1 : LEMMA injective?(h)  
+                                      IMPLIES  (h o f = h o g IFF f = g)
+  
+  composition_left_cancel2 : LEMMA bijective?(h)  
+                                      IMPLIES  (h o f = h o g IFF f = g)
+
+ 
+  composition_right_cancel1: LEMMA surjective?(f)  
+                                      IMPLIES  (h o f = k o f IFF h = k)
+  
+  composition_right_cancel2: LEMMA bijective?(f) 
+                                      IMPLIES  (h o f = k o f IFF h = k)
+
+END func_composition
+

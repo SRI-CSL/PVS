@@ -1,0 +1,99 @@
+%------------------------------------------------------------------------
+%
+% Operational definition of bitvector addition
+% -------------------------------------------------
+%
+%   Author
+%
+%         Victor Carreno
+%
+%   Defines:
+%
+%       oba_sum - "sum" output of one bit adder
+%       oba_cout - overflow bit of one bit adder
+%       bv_adder - n-bit adder
+%
+%   Establishes:
+%
+%       adder_is_add: THEOREM bv_adder(bv1,bv2,FALSE) = bv1 + bv2   
+%
+%------------------------------------------------------------------------
+
+bv_adder[N:posnat]: THEORY
+
+BEGIN
+
+
+   IMPORTING bv_bitwise[N], bv_nat[N]
+   
+   a,b,cin : VAR bit
+   
+   % =======   oba is a One Bit Adder   ======================================
+   %
+   %                 |---------------|
+   %         a   --->|               |
+   %                 |               | ----> sum
+   %         b   --->|     oba       |
+   %                 |               | ----> cout
+   %         cin --->|               |
+   %                 |---------------|
+   %
+   % =========================================================================  
+   
+   oba_sum (a,b,cin): bit = (a XOR b XOR cin)
+   oba_cout (a,b,cin): bit = ((a AND b) OR (a AND cin) OR (b AND cin))
+   
+   oba_correct: LEMMA a + b + cin = 2 * oba_cout (a,b,cin) + oba_sum (a,b,cin)
+   
+   a_cin: VAR bit
+   x,y: VAR bvec[N]
+   n: VAR below[N]
+   
+   % =======  
+   %
+   %     x   y   cin      x   y   cin        x   y   cin       x    y   
+   %      n   n   __n_     n-1 n-1 __n-1      1   1   __1_      0    0  __ a_cin
+   %     |   |   |    |   |   |   |           |   |   |    |   |   |   |
+   %    -----------   |  -----------         -----------   |  -----------
+   %    |         |   |  |         |         |         |   |  |         |
+   %    |_________|   |  |_________|         |_________|   |  |_________|
+   %      |    |      |____|    |            __|    |      |____|    | 
+   %      c    s           c    s              c    s           c    s
+   %       n    n           n-1  n-1            1    1           0    0
+   %
+   % =========================================================================  
+   
+   n_cout_rec (n,x,y,a_cin): RECURSIVE bit =
+     IF n =0 THEN oba_cout(x^(0),y^(0),a_cin)
+     ELSE oba_cout(x^(n),y^(n),n_cout_rec(n-1,x,y,a_cin))
+     ENDIF
+     MEASURE n
+   
+   bv_adder(x,y,a_cin): bvec[N] =
+     (LAMBDA (i:below(N)): 
+      IF i=0 THEN oba_sum(x^(0),y^(0),a_cin)
+      ELSE oba_sum(x^(i),y^(i),n_cout_rec(i-1,x,y,a_cin))
+      ENDIF)
+   
+   adder_correct_rec: LEMMA 
+       exp2(n+1)*n_cout_rec(n,x,y,a_cin)+bv2nat_rec(n+1,bv_adder(x,y,a_cin)) =  
+       bv2nat_rec(n+1,x) + bv2nat_rec(n+1,y) + a_cin
+   
+   adder_correct: THEOREM 
+       exp2(N)*n_cout_rec(N-1,x,y,a_cin) + bv2nat(bv_adder(x,y,a_cin)) =  
+       bv2nat(x) + bv2nat(y) + a_cin
+
+   IMPORTING bv_arith_nat
+
+   bv1,bv2: VAR bvec[N]
+   adder_is_add: THEOREM bv_adder(bv1,bv2,FALSE) = bv1 + bv2 
+                             
+END bv_adder
+
+
+
+
+
+
+
+

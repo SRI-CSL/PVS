@@ -1,0 +1,27 @@
+bv_arith_nat_caret_rules: THEORY
+BEGIN
+
+  IMPORTING bv_arith_caret
+
+  N: VAR posnat
+
+  bv_shift_rule  : THEOREM FORALL (bv:bvec[N], ss: below(N)):
+                       bv2nat(bv^(N-1,ss)) = div(bv2nat(bv), exp2(ss))
+	      
+  bv_bottom_rule : THEOREM FORALL (bv:bvec[N], ss: below(N)):
+                       bv2nat(bv^(ss,0)) = mod(bv2nat(bv),exp2(ss+1))
+	      
+
+  bv_middle_rule : THEOREM (FORALL (i,j: below(N), bv: bvec[N]): i >= j IMPLIES
+                       bv2nat(bv^(i,j)) = 
+                           mod(div(bv2nat(bv), exp2(j)),exp2(i-j+1)))
+
+
+  bv_caret_00_rule : THEOREM FORALL (n: posnat, bv: bvec[n]):
+                              bv2nat(bv^(0,0)) = b2n(bv^0)
+
+  bv2nat_lem_rule  : THEOREM FORALL (n: above(1), bv: bvec[n]):
+                              2 * bv2nat(bv ^ (n - 1, 1)) + b2n(bv ^ 0) 
+                                 = bv2nat(bv)
+
+END bv_arith_nat_caret_rules

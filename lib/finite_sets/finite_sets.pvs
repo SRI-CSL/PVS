@@ -1,0 +1,73 @@
+finite_sets[T: TYPE]: THEORY
+
+BEGIN
+
+  IMPORTING card_def[T] 
+
+  A, B, S: VAR finite_set
+  x: VAR T
+  n: VAR nat
+
+  card_emptyset   : THEOREM card(emptyset[T]) = 0
+
+  empty_card      : THEOREM empty?(S) IFF card(S) = 0
+
+  card_empty?     : THEOREM (card(S) = 0) = empty?(S)
+
+  card_is_0       : THEOREM (card(S) = 0) = (S = emptyset)
+
+  nonempty_card   : THEOREM nonempty?(S) IFF card(S) > 0
+
+  card_singleton  : THEOREM card(singleton(x)) = 1
+
+  card_one        : THEOREM card(S) = 1 IFF (EXISTS x : S = singleton(x))
+
+  card_disj_union : THEOREM disjoint?(A,B) IMPLIES 
+                              card(union(A,B)) = card(A) + card(B)
+
+  card_diff_subset: THEOREM subset?(A, B) IMPLIES 
+                                  card(difference(B, A)) = card(B) - card(A)
+
+  card_subset     : THEOREM subset?(A,B) IMPLIES card(A) <= card(B)
+
+  card_plus       : THEOREM card(A) + card(B) = 
+                                card(union(A, B)) + card(intersection(A,B))  
+
+  card_union      : THEOREM card(union(A,B)) = card(A) + card(B) -
+                                               card(intersection(A,B))
+
+  card_add        : THEOREM card(add(x, S)) = card(S) 
+                                                   + IF S(x) THEN 0 ELSE 1 ENDIF
+
+  card_remove     : THEOREM card(remove(x, S)) = card(S)
+                                                   - IF S(x) THEN 1 ELSE 0 ENDIF
+
+  card_rest       : THEOREM NOT empty?(S) IMPLIES card(rest(S)) = card(S) - 1
+
+  same_card_subset: THEOREM subset?(A, B) AND card(A) = card(B) 
+                               IMPLIES A = B
+
+  smaller_card_subset : THEOREM subset?(A, B) AND card(A) < card(B) IMPLIES
+                                 (EXISTS x : member(x, B) AND NOT member(x, A))
+
+  card_1_has_1    : THEOREM card(S) >= 1 IMPLIES (EXISTS (x: T): S(x))
+
+  card_2_has_2    : THEOREM card(S) >= 2 IMPLIES
+                              (EXISTS (x,y: T): x /= y AND S(x) AND S(y))
+
+  card_intersection_le: THEOREM card(intersection(A,B)) <= card(A) AND
+                              card(intersection(A,B)) <= card(B)
+
+  N: VAR nat
+  card_bij        : THEOREM card(S) = N
+                             IFF (EXISTS (f: [(S) -> below[N]]): bijective?(f))
+
+  bij_exists      : COROLLARY (EXISTS (f: [(S) -> below(card(S))]):
+                                       bijective?(f))
+
+%  card_n_has_n    : THEOREM card(S) >= n IMPLIES
+%                              (EXISTS (X: [below[N] -> T]):
+%                                   (FORALL (i: below[N]): S(X(i))) AND
+%                                   (FORALL (i,j: below[N]): X(i) /= X(j)))
+               
+END finite_sets

@@ -1,0 +1,46 @@
+bv_caret_bitwise_rules: THEORY
+% -----------------------------------------------------------------------
+% Rules derived from bv_bitwise and bv_caret
+%
+% -----------------------------------------------------------------------  
+BEGIN
+
+  IMPORTING bv_caret_bitwise
+
+
+  N : VAR nat
+
+  bv_caret_OR       : LEMMA (FORALL (bv1,bv2: bvec[N], i: below[N], j: upto(i)):
+                        (bv1 OR bv2)^(i,j) = (bv1^(i,j) OR bv2^(i,j)))
+
+  bv_caret_AND      : LEMMA (FORALL (bv1,bv2: bvec[N], i: below[N], j: upto(i)):
+                        (bv1 AND bv2)^(i,j) = (bv1^(i,j) AND bv2^(i,j)))
+
+  bv_caret_XOR      : LEMMA (FORALL (bv1,bv2: bvec[N], i: below[N], j: upto(i)):
+                        XOR(bv1,bv2)^(i,j) = (bv1^(i,j) XOR bv2^(i,j)) )
+
+  bv_caret_IFF      : LEMMA (FORALL (bv1,bv2: bvec[N], i: below(N), j: upto(i)):
+                        (bv1 IFF bv2)^(i,j) = (bv1^(i,j) IFF bv2^(i,j)))
+  
+  bv_caret_NOT      : LEMMA (FORALL (bv: bvec[N], i: below(N), j: upto(i)):
+                        (NOT bv)^(i,j) = NOT bv^(i,j) )
+
+
+
+  bv_caret_OR_unary : LEMMA (FORALL (bv1, bv2: bvec[N], i: below[N]):
+                        (bv1 OR bv2)^i = (bv1^i OR bv2^i))
+
+  bv_caret_AND_unary: LEMMA (FORALL (bv1,bv2: bvec[N], i: below[N]):
+                        (bv1 AND bv2)^i = (bv1^i AND bv2^i))
+
+  bv_caret_XOR_unary: LEMMA (FORALL (bv1,bv2: bvec[N], i: below[N]):
+                        XOR(bv1,bv2)^i = (bv1^i XOR bv2^i) )
+
+  bv_caret_IFF_unary: LEMMA (FORALL (bv1,bv2: bvec[N], i: below[N]):
+                          IFF(bv1,bv2)^i = (bv1^i IFF bv2^i) )
+
+  bv_caret_NOT_unary: LEMMA (FORALL (bv: bvec[N], i: below[N]):
+                        (NOT bv)^i = NOT bv^i )
+
+
+END bv_caret_bitwise_rules

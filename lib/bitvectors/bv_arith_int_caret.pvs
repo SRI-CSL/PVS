@@ -1,0 +1,60 @@
+bv_arith_int_caret: THEORY
+BEGIN
+
+
+  IMPORTING bv_arithmetic, bv_arith_caret
+
+%  IMPORTING bv_int, bv_arith_caret, bv_caret_concat
+
+  N: VAR posnat
+
+  bv_sign_of_frag_neg: LEMMA FORALL (bvn: bvec[N], i: below[N]):
+                                bv2int(bvn) < 0 => bv2int(bvn^(N-1, i)) < 0
+  
+  bv_sign_of_frag_pos: LEMMA FORALL (bvn: bvec[N], i: below[N]):
+                                bv2int(bvn) >= 0 => bv2int(bvn^(N-1, i)) >= 0
+
+
+  bv2int_top   : THEOREM FORALL (bv: bvec[N], i: below[N]):
+                               bv2int(bv^(N-1,i)) = floor(bv2int(bv)/ exp2(i))
+
+
+  bv2int_concat : LEMMA FORALL (n, m: posnat, bvn: bvec[n], bvm: bvec[m]):
+                         bv2int(bvn o bvm) = 
+                             bv2int(bvn) * exp2(m) + bv2int(bvm) 
+                                + (b2n(bvm^(m-1)) * exp2(m))
+
+  bv2int_bottom : THEOREM FORALL (bv: bvec[N], i: below[N]):
+                            bv2int(bv^(i,0)) 
+                             = mod(bv2int(bv),exp2(i+1)) - exp2(i+1)*b2n(bv^(i)) 
+
+  in_small_rng   : LEMMA (FORALL (bv: bvec[N], i: below[N]):
+                           i > 0 AND in_rng_2s_comp[i](bv2int(bv)) IMPLIES
+	                             (bv = fill[N-i](bv^(N-1)) o bv^(i-1,0)))
+
+
+  in_rng_i_bv2int: LEMMA FORALL (bv: bvec[N], i: below[N]): i > 0 
+                             AND in_rng_2s_comp[i](bv2int(bv)) IMPLIES
+                                 bv2int[N](bv) = bv2int[i](bv^(i-1,0))
+
+  bv_caret_negate: LEMMA FORALL (bv1: bvec[N], m: below[N]): 
+                                    (-bv1)^(m,0) = -(bv1^(m,0))
+
+
+  bv2int_in_rng_i    : LEMMA FORALL (bv: bvec[N], n: {np: posnat | np < N}):
+                           in_rng_2s_comp[n](bv2int(bv)) => 
+                              (bv = fill[N-n](bv^(n-1)) o bv^(n-1, 0))
+  
+  bv2int_in_rng_i_top: LEMMA FORALL (bv: bvec[N], n: {np: posnat | np < N}):
+                            in_rng_2s_comp[n](bv2int(bv)) => 
+                               (bv^(N-1, n) = fill[N-n](bv^(n-1)))
+
+
+  IMPORTING bv_arith_extend
+  
+  bv2int_of_sign_extension: LEMMA FORALL (bv: bvec[N], n: {np: posnat | np < N}):
+                        in_rng_2s_comp[n](bv2int(bv)) =>
+                           bv2int(bv^(n-1, 0)) = bv2int(bv)
+
+
+END bv_arith_int_caret

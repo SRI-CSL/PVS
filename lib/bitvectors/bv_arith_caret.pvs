@@ -1,0 +1,42 @@
+bv_arith_caret: THEORY
+
+BEGIN
+
+  IMPORTING bv_arith_nat, bv_caret, div,
+            bv_sum, bv_arith_concat % For proofs only
+
+  N: VAR posnat
+  i: VAR int
+  
+
+
+  bv_shift    : THEOREM (FORALL (bv:bvec[N], ss: below(N)):
+                       bv2nat(bv^(N-1,ss)) = div(bv2nat(bv), exp2(ss)))
+	      
+  bv_bottom   : THEOREM (FORALL (bv:bvec[N], ss: below(N)):
+                          bv2nat(bv^(ss,0)) = mod(bv2nat(bv),exp2(ss+1)) )
+	      
+  bv_top      : THEOREM (FORALL (bv:bvec[N], ss: below(N)):
+                         bv^(N-1,ss) = nat2bv[N-ss](div(bv2nat(bv), exp2(ss))))
+
+  bv_bot      : THEOREM (FORALL (bv:bvec[N], nn: below(N)):
+                          bv^(nn,0) = nat2bv[nn+1](mod(bv2nat(bv),exp2(nn+1))))
+
+  bv_add_subrange : THEOREM (FORALL (bv1,bv2:bvec[N], nn: below(N)):
+                               (bv1 + bv2)^(nn,0) = bv1^(nn,0) + bv2^(nn,0))
+
+  bv_plus_caret: LEMMA (FORALL (bv1: bvec[N], nn: below(N)):
+                               (bv1 + i)^(nn,0) = bv1^(nn,0) + i)
+
+  bv_middle      : THEOREM (FORALL (n: posnat, i,j: below(n), bv: bvec[n]): 
+                      i >= j IMPLIES
+                    bv2nat(bv^(i,j)) = mod(div(bv2nat(bv), exp2(j)),exp2(i-j+1)))
+
+
+  bv2nat_caret_00: THEOREM FORALL (n: posnat, bv: bvec[n]):
+                              bv2nat(bv^(0,0)) = b2n(bv^0)
+
+  bv2nat_lem     : THEOREM FORALL (n: above(1), bv: bvec[n]):
+                              bv2nat(bv)  = 2 * bv2nat(bv ^ (n - 1, 1)) + bv ^ 0
+
+END bv_arith_caret

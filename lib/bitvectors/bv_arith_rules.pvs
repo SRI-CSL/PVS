@@ -1,0 +1,70 @@
+bv_arith_rules: THEORY
+BEGIN
+
+  IMPORTING bv_arith_nat
+
+  N: VAR posnat
+  n: VAR nat
+  i,i1,i2: VAR int
+  b: VAR bit
+
+% ---------- rules involving addition of two bitvectors ----------
+
+  bv_add_normalization     : LEMMA FORALL (bv1,bv2,bv3: bvec[N]): 
+                                         bv1 + (bv2 + bv3) = (bv1 + bv2) + bv3
+
+  bv_add_both_sides        : LEMMA FORALL (bv1,bv2,bv3: bvec[N]):
+                                     (bv1 + bv3 = bv2 + bv3) IFF bv1 = bv2
+
+  bv_add_associative       : LEMMA FORALL (bv1,bv2,bv3: bvec[N]):
+                                      bv1 + (bv2 + bv3) = (bv1 + bv2) + bv3 
+
+  bv_add_identity_R        : LEMMA FORALL (bv1: bvec[N]): 
+                                         bv1 + fill[N](FALSE) = bv1
+
+  bv_add_identity_L        : LEMMA FORALL (bv1: bvec[N]): 
+                                         fill[N](FALSE) + bv1 = bv1
+
+% ------- rules involving bitvector plus a constant
+
+  bv_plus_wrap_rule : LEMMA FORALL (bv: bvec[N]): bv + i*exp2(N) = bv
+
+  bv_fill_T_plus1   : LEMMA fill[N](TRUE) + 1 = fill[N](FALSE)
+
+
+  bv_plus_0         : LEMMA FORALL (bv: bvec[N]): i = 0 IMPLIES bv + i = bv
+
+  bv_plus_inj_rule  : LEMMA FORALL (bv: bvec[N]),(n1,n2: below(exp2(N))):
+                                      (bv + n1 = bv + n2) = (n1 = n2)
+
+% ----- rules involving addition of two bitvectors and integers -----
+
+%  bv_bit_add_normalization : LEMMA FORALL (bv1,bv2: bvec[N]):
+%                                         bv1 + (bv2 + b) = (bv1 + b) + bv2 
+
+  bv_plus_assoc1           : LEMMA FORALL (bv1,bv2: bvec[N]):
+                                 bv1 + (bv2 + i) = (bv1 + bv2) + i
+
+  bv_plus_assoc2           : LEMMA FORALL (bv1,bv2: bvec[N]):
+                                (bv1 + i) + bv2  = (bv1 + bv2) + i
+
+  bv_plus_2int_assoc       : LEMMA FORALL (bv1: bvec[N]):
+                                (bv1 + i1) + i2  = bv1 + (i1 + i2) 
+
+
+  bv_add_2_consts_1   : LEMMA FORALL (bv: bvec[N]),(k1,k2: int):
+                                      (bv + k1) + k2 = bv + (k1+k2)
+
+  bv_add_2_consts_2   : LEMMA FORALL (bv1,bv2: bvec[N]),(k1,k2: int):
+                               (bv1 + k1) + (bv2 + k2) = (bv1 + bv2) + (k1 + k2) 
+
+% ---- The following converts +(bv1,bv2) INTO bv plus constant
+
+  fill_T_plus_bv   : LEMMA (FORALL (bv: bvec[N]): fill[N](TRUE) + bv = (bv - 1))
+  bv_plus_fill_T   : LEMMA (FORALL (bv: bvec[N]): bv + fill[N](TRUE) = (bv - 1))
+
+
+END bv_arith_rules
+
+
+

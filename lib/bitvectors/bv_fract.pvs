@@ -1,0 +1,44 @@
+bv_fract [N: above(1)]: THEORY
+%------------------------------------------------------------------------------
+% Defines an interpretation of bit vectors as 2's complement fractions.
+%
+%   Introduces:
+%        bv2fract: function [bvec[N] -> bv2fract_range]
+%------------------------------------------------------------------------------
+BEGIN
+
+  IMPORTING bv, exp2
+  
+  %----------------------------------------------------------------------------
+  % Using a 2's complement representation, a bit vector of size N can 
+  % represent any fraction of the form i/exp2(N-1) as a rational number, 
+  % where i ranges over all integers representable by a bit vector of size N.
+  % The predicate bv2fract_range characterizes this set of rationals.
+  %--------------------------------------------------------------------------- 
+
+  fract_numerator_range: TYPE = {i: int| i >= -exp2(N-1) & i < exp2(N-1)}
+
+  bv2fract_range(r: rational): bool =
+     (EXISTS (i: fract_numerator_range): (r = i/exp2(N-1)) )
+
+  bv2fract_range: TYPE = (bv2fract_range) CONTAINING 0
+
+  bv2fract: [bvec[N] -> bv2fract_range]
+
+  %---------------------------------------------------------------------------
+  % The following min and max definitions ignore 0 and -1, instead
+  % naming their nearest fractional representations.
+  %---------------------------------------------------------------------------
+
+  min_pos_fract: bv2fract_range = 1/exp2(N-1)
+  max_pos_fract: bv2fract_range = 1 - 1/exp2(N-1)
+
+  min_neg_fract: bv2fract_range = -1/exp2(N-1)
+  max_neg_fract: bv2fract_range = -1 + 1/exp2(N-1)
+
+END bv_fract
+
+
+
+
+

@@ -1,0 +1,41 @@
+finite_sets_eq[T1, T2 : TYPE] : THEORY
+%-------------------------------------------------------------------------
+%
+%      by Bruno Dutertre    Royal Holloway & Bedford New College
+% 
+%      Equipotence of finite sets  
+%
+%-------------------------------------------------------------------------
+
+BEGIN
+
+
+  N: VAR nat
+
+  IMPORTING finite_sets, func_composition
+
+  E: VAR finite_set[T1]
+  F: VAR finite_set[T2]
+
+  S: VAR set[T1]
+  U: VAR set[T2]
+
+  injection_to_finite_set    : LEMMA
+        (EXISTS (f: [(S)->(F)]): injective?(f)) IMPLIES is_finite(S)
+
+  surjection_from_finite_set : LEMMA
+        (EXISTS (f: [(E)->(U)]): surjective?(f)) IMPLIES is_finite(U)
+
+  injection_to_finite_set2   : LEMMA
+        (FORALL S, F, (f: [(S)->(F)]): injective?(f) IMPLIES is_finite(S))
+
+  surjection_from_finite_set2: LEMMA
+        (FORALL E, U, (f: [(E)->(U)]): surjective?(f) IMPLIES is_finite(U))
+
+  bijection_finite_set1      : LEMMA
+        (EXISTS (f: [(S)->(F)]): bijective?(f)) IMPLIES is_finite(S)
+
+  bijection_finite_set2      : LEMMA
+        (EXISTS (f: [(E)->(U)]): bijective?(f)) IMPLIES is_finite(U)
+
+END finite_sets_eq

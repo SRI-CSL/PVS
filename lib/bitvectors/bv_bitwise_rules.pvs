@@ -1,0 +1,81 @@
+bv_bitwise_rules: THEORY
+% -----------------------------------------------------------------------
+% Rules derived from bv_bitwise
+%
+%   o move fill[N]() to the right
+%
+%   o association to the left
+%
+% -----------------------------------------------------------------------  
+BEGIN
+
+  IMPORTING bv_bitwise
+
+  N : VAR nat
+  b : VAR bit
+  nb: VAR nbit
+
+  bv_NOT_NOT           : LEMMA FORALL (bv:bvec[N]): (NOT (NOT bv)) = bv
+
+  bv_NOT_caret         : LEMMA FORALL (bv:bvec[N]) (i: below(N)): 
+                                      (NOT(bv))^i = NOT (bv^i)
+
+  bv_fill_NOT          : LEMMA (NOT (fill[N](b))) = fill[N](NOT b)   
+
+  bv_AND_fill_normalize: LEMMA FORALL (bv1 : bvec[N]):
+                                 (fill[N](b) AND bv1) = (bv1 AND fill[N](b))
+
+  bv_AND_fill_F        : LEMMA FORALL (bv1: bvec[N]): 
+                                (bv1 AND fill[N](FALSE)) = fill[N](FALSE)
+
+  bv_AND_fill_T        : LEMMA FORALL 
+                                (bv1: bvec[N]): (bv1 AND fill[N](TRUE)) = bv1
+
+  bv_AND_same          : LEMMA FORALL (bv1, bv2: bvec[N]):
+                                  (bv1 = bv2) => (bv1 AND bv2) = bv1
+
+  bv_AND_associative   : LEMMA FORALL (bv1, bv2, bv3: bvec[N]):
+                               (bv1 AND (bv2 AND bv3)) = ((bv1 AND bv2) AND bv3)
+
+  bv_AND_bv_2eq        : LEMMA FORALL (bv1, bv2, bv3: bvec[N]):
+                            bv1 = bv2 => (bv1 AND (bv2 AND bv3)) = (bv2 AND bv3)
+
+  bv_OR_fill_normalize : LEMMA FORALL (bv1: bvec[N]): 
+                                  (fill[N](b) OR bv1) = (bv1 OR fill[N](b))
+
+  bv_OR_fill_F          : LEMMA FORALL (bv1: bvec[N]): 
+                                 (bv1 OR fill[N](FALSE)) = bv1
+
+  bv_OR_fill_T          : LEMMA FORALL (bv1: bvec[N]): 
+                                  (bv1 OR fill[N](TRUE)) = fill[N](TRUE)
+ 
+  bv_OR_bv_eq          : LEMMA FORALL (bv1, bv2: bvec[N]):
+                                  (bv1 = bv2) => (bv1 OR bv2) = bv1
+
+  bv_OR_associative    : LEMMA FORALL (bv1, bv2, bv3: bvec[N]):
+                                  (bv1 OR (bv2 OR bv3)) = ((bv1 OR bv2) OR bv3)
+
+  bv_OR_bv_bv_2eq      : LEMMA FORALL (bv1, bv2, bv3: bvec[N]):
+                           (bv1 = bv2) => (bv1 OR (bv2 OR bv3)) = (bv2 OR bv3)
+
+  bv_XOR_fill_normalize: LEMMA FORALL (bv1 : bvec[N]):
+                           (fill[N](b) XOR bv1) = (bv1 XOR fill[N](b))
+
+  bv_XOR_fill_F        : LEMMA FORALL (bv1: bvec[N]): 
+                           (bv1 XOR fill[N](FALSE)) = bv1
+
+  bv_XOR_fill_T        : LEMMA FORALL (bv1: bvec[N]): 
+                           (bv1 XOR fill[N](TRUE)) = (NOT bv1)
+
+  bv_XOR_bv_2eq        : LEMMA FORALL (bv1, bv2: bvec[N]):
+                           (bv1 = bv2) => (bv1 XOR bv2) = fill[N](FALSE)
+
+  bv_XOR_associative   : LEMMA FORALL (bv1, bv2, bv3: bvec[N]):
+                           (bv1 XOR (bv2 XOR bv3)) = ((bv1 XOR bv2) XOR bv3)
+
+  bv_XOR_bv_bv_2eq     : LEMMA FORALL (bv1, bv2, bv3: bvec[N]):
+                            bv1 = bv2 => (bv1 XOR (bv2 XOR bv3)) = bv3
+
+
+
+END bv_bitwise_rules

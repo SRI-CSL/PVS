@@ -1,0 +1,32 @@
+finite_sets_int: THEORY
+ BEGIN
+  IMPORTING finite_sets[int]
+
+  i, j, x: VAR int
+
+  p: VAR pred[int]
+
+  in_subrng(x,i,j): bool = (i <= x) AND (x <= j)
+
+  finite_subrng       : LEMMA is_finite({x | in_subrng(x,i,j)})
+
+  finite_subrng_subset: LEMMA is_finite({x | in_subrng(x,i,j) AND p(x)})
+
+  card_subrng         : LEMMA card({x | in_subrng(x,i,j)}) =
+                                  IF i <= j THEN abs(j-i+1) ELSE 0 ENDIF
+
+
+% ------------------------------------------------------------------------
+% The following lemmas apply is_finite[nat] and card[nat] to subtype
+% sets.  This should be avoided if possible.  See finite_subint for
+% preferred lemmas.
+% ------------------------------------------------------------------------
+
+  finite_int_subrange     : LEMMA is_finite[int]({x: subrange(i, j) | TRUE})
+
+  finite_int_subrange_pred: LEMMA is_finite[int]({x: subrange(i, j) | p(x)})
+
+  card_int_subrange       : LEMMA card[int]({x: subrange(i, j) | TRUE}) =
+                                    IF i <= j THEN abs(j-i+1) ELSE 0 ENDIF
+
+END finite_sets_int

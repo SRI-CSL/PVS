@@ -1,0 +1,43 @@
+bv_concat: THEORY
+%------------------------------------------------------------------------
+% This theory develops properties for the concatenation operator o for 
+% bitvectors:
+%
+%    o(bvn: bvec[n], bvm: bvec[m]): bvec[n+m] =
+%         (LAMBDA (nm: below(n+m)): IF nm < m THEN bvm(nm)
+%                                   ELSE bvn(nm - m)
+%                                   ENDIF)
+%
+% which is defined in bv_concat_def
+%
+%------------------------------------------------------------------------
+
+BEGIN
+
+  IMPORTING bv_concat_def
+
+  n,m,p,j: VAR nat
+
+  bvconcat_bot0: THEOREM FORALL (bvm:bvec[m], bvn:bvec[n]):
+                               m = 0 IMPLIES bvn o bvm = bvn 
+
+  bvconcat_top0: THEOREM FORALL (bvm:bvec[m], bvn:bvec[n]):
+                               n = 0 IMPLIES bvn o bvm = bvm
+
+  bv_concat_bot: THEOREM FORALL (bvm:bvec[m], bvn:bvec[n], i: below(m)): 
+                            (bvn o bvm)^i = bvm^i
+
+  bv_concat_top: THEOREM FORALL (bvm:bvec[m], bvn:bvec[n]): 
+                           j >= m AND j < n+m IMPLIES  (bvn o bvm)^j = bvn^(j-m)
+
+
+  bv_concat_assoc   : LEMMA FORALL (bvm:bvec[m], bvn:bvec[n], bvp:bvec[p]):
+                             (bvm o bvn) o bvp = bvm o (bvn o bvp)
+
+  bv_concat_top_bit : LEMMA FORALL (N: posnat, bvn: bvec[N], bvm: bvec[m]):
+                                     (bvn o bvm)^(N+m-1) = bvn^(N-1)
+
+
+
+
+END bv_concat

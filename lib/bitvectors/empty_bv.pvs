@@ -1,0 +1,8 @@
+
+empty_bv: THEORY
+
+BEGIN
+
+  empty_bv: [below[0] -> bool] = (LAMBDA (x: below[0]): TRUE) ;
+
+END empty_bv

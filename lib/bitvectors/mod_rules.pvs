@@ -1,0 +1,53 @@
+mod_rules: THEORY
+BEGIN
+
+   IMPORTING mod
+
+  i, i1, i2: VAR int
+  n, k: VAR nat
+  m, m1, m2: VAR posnat
+
+  
+% ---------- Some basic rules about mod ---------- 
+  
+  mod_rule1     : LEMMA n >= m => mod(n, m) = mod(n-m, m)
+  mod_rule2     : LEMMA n < m => mod(n, m) = n
+  mod_rule3     : LEMMA i < 0 => mod(i, m) = mod(i+m, m)
+
+
+  mod_mod_rule  : LEMMA mod(mod(i, m), m) = mod(i, m)
+  mod_eq_rule1  : LEMMA m1 = m2 => mod(n + m1, m2) = mod(n, m2)
+  mod_eq_rule2  : LEMMA m1 = m2 => mod(m1, m2) = 0
+
+  mod_wrap_rule1: LEMMA n < m AND k <= m AND k >= m-n
+                          IMPLIES mod(n+k, m) = n - (m-k)
+
+  mod_wrap_rule2: LEMMA k < n AND n = m IMPLIES mod(n+k, m) = n - (m-k)
+
+
+  mod_flatten1  : LEMMA mod(mod(i1, m) + i2, m) = mod(i1 + i2, m)
+  mod_flatten2  : LEMMA mod(i1 + mod(i2, m), m) = mod(i1 + i2, m)
+
+
+  mod_gt_rule   : LEMMA (i<2*m) AND (i >= m) IMPLIES mod(i,m) = i-m
+
+  mod_lt        : LEMMA (i > -2*m) AND (i < 0) IMPLIES mod(i,m) = mod(i+m,m)
+
+  mod_identity  : LEMMA (i >= 0) AND (i < m) IMPLIES mod(i,m) = i
+  
+  mod_gt_log2   : LEMMA i >= 2*m IMPLIES mod(i,m) = mod(mod(i,2*m),m);
+  
+  mod_gt_log16  : LEMMA i >= 16*m IMPLIES mod(i,m) = mod(mod(i,16*m),m)
+  
+  mod_gt_log256 : LEMMA i >= 256*m IMPLIES (mod(i,m) = mod(mod(i,256*m),m));
+  
+  mod_lt_log256 : LEMMA i <= -256*m IMPLIES mod(i,m) = mod(mod(i,256*m),m)
+  
+  mod_lt_log16  : LEMMA i <= -16*m IMPLIES mod(i,m) = mod(mod(i,16*m),m)
+  
+  mod_lt_log2   : LEMMA i <= -2*m IMPLIES mod(i,m) = mod(mod(i,2*m),m)
+  
+
+END mod_rules
+
+

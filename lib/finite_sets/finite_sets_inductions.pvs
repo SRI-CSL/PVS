@@ -1,0 +1,52 @@
+finite_sets_inductions[T: TYPE]: THEORY
+
+BEGIN
+
+  IMPORTING finite_sets[T]
+
+  S, S1, S2 : VAR finite_set
+  SS,U : VAR non_empty_finite_set
+  e : VAR T
+  P : VAR pred[finite_set]
+  Q : VAR pred[non_empty_finite_set]
+  n : VAR nat
+
+  cardinal_induction       : LEMMA (FORALL S : P(S)) IFF 
+                                      (FORALL n, S : card(S) = n IMPLIES P(S)) 
+
+  finite_set_induction     : THEOREM P(emptyset[T])
+                                      AND (FORALL e,S: P(S) IMPLIES P(add(e,S)))
+                                         IMPLIES (FORALL S: P(S))
+
+  finite_set_ind_modified  : THEOREM  P(emptyset[T]) AND 
+                             (FORALL e,S: NOT S(e) AND P(S) IMPLIES P(add(e,S)))
+                                       IMPLIES (FORALL S: P(S))
+
+  finite_set_induction_rest: THEOREM P(emptyset[T])
+                                     AND (FORALL SS : P(rest(SS)) IMPLIES P(SS))
+                                             IMPLIES (FORALL S : P(S))
+
+  finite_set_induction_union: THEOREM P(emptyset[T])
+                                      AND (FORALL e: P(singleton(e)))
+                  AND (FORALL S1,S2: P(S1) AND P(S2) IMPLIES P(union(S1,S2)))
+                                     IMPLIES (FORALL S: P(S))
+
+
+  finite_set_induction_gen: THEOREM (FORALL S:
+                                 (FORALL S2: card(S2) < card(S) IMPLIES P(S2))
+                                                IMPLIES P(S))
+                                  IMPLIES (FORALL S: P(S))
+
+
+% -------- Induction rules for non empty sets ----------------
+
+
+  nonempty_card_induction : LEMMA (FORALL U : Q(U)) IFF 
+	                      (FORALL S, n : n > 0 AND card(S) = n IMPLIES Q(S))
+
+  nonempty_finite_set_induct : THEOREM (FORALL e : Q(singleton(e)))
+       AND (FORALL e, U : Q(U) AND NOT U(e) IMPLIES Q(add(e, U)))
+                                        IMPLIES (FORALL U : Q(U))
+
+END finite_sets_inductions
+

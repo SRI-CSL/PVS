@@ -1,0 +1,26 @@
+finite_sets_below[N: nat]: THEORY
+BEGIN
+
+  IMPORTING finite_sets
+
+  A,B,BS: VAR set[below(N)]
+  US: VAR set[upto(N)]
+
+  finite_below      : LEMMA is_finite[below(N)](BS)
+
+  card_below_fullset: LEMMA card[below(N)](fullset[below(N)]) = N
+
+  card_below        : LEMMA card[below(N)](BS) <= N
+
+  finite_upto       : LEMMA is_finite[upto(N)](US)
+
+  card_upto_fullset : LEMMA card[upto(N)](fullset[upto(N)]) = N + 1
+
+  card_upto         : LEMMA card[upto(N)](US) <= N + 1
+
+  k: VAR nat
+  pidgeon_hole      : LEMMA card(A) + card(B) >= N + k IMPLIES 
+                                card(intersection(A,B)) >= k
+
+
+END finite_sets_below

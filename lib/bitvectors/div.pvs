@@ -1,0 +1,33 @@
+div: THEORY
+%------------------------------------------------------------------------
+% Defines natural division only.   See div library for more general div.
+%------------------------------------------------------------------------
+BEGIN
+
+  i: VAR int
+  n,k: VAR nat
+  m: VAR posnat
+
+  IMPORTING floor_div_props
+
+  div(i,m): integer = IF i >= 0 THEN floor(i/m) ELSE ceiling(i/m) ENDIF
+
+  div_def: LEMMA div(i,m) = sgn(i)*floor(abs(i)/m)
+
+  JUDGEMENT div(n, m) HAS_TYPE nat
+
+  div_by_one:	  LEMMA div(n,1) = n
+  
+  div_zero:	  LEMMA div(0,m) = 0
+
+  div_sum_nat:	  LEMMA div(n+k*m,m) = div(n,m) + k
+  
+  div_sum_nat2:	  LEMMA n+i*m >= 0 IMPLIES div(n+i*m,m) = div(n,m) + i
+
+  div_lt_nat:	  LEMMA n < m IMPLIES div(n,m) = 0
+
+  div_max:        LEMMA div(n,m) <= n
+
+END div
+
+
