@@ -1,231 +1,274 @@
-specification ::= {theory | datatype}+
+% The PVS grammar is given here in an Extended Backus-Naur Form (EBNF).
+% This consists of a set of rules of the form
+%    Symbol ::= expression
+% The symbol consists of an initial letter followed by any number of
+%   letters, underscores, or hyphens.
+% Literal strings appear in single quotes, and are case-insensitive.
+% Strings appear in double quotes; to include a double quote or a backslash
+%   precede with a backslash (e.g., "\"\\" is a string with the two
+%   characters '"' and '\'.
+% Comments start with '%' and go to the end of the line
+% The expression of a rule is interpreted as follows:
+%   A B    - A followed by B
+%   A | B  - A or B but not both
+%   [A]    - A is optional
+%   A+     - One or more occurrences of A
+%   A*     - Zero or more occurrences of A
+%   A++B   - One or more occurrences of A separated by occurrences of B
+%   A**B   - Zero or more occurrences of A separated by occurrences of B
+%   {A}    - A is treated as a unit; used for grouping
 
-theory ::= id [theory-formals] ':' 'THEORY'
-	     [exporting]
+Specification ::= {Theory | Datatype}+
+
+Theory ::= id [TheoryFormals] ':' 'THEORY'
+	     [Exporting]
 	     'BEGIN'
-             [assuming-part]
-             [theory-part]
+             [AssumingPart]
+             [TheoryPart]
 	    'END' id
 
-theory-formals ::= '[' theory-formal++',' ']'
+TheoryFormals ::= '[' TheoryFormal++',' ']'
 
-theory-formal ::= ['(' importing ')'] theory-formal-decl
+TheoryFormal ::= ['(' Importing ')'] TheoryFormalDecl
 
-theory-formal-decl ::= idops ':' {'TYPE'|'NONEMPTY_TYPE'|'TYPE+'}
-                                 ['FROM' type-expr]
-		     | idops ':' type-expr
+TheoryFormalDecl ::= TheoryFormalType | TheoryFormalConst
 
-exporting ::= 'EXPORTING' exportingnames ['WITH' exportingtheories]
+TheoryFormalType ::= Ids ':' {'TYPE'|'NONEMPTY_TYPE'|'TYPE+'} ['FROM' TypeExpr]
 
-exportingnames ::= 'ALL' ['BUT' exportingname++',']
-	         | exportingname++','
+TheoryFormalConst ::= IdOps ':' TypeExpr
 
-exportingname ::= idop [':' {type-expr | 'TYPE' | 'FORMULA'}]
+Exporting ::= 'EXPORTING' ExportingNames ['WITH' ExportingTheories]
 
-exportingtheories ::= 'ALL' | 'CLOSURE' | theorynames
+ExportingNames ::= 'ALL' ['BUT' ExportingName++',']
+	         | ExportingName++','
 
-importing ::= 'IMPORTING' theorynames
+ExportingName ::= IdOp [':' {TypeExpr | 'TYPE' | 'FORMULA'}]
 
-assuming-part ::= 'ASSUMING' {assuming-element [';']}+ 'ENDASSUMING'
+ExportingTheories ::= 'ALL' | 'CLOSURE' | TheoryNames
 
-assuming-element ::= importing
-                   | theory-decl
-                   | assumption
+Importing ::= 'IMPORTING' TheoryNames
 
-theory-part ::= {theory-element [';']}+
+AssumingPart ::= 'ASSUMING' {AssumingElement [';']}+ 'ENDASSUMING'
 
-theory-element ::= importing
-		 | theory-decl
-                 | judgement
-		 | conversion
+AssumingElement ::= Importing
+		  | Assumption
+		  | TheoryDecl
+
+TheoryPart ::= {TheoryElement [';']}+
+
+TheoryElement ::= Importing | TheoryDecl
 
 %% Declarations
 
-theory-decl ::= lib-decl | theory-abbr-decl | type-decl
-              | var-decl | const-decl | recursive-decl | inductive-decl
-              | formula-decl | datatype
+TheoryDecl ::= LibDecl
+             | TheoryAbbrDecl
+	     | TypeDecl
+	     | VarDecl
+	     | ConstDecl
+             | RecursiveDecl
+	     | InductiveDecl
+	     | FormulaDecl
+	     | Judgement
+	     | Conversion
+	     | InlineDatatype
 
-lib-decl ::= idops ':' 'LIBRARY' ['='] string
+LibDecl ::= Ids ':' 'LIBRARY' ['='] String
 
-theory-abbr-decl ::= idops ':' 'THEORY' '=' theoryname
+TheoryAbbrDecl ::= Ids ':' 'THEORY' '=' TheoryName
 
-type-decl ::= idops bindings* ':' {'TYPE'|'NONEMPTY_TYPE'|'TYPE+'}
-                            [{'='|'FROM'} type-expr]
+TypeDecl ::= Id [{',' Ids} | Bindings] ':'
+                {'TYPE'|'NONEMPTY_TYPE'|'TYPE+'}
+	        [{'='|'FROM'} TypeExpr ['CONTAINING' Expr]]
 
-var-decl ::= idops ':' 'VAR' type-expr
+VarDecl ::= IdOps ':' 'VAR' TypeExpr
 
-const-decl ::= idops bindings* ':' type-expr ['=' expr]
+ConstDecl ::= IdOp [{',' IdOps} | Bindings+] ':' TypeExpr ['=' Expr]
 
-recursive-decl ::= idops bindings* ':' 'RECURSIVE' type-expr '=' expr
-	            'MEASURE' expr ['BY' expr]
+RecursiveDecl ::= IdOp [{',' IdOps} | Bindings+] ':'
+                    'RECURSIVE' TypeExpr '=' Expr
+	            'MEASURE' Expr ['BY' Expr]
 
-inductive-decl ::= idops bindings* ':' 'INDUCTIVE' type-expr '=' expr
+InductiveDecl ::= IdOp [{',' IdOps} | Bindings+] ':'
+                    'INDUCTIVE' TypeExpr '=' Expr
 		
-assumption ::= idops ':' 'ASSUMPTION' expr
+Assumption ::= Ids ':' 'ASSUMPTION' Expr
 
-formula-decl ::= idops ':' formula-name expr
+FormulaDecl ::= Ids ':' FormulaName Expr
 
-judgement ::= constant-judgement | subtype-judgement
+Judgement ::= SubtypeJudgement | ConstantJudgement
 
-constant-judgement ::= 'JUDGEMENT' name-or-number++',' 'HAS_TYPE' type-expr
+SubtypeJudgement ::= [IdOp ':'] 'JUDGEMENT' TypeExpr++','
+                                'SUBTYPE_OF' TypeExpr
 
-subtype-judgement ::= 'JUDGEMENT' type-expr++',' 'SUBTYPE_OF' type-expr
+ConstantJudgement ::= [IdOp ':'] 'JUDGEMENT' ConstantReference++','
+		                 'HAS_TYPE' TypeExpr
 
-name-or-number ::= name [':' type-expr]
-                 | number
+ConstantReference ::= Number | {Name Bindings*}
 
-conversion ::= 'CONVERSION' {name [':' type-expr]}++','
+Conversion ::= 'CONVERSION' {Name [':' TypeExpr]}++','
 
 
 %% Datatypes
 
-datatype ::= id [theory-formals] ':' 'DATATYPE' ['WITH' 'SUBTYPES' ids]
+Datatype ::= Id [TheoryFormals] ':' 'DATATYPE' ['WITH' 'SUBTYPES' Ids]
 	       'BEGIN'
-	       [importing]
-	       [assuming-part]
-	       datatype-part
-	      'END' id
+	       [Importing [';']]
+	       [AssumingPart]
+	       DatatypePart
+	      'END' Id
 
-datatype-part ::= {constructor ':' idop [':' id]}+
+InlineDatatype ::= Id ':' 'DATATYPE' ['WITH' 'SUBTYPES' Ids]
+	       	       'BEGIN'
+		       [Importing [';']]
+		       [AssumingPart]
+		       DatatypePart
+		       'END' Id
 
-constructor ::= idop ['(' {idops ':' type-expr}++',' ')']
+DatatypePart ::= {Constructor ':' IdOp [':' Id]}+
+
+Constructor ::= IdOp ['(' {IdOps ':' TypeExpr}++',' ')']
 
 
 %% Type Expressions
 
-type-expr ::= name
-            | type-application
-            | enumeration-type
-            | subtype ['CONTAINING' expr]
-            | function-type
-            | tuple-type
-            | record-type
+TypeExpr ::= Name
+           | EnumerationType
+           | Subtype
+           | TypeApplication
+           | FunctionType
+           | TupleType
+           | RecordType
 
-type-application ::= name arguments
+TypeApplication ::= Name Arguments 
 
-enumeration-type ::= '{' ids '}'
+EnumerationType ::= '{' IdOps '}'
 
-subtype ::= '{' set-formals '|' expr '}'
-          | '(' expr ')'
+Subtype ::= {'{' SetBindings '|' Expr '}'}
+          | {'(' Expr ')'}
 
-function-type ::= ['FUNCTION'|'ARRAY']
-                      '[' {[idop ':'] type-expr}++',' '->' type-expr ']'
+FunctionType ::= ['FUNCTION'|'ARRAY']
+                      '[' {[IdOp ':'] TypeExpr}++',' '->' TypeExpr ']'
 
-tuple-type ::= '[' {[idop ':'] type-expr}++',' ']'
+TupleType ::= '[' {[IdOp ':'] TypeExpr}++',' ']'
 
-record-type ::= '[#' field-decls++',' '#]'
+RecordType ::= '[#' FieldDecls++',' '#]'
 
-field-decls ::= ids ':' type-expr
+FieldDecls ::= Ids ':' TypeExpr
 
 
 %% Expressions
 
-expr ::= number
-       | string
-       | name
-       | idop '!' number
-       | '(' expr++',' ')'
-       | '(:' expr**',' ':)'
-       | '[|' expr**',' '|]'
-       | '(#' assignment++',' '#)'
-       | expr arguments
-       | expr binop expr
-       | unaryop expr
-       | expr ':' type-expr
-       | if-expr
-       | binding-expr
-       | '{' set-bindings '|' expr '}'
-       | 'LET' let-binding++',' 'IN' expr
-       | expr 'WHERE' let-binding++','
-       | expr 'WITH' '[' assignment++',' ']'
-       | 'CASES' expr 'OF' selection++',' ['ELSE' expr] 'ENDCASES'
-       | 'COND' {expr '->' expr}++',' [',' 'ELSE' '->' expr] 'ENDCOND'
-       | table-expr
+Expr ::= Number
+       | String
+       | Name
+       | {Id '!' Number}
+       | {Expr Arguments}
+       | {Expr Binop Expr}
+       | {Unaryop Expr}
+       | {Expr '`' {Id | Number}}
+       | {'(' Expr++',' ')'}
+       | {'(:' Expr**',' ':)'}
+       | {'[|' Expr**',' '|]'}
+       | {'(#' Assignment++',' '#)'}
+       | {Expr '::' TypeExpr}
+       | IfExpr
+       | BindingExpr
+       | {'{' SetBindings '|' Expr '}'}
+       | {'LET' LetBinding++',' 'IN' Expr}
+       | {Expr 'WHERE' LetBinding++','}
+       | {Expr 'WITH' '[' Assignment++',' ']'}
+       | {'CASES' Expr 'OF' Selection++',' ['ELSE' Expr] 'ENDCASES'}
+       | {'COND' {Expr '->' Expr}++',' [',' 'ELSE' '->' Expr] 'ENDCOND'
+       | TableExpr
 
-if-expr ::= 'IF' expr 'THEN' expr
-               {'ELSIF' expr 'THEN' expr}*
-               'ELSE' expr 'ENDIF'
+IfExpr ::= 'IF' Expr 'THEN' Expr
+               {'ELSIF' Expr 'THEN' Expr}*
+               'ELSE' Expr 'ENDIF'
 
-binding-expr ::= binding-op lambda-bindings ['->' type-expr] ':' expr
+BindingExpr ::= BindingOp LambdaBindings ['->' TypeExpr] ':' Expr
 
-binding-op ::= 'LAMBDA' | 'FORALL' | 'EXISTS' | idop '!'
+BindingOp ::= 'LAMBDA' | 'FORALL' | 'EXISTS' | {IdOp '!'}
 
-lambda-bindings ::= lambda-binding [[','] lambda-bindings]
+LambdaBindings ::= LambdaBinding [[','] LambdaBindings]
 
-lambda-binding ::= idop | bindings
+LambdaBinding ::= IdOp | Bindings
 
-set-bindings ::= set-binding [[','] set-bindings]
+SetBindings ::= SetBinding [[','] SetBindings]
 
-set-binding ::= idop [':' type-expr] | bindings
+SetBinding ::= {IdOp [':' TypeExpr]} | Bindings
 
-bindings ::= '(' binding++',' ')'
+Bindings ::= '(' Binding++',' ')'
 
-binding ::= typed-id | '(' typed-ids ')'
+Binding ::= TypedId | {'(' TypedIds ')'}
 
-assignment ::= assign-arg {':=' | '|->'} expr
+Assignment ::= AssignArgs {':=' | '|->'} Expr
 
-assign-arg ::= {'(' expr ')'}+
-	     | id
-	     | number
+AssignArgs ::= Id ['!' Number]
+	     | Number
+	     | AssignArg+
 
-selection ::= idop ['(' idops ')'] ':' expr
+AssignArg ::= {'(' Expr++',' ')'}
+	    | {'`' Id}
+	    | {'`' Number}
 
-table-expr ::= 'TABLE' [expr] [',' expr]
-		[col-heading]
-		table-entry+ 'ENDTABLE'
+Selection ::= IdOp ['(' IdOps ')'] ':' Expr
 
-col-heading ::= '|[' expr {'|' {expr | 'ELSE'}}+ ']|'
+TableExpr ::= 'TABLE' [Expr] [',' Expr]
+		[ColHeading]
+		TableEntry+ 'ENDTABLE'
 
-table-entry ::= {'|' [expr | 'ELSE']}+ '||'
+ColHeading ::= '|[' Expr {'|' {Expr | 'ELSE'}}+ ']|'
 
-let-binding ::= {binding | '(' binding++',' ')'} '=' expr
+TableEntry ::= {'|' [Expr | 'ELSE']}+ '||'
 
-arguments ::= '(' expr++',' ')'
+LetBinding ::= {LetBind | '(' LetBind++',' ')'} '=' Expr
 
-typed-ids ::= idops [':' type-expr] ['|' expr]
+LetBind ::= IdOp Bindings* [':' TypeExpr]
 
-typed-id ::= idop [':' type-expr] ['|' expr] 
+Arguments ::= '(' Expr++',' ')'
 
-theorynames ::= theoryname++','
+TypedIds ::= IdOps [':' TypeExpr] ['|' Expr]
 
-theoryname ::= [id '@'] id [actuals]
+TypedId ::= Idop [':' TypeExpr] ['|' Expr] 
 
-names ::= name++','
+TheoryNames ::= TheoryName++','
 
-name ::= [id '@'] idop [actuals] ['.' idop]
+TheoryName ::= [Id '@'] Id [Actuals]
 
-actuals ::= '[' actual++',' ']'
+Names ::= Name++','
 
-actual ::= expr | type-expr
+Name ::= [Id '@'] IdOp [Actuals] ['.' IdOp]
 
-idops ::= idop++','
+Actuals ::= '[' Actual++',' ']'
 
-idop ::= id | opsym
+Actual ::= Expr | TypeExpr
 
-ids ::= id++','
+IdOps ::= IdOp++','
 
-opsym ::= binop | unaryop | 'IF' | 'TRUE' | 'FALSE' | '[||]'
+IdOp ::= Id | Opsym
 
-binop ::= 'o' | 'IFF' | '<=>' | 'IMPLIES' | '=>' | 'WHEN' | 'OR'
+Ids ::= Id++','
+
+Opsym ::= BinOp | UnaryOp | 'IF' | 'TRUE' | 'FALSE' | '[||]'
+
+BinOp ::= 'o' | 'IFF' | '<=>' | 'IMPLIES' | '=>' | 'WHEN' | 'OR'
         | '\/' | 'AND' | '/\' | '&' | 'XOR' | 'ANDTHEN' | 'ORELSE'
         | '^' | '+' | '-' | '*' | '/' | '++' | '~' | '**' | '//' | '^^'
         | '|-' | '|=' | '<|' | '|>' | '=' | '/=' | '==' | '<' | '<='
         | '>' | '>=' | '<<' | '>>' | '<<=' | '>>=' | '#' | '@@' | '##'
 
-unaryop ::= 'NOT' | '~' | '[]' | '<>' | '-'
+UnaryOp ::= 'NOT' | '~' | '[]' | '<>' | '-'
 
-formula-name ::= 'AXIOM' | 'CHALLENGE' | 'CLAIM' | 'CONJECTURE' | 'COROLLARY'
+FormulaName ::= 'AXIOM' | 'CHALLENGE' | 'CLAIM' | 'CONJECTURE' | 'COROLLARY'
                | 'FACT' | 'FORMULA' | 'LAW' | 'LEMMA' | 'OBLIGATION'
 	       | 'POSTULATE' | 'PROPOSITION' | 'SUBLEMMA' | 'THEOREM'
 
-id ::= letter idchar+
+Id ::= Letter IdChar+
 
-idchar ::= letter | digit | '_' | '?'
+Number ::= Digit+
 
-letter ::= 'A' | ... | 'Z' | 'a' | ... | 'z'
+IdChar ::= Letter | Digit | '_' | '?'
 
-digit ::= '0' | ... | '9'
+Letter ::= 'A' | ... | 'Z' | 'a' | ... | 'z'
 
-number ::= digit+
-
-string ::= '"' ASCII-character* '"'    % '\' acts as an escape character
+Digit ::= '0' | ... | '9'
