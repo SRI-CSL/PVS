@@ -320,7 +320,6 @@ groundevallisp = src/groundeval/eval-macros.lisp \
 inst-by-unif-lisp = src/inst-by-unif/lvars-and-skofuns.lisp \
                     src/inst-by-unif/translate-to-dc-lvars.lisp \
                     src/inst-by-unif/unify.lisp \
-                    src/inst-by-unif/herbrandize.lisp \
                     src/inst-by-unif/inst-by-unif.lisp \
                     src/inst-by-unif/utils.lisp \
                     src/inst-by-unif/herbrandize.lisp \
