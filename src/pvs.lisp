@@ -54,6 +54,10 @@
   (setq *pvs-context-writable* (write-permission? (working-directory)))
   (setq *pvs-library-path* (get-pvs-library-path))
   ;;(restore-context)
+  ;; This strange-looking line just looks at the bdd_interrupted variable.
+  ;; This is because the first time lisp looks at the variable, it returns
+  ;; a bogus value.  I suspect this is an Allegro bug.
+  bdd_interrupted
   (setq *pvs-initialized* t)
   (when *to-emacs*
     (pvs-emacs-eval "(setq *pvs-initialized* t)")))
