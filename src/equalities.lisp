@@ -1456,27 +1456,6 @@ where db is to replace db1 and db2")
 	(substit types (list (cons pname appl))))
       types))
 
-(defun make-proj-inclusion (aty ety preds var projnum)
-  (declare (ignore ety))
-  (let* ((aconstr (type-constraints aty))
-	 (prem (when aconstr
-		 (mk-conjunction
-		  (mapcar #'(lambda (pr)
-			      (mk-application pr
-				(mk-application (makesym "PROJ_~d" projnum)
-				  (mk-name-expr var))))
-			  aconstr))))
-	 (conc (mk-conjunction
-		(mapcar #'(lambda (p)
-			    (mk-application p
-			      (mk-application (makesym "PROJ_~d" projnum)
-				(mk-name-expr var))))
-			preds))))
-    (mk-lambda-expr (list var)
-      (if prem
-	  (mk-implication prem conc)
-	  conc))))
-
 (defmethod compatible-preds* ((atype tupletype) (etype list)
 			      (aexpr tuple-expr) incs)
   incs)
@@ -1563,25 +1542,6 @@ where db is to replace db1 and db2")
   (let* ((ne aexpr)
 	 (appl (make!-field-application (id field) ne)))
     (substit fields (list (cons field (beta-reduce appl))))))
-
-(defun make-field-inclusion (afld efld preds var)
-  (let* ((aconstr (type-constraints (type afld)))
-	 (prem (when aconstr
-		 (mk-conjunction
-		  (mapcar #'(lambda (pr)
-			      (mk-application pr
-				(mk-application (id afld)
-				  var)))
-			  aconstr))))
-	 (conc (mk-conjunction
-		(mapcar #'(lambda (p)
-			    (mk-application p
-			      (mk-application (id efld)
-				var)))
-			preds))))
-    (if prem
-	(mk-implication prem conc)
-	conc)))
 
 
 ;;; Strict-subtype-of?
