@@ -904,9 +904,10 @@
 
 (defun pvs-library-path-ref (lib-ref &optional (libs *pvs-library-path*))
   (when libs
-    (if (file-exists-p lib-path)
-	lib-path
-	(pvs-library-path-ref lib-ref (cdr libs)))))
+    (let ((lib-path (concatenate 'string (car libs) lib-ref)))
+      (if (file-exists-p lib-path)
+	  lib-path
+	  (pvs-library-path-ref lib-ref (cdr libs))))))
 
 (defun pathname-to-libref (lib-path)
   (if (and (file-exists-p lib-path)
