@@ -26,14 +26,18 @@
 
 
 (defconst +ilisp-emacs-version-id+
-  (cond ((string-match "XEmacs 20" (emacs-version))
+  (cond ((string-match "XEmacs 21" (emacs-version))
+         'xemacs-20)
+	((string-match "XEmacs 20" (emacs-version))
          'xemacs-20)
         ((string-match "XEmacs 19" (emacs-version))
          'xemacs-19)
 	((string-match "XEmacs " (emacs-version))
 	 (message "ILISP: Unknown XEmacs.  Assuming XEmacs 20 - best of luck!")
          'xemacs-20)
-        ((string-match "Emacs 20" (emacs-version))
+        ((string-match "Emacs 21" (emacs-version))
+         'fsf-20)
+	((string-match "Emacs 20" (emacs-version))
          'fsf-20)
         ((string-match "Emacs 19" (emacs-version))
          'fsf-19)
