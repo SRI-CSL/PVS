@@ -492,7 +492,8 @@
   (make-diagonal-matrix (1+ max-vars)))
 
 (defun polyhedral-structure-to-equations (poly-s cong-state)
-  (when (= (polyhedron-next (polyhedral-structure-polyhedron poly-s)) 0)
+  (when (domain= (polyhedron-next (polyhedral-structure-polyhedron poly-s))
+		   0)
     (constraints2equations
      (polyhedron2constraints (polyhedral-structure-polyhedron poly-s))
      (polyhedral-structure-ineq-var-index-array poly-s)
@@ -504,7 +505,7 @@
 	(constraint2equation constraints i ineq-var-index-array cong-state)))
 
 (defun polyhedral-structure-to-equalities (poly-s cong-state &optional all)
-  (if (= (polyhedron-next (polyhedral-structure-polyhedron poly-s)) 0)
+  (if (domain= (polyhedron-next (polyhedral-structure-polyhedron poly-s)) 0)
       (polyhedron-to-equalities (polyhedral-structure-polyhedron poly-s)
 				(polyhedral-structure-ineq-var-index-array
 				 poly-s)
@@ -525,7 +526,7 @@
 
 (defun domain-to-equalities-list (polyhedron ineq-var-index-array cong-state
 					     all)
-  (if (= (polyhedron-next polyhedron) 0)
+  (if (domain= (polyhedron-next polyhedron) 0)
       (list (polyhedron-to-equalities polyhedron ineq-var-index-array
 				      cong-state all))
       (cons (polyhedron-to-equalities polyhedron ineq-var-index-array
@@ -536,7 +537,7 @@
 
 (defun domain-to-equalities-intersect
   (current-eqs polyhedron ineq-var-index-array cong-state)
-  (if (= (polyhedron-next polyhedron) 0)
+  (if (domain= (polyhedron-next polyhedron) 0)
       (intersection
        current-eqs
        (polyhedron-to-equalities polyhedron ineq-var-index-array
@@ -545,12 +546,12 @@
 					     cong-state nil))
 	     (rest-poly (polyhedron-next polyhedron))
 	     (ceqs (intersection current-eqs eqs1)))
-	(if (= rest-poly 0)
+	(if (domain= rest-poly 0)
 	    ceqs
 	    (if ceqs
 		(domain-to-equalities-intersect
 		 ceqs rest-poly ineq-var-index-array cong-state)
-		nil)))))	    
+		nil)))))
 
 (defun domain-to-equalities (polyhedron ineq-var-index-array cong-state all)
   (let ((equalities-list
@@ -624,11 +625,14 @@
   (adjust-array index-array (1+ max-vars)))
 
 (defun clr-polyhedral-structure (poly-s)
-  (when (not (eq (polyhedral-structure-polyhedron poly-s)
-		 (universal-polyhedral-domain)))
+  (when (and (not (domain-eq
+		   (polyhedral-structure-polyhedron poly-s)
+		   (universal-polyhedral-domain)))
+	     (not (domain-freed? (polyhedral-structure-polyhedron poly-s))))
     (domain_free (polyhedral-structure-polyhedron poly-s)))
-  (when (not (eq (polyhedral-structure-epsilon-poly poly-s)
-		 (initial-epsilon-poly)))
+  (when (and (not (domain-eq (polyhedral-structure-epsilon-poly poly-s)
+			     (initial-epsilon-poly)))
+	     (not (domain-freed? (polyhedral-structure-epsilon-poly poly-s))))
     (domain_free (polyhedral-structure-epsilon-poly poly-s)))
   (when (not (eq (polyhedral-structure-projection-matrix poly-s)
 		 (initial-projection-matrix)))
