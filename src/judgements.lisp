@@ -119,18 +119,20 @@
 (defmethod judgement-lt ((d1 application-judgement) (d2 application-judgement))
   (judgement-lt (judgement-type d1) (judgement-type d2)))
 
+;;; Should this take dependent types into account?
 (defmethod judgement-lt ((t1 funtype) (t2 funtype))
   (and (not (tc-eq t1 t2))
-       (subtype-of? (domain t1) (domain t2))
-       (subtype-of? (range t1) (range t2))))
+       (subtype-of? (range t1) (range t2))
+       (subtype-of? (domain t1) (domain t2))))
 
 (defmethod judgement-subsumes ((d1 application-judgement)
 			       (d2 application-judgement))
   (judgement-subsumes (judgement-type d1) (judgement-type d2)))
 
+;;; Should this take dependent types into account?
 (defmethod judgement-subsumes ((t1 funtype) (t2 funtype))
-  (and (subtype-of? (domain t2) (domain t1))
-       (subtype-of? (range t1) (range t2))))
+  (and (subtype-of? (range t1) (range t2))
+       (subtype-of? (domain t2) (domain t1))))
 	
 
 ;;; Accessors and update functions for the above
@@ -1346,11 +1348,34 @@
   (let ((aty (if (typep atype 'dep-binding) (type atype) atype))
 	(ety (if (typep etype 'dep-binding) (type etype) etype)))
     (unless (subtype-of? aty ety)
-      (clrhash *subtype-of-hash*)
+      (remove-compatible-subtype-of-hash-entries etype)
       (let ((entry (get-known-subtypes aty)))
 	(if (null entry)
 	    (push (list aty ety) (known-subtypes *current-context*))
 	    (push ety (cdr entry)))))))
+
+
+;;; We remove the compatible *subtype-of-hash* that return nil, as the
+;;; new information may yield t for these.  Note that we don't need to
+;;; change the true ones, as adding more known subtypes cannot change
+;;; this.  We need to use compatible, as it may be that T0 <: T1 and
+;;; T2 <: T3, but NOT T1 <: T2 in the subtype hash, and this is
+;;; precisely what we're adding.  Hence we need to deal with the T0,
+;;; T3 entry, even though neither of these types is mentioned.
+;;; However, they must be compatible with the given types.  The
+;;; *strong-tc-eq* flag is needed as compatible? has a much looser
+;;; definition without it, and will return t wherever a formal is
+;;; matched with another type.
+
+(defun remove-compatible-subtype-of-hash-entries (type)
+  (let ((*strong-tc-eq-flag* t))
+    (maphash #'(lambda (ty hsh)
+		 (when (compatible? ty type)
+		   (maphash #'(lambda (sty val)
+				(unless val
+				  (remhash sty hsh)))
+			    hsh)))
+	     *subtype-of-hash*)))
 
 (defun get-known-subtypes (aty)
   (assoc aty (known-subtypes *current-context*) :test #'tc-eq))
