@@ -25,7 +25,7 @@
                                     :expected "[set[nat], set[nat] -> set[nat]]")
 (def-pvs-term intersection-operator "intersection[nat]" "record_prelude_example"
                                     :expected "[set[nat], set[nat] -> set[nat]]")
-(def-pvs-term difference-operator "difference[nat]" "record_prelude_example"
+(def-pvs-term set-difference-operator "difference[nat]" "record_prelude_example"
                                     :expected "[set[nat], set[nat] -> set[nat]]")
 (def-pvs-term emptyset-operator "emptyset[nat]" "record_prelude_example"
                                     :expected "set[nat]")

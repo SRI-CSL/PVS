@@ -333,7 +333,7 @@
        (2nd-order? trm)))
 
 (defun difference2? (trm)
-  (and (tc-eq (operator trm) (difference-operator))
+  (and (tc-eq (operator trm) (set-difference-operator))
        (2nd-order? trm)))
   
 (defun the2? (trm)
