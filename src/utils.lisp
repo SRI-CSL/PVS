@@ -1280,7 +1280,8 @@
   (setf (adt te) (get-adt-slot-value te)))
 
 (defun get-adt-slot-value (te)
-  (or (get-theory (id te))
+  (or (let ((dt (get-theory (id te))))
+	(and (datatype? dt) dt))
       (find-if #'(lambda (d)
 		   (and (typep d 'datatype)
 			(eq (id d) (id te))))
