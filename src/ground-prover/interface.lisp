@@ -191,16 +191,16 @@
 
 
 (defun alphalessp (a b)
-  (string< (arithstring a) (arithstring b)))
+  (string< (string a) (string b)))
 
-(defun arithstring (a)
-  (case a
-    (minus "MINUS")
-    (times "TIMES")
-    (divides "DIVIDES")
-    (plus "PLUS")
-    (difference "DIFFERENCE")
-    (t (string a))))
+; (defun arithstring (a)
+;   (case a
+;     (minus "MINUS")
+;     (times "TIMES")
+;     (divides "DIVIDES")
+;     (plus "PLUS")
+;     (difference "DIFFERENCE")
+;     (t (string a))))
 
 ;from library-cl
 ;used in q

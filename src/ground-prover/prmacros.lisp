@@ -40,13 +40,13 @@
 
 (defconstant *eqarithrels* '(greatereqp lesseqp))
 
-(defconstant *ifops* '(if if*))
+(defconstant *ifops* '(IF IF*))
 
 (defconstant *boolconstants* '(false true))
 
 (defconstant *arithrels* '(lessp lesseqp greaterp greatereqp))
 
-(defconstant *arithops* '(plus times difference minus))
+(defconstant *arithops* '(PLUS TIMES DIFFERENCE MINUS))
 
-(defconstant *boolops* '(and or implies not if iff))
+(defconstant *boolops* '(and or implies not IF iff))
 

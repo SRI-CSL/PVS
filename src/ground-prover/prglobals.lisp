@@ -40,26 +40,26 @@
       (lesseqp . bool)
       (greaterp . bool)
       (greatereqp . bool)
-      (quo . number)
-      (plus . number)
-      (minus . number)
-      (difference . number)
-      (times . number)
-      (divide . number)
+      (QUO . number)
+      (PLUS . number)
+      (MINUS . number)
+      (DIFFERENCE . number)
+      (TIMES . number)
+      (DIVIDE . number)
       (tupcons . tuple)
       (update . array)
       (arrayrest . array)
-      (tupsel-integer . integer)
-      (tupsel-number . number)
-      (tupsel-bool . bool)
+      (TUPSEL-integer . integer)
+      (TUPSEL-number . number)
+      (TUPSEL-bool . bool)
      )) ;NSH from prglobals.lisp
 
 (defvar   interpsyms
-     '(plus minus difference times divide
+     '(PLUS MINUS DIFFERENCE TIMES DIVIDE
        lessp lesseqp greaterp greatereqp
-       tupcons tupsel
+       tupcons TUPSEL
        update arrayrest arraysel
-       if*
+       IF*
       )); NSH from prglobals.lisp
 
 (defvar  pr-infile "prx-.m"    " input file - a dummy used to fool maclisp " )
@@ -144,11 +144,11 @@
     (lesseqp 6)
     (greatereq 6)
     (greatereqp 6)
-    (plus 7)
-    (minus 7)
-    (difference 7)
-    (times 8)
-    (divide 8)))
+    (PLUS 7)
+    (MINUS 7)
+    (DIFFERENCE 7)
+    (TIMES 8)
+    (DIVIDE 8)))
 
 (defvar precedence-stack nil)
 
