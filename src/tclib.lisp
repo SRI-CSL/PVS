@@ -249,8 +249,7 @@
 	     (when restoring?
 	       ;; Note that this is a noop if Emacs is not there
 	       (pvs-emacs-eval
-		(format nil "(load \"~apvs-lib\" t nil nil t)"
-		  lib-path)))))))
+		(format nil "(load-pvs-lib-file ~s" lib-path)))))))
 
 (defun load-pvs-lib-lisp-file (lib-path)
   ;; Set up *default-pathname-defaults* and sys:*load-search-list*
