@@ -1,16 +1,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; resolve.lisp -- 
+;; resolve.lisp -- Name resolution determination
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec  9 14:44:26 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sun Apr  5 01:15:56 1998
-;; Update Count    : 38
-;; Status          : Beta test
+;; Last Modified On: Mon Apr 12 16:10:32 2004
+;; Update Count    : 40
+;; Status          : Stable
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
-
 
 (in-package :pvs)
 
@@ -1667,9 +1666,37 @@
 (defmethod locality ((decl binding))
   0)
 
-(defmethod locality ((ex lambda-expr))
+(defmethod locality ((ex lambda-conversion))
   ;; This comes from K_conversion
   4)
+
+(defmethod locality ((ex funtype-conversion))
+  (if (domain-conversion ex)
+      (if (range-conversion ex)
+	  (min (locality (domain-conversion ex))
+	       (locality (range-conversion ex)))
+	  (locality (domain-conversion ex)))
+      (locality (range-conversion ex))))
+
+(defmethod locality ((ex rectype-conversion))
+  (locality* (conversions ex)))
+
+(defmethod locality ((ex rectype-conversion))
+  (locality* (conversions ex)))
+
+(defun locality* (conversions &optional min)
+  (if (null conversions)
+      min
+      (if (car conversions)
+	  (let ((loc (locality (car conversions))))
+	    (locality* (cdr conversions)
+		       (if (and min (<= min loc))
+			   min
+			   loc)))
+	  (locality* (cdr conversions) min))))
+
+(defmethod locality ((cr conversion-result))
+  (locality (expr cr)))
 
 (defmethod locality ((decl declaration))
   (with-slots (module) decl
@@ -1824,427 +1851,6 @@
   (visible? decl))
 
 
-(defun argument-conversion (name arguments)
-  (let ((*found-one* nil)
-	(reses (remove-if-not #'(lambda (r)
-				  (typep (find-supertype (type r)) 'funtype))
-		 (resolve name 'expr nil))))
-    (declare (special *found-one*))
-    (when (let ((*ignored-conversions*
-		 (cons "K_conversion" *ignored-conversions*)))
-	    (argument-conversions (mapcar #'type reses) arguments))
-      (resolve name 'expr arguments))))
-
-(defun argument-k-conversion (name arguments)
-  (let ((*found-one* nil)
-	(reses (remove-if-not #'(lambda (r)
-				  (typep (find-supertype (type r)) 'funtype))
-		 (resolve name 'expr nil))))
-    (declare (special *found-one*))
-    (unless (member "K_conversion" *ignored-conversions* :test #'string=)
-      (let ((*only-use-conversions* (list "K_conversion")))
-	(when (argument-conversions (mapcar #'type reses) arguments)
-	  (resolve name 'expr arguments))))))
-
-(defun argument-conversions (optypes arguments)
-  (declare (special *found-one*))
-  (if optypes
-      (let* ((rtype (find-supertype (car optypes)))
-	     (dtypes (when (typep rtype 'funtype)
-		       (domain-types rtype)))
-	     (dtypes-list (all-possible-instantiations dtypes arguments)))
-	(when (length= arguments dtypes)
-	  (argument-conversions* arguments dtypes-list))
-	(argument-conversions (cdr optypes) arguments))
-      *found-one*))
-
-(defun argument-conversions* (arguments dtypes-list &optional aconversions)
-  (declare (special *found-one*))
-  (if (null dtypes-list)
-      aconversions
-      (let ((conversions (argument-conversions1 arguments (car dtypes-list)))
-	    (found-one nil))
-	(when conversions
-	  (mapc #'(lambda (arg convs)
-		    (when convs
-		      (setq found-one t)
-		      (setq *found-one* t)
-		      (setf (types arg)
-			    (remove-duplicates
-				(append (types arg)
-					(mapcar #'(lambda (c)
-						    (get-conversion-range-type
-						     c arg))
-					  convs))
-			      :test #'tc-eq :from-end t))))
-		arguments conversions))
-	(argument-conversions* arguments (cdr dtypes-list)
-			       (if found-one
-				   (cons conversions aconversions)
-				   aconversions)))))
-
-(defun argument-conversions1 (arguments dtypes &optional result)
-  (if (null arguments)
-      (unless (every #'null result)
-	(nreverse result))
-      (let* ((atypes (types (car arguments)))
-	     (convs (unless (some #'(lambda (aty)
-				      (or (tc-eq aty (car dtypes))
-					  (and (compatible? aty (car dtypes))
-					       (fully-instantiated?
-						(car dtypes)))))
-				  atypes)
-		      (argument-conversions** atypes (car dtypes)))))
-	(argument-conversions1 (cdr arguments) (cdr dtypes)
-			       (cons convs result)))))
-
-(defun argument-conversions** (atypes etype &optional result)
-  (if (null atypes)
-      (nreverse result)
-      (let ((conv (find-conversions-for (car atypes) etype)))
-	(argument-conversions** (cdr atypes) etype
-				(append conv result)))))
-
-(defun all-possible-instantiations (dtypes arguments)
-  (when (length= dtypes arguments)
-    (if (free-params dtypes)
-	(let* ((bindings (instantiate-operator-bindings (free-params dtypes)))
-	       (bindings-list (all-possible-bindings dtypes arguments bindings)))
-	  (or (all-possible-instantiations* dtypes bindings-list)
-	      (list dtypes)))
-	(list dtypes))))
-
-(defun all-possible-instantiations* (dtypes bindings-list &optional result)
-  (cond ((null bindings-list)
-	 (nreverse result))
-	(t (assert (every #'cdr (car bindings-list)))
-	   (let ((dtypes-inst (instantiate-operator-from-bindings
-			       dtypes (car bindings-list))))
-	     (all-possible-instantiations* dtypes (cdr bindings-list)
-					   (pushnew dtypes-inst result
-						    :test #'tc-eq))))))
-      
-
-(defun all-possible-bindings (dtypes arguments bindings)
-  (cond ((every #'cdr bindings)
-	 (list bindings))
-	((null dtypes)
-	 nil)
-	(t (let ((abindings (all-possible-bindings*
-			     (car dtypes) (types (car arguments)) bindings)))
-	     (delete-duplicates
-	      (mapcan #'(lambda (bnd)
-			  (all-possible-bindings
-			   (cdr dtypes) (cdr arguments) bnd))
-		(if (member bindings abindings :test #'equal)
-		    abindings
-		    (nconc abindings (list bindings))))
-	      :test #'equal)))))
-
-(defun all-possible-bindings* (dtype atypes bindings)
-  (if (free-params dtype)
-      (possible-bindings dtype atypes bindings)
-      (list bindings)))
-
-(defun possible-bindings (dtype atypes bindings &optional bindings-list)
-  (if (null atypes)
-      (nreverse bindings-list)
-      (let* ((nbindings (tc-match (car atypes) dtype (copy-tree bindings))))
-	(possible-bindings dtype (cdr atypes) bindings
-			   (if (and nbindings
-				    (not (member nbindings bindings-list
-						 :test #'equal)))
-			       (cons nbindings bindings-list)
-			       bindings-list)))))
-
-
-;;; This is called by typecheck* (name) when the resolution is nil.  If there
-;;; are arguments, it first checks whether there is a conversion available that
-;;; would turn the given name into a function of the right type.  If not, then
-;;; it looks for a k-conversion so that it can push the conversion down on the
-;;; arguments.
-
-(defun function-conversion (name arguments)
-  (append (simple-function-conversion name arguments)
-	  (resolutions-with-argument-conversions
-	   (resolve (copy name 'resolutions nil) 'expr nil) arguments)))
-
-(defun resolutions-with-argument-conversions (resolutions arguments
-							  &optional result)
-  (if (null resolutions)
-      result
-      (let ((rtype (find-supertype (type (car resolutions)))))
-	(multiple-value-bind (compats k-conv-type)
-	    (compatible-arg-conversions? rtype arguments)
-	  (resolutions-with-argument-conversions
-	   (cdr resolutions)
-	   arguments
-	   (if (and compats
-		    (some #'(lambda (x) (not (eq x 't))) compats))
-	       (cons (make-function-conversion-resolution
-		      (car resolutions) arguments compats k-conv-type)
-		     result)
-	       result))))))
-
-(defun make-function-conversion-resolution (res args compats k-conv-type)
-  (declare (ignore args))
-  (let ((theories (delete *current-theory*
-			  (delete-duplicates (mapcar #'module
-						     (free-params res)))))
-	(dtypes (domain-types (type res)))
-	(nres res))
-    (dolist (th theories)
-      (mapc #'(lambda (dt compat)
-		(when (typep compat 'name-expr)
-		  (let ((bindings (tc-match
-				   (domain (type compat)) dt
-				   (mapcar #'(lambda (x)
-					       (cons x nil))
-				     (formals-sans-usings th)))))
-		    (when (and bindings (every #'cdr bindings))
-		      (setq nres
-			    (subst-mod-params
-			     nres
-			     (mk-modname (id th)
-			       (mapcar #'(lambda (a)
-					   (mk-res-actual (cdr a) th))
-				 bindings))))))))
-	    dtypes compats))
-    (change-class nres 'lambda-conversion-resolution)
-    (setf (k-conv-type nres) k-conv-type)
-    (let* ((ktype (type (find-if #'name-expr? compats)))
-	   (ftype (mk-funtype (domain ktype)
-			      (mk-funtype (domain (range ktype))
-					  (range (type nres))))))
-      (setf (type nres) ftype))
-    nres))
-
-(defun compatible-arg-conversions? (rtype arguments)
-  (and (typep rtype 'funtype)
-       (let* ((dtypes (domain-types rtype))
-	      (dtypes-list (all-possible-instantiations dtypes arguments)))
-	 (and (length= dtypes arguments)
-	      (let* ((compats (mapcan #'(lambda (dty)
-					  (compatible-arguments-k-conversions
-					   dty arguments))
-				dtypes-list))
-		     (k-convtype (get-k-conversion-type compats)))
-		(when k-convtype
-		  (let* ((ndtypes-list
-			  (mapcar #'(lambda (dtypes)
-				      (mapcar #'(lambda (dty)
-						  (if (and (funtype? dty)
-							   (tc-eq k-convtype
-								  (domain dty)))
-						      (range dty)
-						      dty))
-					dtypes))
-			    dtypes-list))
-			 (ncompats (mapcan #'(lambda (dty)
-					       (compatible-arguments-k-conversions
-						dty arguments))
-				     ndtypes-list)))
-		    (values (or ncompats compats) k-convtype))))))))
-
-(defun get-k-conversion-type (compats &optional type)
-  (if (null compats)
-      type
-      (if (eq (car compats) t)
-	  (get-k-conversion-type (cdr compats) type)
-	  (let ((k-type (domain (range (type (car compats))))))
-	    (when (or (null type)
-		      (tc-eq type k-type))
-	      (get-k-conversion-type (cdr compats) k-type))))))
-
-(defun compatible-arguments-k-conversions (dtypes arguments
-						  &optional kconv result)
-  (if (null dtypes)
-      (nreverse result)
-      (let ((conv (compatible-argument-k-conversions
-		   (car dtypes) (car arguments))))
-	(when conv
-	  (assert (or (eq conv t)
-		      (name-expr? conv)))
-	  (when (or (null kconv)
-		    (eq conv t)
-		    ;; Do they have the same introduced type, e.g., state?
-		    (tc-eq (cadr (actuals (module-instance kconv)))
-			   (cadr (actuals (module-instance conv)))))
-	    (compatible-arguments-k-conversions
-	     (cdr dtypes) (cdr arguments)
-	     (or kconv (and (name-expr? conv) conv))
-	     (cons conv result)))))))
-
-(defun compatible-argument-k-conversions (dtype argument)
-  (or (some #'(lambda (pty)
-		(compatible? dtype pty))
-	    (ptypes argument))
-      (compatible-argument-k-conversion dtype (ptypes argument))))
-
-(defun compatible-argument-k-conversion (dtype ptypes)
-  (when ptypes
-    (let ((fty (find-supertype (car ptypes))))
-      (or (and (typep fty 'funtype)
-	       (compatible? (range fty) dtype)
-	       (car (get-k-conversions fty)))
-	  (compatible-argument-k-conversion dtype (cdr ptypes))))))
-
-(defun k-conversion-resolutions (res kcs arguments &optional result)
-  (if (null res)
-      result
-      (let ((nres (k-conversion-resolutions1 (car res) kcs arguments)))
-	(k-conversion-resolutions (cdr res) kcs arguments
-				(if nres (cons nres result) result)))))
-
-(defun k-conversion-resolutions1 (res kcs arguments)
-  (let ((rtype (find-supertype (type res))))
-    (when (and (typep rtype 'funtype)
-	       (length= (domain-types rtype) arguments))
-      (let ((kc (find-if #'(lambda (kc)
-			     (compatible-k-args kc (domain-types rtype) arguments))
-		  kcs)))
-	(when kc
-	  (let ((sres (instantiate-resolution-from-k
-		       res (domain (find-supertype (type kc))))))
-	    (change-class sres 'conversion-resolution)
-	  (setf (conversion sres) kc)
-	  sres))))))
-
-(defun instantiate-resolution-from-k (res domain)
-  (if (fully-instantiated? (type res))
-      res
-      (let ((bindings (tc-match domain (domain (find-supertype (type res)))
-				(mapcar #'(lambda (x) (cons x nil))
-					(formals-sans-usings
-					 (get-theory
-					  (module-instance res)))))))
-	(if (every #'cdr bindings)
-	    (subst-mod-params res
-			      (car (create-compatible-modinsts
-				    (module-instance res)
-				    (list bindings)
-				    nil)))
-	    res))))
-
-(defun compatible-k-args (kc dtypes args)
-  (let ((lt (car (domain-types (type kc))))
-	(rt (range (type kc))))
-    (compatible-k-args* lt rt dtypes args)))
-
-(defun compatible-k-args* (lt rt dtypes args)
-  (or (null dtypes)
-      (and (some #'(lambda (pty)
-		     (or (compatible? pty (car dtypes))
-			 (and (compatible? pty rt)
-			      (compatible? lt (car dtypes)))))
-		 (ptypes (car args)))
-	   (compatible-k-args* lt rt (cdr dtypes) (cdr args)))))
-
-(defun matching-k-conversions (args &optional result)
-  (if (null args)
-      (remove-duplicates result :test #'tc-eq)
-      (matching-k-conversions
-       (cdr args)
-       (append (matching-k-conversions1 (ptypes (car args)))
-	       result))))
-
-(defun matching-k-conversions1 (atypes &optional result)
-  (if (null atypes)
-      result
-      (matching-k-conversions1
-       (cdr atypes)
-       (append (get-k-conversions (car atypes)) result))))
-
-(defun simple-function-conversion (name arguments)
-  (let ((reses (resolve name 'expr nil))
-	(creses nil))
-    (mapc #'(lambda (r)
-	      (let ((conv (car (get-resolution-conversions r arguments))))
-		(when conv
-		  (push (make-conversion-resolution r conv name)
-			creses))))
-	  reses)
-    creses))
-
-(defun get-resolution-conversions (res arguments)
-  (get-resolution-conversions*
-   (remove-if #'k-combinator? (conversions *current-context*))
-   res arguments nil))
-
-(defun get-resolution-conversions* (conversions res arguments result)
-  (if (null conversions)
-      (nreverse result)
-      (let ((conv (compatible-resolution-conversion (car conversions)
-						    res arguments)))
-	(get-resolution-conversions* (cdr conversions) res arguments
-				     (if conv
-					 (cons conv result)
-					 result)))))
-
-(defun compatible-resolution-conversion (conversion res arguments)
-  (let ((nconv (compatible-operator-conversion
-		conversion (type res) arguments)))
-    (when nconv (expr nconv))))
-
-(defun compatible-resolution-conversion-args (bindings ctype arguments)
-  (let* ((cran (find-supertype (range ctype)))
-	 (dtypes (when (typep cran 'funtype)
-		   (domain-types cran)))
-	 (bindings-list (find-compatible-bindings arguments dtypes bindings)))
-    (car bindings-list)))
-
-(defun compatible-resolution-conversion? (ctype res arguments)
-  (and (compatible? (domain ctype) (type res))
-       (or (null arguments)
-	   (let ((cran (find-supertype (range ctype))))
-	     (and (typep cran 'funtype)
-		  (let* ((dtypes (domain-types cran))
-			 (args (if (and (singleton? dtypes)
-					(not (singleton? arguments)))
-				   (list (typecheck* (mk-arg-tuple-expr*
-						      arguments)
-						     nil nil nil))
-				   arguments)))
-		    (and (length= dtypes args)
-			 (every #'(lambda (a dty)
-				    (some #'(lambda (pty)
-					      (compatible? pty dty))
-					  (ptypes a)))
-				args dtypes))))))))
-
-(defun make-conversion-resolution (res conv name)
-  (let* ((ctype (find-supertype (type conv)))
-	 (dep? (typep (domain ctype) 'dep-binding))
-	 (nname (when dep?
-		  (copy name
-		    'type (type res)
-		    'resolutions (list res))))
-	 (rtype (if dep?
-		    (substit (range ctype)
-		      (acons (domain ctype) nname nil))
-		    (range ctype)))
-	 (cconv (copy conv)))
-    (when (name-expr? conv)
-      (change-name-expr-class-if-needed (declaration conv) cconv))
-    (make-instance 'conversion-resolution
-      'module-instance (module-instance res)
-      'declaration (declaration res)
-      'type (copy rtype 'from-conversion cconv)
-      'conversion cconv)))
-
-(defun get-conversion-range-type (conv expr)
-  (let* ((ctype (find-supertype (type conv)))
-	 (dep? (typep (domain ctype) 'dep-binding))
-	 (nexpr (when dep?
-		  (typecheck* (copy-untyped expr) (domain ctype) nil nil)))
-	 (rtype (if dep?
-		    (substit (range ctype)
-		      (acons (domain ctype) nexpr nil))
-		    (range ctype)))
-	 (cconv (copy conv)))
-    (when (name-expr? conv)
-      (change-name-expr-class-if-needed (declaration conv) cconv))
-    (copy rtype 'from-conversion cconv)))
 
 
 ;;; Resolution error handling
