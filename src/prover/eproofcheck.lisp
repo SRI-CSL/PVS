@@ -156,8 +156,6 @@
 		    'dpinfo-sigalist sigalist
 		    'dpinfo-findalist findalist
 		    'dpinfo-usealist usealist))
-	(*dp-state* (when *new-ground?*
-		      (dp::push-new-cong-state *init-dp-state*)))
 	(*current-context* (context decl))
 	(*current-theory* (module decl)))
     (initprover)			;initialize prover
@@ -172,6 +170,9 @@
     (let* ((top-formula (closed-definition decl))
 	   (s-form (make-instance 's-formula 'formula top-formula))
 	   (sequent (make-instance 'sequent 's-forms (list s-form)))
+	   (*newdc* *newdc*)
+	   (*new-ground?* *new-ground?*)
+	   (*old-ground?* *old-ground?*)
 	   (*top-proofstate*
 	    (make-instance 'top-proofstate
 	      'current-goal sequent
@@ -185,17 +186,31 @@
 	      'justification (justification decl)
 	      'declaration decl
 	      'current-auto-rewrites auto-rewrites-info)))
-      (before-prove*)
-      (unwind-protect
-	  (catch 'quit			;to quit proofs
-	    (if *please-interrupt*
-		(prove* *top-proofstate*)
-		(with-interrupts-deferred
-		 (prove* *top-proofstate*))))
-	(after-prove*)
-	(unless *recursive-prove-decl-call*
-	  (save-proof-info decl init-real-time init-run-time)))
-      *top-proofstate*)))
+      (unless (or (eq *new-ground?* (new-ground? decl))
+		  *proving-tcc*
+		  (not
+		   (pvs-yes-or-no-p
+		    "~%This proof was originally done with the ~:[old~;new~] ~
+                     decision procedures,~%which is not the default.  ~
+                     Use the ~:[old~;new~] one (for this proof only)? "
+		    (not *new-ground?*) (not *new-ground?*))))
+	(if *new-ground?*
+	    (old-ground)
+	    (new-ground)))
+      (let ((*dp-state* (when *new-ground?*
+			  (dp::push-new-cong-state *init-dp-state*))))
+	(setf (dp-state *top-proofstate*) *dp-state*)
+	(before-prove*)
+	(unwind-protect
+	    (catch 'quit		;to quit proofs
+	      (if *please-interrupt*
+		  (prove* *top-proofstate*)
+		  (with-interrupts-deferred
+		   (prove* *top-proofstate*))))
+	  (after-prove*)
+	  (unless *recursive-prove-decl-call*
+	    (save-proof-info decl init-real-time init-run-time)))
+	*top-proofstate*))))
 
 (defmethod prove-decl ((decl declaration) &key strategy)
   (declare (ignore strategy))
@@ -250,6 +265,7 @@
 	 (setf (justification2 decl)(justification decl)
 	       (justification decl)
 	       (justification *top-proofstate*))
+	 (setf (new-ground? decl) *new-ground?*)
 	 (when *context-modified*
 	   (setf (proof-status decl) 'unfinished)
 	   (let ((ans (pvs-yes-or-no-p
@@ -271,7 +287,7 @@ Would you like to rerun the proof?~%")))
 		   (justification decl)
 		   (collect-justification *top-proofstate*)
 		   (proof-status decl) 'unfinished)
-	     )))))
+	     (setf (new-ground? decl) *new-ground?*))))))
 
 (defun rerun-prove (decl)
   (if (and *noninteractive* *pvs-verbose*)
@@ -927,9 +943,8 @@ Would you like to rerun the proof?~%")))
 		 'rule  (sexp-unparse (current-rule proofstate))
 		 'xrule (current-xrule proofstate)
 		 'comment (new-comment proofstate)
-		 'subgoals
-		 (mapcar #'(lambda (x) (justification x))
-			 (done-subgoals proofstate))))
+		 'subgoals (mapcar #'(lambda (x) (justification x))
+			     (done-subgoals proofstate))))
 	      (t (justification (car (done-subgoals proofstate)))))
 	)
   (mapcar #'(lambda (x)
@@ -941,6 +956,22 @@ Would you like to rerun the proof?~%")))
 	  (done-subgoals proofstate))
 ;;   (format t "~%decls = ~a" (dependent-decls proofstate))
   proofstate)
+
+(defun new-decision-procedures ()
+  (cond (*in-checker*
+	 (unless *new-ground?*
+	   (pvs-message
+	       "Cannot change default decision procedures while in the prover")))
+	(t (new-ground)
+	   (pvs-message "New decision procedures are now the defualt"))))
+
+(defun old-decision-procedures ()
+  (cond (*in-checker*
+	 (unless (not *new-ground?*)
+	   (pvs-message
+	       "Cannot change default decision procedures while in the prover")))
+	(t (old-ground)
+	   (pvs-message "Old decision procedures are now the defualt"))))
 
 (defvar *report-mode* nil)
 (defvar *print-ancestor* nil)
@@ -2148,12 +2179,17 @@ Would you like to rerun the proof?~%")))
 	  (t (cons (unformat-rule (car sexp))
 		   (unformat-rule (cdr sexp)))))))
   
-
-(defmethod label ((list list)) (car list))
-(defmethod rule ((list list)) (cadr list))
-(defmethod subgoals ((list list)) (caddr list))
+(defmethod new-ground? ((list list))
+  (and (listp (car list)) (memq :new-ground? (car list))))
+(defmethod label ((list list))
+  (if (listp (car list)) (cadr list) (car list)))
+(defmethod rule ((list list))
+  (if (listp (car list)) (caddr list) (cadr list)))
+(defmethod subgoals ((list list))
+  (if (listp (car list)) (cadddr list) (caddr list)))
 
 ;;catchall methods for label, rule, subgoals
+(defmethod new-ground? ((x T)) nil)
 (defmethod label ((x T)) "9999")
 (defmethod rule ((x T)) '(skip))
 (defmethod subgoals ((x T)) NIL)

@@ -245,10 +245,15 @@
 (defcl justification ()
   label   ;;the label is needed since proofs might get out of order.
   rule
-  (subgoals :initform nil)
-  (xrule :initform nil) ;;this is the expanded rule in primitive terms
-  (comment :initform nil)
+  subgoals
+  xrule   ;;this is the expanded rule in primitive terms
+  comment
   )
+
+(defmethod new-ground? ((justification list))
+  (and (listp (car justification))
+       (keywordp (caar justification))
+       (memq :new-ground (car justification))))
 
 ;used in makeskoconst and needed to avoid chasing references for skolem
 ;constants. 
