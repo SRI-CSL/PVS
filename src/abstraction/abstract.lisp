@@ -369,6 +369,7 @@ selections of unsimplified CASES expressions."
 )))
 
 
+;; Should be broken into methods
 (defun alpha-image-expr (sign expr context)
  (let*   ((expr (lift-state-bindings expr)))
         ;; ((expr expr))
@@ -412,37 +413,39 @@ selections of unsimplified CASES expressions."
                                   *state-type*)) (bindings expr))
      nil))
 
-(defun expr-is-atom? (expr)
- (and (not (disjunction? expr))
-  (and (not (implication? expr))
-   (and (not (conjunction? expr)) 
-    (and (not (negation? expr))
-     (and (not (iff-or-boolean-equation? expr))
-      (and (not (branch? expr))
-       (and (not (binding-expr? expr))
-        (and (not (any-mu-nu-expr-application? expr)) 
-         (and (not (any-mu-nu-expr? expr))
-          (and (not (mu-var-application? expr))
-                (not (pred-state-expr? expr)))))))))))))
+(defmethod expr-is-atom? ((expr propositional-application))
+  nil)
+
+(defmethod expr-is-atom? ((expr iff-or-boolean-equation))
+  nil)
+
+(defmethod expr-is-atom? ((expr branch))
+  nil)
+
+(defmethod expr-is-atom? ((expr binding-expr))
+  nil)
+
+(defmethod expr-is-atom? ((expr expr))
+  (and (not (any-mu-nu-expr-application? expr)) 
+       (and (not (any-mu-nu-expr? expr))
+	    (and (not (mu-var-application? expr))
+		 (not (pred-state-expr? expr))))))
 ;;
 
-(defun any-mu-nu-expr? (expr) ;; /= from mu-nu-expr?. Without restriction
-  (if (application? expr)     ;; to mu-translatable types
-      (let ((op (operator expr)))
-	(and (typep op 'name-expr)
-	     (find (string (id op)) '("mu" "nu") :test #'string=)
-	     (eq (id (module (declaration op))) '|mucalculus|)
-              ))
-    nil))
+(defun any-mu-nu-expr? (expr)
+  ;; /= from mu-nu-expr?. Without restriction to mu-translatable types
+  (and (application? expr)
+       (let ((op (operator expr)))
+	 (and (typep op 'name-expr)
+	      (memq (id op) '(|mu| |nu|))
+	      (eq (id (module (declaration op))) '|mucalculus|)))))
 
 (defun any-mu-nu-expr-application? (expr) 
-;; /= from mu-nu-expr-application?. Without restriction to mu-translatable types
-  (if (application? expr) 
-      (let ((op (operator expr)))
-          (any-mu-nu-expr? op)
-      )
-    nil)
-)
+  ;; /= from mu-nu-expr-application?. Without restriction to
+  ;; mu-translatable types
+  (and (application? expr)
+       (let ((op (operator expr)))
+	 (any-mu-nu-expr? op))))
 
 (defun state-expr? (expr)
  (and (expr? expr) (compatible-type (type expr) *state-type*)))
@@ -459,16 +462,16 @@ selections of unsimplified CASES expressions."
 ;;
 
 (defun  alpha-image-disjunction (sign expr context)
- (let* ((bdd-args1   (let* ((*concretize?* nil))
-               (alpha-image-expr sign (args1 expr)  context)))
-  ;;      (updated-context (bdd_and context (bdd-not 
-  ;;               (encode-into-bdd-pvs-expr (args1 expr)))))
-        (bdd-args2  (let* ((*concretize?* nil)) 
-                    (alpha-image-expr sign (args2 expr) 
-                                context)))) ;; updated-context is too much
-   (if  *concretize?* 
-     (gamma-image (bdd_or bdd-args1 bdd-args2))
-(bdd_or bdd-args1 bdd-args2))))   
+  (let* ((bdd-args1   (let* ((*concretize?* nil))
+			(alpha-image-expr sign (args1 expr)  context)))
+	 ;;      (updated-context (bdd_and context (bdd-not 
+	 ;;               (encode-into-bdd-pvs-expr (args1 expr)))))
+	 (bdd-args2  (let* ((*concretize?* nil)) 
+		       (alpha-image-expr sign (args2 expr) 
+					 context))));; updated-context is too much
+    (if  *concretize?* 
+	 (gamma-image (bdd_or bdd-args1 bdd-args2))
+	 (bdd_or bdd-args1 bdd-args2))))   
 
 ; (defun  alpha-image-implication (sign expr context)
 ;  (let* ((bdd-args1  (let* ((*concretize?* nil))
@@ -936,7 +939,7 @@ selections of unsimplified CASES expressions."
  (if (null state-var) nil
  (let* ((list-pred (mapcar #'expression *list-predicates*))
         (current-list (mapcar #'(lambda (pred) 
-                           (my-substit state-var (car (freevars pred)) pred))
+                           (struc-substit state-var (car (freevars pred)) pred))
                             list-pred)))
  current-list)))
 
@@ -945,18 +948,8 @@ selections of unsimplified CASES expressions."
 ;;
 ;;
 
-(defun my-substit (new-var old-var expr)
- (beta-reduce (typecheck (pc-parse (format nil "(~a) (~a)" 
-     (make-lambda-expr (mk-bindings (list old-var)) expr) new-var) 'expr))))
-
-
 (defun struc-substit (new-var state-var expr)
- (gensubst* expr #'(lambda (exp) new-var) 
-                 #'(lambda (exp) (tc-eq state-var exp))))
-
-(defun struc-substit (new-var state-var expr)
- (gensubst expr #'(lambda (exp) new-var) 
-                 #'(lambda (exp) (tc-eq state-var exp))))
+ (substit expr (acons (declaration state-var) new-var nil)))
 
 
 ;; (defmethod gensubst* :around (obj substfn testfn)
@@ -1310,24 +1303,25 @@ selections of unsimplified CASES expressions."
                                
 
 (defun decompose-assign-predicate (predicate)  
- (let* ((new-fml (normalize-decompose-equality predicate))
-        (changed? (not (tc-eq predicate new-fml))))
- (if changed?
-  (let ((fml (mapcar #'(lambda (conj) (eliminate-eq-conjunct conj)) 
-             (conjuncts new-fml))))
-   (make-conjunction fml))
- predicate)))
+  (let* ((new-fml (normalize-decompose-equality predicate))
+	 (changed? (not (tc-eq predicate new-fml))))
+    (if changed?
+	(let ((fml (mapcar #'eliminate-eq-conjunct
+		     (conjuncts new-fml))))
+	  (make-conjunction fml))
+	predicate)))
 
 (defun  eliminate-eq-conjunct (conj)    
   (if (equation? conj) 
-       (let* ((fml1 (args1 conj))
-              (fml2 (args2 conj))
-              (field1? (field-application? fml1))
-              (field2? (field-application? fml2)))
-      (if (and field1? field2?)
-                (if (tc-eq (id fml1) (id fml2)) *true*
-                                  conj)
-       conj ))))
+      (let* ((fml1 (args1 conj))
+	     (fml2 (args2 conj))
+	     (field1? (field-application? fml1))
+	     (field2? (field-application? fml2)))
+	(if (and field1? field2?
+		 (eq (id fml1) (id fml2)))
+	    *true*
+	    conj))
+      conj))
         
 
 ;;
@@ -1383,56 +1377,9 @@ selections of unsimplified CASES expressions."
       )))
  bdd_alpha))
 
-
 (defun real-compute-alpha-image-atom-under (predicate primed? context)
-;; is suppose to be the dual of (real-compute-alpha-image-atom-ove)
-;; High potential of errors......
-  (let* ((bdd_alpha (bdd_0)) ;; initialize alpha with false
-         (bdd_list_previous_fail (list (bdd_1)))  ;; initialize fail with true
-         (bdd_list_current_fail nil )
-         (force-stop nil) ;; stop when exact abstraction or any other criterion
-         (generated_bool_exprs 
-              (generate-possible-conj-bool-expr bdd_alpha ;;over
-               bdd_list_previous_fail (list (bdd_1))  primed?)) ;;over
-         (generated_bool_exprs (reverse generated_bool_exprs))) 
-   (loop while (and (not force-stop) (not (null generated_bool_exprs))) do
-       (dolist (one_bool_expr generated_bool_exprs)
-           (if force-stop (setq force-stop force-stop) ;;stop looping
-         (if (conj-subsumed-by-alpha 
-                    one_bool_expr bdd_alpha bdd_list_previous_fail)
-              (setq bdd_list_current_fail (cons one_bool_expr 
-                                                bdd_list_current_fail))
-
-            (let* ((pvs-expr (local-gamma-image one_bool_expr))
-                  (is-exact-abstraction? (same-expression pvs-expr predicate))
-                  (context-expr (gamma-image-contex context)))
-           (if is-exact-abstraction?
-                 (progn 
-                  (setq force-stop t)
-                  (setq bdd_alpha (bdd_or bdd_alpha one_bool_expr))
-                  )
-          (if  (call-decision-procedure-and-prove 
-                         (make-conjunction (list context-expr pvs-expr)) 
-                                  predicate)
-                (setq bdd_alpha (bdd_or bdd_alpha one_bool_expr))
-                (setq bdd_list_current_fail 
-                            (cons one_bool_expr bdd_list_current_fail))
-                )))
-          )))
-         (if (or force-stop (> *proof-counter* *max-proof-counter* ))
-            (setq force-stop t) ;;stop looping
-         (progn
-        (setq generated_bool_exprs (if (null bdd_list_current_fail) nil
-             (generate-possible-conj-bool-expr bdd_alpha 
-                  bdd_list_previous_fail   bdd_list_current_fail primed?)))
-        (setq bdd_list_previous_fail bdd_list_current_fail)
-        (setq bdd_list_current_fail nil)
-      )))
- bdd_alpha))
-
-(defun real-compute-alpha-image-atom-under (predicate primed? context)
- (bdd_not (real-compute-alpha-image-atom-over 
-                    (make-negation-with-p predicate)  primed? context)))
+  (bdd_not (real-compute-alpha-image-atom-over 
+	    (make-negation-with-p predicate) primed? context)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
