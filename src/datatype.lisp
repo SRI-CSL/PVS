@@ -1244,7 +1244,9 @@ generated")
 (defmethod gen-induction-hypothesis ((c simple-constructor) indvar
 				     &optional adt)
   (if (arguments c)
-      (let* ((arghyps (acc-induction-hypotheses (arguments c) indvar adt))
+      (let* ((subst-alist (adt-subst-alist (arguments c)))
+	     (arghyps (acc-induction-hypotheses (arguments c) indvar adt
+						subst-alist))
 	     (ppappl (mk-application indvar
 		       (mk-application* (id c)
 			 (mapcar #'get-adt-var-name (arguments c)))))
@@ -1257,14 +1259,33 @@ generated")
 	(pc-parse (unparse indh :string t) 'expr))
       (mk-application indvar (mk-name-expr (id c)))))
 
+(defun adt-subst-alist (args)
+  (adt-subst-alist* (mapcar #'get-adt-var-name args)
+		    (mapcar #'bind-decl args)
+		    (mapcar #'bind-decl args)))
+
+(defun adt-subst-alist* (vars bds sbds &optional result)
+  (if (null vars)
+      (nreverse result)
+      (let* ((nbd (mk-bind-decl (id (car vars))
+		   (declared-type (car sbds)) (type (car sbds))))
+	     (var (mk-name-expr (id (car vars)) nil nil
+				(make-resolution nbd
+				  (current-theory-name) (type nbd)))))
+	(adt-subst-alist* (cdr vars)
+			  (cdr bds)
+			  (substit (cdr sbds)
+			    (acons (car sbds) var nil))
+			  (acons (car bds) var result)))))
+
 (defun get-adt-var-name (arg)
   (make-instance 'name-expr 'id (id (get-adt-var arg))))
 
-(defun acc-induction-hypotheses (args indvar adt &optional result)
+(defun acc-induction-hypotheses (args indvar adt subst-alist &optional result)
   (if (null args)
       (nreverse result)
-      (let ((hyp (acc-induction-hypothesis (car args) indvar adt)))
-	(acc-induction-hypotheses (cdr args) indvar adt
+      (let ((hyp (acc-induction-hypothesis (car args) indvar adt subst-alist)))
+	(acc-induction-hypotheses (cdr args) indvar adt subst-alist
 				  (if hyp (cons hyp result) result)))))
 
 
@@ -1273,8 +1294,9 @@ generated")
 ;;; a positive actual parameter to a different datatype.  In every other case,
 ;;; return NIL.
 
-(defun acc-induction-hypothesis (arg indvar adt)
-  (let ((pred (acc-induction-hypothesis* (type arg) indvar adt)))
+(defun acc-induction-hypothesis (arg indvar adt subst-alist)
+  (let ((pred (acc-induction-hypothesis* (substit (type arg) subst-alist)
+					 indvar adt)))
     (when (and pred
 	       (not (everywhere-true? pred)))
       (mk-application pred (get-adt-var-name arg)))))
@@ -3033,44 +3055,43 @@ generated")
 
 (defun gen-adt-reduce-dom (atype rtype adt adtinst)
   (let ((adt-type (or adtinst (adt-type-name adt))))
-    (gen-adt-reduce-dom* atype rtype adt-type)))
+    (gen-adt-reduce-dom* atype rtype (cons adt-type (subtypes adt)))))
 
-(defun gen-adt-reduce-dom* (atype rtype adt-type)
+(defun gen-adt-reduce-dom* (atype rtype adt-types)
   (gensubst atype
-    #'(lambda (ex) (gen-adt-reduce-dom! ex rtype adt-type))
-    #'(lambda (ex) (gen-adt-reduce-dom? ex adt-type))))
+    #'(lambda (ex) (gen-adt-reduce-dom! ex rtype adt-types))
+    #'(lambda (ex) (gen-adt-reduce-dom? ex adt-types))))
 
-(defmethod gen-adt-reduce-dom? ((ex type-name) adt-type)
-  (same-declaration ex adt-type))
+(defmethod gen-adt-reduce-dom? ((ex type-name) adt-types)
+  (member ex adt-types :test #'same-declaration))
 
-(defmethod gen-adt-reduce-dom! ((ex type-name) rtype adt-type)
-  (declare (ignore adt-type))
+(defmethod gen-adt-reduce-dom! ((ex type-name) rtype adt-types)
+  (declare (ignore adt-types))
   (copy rtype))
 
-(defmethod gen-adt-reduce-dom? ((ex expr-as-type) adt-type)
-  (declare (ignore adt-type))
+(defmethod gen-adt-reduce-dom? ((ex expr-as-type) adt-types)
+  (declare (ignore adt-types))
   nil)
 
-(defmethod gen-adt-reduce-dom? ((ex subtype) adt-type)
-  (or (subtype-of? ex adt-type)
+(defmethod gen-adt-reduce-dom? ((ex subtype) adt-types)
+  (or (subtype-of? ex (car adt-types))
       (let ((stype (find-supertype ex)))
 	(and (adt-type-name? stype)
-	     (occurs-in adt-type stype)))))
+	     (occurs-in (car adt-types) stype)))))
 
-(defmethod gen-adt-reduce-dom! ((ex subtype) rtype adt-type)
-  (declare (ignore adt-type))
-  (if (subtype-of? ex adt-type)
+(defmethod gen-adt-reduce-dom! ((ex subtype) rtype adt-types)
+  (if (subtype-of? ex (car adt-types))
       (copy rtype)
-      (gen-adt-reduce-dom* (find-supertype ex) rtype adt-type)))
+      (gen-adt-reduce-dom* (find-supertype ex) rtype adt-types)))
 
-(defmethod gen-adt-reduce-dom? ((ex datatype-subtype) adt-type)
-  (occurs-in adt-type ex))
+(defmethod gen-adt-reduce-dom? ((ex datatype-subtype) adt-types)
+  (occurs-in (car adt-types) ex))
 
-(defmethod gen-adt-reduce-dom! ((ex datatype-subtype) rtype adt-type)
-  (gen-adt-reduce-dom* (supertype ex) rtype adt-type))
+(defmethod gen-adt-reduce-dom! ((ex datatype-subtype) rtype adt-types)
+  (gen-adt-reduce-dom* (supertype ex) rtype adt-types))
 
-(defmethod gen-adt-reduce-dom? (ex adt-type)
-  (declare (ignore ex adt-type))
+(defmethod gen-adt-reduce-dom? (ex adt-types)
+  (declare (ignore ex adt-types))
   nil)
 
 (defun gen-adt-reduce-definition2 (adt fname fdoms ran adtinst)
