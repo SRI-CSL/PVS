@@ -946,22 +946,28 @@
 
 (defun proofs-get-proof-at (line)
   (let ((pair (proofs-get-pair-at line)))
-    (values (car pair) (cdr pair))))
+    (cond ((and (car pair) (cdr pair))
+	   (values (car pair) (cdr pair)))
+	  (t (pvs-message "line ~d out of range" line)
+	     nil))))
 
 (defun proofs-get-pair-at (line)
-  (nth (+ (case (car *show-proofs-info*)
-	    (formula -3)
-	    (theory -3)
-	    (pvs-file -3))
-	  line)
-       (cddr *show-proofs-info*)))
+  (let ((n (+ (case (car *show-proofs-info*)
+		(formula -3)
+		(theory -3)
+		(pvs-file -3))
+	      line)))
+    (when (and (<= 0 n)
+	       (< n (length (cddr *show-proofs-info*))))
+      (nth n (cddr *show-proofs-info*)))))
 
 (defun set-proofs-default (line)
   (multiple-value-bind (fdecl prf)
       (proofs-get-proof-at line)
-    (setf (default-proof fdecl) prf)
-    (save-all-proofs (module fdecl))
-    (display-proofs-buffer line)))
+    (when prf
+      (setf (default-proof fdecl) prf)
+      (save-all-proofs (module fdecl))
+      (display-proofs-buffer line))))
 
 (defun proofs-delete-proof (line)
   (let* ((pair (proofs-get-pair-at line))
@@ -979,72 +985,77 @@
   (multiple-value-bind (fdecl prf)
       (proofs-get-proof-at line)
     (declare (ignore fdecl))
-    (setf (id prf) id)
-    (save-all-proofs (module fdecl))
-    (display-proofs-buffer line)))
+    (when prf
+      (setf (id prf) id)
+      (save-all-proofs (module fdecl))
+      (display-proofs-buffer line))))
 
 (defun proofs-show-proof (line)
   (multiple-value-bind (fdecl prf)
       (proofs-get-proof-at line)
-    (pvs-buffer (format nil "Proof:~a" (id prf))
-      (with-output-to-string (out)
-	(format out "Id: ~a~%Description: ~a~%Status: ~a~%~
+    (when prf
+      (pvs-buffer (format nil "Proof:~a" (id prf))
+	(with-output-to-string (out)
+	  (format out "Id: ~a~%Description: ~a~%Status: ~a~%~
                      Formula Declaration: ~a~%Decision Procedures: ~a~%~
                      Creation Date: ~a~%~
                      Date Last Run: ~a~%~
                      Run Time: ~:[Unknown~;~:*~,2,-3f seconds~]~%Proof:~%"
-	  (id prf)
-	  (or (description prf) "None")
-	  (string-downcase (status prf))
-	  (id fdecl)
-	  (if (justification fdecl) (decision-procedure-used fdecl) "None")
-	  (if (create-date prf)
-	      (date-string (create-date prf))
-	      "Unknown")
-	  (if (run-date prf)
-	      (date-string (run-date prf))
-	      "Unknown")
-	  (run-time prf))
-	(write (editable-justification (script prf))
-	       :stream out :pretty t :escape t
-	       :level nil :length nil
-	       :pprint-dispatch *proof-script-pprint-dispatch*))
-      t)))
+	    (id prf)
+	    (or (description prf) "None")
+	    (string-downcase (status prf))
+	    (id fdecl)
+	    (if (justification fdecl) (decision-procedure-used fdecl) "None")
+	    (if (create-date prf)
+		(date-string (create-date prf))
+		"Unknown")
+	    (if (run-date prf)
+		(date-string (run-date prf))
+		"Unknown")
+	    (run-time prf))
+	  (write (editable-justification (script prf))
+		 :stream out :pretty t :escape t
+		 :level nil :length nil
+		 :pprint-dispatch *proof-script-pprint-dispatch*))
+	t))))
 
 (defun proofs-change-description (line description)
   (multiple-value-bind (fdecl prf)
       (proofs-get-proof-at line)
     (declare (ignore fdecl))
-    (setf (description prf) description)
-    (display-proofs-buffer line)))
+    (when prf
+      (setf (description prf) description)
+      (display-proofs-buffer line))))
 
 (defun proofs-rerun-proof (line)
   (multiple-value-bind (fdecl prf)
       (proofs-get-proof-at line)
-    (setf (default-proof fdecl) prf)
-    (let ((*current-theory* (module fdecl)))
-      (read-strategies-files)
-      (auto-save-proof-setup fdecl)
-      (setq *last-proof* (prove (id fdecl) :strategy '(rerun)))
-      (unless (from-prelude? fdecl)
-	(save-all-proofs *current-theory*)
-	;; If the proof status has changed, update the context.
-	(update-context-proof-status fdecl))
-      (remove-auto-save-proof-file))
-    (let ((*to-emacs* t))
-      (display-proofs-buffer line))))
+    (when prf
+      (setf (default-proof fdecl) prf)
+      (let ((*current-theory* (module fdecl)))
+	(read-strategies-files)
+	(auto-save-proof-setup fdecl)
+	(setq *last-proof* (prove (id fdecl) :strategy '(rerun)))
+	(unless (from-prelude? fdecl)
+	  (save-all-proofs *current-theory*)
+	  ;; If the proof status has changed, update the context.
+	  (update-context-proof-status fdecl))
+	(remove-auto-save-proof-file))
+      (let ((*to-emacs* t))
+	(display-proofs-buffer line)))))
 
 (defun proofs-edit-proof (line)
   (multiple-value-bind (fdecl prf)
       (proofs-get-proof-at line)
-    (setq *edit-proof-info* (list fdecl (place fdecl) "Display Proofs" 0))
-    (pvs-buffer "Proof"
-      (with-output-to-string (out)
-	(write (editable-justification (script prf))
-	       :stream out :pretty t :escape t
-	       :level nil :length nil
-	       :pprint-dispatch *proof-script-pprint-dispatch*))
-      'popto)))
+    (when prf
+      (setq *edit-proof-info* (list fdecl (place fdecl) "Display Proofs" 0))
+      (pvs-buffer "Proof"
+	(with-output-to-string (out)
+	  (write (editable-justification (script prf))
+		 :stream out :pretty t :escape t
+		 :level nil :length nil
+		 :pprint-dispatch *proof-script-pprint-dispatch*))
+	'popto))))
 
 (defun show-all-proofs-nostatus (outstr theoryid proofs)
   (dolist (prf proofs)
