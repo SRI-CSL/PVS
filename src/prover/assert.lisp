@@ -1987,7 +1987,7 @@
 		 ((tc-eq (cadr nargs) *false*)
 		  (values '? (car nargs)))
 		 (t (do-auto-rewrite expr sig)))))
-	((iff-or-booleq? expr)
+	((iff-or-boolean-equation? expr)
 	 (let* ((nargs (argument-list newargs))
 		(left (car nargs))
 		(right (cadr nargs)))

@@ -42,7 +42,7 @@
 		  (lhs
 		   (if  (not-expr? fmla)
 			(if (or (equality? (args1 fmla))
-				(iff-or-booleq? (args1 fmla)))
+				(iff-or-boolean-equation? (args1 fmla)))
 			    (if (eq direction 'RL)
 				(args2 (args1 fmla))
 				(args1 (args1 fmla)))
@@ -51,7 +51,7 @@
 		  (rhs
 		   (if  (not-expr? fmla)
 			(if (or (equality? (args1 fmla))
-				(iff-or-booleq? (args1 fmla)))
+				(iff-or-boolean-equation? (args1 fmla)))
 			    (if (eq direction 'RL)
 				(args1 (args1 fmla))
 				(args2 (args1 fmla)))
