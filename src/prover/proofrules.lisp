@@ -494,8 +494,12 @@
 
 (defmethod simplify-ifs ((expr tuple-expr) trueconds falseconds)
   (with-slots (exprs) expr
-  (lcopy expr
-	'exprs (simplify-ifs exprs trueconds falseconds))))
+    (let ((sexprs (simplify-ifs exprs trueconds falseconds)))
+      (if (eq exprs sexprs)
+	  expr
+	  (copy expr
+	    'exprs sexprs
+	    'type (mk-tupletype (mapcar #'type sexprs)))))))
 
 (defmethod simplify-ifs ((expr update-expr) trueconds falseconds)
   (with-slots (expression assignments) expr
