@@ -70,6 +70,8 @@
 
 (defvar *subst-mod-params-theory* nil)
 
+(defvar *subst-mod-params-map-bindings*)
+
 ;;; This resets the *all-subst-mod-params-caches* hash table.  It is
 ;;; called from the parser whenever a newly parsed theory replaces the old
 ;;; theory, to ensure that the garbage collector can remove the objects.
@@ -181,20 +183,20 @@
 	       (*subst-mod-params-cache* (car caches))
 	       (*subst-mod-params-eq-cache* (cdr caches))
 	       (*smp-mappings* (mappings modinst))
+	       (*subst-mod-params-map-bindings* nil) ; Collects map bindings
+	       (init-bindings (initial-subst-mod-params-mappings
+			       *subst-mod-params-theory*))
 	       (bindings (make-subst-mod-params-bindings
-			  modinst formals (actuals modinst)
-			  (extended-mappings modinst
-					     *subst-mod-params-theory*
-					     *subst-mod-params-theory*)
-			  nil))
+			  modinst formals (actuals modinst) (mappings modinst)
+			  init-bindings))
 	       (nobj (subst-mod-params* obj modinst bindings)))
 	  #+pvsdebug (assert (or (eq obj nobj) (not (tc-eq obj nobj))))
 	  #+pvsdebug (assert (equal bindings
 				    (pairlis formals (actuals modinst))))
 	  #+pvsdebug (assert (or (typep nobj 'modname)
 				 (fully-instantiated? nobj)))
-			     nobj)
-	  obj)))
+	  (values nobj *subst-mod-params-map-bindings*))
+	obj)))
 
 (defun adt-modinst (modinst &optional theory)
   (let* ((th (or theory (get-theory modinst))))
@@ -227,6 +229,13 @@
 	act
 	(mk-actual ty))))
 
+(defmethod initial-subst-mod-params-mappings ((theory module))
+  nil)
+
+(defmethod initial-subst-mod-params-mappings ((theory theory-interpretation))
+  (setq *subst-mod-params-map-bindings* (mapping theory)))
+
+
 ;;; Create the formals to actuals bindings.  This would simply be a call
 ;;; to pairlis, but formal subtypes have an associated predicate that must
 ;;; be substituted for as well.
@@ -234,6 +243,8 @@
 (defun make-subst-mod-params-bindings (modinst formals actuals mappings
 					       bindings)
   (cond ((null formals)
+	 (assert (every #'(lambda (d) (typep (car d) '(or declaration module)))
+			bindings))
 	 (setq *subst-mod-free-params* (mapcar #'car bindings))
 	 (make-subst-mod-params-map-bindings modinst mappings bindings))
 	(t (let ((pred-binding (make-subst-mod-params-pred-binding
@@ -260,67 +271,94 @@
 			       thname
 			       (formals-sans-usings source-theory)
 			       (actuals thname)
-			       (extended-mappings thname theory
-						  interpreted-theory
-						  source-theory)
-			       nil)))
+			       nil
+			       (extended-mappings thname theory))))
 	   (assert interpreted-theory)
-	   (append (mapcar #'(lambda (x)
-			       (let ((interp
-				      (assq (car x)
-					    (mapping interpreted-theory))))
-				 (if interp
-				     (cons (cdr interp) (cdr x))
-				     x)))
-		     pre-bindings)
+	   ;; Now we compose the inverses of the mappings of the interpreted
+	   ;; theory and the source 
+	   (append (compose-mappings
+		    (inverse-mapping (mapping interpreted-theory)
+				     interpreted-theory)
+		    (mapping theory))
+		   pre-bindings
 		   bindings))))
 
-(defun extended-mappings (thname theory interpreted-theory
-				 &optional (source-theory interpreted-theory))
+;;; mapping1 is an alist of declaration to declaration mappings
+;;; mapping2 is an alist of declaration to rhs-mappings
+(defun compose-mappings (mapping1 mapping2 &optional composition)
+  (if (null mapping1)
+      (nreverse composition)
+      (let ((map2 (assq (cdar mapping1) mapping2)))
+	(compose-mappings
+	 (cdr mapping1) mapping2
+	 (if map2
+	     (acons (caar mapping1) (cdr map2) composition)
+	     composition)))))
+
+(defun inverse-mapping (mapping theory &optional inverse)
+  (if (null mapping)
+      (nreverse inverse)
+      (inverse-mapping
+       (cdr mapping)
+       theory
+       (let* ((map (car mapping))
+	      (val (cdr map)))
+	 (typecase val
+	   (mapping-rhs (if (type-value val)
+			    (if (and (type-name? (type-value val))
+				     (eq (module
+					  (declaration (type-value val)))
+					 theory))
+				(acons (declaration (type-valeu val)) (car map)
+				       inverse)
+				inverse)
+			    (if (and (name-expr? (expr val))
+				     (eq (module (declaration (expr val)))
+					 theory))
+				(acons (declaration (expr val)) (car map)
+				       inverse)
+				inverse)))
+	   (declaration (acons val (car map) inverse))
+	   (t (break "What else is there?")))))))
+
+
+;;; extended-mappings creates a bindings alist from lhs to rhs.
+;;; There are a number of places the bindings can come from:
+;;; 1. the given theory name (thname)
+;;;    a. If it has a theory parameter, it needs to have it's bindings included
+;;;    b. If it has a theory mapping, also needs bindings.
+;;; 2. the theory may already be an interpretation, in which case those
+;;;    bindings need to be brought out - (mapping theory) does this.
+
+(defun extended-mappings (thname theory)
   (let ((all-mappings (nconc (mapcar #'(lambda (m)
 					 (cons (declaration (lhs m)) (rhs m)))
 			       (mappings thname))
 			     (mapping theory))))
-    (when all-mappings
-      (mapcar #'(lambda (d)
-		  (let ((map (assq d all-mappings))
-			(res (make-resolution d
-			       (mk-modname (id (module d))))))
-		    (mk-mapping
-		     (mk-name (id d) nil nil res)
-		     (if map
-			 (cdr map)
-			 (typecase d
-			   (type-decl (if (type-name? (type res))
-					  (type res)
-					  (mk-type-name (id d) nil nil res)))
-			   (module (mk-modname (id d)))
-			   (t (mk-name-expr (id d) nil nil res)))
-			 ))))
-	(interpretable-declarations source-theory)))))
+    (dolist (amap all-mappings)
+      (when (module? (car amap))
+	(setq all-mappings
+	      (append (extended-mappings (expr (cdr amap)) (car amap))
+		      all-mappings))))
+    all-mappings))
 
-(defun get-extended-mappings (mappings &optional emappings)
-  (if (null mappings)
-      (nreverse emappings)
-      (get-extended-mappings
-       (cdr mappings)
-       (let ((decl (declaration (lhs (car mappings)))))
-	 (typecase decl
-	   (module
-	    (let* ((lhs (lhs (car mappings)))
-		   (rhs (rhs (car mappings)))
-		   (thname (change-class (copy (expr rhs)) 'modname))
-		   (foo (break "foo"))
-		   (bindings (make-subst-mod-params-bindings
-			      thname
-			      (formals-sans-usings decl)
-			      (actuals thname)
-			      (extended-mappings thname decl)
-			      nil)))
-	      (nconc (nreverse bindings) emappings)))
-	   (modname
-	    (break "get-extended-mappings modname"))
-	   (t (acons decl (rhs (car mappings)) emappings)))))))
+
+;;; Called from make-interpreted-copy
+(defun get-interpreted-mapping (theory interpretation theory-name)
+  (let* ((*subst-mod-params-map-bindings* nil)
+	 (mapping (make-subst-mod-params-map-bindings
+		   theory-name (mappings theory-name) nil))
+	 (int-decls (when interpretation (all-decls interpretation))))
+    (when interpretation
+      (dolist (decl (interpretable-declarations theory))
+	(unless (assq decl mapping)
+	  (push (cons decl (find decl int-decls
+				 :test #'(lambda (x y)
+					   (and (declaration? y)
+						(same-id x y)))))
+		mapping))))
+    (assert (every #'cdr mapping))
+    mapping))
 
 (defmethod mapping (module)
   nil)
@@ -353,21 +391,16 @@
 
 (defun make-subst-mod-params-map-bindings (modinst mappings bindings)
   (if (null mappings)
-      (nreverse bindings)
+      (reverse bindings)
       (let* ((decl (declaration (car (resolutions (lhs (car mappings))))))
 	     (bind-rhs (rhs (car mappings)))
 	     (nbindings (make-subst-mod-params-map-bindings*
 			 decl bind-rhs bindings)))
+	(assert (every #'(lambda (d) (typep (car d) '(or declaration module)))
+		       nbindings))
 	(make-subst-mod-params-map-bindings
 	 modinst
 	 (cdr mappings)
-;; 	 (mapcar #'(lambda (m)
-;; 		     (gensubst m
-;; 		       #'(lambda (x)
-;; 			   (copy x 'mod-id (id (module-instance x))))
-;; 		       #'(lambda (x)
-;; 			   (and (name? x) (eq (id x) (id decl))))))
-;; 	   (cdr mappings))
 	 nbindings))))
 
 (defmethod make-subst-mod-params-map-bindings* ((theory module) rhs bindings)
@@ -375,8 +408,13 @@
 	 (pre-bindings (make-subst-mod-params-bindings
 			thname (formals-sans-usings theory)
 			(actuals thname)
-			(extended-mappings thname theory theory)
-			nil)))
+			nil
+			(extended-mappings thname theory))))
+    (assert (every #'(lambda (d) (typep (car d) '(or declaration module)))
+		   pre-bindings))
+    (setq *subst-mod-params-map-bindings*
+	  (acons theory rhs
+		 (append pre-bindings *subst-mod-params-map-bindings*)))
     (acons theory rhs
 	   (append pre-bindings bindings))))
 
@@ -387,9 +425,13 @@
 	 (pre-bindings (make-subst-mod-params-bindings
 			thname (formals-sans-usings source-theory)
 			(actuals thname)
-			(extended-mappings thname interpreted-theory
-					   source-theory)
-			nil)))
+			nil
+			(extended-mappings thname interpreted-theory))))
+    (assert (every #'(lambda (d) (typep (car d) '(or declaration module)))
+		   pre-bindings))
+    (setq *subst-mod-params-map-bindings*
+	  (acons decl rhs
+		 (append pre-bindings *subst-mod-params-map-bindings*)))
     (acons decl rhs
 	   (append (mapcar #'(lambda (x)
 			       (let ((interp
@@ -404,13 +446,12 @@
 
 
 (defmethod make-subst-mod-params-map-bindings* (decl rhs bindings)
-  (if nil ;(resolve (id decl) (if (type-decl? decl) 'type 'expr) nil)
-      (acons decl
-	     (gensubst rhs
-	       #'(lambda (x) (copy x 'mod-id (id (module-instance x))))
-	       #'(lambda (x) (and (name? x) (eq (id x) (id decl)))))
-	     bindings)
-      (acons decl rhs bindings)))
+  (setq *subst-mod-params-map-bindings*
+	(acons decl rhs *subst-mod-params-map-bindings*))
+  (assert (typep decl '(or declaration module)))
+  (assert (every #'(lambda (d) (typep (car d) '(or declaration module)))
+		   bindings))
+  (acons decl rhs bindings))
 
 (defvar *caching-subst-mod-params?* t)
 
@@ -440,11 +481,16 @@
 	      (when (and (typep obj 'type-expr)
 			 (typep nobj 'type-expr))
 		(when (print-type obj)
-		  (let* ((stype (subst-mod-params* (print-type obj)
-						   modinst bindings))
-			 (pte (or (print-type stype) stype)))
-		    (unless (tc-eq pte nobj)
-		      (setq nobj (lcopy nobj 'print-type pte)))))
+		  (if (or (tc-eq obj nobj)
+			  (and (free-params obj)
+			       (tc-match nobj obj
+					 (mapcar #'list (free-params obj)))))
+		      (let* ((stype (subst-mod-params* (print-type obj)
+						       modinst bindings))
+			     (pte (or (print-type stype) stype)))
+			(unless (tc-eq pte nobj)
+			  (setq nobj (lcopy nobj 'print-type pte))))
+		      (setq nobj (lcopy nobj 'print-type nil))))
 		(when (from-conversion obj)
 		  (let ((fconv (subst-mod-params* (from-conversion obj)
 						  modinst bindings)))
@@ -676,7 +722,9 @@
   (with-slots (definition) decl
     (let ((ndef (subst-mod-params* definition modinst bindings)))
       (unless (and (axiom? decl)
-		   (not (find-uninterpreted ndef modinst)))
+		   (not (find-uninterpreted ndef modinst
+					    *subst-mod-params-theory*
+					    *subst-mod-params-map-bindings*)))
 	(lcopy decl
 	  'definition ndef
 	  'generated-by nil)))))
@@ -862,9 +910,11 @@
 	(type-value act)
 	(let ((stype (subst-mod-params* (supertype type) modinst bindings))
 	      (spred (subst-mod-params* (predicate type) modinst bindings)))
-	  (lcopy type
-	    'supertype stype
-	    'predicate (pseudo-normalize spred))))))
+	  (if (everywhere-true? spred)
+	      stype
+	      (lcopy type
+		'supertype stype
+		'predicate (pseudo-normalize spred)))))))
 
 (defmethod formal-subtype-binding-match (subtype (formal formal-subtype-decl))
   (tc-eq subtype (type-value formal)))
@@ -986,8 +1036,9 @@
 
 (defmethod subst-mod-params* ((bd binding) modinst bindings)
   (let ((ntype (subst-mod-params* (type bd) modinst bindings))
-	(ndeclared-type (subst-mod-params* (declared-type bd)
-					   modinst bindings)))
+	(ndeclared-type (unless *generating-mapped-axiom-tcc*
+			  (subst-mod-params* (declared-type bd)
+					     modinst bindings))))
     (if (and (eq (type bd) ntype)
 	     (eq (declared-type bd) ndeclared-type))
 	bd
@@ -1073,8 +1124,24 @@
       (lcopy expr 'argument narg 'type ntype))))
 
 (defmethod subst-mod-params* ((expr number-expr) modinst bindings)
-  (declare (ignore modinst bindings))
-  expr)
+  (with-slots (number) expr
+    (let ((map (assoc number bindings :key #'id)))
+      (if map
+	  (expr (cdr map))
+	  (let ((ntype (subst-mod-params* (type expr) modinst bindings)))
+	    (if (tc-eq (type expr) ntype)
+		expr
+		(let ((nres (mk-resolution (number-declaration number)
+			      modinst ntype)))
+		  (mk-name-expr number nil nil nres))))))))
+
+(defvar *number-declarations* (make-hash-table :test '=))
+
+(defun number-declaration (number)
+  (or (gethash number *number-declarations*)
+      (let ((decl (mk-const-decl number *number*)))
+	(setf (module decl) (get-theory "numbers"))
+	(setf (gethash number *number-declarations*) decl))))
 
 (defmethod subst-mod-params* ((expr record-expr) modinst bindings)
   (let ((ass (subst-mod-params* (assignments expr) modinst bindings))
@@ -1164,10 +1231,15 @@
 			  nebindings))
 	   (alist (unless (eq nbindings ebindings)
 		    (pairlis ebindings nbindings)))
-	   (nexpr (subst-mod-params* (if alist
-					 (substit expression alist)
-					 expression)
-				     modinst bindings))
+	   (nexpr (if alist
+		      (substit (subst-mod-params* expression
+						  modinst bindings)
+			alist)
+		      (subst-mod-params* expression modinst bindings)))
+;; 	   (nexpr (subst-mod-params* (if alist
+;; 					 (substit expression alist)
+;; 					 expression)
+;; 				     modinst bindings))
 	   (ntype (subst-mod-params* type modinst bindings)))
       (lcopy expr
 	'bindings nbindings
@@ -1288,21 +1360,37 @@
 	    ((and (eq (id mi) (id modinst))
 		  (or (null acts)
 		      (actuals-are-formals? acts)))
+	     ;; Note: mappings may change the type of a resolution for an
+	     ;; uninterpreted constant.
 	     (let ((ntype (subst-mod-params* type modinst bindings)))
 	       (mk-resolution decl modinst ntype)))
 	    (t (let* ((nacts (subst-mod-params* acts modinst bindings)))
 		 (if (and (eq nacts acts)
-			  (not (binding? decl)))
+			  (not (binding? decl))
+			  (null (mappings modinst)))
 		     res
-		     (mk-resolution decl
-		       (mk-modname (id mi)
-			 (if (memq (id mi) '(|equalities| |notequal|))
-			     (list (mk-actual (find-supertype
-					       (type-value (car nacts)))))
-			     nacts)
-			 (when (library-datatype-or-theory? (module decl))
-			   (get-lib-id (module decl))))
-		       (subst-mod-params* type modinst bindings)))))))))
+		     (let ((ntype (subst-mod-params* type modinst bindings)))
+		       (if (and (tc-eq type ntype)
+				(tc-eq nacts acts)
+				(not (memq (id mi) '(|equalities| |notequal|)))
+				(not (library-datatype-or-theory?
+				      (module decl))))
+			   res
+			   (mk-resolution decl
+			     (mk-modname (id mi)
+			       (if (memq (id mi) '(|equalities| |notequal|))
+				   (list (mk-actual
+					  (find-supertype
+					   (type-value (car nacts)))))
+				   nacts)
+			       (when (library-datatype-or-theory?
+				      (module decl))
+				 (get-lib-id (module decl)))
+			       (unless (or (eq type ntype)
+					   (memq (id mi)
+						 '(|equalities| |notequal|)))
+				 (mappings modinst)))
+			     ntype))))))))))
 
 (defmethod make-resolution (decl modinst &optional type)
   (assert (modname? modinst))
