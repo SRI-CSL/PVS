@@ -62,6 +62,7 @@ useful if more than one specification is to be included in one document")
 ;;; Called by Emacs
 
 (defun latex-theory (theoryname filename &optional show-subst)
+  (declare (ignore filename))
   (let ((theory (get-theory theoryname)))
     (cond ((not *pvs-context-writable*)
 	   (pvs-message "You do not have write permission in this context"))
@@ -77,6 +78,7 @@ useful if more than one specification is to be included in one document")
 	(t (pvs-message "File ~a has not been typechecked" filename))))
 
 (defun latex-usingchain (theoryname filename &optional show-subst)
+  (declare (ignore filename))
   (let ((theory (get-theory theoryname)))
     (cond ((not *pvs-context-writable*)
 	   (pvs-message "You do not have write permission in this context"))
@@ -133,6 +135,7 @@ useful if more than one specification is to be included in one document")
 
 
 (defun latex-print-finish (&optional file)
+  (declare (ignore file))
   (with-open-file (mods (make-pathname :defaults *pvs-context-path*
 				       :name "pvs-files" :type "tex")
 			:direction :output
@@ -541,6 +544,7 @@ useful if more than one specification is to be included in one document")
 ;;; 
 
 (defun latex-theory-view (theoryname filename viewer &optional show-subst)
+  (declare (ignore filename))
   (let ((theory (get-theory theoryname)))
     (cond ((not *pvs-context-writable*)
 	   (pvs-message "You do not have write permission in this context"))
@@ -553,6 +557,7 @@ useful if more than one specification is to be included in one document")
 	  (t (pvs-message "Theory ~a has not been typechecked" theoryname)))))
 
 (defun latex-proof-view (texfile viewer &optional terse? show-subst)
+  (declare (ignore show-subst))
   (cond (*last-proof*
 	 (latex-proof texfile terse?)
 	 (let ((errstr (run-latex "pvs-files")))
@@ -604,16 +609,14 @@ useful if more than one specification is to be included in one document")
 #+allegro
 (defun run-latex-viewer (latex-viewer)
   (if latex-viewer
-      (let ((status nil)
-	    (tmp-file (funcall *pvs-tmp-file*)))
+      (let ((tmp-file (funcall *pvs-tmp-file*)))
 	(with-open-file (out tmp-file
 			     :direction :output :if-exists :supersede)
-	  (setq status
-		(excl:run-shell-command
-		 (format nil "~a pvs-files" latex-viewer)
-		 :output out
-		 :error-output :output
-		 :wait nil)))
+	  (excl:run-shell-command
+	   (format nil "~a pvs-files" latex-viewer)
+	   :output out
+	   :error-output :output
+	   :wait nil))
 	(delete-file tmp-file))
       (pvs-message "No viewer provided")))
 
