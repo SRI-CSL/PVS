@@ -235,6 +235,7 @@
      :source-pathname "src/"
      :components ((:file "macros")
 		  (:file "prover/checker-macros")
+		  (:file "groundeval/eval-macros")
 		  (:file "globals")
 		  (:file "optimize")
 		  (:file "makes" :depends-on ("macros"))
@@ -357,13 +358,13 @@
      :depends-on ("dc-structure"))
    (:module groundeval
      :source-pathname "src/groundeval"
-     :components ((:file "eval-macros")
-		  (:file "eval-utils")
+     :components ((:file "eval-utils")
 		  (:file "ground-expr")
 		  (:file "static-update")
 		  (:file "pvseval-update")
 		  (:file "cl2pvs")
-		  (:file "generate-lisp-for-theory")))
+		  (:file "generate-lisp-for-theory"))
+     :depends-on (basic))
    (:module ws1s
      :source-pathname "src/WS1S/lisp"
      :components ((:file "dfa-foreign")
