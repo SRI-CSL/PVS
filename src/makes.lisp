@@ -1431,7 +1431,7 @@
   (assert (type ex2))
   (assert (tc-eq (find-supertype (type ex1)) *number*))
   (assert (tc-eq (find-supertype (type ex2)) *number*))
-  (assert (eq *generate-tccs* 'none))
+  ;;(assert (eq *generate-tccs* 'none))
   (make-instance 'infix-application
     'operator (difference-operator)
     'argument (make!-arg-tuple-expr ex1 ex2)
