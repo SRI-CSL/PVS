@@ -1804,14 +1804,16 @@ bind tighter.")
 (defmethod get-where-bindings ((ex where-expr))
   (with-slots (operator argument) ex
     (get-where-bindings* (expression operator) (bindings operator)
-		       argument nil)))
+			 argument nil)))
 
 (defmethod get-where-bindings* ((ex chained-where-expr) bindings arg lbindings)
   (with-slots (operator argument) ex
     (get-where-bindings* (expression operator)
-		       (bindings operator)
-		       argument
-		       (cons (cons bindings arg) lbindings))))
+			 (bindings operator)
+			 argument
+			 (multiple-value-bind (formals arg-expr)
+			   (get-let-formals-and-arg arg)
+			 (cons (list bindings formals arg-expr) lbindings)))))
 
 (defmethod get-where-bindings* (ex bindings arg lbindings)
   (multiple-value-bind (formals arg-expr)
