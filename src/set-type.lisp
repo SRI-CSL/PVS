@@ -631,8 +631,9 @@ required a context.")
   (let ((nmodinst (simplify-modinst modinst)))
     (unless (eq *generate-tccs* 'none)
       (generate-assuming-tccs nmodinst modinst)
-      (when (mappings modinst)
-	(generate-mapped-axiom-tccs nmodinst))
+      ;; This is now done in typecheck-using* after doing add-to-using
+      ;; (when (mappings modinst)
+	;; (generate-mapped-axiom-tccs nmodinst))
       ;; Compare the given actuals with those determined by the typechecker 
       ;;(generate-actuals-tccs (actuals expr) (actuals nmodinst))
       )
@@ -756,25 +757,193 @@ required a context.")
 	     (change-class (expr act) 'theory-name-expr)))
     (set-type-actuals (expr act))))
 
-(defun set-type-mappings (modinst)
-  (when (mappings modinst)
-    (set-type-mappings* (mappings modinst) (copy modinst 'mappings nil))))
+(defun set-type-mappings (thinst)
+  (when (mappings thinst)
+    (let ((cthinst (copy thinst 'mappings nil)))
+      (set-type-lhs-mappings (mappings thinst) cthinst)
+      (let ((smappings (sort-mappings (mappings thinst))))
+	(set-type-mappings* smappings cthinst)))))
 
-(defun set-type-mappings* (mappings modinst &optional previous-mappings)
+(defun sort-mappings (mappings &optional sorted)
+  ;; Need to sort theory mappings first, then declarations of top level
+  (if (null mappings)
+      (nreverse sorted)
+      (let ((next (or (find-if
+			  #'(lambda (map)
+			      (and (module? (declaration (lhs map)))
+				   (not (some #'(lambda (m)
+						  (and (not (eq m map))
+						       (module? (declaration
+								 (lhs map)))
+						       (theory-map-depends-on
+							map m)))
+					      mappings))))
+			mappings)
+		      (find-if #'(lambda (map)
+				   (not (some #'(lambda (m)
+						  (and (not (eq m map))
+						       (map-depends-on map m)))
+					      mappings)))
+			mappings))))
+	(assert next () "No next mapping?")
+	(assert (or (module? (declaration (lhs next)))
+		    (not (some #'(lambda (m) (module? (declaration (lhs m))))
+			       mappings)))
+		() "Should have chosen a theory mapping")
+	(sort-mappings (remove next mappings) (cons next sorted)))))
+	
+
+;;; Returns t if theory of map1 depends on theory of map2
+(defun theory-map-depends-on (map1 map2)
+  (let ((th1 (declaration (lhs map1)))
+	(th2 (declaration (lhs map2))))
+    (cond ((from-prelude? th1)
+	   (and (from-prelude? th2)
+		(memq th1 (memq th2 *prelude-theories*))
+		t))
+	  ((from-prelude? th2)
+	   t)
+	  ((from-prelude-library? th1)
+	   (and (from-prelude-library? th2)
+		(memq th2 (all-importings th1))
+		t))
+	  ((from-prelude-library? th2)
+	   t)
+	  (t (memq th2 (all-importings th1))
+	     t))))
+
+;;; Returns t if declaration of map1 depends on declaration of map2
+(defun map-depends-on (map1 map2)
+  (let ((d1 (declaration (lhs map1))))
+    ;; uninterpreted type declarations can't possibly depend on anything
+    (unless (type-decl? d1)
+      (let ((d2 (declaration (lhs map2)))
+	    (refs (collect-references (type d1))))
+	(and (memq d2 refs) t)))))
+    
+
+(defun set-type-mappings* (mappings thinst &optional previous-mappings)
   (when mappings
-    (set-type-mapping (car mappings) modinst previous-mappings)
+    (set-type-mapping (car mappings) thinst previous-mappings)
     (set-type-mappings*
-     (cdr mappings) modinst (nconc previous-mappings (list (car mappings))))))
+     (cdr mappings) thinst (nconc previous-mappings (list (car mappings))))))
 
-(defmethod set-type-mapping ((map mapping) modinst previous-mappings)
+(defun set-type-lhs-mappings (mappings thinst)
+  (set-type-lhs-mappings* mappings thinst)
+  (check-mapping-completeness mappings thinst))
+
+(defun set-type-lhs-mappings* (mappings thinst)
+  (when mappings
+    (set-type-lhs-mapping (car mappings) thinst)
+    (set-type-lhs-mappings* (cdr mappings) thinst)))
+
+(defun set-type-lhs-mapping (map thinst)
   (let ((lhs (lhs map))
 	(rhs (rhs map)))
     (assert (resolutions lhs))
     ;;(assert (ptypes (expr rhs)))
-    (determine-best-mapping-lhs lhs rhs)
-    (set-type-mapping-rhs rhs lhs modinst previous-mappings)))
+    (determine-best-mapping-lhs lhs rhs)))
 
-(defmethod set-type-mapping ((map mapping-rename) modinst previous-mappings)
+(defun determine-best-mapping-lhs (lhs rhs)
+  (unless (singleton? (resolutions lhs))
+    (let ((reses (determine-best-mapping-lhs-resolutions
+		  (resolutions lhs) rhs)))
+      (assert reses () "Determine-best-mapping-lhs failed")
+      (setf (resolutions lhs) reses)
+      (unless (singleton? reses)
+	(type-ambiguity lhs)))))
+
+(defun determine-best-mapping-lhs-resolutions (lhs-reses rhs)
+  (filter-local-resolutions
+   (remove-if-not
+       #'(lambda (r) (determine-best-mapping-lhs-resolutions* r rhs))
+     lhs-reses)))
+
+(defun determine-best-mapping-lhs-resolutions* (lhs-res rhs)
+  (case (kind-of (declaration lhs-res))
+    (type (type-value rhs))
+    (module (and (name-expr? (expr rhs))
+		 (some #'(lambda (r) (eq (kind-of (declaration r)) 'module))
+		       (resolutions (expr rhs)))))
+    (expr (ptypes (expr rhs)))
+    (t (break "Strange kind-of"))))
+
+(defun check-mapping-completeness (mappings thinst)
+  ;; Check if the lhs is a complete set - this means if a constant is
+  ;; mapped, all its uninterpreted types must be mapped
+  (let* ((mth (get-theory thinst))
+	 (mapped-theories
+	  (cons mth
+		(mapcan #'(lambda (m)
+			    (when (module? (declaration (lhs m)))
+			      (list (declaration (lhs m)))))
+		  mappings))))
+    (dolist (map mappings)
+      (when (const-decl? (declaration (lhs map)))
+	(let* ((refs (collect-references (type (resolution (lhs map)))))
+	       (unint (find-if #'(lambda (r)
+				   (and (memq (module r) mapped-theories)
+					(interpretable? r)
+					(not (has-mapping? r mappings))))
+			refs)))
+	  (when unint
+	    (type-error (lhs map)
+	      "~a has a type that references ~a, which has not been mapped"
+	      (lhs map) (id unint))))))))
+
+;; Checks to see if the obj has dependencies that are not properly mapped
+(defun safe-mappings? (obj theory theoryname)
+  (or (null (mappings theoryname))
+      (let ((imdecls (invalid-mapping-decls theory theoryname))
+	    (refs (collect-references obj)))
+	(some #'(lambda (r) (memq r imdecls)) refs))))
+
+
+;;; Use the mappings of the theory and theoryname to determine which
+;;; declarations of the given theory will cause problems for
+;;; subst-mod-params.  For example,
+;;;  T: TYPE
+;;;  y, z: T
+;;;  nz: TYPE = {x: T | x /= z}
+;;;  ny: TYPE = {x: T | x /= y}
+;;; If T and z are mapped (say to int and 0), then references to ny have
+;;; problems since it is unclear what y maps to.
+
+(defun invalid-mapping-references (theory theoryname)
+  (when (mappings theoryname)
+    (let ((decls (all-decls theory))
+	  (unmapped-constants nil)
+	  (unmapped-types nil)
+	  (invalid-refs nil))
+      (dolist (decl decls)
+	(typecase decl
+	  ((or formal-decl var-decl) nil)
+	  (const-decl (if (interpretable? decl)
+			  (unless (member decl (mappings theoryname)
+					  :key #'(lambda (m)
+						   (declaration (lhs m))))
+			    (push decl unmapped-constants))
+			  ())))))))
+			    
+
+(defun has-mapping? (decl mappings)
+  (or (member decl mappings :key #'(lambda (m) (declaration (lhs m))))
+      (let* ((dth (module decl))
+	     (tmap (find-if #'(lambda (m) (eq (declaration (lhs m)) dth))
+		     mappings)))
+	(when tmap
+	  (has-mapping? decl (mappings (expr (rhs tmap))))))))
+	
+  
+(defmethod set-type-mapping ((map mapping) thinst previous-mappings)
+  (let ((lhs (lhs map))
+	(rhs (rhs map)))
+    (assert (resolutions lhs))
+    ;;(assert (ptypes (expr rhs)))
+    ;;(determine-best-mapping-lhs lhs rhs)
+    (set-type-mapping-rhs rhs lhs thinst previous-mappings)))
+
+(defmethod set-type-mapping ((map mapping-rename) thinst previous-mappings)
   (let* ((lhs (lhs map))
 	 (rhs (rhs map))
 	 (decl (declaration lhs))
@@ -791,7 +960,7 @@ required a context.")
       (const-decl
        (let ((subst-type (subst-mod-params
 			  (type (declaration lhs))
-			  (lcopy modinst 'mappings previous-mappings)
+			  (lcopy thinst 'mappings previous-mappings)
 			  (module (declaration lhs)))))
 	 (setf (mapped-decl map)
 	       (copy decl
@@ -804,7 +973,7 @@ required a context.")
 	 (setf (type (expr rhs)) subst-type)))
       (t (break "set-type-mapping (mapping-rename) theory")))))
 
-(defun set-type-mapping-rhs (rhs lhs modinst mappings)
+(defun set-type-mapping-rhs (rhs lhs thinst mappings)
   (typecase (declaration lhs)
     (type-decl
      (if (type-value rhs)
@@ -834,10 +1003,10 @@ required a context.")
 	     (t (setf (resolutions (expr rhs)) threses)
 		(when (mappings (expr rhs))
 		  (set-type-mappings (name-to-modname (expr rhs))))))))
-    (t (let* ((mapmodinst (lcopy modinst
-			    'mappings (append mappings (mappings modinst))))
+    (t (let* ((mapthinst (lcopy thinst
+			    'mappings (append mappings (mappings thinst))))
 	      (subst-type (subst-mod-params (type (declaration lhs))
-					    mapmodinst
+					    mapthinst
 					    (module (declaration lhs)))))
 	 (set-type* (expr rhs) subst-type)))))
 
@@ -868,30 +1037,6 @@ required a context.")
     (typecase decl
       (mod-decl (modname decl))
       (t (module-instance (resolution d))))))
-
-(defun determine-best-mapping-lhs (lhs rhs)
-  (unless (singleton? (resolutions lhs))
-    (let ((reses (determine-best-mapping-lhs-resolutions
-		  (resolutions lhs) rhs)))
-      (assert reses () "Determine-best-mapping-lhs failed")
-      (setf (resolutions lhs) reses)
-      (unless (singleton? reses)
-	(type-ambiguity lhs)))))
-
-(defun determine-best-mapping-lhs-resolutions (lhs-reses rhs)
-  (filter-local-resolutions
-   (remove-if-not
-       #'(lambda (r) (determine-best-mapping-lhs-resolutions* r rhs))
-     lhs-reses)))
-
-(defun determine-best-mapping-lhs-resolutions* (lhs-res rhs)
-  (case (kind-of (declaration lhs-res))
-    (type (type-value rhs))
-    (module (and (name-expr? (expr rhs))
-		 (some #'(lambda (r) (eq (kind-of (declaration r)) 'module))
-		       (resolutions (expr rhs)))))
-    (expr (ptypes (expr rhs)))
-    (t (break "Strange kind-of"))))
 
 
 (defvar *simplify-actuals* t)
