@@ -1424,10 +1424,18 @@ pvs-strategies files.")
   (when (formula-decl? decl)
     (let ((prf-entry (find-associated-proof-entry decl proofs)))
       (cond ((integerp (cadr prf-entry))
-	     ;; Already in multiple-proof form
-	     (setf (proofs decl)
-		   (mapcar #'(lambda (p) (apply #'mk-proof-info p))
-		     (cddr prf-entry)))
+	     ;; Already in multiple-proof form, but may need to be lower-cased
+	     (let ((wrong-case? (memq (nth 9 (car (cddr prf-entry)))
+				      '(NIL T))))
+	       (setf (proofs decl)
+		     (mapcar #'(lambda (p)
+				 (apply #'mk-proof-info
+				   (if wrong-case?
+				       (cons (car p)
+					     (convert-proof-form-to-lowercase
+					      (cdr p)))
+				       p)))
+		       (cddr prf-entry))))
 	     (setf (default-proof decl)
 		   (nth (cadr prf-entry) (proofs decl))))
 	    (prf-entry
