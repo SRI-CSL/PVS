@@ -760,15 +760,17 @@ where db is to replace db1 and db2")
       (call-next-method)))
 
 (defun declaration-outside-formals? (type-name)
-  (let ((decl (declaration type-name)))
-    (and (typep decl 'formal-decl)
-	 (not (memq decl (formals (current-theory)))))))
+  (unless *strong-tc-eq-flag*
+    (let ((decl (declaration type-name)))
+      (and (typep decl 'formal-decl)
+	   (not (memq decl (formals (current-theory))))))))
 
 (defun actuals-are-outside-formals? (actuals)
-  (let ((ex (actual-value (car actuals))))
-    (and (typep ex 'name)
-	 (typep (declaration ex) 'formal-decl)
-	 (not (memq (declaration ex) (formals (current-theory)))))))
+  (unless *strong-tc-eq-flag*
+    (let ((ex (actual-value (car actuals))))
+      (and (typep ex 'name)
+	   (typep (declaration ex) 'formal-decl)
+	   (not (memq (declaration ex) (formals (current-theory))))))))
 
 (defmethod compatible?* ((l1 list) (l2 list))
   (and (length= l1 l2)
