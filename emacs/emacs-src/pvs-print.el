@@ -538,11 +538,15 @@ Generates an HTML web corresponding to the filename, which must already be typec
 
 NOTE: There is no corresponding html-theory, as links to the given theory would become ambiguous."
   (interactive (complete-pvs-file-name "Generate HTML for PVS file named: "))
-  (pvs-send (format "(html-pvs-file \"%s\")" filename) nil))
+  (pvs-send (format "(html-pvs-file \"%s\" %s nil)"
+		filename (and current-prefix-arg t))
+	    nil))
 
 (defpvs html-pvs-files html (filename)
   "Generate HTML for a PVS file, with names pointing to their declarations.
 
 Generates an HTML web corresponding to the filename, which must already be typechecked.  A pvshtml subdirectory of the current context is created if necessary, and the pvshtml/filename.html file is created.  If the file is already there, and newer than the source file, it is not regenerated."
   (interactive (complete-pvs-file-name "Generate HTML files rooted at PVS file: "))
-  (pvs-send (format "(html-pvs-file \"%s\" t)" filename) nil))
+  (pvs-send (format "(html-pvs-file \"%s\" %s t)"
+		filename (and current-prefix-arg t))
+	    nil))
