@@ -369,6 +369,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
   (apply 'pvs-error* (parse-pvs-message output)))
 
 (defun pvs-error* (file dir msg err place)
+  (setq *pvs-error* t)
   (if noninteractive
       (progn
 	(when pvs-validating
@@ -390,7 +391,6 @@ want to set this to nil for slow terminals, or connections over a modem.")
 	(comint-display-file-output err "PVS Error")
 	(delete-file err)
 	(recenter '(nil))
-	(setq *pvs-error* t)
 	(message msg)
 	t)))
 
