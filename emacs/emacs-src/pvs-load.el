@@ -253,11 +253,13 @@ get to the same state."
                      (setq *noninteractive* %s)
                      (setq *pvs-verbose* %d)
                      (setq *force-dp* %s)
-                     (set-decision-procedure %s))"
+                     (when '%s
+                       (set-decision-procedure '%s)))"
 	     pvs-path (equal (getenv "PVSMINUSQ") "-q")
 	     noninteractive pvs-verbose
 	     (getenv "PVSFORCEDP")
-	     (or (getenv "PVSDEFAULTDP") "'shostak"))
+	     (getenv "PVSDEFAULTDP")
+	     (getenv "PVSDEFAULTDP"))
 	 nil nil 'dont-care))
       (setq *pvs-version-information* nil)
       (sleep-for 1)
