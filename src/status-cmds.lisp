@@ -545,6 +545,7 @@
   (let* ((te (get-context-theory-entry theory))
 	 (finfo (when te (te-formula-info te)))
 	 (th (get-theory theory)))
+    (break "show-all-proofs-theory")
     (cond (th
 	   (show-all-proofs-theory* outstr proofs (all-decls th) th))
 	  (finfo
@@ -1069,7 +1070,10 @@
   (if (integerp (cadr prf))
       (editable-justification
        (fifth (nth (cadr prf) (cddr prf))))
-      (editable-justification (cdr prf))))
+      ;; Old style proof - need to remove (:new-ground? t) entry if there
+      (if (consp (car (cdr prf)))
+	  (editable-justification (cddr prf))
+	  (editable-justification (cdr prf)))))
 
 (defmethod formula-proof-dependencies ((decl formula-decl))
   (let* ((*dependings* (init-symbol-table))
