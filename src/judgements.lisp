@@ -421,21 +421,12 @@
 			  (aref vector (1- currynum)))))
 	    (when entry
 	      (let ((argtypes (judgement-types+ (argument ex))))
-;		(multiple-value-bind (jatypes there?)
-;		    (when (argtype-hash entry)
-;		      (gethash argtypes (argtype-hash entry)))
-;		  (if there?
-;		      jatypes
-		      (let* ((gtypes (compute-application-judgement-types
-				      ex
-				      (judgements-graph entry)))
-			     (jtypes (generic-application-judgement-types
-				      ex (generic-judgements entry) gtypes)))
-;			(when (argtype-hash entry)
-;			  (setf (gethash argtypes (argtype-hash entry)) jtypes))
-			jtypes)
-;		      ))
-		      ))))))))
+		(let* ((gtypes (compute-application-judgement-types
+				ex
+				(judgements-graph entry)))
+		       (jtypes (generic-application-judgement-types
+				ex (generic-judgements entry) gtypes)))
+		  jtypes)))))))))
 
 (defun generic-application-judgement-types (ex gen-judgements jtypes)
   (if (null gen-judgements)
@@ -969,28 +960,22 @@
 		   (setf (gethash decl to-hash)
 			 (make-array (length from-vector)
 				     :adjustable t :initial-element nil))))
-	   (setf (gethash decl to-hash)
-		 (merge-appl-judgement-vectors decl from-vector to-vector
-					       theory theoryname))))
+	   (merge-appl-judgement-vectors decl from-vector to-vector
+					 theory theoryname)))
      from-hash)))
 
 (defun merge-appl-judgement-vectors (decl from-vector to-vector
 					  theory theoryname)
   (when (< (length to-vector) (length from-vector))
-    (setq to-vector (resize-array to-vector (length from-vector))))
+    (setq to-vector (adjust-array to-vector (length from-vector))))
   (dotimes (i (length from-vector))
     (when (aref from-vector i)
       (unless (aref to-vector i)
 	(setf (aref to-vector i)
-	      (make-instance 'application-judgements
-;		'argtype-hash (when (argtype-hash (aref from-vector i))
-;				(make-hash-table
-;				 :hash-function 'pvs-sxhash :test 'tc-eq))
-		)))
-      (setf (aref to-vector i)
-	    (merge-appl-judgements-entries
-	     decl (aref from-vector i) (aref to-vector i)
-	     theory theoryname))))
+	      (make-instance 'application-judgements)))
+      (merge-appl-judgements-entries
+       decl (aref from-vector i) (aref to-vector i)
+       theory theoryname))))
   to-vector)
 
 ;;; Entry here is an instance of application-judgements
