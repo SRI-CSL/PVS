@@ -2433,7 +2433,7 @@
   (cond ((null sexp) nil)
 	((and (null no-escape?)
 	      (stringp sexp))
-	 (protect-emacs-output sexp))
+	 (protect-string-output sexp))
 	((not (consp sexp)) sexp)
 	((eq (car sexp) 'TYPECHECKED)
 	 (list (cadr sexp) '!TYPE (caddr sexp)))
