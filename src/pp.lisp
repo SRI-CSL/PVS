@@ -21,6 +21,10 @@
 
 (defvar *unparse-expanded* nil)
 
+(defvar *pp-compact* nil)
+
+(defvar *pp-table-hrules* t)
+
 ;;; Unparse takes the following keywords:
 ;;; :string :stream :char-width :file :sb-tex :style
 
@@ -84,8 +88,12 @@
       (write 'BEGIN)
       (pprint-indent :block 2)
       (pprint-newline :mandatory)
-      (pp-assuming assuming)
-      (pp-theory theory)
+      (pp-assuming (if *unparse-expanded*
+		       assuming
+		       (remove-if #'generated-by assuming)))
+      (pp-theory (if *unparse-expanded*
+		     theory
+		     (remove-if #'generated-by theory)))
       (pprint-indent :block 1)
       (pprint-newline :mandatory)
       (write 'END)
@@ -107,6 +115,7 @@
 					       :prefix "(" :suffix ")")
 		      (write "IMPORTING")
 		      (write #\space)
+		      (pprint-indent :current 0)
 		      (loop (pp* (pprint-pop))
 			    (pprint-exit-if-list-exhausted)
 			    (write-char #\,)
@@ -230,31 +239,41 @@
 
 (defun pp-assuming (assuming)
   (when assuming
-    (let ((*pretty-printing-decl-list* t))
-      (pprint-logical-block (nil (check-chained-syntax assuming))
+    (let ((*pretty-printing-decl-list* t)
+	  (last-one (car (last assuming))))
+      (pprint-logical-block (nil nil)
 	(write 'ASSUMING)
 	(pprint-indent :block 1)
 	(pprint-newline :mandatory)
-	(loop (let ((decl (pprint-pop)))
-		(if (typep decl 'importing)
-		    (let ((imps (list decl)))
-		      (loop while (chain? (car imps))
-			    do (setq decl (pprint-pop))
-			    do (push decl imps))
-		      (pprint-logical-block (nil (nreverse imps))
-			(write "IMPORTING")
-			(write #\space)
-			(loop (pp* (pprint-pop))
-			      (pprint-exit-if-list-exhausted)
-			      (write-char #\,)
-			      (write-char #\space)
-			      (pprint-newline :fill))))
-		    (pp* decl))
-		(unless (or (chain? decl)
-			    (eq decl last-one))
-		  (pprint-newline :mandatory)))
-	      (pprint-exit-if-list-exhausted))
-	(write 'ENDASSUMING)))))
+	(pprint-logical-block (nil (check-chained-syntax assuming))
+	  (loop (let ((decl (pprint-pop)))
+		  (if (typep decl 'importing)
+		      (let ((imps (list decl)))
+			(loop while (chain? (car imps))
+			      do (setq decl (pprint-pop))
+			      do (push decl imps))
+			(pprint-logical-block (nil (nreverse imps))
+			  (write "IMPORTING")
+			  (write #\space)
+			  (pprint-indent :current 0)
+			  (loop (pp* (pprint-pop))
+				(pprint-exit-if-list-exhausted)
+				(write-char #\,)
+				(write-char #\space)
+				(pprint-newline :fill)))
+			(unless *pp-compact*
+			  (pprint-newline :mandatory)))
+		      (pp* decl))
+		  (unless (or (chain? decl)
+			      (eq decl last-one))
+		    (pprint-newline :mandatory)
+		    (unless *pp-compact*
+		      (pprint-newline :mandatory))))
+		(pprint-exit-if-list-exhausted)))
+	(pprint-indent :block 0)
+	(pprint-newline :mandatory)
+	(write 'ENDASSUMING)
+	(pprint-newline :mandatory)))))
 
 (defun pp-theory (theory)
   (when theory
@@ -271,6 +290,7 @@
 		      (pprint-logical-block (nil (nreverse imps))
 			(write "IMPORTING")
 			(write #\space)
+			(pprint-indent :current 0)
 			(loop (pp* (pprint-pop))
 			      (pprint-exit-if-list-exhausted)
 			      (write-char #\,)
@@ -279,7 +299,9 @@
 		    (pp* decl))
 		(unless (or (chain? decl)
 			    (eq decl last-one))
-		  (pprint-newline :mandatory)))
+		  (pprint-newline :mandatory)
+		  (unless *pp-compact*
+		    (pprint-newline :mandatory))))
 	      (pprint-exit-if-list-exhausted))))))
 
 (defmethod pp* ((dt datatype))
@@ -379,8 +401,9 @@
 	(cond ((and chain?
 		    *pretty-printing-decl-list*)
 	       (write id)
-	       (write-char #\,)
-	       (write-char #\space))
+	       (unless (typep decl 'formal-decl)
+		 (write-char #\,)
+		 (write-char #\space)))
 	      (t (when (newline-comment decl)
 		   (write (car (newline-comment decl)))
 		   (write-char #\space)
@@ -394,9 +417,7 @@
 		 (write-char #\space)
 		 (pprint-newline :miser)
 		 (call-next-method)
-		 (when semi (write-char #\;))
-		 (unless (typep decl '(or formal-decl adtdecl))
-		   (pprint-newline :mandatory))))))))
+		 (when semi (write-char #\;))))))))
 
 (defun pp-decl-formals (formals)
   (when formals
@@ -463,8 +484,6 @@
 
 (defmethod pp* ((decl formal-const-decl))
   (with-slots (declared-type) decl
-    (write-char #\space)
-    (pprint-newline :fill)
     (pp* declared-type)))
 
 (defmethod pp* ((decl lib-decl))
@@ -565,9 +584,7 @@
 (defmethod pp* ((decl formula-decl))
   (with-slots (spelling definition) decl
     (write spelling)
-    (write-char #\space)
     (pprint-indent :block 4)
-    (pprint-newline :fill)
     (write-char #\space)
     (pprint-newline :fill)
     (pp* definition)
@@ -973,31 +990,25 @@
       (pprint-newline :miser)
       (pp-arguments (argument-list argument)))))
 
-(defvar *pp-infix-indents* 0)
-
 (defmethod pp* ((ex infix-application))
   (with-slots (operator argument) ex
     (if (and (typep operator 'name-expr)
 	     (memq (id operator) *infix-operators*)
 	     (typep argument 'tuple-expr)
 	     (= (length (exprs argument)) 2))
-	(let ((oplen (length (string (id operator)))))
+	(progn
 	  (set-parens-if-needed ex)
 	  (pprint-logical-block (nil nil)
-	    (pp* (args1 ex))
 	    (pprint-indent :block 1)
+	    (pp* (args1 ex))
 	    (write-char #\space)
 	    (pprint-newline :fill)
-	    (pprint-logical-block (nil nil)
-	      (pprint-indent :block 1)
-	      (if (eq (id operator) 'O)
-		  (pp* '|o|)
-		  (pp* (id operator)))
-	      (write-char #\space)
-	      (if (>= oplen 4)
-		  (pprint-newline :fill)
-		  (pprint-newline :miser))
-	      (pp* (args2 ex)))))
+	    (if (eq (id operator) 'O)
+		(pp* '|o|)
+		(pp* (id operator)))
+	    (write-char #\space)
+	    (pprint-newline :fill)
+	    (pp* (args2 ex))))
 	(call-next-method))))
 
 (defun pp-column ()
@@ -1024,13 +1035,16 @@
 
 (defmethod pp* ((ex unary-application))
   (with-slots (operator argument) ex
-    (pprint-logical-block (nil nil)
-      (pprint-indent :current 2)
-      (write (id operator))
-      (when (valid-pvs-id* (id operator))
-	(write-char #\space)
-	(pprint-newline :miser))
-      (pp* argument))))
+    (if (and (typep operator 'name-expr)
+	     (memq (id operator) *unary-operators*))
+	(pprint-logical-block (nil nil)
+	  (pprint-indent :current 2)
+	  (write (id operator))
+	  (when (valid-pvs-id* (id operator))
+	    (write-char #\space)
+	    (pprint-newline :miser))
+	  (pp* argument))
+	(call-next-method))))
 
 (defmethod pp* ((ex binding-application))
   (with-slots (operator argument) ex

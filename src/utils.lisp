@@ -794,14 +794,17 @@
   (let ((pctx (or *prelude-library-context*
 		  *prelude-context*)))
     (if pctx
-	(make-instance 'context
-	  'theory theory
-	  'theory-name (mk-modname (id theory))
-	  'using-hash (copy (using-hash pctx))
-	  'declarations-hash (copy (declarations-hash pctx))
-	  'judgements (copy-judgements (judgements pctx))
-	  'known-subtypes (copy-tree (known-subtypes pctx))
-	  'conversions (copy-list (conversions pctx)))
+	(let ((*current-context*
+	       (make-instance 'context
+		 'theory theory
+		 'theory-name (mk-modname (id theory))
+		 'using-hash (copy (using-hash pctx))
+		 'declarations-hash (copy (declarations-hash pctx))
+		 'known-subtypes (copy-tree (known-subtypes pctx))
+		 'conversions (copy-list (conversions pctx)))))
+	  (setf (judgements *current-context*)
+		(copy-judgements (judgements pctx)))
+	  *current-context*)
 	(make-instance 'context
 	  'theory theory
 	  'theory-name (mk-modname (id theory))
