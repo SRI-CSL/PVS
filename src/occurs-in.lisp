@@ -9,8 +9,9 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (defmethod occurs-in (x y)
   (when (eql x y) y))
@@ -293,6 +294,13 @@
   (if (type-value act)
       (occurs-in obj (type-value act))
       (occurs-in obj (expr act))))
+
+(defmethod occurs-in ((obj formal-theory-decl) (nm name))
+  (occurs-in (generated-theory obj) nm))
+
+(defmethod occurs-in ((obj theory-interpretation) (nm name))
+  (and (resolution nm)
+       (eq (module (declaration nm)) obj)))
 
 ;;; id-occurs-in checks whether the id occurs in the term.  Note that we
 ;;; use string= rather than eq, since string= ignores package names.
