@@ -69,12 +69,18 @@
 		   (set-type ex type))))))
     ex))
 
+(defvar *empty-expression-types* (make-hash-table :test 'eq))
+
 (defmethod typecheck :around (obj &key expected context tccs)
   (declare (ignore obj expected context tccs))
-  (prog1 (let ((*in-typechecker* t))
-	   (call-next-method))
+  (unwind-protect
+      (let ((*expression-types* (if *in-typechecker*
+				    *expression-types*
+				    *empty-expression-types*))
+	    (*in-typechecker* t))
+	(call-next-method))
     (unless *in-typechecker*
-      (clrhash *expression-types*))))
+      (clrhash *empty-expression-types*))))
 
 (defmethod types ((ex expr))
   (gethash ex *expression-types*))
