@@ -62,7 +62,7 @@
 
 (defun var? (expr) 
   (and (name-expr? expr)
-       (member (kind expr) '(variable constant))
+    ;   (member (kind expr) '(variable constant))
     ;   (typep (declaration expr) '(and const-decl (not def-decl)))
        (not (def-axiom (declaration expr)))))
 
