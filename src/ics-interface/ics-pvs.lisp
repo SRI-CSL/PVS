@@ -121,7 +121,8 @@
   (ics_caml_startup (if full 1 0) #(0))
   (register_lisp_error_function
    (nth-value 1 (ff:register-function `ics_error)))
-  (ics_init verbose))
+  ;;(ics_init verbose)
+  )
 
 (defun ics-empty-state ()
   (let ((empty (state-wrap (ics_context_empty))))
