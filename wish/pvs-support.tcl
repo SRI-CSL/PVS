@@ -989,6 +989,7 @@ proc setup-proof {name theory directory counter interactive} {
 proc reset-options {} {
     option clear
     option add Tk.foreground black startupFile
+    option add Tk.background white startupfile
 
     if {[tk colormodel .]=={color}} {
 	option add Tk.highlight red startupFile
