@@ -1,0 +1,45 @@
+Welcome to MONA Version 1.3!
+
+Please read the file 'COPYRIGHT' before you compile MONA.
+
+To compile MONA you need the GNU C/C++ compiler and the GNU tools 
+'bison', 'flex' and 'gmake'. Running 'gmake' in the directory where 
+this file is residing will (hopefully) generate the file 'mona'. 
+Running 'mona' with no arguments will show the usage.
+
+The 'MONA Version 1.3 User Manual' is available from the MONA homepage.
+
+Information about the Graphviz tool for visualization of DFAs 
+can be found at http://www.research.att.com/sw/tools/graphviz/.
+
+A simple Emacs MONA mode is available in this package. 
+See 'mona-mode.el' for further information.
+
+The directory 'Lib' contains libraries for using the external automaton 
+format and some example applications.
+The directory 'Examples' contains the MONA programs shown in the manual
+and some example applications of the BDD, DFA and GTA packages using 
+the internal representation.
+
+If you have any problems or questions about the source code, 
+please send email to 
+  
+  mona@brics.dk 
+
+or visit the MONA homepage at 
+
+  http://www.brics.dk/mona 
+
+or write to
+
+  The MONA Project
+  BRICS
+  Department of Computer Science
+  University of Aarhus
+  Ny Munkegade
+  DK-8000 Aarhus C
+  Denmark
+
+
+Anders Moeller
+amoeller@brics.dk

@@ -1,0 +1,5 @@
+mona-1.3:	Original Mona Distrution
+lisp:		Connection of PVS with Mona
+ws1s_extended_interface.c : Some C functions for realizing this interface
+ix86-redhat4:	Shared object file for the PVS Mona connection
+

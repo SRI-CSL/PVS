@@ -1,0 +1,20 @@
+external.o: external.c gta.h ../BDD/bdd.h ../BDD/bdd_external.h \
+ ../BDD/long_mem/memuser.h
+analyze.o: analyze.c ../BDD/bdd.h gta.h
+negation.o: negation.c gta.h ../BDD/bdd.h
+copy.o: copy.c gta.h ../BDD/bdd.h
+replace_indices.o: replace_indices.c gta.h ../BDD/bdd.h
+printgta.o: printgta.c gta.h ../BDD/bdd.h
+gta.o: gta.c gta.h ../BDD/bdd.h
+product.o: product.c gta.h ../BDD/bdd.h dyn.h pairhash.h
+pairhash.o: pairhash.c pairhash.h gta.h ../BDD/bdd.h
+project.o: project.c gta.h ../BDD/bdd.h dyn.h projset.h subsets.h
+minimize.o: minimize.c gta.h ../BDD/bdd.h
+subsets.o: subsets.c subsets.h gta.h ../BDD/bdd.h
+projset.o: projset.c projset.h gta.h ../BDD/bdd.h
+basic.o: basic.c gta.h ../BDD/bdd.h
+makebasic.o: makebasic.c gta.h ../BDD/bdd.h
+reachable.o: reachable.c gta.h ../BDD/bdd.h dyn.h
+dyn.o: dyn.c dyn.h gta.h ../BDD/bdd.h ../BDD/bdd_dump.h
+restrict.o: restrict.c gta.h ../BDD/bdd.h
+analyze_acceptance.o: analyze_acceptance.c gta.h ../BDD/bdd.h

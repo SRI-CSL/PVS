@@ -1,0 +1,2 @@
+memblock.o: memblock.c memint.h memuser.h
+memrec.o: memrec.c memint.h memuser.h
