@@ -193,7 +193,7 @@
   (setf (saved-context decl) nil))
 
 (defmethod untypecheck-theory ((decl lib-decl))
-  nil)
+  (setf (lib-ref decl) nil))
 
 (defmethod untypecheck-theory ((decl mod-decl))
   (when (next-method-p) (call-next-method))
