@@ -756,7 +756,7 @@
   (assert (type arg))
   (let* ((stype (find-supertype (type arg)))
 	 (projtype (projection-type* (types stype) index 1 arg (type arg))))
-    (make-instance 'projection-application
+    (make-instance 'projappl
       'id (makesym "PROJ_~d" index)
       'index index
       'argument arg
@@ -765,7 +765,7 @@
 (defun make-field-application (field-name arg)
   (assert (and (type arg) (typep (find-supertype (type arg)) 'recordtype)))
   (let* ((ftype (field-application-type field-name (type arg) arg)))
-    (make-instance 'field-application
+    (make-instance 'fieldappl
       'id (ref-to-id field-name)
       'argument arg
       'type ftype)))
@@ -801,7 +801,7 @@
 				    (make-projection-application index arg)
 				    nil))
 			   (cdr types)))
-	     (projappl (make-instance 'projection-application
+	     (projappl (make-instance 'projappl
 			 'id (makesym "PROJ_~d" index)
 			 'index index
 			 'argument arg
@@ -858,7 +858,7 @@
   (assert fields)
   (if (eq (id (car fields)) field-id)
       (type (car fields))
-      (let* ((fapp (make-instance 'field-application
+      (let* ((fapp (make-instance 'fieldappl
 		    'id (id (car fields))
 		    'argument arg
 		    'type (type (car fields))))
@@ -1309,7 +1309,7 @@
       (let* ((cartype (if (typep (car types) 'dep-binding)
 			  (type (car types))
 			  (car types)))
-	     (projappl (make-instance 'projection-application
+	     (projappl (make-instance 'projappl
 			 'id (makesym "PROJ_~d" index)
 			 'index index
 			 'argument arg
@@ -1324,7 +1324,7 @@
   (assert (type arg))
   (let* ((stype (find-supertype (type arg)))
 	 (projtype (make!-projection-type* (types stype) index 1 arg)))
-    (make-instance 'projection-application
+    (make-instance 'projappl
       'id (makesym "PROJ_~d" index)
       'index index
       'argument arg
@@ -1337,7 +1337,7 @@
 		      (car types))))
     (if (= index ctr)
 	cartype
-	(let* ((proj (make-instance 'projection-application
+	(let* ((proj (make-instance 'projappl
 		       'id (makesym "PROJ_~d" index)
 		       'index index
 		       'argument arg
@@ -1352,7 +1352,7 @@
   (assert (and (type arg) (typep (find-supertype (type arg)) 'recordtype)))
   (let* ((fid (ref-to-id field-name))
 	 (ftype (make!-field-application-type fid (type arg) arg)))
-    (make-instance 'field-application
+    (make-instance 'fieldappl
       'id fid
       'argument arg
       'type ftype)))
@@ -1368,7 +1368,7 @@
   (assert fields)
   (if (eq (id (car fields)) field-id)
       (type (car fields))
-      (let* ((fapp (make-instance 'field-application
+      (let* ((fapp (make-instance 'fieldappl
 		    'id (id (car fields))
 		    'argument arg
 		    'type (type (car fields))))
