@@ -81,6 +81,7 @@ do
      -name|-title|-xrm) PVSXINIT="$PVSXINIT $1 $2"
                         shift;;
      -q|-no-init-file) flags="$flags $1"
+                       PVSMINUSQ="-q"
 		       dotemacs= ;;
      -h|-help|--help)  echo "usage:
        pvs [-options ...] [file]
@@ -162,7 +163,7 @@ PVSVERBOSE=${PVSVERBOSE:-0}
 PVSIMAGE="$PVSLISP"
 
 export ALLEGRO_CL_HOME DISPLAY
-export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSPATCHLEVEL
+export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSPATCHLEVEL PVSMINUSQ
 
 pvsemacsinit="-load $PVSPATH/emacs/go-pvs.el"
 
