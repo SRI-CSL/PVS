@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Sat Feb 19 21:23:43 1994
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Jul  1 18:50:38 1999
-;; Update Count    : 11
+;; Last Modified On: Fri May 21 04:10:26 2004
+;; Update Count    : 13
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
@@ -800,7 +800,7 @@
        (eq (spelling x) 'ASSUMPTION)))
     
 (defmethod pc-analyze* ((fdecl formula-decl))
-  (let ((*depending-chain* *depending-chain* ))
+  (let ((*depending-chain* *depending-chain*))
     (cond ((memq fdecl *depending-chain*)
 	   (pushnew fdecl *depending-cycles*)
 	   *dependings*)
@@ -808,20 +808,22 @@
 	   *dependings*)
 	  (t (setf (gethash fdecl *dependings*) fdecl)
 	     (push fdecl *depending-chain*)
-	     (cond ((or (axiom? fdecl)
-			(assumption? fdecl))
-		    (pc-analyze* (remove-if-not #'tcc? (generated fdecl))))
-		   ((or (from-prelude? fdecl)
-			(not (proved? fdecl)))
+	     (cond ((from-prelude? fdecl)
 		    *dependings*)
-		   ;;((eq (kind fdecl) 'tcc)
-		   ;; (pc-analyze* (proof-refers-to fdecl)))
-		   (t (pc-analyze* (union (refers-to fdecl)
-					  (proof-refers-to fdecl)))))))))
+		   ((or (axiom? fdecl)
+			(assumption? fdecl))
+		    ;; No need to include proof-refers-to in this case
+		    (pc-analyze* (union (refers-to fdecl)
+					(remove-if-not #'tcc?
+					  (generated fdecl)))))
+		   (t (pc-analyze* (union (union (refers-to fdecl)
+						 (proof-refers-to fdecl))
+					  (remove-if-not #'tcc?
+					    (generated fdecl))))))))))
 
 
-(defmethod pc-analyze* ((decl declaration) )
-  (let ((*depending-chain* *depending-chain* ))
+(defmethod pc-analyze* ((decl declaration))
+  (let ((*depending-chain* *depending-chain*))
     (cond ((and (not (typep decl '(or def-decl fixpoint-decl)))
 		(memq decl *depending-chain*))
 	   (pushnew decl *depending-cycles*)
@@ -830,8 +832,11 @@
 	   *dependings*)
 	  (t (setf (gethash decl *dependings*) decl)
 	     (push decl *depending-chain*)
-	     (pc-analyze* (union (refers-to decl)
-				 (remove-if-not #'tcc? (generated decl))))))))
+	     (if (from-prelude? decl)
+		 *dependings*
+		 (pc-analyze* (union (refers-to decl)
+				     (remove-if-not #'tcc?
+				       (generated decl)))))))))
 
 (defmethod pc-analyze* ((theory module))
   ;; From theory mappings
