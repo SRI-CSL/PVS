@@ -49,6 +49,7 @@
 	(substit* obj nalist))))
 
 (defmethod substit* :around ((expr expr) alist)
+  (declare (ignore alist))
   (if (null (freevars expr))
       expr
       (call-next-method)))
@@ -74,7 +75,7 @@
 	 (fv-subs (pick-freevars-entries fv alist)))
     (setf (gethash (cons expr fv-subs) hash)
 	  result)
-    T))
+    t))
 
 (defun pick-freevars-entries (freevars alist &optional entries)
   (if (null freevars)
@@ -277,6 +278,7 @@
 		 nex))))))
 
 (defmethod substit* ((expr equation) alist)
+  (declare (ignore alist))
   (if *substit-dont-simplify*
       (call-next-method)
       (let* ((result (call-next-method)))
@@ -296,6 +298,7 @@
 
 
 (defmethod substit* ((expr conjunction) alist)
+  (declare (ignore alist))
   (if *substit-dont-simplify*
       (call-next-method)
       (let ((result (call-next-method)))
@@ -313,6 +316,7 @@
 	    result))))
 
 (defmethod substit* ((expr disjunction) alist)
+  (declare (ignore alist))
   (if *substit-dont-simplify*
       (call-next-method)
       (let ((result (call-next-method)))
@@ -330,6 +334,7 @@
 	    result))))
 
 (defmethod substit* ((expr implication) alist)
+  (declare (ignore alist))
   (if *substit-dont-simplify*
       (call-next-method)
       (let ((result (call-next-method)))
@@ -347,6 +352,7 @@
 	    result))))
 
 (defmethod substit* ((expr negation) alist)
+  (declare (ignore alist))
   (if *substit-dont-simplify*
       (call-next-method)
       (let ((result (call-next-method)))
@@ -360,6 +366,7 @@
 	    result))))
 
 (defmethod substit* ((expr branch) alist)
+  (declare (ignore alist))
   (if *substit-dont-simplify*
       (call-next-method)
       (let ((result (call-next-method)))
