@@ -64,8 +64,15 @@
 (defun pvs-context-libraries ()
   (cadr *pvs-context*))
 
+(defun pvs-context-default-decision-procedure ()
+  (or (when (listp (caddr *pvs-context*))
+	(getf (caddr *pvs-context*) :default-decision-procedure))
+      'shostak))
+
 (defun pvs-context-entries ()
-  (cddr *pvs-context*))
+  (if (listp (caddr *pvs-context*))
+      (cdddr *pvs-context*)
+      (cddr *pvs-context*)))
 
 (defstruct (context-entry (:conc-name ce-))
   file
@@ -346,7 +353,9 @@ pvs-strategies files.")
 	  (pvs-context-entries))
     (cons *pvs-version*
 	  (cons (pvs-context-libraries)
-		(sort-context context)))))
+		(cons (list :default-decision-procedure
+			    *default-decision-procedure*)
+		      (sort-context context))))))
 
 (defun prelude-libraries-pathnames ()
   (let ((paths nil))
@@ -377,7 +386,9 @@ pvs-strategies files.")
       (setq *pvs-context*
 	    (cons *pvs-version*
 		  (cons (pvs-context-libraries)
-			(cons nce (remove oce (pvs-context-entries))))))
+			(cons (list :default-decision-procedure
+				    *default-decision-procedure*)
+			      (cons nce (remove oce (pvs-context-entries)))))))
       (setq *pvs-context-changed* t))))
 
 (defun delete-file-from-context (filename)
@@ -683,11 +694,17 @@ pvs-strategies files.")
 	      ((same-major-version-number (car context) *pvs-version*)
 	       (setq *pvs-context* context)
 	       (cond ((listp (cadr context))
-		      (load-prelude-libraries (cadr context)))
+		      (load-prelude-libraries (cadr context))
+		      (setq *default-decision-procedure*
+			    (or (when (listp (caddr context))
+				  (getf (caddr context)
+					:default-decision-procedure))
+				'shostak)))
 		     ((typep (cadr context) 'context-entry)
 		      (setq *pvs-context*
 			    (cons (car *pvs-context*)
-				  (cons nil (cdr *pvs-context*)))))
+				  (cons nil
+					(cons nil (cdr *pvs-context*))))))
 		     (t (pvs-message "PVS context was not written correctly ~
                                       - resetting")
 			(pvs-log "  ~a" error)
@@ -1083,26 +1100,28 @@ pvs-strategies files.")
 (defun get-referenced-declaration (declref)
   (apply #'get-referenced-declaration* declref))
 
-(defun get-referenced-declaration* (id class type theory-id library)
-  (let ((theory (get-theory (mk-modname theory-id library))))
-    (when theory
-      (let ((decls (remove-if-not
-		       #'(lambda (d)
-			   (and (typep d 'declaration)
-				(eq (id d) id)
-				(eq (type-of d) class)))
-		     (all-decls theory))))
-	(cond ((singleton? decls)
-	       (car decls))
-	      ((and (cdr decls) type)
-	       (let ((ndecls (remove-if-not
-				 #'(lambda (d)
-				     (string= (unparse (declared-type d)
-						:string t)
-					      type))
-			       decls)))
-		 (when (singleton? ndecls)
-		   (car ndecls)))))))))
+(defun get-referenced-declaration* (id class &optional type theory-id library)
+  (if (eq class 'module)
+      (get-theory id)
+      (let ((theory (get-theory (mk-modname theory-id library))))
+	(when theory
+	  (let ((decls (remove-if-not
+			   #'(lambda (d)
+			       (and (typep d 'declaration)
+				    (eq (id d) id)
+				    (eq (type-of d) class)))
+			 (all-decls theory))))
+	    (cond ((singleton? decls)
+		   (car decls))
+		  ((and (cdr decls) type)
+		   (let ((ndecls (remove-if-not
+				     #'(lambda (d)
+					 (string= (unparse (declared-type d)
+						    :string t)
+						  type))
+				   decls)))
+		     (when (singleton? ndecls)
+		       (car ndecls))))))))))
 
 (defun invalidate-proofs (theory)
   (when theory
