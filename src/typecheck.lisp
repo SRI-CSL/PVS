@@ -77,7 +77,10 @@
       (let ((*expression-types* (if *in-typechecker*
 				    *expression-types*
 				    *empty-expression-types*))
-	    (*in-typechecker* t))
+	    (*in-typechecker* (or *in-typechecker*
+				  (if (or *in-checker* *in-evaluator*)
+				      (unparse obj :string t)
+				      t))))
 	(call-next-method))
     (unless *in-typechecker*
       (clrhash *empty-expression-types*))))
