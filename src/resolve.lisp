@@ -51,8 +51,8 @@
     (when (and (null res)
 	       args
 	       (eq k 'expr))
-      (setq res (append (function-conversion name args)
-			(argument-conversion name args))))
+      (setq res (append (argument-conversion name args)
+			(function-conversion name args))))
     (when (memq name *recursive-calls-without-enough-args*)
       (dolist (r res)
 	(when (eq (declaration r) (current-declaration))
@@ -2200,7 +2200,7 @@
 		    (format nil
 			"~a~%Enabling K_conversion before this declaration might help"
 		      error)))
-	  (if (and (not *in-checker*) type-error?)
+	  (if type-error?
 	      (type-error-noconv obj error)
 	      (progn (set-strategy-errors error)
 		     nil)))))))
