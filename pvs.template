@@ -7,14 +7,19 @@
 # from the system on which PVS is invoked.
 
 # command line arguments:
-#   -h           prints a help line and exits
-#   -lisp        lisp image name
+#   -h | -help | --help  prints a help line and exits
 #   -emacs       emacs, xemacs, or pathname
+#   -lisp        lisp image name
+#   -redhat              the redhat version (4 or 5)
+#   -runtime             use the runtime image
+#   -decision-procedures set the default decision procedures (new or old)
+#   -force-decision-procedures  forces the dec. procs to be used (new or old)
 #   -patchlevel  indicates the patch level:
 #       0 (none). No patches
 #       1 (rel).  Released patches (patch2.lisp)
 #       2 (test). Test patches (patch2-test.lisp) (the default)
 #       3 (exp).  Experimental patches (patch2-exp.lisp)
+#   -batch       run in batch mode
 #   -v           the (verbose) level number - 0-3
 #   any emacs parameters (e.g. -q -batch -l foo)
 #   any X window parameters (e.g. -geometry 80x60+0-0)
@@ -105,13 +110,16 @@ do
      -h|-help|--help)  echo "usage:
        pvs [-options ...] [file]
 where options include:
-    -h, -help          print out this message
-    -emacs emacspath   emacs to use (e.g., emacs, xemacs, /usr/local/bin/emacs)
-    -lisp lispversion  lisp image to use (e.g., allegro5.0)
-    -redhat number     the number corresponding to the Redhat release (4 or 5)
-    -patchlevel level  patchlevel (none, rel, test, exp)
-    -batch             run in batch mode
-    -v number          verbosity level for batch mode (0-3)
+  -h | -help | --help  print out this message
+  -emacs emacspath     emacs to use (e.g., emacs, xemacs, /usr/local/bin/emacs)
+  -lisp lispversion  lisp image to use (e.g., allegro5.0)
+  -redhat number     the number corresponding to the Redhat release (4 or 5)
+  -runtime           use the runtime image
+  -decision-procedures  set default decision procedures (new or old)
+  -force-decision-procedures  forces the decision procedures (new or old)
+  -patchlevel level  patchlevel (none, rel, test, exp)
+  -batch             run in batch mode
+  -v number          verbosity level for batch mode (0-3)
   and any Emacs or X window options
 To change the title and icon names, use -title and -xrm, for example,
   pvs -title foo -xrm \"pvs*iconName:bar\""
