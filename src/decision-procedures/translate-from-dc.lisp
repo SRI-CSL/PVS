@@ -24,12 +24,12 @@
 
 
 (defmethod translate-to-dc :around (obj)
-  (let ((hashed-value (pvs-gethash obj *translate-to-dc-hash*)))
+  (let ((hashed-value (gethash obj *translate-to-dc-hash*)))
     (or hashed-value
 	(let ((result (call-next-method)))
 	  (unless (or *bound-variables* *bindings*)
 	    (when (dp::node-p result)
-	      (setf (pvs-gethash obj *translate-to-dc-hash*) result)))
+	      (setf (gethash obj *translate-to-dc-hash*) result)))
 	  ;(setf (gethash result *translate-from-dc-hash*) obj)
 	  (when (dp::node-p result)
 	    (set-inverse-translation result obj))
