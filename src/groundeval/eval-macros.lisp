@@ -309,3 +309,17 @@
 	     (cdr lookup-diffs))
 	(svref (pvs-array-contents arr) ind)))))
 
+(defmacro pvs2cl_tuple (&rest args)
+  (let ((protected-args (loop for x in args collect `(trap-undefined ,x))))
+    `(vector ,@protected-args)))
+
+(defmacro pvs2cl_record (&rest args)
+  (let ((protected-args (loop for x in args collect `(trap-undefined ,x))))
+    `(vector ,@protected-args)))
+
+(defmacro nd-rec-tup-update (rec fieldnum newval)
+  `(let ((val ,newval)
+	(newrec  (copy-seq ,rec)))
+    (setf (svref newrec ,fieldnum) val)
+    newrec))
+

@@ -613,14 +613,6 @@
   (declare (ignore bindings livevars))
   (number expr))
 
-(defmacro pvs2cl_tuple (&rest args)
-  (let ((protected-args (loop for x in args collect `(trap-undefined ,x))))
-    `(vector ,@protected-args)))
-
-(defmacro pvs2cl_record (&rest args)
-  (let ((protected-args (loop for x in args collect `(trap-undefined ,x))))
-    `(vector ,@protected-args)))
-
 (defmethod pvs2cl_up* ((expr tuple-expr) bindings livevars)
   (let ((args (pvs2cl_up* (exprs expr) bindings livevars)))
     `(pvs2cl_tuple ,@args)))
@@ -952,12 +944,6 @@
 		   restargs assign-expr bindings livevars)))
     (push (list arg1var cl-arg1) *lhs-args*)
     `(pvs-outer-array-update ,expr ,arg1var ,newexpr ,cl-bound)))
-
-(defmacro nd-rec-tup-update (rec fieldnum newval)
-  `(let ((val ,newval)
-	(newrec  (copy-seq ,rec)))
-    (setf (svref newrec ,fieldnum) val)
-    newrec))
 
 (defmethod pvs2cl-update-nd-type* ((type recordtype) expr arg1 restargs
 				   assign-expr bindings livevars)
