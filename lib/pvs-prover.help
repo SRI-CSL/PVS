@@ -1,0 +1,204 @@
+
+
+----------------------------Prover Commands-----------------------------------
+
+Prover commands are currently typed in directly to lisp, by giving the
+command with its arguments surrounded by parentheses and separated by
+whitespace.  There are three categories of commands: primitive rules,
+defined rules, and strategies.  Following these are sections describing
+the arguments and the procedure for defining new rules and strategies.
+
+Commands and arguments not surrounded by angle or square brackets must
+be typed as given, though they are case insensitive.  Arguments in
+brackets indicate a class of allowable values.  For example, 'fail' is
+an instance of <command>.  Arguments in square brackets are optional; if
+two or more arguments are optional then earlier ones must be given
+values first.  Arguments followed by a '+' repeated one or more times,
+surrounded by parentheses (parentheses are unnecessary for singletons).
+
+
+Primitive Rules
+---------------
+
+(help [*])            - Describe all the prover commands
+(help rules)	      - Describe primitive rules
+(help defined-rules)  - Describe defined rules
+(help strategies)     - Describe strategies
+(help <command>)      - Describe specified command
+
+(fail)                - Force backtracking
+
+(skip)                - Do nothing
+
+(postpone)            - Go to next unproved branch, if any
+
+(undo [number])       - Undo proof back number steps (default 1)
+(undo <command>)      - Undo proof back to specified command
+
+(lisp <sexp>)         - Evaluate a Lisp expression
+
+(propax)              - Check for axiom of form  G,a |- a,D
+
+(delete <fnums>)      - Delete specified formulas
+
+(apply <step>)        - Apply strategy as if it were a rule
+
+(add-decl <pvs-decl>) - Add pvs-decl to the end of the current theory
+
+(assert [fnums])      - Invokes decision procedures to simplify, prove,
+                        or record formulas for future use.
+
+(split [fnums])       - Conjunctively split formula
+
+(dsimp [fnums])       - Disjunctively simplify chosen formulas
+
+(lift-if [fnums])     - Lift IF occurrences to the top of chosen formulas
+
+(lemma <lname> [substs])
+                      - Add lemma with substitutions to the premises
+
+(typepred <pvs-expr+>)
+                      - Extract subtype constraints for expressions
+                        and add to the premises
+
+(iff [fnums])         - Convert top level Boolean equality into an IFF
+
+(case <pvs-expr>)     - Split according to the truth or falsity of
+                        the specified expression
+
+(extensionality <pvs-type>)
+                      - Add an extensionality premise derived from the type
+
+(name <newname> <pvs-expr>)
+                      - Introduce a <pvs-expr>=<newname> premise
+
+(replace fnum [fnums] [R|L])
+                      - Rewrite the given formula-numbers in the sequent
+                        with the formula, either rightwards or leftwards
+
+(beta [fnums] [R|L|nil])
+                      - Beta-reduce specified formulas. If rewrite-flag is
+                        R(L), then left(right)-hand-side is left undisturbed
+                        for rewriting
+
+(quant <fnum> <pvs-expr+> [copy?])
+                      - Instantiate top quantifier in the formula
+
+(skolem [fnum] [skolem-name+])
+                      - Replace universally quantified variables with
+                        new skolem constants
+
+(hide <fnum+>)        - Hide the specified formulas
+
+(reveal)              - Move all hidden formulas back to the sequent
+
+(auto-rewrite <name1> ... <namei>)
+                      - Automatically rewrite lemmas/definitions.
+
+(auto-rewrite-theory <theory1> ... <theoryn>)
+                      - Automatically rewrite relative to theories.
+
+
+Defined Rules
+-------------
+
+(prop$)               - A black-box rule for propositional simplification
+
+(ground$)             - Do propositional simplification followed by the
+                        use of decision procedures
+
+(rewrite-lemma <lname> <substs> [fnums])
+                      - Rewrite using the given (conditional) rewrite rule and
+                        substitution in the given sequent formulas
+
+(rewrite <lname> [fnums1] [substs] [fnums2] [R|L|nil])
+                      - Rewrite expressions in fnums2 after finding a
+                        match for conclusion of lemma from fnums1.
+
+(quant? [fnums1] [pvs-expr+] [fnums2] [copy?])
+                      - Try to automatically instantiate a top-level quantifier
+                        from fnums1 with matches from fnums2
+
+
+Predefined Strategies
+---------------------
+
+(query*)              - Basic strategy that queries the user for the next step
+
+(else <step1> <step2>)
+                      - If step1 fails, then try step2,
+                        else keep the the results of step1
+
+(repeat <step>)       - Successively apply <step> to the main branch until
+                        it does nothing
+
+(repeat* <step>)      - Successively apply <step> to all branches until
+                        it does nothing
+
+(prop*)               - The propositional simplification strategy
+
+(then <step1> <step2>)
+                      - Apply step1, then step2 to resulting goal(s)
+                        regardless of whether step1 succeeds
+
+(then* <step1> ... <stepn>)
+                      - Successively apply the steps
+
+(spread <step> <step+>)
+                      - Apply step and pair the steps in step+ with subgoals
+
+(branch <step> <step+>)
+                      - Like spread, applies step then pairs steps in step+
+                        with the resulting subgoals, using the last step in
+                        step+ for any excess subgoals
+
+(ground*)             - Ground simplification strategy
+
+(rerun)               - Strategy to rerun existing proof
+
+(skolem! [fnums] [pvs-expr+])
+                      - Skolemizes by automatically generating skolem constants
+
+Prover Arguments
+----------------
+
+command               - Any of the commands above, or user-defined rules
+                        and strategies
+
+number                - A number
+
+sexp                  - A lisp expression
+
+fnums                 - A list of formula numbers.  These are the numbers 
+                        that appear in brackets on the left side of the
+                        sequent.  A '*' means all formulas, and is the
+                        default. A '-' means all the premises, and a '+'
+                        means all the conclusions.
+
+step		      - The name of a strategy
+
+pvs-decl	      - A PVS declaration string
+pvs-type              - A PVS type string
+pvs-expr	      - A PVS expression string
+                        These will be typechecked in the context of the
+                        theory containing the formula being proved
+
+label		      - A label provided by the user to name the formulas
+
+lname		      - The name of an axiom or formula visible to the
+                        current theory
+
+substs                - A list of substitution pairs of the form
+                        ("x" "f(a)" "y" "x + 1"), which indicates the
+                        simultaneous substitution of "f(a)" for "x"
+                        and "x + 1" for "y"
+
+
+Defining Rules and Strategies
+-----------------------------
+
+These must be defined in lisp.
+
+(defrule <name> <formals> <definition> [docstring] [format-string])
+
+(defstrat <name> <formals> <definition> [docstring] [format-string])

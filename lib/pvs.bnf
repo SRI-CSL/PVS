@@ -1,0 +1,231 @@
+specification ::= {theory | datatype}+
+
+theory ::= id [theory-formals] ':' 'THEORY'
+	     [exporting]
+	     'BEGIN'
+             [assuming-part]
+             [theory-part]
+	    'END' id
+
+theory-formals ::= '[' theory-formal++',' ']'
+
+theory-formal ::= ['(' importing ')'] theory-formal-decl
+
+theory-formal-decl ::= idops ':' {'TYPE'|'NONEMPTY_TYPE'|'TYPE+'}
+                                 ['FROM' type-expr]
+		     | idops ':' type-expr
+
+exporting ::= 'EXPORTING' exportingnames ['WITH' exportingtheories]
+
+exportingnames ::= 'ALL' ['BUT' exportingname++',']
+	         | exportingname++','
+
+exportingname ::= idop [':' {type-expr | 'TYPE' | 'FORMULA'}]
+
+exportingtheories ::= 'ALL' | 'CLOSURE' | theorynames
+
+importing ::= 'IMPORTING' theorynames
+
+assuming-part ::= 'ASSUMING' {assuming-element [';']}+ 'ENDASSUMING'
+
+assuming-element ::= importing
+                   | theory-decl
+                   | assumption
+
+theory-part ::= {theory-element [';']}+
+
+theory-element ::= importing
+		 | theory-decl
+                 | judgement
+		 | conversion
+
+%% Declarations
+
+theory-decl ::= lib-decl | theory-abbr-decl | type-decl
+              | var-decl | const-decl | recursive-decl | inductive-decl
+              | formula-decl | datatype
+
+lib-decl ::= idops ':' 'LIBRARY' ['='] string
+
+theory-abbr-decl ::= idops ':' 'THEORY' '=' theoryname
+
+type-decl ::= idops bindings* ':' {'TYPE'|'NONEMPTY_TYPE'|'TYPE+'}
+                            [{'='|'FROM'} type-expr]
+
+var-decl ::= idops ':' 'VAR' type-expr
+
+const-decl ::= idops bindings* ':' type-expr ['=' expr]
+
+recursive-decl ::= idops bindings* ':' 'RECURSIVE' type-expr '=' expr
+	            'MEASURE' expr ['BY' expr]
+
+inductive-decl ::= idops bindings* ':' 'INDUCTIVE' type-expr '=' expr
+		
+assumption ::= idops ':' 'ASSUMPTION' expr
+
+formula-decl ::= idops ':' formula-name expr
+
+judgement ::= constant-judgement | subtype-judgement
+
+constant-judgement ::= 'JUDGEMENT' name-or-number++',' 'HAS_TYPE' type-expr
+
+subtype-judgement ::= 'JUDGEMENT' type-expr++',' 'SUBTYPE_OF' type-expr
+
+name-or-number ::= name [':' type-expr]
+                 | number
+
+conversion ::= 'CONVERSION' {name [':' type-expr]}++','
+
+
+%% Datatypes
+
+datatype ::= id [theory-formals] ':' 'DATATYPE' ['WITH' 'SUBTYPES' ids]
+	       'BEGIN'
+	       [importing]
+	       [assuming-part]
+	       datatype-part
+	      'END' id
+
+datatype-part ::= {constructor ':' idop [':' id]}+
+
+constructor ::= idop ['(' {idops ':' type-expr}++',' ')']
+
+
+%% Type Expressions
+
+type-expr ::= name
+            | type-application
+            | enumeration-type
+            | subtype ['CONTAINING' expr]
+            | function-type
+            | tuple-type
+            | record-type
+
+type-application ::= name arguments
+
+enumeration-type ::= '{' ids '}'
+
+subtype ::= '{' set-formals '|' expr '}'
+          | '(' expr ')'
+
+function-type ::= ['FUNCTION'|'ARRAY']
+                      '[' {[idop ':'] type-expr}++',' '->' type-expr ']'
+
+tuple-type ::= '[' {[idop ':'] type-expr}++',' ']'
+
+record-type ::= '[#' field-decls++',' '#]'
+
+field-decls ::= ids ':' type-expr
+
+
+%% Expressions
+
+expr ::= number
+       | string
+       | name
+       | idop '!' number
+       | '(' expr++',' ')'
+       | '(:' expr**',' ':)'
+       | '[|' expr**',' '|]'
+       | '(#' assignment++',' '#)'
+       | expr arguments
+       | expr binop expr
+       | unaryop expr
+       | expr ':' type-expr
+       | if-expr
+       | binding-expr
+       | '{' set-bindings '|' expr '}'
+       | 'LET' let-binding++',' 'IN' expr
+       | expr 'WHERE' let-binding++','
+       | expr 'WITH' '[' assignment++',' ']'
+       | 'CASES' expr 'OF' selection++',' ['ELSE' expr] 'ENDCASES'
+       | 'COND' {expr '->' expr}++',' [',' 'ELSE' '->' expr] 'ENDCOND'
+       | table-expr
+
+if-expr ::= 'IF' expr 'THEN' expr
+               {'ELSIF' expr 'THEN' expr}*
+               'ELSE' expr 'ENDIF'
+
+binding-expr ::= binding-op lambda-bindings ['->' type-expr] ':' expr
+
+binding-op ::= 'LAMBDA' | 'FORALL' | 'EXISTS' | idop '!'
+
+lambda-bindings ::= lambda-binding [[','] lambda-bindings]
+
+lambda-binding ::= idop | bindings
+
+set-bindings ::= set-binding [[','] set-bindings]
+
+set-binding ::= idop [':' type-expr] | bindings
+
+bindings ::= '(' binding++',' ')'
+
+binding ::= typed-id | '(' typed-ids ')'
+
+assignment ::= assign-arg {':=' | '|->'} expr
+
+assign-arg ::= {'(' expr ')'}+
+	     | id
+	     | number
+
+selection ::= idop ['(' idops ')'] ':' expr
+
+table-expr ::= 'TABLE' [expr] [',' expr]
+		[col-heading]
+		table-entry+ 'ENDTABLE'
+
+col-heading ::= '|[' expr {'|' {expr | 'ELSE'}}+ ']|'
+
+table-entry ::= {'|' [expr | 'ELSE']}+ '||'
+
+let-binding ::= {binding | '(' binding++',' ')'} '=' expr
+
+arguments ::= '(' expr++',' ')'
+
+typed-ids ::= idops [':' type-expr] ['|' expr]
+
+typed-id ::= idop [':' type-expr] ['|' expr] 
+
+theorynames ::= theoryname++','
+
+theoryname ::= [id '@'] id [actuals]
+
+names ::= name++','
+
+name ::= [id '@'] idop [actuals] ['.' idop]
+
+actuals ::= '[' actual++',' ']'
+
+actual ::= expr | type-expr
+
+idops ::= idop++','
+
+idop ::= id | opsym
+
+ids ::= id++','
+
+opsym ::= binop | unaryop | 'IF' | 'TRUE' | 'FALSE' | '[||]'
+
+binop ::= 'o' | 'IFF' | '<=>' | 'IMPLIES' | '=>' | 'WHEN' | 'OR'
+        | '\/' | 'AND' | '/\' | '&' | 'XOR' | 'ANDTHEN' | 'ORELSE'
+        | '^' | '+' | '-' | '*' | '/' | '++' | '~' | '**' | '//' | '^^'
+        | '|-' | '|=' | '<|' | '|>' | '=' | '/=' | '==' | '<' | '<='
+        | '>' | '>=' | '<<' | '>>' | '<<=' | '>>=' | '#' | '@@' | '##'
+
+unaryop ::= 'NOT' | '~' | '[]' | '<>' | '-'
+
+formula-name ::= 'AXIOM' | 'CHALLENGE' | 'CLAIM' | 'CONJECTURE' | 'COROLLARY'
+               | 'FACT' | 'FORMULA' | 'LAW' | 'LEMMA' | 'OBLIGATION'
+	       | 'POSTULATE' | 'PROPOSITION' | 'SUBLEMMA' | 'THEOREM'
+
+id ::= letter idchar+
+
+idchar ::= letter | digit | '_' | '?'
+
+letter ::= 'A' | ... | 'Z' | 'a' | ... | 'z'
+
+digit ::= '0' | ... | '9'
+
+number ::= digit+
+
+string ::= '"' ASCII-character* '"'    % '\' acts as an escape character

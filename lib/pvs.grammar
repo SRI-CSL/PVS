@@ -1,0 +1,221 @@
+			  PVS Language Summary
+
+============================Example Theories==================================
+
+orderings[t: TYPE] : THEORY
+  BEGIN
+    x, y, z: VAR t
+    pp, qq: VAR PRED[t]
+    <= : VAR PRED[t,t]
+
+    reflexive?(<=) : bool = (FORALL x: x <= x)
+
+    antisymmetric?(<=) : bool =
+      (FORALL x, y: (x <= y & y <= x) => x = y)
+
+    transitive?(<=) : bool =
+      (FORALL x, y, z: (x <= y & y <= z) => x <= z)
+
+    partial_order?(<=) : bool =
+      reflexive?(<=) & antisymmetric?(<=)
+                     & transitive?(<=)
+
+    linear?(<=) : bool =
+      (FORALL x, y : x <= y OR y <= x)
+
+    total_order?(<=) : bool =
+      partial_order?(<=) & linear?(<=)
+  END orderings
+
+sort [domain, range: TYPE,
+      (USING orderings[range], orderings[domain])
+      d_order: (total_order?),
+      r_order: (partial_order?)] : THEORY
+  BEGIN
+    A, B, C: VAR ARRAY[domain->range]
+    sorted?(A): bool =
+      (FORALL (x, y: domain): (d_order(x, y) & x /= y)
+                    => NOT r_order(A(y), A(x)))
+  END sort
+
+
+list[t:TYPE] : DATATYPE
+  BEGIN
+    null: null?
+    cons (car: t, cdr :list) :cons?
+  END list
+
+
+=============================Lexical Rules====================================
+
+Comments start with '%' and go to the end of the line
+
+Identifiers are composed of letters, digits, question mark, and underscores;
+they must begin with a letter.
+
+Numbers are composed of digits; floating point numbers are not supported.
+
+
+============================Reserved Words====================================
+
+ALL           ELSE           IFF            RECURSIVE
+AND	      ELSIF          IMPLEMENTING   RENAMING 
+ARRAY	      END            IMPLIES        SETOF    
+ASSUMING      ENDASSUMING    IN             SOME     
+ASSUMPTION    ENDCASES       LAM            SUBLEMMA 
+AXIOM	      ENDIF          LAMBDA         THEN     
+BEGIN	      EXISTS         LEMMA          THEOREM  
+BUT           EXPORTING      LET            THEORY   
+CASES	      FACT           NOT            TO       
+CLAIM	      FORALL         OBLIGATION     TYPE     
+CONJECTURE    FORMULA        OR             USING    
+CONTAINING    FROM           PARLET         VAR      
+COROLLARY     FUNCTION       PRED           WHERE    
+DATATYPE      IF             PROPOSITION    WITH     
+
+
+==============================Type Declarations===============================
+
+----------------------Uninterpreted types and subtypes------------------------
+foo: TYPE
+some_nums: TYPE FROM number
+nat_to_10: TYPE = {x:nat | x <= 10}
+posint: TYPE = {x:integer | x > 0} CONTAINING 1
+ptype: TYPE = (pred?)                    % == {x | pred?(x)}
+
+-------------------------------Function types---------------------------------
+
+intf: TYPE = FUNCTION[int, int -> int]
+altf: TYPE = [int, int -> int]           % same as above
+inta: TYPE = ARRAY[int,int -> int]       % same as above
+intp: TYPE = pred[int]                   % == [int -> bool]
+ints: TYPE = setof[int]                  % == [int -> bool]
+
+---------------------------------Tuple Types----------------------------------
+
+tuptype: TYPE = [int, bool, [int -> int]]
+
+--------------------------------Record types----------------------------------
+
+stack: TYPE = [# pointer: nat, astack: ARRAY[nat -> t] #]
+
+-------------------------------Dependent Types--------------------------------
+
+pfun: TYPE = [# dom: PRED[t1], pfn:[(dom)->t2] #]
+date: TYPE = [y,m:nat, {d:nat | d <= days(m,y))}]
+tmod: TYPE = [n,m:int -> {x:nat | x < m}]
+
+------------------------------Enumeration Types-------------------------------
+
+color: TYPE = {red, green, blue}
+
+----------------------------------Datatypes-----------------------------------
+
+list[t:TYPE] : DATATYPE 
+ BEGIN
+  null: null?
+  cons (car: t, cdr :list) :cons?
+ END list
+
+-----------------Imports, Exports, and Theory Abbreviations-------------------
+
+IMPORTING orderings[int], set[foo[nat]]
+EXPORTING foo, bar WITH set[foo]
+pset: THEORY = sets[list[nat]]
+
+---------------------Constants and Recursive Definitions----------------------
+
+some_int: int
+max: int = 10
+abs: [int -> nat] = (LAMBDA x: IF x < 0 THEN -x ELSE x ENDIF)
+sum(f,x,y): int                      % f,x,y prev declared VAR
+sum(f,(x,y:int)): int                % f prev declared VAR
+fac(n): RECURSIVE nat =
+   (IF n = 0 THEN 1 ELSE n * fac(n-1) ENDIF)
+   MEASURE (LAMBDA n: n)
+
+----------------------------Variable Declarations-----------------------------
+
+x, y, z: VAR int
+f: VAR [int -> [int -> int]]
+
+----------------------------Formula Declarations------------------------------
+
+transitive: AXIOM x < y AND y < z IMPLIES x < z
+nonzero_fac: THEOREM fac(n) /= 0
+poset: ASSUMPTION poset?(T,<=)   % Only in ASSUMINGs
+
+=================================Expressions==================================
+
+------------------------------Equality (=, /=)--------------------------------
+Defined for any type; both sides must be the same type.  With boolean,
+= is treated as IFF.
+
+x * y = 4
+true /= 1            % Illegal
+
+-------------Arithmetic (+, -, *, /, <, <=, >, >=, 0, 1, 2, ...)--------------
+
+((x + 1) * x) / 2 < x * x
+
+--------Logical (true, false, AND, &, OR, IMPLIES, =>, NOT, IFF, <=>,
+			 FORALL, ALL, EXISTS, SOME)                  ---------
+
+(FORALL e: (EXISTS d: abs(f(x) - f(y)) < d) IMPLIES abs(x - y) < e)
+
+--------------------------------IF-THEN-ELSE----------------------------------
+
+The {\tt THEN} and {\tt ELSE} parts must have compatible types.
+
+IF x=0 THEN 1 ELSIF y=0 THEN 2 ELSE y/x ENDIF
+
+------------------------------------CASES-------------------------------------
+
+Pattern matching on datatypes.
+
+  CASES x OF
+    cons(x,y): append(reverse(y), cons(x, null))
+    ELSE null
+  ENDCASES
+
+---------Function application, lambda-abstraction & function update-----------
+
+f(1,2)(0)
+(lambda x: x + 1)
+f WITH [(0) := 1, (1) := 0]
+
+------------Record construction, field selection & record update--------------
+
+(# pointer := 1, astack := (LAMBDA x: 0) #)
+astack(r)                                   % r.astack NOT allowed
+r WITH [pointer := 2, (astack)(1) := 1]
+
+-----------------------Tuple construction & projection------------------------
+
+(1, true, (LAMBDA (x:int) x + 37))
+proj_3(tup)
+
+----------------------------LET, PARLET, & WHERE------------------------------
+
+PARLET is a parallel let; in the example below y depends on an outside x.
+WHERE is like LET, but with the assignments and expression reversed.
+
+LET x = 2, y:nat = x*x IN f(x,y)   % == f(2,4)
+PARLET x = 2, y:nat = x*x IN f(x,y)
+f(x,y) WHERE x = 2, y:nat = x*x    % Like LET
+
+----------------------------------Coercion------------------------------------
+
+Coercion indicates the expected type to the typechecker to resolve ambiguity.
+
+a + b:natural
+(LAMBDA n -> nat: n - m)     % LAMBDA coercion
+
+------------------------------------Names-------------------------------------
+
+If foo is declared in theory bar, then the following are allowable references
+(the first two may be ambiguous).
+
+foo
+foo[int]
+bar[int].foo
