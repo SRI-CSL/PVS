@@ -188,12 +188,13 @@
 	      'current-auto-rewrites auto-rewrites-info)))
       (unless (or (eq *new-ground?* (new-ground? decl))
 		  (and *proving-tcc* *use-default-dp?*)
-		  (not
-		   (pvs-yes-or-no-p
-		    "~%This proof was originally done with the ~:[old~;new~] ~
-                     decision procedures,~%which is not the default.  ~
-                     Use the ~:[old~;new~] one (for this proof only)? "
-		    (not *new-ground?*) (not *new-ground?*))))
+		  (and (not *proving-tcc*)
+		       (not
+			(pvs-yes-or-no-p
+			 "~%This proof was originally done with the ~:[old~;new~] ~
+                          decision procedures,~%which is not the default.  ~
+                          Use the ~:[old~;new~] one (for this proof only)? "
+			 (not *new-ground?*) (not *new-ground?*)))))
 	(if *new-ground?*
 	    (old-ground)
 	    (new-ground)))
