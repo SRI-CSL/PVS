@@ -72,7 +72,7 @@
 (defvar *empty-expression-types* (make-hash-table :test 'eq))
 
 (defmethod typecheck :around (obj &key expected context tccs)
-  (declare (ignore obj expected context tccs))
+  (declare (ignore expected context tccs))
   (unwind-protect
       (let ((*expression-types* (if *in-typechecker*
 				    *expression-types*
