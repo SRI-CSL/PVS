@@ -1195,9 +1195,12 @@ pvs-strategies files.")
 	     (prf (when (and (formula-decl? decl)
 			     (justification decl))
 		    (cons (id decl)
-			  (cons (list :new-ground? (new-ground? decl))
-				(extract-justification-sexp
-				 (justification decl)))))))
+			  (if (new-ground? decl)
+			      (cons (list :new-ground? (new-ground? decl))
+				    (extract-justification-sexp
+				     (justification decl)))
+			      (extract-justification-sexp
+			       (justification decl)))))))
 	(collect-theory-proofs*
 	 (cdr decls)
 	 (if prf
