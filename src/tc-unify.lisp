@@ -219,8 +219,8 @@
 						     (resolution farg))))
 				       bindings))
 		    (tc-match-names arg farg bindings))
-		(or (and (formal-type-decl? (declaration farg))
-			 bindings)
+		(or ;;(and (formal-type-decl? (declaration farg))
+			;; bindings)
 		    (tc-match-names arg farg bindings)))))))
 
 ;(defun tc-match-other-formals (arg farg bindings)
