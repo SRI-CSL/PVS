@@ -14,6 +14,7 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
+#-gcl
 (defpackage "TDEFUN")
 (in-package :TDEFUN) (use-package :ergolisp)
 

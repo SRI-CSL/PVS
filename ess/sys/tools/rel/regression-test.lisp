@@ -1,4 +1,5 @@
 ;;; -*- package: ergo-lisp -*-
+#-gcl
 (defpackage "ERGO-LISP")
 (in-package "ERGO-LISP")
 (export '(regression-test regression-test-only regression-test-opt

@@ -13,6 +13,7 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
+#-gcl
 (defpackage "ERGO-TYPES")
 (in-package :ERGO-TYPES) (use-package :ergolisp)
 

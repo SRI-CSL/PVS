@@ -16,6 +16,7 @@
 ;;; ******************************************************************* ;;;
 
 
+#-gcl
 (defpackage "ERGO-SYSTEM")
 (in-package :ERGO-SYSTEM) (use-package :ergolisp)
 

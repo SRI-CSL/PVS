@@ -8,6 +8,7 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
+#-gcl
 (defpackage "CLET")
 (in-package "CLET") (use-package :ergolisp)
 

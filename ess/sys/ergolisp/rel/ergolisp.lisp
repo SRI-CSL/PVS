@@ -13,6 +13,7 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
+#-gcl
 (defpackage "ERGOLISP")
 (in-package :ERGOLISP)
 

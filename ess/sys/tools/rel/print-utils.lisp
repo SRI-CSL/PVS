@@ -4,6 +4,7 @@
 
 ;;; Author: Conal
 
+#-gcl
 (defpackage "PRINT-UTILS")
 (in-package "PRINT-UTILS") (use-package :ergolisp)
 

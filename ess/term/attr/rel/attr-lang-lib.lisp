@@ -13,6 +13,7 @@
 ;;;
 ;;; Interface to Language, Sort, Operator Packages.
 
+#-gcl
 (defpackage "LANGUAGE")
 (in-package "LANGUAGE")  (use-package :ergolisp)
 

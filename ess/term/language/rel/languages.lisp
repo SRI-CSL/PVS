@@ -14,6 +14,7 @@
 ;;; Scott Dietzen, Thu Jun 18 03:15:27 1987
 
 
+#-gcl
 (defpackage "LANG")
 (in-package "LANG")
 (use-package :ergolisp)

@@ -12,6 +12,7 @@
 ;;; The sort-specific part.
 ;;; Author: fp
 
+#-gcl
 (defpackage "NEWATTR")
 (in-package "NEWATTR")   (use-package :ergolisp)
 

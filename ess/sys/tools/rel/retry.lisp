@@ -12,6 +12,7 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
+#-gcl
 (defpackage "RETRY")
 (in-package "RETRY") (use-package :ergolisp)
 

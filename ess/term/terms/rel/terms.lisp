@@ -31,6 +31,7 @@
 ;;;   since this file is compiled after other files which do NOT have a
 ;;;   use-package.
 
+#-gcl
 (defpackage "TERM")
 (in-package "TERM") (use-package :ergolisp)
 

@@ -13,7 +13,7 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
-
+#-gcl
 (defpackage "DLAMBDA-LIB")
 (in-package :DLAMBDA-LIB) (use-package :ergolisp)
 

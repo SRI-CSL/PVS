@@ -13,6 +13,7 @@
 
 ;;; Scott Dietzen, Tue May 26 14:30:09 1987
 
+#-gcl
 (defpackage "OCC")
 (in-package "OCC")  (use-package :ergolisp)
 

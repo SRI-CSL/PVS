@@ -13,6 +13,7 @@
 
 ;;; Scott Dietzen, Tue May 26 13:36:26 1987
 
+#-gcl
 (defpackage "TERM")
 (in-package "TERM") (use-package :ergolisp)
 

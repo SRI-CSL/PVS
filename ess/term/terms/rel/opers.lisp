@@ -13,6 +13,7 @@
 
 ;;; Scott Dietzen, Thu Apr 23 00:16:13 1987
 
+#-gcl
 (defpackage "OPER")
 (in-package "OPER")  (use-package :ergolisp)
 

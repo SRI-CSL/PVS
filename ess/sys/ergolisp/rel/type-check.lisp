@@ -29,6 +29,7 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
+#-gcl
 (defpackage "TYPE-CHECK")
 (in-package :TYPE-CHECK) (use-package '(:ergolisp))
 

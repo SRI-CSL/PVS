@@ -7,6 +7,7 @@
 ;;; Author: Conal.  Last Modified Wed Feb 15 16:54:17 1989
 ;;;
 
+#-gcl
 (defpackage "DLAMBDA")
 (in-package "DLAMBDA") (use-package :ergolisp)
 

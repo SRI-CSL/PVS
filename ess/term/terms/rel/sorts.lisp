@@ -13,6 +13,7 @@
 
 ;;; Scott Dietzen, Thu May 21 12:49:21 1987
 
+#-gcl
 (defpackage "SORT")
 (in-package "SORT")  (use-package :ergolisp)
 
