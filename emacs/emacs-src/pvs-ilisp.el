@@ -141,6 +141,8 @@ intervenes."
 	   "fasl")
 	  ((string-equal machine "ix86") ; Intel/Linux
 	   "lfasl")
+	  ((string-equal machine "powerpc") ; Mac
+	   "mfasl")
 	  (t (error "Machine architecture %s not recognized" machine)))))
 
 (defun pvs-comint-init ()
