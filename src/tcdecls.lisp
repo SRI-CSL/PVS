@@ -1871,7 +1871,7 @@
     (if (and (eq dom (domain type))
 	     (eq rng (range type)))
 	type
-	(let ((tval (mk-funtype dom rng)))
+	(let ((tval (copy type 'domain dom 'range rng)))
 	  tval))))
 
 (defun get-funtype-dependencies (funtype types)
