@@ -185,7 +185,10 @@
     cong-state)
    ((false-p eqn) *false*)
    ((true-p eqn) cong-state)
-   (t (dp-merge (lhs eqn) (rhs eqn) cong-state)
+   ((equality-p eqn)
+    (dp-merge (lhs eqn) (rhs eqn) cong-state)
+    (forward-chain eqn cong-state))
+   (t (dp-merge eqn *true* cong-state)
       (forward-chain eqn cong-state))))
 
 (defun dp-merge (t1 t2 cong-state)
