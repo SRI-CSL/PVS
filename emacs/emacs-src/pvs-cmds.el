@@ -3,12 +3,11 @@
 ;; Author          : Sam Owre
 ;; Created On      : Wed Sep 15 17:53:20 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Sep 19 14:50:21 1996
-;; Update Count    : 27
-;; Status          : Beta testing
-;; 
-;; HISTORY
+;; Last Modified On: Thu May 20 22:40:53 2004
+;; Update Count    : 28
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 ;; parse                   - parse-file
 ;; typecheck               - typecheck-file
@@ -1457,11 +1456,12 @@ specified theory
 
 The status-importchain command provides description of the status of each
 theory within the importchain of the specified theory in the PVS Status
-buffer."
+buffer.  With an argument, displays just the theory names."
   (interactive (complete-theory-name "Importchain for theory named: "))
   (unless (interactive-p) (pvs-collect-theories))
-  (pvs-send (format "(status-importchain \"%s\")" theory) nil
-	    (pvs-get-abbreviation 'show-importchain)))
+  (pvs-send (format "(status-importchain \"%s\" %s)"
+		theory (and current-prefix-arg t))
+	    nil (pvs-get-abbreviation 'show-importchain)))
 
 (defpvs status-importbychain theory-status (theory)
   "Displays the status of the closure of the theories which import the
@@ -1469,11 +1469,12 @@ specified theory
 
 The status-importchain command provides description of the status of each
 theory which imports the specified theory in the current context in the
-PVS Status buffer."
+PVS Status buffer.  With an argument, displays just the theory names."
   (interactive (complete-theory-name "Importbychain for theory named: "))
   (unless (interactive-p) (pvs-collect-theories))
-  (pvs-send (format "(status-importbychain \"%s\")" theory) nil
-	    (pvs-get-abbreviation 'show-importbychain)))
+  (pvs-send (format "(status-importbychain \"%s\" %s)"
+		theory (and current-prefix-arg t))
+	    nil (pvs-get-abbreviation 'show-importbychain)))
 
 
 (defpvs status-proof proof-status ()
