@@ -1105,7 +1105,7 @@ is not of the form: (<var> <term>...)" subst)
 	      (find-templates-with-arithmetic-polarity
 	       (args1 expr) boundvars
 	       (arith-polarity polarity 'less)
-	       (find-templates-with-polarity (args2 expr)
+	       (find-templates-with-arithmetic-polarity (args2 expr)
 					     boundvars
 					     (arith-polarity polarity 'more)
 					     accum)))
@@ -1113,7 +1113,7 @@ is not of the form: (<var> <term>...)" subst)
 	      (find-templates-with-arithmetic-polarity
 	       (args1 expr) boundvars
 	       (arith-polarity polarity 'more)
-	       (find-templates-with-polarity (args2 expr)
+	       (find-templates-with-arithmetic-polarity (args2 expr)
 					     boundvars
 					     (arith-polarity polarity 'less)
 					     accum)))
@@ -1132,7 +1132,7 @@ is not of the form: (<var> <term>...)" subst)
 		boundvars (toggle polarity) accum)))
 	     ((is-minus? op)
 	      (find-templates-with-arithmetic-polarity
-	       (argument op)
+	       (argument expr)
 	       boundvars (toggle polarity) accum))
 	     (t nil)))))
     (if (template? expr boundvars)
