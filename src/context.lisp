@@ -568,9 +568,11 @@ pvs-strategies files.")
 				       (namestring *pvs-context-path*))))
 			(assert (file-exists-p (pvs-file-path dth)))
 			(setq depname (format nil "~a~a"
-					(dep-lib-ref (lib-ref dth))
-					(filename dth))))
-		      (assert (file-exists-p (format nil "~a.pvs" depname)))
+					(lib-ref dth) (filename dth)))
+			(assert (file-exists-p
+				 (format nil "~a~a.pvs"
+				   (libref-to-pathname (libref-directory depname))
+				   (pathname-name depname)))))
 		      (pushnew depname depfiles
 			       :test #'(lambda (x y)
 					 (or (equal x filename)
@@ -784,12 +786,7 @@ pvs-strategies files.")
 		     (get-library-file-reference fdep)
 		     fdep)))
 	(if (find #\/ dep)
-	    (multiple-value-bind (imports errcond)
-		(with-no-type-errors 
-		 (restore-imported-library-file dep))
-	      (declare (ignore imports))
-	      (when errcond
-		(restore-filename-error dep errcond)))
+	    (restore-imported-library-file dep)
 	    (unless (member dep *files-seen* :test #'string=)
 	      (push dep *files-seen*)
 	      (unless (gethash dep *pvs-files*)
