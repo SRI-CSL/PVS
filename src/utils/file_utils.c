@@ -15,27 +15,25 @@ file_exists_p(char *filename)
 int
 directory_p(char *filename)
 {
-  stat(filename,&finfo);
+  if (stat(filename,&finfo) == -1) return(0);
   return(S_ISDIR(finfo.st_mode));
 }
 
-char *
+int
 read_permission_p(char *filename)
 {
-  if (access(filename, R_OK) == -1)
-    return(strerror(errno));
-  return(0);
+  if (access(filename, R_OK) == 0) return(0);
+  return(errno);
 }  
 
-char *
+int
 write_permission_p(char *filename)
 {
-  if (access(filename, W_OK) == -1)
-    return(strerror(errno));
-  return(0);
+  if (access(filename, W_OK) == 0) return(0);
+  return(errno);
 }
 
-int
+long int
 file_write_time(char *filename)
 {
   if (!(stat(filename,&finfo))) {
