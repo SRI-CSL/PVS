@@ -494,7 +494,7 @@ proc get-full-rule {proofwin top} {
     button $rulewin.dismiss -text Dismiss -command "destroy $rulewin"
     pack $rulewin.dismiss -side left -padx 2 -pady 2
     bind $rulewin <Destroy> "+catch {$proofwin delete $path.rlabel$label}"
-    bind $rulewin <Destroy> "+unset pathtorlabel($path)"
+    bind $rulewin <Destroy> "+catch {unset pathtorlabel($path)}"
     bind $rulewin <Destroy> "+after 1 {catch {destroy .rule$label}}"
     wm iconname $rulewin {PVS command}
     wm title $rulewin "Command $label [set ${path}(rule_abbr)]"
@@ -577,7 +577,7 @@ proc show-sequent {proofwin top} {
     button $seqwin.stick -text Stick -command "stick $seqwin $path"
     pack $seqwin.stick -side left -padx 2 -pady 2
     bind $seqwin <Destroy> "catch {$proofwin delete $path.label$label}"
-    bind $seqwin <Destroy> "+unset pathtolabel($path)"
+    bind $seqwin <Destroy> "+catch {unset pathtolabel($path)}"
     bind $seqwin <Destroy> "+after 1 {destroy-sequent $seqwin}"
     wm geometry $seqwin 80x$height
     wm iconname $seqwin {PVS sequent}
