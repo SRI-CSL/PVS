@@ -22,7 +22,7 @@
 ;;; Expressions
 
 (defcl expr (syntax)
-  (parens :initform 0 :parse t)
+  (parens :initform 0 :parse t :ignore t)
   type
   (free-variables :ignore t :initform 'unbound :fetch-as 'unbound)
   (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound))
@@ -35,7 +35,8 @@
   resolutions)
 
 (defcl name-expr (name expr)
-  (kind :documentation "Variable, constant, etc."))
+  ;;(kind :documentation "Variable, constant, etc.")
+  )
 
 (defcl field-name-expr (name-expr))
 
