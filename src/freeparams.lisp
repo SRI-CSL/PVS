@@ -32,6 +32,7 @@
 ;;; Theory
 
 (defmethod free-params* ((theory datatype-or-module) frees)
+  (declare (ignore frees))
   (formals-sans-usings theory))
 
 (defmethod free-params* ((decl declaration) frees)
@@ -41,6 +42,7 @@
   (free-params* (theory-name importing) frees))
 
 (defmethod free-params* ((exporting exporting) frees)
+  (declare (ignore frees))
   nil)
 
 ;;; Type expressions
@@ -155,19 +157,23 @@
 
 (defmethod free-params* ((expr projection-expr) frees)
   (let ((afrees (free-params* (type expr) nil)))
-    (setf (free-parameters expr) afrees)))
+    (setf (free-parameters expr) afrees)
+    (union afrees frees :test #'eq)))
 
 (defmethod free-params* ((expr injection-expr) frees)
   (let ((afrees (free-params* (type expr) nil)))
-    (setf (free-parameters expr) afrees)))
+    (setf (free-parameters expr) afrees)
+    (union afrees frees :test #'eq)))
 
 (defmethod free-params* ((expr injection?-expr) frees)
   (let ((afrees (free-params* (type expr) nil)))
-    (setf (free-parameters expr) afrees)))
+    (setf (free-parameters expr) afrees)
+    (union afrees frees :test #'eq)))
 
 (defmethod free-params* ((expr extraction-expr) frees)
   (let ((afrees (free-params* (type expr) nil)))
-    (setf (free-parameters expr) afrees)))
+    (setf (free-parameters expr) afrees)
+    (union afrees frees :test #'eq)))
 
 (defmethod free-params* ((expr projection-application) frees)
   (let ((afrees (free-params* (argument expr)

@@ -131,20 +131,18 @@
 			     alist))))
 	(sterm term))
     (dolist (th theories)
-      (let ((formals (remove-if #'(lambda (fp) (not (assq fp alist)))
-		       (formals-sans-usings th))))
-	(setf sterm
-	      (subst-mod-params
-	       sterm
-	       (mk-modname (id th)
-		 (mapcar #'(lambda (fp)
-			     (or (cdr (assq fp new-alist))
-				 (mk-res-actual
-				  (mk-name-expr (id fp)
-				    nil nil
-				    (make-resolution fp (mk-modname (id th))))
-				  th)))
-		   (formals-sans-usings th)))))))
+      (setf sterm
+	    (subst-mod-params
+	     sterm
+	     (mk-modname (id th)
+	       (mapcar #'(lambda (fp)
+			   (or (cdr (assq fp new-alist))
+			       (mk-res-actual
+				(mk-name-expr (id fp)
+				  nil nil
+				  (make-resolution fp (mk-modname (id th))))
+				th)))
+		 (formals-sans-usings th))))))
     sterm))
 
 (defmethod subst-theory-params (term (modinst modname))
@@ -261,6 +259,7 @@
 		   bindings))))
 
 (defun extended-mappings (thname interpreted-theory source-theory)
+  (declare (ignore interpreted-theory))
   (nconc
    (mapcar #'(lambda (d)
 	       (let ((map (find d (mappings thname)
@@ -478,6 +477,7 @@
     'theory-name theory-name))
 
 (defmethod create-importing-for-binding (decl expr)
+  (declare (ignore decl expr))
   nil)
   
 
@@ -505,6 +505,7 @@
 	  (lcopy mn 'actuals nacts)))))
 
 (defmethod subst-mod-params* ((decl declaration) modinst bindings)
+  (declare (ignore modinst bindings))
   decl)
 
 (defmethod subst-mod-params* ((decl type-decl) modinst bindings)
@@ -948,6 +949,7 @@
       (lcopy expr 'actuals nacts 'argument narg 'type ntype))))
 
 (defmethod subst-mod-params* ((expr field-name-expr) modinst bindings)
+  (declare (ignore modinst bindings))
   expr)
 
 (defmethod subst-mod-params* ((expr field-application) modinst bindings)
