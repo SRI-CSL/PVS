@@ -250,10 +250,6 @@
   comment
   )
 
-(defmethod new-ground? ((justification list))
-  (and (listp (car justification))
-       (keywordp (caar justification))
-       (memq :new-ground (car justification))))
 
 ;used in makeskoconst and needed to avoid chasing references for skolem
 ;constants. 
