@@ -262,9 +262,10 @@ where db is to replace db1 and db2")
 (defmethod tc-eq* ((e1 projection-application) (e2 projection-application)
 		   bindings)
   (or (eq e1 e2)
-      (with-slots ((id1 id) (arg1 argument)) e1
-	(with-slots ((id2 id) (arg2 argument)) e2
-	  (and (eq id1 id2)
+      (with-slots ((id1 index) (arg1 argument)) e1
+	(with-slots ((id2 index) (arg2 argument)) e2
+	  (assert (and id1 id2))
+	  (and (= id1 id2)
 	       (tc-eq* arg1 arg2 bindings))))))
 
 (defmethod tc-eq* ((e1 projection-application) (e2 name-expr) bindings)
