@@ -277,13 +277,17 @@
       expr
       (let* ((new-bindings (make-new-bindings (bindings expr) alist))
 	     (nalist (nconc (pairlis (bindings expr) new-bindings) alist))
-	     (ntype (substit* (type expr) nalist))
+	     (nexpr (substit* (expression expr) nalist))
+	     (ntype (if (quant-expr? expr)
+			(type expr)
+			(make-formals-funtype (list new-bindings)
+					      (type nexpr))))
 	     (*bound-variables* (nconc (reverse new-bindings)
 				       *bound-variables*)))
 	(copy expr
 	  'bindings new-bindings
 	  'type ntype
-	  'expression (substit* (expression expr) nalist)
+	  'expression nexpr
 	  'parens 0))))
 
 (defun make-new-bindings (old-bindings alist)
