@@ -512,14 +512,14 @@
 	     'chain? t
 	     'place place)))
 	((is-sop 'JNAMEDECL jdecl)
-	 (let ((name (xt-name (term-arg0 jdecl))))
+	 (let ((name (xt-name (term-arg0 jdecl) nil)))
 	   (make-instance 'subtype-judgement
 	     'declared-subtype (change-class name 'type-name)
 	     'declared-type dtype
 	     'chain? t
 	     'place place)))
 	((is-sop 'JAPPLDECL jdecl)
-	 (let ((name (xt-name (term-arg0 jdecl)))
+	 (let ((name (xt-name (term-arg0 jdecl) nil))
 	       (formals (xt-pdf (term-arg1 jdecl))))
 	   (when (cdr formals)
 	     (parse-error formals "Type applications may not be Curried"))
@@ -549,7 +549,7 @@
 (defun xt-const-judgement* (jdecl dtype place)
   (case (sim-term-op jdecl)
     (JNAMEDECL
-     (let ((ex (xt-name (term-arg0 jdecl))))
+     (let ((ex (xt-name (term-arg0 jdecl) nil)))
        (if (number-expr? ex)
 	   (make-instance 'number-judgement
 	     'number-expr ex
@@ -591,7 +591,7 @@
 			     (cons cdecl result))))))
 
 (defun xt-conversion** (ename last? convkey)
-  (let ((name (xt-name (term-arg0 ename)))
+  (let ((name (xt-name (term-arg0 ename) nil))
 	(ntype (term-arg1 ename)))
     (if (is-sop 'NOTYPE ntype)
 	(case convkey
@@ -658,7 +658,7 @@
   (mapcar #'xt-rewrite-name rnames))
 
 (defun xt-rewrite-name (rname)
-  (let ((name (xt-name (term-arg0 rname)))
+  (let ((name (xt-name (term-arg0 rname) nil))
 	(kind (term-arg1 rname))
 	(qual (term-arg2 rname)))
     (case (sim-term-op kind)
@@ -1058,7 +1058,7 @@
     (t (error "type-expr not recognized - ~a" type-expr))))
 
 (defun xt-type-name (type-name)
-  (let ((name (xt-name (term-arg0 type-name))))
+  (let ((name (xt-name (term-arg0 type-name) nil)))
     (change-class name 'type-name)
     (setf (place name) (term-place type-name))
     name))
@@ -1067,7 +1067,7 @@
   (let ((type (term-arg0 type-expr))
 	(args (term-arg1 type-expr)))
     (make-instance 'type-application
-      'type (change-class (xt-name type) 'type-name)
+      'type (change-class (xt-name type nil) 'type-name)
       'parameters (mapcar #'xt-expr (term-args args))
       'place (term-place type-expr))))
 
@@ -1479,7 +1479,7 @@
       (xt-expr (car args))))
 
 (defun xt-name-expr (expr)
-  (let ((name (xt-name (term-arg0 expr))))
+  (let ((name (xt-name (term-arg0 expr) nil)))
     (if (typep name 'number-expr)
 	name
 	(let ((upid (intern (string-upcase (format nil "~a" (id name))))))
@@ -2360,7 +2360,7 @@
 
 ;;; name! means create a name no matter what; otherwise numbers create
 ;;; number-exprs
-(defun xt-name (name &optional name!)
+(defun xt-name (name name!)
   (let ((idop (term-arg0 name))
 	(lib (term-arg1 name))
 	(actuals (term-arg2 name))
@@ -2502,7 +2502,7 @@
   (ds-vid (term-arg0 idop)))
 
 (defun xt-bname (bname)
-  (let ((name (xt-name (term-arg0 bname)))
+  (let ((name (xt-name (term-arg0 bname) nil))
 	(number (ds-number (term-arg1 bname))))
     (when (or (mod-id name)
 	      (library name)
