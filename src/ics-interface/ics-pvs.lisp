@@ -118,7 +118,7 @@
 ;; PVS decision procedure interface
 
 (defun ics-init (&optional full (verbose 0))
-  (ics_caml_startup (if full 1 0) #(0))
+  (ics_caml_startup)
   (register_lisp_error_function
    (nth-value 1 (ff:register-function `ics_error)))
   ;;(ics_init verbose)
@@ -160,7 +160,7 @@
       (let ((name (format nil "~a__~d"
 			       (if (name-expr? expr) (symbol-name (id expr)) "new")
 			       *unique-name-ics-counter*)))
-	(setf *counter* (1+ *unique-name-ics-counter*))
+	(setf *unique-name-ics-counter* (1+ *unique-name-ics-counter*))
 	(setf (gethash expr *pvs-to-ics-symtab*) name))))
 
 
@@ -231,7 +231,7 @@
 
 (defmethod translate-negatom-to-ics* ((expr expr))
   "Fallthrough method: Negations of Boolean expressions 'b' are translated as 'b = false'"
-  (let ((ics-term (translate-term-to-ics* expr))))
+  (let ((ics-term (translate-term-to-ics* expr)))
     (ics_atom_mk_equal ics-term (ics_term_mk_false))))
 
 (defmethod translate-negatom-to-ics* ((expr name-expr))
@@ -483,5 +483,3 @@
   "Forget about the 'fun-type' for now"
   (declare (ignore fun-type))
   (ics_term_mk_select (ics_context_empty) (ics_par term term-args)))
-
-;; foo
