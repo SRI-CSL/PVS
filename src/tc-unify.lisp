@@ -502,9 +502,11 @@
     bindings))
 
 (defmethod tc-match* ((arg projection-expr) (farg name-expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-match* ((arg name-expr) (farg projection-expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-match* ((arg injection-expr) (farg injection-expr) bindings)
@@ -512,9 +514,11 @@
     bindings))
 
 (defmethod tc-match* ((arg injection-expr) (farg name-expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-match* ((arg name-expr) (farg injection-expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-match* ((arg injection?-expr) (farg injection?-expr) bindings)
@@ -522,9 +526,11 @@
     bindings))
 
 (defmethod tc-match* ((arg injection?-expr) (farg name-expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-match* ((arg name-expr) (farg injection?-expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-match* ((arg extraction-expr) (farg extraction-expr) bindings)
@@ -532,9 +538,11 @@
     bindings))
 
 (defmethod tc-match* ((arg extraction-expr) (farg name-expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-match* ((arg name-expr) (farg extraction-expr) bindings)
+  (declare (ignore bindings))
   nil)
 
 (defmethod tc-match* ((arg projection-application)
