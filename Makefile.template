@@ -296,7 +296,7 @@ inst-by-unif-lisp = src/inst-by-unif/lvars-and-skofuns.lisp \
 
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
-	     ${decision-procedures} ${ws1slisp} ${groundevallisp}
+	     ${decision-procedures} ${ws1slisp} ${groundevallisp} \
              ${inst-by-unif-lisp}
 
 fasl-files = $(lisp-files:.lisp=.$(LISPEXT))
