@@ -336,7 +336,14 @@
 			    thereis (and (subsetp trueconds lst); :test #'tc-eq)
 					 (subsetp falseconds lst)))); :test #'tc-eq))))
 			expr
-		 (let ((result (call-next-method)))
+		 (let* ((result (call-next-method))
+			(result
+			 (if (tc-eq (find-supertype (type result))
+				    *boolean*)
+			     (truefalsecond-reduce result
+						   trueconds
+						   falseconds)
+			     result)))
 		   (cond ((eq result expr)
 			  (push (append trueconds falseconds)
 				(gethash expr
@@ -349,19 +356,22 @@
 (defmethod simplify-ifs ((expr branch) trueconds falseconds)
   (let ((simple-condition (simplify-ifs (condition expr) trueconds falseconds)))
     ;;(break "simplify if")
-    (if (truecond? simple-condition trueconds falseconds)
+    (if (eq simple-condition *true*)
+	;(truecond? simple-condition trueconds falseconds)
 	(simplify-ifs (then-part expr) trueconds falseconds)
-	(if (falsecond? simple-condition trueconds falseconds)
+	(if (eq simple-condition *false*)
+	;(falsecond? simple-condition trueconds falseconds)
 	    (simplify-ifs (else-part expr) trueconds falseconds)
 	    (let* ((new-then  ;;NSH(9.27.95) fixed leaky hash
 		   (simplify-ifs (then-part expr)
 				 (cons simple-condition trueconds)
 				 falseconds))
-		   (new-then (truefalsecond-reduce new-then trueconds falseconds))
+;		   (new-then (truefalsecond-reduce new-then trueconds falseconds))
 		   (new-else (simplify-ifs (else-part expr)
 					   trueconds
 					   (cons simple-condition falseconds)))
-		   (new-else (truefalsecond-reduce new-else trueconds falseconds)))
+;		   (new-else (truefalsecond-reduce new-else trueconds falseconds))
+		   )
 	      (if (tc-eq new-then new-else);;NSH(9.27.95) equality test
 		  new-then
 		  (if (and (eq new-then *true*)
@@ -429,7 +439,8 @@
 
 (defmethod simplify-ifs ((expr assignment) trueconds falseconds)
   (lcopy expr
-	'expression (simplify-ifs (expression expr)
+    'arguments (simplify-ifs (arguments expr) trueconds falseconds)
+    'expression (simplify-ifs (expression expr)
 				  trueconds falseconds)))
 
 (defmethod simplify-ifs ((expr cases-expr) trueconds falseconds)
@@ -587,7 +598,8 @@
 	expr-conds)))
 
 (defmethod collect-conds ((expr assignment) &optional boundvars)
-  (collect-conds (expression expr) boundvars))
+  (or  (collect-conds (arguments expr) boundvars)
+       (collect-conds (expression expr) boundvars)))
 
 (defmethod collect-conds ((expr cases-expr) &optional boundvars)
   (unless (intersection (freevars (expression expr)) boundvars
@@ -601,10 +613,9 @@
 (defmethod collect-conds ((list list)  &optional  boundvars)
   (if (null list)
       nil
-      (let ((carconds (collect-conds (car list) boundvars)))
-	(if (null carconds)
-	    (collect-conds (cdr list) boundvars)
-	    carconds))))
+      (or (collect-conds (car list) boundvars)
+	  (collect-conds (cdr list) boundvars))))
+
 			  
 			  
 
