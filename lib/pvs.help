@@ -121,6 +121,8 @@ set-rewrite-depth           Set the print depth for displaying rewrites
 set-rewrite-length          Set the print length for displaying rewrites
 dump-sequents		    Indicate that unproved sequents go to a file
 toggle-proof-prettyprinting Toggles whether to prettyprint proof files
+pvs-set-proof-prompt-behavior Indicates the kind of prompting at the end of
+                              a proof; one of :ask, :overwrite, or :new
 
 -----------------------Proof Information Commands-----------------------------
 

@@ -2142,3 +2142,24 @@ figure out whether a given rewrite rule should apply."
 		    (error (error "invalid strategy syntax"))))))
     (unless (= end (length strategy))
       (error "invalid strategy syntax"))))
+
+(defpvs pvs-set-proof-prompt-behavior prove (behavior)
+  "Set the behavior for interactive proofs
+
+At the end of a proof a number of questions may be asked:
+  Would you like the proof to be saved?
+  Would you like to overwrite the current proof?
+  Please enter an id
+  Please enter a description:
+This may be annoying, and this function gives the user some control.
+The possible values are:
+  :ask - the default; all four questions are asked
+  :overwrite - similar to earlier PVS versions; asks if the proof should be
+               saved and then simply overwrites the earlier one.
+  :new - asks if the proof should be saved, then creates a new proof with a
+         generated id and empty description."
+  (interactive (list (completing-read "Set default proof behavior to: "
+		       '((":ask") (":overwrite") (":new")))))
+  (pvs-send-and-wait (format "(setq *multiple-proof-default-behavior* %s)"
+			 behavior)))
+  
