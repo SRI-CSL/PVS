@@ -4,7 +4,7 @@
   (defvar *develop* t)
   (defvar *node-type* 'array)
   (defvar *argument-type* 'list)
-  (defvar *use-alists* nil))
+  (defvar *use-alists* t))
 
 (declaim (special *dp-changed*))
 (defvar *dp-changed* nil)
