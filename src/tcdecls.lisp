@@ -1575,22 +1575,28 @@
 	     *bound-variables*)))
     (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
   (set-type (declared-type decl) nil)
-  (when (subtype-of? (subtype decl) (type decl))
-    (type-error (declared-subtype decl)
-      "Type is already known to be a subtype"))
-  (let* ((bd (make-new-bind-decl (subtype decl)))
-	 (bvar (make-variable-expr bd)))
-    (setf (place bvar) (place (declared-subtype decl)))
-    (unless (compatible? (subtype decl) (type decl))
-      (type-error decl
-	"Types must be compatible."))
-    (let* ((*compatible-pred-reason*
-	    (acons bvar "judgement" *compatible-pred-reason*))
-	   (incs (compatible-preds (subtype decl) (type decl) bvar)))
-      (cond (incs
-	     (generate-subtype-tcc bvar (type decl) incs)
-	     (add-to-known-subtypes (subtype decl) (type decl)))
-	    (t (pvs-warning "Subtype judgement is superfluous."))))))
+  (if (subtype-of? (subtype decl) (type decl))
+      (pvs-warning
+	  "In judgement ~:[at~;~:*~a,~] Line ~d: ~a is already known to be a subtype of ~a"
+	(id decl) (line-begin (place decl))
+	(declared-subtype decl) (declared-type decl))
+      (let* ((bd (make-new-bind-decl (subtype decl)))
+	     (bvar (make-variable-expr bd)))
+	(setf (place bvar) (place (declared-subtype decl)))
+	(unless (compatible? (subtype decl) (type decl))
+	  (type-error decl
+	    "~@[In judgement ~a: ~]subtype ~a is incompatible with ~a"
+	    (id decl) (declared-subtype decl) (declared-type decl)))
+	(let* ((*compatible-pred-reason*
+		(acons bvar "judgement" *compatible-pred-reason*))
+	       (incs (compatible-preds (subtype decl) (type decl) bvar)))
+	  (cond (incs
+		 (generate-subtype-tcc bvar (type decl) incs)
+		 (add-to-known-subtypes (subtype decl) (type decl)))
+		(t (pvs-warning
+		       "~@[In judgement ~a, ~]Line ~d: ~
+                        Subtype judgement is superfluous."
+		     (id decl) (line-begin (place decl)))))))))
 
 (defmethod typecheck* ((decl number-judgement) expected kind arguments)
   (declare (ignore expected kind arguments))
@@ -1659,7 +1665,7 @@
   (when (free-parameters (type decl))
     (pvs-warning
 	"This judgement will not be used if ~a is only imported generically,~%~
-         as the type cannot be determined from the number."
+         as the type cannot be determined from the name."
       (id (module decl)))))
 
 
