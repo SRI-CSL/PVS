@@ -21,7 +21,7 @@ Date: 05/09/98
 
 #include <signal.h>
 
-int bdd_interrupted;
+int bdd_interrupted = 0;
 sigjmp_buf catch;
 struct sigaction lisp_handler;
 void restore_sigint(void);
