@@ -595,24 +595,24 @@
 ;
 ; else returns nil
 
-(defun solvable(dif &optional (funsymis= nil))
+(defun solvable(dif)
   (cond
    ((listp dif)
     (case (funsym dif)
-      (PLUS (solvableplus dif funsymis=))
+      (PLUS (solvableplus dif))
       (TIMES (solvabletimes dif))
       (t (setq var dif coef 1) T)))
    (t (setq var dif coef 1) T)))
 
 ; solvable for case in which dif is a PLUS expression
 
-(defun solvableplus(dif &optional (funsymis= nil))
+(defun solvableplus(dif)
   (loop for term in (argsof dif)
 	thereis (and (not (qnumberp term))
 		     (cond
 		       ((linearp term)
 			(setq var (varof term) coef (coefof term))
-			(onlyoccurrencep var term dif funsymis=))))))
+			(onlyoccurrencep var term dif))))))
 
 ; solvable for case in which dif is a TIMES expression
 
@@ -634,27 +634,23 @@
 
 ; returns T if only occurrence of var in PLUS expr l is in term t
 
-(defun onlyoccurrencep(var term l &optional (funsymis= nil))
+(defun onlyoccurrencep(var term l)
   (loop for arg in (argsof l)
 	never (and (not (equal arg term))
-		   (occursin var arg funsymis=))))
+		   (occursin var arg))))
 
 ; returns T if var is a variable of term
 
-(defun occursin (var term &optional (funsymis= nil))
+(defun occursin (var term)
   (cond
    ((and (listp term)(eq (funsym term) 'TIMES))
     (cond
-     ((qnumberp (arg1 term))(occursin var (arg2 term) funsymis=))
+     ((qnumberp (arg1 term))(occursin var (arg2 term))
      (t (if *jmr-mult*
 	    (or (equal var term)
-		(if funsymis=;; dac 8/31/92: kludge!!!
-		    ;; only reallycare about x = x * y,
-		    ;; not about x < x * y.
-		    (member-or-div-member var (argsof term))
-		    nil))
-	    (member var (argsof term))))))
-   ((and (listp term)(eq (funsym term) 'DIVIDE) funsymis=)
+		(member-or-div-member var (argsof term)))
+	    (member var (argsof term)))))))
+   ((and (listp term)(eq (funsym term) 'DIVIDE))
     (cond
      ((qnumberp (arg1 term))(interp-subtermof var (arg2 term)))
      (t (or (interp-subtermof var (arg1 term))
