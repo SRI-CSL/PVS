@@ -1208,6 +1208,9 @@ required a context.")
 	  optypes)
 	optypes)))
 
+(defmethod explicit-importings (op optypes)
+  optypes)
+
 (defmethod local-operator-types ((op name-expr) optypes argument)
   (let* ((reses (remove-if-not #'(lambda (r)
 				   (member (type r) optypes :test #'tc-eq))
