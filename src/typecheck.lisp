@@ -328,14 +328,10 @@
   (when (exporting theory)
     (dolist (ename (closure (exporting theory)))
       (let* ((itheory (get-theory ename))
-	     (lname (if (typep itheory 'library-theory)
-			(copy ename
-			  'library
-			  (libref-to-libid (lib-ref itheory)))
-			ename))
-	     (iname (if (actuals inst)
-			(subst-mod-params lname inst)
-			lname)))
+	     (iname (if (or (actuals inst)
+			    (mappings inst))
+			(subst-mod-params ename inst)
+			ename)))
 	(assert itheory)
 	(unless (and (formals-sans-usings itheory) (null (actuals iname)))
 	  ;; Add this to the assuming-instances list if fully instantiated
@@ -548,12 +544,12 @@
 		      (conversions *current-context*))))
       (dolist (conversion new-convs)
 	(if (eq (module conversion) theory)
-	    (push (subst-params-decl conversion theoryname)
+	    (push (subst-params-decl conversion theoryname theory)
 		  (conversions *current-context*))
 	    (push conversion (conversions *current-context*)))))
     (dolist (conversion (disabled-conversions (saved-context theory)))
       (if (eq (module conversion) theory)
-	  (pushnew (subst-params-decl conversion theoryname)
+	  (pushnew (subst-params-decl conversion theoryname theory)
 		   (disabled-conversions *current-context*)
 		   :test #'eq)
 	  (pushnew conversion (disabled-conversions *current-context*)
@@ -583,10 +579,10 @@
       (nreverse elts)
       (list-diff (cdr l1) l2 (cons (car l1) elts))))
 
-(defmethod subst-params-decl ((c conversion-decl) modinst)
+(defmethod subst-params-decl ((c conversion-decl) modinst theory)
   (lcopy c
     'module (current-theory)
-    'expr (subst-mod-params (expr c) modinst)))
+    'expr (subst-mod-params (expr c) modinst theory)))
 
 ;;; Remove formals that are not a part of the current module.  This
 ;;; handles the following circumstance:
@@ -608,7 +604,7 @@
 					(current-theory))))))
 		  (actuals theoryname)))
       (copy theoryname 'actuals nil)
-      (copy theoryname 'actuals (copy-all (actuals theoryname) t))))
+      theoryname))
 
 (defun check-compatible-params (formals actuals assoc)
   (or (null formals)

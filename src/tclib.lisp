@@ -342,6 +342,11 @@
       (when (directory-p lib)
 	(format t "~%~a/ - ~a" (file-namestring lib) lib)))))
 
+
+;;; This is provided for library support, expected to be used in
+;;; pvs-lib.lisp files (or files loaded by them).  If the filestr
+;;; begins with a ".", then it is relative to the
+;;; *default-pathname-defaults*.
 (defun libload (filestr)
   (declare (special libloads))
   (let* ((lib (directory-namestring filestr))
@@ -505,12 +510,12 @@
   (let* ((dep-lib-ref (libref-directory dep-file-ref))
 	 (lib-ref (get-relative-library-reference dep-lib-ref)))
     (multiple-value-bind (lib-path err-msg)
-	(libref-to-pathname dep-lib-ref)
+	(libref-to-pathname lib-ref)
       (if err-msg
 	  (type-error dep-file-ref err-msg)
 	  (unless (or (gethash lib-ref *prelude-libraries*)
 		      (file-equal lib-path *pvs-context-path*))
-	    (with-pvs-context dep-lib-ref
+	    (with-pvs-context lib-ref
 	      (let ((*current-theory* *current-theory*)
 		    (*pvs-context-writable*
 		     (write-permission? *pvs-context-path*))
@@ -685,66 +690,6 @@
 	     *prelude-libraries*)
     libs))
 
-(defun get-prelude-libraries ()
-  (assert *current-context*)
-  (nconc (get-prelude-libraries* (all-decls (module *current-context*))
-				 (declaration *current-context*))
-	 (get-using-prelude-libraries (using-hash *current-context*))))
-
-(defun get-prelude-libraries* (decls &optional end-decl libs)
-  (if (or (null decls)
-	  (eq (car decls) end-decl))
-      (nreverse libs)
-      (get-prelude-libraries*
-       (cdr decls) end-decl
-       (if (and (typep (car decls) 'lib-decl)
-		(not (member (library (car decls)) libs :test #'string=)))
-	   (cons (library (car decls)) libs)
-	   libs))))
-
-(defun get-using-prelude-libraries (using &optional libs)
-  (if (null using)
-      (nreverse libs)
-      (get-using-prelude-libraries
-       (cdr using)
-       (get-theory-prelude-libraries* (caar using) libs))))
-
-(defun get-theory-prelude-libraries* (theory libs)
-  (if (or (from-prelude? theory)
-	  (typep theory '(or library-theory library-datatype)))
-      libs
-      (get-prelude-libraries* (all-decls theory) nil (nreverse libs))))
-
-(defun get-visible-libraries ()
-  (assert *current-context*)
-  (nconc (get-visible-libraries* (all-decls (theory *current-context*))
-				 (declaration *current-context*))
-	 (get-using-visible-libraries (using-hash *current-context*))))
-
-(defun get-visible-libraries* (decls &optional end-decl libs)
-  (if (or (null decls)
-	  (eq (car decls) end-decl))
-      (nreverse libs)
-      (get-visible-libraries*
-       (cdr decls) end-decl
-       (if (and (typep (car decls) 'lib-decl)
-		(not (member (library (car decls)) libs :test #'string=)))
-	   (cons (library (car decls)) libs)
-	   libs))))
-
-(defun get-using-visible-libraries (using &optional libs)
-  (if (null using)
-      (nreverse libs)
-      (get-using-visible-libraries
-       (cdr using)
-       (get-theory-visible-libraries* (caar using) libs))))
-
-(defun get-theory-visible-libraries* (theory libs)
-  (if (or (from-prelude? theory)
-	  (typep theory 'library-theory))
-      libs
-      (get-visible-libraries* (all-decls theory) nil (nreverse libs))))
-
 (defun library-files ()
   (let ((files nil))
     (maphash #'(lambda (lib files&theories)
@@ -861,6 +806,10 @@
 ;;;      If the name starts with ".", "..", or "/" then it is a
 ;;;      relative or absolute pathname, and there is no ambiguity.
 
+;;;      We return a canonical libkey; in case a. we use the canonical
+;;;      lib-ref given in the library declaration, b. uses "./foo/", and
+;;;      c. uses "foo/".
+
 ;;;   2. A libkey, which is a string that is the canonical libref
 ;;;      This is used to look up the library in hash tables, and to
 ;;;      store information in the .pvscontext and .bin files.
@@ -894,7 +843,7 @@
     (if (file-exists-p dirstr)
 	(pathname-to-libref dirstr)
 	(or (get-library-reference (intern libstr))
-	    (values nil "Directory ~a does not exist" libstr)))))
+	    (values nil (format nil "Directory ~a does not exist" libstr))))))
 
 
 (defmethod get-library-reference ((libid symbol))
@@ -925,29 +874,28 @@
       (let* ((ldecl-lib-ref (lib-ref ldecl))
 	     (theory-lib-ref (lib-ref (module ldecl)))
 	     (theory-lib-path (libref-to-pathname theory-lib-ref)))
-	(assert theory-lib-path)
 	(if (string= ldecl-lib-ref theory-lib-ref)
 	    theory-lib-ref
 	    ;; Need to create lib-ref from current-context to ldecl-lib-ref
 	    ;; Do this by temporarily changing the working directory to
 	    ;; theory-lib-path, and getting the real path, then relativizing
 	    ;; it to the current context
-	    (let ((cdir (working-directory))
-		  (*default-pathname-defaults* *default-pathname-defaults*))
-	      (unwind-protect
-		  (progn (set-working-directory theory-lib-path)
-			 (setq *default-pathname-defaults*
-			       (working-directory))
-			 (relative-path (libref-to-pathname ldecl-lib-ref)))
-		(set-working-directory cdir)))))
+	    (if (member (char ldecl-lib-ref 0) '(#\/ #\. #\~))
+		(relative-path (merge-pathnames ldecl-lib-ref theory-lib-path)
+			       *pvs-current-context-path*)
+		theory-lib-ref)))
       (lib-ref ldecl)))
 
+;;; Given a lib-ref from a separate library (that is relative to the
+;;; *pvs-context-path*), returns a library relative to
+;;; *pvs-current-context-path*.
 (defun get-relative-library-reference (lib-ref)
   (if (or (eq *pvs-current-context-path* *pvs-context-path*)
 	  (not (member (char lib-ref 0) '(#\/ #\. #\~))))
       lib-ref
-      (relative-path (libref-to-pathname lib-ref)
-		     *pvs-current-context-path*)))
+      (let ((lib-path (merge-pathnames lib-ref *pvs-context-path*)))
+	(assert (file-exists-p lib-path))
+	(relative-path lib-path *pvs-current-context-path*))))
 
 (defun get-lib-decls (libid)
   (assert *current-context*)
@@ -965,61 +913,6 @@
     (concatenate 'string (get-library-reference dir) file)))
   
 
-;; (defun get-lib-decl-pathname (lib-decl)
-;;   (libref-to-pathname (lib-ref lib-decl)))
-
-;; (defun get-context-library-pathname (libstr)
-;;   (unless (member (char libstr 0) '(#\. #\/ #\~) :test #'char=)
-;;     (multiple-value-bind (libpath condition)
-;; 	(ignore-errors
-;; 	  (namestring (merge-pathnames libstr *pvs-context-path*)))
-;;       (if condition
-;; 	  (values nil nil condition)
-;; 	  (let ((lib-key (get-file-info libpath)))
-;; 	    (when lib-key
-;; 	      (let ((entry (assoc lib-key *library-alist* :test #'equal)))
-;; 		(if entry
-;; 		    (values (cdr entry) libpath)
-;; 		    (let ((reldir (concatenate 'string "./" libstr)))
-;; 		       (push (cons lib-key reldir) *library-alist*)
-;; 		       (values reldir libpath))))))))))
-
-;; (defun get-pvslib-pathname (libdir)
-;;   (unless (member (char libdir 0) '(#\. #\/ #\~) :test #'char=)
-;;     (multiple-value-bind (libpath condition)
-;; 	(ignore-errors
-;; 	  (namestring (merge-pathnames
-;; 		       libdir (format nil "~a/lib/" *pvs-path*))))
-;; 	(if condition
-;; 	    (values nil nil (format nil "~a" condition))
-;; 	    (let ((lib-key (get-file-info libpath)))
-;; 	      (if lib-key
-;; 		  (let ((entry (assoc lib-key *library-alist* :test #'equal)))
-;; 		    (cond (entry
-;; 			   (values (cdr entry) libpath))
-;; 			  (t
-;; 			   (push (cons lib-key libdir) *library-alist*)
-;; 			   (values libdir libpath))))))))))
-
-;; (defun get-rel-or-abs-pathname (libdir)
-;;   (when (member (char libdir 0) '(#\. #\/ #\~) :test #'char=)
-;;     (multiple-value-bind (libpath condition)
-;; 	(ignore-errors
-;; 	  (namestring (merge-pathnames libdir *pvs-context-path*)))
-;; 	(if condition
-;; 	    (values nil nil (format nil "~a" condition))
-;; 	    (let ((lib-key (get-file-info libpath)))
-;; 	      (if lib-key
-;; 		  (let ((entry (assoc lib-key *library-alist* :test #'equal)))
-;; 		    (if entry
-;; 			(values (cdr entry) libpath)
-;; 			(let ((rdir (if *pvs-relative-context-path*
-;; 					(relative-path
-;; 					 libdir *pvs-relative-context-path*)
-;; 					libdir)))
-;; 			  (push (cons lib-key rdir) *library-alist*)
-;; 			  (values rdir libpath))))))))))
-
 (defun all-decls (theory)
   (or (all-declarations theory)
       (let ((decls (append (formals theory)
@@ -1035,20 +928,19 @@
 
 
 ;;; lib-ref in this case is always relative to the pvs-context-path
-;;; NOT necessarily the pvs-current-context-path.
 (defun libref-to-pathname (lib-ref)
   (assert (stringp lib-ref))
   (assert (char= (char lib-ref (- (length lib-ref) 1)) #\/))
   (let ((lib-path (if (member (char lib-ref 0) '(#\~ #\. #\/) :test #'char=)
-		      ;; It's already a real pathname
-		      lib-ref
-		      ;; Otherwise it's a PVS library ref (e.g., finite_sets)
-		      ;; Prepend "*pvs-path*/lib/"
-		      ;;(format nil "~a/lib/~a" *pvs-path* lib-ref)
-		      (pvs-library-path-ref lib-ref))))
+		       ;; It's already a real pathname
+		       lib-ref
+		       ;; Otherwise it's a PVS library ref (e.g., finite_sets)
+		       ;; in the PVS_LIBRARY_PATH
+		       (pvs-library-path-ref lib-ref))))
     (if (file-exists-p lib-path)
 	lib-path
-	(values nil (format nil "Library ~a does not exist" lib-ref)))))
+	(progn (break)
+	(values nil (format nil "Library ~a does not exist" lib-ref))))))
 
 (defun pvs-library-path-ref (lib-ref &optional (libs *pvs-library-path*))
   (when libs
@@ -1141,6 +1033,13 @@
 	     (current-declarations-hash))
     lib-decls))
 
+;;; pvs-file-path is called from file-dependencies and
+;;; parsed-library-file?  Given a theory, it constructs the pathname to
+;;; the file containing the theory.  If it's in the current context, it is
+;;; simply the file name.  Otherwise it is the full path, which should not
+;;; be saved in the lib-ref of a lib-decl, nor as a depname in
+;;; file-dependencies.
+
 (defmethod pvs-file-path ((th datatype-or-module))
   (format nil "~a.pvs" (filename th)))
 
@@ -1150,20 +1049,11 @@
 ;;; pvs-file-path gets the path for the current context.
 (defmethod pvs-file-path ((th library-datatype-or-theory))
   (let* ((lib-ref (lib-ref th))
-	 (rel-lib-path
-	  (if (eq *pvs-context-path* *pvs-current-context-path*)
-	      (libref-to-pathname lib-ref)
-	      (let ((cdir (working-directory))
-		    (*default-pathname-defaults* *default-pathname-defaults*))
-		(unwind-protect
-		    (progn (set-working-directory *pvs-current-context-path*)
-			   (setq *default-pathname-defaults*
-				 (working-directory))
-			   (relative-path (libref-to-pathname lib-ref)
-					  *pvs-context-path*))
-		  (set-working-directory cdir))))))
-    (assert (file-exists-p rel-lib-path))
-    (format nil "~a~a.pvs" rel-lib-path (filename th))))
+	 (lib-path (if (char= (char lib-ref 0) #\.)
+		       (merge-pathnames lib-ref *pvs-current-context-path*)
+		       (libref-to-pathname lib-ref))))
+    (assert (file-exists-p lib-path))
+    (format nil "~a~a.pvs" lib-path (filename th))))
 
 (defmethod dep-lib-ref ((th datatype-or-module))
   (dep-lib-ref (lib-ref th)))
@@ -1172,97 +1062,11 @@
   (let ((rel-lib-path
 	 (if (eq *pvs-context-path* *pvs-current-context-path*)
 	     (libref-to-pathname lib-ref)
-	     (let ((cdir (working-directory))
-		   (*default-pathname-defaults* *default-pathname-defaults*))
-	       (unwind-protect
-		   (progn (set-working-directory *pvs-current-context-path*)
-			  (setq *default-pathname-defaults*
-				(working-directory))
-			  (relative-path (libref-to-pathname lib-ref)
-					 *pvs-context-path*))
-		 (set-working-directory cdir))))))
+	     (let ((*default-pathname-defaults* *pvs-current-context-path*))
+	       (relative-path (libref-to-pathname lib-ref)
+			      *pvs-context-path*)))))
     (assert (file-exists-p rel-lib-path))
     rel-lib-path))
 
 (defun libref-directory (pvs-file-string)
   (subseq pvs-file-string 0 (1+ (position #\/ pvs-file-string :from-end t))))
-
-;;; Converts a dep-file to one relative to the current context path
-;; (defun dep-file-to-pathname (pvs-file-string)
-;;   (let ((dirstr (libref-directory pvs-file-string)))
-;;     (multiple-value-bind (lib-dir err-msg)
-;; 	(dep-lib-ref dirstr)
-;;       (if err-msg
-;; 	  (values nil err-msg)
-;; 	  (let ((file (format nil "~a~a.pvs"
-;; 			lib-dir (pathname-name pvs-file-string))))
-;; 	    (if (file-exists-p file)
-;; 		file
-;; 		(values nil (format nil "~a not found" file))))))))
-
-;;; Needed when getting file dependencies
-;; (defun indirect-libref-to-direct-libref (lib-ref)
-;;   (if (or (eq *pvs-context-path* *pvs-current-context-path*) ; no problem
-;; 	  (not (char= (char lib-ref 0) #\.))) ; Not a relative lib-ref
-;;       lib-ref
-;;       (let* ((cdir (working-directory))
-;; 	     (*default-pathname-defaults* *default-pathname-defaults*)
-;; 	     (dlibref
-;; 	      (unwind-protect
-;; 		  (progn (set-working-directory *pvs-context-path*)
-;; 			 (setq *default-pathname-defaults* (working-directory))
-;; 			 (relative-path (libref-to-pathname lib-ref)
-;; 					*pvs-current-context-path*))
-;; 		(set-working-directory cdir))))
-;; 	(assert (let ((*default-pathname-defaults* *default-pathname-defaults*))
-;; 		  (unwind-protect
-;; 		      (progn (set-working-directory *pvs-current-context-path*)
-;; 			     (setq *default-pathname-defaults* (working-directory))
-;; 			     (file-exists-p dlibref))
-;; 		    (set-working-directory *pvs-context-path*))))
-;; 	dlibref)))
-
-;; This one is needed when ???
-;; (defun direct-libref-to-indirect-libref (lib-ref)
-;;   (if (eq *pvs-context-path* *pvs-current-context-path*)
-;;       lib-ref
-;;       (let* ((cdir (working-directory))
-;; 	     (*default-pathname-defaults* *default-pathname-defaults*)
-;; 	     (ilibref
-;; 	      (unwind-protect
-;; 		  (progn (set-working-directory *pvs-current-context-path*)
-;; 			 (setq *default-pathname-defaults*
-;; 			       (working-directory))
-;; 			 (relative-path (libref-to-pathname lib-ref)))
-;; 		(set-working-directory cdir))))
-;; 	ilibref)))
-
-;;; Some documentation:
-;;; Every library theory or datatype has a lib-ref slot, which is always set
-;;; relative to the *pvs-current-context-path*.  Lib-decls also have a
-;;; lib-ref slot, but it is always relative to the context of its
-;;; declaration.
-;;;
-;;;  indirect-libref-to-direct-libref (lib-ref)
-;;;    Converts a lib-ref of the *pvs-context-path* to one of the
-;;;    *pvs-current-context-path*
-;;;  get-relative-library-reference (lib-ref)
-;;;    Returns the lib-ref relative to the *pvs-current-context-path*
-;;;  pvs-file-path  (th)
-;;;    creates a file path to the given library theory th.
-;;;    This will be accessible to the *pvs-context-path*, and the file
-;;;    is checked with file-exists-p.
-;;;  dep-lib-ref (lib-ref)
-;;;    Converts a lib-ref of the *pvs-current-context-path* to one of the
-;;;    *pvs-context-path*.  The directory should satisfy file-exists-p.
-;;;  pathname-to-libref (lib-path)
-;;;    Given a lib-path - an existing directory - creates a lib-ref
-;;;    If the lib-path is a subdirectory of the <PVS>/lib directory, then
-;;;    "subd/" is returned.  Otherwise it tries to find a way to access
-;;;    the subdirectory from two levels above the *pvs-context-path*.
-;;;  libref-to-pathname (lib-ref)
-;;;    Returns the directory associated with a lib-ref - inverse to
-;;;    pathname-to-libref.
-;;;  get-library-reference (arg)
-;;;    Converts a library reference as provided by the user to a lib-ref.
-
