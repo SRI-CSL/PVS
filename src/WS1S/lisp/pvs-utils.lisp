@@ -1,11 +1,5 @@
 (in-package :pvs)
 
-(defun destructure-application (e &optional acc)
-  (if (application? e)
-      (destructure-application (operator e)
-                               (append (arguments e) acc))
-    (values e acc)))
-
 (defun destructure-bindings (bndngs &key exclude)
   (let ((*exclude* exclude))
     (declare (special *exclude*))
