@@ -92,7 +92,7 @@
 (defun copy-subst-mod-params-cache ()
   (let ((new-hash (make-hash-table
 		   :hash-function 'pvs-sxhash
-		   :test 'tc-eq
+		   :test 'strong-tc-eq
 		   :size (floor (hash-table-size *all-subst-mod-params-caches*)
 				1.5384616))))
     (maphash #'(lambda (modname hashes)
