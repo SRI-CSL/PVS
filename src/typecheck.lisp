@@ -583,6 +583,7 @@
 
 (defmethod subst-params-decl ((c conversion-decl) modinst)
   (lcopy c
+    'module (current-theory)
     'expr (subst-mod-params (expr c) modinst)))
 
 ;;; Remove formals that are not a part of the current module.  This
@@ -659,12 +660,18 @@
     (let ((lhs-theory (get-theory inst)))
       (unless lhs-theory
 	(type-error inst "Theory ~a not found" inst))
-      (let ((lhs-context (context lhs-theory)))
+      (let ((lhs-context (context lhs-theory))
+	    (lhs-theory-decls (interpretable-declarations lhs-theory)))
 	(dolist (mapping mappings)
 	  (let* ((*current-theory* lhs-theory)
 		 (*current-context* lhs-context)
-		 (lhs-theory-decls (interpretable-declarations lhs-theory))
 		 (*generate-tccs* 'none)
+		 (type (when (and (kind mapping)
+				  (eq (kind mapping) 'expr))
+			 (prog1 (typecheck* (declared-type mapping)
+					    nil nil nil)
+			   (let ((*generate-tccs* 'none))
+			     (set-type (declared-type mapping) nil)))))
 		 (tres (unless (and (kind mapping)
 				    (not (eq (kind mapping) 'type)))
 			 (delete-if-not
@@ -676,7 +683,9 @@
 				    (not (eq (kind mapping) 'expr)))
 			 (delete-if-not
 			     #'(lambda (r)
-				 (memq (declaration r) lhs-theory-decls))
+				 (and (memq (declaration r) lhs-theory-decls)
+				      (or (null type)
+					  (compatible? type (type r)))))
 			   (with-no-type-errors
 			    (resolve* (lhs mapping) 'expr nil)))))
 		 (thres (unless (and (kind mapping)
