@@ -2484,8 +2484,9 @@ BEGIN
   finite_singleton: JUDGEMENT singleton(x) HAS_TYPE finite_set
 
   finite_union: JUDGEMENT union(A, B) HAS_TYPE finite_set
-  finite_intersection: JUDGEMENT intersection(A, B) HAS_TYPE finite_set
-  finite_difference: JUDGEMENT difference(A, B) HAS_TYPE finite_set
+  finite_intersection1: JUDGEMENT intersection(S, A) HAS_TYPE finite_set
+  finite_intersection2: JUDGEMENT intersection(A, S) HAS_TYPE finite_set
+  finite_difference: JUDGEMENT difference(A, S) HAS_TYPE finite_set
 
   nonempty_finite_union1: JUDGEMENT union(NA, B) HAS_TYPE non_empty_finite_set
 
