@@ -220,7 +220,7 @@
 	  (if (binding-expr? (definition ndecl))
 	      (cons (bindings (definition ndecl))
 		    (simplify-disjunct (expression (definition ndecl))))
-	      (cons nil (simplify-disjunct (definition ndecl)))))
+	      (cons nil (simplify-disjunct (definition ndecl) nil))))
     (let ((match (car (member ndecl *tccdecls* :test #'subsumes)))
 	  (decl (declaration *current-context*)))
       (when (eq (spelling ndecl) 'OBLIGATION)
