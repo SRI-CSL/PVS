@@ -77,3 +77,14 @@
 			 index1 val1)))
 		   (t term))))
 	  (t term))))
+
+(defun add-use-of-update (term cong-state)
+  (let* ((index (update-index term))
+	 (use-of-update (mk-term (list term index))))
+    (add-use term use-of-update cong-state)))
+
+(defun array-solve (eqn cong-state)
+  (list eqn))
+
+(defun array-solve-neq (neq cong-state)
+  (list neq))
