@@ -958,6 +958,7 @@
   (multiple-value-bind (fdecl prf)
       (proofs-get-proof-at line)
     (setf (default-proof fdecl) prf)
+    (save-all-proofs (module fdecl))
     (display-proofs-buffer line)))
 
 (defun proofs-delete-proof (line)
@@ -969,6 +970,7 @@
     (setf (proofs fdecl) (delete prf (proofs fdecl)))
     (when (eq prf (default-proof fdecl))
       (setf (default-proof fdecl) (car (proofs fdecl))))
+    (save-all-proofs (module fdecl))
     (display-proofs-buffer line)))
 
 (defun proofs-rename (line id)
@@ -976,6 +978,7 @@
       (proofs-get-proof-at line)
     (declare (ignore fdecl))
     (setf (id prf) id)
+    (save-all-proofs (module fdecl))
     (display-proofs-buffer line)))
 
 (defun proofs-show-proof (line)
