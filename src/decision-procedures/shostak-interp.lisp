@@ -40,6 +40,18 @@
    ((bv-p term) (sigbvec term cong-state))
    (t term)))
 
+(defun recursive-sigma (term cong-state)
+  (cond
+   ((application-p term)
+    (if (interp? term)
+	(sigma (mk-term
+		   (cons (funsym term)
+			 (map-funargs-list
+			  #'recursive-sigma term cong-state)))
+	       cong-state)
+	term))
+   (t term)))
+	
 (defvar *process-types* t)
 
 
