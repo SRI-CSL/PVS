@@ -5,25 +5,23 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Fri Oct 30 11:36:10 1998
 ;; Update Count    : 5
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Status          : Beta test
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
-(defvar *store-print-types*)
-
 (defvar *fetched-theory-interpretations*)
 
 (defvar *restore-objects-seen*)
 
-(defvar *adt-type-name-pending*)
+(defvar *restore-object-hash*)
+
+(defvar *store-mapped-theories*)
 
 (defun save-theory (theory)
   (format t "~%Saving ~a" (binpath-id theory))
-  (let ((*store-print-type* nil))
+  (let ((*store-mapped-theories* nil))
     (store-object-to-file (cons *binfile-version* theory)
 			  (make-binpath (binpath-id theory)))))
 
@@ -40,7 +38,6 @@
 (defun get-theory-from-binfile (filename)
   (let* ((file (make-binpath filename))
 	 (start-time (get-internal-real-time))
-	 (*adt-type-name-pending* nil)
 	 (vtheory (fetch-object-from-file file))
 	 (load-time (get-internal-real-time)))
     (unless (and (listp vtheory)
@@ -48,6 +45,7 @@
 		 (= (car vtheory) *binfile-version*))
       (error "Bin file version is out of date"))
     (let* ((theory (cdr vtheory))
+	   (*restore-object-hash* (make-hash-table :test #'eq))
 	   (*restore-objects-seen* nil)
 	   (*assert-if-arith-hash* (make-hash-table :test #'eq))
 	   (*subtype-of-hash* (make-hash-table :test #'equal))
@@ -58,6 +56,7 @@
       (assert (datatype-or-module? theory))
       (assert (not (eq (lhash-next (declarations-hash (saved-context theory)))
 		       'prelude-declarations-hash)))
+      (postrestore-context *current-context*)
       (pvs-message
 	  "Restored theory from ~a.bin in ~,2,-3fs (load part took ~,2,-3fs)"
 	filename (realtime-since start-time)
@@ -120,7 +119,16 @@
   (assert (slot-value obj 'adt))
   (if (inline-recursive-type? (adt obj))
       (call-next-method)
-      (call-next-method (copy obj 'adt (id (adt obj))))))
+      (call-next-method (copy obj
+			  'adt (if (library-recursive-type? (adt obj))
+				   (cons (lib-ref (adt obj))
+					 (id (adt obj)))
+				   (id (adt obj)))))))
+
+(defmethod store-object* :around ((obj mod-decl))
+  (let ((*store-mapped-theories* (cons (get-theory (modname obj))
+				       *store-mapped-theories*)))
+    (call-next-method)))
 
 (defmethod store-object* :around ((obj resolution))
   (when (datatype? (get-theory (module-instance obj)))
@@ -165,6 +173,12 @@
     (theory-interpretation
      (pushnew obj *fetched-theory-interpretations*))
     (t (assert (filename obj))
+       (when (recursive-type? obj)
+	 (let ((atns (assq (id obj) *adt-type-name-pending*)))
+	   (dolist (atn (cdr atns))
+	     (setf (adt atn) obj))
+	   (setf *adt-type-name-pending*
+		 (delete atns *adt-type-name-pending*))))
        (pushnew (id obj) *bin-theories-set*)
        (setf (gethash (id obj) *pvs-modules*) obj))))
 
@@ -185,7 +199,8 @@
   (let ((module (module obj)))
     (reserve-space 3
       (unless (or (from-prelude? module)
-		  (assq module (all-usings *saving-theory*)))
+		  (assq module (all-usings *saving-theory*))
+		  (memq module *store-mapped-theories*))
 	(break "Attempt to store declaration in illegal theory"))
       (push-word (store-obj 'declref))
       (push-word (store-obj (id module)))
@@ -193,6 +208,7 @@
 
 (defmethod store-object* :around ((obj inline-recursive-type))
   (with-slots ((theory adt-theory)) obj
+    (assert (position obj (all-decls theory)))
     (if (not (eq theory *saving-theory*))
 	(if (library-datatype-or-theory? theory)
 	    (reserve-space 4
@@ -246,13 +262,18 @@
   (unless (and (type-value type-decl)
 	       (or (and (type-name? (type-value type-decl))
 			(eq (declaration (type-value type-decl)) type-decl))
-		   (and	;;(subtype? (type-value type-decl))
-		    (type-application? (print-type (type-value type-decl)))
-		    (eq (declaration (type (print-type (type-value type-decl))))
-			type-decl))))
+		   (and (subtype? (type-value type-decl))
+			(type-name? (print-type (type-value type-decl)))
+			(eq (declaration
+			     (resolution (print-type (type-value type-decl))))
+			    type-decl))
+		   (and (type-application? (print-type (type-value type-decl)))
+			(eq (declaration
+			     (type (print-type (type-value type-decl))))
+			    type-decl))))
     (type-value type-decl)))
   
-(defmethod all-usings ((obj datatype))
+(defmethod all-usings ((obj recursive-type))
   (cons (list (adt-theory obj) (mk-modname (id (adt-theory obj))))
 	(all-usings (adt-theory obj))))
 
@@ -432,8 +453,10 @@
 (defmethod update-fetched :around ((obj adt-type-name))
   (call-next-method)
   (assert (eq (free-parameters obj) 'unbound))
-  (when (symbolp (adt obj))
-    (let ((rec-type (get-theory (adt obj))))
+  (when (or (symbolp (adt obj))
+	    (stringp (adt obj)))
+    (let ((rec-type (when (symbolp (adt obj))
+		      (get-theory (adt obj)))))
       (if rec-type
 	  (let ((atns (assq (adt obj) *adt-type-name-pending*)))
 	    (dolist (atn (cdr atns))
@@ -566,11 +589,8 @@
 
 
 
-(defvar *restore-object-hash*)
-
 (defun restore-object (obj)
-  (let ((*restore-object-hash* (make-hash-table :test #'eq)))
-    (restore-object* obj)))
+  (restore-object* obj))
 
 (defvar *restoring-theory* nil)
 
@@ -589,53 +609,53 @@
   (setf (type-value (declaration (adt-type-name obj)))
 	(adt-type-name obj)))
 
-;; (defmethod restore-object* :around ((obj adt-type-name))
-;;   (assert (slot-value obj 'adt))
-;;   (call-next-method))
+(defmethod restore-object* :around ((obj adt-type-name))
+  (call-next-method)
+  (when (consp (adt obj))
+    (let ((lib (car (rassoc (car (adt obj)) (current-library-alist)
+			    :test #'equal))))
+      (assert lib)
+      (let ((adt (get-theory* (cdr (adt obj)) lib)))
+	(assert adt)
+	(setf (adt obj) adt)))))
 
 (defmethod restore-object* :around ((obj importing))
   (when (saved-context obj)
-    (setq *current-context* (prerestore-context (saved-context obj))))
-  (call-next-method))
+    (setq *current-context*
+	  (copy-context (prerestore-context (saved-context obj)))))
+  (call-next-method)
+  (postrestore-context *current-context*))
 
 (defmethod restore-object* :around ((obj formal-theory-decl))
   (setq *current-context* (prerestore-context (saved-context obj)))
-;;   (prog1 (call-next-method)
-;;     (assert (not (eq (lhash-next (declarations-hash *current-context*))
-;; 		     'prelude-declarations-hash))))
-  (call-next-method))
+  (call-next-method)
+  (let ((gtheory (get-theory (id obj))))
+    (assert (theory-interpretation? gtheory))
+    (setf (generated-by-decl gtheory) obj)
+    (setf (generated-theory obj) gtheory))
+  (postrestore-context *current-context*))
 
 (defmethod restore-object* :around ((obj mod-decl))
   (setq *current-context* (prerestore-context (saved-context obj)))
-;;   (prog1 (call-next-method)
-;;     (assert (not (eq (lhash-next (declarations-hash *current-context*))
-;; 		     'prelude-declarations-hash))))
-  (call-next-method))
+  (call-next-method)
+  (let ((gtheory (get-theory (id obj))))
+    (assert (theory-interpretation? gtheory))
+    (setf (generated-by-decl gtheory) obj)
+    (setf (generated-theory obj) gtheory))
+  (postrestore-context *current-context*))
 
 (defmethod restore-object* :around ((obj theory-abbreviation-decl))
   (setq *current-context* (prerestore-context (saved-context obj)))
 ;;   (prog1 (call-next-method)
 ;;     (assert (not (eq (lhash-next (declarations-hash *current-context*))
 ;; 		     'prelude-declarations-hash))))
-  (call-next-method))
-
-(defmethod restore-object* :around ((obj type-decl))
   (call-next-method)
-  (assert (not (store-print-type? (type-value obj))))
-  (unless (type-value obj)
-    (let* ((tn (mk-type-name (id obj)))
-	   (res (mk-resolution obj (mk-modname (id (module obj))) tn)))
-      (setf (resolutions tn) (list res))
-      (let ((ptype (if (formals obj)
-		       (make-instance 'type-application
-			 'type tn
-			 'parameters (mapcar #'mk-name-expr
-				       (car (formals obj))))
-		       tn)))
-	(if (type-def-decl? obj)
-	    (setf (type-value obj) (type-def-decl-saved-value obj ptype))
-	    (setf (type-value obj) tn))
-	(assert (true-type-expr? (type-value obj))))))
+  (postrestore-context *current-context*))
+
+(defmethod restore-object* :around ((obj subtype))
+  (call-next-method)
+  (assert (not (store-print-type? (supertype obj))) ()
+	  "store-print-type subtype")
   obj)
 
 (defun prerestore-context (obj)
@@ -803,6 +823,18 @@
 		      (car known-subtypes))
 		  ksubtypes)))))
 
+(defun postrestore-context (obj)
+  ;;(postrestore-declarations-hash (declarations-hash obj))
+  ;;(postrestore-using-hash (using-hash obj))
+  (postrestore-context-conversions (conversions obj))
+  ;;(postrestore-context-judgements (judgements obj))
+  ;;(postrestore-context-known-subtypes (known-subtypes obj))
+  obj)
+
+(defun postrestore-context-conversions (convs)
+  (dolist (conv convs)
+    (restore-object* conv)))
+
 (defmethod restore-object* :around ((obj declaration))
   (unless (or (typep obj '(or mod-decl theory-abbreviation-decl
 			      formal-theory-decl))
@@ -811,17 +843,39 @@
     (put-decl obj))
   (if (and (module obj)
 	   (eq (module obj) *restoring-theory*))
-      (let ((*restoring-declaration* obj))
-	(call-next-method))
-      obj))
+      (if (boundp '*restoring-declaration*)
+	  (unless (or (eq *restoring-declaration* obj)
+		      (memq *restoring-declaration*
+			    (memq obj (all-decls (module obj)))))
+	    (break "trying to look ahead"))
+	  (let ((*restoring-declaration* obj))
+	    (call-next-method)))
+      (call-next-method)))
+
+(defmethod restore-object* :around ((obj type-decl))
+  (call-next-method)
+  (assert (not (store-print-type? (type-value obj))))
+;;   (assert (or (not (subtype? (type-value obj)))
+;; 	      (not (store-print-type? (supertype (type-value obj))))))
+  (unless (type-value obj)
+    (let* ((tn (mk-type-name (id obj)))
+	   (res (mk-resolution obj (mk-modname (id (module obj))) tn)))
+      (setf (resolutions tn) (list res))
+      (let ((ptype (if (formals obj)
+		       (make-instance 'type-application
+			 'type tn
+			 'parameters (mapcar #'mk-name-expr
+				       (car (formals obj))))
+		       tn)))
+	(if (type-def-decl? obj)
+	    (setf (type-value obj) (type-def-decl-saved-value obj ptype))
+	    (setf (type-value obj) tn))
+	(assert (true-type-expr? (type-value obj))))))
+  obj)
 
 (defmethod restore-object* :around ((obj conversionminus-decl))
   (call-next-method)
   (disable-conversion obj))
-
-(defmethod restore-object* :around ((obj conversion-decl))
-  (call-next-method)
-  (push obj (conversions *current-context*)))
 
 (defmethod restore-object* :around ((obj type-name))
   (let* ((res (resolution obj))
@@ -833,9 +887,12 @@
 	   (let ((*restore-object-parent* obj)
 		 (*restore-object-parent-slot* 'actuals))
 	     (restore-object* (actuals obj)))
-	   (let ((*restore-object-parent* (resolution obj))
+	   (let ((*restore-object-parent* res)
 		 (*restore-object-parent-slot* 'module-instance))
-	     (restore-object* (module-instance (resolution obj))))
+	     (restore-object* (module-instance res)))
+	   (let ((*restore-object-parent* res)
+		 (*restore-object-parent-slot* 'declaration))
+	     (restore-object* (declaration res)))
 	   obj)
 	  (t (call-next-method)))))
 
@@ -858,6 +915,12 @@
 	   obj)
 	  (t (let* ((*restore-objects-seen* (cons obj *restore-objects-seen*))
 		    (nobj (call-next-method)))
+	       (when (subtype? nobj)
+		 (assert (not (store-print-type? (supertype nobj))) ()
+			 "nobj: call-next-method should have restored supertype"))
+	       (when (subtype? obj)
+		 (assert (not (store-print-type? (supertype obj))) ()
+			 "obj: call-next-method should have restored supertype"))
 	       (unless (eq obj nobj)
 		 (setf-restored-object nobj))
 	       (assert (not (store-print-type? nobj)) ()
@@ -942,7 +1005,8 @@
 
 (defmethod restore-object* ((obj store-print-type))
   (or (type obj)
-      (let ((pt (print-type obj)))
+      (let ((pt (print-type obj))
+	    (*pseudo-normalizing* t))
 	(cond ((and (type-name? pt)
 		    (store-print-type? (type-value (declaration pt))))
 	       ;;(assert (eq (type-value (declaration pt)) obj))
@@ -977,11 +1041,17 @@
 
 (defun type-def-decl-saved-value (decl tn)
   (cond ((type-from-decl? decl)
-	 (break "type-def-decl-saved-value")
-	 (check-type-application-formals decl)
 	 (let* ((*bound-variables* (apply #'append (formals decl)))
 		(stype (typecheck* (type-expr decl) nil nil nil))
-		(utype (generate-uninterpreted-subtype decl stype)))
+		(pname (makesym "~a_pred" (id decl)))
+		(pdecl (find-if #'(lambda (d)
+				    (and (const-decl? d)
+					 (eq (id d) pname)))
+			 (generated decl)))
+		(pexpr (mk-name-expr (id pdecl) nil nil
+				     (mk-resolution pdecl (current-theory-name)
+						    (type pdecl))))
+		(utype (mk-subtype stype pexpr)))
 	   (set-type (type-expr decl) nil)
 	   (setf (type-value decl) utype)
 	   (assert (type-expr? tn))
@@ -1048,7 +1118,7 @@
 	       (type-expr (if (actuals thinst)
 			      (subst-mod-params tval thinst)
 			      (copy tval 'print-type te))))
-	  (assert (print-type type-expr))
+	  (assert (or (print-type type-expr) (tc-eq te type-expr)))
 	  (assert (true-type-expr? type-expr))
 	  type-expr))))
 
