@@ -7,8 +7,9 @@
   `(node-type ,sym))
 
 (defun interp? (term)
-  (and (application-p term)
-       (interpsym? (funsym term))))
+  (or (and (application-p term)
+	   (interpsym? (funsym term)))
+      (applyupdate-p term)))
 
 (defvar *current-cs* nil)
 
