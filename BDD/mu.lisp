@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pvs-mu.lisp -- Interface to the Mu-calculus model-checker
 ;; Author          : Sree, Shankar and Saidi
 ;; Created On      : Wed May  3 19:51:22 1995
@@ -126,6 +126,172 @@
 		      (values 'X nil nil)
 		      (values '? ;;;something related to pvs-output
 			      subgoals)))))))))
+
+;;
+;; Saidi(4.6.98)
+;; Temporary comments
+;;
+;; New run-musimp function. Calls run-pvsmu to run the model-checker.
+;; Calls add-mu-subgoals to build new subgoals.
+;;
+
+
+(defun run-musimp (ps fnums dynamic-ordering?)
+(let* ((sforms (s-forms (current-goal ps)))
+	   (selected-sforms (select-seq sforms fnums))
+	   (remaining-sforms (delete-seq sforms fnums))
+	   (mu-expression
+	    (make-bdd-restriction-expr ;; to change
+	       (convert-pvs-to-mu-expr  ;; to change
+		(make-conjunction
+		 (mapcar #'(lambda (sf) (negate (formula sf)))
+		   selected-sforms)))
+	       (make-bdd-conjunction-expr ;;  to change BDD-AND ???
+		(loop for x in  *pvs-bdd-inclusivity-formulas*
+		      when (null (freevars (car x)));;NSH(8.17.95): subtypes
+		      collect
+		      (cdr x)))))
+           (mu-output (run-pvsmu mu-expression dynamic-ordering?))
+        )
+     (add-mu-subgoals ps sforms mu-output remaining-sforms)
+  )
+)
+
+
+;;
+;;
+;; run-pvsmu
+;;
+
+(defun run-pvsmu (mu-expression dynamic-ordering?)
+ (let ((*pvs-bdd-hash* (make-pvs-hash-table :hashfn #'pvs-sxhash
+					     :test #'tc-eq))
+	(*bdd-pvs-hash* (make-hash-table :test #'eq))
+	(*pvs-bdd-inclusivity-formulas* nil)
+	(*bdd-counter* *bdd-counter*)
+	(*recognizer-forms-alist* nil)
+	(*dynamic-ordering?* dynamic-ordering?)
+	(*mu-subtype-list* nil))
+   (real-run-pvsmu mu-expression *dynamic-ordering?*)
+ )
+)
+
+;;
+;;
+;; add-mu-subgoals 
+;;
+
+(defun add-mu-subgoals (ps sforms mu-output remaining-sforms)
+      (if (string= mu-output "") ;; NO should find out what is the
+                                 ;; mu-expression for empty result
+	  (values 'X nil nil)
+	  (let ((pvs-output (convert-mu-expr-to-pvs mu-output)))
+	    (if (null pvs-output)
+		(values 'X nil nil)
+		(let* ((conjuncts (and+ (negate pvs-output)))
+		       (subgoals (mapcar
+				    #'(lambda (disj-fmla)
+				        (copy (current-goal ps)
+				          's-forms
+					  (nconc
+					   (mapcar
+					       #'(lambda (fmla)
+					           (let ((mem
+							 (member fmla sforms
+							       :key #'formula
+							       :test #'tc-eq)))
+						    (if mem (car mem)
+						       (make-instance 's-formula
+							    'formula fmla))))
+					      (simplify-disjunct disj-fmla))
+					    remaining-sforms)))
+				   conjuncts)))
+		  (if (and (singleton? subgoals)
+			   (subsetp (s-forms (car subgoals)) sforms)
+			   (subsetp sforms (s-forms (car subgoals))))
+		      (values 'X nil nil)
+		      (values '? ;;;something related to pvs-output
+			      subgoals))))))
+)
+
+
+;;
+;;
+;; convert-pvs-to-mu-expr
+;; calls convert-pvs-to-mu-expr*
+;;
+
+(defun convert-pvs-to-mu-expr (expr) ;;expr must be of boolean type
+  (let* ((*bound-variables* nil)
+	 (*mu-nu-lambda-bindings-list* nil)
+	 (mu-expr (convert-pvs-to-mu-expr* expr)))
+ mu-expr)
+)
+
+;;
+;; convert-pvs-to-mu-expr* :around ((expr expr));; same as the original version
+;; convert-pvs-to-mu-expr* ((expr list))        ;; same as the original version
+;; convert-pvs-to-mu-expr* ((expr cases-expr))  ;; same as the original version 
+;; convert-pvs-to-mu-expr* ((expr application)) ;; NOT the same 
+;; convert-pvs-to-mu-expr* ((expr expr))        ;; NOT the same 
+;; convert-pvs-to-mu-expr* ((expr number-expr)) ;; NOT the same 
+;;
+
+(defmethod convert-pvs-to-mu-expr* :around ((expr expr))
+  (let ((type (type expr)))
+    (when (and (subtype? type)
+	       (not (member expr *mu-subtype-list* :test #'tc-eq))
+	       (not (assoc expr *pvs-bdd-inclusivity-formulas*
+			   :test #'tc-eq)))
+      (let ((constraints (collect-type-constraints-step expr))
+	    (*mu-subtype-list* (cons expr *mu-subtype-list*)))
+	(loop for x in constraints do
+	      (push (cons expr (convert-pvs-to-mu* x))
+		    *pvs-bdd-inclusivity-formulas*))
+	(format t "~%Added constraints: ~a" constraints)))
+    (call-next-method)))
+
+;;
+;;
+;;
+
+(defmethod convert-pvs-to-mu-expr* ((expr list))
+  (loop for x in expr
+	append (let ((result (convert-pvs-to-mu-expr* x)))
+		(if (listp result)
+		    result
+		    (list result)))))
+
+;;
+;;
+;;
+
+(defmethod convert-pvs-to-mu-expr* ((expr cases-expr))
+  (convert-pvs-to-mu-expr* (translate-cases-to-if expr)))
+
+;;
+;;
+;;
+
+(defmethod convert-pvs-to-mu-expr* ((expr number-expr))
+  (convert-number-expr (number expr)))
+
+(defmethod convert-number-expr (number) ;; ????
+ 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                          ;;;
+;;                                                                          ;;;
+;;                                                                          ;;;
+;;                                                                          ;;; 
+;;                                                                          ;;;
+;;                                                                          ;;;
+;;                                                                          ;;;
+;;                                                                          ;;;
+;;                                                                          ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;NSH(4.7.95): A brief explanation of the convert-pvs-to-mu.
 ;;The musimp rule invokes musimp-fun which sets up *pvs-bdd-hash*
