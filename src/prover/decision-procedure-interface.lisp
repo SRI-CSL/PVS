@@ -214,9 +214,7 @@
 
 (defmethod dpi-end* ((dp (eql 'ics)) proofstate)
   (declare (ignore proofstate))
-  (clrhash *pvs-to-ics-hash*)
-  (clrhash *ics-to-pvs-hash*)
-  (setf *unique-name-counter* 0)
+  (pvs-to-ics-reset)
   (ics_reset))
 
 (defmethod dpi-empty-state* ((dp (eql 'ics)))
@@ -224,28 +222,20 @@
 
 (defmethod dpi-process* ((dp (eql 'ics)) (pvs-expr expr) state)
   (let* ((ics-expr (translate-to-ics pvs-expr))
-	 (ics-value (ics-process state ics-expr)))
-    (cond ((not (zerop (ics_is_consistent ics-value)))
-	   (let ((nstate (ics-d-consistent ics-value)))
-	     (values nil nstate)))
-	  ((not (zerop (ics_is_inconsistent ics-value)))
+	 (result (ics-process state ics-expr)))
+    (cond ((eql result :unsat)
 	   (values *false* state))
+	  ((eql result :valid)
+	   (values *true* state))
 	  (t
-	   (values *true* state)))))
+	   (values nil result)))))
 
 (defmethod dpi-process* ((dp (eql 'ics)) ics-expr state)
-  (let* ((ics-value (wrap ics-expr)))
-    (cond ((not (zerop (ics_is_consistent ics-value)))
-	   (let ((nstate (ics-d-consistent ics-value)))
-	     (values nil nstate)))
-	  ((not (zerop (ics_is_inconsistent ics-value)))
-	   (values *false* state))
-	  (t
-	   (values *true* state)))))
+  (break "Hypothesis: only called when ICS returns disjunction"))
 	 
-
-(defmethod dpi-valid?* ((dp (eql 'ics)) state pvs-expr)
-  (not (zerop (ics_is_valid state (ics_process state pvs-expr)))))
+(defmethod dpi-valid?* ((dp (eql 'ics)) state (pvs-expr expr))
+  (let ((ics-expr (translate-to-ics pvs-expr)))
+    (ics-is-valid state ics-expr)))
 
 (defmethod dpi-push-state* ((dp (eql 'ics)) state)
   state)
