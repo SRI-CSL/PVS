@@ -9,6 +9,7 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -324,12 +325,12 @@
   (free-params* type frees))
 
 (defmethod free-params-res (decl (mi modname) type frees)
-  (declare (ignore decl type))
+  (declare (ignore type))
   (with-slots (actuals) mi
     (if actuals
 	(let ((afrees (free-params* actuals nil)))
 	  (union afrees frees :test #'eq))
-	(let ((theory (get-theory mi)))
+	(let ((theory (module decl)))
 	  (when theory
 	    (dolist (x (formals-sans-usings theory))
 	      (setq frees (pushnew x frees :test #'eq))))
