@@ -446,7 +446,7 @@
 (defun type-error (obj message &rest args)
   (if *type-error-catch*
       (throw *type-error-catch*
-	     (values nil (format nil "~%~?" message args)))
+	     (values nil (set-strategy-errors (format nil "~%~?" message args))))
       (let ((place (place obj)))
 	(cond ((and *to-emacs*
 		    (or (not *in-checker*)
