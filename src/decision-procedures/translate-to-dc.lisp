@@ -6,6 +6,7 @@
 		     #+allegro (debug 1)))
 
 (defvar *translate-rewrite-rule* nil)
+(defvar *translate-from-dc-hash* (dp::dp-make-eq-hash-table))
 
 
 (defparameter *dc-interpreted-names*
@@ -108,18 +109,23 @@
 ;;; This also sets up the global variables typealist, and inserts
 ;;; subtype information.
 
+
+(defun set-inverse-translation (expr inverse)
+  (if *use-translate-from-dc-hash*
+      (setf (gethash expr *translate-from-dc-hash*) inverse)
+      (setf (dp::node-external-info expr) inverse)))
+
 (defmethod translate-to-dc :around (obj)
   (let ((hashed-value (gethash obj *translate-to-dc-hash*)))
     (or hashed-value
-	(when (and nil (typep obj 'name-expr)
-		   (eq (id obj) '^))
-	  (break))
 	(let ((result (call-next-method)))
 	  (unless (or *bound-variables* *bindings*)
-	    (setf (gethash obj *translate-to-dc-hash*) result)
-	    (setf (gethash result *translate-from-dc-hash*) obj))
+	    (when (dp::node-p result)
+	      (setf (gethash obj *translate-to-dc-hash*) result)))
+	  ;(setf (gethash result *translate-from-dc-hash*) obj)
+	  (when (dp::node-p result)
+	    (set-inverse-translation result obj))
 	  result))))
-
 
 (defmethod translate-to-dc ((list list))
   (mapcar #'(lambda (l) (translate-to-dc l)) list))
