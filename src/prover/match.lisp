@@ -1014,11 +1014,12 @@
 (defun tc-eq-or-match (lhs rhs modsubst)
   (if (eq modsubst t)
       (strict-compatible? lhs rhs)
-      (multiple-value-bind (nmodsubst strict-matches)
-	  (tc-match rhs lhs modsubst *strict-matches*)
-	(when strict-matches
-	  (setq *strict-matches* (union strict-matches *strict-matches*)))
-	nmodsubst)))
+      (when modsubst
+	(multiple-value-bind (nmodsubst strict-matches)
+	    (tc-match rhs lhs modsubst *strict-matches*)
+	  (when strict-matches
+	    (setq *strict-matches* (union strict-matches *strict-matches*)))
+	  nmodsubst))))
 
 (defun tc-eq-or-match* (lhs rhs-list modsubst)
   (when rhs-list
