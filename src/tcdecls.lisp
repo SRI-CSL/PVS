@@ -45,7 +45,8 @@
   ;; typecheck-decls will not be affected, and TCCs may be accidentally
   ;; added.
   (when (or (null (generated-by decl))
-	    (typechecked? (generated-by decl)))
+	    (and (declaration (generated-by decl))
+		 (typechecked? (generated-by decl))))
     (if (and (typechecked? decl)
 	     (not (typep decl '(or theory-abbreviation-decl
 				   mod-decl conversion-decl auto-rewrite-decl

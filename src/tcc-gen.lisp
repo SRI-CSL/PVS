@@ -868,7 +868,7 @@
       (dolist (ax (remove-if-not #'axiom? (theory mod)))
 	(let* ((*old-tcc-name* nil)
 	       (ndecl (make-mapped-axiom-tcc-decl ax modinst))
-	       (netype (nonempty-formula-type ndecl)))
+	       (netype (when ndecl (nonempty-formula-type ndecl))))
 	  (if (and ndecl
 		   (or (null netype)
 		       (possibly-empty-type? netype)))
