@@ -374,7 +374,7 @@ cond-case ::= {expr^l '->' expr^r} <cond-case(expr^l,expr^r)>;
 lambda-body ::= {lambda-formals [{'->' type-expr}] ':' expr}
 		   <lambda-body(lambda-formals,
 			        [noreturntype()|type-expr],
-				expr)>;nnn
+				expr)>;
 
 % What we would really like to say here is
 %   lambda-formals ::= adformal++',' | pdformals+
