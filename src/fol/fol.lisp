@@ -57,7 +57,6 @@
 
 (defun fol-search (st fmlas &optional (k #'identity))
   (declare (ignore st))                               ; for the time being
-  (format t "~%Proof Search: ~%~{~a~^~%~}" fmlas)
   (let ((lfmlas (mapcar #'(lambda (fmla)
 			    (mk-fmla *start-label* fmla))
 		  fmlas)))
@@ -74,11 +73,10 @@
 		     ha1 hn1 h1
 		     ca1 cn1 c1
 		     labels unifier k)
-  (format t "~%Proof Search: ~a ~a" ha ca)
-  (try-to-unify1 ca1 ha labels unifier
+  (try-to-unify1 ha ca1 labels unifier
 		#'(lambda (new-unifier)
 		    (if (fail? new-unifier)
-			(try-to-unify1 ha1 ca labels unifier
+			(try-to-unify1 ca ha1 labels unifier
 				      #'(lambda (new-unifier)
 					  (if (fail? new-unifier)
 					      (splitting ha1 hn1 h1
@@ -93,7 +91,6 @@
 		      ha2 hs2 ca2 cs2
 		      ha hs ca cs
 		      label labels unifier k)
-  (format t "~%Process goals")
   (proof-search ha1 ca1
 	  (union ha1 ha :test #'fmla=) hs1 (once* hs)
 	  (union ca1 ca :test #'fmla=) cs1 (once* cs)
@@ -147,11 +144,13 @@
 	 (error "Unreachable"))))
 	 
 (defun split+ (ha ho hn ca co cn labels unifier k)
+  (assert (consp cn))
   (let* ((c1 (car cn))
 	 (l  (label-of c1))
 	 (fl (freeze l))
 	 (e  (fmla-of c1))
 	 (cn (cdr cn)))
+    (format t "~%Cfmla: ~a" c1)
     (if (conjunction-p e)
 	(multiple-value-bind (ha1 hs1 ca1 cs1)
 	    (flatten () hn ()
@@ -172,12 +171,14 @@
 
 (defun split- (ha ho hn ca co cn labels unifier k)
   (declare (ignore cn))
-  (let* ((c1 (car hn))
-	 (l  (label-of c1))
-	 (e  (fmla-of c1))
+  (assert (consp hn))
+  (let* ((h1 (car hn))
+	 (l  (label-of h1))
+	 (e  (fmla-of h1))
 	 (fl (freeze l))
 	 (hn (cdr hn))
 	 (new-labels (adjoin fl labels :test #'labels=)))
+    (format t "~%Hfmla: ~a" h1)
     (cond ((disjunction-p e)
 	   (multiple-value-bind (ha1 hs1 ca1 cs1) 
 	       (flatten () hn (list (mk-fmla fl (rhs e)))
@@ -216,7 +217,6 @@
 ;; Search for Unifiers
 
 (defun try-to-unify1 (hyps concs labels unifier k)
-  (format t "~%Try unify")
   (if (null concs)
       (funcall k *fail*)
       (try-to-unify2 hyps (car concs) labels unifier
@@ -268,7 +268,7 @@
 		:subst subst))
 
 (defun subst-of (uni)
-  (unifier-state uni))
+  (unifier-subst uni))
 
 (defun labels-of (uni)
   (unifier-labels uni))
@@ -300,6 +300,9 @@
 
   (defun frozen-lvar-p (x)
     (gethash x (frozen-vars-p)))
+
+  (defun frozen-init ()
+    (clrhash *frozen-vars-p*))
 )
 
 (defun unlabel (trm)
@@ -312,8 +315,8 @@
   (declare (special *label*))
   (cond ((dp-variable-p trm)
 	 (let ((x (mk-variable (pvs::makesym "~a~a" (constant-id trm) *label*))))
-	;   (when (frozen? *label*)
-	;       (setf (gethash x (frozen-vars-p)) T))
+	   (when (frozen? *label*)
+	     (setf (gethash x (frozen-vars-p)) T))
 	   x))
 	((application-p trm)
 	 (mk-term (cons (funsym trm)
