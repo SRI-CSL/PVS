@@ -445,7 +445,12 @@
       (id-occurs-in id (expression ass))))
 
 (defmethod id-occurs-in (id (nm name))
-  (or (string= id (id nm))
+  (or (if (symbolp id)
+	  (and (symbolp (id nm))
+	       (string= id (id nm)))
+	  (and (integerp id)
+	       (integerp (id nm))
+	       (= id (id nm))))
       (id-occurs-in id (actuals nm))))
 
 (defmethod id-occurs-in (id (act actual))
