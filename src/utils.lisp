@@ -42,7 +42,7 @@
 #+allegro
 (defmethod copy ((ht hash-table) &rest args)
   (let* ((test (hash-table-test ht))
-	 (size (hash-table-size ht))
+	 (size (floor (hash-table-size ht) 1.5384616))
 	 (new-ht (if (memq test '(eq eql equal equalp))
 		     (make-hash-table :test test :size size)
 		     (make-hash-table :test test :size size
