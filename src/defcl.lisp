@@ -183,6 +183,12 @@ unignored slots, saved-slots, and unsaved-slots.")
 			    slots))))
 	   :stream out :level nil :length nil :pretty t)
     (format out "~2%")
+;     (write `(defmethod copy-slots ((to ,name) (from ,name))
+; 	      (with-slots ,unignored-slots to
+; 		,@(mapcar #'(lambda (sl) `(setf ,sl (,sl from)))
+; 		    unignored-slots)))
+; 	   :stream out :level nil :length nil :pretty t)
+;     (format out "~2%")
     (write `(defmethod store-object* ((obj ,name))
 	      (reserve-space ,(1+ (length saved-slots))
 		(with-slots ,(mapcar #'car saved-slots) obj
