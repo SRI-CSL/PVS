@@ -1328,7 +1328,11 @@
 (defun find-known-subtypes* (type-expr known-subtypes found-subtypes)
   (if (null known-subtypes)
       (reverse found-subtypes)
-      (let ((subst (subtype-of-test type-expr (caar known-subtypes))))
+      (let ((subst (if (memq (caar known-subtypes) *subtypes-matched*)
+		       'fail
+		       (subtype-of-test type-expr (caar known-subtypes)))))
+	(unless (eq subst 'fail)
+	  (push (caar known-subtypes) *subtypes-matched*))
 	(find-known-subtypes*
 	 type-expr
 	 (cdr known-subtypes)
