@@ -859,11 +859,6 @@
       (restore-object* (svref (cdr elt) i)))))
 
 (defmethod restore-object* :around ((obj declaration))
-  (unless (or (typep obj '(or mod-decl theory-abbreviation-decl
-			      formal-theory-decl adtdecl))
-	      (and (type-def-decl? obj)
-		   (enumtype? (type-expr obj))))
-    (put-decl obj))
   (if (and (module obj)
 	   (eq (module obj) *restoring-theory*))
       (if (boundp '*restoring-declaration*)
@@ -881,7 +876,7 @@
   (assert (not (store-print-type? (type-value obj))))
 ;;   (assert (or (not (subtype? (type-value obj)))
 ;; 	      (not (store-print-type? (supertype (type-value obj))))))
-  (when (listp (type-value obj))
+  (when (consp (type-value obj))
     (let* ((tn (apply #'make-instance (or (car (type-value obj))
 					  'type-name)
 		 'id (id obj) (cdr (type-value obj))))
