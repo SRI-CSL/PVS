@@ -617,8 +617,10 @@
 (defun addineq(ineq)
   (unless (eq (pr-find ineq) 'true)
     (prog(ineqpot)
-      (transclosure ineq)		; perform transitive closure
-      (setq s (append ineqpot s)))))	; add result to s
+      (transclosure ineq)	; perform transitive closure
+      (addineq2pot ineqpot)
+      ;;was (setq s (append ineqpot s))
+      )))	; add result to s
 
 ; 1/4/91: DAC flag for converting inequality bounds into disjunct of equalities.
 
