@@ -272,7 +272,7 @@ list of positive numbers" occurrence)
 	    (let* ((stype (find-supertype (type newoper)))
 		   (nex (lcopy expr
 			  'operator newoper
-			  'argument (make!-arg-tuple-expr lhs rhs)
+			  'argument (make!-arg-tuple-expr newlhs newrhs)
 			  'type (if (typep (domain stype) 'dep-binding)
 				    (substit (range stype)
 				      (acons (domain stype) newargs nil))
