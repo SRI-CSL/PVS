@@ -1,8 +1,32 @@
 (in-package :dp)
 
+(defvar *fail* :fail)
+
+(defun fail? (subst)
+  (eq sub *fail*))
+
 ;; Top-Level Unification
 
+(defun E-unify (trm1 trm2 cs subst)
+  #+dbg(assert (node-p t1))
+  #+dbg(assert (node-p t2))
+  #+dbg(assert (not (null cs)))
+  (let ((cs (push-new-cong-state cs)))
+    (loop for (x . e) in subst
+           do (assert-eqn! x e cs))
+    (unwind-protect
+	(let ((res (unify trm1 trm2 cs)))
+	  (if (symbolp res) *fail*
+	      (let ((xs (union (vars-of trm1)
+			       (vars-of trm2)
+			       (mapcar #'car subst))))
+		(make-subst xs res))))
+      (npop-cong-state cs))))
+
 (defun unify (t1 t2 cs)
+  #+dbg(assert (node-p t1))
+  #+dbg(assert (node-p t2))
+  #+dbg(assert (not (null cs)))
   (let ((*cs* cs))
     (declare (special *cs*))
     (catch 'fail
@@ -151,4 +175,14 @@
 	     (eq (instance x cs1)
 		 (instance x cs2)))
 	 xs))
+
+(defun assert-eqn! (e1 e2 cs)
+  (dp::dp-union e1 e2 cs))
+
+
+
+
+
+
+
 
