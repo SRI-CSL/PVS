@@ -123,16 +123,22 @@ print object produces an error, and won't allow inspection of the object.")
       (format stream "#<Subtype-judgement ~a SUBTYPE_OF ~a>"
 	(declared-subtype obj) (declared-type obj))))
 
-(defmethod print-object ((obj judgement) stream)
+(defmethod print-object ((obj number-judgement) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (format stream "#<Judgement ~a~@[: ~a~]>" (number obj) (type obj))))
+
+(defmethod print-object ((obj name-judgement) stream)
   (if *debugging-print-object*
       (call-next-method)
       (format stream "#<Judgement ~a~@[: ~a~]>"
 	(or (id obj) (name obj)) (unless (id obj) (type obj)))))
 
-(defmethod print-object ((obj number-judgement) stream)
+(defmethod print-object ((obj application-judgement) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (format stream "#<Judgement ~a~@[: ~a~]>" (number obj) (type obj))))
+      (format stream "#<Judgement ~a~@[: ~a~]>"
+	(or (id obj) (name obj)) (unless (id obj) (judgement-type obj)))))
 
 (defmethod print-object ((obj dep-binding) stream)
   (if *debugging-print-object*
