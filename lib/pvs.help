@@ -20,6 +20,7 @@ exit-pvs (C-x C-c)          Terminate the PVS session
 ------------------------------Getting Help------------------------------------
 
 help-pvs, pvs-help (C-c h)  - Display help for the PVS system commands
+help-pvs-bnf                - Display help for the PVS grammar
 help-pvs-language, pvs-help-language (C-c C-h l)
                             - Display help for the PVS language
 help-pvs-prover, pvs-help-prover (C-c C-h p)
@@ -99,6 +100,7 @@ set-rewrite-depth           Set the print depth for displaying rewrites
 set-rewrite-length          Set the print length for displaying rewrites
 set-proof-backup-number     Set the number of backups to keep for proof files
 dump-sequents		    Indicate that unproved sequents go to a file
+toggle-proof-prettyprinting Toggles whether to prettyprint proof files
 
 -----------------------Proof Information Commands-----------------------------
 
@@ -111,6 +113,13 @@ show-hidden-formulas        Display the hidden formulas of the current sequent
 show-auto-rewrites          Display the currently used auto-rewrite rules
 show-expanded-sequent       Display the expansion of the current sequent
 show-skolem-constants       Display Skolem constants with types of sequent
+usedby-proofs               Display formulas whose proofs refer to the
+                              declaration at cursor
+
+---------------------------Evaluation Commands--------------------------------
+
+pvs-lisp-theory             Generate lisp file for a theory
+pvs-ground-evaluator        Invoke the interactive ground evaluator
 
 -------------------Adding and Modifying Declarations--------------------------
 
@@ -123,6 +132,7 @@ prettyprint-theory,      ppt (C-c C-q t) Prettyprint theory in current buffer
 prettyprint-pvs-file,    ppf (C-c C-q f) Prettyprint file in current buffer
 prettyprint-declaration, ppd (C-c C-q d) Prettyprint the indicated declaration
 prettyprint-region,      ppr (C-c C-q r) Prettyprint region of current buffer
+pvs-set-linelength                       Set the prettyprinter line length
 
 ------------------------------Viewing TCCs------------------------------------
 
@@ -133,6 +143,8 @@ show-tccs,            tccs (C-c C-q s) Show the TCCs of the indicated theory
 
 find-pvs-file, ff (C-c C-f) Find buffer containing named PVS file
 find-theory, ft             Find buffer containing named theory
+view-library-file           View named library file
+view-library-theory         View named library theory
 view-prelude-file, vpf      View the prelude file
 view-prelude-theory, vpt    View the specified prelude theory
 new-pvs-file, nf            Create PVS buffer containing named theory
@@ -142,11 +154,13 @@ import-theory, imt          Import a theory from another PVS file
 delete-pvs-file, df         Delete PVS file
 delete-theory, dt           Delete theory from PVS file
 save-pvs-file, (C-x C-s)    Save file in current buffer
+save-pvs-buffer             Save buffer in file, without renaming
 save-some-pvs-files, ssf    Save modified PVS files
 smail-pvs-files             Mail files in IMPORT chain to specified address
 rmail-pvs-files             Read files sent by smail-pvs-files
 dump-pvs-files              Write files in IMPORT chain to file
 undump-pvs-files            Break dump file into separate PVS files
+edit-pvs-dump-file          Edit a pvs dump file using outline mode
 
 ---------------------------Printing Commands----------------------------------
 
@@ -164,6 +178,7 @@ latex-pvs-file, ltf (C-c C-l f)    Generate LaTeX text for PVS file
 latex-importchain, lti (C-c C-l i) Generate LaTeX text for IMPORT chain
 latex-proof, ltp (C-c C-l p)       Generate LaTeX text for last proof 
 latex-theory-view, ltv (C-c C-l v) Generates and views LaTeX for theory
+latex-proof-view                   Generates and views LaTeX for last proof
 latex-set-linelength               Set the linelength for LaTeX text
 
 ----------------------------Display Commands----------------------------------
@@ -205,6 +220,10 @@ status-theory, stt (C-c C-s t)      Status of specified theory (parsed etc.)
 status-pvs-file, stf (C-c C-s f)    Status of theories of current file
 status-importchain, sti (C-c C-s i) Status of theories in import chain
 status-importbychain, stb (C-c C-s b) Status of theories in imported-by chain
+show-theory-warnings                Show warnings for theory
+show-pvs-file-warnings              Show warnings for PVS file
+show-theory-messages                Show informational messages for theory
+show-pvs-file-messages              Show informational messages for PVS file
 status-proof, sp                    Status of formula at cursor
 status-proof-theory, spt            Status of all formulas in theory
 status-proof-pvs-file, spf          Status of all formulas in PVS file
@@ -227,6 +246,7 @@ pvs                         Start the PVS process
 pvs-load-patches            Load new PVS patches
 pvs-interrupt-subjob        Interrupt PVS lisp process
 reset-pvs                   Interrupt PVS and resynchronize
+report-pvs-bug              Mail a bug report to pvs-bugs@csl.sri.com
 
 
 ========================LaTeX Substitution Files==============================
