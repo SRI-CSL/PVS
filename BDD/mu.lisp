@@ -400,34 +400,30 @@
 
 
 (defun convert-pvs-to-mu-binding-expr (expr)
-         (let* ((expr-bindings (bindings expr))
-		(variables-bindings
-		 (mapcar #'make-variable-expr expr-bindings))
-		(old-inclusivities *pvs-bdd-inclusivity-formulas*)
-		(boundvars (let ((*build-access-var* t)
-                                 ( *build-mu-term* nil)) ;; Hassen 11/12/98 : to avoid call mu_mk_rel_var
-                             (lisp-to-c-list
+  (let* ((expr-bindings (bindings expr))
+	 (variables-bindings
+	  (mapcar #'make-variable-expr expr-bindings))
+	 (old-inclusivities *pvs-bdd-inclusivity-formulas*)
+	 (boundvars (let ((*build-access-var* t)
+			  (*build-mu-term* nil));; Hassen 11/12/98 : to avoid call mu_mk_rel_var
+		      (lisp-to-c-list
                        (convert-pvs-to-mu* variables-bindings))))
-		(*bound-variables* (append variables-bindings
-					   *bound-variables*))
-		(new-inclusivities (ldiff *pvs-bdd-inclusivity-formulas*
-		                 	old-inclusivities))
-		(boundexpr (convert-pvs-to-mu-formula (expression expr))
-		))
-	   (setq *pvs-bdd-inclusivity-formulas*  ;;NSH(8.17.95): to collect
-		                           ;;subtypes from inside binding expr.
-		 (set-difference *pvs-bdd-inclusivity-formulas*
-				 new-inclusivities
-				 :key #'car
-				 :test #'tc-eq))
-      (cond ((forall-expr? expr) 
-        (convert-pvs-to-mu-forall  boundvars boundexpr new-inclusivities))
-            ((exists-expr? expr) 
-        (convert-pvs-to-mu-exists  boundvars boundexpr new-inclusivities))
-            ((lambda-expr? expr) 
-       (convert-pvs-to-mu-lambda  boundvars boundexpr))
-            ))
-)
+	 (*bound-variables* (append variables-bindings *bound-variables*))
+	 (new-inclusivities (ldiff *pvs-bdd-inclusivity-formulas*
+				   old-inclusivities))
+	 (boundexpr (convert-pvs-to-mu-formula (expression expr))))
+    (setq *pvs-bdd-inclusivity-formulas*;;NSH(8.17.95): to collect
+	  ;;subtypes from inside binding expr.
+	  (set-difference *pvs-bdd-inclusivity-formulas*
+			  new-inclusivities
+			  :key #'car
+			  :test #'tc-eq))
+    (cond ((forall-expr? expr) 
+	   (convert-pvs-to-mu-forall  boundvars boundexpr new-inclusivities))
+	  ((exists-expr? expr) 
+	   (convert-pvs-to-mu-exists  boundvars boundexpr new-inclusivities))
+	  ((lambda-expr? expr)
+	   (convert-pvs-to-mu-lambda  boundvars boundexpr)))))
 
 
 
@@ -639,40 +635,40 @@
 ;;msb of the position bit string.  
 
 (defun make-mu-variable (expr);; new-make-variable
- (when (and *expand-term*
-	    (funtype? (find-supertype (type expr))))
-   ;; case where a variable is created for an expression that 
-   ;; is expected to be expanded
-   (pvs-error "Can not model-check" 
-     (format nil "Expession ~a should be expanded"
-       (unparse expr :string t))))
- (let ((bddname (gethash expr *pvs-bdd-hash*)))
-   (if bddname
-       (if (consp bddname)
-	   (let ((new-bddname (cadr bddname)))
-	     (cond (*build-arguments*
-		    (make-argument-vars-scalar new-bddname))
-		   (*build-access-var*
-		    (make-binding-vars-scalar new-bddname))
-		   (t new-bddname)))
-	   (mu-make-bool-var (format nil "b~d" bddname)))
-       (cond ((sub-range? (type expr))
-	      (make-subrange-names expr))
-	     ((scalar? expr)
-	      (make-scalar-names expr))
-	     ((recognizer-application? expr)
-	      (make-mu-variable-recognizer-application expr))
-	     (t (let* ((bddhash-name (make-bdd-var-id))
-		       (mu-expression (mu-create-bool-var bddhash-name))
-		       (is-rel-var (and *build-rel-var*
-					(not *build-access-var*)))
-		       (is-access-var *build-access-var*))
-		  (when (null (freevars expr))
-		    (setf (gethash expr *pvs-bdd-hash*) bddhash-name)
-		    (setf (gethash bddhash-name *bdd-pvs-hash*) expr))
-		  (when (or is-access-var is-rel-var)
-		    (push expr *list-of-relational-vars*))
-		  mu-expression))))))
+  (when (and *expand-term*
+	     (funtype? (find-supertype (type expr))))
+    ;; case where a variable is created for an expression that 
+    ;; is expected to be expanded
+    (pvs-error "Can not model-check" 
+      (format nil "Expession ~a should be expanded"
+	(unparse expr :string t))))
+  (let ((bddname (gethash expr *pvs-bdd-hash*)))
+    (if bddname
+	(if (consp bddname)
+	    (let ((new-bddname (cadr bddname)))
+	      (cond (*build-arguments*
+		     (make-argument-vars-scalar new-bddname))
+		    (*build-access-var*
+		     (make-binding-vars-scalar new-bddname))
+		    (t new-bddname)))
+	    (mu-make-bool-var (format nil "b~d" bddname)))
+	(cond ((sub-range? (type expr))
+	       (make-subrange-names expr))
+	      ((scalar? expr)
+	       (make-scalar-names expr))
+	      ((recognizer-application? expr)
+	       (make-mu-variable-recognizer-application expr))
+	      (t (let* ((bddhash-name (make-bdd-var-id))
+			(mu-expression (mu-create-bool-var bddhash-name))
+			(is-rel-var (and *build-rel-var*
+					 (not *build-access-var*)))
+			(is-access-var *build-access-var*))
+		   (when (null (freevars expr))
+		     (setf (gethash expr *pvs-bdd-hash*) bddhash-name)
+		     (setf (gethash bddhash-name *bdd-pvs-hash*) expr))
+		   (when (or is-access-var is-rel-var)
+		     (push expr *list-of-relational-vars*))
+		   mu-expression))))))
 
 
 
@@ -793,47 +789,42 @@
 
 
 (defun convert-pvs-to-mu-equality-with-scalar-arg (expr) 
-      (let* ((exprarg1 (args1 expr))
-	     (exprarg2 (args2 expr))
-	     (scalar1
-	      (if (bind-decl? exprarg1)
-		  (make-variable-expr exprarg1)
-		  exprarg1))
-	     (scalar2
-	      (if (bind-decl? exprarg2)
-		  (make-variable-expr exprarg2)
-		  exprarg2))
-	     (muvarlist1 (make-argument-vars-scalar(make-scalar-names scalar1)))
-	     (muvarlist2 (make-argument-vars-scalar(make-scalar-names scalar2)))
-	     )
-	(make-mu-conjunction
-	 (mapcar #'(lambda (x y) (mu-mk-equiv x y)
-                  ) 
-	   muvarlist1 muvarlist2)
-              )))
+  (let* ((exprarg1 (args1 expr))
+	 (exprarg2 (args2 expr))
+	 (scalar1 (if (bind-decl? exprarg1)
+		      (make-variable-expr exprarg1)
+		      exprarg1))
+	 (scalar2 (if (bind-decl? exprarg2)
+		      (make-variable-expr exprarg2)
+		      exprarg2))
+	 (muvarlist1 (make-argument-vars-scalar (make-scalar-names scalar1)))
+	 (muvarlist2 (make-argument-vars-scalar (make-scalar-names scalar2))))
+    (make-mu-conjunction
+     (mapcar #'(lambda (x y) (mu-mk-equiv x y))
+       muvarlist1 muvarlist2))))
 
 
 
 (defun convert-pvs-to-mu-equality-with-recordtype-in-arg (expr) 
-      (let* ((type (find-supertype (type (args1 expr))))
-	     (fields (fields type))
-	     (args1-list
-	      (loop for decl in fields
-		    collect (beta-reduce
-			     (make!-field-application
-			      (id decl) (args1 expr)))))
-	     (args2-list
-	      (loop for decl in fields
-		    collect (beta-reduce
-			     (make!-field-application
-			      (id decl) (args2 expr)))))
-	     (equality-bdds
-	      (loop for x in args1-list
-		    as y in args2-list
-		    collect
-		    (convert-pvs-to-mu*
-		     (make!-equation x y)))))
-	(make-mu-conjunction equality-bdds)))
+  (let* ((type (find-supertype (type (args1 expr))))
+	 (fields (fields type))
+	 (args1-list
+	  (loop for decl in fields
+		collect (beta-reduce
+			 (make!-field-application
+			  (id decl) (args1 expr)))))
+	 (args2-list
+	  (loop for decl in fields
+		collect (beta-reduce
+			 (make!-field-application
+			  (id decl) (args2 expr)))))
+	 (equality-bdds
+	  (loop for x in args1-list
+		as y in args2-list
+		collect
+		(convert-pvs-to-mu*
+		 (make!-equation x y)))))
+    (make-mu-conjunction equality-bdds)))
 
 
 (defun convert-pvs-to-mu-equality-with-funtype-mu-trans-supertype-in-arg (expr)
@@ -966,24 +957,21 @@
   (if (zerop index)
       (if (logbitp 0 num)
           (mu-mk-true)
-          (mu-mk-not (mu-create-bool-var (make-bdd-incl-excl-var-id bvar 0)))
-           )
-    (let ((bvarbit (mu-create-bool-var (make-bdd-incl-excl-var-id bvar index)))
+          (mu-mk-not (mu-create-bool-var
+		      (make-bdd-incl-excl-var-id bvar 0))))
+      (let ((bvarbit (mu-create-bool-var
+		      (make-bdd-incl-excl-var-id bvar index)))
 	    (bit (logbitp index num))
-	    (rest-fmla
-	     (make-scalar-inclusive-formula bvar num (1- index))))
+	    (rest-fmla (make-scalar-inclusive-formula bvar num (1- index))))
 	(if bit
-            (mu-mk-or 
-               (mu-mk-not  bvarbit) rest-fmla)
-            (mu-mk-and 
-               (mu-mk-not  bvarbit) rest-fmla)
-             ))))
+            (mu-mk-or (mu-mk-not bvarbit) rest-fmla)
+            (mu-mk-and (mu-mk-not bvarbit) rest-fmla)))))
 
 (defun make-subrange-inclusive-formula (bddvarid-list lo hi)
   (let* ((lo-rep (convert-number lo))
-	(hi-rep (convert-number hi))
-	(lower-rep (make-geq-bdd bddvarid-list lo-rep))
-	(higher-rep (make-leq-bdd bddvarid-list hi-rep)))
+	 (hi-rep (convert-number hi))
+	 (lower-rep (make-geq-bdd bddvarid-list lo-rep))
+	 (higher-rep (make-leq-bdd bddvarid-list hi-rep)))
     (make-mu-conjunction (list lower-rep higher-rep))))
 	
 
@@ -1023,25 +1011,19 @@
   #+pvsdebug
   (pvs-message "find in hash table ~a ~a"
     (unparse expr :string t) (gethash expr *pvs-bdd-hash*))
-  (let* ((recs (recognizers
-		(find-supertype (type expr))))
+  (let* ((recs (recognizers (find-supertype (type expr))))
 	 (len (max 1;;NSH(9.29.95) needed since log 1 2 = 0
 		   (ceiling;;noticed by Nick Graham (York)
 		    (log (length recs) 2))))
-	 (bddvarid-hash
-	  (gethash expr *pvs-bdd-hash*))
-	 (bddvarid
-	  (if bddvarid-hash
-	      (car bddvarid-hash)
-              (make-bdd-var-id)
-	      ))
+	 (bddvarid-hash (gethash expr *pvs-bdd-hash*))
+	 (bddvarid (if bddvarid-hash
+		       (car bddvarid-hash)
+		       (make-bdd-var-id)))
 	 (bddvarid-list
 	  (if bddvarid-hash
 	      (cadr bddvarid-hash)
 	      (loop for index from 0 to (1- len)
-		    collect
-		    (make-bdd-incl-excl-var-id  bddvarid index)
-		    )))
+		    collect (make-bdd-incl-excl-var-id  bddvarid index))))
 	 (format-bitstring (format nil "~~~d,'0b" len)))
     (unless bddvarid-hash
       (setf (gethash expr *pvs-bdd-hash*)
@@ -1049,27 +1031,25 @@
       (when (null (freevars expr))
 	(loop for bddnm in (reverse bddvarid-list)
 	      as i from 0
-	      do
-	      (let* ((irecs
-		      (loop for rec in recs as j from 0
-			    when
-			    (eql (digit-char-p
-				  (elt (format nil format-bitstring j)
-				       i))
-				 1)
-			    collect
-			    (make-application rec expr)))
-		     (bdd-hashname
-		      (make-disjunction irecs)))
-		(setf (gethash bddnm *bdd-pvs-hash*)
-		      bdd-hashname))))
+	      do (let* ((irecs
+			 (loop for rec in recs as j from 0
+			       when
+			       (eql (digit-char-p
+				     (elt (format nil format-bitstring j)
+					  i))
+				    1)
+			       collect
+			       (make-application rec expr)))
+			(bdd-hashname
+			 (make-disjunction irecs)))
+		   (setf (gethash bddnm *bdd-pvs-hash*)
+			 bdd-hashname))))
       (let (( *build-access-var*  nil));; Hassen 06/14 
 	;; create-bool-var in inclusivity
 	(pushnew (cons expr (make-scalar-inclusive-formula
 			     bddvarid (1- (length recs)) (1- len)))
 		 *pvs-bdd-inclusivity-formulas*
-		 :test #'(lambda (x y)(tc-eq (car x)(car y)))))
-      )
+		 :test #'(lambda (x y)(tc-eq (car x)(car y))))))
     (if *build-access-var*  
 	(make-binding-vars-scalar bddvarid-list) 
         (if *build-arguments* (make-argument-vars-scalar bddvarid-list) 
@@ -1078,15 +1058,15 @@
 
 
 (defun make-binding-vars-scalar (bddvarid-list) 
- (mapcar #'(lambda (bddvarid) 
-        (mu-check-bool-var (format nil "b~d" bddvarid))) bddvarid-list)
-)
+  (mapcar #'(lambda (bddvarid) 
+	      (mu-check-bool-var (format nil "b~d" bddvarid)))
+    bddvarid-list))
 
 
 (defun make-argument-vars-scalar (bddvarid-list) 
- (mapcar #'(lambda (bddvarid) 
-        (mu-make-bool-var (format nil "b~d" bddvarid))) bddvarid-list)
-)
+  (mapcar #'(lambda (bddvarid) 
+	      (mu-make-bool-var (format nil "b~d" bddvarid)))
+    bddvarid-list))
 
 
 
@@ -1301,15 +1281,15 @@
 
 
 (defun mu-create-bool-var (bvarid)
-;;(pvs-message (format nil " ~% term? ~a   acc? ~a    rel-var? ~a   build-arg? ~a ~% " *build-mu-term* *build-access-var* *build-rel-var* *build-arguments* ))
- (let ((bvarname (format nil "b~d" bvarid)))
+  #+pvsdebug
+  (pvs-message " ~% term? ~a   acc? ~a    rel-var? ~a   build-arg? ~a ~% "
+    *build-mu-term* *build-access-var* *build-rel-var* *build-arguments*)
+  (let ((bvarname (format nil "b~d" bvarid)))
     (if (and *build-rel-var* (not *build-access-var*)) 
-            (mu-mk-rel-var-dcl  bvarname)
-          (if *build-access-var* 
-              (mu-check-bool-var bvarname)
-              (mu-make-bool-var bvarname)
-       )))
-)
+	(mu-mk-rel-var-dcl  bvarname)
+	(if *build-access-var* 
+	    (mu-check-bool-var bvarname)
+	    (mu-make-bool-var bvarname)))))
 
 (defun mu-mk-rel-var (bvarname)
 (mu_mk_rel_var_ (FF:STRING-TO-CHAR* bvarname)))
