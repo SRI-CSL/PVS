@@ -147,6 +147,9 @@
 	  ((and (typep expression 'name-expr)
 		(constructor? expression))
 	   (beta-reduce* (find-selection (id expression) nil expr)))
+	  ((typep expression 'injection-application)
+	   (beta-reduce* (find-selection (id expression) (arguments expression)
+					 expr)))
 	  (t expr))))
 
 (defmethod beta-reduce* ((expr selection))
@@ -272,7 +275,23 @@
 (defmethod beta-reduce* ((expr injection-application))
   (with-slots (index argument) expr
     (let ((narg (beta-reduce* argument)))
+      (if (and (extraction-application? narg)
+	       (= (index expr) (index narg)))
+	  (argument narg)
+	  (lcopy expr 'argument narg)))))
+
+(defmethod beta-reduce* ((expr injection?-application))
+  (with-slots (index argument) expr
+    (let ((narg (beta-reduce* argument)))
       (lcopy expr 'argument narg))))
+
+(defmethod beta-reduce* ((expr extraction-application))
+  (with-slots (index argument) expr
+    (let ((narg (beta-reduce* argument)))
+      (if (and (injection-application? narg)
+	       (= (index expr) (index narg)))
+	  (argument narg)
+	  (lcopy expr 'argument narg)))))
 
 (defun beta-reduce-record-update-redex (op arg)
   (let ((updates

@@ -200,13 +200,13 @@ auto-rewrite ::= {{'AUTO_REWRITE'|'AUTO_REWRITE+'|'AUTO_REWRITE-'}
                   |auto-rewriteplus(rewrite-name+)
                   |auto-rewriteminus(rewrite-name+)}> ;
 
-rewrite-name-or-fnum ::= {fnum ['!' ['!']^m]^e}
-                         <rewrite-fnum(fnum,
+rewrite-name-or-fnum ::= {'-' number ['!' ['!']^m]^e}
+                         <rewrite-fnum(fnum(number,`-()),
                                        [lazy()|[eager()|macro()]^m]^e)>
                        | rewrite-name
                        ;
 
-fnum ::= {'-' number} <fnum(number,`-())> ;
+% fnum ::= {['-'] number} <fnum(number,[`+()|`-()])> ;
 
 rewrite-name ::= {name ['!' ['!']^m]^e [':' {type-expr|formula-name}]}
                  <{rewrite-name(name,
@@ -449,7 +449,7 @@ assignment ::= {assign-arg+ {':='|'|->'} expr}
 			<assignment(args(plus),expr,{ceq()|arr()})>;
 
 assign-arg ::= {'(' expr++',' ')'} <assign-tuple(expr+)>
-             | {'`' {id | number}} <{field-assign(id)|proj-assign(number)}>
+             | {'`' {id | number}} <{id-assign(id)|proj-assign(number)}>
 	     | {id ['!' number]} <[assign-id(id)|assign-skoname(id,number)]>
              | number <assign-num(number)>
 	     ;

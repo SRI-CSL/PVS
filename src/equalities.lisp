@@ -265,6 +265,34 @@ where db is to replace db1 and db2")
 	  (and (eq id1 id2)
 	       (tc-eq* (car res1) (car res2) bindings))))))
 
+(defmethod tc-eq* ((e1 projection-expr) (e2 projection-expr) bindings)
+  (with-slots ((id1 index) (ty1 type)) e1
+    (with-slots ((id2 index) (ty2 type)) e2
+      (or (eq e1 e2)
+	  (and (= id1 id2)
+	       (tc-eq* ty1 ty2 bindings))))))
+
+(defmethod tc-eq* ((e1 injection-expr) (e2 injection-expr) bindings)
+  (with-slots ((id1 index) (ty1 type)) e1
+    (with-slots ((id2 index) (ty2 type)) e2
+      (or (eq e1 e2)
+	  (and (= id1 id2)
+	       (tc-eq* ty1 ty2 bindings))))))
+
+(defmethod tc-eq* ((e1 injection?-expr) (e2 injection?-expr) bindings)
+  (with-slots ((id1 index) (ty1 type)) e1
+    (with-slots ((id2 index) (ty2 type)) e2
+      (or (eq e1 e2)
+	  (and (= id1 id2)
+	       (tc-eq* ty1 ty2 bindings))))))
+
+(defmethod tc-eq* ((e1 extraction-expr) (e2 extraction-expr) bindings)
+  (with-slots ((id1 index) (ty1 type)) e1
+    (with-slots ((id2 index) (ty2 type)) e2
+      (or (eq e1 e2)
+	  (and (= id1 id2)
+	       (tc-eq* ty1 ty2 bindings))))))
+
 (defmethod tc-eq* ((e1 projection-application) (e2 projection-application)
 		   bindings)
   (or (eq e1 e2)
@@ -275,9 +303,9 @@ where db is to replace db1 and db2")
 	       (tc-eq* arg1 arg2 bindings))))))
 
 (defmethod tc-eq* ((e1 projection-application) (e2 name-expr) bindings)
-  (let ((bind (assoc e1 bindings :test #'tc-eq)))
+  (let ((bind (assoc e2 bindings :test #'tc-eq)))
     (and bind
-	 (tc-eq (cdr bind) e2))))
+	 (tc-eq e1 (cdr bind)))))
 
 (defmethod tc-eq* ((e1 name-expr) (e2 projection-application) bindings)
   (let ((bind (assoc e1 bindings :test #'tc-eq)))
@@ -294,11 +322,49 @@ where db is to replace db1 and db2")
 	       (tc-eq* arg1 arg2 bindings))))))
 
 (defmethod tc-eq* ((e1 injection-application) (e2 name-expr) bindings)
+  (let ((bind (assoc e2 bindings :test #'tc-eq)))
+    (and bind
+	 (tc-eq e1 (cdr bind)))))
+
+(defmethod tc-eq* ((e1 name-expr) (e2 injection-application) bindings)
   (let ((bind (assoc e1 bindings :test #'tc-eq)))
     (and bind
 	 (tc-eq (cdr bind) e2))))
 
-(defmethod tc-eq* ((e1 name-expr) (e2 injection-application) bindings)
+(defmethod tc-eq* ((e1 injection?-application) (e2 injection?-application)
+		   bindings)
+  (or (eq e1 e2)
+      (with-slots ((id1 index) (arg1 argument)) e1
+	(with-slots ((id2 index) (arg2 argument)) e2
+	  (assert (and id1 id2))
+	  (and (= id1 id2)
+	       (tc-eq* arg1 arg2 bindings))))))
+
+(defmethod tc-eq* ((e1 injection?-application) (e2 name-expr) bindings)
+  (let ((bind (assoc e2 bindings :test #'tc-eq)))
+    (and bind
+	 (tc-eq e1 (cdr bind)))))
+
+(defmethod tc-eq* ((e1 name-expr) (e2 injection?-application) bindings)
+  (let ((bind (assoc e1 bindings :test #'tc-eq)))
+    (and bind
+	 (tc-eq (cdr bind) e2))))
+
+(defmethod tc-eq* ((e1 extraction-application) (e2 extraction-application)
+		   bindings)
+  (or (eq e1 e2)
+      (with-slots ((id1 index) (arg1 argument)) e1
+	(with-slots ((id2 index) (arg2 argument)) e2
+	  (assert (and id1 id2))
+	  (and (= id1 id2)
+	       (tc-eq* arg1 arg2 bindings))))))
+
+(defmethod tc-eq* ((e1 extraction-application) (e2 name-expr) bindings)
+  (let ((bind (assoc e2 bindings :test #'tc-eq)))
+    (and bind
+	 (tc-eq e1 (cdr bind)))))
+
+(defmethod tc-eq* ((e1 name-expr) (e2 extraction-application) bindings)
   (let ((bind (assoc e1 bindings :test #'tc-eq)))
     (and bind
 	 (tc-eq (cdr bind) e2))))
@@ -412,9 +478,9 @@ where db is to replace db1 and db2")
 
 (defmethod tc-eq* ((e1 disjunction) (e2 disjunction) bindings)
   (or (eq e1 e2)
-      (with-slots ((arg1 argument)) e1
-	(with-slots ((arg2 argument)) e2
-	  (tc-eq* arg1 arg2 bindings)))))
+      (tc-eq* (collect-disjuncts e1)
+	      (collect-disjuncts e2)
+	      bindings)))
 
 (defmethod collect-disjuncts ((ex disjunction))
   (nconc (collect-disjuncts (args1 ex))
@@ -518,6 +584,10 @@ where db is to replace db1 and db2")
 (defmethod tc-eq-ops ((op1 recognizer-name-expr) (op2 recognizer-name-expr)
 		      &optional bindings)
   (tc-eq-adt-ops op1 op2 bindings))
+
+(defmethod tc-eq-ops ((op1 injection?-expr) (op2 injection?-expr)
+		      &optional bindings)
+  (tc-eq* op1 op2 bindings))
 
 (defmethod tc-eq-ops ((op1 accessor-name-expr) (op2 accessor-name-expr)
 		      &optional bindings)
@@ -801,6 +871,27 @@ where db is to replace db1 and db2")
 		 (actuals-are-outside-formals? a2)
 		 (compatible?* a1 a2))))))
 
+(defmethod compatible?* ((atype type-variable) (etype type-expr))
+  t)
+
+(defmethod compatible?* ((etype type-expr) (atype type-variable))
+  t)
+
+(defmethod compatible?* ((etype type-name) (atype type-variable))
+  t)
+
+(defmethod compatible?* ((atype tup-type-variable) (etype tupletype))
+  t)
+
+(defmethod compatible?* ((etype tupletype) (atype tup-type-variable))
+  t)
+
+(defmethod compatible?* ((atype cotup-type-variable) (etype cotupletype))
+  t)
+
+(defmethod compatible?* ((etype cotupletype) (atype cotup-type-variable))
+  t)
+
 (defmethod compatible?* ((atype type-name) etype)
   (declare (ignore etype))
   (or (declaration-outside-formals? atype)
@@ -1023,6 +1114,7 @@ where db is to replace db1 and db2")
 		(null (intersection recs1 recs2 :test #'tc-eq)))))))
 
 (defmethod disjoint-types?* (t1 t2)
+  (declare (ignore t1 t2))
   nil)
 
 (defun collect-recognizer-preds (type)
@@ -1058,6 +1150,29 @@ where db is to replace db1 and db2")
 
 (defmethod compatible-type* (atype (etype dep-binding))
   (compatible-type* atype (type etype)))
+
+
+(defmethod compatible-type* ((atype type-variable) (etype type-expr))
+  etype)
+
+(defmethod compatible-type* ((atype type-expr) (etype type-variable))
+  atype)
+
+(defmethod compatible-type* ((atype subtype) (etype type-variable))
+  atype)
+
+(defmethod compatible-type* ((atype tup-type-variable) (etype tupletype))
+  etype)
+
+(defmethod compatible-type* ((atype tupletype) (etype tup-type-variable))
+  atype)
+
+(defmethod compatible-type* ((atype cotup-type-variable) (etype cotupletype))
+  etype)
+
+(defmethod compatible-type* ((atype cotupletype) (etype cotup-type-variable))
+  atype)
+
 
 ;;; Note that we return the instantiated type, if there is one.
 
@@ -1133,10 +1248,15 @@ where db is to replace db1 and db2")
 (defmethod compatible-type* ((atype funtype) (etype funtype))
   (with-slots ((adom domain) (arng range)) atype
     (with-slots ((edom domain) (erng range)) etype
-      (if (or (fully-instantiated? adom)
-	      (not (fully-instantiated? edom)))
-	  (lcopy atype 'range (compatible-type* arng erng))
-	  (lcopy etype 'range (compatible-type* arng erng))))))
+      (let* ((ainst? (or (fully-instantiated? adom)
+			 (not (fully-instantiated? edom))))
+	     (dom (cond ((or (type-var? adom) (type-var? edom))
+			 (compatible-type adom edom))
+			(ainst? adom)
+			(t edom))))
+	(if ainst?
+	    (lcopy atype 'domain dom 'range (compatible-type* arng erng))
+	    (lcopy etype 'domain dom 'range (compatible-type* arng erng)))))))
 
 (defmethod compatible-type* ((atype tupletype) (etype tupletype))
   (compatible-tupletypes (types atype) (types etype) nil))
@@ -1288,11 +1408,10 @@ where db is to replace db1 and db2")
 (defun make-compatible-every-pred (pospreds atype aacts aexpr)
   (let ((every (make-every-name atype aacts))
 	(*generate-tccs* 'none))
-    (typecheck* (mk-application (mk-application* every
-				  (mapcar #'make-compatible-every-pred*
-					  pospreds))
-		  (copy aexpr))
-		*boolean* nil nil)))
+    (make!-application
+	(make!-application* every
+			    (mapcar #'make-compatible-every-pred* pospreds))
+      (copy aexpr))))
 
 (defun make-every-name (atype acts)
   (declare (ignore acts))
@@ -1452,6 +1571,8 @@ where db is to replace db1 and db2")
       (substit types (acons type var nil))
       types))
 
+
+;;; 
 (defun compatible-funtype-pred (atype adom edom avar evar ;;apred epred
 				      aexpr arng erng incs)
   (declare (ignore atype evar))
@@ -1470,10 +1591,12 @@ where db is to replace db1 and db2")
 	 (rpreds (compatible-preds*
 		  (subst-deps arng) (subst-deps erng)
 		  (make!-reduced-application
+		   ;; Since avar is already declared to be of the given
+		   ;; subtype, restrict is just the identity.
 		   (if (and (implicit-conversion? aexpr)
 			    (name-expr? (operator aexpr))
 			    (eq (id (operator aexpr)) '|restrict|)
-			    (eq (id (module-instance (resolution (operator aexpr))))
+			    (eq (id (module-instance (operator aexpr)))
 				'|restrict|))
 		       (argument aexpr)
 		       aexpr)
@@ -1545,7 +1668,7 @@ where db is to replace db1 and db2")
       (let* ((id (make-new-variable '|x| aexpr))
 	     (bd (make-bind-decl id (car atypes)))
 	     (var (make-variable-expr bd))
-	     (pred (compatible-preds* (car atypes) (car etypes) var))
+	     (pred (compatible-preds* (car atypes) (car etypes) var nil))
 	     (in-expr (make-instance 'injection-expr
 			'id (makesym "IN_~d" index)
 			'index index)))
@@ -1604,44 +1727,7 @@ where db is to replace db1 and db2")
 (defun subst-var-application (field fields aexpr)
   (let* ((ne aexpr)
 	 (appl (make!-field-application (id field) ne)))
-    (substit fields (list (cons field (beta-reduce appl))))))
-
-
-;;; Strict-subtype-of?
-
-(defmethod strict-subtype-of*? ((l1 list) (l2 list) dist)
-  (multiple-value-bind (ndist strict?)
-      (subtype-of*? l1 l2 dist)
-    (when (and ndist strict?)
-      ndist)))
-
-(defmethod strict-subtype-of*? ((t1 subtype) (t2 type-expr) dist)
-  (if (tc-eq (supertype t1) t2)
-      (1+ dist)
-      (strict-subtype-of*? (supertype t1) t2 (1+ dist))))
-
-(defmethod strict-subtype-of*? ((t1 funtype) (t2 funtype) dist)
-  (and (tc-eq (domain t1) (domain t2))
-       (strict-subtype-of*? (range t1) (range t2) dist)))
-
-(defmethod strict-subtype-of*? ((t1 tupletype) (t2 tupletype) dist)
-  (strict-subtype-of*? (types t1) (types t2) dist))
-
-(defmethod strict-subtype-of*? ((t1 cotupletype) (t2 cotupletype) dist)
-  (strict-subtype-of*? (types t1) (types t2) dist))
-
-(defmethod strict-subtype-of*? ((t1 dep-binding) (t2 dep-binding) dist)
-  (strict-subtype-of*? (type t1) (type t2) dist))
-
-(defmethod strict-subtype-of*? ((t1 dep-binding) (t2 type-expr) dist)
-  (strict-subtype-of*? (type t1) t2 dist))
-
-(defmethod strict-subtype-of*? ((t1 type-expr) (t2 dep-binding) dist)
-  (strict-subtype-of*? t1 (type t2) dist))
-
-(defmethod strict-subtype-of*? ((t1 type-expr) (t2 type-expr) dist)
-  (declare (ignore dist))
-  nil)
+    (substit fields (list (cons field appl)))))
 
 
 ;;; Subtype-of? is used to determine if two types are in the subtype
@@ -1930,7 +2016,7 @@ where db is to replace db1 and db2")
   (if (null types1)
       (values type2
 	      (make!-lambda-expr (list vb)
-		(make!-conjunction* (nreverse (beta-reduce preds)))))
+		(make!-conjunction* (nreverse preds))))
       (multiple-value-bind (ty cpreds)
 	  (subtype-preds (car types1) (car types2))
 	(when ty
@@ -1976,7 +2062,11 @@ where db is to replace db1 and db2")
 	(when ty
 	  (let ((in-expr (make-instance 'injection-expr
 			   'id (makesym "IN_~d" index)
-			   'index index)))
+			   'index index))
+		(pred (make!-conjunction*
+		       (mapcar #'(lambda (o)
+				   (make!-reduced-application o var))
+			 cpreds))))
 	    (subtype-cotuple-preds
 	     (cdr types1) (cdr types2) type2 vb var (1+ index)
 	     (cons (make-instance 'in-selection
@@ -2003,7 +2093,7 @@ where db is to replace db1 and db2")
   (if (null flds1)
       (values type2
 	      (make!-lambda-expr (list vb)
-		(make!-conjunction* (nreverse (beta-reduce preds)))))
+		(make!-conjunction* (nreverse preds))))
       (let* ((fld1 (car flds1))
 	     (fld2 (find fld1 flds2 :test #'same-id)))
 	(multiple-value-bind (ty cpreds)
@@ -2278,6 +2368,7 @@ where db is to replace db1 and db2")
       proj)))
 
 (defmethod type-canon* ((te cotupletype) predicates)
+  (declare (ignore predicates))
   te)
 	       
 (defmethod type-canon* ((te recordtype) predicates)

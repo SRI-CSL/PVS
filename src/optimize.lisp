@@ -1,6 +1,6 @@
 ;;; Functions which replace slower functions in Lucid, AKCL, etc.
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (defun assoc@ (obj list &optional (test #'eql))
   (labels ((assoc* (obj list test)

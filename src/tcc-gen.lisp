@@ -57,26 +57,21 @@
   (assert (every #'type incs))
   (let* ((*generate-tccs* 'none)
 	 (conc (make!-conjunction* incs))
-	 (tform (raise-actuals (add-tcc-conditions conc) nil))
-	 (xform (cond ((tcc-evaluates-to-true conc tform)
+	 (*no-expected* nil)
+	 (*bound-variables* *keep-unbound*)
+	 (tform (add-tcc-conditions conc))
+	 (uform (cond ((tcc-evaluates-to-true conc tform)
 		       *true*)
 		      (*simplify-tccs*
-		       (pseudo-normalize (subst-var-for-recs
-					  tform
-					  (declaration *current-context*))))
-		      (t (subst-var-for-recs
-			  tform
-			  (declaration *current-context*)))))
-	 (*no-expected* nil)
-	 (uform (expose-binding-types (universal-closure xform)))
-	 (*bound-variables* *keep-unbound*)
+		       (pseudo-normalize tform))
+		      (t tform)))
 	 (id (make-tcc-name expr)))
     (assert (tc-eq (find-supertype (type uform)) *boolean*))
     (unless (tc-eq uform *true*)
       (when (and *false-tcc-error-flag*
 		 (tc-eq uform *false*))
 	(type-error expr "Subtype TCC for ~a simplifies to FALSE~@[:~2%  ~a~]"
-		    expr (unless (tc-eq tform *false*) tform)))
+		    expr (unless (tc-eq uform *false*) uform)))
       (typecheck* (if (and *recursive-subtype-term*
 			   (occurs-in-eq *recursive-subtype-term* incs))
 		      (mk-termination-tcc id uform)
@@ -85,79 +80,126 @@
 
 (defvar *substitute-let-bindings* nil)
 
-(defun add-tcc-conditions (expr &optional
-				(conditions (remove-duplicates *tcc-conditions*
-							      :test #'equal))
-				substs
-				antes)
+(defun add-tcc-conditions (expr)
+  (let* ((conditions (subst-var-for-recs
+		      (remove-duplicates *tcc-conditions* :test #'equal)))
+	 (srec-expr (subst-var-for-recs expr))
+	 (substs (get-tcc-binding-substitutions
+		  (reverse (cons srec-expr conditions)))))
+    (universal-closure (add-tcc-conditions* (raise-actuals srec-expr)
+					    conditions substs nil))))
+
+(defun add-tcc-conditions* (expr conditions substs antes)
   (if (null conditions)
       (let ((ex (substit (if antes
 			     (make!-implication
 			      (make!-conjunction* antes) expr)
 			     expr)
-		  (self-substit substs))))
+		  substs)))
 	(assert (type ex))
 	ex)
       (cond ((consp (car conditions))
-	     (add-tcc-conditions expr (cdr conditions)
-				 (if *substitute-let-bindings*
-				     (cons (car conditions) substs)
-				     substs)
-				 (if *substitute-let-bindings*
-				     antes
-				     (cons (make-equation
-					     (mk-name-expr (caar conditions))
-					     (cdar conditions))
-					   antes))))
+	     ;; bindings from a lambda-expr application (e.g., let-expr)
+	     (add-tcc-conditions*
+	      expr
+	      (cdr conditions)
+	      (if *substitute-let-bindings*
+		  (cons (car conditions) substs)
+		  substs)
+	      (if *substitute-let-bindings*
+		  antes
+		  (cons (make!-equation
+			 (mk-name-expr (caar conditions))
+			 (cdar conditions))
+			antes))))
 	    ((typep (car conditions) 'bind-decl)
-	     (make-tcc-closure expr conditions substs antes))
-	    (t (add-tcc-conditions expr (cdr conditions)
-				   substs
-				   (cons (car conditions) antes))))))
+	     ;; Binding from a binding-expr
+	     (add-tcc-bindings expr conditions substs antes))
+	    (t ;; We collect antes so we can form (A & B) => C rather than
+	       ;; A => (B => C)
+	     (add-tcc-conditions* expr (cdr conditions)
+				    substs
+				    (cons (car conditions) antes))))))
 
-(defun make-tcc-closure (expr conditions substs antes &optional bindings)
+
+;;; This creates a substitution from the bindings in *tcc-conditions*
+;;; The substitution associates the given binding with one that has
+;;;  1. unique ids
+;;;  2. lifted actuals
+;;;  3. types are made explicit
+;;; Anytime a binding is modified for one of these reasons, it must be
+;;; substituted for in the other substitutions.  Because of this the
+;;; conditions are the reverse of *tcc-conditions*.
+
+(defun get-tcc-binding-substitutions (conditions &optional substs prior)
+  (cond ((null conditions)
+	 (nreverse substs))
+	((typep (car conditions) 'bind-decl)
+	 (let ((nbd (car conditions)))
+	   (when (untyped-bind-decl? nbd)
+	     (let ((dtype (or (declared-type nbd)
+			      (and (type nbd) (print-type (type nbd)))
+			      (type nbd))))
+	       (setq nbd (change-class (copy nbd 'declared-type dtype)
+				       'bind-decl))))
+	   (let* ((dtype (raise-actuals (declared-type nbd)))
+		  (ptype (when (print-type (type nbd))
+			   (if (tc-eq (print-type (type nbd))
+				      (declared-type nbd))
+			       dtype
+			       (raise-actuals (print-type (type nbd)))))))
+	     (unless (and (eq dtype (declared-type nbd))
+			  (or (null ptype)
+			      (eq ptype dtype)
+			      (eq ptype (print-type (type nbd)))))
+	       (if (eq nbd (car conditions))
+		   (setq nbd (copy (car conditions)
+			       'declared-type dtype
+			       'type (copy (type nbd) 'print-type ptype)))
+		   (setf (declared-type nbd) dtype
+			 (type nbd) (copy (type nbd) 'print-type ptype)))))
+	   (when (binding-id-is-bound (id nbd) prior)
+	     (let ((nid (make-new-variable (id nbd) conditions 1)))
+	       (if (eq nbd (car conditions))
+		   (setq nbd (copy (car conditions) 'id nid))
+		   (setf (id nbd) nid))))
+	   (let ((*pseudo-normalizing* t))
+	     (setq nbd (substit-binding nbd substs)))
+	   (get-tcc-binding-substitutions
+	    (cdr conditions)
+	    (if (eq nbd (car conditions))
+		substs
+		(acons (car conditions) nbd substs))
+	    (cons (car conditions) prior))))
+	(t (get-tcc-binding-substitutions (cdr conditions) substs
+					  (cons (car conditions) prior)))))
+
+(defun add-tcc-bindings (expr conditions substs antes &optional bindings)
   (if (typep (car conditions) 'bind-decl)
-      (if (or (occurs-in (car conditions) expr)
-	      (occurs-in (car conditions) bindings)
-	      (occurs-in (car conditions) antes)
-	      (occurs-in (car conditions) substs)
-	      (possibly-empty-type? (type (car conditions))))
-	  (make-tcc-closure expr (cdr conditions) substs antes
-			    (cons (car conditions) bindings))
-	  (make-tcc-closure expr (cdr conditions) substs antes
-			    bindings))
+      ;; Recurse till there are no more bindings, so we build
+      ;;  FORALL x, y ... rather than FORALL x: FORALL y: ...
+      (let* ((bd (car conditions))
+	     (nbd (or (cdr (assq bd substs)) bd)))
+	(add-tcc-bindings expr (cdr conditions) substs antes
+			  (if (or (occurs-in bd expr)
+				  (occurs-in bd antes)
+				  (occurs-in bd substs)
+				  (possibly-empty-type? (type bd)))
+			      (cons nbd bindings)
+			      bindings)))
+      ;; Now we can build the universal closure
       (let* ((nbody (substit (if antes
 				 (make!-implication
 				  (make!-conjunction* antes)
 				  expr)
 				 expr)
-		      (self-substit substs)))
+		      substs))
 	     (nbindings (get-tcc-closure-bindings bindings nbody))
 	     (nexpr (if nbindings
-			(make-unique-typechecked-forall-expr nbindings nbody)
+			(make!-forall-expr nbindings nbody)
 			nbody)))
-	(add-tcc-conditions nexpr conditions nil nil))))
+	(add-tcc-conditions* nexpr conditions substs nil))))
 
-(defun make-unique-typechecked-forall-expr (bindings expr &optional
-						     (nbindings bindings)
-						     result)
-  (if (null bindings)
-      (make!-forall-expr (nreverse result) expr)
-      (if (binding-id-is-bound (id (car bindings)) expr)
-	  (let* ((nid (make-new-variable (id (car bindings)) expr 1))
-		 (nbd (make-bind-decl nid (type (car nbindings))))
-		 (nvar (make-variable-expr nbd))
-		 (alist (acons (car bindings) nvar nil)))
-	    (make-unique-typechecked-forall-expr
-	     (cdr bindings)
-	     (substit expr alist)
-	     (substit (cdr nbindings) alist)
-	     (cons nbd result)))
-	  (make-unique-typechecked-forall-expr
-	   (cdr bindings)
-	   (substit expr (acons (car bindings) (car nbindings) nil))
-	   (cdr nbindings)
-	   (cons (car nbindings) result)))))
 
 (defun binding-id-is-bound (id expr)
   (let ((found nil))
@@ -172,6 +214,9 @@
 	       expr)
     found))
 
+
+;;; Puts the dependent bindings after the non-dependent ones
+
 (defun get-tcc-closure-bindings (bindings body)
   (let ((nbindings (remove-if-not #'(lambda (ff)
 				      (some #'(lambda (fff)
@@ -179,40 +224,18 @@
 							:test #'same-declaration))
 					    (freevars ff)))
 		     (freevars body))))
-    (sort-freevars (append (remove-if #'(lambda (b)
-					  (some #'(lambda (nb)
-						    (same-declaration b nb))
-						nbindings))
-			     bindings)
-			   (mapcar #'declaration nbindings)))))
+    (sort-freevars
+     (append (remove-if #'(lambda (b)
+			    (or (some #'(lambda (nb)
+					  (same-declaration b nb))
+				      nbindings)
+				(not (possibly-empty-type? (type b)))))
+	       bindings)
+	     (mapcar #'declaration nbindings)))))
 
-(defun self-substit (substs &optional nsubsts (exprs (mapcar #'cdr substs)))
-  (if (null substs)
-      (nreverse nsubsts)
-      (self-substit (cdr substs)
-		    (cons (cons (caar substs) (car exprs)) nsubsts)
-		    (substit (cdr exprs) (list (car substs))))))
-
-;(defun add-tcc-conditions (expr &optional
-;				(conditions *tcc-conditions*) antes)
-;  (if (null conditions)
-;      (if antes
-;	  (mk-implication (mk-conjunction antes) expr)
-;	  expr)
-;      (if (consp (car conditions))
-;	  (let ((lexpr ;;(mk-let-expr (car conditions)
-;			 (if antes
-;			     (substit (mk-implication (mk-conjunction antes) expr)
-;			       (car conditions))
-;			     (substit expr (car conditions))))
-;		;;)
-;		)
-;	    (add-tcc-conditions lexpr (cdr conditions) nil))
-;	  (add-tcc-conditions expr (cdr conditions)
-;			      (cons (copy (car conditions)) antes)))))
 
 (defun insert-tcc-decl (kind expr type ndecl)
-  (if (or *in-checker* *in-evaluator*)
+  (if (or *in-checker* *in-evaluator* *collecting-tccs*)
       (add-tcc-info kind expr type ndecl)
       (insert-tcc-decl1 kind expr type ndecl)))
 
@@ -462,16 +485,12 @@
 		     (typecheck* (mk-application ordering appl2 appl1)
 				 *boolean* nil nil)))
 	   (form (add-tcc-conditions relterm))
-	   (xform (cond ((tcc-evaluates-to-true relterm form)
+	   (uform (cond ((tcc-evaluates-to-true relterm form)
 			 *true*)
 			((and *simplify-tccs*
 			      (not (or *in-checker* *in-evaluator*)))
-			 (pseudo-normalize
-			  (subst-var-for-recs form (declaration *current-context*))))
-			(t (beta-reduce
-			    (subst-var-for-recs
-			     form (declaration *current-context*))))))
-	   (uform (expose-binding-types (universal-closure xform)))
+			 (pseudo-normalize form))
+			(t (beta-reduce form))))
 	   (id (make-tcc-name)))
       (unless (tc-eq uform *true*)
 	(when (and *false-tcc-error-flag*
@@ -571,7 +590,10 @@
 	  (t t))))
 
 (defmethod possibly-empty-type? ((te subtype))
-  t)
+  (if (recognizer-name-expr? (predicate te))
+      (let ((accs (accessors (constructor (predicate te)))))
+	(some #'possibly-empty-type? (mapcar #'type accs)))
+      t))
 
 (defmethod possibly-empty-type? ((te datatype-subtype))
   (possibly-empty-type? (declared-type te)))
@@ -705,12 +727,11 @@
 
 (defun make-existence-tcc-decl (type fclass)
   (let* ((*generate-tccs* 'none)
-	 (stype (pc-parse (unparse (raise-actuals type nil) :string t)
-		  'type-expr))
+	 (stype (raise-actuals type nil))
 	 (var (make-new-variable '|x| type))
-	 (form (mk-exists-expr (list (mk-bind-decl var stype)) *true*))
-	 (tform (add-tcc-conditions (typecheck* form *boolean* nil nil)))
-	 (uform (expose-binding-types (universal-closure tform)))
+	 (form (make!-exists-expr (list (mk-bind-decl var stype stype))
+				  *true*))
+	 (uform (add-tcc-conditions form))
 	 (id (make-tcc-name)))
     (typecheck* (if (eq fclass 'OBLIGATION)
 		    (mk-existence-tcc id uform)
@@ -748,14 +769,14 @@
 	(unless (and (member modinst (assuming-instances (current-theory))
 			     :test #'tc-eq)
 		     (not (existence-tcc? cdecl)))
-	  ;; Don't want to save this module instance unless it does not
-	  ;; depend on any conditions, including implicit ones in the
-	  ;; prover
-	  (unless (or (or *in-checker* *in-evaluator*)
-		      *tcc-conditions*)
-	    (push modinst (assuming-instances *current-theory*)))
 	  (let ((assumptions (remove-if-not #'assumption? (assuming mod))))
 	    (check-assumption-subterm-visibility assumptions modinst)
+	    ;; Don't want to save this module instance unless it does not
+	    ;; depend on any conditions, including implicit ones in the
+	    ;; prover
+	    (unless (or (or *in-checker* *in-evaluator*)
+			*tcc-conditions*)
+	      (push modinst (assuming-instances *current-theory*)))
 	    (dolist (ass assumptions)
 	      (if (eq (kind ass) 'existence)
 		  (let ((atype (subst-mod-params (existence-tcc-type ass)
@@ -825,16 +846,11 @@
   (let* ((*generate-tccs* 'none)
 	 (expr (subst-mod-params (definition ass) modinst))
 	 (tform (add-tcc-conditions expr))
-	 (xform (cond ((tcc-evaluates-to-true expr tform)
+	 (uform (cond ((tcc-evaluates-to-true expr tform)
 		       *true*)
 		      (*simplify-tccs*
-		       (pseudo-normalize (subst-var-for-recs
-					  tform
-					  (declaration *current-context*))))
-		      (t (beta-reduce (subst-var-for-recs
-				       tform
-				       (declaration *current-context*))))))
-	 (uform (expose-binding-types (universal-closure xform)))
+		       (pseudo-normalize tform))
+		      (t (beta-reduce tform))))
 	 (id (make-tcc-name)))
     (unless (tc-eq uform *true*)
       (when (and *false-tcc-error-flag*
@@ -877,12 +893,8 @@
 	 (expr (subst-mod-params (definition ax) modinst))
 	 (tform (add-tcc-conditions expr))
 	 (xform (if *simplify-tccs*
-		    (pseudo-normalize (subst-var-for-recs
-				       tform
-				       (declaration *current-context*)))
-		    (beta-reduce (subst-var-for-recs
-				  tform
-				  (declaration *current-context*)))))
+		    (pseudo-normalize tform)
+		    (beta-reduce tform)))
 	 (uform (expose-binding-types (universal-closure xform)))
 	 (id (make-tcc-name)))
     (unless (tc-eq uform *true*)
@@ -916,10 +928,7 @@
 				      constructors)))
 			   *boolean* nil nil))
 	 (tform (add-tcc-conditions form))
-	 (xform (beta-reduce (subst-var-for-recs
-			      tform
-			      (declaration *current-context*))))
-	 (uform (expose-binding-types (universal-closure xform)))
+	 (uform (beta-reduce tform))
 	 (*bound-variables* nil)
 	 (*old-tcc-name* nil)
 	 (ndecl (typecheck* (mk-cases-tcc id uform) nil nil nil)))
@@ -1032,22 +1041,24 @@
   (let ((imp (current-declaration)))
     (makesym "IMP_~a" (id (theory-name imp)))))
 
-(defun subst-var-for-recs (expr recdecl)
-  (if (and (def-decl? recdecl)
-	   (recursive-signature recdecl))
-      (let* ((vid (make-new-variable '|v| expr))
-	     (vname (make-new-variable-name-expr
-		     vid (recursive-signature recdecl)))
-	     (sexpr (gensubst expr
-		      #'(lambda (x) (declare (ignore x)) (copy vname))
-		      #'(lambda (x) (and (name-expr? x)
-					 (eq (declaration x) recdecl))))))
-	(if (and (not (eq sexpr expr))
-		 (forall-expr? sexpr))
-	    (copy sexpr
-	      'bindings (append (bindings sexpr) (list (declaration vname))))
-	    sexpr))
-      expr))
+(defun subst-var-for-recs (expr)
+  (let ((recdecl (declaration *current-context*)))
+    (if (and (def-decl? recdecl)
+	     (recursive-signature recdecl))
+	(let* ((vid (make-new-variable '|v| expr))
+	       (vname (make-new-variable-name-expr
+		       vid (recursive-signature recdecl) ;; was (type recdecl)
+		       ))
+	       (sexpr (gensubst expr
+			#'(lambda (x) (declare (ignore x)) (copy vname))
+			#'(lambda (x) (and (name-expr? x)
+					   (eq (declaration x) recdecl))))))
+	  (if (and (not (eq sexpr expr))
+		   (forall-expr? sexpr))
+	      (copy sexpr
+		'bindings (append (bindings sexpr) (list (declaration vname))))
+	      sexpr))
+	expr)))
 
 (defun make-new-variable (base expr &optional num)
   (let ((vid (if num (makesym "~a~d" base num) base)))
@@ -1218,19 +1229,14 @@
   (let* ((*generate-tccs* 'none)
 	 (conc (make-disjoint-cond-property conditions values)))
     (when conc
-      (let* ((tform (raise-actuals (add-tcc-conditions conc)))
-	     (xform (cond ((tcc-evaluates-to-true conc)
+      (let* ((*no-expected* nil)
+	     (*bound-variables* *keep-unbound*)
+	     (tform (add-tcc-conditions conc))
+	     (uform (cond ((tcc-evaluates-to-true conc tform)
 			   *true*)
 			  (*simplify-tccs*
-			   (pseudo-normalize (subst-var-for-recs
-					      tform
-					      (declaration *current-context*))))
-			  (t (subst-var-for-recs
-			      tform
-			      (declaration *current-context*)))))
-	     (*no-expected* nil)
-	     (uform (expose-binding-types (universal-closure xform)))
-	     (*bound-variables* *keep-unbound*)
+			   (pseudo-normalize tform))
+			  (t tform)))
 	     (id (make-tcc-name)))
 	(assert (tc-eq (find-supertype (type uform)) *boolean*))
 	(unless (tc-eq conc *true*)
@@ -1280,18 +1286,13 @@
 (defun make-cond-coverage-tcc (expr conditions)
   (let* ((*generate-tccs* 'none)
 	 (conc (make!-disjunction* conditions))
-	 (tform (raise-actuals (add-tcc-conditions conc)))
-	 (xform (cond ((tcc-evaluates-to-true conc tform)
+	 (tform (add-tcc-conditions conc))
+	 (uform (cond ((tcc-evaluates-to-true conc tform)
 		       *true*)
 		      (*simplify-tccs*
-		       (pseudo-normalize (subst-var-for-recs
-					  tform
-					  (declaration *current-context*))))
-		      (t (beta-reduce (subst-var-for-recs
-				       tform
-				       (declaration *current-context*))))))
+		       (pseudo-normalize tform))
+		      (t (beta-reduce tform))))
 	 (*no-expected* nil)
-	 (uform (expose-binding-types (universal-closure xform)))
 	 (*bound-variables* *keep-unbound*)
 	 (id (make-tcc-name)))
     (assert (tc-eq (find-supertype (type uform)) *boolean*))

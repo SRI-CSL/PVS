@@ -69,11 +69,11 @@
   ;;(assert splace)
   (let* ((result (term:mk-sim-term sim-op args))
 	 (eplace (get-end-place sim-op args splace nil)))
-    (when (and (eq sim-op 'elsif)
+    (when (and (eq sim-op 'ELSIF)
 	       *elsif-places*)
       (setq splace (pop *elsif-places*)))
     (sbrt::save-place-and-comment-info result nil splace eplace)
-    (when (eq sim-op 'term-expr)
+    (when (eq sim-op 'TERM-EXPR)
       (reset-operator-place args))
     ;;(assert (type-of result))
     result))
@@ -146,8 +146,8 @@
 (defun reader ()
   (multiple-value-bind (token place comment)
       (lexical-read *lexical-stream* :eof)
-;     (format t "~%reader: token = ~s, place = ~s, comment = ~s"
-;       token place comment)
+    ;; (format t "~%reader: token = ~s, place = ~s, comment = ~s"
+    ;;   token place comment)
     (cond ((consp token)
 	   (case (car token)
 	     (:literal
@@ -236,11 +236,11 @@ with the comment so as to put it in the proper place")
 	     (values (prog1 *hold-a1* (setf *hold-a1* nil))
 		     *hold-a2* *hold-a3* *hold-a4*))
 	    (t (funcall *reader-fun*)))
-;     (format t "~%gettoken: type = ~s, token = ~s, place = ~s, comment = ~s"
-;       type token place comment)
+    ;; (format t "~%gettoken: type = ~s, token = ~s, place = ~s, comment = ~s"
+    ;;   type token place comment)
     (setq *end-place* (list type token place))
     (setq *last-newline-comment* (nconc *last-newline-comment* comment))
-;    (format t "~%gettoken comment = ~s" comment)
+    ;; (format t "~%gettoken comment = ~s" comment)
     (cond (;; This branch of the COND is completely meaningless because
 	   ;; there is currently no way to cause a generated parser to return
 	   ;; a lex'ed keyword (e.g., 'begin', 'then', ':=').  Parsers merely
@@ -267,9 +267,9 @@ with the comment so as to put it in the proper place")
 	       (values (prog1 *hold-a1* (setq *hold-a1* nil))
 		       *hold-a2* *hold-a3* *hold-a4*))
 	      (t (funcall *reader-fun*)))
-;       (format t "~%gobble-token: type = ~s, token = ~s, place = ~s, comment = ~s"
-; 	v1 v2 v3 v4)
-      (when (eq v1 'sbst::elsif)
+      ;; (format t "~%gobble-token: type = ~s, token = ~s, place = ~s, comment = ~s"
+      ;;   v1 v2 v3 v4)
+      (when (eq v1 'sbst::ELSIF)
 	(push v3 pvs::*elsif-places*))
       (setq *end-place* (list v1 v2 v3))
       (setq *last-newline-comment*
@@ -421,7 +421,7 @@ with the comment so as to put it in the proper place")
   (set-term-place term splace (or eplace *end-of-last-token*))
   (when (and *last-newline-comment* 
 	     (is-leaf-term lterm))
-;    (format t "~%~a gets comment ~s" lterm comment)
+    ;; (format t "~%~a gets comment ~s" lterm comment)
     (setf (getf (term:term-attr term) :comment)
 	  *last-newline-comment*)
     (setq *last-newline-comment* nil))
@@ -724,8 +724,8 @@ with the comment so as to put it in the proper place")
 
 (defun show-comments (term)
   (let ((cmt (getf (term:term-attr term) :comment)))
-;     (when cmt
-;       (format t "~%~s - ~s" term cmt))
+    (when cmt
+      (format t "~%~s - ~s" term cmt))
     (mapc #'show-comments (term-args term))
     nil))
 

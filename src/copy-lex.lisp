@@ -135,6 +135,11 @@
   (call-next-method)
   (copy-lex* (declared-type old) (declared-type new)))
 
+(defmethod copy-lex* ((old auto-rewrite-decl) (new auto-rewrite-decl))
+  (unless (eq (class-of old) (class-of new))
+    (change-class old (class-of new)))
+  (copy-lex* (rewrite-names old) (rewrite-names new)))
+
 
 ;;; Type expressions
 
@@ -219,10 +224,32 @@
   (copy-lex* (args old) (args new))
   (copy-lex* (expression old) (expression new)))
 
+(defmethod copy-lex* ((old projection-expr) (new projection-expr))
+  (copy-lex* (actuals old) (actuals new)))
+
+(defmethod copy-lex* ((old injection-expr) (new injection-expr))
+  (copy-lex* (actuals old) (actuals new)))
+
+(defmethod copy-lex* ((old injection?-expr) (new injection?-expr))
+  (copy-lex* (actuals old) (actuals new)))
+
+(defmethod copy-lex* ((old extraction-expr) (new extraction-expr))
+  (copy-lex* (actuals old) (actuals new)))
+
 (defmethod copy-lex* ((old projection-application) (new projection-application))
+  (copy-lex* (actuals old) (actuals new))
   (copy-lex* (argument old) (argument new)))
 
 (defmethod copy-lex* ((old injection-application) (new injection-application))
+  (copy-lex* (actuals old) (actuals new))
+  (copy-lex* (argument old) (argument new)))
+
+(defmethod copy-lex* ((old injection?-application) (new injection?-application))
+  (copy-lex* (actuals old) (actuals new))
+  (copy-lex* (argument old) (argument new)))
+
+(defmethod copy-lex* ((old extraction-application) (new extraction-application))
+  (copy-lex* (actuals old) (actuals new))
   (copy-lex* (argument old) (argument new)))
 
 (defmethod copy-lex* ((old field-application) (new field-application))

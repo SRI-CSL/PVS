@@ -454,7 +454,9 @@ useful if more than one specification is to be included in one document")
   (mapcar #'latex-proof-printout-exprs args))
 
 (defmethod latex-proof-printout-exprs ((arg string))
-  (latex-print (pc-parse arg 'expr) nil))
+  (if (string= arg "_")
+      "\\rule{.1in}{.01in}"
+      (latex-print (pc-parse arg 'expr) nil)))
 
 (defmethod latex-proof-printout-exprs (arg)
   (if (eq arg '_)

@@ -13,6 +13,20 @@
 
 (in-package :pvs)
 
+;;; NOTE: Many attempts have been made to use hash tables to speed up this
+;;; function, and for particular examples it may look like a win, but in
+;;; general it makes things slower.  The real slowness in this function is
+;;; in the calls to pseudo-normalize, which are needed in subtypes,
+;;; actuals, and type-applications.
+
+;;; The *needs-pseudo-normalizing* flag controls when to invoke
+;;; pseudo-normalize.  It is let to nil prior to substituting for the
+;;; expression that may need to be pseudo-normalized, and if an expression
+;;; other than a name is substituted for, it is set to t (in substit*
+;;; (name-expr)).  Pseudo-normalize is then invoked only if the flag is set.
+
+(defvar *needs-pseudo-normalizing* nil)
+
 (defun substit (obj alist)
   ;; At some point, should verify that car of every element of the
   ;; alist is a declaration.
@@ -22,19 +36,17 @@
 				 '(or simple-decl declaration))
 			  (eq (declaration (car a)) (car a))))
 		 alist))
-  (if (null alist)
-      obj
-      (substit* obj alist)))
-
-;(defmethod substit* :around (obj alist)
-;  (let ((hobj (gethash obj *substit-hash*)))
-;    (if hobj
-;	(if (tc-eq obj hobj)
-;	    obj
-;	    hobj))
-;    (let ((nobj (call-next-method)))
-;      (setf (gethash obj *substit-hash*) nobj)
-;      nobj)))
+  (let* ((fvars (freevars obj))
+	 (nalist (remove-if
+		     (complement
+		      #'(lambda (a)
+			  (and (not (eq (car a) (cdr a)))
+			       (member (declaration (car a)) fvars
+				       :key #'declaration :test #'eq))))
+		   alist)))
+    (if (null nalist)
+	obj
+	(substit* obj nalist))))
 
 (defmethod substit* :around ((expr expr) alist)
   (if (null (freevars expr))
@@ -116,7 +128,11 @@
 				 (current-theory-name)
 				 (type (cdr binding)))))
 		   nex)))
-	    (t (cdr binding))))))
+	    (t (unless (name-expr? (cdr binding))
+		 ;; It is now possible that pseudo-normalize will actually
+		 ;; change things.
+		 (setq *needs-pseudo-normalizing* t))
+	       (cdr binding))))))
 
 (defmethod substit* ((expr adt-name-expr) alist)
   (let ((nex (call-next-method)))
@@ -124,8 +140,32 @@
 	nex
 	(copy nex 'adt-type (substit* (adt-type expr) alist)))))
 
+(defmethod substit* ((expr projection-expr) alist)
+  (with-slots (actuals type index) expr
+    (lcopy expr
+      'actuals (substit* actuals alist)
+      'type (substit* type alist))))
+
+(defmethod substit* ((expr injection-expr) alist)
+  (with-slots (actuals type index) expr
+    (lcopy expr
+      'actuals (substit* actuals alist)
+      'type (substit* type alist))))
+
+(defmethod substit* ((expr injection?-expr) alist)
+  (with-slots (actuals type index) expr
+    (lcopy expr
+      'actuals (substit* actuals alist)
+      'type (substit* type alist))))
+
+(defmethod substit* ((expr extraction-expr) alist)
+  (with-slots (actuals type index) expr
+    (lcopy expr
+      'actuals (substit* actuals alist)
+      'type (substit* type alist))))
+
 (defmethod substit* ((expr projection-application) alist)
-  (with-slots (argument type index) expr
+  (with-slots (argument actuals type index) expr
     (let ((narg (substit* argument alist)))
       (cond ((and (not *substit-dont-simplify*)
 		  (tuple-expr? narg))
@@ -137,14 +177,34 @@
 			     index 1 narg (type narg))))
 		 (lcopy expr
 		   'argument narg
+		   'actuals (substit* actuals alist)
 		   'type ntype)))))))
 
 (defmethod substit* ((expr injection-application) alist)
-  (with-slots (argument type index) expr
+  (with-slots (argument actuals type index) expr
     (let ((narg (substit* argument alist))
 	  (ntype (substit* type alist)))
       (lcopy expr
 	'argument narg
+	'actuals (substit* actuals alist)
+	'type ntype))))
+
+(defmethod substit* ((expr injection?-application) alist)
+  (with-slots (argument actuals type index) expr
+    (let ((narg (substit* argument alist))
+	  (ntype (substit* type alist)))
+      (lcopy expr
+	'argument narg
+	'actuals (substit* actuals alist)
+	'type ntype))))
+
+(defmethod substit* ((expr extraction-application) alist)
+  (with-slots (argument actuals type index) expr
+    (let ((narg (substit* argument alist))
+	  (ntype (substit* type alist)))
+      (lcopy expr
+	'argument narg
+	'actuals (substit* actuals alist)
 	'type ntype))))
 
 (defmethod substit* ((expr field-application) alist)
@@ -177,7 +237,11 @@
 	'expr (cond ((and ntype (eq ntype type-value))
 		     expr)
 		    (type-value ntype)
-		    (t (pseudo-normalize (substit* expr alist))))
+		    (t (let* ((*needs-pseudo-normalizing* nil)
+			      (nexpr (substit* expr alist)))
+			 (if *needs-pseudo-normalizing*
+			     (pseudo-normalize nexpr)
+			     nexpr))))
 	'type-value ntype))))
 
 ;(defmethod substit* ( (expr if-expr) alist) ;;NSH(7-30)get rid
@@ -206,7 +270,7 @@
 			     'argument arg
 			     'type (if (typep (domain stype) 'dep-binding)
 				       (substit (range stype)
-					 (acons (domain stype) arg alist))
+					 (acons (domain stype) arg nil))
 				       (range stype)))))
 		 ;; Note: the copy :around (application) method takes care of
 		 ;; changing the class if it is needed.
@@ -215,88 +279,100 @@
 (defmethod substit* ((expr equation) alist)
   (if *substit-dont-simplify*
       (call-next-method)
-      (let* ((result (call-next-method))
-	     (arg1 (args1 result))
-	     (arg2 (args2 result)))
-	(if (tc-eq arg1 arg2)
-	    *true*
-	    (if (iff-or-boolean-equation? result)
-		(if (tc-eq arg1 *true*)
-		    arg2
-		    (if (tc-eq arg2 *true*)
-			arg1
-			result))
-		result)))))
+      (let* ((result (call-next-method)))
+	(if (equation? result)
+	    (let* ((arg1 (args1 result))
+		   (arg2 (args2 result)))
+	      (if (tc-eq arg1 arg2)
+		  *true*
+		  (if (iff-or-boolean-equation? result)
+		      (if (tc-eq arg1 *true*)
+			  arg2
+			  (if (tc-eq arg2 *true*)
+			      arg1
+			      result))
+		      result)))
+	    result))))
 
 
 (defmethod substit* ((expr conjunction) alist)
   (if *substit-dont-simplify*
       (call-next-method)
       (let ((result (call-next-method)))
-	(let ((arg1 (args1 result))
-	      (arg2 (args2 result)))
-	  (if (tc-eq arg1 *true*)
-	      arg2
-	      (if (tc-eq arg2 *true*)
-		  arg1
-		  (if (or (tc-eq arg1 *false*)
-			  (tc-eq arg2 *false*))
-		      *false*
-		      result)))))))
+	(if (conjunction? result)
+	    (let ((arg1 (args1 result))
+		  (arg2 (args2 result)))
+	      (if (tc-eq arg1 *true*)
+		  arg2
+		  (if (tc-eq arg2 *true*)
+		      arg1
+		      (if (or (tc-eq arg1 *false*)
+			      (tc-eq arg2 *false*))
+			  *false*
+			  result))))
+	    result))))
 
 (defmethod substit* ((expr disjunction) alist)
   (if *substit-dont-simplify*
       (call-next-method)
       (let ((result (call-next-method)))
-	(let ((arg1 (args1 result))
-	      (arg2 (args2 result)))
-	  (if (tc-eq arg1 *false*)
-	      arg2
-	      (if (tc-eq arg2 *false*)
-		  arg1
-		  (if (or (tc-eq arg1 *true*)
-			  (tc-eq arg2 *true*))
-		      *true*
-		      result)))))))
+	(if (disjunction? result)
+	    (let ((arg1 (args1 result))
+		  (arg2 (args2 result)))
+	      (if (tc-eq arg1 *false*)
+		  arg2
+		  (if (tc-eq arg2 *false*)
+		      arg1
+		      (if (or (tc-eq arg1 *true*)
+			      (tc-eq arg2 *true*))
+			  *true*
+			  result))))
+	    result))))
 
 (defmethod substit* ((expr implication) alist)
   (if *substit-dont-simplify*
       (call-next-method)
       (let ((result (call-next-method)))
-	(let ((arg1 (args1 result))
-	      (arg2 (args2 result)))
-	  (if (tc-eq arg1 *true*)
-	      arg2
-	      (if (or (tc-eq arg1 *false*)
-		      (tc-eq arg2 *true*))
-		  *true*
-		  (if (tc-eq arg2 *false*)
-		      (negate! arg1)
-		      result)))))))
+	(if (implication? result)
+	    (let ((arg1 (args1 result))
+		  (arg2 (args2 result)))
+	      (if (tc-eq arg1 *true*)
+		  arg2
+		  (if (or (tc-eq arg1 *false*)
+			  (tc-eq arg2 *true*))
+		      *true*
+		      (if (tc-eq arg2 *false*)
+			  (negate! arg1)
+			  result))))
+	    result))))
 
 (defmethod substit* ((expr negation) alist)
   (if *substit-dont-simplify*
       (call-next-method)
       (let ((result (call-next-method)))
-	(let ((arg (argument result)))
-	  (if (tc-eq arg *true*)
-	      *false*
-	      (if (tc-eq arg *false*)
-		  *true*
-		  result))))))
+	(if (negation? result)
+	    (let ((arg (argument result)))
+	      (if (tc-eq arg *true*)
+		  *false*
+		  (if (tc-eq arg *false*)
+		      *true*
+		      result)))
+	    result))))
 
 (defmethod substit* ((expr branch) alist)
   (if *substit-dont-simplify*
       (call-next-method)
       (let ((result (call-next-method)))
-	(let ((cond (condition result))
-	      (then (then-part result))
-	      (else (else-part result)))
-	  (if (tc-eq cond *true*)
-	      then
-	      (if (tc-eq cond *false*)
-		  else
-		  result))))))
+	(if (branch? result)
+	    (let ((cond (condition result))
+		  (then (then-part result))
+		  (else (else-part result)))
+	      (if (tc-eq cond *true*)
+		  then
+		  (if (tc-eq cond *false*)
+		      else
+		      result)))
+	    result))))
 
 (defmethod change-to-infix-appl? ((expr infix-application))
   nil)
@@ -383,25 +459,31 @@
   (cond ((null expr)
 	 (nreverse result))
 	((binding? (car expr))
-	 (let* ((newtype (substit* (type (car expr)) alist))
-		(newcar (lcopy (car expr)
-			  'type newtype
-			  'declared-type (substit* (declared-type (car expr))
-						   alist))))
+	 (let ((newcar (substit-binding (car expr) alist)))
 	   (cond ((eq newcar (car expr))
 		  (substit*-list (cdr expr) alist (cons newcar result)))
 		 (t (substit*-list (cdr expr)
-				   (cons (cons (car expr) newcar) alist)
+				   (acons (car expr) newcar alist)
 				   (cons newcar result))))))
 	(t (substit*-list (cdr expr) alist
 			  (cons (substit* (car expr) alist)
 				result)))))
 
+(defmethod substit-binding (expr alist)
+  (let* ((newtype (substit* (type expr) alist))
+	 (newdtype (if (tc-eq (print-type (type expr))
+			      (declared-type expr))
+		       (print-type newtype)
+		       (substit* (declared-type expr) alist))))
+    (lcopy expr
+      'type newtype
+      'declared-type newdtype)))
+
 (defmethod substit* ((expr binding-expr) alist)
   (if (not (substit-possible? expr alist))
       expr
       (let* ((new-bindings (make-new-bindings (bindings expr) alist))
-	     (nalist (nconc (pairlis (bindings expr) new-bindings) alist))
+	     (nalist (substit-pairlis (bindings expr) new-bindings alist))
 	     (nexpr (substit* (expression expr) nalist))
 	     (ntype (if (quant-expr? expr)
 			(type expr)
@@ -414,6 +496,14 @@
 	  'type ntype
 	  'expression nexpr
 	  'parens 0))))
+
+(defun substit-pairlis (bindings new-bindings alist)
+  (if (null bindings)
+      alist
+      (substit-pairlis (cdr bindings) (cdr new-bindings)
+		       (if (eq (car bindings) (car new-bindings))
+			   alist
+			   (acons (car bindings) (car new-bindings) alist)))))
 
 (defun make-new-bindings (old-bindings alist)
   (make-new-bindings* old-bindings
@@ -524,10 +614,13 @@
 
 (defmethod substit* ((texpr subtype) alist)
   (with-slots (supertype predicate print-type) texpr
-    (let ((npred (substit* predicate alist)))
+    (let* ((*needs-pseudo-normalizing* nil) ;; set to t in substit* (name-expr)
+	   (npred (substit* predicate alist)))
       (if (eq npred predicate)
 	  texpr
-	  (let* ((spred (pseudo-normalize npred))
+	  (let* ((spred (if *needs-pseudo-normalizing*
+			    (pseudo-normalize npred)
+			    npred))
 		 (stype (domain (find-supertype (type spred)))))
 	    (copy texpr
 	      'supertype stype
@@ -544,15 +637,8 @@
     nexpr))
 
 (defmethod substit* ((texpr expr-as-type) alist)
-  (let* ((npred (substit* (predicate texpr) alist))
-	 (spred (if (eq npred (predicate texpr))
-		    npred
-		    (pseudo-normalize npred))))
-    (lcopy texpr
-      'supertype (substit* (supertype texpr) alist)
-      'predicate spred
-      'expr (beta-reduce (substit* (expr texpr) alist))
-      'print-type (substit* (print-type texpr) alist))))
+  (lcopy texpr
+    'expr (beta-reduce (substit* (expr texpr) alist))))
 
 (defmethod substit* ((texpr datatype-subtype) alist)
   (lcopy (call-next-method)
@@ -585,7 +671,11 @@
 (defmethod substit* ((te type-application) alist)
   (lcopy te
     'type (substit* (type te) alist)
-    'parameters (pseudo-normalize (substit* (parameters te) alist))
+    'parameters (let* ((*needs-pseudo-normalizing* nil)
+		       (nparms (substit* (parameters te) alist)))
+		  (if *needs-pseudo-normalizing*
+		      (pseudo-normalize nparms)
+		      nparms))
     'print-type (substit* (print-type te) alist)))
 
 (defmethod substit* ((fd field-decl) alist)

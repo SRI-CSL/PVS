@@ -138,11 +138,6 @@
 	(break "Declaration was not found"))
       decl)))
 
-(defmethod update-fetched :around ((obj lib-decl))
-  (call-next-method)
-  (setf (library-pathname obj)
-	(nth-value 1 (get-library-pathname (library obj)))))
-
 (defmethod update-fetched :around ((obj mod-decl))
   (break "update-fetched (mod-decl)")
   (call-next-method)

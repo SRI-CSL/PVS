@@ -106,14 +106,15 @@
 	    :parse t)
   (filename :type (or null string)
 	    :documentation "The filename sans directory or extension")
-  (path :type (or null pathname))
   (status :type list
 	  :documentation "A list containing the completed actions")
   (generated-by :documentation "a module id")
   (info :documentation
 	"A list of information strings produced by calls to pvs-info")
   (warnings :documentation
-	    "A list of warning strings produced by calls to pvs-info"))
+	    "A list of warning strings produced by calls to pvs-info")
+  (conversion-messages :documentation
+		       "A list of conversion message strings produced by calls to pvs-conversion-msg"))
 
 
 ;;; Datatypes and related classes
@@ -122,12 +123,12 @@
   (importings :parse t)
   (constructors :documentation "a list of constructors"
 		:parse t)
-  positive-types
-  generated-file-date
   adt-type-name
   adt-theory
   adt-map-theory
   adt-reduce-theory
+  generated-file-date
+  positive-types
   (semi :parse t))
 
 (defcl recursive-type-with-subtypes (recursive-type)
@@ -145,9 +146,14 @@
 
 (defcl datatype-with-subtypes (recursive-type-with-subtypes datatype))
 
-(defcl library-datatype (datatype)
-  library
-  library-path)
+;;; Library classes
+
+(defcl library-datatype-or-theory (datatype-or-module)
+  (lib-ref :documentation
+	   "The canonical form of the library path - if relative, then it is
+            relative to the current context"))
+
+(defcl library-datatype (datatype library-datatype-or-theory))
 
 (defcl inline-datatype-with-subtypes (inline-datatype datatype-with-subtypes))
 
@@ -159,9 +165,7 @@
 
 (defcl codatatype-with-subtypes (codatatype recursive-type-with-subtypes))
 
-(defcl library-codatatype (codatatype)
-  library
-  library-path)
+(defcl library-codatatype (codatatype library-datatype-or-theory))
 
 (defcl inline-codatatype-with-subtypes (inline-codatatype codatatype-with-subtypes))
 
@@ -203,9 +207,7 @@
   (tcc-form :fetch-as nil)
   typecheck-time)
 
-(defcl library-theory (module)
-  library
-  library-path)
+(defcl library-theory (module library-datatype-or-theory))
 
 (defcl theory-interpretation (module)
   from-theory
@@ -316,8 +318,7 @@
 
 (defcl lib-decl (declaration)
   (lib-string :parse t)
-  (library :parse t)
-  (library-pathname :fetch-as nil))
+  lib-ref)
 
 (defcl lib-eq-decl (lib-decl))
 
@@ -549,6 +550,15 @@
   (parameters :parse t))
 
 
+(defcl type-var (type-name)) ;; The mixin
+
+(defcl type-variable (type-var))
+
+(defcl tup-type-variable (type-var))
+
+(defcl cotup-type-variable (type-var))
+
+
 ;;; Subtypes are of the form {x [: type] | expr},
 ;;; but also come in with bind-decls of the form (x [: type] | pred)
 ;;; The formals and formula are for this latter form, as the predicate is
@@ -602,7 +612,8 @@
   generated?)
 
 (defcl cotupletype (type-expr)
-  (types :parse t))
+  (types :parse t)
+  generated?)
 
 
 ;;; The domain-tupletype is a tupletype created for a function type, to

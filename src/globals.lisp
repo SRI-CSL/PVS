@@ -13,7 +13,7 @@
 
 ;; provide
 
-(in-package 'pvs)
+(in-package :pvs)
 
 ;; shadow
 
@@ -34,11 +34,11 @@
 (defparameter *pvs-directories*
   '("" "src" "src/prover" "src/decision-procedures" "src/interface"
     "src/decision-procedures/polylib" "src/utils" "BDD" "src/interface"
-    "src/WS1S/lisp" "src/ics" "src/abstraction" "src/fol" "src/qe" 
+    "src/WS1S/lisp" "src/abstraction"
     "src/ground-prover" "src/groundeval" "src/inst-by-unif" ))
 
 (defparameter *pvs-version* "3.0 Beta")
-(defparameter *binfile-version* 16)
+(defparameter *binfile-version* 18)
 
 (defparameter *context-name* ".pvscontext")
 
@@ -179,7 +179,7 @@ prelude libraries")
 (defvar *type-error-catch* nil
   "Set to a value to throw to when trying to control typechecking.")
 
-(defvar *already-checked-for-k-conversion* nil)
+(defvar *skip-k-conversion-check* nil)
 
 (defvar *tc-match-exact* nil)
 
@@ -226,7 +226,12 @@ NIL (the default), TOP, ALL, or NONE.")
   "Flag indicating whether false TCCs should lead to a type error")
 
 (defvar *tccs* nil "The TCC declarations generated while typechecking a file")
-(defvar *tccforms* nil "The TCCs generated while typechecking a file")
+(defvar *tccforms* nil
+  "The TCCs generated while typechecking an expression when in the prover,
+evaluator, or when *collecting-tccs* is true.")
+(defvar *collecting-tccs* nil
+  "Controls whether TCCs are inserted in the current theory or simply
+collected in *tccforms*")
 ;(defvar *suppress-proved-tccs* nil
 ;  "Whether to suppress proved tccs when prettyprinting")
 (defvar *recursive-tcc-names* nil
@@ -270,7 +275,8 @@ rather than the generated declaration.")
 
 (defun pprint-comment-strings (stream string)
   (let ((lines (mk::split-string string :item #\newline))
-	(ccol (1+ (excl:stream-line-column stream))))
+	(ccol 1 ;(1+ (excl:stream-line-column stream))
+	      ))
     (when (and (cdr lines) (integerp ccol) (> ccol 0)
 	       (every #'(lambda (line)
 			  (and (> (length line) ccol)

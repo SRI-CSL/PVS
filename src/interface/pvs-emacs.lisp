@@ -107,12 +107,16 @@
       (pvs-message "~% ~?~%" ctl args)
       (format t "~% ~?~%" ctl args))
   (when (and (current-theory)
-	     (not *in-checker*))
+	     (not *in-checker*)
+	     (not *in-evaluator*))
     (let ((warning (format nil "~?" ctl args)))
       (if (warnings (current-theory))
 	  (nconc (warnings (current-theory)) (list warning))
 	  (setf (warnings (current-theory)) (list warning)))))
   nil)
+
+;;; Collect messages until the end of parsing/typechecking, and provide
+;;; them to a buffer.
 
 (defun show-theory-warnings (theoryname)
   (let ((theory (get-theory theoryname)))
@@ -144,7 +148,8 @@
       (pvs-message "~% ~?~%" ctl args)
       (format t "~% ~?~%" ctl args))
   (when (and (current-theory)
-	     (not *in-checker*))
+	     (not *in-checker*)
+	     (not *in-evaluator*))
     (let ((info (format nil "~?" ctl args)))
       (if (info (current-theory))
 	  (nconc (info (current-theory)) (list info))
@@ -160,6 +165,7 @@
 	  (t (pvs-buffer "PVS Messages"
 	       (format nil
 		   "Messages for theory ~a:~
+                    ~2%Use M-x show-theory-conversions to see the conversions.~
                     ~2%~{~a~^~2%~}"
 		 theoryname
 		 (info theory))
@@ -172,11 +178,57 @@
 	    (pvs-buffer "PVS Messages"
 	      (format nil
 		  "Messages for file ~a.pvs:~
+                   ~2%Use M-x show-theory-conversions to see the conversions.~
                ~:{~2%Messages for theory ~a:~@{~{~2%~a~}~}~}"
 		filename
 		(mapcar #'(lambda (th) (list (id th) (info th))) theories))
 	      t t)
 	    (pvs-message "No messages associated with ~a.pvs" filename))
+	(pvs-message "~a.pvs has not been typechecked" filename))))
+
+;;; Conversions are treated separately
+
+(defun pvs-conversion-msg (ctl &rest args)
+  (if *noninteractive*
+      (pvs-message "~% ~?~%" ctl args)
+      (format t "~% ~?~%" ctl args))
+  (when (and (current-theory)
+	     (not *in-checker*)
+	     (not *in-evaluator*))
+    (let ((cmsg (format nil "~?" ctl args)))
+      (if (conversion-messages (current-theory))
+	  (nconc (conversion-messages (current-theory)) (list cmsg))
+	  (setf (conversion-messages (current-theory)) (list cmsg)))))
+  nil)
+
+(defun show-theory-conversions (theoryname)
+  (let ((theory (get-theory theoryname)))
+    (cond ((null theory)
+	   (pvs-message "Theory ~a is not typechecked" theoryname))
+	  ((null (conversion-messages theory))
+	   (pvs-message "Theory ~a has no conversions" theoryname))
+	  (t (pvs-buffer "PVS Conversions"
+	       (format nil
+		   "Conversions for theory ~a:~
+                    ~2%Use pretty-print-expanded (M-x ppe) to see the conversions as used in the theory.
+                    ~2%~{~a~^~2%~}"
+		 theoryname (conversion-messages theory))
+	       t t)))))
+
+(defun show-pvs-file-conversions (filename)
+  (let ((theories (get-theories filename)))
+    (if theories
+	(if (some #'conversion-messages theories)
+	    (pvs-buffer "PVS Conversions"
+	      (format nil
+		  "Conversions for file ~a.pvs:~
+                   ~2%Use pretty-print-expanded (M-x ppe) to see the conversions as used in the theory.
+               ~:{~2%Conversions for theory ~a:~@{~{~2%~a~}~}~}"
+		filename
+		(mapcar #'(lambda (th) (list (id th) (conversion-messages th)))
+		  theories))
+	      t t)
+	    (pvs-message "No conversions associated with ~a.pvs" filename))
 	(pvs-message "~a.pvs has not been typechecked" filename))))
 
 ;;; Used to put messages in a log file
@@ -437,8 +489,27 @@
 	 (format t "~%Restoring the state.")
 	 (restore))
 	(t (if args
-	       (format t "~%~?" message args)
-	       (format t "~%~a" message))
+	       (format t "~%~?~a~a"
+		 message
+		 args
+		 (if *current-file*
+		     (format nil "~%In file ~a" (pathname-name *current-file*))
+		     "")
+		 (if (place obj)
+		     (format nil " (line ~a, col ~a)"
+		       (line-begin (place obj))
+		       (col-begin (place obj)))
+		     ""))
+	       (format t "~%~a~a~a"
+		 message
+		 (if *current-file*
+		     (format nil "~%In file ~a" (pathname-name *current-file*))
+		     "")
+		 (if (place obj)
+		     (format nil " (line ~a, col ~a)"
+		       (line-begin (place obj))
+		       (col-begin (place obj)))
+		     "")))
 	   (error "Parse error"))))
 
 
@@ -476,6 +547,10 @@
 	   (throw 'tcerror t))
 	  (t (format t "~%~a" error)
 	     (error "Typecheck error")))))
+
+(defun type-error-noconv (obj message &rest args)
+  (let ((*skip-k-conversion-check* t))
+    (apply #'type-error obj message args)))
 
 (defun type-error-for-conversion (obj message args)
   (let ((error (format nil
@@ -517,10 +592,8 @@
 	     error))
 	  (t error))))
 
-(defvar *already-checked-for-k-conversion* nil)
-
 (defun check-if-k-conversion-would-work (ex arguments)
-  (and (not *already-checked-for-k-conversion*)
+  (and (not *skip-k-conversion-check*)
        *typechecking-module*
        (null *type-error-catch*)
        (not (some #'k-combinator? (conversions *current-context*)))
@@ -533,8 +606,9 @@
 		      'name (mk-name-expr '|K_conversion|))))
 	 (typecheck* cdecl nil nil nil)
 	 (push cdecl (conversions *current-context*))
-	 (catch 'type-error
-	   (typecheck* ex nil nil arguments)))))
+	 (let ((tex (catch 'type-error
+		      (ignore-errors (typecheck* ex nil nil arguments)))))
+	   (and tex (conversion-occurs-in? tex))))))
 
 (defun conversion-occurs-in? (obj)
   (let ((conv? nil))
@@ -615,7 +689,7 @@
 	  obstr
 	  (or (> (length obstr) 20)
 	      (find #\newline obstr))
-	  (mapcar #'(lambda (ty) (unparse ty :string t)) (ptypes obj))
+	  (mapcar #'(lambda (ty) (unparse (full-name ty 1) :string t)) (ptypes obj))
 	  (if (some #'fully-instantiated? (ptypes obj))
 	      (if (not (every #'fully-instantiated? (ptypes obj)))
 		  "(Some of these are not fully instantiated)"

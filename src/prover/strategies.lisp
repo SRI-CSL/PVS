@@ -379,23 +379,20 @@ righthand-side.  Examples:
 		(skip-msg "Current theory cannot be given actuals.")
 		(skip-msg "Need theory actuals to install rewrites.")))
 	(skip-msg "No such theory in current context.")))
-	 "Installs an entire theory (or only (explicit) definitions
-if DEFS is T(EXPLICIT)) as auto-rewrites.  In the case of a parametric
-theory, unless the DEFS flag is T or EXPLICIT, the actual parameters
-must be given.  If ALWAYS? is T the rewrites are installed also
-so that any rewrite other than a recursive definition always
-takes effect (see auto-rewrite!).  (Added 2.10.97: If ALWAYS? is
-set to !!, then the non-recursive definitions are always rewritten
-even when only a few of the curried arguments have been provided.)
-Declarations named in EXCLUDE are not introduced and any current
-rewrite rules in the EXCLUDE list are disabled. 
-By default, TCCs in the theory are excluded but they can be included
-when the TCC? flag is T. 
-Examples:
- (auto-rewrite-theory \"sets\" :exclude (\"union\" \"subset?\")
-                      :defs explicit)
- (auto-rewrite-theory \"lists[nat]\" :always? T)
- (auto-rewrite-theory \"connectives\" :always? !!)."
+	 "Installs an entire theory (or only (explicit (non-recursive))
+definitions if DEFS is T(EXPLICIT)) as auto-rewrites.  In the case of a
+parametric theory, unless the DEFS flag is T or EXPLICIT, the actual
+parameters must be given.  If ALWAYS? is T the rewrites are installed also
+so that any rewrite other than a recursive definition always takes effect
+(see auto-rewrite!).  (Added 2.10.97: If ALWAYS? is set to !!, then the
+non-recursive definitions are always rewritten even when only a few of the
+curried arguments have been provided.)  Declarations named in EXCLUDE are
+not introduced and any current rewrite rules in the EXCLUDE list are
+disabled.  By default, TCCs in the theory are excluded but they can be
+included when the TCC? flag is T.  Examples: (auto-rewrite-theory \"sets\"
+:exclude (\"union\" \"subset?\") :defs explicit) (auto-rewrite-theory
+\"lists[nat]\" :always? T) (auto-rewrite-theory \"connectives\" :always?
+!!)."
 	 "Rewriting relative to the theory: ~a")
 
 (defstep auto-rewrite-theories (&rest theories)
@@ -482,52 +479,62 @@ AUTO-REWRITE-THEORY, or AUTO-REWRITE-THEORIES. E.g.,
 
 (defhelper subtype-tcc ()
   (tcc$ explicit)
-  "The strategy used for subtype TCCs"
+  "The strategy used for subtype TCCs- invokes GRIND with non-recursive
+definitions as auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper termination-tcc ()
   (tcc$ !)
-  "The strategy used for termination TCCs"
+  "The strategy used for termination TCCs - invokes GRIND with all
+definitions as auto-rewrites."
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper existence-tcc ()
   (tcc$ explicit)
-  "The strategy used for existence TCCs"
+  "The strategy used for existence TCCs - invokes GRIND with non-recursive
+definitions as auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper assuming-tcc ()
   (tcc$ explicit)
-  "The strategy used for assuming TCCs"
+  "The strategy used for assuming TCCs - invokes GRIND with non-recursive
+definitions as auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper cases-tcc ()
   (tcc$ explicit)
-  "The strategy used for cases TCCs"
+  "The strategy used for cases TCCs - invokes GRIND with non-recursive
+definitions as auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper well-founded-tcc ()
   (tcc$ explicit)
-  "The strategy used for well-founded TCCs"
+  "The strategy used for well-founded TCCs - invokes GRIND with non-recursive
+definitions as auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper same-name-tcc ()
   (tcc$ explicit)
-  "The strategy used for same-name TCCs"
+  "The strategy used for same-name TCCs - invokes GRIND with non-recursive
+definitions as auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper cond-disjoint-tcc ()
   (tcc$ explicit)
-  "The strategy used for cond-disjoint TCCs"
+  "The strategy used for cond-disjoint TCCs - invokes GRIND with non-recursive
+definitions as auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper cond-coverage-tcc ()
   (tcc$ explicit)
-  "The strategy used for cond-coverage TCCs"
+  "The strategy used for cond-coverage TCCs - invokes GRIND with non-recursive
+definitions as auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper monotonicity-tcc ()
   (tcc$ explicit)
-  "The strategy used for monotonicity TCCs"
+  "The strategy used for monotonicity TCCs - invokes GRIND with non-recursive
+definitions as auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper tcc (&optional (defs !))
@@ -537,7 +544,7 @@ Does auto-rewrite-explicit, then applies skolem!, inst?, lift-if,
 bddsimp, and assert, until nothing works.  DEFS is either
  NIL: The definitions in the statement are not installed as auto-rewrites
  T: All defns are installed as conditional rewrites
- !: All defns are installed, but with explicit defns as
+ !: All defns are installed, but with explicit (non-recursive) defns as
     unconditional rewrites
  explicit: Only explicit defns installed as conditional rewrites
  explicit!: Only explicit defns installed as unconditional rewrites."
@@ -635,7 +642,7 @@ THEORIES and REWRITES, and stops rewriting on EXCLUDE-THEORIES
 and EXCLUDE.   DEFS is either
    NIL:  defns in the statement are not installed as auto-rewrites
    T: All defns are installed as conditional rewrites
-   !: All defns are installed, but with explicit defns as
+   !: All defns are installed, but with explicit (non-recursive) defns as
       unconditional rewrites
    !!: All defns are installed, but with explicit defns as
        unconditional rewrites even when partially applied
@@ -676,7 +683,7 @@ assert, until nothing works. Here
  DEFS is either
    NIL:  defns in the statement are not installed as auto-rewrites
    T: All defns are installed as conditional rewrites
-   !: All defns are installed, but with explicit defns as
+   !: All defns are installed, but with explicit (non-recursive) defns as
       unconditional rewrites
    explicit: Only explicit defns installed as conditional rewrites
    explicit!: Only explicit defns installed as unconditional rewrites.
@@ -707,7 +714,9 @@ instantiation mechanism.  This defaults to the (INST?) strategy."
 		  (declaration *top-proofstate*)
 		  *ps*
 		  (memq defs '(explicit explicit!))
-		  nil))
+		  nil
+		  (mapappend #'rewrite-names
+				 (disabled-auto-rewrites *current-context*))))
 	  (names (loop for decl in decls
 		       collect (mk-name-expr (id decl) nil (id (module decl))))))
       (stop-rewrite :names names))
@@ -1257,7 +1266,7 @@ from THEORIES and REWRITES.
  DEFS is either
    NIL:  defns in the statement are not installed as auto-rewrites
    T: All defns are installed as conditional rewrites
-   !: All defns are installed, but with explicit defns as
+   !: All defns are installed, but with explicit (non-recursive) defns as
       unconditional rewrites
    explicit: Only explicit defns installed as conditional rewrites
    explicit!: Only explicit defns installed as unconditional rewrites.
@@ -1615,7 +1624,7 @@ REWRITES, instantiates, and lifts IFs.
  DEFS is either
    NIL:  defns in the statement are not installed as auto-rewrites
    T: All defns are installed as conditional rewrites
-   !: All defns are installed, but with explicit defns as
+   !: All defns are installed, but with explicit (non-recursive) defns as
       unconditional rewrites
    explicit: Only explicit defns installed as conditional rewrites
    explicit!: Only explicit defns installed as unconditional rewrites.
@@ -2088,10 +2097,13 @@ empty, and for the named rewrite rules, otherwise.  Behaves like (SKIP) otherwis
 		 collect (get-theory
 			  (typecheck (pc-parse name 'modname)))))
 			   
+	  (exclude (mapappend #'rewrite-names
+			    (disabled-auto-rewrites *current-context*)))
 	  (decls (collect-referenced-decls (declaration *top-proofstate*)
 					    *ps*
 					  explicit?
-					  exclude-theories))
+					  exclude-theories
+					  exclude))
 	   (rule-list (loop for decl in decls
 			    collect
 			    (let ((name (mk-auto-rewrite-name
@@ -2111,8 +2123,8 @@ else auto-rewrite."
 
 (defstep auto-rewrite-explicit (&optional always?)
   (auto-rewrite-defs t always?)
-  "Installs all the explicit definitions in the original statement.
-If always? is T, then it uses auto-rewrite! else auto-rewrite."
+  "Installs all the explicit (non-recursive) definitions in the original
+statement.  If always? is T, then it uses auto-rewrite! else auto-rewrite."
   "Auto-rewriting with all the explicit definitions relevant to statement")
 
 (defhelper rewrite-directly-with-fnum (fnum  &optional (fnums *) (dir lr))
@@ -2539,13 +2551,21 @@ found. "
 	(lcopy expr 'operator op 'argument (make-arg-tuple-expr args))))
 
 (defmethod detuple* ((expr projection-application))
-       (let ((result (detuple* (argument expr))))
-	 (if (tuple-expr? result)
-	       (nth (1- (index expr))
-		    (exprs result))
-	       (lcopy expr 'argument result))))
+  (let ((result (detuple* (argument expr))))
+    (if (tuple-expr? result)
+	(nth (1- (index expr))
+	     (exprs result))
+	(lcopy expr 'argument result))))
 
-(defmethod detuple* ((expr projection-application))
+(defmethod detuple* ((expr injection-application))
+  (let ((result (detuple* (argument expr))))
+    (lcopy expr 'argument result)))
+
+(defmethod detuple* ((expr injection?-application))
+  (let ((result (detuple* (argument expr))))
+    (lcopy expr 'argument result)))
+
+(defmethod detuple* ((expr extraction-application))
   (let ((result (detuple* (argument expr))))
     (lcopy expr 'argument result)))
 
@@ -2689,10 +2709,11 @@ See also SKOLEM!, TYPEPRED."
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defstep name-replace (name expr &optional (hide? t))
-  (try (name name expr)
-       (then (replace -1)
-	     (if hide? (hide -1)(skip)))
-       (skip-msg "NAME step in NAME-REPLACE failed."))
+  (try-branch (name name expr)
+	      ((then (replace -1)
+		     (if hide? (hide -1)(skip)))
+	       (skip))
+	      (skip-msg "NAME step in NAME-REPLACE failed."))
   "Uses NAME, REPLACE, and HIDE to abbreviate an expression with a
 newly chosen name"
   "Using ~a to name and replace ~a")
@@ -3041,42 +3062,6 @@ is needed, the best option is to use CASE."
 in the given fnums."
   "Merging and generalizing")
 
-(defun cleanup-fnums (fnums)
-  (cond ((consp fnums)(loop for fnum in fnums
-			    collect (if (stringp fnum)
-					(intern fnum)
-					fnum)))
-	((stringp fnums) (list (intern fnums)))
-	((memq fnums '(* + -)) fnums)
-	(t (list fnums))))
-
-(defun gather-fnums (sforms yesnums nonums
-		       &optional (pred #'always-t) (pos 1) (neg -1))
-  (let ((yesnums (cleanup-fnums yesnums))
-	(nonums (cleanup-fnums nonums)))
-    (gather-fnums* sforms yesnums nonums pred pos neg)))
-
-(defun gather-fnums* (seq yesnums nonums
-		       pred pos neg)
-   (cond ((null seq) nil)
-	 ((negation? (formula (car seq)))
-	  (if (and (in-sformnums? (car seq) pos neg yesnums)
-		   (not (in-sformnums? (car seq) pos neg nonums))
-		   (funcall pred (car seq)))
-	      (cons neg
-		    (gather-fnums* (cdr seq) yesnums nonums pred
-				pos (1- neg)))
-	      (gather-fnums* (cdr seq) yesnums nonums pred pos (1- neg)))) 
-	 (t (if (and (in-sformnums? (car seq) pos neg yesnums)
-		     (not (in-sformnums? (car seq) pos neg nonums))
-		     (funcall pred (car seq)))
-	      (cons pos
-		    (gather-fnums* (cdr seq) yesnums nonums
-				pred (1+ pos) neg))
-	      (gather-fnums* (cdr seq) yesnums nonums pred
-			  (1+ pos)  neg)))))
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;NSH(9.3.97): integrating Sam's decompose-equality strategy
 ;;for converting (dis)equalities on compound types to their
@@ -3087,9 +3072,8 @@ in the given fnums."
 (defun decomposable-equality? (fmla)
   (and (or (equation? fmla)
 	   (disequality? fmla))
-       (or (typep (find-supertype
-		   (type (args1 fmla)))
-		  '(or funtype recordtype tupletype))
+       (or (typep (find-supertype (type (args1 fmla)))
+		  '(or funtype recordtype tupletype cotupletype))
 	   (adt? (find-supertype
 		  (type (args1 fmla)))))))
 
@@ -3121,7 +3105,7 @@ in the given fnums."
 	(fnum-count (length (s-forms (current-goal *ps*)))))
     (if fmla
 	(if equality?
-	    (apply-extensionality :hide? hide)
+	    (apply-extensionality fnum :hide? hide)
 	    (branch (case comp-equalities)
 		    ((then (let ((fnums *new-fmla-nums*))
 			     (simplify fnums))
@@ -3152,30 +3136,54 @@ invokes apply-extensionality.  Otherwise it decomposes the
   "Applying decompose-equality")
 
 (defmethod component-equalities (lhs rhs (te recordtype))
-;  (make-negation
-   (make-conjunction
-    (mapcar #'(lambda (fld)
-		(make-equality (make-field-application fld lhs)
-			       (make-field-application fld rhs)))
-      (fields te))));)
+  (make-conjunction
+   (mapcar #'(lambda (fld)
+	       (make-equality (make-field-application fld lhs)
+			      (make-field-application fld rhs)))
+     (fields te))))
 
 (defmethod component-equalities (lhs rhs (te tupletype))
-;  (make-negation
-   (make-conjunction
-    (loop for i from 1 to (length (types te))
-	  collect (make-equality (make-projection-application i lhs)
-				 (make-projection-application i rhs)))));)
+  (make-conjunction
+   (loop for i from 1 to (length (types te))
+	 collect (make-equality (make-projection-application i lhs)
+				(make-projection-application i rhs)))))
+
+(defmethod component-equalities (lhs rhs (te cotupletype))
+  (if (injection-application? lhs)
+      (if (and (injection-application? rhs)
+	       (= (index lhs) (index rhs)))
+	  (make-equality (make!-extraction-application (index lhs) lhs)
+			 (make!-extraction-application (index rhs) rhs))
+	  (make-conjunction*
+	   (make!-injection?-application (index lhs) rhs)
+	   (make-equality (make!-extraction-application (index lhs) lhs)
+			  (make!-extraction-application (index lhs) rhs))))
+      (if (injection-application? rhs)
+	  (make-conjunction*
+	   (make!-injection?-application (index rhs) lhs)
+	   (make-equality (make!-extraction-application (index rhs) lhs)
+			  (make!-extraction-application (index rhs) rhs)))
+	  (let ((index 0))
+	    (make-disjunction
+	     (mapcar #'(lambda (type)
+			 (incf index)
+			 (apply #'make-conjunction
+			   (make!-injection?-application index lhs)
+			   (make!-injection?-application index rhs)
+			   (make-equality
+			    (make!-extraction-application index lhs)
+			    (make!-extraction-application index rhs))))
+	       (types te)))))))
 
 (defmethod component-equalities (lhs rhs (te funtype))
-;  (make-negation
-   (let* ((id (make-new-variable '|x| (list te lhs rhs)))
-	  (dom (domain te))
-	  (bd (typecheck* (mk-bind-decl id dom dom) nil nil nil))
-	  (nvar (mk-name-expr id nil nil (make-resolution bd nil dom))))
-     (make!-forall-expr
-      (list bd)
+  (let* ((id (make-new-variable '|x| (list te lhs rhs)))
+	 (dom (domain te))
+	 (bd (typecheck* (mk-bind-decl id dom dom) nil nil nil))
+	 (nvar (mk-name-expr id nil nil (make-resolution bd nil dom))))
+    (make!-forall-expr
+	(list bd)
       (make-equality (make-application lhs nvar)
-		      (make-application rhs nvar)))));)
+		     (make-application rhs nvar)))))
 
 (defmethod component-equalities (lhs rhs (te type-name))
   (let* ((rec-subtypes (mapcar #'(lambda (r) (typecheck (mk-expr-as-type r)))
@@ -3664,3 +3672,36 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
 	(skip)))
   "Applies (auto-rewrite-theory :always? T) on a given list of theories."
   "Auto-rewriting given theories ~a with :always? T option")
+
+(defstep lazy-grind  (&optional (if-match t) (defs !) rewrites
+                                theories exclude (updates? t))
+  (then
+   (grind$ :if-match nil :defs defs :rewrites rewrites 
+	   :theories theories :exclude exclude :updates? updates?)
+   (reduce$ :if-match if-match :updates? updates?))
+  "Equiv. to (grind) with the instantiations postponed until after simplification."
+  "By skolemization, if-lifting, simplification and instantiation")
+
+(defstep grind-with-lemmas
+  (&optional (lazy-match? t) (if-match t) (polarity? nil) (defs !)
+	     rewrites theories exclude (updates? t) &rest lemmas)
+  (then
+   (if lemmas
+       (if lazy-match?
+	   (let ((lemmata (if (listp lemmas) lemmas (list lemmas)))
+		 (x `(then ,@(loop for lemma in lemmata append `((skosimp* t)(lemma ,lemma))))))
+	     x)
+	   (let ((lemmata (if (listp lemmas) lemmas (list lemmas)))
+		 (x `(then ,@(loop for lemma in lemmata append 
+				   `((skosimp* t)(use ,lemma :if-match ,if-match :polarity? ,polarity?))))))
+	     x))
+       (skip))
+   (if lazy-match? 
+       (then (grind :if-match nil :defs defs :rewrites rewrites
+		    :theories theories :exclude exclude :updates? updates?) 
+             (reduce :if-match if-match :polarity? polarity? :updates? updates?))
+       (grind :if-match if-match :polarity? polarity? :defs defs :rewrites rewrites
+	      :theories theories :exclude exclude :updates? updates?)))
+  "Does a combination of (lemma) and (grind); if lazy-match? is t,
+     postpones instantiations to follow a first round of simplification."
+  "~%Grinding away with the supplied lemmas,")

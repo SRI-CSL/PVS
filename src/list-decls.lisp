@@ -130,12 +130,36 @@
       (progn (pvs-message "Can't find associated record type")
 	     nil)))
 
+(defmethod get-decl-associated-with ((obj projection-expr))
+  (pvs-message "Projections do not have an associated declaration")
+  nil)
+
+(defmethod get-decl-associated-with ((obj injection-expr))
+  (pvs-message "Injections do not have an associated declaration")
+  nil)
+
+(defmethod get-decl-associated-with ((obj injection?-expr))
+  (pvs-message "Injection recognizers do not have an associated declaration")
+  nil)
+
+(defmethod get-decl-associated-with ((obj extraction-expr))
+  (pvs-message "Extractions do not have an associated declaration")
+  nil)
+
 (defmethod get-decl-associated-with ((obj projection-application))
   (pvs-message "Projections do not have an associated declaration")
   nil)
 
 (defmethod get-decl-associated-with ((obj injection-application))
   (pvs-message "Injections do not have an associated declaration")
+  nil)
+
+(defmethod get-decl-associated-with ((obj injection?-application))
+  (pvs-message "Injection recognizers do not have an associated declaration")
+  nil)
+
+(defmethod get-decl-associated-with ((obj extraction-application))
+  (pvs-message "Extractions do not have an associated declaration")
   nil)
 
 (defmethod get-decl-associated-with ((obj null))
@@ -538,11 +562,31 @@
       (whereis sym (args e))
       (whereis sym (expression e))))
 
+(defmethod whereis (sym (e projection-expr))
+  (eq sym (id e)))
+
+(defmethod whereis (sym (e injection-expr))
+  (eq sym (id e)))
+
+(defmethod whereis (sym (e injection?-expr))
+  (eq sym (id e)))
+
+(defmethod whereis (sym (e extraction-expr))
+  (eq sym (id e)))
+
 (defmethod whereis (sym (e projection-application))
   (or (eq sym (id e))
       (whereis sym (argument e))))
 
 (defmethod whereis (sym (e injection-application))
+  (or (eq sym (id e))
+      (whereis sym (argument e))))
+
+(defmethod whereis (sym (e injection?-application))
+  (or (eq sym (id e))
+      (whereis sym (argument e))))
+
+(defmethod whereis (sym (e extraction-application))
   (or (eq sym (id e))
       (whereis sym (argument e))))
 

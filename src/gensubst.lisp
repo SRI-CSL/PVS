@@ -11,9 +11,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (defvar *gensubst-cache* (make-hash-table :test #'eq))
+
+(defvar *dont-expand-adt-subtypes* nil)
 
 (defun gensubst (obj substfn testfn)
   (unwind-protect (gensubst* obj substfn testfn)
@@ -81,9 +83,15 @@
   (let ((nte (call-next-method)))
     (if (or (eq te nte)
 	    (null (print-type te))
-	    (and *adt* (not (compatible? te nte))))
+	    ;; It's possible for the print-type to have been set if te is a
+	    ;; datatype-subtype.  This comes from
+	    ;;   gensubst* (subtype) -> gensubst* (type-name)
+	    ;;                     -> adt-expand-positive-subtypes!
+	    (not (eq (print-type nte) (print-type te))))
 	nte
-	(lcopy nte 'print-type (gensubst* (print-type te) substfn testfn)))))
+	(lcopy nte
+	  'print-type (let ((*dont-expand-adt-subtypes* t))
+			(gensubst* (print-type te) substfn testfn))))))
 
 (defmethod gensubst* ((list list) substfn testfn)
   (let ((nlist (gensubst-list list substfn testfn nil)))
@@ -99,7 +107,9 @@
 			    (declaration (car list)))
 		       (substit (cdr list) (acons (car list) ncar nil))
 		       (cdr list))))
-	(gensubst-list ncdr substfn testfn (cons ncar nlist)))))
+	(if (listp ncdr)
+	    (gensubst-list ncdr substfn testfn (cons ncar nlist))
+	    (cons ncar (gensubst* ncdr substfn testfn))))))
 
 (defmethod gensubst* ((obj exporting) substfn testfn)
   (lcopy obj
@@ -116,7 +126,8 @@
 
 (defmethod gensubst* ((decl typed-declaration) substfn testfn)
   (lcopy decl
-    'declared-type (gensubst* (declared-type decl) substfn testfn)
+    'declared-type (let ((*dont-expand-adt-subtypes* t))
+		     (gensubst* (declared-type decl) substfn testfn))
     'type (gensubst* (type decl) substfn testfn)))
 
 (defmethod gensubst* ((decl type-def-decl) substfn testfn)
@@ -152,13 +163,16 @@
 	     (eq ntype (type type))
 	     (not *visible-only*))
 	type
-	(let ((dtype (gensubst* (declared-type type) substfn testfn)))
+	(let ((dtype (let ((*dont-expand-adt-subtypes* t))
+		       (gensubst* (declared-type type) substfn testfn))))
 	  (lcopy type 'type ntype 'declared-type dtype)))))
 
 (defmethod gensubst* ((te type-name) substfn testfn)
   (declare (ignore substfn testfn))
   (let ((nte (call-next-method)))
-    (if (adt-expand-positive-subtypes? nte)
+    (if (and (not *dont-expand-adt-subtypes*)
+	     (resolution te)
+	     (adt-expand-positive-subtypes? nte))
 	(adt-expand-positive-subtypes! nte)
 	nte)))
 
@@ -230,7 +244,8 @@
     (if (and (eq ntype (type fd))
 	     (not *visible-only*))
 	fd
-	(let ((dtype (gensubst* (declared-type fd) substfn testfn)))
+	(let ((dtype (let ((*dont-expand-adt-subtypes* t))
+		       (gensubst* (declared-type fd) substfn testfn))))
 	  (lcopy fd 'type ntype 'declared-type dtype)))))
 
 
@@ -294,6 +309,34 @@
 		   (gensubst* (type ex) substfn testfn))))
     (lcopy ex 'expression nexpr 'selections sels 'else-part else 'type ntype)))
 
+(defmethod gensubst* ((ex projection-expr) substfn testfn)
+  (let ((ntype (if (or *parsing-or-unparsing*
+		       *visible-only*)
+		   (type ex)
+		   (gensubst* (type ex) substfn testfn))))
+    (lcopy ex 'type ntype)))
+
+(defmethod gensubst* ((ex injection-expr) substfn testfn)
+  (let ((ntype (if (or *parsing-or-unparsing*
+		       *visible-only*)
+		   (type ex)
+		   (gensubst* (type ex) substfn testfn))))
+    (lcopy ex 'type ntype)))
+
+(defmethod gensubst* ((ex injection?-expr) substfn testfn)
+  (let ((ntype (if (or *parsing-or-unparsing*
+		       *visible-only*)
+		   (type ex)
+		   (gensubst* (type ex) substfn testfn))))
+    (lcopy ex 'type ntype)))
+
+(defmethod gensubst* ((ex extraction-expr) substfn testfn)
+  (let ((ntype (if (or *parsing-or-unparsing*
+		       *visible-only*)
+		   (type ex)
+		   (gensubst* (type ex) substfn testfn))))
+    (lcopy ex 'type ntype)))
+
 (defmethod gensubst* ((ex projection-application) substfn testfn)
   (let ((narg (gensubst* (argument ex) substfn testfn))
 	(ntype (if (or *parsing-or-unparsing*
@@ -303,6 +346,22 @@
     (lcopy ex 'argument narg 'type ntype)))
 
 (defmethod gensubst* ((ex injection-application) substfn testfn)
+  (let ((narg (gensubst* (argument ex) substfn testfn))
+	(ntype (if (or *parsing-or-unparsing*
+		       *visible-only*)
+		   (type ex)
+		   (gensubst* (type ex) substfn testfn))))
+    (lcopy ex 'argument narg 'type ntype)))
+
+(defmethod gensubst* ((ex injection?-application) substfn testfn)
+  (let ((narg (gensubst* (argument ex) substfn testfn))
+	(ntype (if (or *parsing-or-unparsing*
+		       *visible-only*)
+		   (type ex)
+		   (gensubst* (type ex) substfn testfn))))
+    (lcopy ex 'argument narg 'type ntype)))
+
+(defmethod gensubst* ((ex extraction-application) substfn testfn)
   (let ((narg (gensubst* (argument ex) substfn testfn))
 	(ntype (if (or *parsing-or-unparsing*
 		       *visible-only*)
@@ -371,7 +430,8 @@
   (let ((ntype (if *visible-only*
 		   (type ex)
 		   (gensubst* (type ex) substfn testfn)))
-	(ndeclared-type (gensubst* (declared-type ex) substfn testfn)))
+	(ndeclared-type (let ((*dont-expand-adt-subtypes* t))
+			  (gensubst* (declared-type ex) substfn testfn))))
     (lcopy ex
       'type ntype
       'declared-type ndeclared-type)))
@@ -410,13 +470,24 @@
   (if (or *parsing-or-unparsing*
 	  *visible-only*
 	  (null (resolutions name)))
-      (lcopy name 'actuals (gensubst* (actuals name) substfn testfn))
+      (lcopy name
+	'actuals (gensubst* (actuals name) substfn testfn)
+	'mappings (gensubst* (mappings name) substfn testfn))
       (let ((nres (gensubst* (resolutions name) substfn testfn)))
 	(if (eq nres (resolutions name))
 	    name
 	    (copy name
 	      'resolutions nres
-	      'actuals (gensubst* (actuals name) substfn testfn))))))
+	      'actuals (gensubst* (actuals name) substfn testfn)
+	      'mappings (gensubst* (mappings name) substfn testfn))))))
+
+(defmethod gensubst* ((map mapping) substfn testfn)
+  (lcopy map
+    'declared-type (let ((*dont-expand-adt-subtypes* t))
+		     (gensubst* (declared-type map) substfn testfn))
+    'type (gensubst* (type map) substfn testfn)
+    'lhs (gensubst* (lhs map) substfn testfn)
+    'rhs (gensubst* (rhs map) substfn testfn)))
 
 (defmethod gensubst* ((res resolution) substfn testfn)
   (let ((nmi (gensubst* (module-instance res) substfn testfn)))
@@ -479,8 +550,13 @@
     (unless (funcall fn obj)
       (call-next-method))))
 
-(defmethod mapobject* (fn (obj list))
-  (mapc #'(lambda (e) (mapobject* fn e)) obj))
+(defmethod mapobject* (fn (obj null))
+  (declare (ignore fn))
+  nil)
+
+(defmethod mapobject* (fn (obj cons))
+  (mapobject* fn (car obj))
+  (mapobject* fn (cdr obj)))
 
 (defmethod mapobject* (fn (obj datatype-or-module))
   (mapobject* fn (formals obj))
@@ -615,10 +691,32 @@
   (mapobject* fn (selections ex))
   (mapobject* fn (else-part ex)))
 
+(defmethod mapobject* (fn (ex projection-expr))
+  (declare (ignore fn obj))
+  nil)
+
+(defmethod mapobject* (fn (ex injection-expr))
+  (declare (ignore fn obj))
+  nil)
+
+(defmethod mapobject* (fn (ex injection?-expr))
+  (declare (ignore fn obj))
+  nil)
+
+(defmethod mapobject* (fn (ex extraction-expr))
+  (declare (ignore fn obj))
+  nil)
+
 (defmethod mapobject* (fn (ex projection-application))
   (mapobject* fn (argument ex)))
 
 (defmethod mapobject* (fn (ex injection-application))
+  (mapobject* fn (argument ex)))
+
+(defmethod mapobject* (fn (ex injection?-application))
+  (mapobject* fn (argument ex)))
+
+(defmethod mapobject* (fn (ex extraction-application))
   (mapobject* fn (argument ex)))
 
 (defmethod mapobject* (fn (ex field-application))
@@ -665,13 +763,18 @@
 
 (defmethod mapobject* (fn (obj name))
   (when (next-method-p) (call-next-method)) ; Handles expr part of name-expr
-  (mapobject* fn (actuals obj)))  
+  (mapobject* fn (actuals obj))
+  (mapobject* fn (mappings obj)))
 
 (defmethod mapobject* (fn (act actual))
   (if (and (not *parsing-or-unparsing*)
 	   (type-value act))
       (mapobject* fn (type-value act))
       (mapobject* fn (expr act))))
+
+(defmethod mapobject* (fn (map mapping))
+  (mapobject* fn (lhs map))
+  (mapobject* fn (rhs map)))
 
 (defmethod mapobject* (fn obj)
   (declare (ignore fn obj))
@@ -764,6 +867,18 @@
       'args (copy-untyped* args)
       'expression (copy-untyped* expression))))
 
+(defmethod copy-untyped* ((ex projection-expr))
+  (copy ex 'type nil))
+
+(defmethod copy-untyped* ((ex injection-expr))
+  (copy ex 'type nil))
+
+(defmethod copy-untyped* ((ex injection?-expr))
+  (copy ex 'type nil))
+
+(defmethod copy-untyped* ((ex extraction-expr))
+  (copy ex 'type nil))
+
 (defmethod copy-untyped* ((ex projection-application))
   (with-slots (argument) ex
     (copy ex
@@ -771,6 +886,18 @@
       'argument (copy-untyped* argument))))
 
 (defmethod copy-untyped* ((ex injection-application))
+  (with-slots (argument) ex
+    (copy ex
+      'type nil
+      'argument (copy-untyped* argument))))
+
+(defmethod copy-untyped* ((ex injection?-application))
+  (with-slots (argument) ex
+    (copy ex
+      'type nil
+      'argument (copy-untyped* argument))))
+
+(defmethod copy-untyped* ((ex extraction-application))
   (with-slots (argument) ex
     (copy ex
       'type nil

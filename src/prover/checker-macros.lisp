@@ -384,38 +384,23 @@
     (copy ,exp 'parens 1)
     ,exp))
 
-;;in-sformnums? checks if the current sformnum (pos or neg, 
+;;in-sformnums? checks if the current sform (pos or neg, 
 ;;  according to sign of sform) is in sformnums.
 (defmacro in-sformnums? (sform pos neg sformnums)
   (let ((sign (gentemp))
 	(sfnums (gentemp)))
     `(let ((,sign (not (negation? (formula ,sform))))
-	   (,sfnums (cleanup-fnums ,sformnums)))
-       (cond ((eql ,sfnums '*) t)
-	     ((eql ,sfnums '+) ,sign)
-	     ((eql ,sfnums '-) (not ,sign))
-	     ((eql ,sfnums ,pos) ,sign)
-	     ((eql ,sfnums ,neg) (not ,sign))
-	     ((and (label ,sform) (memq ,sfnums (label ,sform))) t)
-	     ;;NSH(12-23-91): Turning this off; restore if formula labels are used.
-	     ;;NSH(4.3.97): restoring labels	
-	     ((consp ,sfnums)
-	      (cond ((memq '* ,sfnums) t)
-		    ((memq '+ ,sfnums) ,sign)
-		    ((memq '- ,sfnums) (not ,sign))
-		    ((and (label ,sform)(intersection (label ,sform) ,sfnums)))
-		    ((consp (car ,sfnums))
-		     (if ,sign (member ,pos (car ,sfnums))
-			 (member ,neg (car ,sfnums))))
-		    (t (if ,sign (member ,pos ,sfnums)
-			   (member ,neg ,sfnums)))))
-	     (t nil)))))
-
-(defmacro check-sformnums? (sformnums)
-  `(or (integerp ,sformnums)
-    (member ,sformnums '(+ * -))
-    (and (consp ,sformnums)
-     (every #'integerp ,sformnums))))
+	   (,sfnums ,sformnums))
+       ;; Assumes sformnums has been through cleanup-fnums
+       (cond ((memq '* ,sfnums) t)
+	     ((and (memq '+ ,sfnums) ,sign))
+	     ((and (memq '- ,sfnums) (not ,sign)))
+	     ((and (label ,sform)
+		   (some #'(lambda (lbl) (memq lbl ,sfnums))
+			 (label ,sform))))
+	     (t (if ,sign
+		    (member ,pos ,sfnums)
+		    (member ,neg ,sfnums)))))))
 
 (defmacro restore ()
   `(progn (when *in-evaluator*

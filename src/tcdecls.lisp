@@ -199,18 +199,45 @@
 				    (actuals theory-name) nil))
 	  (t (typecheck-mappings (mappings theory-name) theory-name)
 	     (setq thname (set-type-actuals theory-name))))
+    (let ((local-ref (find-local-theory-reference theory-name)))
+      (when local-ref
+	(type-error local-ref
+	  "Illegal reference to ~a~%May not use theory declarations with ~
+      actuals or mappings that reference~%entities declared in this theory."
+	  local-ref)))	
     (let ((interpreted-copy (make-interpreted-copy theory theory-name decl)))
       (push interpreted-copy (named-theories *current-context*))
       (typecheck-using* interpreted-copy (mk-modname (id interpreted-copy)))
       (setf (generated-theory decl) interpreted-copy))))
 
+(defun find-local-theory-reference (expr &optional allowed-decls)
+  (let ((local-ref nil)
+	(place-ex nil))
+    (mapobject #'(lambda (ex)
+		   (or local-ref
+		       (when (place ex)
+			 (setq place-ex ex)
+			 nil)
+		       (when (and (name? ex)
+				  (resolution ex)
+				  (not (binding? (declaration ex)))
+				  (not (memq (declaration ex) allowed-decls))
+				  (eq (module (declaration ex))
+				      (current-theory)))
+			 (setq local-ref (or place-ex ex)))))
+	       expr)
+    local-ref))
+
+;;; theory and theory-name are the theory to be mapped
+;;; (current-theory) is the theory referencing theory-name
 (defun make-interpreted-copy (theory theory-name decl)
   (let* ((*all-subst-mod-params-caches*
 	  (if (every #'mapping-subst? (mappings theory-name))
 	      *all-subst-mod-params-caches*
 	      nil))
 	 (stheory (subst-mod-params theory theory-name))
-	 (ntheory (pc-parse (unparse (copy stheory 'id (id decl)) :string t)
+	 (itheory (add-referring-theory-importings theory-name stheory))
+	 (ntheory (pc-parse (unparse (copy itheory 'id (id decl)) :string t)
 		    'adt-or-theory))
 	 (*generate-tccs* 'none)
 	 (*current-context* (make-new-context ntheory)))
@@ -222,6 +249,79 @@
     (setf (mapping ntheory)
 	  (get-interpreted-mapping theory ntheory theory-name))
     ntheory))
+
+(defun add-referring-theory-importings (theory-name stheory)
+  (let* ((impinstances (get-currently-imported-instances))
+	 (thinstances (collect-mapping-rhs-imported-instances
+		       theory-name impinstances)))
+    (when thinstances
+      (let ((imps (mapcar #'(lambda (thinst)
+			      (make-instance 'importing
+				'theory-name thinst))
+		    thinstances)))
+	(if (assuming stheory)
+	    (copy stheory
+	      'assuming
+	      (append imps
+		      (remove-if #'(lambda (x)
+				     (and (importing? x)
+					  (member (theory-name x) thinstances
+						  :test #'tc-eq)))
+			(assuming stheory))))
+	    (copy stheory
+	      'theory
+	      (append imps
+		      (remove-if #'(lambda (x)
+				     (and (importing? x)
+					  (member (theory-name x) thinstances
+						  :test #'tc-eq)))
+			(theory stheory)))))))))
+
+(defun get-currently-imported-instances ()
+  (mapcan #'get-currently-imported-instance
+    (nreverse
+     (cdr (memq (current-declaration)
+		(reverse (all-decls (current-theory))))))))
+
+(defmethod get-currently-imported-instance (x)
+  nil)
+
+(defmethod get-currently-imported-instance ((imp importing))
+  (list (theory-name imp)))
+
+(defmethod get-currently-imported-instance ((imp mod-decl))
+  (list (theory-name imp)))
+
+(defmethod get-currently-imported-instance ((imp theory-abbreviation-decl))
+  (list (theory-name imp)))
+
+(defmethod get-currently-imported-instance ((imp formal-theory-decl))
+  (list (theory-name imp)))
+
+;;; We grab the instances from impinstances that are actually used
+(defun collect-mapping-rhs-imported-instances (theory-name impinstances)
+  (let ((thinstances nil))
+    (mapobject #'(lambda (ex)
+		   (when (and (name? ex)
+			      (resolution ex)
+			      (not (from-prelude? (declaration ex)))
+			      (not (from-prelude-library? (declaration ex))))
+		     (pushnew (module-instance ex) thinstances :test #'tc-eq)
+		     nil))
+	       (mapcar #'rhs (mappings theory-name)))
+    ;; Now remove from impinstances those not in thinstances
+    ;; We do this because we want the minimal set, otherwise might bring in
+    ;; references to local decls that are not actually needed.
+    (remove-if (complement
+		#'(lambda (impinst)
+		    (or (member impinst thinstances :test #'tc-eq)
+			(and (null (actuals impinst))
+			     (some #'(lambda (thinst)
+				       (and (eq (id thinst) (id impinst))
+					    (not (member thinst impinstances
+							 :test #'tc-eq))))
+				   thinstances)))))
+      impinstances)))
 
 (defun get-interpreted-mapping (theory interpretation theory-name)
   (let ((mapping (make-subst-mod-params-map-bindings
@@ -241,15 +341,14 @@
 (defmethod typecheck* ((decl lib-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   ;;;(check-duplication decl)
-  (multiple-value-bind (lib path msg)
-      (get-library-pathname (library decl))
-    (declare (ignore path))
+  (multiple-value-bind (ref msg)
+      (get-library-reference (lib-string decl))
     (when msg
       (type-error decl msg (lib-string decl)))
-    (setf (library-pathname decl) path)
+    (setf (lib-ref decl) ref)
     (dolist (d (gethash (id decl) (current-declarations-hash)))
       (when (and (lib-decl? d)
-		 (not (string= lib (get-library-pathname (library d)))))
+		 (not (string= ref (lib-ref d))))
 	(if (eq (module d) (current-theory))
 	    (type-error decl
 	      "Library id ~a declared earlier in this theory (~a) ~
@@ -386,13 +485,7 @@
       (type-error (cdar (formals decl))
 	"Type applications may not be curried"))
     (typecheck* (formals decl) nil nil nil)
-    (mapc #'(lambda (fmlist)
-	      (mapc #'(lambda (fm)
-			(unless (fully-instantiated? fm)
-			  (type-error  (type fm)
-			    "Could not determine the full theory instance")))
-		    fmlist))
-	  (formals decl))))
+    (set-formals-types (apply #'append (formals decl)))))
 
 (defmethod check-nonempty-type-of ((decl nonempty-type-def-decl))
   (let ((ctype (copy (type-value decl) 'print-type nil)))
@@ -434,6 +527,7 @@
     (type-error decl "Formals are not allowed in ~(~a~)s" (type-of decl)))
   (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
   (set-type (declared-type decl) nil)
+  (assert (null (freevars (type decl))))
   (unless (fully-instantiated? (type decl))
     (type-error (declared-type decl)
       "Could not determine the full theory instance"))
@@ -449,13 +543,7 @@
   (declare (ignore expected kind arguments))
   (when (formals decl)
     (typecheck* (formals decl) nil nil nil)
-    (mapc #'(lambda (fmlist)
-	      (mapc #'(lambda (fm)
-			(unless (fully-instantiated? fm)
-			  (type-error  (type fm)
-			    "Could not determine the full theory instance")))
-		    fmlist))
-	  (formals decl)))
+    (set-formals-types (apply #'append (formals decl))))
   (let* ((*bound-variables* (apply #'append (formals decl)))
 	 (rtype (typecheck* (declared-type decl) nil nil nil)))
     (set-type (declared-type decl) nil)
@@ -622,9 +710,9 @@
       (let* ((dom (domain type))
 	     (vid (make-new-variable '|z| (cons decl domtypes)))
 	     (bd (make-bind-decl vid dom))
-	     (var (make-variable-expr bd))
+	     (avar (make-variable-expr bd))
 	     (arg1 (make-lhs-measure-application
-		    (measure decl) domtypes var decl))
+		    (measure decl) (reverse domtypes) avar decl))
 	     (arg2 (make-rhs-measure-application decl))
 	     (appl (if (ordering decl)
 		       (make!-application (copy (ordering decl)) arg1 arg2)
@@ -1106,7 +1194,8 @@
        (check-inductive-occurrences* (else-part ex) decl parity)))
 
 (defmethod check-inductive-occurrences* ((ex cases-expr) decl parity)
-  (and (check-inductive-occurrences* (selections ex) decl parity)
+  (and (check-inductive-occurrences* (expression ex) decl parity)
+       (check-inductive-occurrences* (selections ex) decl parity)
        (or (null (else-part ex))
 	   (check-inductive-occurrences* (else-part ex) decl parity))))
 
@@ -1491,6 +1580,15 @@
 	  (universal-closure (definition decl))))
   (when (eq (spelling decl) 'ASSUMPTION)
     ;;(remove-defined-type-names decl)
+    ;; Check that no local decls are used in definition
+    (let ((local-ref (find-local-theory-reference
+		      (definition decl)
+		      (formals-sans-usings (current-theory)))))
+      (when local-ref
+	(type-error local-ref
+	  "Illegal reference to ~a~%May not use assumptions that reference ~
+           entities declared in this theory."
+	  local-ref)))
     (handle-existence-assuming-on-formals decl))
   decl)
 
@@ -1609,7 +1707,8 @@
       (set-type-for-application-parameters (parameters type) (car typeslist)))
     (let ((tval (substit te (pairlis (car (formals (declaration (type type))))
 				     (parameters type)))))
-      (setf (print-type tval) type)
+      (unless (print-type tval)
+	(setf (print-type tval) type))
       (when (or (nonempty-type-decl? (declaration (type type)))
 		(nonempty? type))
 	(setf (nonempty? tval) t)
@@ -2062,10 +2161,7 @@
       (when dup
 	(type-error dup
 	  "May not use duplicate arguments in judgements")))
-    (dolist (fm fmlist)
-      (unless (fully-instantiated? fm)
-	(type-error (type fm)
-	  "Could not determine the full theory instance for ~a" fm))))
+    (set-formals-types fmlist))
   (let* ((*bound-variables* (reverse (apply #'append (formals decl)))))
     (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
     (set-type (declared-type decl) nil)

@@ -38,9 +38,16 @@
   (mappings :parse t)
   resolutions)
 
+(defcl formula-name (name))
+
 (defcl name-expr (name expr)
   ;;(kind :documentation "Variable, constant, etc.")
   )
+
+(defcl typed-name-expr (name-expr)
+  ;; For (pc-parse "foo: bool" 'unique-name)
+  ;; the declared-type is bool
+  declared-type)
 
 (defcl field-name-expr (name-expr))
 
@@ -59,6 +66,7 @@
 
 (defcl field-application (expr)
   id
+  actuals
   argument)
 
 (defcl fieldappl (field-application))
@@ -68,16 +76,36 @@
 
 (defcl projection-application (expr)
   id
+  actuals
   index
   argument)
 
 (defcl projappl (projection-application))
 
-(defcl injection-expr (name-expr)
+(defcl injection-expr (constructor-name-expr)
+  (index :parse t))
+
+(defcl injection?-expr (recognizer-name-expr)
+  (index :parse t))
+
+(defcl extraction-expr (accessor-name-expr)
   (index :parse t))
 
 (defcl injection-application (expr)
   id
+  actuals
+  index
+  argument)
+
+(defcl injection?-application (expr)
+  id
+  actuals
+  index
+  argument)
+
+(defcl extraction-application (expr)
+  id
+  actuals
   index
   argument)
 
@@ -95,6 +123,8 @@
 ;;; length > 1.
 
 (defcl arg-tuple-expr (tuple-expr))
+
+(defcl projected-arg-tuple-expr (arg-tuple-expr))
 
 (defcl record-expr (expr)
   (assignments :parse t))
@@ -304,9 +334,17 @@
 
 (defcl field-assignment-arg (field-name-expr))
 
-(defcl field-assign (field-assignment-arg))
+(defcl quoted-assign (syntax))
 
-(defcl proj-assign (number-expr))
+(defcl id-assign (name-expr))
+
+(defcl field-assign (field-assignment-arg id-assign))
+
+(defcl proj-assign (number-expr quoted-assign))
+
+(defcl accessor-assignment-arg (accessor-name-expr))
+
+(defcl accessor-assign (accessor-assignment-arg id-assign))
 
 ;;; Misc
 

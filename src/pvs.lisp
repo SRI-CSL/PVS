@@ -232,7 +232,7 @@
 	 (theories (get-theories file)))
     (cond ((not (file-exists-p file))
 	   (unless no-message?
-	     (pvs-message "~a is not in the current context" filename)))
+	     (pvs-message "PVS file ~a is not in the current context" filename)))
 	  ((and (not forced?)
 		(gethash filename *pvs-files*)
 		(parsed-file? file))
@@ -471,7 +471,6 @@
 		    (setf (fe-status fe) 'unchecked)
 		    (setq *pvs-context-changed* t)))))))
 	(setf (filename nth) filename)
-	(setf (path nth) (make-specpath filename))
 	(if (and oth (memq 'typechecked (status oth)))
 	    (let ((diffs (or forced? (compare oth nth))))
 	      (cond ((null diffs)
@@ -589,7 +588,7 @@
 		 (when forced?
 		   (delete-generated-adt-files theories))
 		 (typecheck-theories filename theories)
-		 ;;(assert (every #'typechecked? theories))
+		 (assert (every #'typechecked? theories))
 		 (update-context filename)))
 	(when prove-tccs?
 	  (if *in-checker*
@@ -630,7 +629,7 @@
 	    (*old-tcc-names* nil))
 	(dolist (u (get-immediate-context-usings theory))
 	  (unless (library u)
-	    (get-typechecked-theory u)))
+	    (get-typechecked-theory u theories)))
 	(unless (typechecked? theory)
 	  (typecheck theory)
 	  #+pvsdebug (assert (typechecked? theory))
@@ -639,7 +638,6 @@
 	  ;;	  (prove-unproved-tccs (list theory))
 	  ;;	  (setf (tccs-tried? theory) t))
 	  (setf (filename theory) filename)
-	  (setf (path theory) (make-specpath filename))
 	  (when (module? theory)
 	    (setf (tcc-info theory)
 		  (list (car (tcc-info theory))
@@ -657,14 +655,17 @@
 		 (time (realtime-since start-time)))
 	    (if (zerop tot)
 		(pvs-message "~a typechecked in ~,2,-3fs: No TCCs generated~
-                            ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-		  (id theory) time (length (warnings theory))
+                            ~[~:;; ~:*~d conversion~:p~]~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
+		  (id theory) time
+		  (length (conversion-messages theory))
+		  (length (warnings theory))
 		  (length (info theory)))
 		(pvs-message
 		    "~a typechecked in ~,2,-3fs: ~d TCC~:p, ~
                    ~d proved, ~d subsumed, ~d unproved~
-                   ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
+                   ~[~:;; ~:*~d conversion~:p~]~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
 		  (id theory) time tot prv mat obl
+		  (length (conversion-messages theory))
 		  (length (warnings theory)) (length (info theory))))))))
     (unless *current-context*
       (setq *current-theory* (car (last theories)))))
@@ -959,9 +960,10 @@
       (when (funcall formula-pred fmla)
 	(let ((orig-just (extract-justification-sexp (justification fmla)))
 	      (orig-status (proof-status fmla))
-	      (orig-new-ground? (new-ground? fmla))
+	      (orig-dp (decision-procedure-used fmla))
 	      (orig-proof-refers-to (proof-refers-to fmla))
-	      (orig-proof-time (proof-time fmla)))
+	      (orig-real-time (real-time fmla))
+	      (orig-run-time (run-time fmla)))
 	  (pvs-message "Proving formula ~a" (id fmla))
 	  (incf tried-proofs)
 	  (setf (justification fmla) just)
@@ -979,9 +981,10 @@
 		   (id fmla))
 		 (setf (justification fmla) orig-just
 		       (proof-status fmla) orig-status
-		       (new-ground? fmla) orig-new-ground?
+		       (decision-procedure-used fmla) orig-dp
 		       (proof-refers-to fmla) orig-proof-refers-to
-		       (proof-time fmla) orig-proof-time))
+		       (real-time fmla) orig-real-time
+		       (run-time fmla) orig-run-time))
 		(t (pvs-message
 		       "~a unproved - no current strategy so adding new one"
 		     (id fmla))
@@ -1212,7 +1215,7 @@
   (or (from-prelude? mod)
       (and (filename mod)
 	   (eql (car (gethash (filename mod) *pvs-files*))
-		(file-write-date (path mod))))))
+		(file-write-date (make-specpath (filename mod)))))))
 
 (defmethod parsed?* ((mod library-theory))
   (parsed-library-file? mod))
@@ -1424,12 +1427,30 @@
 				      'formula-decl))
 			(decl (get-decl-at line typespec theories)))
 		   (values decl (place decl))))
-	(t (let* ((theories (typecheck-file name nil nil nil t))
+	(t (if (pathname-directory name)
+	       (let* ((lpath (get-library-reference
+			      (namestring (make-pathname
+					   :directory
+					   (pathname-directory name)))))
+		      (files&theories
+		       (or (gethash lpath *prelude-libraries*)
+			   (gethash lpath *imported-libraries*))))
+		 (if files&theories
+		     (let* ((name (pathname-name name))
+			    (theories (cdr (gethash name
+						    (car files&theories))))
+			    (typespec (if unproved?
+					  'unproved-formula-decl
+					  'formula-decl))
+			    (decl (get-decl-at line typespec theories)))
+		       (values decl (when decl (place decl))))
+		     (pvs-message "Library ~a is not imported" name)))
+	       (let* ((theories (typecheck-file name nil nil nil t))
 		  (typespec (if unproved?
 				'unproved-formula-decl
 				'formula-decl))
 		  (decl (get-decl-at line typespec theories)))
-	     (values decl (when decl (place decl))))))))
+		 (values decl (when decl (place decl)))))))))
 
 
 ;;; This function is invoked from Emacs by pvs-prove-formula.  It provides
@@ -1982,30 +2003,51 @@
 	  (t (let ((filename (context-file-of theoryref)))
 	       (if (and filename (file-exists-p (make-specpath filename)))
 		   (parse-file filename nil nil)
-		   (parse-file theoryref nil nil))
+		   (if (file-exists-p (make-specpath theoryref))
+		       (parse-file theoryref nil nil)
+		       (let ((file
+			      (look-for-theory-in-directory-files theoryref)))
+			 (if file
+			     (parse-file file nil nil)
+			     (parse-file theoryref nil nil)))))
 	       (let ((pmod (get-theory theoryref)))
 		 (or pmod
 		     (type-error theoryref
-		       (format nil "Can't find file for theory ~a"
-			 theoryref)))))))))
+		        "Can't find file for theory ~a" theoryref))))))))
+
+(defun look-for-theory-in-directory-files (theoryref)
+  (let ((pvs-files (directory "*.pvs"))
+	(files-with-clashes nil)
+	(files-with-theoryref nil))
+    (dolist (file pvs-files)
+      (let ((fname (pathname-name file)))
+	(unless (gethash fname *pvs-files*)
+	  (let ((theories (ignore-errors (parse :file file))))
+	    (when (member (id theoryref) theories :key #'id)
+	      ;; Make sure we're not introducing a name clash
+	      ;; E.g., file1 has theories th1 and th2
+	      ;;       file2 has theories th2 and th3
+	      ;; and we're looking for th3 from file1.
+	      (if (some #'(lambda (th)
+			    (gethash (id th) *pvs-modules*))
+			theories)
+		  (push fname files-with-clashes)
+		  (push fname files-with-theoryref)))))))
+    (cond ((null files-with-theoryref)
+	   (when files-with-clashes
+	     (type-error theoryref
+	       "Theory ~a appears in other files:~%  ~{~a~^, ~}~
+              ~%but other theories in those files clash with current theories."
+	       theoryref files-with-clashes)))
+	  ((cdr files-with-theoryref)
+	   (type-error theoryref
+	     "Theory ~a appears in more than one file:~%  ~{~a~^, ~}~
+              ~%pick one and typecheck it."
+	     theoryref files-with-theoryref))
+	  (t (car files-with-theoryref)))))
 
 (defun get-parsed-library-theory (theoryname)
-  (let ((lib-decls (remove-if-not #'lib-decl?
-		     (gethash (library theoryname)
-			      (current-declarations-hash)))))
-    (get-parsed-library-theory*
-     (sort lib-decls #'< :key #'locality)
-     (library theoryname)
-     theoryname)))
-
-(defun get-parsed-library-theory* (lib-decls library theoryname)
-  (if (null lib-decls)
-      (or (load-imported-library (string library) theoryname)
-	  (type-error theoryname "Library with theory ~a not found"
-		      theoryname))
-      (or (load-imported-library (library (car lib-decls)) theoryname)
-	  (get-parsed-library-theory* (cdr lib-decls) library theoryname))))
-
+  (load-imported-library (library theoryname) theoryname))
 
 (defun get-parsed?-theory (theoryref)
   (let ((theory (get-theory theoryref)))
@@ -2017,16 +2059,15 @@
 	   theory)
 	  (t (pvs-message "~a has not been parsed." theoryref)))))
 
-(defun get-typechecked-theory (theoryref)
+(defun get-typechecked-theory (theoryref &optional theories)
   (or (and (or *in-checker*
 	       *generating-adt*)
 	   (get-theory theoryref))
-      (let ((th (get-theory theoryref)))
-	(when (and th (generated-by th))
-	  th))
-      (let* ((theory (get-parsed-theory theoryref)))
+      (let ((theory (get-parsed-theory theoryref)))
 	(when theory
-	  (unless (or *in-checker* (typechecked? theory))
+	  (unless (or *in-checker*
+		      (typechecked? theory)
+		      (memq theory theories))
 	    (let ((*generating-adt* nil))
 	      (typecheck-file (filename theory)))))
 	theory)))

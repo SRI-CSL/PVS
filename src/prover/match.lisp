@@ -435,6 +435,33 @@
 	  ;(if (tc-eq ty1 ty2 bind-alist) subst 'fail)
 	  'fail))))
 
+(defmethod match* ((lhs injection-expr)(instance injection-expr)
+		   bind-alist subst)
+  (with-slots ((id1 id)(ty1 type)) lhs
+    (with-slots ((id2 id)(ty2 type)) instance
+      (if (eq id1 id2)
+	  (match* ty1 ty2 bind-alist subst)
+	  ;(if (tc-eq ty1 ty2 bind-alist) subst 'fail)
+	  'fail))))
+
+(defmethod match* ((lhs injection?-expr)(instance injection?-expr)
+		   bind-alist subst)
+  (with-slots ((id1 id)(ty1 type)) lhs
+    (with-slots ((id2 id)(ty2 type)) instance
+      (if (eq id1 id2)
+	  (match* ty1 ty2 bind-alist subst)
+	  ;(if (tc-eq ty1 ty2 bind-alist) subst 'fail)
+	  'fail))))
+
+(defmethod match* ((lhs extraction-expr)(instance extraction-expr)
+		   bind-alist subst)
+  (with-slots ((id1 id)(ty1 type)) lhs
+    (with-slots ((id2 id)(ty2 type)) instance
+      (if (eq id1 id2)
+	  (match* ty1 ty2 bind-alist subst)
+	  ;(if (tc-eq ty1 ty2 bind-alist) subst 'fail)
+	  'fail))))
+
 
 ;;NSH(7.13.94): Several changes: since match* is used by replace, it
 ;;should do an exact check on the type of non-free variables but
@@ -652,6 +679,22 @@
 	  'fail))))
 
 (defmethod match* ((lhs injection-application)(rhs injection-application)
+		   bind-alist subst)
+  (with-slots ((ind1 index)(arg1 argument)) lhs
+    (with-slots ((ind2 index)(arg2 argument)) rhs
+      (if (eql ind1 ind2)
+	  (match* arg1 arg2 bind-alist subst)
+	  'fail))))
+
+(defmethod match* ((lhs injection?-application)(rhs injection?-application)
+		   bind-alist subst)
+  (with-slots ((ind1 index)(arg1 argument)) lhs
+    (with-slots ((ind2 index)(arg2 argument)) rhs
+      (if (eql ind1 ind2)
+	  (match* arg1 arg2 bind-alist subst)
+	  'fail))))
+
+(defmethod match* ((lhs extraction-application)(rhs extraction-application)
 		   bind-alist subst)
   (with-slots ((ind1 index)(arg1 argument)) lhs
     (with-slots ((ind2 index)(arg2 argument)) rhs

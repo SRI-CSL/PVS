@@ -76,21 +76,6 @@
       (when *subst-type-hash*
 	(clrhash *subst-type-hash*)))))
 
-(defun find-remaining-sformnums (sforms sformnums sub-sformnums
-					&optional (pos 1)(neg -1)(acc nil))
-  (if (null sforms)
-      (nreverse acc)
-      (let* ((sign (not (negation? (formula (car sforms)))))
-	     (newpos (if sign (1+ pos) pos))
-	     (newneg (if sign neg (1- neg)))
-	     (newacc (if (and (in-sformnums? (car sforms) pos neg sformnums)
-			      (not (in-sformnums? (car sforms) pos neg
-						  sub-sformnums)))
-			 (cons (if sign pos neg) acc)
-			 acc)))
-	(find-remaining-sformnums (cdr sforms) sformnums sub-sformnums
-				  newpos newneg newacc))))
-
 (defun assert-sequent (sequent sformnums &optional rewrite-flag)
   (let* ((simplifiable-sformnums
 	  (find-all-sformnums (s-forms sequent) sformnums
@@ -197,17 +182,17 @@
       (unit? rec)))
 
 (defun unit-derecognize (expr)
-  (if (negation? expr)
-      (negate (unit-derecognize (args1 expr)))
-      (if (application? expr)
-	  (let ((unit (unit-recognizer? (operator expr))))
-	    (if (or (not unit)(tc-eq (args1 expr) unit))
-		expr
-		;;multiple-value-bind (sig fmla);;assert-if too slow
-		  ;;  (assert-if unit);;to get its subtype constraint.
-		(progn (record-type-constraints unit)
-		       (make!-equation (args1 expr) unit))))
-	  expr)))
+  (cond ((negation? expr)
+	 (negate (unit-derecognize (args1 expr))))
+	((application? expr)
+	 (let ((unit (unit-recognizer? (operator expr))))
+	   (if (or (not unit)(tc-eq (args1 expr) unit))
+	       expr
+	       ;;multiple-value-bind (sig fmla);;assert-if too slow
+	       ;;  (assert-if unit);;to get its subtype constraint.
+	       (progn (record-type-constraints unit)
+		      (make!-equation (args1 expr) unit)))))
+	(t expr)))
 
 (defun assert-sform (sform &optional rewrite-flag simplifiable?)
   (let ((*assert-typepreds* nil)
@@ -347,11 +332,31 @@
       (mapcar #'translate-from-prove list)
       (translate-from-prove list)))
 
+(defmethod quant-occurs? ((expr projection-expr))
+  nil)
+
+(defmethod quant-occurs? ((expr injection-expr))
+  nil)
+
+(defmethod quant-occurs? ((expr injection?-expr))
+  nil)
+
+(defmethod quant-occurs? ((expr extraction-expr))
+  nil)
+
 (defmethod quant-occurs? ((expr projection-application))
   (with-slots (argument) expr
     (quant-occurs? argument)))
 
 (defmethod quant-occurs? ((expr injection-application))
+  (with-slots (argument) expr
+    (quant-occurs? argument)))
+
+(defmethod quant-occurs? ((expr injection?-application))
+  (with-slots (argument) expr
+    (quant-occurs? argument)))
+
+(defmethod quant-occurs? ((expr extraction-application))
   (with-slots (argument) expr
     (quant-occurs? argument)))
 
@@ -431,11 +436,31 @@
   (declare (ignore accum))
   t)
 
+(defmethod connective-occurs?* ((expr projection-expr) accum)
+  (accum-connective-occurs?* accum))
+
+(defmethod connective-occurs?* ((expr injection-expr) accum)
+  (accum-connective-occurs?* accum))
+
+(defmethod connective-occurs?* ((expr injection?-expr) accum)
+  (accum-connective-occurs?* accum))
+
+(defmethod connective-occurs?* ((expr extraction-expr) accum)
+  (accum-connective-occurs?* accum))
+
 (defmethod connective-occurs?* ((expr projection-application) accum)
   (with-slots (argument) expr
     (connective-occurs?* argument accum)))
 
 (defmethod connective-occurs?* ((expr injection-application) accum)
+  (with-slots (argument) expr
+    (connective-occurs?* argument accum)))
+
+(defmethod connective-occurs?* ((expr injection?-application) accum)
+  (with-slots (argument) expr
+    (connective-occurs?* argument accum)))
+
+(defmethod connective-occurs?* ((expr extraction-application) accum)
   (with-slots (argument) expr
     (connective-occurs?* argument accum)))
 
@@ -526,11 +551,31 @@
   (declare (ignore accum))
   t)
 
+(defmethod update-or-connective-occurs?* ((expr projection-expr) accum)
+  (accum-update-or-connective-occurs?* accum))
+
+(defmethod update-or-connective-occurs?* ((expr injection-expr) accum)
+  (accum-update-or-connective-occurs?* accum))
+
+(defmethod update-or-connective-occurs?* ((expr injection?-expr) accum)
+  (accum-update-or-connective-occurs?* accum))
+
+(defmethod update-or-connective-occurs?* ((expr extraction-expr) accum)
+  (accum-update-or-connective-occurs?* accum))
+
 (defmethod update-or-connective-occurs?* ((expr projection-application) accum)
   (with-slots (argument) expr
     (update-or-connective-occurs?* argument accum)))
 
 (defmethod update-or-connective-occurs?* ((expr injection-application) accum)
+  (with-slots (argument) expr
+    (update-or-connective-occurs?* argument accum)))
+
+(defmethod update-or-connective-occurs?* ((expr injection?-application) accum)
+  (with-slots (argument) expr
+    (update-or-connective-occurs?* argument accum)))
+
+(defmethod update-or-connective-occurs?* ((expr extraction-application) accum)
   (with-slots (argument) expr
     (update-or-connective-occurs?* argument accum)))
 
@@ -660,18 +705,37 @@
 
 (defmethod assert-if-inside ((expr projection-application))
   (with-slots (index argument) expr
-	      (multiple-value-bind (sigarg newarg)
-		  (assert-if argument)
-      		      ;;NSH(2.28.95) correction: field->proj
-		(reduce-proj-application sigarg newarg index))))
+    (multiple-value-bind (sigarg newarg)
+	(assert-if argument)
+      ;;NSH(2.28.95) correction: field->proj
+      (reduce-proj-application sigarg newarg index))))
 
 (defmethod assert-if-inside ((expr injection-application))
   (with-slots (index argument) expr
     (multiple-value-bind (sigarg newarg)
 	(assert-if argument)
-      ;;NSH(2.28.95) correction: field->proj
+      (if (and (extraction-application? newarg)
+	       (= (index newarg) index))
+	  (values '? (argument newarg))
+	  (let ((new-expr (lcopy expr 'argument newarg)))
+	    (do-auto-rewrite new-expr sigarg))))))
+
+(defmethod assert-if-inside ((expr injection?-application))
+  (with-slots (index argument) expr
+    (multiple-value-bind (sigarg newarg)
+	(assert-if argument)
       (let ((new-expr (lcopy expr 'argument newarg)))
 	(do-auto-rewrite new-expr sigarg)))))
+
+(defmethod assert-if-inside ((expr extraction-application))
+  (with-slots (index argument) expr
+    (multiple-value-bind (sigarg newarg)
+	(assert-if argument)
+      (if (and (injection-application? newarg)
+	       (= (index newarg) index))
+	  (values '? (argument newarg))
+	  (let ((new-expr (lcopy expr 'argument newarg)))
+	    (do-auto-rewrite new-expr sigarg))))))
 
 (defun assert-if-inside-sign (expr sign)
   (assert-if-inside-sign* expr sign))
@@ -775,7 +839,7 @@
 		collect
 		(if (same-id cons-rec rec)
 		    (cons rec *true*)
-		    (cons rec *false*))))	     
+		    (cons rec *false*))))
 	(loop for rec in recs
 	      collect
 	      (cons rec (assert-test (make!-application rec arg)))))))
@@ -932,8 +996,8 @@
     'expression expr
     'assignments outer-assignments))
   
-(defmethod assert-if-inside ((expr expr))
-  (assert-if expr))
+;; (defmethod assert-if-inside ((expr expr))
+;;   (assert-if expr))
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -988,6 +1052,15 @@
   (values 'X expr))
 
 (defmethod assert-if ((expr projection-expr))
+  (values 'X expr))
+
+(defmethod assert-if ((expr injection-expr))
+  (values 'X expr))
+
+(defmethod assert-if ((expr injection?-expr))
+  (values 'X expr))
+
+(defmethod assert-if ((expr extraction-expr))
   (values 'X expr))
 
 (defun assert-then-else (test expr condition-flg)
@@ -1986,19 +2059,24 @@
 		   (if (not (eq (id p1) (id p2)));;NSH(12.1.95)
 		       (values '? *false*)
 		       (do-auto-rewrite expr sig))
-		   (let* ((pred (or p1 p2))
-			  (term (if p1 (args2 expr) (args1 expr)))
-			  (result (when pred
-				    (check-rest-recognizers
-				     pred
-				     (check-all-recognizers term)))))
-		     (cond ((null pred)(do-auto-rewrite expr sig))
-			   ((false-p result)
-			    (values '? *false*))
-			   ((and (eq result 'restfalse)
-				 (null (accessors (constructor pred))))
-			    (values '? *true*))
-			   (t (do-auto-rewrite expr sig))))))))))
+		   (if (and (injection-application? (args1 expr))
+			    (injection-application? (args2 expr)))
+		       (if (not (eq (id (args1 expr)) (id (args2 expr))))
+			   (values '? *false*)
+			   (do-auto-rewrite expr sig))
+		       (let* ((pred (or p1 p2))
+			      (term (if p1 (args2 expr) (args1 expr)))
+			      (result (when pred
+					(check-rest-recognizers
+					 pred
+					 (check-all-recognizers term)))))
+			 (cond ((null pred)(do-auto-rewrite expr sig))
+			       ((false-p result)
+				(values '? *false*))
+			       ((and (eq result 'restfalse)
+				     (null (accessors (constructor pred))))
+				(values '? *true*))
+			       (t (do-auto-rewrite expr sig)))))))))))
 
 (defmethod assert-if-application* (expr newop (newargs branch) sig)
   (if  (negation? expr)
@@ -2129,7 +2207,7 @@
 	    (if (cdr accessors)
 		(let ((args (arguments newargs))
 		      (pos (position newop accessors :test #'same-id)))
-		  ;;was tc-eq-ops
+		  ;;was tc-eq-ops (see above)
 		  (if (cdr args)
 		      (nth pos (arguments newargs))
 		      (make!-projection-application (1+ pos) (car args))))
@@ -2239,17 +2317,28 @@
   (with-slots (index argument) expr
     (multiple-value-bind (sig newarg)
 	(assert-if argument)
+      (if (and (extraction-application? newarg)
+	       (= (index newarg) index))
+	  (values '? (argument newarg))
+	  (let ((newexpr (lcopy expr 'argument newarg)))
+	    (values sig newexpr))))))
+
+(defmethod assert-if ((expr injection?-application))
+  (with-slots (index argument) expr
+    (multiple-value-bind (sig newarg)
+	(assert-if argument)
       (let ((newexpr (lcopy expr 'argument newarg)))
-	(if (and (not (connective-occurs? newexpr))
-		 ;;*boolean-context*
-		 (tc-eq (find-supertype (type newexpr)) *boolean*)
-		 (let ((result (assert-test newexpr)));;NSH(11.18.94)
-		   (if (false-p result)
-		       (values-assert-if '? *false* newexpr)
-		       (if (true-p result)
-			   (values-assert-if '? *true* newexpr)
-			   (do-auto-rewrite newexpr sig))))
-		 (values newsig newexpr)))))))
+	(values sig newexpr)))))
+
+(defmethod assert-if ((expr extraction-application))
+  (with-slots (index argument) expr
+    (multiple-value-bind (sig newarg)
+	(assert-if argument)
+      (if (and (injection-application? newarg)
+	       (= (index newarg) index))
+	  (values '? (argument newarg))
+	  (let ((newexpr (lcopy expr 'argument newarg)))
+	    (values sig newexpr))))))
 
 ;;NSH(9.14.94): updated assert-if(projection/field-application) to
 ;;distribute through if-then-else. 
@@ -2548,6 +2637,7 @@
 	     (lhs-hashentry (lhs hashentry1)))
 	(cond ((and (eq expr op*)
 		    (is-res-macro res)
+		    (name-expr? op*)
 		    (if (generic? res)
 			(tc-eq (declaration op*)(declaration res))
 			(tc-eq (resolution op*) res)))
@@ -3305,6 +3395,14 @@
   (with-slots (argument) expr
     (collect-subexpr-typepreds* argument)))
 
+(defmethod collect-subexpr-typepreds* ((expr injection?-application))
+  (with-slots (argument) expr
+    (collect-subexpr-typepreds* argument)))
+
+(defmethod collect-subexpr-typepreds* ((expr extraction-application))
+  (with-slots (argument) expr
+    (collect-subexpr-typepreds* argument)))
+
 
 ;;tests the value of a formula in the current dec. procedure alist.
 (defun assert-test (fmla)
@@ -3518,10 +3616,28 @@ e LHS free variables in ~a" hyp lhs)
 (defmethod auto-rewrite-hashname ((expr update-expr))
   'update)
 
+(defmethod auto-rewrite-hashname ((expr projection-expr))
+  (id expr))
+
+(defmethod auto-rewrite-hashname ((expr injection-expr))
+  (id expr))
+
+(defmethod auto-rewrite-hashname ((expr injection?-expr))
+  (id expr))
+
+(defmethod auto-rewrite-hashname ((expr extraction-expr))
+  (id expr))
+
 (defmethod auto-rewrite-hashname ((expr projection-application))
   (id expr))
 
 (defmethod auto-rewrite-hashname ((expr injection-application))
+  (id expr))
+
+(defmethod auto-rewrite-hashname ((expr injection?-application))
+  (id expr))
+
+(defmethod auto-rewrite-hashname ((expr extraction-application))
   (id expr))
 
 (defmethod auto-rewrite-hashname ((expr field-application))

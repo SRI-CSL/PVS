@@ -41,33 +41,51 @@
       te
       (occurs-in obj (expr te))))
 
-(defmethod occurs-in (obj (te subtype))
+(defmethod occurs-in ((obj subtype) (te subtype))
   (or (when (tc-eq obj te)
 	te)
       (occurs-in obj (print-type te))
       (occurs-in obj (supertype te))
       (occurs-in obj (predicate te))))
 
-(defmethod occurs-in (obj (te funtype))
+(defmethod occurs-in (obj (te subtype))
+  (or (occurs-in obj (print-type te))
+      (occurs-in obj (supertype te))
+      (occurs-in obj (predicate te))))
+
+(defmethod occurs-in ((obj funtype) (te funtype))
   (or (when (tc-eq obj te)
 	te)
       (occurs-in obj (domain te))
       (occurs-in obj (range te))))
 
+(defmethod occurs-in (obj (te funtype))
+  (or (occurs-in obj (domain te))
+      (occurs-in obj (range te))))
+
+(defmethod occurs-in ((obj tupletype) (te tupletype))
+  (or (when (tc-eq obj te)
+	te)
+      (occurs-in obj (types te))))
+
 (defmethod occurs-in (obj (te tupletype))
+  (occurs-in obj (types te)))
+
+(defmethod occurs-in ((obj cotupletype) (te cotupletype))
   (or (when (tc-eq obj te)
 	te)
       (occurs-in obj (types te))))
 
 (defmethod occurs-in (obj (te cotupletype))
-  (or (when (tc-eq obj te)
-	te)
-      (occurs-in obj (types te))))
+  (occurs-in obj (types te)))
 
-(defmethod occurs-in (obj (te recordtype))
+(defmethod occurs-in ((obj recordtype) (te recordtype))
   (or (when (tc-eq obj te)
 	te)
       (occurs-in obj (fields te))))
+
+(defmethod occurs-in (obj (te recordtype))
+  (occurs-in obj (fields te)))
 
 
 ;;; Recurse on the range, otherwise we will never terminate.
@@ -96,16 +114,25 @@
   (when (eq decl (declaration ex))
     ex))
 
-(defmethod occurs-in (obj (ex number-expr))
-  (when (tc-eq obj ex) ex))
+(defmethod occurs-in ((obj number-expr) (ex number-expr))
+  (when (= (number obj) (number ex)) ex))
 
-(defmethod occurs-in (obj (ex record-expr))
+(defmethod occurs-in (obj (ex number-expr))
+  nil)
+
+(defmethod occurs-in ((obj record-expr) (ex record-expr))
   (or (when (tc-eq obj ex) ex)
       (occurs-in obj (assignments ex))))
 
-(defmethod occurs-in (obj (ex tuple-expr))
+(defmethod occurs-in (obj (ex record-expr))
+  (occurs-in obj (assignments ex)))
+
+(defmethod occurs-in ((obj tuple-expr) (ex tuple-expr))
   (or (when (tc-eq obj ex) ex)
       (occurs-in obj (exprs ex))))
+
+(defmethod occurs-in (obj (ex tuple-expr))
+  (occurs-in obj (exprs ex)))
 
 ;(defmethod occurs-in (obj (ex coercion))
 ;  (or (when (tc-eq obj ex) ex)
@@ -117,31 +144,103 @@
 ;      (occurs-in obj (expression ex))
 ;      (occurs-in obj (type-value ex))))
 
-(defmethod occurs-in (obj (ex projection-application))
+(defmethod occurs-in ((obj projection-expr) (ex projection-expr))
   (or (when (tc-eq obj ex) ex)
-      (occurs-in obj (argument ex))))
+      (occurs-in obj (actuals ex))))
+
+(defmethod occurs-in (obj (ex projection-expr))
+  (occurs-in obj (actuals ex)))
+
+(defmethod occurs-in ((obj injection-expr) (ex injection-expr))
+  (or (when (tc-eq obj ex) ex)
+      (occurs-in obj (actuals ex))))
+
+(defmethod occurs-in (obj (ex injection-expr))
+  (occurs-in obj (actuals ex)))
+
+(defmethod occurs-in ((obj injection?-expr) (ex injection?-expr))
+  (or (when (tc-eq obj ex) ex)
+      (occurs-in obj (actuals ex))))
+
+(defmethod occurs-in (obj (ex injection?-expr))
+  (occurs-in obj (actuals ex)))
+
+(defmethod occurs-in ((obj extraction-expr) (ex extraction-expr))
+  (or (when (tc-eq obj ex) ex)
+      (occurs-in obj (actuals ex))))
+
+(defmethod occurs-in (obj (ex extraction-expr))
+  (occurs-in obj (actuals ex)))
+
+(defmethod occurs-in ((obj projection-application) (ex projection-application))
+  (or (when (tc-eq obj ex) ex)
+      (occurs-in obj (argument ex))
+      (occurs-in obj (actuals ex))))
+
+(defmethod occurs-in (obj (ex projection-application))
+  (or (occurs-in obj (argument ex))
+      (occurs-in obj (actuals ex))))
+
+(defmethod occurs-in ((obj injection-application) (ex injection-application))
+  (or (when (tc-eq obj ex) ex)
+      (occurs-in obj (argument ex))
+      (occurs-in obj (actuals ex))))
 
 (defmethod occurs-in (obj (ex injection-application))
+  (or (occurs-in obj (argument ex))
+      (occurs-in obj (actuals ex))))
+
+(defmethod occurs-in ((obj injection?-application) (ex injection?-application))
+  (or (when (tc-eq obj ex) ex)
+      (occurs-in obj (argument ex))
+      (occurs-in obj (actuals ex))))
+
+(defmethod occurs-in (obj (ex injection?-application))
+  (or (occurs-in obj (argument ex))
+      (occurs-in obj (actuals ex))))
+
+(defmethod occurs-in ((obj extraction-application) (ex extraction-application))
+  (or (when (tc-eq obj ex) ex)
+      (occurs-in obj (argument ex))
+      (occurs-in obj (actuals ex))))
+
+(defmethod occurs-in (obj (ex extraction-application))
+  (or (occurs-in obj (argument ex))
+      (occurs-in obj (actuals ex))))
+
+(defmethod occurs-in ((obj field-application) (ex field-application))
   (or (when (tc-eq obj ex) ex)
       (occurs-in obj (argument ex))))
 
 (defmethod occurs-in (obj (ex field-application))
-  (or (when (tc-eq obj ex) ex)
-      (occurs-in obj (argument ex))))
+  (occurs-in obj (argument ex)))
 
-(defmethod occurs-in (obj (ex application))
+(defmethod occurs-in ((obj application) (ex application))
   (or (when (tc-eq obj ex) ex)
       (occurs-in obj (operator ex))
       (occurs-in obj (argument ex))))
 
-(defmethod occurs-in (obj (ex binding-expr))
+(defmethod occurs-in (obj (ex application))
+  (or (occurs-in obj (operator ex))
+      (occurs-in obj (argument ex))))
+
+(defmethod occurs-in ((obj binding-expr) (ex binding-expr))
   (or (when (tc-eq obj ex) ex)
       (occurs-in obj (bindings ex))
       (occurs-in obj (expression ex))))
 
-(defmethod occurs-in (obj (ex cases-expr))
+(defmethod occurs-in (obj (ex binding-expr))
+  (or (occurs-in obj (bindings ex))
+      (occurs-in obj (expression ex))))
+
+(defmethod occurs-in ((obj cases-expr) (ex cases-expr))
   (or (when (tc-eq obj ex) ex)
       (occurs-in obj (expression ex))
+      (occurs-in obj (selections ex))
+      (occurs-in obj (else-part ex))))
+
+(defmethod occurs-in (obj (ex cases-expr))
+  (or (occurs-in obj (expression ex))
       (occurs-in obj (selections ex))
       (occurs-in obj (else-part ex))))
 
@@ -150,36 +249,59 @@
       (occurs-in obj (args ex))
       (occurs-in obj (expression ex))))
 
-(defmethod occurs-in (obj (ex update-expr))
+(defmethod occurs-in ((obj update-expr) (ex update-expr))
   (or (when (tc-eq obj ex) ex)
       (occurs-in obj (expression ex))
       (occurs-in obj (assignments ex))))
 
-(defmethod occurs-in (obj (ass assignment))
+(defmethod occurs-in (obj (ex update-expr))
+  (or (occurs-in obj (expression ex))
+      (occurs-in obj (assignments ex))))
+
+(defmethod occurs-in ((obj assignment) (ass assignment))
   (or (when (tc-eq obj ass) ass)
       (occurs-in obj (arguments ass))
       (occurs-in obj (expression ass))))
 
-(defmethod occurs-in (obj (bd bind-decl))
-  (or (when (tc-eq obj bd) bd)
-      (occurs-in obj (type bd))))
+(defmethod occurs-in (obj (ass assignment))
+  (or (occurs-in obj (arguments ass))
+      (occurs-in obj (expression ass))))
 
-(defmethod occurs-in ((decl declaration) (bd bind-decl))
+(defmethod occurs-in ((decl bind-decl) (bd bind-decl))
   (or (when (eq decl bd) bd)
       (occurs-in decl (type bd))))
 
-(defmethod occurs-in (obj (nm name))
-  (or (when (tc-eq obj nm) nm)
-      (occurs-in obj (actuals nm))))
+(defmethod occurs-in (obj (bd bind-decl))
+  (occurs-in obj (type bd)))
 
-(defmethod occurs-in (obj (act actual))
+(defmethod occurs-in ((obj name) (nm name))
+  (or (when (tc-eq obj nm) nm)
+      (occurs-in obj (actuals nm))
+      (call-next-method)))
+
+(defmethod occurs-in (obj (nm name))
+  (occurs-in obj (actuals nm)))
+
+(defmethod occurs-in ((obj actual) (act actual))
   (or (when (tc-eq obj act) act)
       (if (type-value act)
 	  (occurs-in obj (type-value act))
 	  (occurs-in obj (expr act)))))
 
-(defmethod id-occurs-in (x y)
-  (eql x y))
+(defmethod occurs-in (obj (act actual))
+  (if (type-value act)
+      (occurs-in obj (type-value act))
+      (occurs-in obj (expr act))))
+
+;;; id-occurs-in checks whether the id occurs in the term.  Note that we
+;;; use string= rather than eq, since string= ignores package names.
+;;; Thus (eq pvs::TRUE sal::TRUE) is nil,
+;;; but  (string= pvs::TRUE sal::TRUE) is t.
+;;; This is kind of a hack, may want to fix it later.
+
+(defmethod id-occurs-in (id y)
+  (and (symbolp y)
+       (string= id y)))
 
 (defmethod id-occurs-in (id (adt recursive-type))
   (or (id-occurs-in id (formals adt))
@@ -263,11 +385,31 @@
 ;  (or (id-occurs-in id (expression ex))
 ;      (id-occurs-in id (type-value ex))))
 
+(defmethod id-occurs-in (id (ex projection-expr))
+  (string= id (id ex)))
+
+(defmethod id-occurs-in (id (ex injection-expr))
+  (string= id (id ex)))
+
+(defmethod id-occurs-in (id (ex injection?-expr))
+  (string= id (id ex)))
+
+(defmethod id-occurs-in (id (ex extraction-expr))
+  (string= id (id ex)))
+
 (defmethod id-occurs-in (id (ex projection-application))
   (or (string= id (id ex))
       (id-occurs-in id (argument ex))))
 
 (defmethod id-occurs-in (id (ex injection-application))
+  (or (string= id (id ex))
+      (id-occurs-in id (argument ex))))
+
+(defmethod id-occurs-in (id (ex injection?-application))
+  (or (string= id (id ex))
+      (id-occurs-in id (argument ex))))
+
+(defmethod id-occurs-in (id (ex extraction-application))
   (or (string= id (id ex))
       (id-occurs-in id (argument ex))))
 

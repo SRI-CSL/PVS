@@ -7,5 +7,7 @@
   #-(or runtime-standard runtime-dynamic)
   (require 'prof)
   (setq excl:*global-gc-behavior* :auto)
-  (load (format nil "~a/pvs.system" *pvs-path*)))
+  (load (format nil "~a/pvs.system" *pvs-path*))
+  (require 'uri)
+  (require 'pxml))
 (operate-on-system :pvs :compile)

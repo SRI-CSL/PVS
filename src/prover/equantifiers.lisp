@@ -430,47 +430,6 @@ Please provide skolem constants for these variables." overlap)
 			  (negate skobody)))))))
 
 
-(defun find-all-sformnums (sforms sformnums pred
-				  &optional (pos 1)(neg -1)(acc nil))
-  (cond ((null sforms) (nreverse acc))
-	(t (let* ((sign (not (negation? (formula (car sforms)))))
-		  (newpos (if sign (1+ pos) pos))
-		  (newneg (if sign neg (1- neg)))
-		  (newacc (if (and (in-sformnums?
-				    (car sforms) pos neg sformnums)
-				   (funcall pred (formula (car sforms))))
-			      (cons (if sign pos neg) acc)
-			      acc)))  ;;(break "find-all")
-		 (find-all-sformnums (cdr sforms) sformnums pred
-				     newpos newneg newacc)))))
-
-(defun find-sform (sforms sformnum &optional (pred #'always-true))
-  (find-sform* sforms sformnum pred 1 -1))
-
-(defun find-sform* (sforms sformnum pred pos neg)
-  (cond ((null sforms) nil)
-	((negation? (formula (car sforms)))
-	 (if (and (or (memq sformnum '(* -))
-		      (equal sformnum neg)
-		      (and (label (car sforms))
-			   (or (symbolp sformnum)
-				 (stringp sformnum))
-			   (memq (intern sformnum)
-			       (label (car sforms)))))
-		  (funcall pred  (car sforms)))
-	     neg
-	     (find-sform* (cdr sforms) sformnum pred pos (1- neg))))
-	(t (if (and (or (memq sformnum '(* +))
-			(equal sformnum pos)
-			(and (label (car sforms))
-			     (or (symbolp sformnum)
-				 (stringp sformnum))
-			     (memq (intern sformnum)
-				   (label (car sforms)))))
-		  (funcall pred (car sforms)))
-	       pos
-	       (find-sform* (cdr sforms) sformnum pred (1+ pos) neg)))))
-
 (defmethod tc-eq* ((x s-formula)(y s-formula) bindings)
   (tc-eq* (formula x)(formula y) bindings))
 	
@@ -596,6 +555,7 @@ Please provide skolem constants for these variables." overlap)
 (defun skolem-typepreds-subgoal (subgoal terms ps skolem-typepreds?)
   (if skolem-typepreds?
       (let ((preds (loop for expr in terms
+			 unless (equal expr "_")
 			 append (collect-typepreds expr ps))))
 	(if preds
 	    (let* ((new-sforms
@@ -1321,14 +1281,33 @@ is not of the form: (<var> <term>...)" subst)
 (defmethod find-templates* ((expr field-application) boundvars &optional accum)
   (find-templates* (argument expr) boundvars accum))
 
+(defmethod find-templates* ((expr projection-expr) boundvars &optional accum)
+  accum)
+
+(defmethod find-templates* ((expr injection-expr) boundvars &optional accum)
+  accum)
+
+(defmethod find-templates* ((expr injection?-expr) boundvars &optional accum)
+  accum)
+
+(defmethod find-templates* ((expr extraction-expr) boundvars &optional accum)
+  accum)
+
 (defmethod find-templates* ((expr projection-application) boundvars
 			    &optional accum) 
   (find-templates* (argument expr) boundvars accum))
 
 (defmethod find-templates* ((expr injection-application) boundvars
 			    &optional accum) 
+  (find-templates* (argument expr) boundvars accum))
+
+(defmethod find-templates* ((expr injection?-application) boundvars
+			    &optional accum) 
   (find-templates* (argument expr) boundvars accum)) 
 
+(defmethod find-templates* ((expr extraction-application) boundvars
+			    &optional accum) 
+  (find-templates* (argument expr) boundvars accum))
 
 (defmethod find-templates* ((expr record-expr) boundvars &optional accum)
   (let ((argument-templates
@@ -1711,6 +1690,12 @@ is not of the form: (<var> <term>...)" subst)
 (defmethod args1 ((expr injection-application))
   (args1* (argument expr)))
 
+(defmethod args1 ((expr injection?-application))
+  (args1* (argument expr)))
+
+(defmethod args1 ((expr extraction-application))
+  (args1* (argument expr)))
+
 (defmethod args1* ((expr tuple-expr))
   (car (exprs expr)))
 
@@ -1724,6 +1709,12 @@ is not of the form: (<var> <term>...)" subst)
   (args2* (argument expr)))
 
 (defmethod args2 ((expr injection-application))
+  (args2* (argument expr)))
+
+(defmethod args2 ((expr injection?-application))
+  (args2* (argument expr)))
+
+(defmethod args2 ((expr extraction-application))
   (args2* (argument expr)))
 
 (defmethod args2* ((expr tuple-expr))

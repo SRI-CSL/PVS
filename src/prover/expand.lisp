@@ -57,9 +57,7 @@ list of positive numbers" occurrence)
 	   (values 'X nil nil))
 	  (t 
 	   (let ((new-sforms
-		  (expand-sforms name sforms sformnums
-				 occurrence 
-				 +1 -1 nil)))
+		  (expand-sforms name sforms sformnums occurrence)))
 	     (cond ((every #'eq sforms new-sforms)
 		    (values 'X nil nil))
 		   (t (mapcar #'(lambda (x)
@@ -71,9 +69,10 @@ list of positive numbers" occurrence)
 					'dependent-decls
 					*dependent-decls*))))))))))
 
+(defun expand-sforms (name sforms sformnums occurrence)
+  (expand-sforms* name sforms (cleanup-fnums sformnums) occurrence +1 -1 nil))
 
-(defun expand-sforms (name sforms sformnums occurrence 
-			   pos neg accum)
+(defun expand-sforms* (name sforms sformnums occurrence pos neg accum)
   (if (null sforms)
       (nreverse accum)
       (let* ((*count-occurrences* 0)
@@ -84,19 +83,19 @@ list of positive numbers" occurrence)
 		  fmla))
 	     )
 	(if (eq fmla new-fmla)
-	    (expand-sforms name (cdr sforms)
-			   sformnums occurrence
-			   (if (not (negation? fmla))
-			       (1+ pos)
-			       pos)
-			   (if (negation? fmla)
-			       (1- neg)
-			       neg)
-			   (cons (car sforms) accum))
+	    (expand-sforms* name (cdr sforms)
+			    sformnums occurrence
+			    (if (not (negation? fmla))
+				(1+ pos)
+				pos)
+			    (if (negation? fmla)
+				(1- neg)
+				neg)
+			    (cons (car sforms) accum))
 	    (multiple-value-bind (sig result)
 		(if (eq *assert-flag* 'none)
 		    (values 'X new-fmla) ;;NSH(1/16/97): Myla Archer
-		        ;;wanted no-simplification option.
+		    ;;wanted no-simplification option.
 		    (assert-if-inside new-fmla))
 	      (let ((new-sform (lcopy (car sforms)
 				 'formula (if (eq sig 'X)
@@ -106,17 +105,17 @@ list of positive numbers" occurrence)
 		    (append (nreverse accum)
 			    (cons new-sform (cdr sforms)))
 		    ;;since only one formula is
-		      ;;processed when occurrence is
-			;;given.  
-		  (expand-sforms name (cdr sforms)
-				 sformnums occurrence
-				 (if (not (negation? fmla))
-				     (1+ pos)
-				     pos)
-				 (if (negation? fmla)
-				     (1- neg)
-				     neg)
-				 (cons new-sform accum)))))))))
+		    ;;processed when occurrence is
+		    ;;given.  
+		    (expand-sforms* name (cdr sforms)
+				    sformnums occurrence
+				    (if (not (negation? fmla))
+					(1+ pos)
+					pos)
+				    (if (negation? fmla)
+					(1- neg)
+					neg)
+				    (cons new-sform accum)))))))))
 
 (defun match-defns (expr def-axioms)
   (cond ((null def-axioms) 'fail)
@@ -134,7 +133,19 @@ list of positive numbers" occurrence)
 		 'fail)))))
 
 
-;;; SO 9/2/94 - Added methods for projection-application and field-application
+
+
+(defmethod expand-defn (name (expr projection-expr) occurrence)
+  expr)
+
+(defmethod expand-defn (name (expr injection-expr) occurrence)
+  expr)
+
+(defmethod expand-defn (name (expr injection?-expr) occurrence)
+  expr)
+
+(defmethod expand-defn (name (expr extraction-expr) occurrence)
+  expr)
 
 (defmethod expand-defn (name (expr projection-application) occurrence)
   (if (and (plusp *max-occurrence*)
@@ -145,6 +156,22 @@ list of positive numbers" occurrence)
 	(lcopy expr 'argument newarg))))
 
 (defmethod expand-defn (name (expr injection-application) occurrence)
+  (if (and (plusp *max-occurrence*)
+	   (< *max-occurrence* *count-occurrences*))
+      expr
+      (let* ((arg (argument expr))
+	     (newarg (expand-defn name arg occurrence)))
+	(lcopy expr 'argument newarg))))
+
+(defmethod expand-defn (name (expr injection?-application) occurrence)
+  (if (and (plusp *max-occurrence*)
+	   (< *max-occurrence* *count-occurrences*))
+      expr
+      (let* ((arg (argument expr))
+	     (newarg (expand-defn name arg occurrence)))
+	(lcopy expr 'argument newarg))))
+
+(defmethod expand-defn (name (expr extraction-application) occurrence)
   (if (and (plusp *max-occurrence*)
 	   (< *max-occurrence* *count-occurrences*))
       expr

@@ -113,13 +113,12 @@
 (defun get-resolutions (name kind args)
   (let* ((adecls (gethash (id name) (current-declarations-hash)))
 	 (ldecls (if (library name)
-		     (let ((lib (get-library-pathname (library name))))
-		       (if lib
+		     (let ((libref (get-library-reference (library name))))
+		       (if libref
 			   (remove-if-not
 			       #'(lambda (d)
 				   (and (library-theory? (module d))
-					(equal lib (directory-namestring
-						    (path (module d))))))
+					(string= libref (lib-ref (module d)))))
 			     adecls)
 			   (type-error name "~a is an unknown library"
 				       (library name))))
@@ -324,7 +323,7 @@
 				   (case kind
 				     (expr (type decl))
 				     (type (type-value decl)))))
-	      (let* ((modinsts (decl-args-compatible? decl args))
+	      (let* ((modinsts (decl-args-compatible? decl args mappings))
 		     (unint-modinsts
 		      (remove-if
 			  #'(lambda (mi)
@@ -334,7 +333,7 @@
 						  (and (mapping-def? m)
 						       (declaration (lhs m)))))))
 			modinsts))
-		     (thinsts (if mappings
+		     (thinsts (if nil ;mappings have already been considered
 				  (remove-if-not
 				      #'(lambda (mi)
 					  (matching-mappings mappings mi))
@@ -360,7 +359,7 @@
 		      (when (compatible-arguments? decl dthi args
 						   (current-theory))
 			(list (make-resolution decl dthi)))))
-		  (let* ((modinsts (decl-args-compatible? decl args))
+		  (let* ((modinsts (decl-args-compatible? decl args mappings))
 			 (thinsts (matching-decl-theory-instances
 				   acts dth modinsts)))
 		    (when thinsts
@@ -370,12 +369,40 @@
 
 (defun matching-decl-theory-instances (acts theory thinsts &optional matches)
   (if (null thinsts)
-      (nreverse matches)
+      (get-best-matching-decl-theory-instances acts (nreverse matches))
       (let ((mthinst (matching-actuals acts theory (car thinsts))))
 	(matching-decl-theory-instances acts theory (cdr thinsts)
 					(if mthinst
 					    (cons mthinst matches)
 					    matches)))))
+
+(defun get-best-matching-decl-theory-instances (acts instances)
+  (if (cdr instances)
+      (get-best-matching-decl-theory-instances* acts instances)
+      instances))
+
+(defun get-best-matching-decl-theory-instances* (acts instances
+						      &optional (count 0) best)
+  (if (null instances)
+      (nreverse best)
+      (let ((ncount (count-equal-actuals acts (actuals (car instances)))))
+	(get-best-matching-decl-theory-instances*
+	 acts (cdr instances)
+	 (max ncount count)
+	 (cond ((< ncount count)
+		best)
+	       ((> ncount count)
+		(list (car instances)))
+	       (t (cons (car instances) best)))))))
+
+(defun count-equal-actuals (acts1 acts2 &optional (count 0))
+  (if (null acts1)
+      count
+      (count-equal-actuals
+       (cdr acts1) (cdr acts2)
+       (if (tc-eq (car acts1) (car acts2))
+	   (1+ count)
+	   count))))
 
 (defun copy-actuals (acts)
   acts)
@@ -386,25 +413,55 @@
 			     :test #'same-id :key #'lhs))
 	     mappings)
       (make-resolution decl thinst)
-      (let* ((nmappings (append mappings
-				(remove-if #'(lambda (m)
-					       (member (lhs m) mappings
-						       :test #'same-id
-						       :key #'lhs))
-				  (mappings thinst))))
-	      (nthinst (copy thinst
-			'mappings nmappings)))
+      (let* ((nmappings (append (mappings thinst) mappings))
+	     (nthinst (copy thinst 'mappings nmappings)))
 	(typecheck-mappings nmappings nthinst)
 	(make-resolution decl nthinst))))
 	
 
-(defun decl-args-compatible? (decl args)
+(defun decl-args-compatible? (decl args mappings)
   (if (eq (module decl) (current-theory))
       (compatible-arguments? decl (current-theory-name) args (current-theory))
-      (let ((thinsts (gethash (module decl) (current-using-hash))))
+      (let* ((idecls (when mappings
+		       (interpretable-declarations (module decl))))
+	     (thinsts (when (or (null mappings)
+				(every #'(lambda (m)
+					   (member (id (lhs m)) idecls
+						   :key #'id))
+				       mappings))
+			(gethash (module decl) (current-using-hash))))
+	     (mthinsts (if mappings
+			   (create-theorynames-with-name-mappings
+			    thinsts mappings)
+			   thinsts)))
 	(mapcan #'(lambda (thinst)
-		    (compatible-arguments? decl thinst args (current-theory)))
-	  thinsts))))
+		    (compatible-arguments?
+		     decl thinst args (current-theory)))
+	  mthinsts))))
+
+(defun create-theorynames-with-name-mappings (thinsts mappings
+						      &optional mthinsts)
+  ;; Note that some instances may work, while others won't.
+  ;; E.g., given mappings (x := 3), where x and y are interpretable
+  ;; in theory th, the instances
+  ;;  th, th[int], and th{{y := 4}} works, but
+  ;;  th{{x := 4}} will be ignored, since x is no longer interpretable in
+  ;; that instance.
+  (if (null thinsts)
+      (nreverse mthinsts)
+      (create-theorynames-with-name-mappings
+       (cdr thinsts)
+       mappings
+       (if (matching-mappings mappings (car thinsts))
+	   (let* ((nmappings (copy-all mappings))
+		  (nthinst (copy (car thinsts)
+			     'mappings (append (mappings (car thinsts))
+					       nmappings))))
+	     (typecheck-mappings nmappings nthinst)
+	     (cons nthinst mthinsts))
+	   mthinsts))))
+
+      
 
 ;;; This will set the types of the actual parameters.
 ;;; Name-exprs are typechecked twice; once as an expression and once as
@@ -689,6 +746,82 @@
 	   (some #'(lambda (ty) (tc-eq-with-bindings ty ty2 bindings))
 		 ty1)))))
 
+(defmethod matching-actual-expr* ((e1 projection-expr) (e2 projection-expr)
+				  bindings)
+  (or (eq e1 e2)
+      (with-slots ((id1 index)) e1
+	(with-slots ((id2 index)) e2
+	  (= id1 id2)))))
+
+(defmethod matching-actual-expr* ((e1 projection-expr) (e2 name-expr)
+				  bindings)
+  (let ((bind (assoc e2 bindings :test #'tc-eq)))
+    (and bind
+	 (matching-actual-expr* e1 (cdr bind) nil))))
+
+(defmethod matching-actual-expr* ((e1 name-expr) (e2 projection-expr)
+				  bindings)
+  (let ((bind (assoc e1 bindings :test #'tc-eq)))
+    (and bind
+	 (matching-actual-expr* (cdr bind) e2 nil))))
+
+(defmethod matching-actual-expr* ((e1 injection-expr) (e2 injection-expr)
+				  bindings)
+  (or (eq e1 e2)
+      (with-slots ((id1 index)) e1
+	(with-slots ((id2 index)) e2
+	  (= id1 id2)))))
+
+(defmethod matching-actual-expr* ((e1 injection-expr) (e2 name-expr)
+				  bindings)
+  (let ((bind (assoc e2 bindings :test #'tc-eq)))
+    (and bind
+	 (matching-actual-expr* e1 (cdr bind) nil))))
+
+(defmethod matching-actual-expr* ((e1 name-expr) (e2 injection-expr)
+				  bindings)
+  (let ((bind (assoc e1 bindings :test #'tc-eq)))
+    (and bind
+	 (matching-actual-expr* (cdr bind) e2 nil))))
+
+(defmethod matching-actual-expr* ((e1 injection?-expr) (e2 injection?-expr)
+				  bindings)
+  (or (eq e1 e2)
+      (with-slots ((id1 index)) e1
+	(with-slots ((id2 index)) e2
+	  (= id1 id2)))))
+
+(defmethod matching-actual-expr* ((e1 injection?-expr) (e2 name-expr)
+				  bindings)
+  (let ((bind (assoc e2 bindings :test #'tc-eq)))
+    (and bind
+	 (matching-actual-expr* e1 (cdr bind) nil))))
+
+(defmethod matching-actual-expr* ((e1 name-expr) (e2 injection?-expr)
+				  bindings)
+  (let ((bind (assoc e1 bindings :test #'tc-eq)))
+    (and bind
+	 (matching-actual-expr* (cdr bind) e2 nil))))
+
+(defmethod matching-actual-expr* ((e1 extraction-expr) (e2 extraction-expr)
+				  bindings)
+  (or (eq e1 e2)
+      (with-slots ((id1 index)) e1
+	(with-slots ((id2 index)) e2
+	  (= id1 id2)))))
+
+(defmethod matching-actual-expr* ((e1 extraction-expr) (e2 name-expr)
+				  bindings)
+  (let ((bind (assoc e2 bindings :test #'tc-eq)))
+    (and bind
+	 (matching-actual-expr* e1 (cdr bind) nil))))
+
+(defmethod matching-actual-expr* ((e1 name-expr) (e2 extraction-expr)
+				  bindings)
+  (let ((bind (assoc e1 bindings :test #'tc-eq)))
+    (and bind
+	 (matching-actual-expr* (cdr bind) e2 nil))))
+
 (defmethod matching-actual-expr* ((e1 projection-application)
 				  (e2 projection-application)
 				  bindings)
@@ -700,15 +833,15 @@
 
 (defmethod matching-actual-expr* ((e1 projection-application) (e2 name-expr)
 				  bindings)
-  (let ((bind (assoc e1 bindings :test #'tc-eq)))
+  (let ((bind (assoc e2 bindings :test #'tc-eq)))
     (and bind
-	 (matching-actual-expr* (cdr bind) e2 nil))))
+	 (matching-actual-expr* e1 (cdr bind) bindings))))
 
 (defmethod matching-actual-expr* ((e1 name-expr) (e2 projection-application)
 				  bindings)
   (let ((bind (assoc e1 bindings :test #'tc-eq)))
     (and bind
-	 (matching-actual-expr* (cdr bind) e2 nil))))
+	 (matching-actual-expr* (cdr bind) e2 bindings))))
 
 (defmethod matching-actual-expr* ((e1 injection-application)
 				  (e2 injection-application)
@@ -721,15 +854,57 @@
 
 (defmethod matching-actual-expr* ((e1 injection-application) (e2 name-expr)
 				  bindings)
-  (let ((bind (assoc e1 bindings :test #'tc-eq)))
+  (let ((bind (assoc e2 bindings :test #'tc-eq)))
     (and bind
-	 (matching-actual-expr* (cdr bind) e2 nil))))
+	 (matching-actual-expr* e1 (cdr bind) bindings))))
 
 (defmethod matching-actual-expr* ((e1 name-expr) (e2 injection-application)
 				  bindings)
   (let ((bind (assoc e1 bindings :test #'tc-eq)))
     (and bind
-	 (matching-actual-expr* (cdr bind) e2 nil))))
+	 (matching-actual-expr* (cdr bind) e2 bindings))))
+
+(defmethod matching-actual-expr* ((e1 injection?-application)
+				  (e2 injection?-application)
+				  bindings)
+  (or (eq e1 e2)
+      (with-slots ((id1 index) (arg1 argument)) e1
+	(with-slots ((id2 index) (arg2 argument)) e2
+	  (and (= id1 id2)
+	       (matching-actual-expr* arg1 arg2 bindings))))))
+
+(defmethod matching-actual-expr* ((e1 injection?-application) (e2 name-expr)
+				  bindings)
+  (let ((bind (assoc e2 bindings :test #'tc-eq)))
+    (and bind
+	 (matching-actual-expr* e1 (cdr bind) bindings))))
+
+(defmethod matching-actual-expr* ((e1 name-expr) (e2 injection?-application)
+				  bindings)
+  (let ((bind (assoc e1 bindings :test #'tc-eq)))
+    (and bind
+	 (matching-actual-expr* (cdr bind) e2 bindings))))
+
+(defmethod matching-actual-expr* ((e1 extraction-application)
+				  (e2 extraction-application)
+				  bindings)
+  (or (eq e1 e2)
+      (with-slots ((id1 index) (arg1 argument)) e1
+	(with-slots ((id2 index) (arg2 argument)) e2
+	  (and (= id1 id2)
+	       (matching-actual-expr* arg1 arg2 bindings))))))
+
+(defmethod matching-actual-expr* ((e1 extraction-application) (e2 name-expr)
+				  bindings)
+  (let ((bind (assoc e2 bindings :test #'tc-eq)))
+    (and bind
+	 (matching-actual-expr* e1 (cdr bind) bindings))))
+
+(defmethod matching-actual-expr* ((e1 name-expr) (e2 extraction-application)
+				  bindings)
+  (let ((bind (assoc e1 bindings :test #'tc-eq)))
+    (and bind
+	 (matching-actual-expr* (cdr bind) e2 bindings))))
 
 (defmethod matching-actual-expr* ((e1 application) (e2 field-application)
 				  bindings)
@@ -1213,12 +1388,45 @@
 	(if (eq kind 'expr)
 	    (if (cdr res)
 		(filter-equality-resolutions
-		 (filter-local-expr-resolutions
-		  (filter-bindings res args)))
+		 (filter-nonlocal-module-instances
+		  (filter-local-expr-resolutions
+		   (filter-bindings res args))))
 		res)
 	    (remove-mapping-resolutions
 	     (remove-outsiders (remove-generics res)))))
       reses))
+
+;;; If both the generic and several (2 or more) instantiated resolutions
+;;; are available, throw away the instantiated ones.
+(defun filter-nonlocal-module-instances (res &optional freses)
+  (if (null res)
+      freses
+      (multiple-value-bind (mreses rest)
+	  (split-on #'(lambda (r) (same-declaration r (car res)))
+		    res)
+	(filter-nonlocal-module-instances
+	 rest (nconc (filter-nonlocal-module-instances* mreses) freses)))))
+
+(defun filter-nonlocal-module-instances* (mreses)
+  (if (cddr mreses) ;; at least three - possibly a generic and two others
+      (let ((th (module (declaration (car mreses)))))
+	(if (or (null th)
+		(from-prelude? th)
+		(from-prelude-library? th))
+	    mreses
+	    (multiple-value-bind (freses ureses)
+		(split-on #'fully-instantiated? mreses)
+	      (if ureses
+		  (append ureses
+			  (remove-if (complement
+				      #'(lambda (r)
+					  (member (module-instance r)
+						  (get-immediate-usings
+						   (current-theory))
+						  :test #'tc-eq)))
+			    freses))
+		  mreses))))
+      mreses))
 
 (defun remove-mapping-resolutions (reses)
   (remove-if #'(lambda (res)
@@ -1581,7 +1789,8 @@
 	   (let ((dtypes-inst (instantiate-operator-from-bindings
 			       dtypes (car bindings-list))))
 	     (all-possible-instantiations* dtypes (cdr bindings-list)
-					   (cons dtypes-inst result))))))
+					   (pushnew dtypes-inst result
+						    :test #'tc-eq))))))
       
 
 (defun all-possible-bindings (dtypes arguments bindings)
@@ -1682,9 +1891,37 @@
        (let* ((dtypes (domain-types rtype))
 	      (dtypes-list (all-possible-instantiations dtypes arguments)))
 	 (and (length= dtypes arguments)
-	      (mapcan #'(lambda (dty)
-			  (compatible-arguments-k-conversions dty arguments))
-		dtypes-list)))))
+	      (let* ((compats (mapcan #'(lambda (dty)
+					  (compatible-arguments-k-conversions
+					   dty arguments))
+				dtypes-list))
+		     (k-convtype (get-k-conversion-type compats)))
+		(when k-convtype
+		  (let* ((ndtypes-list
+			  (mapcar #'(lambda (dtypes)
+				      (mapcar #'(lambda (dty)
+						  (if (and (funtype? dty)
+							   (tc-eq k-convtype
+								  (domain dty)))
+						      (range dty)
+						      dty))
+					dtypes))
+			    dtypes-list))
+			 (ncompats (mapcan #'(lambda (dty)
+					       (compatible-arguments-k-conversions
+						dty arguments))
+				     ndtypes-list)))
+		    (or ncompats compats))))))))
+
+(defun get-k-conversion-type (compats &optional type)
+  (if (null compats)
+      type
+      (if (eq (car compats) t)
+	  (get-k-conversion-type (cdr compats) type)
+	  (let ((k-type (domain (range (type (car compats))))))
+	    (when (or (null type)
+		      (tc-eq type k-type))
+	      (get-k-conversion-type (cdr compats) k-type))))))
 
 (defun compatible-arguments-k-conversions (dtypes arguments
 						  &optional kconv result)
@@ -1939,8 +2176,7 @@
 			"~a~%Enabling K_conversion before this declaration might help"
 		      error)))
 	  (if type-error?
-	      (let ((*already-checked-for-k-conversion* t))
-		  (type-error obj error))
+	      (type-error-noconv obj error)
 	      (progn (set-strategy-errors error)
 		     nil)))))))
 

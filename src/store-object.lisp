@@ -329,13 +329,11 @@
 			(fetch-symbol)
 			(let* ((type (fetch-obj (object-store ptr)))
 			       (fetcher (get type 'fetcher)))
-			  ;;(format t "~%Type = ~a, fetcher = ~a" type fetcher)
 			  (if fetcher
 			      (funcall fetcher)
 			      (progn
 				(register-for-updating)
 				(fast-make-instance type)))))))
-	  ;;(format t "~%val = ~a" val)
 	  (when *registered-for-updating*
 	    (queue-update-fetched val ptr))
 	  (setf (svref *fetch-object-table* ptr) val)
@@ -405,8 +403,8 @@
       (setf (char str i) (int-char (stored-word (+ 2 i)))))
     str))
 
-(defmethod store-object* ((obj pathname))
-  (store-object* (namestring obj)))
+;; (defmethod store-object* ((obj pathname))
+;;   (store-object* (namestring obj)))
 
 ;; It would be easy to reduce the storage required for integers
 ;; by storing them with a radix higher than 10.

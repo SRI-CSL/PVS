@@ -64,7 +64,7 @@ generated")
 	    (*current-theory* (make-instance 'module
 				'id ,vtid
 				'exporting (make-instance 'exporting
-					     'kind 'DEFAULT)))
+					     'kind 'default)))
 	    (*current-context* (make-new-context *current-theory*))
 	    (*typechecking-module* t)
 	    (*tccs* nil)
@@ -225,8 +225,7 @@ generated")
 	(setq *pvs-context-changed* t))
       (push 'typechecked (status adt))
       (dolist (th adt-theories)
-	(setf (filename th) adt-file)
-	(setf (path th) (make-specpath adt-file)))
+	(setf (filename th) adt-file))
       (setf (gethash adt-file *pvs-files*)
 	    (cons fdate (adt-generated-theories adt))))))
 
@@ -466,7 +465,7 @@ generated")
 	(t (mk-name-expr '=))))
 
 (defmethod bisimulation-rel ((te subtype) rvar adt)
-  (acc-every-selection* (supertype te) rvar adt))
+  (bisimulation-rel (supertype te) rvar adt))
 
 (defmethod bisimulation-rel ((te funtype) rvar adt)
   (let* ((fid (make-new-variable '|x| te))
@@ -494,10 +493,10 @@ generated")
 (defmethod bisimulation-rel ((te recordtype) rvar adt)
   (let* ((rxid (make-new-variable '|rx| te))
 	 (rxbd (make-bind-decl rxid te))
-	 (rxvar (make-name-expr rxbd))
+	 (rxvar (make-variable-expr rxbd))
 	 (ryid (make-new-variable '|ry| te))
 	 (rybd (make-bind-decl ryid te))
-	 (ryvar (make-name-expr rybd))
+	 (ryvar (make-variable-expr rybd))
 	 (rels (bisimulation-rel-fields (fields te) rxvar ryvar rvar adt)))
     (if (every #'(lambda (x) (and (name-expr? x) (eq (id x) '=))) rels)
 	(mk-name-expr '=)
@@ -511,6 +510,7 @@ generated")
 		  (type (car fields))
 		  (make-field-application (car fields) rxvar)
 		  (make-field-application (car fields) ryvar)
+		  rvar
 		  adt)))
 	(bisimulation-rel-fields (cdr fields) rxvar ryvar rvar adt
 				 (cons rel rels)))))
@@ -518,10 +518,10 @@ generated")
 (defmethod bisimulation-rel ((te tupletype) rvar adt)
   (let* ((txid (make-new-variable '|tx| te))
 	 (txbd (make-bind-decl txid te))
-	 (txvar (make-name-expr txbd))
+	 (txvar (make-variable-expr txbd))
 	 (tyid (make-new-variable '|ty| te))
 	 (tybd (make-bind-decl tyid te))
-	 (tyvar (make-name-expr tybd))
+	 (tyvar (make-variable-expr tybd))
 	 (rels (bisimulation-rel-types (types te) txvar tyvar rvar adt 1)))
     (if (every #'(lambda (x) (and (name-expr? x) (eq (id x) '=))) rels)
 	(mk-name-expr '=)
@@ -535,12 +535,13 @@ generated")
 		  (car types)
 		  (make-projection-application num rxvar)
 		  (make-projection-application num ryvar)
+		  rvar
 		  adt)))
 	(bisimulation-rel-types (cdr types) rxvar ryvar rvar adt (1+ num)
 				(cons rel rels)))))
 
 (defmethod bisimulation-rel ((te dep-binding) rvar adt)
-  (acc-every-selection* (type te) rvar adt))
+  (bisimulation-rel (type te) rvar adt))
 
 (defmethod bisimulation-rel ((te type-expr) rvar adt)
   (declare (ignore rvar adt))
@@ -850,17 +851,23 @@ generated")
 	 (cons corr-act result)))))
 
 (defun find-corresponding-acc-decl (acc common-accessors acc-decls)
-  (if (memq acc (cdar common-accessors))
+  (if (find-corresponding-acc-decl* acc (car common-accessors))
       (car acc-decls)
-      (find-corresponding-acc-decl acc
-				   (cdr common-accessors) (cdr acc-decls))))
+      (find-corresponding-acc-decl
+       acc (cdr common-accessors) (cdr acc-decls))))
+
+(defun find-corresponding-acc-decl* (acc common-accessors)
+  (when common-accessors
+    (or (memq acc (cdar common-accessors))
+	(find-corresponding-acc-decl* acc (cdr common-accessors)))))
 
 (defun generate-accessor (entry adt)
-  ;; entry is of the form ((adtdecl range-type deps) adtdecl ...)
+  ;; entry is of the form (((adtdecl range-type deps) adtdecl ...)
+  ;;                       ((adtdecl range-type deps) adtdecl ...) ...)
   (let* ((domain (get-accessor-domain-type entry adt))
-	 (range (cadar entry))
-	 (acc-type (make-accessor-funtype domain range (caddar entry)))
-	 (acc-decl (mk-adt-accessor-decl (id (caar entry)) acc-type)))
+	 (range (get-accessor-range-type entry domain adt))
+	 (acc-type (make-accessor-funtype domain range (caddr (caar entry))))
+	 (acc-decl (mk-adt-accessor-decl (id (caaar entry)) acc-type)))
     (typecheck-adt-decl acc-decl)
     (when (cddr entry)
       (make-common-accessor-subtype-judgements (cdr entry) domain adt))
@@ -885,11 +892,8 @@ generated")
 
 (defun make-accessor-funtype (domain range deps)
   (if deps
-      (let* ((dep-id (make-new-variable '|x| (list domain range)))
-	     (dtype (typecheck* domain nil nil nil))
-	     (dep-binding (mk-dep-binding dep-id dtype))
-	     (dep-name (make-variable-expr dep-binding))
-	     (*bound-variables* (cons dep-binding *bound-variables*))
+      (let* ((dep-name (make-variable-expr domain))
+	     (*bound-variables* (cons domain *bound-variables*))
 	     (subst-range (substit range
 			    (pairlis
 			     (mapcar #'declaration deps)
@@ -898,23 +902,32 @@ generated")
 						       dep-name)
 						     (type dep) nil nil))
 			       deps)))))
-	(mk-funtype dep-binding subst-range))
+	(mk-funtype domain subst-range))
       (mk-funtype domain range)))
 
 (defun get-accessor-domain-type (entry adt)
-  (if (= (length (cdr entry)) (length (constructors adt)))
-      (mk-type-name (id adt))
-      (if (subtypes adt)
-	  (multiple-value-bind (subtypes recognizers)
-	      (get-accessor-covered-subtypes (copy-list (cdr entry)) adt)
-	    (get-accessor-domain-type* subtypes recognizers))
-	  (get-accessor-domain-type*
-	   nil
-	   (mapcan #'(lambda (c)
-		       (when (some #'(lambda (acc) (memq acc (cdr entry)))
-				   (arguments c))
-			 (list (recognizer c))))
-	     (constructors adt))))))
+  (let ((domain (get-accessor-domain-basic-type entry adt)))
+    (if (caddar (car entry))
+	(let* ((dep-id (make-new-variable 'd adt))
+	       (dtype (typecheck* domain nil nil nil)))
+	  (mk-dep-binding dep-id dtype))
+	domain)))
+  
+(defun get-accessor-domain-basic-type (entry adt)
+  (let ((acc-decls (mapappend #'cdr entry)))
+    (if (= (length (mapappend #'cdr entry)) (length (constructors adt)))
+	(mk-type-name (id adt))
+	(if (subtypes adt)
+	    (multiple-value-bind (subtypes recognizers)
+		(get-accessor-covered-subtypes (copy-list acc-decls) adt)
+	      (get-accessor-domain-type* subtypes recognizers))
+	    (get-accessor-domain-type*
+	     nil
+	     (mapcan #'(lambda (c)
+			 (when (some #'(lambda (acc) (memq acc acc-decls))
+				     (arguments c))
+			   (list (recognizer c))))
+	       (constructors adt)))))))
 
 (defun get-accessor-domain-type* (subtypes recognizers)
   (cond ((and (singleton? subtypes)
@@ -928,7 +941,7 @@ generated")
 	(t
 	 (let* ((*generate-tccs* 'none)
 		(preds (append subtypes recognizers))
-		(var (make-new-variable '|x| preds))
+		(var (make-new-variable 'x preds))
 		(bd (mk-bind-decl var (adt-type-name *adt*)))
 		(appreds (mapcar #'(lambda (p)
 				     (if (subtype? p)
@@ -950,6 +963,7 @@ generated")
 	(multiple-value-bind (subtype-accs subtype-recs covers?)
 	    (get-accessors-for-subtype
 	     (car accs) (subtype constr) (constructors adt))
+	  (declare (ignore subtype-recs))
 	  ;; subtype-accs has all accessors of that name for the given subtype
 	  ;; covers? is true if every constructor of that subtype has an
 	  ;; accessor of that name
@@ -992,6 +1006,45 @@ generated")
 	  (get-accessors-for-subtype acc subtype (cdr constructors)
 				     accs recs covered?))))
 
+(defun get-accessor-range-type (entry domain adt)
+  (declare (ignore domain))
+  (if (cdr entry)
+      (let* ((suptype (reduce #'compatible-type (mapcar #'cadar entry)))
+	     (tid (make-new-variable 'x adt))
+	     (tbd (make-bind-decl tid suptype))
+	     (tvar (make-variable-expr tbd))
+	     (pred (get-accessor-range-type-pred entry suptype tvar adt)))
+	(mk-subtype suptype
+	  (make-instance 'set-expr
+	    'bindings (list tbd)
+	    'expression pred)))
+      (cadaar entry)))
+
+(defun get-accessor-range-type-pred (entry suptype tvar adt)
+  (let* ((vars (caddr (caar entry)))
+	 (subst-alist
+	      (pairlis
+	       (mapcar #'declaration vars)
+	       (mapcar #'(lambda (dep)
+			   (typecheck* (mk-application (id dep) tvar)
+				       (type dep) nil nil))
+		 vars)))
+	 (epred (subtype-pred (substit (cadaar entry) subst-alist) suptype))
+	 (tpred (make!-application epred tvar)))
+    (if (null (cdr entry))
+	tpred
+	(let* ((dtype (get-accessor-domain-type (list (car entry)) adt))
+	       (pred (predicate dtype))
+	       (cond (make!-application pred tvar))
+	       (else (get-accessor-range-type-pred
+		      (cdr entry) suptype tvar adt)))
+	  (make!-if-expr cond tpred else)))))
+  
+
+;;; The common-accessors list is of the form
+;;;  ( (((acc-decl type freevars) acc-decl ...)
+;;;     ((acc-decl type freevars) acc-decl ...))
+;;;    (((acc-decl type freevars) acc-decl ...)) ... )
 (defun collect-common-accessors (adt)
   (let ((common-accessors nil))
     (dolist (c (constructors adt))
@@ -1007,20 +1060,32 @@ generated")
 	    (let* ((arg&type (list a type
 				   (sort-freevars (freevars type))))
 		   (entry (assoc arg&type common-accessors
-				 :test #'same-arg&type)))
+				 :test #'compatible-arg&type
+				 :key #'car)))
 	      (if entry
-		  (nconc entry (list a))
+		  (let ((subentry (assoc arg&type entry
+					 :test #'same-arg&type)))
+		    (if subentry
+			(nconc subentry (list a))
+			(nconc entry (list (list arg&type a)))))
 		  (setq common-accessors
 			(nconc common-accessors
-			       (list (list arg&type a))))))))))
+			       (list (list (list arg&type a)))))))))))
     common-accessors))
 
-(defun same-arg&type (a&t1 a&t2)
+(defun compatible-arg&type (a&t1 a&t2)
   (and (same-id (car a&t1) (car a&t2))
        (multiple-value-bind (bindings mismatch?)
 	   (collect-same-arg&type-bindings (caddr a&t1) (caddr a&t2))
+	 (declare (ignore bindings))
 	 (unless mismatch?
-	   (tc-eq-with-bindings (cadr a&t1) (cadr a&t2) bindings)))))
+	   (compatible? (cadr a&t1) (cadr a&t2))))))
+
+(defun same-arg&type (a&t1 a&t2)
+  (and (same-id (car a&t1) (car a&t2))
+       (let ((bindings (collect-same-arg&type-bindings
+			(caddr a&t1) (caddr a&t2))))
+	 (tc-eq-with-bindings (cadr a&t1) (cadr a&t2) bindings))))
 
 (defun collect-same-arg&type-bindings (deps1 deps2 &optional bindings)
   ;; bindings are sorted already
@@ -1039,13 +1104,8 @@ generated")
 	  (values nil t))))
 
 
-(defun same-adt-arg (a1 a2)
-  (and (same-id a1 a2)
-       (let ((t1 (cdr (assq a1 *common-accessor-types*)))
-	     (t2 (cdr (assq a2 *common-accessor-types*))))
-	 (and t1 t2 (tc-eq t1 t2)))))
-
 (defun mk-recognizer-type (rec-id adt)
+  (declare (ignore adt))
   (let ((rpred (mk-name-expr rec-id)))
     (mk-expr-as-type rpred)))
 
@@ -1135,7 +1195,6 @@ generated")
       (unless pos?
 	(let ((*current-theory* *adt*))
 	  (setf (filename *current-theory*) *current-file*)
-	  (setf (path *current-theory*) (make-specpath *current-file*))
 	  (type-error (or negocc (declared-type arg))
 	    "Recursive uses of the datatype ~a may not appear in:~%  ~
              the domain of a function type,~%  ~
@@ -1178,7 +1237,9 @@ generated")
 	       (and (tc-eq (type-value (car acts)) adt-type)
 		    (member (car formals) (positive-types adt)
 			    :test #'(lambda (x y)
-				      (let ((fdecl (declaration y)))
+				      (let ((fdecl (if (name? y)
+						       (declaration y)
+						       (declaration (print-type y)))))
 					(and (typep fdecl 'formal-type-decl)
 					     (same-id x fdecl))))))
 	       (and (typep (find-supertype (type-value (car acts))) 'type-name)
@@ -1548,11 +1609,13 @@ generated")
   )
 
 (defun mk-everywhere-true-function (type)
-  (mk-lambda-expr (list (mk-bind-decl (make-new-variable '|x| type) type))
+  (make!-lambda-expr
+      (list (mk-bind-decl (make-new-variable '|x| type) type type))
     (copy *true*)))
 
 (defun mk-everywhere-false-function (type)
-  (mk-lambda-expr (list (mk-bind-decl (make-new-variable '|x| type) type))
+  (make!-lambda-expr
+      (list (mk-bind-decl (make-new-variable '|x| type) type type))
     (copy *false*)))
 
 (defmethod gen-induction-conclusion ((adt datatype) indvar)
@@ -1924,7 +1987,8 @@ generated")
 			       (id adt)
 			       (if (datatype? adt) "adt" "codt"))
 	adt
-      (let ((fpairs (adt-map-formal-pairs (formals (adt-theory adt)) adt)))
+      (let* ((*generate-tccs* 'none)
+	     (fpairs (adt-map-formal-pairs (formals (adt-theory adt)) adt)))
 	(generate-adt-map-formals fpairs)
 	(generate-adt-map-using adt)
 	(generate-adt-map fpairs adt)
@@ -1952,9 +2016,11 @@ generated")
 		 (not (member (car formals)
 			      (positive-types adt)
 			      :test #'(lambda (x y)
-					(let ((fdecl (declaration y)))
-					  (and (typep fdecl 'formal-type-decl)
-					       (same-id x fdecl)))))))
+					(let ((fdecl (if (name? y)
+							 (declaration y)
+							 (declaration (print-type y)))))
+						(and (typep fdecl 'formal-type-decl)
+						     (same-id x fdecl)))))))
 	     (let ((nfml (copy-adt-formals (car formals))))
 	       (adt-map-formal-pairs (cdr formals)
 				     adt
@@ -2013,13 +2079,17 @@ generated")
     (typecheck-adt-decl imp)))
 
 (defun generate-adt-map (fpairs adt)
-  (let* ((postype-pairs
+  (let* ((*generate-tccs* 'none)
+	 (postype-pairs
 	  (remove-if-not
 	      #'(lambda (fp)
 		  (member (car fp)
 			  (positive-types adt)
 			  :test #'(lambda (x y)
-				    (let ((fdecl (declaration y)))
+				    (let ((fdecl
+					   (if (name? y)
+					       (declaration y)
+					       (declaration (print-type y)))))
 				      (and (typep fdecl 'formal-type-decl)
 					   (same-id x fdecl))))))
 	    fpairs))
@@ -2215,7 +2285,7 @@ generated")
 	     (mk-application* '|map| (append pvars (list (copy arg))))))
 	((adt? te)
 	 (let ((maps (mapcar #'(lambda (act)
-				 (acc-map-selection* (type-value act)
+				 (acc-map-selection* (raise-actuals (type-value act))
 						     pvars ptypes fpairs adt))
 			     (positive-actuals te))))
 	   (if (every #'identity-fun? maps)
@@ -2498,7 +2568,10 @@ generated")
 		  (member (car fp)
 			  (positive-types adt)
 			  :test #'(lambda (x y)
-				    (let ((fdecl (declaration y)))
+				    (let ((fdecl
+					   (if (name? y)
+					       (declaration y)
+					       (declaration (print-type y)))))
 				      (and (typep fdecl 'formal-type-decl)
 					   (same-id x fdecl))))))
 	    fpairs))
@@ -2585,8 +2658,8 @@ generated")
 	((adt? te)
 	 (let ((everys (adt-every-positive-actuals
 			(positive-actuals te)
-			(positive-actuals (type avar))
-			(positive-actuals (type bvar))
+			(positive-actuals (find-supertype (type avar)))
+			(positive-actuals (find-supertype (type bvar)))
 			pvars ptypes fpairs adt)))
 	   (if (every #'everywhere-true? everys)
 	       *true*
@@ -2598,10 +2671,10 @@ generated")
 					&optional rels)
   (if (null acts)
       (nreverse rels)
-      (let* ((avid (make-new-variable '|x| adt))
-	     (bvid (make-new-variable '|y| adt))
-	     (atype (type-value (car aacts)))
-	     (btype (type-value (car bacts)))
+      (let* ((avid (make-new-variable '|u| adt))
+	     (bvid (make-new-variable '|v| adt))
+	     (atype (raise-actuals (type-value (car aacts))))
+	     (btype (raise-actuals (type-value (car bacts))))
 	     (abd (make-bind-decl avid atype))
 	     (bbd (make-bind-decl bvid btype))
 	     (avar (make-variable-expr abd))
@@ -2628,8 +2701,8 @@ generated")
 		     (substit (range te) (acons (domain te) fvar nil))
 		     (range te))
 		 pvars
-		 (mk-application (copy avar) fvar)
-		 (mk-application (copy bvar) fvar)
+		 (make!-application (copy avar) fvar)
+		 (make!-application (copy bvar) fvar)
 		 ptypes fpairs adt)))
     (if (everywhere-true? every)
 	*true*
@@ -2649,19 +2722,45 @@ generated")
       (nreverse everys)
       (let ((favar (make-field-application (car fields) avar))
 	    (fbvar (make-field-application (car fields) bvar)))
-      (adt-every-rel-fields
-       (if dep?
-	   ;; Need a substit that creates two substitutions and conjoins
-	   ;; them at the predicate level; e.g., in
-	   ;;  [# a: int, b: {x: int | x < a} #]
-	   ;; the substit on cdr fields) should create
-	   ;; (b: {x: int | x < favar and x < fbvar})
-	   (break "Need a special substit")
-	   (cdr fields))
-       pvars avar bvar ptypes fpairs adt dep?
-       (cons (adt-every-rel
-	      (type (car fields)) pvars favar fbvar ptypes fpairs adt)
-	     everys)))))
+	(adt-every-rel-fields
+	 (if dep?
+	     ;; Need a substit that creates two substitutions and conjoins
+	     ;; them at the predicate level; e.g., in
+	     ;;  [# a: int, b: {x: int | x < a} #]
+	     ;; the substit on cdr fields) should create
+	     ;; (b: {x: int | x < favar and x < fbvar})
+	     (every-rel-field-subst (car fields) favar fbvar (cdr fields))
+	     (cdr fields))
+	 pvars avar bvar ptypes fpairs adt dep?
+	 (cons (adt-every-rel
+		(type (car fields)) pvars favar fbvar ptypes fpairs adt)
+	       everys)))))
+
+(defun every-rel-field-subst (field var1 var2 fields)
+  (let* ((alist1 (acons field var1 nil))
+	 (alist2 (acons field var2 nil))
+	 (sfields
+	  (gensubst fields
+	    #'(lambda (ex)
+		(let* ((id (make-new-variable 'x (supertype ex)))
+		       (bd (make-bind-decl id (supertype ex)))
+		       (var (make-variable-expr bd))
+		       (appl (make!-application (predicate ex) var))
+		       (pred1 (substit appl alist1))
+		       (pred2 (substit appl alist2))
+		       (cpred (make!-conjunction pred1 pred2)))
+		  (copy ex
+		    'predicate (make!-set-expr (list bd) cpred)
+		    'print-type nil)))
+	    #'(lambda (ex)
+		(and (subtype? ex)
+		     (member field (freevars (predicate ex))
+			     :key #'declaration))))))
+    (mapc #'(lambda (sfld fld)
+	      (unless (eq (type sfld) (type fld))
+		(setf (declared-type sfld) (type sfld))))
+	  sfields fields)
+    sfields))
 
 (defmethod adt-every-rel ((te tupletype) pvars avar bvar ptypes fpairs adt)
   (let ((everys (adt-every-rel-types
@@ -2683,12 +2782,32 @@ generated")
 	     ;;  [a: int, {x: int | x < a} ]
 	     ;; the substit on cdr fields) should create
 	     ;; ({x: int | x < favar and x < fbvar})
-	     (break "Need a special substit")
+	     (every-rel-types-subst (car types) pavar pbvar (cdr types))
 	     (cdr types))
 	 pvars avar bvar ptypes fpairs adt (incf num)
 	 (cons (adt-every-rel
 		(car types) pvars pavar pbvar ptypes fpairs adt)
 	       everys)))))
+
+(defun every-rel-types-subst (dep var1 var2 types)
+  (let ((alist1 (acons dep var1 nil))
+	(alist2 (acons dep var2 nil)))
+    (gensubst types
+      #'(lambda (ex)
+	  (let* ((id (make-new-variable 'x (supertype ex)))
+		 (bd (make-bind-decl id (supertype ex)))
+		 (var (make-variable-expr bd))
+		 (appl (make!-application (predicate ex) var))
+		 (pred1 (substit appl alist1))
+		 (pred2 (substit appl alist2))
+		 (cpred (make!-conjunction pred1 pred2)))
+	    (copy ex
+	      'predicate (make!-set-expr (list bd) cpred)
+	      'print-type nil)))
+      #'(lambda (ex)
+	  (and (subtype? ex)
+	       (member dep (freevars (predicate ex))
+		       :key #'declaration))))))
 
 (defmethod adt-every-rel ((te type-expr) pvars avar bvar ptypes fpairs adt)
   (declare (ignore pvars ptypes fpairs adt))
@@ -2744,7 +2863,8 @@ generated")
 ;;; Was generate-adt-recursion
 
 (defun generate-adt-reduce (adt ran &optional adtinst)
-  (let* ((rtype (typecheck* (mk-type-name ran) nil nil nil))
+  (let* ((*generate-tccs* 'none)
+	 (rtype (typecheck* (mk-type-name ran) nil nil nil))
 	 (atype (mk-type-name (id adt)))
 	 (fname (case ran
 		  (|nat| '|reduce_nat|)
@@ -3198,9 +3318,10 @@ generated")
 
 (defmethod gen-adt-reduce-dom? ((ex subtype) adt-types)
   (or (subtype-of? ex (car adt-types))
-      (let ((stype (find-supertype ex)))
-	(and (adt-type-name? stype)
-	     (occurs-in (car adt-types) stype)))))
+      (unless (recognizer-name-expr? (predicate ex))
+	(let ((stype (find-supertype ex)))
+	  (and (adt-type-name? stype)
+	       (occurs-in (car adt-types) stype))))))
 
 (defmethod gen-adt-reduce-dom! ((ex subtype) rtype adt-types)
   (if (subtype-of? ex (car adt-types))
@@ -3931,10 +4052,32 @@ function, tuple, or record type")
 (defmethod occurs-positively?* (type (ex tuple-expr) none)
   (occurs-positively?* type (exprs ex) none))
 
+(defmethod occurs-positively?* (type (ex projection-expr) none)
+  (declare (ignore type none))
+  t)
+
+(defmethod occurs-positively?* (type (ex injection-expr) none)
+  (declare (ignore type none))
+  t)
+
+(defmethod occurs-positively?* (type (ex injection?-expr) none)
+  (declare (ignore type none))
+  t)
+
+(defmethod occurs-positively?* (type (ex extraction-expr) none)
+  (declare (ignore type none))
+  t)
+
 (defmethod occurs-positively?* (type (ex projection-application) none)
   (occurs-positively?* type (argument ex) none))
 
 (defmethod occurs-positively?* (type (ex injection-application) none)
+  (occurs-positively?* type (argument ex) none))
+
+(defmethod occurs-positively?* (type (ex injection?-application) none)
+  (occurs-positively?* type (argument ex) none))
+
+(defmethod occurs-positively?* (type (ex extraction-application) none)
   (occurs-positively?* type (argument ex) none))
 
 (defmethod occurs-positively?* (type (ex field-application) none)
@@ -4040,8 +4183,8 @@ function, tuple, or record type")
 (defmethod mk-map-application ((te type-name) fpairs adt maps)
   (if (eq (adt te) adt)
       (mk-application* '|map| maps)
-      (let* ((acts (actuals (module-instance te)))
-	     (macts (subst-map-actuals acts fpairs))
+      (let* ((acts (raise-actuals (actuals (module-instance te))))
+	     (macts (raise-actuals (subst-map-actuals acts fpairs)))
 	     (name (mk-name-expr '|map| (append acts macts)))
 	     (pname (pc-parse (unparse name :string t) 'expr)))
 	(mk-application* pname maps))))

@@ -276,6 +276,38 @@
 		      (translate-to-prove arguments)))
 	      (translate-to-prove arguments)))))
 
+(defmethod translate-to-prove ((expr projection-expr))
+  (let* ((id (make-new-variable '|x| expr))
+	 (bd (make-bind-decl id (domain (find-supertype (type expr)))))
+	 (varex (make-variable-expr bd)))
+    (translate-to-prove
+     (make!-lambda-expr (list bd)
+       (make!-projection-application (index expr) varex)))))
+
+(defmethod translate-to-prove ((expr injection-expr))
+  (let* ((id (make-new-variable '|x| expr))
+	 (bd (make-bind-decl id (domain (find-supertype (type expr)))))
+	 (varex (make-variable-expr bd)))
+    (translate-to-prove
+     (make!-lambda-expr (list bd)
+       (make!-injection-application (index expr) varex)))))
+
+(defmethod translate-to-prove ((expr injection?-expr))
+  (let* ((id (make-new-variable '|x| expr))
+	 (bd (make-bind-decl id (domain (find-supertype (type expr)))))
+	 (varex (make-variable-expr bd)))
+    (translate-to-prove
+     (make!-lambda-expr (list bd)
+       (make!-injection?-application (index expr) varex)))))
+
+(defmethod translate-to-prove ((expr extraction-expr))
+  (let* ((id (make-new-variable '|x| expr))
+	 (bd (make-bind-decl id (domain (find-supertype (type expr)))))
+	 (varex (make-variable-expr bd)))
+    (translate-to-prove
+     (make!-lambda-expr (list bd)
+       (make!-extraction-application (index expr) varex)))))
+
 (defmethod translate-to-prove ((expr projection-application))
   (let ((arg (translate-to-prove (argument expr))))
     `(,(intern (concatenate 'string
@@ -283,6 +315,16 @@
       ,(1- (index expr)) ,arg)))
 
 (defmethod translate-to-prove ((expr injection-application))
+  (let ((arg (translate-to-prove (argument expr))))
+    (list (make-apply-name (mk-funtype (type (argument expr)) (type expr)))
+	  arg)))
+
+(defmethod translate-to-prove ((expr extraction-application))
+  (let ((arg (translate-to-prove (argument expr))))
+    (list (make-apply-name (mk-funtype (type (argument expr)) (type expr)))
+	  arg)))
+
+(defmethod translate-to-prove ((expr injection?-application))
   (let ((arg (translate-to-prove (argument expr))))
     (list (make-apply-name (mk-funtype (type (argument expr)) (type expr)))
 	  arg)))

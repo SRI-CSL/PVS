@@ -107,7 +107,11 @@
     (if (and (singleton? types)
 	     (fully-instantiated? (car types)))
 	(car types)
-	(reduce #'compatible-type types))))
+	(if (every #'(lambda (ty)
+		       (compatible? ty (car types)))
+		   (cdr types))
+	    (reduce #'compatible-type types)
+	    (type-ambiguity ex)))))
 
 (defun typecheck-uniquely (expr &key (tccs 'all given))
   (let ((*generate-tccs* (if given tccs *generate-tccs*)))
@@ -122,11 +126,11 @@
 		 (type-error expr
 		   "~%Given expression does not typecheck uniquely.~%")))
 	   (type-ambiguity expr))
-	  ((not (fully-instantiated? (car (ptypes expr))))
+	  ((not (fully-instantiated? (car (types expr))))
 	   (unless *suppress-printing*
 	     (type-error expr
 	       "Could not determine the full theory instance")))
-	  (t (set-type expr (car (ptypes expr))))))
+	  (t (set-type expr (car (types expr))))))
   expr)
 
 
@@ -258,7 +262,7 @@
 				    (actuals inst) nil))
 	  (t (typecheck-mappings (mappings inst) inst)
 	     (setq nmodinst (set-type-actuals inst))))
-    (add-to-using nmodinst)
+    (add-to-using nmodinst mod)
     (unless (eq nmodinst inst)
       (pushnew inst (gethash (get-theory inst) (current-using-hash))))
     (when (some #'(lambda (m) (mod-decl? (declaration (lhs m))))
@@ -326,9 +330,9 @@
 			(copy ename
 			  'library
 			  (makesym "~a"
-				   (cdr (assoc (library itheory)
+				   (cdr (assoc (lib-ref itheory)
 					       *library-alist*
-					       :test #'equal))))
+					       :test #'string=))))
 			ename))
 	     (iname (if (actuals inst)
 			(subst-mod-params lname inst)
@@ -349,15 +353,20 @@
 (defmethod get-immediate-usings ((theory module))
   (with-slots (immediate-usings formals assuming (theory-part theory)) theory
     (if (eq immediate-usings 'unbound)
-	(setf immediate-usings
-	      (mapcan #'(lambda (thname)
-			  (let ((th (get-theory thname)))
-			    (or (and (typep th 'recursive-type)
-				     (datatype-instances thname))
-				(list thname))))
-		(mapcar #'theory-name
-		  (remove-if-not #'mod-or-using?
-		    (all-decls theory)))))
+	(let* ((usings (mapcar #'theory-name
+			 (remove-if-not #'mod-or-using?
+			   (all-decls theory))))
+	       (all-there? t)
+	       (imm-usings (mapcan #'(lambda (thname)
+				       (let ((th (get-theory thname)))
+					 (unless th (setq all-there? nil))
+					 (or (and (typep th 'datatype)
+						  (datatype-instances thname))
+					     (list thname))))
+			     usings)))
+	  (if all-there?
+	      (setf immediate-usings imm-usings)
+	      imm-usings))
 	immediate-usings)))
 
 (defmethod get-immediate-context-usings ((theory module))
@@ -455,7 +464,11 @@
       (type-error theoryname "Theory ~a not found" (id theoryname)))
     (let ((entry (gethash theory (current-using-hash)))
 	  (tname (remove-coercions
-		  (remove-indirect-formals-of-name theoryname))))
+		  ;; If we don't remove formals, it causes problems with
+		  ;; ~owre/pvs-specs/bugs/Hendrik_Tews/2001-05-17/Fib/base.pvs
+		  (remove-indirect-formals-of-name theoryname)
+		  ;;theoryname
+		  )))
       #+pvsdebug
       (assert (or (null entry)
 		  (every #'(lambda (d)
@@ -541,10 +554,10 @@
 	  (t (break "get-mapped-decl (mapping-rename) theory"))))))
 
 (defmethod check-for-importing-conflicts ((decl lib-decl))
-  (let ((lib (get-library-pathname (library decl))))
+  (let ((lib-ref (lib-ref decl)))
     (dolist (d (gethash (id decl) (current-declarations-hash)))
       (when (and (lib-decl? d)
-		 (not (string= lib (get-library-pathname (library d)))))
+		 (not (string= lib-ref (lib-ref d))))
 	(if (= (locality d) (locality decl))
 	    (pvs-warning
 		"Library id ~a declared in imported theory ~a and ~a ~
@@ -614,7 +627,7 @@
 					(current-theory))))))
 		  (actuals theoryname)))
       (copy theoryname 'actuals nil)
-      theoryname))
+      (copy theoryname 'actuals (copy-all (actuals theoryname) t))))
 
 (defun check-compatible-params (formals actuals assoc)
   (or (null formals)
@@ -838,7 +851,7 @@
 (defun check-exporting (theory)
   (check-exported-theories (modules (exporting theory)))
   (let* ((alldecls (collect-all-exportable-decls theory))
-	 (edecls (cond ((eq (kind (exporting theory)) 'DEFAULT)
+	 (edecls (cond ((eq (kind (exporting theory)) 'default)
 			alldecls)
 		       ((but-names (exporting theory))
 			(set-difference
@@ -846,7 +859,7 @@
 			 (check-exported-names (but-names (exporting theory))
 					       (all-decls theory)
 					       nil)))
-		       ((eq (names (exporting theory)) 'ALL)
+		       ((eq (names (exporting theory)) 'all)
 			alldecls)
 		       ((names (exporting theory))
 			(check-exported-names (names (exporting theory))
@@ -902,11 +915,11 @@
 (defun check-exported-completeness (exporting expdecls)
   (check-exported-internal-completeness (names exporting) expdecls)
   (case (kind exporting)
-    ((ALL DEFAULT)
+    ((all default)
      (setf (closure exporting)
 	   (collect-all-exporting-with-theories
 	    (get-immediate-usings (current-theory)))))
-    (CLOSURE
+    (closure
      (setf (closure exporting)
 	   (let ((insts nil))
 	     (mapobject #'(lambda (ex)

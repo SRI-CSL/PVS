@@ -59,12 +59,108 @@
 
 ;;; Projection-exprs are created by the parser, and those that appear as
 ;;; operators to an application are then converted to
-;;; projection-applications.  Thus any projection-exprs left are errors.
+;;; projection-applications.
 
 (defmethod typecheck* ((expr projection-expr) expected kind argument)
   (declare (ignore expected kind argument))
-  (type-error expr
-    "Projection expressions may only appear as operators of an application."))
+  (cond ((actuals expr)
+	 (unless (singleton? (actuals expr))
+	   (type-error expr
+	     "Projection expression actuals must be a single type"))
+	 (typecheck* (car (actuals expr)) nil 'type nil)
+	 (unless (type-value (car (actuals expr)))
+	   (type-error expr
+	     "Projection expression actual must be a type"))
+	 (unless (tupletype? (find-supertype (type-value
+					      (car (actuals expr)))))
+	   (type-error expr
+	     "Projection expression actual must be a tupletype"))
+	 (setf (types expr)
+	       (list (mk-funtype
+		      (find-supertype (type-value (car (actuals expr))))
+		      (nth (1- (index expr))
+			   (types (find-supertype
+				   (type-value (car (actuals expr))))))))))
+	(t (setf (types expr)
+		 (list (mk-funtype (make-instance 'tup-type-variable
+				     'id (make-new-variable 'tupT expr))
+				   (make-instance 'type-variable
+				     'id (make-new-variable 'T expr))))))))
+
+(defmethod typecheck* ((expr injection-expr) expected kind argument)
+  (declare (ignore kind expected argument))
+  (cond ((actuals expr)
+	 (unless (singleton? (actuals expr))
+	   (type-error expr
+	     "Injection expression actuals must be a single type"))
+	 (typecheck* (car (actuals expr)) nil 'type nil)
+	 (unless (type-value (car (actuals expr)))
+	   (type-error expr
+	     "Injection expression actual must be a type"))
+	 (unless (cotupletype? (find-supertype (type-value
+						(car (actuals expr)))))
+	   (type-error expr
+	     "Injection expression actual must be a cotupletype"))
+	 (setf (types expr)
+	       (list (mk-funtype
+		      (nth (1- (index expr))
+			   (types (find-supertype
+				   (type-value (car (actuals expr))))))
+		      (find-supertype (type-value (car (actuals expr))))))))
+	(t (setf (types expr)
+		 (list (mk-funtype (make-instance 'type-variable
+				     'id (make-new-variable 'T expr))
+				   (make-instance 'cotup-type-variable
+				     'id (make-new-variable 'coT expr))))))))
+
+(defmethod typecheck* ((expr extraction-expr) expected kind argument)
+  (declare (ignore kind expected argument))
+  (cond ((actuals expr)
+	 (unless (singleton? (actuals expr))
+	   (type-error expr
+	     "Extraction expression actuals must be a single type"))
+	 (typecheck* (car (actuals expr)) nil 'type nil)
+	 (unless (type-value (car (actuals expr)))
+	   (type-error expr
+	     "Extraction expression actual must be a type"))
+	 (unless (cotupletype? (find-supertype (type-value
+						(car (actuals expr)))))
+	   (type-error expr
+	     "Extraction expression actual must be a cotupletype"))
+	 (setf (types expr)
+	       (list (mk-funtype
+		      (find-supertype (type-value (car (actuals expr))))
+		      (nth (1- (index expr))
+			   (types (find-supertype
+				   (type-value (car (actuals expr))))))))))
+	(t (setf (types expr)
+		 (list (mk-funtype (make-instance 'cotup-type-variable
+				     'id (make-new-variable 'coT expr))
+				   (make-instance 'type-variable
+				     'id (make-new-variable 'T expr))))))))
+
+(defmethod typecheck* ((expr injection?-expr) expected kind argument)
+  (declare (ignore kind expected argument))
+  (cond ((actuals expr)
+	 (unless (singleton? (actuals expr))
+	   (type-error expr
+	     "Injection? recognizer actuals must be a single type"))
+	 (typecheck* (car (actuals expr)) nil 'type nil)
+	 (unless (type-value (car (actuals expr)))
+	   (type-error expr
+	     "Injection recognizer actual must be a type"))
+	 (unless (cotupletype? (find-supertype (type-value
+						(car (actuals expr)))))
+	   (type-error expr
+	     "Injection recognizer actual must be a cotupletype"))
+	 (setf (types expr)
+	       (list (mk-funtype
+		      (find-supertype (type-value (car (actuals expr))))
+		      *boolean*))))
+	(t (setf (types expr)
+		 (list (mk-funtype (make-instance 'cotup-type-variable
+				     'id (make-new-variable 'coT expr))
+				   *boolean*))))))
 
 (defmethod typecheck* ((expr projection-application) expected kind argument)
   (declare (ignore kind expected argument))
@@ -90,7 +186,109 @@
 
 (defmethod typecheck* ((expr injection-application) expected kind argument)
   (declare (ignore kind expected argument))
-  (typecheck* (argument expr) nil nil nil))
+  (when (actuals expr)
+    (unless (singleton? (actuals expr))
+      (type-error expr
+	"Injection expression actuals must be a single type"))
+    (typecheck* (car (actuals expr)) nil 'type nil)
+    (unless (type-value (car (actuals expr)))
+      (type-error expr
+	"Injection expression actual must be a type"))
+    (unless (cotupletype? (find-supertype (type-value (car (actuals expr)))))
+      (type-error expr
+	"Injection expression actual must be a cotupletype")))
+    (typecheck* (argument expr) nil nil nil)
+    (if (actuals expr)
+	(let* ((intype (nth (1- (index expr))
+			    (types (find-supertype
+				    (type-value (car (actuals expr)))))))
+	       (ptypes (remove-if (complement #'(lambda (ty)
+						  (compatible? ty intype)))
+			 (types (argument expr)))))
+	  (if ptypes
+	      (setf (types (argument expr)) ptypes)
+	      (type-incompatible (argument expr)
+				 (types (argument expr)) intype))
+	  (setf (types expr)
+		(list (find-supertype (type-value (car (actuals expr)))))))
+	(setf (types expr)
+	      (list (make-instance 'cotup-type-variable
+		      'id (make-new-variable 'coT expr))))))
+
+(defmethod typecheck* ((expr extraction-application) expected kind argument)
+  (declare (ignore kind expected argument))
+  (when (actuals expr)
+    (unless (singleton? (actuals expr))
+      (type-error expr
+	"Extraction expression actuals must be a single type"))
+    (typecheck* (car (actuals expr)) nil 'type nil)
+    (unless (type-value (car (actuals expr)))
+      (type-error expr
+	"Extraction expression actual must be a type"))
+    (unless (cotupletype? (find-supertype (type-value (car (actuals expr)))))
+      (type-error expr
+	"Extraction expression actual must be a cotupletype")))
+  (let ((cotype (when (actuals expr)
+		  (find-supertype (type-value (car (actuals expr)))))))
+    (typecheck* (argument expr) cotype nil nil))
+  (let ((cotypes (if (actuals expr)
+		     (types (argument expr))
+		     (remove-if (complement
+				 #'(lambda (ty)
+				     (cotupletype? (find-supertype ty))))
+		       (types (argument expr))))))
+    (if cotypes
+	(let ((lcotypes (remove-if
+			    (complement
+			     #'(lambda (ty)
+				 (<= (index expr)
+				     (length (types (find-supertype ty))))))
+			  cotypes)))
+	  (if lcotypes
+	      (setf (types (argument expr)) lcotypes)
+	      (type-error expr "Index is out of bounds")))
+	(type-error expr
+	  "Extraction argument must be a (known) cotuple type - may need to provide the type, e.g., OUT[[int + bool]](x)"))
+    (setf (types expr)
+	  (mapcar #'(lambda (ty)
+		      (nth (1- (index expr)) (types (find-supertype ty))))
+	    cotypes))))
+
+(defmethod typecheck* ((expr injection?-application) expected kind argument)
+  (declare (ignore kind expected argument))
+  (when (actuals expr)
+    (unless (singleton? (actuals expr))
+      (type-error expr
+	"Injection recognizer actuals must be a single type"))
+    (typecheck* (car (actuals expr)) nil 'type nil)
+    (unless (type-value (car (actuals expr)))
+      (type-error expr
+	"Injection recognizer actual must be a type"))
+    (unless (cotupletype? (find-supertype (type-value (car (actuals expr)))))
+      (type-error expr
+	"Injection recognizer actual must be a cotupletype")))
+  (let ((cotype (when (actuals expr)
+		  (find-supertype (type-value (car (actuals expr)))))))
+    (typecheck* (argument expr) cotype nil nil))
+  (let ((cotypes (if (actuals expr)
+		     (types (argument expr))
+		     (remove-if (complement
+				 #'(lambda (ty)
+				     (cotupletype? (find-supertype ty))))
+		       (types (argument expr))))))
+    (if cotypes
+	(let ((lcotypes (remove-if
+			    (complement
+			     #'(lambda (ty)
+				 (<= (index expr)
+				     (length (types (find-supertype ty))))))
+			  cotypes)))
+	  (if lcotypes
+	      (setf (types (argument expr)) lcotypes)
+	      (type-error expr "Index is out of bounds")))
+	(type-error expr
+	  "Injection? recognizer argument must be a cotuple type")))
+  (setf (types expr) (list *boolean*)))
 
 (defun projection-application-types (ptypes expr)
   (mapcar #'(lambda (pty)
@@ -357,7 +555,7 @@
     (type-error expr "Selections must have a unique id"))
   (when (and (length= (selections expr) (constructors adt))
 	     (else-part expr))
-    (type-error (else-part expr) "ELSE part will never be evaluated"))
+    (type-error-noconv (else-part expr) "ELSE part will never be evaluated"))
   (typecheck-selections* (selections expr) adt type args)
   (when (else-part expr)
     (typecheck* (else-part expr) nil nil args)))
@@ -397,7 +595,7 @@
 (defun get-injection-number (name)
   (let ((strid (string (id name))))
     (when (and (> (length strid) 3)
-	       (string= "in_" strid :end2 3)
+	       (string= "IN_" strid :end2 3)
 	       (every #'digit-char-p (subseq strid 3)))
       (parse-integer strid :start 3))))
 
@@ -408,10 +606,10 @@
 	   (c (car (member (constructor sel) (constructors adt)
 			   :test #'same-id))))
       (unless c
-	(type-error sel "No matching constructor found"))
+	(type-error-noconv sel "No matching constructor found"))
       ;;(typecheck* constr nil nil nil)
       (unless (length= (args sel) (arguments c))
-	(type-error sel "Wrong number of arguments"))
+	(type-error-noconv sel "Wrong number of arguments"))
       (set-selection-types (args sel) type (arguments c))
       (typecheck* (args sel) nil nil nil)
       (let* ((*bound-variables* (append (args sel) *bound-variables*)))
@@ -425,7 +623,7 @@
 	  (if reses
 	      (setf (resolutions constr) reses
 		    (types constr) (mapcar #'type reses))
-	      (type-error sel "No matching constructor found")))
+	      (type-error-noconv sel "No matching constructor found")))
 	(typecheck* (expression sel) nil nil args)))
     (typecheck-selections* (cdr selections) adt type args)))
 
@@ -768,6 +966,9 @@
 
 (defmethod typecheck* ((expr application) expected kind arguments)
   (declare (ignore expected kind arguments))
+  ;; Can't do operator first - breaks when a field application is involved
+  ;;(unless (ptypes (operator expr))
+    ;;(typecheck* (operator expr) nil nil nil))
   (unless (ptypes (argument expr))
     (typecheck* (argument-list (argument expr)) nil nil nil))
   ;;(assert (every #'types (argument-list expr)))
@@ -838,60 +1039,44 @@
 	    (all-possible-tupletypes (exprs arg))))))
 
 (defun set-possible-argument-types* (optypes arg &optional result)
-  (cond ((null optypes)
-	 (setf (types arg) result))
-	((typep (find-supertype (car optypes)) 'funtype)
-	 (let ((dtypes (domain-types (car optypes)))
-	       (exprs (if (tuple-expr? arg)
-			  (exprs arg)
-			  (list arg))))
-	   (if (length= dtypes exprs)
+  (if (null optypes)
+      (setf (types arg) result)
+      (let ((argtypes (get-possible-argument-types (car optypes) arg)))
+	(set-possible-argument-types*
+	 (cdr optypes) arg (nconc result argtypes)))))
+
+(defmethod get-possible-argument-types (optype arg)
+  (ptypes arg))
+       
+(defmethod get-possible-argument-types (optype (arg tuple-expr))
+  (cond ((funtype? (find-supertype optype))
+	 (let ((dtypes (domain-types optype)))
+	   (if (length= dtypes (exprs arg))
 	       (let ((atypes (mapcar #'(lambda (dty a)
 					 (remove-if-not
 					     #'(lambda (aty)
 						 (compatible? aty dty))
-					   (possible-types a dty)))
-			       dtypes exprs)))
-		 (set-possible-argument-types*
-		  (cdr optypes)
-		  arg
-		  (nconc result
-			 (if (cdr atypes)
-			     (mapcar #'mk-tupletype
-			       (cartesian-product atypes))
-			     (car atypes)))))
-	       (set-possible-argument-types*
-		(cdr optypes)
-		arg
-		(if (null (cdr dtypes))
-		    (let ((stype (find-supertype (car dtypes))))
-		      (if (and (typep stype 'tupletype)
-			       (length= (types stype) (exprs arg)))
-			  (let ((atypes (mapcar
-					    #'(lambda (dty a)
-						(remove-if-not
-						    #'(lambda (aty)
-							(compatible? aty dty))
-						  (ptypes a)))
-					  (types stype) (exprs arg))))
-			    (nconc result
-				   (mapcar #'mk-tupletype
-				     (cartesian-product atypes))))
-			  ;; This is possible only if there is a type mismatch;
-			  ;; but we let this go to allow for conversions 
-			  result))
-		    result)))))
-	(t (set-possible-argument-types* (cdr optypes) arg result))))
-
-(defmethod possible-types (a type)
-  (ptypes a))
-
-(defmethod possible-types ((a injection-application) type)
-  (or (ptypes a)
-      (let ((cotuptype (find-supertype type)))
-	(when (and (cotupletype? cotuptype)
-		   (<= (index a) (length (types cotuptype))))
-	  (list cotuptype)))))
+					   (ptypes a)))
+			       dtypes (exprs arg))))
+		 (mapcar #'mk-tupletype
+		   (cartesian-product atypes)))
+	       (if (null (cdr dtypes))
+		   (let ((stype (find-supertype (car dtypes))))
+		     (if (and (typep stype 'tupletype)
+			      (length= (types stype) (exprs arg)))
+			 (let ((atypes (mapcar
+					   #'(lambda (dty a)
+					       (remove-if-not
+						   #'(lambda (aty)
+						       (compatible? aty dty))
+						 (ptypes a)))
+					 (types stype) (exprs arg))))
+			   (mapcar #'mk-tupletype
+			     (cartesian-product atypes)))
+			 ;; This is possible only if there is a type mismatch;
+			 ;; but we let this go to allow for conversions 
+			 nil))
+		   nil))))))
 
 
 ;;; Application-range-types takes an application and returns the list of
@@ -1161,8 +1346,13 @@
       (setf (bindings expr) bindings
 	    (types op) nil
 	    (resolutions op) nil
-	    (expression expr) (mk-application* op args))
-      (add-conversion-info "LAMBDA conversion" orig-expr expr) 
+	    (expression expr) (make-instance (class-of orig-expr)
+				'operator op
+				'argument (if (cdr args)
+					      (make-instance 'arg-tuple-expr
+						'exprs args)
+					      (car args))))
+      (add-conversion-info "LAMBDA conversion" orig-expr expr)
       (typecheck* expr nil nil nil))))
 
 (defun make-arg-conversion-bindings (conversions expr &optional bindings)
@@ -1213,8 +1403,28 @@
 	  (typecheck* ac nil nil nil))
 	arg)))
 
+;;; If the argument is a function whose domain matches one of the
+;;; variables, create the application.  This fixes a problem with,
+;;; e.g., IF a THEN b ELSE c ENDIF, where a: [T -> bool], b, c: [T -> int]
+;;; being translated to
+;;;  LAMBDA (x:T) IF a(x) THEN b ELSE c ENDIF : [T -> [T -> int]]
+;;; rather than
+;;;  LAMBDA (x:T): IF a(x) THEN b(x) ELSE c(x) ENDIF : [T -> int]
 (defmethod application-conversion-argument (arg conv vars)
   (declare (ignore conv vars))
+;;   (let ((var1 (find-if #'(lambda (v)
+;; 			   (every #'(lambda (ty)
+;; 				      (let ((sty (find-supertype ty)))
+;; 					(and (funtype? sty)
+;; 					     (tc-eq (type v) (domain sty)))))
+;; 				  (ptypes arg)))
+;; 		vars)))
+;;     (if var1
+;; 	(let ((ac (make-instance 'argument-conversion
+;; 		    'operator arg
+;; 		    'argument var1)))
+;; 	  (typecheck* ac nil nil nil))
+;; 	arg))
   arg)
 
 (defmethod type-mismatch-error (expr)
@@ -1451,18 +1661,23 @@
   (typecheck* (expression expr) nil nil arguments)
   (unless (type (expression expr))
     (setf (types (expression expr))
-	  (remove-if-not #'(lambda (ty)
-			     (let ((sty (find-supertype ty)))
-			       (and (not (from-conversion sty))
-				    (typep sty '(or funtype tupletype recordtype)))))
+	  (remove-if
+	      (complement
+	       #'(lambda (ty)
+		   (let ((sty (find-supertype ty)))
+		     (and (not (from-conversion sty))
+			  (typep sty '(or funtype tupletype
+					  recordtype adt-type-name))))))
 	    (ptypes (expression expr)))))
   ;; The following may be relaxed in the future.
   (unless (singleton? (ptypes (expression expr)))
     (if (cdr (types (expression expr)))
+	;; FIXME - see if the assignments can determine the expression type
+	;; before complaining about an ambiguity.
 	(type-ambiguity (expression expr))
 	(type-error (expression expr)
-	  "Must resolve to a record, tuple, function, or array type.")))
-  (let ((etype (find-supertype (car (ptypes (expression expr))))))
+	  "Must resolve to a record, tuple, function, array, or datatype.")))
+  (let ((etype (find-declared-adt-supertype (car (ptypes (expression expr))))))
     (typecheck-assignments (assignments expr) etype)
     (setf (types expr) (update-expr-types expr))))
 
@@ -1475,8 +1690,18 @@
 		     (assignments expr)
 		     (typecheck* (copy-untyped (expression expr)) ty nil nil)
 		     ty))
-	  (mapcar #'find-supertype (ptypes (expression expr)))))
-      (mapcar #'find-supertype (ptypes (expression expr)))))
+	  (mapcar #'find-update-supertype (ptypes (expression expr)))))
+      (mapcar #'find-update-supertype (ptypes (expression expr)))))
+
+(defmethod find-update-supertype ((te datatype-subtype))
+  te)
+
+(defmethod find-update-supertype ((te subtype))
+  (find-update-supertype (supertype te)))
+
+(defmethod find-update-supertype ((te type-expr))
+  te)
+  
 
 (defmethod update-expr-type (assignments expr (te tupletype))
   (let ((type (update-expr-type-types assignments expr
@@ -1734,7 +1959,7 @@
 	(mk-funtype (list (mk-subtype stype tpred))
 		    (compatible-type (range type) vtype)))))
 
-(defmethod typecheck-assignments (assigns type)
+(defun typecheck-assignments (assigns type)
   (when assigns
     (let ((assign (car assigns)))
       (typecheck-ass-args (arguments assign) type (typep assign 'maplet))
@@ -1789,6 +2014,42 @@
     (mapc #'(lambda (a) (typecheck* a nil nil nil)) (car args))
     (when (cdr args)
       (typecheck-ass-args (cdr args) (range ftype) maplet?))))
+
+(defmethod typecheck-ass-args (args (type datatype-subtype) maplet?)
+  (let ((accs (collect-datatype-assign-arg-accessors type (caar args))))
+    (when (cdr accs)
+      (break "Multiple accs"))
+    (when (and (cdr args)
+	       (cdr constrs))
+      (break "multiple accessors available"))
+    (setf (resolutions (caar args)) (resolutions (car accs)))
+    (setf (type (caar args)) (type (car accs)))
+;;     (when (and (cdr args)
+;; 	       (cdr constrs))
+;;       (break "multiple accessors available"))
+    (when (cdr args)
+      (typecheck-ass-args (cdr args) (range (car accs))))))
+
+(defmethod typecheck-ass-args (args (type adt-type-name) maplet?)
+  (let ((accs (collect-datatype-assign-arg-accessors type (caar args))))
+    (when (cdr accs)
+      (break "Multiple accs"))
+    (when (and (cdr args)
+	       (cdr constrs))
+      (break "multiple accessors available"))
+    (setf (resolutions (caar args)) (resolutions (car accs)))
+    (setf (type (caar args)) (type (car accs)))
+    (when (cdr args)
+      (typecheck-ass-args (cdr args) (range (car accs))))))
+
+(defun collect-datatype-assign-arg-accessors (dtype arg)
+  (let ((accs nil))
+    (dolist (constr (constructors dtype))
+      (let ((acc (find (id arg) (accessors constr) :key #'id)))
+	(when acc
+	  (pushnew acc accs :test #'tc-eq))))
+    (nreverse accs)))
+    
 
 (defmethod typecheck-ass-args (args type maplet?)
   (declare (ignore type maplet?))

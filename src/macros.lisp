@@ -176,10 +176,10 @@
 ;;; with-pvs-context is a macro that temporarily changes the context,
 ;;; restoring everything to the previous state on exiting.
 
-(defmacro with-pvs-context (directory &rest forms)
+(defmacro with-pvs-context (lib-ref &rest forms)
   (let ((dir (gentemp))
 	(curdir (gentemp)))
-    `(let ((,dir (directory-p ,directory)))
+    `(let ((,dir (directory-p (libref-to-pathname ,lib-ref))))
       (if (pathnamep ,dir)
 	  (let ((,curdir (working-directory))
 		(*default-pathname-defaults* *default-pathname-defaults*)
@@ -187,7 +187,8 @@
 		(*pvs-context* nil))
 	    (unwind-protect
 		 (progn (set-working-directory ,dir)
-			(setq *pvs-context-path* (working-directory))
+			(setq *pvs-context-path*
+			      (shortpath (working-directory)))
 			(setq *default-pathname-defaults* *pvs-context-path*)
 			,@forms)
 	      (set-working-directory ,curdir)))
@@ -292,19 +293,15 @@
 	 (pushnew ',reset-name ,hook)
 	 (defun ,name ()
 	   (or ,var
-	       (let* ((*current-theory* (get-theory ,theory))
-		      (*current-context* (when *current-theory*
-					   (saved-context *current-theory*)))
+	       (let* ((*current-theory* (get-typechecked-theory ,theory))
+		      (*current-context* (saved-context *current-theory*))
 		      (*generate-tccs* 'none)
 		      ,@(when expected
 			  `((expected-type
-			     (when *current-context*
-			       (pc-typecheck (pc-parse ,expected
-					       'type-expr)))))))
-		 (when *current-context*
-		   (setq ,var (pc-typecheck (pc-parse ,term ',nt)
-				,@(when expected
-				    '(:expected expected-type))))))))
+			     (pc-typecheck (pc-parse ,expected 'type-expr))))))
+		 (assert *current-context*)
+		 (setq ,var (pc-typecheck (pc-parse ,term ',nt)
+			      ,@(when expected '(:expected expected-type)))))))
 	 (defun ,reset-name ()
 	   (setq ,var nil))))))
 

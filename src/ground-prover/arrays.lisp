@@ -84,7 +84,7 @@
       ((array0 (arg1 term))
        (j (arg2 term)))
     (cond ((not (consp array0))				       
-	   (when *arrayflg* (terpri) (princ "       ==> ") (pprint term))
+	   (when *arrayflg* (terpri) (princ "       ==> ") (pprint ans))
 	   term)
 	  (t
 	   (case (funsym array0)
@@ -355,5 +355,3 @@
     (if (numberp exp2)
 	nil
       (string< exp1 exp2))))
-	      
-

@@ -968,13 +968,13 @@ bind tighter.")
     (loop (pprint-indent :current 2)
 	  (let ((nextargs (pprint-pop)))
 	    (if (and (singleton? nextargs)
-		     (typep (car nextargs) '(or field-assign proj-assign)))
+		     (typep (car nextargs) 'quoted-assign))
 		(pp* (car nextargs))
 		(pp-arguments nextargs)))
 	  (pprint-exit-if-list-exhausted)
 	  (pprint-newline :fill))))
 
-(defmethod pp* ((ex field-assign))
+(defmethod pp* ((ex id-assign))
   (pprint-logical-block (nil nil)
     (write-char #\`)
     (write (id ex))))
@@ -1254,28 +1254,79 @@ bind tighter.")
   (with-slots (exprs) ex
     (pp-arguments exprs)))
 
+(defmethod pp* ((ex projection-expr))
+  (with-slots (id actuals) ex
+    (pprint-logical-block (nil nil)
+      (write id)
+      (when actuals
+	(pp-actuals actuals)))))
+
+(defmethod pp* ((ex injection-expr))
+  (with-slots (id actuals) ex
+    (pprint-logical-block (nil nil)
+      (write id)
+      (when actuals
+	(pp-actuals actuals)))))
+
+(defmethod pp* ((ex injection?-expr))
+  (with-slots (id actuals) ex
+    (pprint-logical-block (nil nil)
+      (write id)
+      (when actuals
+	(pp-actuals actuals)))))
+
+(defmethod pp* ((ex extraction-expr))
+  (with-slots (id actuals) ex
+    (pprint-logical-block (nil nil)
+      (write id)
+      (when actuals
+	(pp-actuals actuals)))))
+
 (defmethod pp* ((ex projection-application))
-  (with-slots (id argument) ex
-    (if *pp-new-projection-forms*
+  (with-slots (id actuals argument) ex
+    (if (and *pp-new-projection-forms*
+	     (null actuals))
 	(pprint-logical-block (nil nil)
 	  (pp* (argument ex))
 	  (write-char #\`)
 	  (write (index ex)))
 	(pprint-logical-block (nil nil)
 	  (write id)
+	  (when actuals
+	    (pp-actuals actuals))
 	  (pp-arguments (argument-list argument))))))
 
+(defmethod pp* ((ex projappl))
+  (if (actuals ex)
+      (call-next-method)
+      (pprint-logical-block (nil nil)
+	(pp* (argument ex))
+	(write-char #\`)
+	(write (index ex)))))
+
 (defmethod pp* ((ex injection-application))
-  (with-slots (id argument) ex
+  (with-slots (id actuals argument) ex
     (pprint-logical-block (nil nil)
       (write id)
+      (when actuals
+	(pp-actuals actuals))
       (pp-arguments (argument-list argument)))))
 
-(defmethod pp* ((ex projappl))
-  (pprint-logical-block (nil nil)
-    (pp* (argument ex))
-    (write-char #\`)
-    (write (index ex))))
+(defmethod pp* ((ex injection?-application))
+  (with-slots (id actuals argument) ex
+    (pprint-logical-block (nil nil)
+      (write id)
+      (when actuals
+	(pp-actuals actuals))
+      (pp-arguments (argument-list argument)))))
+
+(defmethod pp* ((ex extraction-application))
+  (with-slots (id actuals argument) ex
+    (pprint-logical-block (nil nil)
+      (write id)
+      (when actuals
+	(pp-actuals actuals))
+      (pp-arguments (argument-list argument)))))
 
 (defmethod pp* ((ex field-application))
   (with-slots (id argument) ex
@@ -1365,9 +1416,20 @@ bind tighter.")
 
 (defun pp-arguments-list (args)
   (pprint-logical-block (nil args)
-    (loop (pp-arguments (argument-list (pprint-pop)))
+    (loop (pp-arguments (pp-argument-list (pprint-pop)))
 	  (pprint-exit-if-list-exhausted)
 	  (pprint-newline :fill))))
+
+(defmethod pp-argument-list ((arg projected-arg-tuple-expr))
+  (if (and (every #'projection-application? (exprs arg))
+	   (every #'(lambda (a)
+		      (tc-eq (argument a) (argument (car (exprs arg)))))
+		  (cdr (exprs arg))))
+      (list (argument (car (exprs arg))))
+      (call-next-method)))
+
+(defmethod pp-argument-list (arg)
+  (argument-list arg))
 
 (defmethod pp* ((ex infix-application))
   (with-slots (operator argument) ex
@@ -1491,15 +1553,31 @@ bind tighter.")
 
 (defmethod pp* ((ex when-expr))
   (with-slots (operator argument) ex
-    (pprint-logical-block (nil nil)
-      (pprint-indent :current 2)
-      (pp* (args2 ex))
-      (write-char #\space)
-      (pprint-newline :miser)
-      (write operator)
-      (write-char #\space)
-      (pprint-newline :fill)
-      (pp* (args1 ex)))))
+    (if (real-projected-arg-tuple-expr? argument)
+	(pprint-logical-block (nil nil)
+	  (pprint-indent :current 2)
+	  (write "WHEN")
+	  (write-char #\()
+	  (pp* (argument (car (exprs argument))))
+	  (write-char #\)))
+	(pprint-logical-block (nil nil)
+	  (pprint-indent :current 2)
+	  (pp* (args2 ex))
+	  (write-char #\space)
+	  (pprint-newline :miser)
+	  (write "WHEN")
+	  (write-char #\space)
+	  (pprint-newline :fill)
+	  (pp* (args1 ex))))))
+
+(defmethod real-projected-arg-tuple-expr? ((arg projected-arg-tuple-expr))
+  (and (every #'projection-application? (exprs arg))
+       (every #'(lambda (a)
+		  (tc-eq (argument a) (argument (car (exprs arg)))))
+	      (cdr (exprs arg)))))
+
+(defmethod real-projected-arg-tuple-expr? (arg)
+  nil)
 
 (defmethod pp* ((ex if-expr))
   (pprint-logical-block (nil nil)
@@ -2276,6 +2354,7 @@ bind tighter.")
 	  (pp-paren-adformals bindings))))
 
 (defun pp-paren-adformals (bindings)
+  ;; These are the outermost binding parens
   (pprint-logical-block (nil bindings :prefix "(" :suffix ")")
     (loop (let* ((next (pprint-pop))
 		 (parens (if (zerop (parens (car next))) 0 1)))
@@ -2429,14 +2508,14 @@ bind tighter.")
     
 (defmethod precedence ((expr let-expr) ctx)
   (case ctx
-    (left (gethash (sbst-symbol 'in)
+    (left (gethash (sbst-symbol 'IN)
 		   (fourth *expr-prec-info*)))
     (right most-positive-fixnum)))
 
 (defmethod precedence ((expr update-expr) ctx)
   (case ctx
     (left most-positive-fixnum)
-    (right (gethash (sbst-symbol 'with)
+    (right (gethash (sbst-symbol 'WITH)
 		    (second *expr-prec-info*)))))
     
 (defmethod precedence ((expr application) ctx)

@@ -12,6 +12,8 @@
 
 (in-package :pvs)
 
+(defvar *subgoals* nil)
+
 (defmethod prove (name &key  strategy)
   (let ((decl (get-formula *current-theory*
 			   (if (stringp name)(intern name) name))))
@@ -187,56 +189,56 @@
 
 (defmethod prove-decl ((decl formula-decl) &key strategy context)
   (ensure-default-proof decl)
-  (let ((init-real-time (get-internal-real-time))
-	(init-run-time (get-run-time))
-	(*skovar-counter* nil)
-	(*skofun-counter* nil)
-	(*bind-counter* nil)
-	(*recursive-prove-decl-call* *in-checker*)
-	(*in-checker* t)
-	(*displaying-proof* nil)
-	(*current-displayed* nil)
-	(*flush-displayed* nil)
-	(*auto-rewrites-names* nil)
-	(*auto-rewrites-off* nil)
-	(*assert-typepreds* nil)
-	(*pvs-bdd-hash* nil)
-	(*bdd-pvs-hash* nil)
-	(*bdd-counter* *bdd-counter*)
-	(*subtype-of-hash* (init-if-rec *subtype-of-hash*))
-	(*track-rewrites* nil)
-	(*context-modified* nil)
-	(*generate-tccs* 'none)
-	(*rewrite-msg-off* *rewrite-msg-off*)
-	(*ruletrace* nil)
-	(*ruletracedepth* 0)
-	;; Hash tables
-	(*assert-if-arith-hash* (init-if-rec *assert-if-arith-hash*))
-	(*auto-rewrites* (init-if-rec *auto-rewrites*))
-	(*auto-rewrites-ops* (init-if-rec *auto-rewrites-ops*))
-	(*beta-cache* (init-if-rec *beta-cache*))
-	(*match-cache* (init-if-rec *match-cache*))
-	(*subtype-of-hash* (init-if-rec *subtype-of-hash*))
-	(*create-formulas-cache* (init-if-rec *create-formulas-cache*))
-	(*term-print-strings* (init-if-rec *term-print-strings*))
-	(*all-subst-mod-params-caches* (copy-subst-mod-params-cache))
-	(*pseudo-normalize-hash* (copy *pseudo-normalize-hash*))
-	(*pseudo-normalize-translate-id-hash*
-	 (copy *pseudo-normalize-translate-id-hash*))
-	;;
-	(auto-rewrites-info (initialize-auto-rewrites))
-	(*current-context* (or context (context decl)))
-	(*current-theory* (module decl))
-	(*current-decision-procedure* (determine-decision-procedure decl))
-	;; The next section needed for translate-to-prove, which is used
-	;; by arith-order, make-prod, and arith-ord-translate.  This will
-	;; be removed once term-lt is written.
-	(*translate-id-hash* (init-if-rec *translate-id-hash*))
-	(*translate-id-counter* nil)
-	(*subtype-names* nil)
-	(*local-typealist* *local-typealist*)
-	(*rec-type-dummies* nil)
-	(*named-exprs* nil))
+  (let* ((init-real-time (get-internal-real-time))
+	 (init-run-time (get-run-time))
+	 (*skovar-counter* nil)
+	 (*skofun-counter* nil)
+	 (*bind-counter* nil)
+	 (*recursive-prove-decl-call* *in-checker*)
+	 (*displaying-proof* nil)
+	 (*current-displayed* nil)
+	 (*flush-displayed* nil)
+	 (*auto-rewrites-names* nil)
+	 (*auto-rewrites-off* nil)
+	 (*assert-typepreds* nil)
+	 (*pvs-bdd-hash* nil)
+	 (*bdd-pvs-hash* nil)
+	 (*bdd-counter* *bdd-counter*)
+	 (*subtype-of-hash* (init-if-rec *subtype-of-hash*))
+	 (*track-rewrites* nil)
+	 (*context-modified* nil)
+	 (*generate-tccs* 'none)
+	 (*rewrite-msg-off* *rewrite-msg-off*)
+	 (*ruletrace* nil)
+	 (*ruletracedepth* 0)
+	 ;; Hash tables
+	 (*assert-if-arith-hash* (init-if-rec *assert-if-arith-hash*))
+	 (*auto-rewrites* (init-if-rec *auto-rewrites*))
+	 (*auto-rewrites-ops* (init-if-rec *auto-rewrites-ops*))
+	 (*beta-cache* (init-if-rec *beta-cache*))
+	 (*match-cache* (init-if-rec *match-cache*))
+	 (*subtype-of-hash* (init-if-rec *subtype-of-hash*))
+	 (*create-formulas-cache* (init-if-rec *create-formulas-cache*))
+	 (*term-print-strings* (init-if-rec *term-print-strings*))
+	 (*all-subst-mod-params-caches* (copy-subst-mod-params-cache))
+	 (*pseudo-normalize-hash* (copy *pseudo-normalize-hash*))
+	 (*pseudo-normalize-translate-id-hash*
+	  (copy *pseudo-normalize-translate-id-hash*))
+	 ;;
+	 (*current-context* (or context (context decl)))
+	 (*current-theory* (module decl))
+	 (*in-checker* t) ; Make sure this follows setting of *current-context*
+	 (*current-decision-procedure* (determine-decision-procedure decl))
+	 (auto-rewrites-info (initialize-auto-rewrites))
+	 ;; The next section needed for translate-to-prove, which is used
+	 ;; by arith-order, make-prod, and arith-ord-translate.  This will
+	 ;; be removed once term-lt is written.
+	 (*translate-id-hash* (init-if-rec *translate-id-hash*))
+	 (*translate-id-counter* nil)
+	 (*subtype-names* nil)
+	 (*local-typealist* *local-typealist*)
+	 (*rec-type-dummies* nil)
+	 (*named-exprs* nil))
     (newcounter *translate-id-counter*)
     (initprover)
     ;; remove above once term-lt is written
@@ -558,15 +560,20 @@
 	 (keywords (cddr keylist))
 	 (has-rest? (cadr keylist)))
     (cond ((not keylist)
+	   ;; The user may have used a $ form for a rule, remove it and check
+	   ;; so we can give a more informative error message.
 	   (let* ((dolform (string (car pcmd)))
 		  (dolpos (1- (length dolform)))
-		  (rawform (when (char= (char dolform dolpos) #\$)
+		  (rawform (when (and (>= dolpos 0)
+				      (char= (char dolform dolpos) #\$))
 			     (subseq dolform 0 dolpos))))
-	     (if (and (assq (intern rawform) *prover-keywords*)
-		      (not (char= (char rawform (1- dolpos)) #\$)))
-		 (error-format-if "~%~a is a rule, not a strategy, so does not have a $ form"
+	     (if (and rawform
+		      (assq (intern rawform) *prover-keywords*)
+		      (not (and (> dolpos 0)
+				(char= (char rawform (1- dolpos)) #\$))))
+		 (error-format-if "~%~s is a rule, not a strategy, so does not have a $ form"
 				  rawform)
-		 (error-format-if "~%~a is not a valid prover command" (car pcmd))))
+		 (error-format-if "~%~s is not a valid prover command" (car pcmd))))
 	   nil)
 	  ((and (not keywords)
 		(cdr pcmd))
@@ -580,7 +587,10 @@
 (defun qread (prompt)
   (format t "~%~a"  prompt)
   (force-output)
-  (let ((input (ignore-errors (read))))
+  (let ((input (unwind-protect
+		   (progn (excl:set-case-mode :case-insensitive-lower)
+			  (ignore-errors (read)))
+		 (excl:set-case-mode :case-sensitive-lower))))
     (cond ((member input '(quit q exit (quit)(exit)(q))
 		   :test #'equal)
 	   (if (pvs-y-or-n-p "~%Do you really want to quit?  ")
@@ -2827,100 +2837,173 @@
 ;;;sforms in seq corresponding to nums.
 ;;;delete-seq will delete all sforms in seq corresponding to nums.
 ;;;gather-seq returns all sforms in yesnums but not in nonums satisfying pred.
+;;;gather-fnums is like gather-seq, but returns fnums
 
-(defun select-seq1 (seq nums pos neg)
-       (if (consp seq)
-	   (if (negation? (formula (car seq)))
-	       (if (or (memq neg nums)
-		       (and (label (car seq))
-			    (intersection (label (car seq))
-					  nums)))
-		   (cons (car seq)
-			 (select-seq1 (cdr seq) nums pos (1- neg)))
-		   (select-seq1 (cdr seq) nums pos (1- neg)))
-	       (if (or (memq pos nums)
-		       (and (label (car seq))
-			    (intersection (label (car seq))
-					  nums)))
-		   (cons (car seq)
-			 (select-seq1 (cdr seq) nums (1+ pos) neg))
-		   (select-seq1 (cdr seq) nums (1+ pos) neg)))
-	   nil))
-
-(defun delete-seq1 (seq nums pos neg)
-       (if (consp seq)
-	   (if (negation? (formula (car seq)))
-	       (if (or (memq neg nums)
-		       (and (label (car seq))
-			    (intersection (label (car seq))
-					  nums)))
-		   (delete-seq1 (cdr seq) nums pos (1- neg))
-		   (cons (car seq)
-			 (delete-seq1 (cdr seq) nums pos (1- neg))))
-	       (if (or (memq pos nums)
-		       (and (label (car seq))
-			    (intersection (label (car seq))
-					  nums)))
-		   (delete-seq1 (cdr seq) nums (1+ pos) neg)
-		   (cons (car seq)
-			 (delete-seq1 (cdr seq) nums (1+ pos) neg))))
-	   nil))
+(defun cleanup-fnums (fnums)
+  (cond ((consp fnums)
+	 (if (eq (car fnums) 'quote)
+	     (cleanup-fnums (cadr fnums))
+	     (append (cleanup-fnums (car fnums)) (cleanup-fnums (cdr fnums)))))
+	((null fnums) nil)
+	((stringp fnums) (list (intern fnums)))
+	(t (list fnums))))
 
 (defun select-seq (seq nums)
-  (let ((nums (cleanup-fnums nums)));;NSH(4.3.97)
-    (cond ((eq nums '*) seq)
-	  ((eq nums '+) (loop for sform in seq
-			      when (not (negation? (formula sform)))
-			      collect sform))
-	  ((eq nums '-) (loop for sform in seq
-			      when (negation? (formula sform))
-			      collect sform))
-;	  ((or (integerp nums)(stringp nums)) ;;NSH(4.3.97)commented
-;	   (select-seq1 seq (list nums) +1 -1))
-	  ((consp nums)(select-seq1 seq nums +1 -1))
-	  (t nil))))
+  (let ((nums (cleanup-fnums nums)))
+    ;; cleanup-fnums always returns a flattened list
+    (if (memq '* nums)
+	seq
+	(select-seq1 seq nums +1 -1 nil))))
+
+(defun select-seq1 (seq nums pos neg selected)
+  (if (null seq)
+      (nreverse selected)
+      (if (negation? (formula (car seq)))
+	  (select-seq1 (cdr seq) nums pos (1- neg)
+		       (if (or (memq '- nums)
+			       (memq neg nums)
+			       (and (label (car seq))
+				    (some #'(lambda (lbl) (memq lbl nums))
+					  (label (car seq)))))
+			   (cons (car seq) selected)
+			   selected))
+	  (select-seq1 (cdr seq) nums (1+ pos) neg
+		       (if (or (memq '+ nums)
+			       (memq pos nums)
+			       (and (label (car seq))
+				    (some #'(lambda (lbl) (memq lbl nums))
+					  (label (car seq)))))
+			   (cons (car seq) selected)
+			   selected)))))
 
 (defun delete-seq (seq nums)
-  (let ((nums (cleanup-fnums nums)));;NSH(4.3.97)
-    (cond ((eq nums '*) nil)
-	  ((eq nums '-) (loop for sform in seq
-			      when (not (negation? (formula sform)))
-			      collect sform))
-	  ((eq nums '+) (loop for sform in seq
-			      when (negation? (formula sform))
-			      collect sform))
-	  ((consp nums) (delete-seq1 seq nums +1 -1))
-	  (t nil))))
+  (let ((nums (cleanup-fnums nums)))
+    (if (memq '* nums)
+	nil
+	(delete-seq1 seq nums +1 -1 nil))))
 
-(defun gather-seq (seq yesnums nonums
-		       &optional (pred #'always-t) (pos 1) (neg -1))
+(defun delete-seq1 (seq nums pos neg selected)
+  (if (null seq)
+      (nreverse selected)
+      (if (negation? (formula (car seq)))
+	  (delete-seq1 (cdr seq) nums pos (1- neg)
+		       (if (or (memq '- nums)
+			       (memq neg nums)
+			       (and (label (car seq))
+				    (some #'(lambda (lbl) (memq lbl nums))
+					  (label (car seq)))))
+			   selected
+			   (cons (car seq) selected)))
+	  (delete-seq1 (cdr seq) nums (1+ pos) neg
+		       (if (or (memq '+ nums)
+			       (memq pos nums)
+			       (and (label (car seq))
+				    (some #'(lambda (lbl) (memq lbl nums))
+					  (label (car seq)))))
+			   selected
+			   (cons (car seq) selected))))))
+
+;;; gather-seq takes a list of s-formulas, two lists of numbers, and a
+;;; predicate on s-formulas, and returns the list of s-formulas that
+;;; satisfy the predicate.
+
+(defun gather-seq (seq yesnums nonums &optional (pred #'always-true))
   (let ((yesnums (cleanup-fnums yesnums))
 	(nonums (cleanup-fnums nonums)))
-    (gather-seq* seq yesnums nonums pred pos neg)))
+    (gather-seq* seq yesnums nonums pred 1 -1 nil)))
+
+(defun gather-seq* (seq yesnums nonums pred pos neg selected)
+  (if (null seq)
+      (nreverse selected)
+      (if (negation? (formula (car seq)))
+	  (gather-seq* (cdr seq) yesnums nonums pred pos (1- neg)
+		       (if (and (in-sformnums? (car seq) pos neg yesnums)
+				(not (in-sformnums? (car seq) pos neg nonums))
+				(funcall pred (car seq)))
+			   (cons (car seq) selected)
+			   selected))
+	  (gather-seq* (cdr seq) yesnums nonums pred (1+ pos) neg
+		       (if (and (in-sformnums? (car seq) pos neg yesnums)
+				(not (in-sformnums? (car seq) pos neg nonums))
+				(funcall pred (car seq)))
+			   (cons (car seq) selected)
+			   selected)))))
+
+;;; Similar to gather-seq, but returns fnums rather than s-formulas
+
+(defun gather-fnums (sforms yesnums nonums &optional (pred #'always-true))
+  (let ((yesnums (cleanup-fnums yesnums))
+	(nonums (cleanup-fnums nonums)))
+    (gather-fnums* sforms yesnums nonums pred 1 -1 nil)))
+
+(defun gather-fnums* (seq yesnums nonums pred pos neg selected)
+  (if (null seq)
+      (nreverse selected)
+      (if (negation? (formula (car seq)))
+	  (gather-fnums* (cdr seq) yesnums nonums pred pos (1- neg)
+			 (if (and (in-sformnums? (car seq) pos neg yesnums)
+				  (not (in-sformnums? (car seq) pos neg nonums))
+				  (funcall pred (car seq)))
+			     (cons neg selected)
+			     selected))
+	  (gather-fnums* (cdr seq) yesnums nonums pred (1+ pos) neg
+			 (if (and (in-sformnums? (car seq) pos neg yesnums)
+				  (not (in-sformnums? (car seq) pos neg nonums))
+				  (funcall pred (car seq)))
+			     (cons pos selected)
+			     selected)))))
+
+;;; Similar to gather-fnums, but the predicate here is on exprs rather
+;;; than s-formulas.
+(defun find-all-sformnums (sforms sformnums pred &optional (pos 1) (neg -1))
+  (find-all-sformnums* sforms (cleanup-fnums sformnums) pred 1 -1 nil))
+
+(defun find-all-sformnums* (sforms sformnums pred pos neg acc)
+  (if (null sforms)
+      (nreverse acc)
+      (let* ((sign (not (negation? (formula (car sforms)))))
+	     (newpos (if sign (1+ pos) pos))
+	     (newneg (if sign neg (1- neg)))
+	     (newacc (if (and (in-sformnums? (car sforms) pos neg sformnums)
+			      (funcall pred (formula (car sforms))))
+			 (cons (if sign pos neg) acc)
+			 acc)))	;;(break "find-all")
+	(find-all-sformnums* (cdr sforms) sformnums pred
+			     newpos newneg newacc))))
+
+(defun find-remaining-sformnums (sforms sformnums sub-sformnums)
+  (gather-fnums sforms sformnums sub-sformnums))
+
+(defun find-sform (sforms sformnum &optional (pred #'always-true))
+  (find-sform* sforms sformnum pred 1 -1))
+
+(defun find-sform* (sforms sformnum pred pos neg)
+  (when sforms
+    (if (negation? (formula (car sforms)))
+	(if (and (or (memq sformnum '(* -))
+		     (equal sformnum neg)
+		     (and (label (car sforms))
+			  (or (symbolp sformnum)
+			      (stringp sformnum))
+			  (memq (intern sformnum)
+				(label (car sforms)))))
+		 (funcall pred (car sforms)))
+	    neg
+	    (find-sform* (cdr sforms) sformnum pred pos (1- neg)))
+	(if (and (or (memq sformnum '(* +))
+		     (equal sformnum pos)
+		     (and (label (car sforms))
+			  (or (symbolp sformnum)
+			      (stringp sformnum))
+			  (memq (intern sformnum)
+				(label (car sforms)))))
+		 (funcall pred (car sforms)))
+	    pos
+	    (find-sform* (cdr sforms) sformnum pred (1+ pos) neg)))))
 
 (defun always-t (x)
   (declare (ignore x))
   t)
-
-(defun gather-seq* (seq yesnums nonums
-		       pred pos neg)
-   (cond ((null seq) nil)
-	 ((negation? (formula (car seq)))
-	  (if (and (in-sformnums? (car seq) pos neg yesnums)
-		   (not (in-sformnums? (car seq) pos neg nonums))
-		   (funcall pred (car seq)))
-	      (cons (car seq)
-		    (gather-seq* (cdr seq) yesnums nonums pred
-				pos (1- neg)))
-	      (gather-seq* (cdr seq) yesnums nonums pred pos (1- neg))))
-	 (t (if (and (in-sformnums? (car seq) pos neg yesnums)
-		     (not (in-sformnums? (car seq) pos neg nonums))
-		     (funcall pred (car seq)))
-	      (cons (car seq)
-		    (gather-seq* (cdr seq) yesnums nonums
-				pred (1+ pos) neg))
-	      (gather-seq* (cdr seq) yesnums nonums pred
-			  (1+ pos)  neg)))))
 
 (defmethod nth-arg ((expr application) num)
        (nth num (arguments expr)))
@@ -3243,23 +3326,33 @@
       (let* ((goalsequent (current-goal ps))
 	     (fnums (if (consp fnums) fnums (list fnums))))
 	(cond ((or (stringp label)(symbolp label))
-	       (multiple-value-bind
-		   (signal subgoal)
-		   (sequent-reduce goalsequent
-				   #'(lambda (sform)
-				       (values '?
-					       (if (and push? label)
-						   (lcopy sform
-						     'label
-						     (cons (intern label)
-							   (label sform)))
-					       (lcopy sform
-						 'label
-						 (when label 
-						 (list (intern label)))))))
-				   fnums)
-		 (values signal (list subgoal);;(substitution ps)
-			 )))
+	       (cond ((memq (intern label) '(quote nil * + -))
+		      (error-format-if
+		       "~%Label cannot be NIL, QUOTE, *, +, or -.")
+		      (values 'X nil nil))
+		     ((and (or (digit-char-p (char (string label) 0))
+			       (char= (char (string label) 0) #\-))
+			   (every #'digit-char-p (subseq (string label) 1)))
+		      (error-format-if
+		       "~%Label cannot be an integer"))
+		     (t
+		      (multiple-value-bind
+			  (signal subgoal)
+			  (sequent-reduce
+			   goalsequent
+			   #'(lambda (sform)
+			       (values
+				'?
+				(if (and push? label)
+				    (lcopy sform
+				      'label (cons (intern label)
+						   (label sform)))
+				    (lcopy sform
+				      'label (when label 
+					       (list (intern label)))))))
+			   fnums)
+			(values signal (list subgoal) ;;(substitution ps)
+				)))))
 	      (t (error-format-if "~%Label ~a is not a string." label)
 		 (values 'X nil nil))))))
 

@@ -182,7 +182,8 @@ pvs-strategies files.")
 
 (defun change-context (directory)
   (unless *pvs-context-path*
-    (setq *pvs-context-path* (working-directory)))
+    ;; Need to make sure this is set to something
+    (setq *pvs-context-path* (shortpath (working-directory))))
   (let ((dir (get-valid-context-directory directory nil)))
     (when *pvs-initialized*
       (save-context))
@@ -193,7 +194,7 @@ pvs-strategies files.")
     (clrhash *imported-libraries*)
     (setf (caddr *strat-file-dates*) 0)
     (set-working-directory dir)
-    (setq *pvs-context-path* (working-directory))
+    (setq *pvs-context-path* (shortpath (working-directory)))
     (setq *pvs-current-context-path* *pvs-context-path*)
     (setq *default-pathname-defaults* *pvs-context-path*)
     (clear-theories t)
@@ -437,8 +438,15 @@ pvs-strategies files.")
 					    (ce-dependencies e1)))
 				context))
 			    context)))
-	(assert entry)
-	(sort-context (remove entry context) (cons entry result)))))
+	(cond (entry
+	       (sort-context (remove entry context) (cons entry result)))
+	      (t (pvs-warning
+		     "Circularity detected in files~%~
+                      ~{  ~a~^, ~%~}~%bin files may not load correctly ~
+                      and will instead be retypechecked.~%~
+                      This can be fixed by putting theories in separate files."
+		   (mapcar #'ce-file context))
+		 (nreverse result))))))
 
 (defun create-theory-entry (theory file-entry)
   (let* ((valid? (when file-entry (valid-context-entry file-entry)))
@@ -552,31 +560,30 @@ pvs-strategies files.")
 	(let ((depfiles nil))
 	  (dolist (theory theories)
 	    (dolist (dth (dependencies theory))
-	      (when (filename dth)
-		(let ((depname (pathname-name (filename dth))))
-		  (unless (or (from-prelude? dth)
-			      (and (equal filename depname)
-				   (not (typep dth '(or library-theory
-							library-datatype))))
-			      (some #'(lambda (th)
-					(and (datatype? th)
-					     (eq (id th)
-						 (generated-by dth))))
-				    theories))
-		    (when (and (typep dth '(or library-theory
-					       library-datatype))
-			       (not (file-equal
-				     (directory-namestring (path dth))
-				     (namestring *pvs-context-path*))))
-		      (setq depname
-			    (enough-namestring
-			     (merge-pathnames (library-path dth)
-					      (filename dth))
-			     (format nil "~a/lib/" *pvs-path*))))
-		    (pushnew depname depfiles
-			     :test #'(lambda (x y)
-				       (or (equal x filename)
-					   (equal x y)))))))))
+	      (unless (memq dth theories)
+		(when (filename dth)
+		  (let ((depname (filename dth)))
+		    (unless (or (from-prelude? dth)
+				(and (equal filename depname)
+				     (not (library-datatype-or-theory? dth)))
+				(some #'(lambda (th)
+					  (and (datatype? th)
+					       (eq (id th)
+						   (generated-by dth))))
+				      theories))
+		      (when (and (library-datatype-or-theory? dth)
+				 (not (file-equal
+				       (directory-namestring (pvs-file-path dth))
+				       (namestring *pvs-context-path*))))
+			(assert (file-exists-p (pvs-file-path dth)))
+			(setq depname (format nil "~a~a"
+					(dep-lib-ref (lib-ref dth))
+					(filename dth))))
+		      (assert (file-exists-p (format nil "~a.pvs" depname)))
+		      (pushnew depname depfiles
+			       :test #'(lambda (x y)
+					 (or (equal x filename)
+					     (equal x y))))))))))
 	  (delete-if #'null (nreverse depfiles)))
 	(let ((entry (get-context-file-entry filename)))
 	  (when entry
@@ -611,8 +618,9 @@ pvs-strategies files.")
 				      (or (null ith) (from-prelude? ith)))
 			 (if (generated-by th)
 			     (list (get-theory (generated-by th)))
-			     (mapcar #'(lambda (th) (get-theory th))
-			       (get-immediate-usings th))))
+			     (delete-if #'library-theory?
+			       (mapcar #'(lambda (th) (get-theory th))
+				 (get-immediate-usings th)))))
 		       (cons th deps))
 		      (circular-file-dependencies* (cdr theories)
 						   deps circs)))))))
@@ -645,13 +653,10 @@ pvs-strategies files.")
 	  (dolist (d (reverse rem-decls))
 	    (typecase d
 	      (lib-decl
-	       (put-decl d (current-declarations-hash)))
-	      (mod-decl
-	       (put-decl d (current-declarations-hash))
-	       (let* ((thname (theory-name d))
-		      (th (get-theory thname)))
-		 (add-exporting-with-theories th thname)))
-	      (importing
+	       (when (lib-ref d)
+		 (put-decl d (current-declarations-hash))))
+	      ((or importing mod-decl theory-abbreviation-decl
+		   formal-theory-decl)
 	       (let* ((thname (theory-name d))
 		      (th (get-theory thname)))
 		 (when th
@@ -783,21 +788,22 @@ pvs-strategies files.")
 
 (defun restore-theories* (filename)
   (let ((deps (file-dependencies filename)))
-    (dolist (dep deps)
-      (if (find #\/ dep)
-	  (let* ((pos (position #\/ dep :from-end t))
-		 (lib (subseq dep 0 pos))
-		 (file (subseq dep (1+ pos))))
+    (dolist (fdep deps)
+      (let ((dep (if (char= (char fdep 0) #\/)
+		     ;; Possibly an old absolute reference - clean it up
+		     (get-library-file-reference fdep)
+		     fdep)))
+	(if (find #\/ dep)
 	    (multiple-value-bind (imports errcond)
 		(with-no-type-errors 
-		 (restore-imported-library-file lib file))
+		 (restore-imported-library-file dep))
 	      (declare (ignore imports))
 	      (when errcond
-		(restore-filename-error file errcond))))
-	  (unless (member dep *files-seen* :test #'string=)
-	    (push dep *files-seen*)
-	    (unless (gethash dep *pvs-files*)
-	      (restore-theories* dep)))))
+		(restore-filename-error dep errcond)))
+	    (unless (member dep *files-seen* :test #'string=)
+	      (push dep *files-seen*)
+	      (unless (gethash dep *pvs-files*)
+		(restore-theories* dep))))))
     (if (valid-binfile? filename)
 	(restore-theories-from-file filename)
 	(typecheck-file filename nil nil nil t))))
@@ -806,7 +812,7 @@ pvs-strategies files.")
   (pvs-message "Restoring theories from ~a.bin~@[ (library ~a)~]"
     filename
     (unless (eq *pvs-current-context-path* *pvs-context-path*)
-      (enough-namestring *pvs-context-path* *pvs-current-context-path*)))
+      (relative-path *pvs-context-path* *pvs-current-context-path*)))
   (let ((start-time (get-internal-real-time))
 	(*bin-theories-set* nil))
     (multiple-value-bind (theories condition)
@@ -1072,7 +1078,7 @@ pvs-strategies files.")
 (defun pvs-file-of (theoryref)
   (multiple-value-bind (file ext)
       (context-file-of theoryref)
-    (shortname (make-specpath file ext))))
+    (shortname (make-specpath file (or ext "pvs")))))
 
 (defun context-file-of* (theoryid entries)
   (when entries
@@ -1683,7 +1689,7 @@ pvs-strategies files.")
 	(unless (and (cdr entry)
 		     (= fwd (cdr entry)))
 	  (if entry
-	      (setf (cdr date-entry) fwd)
+	      (setf (cdr entry) fwd)
 	      (push (cons lib fwd) *library-strategy-file-dates*))
 	  (with-open-file (str file :direction :input)
 	    (unless (ignore-errors (load str :verbose nil))
@@ -1694,9 +1700,22 @@ pvs-strategies files.")
     (let ((fwd (file-write-date file)))
       (unless (= fwd (car dates))
 	(setf (car dates) fwd)
+	#+allegro-v6.0
+	(unwind-protect
+	    (progn (excl:set-case-mode :case-insensitive-lower)
+		   (multiple-value-bind (v err)
+		       (ignore-errors (load file :verbose nil))
+		     (declare (ignore v))
+		     (when err
+		       (pvs-message "Error in loading ~a:~%  ~a" file err))))
+	   (excl:set-case-mode :case-sensitive-lower))
+	#-allegro-v6.0
 	(with-open-file (str file :direction :input)
-	  (unless (ignore-errors (load str :verbose nil))
-	    (pvs-message "Error in loading ~a" file)))))))
+	  (multiple-value-bind (v err)
+	      (ignore-errors (load str :verbose nil))
+	    (declare (ignore v))
+	    (when err
+	      (pvs-message "Error in loading ~a:~%  ~a" file err))))))))
 
 (defun make-prf-pathname (fname &optional (dir *pvs-context-path*))
   (assert (or (stringp fname) (pathnamep fname)))

@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (defvar *unproved-dependings* nil)
 (defvar *proved-dependings* nil)
@@ -70,7 +70,7 @@
     (dolist (d (append (assuming theory) (theory theory)))
       (when (and (formula-decl? d)
 		 (not (member (spelling d)
-			      '(axiom postulate assumption))))
+			      '(AXIOM POSTULATE ASSUMPTION))))
 	(cond ((tcc? d)
 	       (incf tccnum)
 	       (when (proved? d)
@@ -303,7 +303,7 @@
     (pfs decls nil)))
 
 (defmethod provable-formula? ((decl formula-decl))
-  (or (not (memq (spelling decl) '(assumption axiom)))
+  (or (not (memq (spelling decl) '(ASSUMPTION AXIOM)))
       (justification decl)))
 
 (defmethod provable-formula? (obj)
@@ -545,17 +545,17 @@
 	  (t
 	   (show-all-proofs-nostatus outstr theory proofs)))))
 
-(defun show-all-proofs-nostatus (outstr theoryid proofs)
-  (dolist (prf proofs)
-    (format outstr "~3%~a.~a~2%"
-      theoryid (car prf))
-    (write (editable-justification
-	    (if (and (listp (cadr prf))
-		     (keywordp (caadr prf)))
-		(cddr prf)
-		(cdr prf)))
-	   :stream outstr :pretty t :escape t :level nil :length nil
-	   :pprint-dispatch *proof-script-pprint-dispatch*)))
+;; (defun show-all-proofs-nostatus (outstr theoryid proofs)
+;;   (dolist (prf proofs)
+;;     (format outstr "~3%~a.~a~2%"
+;;       theoryid (car prf))
+;;     (write (editable-justification
+;; 	    (if (and (listp (cadr prf))
+;; 		     (keywordp (caadr prf)))
+;; 		(cddr prf)
+;; 		(cdr prf)))
+;; 	   :stream outstr :pretty t :escape t :level nil :length nil
+;; 	   :pprint-dispatch *proof-script-pprint-dispatch*)))
 
 (defun show-all-proofs-theory* (outstr proofs decls theory)
   (dolist (prf proofs)
@@ -754,7 +754,7 @@
   (if (and (member origin '("ppe" "tccs") :test #'string=)
 	   (not (get-theory bufname)))
       (pvs-message "~a is not typechecked" bufname)
-      (case (intern (string-upcase origin))
+      (case (intern (string-downcase origin))
 	(ppe (let* ((theories (ppe-form (get-theory bufname)))
 		    (decl (get-decl-at line t theories)))
 	       (values (find-if #'(lambda (d) (and (declaration? d)
@@ -776,15 +776,24 @@
 					*prelude-theories*)))
 			(decl (get-decl-at line t theories)))
 		   (values decl (place decl))))
-	(t (let ((theory (get-theory bufname)))
-	     (if theory
-		 (let ((decl (get-decl-at line t (list theory))))
-		   (if decl
-		       (values decl (place decl))
-		       (progn (pvs-message "No declaration found near point")
-			      nil)))
-		 (pvs-message "Theory ~a has not been typechecked"
-		   bufname)))))))
+	(t (if (pathname-directory bufname)
+	       (let* ((lpath (get-library-reference
+			      (namestring (make-pathname
+					   :directory
+					   (pathname-directory bufname)))))
+		      (files&theories
+		       (or (gethash lpath *prelude-libraries*)
+			   (gethash lpath *imported-libraries*))))
+		 (if files&theories
+		     (let* ((name (pathname-name bufname))
+			    (theories (cdr (gethash name
+						    (car files&theories))))
+			    (decl (get-decl-at line t theories)))
+		       (values decl (when decl (place decl))))
+		     (pvs-message "Library ~a is not imported" bufname)))
+	       (let* ((theories (typecheck-file bufname nil nil nil t))
+		      (decl (get-decl-at line t theories)))
+		 (values decl (when decl (place decl)))))))))
 
 (defun declaration-used-by-proofs-of (udecl)
   (let ((usedbys nil))
@@ -1054,7 +1063,7 @@
     (pc-analyze* (union (union (refers-to decl)
 			       (proof-refers-to decl))
 			(assuming-tccs decl)))
-    (maphash #'(lambda (x y) (push x result)) *dependings*)
+    (maphash #'(lambda (x y) (declare (ignore y)) (push x result)) *dependings*)
     (nreverse result)))
 
 (defmethod formula-unused-declarations ((decl formula-decl))

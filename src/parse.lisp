@@ -269,7 +269,7 @@
   (let* ((exp-t (term-arg0 theory))
 	 (exp (if (is-sop 'NOEXP exp-t)
 		  (make-instance 'exporting
-		    'kind 'DEFAULT
+		    'kind 'default
 		    'place (term-place exp-t))
 		  (xt-exporting exp-t)))
 	 (assum-t (term-arg1 theory))
@@ -563,6 +563,8 @@
 		 'place place))
     (t (parse-error jdecl "Types may not have HAS_TYPE judgements."))))
 
+;;; Conversions
+
 (defun xt-conversion-elt (decl)
   (let ((cdecls (xt-conversion (term-arg0 decl))))
     (dolist (cdecl cdecls)
@@ -711,7 +713,7 @@
 	  (setf (declared-type ndecl)
 		(xt-not-enum-type-expr dtype)))
 	(let* ((idpos (position-if #'(lambda (tm)
-				       (eq (ds-sim-op (term-op tm)) 'idops))
+				       (eq (ds-sim-op (term-op tm)) 'IDOPS))
 				   (term-args absyn))))
 	  (when idpos
 	    (setf (place ndecl)
@@ -882,15 +884,11 @@
 	    dmodname)))
 
 (defun xt-lib-decl (lib-decl)
-  (let* ((libstr (coerce (ds-string (term-arg1 lib-decl)) 'string))
-	 (dirstr (if (char= (char libstr (1- (length libstr))) #\/)
-		       libstr
-		       (concatenate 'string libstr "/"))))
+  (let ((libstr (coerce (ds-string (term-arg1 lib-decl)) 'string)))
     (make-instance (if (is-sop 'NOEQ (term-arg0 lib-decl))
 		       'lib-decl
 		       'lib-eq-decl)
       'lib-string libstr
-      'library dirstr
       'place (term-place lib-decl))))
 
 (defun xt-theory-decl (theory-decl)
@@ -1011,7 +1009,7 @@
 
 (defun xt-assumption (assumption)
   (make-instance 'formula-decl
-    'spelling 'assumption
+    'spelling 'ASSUMPTION
     'definition (xt-expr (term-arg0 assumption))
     'place (term-place assumption)))
 
@@ -1454,29 +1452,42 @@
 	  (multiple-value-bind (prindex prkind)
 	      (projection? upid)
 	    (if prindex
-		(cond ((actuals name)
-		       (parse-error expr "Projection may not have actuals"))
+		(cond ;;((actuals name)
+		       ;;(parse-error expr "Projection may not have actuals"))
 		      ((mod-id name)
 		       (parse-error expr "Projection may not have a theory id"))
 		      ((library name)
 		       (parse-error expr "Projection may not have a library id"))
 		      ((zerop prindex)
 		       (parse-error expr "Projection index may not be zero"))
-		      (t (if (eq prkind 'proj)
-			     (make-instance 'projection-expr
-			       'id upid
-			       'index prindex
-			       'place (term-place expr))
-			     (make-instance 'injection-expr
-			       'id upid
-			       'index prindex
-			       'place (term-place expr)))))
+		      (t (case prkind
+			   (proj (make-instance 'projection-expr
+				   'id upid
+				   'actuals (actuals name)
+				   'index prindex
+				   'place (term-place expr)))
+			   (in (make-instance 'injection-expr
+				 'id upid
+				 'actuals (actuals name)
+				 'index prindex
+				 'place (term-place expr)))
+			   (in? (make-instance 'injection?-expr
+				  'id upid
+				  'actuals (actuals name)
+				  'index prindex
+				  'place (term-place expr)))
+			   (out (make-instance 'extraction-expr
+				  'id upid
+				  'actuals (actuals name)
+				  'index prindex
+				  'place (term-place expr)))
+			   (t (error "problem in xt-name-expr")))))
 		(progn (change-class name 'name-expr)
 		       (setf (place name) (term-place expr))
 		       name)))))))
 
 (defun projection? (id)
-  (let ((str (string-upcase (format nil "~a" id))))
+  (let ((str (string-upcase (string id))))
     (cond ((and (> (length str) 5)
 		(string= str "PROJ_" :end1 5)
 		(every #'digit-char-p (subseq str 5)))
@@ -1484,7 +1495,15 @@
 	  ((and (> (length str) 3)
 		(string= str "IN_" :end1 3)
 		(every #'digit-char-p (subseq str 3)))
-	   (values (parse-integer str :start 3) 'in)))))
+	   (values (parse-integer str :start 3) 'in))
+	  ((and (> (length str) 4)
+		(string= str "IN?_" :end1 4)
+		(every #'digit-char-p (subseq str 4)))
+	   (values (parse-integer str :start 4) 'in?))
+	  ((and (> (length str) 4)
+		(string= str "OUT_" :end1 4)
+		(every #'digit-char-p (subseq str 4)))
+	   (values (parse-integer str :start 4) 'out)))))
 
 (defun xt-rec-expr (rec-expr)
   (make-instance 'record-expr
@@ -1604,12 +1623,28 @@
     (cond ((typep op 'projection-expr)
 	   (make-instance 'projection-application
 	     'id (id op)
+	     'actuals (actuals op)
 	     'index (index op)
 	     'argument (xt-arg-expr args)
 	     'place (term-place expr)))
 	  ((typep op 'injection-expr)
 	   (make-instance 'injection-application
 	     'id (id op)
+	     'actuals (actuals op)
+	     'index (index op)
+	     'argument (xt-arg-expr args)
+	     'place (term-place expr)))
+	  ((typep op 'injection?-expr)
+	   (make-instance 'injection?-application
+	     'id (id op)
+	     'actuals (actuals op)
+	     'index (index op)
+	     'argument (xt-arg-expr args)
+	     'place (term-place expr)))
+	  ((typep op 'extraction-expr)
+	   (make-instance 'extraction-application
+	     'id (id op)
+	     'actuals (actuals op)
 	     'index (index op)
 	     'argument (xt-arg-expr args)
 	     'place (term-place expr)))
@@ -2023,7 +2058,7 @@
 	(projection? id)
       (let ((constr (case kind
 		      (in (make-instance 'injection-expr
-			       'id id
+			       'id (intern (string-upcase id))
 			       'index index
 			       'place (term-place expr)))
 		      (proj (parse-error sel "Projection illegal here"))
@@ -2235,7 +2270,7 @@
 
 (defun xt-assign* (ass-arg)
   (case (sim-term-op ass-arg)
-    (FIELD-ASSIGN (list (make-instance 'field-assign
+    (ID-ASSIGN (list (make-instance 'id-assign
 			  'id (ds-id (term-arg0 ass-arg))
 			  'place (term-place ass-arg))))
     (PROJ-ASSIGN (list (make-instance 'proj-assign

@@ -173,7 +173,7 @@
 (defun mk-subtype-tcc (id expr)
   (make-instance 'subtype-tcc
     'id id
-    'spelling 'obligation
+    'spelling 'OBLIGATION
     'kind 'tcc
     'definition expr
     'semi t))
@@ -181,7 +181,7 @@
 (defun mk-termination-tcc (id expr)
   (make-instance 'termination-tcc
     'id id
-    'spelling 'obligation
+    'spelling 'OBLIGATION
     'kind 'tcc
     'definition expr
     'semi t))
@@ -189,7 +189,7 @@
 (defun mk-existence-tcc (id expr)
   (make-instance 'existence-tcc
     'id id
-    'spelling 'obligation
+    'spelling 'OBLIGATION
     'kind 'existence
     'definition expr
     'semi t))
@@ -197,7 +197,7 @@
 (defun mk-assuming-tcc (id expr theory-instance assuming-decl)
   (make-instance 'assuming-tcc
     'id id
-    'spelling 'obligation
+    'spelling 'OBLIGATION
     'kind 'tcc
     'definition expr
     'theory-instance theory-instance
@@ -207,7 +207,7 @@
 (defun mk-mapped-axiom-tcc (id expr theory-instance axiom-decl)
   (make-instance 'mapped-axiom-tcc
     'id id
-    'spelling 'obligation
+    'spelling 'OBLIGATION
     'kind 'tcc
     'definition expr
     'theory-instance theory-instance
@@ -217,7 +217,7 @@
 (defun mk-cases-tcc (id expr)
   (make-instance 'cases-tcc
     'id id
-    'spelling 'obligation
+    'spelling 'OBLIGATION
     'kind 'tcc
     'definition expr
     'semi t))
@@ -225,7 +225,7 @@
 (defun mk-well-founded-tcc (id expr)
   (make-instance 'well-founded-tcc
     'id id
-    'spelling 'obligation
+    'spelling 'OBLIGATION
     'kind 'tcc
     'definition expr
     'semi t))
@@ -233,7 +233,7 @@
 (defun mk-same-name-tcc (id expr)
   (make-instance 'same-name-tcc
     'id id
-    'spelling 'obligation
+    'spelling 'OBLIGATION
     'kind 'tcc
     'definition expr
     'semi t))
@@ -241,7 +241,7 @@
 (defun mk-cond-disjoint-tcc (id expr)
   (make-instance 'cond-disjoint-tcc
     'id id
-    'spelling 'obligation
+    'spelling 'OBLIGATION
     'kind 'tcc
     'definition expr
     'semi t))
@@ -249,7 +249,7 @@
 (defun mk-cond-coverage-tcc (id expr)
   (make-instance 'cond-coverage-tcc
     'id id
-    'spelling 'obligation
+    'spelling 'OBLIGATION
     'kind 'tcc
     'definition expr
     'semi t))
@@ -257,7 +257,7 @@
 (defun mk-monotonicity-tcc (id expr)
   (make-instance 'monotonicity-tcc
     'id id
-    'spelling 'obligation
+    'spelling 'OBLIGATION
     'kind 'tcc
     'definition expr
     'semi t))
@@ -1293,7 +1293,7 @@
 (defmethod make-assignment ((arg name-expr) expression)
   (if (and (typep (declaration arg) 'field-decl)
 	   (typep arg '(not field-assignment-arg)))
-      (call-next-method (change-class (copy arg) 'field-assignment-arg)
+      (call-next-method (change-class (copy arg) 'field-assign)
 			expression)
       (call-next-method)))
 
@@ -1447,7 +1447,7 @@
 		   'type (type res)
 		   'resolutions (list res)))
 	 (arg (make!-arg-tuple-expr lhs rhs)))
-    (if (compatible? type *boolean*)
+    (if (tc-eq (find-supertype type) *boolean*)
 	(make-instance 'infix-boolean-equation
 	  'operator eqname
 	  'argument arg
@@ -1523,6 +1523,19 @@
 	  'type ttype))
       (car args)))
 
+(defun make!-projected-arg-tuple-expr (&rest args)
+  (funcall #'make!-projected-arg-tuple-expr* args))
+
+(defun make!-projected-arg-tuple-expr* (args)
+  (assert (consp args))
+  (assert (every #'type args))
+  (if (cdr args)
+      (let ((ttype (mk-tupletype (mapcar #'type args))))
+	(make-instance 'projected-arg-tuple-expr
+	  'exprs args
+	  'type ttype))
+      (car args)))
+
 (defun make!-tuple-expr (&rest exprs)
   (apply #'make!-tuple-expr* exprs))
 
@@ -1586,6 +1599,37 @@
 			       (acons (car types) proj nil))
 			     (cdr types))))
 	  (make!-projection-type* cdrtypes index (1+ ctr) arg)))))
+
+(defun make!-injection-application (index arg type)
+  (assert (type arg))
+  (assert (cotupletype? (find-supertype type)))
+  (assert (compatible? (type arg)
+		       (nth (1- index) (types (find-supertype type)))))
+  (let* ((cotuptype (find-supertype (type arg))))
+    (make-instance 'injection-application
+      'id (makesym "IN_~d" index)
+      'index index
+      'argument arg
+      'type cotuptype)))
+
+(defun make!-injection?-application (index arg)
+  (assert (type arg))
+  (assert (cotupletype? (find-supertype (type arg))))
+  (make-instance 'injection?-application
+    'id (makesym "IN?_~d" index)
+    'index index
+    'argument arg
+    'type *boolean*))
+
+(defun make!-extraction-application (index arg)
+  (assert (type arg))
+  (assert (cotupletype? (find-supertype (type arg))))
+  (let* ((cotuptype (find-supertype (type arg))))
+    (make-instance 'extraction-application
+      'id (makesym "OUT_~d" index)
+      'index index
+      'argument arg
+      'type (nth (1- index) (types cotuptype)))))
 
 (defun make!-field-application (field-name arg)
   (assert (and (type arg) (typep (find-supertype (type arg)) 'recordtype)))
@@ -1839,6 +1883,29 @@
     'operator (minus-operator)
     'argument (make!-arg-tuple-expr ex (one-constant))
     'type (type ex)))
+
+(defun make!-expr-as-type (pred)
+  (assert (funtype? (find-supertype (type pred))))
+  (assert (compatible? (range (find-supertype (type pred))) *boolean*))
+  (make-instance 'subtype
+    'print-type (mk-expr-as-type pred)
+    'supertype (domain (find-supertype (type pred)))
+    'predicate pred))
+
+(defun make!-unpack-expr (expr selections &optional else-part)
+  (assert (cotupletype? (find-supertype (type expr))))
+  (assert (every #'(lambda (sel) (type (expression sel))) selections))
+  (assert (every #'(lambda (sel)
+		     (compatible? (type (expression sel))
+				  (type (expression (car selections)))))
+		 (cdr selections)))
+  (let ((type (reduce #'compatible-type selections
+		      :key #'(lambda (sel) (type (expression sel))))))
+    (make-instance 'unpack-expr
+      'expression expr
+      'selections selections
+      'else-part else-part
+      'type type)))
 
 (defun make!-unary-minus (ex)
   (assert (typep ex 'expr))

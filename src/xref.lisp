@@ -221,15 +221,28 @@
 
 (defmethod generate-xref ((e projection-application))
   (assert (type e))
-  (generate-xref (argument e)))
+  (generate-xref (argument e))
+  (generate-xref (actuals e)))
 
 (defmethod generate-xref ((e injection-application))
   (assert (type e))
-  (generate-xref (argument e)))
+  (generate-xref (argument e))
+  (generate-xref (actuals e)))
+
+(defmethod generate-xref ((e extraction-application))
+  (assert (type e))
+  (generate-xref (argument e))
+  (generate-xref (actuals e)))
+
+(defmethod generate-xref ((e injection?-application))
+  (assert (type e))
+  (generate-xref (argument e))
+  (generate-xref (actuals e)))
 
 (defmethod generate-xref ((e field-application))
   (assert (type e))
-  (generate-xref (argument e)))
+  (generate-xref (argument e))
+  (generate-xref (actuals e)))
 
 (defmethod generate-xref ((e application))
   (assert (type e))
@@ -261,11 +274,16 @@
   (generate-xref (type b)))
 
 (defmethod generate-xref ((p projection-expr))
-  (break "shouldn't happen")
-  nil)
+  (generate-xref (actuals e)))
 
 (defmethod generate-xref ((p injection-expr))
-  nil)
+  (generate-xref (actuals e)))
+
+(defmethod generate-xref ((p injection?-expr))
+  (generate-xref (actuals e)))
+
+(defmethod generate-xref ((p extraction-expr))
+  (generate-xref (actuals e)))
 
 (defmethod generate-xref ((n field-name-expr))
   (assert (type n))
@@ -278,6 +296,10 @@
     (unless (typep (declaration n) '(or module mod-decl formal-theory-decl))
       (generate-xref (type n))))
   (call-next-method))
+
+(defmethod generate-xref ((n rewrite-name))
+  (assert (resolutions n))
+  (generate-xref (resolutions n)))
 
 (defmethod generate-xref ((a actual))
   (if (type-value a)
@@ -340,4 +362,18 @@
   nil)
 
 (defmethod from-prelude? ((use importing))
+  nil)
+
+(defmethod from-prelude-library? ((th datatype-or-module))
+  (assoc (id th) (prelude-libraries-uselist)
+	 :test #'(lambda (x y) (eq x (id y)))))
+
+(defmethod from-prelude-library? ((decl declaration))
+  (and (module decl)
+       (from-prelude-library? (module decl))))
+
+(defmethod from-prelude-library? ((decl binding))
+  nil)
+
+(defmethod from-prelude-library? ((use importing))
   nil)

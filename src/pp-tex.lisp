@@ -112,18 +112,24 @@
 	       (unless wrote-char
 		 (write-char char stream))
 	       (write-string-with-tex-substitutions str (1+ pos) len stream))
-	      (t (let* ((npos (or (position-if #'(lambda (ch)
-						   (< (char-code ch) 127))
-					       str
-					       :start pos :end len)
-				  len))
-			(trans (gethash (subseq str pos npos)
-					*pvs-tex-substitution-hash*)))
-		   (assert trans)
-		   (write trans :stream stream)
-		   (write-string-with-tex-substitutions
-		    str npos len stream)))))))
+	      (t (let ((endpos (or (position-if #'(lambda (ch)
+						    (< (char-code ch) 127))
+						str
+						:start pos :end len)
+				   len)))
+		   (multiple-value-bind (trans npos)
+		       (get-latex-substitution-translation str pos endpos)
+		     (write trans :stream stream)
+		     (write-string-with-tex-substitutions
+		      str npos len stream))))))))
   
+(defun get-latex-substitution-translation (str pos epos)
+  (assert (< pos epos))
+  (let ((trans (gethash (subseq str pos epos) *pvs-tex-substitution-hash*)))
+    (if trans
+	(values trans epos)
+	(get-latex-substitution-translation str pos (1- epos)))))
+
 
 ;(defmethod pp-tex* :around ((syn syntax))
 ;  (call-next-method)
@@ -975,7 +981,7 @@
 			(let ((var (car (rassoc ctr bindings))))
 			  (if var
 			      (pprint-logical-block (nil nil)
-				(pp-tex* (car nbd))
+				(pp-tex* var)
 				(write-char #\:)
 				(write-char #\space)
 				(pprint-newline :fill)
@@ -1091,28 +1097,79 @@
   (with-slots (exprs) ex
     (pp-tex-arguments exprs)))
 
+(defmethod pp-tex* ((ex projection-expr))
+  (with-slots (id actuals) ex
+    (pprint-logical-block (nil nil)
+      (pp-tex-id id)
+      (when actuals
+	(pp-tex-actuals actuals)))))
+
+(defmethod pp-tex* ((ex injection-expr))
+  (with-slots (id actuals) ex
+    (pprint-logical-block (nil nil)
+      (pp-tex-id id)
+      (when actuals
+	(pp-tex-actuals actuals)))))
+
+(defmethod pp-tex* ((ex injection?-expr))
+  (with-slots (id actuals) ex
+    (pprint-logical-block (nil nil)
+      (pp-tex-id id)
+      (when actuals
+	(pp-tex-actuals actuals)))))
+
+(defmethod pp-tex* ((ex extraction-expr))
+  (with-slots (id actuals) ex
+    (pprint-logical-block (nil nil)
+      (pp-tex-id id)
+      (when actuals
+	(pp-tex-actuals actuals)))))
+
 (defmethod pp-tex* ((ex projection-application))
-  (with-slots (id argument) ex
-    (if *pp-new-projection-forms*
+  (with-slots (id actuals argument) ex
+    (if (and *pp-new-projection-forms*
+	     (null actuals))
 	(pprint-logical-block (nil nil)
 	  (pp-tex* (argument ex))
 	  (write '|`|)
 	  (pp-tex-number (index ex)))
 	(pprint-logical-block (nil nil)
 	  (pp-tex-id id)
+	  (when actuals
+	    (pp-tex-actuals actuals))
 	  (pp-tex-arguments (argument-list argument))))))
 
+(defmethod pp-tex* ((ex projappl))
+  (if (actuals ex)
+      (call-next-method)
+      (pprint-logical-block (nil nil)
+	(pp-tex* (argument ex))
+	(write '|`|)
+	(pp-tex-number (index ex)))))
+
 (defmethod pp-tex* ((ex injection-application))
-  (with-slots (id argument) ex
+  (with-slots (id actuals argument) ex
     (pprint-logical-block (nil nil)
       (pp-tex-id id)
+      (when actuals
+	(pp-tex-actuals actuals))
       (pp-tex-arguments (argument-list argument)))))
 
-(defmethod pp-tex* ((ex projappl))
-  (pprint-logical-block (nil nil)
-    (pp-tex* (argument ex))
-    (write '|`|)
-    (pp-tex-number (index ex))))
+(defmethod pp-tex* ((ex injection?-application))
+  (with-slots (id actuals argument) ex
+    (pprint-logical-block (nil nil)
+      (pp-tex-id id)
+      (when actuals
+	(pp-tex-actuals actuals))
+      (pp-tex-arguments (argument-list argument)))))
+
+(defmethod pp-tex* ((ex extraction-application))
+  (with-slots (id actuals argument) ex
+    (pprint-logical-block (nil nil)
+      (pp-tex-id id)
+      (when actuals
+	(pp-tex-actuals actuals))
+      (pp-tex-arguments (argument-list argument)))))
 
 (defmethod pp-tex* ((ex field-application))
   (with-slots (id argument) ex

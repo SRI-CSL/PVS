@@ -537,7 +537,7 @@
   (find-out-all-matches-polarity lhs-template expr bind-alist subst
 				 accum polarity))
 
-(defmethod find-match (lhs (expr  name-expr) bind-alist subst order)
+(defmethod find-match (lhs (expr name-expr) bind-alist subst order)
   (declare (ignore order))
   (call-match lhs expr bind-alist subst))
 
@@ -571,6 +571,18 @@
     (find-out-match lhs expr bind-alist subst order insub inmodsubst)))
 
 (defmethod find-match (lhs (expr injection-application) bind-alist 
+			   subst order)
+  (multiple-value-bind (insub inmodsubst)
+      (find-match lhs (argument expr) bind-alist subst order)
+    (find-out-match lhs expr bind-alist subst order insub inmodsubst)))
+
+(defmethod find-match (lhs (expr injection?-application) bind-alist 
+			   subst order)
+  (multiple-value-bind (insub inmodsubst)
+      (find-match lhs (argument expr) bind-alist subst order)
+    (find-out-match lhs expr bind-alist subst order insub inmodsubst)))
+
+(defmethod find-match (lhs (expr extraction-application) bind-alist 
 			   subst order)
   (multiple-value-bind (insub inmodsubst)
       (find-match lhs (argument expr) bind-alist subst order)
@@ -688,6 +700,18 @@
 			(find-all-matches lhs (argument expr)
 					  bind-alist subst accum)))
 
+(defmethod find-all-matches (lhs (expr injection?-application)
+				 bind-alist subst accum)
+  (find-out-all-matches lhs expr bind-alist subst
+			(find-all-matches lhs (argument expr)
+					  bind-alist subst accum)))
+
+(defmethod find-all-matches (lhs (expr extraction-application)
+				 bind-alist subst accum)
+  (find-out-all-matches lhs expr bind-alist subst
+			(find-all-matches lhs (argument expr)
+					  bind-alist subst accum)))
+
 
 (defmethod find-all-matches (lhs (expr field-application)
 				 bind-alist subst accum)
@@ -697,11 +721,10 @@
 
 
 (defmethod find-all-matches (lhs (expr cases-expr) bind-alist subst accum)
-  
-    (find-out-all-matches lhs expr bind-alist subst
-		    (find-all-matches lhs (cons (expression expr)
-						(selections expr))
-				      bind-alist subst accum)))
+  (find-out-all-matches lhs expr bind-alist subst
+			(find-all-matches lhs (cons (expression expr)
+						    (selections expr))
+					  bind-alist subst accum)))
 
 (defmethod find-all-matches (lhs (expr selection) bind-alist subst accum)
   (let ((*bound-variables* (append (args expr) *bound-variables*)))

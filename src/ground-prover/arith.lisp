@@ -353,7 +353,51 @@
 	   (eq (funsym x) 'divide)
 	   (eql (arg1 x) 1))
       (arg2 x)
-      `(DIVIDE 1 ,x)))
+      `(divide 1 ,x)))
+
+(defun cancel-reciprocal (lit divterms)
+  (if (consp lit)
+      (if (eq (funsym lit) 'plus)
+	  `(plus ,@(cancel-reciprocal-list (argsof lit) divterms))
+	  (if (eq (funsym lit) 'times)
+	      (cancel-times-reciprocal (argsof lit) divterms)
+	      (cancel-times-reciprocal (list lit) divterms)))
+      `(times ,lit ,@(loop for x in divterms collect (reciprocal x)))))
+
+(defun cancel-reciprocal-list (lit-list divterms)
+  (loop for a in lit-list collect (cancel-reciprocal a divterms)))
+
+(defun cancel-times-reciprocal (factors divterms)
+  (let ((result (cancel-times-reciprocal* factors divterms nil)))
+    (if (consp result)
+	(if (null (cdr result))
+	    (car result)
+	    `(times ,@result))
+	1)))
+
+(defun cancel-times-reciprocal* (factors divterms accum)
+  (if (consp factors)
+      (if (member (car factors) divterms :test #'equal)
+	  (cancel-times-reciprocal* (cdr factors)
+				   (remove (car factors) divterms
+					   :test #'equal
+					   :count 1)
+				   accum)
+	  (if (and (consp (car factors))
+		   (eq (funsym (car factors)) 'times))
+	      (cancel-times-reciprocal* (append (argsof (car factors))
+						(cdr factors))
+					divterms accum)
+	  (cancel-times-reciprocal* (cdr factors) divterms
+				   (cons (car factors) accum))))
+      (nconc (nreverse accum)
+	     (loop for x in divterms collect (reciprocal x)))))
+
+(defun divterms (args)
+  (loop for a in args
+	when  (and (consp a)
+		   (eq (funsym a) 'divide))
+	collect a))
 
 (defun equalsolve (lit)
   (let ((norm (normineq lit)))
@@ -363,26 +407,29 @@
 	  (if (and (consp head)
 		   (eq (funsym head) 'times))
 	      (let* ((args (argsof head))
-		     (nzarg-reciprocals
-		      (loop for a in args
-			    when (isneqzero? a)
-			    collect (reciprocal a))))
-		(if nzarg-reciprocals
-		    (solvecan `(EQUAL (TIMES ,head ,@nzarg-reciprocals)
-				      (TIMES ,(arg2 norm)
-					     ,@nzarg-reciprocals)))
-		    (list `(LESSEQP ,(arg1 norm) ,(arg2 norm))
-			  `(GREATEREQP ,(arg1 norm) ,(arg2 norm)))))
+		     (divterms (divterms args))
+		     (newhead (if divterms
+				  (cancel-reciprocal head divterms)
+				  head))
+		     (newarg2 (if divterms
+				   (cancel-reciprocal (arg2 norm) divterms)
+				   (arg2 norm))))
+		(if divterms
+		    (solvecan `(equal ,newhead ,newarg2))
+		    (ncons norm)
+		    ;;(list `(lesseqp ,(arg1 norm) ,(arg2 norm))
+			;;  `(greatereqp ,(arg1 norm) ,(arg2 norm)))
+		    ))
 	    (if (onlyoccurrencep head head all-terms t)
 		(ncons norm)
-	      (list `(LESSEQP ,(arg1 norm) ,(arg2 norm))
-		    `(GREATEREQP ,(arg1 norm) ,(arg2 norm))))))
+	      (list `(lesseqp ,(arg1 norm) ,(arg2 norm))
+		    `(greatereqp ,(arg1 norm) ,(arg2 norm))))))
       (ncons norm))))
 
 (defun termsof (lit)
   (cons (arg1 lit)
 	(if (and (consp (arg2 lit)) (eq (funsym (arg2 lit))
-					`PLUS))
+					`plus))
 	    (argsof (arg2 lit))
 	  (ncons (arg2 lit)))))
 
@@ -637,13 +684,19 @@
 		   (eq (pr-find u) 'true))
 	 collect u)))
 
+;;added this because chain-square-ineq was only catching
+;;squares of the form (times x x) and missing (times x x y y).
+(defun square-list? (args) ;;NSH(6-13-02) assumes args is canonical
+  (if (and (consp args)(consp (cdr args)))
+      (and (equal (car args)(cadr args))
+	   (square-list? (cddr args)))
+      (null args)))
+
 (defun chain-square-ineq (ineq)
   (when (and (or (eq (funsym ineq) 'lesseqp) (eq (funsym ineq) 'lessp))
 	     (consp (arg1 ineq))
 	     (eq (funsym (arg1 ineq)) 'times)
-	     (equal (arg1 (arg1 ineq))
-		    (arg2 (arg1 ineq)))
-	     (= (length (argsof (arg1 ineq))) 2))
+	     (square-list? (cdr (arg1 ineq))))
     `((greatereqp ,(arg1 ineq) 0))))
 
 ; returns true if fnsym2 is an inequality operator with sense 
@@ -738,12 +791,12 @@
 
 (defun make-strict (ineq)
   (case (funsym ineq)
-    (EQUAL (if (strict? ineq) FALSE ineq))
-    (LESSEQP (if (strict? ineq)
-		 `(LESSP ,(arg1 ineq) ,(arg2 ineq))
+    (equal (if (strict? ineq) false ineq))
+    (lesseqp (if (strict? ineq)
+		 `(lessp ,(arg1 ineq) ,(arg2 ineq))
 	       ineq))
-    (GREATEREQP (if (strict? ineq)
-		    `(GREATERP ,(arg1 ineq) ,(arg2 ineq))
+    (greatereqp (if (strict? ineq)
+		    `(greaterp ,(arg1 ineq) ,(arg2 ineq))
 		  ineq))
     (t ineq)))
 
@@ -786,8 +839,8 @@
   (cond
    ((listp dif)
     (case (funsym dif)
-      (PLUS (solvableplus dif funsymis=))
-      (TIMES (solvabletimes dif))
+      (plus (solvableplus dif funsymis=))
+      (times (solvabletimes dif))
       (t (setq var dif coef 1) t)))
    (t (setq var dif coef 1) t)))
 

@@ -184,6 +184,7 @@
 
 (defmethod add-judgement-decl ((decl number-judgement))
   (assert (not *in-checker*))
+  (clrhash (judgement-types-hash (judgements *current-context*)))
   (setf (number-judgements (number (number-expr decl))) decl))
 
 ;;; Invoked from typecheck* (name-judgement)
@@ -236,6 +237,7 @@
 	     (adjust-array vector currynum :initial-element nil)))
       (let ((entry (aref vector (1- currynum))))
 	(cond ((null entry)
+	       (clrhash (judgement-types-hash (judgements *current-context*)))
 	       (setf (aref vector (1- currynum))
 		     (make-instance 'application-judgements
 		       'judgements-graph (list (list jdecl))
@@ -624,9 +626,10 @@
   ;;(assert (fully-instantiated? rdomain))
   ;;(assert (fully-instantiated? jdomain))
   ;;(assert (every #'fully-instantiated? argtypes))
-  (if (null argtypes)
-      (judgement-arguments-match*? (list (type argument)) rdomain jdomain)
-      (judgement-arguments-match*? argtypes rdomain jdomain)))
+  (and (compatible? rdomain jdomain)
+       (if (null argtypes)
+	   (judgement-arguments-match*? (list (type argument)) rdomain jdomain)
+	   (judgement-arguments-match*? argtypes rdomain jdomain))))
 
 
 ;;; argtypes here is either
@@ -758,6 +761,18 @@
 		ftypes)
 	      (field-application-types atypes ex))))))
 
+(defmethod judgement-types* ((ex projection-expr))
+  nil)
+
+(defmethod judgement-types* ((ex injection-expr))
+  nil)
+
+(defmethod judgement-types* ((ex injection?-expr))
+  nil)
+
+(defmethod judgement-types* ((ex extraction-expr))
+  nil)
+
 (defmethod judgement-types* ((ex projection-application))
   (let ((atypes (judgement-types* (argument ex))))
     (when atypes
@@ -766,6 +781,12 @@
 	  (projection-application-types atypes ex)))))
 
 (defmethod judgement-types* ((ex injection-application))
+  nil)
+
+(defmethod judgement-types* ((ex injection?-application))
+  nil)
+
+(defmethod judgement-types* ((ex extraction-application))
   nil)
 
 (defmethod judgement-types* ((ex tuple-expr))
@@ -1517,6 +1538,30 @@
       (simple-match* (argument ex) (argument inst) bindings subst)
       'fail))
 
+(defmethod simple-match* ((ex projection-expr) (inst projection-expr)
+			  bindings subst)
+  (if (= (index ex) (index inst))
+      subst
+      'fail))
+
+(defmethod simple-match* ((ex injection-expr) (inst injection-expr)
+			  bindings subst)
+  (if (= (index ex) (index inst))
+      subst
+      'fail))
+
+(defmethod simple-match* ((ex injection?-expr) (inst injection?-expr)
+			  bindings subst)
+  (if (= (index ex) (index inst))
+      subst
+      'fail))
+
+(defmethod simple-match* ((ex extraction-expr) (inst extraction-expr)
+			  bindings subst)
+  (if (= (index ex) (index inst))
+      subst
+      'fail))
+
 (defmethod simple-match* ((ex projection-application)
 			  (inst projection-application)
 			  bindings subst)
@@ -1526,6 +1571,20 @@
 
 (defmethod simple-match* ((ex injection-application)
 			  (inst injection-application)
+			  bindings subst)
+  (if (= (index ex) (index inst))
+      (simple-match* (argument ex) (argument inst) bindings subst)
+      'fail))
+
+(defmethod simple-match* ((ex injection?-application)
+			  (inst injection?-application)
+			  bindings subst)
+  (if (= (index ex) (index inst))
+      (simple-match* (argument ex) (argument inst) bindings subst)
+      'fail))
+
+(defmethod simple-match* ((ex extraction-application)
+			  (inst extraction-application)
 			  bindings subst)
   (if (= (index ex) (index inst))
       (simple-match* (argument ex) (argument inst) bindings subst)

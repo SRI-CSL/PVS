@@ -153,6 +153,22 @@
   (setf (free-parameters expr) nil)
   frees)
 
+(defmethod free-params* ((expr projection-expr) frees)
+  (let ((afrees (free-params* (type expr) nil)))
+    (setf (free-parameters expr) afrees)))
+
+(defmethod free-params* ((expr injection-expr) frees)
+  (let ((afrees (free-params* (type expr) nil)))
+    (setf (free-parameters expr) afrees)))
+
+(defmethod free-params* ((expr injection?-expr) frees)
+  (let ((afrees (free-params* (type expr) nil)))
+    (setf (free-parameters expr) afrees)))
+
+(defmethod free-params* ((expr extraction-expr) frees)
+  (let ((afrees (free-params* (type expr) nil)))
+    (setf (free-parameters expr) afrees)))
+
 (defmethod free-params* ((expr projection-application) frees)
   (let ((afrees (free-params* (argument expr)
 		  (free-params* (type expr) nil))))
@@ -160,6 +176,18 @@
     (union afrees frees :test #'eq)))
 
 (defmethod free-params* ((expr injection-application) frees)
+  (let ((afrees (free-params* (argument expr)
+		  (free-params* (type expr) nil))))
+    (setf (free-parameters expr) afrees)
+    (union afrees frees :test #'eq)))
+
+(defmethod free-params* ((expr injection?-application) frees)
+  (let ((afrees (free-params* (argument expr)
+		  (free-params* (type expr) nil))))
+    (setf (free-parameters expr) afrees)
+    (union afrees frees :test #'eq)))
+
+(defmethod free-params* ((expr extraction-application) frees)
   (let ((afrees (free-params* (argument expr)
 		  (free-params* (type expr) nil))))
     (setf (free-parameters expr) afrees)
@@ -262,6 +290,6 @@
   frees)
 
 (defun external-free-params (obj)
-  (let ((formals (formals-sans-usings *current-theory*)))
+  (let ((formals (formals-sans-usings (current-theory))))
     (remove-if #'(lambda (fp) (memq fp formals))
       (free-params obj))))

@@ -18,7 +18,7 @@
   (declare (ignore context))
   (if (tc-eq type *number*)
       (mk-number-expr sexpr)
-      (if (tc-eq type *boolean*)
+      (if (tc-eq (find-supertype type) *boolean*)
 	  (if sexpr *true* *false*)
 	  (throw 'cant-translate nil))))
 

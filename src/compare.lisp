@@ -260,10 +260,10 @@
 (defmethod compare* ((old formula-decl) (new formula-decl))
   (and (call-next-method)
        (or (eq (spelling old) (spelling new))
-	   (if (and (or (not (memq (spelling old) '(axiom postulate)))
-			(not (memq (spelling new) '(axiom postulate))))
-		    (or (memq (spelling old) '(assumption axiom postulate))
-			(memq (spelling new) '(assumption axiom postulate))))
+	   (if (and (or (not (memq (spelling old) '(AXIOM POSTULATE)))
+			(not (memq (spelling new) '(AXIOM POSTULATE))))
+		    (or (memq (spelling old) '(ASSUMPTION AXIOM POSTULATE))
+			(memq (spelling new) '(ASSUMPTION AXIOM POSTULATE))))
 	       (setq *decl-diffs* 'SIGNATURE)
 	       (unless *decl-diffs*
 		 (setq *decl-diffs* 'SIGNATURE))))
@@ -404,13 +404,48 @@
 	 (compare* (args old) (args new)))
        (compare* (expression old) (expression new))))
 
+(defmethod compare* ((old projection-expr) (new projection-expr))
+  (and (compare* (id old) (id new))
+       (compare* (actuals old) (actuals new))
+       (compare* (index old) (index new))))
+
+(defmethod compare* ((old injection-expr) (new injection-expr))
+  (and (compare* (id old) (id new))
+       (compare* (actuals old) (actuals new))
+       (compare* (index old) (index new))))
+
+(defmethod compare* ((old injection?-expr) (new injection?-expr))
+  (and (compare* (id old) (id new))
+       (compare* (actuals old) (actuals new))
+       (compare* (index old) (index new))))
+
+(defmethod compare* ((old extraction-expr) (new extraction-expr))
+  (and (compare* (id old) (id new))
+       (compare* (actuals old) (actuals new))
+       (compare* (index old) (index new))))
+
+
 (defmethod compare* ((old projection-application) (new projection-application))
   (and (compare* (id old) (id new))
+       (compare* (actuals old) (actuals new))
        (compare* (index old) (index new))
        (compare* (argument old) (argument new))))
 
 (defmethod compare* ((old injection-application) (new injection-application))
   (and (compare* (id old) (id new))
+       (compare* (actuals old) (actuals new))
+       (compare* (index old) (index new))
+       (compare* (argument old) (argument new))))
+
+(defmethod compare* ((old injection?-application) (new injection?-application))
+  (and (compare* (id old) (id new))
+       (compare* (actuals old) (actuals new))
+       (compare* (index old) (index new))
+       (compare* (argument old) (argument new))))
+
+(defmethod compare* ((old extraction-application) (new extraction-application))
+  (and (compare* (id old) (id new))
+       (compare* (actuals old) (actuals new))
        (compare* (index old) (index new))
        (compare* (argument old) (argument new))))
 
@@ -431,6 +466,9 @@
   (and (typep (argument new) 'arg-tuple-expr)
        (= (length (exprs (argument new))) 2)
        (compare* (reverse (exprs (argument old))) (exprs (argument new)))))
+
+(defmethod compare* ((old coercion) (new coercion))
+  (compare* (argument old) (argument new)))
 
 (defmethod compare* ((old table-expr) (new table-expr))
   (and (compare* (row-expr old) (row-expr new))

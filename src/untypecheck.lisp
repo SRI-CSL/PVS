@@ -442,12 +442,40 @@
   (untypecheck-theory (args ex))
   (untypecheck-theory (expression ex)))
 
+(defmethod untypecheck-theory ((ex projection-expr))
+  (call-next-method)
+  (untypecheck-theory (actuals ex)))
+
+(defmethod untypecheck-theory ((ex injection-expr))
+  (call-next-method)
+  (untypecheck-theory (actuals ex)))
+
+(defmethod untypecheck-theory ((ex injection?-expr))
+  (call-next-method)
+  (untypecheck-theory (actuals ex)))
+
+(defmethod untypecheck-theory ((ex extraction-expr))
+  (call-next-method)
+  (untypecheck-theory (actuals ex)))
+
 (defmethod untypecheck-theory ((ex projection-application))
   (call-next-method)
+  (untypecheck-theory (actuals ex))
   (untypecheck-theory (argument ex)))
 
 (defmethod untypecheck-theory ((ex injection-application))
   (call-next-method)
+  (untypecheck-theory (actuals ex))
+  (untypecheck-theory (argument ex)))
+
+(defmethod untypecheck-theory ((ex injection?-application))
+  (call-next-method)
+  (untypecheck-theory (actuals ex))
+  (untypecheck-theory (argument ex)))
+
+(defmethod untypecheck-theory ((ex extraction-application))
+  (call-next-method)
+  (untypecheck-theory (actuals ex))
   (untypecheck-theory (argument ex)))
 
 (defmethod untypecheck-theory ((ex field-application))
@@ -596,17 +624,43 @@
 	(resolutions ex1) (resolutions ex2)))
 
 (defmethod copy-slots ((ex1 projection-expr) (ex2 projection-expr))
-  (break "shouldn't happen")
-  (setf (index ex1) (index ex2)))
+  (setf (index ex1) (index ex2))
+  (setf (actuals ex1) (actuals ex2)))
+
+(defmethod copy-slots ((ex1 injection-expr) (ex2 injection-expr))
+  (setf (index ex1) (index ex2))
+  (setf (actuals ex1) (actuals ex2)))
+
+(defmethod copy-slots ((ex1 injection?-expr) (ex2 injection?-expr))
+  (setf (index ex1) (index ex2))
+  (setf (actuals ex1) (actuals ex2)))
+
+(defmethod copy-slots ((ex1 extraction-expr) (ex2 extraction-expr))
+  (setf (index ex1) (index ex2))
+  (setf (actuals ex1) (actuals ex2)))
 
 (defmethod copy-slots ((ex1 projection-application) (ex2 projection-application))
   (setf (id ex1) (id ex2)
 	(index ex1) (index ex2)
+	(actuals ex1) (actuals ex2)
 	(argument ex1) (argument ex2)))
 
 (defmethod copy-slots ((ex1 injection-application) (ex2 injection-application))
   (setf (id ex1) (id ex2)
 	(index ex1) (index ex2)
+	(actuals ex1) (actuals ex2)
+	(argument ex1) (argument ex2)))
+
+(defmethod copy-slots ((ex1 injection?-application) (ex2 injection?-application))
+  (setf (id ex1) (id ex2)
+	(index ex1) (index ex2)
+	(actuals ex1) (actuals ex2)
+	(argument ex1) (argument ex2)))
+
+(defmethod copy-slots ((ex1 extraction-application) (ex2 extraction-application))
+  (setf (id ex1) (id ex2)
+	(index ex1) (index ex2)
+	(actuals ex1) (actuals ex2)
 	(argument ex1) (argument ex2)))
 
 (defmethod copy-slots ((ex1 field-application) (ex2 field-application))

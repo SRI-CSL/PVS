@@ -43,7 +43,7 @@
 ;;; looking up the modname in *all-subst-mod-params-caches*.
 
 (defvar *subst-mod-params-cache* nil)
-
+(defvar *subst-mod-params-eq-cache* nil)
 
 ;;; Flag indicating whether to update the cache.  Needed because the expr
 ;;; slot of an actual may be substituted for even if it has no type or
@@ -82,7 +82,8 @@
 
 (defun remove-subst-mod-params-cache ()
   (setq *all-subst-mod-params-caches* nil)
-  (setq *subst-mod-params-cache* nil))
+  (setq *subst-mod-params-cache* nil)
+  (setq *subst-mod-params-eq-cache* nil))
 
 (defun copy-subst-mod-params-cache ()
   (let ((new-hash (make-hash-table
@@ -90,9 +91,9 @@
 		   :test 'tc-eq
 		   :size (floor (hash-table-size *all-subst-mod-params-caches*)
 				1.5384616))))
-    (maphash #'(lambda (modname hash)
+    (maphash #'(lambda (modname hashes)
 		 (setf (gethash modname new-hash)
-		       (copy hash)))
+		       (cons (copy (car hashes)) (copy (cdr hashes)))))
 	     *all-subst-mod-params-caches*)
     new-hash))
 
@@ -100,16 +101,17 @@
 ;;; Gets the cache associated with the given modinst, or creates a new one
 ;;; and returns it if necessary.
 
-(defun get-subst-mod-params-cache (modinst)
+(defun get-subst-mod-params-caches (modinst)
   (unless *all-subst-mod-params-caches*
     (reset-subst-mod-params-cache))
-  (let ((cache (gethash modinst *all-subst-mod-params-caches*)))
-    (or cache
-	(let ((ncache
-	       (make-hash-table :hash-function 'pvs-sxhash
-				:test 'strong-tc-eq)))
-	  (setf (gethash modinst *all-subst-mod-params-caches*) ncache)
-	  ncache))))
+  (let ((caches (gethash modinst *all-subst-mod-params-caches*)))
+    (or caches
+	(let ((ncaches
+	       (cons (make-hash-table :hash-function 'pvs-sxhash
+				      :test 'strong-tc-eq)
+		     (make-hash-table :test 'eq))))
+	  (setf (gethash modinst *all-subst-mod-params-caches*) ncaches)
+	  ncaches))))
 
 (defmethod subst-theory-params (term (alist cons))
   (assert (every #'(lambda (elt) (formal-decl? (car elt))) alist))
@@ -158,8 +160,9 @@
 		   )
 	      (mappings modinst))
 	  (let* ((*generate-tccs* 'none)
-		 (*subst-mod-params-cache*
-		  (get-subst-mod-params-cache modinst))
+		 (caches (get-subst-mod-params-caches modinst))
+		 (*subst-mod-params-cache* (car caches))
+		 (*subst-mod-params-eq-cache* (cdr caches))
 		 (bindings (make-subst-mod-params-bindings
 			    modinst formals actuals (mappings modinst) nil))
 		 (nobj (subst-mod-params* obj modinst bindings)))
@@ -363,39 +366,40 @@
 
 (defmethod subst-mod-params* :around (obj modinst bindings)
   (declare (type hash-table *subst-mod-params-cache*))
-  (let ((hobj (gethash obj *subst-mod-params-cache*)))
-    (or hobj
-	(let ((nobj (if (and (null (mappings modinst))
-			     (not (some #'(lambda (b)
-					    (formal-theory-decl? (car b)))
-					bindings))
-			     (fully-instantiated? obj))
-			obj
-			(call-next-method))))
-	  (when (and (typep obj 'type-expr)
-		     (typep nobj 'type-expr))
-	    (when (print-type obj)
-	      (let ((pte (subst-mod-params* (print-type obj)
-					    modinst bindings)))
-		(setq nobj (lcopy nobj 'print-type pte))))
-	    (when (from-conversion obj)
-	      (let ((fconv (subst-mod-params* (from-conversion obj)
-					    modinst bindings)))
-		(setq nobj (lcopy nobj 'from-conversion fconv)))))
-	  (when (or (eq obj nobj)
-		    (and (null (freevars nobj))
-			 (relatively-fully-instantiated?
-			  nobj (free-params modinst))))
-	    (setf (gethash obj *subst-mod-params-cache*) nobj))
-	  #+pvsdebug
-	  (assert (every #'(lambda (fv)
-			     (or (binding? fv)
-				 (member fv (freevars obj)
-					 :test #'same-declaration)
-				 (member fv (freevars modinst)
-					 :test #'same-declaration)))
-			 (freevars nobj)))
-	  nobj))))
+  (or (gethash obj *subst-mod-params-eq-cache*)
+      (let ((hobj (gethash obj *subst-mod-params-cache*)))
+	(or hobj
+	    (let ((nobj (if (and (null (mappings modinst))
+				 (not (some #'(lambda (b)
+						(formal-theory-decl? (car b)))
+					    bindings))
+				 (fully-instantiated? obj))
+			    obj
+			    (call-next-method))))
+	      (when (and (typep obj 'type-expr)
+			 (typep nobj 'type-expr))
+		(when (print-type obj)
+		  (let ((pte (subst-mod-params* (print-type obj)
+						modinst bindings)))
+		    (setq nobj (lcopy nobj 'print-type pte))))
+		(when (from-conversion obj)
+		  (let ((fconv (subst-mod-params* (from-conversion obj)
+						  modinst bindings)))
+		    (setq nobj (lcopy nobj 'from-conversion fconv)))))
+	      (if (and (null (freevars nobj))
+		       (relatively-fully-instantiated?
+			nobj (free-params modinst)))
+		  (setf (gethash obj *subst-mod-params-cache*) nobj)
+		  (setf (gethash obj *subst-mod-params-eq-cache*) nobj))
+	      #+pvsdebug
+	      (assert (every #'(lambda (fv)
+				 (or (binding? fv)
+				     (member fv (freevars obj)
+					     :test #'same-declaration)
+				     (member fv (freevars modinst)
+					     :test #'same-declaration)))
+			     (freevars nobj)))
+	      nobj)))))
 
 (defun relatively-fully-instantiated? (obj free-params)
   (let ((frees (set-difference (free-params obj) free-params)))
@@ -418,13 +422,13 @@
 
 (defmethod subst-mod-params* ((th module) modinst bindings)
   (with-slots (formals assuming theory exporting) th
-    (let ((rformals (remove-if #'(lambda (d) (assq d bindings)) formals))
-	  (rassuming (remove-if
-			 #'(lambda (d) (substituted-map-decl d bindings))
-		       assuming))
-	  (rtheory (remove-if
-		       #'(lambda (d) (substituted-map-decl d bindings))
-		     theory)))
+    (let* ((rformals (remove-if #'(lambda (d) (assq d bindings)) formals))
+	   (rassuming (remove-if
+			  #'(lambda (d) (substituted-map-decl d bindings))
+			assuming))
+	   (rtheory (remove-if
+			#'(lambda (d) (substituted-map-decl d bindings))
+		      theory)))
       (lcopy th
 	'formals (subst-mod-params* rformals modinst bindings)
 	'assuming (remove-if #'null
@@ -874,19 +878,65 @@
 		(list (mk-resolution nbd (current-theory-name) ntype)))
 	  nbd))))
 
-(defmethod subst-mod-params* ((expr projection-application) modinst bindings)
-  (with-slots (argument type) expr
-    (let ((narg (subst-mod-params* argument modinst bindings))
+(defmethod subst-mod-params* ((expr projection-expr) modinst bindings)
+  (with-slots (actuals type) expr
+    (let ((nacts (subst-mod-params* actuals modinst bindings))
 	  (ntype (subst-mod-params* type modinst bindings)))
-	    #+pvsdebug (assert (fully-instantiated? ntype))
-	    (lcopy expr 'argument narg 'type ntype))))
+      #+pvsdebug (assert (fully-instantiated? ntype))
+      (lcopy expr 'actuals nacts 'type ntype))))
+
+(defmethod subst-mod-params* ((expr injection-expr) modinst bindings)
+  (with-slots (actuals type) expr
+    (let ((nacts (subst-mod-params* actuals modinst bindings))
+	  (ntype (subst-mod-params* type modinst bindings)))
+      #+pvsdebug (assert (fully-instantiated? ntype))
+      (lcopy expr 'actuals nacts 'type ntype))))
+
+(defmethod subst-mod-params* ((expr injection?-expr) modinst bindings)
+  (with-slots (actuals type) expr
+    (let ((nacts (subst-mod-params* actuals modinst bindings))
+	  (ntype (subst-mod-params* type modinst bindings)))
+      #+pvsdebug (assert (fully-instantiated? ntype))
+      (lcopy expr 'actuals nacts 'type ntype))))
+
+(defmethod subst-mod-params* ((expr extraction-expr) modinst bindings)
+  (with-slots (actuals type) expr
+    (let ((nacts (subst-mod-params* actuals modinst bindings))
+	  (ntype (subst-mod-params* type modinst bindings)))
+      #+pvsdebug (assert (fully-instantiated? ntype))
+      (lcopy expr 'actuals nacts 'type ntype))))
+
+(defmethod subst-mod-params* ((expr projection-application) modinst bindings)
+  (with-slots (argument actuals type) expr
+    (let ((nacts (subst-mod-params* actuals modinst bindings))
+	  (narg (subst-mod-params* argument modinst bindings))
+	  (ntype (subst-mod-params* type modinst bindings)))
+      #+pvsdebug (assert (fully-instantiated? ntype))
+      (lcopy expr 'actuals nacts 'argument narg 'type ntype))))
 
 (defmethod subst-mod-params* ((expr injection-application) modinst bindings)
-  (with-slots (argument type) expr
-    (let ((narg (subst-mod-params* argument modinst bindings))
+  (with-slots (argument actuals type) expr
+    (let ((nacts (subst-mod-params* actuals modinst bindings))
+	  (narg (subst-mod-params* argument modinst bindings))
 	  (ntype (subst-mod-params* type modinst bindings)))
-	    #+pvsdebug (assert (fully-instantiated? ntype))
-	    (lcopy expr 'argument narg 'type ntype))))
+      #+pvsdebug (assert (fully-instantiated? ntype))
+      (lcopy expr 'actuals nacts 'argument narg 'type ntype))))
+
+(defmethod subst-mod-params* ((expr injection?-application) modinst bindings)
+  (with-slots (argument actuals type) expr
+    (let ((nacts (subst-mod-params* actuals modinst bindings))
+	  (narg (subst-mod-params* argument modinst bindings))
+	  (ntype (subst-mod-params* type modinst bindings)))
+      #+pvsdebug (assert (fully-instantiated? ntype))
+      (lcopy expr 'actuals nacts 'argument narg 'type ntype))))
+
+(defmethod subst-mod-params* ((expr extraction-application) modinst bindings)
+  (with-slots (argument actuals type) expr
+    (let ((nacts (subst-mod-params* actuals modinst bindings))
+	  (narg (subst-mod-params* argument modinst bindings))
+	  (ntype (subst-mod-params* type modinst bindings)))
+      #+pvsdebug (assert (fully-instantiated? ntype))
+      (lcopy expr 'actuals nacts 'argument narg 'type ntype))))
 
 (defmethod subst-mod-params* ((expr field-name-expr) modinst bindings)
   expr)
@@ -1148,8 +1198,13 @@
 	      (mk-modname (id th)
 		(mapcar #'(lambda (fm)
 			    (let ((ex (cdr (assq fm alist))))
-			      (assert ex)
-			      (mk-actual ex)))
+			      (if ex
+				  (mk-actual ex)
+				  (mk-res-actual
+				   (mk-name-expr (id fm)
+				     nil nil
+				     (make-resolution fm (mk-modname (id th))))
+				   th))))
 		  (formals-sans-usings th))))
     (theories-of-param-alist alist)))
 

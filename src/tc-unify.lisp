@@ -24,8 +24,8 @@
 ;;; will be weeded out in resolve.lisp - see create-compatible-modinsts.
 
 (defun find-compatible-bindings (arguments formals binding)
-  (let ((types-lists (cartesian-product
-		      (mapcar #'get-compatible-binding-types arguments))))
+  (let* ((args-types (mapcar #'get-compatible-binding-types arguments))
+	 (types-lists (cartesian-product args-types)))
     (find-compatible-bindings* types-lists formals binding nil)))
 
 (defun get-compatible-binding-types (obj)
@@ -59,8 +59,17 @@
 
 (defmethod lift-constructor-types ((obj application))
   (if (name-expr? (operator obj))
-      (let ((creses (remove-if (complement #'constructor-resolution?)
-		      (resolutions (operator obj)))))
+      (let* ((creses (remove-if (complement #'constructor-resolution?)
+		       (resolutions (operator obj))))
+	     (rem-types (when creses
+			  (remove-if
+			      #'(lambda (ty)
+				  (member ty
+					  (resolutions (operator obj))
+					  :test #'tc-eq
+					  :key #'(lambda (r)
+						   (range (type r)))))
+			    (types obj)))))
 	(if creses
 	    (delete-duplicates
 	     (nconc (mapcar #'(lambda (r) (supertype (range (type r))))
@@ -68,7 +77,8 @@
 		    (mapcan #'(lambda (r)
 				(unless (memq r creses)
 				  (list (range (type r)))))
-		      (resolutions (operator obj))))
+		      (resolutions (operator obj)))
+		    rem-types)
 	     :test #'tc-eq)
 	    (types obj)))
       (types obj)))
@@ -487,6 +497,46 @@
 ;  (tc-match* (expression arg) (expression farg)
 ;	 (tc-match* (type arg) (type farg) bindings)))
 
+(defmethod tc-match* ((arg projection-expr) (farg projection-expr) bindings)
+  (when (= (index arg) (index farg))
+    bindings))
+
+(defmethod tc-match* ((arg projection-expr) (farg name-expr) bindings)
+  nil)
+
+(defmethod tc-match* ((arg name-expr) (farg projection-expr) bindings)
+  nil)
+
+(defmethod tc-match* ((arg injection-expr) (farg injection-expr) bindings)
+  (when (= (index arg) (index farg))
+    bindings))
+
+(defmethod tc-match* ((arg injection-expr) (farg name-expr) bindings)
+  nil)
+
+(defmethod tc-match* ((arg name-expr) (farg injection-expr) bindings)
+  nil)
+
+(defmethod tc-match* ((arg injection?-expr) (farg injection?-expr) bindings)
+  (when (= (index arg) (index farg))
+    bindings))
+
+(defmethod tc-match* ((arg injection?-expr) (farg name-expr) bindings)
+  nil)
+
+(defmethod tc-match* ((arg name-expr) (farg injection?-expr) bindings)
+  nil)
+
+(defmethod tc-match* ((arg extraction-expr) (farg extraction-expr) bindings)
+  (when (= (index arg) (index farg))
+    bindings))
+
+(defmethod tc-match* ((arg extraction-expr) (farg name-expr) bindings)
+  nil)
+
+(defmethod tc-match* ((arg name-expr) (farg extraction-expr) bindings)
+  nil)
+
 (defmethod tc-match* ((arg projection-application)
 		      (farg projection-application) bindings)
   (when (= (index arg) (index farg))
@@ -494,6 +544,16 @@
 
 (defmethod tc-match* ((arg injection-application)
 		      (farg injection-application) bindings)
+  (when (= (index arg) (index farg))
+    (tc-match* (argument arg) (argument farg) bindings)))
+
+(defmethod tc-match* ((arg injection?-application)
+		      (farg injection?-application) bindings)
+  (when (= (index arg) (index farg))
+    (tc-match* (argument arg) (argument farg) bindings)))
+
+(defmethod tc-match* ((arg extraction-application)
+		      (farg extraction-application) bindings)
   (when (= (index arg) (index farg))
     (tc-match* (argument arg) (argument farg) bindings)))
 

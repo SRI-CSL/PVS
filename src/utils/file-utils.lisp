@@ -37,10 +37,12 @@
 ;;;
 
 (defmacro expanded-tilde-namestring (filename)
-  `(excl::tilde-expand-unix-namestring (namestring ,filename)))
+  `(ignore-errors (excl::tilde-expand-unix-namestring (namestring ,filename))))
 
 (defun file-exists-p (filename)
-  (zerop (fileutils___file_exists_p (expanded-tilde-namestring filename))))
+  (let ((exp-file (expanded-tilde-namestring filename)))
+    (and exp-file
+	 (zerop (fileutils___file_exists_p exp-file)))))
 
 (defun directory-p (filename)
   (let* ((filestring (expanded-tilde-namestring filename)))

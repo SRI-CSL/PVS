@@ -78,7 +78,8 @@
 (defun sequent-reduce (sequent simplifier sformnums)
   (multiple-value-bind
    (signal result)
-   (sform-reduce (s-forms sequent) simplifier sformnums 1 -1)
+   (sform-reduce (s-forms sequent) simplifier
+		 (cleanup-fnums sformnums) 1 -1)
    (cond ((eq signal '!) (values '! nil))
 	 ((eq signal 'X) (values 'X sequent))
 	 ((eq signal '?)(values '?  (lcopy sequent
@@ -425,6 +426,24 @@
 		    'argument arg
 		    'type injtype))))))))
 
+(defmethod simplify-ifs ((expr injection?-application) trueconds falseconds)
+  (with-slots (index argument) expr
+    (let ((arg (simplify-ifs argument trueconds falseconds)))
+      (lcopy expr 'argument arg))))
+
+(defmethod simplify-ifs ((expr extraction-application) trueconds falseconds)
+  (with-slots (index argument) expr
+    (let ((arg (simplify-ifs argument trueconds falseconds)))
+      (if (eq arg argument)
+	  expr
+	  (if (tc-eq (type arg) (type argument))
+	      (copy expr 'argument arg)
+	      (let* ((stype (find-supertype (type arg)))
+		     (intype (nth (1- index) (types stype))))
+		(copy expr
+		  'argument arg
+		  'type intype)))))))
+
 (defmethod simplify-ifs ((expr field-application) trueconds falseconds)
   (with-slots (id argument) expr
     (let ((arg (simplify-ifs argument trueconds falseconds)))
@@ -617,6 +636,12 @@
 (defmethod collect-conds ((expr injection-application) &optional boundvars)
   (collect-conds (argument expr) boundvars))
 
+(defmethod collect-conds ((expr injection?-application) &optional boundvars)
+  (collect-conds (argument expr) boundvars))
+
+(defmethod collect-conds ((expr extraction-application) &optional boundvars)
+  (collect-conds (argument expr) boundvars))
+
 (defmethod collect-conds ((expr field-application) &optional boundvars)
   (collect-conds (argument expr) boundvars))
 
@@ -802,7 +827,8 @@
 				      mod-inst res-params))
 	     (rest (check-with-subst (cdr resolutions) subalist context)))
 	;; (break)
-	(if form
+	(if (and form
+		 (not (assoc form rest :test #'tc-eq)))
 	    (cons (cons form resolution) rest)
 	    rest))))
 

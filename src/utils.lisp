@@ -59,7 +59,8 @@
   (let ((nex (call-next-method)))
     (if (or (not (type ex))
 	    (not (type nex))
-	    (eq (operator ex) (operator nex)))
+	    (and (eq (operator ex) (operator nex))
+		 (eq (argument ex) (argument nex))))
 	nex
 	(change-application-class-if-necessary ex nex))))
 
@@ -272,11 +273,7 @@
 
 (defmethod get-theory ((name modname))
   (with-slots (library id) name
-    (if library
-	(let ((lib-decls (remove-if-not #'lib-decl?
-			   (gethash library (current-declarations-hash)))))
-	  (get-lib-theory (sort lib-decls #'< :key #'locality) library id))
-	(get-theory* id library))))
+    (get-theory* id library)))
 
 (defmethod get-theory ((name name))
   (with-slots (mod-id library id) name
@@ -286,13 +283,6 @@
 			     (gethash library (current-declarations-hash)))))
 	    (get-lib-theory (sort lib-decls #'< :key #'locality) library id))
 	  (get-theory* id library)))))
-
-(defun get-lib-theory (lib-decls library id)
-  (if (null lib-decls)
-      (get-theory* id (string library))
-      (or (get-theory* id (library-pathname (car lib-decls)))
-	  (get-lib-theory (cdr lib-decls) library id))))
-      
 
 (defmethod get-theory ((str string))
   (get-theory (pc-parse str 'modname)))
@@ -316,28 +306,30 @@
   (get-theory (pathname-name path)))
 
 (defun get-theory* (id library)
-  (let ((*current-context* (or *current-context* *prelude-context*)))
+  (assert (symbolp library))
+  (let ((*current-context* (or *current-context*
+			       *prelude-library-context*
+			       *prelude-context*)))
     (if library
-	(multiple-value-bind (lib path)
-	    (get-library-pathname library)
-	  (and lib
-	       (let* ((imphash (cadr (gethash lib *imported-libraries*)))
-		      (prehash (cadr (gethash lib *prelude-libraries*))))
-		 (if (file-equal path *pvs-context-path*)
+	(let* ((lref (get-library-reference library))
+	       (lib-ref (when lref (get-relative-library-reference lref))))
+	  (and lib-ref
+	       (let* ((imphash (cadr (gethash lib-ref *imported-libraries*)))
+		      (prehash (cadr (gethash lib-ref *prelude-libraries*))))
+		 (if (file-equal lib-ref *pvs-context-path*)
 		     (gethash id *pvs-modules*)
 		     (or (and imphash (gethash id imphash))
 			 (and prehash (gethash id prehash))
 			 ;;(gethash id *prelude*)
 			 )))))
 	(or (when (and (current-theory)
-		       (eq (id (current-theory)) id))
-	      (current-theory))
+                       (eq (id (current-theory)) id))
+              (current-theory))
 	    (gethash id *prelude*)
-	    ;;(gethash id *pvs-modules*)
 	    (car (assoc id (prelude-libraries-uselist)
 			:test #'(lambda (x y) (eq x (id y)))))
-	    (gethash id *pvs-modules*)
 	    (find id (named-theories *current-context*) :key #'id)
+	    (gethash id *pvs-modules*)
 	    (let ((theories (get-imported-theories id)))
 	      (if (cdr theories)
 		  (pvs-message "Ambiguous theories - ~a"
@@ -463,6 +455,52 @@
 		 ndir
 		 cdir)))
 	  (t cdir))))
+
+(defun shortpath (directory)
+  (let ((dirlist (pathname-directory
+		  (directory-p
+		   (excl:pathname-resolve-symbolic-links
+		    (truename directory)))))
+	(file-info (get-file-info directory)))
+    (assert (listp dirlist))
+    (assert file-info)
+    (if (eq (car dirlist) :absolute)
+	(shortpath* (reverse (cdr dirlist)) file-info)
+	directory)))
+
+(defun shortpath* (revdirlist file-info &optional dirlist)
+  (let ((path (make-pathname :directory (cons :absolute dirlist))))
+    (if (equal (get-file-info path) file-info)
+	path
+	(shortpath* (cdr revdirlist) file-info
+		    (cons (car revdirlist) dirlist)))))
+
+(defun relative-path (path &optional (relpath *pvs-context-path*) (depth 2))
+  (let ((dirlist (pathname-directory (shortpath path)))
+	(reldirlist (pathname-directory (shortpath relpath))))
+    (when (and (eq (car dirlist) :absolute)
+	       (eq (car reldirlist) :absolute))
+      (or (relative-path* (cdr dirlist) (cdr reldirlist) depth)
+	  path))))
+
+(defun relative-path* (dirlist reldirlist depth)
+  (if (and dirlist
+	   reldirlist
+	   (string= (car dirlist) (car reldirlist)))
+      (relative-path* (cdr dirlist) (cdr reldirlist) depth)
+      (when (or (null depth)
+		(and (integerp depth)
+		     (>= depth (length reldirlist))))
+	(let ((reldir
+	       (namestring
+		(make-pathname :directory
+			       (cons :relative
+				     (nconc (make-list (length reldirlist)
+						       :initial-element :back)
+					    dirlist))))))
+	  (if (and dirlist (null reldirlist))
+	      (concatenate 'string "./" reldir)
+	      reldir)))))
 
 ;;; Checks if the dir is in fact a directory; returns the expanded
 ;;; pathname ending with a slash.
@@ -709,7 +747,8 @@
 					      (adt-map-theory prevp)
 					      (adt-theory prevp))
 					  prevp))))
-				  (t *prelude-context*))
+				  (t (or *prelude-library-context*
+					 *prelude-context*)))
 			    theory
 			    (reverse rem-decls)
 			    (or (car rem-decls) decl))
@@ -726,8 +765,7 @@
 	 (put-decl d (current-declarations-hash))
 	 (let* ((thname (theory-name d))
 		(th (get-theory thname)))
-	   (add-exporting-with-theories th thname)
-	   (add-to-using thname))
+	   (add-exporting-with-theories th thname))
 	 (setf (saved-context d) (copy-context *current-context*)))
 	(importing
 	 (let* ((thname (theory-name d))
@@ -809,7 +847,7 @@
 		       adecls))
 	     (badass (find-if #'(lambda (d)
 				 (and (typep d 'formula-decl)
-				      (eq (spelling d) 'assumption)
+				      (eq (spelling d) 'ASSUMPTION)
 				      (some #'(lambda (dd)
 						(and (typep dd 'formal-decl)
 						     (not (memq dd fdecls))))
@@ -906,7 +944,7 @@
 
 (defmethod context (ignore)
   (declare (ignore ignore))
-  (copy-context *prelude-context*))
+  (copy-context (or *prelude-library-context* *prelude-context*)))
 
 (defun add-usings-to-context (modinsts)
   (when modinsts
@@ -1410,7 +1448,7 @@
 
 (defmethod adt :around ((te type-name))
   (with-slots (adt) te
-    (if (and adt (symbolp adt))
+    (if (symbolp adt)
 	(restore-adt-slot te)
 	adt)))
 
@@ -1465,6 +1503,13 @@
 	(setf (recognizer-name fn)
 	      (mk-name-expr (id rd) nil nil res)))))
 
+(defmethod recognizer ((fn injection-expr))
+  (let ((cotuptype (find-supertype (range (type fn)))))
+    (make-instance 'injection?-expr
+      'id (makesym "IN?_~d" (index fn))
+      'index (index fn)
+      'type (mk-funtype cotuptype *boolean*))))
+
 (defmethod accessors ((fn name-expr))
   (when (constructor? fn)
     (let* ((con (car (member fn (constructors (adt (adt fn)))
@@ -1486,9 +1531,32 @@
 		(acc-decls con))))
       (accessor-names fn)))
 
+(defmethod accessors ((fn injection-expr))
+  (let* ((cotuptype (find-supertype (range (type fn))))
+	 (inrec (make-instance 'injection?-expr
+		  'id (makesym "IN?_~d" (index fn))
+		  'index (index fn)
+		  'type (mk-funtype cotuptype *boolean*)))
+	 (insubtype (make!-expr-as-type inrec))
+	 (intype (nth (1- (index fn)) (types cotuptype))))
+    (list (make-instance 'extraction-expr
+	    'id (makesym "OUT_~d" (index fn))
+	    'index (index fn)
+	    'type (mk-funtype insubtype intype)))))
+
 (defmethod constructor ((fn recognizer-name-expr))
   (or (constructor-name fn)
       (setf (constructor-name fn) (call-next-method))))
+
+(defmethod constructor ((fn injection?-expr))
+  (or (constructor-name fn)
+      (setf (constructor-name fn)
+	    (let* ((cotupletype (find-supertype (domain (type fn))))
+		   (intype (nth (1- (index fn)) (types cotupletype))))
+	      (make-instance 'injection-expr
+		'index (index fn)
+		'id (makesym "IN_~d" (index fn))
+		'type (mk-funtype intype cotupletype))))))
 
 (defmethod constructor ((fn accessor-name-expr))
   (let* ((constrs (remove-if-not #'(lambda (c) (part-of-constructor fn c))
@@ -1530,6 +1598,16 @@
 			      (make-resolution cd (module-instance tn))))
 	    (mapcar #'con-decl (constructors (adt tn))))))
 
+(defmethod constructors ((te cotupletype))
+  (let ((index 0))
+    (mapcar #'(lambda (ty rec)
+		(incf index)
+		(make-instance 'injection-expr
+		  'id (makesym "IN_~d" index)
+		  'index index
+		  'type (mk-funtype te (make!-expr-as-type rec))))
+      (types te) (recognizers te))))
+
 (defmethod constructors ((te subtype))
   (constructors (supertype te)))
 
@@ -1541,6 +1619,17 @@
 	(setf (recognizer-names tn)
 	      (subst-mod-params (mapcar #'recognizer (constructors tn))
 				(module-instance tn))))))
+
+(defmethod recognizers ((te cotupletype))
+  (let ((index 0))
+    (mapcar #'(lambda (ty)
+		(incf index)
+		(make-instance 'injection?-expr
+		  'id (makesym "IN?_~d" index)
+		  'index index
+		  'type (mk-funtype te *boolean*)))
+      (types te))))
+		
 
 (defmethod recognizers ((te subtype))
   (recognizers (supertype te)))
@@ -1687,6 +1776,7 @@
 
 (defun raise-actuals (obj &optional (actuals-also? t))
   (let ((*raise-actuals-of-actuals* actuals-also?)
+	(*pseudo-normalizing* t)
 	(*visible-only* t))
     (gensubst obj #'raise-actuals! #'raise-actuals?)))
 
@@ -1799,11 +1889,14 @@
 	((null selections)
 	 else-part)
 	(t (let* ((sel (car selections))
-		  (thinst (module-instance (find-supertype (type expr))))
-		  (rec
-		   (subst-mod-params (recognizer (constructor sel))
-				     thinst))
-		  (cond (make-application rec expr))
+		  (stype (find-supertype (type expr)))
+		  (thinst (unless (cotupletype? stype)
+			    (module-instance stype)))
+		  (rec (if thinst
+			   (subst-mod-params (recognizer (constructor sel))
+					     thinst)
+			   (recognizer (constructor sel))))
+		  (cond (make!-application rec expr))
 		  (then ;(subst-mod-params
 			 (subst-accessors-in-selection expr sel)
 			 ;thinst)
@@ -1811,17 +1904,28 @@
 		  (else (translate-cases-to-if* expr (cdr selections)
 						else-part t)))
 	     (if chained?
-		 (make-chained-if-expr cond then else)
-		 (make-if-expr cond then else))))))
+		 (make!-chained-if-expr cond then else)
+		 (make!-if-expr cond then else))))))
 
 (defun subst-accessors-in-selection (expr sel)
-  (let* ((thinst (module-instance (find-declared-adt-supertype (type expr))))
-	 (accs (subst-mod-params (accessors (constructor sel)) thinst))
+  (let* ((stype (find-declared-adt-supertype (type expr)))
+	 (thinst (unless (cotupletype? stype)
+		   (module-instance stype)))
+	 (accs (if thinst
+		   (subst-mod-params (accessors (constructor sel)) thinst)
+		   (accessors (constructor sel))))
 	 (vars (args sel))
-	(selexpr (expression sel)))
+	 (selexpr (expression sel)))
     (substit selexpr
       (pairlis vars
-	       (mapcar #'(lambda (acc) (make-application acc expr))
+	       (mapcar #'(lambda (acc)
+			   (if thinst
+			       (make!-application acc expr)
+			       (make-instance 'extraction-application
+				 'id (id acc)
+				 'index (index acc)
+				 'argument expr
+				 'type (range (type acc)))))
 		       accs)))))
 
 ;;; Translate update applications to if expressions, e.g.
@@ -2122,10 +2226,10 @@
 ;;; gensubst, this function may only be used when the object has been
 ;;; typechecked, and *current-context* must be set.
 
-(defun copy-all (obj)
+(defun copy-all (obj &optional not-parsing)
   (let ((*copy-print-type* t)
 	;;(*gensubst-cache* nil)
-	(*parsing-or-unparsing* t))
+	(*parsing-or-unparsing* (not not-parsing)))
     (gensubst obj #'copy-all! #'copy-all?)))
 
 (defmethod copy-all? ((ex name))
@@ -2206,8 +2310,8 @@ space")
 	  (not (fully-instantiated? expr)))
       expr
       (let* ((fvars (freevars expr))
-	     (nexpr (unless fvars
-		      (gethash expr *pseudo-normalize-hash*))))
+	     (key (unless fvars (cons expr include-typepreds?)))
+	     (nexpr (when key (gethash key *pseudo-normalize-hash*))))
 	(if nexpr
 	    (if (tc-eq nexpr expr)
 		expr
@@ -2241,9 +2345,8 @@ space")
 				   (assert-if-simplify expr)))))
 		 (when (and nil (not (tc-eq result expr)))
 		   (break "pseudo-norm changed expr"))
-		 (unless fvars
-		   (setf (gethash expr *pseudo-normalize-hash*)
-			 result))
+		 (when key
+		   (setf (gethash key *pseudo-normalize-hash*) result))
 		 result)))))))
 
 
@@ -2486,7 +2589,7 @@ space")
   (let* ((ctype (range (find-supertype (type conversion))))
 	 (fparams (free-params ctype))
 	 (ctheory (when fparams (module (car fparams))))
-	 (fmls (formals-sans-usings ctheory)))
+	 (fmls (when ctheory (formals-sans-usings ctheory))))
     (if (and fmls
 	     (not (fully-instantiated? ctype)))
 	(let ((bindings (tc-match type ctype (mapcar #'list fmls))))
@@ -2598,6 +2701,15 @@ space")
 
 ;;;
 
+(defmethod domtype ((type funtype))
+  (domtype* (domain type)))
+
+(defmethod domtype* ((type dep-binding))
+  (type type))
+
+(defmethod domtype* (type)
+  type)
+
 (defun domain-types (type)
   (domain-types* (domain type)))
 
@@ -2675,6 +2787,14 @@ space")
     (argument-list argument)))
 
 (defmethod arguments ((expr injection-application))
+  (with-slots (argument) expr
+    (argument-list argument)))
+
+(defmethod arguments ((expr injection?-application))
+  (with-slots (argument) expr
+    (argument-list argument)))
+
+(defmethod arguments ((expr extraction-application))
   (with-slots (argument) expr
     (argument-list argument)))
 
@@ -3319,6 +3439,24 @@ space")
   (ensure-default-proof decl)
   (setf (refers-to (default-proof decl)) refs))
 
+(defmethod real-time ((decl formula-decl))
+  (when (proofs decl)
+    (ensure-default-proof decl)
+    (real-time (default-proof decl))))
+
+(defmethod (setf real-time) (time (decl formula-decl))
+  (ensure-default-proof decl)
+  (setf (real-time (default-proof decl)) time))
+
+(defmethod run-time ((decl formula-decl))
+  (when (proofs decl)
+    (ensure-default-proof decl)
+    (run-time (default-proof decl))))
+
+(defmethod (setf run-time) (time (decl formula-decl))
+  (ensure-default-proof decl)
+  (setf (run-time (default-proof decl)) time))
+
 (defun ensure-default-proof (fdecl &optional script id description)
   (unless (default-proof fdecl)
     (if (proofs fdecl)
@@ -3382,7 +3520,8 @@ space")
     theory-instances))
 
 (defun expose-binding-types (expr)
-  (gensubst expr #'expose-binding-types! #'expose-binding-types?))
+  (let ((*visible-only* t))
+    (gensubst expr #'expose-binding-types! #'expose-binding-types?)))
 
 (defmethod expose-binding-types? (ex)
   nil)
@@ -3397,8 +3536,8 @@ space")
   ex)
 
 (defmethod expose-binding-types! ((ex untyped-bind-decl))
-  (let ((dtype (or (declared-type ex)
-		   (and (type ex) (print-type (type ex)))
+  (let ((dtype (or (and (type ex) (print-type (type ex)))
+		   (declared-type ex)
 		   (type ex))))
     (if dtype
 	(change-class (copy ex 'declared-type dtype) 'bind-decl)

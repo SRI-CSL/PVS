@@ -49,6 +49,9 @@
 (defmethod freevars* ((exp exporting))
   nil)
 
+(defmethod freevars* ((imp importing))
+  nil)
+
 (defmethod freevars* :around ((expr expr))
   (with-slots (free-variables) expr
     (if (eq free-variables 'unbound)
@@ -65,6 +68,12 @@
   (freevars* (argument expr)))
 
 (defmethod freevars* ((expr injection-application))
+  (freevars* (argument expr)))
+
+(defmethod freevars* ((expr injection?-application))
+  (freevars* (argument expr)))
+
+(defmethod freevars* ((expr extraction-application))
   (freevars* (argument expr)))
 
 (defmethod freevars* ((expr field-application))
@@ -137,6 +146,15 @@
 (defmethod freevars* ((expr projection-expr))
   (freevars* (type expr)))
 
+(defmethod freevars* ((expr injection-expr))
+  (freevars* (type expr)))
+
+(defmethod freevars* ((expr injection?-expr))
+  (freevars* (type expr)))
+
+(defmethod freevars* ((expr extraction-expr))
+  (freevars* (type expr)))
+
 (defmethod freevars* ((expr record-expr))
   (freevars* (assignments expr)))
 
@@ -200,6 +218,9 @@
 
 (defmethod freevars* ((mn modname))
   (freevars* (actuals mn)))
+
+(defmethod freevars* ((texpr type-var))
+  nil)
 
 (defmethod freevars* ((texpr type-name))
   (freevars* (actuals (module-instance (resolution texpr)))))
