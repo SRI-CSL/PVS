@@ -934,11 +934,7 @@ generated")
 	  (put-decl ad (current-declarations-hash)))
 	(let* ((rng (subst-dependent-accessor-type vname pargs dtype))
 	       (ftype (mk-funtype (list dom) rng)))
-; 	  (dolist (ad accdecls)
-; 	    (setf (gethash (id ad) (declarations *current-theory*))
-; 		  (remove ad
-; 			  (gethash (id ad) (declarations *current-theory*)))))
-	  ftype))
+	  (pc-parse (unparse ftype :string t) 'type-expr)))
       (mk-funtype (list rtype) dtype)))
 
 (defun subst-dependent-accessor-type (var pargs dtype)
@@ -957,8 +953,10 @@ generated")
 
 (defmethod subst-dependent-accessor-type! ((ex name-expr) var pargs)
   (declare (ignore pargs))
-  (typecheck* (pc-parse (unparse (mk-application ex var) :string t) 'expr)
-	      (type ex) nil nil))
+  (let ((appl (mk-application (lcopy ex 'parens 0) var)))
+    (setf (parens appl) (parens ex))
+    (typecheck* (pc-parse (unparse appl :string t) 'expr)
+		(type ex) nil nil)))
 
 
 ;;; Ord function
