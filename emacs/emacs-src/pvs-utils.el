@@ -1472,21 +1472,31 @@ Point will be on the offending delimiter."
 	       ;;(save-buffer 0) ;writes a message-use the following 3 lines
 	       (set-buffer logbuf)	; body may have changed active buffer
 	       (when pvs-expected-output
-		 (goto-char (point-min))
-		 (pvs-message "Checking for expected output:\n  %s"
-		   pvs-expected-output)
-		 (if (re-search-forward pvs-expected-output nil t)
-		     (pvs-message "Found expected output")
-		     (pvs-message "ERROR: expected output not found - check %s"
-		       logfile)))
+		 (let ((standard-output logbuf))
+		   (pvs-message "Checking for expected output:\n  %s"
+		     pvs-expected-output)
+		   (let ((foundit nil))
+		     (save-excursion
+		       (goto-char (point-min))
+		       (setq foundit
+			     (re-search-forward pvs-expected-output nil t)))
+		     (if foundit
+			 (pvs-message "Found expected output")
+			 (pvs-message "ERROR: expected output not found - check %s"
+			   logfile)))))
 	       (when pvs-unexpected-output
-		 (goto-char (point-min))
-		 (pvs-message "Checking for unexpected output:\n  %s"
-		   pvs-unexpected-output)
-		 (if (re-search-forward pvs-unexpected-output nil t)
-		     (pvs-message "ERROR: unexpected output found - check %s"
-		       logfile)
-		     (pvs-message "Did not find unexpected output")))
+		 (let ((standard-output logbuf))
+		   (pvs-message "Checking for unexpected output:\n  %s"
+		     pvs-unexpected-output)
+		   (let ((foundit nil))
+		     (save-excursion
+		       (goto-char (point-min))
+		       (setq foundit
+			     (re-search-forward pvs-unexpected-output nil t)))
+		     (if foundit
+			 (pvs-message "ERROR: unexpected output found - check %s"
+			   logfile)
+			 (pvs-message "Did not find unexpected output")))))
 	       (write-region (point-min) (point-max) (buffer-file-name) nil 'nomsg)
 	       (set-buffer-modified-p nil)
 	       (clear-visited-file-modtime)
