@@ -3443,7 +3443,7 @@ labels in a list, then the last label is applied to the remaining
 fnums."
   "Applying ~a and labelling new subgoal formulas with ~a")
 
-(defstep hide-all-but (&optional (fnums *) keep-fnums)
+(defstep hide-all-but (&optional keep-fnums (fnums *))
   (let ((fnums (gather-fnums (s-forms (current-goal *ps*))
 			     fnums keep-fnums)))
     (hide :fnums fnums))
