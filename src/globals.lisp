@@ -47,6 +47,10 @@
 (defvar *suppress-msg* nil
   "Flag indicating whether to suppress messages output with pvs-message")
 
+(defvar *pp-new-projection-forms* nil
+  "Flag indicating to prettyprint new projection forms, e.g., foo`1 rather
+than proj_1(foo).")
+
 (defvar *comment-on-proof-status* nil
   "Flag indicating whether to include the proof status when unparsing a
 formula declaration.")
