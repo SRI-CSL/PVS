@@ -22,6 +22,7 @@ proc create-dag {win} {
 
     catch {unset dag}
     set dag(items) {}
+    bind $win <Destroy> "+delete-all-dag-items $win"
 }
 
 proc dag-bind-move {win suffix modifier button update} {
@@ -113,6 +114,16 @@ proc dag-add-item {win tag succs linetags} {
 		 -width 0]
 	set dag(linefrom,$lineid) $tag
 	set dag(lineto,$lineid) $s
+    }
+}
+
+proc delete-all-dag-items {win} {
+    upvar #0 dag-$win dag
+
+    foreach i [array names dag] {
+	if {[string match destroy,* $i]} {
+	    eval $dag($i)
+	}
     }
 }
 
@@ -399,6 +410,7 @@ proc proof-show {path} {
 
 
     dag-add-item $proofwin $path [kids $path [set ${path}(kids)]] [ancestors $path .desc]
+    dag-add-destroy-cb $proofwin $path "global $path; catch {unset $path}"
     if [info exists ${path}(done)] {
 	my-foreground $proofwin $path [get-option doneColor]
     } elseif [info exists ${path}(tcc)] {
@@ -450,7 +462,7 @@ proc get-full-rule {} {
     pack $win.fr.text -expand yes -fill both
     button $win.dismiss -text Dismiss -command "destroy $win"
     pack $win.dismiss -side left -padx 2 -pady 2
-    bind $win <Destroy> "catch {$proofwin delete $path.rlabel$label}"
+    bind $win <Destroy> "+catch {$proofwin delete $path.rlabel$label}"
     bind $win <Destroy> "+unset pathtorlabel($path)"
     bind $win <Destroy> "+after 1 {catch {destroy .rule$label}}"
     wm iconname $win {PVS command}
@@ -854,7 +866,7 @@ proc setup-proof {name file directory counter} {
     dag-bind-move $proofwin {} Control 2 both
     $proofwin bind sequent <1> {get-current-sequent}
     $proofwin bind rule <1> {get-full-rule}
-    bind $proofwin <Destroy> "pvs-send {(stop-displaying-proof $counter)}"
+    bind $proofwin <Destroy> "+pvs-send {(stop-displaying-proof $counter)}"
     bind $proofwin <Destroy> {+
 	foreach kid [winfo children .] {
 	    if {[string match .sequent* $kid]} {
