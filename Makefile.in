@@ -487,7 +487,7 @@ system-files = README pvs pvs-tex.sub pvs.sty bin/relocate bin/pvs-platform \
                lib/ordstruct_adt.pvs lib/character_adt.pvs \
                lib/pvs-language.help lib/pvs-prover.help lib/pvs.help \
                lib/pvs.grammar lib/pvs.bnf wish/pvs-support.tcl \
-               lib/strategies.lisp lib/release-notes \
+               lib/strategies.lisp doc/release-notes.html \
                wish/gray.xbm wish/sequent.xbm \
                emacs/README emacs/go-pvs.el $(pvs-emacs-src) \
                emacs/emacs-src/pvs.xpm \
