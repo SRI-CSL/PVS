@@ -2973,7 +2973,7 @@ required a context.")
 
 (defmethod set-assignment-arg-types* (args-list values ex (expected subtype))
   (declare (ignore args-list values ex))
-  (call-next-method))
+  (set-assignment-arg-types* args-list values ex (supertype expected)))
 
 (defmethod set-assignment-arg-types* (args-list values ex (expected recordtype))
   (with-slots (fields) expected
