@@ -43,7 +43,10 @@
 ;;; streams.  The user may not specify a readtable; the readtable must default.
 ;;; stream should be something for which the curplace, place-read-char, and 
 ;;; place-unread-char operators work
-(defstruct lexical-stream
+(defstruct (lexical-stream (:print-function
+			   (lambda (ps stream depth)
+			     (declare (ignore depth))
+			     (format stream "<lexical-stream>"))))
   stream
   readtable
   stringbuffer)
@@ -213,7 +216,10 @@
 
 ;;; Define a stream for which curplace works.  User is only allowed to 
 ;;; initialize the stream field.
-(defstruct placestream
+(defstruct (placestream (:print-function
+			   (lambda (ps stream depth)
+			     (declare (ignore depth))
+			     (format stream "<placestream>"))))
 	    stream
 	    (linetext "")
 	    (linenumber 0)
