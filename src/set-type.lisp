@@ -586,12 +586,12 @@ required a context.")
       incs
       (compatible-predicates
        (cdr types) expected ex
-       (let* ((npreds (compatible-preds (car types) expected ex))
-	      (nincs (if incs
-			 (nintersection incs npreds :test #'tc-eq)
-			 npreds)))
-	 nincs))))
-	     
+       (let ((npreds (compatible-preds (car types) expected ex)))
+	 (if incs
+	     (or (nintersection incs npreds :test #'tc-eq)
+		 npreds)
+	     npreds)))))
+
 
 (defun find-funtype-conversion (type expected expr)
   (unless (or *no-conversions-allowed*
@@ -1017,7 +1017,6 @@ required a context.")
 		  (resolutions op)))
 	 (lreses (local-resolutions reses))
 	 (loptypes (mapcar #'type lreses)))
-    
     (if (cdr loptypes)
 	(optypes-for-local-arguments argument loptypes)
 	loptypes)))
@@ -1095,12 +1094,14 @@ required a context.")
 	optypes)))
 
 (defmethod optypes-for-local-arguments* ((ex name-expr) domtypes)
-  (let* ((reses (local-resolutions (resolutions ex))))
-    (when (singleton? reses)
-      (let* ((rtype (type (car reses)))
-	     (dtypes (member rtype domtypes :test #'tc-eq)))
-	(unless (member rtype (cdr dtypes) :test #'tc-eq)
-	  (position (car dtypes) domtypes :test #'tc-eq))))))
+  (with-slots (resolutions) ex
+    (when (cdr resolutions)
+      (let* ((reses (local-resolutions resolutions)))
+	(when (singleton? reses)
+	  (let* ((rtype (type (car reses)))
+		 (dtypes (member rtype domtypes :test #'tc-eq)))
+	    (unless (member rtype (cdr dtypes) :test #'tc-eq)
+	      (position (car dtypes) domtypes :test #'tc-eq))))))))
 
 (defmethod optypes-for-local-arguments* ((ex tuple-expr) domtypes)
   (let ((dtypes-list (mapcar #'types domtypes)))
@@ -1130,8 +1131,7 @@ required a context.")
    (operator ex)
    (mapcar #'(lambda (dtype)
 	       (find-if #'(lambda (opty)
-			    (tc-eq (range (find-supertype opty))
-				   dtype))
+			    (tc-eq (range (find-supertype opty)) dtype))
 		 (types (operator ex))))
      domtypes)))
 
