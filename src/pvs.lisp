@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Wed Dec  1 15:00:38 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Jul  1 18:50:39 1999
-;; Update Count    : 94
+;; Last Modified On: Fri May 21 04:08:38 2004
+;; Update Count    : 96
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
@@ -2020,9 +2020,41 @@
 	(t (pvs-message "~a has no proof" (id decl))
 	   nil)))
 
+(defvar *proofchain-formulas*)
+(defvar *proofchain-decls*)
 
 (defun get-proofchain (fdecl)
-  (union (refers-to fdecl) (proof-refers-to fdecl)))
+  (let ((*proofchain-formulas* nil)
+	(*proofchain-decls* nil))
+    (get-proofchain* fdecl)
+    (cons fdecl
+	  (pc-sort (remove fdecl *proofchain-formulas*)
+		   (module fdecl)))))
+
+(defmethod get-proofchain* ((decls list))
+  (get-proofchain* (car decls))
+  (get-proofchain* (cdr decls)))
+
+(defmethod get-proofchain* ((decls null))
+  nil)
+
+(defmethod get-proofchain* ((decl formula-decl))
+  (unless (memq decl *proofchain-formulas*)
+    (push decl *proofchain-formulas*)
+    (unless (from-prelude? decl)
+      (get-proofchain* (refers-to decl))
+      (unless (or (axiom? decl) (assumption? decl))
+	(get-proofchain* (proof-refers-to decl)))
+      (get-proofchain* (generated decl)))))
+
+(defmethod get-proofchain* ((decl declaration))
+  (unless (or (from-prelude? decl)
+	      (memq decl *proofchain-decls*))
+    (push decl *proofchain-decls*)
+    (get-proofchain* (generated decl))))
+
+(defmethod get-proofchain* (decl)
+  nil)
 
 (defun prove-theories (name theories retry? &optional use-default-dp?)
   (let ((total 0) (proved 0) (realtime 0) (runtime 0)
