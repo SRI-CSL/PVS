@@ -1106,6 +1106,20 @@
 	    (cdrfields (subst-rec-dep-type fapp (car fields) (cdr fields))))
 	(field-application-type* cdrfields field-id arg))))
 
+;;; Gets the accessor type from the given type (a subtype of a recursive type)
+;;; The arg is needed if the accessor is dependent on earlier accessors.
+;; (defun accessor-type (acc type arg)
+;;   (let* ((constr (find-if #'(lambda (c)
+;; 			      (member (id acc) (accessors c) :key #'id))
+;; 		   (constructors type)))
+;; 	 (acc-type (type (car (member (id acc) (accessors constr)
+;; 				      :key #'id)))))
+;;     (if (freevars acc-type) ;; Has dependencies?
+;; 	(break)
+;; 	acc-type)))
+
+;; (defun accessor-application-type (acc type arg)
+;;   (range (accessor-type acc type arg)))
 
 (defun make-if-expr (cond then else)
   (let ((if-expr (mk-if-expr cond then else)))
@@ -1653,7 +1667,7 @@
 			   (cdr types))))
 	(make-projections* cdrtypes arg (1+ index) (cons projappl projapps)))))
 
-(defun make!-projection-application (index arg)
+(defun make!-projection-application (index arg &optional actuals)
   (assert (type arg))
   (if (tuple-expr? arg)
       (nth (1- index) (exprs arg))
@@ -1662,6 +1676,7 @@
 	(make-instance 'projappl
 	  'id (makesym "PROJ_~d" index)
 	  'index index
+	  'actuals actuals
 	  'argument arg
 	  'type projtype))))
 
@@ -1683,42 +1698,45 @@
 			     (cdr types))))
 	  (make!-projection-type* cdrtypes index (1+ ctr) arg)))))
 
-(defun make!-injection?-expr (index type)
+(defun make!-injection?-expr (index type &optional actuals)
   (assert (cotupletype? type))
   (make-instance 'injection?-expr
     'id (makesym "IN?_~d" index)
     'index index
-    'actuals (list (mk-actual type))
+    'actuals (or actuals (list (mk-actual type)))
     'type (mk-funtype type *boolean*)))
 
-(defun make!-injection-application (index arg type)
+(defun make!-injection-application (index arg type &optional actuals)
   (assert (type arg))
   (assert (cotupletype? (find-supertype type)))
   (assert (compatible? (type arg)
 		       (nth (1- index) (types (find-supertype type)))))
-  (let* ((cotuptype (find-supertype (type arg))))
+  (let* ((cotuptype (find-supertype type)))
     (make-instance 'injection-application
       'id (makesym "IN_~d" index)
       'index index
+      'actuals actuals
       'argument arg
       'type cotuptype)))
 
-(defun make!-injection?-application (index arg)
+(defun make!-injection?-application (index arg &optional actuals)
   (assert (type arg))
   (assert (cotupletype? (find-supertype (type arg))))
   (make-instance 'injection?-application
     'id (makesym "IN?_~d" index)
     'index index
+    'actuals actuals
     'argument arg
     'type *boolean*))
 
-(defun make!-extraction-application (index arg)
+(defun make!-extraction-application (index arg &optional actuals)
   (assert (type arg))
-  (assert (cotupletype? (find-supertype (type arg))))
   (let* ((cotuptype (find-supertype (type arg))))
+    (assert (cotupletype? cotuptype))
     (make-instance 'extraction-application
       'id (makesym "OUT_~d" index)
       'index index
+      'actuals actuals
       'argument arg
       'type (nth (1- index) (types cotuptype)))))
 
