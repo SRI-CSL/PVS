@@ -9,7 +9,7 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 ;;; This file defines most of the classes used in PVS.  Below is a
 ;;; summary, which leaves out many of the slots and some of the classes
@@ -105,20 +105,30 @@
 	    :documentation "a list of declarations and usings"
 	    :parse t)
   (filename :type (or null string)
-	    :documentation "The filename sans directory or extension")
+	    :documentation "The filename sans directory or extension"
+	    :restore-as nil)
   (status :type list
-	  :documentation "A list containing the completed actions")
-  (generated-by :documentation "a module id")
+	  :documentation "A list containing the completed actions"
+	  :restore-as nil)
+  (generated-by :documentation "a module id" :restore-as nil)
   (tcc-comments :documentation
-		"An alist of TCCs and comments that follow.")
+		"An alist of TCCs and comments that follow."
+		:restore-as nil)
   (info :documentation
-	"A list of information strings produced by calls to pvs-info")
+	"A list of information strings produced by calls to pvs-info"
+	:restore-as nil)
   (warnings :documentation
-	    "A list of warning strings produced by calls to pvs-info")
+	    "A list of warning strings produced by calls to pvs-info"
+	    :restore-as nil)
   (conversion-messages :documentation
-		       "A list of conversion message strings produced by calls to pvs-conversion-msg")
+		       "A list of conversion message strings produced by calls to pvs-conversion-msg"
+		       :restore-as nil)
   (all-declarations :fetch-as nil)
-  (all-imported-theories :fetch-as nil :initform 'unbound))
+  (all-imported-theories :fetch-as 'unbound :initform 'unbound)
+  (all-imported-names :fetch-as 'unbound :initform 'unbound)
+  ;; places is restored, but after the theory part - see save-theories.lisp
+  ;;(places :restore-as nil)
+  )
 
 
 ;;; Datatypes and related classes
@@ -127,20 +137,20 @@
   (importings :parse t)
   (constructors :documentation "a list of constructors"
 		:parse t)
-  adt-type-name
-  adt-theory
-  adt-map-theory
-  adt-reduce-theory
-  generated-file-date
-  positive-types
-  (semi :parse t))
+  (adt-type-name :restore-as nil)
+  (adt-theory :restore-as nil)
+  (adt-map-theory :restore-as nil)
+  (adt-reduce-theory :restore-as nil)
+  (generated-file-date :restore-as nil)
+  (positive-types :restore-as nil)
+  (semi :parse t :restore-as nil))
 
 (defcl recursive-type-with-subtypes (recursive-type)
   subtypes)
 
 (defcl inline-recursive-type (recursive-type)
-  generated
-  typechecked?)
+  (generated :restore-as nil)
+  (typechecked? :restore-as nil))
 
 ;;; Datatypes
 
@@ -155,7 +165,8 @@
 (defcl library-datatype-or-theory (datatype-or-module)
   (lib-ref :documentation
 	   "The canonical form of the library path - if relative, then it is
-            relative to the current context"))
+            relative to the current context"
+	   :restore-as nil))
 
 (defcl library-datatype (datatype library-datatype-or-theory))
 
@@ -175,7 +186,8 @@
 
 (defcl adt-constructor (syntax)
   (recognizer :type symbol :parse t)
-  (ordnum :type fixnum))
+  (ordnum :type fixnum
+	  :restore-as nil))
 
 (defcl constructor-with-subtype (simple-constructor)
   subtype)
@@ -185,7 +197,7 @@
 ;;; record-constructors anymore
 
 (defcl simple-constructor (adt-constructor)
-  (id :type symbol :parse t)
+  (id :type symbol :parse t :restore-as nil)
   (arguments :documentation "a list of adtdecls" :parse t)
   con-decl
   rec-decl
@@ -203,18 +215,22 @@
   instances-used
   assuming-instances
   used-by
-  (saved-context :fetch-as nil)
-  tccs-tried?
-  modified-proof?
-  (tcc-info :type list :initform (list 0 0 0 0))
+  saved-context
+  dependent-known-subtypes ; Those that reference the theory parameters
+  (macro-expressions :restore-as nil)
+  (tccs-tried? :restore-as nil)
+  (modified-proof? :restore-as nil)
+  (tcc-info :type list :initform (list 0 0 0 0) :restore-as nil)
   (ppe-form :fetch-as nil)
   (tcc-form :fetch-as nil)
-  typecheck-time)
+  (typecheck-time :restore-as nil))
 
 (defcl library-theory (module library-datatype-or-theory))
 
 (defcl theory-interpretation (module)
-  from-theory
+  (from-theory :restore-as nil)
+  (from-theory-name :restore-as nil)
+  (generated-by-decl :restore-as nil :fetch-as nil)
   (mapping :documentation
 	   "An alist mapping declarations of the from-theory to this theory"))
 
@@ -226,18 +242,18 @@
   (closure :documentation "The closure of the list of modules"))
 
 (defcl expname (syntax)
-  (id :parse t)
-  (kind :parse t)
+  (id :parse t :restore-as nil)
+  (kind :parse t :restore-as nil)
   type)
 
 (defcl importing (syntax)
   (theory-name :parse t)
-  (semi :parse t)
-  (chain? :parse t)
-  refers-to
-  generated
+  (semi :parse t :restore-as nil)
+  (chain? :parse t :restore-as nil)
+  (refers-to :restore-as nil)
+  (generated :restore-as nil)
   (tcc-form :fetch-as nil :ignore t)
-  (saved-context :fetch-as nil))
+  saved-context)
 
 ;;; DECLARATION Classes.  Many of these have both a declared-type and a
 ;;; type slot.  The declared-type is set by the parser and used by the
@@ -245,19 +261,20 @@
 ;;; of the declared-type.
 
 (defcl declaration (syntax)
-  (id :type symbol :parse t)
+  (newline-comment :restore-as nil)
+  (id :type symbol :parse t :restore-as nil)
   (formals :type list :parse t)
-  module
-  (refers-to :type list)
+  (module :restore-as nil)
+  (refers-to :type list :restore-as nil)
   (referred-by :type list :fetch-as nil)
-  (chain? :type symbol :parse t)
-  (typechecked? :type symbol)
-  (visible? :type symbol)
-  (generated :documentation "a list of declarations")
-  (generated-by :documentation "a declaration instance")
-  (semi :parse t)
+  (chain? :type symbol :parse t :restore-as nil)
+  (typechecked? :type symbol :restore-as nil)
+  (visible? :type symbol :restore-as nil)
+  (generated :documentation "a list of declarations" :restore-as nil)
+  (generated-by :documentation "a declaration instance" :restore-as nil)
+  (semi :parse t :restore-as nil)
   (tcc-form :fetch-as nil :ignore t)
-  typecheck-time)
+  (typecheck-time :restore-as nil))
 
 ;;; declared-type-string keeps the string of the declared type for
 ;;; creating the pvs context - see create-declaration-entry
@@ -276,10 +293,10 @@
 ;;;  t: TYPE+ FROM x --> nonempty-type-from-decl
 
 (defcl type-decl (declaration)
-  type-value)
+  (type-value :store-as ignore-self-reference-type-values))
 
 (defcl nonempty-type-decl (type-decl)
-  keyword)
+  (keyword :restore-as nil))
 
 ;;; A mixin
 (defcl type-def-decl (type-decl)
@@ -301,7 +318,7 @@
 ;;; Formal theory parameter declarations
 
 (defcl formal-decl (declaration)
-  dependent?)
+  (dependent? :restore-as nil))
 
 (defcl formal-type-decl (formal-decl type-decl typed-declaration))
 
@@ -312,31 +329,30 @@
 (defcl formal-nonempty-subtype-decl (formal-subtype-decl nonempty-type-decl))
 
 (defcl formal-const-decl (formal-decl typed-declaration)
-  possibly-empty-type?)
+  (possibly-empty-type? :restore-as nil))
 
 (defcl formal-theory-decl (formal-decl)
   theory-name
   (generated-theory :fetch-as nil)
-  (saved-context :fetch-as nil))
+  saved-context)
 
 (defcl adtdecl (typed-declaration)
   (bind-decl :documentation "Keeps a corresponding bind-decl"))
 
 (defcl lib-decl (declaration)
-  (lib-string :parse t)
-  lib-ref)
+  (lib-string :parse t :restore-as nil)
+  (lib-ref :restore-as nil))
 
 (defcl lib-eq-decl (lib-decl))
 
 (defcl mod-decl (declaration)
   (modname :parse t)
   (generated-theory :fetch-as nil)
-  (saved-context :fetch-as nil))
+  saved-context)
 
 (defcl theory-abbreviation-decl (declaration)
   (theory-name :parse t)
-  (generated-theory :fetch-as nil)
-  (saved-context :fetch-as nil))
+  saved-context)
 
 (defcl var-decl (typed-declaration))
 
@@ -353,10 +369,10 @@
 (defcl macro-decl (const-decl))
 
 (defcl adt-constructor-decl (const-decl)
-  ordnum)
+  (ordnum :restore-as nil))
 
 (defcl adt-recognizer-decl (const-decl)
-  ordnum)
+  (ordnum :restore-as nil))
 
 (defcl adt-accessor-decl (const-decl))
 
@@ -364,7 +380,7 @@
   (declared-measure :parse t)
   (ordering :parse t)
   measure
-  measure-depth
+  (measure-depth :restore-as nil)
   recursive-signature)
 
 (defcl fixpoint-decl (const-decl))
@@ -383,30 +399,27 @@
 ;;;   definition: The body of the formula declaration
 ;;;   closed-definition: The closure of the body of the definition
 ;;;   kind:       The kind of formula-decl (e.g., TCC, EXISTENCE)
-;;;   justification: The default justification
-;;;   justifications: The justifications for this delaration - the default
-;;;                   justification is one of these
-;;;   proof-status: The status of the default justification - one of
-;;;                   proved, unproved, unfinished, or unchecked
-;;;   proof-refers-to: The delarations that the default justification refers to
-;;;   proof-time: The times associated with the proof; a list of the form
-;;;               (runtime, realtime, interactive?)
+;;;   default-proof The default proof-info (it is a member of proofs)
+;;;   proofs      The list of proof-info instances
 
 (defcl formula-decl (declaration)
-  (spelling :documentation "One of formula, axiom, lemma, etc." :parse t)
+  (spelling :documentation "One of formula, axiom, lemma, etc."
+	    :parse t
+	    :restore-as nil)
   (definition :parse t)
   ;; The universal closure of the definition, used in create-formulas
   (closed-definition :fetch-as nil)
-  kind
-  (default-proof :fetch-as nil)
-  (proofs :fetch-as nil))
+  (kind :restore-as nil)
+  (default-proof :restore-as nil)
+  (proofs :restore-as nil))
 
 (defcl assuming-decl (formula-decl)
   original-definition)
 
 (defcl tcc-decl (formula-decl)
   (tcc-disjuncts
-   :documentation "The disjuncts of the definition used for TCCs")
+   :documentation "The disjuncts of the definition used for TCCs"
+   :restore-as nil)
   importing-instance)
 
 (defcl subtype-tcc (tcc-decl))
@@ -419,11 +432,11 @@
 
 (defcl assuming-tcc (tcc-decl)
   theory-instance
-  generating-assumption)
+  (generating-assumption :restore-as nil))
 
 (defcl mapped-axiom-tcc (tcc-decl)
   theory-instance
-  generating-axiom)
+  (generating-axiom :restore-as nil))
 
 (defcl cases-tcc (tcc-decl))
 
@@ -458,7 +471,7 @@
   judgement-type)
 
 (defcl conversion-decl (declaration)
-  k-combinator?
+  (k-combinator? :restore-as nil)
   (expr :parse t)
   (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound)
   (free-parameter-theories :ignore t :initform 'unbound :fetch-as 'unbound))
@@ -495,7 +508,7 @@
   type)
 
 (defcl formula-rewrite-name (rewrite-name) ; A mixin
-  spelling)
+  (spelling :restore-as nil))
 
 (defcl lazy-rewrite-name (rewrite-name lazy-rewrite))
 
@@ -528,20 +541,20 @@
 ;;; Type Expressions
 
 (defcl type-expr (syntax)
-  (parens :initform 0 :parse t)
+  (parens :initform 0 :parse t :restore-as nil)
   print-type
   from-conversion
   (free-variables :ignore t :initform 'unbound :fetch-as 'unbound)
   (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound)
-  nonempty?)
+  (nonempty? :restore-as nil))
 
 ;;(defcl type-variable (type-expr))
 
 (defcl enumtype (inline-datatype))
 
 (defcl type-name (type-expr name)
-  adt
-  uninterpreted?)
+  ;;adt
+  )
 
 (defcl uninterpreted-type-name (type-name)) 
 
@@ -614,11 +627,11 @@
 
 (defcl tupletype (type-expr)
   (types :parse t)
-  generated?)
+  (generated? :restore-as nil))
 
 (defcl cotupletype (type-expr)
   (types :parse t)
-  generated?)
+  (generated? :restore-as nil))
 
 
 ;;; The domain-tupletype is a tupletype created for a function type, to
@@ -637,7 +650,15 @@
 (defcl recordtype (type-expr)
   (fields :parse t)
   ;;generated?
-  dependent?)
+  (dependent? :restore-as nil))
+
+;;; This is used solely by save-theories.  The idea is to store the
+;;; print-type of a type whenever it appears, and to recreate the
+;;; canonical form when restoring.  This ensures that eq structures
+;;; are created whenever possible.
+(defcl store-print-type ()
+  print-type
+  (type :fetch-as nil))
 
 
 (defcl eval-defn-info ()
