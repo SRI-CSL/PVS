@@ -31,6 +31,7 @@
 	*posint* nil
 	*ordinal* nil)
   (let ((cdir (working-directory))
+	(*pvs-context-path* nil)
 	(*pvs-modules* (make-hash-table :test #'eq :size 20 :rehash-size 10))
 	(*pvs-files* (make-hash-table :test #'equal))
 	(*loaded-libraries* (make-hash-table :test #'equal))
@@ -50,6 +51,7 @@
     (unwind-protect
 	(progn
 	  (set-working-directory (format nil "~a/lib/" *pvs-path*))
+	  (setq *pvs-context-path* (working-directory))
 	  (dolist (m mods)
 	    (let ((*current-theory* m))
 	      (format t "~%Typechecking ~a" (id m))
