@@ -877,7 +877,7 @@
 		    (pseudo-normalize tform)
 		    (beta-reduce tform)))
 	 (uform (expose-binding-types (universal-closure xform)))
-	 (id (make-tcc-name)))
+	 (id (make-tcc-name nil (id ax))))
     (unless (tc-eq uform *true*)
       (when (and *false-tcc-error-flag*
 		 (tc-eq uform *false*))
@@ -929,13 +929,13 @@
       (when unselected
 	(break "generate-coselections-tccs")))))
 
-(defun make-tcc-name (&optional expr)
+(defun make-tcc-name (&optional expr extra-id)
   (assert *current-context*)
   (if (or *in-checker* *in-evaluator*)
       (gensym)
-      (make-tcc-name* (current-declaration) expr)))
+      (make-tcc-name* (current-declaration) expr extra-id)))
 
-(defmethod make-tcc-name* ((decl declaration) expr)
+(defmethod make-tcc-name* ((decl declaration) expr extra-id)
   (declare (ignore expr))
   (let ((decl-id (op-to-id
 		  (or (if (declaration? (generated-by (current-declaration)))
@@ -944,43 +944,45 @@
     (make-tcc-name** decl-id
 		     (remove-if-not #'declaration?
 		       (all-decls (current-theory)))
+		     extra-id
 		     1)))
 
-(defmethod make-tcc-name* ((decl subtype-judgement) expr)
+(defmethod make-tcc-name* ((decl subtype-judgement) expr extra-id)
   (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
 	(id decl))
       (call-next-method)))
 
-(defmethod make-tcc-name* ((decl number-judgement) expr)
+(defmethod make-tcc-name* ((decl number-judgement) expr extra-id)
   (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
 	(id decl))
       (call-next-method)))
 
-(defmethod make-tcc-name* ((decl name-judgement) expr)
+(defmethod make-tcc-name* ((decl name-judgement) expr extra-id)
   (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
 	(id decl))
       (call-next-method)))
 
-(defmethod make-tcc-name* ((decl application-judgement) expr)
+(defmethod make-tcc-name* ((decl application-judgement) expr extra-id)
   (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
 	(id decl))
       (call-next-method)))
 
-(defmethod make-tcc-name* ((imp importing) expr)
+(defmethod make-tcc-name* ((imp importing) expr extra-id)
   (declare (ignore expr))
   (let ((old-id (make-tcc-using-id))
 	(new-id (make-tcc-importing-id)))
-    (setq *old-tcc-name* (make-tcc-name** old-id nil 1))
+    (setq *old-tcc-name* (make-tcc-name** old-id nil nil 1))
     (make-tcc-name** new-id
 		     (remove-if-not #'declaration?
 		       (all-decls (current-theory)))
+		     extra-id
 		     1)))
 
-(defun make-tcc-name** (id decls num)
-  (let ((tcc-name (makesym "~a_TCC~d" id num)))
+(defun make-tcc-name** (id decls extra-id num)
+  (let ((tcc-name (makesym "~a_~@[~a_~]TCC~d" id extra-id num)))
     (if (or (member tcc-name decls :key #'id)
 	    (assq tcc-name *old-tcc-names*))
-	(make-tcc-name** id decls (1+ num))
+	(make-tcc-name** id decls extra-id (1+ num))
 	tcc-name)))
 
 (defmethod generating-judgement-tcc? ((decl number-judgement) expr)
