@@ -892,8 +892,14 @@ generated")
 
 (defun make-accessor-funtype (domain range deps)
   (if deps
-      (let* ((dep-name (make-variable-expr domain))
-	     (*bound-variables* (cons domain *bound-variables*))
+      (let* ((tdom (typecheck* (copy domain) nil nil nil))
+	     (dtype (if (dep-binding? tdom)
+			tdom
+			(mk-dep-binding (make-new-variable 'd
+					  (list tdom range))
+					tdom)))
+	     (dep-name (make-variable-expr dtype))
+	     (*bound-variables* (cons dtype *bound-variables*))
 	     (subst-range (substit range
 			    (pairlis
 			     (mapcar #'declaration deps)
@@ -902,7 +908,7 @@ generated")
 						       dep-name)
 						     (type dep) nil nil))
 			       deps)))))
-	(mk-funtype domain subst-range))
+	(mk-funtype dtype subst-range))
       (mk-funtype domain range)))
 
 (defun get-accessor-domain-type (entry adt)
@@ -1739,16 +1745,27 @@ generated")
 		     bindings)))
 	(mk-selection (mk-name-expr (id c))
 	  bindings
-	  (let ((exprs (mapcar #'(lambda (v)
-				   (acc-predicate-selection
-				    v (type v)
-				    pvars ptypes adt function-id curried?))
-			 vars)))
+	  (let ((exprs (acc-predicate-selections
+			(arguments c) vars pvars ptypes adt
+			function-id curried?)))
 	    (if (eq function-id '|every|)
 		(mk-conjunction exprs)
 		(mk-disjunction exprs)))))
       (mk-selection (mk-name-expr (id c)) nil
 		    (copy (if (eq function-id '|every|) *true* *false*)))))
+
+(defun acc-predicate-selections (args vars pvars ptypes adt function-id
+				      curried? &optional selections)
+  (if (null vars)
+      (nreverse selections)
+      (let ((sel (acc-predicate-selection (car vars) (type (car vars))
+					  pvars ptypes adt
+					  function-id curried?))
+	    (nvars (substit (cdr vars)
+		     (acons (bind-decl (car args)) (car vars) nil))))
+	(acc-predicate-selections (cdr args) nvars pvars ptypes adt
+				  function-id curried?
+				  (cons sel selections)))))
 
 
 (defmethod acc-predicate-selection (arg (te type-name) pvars ptypes adt
@@ -1806,14 +1823,13 @@ generated")
 		(everywhere-true? fun)
 		(everywhere-false? fun))
 	    (call-next-method)
-	    (let* ()
-	      (if (eq funid '|every|)
-		  (mk-forall-expr (list fbd)
-		    (mk-application fun
-		      (mk-application (copy arg) (copy fvar))))
-		  (mk-exists-expr (list fbd)
-		    (mk-application fun
-		      (mk-application (copy arg) (copy fvar))))))))))
+	    (if (eq funid '|every|)
+		(mk-forall-expr (list fbd)
+		  (mk-application fun
+		    (mk-application (copy arg) (copy fvar))))
+		(mk-exists-expr (list fbd)
+		  (mk-application fun
+		    (mk-application (copy arg) (copy fvar)))))))))
 
 (defmethod acc-predicate-selection (arg (te recordtype) pvars ptypes adt
 					funid curried?)
