@@ -197,7 +197,7 @@
 
 (defcl last-cond-expr (branch))
 
-(defcl else-condition (unary-application))
+(defcl else-condition (unary-negation))
 
 
 (defcl table-expr (expr)
@@ -236,9 +236,7 @@
 (defcl binding-expr (expr)
   (bindings :parse t)
   (expression :parse t)
-  (result-type :parse t)
   (commas? :parse t)
-  type-value
   (chain? :parse t))
 
 (defcl lambda-expr (binding-expr))
