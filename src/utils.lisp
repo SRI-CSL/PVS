@@ -1724,15 +1724,10 @@
 	 else-part)
 	(t (let* ((sel (car selections))
 		  (thinst (module-instance (find-supertype (type expr))))
-		  (cons-or-rec
-		   (if (args sel)
-		       (subst-mod-params (recognizer (constructor sel))
-					 thinst)
-		       (subst-mod-params (constructor sel)
-					 thinst)))
-		  (cond (if (args sel)
-			    (make-application cons-or-rec expr)
-			    (make-equation expr cons-or-rec)))
+		  (rec
+		   (subst-mod-params (recognizer (constructor sel))
+				     thinst))
+		  (cond (make-application rec expr))
 		  (then ;(subst-mod-params
 			 (subst-accessors-in-selection expr sel)
 			 ;thinst)
