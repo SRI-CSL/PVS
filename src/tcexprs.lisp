@@ -1060,6 +1060,8 @@
       (add-conversion-info (find-if #'expr? conversions) expr)
       (change-class expr 'lambda-conversion)
       (setf (bindings expr) bindings
+	    (types op) nil
+	    (resolutions op) nil
 	    (expression expr) (mk-application* op args))
       (typecheck* expr nil nil nil))))
 

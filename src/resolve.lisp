@@ -1454,9 +1454,11 @@
 	    dtypes compats))
     (change-class nres 'lambda-conversion-resolution)
     (setf (conversion nres) compats)
-    ;;    (let ((ftype (mk-funtype (type res) (range (type (car compats))))))
-    ;;      (break)
-    ;;      (setf (type nres) ftype))
+    (let* ((ktype (type (find-if #'name-expr? compats)))
+	   (ftype (mk-funtype (domain ktype)
+			      (mk-funtype (domain (range ktype))
+					  (range (type nres))))))
+      (setf (type nres) ftype))
     nres))
 
 (defun compatible-arg-conversions? (rtype arguments)
@@ -1468,16 +1470,22 @@
 			  (compatible-arguments-k-conversions dty arguments))
 		dtypes-list)))))
 
-(defun compatible-arguments-k-conversions (dtypes arguments &optional result)
+(defun compatible-arguments-k-conversions (dtypes arguments
+						  &optional kconv result)
   (if (null dtypes)
       (nreverse result)
       (let ((conv (compatible-argument-k-conversions
 		   (car dtypes) (car arguments))))
 	(when conv
 	  (assert (or (eq conv t)
-		      (typep conv 'name-expr)))
-	  (compatible-arguments-k-conversions
-	   (cdr dtypes) (cdr arguments) (cons conv result))))))
+		      (name-expr? conv)))
+	  (when (or (null kconv)
+		    (eq conv t)
+		    (tc-eq kconv conv))
+	    (compatible-arguments-k-conversions
+	     (cdr dtypes) (cdr arguments)
+	     (or kconv (and (name-expr? conv) conv))
+	     (cons conv result)))))))
 
 (defun compatible-argument-k-conversions (dtype argument)
   (or (some #'(lambda (pty)
