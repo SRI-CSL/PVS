@@ -159,15 +159,22 @@
 				     *pvs-path* "/src/utils/" platform))
 			 (bddpath (concatenate 'string
 				    *pvs-path* "/BDD/" platform))
+			 (icspath (concatenate 'string
+				     *pvs-path*
+				     "/src/ics-interface/"
+				     platform))
 			 (ws1spath (concatenate 'string
 				     *pvs-path* "/src/WS1S/" platform)))
 		    (load (format nil "~a/file_utils.so" utilpath))
 		    (load (format nil "~a/mu.so" bddpath))
-		    (load (format nil "~a/ws1s.so" ws1spath)))
+		    (load (format nil "~a/ws1s.so" ws1spath))
+		    (load (format nil "~a/ics_lisp_error.so" icspath))
+		    (load "@ICSLIB@/libics.so"))
 		  (setq *pvs-system-loaded* t))
   :finally-do (progn
 		#+lucid (precompile-generic-functions)
 		#+lcl4.1 (clos::flush-pv-caches)
+		(load "@ICSOBJ@/ics.lisp")
 		(pvs::bdd_init)
 		(pvs::load-prelude)
 		#+allegro
