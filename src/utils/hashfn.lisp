@@ -57,8 +57,6 @@
 
 (proclaim '(ftype (function (t list) fixnum) pvs-sxhash*))
 
-(defvar *pvs-sxhash-cache* nil)
-
 (defun pvs-sxhash (x &optional bindings)
   (pvs-sxhash* x bindings))
 
