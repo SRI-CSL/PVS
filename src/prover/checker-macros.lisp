@@ -610,7 +610,6 @@
     `(let* ((,g-expr ,expr)
 	    (,g-dp-state ,dp-state)
 	    (,g-alists ,alists)
-	    (typealist (append *local-typealist* typealist))
 	    (sigalist (dpinfo-sigalist ,g-alists))
 	    (findalist (dpinfo-findalist ,g-alists))
 	    (usealist (dpinfo-usealist ,g-alists))
@@ -623,29 +622,30 @@
 			  ,g-expr))
 	    (new-result nil)
 	    (old-result nil))
-       (when *new-ground?*
-	 (setq new-result (translate-from-dc
-			   (dp::invoke-process new-expr ,g-dp-state))))
-       (when *old-ground?*
-	 (setq old-result (translate-from-prove-list
-			   (invoke-process old-expr)))
-	 (setf (dpinfo-sigalist ,g-alists) sigalist
-	       (dpinfo-findalist ,g-alists) findalist
-	       (dpinfo-usealist ,g-alists) usealist))
-       (let ((not-incompatible
-	      (or (not (and *new-ground?* *old-ground?*))
-		  (and (compatible-dp-results new-result old-result)))))
-	 (when (and *dp-print-incompatible-warning*
-		    (not not-incompatible))
-	   (format t "~%***IncompatibleWarning*** expr: ~A,~%new-result: ~A, ~%old-result:~A"
-	     new-expr new-result old-result))
-	 (assert (or (not *break-on-ground-diff*)
-		     not-incompatible)
-		 (*break-on-ground-diff*)))
-       (setq *break-on-ground-diff* t)
-       (if *new-ground?*
-	   new-result
-	   old-result))))
+       (let ((typealist (append *local-typealist* typealist)))
+	 (when *new-ground?*
+	   (setq new-result (translate-from-dc
+			     (dp::invoke-process new-expr ,g-dp-state))))
+	 (when *old-ground?*
+	   (setq old-result (translate-from-prove-list
+			       (invoke-process old-expr)))
+	   (setf (dpinfo-sigalist ,g-alists) sigalist
+		 (dpinfo-findalist ,g-alists) findalist
+		 (dpinfo-usealist ,g-alists) usealist))
+	 (let ((not-incompatible
+		(or (not (and *new-ground?* *old-ground?*))
+		    (and (compatible-dp-results new-result old-result)))))
+	   (when (and *dp-print-incompatible-warning*
+		      (not not-incompatible))
+	     (format t "~%***IncompatibleWarning*** expr: ~A,~%new-result: ~A, ~%old-result:~A"
+	       new-expr new-result old-result))
+	   (assert (or (not *break-on-ground-diff*)
+		       not-incompatible)
+		   (*break-on-ground-diff*)))
+	 (setq *break-on-ground-diff* t)
+	 (if *new-ground?*
+	     new-result
+	     old-result)))))
 
 (defmacro translate-to-ground (expr)
   `(if *newdc*
