@@ -48,7 +48,7 @@
  :include-tpl t
  :include-xcw nil
  :internal-debug nil
- :lisp-heap-size 200000000
+ :lisp-heap-size 20000000
  :lisp-heap-start nil
  ;; :lisp-files nil
  :load-local-names-info nil
