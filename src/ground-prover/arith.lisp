@@ -183,9 +183,7 @@
       `(DIVIDE 1 ,denom)))
 
 (defun is-infinity (sym)
-  (and (symbolp sym)
-       (> (length (string sym)) 10)
-       (string= "*-infinity" (subseq (string sym) 0 10))))
+  (eq sym *infinity*))
 
 (defun make-infinity ()
   *infinity*)
