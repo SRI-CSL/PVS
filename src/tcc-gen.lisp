@@ -474,7 +474,8 @@
 
 (defun check-nonempty-type (type expr)
   (unless (or (nonempty? type)
-	      (typep (declaration *current-context*) 'adt-accessor-decl))
+	      (typep (declaration *current-context*) 'adt-accessor-decl)
+	      (member type (nonempty-types *current-theory*) :test #'tc-eq))
     (when (possibly-empty-type? type)
       (generate-existence-tcc type expr)
       (unless (or (or *in-checker* *in-evaluator*)
