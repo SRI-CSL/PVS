@@ -778,14 +778,6 @@
 (defmethod pvs2cl_up* ((expr projection-application) bindings livevars)
     `(project ,(index expr) ,(pvs2cl_up* (argument expr) bindings livevars)))
 
-
-;;check if this has already been defined elsewhere.
-(defun sort-assignments (assigns)                
-  (let ((restructure   (copy-list assigns)))     
-    (sort restructure                            
-          #'string-lessp                         
-          :key #'(lambda (x) (id (caar (arguments x)))))))
-
 (defun sorted-fields (typ)                
   (let ((restructure   (copy-list (fields typ))))     
     (sort restructure                            
