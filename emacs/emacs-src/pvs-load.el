@@ -300,7 +300,7 @@ get to the same state."
       (setq pvs-in-evaluator nil)
       (unless noninteractive
 	(pvs-auto-set-linelength (selected-frame))
-	(pvs-welcome))
+	(pvs-welcome (equal (buffer-name) "*pvs*")))
       (when (boundp 'save-options-file)
 	(setq save-options-file "~/.pvsxemacs-options")
 	(setq save-options-init-file "~/.pvsemacs"))
