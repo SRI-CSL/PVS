@@ -526,65 +526,81 @@
 ;;connectives or IF-exprs in the expression that the decision
 ;;procedure could be used to simplify.
 
-(defmethod connective-occurs? ((expr name-expr))
-  NIL)
+(defun connective-occurs? (expr)
+  (connective-occurs?* expr nil))
 
-(defmethod connective-occurs? ((expr branch))
+(defmacro accum-connective-occurs?* (accum)
+  `(when (consp ,accum)
+       (connective-occurs?* (car ,accum)(cdr ,accum))))
+
+
+(defmethod connective-occurs?* ((expr name-expr) accum)
+  (accum-connective-occurs?* accum))
+
+(defmethod connective-occurs?* ((expr branch) accum)
     T)
 
-(defmethod connective-occurs? ((expr cases-expr))
+(defmethod connective-occurs?* ((expr cases-expr) accum)
   T)
 
-(defmethod connective-occurs? ((expr projection-application))
+(defmethod connective-occurs?* ((expr projection-application) accum)
   (with-slots (argument) expr
-    (connective-occurs? argument)))
+    (connective-occurs?* argument accum)))
 
-(defmethod connective-occurs? ((expr tuple-expr))
+(defmethod connective-occurs?* ((expr tuple-expr) accum)
   (with-slots (exprs) expr
-    (connective-occurs? exprs)))
+    (connective-occurs?* exprs accum)))
 
-(defmethod connective-occurs? ((expr record-expr))
+(defmethod connective-occurs?* ((expr record-expr) accum)
   (with-slots (assignments) expr
-    (connective-occurs? assignments)))
+    (connective-occurs?* assignments accum)))
 
-(defmethod connective-occurs? ((expr assignment))
+(defmethod connective-occurs?* ((expr assignment) accum)
   (with-slots (arguments expression) expr
-    (or (connective-occurs? arguments)
-	(connective-occurs? expression))))
+    (connective-occurs?* arguments (cons expression accum))))
 
-(defmethod connective-occurs? ((expr field-application))
+
+(defmethod connective-occurs?* ((expr field-application) accum)
   (with-slots (argument) expr
-      (connective-occurs? argument)))
+      (connective-occurs?* argument accum)))
 
-(defmethod connective-occurs? ((expr propositional-application))
+(defmethod connective-occurs?* ((expr propositional-application) accum)
   T)
 
-(defmethod connective-occurs? ((expr application))
+(defmethod connective-occurs?* ((expr application) accum)
   (with-slots (operator argument) expr
-    (or (connective-occurs? operator)
-	(connective-occurs? argument))))
+   (connective-occurs?* operator (cons argument accum))))
 
-(defmethod connective-occurs? ((expr list))
-  (some #'connective-occurs? expr))
+
+(defmethod connective-occurs?* ((expr list) accum)
+  (if (consp expr)
+      (connective-occurs?* (cdr list)
+			  (cons (car list) accum))
+      (if (consp accum)
+	  (connective-occurs?* (car accum)(cdr accum))
+	  nil)))
+      
+;  (some #'connective-occurs?* expr))
 ;  (cond ((null  expr) nil)
 ;	(t (or (connective-occurs? (car expr))
 ;	       (connective-occurs? (cdr expr)))))
 
-(defmethod connective-occurs? ((expr binding-expr))
-  nil
+(defmethod connective-occurs?* ((expr binding-expr) accum)
+  (accum-connective-occurs?* accum))
   ;(connective-occurs? (expression expr))
   )
 
-(defmethod connective-occurs? 
-    ((expr update-expr))
+(defmethod connective-occurs?* 
+    ((expr update-expr) accum)
   (with-slots (expression assignments) expr
-    (or (connective-occurs? expression)
-	(connective-occurs? assignments))))
+    (connective-occurs?* assignments (cons expression accum))))
+;    (or (connective-occurs? expression)
+;	(connective-occurs? assignments))))
    ;;NSH(5/8/99): update-or-connective-occurs? is T on updates.
    ;;NSH(6/2/99): changed from NIL to look inside for connectives.
 
-(defmethod connective-occurs? ((expr expr))
-  NIL)
+(defmethod connective-occurs?* ((expr expr) accum)
+  (accum-connective-occurs?* accum))
 
 ;;Separated connective-occurs? from update-or-connective-occurs?.
 ;;The latter is used for typepreds and process-assert, and the
