@@ -862,7 +862,8 @@
 	  (if ndecl
 	      (let ((refs (collect-references (definition ndecl))))
 		(if (some #'(lambda (d)
-			      (same-id (module d) modinst))
+			      (and (same-id (module d) modinst)
+				   (interpretable? d)))
 			  refs)
 		    (pvs-warning "Axiom ~a not translated" (id ax))
 		    (insert-tcc-decl 'mapped-axiom modinst ax ndecl)))
