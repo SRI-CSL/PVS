@@ -19,18 +19,15 @@
 (defun address (p)
   (dfa-address p))
 
-(defun mk-dfa (a)
-  (let ((p (make-dfa a)))
-    (dfa-finalize! p)
-    p))
 
 (defun dfa-free! (p)
   (assert (dfa? p))
   (mona-free! (dfa-address p)))
 
-(defun dfa-finalize! (p)
-  (assert (dfa? p))
-  (excl:schedule-finalization p #'dfa-free!))
+(defun mk-dfa (a)
+  (let ((p (make-dfa a)))
+    (excl:schedule-finalization p #'dfa-free!)
+    p))
 
 
 ;; Constants
@@ -66,19 +63,25 @@
 (defun dfa-var0 (i)
   (mk-dfa (mona-boolvar i)))
 
-(defun dfa-var1 (i)                     ; X(0)*1(0)*
-  (mk-dfa (mona-singleton i)))
+(defun dfa-var1 (i)                     ; X(0)*1(X)*
+  (mk-dfa (mona-first-order i)))
 
 ;; Simple Constructors
 
-(defun dfa-const (i n)               ; p_i = n
-  (mk-dfa (mona-const i n)))
+(defun dfa-const (n i)               ; p_i = n
+  (mk-dfa (mona-const n i)))
 
 (defun dfa-less (i j)                ; p_i < p_j
   (mk-dfa (mona-less i j)))
 
+(defun dfa-greater (i j)                ; p_i > p_j
+  (mk-dfa (mona-less j i)))
+
 (defun dfa-lesseq (i j)              ; p_i <= p_j
   (mk-dfa (mona-lesseq i j)))
+
+(defun dfa-greatereq (i j)              ; p_i >= p_j
+  (mk-dfa (mona-lesseq j i)))
 
 (defun dfa-plus1 (i j n)             ;  p_i = p_j + n
   (mk-dfa (mona-plus1 i j n)))
@@ -148,25 +151,18 @@
 (defun dfa-conjunction (p1 p2)
   (assert (dfa? p1))
   (assert (dfa? p2))
-  (cond ((dfa-false? p1) (dfa-false))
-	((dfa-false? p2) (dfa-false))
-	((dfa-true? p1) p2)
-	((dfa-true? p2) p1)
-	(t (let* ((a (mona-conjunction (address p1) (address p2)))
-		  (p (mk-dfa (mona-minimize a))))
-	     (mona-free! a)
-	     p))))
+  (let* ((a (mona-conjunction (address p1) (address p2)))
+	 (p (mk-dfa (mona-minimize a))))
+    (mona-free! a)
+    p))
 
 (defun dfa-disjunction (p1 p2)
   (assert (dfa? p1))
   (assert (dfa? p2))
-  (cond ((or (dfa-true? p1) (dfa-true? p2)) (dfa-true))
-	((dfa-false? p1) p2)
-	((dfa-false? p2) p1)
-	(t (let* ((a (mona-disjunction (address p1) (address p2)))
-		  (p (mk-dfa (mona-minimize a))))
-	     (mona-free! a)
-	     p))))
+  (let* ((a (mona-disjunction (address p1) (address p2)))
+	 (p (mk-dfa (mona-minimize a))))
+    (mona-free! a)
+    p))
 
 (defun dfa-implication (p1 p2)
   (assert (dfa? p1))
@@ -179,12 +175,10 @@
 (defun dfa-iff (p1 p2)
   (assert (dfa? p1))
   (assert (dfa? p2))
-  (if (dfa= p1 p2)
-      (dfa-true)
-    (let* ((a (mona-iff (address p1) (address p2)))
-	   (p (mk-dfa (mona-minimize a))))
-      (mona-free! a)
-      p)))
+  (let* ((a (mona-iff (address p1) (address p2)))
+	 (p (mk-dfa (mona-minimize a))))
+    (mona-free! a)
+    p))
 
 (defun dfa-unrestrict (p)
   (assert (dfa? p))
@@ -196,9 +190,10 @@
   (assert (dfa? p))
   (let ((a (mona-copy (address p))))
     (mona-right-quotient! a i)
-    (let* ((b (mona-project a i)))
+    (let ((b (mona-project a i)))
       (mona-free! a)
       (mk-dfa (mona-minimize b)))))
+
 
 ;; Derived Automaton Constructions
 
@@ -212,21 +207,10 @@
 
 (defun dfa-conjunction* (as)
   (labels ((loop* (l acc)
-	     (if (null l) acc
-	       (let ((a (car l)))
-		 (if (dfa-false? a)
-		     (return-from dfa-conjunction* (dfa-false))
-		   (loop* (cdr l) (dfa-conjunction acc a)))))))
+	     (if (null l)
+		 acc
+	       (loop* (cdr l) (dfa-conjunction acc (car l))))))
     (loop* as (dfa-true))))
-
-(defun dfa-disjunction* (as)
-  (labels ((loop* (l acc)
-	     (if (null l) acc
-	       (let ((a (car l)))
-		 (if (dfa-true? a)
-		     (return-from dfa-disjunction* (dfa-true))
-		   (loop* (cdr l) (dfa-disjunction acc a)))))))
-    (loop* as (dfa-false))))
 
 (defun dfa-exists2 (i p)
   (dfa-exists i p))
@@ -235,7 +219,7 @@
   (dfa-exists i (dfa-conjunction (dfa-var1 i) p)))
 
 (defun dfa-exists0 (i p)
-  (dfa-exists i (dfa-conjunction (dfa-var0 i) p)))
+  (dfa-exists i p))
 
 (defun dfa-forall2 (i p)
   (dfa-negation (dfa-exists i (dfa-negation p))))
@@ -246,9 +230,7 @@
 			       (dfa-negation p)))))
 
 (defun dfa-forall0 (i p)
-  (dfa-negation (dfa-exists i (dfa-conjunction
-			       (dfa-var0 i)
-			       (dfa-negation p)))))
+  (dfa-negation (dfa-exists i (dfa-negation p))))
 
 (defun dfa-exists* (levels is a)
   (cond ((and (null levels) (null is))
@@ -315,9 +297,6 @@
   (make-example p num indices :kind -1))
 
 
-(defun dfa-equiv (p1 p2)
-  (dfa-empty? (dfa-conjunction p1 (dfa-negation p2))))
-
 ;; Printing a DFA
 
 (defun dfa-print (p num fvars offsets)
@@ -326,71 +305,6 @@
 (defun dfa-print-verbose (p)
   (mona-print-verbose (address p)))
 
-
-;; Some Arithmetic
-
-(defun dfa-position-in (c p new)             ; forall t. t = c => t in p
-  (let ((t0 (funcall new)))
-    (dfa-exists1 t0 (dfa-conjunction (dfa-const t0 c) (dfa-in t0 p)))))
-
-
-(defun dfa-presburger-add (p q r new) ;  P + Q = R
-  (let ((c (funcall new))
-	(t0 (funcall new))
-	(t1 (funcall new)))
-    (dfa-exists2 c
-		 (dfa-conjunction
-		  (dfa-negation (dfa-position-in 0 c new))   ; 0 notin c &
-		  (dfa-forall1 t0                            ; forall t.
-			       (let ((pt (dfa-in t0 p))      ;  (C(t + 1) = ((P(t)& Q(t)) | (P(t) & C(t)) | (Q(t) & C(t)))
-				     (qt (dfa-in t0 q))      ;  & (R(t) = P(t) = Q(t) = C(t))});
-				     (rt (dfa-in t0 r))
-				     (ct (dfa-in t0 c)))
-				 (dfa-conjunction
-				  (dfa-iff
-				   (dfa-exists1 t1           ; t1 = t0 + 1 & t1 in c
-				    (dfa-conjunction
-				     (dfa-plus1 t1 t0 1)
-				     (dfa-in t1 c)))
-				   (dfa-disjunction*
-				    (list (dfa-conjunction pt qt)
-					  (dfa-conjunction pt ct)
-					  (dfa-conjunction qt ct))))
-				 (dfa-iff
-				  rt
-				  (dfa-xor (dfa-xor pt qt) ct)))))))))
-				 
-
-(defun dfa-presburger-greatereq (p q new) ; P >= Q
-   (let ((r (funcall new)))
-      (dfa-exists2 r (dfa-presburger-add p q r new))))
-
-(defun dfa-presburger-greater (p q new) ; P > Q
-  (dfa-conjunction (dfa-presburger-greatereq p q new) (dfa-negation (dfa-eq2 p q))))
-
-(defun dfa-presburger-less (p q new)
-  (dfa-presburger-greater q p new))
-
-(defun dfa-presburger-lesseq (p q new)
-  (dfa-presburger-greatereq q p new))
-
-;; Test functions
-
-(let ((counter 0))
-  (defun new ()
-    (setf counter (1+ counter)))
-  (defun seed (n)
-    (setf counter n)))
-
-(defun test (n m k)
-  (seed 2)
-  (dfa-exists2 0
-	       (dfa-conjunction (dfa-presburger-const 0 n)
-				(dfa-exists2 1
-					     (dfa-conjunction (dfa-presburger-const 1 m)
-							      (dfa-exists2 2
-									   (dfa-conjunction (dfa-presburger-const 2 k)
-											    (dfa-presburger-add 0 1 2 #'new))))))))
 
 
 
