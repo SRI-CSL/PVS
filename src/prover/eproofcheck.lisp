@@ -231,9 +231,13 @@
 			'dpinfo-sigalist sigalist
 			'dpinfo-findalist findalist
 			'dpinfo-usealist usealist))
+	(*init-ics-state* (ics_empty_state))
+	(*ics-state* (ics_empty_state))
+	(*top-ics-state* (ics_empty_state))
 	(*current-context* (context decl))
 	(*current-theory* (module decl)))
     (initprover)			;initialize prover
+    (init-ics)
     (cond ((eq *force-dp* :old)
 	   (old-ground))
 	  ((eq *force-dp* :new)
@@ -264,6 +268,7 @@
 	      'context *current-context*
 	      'alists (make-dpinfo sigalist findalist usealist)
 	      'dp-state *dp-state*
+	      'ics-state *ics-state*
 	      'justification (justification decl)
 	      'declaration decl
 	      'current-auto-rewrites auto-rewrites-info)))
@@ -365,10 +370,6 @@
     'dpinfo-usealist usealist))
 
 (defun save-proof-info (decl init-real-time init-run-time)
-  (setf (proof-time decl)
-	(list (runtime-since init-run-time)
-	      (realtime-since init-real-time)
-	      nil))
   (let ((prinfo (default-proof decl))
 	(script (extract-justification-sexp
 		 (collect-justification *top-proofstate*))))
@@ -784,42 +785,23 @@
 (defun primitive-rule (name)
   (gethash name *rulebase*))
 
-;(defun new-formula-nums (sforms par-sforms &optional (pos 1) (neg -1))
-;  (when sforms
-;    (let* ((sign (not (negation? (formula (car sforms)))))
-;	   (result
-;	    (if sign
-;		(new-formula-nums (cdr sforms) par-sforms (1+ pos) neg)
-;		(new-formula-nums (cdr sforms) par-sforms pos (1- neg)))))
-;      (if (memq (car sforms) par-sforms)
-;	  result
-;	  (if sign (cons pos result)
-;	      (cons neg result))))))
-
-(defun new-formula-nums (goal par-goal &optional (pos 1) (neg -1))
+(defun new-formula-nums (goal par-goal)
   (when goal
-    (let ((pos-s-forms (pos-s-forms goal))
-	  (parent-pos-s-forms (pos-s-forms par-goal))
-	  (neg-s-forms (neg-s-forms goal))
-	  (parent-neg-s-forms (neg-s-forms par-goal)))
-      (nconc (new-neg-formula-nums neg-s-forms parent-neg-s-forms neg)
-	     (new-pos-formula-nums pos-s-forms parent-pos-s-forms pos)))))
+    (new-formula-nums* (s-forms goal) (when par-goal (s-forms par-goal))
+		       1 -1)))
 
-(defun new-pos-formula-nums (pos-s-forms parent-pos-s-forms pos)
-  (when pos-s-forms
-    (let ((result (new-pos-formula-nums (cdr pos-s-forms)
-					parent-pos-s-forms (1+ pos))))
-      (if (memq (car pos-s-forms) parent-pos-s-forms)
-	  result
-	  (cons pos result)))))
-	      
-(defun new-neg-formula-nums (neg-s-forms parent-neg-s-forms neg)
-  (when neg-s-forms
-    (let ((result (new-neg-formula-nums (cdr neg-s-forms)
-					parent-neg-s-forms (1- neg))))
-      (if (memq (car neg-s-forms) parent-neg-s-forms)
-	  result
-	  (cons neg result)))))
+(defun new-formula-nums* (s-forms parent-s-forms pos neg &optional result)
+  (if (null s-forms)
+      (nreverse result)
+      (let ((sign (not (negation? (formula (car s-forms))))))
+	(new-formula-nums*
+	 (cdr s-forms)
+	 parent-s-forms
+	 (if sign (1+ pos) pos)
+	 (if sign neg (1- neg))
+	 (if (memq (car s-forms) parent-s-forms)
+	     result
+	     (cons (if sign pos neg) result))))))
 	  
 (defun strat-eval* (strat ps)
   (let* ((*ps* ps)
@@ -1603,6 +1585,7 @@
 ;    (out-substitution (setf (out-substitution ps) value))
     (alists (setf (alists ps) value))
     (dp-state (setf (dp-state ps) value))
+    (ics-state (setf (ics-state ps) value))
     (current-auto-rewrites (setf (current-auto-rewrites ps) value))
     (rewrite-hash (setf (rewrite-hash ps) value))
     (subtype-hash (setf (subtype-hash ps) value))
@@ -1683,10 +1666,12 @@
 (defun assert-tccforms (tccforms ps)
   (when tccforms
     (let* ((dp-state (dp-state ps))
-	   (alists (alists ps)))
+	   (alists (alists ps))
+	   (ics-state (ics-state ps)))
       (nprotecting-cong-state
        ((*dp-state* dp-state)
-	(*alists* alists))
+	(*alists* alists)
+	(*ics-state* ics-state))
        ;;(break "atc")
        (let ((*rewrite-hash* (copy (rewrite-hash ps)))
 	     (*subtype-hash* (copy (subtype-hash ps))))
@@ -1731,7 +1716,8 @@
  	 (*macro-names* (macro-names ps))	 
 	 (*rewrite-hash* (rewrite-hash ps))
 	 (*alists* (alists ps))
-	 (*dp-state* (dp-state ps)))
+	 (*dp-state* (dp-state ps))
+	 (*ics-state* (ics-state ps)))
     ;;(break)
     (cond ((typep step 'rule-instance);;if step is a rule, then
 	   ;;reinvoke rule-apply with corresponding strategy. 
@@ -1909,10 +1895,12 @@
 
 (defun assert-test-list (fmla-list ps)
   (let* ((alists (alists ps))
-	 (dp-state (dp-state ps)))
+	 (dp-state (dp-state ps))
+	 (ics-state (ics-state ps)))
     (nprotecting-cong-state
      ((*dp-state* dp-state)
-      (*alists* alists))
+      (*alists* alists)
+      (*ics-state* ics-state))
      (let ((*rewrite-hash* (copy (rewrite-hash ps)))
 	   (*subtype-hash* (copy (subtype-hash ps))))
        (loop for fmla in fmla-list
@@ -2107,6 +2095,7 @@
 		    'alists (copy (alists proofstate))
 		    'dp-state (when *new-ground?*
 				(dp::copy-cong-state (dp-state proofstate)))
+		    'ics-state (ics-state proofstate)
 		    'current-auto-rewrites
 		    (current-auto-rewrites proofstate)
 		    'rewrite-hash (rewrite-hash proofstate)
@@ -2387,10 +2376,24 @@
 		  (consp (caar ejustif)))
 	     (some #'check-edited-justification (car ejustif))
 	     (if (consp (car ejustif))
-		 (check-edited-justification (cdr ejustif)
-					     label)
-		 (values "A rule application must be a list."
-			 (car ejustif)))))))
+		 (check-edited-justification (cdr ejustif) label)
+		 (if (stringp (car ejustif))
+		     (if (valid-comment-string? (car ejustif))
+			 (check-edited-justification (cdr ejustif) label)
+			 (values "Invalid comment string" (car ejustif)))
+		     (values "A rule application must be a list."
+			     (car ejustif))))))))
+
+(defun valid-comment-string? (string &optional (pos 0) (after-newline? t)
+				     (len (length string)))
+  (or (>= pos len)
+      (case (char string pos)
+	(#\newline (valid-comment-string? string (1+ pos) t len))
+	((#\space #\tab)
+	 (valid-comment-string? string (1+ pos) after-newline? len))
+	(#\; (valid-comment-string? string (1+ pos) nil))
+	(t (unless after-newline?
+	     (valid-comment-string? string (1+ pos) nil len))))))
 
 (defun revert-justification (ejustif &optional label)
   (unless (null ejustif)
