@@ -1932,7 +1932,7 @@
 		   (new-elt (if (or (null cur-elt)
 				    (member cur-elt theory-known-subtypes
 					    :test #'equal))
-				elt
+				th-subtype-elt
 				(merge-known-subtypes-elts
 				 cur-elt th-subtype-elt)))
 		   (refs (collect-references new-elt)))
