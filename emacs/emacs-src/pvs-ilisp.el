@@ -3,12 +3,11 @@
 ;; Author          : Sam Owre
 ;; Created On      : Fri Dec 17 13:08:13 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sun Oct 15 01:44:47 1995
-;; Update Count    : 40
-;; Status          : Beta test
-;; 
-;; HISTORY
+;; Last Modified On: Thu May 20 22:42:31 2004
+;; Update Count    : 41
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (eval-when-compile (require 'comint))
 (require 'ilisp)
@@ -213,9 +212,15 @@ intervenes."
 	  (if in-pvs-emacs-eval
 	      (comint-simple-send (ilisp-process) string)
 	      (ilisp-send (format "(pvs::lisp (pvs::pvs-errors %s))" string)
-			  message status (when (and (null noninteractive)
-						    and-go)
+			  message status (when and-go
+					   ;;(and (null noninteractive)
+					   ;;     and-go)
 					   'dispatch))))
+      ;; Disabling 'dispatch above really slows down batch mode for
+      ;; some reason, so we use this instead.  It ensures that batch
+      ;; commands are allowed to complete before exiting.
+      (when noninteractive
+	(pvs-wait-for-it))
       (when *pvs-output-pos*
 	(switch-to-buffer (marker-buffer *pvs-output-pos*))
 	(goto-char (marker-position *pvs-output-pos*))))))
