@@ -1206,34 +1206,7 @@
 
 ;;; add-to-known-subtypes updates the known-subtypes of the current
 ;;; context.  It first checks to see whether the subtype relation is
-;;; already known, in which case it does nothing.  If it needs to update the 
-
-(defun add-to-known-subtypes (atype etype)
-  (let ((aty (if (typep atype 'dep-binding) (type atype) atype))
-	(ety (if (typep etype 'dep-binding) (type etype) etype)))
-    (unless (subtype-of? aty ety)
-      (let* ((entry (get-known-subtypes aty))
-	     (atypes (or (cdr entry)
-			 (get-direct-subtype-alist aty)))
-	     (etypes (or (cdr (get-known-subtypes ety))
-			 (get-direct-subtype-alist ety)))
-	     (inc-types (mapcar #'(lambda (ety)
-				    (cons (car ety) (1+ (cdr ety))))
-				etypes))
-	     (mtypes (sort (append inc-types
-				   (remove-if #'(lambda (at)
-						  (assoc (car at) inc-types
-							 :test #'tc-eq))
-				     atypes))
-			   #'< :key #'cdr)))
-	(when *subtype-of-hash*
-	  (let ((ht (gethash aty *subtype-of-hash*)))
-	    (when ht
-	      (clrhash *subtype-of-hash*))))
-	(if entry
-	    (setf (cdr entry)
-		  (acons ety 1 mtypes))
-	    (set-known-subtypes aty (acons ety 1 mtypes)))))))
+;;; already known, in which case it does nothing.
 
 (defun add-to-known-subtypes (atype etype)
   (let ((aty (if (typep atype 'dep-binding) (type atype) atype))
@@ -1246,12 +1219,6 @@
 
 (defun get-known-subtypes (aty)
   (assoc aty (known-subtypes *current-context*) :test #'tc-eq))
-
-(defun set-known-subtypes (type subtypes)
-  (break "set-known-subtypes")
-  (push (cons type subtypes)
-	(known-subtypes *current-context*)))
-    
 
 (defun copy-known-subtypes (known-subtypes)
   (copy-tree known-subtypes))
@@ -1323,7 +1290,7 @@
 
 (defun find-known-subtypes* (type-expr known-subtypes found-subtypes)
   (if (null known-subtypes)
-      (nreverse found-subtypes)
+      (reverse found-subtypes)
       (let ((subst (subtype-of-test type-expr (caar known-subtypes))))
 	(find-known-subtypes*
 	 type-expr
