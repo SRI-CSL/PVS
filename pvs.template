@@ -166,10 +166,6 @@ export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSPATCHLEVEL
 
 pvsemacsinit="-load $PVSPATH/emacs/go-pvs.el"
 
-if [ -f "$HOME/.pvsemacs" ]
- then pvsemacsinit="$pvsemacsinit -load $HOME/.pvsemacs"
-fi
-
 if [ ! "$batch" -a "$DISPLAY" != "" -a "$nowin" != 1 ]
  then
   HOST=${HOST:-`uname -n`}
