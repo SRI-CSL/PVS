@@ -68,6 +68,13 @@
 (defun mk-minus (arg)
   (mk-term `(,*minus* ,arg)))
 
+(defun mk-floor (arg)
+  (mk-term `(,*floor* ,arg) *integer*))
+
+(defun floor-p (term)
+  (and (application-p term)
+       (eq (funsym term) *floor*)))
+
 ;;returns monomials of a polynomial
 (defun termsof (expr)  ;;;expr must be arithmetic.
   (if (plus-p expr)
@@ -443,6 +450,52 @@
     (sigplus (mk-plus (map-funargs-list #'sigminus1 u))))
    (t (sigtimes (mk-times `(,*neg-one* ,u))))))
 
+(defun sigfloor (u)
+  (multiple-value-bind (number-args integer-args)
+      (split-args-num-int (arg 1 u))
+    (cond
+     ((and number-args integer-args)
+      (sigplus (mk-plus (cons (mk-floor (sigplus (mk-plus number-args)))
+			      integer-args))))
+     (number-args (mk-floor (sigplus (mk-plus number-args))))
+     (integer-args (sigplus (mk-plus integer-args)))
+     (t 0))))
+
+(defun split-args-num-int (arg)
+  (let ((args (cond
+	       ((plus-p arg)
+		(funargs arg))
+	       ((dp-numberp arg)
+		(list (mk-constant (floor (constant-id arg)))))
+	       (t (list arg)))))
+    (loop with integer-args = nil
+	  with number-args = nil
+	  with const = 0
+	  for a in args
+	  for integer? = (dp-integer-atom-p a)
+	  do (cond
+	      ((dp-numberp a) (setq const (+ (constant-id a) const)))
+	      (integer?
+	       (setq integer-args (cons a integer-args)))
+	      (t (setq number-args (cons a number-args))))
+	  finally (return
+		   (cond
+		    ((zerop const)
+		     (values number-args integer-args))
+		    ((integerp const)
+		     (values number-args (cons (mk-constant const)
+					       integer-args)))
+		    ((minusp const)
+		     (values (cons (mk-constant (num-fractpt const))
+				   number-args)
+			     (cons (mk-constant (ceiling const))
+				   integer-args)))
+		    (t
+		     (values (cons (mk-constant (num-fractpt const))
+				   number-args)
+			     (cons (mk-constant (floor const))
+				   integer-args))))))))
+
 ;;inverts a -1. 
 (defmacro neg-sgn (sgn)
   `(* -1 ,sgn))
@@ -481,30 +534,31 @@
 (defun ineq-strict? (ineq)
   (member (funsym ineq) (list *lessp* *greaterp*) :test #'eq))
 
-(defun normineq (ineq cong-state)
-  (integercut (normineq-rational ineq cong-state)))
+(defun normineq (ineq cong-state &optional (var nil))
+  (integercut (normineq-rational ineq cong-state var)))
 
 ;;canonizes inequalities a {<, <=, >, >=, =} b by
 ;;canonizing a - b and picking the head term as the lhs of
 ;;the normalized ineq.
-(defun normineq-rational (ineq cong-state)
+(defun normineq-rational (ineq cong-state var)
   (let ((ineq-pred (funsym ineq))
 	(dif (sigdifference (mk-difference (arg 1 ineq)
 					   (arg 2 ineq)))))
-    (mk-diff-into-ineq ineq-pred dif cong-state)))
+    (mk-diff-into-ineq ineq-pred dif cong-state var)))
 
 ;;converts normalized difference into normalized inequality.
-(defun mk-diff-into-ineq (ineq-pred dif cong-state)
+(defun mk-diff-into-ineq (ineq-pred dif cong-state var)
   (let ((sign-type (sign-type dif cong-state)))
     (cond
-     (sign-type (mk-sign-type-into-ineq ineq-pred sign-type dif cong-state))
+     (sign-type
+      (mk-sign-type-into-ineq ineq-pred sign-type dif cong-state var))
      ((dp-numberp dif)
       (mk-const-ineq ineq-pred dif))
-     (t (mk-no-sign-type-into-ineq ineq-pred dif cong-state)))))
+     (t (mk-no-sign-type-into-ineq ineq-pred dif cong-state var)))))
 
-(defun mk-no-sign-type-into-ineq (ineq-pred dif cong-state)
+(defun mk-no-sign-type-into-ineq (ineq-pred dif cong-state var)
   (multiple-value-bind (head-term rest-dif)
-	    (pick-head-term dif)
+	    (pick-head-term dif var)
 	  (mk-norm-ineq ineq-pred head-term rest-dif)))
 
 (defun sign-type (term cong-state)
@@ -623,7 +677,7 @@
 (defun nonzero-plus (sign)
   nil)
 
-(defun mk-sign-type-into-ineq (ineq-pred sign-type dif cong-state)
+(defun mk-sign-type-into-ineq (ineq-pred sign-type dif cong-state var)
   (cond
    ((eq sign-type 'zero)
     (case (constant-id ineq-pred)
@@ -633,38 +687,41 @@
    ((eq sign-type 'nonpos)
     (case (constant-id ineq-pred)
       ((LESSP LESSEQP) *true*)
-      (= (mk-no-sign-type-into-ineq ineq-pred dif cong-state))
+      (= (mk-no-sign-type-into-ineq ineq-pred dif cong-state var))
       (t  *false*)))
    ((eq sign-type 'strict-nonpos)
     (case (constant-id ineq-pred)
       ((LESSP LESSEQP) *true*)
-      (LESSEQP (mk-no-sign-type-into-ineq *lessp* dif cong-state))
+      (LESSEQP (mk-no-sign-type-into-ineq *lessp* dif cong-state var))
       (t  *false*)))
    ((eq sign-type 'nonneg)
     (case (constant-id ineq-pred)
       ((GREATERP GREATEREQP) *true*)
-      (= (mk-no-sign-type-into-ineq ineq-pred dif cong-state))
+      (= (mk-no-sign-type-into-ineq ineq-pred dif cong-state var))
       (t *false*)))
    (t
     (case (constant-id ineq-pred)
       ((GREATERP GREATEREQP)*true*)
-      (GREATEREQP (mk-no-sign-type-into-ineq *greaterp* dif cong-state))
+      (GREATEREQP (mk-no-sign-type-into-ineq *greaterp* dif cong-state var))
       (t *false*)))))
 
 ;;used by mk-diff-into-ineq to pick head term of a normalized difference.
 ;;returns two values head-term rest-dif s.t. diff = head-rest + rest-dif.
-(defun pick-head-term (diff)
+(defun pick-head-term (diff var)
   (cond
    ((plus-p diff)
     (loop with front-rest = nil
 	  for rest on (funargs diff)
 	  for head-rest = (car rest)
 	  do
-	  (if (not (dp-numberp head-rest))
+	  (if (and (not (dp-numberp head-rest))
+		   (or (null var)
+		       (eq var (term-var head-rest))))
 	      (return (values head-rest
 			      (sigplus
 			       (mk-plus (nconc front-rest (cdr rest))))))
-	      (setq front-rest (nconc front-rest (list head-rest))))))
+	      (setq front-rest (nconc front-rest (list head-rest))))
+	  finally (pick-head-term diff nil)))
    (t (values diff *zero*))))
 
 ;;if the normalized difference is a constant, then mk-const-ineq
@@ -741,4 +798,5 @@
    ((difference-p term) (sigdifference term))
    ((minus-p term) (sigminus term))
    ((divide-p term) (sigdivide term))
+   ((floor-p term) (sigfloor term))
    (t term)))
