@@ -162,7 +162,53 @@
       (evaluator-print-tccs (cdr tccforms)))))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;These operations evaluate a list of PVS expression strings and
+;;print the values to a file.   Requested by Ajay Chander (3/23/03).
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun eval-to-file (theoryname list-of-exprs filename)
+  (let ((theory (get-theory theoryname)))
+    (cond ((null theory)
+	   (format t "~%Theory ~a is not typechecked." theoryname))
+	  (t (let ((*current-context* (saved-context theory)))
+	       (eval-to-file* list-of-exprs filename))))))
+
+(defun eval-to-file* (exprs filename)
+  (cond ((consp exprs)
+	 (eval-expr-to-file (car exprs) filename)
+	 (eval-to-file* (cdr exprs) filename))
+	(t nil)))
+
+(defun eval-expr-to-file (expr filename)      
+  (let* ((*generate-tccs* 'all)
+	 (*tccforms* nil)
+	 (expr (pc-parse expr 'expr))
+	 (expr (pc-typecheck expr)))
+    (with-open-file (out filename
+			 :direction :output
+			 :if-exists :append
+			 :if-does-not-exist :create)
+      (format out "~%Evaluating: ~a" expr)
+;;NSH: can be turned on if TCCs must be printed.      
+;       (when *tccforms*
+; 	(format out "~%Generated TCCs: ")
+; 	(evaluator-print-tccs *tccforms*))
+      (multiple-value-bind (cl-input error)
+	  (catch 'no-defn (pvs2cl expr))
+	(cond ((eq cl-input 'cant-translate)
+	       (format out "~%Expression ~s could not be translated: ~%~a"
+		 expr error))
+	      (t (multiple-value-bind (cl-eval error)
+		     (eval cl-input)
+		   (if (not error)
+		       (let ((pvsval (catch 'cant-translate
+				       (cl2pvs cl-eval (type expr)))))
+			 (cond (pvsval
+				(format out "~%Value: ~a~%~%" pvsval))
+			       (t (format out "~%Can't convert back to PVS.")
+				  (format out "Common Lisp value: ~s" cl-eval))))
+		       (format out "~%~a" error)))))))))
 
 
 
