@@ -317,7 +317,7 @@
 ;;tc-eq-norm-addition. 
 		   (result
 		    (if (subsetp (freevars lhs) *bound-variables* :test
-				 #'tc-eq)
+				 #'same-declaration) ;was #'tc-eq
 			(assert-test0;;pseudo-normalize would do
 			 ;;too much work.  
 			 equality)
@@ -335,14 +335,21 @@
 		    (if (and (null lhs-terms)(null rhs-terms))
 			subst
 			(if (eq sig '?)
-			    (match* (make-sum lhs-terms
-					     (compatible-type (type lhs)
-							      *integer*))
-				   (make-sum rhs-terms
-					     (compatible-type (type instance)
-							      *integer*))
-				   bind-alist
-				   subst)
+			    (if (or (intersection (freevars lhs-terms)
+					      *bound-variables*
+					      :test #'same-declaration)
+				    (intersection (freevars rhs-terms)
+					      *bound-variables*
+					      :test #'same-declaration))
+				'fail
+				(match* (make-sum lhs-terms
+						  (compatible-type (type lhs)
+								   *integer*))
+					(make-sum rhs-terms
+						  (compatible-type (type instance)
+								   *integer*))
+					bind-alist
+					subst))
 		    'fail)))
 		  ))
 	    ans)))))
@@ -679,8 +686,8 @@
 
 (defun make-lambda-expr-iter (args* instance)
   (if (null args*) instance
-      (make-lambda-expr-iter (cdr args*)
-			     (make!-lambda-expr (car args*)
+      (make!-lambda-expr (car args*) ;;NSH(10.1.99) swapped order
+	    (make-lambda-expr-iter (cdr args*)
 			       instance))))
      
 (defun map-args*-with-bind-alist (args*  bind-alist)

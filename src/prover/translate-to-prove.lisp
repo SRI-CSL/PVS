@@ -188,6 +188,21 @@
 (defmethod translate-to-prove ((expr number-expr))
   (number expr))
 
+(defmethod translate-to-prove ((ex string-expr))
+  (string->int (string-value ex)))
+
+(defun string->int (string)
+  (let ((value 0))
+    (loop for i from 0 to (1- (length string))
+	  do (setq value (+ (ash value 8) (char-int (char string i)))))
+    value))
+
+(defun int->string (int &optional chars)
+  (if (zerop int)
+      (concatenate 'string chars)
+      (int->string (ash int -8)
+		   (cons (int-char (ldb (byte 8 0) int)) chars))))
+
 (defmethod translate-to-prove ((expr record-expr))
   ;; Creates a dummy record and an update of it.
   (let* ((dummy (get-rec-type-dummy-name (type expr)))
@@ -270,9 +285,9 @@
 (defmethod translate-to-prove ((expr field-application))
   (with-slots (id argument type) expr
     (let* ((fields (fields (find-supertype (type argument))))
-	   (sfields (sort-fields fields))
-	   (pos (position id sfields
-			  :test #'(lambda (x y) (eq x (id y))))))
+	   (sfields ;;(sort-fields fields)
+	    fields)
+	   (pos (position id sfields :key #'id)))
       (list (make-apply-name (mk-funtype (type argument) type))
 	    (translate-to-prove argument)
 	    pos))))
@@ -421,7 +436,7 @@
 			  (unless (or (null prtype)
 				      (assoc apname typealist))
 			    (push (cons apname prtype) typealist)
-			    (push apname applysymlist))
+			    (pushnew apname applysymlist))
 			  (push (cons expr apform) *named-exprs*)
 			  apform))
 		       (t 
@@ -429,6 +444,7 @@
 			(push (list expr newid) *named-exprs*)
 			(list newid))))))
 	      (translate-to-prove (expression expr))))
+	 (tr-operator (unique-binding-operator expr))
 	 (tr-lambda-expr
 	  (cons 'LAMBDA
 		(cons (length (bindings expr))
@@ -441,15 +457,28 @@
 				    "APPLY-"
 				    (princ-to-string (length tr-bndvars))
 				    "-"))
-				 (operator expr)
+				 tr-operator
 				 tr-bndvars)))))))
     (if (lambda-expr? expr)
 	tr-lambda-expr
 	 (list (intern
 		(concatenate 'string
 		  "APPLY-1-" (or (string prtype) "")))
-	       (operator expr)
+	       tr-operator
 	       tr-lambda-expr))))
+
+(defmethod unique-binding-operator ((ex quant-expr))
+  (let ((key (cons (operator ex) (mapcar #'type (bindings ex)))))
+    (or (gethash key *translate-id-hash*)
+	(setf (gethash key *translate-id-hash*)
+	      (intern (concatenate 'string
+			(string (operator ex))
+			"_"
+			(princ-to-string
+			 (funcall *translate-id-counter*))))))))
+
+(defmethod unique-binding-operator ((ex lambda-expr))
+  'LAMBDA)
 
 ;;; Update expressions
 ;;; Translate expressions of the form
@@ -503,7 +532,8 @@
 (defun translate-assign-args (args value trbasis type)
   (if args
       (let ((sorted-fields (when (recordtype? type)
-			     (sort-fields (fields type)))))
+			     ;;(sort-fields (fields type))
+			     (fields type))))
 	(list 'UPDATE
 	      trbasis
 	      (typecase type
@@ -571,7 +601,7 @@
     (unless (or (not prtype)
 		(assoc name typealist))
       (push (cons name prtype) typealist)
-      (push name applysymlist))
+      (pushnew name applysymlist))
     name))
 
 (defmethod prover-type ((type type-expr))
