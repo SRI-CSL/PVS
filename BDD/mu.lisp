@@ -146,7 +146,7 @@
 		(make-conjunction
 		 (mapcar #'(lambda (sf) (negate (formula sf)))
 		   selected-sforms)))
-	       (make-bdd-conjunction-expr ;;  to change BDD-AND ???
+	       (make-bdd-conjunction-expr ;;  change to BDD-AND ???
 		(loop for x in  *pvs-bdd-inclusivity-formulas*
 		      when (null (freevars (car x)));;NSH(8.17.95): subtypes
 		      collect
@@ -279,6 +279,7 @@
 
 (defmethod convert-number-expr (number) ;; ????
  
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
