@@ -1953,7 +1953,7 @@
 	    (setf (conversions *current-context*)
 		  (remove-if #'(lambda (cd)
 				 (same-declaration (name decl) (name cd)))
-		    (conversions *current-context*))))))
+		    (conversions *current-context*)))))))
     
 
 (defun check-duplication (decl)
