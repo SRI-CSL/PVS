@@ -1275,7 +1275,7 @@
 	  total (+ proved unfin) proved))
       t)))
 
-(defun pvs-prove-decl (decl retry? &optional use-default-dp?)
+(defun pvs-prove-decl (decl retry?)
   (setq *current-theory* (module decl))
   (cond ((and (or (justification decl)
 		  (eq (kind decl) 'tcc))
@@ -1287,7 +1287,7 @@
 	   (setf (proof-status decl) 'unproved)
 	   (cond ((justification decl)
 		  (pvs-message "Rerunning proof of ~a" (id decl))
-		  (let ((pstat (rerun-prove decl use-default-dp?))
+		  (let ((pstat (rerun-prove decl))
 			(time (/ (- (get-internal-real-time) start-time)
 				 internal-time-units-per-second 1.0)))
 		    (pvs-message "~a ~aproved in ~,2f seconds"
