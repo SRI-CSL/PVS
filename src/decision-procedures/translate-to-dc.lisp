@@ -5,9 +5,6 @@
 		     (safety 1) (speed 3)
 		     #+allegro (debug 1)))
 
-(defvar *newdc* nil) ;;needs to be set to T to get new ground prover
-;;(defvar *bindings* nil)
-
 (defvar *translate-rewrite-rule* nil)
 
 
