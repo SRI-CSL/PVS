@@ -269,7 +269,7 @@
 	 (t (break "Please contact Cyrluk and do a :cont 0 to continue")
 	    t-c))))
      (t (let ((result (canon* term cong-state no-mod)))
-	  (setf (canon-hash term cong-state) canon-hash)
+	  (unless no-mod (setf (canon-hash term cong-state) canon-hash))
 	  result)))))
 
 (defun canon* (term cong-state &optional (no-mod nil))
