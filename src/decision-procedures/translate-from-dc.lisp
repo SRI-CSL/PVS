@@ -289,11 +289,14 @@
    (t (translate-from-dc-name expr))))
 
 (defun translate-from-dc (expr)
-  (when expr
-    (let* ((struct (translate-from-dc-expr expr))
-	   (eqlty (mk-equation struct struct))
-	   (typed-eqlty (typecheck eqlty :expected *boolean*)))
-      (args1 typed-eqlty))))
+  (cond
+   ((dp::true-p expr) *true*)
+   ((dp::false-p expr) *false*)
+   (t (when expr
+	(let* ((struct (translate-from-dc-expr expr))
+	       (eqlty (mk-equation struct struct))
+	       (typed-eqlty (typecheck eqlty :expected *boolean*)))
+	  (args1 typed-eqlty))))))
 
 (defun translate-from-dc-list (list)
   (if (listp list)
