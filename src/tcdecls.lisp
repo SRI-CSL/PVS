@@ -2330,7 +2330,7 @@
 	  (cond (incs
 		 (unless (eq *generate-tccs* 'none)
 		   (generate-subtype-tcc bvar (type decl) incs))
-		 (add-to-known-subtypes (subtype decl) (type decl)))
+		 (add-judgement-decl decl))
 		(t (pvs-warning
 		       "Subtype judgement is superfluous~@[ (on line ~d)~]:~
                         ~%  ~a"

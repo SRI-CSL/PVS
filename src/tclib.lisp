@@ -527,36 +527,35 @@
 	(orig-context-path *pvs-context-path*))
     (multiple-value-bind (lib-path err-msg)
 	(libref-to-pathname lib-ref)
-      (if err-msg
-	  (type-error dep-lib-ref err-msg)
-	  (unless (or (gethash lib-ref *prelude-libraries*)
-		      (file-equal lib-path *pvs-context-path*))
-	    (with-pvs-context lib-ref
-	      (restore-context)
-	      (multiple-value-bind (*pvs-files* *pvs-modules*)
-		  (get-imported-files-and-theories lib-ref)
-		(unless (every #'(lambda (thid)
-				   (gethash thid *pvs-modules*))
-			       theory-ids)
-		  (relativize-imported-libraries
-		   lib-ref orig-context-path
-		   (let* ((*prelude-libraries*
-			   (make-hash-table :test #'equal))
-			  (theories (mapcan
-					#'(lambda (thid)
-					    (unless (gethash thid
-							     *pvs-modules*)
-					      (list (get-typechecked-theory
-						     thid))))
-				      theory-ids)))
-		     (when (and theories
-				(every #'typechecked? theories))
-		       (save-context)
-		       (dolist (th theories)
-			 (unless (library-datatype-or-theory? th)
-			   (change-to-library-class th lib-ref)
-			   (setf (all-imported-theories th) 'unbound)))
-		       theories)))))))))))
+      (when err-msg
+	(type-error dep-lib-ref err-msg))
+      (unless (or (gethash lib-ref *prelude-libraries*)
+		  (file-equal lib-path *pvs-context-path*))
+	(with-pvs-context lib-ref
+	  (restore-context)
+	  (multiple-value-bind (*pvs-files* *pvs-modules*)
+	      (get-imported-files-and-theories lib-ref)
+	    (unless (every #'(lambda (thid)
+			       (gethash thid *pvs-modules*))
+			   theory-ids)
+	      (relativize-imported-libraries
+	       lib-ref orig-context-path
+	       (let* ((*prelude-libraries*
+		       (make-hash-table :test #'equal))
+		      (theories (mapcan
+				    #'(lambda (thid)
+					(unless (gethash thid *pvs-modules*)
+					  (list (get-typechecked-theory
+						 thid))))
+				  theory-ids)))
+		 (when (and theories
+			    (every #'typechecked? theories))
+		   (save-context)
+		   (dolist (th theories)
+		     (unless (library-datatype-or-theory? th)
+		       (change-to-library-class th lib-ref)
+		       (setf (all-imported-theories th) 'unbound)))
+		   theories))))))))))
 
 ;;; Load-imported-library loads imported libraries - called from
 ;;; get-parsed-theory when a library name is given in an IMPORTING clause.
@@ -1109,6 +1108,7 @@
   (subseq pvs-file-string 0 (1+ (position #\/ pvs-file-string :from-end t))))
 
 (defmethod change-to-library-class (th lib-ref)
+  (assert (not (from-prelude? th)))
   (typecase th
     (library-datatype-or-theory th)
     (rectype-theory

@@ -126,11 +126,12 @@
 
 (defmethod subst-theory-params (term (alist cons))
   ;;(assert (every #'(lambda (elt) (formal-decl? (car elt))) alist))
-  (let ((new-alist (mapcar #'(lambda (elt)
-			       (cons (car elt)
-				     (if (actual? (cdr elt))
-					 (cdr elt)
-					 (mk-actual (cdr elt)))))
+  (let ((new-alist (mapcan #'(lambda (elt)
+			       (when (cdr elt)
+				 (list (cons (car elt)
+					     (if (actual? (cdr elt))
+						 (cdr elt)
+						 (mk-actual (cdr elt)))))))
 		     alist))
 	(theories (delete *current-theory*
 			  (delete-duplicates
@@ -149,11 +150,13 @@
 	       (mk-modname (id th)
 		 (mapcar #'(lambda (fp)
 			     (or (cdr (assq fp new-alist))
-				 (mk-res-actual
-				  (mk-name-expr (id fp)
-				    nil nil
-				    (make-resolution fp (mk-modname (id th))))
-				  th)))
+				 (let ((res (make-resolution fp
+					      (mk-modname (id th)))))
+				   (mk-res-actual
+				    (if (type-decl? fp)
+					(mk-type-name (id fp) nil nil res)
+					(mk-name-expr (id fp) nil nil res))
+				    th))))
 		   (formals-sans-usings th))
 		 lib-id)
 	       th))))
