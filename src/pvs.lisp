@@ -3136,3 +3136,15 @@
 		   (push (format-string s) format-strings)))
 	     *steps*)
     format-strings))
+
+(defun do-all-strategies (fn)
+  (maphash #'(lambda (id entry) (funcall fn entry)) *rulebase*)
+  (maphash #'(lambda (id entry) (funcall fn entry)) *rules*)
+  (maphash #'(lambda (id entry) (funcall fn entry)) *steps*))
+
+(defmethod formals ((rule rule-entry))
+  (append (required-args rule)
+	  (when (optional-args rule)
+	    (if (eq (car (optional-args rule)) '&rest)
+		(optional-args rule)
+		(cons '&optional (optional-args rule))))))
