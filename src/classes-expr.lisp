@@ -248,6 +248,8 @@
 
 (defcl set-expr (lambda-expr))
 
+(defcl let-lambda-expr (lambda-expr))
+
 (defcl quant-expr (binding-expr))
 
 (defcl forall-expr (quant-expr))
