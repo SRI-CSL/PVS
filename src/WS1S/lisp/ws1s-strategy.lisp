@@ -4,11 +4,27 @@
 (defvar *output-automaton* nil)
 (defvar *output-traces* nil)
 
-(defstep ws1s (&optional (fnums *) (examples T) (automaton nil) (traces nil))
+(defstep ws1s (&optional (fnums *)
+			 (examples T)
+			 (automaton nil)
+			 (traces nil)
+			 (defs !)
+			 theories
+			 rewrites
+			 exclude)
   (let ((cuth *current-theory*)
-	(cuthstr (string (id cuth))))
+	(cuthstr (string (id cuth)))
+	(exclude (if (listp exclude) exclude (list exclude)))
+	(all-exclude (append exclude (list "sets.the"
+					   "sets.union"
+					   "sets.intersection"
+					   "sets.difference"
+					   "sets.emptyset"))))
     (then* (skolem!)
-	   (install-rewrites :defs ! :exclude "sets.the")
+	   (install-rewrites :defs defs
+			     :theories theories
+			     :rewrites rewrites
+			     :exclude all-exclude)
 	   (rewrite-msg-off)
 	   (skip-msg "Expanding definitions..." :force-printing? T)
 	   (assert :cases-rewrite? T)
@@ -16,10 +32,13 @@
 	   (ws1s-simp fnums examples automaton traces)))
   "Expands definitions in the formulas specified by FNUMS and tries to decide then
    using the WS1S decision procedures (based on the Mona package developed
-   at BRICS (http://www.brics.dk/~mona).  If EXAMPLES is true a witness
+   at BRICS (http://www.brics.dk/~mona). FNUMS restricts the focus of the
+   strategy to the thereby specified sequent formulas. If EXAMPLES is true a witness
    and a counterexample are being displayed if these formulas turn out to be satisfiable
    but not valid, setting the flag AUTOMATON causes the strategy to display the
-   constructed automaton, TRACES displays a trace version of the witness."
+   constructed automaton, TRACES displays a trace version of the witness.
+   For a description of the remaining flags DEFS, THEORIES, REWRITES, and
+   EXCLUDE see (help install-rewrites)"
   "By rewriting and WS1S decision procedure")
 
 (addrule 'ws1s-simp nil ((fnums *) (examples T) (automaton nil) (traces nil))

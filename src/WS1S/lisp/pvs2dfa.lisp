@@ -156,7 +156,10 @@
 				   (cond ((tc-eq type *boolean*) 0)
 					 ((tc-eq type *naturalnumber*) 1)
 					 ((tc-eq type (fset-of-nats)) 2)
-					 (t (break))))
+					 (t
+					  (error-format-if "~%Type ~a not WS1S translatable in ~a"
+							   type fml)
+					  (throw 'not-ws1s-translatable))))
 			 types)))
 	  (dfa-forall* levels
 		       indices
@@ -173,7 +176,10 @@
 				   (cond ((tc-eq type *boolean*) 0)
 					 ((tc-eq type *naturalnumber*) 1)
 					 ((tc-eq type (fset-of-nats)) 2)
-					 (t (break))))
+					 (t
+					  (error-format-if "~%Type ~a not WS1S translatable in ~a"
+							   type fml)
+					  (throw 'not-ws1s-translatable))))
 			 types)))
 	  (dfa-exists* levels
 		       indices
@@ -248,7 +254,7 @@
   (cond ((var2? trm)
 	 (values (symtab-index trm) nil (dfa-true-val)))
 	((emptyset2? trm)
-	 (let ((i (symtab-index trm)))
+	 (let ((i (symtab-new-index)))
 	   (values i  (list i) (dfa-op #'dfa-empty i))))
 	(t
 	 (error-format-if "~a is not a 2nd-order variable" trm)
