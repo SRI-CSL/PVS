@@ -2644,13 +2644,16 @@ generated")
   (let ((arec (mk-application (mk-name-expr (recognizer c)) avar))
 	(brec (mk-application (mk-name-expr (recognizer c)) bvar))
 	(vals (mapcar #'(lambda (a)
-			  (adt-every-rel
-			   (type a) pvars
-			   (typecheck (mk-application (id a) avar)
-			     :expected (type a))
-			   (typecheck (mk-application (id a) bvar)
-			     :expected (type a))
-			   ptypes fpairs adt))
+			  (let* ((atype (typecheck (copy-untyped
+						    (declared-type a))))
+				 (btype (subst-map-actuals atype fpairs)))
+			    (adt-every-rel
+			     (type a) pvars
+			     (typecheck (mk-application (id a) avar)
+			       :expected atype)
+			     (typecheck (mk-application (id a) bvar)
+			       :expected btype)
+			     ptypes fpairs adt)))
 		(arguments c))))
     (mk-conjunction (cons arec (cons brec vals)))))
 
