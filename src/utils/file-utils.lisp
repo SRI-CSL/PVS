@@ -4,35 +4,38 @@
 			file-write-time get-file-info))
 
 (ff:def-foreign-call fileutils___file_exists_p
-    ((filename (* :char)))
-  #+(version>= 6) :strings-convert #+(version>= 6) t
-  :returning :int)
+    ((filename (* :char) simple-string))
+  :returning :int
+  #+(version>= 6) :strings-convert #+(version>= 6) nil
+  :call-direct t)
 
 (ff:def-foreign-call fileutils___directory_p
-    ((filename (* :char)))
-  #+(version>= 6) :strings-convert #+(version>= 6) t
-  :returning :int)
+    ((filename (* :char) simple-string))
+  :returning :int
+  #+(version>= 6) :strings-convert #+(version>= 6) nil
+  :call-direct t)
 
 (ff:def-foreign-call fileutils___read_permission_p
-    ((filename (* :char)))
-  #+(version>= 6) :strings-convert #+(version>= 6) t
-  )
+    ((filename (* :char) simple-string))
+  #+(version>= 6) :strings-convert #+(version>= 6) nil
+  :call-direct t)
 
 (ff:def-foreign-call fileutils___write_permission_p
-    ((filename (* :char)))
-  #+(version>= 6) :strings-convert #+(version>= 6) t
-  )
+    ((filename (* :char) simple-string))
+  #+(version>= 6) :strings-convert #+(version>= 6) nil
+  :call-direct t)
 
 (ff:def-foreign-call fileutils___file_write_time
-    ((filename (* :char)))
-  #+(version>= 6) :strings-convert #+(version>= 6) t
-  :returning :int)
+    ((filename (* :char) simple-string))
+  #+(version>= 6) :strings-convert #+(version>= 6) nil
+  :returning :int
+  :call-direct t)
 
 (ff:def-foreign-call fileutils___getfileinfo
-    ((filename (* :char))
-     (stat (* :int) (array fixnum)))
-  #+(version>= 6) :strings-convert #+(version>= 6) t
-  )
+    ((filename (* :char) simple-string)
+     (stat (* :int) (simple-array fixnum)))
+  #+(version>= 6) :strings-convert #+(version>= 6) nil
+  :call-direct t)
 
 ;;;
 
@@ -42,41 +45,49 @@
 (defun file-exists-p (filename)
   (let ((exp-file (expanded-tilde-namestring filename)))
     (and exp-file
-	 (zerop (fileutils___file_exists_p exp-file)))))
+	 (excl:with-native-string
+	  (cstr exp-file)
+	  (zerop (fileutils___file_exists_p cstr))))))
 
 (defun directory-p (filename)
   (when filename
-    (let* ((filestring (expanded-tilde-namestring filename)))
-      (unless (zerop (fileutils___directory_p filestring))
-	(pathname (if (char= (char filestring (1- (length filestring))) #\/)
-		      filestring
-		      (concatenate 'string filestring "/")))))))
+    (let ((filestring (expanded-tilde-namestring filename)))
+      (excl:with-native-string
+       (cstr filestring)
+       (unless (zerop (fileutils___directory_p cstr))
+	 (pathname (if (char= (char filestring (1- (length filestring))) #\/)
+		       filestring
+		       (concatenate 'string filestring "/"))))))))
 
 (defun read-permission? (filename)
-  (let ((errno (fileutils___read_permission_p
-		(expanded-tilde-namestring filename))))
-    (or (zerop errno)
-	(values nil (ff:char*-to-string errno)))))
+  (excl:with-native-string
+   (cstr (expanded-tilde-namestring filename))
+   (let ((errno (fileutils___read_permission_p cstr)))
+     (or (zerop errno)
+	 (values nil (ff:char*-to-string errno))))))
 
 (defun write-permission? (filename)
-  (let ((errno (fileutils___write_permission_p
-		(expanded-tilde-namestring filename))))
-    (or (zerop errno)
-	(values nil (ff:char*-to-string errno)))))
+  (excl:with-native-string
+   (cstr (expanded-tilde-namestring filename))
+   (let ((errno (fileutils___write_permission_p cstr)))
+     (or (zerop errno)
+	 (values nil (ff:char*-to-string errno))))))
 
 (defconstant u1970 (encode-universal-time 0 0 0 1 1 1970 0))
 
 (defun file-write-time (filename)
-  (let ((date (fileutils___file_write_time
-	       (expanded-tilde-namestring filename))))
-    (unless (zerop date)
-      (+ date u1970))))
+  (excl:with-native-string
+   (cstr (expanded-tilde-namestring filename))
+   (let ((date (fileutils___file_write_time cstr)))
+     (unless (zerop date)
+       (+ date u1970)))))
 
 ;;; #(dev inode mtime isdir mode)
 (let ((fstat-array
        (make-array 2 :initial-element 0 :element-type 'fixnum)))
   (defun get-file-info (filename)
-    (when (zerop (fileutils___getfileinfo (expanded-tilde-namestring filename)
-					  fstat-array))
-      (list (aref fstat-array 0)
-	    (aref fstat-array 1)))))
+    (excl:with-native-string
+     (cstr (expanded-tilde-namestring filename))
+     (when (zerop (fileutils___getfileinfo cstr fstat-array))
+       (list (aref fstat-array 0)
+	     (aref fstat-array 1))))))
