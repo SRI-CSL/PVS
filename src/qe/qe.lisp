@@ -329,7 +329,7 @@
   (let ((solved-expr nil)
 	(lowers nil) (uppers nil) (diseqns nil) (noccurs nil) (others nil))
     (loop for fml in conjuncts
-       do (let ((res (dp::invoke-process fml *state*)))
+       do (let ((res (dp::invoke-process (top-translate-to-dc fml) *state*)))
 	    (cond ((eq res dp::*false*)
 		   (throw-unsat "~%Inconsistency: ~a" fml))
 		  ((eq res dp::*true*)
