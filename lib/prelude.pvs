@@ -310,6 +310,15 @@ extend_bool [T: TYPE, S: TYPE FROM T]: THEORY
 
  END extend_bool
 
+% The K combinator is used to trigger lambda conversions.
+
+K[T1, T2: TYPE]: THEORY
+ BEGIN
+ 
+  K(x:T1)(y:T2): T1 = x
+  CONVERSION K
+  
+ END K
 
 % identity simply defines the identity function.  The identity is used for
 % conversion expressions.  For example, "foo: T" is translated to
@@ -2324,6 +2333,367 @@ exponentiation: THEORY
  END exponentiation
 
 
+euclidean_division : THEORY
+ BEGIN
+  a, i : VAR nat
+  b : VAR posnat
+  n : VAR int
+
+  %-----------------------------------------------
+  %  Type mod(b) = 0.. b-1
+  %  (replace below[b] to reduce number of TCCs)
+  %-----------------------------------------------
+
+  mod(b) : NONEMPTY_TYPE = { i | i <  b}
+
+  %-----------------------
+  %  Euclidean division
+  %-----------------------
+
+  euclide_nat : LEMMA
+        EXISTS (q : nat), (r : mod(b)) : a = b * q + r
+
+  euclide_int : PROPOSITION
+        EXISTS (q : int), (r : mod(b)) : n = b * q + r
+
+  unique_quotient : PROPOSITION
+        FORALL (q1, q2 : int), (r1, r2 : mod(b)) :
+            b * q1 + r1 = b * q2 + r2 IMPLIES q1 = q2
+
+  unique_remainder : COROLLARY
+        FORALL (q1, q2 : int), (r1, r2 : mod(b)) :
+            b * q1 + r1 = b * q2 + r2 IMPLIES r1 = r2
+
+  unique_division : COROLLARY
+        FORALL (q1, q2 : int), (r1, r2 : mod(b)) :
+            b * q1 + r1 = b * q2 + r2 IMPLIES q1 = q2 AND r1 = r2
+
+ END euclidean_division
+
+
+%
+%  Divisibility relation
+%  
+%  For integers and natural numbers
+%
+divides : THEORY
+ BEGIN
+  n, m, l, x, y : VAR int
+  p, q : VAR nat
+  nz : VAR nzint
+
+  %--------------------
+  %  Divides relation
+  %--------------------
+
+  divides(n, m): bool = EXISTS x : m = n * x
+
+  %----------------
+  %  Easy lemmas
+  %----------------
+
+  divides_sum : LEMMA
+     divides(x, n) AND divides(x, m) IMPLIES divides(x, n + m)
+
+  divides_diff : LEMMA
+     divides(x, n) AND divides(x, m) IMPLIES divides(x, n - m)
+
+  divides_opposite : LEMMA
+     divides(x, - n) IFF divides(x, n)
+
+  opposite_divides : LEMMA
+     divides(- x, n) IFF divides(x, n)
+
+  divides_prod1 : LEMMA
+     divides(x, n) IMPLIES divides(x, n * m)
+
+  divides_prod2 : LEMMA
+     divides(x, n) IMPLIES divides(x, m * n)
+
+  %---------------
+  %  Elimination
+  %---------------
+
+  divides_prod_elim1 : LEMMA
+     divides(nz * n, nz * m) IFF divides(n, m)
+
+  divides_prod_elim2 : LEMMA
+     divides(n* nz, m * nz) IFF divides(n, m)
+
+  %------------------------------------
+  %  Reflexivity and transitivity
+  %------------------------------------
+
+  divides_reflexive: LEMMA divides(n, n)
+
+  divides_transitive: LEMMA
+     divides(n, m) AND divides(m, l) IMPLIES divides(n, l)
+
+  %-----------------------------------------
+  %  Mutual divisors are equal or opposite
+  %-----------------------------------------
+
+  product_one : LEMMA 
+     x * y = 1 IFF (x = 1 AND y = 1) OR (x = -1 AND y = -1)
+
+  mutual_divisors : LEMMA 
+     divides(n, m) AND divides(m, n) IMPLIES n = m OR n = - m
+
+  mutual_divisors_nat: LEMMA
+     divides(p, q) AND divides(q, p) IMPLIES p = q
+  
+  %--------------------------------------
+  %  special properties of zero and one
+  %--------------------------------------
+
+  one_divides : LEMMA divides(1, n)
+
+  divides_zero : LEMMA divides(n, 0)
+
+  zero_div_zero : LEMMA divides(0, n) IFF n = 0
+
+  divisors_of_one : LEMMA divides(n, 1) IFF n = 1 OR n = -1
+
+  one_div_one : LEMMA divides(p, 1) IFF p = 1
+
+  %--------------------------------
+  %  comparisons divisor/multiple
+  %--------------------------------
+
+  divisor_smaller: LEMMA divides(p, q) IMPLIES q=0 OR p <= q
+  
+ END divides
+
+
+min_nat[T: TYPE FROM nat]: THEORY
+ BEGIN
+  S: VAR (nonempty?[T])
+  a, x: VAR T
+
+  min(S): {a | S(a) AND (FORALL x: S(x) IMPLIES a <= x)}
+
+  minimum?(a, S) : bool = S(a) AND (FORALL x: S(x) IMPLIES a <= x)
+
+  min_def : LEMMA 
+     FORALL (S: (nonempty?[T])) : min(S) = a IFF minimum?(a, S)
+
+ END min_nat
+
+
+common_divisor : THEORY
+ BEGIN
+  a, b: VAR nzint
+  c, d, x: VAR posnat
+  n, m: VAR int
+
+  E(a, b) : (nonempty?[posnat]) = { x | EXISTS n, m: x = a * n + b * m }
+
+  gcd(a, b): posnat = min(E(a, b))
+
+  gcd_decomp: LEMMA  EXISTS n, m: gcd(a, b) = a * n + b * m
+
+  gcd_commutes: LEMMA gcd(b, a) = gcd(a, b)
+
+  gcd_divides1: LEMMA divides(gcd(a, b), a)
+
+  gcd_divides2: LEMMA divides(gcd(a, b), b)
+
+  greatest_common_divisor: LEMMA
+     divides(x, a) AND divides(x, b) IMPLIES divides(x, gcd(a, b))
+
+  gcd_def: LEMMA
+     gcd(a, b) = d IFF (divides(d, a) AND divides(d, b) AND 
+        (FORALL x: divides(x, a) AND divides(x, b) IMPLIES divides(x, d)))
+
+  gcd_self: LEMMA gcd(c, c) = c
+
+  gcd_opp1: LEMMA  gcd(-a, b) = gcd(a, b)
+
+  gcd_opp2: LEMMA  gcd(a, -b) = gcd(a, b)
+
+  gcd_one1: LEMMA  gcd(1, a) = 1
+
+  gcd_one2: LEMMA  gcd(a, 1) = 1
+
+  gcd_rule1: LEMMA  a + b * x /= 0 IMPLIES gcd(a + b * x, b) = gcd(a, b)
+
+  gcd_rule2: LEMMA  b + a * x /= 0 IMPLIES gcd(a, b + a * x) = gcd(a, b)
+
+  gcd_multiple1: LEMMA gcd(c * a, c) = c
+
+  gcd_multiple2: LEMMA gcd(c, c * a) = c
+
+  gcd_multiple3: LEMMA gcd(c, b) = c IFF divides(c, b)
+
+  gcd_multiple4: LEMMA gcd(a, c) = c IFF divides(c, a)
+
+  gcd_bound1: LEMMA gcd(c, b) <= c
+
+  gcd_bound2: LEMMA gcd(a, c) <= c
+
+ END common_divisor
+
+
+mutual_primes : THEORY
+ BEGIN
+  a, b, c: VAR nzint
+  d: VAR posnat
+  n, m: VAR int
+
+  prime(a, b): bool = gcd(a, b) = 1
+
+  mutual_primes_commutes: LEMMA  prime(a, b) IFF prime(b, a)
+
+  mutual_primes_equiv: LEMMA
+      prime(a, b) IFF EXISTS n, m: a * n + b * m = 1
+
+  common_div_of_primes: LEMMA
+      prime(a, b) AND divides(d, a) AND divides(d, b) IMPLIES d=1
+
+  mutual_primes_equiv2: LEMMA
+      prime(a, b) IFF (FORALL d: divides(d, a) AND divides(d, b) IMPLIES d=1)
+
+  divides_prod_prime1: LEMMA
+      divides(c, a * b) AND prime(a, c) IMPLIES divides(c, b)
+
+  divides_prod_prime2: LEMMA
+      divides(c, a * b) AND prime(b, c) IMPLIES divides(c, a)
+
+  common_multiple_primes: LEMMA
+      divides(a, c) AND divides(b, c) AND prime(a, b) 
+          IMPLIES divides(a * b, c)  
+
+  mutual_prime_prod: LEMMA
+      prime(a * b, c) IFF prime(a, c) AND prime(b, c)
+
+  prime_with_one: LEMMA  prime(1, a)
+
+  prime_with_one2: LEMMA  prime(a, 1)
+
+ END mutual_primes
+
+
+modulo_arithmetic : THEORY
+ BEGIN
+  x, y, z, t, q : VAR int
+  n0x : VAR nzint
+  px, py, b: VAR posnat
+  n: VAR nat
+
+  %---------------------
+  %  Remainder of x/b
+  %---------------------
+
+  rem(b)(x): mod(b) = epsilon! (r: mod(b)): EXISTS q: x = b * q + r
+
+  rem_def: LEMMA
+     FORALL (r : mod(b)): rem(b)(x) = r IFF EXISTS q: x = b * q + r
+
+  rem_def2: LEMMA
+     FORALL (r : mod(b)): rem(b)(x) = r IFF divides(b, x - r)
+
+  rem_def3: LEMMA
+     FORALL (r : mod(b)): rem(b)(x) = r IFF divides(b, r - x)
+
+
+  %------------------------
+  %  Remainder for easy x
+  %------------------------
+
+  rem_mod: LEMMA FORALL (r : mod(b)): rem(b)(r) = r
+
+  rem_mod2: LEMMA 0 <= x AND x < b IMPLIES rem(b)(x) = x
+
+  rem_zero: LEMMA rem(b)(0) = 0
+
+  rem_self: LEMMA rem(b)(b) = 0
+
+  rem_multiple1: LEMMA rem(b)(b * x) = 0
+
+  rem_multiple2: LEMMA rem(b)(x * b) = 0
+
+  rem_one: LEMMA b /= 1 IMPLIES rem(b)(1) = 1
+
+  rem_minus_one: LEMMA rem(b)(-1) = b-1
+
+
+  %-------------------------
+  %  Congruence properties
+  %-------------------------
+
+  same_remainder: LEMMA
+     rem(b)(x) = rem(b)(y) IFF divides(b, x - y)
+
+
+  rem_rem: LEMMA rem(b)(rem(b)(x)) = rem(b)(x)
+
+
+  rem_sum: LEMMA
+     rem(b)(x) = rem(b)(y) AND rem(b)(z) = rem(b)(t) 
+        IMPLIES rem(b)(x + z) = rem(b)(y + t)
+
+  rem_sum1: LEMMA rem(b)(rem(b)(x) + y) = rem(b)(x + y)
+
+  rem_sum2: LEMMA rem(b)(x + rem(b)(y)) = rem(b)(x + y)
+
+
+  rem_diff: LEMMA
+     rem(b)(x) = rem(b)(y) AND rem(b)(z) = rem(b)(t)
+        IMPLIES rem(b)(x - z) = rem(b)(y - t)
+
+  rem_diff1: LEMMA rem(b)(rem(b)(x) - y) = rem(b)(x - y)
+
+  rem_diff2: LEMMA rem(b)(x - rem(b)(y)) = rem(b)(x - y)
+
+
+
+  rem_prod1: LEMMA rem(b)(rem(b)(x) * y) = rem(b)(x * y)
+
+  rem_prod2: LEMMA rem(b)(x * rem(b)(y)) = rem(b)(x * y)
+
+  rem_prod: LEMMA
+     rem(b)(x) = rem(b)(y) AND rem(b)(z) = rem(b)(t)
+        IMPLIES rem(b)(x * z) = rem(b)(y * t)
+
+
+  rem_expt: LEMMA
+      rem(b)(x) = rem(b)(y) IMPLIES rem(b)(expt(x, n)) = rem(b)(expt(y, n))
+
+  rem_expt1: LEMMA rem(b)(expt(rem(b)(x), n)) = rem(b)(expt(x, n))
+
+
+
+  rem_sum_elim1: LEMMA
+     rem(b)(x + y) = rem(b)(x + z) IFF rem(b)(y) = rem(b)(z)
+
+  rem_sum_elim2: LEMMA
+     rem(b)(y + x) = rem(b)(z + x) IFF rem(b)(y) = rem(b)(z)
+
+  rem_diff_elim1: LEMMA
+     rem(b)(x - y) = rem(b)(x - z) IFF rem(b)(y) = rem(b)(z)
+
+  rem_diff_elim2: LEMMA
+     rem(b)(y - x) = rem(b)(z - x) IFF rem(b)(y) = rem(b)(z)
+
+  rem_opposite_elim: LEMMA
+     rem(b)(- x) = rem(b)(- y) IFF rem(b)(x) = rem(b)(y)
+
+
+
+  %------------------------------------
+  %  Existence of an inverse modulo b
+  %------------------------------------
+
+  rem_inverse: LEMMA 
+     (EXISTS y : rem(b)(x * y) = 1) IFF x /= 0 AND b /= 1 AND prime(x, b)
+
+  rem_inverse2: LEMMA
+     (EXISTS py: rem(b)(x * py) = 1) IFF  x /= 0 AND b /= 1 AND prime(x, b)
+
+  END modulo_arithmetic
+
+
+
 % subrange_induction defines induction schemas for subranges.  This is a
 % parameterized theory so that it may be used as a name to the prover
 % induction commands.  subrange_induction is the weak form, and
@@ -2466,15 +2836,9 @@ finite_sets_def[T: TYPE]: THEORY
   A,B: VAR finite_set
   NA, NB: VAR non_empty_finite_set
 
-  finite_union:        LEMMA is_finite(union(A,B))
   finite_subset:       LEMMA subset?(S,A) IMPLIES is_finite(S)
-  finite_emptyset:     LEMMA is_finite(emptyset[T])
-  finite_singleton:    LEMMA is_finite(singleton(x))
   finite_intersection: LEMMA is_finite(intersection(A,B))
-  finite_difference:   LEMMA is_finite(difference(A,B))
   finite_add:          LEMMA is_finite(add(x,A))
-  finite_remove:       LEMMA is_finite(remove(x,A))
-  finite_rest:         LEMMA is_finite(rest(A))
 
   % -------- Judgements --------------------------------------------------
 
@@ -2638,32 +3002,32 @@ finite_sequences [T: TYPE]: THEORY
     (# length := 0,
        seq := (LAMBDA (x: below[0]): epsilon! (t:T): true) #)
 
-  finseq_appl(fs): [below[length(fs)] -> T] = seq(fs);
+  finseq_appl(fs): [below[length(fs)] -> T] = fs`seq;
 
   CONVERSION finseq_appl
 
   o(fs1, fs2): finseq =
-     LET l1 = length(fs1),
-         lsum = l1 + length(fs2)
+     LET l1 = fs1`length,
+         lsum = l1 + fs2`length
       IN (# length := lsum,
             seq := (LAMBDA (n:below[lsum]):
                       IF n < l1
-                         THEN seq(fs1)(n)
-                         ELSE seq(fs2)(n-l1)
+                         THEN fs1`seq(n)
+                         ELSE fs2`seq(n-l1)
                       ENDIF) #);
 
   p: VAR [nat, nat]
 
   ^(fs, p): finseq =
     LET (m, n) = p
-     IN IF m > n OR m >= length(fs)
+     IN IF m > n OR m >= fs`length
         THEN empty_seq
-        ELSE LET len = min(n - m + 1, length(fs) - m)
+        ELSE LET len = min(n - m + 1, fs`length - m)
               IN (# length := len,
-                    seq := (LAMBDA (x: below[len]): seq(fs)(x + m)) #)
+                    seq := (LAMBDA (x: below[len]): fs`seq(x + m)) #)
         ENDIF
 
-  extract1(fs:{fs | length(fs) = 1}): T = seq(fs)(0)
+  extract1(fs:{fs | fs`length = 1}): T = fs`seq(0)
 
   CONVERSION extract1
 
@@ -3027,6 +3391,164 @@ strings: THEORY
  END strings
 
 
+% Defines fixpoints for sets, needed to support the mucalculus model checker.
+
+mucalculus[T:TYPE]: THEORY
+ BEGIN
+
+  s: VAR T
+  p, p1, p2: VAR pred[T]
+  predtt: TYPE = [pred[T]->pred[T]]
+  pp: VAR predtt
+  setofpred: VAR pred[pred[T]]
+
+  IMPORTING orders[pred[T]]
+  <=(p1,p2): bool = FORALL s: p1(s) IMPLIES p2(s)
+
+  ismono(pp): bool =
+      FORALL p1, p2: p1 <= p2 IMPLIES pp(p1) <= pp(p2)
+
+  isfix (pp,p): bool = (pp(p) = p)
+
+  glb (setofpred): pred[T] =
+      LAMBDA s: (FORALL p: member(p,setofpred) IMPLIES p(s))
+
+  % least fixpoint
+  lfp(pp): pred[T] = glb({p | pp(p) <= p})
+
+  mu(pp): pred[T] = lfp(pp)
+
+  islfp(pp, p1): bool =
+    isfix (pp, p1) AND FORALL p2: isfix(pp,p2) IMPLIES p1 <= p2
+
+  lub(setofpred): pred[T] = LAMBDA s: EXISTS p: member(p,setofpred) AND p(s)
+
+  % greatest fixpoint
+  gfp(pp): pred[T] = lub({p | p <= (pp(p))})
+
+  nu(pp): pred[T] = gfp(pp)
+
+  isgfp(pp,p1): bool =
+    isfix (pp,p1) AND FORALL p2: isfix (pp,p2) IMPLIES p2 <= p1
+
+ END mucalculus
+
+
+% Basic CTL temporal operators (without fairness) defined in mu-calculus
+
+ctlops[state : TYPE]: THEORY
+ BEGIN
+
+  IMPORTING mucalculus[state]
+
+  u,v,w: VAR state
+  f,g,Q,P,p1,p2: VAR pred[state]
+  Z: VAR pred[[state, state]]
+
+  N: VAR [state, state -> bool]
+
+  EX(N,f)(u):bool = (EXISTS v: (f(v) AND N(u, v)))
+
+  EG(N,f):pred[state] = nu(LAMBDA Q: (f AND EX(N,Q)))
+
+  EU(N,f,g):pred[state] = mu(LAMBDA Q: (g OR (f AND EX(N,Q))))
+
+  % Other operator definitions
+  EF(N,f):pred[state] = EU(N,(LAMBDA u: TRUE),f)
+  AX(N,f):pred[state] = NOT EX(N, NOT f)
+  AF(N,f):pred[state] = NOT EG(N, NOT f)
+  AG(N,f):pred[state] = NOT EF(N, NOT f)
+  AU(N,f,g):pred[state] = NOT EU(N, NOT g, (NOT f AND NOT g)) AND AF(N,g)
+
+ END ctlops
+
+
+% Fair versions of CTL operators where
+% fairAG(N, f)(Ff)(s) means f always holds along every N-path
+% from s along which the fairness predicate Ff holds infinitely
+% often.  This is different from the usual linear-time notion of 
+% fairness where the strong form asserts that if an action A is 
+% enabled infinitely often, it is taken infinitely often, and the 
+% weak form asserts that if any action that is continuously enabled 
+% is taken infinitely often.  
+
+fairctlops  [ state : TYPE ]: THEORY
+ BEGIN
+  IMPORTING ctlops[state]
+  u,v,w: VAR state
+  f,g,Q,P,p1,p2: VAR pred[state]
+  N: VAR [state, state->bool]
+  Ff: VAR pred[state] % Fair formula
+
+  fairEG(N, f)(Ff): pred[state] =
+    nu(LAMBDA P: EU(N, f, f AND Ff AND EX(N, P)))
+
+  fairAF(N,f)(Ff):pred[state]  = NOT fairEG(N, NOT f)(Ff)
+
+  fair?(N,Ff):pred[state] = fairEG(N,LAMBDA u: TRUE)(Ff)
+
+  fairEX(N,f)(Ff):pred[state] = EX(N,f AND fair?(N,Ff))
+
+  fairEU(N,f,g)(Ff):pred[state] = EU(N,f,g AND fair?(N,Ff))
+
+  fairEF(N,f)(Ff):pred[state] = EF(N,f AND fair?(N,Ff))
+
+  fairAX(N,f)(Ff):pred[state] = NOT fairEX(N, NOT f)(Ff)
+
+  fairAG(N,f)(Ff):pred[state] = NOT fairEF(N,NOT f)(Ff)
+
+  fairAU(N,f,g)(Ff):pred[state] =
+	NOT fairEU(N,NOT g,NOT f AND NOT g)(Ff)
+	    AND fairAF(N,g)(Ff)
+
+ END fairctlops
+
+
+% Fair versions of CTL operators with lists of fairness conditions.
+% FairAG(N,f)(Fflist)(s) means f always holds on every N-path from
+% s along which each predicate in Fflist holds infinitely often.
+
+Fairctlops[state : TYPE]: THEORY
+ BEGIN
+  IMPORTING ctlops[state]
+  u,v,w: VAR state
+  f,g,Q,P,p1,p2: VAR pred[state]
+  N: VAR [state, state->bool]
+  Fflist, Gflist: VAR list[pred[state]] % Fair formula
+
+  CheckFair(Q, N, f, Fflist): RECURSIVE pred[state] =
+    (CASES Fflist OF
+     cons(Ff, Gflist):
+	     EU(N, f, f AND Ff AND
+		      EX(N, CheckFair(Q, N, f, Gflist))),
+     null : Q
+     ENDCASES)
+    MEASURE length(Fflist)
+
+  FairEG(N, f)(Fflist): pred[state] =
+    nu(LAMBDA P: CheckFair(P, N, f, Fflist))
+
+  FairAF(N,f)(Fflist):pred[state]  = NOT FairEG(N, NOT f)(Fflist)
+
+  Fair?(N,Fflist):pred[state] = FairEG(N,LAMBDA u: TRUE)(Fflist)
+
+  FairEX(N,f)(Fflist):pred[state] = EX(N,f AND Fair?(N,Fflist))
+
+  FairEU(N,f,g)(Fflist):pred[state] = EU(N,f,g AND Fair?(N,Fflist))
+
+  FairEF(N,f)(Fflist):pred[state] = EF(N,f AND Fair?(N,Fflist))
+
+  FairAX(N,f)(Fflist):pred[state] = NOT FairEX(N, NOT f)(Fflist)
+
+  FairAG(N,f)(Fflist):pred[state] = NOT FairEF(N,NOT f)(Fflist)
+
+  FairAU(N,f,g)(Fflist):pred[state] =
+	NOT FairEU(N,NOT g,NOT f AND NOT g)(Fflist)
+	    AND FairAF(N,g)(Fflist)
+
+ END Fairctlops
+
+
 % The rest of the prelude contains examples meant to illustrate language
 % features not illustrated in the preceding theories.  Note that these
 % theories are not meant to be imported.
@@ -3040,13 +3562,13 @@ tuple_prelude_example: THEORY
   t1, t2: VAR T_prelude
 
   T_prelude_extensionality: POSTULATE
-    (PROJ_1(t1) = PROJ_1(t2) AND PROJ_2(t1) = PROJ_2(t2)) IMPLIES t1 = t2
+    (t1`1 = t2`1 AND t1`2 = t2`2) IMPLIES t1 = t2
 
   t_prelude: T_prelude = (3, 2)
 
-  tupaccess_prelude: FORMULA PROJ_1(3,2) = PROJ_2((7,3))
+  tupaccess_prelude: FORMULA (3,2)`1 = (7,3)`2
 
-  tupform_prelude: FORMULA t_prelude WITH [1 := 4] = (4, 2)
+  tupform_prelude: FORMULA t_prelude WITH [`1 := 4] = (4, 2)
  END tuple_prelude_example
 
 
@@ -3059,10 +3581,10 @@ record_prelude_example: THEORY
   r1, r2: VAR R_prelude
 
   R_prelude_extensionality: POSTULATE
-    (a(r1) = a(r2) AND b(r1) = b(r2))
+    (r1`a = r2`a AND r1`b = r2`b)
    IMPLIES r1 = r2
 
   r_prelude: R_prelude = (# a := 3, b := 2 #)
 
-  recform_prelude: FORMULA r_prelude WITH [a := 4] = (# a := 4, b := 2 #)
+  recform_prelude: FORMULA r_prelude WITH [`a := 4] = (# a := 4, b := 2 #)
  END record_prelude_example
