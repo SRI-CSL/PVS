@@ -1,13 +1,6 @@
 (in-package :pvs)
 
 ;; Translation of PVS formulas to deterministic finite automata;
-;;
-;; typically used as follows:
-;;    (unwind-protect
-;;       (progn
-;;         (bool-to-dfa-init)
-;;         (.... (catch 'not-ws1s-translatable (bool-to-dfa ....)))
-;;      (bool-to-dfa-init))
 
 ; Messages
 
@@ -16,18 +9,6 @@
       (when *verbose*
         (format t ,str ,@args))))
 
-; Initialization
-
-(defun bool-to-dfa-init ()
-  (symtab-init)
-  (bool-to-dfa-hash-init))
-
-(defvar *bool-to-dfa-table* nil)
-
-(defun bool-to-dfa-hash-init ()
-  (if *bool-to-dfa-table*
-      (clrhash *bool-to-dfa-table*)
-    (setf *bool-to-dfa-table* (make-hash-table :test 'eq))))
 
 ;; WS1S type declarations
 
@@ -37,6 +18,7 @@
 (defun ws1s-type? (type)
   (member type (ws1s-types) :test #'tc-eq))
 
+
 ;; Recognizing Variables
 
 (defun var? (expr) 
@@ -45,12 +27,12 @@
     ;   (typep (declaration expr) '(and const-decl (not def-decl)))
        (not (def-axiom (declaration expr)))))
 
+
 ;; Assign level according to type information
 
 (defun level (type)
   (cond ((tc-eq type *boolean*) 0)
-	((subtype-of? type *number*)
-	 (if *presburger* 2 1))
+	((subtype-of? type *number*) 1)
 	(t
 	 2)))
 	;((subtype-of? type (fset-of-nats)) 2)
@@ -88,7 +70,9 @@
   (unwind-protect
       (progn 
 	(symtab-init)
-	(dfa-unrestrict (bool-to-dfa* fml (symtab-empty))))
+	(multiple-value-bind (dfa symtab)
+	    (bool-to-dfa* fml (symtab-empty))
+	  (values (dfa-unrestrict dfa) symtab)))
     nil))
        
 (defmethod bool-to-dfa* ((fml expr) symtab)
@@ -194,15 +178,10 @@
 	   (bool-to-dfa* (make!-equivalence lhs rhs) symtab))
 	  ((or (natural-expr? lhs)
 	       (natural-expr? rhs))
-	   (if *presburger*
-	       (combine-binary #'presburger-to-dfa lhs
-			       #'presburger-to-dfa rhs
-			       #'dfa-eq2
-			       symtab)
-	       (combine-binary #'index-to-dfa lhs
-			       #'index-to-dfa rhs
-			       #'dfa-eq1
-			       symtab)))
+	   (combine-binary #'index-to-dfa lhs
+			   #'index-to-dfa rhs
+			   #'dfa-eq1
+			   symtab))
 	  ((or (finite-set-of-nat? lhs)
 	       (finite-set-of-nat? rhs))
 	   (combine-binary #'nats-to-dfa lhs
@@ -228,42 +207,28 @@
 			   #'dfa-in
 			   symtab))
 	  ((tc-eq op (less-operator))
-	   (process-nat-binrel (args1 fml)
-			       (args2 fml)
-			       #'dfa-presburger-less
-			       #'dfa-less
-			       symtab))
+	   (combine-binary #'index-to-dfa (args1 fml)
+			   #'index-to-dfa (args2 fml)
+			   #'dfa-less
+			   symtab))
 	  ((tc-eq op (greater-operator))
-	   (process-nat-binrel (args1 fml)
-			       (args2 fml)
-			       #'dfa-presburger-greater
-			       #'(lambda (i j) (dfa-less j i))
-			       symtab))
+	   (combine-binary #'index-to-dfa (args1 fml)
+			   #'index-to-dfa (args2 fml)
+			   #'(lambda (i j) (dfa-less j i))
+			   symtab))
 	  ((tc-eq op (lesseq-operator))
-	   (process-nat-binrel (args1 fml)
-			       (args2 fml)
-			       #'dfa-presburger-lesseq
-			       #'dfa-lesseq
-			       symtab))
+	   (combine-binary #'index-to-dfa (args1 fml)
+			   #'index-to-dfa (args2 fml)
+			   #'dfa-lesseq
+			   symtab))
 	  ((tc-eq op (greatereq-operator))
-	   (process-nat-binrel (args1 fml)
-			       (args2 fml)
-			       #'dfa-presburger-greatereq
-			       #'(lambda (i j) (dfa-lesseq j i))
-			       symtab))
+	   (combine-binary #'index-to-dfa (args1 fml)
+			   #'index-to-dfa (args2 fml)
+			   #'(lambda (i j) (dfa-lesseq j i))
+			   symtab))
 	  (t
 	   (call-next-method)))))
 
-(defun process-nat-binrel (lhs rhs combine-presburger combine-succ symtab)
-  (if *presburger*
-      (combine-binary #'presburger-to-dfa lhs
-		      #'presburger-to-dfa rhs
-		      #'(lambda (p q) (funcall combine-presburger p q #'symtab-fresh-index))
-		      symtab)
-      (combine-binary #'index-to-dfa lhs
-		      #'index-to-dfa rhs
-		      combine-succ
-		      symtab)))
 
 (defmethod bool-to-dfa* ((fml forall-expr) symtab)
   (bool-to-dfa*
@@ -291,7 +256,6 @@
 
 
 ;; Translation of finite set of naturals
-
 
 (defun nats-to-dfa (expr symtab)
   (nats-to-dfa* expr symtab))
@@ -448,88 +412,6 @@
 		symtab2)))))
 
 
-;; Translation of presburger expressions
-
-(defun presburger-to-dfa (trm symtab)
-  (presburger-to-dfa* trm symtab))
-
-(defmethod presburger-to-dfa* ((trm expr) symtab)
-  (when (symtab-shielding? trm symtab)
-    (ws1s-msg "~%Not abstractable: ~a." trm)
-    (throw 'not-ws1s-translatable nil))
-  (let ((idx (symtab-index trm symtab)))
-    (if idx
-	(values idx nil (dfa-true) symtab)
-	(multiple-value-bind (idx1 symtab1)
-	    (symtab-add-free trm symtab)
-	  (ws1s-msg "~%Abstracting natural ~a" trm)   
-	  (values idx1
-		  nil
-		  (dfa-true)
-		  symtab1)))))
-
-(defmethod presburger-to-dfa* ((expr name-expr) symtab)
-  (cond ((natural-expr? expr)
-	 (let ((idx (symtab-index expr symtab)))
-	   (if idx
-	       (values idx nil (dfa-true) symtab)
-	       (call-next-method))))
-	(t
-	 (ws1s-msg "~%Not abstractable: ~a." expr)
-	 (throw 'not-ws1s-translatable nil))))
-
-(defmethod presburger-to-dfa* ((expr number-expr) symtab)
-  (cond ((not (natural-number-expr? expr))
-	 (ws1s-msg "~%Not abstractable: ~a." expr)
-	 (throw 'not-ws1s-translatable nil))
-	(t
-	 (multiple-value-bind (idx0 symtab0)
-	     (symtab-add-free expr symtab)
-	   (values idx0
-		   nil
-		   (dfa-presburger-const idx0 (number expr))
-		   symtab0)))))
-
-(defmethod presburger-to-dfa* ((trm application) symtab)
-  (let ((op (operator trm)))
-    (cond ((tc-eq op (minus-operator))
-	   (let ((trm1 (make!-plus (args1 trm)
-				   (make!-unary-minus (args2 trm)))))
-	     (presburger-to-dfa* trm1 symtab)))
-	  ((tc-eq op (plus-operator))
-	   (plus-to-dfa (args1 trm) (args2 trm) symtab))
-	  ((and (tc-eq op (times-operator))
-		(natural-number-expr? (args1 trm)))
-	   (linear-times-to-dfa (number (args1 trm)) (args2 trm) symtab))
-	  (t
-	   (call-next-method)))))
-
-(defun plus-to-dfa (lhs rhs symtab)
-  (multiple-value-bind (idx1 exs1 cnstrnts1 symtab1)
-      (presburger-to-dfa* lhs symtab)
-    (multiple-value-bind (idx2 exs2 cnstrnts2 symtab2)
-	(presburger-to-dfa* rhs symtab1)
-      (let* ((idx3 (symtab-fresh-index))
-	     (exs (cons idx3 (append exs1 exs2)))
-	     (cnstrnts3 (dfa-presburger-add idx1 idx2 idx3 #'symtab-fresh-index)) ; idx3 = idx2 + idx1
-	     (cnstrnts (dfa-conjunction cnstrnts1
-					(dfa-conjunction cnstrnts2 cnstrnts3))))
- 	  (values idx3
-		  (cons idx3 (append exs1 exs2))
-		  cnstrnts
-		  symtab2)))))
-
-(defun linear-times-to-dfa (n trm symtab &optional exs (cnstrnts (dfa-true)) idx)
-  (if (= n 0)
-      (values idx exs cnstrnts symtab)
-      (multiple-value-bind (new-idx new-exs new-cnstrnts new-symtab)
-	  (plus-to-dfa trm trm symtab)
-	(linear-times-to-dfa (1- n)
-			     trm
-			     new-symtab
-			     (append exs new-exs)
-			     (dfa-conjunction cnstrnts new-cnstrnts)
-			     new-idx))))
 
 
 ;; Translation of index terms
@@ -596,7 +478,7 @@
   (let ((op (operator expr)))
     (cond ((tc-eq op (minus1))
 	   (let ((nexpr (make!-minus
-			 (pseudo-normalize (args1 expr)))))          ; now hopefully of the form p_i =  n + p_j
+			 (pseudo-normalize (args1 expr)))))    ; now hopefully of the form p_i =  n + p_j
 	     (cond ((not (natural-number-expr? (args1 nexpr)))
 		    (call-next-method))
 		   (t
