@@ -848,7 +848,9 @@
 
 (defmethod subst-params-decl ((j number-judgement) modinst)
   (let ((nj (lcopy j
-	      'module (current-theory)
+	      'module (if (fully-instantiated? modinst)
+			  (current-theory)
+			  (module j))
 	      'declared-type (subst-mod-params (declared-type j) modinst)
 	      'type (subst-mod-params (type j) modinst))))
     (unless (eq j nj)
@@ -857,7 +859,9 @@
 
 (defmethod subst-params-decl ((j name-judgement) modinst)
   (let ((nj (lcopy j
-	      'module (current-theory)
+	      'module (if (fully-instantiated? modinst)
+			  (current-theory)
+			  (module j))
 	      'declared-type (subst-mod-params (declared-type j) modinst)
 	      'type (subst-mod-params (type j) modinst)
 	      'name (subst-mod-params (name j) modinst))))
@@ -867,7 +871,9 @@
 
 (defmethod subst-params-decl ((j application-judgement) modinst)
   (let ((nj (lcopy j
-	      'module (current-theory)
+	      'module (if (fully-instantiated? modinst)
+			  (current-theory)
+			  (module j))
 	      'declared-type (subst-mod-params (declared-type j) modinst)
 	      'type (subst-mod-params (type j) modinst)
 	      'judgement-type (subst-mod-params (judgement-type j) modinst)
