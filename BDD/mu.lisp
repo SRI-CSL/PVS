@@ -638,8 +638,7 @@
 ;; Klaus noticed this unsoundness since the lsb was being set to the
 ;;msb of the position bit string.  
 
-
-(defun make-mu-variable (expr) ;; new-make-variable
+ (defun make-mu-variable (expr) ;; new-make-variable
     (let ((bddname (gethash expr *pvs-bdd-hash*)))
     (if bddname (if (consp bddname)
               (let ((new-bddname (cadr bddname)))
@@ -649,8 +648,7 @@
            (if (member expr *list-of-relational-vars* :test #'tc-eq)
                         (mu-make-bool-var (format nil "b~d" bddname))
                                (if *build-arguments* 
-    (mu-make-bool-var (format nil "b~d" bddname)) bddname)) ;; not sure 
-                              )
+    (mu-make-bool-var (format nil "b~d" bddname)) bddname)))
 	(if (sub-range? (type expr))
 	    (make-subrange-names expr)
 	    (if (scalar? expr)
@@ -663,8 +661,7 @@
                                  (not *build-access-var*)))
                            (is-access-var *build-access-var*))
                             (setf (gethash expr *pvs-bdd-hash*)
-			     (if (or is-access-var is-rel-var) 
-                                        bddhash-name mu-expression))
+			          bddhash-name )
 	        	    (when (null (freevars expr))
 		              (setf (gethash bddhash-name *bdd-pvs-hash*)
 			        expr))
@@ -672,7 +669,6 @@
                                 (push expr *list-of-relational-vars* ))
              	mu-expression
 )))))))
-
 
 
 ;; negates a particular element in a list of boolean lits (symbols)
