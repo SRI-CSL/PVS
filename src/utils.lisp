@@ -621,15 +621,36 @@
 (defun add-decl-test (x y)
   (and (eq (kind-of x) (kind-of y))
        (case (kind-of x)
-	 (expr (tc-eq (type x) (type y)))
-	 ((judgement conversion) (and (eq (class-of x) (class-of y))
-				      (tc-eq (type x) (type y))))
+	 (judgement (add-decl-test* x y))
+	 (conversion (and (eq (class-of x) (class-of y))
+			  (tc-eq (type x) (type y))))
 	 (auto-rewrite (and (if (auto-rewrite-minus-decl? x)
 				(auto-rewrite-minus-decl? y)
 				(not (auto-rewrite-minus-decl? y)))
 			    (tc-eq (rewrite-names x)
 				   (rewrite-names y))))
+	 (expr (tc-eq (type x) (type y)))
 	 (t t))))
+
+(defmethod add-decl-test* ((x subtype-judgement) (y subtype-judgement))
+  (and (tc-eq (type x) (type y))
+       (tc-eq (subtype x) (subtype y))))
+
+(defmethod add-decl-test* ((x number-judgement) (y number-judgement))
+  (and (= (number (number-expr x)) (number (number-expr y)))
+       (tc-eq (type x) (type y))))
+
+(defmethod add-decl-test* ((x name-judgement) (y name-judgement))
+  (and (eq (declaration (name x)) (declaration (name y)))
+       (tc-eq (type x) (type y))))
+
+(defmethod add-decl-test* ((x application-judgement) (y application-judgement))
+  (and (eq (declaration (name x)) (declaration (name y)))
+       (tc-eq (judgement-type x) (judgement-type y))))
+
+(defmethod add-decl-test* (x y)
+  (declare (ignore x y))
+  nil)
 
 
 ;;; Simple file copy function.  See SunCL Advanced User's Guide for
@@ -867,7 +888,7 @@
 		(th (get-theory thname)))
 	   (add-usings-to-context* th thname))
 	 (setf (saved-context d) (copy-context *current-context*)))
-	(subtype-judgement (add-to-known-subtypes (subtype d) (type d)))
+	;;(subtype-judgement (add-to-known-subtypes (subtype d) (type d)))
 	(judgement (add-judgement-decl d t))
 	(conversionminus-decl (disable-conversion d))
 	(conversion-decl (push d (conversions *current-context*)))
@@ -900,20 +921,36 @@
 	 (th (get-theory thname))
 	 (thdecls (all-decls th))
 	 (prev-decls (ldiff thdecls (memq decl thdecls)))
-	 (*insert-add-decl* nil))
+	 (*insert-add-decl* nil)
+	 (imp-context (when (and (generated-by decl)
+				 (typep decl
+					'(or importing theory-abbreviation-decl
+					     mod-decl formal-theory-decl)))
+			(saved-context (generated-by decl)))))
     ;;; Want something like add-usings-to-context*, but only for those
     ;;; importings that precede the given declaration.
-    (add-to-using thname th)
-    (add-preceding-importings prev-decls th thname)))
+    (when imp-context
+      (dolist (entry (library-alist imp-context))
+	(pushnew entry (current-library-alist) :key #'car))
+      (add-to-using thname th)
+      (add-preceding-importings prev-decls th thname))))
 
 (defmethod update-context-importing-for-mapped-tcc ((decl assuming-tcc))
   (let* ((thname (theory-instance decl))
 	 (th (module (generating-assumption decl)))
 	 (thdecls (all-decls th))
 	 (prev-decls (ldiff thdecls (memq decl thdecls)))
-	 (*insert-add-decl* nil))
-    (add-to-using thname th)
-    (add-preceding-importings prev-decls th thname)))
+	 (*insert-add-decl* nil)
+	 (imp-context (when (and (generated-by decl)
+				 (typep decl
+					'(or importing theory-abbreviation-decl
+					     mod-decl formal-theory-decl)))
+			(saved-context (generated-by decl)))))
+    (when imp-context
+      (dolist (entry (library-alist imp-context))
+	(pushnew entry (current-library-alist) :key #'car))
+      (add-to-using thname th)
+      (add-preceding-importings prev-decls th thname))))
 
 (defun add-preceding-importings (prev-decls theory thinst)
   (dolist (d prev-decls)
@@ -1892,8 +1929,8 @@
        (not (variable? x))
        (module-instance (resolution x))
        (or (null (current-theory))
-	   (not (eq (id (module-instance (resolution x)))
-		    (id (current-theory))))
+	   (not (eq (module (declaration (resolution x)))
+		    (current-theory)))
 	   (actuals (module-instance (resolution x)))
 	   (integerp (id x))
 	   (mappings (module-instance (resolution x))))
@@ -2554,8 +2591,10 @@ space")
   (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
 
 (defun reset-pseudo-normalize-caches ()
-  (setq *pseudo-normalize-hash*
-	(make-lhash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+  (if *pseudo-normalize-hash*
+      (clrhash *pseudo-normalize-hash*)
+      (setq *pseudo-normalize-hash*
+	    (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq)))
   (if *pseudo-normalize-translate-to-prove-hash*
       (clrhash *pseudo-normalize-translate-to-prove-hash*)
       (setq *pseudo-normalize-translate-to-prove-hash*
@@ -2576,11 +2615,8 @@ space")
 		      adt-accessor-decl adt-def-decl))
 	  (not (fully-instantiated? expr)))
       expr
-      (let* ((fvars (freevars expr))
-	     (key (unless nil;fvars
-		    (cons expr include-typepreds?)))
-	     (nexpr (when key (get-lhash key *pseudo-normalize-hash*))))
-	;;(push expr pnexprs)
+      (let* ((key (cons expr include-typepreds?))
+	     (nexpr (gethash key *pseudo-normalize-hash*)))
 	(if nexpr
 	    (if (tc-eq nexpr expr)
 		expr
@@ -2598,8 +2634,8 @@ space")
 		   (*assert-flag* 'simplify)
 		   (*process-output* nil)
 		   (*assert-if-arith-hash*
-		    (if *assert-if-arith-hash*;;NSH(11.30.95) 
-			*assert-if-arith-hash*;;not real shadowing
+		    (if *assert-if-arith-hash* ;;NSH(11.30.95) 
+			*assert-if-arith-hash* ;;not real shadowing
 			(make-hash-table :test #'eq)))
 		   (*current-decision-procedure* 'shostak))
 	      (nprotecting-cong-state
@@ -2616,8 +2652,7 @@ space")
 					(typealist typealist))
 				   (newcounter *translate-id-counter*)
 				   (assert-if-simplify expr)))))
-		 (when key
-		   (setf (get-lhash key *pseudo-normalize-hash*) result))
+		 (setf (gethash key *pseudo-normalize-hash*) result)
 		 ;; (unless (tc-eq result (partial-normalize expr))
 		 ;;   (break "Different pseudo-normalize results"))
 		 result)))))))
