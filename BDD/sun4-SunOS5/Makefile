@@ -10,9 +10,9 @@ XCFLAGS = -O
 SHELL = /bin/sh
 VPATH = ..:../bdd/utils:../bdd/src:../mu/src
 
-bddobj = bdd_interface.o bdd_fns.o bdd.o bdd_factor.o bdd_quant.o vfns.o
+bddobj = bdd_interface.o bdd_fns.o bdd.o bdd_factor.o bdd_quant.o bdd_vfns.o
 
-muobj = bdd_interface.o bdd.o bdd_factor.o bdd_quant.o bdd_fns.o vfns.o \
+muobj = bdd_interface.o bdd.o bdd_factor.o bdd_quant.o bdd_fns.o bdd_vfns.o \
         appl.o mu_interface.o mu.o
 
 utilobj = double.o list.o hash.o alloc.o
@@ -40,7 +40,7 @@ bdd_factor.o : bdd_factor.c bdd_factor.h
 bdd.o : bdd.c bdd.h bdd_extern.h
 bdd_fns.o : bdd_fns.c bdd_fns.h bdd.h bdd_extern.h
 bdd_quant.o : bdd_quant.c bdd_fns.h bdd.h bdd_extern.h
-vfns.o : vfns.c vfns.h bdd_fns.h bdd.h bdd_extern.h
+bdd_vfns.o : bdd_vfns.c bdd_vfns.h bdd_fns.h bdd.h bdd_extern.h
 
 mu_interface.o : mu_interface.c mu.h
 mu.o : mu.c mu.h
