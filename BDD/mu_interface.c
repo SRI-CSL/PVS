@@ -149,11 +149,11 @@ BDDPTR modelcheck_formula (Formula fml)
    mu_verbose = 1;  /* 1 */
    mu_echo = 1;  /* 1 */
    mu_use_and_smooth = 1;
-   /*
+   
      fprintf (stdout, "  \n");  
      mu_print_formula_infix (stdout, fml); 
      fprintf (stdout, ";\n ");  
-     */
+   
    R = mu_interpret_formula (fml, Ip, NULL);
    mu_free_formula(fml);
  /*   bdd_print_as_sum_of_cubes (stdout, R,0) ; */
