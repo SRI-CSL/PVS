@@ -194,4 +194,3 @@
 
 (defun dom (subst)
   (mapcar #'car subst))
-
