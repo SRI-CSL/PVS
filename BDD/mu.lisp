@@ -551,8 +551,19 @@
    (mu_mk_curry_application mu-reach-expr other-arguments))
 )
 
-
-
+;;HS 03/05/99
+(defun convert-pvs-to-mu-reachable (expr)
+  (let* ((mu-list-args (convert-pvs-to-mu-formula (arguments expr)))
+         (reach-list-args (convert-pvs-to-mu-term (arguments (operator expr))))
+         (nbofargs (length (arguments (operator expr))))
+         (mu-reach-expr
+   (cond ((equal 2 nbofargs) (mu_mk_reach (nth 0 reach-list-args) 
+                             (nth 1 reach-list-args) (mu-mk-true) ))
+         ((equal 3 nbofargs) (mu_mk_reach (nth 0 reach-list-args) 
+                 (nth 1 reach-list-args) (nth 2 reach-list-args) ))
+              )))
+   (mu_mk_curry_application mu-reach-expr (lisp-to-c-list mu-list-args)))
+)
 
 (defun convert-pvs-to-mu-equality (expr)
  (cond
