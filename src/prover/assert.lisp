@@ -538,7 +538,7 @@
 (defmethod connective-occurs? ((expr application))
     (or ;;NSH(4.8.96) (negation? expr)
 	(implication? expr)(conjunction? expr)
-	(disjunction? expr)(ifff? expr)
+	(disjunction? expr)(iff? expr)
 ;	(and (equality? expr)(typep (args1 expr) 'tuple-expr)
 ;	     (typep (args2 expr) 'tuple-expr))
 ;	(and (equality? expr)(typep (args1 expr) 'record-expr)
@@ -1987,7 +1987,7 @@
 		 ((tc-eq (cadr nargs) *false*)
 		  (values '? (car nargs)))
 		 (t (do-auto-rewrite expr sig)))))
-	((iff? expr)
+	((iff-or-booleq? expr)
 	 (let* ((nargs (argument-list newargs))
 		(left (car nargs))
 		(right (cadr nargs)))
@@ -3700,23 +3700,3 @@ chronological order are:~3%")
 	t t)
       (pvs-message "No current proof")))
 
-(defun lookup-subst-hash (expr alist hash)
-  (gethash (cons expr
-		 (pick-freevars-entries (freevars expr) alist))
-	   hash))
-
-(defun pick-freevars-entries (freevars alist &optional entries)
-  (if (null freevars)
-      (nreverse entries)
-      (let ((entry (assq (declaration (car freevars)) alist)))
-	(pick-freevars-entries (cdr freevars) alist
-			       (if entry
-				   (cons (cdr entry) entries)
-				   entries)))))
-
-(defun install-subst-hash (expr alist result hash)
-  (let* ((fv (freevars expr))
-	 (fv-subs (pick-freevars-entries fv alist)))
-    (setf (gethash (cons expr fv-subs) hash)
-	  result)
-    T))
