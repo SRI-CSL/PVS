@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Oct 29 22:40:53 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Jan 28 18:16:43 1999
-;; Update Count    : 10
+;; Last Modified On: Fri Sep  3 04:19:25 2004
+;; Update Count    : 11
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
@@ -548,6 +548,7 @@
   argtypes)
 
 (defun compute-application-judgement-types (ex graph)
+  (assert (every #'fully-instantiated? (mapcar #'car graph)))
   (let ((args-list (argument* ex)))
     (compute-appl-judgement-types
      args-list
