@@ -91,7 +91,8 @@
 		      'spelling 'formula
 		      'definition cexpr))
 	 (*start-proof-display* display?))
-    (prove-decl expr-decl :strategy `(then (then ,strategy (postpone)) (quit)))
+    (prove-decl expr-decl :strategy `(then (then ,strategy (postpone)) (quit))
+		:context *current-context*)
     (let ((mform (merge-subgoals *subgoals*)))
       (remove-skolem-constants
        (gensubst mform
@@ -137,7 +138,8 @@
 		      'spelling 'formula
 		      'definition closed-expr))
 	 (*start-proof-display* display?))
-    (prove-decl expr-decl :strategy `(then (then ,strategy (postpone)) (quit)))
+    (prove-decl expr-decl :strategy `(then (then ,strategy (postpone)) (quit))
+		:context *current-context*)
     *subgoals*))
 
 (defun merge-subgoals (subgoals)
@@ -160,7 +162,7 @@
 
 (defvar *dump-sequents-to-file* nil)
 
-(defmethod prove-decl ((decl formula-decl) &key strategy)
+(defmethod prove-decl ((decl formula-decl) &key strategy context)
   (ensure-default-proof decl)
   (let ((init-real-time (get-internal-real-time))
 	(init-run-time (get-run-time))
@@ -234,7 +236,7 @@
 	(*init-ics-state* (ics_empty_state))
 	(*ics-state* (ics_empty_state))
 	(*top-ics-state* (ics_empty_state))
-	(*current-context* (context decl))
+	(*current-context* (or context (context decl)))
 	(*current-theory* (module decl)))
     (initprover)			;initialize prover
     (init-ics)
