@@ -241,6 +241,14 @@
 
 (defmethod compare* ((old formula-decl) (new formula-decl))
   (and (call-next-method)
+       (or (eq (spelling old) (spelling new))
+	   (if (and (or (not (memq (spelling old) '(axiom postulate)))
+			(not (memq (spelling new) '(axiom postulate))))
+		    (or (memq (spelling old) '(assumption axiom postulate))
+			(memq (spelling new) '(assumption axiom postulate))))
+	       (setq *decl-diffs* 'SIGNATURE)
+	       (unless *decl-diffs*
+		 (setq *decl-diffs* 'SIGNATURE))))
        (compare-bod (kind old) (kind new))
        (compare-bod (definition old) (definition new))))
 
