@@ -336,7 +336,7 @@
 
 (defcl quoted-assign (syntax))
 
-(defcl id-assign (name-expr))
+(defcl id-assign (name-expr quoted-assign))
 
 (defcl field-assign (field-assignment-arg id-assign))
 
