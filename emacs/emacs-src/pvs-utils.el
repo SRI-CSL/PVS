@@ -1707,19 +1707,6 @@ existence and time differences to be whitespace")
   (message "PVS Exited"))
 )
 
-(defun list-lisp-declarations (filename)
-  (interactive "fList lisp declarations for file: ")
-  (pvs-send-and-wait
-   (format "(list-lisp-entities-of-file \"%s\" \"%s entities\")"
-       filename (pathname-name filename))))
-
-(defun list-lisp-duplicates (filename1 filename2)
-  (interactive "fFile1: \nfFile2: ")
-  (pvs-send-and-wait
-   (format "(print-duplicate-lisp-entities \"%s\" \"%s\" \"%s/%s duplicates\")"
-       filename1 filename2
-       (pathname-name filename1) (pathname-name filename2))))
-
 (defun trailing-components (directory num)
   (let ((comps (nreverse (string-split ?/ directory)))
 	(sdir "")
