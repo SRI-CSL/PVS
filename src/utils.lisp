@@ -2851,6 +2851,8 @@ space")
     (assert (singleton? resolutions))
     (typep (declaration (car resolutions)) '(or var-decl binding))))
 
-(defmethod variable? (expr)
-  (declare (ignore expr))
+(defmethod variable? ((expr field-assignment-arg))
+  nil)
+
+(defmethod variable? ((expr T))
   nil)
