@@ -143,17 +143,20 @@
 
 (defun get-theory-aliases* (mod-decls &optional modnames)
   (if (null mod-decls)
-      modnames
-      (let* ((thname (modname (car mod-decls)))
-	     (instances (gethash (get-theory thname) (current-using-hash))))
-	(get-theory-aliases*
-	 (cdr mod-decls)
-	 (nconc modnames
-		(mapcar #'(lambda (inst)
-			    (if (actuals inst)
-				(subst-mod-params thname inst)
-				thname))
-		  instances))))))
+      (delete-duplicates modnames :test #'tc-eq)
+      (get-theory-aliases*
+       (cdr mod-decls)
+       (let ((thname (modname (car mod-decls))))
+	 (if (eq (module (car mod-decls)) (current-theory))
+	     (nconc (list thname) modnames)
+	     (let ((instances (gethash (module (car mod-decls))
+				       (current-using-hash))))
+	       (nconc modnames
+		      (mapcar #'(lambda (inst)
+				  (if (actuals inst)
+				      (subst-mod-params thname inst)
+				      thname))
+			instances))))))))
 
 (defmethod get-binding-resolutions ((name name) kind args)
   (with-slots (mod-id library actuals id) name
@@ -701,17 +704,23 @@
   nil)
 
 (defmethod matching-actual-expr* ((n1 name) (n2 name) bindings)
-  (with-slots ((id1 id) (res1 resolutions)) n1
-    (with-slots ((id2 id) (res2 resolutions)) n2
+  (with-slots ((res1 resolutions)) n1
+    (with-slots ((res2 resolutions)) n2
       (some #'(lambda (r)
-		(if (actuals (module-instance r))
-		    (if (actuals (module-instance (car res2)))
-			(tc-eq-with-bindings r (car res2) bindings)
-			(same-declaration r (car res2)))
-		    (if (actuals (module-instance (car res2)))
-			(same-declaration r (car res2))
-			(tc-eq-with-bindings r (car res2) bindings))))
+		(if (and (actuals (module-instance r))
+			 (actuals (module-instance (car res2))))
+		    (tc-eq-with-bindings r (car res2) bindings)
+		    (same-declaration-res r (car res2))))
 	    res1))))
+
+(defmethod same-declaration-res ((r1 resolution) (r2 resolution))
+  (with-slots ((d1 declaration)) r1
+    (with-slots ((d2 declaration)) r2
+      (or (eq d1 d2)
+	  (let ((alias (assq d1 (boolean-aliases))))
+	    (and alias (eq (cdr alias) d2)))
+	  (let ((alias (assq d2 (boolean-aliases))))
+	    (and alias (eq d1 (cdr alias))))))))
 
 (defun match-record-arg-decls (name kind args)
   (when (and (eq kind 'expr)
