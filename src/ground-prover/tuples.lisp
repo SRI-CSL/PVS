@@ -24,7 +24,7 @@
        (is-tupsel-n (funsym term))))
 
 (defun make-tupsel (type)
-  (intern (format nil "TUPSEL-~a" type)))
+  (intern (if type (format nil "TUPSEL-~a" type) (format nil "TUPSEL-"))))
 
 (defun sigtupsel (term)
   ; currently an error if term is an atom.
