@@ -894,7 +894,8 @@
   (let* ((thname (theory-instance decl))
 	 (th (get-theory thname))
 	 (thdecls (all-decls th))
-	 (prev-decls (ldiff thdecls (memq decl thdecls))))
+	 (prev-decls (ldiff thdecls (memq decl thdecls)))
+	 (*insert-add-decl* nil))
     ;;; Want something like add-usings-to-context*, but only for those
     ;;; importings that precede the given declaration.
     (add-to-using thname th)
@@ -904,7 +905,8 @@
   (let* ((thname (theory-instance decl))
 	 (th (module (generating-assumption decl)))
 	 (thdecls (all-decls th))
-	 (prev-decls (ldiff thdecls (memq decl thdecls))))
+	 (prev-decls (ldiff thdecls (memq decl thdecls)))
+	 (*insert-add-decl* nil))
     (add-to-using thname th)
     (add-preceding-importings prev-decls th thname)))
 
