@@ -164,8 +164,10 @@
 ;			    *skovar-counter*))))
 
 (defun declared? (id context)
-  (or (not (every #'var-decl? (gethash id (local-decls context))))
-       (not (null (gethash id (local-proof-decls context))))))
+  (some #'(lambda (d)
+	     (and (not (var-decl? d))
+		  (eq (module d) (current-theory))))
+	(gethash id (declarations-hash context))))
 
 (defun one-to-one (alist)
   (if (consp alist)
@@ -185,7 +187,7 @@
 	     'id (id id)
 	     'type type
 	     'module (module context))
-	    (local-proof-decls context))
+	    (declarations-hash context))
   (typecheck
    id
    :expected type 
@@ -634,9 +636,7 @@ Please provide skolem constants for these variables." overlap)
 	 ;;	 (findalist (dpinfo-findalist alists))
 	 ;;	 (usealist (dpinfo-usealist alists))
 	 ;;	 (sigalist (dpinfo-sigalist alists))
-	 (new-context (copy *current-context*
-			'local-proof-decls
-			(copy (local-proof-decls *current-context*))))
+	 (new-context (copy-prover-context))
 	 (terms (if (consp terms) terms (list terms)))
 	 (sformnum (find-sform (s-forms (current-goal ps)) sformnum
 			       #'(lambda (sform)
