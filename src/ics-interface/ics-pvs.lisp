@@ -109,7 +109,7 @@
 
 ;; ICS-PVS error handling
 
-(ff:defun-foreign-callable ocaml_error (fname msg)
+(ff:defun-foreign-callable ics_error (fname msg)
   (error (format nil "~a: ~a" (excl:native-to-string fname)
 		 (excl:native-to-string msg))))
 
@@ -120,7 +120,7 @@
 (defun ics-init (&optional full (verbose 0))
   (ics_caml_startup (if full 1 0) #(0))
   (register_lisp_error_function
-   (nth-value 1 (ff:register-function `ocaml_error)))
+   (nth-value 1 (ff:register-function `ics_error)))
   (ics_init verbose))
 
 (defun ics-empty-state ()
