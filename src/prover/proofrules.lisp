@@ -346,7 +346,8 @@
 		 (let* ((result (call-next-method))
 			(result
 			 (if (and (type result)
-				  (tc-eq (find-supertype (type result))
+				  (tc-eq (type result) ;was (expensive)
+					 ;;;;;;(find-supertype (type result))
 					 *boolean*))
 			     (truefalsecond-reduce result
 						   trueconds
@@ -398,97 +399,107 @@
 				   new-else)))))))))))
 
 (defmethod simplify-ifs ((expr binding-expr) trueconds falseconds)
-  (lcopy expr
-	'expression (simplify-ifs (expression expr) trueconds falseconds)))
+  (with-slots (expression) expr
+    (lcopy expr
+      'expression (simplify-ifs expression trueconds falseconds))))
 
 ;;; SO 9/5/94 - Added projection-application and field-application methods
 (defmethod simplify-ifs ((expr projection-application) trueconds falseconds)
+  (with-slots (argument) expr
   (lcopy expr
-    'argument (simplify-ifs (argument expr) trueconds falseconds)))
+    'argument (simplify-ifs argument trueconds falseconds)))
 
 (defmethod simplify-ifs ((expr field-application) trueconds falseconds)
-  (lcopy expr
-    'argument (simplify-ifs (argument expr) trueconds falseconds)))
+  (with-slots (argument) expr
+    (lcopy expr
+      'argument (simplify-ifs argument trueconds falseconds))))
 
 (defmethod simplify-ifs ((expr application) trueconds falseconds)
-  (if (and *lift-if-updates* (update-expr? (operator* expr)))
-      (let ((translation (translate-update-to-if expr)))
-	(if (and (branch? translation)
-		 (or (truecond? (condition translation)
-				trueconds falseconds)
-		     (falsecond? (condition translation)
-				trueconds falseconds)))
-	    (simplify-ifs translation trueconds falseconds)
-	    (lcopy expr
-	      'operator (simplify-ifs (operator expr)
-				      trueconds falseconds)
-	      'argument (simplify-ifs (argument expr) trueconds
-				 falseconds))))
-      (lcopy expr
-	'operator (simplify-ifs (operator expr) trueconds falseconds)
-	'argument (simplify-ifs (argument expr) trueconds
-				falseconds))))
+  (with-slots (operator argument) expr
+    (if (and *lift-if-updates* (update-expr? (operator* expr)))
+	(let ((translation (translate-update-to-if expr)))
+	  (if (and (branch? translation)
+		   (or (truecond? (condition translation)
+				  trueconds falseconds)
+		       (falsecond? (condition translation)
+				   trueconds falseconds)))
+	      (simplify-ifs translation trueconds falseconds)
+	      (lcopy expr
+		'operator (simplify-ifs operator
+					trueconds falseconds)
+		'argument (simplify-ifs argument trueconds
+					falseconds))))
+	(lcopy expr
+	  'operator (simplify-ifs operator trueconds falseconds)
+	  'argument (simplify-ifs argument trueconds
+				  falseconds)))))
 
 (defmethod simplify-ifs ((expr record-expr) trueconds falseconds)
+  (with-slots (assignments) expr
   (lcopy expr
-	'assignments (simplify-ifs (assignments expr)
-				   trueconds falseconds)))
+	'assignments (simplify-ifs assignments
+				   trueconds falseconds))))
 
 (defmethod simplify-ifs ((expr tuple-expr) trueconds falseconds)
+  (with-slots (exprs) expr
   (lcopy expr
-	'exprs (simplify-ifs (exprs expr) trueconds falseconds)))
+	'exprs (simplify-ifs exprs trueconds falseconds))))
 
 (defmethod simplify-ifs ((expr update-expr) trueconds falseconds)
+  (with-slots (expression assignments) expr
   (lcopy expr
-	'expression (simplify-ifs (expression expr)
+	'expression (simplify-ifs expression
 				  trueconds falseconds)
-	'assignments (simplify-ifs (assignments expr)
-				   trueconds falseconds)))
+	'assignments (simplify-ifs assignments
+				   trueconds falseconds))))
 
 (defmethod simplify-ifs ((expr assignment) trueconds falseconds)
+  (with-slots (arguments expression) expr
   (lcopy expr
-    'arguments (simplify-ifs (arguments expr) trueconds falseconds)
-    'expression (simplify-ifs (expression expr)
-				  trueconds falseconds)))
+    'arguments (simplify-ifs arguments trueconds falseconds)
+    'expression (simplify-ifs expression
+				  trueconds falseconds))))
 
 (defmethod simplify-ifs ((expr cases-expr) trueconds falseconds)
-  (let* ((expression (simplify-ifs (expression expr) trueconds falseconds))
+  (with-slots (expression selections else-part) expr
+  (let* ((expression (simplify-ifs expression trueconds falseconds))
 	 ;;(recs (recognizers (find-supertype (type expression))))
-	 (selections
-	  (loop for sel in (selections expr)
+	 (non-false-selections
+	  (loop for sel in selections
 		when (not (member (make-application
 				      (recognizer (constructor sel))
 				    expression)
 				  falseconds :test #'tc-eq))
 		collect sel))
 	 (true-selection
-	  (loop for sel in selections
+	  (loop for sel in non-false-selections
 		when (member (make-application (recognizer (constructor sel))
 			       expression)
 			     trueconds :test #'tc-eq)
 		return (subst-accessors-in-selection expression
 						     sel))))
-    (if (and (null selections) (else-part expr));;NSH(4.24.97)
+    (if (and (null non-false-selections) else-part);;NSH(4.24.97)
 	;;if all selections are false, there better be an else-part.
-	(simplify-ifs (else-part expr) trueconds falseconds)
-	(if (and (singleton? selections) (null (else-part expr)))
+	(simplify-ifs else-part trueconds falseconds)
+	(if (and (singleton? non-false-selections) (null else-part))
 	    ;;NSH(4.24.97) PYGloess noticed lift-if unsound
 	    ;;if we just check singleton?.  
 	    (simplify-ifs  (subst-accessors-in-selection
-			    expression (car selections))
+			    expression (car non-false-selections))
 			   trueconds falseconds)
 	    (if true-selection
 		(simplify-ifs true-selection trueconds falseconds)
 		(lcopy expr
 		  'expression expression
-		  'selections (simplify-ifs (selections expr)
+		  'selections (simplify-ifs selections
 					    trueconds falseconds)
-		  'else-part (simplify-ifs (else-part expr)
-					   trueconds falseconds)))))))
+		  'else-part (simplify-ifs else-part
+					   trueconds falseconds))))))))
 
 (defmethod simplify-ifs ((expr selection) trueconds falseconds)
+  (with-slots (expression) expr
   (lcopy expr
-	'expression (simplify-ifs (expression expr) trueconds falseconds)))
+	'expression (simplify-ifs expression trueconds falseconds))))
     
 
 (defmethod simplify-ifs ((list list) trueconds falseconds)
