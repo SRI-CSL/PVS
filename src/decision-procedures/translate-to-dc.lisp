@@ -1,6 +1,7 @@
 ;;modified from prover/translate-to-prove.
 (in-package 'pvs)
 
+
 (proclaim '(optimize (compilation-speed 0) (space 1)
 		     (safety 1) (speed 3)
 		     #+allegro (debug 1)))
@@ -28,7 +29,7 @@
 	(mk-name '|floor| nil '|floor_ceil|)
 	))
 
-(defparameter *dc-interpreted-alist*
+(defparameter *dc-interpreted-alist* 
   (mapcar #'(lambda (x) (cons (id x) x)) *dc-interpreted-names*))
 
 (defvar *dc-interpretations*
@@ -91,6 +92,60 @@
 	  (update . ,dp::*update*)
 	  (|floor| . ,dp::*floor*))))
 
+(defun interpreted-bv-operation? (expr)
+  (and nil
+  (case (id expr)
+    ((^) (or (and (eq (id (module-instance expr))
+		      '|bv|)
+		  (number-expr? (expr (car (actuals (module-instance expr)))))
+		  'bv-bit)
+	     (and (eq (id (module-instance expr))
+		      ' |bv_extractors|)
+		  (number-expr? (expr (car (actuals (module-instance expr)))))
+		  bvec::*bv-extract*)))
+    ((|fill|) (and (eq (id (module-instance expr))
+		    '|bv|)
+		 (number-expr? (expr (car (actuals (module-instance expr)))))
+		 bvec::*bv-fill*))
+    ((|bv2nat|) (and (eq (id (module-instance expr))
+		    '|bv_nat|)
+		 (number-expr? (expr (car (actuals (module-instance expr)))))
+		 'bv2nat))
+    ((|nat2bv|) (and (eq (id (module-instance expr))
+		    '|bv_nat|)
+		 (number-expr? (expr (car (actuals (module-instance expr)))))
+		 'nat2bv))
+    ((o) (and (eq (id (module-instance expr))
+		    '|bv_concat|)
+		 (number-expr? (expr (car (actuals (module-instance expr)))))
+		 (number-expr? (expr (cadr (actuals (module-instance expr)))))
+		 bvec::*bv-compose*))
+    ((OR)
+     (and (eq (id (module-instance expr))
+		    '|bv_bitwise|)
+		 (number-expr? (expr (car (actuals (module-instance expr)))))
+		 bvec::*bv-or*))
+    ((AND)
+     (and (eq (id (module-instance expr))
+		    '|bv_bitwise|)
+		 (number-expr? (expr (car (actuals (module-instance expr)))))
+		 bvec::*bv-and*))
+    ((IFF)
+     (and (eq (id (module-instance expr))
+		    '|bv_bitwise|)
+		 (number-expr? (expr (car (actuals (module-instance expr)))))
+		 bvec::*bv-iff*))
+    ((NOT)
+     (and (eq (id (module-instance expr))
+		    '|bv_bitwise|)
+		 (number-expr? (expr (car (actuals (module-instance expr)))))
+		 bvec::*bv-not*))
+    ((XOR)
+     (and (eq (id (module-instance expr))
+		    '|bv_bitwise|)
+		 (number-expr? (expr (car (actuals (module-instance expr)))))
+		 bvec::*bv-xor*)))))
+
 (defmethod interpreted? ((expr name-expr))
   (with-slots (id resolutions) expr
     (let ((interp (cdr (assq id (if *newdc*
@@ -105,9 +160,10 @@
 		   (if *newdc*
 		       *dc-interpretations*
 		       *interpretations*)))
-       (if *newdc*
-	   (dp::mk-constant (id name))
-	   (id name))))
+      (interpreted-bv-operation? name)
+      (if *newdc*
+	  (dp::mk-constant (id name))
+	  (id name))))
 
 
 ;;; Translate into list representation for passing to the prover.
@@ -206,8 +262,38 @@
 		(translate-to-dc-actuals (cdr actuals))))
       nil))
 
+(defun fixed-length-bitvector-type? (type)
+  (let* ((type (find-supertype type))
+	 (ptype (print-type type)))
+    (and ptype
+	 (eq (id ptype) '|bvec|)
+	 (eq (id (module-instance ptype)) '|bv|)
+	 (number-expr? (expr (car (actuals (module-instance ptype)))))
+	 (number (expr (car (actuals (module-instance ptype))))))))
+
 (defmethod translate-to-dc ((expr constructor-name-expr))
   (call-next-method (lift-adt expr)))
+
+(defun dc-set-constructor-type (expr dp-const)
+  (let ((dc-accessors (translate-to-dc (accessors expr))))
+    (setf (dp::node-constructor-accessors dp-const) dc-accessors)
+    (setf (dp::node-interpreted? dp-const) t)
+    (setf (dp::node-constructor? dp-const) t)))
+
+(defun make-constructor-indices-for-accessor (accessor)
+  (let* ((constructors (constructor accessor)))
+    (loop for constructor in constructors
+	  for arguments = (accessors constructor)
+	  for index = (position accessor
+				arguments
+				:test #'tc-eq)
+	  when index
+	  collect (cons (translate-to-dc constructor) index))))
+
+(defun dc-set-accessor-type (expr dp-const)
+  (let ((indices (make-constructor-indices-for-accessor  expr)))
+    (setf (dp::node-interpreted? dp-const) t)
+    (setf (dp::node-accessor-indices dp-const) indices)))
 
 (defun dc-unique-prover-name (expr)
   (cond ((constant? expr) ;;NSH(2.16.94): changed to deal with Ricky's
@@ -226,15 +312,19 @@
 					   (range type)
 					   type))
 			   (dc-range-type (dc-prover-type range-type))
-			   (new-const (dp::mk-constant
-				       (intern (format nil "~a_~a"
-						 (id expr)
-						 (funcall
-						  *dc-translate-id-counter*)))
-				       dc-range-type)))
-		      (when (and (constructor? expr)
-				 (enum-adt? (find-supertype type)))
-			(setf (dp::node-constructor? new-const) t))
+			   (bvlength (fixed-length-bitvector-type? type))
+			   (new-const1
+			    (dp::mk-constant
+			     (intern (format nil "~a_~a"
+				       (id expr)
+				       (funcall
+					*dc-translate-id-counter*)))
+			     dc-range-type))
+			   (new-const (if bvlength
+					  (bvec::make-bv-var
+					   new-const1
+					   (dp::mk-contant bvlength))
+					  new-const1)))
 		      (dc-add-to-reverse-prover-name new-const expr)
 		      (dc-add-to-pvs-typealist new-const expr)
 		      new-const))))
@@ -242,7 +332,13 @@
 	     (setf (gethash hash-list *dc-translate-id-hash*)
 		   dc-expr)
 	     ;;(format t "~%adding ~a to typealist" (car newconst))
-	     (add-to-prtype-hash dc-expr expr))
+	     (add-to-prtype-hash dc-expr expr)
+	     (cond
+	      ((constructor? expr)
+	       (dc-set-constructor-type expr dc-expr))
+	      ((accessor? expr)
+	       (dc-set-accessor-type expr dc-expr))
+	      (t nil)))
 	   dc-expr))
 	((typep expr 'field-decl)
 	 (let* ((id (id expr))
@@ -467,6 +563,25 @@
 		     ((and (eq op dp::*not*)
 			   (dp::negation-p (car args)))
 		      (dp::arg 1 (car args)))
+		     ((eq op bvec::*bv-fill*)
+		      (let* ((width (number (expr (car (actuals operator)))))
+			     (num (car args))
+			     (value
+			      (cond
+			       ((eq num dp::*zero*)
+				0)
+			       ((eq num dp::*one*)
+				(1- (expt 2 width)))
+			       (t (break))))
+			     (value (1- (expt 2 width)))))
+		      (bvec::make-bv-const value width))
+		     ((eq op bvec::*nat2bv*)
+		      (let* ((width (number (expr (car actuals))))
+			     ;operator
+			     (num (car args)))
+			(if (dp::dp-numberp num)
+			    (bvec::make-bv-const (dp::constant-id num width))
+			    (bvec::make-bv-var num (dp::mk-constant width)))))
 		     (*translate-rewrite-rule*
 		      (dp::sigma (dp::mk-term (cons op args))
 				 *init-dp-state*))
@@ -477,8 +592,15 @@
 		      ;;(skolem-application? expr)
 		      ))
 	     (break))
-	    (t (dc-mk-typed-term (cons (translate-to-dc (lift-adt operator t)) args)
-				 (dc-prover-type (type expr))))))))
+	    (t (let* ((op (translate-to-dc (lift-adt operator t)))
+		      (translated-expr
+		       (dc-mk-typed-term (cons op args)
+					 (dc-prover-type (type expr))))
+		      (bvlength (fixed-length-bitvector-type? (type expr))))
+		 (if bvlength
+		     (bvec::make-bv-var translated-expr
+					(dp::mk-constant bvlength))
+		     translated-expr)))))))
 
 (defun dc-mk-typed-term (args dc-type)
   (let ((result (dp::mk-term args)))
