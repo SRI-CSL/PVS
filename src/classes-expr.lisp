@@ -9,6 +9,7 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -17,31 +18,37 @@
 ;;; Provide a class on which to hang syntactic information
 
 (defcl syntax ()
-  newline-comment
+  ;;newline-comment
   place
   (pvs-sxhash-value :fetch-as nil :ignore t))
 
 ;;; Expressions
 
 (defcl expr (syntax)
-  (parens :initform 0 :parse t)
+  (parens :initform 0 :parse t :restore-as nil)
   type
   (free-variables :ignore t :initform 'unbound :fetch-as 'unbound)
   (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound)
-  from-macro)
+  ;;from-macro
+  )
 
 (defcl name (syntax)
-  (mod-id :parse t)
-  (library :parse t)
+  (mod-id :parse t :restore-as nil)
+  (library :parse t :restore-as nil)
   (actuals :parse t)
-  (id :parse t)
+  (id :parse t :restore-as nil)
   (mappings :parse t)
+  (target :parse t)
   resolutions)
 
 (defcl formula-name (name))
 
 (defcl name-expr (name expr)
   ;;(kind :documentation "Variable, constant, etc.")
+  )
+
+(defcl theory-name-expr (name-expr)
+  ;; For names with resolutions to a theory
   )
 
 (defcl typed-name-expr (name-expr)
@@ -60,57 +67,57 @@
 
 (defcl recognizer-name-expr (adt-name-expr)
   (constructor-name :fetch-as nil :ignore t)
-  (unit? :initform 'unbound :ignore t))
+  (unit? :initform 'unbound :fetch-as 'unbound :ignore t))
 
 (defcl accessor-name-expr (adt-name-expr))
 
 (defcl field-application (expr)
-  id
+  (id :restore-as nil)
   actuals
   argument)
 
 (defcl fieldappl (field-application))
 
 (defcl projection-expr (name-expr)
-  (index :parse t))
+  (index :parse t :restore-as nil))
 
 (defcl projection-application (expr)
-  id
+  (id :restore-as nil)
   actuals
-  index
+  (index :restore-as nil)
   argument)
 
 (defcl projappl (projection-application))
 
 (defcl injection-expr (constructor-name-expr)
-  (index :parse t))
+  (index :parse t :restore-as nil))
 
 (defcl injection?-expr (recognizer-name-expr)
-  (index :parse t))
+  (index :parse t :restore-as nil))
 
 (defcl extraction-expr (accessor-name-expr)
-  (index :parse t))
+  (index :parse t :restore-as nil))
 
 (defcl injection-application (expr)
-  id
+  (id :restore-as nil)
   actuals
-  index
+  (index :restore-as nil)
   argument)
 
 (defcl injection?-application (expr)
-  id
+  (id :restore-as nil)
   actuals
-  index
+  (index :restore-as nil)
   argument)
 
 (defcl extraction-application (expr)
-  id
+  (id :restore-as nil)
   actuals
-  index
+  (index :restore-as nil)
   argument)
 
 (defcl number-expr (expr)
-  (number :parse t))
+  (number :parse t :restore-as nil))
 
 ;(defcl function-expr (expr)
 ;  assignments)
@@ -142,7 +149,7 @@
 (defcl unpack-expr (cases-expr))
 
 (defcl in-selection (selection)
-  index)
+  (index :restore-as nil))
 
 (defcl application (expr)
   (operator :parse t)
@@ -159,7 +166,7 @@
   )
 
 (defcl string-expr (application)
-  string-value)
+  (string-value :restore-as nil))
 
 (defcl bracket-expr (application)
   ;;"Used for expressions of the form [| |]"
@@ -291,8 +298,8 @@
 (defcl binding-expr (expr)
   (bindings :parse t)
   (expression :parse t)
-  (commas? :parse t)
-  (chain? :parse t))
+  (commas? :parse t :restore-as nil)
+  (chain? :parse t :restore-as nil))
 
 (defcl lambda-expr (binding-expr))
 
@@ -362,18 +369,18 @@
 ;  declarations)
 
 (defcl simple-decl (syntax)
-  (id :parse t)
+  (id :parse t :restore-as nil)
   (declared-type :parse t)
   type)
 
 (defcl binding (simple-decl))
 
 (defcl dep-binding (binding name)
-  (parens :initform 0 :parse t))
+  (parens :initform 0 :parse t :restore-as nil))
 
 (defcl field-decl (binding name)
   ;;(recordtype :documentation "A pointer to the record typeof this decl")
-  (chain? :parse t))
+  (chain? :parse t :restore-as nil))
 
 
 ;;; bind-decl is for local bindings, used in binding-exprs and in the
@@ -386,7 +393,7 @@
 ;;; The x is an arg-bind-decl, as is the y in the second case.
 
 (defcl bind-decl (binding name-expr)
-  (chain? :parse t))
+  (chain? :parse t :restore-as nil))
 
 (defcl arg-bind-decl (bind-decl))
 
@@ -400,6 +407,9 @@
 (defcl full-modname (modname))
 
 (defcl datatype-modname (modname))
+
+(defcl interpreted-modname (modname)
+  interp-theory)
 
 ;;; Used to keep modnames for which TCCs have not yet been generated.  Used to
 ;;; delay the generation of TCCs until the TCC context has been built up,
@@ -415,7 +425,7 @@
 (defcl mapping (syntax)
   (lhs :parse t)
   (rhs :parse t)
-  (kind :parse t)
+  (kind :parse t :restore-as nil)
   (declared-type :parse t)
   type)
 
@@ -436,16 +446,14 @@
 (defcl mapping-subst-with-formals (mapping-with-formals mapping-subst))
 (defcl mapping-rename-with-formals (mapping-with-formals mapping-rename))
 
-(defcl mapping-rhs (actual)
-  (expr :parse t)
-  type-value)
+(defcl mapping-rhs (actual))
 
 ;;; The resolution class holds the possibilities generated during name
 ;;; resolution.  The inclusions are the predicates which will become
 ;;; TCCs if that particular resolution is chosen.
 
 (defcl resolution ()
-  declaration
+  (declaration :restore-as nil)
   module-instance
   type)
 
@@ -463,26 +471,37 @@
 (defcl recursive-function-resolution (resolution)
   conversion)
 
+;; Needed for lhs references, e.g.,
+;;   IMPORTING th{{x := ...}} AS foo
+;;    ... foo.x ...
+;; In this case, the declaration is the mapping, the module instance is foo
+;; and the type is the type of the expression, or the type value, depending on
+;; x.  If x is a theory declaration, resolutions are not needed, since in that
+;; case foo.x is not a type-name or name-expr.
+(defcl mapping-resolution (resolution))
+
 (defcl context ()
-  theory
-  theory-name
-  declaration
+  (theory :restore-as nil)
+  (theory-name :restore-as nil)
+  (declaration :restore-as nil)
   declarations-hash
   using-hash
   named-theories
-  (judgements :initform (make-instance 'judgements))
+  library-alist
+  (judgements :initform (make-instance 'judgements) :restore-as nil)
   (known-subtypes :initform nil)
-  (conversions :initform nil)
-  (disabled-conversions :initform nil)
+  (conversions :initform nil :restore-as nil)
+  (disabled-conversions :initform nil :restore-as nil)
   (auto-rewrites :initform nil)
   (disabled-auto-rewrites :initform nil))
 
 (defcl judgements ()
   (judgement-types-hash
-   :initform (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
-  (number-judgements-hash :initform (make-hash-table :test 'eql))
-  (name-judgements-hash :initform (make-hash-table :test 'eq))
-  (application-judgements-hash :initform (make-hash-table :test 'eq)))
+   :initform (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq)
+   :fetch-as nil)
+  number-judgements-alist
+  name-judgements-alist
+  application-judgements-alist)
 
 (defcl name-judgements ()
   (minimal-judgements :initform nil)
