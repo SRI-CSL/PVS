@@ -1009,7 +1009,7 @@ generated")
 (defun get-accessor-range-type (entry domain adt)
   (assert (or (null (cdr entry)) (dep-binding? domain)))
   (if (cdr entry)
-      (let* ((dtype (if (dep-binding? domain) (type domain) domain))
+      (let* (;;(dtype (if (dep-binding? domain) (type domain) domain))
 	     (dvar (when (dep-binding? domain)
 		     (make-variable-expr domain)))
 	     (suptype (reduce #'compatible-type (mapcar #'cadar entry)))
@@ -2518,7 +2518,7 @@ generated")
 						       var))))
 			  (mk-selection in-expr (list bd) sel-expr)))
 	      maps (types te)))
-	  nil)))))
+	  nil))))
 
 (defmethod acc-map-selection (arg (te type-expr) pvars ptypes fpairs
 				  adt curried?)
@@ -2954,11 +2954,7 @@ generated")
 	       everys)))))
 
 (defmethod adt-every-rel ((te cotupletype) pvars avar bvar ptypes fpairs adt)
-  (let ((num 0)
-	(mpairs (mapcar #'(lambda (fp) (cons (find (car fp) (formals adt)
-						   :test #'same-id)
-					     (car fp)))
-		  fpairs)))
+  (let ((num 0))
     (mk-disjunction
      (mapcar #'(lambda (type)
 		 (incf num)
@@ -2972,8 +2968,6 @@ generated")
 				'index num
 				'argument bvar))
 			(outid (makesym "OUT_~d" num))
-			(atype (typecheck (subst-map-actuals type mpairs)))
-			(btype (subst-map-actuals atype fpairs))
 			(aout (typecheck (make-instance 'extraction-application
 					   'id outid
 					   'index num
