@@ -1325,6 +1325,12 @@
     (assert tval)
     (when (typep tval 'type-name)
       (setf (uninterpreted? type) (uninterpreted? tval)))
+    (when (and (mod-id type)
+	       (type-name? (print-type tval))
+	       (not (mod-id (print-type tval))))
+      (setq tval (copy tval
+		   'print-type (copy (print-type tval)
+				 'mod-id (mod-id type)))))
     (if (eq tval 'type)
 	type
 	tval)))
