@@ -1483,6 +1483,7 @@
 			      dtype)
 		   substs)))
       (setf (type bd) type)
+      (assert (type bd))
       (unless (fully-instantiated? type)
 	(type-error (car bindings)
 	  "Could not determine the full theory instance"))
@@ -1493,7 +1494,7 @@
 
 (defun get-let-binding-type (bd bindings arg anum)
   (if (declared-type bd)
-      (progn (typecheck* (declared-type bd) nil nil nil)
+      (prog1 (typecheck* (declared-type bd) nil nil nil)
 	     (set-type (declared-type bd) nil))
       (let ((vdecl (find-if #'(lambda (v)
 				(and (var-decl? v)
