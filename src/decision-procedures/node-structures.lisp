@@ -1390,8 +1390,10 @@
   ;(return-all-cong-states *made-cong-states*)
   (setq *ineq-var-count* 0)
   (setq *epsilon* (make-epsilon))
-  ;(setq *universal-polyhedral-domain* (make-universal-polyhedron))
-  (make-epsilon-leq-0-polyhedron *max-ineq-vars* *max-rays*)
+  (setq *universal-polyhedral-domain*
+	(make-universal-polyhedron *max-ineq-vars* *max-rays*))
+  (setq *epsilon-leq-0-poly*
+	(make-epsilon-leq-0-polyhedron *max-ineq-vars* *max-rays*))
   (setq *=* (mk-predicate-sym '=))
   (setq *true* (mk-constant 'TRUE))
   (setq *false* (mk-constant 'FALSE))
