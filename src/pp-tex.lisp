@@ -1412,7 +1412,7 @@
   (with-slots (constructor args expression) sel
     (pprint-logical-block (nil nil)
       (pprint-indent :current 2)
-      (pp-tex* constructor)
+      (pp-tex-id (id constructor))
       (when args
 	(pprint-logical-block (nil args :prefix "(" :suffix ")")
 	  (loop (pp-tex-id (id (pprint-pop)))
