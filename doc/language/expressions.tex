@@ -192,6 +192,60 @@ Note that such use may include actual parameters, just as for names.  Thus
 \texttt{groups[int].0} or \texttt{0[int]} might refer to the group zero
 instantiated with the integer carrier set.
 
+\section{Characters and String Expressions}
+\index{string expressions}
+
+String expressions are expressions enclosed in double quotes `\texttt{"}',
+for example,
+\begin{pvsex}
+  "This is a string"
+\end{pvsex}
+Strings consist of eight bit ASCII characters.  To include control
+characters or characters above the usual seven bits, use a back slash
+`\verb|\|', as described in the following table.
+
+\begin{tabular}{ll}
+\verb|\a| & \verb|^G| (BEL) \\
+\verb|\b| & \verb|^H| (backspace) \\
+\verb|\f| & \verb|^L| (form feed) \\
+\verb|\n| & \verb|^J| (new line) \\
+\verb|\r| & \verb|^M| (carriage return) \\
+\verb|\t| & \verb|^I| (horizontal tab) \\
+\verb|\v| & \verb|^K| (vertical tab) \\
+\verb|\"| & double quote \\
+\verb|\\| & backslash \\
+\verb|\x|NN & byte with hexadecimal value NN (2 digits) \\
+\verb|\|NNN & byte with decimal value NNN (3 digits) \\
+\verb|\0|NNN & byte with octal value NNN (3 digits) \\
+\end{tabular}
+
+Strings are finite sequences of characters, which in turn are represented
+by a datatype.
+\begin{pvsex}
+  character: DATATYPE
+   BEGIN
+    char(code:below[256]):char?
+   END character
+\end{pvsex}
+When a string is parsed, it is internally converted to a conversion of a
+list of characters to a finite sequence.  The following lemm is thus
+trivially true, because both sides are actually the same term.
+\begin{pvsex}
+  string_rep: LEMMA
+    "foo" = list2finseq(cons(char(102),
+                             cons(char(111),
+                                  cons(char(111), null))))
+\end{pvsex}
+Note that there is no special notation for characters; this is because the
+\texttt{extract1} conversion will automatically convert a string of length
+one to a character.  Note also that because of the \texttt{finseq\_appl}
+conversion, a specific character may be extracted from a string simply by
+applying it.  For example the following will typecheck
+\begin{pvsex}
+  f: character = "f"
+  char_test: LEMMA "foo"(0) = f
+\end{pvsex}  
+
 \section{Applications}
 \index{application expressions}
 

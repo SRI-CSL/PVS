@@ -49,7 +49,8 @@
     (while (>= pos 0)
       (setq chars
 	    (nconc
-	     (string-to-char-list (concat "\\char" (aref string pos)))
+	     (string-to-char-list (concat "\\char"
+	                                  (format "%d" (aref string pos))))
 	     chars))
       (decf pos))
     (concat chars)))
