@@ -180,8 +180,8 @@
 		     (let ((new-eqn
 			    (if *tc-ehdm-test*
 				`(EQUAL ,(arg1 ineq) ,(arg2 ineq))
-				(normineq `(EQUAL ,(canonsig (arg1 ineq))
-						  ,(canonsig (arg2 ineq)))))))
+				(normineq `(EQUAL ,(canonsig-arith (arg1 ineq))
+						  ,(canonsig-arith (arg2 ineq)))))))
 		       (unless (if *tc-ehdm-test*
 				   (subtermof (arg1 ineq) (arg2 ineq))
 				   (bad-eqn new-eqn))
@@ -302,7 +302,7 @@
 		(eq (apply-operator u) t1))
 	   (setq newsig
 		 (sigma newsig))
-	   (setq s (append (solve `(EQUAL ,(pr-find u) ,(canonsig newsig))) s))
+	   (setq s (append (solve `(EQUAL ,(pr-find u) ,(canonsig-merge newsig))) s))
 	   )
 	  ((uninterp newsig)		; SO 9/28/90 was u - is now newsig
 
@@ -373,7 +373,7 @@
 					; and as apply`s of updates and lambdas.
 	     (setq newsig
 		   (sigma newsig))
-	     (push `(EQUAL ,u ,(canonsig newsig)) s))
+	     (push `(EQUAL ,u ,(canonsig-merge newsig)) s))
 
 	    ((equal (pr-find u) (pr-find 'false))
 	     (print "msg from merge - this should not have occurred
@@ -385,7 +385,7 @@
 		; (sigma newsig))
 	   ; 7-24-91: dac changed above sigma no longer needed due to change in canonsig.
 	   ; bug manifested itself in needing recursive call for sigupdate.
-	   (push `(EQUAL ,u ,(canonsig newsig)) s))) )))
+	   (push `(EQUAL ,u ,(canonsig-merge newsig)) s))) )))
 
 (defun subtermoflambda (subterm term)
   (and (consp term)
