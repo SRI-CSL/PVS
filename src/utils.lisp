@@ -302,7 +302,7 @@
   (get-theory (pathname-name path)))
 
 (defun get-theory* (id library)
-  (assert (symbolp library))
+  ;;(assert (symbolp library))
   (let ((*current-context* (or *current-context*
 			       *prelude-library-context*
 			       *prelude-context*)))
@@ -318,14 +318,14 @@
 			 (and prehash (gethash id prehash))
 			 ;;(gethash id *prelude*)
 			 )))))
-	(or (when (and (current-theory)
-                       (eq (id (current-theory)) id))
-              (current-theory))
+	(or (gethash id *pvs-modules*)
 	    (gethash id *prelude*)
+	    (let ((cth (when *current-context* (theory *current-context*))))
+	      (when (and cth (eq (id cth) id))
+		cth))
 	    (car (assoc id (prelude-libraries-uselist)
-			:test #'(lambda (x y) (eq x (id y)))))
+			:test #'eq :key #'id))
 	    (find id (named-theories *current-context*) :key #'id)
-	    (gethash id *pvs-modules*)
 	    (let ((theories (get-imported-theories id)))
 	      (if (cdr theories)
 		  (pvs-message "Ambiguous theories - ~a"
@@ -1368,6 +1368,7 @@
   (setf (adt te) (get-adt-slot-value te)))
 
 (defun get-adt-slot-value (te)
+  ;; te must be a type-name
   (or (let ((dt (get-theory (id te))))
 	(and (recursive-type? dt) dt))
       (find-if #'(lambda (d)
@@ -1447,7 +1448,7 @@
 
 (defmethod adt :around ((te type-name))
   (with-slots (adt) te
-    (if (symbolp adt)
+    (if (and adt (symbolp adt))
 	(restore-adt-slot te)
 	adt)))
 
