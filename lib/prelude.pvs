@@ -963,29 +963,25 @@ operator_defs[T: TYPE]: THEORY
 
 
 % numbers provides the number type, which is the highest numeric type.
-% Though not explicitly specified, once the number type is declared all
-% numeric constants are known to be of type number.  We include the
-% postulate 0 /= 1 so that the nonzero subtypes declared later can be
-% shown to be nonempty.
+% Its primary purpose is to provide a way to extend the reals, for
+% example, the extended reals can be declared as a subtype of number that
+% contains all the reals and the points at infinity.
 
 numbers: THEORY
  BEGIN
 
   number: NONEMPTY_TYPE
 
-  % Imagine the following declarations here
-  % 0, 1, 2, ... : number
-  % AXIOM 0 /= 1 AND 0 /= 2 AND 1 /= 2 AND ...
-
  END numbers
 
 
-% reals defines the real numbers as an uninterpreted subtype of
-% number.  Note that / is defined only when the second argument is
-% nonzero.  This theory should not generally be used in auto-rewrite,
-% since the inequalities are already known to the decision procedures,
-% and tend to get rewritten to disjunctions, which are slightly harder
-% to work with.
+% reals defines the real numbers as an uninterpreted subtype of number.
+% Though not explicitly specified, all numeric constants are known to be
+% of type real (hence number). Note that / is defined only when the second
+% argument is nonzero.  This theory should not generally be used in
+% auto-rewrite, since the inequalities are already known to the decision
+% procedures, and tend to get rewritten to disjunctions, and leads to
+% unnecessary case splits.
 
 reals: THEORY
  BEGIN
@@ -996,8 +992,8 @@ reals: THEORY
 
   % The following declarations, if they could be expanded, are built in to
   %  the typechecker and prover:
-  % AXIOM real_pred(0) AND real_pred(1) AND real_pred(2) AND ...
-  % JUDGEMENT 0, 1, 2, ... HAS_TYPE real
+  % 0, 1, 2, ... : real
+  % AXIOM 0 /= 1 AND 0 /= 2 AND 1 /= 2 AND ...
 
   nonzero_real: NONEMPTY_TYPE = {r: real | r /= 0} CONTAINING 1
   nzreal: NONEMPTY_TYPE = nonzero_real
