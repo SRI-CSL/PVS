@@ -846,10 +846,7 @@
 ;;DAC(1/28/94): Added nrmineq-unchanged and pushed more often.
 
 (defun normineq(lit)
-  (let ((lit (integercut lit)))
-    (if (consp lit)
-	(integercut (normineq1 lit))
-	lit)))
+  (integercut (normineq1 lit)))
 
 ; normalization other than Gomery cut
 
