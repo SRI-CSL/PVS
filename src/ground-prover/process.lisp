@@ -380,10 +380,14 @@
 		       according to Rob Shostak ") )))
 	  ((find1 u) ;;NSH(6-12-02) was blank   ;(break "pr-merge")
 	            ;; This is needed to deal with nonlinear entries.
-	   (when (not (equal (find1 u) u))
-	     (let ((newsig (canonsig-merge newsig))) 
+	   (when (and (not (equal (find1 u) u))
+		      (not (linearp u)))
+	     	       ;;NSH(9/4/02) added nonlinear restriction,
+	     ;;otherwise it loops bugs 695,696.
+	     (let ((newsig (canonsig-merge newsig))
+		   (new-u (canonsig-merge (pr-find u))))
 	       ;;NSH(7/1/02) added canonsig-merge to avoid loop (bug252)
-	       (setq s (append (solve `(equal ,(canonsig-merge (pr-find u))
+	       (setq s (append (solve `(equal ,new-u
 					      ,newsig)) s)))))
 	  (t				; interpreted term
 	   ;(setq newsig
@@ -391,7 +395,7 @@
 	   ; 7-24-91: dac changed above sigma no longer needed due to change in canonsig.
 	   ; bug manifested itself in needing recursive call for sigupdate.
 	   (let ((newsig (canonsig-merge newsig)))
-	     (push `(equal ,u ,(canonsig-merge newsig)) s)))))))
+	     (push `(equal ,u ,newsig) s)))))))
 
 ; ------------------------------------------------------------------------
 
