@@ -9,5 +9,6 @@
   (setq excl:*global-gc-behavior* :auto)
   (load (format nil "~a/pvs.system" *pvs-path*))
   (require 'uri)
+  #+(version>= 6)
   (require 'pxml))
 (operate-on-system :pvs :compile)
