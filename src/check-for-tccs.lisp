@@ -134,8 +134,9 @@
   (with-slots (operator argument type) expr
     (let ((optype (find-supertype (type operator))))
       (check-for-tccs* (argument expr) (domain optype))
-      (let ((*tcc-conditions* (nconc (appl-tcc-conditions operator argument)
-				     *tcc-conditions*)))
+      (let ((*appl-tcc-conditions*
+			    (cons (appl-tcc-conditions operator argument)
+				  *appl-tcc-conditions*)))
 	(check-for-tccs* operator optype)))))
 
 (defmethod check-for-tccs* ((ex conjunction) expected)
@@ -192,20 +193,23 @@
 	(generate-subtype-tcc ex expected toppreds)))))
 
 (defun check-for-binding-expr-tccs (bindings expected-types)
-  (when bindings
-    (let* ((dep? (typep (car expected-types) 'dep-binding))
-	   (etype (if dep?
-		      (type (car expected-types))
-		      (car expected-types))))
-      (check-for-tccs* (car bindings) etype)
-      (let ((*bound-variables* (cons (car bindings) *bound-variables*))
-	    (*tcc-conditions* (cons (car bindings) *tcc-conditions*)))
-	(check-for-binding-expr-tccs
-	 (cdr bindings)
-	 (if dep?
-	     (substit (cdr expected-types)
-	       (acons (car expected-types) (car bindings) nil))
-	     (cdr expected-types)))))))
+  (if (cdr bindings)
+      (let* ((dep? (typep (car expected-types) 'dep-binding))
+	     (etype (if dep?
+			(type (car expected-types))
+			(car expected-types))))
+	(check-for-tccs* (car bindings) etype)
+	(let ((*bound-variables* (cons (car bindings) *bound-variables*))
+	      (*tcc-conditions* (cons (car bindings) *tcc-conditions*)))
+	  (check-for-binding-expr-tccs
+	   (cdr bindings)
+	   (if dep?
+	       (substit (cdr expected-types)
+		 (acons (car expected-types) (car bindings) nil))
+	       (cdr expected-types)))))
+      (let ((*tcc-conditions*
+	     (append (car *appl-tcc-conditions*) *tcc-conditions*)))
+	(check-for-tccs* (car bindings) (car expected-types)))))
 
 (defmethod check-for-tccs* ((expr bind-decl) expected)
   (when (declared-type expr)
