@@ -416,7 +416,9 @@
 	  (common-factors-list (cdr term))
 	  (if (eq (car term) 'times)
 	      (cdr term)))
-      (list term)))
+      (if (eql term 0)
+	  nil
+	  (list term))))
 
 (defun common-factors-list (terms)
   (if (consp terms)
@@ -432,7 +434,8 @@
   (if (consp args)
       (let ((a (car args)))
 	(if (or (and (isneqzero? a)
-		     (member a factors :test #'equal))
+		     (or (null factors)
+			 (member a factors :test #'equal)))
 		(and (consp a)
 		     (eq (funsym a) 'divide)))
 	    (divterms* (cdr args) factors (cons a accum))
@@ -468,14 +471,19 @@
 		   (eq (funsym head) 'times))
 	      (let* ((args (argsof head))
 		     (divterms (divterms args (common-factors (arg2 norm))))
-		     (newhead (if divterms
-				  (cancel-reciprocal head divterms)
-				  head))
-		     (newarg2 (if divterms
-				   (cancel-reciprocal (arg2 norm) divterms)
-				   (arg2 norm))))
+		     (newhead (when divterms
+				  (cancel-reciprocal head divterms)))
+				  ;head
+		     (newarg2 (when divterms
+				   (cancel-reciprocal (arg2 norm) divterms)))
+				   ;(arg2 norm)
+		     (newlits (when divterms
+				  (solvecan `(equal ,newhead ,newarg2)))))
 		(if divterms
-		    (solvecan `(equal ,newhead ,newarg2))
+		    (if (and (singleton? newlits)
+			     (eq (car newlits) 'true))
+			newlits
+			(cons norm newlits))
 		    (ncons norm)
 		    ;;(list `(lesseqp ,(arg1 norm) ,(arg2 norm))
 			;;  `(greatereqp ,(arg1 norm) ,(arg2 norm)))
@@ -696,13 +704,14 @@
 		    ((eq norm 'ident)
 		     (let ((new-eqn
 			    (if *tc-ehdm-test*
-				`(equal ,(arg1 ineq) ,(arg2 ineq))
-				(normineq `(equal ,(canonsig-arith (arg1 ineq))
-						  ,(canonsig-arith (arg2 ineq)))))))
+				`(equal ,(arg1 ineq) ,(arg2 ineq)))
+				 (normineq `(equal ,(canonsig-arith (arg1 ineq))
+						  ,(canonsig-arith (arg2 ineq))))))
 		       (unless (if *tc-ehdm-test*
 				   (subtermof (arg1 ineq) (arg2 ineq))
 				   (bad-eqn new-eqn))
-			 (push new-eqn ineqpot)
+			 (loop for eqn in (equalsolve new-eqn)
+			       do (push eqn ineqpot))
 			 (return nil))))
 		    (t (push norm ineqpot))))
 	     ;;; 11/17/92: DAC see note above about nrmineq.
