@@ -221,6 +221,7 @@
 		       (when (and (name? ex)
 				  (resolution ex)
 				  (not (binding? (declaration ex)))
+				  (not (var-decl? (declaration ex)))
 				  (not (memq (declaration ex) allowed-decls))
 				  (eq (module (declaration ex))
 				      (current-theory)))
