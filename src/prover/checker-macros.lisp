@@ -118,7 +118,7 @@
 (defvar *dp-state* nil)
 (defvar *new-ground?* nil)
 (defvar *old-ground?* t)
-(defvar *newdc* nil)
+(defvar *newdc* nil) ;;needs to be set to T to get new ground prover
 (defvar *dp-changed*)
 (defvar *alists*)
 (defvar *dp-state*)
