@@ -163,7 +163,10 @@
 	(arg)
 	(if (eq arg t1) t2 arg)))
     (let ((args (map-args-array #'replarg (the application term))))
-      (mk-term-array args))))
+      (let ((result (mk-term-array args)))
+	(setf (node-external-info result)
+	      (node-external-info t1))
+	result))))
 
 (defun replace-term-in-sig (t1 t2 u cong-state)
   (setf (sig u cong-state)
@@ -200,14 +203,22 @@
   (declare (type node term)
 	   (type cong-state cong-state))
   (if (application-p term)
-      (sigma
-       (mk-term-array (map-args-array
-		       #'canon* (the application term) cong-state no-mod))
-       cong-state)
-       term))
+      (let ((result
+	     (sigma
+	      (mk-term-array (map-args-array
+			      #'canon* (the application term)
+			      cong-state no-mod))
+	      cong-state)))
+	(setf (node-external-info result)
+	      (node-external-info term))
+	result)
+      term))
 
 (defun replace-args-with-canonsig (w cong-state &optional (no-mod nil))
-  (mk-term-array (map-args-array #'canonsig w cong-state no-mod)))
+  (let ((result
+	 (mk-term-array (map-args-array #'canonsig w cong-state no-mod))))
+    (setf (node-external-info result)
+	  (node-external-info w))))
 
 (defun adduse-of-term (term cong-state)
   (declare (type node term)
