@@ -635,8 +635,8 @@ pvs-strategies files.")
 
 (defun dependencies-context (theory)
   (let ((decl (car (last (or (theory theory)
-				  (assuming theory)
-				  (formals theory))))))
+			     (assuming theory)
+			     (formals theory))))))
     (if decl
 	(let* ((prev-decls (reverse (all-decls theory)))
 	       (rem-decls prev-decls)
