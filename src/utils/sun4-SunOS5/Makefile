@@ -1,3 +1,5 @@
+LD = /pkg/binutils/bin/ld
+LDFLAGS = -G -L./
 CC=gcc
 CFLAGS=-fPIC
 WFLAGS=-Wall
@@ -12,4 +14,4 @@ obj=file_utils.o
 all : file_utils.so
 
 file_utils.so: ${obj}
-	$(LD) -shared  -o file_utils.so ${obj}
+	$(LD) ../utils-ld-table $(LDFLAGS) -o file_utils.so ${obj}
