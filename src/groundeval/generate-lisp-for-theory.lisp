@@ -123,7 +123,11 @@
 		   (format t "~%~%Evaluating in the presence of unproven TCCs may be unsound~%")
 		   (unless (pvs-y-or-n-p "Do you wish to proceed with evaluation?")
 		     (throw 'abort t)))
-		 (let ((cl-input (pvs2cl tc-input)))
+		 (multiple-value-bind (cl-input error)
+		     (catch 'no-defn (pvs2cl tc-input))
+		   (unless cl-input
+		     (format t "~s could not be translated:~%~a" input error)
+		     (throw 'abort t))
 		   (when *evaluator-debug*
 		     (format t "~a translates to ~a~%" tc-input cl-input))
 		   (multiple-value-bind (cl-eval error)
