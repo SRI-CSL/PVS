@@ -40,7 +40,7 @@
     "src/WS1S/lisp" "src/abstraction"
     "src/ground-prover" "src/groundeval" "src/inst-by-unif" ))
 
-(defparameter *pvs-version* "3.0 Beta")
+(defparameter *pvs-version* "3.0")
 (defparameter *binfile-version* 19)
 
 (defparameter *context-name* ".pvscontext")
