@@ -258,7 +258,7 @@
 (defmethod translate-to-dc ((expr cases-expr))
   (let ((name (pvs-gethash expr *dc-named-exprs*)))
     (or name
-	(let ((newid (gentemp)))
+	(let ((newid (dp::mk-constant (gentemp))))
 	  (add-to-prtype-hash newid nil (type expr))
 	  (setf (pvs-gethash expr *dc-named-exprs*) newid)
 	  newid))))
