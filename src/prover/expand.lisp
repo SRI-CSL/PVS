@@ -88,6 +88,7 @@ list of positive numbers" occurrence)
 		  (expand-defn name fmla occurrence)
 		  fmla))
 	     )
+	(break)
 	(if (eq fmla new-fmla)
 	    (expand-sforms name (cdr sforms)
 			   sformnums occurrence
@@ -209,17 +210,20 @@ list of positive numbers" occurrence)
 	(substit (expression newoper)
 	  (pairlis-args (bindings newoper)
 			(argument-list newargs)))
-	(let* ((stype (find-supertype (type newoper)))
-	       (nex (lcopy expr
-		      'operator newoper
-		      'argument newargs
-		      'type (if (typep (domain stype) 'dep-binding)
-				(substit (range stype)
-				  (acons (domain stype) newargs nil))
-				(range stype)))))
-	  (unless (eq newoper (operator expr))
-	    (change-application-class-if-necessary expr nex))
-	  nex))))
+	(if (and (eq oper newoper)
+		 (eq arg newargs))
+	    expr
+	    (let* ((stype (find-supertype (type newoper)))
+		   (nex (lcopy expr
+			  'operator newoper
+			  'argument newargs
+			  'type (if (typep (domain stype) 'dep-binding)
+				    (substit (range stype)
+				      (acons (domain stype) newargs nil))
+				    (range stype)))))
+	      (unless (eq newoper (operator expr))
+		(change-application-class-if-necessary expr nex))
+	      nex)))))
 
 
 (defmethod expand-defn (name (expr name-expr) occurrence)
