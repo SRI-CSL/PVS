@@ -140,6 +140,8 @@ time).  Verbose? set to T provides more information."
 
 (defun run-musimp (ps fnums dynamic-ordering? irredundant? verbose?)
   (bdd_init)
+  ;; Need to look at this, or somehow it gets a nonzero value
+  bdd_interrupted
   (mu_init)
   (let* ((init-real-time (get-internal-real-time))
 	 (init-run-time (get-run-time))
