@@ -192,12 +192,13 @@
 		       (not
 			(pvs-yes-or-no-p
 			 "~%This proof was originally done with the ~:[old~;new~] ~
-                          decision procedures,~%which is not the default.  ~
-                          Use the ~:[old~;new~] one (for this proof only)? "
-			 (not *new-ground?*) (not *new-ground?*)))))
+                          decision procedures,~%which is not the default.~%~
+                          Use the ~:[old~;new~] ones (for this proof only)? "
+			 (new-ground? decl) (new-ground? decl)))))
 	(if *new-ground?*
 	    (old-ground)
 	    (new-ground)))
+      (pvs-message "Using ~:[old~;new~] decision procedures" *new-ground?*)
       (let ((*dp-state* (when *new-ground?*
 			  (dp::push-new-cong-state *init-dp-state*))))
 	(setf (dp-state *top-proofstate*) *dp-state*)
