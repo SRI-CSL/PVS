@@ -101,9 +101,15 @@
   `(name (ex-defn-d ,decl)))
 
 (defun undefined (expr)
-  #'(lambda (&rest x)
-      (throw 'undefined (format nil "Hit uninterpreted term ~a during evaluation"
-			  (ref-to-id expr)))))
+  (let* ((fname (gentemp "undefined"))
+	 (fbody `(defun ,fname (&rest x)
+		   (declare (ignore x))
+		   (throw 'undefined
+			  (format nil "Hit uninterpreted term ~a during evaluation"
+			    (ref-to-id ,expr))))))
+    (eval fbody)
+    (compile fname)
+    fname))
 
 (defmacro trap-undefined (expr)
   `(catch 'undefined ,expr))
@@ -1274,10 +1280,11 @@
 	 (*current-theory* (module decl)))
     (cond ((null defax);;(break)
 	   (make-eval-info decl)
-	   (setf (ex-name decl) (undefined decl)
-		 (ex-name-m decl) (undefined decl)
-		 (ex-name-d decl) (undefined decl))
-	   (undefined decl))
+	   (let ((undef (undefined decl)))
+	     (setf (ex-name decl) undef
+		   (ex-name-m decl) undef
+		   (ex-name-d decl) undef)
+	     undef))
 	  (t (let
 		 ((formals (loop for x in (formals (module decl))
 				 when (formal-const-decl? x)
@@ -1378,10 +1385,11 @@
   (let* ((defax (def-axiom decl))
 	 (*external* nil))
     (cond ((null defax)
-	   (setf (in-name decl) (undefined decl)
-		 (in-name-m decl) (undefined decl)
-		 (in-name-d decl) (undefined decl))
-	   (undefined decl))
+	   (let ((undef (undefined decl)))
+	     (setf (in-name decl) undef
+		   (in-name-m decl) undef
+		   (in-name-d decl) undef)
+	     undef))
 	  (t (let* 
 		 ((id (mk-newsymb  (id decl)))
 		  (id-d (mk-newsymb (format nil "~a!" (id decl))))
