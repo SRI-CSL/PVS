@@ -938,6 +938,26 @@ e.g., C-u or M-0."
       (set-buffer buf)
       (setq default-directory dname)
       (goto-char (point-min))
+      (while (re-search-forward "^(load-prelude-library \\(.*\\))$" nil t)
+	(let* ((dir (car (read-from-string
+			  (buffer-substring (match-beginning 1)
+					    (match-end 1))))))
+	  (unless (file-name-absolute-p dir)
+	    (let* ((libs (pvs-library-path-subdirs pvs-library-path))
+		   (lib (if (= (aref dir (1- (length dir))) ?/)
+			    (substring dir 0 (1- (length dir)))
+			    dir))
+		   (lib-dir (assoc lib libs)))
+	      (if lib-dir
+		  (let ((ldir (concat (cdr lib-dir) "/" (car lib-dir))))
+		    (if (file-directory-p ldir)
+			(setq dir ldir)
+			(error "Library directory %s points to %s, which does not exist\ncheck your PVS_LIBRARY_PATH"
+			       dir (cdr lib-dir))))
+		  (error "Library directory %s not found - check your PVS_LIBRARY_PATH" dir))))
+	  (if (file-directory-p dir)
+	      (load-prelude-library dir)
+	      (error "Library directory %s not found" dir))))
       (let ((found-one (re-search-forward "^[$][$][$].*$" nil t)))
 	(while found-one
 	  (forward-line)
