@@ -281,3 +281,19 @@
   (loop for var in (free-formal-vars expr)
 	when (contains-updateable? (type var))
 	collect var))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defvar *closure-vars* nil)
+
+(defun closure-vars (expr)
+  (let* ((*closure-vars* nil)
+	 (closure-vars
+	  (mapobject
+	   #'(lambda (x)
+	       (when (binding-expr? x)(break)
+		 (loop for y
+		       in (updateable-vars x)
+		       do (pushnew y *closure-vars*
+				   :test #'tc-eq))
+		 T))
+	   expr)))
+    *closure-vars*))
