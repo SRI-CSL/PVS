@@ -25,6 +25,7 @@ PLATFORM := $(shell bin/pvs-platform)
 ICSPLATFORM := $(shell @ICSPATH@/bin/config.guess)
 export PLATFORM ICSPLATFORM
 
+LISP=allegro6.0
 ALLEGRODIR= @ALLEGRODIR@
 PVSLISP= @ALLEGRODIR@/mlisp
 LD_LIBRARY_PATH = @ALLEGRODIR@:$LD_LIBRARY_PATH
@@ -113,8 +114,8 @@ endif
 endif
 
 bindir = bin/$(PLATFORM)
-pvsfull = ${bindir}/full/pvs-${PVSLISP}
-pvsrt = ${bindir}/runtime/pvs-${PVSLISP}
+pvsfull = ${bindir}/full/pvs-${LISP}
+pvsrt = ${bindir}/runtime/pvs-${LISP}
 
 pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
 		 src/make-allegro-pvs.lisp src/closopt.lisp
