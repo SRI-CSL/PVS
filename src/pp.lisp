@@ -2125,9 +2125,11 @@ bind tighter.")
 	(write-char #\@))
       (cond (mod-id
 	     (write mod-id)
+	     (pprint-indent :current 0)
 	     (when actuals
 	       (pp-actuals actuals))
 	     (when mappings
+	       (pprint-newline :fill)
 	       (pp-mappings mappings))
 	     (write-char #\.)
 	     (write id))
@@ -2135,9 +2137,11 @@ bind tighter.")
 	     (unless (or library (not (memq id '(|#| |##|))))
 	       (write " "))
 	     (write id)
+	     (pprint-indent :current 0)
 	     (when actuals
 	       (pp-actuals actuals))
 	     (when mappings
+	       (pprint-newline :fill)
 	       (pp-mappings mappings)))))))
 
 (defun pp-mappings (mappings)
@@ -2145,7 +2149,7 @@ bind tighter.")
     (loop (pp* (pprint-pop))
 	  (pprint-exit-if-list-exhausted)
 	  (write ", ")
-	  (pprint-newline :fill))))
+	  (pprint-newline :linear))))
 
 (defmethod pp* ((map mapping))
   (pprint-logical-block (nil nil)
