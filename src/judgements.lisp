@@ -423,7 +423,7 @@
     (let ((jthinst (mk-modname (id (module judgement))
 		     (mapcar #'(lambda (a) (mk-actual (cdr a)))
 		       bindings))))
-      (subst-mod-params (type judgement) jthinst))))))
+      (subst-mod-params (type judgement) jthinst))))
 
 (defmethod judgement-types* ((ex application))
   (let* ((op (operator* ex)))
@@ -437,13 +437,13 @@
 		 (entry (when (<= currynum (length vector))
 			  (aref vector (1- currynum)))))
 	    (when entry
-	      (let ((argtypes (judgement-types+ (argument ex))))
-		(let* ((gtypes (compute-application-judgement-types
-				ex
-				(judgements-graph entry)))
-		       (jtypes (generic-application-judgement-types
-				ex (generic-judgements entry) gtypes)))
-		  jtypes)))))))))
+	      (let* ((argtypes (judgement-types+ (argument ex)))
+		     (gtypes (compute-application-judgement-types
+			      ex
+			      (judgements-graph entry)))
+		     (jtypes (generic-application-judgement-types
+			      ex (generic-judgements entry) gtypes)))
+		jtypes))))))))
 
 (defun generic-application-judgement-types (ex gen-judgements jtypes)
   (if (null gen-judgements)
@@ -617,17 +617,23 @@
     (or (subtype-wrt? rdomain (car argtypes) jdomain)
 	(judgement-list-arguments-match? (cdr argtypes) rdomain jdomain))))
 
-(defun judgement-vector-arguments-match? (argtypes rdomain jdomain num)
+(defun judgement-vector-arguments-match? (argtypes rdomain jdomain num
+						   &optional bindings)
   (or (>= num (length argtypes))
       (and (judgement-vector-arguments-match*?
-	    (aref argtypes num) (car rdomain) (car jdomain))
+	    (aref argtypes num) (car rdomain) (car jdomain) bindings)
 	   (judgement-vector-arguments-match?
-	    argtypes (cdr rdomain) (cdr jdomain) (1+ num)))))
+	    argtypes (cdr rdomain) (cdr jdomain) (1+ num)
+	    (if (and (typep (car rdomain) 'dep-binding)
+		     (typep (car jdomain) 'dep-binding))
+		(acons (car jdomain) (car rdomain) bindings)
+		bindings)))))
 
-(defun judgement-vector-arguments-match*? (argtypes rtype jtype)
+(defun judgement-vector-arguments-match*? (argtypes rtype jtype bindings)
   (when argtypes
-    (or (subtype-wrt? (car argtypes) jtype rtype)
-	(judgement-vector-arguments-match*? (cdr argtypes) rtype jtype))))
+    (or (subtype-wrt? (car argtypes) jtype rtype bindings)
+	(judgement-vector-arguments-match*? (cdr argtypes) rtype jtype
+					    bindings))))
 
 (defmethod judgement-types* ((ex field-application))
   (let ((atypes (judgement-types* (argument ex))))
@@ -732,23 +738,23 @@
 		    j-argtype argtypes domtypes))
 	 judgement-argtypes argtypes domain-types))
 
-(defun subtype-wrt? (type1 type2 reltype)
+(defun subtype-wrt? (type1 type2 reltype &optional bindings)
   ;; returns true when type1 is a subtype of type2, given that it must be
   ;; of type reltype, e.g., (subtype-wrt? rat nzrat nzreal) is true.
   (or (subtype-of? type1 type2)
-      (and (same-predicate? type2 reltype)
+      (and (same-predicate? type2 reltype bindings)
 	   (subtype-of? type1 (supertype type2)))))
 
-(defmethod same-predicate? ((t1 subtype) (t2 subtype))
-  (same-predicate? (predicate t1) (predicate t2)))
+(defmethod same-predicate? ((t1 subtype) (t2 subtype) bindings)
+  (same-predicate? (predicate t1) (predicate t2) bindings))
 
-(defmethod same-predicate? ((p1 lambda-expr) (p2 lambda-expr))
+(defmethod same-predicate? ((p1 lambda-expr) (p2 lambda-expr) bindings)
   (with-slots ((ex1 expression) (b1 bindings)) p1
     (with-slots ((ex2 expression) (b2 bindings)) p2
-      (tc-eq-with-bindings ex1 ex2 (acons (car b1) (car b2) nil)))))
+      (tc-eq-with-bindings ex1 ex2 (acons (car b1) (car b2) bindings)))))
 
-(defmethod same-predicate? (p1 p2)
-  (tc-eq p1 p2))
+(defmethod same-predicate? (p1 p2 bindings)
+  (tc-eq-with-bindings p1 p2 bindings))
 
 (defun minimal-types (types &optional mintypes)
   (cond ((null types)
@@ -1029,7 +1035,7 @@
 	      (make-instance 'application-judgements)))
       (merge-appl-judgements-entries
        decl (aref from-vector i) (aref to-vector i)
-       theory theoryname))))
+       theory theoryname)))
   to-vector)
 
 ;;; Entry here is an instance of application-judgements
@@ -1170,9 +1176,6 @@
 							 :test #'tc-eq))
 				     atypes))
 			   #'< :key #'cdr)))
-	(when (> (length (known-subtypes *current-context*)) 20)
-	  (break "Long subtypes list"))
-	(when (> (length entry) 20) (break "Long subtype entry"))
 	(when *subtype-of-hash*
 	  (let ((ht (gethash aty *subtype-of-hash*)))
 	    (when ht

@@ -370,41 +370,6 @@
       'formals (car (bindings expr))
       'formula (expression expr))))
 
-
-;;; Returns a set of module instances of the same form as the using of a
-;;; context, i.e. ((mod modname_1 ... modname_n) ... ), where each
-;;; mod contains a declaration with the same id, and each modname_i is
-;;; compatible with the name.
-
-(defun get-modinsts-list (name using-list)
-  (when (library name)
-    (let ((lib (get-library-pathname (library name) *current-theory*)))
-      (if lib
-	  (setq using-list
-		(remove-if-not #'(lambda (ulist)
-				   (and (typep (car ulist) 'library-theory)
-					(equal (pvs-truename (library
-							      (car ulist)))
-					       (pvs-truename lib))))
-		  using-list))
-	  (type-error name "Library ~a not found" (library name)))))
-  (if (mod-id name)
-      (or (module-synonym-instance name)
-	  (let* ((modalist (acons (theory *current-context*)
-				  (theory-name *current-context*)
-				  using-list))
-		 (modinsts (or (assoc (mod-id name) modalist :test #'eq-id)
-			       (let ((dt (get-theory (mod-id name))))
-				 (and (typep dt 'datatype)
-				      (assq (adt-theory dt) modalist))))))
-	    (if modinsts
-		(let ((mis (matching-modinsts
-			    (id name) (actuals name) modinsts)))
-		  (when mis (list mis)))
-		(type-error name "Theory ~a is not in the IMPORTINGs"
-			    (mod-id name)))))
-      (get-modinsts-list* (id name) (actuals name) using-list nil)))
-
 (defun eq-id (x y)
   (eq x (id y)))
 
@@ -421,52 +386,15 @@
   (when usings
     (let ((mdecl (find-if #'(lambda (d)
 			      (and (typep d 'mod-decl)
+				   (eq (id d) mid)
 				   (visible? d)))
-		   (gethash mid (declarations (caar usings))))))
+		   (all-decls (caar usings)))))
       (if mdecl
 	  (list (cons (get-typechecked-theory (id (modname mdecl)))
 		      (mapcar #'(lambda (u)
 				  (subst-mod-params (modname mdecl) u))
 			      (cdar usings))))
 	  (used-mod-syn mid (cdr usings))))))
-
-(defun get-modinsts-list* (id actuals lmodinsts result)
-  (if (null lmodinsts)
-      result
-      (let ((modinsts (matching-modinsts id actuals (car lmodinsts))))
-	(get-modinsts-list* id actuals (cdr lmodinsts)
-			    (if modinsts (cons modinsts result) result)))))
-
-;;; modinsts is of the form (#mod name1 name2 ...).  Finds those
-;;; instances which match the module name, have a declaration with the
-;;; right id, and match the actuals.
-
-(defun matching-modinsts (id acts modinsts)
-  (let ((mod (car modinsts)))
-    ;; If it is in the current context, it will be handled by
-    ;; match-local-decls
-    (unless (eq mod (theory *current-context*))
-      (and (gethash id (declarations mod))
-	   (if acts
-	       (let ((minsts (or (remove-if #'actuals (cdr modinsts))
-				 (cdr modinsts))))
-		 (and (length= acts (formals-sans-usings mod))
-		      (or (matching-actuals acts mod minsts nil)
-			  (compatible-actuals acts mod minsts nil))))
-	       modinsts)))))
-
-(defun compatible-actuals (acts mod minsts result)
-  (if (null minsts)
-      (when result
-	(cons mod
-	      (mapcar #'(lambda (mi)
-			  (copy mi 'actuals (mapcar #'copy (actuals mi))))
-		result)))
-      (compatible-actuals acts mod (cdr minsts)
-			  (if (and (actuals (car minsts))
-				   (compatible? acts (actuals (car minsts))))
-			      (cons (car minsts) result)
-			      result))))
 
 
 ;;; At this point, we know that the module has the right id, the right
@@ -832,15 +760,6 @@
 	   (cons (car bvars) result)
 	   result))))
 
-(defun matching-decls (name lmodinsts kind args result)
-  (if (null lmodinsts)
-      result
-      (let* ((decls (gethash (id name) (declarations (caar lmodinsts))))
-	     (pdecls (possible-decls (id name) decls kind))
-	     (modinsts (cdar lmodinsts))
-	     (res (matching-decls* name pdecls modinsts args nil)))
-	(matching-decls name (cdr lmodinsts) kind args (nconc result res)))))
-
 (defun possible-decls (id decls kind &optional result)
   (if (null decls)
       result
@@ -1123,16 +1042,20 @@
 
 (defun filter-preferences (name reses kind args)
   (declare (ignore name))
-  (let ((res (or (remove-if #'(lambda (r)
-				(typep (module-instance r) 'datatype-modname))
-		   reses)
-		 reses)))
-    (if (eq kind 'expr)
-	(if (cdr res)
-	    (filter-local-expr-resolutions
-	     (filter-bindings res args))
-	    res)
-	(remove-outsiders (remove-generics res)))))
+  (if (cdr reses)
+      (let* ((dreses (remove-duplicates reses :test #'tc-eq))
+	     (res (or (remove-if
+			  #'(lambda (r)
+			      (typep (module-instance r) 'datatype-modname))
+			dreses)
+		      dreses)))
+	(if (eq kind 'expr)
+	    (if (cdr res)
+		(filter-local-expr-resolutions
+		 (filter-bindings res args))
+		res)
+	    (remove-outsiders (remove-generics res))))
+      reses))
 
 (defun filter-bindings (reses args)
   (or (delete-if-not #'(lambda (r) (typep (declaration r) 'bind-decl))
