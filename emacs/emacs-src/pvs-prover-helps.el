@@ -860,24 +860,24 @@ Assumes that an Proof buffer exists."
 
 ;;; pvs-prover-goto-next-step puts the cursor at the beginning of the next
 ;;; proof command in the buffer.  The next proof command is determined by
-;;; looking for a left paren followed by two capital letters.  If it is
-;;; already at a proof command, this function does nothing.
+;;; looking for a left paren followed by anything but a left paren or a
+;;; \".  If it is already at a proof command, this function does nothing.
 
 (defun pvs-prover-goto-next-step ()
-  "Called from an Edit Proof buffer, goes to next step in proof.
-NOTE: This will fail to work properly if there exists within a proof
-statement a substring of the form ([a-zA-Z][a-zA-Z] or (|."
+  "Called from an Edit Proof buffer, goes to next step in proof.  NOTE:
+The regexp looks for a substring consisting of a left paren followed by
+anything but a left paren or a \", ignoring whitespace."
   (interactive "p")
   (let ((case-fold-search nil))
-    (if (not (re-search-forward "(\\(|.\\|[a-zA-Z][a-zA-Z]\\)" (point-max) t))
+    (if (not (re-search-forward "([ \t\n\r]*[^(\" \t\n\r]" (point-max) t))
 	(progn
 	  (goto-char (point-max))
 	  (message "No more proof statements."))
-	(forward-char -3)
-	(if (looking-at "(\\(PROPAX\\|propax\\))")
+	(goto-char (match-beginning 0))
+	(if (looking-at "([ \t\n\r]*[Pp][Rr][Oo][Pp][Ax][Xx][ \t\n\r]*)")
 	    (progn (forward-char 4) (pvs-prover-goto-next-step))
 	    (if (save-excursion
-		  (in-comment))
+		  (or (in-comment) (in-string)))
 		(progn (forward-char 1) (pvs-prover-goto-next-step)))))))
 
 
@@ -887,32 +887,30 @@ statement a substring of the form ([a-zA-Z][a-zA-Z] or (|."
 		    
 (defun pvs-prover-goto-prev-step (&optional undop)
   "Called from an Edit Proof buffer, goes to prev step in proof.
-NOTE: This will fail to work properly if there exists within a proof
-statement a substring of the form ([a-zA-Z][a-zA-Z] or (|."
+The regexp looks for a substring consisting of a left paren followed by
+anything but a left paren or a \", ignoring whitespace."
   (interactive "p")
-  (if (not (re-search-backward "(\\(|.\\|[a-zA-Z][a-zA-Z]\\)" (point-min) t))
+  (if (not (re-search-backward "([ \t\n\r]*[^(\" \t\n\r]" (point-min) t))
       (progn
 	(goto-char (1+ (point-min)))
 	(pvs-prover-goto-next-step)
 	(message "No earlier proof statements."))
       (when undop
 	(forward-sexp 1)
-	(if (not (looking-at "[ \n\t]*\)"))
+	(if (not (looking-at "[ \n\t\r]*\)"))
 	    (forward-sexp -1)
 	    (progn
 	      (re-search-forward "[ \n\t\)]*")
 	      (forward-sexp -1)
-	      (unless (re-search-backward "(\\(|.\\|[a-zA-Z][a-zA-Z]\\)" (point-min) t)
+	      (unless (re-search-backward "([ \t\n\r]*[^(\" \t\n\r]" (point-min) t)
 		(goto-char (1+ (point-min)))
 		(pvs-prover-goto-next-step)
 		(message "No earlier proof statements.")))))
-      (if (looking-at "(\\(PROPAX\\|propax\\))")
+      (if (looking-at "([ \t\n\r]*[Pp][Rr][Oo][Pp][Ax][Xx][ \t\n\r]*)")
 	  (pvs-prover-goto-prev-step undop))))
 
 (defun pvs-prover-goto-prev-step (&optional undop)
-  "Called from an Edit Proof buffer, goes to prev step in proof.
-NOTE: This will fail to work properly if there exists within a proof
-statement a substring of the form ([a-zA-Z][a-zA-Z] or (|."
+  "Called from an Edit Proof buffer, goes to prev step in proof."
   (interactive "p")
   (let ((cpoint (point)))
     (goto-char (point-min))
