@@ -268,7 +268,8 @@ generated")
     (generate-adt-ord-function adt))
   (if (or (enumtype? adt)
 	  (every #'(lambda (c) (null (arguments c))) (constructors adt)))
-      (generate-inclusive-axiom adt)
+      (progn (generate-inclusive-axiom adt)
+	     (generate-disjoint-axiom adt))
       (generate-adt-axioms adt))
   (generate-remaining-adt-sections adt)
   (setf (adt-theory adt) *current-theory*))
@@ -888,7 +889,13 @@ generated")
 	  (multiple-value-bind (subtypes recognizers)
 	      (get-accessor-covered-subtypes (copy-list (cdr entry)) adt)
 	    (get-accessor-domain-type* subtypes recognizers))
-	  (get-accessor-domain-type* nil (cdr entry)))))
+	  (get-accessor-domain-type*
+	   nil
+	   (mapcan #'(lambda (c)
+		       (when (some #'(lambda (acc) (memq acc (cdr entry)))
+				   (arguments c))
+			 (list (recognizer c))))
+	     (constructors adt))))))
 
 (defun get-accessor-domain-type* (subtypes recognizers)
   (cond ((and (singleton? subtypes)
@@ -1167,7 +1174,8 @@ generated")
 (defun generate-adt-axioms (adt)
   (generate-adt-extensionalities (constructors adt) adt)
   (generate-adt-accessor-axioms (constructors adt) adt)
-  (generate-inclusive-axiom adt))
+  (generate-inclusive-axiom adt)
+  (generate-disjoint-axiom adt))
 
 (defun generate-adt-extensionalities (constructors adt)
   (when constructors
@@ -1266,15 +1274,23 @@ generated")
 			     (cons nbd result)))))
 
 (defun generate-disjoint-axiom (adt)
-  (let ((tvar (mk-name-expr (makesym "~a_var" (id adt)))))
+  (let* ((varid (makesym "~a_var" (id adt)))
+	 (bd (make-bind-decl varid (adt-type-name adt)))
+	 (var (make-variable-expr bd))
+	 (*generate-tccs* 'none))
     (typecheck-adt-decl
      (mk-formula-decl (makesym "~a_disjoint" (id adt))
-       (mk-forall-expr (list (mk-bind-decl (id tvar)
-			       (mk-type-name (id adt))))
-	 (mk-conjunction
+       (make!-forall-expr (list bd)
+	 (make!-conjunction*
 	  (make-disjoint-pairs
-	   (mapcar #'(lambda (c) (mk-application (recognizer c) tvar))
-		   (constructors adt)))))
+	   (mapcar #'(lambda (c)
+		       (let ((recname
+			      (mk-name-expr (recognizer c)
+				nil nil
+				(make-resolution (rec-decl c)
+				  (current-theory-name) (type (rec-decl c))))))
+			 (make!-application recname var)))
+	       (constructors adt)))))
        'AXIOM))))
 
 (defun make-disjoint-pairs (appls &optional result)
@@ -1282,10 +1298,10 @@ generated")
       result
       (make-disjoint-pairs
        (cdr appls)
-       (append result
-	       (mapcar #'(lambda (a)
-			   (mk-negation
-			    (mk-conjunction (list (car appls) a))))
+       (nconc result
+	      (mapcar #'(lambda (a)
+			   (make!-negation
+			    (make!-conjunction (car appls) a)))
 		       (cdr appls))))))
 
 (defun generate-inclusive-axiom (adt)
