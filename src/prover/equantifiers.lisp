@@ -1632,11 +1632,31 @@ is not of the form: (<var> <term>...)" subst)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;useful operations (courtesy Sam).
-(defun args1 (expr)
-  (car (arguments expr)))
+(defmethod args1 ((expr application))
+  (args1* (argument expr)))
 
-(defun args2 (expr)
-  (cadr (arguments expr)))
+(defmethod args1 ((expr projection-application))
+  (args1* (argument expr)))
+
+(defmethod args1* ((expr tuple-expr))
+  (car (exprs expr)))
+
+(defmethod args1* (expr)
+  expr)
+
+(defmethod args2 ((expr application))
+  (args2* (argument expr)))
+
+(defmethod args2 ((expr projection-application))
+  (args2* (argument expr)))
+
+(defmethod args2* ((expr tuple-expr))
+  (cadr (exprs expr)))
+
+(defmethod args2* (expr)
+  nil)
+
+
 
 ;(defmethod declaration ((expr name-expr))
 ;  (declaration (car (resolutions (name expr)))))
