@@ -183,16 +183,15 @@
 
 (defun makeskoconst (id type context)
   (setf (declarations-hash context) (copy (declarations-hash context)))
-  (put-decl (make-instance
-	     'skolem-const-decl
-	     'id (id id)
-	     'type type
-	     'module (module context))
-	    (declarations-hash context))
-  (typecheck
-   id
-   :expected type 
-   :context context))
+  (let ((ctype (lcopy type 'from-conversion nil)))
+    (put-decl (make-instance 'skolem-const-decl
+		'id (id id)
+		'type ctype
+		'module (module context))
+	      (declarations-hash context))
+    (typecheck id
+      :expected ctype
+      :context context)))
 
 (defmethod quantifier-step ((expr quant-expr)  context sign terms ps)
   (declare (ignore context sign ps))
