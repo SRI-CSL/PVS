@@ -5,14 +5,16 @@
 (defvar *output-traces* nil)
 
 (defstep ws1s (&optional (fnums *)
-			 (examples T)
-			 (automaton nil)
-			 (traces nil)
+			 (examples? T)
+			 (automaton? nil)
+			 (traces? nil)
+			 (verbose? T)
 			 (defs !)
 			 theories
 			 rewrites
 			 exclude)
   (let ((cuth *current-theory*)
+	(rewrite-msg *rewrite-msg-off*)
 	(cuthstr (string (id cuth)))
 	(exclude (if (listp exclude) exclude (list exclude)))
 	(all-exclude (append exclude (list "sets[nat].singleton"
@@ -29,23 +31,23 @@
 			     :theories theories
 			     :rewrites rewrites
 			     :exclude all-exclude)
-	   (rewrite-msg-off)
+           (rewrite-msg-off)
 	   (expand* expand)
 	   (skip-msg "Expanding definitions..." :force-printing? T)
-	   (assert :cases-rewrite? T)
+	   (assert fnums :cases-rewrite? T)
+	   (if rewrite-msg (skip) (rewrite-msg-on)) ; restore if necessary
 	   (skip-msg "WS1S decision procedure..." :force-printing? T)
-	   (rewrite-msg-on)
-	   (ws1s-simp fnums examples automaton traces)))
+	   (ws1s-simp fnums examples? automaton? traces? verbose?)))
   "Decision procedure for Weak Second-order monadic logic of 1 Successor (WS1S)
    based on the Mona package developed at BRICS (http://www.brics.dk/~mona).
    Expands definitions in the formulas specified by FNUMS, applies Boolean
    abstraction for formulas outside the scope of WS1S, and constructs an
    automata that recognizes the 'language' of interpretations of these formulas.
 
-   The argument FNUMS restricts the focus of the strategy to the thereby specified sequent
-   formulas. If EXAMPLES is true, a witness and a counterexample are being displayed if these
-   formulas turn out to be satisfiable but not valid setting the flag AUTOMATON causes
-   the strategy to display the constructed automaton, TRACES displays a trace version of
+   The argument FNUMS restricts the focus of the strategy to the thereby specified seqbuent
+   formulas. If EXAMPLES? is true, a witness and a counterexample are being displayed if these
+   formulas turn out to be satisfiable but not valid setting the flag AUTOMATON? causes
+   the strategy to display the constructed automaton, TRACES? displays a trace version of
    the witness. For a description of the remaining flags DEFS, THEORIES, REWRITES, and
    EXCLUDE see e.g. (help install-rewrites).
 
@@ -68,20 +70,22 @@
                  (R(t) = P(t) = Q(t) = C(t))});"
   "By rewriting and WS1S decision procedure")
 
-(addrule 'ws1s-simp nil ((fnums *) (examples T) (automaton nil) (traces nil))
-	 (ws1s-step fnums examples automaton traces)
+(addrule 'ws1s-simp nil ((fnums *) (examples T) (automaton nil) (traces nil) (verbose T))
+	 (ws1s-step fnums examples automaton traces verbose)
 	 "WS1S Decision Procedure.")
 
-(defun ws1s-step (fnums examples automaton traces)
+
+(defun ws1s-step (fnums examples automaton traces verbose)
   #'(lambda (ps)
       (let* ((*output-examples* examples)
 	     (*output-automaton* automaton)
 	     (*output-traces* traces)
+	     (*verbose* verbose)
 	     (sforms (s-forms (current-goal ps)))
 	     (selected-sforms (select-seq sforms fnums))
 	     (remaining-sforms (delete-seq sforms fnums)))
 	(declare (special *output-examples* *output-automaton*
-			  *output-traces*))
+			  *output-traces* *verbose*))
 	(multiple-value-bind (signal newform)
 	    (ws1s-sforms selected-sforms)
 	  (case signal
@@ -109,7 +113,10 @@
 	(fml-to-dfa-init)
 	(let ((main (catch 'not-ws1s-translatable
 		      (fml-to-dfa fmla))))
-	  (if (not main) fmla
+	  (if (not main)
+	      (progn
+		(error-format-if "~%Formula ~a not in WS1S" fmla)
+	         fmla)
 	    (multiple-value-bind (symtab num offsets fvars types)
 		(symtab-strip)
 	      (let* ((restr (dfa-conjunction* (assertions symtab)))
@@ -189,7 +196,4 @@
     (format t "~2%Free vars:~2%" fvars)
     (dfa-print (address p) num fvars offsets)
     (format t "~%")))
-
-
-
 
