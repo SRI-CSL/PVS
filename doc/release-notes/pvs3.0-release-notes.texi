@@ -17,7 +17,7 @@ Copyright 2002 SRI International
 
 @titlepage
 @title PVS 3.0 release notes
-@author Sam Owre <owre@csl.sri.com>, SRI International 
+@author Sam Owre <owre@@csl.sri.com>, SRI International 
 
 @end titlepage
 
