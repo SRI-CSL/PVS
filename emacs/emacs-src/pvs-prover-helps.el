@@ -874,7 +874,7 @@ statement a substring of the form ([a-zA-Z][a-zA-Z] or (|."
 	  (goto-char (point-max))
 	  (message "No more proof statements."))
 	(forward-char -3)
-	(if (looking-at "(PROPAX)")
+	(if (looking-at "(\\(PROPAX\\|propax\\))")
 	    (progn (forward-char 4) (pvs-prover-goto-next-step))
 	    (if (save-excursion
 		  (lisp-in-comment (concat "[ \t]*" comment-start "+[ \t]*")))
