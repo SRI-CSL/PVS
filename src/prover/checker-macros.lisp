@@ -26,6 +26,7 @@
 (defvar *assert-typepreds-off* nil)
 (defvar *assert-typepreds* nil)
 (defvar *prover-indent* 0)
+(defvar *ignore-prover-output?* nil)
 (defvar *rerunning-proof* nil)
 (defvar *top-label* nil)
 (defvar *max-occurrence* 0)
