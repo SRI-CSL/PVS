@@ -27,6 +27,7 @@ earlier version of PVS.
 @section New Features
 
 @menu
+* Startup Script Update::
 * Theory Interpretation Enhancements::
 * References to Mapped Entities::
 * Cleaning up Specifications::
@@ -34,7 +35,15 @@ earlier version of PVS.
 * Generating HTML:: 
 * Default Strategies::
 * all-typepreds strategy::
+* TeX Substitutions::
+* add-declaration and IMPORTINGs::
 @end menu
+
+@node Startup Script Update
+@subsection Startup Script Update
+
+The PVS startup script @code{pvs} has been made to work with later
+versions of Linux (i.e., RedHat 9 and Enterprise).
 
 @node Theory Interpretation Enhancements
 @subsection Theory Interpretation Enhancements
@@ -157,7 +166,9 @@ The new commands @code{unusedby-proof-of-formula} and
 listing all the declarations that are unused in the proof of the given
 formula.  Removing all these declarations and those that follow the
 given formula should give a theory that typechecks and for which the
-proofchain is still complete, if it was in the full theory.
+proofchain is still complete, if it was in the full theory.  This
+could be done automatically in the future.
+
 
 @node Binary Files
 @subsection Binary Files
@@ -199,25 +210,119 @@ validation suite.
 @node Generating HTML
 @subsection Generating HTML
 
-The commands @code{html-pvs-file} and @code{html-pvs-files} generate a
-@code{pvshtml} subdirectory and create HTML files corresponding to the
-PVS files.  This is done by copying the PVS file, and adding link
-information so that comments and whitespace are preserved.  Note that
-there is no @code{html-theory} command.  This is not an oversight;
-in creating the HTML file links are created to point to the
-declarations of external HTML files.  Hence if there was as way to
-generate HTML corresponding to both theory and PVS file, it would be
-difficult to decide which a link should refer to.
+The commands @code{html-pvs-file} and @code{html-pvs-files} generate
+HTML for PVS specification files.  These can be generated in place, or
+in a specified web location.  This is driven by setting a Lisp
+variable @code{*pvs-url-mapping*}, as described below.
+
+The in place version creates a @code{pvshtml} subdirectory for each
+context and writes HTML files there.  This is done by copying the PVS
+file, and adding link information so that comments and whitespace are
+preserved.  Note that there is no @code{html-theory} command.  This is
+not an oversight; in creating the HTML file links are created to point
+to the declarations of external HTML files.  Hence if there was as way
+to generate HTML corresponding to both theory and PVS file, it would
+be difficult to decide which a link should refer to.
 
 HTML files can be generated in any order, and may point to library
 files and the prelude.  Of course, if these files do not exist then
-following these links will produce a browser error.
+following these links will produce a browser error.  The
+@code{html-pvs-files} command will attempt to create all files that
+are linked to, failure is generally due to write permission problems.
 
-Keep in mind that links to libraries and the prelude are for absolute
-pathnames, and if you want to bundle them up for someone else to use
-you should also provide a script that resets the links.  This is
-due to HTML limitations; there is no equivalent to
-@code{PVS_LIBRARY_PATH} in HTML.
+Usually it is desirable to put the HTML files someplace where anybody
+on the web can see them, in which case you should set the
+@code{*pvs-url-mapping*} variable.  It's probably best to put this in
+your @code{~/.pvs.lisp} file in your home directory so that it is
+consistently used.  This should be set to a list value, as in the
+following example.
+@example
+  (setq *pvs-url-mapping*
+        '("http://www.csl.sri.com/~owre/"
+          "/homes/owre/public_html/"
+          ("/homes/owre/pvs-specs" "pvs-specs" "pvs-specs")
+          ("/homes/owre/pvs3.2" "pvs-specs/pvs3.2" "pvs-specs/pvs3.2")
+          ("/homes/owre/pvs-validation/3.2/libraries/LaRC/lib"
+           "pvs-specs/validation/nasa"
+           "pvs-specs/validation/nasa")))
+@end example
+The first element of this list forms the base URL, and is used to
+create a @code{<base>} element in each file.  The second element is
+the actual directory associated with this URL, and is where the
+@code{html-pvs-file} commands put the generated files.  The rest of
+the list is composed of lists of three elements: a specification
+directory, a (possibly relative) URL, and a (possibly relative) HTML
+directory.  In the above example, the base URL is
+@code{http://www.csl.sri.com/~owre/}, which the server associates with
+@code{/homes/owre/public_html}.  The next entry says that specs found
+in (a subdirectory of) @code{/homes/owre/pvs-specs} are to have
+relative URLs corresponding to @code{pvs-specs}, and relative
+subdirectories similarly.  Thus a specification in
+@code{/homes/owre/pvs-specs/tests/conversions/} will have a
+corresponding HTML file in
+@code{/homes/owre/public_html/pvs-specs/test/conversions/} and
+correspond to the URL
+@code{http://www.csl.sri.com/~owre/pvs-specs/test/conversions/}.
+In this case, PVS is installed in @code{/homes/owre/pvs3.2}, and thus
+references to the prelude and distributed libraries (such as finite
+sets), will be mapped as well.  Note that in this example, all the
+relative structures are the same, but it doesn't have to be that way.
+
+The @code{*pvs-url-mapping*} is checked to see that the directories
+all exist, though currently no URLs are checked (if anybody knows a
+nice way to do this from Lisp, please let us know).  If a subdirectory
+is missing, the system will prompt you for each subdirectory before
+creating it.  A @code{n} or @code{q} answer terminates processing
+without creating the directory, a @code{y} creates the
+directory and continues, and a @code{!} causes it to just create any
+needed directories without further questions.
+
+If a @code{*pvs-url-mapping*} is given, it must be complete for the
+file specified in the @code{html-pvs-file} command.  In practice, this
+means that your PVS distribution must be mapped as well.  PVS will
+complain if it is not complete; in which case simply add more
+information to the @code{*pvs-url-mapping*} list.
+
+No matter which version is used, the generated HTML (actually
+XHTML) file contains a number of @code{<span>} elements.  These simply
+provide a way to add @code{class} attributes, which can then be used
+in Cascading Style Sheet (CSS) files to define fonts, colors, etc.
+The classes currently supported are:
+@example
+span.comment
+span.theory
+span.datatype
+span.codatatype
+span.type-declaration
+span.formal-declaration
+span.library-declaration
+span.theory-declaration
+span.theory-abbreviation-declaration
+span.variable-declaration
+span.macro-declaration
+span.recursive-declaration
+span.inductive-declaration
+span.coinductive-declaration
+span.constant-declaration
+span.assuming-declaration
+span.tcc-declaration
+span.formula-declaration
+span.judgement-declaration
+span.conversion-declaration
+span.auto-rewrite-declaration
+@end example
+See the @code{<PVS>/lib/pvs-style.css} file for examples.  This file
+is automatically copied to the base directory if it doesn't already
+exist, and it is referenced in the generated HTML files.  Most browsers
+underline links, which can make some operators difficult to read, so
+this file also suppresses underlines.  This file may be edited to suit
+your own taste or conventions.
+
+Both the @code{html-pvs-file} commands take an optional argument.
+Without it, many of the common prelude operators are not linked to.
+With the argument all operators get a link.  Overloaded operators not
+from the prelude still get links.
+
 
 @node Default Strategies
 @subsection Default Strategies
@@ -238,6 +343,85 @@ not be particularly fast since a lot of irrelevant formulas may be
 added to the sequent.
 
 
+@node TeX Substitutions
+@subsection TeX Substitutions
+
+TeX substitutions have been improved, allowing substitutions to be
+made for various delimiters, as shown below.  The TeX commands
+are defined in the @code{pvs.sty} file at the top level of the PVS
+directory.  They consist of the prefix, followed by '@code{l}' or
+'@code{r}' to indicate the left or right delimiter.
+
+@multitable @columnfractions .3 .2 .3 .1
+@item @strong{Name} @tab @strong{Symbols} @tab @strong{TeX Command
+Prefix} @tab @strong{TeX}
+@item parentheses @tab @code{( )} @tab @code{\pvsparen} @tab
+@iftex
+@tex
+$\bigl(\; \bigr)$
+@end tex
+@end iftex
+@item  brackets @tab @code{[ ]} @tab @code{\pvsbracket} @tab
+@iftex
+@tex
+$\bigl[\; \bigr]$
+@end tex
+@end iftex
+@item record type constructors @tab @code{[# #]} @tab @code{\pvsrectype} @tab
+@iftex
+@tex
+$\bigl[\#\; \#\bigr]$
+@end tex
+@end iftex
+@item bracket bar @tab @code{[| |]} @tab @code{\pvsbrackvbar} @tab
+@iftex
+@tex
+$\bigl[\hskip-1pt\bigl[\; \bigr]\hskip-1pt\bigr]$
+@end tex
+@end iftex
+@item parenthesis bar @tab @code{(| |)} @tab @code{\pvsparenvbar} @tab
+@iftex
+@tex
+$\bigl(\hskip-1pt\bigl[\; \bigr]\hskip-1pt\bigr)$
+@end tex
+@end iftex
+@item brace bar @tab @code{@{| |@}} @tab @code{\pvsbracevbar} @tab
+@iftex
+@tex
+$\bigl\{\hskip-1.5pt\bigl[\; \bigr]\hskip-1.5pt\bigr\}$
+@end tex
+@end iftex
+@item list constructor @tab @code{(: :)} @tab @code{\pvslist} @tab
+@iftex
+@tex
+$\bigl\langle\; \bigr\rangle$
+@end tex
+@end iftex
+@item record constructor @tab @code{(# #)} @tab @code{\pvsrecexpr} @tab
+@iftex
+@tex
+$\bigl(\#\; \#\bigr)$
+@end tex
+@end iftex
+@end multitable
+
+These can be customized either by including new mappings for the
+symbols in a @code{pvs-tex.sub} file, or by overriding the TeX
+commands in your LaTeX file.  It may be useful to look at the default
+@code{pvs.sty} and @code{pvs-tex.sub} files; both are located in the
+top level of the PVS installation (provided by @code{M-x
+whereis-pvs}).
+
+@node add-declaration and IMPORTINGs
+@subsection add-declaration and IMPORTINGs
+The @code{add-declaration} command now allows IMPORTINGs.  This is
+most useful during a proof when a desired lemma is in a theory that
+has not been imported.  Note that it is possible for the file to no
+longer typecheck due to ambiguities after this, even though the proof
+will go through just fine.  Such errors are typically very easy to
+repair.
+
+
 @node 3.2 Bug Fixes
 @section Bug Fixes
 
@@ -248,7 +432,8 @@ List}.  Not all of these have been fixed yet.  Those marked
 The more significant bug fixes include the following.
 
 @menu
-* Retypechecking:: Retypechecking
+* Retypechecking::
+* Quantifier Simplification::
 @end menu
 
 @node Retypechecking
@@ -277,6 +462,23 @@ declarations would no longer be valid.
 The fix is to keep a stack of the theories being typechecked and the
 importing they are processing, and when a change is needed, the
 theories are only untypechecked after the importing.
+
+@node Quantifier Simplification
+@subsection Quantifier Simplification
+
+In PVS 3.1, a form of quantifier simplification was added, so that
+forms such as @code{FORALL x: x = n IMPLIES p(x)} were automatically
+simplified to @code{p(n)}.  In most cases, this is very useful, but
+there are situations where the quantified form is preferable, either
+to trigger forms of auto-rewriting or to allow induction to be used.
+
+Many proof commands now include a @code{:quant-simp?} flag to control
+this behavior.  By default, quantifier simplification is not done;
+setting the flag to @code{t} allows the simplification.
+
+@code{simplify}, @code{assert}, @code{bash}, @code{reduce},
+@code{smash}, @code{grind}, @code{ground}, @code{lazy-grind},
+@code{crush}, and @code{reduce-ext} all have this flag.
 
 
 @node 3.2 Incompatibilities
