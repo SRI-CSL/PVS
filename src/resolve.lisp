@@ -51,11 +51,11 @@
 	       (resolution-error name k args)))
 	  ((and (cdr res)
 		(not (eq k 'expr)))
-	   (let* ((nres (delete-if-not #'(lambda (r)
-					  (if argument
-					      (formals (declaration r))
-					      (not (formals (declaration r)))))
-			 res))
+	   (let* ((nres (if argument
+			    (delete-if-not #'(lambda (r)
+					       (formals (declaration r)))
+			      res)
+			    res))
 		  (fres (or (delete-if-not #'fully-instantiated? nres) nres)))
 	     (setf (resolutions name) fres)
 	     (when (cdr fres)
@@ -379,28 +379,22 @@
 					       (pvs-truename lib))))
 		  using-list))
 	  (type-error name "Library ~a not found" (library name)))))
-  (cond ((mod-id name)
-	 (or (module-synonym-instance name)
-	     (let* ((modalist (acons (module *current-context*)
-				     (mod-name *current-context*)
-				     using-list))
-		    (modinsts (or (assoc (mod-id name) modalist :test #'eq-id)
-				  (let ((dt (get-theory (mod-id name))))
-				    (and (typep dt 'datatype)
-					 (assq (adt-theory dt) modalist))))))
-	       (if modinsts
-		   (let ((mis (matching-modinsts
-			       (id name) (actuals name) modinsts)))
-		     (when mis (list mis)))
-		   (type-error name "Theory ~a is not in the IMPORTINGs"
-			       (mod-id name))))))
-	((actuals name)
-	 (get-modinsts-list* (id name) (actuals name) using-list nil))
-	(t (or ;(gethash (id name) *id-to-modinsts*)
-	       (let ((modinsts (get-modinsts-list* (id name) nil
-						   using-list nil)))
-		 ;(setf (gethash (id name) *id-to-modinsts*) modinsts)
-		 modinsts)))))
+  (if (mod-id name)
+      (or (module-synonym-instance name)
+	  (let* ((modalist (acons (module *current-context*)
+				  (mod-name *current-context*)
+				  using-list))
+		 (modinsts (or (assoc (mod-id name) modalist :test #'eq-id)
+			       (let ((dt (get-theory (mod-id name))))
+				 (and (typep dt 'datatype)
+				      (assq (adt-theory dt) modalist))))))
+	    (if modinsts
+		(let ((mis (matching-modinsts
+			    (id name) (actuals name) modinsts)))
+		  (when mis (list mis)))
+		(type-error name "Theory ~a is not in the IMPORTINGs"
+			    (mod-id name)))))
+      (get-modinsts-list* (id name) (actuals name) using-list nil)))
 
 (defun eq-id (x y)
   (eq x (id y)))
@@ -445,8 +439,7 @@
     (unless (eq mod (module *current-context*))
       (and (gethash id (declarations mod))
 	   (if acts
-	       (let ((minsts (or (and acts
-				      (remove-if #'actuals (cdr modinsts)))
+	       (let ((minsts (or (remove-if #'actuals (cdr modinsts))
 				 (cdr modinsts))))
 		 (and (length= acts (formals-sans-usings mod))
 		      (or (matching-actuals acts mod minsts nil)
@@ -567,9 +560,11 @@
       (matching-actual-expr* aex maex nil)))
 
 (defmethod matching-actual-expr (aex maex)
+  (declare (ignore aex maex))
   nil)
 
 (defmethod matching-actual-expr* (aex maex bindings)
+  (declare (ignore aex maex bindings))
   nil)
 
 (defmethod matching-actual-expr* (aex (maex implicit-conversion) bindings)
@@ -766,7 +761,10 @@
 
 (defun match-record-arg-decls (name kind args)
   (when (and (eq kind 'expr)
-	     (singleton? args))
+	     (singleton? args)
+	     (null (mod-id name))
+	     (null (actuals name))
+	     (null (library name)))
     (let ((fdecls (mapcan #'(lambda (pty)
 			      (let ((sty (find-supertype pty)))
 				(when (typep sty 'recordtype)
@@ -777,6 +775,7 @@
 				      (list fdecl))))))
 			  (ptypes (car args))))
 	  (modinsts (list (mod-name *current-context*))))
+      ;;; FIXME - create resolutions here
       (matching-decls* name fdecls modinsts args nil))))
 
 
@@ -797,13 +796,7 @@
   (when (and (or (null (mod-id name))
 		 (eq (mod-id name) (id (mod-name *current-context*))))
 	     (null (library name))
-	     (or (null (actuals name))
-		 (let ((formals (formals-sans-usings *current-theory*)))
-		   (and (length= (actuals name) formals)
-			(every #'matching-actual
-			       (actuals name)
-			       (make-list (length formals))
-			       formals)))))
+	     (null (actuals name)))
     #+pvsdebug (assert (every #'binding? *bound-variables*))
     (let* ((bvars (get-distinct-bound-variables *bound-variables* name))
 	   (ldecls (append (gethash (id name)
@@ -824,7 +817,7 @@
        (cdr bvars)
        name
        (if (and (eq (id (car bvars)) (id name))
-		(not (eq (car bvars) name))
+		;;(not (eq (car bvars) name))
 		(not (member (type (car bvars)) result
 			     :test #'compatible? :key #'type)))
 	   (cons (car bvars) result)
@@ -837,8 +830,7 @@
 	     (pdecls (possible-decls (id name) decls kind))
 	     (modinsts (cdar lmodinsts))
 	     (res (matching-decls* name pdecls modinsts args nil)))
-	(matching-decls name (cdr lmodinsts) kind args
-			(if res (nconc result res) result)))))
+	(matching-decls name (cdr lmodinsts) kind args (nconc result res)))))
 
 (defun possible-decls (id decls kind &optional result)
   (if (null decls)
@@ -847,7 +839,7 @@
 		      (let ((d (car decls)))
 			(if (and (kind-match (kind-of d) kind)
 				 (or (memq d *bound-variables*)
-				     (typep d 'binding)
+				     ;; (typep d 'binding)
 				     (eq (module d) (module *current-context*))
 				     (and (visible? d)
 					  (can-use-for-assuming-tcc? d))))
@@ -944,19 +936,19 @@
 			nil))
 	     (if (uninstantiated? modinst mod decl)
 		 (compatible-uninstantiated? decl modinst args)
-		 (when (compatible-args?
-			decl
-			args
-			(mapcar #'(lambda (dt)
-				    (let ((*smp-include-actuals* t)
-					  (*smp-dont-cache* t))
-				      (if (actuals modinst)
-					  (let ((*generate-tccs* 'none))
-					    (subst-mod-params
-					     dt (set-type-actuals modinst)))
-					  dt)))
-				dtypes))
-		   (list modinst)))))))
+		 (let ((*generate-tccs* 'none))
+		   (set-type-actuals modinst)
+		   (when (compatible-args?
+			  decl
+			  args
+			  (mapcar #'(lambda (dt)
+				      (let ((*smp-include-actuals* t)
+					    (*smp-dont-cache* t))
+					(if (actuals modinst)
+					    (subst-mod-params dt modinst))
+					dt))
+			    dtypes))
+		     (list modinst))))))))
 
 (defmethod compatible-arguments? ((decl field-decl) modinst args mod)
   (declare (ignore mod))
@@ -966,12 +958,12 @@
 	   (and (funtype? stype)
 		(or (length= (domain-types stype) args)
 		    (and (singleton? args)
-			 (some@ #'(lambda (ty)
-				    (let ((sty (find-supertype ty)))
-				      (and (tupletype? sty)
-					   (length= (types sty)
-						    (domain-types stype)))))
-				(ptypes (car args)))))
+			 (some #'(lambda (ty)
+				   (let ((sty (find-supertype ty)))
+				     (and (tupletype? sty)
+					  (length= (types sty)
+						   (domain-types stype)))))
+			       (ptypes (car args)))))
 		(when (compatible-args?
 		       decl
 		       args
@@ -1027,7 +1019,7 @@
        (not (eq mod (module decl)))
        (formals (module decl))
        (or (null (actuals modinst))
-	   (some@ #'(lambda (a)
+	   (some #'(lambda (a)
 		     (let ((d (declaration a)))
 		       (and d
 			    (typep d 'formal-decl)
@@ -1125,12 +1117,12 @@
       (compatible? atype etype)))
 
 (defun disallowed-free-variable? (res)
+  (assert (every #'binding? *bound-variables*))
   (and (not *allow-free-variables*)
        ;;(not *generating-tcc*)
        (typep (declaration res) 'var-decl)
        (not (typep (declaration *current-context*) 'formula-decl))
-       (not (member (declaration res) *bound-variables*
-		    :test #'(lambda (x y) (eq (id x) (id y)))))))
+       (not (memq (declaration res) *bound-variables*))))
 
 
 ;;; Filter-preferences returns a subset of the list of decls, filtering
@@ -1262,18 +1254,6 @@
 	      (eq (declaration (argument (expression def)))
 		  (car (bindings def)))))))
 
-(defun partition-on-compatible-ranges (reses partition)
-  (if (null reses)
-      (mapcar #'cdr partition)
-      (let* ((range (range (find-supertype (type (car reses)))))
-	     (part (assoc range partition :test #'compatible?)))
-	(cond (part
-	       (nconc part (list (car reses)))
-	       (partition-on-compatible-ranges (cdr reses) partition))
-	      (t (partition-on-compatible-ranges
-		  (cdr reses)
-		  (acons range (list (car reses)) partition)))))))
-
 (defun compatible-wrt-freeparams (ty1 ty2)
   (and (compatible? ty1 ty2)
        (let ((fp1 (free-params ty1))
@@ -1350,9 +1330,8 @@
 	(let* ((*current-context* context)
 	       (nname (if (actuals name)
 			  (copy-untyped name)
-			  name))
-	       (reses (resolve* nname kind args)))
-	  reses))))
+			  name)))
+	  (resolve* nname kind args)))))
 
 
 ;;; resolve-theory-name is called by the prover.  It returns a list of
@@ -1421,6 +1400,7 @@
 	  (resolve-imported-theory-abbreviation modname (cdr importings))))))
 
 (defmethod imported-theory-abbreviation (decl)
+  (declare (ignore decl))
   nil)
 
 (defmethod imported-theory-abbreviation ((decl mod-decl))
@@ -1514,6 +1494,7 @@
 	     result)))))
 
 (defun make-function-conversion-resolution (res args compats)
+  (declare (ignore args))
   (let ((theories (delete *current-theory*
 			  (delete-duplicates (mapcar #'module
 						     (free-params res)))))
