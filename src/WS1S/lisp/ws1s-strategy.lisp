@@ -131,8 +131,8 @@
   (labels ((loop* (j acc)
 	     (if (= j length) acc
 	       (let ((newacc (if (set? (elt example (+ (* i length) j 1)))
-				 (make!-application (add-to-fset)
-						    (list (make!-number-expr j) acc))
+				 (make!-application* (add-to-fset)
+						     (list (make!-number-expr j) acc))
 			       acc)))
 		 (loop* (1+ j) newacc)))))
     (loop* 0 (empty-fset-of-nats))))
