@@ -40,7 +40,7 @@
 
 #+allegro
 (defmacro def-disksave-hook (&body body)
-  `(pushnew '(:eval . (progn . ,body)) excl:*restart-actions* :test #'equal))
+  `(pushnew #'(lambda () . ,body) excl:*restart-actions* :test #'equal))
 
 #-allegro
 (defvar *disksave-hooks* nil)
