@@ -303,10 +303,10 @@
 	   (ics_term_mk_mult (translate-term-to-ics* (args1 expr))
 			      (translate-term-to-ics* (args2 expr))))
 	  ((tc-eq op (floor-operator))
-	   (ics_term_mk_floor (ics_empty_context)
+	   (ics_term_mk_floor (ics_context_empty)
 			      (translate-term-to-ics* (args1 expr))))
 	  ((tc-eq op (divides-operator))
-	   (ics_term_mk_div (ics_empty_context)
+	   (ics_term_mk_div (ics_context_empty)
 			    (translate-term-to-ics* (args1 expr))
 			    (translate-term-to-ics* (args2 expr))))
 	  (t
