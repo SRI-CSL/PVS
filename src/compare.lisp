@@ -224,6 +224,7 @@
 
 (defmethod compare* ((old type-def-decl) (new type-def-decl))
   (and (call-next-method)
+       (compare-bod (contains old) (contains new))
        (compare-sig (type-expr old) (type-expr new))))
 
 ;(defmethod compare* ((old var-decl) (new var-decl))
@@ -296,18 +297,18 @@
        (compare* (parameters old) (parameters new))))
 
 (defmethod compare* ((old subtype) (new subtype))
-  (and (compare* (contains old) (contains new))
+  (and ;;(compare* (contains old) (contains new))
        ;;(compare* (supertype old) (supertype new))
        (compare* (predicate old) (predicate new))))
 
 (defmethod compare* ((old setsubtype) (new setsubtype))
-  (and (compare* (contains old) (contains new))
+  (and ;;(compare* (contains old) (contains new))
        (compare* (supertype old) (supertype new))
        (compare* (formals old) (formals new))
        (compare* (formula old) (formula new))))
 
 (defmethod compare* ((old nsetsubtype) (new nsetsubtype))
-  (and (compare* (contains old) (contains new))
+  (and ;;(compare* (contains old) (contains new))
        (compare* (formals old) (formals new))
        (compare* (formula old) (formula new))))
 
