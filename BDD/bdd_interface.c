@@ -38,15 +38,9 @@ BDD_LIST bdd_sum_of_cubes (BDDPTR f, int irredundant)
   
   if (BDD_VOID_P (f))
     return NULL_LIST;
-
-  if (irredundant) {
-    foo = foobarsucks(f); /* bdd_irredundant_sum_of_cubes_as_list (f);*/
-    return foo;
-  }
-  return bdd_sum_of_cubes_as_list(f);
   
-/*     return irredundant ? bdd_irredundant_sum_of_cubes_as_list (f)
-	:             bdd_sum_of_cubes_as_list (f); */
+  return irredundant ? bdd_irredundant_sum_of_cubes_as_list (f)
+	             : bdd_sum_of_cubes_as_list (f);
   
 }
 
