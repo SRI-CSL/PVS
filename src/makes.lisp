@@ -28,6 +28,7 @@
 (def-pvs-term less-operator "<" "reals")
 (def-pvs-term floor-operator "floor" "floor_ceil")
 (def-pvs-term unary-minus-operator "-" "reals" :expected "[real -> real]")
+(def-pvs-term integer_pred "integer_pred" "integers")
 
 (def-pvs-term number-cross-number "[number, number]" "reals" :nt type-expr)
 
