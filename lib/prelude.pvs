@@ -546,7 +546,7 @@ sets_lemmas [T: TYPE]: THEORY
  BEGIN
 
   a, b, c: VAR set[T]
-  x: VAR T
+  x, y: VAR T
 
   extensionality: LEMMA
       (FORALL x: member(x, a) IFF member(x, b)) IMPLIES (a = b)
@@ -676,7 +676,7 @@ sets_lemmas [T: TYPE]: THEORY
 
   subset_add: LEMMA subset?(a, add(x, a))
 
-  add_as_union: LEMMA add(x, a) = union(a, singleton(x))
+  add_as_union: LEMMA add(x, a) = union(a, {y | y = x})
 
   singleton_as_add: LEMMA singleton(x) = add(x, emptyset)
 
@@ -1178,14 +1178,14 @@ real_types: THEORY
   npreal_div_posreal_is_npreal:  JUDGEMENT /(npx, py)  HAS_TYPE npreal
   npreal_div_negreal_is_nnreal:  JUDGEMENT /(npx, ny)  HAS_TYPE npreal
 
-  posreal_plus_nnreal_is_posreal:  JUDGEMENT +(px, nny) HAS_TYPE posreal
-  nnreal_plus_posreal_is_posreal:  JUDGEMENT +(nnx, py) HAS_TYPE posreal
+  posreal_plus_nnreal_is_posreal:   JUDGEMENT +(px, nny) HAS_TYPE posreal
+  nnreal_plus_posreal_is_posreal:   JUDGEMENT +(nnx, py) HAS_TYPE posreal
   posreal_times_posreal_is_posreal: JUDGEMENT *(px, py) HAS_TYPE posreal
   posreal_div_posreal_is_posreal:   JUDGEMENT /(px, py) HAS_TYPE posreal
 
   negreal_plus_negreal_is_negreal:  JUDGEMENT +(nx, ny) HAS_TYPE negreal
   negreal_times_negreal_is_posreal: JUDGEMENT *(nx, ny) HAS_TYPE posreal
-  negreal_div_negreal_is_negreal:   JUDGEMENT /(nx, ny) HAS_TYPE posreal
+  negreal_div_negreal_is_posreal:   JUDGEMENT /(nx, ny) HAS_TYPE posreal
 
  END real_types
 
@@ -1241,20 +1241,34 @@ rationals: THEORY
   n0x, n0y: VAR nzrat
 
   nnrat_is_nnreal:   JUDGEMENT nonneg_rat SUBTYPE_OF nonneg_real
+  nprat_is_npreal:   JUDGEMENT nonpos_rat SUBTYPE_OF nonpos_real
   posrat_is_posreal: JUDGEMENT posrat     SUBTYPE_OF posreal
+  negrat_is_negreal: JUDGEMENT negrat     SUBTYPE_OF negreal
   posrat_is_nzrat:   JUDGEMENT posrat     SUBTYPE_OF nzrat
+  negrat_is_nzrat:   JUDGEMENT negrat     SUBTYPE_OF nzrat
 
-  nzrat_times_nzrat_is_nzrat: JUDGEMENT *(n0x,n0y) HAS_TYPE nzrat
-  nzrat_div_nzrat_is_nzrat:   JUDGEMENT /(n0x,n0y) HAS_TYPE nzrat
-  minus_nzrat_is_nzrat:       JUDGEMENT -(n0x) HAS_TYPE nzrat
+  nzrat_times_nzrat_is_nzrat: JUDGEMENT *(n0x, n0y) HAS_TYPE nzrat
+  nzrat_div_nzrat_is_nzrat:   JUDGEMENT /(n0x, n0y) HAS_TYPE nzrat
+  minus_nzrat_is_nzrat:       JUDGEMENT -(n0x)      HAS_TYPE nzrat
 
-  nnrat_plus_nnrat_is_nnrat:  JUDGEMENT +(nnx,nny) HAS_TYPE nonneg_rat
-  nnrat_times_nnrat_is_nnrat: JUDGEMENT *(nnx,nny) HAS_TYPE nonneg_rat
-  nnrat_div_posrat_is_nnrat:  JUDGEMENT /(nnx,py) HAS_TYPE nonneg_rat
+  nnrat_plus_nnrat_is_nnrat:  JUDGEMENT +(nnx, nny) HAS_TYPE nonneg_rat
+  nnrat_times_nnrat_is_nnrat: JUDGEMENT *(nnx, nny) HAS_TYPE nonneg_rat
+  nnrat_div_posrat_is_nnrat:  JUDGEMENT /(nnx, py)  HAS_TYPE nonneg_rat
+  nnrrat_div_negrat_is_nprat: JUDGEMENT /(nnx, ny)  HAS_TYPE nprat
 
-  posrat_plus_posrat_is_posrat:  JUDGEMENT +(px,py) HAS_TYPE posrat
-  posrat_times_posrat_is_posrat: JUDGEMENT *(px,py) HAS_TYPE posrat
-  posrat_div_posrat_is_posrat:   JUDGEMENT /(px,py) HAS_TYPE posrat
+  nprat_plus_nprat_is_nprat:  JUDGEMENT +(npx, npy) HAS_TYPE nprat
+  nprat_times_nprat_is_nnrat: JUDGEMENT *(npx, npy) HAS_TYPE nnrat
+  nprat_div_posrat_is_nprat:  JUDGEMENT /(npx, py)  HAS_TYPE nprat
+  nprat_div_negrat_is_nnrat:  JUDGEMENT /(npx, ny)  HAS_TYPE nprat
+
+  posrat_plus_nnrat_is_posrat:   JUDGEMENT +(px, nny) HAS_TYPE posrat
+  nnrat_plus_posrat_is_posrat:   JUDGEMENT +(nnx, py) HAS_TYPE posrat
+  posrat_times_posrat_is_posrat: JUDGEMENT *(px, py)  HAS_TYPE posrat
+  posrat_div_posrat_is_posrat:   JUDGEMENT /(px, py)  HAS_TYPE posrat
+
+  negrat_plus_negrat_is_negrat:  JUDGEMENT +(nx, ny) HAS_TYPE negrat
+  negrat_times_negrat_is_posrat: JUDGEMENT *(nx, ny) HAS_TYPE posrat
+  negrat_div_negrat_is_posrat:   JUDGEMENT /(nx, ny) HAS_TYPE posrat
 
  END rationals
 
@@ -1306,18 +1320,36 @@ integers: THEORY
 
   posnat: NONEMPTY_TYPE = posint
 
+  nni, nnj: VAR nonneg_int
+  npi, npj: VAR nonpos_int
   pi, pj: VAR posint
+  ni, nj: VAR negint
 
   % Built in:
   % JUDGEMENT 1, 2, 3, ... HAS_TYPE posint
 
   nnint_is_nnrat:   JUDGEMENT nonneg_int SUBTYPE_OF nonneg_rat
+  npint_is_nprat:   JUDGEMENT nonpos_int SUBTYPE_OF nonpos_rat
   posint_is_posrat: JUDGEMENT posint     SUBTYPE_OF posrat
+  negint_is_negrat: JUDGEMENT negint     SUBTYPE_OF negrat
   posint_is_nzint:  JUDGEMENT posint     SUBTYPE_OF nzint
+  negint_is_nzint:  JUDGEMENT negint     SUBTYPE_OF nzint
 
-  nzint_times_nzint_is_nzint:    JUDGEMENT *(n0i,n0j) HAS_TYPE nzint
-  posint_plus_posint_is_posint:  JUDGEMENT +(pi,pj) HAS_TYPE posint
-  posint_times_posint_is_posint: JUDGEMENT *(pi,pj) HAS_TYPE posint
+  nzint_times_nzint_is_nzint:    JUDGEMENT *(n0i, n0j) HAS_TYPE nzint
+  minus_nzint_is_nzint:          JUDGEMENT -(n0i)      HAS_TYPE nzint
+  
+  nnint_plus_nnint_is_nnint:	 JUDGEMENT +(nni, nnj) HAS_TYPE nonneg_int
+  nnint_times_nnint_is_nnint:    JUDGEMENT *(nni, nnj) HAS_TYPE nonneg_int
+  
+  npint_plus_npint_is_npint:	 JUDGEMENT +(npi, npj) HAS_TYPE nonpos_int
+  npint_times_npint_is_nnint:    JUDGEMENT *(npi, npj) HAS_TYPE nonneg_int
+  
+  posint_plus_nnint_is_posint:   JUDGEMENT +(pi, nnj)  HAS_TYPE posint
+  nnint_plus_posint_is_posint:   JUDGEMENT +(nni, pj)  HAS_TYPE posint
+  posint_times_posint_is_posint: JUDGEMENT *(pi, pj)   HAS_TYPE posint
+  
+  negint_plus_negint_is_negint:  JUDGEMENT +(ni, nj)   HAS_TYPE negint
+  negint_times_negint_is_posint: JUDGEMENT *(ni, nj)   HAS_TYPE posint
 
   % Note: subrange may be an empty type
   subrange(i, j): TYPE = {k: int | i <= k AND k <= j}
@@ -1326,26 +1358,26 @@ integers: THEORY
   odd?(i): bool  = EXISTS j: i = j * 2 + 1
 
   even_int: NONEMPTY_TYPE = (even?) CONTAINING 0
-  odd_int:  NONEMPTY_TYPE = (odd?) CONTAINING 1
+  odd_int:  NONEMPTY_TYPE = (odd?)  CONTAINING 1
 
   e1, e2: VAR even_int
   o1, o2: VAR odd_int
 
   odd_is_nzint: JUDGEMENT odd_int SUBTYPE_OF nzint
 
-  even_plus_even_is_even: JUDGEMENT +(e1,e2) HAS_TYPE even_int
+  even_plus_even_is_even:  JUDGEMENT +(e1,e2) HAS_TYPE even_int
   even_minus_even_is_even: JUDGEMENT -(e1,e2) HAS_TYPE even_int
-  odd_plus_odd_is_even: JUDGEMENT +(o1,o2) HAS_TYPE even_int
-  odd_minus_odd_is_even: JUDGEMENT -(o1,o2) HAS_TYPE even_int
-  odd_plus_even_is_odd: JUDGEMENT +(o1,e2) HAS_TYPE odd_int
-  odd_minus_even_is_odd: JUDGEMENT -(o1,e2) HAS_TYPE odd_int
-  even_plus_odd_is_odd: JUDGEMENT +(e1,o2) HAS_TYPE odd_int
-  even_minus_odd_id_odd: JUDGEMENT -(e1,o2) HAS_TYPE odd_int
-  even_times_int_is_even: JUDGEMENT *(e1,i) HAS_TYPE even_int
-  int_times_even_is_even: JUDGEMENT *(i,e2) HAS_TYPE even_int
-  odd_times_odd_is_odd: JUDGEMENT *(o1,o2) HAS_TYPE odd_int
-  minus_even_is_even: JUDGEMENT -(e1) HAS_TYPE even_int
-  minus_odd_is_odd: JUDGEMENT -(o1) HAS_TYPE odd_int
+  odd_plus_odd_is_even:    JUDGEMENT +(o1,o2) HAS_TYPE even_int
+  odd_minus_odd_is_even:   JUDGEMENT -(o1,o2) HAS_TYPE even_int
+  odd_plus_even_is_odd:	   JUDGEMENT +(o1,e2) HAS_TYPE odd_int
+  odd_minus_even_is_odd:   JUDGEMENT -(o1,e2) HAS_TYPE odd_int
+  even_plus_odd_is_odd:	   JUDGEMENT +(e1,o2) HAS_TYPE odd_int
+  even_minus_odd_id_odd:   JUDGEMENT -(e1,o2) HAS_TYPE odd_int
+  even_times_int_is_even:  JUDGEMENT *(e1,i)  HAS_TYPE even_int
+  int_times_even_is_even:  JUDGEMENT *(i,e2)  HAS_TYPE even_int
+  odd_times_odd_is_odd:	   JUDGEMENT *(o1,o2) HAS_TYPE odd_int
+  minus_even_is_even:	   JUDGEMENT -(e1)    HAS_TYPE even_int
+  minus_odd_is_odd:	   JUDGEMENT -(o1)    HAS_TYPE odd_int
 
   % Note that there are no built-in judgements for 0, 1, 2, ...
   % relating to even/odd types
