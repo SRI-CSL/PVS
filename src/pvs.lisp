@@ -24,14 +24,17 @@
 
 (defvar *justifications-changed?* nil)
 
+(defvar *started-with-minus-q* nil)
+
 ;;; Invoked from Emacs
 
-(defun pvs-init (&optional dont-load-patches)
+(defun pvs-init (&optional dont-load-patches dont-load-user-lisp)
   (setq excl:*enclose-printer-errors* nil)
   (setq *print-pretty* t)
   (setf (symbol-function 'ilisp::ilisp-restore) #'pvs-ilisp-restore)
   #+allegro (setq top-level::*print-length* nil
 		  top-level::*print-level* nil)
+  (setq *started-with-minus-q* dont-load-user-lisp)
   (unless dont-load-patches
     (load-pvs-patches))
   (pvs-init-globals)
@@ -109,7 +112,8 @@
     )
 
 (defun load-pvs-patches ()
-  (dolist (pfile (collect-pvs-patch-files))
+  (dolist (pfile (append (collect-pvs-patch-files)
+			 (user-pvs-lisp-file)))
     (let* ((bfile (make-pathname :defaults pfile :type *pvs-binary-type*))
 	   (compile? (and #+runtime nil
 			  (probe-file pfile)
@@ -154,6 +158,14 @@
     (3 (append (pvs-patch-files-for nil)
 	       (pvs-patch-files-for "test")
 	       (pvs-patch-files-for "exp")))))
+
+(defun user-pvs-lisp-file ()
+  (unless *started-with-minus-q*
+    (let ((home-lisp-file (make-pathname :defaults "~/" :name ".pvs" :type "lisp"))
+	  (home-fasl-file (make-pathname :defaults "~/" :name ".pvs" :type *pvs-binary-type*)))
+      (when (or (probe-file home-lisp-file)
+		(probe-file home-fasl-file))
+	(list home-lisp-file)))))
 
 (defun pvs-patch-files-for (ext)
   (let* ((defaults (pathname (format nil "~a/"
