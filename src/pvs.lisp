@@ -1356,8 +1356,7 @@
 			(*current-theory* (module fdecl))
 			(*current-system* (if (member origin '("tccs" "ppe"))
 					      'pvs
-					      (intern (string-upcase
-						       origin))))
+					      (intern origin)))
 			(*start-proof-display* display?)
 			(ojust (extract-justification-sexp
 				(justification fdecl)))
@@ -1985,7 +1984,7 @@
 ;;; help-prover
 
 (defun help-prover (&optional name)
-  (let ((rule (if (stringp name) (intern (string-upcase name)) '*))
+  (let ((rule (if (stringp name) (intern (string-downcase name)) '*))
 	(*disable-gc-printout* t))
     (pvs-buffer "Prover Help"
       (with-output-to-string (*standard-output*)
