@@ -838,7 +838,7 @@
 
 (defun prettyprint-decl (d theory)
   (let* ((place (place (if (consp d) (car d) d)))
-	 (indent (- *default-char-width* (col-begin place)))
+	 (indent (col-begin place))
 	 (dstr (unpindent d indent :string t))
          (dfinal (string-trim '(#\Space #\Tab #\Newline) dstr)))
     (pvs-modify-buffer (shortname *pvs-context-path*)
@@ -1234,8 +1234,9 @@
     (when theory
       (prove-theories theoryname
 		      (remove-if #'(lambda (th)
-				     (typep th '(or library-datatype
-						    library-theory)))
+				     (or (from-prelude? th)
+					 (typep th '(or library-datatype
+							library-theory))))
 			(collect-theory-usings theoryname exclude))
 		      retry?
 		      use-default-dp?))
