@@ -35,19 +35,19 @@
 (defun mk-branch-expr* (class cond then else type)
   (let ((if-name (make-branch-if type)))
     (if (eq class 'if-expr)
-	(make-instance 'if-expr
+	(make-instance 'mixfix-branch
 	  'operator if-name
 	  'argument (make-instance 'arg-tuple-expr
 		      'exprs (list cond then else)))
-	(make-instance 'chained-if-expr
+	(make-instance 'chained-branch
 	  'operator if-name
 	  'argument (make-instance 'arg-tuple-expr
 		      'exprs (list cond then else))))))
 
 (defun mk-translate-cases-to-if (cases-expr)
   (mk-translate-cases-to-if* (expression cases-expr)
-			  (selections cases-expr)
-			  (else-part cases-expr)))
+			     (selections cases-expr)
+			     (else-part cases-expr)))
 
 (defun mk-translate-cases-to-if* (expr selections else-part &optional chained?)
   (cond ((and (null (cdr selections))
@@ -60,12 +60,12 @@
 		  (rec (subst-mod-params (recognizer (constructor sel))
 					 thinst))
 		  (cond (mk-application rec expr))
-		  (then ;(subst-mod-params
-			 (mk-subst-accessors-in-selection expr sel)
-			 ;thinst)
-		    )
+		  (then			;(subst-mod-params
+		   (mk-subst-accessors-in-selection expr sel)
+					;thinst)
+		   )
 		  (else (mk-translate-cases-to-if* expr (cdr selections)
-						else-part t)))
+						   else-part t)))
 	     (if chained?
 		 (mk-chained-branch-expr cond then else (type expr))
 		 (mk-branch-expr cond then else (type expr)))))))
