@@ -194,6 +194,18 @@
 	   for arg across (the simple-vector arguments)
 	   do (funcall ,fn arg .,more-args)))
 
+(defmacro map-args-args (fn application1 application2 &rest more-args)
+  `(declare (type application ,application1)
+	    (type application ,application2)
+	    (type function ,fn))
+  `(loop with arguments1 = (the simple-vector
+			     (application-arguments ,application1))
+	 with arguments2 = (the simple-vector
+			     (application-arguments ,application2))
+	 for arg1 across (the simple-vector arguments1)
+	 for arg2 across (the simple-vector arguments2)
+	 do (funcall ,fn arg1 arg2 .,more-args)))
+
 (defmacro map-args-list (fn application &rest more-args)
   `(declare (type application ,application)
 	    (type function ,fn))
@@ -370,6 +382,9 @@
        (eq (rhs term) *false*)
        (equality-p (lhs term))))
 
+(defun mk-nequality (lhs rhs)
+  (mk-equality (mk-equality lhs rhs) *false*))
+
 (defun nequal-p (term)
   (declare (type node term))
   (and (application-p term)
@@ -429,11 +444,16 @@
   new-hash-table)
 
 (defun copy-array (new-array old-array)
-  (loop for i from 0 below (array-total-size old-array)
-	do
-	(setf (row-major-aref new-array i)
-	      (row-major-aref old-array i)))
-  new-array)
+  (let* ((new-array-size (array-total-size new-array))
+	 (old-array-size (array-total-size old-array))
+	 (adjusted-new-array (if (< new-array-size old-array-size)
+				 (adjust-array new-array old-array-size)
+				 new-array)))
+    (loop for i from 0 below old-array-size
+	  do
+	  (setf (row-major-aref adjusted-new-array i)
+		(row-major-aref old-array i)))
+    adjusted-new-array))
 
 (defun copy-latest-polyhedral-structure (new-poly-s old-poly-s)
   (setf (polyhedral-structure-max-vars new-poly-s)
@@ -458,17 +478,32 @@
 	(polyhedral-structure-equalities old-poly-s))
   new-poly-s)
 
+(defdpstruct (rewrite-rules
+	      (:print-function
+	       (lambda (rr s k)
+		 (declare (ignore k))
+		 (format s "<~D Rewrite rules>"
+		   (+ (length (rewrite-rules-rules rr))
+		      (length (rewrite-rules-rules! rr)))))))
+  (rules nil)
+  (rules! nil)
+  (hash (dp-make-eq-hash-table)))
+
 (defdpstruct (cong-state*
 	      (:print-function
 	       (lambda (cs* s k)
 		 (declare (ignore k))
-		 (format s "<~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type>"
+		 (format s "<~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type, ~D rewrites>"
 		   (length (cong-state*-assertions cs*))
 		   (hash-table-count (cong-state*-use-hash cs*))
 		   (hash-table-count (cong-state*-find-hash cs*))
 		   (hash-table-count (cong-state*-sig-hash cs*))
 		   (length (cong-state*-neq-list cs*))
-		   (hash-table-count (cong-state*-type-hash cs*))))))
+		   (hash-table-count (cong-state*-type-hash cs*))
+		   (+ (length (rewrite-rules-rules!
+			       (cong-state*-rewrite-rules cs*)))
+		      (length (rewrite-rules-rules
+			       (cong-state*-rewrite-rules cs*))))))))
   (assertions nil)
   (seen-hash (dp-make-eq-hash-table))
   (find-hash (dp-make-eq-hash-table))
@@ -476,16 +511,19 @@
   (sig-hash (dp-make-eq-hash-table))
   (neq-list nil)
   (type-hash (dp-make-eq-hash-table))
-  (polyhedral-structure (initial-polyhedral-structure)))
+  (polyhedral-structure (initial-polyhedral-structure))
+  (rewrite-rules (initial-rewrite-rules)))
 
 (defun print-cong-state* (cs* s)
-  (format s "<~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type>"
+  (format s "<~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type, ~D rewrites>"
     (length (cong-state*-assertions cs*))
     (hash-table-count (cong-state*-use-hash cs*))
     (hash-table-count (cong-state*-find-hash cs*))
     (hash-table-count (cong-state*-sig-hash cs*))
     (length (cong-state*-neq-list cs*))
-    (hash-table-count (cong-state*-type-hash cs*))))
+    (hash-table-count (cong-state*-type-hash cs*))
+    (+ (length (rewrite-rules-rules! (cong-state*-rewrite-rules cs*)))
+       (length (rewrite-rules-rules (cong-state*-rewrite-rules cs*))))))
 
 (defun clear-cong-state* (cong-state*)
   (setf (cong-state*-assertions cong-state*) nil)
@@ -496,6 +534,7 @@
   (setf (cong-state*-neq-list cong-state*) nil)
   (dp-clrhash (cong-state*-type-hash cong-state*))
   (clr-polyhedral-structure (cong-state*-polyhedral-structure cong-state*))
+  (clr-rewrite-rules (cong-state*-rewrite-rules cong-state*))
   cong-state*)
 
 (defdpstruct (made-cong-states
@@ -663,6 +702,7 @@
 	(copy-latest-polyhedral-structure
 	 (cong-state*-polyhedral-structure cong-state*)
 	 (polyhedral-structure cong-state)))
+  (setf (cong-state*-rewrite-rules cong-state*) (copy-rewrite-rules (rewrite-rules cong-state)))
   ;(format t "~%**(setf (cong-state*-polhedral-domain ~A) ~A)**"
   ;   cong-state*
   ;  (polyhedral-domain cong-state))
@@ -782,6 +822,24 @@
 	new-poly))
 
 (defsetf polyhedral-structure setf-polyhedral-structure)
+
+(defun rewrite-rules (cong-state)
+  (declare (type cong-state cong-state))
+  (rewrite-rules-from-stack (cong-state-stack cong-state)))
+
+(defun rewrite-rules-from-stack (cong-state-stack)
+  (if cong-state-stack
+      (rewrite-rules* (top cong-state-stack))
+      (initial-rewrite-rules)))
+
+(defun rewrite-rules* (cong-state*)
+  (cong-state*-rewrite-rules cong-state*))
+
+(defun setf-rewrite-rules (cong-state new-rewrite-rules)
+  (setf (cong-state*-rewrite-rules (top (cong-state-stack cong-state)))
+	new-rewrite-rules))
+
+(defsetf rewrite-rules setf-rewrite-rules)
 
 (defvar *reverse-find* nil)
 
