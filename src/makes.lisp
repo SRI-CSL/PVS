@@ -5,9 +5,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Thu Nov  5 15:11:36 1998
 ;; Update Count    : 27
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -1757,12 +1755,16 @@
 (defun make!-recognizer-name-expr (rec-id adt-type-name)
   (let* ((adt (adt adt-type-name))
 	 (constr (find rec-id (constructors adt) :key #'recognizer))
-	 (rec-decl (rec-decl constr)))
+	 (rec-decl (rec-decl constr))
+	 (thinst (module-instance adt-type-name)))
     (make-instance 'recognizer-name-expr
       'id rec-id
       'type (mk-funtype adt-type-name *boolean*)
       'resolutions (list (make-resolution rec-decl
-			   (module-instance adt-type-name)
+			   (if (and (null (library thinst))
+				    (library-datatype? adt))
+			       (copy thinst 'library (get-lib-id adt))
+			       thinst)
 			   (mk-funtype adt-type-name *boolean*))))))
 
 ;;; The following create special forms that are used frequently
