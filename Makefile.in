@@ -386,26 +386,6 @@ endif
 
 all : ${templatedeps} full
 
-pvs : pvs.in
-	@echo "Please run configure"
-	@exit -1
-
-src/make-allegro-pvs.lisp : src/make-allegro-pvs.lisp.in
-	@echo "Please run configure"
-	@exit -1
-
-pvs.system : pvs.system.in
-	@echo "Please run configure"
-	@exit -1
-
-ess/dist-ess.lisp : ess/dist-ess.lisp.in
-	@echo "Please run configure"
-	@exit -1
-
-ess/allegro-runtime.lisp : ess/allegro-runtime.lisp.in
-	@echo "Please run configure"
-	@exit -1
-
 full : makefileutils makebdd makews1s ${pvsfull} ${emacs}
 
 runtime : makefileutils makebdd makews1s ${pvsrt} ${emacs}
@@ -610,14 +590,3 @@ ifeq ($(shell if [ -x ${xemacs19} ] ; then echo OK ; fi), OK)
 emacs/xemacs19/pvs-load.elc : ${pvs-xemacs19-src} ${ilisp-xemacs19-src}
 	(cd emacs/xemacs19; $(XEMACS19) -batch -l pvs-byte-compile.el)
 endif
-
-# Take care of dependencies with the configure inputs
-configure: configure.in
-	autoconf
-
-Makefile: Makefile.in config.status
-	./config.status
-
-config.status: configure
-	./config.status --recheck
-
