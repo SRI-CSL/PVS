@@ -7,11 +7,14 @@
 ;; Update Count    : 91
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(in-package "USER")
+
 #+allegro
 (eval-when (eval load)
   (setq *record-source-file-info* t
 	*load-source-file-info* t
-	*record-xref-info* t))
+	*record-xref-info* t
+	*ignore-package-name-case* t))
 
 (eval-when (eval load)
   (defparameter *pvs-path* "/project/pvs/pvs2.3")
@@ -35,6 +38,7 @@
 
 #+allegro
 (eval-when (eval load)
+  (setq excl:*fasl-default-type* *pvs-binary-type*)
   (setq system:*load-search-list*
 	(list #p"" (make-pathname :type *pvs-binary-type*)
 	      #p(:type "cl") #p(:type "lisp"))))
@@ -45,7 +49,33 @@
   (let ((*enable-package-locked-errors* nil))
     (load (format nil "~a/src/defsystem" *pvs-path*))))
 
-(defpackage "ILISP" (:use "LISP"))
+(defpackage "ILISP")
+
+;;; Stuff for the new decision procedures
+
+(defpackage "DP")
+
+(defvar *dp-path* (concatenate 'string *pvs-path* "/src/decision-procedures"))
+
+(defvar dp::*dp-path* *dp-path*)
+
+;#+allegro
+;(require :ffcompat)
+
+(defvar *poly-path*
+  (concatenate 'string "/polylib/"
+	       #+(and allegro sun4 sunos4) "SunOS4"
+	       #+(and allegro sun4 (not sunos4)) "SunOS5"
+	       #+(and allegro x86) "Linux"))
+
+(defvar dp::*poly-path* *poly-path*)
+
+(defvar dp::*develop* t)
+
+#+allegro
+(defun dp::string-append (&rest args)
+  (apply #'clos::string-append args))
+
 
 (in-package "MAKE")
 
@@ -87,10 +117,12 @@
       (second slotd))))
 
 (defvar pvs::*pvs-path* *pvs-path*)
+(defvar pvs::*pvs-binary-type* *pvs-binary-type*)
 
 (defvar *pvs-system-loaded* nil)
 
 (defvar *load-pvs-classes* #-allegro nil #+allegro t)
+
 
 (defsystem pvs
   :source-pathname *pvs-path*
@@ -132,8 +164,8 @@
 		  (load (format nil "~a/ess/dist-ess.lisp" *pvs-path*))
 		  #-gcl
 		  (generate-ess ergolisp)
-		  ;;#+gcl
-		  ;;(load (format nil "~a/ess/allegro-runtime.lisp" *pvs-path*))
+		  #+gcl
+		  (load (format nil "~a/ess/allegro-runtime.lisp" *pvs-path*))
 		  #+allegro (require :loop)
 		  #+gcl (load (format nil "~a/src/loop" *pvs-path*))
 		  (in-package 'pvs)
@@ -149,8 +181,8 @@
 			   #+(and allegro x86) "Linux")))
 		    #+(and allegro dlfcn)
 		    (load (format nil "~a/bdd/bdd.so" bddpath))
-		    ;;#+(and allegro dlfcn)
-		    ;;(load (format nil "~a/mu/mu.so" bddpath))
+		    #+(and allegro dlfcn)
+		    (load (format nil "~a/mu/mu.so" bddpath))
 		    #+(and allegro (not dlfcn))
 		    (load ""
 			  :foreign-files
@@ -229,8 +261,8 @@
 			 (pvs::write-deferred-methods-to-file))))
    (:module utils
      :source-pathname "src/utils"
-     :components (#-allegro-v4.3 (:file "hash")
-		  (:file "hashfn")))
+     :components (#+allegro-v4.2 (:file "hash")
+				 (:file "hashfn")))
    (:module language
      :source-pathname "src/"
      :components ((:file "ergo-runtime-fixes")
@@ -270,6 +302,7 @@
 		  ;;(:file "check-for-tccs")
 		  (:file "tcexprs")
 		  (:file "tcdecls")
+		  (:file "judgements")
 		  (:file "xref")
 		  (:file "occurs-in")
 		  (:file "context")
@@ -311,7 +344,47 @@
      :source-pathname "BDD"
      :components ((:file "bdd")))
    (:module mu-simplifier
-     :source-pathname "MU"
-     :components ((:file "pvs-mu")
+     :source-pathname "BDD"
+     :components ((:file "mu")
 		  (:file "strategies")))
+   (:module dc-structure
+     :source-pathname "src/decision-procedures"
+     :components ((:file "types")
+		  (:file "node-structures"
+			 :depends-on ("types"))))
+   (:module dc-interface
+     :source-pathname "src/decision-procedures"
+     :components (;;(:file "dc-pvs")
+		  ;;(:file "translate-from-prove")
+		  (:file "translate-to-dc")
+		  (:file "translate-from-dc")))
+   (:module polylib
+     :source-pathname "/src/decision-procedures/polylib"
+     :components ((:file "foreign"))
+     :depends-on ("dc-structure"))
+   (:module dc-prototypes
+     :source-pathname "src/decision-procedures"
+     :components ((:file "integer")
+		  (:file "arithmetic")
+		  (:file "arrays")
+		  (:file "shostak")
+		  (:file "shostak-interp")
+		  (:file "arith-solve")
+		  (:file "polyhedron"))
+     :depends-on ("dc-structure"))
+   (:module rewrite
+     :source-pathname "src/decision-procedures"
+     :components ((:file "rewrite")
+		  ;;(:file "rewrite-2")
+		  (:file "rewrite-pvs")
+		  (:file "datatypes-pvs")
+		  (:file "records")
+		  (:file "rewrite-optimize")
+		  (:file "simplify"))
+     :depends-on ("dc-structure"))
+   (:module forward-chain
+     :source-pathname "src/decision-procedures"
+     :components ((:file "forward-chain-pvs")
+		  (:file "forward-chain"))
+     :depends-on ("dc-structure"))
    ))
