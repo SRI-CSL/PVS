@@ -417,6 +417,9 @@
       (nreverse fielddecls)
       (let* ((ass (car assignments))
 	     (fieldname (caar (arguments ass))))
+	(when (maplet? ass)
+	  (type-error ass
+	    "Record expression assignments may not have maplets"))
 	(when (cdr (arguments ass))
 	  (type-error ass
 	    "Record expression assignments must not have arguments"))
