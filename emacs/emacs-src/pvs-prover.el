@@ -1586,14 +1586,14 @@ Letters do not insert themselves; instead, they are commands:
   (make-face 'font-lock-pvs-checkpoint-face)
   (set-face-background 'font-lock-pvs-checkpoint-face "red")
 
-(defpvs install-proof-checkpoint prove ()
+(defun install-proof-checkpoint ()
   (interactive)
   (unless (eq (current-buffer) (get-buffer "Proof"))
     (error "Must be in a Proof buffer to make a checkpoint"))
   (add-proof-checkpoint)
   (install-proof))
 
-(defpvs add-proof-checkpoint prove ()
+(defun add-proof-checkpoint ()
   (interactive)
   (unless (eq (current-buffer) (get-buffer "Proof"))
     (error "Must be in a Proof buffer to make a checkpoint"))
@@ -1605,7 +1605,7 @@ Letters do not insert themselves; instead, they are commands:
 	(overlay-put (make-overlay start (point))
 		     'face 'font-lock-pvs-checkpoint-face))))
 
-(defpvs remove-proof-checkpoint prove ()
+(defun remove-proof-checkpoint ()
   (interactive)
   (unless (eq (current-buffer) (get-buffer "Proof"))
     (error "Must be in a Proof buffer to make a checkpoint"))
@@ -1615,7 +1615,7 @@ Letters do not insert themselves; instead, they are commands:
       (delete-char 2)
       (error "Not at a checkpoint mark")))
 
-(defpvs remove-all-proof-checkpoints prove ()
+(defun remove-all-proof-checkpoints ()
   (interactive)
   (unless (eq (current-buffer) (get-buffer "Proof"))
     (error "Must be in a Proof buffer to make a checkpoint"))
@@ -1624,7 +1624,7 @@ Letters do not insert themselves; instead, they are commands:
     (while (search-forward "!!" nil t)
       (delete-char -2))))
 
-(defpvs prove-with-checkpoint prove ()
+(defun prove-with-checkpoint ()
   (interactive)
   (confirm-not-in-checker)  
   (unless (eq (current-buffer) (get-buffer "Proof"))
