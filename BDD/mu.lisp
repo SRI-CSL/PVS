@@ -320,10 +320,9 @@
 (defmethod convert-pvs-to-mu* ((expr list))
   (loop for x in expr
 	append (let ((result (convert-pvs-to-mu* x)))
-		(if (listp result)
-		    result
-		    (list result))))
-)
+		 (if (listp result)
+		     result
+		     (list result)))))
 
 
 (defmethod convert-pvs-to-mu* ((expr cases-expr))
@@ -663,9 +662,8 @@
 			(is-rel-var (and *build-rel-var*
 					 (not *build-access-var*)))
 			(is-access-var *build-access-var*))
-		   (when (null (freevars expr))
-		     (setf (gethash expr *pvs-bdd-hash*) bddhash-name)
-		     (setf (gethash bddhash-name *bdd-pvs-hash*) expr))
+		   (setf (gethash expr *pvs-bdd-hash*) bddhash-name)
+		   (setf (gethash bddhash-name *bdd-pvs-hash*) expr)
 		   (when (or is-access-var is-rel-var)
 		     (push expr *list-of-relational-vars*))
 		   mu-expression))))))
@@ -1057,13 +1055,13 @@
     ))
 
 
-(defun make-binding-vars-scalar (bddvarid-list) 
+(defun make-binding-vars-scalar (bddvarid-list)
   (mapcar #'(lambda (bddvarid) 
 	      (mu-check-bool-var (format nil "b~d" bddvarid)))
     bddvarid-list))
 
 
-(defun make-argument-vars-scalar (bddvarid-list) 
+(defun make-argument-vars-scalar (bddvarid-list)
   (mapcar #'(lambda (bddvarid) 
 	      (mu-make-bool-var (format nil "b~d" bddvarid)))
     bddvarid-list))
