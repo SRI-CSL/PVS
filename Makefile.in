@@ -408,6 +408,8 @@ xemacs19-elc = $(pvs-xemacs19-src:.el=.elc) $(ilisp-xemacs19-src:.el=.elc)
 emacs += $(PVSPATH)emacs/xemacs19/pvs-load.elc
 endif
 
+.PHONY : all full runtime
+
 all : ${templatedeps} full
 
 full : makefileutils makebdd makews1s ${pvsfull} ${emacs}
@@ -520,6 +522,7 @@ system-files = README pvs pvs-tex.sub pvs.sty bin/relocate bin/pvs-platform \
 	       bin/tarmail bin/untarmail Examples \
                lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
                lib/ordstruct_adt.pvs lib/character_adt.pvs \
+	       lib/union_adt.pvs lib/lift_adt.pvs \
                lib/pvs-language.help lib/pvs-prover.help lib/pvs.help \
                lib/pvs.grammar lib/pvs.bnf wish/pvs-support.tcl \
                lib/strategies.lisp $(release-notes) \
