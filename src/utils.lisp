@@ -86,32 +86,6 @@
 		    :initial-value (apply fn1 args))))
     #'identity))
 
-(defun list-pvs-libraries ()
-  (dolist (path *pvs-library-path*)
-    (dolist (lib (directory path))
-      (when (directory-p lib)
-	(format t "~%~a/ - ~a" (file-namestring lib) lib)))))
-
-(defun libload (filestr)
-  (let* ((lib (directory-namestring filestr))
-	 (file (file-namestring filestr))
-	 (libpath (libref-to-pathname lib))
-	 (*default-pathname-defaults* (if (string= libpath "./")
-					  *default-pathname-defaults*
-					  libpath)))
-    (pvs-message "Loading file ~a" filestr)
-    (unwind-protect
-	(progn (excl:set-case-mode :case-insensitive-lower)
-	       (multiple-value-bind (ignore error)
-		   (ignore-errors (load file))
-		 (declare (ignore ignore))
-		 (if error
-		     (pvs-message "Error loading ~a:~%  ~a"
-		       filestr error)
-		     (pvs-message "~a loaded" filestr))))
-      (excl:set-case-mode :case-sensitive-lower)
-      (add-lowercase-prover-ids))))
-
 (defmacro lf (file &optional force)
   `(make-file ,file ,force))
 
