@@ -283,6 +283,8 @@
 		(and expr (dc-prover-type (type expr))))))))
 
 (defun add-to-local-prtype-hash (id expr)
+  (setf (dp::node-initial-type id)
+	(dc-prover-type (type expr)))
   (let ((entry (gethash id *local-prtype-hash*)))
     (unless entry
       (setf (gethash id *local-prtype-hash*)
