@@ -84,12 +84,12 @@
 
 (defmethod compare* ((old inline-datatype) (new inline-datatype))
   (when (eq (id old) (id new))
-    (cond ((and (using old) (using new))
-	   (compare* (using old) (using new)))
-	  ((using old)
-	   (push (list (using old) 'del) *differences*))
-	  ((using new)
-	   (push (list (using new) 'add) *differences*)))
+    (cond ((and (importings old) (importings new))
+	   (compare* (importings old) (importings new)))
+	  ((importings old)
+	   (push (list (importings old) 'del) *differences*))
+	  ((importings new)
+	   (push (list (importings new) 'add) *differences*)))
     (compare-decl-lists (constructors old) (constructors new))
     (values t *decl-diffs*)))
 
