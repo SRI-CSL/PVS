@@ -303,9 +303,9 @@ where db is to replace db1 and db2")
 	       (tc-eq* arg1 arg2 bindings))))))
 
 (defmethod tc-eq* ((e1 projection-application) (e2 name-expr) bindings)
-  (let ((bind (assoc e2 bindings :test #'tc-eq)))
+  (let ((bind (assoc e1 bindings :test #'tc-eq)))
     (and bind
-	 (tc-eq e1 (cdr bind)))))
+	 (tc-eq (cdr bind) e2))))
 
 (defmethod tc-eq* ((e1 name-expr) (e2 projection-application) bindings)
   (let ((bind (assoc e1 bindings :test #'tc-eq)))
@@ -322,9 +322,9 @@ where db is to replace db1 and db2")
 	       (tc-eq* arg1 arg2 bindings))))))
 
 (defmethod tc-eq* ((e1 injection-application) (e2 name-expr) bindings)
-  (let ((bind (assoc e2 bindings :test #'tc-eq)))
+  (let ((bind (assoc e1 bindings :test #'tc-eq)))
     (and bind
-	 (tc-eq e1 (cdr bind)))))
+	 (tc-eq (cdr bind) e2))))
 
 (defmethod tc-eq* ((e1 name-expr) (e2 injection-application) bindings)
   (let ((bind (assoc e1 bindings :test #'tc-eq)))
@@ -341,9 +341,9 @@ where db is to replace db1 and db2")
 	       (tc-eq* arg1 arg2 bindings))))))
 
 (defmethod tc-eq* ((e1 injection?-application) (e2 name-expr) bindings)
-  (let ((bind (assoc e2 bindings :test #'tc-eq)))
+  (let ((bind (assoc e1 bindings :test #'tc-eq)))
     (and bind
-	 (tc-eq e1 (cdr bind)))))
+	 (tc-eq (cdr bind) e2))))
 
 (defmethod tc-eq* ((e1 name-expr) (e2 injection?-application) bindings)
   (let ((bind (assoc e1 bindings :test #'tc-eq)))
@@ -360,9 +360,9 @@ where db is to replace db1 and db2")
 	       (tc-eq* arg1 arg2 bindings))))))
 
 (defmethod tc-eq* ((e1 extraction-application) (e2 name-expr) bindings)
-  (let ((bind (assoc e2 bindings :test #'tc-eq)))
+  (let ((bind (assoc e1 bindings :test #'tc-eq)))
     (and bind
-	 (tc-eq e1 (cdr bind)))))
+	 (tc-eq (cdr bind) e2))))
 
 (defmethod tc-eq* ((e1 name-expr) (e2 extraction-application) bindings)
   (let ((bind (assoc e1 bindings :test #'tc-eq)))
