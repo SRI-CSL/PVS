@@ -1267,24 +1267,15 @@
 					     theory theoryname))))
      from-hash)))
 
-(defun subst-appl-judgements (appl-judgements theory theoryname)
-  (if (generic-judgements appl-judgements)
-      ;; Substitute actuals/mappings in the generic, if it becomes
-      ;; fully-instantiated move it to the judgements-graph
-      (let ((subst-jdecls (subst-params-decls
-			    (generic-judgements appl-judgements)
-			    theory theoryname)))
-	(if (equal subst-jdecls (generic-judgements appl-judgements))
-	    appl-judgements
-	    (multiple-value-bind (gen-jdecls graph)
-		(update-instantiated-appl-judgements
-		 subst-jdecls (judgements-graph appl-judgements))
-	      (if (equal gen-jdecls subst-jdecls)
-		  appl-judgements
-		  (make-instance 'application-judgements
-		    'generic-judgements gen-jdecls
-		    'judgements-graph graph)))))
-      appl-judgements))
+(defun subst-appl-judgements (from-entry theory theoryname)
+  (multiple-value-bind (gen-jdecls graph)
+      (merge-appl-judgements-entries*
+       (generic-judgements from-entry)
+       (judgements-graph from-entry)
+       nil nil theory theoryname)
+    (lcopy from-entry
+      'generic-judgements gen-jdecls
+      'judgements-graph graph)))
 
 (defun update-instantiated-appl-judgements (subst-jdecls graph
 							 &optional gen-jdecls)
