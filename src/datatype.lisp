@@ -5,11 +5,8 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Fri Jul  2 18:51:55 1999
 ;; Update Count    : 125
-;; Status          : Beta test
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 (in-package :pvs)
 
@@ -2295,7 +2292,8 @@ generated")
 	 (imp (make-instance 'importing
 		'theory-name mod)))
     (dolist (im (importings adt))
-      (typecheck-adt-decl im))
+      (let ((nthname (copy-untyped (theory-name im))))
+	(typecheck-adt-decl (copy im 'theory-name nthname))))
     (typecheck-adt-decl imp)))
 
 (defun generate-adt-map (fpairs adt)
