@@ -304,7 +304,7 @@
 		  (let ((newbody
 			 (copy body
 			   'argument
-			   (make!-arg-tuple-expr
+			   (make!-arg-tuple-expr*
 			    (if (eq rewrite-flag 'RL)
 				(list newbodypart (args2 body))
 				(list (args1 body) newbodypart))))))
@@ -1232,7 +1232,7 @@
 			(multiple-value-bind (sig value)
 			    (assert-if-application
 			     newexpr expr
-			     (make!-arg-tuple-expr args) '?)
+			     (make!-arg-tuple-expr* args) '?)
 			  (if (eq sig '?) value newexpr)))))
 	      (if new-updates
 		  (make!-update-expr newexpr new-updates)
