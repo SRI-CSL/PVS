@@ -1385,14 +1385,18 @@
   (nreverse (acons te dist alist)))
 
 (defun update-known-subtypes (theory theoryname)
-  (when (and (saved-context theory)
-	     (not (equal (known-subtypes (saved-context theory))
-			 (known-subtypes *current-context*))))
+  (when (saved-context theory)
+    ;; The following doesn't work, as instantiation may be done
+    ;; even if they are equal.
+    ;;         (not (equal (known-subtypes (saved-context theory))
+    ;; 		    (known-subtypes *current-context*))))
     (dolist (subtype (known-subtypes (saved-context theory)))
       (cond ((fully-instantiated? (car subtype))
-	     (mapcar #'(lambda (ety)
+	     (unless (member subtype (known-subtypes *current-context*)
+			     :test #'equal)
+	       (mapc #'(lambda (ety)
 			 (add-to-known-subtypes (car subtype) ety))
-	       (cdr subtype)))
+		     (cdr subtype))))
 	    ((subsetp (free-params subtype) (free-params theoryname))
 	     (let ((aty (subst-mod-params (car subtype) theoryname))
 		   (etypes (mapcar #'(lambda (ety)
