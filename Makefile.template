@@ -28,10 +28,10 @@ endif
 endif
 endif
 
-EMACS20 = /usr/bin/emacs-20.3
-EMACS19 = /pkg/bin/emacs19
-XEMACS20 = /usr/local/bin/xemacs-20.4
-XEMACS19 = /pkg/bin/xemacs-19.15
+EMACS20 = emacs-20.3
+EMACS19 = emacs-19.34
+XEMACS20 = xemacs-20.4
+XEMACS19 = xemacs-19.16
 
 bindir = bin/$(PLATFORM)
 pvsfull = ${bindir}/full/pvs-${lisp}
