@@ -711,17 +711,18 @@ proc make-setter {top orient} {
     entry $win.ent -width 10 -relief sunken
     bind $win.ent <Return> "option add Tk$top*${orient}Sep \[%W get\]; dagwin-layout $top.fr.c; destroy $win"
     pack $win.ent -side left
+    focus $win.ent
 }
     
 
 proc module-hierarchy {name file directory dag} {
-    catch {frame .mod-hier}
+    catch {frame .th-hier}
     set win \
 	[setup-dag-win \
 	     "Theory hierarchy for $name in $directory$file" \
 	     "Theory Hierarchy" \
 	     $directory${name}_hier.ps \
-	     [string tolower .mod-hier.$name] \
+	     [string tolower .th-hier.$name] \
 	     TheoryHierarchy]
     dag-bind-move $win {} Control 1 both
     $win bind :theory <Enter> "module-highlight $win"
@@ -812,8 +813,8 @@ proc reset-options {} {
 
     option add Tk*proof*xSep 10 startupFile
     option add Tk*proof*ySep 20 startupFile
-    option add Tk*mod-hier*xSep 50 startupFile
-    option add Tk*mod-hier*ySep 100 startupFile
+    option add Tk*th-hier*xSep 50 startupFile
+    option add Tk*th-hier*ySep 100 startupFile
 }
 
 proc get-option {opt {win .}} {
