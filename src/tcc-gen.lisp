@@ -1367,10 +1367,10 @@
 		    (format nil "(at line ~d, column ~d)"
 		      (starting-row place) (starting-col place))))
 	   (tccstr (format nil
-		       "% The ~@[~a ~]~a TCC ~@[~a~] for~
+		       "% The ~@[~a ~]~a TCC ~@[~a~] in decl ~a for~
                         ~:[ ~;~%    % ~]~@[~a~]~@[~%    %~a~]~%  ~a"
 		     (cdr (assq expr *compatible-pred-reason*))
-		     kind plstr
+		     kind plstr (if (importing? decl) "IMPORTING" (id decl))
 		     (> (+ (length (cdr (assq expr
 					      *compatible-pred-reason*)))
 			   (length (string kind))
