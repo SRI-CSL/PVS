@@ -1108,10 +1108,10 @@
 				  bindings livevars))
 		  (t
 		   (when (and *eval-verbose* (not updateable-livevars))
-		     (format t "Update ~s translated nondestructively.
+		     (format t "~%Update ~s translated nondestructively.
  Live variables ~s present" expr livevars))
 		   (when (and *eval-verbose* (not check-assign-types))
-		     (format t "Update ~s translated nondestructively.
+		     (format t "~%Update ~s translated nondestructively.
 Assignment right-hand sides contain possible function types that can
 trap references." expr))
 		   (pvs2cl-update-nondestructive  expr
