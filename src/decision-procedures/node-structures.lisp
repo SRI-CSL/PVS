@@ -1570,3 +1570,34 @@
          (some #'(lambda (arg)
 	           (occurs-p x arg))
 	       (funargs trm)))))
+
+;; Additional Symbols, Recognizers etc.
+
+(defvar *implies* (mk-predicate-sym 'implies))
+
+(setf *preds* (cons *implies* *preds*))
+
+(defun mk-conjunction (trm1 trm2)
+  (mk-term (list *and* trm1 trm2)))
+
+(defun mk-disjunction (trm1 trm2)
+  (mk-term (list *or* trm1 trm2)))
+
+(defun mk-implication (trm1 trm2)
+  (mk-term (list *implies* trm1 trm2)))
+
+(defun negation-p (term)
+  (and (application-p term)
+       (eq (funsym term) *not*)))
+
+(defun conjunction-p (term)
+  (and (application-p term)
+       (eq (funsym term) *and*)))
+
+(defun disjunction-p (term)
+  (and (application-p term)
+       (eq (funsym term) *or*)))
+
+(defun implication-p (term)
+  (and (application-p term)
+       (eq (funsym term) *implies*)))
