@@ -6,5 +6,6 @@
   (pushnew :runtime *features*)
   #-(or runtime-standard runtime-dynamic)
   (require 'prof)
+  (setq excl:*global-gc-behavior* :auto)
   (load (format nil "~a/pvs.system" *pvs-path*)))
 (operate-on-system :pvs :compile)
