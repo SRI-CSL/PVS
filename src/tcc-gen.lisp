@@ -67,7 +67,7 @@
 	 (id (make-tcc-name expr)))
     (assert (tc-eq (type uform) *boolean*))
     (unless (tc-eq uform *true*)
-      (when (and (not (eq gen-tccs 'all!))
+      (when (and *false-tcc-error-flag*
 		 (tc-eq uform *false*))
 	(type-error expr "Subtype TCC for ~a simplifies to FALSE~@[:~2%  ~a~]"
 		    expr (unless (tc-eq tform *false*) tform)))
@@ -408,7 +408,7 @@
 	   (id (make-tcc-name)))
       (push name *recursive-tcc-names*)
       (unless (tc-eq uform *true*)
-	(when (and (not (eq gen-tccs 'all!))
+	(when (and *false-tcc-error-flag*
 		   (tc-eq uform *false*))
 	  (type-error name
 	    "Termination TCC for this expression simplifies to false:~2%  ~a"
@@ -460,7 +460,7 @@
 		    (beta-reduce form)))
 	 (id (make-tcc-name)))
     (unless (tc-eq xform *true*)
-      (when (and (not (eq *generate-tccs* 'all!))
+      (when (and *false-tcc-error-flag*
 		 (tc-eq xform *false*))
 	(type-error ordering
 	  "TCC for this expression simplifies to false:~2%  ~a"
@@ -698,7 +698,7 @@
 	 (uform (universal-closure xform))
 	 (id (make-tcc-name)))
     (unless (tc-eq uform *true*)
-      (when (and (not (eq gen-tccs 'all!))
+      (when (and *false-tcc-error-flag*
 		 (tc-eq uform *false*))
 	(type-error ass
 	  "Assuming TCC for this expression simplifies to false:~2%  ~a"
@@ -876,7 +876,7 @@
 		    (beta-reduce (universal-closure form))))
 	 (id (make-tcc-name)))
     (unless (tc-eq uform *true*)
-      (when (and (not (eq gen-tccs 'all!))
+      (when (and *false-tcc-error-flag*
 		 (tc-eq uform *false*))
 	(type-error act
 	  "Actuals TCC for this expression simplifies to false:~2%  ~a"
@@ -1009,7 +1009,7 @@
 	     (id (make-tcc-name)))
 	(assert (tc-eq (type uform) *boolean*))
 	(unless (tc-eq conc *true*)
-	  (when (and (not (eq gen-tccs 'all!))
+	  (when (and *false-tcc-error-flag*
 		     (tc-eq uform *false*))
 	    (type-error expr
 	      "Disjointness TCC for this expression simplifies to false:~2%  ~a"
@@ -1070,7 +1070,7 @@
 	 (id (make-tcc-name)))
     (assert (tc-eq (type uform) *boolean*))
     (unless (tc-eq uform *true*)
-      (when (and (not (eq gen-tccs 'all!))
+      (when (and *false-tcc-error-flag*
 		 (tc-eq uform *false*))
 	(type-error expr
 	  "Coverage TCC for this expression simplifies to false:~2%  ~a"
