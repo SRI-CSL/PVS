@@ -104,44 +104,39 @@
 
 
 
-(load "ilcompat")                       ; emacs version specific stuff
-(load "comint-ipc")                     ; comint IPC extensions
+(load "ilcompat" nil noninteractive)                       ; emacs version specific stuff
+(load "comint-ipc" nil noninteractive)                     ; comint IPC extensions
 
-(if (load "ilisp-all.elc" t)            ; ilisp-all.elc is a concatenation of all the .elc files
-    t
-  (progn				; I know it is useless in Elisp.
-    (load "ilisp-def")
-    (load "ilisp-el")
-    (load "ilisp-sym")
-    (load "ilisp-inp")
-    (load "ilisp-ind")
+(load "ilisp-def" nil noninteractive)
+(load "ilisp-el" nil noninteractive)
+(load "ilisp-sym" nil noninteractive)
+(load "ilisp-inp" nil noninteractive)
+(load "ilisp-ind" nil noninteractive)
 
-    (load "ilisp-prc")
-    (load "ilisp-val")
-    (load "ilisp-out")
-    (load "ilisp-mov")
-    (load "ilisp-key")
-    (load "ilisp-prn")
-    (load "ilisp-low")
-    (load "ilisp-doc")
-    (load "ilisp-ext")			; Some emacs-lisp
-					; bindings. Lisp char syntax.
-    (load "ilisp-mod")
-    (load "ilisp-dia")
-    (load "ilisp-cmt")
-    (load "ilisp-rng")
-    (load "ilisp-hnd")
-    (load "ilisp-utl")
-    (load "ilisp-cmp")
-    (load "ilisp-kil")
-    (load "ilisp-snd")
-    (load "ilisp-xfr")
-    (load "ilisp-hi")
-    (load "ilisp-aut")
+(load "ilisp-prc" nil noninteractive)
+(load "ilisp-val" nil noninteractive)
+(load "ilisp-out" nil noninteractive)
+(load "ilisp-mov" nil noninteractive)
+(load "ilisp-key" nil noninteractive)
+(load "ilisp-prn" nil noninteractive)
+(load "ilisp-low" nil noninteractive)
+(load "ilisp-doc" nil noninteractive)
+(load "ilisp-ext" nil noninteractive)	
+(load "ilisp-mod" nil noninteractive)
+(load "ilisp-dia" nil noninteractive)
+(load "ilisp-cmt" nil noninteractive)
+(load "ilisp-rng" nil noninteractive)
+(load "ilisp-hnd" nil noninteractive)
+(load "ilisp-utl" nil noninteractive)
+(load "ilisp-cmp" nil noninteractive)
+(load "ilisp-kil" nil noninteractive)
+(load "ilisp-snd" nil noninteractive)
+(load "ilisp-xfr" nil noninteractive)
+(load "ilisp-hi" nil noninteractive)
+(load "ilisp-aut" nil noninteractive)
 
-    (load "ilisp-cl")
-    (load "ilisp-acl")
-    ))
+(load "ilisp-cl" nil noninteractive)
+(load "ilisp-acl" nil noninteractive)
 
 ;;; Create the keymaps before running the hooks.
 ;;; This is necessary if you want the lispm bindings in the load
