@@ -401,7 +401,7 @@
     (lcopy texpr
       'supertype (substit* (supertype texpr) alist)
       'predicate spred
-      'expr (substit* (expr texpr) alist)
+      'expr (beta-reduce (substit* (expr texpr) alist))
       'print-type (substit* (print-type texpr) alist))))
 
 (defmethod substit* ((texpr datatype-subtype) alist)
