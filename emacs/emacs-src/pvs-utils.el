@@ -1667,7 +1667,7 @@ existence and time differences to be whitespace")
 	      (ilisp-process)
 	      (or (null timeout)
 		  (> (decf timeout) 0)))
-    (pvs-send "(pvs-emacs-eval \"(setq pvs-waiting nil)\")")
+    (pvs-send "(pvs::pvs-emacs-eval \"(setq pvs-waiting nil)\")")
     (accept-process-output)
     (sit-for 1)))
 
