@@ -380,9 +380,6 @@ proc proof-show {path} {
 	    set rule [set ${path}(rule)]
 	    set alen [get-option abbrevLen]
 	    if $alen {
-		puts "rule=$rule
-alen=$alen
-len=[string length $rule]"
 		if {[string length $rule]>$alen} {
 		    if {[regexp {^[^ ]* } $rule whole]} {
 			set rule "$whole...)"
@@ -471,7 +468,9 @@ proc get-current-sequent {} {
 
     set lisp_path [path-to-lisp-path $path]
 
-    source [lindex [pvs-send-and-wait "(request-sequent '($lisp_path))"] 0]
+    set file [lindex [pvs-send-and-wait "(request-sequent '($lisp_path))"] 0]
+    source $file
+    exec rm -f $file
 }
 
 proc show-sequent {path seq_label text} {
