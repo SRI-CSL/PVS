@@ -395,10 +395,6 @@
 		   (translate-to-ground (predicate *rational*))))
 	   (when *real*
 	     (setq *real-pred* (translate-to-ground (predicate *real*))))
-	   (when *newdc*
-	     (setf (dp::node-initial-type *integer-pred*) 'dp::integer-pred)
-	     (setf (dp::node-initial-type *rational-pred*) 'dp::rational-pred)
-	     (setf (dp::node-initial-type *real-pred*) 'dp::real-pred))
 	   (translate-to-ground (unit-derecognize expr)))
 	  (t (translate-with-new-hash
 	       (unless *integer-pred*

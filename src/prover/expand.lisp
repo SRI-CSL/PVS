@@ -27,11 +27,6 @@
 
 (defun expand-step (name ps sformnum occurrence if-simplifies assert?)
   (let* ((goalsequent (current-goal ps))
-	 (alists (alists ps))
-	 (sigalist (dpinfo-sigalist  alists))
-	 (findalist (dpinfo-findalist  alists))
-	 (usealist (dpinfo-usealist alists))
-	 ;;(typealist (typealist alists)) ;;NSH(2.16.94)
 	 (*assert-flag* (if (eq assert? 'none) 'none
 			    (if assert? 'assert 'simplify)))
 	 (*hash-rewrites?* T)

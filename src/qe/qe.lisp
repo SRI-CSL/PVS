@@ -178,7 +178,7 @@
 (defun qe-conjuncts (bndng conjuncts counter)
   (declare (special *state*))
   (qe-msg "~%Conjunct ~a:" counter)
-  (protecting-dp-state ((*state* *state*))
+  (dp::protecting-dp-state ((*state* *state*))
      (let ((dnf (catch 'unsatisfiable
 		  (qe-conjuncts* bndng conjuncts))))
        (if (unsat? dnf) *false-dnf* dnf))))

@@ -21,13 +21,7 @@
 	 (resolutions (formula-or-definition-resolutions lemmaname-expr))
 	 (sforms (select-seq (s-forms *goal*)
 			     (if (numberp fnums) (list fnums)
-				 fnums)))
-	 
-	 (alists (alists *ps*));;NSH(9.9.93)changed to set context for match.
-	 (findalist (dpinfo-findalist alists))
-	 (usealist (dpinfo-usealist alists))
-	 ;;(typealist (typealist alists)) ;;NSH(2.16.94)
-	 (sigalist (dpinfo-sigalist alists)))
+				 fnums))))
     (cond ((null resolutions)
 	   (error-format-if "~%No resolution for ~a" lemma)
 	   '(skip))

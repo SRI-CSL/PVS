@@ -574,7 +574,6 @@ Please provide skolem constants for these variables." overlap)
 					 (body (if sign
 						   fmla
 						   (args1 fmla))))
-				    (top-translate-to-prove body)
 				    (and (not (connective-occurs? body))
 					 (let ((res (call-process fmla
 								  *dp-state*)))

@@ -207,21 +207,12 @@
 	   'auto-rewrites-names nil
 	   'auto-rewrites!-names nil
 	   'macro-names nil))
-	(*alists* (make-instance 'dpinfo
-		    'dpinfo-sigalist sigalist
-		    'dpinfo-findalist findalist
-		    'dpinfo-usealist usealist))
-	(*top-alists* (make-instance 'dpinfo
-			'dpinfo-sigalist sigalist
-			'dpinfo-findalist findalist
-			'dpinfo-usealist usealist))
 	(*current-context* (or context (context decl)))
 	(*current-theory* (module decl))
 	(*current-decision-procedure* (determine-decision-procedure decl)))
     (newcounter *skovar-counter*)
     (newcounter *skofun-counter*)
     (newcounter *bind-counter*)
-    (newcounter *dc-translate-id-counter*)
     (unless (closed-definition decl)
       (setf (closed-definition decl)
 	    (universal-closure (definition decl))))
@@ -244,8 +235,9 @@
 	      'declaration decl
 	      'current-auto-rewrites auto-rewrites-info)))
       (before-prove*)
-      (dpi-init #'prove-decl-body)
-      (after-prove*)
+      (unwind-protect
+	   (dpi-init #'prove-decl-body)
+	(after-prove*))
       (unless *recursive-prove-decl-call*
 	(save-proof-info decl init-real-time init-run-time))
       *top-proofstate*)))
@@ -262,10 +254,8 @@
                    Do you want to use the default ~a instead? "
 		    (decision-procedure-used decl)
 		    *default-decision-procedure*)))
-	  (car (member *default-decision-procedure* *decision-procedures*
-		       :key #'dp-interface-name))
-	  (car (member (decision-procedure-used decl) *decision-procedures*
-		       :key #'dp-interface-name)))
+	  (car (member *default-decision-procedure* *decision-procedures*))
+	  (car (member (decision-procedure-used decl) *decision-procedures*)))
       (pvs-error "Proof Error"
 	(format nil "Can't find the ~a decision procedure"
 	  (decision-procedure-used decl)))))
@@ -656,7 +646,7 @@
 		      ((eq (status-flag post-proofstate) '!);;rule-apply proved
 		       (format-printout post-proofstate)
 		       (wish-done-proof post-proofstate)
-		       (dp-done-proof post-proofstate)
+		       (dpi-cleanup-proof post-proofstate)
 ;		       (when (printout post-proofstate)
 ;			 (format-if (printout post-proofstate)))
 		       post-proofstate)
@@ -1089,7 +1079,7 @@
 
 (defun success-step (proofstate)
   (wish-done-proof proofstate)
-  (dp-done-proof proofstate)
+  (dpi-cleanup-proof proofstate)
   (setf (status-flag proofstate) '!
 	(done-subgoals proofstate)
 	(sort (done-subgoals proofstate)
@@ -1117,32 +1107,22 @@
 ;;   (format t "~%decls = ~a" (dependent-decls proofstate))
   proofstate)
 
-(defun dp-done-proof (proofstate)
-  (when (and t *new-ground?*) ;(break)
-    (let* ((dp-state (dp-state proofstate))
-	   (dp-stack (dp::cong-state-stack dp-state))
-	   (done-subgoals (done-subgoals proofstate)))
-      (loop for ps in done-subgoals
-	    for subgoal-dp-state = (dp-state ps)
-	    for subgoal-stack = (dp::cong-state-stack subgoal-dp-state)
-	    unless (eq dp-stack subgoal-stack)
-	    do 	(dp::npop-cong-state subgoal-dp-state)))))
-
-(defun new-decision-procedures ()
-  (cond (*in-checker*
-	 (unless *new-ground?*
-	   (pvs-message
-	       "Cannot change default decision procedures while in the prover")))
-	(t (new-ground)
-	   (pvs-message "New decision procedures are now the default"))))
-
-(defun old-decision-procedures ()
-  (cond (*in-checker*
-	 (unless (not *new-ground?*)
-	   (pvs-message
-	       "Cannot change default decision procedures while in the prover")))
-	(t (old-ground)
-	   (pvs-message "Old decision procedures are now the default"))))
+(defun set-decision-procedure (name)
+  (assert (or (stringp name) (symbolp name)))
+  (let* ((id (if (stringp name)
+		 (intern (string-upcase name))
+		 name))
+	 (dp (car (member id *decision-procedures*))))
+    (if dp
+	(if (eq id *default-decision-procedure*)
+	    (pvs-message "~a is already the default decision procedure" id)
+	    (progn
+	      (pvs-message "~a is now the default decision procedure" id)
+	      (setq *default-decision-procedure* id)
+	      (when *in-checker*
+		(pvs-message
+		    "You must restart the current proof to use the new default"))))
+	(pvs-message "~a is not a known decision procedure" id))))
 
 (defvar *report-mode* nil)
 (defvar *print-ancestor* nil)
@@ -1176,30 +1156,6 @@
 	      (sort subgoals #'<
 		    :key #'(lambda (x)(safe-parse-integer (label x)))))
 	    (list proofstate)))))
-
-(defun free-all-remaining-dp-states* (proofstate)
-  (if (eq (status-flag proofstate) '!) nil
-      (let* ((dp-state (dp-state proofstate))
-	     (dp-stack (dp::cong-state-stack dp-state))
-	     (subgoals  (append (pending-subgoals proofstate)
-				(remaining-subgoals proofstate)))
-	     (subgoals (if (current-subgoal proofstate)
-			   (cons (current-subgoal proofstate) subgoals)
-			   subgoals))
-	     (ssubgoals
-	      (sort subgoals #'<
-		    :key #'(lambda (x)(safe-parse-integer (label x))))))
-	(when subgoals
-	  (mapcar #'free-all-remaining-dp-states* ssubgoals)
-	  (loop for sg in ssubgoals
-		for sg-dp-state = (dp-state sg)
-		for sg-stack = (dp::cong-state-stack sg-dp-state)
-		unless (eq dp-stack sg-stack)
-		do (dp::npop-cong-state sg-dp-state))))))
-
-(defun free-all-remaining-dp-states ()
-  (free-all-remaining-dp-states* *top-proofstate*)
-  (dp::npop-cong-state (dp-state *top-proofstate*)))
 
 (defun bump-report-flag (flag ps)
   (if (printout ps)
@@ -1555,11 +1511,7 @@
     (status-flag (setf (status-flag ps) value))
     (strategy (setf (strategy ps) value))
     (context (setf (context ps) value))
-;    (out-context (setf (out-context ps) value))
-;    (out-substitution (setf (out-substitution ps) value))
-;    (alists (setf (alists ps) value))
     (dp-state (setf (dp-state ps) value))
-;    (ics-state (setf (ics-state ps) value))
     (current-auto-rewrites (setf (current-auto-rewrites ps) value))
     (rewrite-hash (setf (rewrite-hash ps) value))
     (subtype-hash (setf (subtype-hash ps) value))
@@ -1858,24 +1810,6 @@
 		   (strategy ps)
 		   (failure-strategy (strategy ps)))
 	     ps))))
-
-
-(defun assert-test-list (fmla-list ps)
-  (let* ((alists (alists ps))
-	 (dp-state (dp-state ps))
-	 (ics-state (ics-state ps)))
-    (nprotecting-cong-state
-     ((*dp-state* dp-state))
-     (let ((*rewrite-hash* (copy (rewrite-hash ps)))
-	   (*subtype-hash* (copy (subtype-hash ps))))
-       (loop for fmla in fmla-list
-	     nconc
-	     (multiple-value-bind (sig value)
-		 (assert-if fmla)
-	       (cond ((tc-eq value *true*) nil)
-		     ((eq sig 'X) (list fmla))
-		     (t (list value)))))))))
-		   
 
 (defvar *record-undone-proofstate* nil)
 
@@ -2417,8 +2351,10 @@
 	  (t (cons (unformat-rule (car sexp))
 		   (unformat-rule (cdr sexp)))))))
   
-(defmethod new-ground? ((list list))
-  (and (listp (car list)) (memq :new-ground? (car list))))
+(defmethod decision-procedure-used ((list list))
+  (or (and (listp (car list))
+	   (cdr (assq :decision-procedure-used (car list))))
+      *default-decision-procedure*))
 (defmethod label ((list list))
   (if (listp (car list)) (cadr list) (car list)))
 (defmethod rule ((list list))
@@ -2427,7 +2363,7 @@
   (if (listp (car list)) (cadddr list) (caddr list)))
 
 ;;catchall methods for label, rule, subgoals
-(defmethod new-ground? ((x T)) nil)
+(defmethod decision-procedure-used ((x T)) *default-decision-procedure*)
 (defmethod label ((x T)) "9999")
 (defmethod rule ((x T)) '(skip))
 (defmethod subgoals ((x T)) NIL)
@@ -3384,3 +3320,6 @@
 	 (#\newline (append '(#\n #\\) result))
 	 (t   (cons (char string pos) result))))
       (coerce (nreverse result) 'string)))
+
+(defun call-process (expr dp-state)
+  (dpi-process expr dp-state))
