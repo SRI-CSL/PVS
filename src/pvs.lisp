@@ -28,6 +28,28 @@
 
 ;;; Invoked from Emacs
 
+;;; A robodoc header
+;****f* interface/pvs-init
+;*
+;*  NAME
+;*    pvs-init -- initialize the pvs session
+;*  SYNOPSIS
+;*    pvs-init &optional dont-load-patches dont-load-user-lisp
+;*  FUNCTION
+;*    Initializes the pvs session, setting up various global variables,
+;*    loading user lisp and patch files, and initializing the decision
+;*    procedures.
+;*  INPUTS
+;*    dont-load-patches - indicates that the patches should not be loaded
+;*    dont-load-user-lisp - indicates that the ~/.pvs.lisp file should not be
+;*                          loaded
+;*  RESULT
+;*    N/A
+;*  SEE ALSO
+;*    pvs-emacs/pvs
+;*
+;******
+ 
 (defun pvs-init (&optional dont-load-patches dont-load-user-lisp)
   (setq excl:*enclose-printer-errors* nil)
   (setq *print-pretty* t)
@@ -608,7 +630,7 @@
 		 (when forced?
 		   (delete-generated-adt-files theories))
 		 (typecheck-theories filename theories)
-		 (assert (every #'typechecked? theories))
+		 #+pvsdebug (assert (every #'typechecked? theories))
 		 (update-context filename)))
 	(when prove-tccs?
 	  (if *in-checker*
@@ -2450,11 +2472,11 @@
       (let ((*disable-gc-printout* t))
 	(pvs-buffer "Expanded Sequent"
 	  (with-output-to-string (*standard-output*)
-;	  (unless all?
-;	    (format t "%%% Prelude names are not expanded~%")
-;	    (format t "%%%    use C-u M-x show-expanded-sequent to see them~2%"))
+	    (unless all?
+	      (format t ";;; Prelude names not expanded; ")
+	      (format t "C-u M-x show-expanded-sequent shows all~%"))
 	    (write (expanded-sequent all?)))
-	t))
+	  t))
       (pvs-message "Not in prover")))
 
 (defun expanded-sequent (&optional all?)
@@ -2552,7 +2574,8 @@
 	   (*generate-tccs* 'none)
 	   (*from-buffer* "Formula Decl"))
       (pvs-buffer *from-buffer* formula-decl nil t)
-      (let ((fdecl (car (pc-parse formula-decl 'theory-elt))))
+      (let* ((pdecl (pc-parse formula-decl 'theory-elt))
+	     (fdecl (if (listp pdecl) (car pdecl) pdecl)))
 	(unless (typep fdecl 'formula-decl)
 	  (type-error fdecl "Not a formula declaration"))
 	(typecheck-decl fdecl)
@@ -2618,6 +2641,8 @@
 
 (defun get-prove-formula-proof ()
   *prove-formula-proof*)
+
+  
 
 (defun show-strategy (strat-name)
   (let* ((strat-id (intern (string-downcase strat-name)))
