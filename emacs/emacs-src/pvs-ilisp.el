@@ -275,10 +275,10 @@ want to set this to nil for slow terminals, or connections over a modem.")
 			 (eq (current-buffer) (ilisp-buffer))
 			 (string-match "Rule\\? " pvs-process-output))
 		(save-excursion
-		  (let ((owin (selected-window))
-			(select-window (get-buffer-window "*pvs*"))
-			(recenter -1)
-			(select-window owin))))))
+		  (let ((owin (selected-window)))
+		    (select-window (get-buffer-window "*pvs*"))
+		    (recenter -1)
+		    (select-window owin)))))
 	  (set-ilisp-value 'pvs-partial-line
 			   pvs-process-output))))))
 
