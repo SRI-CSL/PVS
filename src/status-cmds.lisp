@@ -735,14 +735,13 @@
 
 (defun usedby-proofs (bufname origin line)
   (let ((udecl (get-decl-at-origin bufname origin line)))
-    (if udecl
-	(let ((decls (declaration-used-by-proofs-of udecl)))
-	  (if decls
-	      (mapcar #'(lambda (d)
-			  (format-decl-list d (ptype-of d) (module d)))
-		decls)
-	      (pvs-message "No proofs use ~a" (id udecl))))
-	(pvs-message "No declaration found near point"))))
+    (when udecl
+      (let ((decls (declaration-used-by-proofs-of udecl)))
+	(if decls
+	    (mapcar #'(lambda (d)
+			(format-decl-list d (ptype-of d) (module d)))
+	      decls)
+	    (pvs-message "No proofs use ~a" (id udecl)))))))
 
 (defun get-decl-at-origin (bufname origin line)
   (if (and (member origin '("ppe" "tccs") :test #'string=)
@@ -770,9 +769,15 @@
 					*prelude-theories*)))
 			(decl (get-decl-at line T theories)))
 		   (values decl (place decl))))
-	(t (let* ((theories (list (get-theory bufname)))
-		  (decl (get-decl-at line T theories)))
-	     (values decl (when decl (place decl))))))))
+	(t (let ((theory (get-theory bufname)))
+	     (if theory
+		 (let ((decl (get-decl-at line T (list theory))))
+		   (if decl
+		       (values decl (place decl))
+		       (progn (pvs-message "No declaration found near point")
+			      nil)))
+		 (pvs-message "Theory ~a has not been typechecked"
+		   bufname)))))))
 
 (defun declaration-used-by-proofs-of (udecl)
   (let ((usedbys nil))
