@@ -11,6 +11,8 @@
 
 (in-package :pvs)
 
+(export '(get-decl-resolutions resolve))
+
 (defvar *resolve-error-info* nil)
 
 (defvar *field-records* nil)

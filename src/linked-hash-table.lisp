@@ -1,4 +1,17 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; linked-hash-table.lisp -- 
+;; Author          : Sam Owre
+;; Created On      : Wed Sep  1 03:24:33 2004
+;; Last Modified By: Sam Owre
+;; Last Modified On: Wed Sep  1 03:26:08 2004
+;; Update Count    : 1
+;; Status          : Stable
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (in-package :pvs)
+
+(export '(make-lhash-table copy-lhash-table get-lhash map-lhash lhash-table
+			   lhash-next))
 
 (defstruct (linked-hash-table (:conc-name lhash-))
   table

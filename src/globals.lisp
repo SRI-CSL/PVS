@@ -18,7 +18,8 @@
 	  *even_int* *false* *generate-all-adt-axioms* *generate-tccs*
 	  *integer* *naturalnumber* *number* *number_field* *odd_int*
 	  *posint* *prelude* *pvs-directories* *pvs-modules* *pvs-tmp-file*
-	  *real* *tcc-conditions* *true* *typechecking-module*))
+	  *real* *show-conversions* *tcc-conditions* *true*
+	  *typechecking-module*))
 
 (export '(all none))
 
