@@ -1169,9 +1169,6 @@ built-in prelude may not be removed this way."
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-files)
-  (setq dir (expand-file-name dir))
-  (unless (string-match "/$" dir)
-    (setq dir (concat dir "/")))
   (pvs-send (format "(remove-prelude-library \"%s\")" dir)))
 
 
