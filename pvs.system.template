@@ -328,7 +328,7 @@
      :source-pathname "src/decision-procedures"
      :components ((:file "integer")
 		  (:file "shostak")
-		  (:file "arithmetic")
+		  (:file "arithmetic" :depends-on ("shostak"))
 		  (:file "arrays")
 		  (:file "shostak-interp")
 		  (:file "arith-solve")
