@@ -1734,6 +1734,9 @@
 (defmethod ref-to-id ((ref string))
   (intern ref))
 
+(defmethod ref-to-id ((ref integer))
+  (makesym "~r" ref))
+
 (defmethod ref-to-id ((ref syntax))
   (if (slot-exists-p ref 'id)
       (id ref)
