@@ -517,11 +517,35 @@
 				       ineq-var-index-array
 				       cong-state))))
 
+(defun domain-to-equalities-intersect
+  (current-eqs polyhedron ineq-var-index-array cong-state)
+  (if (= (polyhedron-next polyhedron) 0)
+      (intersect current-eqs
+		(polyhedron-to-equalities polyhedron ineq-var-index-array
+					  cong-state))
+      (let* ((eqs1 (polyhedron-to-equalities polyhedron ineq-var-index-array
+					     cong-state))
+	     (rest-poly (polyhedron-next polyhedron))
+	     (ceqs (intersection current-eqs eqs1)))
+	(if (= rest-poly 0)
+	    ceqs
+	    (if ceqs
+		(domain-to-equalities-intersect
+		 ceqs rest-poly ineq-var-index-array cong-state)
+		nil)))))	    
+
 (defun domain-to-equalities (polyhedron ineq-var-index-array cong-state)
   (let ((equalities-list
 	 (domain-to-equalities-list polyhedron ineq-var-index-array
 				    cong-state)))
     (reduce #'intersection equalities-list)))
+
+(defun domain-to-equalities (polyhedron ineq-var-index-array cong-state)
+  (let ((first-eqs
+	 (polyhedron-to-equalities polyhedron ineq-var-index-array
+				   cong-state)))
+    (domain-to-equalities-intersect
+     first-eqs (polyhedron-next polyhedron) ineq-var-index-array cong-state)))
 
 (defun constraints2equalities (constraints ineq-var-index-array cong-state)
   (loop for i from 0 below (matrix-NbRows constraints)
