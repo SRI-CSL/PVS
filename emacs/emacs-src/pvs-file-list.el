@@ -62,8 +62,8 @@ Precisely,\\{pvs-file-list-mode-map}"
 The list-pvs-files command prompts for a directory and if there is a PVS
 context in the given directory, lists the PVS files of that context.  The
 resulting buffer is in a special mode, which allows the file to be viewed
-(by typing a `v'), selected (by typing a `s') or imported (by typing an
-`i').  A file or theory may only be selected if it is in the current
+by typing a `v', selected by typing a `s' or imported by typing an
+`i'.  A file or theory may only be selected if it is in the current
 context, and may only be imported if it is not."
   (interactive (pvs-complete-file-name "List PVS files of context named: "))
   (unless (equal (substring context -1) "/")
