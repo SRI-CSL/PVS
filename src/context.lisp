@@ -172,9 +172,9 @@ pvs-strategies files.")
 
 (defun change-context (directory)
   (let ((dir (get-valid-context-directory directory nil)))
-    (setq *pvs-context-writable* (write-permission? dir))
     (when *pvs-initialized*
       (save-context))
+    (setq *pvs-context-writable* (write-permission? dir))
     (clrhash *prelude-libraries*)
     (setq *prelude-libraries-uselist* nil)
     (clrhash *imported-libraries*)
@@ -221,9 +221,9 @@ pvs-strategies files.")
 ;;; changes since the last time the context was saved.
 
 (defun save-context ()
-  (cond ((not (probe-file (working-directory)))
+  (cond ((not (probe-file *pvs-context-path*))
 	 (pvs-message "Directory ~a seems to have disappeared!"
-	   (namestring (working-directory))))
+	   (namestring *pvs-context-path*)))
 	(t (unless (or *loading-prelude*
 		       *loading-library*)
 	     (unless (or *dont-write-object-files*
@@ -242,7 +242,7 @@ pvs-strategies files.")
 	(let ((context (make-pvs-context)))
 	  (multiple-value-bind (value condition)
 	      (ignore-file-errors
-	       (store-object-to-file context *context-name*))
+	       (store-object-to-file context (context-pathname)))
 	    (declare (ignore value))
 	    (cond (condition
 		   (pvs-message "~a" condition))
