@@ -497,6 +497,8 @@ sets [T: TYPE]: THEORY
   complement(a): set = {x | NOT member(x, a)} 
 
   difference(a, b): set = {x | member(x, a) AND NOT member(x, b)}
+  
+  union_difference: LEMMA union(a, b) = union(a, difference(b, a))
 
   symmetric_difference(a, b): set =
     union(difference(a, b), difference(b, a))
@@ -542,9 +544,13 @@ sets_lemmas [T: TYPE]: THEORY
 
   empty_no_members: LEMMA NOT member(x, emptyset)
 
+  emptyset_min: LEMMA subset?(a, emptyset) IMPLIES a = emptyset
+
   nonempty_member: LEMMA nonempty?(a) IFF EXISTS x: member(x, a)
 
   fullset_member: LEMMA member(x, fullset)
+
+  fullset_max: LEMMA subset?(fullset, a)  IMPLIES a = fullset
   
   nonempty_exists: LEMMA nonempty?(a) IFF EXISTS (x: (a)): TRUE
 
@@ -575,6 +581,11 @@ sets_lemmas [T: TYPE]: THEORY
 
   union_subset2: LEMMA subset?(a, b) IMPLIES union(a, b) = b
 
+  union_upper_bound : LEMMA
+    subset?(a, c) and subset?(b, c) IMPLIES subset?(union(a, b), c)
+
+  union_diff_subset: LEMMA subset?(a, b) IMPLIES union(a, difference(b, a)) = b
+
   intersection_idempotent: LEMMA intersection(a, a) = a
 
   intersection_commutative: LEMMA intersection(a, b) = intersection(b, a)
@@ -589,6 +600,9 @@ sets_lemmas [T: TYPE]: THEORY
   intersection_subset1: LEMMA subset?(intersection(a, b), a)
 
   intersection_subset2: LEMMA subset?(a, b) IMPLIES intersection(a, b) = a
+
+  intersection_lower_bound: LEMMA
+    subset?(c, a) and subset?(c, b) IMPLIES subset?(c, intersection(a, b))
 
   distribute_intersection_union: LEMMA
     intersection(a, union(b, c))
@@ -630,13 +644,34 @@ sets_lemmas [T: TYPE]: THEORY
     difference(a, difference(b, c))
       = union(difference(a, b), intersection(a, c))
 
+  difference_subset : LEMMA  subset?(difference(a, b), a)
+
+  difference_disjoint: LEMMA disjoint?(a, difference(b, a))
+
+  diff_union_inter: LEMMA
+    difference(union(a, b), a) = difference(b, intersection(a, b))
+
+  nonempty_add: LEMMA NOT empty?(add(x, a))
+
   member_add: LEMMA member(x, a) IMPLIES add(x, a) = a
 
   member_remove: LEMMA NOT member(x, a) IMPLIES remove(x, a) = a
 
+  add_remove_member: LEMMA member(x, a) IMPLIES add(x, remove(x, a)) = a
+
+  remove_add_member: LEMMA NOT member(x, a) IMPLIES remove(x, add(x, a)) = a
+
   subset_add: LEMMA subset?(a, add(x, a))
 
+  add_as_union: LEMMA add(x, a) = union(a, singleton(x))
+
+  singleton_as_add: LEMMA singleton(x) = add(x, emptyset)
+
   subset_remove: LEMMA subset?(remove(x, a), a)
+
+  remove_as_difference: LEMMA remove(x, a) = difference(a, singleton(x))
+
+  remove_member_singleton: LEMMA remove(x, singleton(x)) = emptyset
 
   choose_rest: LEMMA NOT empty?(a) IMPLIES add(choose(a), rest(a)) = a
 
@@ -649,6 +684,8 @@ sets_lemmas [T: TYPE]: THEORY
 
   rest_member: LEMMA member(x,rest(a)) IMPLIES member(x,a)
 
+  rest_subset : LEMMA subset?(rest(a), a)
+
   choose_add: LEMMA choose(add(x, a)) = x OR member(choose(add(x, a)), a)
 
   choose_rest_or: LEMMA
@@ -657,9 +694,27 @@ sets_lemmas [T: TYPE]: THEORY
   choose_singleton: LEMMA choose(singleton(x)) = x
 
   rest_singleton: LEMMA rest(singleton(x)) = emptyset[T]
+  
+  singleton_subset: LEMMA member(x, a) IFF subset?(singleton(x), a)
 
   rest_empty_lem: LEMMA NOT empty?(a) AND empty?(rest(a))
                           IMPLIES a = singleton(choose(a))
+
+  singleton_disjoint: LEMMA NOT member(x, a) IMPLIES disjoint?(singleton(x), a)
+
+  disjoint_remove_left: LEMMA
+    disjoint?(a, b) IMPLIES disjoint?(remove(x, a), b)
+
+  disjoint_remove_right: LEMMA
+    disjoint?(a, b) IMPLIES disjoint?(a, remove(x, b))
+
+  union_disj_remove_left: LEMMA
+    disjoint?(a, b) AND a(x) IMPLIES
+      union(remove(x, a), b) = remove(x, union(a, b))
+
+  union_disj_remove_right: LEMMA
+    disjoint?(a, b) AND b(x) IMPLIES
+      union(a, remove(x, b)) = remove(x, union(a, b))
 
 END sets_lemmas
 
@@ -2375,6 +2430,87 @@ nat_types[m: nat] : THEORY
   upto:   NONEMPTY_TYPE = upto(m)
   below:  TYPE = below(m)
  END nat_types
+
+
+finite_sets_def[T: TYPE]: THEORY
+%------------------------------------------------------------------------
+%
+%  finite sets (basic definitions and closure properties)
+%  -----------------------------------------------------
+%      Authors:  Damir Jamsek
+%                Ricky W. Butler
+%                Sam Owre
+%                C. Michael Holloway
+%
+%  This theory defines finite sets as the subtype of sets[T] that
+%  satisfy the predicate "is_finite".  This predicate states
+%  that there is an injective function into below[N] for some N.
+%
+%------------------------------------------------------------------------
+
+BEGIN
+
+  x, y, z: VAR T
+  S: VAR set[T]
+  N: VAR nat
+
+  is_finite(S): bool = (EXISTS N, (f: [(S) -> below[N]]):
+                          injective?(f)) 
+
+  finite_set: TYPE = (is_finite) CONTAINING emptyset[T]
+
+  non_empty_finite_set: TYPE = {s: finite_set | NOT empty?(s)}
+
+
+  A,B: VAR finite_set
+  NA, NB: VAR non_empty_finite_set
+
+  finite_union:        LEMMA is_finite(union(A,B))
+  finite_subset:       LEMMA subset?(S,A) IMPLIES is_finite(S)
+  finite_emptyset:     LEMMA is_finite(emptyset[T])
+  finite_singleton:    LEMMA is_finite(singleton(x))
+  finite_intersection: LEMMA is_finite(intersection(A,B))
+  finite_difference:   LEMMA is_finite(difference(A,B))
+  finite_add:          LEMMA is_finite(add(x,A))
+  finite_remove:       LEMMA is_finite(remove(x,A))
+  finite_rest:         LEMMA is_finite(rest(A))
+
+  % -------- Judgements --------------------------------------------------
+
+  nonempty_finite_is_nonempty: JUDGEMENT
+    non_empty_finite_set SUBTYPE_OF (nonempty?[T])
+
+  finite_singleton: JUDGEMENT singleton(x) HAS_TYPE finite_set
+
+  finite_union: JUDGEMENT union(A, B) HAS_TYPE finite_set
+  finite_intersection: JUDGEMENT intersection(A, B) HAS_TYPE finite_set
+  finite_difference: JUDGEMENT difference(A, B) HAS_TYPE finite_set
+
+  nonempty_finite_union1: JUDGEMENT union(NA, B) HAS_TYPE non_empty_finite_set
+
+  nonempty_finite_union2: JUDGEMENT union(A, NB) HAS_TYPE non_empty_finite_set
+
+  nonempty_add_finite: JUDGEMENT add(x, A) HAS_TYPE non_empty_finite_set
+
+  finite_remove: JUDGEMENT remove(x, A) HAS_TYPE finite_set
+
+  finite_rest: JUDGEMENT rest(A) HAS_TYPE finite_set
+
+  finite_emptyset: JUDGEMENT emptyset HAS_TYPE finite_set
+
+  nonempty_singleton_finite: JUDGEMENT
+   singleton(x) HAS_TYPE non_empty_finite_set
+
+
+  % -------- Base type is finite -----------------------------------------
+
+  is_finite_type: bool = (EXISTS N, (g:[T -> below[N]]): injective?(g))
+
+  finite_full:         LEMMA is_finite_type IFF is_finite(fullset[T])
+  finite_type_set:     LEMMA is_finite_type IMPLIES is_finite(S)
+  finite_complement:   LEMMA is_finite_type IMPLIES is_finite(complement(S))
+
+END finite_sets_def
 
 
 % function_iterate provides the iterate function, which composes a
