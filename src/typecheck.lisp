@@ -253,6 +253,10 @@
 				    (actuals inst) nil))
 	  (t (typecheck-mappings (mappings inst) inst)
 	     (setq nmodinst (set-type-actuals inst))))
+    (when (some #'(lambda (m) (mod-decl? (declaration (lhs m))))
+		(mappings nmodinst))
+      (type-error inst
+	"IMPORTINGs with theory interpretations is not allowed - use a theory declaration instead"))
     (add-to-using nmodinst)
     (unless (eq nmodinst inst)
       (pushnew inst (gethash (get-theory inst) (current-using-hash))))
@@ -392,11 +396,14 @@
 	      (importings adt)))))
 
 (defun mod-or-using? (obj)
-  (typep obj '(or mod-decl importing)))
+  (typep obj '(or mod-decl theory-abbreviation-decl importing)))
 
 (defmethod modules ((decl mod-decl))
   (list (modname decl)))
-    
+
+(defmethod modules ((decl theory-abbreviation-decl))
+  (list (theory-name decl)))
+
 
 ;;; Perform the substitution.  In the above, would be called with
 ;;; (m1[t,c] #m1 m2[s]) and return m2[t].
@@ -575,7 +582,8 @@
 		       (type-value actual) type)))))
     (formal-theory-decl
      (unless (typep (declaration (expr actual))
-		    '(or module mod-decl formal-theory-decl))
+		    '(or module mod-decl theory-abbreviation-decl
+		         formal-theory-decl))
        (type-error actual "Theory name expected here")))
     (t (let ((type (subst-types (type formal) assoc)))
 	 (typecheck* (expr actual) type nil nil))))
@@ -636,7 +644,10 @@
 (defmethod typecheck-mapping-rhs* ((ex name-expr) rhs)
   (let ((tres (with-no-type-errors (resolve* ex 'type nil)))
 	(eres (with-no-type-errors (resolve* ex 'expr nil)))
-	(thres (with-no-type-errors (resolve* ex 'module nil))))
+	(thres (with-no-type-errors (unless (mod-id ex)
+				      (with-no-type-errors
+					  (resolve* (name-to-modname ex)
+						    'module nil))))))
     (if (cdr tres)
 	(cond (eres
 	       (setf (resolutions ex) eres))

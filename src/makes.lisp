@@ -345,6 +345,14 @@
 ;      (change-name-expr-class-if-needed (declaration nres) nex))
 ;    nex))
 
+(defmethod mk-name-expr ((id number) &optional actuals mod-id res)
+  (if res
+      (make!-name-expr id actuals mod-id res)
+      (make-instance 'name-expr
+	'id id
+	'mod-id mod-id
+	'actuals actuals)))
+
 (defmethod mk-name-expr ((id symbol) &optional actuals mod-id res)
   (if res
       (make!-name-expr id actuals mod-id res)
@@ -703,6 +711,22 @@
 
 (defmethod mk-actual ((arg expr))
   (make-instance 'actual 'expr arg))
+
+(defun mk-mapping (lhs rhs)
+  (make-instance 'mapping
+    'lhs lhs
+    'rhs (mk-mapping-rhs rhs)))
+
+(defmethod mk-mapping-rhs ((ex type-expr))
+  (make-instance 'mapping-rhs
+    'expr (or (print-type ex) ex)
+    'type-value (lcopy ex 'from-conversion nil)))
+
+(defmethod mk-mapping-rhs ((ex expr))
+  (make-instance 'mapping-rhs 'expr ex))
+
+(defmethod mk-mapping-rhs ((ex mapping-rhs))
+  ex)
 
 (defun mk-proof-info (id description create-date run-date script status
 			 refers-to real-time run-time interactive?
