@@ -452,17 +452,20 @@
 		 cdir)))
 	  (t cdir))))
 
+(defvar *shortpath-directories*
+  (make-hash-table :test #'equal))
+
 (defun shortpath (directory)
-  (let ((dirlist (pathname-directory
-		  (directory-p
-		   (excl:pathname-resolve-symbolic-links
-		    (truename directory)))))
-	(file-info (get-file-info directory)))
-    (assert (listp dirlist))
-    (assert file-info)
-    (if (eq (car dirlist) :absolute)
-	(shortpath* (reverse (cdr dirlist)) file-info)
-	directory)))
+  (or (gethash directory *shortpath-directories*)
+      (let* ((dirlist (pathname-directory
+		       (directory-p
+			(excl:pathname-resolve-symbolic-links
+			 (truename directory)))))
+	     (file-info (get-file-info directory))
+	     (result (if (eq (car dirlist) :absolute)
+			 (shortpath* (reverse (cdr dirlist)) file-info)
+			 directory)))
+	(setf (gethash directory *shortpath-directories*) result))))
 
 (defun shortpath* (revdirlist file-info &optional dirlist)
   (let ((path (make-pathname :directory (cons :absolute dirlist))))
@@ -1850,7 +1853,7 @@
 
 (defmethod ref-to-id ((ref syntax))
   (if (slot-exists-p ref 'id)
-      (id ref)
+      (ref-to-id (id ref))
       (error "No id slot for <# ~a - ~a #>" (class-name (class-of ref)) ref)))
 
 (defmethod ref-to-id ((ref subtype-judgement))
