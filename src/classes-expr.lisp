@@ -448,7 +448,7 @@
   conversion)
 
 (defcl lambda-conversion-resolution (resolution)
-  conversion)
+  (k-conv-type :documentation "The common conversion type, e.g., state"))
 
 (defcl recursive-function-resolution (resolution)
   conversion)
