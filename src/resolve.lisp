@@ -1255,11 +1255,8 @@
       (if (get-theory modname)
 	  (progn
 	    (typecheck* modname nil nil nil)
-	    (let* ((importings (cdr (or (gethash (get-theory modname)
-						 (using-hash *current-context*))
-					(assoc modname
-					       (using *current-context*)
-					       :test #'same-id)))))
+	    (let* ((importings (gethash (get-theory modname)
+					(using-hash *current-context*))))
 	      (unless importings
 		(type-error modname
 		  "Theory ~a is not imported in the current context"
