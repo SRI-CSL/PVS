@@ -866,7 +866,7 @@
     (pprint-newline :mandatory)))
 
 (defmethod pp-tex* :around ((decl auto-rewrite-decl))
-  (with-slots (name chain?) decl
+  (with-slots (rewrite-names semi) decl
     (when (or (not *pretty-printing-decl-list*)
 	      (not *pretty-printed-prefix*))
       (when *pretty-printing-decl-list*
@@ -877,16 +877,18 @@
 	(t (pp-tex-keyword 'AUTO_REWRITE)))
       (write-char #\space)
       (pprint-newline :miser))
-    (pp-tex* name)
-    (when (typep decl 'typed-auto-rewrite-decl)
-      (write-char #\:)
-      (write-char #\space)
-      (pp-tex* (declared-type decl)))
-    (when (and chain?
-	       *pretty-printing-decl-list*)
-      (write-char #\,)
-      (write-char #\space))
+    (pp-tex-rewrite-names rewrite-names)
+    (when semi
+      (write-char #\;))
     (pprint-newline :mandatory)))
+
+(defun pp-tex-rewrite-names (names)
+  (pprint-logical-block (nil names)
+    (loop (pp-tex* (pprint-pop))
+	  (pprint-exit-if-list-exhausted)
+	  (write-char #\,)
+	  (write-char #\space)
+	  (pprint-newline :fill))))
 
 ;;; Type expressions
 
@@ -1841,25 +1843,38 @@
 	(pp-tex* declared-type)))))
 
 (defmethod pp-tex* ((ex name))
-  (with-slots (library mod-id actuals id mappings resolutions) ex
+  (with-slots (library mod-id actuals id mappings target) ex
     (pprint-logical-block (nil (list ex))
+      (pprint-indent :block 4)
       (when library
 	(pp-tex-id library)
 	(write-char #\@))
       (cond (mod-id
 	     (pp-tex-id mod-id)
 	     (when actuals
+	       (pprint-newline :fill)
 	       (pp-tex-actuals actuals))
 	     (when mappings
+	       (pprint-newline :fill)
 	       (pp-tex-mappings mappings))
+	     (when target
+	       (write " :-> ")
+	       (pprint-newline :fill)
+	       (pp-tex* target))
 	     (write-char #\.)
 	     (pp-tex-id id))
 	    (t
 	     (pp-tex-id id)
 	     (when actuals
+	       (pprint-newline :fill)
 	       (pp-tex-actuals actuals))
 	     (when mappings
-	       (pp-tex-mappings mappings)))))))
+	       (pprint-newline :fill)
+	       (pp-tex-mappings mappings))
+	     (when target
+	       (write " :-> ")
+	       (pprint-newline :fill)
+	       (pp-tex* target)))))))
 
 (defun pp-tex-mappings (mappings)
   (pprint-logical-block (nil mappings :prefix "{{ " :suffix " }}")
