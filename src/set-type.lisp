@@ -26,7 +26,7 @@
   (assert *current-context*)
   (assert *generate-tccs*)
   (cond ((or (not (type ex))
-	     (memq *generate-tccs* '(all all!)))
+	     (eq *generate-tccs* 'all))
 	 (set-type* ex expected))
 	((eq *generate-tccs* 'top)
 	 (check-for-subtype-tcc ex expected))))
@@ -39,7 +39,7 @@
   (set-type* te expected))
 
 (defmethod typed? ((expr expr))
-  (and (not (memq *generate-tccs* '(all all! top)))
+  (and (not (memq *generate-tccs* '(all top)))
        (type expr)))
 
 (defmethod typed? ((expr name-expr))
