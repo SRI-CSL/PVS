@@ -99,19 +99,27 @@
      ((qnumberp v) nil)
      ((equal (car u) 'TIMES)
       (if (equal (car v) 'TIMES)
-	  (or (subsetp (cdr v)(cdr u))
-	      (arithord1 (cdr u) (cdr v)))
-	  (arithord1 (times-arithord-rep u) v)))
+	  ;;(or (subsetp (cdr v)(cdr u)))
+	  (arithord1 (arithcdr u) (arithcdr v))
+	  (let ((rep (times-arithord-rep u)))
+	    (or (equal rep v)
+		(arithord1  rep v)))))
      ((equal (car u) 'DIVIDE)
       (if (equal (car v) 'DIVIDE)
-	  (arithord1 (cdr u)(cdr v))
-	  (arithord1 (div-arithord-rep u) v)))
+	  (arithord1 (arithcdr u)(arithcdr v))
+	  (let ((rep (div-arithord-rep u)))
+	    (or (equal rep v)
+		(arithord1 rep v)))))
      ((equal (car v) 'TIMES)
       (arithord1 u (times-arithord-rep v)))
      ((equal (car v) 'DIVIDE)
       (arithord1 u (div-arithord-rep v)))
      ((equal (car u)(car v))(arithord1 (cdr u)(cdr v)))
      (t (arithord1 (car u)(car v)))))
+
+(defun arithcdr (x)
+  (arithlist (cdr x)))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
