@@ -26,9 +26,9 @@ case `uname -s` in
 	   else if [ -f /lib/libc.so.6 ]
 		  then os_version=5
 		  else os_version=4
-		fi
-	 if [ $os_version -gt 5 ]; then os_version=5; fi
-	 fi;;
+		fi;
+	 fi;
+	 if [ $os_version -gt 5 ]; then os_version=5; fi;;
   AIX) arch=powerpc-ibm
        os=AIX
        os_version=`uname -r`;;
