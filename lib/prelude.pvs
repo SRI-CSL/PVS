@@ -3032,84 +3032,6 @@ nat_types[m: nat] : THEORY
  END nat_types
 
 
-%------------------------------------------------------------------------
-%
-%  finite sets (basic definitions and closure properties)
-%  -----------------------------------------------------
-%      Authors:  Damir Jamsek
-%                Ricky W. Butler
-%                Sam Owre
-%                C. Michael Holloway
-%
-%  This theory defines finite sets as the subtype of sets[T] that
-%  satisfy the predicate "is_finite".  This predicate states
-%  that there is an injective function into below[N] for some N.
-%
-%------------------------------------------------------------------------
-
-finite_sets_def[T: TYPE]: THEORY
- BEGIN
-  x, y, z: VAR T
-  S: VAR set[T]
-  N: VAR nat
-
-  is_finite(S): bool = (EXISTS N, (f: [(S) -> below[N]]):
-                          injective?(f)) 
-
-  finite_set: TYPE = (is_finite) CONTAINING emptyset[T]
-
-  non_empty_finite_set: TYPE = {s: finite_set | NOT empty?(s)}
-
-  is_finite_surj: LEMMA (EXISTS (N: nat), (f: [below[N] -> (S)]):
-                            surjective?(f)) IFF is_finite(S) 
-
-
-  A,B: VAR finite_set
-  NA, NB: VAR non_empty_finite_set
-
-  finite_subset:       LEMMA subset?(S,A) IMPLIES is_finite(S)
-  finite_intersection: LEMMA is_finite(intersection(A,B))
-  finite_add:          LEMMA is_finite(add(x,A))
-
-  % -------- Judgements --------------------------------------------------
-
-  nonempty_finite_is_nonempty: JUDGEMENT
-    non_empty_finite_set SUBTYPE_OF (nonempty?[T])
-
-  finite_singleton: JUDGEMENT singleton(x) HAS_TYPE finite_set
-
-  finite_union: JUDGEMENT union(A, B) HAS_TYPE finite_set
-  finite_intersection1: JUDGEMENT intersection(S, A) HAS_TYPE finite_set
-  finite_intersection2: JUDGEMENT intersection(A, S) HAS_TYPE finite_set
-  finite_difference: JUDGEMENT difference(A, S) HAS_TYPE finite_set
-
-  nonempty_finite_union1: JUDGEMENT union(NA, B) HAS_TYPE non_empty_finite_set
-
-  nonempty_finite_union2: JUDGEMENT union(A, NB) HAS_TYPE non_empty_finite_set
-
-  nonempty_add_finite: JUDGEMENT add(x, A) HAS_TYPE non_empty_finite_set
-
-  finite_remove: JUDGEMENT remove(x, A) HAS_TYPE finite_set
-
-  finite_rest: JUDGEMENT rest(A) HAS_TYPE finite_set
-
-  finite_emptyset: JUDGEMENT emptyset HAS_TYPE finite_set
-
-  nonempty_singleton_finite: JUDGEMENT
-   singleton(x) HAS_TYPE non_empty_finite_set
-
-
-  % -------- Base type is finite -----------------------------------------
-
-  is_finite_type: bool = (EXISTS N, (g:[T -> below[N]]): injective?(g))
-
-  finite_full:         LEMMA is_finite_type IFF is_finite(fullset[T])
-  finite_type_set:     LEMMA is_finite_type IMPLIES is_finite(S)
-  finite_complement:   LEMMA is_finite_type IMPLIES is_finite(complement(S))
-
-END finite_sets_def
-
-
 nat_fun_props : THEORY
 %------------------------------------------------------------------------
 %      Author:  Bruno Dutertre 
@@ -3170,7 +3092,90 @@ BEGIN
 END nat_fun_props
 
 
-card_def[T: TYPE]: THEORY
+%------------------------------------------------------------------------
+%
+%  finite sets (basic definitions and closure properties)
+%  -----------------------------------------------------
+%      Authors:  Damir Jamsek
+%                Ricky W. Butler
+%                Sam Owre
+%                C. Michael Holloway
+%
+%  This theory defines finite sets as the subtype of sets[T] that
+%  satisfy the predicate "is_finite".  This predicate states
+%  that there is an injective function into below[N] for some N.
+%
+%------------------------------------------------------------------------
+%
+% finite_sets_def, card_def, and finite_sets are combined here to make
+% things a bit more backward compatible.  These were all originally
+% part of the finite_sets library.
+
+finite_sets[T: TYPE]: THEORY
+% beginning of original finite_sets_def theory
+ BEGIN
+  x, y, z: VAR T
+  s: VAR set[T]
+  N: VAR nat
+
+  is_finite(s): bool = (EXISTS N, (f: [(s) -> below[N]]):
+                          injective?(f)) 
+
+  finite_set: TYPE = (is_finite) CONTAINING emptyset[T]
+
+  non_empty_finite_set: TYPE = {s: finite_set | NOT empty?(s)}
+
+  is_finite_surj: LEMMA (EXISTS (N: nat), (f: [below[N] -> (s)]):
+                            surjective?(f)) IFF is_finite(s) 
+
+
+  A, B: VAR finite_set
+  NA, NB: VAR non_empty_finite_set
+
+  finite_subset:       LEMMA subset?(s,A) IMPLIES is_finite(s)
+  finite_intersection: LEMMA is_finite(intersection(A,B))
+  finite_add:          LEMMA is_finite(add(x,A))
+
+  % -------- Judgements --------------------------------------------------
+
+  nonempty_finite_is_nonempty: JUDGEMENT
+    non_empty_finite_set SUBTYPE_OF (nonempty?[T])
+
+  finite_singleton: JUDGEMENT singleton(x) HAS_TYPE finite_set
+
+  finite_union: JUDGEMENT union(A, B) HAS_TYPE finite_set
+  finite_intersection1: JUDGEMENT intersection(s, A) HAS_TYPE finite_set
+  finite_intersection2: JUDGEMENT intersection(A, s) HAS_TYPE finite_set
+  finite_difference: JUDGEMENT difference(A, s) HAS_TYPE finite_set
+
+  nonempty_finite_union1: JUDGEMENT union(NA, B) HAS_TYPE non_empty_finite_set
+
+  nonempty_finite_union2: JUDGEMENT union(A, NB) HAS_TYPE non_empty_finite_set
+
+  nonempty_add_finite: JUDGEMENT add(x, A) HAS_TYPE non_empty_finite_set
+
+  finite_remove: JUDGEMENT remove(x, A) HAS_TYPE finite_set
+
+  finite_rest: JUDGEMENT rest(A) HAS_TYPE finite_set
+
+  finite_emptyset: JUDGEMENT emptyset HAS_TYPE finite_set
+
+  nonempty_singleton_finite: JUDGEMENT
+   singleton(x) HAS_TYPE non_empty_finite_set
+
+
+  % -------- Base type is finite -----------------------------------------
+
+  is_finite_type: bool = (EXISTS N, (g:[T -> below[N]]): injective?(g))
+
+  finite_full:         LEMMA is_finite_type IFF is_finite(fullset[T])
+  finite_type_set:     LEMMA is_finite_type IMPLIES is_finite(s)
+  finite_complement:   LEMMA is_finite_type IMPLIES is_finite(complement(s))
+
+% end of original finite_sets_def
+
+% beginning of original card_def theory
+
 %------------------------------------------------------------------------
 %
 %  Fundamental definition of card
@@ -3179,11 +3184,8 @@ card_def[T: TYPE]: THEORY
 %                Ricky W. Butler
 %------------------------------------------------------------------------
 
-BEGIN
-
-  S, S2: VAR finite_set[T]
-  n,m: VAR nat
-  x: VAR T
+  S, S2: VAR finite_set
+  n, m: VAR nat
   p : VAR posnat
 
   inj_set(S): (nonempty?[nat]) = 
@@ -3215,16 +3217,9 @@ BEGIN
 
   card_def        : THEOREM card(S) = Card(S)  % But if you really need to
 
-END card_def
+% end of original card_def theory
 
-
-finite_sets[T: TYPE]: THEORY
-
-BEGIN
-
-  A, B, S: VAR finite_set[T]
-  x: VAR T
-  n: VAR nat
+% beginning of original finite_sets theory 
 
   card_emptyset   : THEOREM card(emptyset[T]) = 0
 
@@ -3276,7 +3271,6 @@ BEGIN
   card_intersection_le: THEOREM card(intersection(A,B)) <= card(A) AND
                               card(intersection(A,B)) <= card(B)
 
-  N: VAR nat
   card_bij        : THEOREM card(S) = N
                              IFF (EXISTS (f: [(S) -> below[N]]): bijective?(f))
 
