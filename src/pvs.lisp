@@ -2184,6 +2184,15 @@
 
 (defun get-parsed-theory (theoryref)
   (let ((mod (get-theory theoryref)))
+    (when (and mod
+	       (filename mod)
+	       (gethash (filename mod) *pvs-files*)
+	       (not (file-exists-p (make-specpath (filename mod)))))
+      (pvs-message "File ~a.pvs has disappeared!" (filename mod))
+      (remhash (filename mod) *pvs-files*)
+      (remhash (id mod) *pvs-modules*)
+      (delete-file-from-context (filename mod))
+      (setq mod nil))
     (cond ((and mod (gethash (id mod) *prelude*))
 	   mod)
 	  ((and mod (parsed? mod))
