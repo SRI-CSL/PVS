@@ -667,10 +667,10 @@
 
 (defmethod update-or-connective-occurs?* ((expr list) accum)
     (if (consp expr)
-      (update-or-connective-occurs?** (cdr expr)
+      (update-or-connective-occurs?* (cdr expr)
 			  (cons (car expr) accum))
       (if (consp accum)
-	  (update-or-connective-occurs?** (car accum)(cdr accum))
+	  (update-or-connective-occurs?* (car accum)(cdr accum))
 	  nil)))
 
 (defmethod update-or-connective-occurs?* ((expr binding-expr) accum)
