@@ -248,7 +248,8 @@ that gensubst does not try to pseudo-normalize inappropriately.")
 
 ;;; Prover-related variables
 
-(defvar *prover-lines* nil)
+(defvar *use-default-dp?* nil)
+(defvar *prover-print-lines* nil)
 (defvar *print-lines* nil)
 
 (defvar *context-modified* nil
