@@ -216,12 +216,6 @@ required a context.")
 (defmethod expand1* ((ex expr) def)
   def)
 
-(defmethod argument-application-number ((ex application) &optional (num 0))
-  (argument-application-number (operator ex) (1+ num)))
-
-(defmethod argument-application-number ((ex expr) &optional (num 0))
-  num)
-
 (defmethod lambda-binding-number ((ex lambda-expr) &optional (num 0))
   (lambda-binding-number (expression ex) (1+ num)))
 
@@ -2961,6 +2955,7 @@ required a context.")
     (set-assignment-arg-types* (cdr args-list) (cdr values) ex expected)))
 
 (defmethod set-assignment-arg-types* (args-list values ex (expected subtype))
+  (declare (ignore args-list values ex))
   (call-next-method))
 
 (defmethod set-assignment-arg-types* (args-list values ex (expected recordtype))

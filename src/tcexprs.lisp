@@ -343,7 +343,7 @@
 ;;; type that is available (see load-predefined-modules)
 
 (defmethod typecheck* ((expr number-expr) expected kind arguments)
-  (declare (ignore expected kind arguments))
+  (declare (ignore expected kind))
   ;;(assert (typep *number* 'type-expr))
   (let ((reses (resolve* expr 'expr arguments)))
     (when reses
@@ -1063,6 +1063,7 @@
 	 (cdr optypes) arg (nconc result argtypes)))))
 
 (defmethod get-possible-argument-types (optype arg)
+  (declare (ignore optype))
   (ptypes arg))
        
 (defmethod get-possible-argument-types (optype (arg tuple-expr))
