@@ -1,0 +1,639 @@
+\input texinfo   @c -*-texinfo-*-
+@c %**start of header
+@setfilename pvs3.0-release-notes.info
+@settitle PVS 3.0 Release Notes
+@setchapternewpage odd
+@paragraphindent 0
+@c %**end of header
+
+@ifinfo
+This file documents ...
+
+Copyright YEAR COPYRIGHT-OWNER
+
+Permission is granted to ...
+@end ifinfo
+
+@c  This title page illustrates only one of the
+@c  two methods of forming a title page.
+
+@titlepage
+@title PVS 3.0 release notes
+@author Sam Owre
+
+@end titlepage
+
+@node Top, Overview, (dir), (dir)
+
+@ifinfo
+
+The release notes contain the features, bug fixes, and
+incompatibilities of PVS version 3.0 over version 2.4.  Note that the
+release notes are now written in texinfo, and are thus available in
+Emacs info, HTML, Postscript, and PDF forms.
+
+@menu
+* Overview:: Overview
+* New Features:: New Features
+* Bug Fixes:: Bug Fixes
+* Incompatibilities:: Incompatibilities
+@end menu
+@end ifinfo
+
+@node    Overview,  New Features, Top,      Top
+@comment node-name, next,         previous, up
+@chapter Overview
+
+We are still working on updating the documentation, integration of the
+@uref{http://ics.csl.sri.com,ICS} decision procedures, and completing
+the validation tests, but we wanted to make it available so that
+others may try out some of the new features and provide feedback into
+the next release.  Please let us know of any bugs or suggestions you
+have by sending them to @uref{mailto:pvs-bugs@@csl.sri.com,
+@emph{pvs-bugs@@csl.sri.com}}
+
+You can download it @uref{download.html,here}.
+
+In addition to the usual bug fixes, there are quite a few changes to
+this release.  Most of these changes are backward compatible, but the
+new multiple proofs feature makes it difficult to run PVS 3.0 in a
+given context and then revert back to an earlier version.  For this
+reason we strongly suggest that you copy existing directories
+(especially the proof files) before running PVS 3.0 on existing
+specifications.
+
+@node    New Features, Bug Fixes, Overview, Top
+@comment node-name, next, previous, up
+@chapter New Features
+There are a number of new features in PVS 3.0.
+
+@menu
+* Allegro6.0:: Allegro 6.0 Port
+* Interpretations:: Theory Interpretations
+* Multiple Proofs:: Multiple Proofs
+* Library Support:: Describes the Improved Library Support
+* Cotuples:: Cotuples
+* Coinduction:: Coinductive Definitions
+* Datatype Updates:: Datatype Updates
+* Every relation:: Datatype every relation
+* Conversion Messages:: Conversion messages
+* More TCC information:: More TCC information
+* Numbers as constants:: Numbers as constants
+* Theory Search:: Theory search
+* Improved Decision Procedures:: Improved Existing (Shostak) Decision Procedures
+* ICS Integration:: New (ICS) Decision Procedures
+* LET Reduce:: LET Reduction Control
+* Prelude Changes:: Prelude Changes
+* Conversion Expressions:: Conversion Expressions
+@end menu
+
+
+@node    Allegro6.0, Interpretations, New Features, New Features
+@comment node-name,     next,           previous, up
+@section Allegro 6.2 port
+
+PVS 3.0 has been ported to the case-sensitive version of Allegro
+version 6.0.  This was done in order to be able to use the XML support
+provided by Allegro 6.0.  We plan to both write and read XML abstract
+syntax for PVS, which should make it easier to interact with other
+systems.
+
+Note: for the most part, you may continue to define pvs-strategies
+(and the files they load) as case insensitive, but in general this
+cannot always be done correctly, and it means that you cannot load
+such files directly at the lisp prompt.  If you suspect that your
+strategies are not being handled properly, try changing it to all
+lower case (except in specific cases), and see if that helps.  If not,
+send the strategies file to
+@uref{mailto:pvs-bugs@@csl-sri.com,pvs-bugs} and we'll fix it as
+quickly as we can.  Because there is no way to handle it robustly, and
+since case-sensitivity can actually be useful, in the future we may no
+longer support mixed cases in strategy files.
+
+@node    Interpretations, Multiple Proofs, Allegro6.0,      New Features
+@comment node-name,     next,           previous, up
+@section Theory Interpretations
+
+Theory interpretations are described fully in
+@uref{doc/interpretations.html,Theory Interpretations in PVS}
+
+@strong{NOTES:}
+@itemize @bullet
+@item
+This introduces one backward incompatible change; theory abbreviations
+such as
+@example
+foo: THEORY = bar[int, 3]
+@end example
+should be changed to the new form
+@example
+IMPORTING bar[int, 3] AS foo
+@end example
+Note that `@code{AS}' is a new keyword, and may cause parse errors
+where none existed before.
+
+@item
+The stacks example doesn't work as given; in particular, the mappings
+for @code{push}, @code{top}, and @code{pop} should be changed to 
+@example
+push := LAMBDA (x: t, A: E[cstack, ce]):
+          equiv_class[cstack,ce](cpush(x)(rep(A))),
+top := LAMBDA (A: E[cstack, ce] | cnonempty?(rep(A))): ctop(rep(A)),
+pop := LAMBDA (A: E[cstack, ce] | cnonempty?(rep(A))):
+          equiv_class[cstack,ce](cpop(rep(A))) 
+@end example
+
+Otherwise unprovable TCCs result (e.g., every stack is nonempty).
+@end itemize
+
+@node    Multiple Proofs, Library Support, Interpretations, New Features
+@comment node-name,     next,           previous, up
+@section Multiple Proofs
+
+
+PVS now supports multiple proofs for a given formula.  When a proof
+attempt is completed, either by quitting or successfully completing the
+proof, the proof is checked for changes.  If any changes have occured, the
+user is queried about whether to save the proof, and whether to overwrite
+the current proof or to create a new proof.  If a new proof is created,
+the user is prompted for a proof identifier and description.
+
+   In addition to a proof identifier, description, and proof script, the proof
+objects contain the status, the date of creation, the date last run, and
+the run time.
+
+   Every formula that has proofs has a default proof, which is
+used for most of the existing commands, such as prove, prove-theory,
+and status-proofchain.  Whenever a proof is saved, it automatically
+becomes the default.
+
+   Three new Emacs commands allow for browsing and manipulating multiple
+proofs: @code{display-proofs-formula}, @code{display-proofs-theory},
+and @code{display-proofs-pvs-file}.  These commands all pop up buffers
+with a table of proofs.  The default proof is marked with a `@code{+}'.
+Within such buffers, the following keys have the following effects.
+
+@table @kbd
+@item Key
+Effect
+@item c
+Change description: add or change the description for the proof
+@item d
+Default proof: set the default to the specified proof
+@item e
+Edit proof: bring up a Proof buffer for the specified proof; the proof
+may then be applied to other formulas
+@item p
+Prove: rerun the specified proof (makes it the default)
+@item q
+Quit: exit the Proof buffer
+@item r
+Rename proof: rename the specified proof
+@item s
+Show proof: Show the specified proof in a Proof:@emph{id} buffer
+@item DEL
+Delete proof: delete the specified proof from the formula
+@end table
+
+   
+@node    Library Support, Cotuples, Multiple Proofs,      New Features
+@comment node-name,     next,           previous, up
+@section Better Library Support
+
+   PVS now uses the @code{PVS_LIBRARY_PATH} environment variable to look
+   for library pathnames, allowing libraries to be specified as simple
+   (subdirectory) names.  This is an extension of the way, for example,
+   the @code{finite_sets} library is found relative to the PVS
+   installation path - in fact it is implicitly appended to the end the
+   @code{PVS_LIBRARY_PATH}.
+
+   The @code{.pvscontext} file stores, amongst other things, library
+   dependencies.  Any library found as a subdirectory of a path in the
+   @code{PVS_LIBRARY_PATH} is stored as simply the subdirectory name.
+   Thus if the @code{.pvscontext} file is included in a tar file, it may
+   be untarred on a different machine as long as the needed libraries
+   may be found in the @code{PVS_LIBRARY_PATH}.  This makes libraries
+   much more portable.
+
+   In addition, the @code{load-prelude-library} command now
+   automatically loads the @code{pvs-lib.el} file, if it exists, into
+   Emacs and the @code{pvs-lib.lisp} file, if it exists, into lisp,
+   allowing the library to add new features, e.g., key-bindings.  Note
+   that the @code{pvs-lib.lisp} file is not needed for new strategies,
+   which should go into the @code{pvs-strategies} file as usual.  The
+   difference is that the @code{pvs-strategies} file  is only loaded
+   when a proof is started, and it may be desirable to have some lisp code
+   that is loaded when the library is, i.e., to support some new Emacs
+   key-bindings.
+
+   The @code{PVS_LIBRARY_PATH} is a colon-separated list of paths, and
+   the @code{lib} subdirectory of the PVS path is added implicitly at
+   the end.  Note that the paths given in the @code{PVS_LIBRARY_PATH}
+   are expected to have subdirectories, e.g., if you have put Ben Di Vito's
+   @uref{http://shemesh.larc.nasa.gov/people/bld/manip.html, Manip-package}
+   in @code{~/pvs-libs/Manip-1.0}, then your @code{PVS_LIBRARY_PATH}
+   should only include @code{~/pvs-libs}, not
+   @code{~/pvs-libs/Manip-1.0}.
+
+   If the @code{pvs-libs.lisp} file needs to load other files in other
+libraries, use @code{libload}.  For example, C@'esar Mu@~noz's
+@uref{http://www.icase.edu./~munoz/Field/field.html,Field Package}
+loads the @code{Manip-package}
+using @code{(libload "Manip-1.0/manip-strategies")}
+   
+@node    Cotuples, Coinduction, Library Support,      New Features
+@comment node-name,     next,           previous, up
+@section Cotuples
+
+PVS now supports cotuple types (also known as coproduct or sum types)
+directly.  The syntax is similar to that for tuple types, but with the
+`@code{,}' replaced with a `@code{+}'.  For example,
+   
+@example
+cT: TYPE = [int + bool + [int -> int]]
+@end example
+
+Associated with a cotuple type are injections @code{IN_}@emph{i},
+predicates @code{IN?_}@emph{i}, and extractions @code{OUT_}@emph{i}
+(none of these is case-sensitive).  For example, in this case we have
+   
+@example
+IN_1:  [int -> cT]
+IN?_1: [cT -> bool]
+OUT_1: [(IN?_1) -> int]
+@end example
+
+Thus @code{IN_2(true)} creates a @code{cT} element, and an arbitrary
+@code{cT} element @code{c} is processed using @code{CASES}, e.g.,
+
+@example
+CASES c OF
+  IN_1(i): i + 1,
+  IN_2(b): IF b THEN 1 ELSE 0 ENDIF,
+  IN_3(f): f(0)
+ENDCASES
+@end example
+
+This is very similar to using the @code{union} datatype defined in the
+prelude, but allows for any number of arguments, and doesn't generate
+a datatype theory.
+
+Typechecking expressions such as @code{IN_1(3)} requires that the
+context be known.  This is similar to the problem of a standalone
+@code{PROJ_1}, and both are now supported:
+	 
+@example
+F: [cT -> bool]
+FF: FORMULA F(IN_1(3))
+G: [[int -> [int, bool, [int -> int]]] -> bool]
+GG: FORMULA G(PROJ_1)
+@end example
+
+This means it is easy to write terms that are ambiguous:
+	 
+@example
+HH: FORMULA IN_1(3) = IN_1(4)
+HH: FORMULA PROJ_1 = PROJ_1
+@end example
+
+This can be disambiguated by providing the type explicitly:
+	 
+@example
+HH: FORMULA IN_1[cT](3) = IN_1(4)
+HH: FORMULA PROJ_1 = PROJ_1[[int, int]]
+@end example
+
+This uses the same syntax as for actual parameters, but doesn't mean
+the same thing, as the projections, injections, etc., are builtin, and
+not provided by any theories.  Note that coercions don't work in this
+case, as @code{PROJ_1::[[int, int] -> int]} is the same as
+
+@example
+(LAMBDA (x: [[int, int] -> int]): x)(PROJ_1)
+@end example
+
+and not
+
+@example
+LAMBDA (x: [int, int]): PROJ_1(x)
+@end example
+
+The prover has been updated to handle extensionality and reduction rules
+as expected.
+   
+@node    Coinduction, Datatype Updates, Cotuples,      New Features
+@comment node-name,     next,           previous, up
+@section Coinduction
+
+Coinductive definitions are now supported.  They are like inductive
+definitions, but introduced with the keyword `@code{COINDUCTIVE}', and
+generate the greatest fixed point.
+
+   
+@node    Datatype Updates, Every relation, Coinduction,      New Features
+@comment node-name,     next,           previous, up
+@section Datatype Updates
+
+Update expressions now work on datatypes, in much the same way they work
+on records.  For example, if @code{lst: list[nat]}, then @code{lst WITH
+[`car := 0]} returns the list with first element 0, and the rest the
+same as the cdr of @code{lst}.  In this case there is also a TCC of the
+form @code{cons?(lst)}, as it makes no sense to set the car of
+@code{null}.
+
+Complex datatypes with overloaded accessors and dependencies are also
+handled.  For example,
+
+@example
+dt: DATATYPE
+BEGIN
+ c0: c0?
+ c1(a: (even?), b: int): c1?
+ c2(a: nat, c: int): c2?
+END dt
+
+datatype_update: THEORY
+BEGIN
+ IMPORTING dt
+ x: dt
+ y: int
+ f: dt = x WITH [a := y]
+END datatype_update
+@end example
+
+This generates the TCC
+
+@example
+f_TCC1: OBLIGATION
+  (c1?(x) AND IF c1?(x) THEN even?(y) ELSE y >= 0 ENDIF) OR
+   (c2?(x) AND IF c1?(x) THEN even?(y) ELSE y >= 0 ENDIF);
+@end example
+
+
+   
+@node    Every relation, Conversion Messages, Datatype Updates,      New Features
+@comment node-name,     next,           previous, up
+@section Every Relation
+If a top level datatype generates a map theory, the theory also contains
+an every relation.  For lists, for example, it is defined as
+
+@example
+  every(R: [[T, T1] -> boolean])(x: list[T], y: list[T1]):  boolean =
+      null?(x) AND null?(y) OR
+       cons?(x) AND
+        cons?(y) AND R(car(x), car(y)) AND every(R)(cdr(x), cdr(y));
+@end example
+
+Thus, for example, @code{every(<)(x, y: list[nat])} returns true if the
+lists x and y are of the same length, and each element of @code{x} is
+less than the corresponding element of @code{y}.
+
+@node    Conversion Messages, More TCC information, Every relation, New Features
+@comment node-name,     next,           previous, up
+@section Conversion Messages
+
+Messages related to conversions have been separated out, so that if any
+are generated a message is produced such as
+@example
+po_lems typechecked in 9.56s: 10 TCCs, 0 proved, 3 subsumed,
+                    7 unproved; 4 conversions; 2 warnings; 3 msgs
+@end example
+In addition, the commands @code{M-x show-theory-conversions} and @code{M-x
+show-pvs-file-conversions} have been added to view the conversions.
+
+@node    More TCC information, Numbers as constants,  Conversion Messages, New Features
+@comment node-name,     next,           previous, up
+@section More TCC Information
+Trivial TCCs of the form @code{x /= 0 IMPLIES x /= 0} and @code{45 <
+256} used to quietly be suppressed.  Now they are added to the
+messages associated with a theory, along with subsumed TCCs.  In addition,
+both trivial and subsumed TCCs are now displayed in commented form in the
+show-tccs buffer.
+
+
+@node    Numbers as constants, Theory Search, More TCC information, New Features
+@comment node-name,     next,           previous, up
+@section Numbers as Constants
+Numbers may now be declared as constants, e.g.,
+
+@example
+42: [int -> int] = LAMBDA (x: int): 42
+@end example
+
+This is most useful in defining algebraic structures (groups, rings,
+etc.), where overloading 0 and 1 is common mathematical practice.
+It's usually a bad idea to declare a constant to be of a number type,
+e.g.,
+
+@example
+42: int = 57
+@end example
+
+Even if the typechecker doesn't get confused, most users would.
+
+
+@node    Theory Search, Improved Decision Procedures, Numbers as constants, New Features
+@comment node-name,     next,           previous, up
+@section Theory Search
+
+   When the parser encounters an importing for a theory @code{foo} that
+has not yet been typechecked, it looks first in the @code{.pvscontext}
+file, then looks for @code{foo.pvs}. In previous versions, if the theory
+wasn't found at this point an error would result.  The problem is that
+file names often don't match the theory names, either because a given file
+may have multiple theories, or a naming convention (e.g., the file is
+lower case, but theories are capitalized)
+
+   Now the system will parse every @code{.pvs} file in the current
+context, and if there is only one file with that theory id in it, it will
+be used.  If multiple files are found, a message is produced indicating
+which files contain a theory of that name, so that one of those may be
+selected and typechecked.
+
+@strong{NOTES:}
+   
+@itemize @bullet   
+@item
+Once a file has been typechecked, the @code{.pvscontext} is
+updated accordingly, and this check is no longer needed.
+@item
+@code{.pvs} files that contain parse errors will be ignored.
+@end itemize
+
+
+@node    Improved Decision Procedures, ICS Integration, Theory Search, New Features
+@comment node-name,     next,           previous, up
+@section Improved Decision Procedures
+   The existing (named Shostak, for the original author) decision
+procedures have been made more complete.  Note that this sometimes breaks
+existing proofs, though they are generally easy to repair, especially if
+the proof is rerun in parallel with the older PVS version.  If you have
+difficulties repairing your proofs, please let us know.
+
+
+@node    ICS Integration, LET Reduce, Improved Decision Procedures, New Features
+@comment node-name,     next,           previous, up
+@section ICS Integration
+
+   The Linux version of PVS 3.0 now has an alpha test integration of the
+@uref{http://ics.csl.sri.com",ICS decision procedure}.  Use @code{M-x
+set-decision-procedure ics} to try it out.
+
+
+@node    LET Reduce, Prelude Changes, ICS Integration,      New Features
+@comment node-name,     next,           previous, up
+@section LET Reduce
+   The @code{BETA} and @code{SIMPLIFY} rules, and the @code{ASSERT},
+@code{BASH}, @code{REDUCE}, @code{SMASH}, @code{GRIND},
+@code{GROUND}, @code{USE}, and @code{LAZY-GRIND} strategies now all
+take an optional @code{LET-REDUCE?} flag.  It defaults to @code{t},
+and if set to @code{nil} keeps @code{LET} expressions from being
+reduced.
+
+@node    Prelude Changes, New Theories, LET Reduce, New Features
+@comment node-name, next, previous, up
+@section Prelude Changes
+
+@menu
+* New Theories:: New Theories
+* New Declarations:: New Declarations
+* Modified Declarations:: Modified Declarations
+@end menu
+
+@node New Theories, New Declarations, Prelude Changes, Prelude Changes
+@subsection New Theories
+@table @code
+@item restrict_props, extend_props
+Provides lemmas that @code{restrict} and @code{extend} are identities when the
+subtype equals the supertype.
+@item indexed_sets
+Provides indexed union and intersetion operations and lemmas.
+@item number_fields
+The @code{real} theory was split into two, with @code{number_fields}
+providing the field axioms and the subtype @code{reals} providing the
+ordering axioms.  This allows for theories such as complex numbers to
+be inserted in between, thus allowing reals to be a subtype of complex
+numbers without having to encode them.
+@item nat_fun_props
+Defines special properties of injective/surgective functions over
+nats, provided by Bruno Dutertre.
+@item finite_sets
+combination of @code{finite_sets_def} (which was in the 2.4 prelude),
+@code{card_def}, and @code{finite_sets} (from the finite_sets library)
+@item bitvectors:
+To provide support for the bitvector theory built in  to ICS, the
+following theories were moved from the bitvectors library to the prelude:
+@code{bit}, @code{bv}, @code{exp2}, @code{bv_cnv},
+@code{bv_concat_def}, @code{bv_bitwise}, @code{bv_nat},
+@code{empty_bv}, and @code{bv_caret}.
+@item finite_sets_of_sets
+Proves that the powerset of a finite set is finite, and provides the
+corresponding judgement.
+@item equivalence classes
+The following theories were derived from those provided by Bart Jacobs:
+@code{EquivalenceClosure}, @code{QuotientDefinition},
+@code{KernelDefinition}, @code{QuotientKernelProperties},
+@code{QuotientSubDefinition}, @code{QuotientExtensionProperties},
+@code{QuotientDistributive}, and @code{QuotientIteration}.
+@item Partial Functions
+Bart Jacobs also provided definitions for partial functions:
+@code{PartialFunctionDefinitions} and
+@code{PartialFunctionComposition}.
+@end table
+
+@node New Declarations, Modified Declarations, New Theories, Prelude Changes
+@subsection New Declarations
+The following declarations have been added to the prelude:
+@code{relations.equivalence type}, @code{sets.setofsets},
+@code{sets.powerset}, @code{sets.Union}, @code{sets.Intersection},
+@code{sets_lemmas.subset_powerset}, @code{sets_lemmas.empty_powerset},
+@code{sets_lemmas.nonempty_powerset}, @code{real_props.div_cancel4},
+and @code{rational_props.rational_pred_ax2}.
+
+@node Modified Declarations, Conversion Expressions, New Declarations, Prelude Changes
+@subsection Modified Declarations
+The following declarations have been modified.
+@code{finite_sets.is_finite_surj} was turned into an IFF and extended
+from posnat to nat.
+
+The fixpoint declarations of the @code{mucalculus} theory have been
+restricted to monotonic predicates.  This affects the declarations
+@code{fixpoint?}, @code{lfp}, @code{mu}, @code{lfp?}, @code{gfp},
+@code{nu}, and @code{gfp?}.
+
+@node Conversion Expressions,  , Modified Declarations, New Features
+@section Conversion Expressions
+
+Conversions may now be any function valued expression, for example,
+@example
+CONVERSION+ EquivClass(ce), lift(ce), rep(ce)
+@end example
+This introduces a possible incompatibility if the following
+declaration is for an infix operator.  In that case the conversion
+must be followed with a semi-colon '@code{;}'.
+
+@node Bug Fixes, Incompatibilities, New Features, Top
+@chapter Bug Fixes
+Although there are still a number of bugs still outstanding, a large
+number of bugs have been fixed in this release.  All those in the
+@uref{http://pvs.csl.sri.com/cgi-bin/pvs/pvs-bug-list/?bugs=open&bugs=analyzed,
+pvs-bugs list} that are marked as analyzed have been fixed, at least
+for the specific specs that caused the bugs.
+
+@node Incompatibilities, , Bug Fixes, Top
+@chapter Incompatibilities
+Most of these are covered elsewhere, they are collected here for easy
+reference.
+
+@section Improved Decision Procedures
+The decision procedures are more complete.  Though this is usually a
+good thing, some existing proofs may fail.  For example, a given
+auto-rewrite may have worked in the past, but now the key term has
+been simplified and the rewrite no longer matches.
+
+@section Prelude Changes
+These are given in @xref{Prelude Changes}.  Theory identifiers used in
+the prelude may not be used for library or user theories, some
+existing theories may need to be adjusted.
+
+The theories @code{finite_sets}, @code{finite_sets_def}, and
+@code{card_def} were once a part of the @code{finite_sets} library,
+but have been merged into a single @code{finite_sets} theory and moved
+to the prelude.  This means that the library references such as
+@example
+IMPORTING finite_sets@@finite_sets
+IMPORTING fsets@@card_def
+@end example
+must be changed.  In the first case just drop the prefix, drop the
+prefix and change @code{card_def} to @code{finite_sets} in the second.
+
+The @code{reals} theory was split in two, separating out the field
+axioms into the @code{number_fields} theory.  There is the possibility
+that proofs could fail because of adjustments related to this, though
+this did not show up in our validations.
+
+@section Theory Abbreviations
+Theory abbreviations such as
+@example
+foo: THEORY = bar[int, 3]
+@end example
+should be changed to the new form
+@example
+IMPORTING bar[int, 3] AS foo
+@end example
+Note that `@code{AS}' is a new keyword, and may cause parse errors
+where none existed before.
+
+@section Conversion Expressions
+Since conversions may now be arbitrary function-valued expressions, if
+the declaration following is an infix operator it leads to ambiguity.
+In that case the conversion must be followed with a semi-colon
+'@code{;}'.
+
+@iftex
+@sp 1
+@end iftex
+
+@summarycontents
+@contents
+@bye
