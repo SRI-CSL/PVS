@@ -576,10 +576,9 @@
   ;(connective-occurs? (expression expr))
   )
 
-(defmethod connective-occurs? ;;NSH(5.13.97) needed for updates
-    ;;or the translations get HUGE.
+(defmethod connective-occurs? 
     ((expr update-expr))
-  T)
+  NIL);;NSH(5/8/99): update-or-connective-occurs? is T on updates.
 
 (defmethod connective-occurs? ((expr expr))
   NIL)
