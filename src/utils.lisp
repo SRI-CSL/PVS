@@ -21,6 +21,35 @@
   (list (line-begin place) (col-begin place)
 	(line-end place) (col-end place)))
 
+#+lucid
+(defmethod copy ((ht hash-table) &rest args)
+  (let ((new-ht (make-hash-table :test (hash-table-test ht))))
+    (maphash #'(lambda (id data)
+		 (setf (gethash id new-ht) data))
+	     ht)
+    new-ht))
+
+#-(or allegro lucid)
+(defmethod copy (obj &rest args)
+  (if (typep obj 'hash-table)
+      (let ((new-ht (make-hash-table :test (hash-table-test obj))))
+	(maphash #'(lambda (id data)
+		     (setf (gethash id new-ht) data))
+		 obj)
+	new-ht)
+      (error "copy called for unknown type: ~a" (type-of obj))))
+
+#+allegro
+(defmethod copy ((ht hash-table) &rest args)
+  (let* ((test (hash-table-test ht))
+	 (new-ht (if (memq test '(eq eql equal equalp))
+		     (make-hash-table :test test)
+		     (make-hash-table :test test :hash-function 'pvs-sxhash))))
+    (maphash #'(lambda (id data)
+		 (setf (gethash id new-ht) data))
+	     ht)
+    new-ht))
+
 
 ;;; The following allows slot-exists-p to be called on anything.
 ;#+gcl
