@@ -1208,7 +1208,8 @@
 	       (let* ((*generate-tccs* 'none)
 		      (narg (with-no-type-errors
 			     (typecheck* (copy-untyped arg) atype nil nil))))
-		 (when narg
+		 (when (and narg
+			    (compatible? (type narg) (type domain)))
 		   #+pvsdebug (assert (fully-typed? narg))
 		   (substit range (acons domain narg nil)))))))))
 
