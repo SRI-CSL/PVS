@@ -359,6 +359,7 @@
 	  ((and (typep oper 'name-expr)
 		(accessor? oper)
 		(typep arg 'application)
+		(typep (operator arg) 'name-expr)
 		(member (operator arg) (constructor oper) :test #'same-id))
 	   (let ((accessors (accessors (operator arg))))
 	     (if (cdr accessors)
