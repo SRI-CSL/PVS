@@ -6,7 +6,8 @@
 			  copy?
 			  (if-match best)
 			  complete?
-			  (relativize? T))
+			  relativize?
+			  simultaneous?)
   (let ((sforms (s-forms (current-goal *ps*)))
 	(inst-sforms (gather-seq sforms fnums nil
 				 (compose #'essentially-existential? #'formula)))
@@ -21,16 +22,15 @@
 						 :test #'tc-eq))
 			    (mapcar #'formula
 			      (select-seq sforms where))))
-	    (rule (ignore-errors
-	                (construct-inst-rule inst-fnums
-				             subst
-				             inst-fmlas
-				             where-fmlas
-				             if-match
-				             copy?
-				             complete?
-				             relativize?
-				             nil))))
+	    (rule (construct-inst-rule inst-fnums
+				       subst
+				       inst-fmlas
+				       where-fmlas
+				       if-match
+				       copy?
+				       complete?
+				       relativize?
+				       simultaneous?)))
 	(if rule rule
 	    (skip-msg "No suitable instantiation found")))))
   "Tries to find instantiations for the toplevel, existential strength
@@ -62,53 +62,93 @@
 ;;   (positive) formulas (conclusions)
 
 (defun construct-inst-rule (fnums initial-subst inst-fmlas where-fmlas
-				  if-match copy? complete? relativize? verbose? &optional state)
-   (let ((*start-state* (or state
-			    *init-dp-state*          ; skip *dp-state*
-			    (dp::null-single-cong-state)))
-	 (*complete* complete?)
+				  if-match copy? complete? relativize? simultaneous?)
+   (let ((*complete* complete?)
 	 (*relativize* relativize?)
-	 (*verbose* verbose?))
-     (declare (special *start-state*)
-	      (special *complete*)
+	 (*verbose* nil)
+	 (*if-match* if-match)
+	 (*copy* copy?)
+	 (*current-context* (copy-context *current-context*)))
+     (declare (special *complete*)
 	      (special *relativize*)
-	      (special *verbose*))
-     (multiple-value-bind (list-of-toplevel-bndngs bodies renamings)
-	 (destructure-inst-fmlas inst-fmlas initial-subst)
-       (setf *bodies* bodies)
-       (let ((lvars (collect-vars renamings))
-	     (all-bndngs (reduce #'append list-of-toplevel-bndngs))
-	     (fmlas (union bodies where-fmlas :test #'tc-eq)))
-	 (let ((*bound-variables* (append all-bndngs *bound-variables*)))
-	   (declare (special *bound-variables*))
-	   (if (null lvars)
-	       (inst!-rule-top fnums list-of-toplevel-bndngs (list renamings) renamings copy? if-match)
-	       (multiple-value-bind (trms new-lvars new-renamings)
-		   (herbrandize fmlas lvars renamings 'T)
-		 (declare (ignore new-renamings)
-			  (ignore new-lvars))
-		 (let ((score-substs (dp::gensubsts lvars trms *verbose*)))
-		   (if (null score-substs) nil
-		       (let ((substs (choose-substs score-substs if-match)))
-			 (inst!-rule-top fnums list-of-toplevel-bndngs substs renamings copy? if-match)))))))))))
+	      (special *verbose*)
+	      (special *if-match*)
+	      (special *copy*)
+	      (special *current-context*))
+     (let ((new-where-fmlas (remove-if #'(lambda (fmla)
+					   (or (forall-expr? fmla)
+					       (and (negation? fmla) (exists-expr? fmla))))
+			      where-fmlas)))
+       (if simultaneous?
+	   (construct-inst-rule* fnums initial-subst inst-fmlas new-where-fmlas)
+	 (construct-inst-rule1 fnums initial-subst inst-fmlas new-where-fmlas)))))
+
+(defun construct-inst-rule1 (fnums initial-subst inst-fmlas where-fmlas)
+  "Try to instantiate one-by-one until one is successful."
+  (if (or (null fnums) (null inst-fmlas)) nil
+     (let ((result (construct-inst-rule* (list (car fnums))
+					 initial-subst
+					 (list (car inst-fmlas))
+					 where-fmlas)))
+       (or result (construct-inst-rule1 (cdr fnums)
+					initial-subst
+					(cdr inst-fmlas)
+					where-fmlas)))))
+
+(defun construct-inst-rule* (fnums initial-subst inst-fmlas where-fmlas)
+  (multiple-value-bind (list-of-toplevel-bndngs bodies renamings)
+      (destructure-inst-fmlas inst-fmlas initial-subst)
+    (let* ((lvars (collect-vars renamings))
+	   (all-bndngs (reduce #'append list-of-toplevel-bndngs))
+	   (fmlas (union bodies where-fmlas :test #'tc-eq)))
+      (if (null lvars)
+	  (inst!-rule-top fnums list-of-toplevel-bndngs (list renamings) renamings
+			  *copy* *if-match*)
+	  (multiple-value-bind (trms new-lvars new-renamings)
+	      (herbrandize fmlas lvars renamings 'T nil)
+	    (declare (ignore new-renamings)
+		     (ignore new-lvars))
+	    (let ((score-substs (gensubsts lvars trms)))
+	      (if (null score-substs) nil
+		  (let ((substs (choose-substs score-substs *if-match*)))
+		    (inst!-rule-top fnums list-of-toplevel-bndngs substs renamings
+				    *copy* *if-match*)))))))))
+
+(defun gensubsts (lvars fmlas)
+  (let ((*translate-rewrite-rule* 'T))  ; translate variables  
+    (declare (special *translate-rewrite-rules*))
+    (let ((state (or ; *dp-state*
+		     *init-dp-state*         
+		    (dp::null-single-cong-state))))
+      (translate-score-substs (dp::gensubsts (top-translate-to-dc lvars)
+					     (top-translate-to-dc fmlas)
+					     state)))))
+
+(defun translate-score-substs (score-substs &optional acc)
+  (if (null score-substs) (nreverse acc)
+    (let ((score (dp::score-of (car score-substs)))
+	  (subst (loop for (x . e) in (dp::substitution-of (car score-substs))
+		    collect (cons (translate-from-dc x) (translate-from-dc e)))))
+      (translate-score-substs (cdr score-substs)
+			      (cons (cons score subst) acc)))))
+      
 
 (defun collect-vars (renamings)
   "Lists all the variables in the range of the substitution"
   (if (null renamings) nil
       (let ((assoc (car renamings)))
-	(if (dp::dp-variable-p (cdr assoc))
+	(if (variable? (cdr assoc))
 	    (adjoin (cdr assoc) (collect-vars (cdr renamings)))
 	  (collect-vars (cdr renamings))))))
   
 (defun destructure-inst-fmlas (fmlas initial-subst &optional list-of-bndngs bodies renamings)
   (assert (listp fmlas))
   (if (null fmlas)
-      (values (reverse list-of-bndngs) (reverse bodies) renamings)
+      (values (nreverse list-of-bndngs) (nreverse bodies) renamings)
       (multiple-value-bind (bndngs body)
 	  (destructure-toplevel-existential (car fmlas))
 	(multiple-value-bind (assocs new-initial-subst)
-	    (let ((*bound-variables* (append bndngs *bound-variables*)))
-	      (construct-assocs bndngs initial-subst))
+	    (construct-assocs bndngs initial-subst)
 	  (destructure-inst-fmlas (cdr fmlas)
 				  new-initial-subst
 				  (cons bndngs list-of-bndngs)
@@ -132,27 +172,23 @@
    the initial substitution."
   (if (null bndngs)
       (values (reverse assocs) subst)
-      (let* ((bndng (car bndngs))
-	     (x1    (top-translate-to-dc bndng)))
+      (let ((bndng (car bndngs)))
 	(multiple-value-bind (trm1 subst1)
 	    (cond ((< (length subst) 2)
-		   (values (mk-new-var bndng) nil))
+		   (values (fresh-variable bndng) nil))
 		  ((string= (symbol-name (id bndng)) (first subst))
 		   (let ((trm (ignore-errors
 				(pc-typecheck (pc-parse (second subst) 'expr)))))
-		     (values (or (and trm
-				      (top-translate-to-dc trm))
-				 (mk-new-var bndng))
+		     (values (or trm
+				 (fresh-variable bndng))
 			     (nthcdr 2 subst))))
-		  (t (values (mk-new-var bndng) subst)))
-	  (construct-assocs (cdr bndngs) subst1 (acons x1 trm1 assocs))))))
+		  (t (values (fresh-variable bndng) subst)))
+	  (construct-assocs (cdr bndngs) subst1 (acons bndng trm1 assocs))))))
 			
 (defun choose-substs (score-substs if-match)
   (if (or (eq if-match :best) (eq if-match 'best))
       (list (choose-best-subst score-substs))
-      (mapcar #'(lambda (score-subst)
-		  (dp::substitution-of score-subst))
-	score-substs)))
+    (mapcar #'cdr score-substs)))
 
 (defun choose-best-subst (score-substs &optional (best-score 0) best-subst)
   (declare (special *verbose*))
@@ -160,15 +196,15 @@
 	 (when *verbose*
 	   (format t "~%Top score: ~a" best-score))
 	 best-subst)
-	(t (let ((current-score  (dp::score-of (car score-substs)))
-		 (current-subst (dp::substitution-of (car score-substs))))
+	(t (destructuring-bind (current-score . current-subst)
+	       (car score-substs)
 	     (multiple-value-bind (new-score new-subst)
 		 (if (or (and (> (length current-subst)
 				 (length best-subst))
 			      (>= current-score best-score))
 		         (> current-score best-score))
 		     (values current-score current-subst)
-		   (values best-score best-subst))
+		     (values best-score best-subst))
 	       (choose-best-subst (cdr score-substs) new-score new-subst))))))
     
 ;; Construct a PVS rule from instantiations of the form;
@@ -180,7 +216,9 @@
   (let ((*renamings* renamings)
 	(*substs* substs)
 	(*copy* copy?)
-	(*if-match* (if (or (eq if-match :best) (eq if-match 'best)) nil if-match)))
+	(*if-match* (if (or (eq if-match :best)
+			    (eq if-match 'best)) nil
+			   if-match)))
     (declare (special *renamings*)
 	     (special *substs*)
 	     (special *copy*)
@@ -196,13 +234,12 @@
 (defun inst!-rule (fnum bndngs)
   (declare (special *copy*) (special *if-match*))
   (let* ((insts (construct-insts bndngs))
-	 (insts1 (if (and
-		         (not (eq *if-match* 'all))
-		         (listp insts)          ; patch
-			 (= (length insts) 1)
-			 (listp (first insts))
-			 (= (length (first insts)) 1)
-			 (listp (first (first insts))))
+	 (insts1 (if (and (not (eq *if-match* 'all))
+			  (listp insts)          ; patch
+			  (= (length insts) 1)
+			  (listp (first insts))
+			  (= (length (first insts)) 1)
+			  (listp (first (first insts))))
 		    (first insts)
 		  insts)))
     (display-substitution fnum bndngs insts1)
@@ -215,8 +252,7 @@
   (declare (special *substs*))
   (cond ((= (length *substs*) 0)
          (let ((inst (construct-inst bndngs nil)))
-	   (and inst
-		(list (list inst)))))
+	   (and inst (list (list inst)))))
 	((= (length *substs*) 1)
 	 (let ((inst (construct-inst bndngs (first *substs*))))
 	   (and inst (list (list inst)))))
@@ -244,18 +280,15 @@
 (defun construct-inst* (bndngs subst)
   (declare (special *renamings*))
   (loop for bndng in bndngs
-	collect (let ((pair (assoc (top-translate-to-dc bndng) *renamings*)))
-		  (if (not pair) "_"
-		      (let ((trm (cdr pair)))
-			(cond ((null (dp::vars-of trm)) ; from initial substitution
-			       (translate-from-dc trm))
-			      ((dp::dp-variable-p trm)  ; from computes substitution
-			       (let ((pair (assoc trm subst)))
-				 (or (and pair
-					  (or (translate-from-dc (cdr pair))
-					       "_"))
-				     "_")))
-			      (t "_")))))))
+     collect (let ((renaming (cdr (assoc bndng *renamings* :test #'tc-eq))))
+	       (cond ((null renaming)
+		      "_")
+		     ((null (freevars renaming))   ; from initial substitution
+		      renaming)
+		     ((variable? renaming)
+		      (let ((expr (cdr (assoc renaming subst :test #'tc-eq))))
+			(or expr "_")))
+		     (t "_")))))
 
 (defun complete-inst? (inst)
   (not (incomplete-inst? inst)))

@@ -24,22 +24,26 @@
 
 ;; Top-Level
 
-(defun gensubsts (vars trms &optional verbose?)
+(defun gensubsts (vars trms state)
   "Generate a list of substitutions (for all variables in vars)
    together with scores"
   #+dbg(assert (every #'dp-variable-p vars))
   #+dbg(assert (every #'node-p trms))
+  #+dbg(assert (not (null state)))
   (let ((*lvars* vars)
-	(*verbose* verbose?))
+	(*verbose* nil))
     (declare (special *lvars*)
 	     (special *verbose*))
+    (E-unify-init)
     (multiple-value-bind (ha hn ca cn)
 	(flatten-seq () () () () () trms)
-      (let ((sequents (split1 ha hn ca cn)))
-	(display-sequents sequents)
-        #+dbg(assert (every #'sequent? sequents))
-	(filter-substs
-	 (gensubsts-sequents sequents))))))
+      (protecting-dp-state ((*state* state))
+        ; (add-eqns (remove-if-not #'equality-p ha) *state*)
+	(let ((sequents (split1 ha hn ca cn)))
+	  (display-sequents sequents)
+	  #+dbg(assert (every #'sequent? sequents))
+	  (filter-substs
+	   (gensubsts-sequents sequents)))))))
 
 (defun display-sequents (sequents)
   (declare (special *verbose*))
@@ -60,15 +64,6 @@
 					  (var-occurs-p (cdr pair)))
 			     (substitution-of score-subst))))
 	  
-;(defun incomplete? (subst)
-;  (declare (special *lvars*))
-;  (some #'(lambda (x)
-;	    (or ; (not (member x (dom subst)))   ; now also deal with partial substs
-;		(some #'(lambda (trm)
-;			  (and trm (occurs-p x trm)))
-;		      (mapcar #'cdr subst))))
-;	*lvars*))
-
 ;; Collect all possible substitutions for a given set of sequents
 
 (defun sequent? (seq)
@@ -83,13 +78,11 @@
   #+dbg(assert (every #'sequent? sequents))
   (if (null sequents) score-substs
       (let ((new-score-substs
-	     (destructuring-bind (hyps concs) (car sequents)
-	       (let ((*state* (init-dp-state nil)))
-			    ;   (collect-equalities hyps))))
-		 (declare (special *state*))
-		 (score-substs-union score-substs
-				     (gensubsts-sequent hyps concs
-							(extended-score-substs score-substs)))))))
+	     (destructuring-bind (hyps concs)
+		 (car sequents)
+	       (score-substs-union score-substs
+				   (gensubsts-sequent hyps concs
+					    (extended-score-substs score-substs))))))
 	(gensubsts-sequents (cdr sequents) new-score-substs))))
 
 (defun collect-equalities (fmlas &optional acc)
@@ -99,6 +92,13 @@
 		       (cons fmla acc)
 		     acc)))
       (collect-equalities (cdr fmlas) newacc))))
+
+(defun partition (l p &optional yes no)
+  (if (null l)
+      (values (nreverse yes) (nreverse no))
+    (if (funcall p (car l))
+	(partition (cdr l) p (cons (car l) yes) no)
+      (partition (cdr l) p yes (cons (car l) no)))))
 			 
 (defun extended-score-substs (score-substs)
   (if (some #'(lambda (score-subst)
@@ -111,6 +111,11 @@
   #+dbg(assert (every #'node-p hyps))
   #+dbg(assert (every #'node-p concs))
   #+dbg(assert (every #'score-subst-p score-substs))
+;  (protecting-dp-state ((*state* *state*))
+;      (add-eqns (remove-if-not #'equality-p hyps) *state*)
+      (gensubsts-sequent* hyps concs score-substs))
+
+(defun gensubsts-sequent* (hyps concs score-substs)
   (if (null score-substs) nil
       (let* ((subst (substitution-of (car score-substs)))
 	     (score (score-of (car score-substs)))
@@ -120,9 +125,9 @@
 					    :subst subst))
 		(gensubsts-sequent1 hyps concs subst))))
 	(score-substs-union new-score-substs
-			    (gensubsts-sequent hyps
-					       concs
-					       (cdr score-substs))))))
+			    (gensubsts-sequent* hyps
+						concs
+						(cdr score-substs))))))
 
 (defun score-substs-union (ss1 ss2)
   (add-score-substs (append ss1 ss2) nil))
@@ -136,7 +141,8 @@
   (if (null score-substs)
       (list score-subst)
     (let ((score-subst1 (car score-substs)))
-      (if (subst= (substitution-of score-subst1) (substitution-of score-subst))
+      (if (subst= (substitution-of score-subst1)
+		  (substitution-of score-subst))
 	  (if (< (score-of score-subst1) (score-of score-subst))
 	      (cons score-subst (cdr score-substs))
 	    score-substs)
@@ -149,13 +155,17 @@
   #+dbg(assert (every #'node-p hyps))
   #+dbg(assert (every #'node-p concs))
   (let ((*instantiations* nil))
-    (loop for hyp in hyps
-	  do (loop for conc in concs
-		   do (when (or (var-occurs-p hyp)
-				(var-occurs-p conc)) 
-			(let ((new-subst (E-unify hyp conc *state* subst))) 
-			  (setf *instantiations*
-				(add-to-subst new-subst *instantiations*))))))
+    (loop for conc in concs
+	  do    ; (if (equality-p conc)
+		; (let ((new-subst (E-unify (lhs conc) (rhs conc) *state* subst)))
+		;   (setf *instantiations*
+			; (add-to-subst new-subst *instantiations*)))
+		 (loop for hyp in hyps
+		       do (when (or (var-occurs-p conc)
+				    (var-occurs-p hyp))
+			    (let ((new-subst (E-unify hyp conc *state* subst))) 
+			      (setf *instantiations*
+				    (add-to-subst new-subst *instantiations*))))))
     *instantiations*))
 
 (defun var-occurs-p (trm)
@@ -276,6 +286,16 @@
   (let ((state (null-single-cong-state)))
     (loop for eqn in eqns
 	  do (when (equality-p eqn)
-	       (assert-eqn! (lhs eqn) (rhs eqn) state)))
+	       (dp-union (lhs eqn) (rhs eqn) state)))
     state))
 
+(defun add-eqns (eqns state)
+   (loop for eqn in eqns
+      do (when (and (not (eq (canon (lhs eqn) state)
+			     (canon (rhs eqn) state)))
+		    (ground? (lhs eqn))
+		    (ground? (rhs eqn)))
+	     (dp-union (lhs eqn) (rhs eqn) state))))
+
+(defun ground? (trm)
+  (null (vars-of trm)))
