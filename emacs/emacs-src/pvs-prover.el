@@ -92,7 +92,7 @@ The x-prove command invokes the prover on the next formula at or beyond
 the current cursor position, and starts up the proof display - see
 x-show-current-proof."
   (interactive)
-  (cond ((pvs-getenv "DISPLAY")
+  (cond ((wish-possible-p)
 	 (let ((pvs-x-show-proofs t))
 	   (prove rerun)))
 	(t (message "DISPLAY variable not set, cannot popup proof display")
@@ -677,7 +677,7 @@ buffer."
 
 (defpvs install-and-x-step-proof edit-proof ()
   (interactive)
-  (cond ((pvs-getenv "DISPLAY")
+  (cond ((wish-possible-p)
 	 (let ((pvs-x-show-proofs t))
 	   (install-proof t)))
 	(t (message "DISPLAY variable not set, cannot popup proof display")
@@ -1360,7 +1360,7 @@ through using the edit-proof command."
 The x-step-proof command starts the prover, proof-stepper and x-proof
 display for the indicated formula"
   (interactive)
-  (cond ((pvs-getenv "DISPLAY")
+  (cond ((wish-possible-p)
 	 (let ((pvs-x-show-proofs t))
 	   (step-proof)))
 	(t (message "DISPLAY variable not set, cannot popup proof display")
@@ -1745,7 +1745,7 @@ editing commands are not available for it."
 The x-show-current-proof command displays the proof in progress using the
 Tcl/Tk proof display facility."
   (interactive)
-  (if (pvs-getenv "DISPLAY")
+  (if (wish-possible-p)
       (pvs-send "(call-x-show-proof)")
       (message "DISPLAY variable not set, cannot popup proof display")))
 
@@ -1755,7 +1755,7 @@ Tcl/Tk proof display facility."
 The x-show-proof command displays the proof of the formula at or beyond
 the current cursor position using the Tcl/Tk proof display facility."
   (interactive)
-  (if (pvs-getenv "DISPLAY")
+  (if (wish-possible-p)
       (let* ((name-and-origin (pvs-formula-origin))
 	     (oname (car name-and-origin))
 	     (origin (cadr name-and-origin))

@@ -27,7 +27,9 @@
     (condition-case nil
 	(set-buffer (apply (function make-comint) "tcl-pvs"
 			   pvs-wish-cmd nil
-			   (append '("-name" "pvs") tcl-command-switches)))
+			   (if (pvs-getenv "DISPLAY") 
+			       (append '("-name" "pvs") tcl-command-switches)
+			       tcl-command-switches)))
       (file-error
        (error "Cannot find %s in your path; X-display commands will not work."
 	      pvs-wish-cmd)))

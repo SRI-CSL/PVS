@@ -1668,11 +1668,15 @@ Tcl/Tk, click on the Help button at the bottom of the display for more
 information."
   (interactive (complete-theory-name "Show theory hierarchy from theory:"))
   (unless (interactive-p) (pvs-collect-theories))
-  (if (pvs-getenv "DISPLAY")
+  (if (wish-possible-p)
       (pvs-send (format "(x-module-hierarchy \"%s\" %s)"
 		    theoryname (and current-prefix-arg t)))
       (message
        "DISPLAY variable not set, cannot popup theory hierarchy display")))
+
+(defun wish-possible-p ()
+  (or (pvs-getenv "DISPLAY")
+      (equal (pvs-getenv "PVSARCH") "powerpc")))
 
 (defpvs pvs-dont-write-bin-files context ()
   "Inhibit writing or loading of .bin files
