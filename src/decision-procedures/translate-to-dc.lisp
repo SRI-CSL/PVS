@@ -119,16 +119,31 @@
       (setf (dp::node-external-info expr) inverse)))
 
 (defmethod translate-to-dc :around (obj)
-  (let ((hashed-value (gethash obj *translate-to-dc-hash*)))
-    (or hashed-value
-	(let ((result (call-next-method)))
-	  (unless (or *bound-variables* *bindings*)
-	    (when (dp::node-p result)
-	      (setf (gethash obj *translate-to-dc-hash*) result)))
-	  ;(setf (gethash result *translate-from-dc-hash*) obj)
-	  (when (dp::node-p result)
-	    (set-inverse-translation result obj))
-	  result))))
+  (if (or *bound-variables* *bindings*)
+      (call-next-method)
+      (let ((hashed-value (gethash obj *translate-to-dc-hash*)))
+	(or hashed-value
+	    (let ((result (call-next-method)))
+	      (unless (or *bound-variables* *bindings*)
+		(when (dp::node-p result)
+		  (setf (gethash obj *translate-to-dc-hash*) result)))
+	      ;;(setf (gethash result *translate-from-dc-hash*) obj)
+	      (when (dp::node-p result)
+		(set-inverse-translation result obj))
+	      result)))))
+
+;(defmethod translate-to-dc :around ((obj binding-expr))
+;           (if (or *bound-variables* *bindings*)
+;               (call-next-method)
+;               (let ((hashed-value
+;                      (gethash obj *translate-to-dc-hash*)))
+;                 (or hashed-value
+;                     (let ((result (call-next-method)))
+;                       (when (dp::node-p result)
+;                         (setf (gethash obj *translate-to-dc-hash*)
+;                               result)
+;                         (set-inverse-translation result obj))
+;                       result)))))
 
 (defmethod translate-to-dc ((list list))
   (mapcar #'(lambda (l) (translate-to-dc l)) list))
@@ -533,42 +548,55 @@
 
 
 (defmethod translate-to-dc ((expr binding-expr))
-  (let ((*bindings* (append (bindings expr) *bindings*)))
-    ;;(NSH:4-5-91)(9.14.94)
-    (dp::mk-term
-	(list
-	 (dp::mk-constant
-	  (intern (format nil "~a_~a" (operator expr)
-			  (length (bindings expr)))))
-	 (dp::mk-constant (length (bindings expr)))
-	 (if (connective-occurs? (expression expr))
-	     (let ((name (gethash expr *dc-named-exprs*)))
-	       (or name;;NSH(11.4.95): Fixes unsoundness caused
-		   ;;by translating (LAMBDA : IF B ...) to (LAMBDA 1: CC)
-		   ;;by generating (LAMBDA 1 : CC(*1*)) instead.
-		   ;;Note that two tc-eq such LAMBDAs will generate
-		   ;;different translations so that ASSERT might miss some
-		   ;;syntactic equalities when there are IFs in LAMBDAs.
-		   (let* ((newid (dp::mk-constant (gentemp)))
-			  (type (type expr))
-			  (prtype (dc-prover-type type))
-			  (freevars (freevars (expression expr))))
-		     ;;NSH(2.5.96) (freevars (expr..)) instead of
-		     ;;(freevars expr).
-		     (cond
-		      (freevars
-		       (let* ((tr-freevars (translate-to-dc freevars))
-			      (apform (dp::mk-term (cons newid
-						     tr-freevars))))
-			 (setf (gethash expr *dc-named-exprs*) apform)
-			 apform))
-		      (t
-		       (add-to-prtype-hash newid expr prtype)
-		       (setf (gethash expr *dc-named-exprs*)  newid)
-		       newid)))))
-	     (translate-to-dc (expression expr)))))))
-
-
+  (let* ((*bindings* (append (bindings expr) *bindings*))
+	 (binding-vars (mapcar #'make-variable-expr (bindings expr)))
+	 (type (type expr))
+	 (prtype (dc-prover-type type))
+	 (tr-bndvars (translate-to-dc binding-vars))
+	 ;;bound variables can't be ignored; subtyp constraints needed
+	 (tr-freevars (translate-to-dc (freevars expr)))
+	 ;;freevars of the expr are needed for connectives.
+	 (tr-vars (append tr-bndvars tr-freevars))
+	 (connective? (connective-occurs? (expression expr)))
+	 (tr-expr
+	  (if connective?
+	      (let ((name (gethash expr *dc-named-exprs*)))
+		(or name;;NSH(11.4.95): Fixes unsoundness caused
+		    ;;by translating (LAMBDA : IF B ...) to (LAMBDA 1: CC)
+		    ;;by generating (LAMBDA 1 : CC(*1*)) instead.
+		    ;;Note that two tc-eq such LAMBDAs will generate
+		    ;;different translations so that ASSERT might miss some
+		    ;;syntactic equalities when there are IFs in LAMBDAs.
+		    (let* ((newid (gentemp))
+			   ;;(freevars (freevars (expression expr)))
+			   )
+		      ;;NSH(2.5.96) (freevars (expr..)) instead of
+		      ;;(freevars expr).
+		      (cond
+		       (*bindings*
+			(let ((apform (dp::mk-term (cons newid
+							 tr-vars))))
+			  (setf (gethash expr *dc-named-exprs*)  apform)
+			  apform))
+		       (t 
+			(add-to-prtype-hash newid expr prtype)
+			(setf (gethash expr *dc-named-exprs*)  newid)
+			newid)))))
+	      (translate-to-dc (expression expr))))
+	 (tr-lambda-expr
+	  (dp::mk-term
+	   (cons dp::*lambda*
+		 (cons (dp::mk-constant (length (bindings expr)))
+		       (if (or connective? (null tr-freevars))
+			   (list tr-expr)
+			   (list tr-expr
+				 (dp::mk-term
+				  (cons (dp::mk-constant (operator expr))
+					tr-bndvars)))))))))
+    (if (lambda-expr? expr)
+	tr-lambda-expr
+	(dp::mk-term (list (dp::mk-constant (operator expr))
+			   tr-lambda-expr)))))
 
 
 ;;; Update expressions
