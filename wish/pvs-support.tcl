@@ -3,8 +3,8 @@
 # Author          : Carl Witty with mods by Sam Owre
 # Created On      : Thu Apr 27 02:27:14 1995
 # Last Modified By: Sam Owre
-# Last Modified On: Sat Apr 29 18:37:45 1995
-# Update Count    : 13
+# Last Modified On: Thu May  4 19:04:20 1995
+# Update Count    : 14
 # Status          : Unknown, Use with caution!
 
 
@@ -167,7 +167,6 @@ proc dag-delete-subtree {win tag {suffix .real}} {
     foreach i $succs {
 	dag-delete-subtree $win $i {}
     }
-
     dag-delete-item $win $tag $suffix
 }
 
@@ -408,7 +407,13 @@ proc proof-show {name theory path} {
     if [info exists ${fullpath}(rule)] {
 	set bbox [$proofwin bbox $seq]
 	set seqbot [lindex $bbox 3]
-	set linebot [expr $seqbot+[get-option ySep $proofwin]]
+	set ysep [get-option ySep $proofwin]
+	# I don't know why it happens, but sometimes get-option returns {}
+	# here.  get-option works fine after this function.
+	if {$ysep == {}} {
+	    set ysep 20
+	}
+	set linebot [expr $seqbot+$ysep]
 	set rule [set ${fullpath}(rule)]
 	set alen [get-option abbrevLen]
 	if $alen {
@@ -452,11 +457,18 @@ proc get-full-rule {proofwin top} {
     }
 
     if [info exists pathtorlabel($path)] {
+	set rulelab $pathtorlabel($path)
+	if {! [winfo ismapped .rule$rulelab.rule]} {
+	    wm deiconify .rule$rulelab.rule
+	} else {
+	    wm iconify .rule$rulelab.rule
+	    wm deiconify .rule$rulelab.rule
+	}
  	return
     }
     set pathtorlabel($path) $label
 
-    set win .rule$label.rule
+    set rulewin .rule$label.rule
     set bbox [$proofwin bbox $path.rule]
     set x [lindex $bbox 2]
     set y [expr round(([lindex $bbox 1]+[lindex $bbox 3])/2)]
@@ -466,28 +478,29 @@ proc get-full-rule {proofwin top} {
     update-color $proofwin $path $path.rlabel$label
     
     frame .rule$label
-    toplevel $win -class Command
-    frame $win.fr
-    pack $win.fr -expand yes -fill both
-    text $win.fr.text -bd 2 -relief raised
-    $win.fr.text insert end [set ${path}(rule)]
-    set height [lindex [split [$win.fr.text index end] .] 0]
+    toplevel $rulewin -class Command
+    frame $rulewin.fr
+    pack $rulewin.fr -expand yes -fill both
+    text $rulewin.fr.text -bd 2 -relief raised
+    $rulewin.fr.text insert end [set ${path}(rule)]
+    set height [lindex [split [$rulewin.fr.text index end] .] 0]
     set wd 0
     for {set i 1} {$i<=$height} {incr i} {
-	set linewd [lindex [split [$win.fr.text index "$i.0 lineend"] .] 1]
+	set linewd [lindex [split [$rulewin.fr.text index "$i.0 lineend"] .] 1]
 	if {$linewd>$wd} {set wd $linewd}
     }
-    $win.fr.text config -height $height -width $wd -state disabled -wrap none
-    pack $win.fr.text -expand yes -fill both
-    button $win.dismiss -text Dismiss -command "destroy $win"
-    pack $win.dismiss -side left -padx 2 -pady 2
-    bind $win <Destroy> "+catch {$proofwin delete $path.rlabel$label}"
-    bind $win <Destroy> "+unset pathtorlabel($path)"
-    bind $win <Destroy> "+after 1 {catch {destroy .rule$label}}"
-    wm iconname $win {PVS command}
-    wm title $win "Command $label [set ${path}(rule_abbr)]"
+    $rulewin.fr.text config -height $height -width $wd -state disabled -wrap none
+    pack $rulewin.fr.text -expand yes -fill both
+    button $rulewin.dismiss -text Dismiss -command "destroy $rulewin"
+    pack $rulewin.dismiss -side left -padx 2 -pady 2
+    bind $rulewin <Destroy> "+catch {$proofwin delete $path.rlabel$label}"
+    bind $rulewin <Destroy> "+unset pathtorlabel($path)"
+    bind $rulewin <Destroy> "+after 1 {catch {destroy .rule$label}}"
+    wm iconname $rulewin {PVS command}
+    wm title $rulewin "Command $label [set ${path}(rule_abbr)]"
 
-    dag-add-destroy-cb $proofwin $path "disable-sequent $win"
+    set next [lindex [set dag(succs,$path)] 0]
+    dag-add-destroy-cb $proofwin $next "catch {destroy $rulewin}"
 }
     
 
@@ -516,10 +529,17 @@ proc show-sequent {proofwin top} {
     }
 
     if [info exists pathtolabel($path)] {
+	set seqlab $pathtolabel($path)
+	if {! [winfo ismapped .sequent$seqlab.sequent]} {
+	    wm deiconify .sequent$seqlab.sequent
+	} else {
+	    wm iconify .sequent$seqlab.sequent
+	    wm deiconify .sequent$seqlab.sequent
+	}
 	return
     }
 
-    set win .sequent$label.sequent
+    set seqwin .sequent$label.sequent
     set bbox [$proofwin bbox $path.sequent]
     set x [lindex $bbox 2]
     set y [expr round(([lindex $bbox 1]+[lindex $bbox 3])/2)]
@@ -530,43 +550,58 @@ proc show-sequent {proofwin top} {
     update-color $proofwin $path $path.label$label
     
     frame .sequent$label
-    toplevel $win -class Sequent
-    frame $win.fr
-    pack $win.fr -expand yes -fill both
-    text $win.fr.text -bd 2 -relief raised -height 2 -width 80 -setgrid true
+    toplevel $seqwin -class Sequent
+    frame $seqwin.fr
+    pack $seqwin.fr -expand yes -fill both
+    text $seqwin.fr.text -bd 2 -relief raised -height 2 -width 80 -setgrid true
     set text [string range $text 1 [expr [string length $text]-2]]
-    $win.fr.text insert end $text
-    set height [lindex [split [$win.fr.text index end] .] 0]
-    $win.fr.text config -state disabled
+    $seqwin.fr.text insert end $text
+    set height [lindex [split [$seqwin.fr.text index end] .] 0]
+    $seqwin.fr.text config -state disabled
     if {$height>5} {
-	scrollbar $win.fr.s -command "$win.fr.text yview"
-	$win.fr.text config -yscrollcommand "$win.fr.s set"
-	pack $win.fr.s -fill y -side right
-	wm minsize $win 80 2
-	wm maxsize $win 80 $height
+	scrollbar $seqwin.fr.s -command "$seqwin.fr.text yview"
+	$seqwin.fr.text config -yscrollcommand "$seqwin.fr.s set"
+	pack $seqwin.fr.s -fill y -side right
+	wm minsize $seqwin 80 2
+	wm maxsize $seqwin 80 $height
 	if {$height>[get-option maxHeight]} {
 	    set height [get-option maxHeight]
 	}
     } else {
-	wm minsize $win 80 $height
-	wm maxsize $win 80 $height
+	wm minsize $seqwin 80 $height
+	wm maxsize $seqwin 80 $height
     }
-    pack $win.fr.text -expand yes -fill both
-    button $win.dismiss -text Dismiss -command "destroy $win"
-    pack $win.dismiss -side left -padx 2 -pady 2
-    bind $win <Destroy> "catch {$proofwin delete $path.label$label}"
-    bind $win <Destroy> "+unset pathtolabel($path)"
-    bind $win <Destroy> "+after 1 {catch {destroy .sequent$label}}"
-    wm geometry $win 80x$height
-    wm iconname $win {PVS sequent}
-    wm title $win "Sequent $label ($seq_label)"
+    pack $seqwin.fr.text -expand yes -fill both
+    button $seqwin.dismiss -text Dismiss -command "destroy $seqwin"
+    pack $seqwin.dismiss -side left -padx 2 -pady 2
+    button $seqwin.stick -text Stick -command "stick $seqwin $path"
+    pack $seqwin.stick -side left -padx 2 -pady 2
+    bind $seqwin <Destroy> "catch {$proofwin delete $path.label$label}"
+    bind $seqwin <Destroy> "+unset pathtolabel($path)"
+    bind $seqwin <Destroy> "+after 1 {destroy-sequent $seqwin}"
+    wm geometry $seqwin 80x$height
+    wm iconname $seqwin {PVS sequent}
+    wm title $seqwin "Sequent $label ($seq_label)"
 
-    dag-add-destroy-cb $proofwin $path "disable-sequent $win"
+    catch {unset sticky_seqs($seqwin)}
+    dag-add-destroy-cb $proofwin $path "destroy-sequent $seqwin"
     set pathtolabel($path) $label
 }
 
-proc disable-sequent {win} {
-    catch {destroy $win}
+proc stick {win path} {
+    global sticky_seqs $win pathtolabel
+    catch {unset pathtolabel($path)}
+    set sticky_seqs($win) 1
+    pack forget $win.stick
+}
+
+proc destroy-sequent {win} {
+    global sticky_seqs $win
+    if {! [info exists sticky_seqs($win)]} {
+	if {[winfo exists $win]} {
+	    catch {destroy [winfo parent $win]}
+	}
+    }
 }
 
 proc path-to-lisp-path {path} {
@@ -712,7 +747,7 @@ proc proof-current {name theory relpath} {
 
 	set pwid [expr [lindex $bbox 2]-[lindex $bbox 0]]
 	set phit [expr [lindex $bbox 3]-[lindex $bbox 1]]
-    
+
 	if {[parse-bool [get-option circleCurrent]]} {
 	    $proofwin create oval \
 		[expr [lindex $bbox 0]-$pwid/2.8] \
@@ -755,6 +790,7 @@ proc gen-ps {top psfile landscape} {
     show-message $top "Saved PS to $psfile"
 }
 
+
 proc setup-dag-win {title icon PSname win_name class} {
     reset-options
     catch {destroy $win_name}
@@ -785,7 +821,6 @@ proc setup-dag-win {title icon PSname win_name class} {
     pack $top.message -fill x -side bottom
     button $top.dismiss -text "Dismiss" -command "destroy $win_name" -bd 2
     pack $top.dismiss -side left -padx 2 -pady 2
-#    button $top.ps -text "Gen PS" -command "gen-ps $top $PSname"
     menubutton $top.ps -text "Gen PS" -menu $top.ps.menu -relief raised -bd 2
     menu $top.ps.menu
     $top.ps.menu add command -label Portrait -command "gen-ps $top $PSname 0"
@@ -968,7 +1003,6 @@ proc reset-options {} {
 
 proc get-option {opt {win .}} {
     set upper [string toupper [string range $opt 0 0]][string range $opt 1 end]
-
     option get $win $opt $upper
 }
 
