@@ -1161,31 +1161,28 @@ real_types: THEORY
 
   nonneg_real_mult_closed: LEMMA nnx * nny >= 0
 
-  nzreal_times_nzreal_is_nzreal: JUDGEMENT *(x,y:nzreal) HAS_TYPE nzreal
-  nzreal_div_nzreal_is_nzreal:   JUDGEMENT /(x,y:nzreal) HAS_TYPE nzreal
-  minus_nzreal_is_nzreal:        JUDGEMENT -(x:nzreal)   HAS_TYPE nzreal
+  nzreal_times_nzreal_is_nzreal: JUDGEMENT *(nzx, nzy) HAS_TYPE nzreal
+  nzreal_div_nzreal_is_nzreal:   JUDGEMENT /(nzx, nzy) HAS_TYPE nzreal
+  minus_nzreal_is_nzreal:        JUDGEMENT -(nzx)      HAS_TYPE nzreal
 
-  nnreal_plus_nnreal_is_nnreal:  JUDGEMENT +(x,y:nnreal) HAS_TYPE nnreal
-  nnreal_times_nnreal_is_nnreal: JUDGEMENT *(x,y:nnreal) HAS_TYPE nnreal
-  nnreal_div_posreal_is_nnreal:  JUDGEMENT
-    /(x:nnreal, y:posreal) HAS_TYPE nnreal
-  nnreal_div_negreal_is_npreal:  JUDGEMENT
-    /(x:nnreal,y:negreal) HAS_TYPE npreal
+  nnreal_plus_nnreal_is_nnreal:  JUDGEMENT +(nnx, nny) HAS_TYPE nnreal
+  nnreal_times_nnreal_is_nnreal: JUDGEMENT *(nnx, nny) HAS_TYPE nnreal
+  nnreal_div_posreal_is_nnreal:  JUDGEMENT /(nnx, py)  HAS_TYPE nnreal
+  nnreal_div_negreal_is_npreal:  JUDGEMENT /(nnx, ny)  HAS_TYPE npreal
 
-  npreal_plus_npreal_is_npreal:  JUDGEMENT +(x,y:npreal) HAS_TYPE npreal
-  npreal_times_npreal_is_nnreal: JUDGEMENT *(x,y:npreal) HAS_TYPE nnreal
-  npreal_div_posreal_is_npreal:  JUDGEMENT
-    /(x:npreal,y:posreal) HAS_TYPE npreal
-  npreal_div_negreal_is_nnreal:  JUDGEMENT
-    /(x:npreal,y:negreal)  HAS_TYPE npreal
+  npreal_plus_npreal_is_npreal:  JUDGEMENT +(npx, npy) HAS_TYPE npreal
+  npreal_times_npreal_is_nnreal: JUDGEMENT *(npx, npy) HAS_TYPE nnreal
+  npreal_div_posreal_is_npreal:  JUDGEMENT /(npx, py)  HAS_TYPE npreal
+  npreal_div_negreal_is_nnreal:  JUDGEMENT /(npx, ny)  HAS_TYPE npreal
 
-  posreal_plus_posreal_is_posreal:  JUDGEMENT +(x,y:posreal) HAS_TYPE posreal
-  posreal_times_posreal_is_posreal: JUDGEMENT *(x,y:posreal) HAS_TYPE posreal
-  posreal_div_posreal_is_posreal:   JUDGEMENT /(x,y:posreal) HAS_TYPE posreal
+  posreal_plus_nnreal_is_posreal:  JUDGEMENT +(px, nny) HAS_TYPE posreal
+  nnreal_plus_posreal_is_posreal:  JUDGEMENT +(nnx, py) HAS_TYPE posreal
+  posreal_times_posreal_is_posreal: JUDGEMENT *(px, py) HAS_TYPE posreal
+  posreal_div_posreal_is_posreal:   JUDGEMENT /(px, py) HAS_TYPE posreal
 
-  negreal_plus_negreal_is_negreal:  JUDGEMENT +(x,y:negreal) HAS_TYPE negreal
-  negreal_times_negreal_is_posreal: JUDGEMENT *(x,y:negreal) HAS_TYPE posreal
-  negreal_div_negreal_is_negreal:   JUDGEMENT /(x,y:negreal) HAS_TYPE posreal
+  negreal_plus_negreal_is_negreal:  JUDGEMENT +(nx, ny) HAS_TYPE negreal
+  negreal_times_negreal_is_posreal: JUDGEMENT *(nx, ny) HAS_TYPE posreal
+  negreal_div_negreal_is_negreal:   JUDGEMENT /(nx, ny) HAS_TYPE posreal
 
  END real_types
 
