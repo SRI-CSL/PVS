@@ -252,8 +252,7 @@ all : makebdd makepolylib ${pvsfull} ${pvsrt} ${emacs}
 
 ${fasl-files} : ${pvs-make-files} ${ff-files} ${lisp-files}
 	$(LISP) -e '(load "pvs.system")' \
-		-e "(operate-on-system 'pvs :lf)" \
-		-e '(excl:exit)'
+		-e "(unwind-protect (progn (operate-on-system 'pvs :lf) (excl:exit)) (excl:exit 1))"
 
 ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${fasl-files}
 	rm -rf ${bindir}/full
