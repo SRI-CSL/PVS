@@ -763,10 +763,17 @@ window."
 (defun pvs-query (out)
   (apply 'pvs-query* (parse-pvs-message out)))
 
-(defun pvs-query* (file dir query mitems place)
-  (let ((items (pvs-make-items mitems))
-	(pos (pvs-get-place place)))
-    (pvs-menu query items)))
+(defun pvs-query* (prompt)
+  (if noninteractive
+      (progn (message msg)
+	     (comint-simple-send (ilisp-process) "t")
+	     t)
+      (let ((inhibit-quit nil)
+	    (query nil))
+	(pvs-emacs-query 'query prompt)
+	(comint-simple-send
+	 (ilisp-process)
+	 (case query (?! ":auto") (?y "t") (t "nil"))))))
 
 (defun pvs-make-items (item-list)
   (mapcar '(lambda (x) (cons (cadr x) (caddr x)))

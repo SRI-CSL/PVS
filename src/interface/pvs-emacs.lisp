@@ -341,19 +341,31 @@
 	(full? (yes-or-no-p-with-prompt msg nil))
 	(t (y-or-n-p-with-prompt msg nil))))
 
-(defun pvs-query (theory msg query place)
+;;;        Returns t, nil, :auto, or aborts
+;;; Corresponds to y, n,   !,    and q (C-g) on Emacs side.
+(defun pvs-query (prompt &rest args)
   (if *to-emacs*
       (let* ((*print-pretty* nil)
 	     (*output-to-emacs*
-	      (format nil ":pvs-qry ~a&~a&~a&~a&~d ~d :end-pvs-qry"
-		theory
-		(protect-emacs-output (namestring *pvs-context-path*))
-		(protect-emacs-output msg)
-		(protect-emacs-output query)
-		(if place (sbrt::place-linenumber place))
-		(if place (sbrt::place-charnumber place)))))
-	(to-emacs))
-      (query theory msg query place)))
+	      (format nil ":pvs-qry ~a:end-pvs-qry"
+		(protect-emacs-output
+		 (format nil "~?" prompt args)))))
+	(to-emacs)
+	(let ((val (read)))
+	  (when (eq val :abort)
+	    (pvs-message "Aborting")
+	    (pvs-abort))
+	  val))
+      (pvs-query* (format nil "~?" prompt args))))
+
+(defun pvs-query* (prompt)
+  (format t "~a [Type y, n, q or !]~%" prompt)
+  (case (read)
+    (y t)
+    (n nil)
+    (q (pvs-abort))
+    (! :auto)
+    (t (pvs-query* prompt))))
 
 (defun pvs-prompt (type msg &rest args)
   (if (and *pvs-emacs-interface* *to-emacs*)
