@@ -118,9 +118,13 @@
 ;; PVS decision procedure interface
 
 (defun ics-init (&optional full (verbose 0))
-  (ics_caml_startup)
-  (register_lisp_error_function
-   (nth-value 1 (ff:register-function `ics_error)))
+  (multiple-value-bind (ignore error)
+      (ignore-errors (ics_caml_startup))
+    (cond (error
+	   (setq *decision-procedures* (remove 'ics *decision-procedures*))
+	   (pvs-message "Trouble loading ICS, so it is not available"))
+	  (t (register_lisp_error_function
+	      (nth-value 1 (ff:register-function `ics_error))))))
   ;;(ics_init verbose)
   )
 
