@@ -23,6 +23,17 @@
   (and (not (equality-p lit))
        (integer-equality-p lit cong-state)))  
 
+(defun strong-integercut (lit cong-state)
+  (let ((diff (make-ineq-to-difference lit)))
+    (if (plus-p diff)
+	(let* ((lcm (mk-constant (apply #'lcm (plus-denoms diff))))
+	       (normed-lit
+		(mk-term (list (funsym lit)
+			       (sigtimes (mk-times (list lcm (lhs lit))))
+			       (sigtimes (mk-times (list lcm (rhs lit))))))))
+	  (integercut normed-lit cong-state))
+	lit)))
+
 (defun integercut (lit cong-state)
   (let ((fract (and (or (arith-bool-p lit)
 			(equality-p lit))
