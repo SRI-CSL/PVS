@@ -1207,11 +1207,7 @@
 	    (car atypes)))
       (if (cdr (types arg))
 	  (type-ambiguity arg)
-	  (let* ((*generate-tccs* 'none))
-	    (typecheck* arg (car (types arg)) nil nil)
-	    (car (judgement-types+ arg))))))
-      
-
+	  (car (types arg)))))
 
 (defun set-dep-projections (projections types)
   (when projections
