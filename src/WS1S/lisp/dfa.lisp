@@ -161,7 +161,6 @@
   (if (null is) a
     (dfa-exists1 (car is) (dfa-exists1* (cdr is) a))))
 
-
 ;; Accessors, Recognizers
 
 (defun number-of-states      (a) (dfa-ns (address a)))
