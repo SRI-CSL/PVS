@@ -143,6 +143,9 @@ case $opsys in
 		    echo "$0 -redhat $othervers $*"
 	    fi
 	 fi
+	 if [ $majvers -gt 5 ]
+	    then majvers=5
+	 fi
 	 PVSARCH=ix86;;
   *) echo "PVS 2.3 only runs under Solaris or Linux"; exit 1
 esac
