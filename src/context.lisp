@@ -888,6 +888,19 @@ pvs-strategies files.")
 (defvar *files-seen* nil)
 
 ;;; Called from parse-file
+;;; parse-file ->
+;;;   restore-theories ->
+;;;     restore-theories* ->
+;;;       restore-theory
+;;;     restore-theory ->
+;;;       get-theory-from-binfile
+;;;       update-restored-theories ->
+;;;         restore-from-context ->
+;;;           restore-proofs ->
+;;;             restore-theory-proofs
+;;;             restore-theory-proofs-from-file ->
+;;;               restore-theory-proofs ->
+;;;                 restore-theory-proofs*
 (defun restore-theories (filename)
   (let* ((*theories-restored* nil)
 	 (*adt-type-name-pending* nil)
@@ -902,7 +915,7 @@ pvs-strategies files.")
 	(let ((file (filename th)))
 	  (unless (or (member file files :test #'string=)
 		      (not (some #'null (gethash file *pvs-files*))))
-	    (pushnew file files))))
+	    (push file files))))
       (dolist (file files)
 	(restore-theories file)))
     (get-theories (make-specpath filename))))
@@ -915,30 +928,24 @@ pvs-strategies files.")
 
 (defun restore-theory (thname)
   (unless (gethash thname *pvs-modules*)
-    (let* ((start-time (get-internal-real-time))
-	   (theory (get-theory-from-binfile thname))
-	   (load-time (get-internal-real-time))
-	   (tes (when (filename theory)
-		  (ce-theories (get-context-file-entry (filename theory)))))
-	   (theories (mapcar #'(lambda (te) (gethash (id te) *pvs-modules*))
-		       tes)))
-      (assert theory)
-      (push theory *theories-restored*)
-      (unless (null (filename theory))
-	(setf (gethash (filename theory) *pvs-files*)
-	      (cons (file-write-date (make-specpath (filename theory)))
-		    theories))
-	(dolist (th theories)
-	  (when (memq th *theories-restored*)
-	    (update-restored-theories th)
-	    ;;(assert (or (generated-by th) (typechecked? th)))
-	    )))
-;;       (pvs-message
-;; 	  "Restored theory from ~a.bin in ~,2,-3fs (load part took ~,2,-3fs)"
-;; 	thname (realtime-since start-time)
-;; 	(floor (- load-time start-time) millisecond-factor))
-      )))
-
+    (let ((theory (get-theory-from-binfile thname)))
+      (when theory
+	(let* ((tes (when (filename theory)
+		      (ce-theories (get-context-file-entry
+				    (filename theory)))))
+	       (theories (mapcar #'(lambda (te)
+				     (gethash (id te) *pvs-modules*))
+			   tes)))
+	  (assert (filename theory))
+	  (push theory *theories-restored*)
+	  (setf (gethash (filename theory) *pvs-files*)
+		(cons (file-write-date (make-specpath (filename theory)))
+		      theories))
+	  (dolist (th theories)
+	    (when (memq th *theories-restored*)
+	      (update-restored-theories th)
+	      ;;(assert (or (generated-by th) (typechecked? th)))
+	      )))))))
 
 ;;; Invoked after a bin file has been restored.
 (defmethod update-restored-theories ((theory module))
@@ -947,8 +954,10 @@ pvs-strategies files.")
 	  (formals theory)))
   ;;(generate-xref theory)
   ;;(reset-restored-types theory)
-  (unless (valid-proofs-file (filename theory))
-    (restore-from-context (filename theory) theory))
+  (unless nil ;(valid-proofs-file (filename theory))
+    (let ((*current-context* (saved-context theory)))
+      (assert *current-context*)
+      (restore-from-context (filename theory) theory)))
   (assert (saved-context theory)))
 
 (defmethod update-restored-theories ((adt recursive-type))
@@ -1189,7 +1198,7 @@ pvs-strategies files.")
 
 
 ;;; Called from typecheck-theories in pvs.lisp and from
-;;; update-restored-theories
+;;; update-restored-theories (module)
 
 (defun restore-from-context (filename theory &optional proofs)
   (restore-proofs filename theory proofs))
@@ -1700,15 +1709,22 @@ pvs-strategies files.")
 	       nil)
 	      (t proofs))))))
 
-(defun convert-proof-case-if-needed (proofs)
-  (if (integerp (cadr (car (cdr proofs))))
-      proofs
-      (cons (car proofs)
-	    (mapcar #'(lambda (pform)
-			(cons (car pform)
-			      (convert-proof-form-to-lowercase
-			       (cdr pform))))
-	      (cdr proofs)))))
+;;; proofs is the proofs for a theory
+(defun convert-proof-case-if-needed (theory-proofs)
+  (if (integerp (cadr (car (cdr theory-proofs))))
+      theory-proofs
+      (cons (car theory-proofs)
+	    (mapcar #'convert-proof-case-if-needed* (cdr theory-proofs)))))
+
+;;; Proof for a formula
+(defun convert-proof-case-if-needed* (formula-proof)
+  (let* ((script (if (consp (car (cdr formula-proof)))
+		     (cddr formula-proof)
+		     (cdr formula-proof)))
+	 (prinfo (make-proof-info (convert-proof-form-to-lowercase script)
+				  (makesym "~a-1" (car formula-proof)))))
+    (cons (car formula-proof)
+	  (cons 0 (list (sexp prinfo))))))
 
 (defun read-orphaned-proofs (&optional theoryref)
   (when (file-exists-p "orphaned-proofs.prf")
@@ -2013,9 +2029,9 @@ pvs-strategies files.")
 		   "Proof will be loaded when the file is next parsed.")
 	       (pvs-message "~a.pvs not found." filename)))
 	  (t (mapc #'(lambda (th)
-		       (restore-proofs prf-file th)
-		       (clear-proof-status th)
-		       )
+		       (let ((*current-context* (saved-context th)))
+			 (restore-proofs prf-file th)
+			 (clear-proof-status th)))
 		   theories)))))
 
 (defmethod clear-proof-status (theory)
@@ -2130,7 +2146,7 @@ pvs-strategies files.")
 (defun cleanup-proofs-pvs-file (file)
   (let* ((all-proofs (read-pvs-file-proofs file))
 	 (aproofs (proofs-with-associated-decls file all-proofs))
-	 (dproofs (collect-default-proofs file aproofs)))
+	 (dproofs (collect-default-proofs aproofs)))
     (if (equalp all-proofs dproofs)
 	(pvs-message "Proof file is already cleaned up")
 	(let ((prf-file (make-prf-pathname file)))
@@ -2283,3 +2299,61 @@ pvs-strategies files.")
 				th-entries))))
 	  (push (list file-info ok? spec-file) *binfiles-checked*)
 	  ok?))))
+
+;; (defun check-proof-file-is-current (&optional file)
+;;   (if file
+;;       (check-proof-file-is-current* file (gethash file *pvs-files*))
+;;       (maphash #'check-proof-file-is-current* *pvs-files*)))
+
+;; (defun check-proof-file-is-current* (file date&theories)
+;;   (let ((prfpath (make-prf-pathname file))
+;; 	(cur-proofs (collect-theories-proofs (cdr date&theories))))
+;;     (if (file-exists-p prfpath)
+;; 	(let ((file-proofs (read-pvs-file-proofs file)))
+;; 	  (check-proof-file-is-current** file-proofs cur-proofs))
+;; 	(unless (every #'(lambda (prf) (null (cdr prf))) cur-proofs)
+;; 	  (error "~%Proof file ~a does not exist" prfpath)))))
+
+;; (defun check-proof-file-is-current** (file-proofs cur-proofs)
+;;     (if file-proofs
+;; 	(let* ((file-theory-proofs (car file-proofs))
+;; 	       (theoryid (car file-theory-proofs))
+;; 	       (cur-theory-proofs (assq theoryid cur-proofs)))
+;; 	  ;;(unless cur-theory-proofs
+;; 	    ;;(error "No internal-proofs for ~a" theoryid))
+;; 	  (when cur-theory-proofs
+;; 	    (unless (proofs-equal file-theory-proofs cur-theory-proofs)
+;; 	      (error "File and internal proof mismatch for ~a" theoryid)))
+;; 	  (check-proof-file-is-current**
+;; 	   (cdr file-proofs) (remove cur-theory-proofs cur-proofs)))
+;; 	(if cur-proofs
+;; 	    (error "No file proof for internal proofs: ~{~a~^, ~}"
+;; 		   (mapcar #'car cur-proofs)))))
+
+;; (defun proofs-equal (file-theory-proofs cur-theory-proofs)
+;;   (every #'proofs-equal*
+;; 	 (remove-if (complement #'(lambda (pf)
+;; 				    (assq (car pf) cur-theory-proofs)))
+;; 	   (cdr file-theory-proofs))
+;; 	 (cdr cur-theory-proofs)))
+
+;; (defun proofs-equal* (file-formula-proof cur-formula-proof)
+;;   (and (eq (car file-formula-proof) (car cur-formula-proof)) ; formula id
+;;        (= (cadr file-formula-proof) (cadr cur-formula-proof)) ; index
+;;        (every #'proofs-equal**
+;; 	      (cddr file-formula-proof) (cddr cur-formula-proof))))
+
+;; (defun proofs-equal** (file-formula-proof cur-formula-proof)
+;;   (and (eq (car file-formula-proof) (car cur-formula-proof)) ; proof id
+;;        (equal (cadr file-formula-proof) (cadr cur-formula-proof)) ; description
+;;        ;; create-date - ignore
+;;        ;; run-date - ignore
+;;        (equal (fifth file-formula-proof) (fifth cur-formula-proof)) ; script 
+;;        ;; status - ignore
+;;        ;; refers-to - ignore
+;;        ;; real-time 
+;;        ;; run-time
+;;        ;; interactive?
+;;        ;; decision-procedure-used
+;;        ))
+       
