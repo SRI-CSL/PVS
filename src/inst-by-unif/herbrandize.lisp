@@ -1,7 +1,9 @@
 (in-package :pvs)
 
-(defun herbrandize (fmlas &optional xs renamings)
-    (herbrandize* fmlas xs renamings))
+(defun herbrandize (fmlas &optional xs renamings always-skolemize)
+  (let ((*always-skolemize* always-skolemize))
+    (declare (special *always-skolemize*))
+    (herbrandize* fmlas xs renamings)))
 
 (defmethod herbrandize* ((fmlas null) xs subst)
   (values nil xs subst))
@@ -135,9 +137,11 @@
 	(skolemize* (expression fmla) xs (append assocs subst))))))
 
 (defun safe-to-skolemize? (bndngs)
-  (every #'(lambda (bndng)
-		   (nonempty? (type bndng)))
-	 bndngs))
+  (declare (special *always-skolemize*))
+  (or *always-skolemize*
+      (every #'(lambda (bndng)
+		 (nonempty? (type bndng)))
+	     bndngs)))
 
 (defun relativize-quantifier (fmla)
   (lift-predicates-in-quantifier fmla
