@@ -410,7 +410,7 @@
 
 (defcl adt-type-name (type-name)
   adt
-  recognizer-names
+  (recognizer-names :ignore t :fetch-as nil)
   struct-name)
 
 (defcl type-application (type-expr)
