@@ -808,14 +808,16 @@
     result))
 
 (defun return-cong-state* (cong-state* made-cong-states)
-  (assert (member cong-state* (made-cong-states-used made-cong-states)
-		  :test #'eq))
+  ;;(assert (member cong-state* (made-cong-states-used made-cong-states)
+  ;;                :test #'eq))
   ;(assert (not (eq cong-state* pvs::*ics*)))
-  (clear-cong-state* cong-state*)
-  (setf (made-cong-states-used made-cong-states)
-	(delete cong-state* (made-cong-states-used made-cong-states)
-		:test #'eq))
-  (push cong-state* (made-cong-states-free made-cong-states)))
+  (when (member cong-state* (made-cong-states-used made-cong-states)
+		:test #'eq)
+    (clear-cong-state* cong-state*)
+    (setf (made-cong-states-used made-cong-states)
+	  (delete cong-state* (made-cong-states-used made-cong-states)
+		  :test #'eq))
+    (push cong-state* (made-cong-states-free made-cong-states))))
 
 (defun return-all-cong-states (made-cong-states)
   (loop for cong-state* in (made-cong-states-used made-cong-states)
@@ -830,16 +832,23 @@
 (defvar *made-cong-states* (make-made-cong-states :used nil :free nil))
 
 (defvar *print-cong-state* nil)
+(defvar *print-cong-state-stack* t)
 
 (defdpstruct (cong-state
 	    (:print-function
 	     (lambda (cs s k)
 	       (declare (ignore k))
-	       (if *print-cong-state*
-		   (format s "~A"
-		     (cong-state-used-assertions cs))
-		   (format s "<~A used assertions>"
-		     (length (cong-state-used-assertions cs)))))))
+	       (cond
+		(*print-cong-state*
+		 (format s "~A"
+		   (cong-state-used-assertions cs)))
+		(*print-cong-state-stack*
+		 (format s "<~A>"
+		   (loop for cs* in (cong-state-stack cs)
+			 collect (cong-state*-id cs*))))
+		(t
+		 (format s "<~A used assertions>"
+		   (length (cong-state-used-assertions cs))))))))
   (stack nil :type list)
   (reverse nil :type list)
   (used-assertions nil :type list))
@@ -860,18 +869,7 @@
 (defmacro previous (reverse-cong-state-stack)
   `(cdr ,reverse-cong-state-stack))
 
-(defun null-cong-state ()
-  (make-cong-state :stack nil
-		   :reverse nil
-		   :used-assertions nil))
 
-(defun single-cong-state (cong-state*)
-  (let ((stack (list cong-state*)))
-    (make-cong-state :stack stack
-		     :reverse stack)))
-
-(defun null-single-cong-state ()
-  (single-cong-state (get-cong-state *made-cong-states*)))
 
 ;(defvar *cong-state* (null-single-cong-state))
 
@@ -886,7 +884,7 @@
 	 (new-reverse (nbutlast old-reverse)))
     (setf (cong-state-reverse cong-state)
 	  new-reverse)
-    (when (eq (polyhedral-structure-polyhedron
+    (when (domain-eq (polyhedral-structure-polyhedron
 	       (cong-state*-polyhedral-structure popped-cong-state*))
 	      (polyhedral-structure-polyhedron
 	       (polyhedral-structure cong-state)))
@@ -894,7 +892,7 @@
       (setf (polyhedral-structure-polyhedron (cong-state*-polyhedral-structure
 					      popped-cong-state*))
 	    (universal-polyhedral-domain)))
-    (when (eq (polyhedral-structure-epsilon-poly
+    (when (domain-eq (polyhedral-structure-epsilon-poly
 	       (cong-state*-polyhedral-structure popped-cong-state*))
 	      (polyhedral-structure-epsilon-poly
 	       (polyhedral-structure cong-state)))
@@ -1392,6 +1390,24 @@
       (nconc (typealist* (top cong-state-stack))
 	     (typealist-from-stack (rest cong-state-stack)))
       nil))
+
+
+
+(defun null-cong-state ()
+  (make-cong-state :stack nil
+		   :reverse nil
+		   :used-assertions nil))
+
+(defun single-cong-state (cong-state*)
+  (let ((stack (list cong-state*)))
+    (setf (cong-state*-polyhedral-structure cong-state*)
+	  (initial-polyhedral-structure))
+    (make-cong-state :stack stack
+		     :reverse stack)))
+
+(defun null-single-cong-state ()
+  (single-cong-state (get-cong-state *made-cong-states*)))
+
 
 (defun init-dp-0 (&optional strong)
   (when strong
