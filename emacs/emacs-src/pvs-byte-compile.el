@@ -11,17 +11,18 @@
 ; we want *all* of the byte compilation warnings
 (setq byte-compile-warnings t)
 
-; CSL ONLY
-(setq byte-compile-generate-call-tree t)
+; For debugging
+;(setq byte-compile-generate-call-tree t)
 
 (defun pvs-compile (filename)
   (let ((elisp-file (format "%s.el" filename))
 	(call-file (format "%s.call" filename)))
-    (byte-compile-file elisp-file)
-    (when (get-buffer "*Call-Tree*")
-      (save-excursion
-	(set-buffer "*Call-Tree*")
-	(write-file call-file nil)))))
+    (byte-compile-file elisp-file)))
+
+;    (when (get-buffer "*Call-Tree*")
+;      (save-excursion
+;	(set-buffer "*Call-Tree*")
+;	(write-file call-file nil)))))
 
 (let ((pvsfiles '(pvs-abbreviations
 		  pvs-browser
