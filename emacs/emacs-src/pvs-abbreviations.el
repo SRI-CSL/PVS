@@ -16,6 +16,7 @@
 (global-set-key "\C-c\C-f" 'find-pvs-file)
 (global-set-key "\C-ch"    'help-pvs)
 (global-set-key "\C-c\C-hl" 'help-pvs-language)
+(global-set-key "\C-c\C-hb" 'help-pvs-bnf)
 (global-set-key "\C-c\C-hp" 'help-pvs-prover)
 (global-set-key "\C-c\C-hc" 'help-pvs-prover-command)
 (global-set-key "\C-c\C-hs" 'help-pvs-prover-strategy)
