@@ -52,7 +52,7 @@ There are a number of new features in PVS 3.0.
 * Improved Decision Procedures:: Improved Existing (Shostak) Decision Procedures
 * ICS Integration:: New (ICS) Decision Procedures
 * LET Reduce:: LET Reduction Control
-* Prelude Changes:: Prelude Changes
+* Prelude Changes in 3.0::
 * Conversion Expressions:: Conversion Expressions
 * Judgement TCC proofs:: Judgement TCC proofs
 * PVS Startup Change:: PVS Startup Change
@@ -534,8 +534,8 @@ take an optional @code{LET-REDUCE?} flag.  It defaults to @code{t},
 and if set to @code{nil} keeps @code{LET} expressions from being
 reduced.
 
-@node    Prelude Changes
-@subsection Prelude Changes
+@node    Prelude Changes in 3.0
+@subsection Prelude Changes in 3.0
 
 @menu
 * New Theories:: New Theories
@@ -681,8 +681,8 @@ good thing, some existing proofs may fail.  For example, a given
 auto-rewrite may have worked in the past, but now the key term has
 been simplified and the rewrite no longer matches.
 
-@subsection Prelude Changes
-These are given in @ref{Prelude Changes}.  Theory identifiers used in
+@subsection Prelude Incompatibilities
+These are given in Prelude Changes in 3.0.  Theory identifiers used in
 the prelude may not be used for library or user theories, some
 existing theories may need to be adjusted.
 
