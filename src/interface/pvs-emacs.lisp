@@ -610,7 +610,7 @@
 		      'id '|K_conversion|
 		      'module (get-theory "K_conversion")
 		      'k-combinator? t
-		      'name (mk-name-expr '|K_conversion|))))
+		      'expr (mk-name-expr '|K_conversion|))))
 	 (typecheck* cdecl nil nil nil)
 	 (push cdecl (conversions *current-context*))
 	 (let ((tex (catch 'type-error
