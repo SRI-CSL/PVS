@@ -240,7 +240,7 @@ get to the same state."
                      (pvs-init nil %s)
                      (setq *noninteractive* %s)
                      (setq *pvs-verbose* %d))"
-	     pvs-path (not init-file-user) noninteractive pvs-verbose)
+	     pvs-path (equal (getenv "PVSMINUSQ") "-q") noninteractive pvs-verbose)
      nil nil 'dont-care))
   (setq *pvs-version-information* nil)
   (sleep-for 1)
@@ -254,7 +254,7 @@ get to the same state."
     (setq save-options-file "~/.pvsxemacs-options")
     (setq save-options-init-file "~/.pvsemacs"))
   (when (and (file-exists-p "~/.pvsemacs")
-             init-file-user)
+             (not (getenv "PVSMINUSQ")))
     (load "~/.pvsemacs"))
   (run-hooks 'change-context-hook)
   (if (pvs-buffer-file-name)
@@ -266,3 +266,5 @@ get to the same state."
     (message "Ready")))
 
 (pvs)
+
+
