@@ -271,3 +271,28 @@
     `(let ((,obj ,form))
        (setf (place ,obj) ,place)
        ,obj)))
+
+(defmacro def-pvs-term (name term theory &key (nt 'expr) expected)
+  (assert (symbolp name) () "NAME should be a symbol")
+  (assert (stringp term) () "TERM should be a string")
+  (assert (stringp theory) () "THEORY should be a string")
+  (let ((var (gensym))
+	(reset-name (intern (format nil "%RESET-~a" name)))
+	(hook (if (gethash (intern theory) *prelude*)
+		  '*load-prelude-hook*
+		  '*untypecheck-hook*)))
+    `(let ((,var nil))
+       (pushnew ',reset-name ,hook)
+       (defun ,name ()
+	 (or ,var
+	     (let* ((*current-context*
+		     (saved-context (get-typechecked-theory ,theory)))
+		    (*generate-tccs* 'none)
+		    ,@(when expected
+			`((expected-type
+			   (pc-typecheck (pc-parse ,expected 'type-expr))))))
+	       (assert *current-context*)
+	       (setq ,var (pc-typecheck (pc-parse ,terme ',nt)
+			    ,@(when expected '(:expected expected-type)))))))
+       (defun ,reset-name ()
+	 (setq ,var nil)))))
