@@ -374,10 +374,14 @@
 	  (t (let* ((all-type-pred-state (mapcar #'type all-expr-pred-states))
 		    (all-state-types (remove-duplicates (mapcar #'domain
 							  all-type-pred-state)
-				       :test 'tc-eq)))
+				       :test 'tc-eq))
+		    (state-type (car all-state-types)))
 	       (cond ((cdr all-state-types)
 		      (error-format-if
 		       "State predicates have different domains"))
+		     ((not (is-a-good-state? state-type))
+		       (error-format-if
+		       "State type must be a record type"))
 		     (t all-expr-pred-states)))))))
        
 
