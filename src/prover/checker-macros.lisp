@@ -486,7 +486,8 @@
 	  (*generate-tccs* (if (and *generate-tccs*
 				    (not (eq *generate-tccs* 'NONE)))
 			       *generate-tccs*
-			       'ALL!))
+			       'ALL))
+	  (*false-tcc-error-flag* nil)
 	  (expr ,expr)
 	  (tcc-fmlas (when (not (eq *generate-tccs* 'NONE))
 		       (loop for tccinfo in *tccforms*
