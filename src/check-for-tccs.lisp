@@ -275,10 +275,10 @@
 
 (defmethod check-for-tccs* ((expr update-expr) (expected recordtype))
   (with-slots (expression assignments) expr
-    (check-for-tccs* expression (type expression))
     (let ((atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
+      (check-for-tccs* expression (contract-expected expr atype))
       (check-assignment-arg-types args-list values expression atype))))
 
 (defmethod check-for-tccs* ((expr update-expr) (expected tupletype))
@@ -328,6 +328,10 @@
   (declare (ignore ex))
   (check-for-tccs* value expected))
 
+(defmethod check-assignment-arg-types* (args-list values ex (expected subtype))
+  (declare (ignore args-list values ex))
+  (check-assignment-arg-types* args-list values ex (supertype expected)))
+
 (defmethod check-assignment-arg-types* (args-list values ex (expected recordtype))
   (with-slots (fields) expected
     (if (every #'null args-list)
@@ -373,34 +377,45 @@
 	   (args (when pos (nth pos args-list)))
 	   (value (when pos (nth pos values)))
 	   (rem-args (if args
-			 (remove args args-list)
+			 (remove args args-list :count 1 :start pos)
 			 args-list))
 	   (rem-values (if value
-			   (remove value values)
+			   (remove value values :count 1 :start pos)
 			   values))
 	   (done-with-field? (not (member (car fields) rem-args
 					  :test #'same-id :key #'caar))))
       (when args
 	(when done-with-field?
-	  (check-assignment-arg-types*
-	   (mapcar #'cdr (nreverse (cons args cargs)))
-	   (nreverse (cons value cvalues))
-	   (when ex (make!-field-application (car fields) ex))
-	   (type (car fields)))))
-      (check-assignment-rec-arg-types
-       rem-args rem-values ex
-       (if done-with-field?
-	   (if (some #'(lambda (fld)
-			 (member (car fields) (freevars fld)
-				 :key #'declaration))
-		     fields)
-	       (subst-rec-dep-type value (car fields) (cdr fields))
-	       (cdr fields))
-	   fields)
-       (unless done-with-field?
-	 (cons args cargs))
-       (unless done-with-field?
-	 (cons value cvalues))))))
+	  (let ((cdr-args (mapcar #'cdr (nreverse (cons args cargs)))))
+	    (check-assignment-arg-types*
+	     cdr-args
+	     (nreverse (cons value cvalues))
+	     (when (and ex (some (complement #'null) cdr-args))
+	       (make!-field-application (car fields) ex))
+	     (type (car fields))))))
+      (let ((nfields (if done-with-field?
+			 (if (some #'(lambda (fld)
+				       (member (car fields) (freevars fld)
+					       :key #'declaration))
+				   fields)
+			     (subst-rec-dep-type value (car fields) (cdr fields))
+			     (cdr fields))
+			 fields)))
+	(if nfields
+	    (check-assignment-rec-arg-types rem-args rem-values ex nfields
+					    (unless done-with-field?
+					      (cons args cargs))
+					    (unless done-with-field?
+					      (cons value cvalues)))
+	    (check-assignment-rec-arg-maplet-types rem-args rem-values ex))))))
+
+(defun check-assignment-rec-arg-maplet-types (args-list values ex)
+  (when args-list
+    (let ((args (car args-list))
+	  (value (car values)))
+      (assert (null (cdr args)))
+      (check-for-tccs* value (car (types value))))
+    (set-assignment-rec-arg-maplet-types (cdr args-list) (cdr values) ex)))
 
 (defun check-assignment-tup-arg-types (args-list values ex types index
 					       &optional cargs cvalues)
