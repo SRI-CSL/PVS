@@ -284,9 +284,6 @@
 	    (get-lib-theory (sort lib-decls #'< :key #'locality) library id))
 	  (get-theory* id library)))))
 
-(defmethod get-theory ((name name-expr))
-  (call-next-method))
-
 (defun get-lib-theory (lib-decls library id)
   (if (null lib-decls)
       (get-theory* id (string library))
