@@ -16,6 +16,8 @@
 
 (defvar *multiple-proof-default-behavior* :ask)
 
+(defvar *default-proof-description* nil)
+
 (defmethod prove (name &key  strategy)
   (let ((decl (get-formula *current-theory*
 			   (if (stringp name)(intern name) name))))
@@ -454,9 +456,13 @@
 
 (defun read-proof-description ()
   (cond ((eq *multiple-proof-default-behavior* :ask)
-	 (format t "Please enter a description: ")
-	 (read-line))
-	(t "")))
+	 (format t "Please enter a description~@[ (default ~s)~]: "
+	   *default-proof-description*)
+	 (let ((descr (read-line)))
+	   (if (string-equal descr "")
+	       (or *default-proof-description* descr)
+	       descr)))
+	(t (or *default-proof-description* descr))))
 
 (defun rerun-prove (decl)
   (if (and *noninteractive*
