@@ -147,9 +147,7 @@
 	   (setq *decision-procedures* (remove 'ics *decision-procedures*))
 	   (pvs-message "Trouble loading ICS, so it is not available"))
 	  (t (register_lisp_error_function
-	      (nth-value 1 (ff:register-function `ics_error))))))
-  ;;(ics_init verbose)
-  )
+	      (nth-value 1 (ff:register-function `ics_error)))))))
 
 
 (defun ics-current-context-pp ()
@@ -218,11 +216,13 @@
 	
 (defun unique-name-ics (expr)
   (or (gethash expr *pvs-to-ics-symtab*)
-      (let ((name (format nil "~a__~d"
-			       (if (name-expr? expr) (symbol-name (id expr)) "new")
-			       *unique-name-ics-counter*)))
-	(setf *unique-name-ics-counter* (1+ *unique-name-ics-counter*))
-	(setf (gethash expr *pvs-to-ics-symtab*) name))))
+      (progn
+        ; (pvs-message "~%Abstract : ~a" expr)
+	(let ((name (format nil "~a__~d"
+			    (if (name-expr? expr) (symbol-name (id expr)) "new")
+			    *unique-name-ics-counter*)))
+	  (setf *unique-name-ics-counter* (1+ *unique-name-ics-counter*))
+	  (setf (gethash expr *pvs-to-ics-symtab*) name)))))
 
 
 ;; Translating from PVS expressions to ICS terms
@@ -285,11 +285,16 @@
 	    ((or (tc-eq op (real_pred))
 		 (tc-eq op (rational_pred)))
 	     (ics_atom_mk_real (translate-term-to-ics* (args1 expr))))
+	    ((tc-eq op (number-field_pred)) ; ignore
+	     (ics_atom_mk_true))
 	    (t
 	     (call-next-method))))))
 
 (defmethod translate-posatom-to-ics* ((expr negation))
-  (translate-negatom-to-ics* (args1 expr)))
+  (cond ((tc-eq (operator expr) (integer_pred))
+	 (ics_atom_mk_nonint (translate-term-to-ics* (args1 expr))))
+	(t
+	 (translate-negatom-to-ics* (args1 expr)))))
 
 (defmethod translate-negatom-to-ics* ((expr expr))
   "Fallthrough method: Negations of Boolean expressions 'b' are translated as 'b = false'"
