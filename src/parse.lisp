@@ -40,8 +40,7 @@
 	;;(assert-places-set)
 	(values parsed-object
 		(if *current-file*
-		    (/ (- (get-internal-real-time) start-time)
-		       internal-time-units-per-second 1.0)
+		    (realtime-since start-time)
 		    0))))))
 
 (defun init-parser ()
