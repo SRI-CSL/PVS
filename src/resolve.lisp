@@ -260,10 +260,11 @@
 					     (tc-eq acts (actuals thinst)))
 				       modinsts)
 				     (find-if
-					 #'(lambda (thinst)
-					     (matching-actuals
-					      acts (actuals thinst)
-					      (formals-sans-usings dth) nil))
+					 #'(lambda (dth)
+					     (every #'matching-actual
+						    acts (actuals dth)
+						    (formals-sans-usings
+						     (get-theory dth))))
 				       modinsts))))
 		    (unless thinst (break "No matching thinst"))
 		    (when thinst
