@@ -893,7 +893,7 @@
 	 (error-format-if "~%Ill-formed rule/strategy: ~s " strat)
 	 (get-rule '(skip) *ps*))
 	((quote? strat)(strat-eval (cadr strat)))
-	((if-form? strat);;(break "if")
+	((if-form? strat) ;;(break "if")
 	 (if (expr-eval (cadr strat))
 	     (strat-eval (caddr strat))
 	     (strat-eval (cadddr strat))))
@@ -905,28 +905,28 @@
 	((let-form? strat)
 	 (let ((let-value (let-eval (let-bindings strat))))
 	   (strat-eval (subst-stratexpr
-			     (let-body strat)
-			     let-value
-			     (reverse let-value)
-			     ))))
-	((eq (car strat) 'note)
-	 ;;if this evaluates to a rule, then the input is noted with
-	 ;;comment string which becomes part of the printout.
-	 (let ((result
-		(strat-eval (cadr strat))))
-	   (when (typep result 'rule-instance)
-	     (setf (rule-input result) strat
-		   (rule-format result)
-		   (if (cddr strat)
-		       (cons (format nil "~%(~a)~a" (caddr strat)
-				     (car (rule-format result)))
-			     (cdr (rule-format result)))
-		       (rule-format result))))
-	   result))
+			(let-body strat)
+			let-value
+			(reverse let-value)))))
+;; 	((eq (car strat) 'note)
+;; 	 ;;if this evaluates to a rule, then the input is noted with
+;; 	 ;;comment string which becomes part of the printout.
+;; 	 (let ((result
+;; 		(strat-eval (cadr strat))))
+;; 	   (break)
+;; 	   (when (typep result 'rule-instance)
+;; 	     (setf (rule-input result) strat
+;; 		   (rule-format result)
+;; 		   (if (cddr strat)
+;; 		       (cons (format nil "~%(~a)~a" (caddr strat)
+;; 				     (car (rule-format result)))
+;; 			     (cdr (rule-format result)))
+;; 		       (rule-format result))))
+;; 	   result))
 	((rule-definition (car strat))
 	 (let* ((def (rule-definition (car strat)))
 		(subalist (pair-formals-args (formals def)
-					       (cdr strat)))
+					     (cdr strat)))
 		(args (loop for x in (formals def)
 			    when (not (memq x '(&optional &rest)))
 			    collect
@@ -938,7 +938,7 @@
 			    (defn def)
 			    subalist
 			    (reverse subalist)))
-		(new-def-expr;;2/91:so that rules are APPLYed.
+		(new-def-expr ;;2/91:so that rules are APPLYed.
 		 `(apply ,def-expr))
 		(result (strat-eval new-def-expr)))
 	   (setq *rule-args-alist*
@@ -953,7 +953,7 @@
 	((step-definition (car strat))
 	 (let* ((def (step-definition (car strat)))
 		(alist (pair-formals-args (formals def)
-					       (cdr strat)))
+					  (cdr strat)))
 		(def-expr  (subst-stratexpr
 			    (defn def)
 			    alist
