@@ -5,9 +5,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Thu Oct 29 22:44:02 1998
 ;; Update Count    : 12
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -119,6 +117,14 @@
 (defmacro ignore-file-errors (&rest body)
   `(ignore-errors
     ,@body))
+
+(defvar *ignore-lisp-errors* t)
+
+(defmacro ignore-lisp-errors (&rest body)
+  `(if *ignore-lisp-errors*
+       (ignore-errors ,@body)
+       (progn ,@body)))
+  
 
 (unless (fboundp 'nth-value)
   (defmacro nth-value (n form)
