@@ -897,7 +897,7 @@
 		  'name (subst-mod-params (name j) thname theory)
 		  'formals (subst-mod-params (formals j) thname theory))))
 	(unless (eq j nj)
-	  (setf (module j)
+	  (setf (module nj)
 		(if (fully-instantiated? thname)
 		    (current-theory)
 		    (module j)))
