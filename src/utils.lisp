@@ -2432,38 +2432,50 @@ space")
 	  (when convs
 	    (make!-application (car convs) pappl))))))
 
-;; (defmethod find-conversions-for ((atype funtype) (etype funtype))
-;;   (append (call-next-method)
-;; 	  (let* ((fid (make-new-variable '|f| (list atype etype)))
-;; 		 (fbd (make-bind-decl fid atype))
-;; 		 (fvar (make-variable-expr fbd))
-;; 		 (datype (if (dep-binding? (domain atype))
-;; 			     (type (domain atype))
-;; 			     (domain atype)))
-;; 		 (detype (if (dep-binding? (domain etype))
-;; 			     (type (domain etype))
-;; 			     (domain etype)))
-;; 		 (daid (make-new-variable '|x| (list atype etype)))
-;; 		 (dabd (make-bind-decl daid detype))
-;; 		 (davar (make-variable-expr dabd))
-;; 		 (arg (if (tc-eq datype detype)
-;; 			  davar
-;; 			  ;; Note contravariance
-;; 			  (let ((dconvs (find-conversions-for detype datype)))
-;; 			    (when dconvs
-;; 			      (make!-application (car dconvs) davar))))))
-;; 	    (when arg
-;; 	      (let* ((appl (make!-application fvar arg))
-;; 		     (expr (if (compatible? (range atype) (range etype))
-;; 			       appl
-;; 			       (let ((rconvs (find-conversions-for
-;; 					      (range atype) (range etype))))
-;; 				 (when rconvs
-;; 				   (make!-application (car rconvs) appl))))))
-;; 		(when expr
-;; 		  (list (make!-lambda-expr (list fbd)
-;; 			  (make!-lambda-expr (list dabd)
-;; 			    expr)))))))))
+(defmethod find-conversions-for ((atype funtype) (etype funtype))
+  (let* ((nconvs (call-next-method))
+	 (sconvs (remove-if
+		     (complement
+		      #'(lambda (c)
+			  (let ((ctype (find-supertype (type c))))
+			    (and (strict-compatible? (domain ctype) atype)
+				 (strict-compatible? (range ctype) etype)))))
+		   nconvs))
+	 (fid (make-new-variable '|f| (list atype etype)))
+	 (fbd (make-bind-decl fid atype))
+	 (fvar (make-variable-expr fbd))
+	 (datype (if (dep-binding? (domain atype))
+		     (type (domain atype))
+		     (domain atype)))
+	 (detype (if (dep-binding? (domain etype))
+		     (type (domain etype))
+		     (domain etype)))
+	 (daid (make-new-variable '|x| (list atype etype)))
+	 (dabd (make-bind-decl daid detype))
+	 (davar (make-variable-expr dabd))
+	 (arg (if (tc-eq datype detype)
+		  davar
+		  ;; Note contravariance
+		  (let ((dconvs (find-conversions-for detype datype)))
+		    (when dconvs
+		      (make!-application (car dconvs) davar)))))
+	 (fconvs (when arg
+		   (let* ((appl (make!-application fvar arg))
+			  (expr (if (compatible? (range atype) (range etype))
+				    appl
+				    (let ((rconvs (find-conversions-for
+						   (range atype)
+						   (range etype))))
+				      (when rconvs
+					(make!-application (car rconvs)
+					  appl))))))
+		     (when expr
+		       (list (make!-lambda-expr (list fbd)
+			       (make!-lambda-expr (list dabd)
+				 expr))))))))
+    (or sconvs
+	fconvs
+	nconvs)))
 
 (defmethod find-conversions-for (atype etype)
   (find-conversions* (conversions *current-context*)
