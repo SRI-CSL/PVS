@@ -74,7 +74,7 @@
   `(dpi-term-arguments* *current-decision-procedure* ,term))
 
 (defmacro dpi-canon (term state)
-  `(dpi-canon* *current-decision-procedure* ,term))
+  `(dpi-canon* *current-decision-procedure* ,term ,state))
 
 
 ;;; Initialization - invoked from init-pvs.
@@ -89,7 +89,7 @@
 ;;; The generic versions - leave out those that must be specialized
 
 (defmethod dpi-end* (dp proofstate)
-  )
+  (declare (ignore dp proofstate)))
 
 ;;; Now define the interfaces for the individual decision procedures
 
@@ -241,7 +241,7 @@
 	 
 
 (defmethod dpi-valid?* ((dp (eql 'ics)) state pvs-expr)
-  (not (zerop (ics_is_valid state (ics_process state ics-expr)))))
+  (not (zerop (ics_is_valid state (ics_process state pvs-expr)))))
 
 (defmethod dpi-push-state* ((dp (eql 'ics)) state)
   state)
@@ -257,3 +257,60 @@
 
 (defmethod dpi-state-changed?* ((dp (eql 'ics)) old-state new-state)
   (not (eq old-state new-state)))
+
+;;; Comparison interface
+
+
+(defmethod dpi-init* ((dp (eql 'shostak-and-ics)))
+  (dpi-init* 'shostak)
+  (dpi-init* 'ics))
+
+(defmethod dpi-start* ((dp (eql 'shostak-and-ics)) (prove-body function))
+  ;; This one does a let and invokes prove-body, so we can't call both
+  (pvs-to-ics-reset)
+  (dpi-start* 'shostak prove-body))
+
+(defmethod dpi-empty-state* ((dp (eql 'shostak-and-ics)))
+  (cons (dpi-empty-state* 'shostak)
+	(dpi-empty-state* 'ics)))
+
+(defmethod dpi-process* ((dp (eql 'shostak-and-ics)) expr state)
+  (multiple-value-bind (shostak-result shostak-nstate)
+      (dpi-process* 'shostak expr (car state))
+    (multiple-value-bind (ics-result ics-nstate)
+	(dpi-process* 'ics expr (cdr state))
+      (unless (tc-eq shostak-result ics-result)
+	(format t "~%ICS-PROBLEM: dpi-process*: shostak and ICS differ on ~a"
+	  expr))
+      (values shostak-result (cons shostak-nstate ics-nstate)))))
+
+(defmethod dpi-valid?* ((dp (eql 'shostak-and-ics)) state pvs-expr)
+  (let ((shostak-result (dpi-valid?* 'shostak (car state) pvs-expr))
+	(ics-result (dpi-valid?* 'ics (cdr state) pvs-expr)))
+    (unless (tc-eq shostak-result ics-result)
+      (format t "~%ICS-PROBLEM: dpi-valid?* shostak and ICS differ on ~a"
+	expr))
+    shostak-result))
+
+(defmethod dpi-push-state* ((dp (eql 'shostak-and-ics)) state)
+  (cons (dpi-push-state* 'shostak (car state))
+	(dpi-push-state* 'ics (cdr state))))
+
+(defmethod dpi-pop-state* ((dp (eql 'shostak-and-ics)) state)
+  state)
+
+(defmethod dpi-copy-state* ((dp (eql 'shostak-and-ics)) state)
+  (cons (dpi-copy-state* 'shostak (car state))
+	(dpi-copy-state* 'ics (cdr state))))
+
+(defmethod dpi-restore-state* ((dp (eql 'shostak-and-ics)) state)
+  state)
+
+(defmethod dpi-state-changed?* ((dp (eql 'shostak-and-ics)) old-state new-state)
+  (let ((shostak-result (dpi-state-changed?* 'shostak
+					     (car old-state) (car new-state)))
+	(ics-result (dpi-state-changed?* 'ics
+					 (cdr old-state) (cdr new-state))))
+    (unless (eq shostak-result ics-result)
+      (format t "~%ICS-PROBLEM: dpi-state-changed?* shostak and ICS differ"))
+    shostak-result))
