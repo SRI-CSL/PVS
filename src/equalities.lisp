@@ -195,6 +195,12 @@ where db is to replace db1 and db2")
 	  (call-next-method)
 	  (tc-eq* e1 e2 bindings)))))
 
+(defmethod tc-eq* ((t1 type-application) (t2 type-application) bindings)
+  (with-slots ((ty1 type) (p1 parameters)) t1
+    (with-slots ((ty2 type) (p2 parameters)) t2
+      (and (tc-eq* ty1 ty2 bindings)
+	   (tc-eq* p1 p2 bindings)))))
+
 
 (defmethod tc-eq* ((t1 funtype) (t2 funtype) bindings)
   (with-slots ((d1 domain) (r1 range)) t1
@@ -837,7 +843,11 @@ where db is to replace db1 and db2")
 	       (or (binding? decl1)
 		   (if mi1
 		       (and mi2
-			    (tc-eq* mi1 mi2 bindings))
+			    (or (null (library mi1))
+				(null (library mi2))
+				(eq (library mi1) (library mi2)))
+			    (tc-eq* (actuals mi1) (actuals mi2) bindings)
+			    (tc-eq* (mappings mi1) (mappings mi2) bindings))
 		       (null mi2))))))))
 
 (defmethod tc-eq* ((n1 modname) (n2 modname) bindings)
