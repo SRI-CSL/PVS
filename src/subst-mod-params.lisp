@@ -63,6 +63,10 @@
 
 (defvar *free-bindings* nil)
 
+(defvar *smp-mappings* nil)
+
+(defvar *subst-mod-params-module?* nil)
+
 ;;; This resets the *all-subst-mod-params-caches* hash table.  It is
 ;;; called from the parser whenever a newly parsed theory replaces the old
 ;;; theory, to ensure that the garbage collector can remove the objects.
@@ -163,6 +167,7 @@
 		 (caches (get-subst-mod-params-caches modinst))
 		 (*subst-mod-params-cache* (car caches))
 		 (*subst-mod-params-eq-cache* (cdr caches))
+		 (*smp-mappings* (mappings modinst))
 		 (bindings (make-subst-mod-params-bindings
 			    modinst formals actuals (mappings modinst) nil))
 		 (nobj (subst-mod-params* obj modinst bindings)))
@@ -326,7 +331,7 @@
 	     (bind-rhs (rhs (car mappings))))
 	 (assert decl)
 	 (make-subst-mod-params-map-bindings*
-	  decl bind-rhs bindings))))))
+	  decl bind-rhs bindings)))))
 
 (defmethod make-subst-mod-params-map-bindings* ((decl mod-decl) rhs bindings)
   (let* ((thname (expr rhs))
@@ -422,7 +427,8 @@
 
 (defmethod subst-mod-params* ((th module) modinst bindings)
   (with-slots (formals assuming theory exporting) th
-    (let* ((rformals (remove-if #'(lambda (d) (assq d bindings)) formals))
+    (let* ((*subst-mod-params-module?* t)
+	   (rformals (remove-if #'(lambda (d) (assq d bindings)) formals))
 	   (rassuming (remove-if
 			  #'(lambda (d) (substituted-map-decl d bindings))
 			assuming))
@@ -647,18 +653,21 @@
 	(type-value act) ;; sufficient since we know
 	;; type name was found on the bindings, and the corresponding
         ;; actual is there.  Here we actally do the substitution.
-	(let* ((mi (module-instance res))
-	       (nacts (subst-mod-params* (actuals mi) modinst bindings)))
-	  #+pvsdebug (assert (not (and nacts (eq (id mi) (id modinst)))))
-	  #+pvsdebug (assert (fully-instantiated? nacts))
-	  (if nacts
-	      (if (eq (actuals mi) nacts)
-		  type
-		  (let ((nmodinst (copy mi 'actuals nacts)))
-		    (subst-mod-params-type-name type nmodinst)))
-	      (if (eq (id mi) (id modinst))
-		  (subst-mod-params-type-name type modinst)
-		  type))))))
+	(if (and *subst-mod-params-module?*
+		 (eq (module decl) (get-theory modinst)))
+	    type
+	    (let* ((mi (module-instance res))
+		   (nacts (subst-mod-params* (actuals mi) modinst bindings)))
+	      #+pvsdebug (assert (not (and nacts (eq (id mi) (id modinst)))))
+	      #+pvsdebug (assert (fully-instantiated? nacts))
+	      (if nacts
+		  (if (eq (actuals mi) nacts)
+		      type
+		      (let ((nmodinst (copy mi 'actuals nacts)))
+			(subst-mod-params-type-name type nmodinst)))
+		  (if (eq (id mi) (id modinst))
+		      (subst-mod-params-type-name type modinst)
+		      type)))))))
 
 ;;; just goes ahead and copies the type with the new module
 ;;; instance in the newly created resolution
