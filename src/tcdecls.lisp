@@ -176,7 +176,8 @@
   (when (formals decl)
     (type-error decl "Formals are not allowed in ~(~a~)s" (type-of decl)))
   (check-duplication decl)
-  (typecheck-usings (list (modname decl)))
+  (typecheck-using (modname decl))
+  (setf (saved-context decl) (copy-context *current-context*))
   ;; Need to allow id to be used as abbreviation
   )
 
