@@ -230,8 +230,13 @@
 					    (or (run-proof-time d) 0))
 				   :initial-value 0)
 			   internal-time-units-per-second))
+	       (statuslength 20) ; "proved - incomplete "
+	       (dplength (+ (apply #'max
+			      (mapcar #'(lambda (x) (length (string x)))
+				*decision-procedures*))
+			    2))
 	       (timelength (length (format nil "~,2f" maxtime)))
-	       (idlength (- 48 timelength)))
+	       (idlength (- 79 4 statuslength dplength timelength 4)))
 	  (dolist (decl fdecls)
 	    (let ((tm (if (run-proof-time decl)
 			  (/ (run-proof-time decl)
