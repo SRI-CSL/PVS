@@ -51,12 +51,13 @@
 	       (resolution-error name k args)))
 	  ((and (cdr res)
 		(not (eq k 'expr)))
-	   (let ((nres (remove-if-not #'(lambda (r)
+	   (let* ((nres (delete-if-not #'(lambda (r)
 					  (if argument
 					      (formals (declaration r))
 					      (not (formals (declaration r)))))
-			 res)))
-	     (setf (resolutions name) nres)
+			 res))
+		  (fres (or (delete-if-not #'fully-instantiated? nres) nres)))
+	     (setf (resolutions name) fres)
 	     (when (cdr nres)
 	       (type-ambiguity name))))
 	  (t (setf (resolutions name) res))))
@@ -159,12 +160,16 @@
 	 (type-error name
 	   "Wrong number of arguments:~%  ~d provided, ~d expected"
 	   (length arguments)
-	   (length (domain-types (type (cadr info))))))
+	   (length (if (typep (cadr info) 'expr)
+		       (domain-types (type (cadr info)))
+		       (car (formals (cadr info)))))))
 	(:arg-mismatch
-	 (type-error name
-	   "~:r argument has the wrong type~
+	 ;; Info = (:arg-mismatch decl argnum args types)
+	 (type-error (car (fourth info))
+	   "~:r argument to ~a has the wrong type~
           ~%     Found: ~{~a~%~^~12T~}  Expected: ~a"
-	   (caddr info)
+	   (third info)
+	   name
 	   (mapcar #'(lambda (fn) (unpindent fn 12 :string t))
 		   (full-name (ptypes (car (fourth info))) 1))
 	   (full-name (car (fifth info)) 1)))))))
@@ -210,16 +215,6 @@
 		(ptypes (car args)))
 	   (1+ num)
 	   num))))
-
-(defun compatible-args*? (decl args types argnum)
-  (or (null args)
-      (if (some #'(lambda (ptype)
-		    (compatible-args**? ptype (car types)))
-		(ptypes (car args)))
-	  (compatible-args*? decl (cdr args) (cdr types) (1+ argnum))
-	  (progn (push (list :arg-mismatch decl argnum args types)
-		       *resolve-error-info*)
-		 nil))))
 
 (defun best-guess-length-error (infolist arguments)
   (declare (ignore arguments))
@@ -295,7 +290,7 @@
 				      (ptypes (expr act))))
 		       (setf (type-value act)
 			     (typecheck* (make-instance 'expr-as-type
-					   'expr (expr act))
+					   'expr (copy-untyped (expr act)))
 					 nil nil nil))))
 		   (when tres
 		     (if (type-value act)
@@ -303,6 +298,11 @@
 			   (push (car tres) (resolutions (expr act)))
 			   (type-ambiguity (expr act)))
 			 (progn
+			   (when (and (mod-id (expr act))
+				      (typep (type (car tres)) 'type-name)
+				      (same-id (expr act) (type (car tres))))
+			     (setf (mod-id (type (car tres)))
+				   (mod-id (expr act))))
 			   (setf (type-value act) (type (car tres)))
 			   (push 'type (types (expr act))))))))
       (set-expr (typecheck* (expr act) nil nil nil)
@@ -381,11 +381,13 @@
 	  (type-error name "Library ~a not found" (library name)))))
   (cond ((mod-id name)
 	 (or (module-synonym-instance name)
-	     (let ((modinsts (assoc (mod-id name)
-				    (cons (list (module *current-context*)
-						(mod-name *current-context*))
-					  using-list)
-				    :test #'(lambda (x y) (eq x (id y))))))
+	     (let* ((modalist (acons (module *current-context*)
+				     (mod-name *current-context*)
+				     using-list))
+		    (modinsts (or (assoc (mod-id name) modalist :test #'eq-id)
+				  (let ((dt (get-theory (mod-id name))))
+				    (and (typep dt 'datatype)
+					 (assq (adt-theory dt) modalist))))))
 	       (if modinsts
 		   (let ((mis (matching-modinsts
 			       (id name) (actuals name) modinsts)))
@@ -399,6 +401,9 @@
 						   using-list nil)))
 		 ;(setf (gethash (id name) *id-to-modinsts*) modinsts)
 		 modinsts)))))
+
+(defun eq-id (x y)
+  (eq x (id y)))
 
 (defun module-synonym-instance (name)
   (when (mod-id name)
@@ -506,31 +511,25 @@
 			  (if mi (cons mi result) result)))))
 
 (defun compatible-parameters? (actuals formals)
-  (when (and (length= actuals formals)
-	     (every #'(lambda (a f)
-			(if (typep f 'formal-type-decl)
-			    (type-value a)
-			    (ptypes (expr a))))
-		    actuals formals))
+  (when (length= actuals formals)
     (compatible-parameters?* actuals formals)))
 
-(defun compatible-parameters?* (actuals formals)
+(defun compatible-parameters?* (actuals formals &optional alist)
   (or (null actuals)
-      (let ((type (compatible-parameter? (car actuals) (car formals))))
-	(and type
-	     (if (typep (car formals) 'formal-type-decl)
-		 (compatible-parameters?*
-		  (cdr actuals)
-		  (subst-actual-in-remaining-formals actuals formals))
-		 (some #'(lambda (ty)
-			   (let ((nact (copy-untyped (car actuals))))
-			     (typecheck* nact nil nil nil)
-			     (set-type (expr nact) ty)
-			     (compatible-parameters?*
-			      (cdr actuals)
-			      (subst-actual-in-remaining-formals
-			       (cons nact (cdr actuals)) formals))))
-		       type))))))
+      (multiple-value-bind (nfml nalist)
+	  (subst-actuals-in-next-formal (car actuals) (car formals) alist)
+	(let ((type (compatible-parameter? (car actuals) nfml)))
+	  (and type
+	       (if (typep nfml 'formal-type-decl)
+		   (compatible-parameters?* (cdr actuals) (cdr formals) nalist)
+		   (some #'(lambda (ty)
+			     (let ((nact (copy-untyped (car actuals))))
+			       (typecheck* nact nil nil nil)
+			       (set-type (expr nact) ty)
+			       (compatible-parameters?*
+				(cdr actuals) (cdr formals)
+				(acons (car formals) nact (cdr nalist)))))
+			 type)))))))
 
 (defun compatible-parameter? (actual formal)
   (if (formal-type-decl? formal)
@@ -1112,7 +1111,7 @@
 		    (compatible-args**? ptype (car types)))
 		(ptypes (car args)))
 	  (compatible-args*? decl (cdr args) (cdr types) (1+ argnum))
-	  (progn (push (list :arg-mismatch decl argnum (car types))
+	  (progn (push (list :arg-mismatch decl argnum args types)
 		       *resolve-error-info*)
 		 nil))))
 
@@ -1733,4 +1732,3 @@
 	 (cconv (copy conv)))
     (change-name-expr-class-if-needed (declaration conv) cconv)
     (copy rtype 'from-conversion cconv)))
-
