@@ -81,7 +81,8 @@
 	     ((some #'(lambda (a)
 			(complementary? c a))
 		    acc)
-	      (throw-unsat "~%Inconsistency: ~a" cs))
+	      (qe-msg "~%Inconsistency: ~a" cs)
+	      (throw 'unsatisfiable :unsat))
 	     (t
 	      (reduced-conjuncts (cdr cs)
 				 (adjoin c acc :test #'tc-eq)))))))
