@@ -466,7 +466,6 @@
 
 (defmethod update-fetched :around ((obj adt-type-name))
   (call-next-method)
-  (assert (eq (free-parameters obj) 'unbound))
   (when (or (symbolp (adt obj))
 	    (stringp (adt obj)))
     (let ((rec-type (when (symbolp (adt obj))
@@ -478,8 +477,7 @@
 	    (setf (adt obj) rec-type)
 	    (setf *adt-type-name-pending*
 		  (delete atns *adt-type-name-pending*)))
-	  (add-to-alist (adt obj) obj *adt-type-name-pending*))))
-  (assert (eq (free-parameters obj) 'unbound)))
+	  (add-to-alist (adt obj) obj *adt-type-name-pending*)))))
 
 (defmethod store-object* :around ((obj type-expr))
    (if (and (print-type obj)
@@ -850,13 +848,26 @@
     (restore-object* conv)))
 
 (defun postrestore-context-judgements (judgements)
-  (dolist (elt (number-judgements-alist judgements))
-    (restore-object* (cdr elt)))
-  (dolist (elt (name-judgements-alist judgements))
-    (restore-object* (cdr elt)))
-  (dolist (elt (application-judgements-alist judgements))
-    (dotimes (i (length (cdr elt)))
-      (restore-object* (svref (cdr elt) i)))))
+  (let* ((prelude-judgements (judgements (or *prelude-library-context*
+					    *prelude-context*)))
+	 (prelude-num-judgements (number-judgements-alist prelude-judgements))
+	 (prelude-name-judgements (name-judgements-alist prelude-judgements))
+	 (prelude-appl-judgements (application-judgements-alist
+				   prelude-judgements)))
+    (unless (eq prelude-num-judgements (number-judgements-alist judgements))
+      (dolist (elt (number-judgements-alist judgements))
+	(unless (memq elt prelude-num-judgements)
+	  (restore-object* (cdr elt)))))
+    (unless (eq prelude-name-judgements (name-judgements-alist judgements))
+      (dolist (elt (name-judgements-alist judgements))
+	(unless (memq elt prelude-name-judgements)
+	  (restore-object* (cdr elt)))))
+    (unless (eq prelude-appl-judgements
+		(application-judgements-alist judgements))
+      (dolist (elt (application-judgements-alist judgements))
+	(unless (memq elt prelude-appl-judgements)
+	  (dotimes (i (length (cdr elt)))
+	    (restore-object* (svref (cdr elt) i))))))))
 
 (defmethod restore-object* :around ((obj declaration))
   (if (and (module obj)
