@@ -86,16 +86,16 @@
 			 (progn
 			   (pop *pp-tex-newline-element*)
 			   (if (cdr *pp-tex-newline-element*)
-			       (write "}\\)}\\zbox{\\({" :stream stream)
-			       (write "}\\)}\\hbox{\\({" :stream stream))
+			       (write "}\\)} \\zbox{\\({" :stream stream)
+			       (write "}\\)} \\hbox{\\({" :stream stream))
 			   (setq wrote-char t)
 			   (setq *pp-tex-spaces-to-delete*
-				 (+ *pp-tex-column* 3)))
+				 (+ *pp-tex-column* 100)))
 			 (setq *pp-tex-column* 0)))
 	  (#\{ (when *pp-tex-newline-element*
 		 (if (cdr *pp-tex-newline-element*)
-		     (write "{\\vbox{\\zbox{\\(" :stream stream)
-		     (write "{\\vbox{\\hbox{\\(" :stream stream))))
+		     (write "{{\\zbox{\\(" :stream stream)
+		     (write "{{\\hbox{\\(" :stream stream))))
 	  (#\} (when *pp-tex-newline-element*
 		 (write "}\\)}}" :stream stream)))
 	  (#\space (unless (zerop *pp-tex-spaces-to-delete*)
@@ -110,10 +110,18 @@
 	       (unless wrote-char
 		 (write-char char stream))
 	       (write-string-with-tex-substitutions str (1+ pos) len stream))
-	      (t (let ((endpos (or (position-if #'(lambda (ch)
-						    (< (char-code ch) 127))
-						str
-						:start pos :end len)
+	      (t (assert (= (char-code char) 127) ()
+			 (format nil "char-code = ~d, pos = ~d, len = ~d"
+			   (char-code char) pos len))
+		 (let* ((midpos (position-if #'(lambda (ch)
+						 (not (= (char-code ch)
+							 127)))
+					     str
+					     :start pos :end len))
+			(endpos (or (position-if #'(lambda (ch)
+						     (<= (char-code ch) 127))
+						 str
+						 :start midpos :end len)
 				   len)))
 		   (multiple-value-bind (trans npos)
 		       (get-latex-substitution-translation str pos endpos)
@@ -124,6 +132,8 @@
 (defun get-latex-substitution-translation (str pos epos)
   (assert (< pos epos))
   (let ((trans (gethash (subseq str pos epos) *pvs-tex-substitution-hash*)))
+    (assert trans ()
+	    "trans of ~a not found" (subseq str pos epos))
     (if trans
 	(values trans epos)
 	(get-latex-substitution-translation str pos (1- epos)))))
@@ -176,8 +186,10 @@
 (defun pp-tex-theory-formals (formals)
   (when formals
     (let ((*pretty-printing-decl-list* t))
-      (pprint-logical-block (nil (check-chained-syntax formals)
-				 :prefix "[" :suffix "]")
+      (pprint-logical-block
+	  (nil (check-chained-syntax formals)
+	       :prefix (get-pp-tex-id '\[)
+	       :suffix (get-pp-tex-id '\]))
 	(loop (let ((*pretty-printed-prefix* nil)
 		    (elt (pprint-pop)))
 		(when (typep elt 'importing)
@@ -185,8 +197,10 @@
 		    (loop while (chain? (car imps))
 			  do (setq elt (pprint-pop))
 			  do (push elt imps))
-		    (pprint-logical-block (nil (nreverse imps)
-					       :prefix "(" :suffix ")")
+		    (pprint-logical-block
+			(nil (nreverse imps)
+			     :prefix (get-pp-tex-id '\()
+			     :suffix (get-pp-tex-id '\)))
 		      (pp-tex-keyword 'IMPORTING)
 		      (write #\space)
 		      (pprint-indent :current 0)
@@ -394,13 +408,18 @@
   (with-slots (id arguments recognizer) constr
     (pprint-logical-block (nil nil)
       (pp-tex-id id)
+      (pprint-indent :current 0)
       (when arguments
-	(pprint-logical-block (nil arguments :prefix "(" :suffix ")")
+	(pprint-logical-block
+	    (nil arguments
+	       :prefix (get-pp-tex-id '\()
+	       :suffix (get-pp-tex-id '\)))
 	  (loop (pp-tex* (pprint-pop))
 		(pprint-exit-if-list-exhausted)
 		(write-char #\,)
 		(write-char #\space)
 		(pprint-newline :fill))))
+      (pprint-newline :fill)
       (write-char #\:)
       (write-char #\space)
       (pp-tex-id recognizer)
@@ -468,11 +487,13 @@
 	       (pp-tex-const-decl id formals (if module
 						 (id module)
 						 (id (current-theory))))
+	       (pprint-indent :block 6)
 	       (write-char #\:)
 	       (write-char #\space)
-	       (pprint-newline :fill)
+	       ;;(pprint-newline :fill)
 	       (call-next-method)
 	       (when semi (write-char #\;))
+	       (pprint-indent :block 0)
 	       (unless (typep decl 'formal-decl)
 		 (write "\\vspace*{\\pvsdeclspacing}")))))))
 
@@ -937,7 +958,10 @@
     (pp-tex-number (number ex))))
 
 (defun pp-tex-arguments (args)
-  (pprint-logical-block (nil args :prefix "(" :suffix ")")
+  (pprint-logical-block
+      (nil args
+	       :prefix (get-pp-tex-id '\()
+	       :suffix (get-pp-tex-id '\)))
     (pprint-indent :current 0)
     (loop (pp-tex* (pprint-pop))
 	  (pprint-exit-if-list-exhausted)
@@ -973,13 +997,16 @@
 
 (defmethod pp-tex* ((te expr-as-type))
   (with-slots (expr) te
-    (write-char #\()
+    (pp-tex-id '\()
     (pp-tex* expr)
-    (write-char #\))))
+    (pp-tex-id '\))))
 
 (defmethod pp-tex* ((te recordtype))
   (with-slots (fields) te
-    (pprint-logical-block (nil fields :prefix "[# " :suffix " #]")
+    (pprint-logical-block
+	(nil fields
+	       :prefix (get-pp-tex-id '\[\#)
+	       :suffix (get-pp-tex-id '\#\]))
       (loop (pp-tex* (pprint-pop))
 	    (pprint-exit-if-list-exhausted)
 	    (write-char #\,)
@@ -988,7 +1015,10 @@
 
 (defmethod pp-tex* ((te funtype))
   (with-slots (domain range) te
-    (pprint-logical-block (nil nil :prefix "[" :suffix "]")
+    (pprint-logical-block
+	(nil nil
+	     :prefix (get-pp-tex-id '\[)
+	     :suffix (get-pp-tex-id '\]))
       (pprint-indent :current 2)
       (pp-tex-funtype domain range)
       (pprint-indent :block 0))))
@@ -1061,7 +1091,10 @@
 
 (defmethod pp-tex* ((te tupletype))
   (with-slots (types) te
-    (pprint-logical-block (nil types :prefix "[" :suffix "]")
+    (pprint-logical-block
+	(nil types
+	     :prefix (get-pp-tex-id '\[)
+	     :suffix (get-pp-tex-id '\]))
       (pprint-indent :current 0)
       (loop (pp-tex* (pprint-pop))
 	    (pprint-exit-if-list-exhausted)
@@ -1071,7 +1104,10 @@
 
 (defmethod pp-tex* ((te cotupletype))
   (with-slots (types) te
-    (pprint-logical-block (nil types :prefix "[" :suffix "]")
+    (pprint-logical-block
+	(nil types
+	     :prefix (get-pp-tex-id '\[)
+	     :suffix (get-pp-tex-id '\]))
       (pprint-indent :current 0)
       (loop (pp-tex* (pprint-pop))
 	    (pprint-exit-if-list-exhausted)
@@ -1090,17 +1126,17 @@
       (if (typep ex 'binding)
 	  (call-next-method)
 	  (progn (dotimes (p (parens ex))
-		   (write-char #\())
+		   (pp-tex-id '\())
 		 (call-next-method)
 		 (dotimes (p (parens ex))
-		   (write-char #\)))))))
+		   (pp-tex-id '\)))))))
 
 (defmethod pp-tex* :around ((ex infix-application))
   (cond ((and *pp-print-parens*
 	      (zerop (parens ex)))
-	 (write-char #\()
+	 (pp-tex-id '\()
 	 (call-next-method)
-	 (write-char #\)))
+	 (pp-tex-id '\)))
 	(t (call-next-method))))
 
 (defmethod pp-tex* ((ex number-expr))
@@ -1122,8 +1158,10 @@
 
 (defmethod pp-tex* ((ex list-expr))
   (if (valid-list-expr? ex)
-      (pprint-logical-block (nil (list-arguments ex)
-				 :prefix "(: " :suffix " :)")
+      (pprint-logical-block
+	  (nil (list-arguments ex)
+	       :prefix (get-pp-tex-id '\(\:)
+	       :suffix (get-pp-tex-id '\:\)))
 	(pprint-indent :current 0)
 	(loop (pp-tex* (pprint-pop))
 	      (pprint-exit-if-list-exhausted)
@@ -1137,7 +1175,10 @@
   (pp-tex-keyword '|:)|))
 
 (defmethod pp-tex* ((ex bracket-expr))
-  (pprint-logical-block (nil (arguments ex) :prefix "[| " :suffix " |]")
+  (pprint-logical-block
+      (nil (arguments ex)
+	   :prefix (get-pp-tex-id '\[\|)
+	   :suffix (get-pp-tex-id '\|\]))
     (pprint-indent :current 0)
     (loop (pp-tex* (pprint-pop))
 	  (pprint-exit-if-list-exhausted)
@@ -1146,7 +1187,10 @@
 	  (pprint-newline :linear))))
 
 (defmethod pp-tex* ((ex paren-vbar-expr))
-  (pprint-logical-block (nil (arguments ex) :prefix "(| " :suffix " |)")
+  (pprint-logical-block
+      (nil (arguments ex)
+	   :prefix (get-pp-tex-id '\(\|)
+	   :suffix (get-pp-tex-id '\|\)))
     (pprint-indent :current 0)
     (loop (pp-tex* (pprint-pop))
 	  (pprint-exit-if-list-exhausted)
@@ -1155,7 +1199,10 @@
 	  (pprint-newline :linear))))
 
 (defmethod pp-tex* ((ex brace-vbar-expr))
-  (pprint-logical-block (nil (arguments ex) :prefix "\\{| " :suffix " |\\}")
+  (pprint-logical-block
+      (nil (arguments ex)
+	   :prefix (get-pp-tex-id '\{\|)
+	   :suffix (get-pp-tex-id '\|\}))
     (pprint-indent :current 0)
     (loop (pp-tex* (pprint-pop))
 	  (pprint-exit-if-list-exhausted)
@@ -1165,7 +1212,10 @@
 
 (defmethod pp-tex* ((ex record-expr))
   (with-slots (assignments) ex
-    (pprint-logical-block (nil assignments :prefix "(# " :suffix " #)")
+    (pprint-logical-block
+	(nil assignments
+	   :prefix (get-pp-tex-id '\(\#)
+	   :suffix (get-pp-tex-id '\#\)))
       (pprint-indent :current 0)
       (loop (pp-tex* (pprint-pop))
 	    (pprint-exit-if-list-exhausted)
@@ -1213,9 +1263,9 @@
 	  (if (and (zerop (parens (argument ex)))
 		   (< (precedence (argument ex) 'left)
 		      (precedence 'sbst::|`| 'right)))
-	      (progn (write-char #\()
+	      (progn (pp-tex-id '\()
 		     (pp-tex* (argument ex))
-		     (write-char #\)))
+		     (pp-tex-id '\)))
 	      (pp-tex* (argument ex)))
 	  (write '|`|)
 	  (pp-tex-number (index ex)))
@@ -1232,9 +1282,9 @@
 	(if (and (zerop (parens (argument ex)))
 		 (< (precedence (argument ex) 'left)
 		    (precedence 'sbst::|`| 'right)))
-	    (progn (write-char #\()
+	    (progn (pp-tex-id '\()
 		   (pp-tex* (argument ex))
-		   (write-char #\)))
+		   (pp-tex-id '\)))
 	    (pp-tex* (argument ex)))
 	(write '|`|)
 	(pp-tex-number (index ex)))))
@@ -1270,9 +1320,9 @@
 	  (if (and (zerop (parens (argument ex)))
 		   (< (precedence (argument ex) 'left)
 		      (precedence 'sbst::|`| 'right)))
-	      (progn (write-char #\()
+	      (progn (pp-tex-id '\()
 		     (pp-tex* (argument ex))
-		     (write-char #\)))
+		     (pp-tex-id '\)))
 	      (pp-tex* (argument ex)))
 	  (write '|`|)
 	  (pp-tex-id (id ex)))
@@ -1288,9 +1338,9 @@
     (if (and (zerop (parens (argument ex)))
 	     (< (precedence (argument ex) 'left)
 		(precedence 'sbst::|`| 'right)))
-	(progn (write-char #\()
+	(progn (pp-tex-id '\()
 	       (pp-tex* (argument ex))
-	       (write-char #\)))
+	       (pp-tex-id '\)))
 	(pp-tex* (argument ex)))
     (write '|`|)
     (pp-tex-id (id ex))))
@@ -1328,34 +1378,36 @@
 
 (defmethod pp-tex* :around ((ex application))
   (with-slots (operator argument) ex
-    (let* ((args (argument* ex))
-	   (arglengths (mapcar #'(lambda (arg)
-				   (if (typep arg 'tuple-expr)
-				       (length (exprs arg))
-				       1))
-			 args))
-	   (appltrans (get-pp-tex-funsym operator arglengths)))
-      (cond (appltrans
-	     (unless *in-tex-math-mode*
-	       (write "\\("))
-	     (let ((*in-tex-math-mode* t))
-	       (dotimes (p (parens ex))
-		 (write-char #\())
-	       (write appltrans)
-	       (dolist (arg args)
-		 (cond ((typep arg 'tuple-expr)
-			(dolist (a (exprs arg))
-			  (write "{")
-			  (pp-tex* a)
-			  (write "}")))
-		       (t (write "{")
-			  (pp-tex* arg)
-			  (write "}"))))
-	       (dotimes (p (parens ex))
-		 (write-char #\))))
-	     (unless *in-tex-math-mode*
-	       (write "\\)")))
-	    (t (call-next-method))))))
+    (if (typep ex '(or bracket-expr paren-vbar-expr brace-vbar-expr))
+	(call-next-method)
+	(let* ((args (argument* ex))
+	       (arglengths (mapcar #'(lambda (arg)
+				       (if (typep arg 'tuple-expr)
+					   (length (exprs arg))
+					   1))
+			     args))
+	       (appltrans (get-pp-tex-funsym operator arglengths)))
+	  (cond (appltrans
+		 (unless *in-tex-math-mode*
+		   (write "\\("))
+		 (let ((*in-tex-math-mode* t))
+		   (dotimes (p (parens ex))
+		     (pp-tex-id '\())
+		   (write appltrans)
+		   (dolist (arg args)
+		     (cond ((typep arg 'tuple-expr)
+			    (dolist (a (exprs arg))
+			      (write "{")
+			      (pp-tex* a)
+			      (write "}")))
+			   (t (write "{")
+			      (pp-tex* arg)
+			      (write "}"))))
+		   (dotimes (p (parens ex))
+		     (pp-tex-id '\))))
+		 (unless *in-tex-math-mode*
+		   (write "\\)")))
+		(t (call-next-method)))))))
 
 (defmethod pp-tex* ((ex application))
   (let ((operator (get-pp-operator* (operator ex)))
@@ -1401,9 +1453,9 @@
 	    (if (and (zerop (parens lhs))
 		     (< (precedence lhs 'left)
 			(gethash oper (second *expr-prec-info*))))
-		(progn (write-char #\()
+		(progn (pp-tex-id '\()
 		       (pp-tex* lhs)
-		       (write-char #\)))
+		       (pp-tex-id '\)))
 		(pp-tex* lhs))
 	    (write-char #\space)
 	    (unless *in-tex-math-mode*
@@ -1417,9 +1469,9 @@
 	    (if (and (zerop (parens rhs))
 		     (< (precedence rhs 'right)
 			(gethash oper (third *expr-prec-info*))))
-		(progn (write-char #\()
+		(progn (pp-tex-id '\()
 		       (pp-tex* rhs)
-		       (write-char #\)))
+		       (pp-tex-id '\)))
 		(pp-tex* rhs))))
 	(call-next-method))))
 
@@ -1443,7 +1495,10 @@
 		      (gethash (sbst-symbol (id operator))
 			       (first *expr-prec-info*)))
 	      (pp-tex* argument)
-	      (pprint-logical-block (nil nil :prefix "(" :suffix ")")
+	      (pprint-logical-block
+		  (nil nil
+		       :prefix (get-pp-tex-id '\()
+		       :suffix (get-pp-tex-id '\)))
 		(pp-tex* argument))))
 	(call-next-method))))
 
@@ -1469,9 +1524,9 @@
 	(pprint-logical-block (nil nil)
 	  (pprint-indent :current 2)
 	  (pp-tex-keyword 'WHEN)
-	  (write-char #\()
+	  (pp-tex-id '\()
 	  (pp-tex* (argument (car (exprs argument))))
-	  (write-char #\)))
+	  (pp-tex-id '\)))
 	(pprint-logical-block (nil nil)
 	  (pprint-indent :current 2)
 	  (pp-tex* (args2 ex))
@@ -1596,7 +1651,10 @@
   (pprint-logical-block (nil let-bindings)
     (loop (let ((lb (pprint-pop)))
 	    (if (cdr (car lb))
-		(pprint-logical-block (nil nil :prefix "(" :suffix ")")
+		(pprint-logical-block
+		    (nil nil
+			 :prefix (get-pp-tex-id '\()
+			 :suffix (get-pp-tex-id '\)))
 		  (pp-tex-bindings (car lb)))
 		(if (cadr lb)
 		    (pp-tex-id (id (caar lb)))
@@ -1639,15 +1697,18 @@
       (if (and (zerop (parens expression))
 	       (< (precedence expression 'left)
 		  (precedence 'WITH 'right)))
-	  (progn (write-char #\()
+	  (progn (pp-tex-id '\()
 		 (pp-tex* expression)
-		 (write-char #\)))
+		 (pp-tex-id '\)))
 	  (pp-tex* expression))
       (write-char #\space)
       (pprint-newline :fill)
       (pp-tex-keyword 'WITH)
       (write-char #\space)
-      (pprint-logical-block (nil assignments :prefix "[" :suffix "]")
+      (pprint-logical-block
+	  (nil assignments
+	       :prefix (get-pp-tex-id '\[)
+	       :suffix (get-pp-tex-id '\]))
 	(pprint-indent :current 0)
 	(loop (pp-tex* (pprint-pop))
 	      (pprint-exit-if-list-exhausted)
@@ -1709,9 +1770,9 @@
       (write-char #\space)
       (pp-tex* expression)
       (write-char #\space)
-      (pprint-newline :fill)
       (pp-tex-keyword 'OF)
       (write-char #\space)
+      (pprint-newline :fill)
       (pprint-logical-block (nil selections)
 	(loop (pp-tex* (pprint-pop))
 	      (pprint-exit-if-list-exhausted)
@@ -1746,7 +1807,10 @@
 		 (write "\\)")))
 	    (t (pp-tex-id (id constructor))
 	       (when args
-		 (pprint-logical-block (nil args :prefix "(" :suffix ")")
+		 (pprint-logical-block
+		     (nil args
+			  :prefix (get-pp-tex-id '\()
+			  :suffix (get-pp-tex-id '\)))
 		   (loop (pp-tex-id (id (pprint-pop)))
 			 (pprint-exit-if-list-exhausted)
 			 (write-char #\,)
@@ -1900,7 +1964,10 @@
 	       (pp-tex* target)))))))
 
 (defun pp-tex-mappings (mappings)
-  (pprint-logical-block (nil mappings :prefix "{{ " :suffix " }}")
+  (pprint-logical-block
+      (nil mappings
+	   :prefix (get-pp-tex-id '\{\{)
+	   :suffix (get-pp-tex-id '\}\}))
     (loop (pp-tex* (pprint-pop))
 	  (pprint-exit-if-list-exhausted)
 	  (write ", ")
@@ -1985,7 +2052,10 @@
 	  (pp-tex* elt)))))
 
 (defun pp-tex-actuals (actuals)
-  (pprint-logical-block (nil actuals :prefix "[" :suffix "]")
+  (pprint-logical-block
+      (nil actuals
+	   :prefix (get-pp-tex-id '\[)
+	   :suffix (get-pp-tex-id '\]))
     (pprint-indent :current 0)
     (loop (pp-tex* (pprint-pop))
 	  (pprint-exit-if-list-exhausted)
@@ -2022,10 +2092,7 @@
 			(write-char #\:)
 			(write-char #\space)
 			(pp (declared-type (caar bindings)))))
-		    (if (typep (caar bindings) 'untyped-bind-decl)
-			(pprint-logical-block (nil nil :prefix "(" :suffix ")")
-			  (pp-tex-id (id (caar bindings))))
-			(pp-tex-id (id (caar bindings))))))
+			(pp-tex-id (id (caar bindings)))))
 	    (write-char #\,)
 	    (write-char #\space)
 	    (pprint-newline :fill)
@@ -2043,7 +2110,10 @@
 		      (pp (declared-type (caar bindings))))))
 	      (if (or (cdr (car bindings))
 		      (declared-type (caar bindings)))
-		  (pprint-logical-block (nil nil :prefix "(" :suffix ")")
+		  (pprint-logical-block
+		      (nil nil
+			   :prefix (get-pp-tex-id '\()
+			   :suffix (get-pp-tex-id '\)))
 		    (pp-tex-paren-adformals* (car bindings)))
 		  (pp-tex-id (id (caar bindings))))))
       (if (and set-expr?
@@ -2057,7 +2127,10 @@
 	  (pp-tex-paren-adformals bindings))))
 
 (defun pp-tex-paren-adformals (bindings)
-  (pprint-logical-block (nil bindings :prefix "(" :suffix ")")
+  (pprint-logical-block
+      (nil bindings
+	   :prefix (get-pp-tex-id '\()
+	   :suffix (get-pp-tex-id '\)))
     (loop (let* ((next (pprint-pop))
 		 (parens (if (zerop (parens (car next))) 0 1)))
 	    (pp-tex-paren-adformals* next parens)
@@ -2070,21 +2143,23 @@
   (if (zerop parens)
       (pprint-logical-block (nil nil)
 	(mapl #'(lambda (bb)
-		  (if (or (cdr bb)
-			  (not (chain? (car bb)))
-			  (not (typep (car bb) 'untyped-bind-decl)))
-		      (pp-tex* (car bb))
-		      (pp-tex-bind-decl (car bb)))
+		  (pp-tex-bind-decl (car bb) nil)
 		  (when (cdr bb)
 		    (write-char #\,)
 		    (write-char #\space)
 		    (pprint-newline :fill)))
 	      b))
-      (pprint-logical-block (nil nil :prefix "(" :suffix ")")
+      (pprint-logical-block
+	  (nil nil
+	       :prefix (get-pp-tex-id '\()
+	       :suffix (get-pp-tex-id '\)))
 	(pp-tex-paren-adformals* b 0))))
 
 (defun pp-tex-lambda-adformals (bindings)
-  (pprint-logical-block (nil bindings :prefix "(" :suffix ")")
+  (pprint-logical-block
+      (nil bindings
+	   :prefix (get-pp-tex-id '\()
+	   :suffix (get-pp-tex-id '\)))
     (loop (pprint-indent :current 2)
 	  (pp-tex* (pprint-pop))
 	  (pprint-exit-if-list-exhausted)
@@ -2192,6 +2267,13 @@
 (defun pp-tex-id (id &optional theory-id)
   (write (get-pp-tex-id id theory-id)))
 
+;; Generates a string of the given length, so that the prettyprinter will
+;; insert the right whitespace, and associates this string with the
+;; substitution for the second pass in write-string-with-tex-substitutions
+;; The string must start with char 128 (DEL), then any number of characters
+;; >= 128, though the last one(s) must be > 128.  Note that this means any
+;; mapping said to be of length 1 will actually be treated as length 2, or
+;; more if there are more than 128 of length 1 or 2.
 (defun get-pp-tex-id (symbol &optional theory-id)
   (let* ((msymbol (makesym "~a%" symbol))
 	 (thsym (when theory-id (makesym "~a.~a" theory-id symbol)))
@@ -2311,26 +2393,38 @@
 		(setf (gethash str *pvs-tex-substitution-hash*) trans)
 		str)))))
 
+;; Creates a string starting with char 128, ending with chars > 128.  Hence
+;; is always at least two chars.  This is needed in order to recognize when
+;; two strings run together.  Since lengths are approximate anyway, it
+;; shouldn't matter much.
 (defun make-new-tex-string (length)
+  (when (< length 2) (setq length 2))
   (let ((cnt (get-next-tex-symbol-counter length))
 	(str (make-string length :initial-element (code-char 127))))
-    (if (and (= length 1) (> cnt 128))
-	(make-new-tex-string 2)
+    (if (and (= length 2) (> cnt 126))
+	(make-new-tex-string 3)
+	;; Technically we could need to check whether we used up the length
+	;; 3 strings as well, but that would mean we have over 16384
+	;; identifiers of length 0, 1, 2, and 3.  Even if someone generated
+	;; a spec like this, would they really want to latex-print it?
 	(make-new-tex-string* str (1- length) cnt))))
 
 (defun make-new-tex-string* (str pos cnt)
   (if (zerop cnt)
-      str
+      (progn (assert (char= (char str 0) #\Rubout))
+	     (assert (not (char= (char str (1- (length str))) #\Rubout)))
+	     str)
       (multiple-value-bind (q r)
-	  (floor cnt 129)
-	(setf (char str pos) (code-char (+ r 127)))
+	  (floor cnt 127)
+	(setf (char str pos) (code-char (+ r 128)))
+	(assert (not (char= (char str pos) #\Rubout)))
 	(make-new-tex-string* str (1- pos) q))))
 
 (defun get-next-tex-symbol-counter (length)
   (let ((counter (assoc length *tex-symbol-counters* :test #'=)))
     (cond (counter (incf (cdr counter)))
-	  (t (push (cons length 0) *tex-symbol-counters*)
-	     0))))
+	  (t (push (cons length 1) *tex-symbol-counters*)
+	     1))))
 
 ; (defun break-pvs-name (string)
 ;   (let* ((bang-pos (position #\! string))
