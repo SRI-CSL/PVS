@@ -2126,12 +2126,12 @@
 (defvar *prove-formula-proof* nil)
 
 (defun prove-formula-decl (formula-decl &optional theory-name strategy)
-  (let* ((*current-theory* (if theory-name
+  (let* ((*to-emacs* t)
+	 (*current-theory* (if theory-name
 			       (get-typechecked-theory theory-name)
 			       (car (last *prelude-theories*))))
 	 (*current-context* (copy (context *current-theory*)))
 	 (fdecl (typecheck-formula-decl formula-decl theory-name))
-	 (*in-checker* t)
 	 (*tccforms* nil))
     (typecheck (definition fdecl) :expected *boolean* :tccs 'all)
     (when *tccforms*
@@ -2146,12 +2146,20 @@
 				       (list (definition fdecl)))))
 	       :string t)
 	     theory-name)))
-    (setq *to-emacs* nil)
     (setq *prove-formula-proof* nil)
     (when strategy
-      (setf (justification fdecl) (revert-justification strategy)))
+      (multiple-value-bind (strat err)
+	  (if (stringp strategy)
+	      (ignore-errors (values (read-from-string strategy)))
+	      strategy)
+	(let ((just (unless err (revert-justification strat))))
+	  (unless just
+	    (type-error strategy "Bad form for strategy~%  ~s" strategy))
+	  (setf (justification fdecl) just))))
+    (setq *to-emacs* nil)
     (unwind-protect
-	(let ((proof (prove-decl fdecl :strategy (when strategy '(rerun)))))
+	(let* ((*in-checker* t)
+	       (proof (prove-decl fdecl :strategy (when strategy '(rerun)))))
 	  (setq *prove-formula-proof*
 		(editable-justification
 		 (extract-justification-sexp (justification proof)))))
