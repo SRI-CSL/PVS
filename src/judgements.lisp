@@ -1198,10 +1198,15 @@
 							      ety))
 		 (cdr subtype)))))))
 
+(defvar *subtypes-seen* nil)
+
 (defun known-subtype-of? (t1 t2)
-  (let ((known-subtypes (find-known-subtypes t1)))
-    (some #'(lambda (ks) (subtype-of*? ks t2))
-	  known-subtypes)))
+  (let ((it (cons t1 t2)))
+    (unless (member it *subtypes-seen* :test #'tc-eq)
+      (let ((*subtypes-seen* (cons it *subtypes-seen*))
+	    (known-subtypes (find-known-subtypes t1)))
+	(some #'(lambda (ks) (subtype-of*? ks t2))
+	      known-subtypes)))))
 
 (defun find-known-subtypes (type-expr)
   (find-known-subtypes* type-expr (known-subtypes *current-context*) nil))
