@@ -1264,15 +1264,7 @@ Provides an example specification, along with the PVS grammar."
 (defpvs pvs-release-notes help ()
   "Display the release notes."
   (interactive)
-  (let ((buf (get-buffer-create "PVS Release Notes")))
-    (set-buffer buf)
-    (if buffer-read-only (toggle-read-only))
-    (erase-buffer)
-    (insert-file-contents (concat pvs-path "/lib/release-notes"))
-    (goto-char (point-min))
-    (unless buffer-read-only (toggle-read-only))
-    (pop-to-buffer buf)
-    (pvs-view-mode)))
+  (info (concat pvs-path "/doc/release-notes/pvs3.0-release-notes.info")))
 
 
 ;;; suspend-pvs
