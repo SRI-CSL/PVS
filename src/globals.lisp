@@ -40,7 +40,14 @@
     "src/WS1S/lisp" "src/abstraction"
     "src/ground-prover" "src/groundeval" "src/inst-by-unif" ))
 
-(defparameter *pvs-version* "3.0")
+#+allegro
+(defun pvs-build-date ()
+  (let ((end (position #\space excl::cl-release-date :from-end t)))
+    (subseq excl::cl-release-date 0 end)))
+
+(defparameter *pvs-version*
+  (concatenate 'string "3.0 Beta 2"))
+
 (defparameter *binfile-version* 19)
 
 (defparameter *context-name* ".pvscontext")
