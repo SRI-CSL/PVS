@@ -755,25 +755,30 @@
     jtccs))
 
 (defmethod get-judgement-tcc ((jdecl subtype-judgement) &optional decls)
+  ;; This one is difficult, since it is not obvious when the judgement comes
+  ;; into play.  Just collect them all.
   (if (generated-by jdecl)
       (get-judgement-tcc (generated-by jdecl) decls)
       (find-if #'judgement-tcc? (generated jdecl))))
 
 (defmethod get-judgement-tcc ((jdecl number-judgement) &optional decls)
+  ;; Similarly, don't really know when a number-judgement kicked in.
   (if (generated-by jdecl)
       (get-judgement-tcc (generated-by jdecl) decls)
       (find-if #'judgement-tcc? (generated jdecl))))
 
 (defmethod get-judgement-tcc ((jdecl name-judgement) &optional decls)
-  (if (generated-by jdecl)
-      (get-judgement-tcc (generated-by jdecl) decls)
-      (when (memq (declaration (name jdecl)) decls)
-	(find-if #'judgement-tcc? (generated jdecl)))))
+  ;; Ignore it, if the associated declaration is not in decls
+  (when (memq (declaration (name jdecl)) decls)
+    (if (generated-by jdecl)
+	(get-judgement-tcc (generated-by jdecl) decls)
+	(when (memq (declaration (name jdecl)) decls)
+	  (find-if #'judgement-tcc? (generated jdecl))))))
 
 (defmethod get-judgement-tcc ((jdecl application-judgement) &optional decls)
-  (if (generated-by jdecl)
-      (get-judgement-tcc (generated-by jdecl) decls)
-      (when (memq (declaration (name jdecl)) decls)
+  (when (memq (declaration (name jdecl)) decls)
+    (if (generated-by jdecl)
+	(get-judgement-tcc (generated-by jdecl) decls)
 	(find-if #'judgement-tcc? (generated jdecl)))))
 
 (defmethod get-judgement-tcc ((jtcc judgement-tcc) &optional decls)
