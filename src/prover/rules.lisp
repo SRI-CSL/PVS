@@ -799,3 +799,24 @@ The DEPTH argument can either be a non-negative integer indicating
 the nesting of top-level disjunctions to be elimnated, or NIL
 which eliminates all top-level disjuncts in the indicated FNUMS."
  "~%Applying disjunctive simplification to flatten sequent,")
+
+(addrule 'set-print-lines () (lines)
+	 #'(lambda (ps)
+	     (setq *prover-print-lines* (unless (zerop lines) lines))
+	     (values 'X nil nil))
+	 "Sets the number of lines to print to LINES."
+	 "Setting print lines to ~a")
+
+(addrule 'set-print-length () (length)
+	 #'(lambda (ps)
+	     (setq *prover-print-length* (unless (zerop length) length))
+	     (values 'X nil nil))
+	 "Sets the print length"
+	 "Setting print length to ~a")
+
+(addrule 'set-print-depth () (depth)
+	 #'(lambda (ps)
+	     (setq *prover-print-depth* (unless (zerop depth) depth))
+	     (values 'X nil nil))
+	 "Sets the print depth."
+	 "Setting print depth to ~a")
