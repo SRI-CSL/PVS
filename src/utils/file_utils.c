@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
@@ -18,19 +19,19 @@ directory_p(char *filename)
   return(S_ISDIR(finfo.st_mode));
 }
 
-const char *
+char *
 read_permission_p(char *filename)
 {
   if (access(filename, R_OK) == -1)
-    return(sys_errlist[errno]);
+    return(strerror(errno));
   return(0);
 }  
 
-const char *
+char *
 write_permission_p(char *filename)
 {
   if (access(filename, W_OK) == -1)
-    return(sys_errlist[errno]);
+    return(strerror(errno));
   return(0);
 }
 
