@@ -64,8 +64,7 @@ do
 		 else echo "The -redhat flag only makes sense under Linux"
 	      fi
 	      shift;;
-     -runtime) pvsruntime=1
-               shift;;
+     -runtime) pvsruntime=1;;
      -decision-procedures)
         case $2 in
 	  new)  PVSDEFAULTDP=new;;
