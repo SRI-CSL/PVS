@@ -275,7 +275,6 @@
 						    (formals-sans-usings
 						     (get-theory dth))))
 				       modinsts))))
-		    (unless thinst (break "No matching thinst"))
 		    (when thinst
 		      (list (make-resolution decl thinst)))))))))))
 
