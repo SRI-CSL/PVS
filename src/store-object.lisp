@@ -9,6 +9,7 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -92,6 +93,9 @@
 (defvar *store-object-hash* (make-hash-table :test #'eq))
 
 (defvar *store-object-ptr*)
+(defvar *store-object-substs*)
+(defvar *restore-object-parent*)
+(defvar *restore-object-parent-slot*)
 
 ;; The following macro is used to help avoid consing.  If a
 ;; non-reentrant function needs a temporary vector of a given size,
@@ -140,10 +144,13 @@
     (setf (object-store 1) *store-object-ptr*)))
 
 (defun store-object-to-file (obj file)
-  (store-object obj)
-  (with-open-file (f file :direction :output :element-type '(unsigned-byte 32)
-		     :if-exists :supersede)
-    (write-array f *store-object-store* 0 (object-store 1)))
+  (let ((*store-object-substs* nil))
+    (store-object obj)
+    (with-open-file (f file
+		       :direction :output
+		       :element-type '(unsigned-byte 32)
+		       :if-exists :supersede)
+      (write-array f *store-object-store* 0 (object-store 1))))
   t)
 
 (defun store-obj (obj)
@@ -163,7 +170,9 @@
     ,@body))
 
 (defun push-word (word)
-  (setf (object-store *reserve-space-ptr*) word)
+  (let ((sword (or (cdr (assoc word *store-object-substs* :test #'=))
+		   word)))
+    (setf (object-store *reserve-space-ptr*) sword))
   (incf *reserve-space-ptr*))
 
 (defmethod store-object* ((obj t))
@@ -253,15 +262,6 @@
 	   (update-fetched (svref *fetch-object-update-obj*
 				  *fetch-object-update-end*))))))))
 
-#+lucid
-(defun fetch-object-from-file (file)
-  (with-open-file (f file :direction :input :element-type '(unsigned-byte 32))
-    (setf (object-store 0) (read-byte f))
-    (ensure-vector-size *store-object-store* *store-object-store-size*
-			(object-store 0))
-    (read-array f *store-object-store* 1 (object-store 0)))
-  (fetch-object))
-
 #+allegro
 (defun fetch-object-from-file (file)
   (with-open-file (f file :direction :input :element-type '(unsigned-byte 32))
@@ -286,6 +286,15 @@
   (fetch-object (if (or (= (object-store 0) 1)
 			(= (reverse-endian (object-store 0)) 1))
 		    1 0)))
+
+#+lucid
+(defun fetch-object-from-file (file)
+  (with-open-file (f file :direction :input :element-type '(unsigned-byte 32))
+    (setf (object-store 0) (read-byte f))
+    (ensure-vector-size *store-object-store* *store-object-store-size*
+			(object-store 0))
+    (read-array f *store-object-store* 1 (object-store 0)))
+  (fetch-object))
 
 #+gcl
 (defun fetch-object-from-file (file)
@@ -425,11 +434,13 @@
       (reserve-space (+ (length obj) 2)
 	(push-word (store-obj 'list))
 	(push-word (length obj))
-	(dolist (x obj)
-	  (when (and (not *saving-theory*)
-		     (typep x 'datatype-or-module))
-	    (remhash x *store-object-hash*))
-	  (push-word (store-obj x))))
+	(let ((i 0))
+	  (dolist (x obj)
+	    (when (and (not *saving-theory*)
+		       (typep x 'datatype-or-module))
+	      (remhash x *store-object-hash*))
+	    (push-word (store-obj x))
+	    (incf i))))
       (reserve-space 3
 	(push-word (store-obj 'cons))
 	(push-word (store-obj (car obj)))
