@@ -1580,7 +1580,7 @@ where db is to replace db1 and db2")
 			  postypes))
 	((member (car formals) postypes
 		 :test #'(lambda (x y)
-			   (let ((ydecl (declaration y)))
+			   (let ((ydecl (declaration (or (print-type y) y))))
 			     (and (typep ydecl 'formal-type-decl)
 				  (same-id x ydecl)))))
 	 (and (subtype-of*? (type-value (car acts1))
