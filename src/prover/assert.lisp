@@ -3752,12 +3752,21 @@
 	 (cdr reses)
 	 (if (or (not (formula-decl? (declaration res)))
 		 (check-auto-rewrite res fmla))
-	     (acons res fmla res-alist)
+	     (let* ((thinst (module-instance res))
+		    (th (module (declaration res)))
+		    (lres (if (and (library-datatype-or-theory? th)
+				   (null (library thinst)))
+			      (copy res
+				'module-instance
+				(copy thinst
+				  'library (libref-to-libid (lib-ref th))))
+			      res)))
+	       (acons lres fmla res-alist))
 	     res-alist)))))
 
 (defun check-auto-rewrite (res fmla)
   (let* ((mod-inst (module-instance res))
-	 (theory (get-theory mod-inst))
+	 (theory (module (declaration res)))
 	 (current-mod? (eq theory (current-theory)))
 	 (actuals (unless current-mod?
 		    (actuals mod-inst)))
@@ -3874,8 +3883,7 @@ e LHS free variables in ~a" hyp lhs)
 	       (install-rewrite-res res name thefmla always?))))))
 
 (defun install-rewrite-res (res name fmla always?)	       
-  (multiple-value-bind
-      (lhs rhs hyp)
+  (multiple-value-bind (lhs rhs hyp)
       (split-rewrite fmla)
     (let* ((res (or (is-res-rewrite res) res))
 	   (lhs-freevars (freevars lhs))
@@ -3899,7 +3907,7 @@ e LHS free variables in ~a" hyp lhs)
 	     (fixpoint-decl? (declaration res)))
 	(error-format-if "~%Can't rewrite using ~a: (co)inductive definition cannot be used." name))
        (t
-	(unless (consp res);;(6.16.95)avoids antecedent rewrites
+	(unless (consp res) ;;(6.16.95)avoids antecedent rewrites
 	  (typecheck (module-instance res) :tccs 'all))
 	;;NSH(6.14.95): above typecheck needed to generate
 	;;assuming TCCS.  
@@ -3914,35 +3922,35 @@ e LHS free variables in ~a" hyp lhs)
 	 :test #'(lambda (x y)(tc-eq (res x)(res y))))
 	(pushnew res *all-rewrites-names*) ;;don't need tc-eq
 	;;				(*auto-rewrites*)
-	(cond ((and (eq always? '!!)   ;;NSH(5.8.98) inserted macro case
-		    (not (and (resolution? res) ;;NSH(12.1.95)
+	(cond ((and (eq always? '!!) ;;NSH(5.8.98) inserted macro case
+		    (not (and (resolution? res)	;;NSH(12.1.95)
 			      (def-decl? (declaration res)))))
 	       (pushnew res *macro-names*)
-			;;:test #'tc-eq
+	       ;;:test #'tc-eq
 	       (setq *auto-rewrites-names*
 		     (remove res *auto-rewrites-names*))
 	       (setq *auto-rewrites!-names*
 		     (remove res *auto-rewrites!-names*))
-			     ;;:test #'tc-eq
+	       ;;:test #'tc-eq
 	       (format-if "~%Installing macro(!!) ~a" name))
-	      ((and always?   ;;NSH(10.7.95) decl -> (declaration res)
-		    (not (and (resolution? res) ;;NSH(12.1.95)
+	      ((and always? ;;NSH(10.7.95) decl -> (declaration res)
+		    (not (and (resolution? res)	;;NSH(12.1.95)
 			      (def-decl? (declaration res)))))
 	       (pushnew res *auto-rewrites!-names*)
-			;;:test #'tc-eq
+	       ;;:test #'tc-eq
 	       (setq *auto-rewrites-names*
 		     (remove res *auto-rewrites-names*))
 	       (setq *macro-names*
 		     (remove res *macro-names*))
-			     ;;:test #'tc-eq
+	       ;;:test #'tc-eq
 	       (format-if "~%Installing rewrite rule(!) ~a" name))
 	      (t (pushnew res *auto-rewrites-names*)
-			  ;;:test #'tc-eq
+		 ;;:test #'tc-eq
 		 (setq *auto-rewrites!-names*
 		       (remove res *auto-rewrites!-names*))
 		 (setq *macro-names*
-		     (remove res *macro-names*))
-			       ;;:test #'tc-eq
+		       (remove res *macro-names*))
+		 ;;:test #'tc-eq
 		 (format-if "~%Installing rewrite rule ~a" name)))
 	(setf (gethash (rewrite-declaration hashname) *auto-rewrites-ops*) t)
 	;;(format-if "~%Installing rewrite rule ~a" name)
