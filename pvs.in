@@ -137,7 +137,7 @@ where options include:
   -h | -help | --help  print out this message
   -version | --version show the PVS version number
   -emacs emacspath     emacs to use (e.g., emacs, xemacs, /usr/local/bin/emacs)
-  -lisp lispversion  lisp image to use (e.g., allegro5.0)
+  -lisp lispversion  lisp image to use (e.g., allegro6.0)
   -load-after        emacs file
   -redhat number     the number corresponding to the Redhat release (4 or 5)
   -runtime           use the runtime image
@@ -197,8 +197,10 @@ binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
 
 if [ -d $binpath/full -a -x $binpath/full/$PVSIMAGE -a ! "$pvsruntime" ]
    then PATH=$binpath/full:$binpath:$PVSPATH/bin:$PATH
+    LD_LIBRARY_PATH=$binpath/full:$LD_LIBRARY_PATH
 elif [ -d $binpath/runtime -a -x $binpath/runtime/$PVSIMAGE ]
    then PATH=$binpath/runtime:$binpath:$PVSPATH/bin:$PATH
+    LD_LIBRARY_PATH=$binpath/runtime:$LD_LIBRARY_PATH
    else echo "Cannot find $binpath/runtime/$PVSIMAGE"
         echo "Check the values of PVSPATH and PVSLISP"
 	exit 1
@@ -225,7 +227,7 @@ fi
 PVSVERBOSE=${PVSVERBOSE:-0}
 PVSIMAGE="$PVSLISP"
 
-export ALLEGRO_CL_HOME DISPLAY
+export ALLEGRO_CL_HOME DISPLAY LD_LIBRARY_PATH
 export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSTIMEOUT
 export PVSPATCHLEVEL PVSMINUSQ PVSFORCEDP PVSDEFAULTDP
 
