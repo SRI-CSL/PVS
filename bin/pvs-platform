@@ -22,6 +22,9 @@ case `uname -s` in
   AIX) arch=powerpc-ibm
        os=AIX
        os_version=`uname -r`;;
+  Darwin) arch=powerpc
+          os=MacOSX
+	  os_version=`uname -r | cut -d"." -f1`;;
   *)   arch=`uname -m`
        os=`uname -s`
        os_version=`uname -r | cut -d"." -f1`;;
