@@ -106,21 +106,27 @@
 	    ignore))))
 
 (defmethod judgement-eq ((d1 application-judgement) (d2 application-judgement))
-  (tc-eq (judgement-type d1) (judgement-type d2)))
+  (or (eq d1 d2)
+      (tc-eq (judgement-type d1) (judgement-type d2))))
 
 (defmethod judgement-eq ((d1 number-judgement) (d2 number-judgement))
-  (tc-eq (type d1) (type d2)))
+  (or (eq d1 d2)
+      (tc-eq (type d1) (type d2))))
 
 (defmethod judgement-lt ((d1 number-judgement) (d2 number-judgement))
-  (and (not (tc-eq (type d1) (type d2)))
+  (and (not (eq d1 d2))
+       (not (tc-eq (type d1) (type d2)))
        (subtype-of? (type d1) (type d2))))
 
 (defmethod judgement-lt ((d1 name-judgement) (d2 name-judgement))
-  (and (not (tc-eq (type d1) (type d2)))
+  (and (not (eq d1 d2))
+       (not (tc-eq (type d1) (type d2)))
        (subtype-of? (type d1) (type d2))))
 
 (defmethod judgement-lt ((d1 application-judgement) (d2 application-judgement))
-  (judgement-lt (judgement-type d1) (judgement-type d2)))
+  (and (not (eq d1 d2))
+       (not (tc-eq (judgement-type d1) (judgement-type d2)))
+       (judgement-lt (judgement-type d1) (judgement-type d2))))
 
 ;;; Should this take dependent types into account?
 (defmethod judgement-lt ((t1 funtype) (t2 funtype))
@@ -836,59 +842,87 @@
   nil)
 
 (defun subst-params-decls (jdecls theory theoryname)
-  (declare (ignore theory))
-  (mapcar #'(lambda (jd)
-	      (subst-params-decl jd theoryname))
-    jdecls))
+  (if (and (null (actuals theoryname))
+	   (null (mappings theoryname)))
+      jdecls
+      (mapcar #'(lambda (jd)
+		  (subst-params-decl jd theoryname theory))
+	jdecls)))
 
-(defmethod subst-params-decl ((j subtype-judgement) modinst)
-  (let ((nj (lcopy j
-	      'declared-type (subst-mod-params (declared-type j) modinst)
-	      'declared-subtype (subst-mod-params (declared-subtype j) modinst)
-	      'type (subst-mod-params (type j) modinst)
-	      'name (subst-mod-params (subtype j) modinst))))
-    (unless (eq j nj)
-      (setf (generated-by nj) (or (generated-by j) j)))
-    nj))
+(defmethod subst-params-decl ((j subtype-judgement) thname theory)
+  (if (or (mappings thname)
+	  (memq theory (free-params-theories j)))
+      (let ((nj (lcopy j
+		  'declared-type (subst-mod-params (declared-type j)
+						   thname theory)
+		  'declared-subtype (subst-mod-params (declared-subtype j)
+						      thname theory)
+		  'type (subst-mod-params (type j) thname theory)
+		  'name (subst-mod-params (subtype j) thname theory))))
+	(unless (eq j nj)
+	  (setf (generated-by nj) (or (generated-by j) j)))
+	nj)
+      j))
 
-(defmethod subst-params-decl ((j number-judgement) modinst)
-  (let ((nj (lcopy j
-	      'module (if (fully-instantiated? modinst)
-			  (current-theory)
-			  (module j))
-	      'declared-type (subst-mod-params (declared-type j) modinst)
-	      'type (subst-mod-params (type j) modinst))))
-    (unless (eq j nj)
-      (setf (generated-by nj) (or (generated-by j) j)))
-    nj))
+(defmethod subst-params-decl ((j number-judgement) thname theory)
+  (if (or (mappings thname)
+	  (memq theory (free-params-theories j)))
+      (let ((nj (lcopy j
+		  'declared-type (subst-mod-params (declared-type j)
+						   thname theory)
+		  'type (subst-mod-params (type j) thname theory))))
+	(unless (eq j nj)
+	  (setf (generated-by nj) (or (generated-by j) j))
+	  (setf (module nj)
+		(if (fully-instantiated? thname)
+		    (current-theory)
+		    (module j))))
+	nj)
+      j))
 
-(defmethod subst-params-decl ((j name-judgement) modinst)
-  (let ((nj (lcopy j
-	      'module (if (fully-instantiated? modinst)
-			  (current-theory)
-			  (module j))
-	      'declared-type (subst-mod-params (declared-type j) modinst)
-	      'type (subst-mod-params (type j) modinst)
-	      'name (subst-mod-params (name j) modinst))))
-    (unless (eq j nj)
-      (setf (generated-by nj) (or (generated-by j) j)))
-    nj))
+(defmethod subst-params-decl ((j name-judgement) thname theory)
+  (if (or (mappings thname)
+	  (memq theory (free-params-theories j)))
+      (let ((nj (lcopy j
+		  'declared-type (subst-mod-params (declared-type j)
+						   thname theory)
+		  'type (subst-mod-params (type j) thname theory)
+		  'name (subst-mod-params (name j) thname theory))))
+	(unless (eq j nj)
+	  (setf (generated-by nj) (or (generated-by j) j))
+	  (setf (module nj)
+		(if (fully-instantiated? thname)
+		    (current-theory)
+		    (module j))))
+	nj)
+      j))
 
-(defmethod subst-params-decl ((j application-judgement) modinst)
-  (let ((nj (lcopy j
-	      'module (if (fully-instantiated? modinst)
-			  (current-theory)
-			  (module j))
-	      'declared-type (subst-mod-params (declared-type j) modinst)
-	      'type (subst-mod-params (type j) modinst)
-	      'judgement-type (subst-mod-params (judgement-type j) modinst)
-	      'name (subst-mod-params (name j) modinst)
-	      'formals (subst-mod-params (formals j) modinst))))
-    (unless (eq j nj)
-      (setf (generated-by nj) (or (generated-by j) j)))
-    nj))
+(defmethod subst-params-decl ((j application-judgement) thname theory)
+  (if (or (mappings thname)
+	  (memq theory (free-params-theories j)))
+      (let ((nj (lcopy j
+		  'declared-type (subst-mod-params (declared-type j)
+						   thname theory)
+		  'type (subst-mod-params (type j) thname theory)
+		  'judgement-type (subst-mod-params (judgement-type j)
+						    thname theory)
+		  'name (subst-mod-params (name j) thname theory)
+		  'formals (subst-mod-params (formals j) thname theory))))
+	(unless (eq j nj)
+	  (setf (module j)
+		(if (fully-instantiated? thname)
+		    (current-theory)
+		    (module j)))
+	  (setf (generated-by nj) (or (generated-by j) j)))
+	nj)
+      j))
 
-
+(defun free-params-theories (jdecl)
+  (if (eq (free-parameter-theories jdecl) 'unbound)
+      (setf (free-parameter-theories jdecl)
+	    (delete-duplicates (mapcar #'module (free-params jdecl))
+			       :test #'eq))
+      (free-parameter-theories jdecl)))
 
 (defun compatible-application-judgement-args (judgement-argtypes argtypes
 								 domain-types)
@@ -1118,27 +1152,46 @@
 
 (defun merge-number-judgements (from-hash to-hash theory theoryname)
   (unless (zerop (hash-table-count from-hash))
-    (if (and (zerop (hash-table-count to-hash))
-	     (null (actuals theoryname)))
-	(maphash #'(lambda (num jdecls)
-		     (setf (gethash num to-hash) jdecls))
-		 from-hash)
-	(maphash #'(lambda (num jdecls)
-		     (let* ((to-judgements (gethash num to-hash))
-			    (subst-judgements
-			     (subst-params-decls jdecls theory theoryname))
-			    (sjdecls (minimal-judgement-decls
-				      (remove-if #'(lambda (sj)
-						     (member (type sj)
-							     to-judgements
-							     :test #'tc-eq
-							     :key #'type))
-					subst-judgements)
-				      to-judgements)))
-		       (unless (equal sjdecls to-judgements)
-			 (setf (gethash num to-hash) sjdecls)
-			 (setf *judgements-added* t))))
-		 from-hash))))
+    (cond ((and (zerop (hash-table-count to-hash))
+		(null (actuals theoryname))
+		(null (mappings theoryname)))
+	   (maphash #'(lambda (num jdecls)
+			(setf (gethash num to-hash) jdecls))
+		    from-hash))
+	  ((and (null (actuals theoryname))
+		(null (mappings theoryname)))
+	   (maphash #'(lambda (num from-jdecls)
+			(let ((to-jdecls (gethash num to-hash)))
+			  (unless (equal from-jdecls to-jdecls)
+			    (let* ((new-from-decls
+				    (remove-if
+					#'(lambda (fj)
+					    (member fj to-jdecls
+						    :test #'judgement-eq))
+				      from-jdecls))
+				   (min-from-jdecls
+				    (minimal-judgement-decls
+				     new-from-decls to-jdecls)))
+			      (unless (equal min-from-jdecls to-jdecls)
+				(setf (gethash num to-hash) min-from-jdecls)
+				(setf *judgements-added* t))))))
+		    from-hash))
+	  (t (maphash
+	      #'(lambda (num from-jdecls)
+		  (let* ((to-jdecls (gethash num to-hash))
+			 (subst-from-jdecls
+			  (subst-params-decls from-jdecls theory theoryname))
+			 (new-from-jdecls
+			  (remove-if #'(lambda (fj)
+					 (member fj to-jdecls
+						 :test #'judgement-eq))
+			    subst-from-jdecls))
+			 (min-jdecls
+			  (minimal-judgement-decls new-from-jdecls to-jdecls)))
+		    (unless (equal min-jdecls to-jdecls)
+		      (setf (gethash num to-hash) min-jdecls)
+		      (setf *judgements-added* t))))
+	      from-hash)))))
 
 (defun merge-name-judgements (from-hash to-hash theory theoryname)
   (unless (zerop (hash-table-count from-hash))
@@ -1205,57 +1258,156 @@
     (maphash
      #'(lambda (decl from-vector)
 	 (let ((to-vector (gethash decl to-hash)))
-	   (unless to-vector
-	     (setq to-vector
+	   (if (null to-vector)
+	       (if (or (actuals theoryname)
+		       (mappings theoryname))
 		   (setf (gethash decl to-hash)
-			 (make-array (length from-vector)
-				     :adjustable t :initial-element nil))))
-	   (merge-appl-judgement-vectors decl from-vector to-vector
-					 theory theoryname)))
+			 (make-array
+			  (length from-vector)
+			  :adjustable t
+			  :initial-contents
+			  (map 'list
+			       #'(lambda (fj)
+				   (subst-appl-judgements
+				    fj theory theoryname))
+			       from-vector)))
+		   (setf (gethash decl to-hash)
+			 (make-array (length from-vector) :adjustable t
+				     :initial-contents from-vector)))
+	       (merge-appl-judgement-vectors from-vector to-vector
+					     theory theoryname))))
      from-hash)))
 
-(defun merge-appl-judgement-vectors (decl from-vector to-vector
-					  theory theoryname)
+(defun subst-appl-judgements (appl-judgements theory theoryname)
+  (if (generic-judgements appl-judgements)
+      ;; Substitute actuals/mappings in the generic, if it becomes
+      ;; fully-instantiated move it to the judgements-graph
+      (let ((subst-jdecls (subst-params-decls
+			    (generic-judgements appl-judgements)
+			    theory theoryname)))
+	(if (equal subst-jdecls (generic-judgements appl-judgements))
+	    appl-judgements
+	    (multiple-value-bind (gen-jdecls graph)
+		(update-instantiated-appl-judgements
+		 subst-jdecls (judgements-graph appl-judgements))
+	      (if (equal gen-jdecls subst-jdecls)
+		  appl-judgements
+		  (make-instance 'application-judgements
+		    'generic-judgements gen-jdecls
+		    'judgements-graph graph)))))
+      appl-judgements))
+
+(defun update-instantiated-appl-judgements (subst-jdecls graph
+							 &optional gen-jdecls)
+  (if (null subst-jdecls)
+      (values (nreverse gen-jdecls) graph)
+      (if (fully-instantiated? (type (car subst-jdecls)))
+	  (update-instantiated-appl-judgements
+	   (cdr subst-jdecls)
+	   (if (some-judgement-subsumes (car subst-jdecls) graph t)
+	       graph
+	       (add-application-judgement (car subst-jdecls) graph))
+	   gen-jdecls)
+	  (update-instantiated-appl-judgements
+	   (cdr subst-jdecls)
+	   graph
+	   (cons (car subst-jdecls) gen-jdecls)))))
+
+(defun merge-appl-judgement-vectors (from-vector to-vector theory theoryname)
   (when (< (length to-vector) (length from-vector))
     (setq to-vector (adjust-array to-vector (length from-vector))))
   (dotimes (i (length from-vector))
     (when (aref from-vector i)
-      (unless (aref to-vector i)
-	(setf (aref to-vector i)
-	      (make-instance 'application-judgements)))
-      (merge-appl-judgements-entries
-       decl (aref from-vector i) (aref to-vector i)
-       theory theoryname)))
+      (if (aref to-vector i)
+	  (merge-appl-judgements-entries
+	   (aref from-vector i) (aref to-vector i)
+	   theory theoryname)
+	  (setf (aref to-vector i)
+		(subst-appl-judgements
+		 (aref from-vector i) theory theoryname)))))
   to-vector)
 
-;;; Entry here is an instance of application-judgements
+;;; Entry here is an instance of application-judgements Need to substitute
+;;; generics of the from-entry, and update the generics and graph of the
+;;; to-entry.  Note that the graph may need substitution as well, since it
+;;; may be fully-instantiated only in the theory in which it was declared.
+(defun merge-appl-judgements-entries (from-entry to-entry theory theoryname)
+  (multiple-value-bind (gen-jdecls graph)
+      (merge-appl-judgements-entries*
+       (generic-judgements from-entry)
+       (judgements-graph from-entry)
+       (generic-judgements to-entry)
+       (judgements-graph to-entry)
+       theory theoryname)
+    (lcopy to-entry
+      'generic-judgements gen-jdecls
+      'judgements-graph graph)))
 
-(defun merge-appl-judgements-entries (decl from-entry to-entry
-					   theory theoryname)
-  (merge-judgement-graphs decl to-entry (judgements-graph from-entry)
-			  theory theoryname))
+(defun merge-appl-judgements-entries* (from-gens from-graph to-gens
+						 to-graph theory theoryname)
+  (multiple-value-bind (new-to-gens new-to-graph)
+      (merge-appl-judgement-graphs from-graph to-graph to-gens
+				   theory theoryname)
+    (merge-appl-judgement-generics from-gens new-to-gens new-to-graph
+				   theory theoryname)))
 
-(defun merge-judgement-graphs (decl to-entry from-graph theory theoryname)
-  (when from-graph
-    (let ((jdecl (caar from-graph)))
-      (unless (member jdecl (judgements-graph to-entry) :test #'eq :key #'car)
-	(let ((sjdecl (subst-params-decl jdecl theoryname)))
-	  (unless (and (not (eq sjdecl jdecl))
-		       (member sjdecl (judgements-graph to-entry)
-			       :test #'judgement-eq :key #'car))
-	    (if (fully-instantiated? (judgement-type sjdecl))
-		(add-judgement-decl-to-graph sjdecl to-entry t)
-		(unless (or (memq jdecl (generic-judgements to-entry))
-			    (some #'(lambda (jd) (judgement-subsumes jd jdecl))
-				  (generic-judgements to-entry))
-			    (judgement-uninstantiable? sjdecl))
-		  (setf (generic-judgements to-entry)
-			(cons sjdecl
-			      (delete-if #'(lambda (jd)
-					     (judgement-subsumes jdecl jd))
-				(generic-judgements to-entry))))))))))
-    (merge-judgement-graphs decl to-entry (cdr from-graph) theory theoryname)))
+(defun merge-appl-judgement-graphs (from-graph to-graph to-gens
+					       theory theoryname)
+  (if (null from-graph)
+      (values to-gens to-graph)
+      (let ((from-jdecl (caar from-graph)))
+	(if (or (assq from-jdecl to-graph)
+		(assoc from-jdecl to-graph :test #'judgement-eq))
+	    (merge-appl-judgement-graphs
+	     (cdr from-graph) to-graph to-gens theory theoryname)
+	    (if (fully-instantiated? from-jdecl)
+		(merge-appl-judgement-graphs
+		 (cdr from-graph) 
+		 (add-application-judgement from-jdecl to-graph)
+		 to-gens theory theoryname)
+		(let ((subst-from-jdecl (subst-params-decl from-jdecl
+							   theoryname theory)))
+		  (if (fully-instantiated? subst-from-jdecl)
+		      (if (and (not (eq subst-from-jdecl from-jdecl))
+			       (assoc subst-from-jdecl to-graph
+				      :test #'judgement-eq))
+			  (merge-appl-judgement-graphs
+			   (cdr from-graph)
+			   (add-application-judgement from-jdecl to-graph)
+			   to-gens theory theoryname)
+			  (merge-appl-judgement-graphs
+			   (cdr from-graph) to-graph to-gens
+			   theory theoryname))
+		      (merge-appl-judgement-graphs
+		       (cdr from-graph) to-graph
+		       (if (member subst-from-jdecl to-gens
+				   :test #'judgement-eq)
+			   to-gens
+			   (cons subst-from-jdecl to-gens))
+		       theory theoryname))))))))
 
+(defun merge-appl-judgement-generics (from-gens to-gens to-graph
+						theory theoryname)
+  (let ((subst-from-gens (subst-params-decls from-gens theory theoryname)))
+    (merge-appl-judgement-generics* subst-from-gens to-gens to-graph)))
+
+(defun merge-appl-judgement-generics* (from-jdecls to-gens to-graph)
+  (if (null from-jdecls)
+      (values to-gens to-graph)
+      (if (fully-instantiated? (car from-jdecls))
+	  (if (assoc (car from-jdecls) to-graph :test #'judgement-eq)
+	      (merge-appl-judgement-generics*
+	       (cdr from-jdecls) to-gens to-graph)
+	      (merge-appl-judgement-generics*
+	       (cdr from-jdecls) to-gens
+	       (add-application-judgement (car from-jdecls) to-graph)))
+	  (merge-appl-judgement-generics*
+	   (cdr from-jdecls)
+	   (if (member (car from-jdecls) to-gens :test #'judgement-eq)
+	       to-gens
+	       (cons (car from-jdecls) to-gens))
+	   to-graph))))
+      
 
 ;;; A judgement declaration is uninstantiable if it's name does not
 ;;; include all the formal parameters of the judgement declarations'
