@@ -109,7 +109,8 @@ constructor ::= {idop [{'(' {{{idops ':' type-expr}
 theory-formals	::= {'[' {theory-formal ++ ','} ']'}
 			<theory-formals(theory-formal+)>;
 
-theory-formal ::= {[{'(' importing ')'} <importing-elt(importing,nosemic())>]
+theory-formal ::= {[{'(' importing ')'}
+                     <importing-elt(importing,nosemic())>]
                    idops ':' theory-formal-decl}
 		     <theory-formal(opt,idops,theory-formal-decl)>;
 
@@ -354,10 +355,8 @@ set-expr ::= {'{' set-formals '|' expr '}'} <set-expr(set-formals,expr)>;
 
 cond-case ::= {expr^l '->' expr^r} <cond-case(expr^l,expr^r)>;
 
-lambda-body ::= {lambda-formals [{'->' type-expr}] ':' expr}
-		   <lambda-body(lambda-formals,
-			        [noreturntype()|type-expr],
-				expr)>;
+lambda-body ::= {lambda-formals ':' expr}
+		   <lambda-body(lambda-formals,expr)>;
 
 % What we would really like to say here is
 %   lambda-formals ::= adformal++',' | pdformals+
