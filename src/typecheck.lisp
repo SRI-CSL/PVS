@@ -254,6 +254,8 @@
 				    (actuals inst) nil))
 	  (t (setq nmodinst (set-type-actuals inst))))
     (add-to-using nmodinst)
+    (unless (eq nmodinst inst)
+      (pushnew inst (gethash (get-theory inst) (current-using-hash))))
     (unless *ignore-exportings*
       (add-exporting-with-theories mod nmodinst))))
 
