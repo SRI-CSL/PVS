@@ -429,7 +429,7 @@
      (every #'integerp ,sformnums))))
 
 (defmacro restore ()
-  `(throw 'abort nil))
+  `(throw 'abort *in-evaluator*))
 ;NSH(8.22.94): modified catch-restore to catch only outside apply.
 ;  `(if *in-apply*
 ;    (throw 'abort-in-apply nil)
