@@ -139,10 +139,12 @@
 	 (dth (if (module? (generated-by th))
 		  (generated-by th)
 		  (get-theory* (generated-by th)
-			       (when (library modinst)
+			       (when (and (library modinst)
+					  (typep th '(or library-theory
+							 library-datatype)))
 				 (library th))))))
     (if (and dth
-	     (typep dth 'datatype))
+	     (typep dth 'recursive-type))
 	(adt-modinst* (positive-types dth) (actuals modinst)
 		      (formals-sans-usings dth) modinst)
 	modinst)))
