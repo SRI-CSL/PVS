@@ -205,6 +205,11 @@
    (t (some #'(lambda (x) (occurs-under-interp term1 x))
 	    (funargs term2)))))
 
+(defun good-equalities (equalities)
+  (loop for eqn in equalities
+	unless (occurs-under-interp (lhs eqn) (rhs eqn))
+	collect eqn))
+
 (defun solve-normed-arith-eq (eqn cong-state)
   (let* ((head (lhs eqn))
 	 (headsgn (neg-sgn (term-sgn head)))
