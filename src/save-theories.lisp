@@ -1154,6 +1154,7 @@
 	 (thinst (module-instance (resolution te))))
     (unless (eq (id (module decl)) (id thinst))
       (break "Strange type-name resolution"))
+    (restore-object* (actuals thinst))
     (if (store-print-type? tval)
 	(break)
 	(let* ((type-expr (if (actuals thinst)
@@ -1173,22 +1174,23 @@
 (defmethod type-expr-from-print-type ((te type-application))
   (let* ((res (resolution (type te)))
 	 (decl (declaration res))
-	 (thinst (module-instance res))
-	 (mtype-expr (if (actuals thinst)
+	 (thinst (module-instance res)))
+    (restore-object* (actuals thinst))
+    (let* ((mtype-expr (if (actuals thinst)
 			 (subst-mod-params (type-value decl) thinst
 					   (module decl))
 			 (type-value decl)))
-	 (type-expr (if (every #'(lambda (x y)
-				   (and (name-expr? y)
-					(eq (declaration y) x)))
-			       (car (formals decl)) (parameters te))
-			mtype-expr
-			(substit mtype-expr
-			  (pairlis (car (formals decl)) (parameters te))))))
-    #+pvsdebug (assert (true-type-expr? type-expr))
-    (with-slots (print-type) type-expr
-      (setf print-type te))
-    type-expr))
+	   (type-expr (if (every #'(lambda (x y)
+				     (and (name-expr? y)
+					  (eq (declaration y) x)))
+				 (car (formals decl)) (parameters te))
+			  mtype-expr
+			  (substit mtype-expr
+			    (pairlis (car (formals decl)) (parameters te))))))
+      #+pvsdebug (assert (true-type-expr? type-expr))
+      (with-slots (print-type) type-expr
+	(setf print-type te))
+      type-expr)))
 
 (defmethod print-type-correct? ((te type-expr))
   (or (null (print-type te))
