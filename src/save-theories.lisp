@@ -188,6 +188,17 @@
        (pushnew (id obj) *bin-theories-set*)
        (setf (gethash (id obj) *pvs-modules*) obj))))
 
+(defmethod store-object* :around ((obj formula-decl))
+  (dolist (proof (proofs obj))
+    (setf (refers-to proof)
+	  (delete-if (complement
+		      #'(lambda (ref)
+			  (and (declaration? ref)
+			       (assq (module ref)
+				     (all-usings *saving-theory*)))))
+	    (refers-to proof))))
+  (call-next-method))
+
 (defmethod store-object* :around ((obj declaration))
   (with-slots (module) obj
     (if (and module (not (eq module *saving-theory*)))
