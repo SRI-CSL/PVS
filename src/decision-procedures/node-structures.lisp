@@ -615,14 +615,11 @@
 
 (defdpstruct (fourier-motzkin
 	      (:print-function
-	       (lambda (ps s k)
+	       (lambda (fm s k)
 		 (declare (ignore k))
-		 (if *print-polyhedron*
-		     (domain_print (polyhedral-structure-polyhedron ps))
-		     (format s "<~A slack variables, ~A dimension>"
-		       (polyhedral-structure-ineq-var-count ps)
-		       (polyhedron-dimension
-			(polyhedral-structure-polyhedron ps)))))))
+		 (format s "<~A inequalities, ~A equalities>"
+		   (length (fourier-motzkin-inequalities fm))
+		   (length (fourier-motzkin-equalities fm))))))
   (max-vars *max-ineq-vars* :type fixnum)
   (ineq-var-count 0 :type fixnum)
   (ineq-var-to-index-hash (dp-make-eq-hash-table)
@@ -936,6 +933,17 @@
   (let ((cong-state* (get-cong-state *made-cong-states*)))
     ;(break "pncs")
     (push-cong-state* cong-state* cong-state)))
+
+(defmacro nprotecting-cong-state ((new-cong-state old-cong-state)
+				  &body body)
+  (let ((resultsym (gensym)))
+    `(let ((,new-cong-state (push-new-cong-state ,old-cong-state))
+	   (,resultsym nil))
+       (unwind-protect
+	   (setq ,resultsym
+		 (multiple-value-list (progn ,@body)))
+	 (npop-cong-state ,new-cong-state))
+       (values-list ,resultsym))))
 
 (defun push-cong-state* (cong-state* cong-state)
   (setf (cong-state*-neq-list cong-state*) (nequals cong-state))
@@ -1380,8 +1388,8 @@
   (if cong-state-stack
       (let ((type (type* term (top cong-state-stack))))
 	(or type (setf (type* term (top cong-state-stack))
-		      (type-from-stack term (rest cong-state-stack)))))
-      nil))
+		       (type-from-stack term (rest cong-state-stack)))))
+      (node-initial-type term)))
 
 (defun type* (term cong-state*)
   (let ((hash-type (dp-gethash term (cong-state*-type-hash cong-state*))))
@@ -1399,6 +1407,7 @@
   (let ((type1 (dp-type term1 cong-state))
 	(type2 (dp-type term2 cong-state)))
     (let ((merged-type (merge-type type1 type2)))
+      ;(when (eq term1 *t1*) (break))
       (setf (dp-type term1 cong-state) merged-type
 	    (dp-type term2 cong-state) merged-type))))
 	      
