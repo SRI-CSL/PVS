@@ -553,7 +553,8 @@
 
 ;;HS 03/05/99
 (defun convert-pvs-to-mu-reachable (expr)
-  (let* ((mu-list-args (convert-pvs-to-mu-formula (arguments expr)))
+  (let* ((mu-list-args  (let ((*build-arguments* t))
+            (convert-pvs-to-mu-formula (arguments expr))))
          (reach-list-args (convert-pvs-to-mu-term (arguments (operator expr))))
          (nbofargs (length (arguments (operator expr))))
          (mu-reach-expr
