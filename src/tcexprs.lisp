@@ -1206,7 +1206,10 @@
 	    (car atypes)))
       (if (cdr (types arg))
 	  (type-ambiguity arg)
-	  (car (types arg)))))
+	  (let* ((*generate-tccs* 'none)
+		 (narg (typecheck* (copy-untyped arg) (car (types arg))
+				   nil nil)))
+	    (car (judgement-types+ narg))))))
       
 
 
