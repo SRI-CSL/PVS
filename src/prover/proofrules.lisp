@@ -1298,20 +1298,6 @@ or supply more substitutions."
 	 context
 	 (cons var vars)))))
 
-(defun list-of-projections (types tuptype context &optional (num 1))
-  (when types
-    (let* ((decl (mk-proj-decl (makesym "PROJ_~d" num)
-		  (mk-funtype (list tuptype)
-			      (if (dep-binding? (car types))
-				  (type (car types))
-				  (car types)))))
-	  (proj (change-class (mk-name-expr  decl nil nil nil 'constant)
-			  'projection-expr)))
-      (add-decl decl context)
-      (setf (index proj) num)
-      (cons proj
-	    (list-of-projections (cdr types) tuptype context (1+ num))))))
-
 (defun make-and-equal* (lhs-list rhs-list)
   (make-conjunction (loop for lhs in lhs-list
 			  as rhs in rhs-list

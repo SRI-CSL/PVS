@@ -129,8 +129,6 @@
 			 (skolem-constant? (declaration ex)))))))
     (universal-closure nex)))
 
-(defvar *subgoals* nil)
-
 (defun simplify-expr (expr module-name strategy
 			   &optional display? (id 'simplify-expr))
   ;;in the context of decl, simplify the boolean expr using strategy
@@ -176,6 +174,7 @@
 (defvar *show-parens-in-proof* nil)
 
 (defmethod prove-decl :around ((decl formula-decl) &key strategy context)
+  (declare (ignore strategy context))	   
   (if (or *proof-timeout*
 	  (and *noninteractive*
 	       *noninteractive-timeout*))
@@ -2693,6 +2692,7 @@
   (list form))
 
 (defmethod and++ (form depth)
+  (declare (ignore depth))
   (list form))
 
 (defmethod and++ ((form conjunction) depth)
@@ -2700,6 +2700,7 @@
 	 (and++ (args2 form) (when depth (1- depth)))))
 
 (defmethod and++ ((form iff) depth)
+  (declare (ignore depth))
   (list (make!-implication (args1 form) (args2 form))
 	(make!-implication (args2 form) (args1 form))))
 
@@ -2707,6 +2708,7 @@
   (and++ (translate-cases-to-if form) (when depth (1- depth))))
 
 (defmethod and++ ((form branch) depth)
+  (declare (ignore depth))
   (list (make!-implication (condition form) (then-part form))
 	(make!-implication (negate! (condition form)) (else-part form))))
 
@@ -2729,11 +2731,13 @@
   (and++ (negate! (translate-cases-to-if form)) (when depth (1- depth))))
 
 (defmethod and+-negation ((form branch) depth)
+  (declare (ignore depth))
   (list (make!-negation (make!-conjunction (condition form) (then-part form)))
 	(make!-negation (make!-conjunction (make!-negation (condition form))
 					   (else-part form)))))
 
 (defmethod and+-negation (form depth)
+  (declare (ignore form depth))
   nil)
 
 (defun and+form? (exp)
@@ -2952,7 +2956,7 @@
 
 ;;; Similar to gather-fnums, but the predicate here is on exprs rather
 ;;; than s-formulas.
-(defun find-all-sformnums (sforms sformnums pred &optional (pos 1) (neg -1))
+(defun find-all-sformnums (sforms sformnums pred)
   (find-all-sformnums* sforms (cleanup-fnums sformnums) pred 1 -1 nil))
 
 (defun find-all-sformnums* (sforms sformnums pred pos neg acc)
@@ -3481,19 +3485,6 @@
 		   (forall-expr? (args1 formula))))
 	  (bindings (args1 formula))
 	  nil)))
-
-(defun protect-emacs-output* (string pos &optional result)
-  (if (< pos (length string))
-      (protect-emacs-output*
-       string
-       (1+ pos)
-       (case (char string pos)
-	 (#\& (append '(#\& #\\) result))
-	 (#\\ (append '(#\\ #\\) result))
-	 (#\" (append '(#\" #\\) result))
-	 (#\newline (append '(#\n #\\) result))
-	 (t   (cons (char string pos) result))))
-      (coerce (nreverse result) 'string)))
 
 (defun collect-prover-input-strings (input &optional alist)
   (cond ((null input)
