@@ -43,15 +43,19 @@
 ;;(find-file-noselect "~/PVS Log" t)
 (pvs-log-message 'LOG "Started loading Emacs files")
 
-(if (getenv "PVSIMAGE")
-    (defconst pvs-image (getenv "PVSIMAGE")
+(defun pvs-getenv (var)
+  (let ((val (getenv var)))
+    (if (equal val "") nil val)))
+
+(if (pvs-getenv "PVSIMAGE")
+    (defconst pvs-image (pvs-getenv "PVSIMAGE")
       "The name of the pvs binary image.  Set in pvs-load.el to reflect
        the environment variable PVSIMAGE, set by the pvs shell script")
     (error "PVSIMAGE environment variable must be set"))
 
 (defvar pvs-verbose
   (condition-case ()
-      (car (read-from-string (getenv "PVSVERBOSE")))
+      (car (read-from-string (pvs-getenv "PVSVERBOSE")))
     (error 0)))
 
 (defvar pvs-validating nil
@@ -112,8 +116,8 @@
 (global-set-key "\C-c;" 'comment-region)
 
 (defvar pvs-library-path nil)
-(if (getenv "PVS_LIBRARY_PATH")
-    (let ((dirs (string-split ?: (getenv "PVS_LIBRARY_PATH"))))
+(if (pvs-getenv "PVS_LIBRARY_PATH")
+    (let ((dirs (string-split ?: (pvs-getenv "PVS_LIBRARY_PATH"))))
       (setq pvs-library-path dirs)
       (setq load-path
 	    (cons (car load-path) (append dirs (cdr load-path))))))
@@ -288,12 +292,12 @@ get to the same state."
                      (setq *force-dp* %s)
                      (when '%s
                        (set-decision-procedure '%s)))"
-	     pvs-path (equal (getenv "PVSMINUSQ") "-q")
-	     noninteractive (getenv "PVSTIMEOUT")
+	     pvs-path (equal (pvs-getenv "PVSMINUSQ") "-q")
+	     noninteractive (pvs-getenv "PVSTIMEOUT")
 	     pvs-verbose
-	     (getenv "PVSFORCEDP")
-	     (getenv "PVSDEFAULTDP")
-	     (getenv "PVSDEFAULTDP"))
+	     (pvs-getenv "PVSFORCEDP")
+	     (pvs-getenv "PVSDEFAULTDP")
+	     (pvs-getenv "PVSDEFAULTDP"))
 	 nil nil 'dont-care))
       (setq *pvs-version-information* nil)
       (sleep-for 1)
@@ -310,7 +314,7 @@ get to the same state."
 	(setq save-options-file "~/.pvsxemacs-options")
 	(setq save-options-init-file "~/.pvsemacs"))
       (when (and (file-exists-p "~/.pvsemacs")
-		 (not (getenv "PVSMINUSQ")))
+		 (not (pvs-getenv "PVSMINUSQ")))
 	(load "~/.pvsemacs"))
       (run-hooks 'change-context-hook)
       (if (pvs-buffer-file-name)
