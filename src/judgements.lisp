@@ -284,9 +284,9 @@
 		  new-graph)))))
 
 (defun some-judgement-subsumes (jdecl graph quiet?)
-  (let ((sjdecl (find-if #'(lambda (adjlist)
-			     (judgement-subsumes (car adjlist) jdecl))
-		  graph)))
+  (let ((sjdecl (car (find-if #'(lambda (adjlist)
+				  (judgement-subsumes (car adjlist) jdecl))
+		       graph))))
     (when sjdecl
       (unless quiet?
 	(pvs-warning
