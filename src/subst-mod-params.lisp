@@ -175,15 +175,16 @@
 	    nobj)
 	  obj))))
 
-(defun adt-modinst (modinst)
-  (let* ((th (get-theory modinst))
-	 (dth (if (module? (generated-by th))
-		  (generated-by th)
-		  (get-theory* (generated-by th)
-			       (when (and (library modinst)
-					  (typep th '(or library-theory
-							 library-datatype)))
-				 (library th))))))
+(defun adt-modinst (modinst &optional theory)
+  (let* ((th (or theory (get-theory modinst)))
+	 (dth (when (generated-by th)
+		(if (module? (generated-by th))
+		    (generated-by th)
+		    (get-theory* (generated-by th)
+				 (when (and (library modinst)
+					    (typep th '(or library-theory
+							   library-datatype)))
+				   (library modinst)))))))
     (if (and dth
 	     (typep dth 'recursive-type))
 	(adt-modinst* (positive-types dth) (actuals modinst)
