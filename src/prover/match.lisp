@@ -56,7 +56,10 @@
 	    (match-remaining-actuals (cdr stack) result)))))
 
 (defun match (expr instance bind-alist subst)
-  (let* ((hashed-table-expr
+  (let* ((*match-cache* (or *match-cache* ;;for initialization
+			                   ;;not shadowing
+			    (make-hash-table :test #'eq)))
+	 (hashed-table-expr
 	  (unless *no-bound-variables-in-match* ;;NSH(10.19.95)
 	    (gethash expr *match-cache*)))  ;;should not cache or lookup
 	 (hashed-value (when hashed-table-expr
