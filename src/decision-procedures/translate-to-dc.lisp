@@ -206,6 +206,9 @@
 						 (funcall
 						  *dc-translate-id-counter*)))
 				       dc-range-type)))
+		      (when (and (constructor? expr)
+				 (enum-adt? (find-supertype type)))
+			(setf (dp::node-constructor? new-const) t))
 		      (dc-add-to-reverse-prover-name new-const expr)
 		      (dc-add-to-pvs-typealist new-const expr)
 		      new-const))))
