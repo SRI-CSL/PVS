@@ -7,9 +7,9 @@
 
 ;; Replace formula with a simplified version
 
-(addrule 'sigmatize nil ((fnums *))
-   (sigmatize-step fnums)
-   "Replace formula with a simplified formula")
+; (addrule 'sigmatize nil ((fnums *))
+;   (sigmatize-step fnums)
+;   "Replace formula with a simplified formula")
 
 (defun sigmatize-step (fnums)
   #'(lambda (ps)
@@ -35,9 +35,9 @@
 
 ;; Replace formula with canonized version
 
-(addrule 'canon nil ((fnums *))
-   (canon-step fnums)
-   "Replace formula with a simplified formula")
+;(addrule 'canon nil ((fnums *))
+;   (canon-step fnums)
+;   "Replace formula with a simplified formula")
 
 (defun canon-step (fnums)
   #'(lambda (ps)
@@ -64,9 +64,9 @@
 
 ;; Checking if a subset of the formulas hold or not
 
-(addrule 'check nil ((fnums *) (vars nil))
-   (check-step fnums vars)
-   "Check if argument formulas hold")
+;(addrule 'check nil ((fnums *) (vars nil))
+;   (check-step fnums vars)
+;   "Check if argument formulas hold")
 
 (defun check-step (fnums vars)
   #'(lambda (ps)
