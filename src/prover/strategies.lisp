@@ -1159,8 +1159,7 @@ is T) and disjunctively simplifies."
 			       (make-lambda-expr
 				   (list new-bound-var)
 				 new-body))
-			     (make-lambda-expr (list actual-var)
-			       body nil  *current-context*))
+			     (make-lambda-expr (list actual-var) body))
 			 nil))
 		    )
 		(if induction-name
@@ -1375,8 +1374,7 @@ simplifies using given REWRITES. "
 			    (lcopy fmla 'bindings
 				   remaining-vars)
 			    (expression fmla))))
-		   (make-lambda-expr  actual-vars
-		     body nil  *current-context*)))
+		   (make-lambda-expr actual-vars body)))
 		(domain-type (make-domain-type-from-bindings actual-vars))
 		(measure (pc-parse measure 'expr))
 		(measure (mk-lambda-expr actual-vars measure))
