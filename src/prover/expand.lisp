@@ -29,6 +29,7 @@
 	 (*hash-rewrites?* t)
 	 (*rewrite-hash* ;;if *hash-rewrites?*
 	  (copy (rewrite-hash ps)))
+	 (*sequent-typealist* nil)
 	 ;(*quant-simp?* nil)
 	 (sformnums (if (memq sformnum '(* + -))
 			sformnum
