@@ -72,7 +72,7 @@
 				     (list 'dp-state
 					   *dp-state*))))))))
 
-(addrule 'install-ground-rewrite nil nil (install-ground-rewrite-step)
+(addrule 'install-ground-rewrites nil nil (install-ground-rewrite-step)
 	 "Install's the current set of auto-rewrites into the ground prover.")
 
 (addrule 'ground-rewrite () ((fnums *) (replace? t))
