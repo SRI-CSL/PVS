@@ -5,9 +5,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Tue Jan 26 18:28:57 1999
 ;; Update Count    : 10
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (in-package :pvs)
@@ -421,6 +419,15 @@
 ;;; (defmethod pp-tex* ((constr constructor-with-subtype)))
 
 (defmethod pp-tex* ((te enumtype))
+  (pp-tex-id (id te))
+  (write ": ")
+  (pprint-newline :fill)
+  (pp-tex-keyword 'TYPE)
+  (write-char #\space)
+  (pprint-newline :miser)
+  (write-char #\=)
+  (write-char #\space)
+  (pprint-newline :fill)
   (pprint-logical-block (nil (constructors te) :prefix "\\{" :suffix "\\}")
     (pprint-indent :block 0)
     (loop (pp-tex-id (id (pprint-pop)))
@@ -1287,6 +1294,22 @@
 	(pp-tex* (argument ex)))
     (write '|`|)
     (pp-tex-id (id ex))))
+
+(defmethod pp-tex* ((ex fieldex))
+  (pprint-logical-block (nil nil)
+    (write-char #\`)
+    (pp-tex-id (id ex))
+    (when (actuals ex)
+      (pprint-newline :fill)
+      (pp-tex-actuals (actuals ex)))))
+
+(defmethod pp* ((ex projex))
+  (pprint-logical-block (nil nil)
+    (write-char #\`)
+    (pp-tex-number (index ex))
+    (when (actuals ex)
+      (pprint-newline :fill)
+      (pp-tex-actuals (actuals ex)))))
 
 (defmethod pp-tex* ((ex implicit-conversion))
   (if *show-conversions*
