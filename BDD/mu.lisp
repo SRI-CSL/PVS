@@ -674,7 +674,8 @@
 			(is-rel-var (and *build-rel-var*
 					 (not *build-access-var*))))
 		   (setf (gethash expr *pvs-bdd-hash*) bddhash-name)
-		   (setf (gethash bddhash-name *bdd-pvs-hash*) expr)
+		   (unless (freevars expr)
+		     (setf (gethash bddhash-name *bdd-pvs-hash*) expr))
 		   (when is-rel-var
 		     (push expr *list-of-relational-vars*))
 		   mu-expression))))))
