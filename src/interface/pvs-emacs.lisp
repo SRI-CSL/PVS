@@ -271,63 +271,6 @@
   `(list :pvs-value ,form))
 
 
-;;; pvs-file-attributes returns the list of file attributes given by
-;;; Emacs, except that, since it calls file-attributes*, the 0. entry is
-;;; just t or nil (i.e., softlinks are followed).
-
-;;; 0. t for directory, string (name linked to) for symbolic link, or nil.
-;;; 1. Number of links to file.
-;;; 2. File uid.
-;;; 3. File gid.
-;;; 4. Last access time, as a list of two integers.
-;;;  First integer has high-order 16 bits of time, second has low 16 bits.
-;;; 5. Last modification time, likewise.
-;;; 6. Last status change time, likewise.
-;;; 7. Size in bytes. (-1, if number is out of range).
-;;; 8. File modes, as a string of ten letters or dashes as in ls -l.
-;;; 9. t iff file's gid would change if file were deleted and recreated.
-;;;10. inode number.
-;;;11. Device number.
-
-(defmethod pvs-file-attributes (file)
-  (read-from-string
-   (pvs-emacs-eval (format nil "(file-attributes* ~s)" file))))
-
-#-allegro
-(defun pvs-stable-file-attributes (file)
-  (let ((attrs (pvs-file-attributes file)))
-    (list (nth 0 attrs) (nth 10 attrs) (nth 11 attrs))))
-
-#+allegro
-(defmethod pvs-stable-file-attributes ((file string))
-  (multiple-value-list (excl::filesys-inode file)))
-
-#+allegro
-(defmethod pvs-stable-file-attributes ((file pathname))
-  (pvs-stable-file-attributes (namestring file)))
-
-#-gcl
-(defmethod pvs-file-attributes ((file pathname))
-  (pvs-file-attributes (namestring file)))
-
-#+gcl
-(defmethod pvs-file-attributes (file)
-  (when (pathnamep file)
-    (pvs-file-attributes (namestring file))))
-
-#+allegro
-(defun pvs-file-inode (file)
-  (let ((path (probe-file file)))
-    (when path
-      (excl::filesys-inode (namestring path)))))
-
-#-allegro
-(defun pvs-file-inode (file)
-  (let ((path (probe-file file)))
-    (when path
-      (let ((attrs (pvs-file-attributes file)))
-	(values (nth 10 attrs) (nth 11 attrs))))))
-
 (defun query (theory msg query place)
   (declare (ignore theory place))
   (format t "~%~a~{~%~{~a: ~a~*~}~}~%choice? " msg query)
@@ -654,7 +597,7 @@
 			 (let ((tfile (make-pathname
 				       :type (format nil "p~d" (incf counter))
 				       :defaults tmp-file-default)))
-			   (if (probe-file tfile)
+			   (if (file-exists-p tfile)
 			       (tmp-file)
 			       tfile))))
 		(tmp-file))))))
