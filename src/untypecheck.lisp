@@ -37,7 +37,11 @@
 				      (generated-by d)))
 	  (assuming dorm)))
   (untypecheck-theory (assuming dorm))
-  (setf (status dorm) (list 'parsed)))
+  (setf (status dorm) (list 'parsed))
+  (setf (tcc-comments dorm) nil)
+  (setf (info dorm) nil)
+  (setf (warnings dorm) nil)
+  (setf (conversion-messages dorm) nil))
 
 (defmethod untypecheck-theory ((adt datatype))
   (untypecheck-theory (importings adt))
