@@ -402,7 +402,7 @@ bind tighter.")
 	      (pprint-exit-if-list-exhausted))))))
 
 (defmethod pp* ((dt datatype))
-  (with-slots (id formals using assuming constructors) dt
+  (with-slots (id formals importings assuming constructors) dt
     (pprint-logical-block (nil nil)
       (write id)
       (pp-theory-formals formals)
@@ -426,8 +426,17 @@ bind tighter.")
       (write 'BEGIN)
       (pprint-indent :block 2)
       (pprint-newline :mandatory)
-      (when using
-	(pp* using)
+      (when importings
+	(pprint-logical-block (nil importings)
+	  (write 'IMPORTING)
+	  (write-char #\space)
+	  (pprint-indent :current 0)
+	  (loop (pp* (theory-name (pprint-pop)))
+		(pprint-exit-if-list-exhausted)
+		(write-char #\,)
+		(write-char #\space)
+		(pprint-newline :fill)))
+	(pprint-newline :mandatory)
 	(pprint-newline :mandatory))
       (pp-assuming assuming)
       (pp-constructors constructors)
@@ -1132,6 +1141,7 @@ bind tighter.")
 
 (defmethod pp* ((ex application))
   (with-slots (operator argument) ex
+    (set-parens-if-needed ex)
     (pprint-logical-block (nil nil)
       (pprint-indent :current (if (typep operator 'name-expr)
 				  (min (- (length (string (id operator))) 2) 6)
@@ -1168,6 +1178,13 @@ bind tighter.")
   ;;(slot-value *standard-output* 'excl::buffpos)
   (slot-value *standard-output* 'excl::buffer-ptr)
   )
+
+(defmethod set-parens-if-needed ((ex application))
+  (with-slots (operator argument) ex
+    (when (and (zerop (parens operator))
+	       (< (precedence operator 'left)
+		  (precedence argument 'right)))
+      (setf (parens operator) 1))))
 
 (defmethod set-parens-if-needed ((ex infix-application))
   (with-slots (operator argument) ex
