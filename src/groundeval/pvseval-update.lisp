@@ -1385,6 +1385,9 @@
 			     (let ((dt (find-supertype (type-value decl))))
 			       (when (adt-type-name? dt)
 				 (pvs2cl-constructors (constructors dt) dt))))
+			    ((datatype? decl)
+			     (let ((adt (adt-type-name decl)))
+			       (pvs2cl-constructors (constructors adt) adt)))
 			    ((const-decl? decl)
 			     (unless (eval-info decl)
 			       (progn
