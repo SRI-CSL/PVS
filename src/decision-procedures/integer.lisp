@@ -2,7 +2,13 @@
 
 (defun dp-integer-atom-p (l)
   (or (eq (node-initial-type l) *integer*)
-      (floor-p l)))
+      (floor-p l)
+      (and (times-p l)
+	   (integer-times-p l))))
+
+(defun integer-times-p (l)
+  (loop for a in (funargs l)
+	always (dp-integer-atom-p a)))
 
 (defun integer-equality-p (lit)
   (let ((fract (and (or (arith-bool-p lit)
