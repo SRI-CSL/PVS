@@ -14,7 +14,7 @@
 
 
 
-(defun replace-rule-fun (sformnum &optional sformnums dir hide?
+(defun replace-rule-fun (sformnum &optional sformnums dir hide? 
 				  actuals? keep?) 
   #'(lambda (ps)(replace-step sformnum sformnums dir hide?
 			      actuals?  keep? ps)))
@@ -65,7 +65,7 @@
 				    (if (null sformnums)
 					'* sformnums)
 				    (s-forms goalsequent)
-				    1 -1))) 
+				    1 -1 keep?))) 
 		 (if (every #'eql  new-s-forms (s-forms goalsequent))
 		     (values 'X nil nil)
 		     (let* ((new-s-forms
@@ -97,7 +97,7 @@
 ;  (not (eq (match lhs rhs nil nil) 'fail))))
 
 
-(defun replace-loop (lhs rhs sformnum sformnums sforms pos neg)
+(defun replace-loop (lhs rhs sformnum sformnums sforms pos neg keep?)
   (let ((*replace-cache*
 	 (make-hash-table :test #'eq)))
     (if (null sforms) nil
@@ -106,18 +106,32 @@
 		    (not (in-sformnums? (car sforms) pos neg sformnums)))
 		(cons (car sforms)
 		      (replace-loop lhs rhs sformnum sformnums  (cdr sforms)
-				    pos (1- neg)))
-		(cons (replace-expr lhs rhs (car sforms))
-		      (replace-loop lhs rhs sformnum sformnums (cdr sforms)
-				    pos (1- neg))))
+				    pos (1- neg) keep?))
+		(let* ((result (replace-expr lhs rhs (car sforms)))
+		       (new-fmla (formula result))
+		       (keep-result 
+			(if (and keep?
+				 (tc-eq new-fmla *false*))
+			    (car sforms)
+			    result)))
+		  (cons keep-result
+			(replace-loop lhs rhs sformnum sformnums (cdr sforms)
+				      pos (1- neg) keep?))))
 	    (if (or (eq sformnum pos)
 		    (not (in-sformnums? (car sforms) pos neg sformnums)))
 		(cons (car sforms)
 		      (replace-loop lhs rhs sformnum sformnums (cdr sforms)
-				    (1+ pos) neg))
-		(cons (replace-expr lhs rhs (car sforms))
+				    (1+ pos) neg keep?))
+		(let* ((result (replace-expr lhs rhs (car sforms)))
+		       (new-fmla (formula result))
+		       (keep-result 
+			(if (and keep?
+				 (tc-eq new-fmla *false*))
+			    (car sforms)
+			    result)))
+		(cons keep-result
 		      (replace-loop lhs rhs sformnum sformnums (cdr sforms)
-				    (1+ pos) neg)))))))
+				    (1+ pos) neg keep?))))))))
 
 	       
 (defun replace-expr (lhs rhs sequent)

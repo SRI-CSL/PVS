@@ -16,7 +16,7 @@
 ;;The rulefun rewrite finds the matching instantiations automatically.
 
 (defun rewrite-step (lemma fnums &optional subst target-fnums
-			       dir order)
+			       dir order keep?)
   (let* ((lemmaname-expr (pc-parse lemma 'bname))
 	 (resolutions (formula-or-definition-resolutions lemmaname-expr))
 	 (sforms (select-seq (s-forms *goal*)
@@ -41,12 +41,13 @@
 	       (search-and-rewrite lemmaname-expr resolutions sforms
 				   in-subst
 				   *current-context*
-				   target-fnums dir order))))))
+				   target-fnums dir order keep?))))))
 
 
 
 (defun search-and-rewrite (name-expr resolutions sforms &optional
-				     in-subst context in-sformnums dir order)
+				     in-subst context in-sformnums dir order
+				     keep?)
   (cond ((null resolutions)
 	 (error-format-if "~%No matching instance for ~a found." name-expr)
 	 '(skip))
@@ -56,11 +57,11 @@
 		  (rule (search-and-rewrite* name-expr res mod-inst
 					      forms sforms
 					     in-subst context
-					     in-sformnums dir order)))
+					     in-sformnums dir order keep?)))
 	     (cond ((null rule)
 		    (search-and-rewrite name-expr (cdr resolutions) sforms
 					in-subst context in-sformnums
-					dir order))
+					dir order keep?))
 		   (t rule))))))
 
 (defun tc-alist (in-alist &optional out-alist (tccs 'all))
@@ -104,7 +105,8 @@
 
 (defun search-and-rewrite* (name-expr res mod-inst 
 				      forms sforms
-				      in-subst context in-sformnums dir order)
+				      in-subst context in-sformnums dir order
+				      keep?)
   (when (and forms sforms)
     (let* ((form (car forms));;it's always a universal closure
 	   (outervars (substitutable-vars form))
@@ -147,11 +149,11 @@
 	       (or (search-and-rewrite* name-expr res mod-inst 
 					forms (cdr sforms)
 					in-subst context
-					in-sformnums dir order)
+					in-sformnums dir order keep?)
 		   (search-and-rewrite* name-expr res mod-inst 
 					(cdr forms) sforms
 					in-subst context
-					in-sformnums dir order)))
+					in-sformnums dir order keep?)))
 	      (t (let* ((modinst
 			 (unless (eq modsubst t)
 			   (let* ((module (module (caar modsubst)))
@@ -178,7 +180,8 @@
 		   `(rewrite-lemma$ ,full-name-expr
 				    ,(flatten-sub subst)
 				    ,in-sformnums
-				    ,dir))))))))
+				    ,dir
+				    ,keep?))))))))
 					
 (defun get-formulas (name context)
   (create-formulas name context))

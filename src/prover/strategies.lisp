@@ -2135,7 +2135,8 @@ else auto-rewrite."
 statement.  If always? is T, then it uses auto-rewrite! else auto-rewrite."
   "Auto-rewriting with all the explicit definitions relevant to statement")
 
-(defhelper rewrite-directly-with-fnum (fnum  &optional (fnums *) (dir lr))
+(defhelper rewrite-directly-with-fnum (fnum  &optional (fnums *) (dir lr)
+					     keep?)
     (if (select-seq (s-forms (current-goal *ps*)) fnums)
 	(then (beta fnum dir)
 	      (branch (split fnum)
@@ -2143,19 +2144,17 @@ statement.  If always? is T, then it uses auto-rewrite! else auto-rewrite."
 			   (let ((newnum  (car *new-fmla-nums*)))
 			     (let ((newnums (list newnum)))
 			       (then (assert newnums dir)
-				     (try (replace newnum
-						   fnums
-						   dir)
-					  (delete newnums)
-					  (skip)))))
+				     (replace newnum
+					      fnums
+					      dir :keep? keep?)
+				     (delete newnums))))
 			   (then (assert fnum dir)
-				 (try (replace fnum
+				 (replace fnum
 					       fnums
-					       dir)
-				      (delete fnum)
-				      (skip))))
+					       dir :keep? keep?)
+				 (delete fnum))))
 		       (then (beta *)
-			     (assert *)))))
+			     (assert *))))
 	(skip-msg "Invalid target formula(s) given to rewrite-directly-with-fnum"))
     "Beta-reduces, splits, and simplifies FNUM, and does a replacement in FNUMS
 corresponding to dir (left-to-right when LR, and right-to-left when RL)."
@@ -2193,7 +2192,7 @@ corresponding to dir (left-to-right when LR, and right-to-left when RL)."
 		       'fail)))
     in-subst))
 
-(defstep rewrite-with-fnum (fnum &optional subst (fnums *) (dir lr))
+(defstep rewrite-with-fnum (fnum &optional subst (fnums *) (dir lr) keep?)
   (let ((fnum (find-sform (s-forms (current-goal *ps*)) fnum))
 	;;NSH(5.9.99): numeralizes labels.
 	 (sforms (select-seq (s-forms (current-goal *ps*))
@@ -2240,7 +2239,7 @@ corresponding to dir (left-to-right when LR, and right-to-left when RL)."
 				     `(inst ,fnum1 :terms ,sub)))
 			 (list `(copy ,fnum)))))
 		(then (then :steps rules)
-		      (rewrite-directly-with-fnum fnum1 fnums dir)))))
+		      (rewrite-directly-with-fnum fnum1 fnums dir keep?)))))
 	(skip-msg "No rewritable FNUM found.")))
   "Rewrites using the formula named in FNUM given input substitution
 SUBST, target FNUMS where rewrites are to occur, and the rewrite direction
@@ -2248,7 +2247,7 @@ DIR (LR for left-to-right, and RL, otherwise)."
   "Rewriting with ~a")
 
 (defstep rewrite-lemma (lemma subst &optional (fnums *)
-			  (dir lr))
+			  (dir lr) keep?)
   (let ((in-sformnums (if (consp fnums)
 			   (loop for x in fnums
 				 collect (if (and (integerp x)
@@ -2261,7 +2260,7 @@ DIR (LR for left-to-right, and RL, otherwise)."
 	  (try-branch (lemma lemma subst)
 	   ((if *new-fmla-nums*
 		(let ((num (car *new-fmla-nums*)))
-		  (rewrite-directly-with-fnum num in-sformnums dir))
+		  (rewrite-directly-with-fnum num in-sformnums dir keep?))
 		(skip))
 	    (then (beta *)(assert *)))
 	   (skip )))
@@ -2271,11 +2270,11 @@ DIR (LR for left-to-right, and RL, otherwise)."
    "Rewriting using ~a~@[ where~{~%   ~a gets ~a~^,~}~]")
 
 (defstep rewrite (lemma-or-fnum &optional (fnums *)  subst (target-fnums *)
-		    (dir lr) (order in) ) ;;(hash-rewrites? t) NSH(9.21.95)
+		    (dir lr) (order in) keep?) ;;(hash-rewrites? t) NSH(9.21.95)
   (if (find-sform (s-forms (current-goal *ps*)) lemma-or-fnum) ;integerp lemma-or-fnum)
-      (rewrite-with-fnum lemma-or-fnum subst target-fnums dir)
+      (rewrite-with-fnum lemma-or-fnum subst target-fnums dir keep?)
   (let ((x (rewrite-step lemma-or-fnum fnums subst
-			  target-fnums dir order)))
+			  target-fnums dir order keep?)))
     x))
   "Rewrites using LEMMA-OR-FNUM (lemma name or fnum) of the form
 H IMPLIES L = R by finding match L' for L and replacing L' by R' with
@@ -2285,7 +2284,9 @@ FNUMS constrains where to search for a match,
 SUBST takes a partial substitution and tries to find a match extending this,
 TARGET-FNUMS constrains where the rewriting occurs,
 DIR is left-to-right(LR) or right-to-left(RL),
-ORDER is inside-out(IN) or outside-in (OUT)."
+ORDER is inside-out(IN) or outside-in (OUT),
+KEEP? prevents antecedent/succedent formulas from being rewritten to
+      true/false."
   "Rewriting using ~a~@[, matching in ~a~]~@[ where~{~%  ~a gets ~a~^,~}~]")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
