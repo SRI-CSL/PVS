@@ -537,6 +537,9 @@
        (and (or (and (null (mappings old)) (null (mappings new)))
 		(and (mappings old) (mappings new)))
 	    (compare* (mappings old) (mappings new)))
+       (and (or (and (null (target old)) (null (target new)))
+		(and (target old) (target new)))
+	    (compare* (target old) (target new)))
        (compare* (id old) (id new))))
 
 (defmethod compare* ((old expr) (new expr))
