@@ -1,0 +1,28 @@
+;;; This is used to create pvs-prelude-files-and-regions.el, which is just
+;;; defines *pvs-files-and-regions* so that extracting prelude theories
+;;; (e.g., using M-x vpt) is reasonably quick.
+
+(defvar region-file
+  "emacs/emacs-src/pvs-prelude-files-and-regions.el")
+
+(defun set-prelude-files-and-regions ()
+  (let* ((files (directory-files "@PVSPATH@/lib"
+				 t "^prelude\\.pvs$\\|.*_adt\\.pvs$"))
+	 (files-and-regions
+	  (mapcar '(lambda (file)
+		     (save-excursion
+		       (let ((noninteractive t)) ;; Shut up about read-only
+			 (set-buffer (find-file-noselect file)))
+		       (cons (file-name-nondirectory file) (theory-regions*))))
+	    files)))
+    (set-buffer (find-file-noselect (format "@PVSPATH@/%s" region-file)))
+    (erase-buffer)
+    (insert ";;; Generated from pvs-set-prelude-info.el - do not edit
+(defvar *prelude-files-and-regions*
+  (mapcar
+      '(lambda (x)
+	 (cons (format \"%s/lib/%s\" pvs-path (car x)) (cdr x)))
+    '")
+    (insert (format "%S" files-and-regions))
+    (insert "))")
+    (write-file (buffer-file-name))))
