@@ -217,7 +217,9 @@
 
 (defmethod untypecheck-theory ((decl def-decl))
   (when (next-method-p) (call-next-method))
-  (untypecheck-theory (measure decl))
+  (untypecheck-theory (declared-measure decl))
+  (setf (measure decl) nil)
+  (untypecheck-theory (ordering decl))
   (setf (measure-depth decl) nil))
 
 ;;; inductive-decl is a const-decl
