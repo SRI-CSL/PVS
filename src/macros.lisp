@@ -184,6 +184,7 @@
 	    (unwind-protect
 		 (progn (set-working-directory ,dir)
 			(setq *pvs-context-path* (working-directory))
+			(setq *default-pathname-defaults* *pvs-context-path*)
 			,@forms)
 	      (set-working-directory ,curdir)))
 	  (pvs-message "Library ~a does not exist" ,dir)))))
