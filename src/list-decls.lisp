@@ -22,30 +22,6 @@
 
 (defvar *list-declarations* nil)
 
-(defmacro do-all-theories (fn)
-  `(progn (maphash #'(lambda (mid theory)
-		       (declare (ignore mid))
-		       (funcall ,fn theory))
-		   *pvs-modules*)
-	  (maphash #'(lambda (lib ht)
-		       (declare (ignore lib))
-		       (maphash #'(lambda (mid theory)
-				    (declare (ignore mid))
-				    (funcall ,fn theory))
-				(cadr ht)))
-		   *imported-libraries*)
-	  (maphash #'(lambda (lib ht)
-		       (declare (ignore lib))
-		       (maphash #'(lambda (mid theory)
-				    (declare (ignore mid))
-				    (funcall ,fn theory))
-				(cadr ht)))
-		   *prelude-libraries*)
-	  (maphash #'(lambda (mid theory)
-		       (declare (ignore mid))
-		       (funcall ,fn theory))
-		   *prelude*)))
-
 ;;; Called by Emacs - show-declaration command
 
 (defvar *show-declaration* nil)
