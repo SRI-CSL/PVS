@@ -9,9 +9,9 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; (compile-file "/homes/owre/pvs2.2a/BDD/mu.lisp")
-;; (load "/homes/owre/pvs2.2a/BDD/mu.lisp")
-;;
+;; 
+;; 
+;; (compile-file "/project/pvs/pvs2.2/BDD/mu.lisp")(load"/project/pvs/pvs2.2/BDD/mu.fasl")(load"/project/pvs/pvs2.2/BDD/Linux/bdd/bdd.so")(load"/project/pvs/pvs2.2/BDD/Linux/mu/mu.so")
 
 (in-package 'pvs)  
 
@@ -27,6 +27,10 @@
 ;;; Formula mu_mk_true_formula (void)
 (ff:defforeign 'mu_mk_bool_var)
 ;;; Formula mu_mk_bool_var (char *name)
+(ff:defforeign 'mu_check_bool_var)
+;;; Formula mu_check_bool_var
+(ff:defforeign 'mu_check_mk_bool_var)
+;;; Formula mu_check_mk_bool_var
 (ff:defforeign 'mu_mk_ite_formula)
 ;;; Formula mu_mk_ite_formula (Formula cond, Formula then_part, Formula else_part)
 (ff:defforeign 'mu_mk_curry_application)
@@ -72,12 +76,6 @@
 
 
 
-;;;;;;;;;;;;;;;;;;;;
-;;;  Variables   ;;;
-;;;;;;;;;;;;;;;;;;;;
-(ff:defforeign 'mu_mk_bool_var)
-
-
 ;;;;;;;;;;;;;;;;;;;
 ;;;  Lists      ;;;
 ;;;;;;;;;;;;;;;;;;;
@@ -96,7 +94,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Main function   ;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
-
+(ff:defforeign 'mu_init)
+(ff:defforeign 'mu_quit)
 (ff:defforeign 'modelcheck_formula)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -124,6 +123,10 @@
   (let* ((*pvs-bdd-hash* (make-hash-table
 			  :hash-function 'pvs-sxhash :test 'tc-eq))
 	 (*bdd-pvs-hash* (make-hash-table))
+	 (*pvs-bdd-inclusivity-formulas* nil)
+	 (*bdd-counter* *bdd-counter*)
+	 (*recognizer-forms-alist* nil)
+         (*mu-subtype-list* nil)
 	 (sforms (s-forms (current-goal ps)))
 	 (selected-sforms (select-seq sforms fnums))
 	 (remaining-sforms (delete-seq sforms fnums))
@@ -144,13 +147,13 @@
 	 (lit-list (mapcar #'(lambda (conj)
 			       (mapcar #'(lambda (lit)
 					   (if (consp lit)
-					       (gethash (car lit) *bdd-pvs-hash*)
-					       (make-negation
+					     (gethash (car lit) *bdd-pvs-hash*)
+					     (make-negation
 						(gethash lit *bdd-pvs-hash*))))
 				 conj))
 		     list-of-conjuncts))
 	 )
-    (add-mu-subgoals ps sforms lit-list remaining-sforms)
+    (add-bdd-subgoals ps sforms lit-list remaining-sforms)
     )
   )
 
@@ -162,20 +165,13 @@
 
 
 (defun run-pvsmu (mu-formula dynamic-ordering?)
- (let ((*pvs-bdd-hash* (make-hash-table :hash-function 'pvs-sxhash
-					     :test 'tc-eq))
-	(*bdd-pvs-hash* (make-hash-table :test #'eq))
-	(*pvs-bdd-inclusivity-formulas* nil)
-	(*bdd-counter* *bdd-counter*)
-	(*recognizer-forms-alist* nil)
-	(*mu-subtype-list* nil))
 ;;   (set_mu_bdd_ordering (if dynamic-ordering? 1 0))
    (set_mu_warnings 0)
    (set_mu_simplify_frontier 1)
    (set_mu_verbose 1)
    (mu-interpret-formula mu-formula)
  )
-)
+
 
 ;;
 ;; mu-interpret-formula
@@ -270,9 +266,9 @@
 
 
 (defmethod convert-pvs-to-mu* ((expr list))
- (if (null expr) NULL_LIST
+ (if (null expr) (NULL_LIST)
       (append_cont (convert-pvs-to-mu* (car expr))
-          (convert-pvs-to-mu* (cdr (expr))))
+          (convert-pvs-to-mu* (cdr expr)))
   )
 )
 
@@ -588,6 +584,7 @@
 
 
 (defun make-mu-variable (expr)
+ (pvs-message "make-expr" )
   (let ((bddvarid (gethash expr *pvs-bdd-hash*)))
        (cond ((null bddvarid)
               (cond ((sub-range? (type expr)) (make-subrange-names expr))
@@ -595,13 +592,13 @@
                     (t (let ((new-bddvarid
 		       (if (recognizer-application? expr)
 			   (make-mu-variable-recognizer-application expr)
-			   (make-bdd-var-id)))))
+			   (make-bdd-var-id))))
 		  (setf (gethash expr *pvs-bdd-hash*)
 			new-bddvarid)
 		  (when (null (freevars expr))
-		    (setf (gethash new-varid *bdd-pvs-hash*)
+		    (setf (gethash new-bddvarid *bdd-pvs-hash*)
 			  expr))
-		  (mu-create-bool-var new-bddvarid))))
+		  (mu-create-bool-var new-bddvarid)))))
                  (t   (let ((bddvarid  (if (consp bddvarid)(cadr bddvarid) bddvarid)))
                                  (mu-create-bool-var bddvarid)))
                  ))
@@ -1185,7 +1182,7 @@
  ))
        
 (defun mu-mk-cof (fml1 fml2)
-   (mu_mk_cof fml1 fml2)
+   (mu_mk_cofactor fml1 fml2)
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1224,12 +1221,22 @@
 
 
 (defun mu-create-bool-var (bvarid)
+ (pvs-message (format nil "~d " bvarid))
  (let ((bvarname (format nil "b~a" bvarid)))
     (if *build-rel-var*  
             (mu_mk_rel_var_dcl bvarname)
           (if *build-access-var* 
               (mu_check_bool_var bvarname)
-              (mu_mk_bool_var bvarname))))
+              (mu-make-bool-var bvarname))
+       ))
+)
+
+
+(defun mu-make-bool-var (bvarname)
+ (pvs-message "goes in")
+;;  (mu_check_bool_var bvarname)
+  (pvs-message "never come back")
+ (mu_check_mk_bool_var bvarname)
 )
 
 ;;
@@ -1411,7 +1418,7 @@
 ;;
 
 (defun from-lisp-list-to-c-list (lisp-list)
-  (if (null lisp-list) NULL_LIST
+  (if (null lisp-list) (NULL_LIST)
        (append_cont (car lisp-list) (from-lisp-list-to-c-list (cdr lisp-list))
   ))
 )
