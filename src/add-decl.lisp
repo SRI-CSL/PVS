@@ -6,9 +6,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Sun Apr 30 13:38:19 1995
 ;; Update Count    : 6
-;; Status          : Alpha test
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -224,8 +222,8 @@
 					    (eq (module d) (current-theory)))
 			   (get-declarations (id decl)))
 			 :test #'add-decl-test)))
-    (let* ((thry (theory *current-context*))
-	   (curdecl (declaration *current-context*))
+    (let* ((thry (current-theory))
+	   (curdecl (current-declaration))
 	   (cdecl (when curdecl
 		    (if (tcc? decl)
 			curdecl
@@ -285,7 +283,10 @@
 		     (if cdecl
 			 (append (ldiff (theory thry) ttail)
 				 (cons decl ttail))
-			 (cons decl ttail))))))
+			 (cons decl ttail)))))
+	(setf (all-declarations thry) nil))
+      (assert (eq thry (module decl)))
+      (assert (memq decl (all-decls thry)))
       (unless (or (importing? decl)
 		  (null *insert-add-decl*))
 	(put-decl decl (current-declarations-hash)))
