@@ -67,6 +67,20 @@ EMACS19 = "$(shell which emacs-19.34)"
 endif
 endif
 
+ifeq ("$(emacsversion)", "XEmacs 21")
+XEMACS21 = "$(shell which emacs)"
+else
+ifeq ("$(xemacsversion)", "XEmacs 21")
+XEMACS21 = "$(shell which xemacs)"
+else
+xemacs21version = $(shell expr "`xemacs-21.1.8 --version 2> /dev/null`" \
+                               : '[^X]*\(X\?Emacs [0-9]\+\)')
+ifeq ("$(xemacs21version)", "XEmacs 21")
+XEMACS21 = "$(shell which xemacs-21.1.8)"
+endif
+endif
+endif
+
 ifeq ("$(emacsversion)", "XEmacs 20")
 XEMACS20 = "$(shell which emacs)"
 else
@@ -380,6 +394,11 @@ emacs19-elc = $(pvs-emacs19-src:.el=.elc) $(ilisp-emacs19-src:.el=.elc)
 emacs += emacs/emacs19/pvs-load.elc
 endif
 
+ifneq ($(strip $(XEMACS21)),)
+xemacs21-elc = $(pvs-xemacs21-src:.el=.elc) $(ilisp-xemacs21-src:.el=.elc)
+emacs += emacs/xemacs21/pvs-load.elc
+endif
+
 ifneq ($(strip $(XEMACS20)),)
 xemacs20-elc = $(pvs-xemacs20-src:.el=.elc) $(ilisp-xemacs20-src:.el=.elc)
 emacs += emacs/xemacs20/pvs-load.elc
@@ -486,15 +505,19 @@ makews1s :
 	umask 002; \
 	$(MAKE) -C src/WS1S/$(PLATFORM)
 
-image-tar = pvs-$(PLATFORM).tgz
+runtime-image-tar = pvs-$(PLATFORM).tgz
+
+full-image-tar = pvs-full-$(PLATFORM).tgz
 
 system-tar = pvs-system.tgz
 
 emacs19-tar = pvs-emacs19.tgz
 
-tarfiles : ${image-tar} ${system-tar} ${emacs19-tar}
+tarfiles : ${runtime-image-tar} ${full-image-tar} ${system-tar} ${emacs19-tar}
 
-image-files = $(wildcard ${bindir}/runtime/*)
+runtime-image-files = $(wildcard ${bindir}/runtime/*)
+
+full-image-files = $(wildcard ${bindir}/full/*)
 
 system-files = README pvs pvs-tex.sub pvs.sty bin/relocate bin/pvs-platform \
 	       Examples \
@@ -504,12 +527,15 @@ system-files = README pvs pvs-tex.sub pvs.sty bin/relocate bin/pvs-platform \
                lib/pvs.grammar lib/pvs.bnf wish/pvs-support.tcl \
                wish/gray.xbm wish/sequent.xbm \
                emacs/README emacs/go-pvs.el $(pvs-emacs-src) \
-               $(ilisp-emacs-src) emacs/emacs20 emacs/xemacs20
+               $(ilisp-emacs-src) emacs/emacs20 emacs/xemacs20 emacs/xemacs21
 
 emacs19-files = emacs/emacs19 emacs/xemacs19
 
-${image-tar} : ${pvsrt}
-	$(TAR) $(TARFLAGS) -f ${image-tar} ${image-files}
+${runtime-image-tar} : ${pvsrt}
+	$(TAR) $(TARFLAGS) -f ${runtime-image-tar} ${runtime-image-files}
+
+${full-image-tar} : ${pvsfull}
+	$(TAR) $(TARFLAGS) -f ${full-image-tar} ${full-image-files}
 
 ${system-tar} : ${system-files}
 	$(TAR) $(TARFLAGS) -f ${system-tar} ${system-files}
@@ -532,11 +558,13 @@ ilisp-emacs-src = $(wildcard emacs/emacs-src/ilisp/*.el)
 
 pvs-emacs20-src = $(addprefix emacs/emacs20/,$(notdir ${pvs-emacs-src}))
 pvs-emacs19-src = $(addprefix emacs/emacs19/,$(notdir ${pvs-emacs-src}))
+pvs-xemacs21-src = $(addprefix emacs/xemacs21/,$(notdir ${pvs-emacs-src}))
 pvs-xemacs20-src = $(addprefix emacs/xemacs20/,$(notdir ${pvs-emacs-src}))
 pvs-xemacs19-src = $(addprefix emacs/xemacs19/,$(notdir ${pvs-emacs-src}))
 
 ilisp-emacs20-src = $(addprefix emacs/emacs20/,$(notdir ${ilisp-emacs-src}))
 ilisp-emacs19-src = $(addprefix emacs/emacs19/,$(notdir ${ilisp-emacs-src}))
+ilisp-xemacs21-src = $(addprefix emacs/xemacs21/,$(notdir ${ilisp-emacs-src}))
 ilisp-xemacs20-src = $(addprefix emacs/xemacs20/,$(notdir ${ilisp-emacs-src}))
 ilisp-xemacs19-src = $(addprefix emacs/xemacs19/,$(notdir ${ilisp-emacs-src}))
 
@@ -545,6 +573,9 @@ emacs/emacs20/%.el : emacs/emacs-src/%.el
 
 emacs/emacs19/%.el : emacs/emacs-src/%.el
 	(cd emacs/emacs19; ln -sf ../emacs-src/$(@F) .)
+
+emacs/xemacs21/%.el : emacs/emacs-src/%.el
+	(cd emacs/xemacs21; ln -sf ../emacs-src/$(@F) .)
 
 emacs/xemacs20/%.el : emacs/emacs-src/%.el
 	(cd emacs/xemacs20; ln -sf ../emacs-src/$(@F) .)
@@ -557,6 +588,9 @@ emacs/emacs20/%.el : emacs/emacs-src/ilisp/%.el
 
 emacs/emacs19/%.el : emacs/emacs-src/ilisp/%.el
 	(cd emacs/emacs19; ln -sf ../emacs-src/ilisp/$(@F) .)
+
+emacs/xemacs21/%.el : emacs/emacs-src/ilisp/%.el
+	(cd emacs/xemacs21; ln -sf ../emacs-src/ilisp/$(@F) .)
 
 emacs/xemacs20/%.el : emacs/emacs-src/ilisp/%.el
 	(cd emacs/xemacs20; ln -sf ../emacs-src/ilisp/$(@F) .)
@@ -572,6 +606,11 @@ endif
 ifeq ($(shell if [ -x ${emacs19} ] ; then echo OK ; fi), OK)
 emacs/emacs19/pvs-load.elc : ${pvs-emacs19-src} ${ilisp-emacs19-src}
 	(cd emacs/emacs19; $(EMACS19) -batch -l pvs-byte-compile.el)
+endif
+
+ifeq ($(shell if [ -x ${xemacs21} ] ; then echo OK ; fi), OK)
+emacs/xemacs21/pvs-load.elc : ${pvs-xemacs21-src} ${ilisp-xemacs21-src}
+	(cd emacs/xemacs21; $(XEMACS21) -batch -l pvs-byte-compile.el)
 endif
 
 ifeq ($(shell if [ -x ${xemacs20} ] ; then echo OK ; fi), OK)
