@@ -271,6 +271,7 @@ get to the same state."
       (pvs-send-and-wait "(progn (in-package \"PVS\") nil)" nil nil 'dont-care)
       (sleep-for 1)
       (load (format "patch%d" (pvs-major-version-number)) t t)
+      (setq debug-on-error nil)
       (let ((comint-log nil))
 	(pvs-send-and-wait
 	 (format "(progn (setq *pvs-path* \"%s\")
@@ -311,7 +312,6 @@ get to the same state."
 	  (pvs-mode)
 	  (unless noninteractive
 	    (switch-to-buffer (get-buffer-create "PVS Welcome"))))
-      (setq debug-on-error nil)
       (unless noninteractive
 	(message "Ready"))))
 
