@@ -1792,6 +1792,8 @@ a lot longer to generate.  By default, proof files are prettyprinted."
       '(lambda () (interactive) (scroll-left -16)))
     (define-key pvs-browse-proofs-mode-map "\177"
       '(lambda () (interactive) (pvs-proofs-delete-proof)))
+    (define-key pvs-browse-proofs-mode-map "h" 'describe-mode)
+    (define-key pvs-browse-proofs-mode-map "?" 'describe-mode)
     )
 
 (defun pvs-browse-proofs-mode ()
@@ -1809,7 +1811,8 @@ Letters do not insert themselves; instead, they are commands:
   q     Quit: exits the Proofs buffer
   r     Rename proof: rename the specified proof
   s     Show proof: Shows the specified proof in a Proof:<id> buffer
-  DEL   Delete proof: deletes the specified proof from the formula"
+  DEL   Delete proof: deletes the specified proof from the formula
+  ? or h Help: Display summary of proof browsing commands"
   (kill-all-local-variables)
   (use-local-map pvs-browse-proofs-mode-map)
   (setq truncate-lines t)
@@ -1877,7 +1880,6 @@ Letters do not insert themselves; instead, they are commands:
   (pvs-send-and-wait (format "(proofs-edit-proof %d)" (current-line-number)))
   (when (eq (current-buffer) (get-buffer "Proof"))
     (fix-edit-proof-comments)))
-
 
 (make-face 'font-lock-pvs-checkpoint-face)
 (set-face-background 'font-lock-pvs-checkpoint-face "red")
