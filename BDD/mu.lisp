@@ -507,20 +507,26 @@
 
 
 (defun convert-pvs-to-mu-nu-application  (expr)
-      (let* ((exprargs (arguments expr))
+      (let* ((*expand-term* nil)
+	     (exprargs (arguments expr))
 	     (argsfml (let ((*build-arguments* t))
                      (lisp-to-c-list (convert-pvs-to-mu* exprargs))))
 	     (muop (operator expr))
 	     (mu-or-nu (string (id (operator muop))))
 	     (muargs1bindgs (bindings (args1 muop)))
 	     (*mu-nu-lambda-bindings-list*
-	      (append muargs1bindgs
-		      *mu-nu-lambda-bindings-list*))
+	      (if muargs1bindgs
+		  (append muargs1bindgs
+			  *mu-nu-lambda-bindings-list*) 
+		  (pvs-error "Can not model-check" 
+		    (format nil "Expression ~a ~% of type ~a should be expanded"
+		      (unparse (args1 muop) :string t) 
+		      (unparse (type (args1 muop)) :string t)))))
 	     (muarg1fml (let ((*build-rel-var* t)) 
                                  (car (convert-pvs-to-mu*
 			 (mapcar #'make-variable-expr muargs1bindgs)))))
 	     (muarg2expr (expression (args1 muop)))
-	     (muarg2fml (convert-pvs-to-mu-term muarg2expr))
+	     (muarg2fml (convert-pvs-to-mu-term-expanded muarg2expr))
 	     (muexprfml
                (make-mu-application
                       (if (string= mu-or-nu "mu") 
@@ -532,7 +538,8 @@
 
 
 (defun convert-pvs-to-mu-nu-expression (expr)
-  (let* ((muop (operator expr))
+  (let* ((*expand-term* nil)
+	 (muop (operator expr))
 	 (mu-or-nu (string (id muop)))
 	 (muargs1bindgs (bindings (args1 expr)));;args1muop islambda-expr
 	 (muarg1fml 
@@ -540,10 +547,15 @@
 	    (car (convert-pvs-to-mu*
 		  (mapcar #'make-variable-expr muargs1bindgs)))))
 	 (*mu-nu-lambda-bindings-list*;;NSH(6.23.95)
-	  (append muargs1bindgs
-		  *mu-nu-lambda-bindings-list*))
+	  (if muargs1bindgs
+	      (append muargs1bindgs
+		      *mu-nu-lambda-bindings-list*) 
+	      (pvs-error "Can not model-check" 
+		(format nil "Expression ~a ~% of type ~a should be expanded"
+		  (unparse (args1 muop) :string t) 
+		  (unparse (type (args1 muop)) :string t)))))
 	 (muarg2expr (expression (args1 expr)))
-	 (muarg2fml (convert-pvs-to-mu-term muarg2expr))
+	 (muarg2fml (convert-pvs-to-mu-term-expanded muarg2expr))
 	 (muexprstr
 	  (if (string= mu-or-nu "mu") 
 	      (mu_mk_l_fixed_point muarg1fml muarg2fml)
@@ -650,7 +662,7 @@
 		    (*build-access-var*
 		     (make-binding-vars-scalar new-bddname))
 		    (t new-bddname)))
-	    (mu-make-bool-var (format nil "b~d" bddname)))
+	    (mu-create-bool-var (format nil "b~d" bddname)))
 	(cond ((sub-range? (type expr))
 	       (make-subrange-names expr))
 	      ((scalar? expr)
@@ -664,7 +676,7 @@
 			(is-access-var *build-access-var*))
 		   (setf (gethash expr *pvs-bdd-hash*) bddhash-name)
 		   (setf (gethash bddhash-name *bdd-pvs-hash*) expr)
-		   (when (or is-access-var is-rel-var)
+		   (when is-rel-var
 		     (push expr *list-of-relational-vars*))
 		   mu-expression))))))
 
@@ -1282,7 +1294,7 @@
   #+pvsdebug
   (pvs-message " ~% term? ~a   acc? ~a    rel-var? ~a   build-arg? ~a ~% "
     *build-mu-term* *build-access-var* *build-rel-var* *build-arguments*)
-  (let ((bvarname (format nil "b~d" bvarid)))
+  (let ((bvarname (if (stringp bvarid) bvarid (format nil "b~d" bvarid))))
     (if (and *build-rel-var* (not *build-access-var*)) 
 	(mu-mk-rel-var-dcl  bvarname)
 	(if *build-access-var* 
