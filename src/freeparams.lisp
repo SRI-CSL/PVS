@@ -37,6 +37,12 @@
 (defmethod free-params* ((decl declaration) frees)
   (free-params* (module decl) frees))
 
+(defmethod free-params* ((importing importing) frees)
+  (free-params* (theory-name importing) frees))
+
+(defmethod free-params* ((exporting exporting) frees)
+  nil)
+
 ;;; Type expressions
 
 (defmethod free-params* :around ((texpr type-expr) frees) 
