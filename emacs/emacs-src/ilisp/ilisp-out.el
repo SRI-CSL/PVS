@@ -303,43 +303,40 @@
 (defun ilisp-window-to-use-for-typeout ()
   (ilisp-find-top-left-most-window))
 
-
 (defun ilisp-display-buffer-in-typeout-window (buffer)
   "Display buffer in a window at the top of the screen."
   (let ((window (get-buffer-window buffer)))
+    (when window
+      (delete-window window)))
 
-    ;; If buffer already has a window, keep it.
-    (if (null window)
-	;; Otherwise, find a window to split.
-	(let* ((top-window (ilisp-window-to-use-for-typeout))
-	       (new-window nil)
-	       (previously-selected-window (selected-window))
-	       (desired-height (ilisp-desired-height buffer)))
+  ;; Otherwise, find a window to split.
+  (let* ((top-window (ilisp-window-to-use-for-typeout))
+	 (new-window nil)
+	 (previously-selected-window (selected-window))
+	 (desired-height (ilisp-desired-height buffer)))
 
-	  ;; The new window is always the lower one.
-	  (select-window top-window)
+    ;; The new window is always the lower one.
+    (select-window top-window)
 
-	  ;; Always minimize redisplay (except in emacs 18).
-	  (let ((split-window-keep-point nil))
-	    ;; If the top window is not big enough to split, commandeer it
-	    ;; entirely.
-	    (cond ((> desired-height (- (window-height) window-min-height))
-		   (setq new-window top-window))
-		  (t
-		   (setq new-window (split-window-vertically desired-height)))))
+    ;; Always minimize redisplay (except in emacs 18).
+    (let ((split-window-keep-point nil))
+      ;; If the top window is not big enough to split, commandeer it
+      ;; entirely.
+      (cond ((> desired-height (- (window-height) window-min-height))
+	     (setq new-window top-window))
+	    (t
+	     (setq new-window (split-window-vertically desired-height)))))
 
-	  (set-window-buffer top-window buffer)
-	  ;; The height is already correct, unless there was line wrapping.
-	  ;; Account for that here.
-	  (ilisp-shrink-wrap-window top-window)
+    (set-window-buffer top-window buffer)
+    ;; The height is already correct, unless there was line wrapping.
+    ;; Account for that here.
+    (ilisp-shrink-wrap-window top-window)
 
-	  ;; Restore selected window.
-	  (if (eq previously-selected-window top-window)
-	      (select-window new-window)
-	    (select-window previously-selected-window)))
+    ;; Restore selected window.
+    (if (eq previously-selected-window top-window)
+	(select-window new-window)
+	(select-window previously-selected-window))))
 
-      ;; Simply shrink-wrap an existing window.
-      (ilisp-shrink-wrap-window window))))
 
 
 
@@ -363,7 +360,11 @@
 	((eq lisp-no-popper t)
 	 (ilisp-display-output-in-lisp-listener output))
 	(t
-	 (ilisp-display-output-adaptively output))))
+	 (ilisp-display-output-in-typeout-window output ))))
+;
+; davesc
+;	 (ilisp-display-output-adaptively output))))
+;
 
 
 ;; This is the display function I like to use.
