@@ -446,6 +446,9 @@
 (defmethod check-for-tccs* ((te tupletype) expected)
   (mapc #'(lambda (ty) (check-for-tccs* ty expected)) (types te)))
 
+(defmethod check-for-tccs* ((te cotupletype) expected)
+  (mapc #'(lambda (ty) (check-for-tccs* ty expected)) (types te)))
+
 (defmethod check-for-tccs* ((te recordtype) expected)
   (mapc #'(lambda (fd) (check-for-tccs* (declared-type fd) expected))
 	(fields te)))
