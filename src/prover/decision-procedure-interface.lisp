@@ -34,6 +34,9 @@
 (defvar *decision-procedures*
   (list 'shostak 'ics))
 
+(defvar *decision-procedure-descriptions*
+  '((ics . "ICS (alpha)")))
+
 (defmacro dpi-init ()
   `(dpi-init* *current-decision-procedure*))
 
