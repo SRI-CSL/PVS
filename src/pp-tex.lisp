@@ -556,8 +556,6 @@
       (pp-tex* definition)
       (pprint-indent :block 0))))
 
-;; (defmethod pp-tex* ((decl proj-decl)) )
-
 (defmethod pp-tex* ((decl def-decl))
   (with-slots (declared-type definition declared-measure ordering) decl
     (pp-tex-keyword 'RECURSIVE)

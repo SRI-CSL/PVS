@@ -37,7 +37,8 @@
   (setq *started-with-minus-q* dont-load-user-lisp)
   (unless dont-load-patches
     (load-pvs-patches))
-  (pvs-init-globals))
+  (pvs-init-globals)
+  (initialize-decision-procedures))
 
 (defun pvs-init-globals ()
   (setq *pvs-modules* (make-hash-table :test #'eq :size 20 :rehash-size 10))
@@ -231,6 +232,7 @@
 	 (theories (get-theories file)))
     (cond ((not (file-exists-p file))
 	   (unless no-message?
+	     (break "Not found")
 	     (pvs-message "~a is not in the current context" filename)))
 	  ((and (not forced?)
 		(gethash filename *pvs-files*)
@@ -1906,6 +1908,9 @@
   (or (and (or *in-checker*
 	       *generating-adt*)
 	   (get-theory theoryref))
+      (let ((th (get-theory theoryref)))
+	(when (generated-by th)
+	  th))
       (let* ((theory (get-parsed-theory theoryref)))
 	(when theory
 	  (unless (or *in-checker* (typechecked? theory))

@@ -309,6 +309,7 @@
 	  ((or const-decl def-decl)
 	   (if (funtype? (declared-type decl))
 	       "function" "const"))
+	  (module "theory")
 	  (formula-decl (format nil "~(~a~)" (spelling decl)))
 	  (type-decl "type")
 	  (mod-decl "theory abbr")

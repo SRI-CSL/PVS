@@ -664,11 +664,12 @@
 	'arguments arguments
 	'expression expression)))
 
-(defun mk-modname (id &optional actuals library)
+(defun mk-modname (id &optional actuals library mappings)
   (make-instance 'modname
     'id id
     'actuals actuals
-    'library library))
+    'library library
+    'mappings mappings))
 
 (defun mk-modname-no-tccs (id &optional actuals mappings)
   (make-instance 'modname-no-tccs

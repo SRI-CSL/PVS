@@ -13,6 +13,8 @@
 
 (in-package 'pvs)
 
+(export '(*debugging-print-object*))
+
 (defvar *debugging-print-object* nil
   "If true, will print using the default print-object.  Useful when
 print object produces an error, and won't allow inspection of the object.")
@@ -179,10 +181,12 @@ print object produces an error, and won't allow inspection of the object.")
   (if *debugging-print-object*
       (call-next-method)
       (format stream
-	  "#<Resolution ~@<~a~@[~I~<[~;~@{~W~^, ~:_~}~;]~:>~].~a~:_:~a~:>>"
+	  "#<Resolution ~@<~a~@[~I~<[~;~@{~W~^, ~:_~}~;]~:>~]~@[~I~<{{~;~@{~W~^, ~:_~}~;}}~:>~]~@[.~a~]~:_:~a~:>>"
 	(and (module-instance res) (id (module-instance res)))
 	(and (module-instance res) (actuals (module-instance res)))
-	(id (declaration res))
+	(and (module-instance res) (mappings (module-instance res)))
+	(unless (module? (declaration res))
+	  (id (declaration res)))
 	(if (eq (kind-of (declaration res)) 'expr)
 	    (or (type res) (type (declaration res)))
 	    (kind-of (declaration res))))))
@@ -220,8 +224,10 @@ print object produces an error, and won't allow inspection of the object.")
   (when (ignore-errors (excl:source-file obj))
     (format stream "  Its source file is ~a" (excl:source-file obj))))
 
+(defmethod kind-of ((decl module)) 'module)
 (defmethod kind-of ((decl type-decl)) 'type)
 (defmethod kind-of ((decl formal-type-decl)) 'type)
+(defmethod kind-of ((decl formal-theory-decl)) 'module)
 (defmethod kind-of ((decl typed-declaration)) 'expr)
 (defmethod kind-of ((decl bind-decl)) 'expr)
 (defmethod kind-of ((decl field-decl)) 'expr)

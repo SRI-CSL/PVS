@@ -626,6 +626,12 @@ bind tighter.")
   (with-slots (declared-type) decl
     (pp* declared-type)))
 
+(defmethod pp* ((decl formal-theory-decl))
+  (with-slots (theory-name) decl
+    (write 'THEORY)
+    (write-char #\space)
+    (pp* theory-name)))
+
 (defmethod pp* ((decl lib-decl))
   (with-slots (lib-string) decl
     (write 'library)

@@ -13,6 +13,8 @@
 
 (in-package :pvs)
 
+(export '(defcl))
+
 #+cmu
 (defmethod slot-exists-p-using-class (c o s)
   (declare (ignore c o s))

@@ -120,6 +120,7 @@ theory-formal ::= {[{'(' importing ')'}
 theory-formal-decl ::= {type-keyword ['FROM' type-expr]}
 		        <ftype-decl(type-keyword,[notype()|type-expr])>
 		     | {type-expr} <fconst-decl(type-expr)>
+		     | {'THEORY' modname} <ftheory-decl(modname)>
 		     ;
 
 exporting ::= {'EXPORTING' exportings [{ 'WITH' exportingmods}]}
@@ -165,19 +166,22 @@ theory-elt ::= {importing [';']}
                  <judgement-elt(judgement,[nosemic()|semic()])>
 	     | {conversion [';']}
 		 <conversion-elt(conversion,[nosemic()|semic()])>
-	     | {idops [pdformals+] ':' theory-decl [';']^s}
+	     | {idops [pdformals+] ':' theory-declaration [';']^s}
 		 <theory(idops,[noformals()|pdf(plus)],
-                         theory-decl,[nosemic()|semic()]^s)>
+                         theory-declaration,[nosemic()|semic()]^s)>
 	     ;
 
-importing ::= {'IMPORTING' {modname ++ ','}} <importing(modname+)>;
+importing ::= {'IMPORTING' {importing-item++ ','}}
+              <importing(importing-elt+)>;
+
+importing-item ::= {modname ['AS' id]}
+                  <[modname|theory-abbreviation-decl(modname,id)]>;
 
 judgement ::= {'JUDGEMENT' {jdecl++','} {'HAS_TYPE'|'SUBTYPE_OF'} type-expr}
 	      <{judgement(jdecls(doubleplus),
                  {has-type()|subtype-of()},type-expr)>;
 
 jdecl ::= type-expr-sans-name <jsubtypedecl(type-expr-sans-name)>
-        | number <jnumberdecl(number)>
         | {name [pdformals+]} <[jnamedecl(name)|jappldecl(name,pdf(plus))]>
         ;
 
@@ -195,15 +199,15 @@ adformal ::= typed-id
 	   | {'(' typed-ids ')'} <typed-ids>
 	   ;
 
-assuming-decl ::= theory-decl | assumption;
+assuming-decl ::= theory-declaration | assumption;
 
-theory-decl ::= lib-decl | mod-decl | type-decl | var-decl
+theory-declaration ::= lib-decl | theory-decl | type-decl | var-decl
               | const-decl | def-decl | ind-decl | corec-decl | coind-decl
               | formula-decl | datatype | judgement;
 
 lib-decl ::= {'LIBRARY' ['='] string} <lib-decl([noeq()|eq()],string)>;
 
-mod-decl ::= {'THEORY' '=' modname} <mod-decl(modname)>;
+theory-decl ::= {'THEORY' '=' modname} <theory-decl(modname)>;
 
 type-decl ::= {type-keyword [type-def ['CONTAINING' expr]^c]}
                 <[uninterp-type-decl(type-keyword)
@@ -256,17 +260,24 @@ type-expr-sans-name ::= { '(' expr ')'} <expr-as-type(expr)>
 % names cause conflicts.
 
 comp-type-expr	::= recordtype
-		 |  {[fun-array]^f '[' {dep-type-expr**','}
+		 |  {[fun-array]^f '[' dep-type-exprs
 		     	[{'->' type-expr} <type-expr>]^r ']'}
-		     <funtype(opt^f,dom(dep-type-expr*),opt^r)>
+		     <funtype(opt^f,dep-type-exprs,opt^r)>
 		 ;
 
-recordtype ::= {'[#' {field-decls ++ ','} '#]'}
-                <recordtype(fields(field-decls+))>;
+recordtype ::= {'[#' field-decls [{',' field-decls++','}|{'+' field-decls++'+'}] '#]'}
+                <[recordtype(fields(list(field-decls)))
+                 |{recordtype(fields(cons(field-decls,field-decls+)))
+                  |varianttype(fields(cons(field-decls,field-decls+)))}]>;
 
 field-decls ::= {ids ':' type-expr} <field-decls(ids,type-expr)>;
 
 fun-array ::= 'FUNCTION' <function()> | 'ARRAY' <array()>;
+
+dep-type-exprs ::= {dep-type-expr [{',' dep-type-expr++','}|{'+' dep-type-expr++'+'}]}
+                   <[dom(list(dep-type-expr))
+                    |{dom(cons(dep-type-expr,dep-type-expr+))
+                     |cotupletype(cons(dep-type-expr,dep-type-expr+))}]>;
 
 dep-type-expr ::= type-expr
 	       |  {idop ':' type-expr} <dep-binding(idop,type-expr)>
@@ -275,8 +286,7 @@ dep-type-expr ::= type-expr
 
 %% Expressions
 
-expr ::= number <number-expr(number)>
-       | string <string-expr(string)>
+expr ::= string <string-expr(string)>
        | name <name-expr(name)>
        | {'(:' {expr ** ','} ':)'} <list-expr(expr*)>
        | {'[|' {expr ** ','} '|]'} <brack-expr(expr*)>
@@ -451,7 +461,7 @@ arguments ::= {'(' {expr ++ ','} ')'} <arguments(expr+)>;
 
 idops ::= {idop ++ ','} <idops(idop+)>;
 
-idop ::=  id  <idop(id)> | opsym <idop(opsym)>;
+idop ::=  id  <idop(id)> | opsym <idop(opsym)> | number <idop(number)> ;
 
 ids ::= {id ++ ','} <ids(id+)>;
 
