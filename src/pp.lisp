@@ -1148,6 +1148,7 @@ bind tighter.")
 
 (defmethod pp* :around ((ex expr))
   (if (and *ppmacros*
+	   (current-theory)
 	   (from-macro ex))
       (pp* (from-macro ex))
       (if (typep ex 'binding)
