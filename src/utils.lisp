@@ -2565,9 +2565,11 @@ space")
 	     (if (> *pvs-gc-count* excl:*tenured-bytes-limit*)
 		 (excl:without-interrupts
 		  (setq *prevent-gc-recursion* t)
-		  (format t ";;; GC:")
+		  (unless *disable-gc-printout*
+		    (format t ";;; GC:"))
 		  (excl:gc t)
-		  (format t ";;; Finished GC~%")
+		  (unless *disable-gc-printout*
+		    (format t ";;; Finished GC~%"))
 		  (setq *pvs-gc-count* 0)
 		  (setq *prevent-gc-recursion* nil)))))))
 
