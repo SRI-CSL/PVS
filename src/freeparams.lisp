@@ -29,6 +29,13 @@
 	(let ((formals (formals-sans-usings (current-theory))))
 	  (every #'(lambda (fp) (memq fp formals)) frees)))))
 
+;;; Theory
+
+(defmethod free-params* ((theory datatype-or-module) frees)
+  (formals-sans-usings theory))
+
+(defmethod free-params* ((decl declaration) frees)
+  (free-params* (module decl) frees))
 
 ;;; Type expressions
 
@@ -72,6 +79,11 @@
     (union dfrees frees :test #'eq)))
 
 (defmethod free-params* ((texpr tupletype) frees)
+  (let ((tfrees (free-params* (types texpr) nil)))
+    (setf (free-parameters texpr) tfrees)
+    (union tfrees frees :test #'eq)))
+
+(defmethod free-params* ((texpr cotupletype) frees)
   (let ((tfrees (free-params* (types texpr) nil)))
     (setf (free-parameters texpr) tfrees)
     (union tfrees frees :test #'eq)))
