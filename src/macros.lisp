@@ -397,7 +397,9 @@
 				    *empty-expression-types*))
 	    (*in-typechecker* (or *in-typechecker*
 				  (if (or *in-checker* *in-evaluator*)
-				      (copy-all ,obj)
+				      (if (syntax? ,obj)
+					  (copy-all ,obj)
+					  ,obj)
 				      t))))
 	,@forms)
     (unless *in-typechecker*
