@@ -118,13 +118,15 @@
     (assert *current-context*)
     (assert (modname? modinst))
     (let ((formals (formals-sans-usings (or theory (get-theory modinst)))))
-      (if (and actuals
-	       (some #'(lambda (ofp) (memq ofp formals)) (free-params obj)))
+      (if (or (and actuals
+		   (some #'(lambda (ofp)
+			     (memq ofp formals)) (free-params obj)))
+	      (mappings modinst))
 	  (let* ((*generate-tccs* 'none)
 		 (*subst-mod-params-cache*
 		  (get-subst-mod-params-cache modinst))
 		 (bindings (make-subst-mod-params-bindings
-			    modinst formals actuals nil))
+			    modinst formals actuals (mappings modinst) nil))
 		 (nobj (subst-mod-params* obj modinst bindings)))
 	    #+pvsdebug (assert (or (eq obj nobj) (not (tc-eq obj nobj))))
 	    #+pvsdebug (assert (equal bindings (pairlis formals actuals)))
@@ -176,15 +178,17 @@
 ;;; to pairlis, but formal subtypes have an associated predicate that must
 ;;; be substituted for as well.
 
-(defun make-subst-mod-params-bindings (modinst formals actuals bindings)
+(defun make-subst-mod-params-bindings (modinst formals actuals mappings
+					       bindings)
   (if (null formals)
-      (nreverse bindings)
+      (make-subst-mod-params-map-bindings modinst mappings bindings)
       (let ((pred-binding (make-subst-mod-params-pred-binding
 			   modinst (car formals) (car actuals) bindings)))
 	(make-subst-mod-params-bindings
 	 modinst
 	 (cdr formals)
 	 (cdr actuals)
+	 mappings
 	 (let ((nbindings (acons (car formals) (car actuals) bindings)))
 	   (if pred-binding
 	       (cons pred-binding nbindings)
@@ -212,6 +216,16 @@
   (declare (ignore modinst formal actual bindings))
   nil)
 
+(defun make-subst-mod-params-map-bindings (modinst mappings bindings)
+  (if (null mappings)
+      (nreverse bindings)
+      (make-subst-mod-params-map-bindings
+       modinst
+       (cdr mappings)
+       (let ((decl (declaration (lhs (car mappings)))))
+	 (assert decl)
+	 (acons decl (rhs (car mappings))
+		bindings)))))
 
 (defvar *caching-subst-mod-params?* t)
 
@@ -229,7 +243,8 @@
   (declare (type hash-table *subst-mod-params-cache*))
   (let ((hobj (gethash obj *subst-mod-params-cache*)))
     (or hobj
-	(let ((nobj (if (fully-instantiated? obj)
+	(let ((nobj (if (and (null (mappings modinst))
+			     (fully-instantiated? obj))
 			obj
 			(call-next-method))))
 	  (when (and (typep obj 'type-expr)
@@ -258,9 +273,10 @@
 
 
 (defmethod subst-mod-params* :around ((obj expr) modinst bindings)
-  (declare (ignore modinst bindings))
+  (declare (ignore bindings))
   (with-slots (free-parameters) obj
-    (cond (free-parameters
+    (cond ((or free-parameters
+	       (mappings modinst))
 	   (let ((nobj (call-next-method)))
 	     nobj))
 	  (t #+pvsdebug (let ((nobj (call-next-method)))
@@ -480,27 +496,33 @@
   (let ((nexpr (call-next-method)))
     (cond ((eq expr nexpr)
 	   expr)
-	  (t (setf (adt-type nexpr)
-		   (subst-mod-params* (adt-type expr) modinst bindings))
-	     nexpr))))
+	  ((adt-name-expr? nexpr)
+	   (setf (adt-type nexpr)
+		 (subst-mod-params* (adt-type expr) modinst bindings))
+	   nexpr)
+	  (t nexpr))))
 
 (defmethod subst-mod-params* ((expr constructor-name-expr) modinst bindings)
   (declare (ignore modinst bindings))
   (let ((nexpr (call-next-method)))
-    (if (eq nexpr expr)
-	expr
-	(lcopy nexpr
-	  'recognizer-name nil
-	  'accessor-names 'unbound))))
+    (cond ((eq nexpr expr)
+	   expr)
+	  ((constructor-name-expr? nexpr)
+	   (lcopy nexpr
+	     'recognizer-name nil
+	     'accessor-names 'unbound))
+	  (t nexpr))))
 
 (defmethod subst-mod-params* ((expr recognizer-name-expr) modinst bindings)
   (declare (ignore modinst bindings))
   (let ((nexpr (call-next-method)))
-    (if (eq nexpr expr)
-	expr
-	(lcopy nexpr
-	  'constructor-name nil
-	  'unit? 'unbound))))
+    (cond ((eq nexpr expr)
+	   expr)
+	  ((recognizer-name-expr? nexpr)
+	   (lcopy nexpr
+	     'constructor-name nil
+	     'unit? 'unbound))
+	  (t nexpr))))
 
 (defmethod subst-mod-params* ((bd binding) modinst bindings)
   (let ((ntype (subst-mod-params* (type bd) modinst bindings))

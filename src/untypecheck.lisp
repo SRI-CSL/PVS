@@ -354,6 +354,7 @@
   (assert (not (memq ex (list *boolean* *number*))))
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (actuals ex))
+  (untypecheck-theory (mappings ex))
   (setf (resolutions ex) nil))
 
 ; (defmethod untypecheck-theory ((ex name-expr))
@@ -476,6 +477,15 @@
   (untypecheck-theory (expr act))
   (setf (type-value act) nil))
 
+(defmethod untypecheck-theory ((map mapping))
+  (when (next-method-p) (call-next-method))
+  (untypecheck-theory (lhs map))
+  (untypecheck-theory (rhs map)))
+
+(defmethod untypecheck-theory ((rhs mapping-rhs))
+  (when (next-method-p) (call-next-method))
+  (untypecheck-theory (expr rhs))
+  (setf (type-value rhs) nil))
 
 ;;; Untypecheck
 

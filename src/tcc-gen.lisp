@@ -712,6 +712,49 @@
 	  tform))
       (typecheck* (mk-assuming-tcc id uform modinst ass) nil nil nil))))
 
+(defun generate-mapped-axiom-tccs (modinst expr)
+  (let ((mod (get-theory modinst)))
+    (unless (eq mod (current-theory))
+      (let ((cdecl (or (and (or *in-checker* *in-evaluator*)
+			    *top-proofstate*
+			    (declaration *top-proofstate*))
+		       (declaration *current-context*))))
+	(unless (member modinst (assuming-instances (current-theory))
+			:test #'tc-eq)
+	  ;; Don't want to save this module instance unless it does not
+	  ;; depend on any conditions, including implicit ones in the
+	  ;; prover
+	  (unless (or (or *in-checker* *in-evaluator*)
+		      *tcc-conditions*)
+	    (push modinst (assuming-instances *current-theory*)))
+	  (dolist (ax (remove-if-not #'axiom? (theory mod)))
+	    (let* ((*old-tcc-name* nil)
+		   (ndecl (make-mapped-axiom-tcc-decl ax modinst)))
+		  (if ndecl
+		      (insert-tcc-decl 'mapped-axiom modinst ax ndecl)
+		      (incf (tccs-simplified))))))))))
+
+(defun make-mapped-axiom-tcc-decl (ax modinst)
+  (let* ((*generate-tccs* 'none)
+	 (expr (subst-mod-params (definition ax) modinst))
+	 (tform (add-tcc-conditions expr))
+	 (xform (if *simplify-tccs*
+		    (pseudo-normalize (subst-var-for-recs
+				       tform
+				       (declaration *current-context*)))
+		    (beta-reduce (subst-var-for-recs
+				  tform
+				  (declaration *current-context*)))))
+	 (uform (universal-closure xform))
+	 (id (make-tcc-name)))
+    (unless (tc-eq uform *true*)
+      (when (and *false-tcc-error-flag*
+		 (tc-eq uform *false*))
+	(type-error ax
+	  "Mapped axiom TCC for this expression simplifies to false:~2%  ~a"
+	  tform))
+      (typecheck* (mk-mapped-axiom-tcc id uform modinst ax) nil nil nil))))
+
 (defun generate-selections-tccs (expr constructors adt)
   (when (and constructors
 	     (not (eq *generate-tccs* 'none)))
