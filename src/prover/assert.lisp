@@ -604,59 +604,71 @@
 
 ;;Separated connective-occurs? from update-or-connective-occurs?.
 ;;The latter is used for typepreds and process-assert, and the
-;;former is used everywhere else. 
+;;former is used everywhere else.
 
-(defmethod update-or-connective-occurs? ((expr name-expr))
-  NIL)
+(defun update-or-connective-occurs? (expr)
+  (update-or-connective-occurs?* expr nil))
 
-(defmethod update-or-connective-occurs? ((expr branch))
+(defmacro accum-update-or-connective-occurs?* (accum)
+  `(when (consp ,accum)
+       (update-or-connective-occurs?* (car ,accum)(cdr ,accum))))
+
+
+(defmethod update-or-connective-occurs?* ((expr name-expr) accum)
+  (accum-update-or-connective-occurs?* accum))
+
+(defmethod update-or-connective-occurs?* ((expr branch) accum)
     T)
 
-(defmethod update-or-connective-occurs? ((expr cases-expr))
+(defmethod update-or-connective-occurs?* ((expr cases-expr) accum)
   T)
 
-(defmethod update-or-connective-occurs? ((expr projection-application))
+(defmethod update-or-connective-occurs?* ((expr projection-application) accum)
   (with-slots (argument) expr
-    (update-or-connective-occurs? argument)))
+    (update-or-connective-occurs?* argument accum)))
 
-(defmethod update-or-connective-occurs? ((expr tuple-expr))
+(defmethod update-or-connective-occurs?* ((expr tuple-expr) accum)
   (with-slots (exprs) expr
-    (update-or-connective-occurs? exprs)))
+    (update-or-connective-occurs?* exprs accum)))
 
-(defmethod update-or-connective-occurs? ((expr record-expr))
-  (update-or-connective-occurs? (assignments expr)))
+(defmethod update-or-connective-occurs?* ((expr record-expr) accum)
+  (update-or-connective-occurs?* (assignments expr) accum))
 
-(defmethod update-or-connective-occurs? ((expr assignment))
+(defmethod update-or-connective-occurs?* ((expr assignment) accum)
   (with-slots (arguments expression) expr
-    (or (update-or-connective-occurs? arguments)
-	(update-or-connective-occurs? expression))))
+    (update-or-connective-occurs?* arguments (cons expression accum))))
 
-(defmethod update-or-connective-occurs? ((expr field-application))
+
+(defmethod update-or-connective-occurs?* ((expr field-application) accum)
   (with-slots (argument) expr
-    (update-or-connective-occurs? argument)))
+    (update-or-connective-occurs?* argument accum)))
 
-(defmethod update-or-connective-occurs? ((expr propositional-application))
+(defmethod update-or-connective-occurs?* ((expr propositional-application) accum)
   T)
 
-(defmethod update-or-connective-occurs? ((expr application))
+(defmethod update-or-connective-occurs?* ((expr application) accum)
   (with-slots (operator argument) expr
-    (or (update-or-connective-occurs? operator)
-	(update-or-connective-occurs? argument))))
+    (update-or-connective-occurs?* operator (cons argument accum))))
 
-(defmethod update-or-connective-occurs? ((expr list))
-  (some #'update-or-connective-occurs? expr))
+(defmethod update-or-connective-occurs?* ((expr list) accum)
+    (if (consp expr)
+      (update-or-connective-occurs?** (cdr expr)
+			  (cons (car expr) accum))
+      (if (consp accum)
+	  (update-or-connective-occurs?** (car accum)(cdr accum))
+	  nil)))
 
-(defmethod update-or-connective-occurs? ((expr binding-expr))
-  nil
+(defmethod update-or-connective-occurs?* ((expr binding-expr) accum)
+  (accum-update-or-connective-occurs?* accum)
   )
 
-(defmethod update-or-connective-occurs? ;;NSH(5.13.97) needed for updates
+(defmethod update-or-connective-occurs?* ;;NSH(5.13.97) needed for updates
     ;;or the translations get HUGE.
-    ((expr update-expr))
+    ((expr update-expr) accum)
   T)
 
-(defmethod update-or-connective-occurs? ((expr expr))
-  NIL)
+(defmethod update-or-connective-occurs?* ((expr expr) accum)
+  (accum-update-or-connective-occurs?* accum))
 
 
 (defun cond-assert-if (expr &optional conditions)
