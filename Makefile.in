@@ -25,7 +25,8 @@ PLATFORM := $(shell bin/pvs-platform)
 ICSPLATFORM := $(shell @ICSPATH@/bin/config.guess)
 export PLATFORM ICSPLATFORM
 
-PVSLISP= @ALLEGRO@
+ALLEGRODIR= @ALLEGRODIR@
+PVSLISP= @ALLEGRODIR@/mlisp
 ifeq ($(PLATFORM),sun4-SunOS5)
 	LISPEXT=fasl
 else
@@ -466,7 +467,7 @@ makews1s :
 
 src/ics-interface/$(PLATFORM)/ics_lisp_error.so : src/ics-interface/$(PLATFORM)/ics_lisp_error.o
 	umask 002; \
-	$(LD) -G -o $@ $< /csl/allegro/allegro6.0/libacli601.so
+	$(LD) -G -o $@ $< -L@ALLEGRODIR@ -lacli601
 
 src/ics-interface/$(PLATFORM)/ics_lisp_error.o : src/ics-interface/ics_lisp_error.c
 	umask 002; \
