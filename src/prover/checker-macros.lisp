@@ -614,9 +614,10 @@
 	    ;; put in (typep expr 'syntax) check
 	    ;; in case call-process is called from process-assert
 	    ;; which already has translated exprs
-	    (old-expr (if (typep ,g-expr 'syntax)
-			  (top-translate-to-old-prove ,g-expr)
-			  ,g-expr))
+	    (old-expr (when *old-ground?*
+			(if (typep ,g-expr 'syntax)
+			    (top-translate-to-old-prove ,g-expr)
+			    ,g-expr)))
 	    (new-result nil)
 	    (old-result nil))
        (let ((typealist (append *local-typealist* typealist)))
