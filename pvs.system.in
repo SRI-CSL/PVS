@@ -7,7 +7,7 @@
 ;; Update Count    : 92
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package "USER")
+(in-package :user)
 
 #+allegro
 (eval-when (eval load)
@@ -47,16 +47,16 @@
 
 (setq *cltl1-in-package-compatibility-p* t)
 
-(defpackage "ILISP")
-(defpackage "DP")
-(defpackage "POLY")
-(defpackage "BVEC")
+(defpackage :ilisp)
+(defpackage :dp)
+(defpackage :poly)
+(defpackage :bvec)
 
-(unless (find-package "MAKE")
+(unless (find-package :make)
   (let ((*enable-package-locked-errors* nil))
     (load (format nil "~a/src/defsystem" *pvs-path*))))
 
-(in-package "MAKE")
+(in-package :make)
 
 (component-operation :lf 'load-and-compile-if-needed-operation)
 (component-operation 'lf 'load-and-compile-if-needed-operation)
@@ -77,13 +77,13 @@
 
 (in-package 'user)
 
-(unless (or (find-package "CLOS") (find-package "PCL"))
+(unless (or (find-package :clos) (find-package :pcl))
   #+(and lcl4.0 (not lcl4.1)) (load "/usr/subsys/lisp/clos")
   #+lcl4.1 (load "/usr/global/lisp/lucid/dbcs/clos"))
 
 #-gcl
-(defpackage pvs (:use #+lucid "LUCID-COMMON-LISP" "LISP"
-		      #-gcl "CLOS" #+gcl "PCL" "MAKE"))
+(defpackage pvs (:use #+lucid :lucid-common-lisp :lisp
+		      #-gcl :clos #+gcl :pcl :make))
 
 #+gcl
 (unless (find-package :pvs)
@@ -139,7 +139,7 @@
 		    (load (format nil "~a/src/xp" *pvs-path*))
 		    #+gcl
 		    (load (format nil "~a/src/xp-code" *pvs-path*))
-		    (apply (find-symbol "INSTALL" :xp) :package :pvs nil))
+		    (apply (find-symbol :install :xp) :package :pvs nil))
 		  (load (format nil "~a/ess/dist-ess.lisp" *pvs-path*))
 		  #-gcl
 		  (generate-ess ergolisp)
@@ -148,8 +148,8 @@
 		  #+allegro (require :loop)
 		  #+gcl (load (format nil "~a/src/loop" *pvs-path*))
 		  (in-package 'pvs)
-		  (use-package '("ERGOLISP" "OPER" "OCC" "TERM" "SORT"
-				 "SB-RUNTIME" "LANG" "NEWATTR"))
+		  (use-package '(:ergolisp :oper :occ :term :sort
+				 :sb-runtime :lang :newattr))
 		  #+gcl (defmacro ignore-errors (&body forms)
 			  `(progn ,@forms))
 		  #+(and allegro dlfcn)
@@ -253,13 +253,13 @@
 		  (:file "gensubst")
 		  (:file "substit"))
      :depends-on (language))
-   (:module dc-structure
-     :source-pathname "src/decision-procedures"
-     :components ((:file "types")
-		  (:file "node-structures"
-			 :depends-on ("types"))
-		  (:file "interpreted-node-structures"
-			 :depends-on ("node-structures"))))
+;    (:module dc-structure
+;      :source-pathname "src/decision-procedures"
+;      :components ((:file "types")
+; 		  (:file "node-structures"
+; 			 :depends-on ("types"))
+; 		  (:file "interpreted-node-structures"
+; 			 :depends-on ("node-structures"))))
    (:module emacs-interface
      :source-pathname "src/interface"
      :components ((:file "pvs-emacs")
@@ -327,57 +327,57 @@
 		  ;;(:file "strategies")
 		  )
      :depends-on (proof-checker))
-   (:module dc-interface
-     :source-pathname "src/decision-procedures"
-     :components (;;(:file "dc-pvs")
-		  ;;(:file "translate-from-prove")
-		  (:file "translate-to-dc")
-		  (:file "translate-from-dc")))
-   (:module polylib
-     :source-pathname "/src/decision-procedures/polylib"
-     :components ((:file "foreign")
-		  (:file "dp-foreign"))
-     :depends-on ("dc-structure"))
-   (:module rewrite
-     :source-pathname "src/decision-procedures"
-     :components ((:file "rewrite")
-		  ;;(:file "rewrite-2")
-		  (:file "rewrite-pvs")
-		  (:file "datatypes-pvs")
-		  (:file "datatypes")
-		  (:file "records")
-		  (:file "rewrite-optimize")
-		  (:file "simplify"))
-     :depends-on ("dc-structure"))
-   (:module forward-chain
-     :source-pathname "src/decision-procedures"
-     :components ((:file "forward-chain-pvs")
-		  (:file "forward-chain"))
-     :depends-on ("dc-structure"))
-   (:module dc-prototypes
-     :source-pathname "src/decision-procedures"
-     :components ((:file "integer")
-		  (:file "fourier-motzkin")
-		  (:file "polyhedron")
-		  (:file "cong-state" :depends-on ("polyhedron"
-						   "fourier-motzkin"))
-		  (:file "shostak" :depends-on ("cong-state"))
-		  (:file "arithmetic" :depends-on ("shostak"))
-		  (:file "arrays")
-		  (:file "boolean")
-		  (:file "shostak-interp")
-		  (:file "arith-solve")
-		  (:file "sets")
-		  (:file "bdd-solve"))
-     :depends-on ("dc-structure"))
-   (:module bvec
-     :source-pathname "src/decision-procedures/bit-vectors"
-     :components ((:file "bvec_structure")
-		  (:file "bvec_arith")
-		  (:file "bvec_fixed_solver")
-		  (:file "bvec_bdd_solve")
-		  (:file "bvec_slicing"))
-     :depends-on ("dc-structure"))
+;    (:module dc-interface
+;      :source-pathname "src/decision-procedures"
+;      :components (;;(:file "dc-pvs")
+; 		  ;;(:file "translate-from-prove")
+; 		  (:file "translate-to-dc")
+; 		  (:file "translate-from-dc")))
+;    (:module polylib
+;      :source-pathname "/src/decision-procedures/polylib"
+;      :components ((:file "foreign")
+; 		  (:file "dp-foreign"))
+;      :depends-on ("dc-structure"))
+;    (:module rewrite
+;      :source-pathname "src/decision-procedures"
+;      :components ((:file "rewrite")
+; 		  ;;(:file "rewrite-2")
+; 		  (:file "rewrite-pvs")
+; 		  (:file "datatypes-pvs")
+; 		  (:file "datatypes")
+; 		  (:file "records")
+; 		  (:file "rewrite-optimize")
+; 		  (:file "simplify"))
+;      :depends-on ("dc-structure"))
+;    (:module forward-chain
+;      :source-pathname "src/decision-procedures"
+;      :components ((:file "forward-chain-pvs")
+; 		  (:file "forward-chain"))
+;      :depends-on ("dc-structure"))
+;    (:module dc-prototypes
+;      :source-pathname "src/decision-procedures"
+;      :components ((:file "integer")
+; 		  (:file "fourier-motzkin")
+; 		  (:file "polyhedron")
+; 		  (:file "cong-state" :depends-on ("polyhedron"
+; 						   "fourier-motzkin"))
+; 		  (:file "shostak" :depends-on ("cong-state"))
+; 		  (:file "arithmetic" :depends-on ("shostak"))
+; 		  (:file "arrays")
+; 		  (:file "boolean")
+; 		  (:file "shostak-interp")
+; 		  (:file "arith-solve")
+; 		  (:file "sets")
+; 		  (:file "bdd-solve"))
+;      :depends-on ("dc-structure"))
+;    (:module bvec
+;      :source-pathname "src/decision-procedures/bit-vectors"
+;      :components ((:file "bvec_structure")
+; 		  (:file "bvec_arith")
+; 		  (:file "bvec_fixed_solver")
+; 		  (:file "bvec_bdd_solve")
+; 		  (:file "bvec_slicing"))
+;      :depends-on ("dc-structure"))
    (:module groundeval
      :source-pathname "src/groundeval"
      :components ((:file "eval-utils")
