@@ -62,3 +62,33 @@
 		(decf *table-bracket-counter*)
 		'sbst::]\|)
                (t (lexical-unread-char stream) 'sbst::]))))
+
+;;; This one allows :- to be treated as two tokens instead of one.
+;;; Got this way when ':->' was added to the grammar.
+
+(defvar sbrt::*holding-char* nil)
+
+(defun |LEX-:| (stream symbol)
+  (declare (ignore symbol))
+  (let (holdchar)
+    (setf holdchar (lexical-read-char stream :eof))
+    (if (and PVS-ESCAPE-CHAR (eql holdchar PVS-ESCAPE-CHAR))
+        (setf holdchar (lexical-read-char stream :eof)))
+    (cond ((eql holdchar #\=) 'SBST::|:=|)
+          ((eql holdchar #\:)
+           (setf holdchar (lexical-read-char stream :eof))
+           (if (and PVS-ESCAPE-CHAR (eql holdchar PVS-ESCAPE-CHAR))
+               (setf holdchar (lexical-read-char stream :eof)))
+           (cond ((eql holdchar #\=) 'SBST::|::=|)
+                 (t (lexical-unread-char stream) 'SBST::|::|)))
+          ((eql holdchar #\)) 'SBST::|:)|)
+          ((eql holdchar #\-)
+           (setf holdchar (lexical-read-char stream :eof))
+           (if (and PVS-ESCAPE-CHAR (eql holdchar PVS-ESCAPE-CHAR))
+               (setf holdchar (lexical-read-char stream :eof)))
+           (cond ((eql holdchar #\>) 'SBST::|:->|)
+                 (t
+                  (lexical-unread-char stream)
+		  (setq sbrt::*holding-char* #\-)
+                  'SBST::|:|)))
+          (t (lexical-unread-char stream) 'SBST::|:|))))
