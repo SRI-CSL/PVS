@@ -489,7 +489,7 @@
 (defmethod substit* ((expr binding-expr) alist)
   (if (not (substit-possible? expr alist))
       expr
-      (let* ((new-bindings (make-new-bindings (bindings expr) alist))
+      (let* ((new-bindings (make-new-bindings (bindings expr) alist (expression expr)))
 	     (nalist (substit-pairlis (bindings expr) new-bindings alist))
 	     (nexpr (substit* (expression expr) nalist))
 	     (ntype (if (quant-expr? expr)
@@ -512,11 +512,12 @@
 			   alist
 			   (acons (car bindings) (car new-bindings) alist)))))
 
-(defun make-new-bindings (old-bindings alist)
+(defun make-new-bindings (old-bindings alist expr)
   (make-new-bindings* old-bindings
 		      (alist-freevars alist)
 		      (alist-boundvars alist)
-		      alist))
+		      alist
+		      expr))
 
 (defun alist-freevars (alist)
   (delete-duplicates (mapappend #'alist-freevars* alist)))
@@ -549,7 +550,7 @@
 
 ;;freevars must be the free variables in alist.
 
-(defun make-new-bindings* (old-bindings freevars boundvars alist
+(defun make-new-bindings* (old-bindings freevars boundvars alist expr
 					&optional nbindings)
   (if (null old-bindings)
       (nreverse nbindings)
@@ -565,7 +566,7 @@
 		    'type stype
 		    'declared-type (substit* dec-type alist))
 		  (copy bind
-		    'id (new-boundvar-id (id bind))
+		    'id (new-boundvar-id (id bind) expr)
 		    'type stype
 		    'declared-type (substit* dec-type alist)))))
 	(unless (or (eq bind new-binding)
@@ -576,6 +577,7 @@
 	 (add-alist-freevars new-binding freevars)
 	 boundvars
 	 (acons bind new-binding alist)
+	 (cons new-binding expr)
 	 (cons new-binding nbindings)))))
 
 
@@ -593,7 +595,7 @@
 	(substit* (translate-cases-to-if expr) alist))))
 
 (defmethod substit* ((expr selection) alist)
-  (let ((new-bindings (make-new-bindings (args expr) alist)))
+  (let ((new-bindings (make-new-bindings (args expr) alist (expression expr))))
     (lcopy expr
       'constructor (constructor expr)
       'args new-bindings
