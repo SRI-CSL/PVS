@@ -278,7 +278,11 @@ unignored slots, saved-slots, and unsaved-slots.")
   (remove-if (complement #'(lambda (a) (memq :fetch-as a))) args))
 
 (defun restored-slots% (args)
-  (remove-if #'(lambda (a) (memq :restore-as a)) args))
+  (let ((rslots (remove-if #'(lambda (a) (memq :restore-as a)) args)))
+    (if (assq 'print-type rslots)
+	(append (remove (assq 'print-type rslots) rslots)
+		(list (assq 'print-type rslots)))
+	rslots)))
 
 
 ;;; Grabbed off the net, from jmorrill@bbn.com (Jeff Morrill)
