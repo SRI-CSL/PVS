@@ -116,7 +116,7 @@
       (call-next-method)))
 
 (defmethod store-object* :around ((obj adt-type-name))
-  (assert (slot-value obj 'adt))
+  (unless (slot-value obj 'adt) (break "Should have an adt"))
   (if (inline-recursive-type? (adt obj))
       (call-next-method)
       (call-next-method (copy obj
@@ -1111,12 +1111,14 @@
 
 (defmethod type-expr-from-print-type ((te type-name))
   (let* ((decl (declaration (resolution te)))
-	 (tval (type-value decl)))
+	 (tval (type-value decl))
+	 (thinst (module-instance (resolution te))))
+    (unless (eq (id (module decl)) (id thinst))
+      (break "Strange type-name resolution"))
     (if (store-print-type? tval)
 	(break)
-	(let* ((thinst (module-instance (resolution te)))
-	       (type-expr (if (actuals thinst)
-			      (subst-mod-params tval thinst)
+	(let* ((type-expr (if (actuals thinst)
+			      (subst-mod-params tval thinst (module decl))
 			      (copy tval 'print-type te))))
 	  (assert (or (print-type type-expr) (tc-eq te type-expr)))
 	  (assert (true-type-expr? type-expr))
