@@ -1820,3 +1820,11 @@
     'operator (minus-operator)
     'argument (make!-arg-tuple-expr ex (one-constant))
     'type (type ex)))
+
+(defun make!-unary-minus (ex)
+  (assert (typep ex 'expr))
+  (assert (tc-eq (find-supertype (type ex)) *number*))
+  (make-instance 'infix-application
+    'operator (unary-minus-operator)
+    'argument ex
+    'type (type ex)))
