@@ -379,7 +379,8 @@
   using-hash ; was using
   (judgements :initform (make-instance 'judgements))
   (known-subtypes :initform nil)
-  (conversions :initform nil))
+  (conversions :initform nil)
+  (disabled-conversions :initform nil))
 
 (defcl judgements ()
   (judgement-types-hash
