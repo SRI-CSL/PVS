@@ -747,10 +747,7 @@
 			     (list (mk-actual (find-supertype
 					       (type-value (car nacts)))))
 			     nacts)
-			 (when (and (typep (module decl) 'library-theory)
-				    (get-theory* (id (module decl))
-						 (library modinst)))
-			   (library modinst)))
+			 (library modinst))
 		       (subst-mod-params* type modinst bindings)))))))))
 
 (defmethod make-resolution (decl modinst &optional type)
