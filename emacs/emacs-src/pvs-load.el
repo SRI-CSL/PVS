@@ -300,7 +300,7 @@ get to the same state."
       (setq pvs-in-evaluator nil)
       (unless noninteractive
 	(pvs-auto-set-linelength (selected-frame))
-	(pvs-welcome (equal (buffer-name) "*pvs*")))
+	(pvs-welcome (not (equal (buffer-name) "*pvs*"))))
       (when (boundp 'save-options-file)
 	(setq save-options-file "~/.pvsxemacs-options")
 	(setq save-options-init-file "~/.pvsemacs"))
@@ -311,7 +311,9 @@ get to the same state."
       (if (pvs-buffer-file-name)
 	  (pvs-mode)
 	  (unless noninteractive
-	    (switch-to-buffer (get-buffer-create "PVS Welcome"))))
+	    (if (equal (buffer-name) "*pvs*")
+		(goto-char (point-max))
+		(switch-to-buffer (get-buffer-create "PVS Welcome")))))
       (unless noninteractive
 	(message "Ready"))))
 
