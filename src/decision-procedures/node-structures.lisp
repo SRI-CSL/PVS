@@ -1564,6 +1564,10 @@
 	 (some #'(lambda (e)
 		   (occurs-p x e))
 	       (funargs trm)))
+	((listp trm)
+	 (some #'(lambda (e)
+		   (occurs-p x e))
+	       trm))
 	(t nil)))
 
 (defun replace-by (trm subst)
@@ -1583,7 +1587,7 @@
 
 (defun occurs-in-scope-of-uninterp-p (x trm)
   (and (application-p trm)
-       (if (or (interpsym? (funsym trm))
+       (if (or (node-interpreted? (funsym trm))
 	       (equality-p trm))
 	   (some #'(lambda (arg)
 		     (occurs-in-scope-of-uninterp-p x arg))
