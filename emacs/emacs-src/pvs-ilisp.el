@@ -107,7 +107,8 @@ intervenes."
   (define-pvs-key-bindings (ilisp-buffer))
   (setq *default-char-width* (window-width))
   (add-hook 'kill-emacs-hook
-    '(lambda () (when (ilisp-process) (kill-process (ilisp-process)))))
+    '(lambda () (when (and (funcall ilisp-buffer-function) (ilisp-process))
+		  (kill-process (ilisp-process)))))
   ;;(setq *pvs-initialized* t)
   )
 
@@ -515,6 +516,11 @@ window."
 			 (set-buffer buf)
 			 (erase-buffer)
 			 (insert-file-contents file nil)
+			 (define-pvs-key-bindings buf)
+			 (pvs-set-buffer-mode buf)
+			 (when (or (eq major-mode default-major-mode)
+				   (eq major-mode 'fundamental-mode))
+			   (pvs-view-mode))
 			 (buffer-string))))
 	  (when pvs-validating
 	    (princ bufstr)
