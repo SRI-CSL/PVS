@@ -822,16 +822,21 @@
 
 (defun display-proofs-formula-at (name declname origin line)
   (let ((fdecl (formula-decl-to-prove name declname line origin)))
-    (cond ((null fdecl)
-	   (pvs-message "Not at a formula declaration"))
-	  ((null (proofs fdecl))
-	   (pvs-message "Formula ~a does not have any proofs" (id fdecl)))
-	  (t (setq *show-proofs-info*
-		   (cons 'formula
-			 (cons fdecl
-			       (mapcar #'(lambda (p) (cons fdecl p))
-				 (proofs fdecl)))))
-	     (display-proofs-buffer)))))
+    (if (null fdecl)
+	(pvs-message "Not at a formula declaration")
+	(let ((proofs (nontrivial-proofs fdecl)))
+	  (cond ((null proofs)
+		 (pvs-message "Formula ~a does not have any proofs" (id fdecl)))
+		(t (setq *show-proofs-info*
+			 (cons 'formula
+			       (cons fdecl
+				     (mapcar #'(lambda (p) (cons fdecl p))
+				       proofs))))
+		   (display-proofs-buffer)))))))
+
+(defun nontrivial-proofs (decl)
+  (remove-if #'(lambda (prf) (null (script prf)))
+    (proofs decl)))
 
 (defun display-proofs-theory (theoryname)
   (let ((theory (get-theory theoryname)))
@@ -842,7 +847,7 @@
 			     (mapcan #'(lambda (d)
 					 (when (typep d 'formula-decl)
 					   (mapcar #'(lambda (p) (cons d p))
-					     (proofs d))))
+					     (nontrivial-proofs d))))
 			       (all-decls theory)))))
 	   (display-proofs-buffer))
 	  (t (pvs-message "~a has not been typechecked" theoryname)))))
@@ -859,7 +864,7 @@
 						 (when (typep d 'formula-decl)
 						   (mapcar #'(lambda (p)
 							       (cons d p))
-						     (proofs d))))
+						     (nontrivial-proofs d))))
 				       (all-decls theory)))
 			       theories))))
 	   (display-proofs-buffer))
@@ -984,7 +989,6 @@
 (defun proofs-rename (line id)
   (multiple-value-bind (fdecl prf)
       (proofs-get-proof-at line)
-    (declare (ignore fdecl))
     (when prf
       (setf (id prf) id)
       (save-all-proofs (module fdecl))
