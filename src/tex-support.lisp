@@ -5,16 +5,11 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Fri Jan 22 12:52:46 1999
 ;; Update Count    : 10
-;; Status          : Beta test
-;; 
-;; HISTORY
-;; 13-Mar-1994		Sam Owre	
-;;    Last Modified: Sun Mar 13 15:23:22 1994 #5 (Sam Owre)
-;;    Fixed handling of actuals
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
-
-(in-package 'pvs)
+(in-package :pvs)
 
 ;#+allegro
 ;(import '(excl::string-output-stream excl::string-input-stream))
@@ -109,10 +104,14 @@ useful if more than one specification is to be included in one document")
 	(*latex-keyword-length-list* *latex-keyword-length-list*)
 	(*latex-newcommands-list* *latex-newcommands-list*)
 	(old-ids *latex-id-macro-list*))
+    (when (and (filename theory)
+	       (not (eq (intern (filename theory)) (id theory))))
+      (read-tex-substitutions (working-directory) (intern (filename theory))))
+    (read-tex-substitutions (working-directory) (id theory))
     (read-tex-substitutions (working-directory) (id theory))
     (push (string (id theory)) *latex-files*)
     (multiple-value-bind (v condition)
-	(ignore-errors
+	;;(ignore-errors
 	  (with-open-file (stream file :direction :output :if-exists :supersede)
 	    (when *insert-newcommands-into-output*
 	      (dolist (nc *latex-newcommands-list*)
@@ -120,7 +119,8 @@ useful if more than one specification is to be included in one document")
 		(terpri stream)))
 	    (format stream "\\begin{alltt}~%")
 	    (pp-tex theory stream)
-	    (format stream "\\end{alltt}~%")))
+	    (format stream "\\end{alltt}~%"))
+         ;;)
       (declare (ignore v))
       (when condition
 	(pvs-error "LaTeX generation error"
