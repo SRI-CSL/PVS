@@ -220,9 +220,6 @@
 	 (bdd_free ,mbdd1) (bdd_free ,mbdd2) (bdd_free ,mbdd3)))))
 
 
-(defvar *pvs-bdd-hash* nil)
-(defvar *bdd-pvs-hash* nil)
-
 (addrule 'bddsimp () ((fnums *)
 		      (dynamic-ordering? nil)
 		      (irredundant? t))
