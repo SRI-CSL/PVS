@@ -330,6 +330,17 @@
 		    (all-decls theory)))))
 	immediate-usings)))
 
+(defmethod get-immediate-context-usings ((theory module))
+  (mapcan #'(lambda (thname)
+	      (unless (library thname)
+		(let ((th (get-theory thname)))
+		  (or (and (typep th 'datatype)
+			   (datatype-instances thname))
+		      (list thname)))))
+    (mapcar #'theory-name
+      (remove-if-not #'mod-or-using?
+	(all-decls theory)))))
+
 (defmethod theory-name ((mdecl mod-decl))
   (modname mdecl))
 
