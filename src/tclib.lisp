@@ -254,19 +254,28 @@
 	      (*pvs-context-changed* nil))
 	  (restore-context)
 	  (cond ((cddr *pvs-context*)
-		 (dolist (ce (pvs-context-entries))
-		   (typecheck-file (ce-file ce)))
-		 (save-context)
-		 (maphash #'(lambda (id th)
-			      (declare (ignore id))
-			      (if (module? th)
-				  (change-class th 'library-theory)
-				  (change-class th 'library-datatype))
-			      (setf (lib-ref th) lib-ref)
-			      (update-prelude-library-context th))
-			  *pvs-modules*)
-		 (setf (gethash lib-ref *prelude-libraries*)
-		       (list *pvs-files* *pvs-modules*)))
+		 (unwind-protect
+		     (progn
+		       (dolist (ce (pvs-context-entries))
+			 (typecheck-file (ce-file ce)))
+		       (save-context)
+		       (maphash #'(lambda (id th)
+				    (declare (ignore id))
+				    (if (module? th)
+					(change-class th 'library-theory)
+					(change-class th 'library-datatype))
+				    (setf (lib-ref th) lib-ref)
+				    (update-prelude-library-context th))
+				*pvs-modules*)
+		       (setf (gethash lib-ref *prelude-libraries*)
+			     (list *pvs-files* *pvs-modules*)))
+		   (maphash #'(lambda (thid theory)
+				(unless (library-datatype-or-theory?
+					 theory)
+				  (remhash thid *pvs-modules*)
+				  (remhash (filename theory)
+					   *pvs-files*)))
+			    *pvs-modules*))
 		(t (type-error lib-path
 		     "~a.pvscontext is empty - library not loaded"
 		     lib-path)))))))
@@ -404,27 +413,35 @@
 			(setq filename (look-for-theory-in-directory-files
 					theory-name))))
 		  (if filename
-		      (let* ((theories (typecheck-file filename))
-			     (theory (find theory-name theories :test #'same-id)))
-			(cond (theory
-			       (let ((*current-context* (context theory))
-				     (*current-theory* theory))
-				 (save-context))
-			       (maphash
-				#'(lambda (id th)
-				    (declare (ignore id))
-				    (unless (library-datatype-or-theory? th)
-				      (if (typep th 'module)
-					  (change-class th 'library-theory)
-					  (change-class th 'library-datatype)))
-				    (setf (lib-ref th) rel-lib-ref))
-				*pvs-modules*)
-			       (setq value theory))
-			      (t (setq value
-				       (format nil
-					   "Theory ~a could  not be found in ~
+		      (unwind-protect
+			  (let* ((theories (typecheck-file filename))
+				 (theory (find theory-name theories :test #'same-id)))
+			    (cond (theory
+				   (let ((*current-context* (context theory))
+					 (*current-theory* theory))
+				     (save-context))
+				   (maphash
+				    #'(lambda (id th)
+					(declare (ignore id))
+					(unless (library-datatype-or-theory? th)
+					  (if (typep th 'module)
+					      (change-class th 'library-theory)
+					      (change-class th 'library-datatype)))
+					(setf (lib-ref th) rel-lib-ref))
+				    *pvs-modules*)
+				   (setq value theory))
+				  (t (setq value
+					   (format nil
+					       "Theory ~a could  not be found in ~
                                           the PVS context of library ~a"
-					 theory-name lib-ref)))))
+					     theory-name lib-ref)))))
+			(maphash #'(lambda (thid theory)
+				     (unless (library-datatype-or-theory?
+					      theory)
+				       (remhash thid *pvs-modules*)
+				       (remhash (filename theory)
+						*pvs-files*)))
+				 *pvs-modules*))
 		      (setq value
 			    (format nil
 				"Theory ~a not found in the PVS context of ~
