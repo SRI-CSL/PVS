@@ -506,8 +506,6 @@ sets [T: TYPE]: THEORY
   complement(a): set = {x | NOT member(x, a)} 
 
   difference(a, b): set = {x | member(x, a) AND NOT member(x, b)}
-  
-  union_difference: LEMMA union(a, b) = union(a, difference(b, a))
 
   symmetric_difference(a, b): set =
     union(difference(a, b), difference(b, a))
@@ -593,6 +591,8 @@ sets_lemmas [T: TYPE]: THEORY
 
   union_upper_bound : LEMMA
     subset?(a, c) and subset?(b, c) IMPLIES subset?(union(a, b), c)
+  
+  union_difference: LEMMA union(a, b) = union(a, difference(b, a))
 
   union_diff_subset: LEMMA subset?(a, b) IMPLIES union(a, difference(b, a)) = b
 
