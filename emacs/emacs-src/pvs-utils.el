@@ -17,7 +17,7 @@
 
 (defvar pvs-string-positions nil)
 
-;;; Misc functions
+;;; Misc functions ;;;
 
 (defpvs forward-theory editing (&optional nomsg)
   "Move forward to the beginning of the next theory
