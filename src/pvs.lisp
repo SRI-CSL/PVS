@@ -1020,7 +1020,9 @@
 (defmethod typechecked? ((theory datatype-or-module))
   (or *in-checker*
       (and (memq 'typechecked (status theory))
-	   (let ((importings (all-importings (list theory))))
+	   (saved-context theory)
+	   (let* ((*current-context* (saved-context theory))
+		  (importings (all-importings (list theory))))
 	     (every #'(lambda (th)
 			(and (parsed? th)
 			     (memq 'typechecked (status th))))
