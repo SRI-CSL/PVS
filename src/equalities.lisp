@@ -1348,7 +1348,9 @@ where db is to replace db1 and db2")
 				    *dep-bindings*)
 			     *dep-bindings*))
 	 (rpreds (compatible-preds* (subst-deps arng) (subst-deps erng)
-				    (make!-application aexpr avar) nil))
+				    (beta-reduce
+				     (make!-application aexpr avar))
+				    nil))
 	 (rpred (when rpreds
 		  (make!-forall-expr (list (declaration avar))
 		    (make!-conjunction* rpreds))))
