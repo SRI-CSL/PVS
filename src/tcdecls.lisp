@@ -691,6 +691,7 @@
 	   (let ((ptypes (remove-if-not
 			     #'(lambda (mty)
 				 (and (typep mty 'funtype)
+				      (nth-domain mty doms)
 				      (compatible? (domain type)
 						   (nth-domain mty doms))))
 			   mtypes)))
@@ -704,10 +705,13 @@
 	  (t (type-error (measure decl)
 	       "Measure must have range a naturalnumber or an ordinal")))))
 
-(defun nth-domain (funtype doms)
+(defmethod nth-domain ((ftype funtype) doms)
   (if (null doms)
-      (domain funtype)
-      (nth-domain (range funtype) (cdr doms))))
+      (domain ftype)
+      (nth-domain (range ftype) (cdr doms))))
+
+(defmethod nth-domain (ftype doms)
+  nil)
 
 (defmethod measure-incompatible (decl type (meas lambda-expr) mtypes)
   (let ((ftypes (remove-if-not #'(lambda (mty) (typep mty 'funtype))
@@ -735,8 +739,8 @@
 		  mtypes)))
     (if ftypes
 	(type-error (measure decl)
-	  "Incompatible domain types~
-     ~%     Found: ~{[~{~a~^, ~}]~%~^~12T~}  Expected: [~{~a~^, ~}]"
+	  "Incompatible domain types for measure~
+           ~%     Found: ~{~a~^, ~}~%  Expected: ~a"
 	  (mapcar #'domain mtypes) (domain type))
 	(type-error (measure decl)
 	  "Wrong number of arguments in measure"))))
