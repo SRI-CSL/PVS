@@ -701,6 +701,11 @@
 	  norm))
     ineq))
 
+(defun normineqcan (ineq)
+  (normineq `(,(funsym ineq)
+	      ,(arithcan (arg1 ineq))
+	      ,(arg2 ineq))))
+
 (defun normalize-new-eqn (eqn)
   (normineq `(equal ,(canonsig-arith (arg1 eqn))
 		    ,(canonsig-arith (arg2 eqn)))))
@@ -730,18 +735,23 @@
 	     ;;; next time blah is seen it will be reduced to true and not
 	     ;;; added to the ineqpot.
 
-	     (loop for chainineq in (chainineqs ineq) with (norm) do
-		   (setq norm (normineq (residue ineq chainineq)))
+	     (loop for chainineq in (chainineqs ineq) do ;;with (norm) do
+		   (let ((chainineq `(,(funsym chainineq)
+				      ,(arg1 chainineq)
+				      ,(arithcan (arg2 chainineq))))
+			 (norm (normineq (residue ineq chainineq))))
 		   (cond
 		    ((eq norm 'true)
 		     (add-disjunct-of-equals ineq chainineq))
 		    ((eq norm 'false)(retfalse))
-		    ((eq norm 'ident)
+		    ((eq norm 'ident) 
 		     (let ((new-eqn
 			    (if *tc-ehdm-test*
 				`(equal ,(arg1 ineq) ,(arg2 ineq))
-				 (normineq `(equal ,(canonsig-arith (arg1 ineq))
-						  ,(canonsig-arith (arg2 ineq)))))))
+				 (normineq `(equal ,(arg1 ineq) ,(arg2 ineq)))
+; 					     ,(canonsig-arith (arg1 ineq))
+; 						  ,(canonsig-arith (arg2 ineq))
+				 )))
 		       (unless (or (not (consp new-eqn));;NSH(9/10/02)
 				   (if *tc-ehdm-test*
 				       (subtermof (arg1 ineq) (arg2 ineq))
@@ -749,7 +759,7 @@
 			 (loop for eqn in (equalsolve new-eqn)
 			       do (push eqn ineqpot))
 			 (return nil))))
-		    (t (push norm ineqpot))))
+		    (t (push norm ineqpot)))))
 	     ;;; 11/17/92: DAC see note above about nrmineq.
 	     ;;; NSH(1/15/94): Loops without WHEN clause below.  DAC's note
 	     ;;; indicates why it might be needed.  
