@@ -1407,50 +1407,9 @@ where db is to replace db1 and db2")
 	     (cdr aexprs))
 	 (append preds incs)))))
 
-(defmethod compatible-preds* ((atype tupletype) (etype list)
-			      (aexpr tuple-expr) incs)
-  incs)
-
-(defmethod compatible-preds* ((atype tupletype) (etype list) aexpr incs)
-  (multiple-value-bind (stypes sincs)
-      (compatible-preds* (types atype) aexpr etype incs)
-    (when stypes
-      (values (lcopy atype 'types stypes) sincs))))
-
-(defmethod compatible-preds* ((atype list) (etype tupletype)
-			      (aexpr tuple-expr) incs)
-  incs)
-
-(defmethod compatible-preds* ((atype list) (etype tupletype) aexpr incs)
-  (compatible-preds* atype (types atype) aexpr incs))
-
-(defmethod compatible-preds* ((atypes list) (etypes list) aexpr incs)
-  (break "Do something about aexpr")
-  (cond ((and (null (cdr atypes))
-	      (typep (car atypes) 'tupletype))
-	 (compatible-preds* (types (car atypes)) aexpr etypes incs))
-	((and (null (cdr etypes))
-	      (typep (car etypes) 'tupletype))
-	 (compatible-preds* atypes (types (car etypes)) aexpr incs))
-	((length= atypes etypes)
-	 (compatible-lists? atypes etypes aexpr incs nil))))
-
-(defun compatible-lists? (atypes etypes aexpr incs result)
-  (if (and (null atypes) (null etypes))
-      (values (reverse result) incs)
-      (multiple-value-bind (type lincs)
-	  (compatible-preds* (car atypes) (car etypes) aexpr incs)
-	(when type
-	  (compatible-lists? (cdr atypes) (cdr etypes) aexpr
-			     lincs (cons type result))))))
-
 (defmethod compatible-preds* ((atype recordtype) (etype recordtype)
 			      (aexpr record-expr) incs)
   incs)
-
-;(defmethod compatible-preds* ((atype recordtype) (etype recordtype)
-;			      (aexpr update-expr) incs)
-;  incs)
 
 (defmethod compatible-preds* ((atype recordtype) (etype recordtype) aexpr incs)
   (compatible-recordtype-preds (subst-fields atype aexpr)
@@ -1517,10 +1476,6 @@ where db is to replace db1 and db2")
 
 (defmethod strict-subtype-of*? ((t1 tupletype) (t2 tupletype) dist)
   (strict-subtype-of*? (types t1) (types t2) dist))
-
-;(defmethod strict-subtype-of*? ((t1 recordtype) (t2 recordtype))
-;  (and (length= (fields t1) (fields t2))
-;       (break "Finish this")))
 
 (defmethod strict-subtype-of*? ((t1 dep-binding) (t2 dep-binding) dist)
   (strict-subtype-of*? (type t1) (type t2) dist))
