@@ -389,16 +389,16 @@
     (unless theory
       (type-error theoryname "Theory ~a not found" (id theoryname)))
     (let ((entry (gethash theory (current-using-hash)))
-	  ;; :test #'theoryname-in-context-using
 	  (tname (remove-coercions
 		  (remove-indirect-formals-of-name theoryname))))
-      (when entry
-	(assert (every #'(lambda (d)
-			   (if (and (declaration? d) (visible? d))
-			       (memq d (gethash (id d)
-						(current-declarations-hash)))
-			       t))
-		       (theory theory))))
+      #+pvsdebug
+      (assert (or (null entry)
+		  (every #'(lambda (d)
+			     (if (and (declaration? d) (visible? d))
+				 (memq d (gethash (id d)
+						  (current-declarations-hash)))
+				 t))
+			 (theory theory))))
       (if entry
 	  (unless (member tname entry :test #'tc-eq)
 	    (if (actuals tname)
