@@ -3,14 +3,13 @@
 ;; Author          : Sam Owre
 ;; Created On      : Sat Dec  4 12:35:56 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Nov  5 15:17:41 1998
-;; Update Count    : 48
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Last Modified On: Mon Apr 12 14:56:18 2004
+;; Update Count    : 50
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
-(in-package 'pvs)
+(in-package :pvs)
 
 ;;; Typechecking expressions - the arguments for these methods are:
 ;;;   expr	- the expression being typechecked
@@ -57,6 +56,39 @@
   (assert (types expr)))
 
 
+(defmethod typecheck* ((expr fieldex) expected kind argument)
+  (declare (ignore expected kind argument))
+  (cond ((actuals expr)
+	 (unless (singleton? (actuals expr))
+	   (type-error expr
+	     "Field expression actuals must be a single type"))
+	 (typecheck* (car (actuals expr)) nil 'type nil)
+	 (unless (type-value (car (actuals expr)))
+	   (type-error expr
+	     "Field expression actual must be a type"))
+	 (unless (recordtype? (find-supertype (type-value
+					      (car (actuals expr)))))
+	   (type-error expr
+	     "Field expression actual must be a recordtype"))
+	 (let* ((rtype (find-supertype (type-value (car (actuals expr)))))
+		(field (find (id expr) (fields rtype) :key #'id)))
+	   (unless field
+	     (type-error expr
+	       "Field ~a is not in record ~a" (id expr) rtype))
+	   (if (dependent? rtype)
+	       (let* ((id (make-new-variable '|r| rtype))
+		      (db (mk-dep-binding id rtype))
+		      (ne (make-dep-field-name-expr db rtype))
+		      (ftype (field-application-type (id field) rtype ne)))
+		 (setf (types expr) (list (mk-funtype db ftype))))
+	       (setf (types expr)
+		     (list (mk-funtype rtype (type field)))))))
+	(t (setf (types expr)
+		 (list (mk-funtype (make-instance 'rec-type-variable
+				     'id (make-new-variable 'recT expr))
+				   (make-instance 'type-variable
+				     'id (make-new-variable 'T expr))))))))
+
 ;;; Projection-exprs are created by the parser, and those that appear as
 ;;; operators to an application are then converted to
 ;;; projection-applications.
@@ -75,17 +107,36 @@
 					      (car (actuals expr)))))
 	   (type-error expr
 	     "Projection expression actual must be a tupletype"))
-	 (setf (types expr)
-	       (list (mk-funtype
-		      (find-supertype (type-value (car (actuals expr))))
-		      (nth (1- (index expr))
-			   (types (find-supertype
-				   (type-value (car (actuals expr))))))))))
+	 (unless (<= (index expr)
+		     (length (types (find-supertype (type-value
+						     (car (actuals expr)))))))
+	   (type-error expr
+	     "Projection expression index ~d too large" (index expr)))
+	 (let ((ttype (type-value (car (actuals expr)))))
+	   (setf (types expr)
+		 (list (make-projection-type expr ttype)))))
 	(t (setf (types expr)
 		 (list (mk-funtype (make-instance 'tup-type-variable
 				     'id (make-new-variable 'tupT expr))
 				   (make-instance 'type-variable
 				     'id (make-new-variable 'T expr))))))))
+
+(defun make-projection-type (projection-expr &optional type)
+  (let* ((ttype (or type (type projection-expr)))
+	 (tuptype (find-supertype ttype))
+	 (index (index projection-expr))
+	 (first-dep-pos (position-if #'dep-binding? (types tuptype)))
+	 (dep? (and first-dep-pos (< first-dep-pos (1- index)))))
+    (if dep?
+	(let* ((id (make-new-variable 't ttype))
+	       (db (mk-dep-binding id ttype))
+	       (dvar (make-variable-expr db)))
+	  (mk-funtype db
+		      (make!-projection-type* (types tuptype) index 1 dvar)))
+	(mk-funtype ttype (nth (1- index) (types tuptype))))))
+		      
+	      
+	 
 
 (defmethod typecheck* ((expr injection-expr) expected kind argument)
   (declare (ignore kind expected argument))
@@ -244,12 +295,12 @@
 			    (type-value (car (actuals expr)))))))
 	     (typecheck* (argument expr) cotype nil nil))
 	   (let ((cotypes (if (actuals expr)
-			      (types (argument expr))
+			      (ptypes (argument expr))
 			      (remove-if (complement
 					  #'(lambda (ty)
 					      (cotupletype?
 					       (find-supertype ty))))
-				(types (argument expr))))))
+				(ptypes (argument expr))))))
 	     (if cotypes
 		 (let ((lcotypes (remove-if
 				     (complement
@@ -1154,9 +1205,11 @@
 			 (type domain) argtype)))
 	     (when atype
 	       (let* ((*generate-tccs* 'none)
-		      (narg (typecheck* (copy-untyped arg) atype nil nil)))
-		 #+pvsdebug (assert (fully-typed? narg))
-		 (substit range (acons domain narg nil))))))))
+		      (narg (with-no-type-errors
+			     (typecheck* (copy-untyped arg) atype nil nil))))
+		 (when narg
+		   #+pvsdebug (assert (fully-typed? narg))
+		   (substit range (acons domain narg nil)))))))))
 
 (defun application-range-instantiated-argtype (domain argtype)
   (if (fully-instantiated? argtype)
@@ -1237,189 +1290,6 @@
   (declare (ignore arg domain))
   range)
 
-(defun find-application-conversion (expr)
-  (let* ((op (operator expr))
-	 (arg (argument expr))
-	 (args (arguments expr))
-	 (*found-one* nil))
-    (declare (special *found-one*))
-    (if (or (argument-conversions (types op) args)
-	    (argument-conversions (types op) (list arg)))
-	(set-possible-argument-types op (argument expr))
-	(let ((conversions (unless *no-conversions-allowed*
-			     (find-operator-conversions (types op) args))))
-	  (if conversions
-	      (let* ((conv (car conversions))
-		     (ctype (type (expr conv)))
-		     (dom (domain (find-supertype ctype)))
-		     ;;(ran (range (find-supertype ctype)))
-		     (nop (copy op)))
-		(add-conversion-info (expr conv) op)
-		(change-class op 'implicit-conversion)
-		(setf (argument op) nop)
-		(setf (types nop)
-		      (list (if (typep dom 'dep-binding) (type dom) dom)))
-		(setf (operator op) (copy (expr conv)))
-		(setf (types op) (list ctype))
-		(typecheck* op nil nil nil))
-	      (type-mismatch-error expr))))))
-
-(defun find-operator-conversions (optypes args &optional conversions)
-  (if (null optypes)
-      conversions
-      (find-operator-conversions
-       (cdr optypes) args
-       (append conversions
-	       (find-operator-conversion* (car optypes) args)))))
-
-(defun find-operator-conversion* (optype args)
-  (let ((conversions nil))
-    (dolist (conv (conversions *current-context*))
-      (let ((nconv (compatible-operator-conversion conv optype args)))
-	(when (and nconv
-		   (not (member nconv (disabled-conversions *current-context*)
-				:key #'name :test #'tc-eq)))
-	  (push nconv conversions))))
-    (nreverse conversions)))
-
-(defun compatible-operator-conversion (conversion optype args)
-  (let* ((theory (module conversion))
-	 (ctype (find-supertype (type (expr conversion))))
-	 (fmls (formals-sans-usings theory)))
-    (and (typep ctype 'funtype)
-	 (typep (find-supertype (range ctype)) 'funtype)
-	 (if (and (remove-if #'(lambda (fp)
-				 (memq fp (formals-sans-usings
-					   (current-theory))))
-		    (free-params conversion))
-		  fmls
-		  (not (eq theory *current-theory*)))
-	     (let* ((bindings1 (tc-match optype (domain ctype)
-					 (mapcar #'list fmls)))
-		    (dtypes (domain-types (find-supertype (range ctype))))
-		    (bindings (when (= (length args) (length dtypes))
-				(car (find-compatible-bindings args dtypes
-							       bindings1)))))
-	       (when (and bindings (every #'cdr bindings))
-		 (let* ((acts (mapcar #'(lambda (a)
-					  (mk-res-actual (cdr a) theory))
-				      bindings))
-			(nmi (mk-modname (id theory) acts)))
-		   (and (with-no-type-errors
-			 (check-compatible-params
-			  (formals-sans-usings theory) acts nil))
-			(check-operator-conversion
-			 (subst-params-decl conversion nmi theory) args)))))
-	     (when (compatible? optype (domain ctype))
-	       (check-operator-conversion conversion args))))))
-
-(defun check-operator-conversion (conversion args)
-  (let* ((ftype (find-supertype (type (expr conversion))))
-	 (rtype (find-supertype (range ftype))))
-    (when (and ;;(valid-actuals (expr conversion))
-	       (typep rtype 'funtype)
-	       (length= args (domain-types rtype))
-	       (every #'(lambda (a d)
-			  (some #'(lambda (aty) (compatible? aty d))
-				(ptypes a)))
-		      args (domain-types rtype)))
-      conversion)))
-
-(defvar *in-application-conversion* nil)
-
-(defun change-application-to-conversion (expr)
-  #+pvsdebug (assert (and (typep (operator expr) 'name-expr)
-			  (some #'(lambda (r)
-				    (typep r 'lambda-conversion-resolution))
-				(resolutions (operator expr)))))
-  (unless (or *no-conversions-allowed*
-	      *in-application-conversion*)
-    (let* ((*in-application-conversion* t)
-	   (op (operator expr))
-	   (kres (find-if #'(lambda (r)
-			      (typep r 'lambda-conversion-resolution))
-		   (resolutions (operator expr))))
-	   (kid (make-new-variable 's expr))
-	   (kbd (make-bind-decl kid (k-conv-type kres)))
-	   (*bound-variables* (cons kbd *bound-variables*))
-	   (kvar (make-variable-expr kbd))
-	   (args (application-conversion-arguments (arguments expr) kvar))
-	   (orig-expr (copy expr)))
-      (change-class expr 'lambda-conversion)
-      (setf (bindings expr) (list kbd)
-	    (types op) nil
-	    (resolutions op) nil
-	    (expression expr) (make-instance (class-of orig-expr)
-				'operator op
-				'argument (if (cdr args)
-					      (make-instance 'arg-tuple-expr
-						'exprs args)
-					      (car args))))
-      (add-conversion-info "LAMBDA conversion" orig-expr expr)
-      (typecheck* expr nil nil nil))))
-
-(defun application-conversion-arguments (arguments kvar)
-  (let* ((*parsing-or-unparsing* t)
-	 (*gensubst-reset-types* t)
-	 (nargs (gensubst arguments
-		  #'(lambda (ex)
-		      (setf (types ex) nil)
-		      (when (name-expr? ex) (setf (resolutions ex) nil))
-		      (let ((ac (make-instance 'argument-conversion
-				  'operator ex
-				  'argument kvar)))
-			(typecheck* ac nil nil nil)))
-		  #'(lambda (ex)
-		      (and (expr? ex)
-			   (some #'(lambda (ty)
-				     (and (not (from-conversion ty))
-					  (let ((sty (find-supertype ty)))
-					    (and (funtype? sty)
-						 (compatible? (domain sty)
-							      (type kvar))))))
-				 (ptypes ex)))))))
-    (typecheck* nargs nil nil nil)))
-      
-
-(defmethod application-conversion-argument (arg (conv name-expr) vars)
-  (let ((var1 (find-if #'(lambda (v)
-			   (tc-eq (type v) (domain (range (type conv)))))
-		vars)))
-    (if (some #'(lambda (ty)
-		  (and (funtype? (find-supertype ty))
-		       (compatible? (domain (find-supertype ty)) (type var1))))
-	      (ptypes arg))
-	(let ((ac (make-instance 'argument-conversion
-		    'operator arg
-		    'argument var1)))
-	  (typecheck* ac nil nil nil))
-	arg)))
-
-;;; If the argument is a function whose domain matches one of the
-;;; variables, create the application.  This fixes a problem with,
-;;; e.g., IF a THEN b ELSE c ENDIF, where a: [T -> bool], b, c: [T -> int]
-;;; being translated to
-;;;  LAMBDA (x:T) IF a(x) THEN b ELSE c ENDIF : [T -> [T -> int]]
-;;; rather than
-;;;  LAMBDA (x:T): IF a(x) THEN b(x) ELSE c(x) ENDIF : [T -> int]
-(defmethod application-conversion-argument (arg conv vars)
-  (declare (ignore conv vars))
-  (let ((var1 (find-if #'(lambda (v)
-			   (every #'(lambda (ty)
-				      (let ((sty (find-supertype ty)))
-					(and (funtype? sty)
-					     (tc-eq (type v) (domain sty)))))
-				  (ptypes arg)))
-		vars)))
-    (if var1
-	(let ((ac (make-instance 'argument-conversion
-		    'operator arg
-		    'argument var1)))
-	  (typecheck* ac nil nil nil))
-	arg))
-  ;;arg
-  )
-
 (defmethod type-mismatch-error (expr)
   (let ((exprstr (unpindent expr 4 :string t)))
     (type-error expr
@@ -1499,8 +1369,7 @@
       (let ((vdecl (find-if #'(lambda (v)
 				(and (var-decl? v)
 				     (eq (module v) (current-theory))))
-		     (gethash (id bd)
-			      (current-declarations-hash)))))
+		     (get-declarations (id bd)))))
 	(cond ((and vdecl
 		    (some #'(lambda (ty)
 			      (compatible? (type vdecl) ty))
@@ -1918,15 +1787,15 @@
       (let* ((*generate-tccs* 'none)
 	     (stype (supertype type))
 	     (pred (predicate type))
-	     (var (mk-name-expr (make-new-variable '|x| expr)))
-	     (vb (mk-bind-decl (id var) stype))
-	     (upred (mk-lambda-expr (list vb)
-		      (mk-disjunction
-		       (cons (mk-application pred var)
-			     (list (mk-application '= var arg))))))
-	     (tpred (beta-reduce
-		     (typecheck* upred (mk-funtype (list stype) *boolean*)
-				 nil nil))))
+	     (vid (make-new-variable '|x| expr))
+	     (vb (make-bind-decl vid stype))
+	     (var (make-variable-expr vb))
+	     (carg (typecheck* (copy arg) stype nil nil))
+	     (upred (make!-lambda-expr (list vb)
+		      (make!-disjunction
+		       (make!-application pred var)
+		       (make!-equation var carg))))
+	     (tpred (beta-reduce upred)))
 	(mk-subtype stype tpred))))
 
 (defmethod extend-domain-type (arg (type dep-binding) expr)
@@ -2068,7 +1937,7 @@
       (let ((vdecls (remove-if-not #'(lambda (d)
 				       (and (var-decl? d)
 					    (eq (module d) (current-theory))))
-		      (gethash (id decl) (current-declarations-hash)))))
+		      (get-declarations (id decl)))))
 	(cond ((null vdecls) 
 	       (type-error decl
 		 "Variable ~a not previously declared" (id decl)))
