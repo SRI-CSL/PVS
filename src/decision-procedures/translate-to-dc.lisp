@@ -106,47 +106,6 @@
 	   (dp::mk-constant (id name))
 	   (id name))))
 
-(defmacro translate-to-ground (expr)
-  `(if *newdc*
-      (translate-to-dc ,expr)
-      (translate-to-prove ,expr)))
-
-(defmacro translate-with-new-hash (&rest body)
-  `(if *newdc*
-       (let ((*translate-to-dc-hash*
-	      (make-hash-table  ;;NSH(2.5.95)
-	       :hash-function 'pvs-sxhash ;;hash to pvs-hash
-	       :test 'tc-eq)))
-	 ,@body)
-      (let ((*translate-to-prove-hash*
-	      (make-hash-table  ;;NSH(2.5.95)
-	       :hash-function 'pvs-sxhash ;;hash to pvs-hash
-	       :test 'tc-eq)))
-	 ,@body)))
-
-(defun top-translate-to-prove (expr)
-  (let ((*bindings* nil)
-	(*generate-tccs* 'NONE))
-    (cond ((hash-table-p *translate-to-prove-hash*)
-	   (when *integer*
-	     (setq *integer-pred* (translate-to-ground (predicate *integer*))))
-	   (when *rational*
-	     (setq *rational-pred*
-		   (translate-to-ground (predicate *rational*))))
-	   (when *real*
-	     (setq *real-pred* (translate-to-ground (predicate *real*))))
-	   (when *newdc*
-	     (setf (dp::node-initial-type *integer-pred*) 'dp::integer-pred)
-	     (setf (dp::node-initial-type *rational-pred*) 'dp::rational-pred)
-	     (setf (dp::node-initial-type *real-pred*) 'dp::real-pred))
-	   (translate-to-ground (unit-derecognize expr)))
-	  (t (translate-with-new-hash
-	       (unless *integer-pred*
-		 (setq *integer-pred*
-		       (when *integer*
-			 (translate-to-ground (predicate *integer*)))))
-	       (translate-to-ground (unit-derecognize expr)))))))
-
 
 ;;; Translate into list representation for passing to the prover.
 ;;; This also sets up the global variables typealist, and inserts

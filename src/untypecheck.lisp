@@ -65,8 +65,6 @@
 (defmethod untypecheck-theory ((theory module))
   (tcdebug "~%Untypechecking theory ~a" (id theory))
   (setf (declarations theory) (make-hash-table :test #'eq :size 20))
-  (setf (judgements theory) nil)
-  (setf (conversions theory) nil)
   (dolist (ty (types theory))
     (setf (nonempty? ty) nil))
   (setf (types theory) nil)
@@ -233,21 +231,24 @@
   ;;(update-context-proof-status decl)
   )
 
+(defmethod untypecheck-theory ((decl subtype-judgement))
+  (when (next-method-p) (call-next-method))
+  (untypecheck-theory (declared-subtype decl))
+  (setf (subtype decl) nil))
+
 (defmethod untypecheck-theory ((decl number-judgement))
   (when (next-method-p) (call-next-method))
-  (untypecheck-theory (number decl))
-  (untypecheck-theory (declared-type decl))
-  (setf (type decl) nil))
+  (untypecheck-theory (number decl)))
 
-(defmethod untypecheck-theory ((decl named-judgement))
+(defmethod untypecheck-theory ((decl name-judgement))
+  (when (next-method-p) (call-next-method))
+  (untypecheck-theory (name decl)))
+
+(defmethod untypecheck-theory ((decl application-judgement))
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (name decl))
-  (untypecheck-theory (declared-type decl))
-  (setf (type decl) nil))
-
-(defmethod untypecheck-theory ((decl typed-judgement))
-  (when (next-method-p) (call-next-method))
-  (untypecheck-theory (declared-name-type decl)))
+  (untypecheck-theory (formals decl))
+  (setf (formal-types decl) nil))
 
 (defmethod untypecheck-theory ((decl conversion-decl))
   (when (next-method-p) (call-next-method))

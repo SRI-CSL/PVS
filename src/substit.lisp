@@ -16,11 +16,11 @@
 (defun substit (obj alist)
   ;; At some point, should verify that car of every element of the
   ;; alist is a declaration.
-  #+pvsdebug (assert (every #'(lambda (a)
-				(and (typep (car a)
-					    '(or simple-decl declaration))
-				     (eq (declaration (car a)) (car a))))
-			    alist))
+  (assert (every #'(lambda (a)
+		     (and (typep (car a)
+				 '(or simple-decl declaration))
+			  (eq (declaration (car a)) (car a))))
+		 alist))
   (if (null alist)
       obj
       (substit* obj alist)))
@@ -35,10 +35,25 @@
 ;      (setf (gethash obj *substit-hash*) nobj)
 ;      nobj)))
 
-(defmethod substit* :around (expr alist)
-  (if (null (freevars expr)) ;; (substit-possible? expr alist)
-      expr
-      (call-next-method)))
+(defmethod substit* :around ((expr T) alist)
+  (cond ((null (freevars expr));;NSH(2.21.96)
+                            ;;removed (rassoc expr alist :test #'eq)
+	 expr)
+	((type-expr? expr)
+	 (if *subst-type-hash*
+	     (let ((result (lookup-subst-hash expr alist *subst-type-hash*)))
+	       (if result result
+		   (let ((result (call-next-method)))
+		     (install-subst-hash expr alist result *subst-type-hash*)
+		     result)))
+	     (call-next-method)))
+	(t ;;(when (funtype? expr) (break "substit"))
+	   (call-next-method))))
+
+;(defmethod substit* :around (expr alist)
+;  (if (null (freevars expr)) ;; (substit-possible? expr alist)
+;      expr
+;      (call-next-method)))
 
 (defun substit-possible? (expr alist)
   (substit-possible*? (freevars expr) alist))
@@ -265,10 +280,10 @@
   (make-new-bindings* old-bindings (alist-freevars alist) alist))
 
 (defun alist-freevars (alist)
-  (delete-duplicates (mapcan #'alist-freevars* alist)))
+  (delete-duplicates (mapappend #'alist-freevars* alist)))
 
 (defun alist-freevars* (alist-pair)
-  (mapcar #'declaration (cdr alist-pair)))
+  (freevars (cdr alist-pair)))
 
 (defun add-alist-freevars (expr alist-freevars)
   (add-alist-freevars* (freevars expr) alist-freevars))
@@ -280,7 +295,7 @@
        (cdr freevars)
        (if (memq (car freevars) alist-freevars)
 	   alist-freevars
-	   (cons (declaration freevars) alist-freevars)))))
+	   (cons (declaration (car freevars)) alist-freevars)))))
 
 ;;freevars must be the free variables in alist.
 
@@ -363,16 +378,15 @@
 
 (defmethod substit* ((texpr subtype) alist)
   (with-slots (supertype predicate print-type) texpr
-    (let* ((stype (substit* supertype alist))
-	   (ptype (substit* print-type alist))
-	   (npred (substit* predicate alist))
-	   (spred (if (eq npred predicate)
-		      predicate
-		      (pseudo-normalize npred))))
-      (lcopy texpr
-	'supertype stype
-	'predicate spred
-	'print-type ptype))))
+    (let ((npred (substit* predicate alist)))
+      (if (eq npred predicate)
+	  texpr
+	  (let* ((spred (pseudo-normalize npred))
+		 (stype (domain (find-supertype (type spred)))))
+	    (copy texpr
+	      'supertype stype
+	      'predicate spred
+	      'print-type (print-type stype)))))))
 
 (defmethod substit* ((texpr setsubtype) alist)
   (let ((nexpr (call-next-method)))

@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Mon Oct 18 22:45:21 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Wed Jul 13 04:20:03 1994
-;; Update Count    : 88
+;; Last Modified On: Wed Nov  4 17:04:21 1998
+;; Update Count    : 90
 ;; Status          : Beta testing
 ;; 
 ;; HISTORY
@@ -944,18 +944,6 @@
   (not (occurs-in decl ex)))
 
 
-(defmethod range* ((te subtype))
-  (range* (type te)))
-
-(defmethod range* ((te dep-binding))
-  (range* (type te)))
-
-(defmethod range* ((te funtype))
-  (range* (range te)))
-
-(defmethod range* ((te type-expr))
-  te)
-
 (defun make-inductive-def-inductions (decl pred-type fixed-vars rem-vars)
   (let* ((pid (make-new-variable 'P (definition decl)))
 	 (wbd (make-bind-decl pid pred-type))
@@ -1401,31 +1389,13 @@
   (let* ((pname (makesym "~a_pred" (id decl)))
 	 (pexpr (mk-name-expr pname))
 	 (ftype (typecheck* (mk-funtype (list stype) *boolean*) nil nil nil))
-	 (type (make-formals-funtype (formals decl) ftype))
 	 (cdecl (declaration *current-context*))
-	 (ndecl (typecheck* (mk-const-decl pname ftype nil
-					   (mapcar #'(lambda (ff)
-						       (mapcar #'copy ff))
-					     (formals decl)))
+	 (ndecl (typecheck* (mk-const-decl pname ftype nil nil)
 			    nil nil nil)))
     (setf (declaration *current-context*) cdecl)
     (add-decl ndecl (not (formal-subtype-decl? decl)))
-    (typecheck* pexpr type nil nil)
-    (mk-subtype (make-formals-funtype (formals decl) stype) pexpr)))
-
-;(defun generate-uninterpreted-subtype (decl tval)
-;  (let* ((pname (makesym "~a_pred" (id decl)))
-;	 (pexpr (mk-name-expr pname))
-;	 (type (typecheck* (mk-funtype (list (find-supertype tval))
-;				       *boolean*)
-;			   nil nil nil))
-;	 (cdecl (declaration *current-context*))
-;	 (ndecl (typecheck* (mk-const-decl pname type) nil nil nil)))
-;    (setf (declaration *current-context*) cdecl)
-;    (add-decl ndecl (not (formal-subtype-decl? decl)))
-;    (assert (typep (module ndecl) '(or module datatype)))
-;    (typecheck* pexpr type nil nil)
-;    (mk-subtype tval pexpr)))
+    (typecheck* pexpr ftype nil nil)
+    (mk-subtype stype pexpr)))
 
 
 ;;; Tuple Types - in the following, the f_i are optional; any that are
@@ -1622,36 +1592,64 @@
 
 (defmethod typecheck* ((decl number-judgement) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (break "typecheck* number-judgement")
   (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
   (set-type (declared-type decl) nil)
   (typecheck* (number decl) (type decl) 'expr nil)
-  (add-to-alist (number (number decl)) decl (judgements *current-context*)))
+  (generic-judgement-warning decl)
+  (add-judgement-decl decl))
 
-(defmethod typecheck* ((decl named-judgement) expected kind arguments)
+(defmethod typecheck* ((decl name-judgement) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (when (formals decl)
-    (typecheck* (formals decl) nil nil nil)
-    (mapc #'(lambda (fmlist)
-	      (mapc #'(lambda (fm)
-			(unless (fully-instantiated? fm)
-			  (type-error  (type fm)
-			    "Could not determine the full theory instance")))
-		    fmlist))
-	  (formals decl)))
+  (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
+  (set-type (declared-type decl) nil)
+  (let ((*no-conversions-allowed*))
+    (typecheck* (name decl) (type decl) nil nil))
+  (add-judgement-decl decl))
+
+(defmethod typecheck* ((decl application-judgement) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (typecheck* (formals decl) nil nil nil)
+  (let ((fmlist (apply #'append (formals decl))))
+    (let ((dup (duplicates? fmlist :key #'id)))
+      (when dup
+	(type-error dup
+	  "May not use duplicate arguments in judgements")))
+    (dolist (fm fmlist)
+      (unless (fully-instantiated? fm)
+	(type-error (type fm)
+	  "Could not determine the full theory instance for ~a" fm))))
   (let* ((*bound-variables* (reverse (apply #'append (formals decl)))))
     (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
     (set-type (declared-type decl) nil)
     (let* ((*no-conversions-allowed* t)
-	   (expr (if (formals decl)
-		     (mk-application-for-formals (name decl) (formals decl))
-		     (name decl))))
+	   (expr (mk-application-for-formals (name decl) (formals decl))))
       (typecheck* expr (type decl) nil nil)))
-  (if (formals decl)
-      (add-to-alist (declaration (name decl)) decl
-		    (application-judgements *current-context*))
-      (add-to-alist (declaration (name decl)) decl
-		    (judgements *current-context*))))
+  (setf (judgement-type decl)
+	(make-formals-funtype (formals decl) (type decl)))
+  (add-judgement-decl decl))
+
+(defmethod generic-judgement-warning ((decl number-judgement))
+  (when (free-parameters (type decl))
+    (pvs-warning
+	"This judgement will not be used if ~a is only imported generically,~%~
+         as the type cannot be determined from the number."
+      (id (module decl)))))
+
+(defmethod generic-judgement-warning ((decl name-judgement))
+  (unless (subsetp (free-parameters (type decl))
+		   (free-parameters (name decl)))
+    (pvs-warning
+	"This judgement will not be used if ~a is only imported generically,~%~
+         as the type cannot be determined from the name."
+      (id (module decl)))))
+
+(defmethod generic-judgement-warning ((decl application-judgement))
+  (when (free-parameters (type decl))
+    (pvs-warning
+	"This judgement will not be used if ~a is only imported generically,~%~
+         as the type cannot be determined from the number."
+      (id (module decl)))))
+
 
 (defun mk-application-for-formals (expr formals)
   (if (null formals)
@@ -1663,28 +1661,6 @@
 	(mk-application-for-formals
 	 (mk-application* expr names)
 	 (cdr formals)))))
-
-(defmethod typecheck* ((decl typed-judgement) expected kind arguments)
-  (declare (ignore expected kind arguments))
-  (break "typecheck* typed-judgement")
-  (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
-  (set-type (declared-type decl) nil)
-  ;;(setf (id decl) (id (name decl)))
-  (setf (kind (name decl)) 'constant)
-  (let ((dtype (typecheck* (declared-name-type decl) nil nil nil)))
-    (set-type (declared-name-type decl) nil)
-    (typecheck* (name decl) nil 'expr nil)
-    (let ((res (find-if #'(lambda (r) (tc-eq (type r) dtype))
-		 (resolutions (name decl)))))
-      (unless res
-	(type-error (name decl)
-	  "No declaration of specified type could be found"))
-      (setf (resolutions (name decl)) (list res))
-      (cond ((typep dtype 'funtype)
-	     ;;(setf (type (name decl)) (type res))
-	     (typecheck-funtype-judgement decl))
-	    (t (typecheck* (name decl) (type decl) 'expr nil)))))
-  (add-to-alist (declaration (name decl)) decl (judgements *current-context*)))
 
 (defun typecheck-funtype-judgement (decl)
   (let* ((jtype (find-supertype (type decl)))
@@ -1726,6 +1702,23 @@
     (dolist (joptype joptypes)
       (let ((boptype (type res)))
 	(mapc #'add-to-known-subtypes jdom (domain-types boptype))))))
+
+;;; This is essentially the same as find-best-judgment-optype in
+;;; set-type.lisp, except that the expected is not provided, and it
+;;; returns a list of types.
+
+(defun find-best-judgement-optypes (args optype jtypes)
+  ;; jtypes is a list of types and judgement-resolutions
+  (let ((best-optypes (find-best-operator-types args (cons optype jtypes))))
+    (assert best-optypes)
+    best-optypes))
+
+(defun find-best-operator-types (args optypes)
+  (assert optypes)
+  (let* ((*generate-tccs* 'none)
+	 (*substituted-subtypes* nil)
+	 (distances (optype-distances args optypes nil nil)))
+    (minimal-optypes* distances optypes (apply #'min distances) nil)))
 
 (defun make-judgement-dependent-type (ndom jdom jran bvars decl)
   (let ((newdom (make-judgement-dependent-domain ndom jdom)))
@@ -1939,7 +1932,8 @@
 		   (id x) (unparse (type y) :string t)))))
 	(unless (or (and (typep y 'type-def-decl)
 			 (typep (type-expr y) 'datatype))
-		    (not (types-with-same-signatures x y)))
+		    (and (typep y 'type-decl)
+			 (not (types-with-same-signatures x y))))
 	  (type-error x
 	    "Name ~a already in use as a ~a" (id x) (kind-of x))))))
 

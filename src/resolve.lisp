@@ -41,7 +41,7 @@
 	 (*field-records* nil)
 	 (k (or kind 'expr))
 	 (args (if (and argument (eq k 'expr))
-		   (argument* argument)
+		   (argument-list argument)
 		   argument))
 	 (res (resolve* name k args)))
     (cond ((null res)

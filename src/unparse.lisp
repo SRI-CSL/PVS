@@ -797,7 +797,7 @@ bind tighter.")
 	(mk-ergo-term* 'noacts)
 	(mk-ergo-term* 'nomod)))
     (mk-ergo-term 'fun-arguments
-      (mapcar #'xf (argument* (argument expr))))))
+      (mapcar #'xf (argument-list (argument expr))))))
 
 (defmethod xf ((expr field-application))
   (mk-ergo-term* 'application
@@ -809,7 +809,7 @@ bind tighter.")
 	(mk-ergo-term* 'noacts)
 	(mk-ergo-term* 'nomod)))
     (mk-ergo-term 'fun-arguments
-      (mapcar #'xf (argument* (argument expr))))))
+      (mapcar #'xf (argument-list (argument expr))))))
 
 (defmethod xf ((expr application))
   (mk-ergo-term* 'application

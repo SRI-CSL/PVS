@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Sat Dec  4 12:35:56 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sat Apr 29 23:51:55 1995
-;; Update Count    : 47
+;; Last Modified On: Thu Nov  5 15:17:41 1998
+;; Update Count    : 48
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -697,8 +697,8 @@
 (defmethod typecheck* ((expr application) expected kind arguments)
   (declare (ignore expected kind arguments))
   (unless (ptypes (argument expr))
-    (typecheck* (argument* (argument expr)) nil nil nil))
-  ;;(assert (every #'types (argument* expr)))
+    (typecheck* (argument-list (argument expr)) nil nil nil))
+  ;;(assert (every #'types (argument-list expr)))
   (when (lambda-expr? (operator expr))
     (if (typep expr '(or let-expr where-expr))
 	(progn
@@ -706,7 +706,7 @@
 	  (typecheck-let-bindings (bindings (operator expr)) (argument expr)))
 	(typecheck* (bindings (operator expr)) nil nil nil)))
   (unless (ptypes (operator expr))
-    (typecheck* (operator expr) nil nil (argument* (argument expr))))
+    (typecheck* (operator expr) nil nil (argument-list (argument expr))))
   (set-possible-argument-types (operator expr) (argument expr))
   (unless (or (type (operator expr))
 	      (typep (operator expr) 'name-expr))
@@ -809,8 +809,8 @@
 
 ;;; Application-range-types takes an application and returns the list of
 ;;; possible types of that application.  In the simple cases, this is just
-;;; the range of the possible types of the operator.  However, judgements
-;;; and dependencies ruin this utopia.
+;;; the range of the possible types of the operator.  However,
+;;; dependencies ruin this utopia.
 
 (defmethod application-range-types ((expr application))
   (with-slots (operator argument) expr
@@ -841,10 +841,6 @@
 (defmethod application-range-type-arg (arg optype argtype)
   (declare (ignore arg optype argtype))
   nil)
-
-(defmethod application-range-type-arg (arg (optype judgement-resolution) argtype)
-  (with-slots (judgement-type) optype
-    (application-range-type-arg arg judgement-type argtype)))
 
 (defmethod application-range-type-arg (arg (optype subtype) argtype)
   (with-slots (supertype) optype

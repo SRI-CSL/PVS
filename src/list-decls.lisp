@@ -124,8 +124,15 @@
   nil)
 
 (defmethod get-decl-associated-with ((obj field-application))
-  (find-if #'(lambda (fld) (eq (id obj) (id fld)))
-    (fields (find-supertype (type (argument obj))))))
+  (let ((pt (print-type (find-supertype (type (argument obj))))))
+	(cond (pt
+	       (declaration pt))
+	      (t (pvs-message "No print type for field application ~a" obj)
+		 nil))))
+
+(defmethod get-decl-associated-with ((obj field-assignment-arg))
+  (pvs-message "Declarations for field assignments broken.  Awaiting Sam to fix")
+  nil)
 
 (defmethod get-decl-associated-with ((obj projection-application))
   (pvs-message "Projections do not have an associated declaration")

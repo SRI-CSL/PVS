@@ -20,17 +20,18 @@
 ;;assert, or *rewrite.
 
 (defun pvs-initprover ()
-  (setq  sigalist nil )
-  (setq  findalist nil )
-  (setq  usealist nil )
-  (process '(NOT (EQUAL TRUE FALSE)))
-)
+  (setq *alists* (copy *init-alists*))
+  (setq *dp-state* (dp::push-new-cong-state *init-dp-state*)))
 
 (defun invoke-simplification (sformnums record? rewrite?
 				   rewrite-flag flush? linear?
-				   cases-rewrite? type-constraints?)
+				   cases-rewrite? type-constraints?
+				   ignore-prover-output?)
+				   ;;assert-connectives?
   #'(lambda (ps)
-      (let ((*cases-rewrite* cases-rewrite?))
+      (let ((*cases-rewrite* cases-rewrite?)
+	    ;;(*assert-connectives?* assert-connectives?)
+	    (*ignore-prover-output?* ignore-prover-output?))
 	(if record?
 	    (if rewrite?
 		(assert-sformnums
@@ -65,18 +66,21 @@
 				  (rewrite-hash ps)))
 	      (*subtype-hash* (if flush?
 				  (make-hash-table :hash-function 'pvs-sxhash
-						       :test 'tc-eq)
+						   :test 'tc-eq)
 				  (copy (subtype-hash ps))))
+	      (*subst-type-hash* (make-hash-table :hash-function 'pvs-sxhash
+						  :test 'tc-eq))
 	      (*assert-typepreds-off* (not type-constraints?))
-	      (alists (alists ps))
-	      (sigalist (dpinfo-sigalist  alists))
-	      (findalist (dpinfo-findalist  alists))
-	      (usealist (dpinfo-usealist alists))
-;	      (typealist (if flush? primtypealist ;;NSH(2.16.94) now global 
-; 			     (typealist alists))) ;;to proof
-	      )
-	 (when flush? (pvs-initprover))
-	 (assert-sequent goalsequent sformnums rewrite-flag)))
+	      (*alists* (alists ps))
+	      (*dp-state* (dp-state ps)))
+    (protecting-cong-state
+     ((*dp-state* (if flush?
+		      *init-dp-state*
+		      *dp-state*))
+      (*alists* (if flush?
+		    *init-alists*
+		    *alists*)))
+     (assert-sequent goalsequent sformnums rewrite-flag))))
 
 (defun find-remaining-sformnums (sforms sformnums sub-sformnums
 				  &optional (pos 1)(neg -1)(acc nil))
@@ -96,7 +100,7 @@
 					   sub-sformnums
 				     newpos newneg newacc)))))
 
-(defun assert-sequent (sequent sformnums &optional rewrite-flag)
+(defun assert-sequent (sequent sformnums &optional rewrite-flag assert-connectives?)
   (let* ((simplifiable-sformnums
 	  (find-all-sformnums (s-forms sequent) sformnums
 			      #'(lambda (fmla)
@@ -139,13 +143,8 @@
 				   (list 'rewrite-hash *rewrite-hash*
 					 'subtype-hash *subtype-hash*
 					 'dependent-decls *dependent-decls*
-					 'alists
-					 (make-instance 'dpinfo
-					   'dpinfo-sigalist sigalist
-					   'dpinfo-findalist findalist
-					   'dpinfo-usealist usealist
-					   ;;'typealist typealist
-					   )))))))))))))
+					 'dp-state *dp-state*
+					 'alists *alists*))))))))))))
 
 ;;this is needed to take care of the output from process.
 (defun sequent-reduce-around (sequent simplifier sformnums)
@@ -153,39 +152,40 @@
       (sequent-reduce sequent simplifier sformnums)
     (cond ((eq signal '!)
 	   (values signal newsequent))
-	  ((memq *assert-flag* '(simplify rewrite))
+	  ((or (memq *assert-flag* '(simplify rewrite))
+	       *ignore-prover-output?*)
 	   (values signal newsequent))
 	  (t (assert-process-output signal newsequent)))))
 
 (defun assert-process-output (signal sequent)
-  (let* ((sigalist sigalist)
-	 (findalist findalist)
-	 (usealist usealist)
-	 ;;(typealist typealist);;NSH(2.16.94)
-	 (result (catch 'context
-		   (process-assert *process-output*))))
-    (cond ((eq result 'false)(values '! sequent))
-	  (t (values signal sequent)))))
+  (nprotecting-cong-state
+   ((*dp-state* *dp-state*)
+    (*alists* *alists*))
+   (let ((result (catch 'context (process-assert *process-output*))))
+     (if (tc-eq result *false*)
+	 (values '! sequent)
+	 (values signal sequent)))))
 
 (defun process-assert (forms)
   (if (null forms) nil
-      (let* ((fmla (car forms))
-	     (op (when (consp fmla)(car fmla))))
-	(cond ((eq op 'OR)
-	       (if (loop for x in (cdr fmla)
-			 always (let* ((sigalist sigalist)
-				       (findalist findalist)
-				       (usealist usealist)
-				       ;;(typealist typealist);NSH(2.16.94)
-				       (result
-					(catch 'context
-					  (process-assert (cons x (cdr forms))))))
-				  (eq result 'false)))
-		   (retfalse)))
-	      ((memq op '(if if* implies not and iff)) ;;NSH(9.22.95)
+      (let* ((fmla (car forms)))
+	(cond ((disjunction? fmla)
+	       (if (loop for x in (arguments fmla)
+			 always (nprotecting-cong-state
+				 ((*dp-state* *dp-state*)
+				  (*alists* *alists*))
+				 (let* ((result
+					 (catch 'context 
+					   (process-assert
+					    (cons x (cdr forms))))))
+				   (tc-eq result *false*))))
+		   (throw 'context *false*)))
+	      ((or (negation? fmla) (implication? fmla) (ifff? fmla))
 	       (process-assert (cdr forms)))
-	      (t (let ((result (call-process fmla)))
-		   (process-assert (cdr forms))))))))
+	      (t (let ((result (call-process fmla *dp-state* *alists*)))
+		   (if (false-p result)
+		       (throw 'context *false*)
+		       (process-assert (cdr forms)))))))))
 
 (defmethod unit-recognizer? (rec) ;recognizer for 0-ary constructor.
   nil)
@@ -208,7 +208,7 @@
 		;;multiple-value-bind (sig fmla);;assert-if too slow
 		  ;;  (assert-if unit);;to get its subtype constraint.
 		(progn (record-type-constraints unit)
-			(make-equality (args1 expr) unit))))
+		       (make-equality (args1 expr) unit))))
 	  expr)))
 
 (defun assert-sform (sform &optional rewrite-flag simplifiable?)
@@ -218,118 +218,234 @@
 	(assert-sform* sform rewrite-flag simplifiable?)
       (cond ((eq signal '!)(values signal sform))
 	    ((or (eq signal '?) *assert-typepreds*)
-	     (if (some #'assert-typepreds *assert-typepreds*)
+	     ;;(break "assert-typepreds")
+	     (if (some #'(lambda (fmla)
+			   (let* ((sign (not (not-expr? fmla)))
+				  (body (if sign
+					    fmla
+					    (args1 fmla)))
+				  (*update-occurs?* T))
+			     ;;NSH(5.13.97): rearranged lets
+			     ;;so translation avoided
+			     ;;when there is a connective.
+			     ;;want to check for connectives even if
+			     ;;assert-connectives? is T
+			     (and (not (connective-occurs? body))
+				  (let ((res (call-process fmla
+							   *dp-state*
+							   *alists*)))
+				    (when (consp res)
+				      (loop for x in res
+					    do (push x *process-output*)))
+				    (false-p res)))))
+		       *assert-typepreds*)
 		 (values '! sform)
 		 (values '? sform)))
 	    (t (values signal sform))))))
 
-(defun assert-typepreds (fmla)
-  (let* ((sign (not (not-expr? fmla)))
-	 (body (if sign fmla (args1 fmla)))
-	 (translated-body (top-translate-to-prove body))
-	 (translated-fmla (if sign translated-body
-			      (list 'NOT translated-body))))
-    (and (not (connective-occurs? body))
-	 (let ((res (catch 'context (call-process translated-fmla))))
-	   (when (consp res)
-	     (loop for x in res
-		   do (push x *process-output*)))
-	   (eq res 'FALSE)))))
+(defun assert-typepreds (typepreds)
+  (when (consp typepreds)
+      (let* ((fmla (car typepreds))
+	     (sign (not (not-expr? fmla)))
+	     (body (if sign
+		       fmla
+		       (args1 fmla)))
+	     (*update-occurs?* T))
+			     ;;NSH(5.13.97): rearranged lets
+			     ;;so translation avoided
+			     ;;when there is a connective.
+			     ;;want to check for connectives even if
+			     ;;assert-connectives? is T
+	(or (and (not (connective-occurs? body))
+		 (let* ((translated-body
+			 (top-translate-to-prove
+			  body))
+			(translated-fmla
+			 (if sign translated-body
+			     (list 'NOT
+				   translated-body)))
+			(res (catch 'context
+			       (call-process translated-fmla
+					     *dp-state* *alists*))))
+		   (when (consp res)
+		     (loop for x in res
+			   do (push x *process-output*)))
+		   (eq res 'FALSE)))
+	    (assert-typepreds (cdr typepreds))))))
 
 (defun assert-sform* (sform &optional rewrite-flag simplifiable?)
   (let* ((fmla (formula sform))
 	 (sign (not (not-expr? fmla)))
 	 (body (if sign fmla (args1 fmla)))
 	 (*bound-variables* nil)
-	 (*top-rewrite-hash* *rewrite-hash*)
-	 (*top-findalist* findalist)
-	 (*top-usealist* usealist)
-	 (*top-sigalist* sigalist))
-    (cond (rewrite-flag
-	   (multiple-value-bind (sig newbodypart)
-	       (if (or (iff-expr? body)(equality? body))
-		   (if (eq rewrite-flag 'RL)
-		       (assert-if (args1 body))
-		       (assert-if (args2 body)))
-		   (values 'X body))
-	     (if (eq sig 'X)
-		 (if (or (and sign (tc-eq fmla *false*))
-			 (and (not sign)(tc-eq body *true*)))
-		     (values '? nil)
-		     (values 'X sform))
-		 (let ((newbody
-			(copy body
-			  'argument
-			  (make-arg-tuple-expr
+	 (*top-rewrite-hash* *rewrite-hash*))
+    (protecting-cong-state
+     ((*top-dp-state* *dp-state*)
+      (*top-alists* *alists*))
+     ;(break "0")
+     (cond (rewrite-flag
+	    (multiple-value-bind (sig newbodypart)
+		(if (or (iff-expr? body)(equality? body))
+		    (if (eq rewrite-flag 'RL)
+			(assert-if (args1 body))
+			(assert-if (args2 body)))
+		    (values 'X body))
+	      (if (eq sig 'X)
+		  (if (or (and sign (tc-eq fmla *false*))
+			  (and (not sign)(tc-eq body *true*)))
+		      (values '? nil)
+		      (values 'X sform))
+		  (let ((newbody
+			 (copy body
+			   'argument
+			   (make-arg-tuple-expr
 			    (if (eq rewrite-flag 'RL)
 				(list newbodypart (args2 body))
 				(list (args1 body) newbodypart))))))
-		   (values '? (copy sform
-				'formula
-				(if sign newbody
-				    (copy fmla
-				      'argument
-				      newbody))))))))
-	  (simplifiable?		;(connective-occurs? body)
-	   (multiple-value-bind (sig newfmla)
-	           ;;NSH(7.27.96): I've been going back and forth
-	           ;;on  assert-if-inside vs. assert-if here.
-	           ;;assert-if fails because for an enum type
-	           ;;red?(expr) triggers check-all-recognizers
-	           ;;which causes self-simplification.  I don't
-	           ;;recall when assert-if-inside misbehaves.
-	       (if (if sign (application? fmla)
-		       (application? (args1 fmla)))
-		   (assert-if-inside fmla) 
-		   (assert-if fmla))
-	     (cond ((eq sig 'X)
-		    (if (or (and sign (tc-eq fmla *false*))
-			    (and (not sign)(tc-eq body *true*)))
-			(values '? nil)
-			(values 'X sform)))
-		   ((and (not (eq *assert-flag* 'simplify))
-			 (not (connective-occurs? newfmla)))
-		    (process-sform sform newfmla sig))
-;		    (let ((newsform (copy sform 'formula newfmla)))	
-;		      (multiple-value-bind
-;			  (sig2 sform2)
-;			  (assert-sform newsform)
-;			(if (eq sig2 'X)
-;			    (values '? newsform)
-;			    (values '? sform2))))
-		   (t (values '? (copy sform 'formula newfmla))))))
-	  (t (multiple-value-bind (sig newfmla)
-		 (assert-if-inside fmla)
-	       (if (memq *assert-flag* '(simplify rewrite))
-		   (values sig (if (eq sig '?) (copy sform
-						 'formula newfmla)
-				   sform))
-		   (process-sform sform
-				  (if (eq sig '?) newfmla fmla)
-				  sig)))))))
+		    (values '? (copy sform
+				 'formula
+				 (if sign newbody
+				     (copy fmla
+				       'argument
+				       newbody))))))))
+	   (simplifiable?		;(connective-occurs? body)
+	    (multiple-value-bind (sig newfmla)
+		(assert-if fmla);;NSH(5.1.96) was assert-if-inside
+	      (cond ((eq sig 'X)
+		     (if (or (and sign (tc-eq fmla *false*))
+			     (and (not sign)(tc-eq body *true*)))
+			 (values '? nil)
+			 (values 'X sform)))
+		    ((and (not (eq *assert-flag* 'simplify))
+			  (not (connective-occurs? newfmla)))
+		     (process-sform sform newfmla sig))
+		    (t (values '? (copy sform 'formula newfmla))))))
+	   (t ;(break "1")
+	      (multiple-value-bind (sig newfmla)
+		  (assert-if-inside fmla)
+		;(break "2")
+		(if (memq *assert-flag* '(simplify rewrite))
+		    (values sig (if (eq sig '?) (copy sform
+						  'formula newfmla)
+				    sform))
+		    (process-sform sform
+				   (if (eq sig '?) newfmla fmla)
+				   sig))))))))
 
 (defun process-sform (sform newfmla sig)
+  ;(when (connective-occurs? newfmla)(break))
   (let* ((*bindings* nil)
-	 (transformula (top-translate-to-prove
-			(negate
-			 newfmla)))
-	 (result (catch 'context (call-process transformula))))
+	 (result (call-process (negate newfmla) *dp-state* *alists*)))
+    ;(break "cp")
     (if (consp result)
 	(loop for x in result do (push x *process-output*)))
-    (if (eq result 'FALSE)
+    (if (false-p result)
 	(values '! sform)
 	(if (eq sig '?)
 	    (let ((new-sform (copy sform
 			       'formula newfmla)))
 	      (values '? new-sform))
-	    (if (and (eq findalist
-			 *top-findalist*)
-		     (eq usealist
-			 *top-usealist*)
-		     (eq sigalist
-			 *top-sigalist*))
-		(values 'X sform) 
-		(values '? sform))))))
+	     ;;;***Need a flag to check if *top-dp-state* was changed,
+	     ;;;namely, is the new stuff essentially empty.  
+	    (if (dp-changed *top-dp-state* *dp-state* *top-alists* *alists*)
+		(values '? sform) 
+		(values 'X sform))))))
+
+(defun dp-changed (old-dpstate new-dpstate old-alists new-alists)
+  (let ((new-changed (and *new-ground?*
+			  (dp::dp-changed old-dpstate new-dpstate)))
+	(old-changed (and *old-ground?*
+			  (alists-changed old-alists new-alists))))
+    (assert (or (not *break-on-ground-diff*)
+		(not (and *new-ground?* *old-ground?*))
+		(eq new-changed old-changed))
+	    (*break-on-ground-diff*))
+    (if *new-ground?*
+	new-changed
+	old-changed)))
+
+(defun top-translate-to-dc (expr)
+  (let ((*newdc* t))
+    (top-translate-to-prove expr)))
+
+(defun top-translate-to-old-prove (expr)
+  (let ((*newdc* nil))
+    (top-translate-to-prove expr)))
+
+(defun translate-from-dc (expr)
+  (cond
+   ((eq expr dp::*true*) *true*)
+   ((eq expr dp::*false*) *false*)
+   (t expr)))
+
+(defun translate-from-prove (expr)
+  (cond
+   ((eq expr 'true) 'true)
+   ((eq expr 'false) 'false)
+   (t expr)))
+
+(defun translate-from-prove-list (list)
+  (if (listp list)
+      (mapcar #'translate-from-prove list)
+      (translate-from-prove list)))
+
+(defun init-cong-state ()
+  (when *new-ground?* (dp::null-single-cong-state)))
+
+(defun new-cs (old-cs)
+  (when *new-ground?*
+    (dp::push-new-cong-state old-cs)))
+
+(defun restore-old-cs (new-cs)
+  (when *new-ground?*
+    (dp::npop-cong-state new-cs)))
+
+(defun init-dp (&optional strong)
+  (when *new-ground?*
+    (dp::init-dp-0 strong)))
+
+(defun compatible-dp-results (new-result old-result)
+  (or (tc-eq new-result old-result)
+      (and (eq new-result dp::*true*) (eq old-result TRUE))
+      (and (eq new-result dp::*false*) (eq old-result FALSE))
+      (and (or (listp old-result)
+	       (typep old-result 'syntax))
+	   (null new-result))))
+
+(defun compatible-dp-results (new-result old-result)
+  (or (tc-eq new-result old-result)
+      (and (true-p new-result) (true-p old-result))
+      (and (true-p new-result) (null old-result))
+      (and (false-p new-result) (false-p old-result))
+      (and 
+	   (or (listp old-result)
+	       (and (not (or (true-p old-result)
+			     (false-p old-result)))
+		    (typep old-result 'syntax)))
+	   (null new-result))))
+
+(defvar *init-dp-state*
+  (when nil
+    (init-cong-state)))
+
+(defun init-dc (&optional strong)
+  (init-dp strong)
+  (dp::return-all-cong-states dp::*made-cong-states*)
+  (setq *init-dp-state* (init-cong-state))
+  (reset-translate-from-dc)
+  (reset-translate-to-dc))
+
+(defun dp::restore ()
+  (in-package pvs)
+  (restore))
+
+(defun alists-changed (old-alists new-alists)
+  (not (and (eq (dpinfo-usealist old-alists)
+		(dpinfo-usealist new-alists))
+	    (eq (dpinfo-findalist old-alists)
+		(dpinfo-findalist new-alists))
+	    (eq (dpinfo-sigalist old-alists)
+		(dpinfo-sigalist new-alists)))))
 
 (defmethod quant-occurs? ((expr projection-application))
   (with-slots (argument) expr
@@ -443,29 +559,38 @@
   ;(connective-occurs? (expression expr))
   )
 
+(defmethod connective-occurs? ;;NSH(5.13.97) needed for updates
+    ;;or the translations get HUGE.
+    ((expr update-expr))
+  T)
+
 (defmethod connective-occurs? ((expr expr))
   NIL)
 
 (defun cond-assert-if (expr &optional conditions)
   (if (number-expr? expr)  ;;NSH(4.7.96)
       (values 'X expr)
-      (let ((sigalist sigalist)
-	    (usealist usealist)
-	    (findalist findalist)
-	    (*rewrite-hash* (if *hash-rewrites?*
+      (nprotecting-cong-state   ;;;changed from LET on alists
+       ((*dp-state* *dp-state*)
+	(*alists* *alists*))
+      (let ((*rewrite-hash* (if *hash-rewrites?*
 				(copy *rewrite-hash*)
 				*rewrite-hash*))
-	    ;;(typealist typealist) ;;NSH(2.16.94)
 	    (conditions (if (not (listp conditions))
 			    (list conditions)
 			    conditions))
 	    )
 	(loop for condition
-	      in conditions
-	      ;;when (not (connective-occurs? condition))
+	      in conditions  ;;NSH(5.18.97):restored check to catch
+	                    ;;nested updates.
+	      when (and (not (false-p condition)) ;;; DAC: condition
+			;;;should never be false
+			(not (check-for-connectives? condition)))
 	      do (let ((translation (top-translate-to-prove condition)))
-		   (catch 'context (call-process translation))))
-	(assert-if expr))))
+		   (call-process translation *dp-state* *alists*)))
+	;;    (format T "~%  Simplifying ~a under conditions ~{~a, ~}"
+	;;	       expr conditions);;NSH(10.10.94)omitting for now.
+	(assert-if expr)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;assert-if-inside rewrites only inside the expression but leaves
@@ -529,7 +654,7 @@
 			  (sig val)
 			  (assert-if (substit (expression newop)
 				       (pvs-pairlis (bindings newop)
-						    (argument* newargs))))
+						    (argument-list newargs))))
 			(values '? val)))
 		     ((and (is-predicate? newop)
 			   (adt? (find-supertype
@@ -546,14 +671,13 @@
 				  sig)))))
 		     ((and sign
 			   (is-predicate? newop)
-			   (or (judgement-types newargs)
-			       (typep (type newargs) 'subtype))
-			   (member newop
-				   (type-constraints
-				    (cons (type newargs)
-					  (judgement-types newargs))
-				    T)
-				   :test #'tc-eq));;(break)
+			   (let* ((atype (type newargs))
+				  (jtypes (judgement-types newargs))
+				  (stypes (cons atype jtypes)))
+			     (when stypes
+			       (member newop
+				       (type-constraints stypes t)
+				       :test #'tc-eq))));;(break)
 		      (values '? *true*))
 		     (t
 		      (multiple-value-bind (newsig newval)
@@ -578,9 +702,7 @@
 		      (type arg)))
 	always
 	(or (tc-eq rec recog)
-	    (equal (assert-test
-		     (make-application rec
-			       arg))
+	    (equal (assert-test (make!-application rec arg))
 		   'FALSE))))
 
 ;(defun check-other-recognizers (recog arg)
@@ -621,27 +743,30 @@
 	(loop for rec in recs
 	      collect
 	      (if (tc-eq-ops (recognizer constructor) rec)
-		  (cons rec 'TRUE)
-		  (cons rec 'FALSE)))	     
+		  (cons rec *TRUE*)
+		  (cons rec *FALSE*)))	     
 	(loop for rec in recs
 	      collect
-	      (cons rec (assert-test (make-application rec arg)))))))
+	      (cons rec (assert-test (make!-application rec arg)))))))
 
 
 (defun check-rest-recognizers (rec all-result &optional indirect)
   (cond ((null all-result) 'RESTFALSE)
         ((same-id rec (caar all-result))
-         (if (and (memq (cdar all-result) '(TRUE FALSE))
+         (if (and (or (true-p (cdar all-result))
+		      (false-p (cdar all-result)))
 		  (null indirect))
              (cdar all-result)
              (check-rest-recognizers rec (cdr all-result) indirect)))
-        (t (if (eq (cdar all-result) 'TRUE)
-                'FALSE
+        (t (if (true-p (cdar all-result))
+                *FALSE*
                (let ((rest (check-rest-recognizers rec (cdr all-result)
 						   indirect))) 
-                  (cond ((memq rest '(TRUE FALSE)) rest)
+                  (cond ((or (true-p rest)
+			     (false-p rest))
+			 rest)
                         ((eq rest 'RESTFALSE)
-                         (if (eq (cdar all-result) 'FALSE)
+                         (if (false-p (cdar all-result))
                              'RESTFALSE
                              nil))
                         (t nil)))))))
@@ -649,7 +774,7 @@
 (defun check-some-recognizer (rec all-result &optional indirect) ;;;all-result comes from
 					      ;;;check-all-recognizers
     (let ((rest (check-rest-recognizers rec all-result indirect)))
-       (if (eq rest 'RESTFALSE) 'TRUE
+       (if (eq rest 'RESTFALSE) *TRUE*
            rest)))
 
 
@@ -675,51 +800,108 @@
 (defmethod simplify-nested-updates
     ((expr record-expr) outer-assignments update-expr)
   (with-slots (assignments) expr
-    (let* ((new-assignments
-	   (loop for assign in assignments
-		 collect
-		 (let ((outer-assign
-			 (find (arguments assign) outer-assignments
-				:test #'tc-eq
-				:key #'arguments)))
-		   (if outer-assign outer-assign assign))))
-	  (new-assignments
-	   (if (equal assignments new-assignments)
-	       assignments
-	       new-assignments))
-	  (new-expr (lcopy expr 'assignments new-assignments))
-	  (new-outer-assignments
-	   (loop for assign in outer-assignments
-		 when (not (member (arguments assign) assignments
-				   :test #'tc-eq
-				   :key #'arguments))
-		 collect assign))
-	  (new-outer-assignments
-	   (if (equal outer-assignments new-outer-assignments)
-	       outer-assignments
-	       new-outer-assignments)))
-      (if (null new-outer-assignments)
+    (let* ((new-expr-assigns
+	      (loop for assign in assignments
+		    collect (make-updated-assign assign outer-assignments)))
+	   (new-outer-assigns
+	    (collect-new-outer-assigns assignments
+				       outer-assignments))
+	   (outer-to-inner-assigns
+	    (loop for assign in new-outer-assigns
+		  when (singleton? (arguments assign))
+		  collect assign))
+	   (outer-outer-assigns
+	    (loop for assign in new-outer-assigns
+		  when (not (singleton? (arguments assign)))
+		  collect assign))
+	  (new-expr (if (and (equal new-expr-assigns assignments)
+			     (null outer-to-inner-assigns))
+			expr
+			(lcopy expr 'assignments
+			       (nconc new-expr-assigns
+				      outer-to-inner-assigns)))))
+      (if (null outer-outer-assigns)
 	  new-expr
-	  (lcopy update-expr
-	    'expression new-expr
-	    'assignments new-outer-assignments)))))
+	  (if (equal outer-outer-assigns outer-assignments)
+	      (lcopy update-expr 'expression new-expr)
+	      (lcopy update-expr
+		'expression new-expr
+		'assignments new-outer-assignments))))))
 
 (defmethod simplify-nested-updates
     ((expr update-expr) outer-assignments update-expr)
   (with-slots (expression assignments)
       expr
-      (let* ((new-assignments
-              (loop for assign in assignments
-                    when (not (member (arguments assign)
-                                      outer-assignments
-                                      :test #'tc-eq
-                                      :key #'arguments))
-                    collect assign))
-             (new-merged-assignments
-              (nconc new-assignments
-                     outer-assignments)))
-        (lcopy expr
-          'assignments new-merged-assignments))))
+      (let* ((new-expr-assigns
+	      (loop for assign in assignments
+		    collect (make-updated-assign assign outer-assignments)))
+	     (new-outer-assigns
+	      (collect-new-outer-assigns assignments
+					 outer-assignments))
+	     (new-merged-assignments
+	      (nconc new-expr-assigns
+		     new-outer-assigns)))
+	(lcopy expr
+	  'assignments new-merged-assignments))))
+
+(defun make-updated-assign (assignment outer-assignment)
+  (with-slots (arguments expression) assignment
+    (lcopy assignment
+      'expression
+      (make-updated-assign-expr arguments expression outer-assignment nil))))
+
+;;checks if assign-args are reassigned in outer-assignments and
+;;returns the updated or overridden assign-expr.
+(defun make-updated-assign-expr (assign-args assign-expr outer-assignments
+					accum-assignments)
+  (if (consp outer-assignments)
+      (let* ((outer-args1 (arguments (car outer-assignments)))
+	     (outer-assgn1 (expression (car outer-assignments)))
+	     (match (match-update-args-prefix? assign-args outer-args1)))
+	(if match
+	    (make-updated-assign-expr assign-args assign-expr
+				 (cdr outer-assignments)
+				 (cons (cons match outer-assgn1)
+				       accum-assignments))
+	    (make-updated-assign-expr assign-args assign-expr
+				 (cdr outer-assignments)
+				 accum-assignments)))
+      (if accum-assignments
+	  (let ((final-override
+		 (some #'(lambda (x)(and (eq (car x) T) x)) accum-assignments))
+		)
+	    (if final-override
+		(cdr final-override)
+		(let* ((naccum-assignments (nreverse accum-assignments))
+		       (tc-naccum-assignments
+			(loop for (x . y) in naccum-assignments
+			      collect (make-assignment x y))))
+		  (simplify-nested-updates assign-expr tc-naccum-assignments
+					   (make-update-expr
+					    assign-expr tc-naccum-assignments)))))
+	  assign-expr)))
+
+(defun collect-new-outer-assigns (assignments outer-assignments)
+  (when (consp outer-assignments)
+      (if (member (arguments (car outer-assignments))
+		  assignments
+		  :test #'(lambda (x y)
+			    (match-update-args-prefix? y x))
+		  :key #'arguments)
+	  (collect-new-outer-assigns assignments
+				     (cdr outer-assignments))
+	  (cons (car outer-assignments)
+		(collect-new-outer-assigns assignments
+					   (cdr outer-assignments))))))
+
+;;checks if assignment lhs args1 is a prefix of lhs args2 and returns
+;;the remainder of args2.
+(defun match-update-args-prefix? (args1 args2)
+  (if (and (consp args1)
+	   (consp args2)
+	   (tc-eq (car args1)(car args2)))
+    (match-update-args-prefix? (cdr args1)(cdr args2))
+    (when (null args1) (if (null args2) T args2))))
 
 (defmethod simplify-nested-updates
     (expr outer-assignments update-expr)
@@ -738,24 +920,15 @@
     (collect-type-constraints-step expr typepreds)))
 
 (defun collect-type-constraints-step (ex &optional type-constraints)
-  (let* ((typepreds (collect-typepreds-with-judgements ex t)))
-    (loop for pred in typepreds
-	  nconc
-	  (let ((fmla (if (lambda? pred)
-			  (substit (expression pred)
-			    (pvs-pairlis
-			     (bindings pred) (list ex)))
-			  (make!-application (copy pred) ex *boolean*))))
-	    (remove-if #'(lambda (fm)
-			   (member fm type-constraints :test #'tc-eq))
-	      (and+ fmla))))))
+  (type-predicates ex))
 
 ;;NSH(7.11.94): old code triggered a loop since collect-type-constraints
 ;;calls substit which calls pseudo-normalize which calls
 ;;collect-type-constraints.  Probably should turn off collect-type-preds
 ;;for pseudo-normalize.
 (defun record-type-constraints (expr)
-  (unless *assert-typepreds-off*
+  (unless (or *assert-typepreds-off*
+	      (connective-occurs? expr))
     (let ((constraints (collect-type-constraints expr *assert-typepreds*)))
       (when (and *subtype-hash* constraints)
 	(setq *assert-typepreds* (nconc constraints *assert-typepreds*))
@@ -776,9 +949,9 @@
 	     (values 'X expr)
 	     (let ((result
 		    (assert-test expr)))
-	       (cond ((equal result 'TRUE)
+	       (cond ((true-p result)
 		      (values-assert-if '? *true* expr))
-		     ((equal result 'FALSE)
+		     ((false-p result)
 		      (values-assert-if '? *false* expr))
 		     (t (do-auto-rewrite expr 'X))))))
 	((and (not (memq *assert-flag* '(record simplify)))
@@ -1063,14 +1236,14 @@
                            (check-some-recognizer
                              (recognizer (constructor sel))
                              all-result)))
-                      (when (eq check 'TRUE) sel)))));;(break "cases")
+                      (when (true-p check) sel)))));;(break "cases")
    (cond ((null select)
 	  (if (else-part case-expr)
 	      (if (loop for sel in selections
-			always (eq (check-some-recognizer
-				    (recognizer (constructor sel))
-				    all-result)
-				   'FALSE))
+			always (false-p
+				(check-some-recognizer
+				 (recognizer (constructor sel))
+				 all-result)))
 		  (assert-subgoal (else-part case-expr))
 		  (values 'X case-expr))
 	      (values 'X case-expr)))
@@ -1082,55 +1255,6 @@
                                              (arguments expression)))))
          (t (assert-subgoal (subst-accessors-in-selection expression
 							  select)))))) 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;(NSH(7-23-93)commenting assert-cases below out.  It is superseded
-;;by the one above.  
-;;(NSH:1/11/93) The else flag makes sure all the other cases are false.
-;(defun assert-cases (expression selections else-part else-flag)
-;  (if (null selections)
-;      (if (or (null else-part)(null else-flag))(values 'X nil)
-;	  (assert-subgoal else-part))
-;      (let* ((sel (car selections)))
-;	(if (and (typep expression 'name-expr)
-;		 (constructor? expression))
-;	    (if (eq (id expression)(id (constructor sel)))
-;		(assert-subgoal (expression sel))
-;		(assert-cases expression (cdr selections)
-;			      else-part else-flag))
-;	    (if (and (typep expression 'application)
-;		     (typep (operator expression) 'name-expr)
-;		     (constructor? (operator expression)))
-;		(if (eq (id (operator expression))
-;			(id (constructor sel)))
-;		    (assert-subgoal
-;		     (substit (expression sel)
-;		       (pvs-pairlis (args sel)
-;				(arguments expression))))
-;		    (assert-cases expression (cdr selections)
-;				  else-part else-flag))
-;		(let*
-;		    ((thinst (module-instance
-;			      (find-supertype (type expression))))
-;		     (rec (subst-mod-params
-;			   (recognizer (constructor sel))
-;			   thinst))
-;		     (cond (make-application rec expression)))
-;		  (multiple-value-bind (sig result)
-;		      (cond-assert-if cond)
-;		    (cond ((tc-eq result *true*)
-;			   (assert-subgoal
-;			    (subst-accessors-in-selection
-;			     expression sel)))
-;			  ((tc-eq result *false*)
-;			   (assert-cases expression
-;					   (cdr selections)
-;					   else-part
-;					   else-flag))
-;			  (t (assert-cases expression
-;					   (cdr selections)
-;					   else-part NIL))))))))))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;pvs-pairlis is careful to treat tuples as lists in pairing
 ;;formals and actuals. 
@@ -1293,9 +1417,9 @@
 				 (assert-equality equality (list uarg1 arg1) 'X)
 			     (assert-test newresult))
 			     ))))
-	(cond ((eq result 'TRUE)
+	(cond ((true-p result)
 	       (check-update-args (cdr update-args)(cdr args)))
-	      ((eq result 'FALSE) 'FALSE)
+	      ((false-p result) 'FALSE)
 	      (t 'NOIDEA)))))
 
 (defmethod assert-if ((expr tuple-expr))
@@ -1320,12 +1444,6 @@
   (with-slots (argument) expr
     (typep argument 'update-expr)))
 
-
-(defun make-update-expr (expression assignments &optional expected)
-  (typecheck (make-instance 'update-expr
-			    'expression expression
-			    'assignments assignments)
-	     :expected expected))
 
 (defun make-record-update-reduced-application (op arg)
   (let* ((new-application (make-field-application op arg)))
@@ -1496,7 +1614,7 @@
 
 (defun get-merged-sum (expr newargs)
   (let* ((nargs (if newargs
-		    (argument* newargs)
+		    (argument-list newargs)
 		    (arguments expr)))
 	 (lhs (car nargs))
 	 (rhs (cadr nargs))
@@ -1512,7 +1630,7 @@
 					     ;;addition/subtraction.
   (let* ((hashvalue (gethash expr *assert-if-arith-hash*))
 	 (msum (if hashvalue hashvalue
-		   (let* ((nargs (argument* newargs))
+		   (let* ((nargs (argument-list newargs))
 			  (lhs (car nargs))
 			  (rhs (cadr nargs))
 			  (lsums (addends lhs))
@@ -1594,10 +1712,13 @@
       nil))
 
 (defun make-sum (list type)
-  (make-sum* (sort list #'(lambda (x y)
-			    (arithord (top-translate-to-prove x)
-				       (top-translate-to-prove y))))
-	     type))
+  (if (connective-occurs? list)
+      (make-sum* list type)
+      (let ((*newdc* nil))
+	(make-sum* (sort list #'(lambda (x y)
+				  (arithord (top-translate-to-prove x)
+					    (top-translate-to-prove y))))
+		   type))))
 
 (defun make-sum* (list type)
   (cond ((null list) (make-number-expr 0))
@@ -1619,10 +1740,15 @@
   (typecheck (mk-difference x y) :expected type))
 
 (defun make-prod (list type)
-  (make-prod* (sort list #'(lambda (x y)
-			    (arithord (top-translate-to-prove x)
-				       (top-translate-to-prove y))))
-	     type))
+  (let ((*newdc* nil))
+    (make-prod* (sort list #'(lambda (x y)
+			       (arithord (top-translate-to-prove x)
+					 (top-translate-to-prove y))))
+		type)))
+
+(defun arith-ord-translate (x y)
+  (arithord (top-translate-to-prove x)
+	    (top-translate-to-prove y)))
 
 (defun make-prod* (list type)
   (cond ((null list) (make-number-expr 1))
@@ -1746,7 +1872,7 @@
 (defun assert-if-multiplication (expr newargs sig)
   (let* ((hashvalue (gethash expr *assert-if-arith-hash*))
 	 (prod (if hashvalue hashvalue
-		   (let* ((nargs (argument* newargs))
+		   (let* ((nargs (argument-list newargs))
 			  (lhs (car nargs))
 			  (rhs (cadr nargs))
 			  (type (compatible-type (type lhs)(type rhs))))
@@ -1814,23 +1940,22 @@
   (cancel-terms* lhs-terms rhs-terms NIL 'X))
 
 (defun cancel-terms* (lhs* rhs* lhs-accum sig)
-  (cond ((null lhs*)(values sig (nreverse lhs-accum)
-			    rhs*))
-	(t (let ((rhs-match
-		  (find (car lhs*) rhs*
-			:test #'(lambda (x y)
-				  (equal (assert-test (make-equality x y))
-					 'TRUE))
-			)))
-	     (if rhs-match
-		 (cancel-terms* (cdr lhs*)
-				  (remove rhs-match rhs*
-					  :count 1);;NSH(2.21.97) 
-				  lhs-accum '?)
-		 (cancel-terms* (cdr lhs*)
-				  rhs*
-				  (cons (car lhs*) lhs-accum)
-				  sig))))))
+  (if (null lhs*)
+      (values sig (nreverse lhs-accum) rhs*)
+      (let ((rhs-match
+	     (find (car lhs*) rhs*
+		   :test #'tc-eq)) ;#'(lambda (x y)
+				   ;(true-p (assert-test (make-equality x y))))
+	    )
+	(if rhs-match
+	    (cancel-terms* (cdr lhs*)
+			   (remove rhs-match rhs*
+				   :count 1);;NSH(2.21.97) 
+			   lhs-accum '?)
+	    (cancel-terms* (cdr lhs*)
+			   rhs*
+			   (cons (car lhs*) lhs-accum)
+			   sig)))))
       
 (defun assert-numeric-equality (expr sig)
   ;;NSH(12.1.94): assumes that equality has been simplified and
@@ -1860,7 +1985,7 @@
 	      (do-auto-rewrite expr sig))))))
 
 (defun assert-disequality (expr newargs sig)
-  (let* ((nargs (argument* newargs))
+  (let* ((nargs (argument-list newargs))
 	(equality (make-equation (car nargs)(cadr nargs))))
     (multiple-value-bind (sig newequality)
 	(assert-equality equality newargs sig)
@@ -1873,7 +1998,7 @@
 
 ;;NSH(10.21.94)
 (defun assert-equality (expr newargs sig)
-  (let ((nargs (argument* newargs)))
+  (let ((nargs (argument-list newargs)))
     (cond ((tc-eq (car nargs)(cadr nargs))
 	   (values '? *true*))
 ;;NSH(10.21.94): separated out since this shouldn't be
@@ -1961,7 +2086,7 @@
 	 (multiple-value-bind (sig val)
 	     (assert-if (substit (expression newop)
 			  (pairlis-args (bindings newop)
-					(argument* newargs))))
+					(argument-list newargs))))
 	   (values-assert-if '? val expr)))
 	((negation? expr)
 	 (if (tc-eq newargs *true*)
@@ -1972,7 +2097,7 @@
 		     (values '? (args1 newargs))
 		     (do-auto-rewrite expr sig)))))
 	((implication? expr)
-	 (let ((nargs (argument* newargs)))
+	 (let ((nargs (argument-list newargs)))
 	   (cond ((or (tc-eq (car nargs) *false*)
 		      (tc-eq (cadr nargs) *true*))
 		  (values '? *true*))
@@ -1982,7 +2107,7 @@
 		  (values '? (make-negation (car nargs))))
 		 (t (do-auto-rewrite expr sig)))))
 	((conjunction? expr)
-	 (let ((nargs (argument* newargs)))
+	 (let ((nargs (argument-list newargs)))
 	   (cond ((tc-eq (car nargs) *true*)
 		  (values '? (cadr nargs)))
 		 ((or (tc-eq (car nargs) *false*)
@@ -1992,7 +2117,7 @@
 		  (values '? (car nargs)))
 		 (t (do-auto-rewrite expr sig)))))
 	((disjunction? expr)
-	 (let ((nargs (argument* newargs)))
+	 (let ((nargs (argument-list newargs)))
 	   (cond ((or (tc-eq (car nargs) *true*)
 		      (tc-eq (cadr nargs) *true*))
 		  (values '? *true*))
@@ -2002,7 +2127,7 @@
 		  (values '? (car nargs)))
 		 (t (do-auto-rewrite expr sig)))))
 	((iff? expr)
-	 (let* ((nargs (argument* newargs))
+	 (let* ((nargs (argument-list newargs))
 		(left (car nargs))
 		(right (cadr nargs)))
 	   (cond ((tc-eq left *true*)
@@ -2036,12 +2161,13 @@
 	  (reduce-proj-application sig newarg index expr)
 	;;NSH(11.22.94)
 	(if (and (not (connective-occurs? newexpr))
-		     (tc-eq (find-supertype (type newexpr))
-			    *boolean*))
+		 ;;*boolean-context*
+		 (tc-eq (find-supertype (type newexpr))
+			*boolean*))
 		(let ((result (assert-test newexpr)));;NSH(11.18.94)
-		  (if (eq result 'FALSE)
+		  (if (false-p result)
 		      (values-assert-if '? *false* newexpr)
-		      (if (eq result 'TRUE)
+		      (if (true-p result)
 			  (values-assert-if '? *true* newexpr)
 			  (do-auto-rewrite newexpr
 					   sig))))
@@ -2129,11 +2255,12 @@
 	  (reduce-field-application sig newarg id expr)
 	(cond
 	 ((and (not (connective-occurs? newexpr))
+	       ;;*boolean-context*
 	       (tc-eq (find-supertype (type newexpr)) *boolean*))
 	  (let ((result (assert-test newexpr)));;NSH(11.18.94)
-	    (if (eq result 'FALSE)
+	    (if (false-p result)
 		(values-assert-if '? *false* newexpr)
-	      (if (eq result 'TRUE)
+	      (if (true-p result)
 		  (values-assert-if '? *true* newexpr)
 		(do-auto-rewrite newexpr
 				 newsig)))))
@@ -2232,14 +2359,12 @@
 			   (do-auto-rewrite expr
 					    sig)))))
 		((and (is-predicate? newop)
-		      (or (judgement-types newargs)
-			  (typep (type newargs) 'subtype))
-		      (member newop
-			      (type-constraints
-			       (or (judgement-types newargs)
-				   (type newargs))
-			       T)
-			      :test #'tc-eq));;(break)
+		      (let* ((atype (type newargs))
+			     (jtypes (judgement-types newargs))
+			     (stypes (cons atype jtypes)))
+			(member newop
+				(type-constraints stypes t)
+				:test #'tc-eq)));;(break)
 		 (values-assert-if '? *true* expr))
 		;;NSH(9.10.93) The case above is kept here so that assert-if-inside doesn't
 		;;remove something brought in by typepred.
@@ -2284,17 +2409,16 @@
 
 (defun do-auto-rewrite-memo* (expr op* decl sig hash-res)
   (let* (
-	 (hashed-result  (car hash-res))
-	 (hashed-alist  (cadr hash-res))
-	 (hashed-findalist (car hashed-alist))
-	 (hashed-usealist (cdr hashed-alist))
-	 (hashed-rewrites  (caddr hash-res))
-	 (hashed-rewrites!  (cadddr hash-res))
-	 (hashed-macros (nth 4 hash-res))) ;;(break "memo")
+	 (hashed-result  (nth 0 hash-res))
+	 (hashed-dp-state (nth 1 hash-res))
+	 (hashed-alists  (nth 2 hash-res))
+	 (hashed-rewrites  (nth 3 hash-res))
+	 (hashed-rewrites!  (nth 4 hash-res))
+	 (hashed-macros (nth 5 hash-res))) ;;(break "memo")
 	(progn
 	  (incf *rewrite-hits*)
-	  (if (and (eq findalist hashed-findalist);;if context unchanged since
-		   (eq usealist hashed-usealist)
+	  (if (and (not (dp-changed hashed-dp-state *dp-state*;;if context
+				    hashed-alists *alists*));;unchanged since
 		   (eq *auto-rewrites-names* hashed-rewrites);;hashing
 		   (eq *auto-rewrites!-names* hashed-rewrites!)
 		   (eq *macro-names* hashed-macros))
@@ -2325,11 +2449,11 @@
       (do-auto-rewrite-non-memo-then-hash* expr op* decl sig)
       (multiple-value-bind
 	  (topsig topexpr)
-	  (let ((findalist *top-findalist*)
-		(usealist *top-usealist*)
-		(sigalist *top-sigalist*)
-		(*rewrite-hash* *top-rewrite-hash*))
-	    (do-auto-rewrite-non-memo-then-hash* expr op* decl sig))
+	  (nprotecting-cong-state  ;;;changed from LET on alists
+	   ((*dp-state* *top-dp-state*)
+	    (*alists* *top-alists*))
+	   (let ((*rewrite-hash* *top-rewrite-hash*))
+	     (do-auto-rewrite-non-memo-then-hash* expr op* decl sig)))
 	(if (eq topsig 'X)
 	    (do-auto-rewrite-non-memo-then-hash* expr op* decl sig)
 	    (multiple-value-bind
@@ -2342,11 +2466,20 @@
 		       (values '? newexpr))))))))
 
 (defun set-rewrite-hash (expr result)
-  (setf (gethash expr *rewrite-hash*)
-	(list result (cons findalist usealist)
-	      *auto-rewrites-names*
-	      *auto-rewrites!-names*
-	      *macro-names*)))
+  (let ((hashed-dp-state
+	 (when *new-ground?*
+	   (dp::make-cong-state :stack nil :reverse nil
+				:used-assertions
+				(dp::cong-state-used-assertions *dp-state*))))
+	(hashed-alists
+	 (make-dpinfo (dpinfo-sigalist *alists*)
+		      (dpinfo-findalist *alists*)
+		      (dpinfo-usealist *alists*))))
+    (setf (gethash expr *rewrite-hash*)
+	  (list result hashed-dp-state hashed-alists;;(cons findalist usealist)
+		*auto-rewrites-names*
+		*auto-rewrites!-names*
+		*macro-names*))))
 
 (defun do-auto-rewrite-non-memo-then-hash* (expr op* decl sig)
       (multiple-value-bind (newsig newexpr)
@@ -2478,10 +2611,13 @@
 			  (values
 			   (loop for vars in (arguments* lhs)
 				 as args in (arguments* expr)
-				 nconc (pairlis-args vars args))
+				 nconc (pairlis-args
+					(mapcar #'declaration vars)
+					args))
 			   T)
 			  (if lhs
-			      (let ((*modsubst* modsubst))
+			      (let ((*modsubst* modsubst) ;;no tccs in match
+				    (*generate-tccs* 'NONE)) ;;NSH(11.24.98)
 				(values (match lhs expr nil nil)
 					*modsubst*))
 			      'fail))
@@ -2684,7 +2820,7 @@
 		  (assert-if-simplify (substit (condition expr) subst))))
 	   ;;check if assert-if-simplify is needed.  Why another assert-test
 	   ;;below.  
-	   (cond ((connective-occurs? newtest)
+	   (cond ((check-for-connectives? newtest)
 		  (if if-flag
 		      (values 'X expr);;expr is irrelevant
 		      (values '? (substit expr subst))) )
@@ -2711,7 +2847,7 @@
 	 (let ((newtest (assert-if-simplify (condition expr))))
 	   ;;check if assert-if-simplify is needed.  Why another assert-test
 	   ;;below.  
-	   (cond ((connective-occurs? newtest)
+	   (cond ((check-for-connectives? newtest)
 		  (values 'X expr))
 		 (t (let ((result newtest))  ;;instead of (assert-test newtest)
 		      (cond ((tc-eq result *true*)
@@ -2755,14 +2891,14 @@
 				    (check-some-recognizer
 				     (recognizer (constructor sel))
 				     all-result)))
-			       (when (eq check 'TRUE) sel)))))
+			       (when (true-p check) sel)))))
 	  (cond ((null select)
 		 (if (and else-part
 			  (loop for sel in selections
-				always (eq (check-some-recognizer
-					    (recognizer (constructor sel))
-					    all-result)
-					   'FALSE)))
+				always (false-p
+					(check-some-recognizer
+					 (recognizer (constructor sel))
+					 all-result))))
 		     (sig-lazy-assert-if-with-subst
 		      else-part '?  subst)
 		     (if  if-flag ;;NSH(2.27.97)
@@ -2836,6 +2972,18 @@
 	      (t (sig-lazy-assert-if (subst-accessors-in-selection expression
 							       select) '?)))))))
 
+(defmethod lazy-assert-if-with-subst ((expr application) subst &optional if-flag)
+  (with-slots ((op operator) (arg argument))
+      expr
+  (if (lambda? op)  ;;Don't bother simplifying within a lambda op.
+      (lazy-assert-if-with-subst
+       (expression (operator expr))
+       (append (pairlis-args (bindings op)
+			     (substit (argument* arg) subst))
+	       subst)
+       if-flag)
+      (call-next-method))))
+
 (defmethod lazy-assert-if-with-subst ((expr expr) subst &optional if-flag)
   (multiple-value-bind (sig result)
       (assert-if (substit expr subst))
@@ -2898,115 +3046,55 @@
 		     (values 'X expr)
 		     (values '? (cons newcar newcdr))))))))
 
-(defmethod assert-if ((expr binding-expr)) ;;(break "assert-if-binding")
+(defmethod assert-if ((expr binding-expr));;(break "assert-if-binding")
   (with-slots (bindings expression) expr
-  (let* (
-	 (*subtype-hash* (when *subtype-hash* (copy *subtype-hash*)))
-	 (*assert-typepreds-off* T) 
-	 (*bound-variables* (append bindings
-				    *bound-variables*))
-	 (*local-typealist* *local-typealist*);;shadowing
-	 (typepreds (loop for x in bindings
-			  nconc
-			  (let ((y (change-class (copy x) 'name-expr))
-				(*keep-unbound* *bound-variables*))
-			    ;;NSH(12.30.93)not sure if *keep-unbound* needs to
-			    ;;be set. 
-			    (setf (kind y) 'VARIABLE)
-			    (collect-type-constraints-step y))))
-	 ) ;;(break "binding")
-    (multiple-value-bind (sig newexpr)
-	(cond-assert-if expression typepreds)
-      (if (or (and (forall-expr? expr)
-		   (tc-eq newexpr *true*))
-	      (and (exists-expr? expr)
-		   (tc-eq newexpr *false*)))
-	  (values '? newexpr)
-	  (do-auto-rewrite (lcopy expr 'expression newexpr) sig))))))
+    (let* ((*subtype-hash* (when *subtype-hash* (copy *subtype-hash*)))
+	   (*assert-typepreds-off* T) 
+	   (*bound-variables* (append bindings
+				      *bound-variables*))
+	   (*local-typealist* *local-typealist*);;shadowing
+	   (typepreds (loop for x in bindings
+			    nconc
+			    (let ((y (change-class (copy x) 'name-expr))
+				  (*keep-unbound* *bound-variables*))
+			      ;;NSH(12.30.93)not sure if *keep-unbound* needs to
+			      ;;be set. 
+			      (setf (kind y) 'VARIABLE)
+			      (collect-type-constraints-step y))))
+	   );;(break "binding")
+      (multiple-value-bind (sig newexpr)
+	  (cond-assert-if expression typepreds)
+	(if (or (and (forall-expr? expr)
+		     (tc-eq newexpr *true*))
+		(and (exists-expr? expr)
+		     (tc-eq newexpr *false*)))
+	    (values '? newexpr)
+	    (do-auto-rewrite (lcopy expr 'expression newexpr) sig))))))
 
 (defmethod assert-if ((expr expr))
 	   (values 'X expr))
 
 ;;tests the value of a formula in the current dec. procedure alist.
 (defun assert-test (fmla)
-  (let* ((usealist usealist)
-	 (sigalist sigalist)
-	 (findalist findalist)
-	 (translation (top-translate-to-prove fmla)))
-    (when *pseudo-normalizing*
-      (mapc #'assert-typepreds *assert-typepreds*))
-    (catch 'context (call-process translation))))
+  (unless (check-for-connectives? fmla)
+    (nprotecting-cong-state  ;;changed from LET on alists
+     ((*dp-state* *dp-state*)
+      (*alists* *alists*))
+     (when *pseudo-normalizing*
+       (mapc #'assert-typepreds *assert-typepreds*))
+     (call-process fmla *dp-state* *alists*))))
 
 (defun assert-test0 (fmla)
-  (let* ((usealist nil)
-	 (sigalist nil)
-	 (findalist nil)
-	 (translation (top-translate-to-prove fmla))
-	 ;;(typealist typealist) ;;NSH(2.16.94)
-	 (result (catch 'context  (call-process translation))))
-    result))
-	  
-
-;(defun assert-rule (sformnums)
-;  (make-instance 'rule
-;		 'rule-part (assert-sformnums sformnums)
-;		 'rule-input `(assert ,sformnums)))
-
-
-
-
-
-;;(NSH:3-20-91) old form of assert; would only assert one formula.
-;(defun assert-rule-fun (sformnum)
-;  #'(lambda (ps)
-;       (let* ((goalsequent (current-goal ps))
-;	      (selected-sforms (select-seq (s-forms goalsequent)
-;					   (list sformnum)))
-;	      (sform (car selected-sforms))
-;	      (formula (formula sform)))
-;
-;	 (if (typep (formula sform) 'quant-expr)
-;	     (values 'X nil nil)
-;	   (do-assert formula ps))))) 
-;
-;(defun do-assert (formula ps)
-;  (let* ((alists (alists ps))
-;	 (sigalist (sigalist  alists))
-;	 (findalist (findalist  alists)) ;;(3-20-91):used to be
-;					 ;;*findalist*, etc.
-;	 (usealist (usealist alists))
-;	 (typealist (typealist alists))
-;	 (transformula (translate-to-prove
-;			formula))
-;	 (negformula (if (and (consp transformula)
-;			      (eq (car transformula) 'NOT))
-;			 (cadr transformula)
-;		       (list 'NOT transformula)))
-;	 (result (catch 'context (process negformula))))
-;    (if (eq result 'FALSE)
-;	(values '! nil (substitution ps))
-;      (values '? (list (current-goal ps)) (substitution ps)
-;	      (list 'alists
-;		    (make-instance 'dpinfo
-;				   'sigalist sigalist
-;				   'findalist findalist
-;				   'usealist usealist
-;				   'typealist typealist))))))
-;		 
-;	      
-;	      
-;
-;(defun assert-rule (sformnum)
-;  (make-instance 'rule
-;		 'rule-part (assert-rule-fun sformnum)))
-;
-;(addrule 'assert (sformnum) nil (assert-rule sformnum)
-; "(assert <formula-number>): Invokes the decision procedures on formula.")
+  (unless (check-for-connectives? fmla)
+    (nprotecting-cong-state
+     ((*dp-state* *init-dp-state*)
+      (*alists* *init-alists*))
+     (let ((result (call-process fmla *dp-state* *alists*)))
+       result))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;auto-rewriting
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 (defun auto-rewrite (names ps &optional force?)
   (loop for name in names
@@ -3211,12 +3299,6 @@ Free parameters in the LHS of rewrite must contain all theory formals."
 ;	((null (cddr fmlas))
 ;	 (car fmlas))
 ;	(t (select-from-fmlas (cdr fmlas)))
-
-(defmethod operator* ((expr application))
-  (operator* (operator expr)))
-
-(defmethod operator* ((expr expr))
-  expr)
 
 (defmethod auto-rewrite-hashname ((expr name-expr))
   expr)
@@ -3869,3 +3951,27 @@ chronological order are:~3%")
 	   (collect-auto-rewrites))
 	t t)
       (pvs-message "No current proof")))
+
+(defun lookup-subst-hash (expr alist hash)
+  (gethash (cons expr
+		 (pick-freevars-entries (freevars expr) alist))
+	   hash))
+
+(defun pick-freevars-entries (freevars alist)
+  (if (consp freevars)
+      (let ((entry (assoc (declaration (car freevars))
+			  alist
+			  :test #'same-declaration)))
+	(if entry
+	    (cons (cdr entry) (pick-freevars-entries (cdr freevars)
+						     alist))
+	    (pick-freevars-entries (cdr freevars)
+				   alist)))
+      NIL))
+
+(defun install-subst-hash (expr alist result hash)
+  (let* ((fv (freevars expr))
+	 (fv-subs (pick-freevars-entries fv alist)))
+    (setf (gethash (cons expr fv-subs) hash)
+	  result)
+    T))

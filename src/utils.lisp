@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre and N. Shankar
 ;; Created On      : Thu Dec  2 13:31:00 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Oct 30 19:14:36 1998
-;; Update Count    : 89
+;; Last Modified On: Thu Nov  5 14:25:48 1998
+;; Update Count    : 91
 ;; Status          : Beta test
 ;; 
 ;; HISTORY
@@ -803,7 +803,7 @@
     (add-formal-importings-to-context decl)
     (add-immediate-importings-to-context decl)
     (add-imported-assumings decl)
-    (mapc #'add-judgements-to-context prevdecls)
+    (mapc #'add-judgement-decl prevdecls)
     (mapc #'add-conversions-to-context prevdecls)
     (mapc #'(lambda (c)
 	      (push c (conversions *current-context*)))
@@ -867,41 +867,6 @@
 		    pdecls)))
       prevdecls))
 
-(defmethod add-judgements-to-context (decl)
-  )
-
-(defmethod add-judgements-to-context ((decl subtype-judgement))
-  (add-to-known-subtypes (subtype decl) (type decl)))
-
-(defmethod add-judgements-to-context ((decl number-judgement))
-  (add-to-alist (number (number decl))
-		decl
-		(judgements *current-context*)))
-
-(defmethod add-judgements-to-context ((decl named-judgement))
-  (let* ((ndecl (declaration (name decl)))
-	 (djudgements (assq ndecl
-			    (if (formals decl)
-				(application-judgements *current-context*)
-				(judgements *current-context*)))))
-    (unless (member decl (cdr djudgements) :test #'same-judgement-types)
-      (if (formals decl)
-	  (add-to-alist ndecl decl (application-judgements *current-context*))
-	  (add-to-alist ndecl decl (judgements *current-context*)))
-      (when (typep (find-supertype (type decl)) 'funtype)
-	(let* ((jtype (find-supertype (type decl)))
-	       (jdom (domain-types jtype))
-	       (ntype (name-judgement-result-type
-		       (find-supertype (type (resolution (name decl))))
-		       (formals decl)))
-	       (ndom (domain-types ntype)))
-	  (mapc #'add-to-known-subtypes jdom ndom))))))
-
-(defun name-judgement-result-type (type formals)
-  (if formals
-      (name-judgement-result-type (range (find-supertype type)) (cdr formals))
-      type))
-
 (defmethod add-conversions-to-context (decl)
   )
 
@@ -914,23 +879,32 @@
     (when (saved-context theory)
       (dolist (c (conversions (saved-context theory)))
 	(pushnew (copy-tree c) (conversions *current-context*) :test #'equal))
-      (dolist (elt (judgements (saved-context theory)))
-	(dolist (j (cdr elt))
-	  (add-to-alist (car elt) j (judgements *current-context*))))
-      (dolist (elt (application-judgements (saved-context theory)))
-	(dolist (j (cdr elt))
-	  (add-to-alist (car elt) j
-			(application-judgements *current-context*))))
+      (setf (judgements *current-context*)
+	    (copy-judgements (judgements (saved-context theory))))
       (setf (known-subtypes *current-context*)
 	    (copy-known-subtypes (known-subtypes (saved-context theory)))))))
+
+(defun make-new-context (theory)
+  (let ((pctx (or *prelude-library-context*
+		  *prelude-context*)))
+    (if pctx
+	(make-instance 'context
+	  'module theory
+	  'mod-name (mk-modname (id theory))
+	  'using (copy-tree (using pctx))
+	  'judgements (copy-judgements (judgements pctx))
+	  'known-subtypes (copy-tree (known-subtypes pctx))
+	  'conversions (copy-list (conversions pctx)))
+	(make-instance 'context
+	  'module theory
+	  'mod-name (mk-modname (id theory))))))
 
 (defmethod copy-context (context)
   (copy context
     'local-decls (copy (local-decls context))
     'local-proof-decls (make-hash-table :test #'eq)
     'using (copy-tree (using context))
-    'judgements (copy-list (judgements context))
-    'application-judgements (copy-list (application-judgements context))
+    'judgements (copy-judgements (judgements context))
     'conversions (copy-list (conversions context))
     'known-subtypes (copy-tree (known-subtypes context))))
     
@@ -1779,6 +1753,7 @@
 
 #+(or lucid allegro)
 (defmethod ppr (obj)
+  (format t "~&")
   (write obj :pretty t :level nil :length nil)
   nil)
 
@@ -1808,15 +1783,19 @@
       (id ref)
       (error "No id slot for <# ~a - ~a #>" (class-name (class-of ref)) ref)))
 
-(defmethod ref-to-id ((ref number-judgement))
-  (or (id ref)
-      (makesym "~r" (number (number ref)))))
-
 (defmethod ref-to-id ((ref subtype-judgement))
   (or (id ref)
       'subtype))
 
-(defmethod ref-to-id ((ref named-judgement))
+(defmethod ref-to-id ((ref number-judgement))
+  (or (id ref)
+      (makesym "~r" (number (number ref)))))
+
+(defmethod ref-to-id ((ref name-judgement))
+  (or (id ref)
+      (id (name ref))))
+
+(defmethod ref-to-id ((ref application-judgement))
   (or (id ref)
       (id (name ref))))
 
@@ -1839,9 +1818,15 @@
 	 else-part)
 	(t (let* ((sel (car selections))
 		  (thinst (module-instance (find-supertype (type expr))))
-		  (rec (subst-mod-params (recognizer (constructor sel))
-					 thinst))
-		  (cond (make-application rec expr))
+		  (cons-or-rec
+		   (if (args sel)
+		       (subst-mod-params (recognizer (constructor sel))
+					 thinst)
+		       (subst-mod-params (constructor sel)
+					 thinst)))
+		  (cond (if (args sel)
+			    (make-application cons-or-rec expr)
+			    (make-equation expr cons-or-rec)))
 		  (then ;(subst-mod-params
 			 (subst-accessors-in-selection expr sel)
 			 ;thinst)
@@ -2237,7 +2222,7 @@ space")
   (setq *pseudo-normalize-translate-id-hash* nil))
 
 (defun pseudo-normalize (expr)
-  (if (or *pseudo-normalizing* ; Don't allow recursion
+  (if (or *pseudo-normalizing*		; Don't allow recursion
 	  (not (fully-instantiated? expr)))
       expr
       (let* ((fvars (freevars expr))
@@ -2250,32 +2235,31 @@ space")
 		nexpr)
 	    (let* ((*pseudo-normalizing* t)
 		   (*generate-tccs* 'none)
-		   (sigalist  nil)
-		   (findalist nil)
-		   (usealist *init-usealist*)
-		   (*subtype-hash* (clrhash *pseudo-normalize-subtype-hash*))
-		   (*local-typealist* *local-typealist*)
 		   ;;(typealist primtypealist);;NSH(2.16.94)
 		   (*assert-flag* 'simplify)
-		   (*assert-typepreds* nil)
 		   (*process-output* nil)
 		   (*assert-if-arith-hash*
-		    (if *assert-if-arith-hash* ;;NSH(11.30.95) 
-			*assert-if-arith-hash* ;;not real shadowing
+		    (if *assert-if-arith-hash*;;NSH(11.30.95) 
+			*assert-if-arith-hash*;;not real shadowing
 			(make-hash-table :test #'eq))))
-	      (let ((result
-		     (if *in-checker*
-			 (assert-if-simplify expr)
-			 (let* ((*translate-id-hash*
-				 (clrhash
-				  *pseudo-normalize-translate-id-hash*))
-				(*translate-id-counter* nil)
-				(typealist typealist))
-			   (newcounter *translate-id-counter*)
-			   (assert-if-simplify expr)))))
-		(unless fvars
-		  (setf (gethash expr *pseudo-normalize-hash*) result))
-		result))))))
+	      (nprotecting-cong-state
+	       ((*dp-state* *init-dp-state*)
+		(*alists* *init-alists*))
+	       (let ((result (if *translate-id-counter*
+				 (assert-if-simplify expr)
+				 (let* ((*translate-id-hash*
+					 (clrhash
+					  *pseudo-normalize-translate-id-hash*))
+					(*translate-id-counter* nil)
+					(typealist typealist))
+				   (newcounter *translate-id-counter*)
+				   (assert-if-simplify expr)))))
+		 (when (and nil (not (tc-eq result expr)))
+		   (break "pseudo-norm changed expr"))
+		 (unless fvars
+		   (setf (gethash expr *pseudo-normalize-hash*)
+			 result))
+		 result)))))))
 
 
 (defmethod get-coercions ((res resolution))
@@ -2509,21 +2493,86 @@ space")
 
 (defmethod module ((db dep-binding)) nil)
 
+;;;
+
+(defmethod domain* ((te funtype) &optional domains)
+  (domain* (range te) (cons (domain te) domains)))
+
+(defmethod domain* ((te subtype) &optional domains)
+  (domain* (supertype te) domains))
+
+(defmethod domain* ((te dep-binding) &optional domains)
+  (domain* (type te) domains))
+
+(defmethod domain* ((te type-expr) &optional domains)
+  (nreverse domains))
+
+
+(defmethod range* ((te funtype))
+  (range* (range te)))
+
+(defmethod range* ((te subtype))
+  (let ((stype (find-supertype te)))
+    (if (typep stype 'funtype)
+	(range* stype)
+	te)))
+
+(defmethod range* ((te dep-binding))
+  (range* (type te)))
+
+(defmethod range* ((te type-expr))
+  te)
+
+;;; operator* returns the eventual operator of an application, or the
+;;;   expression itself if it is not an application.
+;;;   e.g., if e is f(1,2)(x)(a,b,c), then
+;;;   (operator* e)  ==>  f
+;;; arg* returns a list of the arguments of an application, or nil if it
+;;;   is not an application.  This will be a list of expressions.
+;;;   (arg* e) ==> ((1,2) x (a,b,c))
+;;; arguments returns a list of the arguments to an application.
+;;;   (arguments e) ==> (a b c)
+;;; arguments* returns a list of lists of arguments of an application.
+;;;   (arguments* e) ==> ((1 2) (x) (a b c))
+;;; argument-list returns a list of expressions.  For tuple-exprs, it pulls
+;;;   out the exprs, lists are simply returned, and for anything else it
+;;;   simply returns the singleton list of the expression.
+;;;   (argument-list e) ==> (f(1,2)(x)(a,b,c))
+
+(defmethod operator* ((expr application))
+  (operator* (operator expr)))
+
+(defmethod operator* ((expr expr))
+  expr)
+
+(defmethod argument* ((expr application) &optional args)
+  (argument* (operator expr) (cons (argument expr) args)))
+
+(defmethod argument* ((expr expr) &optional args)
+  args)
+
 (defmethod arguments ((expr projection-application))
-  (argument* (argument expr)))
+  (argument-list (argument expr)))
 
 (defmethod arguments ((expr application))
-  (argument* (argument expr)))
+  (argument-list (argument expr)))
 
-(defmethod argument* ((expr tuple-expr))
+(defmethod argument-list ((expr tuple-expr))
   (exprs expr))
 
-(defmethod argument* ((expr expr))
+(defmethod argument-list ((expr expr))
   (list expr))
 
-(defmethod argument* ((list list))
+(defmethod argument-list ((list list))
   (assert (every #'expr? list))
   list)
+
+(defmethod arguments* ((expr application) &optional accum)
+  (with-slots ((op operator)) expr
+    (arguments* op (cons (arguments expr) accum))))
+
+(defmethod arguments* ((expr expr) &optional accum)
+  accum)
 
 (defun modname-in-current-context? (modname)
   (let* ((th (get-theory modname))
@@ -2603,147 +2652,8 @@ space")
 (defmethod non-recursive-construction? ((ex expr))
   nil)
 
-(defvar *or-operator* nil)
-
-(defun make-or-operator ()
-  (let ((boolth (get-theory "booleans")))
-    (if (and *or-operator*
-	     (eq (module (declaration *or-operator*)) boolth))
-	*or-operator*
-	(setq *or-operator*
-	      (mk-name-expr 'or nil nil
-			    (make-resolution
-				(find-if #'(lambda (d)
-					     (eq (id d) 'or))
-				  (theory boolth))
-			      (mk-modname '|booleans|)
-			      (mk-funtype (list *boolean* *boolean*)
-					  *boolean*))
-			    'constant)))))
-
-(defvar *and-operator* nil)
-
-(defun make-and-operator ()
-  (let ((boolth (get-theory "booleans")))
-    (if (and *and-operator*
-	     (eq (module (declaration *and-operator*)) boolth))
-	*and-operator*
-	(setq *and-operator*
-	      (mk-name-expr 'and nil nil
-			    (make-resolution
-				(find-if #'(lambda (d)
-					     (eq (id d) 'and))
-				  (theory boolth))
-			      (mk-modname '|booleans|)
-			      (mk-funtype (list *boolean* *boolean*)
-					  *boolean*))
-			    'constant)))))
-
-(defvar *not-operator* nil)
-
-(defun make-not-operator ()
-  (let ((boolth (get-theory "booleans")))
-    (if (and *not-operator*
-	     (eq (module (declaration *not-operator*)) boolth))
-	*not-operator*
-	(setq *not-operator*
-	      (mk-name-expr 'not nil nil
-			    (make-resolution
-				(find-if #'(lambda (d)
-					     (eq (id d) 'not))
-				  (theory boolth))
-			      (mk-modname '|booleans|)
-			      (mk-funtype *boolean* *boolean*))
-			    'constant)))))
-
-(defvar *implies-operator* nil)
-
-(defun make-implies-operator ()
-  (let ((boolth (get-theory "booleans")))
-    (if (and *implies-operator*
-	     (eq (module (declaration *implies-operator*)) boolth))
-	*implies-operator*
-	(setq *implies-operator*
-	      (mk-name-expr 'implies nil nil
-			    (make-resolution
-				(find-if #'(lambda (d)
-					     (eq (id d) 'implies))
-				  (theory boolth))
-			      (mk-modname '|booleans|)
-			      (mk-funtype (list *boolean* *boolean*)
-					  *boolean*))
-			    'constant)))))
-
-(defun make-typechecked-negation (ex)
-  (make-instance 'unary-application
-    'operator (make-not-operator)
-    'argument ex
-    'type *boolean*))
-
-(defun make-typechecked-disjunction (e1 e2)
-  (let* ((booltup (mk-tupletype (list *boolean* *boolean*)))
-	 (arg (make-instance 'arg-tuple-expr
-		'exprs (list e1 e2)
-		'type booltup)))
-    (make-instance 'infix-application
-      'operator (make-or-operator)
-      'argument arg
-      'type *boolean*
-      'parens 0)))
-
-(defun make-typechecked-disjunction* (exprs)
-  (make-typechecked-disjunction*-aux (nreverse exprs) nil))
-
-(defun make-typechecked-disjunction*-aux (exprs conj)
-  (cond ((null exprs)
-	 (or conj *false*))
-	((null conj)
-	 (make-typechecked-disjunction*-aux (cdr exprs) (car exprs)))
-	(t (make-typechecked-disjunction*-aux
-	    (cdr exprs) (make-typechecked-disjunction (car exprs) conj)))))
-
-(defun make-typechecked-conjunction (e1 e2)
-  (let* ((booltup (mk-tupletype (list *boolean* *boolean*)))
-	 (arg (make-instance 'arg-tuple-expr
-		'exprs (list e1 e2)
-		'type booltup)))
-    (make-instance 'infix-application
-      'operator (make-and-operator)
-      'argument arg
-      'type *boolean*
-      'parens 0)))
-
-(defun make-typechecked-conjunction* (exprs)
-  (make-typechecked-conjunction*-aux (nreverse exprs) nil))
-
-(defun make-typechecked-conjunction*-aux (exprs conj)
-  (cond ((null exprs)
-	 (or conj *true*))
-	((null conj)
-	 (make-typechecked-conjunction*-aux (cdr exprs) (car exprs)))
-	(t (make-typechecked-conjunction*-aux
-	    (cdr exprs) (make-typechecked-conjunction (car exprs) conj)))))
-
-(defun make-typechecked-implication (e1 e2)
-  (let* ((booltup (mk-tupletype (list *boolean* *boolean*)))
-	 (arg (make-instance 'arg-tuple-expr
-		'exprs (list e1 e2)
-		'type booltup)))
-    (make-instance 'infix-application
-      'operator (make-implies-operator)
-      'argument arg
-      'type *boolean*
-      'parens 0)))
-
-(defun make-typechecked-forall-expr (bindings expr)
-  (assert (type expr))
-  (let ((fex (mk-forall-expr bindings expr)))
-    (setf (type fex) *boolean*)
-    fex))
-
 (defun make-negated-conjunction (e1 e2)
-  (make-typechecked-negation
-   (make-typechecked-conjunction e1 e2)))
+  (make!-negation (make!-conjunction e1 e2)))
 
 #+allegro
 (defvar *pvs-gc-count* 0)
@@ -2764,7 +2674,7 @@ space")
 		  (format t ";;; Finished GC~%")
 		  (setq *pvs-gc-count* 0)
 		  (setq *prevent-gc-recursion* nil)))))))
-#+allegro-v4.3
+#+(or allegro-v4.3 allegro-v5.0)
 (defun pvs-gc-after-hook (global-p to-new to-old eff to-be-allocated)
   (declare (ignore eff to-new to-be-allocated))
   (unless *prevent-gc-recursion*
@@ -2895,20 +2805,63 @@ space")
 (defmethod infix-op? ((id string))
   (memq (intern id) *infix-operators*))
 
-(defun lookup-hash (obj &rest hashtabs)
-  (lookup-hash* obj hashtabs))
+(defstruct (pvs-tables (:conc-name nil))
+  ;;(judgement-types-cache
+  ;; (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+  (subst-mod-params-cache
+   (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+  )
 
-(defun lookup-hash* (obj hashtabs)
-  (when hashtabs
-    (or (and (hash-table-p (car hashtabs))
-	     (gethash obj (car hashtabs)))
-	(lookup-hash* obj (cdr hashtabs)))))
+(defun reset-pvs-tables (table)
+  ;;(clrhash (judgement-types-cache table))
+  (clrhash (subst-mod-params-cache table))
+  )
 
-(defsetf lookup-hash (obj &rest hashtabs) (new)
-  `(setf-lookup-hash* ,obj ,new (list ,@hashtabs)))
+(defmacro lookup-table (obj table &key (test #'eq))
+  `(lookup-table* ,obj ,table *pvs-global-tables* ,test))
 
-(defun setf-lookup-hash* (obj new hashtabs)
-  (when hashtabs
-    (if (hash-table-p (car hashtabs))
-	(setf (gethash obj (car hashtabs)) new)
-	(setf-lookup-hash* obj new (cdr hashtabs)))))
+(defun lookup-table* (obj table tables test)
+  (when tables
+    (multiple-value-bind (value there?)
+	(lookup-table** obj (funcall table (car tables)) test)
+      (if there?
+	  (values value there?)
+	  (lookup-table* obj table (cdr tables) test)))))
+
+(defun lookup-table** (obj table test)
+  (if (hash-table-p table)
+      (gethash obj table)
+      (let ((pair (assoc obj table :test test)))
+	(values (cdr pair) (when pair t)))))
+
+(defsetf lookup-table (obj table &key (test #'eq)) (new)
+  `(setf-lookup-table* ,obj ,new ,table ,test))
+
+(defun setf-lookup-table* (obj new table test)
+  (let ((tbl (funcall table (car *pvs-global-tables*))))
+    (if (hash-table-p tbl)
+	(setf (gethash obj tbl) new)
+	(let ((pair (assoc obj tbl :test test)))
+	  (if pair
+	      (setf (cdr pair) new)
+	      (push (cons obj new)
+		    (table (car *pvs-global-tables*))))))))
+
+(defvar *dependent-type-substitutions*
+  (make-hash-table :test 'tc-eq :hash-function 'pvs-sxhash))
+
+(defmethod dep-substit ((list list) alist)
+  (let ((elt (cons list alist)))
+    (or (gethash elt *dependent-type-substitutions*)
+	(let ((nlist (substit list alist)))
+	  (mapc #'cache-dep-substitutions list nlist)
+	  (setf (gethash elt *dependent-type-substitutions*) nlist)))))
+
+(defun cache-dep-substitutions (old new)
+  (setf (gethash (cons old alist) *dependent-type-substitutions*) new))
+
+(defmethod dep-substit (obj alist)
+  (let ((elt (cons obj alist)))
+    (or (gethash elt *dependent-type-substitutions*)
+	(setf (gethash elt *dependent-type-substitutions*)
+	      (substit obj alist)))))

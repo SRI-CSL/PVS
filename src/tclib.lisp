@@ -18,9 +18,14 @@
 
 (defparameter *prelude-filename* "prelude.pvs")
 
+(defvar *typecheck-tables* (make-pvs-tables))
+(defvar *prover-tables* (make-pvs-tables))
+
 (defun load-prelude ()
   (setq sbrt::*disable-caching* t)
   (setq *pvs-context* nil)
+  (reset-pvs-tables *typecheck-tables*)
+  (setq *pvs-global-tables* (list *typecheck-tables*))
   (setq *prelude-names* nil
 	*boolean* nil
 	*number* nil
@@ -42,7 +47,9 @@
 	(mods (parse :file (format nil "~a/lib/~a"
 			     *pvs-path* *prelude-filename*))))
     (clear-theories t)
+    (setq *prelude-context* nil)
     (clrnumhash)
+    (reset-all-operators)
     (unwind-protect
 	(progn
 	  (set-working-directory (format nil "~a/lib/" *pvs-path*))
@@ -52,27 +59,44 @@
 	      (setf (status m) '(parsed))
 	      (setf (gethash (id m) *prelude*) m)
 	      (typecheck m)
-	      ;; No need to save prelude contexts
-;	      (when (typep m 'module)
-;		(setf (saved-context m) nil))
+	      (let* ((tot (car (tcc-info m)))
+		     (prv (cadr (tcc-info m)))
+		     (mat (caddr (tcc-info m)))
+		     (obl (- tot prv mat)))
+		(if (zerop tot)
+		    (format t "~%~a typechecked: No TCCs generated" (id m))
+		    (format t "~%~a typechecked: ~d TCC~:p, ~
+                               ~d proved, ~d subsumed, ~d unproved~
+                               ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
+		      (id m) tot prv mat obl
+		      (length (warnings m)) (length (info m)))))
+	      ;; No need to have saved-context set for prelude contexts
 	      (assert (typep m '(or datatype module)))
-	      (if (typep m 'datatype)
-		  (labels ((addp (mod)
-				 (when mod
-				   (assert (typep mod 'module))
-				   (push (list mod (mk-modname (id mod)))
-					 *prelude-names*))))
-		    (addp (adt-theory m))
-		    (addp (adt-map-theory m))
-		    (addp (adt-reduce-theory m)))
-		  (push (list m (mk-modname (id m))) *prelude-names*))
+	      (let ((imps (if (typep m 'datatype)
+			      (delete-if #'null
+				(mapcar #'(lambda (th)
+					    (when th
+					      (list th (mk-modname (id th)))))
+				  (list (adt-reduce-theory m)
+					(adt-map-theory m)
+					(adt-theory m))))
+			      (list (list m (mk-modname (id m)))))))
+		(setq *prelude-names* (append imps *prelude-names*))
+		(let* ((th (if (typep m 'datatype)
+			       (adt-theory m)
+			       m))
+		       (ctx (saved-context th)))
+		  (setq *prelude-context*
+			(copy ctx
+			  'using (append imps (using ctx))))))
 	      (when (eq (id m) '|booleans|)
-		(let ((*current-context* (context m)))
+		(let ((*current-context* (saved-context m)))
 		  (setq *true*
 			(typecheck* (mk-name-expr 'true) *boolean* nil nil))
 		  (setq *false*
 			(typecheck* (mk-name-expr 'false) *boolean* nil
 				    nil))))))
+	  (format t "~%Done typechecking the prelude; restoring the proofs")
 	  (restore-prelude-proofs))
       (setq *prelude-types* (list *boolean* *number* *real* *rational*
 				  *integer* *naturalnumber* *ordinal*))
@@ -98,7 +122,8 @@
 
 (defun prove-prelude (&optional retry?)
   (let ((theories (reverse (mapcar #'car *prelude-names*)))
-	(*loading-prelude* t))
+	(*loading-prelude* t)
+	(*proving-tcc* t))
     (prove-theories "prelude" theories retry?)
     (prelude-summary)))
 
@@ -222,14 +247,18 @@
 		   (car libr))
 		  (t (setf *library-alist* (delete libr *library-alist*))
 		     nil))))
-	(let ((lib (if (valid-pvs-id* rawlibname)
-		       (or (directory-p (merge-pathnames
-					 (string libname)
-					 (format nil "~a/lib/" *pvs-path*)))
-			   (merge-pathnames libname (working-directory)))
-		       (merge-pathnames (string libname)
-					(working-directory)))))
-	  (cond ((not (probe-file lib))
+	(multiple-value-bind (lib condition)
+	    (ignore-errors
+	      (if (valid-pvs-id* rawlibname)
+		  (or (directory-p (merge-pathnames
+				    (string libname)
+				    (format nil "~a/lib/" *pvs-path*)))
+		      (merge-pathnames libname (working-directory)))
+		  (merge-pathnames (string libname)
+				   (working-directory))))
+	  (cond (condition
+		 (values nil (format nil "~a" condition)))
+		((not (probe-file lib))
 		 (values nil "Library ~a does not exist"))
 		((not (probe-file (context-pathname lib)))
 		 (values nil "Library ~a does not have a PVS context"))

@@ -208,7 +208,7 @@ list of positive numbers" occurrence)
 	     (typep newoper 'lambda-expr))
 	(substit (expression newoper)
 	  (pairlis-args (bindings newoper)
-			(argument* newargs)))
+			(argument-list newargs)))
 	(let* ((stype (find-supertype (type newoper)))
 	       (nex (lcopy expr
 		      'operator newoper

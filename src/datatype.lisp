@@ -69,7 +69,7 @@ generated")
 					       :test #'eq :size 20)
 				'exporting (make-instance 'exporting
 					     'kind 'DEFAULT)))
-	    (*current-context* (context *current-theory*))
+	    (*current-context* (make-new-context *current-theory*))
 	    (*typechecking-module* t)
 	    (*tccs* nil)
 	    (*tccdecls* nil)

@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Tue Jan  4 23:17:39 1994
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Oct 29 22:49:54 1998
-;; Update Count    : 25
+;; Last Modified On: Thu Nov  5 15:11:36 1998
+;; Update Count    : 27
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -12,6 +12,54 @@
 
 (in-package 'pvs)
 
+(defmacro make-operator-name (opsym theory-id &optional (opname opsym)
+				    (first t))
+  (let ((operator (gensym))
+	(decl (gensym))
+	(res (gensym)))
+    `(let ((,operator nil))
+       (defun ,(intern (concatenate 'string (string opname) "-OPERATOR")) ()
+	 (or ,operator
+	     (let* ((,decl (find ',opsym (theory (get-theory ',theory-id))
+				 :key #'id
+				 ,@(unless first (list :from-end t))))
+		    (,res (make-instance 'resolution
+			    'declaration ,decl
+			    'module-instance (make-instance 'modname
+					       'id ',theory-id)
+			    'type (type ,decl))))
+	       (setq ,operator (make-instance 'name-expr
+				 'id ',opsym
+				 'resolutions (list ,res)
+				 'type (type ,decl)
+				 'kind 'constant)))))
+       (defun ,(intern (concatenate 'string
+			 "RESET-" (string opname) "-OPERATOR")) ()
+	 (setq ,operator nil)))))
+
+(make-operator-name not |booleans|)
+(make-operator-name and |booleans|)
+(make-operator-name or |booleans|)
+(make-operator-name implies |booleans|)
+(make-operator-name iff |booleans|)
+(make-operator-name + |reals| plus)
+(make-operator-name - |reals| difference)
+(make-operator-name - |reals| minus nil)
+(make-operator-name * |reals| times)
+(make-operator-name / |reals| divides)
+
+(defun reset-all-operators ()
+  (reset-not-operator)
+  (reset-and-operator)
+  (reset-or-operator)
+  (reset-implies-operator)
+  (reset-iff-operator)
+  (reset-plus-operator)
+  (reset-difference-operator)
+  (reset-minus-operator)
+  (reset-times-operator)
+  (reset-divides-operator))
+  
 ;;; This file provides make-class for the useful classes in classes.
 ;;; For each such class, it basically provides a nicer syntax to replace
 ;;; make-instance, along with a better interpretation of the arguments.
@@ -260,10 +308,6 @@
       (make-instance 'funtype 'domain domain 'range range)
       (make-instance class 'domain domain 'range range)))
   
-(defmethod mk-funtype ((domain judgement-resolution) range
-		       &optional (class 'funtype))
-  (mk-funtype (judgement-type domain) range class))
-
 (defun mk-predtype (type)
   (mk-funtype type *boolean*))
 
@@ -484,6 +528,18 @@
     'bindings (mk-bindings vars)
     'expression expr
     'parens 1))
+
+(defun mk-equation (lhs rhs)
+  (mk-application '= lhs rhs))
+
+(defun mk-update-expr (expr assignments)
+  (make-instance 'update-expr
+    'expression expr
+    'assignments assignments))
+
+(defun mk-update-expr-1 (expr index value)
+  (let ((assignment (mk-assignment 'uni `((,index)) value)))
+    (mk-update-expr expr (list assignment))))
 
 ;;; Note that an expected type is unnecessary; bind-decls always
 ;;; complain if they don't uniquely typecheck.
@@ -892,7 +948,7 @@
 	   (tc-eq (type ante) *boolean*)
 	   (type succ)
 	   (tc-eq (type succ) *boolean*))
-      (make-typechecked-implication ante succ)
+      (make!-implication ante succ)
       (let ((expr (mk-implication ante succ)))
 	(assert *current-context*)
 	(typecheck expr :expected *boolean*))))
@@ -911,7 +967,7 @@
 			       (tc-eq (type a) *boolean*)))
 		      args))
 	  (if (cdr args)
-	      (make-typechecked-conjunction* (copy-list args))
+	      (make!-conjunction* (copy-list args))
 	      (car args))
 	  (let ((expr (mk-conjunction args)))
 	    (assert *current-context*)
@@ -926,7 +982,7 @@
 			       (tc-eq (type a) *boolean*)))
 		      args))
 	  (if (cdr args)
-	      (make-typechecked-disjunction* (copy-list args))
+	      (make!-disjunction* (copy-list args))
 	      (car args))
 	  (let ((expr (mk-disjunction args)))
 	    (assert *current-context*)
@@ -938,7 +994,7 @@
 	   (tc-eq (type arg) *boolean*)
 	   (or (not (typep arg 'name-expr))
 	       (resolution arg)))
-      (make-typechecked-negation arg)
+      (make!-negation arg)
       (let* ((expr (mk-negation arg)))
 	(assert *current-context*)
 	(typecheck expr :expected *boolean*))))
@@ -991,11 +1047,6 @@
     'resolutions (when res (list res))
     'kind kind))
 
-(defmethod make-name-expr ((decl dep-binding))
-  (let* ((type (type decl))
-	 (res (make-resolution decl (mk-modname (id *current-theory*)) type)))
-    (mk-name-expr (id decl) nil nil res 'variable)))
-
 (defmethod make-name ((res resolution))
   (make-instance 'name
     'id (id (declaration res))
@@ -1032,7 +1083,10 @@
   (assert args)
   (assert (every #'(lambda (arg) (expr? arg)) args))
   (if (cdr args)
-      (make-instance 'arg-tuple-expr 'exprs args)
+      (make-instance 'arg-tuple-expr
+	'exprs args
+	'place (merge-places (place (car args))
+			     (place (car (last args)))))
       (car args)))
 
 (defun mk-arg-tuple-expr (&rest args)
@@ -1143,30 +1197,279 @@
 	  (mk-assignment nil args expression)
 	  (error "make-assignment bad arguments: must be expression, list of exprs, or list of list of exprs"))))
 
-(defun make!-update-expr (expression assignments &optional expected)
-  (let ((type (or expected (type expression))))
-    (make-instance 'update-expr
-      'expression expression
-      'assignments assignments
-      'type type
-      ;;'types (list type)
-      )))
+(defun make-update-expr (expression assignments &optional expected)
+  (typecheck (make-instance 'update-expr
+			    'expression expression
+			    'assignments assignments)
+	     :expected expected))
 
-(defun make!-application (op arg &optional type)
+
+;;; make!- forms assume that the provided expressions are fully
+;;; typechecked, and generate typed expressions accordingly.
+
+(defun make!-application (op arg)
+  (assert (type op))
   (let* ((appl (mk-application op arg))
-	 (atype (or type (range op))))
-    (setf (type appl) atype)
-    ;;(setf (types appl) (list atype))
+	 (ftype (find-supertype (type op)))
+	 (rtype (if (dep-binding? (domain ftype))
+		    (dep-substit (range ftype) (acons (domain ftype) arg nil))
+		    (range ftype))))
+    (setf (type appl) rtype)
     appl))
 
 (defun make!-number-expr (num)
-  (let ((nexpr (mk-number-expr num)))
-    (setf (type nexpr) *number*)
-    ;;(setf (types nexpr) (available-numeric-type num))
-    nexpr))
+  (assert (typep num '(integer 0 *)))
+  (make-instance 'number-expr
+    'number num
+    'type *number*))
+
+(defun make!-equation (lhs rhs)
+  (assert (and (type lhs) (type rhs)))
+  (assert (compatible? (type lhs) (type rhs)))
+  (let* ((type (find-supertype (type lhs)))
+	 (res (make-instance 'resolution
+		'declaration (equality-decl)
+		'module-instance (make-instance 'modname
+				   'id '|equalities|
+				   'actuals (list (mk-actual type)))
+		'type (mk-funtype (list type type) *boolean*)))
+	 (eqname (make-instance 'name-expr
+		   'id '=
+		   'type (type res)
+		   'resolutions (list res)
+		   'kind 'constant))
+	 (arg (make!-arg-tuple-expr lhs rhs)))
+    (make-instance 'infix-application
+      'operator eqname
+      'argument arg
+      'type *boolean*)))
+
+(defun make!-if-expr (cond then else)
+  (assert (and (type cond) (type then) (type else)))
+  (assert (tc-eq (type cond) *boolean*))
+  (assert (compatible? (type then) (type else)))
+  (let* ((stype (compatible-type (type then) (type else)))
+	 (ifoptype (make-instance 'funtype
+		     'domain (make-instance 'tupletype
+			       'types (list *boolean* stype stype))
+		     'range stype))
+	 (if-res (make-instance 'resolution
+		   'declaration (if-declaration)
+		   'module-instance (make-instance 'modname
+				      'id '|if_def|
+				      'actuals (list (mk-actual stype)))
+		   'type ifoptype))
+	 (if-name (make-instance 'name-expr
+		    'id 'if
+		    'type ifoptype
+		    'resolutions (list if-res)
+		    'kind 'constant))
+	 (if-args (make-instance 'arg-tuple-expr
+		    'exprs (list cond then else)
+		    'type (make-instance 'tupletype
+			    'types (list *boolean* (type then) (type else))))))
+    (make-instance 'if-expr
+      'operator if-name
+      'argument if-args)))
+
+(defun make!-arg-tuple-expr (&rest args)
+  (funcall #'make!-arg-tuple-expr* args))
+
+(defun make!-arg-tuple-expr* (args)
+  (assert (consp args))
+  (assert (every #'type args))
+  (if (cdr args)
+      (let ((ttype (mk-tupletype (mapcar #'type args))))
+	(make-instance 'arg-tuple-expr
+	  'exprs args
+	  'type ttype))
+      (car args)))
+
+(defun make!-tuple-expr (&rest exprs)
+  (apply #'make!-tuple-expr* exprs))
+
+(defun make!-tuple-expr* (exprs)
+  (assert (every #'type exprs))
+  (let ((tupex (mk-tuple-expr exprs))
+	(type (mk-tupletype (mapcar #'type exprs))))
+    (setf (type tupex) type)
+    tupex))
+
+(defun make!-projections (expr)
+  (assert (type expr))
+  (let ((tuptype (find-supertype (type expr))))
+    (assert (tupletype? tuptype))
+    (make-projections* (types tuptype) expr 1 nil)))
+
+(defun make!-projections* (types arg index projapps)
+  (assert (type arg))
+  (if (null types)
+      (nreverse projapps)
+      (let* ((cartype (if (typep (car types) 'dep-binding)
+			  (type (car types))
+			  (car types)))
+	     (projappl (make-instance 'projection-application
+			 'id (makesym "PROJ_~d" index)
+			 'index index
+			 'argument arg
+			 'type cartype))
+	     (cdrtypes (if (typep (car types) 'dep-binding)
+			   (substit (cdr types)
+			     (acons (car types) projappl nil))
+			   (cdr types))))
+	(make-projections* cdrtypes arg (1+ index) (cons projappl projapps)))))
+
+(defun make!-projection-application (index arg)
+  (assert (type arg))
+  (let* ((stype (find-supertype (type arg)))
+	 (projtype (make!-projection-type* (types stype) index 1 arg)))
+    (make-instance 'projection-application
+      'id (makesym "PROJ_~d" index)
+      'index index
+      'argument arg
+      'type projtype)))
+
+(defun make!-projection-type* (types index ctr arg)
+  (let* ((dep? (typep (car types) 'dep-binding))
+	 (cartype (if (typep (car types) 'dep-binding)
+		      (type (car types))
+		      (car types))))
+    (if (= index ctr)
+	cartype
+	(let* ((proj (make-instance 'projection-application
+		       'id (makesym "PROJ_~d" index)
+		       'index index
+		       'argument arg
+		       'type cartype))
+	       (cdrtypes (if dep?
+			     (dep-substit (cdr types)
+			       (acons (car types) proj nil))
+			     (cdr types))))
+	  (projection-type* cdrtypes index (1+ ctr) arg)))))
+
+(defun make!-field-application (field-name arg)
+  (assert (and (type arg) (typep (find-supertype (type arg)) 'recordtype)))
+  (let* ((fid (ref-to-id field-name))
+	 (ftype (make!-field-application-type fid (type arg) arg)))
+    (make-instance 'field-application
+      'id fid
+      'argument arg
+      'type ftype)))
+
+(defun make!-field-application-type (field-id type arg)
+  (let ((rtype (find-supertype type)))
+    (assert (typep rtype 'recordtype))
+    (if (dependent? rtype)
+	(make!-field-application-type* (fields rtype) field-id arg)
+	(type (find field-id (fields rtype) :test #'eq :key #'id)))))
+
+(defun make!-field-application-type* (fields field-id arg)
+  (assert fields)
+  (if (eq (id (car fields)) field-id)
+      (type (car fields))
+      (let* ((fapp (make-instance 'field-application
+		    'id (id (car fields))
+		    'argument arg
+		    'type (type (car fields))))
+	     (cdrfields (dep-substit (cdr fields)
+				     (acons (car fields) fapp nil))))
+	(field-application-type* cdrfields field-id arg))))
+
+(defun make!-update-expr (expression assignments)
+  (assert (type expression))
+  (assert (every #'(lambda (ass) (typep ass '(and assignment (not maplet))))
+		 assignments))
+  (make-instance 'update-expr
+    'expression expression
+    'assignments assignments
+    'type (type expression)))
+
+
+;;; The following create special forms that are used frequently
 
 (defun make!-negation (ex)
+  (assert (and (type ex) (tc-eq (type ex) *boolean*)))
   (make-instance 'unary-application
-    'operator (make-not-operator)
+    'operator (not-operator)
     'argument ex
     'type *boolean*))
+
+(defun make!-conjunction (ex1 ex2)
+  (assert (and (type ex1) (type ex2)
+	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
+  (make-instance 'infix-application
+    'operator (and-operator)
+    'argument (make!-arg-tuple-expr ex1 ex2)
+    'type *boolean*))
+
+(defun make!-conjunction* (exprs &optional conj)
+  (cond ((null exprs)
+	 (or conj *true*))
+	((null conj)
+	 (make!-conjunction* (cdr exprs) (car exprs)))
+	(t (make!-conjunction*
+	    (cdr exprs)
+	    (make!-conjunction conj (car exprs))))))
+
+(defun make!-disjunction (ex1 ex2)
+  (assert (and (type ex1) (type ex2)
+	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
+  (make-instance 'infix-application
+    'operator (or-operator)
+    'argument (make!-arg-tuple-expr ex1 ex2)
+    'type *boolean*))
+
+(defun make!-disjunction* (exprs &optional disj)
+  (cond ((null exprs)
+	 (or disj *false*))
+	((null disj)
+	 (make!-disjunction* (cdr exprs) (car exprs)))
+	(t (make!-disjunction*
+	    (cdr exprs)
+	    (make!-disjunction disj (car exprs))))))
+
+(defun make!-implication (ex1 ex2)
+  (assert (and (type ex1) (type ex2)
+	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
+  (make-instance 'infix-application
+    'operator (implies-operator)
+    'argument (make!-arg-tuple-expr ex1 ex2)
+    'type *boolean*))
+
+(defun make!-iff (ex1 ex2)
+  (assert (and (type ex1) (type ex2)
+	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
+  (make-instance 'infix-application
+    'operator (iff-operator)
+    'argument (make!-arg-tuple-expr ex1 ex2)
+    'type *boolean*))
+
+(defun make!-minus (ex)
+  (assert (type ex))
+  (assert (tc-eq (find-supertype (type ex)) *number*))
+  (make-instance 'unary-application
+    'operator (minus-operator)
+    'argument ex
+    'type *real*))
+
+(defun make!-forall-expr (bindings expr)
+  (assert (and (type expr) (tc-eq (type expr) *boolean*)))
+  (make-instance 'forall-expr
+    'bindings bindings
+    'expression expr
+    'type *boolean*))
+
+(defun make!-exists-expr (bindings expr)
+  (assert (and (type expr) (tc-eq (type expr) *boolean*)))
+  (make-instance 'exists-expr
+    'bindings bindings
+    'expression expr
+    'type *boolean*))
+
+(defun make!-lambda-expr (bindings expr)
+  (assert (every #'type bindings))
+  (assert (type expr))
+  (make-instance 'lambda-expr
+    'bindings bindings
+    'expression expr
+    'type (make-formals-funtype (list bindings) (type expr))))

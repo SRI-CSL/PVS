@@ -104,9 +104,9 @@
     (cond ((variable? expr)
 	   (let* ((tfrees (freevars* type nil))
 		  (ufrees (fv-union tfrees frees)))
-	     (setf free-variables (cons expr tfrees))
+	     (setf free-variables (cons (copy expr) tfrees))
 	     (if (not (member expr ufrees :test #'same-declaration))
-		 (cons expr ufrees)
+		 (cons (copy expr) ufrees)
 		 ufrees)))
 	  (t (let ((afrees (freevars* (actuals (module-instance
 						(car resolutions)))

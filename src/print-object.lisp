@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec  2 13:42:15 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sat Oct 31 04:08:06 1998
-;; Update Count    : 11
+;; Last Modified On: Thu Nov  5 15:14:42 1998
+;; Update Count    : 12
 ;; Status          : Beta test
 ;; 
 ;; HISTORY
@@ -169,16 +169,17 @@ print object produces an error, and won't allow inspection of the object.")
 		  (or (type res) (type (declaration res)))
 		  (kind-of (declaration res))))))
 
-(defmethod print-object ((res judgement-resolution) stream)
-  (if *debugging-print-object*
+(defmethod print-object ((alists dpinfo) stream)
+  (if (or (not *print-expanded-dpinfo*) *debugging-print-object*)
       (call-next-method)
-      (format stream "#<Judgement-res ~a~@[[~{~a~^, ~}]~].~a:~a>"
-	      (and (module-instance res) (id (module-instance res)))
-	      (and (module-instance res) (actuals (module-instance res)))
-	      (id (declaration res))
-	      (judgement-type res))))
+      (format stream "<#dpinfo:~a>" (dpinfo-findalist alists))))
 
-#-allegro-v4.3
+;(defmethod print-object ((list cons) stream)
+;  (if *debugging-print-object*
+;      (call-next-method)
+;      (format stream "~&~@:<~{~d~^ ~:@_~}~:>" list)))
+
+#-(or allegro-v4.3 allegro-v5.0)
 (defmethod print-object ((ht ht) stream)
   (format stream "<pvs-hash-table with ~d element~:p>"
     (ht-num-elements ht)))

@@ -357,7 +357,7 @@
 ;				 #'tc-eq)
 ;			 (tc-eq (norm-addition lhs)(norm-addition instance))))
 		   ) ;;(when (not (eq (eq result 'TRUE) result2))(break "match :around"))
-	      (if  (eq result 'TRUE)  subst ;;NSH(4.10.97) was 'fail
+	      (if  (true-p result)  subst ;;NSH(4.10.97) was 'fail
 		  (multiple-value-bind
 		      (sig lhs-terms rhs-terms)
 		      (light-cancel-terms (addends lhs)
@@ -758,7 +758,8 @@
 		 (let ((diff
 		       (make-assert-expr
 			(make-difference instance (args1 lhs)
-					 (type (args2 lhs))))))
+					 (compatible-type (type instance)
+							  *integer*)))))
 		   (if diff
 		       (match* (args2 lhs) diff
 			      bind-alist subst)
@@ -766,7 +767,8 @@
 		 (if (number-expr? (args2 lhs))
 		     (let ((diff (make-assert-expr
 				  (make-difference instance (args2 lhs)
-						   (type (args1 lhs))))))
+						   (compatible-type (type instance)
+								    *integer*)))))
 		       (if diff (match* (args1 lhs) diff
 				       bind-alist subst)
 			   'fail))
@@ -782,43 +784,6 @@
 		     'fail)
 		 'fail)))
 	(t 'fail)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;NSH(4.28.94): commenting out old match(application,expr).
-;(defmethod match* ((lhs application)(instance expr) bind-alist subst)
-;    (cond ;((eq subst 'fail) 'fail)
-;	((and (tc-eq (find-supertype (type lhs)) *number*)
-;	      (tc-eq (find-supertype (type instance)) *number*))
-;	 (if (is-addition? lhs)
-;	     (if (number-expr? (args1 lhs))
-;		 (let ((diff
-;		       (make-assert-expr
-;			(make-difference instance (args1 lhs)
-;					 (type (args2 lhs))))))
-;		   (if diff
-;		       (match* (args2 lhs) diff
-;			      bind-alist subst)
-;		       'fail))
-;		 (if (number-expr? (args2 lhs))
-;		     (let ((diff (make-assert-expr
-;				  (make-difference instance (args2 lhs)
-;						   (type (args1 lhs))))))
-;		       (if diff (match* (args1 lhs) diff
-;				       bind-alist subst)
-;			   'fail))
-;		     'fail))
-;	     (if (is-subtraction? lhs)
-;		 (if (number-expr? (args2 lhs))
-;		     (let ((sum (make-assert-expr
-;				 (make-sum (list instance (args2 lhs))
-;					   (type (args1 lhs))))))
-;		       (if sum (match* (args1 lhs) sum
-;				      bind-alist subst)
-;			   'fail))
-;		     'fail)
-;		 'fail)))
-;	(t 'fail)))
-		 
     
 (defmethod match* ((lhs if-expr)(instance if-expr) bind-alist subst)
   (match* (else-part lhs)(else-part instance) bind-alist

@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec  2 19:01:35 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Tue Apr 14 12:44:55 1998
-;; Update Count    : 33
+;; Last Modified On: Thu Nov  5 17:41:07 1998
+;; Update Count    : 35
 ;; Status          : Beta test
 ;; 
 ;; HISTORY
@@ -19,8 +19,7 @@
 
 (defmethod typecheck ((m module) &key expected context tccs)
   (declare (ignore expected context tccs))
-  (let ((*generate-tccs* 'ALL)
-	(*in-typechecker* t))
+  (let ((*generate-tccs* 'ALL))
     (typecheck* m nil nil nil)))
 
 
@@ -34,8 +33,7 @@
   (assert context)
   (assert (memq tccs '(nil none all all! top)))
   (let ((*current-context* context)
-	(*generate-tccs* (if given tccs *generate-tccs*))
-	(*in-typechecker* t))
+	(*generate-tccs* (if given tccs *generate-tccs*)))
     (assert *generate-tccs*)
     (typecheck* obj expected nil nil))
   obj)
@@ -48,8 +46,7 @@
   (assert context)
   (assert (memq tccs '(nil none all all! top)))
   (let ((*current-context* context)
-	(*generate-tccs* (if given tccs *generate-tccs*))
-	(*in-typechecker* t))
+	(*generate-tccs* (if given tccs *generate-tccs*)))
     (typecheck* te expected 'type nil)))
 
 (defmethod typecheck ((ex expr) &key expected (context *current-context*)
@@ -58,8 +55,7 @@
   ;;(assert (or (not given) expected (type ex)))
   (assert (memq tccs '(nil none all all! top)))
   (let ((*current-context* context)
-	(*generate-tccs* (if given tccs *generate-tccs*))
-	(*in-typechecker* t))
+	(*generate-tccs* (if given tccs *generate-tccs*)))
     (assert *generate-tccs*)
     (cond ((type ex)
 	   (cond ((memq *generate-tccs* '(all all!))
@@ -72,6 +68,18 @@
 		 (when type
 		   (set-type ex type))))))
     ex))
+
+(defmethod typecheck :around (obj &key expected context tccs)
+   (prog1 (let ((*in-typechecker* t))
+	    (call-next-method))
+     (unless *in-typechecker*
+       (clrhash *expression-types*))))
+
+(defmethod types ((ex expr))
+  (gethash ex *expression-types*))
+
+(defmethod (setf types) (types (ex expr))
+  (setf (gethash ex *expression-types*) types))
 
 (defmethod get-unique-type ((ex name-expr))
   (if (singleton? (resolutions ex))
@@ -123,11 +131,7 @@
 	     (*tccs* nil)
 	     (*tccdecls* nil)
 	     (*tccforms* nil)
-	     (pres (append (copy-tree (prelude-libraries-uselist))
-			   (copy-tree *prelude-names*)))
-	     (context (mk-context m nil pres))
-	     (*current-context* context))
-	(mapc #'add-prelude-info-to-context (reverse *prelude-names*))
+	     (*current-context* (make-new-context m)))
 	(tcdebug "~%  Processing formals")
 	(typecheck-decls (formals m))
 	(set-dependent-formals (formals-sans-usings m))
@@ -145,8 +149,6 @@
 		       (when ndecls
 			 (setf (gethash id (declarations m)) ndecls))))
 		 (local-decls *current-context*))
-	;;(setf (judgements m) (judgements *current-context*))
-	;;(setf (conversions m) (conversions *current-context*))
 	(tcdebug "~%  Processing exporting")
 	(generate-xref m)
 	(assert (eq *current-theory* m))
@@ -421,65 +423,12 @@
 	    (mapcar #'(lambda (ety) (add-to-known-subtypes aty ety))
 		    etypes))))))
 
-(defun update-judgements-of-current-context (theory theoryname)
-  (dolist (judgement-entry (judgements (saved-context theory)))
-    (let ((cjudgements (cdr (assq (car judgement-entry)
-				  (judgements *current-context*)))))
-      (dolist (judgement (cdr judgement-entry))
-	(when (eq (module judgement) theory)
-	  (let ((substj (subst-params-decl judgement theoryname)))
-	    (unless (member substj cjudgements :test #'same-judgement-types)
-	      (add-to-alist (car judgement-entry) substj
-			    (judgements *current-context*))))))))
-  (dolist (judgement-entry (application-judgements (saved-context theory)))
-    (let ((cjudgements (cdr (assq (car judgement-entry)
-				  (application-judgements *current-context*)))))
-      (dolist (judgement (cdr judgement-entry))
-	(when (eq (module judgement) theory)
-	  (let ((substj (subst-params-decl judgement theoryname)))
-	    (unless (member substj cjudgements :test #'same-judgement-types)
-	      (add-to-alist (car judgement-entry) substj
-			    (application-judgements *current-context*)))))))))
-
 (defun update-conversions-of-current-context (theory theoryname)
   (dolist (conversion (conversions (saved-context theory)))
     (when (eq (module conversion) theory)
       (pushnew (subst-params-decl conversion theoryname)
 	       (conversions *current-context*)
 	       :test #'eq))))
-
-
-(defmethod subst-params-decl ((j judgement) modinst)
-  (let* ((gj (or (generated-by j) j))
-	 (nj (lcopy gj
-	      'declared-type (subst-mod-params (declared-type gj) modinst)
-	      'type (subst-mod-params (type gj) modinst))))
-    (unless (eq gj nj)
-      (setf (generated-by nj) gj))
-    nj))
-
-(defmethod subst-params-decl ((j named-judgement) modinst)
-  (let* ((gj (or (generated-by j) j))
-	 (nj (lcopy gj
-	       'declared-type (subst-mod-params (declared-type gj) modinst)
-	       'type (subst-mod-params (type gj) modinst)
-	       'name (subst-mod-params (name gj) modinst))))
-    (unless (eq gj nj)
-      (setf (generated-by nj) gj))
-    nj))
-
-(defmethod subst-params-decl ((j typed-judgement) modinst)
-  (let* ((gj (or (generated-by j) j))
-	 (nj (lcopy gj
-	       'declared-type (subst-mod-params (declared-type gj) modinst)
-	       'type (subst-mod-params (type gj) modinst)
-	       'name (subst-mod-params (name gj) modinst)
-	       'declared-name-type (subst-mod-params (declared-name-type gj)
-						     modinst))))
-    (unless (eq gj nj)
-      (setf (generated-by nj) gj))
-    nj))
-
 
 (defmethod subst-params-decl ((c conversion-decl) modinst)
   (lcopy c

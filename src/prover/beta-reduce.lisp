@@ -228,7 +228,8 @@
 
 (defmethod beta-reduce* ((expr field-application))
   (with-slots (id argument) expr
-    (let ((arg (beta-reduce* argument)))
+    (let* ((arg (beta-reduce* argument))
+	   (expr (lcopy expr 'argument arg)))
       (cond ((record-redex? expr)
 	     (beta-reduce*
 	      (expression
@@ -283,12 +284,12 @@
 		 ((lambda? oper)
 		  (beta-reduce* (substit (expression oper)
 					(pairlis-args (bindings oper)
-						      (arguments expr)))))
+						      (arguments newexpr)))))
 		 (t newexpr)))
 	  ((lambda? oper)
 	   (beta-reduce* (substit (expression oper)
 				 (pairlis-args (bindings oper)
-					  (arguments expr)))))
+					  (arguments newexpr)))))
 	  ((function-update-redex? newexpr)
 	   (simplify-function-update-redex newexpr T))
 	  ((and (typep oper 'name-expr)
@@ -303,7 +304,7 @@
 	  (t (if (lambda? oper)
 		 (beta-reduce* (substit (expression oper)
 				       (pairlis-args (bindings oper)
-						(arguments expr))))
+						(arguments newexpr))))
 		 newexpr)))))
 
 (defmethod beta-reduce* ((list list))

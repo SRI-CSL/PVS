@@ -38,16 +38,34 @@
 ;;; This also sets up the global variables typealist, and inserts
 ;;; subtype information.
 
-(defmethod translate-to-prove :around (obj)
-  (let ((hashed-value (gethash obj *translate-to-prove-hash*)))
-    (or hashed-value
-	(let ((result (call-next-method)))
-	  (unless (or *bound-variables* *bindings*)
-	    (setf (gethash obj *translate-to-prove-hash*) result))
-	  result))))
+;(defmethod translate-to-prove :around (obj)
+;  (let ((hashed-value (gethash obj *translate-to-prove-hash*)))
+;    (or hashed-value
+;	(let ((result (call-next-method)))
+;	  (unless (or *bound-variables* *bindings*)
+;	    (setf (gethash obj *translate-to-prove-hash*) result))
+;	  result))))
 
+(defmethod translate-to-prove :around ((obj name-expr))
+  (if (or *bound-variables* *bindings*)
+      (call-next-method)
+      (let ((hashed-value (gethash obj *translate-to-prove-hash*)))
+	(or hashed-value
+	    (let ((result (call-next-method)))
+	      (setf (gethash obj *translate-to-prove-hash*)
+		    result)
+	      result)))))
 
-
+(defmethod translate-to-prove :around ((obj binding-expr))
+	   (if (or *bound-variables* *bindings*)
+	       (call-next-method)
+	       (let ((hashed-value
+		      (gethash obj *translate-to-prove-hash*)))
+		 (or hashed-value
+		     (let ((result (call-next-method)))
+		       (setf (gethash obj *translate-to-prove-hash*)
+			     result)
+		       result)))))
 
 (defun conjunction (list)
   (if (cdr list)
@@ -89,8 +107,7 @@
 	     (position expr (constructors (find-supertype (type expr)))
 		       :test #'same-id)
 	     (let* ((norm-expr (normalize-name-expr-actuals expr))
-		    (id-hash (pvs-gethash norm-expr
-					  *translate-id-hash*))
+		    (id-hash (gethash norm-expr *translate-id-hash*))
 		    (newconst (or id-hash
 				  (when (tc-eq expr *true*) '(TRUE))
 				  (when (tc-eq expr *false*) '(FALSE))
@@ -101,7 +118,7 @@
 						   (funcall
 						    *translate-id-counter*))))))))
 	       (unless id-hash
-		 (setf (pvs-gethash norm-expr *translate-id-hash*)
+		 (setf (gethash norm-expr *translate-id-hash*)
 		       newconst)
 		 ;;(format t "~%adding ~a to typealist" (car newconst))
 		 (add-to-typealist (car newconst) expr))
@@ -254,52 +271,31 @@
 ;; op(a1), if dom(type(op)) = t1,...,tn ==> (op (tupsel 0 a1)...)
 
 (defmethod translate-to-prove ((expr application))
-  (with-slots (operator argument)
-      expr
-;    (if (field-application? expr)
-;	(let ((pos (position operator
-;			     (fields (find-supertype
-;				      (type argument)))
-;			     :test #'same-id)))
-;	  (list (make-apply-name (type operator))
-;		(translate-to-prove argument)
-;		pos))
-	(let* ((dom (domain-types (type operator)))
-	       (args (translate-args (arguments expr) dom)))
-	  (cond ((interpreted? operator)
-		 (let ((op (interpretation operator))
-		       ;(args (translate-to-prove arguments))
-		       )
-		   (cond ((and (eq op 'difference) (singleton? args))
-			  (cons 'minus args))
-			 ((eq op '/=)
-			  (list 'not (cons 'equal args)))
-			 ((and (eq op 'NOT)
-			       (consp (car args))
-			       (eq (caar args) 'NOT))
-			  (cadar args))
-			 (t (cons op args)))))
-;		((projection-expr? operator)
-;		 `(tupsel ,(1- (index operator))
-;			  ,(if (singleton? (arguments expr))
-;			       (car args)
-;			       `(tupcons ,@args))))
-		((and (or (not (typep operator 'name-expr))
-			  (not (typep (declaration operator) 'const-decl)))
-		      (or (function-non-functional? operator)
-			  ;;(skolem-application? expr)
-			  ))
-		 (add-to-typealist (id operator) operator (type expr))
-		 (cons (id operator)
-		       args))
-		(t (let ((op (translate-to-prove (lift-adt operator t))))
-		     (cons (make-apply-name (type operator))
-			   (cons (if (symbolp op)
-				     ;;(and (symbolp op) (not (skolem-name? op)))
-				     (list op) op)
-				 args))))))
-	;)
-	))
+  (with-slots (operator argument) expr
+    (let* ((dom (domain-types (type operator)))
+	   (args (translate-args (arguments expr) dom)))
+      (cond ((interpreted? operator)
+	     (let ((op (interpretation operator)))
+	       (cond ((and (eq op 'difference) (singleton? args))
+		      (cons 'minus args))
+		     ((eq op '/=)
+		      (list 'not (cons 'equal args)))
+		     ((and (eq op 'NOT)
+			   (consp (car args))
+			   (eq (caar args) 'NOT))
+		      (cadar args))
+		     (t (cons op args)))))
+	    ((and (or (not (typep operator 'name-expr))
+		      (not (typep (declaration operator) 'const-decl)))
+		  (function-non-functional? operator))
+	     (add-to-typealist (id operator) operator (type expr))
+	     (cons (id operator)
+		   args))
+	    (t (let ((op (translate-to-prove (lift-adt operator t))))
+		 (cons (make-apply-name (type operator))
+		       (cons (if (symbolp op)
+				 (list op) op)
+			     args))))))))
 
 (defmethod lift-adt ((ex constructor-name-expr) &optional op?)
   (if op?
@@ -344,7 +340,7 @@
 			 (eq (mod-id i)
 			     (id (module-instance n)))))))
 
-(defmethod interpretation ((expr name-expr))
+(defun interpretation (expr)
   (or (cdr (assoc (id expr) *interpretations*))
       (id expr)))
 
@@ -365,26 +361,36 @@
 (defun top-translate-to-prove (expr)
   (let ((*bindings* nil)
 	(*generate-tccs* 'NONE))
-    (cond ((and *integer*
-		(hash-table-p *translate-to-prove-hash*))
-	   (setq *integer-pred* (translate-to-prove (predicate *integer*)))
-	   (translate-to-prove (unit-derecognize expr)))
-	  (t (unwind-protect
-		 (let ((*translate-to-prove-hash*
-			*top-translate-to-prove-hash*))
-		   (unless *integer-pred*
-		     (setq *integer-pred*
-			   (when *integer*
-			     (translate-to-prove (predicate *integer*)))))
-		   (translate-to-prove (unit-derecognize expr)))
-	       (clrhash *top-translate-to-prove-hash*))))))
+    (cond ((hash-table-p *translate-to-prove-hash*)
+	   (when *integer*
+	     (setq *integer-pred* (translate-to-ground (predicate *integer*))))
+	   (when *rational*
+	     (setq *rational-pred*
+		   (translate-to-ground (predicate *rational*))))
+	   (when *real*
+	     (setq *real-pred* (translate-to-ground (predicate *real*))))
+	   (when *newdc*
+	     (setf (dp::node-initial-type *integer-pred*) 'dp::integer-pred)
+	     (setf (dp::node-initial-type *rational-pred*) 'dp::rational-pred)
+	     (setf (dp::node-initial-type *real-pred*) 'dp::real-pred))
+	   (translate-to-ground (unit-derecognize expr)))
+	  (t (translate-with-new-hash
+	       (unless *integer-pred*
+		 (setq *integer-pred*
+		       (when *integer*
+			 (translate-to-ground (predicate *integer*)))))
+	       (translate-to-ground (unit-derecognize expr)))))))
 
 (defmethod translate-to-prove ((expr binding-expr))
   (let* ((*bindings* (append (bindings expr) *bindings*))
 	 (binding-vars (mapcar #'make-variable-expr (bindings expr)))
 	 (type (type expr))
 	 (prtype (prover-type type))
-	 (tr-freevars (translate-to-prove binding-vars))
+	 (tr-bndvars (translate-to-prove binding-vars))
+	 ;;bound variables can't be ignored; subtyp constraints needed
+	 (tr-freevars (translate-to-prove (freevars expr)))
+	 ;;freevars of the expr are needed for connectives.
+	 (tr-vars (append tr-bndvars tr-freevars))
 	 (connective? (connective-occurs? (expression expr)))
 	 (tr-expr
 	  (if connective?
@@ -404,9 +410,9 @@
 		      (cond
 		       (*bindings*
 			(let* ((apname (makesym "APPLY-~d-~a"
-						(length tr-freevars)
+						(length tr-vars)
 						(or prtype "")))
-			       (apform (cons apname (cons newid tr-freevars))))
+			       (apform (cons apname (cons newid tr-vars))))
 			  (unless (or (null prtype)
 				      (assoc apname typealist))
 			    (push (cons apname prtype) typealist)
@@ -425,9 +431,9 @@
 			  (list tr-expr)
 			  (list tr-expr
 				(list
-				 (makesym "APPLY-~d-" (length tr-freevars))
+				 (makesym "APPLY-~d-" (length tr-bndvars))
 				 (operator expr)
-				 tr-freevars)))))))
+				 tr-bndvars)))))))
     (if (lambda-expr? expr)
 	tr-lambda-expr
 	 (list (makesym "APPLY-~d-~a" 1 (or prtype ""))

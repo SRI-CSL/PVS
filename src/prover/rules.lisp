@@ -283,70 +283,82 @@ See also HIDE, REVEAL"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun apply-step (step &optional comment)
-  (declare (ignore comment))
+(defun apply-step (step &optional comment save? time?)
   #'(lambda (ps)
-      (let* ((*generate-tccs* 'NONE)
-	     (strat (let ((*in-apply* ps)) ;;NSH(8.22.94)
-		      ;;otherwise (apply (query*)) misbehaves.
-		      (strat-eval* step ps))))
-	(cond ((or (typep strat 'strategy)
-		   (typep strat 'rule-instance))
-	       (let* ((new-strat
-		       (if (typep strat 'strategy)
-			   strat
-			   (make-instance 'strategy
-			     'topstep strat)))
-		      (newps0 (copy ps
-				   'strategy
-				   new-strat
-				   'parent-proofstate nil))
-		      (newps (if (typep newps0 'top-proofstate)
-				 (change-class newps0 'proofstate)
-				 newps0))
-		      (*noninteractivemode* t)
-		      (*suppress-printing* t)
-		      (*dependent-decls* nil)
-		      (result ;catch 'abort-in-apply ;;NSH(8.22.94)
-				(let ((*in-apply* ps))
-				  (prove* newps))))
+      (apply-step-body ps step comment save? time?)))
+
+(defun apply-step-body (ps step comment save? time?)
+  (let* ((*generate-tccs* 'NONE)
+	 (strat (let ((*in-apply* ps));;NSH(8.22.94)
+		  ;;otherwise (apply (query*)) misbehaves.
+		  (strat-eval* step ps))))
+    (cond ((or (typep strat 'strategy)
+	       (typep strat 'rule-instance))
+	   (let* ((new-strat
+		   (if (typep strat 'strategy)
+		       strat
+		       (make-instance 'strategy
+			 'topstep strat)))
+		  (newps0 (copy ps
+			    'strategy
+			    new-strat
+			    'parent-proofstate nil))
+		  (newps (if (typep newps0 'top-proofstate)
+			     (change-class newps0 'proofstate)
+			     newps0))
+		  (*noninteractivemode* t)
+		  (*suppress-printing* t)
+		  (*dependent-decls* nil)
+		  (init-time (get-internal-run-time))
+		  (result		;catch 'abort-in-apply ;;NSH(8.22.94)
+		   (let ((*in-apply* ps)
+			 )
+		     (prove* newps)))
+		  (end-time (/ (- (get-internal-run-time) init-time)
+			       internal-time-units-per-second)))
                          ;;;;(break "in-apply")
-;;		 if (null result);;when aborted ;;NSH(8.22.94)
-;;		     if *in-apply*
-;;			 (throw 'abort-in-apply nil)
-;;			 (values 'X nil nil)
-		     (let* ((subgoals (collect-subgoals newps))
-			    (justif (collect-justification newps))
-			    (xrule `(apply
-				     (rerun
-				      ,(editable-justification
-					justif nil T)))))
-;;;		       (format t "~%step= ~a~%decls = ~a" step *dependent-decls*)
-		       (if (or (eq (status-flag newps) 'X)
-			       (and (singleton? subgoals)
-				    (or (and (not (consp (car subgoals)))
-					     (exequal (car subgoals)
-						      (current-goal ps)))
-					(and (consp (car subgoals))
-					     (exequal (caar subgoals)
-						      (current-goal ps))
-					     (eq
-					      (nth 6 (car subgoals))
-					      (current-auto-rewrites newps))))))
-			   (values 'X nil nil)
-			   (if (null subgoals)
-			       (values '! nil
-				       (list 'dependent-decls
-					     *dependent-decls*
-					     'current-xrule
-					     xrule))
-			       (values '? subgoals
-				       (list ;;NSH(4.20.95)
-					     ;;'dependent-decls
-					     ;; *dependent-decls*
-					      'current-xrule
-					      xrule)))))))
-	      (t (values 'X nil nil))))))
+	     ;;		 if (null result);;when aborted ;;NSH(8.22.94)
+	     ;;		     if *in-apply*
+	     ;;			 (throw 'abort-in-apply nil)
+	     ;;			 (values 'X nil nil)
+	     (let* ((subgoals (collect-subgoals newps))
+		    (justif (collect-justification newps))
+		    (xrule `(apply
+				(rerun
+				 ,(editable-justification
+				   justif nil T)))))
+	       ;; (format t "~%step= ~a~%decls = ~a" step *dependent-decls*)
+	       (when time? (format t "~%;;;Used ~,2F seconds in ~s." end-time step))
+	       (if (eq (status-flag newps) 'XX)
+		   (values 'X nil nil);;was 'XX
+		   (if (or (eq (status-flag newps) 'X)
+			   (and (singleton? subgoals)
+				(or (and (not (consp (car subgoals)))
+					 (exequal (car subgoals)
+						  (current-goal ps)))
+				    (and (consp (car subgoals))
+					 (exequal (caar subgoals)
+						  (current-goal ps))
+					 (eq
+					  (nth 8 (car subgoals))
+					;(nth 6 (car subgoals))
+					  (current-auto-rewrites newps))))))
+		       (if save?
+			   (values '? (list (current-goal newps)) nil)
+			   (values 'X nil nil))
+		       (if (eq (status-flag newps) '!);;(null subgoals)
+			   (values '! nil
+				   (list 'dependent-decls
+					 *dependent-decls*
+					 'current-xrule
+					 xrule))
+			   (values '? subgoals
+				   (list;;NSH(4.20.95)
+				    ;;'dependent-decls
+				    ;; *dependent-decls*
+				    'current-xrule
+				    xrule))))))))
+	  (t (values 'X nil nil)))))
 
 (defmethod collect-subgoals ((ps proofstate) &optional accum)
   (mapcar #'(lambda (x) (pushnew x *dependent-decls*))
@@ -356,11 +368,13 @@ See also HIDE, REVEAL"
 	 (cond ((null (pending-subgoals ps))
 		(cons (list (current-goal ps)
 			    'alists (alists ps)
+			    'dp-state (dp-state ps)
 			    'context (context ps)
 			    'current-auto-rewrites (current-auto-rewrites ps)
 			    'subtype-hash (subtype-hash ps)
 			    'rewrite-hash (rewrite-hash ps)
-			    'dependent-decls *dependent-decls*)
+			    'dependent-decls *dependent-decls*
+			    'comment (comment ps))
 		      accum))
 	       (t (collect-subgoals (nreverse (pending-subgoals ps))
 				    accum))))
@@ -372,8 +386,11 @@ See also HIDE, REVEAL"
 			     (collect-subgoals (cdr pslist) accum)))))
 
 			    
-(addrule 'apply (strategy) (comment) (apply-step strategy comment)
-	 "Applies STRATEGY as if it were a rule, and prints the COMMENT string.
+(addrule 'apply (strategy) (comment save? time?) (apply-step strategy comment save? time?) 
+	 "Applies STRATEGY as if it were a rule, and prints COMMENT string.
+If SAVE? is T, then the APPLY step is saved even if the strategy
+does nothing, e.g., (SKIP), which is useful for setting values of
+globals, e.g., (APPLY (LISP (setq *xx* ...)) \"recording value of *xx*\" T).
 This is the basic way of converting a glass-box strategy into an
 atomic step so that internal execution of the strategy is hidden
 and only the resulting subgoals are returned.  E.g.,
@@ -382,8 +399,8 @@ and only the resulting subgoals are returned.  E.g.,
 	 "~%Applying ~%   ~s,~@[~%~a~]")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(addrule 'split () ((fnum *)) ;; labels
-	 (split-rule-fun fnum)
+(addrule 'split () ((fnum *) depth) ;; labels
+	 (split-rule-fun fnum depth)
  "Conjunctively splits formula FNUM.  If FNUM is -, + or *, then
 the first conjunctive sequent formula is chosen from the antecedent,
 succedent, or the entire sequent.  Splitting eliminates any
@@ -392,11 +409,11 @@ negative OR, IMPLIES, or IF-THEN-ELSE."
 "~%Splitting conjunctions,")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(addrule 'flatten () (&rest fnums) (flatten fnums)
- "Disjunctively simplifies chosen formulas.  It eliminates any
-top-level antecedent conjunctions, equivalences, and negations, and
-succedent disjunctions, implications, and negations from the sequent."
- "~%Applying disjunctive simplification to flatten sequent,")
+;(addrule 'flatten () (&rest fnums) (flatten fnums)
+; "Disjunctively simplifies chosen formulas.  It eliminates any
+;top-level antecedent conjunctions, equivalences, and negations, and
+;succedent disjunctions, implications, and negations from the sequent."
+; "~%Applying disjunctive simplification to flatten sequent,")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (addrule 'lift-if () (fnums (updates? T))  (liftif-step fnums updates?)
@@ -557,10 +574,16 @@ REWRITE and REWRITE-LEMMA.  Example reduction steps are:
 (addrule 'simplify
 	 ()
 	 ((fnums *) record? rewrite? 
-	   rewrite-flag flush? linear? cases-rewrite? (type-constraints? T))
+	   rewrite-flag flush? linear? cases-rewrite? (type-constraints? T)
+	   ignore-prover-output?
+	   ;(assert-connectives? T)
+	   )
 	 (invoke-simplification fnums record? rewrite?
 				rewrite-flag flush? linear?
-				cases-rewrite? type-constraints?)
+				cases-rewrite? type-constraints?
+				ignore-prover-output?
+				;assert-connectives?
+				)
 	 "Uses the decision procedures to to simplify the formulas in
 FNUM and record them for further simplification.  The proof steps
 ASSERT, RECORD, SIMPLIFY, DO-REWRITE are instances of this primitive
@@ -590,55 +613,14 @@ effect:
          CASES expression are simplified, otherwise, they are only
          simplified when simplification selects a case.
  TYPE-CONSTRAINTS?: IF T (the default) asserts subtype constraints of each
-         sub-expression to the ground prover data-structures."
+         sub-expression to the ground prover data-structures.
+ IGNORE-PROVER-OUTPUT?: The ground prover returns a disjunction of literals
+         equivalent to the asserted formula.  At the end of a SIMPLIFY with
+         RECORD? set to T, PVS tries to show that the conjunction of these
+         disjunctions is unsatisfiable using the ground prover.  This step
+         can sometimes be expensive and fruitless, and setting
+         IGNORE-PROVER-OUTPUT? to T, cases this step to be skipped." 
 	 "~%Simplifying with decision procedures,")
-    
-
-          
-          
-
-
-
-;(addrule 'simplify () ((fnums *))
-;	 (assert-sformnums fnums nil nil nil 'simplify)
-;	 "Form of assert where decision procedures are only used to simplify
-;Boolean structure." 
-;	 "~%Simplifying with decision procedures,")
-;
-;(addrule 'record () ((fnums *))
-;	 (assert-sformnums fnums nil nil nil 'record)
-;	 "Form of assert where simple sequent formulas are simplified and
-;recorded in the database for future use by decision procedures."
-;	 "~%Recording with decision procedures,"
-;)
-;(addrule 'do-rewrite () ((fnums *) (hash-rewrites? T))
-;	 (assert-sformnums fnums nil nil nil 'rewrite hash-rewrites?)
-;	 "Form of assert where only the auto-rewrites are performed.  If
-;HASH-REWRITES? is T, rewrites are hashed for efficiency."
-;	 "~%Applying auto-rewrites,")
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;(addrule 'install-rewrites ()(names theories theory-definitions
-;				    exclude-names
-;				    always?
-;				    (no-tccs? T))
-;	 (install-rewrites names theories theory-definitions
-;			   exclude-names always? no-tccs?)
-;	 "Installs automatic rewrite rules.  Use M-x show-auto-rewrites
-;to display the current rewrite rules.  Rewrite rules can be
-;individually named in NAMES, or collected from the theories in THEORIES
-;and THEORY-DEFINITIONS but excluding the rules named in EXCLUDE-NAMES.
-;Any parametric theories in THEORIES must be fully instantiated,
-;whereas those in THEORY-DEFINITIONS can be generic since only the
-;definitions in the theories in the latter are installed.
-;If the ALWAYS? flag is T, then the rewrite rule is applied
-;unconditionally, but if it is NIL, then if the right-hand side
-;is a CASE or IF-THEN-ELSE, the top-level conditional must be
-;eliminated by simplification in order for the rewrite to occur.
-;The latter heuristic is used to ensure that recursive functions
-;are not unwound indefinitely."
-;	 "~%Installing rewrite rules,") 
 
 (addrule 'auto-rewrite () (&rest names) (auto-rewrite-step names)
 	 "Installs automatic rewrite rules given in the NAMES list.
@@ -769,3 +751,30 @@ Example: (same-name \"bvec0[i + j]\" \"bvec0[j + i]\")."
 	      (t (format-if "Arguments ~a and ~a must have identical ~
 identifiers" name1 name2)
 	       (values 'X nil nil))))))
+
+(addrule 'label (label fnums) (push?)  (label-step label fnums push?)
+	 "Labels a collection of formulas given by FNUMS by the
+string  LABEL.  If PUSH? is T, then the new label is added to any existing
+ones.  Otherwise, the new labels replaces all existing ones."
+	 "Labelling formulas ~a by ~a")
+
+(addrule 'just-install-proof (proof) ()
+	 #'(lambda (ps)
+	     (just-install-proof-step proof ps))
+	 "Installs an edited PROOF without actually checking it,
+declares the subgoal as finished, but then marks the proof as
+unfinished."
+	 "Installing without checking, the proof ~a")
+
+(addrule 'comment (string) () (comment-step string)
+	 "Adds a comment to the sequent."
+	 "Adding comment: ~a")
+
+(addrule 'flatten-disjunct () (fnums depth) (flatten fnums depth)
+ "Disjunctively simplifies chosen formulas.  It simplifies 
+top-level antecedent conjunctions, equivalences, and negations, and
+succedent disjunctions, implications, and negations from the sequent.
+The DEPTH argument can either be a non-negative integer indicating
+the nesting of top-level disjunctions to be elimnated, or NIL
+which eliminates all top-level disjuncts in the indicated FNUMS."
+ "~%Applying disjunctive simplification to flatten sequent,")

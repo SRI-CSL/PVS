@@ -129,46 +129,55 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;simplify-disjunct takes a formula and returns a list of formulas, the
 ;;disjunction of which is equivalent to the original formula.  
-(defun simplify-disjunct (formula)
-  (if (and (typep formula 'application)
-	   (typep (operator formula) 'name-expr))
-      (cond ((disjunction? formula)
-	     (loop for arg in (arguments formula)
-		   nconc (simplify-disjunct arg)))
-	    ((implication? formula)
-	     (nconc (simplify-disjunct (negate (args1 formula)))
-		    (simplify-disjunct (args2 formula))))
-	    ((inequality? formula)
-	     (list (negate (make-equality (args1 formula)(args2 formula)))))
-	    ((negation? formula)
-	     (let ((arg (args1 formula)))
-	       (if (and (typep arg 'application)
-			(typep (operator arg) 'name-expr))
-		   (cond ((conjunction? arg)
-			  (loop for argum in (arguments arg)
-				nconc (simplify-disjunct (negate argum))))
-			 ((inequality? arg)
-			  (list (make-equality (args1 arg)(args2 arg))))
-			 ((negation? arg)
-			  (simplify-disjunct (args1 arg)))
-			 ((ifff? arg)
-			  (nconc
-			   (simplify-disjunct
-			    (negate
-			     (make-implication
-			      (args1 arg)(args2 arg))))
-			   (simplify-disjunct
-			    (negate
-			     (make-implication
-			      (args2 arg)(args1 arg))))))
-			 (t (list formula)))
-		   (list formula))))
-	    (t (list formula)))
-    (list formula)))
+(defun simplify-disjunct (formula &optional depth)
+  (if (and (integerp depth)
+	   (zerop depth))
+      (list formula)
+      (let ((depth (if (integerp depth)
+		       (1- depth)
+		       depth)))
+	(if (and (typep formula 'application)
+		 (typep (operator formula) 'name-expr))
+	    (cond ((disjunction? formula)
+		   (loop for arg in (arguments formula)
+			 nconc (simplify-disjunct arg depth)))
+		  ((implication? formula)
+		   (nconc (simplify-disjunct (negate (args1 formula)) depth)
+			  (simplify-disjunct (args2 formula) depth)))
+		  ((inequality? formula)
+		   (list (negate (make-equality (args1 formula)(args2 formula)))))
+		  ((negation? formula)
+		   (let ((arg (args1 formula)))
+		     (if (and (typep arg 'application)
+			      (typep (operator arg) 'name-expr))
+			 (cond ((conjunction? arg)
+				(loop for argum in (arguments arg)
+				      nconc (simplify-disjunct (negate argum)
+							       depth)))
+			       ((inequality? arg)
+				(list (make-equality (args1 arg)(args2 arg))))
+			       ((negation? arg)
+				(simplify-disjunct (args1 arg) depth))
+			       ((ifff? arg)
+				(nconc
+				 (simplify-disjunct
+				  (negate
+				   (make-implication
+				    (args1 arg)(args2 arg)))
+				  depth)
+				 (simplify-disjunct
+				  (negate
+				   (make-implication
+				    (args2 arg)(args1 arg)))
+				  depth)))
+			       (t (list formula)))
+			 (list formula))))
+		  (t (list formula)))
+	    (list formula)))))
  
-(defun simplify-disjunct-sform (sform)
+(defun simplify-disjunct-sform (sform depth)
   (let ((new-sforms
-	 (loop for x in (simplify-disjunct (formula sform))
+	 (loop for x in (simplify-disjunct (formula sform) depth)
 	       collect (lcopy sform 'formula x))))
     (if (and (= (length new-sforms) 1)
 	     (s-form-equal? sform (car new-sforms)))
@@ -183,17 +192,18 @@
 
 
 
-(defun flatten (sformnums)
+(defun flatten (sformnums  depth)
   #'(lambda (ps)
       (let ((sformnums (if (null sformnums) '*       ;;NSH(10.18.94)
-			   (loop for sn in sformnums append ;;was nconc
-				 (if (consp sn) sn (list sn))))))
+			   (if (consp sformnums)
+			       (loop for sn in sformnums append ;;was nconc
+				     (if (consp sn) sn (list sn)))
+			       (list sformnums)))))
 	(multiple-value-bind (signal subgoal)
 	    (sequent-reduce
-	     (current-goal ps) #'simplify-disjunct-sform
+	     (current-goal ps) #'(lambda (sf)
+				   (simplify-disjunct-sform sf depth))
 	     sformnums)
-					;	(when (eq signal '?)
-					;	  (format-if "~%Apply disjunctive simplification, "))
 	  (values signal (list subgoal))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1212,8 +1222,8 @@ or supply more substitutions."
 		     thereis (not (member var freevars-seq :test #'tc-eq)))
 	       (format-if "~%Irrelevant free variables in ~a" tc-expr)
 	       nil)
-	      (t (let* ((typepreds (collect-typepreds-with-judgements
-				    tc-expr all?))
+	      (t (let* ((jtypes (judgement-types+ tc-expr))
+			(typepreds (type-constraints jtypes all?))
 			(pred-applications
 			 (mapcar #'(lambda (c)
 				     (let ((*generate-tccs* 'all))
@@ -1282,56 +1292,6 @@ or supply more substitutions."
 (defmethod type-constraints ((type type-expr) &optional all? result)
   (nreverse result))
 
-(defun collect-typepreds-with-judgements (expr &optional all?)
-  (type-constraints (cons (type expr) (judgement-types expr)) all?))
-
-(defun collect-types-with-judgements (expr)
-  (let ((types (collect-types-with-judgements* expr)))
-    ;;(remove-supertypes types)
-    types))
-
-(defun remove-supertypes (types &optional result)
-  (if (null types)
-      result
-      (remove-supertypes
-       (cdr types)
-       (if (or (some #'(lambda (ty) (subtype-of? ty (car types)))
-		     (cdr types))
-	       (some #'(lambda (ty) (subtype-of? ty (car types)))
-		     result))
-	   result
-	   (cons (car types) result)))))
-	   
-
-(defmethod collect-types-with-judgements* ((expr number-expr))
-  (cons (available-numeric-type (number expr))
-	(mapcar #'real-type (get-judgements expr))))
-      
-(defmethod collect-types-with-judgements* ((expr name-expr))
-  (let ((res (resolution expr)))
-    (cons (type res)
-	  (mapcar #'real-type (get-judgements expr)))))
-
-(defmethod collect-types-with-judgements* ((expr field-assignment-arg))
-  nil)
-
-(defmethod collect-types-with-judgements* ((expr application))
-  (let* ((optypes (collect-types-with-judgements (operator expr)))
-	 (argtype (car (types (argument expr))))
-	 (good-optypes (cons (car (types (operator expr)))
-			     (remove-if-not
-				 #'(lambda (opty)
-				     (let ((fty (find-supertype opty)))
-				       (subtype-of? argtype (domain fty))))
-			       optypes))))
-    (mapcar #'(lambda (optype)
-		(application-range-type-arg
-		 (argument expr) optype (type (argument expr))))
-	    good-optypes)))
-
-(defmethod collect-types-with-judgements* ((expr expr))
-  (list (type expr)))
-				 
 
 ;;;One of the points of having simplify is so that steps that do not
 ;;;involve any branching can be combined into a single proof step.

@@ -20,11 +20,14 @@
     (clrhash *gensubst-cache*)))
 
 (defmethod gensubst* :around (obj substfn testfn)
-  (or (gethash obj *gensubst-cache*)
+  (or (and *gensubst-cache*
+	   (gethash obj *gensubst-cache*))
       (let ((nobj (if (funcall testfn obj)
 		      (funcall substfn obj)
 		      (call-next-method))))
-	(setf (gethash obj *gensubst-cache*) nobj))))
+	(if *gensubst-cache*
+	    (setf (gethash obj *gensubst-cache*) nobj)
+	    nobj))))
 
 (defmethod gensubst* ((obj module) substfn testfn)
   (let* ((formals (gensubst* (formals obj) substfn testfn))
@@ -327,13 +330,10 @@
 	 (ntype (if (or *visible-only*
 			*parsing-or-unparsing*)
 		    (type ex)
-		    (gensubst* (type ex) substfn testfn)))
-	 (ntypes (if (eq ntype (type ex))
-		     (types ex)
-		     (list ntype))))
+		    (gensubst* (type ex) substfn testfn))))
     (if (and (eq (expression ex) nexpr)
 	     (eq (bindings ex) nbindings))
-	(lcopy ex 'type ntype 'types ntypes)
+	(lcopy ex 'type ntype)
 	(lcopy ex
 	  'bindings nbindings
 	  'expression (if (or *parsing-or-unparsing*
@@ -341,8 +341,7 @@
 			      (not (declaration (car (bindings ex)))))
 			  nexpr
 			  (substit nexpr (pairlis (bindings ex) nbindings)))
-	  'type ntype
-	  'types ntypes))))
+	  'type ntype))))
 
 (defmethod gensubst* ((ex bind-decl) substfn testfn)
   (let ((ntype (if *visible-only*

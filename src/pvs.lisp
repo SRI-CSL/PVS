@@ -28,7 +28,7 @@
 
 (defun pvs-init (&optional dont-load-patches)
   (setq *print-pretty* nil)
-  (setf (symbol-function 'ilisp:ilisp-restore) #'pvs-ilisp-restore)
+  (setf (symbol-function 'ilisp::ilisp-restore) #'pvs-ilisp-restore)
   #+allegro (setq top-level::*print-length* nil
 		  top-level::*print-level* nil)
   (unless dont-load-patches
@@ -94,16 +94,19 @@
 (defvar *pvs-patches-loaded* nil)
 
 (defvar *pvs-binary-type*
-  #+(and lucid (not sparc) (not rios) (not mips)) "lbin"
-  #+(and lucid rios) "rbin"
-  #+(and lcl4.1 sparc) "sbin"
-  #+(and lcl4.0 (not lcl4.1) sparc) "obin"
-  #+(and lucid mips) "mbin"
-  #+akcl "o"
-  #+cmu "sparcf"
-  #+excl "fasl"
-  #+harlequin-common-lisp "wfasl"
-  )
+    #+(and allegro sparc) "fasl"	; Sun4
+    #+(and allegro rios) "rfasl"	; PowerPC/RS6000
+    #+(and allegro hpux) "hfasl"	; HP 9000
+    #+(and allegro x86) "lfasl"         ; Intel x86
+    #+(and lucid lcl4.1 sparc) "sbin"	; Sun4 new Lucid
+    #+(and lucid (not lcl4.1) sparc) "obin" ; Sun4 old Lucid
+    #+(and lucid rios) "rbin"		; PowerPC/RS6000
+    #+(and lucid mips) "mbin"		; DEC
+    ;;; These are experimental
+    #+gcl "o"
+    #+cmu "sparcf"
+    #+harlequin-common-lisp "wfasl"
+    )
 
 (defun load-pvs-patches ()
   (dolist (pfile (collect-pvs-patch-files))
@@ -452,7 +455,7 @@
 		     (copy-lex oth nth))
 		    (t (reset-typecheck-caches)
 		       (unless (typep oth 'datatype)
-			 (dolist (ty (types oth))
+			 (dolist (ty (nonempty-types oth))
 			   (setf (nonempty? ty) nil)))
 		       (reset-proof-statuses oth)
 		       (when (typep oth 'datatype)
@@ -1335,13 +1338,16 @@
 	   ;;(setq *current-theory* (module fdecl))
 	   (pvs-buffer "Proof"
 	     (with-output-to-string (out)
-	       (write (editable-justification (justification fdecl))
+	       ;;(format out ";;; Proof ~a for formula ~a.~a~%"
+		 ;;(id (default-proof fdecl)) (id (module fdecl)) (id fdecl))
+	       (write (editable-justification (justification fdecl)
+					      nil nil (when full-label ""))
 		      :stream out :pretty t :escape t
 		      :level nil :length nil
 		      :pprint-dispatch *proof-script-pprint-dispatch*))
 	     'popto))
 	  (fdecl
-	   ;;(pvs-buffer "Proof" " " 'popto)
+	   (pvs-buffer "Proof" " " 'popto)
 	   (pvs-message "Formula ~a has no proof to edit"
 	     (id fdecl)))
 	  (t (pvs-message "Unable to find formula declaration")))))

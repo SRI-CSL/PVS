@@ -178,11 +178,6 @@
 	 (typed-eqlty (typecheck eqlty :expected *boolean*)))
     (args1 typed-eqlty)))
 
-(defun translate-from-prove-list (list)
-  (if (listp list)
-      (mapcar #'translate-from-prove list)
-      (translate-from-prove list)))
-
 (defvar *infix-trans-table*
   '((equal . =)
     (lessp . <)

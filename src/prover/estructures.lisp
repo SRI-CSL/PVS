@@ -87,19 +87,6 @@
   (hidden-s-forms :initform nil)
   (info :initform nil))
 
-;;(defcl goal ()
-;;  (label :initform (format nil ""))
-;;  (goalsequent :initform nil))
-
-;(defcl proofstate ()
-;  subgoals
-;  (substitution :initform nil)
-;  (in-proof :initform nil)
-;  (out-proof :initform nil)
-;  (pending :initform nil)
-;  (nextstate :initform nil)
-;  (history :initform nil))
-
 (defcl dpinfo ()       ;;decision proc. information.
   (dpinfo-sigalist :initform nil)
   (dpinfo-findalist :initform nil)
@@ -114,6 +101,7 @@
   current-goal         ;;is a sequent
   (current-rule :initform nil)
   (alists :initform nil)       ;dpinfo
+  (dp-state :initform *init-dp-state*)
   (done-subgoals :initform nil)
   (pending-subgoals :initform nil)
   current-subgoal      
@@ -123,6 +111,7 @@
   (justification :initform nil)
   (current-input :initform nil)
   (printout :initform nil)
+  (comment :initform nil)
   strategy
   (context :initform nil)
   (parent-proofstate :initform nil)
@@ -258,6 +247,7 @@
   rule
   (subgoals :initform nil)
   (xrule :initform nil) ;;this is the expanded rule in primitive terms
+  (comment :initform nil)
   )
 
 ;used in makeskoconst and needed to avoid chasing references for skolem

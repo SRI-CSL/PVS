@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Oct 21 19:36:29 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Oct 29 23:19:06 1998
-;; Update Count    : 48
+;; Last Modified On: Wed Nov  4 18:13:31 1998
+;; Update Count    : 54
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -183,11 +183,13 @@
 (defun xt-theory-formal (theory-formal)
   (let* ((using (term-arg0 theory-formal))
 	 (idops (term-arg1 theory-formal))
-	 (decl-body (term-arg2 theory-formal))
-	 (decl (xt-declaration decl-body)))
-    (append (unless (is-sop 'theory-formal-null-1 using)
-	      (list (xt-using-elt using)))
-	    (xt-chained-decls (term-args idops) nil decl theory-formal))))
+	 (decl-body (term-arg2 theory-formal)))
+    (multiple-value-bind (decl dtype)
+	(xt-declaration-body decl-body)
+      (append (unless (is-sop 'theory-formal-null-1 using)
+		(list (xt-using-elt using)))
+	      (xt-chained-decls (term-args idops) dtype nil decl
+				theory-formal)))))
 
 (defun xt-datatype (datatype &optional id inline)
   (let ((assuming (term-arg0 datatype))
@@ -241,6 +243,7 @@
 	 (type (term-arg1 adtdecl))
 	 (dtype (xt-not-enum-type-expr type)))
     (xt-chained-decls (term-args idops)
+		      type
 		      nil
 		      (make-instance 'adtdecl
 			'declared-type dtype
@@ -326,16 +329,18 @@
   (let* ((idops (term-arg0 assuming))
 	 (formals (term-arg1 assuming))
 	 (decl (term-arg2 assuming))
-	 (semi (term-arg3 assuming))
-	 (pdecl (xt-declaration decl))
-	 (decls (xt-chained-decls (term-args idops)
-				  (unless (is-sop 'noformals
-						  formals)
-				    (xt-pdf formals))
-				  pdecl
-				  assuming)))
-    (setf (semi pdecl) (when (is-sop 'semic semi) t))
-    decls))
+	 (semi (term-arg3 assuming)))
+    (multiple-value-bind (pdecl tdecl)
+	(xt-declaration-body decl idops)
+      (let ((decls (xt-chained-decls (term-args idops)
+				     tdecl
+				     (unless (is-sop 'noformals
+						     formals)
+				       (xt-pdf formals))
+				     pdecl
+				     assuming)))
+	(setf (semi pdecl) (when (is-sop 'semic semi) t))
+	decls))))
 
 (defun xt-theory-part (theory)
   (mapcan #'(lambda (decl)
@@ -355,15 +360,17 @@
 	   (xt-theory-datatype idops formals decl semi))
 	  ((is-sop 'datatypes decl)
 	   (xt-theory-datatypes idops formals decl semi))
-	  (t (let* ((pdecl (xt-declaration decl))
-		    (decls (xt-chained-decls (term-args idops)
-					     (unless (is-sop 'noformals
-							     formals)
-					       (xt-pdf formals))
-					     pdecl
-					     tdecl)))
-	       (setf (semi pdecl) (when (is-sop 'semic semi) t))
-	       decls)))))
+	  (t (multiple-value-bind (pdecl type-decl)
+		 (xt-declaration-body decl idops)
+	       (let ((decls (xt-chained-decls (term-args idops)
+					      type-decl
+					      (unless (is-sop 'noformals
+							      formals)
+						(xt-pdf formals))
+					      pdecl
+					      tdecl)))
+		 (setf (semi pdecl) (when (is-sop 'semic semi) t))
+		 decls))))))
 
 (defun xt-theory-datatypes (idops formals decl semi)
   (cond ((is-sop 'pdf formals)
@@ -417,23 +424,26 @@
     jdecls))
 
 (defun xt-judgement-decl (decl idops)
-  (let ((jdecls (xt-judgement decl)))
+  (multiple-value-bind (jdecls dtype)
+      (xt-judgement decl)
     (cond ((cdr (term-args idops))
 	   (parse-error idops
 	     "May not declare multiple ids for a judgement"))
 	  ((cdr jdecls)
 	   (parse-error decl
 	     "May not declare multiple judgements when an id is given"))
-	  (t (car jdecls)))))
+	  (t (values (car jdecls) dtype)))))
 
 (defun xt-judgement (decl)
   (let* ((jdecls (term-args (term-arg0 decl)))
 	 (class (ds-id (term-arg1 decl)))
-	 (dtype (xt-not-enum-type-expr (term-arg2 decl)))
+	 (type (term-arg2 decl))
+	 (dtype (xt-not-enum-type-expr type))
 	 (place (term-place decl)))
-    (if (eq class 'subtype-of)
-	(xt-subtype-judgement jdecls dtype place)
-	(xt-const-judgement jdecls dtype place))))
+    (values (if (eq class 'subtype-of)
+		(xt-subtype-judgement jdecls dtype place)
+		(xt-const-judgement jdecls dtype place))
+	    type)))
 
 (defun xt-subtype-judgement (jdecls dtype place)
   (let ((decls (mapcar #'(lambda (jdecl)
@@ -443,26 +453,28 @@
     decls))
 
 (defun xt-subtype-judgement* (jdecl dtype place)
-  (cond ((is-sop 'jdecl jdecl)
+  (cond ((is-sop 'jnamedecl jdecl)
+	 (let ((name (xt-name (term-arg0 jdecl))))
+	   (make-instance 'subtype-judgement
+	     'declared-subtype (change-class name 'type-name)
+	     'declared-type dtype
+	     'chain? t
+	     'place place)))
+	((is-sop 'jappldecl jdecl)
 	 (let ((name (xt-name (term-arg0 jdecl)))
-	       (formals (xt-pdf (term-arg1 jdecl)))
-	       (ntype (term-arg2 jdecl)))
+	       (formals (xt-pdf (term-arg1 jdecl))))
 	   (when (cdr formals)
 	     (parse-error formals "Type applications may not be Curried"))
-	   (if (is-sop 'notype ntype)
-	       (make-instance 'subtype-judgement
-		 'declared-subtype (if formals
-				       (make-instance 'type-application
-					 'type (change-class name 'type-name)
-					 'parameters (car formals)
-					 'place (place name))
-				       (change-class name 'type-name))
-		 'declared-type dtype
-		 'chain? t
-		 'place place)
-	       (parse-error jdecl ", expected here"))))
+	   (make-instance 'subtype-judgement
+	     'declared-subtype (make-instance 'type-application
+				 'type (change-class name 'type-name)
+				 'parameters (car formals)
+				 'place (place name))
+	     'declared-type dtype
+	     'chain? t
+	     'place place)))
 	((is-number jdecl)
-	 (parse-error jdecl "type-expr expected here"))
+	 (parse-error jdecl "type expression expected here"))
 	(t (make-instance 'subtype-judgement
 	     'declared-subtype (xt-not-enum-type-expr jdecl)
 	     'declared-type dtype
@@ -477,34 +489,25 @@
     decls))
 
 (defun xt-const-judgement* (jdecl dtype place)
-  (cond ((is-sop 'jdecl jdecl)
-	 (let ((name (xt-name (term-arg0 jdecl)))
-	       (formals (xt-pdf (term-arg1 jdecl)))
-	       (ntype (term-arg2 jdecl)))
-	   (if (is-sop 'notype ntype)
-	       (make-instance 'named-judgement
-		 'name (change-class name 'name-expr)
-		 'formals formals
+  (case (sim-term-op jdecl)
+    (jnumberdecl (make-instance 'number-judgement
+		   'number (make-instance 'number-expr
+			     'number (ds-number (term-arg0 jdecl)))
+		   'declared-type dtype
+		   'chain? t
+		   'place place))
+    (jnamedecl (make-instance 'name-judgement
+		 'name (change-class (xt-name (term-arg0 jdecl)) 'name-expr)
 		 'declared-type dtype
 		 'chain? t
-		 'place place)
-	       (make-instance 'typed-judgement
-		 'name (change-class name 'name-expr)
-		 'formals formals
-		 'declared-name-type
-		 (xt-not-enum-type-expr ntype)
+		 'place place))
+    (jappldecl (make-instance 'application-judgement
+		 'name (change-class (xt-name (term-arg0 jdecl)) 'name-expr)
+		 'formals (xt-pdf (term-arg1 jdecl))
 		 'declared-type dtype
 		 'chain? t
-		 'place place))))
-	((is-number jdecl)
-	 (make-instance 'number-judgement
-	   'number (make-instance 'number-expr
-		     'number (ds-number jdecl))
-	   'declared-type dtype
-	   'chain? t
-	   'place place))
-	(t (parse-error jdecl
-	     "Only constant names or numbers may have HAS_TYPE judgements."))))
+		 'place place))
+    (t (parse-error jdecl "Types may not have HAS_TYPE judgements."))))
 
 (defun xt-conversion-elt (decl)
   (let ((cdecls (xt-conversion (term-arg0 decl))))
@@ -526,8 +529,7 @@
 				   (make-instance 'typed-conversion-decl
 				     'id (id name)
 				     'name (change-class name 'name-expr)
-				     'declared-type
-				     (xt-not-enum-type-expr ntype)
+				     'declared-type dtype
 				     'chain? t
 				     'place (term-place decl)))))
 			 enames)))
@@ -535,7 +537,7 @@
     jdecls))
 
 
-(defun xt-chained-decls (idops formals decl absyn &optional result)
+(defun xt-chained-decls (idops dtype formals decl absyn &optional result)
   (if (null idops)
       (nreverse result)
       (let ((ndecl (if (cdr idops)
@@ -551,8 +553,9 @@
 			      decl))))
 	(when (and (slot-exists-p ndecl 'declared-type)
 		   (declared-type ndecl))
+	  (assert dtype)
 	  (setf (declared-type ndecl)
-		(copy-all (declared-type ndecl))))
+		(xt-not-enum-type-expr dtype)))
 	(let* ((idpos (position-if #'(lambda (tm)
 				       (eq (ds-sim-op (term-op tm)) 'idops))
 				   (term-args absyn))))
@@ -564,7 +567,7 @@
 		      (vector (starting-row splace) (starting-col splace)
 			      (ending-row eplace) (ending-col eplace)))))))
 	(when formals (setf (formals ndecl) formals))
-	(xt-chained-decls (cdr idops) formals decl absyn
+	(xt-chained-decls (cdr idops) dtype formals decl absyn
 			  (cons ndecl result)))))
 
 (defun xt-pdf (pdf)
@@ -607,6 +610,7 @@
 	"May not have multiple ids with '|'"))
     (xt-chained-decls
      (term-args idops)
+     type-expr
      nil
      (if no-pred
 	 (xt-typed-id-bind-decl nil type (term-place typed-ids))
@@ -657,26 +661,7 @@
 
 ;;; Declarations
 
-(defun xt-declaration (decl-term)
-  (let ((idops (term-arg0 decl-term))
-	(formals (term-arg1 decl-term))
-	(decl (term-arg2 decl-term))
-	(semi (term-arg3 decl-term)))
-    (cond ((is-sop 'datatype decl)
-	   (xt-theory-datatype idops formals decl semi))
-	  ((is-sop 'datatypes decl)
-	   (xt-theory-datatypes idops formals decl semi))
-	  (t (let* ((pdecl (xt-declaration-body decl idops))
-		    (decls (xt-chained-decls
-			    (term-args idops)
-			    (unless (is-sop 'theory-null-1 formals)
-			      (xt-pdf formals))
-			    pdecl
-			    decl-term)))
-	       (setf (semi pdecl) (when (is-sop 'semic semi) t))
-	       decls)))))
-
-(defun xt-declaration-body (body idops)
+(defun xt-declaration-body (body &optional idops)
   (case (sim-term-op body)
     (ftype-decl (xt-ftype-decl body))
     (fnetype-decl (xt-fnetype-decl body))
@@ -719,9 +704,11 @@
 	  'place (term-place ftype-decl)))))
 
 (defun xt-fconst-decl (fconst-decl)
-  (make-instance 'formal-const-decl
-    'declared-type (xt-not-enum-type-expr (term-arg0 fconst-decl))
-    'place (term-place fconst-decl)))
+  (let ((dtype (term-arg0 fconst-decl)))
+    (values (make-instance 'formal-const-decl
+	      'declared-type (xt-not-enum-type-expr dtype)
+	      'place (term-place fconst-decl))
+	    dtype)))
 
 (defun xt-lib-decl (lib-decl)
   (let* ((libstr (coerce (ds-string (term-arg1 lib-decl)) 'string))
@@ -783,38 +770,44 @@
 	  'type-expr (xt-type-expr type-expr)))))
 
 (defun xt-var-decl (var-decl)
-  (make-instance 'var-decl
-    'declared-type (xt-not-enum-type-expr (term-arg0 var-decl))
-    'place (term-place var-decl)))
+  (let ((dtype (term-arg0 var-decl)))
+    (values (make-instance 'var-decl
+	      'declared-type (xt-not-enum-type-expr dtype)
+	      'place (term-place var-decl))
+	    dtype)))
 
 (defun xt-const-decl (const-decl)
-  (let ((type-expr (xt-not-enum-type-expr (term-arg0 const-decl)))
-	(value (cadr (term-args const-decl))))
-    (make-instance 'const-decl
-      'declared-type type-expr
-      'definition (when value (xt-expr value))
-      'place (term-place const-decl))))
+  (let* ((dtype (term-arg0 const-decl))
+	 (type-expr (xt-not-enum-type-expr dtype))
+	 (value (cadr (term-args const-decl))))
+    (values (make-instance 'const-decl
+	      'declared-type type-expr
+	      'definition (when value (xt-expr value))
+	      'place (term-place const-decl))
+	    dtype)))
 
 (defun xt-def-decl (def-decl)
   (let ((type-expr (term-arg0 def-decl))
 	(def (term-arg1 def-decl))
 	(meas (term-arg2 def-decl))
 	(ordering (term-arg3 def-decl)))
-    (make-instance 'def-decl
-      'declared-type (xt-not-enum-type-expr type-expr)
-      'definition (xt-expr def)
-      'declared-measure (xt-expr meas)
-      'ordering (unless (is-sop 'noexpr ordering)
-		  (xt-expr ordering))
-      'place (term-place def-decl))))
+    (values (make-instance 'def-decl
+	      'declared-type (xt-not-enum-type-expr type-expr)
+	      'definition (xt-expr def)
+	      'declared-measure (xt-expr meas)
+	      'ordering (unless (is-sop 'noexpr ordering)
+			  (xt-expr ordering))
+	      'place (term-place def-decl))
+	    type-expr)))
 
 (defun xt-ind-decl (ind-decl)
   (let ((type-expr (term-arg0 ind-decl))
 	(def (term-arg1 ind-decl)))
-    (make-instance 'inductive-decl
-      'declared-type (xt-not-enum-type-expr type-expr)
-      'definition (xt-expr def)
-      'place (term-place ind-decl))))
+    (values (make-instance 'inductive-decl
+	      'declared-type (xt-not-enum-type-expr type-expr)
+	      'definition (xt-expr def)
+	      'place (term-place ind-decl))
+	    type-expr)))
 
 (defun xt-assumption (assumption)
   (make-instance 'formula-decl
@@ -1041,6 +1034,7 @@
   (let ((ids (term-arg0 field-decls))
 	(type-expr (term-arg1 field-decls)))
     (xt-chained-decls (term-args ids)
+		      type-expr
 		      nil
 		      (make-instance 'field-decl
 			'declared-type (xt-not-enum-type-expr type-expr)
@@ -1867,7 +1861,15 @@
   (let ((assign (term-arg0 ass))
 	(expr (term-arg1 ass))
 	(sep (ds-id (term-arg2 ass))))
-    (if (memq (sim-term-op assign) '(name-expr number-expr skovar))
+    (when (cdr (term-args assign))
+      (let ((bad-arg (find-if #'(lambda (x)
+				  (memq (sim-term-op x)
+					'(assign-id assign-num)))
+		       (term-args assign))))
+	(when bad-arg
+	  (parse-error bad-arg "Parentheses expected here"))))
+    (if (and (null (cdr (term-args assign)))
+	     (memq (sim-term-op (term-arg0 assign)) '(assign-id assign-num)))
 	(if (eq sep 'ceq)
 	    (make-instance 'uni-assignment
 	      'arguments (xt-assign assign)
@@ -1887,14 +1889,20 @@
 	      'expression (xt-expr expr)
 	      'place (term-place ass))))))
 
-(defun xt-assign (ass)
-  (case (sim-term-op ass)
-    (name-expr (list (list (xt-expr ass))))
-    (number-expr (list (list (xt-expr ass))))
-    (tuple-expr (list (mapcar #'xt-expr (term-args ass))))
-    (application (xt-assign-application ass))
-    (skovar (list (list (xt-expr ass))))
-    (t (parse-error ass "Parentheses expected here"))))
+(defun xt-assign (ass-args)
+  (mapcar #'xt-assign* (term-args ass-args)))
+
+(defun xt-assign* (ass-arg)
+  (case (sim-term-op ass-arg)
+    (field-assign (list (make-instance 'field-assign
+			  'id (ds-id (term-arg0 ass-arg)))))
+    (proj-assign (list (make-instance 'proj-assign
+			 'number (ds-number (term-arg0 ass-arg)))))
+    (assign-id (list (make-instance 'name-expr
+		       'id (ds-id (term-arg0 ass-arg)))))
+    (assign-num (list (make-instance 'number-expr
+			'number (ds-number (term-arg0 ass-arg)))))
+    (assign-tuple (mapcar #'xt-expr (term-args ass-arg)))))
 
 (defun xt-assign-application (ass &optional args)
   (case (sim-term-op ass)

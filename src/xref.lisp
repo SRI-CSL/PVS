@@ -159,13 +159,14 @@
   (generate-xref (number d))
   (generate-xref (declared-type d)))
 
-(defmethod generate-xref ((d named-judgement))
+(defmethod generate-xref ((d name-judgement))
   (generate-xref (name d))
   (generate-xref (declared-type d)))
 
-(defmethod generate-xref ((d typed-judgement))
-  (call-next-method)
-  (generate-xref (declared-name-type d)))
+(defmethod generate-xref ((d application-judgement))
+  (generate-xref (name d))
+  (generate-xref (declared-type d))
+  (generate-xref (formals d)))
 
 (defmethod generate-xref ((d conversion-decl))
   (generate-xref (name d)))

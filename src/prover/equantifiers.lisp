@@ -544,15 +544,25 @@ Please provide skolem constants for these variables." overlap)
   (cond ((null sforms) nil)
 	((not-expr? (formula (car sforms)))
 	 (if (and (or (memq sformnum '(* -))
-		      (equal sformnum neg))
+		      (equal sformnum neg)
+		      (and (label (car sforms))
+			   (or (symbolp sformnum)
+				 (stringp sformnum))
+			   (memq (intern sformnum)
+			       (label (car sforms)))))
 		  (funcall pred  (car sforms)))
 	     neg
 	     (find-sform* (cdr sforms) sformnum pred pos (1- neg))))
 	(t (if (and (or (memq sformnum '(* +))
-			(equal sformnum pos))
+			(equal sformnum pos)
+			(and (label (car sforms))
+			     (or (symbolp sformnum)
+				 (stringp sformnum))
+			     (memq (intern sformnum)
+				   (label (car sforms)))))
 		  (funcall pred (car sforms)))
-	     pos
-	     (find-sform* (cdr sforms) sformnum pred (1+ pos) neg)))))
+	       pos
+	       (find-sform* (cdr sforms) sformnum pred (1+ pos) neg)))))
 
 (defmethod tc-eq* ((x s-formula)(y s-formula) bindings)
   (tc-eq* (formula x)(formula y) bindings))
@@ -618,16 +628,18 @@ Please provide skolem constants for these variables." overlap)
 (defun skolem-step (sformnum ps &optional terms copy?)
   (let* ((*assert-typepreds* nil)
 	 (*subtype-hash* (copy (subtype-hash ps)))
-	 (alists (alists ps))
-	 (findalist (dpinfo-findalist alists))
-	 (usealist (dpinfo-usealist alists))
-	 (sigalist (dpinfo-sigalist alists))
+	 (*dp-state* (dp-state ps))
+	 (*alists* (alists ps))
+	 ;;	 (alists (alists ps))
+	 ;;	 (findalist (dpinfo-findalist alists))
+	 ;;	 (usealist (dpinfo-usealist alists))
+	 ;;	 (sigalist (dpinfo-sigalist alists))
 	 (new-context (copy *current-context*
-			   'local-proof-decls
-			   (copy (local-proof-decls *current-context*))))
-	(terms (if (consp terms) terms (list terms)))
-	(sformnum (find-sform (s-forms (current-goal ps)) sformnum
-			      #'(lambda (sform)
+			'local-proof-decls
+			(copy (local-proof-decls *current-context*))))
+	 (terms (if (consp terms) terms (list terms)))
+	 (sformnum (find-sform (s-forms (current-goal ps)) sformnum
+			       #'(lambda (sform)
 				   (or (and (forall-expr? (formula sform))
 					    (eql (length (bindings
 							  (formula sform)))
@@ -639,87 +651,50 @@ Please provide skolem constants for these variables." overlap)
 							  (args1
 							   (formula sform))))
 						 (length terms))))))))
-    (cond ((null sformnum)
-	   (format-if "~%No suitable (+ve FORALL/-ve EXISTS) quantified expression found.")
-	   (values 'X nil nil))
-	  (t (multiple-value-bind (signal subgoal)
-		 (sequent-reduce (current-goal ps)
-				 #'(lambda (sform)
-				     (skolem-step-sform ps sform
-							new-context
-							terms))
-				 (list sformnum))
-	       (if (eq signal 'X)(values 'X nil nil)
-		   (if (some #'(lambda (fmla)
-			   (let* ((sign (not (not-expr? fmla)))
-				  (body (if sign
-					    fmla
-					    (args1 fmla)))
-				  (translated-body
-				   (top-translate-to-prove
-				    body))
-				  (translated-fmla
-				   (if sign translated-body
-				       (list 'NOT
-					     translated-body))))
-			   (and (not (connective-occurs? body))
-				(let ((res (catch 'context
-					     (call-process translated-fmla))))
-				  (when (consp res)
-				    (loop for x in res
-					  do (push x *process-output*)))
-				  (eq res 'FALSE)))))
-		       *assert-typepreds*)
-		 (values '! sformnum)  ; SO - changed from sform
-		 (values signal (list
-				   (cons subgoal
-					(list 'context new-context
-					      'subtype-hash *subtype-hash*
-					      'alists
-					      (make-instance 'dpinfo
-						'dpinfo-sigalist sigalist
-						'dpinfo-findalist findalist
-						'dpinfo-usealist usealist))))))))))))
+    (protecting-cong-state
+     ((*dp-state* *dp-state*)
+      (*alists* *alists*))
+     (cond ((null sformnum)
+	    (format-if "~%No suitable (+ve FORALL/-ve EXISTS) quantified expression found.")
+	    (values 'X nil nil))
+	   (t (multiple-value-bind (signal subgoal)
+		  (sequent-reduce (current-goal ps)
+				  #'(lambda (sform)
+				      (skolem-step-sform ps sform
+							 new-context
+							 terms))
+				  (list sformnum))
+		(if (eq signal 'X)(values 'X nil nil)
+		    (if (some #'(lambda (fmla)
+				  (let* ((sign (not (not-expr? fmla)))
+					 (body (if sign
+						   fmla
+						   (args1 fmla)))
+					 (translated-body
+					  (top-translate-to-prove
+					   body))
+					 (translated-fmla
+					  (if sign translated-body
+					      (list 'NOT
+						    translated-body))))
+				    (and (not (connective-occurs? body))
+					 (let ((res (call-process
+						     translated-fmla
+						     *dp-state* *alists*)))
+					   (when (consp res)
+					     (loop for x in res
+						   do (push x *process-output*)))
+					   (false-p res)))))
+			      *assert-typepreds*)
+			(values '! sformnum) ; SO - changed from sform
+			(values signal
+				(list
+				 (cons subgoal
+				       (list 'context new-context
+					     'subtype-hash *subtype-hash*
+					     'dp-state *dp-state*
+					     'alists *alists*))))))))))))
 		      
-;  (let* ((goalsequent (current-goal ps))
-;	 (selected-sforms (select-seq (s-forms goalsequent)(list sformnum)))
-;	 (new-sforms (delete-seq (s-forms goalsequent)(list sformnum)))
-;	 (newcontext (copy *current-context*)))
-;    (if (or (null selected-sforms)
-;	    (not (or  (typep (formula (car selected-sforms)) 'quant-expr)
-;		      (and (not-expr? (formula (car selected-sforms)))
-;			   (typep (fstarg (formula (car selected-sforms)))
-;				  'quant-expr)))))
-;	(values 'X nil nil) ;;Rule inapplicable.
-;	(let* ((sel-sform (car selected-sforms))
-;	       (governing-vars (variables sel-sform))
-;	       (formula (formula sel-sform))
-;	       (alist (make-alist substs)))
-;	  (multiple-value-bind
-;	      (new-formula new-vars)
-;	      (if (not-expr? formula)
-;		  (skolem-step (fstarg formula)
-;			     governing-vars
-;			     newcontext
-;			     NIL alist)
-;		(skolem-step formula governing-vars newcontext T alist))
-;	      ;;(break)
-;	    (values '?
-;		    (list (copy goalsequent
-;				's-forms
-;				(cons (make-instance 's-formula
-;					'formula
-;					(if (not-expr? formula)
-;					    (make-negation new-formula)
-;					    new-formula)
-;					'variables new-vars)
-;				      new-sforms)))
-;		    (list 'context newcontext)))))))
-
-
-
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -930,11 +905,12 @@ Please provide skolem constants for these variables." overlap)
 	 (format-if "~%Couldn't find a suitable quantified formula.")
 	 NIL)
 	(t
-	 (let* ((alists (alists ps))
-		(sigalist (dpinfo-sigalist  alists))
-		(findalist (dpinfo-findalist  alists))
-		(usealist (dpinfo-usealist alists)))
-	   (find-quant-terms* sforms subst where if-match polarity? ps)))))
+	 (let* ((*dp-state* (dp-state ps))
+		(*alists* (alists ps)))
+	   (nprotecting-cong-state
+	    ((*dp-state* *dp-state*)
+	     (*alists* *alists*))
+	    (find-quant-terms* sforms subst where if-match polarity? ps))))))
 
 (defun forall-sform?  (sform)
   (let ((formula  (formula sform)))

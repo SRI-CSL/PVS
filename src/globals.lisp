@@ -18,11 +18,14 @@
   "Set by Emacs")
 
 (defparameter *pvs-directories*
-  '("src" "ground-prover" "src/prover" "src/utils" "MU" "BDD"
+  '("src" "ground-prover" "src/prover" "src/decision-procedures"
+    "src/decision-procedures/polylib" "src/utils" "BDD"
     "src/prover/evaluation"))
 
 (defparameter *pvs-version* "2.3 Alpha")
 (defparameter *context-name* ".pvscontext")
+
+(defvar *pvs-global-tables* nil)
 
 (defvar *bin-theories-set* nil)
 
@@ -53,8 +56,14 @@ formula declaration.")
   "Set to the buffer from which a temporary file was generated for
 parsing or typechecking - used by pvs-error.")
 
+(defvar *prelude-context* nil
+  "Provides the context associated with the prelude")
+
 (defvar *prelude* (make-hash-table :test #'eq :rehash-size 1)
   "The hash-table of prelude")
+
+(defvar *prelude-library-context* nil
+  "Provides the context associated with the current prelude libraries")
 
 (defvar *prelude-libraries* nil
   "The pathnames of the prelude libraries that have been loaded.
@@ -99,6 +108,8 @@ prelude libraries")
 (defvar *in-coercion* nil)
 
 (defvar *noninteractive* nil)
+
+(defvar *expression-types* (make-hash-table :test 'eq))
 
 (defvar *set-type-formal* nil)
 

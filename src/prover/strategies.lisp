@@ -186,35 +186,40 @@ computations.  E.g.,
   "")
 
 
-(defstep assert (&optional (fnums *) rewrite-flag
-			   flush? linear? cases-rewrite?
-			   (type-constraints? T)) 
-  (simplify fnums T T rewrite-flag flush? linear? cases-rewrite?
-	    type-constraints?)
- "Simplifies/rewrites/records formulas in FNUMS using decision procedures.
-Variant of SIMPLIFY with RECORD? and REWRITE? flags set to T. If
-REWRITE-FLAG is RL(LR) then only lhs(rhs) of equality is simplified. If
-FLUSH? is T then the current asserted facts are deleted for efficiency.
-If LINEAR? is T, then multiplication and division are uninterpreted.  If
-CASES-REWRITE? is T, then the selections and else parts of a CASES
-expression are simplified, otherwise, they are only simplified when
-simplification selects a case.  If TYPE-CONSTRAINTS? is T (the default)
-asserts subtype constraints of each sub-expression to the ground prover
-data-structures.
+(defstep assert  (&optional (fnums *) rewrite-flag
+			    flush? linear? cases-rewrite? (type-constraints? T)
+			    ignore-prover-output?
+			    ;(assert-connectives? T)
+			    ) 
+	 (simplify
+	  fnums T T rewrite-flag flush? linear? cases-rewrite? type-constraints? ignore-prover-output?) ; assert-connectives?
+ "Simplifies/rewrites/records formulas in FNUMS using decision
+procedures.  Variant of SIMPLIFY with RECORD? and REWRITE? flags set
+to T. If REWRITE-FLAG is RL(LR) then only lhs(rhs) of equality
+is simplified. If FLUSH? is T then the current asserted facts are
+deleted for efficiency.  If LINEAR? is T, then multiplication and
+division are uninterpreted.  If CASES-REWRITE? is T, then
+the selections and else parts of a CASES expression are simplified,
+otherwise, they are only simplified when simplification selects
+a case.  See also SIMPLIFY, RECORD, DO-REWRITE.
 Examples:
  (assert):  Simplifies, rewrites, and records all formulas.
  (assert -1 :rewrite-flag RL): Apply assert to formula -1 leaving
     RHS untouched if the formula is an equality.
  (assert :flush? T :linear? T): Apply assert with fully uninterpreted
   nonlinear arithmetic after flushing existing decision procedure
-  database.
-See also SIMPLIFY, RECORD, DO-REWRITE."
+  database."
 "Simplifying, rewriting, and recording with decision procedures")
 
 (defstep record (&optional (fnums *) rewrite-flag
-			    flush? linear? (type-constraints? T))
+			    flush? linear? (type-constraints? T)
+			    ignore-prover-output?
+			    ;(assert-connectives? T)
+			    )
 	 (simplify
-	  fnums T NIL rewrite-flag flush? linear? type-constraints?)
+	  fnums T NIL rewrite-flag flush? linear? type-constraints?
+	  ignore-prover-output?)
+	  ;;assert-connectives?
 	 "Uses decision procedures to simplify and record the formulas
 in FNUMS for further simplification.   Variant of SIMPLIFY with RECORD?
 flag set to T and REWRITE? flags set to NIL. If REWRITE-FLAG is
@@ -2463,9 +2468,10 @@ found. "
     (let* ((lists
 	    (if (or (null *detuple-singletons?*)
 		    (and (singleton? bindings)
-			 (tupletype? (type (car bindings)))))
+			 (or (tupletype? (find-supertype (type (car bindings))))
+			     (recordtype? (find-supertype (type (car bindings)))))))
 		(make-new-detupled-bindings bindings nil nil)
-		(cons nil bindings)))
+		(cons nil bindings))) ;;NSH(9.19.96) was bindings.
 	   (alist (car lists))
 	   (new-bvars (cdr lists)))
       (if (equal bindings new-bvars)
@@ -2474,7 +2480,6 @@ found. "
 	    'bindings new-bvars
 	    'expression (detuple* (substit expression alist)))))))
       
-
 (defun make-new-detupled-bindings (bindings alist bvars)
   (cond ((null bindings) (cons alist bvars))
 	((tupletype? (type (car bindings)))
@@ -2544,7 +2549,62 @@ found. "
 	       (lcopy expr 'argument result))))
 
 (defmethod detuple* ((expr field-application))
-  (lcopy expr 'argument (detuple* (argument expr))))
+  (cond ((record-expr? (argument expr))
+;;	(break "dt*")
+      (detuple*
+       (expression (find (id expr)
+			 (assignments (argument expr))
+			 :test #'(lambda (x y)
+				   (eq x (id (caar (arguments y)))))))))
+	(t (let ((result (detuple* (argument expr))))
+	(if (record-expr? result)
+	    (expression (find (id expr)
+			 (assignments result)
+			 :test #'(lambda (x y)
+				   (eq x (id (caar (arguments y)))))))
+	(lcopy expr 'argument result))))))
+
+(defun make-new-detupled-bindings (bindings alist bvars)
+  (cond ((null bindings) (cons alist bvars))
+	((or (tupletype? (type (car bindings)))
+	     (recordtype? (type (car bindings))))
+	 (let* ((bind1 (car bindings))
+		(type (find-supertype (type bind1)))
+		(types (if (recordtype? type)
+			   (mapcar #'type (fields type))
+			   (types type)))
+		(new-bvars (make-new-detupled-binding-list
+			    bind1 types alist))
+		(new-vars (loop for x in new-bvars
+				collect
+				(let ((y
+				       (change-class (copy x)
+					      'name-expr)))
+				  (setf (kind y) 'VARIABLE)
+				  y)))
+		(new-tuple (if (recordtype? type)
+			       (make-record-expr
+				(loop for fld in (fields type)
+				      as var in new-vars
+				      collect
+				      (mk-assignment 'uni
+					(list (list (mk-field-name-expr
+						     (id fld)
+						     (resolution fld)
+						     'CONSTANT)))
+					var))
+				type)
+			       (make-tuple-expr new-vars type))))
+	   (make-new-detupled-bindings (cdr bindings)
+				       (cons (cons bind1
+						   new-tuple)
+					     alist)
+				       (nconc bvars new-bvars))))
+	(t (make-new-detupled-bindings (cdr bindings)
+				       (cons (cons (car bindings)
+						   (car bindings))
+					     alist)
+				       (append bvars (list (car bindings)))))))
 
 (defmethod detuple* ((expr record-expr))
   (lcopy expr
@@ -2591,7 +2651,7 @@ found. "
   "Replaces formulas given by FNUMS by equivalent formulas where any
 bound variable of tuple type is replaced by a list of variables.
 When SINGLES? is T, detupling is restricted to those bound variables
-of tuple type that are the sole bound variables of a binding operator,
+of tuple/record type that are the sole bound variables of a binding operator,
 i.e. those x of the form (FORALL x: ...), (EXISTS x: ...),
 or (LAMBDA x: ...)."
   "De-tupling formulas")
@@ -3090,7 +3150,7 @@ invokes apply-extensionality.  Otherwise it decomposes the
 	  (bd (typecheck* (mk-bind-decl id dom dom) nil nil nil))
 	  (nvar (mk-name-expr id nil nil (make-resolution bd nil dom)
 			      'variable)))
-     (make-typechecked-forall-expr
+     (make!-forall-expr
       (list bd)
       (make-equality (make-application lhs nvar)
 		      (make-application rhs nvar)))));)
@@ -3161,7 +3221,7 @@ invokes apply-extensionality.  Otherwise it decomposes the
 	     (inductive-predicate?
 	      (operator* (args1 xf)))))))
 
-(defstep rule-induct-step (rel &optional (fnum -) induction)
+(defstep rule-induct-step (rel &optional (fnum -) name)
   (let ((sforms (s-forms (current-goal *ps*)))
 	(rel (pc-parse rel 'expr))
 	(pred-sforms
@@ -3174,7 +3234,7 @@ invokes apply-extensionality.  Otherwise it decomposes the
 	      (pred-application (args1 (formula pred-sform)))
 	      (rel (operator* pred-application))
 	      (ind-res (when rel
-			 (get-inductive-scheme-res rel induction)))
+			 (get-inductive-scheme-res rel name)))
 	      (ind-scheme-name (print-resolution ind-res))
 	      (ind-scheme (car (create-formulas ind-res)))
 	      (ind-pred (inductive-scheme? ind-scheme))
@@ -3283,18 +3343,18 @@ skolem constants for the induction scheme to make sense."
    but this can also be given explicitly as FNUM.  The induction
    predicate is formulated using all the sequent formulas containing
    x1,...,xn.   The strategy uses the default induction scheme but can be
-   told to use weak induction by giving REL_weak_induction as the INDUCTION
+   told to use weak induction by giving REL_weak_induction as the NAME
    argument."
   "Applying rule induction over ~a")
 
-(defstep rule-induct (rel &optional (fnum +) induction)
+(defstep rule-induct (rel &optional (fnum +) name)
   (then (repeat (skolem! fnum))
 	(try (flatten)
 	     (let ((fnum *new-fmla-nums*))
 	       ;;note rule-induct recursively, not rule-induct-step
 	       ;;to deal with embedded induction predicates.
-	       (rule-induct$ rel :fnum + :induction induction))
-	     (rule-induct-step$ rel :fnum - :induction induction)))
+	       (rule-induct$ rel :fnum + :name name))
+	     (rule-induct-step$ rel :fnum - :name name)))
     "Applies rule induction over an inductive relation REL in
    order to prove a sequent of the form
       ...|- (FORALL ...: REL(...) IMPLIES ... or
@@ -3303,7 +3363,7 @@ skolem constants for the induction scheme to make sense."
    to the specified FNUM (or the first positive, skolemizable consequent)
    before invoking RULE-INDUCT-STEP.   The strategy uses the default
    weak induction scheme but can be told to use strong induction by giving
-   REL_strong_induction as the INDUCTION argument."
+   REL_strong_induction as the NAME argument."
   "Applying rule induction over ~a")
 
 
@@ -3432,3 +3492,84 @@ along every branch."
   "Expands all the given names and simplifies.
 See also EXPAND"
   "Expanding the definition(s) of ~a")
+
+(defstrat checkpoint ()
+  (query*)
+  "A synonym for (query*): inserting (checkpoint) an edited proof and
+ rerunning it causes the non-checkpointed subproofs to be installed
+ (using JUST-INSTALL-PROOF) so that the proof is only run up to the
+checkpoint.  "
+ " ")
+
+(defhelper label-fnums (labels fnums &optional push?)
+  (if (consp labels)
+      (if (consp (cdr labels))
+	  (if (consp fnums)
+	      (let ((label (car labels))
+		    (cdr-labels (cdr labels))
+		    (fnum (car fnums))
+		    (cdr-fnums (cdr fnums)))
+		(then (label label fnum :push? push?)
+		      (label-fnums cdr-labels cdr-fnums :push? push?)))
+	      (skip))
+	  (let ((label (car labels)))
+	    (label label fnums)))
+      (label labels fnums :push? push?))
+  "Labels a list of formulas from FNUMS with corresponding labels
+taken from LABELS so that the last label is applied to any
+remaining fnums.  If PUSH? is T, the new label is added to existing
+labels, otherwise, the old labels are deleted."
+  "Labelling some formulas")
+
+(defstep with-labels (rule labels &optional push?)
+  (then rule
+	(let ((fnums *new-fmla-nums*)
+	      (labels (if (consp labels) labels (list labels)))
+	      (current-labels
+	       (nth-or-last (subgoalnum *ps*) labels)))
+	  (label-fnums current-labels fnums :push? push?)))
+  "If RULE generates subgoal sequents S1...Sn where each Si has
+new formulas, i.e., those numbered with {}, numbered fi1..fim, then
+if LABELS is a list of list of labels ((l11 ... l1k)...(ln1...lnm)),
+then each formula fij is labelled with label lij.  As usual, any of
+the lists can be replaced a single label, and if there are not enough
+labels in a list, then the last label is applied to the remaining
+fnums."
+  "Applying ~a and labelling new subgoal formulas with ~a")
+
+(defstep hide-all-but (&optional (fnums *) keep-fnums)
+  (let ((fnums (gather-fnums (s-forms (current-goal *ps*))
+			     fnums keep-fnums)))
+    (hide :fnums fnums))
+  "Hides all sequent formulas from FNUMS except those listed in
+KEEP-FNUMS.  Useful when all but a few formulas need to be hidden."
+  "Hiding ~a but keeping ~a")
+
+(defstep skolem_inst (&optional (sk_fnum *) (inst_fnum *))
+  (let ((sk_fnum (find-!quant sk_fnum *ps*))
+	(sforms (select-seq (s-forms (current-goal *ps*))(list sk_fnum)))
+	(bindings (when sforms (seq-form-bindings (formula (car sforms)))))
+	(newterms (fill-up-terms sk_fnum nil *ps*))
+	(inst_fnums (gather-fnums
+		     (s-forms (current-goal *ps*))
+		     inst_fnum nil
+		     #'(lambda (sform)
+			 (and (exists-sform? sform)
+			      (eql (length (seq-form-bindings (formula sform)))
+				   (length newterms))
+			      (subsetp (seq-form-bindings (formula sform))
+				       bindings
+				       :test #'same-id)))))
+	(inst_fnum (when inst_fnums (car inst_fnums))))
+    (if inst_fnums
+	(then (skolem sk_fnum newterms)
+	      (inst inst_fnum :terms newterms))
+	(skip-msg "Couldn't find matching top-level quantifiers.")))
+    ""
+    "Simultaneously skolemizing and instantiating with skolem constants")
+
+(defstep flatten (&rest fnums) (flatten-disjunct fnums nil)
+ "Disjunctively simplifies chosen formulas.  It simplifies 
+top-level antecedent conjunctions, equivalences, and negations, and
+succedent disjunctions, implications, and negations from the sequent."
+ "Applying disjunctive simplification to flatten sequent")

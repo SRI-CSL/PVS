@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Wed Nov  3 00:32:38 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Oct 27 02:56:11 1994
-;; Update Count    : 44
+;; Last Modified On: Thu Nov  5 15:16:57 1998
+;; Update Count    : 45
 ;; Status          : Beta test
 ;; 
 ;; HISTORY
@@ -49,7 +49,7 @@
   (assert (every #'type incs))
   (let* ((gen-tccs *generate-tccs*)
 	 (*generate-tccs* 'none)
-	 (conc (make-typechecked-conjunction* incs))
+	 (conc (make!-conjunction* incs))
 	 (tform (raise-actuals (add-tcc-conditions conc) nil))
 	 (xform (if *simplify-tccs*
 		    (pseudo-normalize (subst-var-for-recs
@@ -79,8 +79,8 @@
 				antes)
   (if (null conditions)
       (let ((ex (substit (if antes
-			     (make-typechecked-implication
-			      (make-typechecked-conjunction* antes) expr)
+			     (make!-implication
+			      (make!-conjunction* antes) expr)
 			     expr)
 		  (self-substit substs))))
 	(assert (type ex))
@@ -114,8 +114,8 @@
 	  (make-tcc-closure expr (cdr conditions) substs antes
 			    bindings))
       (let* ((nbody (substit (if antes
-				 (make-typechecked-implication
-				  (make-typechecked-conjunction* antes)
+				 (make!-implication
+				  (make!-conjunction* antes)
 				  expr)
 				 expr)
 		      (self-substit substs)))
@@ -129,7 +129,7 @@
 						     (nbindings bindings)
 						     result)
   (if (null bindings)
-      (make-typechecked-forall-expr (nreverse result) expr)
+      (make!-forall-expr (nreverse result) expr)
       (if (binding-id-is-bound (id (car bindings)) expr)
 	  (let* ((nid (make-new-variable (id (car bindings)) expr 1))
 		 (nbd (make-bind-decl nid (type (car nbindings))))
@@ -574,7 +574,7 @@
 
 (defmethod set-nonempty-type :around ((te type-expr))
   (unless (nonempty? te)
-    (push te (types *current-theory*))
+    (push te (nonempty-types *current-theory*))
     (setf (nonempty? te) t)
     (call-next-method)))
 
@@ -756,12 +756,13 @@
 (defmethod generating-judgement-tcc? ((decl subtype-judgement) expr)
   (id decl))
 
-(defmethod generating-judgement-tcc? ((decl named-judgement) expr)
+(defmethod generating-judgement-tcc? ((decl name-judgement) expr)
   (and (id decl)
-       (if (formals decl)
-	   (and (typep expr 'application)
-		(eq (operator expr) (name decl)))
-	   (eq expr (name decl)))))
+       (eq expr (name decl))))
+
+(defmethod generating-judgement-tcc? ((decl name-judgement) (expr application))
+  (and (id decl)
+       (eq (operator* expr) (name decl))))
 
 (defmethod generating-judgement-tcc? (decl expr)
   nil)
@@ -838,7 +839,7 @@
   (equality-predicates* t1 t2 nil nil nil))
 
 (defmethod equality-predicates* :around (t1 t2 p1 p2 bindings)
-  (if (tc-eq t1 t2 bindings)
+  (if (tc-eq-with-bindings t1 t2 bindings)
       (make-equality-between-predicates t1 p1 p2)
       (call-next-method)))
 
@@ -969,7 +970,7 @@
 	 (make-disjoint-cond-property* (cdr pairs) (car pairs)))
 	(t (make-disjoint-cond-property*
 	    (cdr pairs)
-	    (make-typechecked-conjunction (car pairs) prop)))))
+	    (make!-conjunction (car pairs) prop)))))
 
 (defun make-disjoint-cond-pairs (conditions values &optional result)
   (if (null (cdr conditions))
@@ -995,7 +996,7 @@
 (defun make-cond-coverage-tcc (expr conditions)
   (let* ((gen-tccs *generate-tccs*)
 	 (*generate-tccs* 'none)
-	 (conc (make-typechecked-disjunction* conditions))
+	 (conc (make!-disjunction* conditions))
 	 (tform (raise-actuals (add-tcc-conditions conc)))
 	 (xform (if *simplify-tccs*
 		    (pseudo-normalize (subst-var-for-recs

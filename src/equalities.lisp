@@ -558,7 +558,7 @@ where db is to replace db1 and db2")
 	    (make-compatible-bindings* b2 b1 bindings t))))))
 
 (defun make-compatible-bindings* (b1 b2 bindings rev?)
-  (let* ((projs (make-projections (make-variable-expr (car b1))))
+  (let* ((projs (make!-projections (make-variable-expr (car b1))))
 	 (vars (mapcar #'make-variable-expr b2)))
     (nconc (if rev?
 	       (pairlis vars projs)
@@ -1274,21 +1274,21 @@ where db is to replace db1 and db2")
 		      (var (mk-name-expr id nil nil
 					 (make-resolution bd nil stype)
 				 'variable))
-		      (aconj (make-typechecked-conjunction*
+		      (aconj (make!-conjunction*
 			      (mapcar #'(lambda (o)
-					  (beta-reduce (make-application o var)))
+					  (beta-reduce (make!-application o var)))
 				apred)))
-		      (econj (make-typechecked-conjunction*
+		      (econj (make!-conjunction*
 			      (mapcar #'(lambda (o)
-					  (beta-reduce (make-application o var)))
+					  (beta-reduce (make!-application o var)))
 				epred))))
-		 (make-typechecked-forall-expr
+		 (make!-forall-expr
 		  (list bd)
-		  (make-iff aconj econj))))))))
+		  (make!-iff aconj econj))))))))
 
 (defun actual-equality-expr (aexpr eexpr)
   (unless (tc-eq aexpr eexpr)
-    (make-equation aexpr eexpr)))
+    (make!-equation aexpr eexpr)))
 
 ;;; These two simply recurse up the supertype; in the latter case the
 ;;; incs is augmented with the predicate.  This will find the least
@@ -1300,7 +1300,7 @@ where db is to replace db1 and db2")
 
 (defmethod compatible-preds* ((atype type-expr) (etype subtype) aexpr incs)
   (compatible-preds* atype (supertype etype) aexpr
-		     (cons (beta-reduce (make-application (predicate etype)
+		     (cons (beta-reduce (make!-application (predicate etype)
 					  aexpr))
 			   incs)))
 
@@ -1340,7 +1340,7 @@ where db is to replace db1 and db2")
   (adt-compatible-preds atype etype aexpr incs))
 
 (defun mk-red-appl (op &rest args)
-  (beta-reduce (apply #'make-application op args)))
+  (beta-reduce (apply #'make!-application op args)))
 
 
 ;;; An actual funtype is compatible with a given funtype only if the
@@ -1378,11 +1378,7 @@ where db is to replace db1 and db2")
 
 (defun subst-var-into-deptypes (var type types)
   (if (dep-binding? type)
-      (let ((ne (mk-name-expr type nil nil
-			      (make-resolution type
-				(mod-name *current-context*))
-			      'variable)))
-	(substit types (list (cons ne var))))
+      (substit types (acons type var nil))
       types))
 
 (defun compatible-funtype-pred (atype adom edom avar evar ;;apred epred
@@ -1401,13 +1397,13 @@ where db is to replace db1 and db2")
 				    *dep-bindings*)
 			     *dep-bindings*))
 	 (rpreds (compatible-preds* (subst-deps arng) (subst-deps erng)
-				    (make-application aexpr avar) nil))
+				    (make!-application aexpr avar) nil))
 	 (rpred (when rpreds
-		  (make-forall-expr (list (declaration avar))
-		    (mk-conjunction rpreds))))
+		  (make!-forall-expr (list (declaration avar))
+		    (make!-conjunction* rpreds))))
 	 (conj (if dpred
 		   (if rpred
-		       (make-conjunction (list dpred rpred))
+		       (make!-conjunction dpred rpred)
 		       dpred)
 		   rpred)))
     (if conj
@@ -1422,7 +1418,7 @@ where db is to replace db1 and db2")
   (compatible-tupletype-preds (types atype) (types etype)
 			      (cond ((tuple-expr? aexpr) (exprs aexpr))
 				    ((listp aexpr) aexpr)
-				    (t (make-projections aexpr)))
+				    (t (make!-projections aexpr)))
 			      incs))
 
 (defun compatible-tupletype-preds (atypes etypes aexprs incs)
@@ -1452,7 +1448,9 @@ where db is to replace db1 and db2")
       (let* ((ne (mk-name-expr var))
 	     (proj (mk-tup-accessor tuptype projnum))
 	     (appl (mk-application proj ne))
-	     (pname (make-name-expr dep)))
+	     (dtype (type decl))
+	     (dres (make-resolution dep (mod-name *current-context*) dtype))
+	     (pname (mk-name-expr (id dep) nil nil res 'variable)))
 	(setf (kind ne) 'VARIABLE)
 	(setf (type appl) (type dep))
 	(substit types (list (cons pname appl))))
@@ -1558,12 +1556,12 @@ where db is to replace db1 and db2")
 	      (append preds incs))))))
 
 (defun get-field-application (field expr)
-  (let ((appl (make-field-application (id field) expr)))
+  (let ((appl (make!-field-application (id field) expr)))
     (beta-reduce appl)))
 
 (defun subst-var-application (field fields aexpr)
   (let* ((ne aexpr)
-	 (appl (make-field-application (id field) ne)))
+	 (appl (make!-field-application (id field) ne)))
     (substit fields (list (cons field (beta-reduce appl))))))
 
 (defun make-field-inclusion (afld efld preds var)
@@ -1818,8 +1816,8 @@ where db is to replace db1 and db2")
 			     'variable))
 	 (preds (compatible-preds t2 t1 svar)))
     (if preds
-	(let ((lpred (make-lambda-expr (list vb)
-		       (make-conjunction preds))))
+	(let ((lpred (make!-lambda-expr (list vb)
+		       (make!-conjunction* preds))))
 	  (values t2 (cons lpred incs)))
 	(values t2 incs))))
 
@@ -1850,9 +1848,9 @@ where db is to replace db1 and db2")
 		     (svar (mk-name-expr vid nil nil
 					 (make-resolution vb nil t2)
 					 'variable))
-		     (lpred (make-lambda-expr (list vb)
-			      (make-conjunction
-			       (mapcar #'(lambda (p) (make-application p svar))
+		     (lpred (make!-lambda-expr (list vb)
+			      (make!-conjunction*
+			       (mapcar #'(lambda (p) (make!-application p svar))
 				 preds)))))
 		(values t2 (cons lpred incs)))
 	      (values t2 incs))))))
@@ -1868,8 +1866,8 @@ where db is to replace db1 and db2")
 	 (preds (adt-compatible-preds t2 t1 var nil)))
     (values t2
 	    (if preds
-		(cons (make-lambda-expr (list bd)
-			(make-conjunction preds))
+		(cons (make!-lambda-expr (list bd)
+			(make!-conjunction* preds))
 		      incs)
 		incs))))
 
@@ -1898,8 +1896,8 @@ where db is to replace db1 and db2")
 		    (var (mk-name-expr vid nil nil
 				       (make-resolution vb nil t2)
 				       'variable))
-		    (npred (make-lambda-expr (list vb)
-			     (make-forall-expr (list xb)
+		    (npred (make!-lambda-expr (list vb)
+			     (make!-forall-expr (list xb)
 			       (mk-conjunction
 				(mapcar #'(lambda (pred)
 					    (beta-reduce
@@ -1939,8 +1937,8 @@ where db is to replace db1 and db2")
 (defun subtype-tuple-preds (types1 types2 type2 vb var &optional (num 1) preds)
   (if (null types1)
       (values type2
-	      (make-lambda-expr (list vb)
-		(make-conjunction (nreverse (beta-reduce preds)))))
+	      (make!-lambda-expr (list vb)
+		(make!-conjunction* (nreverse (beta-reduce preds)))))
       (multiple-value-bind (ty cpreds)
 	  (subtype-preds (car types1) (car types2))
 	(when ty
@@ -1948,7 +1946,7 @@ where db is to replace db1 and db2")
 	    (subtype-tuple-preds (if (typep (car types1) 'dep-binding)
 				     (substit (cdr types1)
 				       (acons (car types1)
-					      (make-projection-application
+					      (make!-projection-application
 					       num var)
 					      nil))
 				     (cdr types1))
@@ -1959,8 +1957,8 @@ where db is to replace db1 and db2")
 (defun subtype-tuple-preds* (cpreds var num &optional preds)
   (if (null cpreds)
       preds
-      (let ((npred (make-application (car cpreds)
-		     (make-projection-application num var))))
+      (let ((npred (make!-application (car cpreds)
+		     (make!-projection-application num var))))
 	(subtype-tuple-preds* (cdr cpreds) var num (cons npred preds))))) 
 
 (defmethod subtype-preds ((t1 recordtype) (t2 recordtype) &optional incs)
@@ -1979,8 +1977,8 @@ where db is to replace db1 and db2")
 (defun subtype-record-preds (flds1 flds2 type2 vb var dep? &optional preds)
   (if (null flds1)
       (values type2
-	      (make-lambda-expr (list vb)
-		(make-conjunction (nreverse (beta-reduce preds)))))
+	      (make!-lambda-expr (list vb)
+		(make!-conjunction* (nreverse (beta-reduce preds)))))
       (let* ((fld1 (car flds1))
 	     (fld2 (find fld1 flds2 :test #'same-id)))
 	(multiple-value-bind (ty cpreds)
@@ -1990,7 +1988,7 @@ where db is to replace db1 and db2")
 	      (subtype-record-preds (if dep?
 					(substit (cdr flds1)
 					  (acons (car flds1)
-						 (make-field-application
+						 (make!-field-application
 						  (id fld1) var)
 						 nil))
 					(cdr flds1))
@@ -2000,8 +1998,8 @@ where db is to replace db1 and db2")
 (defun subtype-record-preds* (cpreds var fld &optional preds)
   (if (null cpreds)
       preds
-      (let ((npred (make-application (car cpreds)
-		     (make-field-application (id fld) var))))
+      (let ((npred (make!-application (car cpreds)
+		     (make!-field-application (id fld) var))))
 	(subtype-record-preds* (cdr cpreds) var fld (cons npred preds)))))
 
 
@@ -2104,7 +2102,7 @@ where db is to replace db1 and db2")
       (multiple-value-bind (preds var)
 	  (make-preds-with-same-binding te predicates)
 	(make-lambda-expr-or-eta-equivalent (declaration var)
-					    (make-conjunction preds)))
+					    (make!-conjunction* preds)))
       (possibly-eta-reduce (car predicates))))
 
 (defmethod possibly-eta-reduce (expr)
@@ -2127,13 +2125,13 @@ where db is to replace db1 and db2")
       expr))
 
 (defmethod make-lambda-expr-or-eta-equivalent (bind-decl expr)
-  (make-lambda-expr (list bind-decl) expr))
+  (make!-lambda-expr (list bind-decl) expr))
 
 (defmethod make-lambda-expr-or-eta-equivalent (bind-decl (expr application))
   (if (and (typep (argument expr) 'name-expr)
 	   (same-declaration (argument expr) bind-decl))
       (operator expr)
-      (make-lambda-expr (list bind-decl) expr)))
+      (make!-lambda-expr (list bind-decl) expr)))
 
 (defun make-preds-with-same-binding (te predicates)
   (let* ((id (make-new-variable '|x| predicates))
@@ -2155,7 +2153,7 @@ where db is to replace db1 and db2")
     (acons (car (bindings pred)) nvar nil)))
 
 (defmethod make-pred-with-same-binding (nvar pred)
-  (make-application pred nvar))
+  (make!-application pred nvar))
 
 
 (defmethod type-canon* ((te subtype) predicates)
@@ -2179,7 +2177,7 @@ where db is to replace db1 and db2")
 	  (make-instance 'subtype
 	    'supertype ntuptype
 	    'predicate (make-lambda-expr-or-eta-equivalent (declaration var)
-			 (make-conjunction toppreds)))
+			 (make!-conjunction* toppreds)))
 	  ntuptype))))
 
 (defun add-tupletype-preds (types parts &optional (index 1) ntypes)
@@ -2208,7 +2206,7 @@ where db is to replace db1 and db2")
 	 (bd (typecheck* (mk-bind-decl id type type) nil nil nil))
 	 (nvar (mk-name-expr id nil nil (make-resolution bd nil type)
 			     'variable))
-	 (conj (make-conjunction (gensubst (cdr predicates)
+	 (conj (make!-conjunction* (gensubst (cdr predicates)
 				   #'(lambda (ex) nvar)
 				   #'(lambda (ex)
 				       (tc-eq ex (car predicates)))))))
@@ -2218,10 +2216,10 @@ where db is to replace db1 and db2")
   (if (and (tc-eq (argument conj) nvar)
 	   (tc-eq (type bd) (domain (find-supertype (type (operator conj))))))
       (operator conj)
-      (make-lambda-expr (list bd) conj)))
+      (make!-lambda-expr (list bd) conj)))
 
 (defmethod make-new-tupletype-pred ((conj expr) bd nvar)
-  (make-lambda-expr (list bd) conj))
+  (make!-lambda-expr (list bd) conj))
 
 (defun partition-projection-predicates (var predicates &optional parts)
   (if (null predicates)
@@ -2270,7 +2268,7 @@ where db is to replace db1 and db2")
 	    'supertype nrectype
 	    'predicate (make-lambda-expr-or-eta-equivalent
 			(declaration var)
-			(make-conjunction toppreds)))
+			(make!-conjunction* toppreds)))
 	  nrectype))))
 
 (defun partition-field-predicates (var predicates &optional parts)
@@ -2324,7 +2322,7 @@ where db is to replace db1 and db2")
 	 (bd (typecheck* (mk-bind-decl id te te) nil nil nil))
 	 (nvar (mk-name-expr id nil nil (make-resolution bd nil te)
 			     'variable)))
-    (make-lambda-expr (list bd)
-      (make-conjunction (gensubst (cdr predicates)
+    (make!-lambda-expr (list bd)
+      (make!-conjunction* (gensubst (cdr predicates)
 			  #'(lambda (ex) nvar)
 			  #'(lambda (ex) (tc-eq ex (car predicates))))))))

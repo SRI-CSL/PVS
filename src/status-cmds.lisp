@@ -286,7 +286,9 @@
 ;;; Module Formula Status
 
 (defun proofchain-status-at (filename line &optional (origin "pvs"))
-  (if (gethash filename *pvs-files*)
+  (if (or (gethash filename *pvs-files*)
+	  (and (member origin '("ppe" "tccs") :test #'string=)
+	       (get-theory filename)))
       (let ((fdecl (formula-decl-to-prove filename line origin)))
 	(if fdecl
 	    (let ((*current-theory* (slot-value fdecl 'module)))
@@ -449,7 +451,8 @@
 	  (t (pvs-message "No proofs found in this file")))))
 
 (defun show-proofs-theory (theoryname)
-  (let ((proofs (read-pvs-file-proofs (context-file-of theoryname))))
+  (let* ((file (context-file-of theoryname))
+	 (proofs (when file (read-pvs-file-proofs file))))
     (cond (proofs
 	   (setq *displayed-proofs* proofs)
 	   (pvs-buffer "Show Proofs"
@@ -461,7 +464,8 @@
 					 outstr valid?)))
 	     'popto t)
 	   t)
-	  (t (pvs-message "No proofs found in this theory")))))
+	  (file (pvs-message "No proofs found in this theory"))
+	  (t (pvs-message "Theory not found in context; may need to retypecheck.")))))
 
 (defun show-proofs-importchain (theoryname)
   (let* ((imports (context-usingchain theoryname))

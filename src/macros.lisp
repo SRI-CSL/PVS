@@ -140,11 +140,11 @@
 				 'variable)))
       (beta-reduce (make-lambda-expr (list ,bd)
 		     (if (listp ,op)
-			 (make-typechecked-conjunction*
+			 (make!-conjunction*
 			  (mapcar #'(lambda (o)
-				      (make-application o ,nvar))
+				      (make!-application o ,nvar))
 				  ,op))
-			 (mk-application ,op ,nvar)))))))
+			 (make!-application ,op ,nvar)))))))
 
 (defmacro gen-forall-expr (vsym vtype operator)
   (let ((type (gensym))

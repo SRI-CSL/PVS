@@ -90,6 +90,11 @@
 (defvar *recursive-prove-decl-call* nil)
 (defparameter *init-usealist*
   '((FALSE ((TRUE . FALSE) FALSE)) (TRUE ((TRUE . FALSE) TRUE))))
+(defvar *init-alists*
+  (make-instance 'dpinfo
+    'dpinfo-sigalist nil
+    'dpinfo-findalist nil
+    'dpinfo-usealist *init-usealist*))
 (defvar *goal*)
 (defvar *label*)
 (defvar *subgoalnum*)
@@ -105,6 +110,35 @@
 (defvar + '+)
 (defvar - '-)
 (defvar *macro-names* nil)
+(defvar *subst-type-hash* nil) ;;initialized in assert-sformnums
+(defvar *checkpointed-branches* nil)
+(defvar *dp-print-incompatible-warning* t)
+(defvar *print-expanded-dpinfo* t)
+(defvar *dp-state* nil)
+(defvar *new-ground?* nil)
+(defvar *old-ground?* t)
+(defvar *newdc* nil)
+(defvar *dp-changed*)
+(defvar *alists*)
+(defvar *dp-state*)
+(defvar *top-alists*)
+(defvar *top-dp-state*)
+(defvar *break-on-ground-diff* t)
+
+(defun new-ground ()
+  (setq *newdc* t
+	*new-ground?* t
+	*old-ground?* nil))
+
+(defun old-ground ()
+  (setq *newdc* nil
+	*new-ground?* nil
+	*old-ground?* t))
+
+(defun both-ground ()
+  (setq *newdc* nil
+	*new-ground?* t
+	*old-ground?* t))
 
 #+lucid
 (defmacro pvs-format (stream format-string &rest args)
@@ -313,7 +347,13 @@
   `(synonymize ,rulename1 ,rulename2 *rulebase*))
 
 
+(defun true-p (expr)
+  (or (eq expr 'true)
+      (tc-eq expr *true*)))
 
+(defun false-p (expr)
+  (or (eq expr 'false)
+      (tc-eq expr *false*)))
 
 (defmacro const (x) `#'(lambda (y) ,x))	 
 
@@ -381,18 +421,21 @@
 ;;in-sformnums? checks if the current sformnum (pos or neg, 
 ;;  according to sign of sform) is in sformnums.
 (defmacro in-sformnums? (sform pos neg sformnums)
-  `(let ((sign (not (not-expr? (formula ,sform)))))
+  `(let ((sign (not (not-expr? (formula ,sform))))
+	 (sformnums (cleanup-fnums ,sformnums)))
     (cond ((eql ,sformnums '*) T)
 	((eql ,sformnums '+) sign)
 	((eql ,sformnums '-) (not sign))
-	((eql ,sformnums pos) sign)
-	((eql ,sformnums neg) (not sign))
-;NSH(12-23-91): Turning this off; restore if formula labels are used. 	
+	((eql ,sformnums ,pos) sign)
+	((eql ,sformnums ,neg) (not sign))
+	((and (label ,sform) (memq ,sformnums (label ,sform))) T)
+;NSH(12-23-91): Turning this off; restore if formula labels are used.
+;NSH(4.3.97): restoring labels	
 	((consp ,sformnums)
 	 (cond ((memq '* ,sformnums) T)
 	       ((memq '+ ,sformnums) sign)
 	       ((memq '- ,sformnums) (not sign))
-	 ;(or (memq (label ,sform) ,sformnums))
+	       ((and (label ,sform)(intersection (label ,sform) ,sformnums)))
 	       ((consp (car ,sformnums))
 		(if sign (member ,pos (car ,sformnums))
 		      (member ,neg (car ,sformnums))))
@@ -456,30 +499,32 @@
 (defmacro make-assert-expr (expr)
   `(let* ((*tccforms* nil)
 	  (*keep-unbound*  *bound-variables*)
-	  (*generate-tccs* 'ALL!)
+	  (*generate-tccs* (OR *generate-tccs* 'ALL!))
 	  (expr ,expr)
-	  (tcc-fmlas (loop for tccinfo in *tccforms*
-			   when (not (forall-expr? ;;NSH(8.19.98)
-				      ;;prunes out TCCs w/freevars
-				      (tccinfo-formula tccinfo)))
-			   nconc (and+ (tccinfo-formula tccinfo))))
+	  (tcc-fmlas (when (not (eq *generate-tccs* 'NONE))
+		       (loop for tccinfo in *tccforms*
+			     when (not (forall-expr?;;NSH(8.19.98)
+					;;prunes out TCCs w/freevars
+					(tccinfo-formula tccinfo)))
+			     nconc (and+ (tccinfo-formula tccinfo)))))
 	  (test (loop for tcc-fmla in tcc-fmlas always
-			      (let ((test  (assert-test tcc-fmla)))
-			       (if (not (memq test '(TRUE FALSE)))
-				   (setq *dont-cache-match?* T));NSH(6.12.95)
-			       (eq test 'true)))))
-    (when test expr )))
+		      (let ((test (assert-test tcc-fmla)))
+			(if (not (or (true-p test) (false-p test)))
+			    (setq *dont-cache-match?* T)) ;NSH(6.12.95)
+			(true-p test)))))
+     (when test expr)))
 
 (defmacro track-rewrite-format (res expr format-string &rest args)
-  `(let ((id (format nil "~a" (if (consp ,res)(car ,res)(id ,res)))))
-     (if (member id *track-rewrites* :test #'same-id)
-	  (let ((expr-string (format nil "~a" ,expr)))
-	    (format t "~%;;~a failed to rewrite " id)
-	    (if (> (+ (length id)(length expr-string) 21) *default-char-width*)
-		(format t "~%;;~a" (unpindent ,expr 2 :string T))
-		(format t "~a" expr-string))
-	    (format t "~%;;;;")
-	    (format t ,format-string ,@args)))))
+  `(let ((id (if (consp ,res)(car ,res)(id ,res))))
+     ;;NSH(9.19.97) removed (format nil "~a" ...) from above
+     (when (member id *track-rewrites* :test #'same-id)
+       (let ((expr-string (format nil "~a" ,expr)))
+	 (format t "~%;;~a failed to rewrite " id)
+	 (if (> (+ (length id)(length expr-string) 21) *default-char-width*)
+	     (format t "~%;;~a" (unpindent ,expr 2 :string T))
+	     (format t "~a" expr-string))
+	 (format t "~%;;;;")
+	 (format t ,format-string ,@args)))))
 
 
 (defmacro replace-eq (lhs rhs)
@@ -531,9 +576,91 @@
 (defmacro tc-assoc (x alist)
   `(assoc ,x ,alist :test #'tc-eq))
 
-(defmacro call-process (expr)
-  `(let ((typealist (append *local-typealist* typealist)))
-     (invoke-process ,expr)))
+(defmacro nprotecting-cong-state (((new-cong-state old-cong-state)
+				  (new-alists old-alists))
+				 &body body)
+  (let ((resultsym (gensym)))
+    `(let ((,new-alists (copy ,old-alists))
+	   (,new-cong-state (new-cs ,old-cong-state))
+	   (,resultsym nil))
+       (unwind-protect
+	   (setq ,resultsym
+		 (multiple-value-list (progn ,@body)))
+	 (restore-old-cs ,new-cong-state))
+       (values-list ,resultsym))))
+
+(defmacro protecting-cong-state (((new-cong-state old-cong-state)
+				  (new-alists old-alists))
+				 &body body)
+  (let ((resultsym (gensym)))
+    `(let ((,new-alists (copy ,old-alists))
+	   (,new-cong-state (new-cs ,old-cong-state))
+	   (,resultsym nil))
+       (setq ,resultsym
+	     (multiple-value-list (progn ,@body)))
+       (values-list ,resultsym))))
+
+(defmacro call-process (expr dp-state alists)
+  (let ((g-expr (gentemp))
+	(g-dp-state (gentemp))
+	(g-alists (gentemp)))
+    `(let* ((,g-expr ,expr)
+	    (,g-dp-state ,dp-state)
+	    (,g-alists ,alists)
+	    (typealist (append *local-typealist* typealist))
+	    (sigalist (dpinfo-sigalist ,g-alists))
+	    (findalist (dpinfo-findalist ,g-alists))
+	    (usealist (dpinfo-usealist ,g-alists))
+	    (new-expr (when *new-ground?* (top-translate-to-dc ,g-expr)))
+	    ;; put in (typep expr 'syntax) check
+	    ;; in case call-process is called from process-assert
+	    ;; which already has translated exprs
+	    (old-expr (if (typep ,g-expr 'syntax)
+			  (top-translate-to-old-prove ,g-expr)
+			  ,g-expr))
+	    (new-result nil)
+	    (old-result nil))
+       (when *new-ground?*
+	 (setq new-result (translate-from-dc
+			   (dp::invoke-process new-expr ,g-dp-state))))
+       (when *old-ground?*
+	 (setq old-result (translate-from-prove-list
+			   (invoke-process old-expr)))
+	 (setf (dpinfo-sigalist ,g-alists) sigalist
+	       (dpinfo-findalist ,g-alists) findalist
+	       (dpinfo-usealist ,g-alists) usealist))
+       (let ((not-incompatible
+	      (or (not (and *new-ground?* *old-ground?*))
+		  (and (compatible-dp-results new-result old-result)))))
+	 (when (and *dp-print-incompatible-warning*
+		    (not not-incompatible))
+	   (format t "~%***IncompatibleWarning*** expr: ~A,~%new-result: ~A, ~%old-result:~A"
+	     new-expr new-result old-result))
+	 (assert (or (not *break-on-ground-diff*)
+		     not-incompatible)
+		 (*break-on-ground-diff*)))
+       (setq *break-on-ground-diff* t)
+       (if *new-ground?*
+	   new-result
+	   old-result))))
+
+(defmacro translate-to-ground (expr)
+  `(if *newdc*
+      (translate-to-dc ,expr)
+      (translate-to-prove ,expr)))
+
+(defmacro translate-with-new-hash (&rest body)
+  `(if *newdc*
+       (let ((*translate-to-dc-hash*
+	      (make-hash-table  ;;NSH(2.5.95)
+	       :hash-function 'pvs-sxhash ;;hash to pvs-hash
+	       :test 'tc-eq)))
+	 ,@body)
+      (let ((*translate-to-prove-hash*
+	      (make-hash-table  ;;NSH(2.5.95)
+	       :hash-function 'pvs-sxhash ;;hash to pvs-hash
+	       :test 'tc-eq)))
+	 ,@body)))
 
 (defmacro inc-rewrite-depth (res)
   `(let ((id (if (consp ,res) (car ,res)(id ,res))))
@@ -547,10 +674,10 @@
     (match ,pattern ,expr ,bind-alist ,subst)))
 
 (defmacro with-zero-context (lisp-expr)
-  `(let ((usealist nil)
-	 (sigalist nil)
-	 (findalist nil))
-     ,lisp-expr))
+  `(nprotecting-cong-state
+    ((*dp-state* *init-dp-state*)
+     (*alists* *init-alists*))
+    ,lisp-expr))
 
 (defmacro inc-fnum (fnum)
   `(if (< ,fnum 0)
@@ -563,3 +690,8 @@
       (if (> ,fnum 1)
 	  (1- ,fnum)
 	  ,fnum)))
+
+(defmacro check-for-connectives? (fmla)
+;;  `(unless *assert-connectives?*) ;;NSH(11.24.98)not going 
+                                   ;;to worry about asserting connectives
+     `(connective-occurs? ,fmla))

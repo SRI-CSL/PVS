@@ -73,11 +73,12 @@
       (setq *all-subst-mod-params-caches*
 	    (make-hash-table :hash-function 'pvs-sxhash
 				 :test 'tc-eq)))
-  (if *subst-mod-params-cache*
-      (clrhash *subst-mod-params-cache*)
-      (setq *subst-mod-params-cache*
-	    (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq
-				 :size 5))))
+;  (if *subst-mod-params-cache*
+;      (clrhash *subst-mod-params-cache*)
+;      (setq *subst-mod-params-cache*
+;	    (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq
+;				 :size 5)))
+  )
 
 (defun remove-subst-mod-params-cache ()
   (setq *all-subst-mod-params-caches* nil)
@@ -331,7 +332,7 @@
 	type
 	(let* ((bd (make-new-bind-decl ntype))
 	       (var (make-variable-expr bd))
-	       (preds (make-typechecked-conjunction*
+	       (preds (make!-conjunction*
 		       (adt-compatible-preds ntype type var nil)))
 	       (stype (make-instance 'datatype-subtype
 			'supertype ntype
@@ -462,7 +463,7 @@
 	  (if (eq nexpr expr)
 	      expr
 	      (let ((ntype (type (resolution nexpr))))
-		(lcopy nexpr 'type ntype 'types (list ntype))))))))
+		(lcopy nexpr 'type ntype)))))))
 
 (defmethod subst-mod-params* ((expr adt-name-expr) modinst bindings)
   (let ((nexpr (call-next-method)))

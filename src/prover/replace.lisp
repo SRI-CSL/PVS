@@ -96,24 +96,26 @@
 
 
 (defun replace-loop (lhs rhs sformnum sformnums sforms pos neg)
-  (if (null sforms) nil
-      (if (not-expr? (formula (car sforms)))
-	  (if (or (eq sformnum neg)
-		  (not (in-sformnums? (car sforms) pos neg sformnums)))
-	      (cons (car sforms)
-		    (replace-loop lhs rhs sformnum sformnums  (cdr sforms)
-				  pos (1- neg)))
-	      (cons (replace-expr lhs rhs (car sforms))
-		    (replace-loop lhs rhs sformnum sformnums (cdr sforms)
-				  pos (1- neg))))
-	  (if (or (eq sformnum pos)
-		  (not (in-sformnums? (car sforms) pos neg sformnums)))
-	      (cons (car sforms)
-		    (replace-loop lhs rhs sformnum sformnums (cdr sforms)
-				  (1+ pos) neg))
-	      (cons (replace-expr lhs rhs (car sforms))
-		    (replace-loop lhs rhs sformnum sformnums (cdr sforms)
-				  (1+ pos) neg))))))
+  (let ((*replace-cache*
+	 (make-hash-table :test #'eq)))
+    (if (null sforms) nil
+	(if (not-expr? (formula (car sforms)))
+	    (if (or (eq sformnum neg)
+		    (not (in-sformnums? (car sforms) pos neg sformnums)))
+		(cons (car sforms)
+		      (replace-loop lhs rhs sformnum sformnums  (cdr sforms)
+				    pos (1- neg)))
+		(cons (replace-expr lhs rhs (car sforms))
+		      (replace-loop lhs rhs sformnum sformnums (cdr sforms)
+				    pos (1- neg))))
+	    (if (or (eq sformnum pos)
+		    (not (in-sformnums? (car sforms) pos neg sformnums)))
+		(cons (car sforms)
+		      (replace-loop lhs rhs sformnum sformnums (cdr sforms)
+				    (1+ pos) neg))
+		(cons (replace-expr lhs rhs (car sforms))
+		      (replace-loop lhs rhs sformnum sformnums (cdr sforms)
+				    (1+ pos) neg)))))))
 
 	       
 (defun replace-expr (lhs rhs  sequent
@@ -158,8 +160,7 @@
 		   (ex (lcopy expr
 			 'operator op
 			 'argument arg
-			 'type rtype
-			 'judgement-types nil)))
+			 'type rtype)))
 	      (unless (eq op (operator expr))
 		(change-application-class-if-necessary expr ex))
 	      ex)))))
@@ -272,6 +273,11 @@
 			 (list
 			  new-condition new-then new-else))
 			 ))))))))
+
+(defmethod replace-expr* (lhs rhs (expr number-expr) lastopinfix?)
+  (if (tc-eq lhs expr)
+      (parenthesize rhs lastopinfix?)
+      expr))
 
 (defmethod replace-expr* (lhs rhs (expr name-expr)
 			      lastopinfix?)
