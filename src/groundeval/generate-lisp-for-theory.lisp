@@ -22,7 +22,7 @@
 	(pvs-message "Theory ~a is not typechecked" theoryname)))
   (pvs-emacs-eval "(pvs-evaluator-ready)"))
 
-(defun gqread (&optional prompt)
+(defun gqread ()
   (format t "~%<GndEval> ")
   (force-output)
   (let ((input (ignore-errors (read))))
@@ -73,7 +73,7 @@
 	       (let* ((input (ignore-errors (gqread)))
 		      (pr-input (pc-parse input 'expr))
 		      (tc-input (pc-typecheck pr-input)))
-		 (if (ground-type? (type tc-input))
+		 (if (ground-expr? tc-input)
 		     (format t "~%==> ~%  ~a"
 		       (if *pvs-eval-do-timing*
 			   (time (eval (pvs2cl tc-input)))
