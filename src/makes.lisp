@@ -1165,14 +1165,14 @@
 	 (nexpr (if (integerp num)
 		    (make-instance 'number-expr
 		      'number num
-		      'type *number*)
+		      'type *real*)
 		    (make!-application (divides-operator)
 				       (make-instance 'number-expr
 					 'number (numerator num)
-					 'type *number*)
+					 'type *real*)
 				       (make-instance 'number-expr
 					 'number (denominator num)
-					 'type *number*)))))
+					 'type *real*)))))
     (if (minusp number)
 	(make!-minus nexpr)
 	nexpr)))
