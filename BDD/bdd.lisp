@@ -258,18 +258,24 @@
 	 (list-of-conjuncts (translate-from-bdd-list
 			     (bdd_sum_of_cubes sforms-bdd
 					       (if irredundant? 1 0)))))
-         (init-hash-tables)
-         (let*
-	 ((lit-list (mapcar #'(lambda (conj)
-			       (mapcar #'(lambda (lit)
-					   (if (consp lit)
-					       (gethash (car lit) *bdd-pvs-hash*)
-					       (make-negation
-						(gethash lit *bdd-pvs-hash*))))
-				 conj))
-		     list-of-conjuncts)))
-    (assert (hash-table-p *pvs-bdd-hash*))
-    lit-list)))
+       (from-bdd-list-to-pvs-list list-of-conjuncts))
+)
+
+
+(defun from-bdd-list-to-pvs-list (list-of-conjuncts)
+   (init-hash-tables) ;; definition in mu.lisp
+  (let* ((lit-list (mapcar #'(lambda (conj)
+			     (mapcar #'(lambda (lit)
+				         (if (consp lit)
+					     (gethash (car lit) *bdd-pvs-hash*)
+					     (make-negation
+				      	(gethash lit *bdd-pvs-hash*))))
+		      	 conj))
+		   list-of-conjuncts)))
+  (assert (hash-table-p *pvs-bdd-hash*))
+    lit-list)
+)
+
 
 (defun add-bdd-subgoals (ps sforms conjuncts remaining-sforms)
   (let ((subgoals
