@@ -325,15 +325,30 @@ recursive function definitions.
 \texttt{REDUCE\_ordinal} are defined.  These provide a means for defining
 notions like the size or depth of a datatype term.
 
-\item If all type parameters are positive and no accessor type involves a
-subtype of the datatype,\footnote{These constraints are too strong, and
-may be modified in the future.} a \texttt{map} function is generated in a
+\item If some type parameter is positive and no accessor type involves a
+subtype of the datatype, a \texttt{map} function is generated in a
 separate theory.  Every positive type parameter in the datatype is
 associated with a pair of \texttt{map} parameters, which form the domain
 and range of a corresponding function argument.  Given a set of such
 functions and a term of the datatype, \texttt{map} returns a term that has
 the same structure, but with the ``leaf'' elements replaced by the
 function values.
+
+%% The reason for the accessor subtype restriction is illustrated by the
+%% following datatype.
+%% \begin{pvsex}
+%%   d[T: TYPE]: DATATYPE
+%%    b(n: nat): b?
+%%    c(a: {x: d | b?(x) AND EXISTS (a, b: T): a /= b}): c?
+%%   END d
+%% \end{pvsex}
+%% Now the generated map theory would have two type parameters, \texttt{T}
+%% and \texttt{T1}, and the definition for \texttt{map} should map
+%% \texttt{c?[T]} elements to \texttt{c?[T1]} elements, but when instantiated
+%% as \texttt{map[nat,{x:nat | x = 0}]} there is nothing to map the
+%% \texttt{c?[T]} elements to.  Although this is an artificial example, it is
+%% not obvious 
+
 
 \item A separate theory is generated for the \texttt{reduce} and
 \texttt{REDUCE} functions.  These generalize the \texttt{reduce} functions
