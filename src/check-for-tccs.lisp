@@ -112,15 +112,16 @@
     (dolist (s (selections expr))
       (check-for-tcc-selection s expr expected))
     (if (else-part expr)
-	(let ((*tcc-conditions* (append (make-else-cases-conditions expr)
-					 *tcc-conditions*)))
+	(let ((*tcc-conditions* (push-tcc-conditions
+				 (make-else-cases-conditions expr)
+				 *tcc-conditions*)))
 	  (check-for-tccs* (else-part expr) expected))
 	(generate-selections-tccs expr (constructors adt) adt))))
 
 (defun check-for-tcc-selection (s expr expected)
   (let* ((equality (make-selection-equality s expr))
 	 (*bound-variables* (append (args s) *bound-variables*))
-	 (*tcc-conditions* (cons equality *tcc-conditions*)))
+	 (*tcc-conditions* (push-tcc-condition equality *tcc-conditions*)))
     (check-for-tccs* (expression s) expected)))
 
 (defmethod check-for-tccs* ((expr projection-application) expected)
@@ -141,21 +142,23 @@
       (let ((*appl-tcc-conditions*
 			    (cons (appl-tcc-conditions operator argument)
 				  *appl-tcc-conditions*)))
-	(check-for-tccs* operator optype)))))
+	(check-for-tccs* operator optype))))
+  (check-for-recursive-tcc expr))
 
 (defmethod check-for-tccs* ((ex conjunction) expected)
   (check-for-tccs* (args1 ex) expected)
-  (let ((*tcc-conditions* (append (and!+ (args1 ex)) *tcc-conditions*)))
+  (let ((*tcc-conditions* (push-tcc-condition (args1 ex) *tcc-conditions*)))
     (check-for-tccs* (args2 ex) expected)))
 
 (defmethod check-for-tccs* ((ex disjunction) expected)
   (check-for-tccs* (args1 ex) expected)
-  (let ((*tcc-conditions* (cons (make!-negation (args1 ex)) *tcc-conditions*)))
+  (let ((*tcc-conditions* (push-tcc-condition (make!-negation (args1 ex))
+					     *tcc-conditions*)))
     (check-for-tccs* (args2 ex) expected)))
 
 (defmethod check-for-tccs* ((ex implication) expected)
   (check-for-tccs* (args1 ex) expected)
-  (let ((*tcc-conditions* (append (and!+ (args1 ex)) *tcc-conditions*)))
+  (let ((*tcc-conditions* (push-tcc-condition (args1 ex) *tcc-conditions*)))
     (check-for-tccs* (args2 ex) expected)))
 
 (defmethod check-for-tccs* ((expr branch) expected)
@@ -163,9 +166,10 @@
 	(ethen (then-part expr))
 	(eelse (else-part expr)))
     (check-for-tccs* econd *boolean*)
-    (let ((*tcc-conditions* (append (and!+ econd) *tcc-conditions*)))
+    (let ((*tcc-conditions* (push-tcc-condition econd *tcc-conditions*)))
       (check-for-tccs* ethen expected))
-    (let ((*tcc-conditions* (cons (make!-negation econd) *tcc-conditions*)))
+    (let ((*tcc-conditions* (push-tcc-condition (make!-negation econd)
+					       *tcc-conditions*)))
       (check-for-tccs* eelse expected))))
 
 (defmethod check-for-tccs* ((ex lambda-expr) expected)
@@ -312,8 +316,25 @@
 (defmethod check-for-tccs* ((expr update-expr) (expected funtype))
   (with-slots (expression assignments) expr
     (check-for-tccs* expression (type expression))
-    (mapcar #'(lambda (a) (check-for-tccs* a expected))
-      assignments)))
+    (check-assignment-types-for-funtype
+     assignments expected expression (type expr))))
+
+(defun check-assignment-types-for-funtype (assignments expected expression
+						       utype)
+  (check-assignment-types (car assignments) expression expected)
+  (when (cdr assignments)
+    (check-assignment-types-for-funtype
+     (cdr assignments)
+     expected
+     (if (typep expression 'update-expr)
+	 (copy expression
+	   'assignments (append (assignments expression)
+				(list (car assignments))))
+	 (make-instance 'update-expr
+	   'expression expression
+	   'assignments (list (car assignments))
+	   'type utype))
+     utype)))
 
 (defmethod check-for-tccs* ((expr update-expr) (expected subtype))
   (let ((stype (find-supertype expected)))
@@ -416,6 +437,10 @@
 (defmethod check-assignment-types* (args expr (expected dep-binding)
 					 maplet? oexpr)
   (check-assignment-types* args expr (type expected) maplet? oexpr))
+
+(defmethod check-assignment-types* (args expr (expected subtype)
+					 maplet? oexpr)
+  (check-assignment-types* args expr (find-supertype expected) maplet? oexpr))
 
 
 ;;; Check-types for type expressions
