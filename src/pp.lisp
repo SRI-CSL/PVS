@@ -1412,11 +1412,11 @@ bind tighter.")
       (pp-unchain-binding-expr (expression ex)
 			       (cons (bindings ex) bindings)
 			       op)
-      (values bindings ex)))
+      (values (nreverse bindings) ex)))
 
 (defmethod pp-unchain-binding-expr (ex bindings op)
   (declare (ignore op))
-  (values bindings ex))
+  (values (nreverse bindings) ex))
   
 
 (defmethod pp* ((ex set-expr))
@@ -1601,7 +1601,7 @@ bind tighter.")
   (with-slots (constructor args expression) sel
     (pprint-logical-block (nil nil)
       (pprint-indent :current 2)
-      (pp* constructor)
+      (write (id constructor))
       (when args
 	(pprint-logical-block (nil args :prefix "(" :suffix ")")
 	  (loop (write (id (pprint-pop)))
