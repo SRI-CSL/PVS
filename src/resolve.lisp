@@ -2054,7 +2054,6 @@
     (mapc #'(lambda (r)
 	      (let ((conv (car (get-resolution-conversions r arguments))))
 		(when conv
-		  (assert (typep conv 'name-expr))
 		  (push (make-conversion-resolution r conv name)
 			creses))))
 	  reses)
@@ -2118,7 +2117,8 @@
 		      (acons (domain ctype) nname nil))
 		    (range ctype)))
 	 (cconv (copy conv)))
-    (change-name-expr-class-if-needed (declaration conv) cconv)
+    (when (name-expr? conv)
+      (change-name-expr-class-if-needed (declaration conv) cconv))
     (make-instance 'conversion-resolution
       'module-instance (module-instance res)
       'declaration (declaration res)
