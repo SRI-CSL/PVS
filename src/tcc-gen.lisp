@@ -949,39 +949,97 @@
       ;; depend on any conditions, including implicit ones in the
       ;; prover
       (unless (or *in-checker* *in-evaluator* *collecting-tccs*
-		  *tcc-conditions*)
+		  (some #'(lambda (tcc-cond)
+				  (not (typep tcc-cond '(or bind-decl list))))
+			      *tcc-conditions*))
 	(push modinst (assuming-instances (current-theory))))
-      (dolist (axiom (remove-if-not #'axiom? (theory mod)))
-	(let* ((*old-tcc-name* nil)
-	       (ndecl (make-mapped-axiom-tcc-decl axiom modinst))
-	       (netype (when ndecl (nonempty-formula-type ndecl))))
-	  (if (and ndecl
-		   (or (null netype)
-		       (possibly-empty-type? netype)))
-	      (let ((unint (find-uninterpreted (definition ndecl) modinst)))
-		(if unint
-		    (unless *collecting-tccs*
-		      (pvs-warning
-			  "Axiom ~a not translated because '~a' not interpreted"
-			(id axiom) (id unint)))
-		    (insert-tcc-decl 'mapped-axiom modinst axiom ndecl)))
-	      (if ndecl
-		  (add-tcc-comment
-		   'mapped-axiom nil modinst
-		   (format nil
-		       "%~a~%  % was not generated because ~a is non-empty"
-		     (unpindent ndecl 2 :string t :comment? t)
-		     (unpindent netype 2 :string t :comment? t)))
-		  (add-tcc-comment
-		   'mapped-axiom nil modinst))))))))
+      (let* ((*old-tcc-name* nil))
+	(dolist (axiom (collect-mapping-axioms modinst mod))
+	  (multiple-value-bind (ndecl mappings-alist)
+	      (make-mapped-axiom-tcc-decl axiom modinst mod)
+	    (let ((netype (when ndecl (nonempty-formula-type ndecl))))
+	      (if (and ndecl
+		       (or (null netype)
+			   (possibly-empty-type? netype)))
+		  (let ((unint (find-uninterpreted
+				(definition ndecl)
+				modinst mod mappings-alist)))
+		    (if unint
+			(unless *collecting-tccs*
+			  (pvs-warning
+			      "Axiom ~a not translated because '~a' not interpreted"
+			    (id axiom) (id unint)))
+			(insert-tcc-decl 'mapped-axiom modinst axiom ndecl)))
+		  (if ndecl
+		      (add-tcc-comment
+		       'mapped-axiom nil modinst
+		       (format nil
+			   "%~a~%  % was not generated because ~a is non-empty"
+			 (unpindent ndecl 2 :string t :comment? t)
+			 (unpindent netype 2 :string t :comment? t)))
+		      (add-tcc-comment
+		       'mapped-axiom nil modinst))))))))))
 
-(defun find-uninterpreted (expr modinst)
-  (let ((refs (collect-references expr)))
-    (find-if #'(lambda (d)
-		 (and (same-id (module d) modinst)
-		      (interpretable? d)))
-      refs)))
+(defmethod collect-mapping-axioms (thinst theory)
+  (append (collect-mapping-axioms* (mappings thinst))
+	  (remove-if-not #'axiom? (all-decls theory))))
 
+(defmethod collect-mapping-axioms* ((list list))
+  (mapcan #'collect-mapping-axioms* list))
+
+(defmethod collect-mapping-axioms* ((map mapping))
+  (collect-mapping-axioms* (lhs map)))
+
+(defmethod collect-mapping-axioms* ((n name))
+  (collect-mapping-axioms* (declaration n)))
+
+(defmethod collect-mapping-axioms* ((theory module))
+  (remove-if-not #'axiom? (all-decls theory)))
+
+(defmethod collect-mapping-axioms* ((decl declaration))
+  nil)
+
+(defun find-uninterpreted (expr thinst theory mappings-alist)
+  (let ((refs (collect-references expr))
+	(theories (interpreted-theories thinst theory))
+	(foundit nil))
+    (mapobject #'(lambda (ex)
+		   (or foundit
+		       (when (and (name? ex)
+				  (declaration? (declaration ex))
+				  (interpretable? (declaration ex))
+				  (not (assq (declaration ex) mappings-alist))
+				  (or (memq (module (declaration ex)) theories)
+				      ;;(mappings (module-instance ex))
+				      ))
+			 (setq foundit ex))))
+	       expr)
+    foundit))
+
+(defun interpreted-theories (thinst theory)
+  (cons theory (interpreted-theories* thinst)))
+
+(defmethod interpreted-theories* ((name name))
+  (interpreted-theories* (mappings name)))
+
+(defmethod interpreted-theories* ((list list))
+  (interpreted-theories-list list nil))
+
+(defun interpreted-theories-list (list theories)
+  (if (null list)
+      theories
+      (let ((ths (interpreted-theories* (car list))))
+	(interpreted-theories-list
+	 (cdr list)
+	 (nunion ths theories)))))
+
+(defmethod interpreted-theories* ((map mapping))
+  (when (module? (declaration (lhs map)))
+    (cons (declaration (lhs map))
+	  (interpreted-theories* (rhs map)))))
+
+(defmethod interpreted-theories* ((rhs mapping-rhs))
+  (interpreted-theories* (expr rhs)))
 
 (defmethod nonempty-formula-type ((decl formula-decl))
   (nonempty-formula-type (definition decl)))
@@ -994,23 +1052,26 @@
 (defmethod nonempty-formula-type ((ex expr))
   nil)
 
-(defun make-mapped-axiom-tcc-decl (axiom modinst)
+(defun make-mapped-axiom-tcc-decl (axiom modinst mod)
   (let* ((*generate-tccs* 'none)
-	 (*generating-mapped-axiom-tcc* t)
-	 (expr (subst-mod-params (definition axiom) modinst (module axiom)))
-	 (tform (add-tcc-conditions expr))
-	 (xform (if *simplify-tccs*
-		    (pseudo-normalize tform)
-		    (beta-reduce tform)))
-	 (uform (expose-binding-types (universal-closure xform)))
-	 (id (make-tcc-name nil (id axiom))))
-    (unless (tc-eq uform *true*)
-      (when (and *false-tcc-error-flag*
-		 (tc-eq uform *false*))
-	(type-error axiom
-	  "Mapped axiom TCC for this expression simplifies to false:~2%  ~a"
-	  tform))
-      (typecheck* (mk-mapped-axiom-tcc id uform modinst axiom) nil nil nil))))
+	 (*generating-mapped-axiom-tcc* t))
+    (multiple-value-bind (expr mappings-alist)
+	(subst-mod-params (closed-definition axiom) modinst mod)
+      (let* ((tform (add-tcc-conditions expr))
+	     (xform (if *simplify-tccs*
+			(pseudo-normalize tform)
+			(beta-reduce tform)))
+	     (uform (expose-binding-types (universal-closure xform)))
+	     (id (make-tcc-name nil (id axiom))))
+	(unless (tc-eq uform *true*)
+	  (when (and *false-tcc-error-flag*
+		     (tc-eq uform *false*))
+	    (type-error axiom
+	      "Mapped axiom TCC for this expression simplifies to false:~2%  ~a"
+	      tform))
+	  (values (typecheck* (mk-mapped-axiom-tcc id uform modinst axiom)
+			      nil nil nil)
+		  mappings-alist))))))
 
 (defun generate-selections-tccs (expr constructors adt)
   (when (and constructors
@@ -1141,12 +1202,17 @@
 	 (imp (current-declaration))
 	 (tdecls (all-decls theory))
 	 (decls (memq imp tdecls))
-	 (dimp (find-if #'(lambda (d)
-			    (and (importing? d) (not (chain? d))))
+	 (dimp (find-if
+		   #'(lambda (d)
+		       (and (typep d '(or importing
+					  theory-abbreviation-decl))
+			    (not (chain? d))))
 		 decls))
-	 (remimps (remove-if-not #'(lambda (d)
-				     (and (importing? d)
-					  (not (chain? d))))
+	 (remimps (remove-if-not
+		      #'(lambda (d)
+			  (and (typep d '(or importing
+					     theory-abbreviation-decl))
+			       (not (chain? d))))
 		    tdecls)))
     (makesym "IMPORTING~d" (1+ (position dimp remimps)))))
 
@@ -1498,134 +1564,3 @@
 	(if entry
 	    (nconc entry (list tccstr))
 	    (push (list decl tccstr) (tcc-comments theory)))))))
-
-;; (defun expr-occurs-strictly-in-sequent? (expr)
-;;   (when nil; *in-checker*
-;;     (let ((foundit nil))
-;;       (mapobject #'(lambda (x)
-;; 		     (or foundit
-;; 			 (and (tc-eq x expr)
-;; 			      (setq foundit t))
-;; ;; 			 (when (typep x
-;; ;; 				      '(or conjunction disjunction implication
-;; ;; 					  binding-expr type-expr cases-expr
-;; ;; 					  branch))
-;; ;; 			   (break "check"))
-;; 			 (typecase x
-;; 			   ((or conjunction disjunction implication
-;; 				binding-expr type-expr)
-;; 			    t)
-;; 			   (cases-expr t)
-;; 			   (branch t)
-;; 			   (t ;;(break "foo")
-;; 			    nil))))
-;; 		 *ps*)
-;;       foundit)))
-
-;; ;;; Walks down the sequent, looking at terms which are not governed by
-;; ;;; TCC conditions, and collects information not already known from
-;; ;;; the type.  For example, if x = 1/x occurs as a top-level formula
-;; ;;; of the sequent, then x is known to be nonzero, even if its type
-;; ;;; does not reflect this.
-
-;; (defvar *known-constraints*)
-
-;; (defun collect-known-constraints ()
-;;   (when *in-checker*
-;;     (let ((*known-constraints* nil))
-;;       (collect-known-constraints* *ps*))))
-
-;; (defmethod collect-known-constraints* ((ps proofstate))
-;;   (collect-known-constraints* (current-goal ps)))
-
-;; (defmethod collect-known-constraints* ((seq sequent))
-;;   (collect-known-constraints* (s-forms seq)))
-
-;; (defmethod collect-known-constraints* ((list list))
-;;   (when list
-;;     (collect-known-constraints* (car list))
-;;     (collect-known-constraints* (cdr list))))
-
-;; (defmethod collect-known-constraints* ((form s-formula))
-;;   (collect-known-constraints* (formula form)))
-
-;; (defmethod collect-known-constraints* ((ex conjunction))
-;;   (collect-known-constraints* (args1 ex)))
-
-;; (defmethod collect-known-constraints* ((ex disjunction))
-;;   (collect-known-constraints* (args1 ex)))
-
-;; (defmethod collect-known-constraints* ((ex implication))
-;;   (collect-known-constraints* (args1 ex)))
-
-;; (defmethod collect-known-constraints* ((ex branch))
-;;   (collect-known-constraints* (condition ex)))
-
-;; (defmethod collect-known-constraints* ((ex cases-expr))
-;;   (collect-known-constraints* (expression ex)))
-
-;; (defmethod collect-known-constraints* ((ex name-expr))
-;;   nil)
-
-;; (defmethod collect-known-constraints* ((ex number-expr))
-;;   nil)
-
-;; (defmethod collect-known-constraints* ((ex tuple-expr))
-;;   (collect-known-constraints* (exprs ex)))
-
-;; (defmethod collect-known-constraints* ((ex application))
-;;   (collect-known-constraints* (operator ex))
-;;   (collect-known-constraints* (argument ex))
-;;   (collect-application-constraints
-;;    (domain (find-supertype (type (operator ex))))
-;;    (argument ex)))
-
-;; (defmethod collect-application-constraints ((ty tupletype) (ex tuple-expr))
-;;   (collect-application-constraints (types ty) (exprs ex)))
-
-;; (defmethod collect-application-constraints ((types list) (exprs list))
-;;   (if (length= types exprs)
-;;       (collect-application-constraints-list types exprs)
-;;       (break "collect-application-constraints-list (list list)")))
-
-;; (defmethod collect-application-constraints-list (types exprs)
-;;   (when types
-;;     (collect-application-constraints (car types) (car exprs))
-;;     (collect-application-constraints-list
-;;      (if (dep-binding? (car types))
-;; 	 (substit (cdr types) (acons (car types) (car exprs) nil))
-;; 	 (cdr types))
-;;      (cdr exprs))))
-
-;; (defmethod collect-application-constraints ((ty dep-binding) ex)
-;;   (collect-application-constraints (type ty) ex))
-
-;; (defmethod collect-application-constraints ((ty subtype) ex)
-;;   (unless (some #'(lambda (ety) (subtype-of? ety ty)) (judgement-types+ ex))
-;;     (add-to-known-constraints ty ex)))
-
-;; (defun add-to-known-constraints (ty ex)
-;;   (let* ((jtypes (judgement-types+ ex))
-;; 	 (constraints (compatible-predicates jtypes ty ex)))
-;;     (break)))
-    
-
-;; (defmethod collect-application-constraints ((ty funtype) ex)
-;;   nil)
-
-;; (defmethod collect-application-constraints ((ty cotupletype) ex)
-;;   nil)
-
-;; (defmethod collect-application-constraints ((ty recordtype) ex)
-;;   nil)
-
-;; (defmethod collect-application-constraints ((ty type-name) ex)
-;;   nil)
-
-;; (defun collect-known-type-constraints (ex expected)
-;;   (unless (subtype-of? (type ex) expected)
-;;     (let* ((jtypes (judgement-types+ ex))
-;; 	   (constraints (compatible-predicates jtypes expected ex)))
-;;       (when constraints
-;; 	(pushnew (cons constraints *tcc-conditions*) *collected-constraints*
-;; 		 :test #'tc-eq)))))
