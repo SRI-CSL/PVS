@@ -234,8 +234,6 @@ want to set this to nil for slow terminals, or connections over a modem.")
 (defun pvs-process-filter (process output)
   (when comint-log-verbose
     (comint-log (ilisp-process) (format "\nrec:{%s}\n" output)))
-  (when *pvs-initialized*
-    (check-screen-width))
   (setq output (pvs-process-gc-messages output))
   (if pvs-recursive-process-filter
       (setq pvs-process-output (concat pvs-process-output output))
@@ -988,10 +986,30 @@ This displays information about the PVS command queue in the minibuffer."
 	 (pos (pvs-get-place (caddr message))))
     (pvs-display-file file dir pos)))
 
-(defun check-screen-width ()
-  (unless (= (window-width) *default-char-width*)
-    (setq *default-char-width* (window-width))
-    (pvs-send (format "(setq *default-char-width* %d)" *default-char-width*))))
+(defpvs pvs-set-linelength prettyprint (&optional length)
+  "If called with no argument sets the PVS prettyprinter line length to be the
+width of the current Emacs frame.  Otherwise, sets the line length to the
+specified argument."
+  (interactive "p")
+  (setq *default-char-width* (or length
+				 (frame-width (selected-frame))))
+  (pvs-send (format "(setq *default-char-width* %d)" *default-char-width*)))
+
+
+(defun pvs-auto-set-linelength (frame)
+  "A function suitable for putting in the window-size-change-functions
+hook.  For example:
+
+(when (and (boundp 'window-size-change-functions)
+           (not noninteractive))
+  (push 'pvs-auto-set-linelength window-size-change-functions))
+
+This hook is not available with all versions of [X]Emacs, so is
+not automatically used in PVS.  See pvs-set-linelength function
+for the interactive function."
+  (unless (= (frame-width frame)
+	     *default-char-width*)
+    (pvs-set-linelength (frame-width frame))))
 
 (defun full-copy-sparse-keymap (keymap)
   (copy-keymap keymap))

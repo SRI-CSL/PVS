@@ -258,12 +258,12 @@ get to the same state."
 	 (old-decision-procedures)))
   (setq *pvs-version-information* nil)
   (sleep-for 1)
-  ;;(check-screen-width)
   ;; sets *pvs-current-directory* and pops up the welcome buffer
   (init-change-context *pvs-current-directory*)
   (setq pvs-in-checker nil)
   (setq pvs-in-evaluator nil)
   (unless noninteractive
+    (pvs-auto-set-linelength (selected-frame))
     (pvs-welcome))
   (when (boundp 'save-options-file)
     (setq save-options-file "~/.pvsxemacs-options")
@@ -281,5 +281,15 @@ get to the same state."
     (message "Ready")))
 
 (pvs)
+
+
+
+
+
+
+
+
+
+
 
 
