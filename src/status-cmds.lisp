@@ -1,14 +1,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; status-cmds.lisp -- 
+;; status-cmds.lisp -- support for the various status commands
 ;; Author          : Sam Owre
 ;; Created On      : Sat Feb 19 21:23:43 1994
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Thu Jul  1 18:50:38 1999
 ;; Update Count    : 11
-;; Status          : Alpha test
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -89,16 +88,30 @@
 
 ;;; Using Status
 
-(defun status-importchain (theory)
+(defun status-importchain (theory &optional brief?)
   (let ((te (get-context-theory-entry theory)))
     (if te
 	(let ((*modules-visited* nil)
 	      (*disable-gc-printout* t))
 	  (pvs-buffer "PVS Status"
 	    (with-output-to-string (*standard-output*)
-	      (status-importchain* (id te)))
+	      (if brief?
+		  (brief-status-importchain (id te))
+		  (status-importchain* (id te))))
 	    t))
 	(pvs-message "~a is not in the current context" theory))))
+
+(defun brief-status-importchain (tname &optional (indent 0))
+  (let* ((th (get-theory tname)))
+    (cond ((null th)
+	   (format t "~%~a is not parsed" tname))
+	  ((member tname *modules-visited* :test #'same-id)
+	   (format t "~%~vT~a ... shown above" indent (id tname)))
+	  (t (let ((usings (when th (get-immediate-usings th))))
+	       (when (and th usings) (push tname *modules-visited*))
+	       (format t "~%~vT~a" indent (id th))
+	       (mapc #'(lambda (m) (brief-status-importchain m (+ indent 2)))
+		     usings))))))
 
 (defun status-importchain* (tid &optional (indent 0))
   (let* ((th (get-theory tid)))
@@ -106,7 +119,7 @@
 	   (format t "~a is not parsed" tid))
 	  ((member tid *modules-visited*)
 	   (format t "~vT... ~a already described~%" indent tid))
-	  (t (let ((usings (when th (get-theory-dependencies tid))))
+	  (t (let ((usings (when th (get-immediate-usings th))))
 	       (when th (push tid *modules-visited*))
 	       (format t "~vTTheory ~a~%~vT  It uses ~?~%"
 		 indent (theory-status-string (id th))
@@ -117,13 +130,30 @@
 
 ;;; Usedby Status
 
-(defun status-importbychain (theory)
-  (let ((*modules-visited* nil)
-	(*disable-gc-printout* t))
-    (pvs-buffer "PVS Status"
-      (with-output-to-string (*standard-output*)
-	(status-importbychain* (ref-to-id theory)))
-      t)))
+(defun status-importbychain (theory &optional brief?)
+  (let ((te (get-context-theory-entry theory)))
+    (if te
+	(let ((*modules-visited* nil)
+	      (*disable-gc-printout* t))
+	  (pvs-buffer "PVS Status"
+	    (with-output-to-string (*standard-output*)
+	      (if brief?
+		  (brief-status-importbychain (id te))
+		  (status-importbychain* (ref-to-id theory))))
+	    t))
+	(pvs-message "~a is not in the current context" theory))))
+
+(defun brief-status-importbychain (tname &optional (indent 0))
+  (let* ((th (get-theory tname)))
+    (cond ((null th)
+	   (format t "~a is not parsed" tname))
+	  ((member tname *modules-visited*)
+	   (format t "~vT~a... shown above~%" indent tname))
+	  (t (let ((usedbys (find-all-usedbys tname)))
+	       (push tname *modules-visited*)
+	       (format t "~%~vT~a" indent (id th))
+	       (mapc #'(lambda (m) (brief-status-importbychain m (+ indent 2)))
+		     usedbys))))))
 
 (defun status-importbychain* (tid &optional (indent 0))
   (let ((th (get-theory tid)))
@@ -578,7 +608,8 @@
 	  (if (run-proof-time decl)
 	      (format nil "~,2,-3f" (run-proof-time decl))
 	      (format nil "n/a")))
-	(write (get-editable-justification prf)
+	(write (get-editable-justification
+		(convert-proof-form-to-lowercase prf))
 	       :stream outstr :pretty t :escape t :level nil
 	       :length nil :pprint-dispatch *proof-script-pprint-dispatch*)))))
 
@@ -589,7 +620,8 @@
 	   (status (or (and fe (fe-proof-status-string fe valid?))
 		       "unchecked")))
       (format outstr "~3%~a.~a: ~a~2%" thid (car prf) status)
-      (write (get-editable-justification prf)
+      (write (get-editable-justification
+	      (convert-proof-form-to-lowercase prf))
 	     :stream outstr :pretty t :escape t :level nil :length nil
 	     :pprint-dispatch *proof-script-pprint-dispatch*))))
   
@@ -653,33 +685,58 @@
        (format t "~%~%  The proof chain for ~a is INCOMPLETE.~
                   ~%  It depends on the following unproved conjectures:"
 	 (id decl))
-       (loop for x in *unproved-dependings*
+       (loop for x in (pc-sort *unproved-dependings*)
 	     do
 	     (format t "~%    ~a.~a" (id (module x)) (id x)))))
     (when *proved-dependings*
       (format t "~%~%  ~a depends on the following proved theorems:"
 	(id decl))
-      (loop for x in *proved-dependings*
+      (loop for x in (pc-sort *proved-dependings*)
 	     do
 	     (format t "~%    ~a.~a" (id (module x)) (id x))))
     (when *axiom-dependings*
       (format t "~%~%  ~a depends on the following axioms:"
 	(id decl))
-      (loop for x in *axiom-dependings*
+      (loop for x in (pc-sort *axiom-dependings*)
 	     do
 	     (format t "~%    ~a.~a" (id (module x)) (id x))))
     (when *defn-dependings*
       (format t "~%~%  ~a depends on the following definitions:"
 	(id decl))
-      (loop for x in *defn-dependings*
+      (loop for x in (pc-sort *defn-dependings*)
 	     do
 	     (format t "~%    ~a.~a" (id (module x)) (id x))))
     (when *assumption-dependings*
       (format t "~%~%  ~a depends on the following assumptions:"
 	(id decl))
-      (loop for x in *assumption-dependings*
+      (loop for x in (pc-sort *assumption-dependings*)
 	     do
 	     (format t "~%    ~a.~a" (id (module x)) (id x))))))
+
+;; Lexical ordering; th1.id1 < th2.id2 if th1 precedes th2 in the
+;; all-importings list, or th1 = th2 and (string id1) < (strnig id2)
+(defun pc-sort (decls &optional theory)
+  (assert (or theory *current-context*))
+  (let* ((th (or theory (current-theory)))
+	 (imps (cons th (all-importings th))))
+    (assert (every #'(lambda (x)
+		       (or (from-prelude? x)
+			   (from-prelude-library? x)
+			   (memq (module x) imps)))
+		   decls))
+    (sort decls
+	  #'(lambda (x y)
+	      (cond ((eq (module x) (module y))
+		     (string< (id x) (id y)))
+		    ((from-prelude? y)
+		     (or (not (from-prelude? x))
+			 (string< (id (module x)) (id (module y)))))
+		    ((from-prelude-library? y)
+		     (and (not (from-prelude? x))
+			  (or (not (from-prelude-library? x))
+			      (string< (id (module x)) (id (module y))))))
+		    (t (and (not (from-prelude? x))
+			   (memq (module y) (memq (module x) imps)))))))))
 
 (defun assuming-tccs (decl)
   (let ((theory-decls (all-decls (module decl))))
@@ -692,12 +749,9 @@
   ;;; number judgements, as well as any name or application judgements
   ;;; whose decl is in decls.
   (let ((jtccs nil))
-    (maphash #'(lambda (id pdecls)
-		 (declare (ignore id))
-		 (dolist (decl pdecls)
-		   (let ((tcc (get-judgement-tcc decl decls)))
-		     (when tcc (push tcc jtccs)))))
-	     (current-declarations-hash))
+    (do-all-declarations #'(lambda (decl)
+			     (let ((tcc (get-judgement-tcc decl decls)))
+			       (when tcc (push tcc jtccs)))))
     jtccs))
 
 (defmethod get-judgement-tcc ((jdecl subtype-judgement) &optional decls)
@@ -745,8 +799,6 @@
   (and (typep x 'formula-decl)
        (eq (spelling x) 'ASSUMPTION)))
     
-
-
 (defmethod pc-analyze* ((fdecl formula-decl))
   (let ((*depending-chain* *depending-chain* ))
     (cond ((memq fdecl *depending-chain*)
@@ -762,11 +814,10 @@
 		   ((or (from-prelude? fdecl)
 			(not (proved? fdecl)))
 		    *dependings*)
-;		   ((eq (kind fdecl) 'tcc)
-;		    (pc-analyze* (proof-refers-to fdecl)))
-
+		   ;;((eq (kind fdecl) 'tcc)
+		   ;; (pc-analyze* (proof-refers-to fdecl)))
 		   (t (pc-analyze* (union (refers-to fdecl)
-					    (proof-refers-to fdecl)))))))))
+					  (proof-refers-to fdecl)))))))))
 
 
 (defmethod pc-analyze* ((decl declaration) )
@@ -1110,7 +1161,8 @@
   (dolist (prf proofs)
     (format outstr "~3%~a.~a~2%"
       theoryid (car prf))
-    (write (get-editable-justification prf)
+    (write (get-editable-justification
+	    (convert-proof-form-to-lowercase prf))
 	   :stream outstr :pretty t :escape t :level nil :length nil
 	   :pprint-dispatch *proof-script-pprint-dispatch*)))
 
@@ -1142,3 +1194,105 @@
 (defmethod formula-unused-declarations ((decl formula-decl))
   (set-difference (all-decls (module decl))
 		  (cons decl (formula-proof-dependencies decl))))
+
+(defun unusedby-proofs-of-formulas (formularefs theoryref)
+  (let* ((theory (get-theory theoryref))
+	 (*current-context* (context theory))
+	 (fdecls (mapcar #'(lambda (fref)
+			     (let* ((fname (pc-parse fref 'name))
+				    (reses (formula-resolutions fname)))
+			       (cond ((null reses)
+				      (pvs-message "Cannot resolve ~a" fref))
+				     ((cdr reses)
+				      (pvs-message
+					  "Multiple resolutions for ~a"
+					fref))
+				     (t (declaration (car reses))))))
+		   formularefs))
+	 (unused (unused-by-proofs-of fdecls)))
+    (unless (some #'null fdecls)
+      (if unused
+	  (let ((flist (mapcar #'(lambda (d)
+				   (format-decl-list
+				    d (ptype-of d) (module d)))
+			 unused)))
+	    (write-declaration-info flist))
+	  (pvs-message "No unused declarations found for ~a" formularefs)))))
+
+(defun unused-by-proofs-of (fdecls)
+  (let* ((used (collect-proof-used-declarations fdecls))
+	 (unused nil))
+    (do-all-declarations #'(lambda (d)
+			     (let ((th (module d)))
+			       (assert th)
+			       (unless (or (from-prelude? th)
+					   (library-datatype-or-theory? th)
+					   (memq d used))
+				 (pushnew d unused)))))
+    (sort unused #'string< :key #'id)))
+
+
+(defun unusedby-proof-of-formula (bufname origin line)
+  (let ((udecl (get-decl-at-origin bufname origin line)))
+    (when udecl
+      (let ((decls (unused-by-proof-of udecl)))
+	(if decls
+	    (let ((flist (mapcar #'(lambda (d)
+				     (format-decl-list
+				      d (ptype-of d) (module d)))
+			   decls)))
+	      (write-declaration-info flist))
+	    (pvs-message "No unused declarations found for ~a" (id udecl)))))))
+
+(defun unused-by-proof-of (fdecl)
+  (let* ((*current-context* (context fdecl))
+	 (used (collect-proof-used-declarations fdecl))
+	 (unused nil))
+    (do-all-declarations #'(lambda (d)
+			     (let ((th (module d)))
+			       (assert th)
+			       (unless (or (from-prelude? th)
+					   (library-datatype-or-theory? th)
+					   (memq d used))
+				 (pushnew d unused)))))
+    
+    (sort unused #'string< :key #'id)))
+
+(defmethod collect-proof-used-declarations ((decl-list list))
+  (collect-proof-used-decl-list decl-list nil))
+
+(defun collect-proof-used-decl-list (decl-list used)
+  (if (null decl-list)
+      used
+      (collect-proof-used-decl-list
+       (cdr decl-list)
+       (collect-proof-used-declarations* (car decl-list) used))))
+
+(defmethod collect-proof-used-declarations ((decl formula-decl))
+  (collect-proof-used-declarations* decl nil))
+
+(defmethod collect-proof-used-declarations* ((decl declaration) used)
+  (if (or (from-prelude? decl)
+	  (memq decl used))
+      used
+      (collect-proof-used-declarations*
+       (union (refers-to decl) (generated decl))
+       (cons decl used))))
+
+(defmethod collect-proof-used-declarations* ((decl formula-decl) used)
+  (if (or (from-prelude? decl)
+	  (memq decl used))
+      used
+      (collect-proof-used-declarations*
+       (union (refers-to decl) (union (proof-refers-to decl) (generated decl)))
+       (cons decl used))))
+
+(defmethod collect-proof-used-declarations* (obj used)
+  (break "collect-proof-used-declarations*"))
+
+(defmethod collect-proof-used-declarations* ((list list) used)
+  (if (null list)
+      used
+      (collect-proof-used-declarations*
+       (cdr list)
+       (collect-proof-used-declarations* (car list) used))))
