@@ -116,7 +116,8 @@
   (warnings :documentation
 	    "A list of warning strings produced by calls to pvs-info")
   (conversion-messages :documentation
-		       "A list of conversion message strings produced by calls to pvs-conversion-msg"))
+		       "A list of conversion message strings produced by calls to pvs-conversion-msg")
+  (all-declarations :fetch-as nil))
 
 
 ;;; Datatypes and related classes
