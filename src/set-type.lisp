@@ -217,7 +217,8 @@ required a context.")
 	(expand1* ex
 		  (subst-mod-params
 		   (args2 (car (last (def-axiom (declaration op)))))
-		   (module-instance op)))
+		   (module-instance op)
+		   (module (declaration op))))
 	ex)))
 
 (defmethod expand1* ((ex application) (def lambda-expr))
@@ -388,7 +389,8 @@ required a context.")
 		    (not (eq (declaration op) (current-declaration))))
 	       (let* ((def (subst-mod-params
 			    (args2 (car (last (def-axiom (declaration op)))))
-			    (module-instance op)))
+			    (module-instance op)
+			    (module (declaration op))))
 		      (appl (beta-reduce (make!-applications def (argument* ex))))
 		      (orig (copy ex)))
 		 (change-class ex (class-of appl))
@@ -422,7 +424,8 @@ required a context.")
 	     (not (memq ex *applied-operators*)))
     (let ((def (subst-mod-params (args2 (car (last (def-axiom
 						     (declaration ex)))))
-				 (module-instance ex)))
+				 (module-instance ex)
+				 (module (declaration ex))))
 	  (orig (copy ex)))
       (change-class ex (class-of def))
       (copy-slots ex def)
@@ -587,18 +590,17 @@ required a context.")
 		   (compatible? (type (car resolutions)) expected))
 	      (cons (car resolutions) mreses)
 	      mreses)))
-	(t (let* ((bindings (tc-match expected (type (car resolutions))
+	(t (let* ((theory (get-theory (module-instance (car resolutions))))
+		  (bindings (tc-match expected (type (car resolutions))
 				      (mapcar #'(lambda (x) (cons x nil))
-					      (formals-sans-usings
-					       (get-theory
-						(module-instance
-						 (car resolutions)))))))
+					      (formals-sans-usings theory))))
 		  (mres (when (every #'cdr bindings)
 			  (subst-mod-params (car resolutions)
 					    (car (create-compatible-modinsts
 						  (module-instance (car resolutions))
 						  (list bindings)
-						  nil))))))
+						  nil))
+					    theory))))
 	     (find-tc-matching-resolutions
 	      (cdr resolutions) expected
 	      (if (and mres
@@ -789,7 +791,8 @@ required a context.")
       (const-decl
        (let ((subst-type (subst-mod-params
 			  (type (declaration lhs))
-			  (lcopy modinst 'mappings previous-mappings))))
+			  (lcopy modinst 'mappings previous-mappings)
+			  (module (declaration lhs)))))
 	 (setf (mapped-decl map)
 	       (copy decl
 		 'id (id (expr rhs))
@@ -834,7 +837,8 @@ required a context.")
     (t (let* ((mapmodinst (lcopy modinst
 			    'mappings (append mappings (mappings modinst))))
 	      (subst-type (subst-mod-params (type (declaration lhs))
-					    mapmodinst)))
+					    mapmodinst
+					    (module (declaration lhs)))))
 	 (set-type* (expr rhs) subst-type)))))
 
 ;;; Need to deal with type of lhs.  Here is what we mean:
@@ -959,7 +963,9 @@ required a context.")
 	      (let ((amap (assq (car fmap) amappings)))
 		(assert amap)
 		(cons (cdr fmap)
-		      (or (type-value (cdr amap)) (expr (cdr amap))))))
+		      (if (mapping-rhs? (cdr amap))
+			  (or (type-value (cdr amap)) (expr (cdr amap)))
+			  (cdr amap)))))
     fmappings))
 
 (defmethod get-actual-subtype-predicate (act (formal formal-subtype-decl) alist)
@@ -1122,8 +1128,10 @@ required a context.")
 	    (type-ambiguity (constructor sel))))
       (unless (injection-expr? (constructor sel))
 	(change-class (constructor sel) 'constructor-name-expr)
-	(setf (constructor sel) (subst-mod-params (constructor sel)
-						(module-instance atype))))
+	(setf (constructor sel)
+	      (subst-mod-params (constructor sel)
+				(module-instance atype)
+				(module (declaration atype)))))
       (assert (fully-instantiated? (constructor sel)))
       (let* ((equality (make-selection-equality sel expr))
 	     (*bound-variables* (append (args sel) *bound-variables*))
@@ -3669,7 +3677,10 @@ required a context.")
   #+pvsdebug (fully-typed? te)
   (when (and (typep (type (resolution te)) 'type-name)
 	     (adt (type (resolution te))))
-    (change-class te 'adt-type-name 'adt (adt (type (resolution te)))))
+    (let ((adt (adt (type (resolution te)))))
+      (change-class te 'adt-type-name
+	'adt adt
+	'single-constructor? (singleton? (constructors adt)))))
   (unless (or *dont-worry-about-full-instantiations*
 	      (fully-instantiated? te))
     (type-error te
@@ -3683,7 +3694,8 @@ required a context.")
   (let ((typeslist (make-formals-type-app
 		      (subst-mod-params (formals (declaration (type te)))
 					(module-instance
-					 (resolution (type te)))))))
+					 (resolution (type te)))
+					(module (declaration (type te)))))))
     (set-type-for-application-parameters (parameters te) (car typeslist)))) 
 
 (defmethod set-type* ((te subtype) expected)
