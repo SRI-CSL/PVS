@@ -129,7 +129,7 @@ pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
 ff-files = src/utils/$(PLATFORM)/file_utils.so \
            BDD/$(PLATFORM)/mu.so \
            src/WS1S/$(PLATFORM)/ws1s.so	\
-           src/ics-interface/$(PLATFORM)/ics_lisp_error.so \
+           src/ics-interface/$(PLATFORM)/ics_lisp.so \
 	   @ICSLIB@/libics.so
 
 
@@ -458,9 +458,10 @@ makews1s :
 	(cd src/WS1S ; rm -rf mona ; ln -s mona-1.4 mona);\
 	$(MAKE) -C src/WS1S/$(PLATFORM)
 
-src/ics-interface/$(PLATFORM)/ics_lisp_error.so : src/ics-interface/$(PLATFORM)/ics_lisp_error.o
+src/ics-interface/$(PLATFORM)/ics_lisp.so : src/ics-interface/$(PLATFORM)/ics_lisp_error.o @ICSLIB@/libics.a
 	umask 002; \
-	$(LD) -G -o $@ $< -L@ALLEGRODIR@ -l@ALLEGROLIB@
+	$(LD) -G -o $@ $< -L@ALLEGRODIR@ -l@ALLEGROLIB@ \
+	      --whole-archive @ICSLIB@/libics.a --no-whole-archive
 
 src/ics-interface/$(PLATFORM)/ics_lisp_error.o : src/ics-interface/ics_lisp_error.c
 	umask 002; \

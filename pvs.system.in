@@ -169,8 +169,7 @@
 		    (load (format nil "~a/mu.so" bddpath))
 		    (load (format nil "~a/ws1s.so" ws1spath))
 		    (ignore-errors
-		      (load (format nil "~a/ics_lisp_error.so" icspath)))
-		    (ignore-errors (load "@ICSLIB@/libics.so")))
+		      (load (format nil "~a/ics_lisp.so" icspath))))
 		  (setq *pvs-system-loaded* t))
   :finally-do (progn
 		#+lucid (precompile-generic-functions)
