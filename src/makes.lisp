@@ -1145,22 +1145,35 @@
 			 (make!-arg-tuple-expr* arguments)
 			 (car arguments))))
 
-(defun make!-application (op arg)
+(defun make!-application (op &rest args)
   (assert (type op))
-  (let* ((appl (mk-application op arg))
+  (let* ((appl (apply #'mk-application op args))
 	 (ftype (find-supertype (type op)))
 	 (rtype (if (dep-binding? (domain ftype))
-		    (dep-substit (range ftype) (acons (domain ftype) arg nil))
+		    (dep-substit (range ftype)
+				 (acons (domain ftype) (argument appl) nil))
 		    (range ftype))))
     (setf (type appl) rtype)
     (change-application-class-if-needed appl)
     appl))
 
-(defun make!-number-expr (num)
-  (assert (typep num '(integer 0 *)))
-  (make-instance 'number-expr
-    'number num
-    'type *number*))
+(defun make!-number-expr (number)
+  (assert (typep number 'rational))
+  (let* ((num (if (minusp number) (- number) number))
+	 (nexpr (if (integerp num)
+		    (make-instance 'number-expr
+		      'number num
+		      'type *number*)
+		    (make!-application (divides-operator)
+				       (make-instance 'number-expr
+					 'number (numerator num)
+					 'type *number*)
+				       (make-instance 'number-expr
+					 'number (denominator num)
+					 'type *number*)))))
+    (if (minusp number)
+	(make!-minus nexpr)
+	nexpr)))
 
 (defun make!-name-expr (id actuals mod-id res)
   (assert res)
