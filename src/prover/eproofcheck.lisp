@@ -3,8 +3,8 @@
 ;; Author          : N. Shankar
 ;; Created On      : Thu Apr  2 21:12:58 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sat Oct 31 02:05:25 1998
-;; Update Count    : 7
+;; Last Modified On: Fri Jan 22 18:56:13 1999
+;; Update Count    : 10
 ;; Status          : Beta test
 ;; 
 ;; HISTORY
@@ -31,6 +31,7 @@
 (defvar *steps* (init-symbol-table))
 (defvar *rules* (init-symbol-table))
 (defvar *dependent-decls* nil)
+(defvar *rule-args-alist* nil)
 
 (defvar *ops* (init-symbol-table))
 
@@ -422,18 +423,16 @@ Would you like to rerun the proof?~%")))
 				     (current-rule (parent-proofstate proofstate))
 				     (current-input (parent-proofstate proofstate))))
 			  (display-proofstate proofstate))
-			(let ((strategy
-			       (strat-eval*
-				(if (strategy proofstate)
-				    (strategy proofstate)
-				    ;;(if *proving-tcc*
-				    ;;  '(quit))
-				    '(postpone T));;if no strat, move on.
-				proofstate)))
+			(let* ((*rule-args-alist* nil)
+			       (strategy
+				(strat-eval*
+				 (if (strategy proofstate)
+				     (strategy proofstate)
+				     '(postpone T));;if no strat, move on.
+				 proofstate)))
 			  (setf (strategy proofstate) strategy)
 			  (rule-apply strategy proofstate))))))))
-		;;rule-apply returns a
-		;;revised proofstate.
+		;;rule-apply returns a revised proofstate.
 		(cond ((null post-proofstate);;hence aborted
 		       (let ((nps ;;NSH(7.18.94) for proper restore
 			      (nonstrat-parent-proofstate
@@ -666,15 +665,14 @@ Would you like to rerun the proof?~%")))
 		(new-def-expr;;2/91:so that rules are APPLYed.
 		 `(apply ,def-expr))
 		(result (strat-eval new-def-expr)))
+	   (setq *rule-args-alist*
+		 (nconc *rule-args-alist* (mapcar #'list
+					    (remove-if-not #'stringp args))))
 	   (setf (rule-input result)
 		 strat
 		 (rule-format result)
 		 (when (format-string (rule-definition (car strat)))
 		   (cons (format-string (rule-definition (car strat))) args)
-;		   #'(lambda ()
-;			  (apply #'format nil
-;				 (format-string (rule-definition (car strat)))
-;				 args))
 		   )) 
 	   result))
 	((step-definition (car strat))
@@ -688,8 +686,7 @@ Would you like to rerun the proof?~%")))
 			    )))
 	   (strat-eval def-expr)))
 	((primitive-rule (car strat))
-	 (get-rule strat
-		   *ps*))
+	 (get-rule strat *ps*))
 	(t (format-if "~%Ill-formed rule/strategy: ~s " strat)
 	   (get-rule '(skip) *ps*))))
 
@@ -1409,41 +1406,40 @@ Would you like to rerun the proof?~%")))
   (let* ((rule-name (if (consp rule)(car rule) rule))
 	 (rule-args (when (consp rule)(cdr rule)))
 	 (entry (gethash rule-name *rulebase*)))
-     (cond ((null entry)
-	    (get-rule '(skip) ps))
-	   ((< (length rule-args) (length (required-args entry)))
+    (cond ((null entry)
+	   (get-rule '(skip) ps))
+	  ((< (length rule-args) (length (required-args entry)))
 	   (cond
-	     (*noninteractivemode* (get-rule '(skip) ps))
-	     (t
-	      (let ((formals (if (optional-args entry)
-					(append (required-args entry)
-						(cons '&optional
-						      (optional-args entry)))
-					(required-args entry))))
-	      (format-if "~%Rule ~a has argument list:~%~a"
-			 rule-name  formals)
-	      (get-rule '(skip) ps)))))
-	   (t (let* ((match (match-formals-with-actuals (required-args entry)
-							(optional-args entry)
-							rule-args))
-		     (args (nconc (loop for x in (required-args entry)
-					collect
-					(cdr (assoc x match)))
-				  (extract-optionals
-				   (optional-args entry)
-				   match))))
-		    (make-instance 'rule-instance
-			   'rule (apply (rule-function entry)
-					args)
-			   'rule-input rule
-			   'rule-format (when (format-string entry)
-					  (cons (format-string entry)
-						args)
-;					  #'(lambda ()
-;					    (apply #'format nil
-;						  (format-string entry)
-;						  args))
-			   )))))))
+	    (*noninteractivemode* (get-rule '(skip) ps))
+	    (t
+	     (let ((formals (if (optional-args entry)
+				(append (required-args entry)
+					(cons '&optional
+					      (optional-args entry)))
+				(required-args entry))))
+	       (format-if "~%Rule ~a has argument list:~%~a"
+			  rule-name  formals)
+	       (get-rule '(skip) ps)))))
+	  (t (let* ((match (match-formals-with-actuals (required-args entry)
+						       (optional-args entry)
+						       rule-args))
+		    (args (nconc (loop for x in (required-args entry)
+				       collect
+				       (cdr (assoc x match)))
+				 (extract-optionals
+				  (optional-args entry)
+				  match))))
+	       (setq *rule-args-alist*
+		     (nconc *rule-args-alist*
+			    (mapcar #'list (remove-if-not #'stringp
+					     rule-args))))
+	       (make-instance 'rule-instance
+		 'rule (apply (rule-function entry)
+			 args)
+		 'rule-input rule
+		 'rule-format (when (format-string entry)
+				(cons (format-string entry)
+				      args))))))))
 
 (defun extract-optionals (optionals match)
   (cond ((null optionals) NIL)
@@ -1527,174 +1523,164 @@ Would you like to rerun the proof?~%")))
 			 'topstep step)
 		       ps));;else step is a strategy
 	  ((typep (topstep step) 'rule-instance)
-	  (let* ((*tccforms* NIL)
-		 ;;(*generate-tccs* NIL) ;;NSH(10.20.94)
-		 (topstep (topstep step))
-		 (name (if (consp (rule-input topstep))
-			   (car (rule-input topstep))
-			   topstep)))
-	    (when (memq name *ruletrace*)
-	      (format t "~%~vTEnter: ~a" *ruletracedepth*
-		      (rule-input topstep))
-	      (incf *ruletracedepth*))
-	    (multiple-value-bind (signal subgoals
-					 updates)
-		(funcall (rule topstep) ps) ;;(break "rule-ap")
-	      (cond ((eq signal '!);;success
-		     (when (memq name *ruletrace*)
-		       (decf *ruletracedepth*)
-		       (format t "~%~vT Exit: ~a -- Proved subgoal"
-			   *ruletracedepth* name ))
-		     (setf (status-flag ps) '!      
-			   (current-rule ps)(rule-input topstep)
-			   (printout ps)
-			   (rule-format topstep)
-			   (justification ps)
-			   (make-instance 'justification
-			     'label (label-suffix (label ps))
-			     'rule (rule-input topstep)
-			     'comment (new-comment ps)))
-		     (make-updates updates ps)
-		     ps)
-		    ((eq signal '?);;subgoals generated
-		     (let* ((*tccforms* (remove-duplicates *tccforms*
-					  :test #'tc-eq
-					  :key #'tccinfo-formula))
-			    (tcc-hash-counter 0)
-			    (*tccforms*
-			     (loop for tcc in *tccforms*
-				   when (or
-					 (null (gethash
-					       (tccinfo-formula tcc)
-					       (tcc-hash ps)))
-					 (and (incf tcc-hash-counter)
-					      nil))
-				   collect tcc))
-			    (new-tcc-hash
-			     (if *tccforms*
-				 (copy (tcc-hash ps))
-				 (tcc-hash ps)))
-			    (tccforms (assert-tccforms *tccforms*
-						       ps))
-;			    (tcc-sforms  ;;NSH(1-29-94) ignore for now.
-;			     (mapcar
-;			      #'(lambda (x)(make-instance
-;					       's-formula
-;					     'formula x))
-;			      *tccforms*))
-;			    (neg-tcc-sforms;;NSH(1-29-94) ignore for now.
-;			     (mapcar #'(lambda (x)(make-instance 's-formula
-;						    'formula (negate x)))
-;				     *tccforms*))
-			    (tcc-subgoals
-			     (mapcar
-			      #'(lambda (x)
-				  (let ((y 
-					 (change-class
-					  (copy (current-goal ps)
-					    's-forms
-					    (cons
-					     (make-instance
-						 's-formula
-					       'formula
-					       (tccinfo-formula x))
-					     (s-forms
-					      (current-goal ps))))
-					  'tcc-sequent)))
-				    (setf (tcc y)
-					  (tccinfo-formula x)
-					  (reason y)
-					  (tccinfo-reason x)
-					  (expr y)
-					  (tccinfo-expr x)
-					  (kind y)
-					  (tccinfo-kind x)
-					  (type y)
-					  (tccinfo-type x))
-				    y))
-			      tccforms))
-			    (subgoal-proofstates
-			     (make-subgoal-proofstates
-			      ps
-			      (subgoal-strategy step)
-			      subgoals
-			      tcc-subgoals
-			      ;updates;must be attached to subgoals.
-			      )))
-		       ;;cleaning up (NSH(7.27.94)
-		       ;;1. convert main subgoals of tccs into
-		       ;;non-tccs.
-		       ;;2. hash the new tccs into new-tcc-hash
-		       ;;3. set tcc-hash of main subgoals as
-		       ;;new-tcc-hash
-		       (when (> tcc-hash-counter 0)
-			 (format-if "~%Ignoring ~a repeated TCCs."
-				  tcc-hash-counter))
-		       (loop for tcc in *tccforms*
-			     do
-			     (setf (gethash (tccinfo-formula tcc)
-						new-tcc-hash)
-				   T))
-		       (assert
-			(every #'(lambda (sps)
-				   (every #'(lambda (sfmla)
-					      (null (freevars (formula sfmla)))
-)
-					    (s-forms (current-goal sps))))
-				 subgoal-proofstates))
-		       (loop for sps in subgoal-proofstates
-			     when (not (tcc-proofstate? sps))
-			     do (setf (tcc-hash sps)
-				      new-tcc-hash))
-		       (when (memq name *ruletrace*)
-			 (decf *ruletracedepth*)
-			 (format t "~%~vT Exit: ~a -- ~a subgoal(s) generated."
-			   *ruletracedepth* name (length subgoal-proofstates)))
-		       (push-references *tccforms* ps)
-		       (setf (status-flag ps) '?
-			     (current-rule ps) (rule-input topstep)
-			     (printout ps)
-			     (rule-format topstep)
-			     (remaining-subgoals ps)
-			     subgoal-proofstates)
-		       (unless (typep ps 'top-proofstate)
-			 (setf (strategy ps) nil))
-		       (make-updates updates ps)
-		       ps))
-		    ((eq signal 'X)
-		     (when (memq name *ruletrace*)
-		       (decf *ruletracedepth*)
-		       (format t "~%~vT Exit: ~a -- No change."
-			   *ruletracedepth* name))
-		     (format-if "~%No change on: ~s" (rule-input topstep))
-		     (setf (status-flag ps) nil;;start afresh
-			   (strategy ps)
-			   (failure-strategy step))
-		     (make-updates updates ps)
-		     ps)
-		    ((eq signal 'XX);;marks the current goal a failure
-		     (setf (status-flag ps) 'XX)
-		     ps)
-		    ((eq signal '*)
-		     (setf (status-flag ps) '*)
-		     ps)
-		    (t  (undo-proof signal ps)))
-	      )))
-    ((typep (topstep step) 'strategy)
-     (setf (status-flag ps) '?
-	   ;;		 (current-rule ps) (strategy-input rule)
-	   (remaining-subgoals ps)
-	   (make-subgoal-proofstates ps
-				     (topstep step)
-				     (list (current-goal ps))))
-				     ;nil
-     ps)
-    (t (format t "~%Bad rule: ~a~%" step);;treated as skip
+	   (let* ((*tccforms* NIL)
+		  (topstep (topstep step))
+		  (name (if (consp (rule-input topstep))
+			    (car (rule-input topstep))
+			    topstep)))
+	     (when (memq name *ruletrace*)
+	       (format t "~%~vTEnter: ~a" *ruletracedepth*
+		       (rule-input topstep))
+	       (incf *ruletracedepth*))
+	     (multiple-value-bind (signal subgoals
+					  updates)
+		 (funcall (rule topstep) ps);;(break "rule-ap")
+	       (cond ((eq signal '!);;success
+		      (when (memq name *ruletrace*)
+			(decf *ruletracedepth*)
+			(format t "~%~vT Exit: ~a -- Proved subgoal"
+			  *ruletracedepth* name ))
+		      (setf (status-flag ps) '!      
+			    (current-rule ps) (rule-input topstep)
+			    (printout ps) (sublis (remove-if #'null
+						    *rule-args-alist*
+						    :key #'cdr)
+						  (rule-format topstep))
+			    (justification ps) (make-instance 'justification
+						 'label (label-suffix (label ps))
+						 'rule (rule-input topstep)
+						 'comment (new-comment ps)))
+		      (make-updates updates ps)
+		      ps)
+		     ((eq signal '?);;subgoals generated
+		      (let* ((*tccforms* (remove-duplicates *tccforms*
+					   :test #'tc-eq
+					   :key #'tccinfo-formula))
+			     (tcc-hash-counter 0)
+			     (*tccforms*
+			      (loop for tcc in *tccforms*
+				    when (or
+					  (null (gethash
+						 (tccinfo-formula tcc)
+						 (tcc-hash ps)))
+					  (and (incf tcc-hash-counter)
+					       nil))
+				    collect tcc))
+			     (new-tcc-hash
+			      (if *tccforms*
+				  (copy (tcc-hash ps))
+				  (tcc-hash ps)))
+			     (tccforms (assert-tccforms *tccforms* ps))
+			     (tcc-subgoals
+			      (mapcar
+				  #'(lambda (x)
+				      (let ((y 
+					     (change-class
+					      (copy (current-goal ps)
+						's-forms
+						(cons
+						 (make-instance
+						     's-formula
+						   'formula
+						   (tccinfo-formula x))
+						 (s-forms
+						  (current-goal ps))))
+					      'tcc-sequent)))
+					(setf (tcc y)
+					      (tccinfo-formula x)
+					      (reason y)
+					      (tccinfo-reason x)
+					      (expr y)
+					      (tccinfo-expr x)
+					      (kind y)
+					      (tccinfo-kind x)
+					      (type y)
+					      (tccinfo-type x))
+					y))
+				tccforms))
+			     (subgoal-proofstates
+			      (make-subgoal-proofstates
+			       ps
+			       (subgoal-strategy step)
+			       subgoals
+			       tcc-subgoals
+					;updates;must be attached to subgoals.
+			       )))
+			;;cleaning up (NSH(7.27.94)
+			;;1. convert main subgoals of tccs into
+			;;non-tccs.
+			;;2. hash the new tccs into new-tcc-hash
+			;;3. set tcc-hash of main subgoals as
+			;;new-tcc-hash
+			(when (> tcc-hash-counter 0)
+			  (format-if "~%Ignoring ~a repeated TCCs."
+				     tcc-hash-counter))
+			(loop for tcc in *tccforms*
+			      do
+			      (setf (gethash (tccinfo-formula tcc)
+					     new-tcc-hash)
+				    T))
+			(assert
+			 (every #'(lambda (sps)
+				    (every #'(lambda (sfmla)
+					       (null (freevars (formula sfmla)))
+					       )
+					   (s-forms (current-goal sps))))
+				subgoal-proofstates))
+			(loop for sps in subgoal-proofstates
+			      when (not (tcc-proofstate? sps))
+			      do (setf (tcc-hash sps)
+				       new-tcc-hash))
+			(when (memq name *ruletrace*)
+			  (decf *ruletracedepth*)
+			  (format t "~%~vT Exit: ~a -- ~a subgoal(s) generated."
+			    *ruletracedepth* name (length subgoal-proofstates)))
+			(push-references *tccforms* ps)
+			(setf (status-flag ps) '?
+			      (current-rule ps) (rule-input topstep)
+			      (printout ps) (sublis (remove-if #'null
+						    *rule-args-alist*
+						    :key #'cdr)
+						    (rule-format topstep))
+			      (remaining-subgoals ps) subgoal-proofstates)
+			(unless (typep ps 'top-proofstate)
+			  (setf (strategy ps) nil))
+			(make-updates updates ps)
+			ps))
+		     ((eq signal 'X)
+		      (when (memq name *ruletrace*)
+			(decf *ruletracedepth*)
+			(format t "~%~vT Exit: ~a -- No change."
+			  *ruletracedepth* name))
+		      (format-if "~%No change on: ~s" (rule-input topstep))
+		      (setf (status-flag ps) nil;;start afresh
+			    (strategy ps)
+			    (failure-strategy step))
+		      (make-updates updates ps)
+		      ps)
+		     ((eq signal 'XX);;marks the current goal a failure
+		      (setf (status-flag ps) 'XX)
+		      ps)
+		     ((eq signal '*)
+		      (setf (status-flag ps) '*)
+		      ps)
+		     (t  (undo-proof signal ps)))
+	       )))
+	  ((typep (topstep step) 'strategy)
+	   (setf (status-flag ps) '?
+		 ;;		 (current-rule ps) (strategy-input rule)
+		 (remaining-subgoals ps)
+		 (make-subgoal-proofstates ps
+					   (topstep step)
+					   (list (current-goal ps))))
+					;nil
+	   ps)
+	  (t (format t "~%Bad rule: ~a~%" step);;treated as skip
 					;(break)
-       (setf (status-flag ps) nil;;start afresh
-	     (strategy ps)
-	     (failure-strategy (strategy ps)))
-       ps))))
+	     (setf (status-flag ps) nil;;start afresh
+		   (strategy ps)
+		   (failure-strategy (strategy ps)))
+	     ps))))
 
 
 (defun assert-test-list (fmla-list ps)
@@ -2037,7 +2023,11 @@ The rules in *rulebase* are: ~%"
 ;;it checks whether the input needs to be parsed.
 
 (defmethod pc-parse ((input string) nt)
-  (parse :string input :nt nt))
+  (let ((x (parse :string input :nt nt))
+	(rule-arg (assq input *rule-args-alist*)))
+    (when rule-arg
+      (setf (cdr rule-arg) x))
+    x))
 
 (defmethod pc-parse (input nt)
   (parse :string (format nil "~a" input) :nt nt))
