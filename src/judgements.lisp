@@ -595,9 +595,11 @@
 	 argtypes
 	 rdomains
 	 (cdr graph)
-	 (if range
-	     (pushnew range jtypes :test #'tc-eq)
-	     jtypes)
+	 (if (or (null range)
+		 (some #'(lambda (r) (subtype-of? r range)) jtypes))
+	     jtypes
+	     (cons range
+		   (delete-if #'(lambda (r) (subtype-of? range r)) jtypes)))
 	 (if (or range excluded?)
 	     (union (car graph) exclude)
 	     exclude)))))
