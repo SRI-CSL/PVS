@@ -180,7 +180,10 @@ prelude libraries")
 
 (defvar *generate-tccs* nil
   "Flag indicating whether TCCs need to be generated, has one of the values
-NIL (the default), ALL, or NONE.")
+NIL (the default), TOP, ALL, or NONE.")
+
+(defvar *false-tcc-error-flag* t
+  "Flag indicating whether false TCCs should lead to a type error")
 
 (defvar *tccs* nil "The TCC declarations generated while typechecking a file")
 (defvar *tccforms* nil "The TCCs generated while typechecking a file")
