@@ -769,7 +769,7 @@
 (defun pc-sort (decls &optional theory)
   (assert (or theory *current-context*))
   (let* ((th (or theory (current-theory)))
-	 (imps (cons th (all-importings th))))
+	 (imps (cons th (complete-importings th))))
     (assert (every #'(lambda (x)
 		       (or (from-prelude? x)
 			   (from-prelude-library? x)
@@ -788,6 +788,16 @@
 			      (string< (id (module x)) (id (module y))))))
 		    (t (and (not (from-prelude? x))
 			   (memq (module y) (memq (module x) imps)))))))))
+
+(defun complete-importings (th)
+  (multiple-value-bind (imps impnames)
+      (all-importings th)
+    (multiple-value-call #'add-generated-interpreted-theories
+			 (add-generated-adt-theories
+			  (cons th imps)
+			  (cons (mk-modname (id th)) impnames))
+			 th)))
+    
 
 (defun assuming-tccs (decl)
   (let ((theory-decls (all-decls (module decl))))
