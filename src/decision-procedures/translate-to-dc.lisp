@@ -552,7 +552,7 @@
 		     (cond
 		      (freevars
 		       (let* ((tr-freevars (translate-to-dc freevars))
-			      (apform (dp::mk-term (cons (dp::mk-constant newid)
+			      (apform (dp::mk-term (cons newid
 						     tr-freevars))))
 			 (setf (gethash expr *dc-named-exprs*) apform)
 			 apform))
