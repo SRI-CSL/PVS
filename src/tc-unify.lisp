@@ -474,7 +474,7 @@
 
 (defmethod tc-match* ((arg projection-application)
 		      (farg projection-application) bindings)
-  (when (eq (id arg) (id farg))
+  (when (= (index arg) (index farg))
     (tc-match* (argument arg) (argument farg) bindings)))
 
 (defmethod tc-match* ((arg field-application)
