@@ -156,7 +156,7 @@
 				    *current-context*
 				    (make-new-context m))))
 	(tcdebug "~%  Processing formals")
-	(typecheck-decls (formals m))
+	(typecheck-decls (remove-if #'generated-by (formals m)))
 	(set-dependent-formals (formals-sans-usings m))
 	(tcdebug "~%  Processing assuming")
 	(when (and (assuming m)
@@ -164,9 +164,9 @@
 	  (type-error m
 	    "Theory ~a has no formal parameters, hence no need for ASSUMING section"
 	    (id m)))
-	(typecheck-decls (assuming m))
+	(typecheck-decls (remove-if #'generated-by (assuming m)))
 	(tcdebug "~%  Processing theory")
-	(typecheck-decls (theory m))
+	(typecheck-decls (remove-if #'generated-by (theory m)))
 	(tcdebug "~%  Processing exporting")
 	(generate-xref m)
 	(assert (eq (current-theory) m))
