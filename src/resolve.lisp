@@ -164,8 +164,10 @@
 	       (null library)
 	       (null mod-id)
 	       (null actuals))
-      (let ((bdecls (remove-if-not #'(lambda (bd) (eq (id bd) id))
-		      *bound-variables*)))
+      (let ((bdecls (remove-duplicates (remove-if-not #'(lambda (bd)
+							  (eq (id bd) id))
+					 *bound-variables*)
+		      :key #'type :test #'compatible? :from-end t)))
 	(when bdecls
 	  (if args
 	      (let ((thinst (current-theory-name)))
