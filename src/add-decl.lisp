@@ -18,7 +18,7 @@
 (defvar *add-declaration-info* nil)
 
 (defun add-declaration-at (filename line)
-  (typecheck-file filename nil t)
+  (typecheck-file filename nil)
   (let ((theory (find-theory-at filename line)))
     (if theory
 	(let* ((decl (get-decl-at line t (list theory)))
@@ -317,16 +317,10 @@
 		      "Declaration ~a was used earlier in the current proof"
 		    (id decl))))
 	      (when *create-formulas-cache*
-		#+allegro-v4.3
 		(maphash #'(lambda (res body)
 			     (when (eq (declaration res) decl)
 			       (remhash res *create-formulas-cache*)))
-			 *create-formulas-cache*)
-		#-allegro-v4.3
-		(pvs-maphash #'(lambda (res body)
-				 (when (eq (declaration res) decl)
-				   (pvs-remhash res *create-formulas-cache*)))
-			     *create-formulas-cache*))
+			 *create-formulas-cache*))
 	      (reset-places* decls (1- (car oplace)) (cadr oplace))
 	      (change-old-decl-to-new decl (car decls))
 	      (unless (= (ending-row (place decl)) (caddr oplace))

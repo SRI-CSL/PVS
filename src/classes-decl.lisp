@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec  2 13:40:37 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Wed Jul 13 18:38:35 1994
-;; Update Count    : 49
+;; Last Modified On: Thu Nov  5 15:09:31 1998
+;; Update Count    : 53
 ;; Status          : Beta test
 ;; 
 ;; HISTORY
@@ -161,20 +161,15 @@
 ;;; Modules
 
 (defcl module (datatype-or-module)
-  (declarations :documentation "Allows for fast access to declarations")
-  (judgements)
-  (conversions :initform nil)
-  types
-  (exporting :documentation "a list of exportings" :parse t)
-  (all-usings 
-   :documentation "The transitive closure of the usings of the theory")
-  (immediate-usings
-   :initform 'unbound
-   :documentation "The set of immediate usings of the theory")
+  (theory :type list :parse t) ; The declarations of the theory-part
+  (exporting :type list :parse t)  ; A list of exportings
+  declarations   ; A hash-table for declarations
+  nonempty-types  ; Keep track of types marked nonempty during typechecking
+  all-usings ; The transitive closure of the usings of the theory
+  (immediate-usings :initform 'unbound) ; immediate usings of the theory
   instances-used
   assuming-instances
   used-by
-  (theory :type list :parse t)
   (saved-context :fetch-as nil)
   tccs-tried?
   modified-proof?
@@ -351,22 +346,23 @@
 
 (defcl monotonicity-tcc (tcc-decl))
 
+;;; judgement class is a mixin
 (defcl judgement (typed-declaration))
-
-(defcl named-judgement (judgement)
-  (name :parse t)
-  formals
-  formal-types)
-
-(defcl typed-judgement (named-judgement)
-  (declared-name-type :parse t))
-
-(defcl number-judgement (judgement)
-  (number :parse t))
 
 (defcl subtype-judgement (judgement)
   (declared-subtype :parse t)
   subtype)
+
+(defcl number-judgement (judgement)
+  (number-expr :parse t))
+
+(defcl name-judgement (judgement)
+  (name :parse t))
+
+(defcl application-judgement (judgement)
+  (name :parse t)
+  (formals :parse t)
+  judgement-type)
 
 (defcl conversion-decl (declaration)
   k-combinator?
@@ -381,7 +377,6 @@
   (parens :initform 0 :parse t)
   print-type
   from-conversion
-  ;;(no-freevars? :ignore t)
   (free-variables :ignore t :initform 'unbound :fetch-as 'unbound)
   (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound)
   nonempty?)

@@ -2,9 +2,9 @@
 ;; compare.lisp -- 
 ;; Author          : Sam Owre
 ;; Created On      : Sat Feb 26 21:41:39 1994
-;; Last Modified By: Sreeranga Rajan
-;; Last Modified On: Fri Aug 26 18:45:57 1994
-;; Update Count    : 14
+;; Last Modified By: Sam Owre
+;; Last Modified On: Thu Nov  5 15:07:41 1998
+;; Update Count    : 15
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -243,17 +243,22 @@
        (compare-bod (kind old) (kind new))
        (compare-bod (definition old) (definition new))))
 
-(defmethod compare* ((old named-judgement) (new named-judgement))
+(defmethod compare* ((old subtype-judgement) (new subtype-judgement))
   (and (call-next-method)
-       (compare-sig (name old) (name new))))
-
-(defmethod compare* ((old typed-judgement) (new typed-judgement))
-  (and (call-next-method)
-       (compare-sig (declared-name-type old) (declared-name-type new))))
+       (compare-sig (declared-subtype old) (declared-subtype new))))
 
 (defmethod compare* ((old number-judgement) (new number-judgement))
   (and (call-next-method)
        (compare-sig (number old) (number new))))
+
+(defmethod compare* ((old name-judgement) (new name-judgement))
+  (and (call-next-method)
+       (compare-sig (name old) (name new))))
+
+(defmethod compare* ((old application-judgement) (new application-judgement))
+  (and (call-next-method)
+       (compare-sig (name old) (name new))
+       (compare-sig (formals old) (formals new))))
 
 (defmethod compare* ((old conversion-decl) (new conversion-decl))
   (and (call-next-method)

@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec  2 13:41:18 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Wed Jul 13 03:01:06 1994
-;; Update Count    : 22
+;; Last Modified On: Thu Nov  5 14:51:55 1998
+;; Update Count    : 28
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -24,7 +24,6 @@
 (defcl expr (syntax)
   (parens :initform 0 :parse t)
   type
-  (types :ignore t)
   (free-variables :ignore t :initform 'unbound :fetch-as 'unbound)
   (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound))
 
@@ -321,13 +320,31 @@
 
 (defcl context ()
   module
+  declaration
   mod-name
   (local-decls :type hash-table :initform (make-hash-table :test #'eq))
   (local-proof-decls :type hash-table :initform (make-hash-table :test #'eq))
   using
-  (visible-libraries :initform nil)
-  (judgements :initform nil)
-  (application-judgements :initform nil)
+  (judgements :initform (make-instance 'judgements))
   (known-subtypes :initform nil)
-  (conversions :initform nil)
-  declaration)
+  (conversions :initform nil))
+
+(defcl judgements ()
+  (judgement-types-hash
+   :initform (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+  (number-judgements-hash :initform (make-hash-table :test 'eql))
+  (name-judgements-hash :initform (make-hash-table :test 'eq))
+  (application-judgements-hash :initform (make-hash-table :test 'eq)))
+
+;;; Application judgements are treated specially; we cannot just keep the
+;;; minimal elements, as it is driven by the actual arguments.  The
+;;; judgements-list is a tree of judgement declarations, starting with the
+;;; minimal types.
+;;; The argtype-hash is only a hash-table as long as no judgement is a
+;;; dependent type.
+
+(defcl application-judgements ()
+  (argtype-hash :initform nil)
+  (generic-judgements :initform nil)
+  (judgements-graph :initform nil))
+

@@ -1193,6 +1193,28 @@ pvs-strategies files.")
 		     (file-namestring filestring)
 		     (file-namestring nfile)))))))
 
+(defun invalid-proof-file (filestring &optional outproofs)
+  (with-open-file (in filestring :direction :input)
+    (multiple-value-bind (inproofs condition)
+	(invalid-proof-file* in (unless outproofs t))
+      (or condition
+	  (and outproofs
+	       (not (equal inproofs outproofs))
+	       (format nil
+		   "Proof file ~a was not written correctly (not caught by lisp)"
+		 filestring))))))
+
+(defun invalid-proof-file* (input &optional proofs)
+  (multiple-value-bind (prfs condition)
+      (ignore-errors (read input NIL NIL))
+    (cond (condition
+	   (values nil condition))
+	  ((null prfs)
+	   (or (eq proofs t)
+	       (nreverse proofs)))
+	  (t (invalid-proof-file* input (when (listp proofs)
+					  (cons prfs proofs)))))))
+
 (defun current-proofs-contain-old-proofs (curproofs oldproofs theories)
   (dolist (theory theories)
     (current-proofs-contain-old-proofs*
