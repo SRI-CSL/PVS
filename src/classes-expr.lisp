@@ -190,13 +190,13 @@
 ;;; e1 -> a1, e2 -> a2, ELSE -> a2 ENDCOND which translate to the same
 ;;; if-expressions.
 
-(defcl first-cond-expr (branch))
+(defcl first-cond-expr (mixfix-branch))
 
-(defcl single-cond-expr (branch))
+(defcl single-cond-expr (mixfix-branch))
 
-(defcl cond-expr (branch))
+(defcl cond-expr (mixfix-branch))
 
-(defcl last-cond-expr (branch))
+(defcl last-cond-expr (mixfix-branch))
 
 (defcl else-condition (unary-negation))
 
