@@ -31,7 +31,7 @@
   (save-excursion
     (if (ilisp-buffer)
 	(set-buffer "*ilisp-send*")
-	(error "You must start an inferior LISP with run-ilisp."))
+	(error "The PVS process has died.  Please start a new one with M-x pvs"))
     (erase-buffer)
     (insert string)
     string))

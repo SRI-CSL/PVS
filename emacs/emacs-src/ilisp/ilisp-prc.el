@@ -42,7 +42,7 @@
       (current-buffer)
     (let ((buffer (funcall ilisp-buffer-function)))
       (or buffer
-	  (error "You must start an inferior LISP with run-ilisp.")))))
+	  (error "The PVS process has died.  Please start a new one with M-x pvs")))))
 
 
 (defun ilisp-recent-buffer ()
