@@ -6,9 +6,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Fri Jul  1 14:02:27 1994
 ;; Update Count    : 14
-;; Status          : Beta
-;; 
-;; HISTORY 
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -70,17 +68,17 @@ unignored slots, saved-slots, and unsaved-slots.")
 			'(,classes ,args))
 		   (delete (assoc ',name *slot-info*)
 			   *slot-info*))))
-    (defmethod untc*
-	,@(when classes (list :around))
-	((obj ,name))
-	,@(when classes (list '(call-next-method)))
-	,@(mapcar #'(lambda (a)
-		      (let ((slot (car a)))
-			(if (cadr (memq :parse a))
-			    `(untc* (slot-value obj ',slot))
-			    `(setf (slot-value obj ',slot)
-			      ,(cadr (memq :initform a))))))
-		  args))
+;;     (defmethod untc*
+;; 	,@(when classes (list :around))
+;; 	((obj ,name))
+;; 	,@(when classes (list '(call-next-method)))
+;; 	,@(mapcar #'(lambda (a)
+;; 		      (let ((slot (car a)))
+;; 			(if (cadr (memq :parse a))
+;; 			    `(untc* (slot-value obj ',slot))
+;; 			    `(setf (slot-value obj ',slot)
+;; 			      ,(cadr (memq :initform a))))))
+;; 		  args))
     ',name))
 
 
