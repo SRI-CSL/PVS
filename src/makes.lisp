@@ -31,6 +31,7 @@
 (def-pvs-term integer_pred "integer_pred" "integers")
 (def-pvs-term rational_pred "rational_pred" "rationals")
 (def-pvs-term real_pred "real_pred" "reals")
+(def-pvs-term number-field_pred "number_field_pred" "number_fields")
 
 (def-pvs-term expt-operator "expt" "exponentiation")
 
