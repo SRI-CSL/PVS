@@ -290,8 +290,8 @@
 	 (pushnew ',reset-name ,hook)
 	 (defun ,name ()
 	   (or ,var
-	       (let* ((*current-context*
-		       (saved-context (get-typechecked-theory ,theory)))
+	       (let* ((*current-theory* (get-typechecked-theory ,theory))
+		      (*current-context* (saved-context *current-theory*))
 		      (*generate-tccs* 'none)
 		      ,@(when expected
 			  `((expected-type
@@ -301,3 +301,7 @@
 			      ,@(when expected '(:expected expected-type)))))))
 	 (defun ,reset-name ()
 	   (setq ,var nil))))))
+
+
+
+
