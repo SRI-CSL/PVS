@@ -1314,20 +1314,19 @@ where db is to replace db1 and db2")
   (with-slots ((adom domain) (arng range)) atype
     (with-slots ((edom domain) (erng range)) etype
       (with-slots (bindings expression) aexpr
-	(let* ((bvars (mapcar #'make-variable-expr bindings))
-	       (avar (if (cdr bvars)
-			 (make!-tuple-expr* bvars)
-			 (car bvars)))
-	       (eid (make-new-variable '|y| (list aexpr atype etype) 1))
-	       (ebd (make-bind-decl eid edom))
-	       (evar (make-variable-expr ebd))
-	       (arange (subst-var-into-deptypes avar adom arng))
-	       (erange (subst-var-into-deptypes avar edom erng)))
-	  (let ((*bound-variables* (cons (declaration avar)
-					 (cons (declaration evar)
-					       *bound-variables*))))
-	    (compatible-funtype-pred atype adom edom avar evar
-				     aexpr arange erange incs)))))))
+	(if (cdr bindings)
+	    (call-next-method)
+	    (let* ((avar (make-variable-expr (car bindings)))
+		   (eid (make-new-variable '|y| (list aexpr atype etype) 1))
+		   (ebd (make-bind-decl eid edom))
+		   (evar (make-variable-expr ebd))
+		   (arange (subst-var-into-deptypes avar adom arng))
+		   (erange (subst-var-into-deptypes avar edom erng))
+		   (*bound-variables* (cons (declaration avar)
+					    (cons (declaration evar)
+						  *bound-variables*))))
+	      (compatible-funtype-pred atype adom edom avar evar
+				       aexpr arange erange incs)))))))
 
 (defun make-funtype-vars (atype aexpr adom arng etype edom erng)
   (let* ((av (make-new-variable '|x| (list aexpr atype etype) 1))
