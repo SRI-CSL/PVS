@@ -12,8 +12,9 @@
 #   -lisp        lisp image name
 #   -redhat              the redhat version (4 or 5)
 #   -runtime             use the runtime image
-#   -decision-procedures set the default decision procedures (new or old)
-#   -force-decision-procedures  forces the dec. procs to be used (new or old)
+#   -decision-procedures  set the default decision procedures
+#                                         (ics, shostak, or cyrluk)
+#   -force-decision-procedures  forces the decision procedures to be used
 #   -patchlevel  indicates the patch level:
 #       0 (none). No patches
 #       1 (rel).  Released patches (patch2.lisp)
@@ -72,18 +73,19 @@ do
      -runtime) pvsruntime=1;;
      -decision-procedures)
         case $2 in
-	  new)  PVSDEFAULTDP=new;;
-	  old)  PVSDEFAULTDP=old;;
-	  *)    echo "The decision-procedures argument must be new or old"
-	        exit 1;;
+	  ics)     PVSDEFAULTDP=ics;;
+	  shostak) PVSDEFAULTDP=shostak;;
+	  cyrluk)  PVSDEFAULTDP=cyrluk;;
+	  *) echo "The decision-procedures argument must be ics, shostak, or cyrluk"
+	     exit 1;;
 	esac
 	shift;;
      -force-decision-procedures)
         case $2 in
-	  new)  PVSFORCEDP=:new;;
-	  old)  PVSFORCEDP=:old;;
-	  *)    echo "The force-decision-procedures argument must be new or old"
-	        exit 1;;
+	  ics) PVSFORCEDP=:ics;;
+	  shostak) PVSFORCEDP=:cyrluk;;
+	  *) echo "The force-decision-procedures argument must be ics, shostak, or cyrluk"
+	     exit 1;;
 	esac
 	shift;;
      -nw)    nowin=1
@@ -115,8 +117,8 @@ where options include:
   -lisp lispversion  lisp image to use (e.g., allegro5.0)
   -redhat number     the number corresponding to the Redhat release (4 or 5)
   -runtime           use the runtime image
-  -decision-procedures  set default decision procedures (new or old)
-  -force-decision-procedures  forces the decision procedures (new or old)
+  -decision-procedures  set default decision procedures (ics, shostak, or cyrluk)
+  -force-decision-procedures  forces the decision procedures (ics, shostak, or cyrluk)
   -patchlevel level  patchlevel (none, rel, test, exp)
   -batch             run in batch mode
   -v number          verbosity level for batch mode (0-3)

@@ -252,14 +252,12 @@ get to the same state."
                      (pvs-init nil %s)
                      (setq *noninteractive* %s)
                      (setq *pvs-verbose* %d)
-                     (setq *force-dp* %s))"
+                     (setq *force-dp* %s)
+                     (set-decision-procedure %s))"
 	     pvs-path (equal (getenv "PVSMINUSQ") "-q")
-	     noninteractive pvs-verbose (getenv "PVSFORCEDP"))
+	     noninteractive pvs-verbose
+	     (getenv "PVSFORCEDP") (getenv "PVSDEFAULTDP"))
 	 nil nil 'dont-care))
-      (cond ((equal (getenv "PVSDEFAULTDP") "new")
-	     (new-decision-procedures))
-	    ((equal (getenv "PVSDEFAULTDP") "old")
-	     (old-decision-procedures)))
       (setq *pvs-version-information* nil)
       (sleep-for 1)
       ;; sets *pvs-current-directory* and pops up the welcome buffer
