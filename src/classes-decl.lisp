@@ -104,6 +104,7 @@
 	    :parse t)
   (filename :type (or null string)
 	    :documentation "The filename sans directory or extension")
+  (path :type (or null pathname))
   (status :type list
 	  :documentation "A list containing the completed actions")
   (generated-by :documentation "a module id")
