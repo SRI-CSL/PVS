@@ -2190,9 +2190,16 @@
   (mapcar #'xt-mapping (term-args mappings)))
 
 (defun xt-mapping (mapping)
-  (make-instance 'mapping
-    'lhs (xt-unique-name (term-arg0 mapping))
-    'rhs (make-instance 'mapping-rhs 'expr (xt-expr (term-arg1 mapping)))))
+  (let ((rhs (term-arg1 mapping)))
+    (make-instance 'mapping
+      'lhs (xt-unique-name (term-arg0 mapping))
+      'rhs (make-instance 'mapping-rhs
+	     'expr (if (member (sim-term-op rhs)
+			       '(subtype expr-as-type enum-or-subtype
+					 funtype;; predtype
+					 recordtype))
+		       (xt-not-enum-type-expr rhs)
+		       (xt-expr rhs))))))
 
 (defun xt-unique-name (name)
   (let ((uname (xt-name (term-arg0 name) t))
