@@ -72,6 +72,7 @@ intervenes."
 ;;;          that determines from old and new whether the new is an error.
 
 (defvar *pvs-error* nil)
+(defvar in-pvs-emacs-eval nil)
 (defvar *default-char-width* 80)
 (defvar pvs-message-delay 500
   "Time for which a PVS message is displayed, in milliseconds")
@@ -179,7 +180,8 @@ intervenes."
 	(pvs-extract-expected-from-output output expected))))
 
 (defun pvs-extract-expected-from-output (output expected)
-  (unless (eq expected 'dont-care)
+  (unless (or in-pvs-emacs-eval
+	      (eq expected 'dont-care))
     (save-match-data
       (let* ((str output)
 	     (val (pvs-read-from-string str)))
@@ -203,9 +205,12 @@ intervenes."
     (comint-log (ilisp-process) (format "\nsent:{%s}\n" string))
     (prog1
 	(let ((cursor-in-echo-area t))
-	  (ilisp-send (format "(pvs::lisp (pvs::pvs-errors %s))" string)
-		      message status (when (and (null noninteractive) and-go)
-				       'dispatch)))
+	  (if in-pvs-emacs-eval
+	      (comint-simple-send (ilisp-process) string)
+	      (ilisp-send (format "(pvs::lisp (pvs::pvs-errors %s))" string)
+			  message status (when (and (null noninteractive)
+						    and-go)
+					   'dispatch))))
       (when *pvs-output-pos*
 	(switch-to-buffer (marker-buffer *pvs-output-pos*))
 	(goto-char (marker-position *pvs-output-pos*))))))
@@ -566,7 +571,8 @@ window."
 ;;; Allow PVS to call a Emacs form and get back the result.
 
 (defun pvs-emacs-eval (form)
-  (let ((inhibit-quit nil))
+  (let ((in-pvs-emacs-eval t)
+	(inhibit-quit nil))
     (condition-case ()
 	(let ((val (eval (car (read-from-string form)))))
 	  (comint-simple-send (ilisp-process)
