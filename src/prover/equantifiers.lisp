@@ -195,6 +195,7 @@
    :context context))
 
 (defmethod quantifier-step ((expr quant-expr)  context sign terms ps)
+  (declare (ignore context sign ps))
   (let* ((preterms (if (listp terms) terms (list terms)))
 	 (terms (loop for x in preterms
 		      collect (pc-parse x 'expr)))
@@ -220,7 +221,7 @@
 	 (qalist (unless overlap 
 		   (make-quant-alist sub-boundvars subterms)))
 	 (freevars (unless (stringp qalist) ;; Error message
-		     (loop for (x . y) in qalist
+		     (loop for (nil . y) in qalist
 			   append (freevars y)))));;(break "quantifier-step")
     (cond ((stringp qalist)
 	   (format-if qalist)
@@ -267,6 +268,7 @@ Please provide substitutions for these variables." overlap)
 	    error))))
 
 (defmethod skolemize-step ((expr quant-expr)  context sign terms)
+  (declare (ignore sign))
   (let* ((preterms (if (listp terms) terms (list terms)))
 	 (terms (loop for x in preterms
 		      collect (pc-parse x 'expr)))
@@ -326,7 +328,7 @@ Please provide skolem constants for these variables." overlap)
 
 (defun make-skolem-alist (boundvars skoconstants context &optional alist)
   (cond ((null boundvars)
-	 (loop for (x . y) in alist
+	 (loop for (nil . y) in alist
 	       do (record-type-constraints y))
 	 (nreverse alist))
 	(t (let ((binding (cons (car boundvars)
@@ -372,82 +374,6 @@ Please provide skolem constants for these variables." overlap)
 	    (make-alist (cddr substs)))
     NIL))
 
-(defun quant-step (sformnum ps &optional terms copy?)
-  (cond ((or (null sformnum)(null terms))
-	 (error-format-if "~%No suitable (+ve EXISTS/-ve FORALL) quantified formula found.")
-	 (values 'X nil nil))
-	(t (let ((*tccforms* NIL)
-		 (*dependent-decls* NIL))
-	     (multiple-value-bind (signal subgoal)
-		 (sequent-reduce
-		  (current-goal ps)
-		  #'(lambda (sform)
-		      (quant-step-sform ps sform
-					terms
-					copy?))  
-		  (list sformnum))
-	       (let ((qsforms (select-seq (s-forms (current-goal ps))
-					  (list sformnum)))
-		     (other-sforms (delete-seq (s-forms (current-goal ps))
-					       (list sformnum))))
-		 (when (and (eq signal '?) (not copy?))
-		   (loop for sf in qsforms
-			 do (pushnew sf (hidden-s-forms subgoal)
-				     :test #'tc-eq)))
-		 (let* ((*tccforms* (remove-duplicates *tccforms*
-				      :test #'tc-eq
-				      :key #'tccinfo-formula))
-			(tccforms (assert-tccforms *tccforms* ps))
-			(tcc-subgoals
-			 (loop for tccinfo in tccforms
-			       collect
-			       (let ((newgoal
-				      (change-class
-				       (copy subgoal
-					 's-forms
-					 (cons (make-instance 's-formula
-						 'formula
-						 (tccinfo-formula tccinfo))
-					       other-sforms))
-				       'tcc-sequent))
-				     (references NIL))
-				 (setf (tcc newgoal)(tccinfo-formula tccinfo)
-				       (reason newgoal)(tccinfo-reason tccinfo)
-				       (expr newgoal)(tccinfo-expr tccinfo)
-				       (kind newgoal)(tccinfo-kind tccinfo)
-				       (type newgoal)(tccinfo-type tccinfo))
-				 (push-references-list
-					(tccinfo-formula tccinfo)
-					references)
-				 (list newgoal
-				       'dependent-decls
-				       references
-				       ))
-				 ))
-			(false-tccforms
-			 (loop for x in tccforms as y in *tccforms*
-			       when (tc-eq (tccinfo-formula x)
-					   *false*)
-			       collect
-			       (list (tccinfo-kind y)
-				     (tccinfo-formula y)
-				     (tccinfo-expr y)
-				     (tccinfo-type y))))
-			)
-		   (cond (false-tccforms
-			  (format T
-			    "~%False TCC(s):~
- ~{~%~{ ~a TCC: ~a when typechecking ~a : ~a~}~}~
-~%when formula ~a is instantiated with ~a"
-			    false-tccforms sformnum terms)
-			  (values 'X nil nil))
-			       
-		   ;;(push-references-list *tccforms* dependent-decls*)
-			 (t (values signal (cons (list subgoal
-						       'dependent-decls
-						       *dependent-decls*)
-						 tcc-subgoals)))))))))))
-
 (defun quant-step-sform (ps sform terms copy?)
   (let* ((fmla (formula sform))
 	 (sign (not (negation? fmla)))
@@ -479,6 +405,7 @@ Please provide skolem constants for these variables." overlap)
 			     (negate qbody))))))))
 
 (defun skolem-step-sform (ps sform  new-context &optional terms)
+  (declare (ignore ps))
   (let* ((fmla (formula sform))
 	 (sign (not (negation? fmla)))
 	 (body (if sign fmla (args1 fmla)))
@@ -521,9 +448,8 @@ Please provide skolem constants for these variables." overlap)
 
 	      
 
-(defun find-sform (sforms sformnum &optional (pred #'(lambda (x) T)))
-  (find-sform* sforms sformnum pred
-		      1 -1))
+(defun find-sform (sforms sformnum &optional (pred #'always-true))
+  (find-sform* sforms sformnum pred 1 -1))
 
 (defun find-sform* (sforms sformnum pred pos neg)
   (cond ((null sforms) nil)
@@ -611,6 +537,7 @@ Please provide skolem constants for these variables." overlap)
 					tcc-subgoals)))))))))
 
 (defun skolem-step (sformnum ps &optional terms copy?)
+  (declare (ignore copy?))
   (let* ((*assert-typepreds* nil)
 	 (*subtype-hash* (copy (subtype-hash ps)))
 	 (*dp-state* (dp-state ps))
@@ -652,14 +579,8 @@ Please provide skolem constants for these variables." overlap)
 				  (let* ((sign (not (negation? fmla)))
 					 (body (if sign
 						   fmla
-						   (args1 fmla)))
-					 (translated-body
-					  (top-translate-to-prove
-					   body))
-					 (translated-fmla
-					  (if sign translated-body
-					      (list 'NOT
-						    translated-body))))
+						   (args1 fmla))))
+				    (top-translate-to-prove body)
 				    (and (not (connective-occurs? body))
 					 (let ((res (call-process
 						     fmla
@@ -759,48 +680,36 @@ Please provide skolem constants for these variables." overlap)
 		collect `(instantiate ,fnum ,qterms)))))
 
 
-;      (let ((formula (when sforms
-;		       (if (negation? (formula (car sforms)))
-;			   (args1 (formula (car sforms)))
-;			   (formula (car sforms))))))
-;    (if (and sforms
-;	     (or (forall-expr? formula)
-;		 (exists-expr? formula))
-;	     (equal (length (bindings formula))
-;		    (length terms)))
-;	(quant sformnum terms copy?)))
-
-
 ;;find-?quant finds quantified formula where outer variables contain
 ;;those in subst.
 (defun find-?quant (sformnum subst ps)
   (let* ((subalist (make-alist subst))
-	(subnames (loop for (x . y) in subalist
-			collect (pc-parse x 'expr)))
-	(badnames (loop for x in subnames
-			when (not (typep x 'name-expr))
-			collect x)))
+	 (subnames (loop for (x . nil) in subalist
+			 collect (pc-parse x 'expr)))
+	 (badnames (loop for x in subnames
+			 when (not (typep x 'name-expr))
+			 collect x)))
     (cond (badnames
 	   (error-format-if "~%Substitution ~a is ill-formed" subst)
 	   nil)
 	  (t (find-sform (s-forms (current-goal ps)) sformnum
-	      #'(lambda (sform)
-		  (or (and (exists-expr? (formula sform))
-			   (subsetp subnames
-				    (quant-bndvars*
-				     (formula sform) T)
-				    :test #'(lambda (x y)
-					      (format-equal (id x)(id y)))))
-		      (and (negation? (formula sform))
-			   (forall-expr?
-			    (args1 (formula sform)))
-			   (subsetp subnames
-				    (quant-bndvars*
-				     (args1 (formula sform)) nil)
-				    :test #'(lambda (x y)
-					      (format-equal
-					       (id x)
-					       (id y))))))))))))
+			 #'(lambda (sform)
+			     (or (and (exists-expr? (formula sform))
+				      (subsetp subnames
+					       (quant-bndvars*
+						(formula sform) T)
+					       :test #'(lambda (x y)
+							 (format-equal (id x)(id y)))))
+				 (and (negation? (formula sform))
+				      (forall-expr?
+				       (args1 (formula sform)))
+				      (subsetp subnames
+					       (quant-bndvars*
+						(args1 (formula sform)) nil)
+					       :test #'(lambda (x y)
+							 (format-equal
+							  (id x)
+							  (id y))))))))))))
 
 (defun quant-body* (fmla sign)
   (if sign
@@ -881,19 +790,16 @@ Please provide skolem constants for these variables." overlap)
 	      nil))))
 	       
  
-(defun find-quant-terms (sforms subst where if-match
-				polarity?
-				ps)
+(defun find-quant-terms (sforms subst where if-match polarity? ps)
   (cond ((null sforms)
 	 (error-format-if "~%Couldn't find a suitable quantified formula.")
 	 NIL)
-	(t
-	 (let* ((*dp-state* (dp-state ps))
-		(*alists* (alists ps)))
-	   (nprotecting-cong-state
-	    ((*dp-state* *dp-state*)
-	     (*alists* *alists*))
-	    (find-quant-terms* sforms subst where if-match polarity? ps))))))
+	(t (let* ((*dp-state* (dp-state ps))
+		  (*alists* (alists ps)))
+	     (nprotecting-cong-state
+	      ((*dp-state* *dp-state*)
+	       (*alists* *alists*))
+	      (find-quant-terms* sforms subst where if-match polarity? ps))))))
 
 (defun forall-sform?  (sform)
   (let ((formula  (formula sform)))
@@ -908,24 +814,23 @@ Please provide skolem constants for these variables." overlap)
 	(exists-expr? formula))))
 
 (defun find-quant-terms* (sforms subst where if-match polarity? ps)
-    (cond ((null sforms)
-	   (error-format-if "~%Couldn't find a suitable instantiation for any
+  (cond ((null sforms)
+	 (error-format-if "~%Couldn't find a suitable instantiation for any
 quantified  formula.  Please provide partial instantiation.")
-	   nil)
-	  ((or (not (listp subst))
-	       (oddp (length subst)))
-	   (error-format-if "~%Given substitution ~a
+	 nil)
+	((or (not (listp subst))
+	     (oddp (length subst)))
+	 (error-format-if "~%Given substitution ~a
 is not of the form: (<var> <term>...)" subst)
-	   nil)
-	  ((not (quant-expr? (if (negation? (formula (car sforms)))
-				 (args1 (formula (car sforms)))
-				 (formula (car sforms)))))
-	   (find-quant-terms* (cdr sforms) subst where if-match
-			      polarity? ps))
-	  (t 
-	   (let* 
-	       ((sform  (car sforms))
-		(formula  (formula sform))
+	 nil)
+	((not (quant-expr? (if (negation? (formula (car sforms)))
+			       (args1 (formula (car sforms)))
+			       (formula (car sforms)))))
+	 (find-quant-terms* (cdr sforms) subst where if-match
+			    polarity? ps))
+	(t 
+	 (let* ((sform (car sforms))
+		(formula (formula sform))
 		(sign (not (negation? formula)))
 		(fmla (quant-body* (if sign formula (args1 formula))
 				   sign))
@@ -933,36 +838,33 @@ is not of the form: (<var> <term>...)" subst)
 					   sign))
 		(pre-alist (make-alist subst))
 		(pre-alist (loop for (x . y) in pre-alist
-				   collect
-				   (cons (pc-parse x 'name) y)))
-		(bad-subst (loop for (x . y) in pre-alist
-				   thereis
-				   (when (not (member (id x)
-						 boundvars
+				 collect (cons (pc-parse x 'name) y)))
+		(bad-subst (loop for (x . nil) in pre-alist
+				 thereis
+				 (unless (member (id x) boundvars
 						 :test
 						 #'(lambda (u v)
-						     (format-equal
-						      u (id v)))))
-				     x))))
-	     (cond (bad-subst
-		    (find-quant-terms* (cdr sforms) subst where
-				       if-match polarity? ps))
-		   (t (let ((sub
-			     (find-quant-subst (car sforms) pre-alist
-					       boundvars sign fmla
-					       where if-match
-					       polarity? ps)))
-			(if sub
-			    (cons (find-sform (s-forms
-					       (current-goal *ps*))
-					      '*
-					      #'(lambda (x)
-						  (eq x (car sforms))))
-				  sub)
-			    (find-quant-terms* (cdr sforms) subst
-					       where if-match
-					       polarity? ps)))))
-	     ))))
+						     (format-equal u (id v))))
+				   x))))
+	   (cond (bad-subst
+		  (find-quant-terms* (cdr sforms) subst where
+				     if-match polarity? ps))
+		 (t (let ((sub
+			   (find-quant-subst (car sforms) pre-alist
+					     boundvars sign fmla
+					     where if-match
+					     polarity? ps)))
+		      (if sub
+			  (cons (find-sform (s-forms
+					     (current-goal *ps*))
+					    '*
+					    #'(lambda (x)
+						(eq x (car sforms))))
+				sub)
+			  (find-quant-terms* (cdr sforms) subst
+					     where if-match
+					     polarity? ps)))))
+	   ))))
 
 
 (defun find-quant-subst (sform pre-alist boundvars sign fmla
@@ -1087,8 +989,7 @@ is not of the form: (<var> <term>...)" subst)
 		      (format-if "~%Using template: ~a" (car subst))))
 	     subs))))
 
-(defun find-match-list-with-polarity
-  (template fmlas subst if-match polarity)
+(defun find-match-list-with-polarity (template fmlas subst if-match polarity)
   (when fmlas
     (let ((match-list1
 	   (if (all-or-best-or-first*? if-match)
@@ -1096,28 +997,24 @@ is not of the form: (<var> <term>...)" subst)
 		 (find-all-matches-polarity
 		  template (car fmlas)
 		  nil subst nil polarity))
-	       (multiple-value-bind (sub modsub)
-		   (find-match-polarity template (car fmlas) nil subst nil
-					polarity)
+	       (let ((sub (find-match-polarity template (car fmlas) nil
+					       subst nil polarity)))
 		 (if (eq sub 'fail) nil sub)))))
       (if (all-or-best-or-first*? if-match)
 	  (nconc match-list1
-		 (find-match-list-with-polarity template (cdr fmlas) subst if-match
-						polarity))
-	  (if match-list1
-	      match-list1
-	      (find-match-list-with-polarity template (cdr fmlas) subst if-match
-					     polarity))))))
+		 (find-match-list-with-polarity template (cdr fmlas) subst
+						if-match polarity))
+	  (or match-list1
+	      (find-match-list-with-polarity template (cdr fmlas) subst
+					     if-match polarity))))))
 
 (defun find-match-list (template fmlas subst if-match)
   (when fmlas
     (let ((match-list1
 	   (if (all-or-best-or-first*? if-match)
 	       (mapcar #'car
-		       (find-all-matches template (car fmlas)
-					 nil subst nil))
-	       (multiple-value-bind (sub modsub)
-		   (find-match template (car fmlas) nil subst nil)
+		 (find-all-matches template (car fmlas) nil subst nil))
+	       (let ((sub (find-match template (car fmlas) nil subst nil)))
 		 (if (eq sub 'fail) nil sub)))))
       (if (all-or-best-or-first*? if-match)
 	  (nconc match-list1
@@ -1147,17 +1044,15 @@ is not of the form: (<var> <term>...)" subst)
     (if (and (eq n 1)(null polarity?))
 	(let* ((nonvars (remove-if #'variable? templates))
 	       (vars (remove-if #'(lambda (x) (not (variable? x)))
-			  templates))
-	       (boundvars-not-in-vars ;;NSH(10.21.96) non-occurring boundvars
+		       templates))
+	       (boundvars-not-in-vars
 		(loop for x in boundvars
 		      when (not (member x vars :test #'same-declaration))
 		      collect (make!-name-expr
 			       (id x) nil nil
-			       (make-resolution x nil (type x))
-			       'VARIABLE))))
-	(nconc nonvars vars
-	       boundvars-not-in-vars
-	       ))
+			       (make-resolution x nil (type x))))))
+	  (nconc nonvars vars
+		 boundvars-not-in-vars))
 	templates)))
 
 (defun subset-expr-freevars-against-arg-templates
@@ -1263,8 +1158,7 @@ is not of the form: (<var> <term>...)" subst)
       (cons (mk-template expr polarity) accum)
       accum))
 
-(defmethod find-templates-with-polarity
-    ((expr application) boundvars
+(defmethod find-templates-with-polarity ((expr application) boundvars
       polarity &optional accum)
   (let ((argument-templates
 	 (cond ((implication? expr)
@@ -1291,7 +1185,7 @@ is not of the form: (<var> <term>...)" subst)
 	(append argument-templates accum))))
 
 (defmethod find-templates-with-polarity ((expr binding-expr) boundvars
-			    polarity &optional accum)
+					 polarity &optional accum)
   (let* ((argument-templates
 	  (find-templates-with-polarity  (expression expr) boundvars polarity))
 	 (argument-templates
@@ -1321,8 +1215,9 @@ is not of the form: (<var> <term>...)" subst)
       (cons (mk-template expr polarity) accum)
       accum))
 
-(defmethod find-templates-with-polarity ((expr T) boundvars
-					 polarity &optional accum) 
+(defmethod find-templates-with-polarity ((expr T) boundvars polarity
+					 &optional accum)
+  (declare (ignore boundvars polarity))
   accum)
 
 (defun rem-dups* (list accum &key (test #'eql) (key #'identity))
@@ -1438,6 +1333,7 @@ is not of the form: (<var> <term>...)" subst)
       accum))
 
 (defmethod find-templates* ((expr T) boundvars &optional accum)
+  (declare (ignore boundvars))
   accum)
 
 
@@ -1731,22 +1627,6 @@ is not of the form: (<var> <term>...)" subst)
 
 (defun args2 (expr)
   (cadr (arguments expr)))
-
-(defmethod constant? ((expr name-expr))
-  (eq (kind expr) 'CONSTANT))
-;   (or (typep (declaration expr) 'const-decl)
-;       (typep (declaration expr) 'def-decl))
-  ;;(NSH:4-5-91) incorrect (not (typep (type expr) 'funtype))
-
-(defmethod constant? ((expr projection-expr))
-  T)
-
-(defmethod constant? ((expr T))
-  NIL)
-
-(defun variable? (expr)
-  (and (typep expr 'name-expr)
-       (eq (kind expr) 'variable)))
 
 ;(defmethod declaration ((expr name-expr))
 ;  (declaration (car (resolutions (name expr)))))
