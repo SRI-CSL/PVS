@@ -327,9 +327,9 @@
    (:module dc-prototypes
      :source-pathname "src/decision-procedures"
      :components ((:file "integer")
+		  (:file "shostak")
 		  (:file "arithmetic")
 		  (:file "arrays")
-		  (:file "shostak")
 		  (:file "shostak-interp")
 		  (:file "arith-solve")
 		  (:file "polyhedron"))
