@@ -326,8 +326,6 @@ that gensubst does not try to pseudo-normalize inappropriately.")
 
 (defvar *modules-visited* nil)
 
-(defvar *in-pvs-batch* nil)
-
 ;;; Prover-related variables
 
 (defvar *use-default-dp?* nil)
