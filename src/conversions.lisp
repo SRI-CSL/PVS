@@ -11,6 +11,8 @@
 
 (in-package :pvs)
 
+(export '(argument-conversions))
+
 ;;; resolve
 (defun argument-conversion (name arguments)
   (let ((*found-one* nil)
@@ -224,7 +226,7 @@
     (let ((fty (find-supertype (car ptypes))))
       (or (and (typep fty 'funtype)
 	       (compatible? (range fty) dtype)
-	       (car (get-k-conversions fty)))
+	       (car (get-k-conversions fty)))	  
 	  (compatible-argument-k-conversion dtype (cdr ptypes))))))
 
 (defun k-conversion-resolutions (res kcs arguments &optional result)
