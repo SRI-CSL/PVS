@@ -232,7 +232,7 @@
 	     (setf (gethash expr *dc-translate-id-hash*)
 		   newconst))
 	   newconst))
-	(t (add-to-local-prtype-hash (id expr) expr)
+	(t ;(add-to-local-prtype-hash (id expr) expr)
 	   (dc-add-to-reverse-prover-name (id expr) expr)
 	   (dc-add-to-pvs-typealist (id expr) expr)
 	   (if *translate-rewrite-rule*
