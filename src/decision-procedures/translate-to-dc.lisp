@@ -1,6 +1,9 @@
 ;;modified from prover/translate-to-prove.
 (in-package 'pvs)
 
+(proclaim '(optimize (compilation-speed 0) (space 1)
+		     (safety 1) (speed 3)
+		     #+allegro (debug 1)))
 
 (defvar *newdc* nil) ;;needs to be set to T to get new ground prover
 ;;(defvar *bindings* nil)
@@ -46,23 +49,23 @@
     (if . ,dp::*if*)
     (update . ,dp::*update*)))
 
-(defvar *translate-to-dc-hash* (make-pvs-hash-table :hashfn #'pvs-sxhash
-						    :test #'tc-eq))
-(defvar *dc-named-exprs* (make-pvs-hash-table :hashfn #'pvs-sxhash
-					      :test #'tc-eq))
+(defvar *translate-to-dc-hash* (make-hash-table :hash-function 'pvs-sxhash
+						:test 'tc-eq))
+(defvar *dc-named-exprs* (make-hash-table :hash-function 'pvs-sxhash
+					  :test 'tc-eq))
 (defvar *dc-translate-id-counter* nil)
 (newcounter *dc-translate-id-counter*)
-(defvar *dc-translate-id-hash* (make-pvs-hash-table :hashfn #'pvs-sxhash
-						    :test #'tc-eq))
+(defvar *dc-translate-id-hash* (make-hash-table :hash-function 'pvs-sxhash
+						:test 'tc-eq))
 (defvar *prtype-hash* (make-hash-table))
 (defvar *local-prtype-hash*  (make-hash-table))
 
 (defun reset-translate-to-dc ()
-  (pvs-clrhash *translate-to-dc-hash*)
-  (pvs-clrhash *dc-translate-id-hash*)
+  (clrhash *translate-to-dc-hash*)
+  (clrhash *dc-translate-id-hash*)
   (clrhash *prtype-hash*)
   (clrhash *local-prtype-hash*)
-  (pvs-clrhash *dc-named-exprs*)
+  (clrhash *dc-named-exprs*)
   (newcounter *dc-translate-id-counter*)
   (setq *dc-interpretations*
 	`((true . ,dp::*true*)
@@ -111,23 +114,27 @@
 (defmacro translate-with-new-hash (&rest body)
   `(if *newdc*
        (let ((*translate-to-dc-hash*
-	      (make-pvs-hash-table  ;;NSH(2.5.95)
-	       :hashfn #'pvs-sxhash ;;hash to pvs-hash
-	       :test #'tc-eq)))
+	      (make-hash-table  ;;NSH(2.5.95)
+	       :hash-function 'pvs-sxhash ;;hash to pvs-hash
+	       :test 'tc-eq)))
 	 ,@body)
       (let ((*translate-to-prove-hash*
-	      (make-pvs-hash-table  ;;NSH(2.5.95)
-	       :hashfn #'pvs-sxhash ;;hash to pvs-hash
-	       :test #'tc-eq)))
+	      (make-hash-table  ;;NSH(2.5.95)
+	       :hash-function 'pvs-sxhash ;;hash to pvs-hash
+	       :test 'tc-eq)))
 	 ,@body)))
 
 (defun top-translate-to-prove (expr)
   (let ((*bindings* nil)
 	(*generate-tccs* 'NONE))
-    (cond ((typep *translate-to-prove-hash* 'ht)
-	   (setq *integer-pred* (translate-to-ground (predicate *integer*)))
-	   (setq *rational-pred* (translate-to-ground (predicate *rational*)))
-	   (setq *real-pred* (translate-to-ground (predicate *real*)))
+    (cond ((hash-table-p *translate-to-prove-hash*)
+	   (when *integer*
+	     (setq *integer-pred* (translate-to-ground (predicate *integer*))))
+	   (when *rational*
+	     (setq *rational-pred*
+		   (translate-to-ground (predicate *rational*))))
+	   (when *real*
+	     (setq *real-pred* (translate-to-ground (predicate *real*))))
 	   (when *newdc*
 	     (setf (dp::node-initial-type *integer-pred*) 'dp::integer-pred)
 	     (setf (dp::node-initial-type *rational-pred*) 'dp::rational-pred)
@@ -146,11 +153,15 @@
 ;;; subtype information.
 
 (defmethod translate-to-dc :around (obj)
-  (let ((hashed-value (pvs-gethash obj *translate-to-dc-hash*)))
+  (let ((hashed-value (gethash obj *translate-to-dc-hash*)))
     (or hashed-value
+	(when (and nil (typep obj 'name-expr)
+		   (eq (id obj) '^))
+	  (break))
 	(let ((result (call-next-method)))
 	  (unless (or *bound-variables* *bindings*)
-	    (setf (pvs-gethash obj *translate-to-dc-hash*) result))
+	    (setf (gethash obj *translate-to-dc-hash*) result)
+	    (setf (gethash result *translate-from-dc-hash*) obj))
 	  result))))
 
 
@@ -170,7 +181,7 @@
 	 (bpos (when apos (- (length *bound-variables*)
 			     apos))))
     (cond ((and (null pos)(null bpos))
-	   (dc-unique-prover-name expr))
+	   (translate-name-expr-with-actuals-to-dc expr))
 	  (bpos (let ((id (dp::mk-constant
 			   (makesym "*~a_~a*" (id expr) bpos))))
 		  (add-to-local-prtype-hash id expr)
@@ -184,38 +195,63 @@
 		)))))  ;;regardless of type:(all (x:foo):..)/=(all (x:bar)..)
 
 
+(defun translate-name-expr-with-actuals-to-dc (expr)
+  (let* ((dc-base-name (dc-unique-prover-name expr))
+	 (actuals (actuals (module-instance expr)))
+	 (dc-actuals (translate-to-dc-actuals actuals)))
+    (if dc-actuals
+	(dp::mk-term (cons dp::*th-app*
+			   (cons dc-base-name dc-actuals))
+		     (dp::node-type dc-base-name))
+	dc-base-name)))
+	
+
+(defun list-of-decl-and-type-actuals (expr)
+  (let ((actuals (actuals (module-instance expr))))
+    (cons (declaration expr) (remove-if-not #'type-value actuals))))
+
+(defun translate-to-dc-actuals (actuals)
+  (if (consp actuals)
+      (if (type-value (car actuals))
+	  (translate-to-dc-actuals (cdr actuals))
+	  (cons (translate-to-dc (expr (car actuals)))
+		(translate-to-dc-actuals (cdr actuals))))
+      nil))
+
 (defun dc-unique-prover-name (expr)
   (cond ((constant? expr) ;;NSH(2.16.94): changed to deal with Ricky's
 	                  ;;soundness bug where actuals are ignored.
-	(let* ((id-hash (pvs-gethash (normalize-name-expr-actuals expr)
-				      *dc-translate-id-hash*))
-		(newconst
-		 (or id-hash
-		     (when (tc-eq expr *true*) dp::*true*)
-		     (when (tc-eq expr *false*) dp::*false*)
-		     (when (interpreted? expr)
-		       (interpretation expr))
-		     (let ((te (find-supertype (type expr))))
-		       (if (and (typep te 'funtype)
-				(tc-eq (range te) *boolean*))
-			   (dp::mk-predicate-sym
-			    (intern (format nil "~a_~a"
-				      (id expr)
-				      (funcall
-				       *dc-translate-id-counter*))))
-			   (dp::mk-constant
-			    (intern (format nil "~a_~a"
-				      (id expr)
-				      (funcall
-				       *dc-translate-id-counter*)))))))))
+	(let* ((hash-list (list-of-decl-and-type-actuals expr))
+	       (id-hash (gethash hash-list *dc-translate-id-hash*))
+	       (dc-expr
+		(or ;(when (eq (id expr) *se*) (break))
+		    id-hash
+		    (when (tc-eq expr *true*) dp::*true*)
+		    (when (tc-eq expr *false*) dp::*false*)
+		    (when (interpreted? expr)
+		      (interpretation expr))
+		    (let* ((type (type expr))
+			   (range-type (if (typep type 'funtype)
+					   (range type)
+					   type))
+			   (dc-range-type (dc-prover-type range-type))
+			   (new-const (dp::mk-constant
+				       (intern (format nil "~a_~a"
+						 (id expr)
+						 (funcall
+						  *dc-translate-id-counter*)))
+				       dc-range-type)))
+		      (dc-add-to-reverse-prover-name new-const expr)
+		      (dc-add-to-pvs-typealist new-const expr)
+		      new-const))))
 	   (unless id-hash
-	     (setf (pvs-gethash expr *dc-translate-id-hash*)
-		   newconst)
+	     (setf (gethash hash-list *dc-translate-id-hash*)
+		   dc-expr)
 	     ;;(format t "~%adding ~a to typealist" (car newconst))
-	     (add-to-prtype-hash  newconst expr))
-	   newconst))
+	     (add-to-prtype-hash dc-expr expr))
+	   dc-expr))
 	((typep expr 'field-decl)
-	 (let* ((id-hash (pvs-gethash expr
+	 (let* ((id-hash (gethash expr
 				      *dc-translate-id-hash*))
 		(newconst
 		 (or id-hash
@@ -225,13 +261,15 @@
 				      (funcall
 				       *dc-translate-id-counter*)))))))
 	   (unless id-hash
-	     (setf (pvs-gethash expr *dc-translate-id-hash*)
+	     (setf (gethash expr *dc-translate-id-hash*)
 		   newconst))
 	   newconst))
 	(t (add-to-local-prtype-hash (id expr) expr)
+	   (dc-add-to-reverse-prover-name (id expr) expr)
+	   (dc-add-to-pvs-typealist (id expr) expr)
 	   (if *translate-rewrite-rule*
-	       (dp::mk-variable (id expr))
-	       (dp::mk-constant (id expr))))))
+	       (dp::mk-variable (id expr) (dc-prover-type (type expr)))
+	       (dp::mk-constant (id expr) (dc-prover-type (type expr)))))))
 
 ;(defmethod normalize-name-expr-actuals ((expr name-expr))
 ;  (with-slots (resolutions) expr
@@ -319,8 +357,12 @@
 (defmethod translate-to-dc ((expr tuple-expr))
   (dp::mk-term (cons dp::*tuple* (translate-to-dc (exprs expr)))))
 	
-;(defmethod translate-to-dc ((expr coercion))
-;  (translate-to-dc (expression expr)))
+(defmethod translate-to-dc ((expr coercion))
+  (with-slots (operator argument) expr
+    (let ((reduced-expr (substit (expression operator)
+			  (pairlis-args (bindings operator)
+					(argument* argument)))))
+      (translate-to-dc reduced-expr))))
 
 (defmethod translate-to-dc ((expr if-expr))
   (if (eq (id (module-instance (resolution (operator expr))))
@@ -332,11 +374,11 @@
       (call-next-method)))
 
 ;(defmethod translate-to-dc ((expr cases-expr))
-;  (let ((name (pvs-gethash expr *dc-named-exprs*)))
+;  (let ((name (gethash expr *dc-named-exprs*)))
 ;    (or name
 ;        (let ((newid (dp::mk-constant (gentemp))))
 ;          (add-to-prtype-hash newid nil (type expr))
-;          (setf (pvs-gethash expr *dc-named-exprs*) newid)
+;          (setf (gethash expr *dc-named-exprs*) newid)
 ;          newid))))
 
 (defmethod translate-to-dc ((expr cases-expr))
@@ -379,12 +421,17 @@
 ;	      (translate-to-dc arguments)))))
 
 (defmethod translate-to-dc ((expr projection-application))
-  (let ((arg (translate-to-dc (argument expr))))
-    (dp::sigproject
-     (dp::mk-term
-      (list dp::*project*  ;;might need to generate a unique one
-	    ;;according to the prtype and set prtype.
-	    (dp::mk-constant (1- (index expr))) arg)))))
+  (let* ((dc-type (dc-prover-type (type expr)))
+	 (arg (translate-to-dc (argument expr)))
+	 (result
+	  (dp::sigproject
+	   (dp::mk-term
+	    (list dp::*project*;;might need to generate a unique one
+		  ;;according to the prtype and set prtype.
+		  (dp::mk-constant (1- (index expr))) arg)))))
+    (when dc-type
+      (setf (dp::node-initial-type result) dc-type))
+    result))
 
 (defmethod translate-to-dc ((expr field-application))
   (with-slots (id argument type) expr
@@ -495,8 +542,8 @@
 ;	   (setq *integer-pred* (translate-to-dc (predicate *integer*)))
 ;	   (translate-to-dc (unit-derecognize expr)))
 ;	  (t (let ((*translate-to-dc-hash*
-;		    (make-pvs-hash-table  ;;NSH(2.5.95)
-;				    :hashfn #'pvs-sxhash ;;hash to pvs-hash
+;		    (make-hash-table  ;;NSH(2.5.95)
+;				    :hash-functiono #'pvs-sxhash ;;hash to hash
 ;				    :test #'tc-eq)))
 ;	       (unless *integer-pred*
 ;		 (setq *integer-pred*
@@ -515,7 +562,7 @@
 			  (length (bindings expr)))))
 	 (dp::mk-constant (length (bindings expr)))
 	 (if (connective-occurs? (expression expr))
-	     (let ((name (pvs-gethash expr *dc-named-exprs*)))
+	     (let ((name (gethash expr *dc-named-exprs*)))
 	       (or name;;NSH(11.4.95): Fixes unsoundness caused
 		   ;;by translating (LAMBDA : IF B ...) to (LAMBDA 1: CC)
 		   ;;by generating (LAMBDA 1 : CC(*1*)) instead.
@@ -533,11 +580,11 @@
 		       (let* ((tr-freevars (translate-to-dc freevars))
 			      (apform (dp::mk-term (cons (dp::mk-constant newid)
 						     tr-freevars))))
-			 (setf (pvs-gethash expr *dc-named-exprs*) apform)
+			 (setf (gethash expr *dc-named-exprs*) apform)
 			 apform))
 		      (t
 		       (add-to-prtype-hash newid (type expr))
-		       (setf (pvs-gethash expr *dc-named-exprs*)  newid)
+		       (setf (gethash expr *dc-named-exprs*)  newid)
 		       newid)))))
 	     (translate-to-dc (expression expr)))))))
 
@@ -603,7 +650,7 @@
 		       (t (if (singleton? (car args))
 			      (translate-to-dc (caar args))
 			      (dp::mk-term
-			       (list (dp::mk-constant 'tupcons)
+			       (cons (dp::mk-constant dp::*tuple*)
 				     (translate-to-dc (car args)))))))
 		     (let* ((ntrbasis-type
 			     (find-supertype 
@@ -632,7 +679,7 @@
 				   trbasis
 				   (if (singleton? (car args))
 				       (translate-to-dc (caar args))
-				       (dp::mk-term (cons 'TUPCONS (translate-to-dc (car args))))))))))
+				       (dp::mk-term (cons dp::*tuple* (translate-to-dc (car args))))))))))
 		       (translate-dc-assign-args (cdr args)
 				     value
 				     ntrbasis
@@ -711,7 +758,7 @@
 		     (if (singleton? (car args))
 			 (translate-to-dc (caar args))
 			 (dp::mk-term
-			  (list (dp::mk-constant 'tupcons)
+			  (list (dp::mk-constant dp::*tuple*)
 				(translate-to-dc (car args)))))
 		     (let* ((ntrbasis-type
 			     (find-supertype 
@@ -723,7 +770,7 @@
 			      (if (singleton? (car args))
 				  (translate-to-dc (caar args))
 				  (dp::mk-term
-				   (cons 'TUPCONS
+				   (cons dp::*tuple*
 					 (translate-to-dc (car args))))))))
 		       (translate-dc-assign-args (cdr args)
 						 value

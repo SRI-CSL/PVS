@@ -4,7 +4,7 @@
   `(not (interp? ,term)))
 
 (defmacro interpsym? (sym)
-  `(node-type ,sym))
+  `(node-interpreted? ,sym))
 
 (defun interp? (term)
   (or (and (application-p term)
@@ -108,11 +108,10 @@
    ((true-p eqn) cong-state)
    ((neq-p eqn) (add-neq eqn cong-state)
     cong-state)
-   (t (let ((new-eqn (add-if-pure-to-theory eqn cong-state)))
-	(cond
-	 ((false-p new-eqn) *false*)
-	 ((true-p new-eqn) cong-state)
-	 (t (dp-merge (lhs new-eqn) (rhs new-eqn) cong-state)))))))
+   ((false-p eqn) *false*)
+   ((true-p eqn) cong-state)
+   (t (dp-merge (lhs eqn) (rhs eqn) cong-state)
+      (forward-chain eqn cong-state))))
 
 (defun dp-merge (t1 t2 cong-state)
   ;(declare (special *contradiction*))
@@ -218,7 +217,8 @@
   (let ((result
 	 (mk-term-array (map-args-array #'canonsig w cong-state no-mod))))
     (setf (node-external-info result)
-	  (node-external-info w))))
+	  (node-external-info w))
+    result))
 
 (defun adduse-of-term (term cong-state)
   (declare (type node term)
