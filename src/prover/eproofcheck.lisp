@@ -291,9 +291,10 @@
 		    *default-decision-procedure*)))
 	  (car (member *default-decision-procedure* *decision-procedures*))
 	  (car (member (decision-procedure-used decl) *decision-procedures*)))
-      (pvs-error "Proof Error"
-	(format nil "Can't find the ~a decision procedure"
-	  (decision-procedure-used decl)))))
+      (progn (format t
+		 "Can't find the ~a decision procedure, using shostak instead"
+	       (decision-procedure-used decl))
+	     'shostak)))
 
 (defmethod prove-decl ((decl declaration) &key strategy)
   (declare (ignore strategy))
@@ -314,7 +315,8 @@
 	 (rewrites- (mapappend #'rewrite-names
 			       (disabled-auto-rewrites *current-context*)))
 	 (rewrites (set-difference rewrites+ rewrites- :test #'tc-eq)))
-    (auto-rewrite rewrites *top-proofstate*))
+    (catch 'abort
+      (auto-rewrite rewrites *top-proofstate*)))
   (make-instance 'auto-rewrites-info
     'rewrites *auto-rewrites*
     'auto-rewrites-names *auto-rewrites-names*
