@@ -371,6 +371,9 @@
 	   (ics_term_mk_unary_minus (translate-term-to-ics* (args1 expr))))
 	  ((tc-eq op (times-operator))
 	   (translate-mult-to-ics* (args1 expr) (args2 expr)))
+	  ((tc-eq op (expt-operator))  ; swapping of args required
+	   (ics_term_mk_expt (translate-term-to-ics* (args2 expr))
+			     (translate-term-to-ics* (args1 expr))))
 	  ((and *ics-nonlin*
 		(tc-eq op (divides-operator)))
 	   (ics_term_mk_div (translate-term-to-ics* (args1 expr))
