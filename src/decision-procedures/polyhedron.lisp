@@ -379,8 +379,6 @@ with the polyhdal-domain of cong-state without modifying cong-state."
 	nil
 	(let ((var-index
 	       (incf (polyhedral-structure-ineq-var-count poly-s))))
-	  (setq *max-ineq-var-count*
-		(max *max-ineq-var-count* var-index))
 	  (when (> var-index (polyhedral-structure-max-vars poly-s))
 	    ;;; might need to debug.
 	    (extend-polyhedral-structure poly-s))
@@ -744,9 +742,6 @@ each polyhedron of the domain (think dnf)."
   (let* ((max-vars (polyhedral-structure-max-vars poly-s))
 	 (ineq-var-count (polyhedral-structure-ineq-var-count poly-s))
 	 (new-ineq-var-count (1+ ineq-var-count)))
-    (break)
-    (setq *max-ineq-var-count*
-	  (max *max-ineq-var-count* new-ineq-var-count))
     (when (> new-ineq-var-count max-vars)
       (extend-polyhedral-structure poly-s))
     (setf (polyhedral-structure-ineq-var-count poly-s) new-ineq-var-count)
