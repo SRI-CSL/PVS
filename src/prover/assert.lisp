@@ -284,68 +284,67 @@
 	 (sign (not (negation? fmla)))
 	 (body (if sign fmla (args1 fmla)))
 	 (*bound-variables* nil)
+	 (*top-dp-state* *dp-state*)
+	 (*top-alists* *alists*)
 	 (*top-rewrite-hash* *rewrite-hash*))
-    (protecting-cong-state
-     ((*top-dp-state* *dp-state*)
-      (*top-alists* *alists*))
-     ;(break "0")
-     (cond (rewrite-flag
-	    (multiple-value-bind (sig newbodypart)
-		(if (or (iff? body)(equation? body))
-		    (if (eq rewrite-flag 'RL)
-			(assert-if (args1 body))
-			(assert-if (args2 body)))
-		    (values 'X body))
-	      (if (eq sig 'X)
-		  (if (or (and sign (tc-eq fmla *false*))
-			  (and (not sign)(tc-eq body *true*)))
-		      (values '? nil)
-		      (values 'X sform))
-		  (let ((newbody
-			 (copy body
-			   'argument
-			   (make!-arg-tuple-expr*
-			    (if (eq rewrite-flag 'RL)
-				(list newbodypart (args2 body))
-				(list (args1 body) newbodypart))))))
-		    (values '? (copy sform
-				 'formula
-				 (if sign newbody
-				     (copy fmla
-				       'argument
-				       newbody))))))))
-	   (simplifiable?		;(connective-occurs? body)
-	    (multiple-value-bind (sig newfmla)
-	           ;;NSH(7.27.96): I've been going back and forth
-	           ;;on  assert-if-inside vs. assert-if here.
-	           ;;assert-if fails because for an enum type
-	           ;;red?(expr) triggers check-all-recognizers
-	           ;;which causes self-simplification.  I don't
-	           ;;recall when assert-if-inside misbehaves.
-		(if (if sign (application? fmla)
-			(application? (args1 fmla)))
-		    (assert-if-inside fmla) 
-		    (assert-if fmla))
-	      (cond ((eq sig 'X)
-		     (if (or (and sign (tc-eq fmla *false*))
-			     (and (not sign)(tc-eq body *true*)))
-			 (values '? nil)
-			 (values 'X sform)))
-		    ((and (not (eq *assert-flag* 'simplify))
-			  (not (connective-occurs? newfmla)))
-		     (process-sform sform newfmla sig))
-		    (t (values '? (copy sform 'formula newfmla))))))
-	   (t ;(break "1")
-	      (multiple-value-bind (sig newfmla)
-		  (assert-if-inside fmla)
-		;(break "2")
-		(if (memq *assert-flag* '(simplify rewrite))
-		    (values sig (if (eq sig '?) (copy sform
-						  'formula newfmla)
-				    sform))
-		    (process-sform sform
-				   (if (eq sig '?) newfmla fmla)
-				   sig))))))))
+    ;;(break "0")
+    (cond (rewrite-flag
+	   (multiple-value-bind (sig newbodypart)
+	       (if (or (iff? body)(equation? body))
+		   (if (eq rewrite-flag 'RL)
+		       (assert-if (args1 body))
+		       (assert-if (args2 body)))
+		   (values 'X body))
+	     (if (eq sig 'X)
+		 (if (or (and sign (tc-eq fmla *false*))
+			 (and (not sign)(tc-eq body *true*)))
+		     (values '? nil)
+		     (values 'X sform))
+		 (let ((newbody
+			(copy body
+			  'argument
+			  (make!-arg-tuple-expr*
+			   (if (eq rewrite-flag 'RL)
+			       (list newbodypart (args2 body))
+			       (list (args1 body) newbodypart))))))
+		   (values '? (copy sform
+				'formula
+				(if sign newbody
+				    (copy fmla
+				      'argument
+				      newbody))))))))
+	  (simplifiable?		;(connective-occurs? body)
+	   (multiple-value-bind (sig newfmla)
+	       ;;NSH(7.27.96): I've been going back and forth
+	       ;;on  assert-if-inside vs. assert-if here.
+	       ;;assert-if fails because for an enum type
+	       ;;red?(expr) triggers check-all-recognizers
+	       ;;which causes self-simplification.  I don't
+	       ;;recall when assert-if-inside misbehaves.
+	       (if (if sign (application? fmla)
+		       (application? (args1 fmla)))
+		   (assert-if-inside fmla) 
+		   (assert-if fmla))
+	     (cond ((eq sig 'X)
+		    (if (or (and sign (tc-eq fmla *false*))
+			    (and (not sign)(tc-eq body *true*)))
+			(values '? nil)
+			(values 'X sform)))
+		   ((and (not (eq *assert-flag* 'simplify))
+			 (not (connective-occurs? newfmla)))
+		    (process-sform sform newfmla sig))
+		   (t (values '? (copy sform 'formula newfmla))))))
+	  (t				;(break "1")
+	   (multiple-value-bind (sig newfmla)
+	       (assert-if-inside fmla)
+					;(break "2")
+	     (if (memq *assert-flag* '(simplify rewrite))
+		 (values sig (if (eq sig '?) (copy sform
+					       'formula newfmla)
+				 sform))
+		 (process-sform sform
+				(if (eq sig '?) newfmla fmla)
+				sig)))))))
 
 (defun process-sform (sform newfmla sig)
   ;(when (connective-occurs? newfmla)(break))
