@@ -56,7 +56,7 @@
 
 (defcl constructor-name-expr (adt-name-expr)
   (recognizer-name :fetch-as nil :ignore t)
-  (accessor-names :initform 'unbound))
+  (accessor-names :initform 'unbound :ignore t))
 
 (defcl recognizer-name-expr (adt-name-expr)
   (constructor-name :fetch-as nil :ignore t)
