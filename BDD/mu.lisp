@@ -11,7 +11,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 
 ;; 
-;; (compile-file "/project/pvs/pvs2.2/BDD/mu.lisp")(load"/project/pvs/pvs2.2/BDD/mu.lisp")(load"/project/pvs/pvs2.2/BDD/bdd.lisp")(load"/project/pvs/pvs2.2/BDD/Linux/bdd/bdd.so")(load"/project/pvs/pvs2.2/BDD/Linux/mu/mu.so")
+;; (compile-file "/project/pvs/pvs2.3/BDD/mu.lisp")(load"/project/pvs/pvs2.3/BDD/mu.lisp")(load"/project/pvs/pvs2.3/BDD/bdd.lisp")(load"/project/pvs/pvs2.3/BDD/Linux/bdd/bdd.so")(load"/project/pvs/pvs2.3/BDD/Linux/mu/mu.so")
 
 (in-package 'pvs)  
 
@@ -61,7 +61,7 @@
 ;;; Term mu_mk_reach (Term Next, Term S0, Term Inv)
 (ff:defforeign 'mu_mk_rel_var_dcl)
 ;;; Term mu_mk_rel_var_dcl (char *name) 
-(ff:defforeign 'mu_mk_rel_var)
+(ff:defforeign 'mu_mk_rel_var_)
 ;;; Term  mu_mk_rel_var (R_Interpret Ip, char *name)
 (ff:defforeign 'mu_mk_true_term)
 ;;; Term  mu_mk_true_term (void)
@@ -291,14 +291,14 @@
 
 
 (defun convert-pvs-to-mu-formula (expr) 
- (let ((*build-mu-term* nil) ;; building a Formula
+ (let* ((*build-mu-term* nil) ;; building a Formula
        (mu-expr (convert-pvs-to-mu* expr)))
  mu-expr)
 )
 
 
 (defun convert-pvs-to-mu-term (expr) 
- (let ((*build-mu-term* t) ;; building a Term
+ (let* ((*build-mu-term* t) ;; building a Term
        (mu-expr (convert-pvs-to-mu* expr)))
  mu-expr)
 )
@@ -694,7 +694,7 @@
               (let ((new-bddname (cadr bddname)))
              (if *build-arguments* (make-argument-vars-scalar new-bddname) 
                  (if *build-access-var* (make-binding-vars-scalar new-bddname) 
-                          new-bddname))) 
+                          new-bddname)))
            (if (member expr *list-of-relational-vars* :test #'tc-eq)
                         (mu-make-bool-var (format nil "b~d" bddname))
                                (if *build-arguments* 
@@ -760,7 +760,7 @@
 	(if (recognizer-application? expr) 
 	    (make-mu-variable expr)
 	    (if (application? expr)
-		(let ((op* (get-op expr));;NSH(4.5.95) extensions to handle
+	       	(let ((op* (get-op expr));;NSH(4.5.95) extensions to handle
 		      ;;more complex expressions.
 		      (args* (get-args expr)))
 		  (if (and (every #'(lambda (x) (mu-translateable? (type x)))
@@ -1387,18 +1387,21 @@
 
 (defun make-mu-conjunction (list-fmls &optional resfml)
  (if (null list-fmls) 
-  (if *build-mu-term* (mu_mk_true_term) (mu_mk_true_formula)) 
+  (if *build-mu-term* (mu_mk_true_term) (mu_mk_true_formula))
+  (if (cdr list-fmls) 
        (mu-mk-and  (car list-fmls) (make-mu-conjunction (cdr list-fmls)))
+       (car list-fmls)))
  )
-)  
 
 
 (defun make-mu-disjunction (list-fmls &optional resfml)
- (if (null list-fmls) 
-    (if *build-mu-term* (mu_mk_false_term) (mu_mk_false_formula))
-       (mu-mk-or (car list-fmls) (make-mu-disjunction (cdr list-fmls)))
- )
-)  
+  (if (null list-fmls) 
+      (if *build-mu-term* (mu_mk_false_term) (mu_mk_false_formula))
+    (if (cdr list-fmls) 
+	(mu-mk-or (car list-fmls) (make-mu-disjunction (cdr list-fmls)))
+      (car list-fmls)))
+  )
+
 
 
 (defun make-mu-restriction (mu-expr1 mu-expr2)
@@ -1431,13 +1434,16 @@
 ;;  (pvs-message (format nil "create ~d rel is ~a    and  acc is  ~a" bvarid
 ;; (if *build-rel-var* 1 0)  (if *build-access-var* 1 0 ) ))
  (let ((bvarname (format nil "b~d" bvarid)))
-    (if (and *build-rel-var* (not *build-access-var*))  
+    (if (and *build-rel-var* (not *build-access-var*)) 
             (mu-mk-rel-var-dcl  bvarname)
           (if *build-access-var* 
               (mu-check-bool-var bvarname)
               (mu-make-bool-var bvarname)
        )))
 )
+
+(defun mu-mk-rel-var (bvarname)
+(mu_mk_rel_var_ (FF:STRING-TO-CHAR* bvarname)))
 
 (defun mu-mk-rel-var-dcl (bvarname)
 (mu_mk_rel_var_dcl (FF:STRING-TO-CHAR* bvarname)))
@@ -1446,8 +1452,12 @@
 (mu_check_bool_var (FF:STRING-TO-CHAR* bvarname)))
 
 (defun mu-make-bool-var (bvarname)
+;;  (pvs-message (format nil "convert ~a term is ~d ~%" bvarname 
+;;          (if *build-mu-term* 1 0)))
+ (if *build-mu-term*
+  (mu_mk_rel_var_ (FF:STRING-TO-CHAR* bvarname))
   (mu_check_mk_bool_var (FF:STRING-TO-CHAR* bvarname))
-)
+))
 
 ;;
 ;;
@@ -1477,9 +1487,9 @@
 					(resolution op)))))
 	       (and (singleton? mu-actuals)
 		    (or (mu-translateable?
-			 (type-value (car mu-actuals)))
-			(format t "~%Theory mucalculus with type ~a is not model-checkable."
-			  (type-value (car mu-actuals))))))))
+			 (type-value (car mu-actuals))
+ (format t "~%Theory mucalculus with type ~a is not model-checkable."
+			  (type-value (car mu-actuals)))))))))
       nil))
 
 
