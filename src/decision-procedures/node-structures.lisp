@@ -475,6 +475,11 @@
   (and (constant-p term)
        (numberp (constant-id (the constant term)))))
 
+(defun dp-integerp (term)
+  (declare (type node term))
+  (and (constant-p term)
+       (integerp (constant-id (the constant term)))))
+
 (defun mk-dp-number (num)
   (mk-constant num))
 
