@@ -2144,10 +2144,13 @@
 	     theory-name)))
     (setq *to-emacs* nil)
     (setq *prove-formula-proof* nil)
+    (when strategy
+      (setf (justification fdecl) (revert-justification strategy)))
     (unwind-protect
-	(progn (prove-decl fdecl :strategy strategy)
-	       (setq *prove-formula-proof*
-		     (extract-justification-sexp (justification fdecl))))
+	(let ((proof (prove-decl fdecl :strategy (when strategy '(rerun)))))
+	  (setq *prove-formula-proof*
+		(editable-justification
+		 (extract-justification-sexp (justification proof)))))
       (pvs-emacs-eval "(pvs-ready)"))))
 
 (defun get-prove-formula-proof ()
