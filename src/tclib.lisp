@@ -49,6 +49,7 @@
     (clear-theories t)
     (setq *prelude-context* nil)
     (clrnumhash)
+    (clear-ignored-type-constraints)
     (reset-all-operators)
     (unwind-protect
 	(progn
