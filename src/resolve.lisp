@@ -1637,7 +1637,9 @@
 		      (name-expr? conv)))
 	  (when (or (null kconv)
 		    (eq conv t)
-		    (tc-eq kconv conv))
+		    ;; Do they have the same introduced type, e.g., state?
+		    (tc-eq (cadr (actuals (module-instance kconv)))
+			   (cadr (actuals (module-instance conv)))))
 	    (compatible-arguments-k-conversions
 	     (cdr dtypes) (cdr arguments)
 	     (or kconv (and (name-expr? conv) conv))
