@@ -407,7 +407,7 @@
 	   (format t "~%~a" error)
 	   (format t "~%Restoring the state.")
 	   (restore))
-	  (*in-evaluator*
+	  ((and *in-evaluator* (not *evaluator-debug*))
 	   (format t "~%~a" error)
 	   (format t "~%Try again.")
 	   (throw 'tcerror t))
