@@ -34,7 +34,7 @@
 	     :debug-on-error t
 	     ;; :destination-directory nil
 	     :discard-arglists nil
-	     :discard-compiler *runtime*
+	     :discard-compiler nil
 	     :discard-local-name-info nil
 	     :discard-source-file-info *runtime*
 	     :discard-xref-info *runtime*
