@@ -331,11 +331,12 @@ extend_bool [T: TYPE, S: TYPE FROM T]: THEORY
  END extend_bool
 
 % The K combinator is used to trigger lambda conversions.
+% Due to user demand, it is turned off by default.
 
 K_conversion [T1, T2: TYPE]: THEORY
  BEGIN
   K_conversion(x:T1)(y:T2): T1 = x
-  CONVERSION K_conversion
+%  CONVERSION K_conversion
  END K_conversion
 
 K_props [T1, T2: TYPE, S: TYPE FROM T1]: THEORY
@@ -2177,6 +2178,10 @@ real_props: THEORY
 
   sqrt_1: LEMMA x * x = 1 IFF x = 1 OR x = -1
 
+  sqrt_1_lt: LEMMA x * x < 1 IMPLIES abs(x) < 1
+
+  sqrt_1_le: LEMMA x * x <= 1 IMPLIES abs(x) <= 1
+
   idem_mult: LEMMA x * x = x IFF x = 0 OR x = 1
 
 
@@ -2192,6 +2197,12 @@ real_props: THEORY
   triangle: LEMMA abs(x+y) <= abs(x) + abs(y)  
 
   abs_mult: LEMMA abs(x * y) = abs(x) * abs(y)
+
+  abs_div: LEMMA abs(x / n0y) = abs(x) / abs(n0y)
+
+  abs_abs: LEMMA abs(abs(x)) = abs(x)
+
+  abs_square: LEMMA abs(x * x) = x * x
 
   abs_limits: LEMMA -(abs(x) + abs(y)) <= x + y AND x + y <= abs(x) + abs(y)
 
@@ -2370,6 +2381,7 @@ exponentiation: THEORY
 
   nnreal_expt:  JUDGEMENT expt(x:nnreal,  n:nat) HAS_TYPE nnreal
   posreal_expt: JUDGEMENT expt(x:posreal, n:nat) HAS_TYPE posreal
+  nzreal_expt:  JUDGEMENT expt(x:nzreal,  n:nat) HAS_TYPE nzreal
   rat_expt:     JUDGEMENT expt(x:rat,     n:nat) HAS_TYPE rat
   nnrat_expt:   JUDGEMENT expt(x:nnrat,   n:nat) HAS_TYPE nnrat
   posrat_expt:  JUDGEMENT expt(x:posrat,  n:nat) HAS_TYPE posrat
@@ -2386,6 +2398,7 @@ exponentiation: THEORY
 
   nnreal_exp:  JUDGEMENT ^(x:nnreal,  i:int | x/=0 OR i>=0) HAS_TYPE nnreal
   posreal_exp: JUDGEMENT ^(x:posreal, i:int) HAS_TYPE posreal
+  nzreal_exp:  JUDGEMENT ^(x:nzreal,  i:int) HAS_TYPE nzreal
   rat_exp:     JUDGEMENT ^(x:rat,     i:int | x/=0 OR i>=0) HAS_TYPE rat
   nnrat_exp:   JUDGEMENT ^(x:nnrat,   i:int | x/=0 OR i>=0) HAS_TYPE nnrat
   posrat_exp:  JUDGEMENT ^(x:posrat,  i:int) HAS_TYPE posrat
@@ -2456,6 +2469,15 @@ exponentiation: THEORY
   both_sides_expt_lt1_ge_aux: LEMMA
     expt(lt1x, m+1) >= expt(lt1x, n+1) IFF n >= m
 
+  expt_of_mult: LEMMA expt(x * y, n) = expt(x, n) * expt(y, n)
+
+  expt_of_div: LEMMA expt(x / n0y, n) = expt(x, n) / expt(n0y, n)
+
+  expt_of_inv: LEMMA expt(1 / n0x, n) = 1 / expt(n0x, n)
+
+  expt_of_abs: LEMMA expt(abs(x), n) = abs(expt(x, n))
+
+  abs_of_expt_inv: LEMMA abs(1 / expt(n0x, n)) = 1 / expt(abs(n0x),n)
 
   % Properties of ^
 
@@ -2512,6 +2534,26 @@ exponentiation: THEORY
   expt_gt1_neg: LEMMA gt1x^(-pm) < 1
 
   expt_gt1_nonpos: LEMMA gt1x^(-m) <= 1
+
+  mult_expt: LEMMA (n0x * n0y) ^i = n0x^i * n0y^i
+
+  div_expt : LEMMA (n0x / n0y)^i = n0x^i / n0y^i
+
+  inv_expt : LEMMA (1 / n0x)^i = 1 / n0x^i
+
+  abs_expt: LEMMA abs(n0x)^i = abs(n0x^i)
+
+  expt_lt1_bound1: LEMMA  expt(lt1x, n) <= 1
+
+  expt_lt1_bound2: LEMMA  expt(lt1x, pn) < 1
+
+  expt_gt1_bound1: LEMMA  1 <= expt(gt1x, n)
+
+  expt_gt1_bound2: LEMMA  1 < expt(gt1x, pn)
+
+  large_expt: LEMMA 1 < px  IMPLIES (FORALL py: EXISTS n: py < expt(px, n))
+
+  small_expt: LEMMA px < 1  IMPLIES (FORALL py: EXISTS n: expt(px, n) < py)
 
   exponent_adjust: LEMMA b^i+b^(i-pm) < b^(i+1)
 
@@ -3403,6 +3445,25 @@ list2set[T:TYPE]: THEORY
  END list2set
 
 
+% The disjointness theory defines the pairwise_disjoint? function.
+% This is used in generating the disjointness axiom for large datatypes
+% or enumeration types.  This is because for N constructors, N(N-1)/2
+% terms need to be constructed.  Thus care must be taken if the list
+% is longer than a few hundred elements.
+
+disjointness: THEORY
+ BEGIN
+  l: VAR list[bool]
+  pairwise_disjoint?(l): RECURSIVE boolean =
+    cases l of
+      null: true,
+      cons(x,y): every(LAMBDA (z:bool): NOT (x AND z))(y)
+                  AND pairwise_disjoint?(y)
+    endcases
+   MEASURE length(l)
+ END disjointness
+
+
 % characters - this follows the ASCII control codes, of which only the
 % first 128 are defined:
 %
@@ -3544,6 +3605,8 @@ ctlops[state : TYPE]: THEORY
 
   N: VAR [state, state -> bool]
 
+  CONVERSION+ K_conversion
+
   EX(N,f)(u):bool = (EXISTS v: (f(v) AND N(u, v)))
 
   EG(N,f):pred[state] = nu(LAMBDA Q: (f AND EX(N,Q)))
@@ -3557,6 +3620,7 @@ ctlops[state : TYPE]: THEORY
   AG(N,f):pred[state] = NOT EF(N, NOT f)
   AU(N,f,g):pred[state] = NOT EU(N, NOT g, (NOT f AND NOT g)) AND AF(N, g)
 
+  CONVERSION- K_conversion
  END ctlops
 
 
@@ -3575,6 +3639,8 @@ fairctlops  [ state : TYPE ]: THEORY
   f,g,Q,P,p1,p2: VAR pred[state]
   N: VAR [state, state->bool]
   Ff: VAR pred[state] % Fair formula
+
+  CONVERSION+ K_conversion
 
   fairEG(N, f)(Ff): pred[state] =
     nu(LAMBDA P: EU(N, f, f AND Ff AND EX(N, P)))
@@ -3597,6 +3663,8 @@ fairctlops  [ state : TYPE ]: THEORY
 	NOT fairEU(N,NOT g,NOT f AND NOT g)(Ff)
 	    AND fairAF(N,g)(Ff)
 
+  CONVERSION- K_conversion
+
  END fairctlops
 
 
@@ -3610,6 +3678,8 @@ Fairctlops[state : TYPE]: THEORY
   f,g,Q,P,p1,p2: VAR pred[state]
   N: VAR [state, state->bool]
   Fflist, Gflist: VAR list[pred[state]] % Fair formula
+
+  CONVERSION+ K_conversion
 
   CheckFair(Q, N, f, Fflist): RECURSIVE pred[state] =
     (CASES Fflist OF
@@ -3641,6 +3711,8 @@ Fairctlops[state : TYPE]: THEORY
 	NOT FairEU(N,NOT g,NOT f AND NOT g)(Fflist)
 	    AND FairAF(N,g)(Fflist)
 
+  % Turn off K_conversion so that it is not a conversion by default.
+  CONVERSION- K_conversion
  END Fairctlops
 
 
@@ -3689,14 +3761,20 @@ BEGIN
 
   bvec : TYPE = [below(N) -> bit]
 
-  fill(b: bit): bvec = (LAMBDA (n: below(N)): b) ;
+  b: VAR bit
+  bv: VAR bvec
+  i: VAR below[N]
+
+  bvec0(i): bit = FALSE
+  bvec1(i): bit = TRUE
+  fill(b)(i): bit = b;
 
   %-----------------------------------------------------------------------    
   % The implementation of the bitvector can be hidden through use of
   % the ^ function below.
   %-----------------------------------------------------------------------  
     
-  ^(bv: bvec, (i: below(N))): bit = bv(i)
+  ^(bv, i): bit = bv(i)
 
 END bv
 
