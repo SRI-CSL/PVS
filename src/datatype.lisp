@@ -332,10 +332,15 @@ generated")
 
 (defun generate-adt-importing (importings)
   (when importings
-    (let ((cimporting (pc-parse (unparse (car importings) :string t)
-			    'theory-elt))
-	  (*adt-decl* (car importings)))
-      (typecheck-adt-decl cimporting))))
+    (let ((cimportings (mapcar #'copy-importing importings)))
+      (dolist (imp importings)
+	(let* ((cimp (copy-importing imp))
+	       (*adt-decl* imp))
+	  (typecheck-adt-decl cimp))))))
+
+(defun copy-importing (imp)
+  (make-instance 'importing
+    'theory-name (pc-parse (unparse (theory-name imp) :string t) 'modname)))
 
 (defun generate-adt-type (adt)
   (let ((*adt-decl* adt)
@@ -1081,7 +1086,8 @@ generated")
 		       (incf num)
 		       (when pred
 			 (list (mk-application pred
-				 (make-instance 'projection-application
+				 (make-instance
+				     'projection-application
 				   'id (makesym "PROJ_~d" num)
 				   'index num
 				   'argument tvar)))))
@@ -2728,9 +2734,12 @@ generated")
 
 (defmethod acc-subterm-selection* ((te type-name) xvar adt)
   (cond ((tc-eq te (adt-type-name adt))
-	 (let ((bd (mk-bind-decl (make-new-variable '|z| te) te)))
-	   (mk-lambda-expr (list bd)
-	     (mk-application '|subterm| (copy xvar) (mk-name-expr (id bd))))))
+	 (let* ((bd (mk-bind-decl (make-new-variable '|z| te) te))
+		(le (mk-lambda-expr (list bd)
+		      (mk-application '|subterm| (copy xvar)
+				      (mk-name-expr (id bd))))))
+	   (setf (parens le) 1)
+	   le))
 	((adt? te)
 	 (let ((subs (mapcar #'(lambda (act)
 				 (acc-subterm-selection* (type-value act)
@@ -2813,18 +2822,21 @@ generated")
 	 (subs (acc-subterm-types (types te) xvar tvar adt)))
     (if (every #'everywhere-false? subs)
 	(call-next-method)
-	(mk-lambda-expr (list tbd)
-	  (let ((num 0))
-	    (mk-disjunction
-	     (mapcan #'(lambda (sub)
-			 (incf num)
-			 (unless (everywhere-false? sub)
-			   (list (mk-application sub
-				   (make-instance 'projection-application
-				     'id (makesym "PROJ_~d" num)
-				     'index num
-				     'argument tvar)))))
-	       subs)))))))
+	(let ((le (mk-lambda-expr (list tbd)
+		    (let ((num 0))
+		      (mk-disjunction
+		       (mapcan #'(lambda (sub)
+				   (incf num)
+				   (unless (everywhere-false? sub)
+				     (list (mk-application sub
+					     (make-instance
+						 'projection-application
+					       'id (makesym "PROJ_~d" num)
+					       'index num
+					       'argument tvar)))))
+			 subs))))))
+	  (setf (parens le) 1)
+	  le))))
 
 (defun acc-subterm-types (types xvar tvar adt &optional (index 1) result)
   (if (null types)
