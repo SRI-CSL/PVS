@@ -272,7 +272,7 @@ pvs-prover = src/prover/checker-macros.lisp \
          src/prover/strategies.lisp \
          src/prover/wish.lisp
 
-bddlisp = BDD/bdd.lisp BDD/mu.lisp BDD/strategies.lisp
+bddlisp = BDD/bdd.lisp BDD/mu.lisp
 
 decision-procedures = src/decision-procedures/types.lisp \
                       src/decision-procedures/node-structures.lisp \

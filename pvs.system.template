@@ -316,7 +316,8 @@
    (:module mu-simplifier
      :source-pathname "BDD"
      :components ((:file "mu")
-		  (:file "strategies"))
+		  ;;(:file "strategies")
+		  )
      :depends-on (proof-checker))
    (:module dc-interface
      :source-pathname "src/decision-procedures"
