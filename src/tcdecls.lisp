@@ -905,7 +905,7 @@
     (t (and (check-inductive-occurrences* (operator ex) decl 0)
 	    (check-inductive-occurrences* (arguments ex) decl 0)))))
 
-(defmethod check-inductive-occurrences* ((ex if-expr) decl parity)
+(defmethod check-inductive-occurrences* ((ex branch) decl parity)
   (and (check-inductive-occurrences* (condition ex) decl 0)
        (check-inductive-occurrences* (then-part ex) decl parity)
        (check-inductive-occurrences* (else-part ex) decl parity)))
@@ -1566,7 +1566,11 @@
   (declare (ignore expected kind arguments))
   (setf (subtype decl) (typecheck* (declared-subtype decl) nil nil nil))
   (set-type (declared-subtype decl) nil)
-  (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
+  (let ((*bound-variables*
+	 (if (typep (declared-subtype decl) 'type-application)
+	     (append (parameters (declared-subtype decl)) *bound-variables*)
+	     *bound-variables*)))
+    (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
   (set-type (declared-type decl) nil)
   (when (subtype-of? (subtype decl) (type decl))
     (type-error (declared-subtype decl)

@@ -1272,21 +1272,39 @@
 		    etypes))))))
 
 (defun known-subtype-of? (t1 t2)
-  (let ((known-subtypes (assoc t1 (known-subtypes *current-context*)
-			       :test #'subtype-of-test)))
+  (let ((known-subtypes (find-known-subtypes t1)))
     (some #'(lambda (ks) (subtype-of*? ks t2))
-	  (cdr known-subtypes))))
+	  known-subtypes)))
+
+(defun find-known-subtypes (type-expr)
+  (find-known-subtypes* type-expr (known-subtypes *current-context*) nil))
+
+(defun find-known-subtypes* (type-expr known-subtypes found-subtypes)
+  (if (null known-subtypes)
+      (nreverse found-subtypes)
+      (let ((subst (subtype-of-test type-expr (caar known-subtypes))))
+	(find-known-subtypes*
+	 type-expr
+	 (cdr known-subtypes)
+	 (if (eq subst 'fail)
+	     found-subtypes
+	     (append found-subtypes
+		     (substit (cdar known-subtypes) subst)))))))
 
 (defun subtype-of-test (tt1 tt2)
   (if (freevars tt2)
       (let ((subst (simple-match tt2 tt1)))
-	(and (not (eq subst 'fail))
-	     (every #'(lambda (sub)
-			(some #'(lambda (jty)
-				  (subtype-of? jty (type (car sub))))
-			      (judgement-types+ (cdr sub))))
-		    subst)))
-      (tc-eq tt1 tt2)))
+	(if (and (not (eq subst 'fail))
+		 (every #'(lambda (sub)
+			    (some #'(lambda (jty)
+				      (subtype-of? jty (type (car sub))))
+				  (judgement-types+ (cdr sub))))
+			subst))
+	    subst
+	    'fail))
+      (if (tc-eq tt1 tt2)
+	  nil
+	  'fail)))
 
 (defun simple-match (ex inst)
   (simple-match* ex inst nil nil))
