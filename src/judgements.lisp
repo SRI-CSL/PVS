@@ -356,7 +356,9 @@
   (append (mapcar #'type
 	    (gethash (number ex)
 		     (number-judgements-hash (judgements *current-context*))))
-	  (list (available-numeric-type (number ex)))))
+	  (cons (available-numeric-type (number ex))
+		(when (and *even_int* *odd_int*)
+		  (list (if (evenp (number ex)) *even_int* *odd_int*))))))
 
 (defmethod judgement-types* ((ex name-expr))
   (let ((entry (name-judgements ex)))
