@@ -1268,8 +1268,9 @@
 			  :initial-contents
 			  (map 'list
 			       #'(lambda (fj)
-				   (subst-appl-judgements
-				    fj theory theoryname))
+				   (when fj
+				     (subst-appl-judgements
+				      fj theory theoryname)))
 			       from-vector)))
 		   (setf (gethash decl to-hash)
 			 (make-array (length from-vector) :adjustable t
