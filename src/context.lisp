@@ -1045,7 +1045,8 @@ pvs-strategies files.")
 ;;; Proof handling functions - originally provided by Shankar.
 
 (defun save-all-proofs (&optional theory)
-  (unless *loading-prelude*
+  (unless (or *loading-prelude*
+	      (and theory (from-prelude? theory)))
     (if theory
 	(save-proofs (make-prf-pathname (filename theory))
 		     (cdr (gethash (filename theory) *pvs-files*)))
