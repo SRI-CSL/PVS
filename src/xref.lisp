@@ -5,11 +5,9 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Wed Jun 30 17:28:43 1999
 ;; Update Count    : 14
-;; Status          : Beta test
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -56,11 +54,12 @@
   (unless (gethash m *prelude*)
     (mapc #'(lambda (u) (pushnew m (used-by (car u)) :test #'eq))
 	  (all-usings m))
-    (dolist (d (all-decls m))
-      (let ((*generate-xref-declaration* d)
-	    (*xref-names-seen* nil)
-	    (*xref-types-seen* nil))
-	(generate-xref d))))
+    (let ((*in-module* m))
+      (dolist (d (all-decls m))
+	(let ((*generate-xref-declaration* d)
+	      (*xref-names-seen* nil)
+	      (*xref-types-seen* nil))
+	  (generate-xref d)))))
   m)
 
 (defmethod generate-xref ((use importing))
@@ -137,6 +136,7 @@
 
 (defmethod generate-xref ((d const-decl))
   (generate-xref (declared-type d))
+  (generate-xref (formals d))
   (when (and (slot-boundp d 'definition)
 	     (definition d))
     (generate-xref (definition d))))
@@ -269,6 +269,9 @@
 (defmethod generate-xref ((b bind-decl))
   (generate-xref (type b)))
 
+(defmethod generate-xref ((e fieldex))
+  (generate-xref (actuals e)))
+
 (defmethod generate-xref ((e projection-expr))
   (generate-xref (actuals e)))
 
@@ -284,6 +287,11 @@
 (defmethod generate-xref ((n field-name-expr))
   (assert (type n))
   nil)
+
+(defmethod generate-xref ((n theory-name-expr))
+  (with-slots (resolutions) n
+    (assert (and resolutions (null (cdr resolutions))))
+    (generate-xref (car resolutions))))
 
 (defmethod generate-xref ((n name-expr))
   (assert (type n))
@@ -315,7 +323,8 @@
   (if (type-value a)
       (generate-xref (type-value a))
       (if (and (name-expr? (expr a))
-	       (module? (declaration (expr a))))
+	       (typep (declaration (expr a))
+		      '(or module mod-decl formal-theory-decl)))
 	  (generate-xref (car (resolutions (expr a))))
 	  (generate-xref (expr a)))))
 
@@ -333,11 +342,17 @@
     (generate-xref mi)
     (unless (or (eq decl *generate-xref-declaration*)
 		(binding? decl)
+		(module? decl)
 		;;(from-prelude? decl)
 		)
       (if (listp *generate-xref-declaration*)
 	  (pushnew decl *generate-xref-declaration*)
 	  (add-xref decl *generate-xref-declaration*)))))
+
+(defmethod generate-xref ((mr mapping-resolution))
+  (with-slots ((decl declaration) (mi module-instance)) mr
+    (generate-xref mi)
+    (generate-xref decl)))
 
 #-gcl
 (defmethod generate-xref ((ti tccinfo))
