@@ -15,6 +15,8 @@
 (defvar *pvs-file-extensions* '("pvs"))
 (defvar pvs-default-timeout 10)
 
+(defvar pvs-string-positions nil)
+
 ;;; Misc functions
 
 (defpvs forward-theory editing (&optional nomsg)
@@ -267,11 +269,23 @@ beginning of the previous one."
 	    (setq blist (cdr blist))))
 	fbuf)))
 
-(defun in-comment ()
+(defun in-comment (&optional strings-computed)
   (let ((limit (point)))
     (save-excursion
       (beginning-of-line)
-      (search-forward "%" limit t))))
+      (let ((found (search-forward "%" limit t)))
+	(while (and found (in-string))
+	  (setq found (search-forward "%" limit t)))
+	found))))
+
+(defun in-string (&optional strings-computed)
+  (let ((pvs-string-positions (if strings-computed
+				  pvs-string-positions
+				  (pvs-string-positions))))
+    (some '(lambda (strpos)
+	     (and (<= (car strpos) (point))
+		  (>= (cdr strpos) (point))))
+	  pvs-string-positions)))
 
 (defpvs find-unbalanced-pvs editing (arg)
   "Find unbalanced PVS delimiters
@@ -292,10 +306,41 @@ The find-unbalanced-region-pvs command goes to the point in region where
 PVS delimiters become unbalanced.  Point will be on the offending
 delimiter."
   (interactive "r")
-  (pvs-count-char-pairs start end "[" "]")
-  (pvs-count-char-pairs start end "(" ")")
-  (pvs-count-char-pairs start end "{" "}")
-  (pvs-count-string-pairs start end "begin" "end"))
+  (let ((pvs-string-positions (pvs-string-positions)))
+    (pvs-count-char-pairs start end "[" "]")
+    (pvs-count-char-pairs start end "(" ")")
+    (pvs-count-char-pairs start end "{" "}")
+    (pvs-count-string-pairs start end "begin" "end")))
+
+(defun pvs-string-positions ()
+  (save-excursion
+    (goto-char (point-min))
+    (let ((string-positions nil)
+	  (string-pos nil))
+      (while (setq string-pos (pvs-next-string-position))
+	(push string-pos string-positions))
+      (nreverse string-positions))))
+
+(defun pvs-next-string-position ()
+  (let ((string-start (re-search-forward "\"" nil t)))
+    (while (and string-start (simple-in-comment))
+      (setq string-start (re-search-forward "\"" nil t)))
+    (when string-start
+      (let ((string-end (re-search-forward "\"" nil t)))
+	(while (and string-end
+		    (save-excursion (forward-char -2)
+				    (looking-at "\\\\")))
+	  (setq string-end (re-search-forward "\"" nil t)))
+	(unless string-end
+	  (goto-char string-start)
+	  (error "Extra \""))
+	(cons (1- string-start) (1- string-end))))))
+
+(defun simple-in-comment ()
+  (let ((limit (point)))
+    (save-excursion
+      (beginning-of-line)
+      (search-forward "%" limit t))))
 
 (defun pvs-count-char-pairs (start end sdel edel)
   (let ((mismatch (pvs-count-char-pairs* start end sdel edel)))
@@ -1284,7 +1329,7 @@ Point will be on the offending delimiter."
     (define-key pvs-query-keymap "!" 'self-insert-and-exit)
     (define-key pvs-query-keymap "q" 'self-insert-and-exit)
     (define-key pvs-query-keymap "n" 'self-insert-and-exit)
-    (unless (memq pvs-emacs-system '(xemacs20 xemacs19))
+    (unless (memq pvs-emacs-system '(xemacs21 xemacs20 xemacs19))
       (define-key pvs-query-keymap "\e" 'self-insert-and-exit))
     ;;(define-key pvs-query-keymap [help-char] 'self-insert-and-exit)
     ;;(define-key pvs-query-keymap "\C-g" 'keyboard-quit)
@@ -1544,6 +1589,18 @@ differences to be whitespace")
     (let ((pvs-verbose 1))
       (message (ad-get-arg 0))))
   ad-do-it)
+
+;;; Can't use kill-emacs-hook instead, as in batch mode the hook is ignored.
+(defadvice kill-emacs (around pvs-batch-control activate)
+  (when (and ilisp-buffer (get-buffer ilisp-buffer))
+    (let ((process (ilisp-process)))
+      (when (and process (equal (process-status process) 'run))
+	(save-some-buffers nil t)
+	(message "Exiting PVS")
+	(comint-simple-send (ilisp-process) "(exit-pvs)")
+	(while (equal (process-status process) 'run)
+	  (sleep-for 1)))))
+  ad-do-it)
 )
 
 (defun list-lisp-declarations (filename)
@@ -1583,7 +1640,7 @@ differences to be whitespace")
 	 (modify-frame-parameters (car (frame-list))
 				  (list (cons 'icon-name title)
 					(cons 'title title)))))))
-  ((xemacs19 xemacs20)
+  ((xemacs21 xemacs20 xemacs19)
    (defun pvs-update-window-titles ()
      (let ((title (pvs-title-string)))
        (when title
