@@ -285,7 +285,7 @@
 			 (cons decl ttail)))))
 	(setf (all-declarations thry) nil))
       (assert (eq thry (module decl)))
-      (assert (memq decl (all-decls thry)))
+      (assert (or (null *insert-add-decl*) (memq decl (all-decls thry))))
       (unless (or (importing? decl)
 		  (null *insert-add-decl*))
 	(put-decl decl (current-declarations-hash)))
