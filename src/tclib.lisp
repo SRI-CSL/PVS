@@ -30,6 +30,8 @@
 	*naturalnumber* nil
 	*posint* nil
 	*ordinal* nil)
+  (when *pvs-initialized*
+    (clear-theories t))
   (let ((cdir (or *pvs-context-path* (working-directory)))
 	(*pvs-context-path* nil)
 	(*pvs-modules* (make-hash-table :test #'eq :size 20 :rehash-size 10))
@@ -42,7 +44,7 @@
 	(*generate-tccs* 'all!)
 	(mods (parse :file (format nil "~a/lib/~a"
 			     *pvs-path* *prelude-filename*))))
-    (clear-theories t)
+    (reset-typecheck-caches)
     (dolist (fn *load-prelude-hook*)
       (funcall fn))
     (setq *prelude-context* nil)
