@@ -1169,13 +1169,26 @@ by the key sequence that invokes the command."
 (defpvs help-pvs-language help ()
   "Display help for the PVS language.
 
-Provides an example specification, along with the the PVS grammar."
+Provides an example specification, along with the PVS grammar."
   (interactive)
   (let ((buf (get-buffer-create "Language Help")))
     (set-buffer buf)
     (if buffer-read-only (toggle-read-only))
     (erase-buffer)
     (insert-file-contents (concat pvs-path "/lib/pvs-language.help"))
+    (goto-char (point-min))
+    (unless buffer-read-only (toggle-read-only))
+    (pop-to-buffer buf)
+    (pvs-view-mode)))
+
+(defpvs help-pvs-bnf help ()
+  "Display the PVS language grammar."
+  (interactive)
+  (let ((buf (get-buffer-create "PVS bnf")))
+    (set-buffer buf)
+    (if buffer-read-only (toggle-read-only))
+    (erase-buffer)
+    (insert-file-contents (concat pvs-path "/lib/pvs.bnf"))
     (goto-char (point-min))
     (unless buffer-read-only (toggle-read-only))
     (pop-to-buffer buf)
