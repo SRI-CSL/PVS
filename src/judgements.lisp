@@ -1207,7 +1207,7 @@
 		     (setq to-judgements
 			   (setf (gethash decl to-hash)
 				 (make-instance 'name-judgements))))
-		   (merge-name-judgements* (nconc from-min from-gen)
+		   (merge-name-judgements* (append from-min from-gen)
 					   to-judgements)))
 	     from-hash)))
 
