@@ -17,6 +17,8 @@
 (defvar *pvs-to-ics-hash* 
   (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
 
+(defvar *ics-to-pvs-translation* nil)
+
 (defvar *ics-to-pvs-hash* 
   (make-hash-table :test 'eql))
 
@@ -25,7 +27,7 @@
 
 (defvar *unique-name-ics-counter* 0)
 
-(defvar *ics-nonlin* t)
+(defvar *ics-nonlin* nil)
 
 (defvar *ics-debug* nil)
 
@@ -34,6 +36,13 @@
   (clrhash *ics-to-pvs-hash*)
   (clrhash *pvs-to-ics-symtab*)
   (setf *unique-name-ics-counter* 0))
+
+(defun pvs-to-ics-add-hash (expr wrapper)
+  #+icsdebug(assert (expr? expr))
+  #+icsdebug(assert (wrap? wrapper))
+  (setf (gethash expr *pvs-to-ics-hash*) wrapper)
+  (when *ics-to-pvs-translation*
+    (setf (gethash wrapper *pvs-to-ics-hash*) expr)))
 
 
 ;; Wrapping and unwrapping ICS values in order to finalize 
@@ -103,6 +112,23 @@
    #+icsdebug(assert (atom-wrap? w))
   (wrap-address w))
 
+(defstruct (prop-wrap
+	    (:include wrap)
+	    (:predicate prop-wrap?)
+	    (:constructor make-prop-wrap (address))
+	    (:print-function
+	     (lambda (p s k)
+	       (declare (ignore k))
+	       (format s "<#prop: ~a>" (wrap-address p))))))
+
+(defun prop-wrap (value)
+   #+icsdebug(assert (integerp value))
+   (make-prop-wrap value))
+
+(defun prop-unwrap (w)
+   #+icsdebug(assert (prop-wrap? w))
+  (wrap-address w))
+
 (defstruct (state-wrap
 	    (:include wrap)
 	    (:predicate state-wrap?)
@@ -155,7 +181,6 @@
   (ics_context_pp (state-unwrap *dp-state*)))
 
 
-
 (defun ics-empty-state ()
   (let ((empty (state-wrap (ics_context_empty))))
     (wrap-finalize! empty)
@@ -166,29 +191,11 @@
   (let ((state (state-wrap (ics_d_consistent value))))
     (wrap-finalize! state)
     state))
-
-#+icsdebug
-(defmethod ics-process :around (state atom)
-  (declare (ignore state))
-  (when *ics-debug*
-    (format t "~%assert ")
-    (ics_atom_pp (atom-unwrap atom))
-    (format t "."))
-  (let ((result (call-next-method)))
-    (when *ics-debug*
-      (cond ((eql result :unsat) 
-	     (format t "~%\% Inconsistent"))
-	    ((eql result :valid)
-	     (format t "~%\% Valid"))
-	    ((not (null result))
-	     (format t "~%\% Ok")))
-      (terpri))
-    result))
     
-(defmethod ics-process (state atom)
+(defmethod ics-process (state (expr expr))
    #+icsdebug(assert (state-wrap? state))
-   #+icsdebug(assert (atom-wrap? atom))
-  (let ((result (ics_process (state-unwrap state) (atom-unwrap atom))))
+  (let* ((atom (translate-to-ics expr))
+	 (result (ics_process (state-unwrap state) (atom-unwrap atom))))
     (cond ((not (zerop (ics_is_consistent result)))
 	   (ics-d-consistent result))
 	  ((not (zerop (ics_is_inconsistent result)))
@@ -196,21 +203,34 @@
 	  ((not (zerop (ics_is_redundant result)))
 	   :valid))))
 
-(defun ics-is-valid (state atom)
+(defun ics-is-valid (state expr)
    #+icsdebug(assert (state-wrap? state))
-   #+icsdebug(assert (atom-wrap? atom))
-  (eql (ics-process state atom) :valid))
+   #+icsdebug(assert (expr? expr))
+   (let ((atom (translate-to-ics expr)))
+     #+icsdebug(assert (atom-wrap? atom))
+     (eql (ics-process state atom) :valid)))
 
-(defun ics-is-unsat (state atom)
+(defun ics-is-unsat (state expr)
    #+icsdebug(assert (state-wrap? state))
-   #+icsdebug(assert (atom-wrap? atom))
-  (eql (ics-process state atom) :unsat))      
+   (let ((atom (translate-to-ics expr)))
+     #+icsdebug(assert (atom-wrap? atom))
+     (eql (ics-process state atom) :unsat)))      
 
 (defun ics-state-unchanged? (state1 state2)
     #+icsdebug(assert (state-wrap? state1))
     #+icsdebug(assert (state-wrap? state2))
    (zerop (ics_context_eq (state-unwrap state1) (state-unwrap state2))))
 
+(defmethod ics-sat (state expr)
+   #+icsdebug(assert (state-wrap? state))
+   #+icsdebug(assert (expr? expr))
+   (let ((prop (translate-prop-to-ics expr)))
+     #+icsdebug(assert (prop-wrap? prop))
+     (let ((result (ics_prop_sat (state-unwrap state) (prop-unwrap prop))))
+       (if (not (zerop (ics_is_none result)))
+	   :unsat
+	 (let* ((assignment (ics_value_of result)))
+	   (cons :sat assignment))))))
 
 ;; Return a unique name for an expression
 	
@@ -227,7 +247,6 @@
 
 ;; Translating from PVS expressions to ICS terms
 
-
 ;; An atom is either an equality, disequality, an arithmetic
 ;; constraint, or some other expression of Boolean type
 
@@ -237,7 +256,8 @@
 	 #+icsdebug(assert (integerp atom))
 	(let ((wrapper (atom-wrap atom)))
 	  (wrap-finalize! wrapper)
-	  (setf (gethash expr *pvs-to-ics-hash*) wrapper)))))
+	  (pvs-to-ics-add-hash expr wrapper)
+	  wrapper))))
 
 (defmethod translate-posatom-to-ics* ((expr expr))
   "Fallthrough method: Boolean expressions 'b' are translated as 'b = true'"
@@ -598,3 +618,54 @@
   "Forget about the 'fun-type' for now"
   (declare (ignore fun-type))
   (ics_term_mk_select term term-args))
+
+
+;; Translations for satisfiability solver
+
+(defmethod translate-prop-to-ics (expr)
+  (let* ((prop (translate-prop-to-ics* expr))
+         (wrapper (prop-wrap prop)))
+    (wrap-finalize! wrapper)
+    wrapper))
+
+(defmethod translate-prop-to-ics* ((expr expr))
+  "Fallthrough method"
+  (let ((wrapper (translate-to-ics expr)))
+    (assert (not (null wrapper)))
+    (ics_prop_mk_poslit (atom-unwrap wrapper))))
+
+(defmethod translate-prop-to-ics* ((expr name-expr))
+  (ics_prop_mk_var (ics_name_of_string (format nil "~s"  (id expr)))))
+
+(defmethod translate-prop-to-ics* ((expr negation))
+  (let ((trm1 (translate-prop-to-ics* (args1 expr))))
+    (ics_prop_mk_neg trm1)))
+
+(defmethod translate-prop-to-ics* ((expr conjunction))
+  (let ((trm1 (translate-prop-to-ics* (args1 expr)))
+	(trm2 (translate-prop-to-ics* (args2 expr))))
+    (ics_prop_mk_conj (ics_cons trm1 (ics_cons trm2 (ics_nil))))))
+
+(defmethod translate-prop-to-ics* ((expr disjunction))
+  (let ((trm1 (translate-prop-to-ics* (args1 expr)))
+	(trm2 (translate-prop-to-ics* (args2 expr))))
+    (ics_prop_mk_disj (ics_cons trm1 (ics_cons trm2 (ics_nil))))))
+
+(defmethod translate-prop-to-ics* ((expr implication))
+  (let ((trm1 (translate-prop-to-ics* (args1 expr)))
+	(trm2 (translate-prop-to-ics* (args2 expr))))
+    (ics_prop_mk_disj (ics_cons (ics_prop_mk_neg trm1) (ics_cons trm2 (ics_nil))))))
+
+(defmethod translate-prop-to-ics* ((expr iff-or-boolean-equation))
+  (let ((trm1 (translate-prop-to-ics* (args1 expr)))
+	(trm2 (translate-prop-to-ics* (args2 expr))))
+    (ics_prop_mk_iff (ics_cons trm1 (ics_cons trm2 (ics_nil))))))
+
+(defmethod translate-prop-to-ics* ((expr let-expr))
+  (break "to do"))
+
+
+
+
+
+
