@@ -245,9 +245,27 @@
 	     ;; something changed underneath
 	     (*tc-theories* (acons (current-theory) (current-declaration)
 				   *tc-theories*))
+	     (plib-context *prelude-library-context*)
 	     (mod (get-typechecked-theory theory-inst)))
+	;; If get-typechecked-theory ended up loading a new prelude library,
+	;; we need to update the current context.
+	(when (context-difference? plib-context *prelude-library-context*)
+	  (setf (lhash-next (using-hash *current-context*))
+		(using-hash *prelude-library-context*))
+	  (setf (lhash-next (declarations-hash *current-context*))
+		(declarations-hash *prelude-library-context*)))
+	(when (and *tc-add-decl*
+		   ;; Check for circularities
+		   (memq (current-theory) (all-importings mod)))
+	  (type-error theory-inst
+	    "Circularity found in importings of theory ~a" theory-inst))
 	;;(assert (get-theory theory-inst))
 	(typecheck-using* mod theory-inst))))
+
+(defun context-difference? (old-ctx new-ctx)
+  (if (null old-ctx)
+      (not (null new-ctx))
+      (not (eq old-ctx new-ctx))))
 
 (defvar *ignore-exportings* nil)
 
@@ -1255,6 +1273,7 @@
 
 (defun external-name (ex)
   (and (name? ex)
+       (not (variable? ex))
        (not (freevars ex))
        (module-instance ex)
        (not (eq (module (declaration ex))
@@ -1269,15 +1288,18 @@
 
 (defun check-exported-theories (theories)
   (unless (symbolp theories);; Handles NIL, ALL, and CLOSURE
-    (when (actuals (car theories))
-      (typecheck-actuals (car theories))
-      (set-type-actuals (car theories)))
-    (unless (member (car theories)
-		    (get-importings (get-theory (car theories)))
-		    :test #'check-exported-theories-test)
-      (type-error (car theories)
-	"~a occurs in an EXPORTING WITH but is not in a IMPORTING clause"
-	(car theories)))
+    (let ((theory (get-theory (car theories))))
+      (unless theory
+	(type-error (car theories) "Theory ~a not found" (car theories)))
+      (when (actuals (car theories))
+	(typecheck-actuals (car theories))
+	(set-type-actuals (car theories) theory))
+      (unless (member (car theories)
+		      (get-importings theory)
+		      :test #'check-exported-theories-test)
+	(type-error (car theories)
+	  "~a occurs in an EXPORTING WITH but is not in a IMPORTING clause"
+	  (car theories))))
     (check-exported-theories (cdr theories))))
 
 (defun check-exported-theories-test (u v)
