@@ -88,7 +88,8 @@
      ["prettyprint-theory" prettyprint-theory (current-pvs-file t)]
      ["prettyprint-pvs-file" prettyprint-pvs-file (current-pvs-file t)]
      ["prettyprint-declaration" prettyprint-declaration (current-pvs-file t)]
-     ["prettyprint-region" prettyprint-region (current-pvs-file t)])
+     ["prettyprint-region" prettyprint-region (current-pvs-file t)]
+     ["prettyprint-theory-instance" prettyprint-theory-instance (current-pvs-file t)])
     ("Viewing TCCs"
      ["show-tccs" show-tccs (current-pvs-file t)]
      ["prettyprint-expanded" prettyprint-expanded (current-pvs-file t)])
