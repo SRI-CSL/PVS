@@ -1066,7 +1066,7 @@ generated")
 		    nil))
 	   (cdr fields))
        rvar indvar adt dep?
-       (cons (acc-induction-hypothesis* (copy-all (type (car fields)))
+       (cons (acc-induction-hypothesis* (type (car fields))
 					indvar adt)
 	     result))))
 
