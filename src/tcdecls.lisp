@@ -47,7 +47,7 @@
 			   '(or module datatype)))
 	    (setf (module decl) (theory *current-context*))
 	    (tcdebug "~%    Typechecking ~a" decl)
-	    (let ((stime (get-internal-run-time)))
+	    (let ((stime (get-run-time)))
 	      (typecheck* decl nil nil nil)
 	      (setf (typecheck-time decl) (runtime-since stime)))
 	    (setf (typechecked? decl) t))
