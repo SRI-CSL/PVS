@@ -17,8 +17,8 @@
   "Expands definitions in the formulas specified by FNUMS and tries to decide then
    using the WS1S decision procedures (based on the Mona package developed
    at BRICS (http://www.brics.dk/~mona).  If EXAMPLES is true a witness
-   is being displayed if these formulas turn out to be satisfiable put not
-   valid, setting the flag AUTOMATON causes the procedure to display the
+   and a counterexample are being displayed if these formulas turn out to be satisfiable
+   but not valid, setting the flag AUTOMATON causes the strategy to display the
    constructed automaton, TRACES displays a trace version of the witness."
   "By rewriting and WS1S decision procedure")
 
