@@ -2641,7 +2641,7 @@
 
 (defmethod lazy-assert-if-with-subst ((expr branch) subst &optional if-flag)
   (let* ((subexpr (substit (condition expr) subst))
-	 (newtest (assert-if-simplify subexpr))) (break "lazy")
+	 (newtest (assert-if-simplify subexpr))) ;;(break "lazy")
     ;;check if assert-if-simplify is needed.  Why another assert-test
     ;;below.
     (if (check-for-connectives? newtest)
