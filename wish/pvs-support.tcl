@@ -1463,7 +1463,7 @@ proc reset-options {} {
     if {$tk_version >= 4.0} {
 	set pvs [winfo name .]
 	option add $pvs.displayfont 7x13bold startupFile
-	option add $pvs.buttonfont 5x8 startupFile
+	option add $pvs.buttonfont 6x10 startupFile
 	if {[winfo depth .] > 1 && !$mono} {
 	    option add $pvs.windowbackground wheat startupFile
 	    option add $pvs.displaybackground white startupFile
@@ -1507,7 +1507,7 @@ proc reset-options {} {
 	option add $pvs*th-hier*ySep 100 startupFile
     } else {
 	option add Tk.displayfont 7x13bold startupFile
-	option add Tk.buttonfont 5x8 startupFile
+	option add Tk.buttonfont 6x9 startupFile
 	if {[tk colormodel .]=={color} && !$mono} {
 	    option add Tk.windowbackground wheat startupFile
 	    option add Tk.displaybackground white startupFile
