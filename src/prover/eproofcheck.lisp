@@ -690,8 +690,8 @@
 	  (parent-pos-s-forms (pos-s-forms par-goal))
 	  (neg-s-forms (neg-s-forms goal))
 	  (parent-neg-s-forms (neg-s-forms par-goal)))
-      (nconc (new-pos-formula-nums pos-s-forms parent-pos-s-forms pos)
-	     (new-neg-formula-nums neg-s-forms parent-neg-s-forms neg)))))
+      (nconc (new-neg-formula-nums neg-s-forms parent-neg-s-forms neg)
+	     (new-pos-formula-nums pos-s-forms parent-pos-s-forms pos)))))
 
 (defun new-pos-formula-nums (pos-s-forms parent-pos-s-forms pos)
   (when pos-s-forms
