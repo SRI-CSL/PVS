@@ -3762,8 +3762,8 @@ e LHS free variables in ~a" hyp lhs)
 		      :test #'tc-eq))
 	(error-format-if "~%Can't rewrite using ~a: non-LHS freevars in hypotheses." name))
        ((and (resolution? res)
-	     (inductive-decl? (declaration res)))
-	(error-format-if "~%Can't rewrite using ~a: inductive definition cannot be used." name))
+	     (fixpoint-decl? (declaration res)))
+	(error-format-if "~%Can't rewrite using ~a: (co)inductive definition cannot be used." name))
        (t
 	(unless (consp res);;(6.16.95)avoids antecedent rewrites
 	  (typecheck (module-instance res) :tccs 'all))
