@@ -8,15 +8,24 @@
 (defun dnf-atom (expr)
   (list (list expr)))
 
+(defun dnf-insert (cs1 dnf)
+  (if (null dnf) (list cs1)
+     (let ((cs2 (car dnf)))
+       (cond ((subsetp cs1 cs2 :test #'tc-eq)
+	      (cons cs1 (cdr dnf)))
+	     ((subsetp cs2 cs1 :test #'tc-eq)
+	      dnf)
+	     (t (cons cs2 (dnf-insert cs1 (cdr dnf))))))))
+
 (defun dnf-disjunction (dnf1 dnf2)
-  (cond ((and (eq dnf1 *true-dnf*)
-	      (eq dnf2 *true-dnf*))
+  (cond ((or (eq dnf1 *true-dnf*) (eq dnf2 *true-dnf*))
 	 *true-dnf*)
 	((eq dnf1 *false-dnf*)
 	 dnf2)
 	((eq dnf2 *false-dnf*)
 	 dnf1)
-	(t (union dnf1 dnf2 :test #'conjuncts=))))
+	(t (dnf-insert (car dnf1)
+		       (dnf-disjunction (cdr dnf1) dnf2)))))
 
 (defun dnf-conjunction (dnf1 dnf2)
   (cond ((not (eq dnf1 *false-dnf*))
@@ -55,7 +64,8 @@
       (adjoin cs dnf :test #'conjuncts=)))
   
 (defun conjuncts= (cs1 cs2)
-  (not (set-difference cs1 cs2 :test #'tc-eq)))
+  (not (and (subsetp cs1 cs2 :test #'tc-eq)
+	    (subsetp cs2 cs1 :test #'tc-eq))))
 
 (defun dnf-conjuncts (cs)
   "Compute a dnf with one reduced set of conjunctions"
