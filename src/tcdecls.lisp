@@ -40,28 +40,34 @@
       (typecheck-decls (cdr decls)))))
 
 (defun typecheck-decl (decl)
-  (if (and (typechecked? decl)
-	   (not (typep decl '(or theory-abbreviation-decl
-			         mod-decl conversion-decl auto-rewrite-decl
-				 judgement))))
-      (mapc #'(lambda (d) (add-decl d nil))
-	    (generated decl))
-      (unwind-protect
-	  (progn
-	    (assert (typep (theory *current-context*)
-			   '(or module recursive-type)))
-	    (setf (module decl) (theory *current-context*))
-	    (tcdebug "~%    Typechecking ~a" decl)
-	    (let ((stime (get-run-time)))
-	      (typecheck* decl nil nil nil)
-	      (setf (typecheck-time decl) (runtime-since stime)))
-	    (setf (typechecked? decl) t))
-	(unless (or *loading-prelude*
-		    (typechecked? decl))
-	  (cleanup-typecheck-decls decl))))
-  (unless (and (type-def-decl? decl)
-	       (enumtype? (type-expr decl)))
-    (put-decl decl (current-declarations-hash))))
+  ;; This check is needed because typechecking an importing may remove
+  ;; declarations from the current theory, but the decls list to
+  ;; typecheck-decls will not be affected, and TCCs may be accidentally
+  ;; added.
+  (when (or (null (generated-by decl))
+	    (typechecked? (generated-by decl)))
+    (if (and (typechecked? decl)
+	     (not (typep decl '(or theory-abbreviation-decl
+				   mod-decl conversion-decl auto-rewrite-decl
+				   judgement))))
+	(mapc #'(lambda (d) (add-decl d nil))
+	      (generated decl))
+	(unwind-protect
+	    (progn
+	      (assert (typep (theory *current-context*)
+			     '(or module recursive-type)))
+	      (setf (module decl) (theory *current-context*))
+	      (tcdebug "~%    Typechecking ~a" decl)
+	      (let ((stime (get-run-time)))
+		(typecheck* decl nil nil nil)
+		(setf (typecheck-time decl) (runtime-since stime)))
+	      (setf (typechecked? decl) t))
+	  (unless (or *loading-prelude*
+		      (typechecked? decl))
+	    (cleanup-typecheck-decls decl))))
+    (unless (and (type-def-decl? decl)
+		 (enumtype? (type-expr decl)))
+      (put-decl decl (current-declarations-hash)))))
 
 (defun cleanup-datatype (adt)
   (unless (typechecked? adt)
