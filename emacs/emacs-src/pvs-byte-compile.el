@@ -39,8 +39,7 @@
 		  pvs-prover
 		  pvs-tcl
 		  pvs-utils
-		  pvs-view
-		  tcl)))
+		  pvs-view)))
       (mapcar 
 	#'(lambda (a) (pvs-compile a))
 	pvsfiles))
