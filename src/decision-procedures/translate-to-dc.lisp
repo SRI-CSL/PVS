@@ -598,6 +598,7 @@
 ;;;        (1) (APPLY int UPDATE g(1) (x' y') 1))
 
 (defmethod translate-to-dc ((expr update-expr))
+  
   (translate-dc-assignments (assignments expr)
 			 (translate-to-dc (expression expr))
 			 (type expr)))
@@ -717,10 +718,8 @@
 				       trbasis)))))
 
 (defun translate-dc-assign-args-tuple (args value trbasis type)
-      (dp::mk-term (list dp::*update*
-		     trbasis
-		     (dp::mk-constant (1- (number (caar args))))
-		     (let* ((ntrbasis-type
+  (let* ((position (1- (number (caar args))))
+	 (new-value (let* ((ntrbasis-type
 			     (find-supertype 
 			      (nth (1- (number (caar args)))
 				   (types type))))
@@ -730,7 +729,25 @@
 		       (translate-dc-assign-args (cdr args)
 						 value
 						 ntrbasis
-						 ntrbasis-type)))))
+						 ntrbasis-type)))
+	 (args
+	  (if (dp::tuple-p trbasis)
+	      (let ((old-args (dp::funargs trbasis)))
+		(setf (nth position old-args)
+		      new-value)
+		old-args)
+	      (translate-dc-to-tuple-args trbasis type
+					  position
+					  new-value))))
+      (dp::mk-term (cons dp::*tuple* args))))
+
+(defun translate-dc-to-tuple-args (trbasis type position value)
+  (loop for i from 0 below (length (types type))
+	collect (if (= i position)
+		    value
+		    (dp::mk-term (list dp::*project*
+				       (dp::mk-constant i)
+				       trbasis)))))
 
 (defun translate-dc-assign-args-update (args value trbasis type)
       (dp::mk-term (list dp::*update*
