@@ -79,6 +79,9 @@
 (defmethod check-type-actual (act (formal formal-const-decl))
   (check-for-tccs* (expr act) (type formal)))
 
+(defmethod check-type-actual (act (formal formal-theory-decl))
+  (set-type-actuals (expr act)))
+
 
 (defmethod check-for-tccs* ((expr number-expr) expected)
   (declare (ignore expected))
