@@ -2520,7 +2520,7 @@ space")
 (defun compatible-conversions (conversions type disabled-convs
 					   &optional result)
   (if (null conversions)
-      result
+      (nreverse result)
       (let ((cos (compatible-conversion (car conversions) type)))
 	(compatible-conversions
 	 (cdr conversions)
