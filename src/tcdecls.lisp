@@ -1757,9 +1757,9 @@
 		 (generate-subtype-tcc bvar (type decl) incs)
 		 (add-to-known-subtypes (subtype decl) (type decl)))
 		(t (pvs-warning
-		       "~@[In judgement ~a, ~]Line ~d: ~
-                        Subtype judgement is superfluous."
-		     (id decl) (line-begin (place decl)))))))))
+		       "Subtype judgement is superfluous~@[ (on line ~d)~]:~
+                        ~%  ~a"
+		     (line-begin (place decl)) (unparse-decl decl))))))))
 
 (defmethod copy-judgement-subtype-without-types ((te type-application))
   (lcopy te
