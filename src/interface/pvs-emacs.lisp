@@ -549,9 +549,10 @@
 
 (defvar *type-error* nil)
 (defvar *type-error-argument* nil)
+(defvar *skip-all-conversion-checks* nil)
 
 (defun type-error (obj message &rest args)
-  (let ((error (type-error-for-conversion obj message args)))
+  (let ((errmsg (type-error-for-conversion obj message args)))
     (cond (*type-error-catch*
 	   (throw *type-error-catch*
 		  (values nil
@@ -559,28 +560,32 @@
 				   (or *in-checker*
 				       *in-evaluator*))
 			      (set-strategy-errors
-			       (format nil "~a" error))
-			      (format nil "~a" error))
+			       (format nil "~a" errmsg))
+			      (format nil "~a" errmsg))
 			  obj)))
 	  ((and *to-emacs*
 		(or (not *in-checker*)
 		    *tc-add-decl*))
 	   (pvs-error "Typecheck error"
-	     error
+	     errmsg
 	     (or (and (current-theory)
 		      (filename (current-theory)))
 		 *current-file*)
 	     (place obj)))
 	  ((and *in-checker* (not *tcdebug*))
-	   (format t "~%~a" error)
+	   (format t "~%~a" errmsg)
 	   (format t "~%Restoring the state.")
 	   (restore))
 	  ((and *in-evaluator* (not *evaluator-debug*))
-	   (format t "~%~a" error)
+	   (format t "~%~a" errmsg)
 	   (format t "~%Try again.")
 	   (throw 'tcerror t))
-	  (t (format t "~%~a" error)
+	  (t (format t "~%~a" errmsg)
 	     (error "Typecheck error")))))
+
+(defun plain-type-error (obj message &rest args)
+  (let ((*skip-all-conversion-checks* t))
+    (apply #'type-error obj message args)))
 
 (defun type-error-noconv (obj message &rest args)
   (let ((*skip-k-conversion-check* t))
@@ -594,8 +599,10 @@
 		     message
 		     (protect-format-string message))
 		 args *type-error* *in-coercion*))
-	(obj-conv? (conversion-occurs-in? obj)))
+	(obj-conv? (unless *skip-all-conversion-checks*
+		     (conversion-occurs-in? obj))))
     (cond ((and *typechecking-module*
+		(not *skip-all-conversion-checks*)
 		(null *type-error-catch*)
 		(or obj-conv?
 		    (and *type-error-argument*
@@ -611,15 +618,19 @@
                                     and leads to the error:~%  ~a"
 		     ex error))
 		  (*no-conversions-allowed* t)
-		  (etype (if obj-conv?
-			     (type obj)
-			     (when  (and (type obj)
-					 (not (dep-binding? (domain (type obj)))))
-			       (range (type obj))))))
+		  (etype (when (expr? obj)
+			   (if obj-conv?
+			       (type obj)
+			       (when  (and (type obj)
+					   (not (dep-binding?
+						 (domain (type obj)))))
+				 (range (type obj)))))))
 	     (untypecheck-theory ex)
-	     (if etype
-		 (typecheck ex :expected etype)
-		 (typecheck-uniquely ex))))
+	     (if (expr? obj)
+		 (if etype
+		     (typecheck ex :expected etype)
+		     (typecheck-uniquely ex))
+		 (typecheck* ex nil nil nil))))
 	  ((check-if-k-conversion-would-work obj nil)
 	   (format nil
 	       "~a~%Enabling K_conversion before this declaration might help"
@@ -627,8 +638,9 @@
 	  (t error))))
 
 (defun check-if-k-conversion-would-work (ex arguments)
-  (and (gethash "K_conversion" *prelude*)
+  (and (not *skip-all-conversion-checks*)
        (not *skip-k-conversion-check*)
+       (gethash "K_conversion" *prelude*)
        *typechecking-module*
        (null *type-error-catch*)
        (not (some #'k-combinator? (conversions *current-context*)))
