@@ -17,20 +17,28 @@ Copyright 2002 SRI International
 
 @titlepage
 @title PVS Release Notes
-@author Sam Owre <owre@@csl.sri.com>, SRI International 
-
+@author Sam Owre <owre@@csl.sri.com>, SRI International
+@page
 @end titlepage
 
+@ifinfo
 @node Top
 @top PVS Release Notes
+@end ifinfo
 
-The PVS release notes are given here, for each version, starting from
-version 3.0.  Note that the release notes are now written in texinfo,
-and are thus available in Emacs info, HTML, Postscript, and PDF forms.
-@code{M-x pvs-release-notes} brings up the info files.  The others are
-available in the @code{doc/release-notes} subdirectory of the PVS
+@chapter Introduction
+
+The PVS release notes are given here, for each version, going back to
+version 3.0.
+
+You can always download the latest version of PVS from@*
+@uref{http://pvs.csl.sri.com/download.html}.
+
+Note that the release notes are now written in texinfo, and are thus
+available in Emacs info, HTML, Postscript, and PDF forms.  @code{M-x
+pvs-release-notes} brings up the info files while in PVS.  The others
+are available in the @code{doc/release-notes} subdirectory of the PVS
 distribution.
-
 
 @menu
 * PVS 3.1 Release Notes:: PVS 3.1 Release Notes

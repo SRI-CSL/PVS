@@ -1,11 +1,10 @@
 @node PVS 3.0 Release Notes
 @chapter PVS 3.0 Release Notes
 
-@ifinfo
-
-The release notes contain the features, bug fixes, and
+The PVS 3.0 release notes contain the features, bug fixes, and
 incompatibilities of PVS version 3.0 over version 2.4.
 
+@ifinfo
 @menu
 * Overview:: Overview
 * New Features:: New Features
@@ -20,9 +19,7 @@ incompatibilities of PVS version 3.0 over version 2.4.
 We are still working on updating the documentation, and completion of
 the @uref{http://ics.csl.sri.com,ICS} decision procedures.  Please let
 us know of any bugs or suggestions you have by sending them to
-@uref{mailto:pvs-bugs@@csl.sri.com, @emph{pvs-bugs@@csl.sri.com}}
-
-You can download it @uref{download.html,here}.
+@email{pvs-bugs@@csl.sri.com, PVS bugs}.
 
 In addition to the usual bug fixes, there are quite a few changes to
 this release.  Most of these changes are backward compatible, but the
@@ -80,7 +77,7 @@ such files directly at the lisp prompt.  If you suspect that your
 strategies are not being handled properly, try changing it to all
 lower case (except in specific instances), and see if that helps.  If
 not, send the strategies file to
-@uref{mailto:pvs-bugs@@csl-sri.com,pvs-bugs} and we'll fix it as
+@email{pvs-bugs@@csl-sri.com,PVS Bugs} and we'll fix it as
 quickly as we can.  Because there is no way to handle it robustly, and
 since case-sensitivity can actually be useful, in the future we may
 not support mixed cases in strategy files.
@@ -89,7 +86,7 @@ not support mixed cases in strategy files.
 @subsection Theory Interpretations
 
 Theory interpretations are described fully in
-@uref{doc/interpretations.html,Theory Interpretations in PVS}
+@uref{http://pvs.csl.sri.com/doc/interpretations.html,Theory Interpretations in PVS}
 
 @strong{NOTES:}
 
@@ -108,15 +105,9 @@ Note that `@code{AS}' is a new keyword, and may cause parse errors
 where none existed before.
 
 @item
-The stacks example doesn't work as given; in particular, the mappings
-for @code{push}, @code{top}, and @code{pop} should be changed to 
-@example
-push := LAMBDA (x: t, A: E[cstack, ce]):
-          equiv_class[cstack,ce](cpush(x)(rep(A))),
-top := LAMBDA (A: E[cstack, ce] | cnonempty?(rep(A))): ctop(rep(A)),
-pop := LAMBDA (A: E[cstack, ce] | cnonempty?(rep(A))):
-          equiv_class[cstack,ce](cpop(rep(A))) 
-@end example
+The stacks example doesn't work as given, and there is an improved
+version that will be available shortly, built on the new equivalence
+class definition in the prelude.
 
 Otherwise unprovable TCCs result (e.g., every stack is nonempty).
 @end itemize
@@ -125,28 +116,29 @@ Otherwise unprovable TCCs result (e.g., every stack is nonempty).
 @subsection Multiple Proofs
 
 PVS now supports multiple proofs for a given formula.  When a proof
-attempt is completed, either by quitting or successfully completing the
+attempt is ended, either by quitting or successfully completing the
 proof, the proof is checked for changes.  If any changes have occured, the
 user is queried about whether to save the proof, and whether to overwrite
 the current proof or to create a new proof.  If a new proof is created,
 the user is prompted for a proof identifier and description.
 
-   In addition to a proof identifier, description, and proof script,
-the proof objects contain the status, the date of creation, the date
-last run, and the run time.  Note that this information is kept in the
+In addition to a proof identifier, description, and proof script, the
+new proof contains the status, the date of creation, the date last
+run, and the run time.  Note that this information is kept in the
 @code{.prf} files, which therefore look different from those of
 earlier PVS versions.
 
-   Every formula that has proofs has a default proof, which is
-used for most of the existing commands, such as prove, prove-theory,
-and status-proofchain.  Whenever a proof is saved, it automatically
+Every formula that has proofs has a default proof, which is used for
+most of the existing commands, such as prove, prove-theory, and
+status-proofchain.  Whenever a proof is saved, it automatically
 becomes the default.
 
-   Three new Emacs commands allow for browsing and manipulating multiple
+Three new Emacs commands allow for browsing and manipulating multiple
 proofs: @code{display-proofs-formula}, @code{display-proofs-theory},
 and @code{display-proofs-pvs-file}.  These commands all pop up buffers
-with a table of proofs.  The default proof is marked with a `@code{+}'.
-Within such buffers, the following keys have the following effects.
+with a table of proofs.  The default proof is marked with a
+`@code{+}'.  Within such buffers, the following keys have the
+following effects.
 
 @table @kbd
 @item Key
@@ -215,16 +207,16 @@ be untarred on a different machine as long as the needed libraries
 may be found in the @code{PVS_LIBRARY_PATH}.  This makes libraries
 much more portable.
 
-In addition, the @code{load-prelude-library} command now
-automatically loads the @code{pvs-lib.el} file, if it exists, into
-Emacs and the @code{pvs-lib.lisp} file, if it exists, into lisp,
-allowing the library to add new features, e.g., key-bindings.  Note
-that the @code{pvs-lib.lisp} file is not needed for new strategies,
-which should go into the @code{pvs-strategies} file as usual.  The
-difference is that the @code{pvs-strategies} file  is only loaded
-when a proof is started, and it may be desirable to have some lisp code
-that is loaded when the library is, i.e., to support some new Emacs
-key-bindings.
+In addition, the @code{load-prelude-library} command now automatically
+loads the @code{pvs-lib.el} file, if it exists, into Emacs and the
+@code{pvs-lib.lisp} file, if it exists, into lisp, allowing the
+library to add new features, e.g., key-bindings.  Note that the
+@code{pvs-lib.lisp} file is not needed for new strategies, which
+should go into the @code{pvs-strategies} file as usual.  The
+difference is that the @code{pvs-strategies} file is only loaded when
+a proof is started, and it may be desirable to have some lisp code
+that is loaded with the library, for example, to support some new
+Emacs key-bindings.
 
 The @code{PVS_LIBRARY_PATH} is a colon-separated list of paths, and
 the @code{lib} subdirectory of the PVS path is added implicitly at
@@ -250,7 +242,7 @@ loaded in the current context.
 
 PVS now supports cotuple types (also known as coproduct or sum types)
 directly.  The syntax is similar to that for tuple types, but with the
-`@code{,}' replaced with a `@code{+}'.  For example,
+`@code{,}' replaced by a `@code{+}'.  For example,
    
 @example
 cT: TYPE = [int + bool + [int -> int]]
@@ -282,8 +274,8 @@ prelude, but allows for any number of arguments, and doesn't generate
 a datatype theory.
 
 Typechecking expressions such as @code{IN_1(3)} requires that the
-context be known.  This is similar to the problem of a standalone
-@code{PROJ_1}, and both are now supported:
+context of its use be known.  This is similar to the problem of a
+standalone @code{PROJ_1}, and both are now supported:
 	 
 @example
 F: [cT -> bool]
@@ -346,28 +338,28 @@ Complex datatypes with overloaded accessors and dependencies are also
 handled.  For example,
 
 @example
-dt: DATATYPE
-BEGIN
- c0: c0?
- c1(a: (even?), b: int): c1?
- c2(a: nat, c: int): c2?
-END dt
+  dt: DATATYPE
+  BEGIN
+   c0: c0?
+   c1(a: int, b: @{z: (even?) | z > a@}, c: int): c1?
+   c2(a: int, b: @{n: nat | n > a@}, c: int): c2?
+  END dt
 
-datatype_update: THEORY
-BEGIN
- IMPORTING dt
- x: dt
- y: int
- f: dt = x WITH [a := y]
-END datatype_update
+  datatype_update: THEORY
+  BEGIN
+   IMPORTING dt
+   x: dt
+   y: int
+   f: dt = x WITH [b := y]
+  END datatype_update
 @end example
 
 This generates the TCC
 
 @example
 f_TCC1: OBLIGATION
-  (c1?(x) AND IF c1?(x) THEN even?(y) ELSE y >= 0 ENDIF) OR
-   (c2?(x) AND IF c1?(x) THEN even?(y) ELSE y >= 0 ENDIF);
+    (c1?(x) AND even?(y) AND y > a(x))
+ OR (c2?(x) AND y >= 0 AND y > a(x));
 @end example
 
 
@@ -437,8 +429,8 @@ conversion mechanism has been modified to deal with this properly.
 @node Conversion Messages
 @subsection Conversion Messages
 
-Messages related to conversions have been separated out, so that if any
-are generated a message is produced such as
+Messages related to conversions have been separated out from the
+warnings, so that if any are generated a message is produced such as
 @example
 po_lems typechecked in 9.56s: 10 TCCs, 0 proved, 3 subsumed,
                     7 unproved; 4 conversions; 2 warnings; 3 msgs
@@ -480,7 +472,7 @@ e.g.,
 42: int = 57
 @end example
 
-Even if the typechecker doesn't get confused, most users would.
+Even if the typechecker didn't get confused, most readers would.
 
 
 @node    Theory Search
@@ -584,10 +576,11 @@ Proves that the powerset of a finite set is finite, and provides the
 corresponding judgement.
 @item equivalence classes
 The following theories were derived from those provided by Bart Jacobs:
-@code{EquivalenceClosure}, @code{QuotientDefinition},
-@code{KernelDefinition}, @code{QuotientKernelProperties},
-@code{QuotientSubDefinition}, @code{QuotientExtensionProperties},
-@code{QuotientDistributive}, and @code{QuotientIteration}.
+
+@code{EquivalenceClosure},@* @code{QuotientDefinition},@*
+@code{KernelDefinition},@* @code{QuotientKernelProperties},@*
+@code{QuotientSubDefinition},@* @code{QuotientExtensionProperties},@*
+@code{QuotientDistributive}, and@* @code{QuotientIteration}.
 @item Partial Functions
 Bart Jacobs also provided definitions for partial functions:
 @code{PartialFunctionDefinitions} and
@@ -689,7 +682,7 @@ auto-rewrite may have worked in the past, but now the key term has
 been simplified and the rewrite no longer matches.
 
 @subsection Prelude Changes
-These are given in @xref{Prelude Changes}.  Theory identifiers used in
+These are given in @ref{Prelude Changes}.  Theory identifiers used in
 the prelude may not be used for library or user theories, some
 existing theories may need to be adjusted.
 
