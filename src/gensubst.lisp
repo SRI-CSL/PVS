@@ -251,6 +251,12 @@
 
 ;;; Expressions
 
+(defmethod gensubst* :around ((ex expr) substfn testfn)
+  (let ((nex (call-next-method)))
+    (unless (or (eq ex nex) (type ex))
+      (setf (types nex) (gensubst* (types ex) substfn testfn)))
+    nex))
+
 (defmethod gensubst* ((ex name-expr) substfn testfn)
   (declare (ignore substfn testfn))
   (let ((nex (call-next-method)))
