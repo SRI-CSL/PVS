@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Oct 29 23:19:42 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Mon Jan 25 19:00:19 1999
-;; Update Count    : 6
+;; Last Modified On: Tue Jan 26 18:34:54 1999
+;; Update Count    : 8
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -24,6 +24,78 @@
 (defvar *pp-compact* nil)
 
 (defvar *pp-table-hrules* t)
+
+(defvar pvs-prec-info (make-hash-table :test #'eq))
+
+(mapc #'(lambda (nt) (init-prec-info nt pvs-prec-info)) '(type-expr expr))
+(mapc #'(lambda (entry)
+          (set-prec-info (car entry) (cadr entry) (caddr entry) (cadddr entry)
+                         pvs-prec-info))
+      '((type-expr sbst::[ 0 10) (type-expr jux 1 20)
+        (type-expr jux 2 21) (expr sbst::<> 0 200)
+        (expr sbst::[] 0 200) (expr sbst::- 0 170)
+        (expr sbst::~ 0 80) (expr sbst::not 0 80)
+        (expr jux 1 230) (expr sbst::|`| 1 220)
+        (expr sbst::^^ 1 210) (expr sbst::^ 1 210)
+        (expr sbst::has_type 1 190) (expr sbst::|::| 1 190)
+        (expr sbst::|:| 1 190) (expr sbst::o 1 180)
+        (expr sbst::// 1 160) (expr sbst::** 1 160)
+        (expr sbst::/ 1 160) (expr sbst::* 1 160)
+        (expr sbst::~ 1 150) (expr sbst::++ 1 150)
+        (expr sbst::- 1 150) (expr sbst::+ 1 150)
+        (expr sbst::\|\| 1 140) (expr sbst::|##| 1 140)
+        (expr sbst::@@ 1 140) (expr sbst::|#| 1 130)
+        (expr sbst::@ 1 130) (expr sbst::in 1 120)
+        (expr sbst::where 1 120) (expr sbst::with 1 110)
+        (expr sbst::\|> 1 100) (expr sbst::<\| 1 100)
+        (expr sbst::>>= 1 100) (expr sbst::<<= 1 100)
+        (expr sbst::>> 1 100) (expr sbst::<< 1 100)
+        (expr sbst::>= 1 100) (expr sbst::> 1 100)
+        (expr sbst::<= 1 100) (expr sbst::< 1 100)
+        (expr sbst::== 1 90) (expr sbst::/= 1 90)
+        (expr sbst::= 1 90) (expr sbst::andthen 1 71)
+        (expr sbst::&& 1 71) (expr sbst::/\\ 1 71)
+        (expr sbst::& 1 71) (expr sbst::and 1 71)
+        (expr sbst::orelse 1 61) (expr sbst::xor 1 61)
+        (expr sbst::\\/ 1 61) (expr sbst::or 1 61)
+        (expr sbst::when 1 51) (expr sbst::=> 1 51)
+        (expr sbst::implies 1 51) (expr sbst::<=> 1 41)
+        (expr sbst::iff 1 41) (expr sbst::\|= 1 31)
+        (expr sbst::\|- 1 31) (expr sbst::\| 1 20)
+        (expr jux 2 231) (expr sbst::|`| 2 221)
+        (expr sbst::^^ 2 211) (expr sbst::^ 2 211)
+        (expr sbst::has_type 2 191) (expr sbst::|::| 2 191)
+        (expr sbst::|:| 2 191) (expr sbst::o 2 181)
+        (expr sbst::// 2 161) (expr sbst::** 2 161)
+        (expr sbst::/ 2 161) (expr sbst::* 2 161)
+        (expr sbst::~ 2 151) (expr sbst::++ 2 151)
+        (expr sbst::- 2 151) (expr sbst::+ 2 151)
+        (expr sbst::\|\| 2 141) (expr sbst::|##| 2 141)
+        (expr sbst::@@ 2 141) (expr sbst::|#| 2 131)
+        (expr sbst::@ 2 131) (expr sbst::in 2 121)
+        (expr sbst::where 2 121) (expr sbst::with 2 111)
+        (expr sbst::\|> 2 101) (expr sbst::<\| 2 101)
+        (expr sbst::>>= 2 101) (expr sbst::<<= 2 101)
+        (expr sbst::>> 2 101) (expr sbst::<< 2 101)
+        (expr sbst::>= 2 101) (expr sbst::> 2 101)
+        (expr sbst::<= 2 101) (expr sbst::< 2 101)
+        (expr sbst::== 2 91) (expr sbst::/= 2 91)
+        (expr sbst::= 2 91) (expr sbst::andthen 2 70)
+        (expr sbst::&& 2 70) (expr sbst::/\\ 2 70)
+        (expr sbst::& 2 70) (expr sbst::and 2 70)
+        (expr sbst::orelse 2 60) (expr sbst::xor 2 60)
+        (expr sbst::\\/ 2 60) (expr sbst::or 2 60)
+        (expr sbst::when 2 50) (expr sbst::=> 2 50)
+        (expr sbst::implies 2 50) (expr sbst::<=> 2 40)
+        (expr sbst::iff 2 40) (expr sbst::\|= 2 30)
+        (expr sbst::\|- 2 30) (expr sbst::\| 2 21)
+        (expr sbst::in 3 10) (expr sbst::has_type 3 10)))
+
+(defparameter *expr-prec-info* (gethash 'expr pvs-prec-info)
+  "The precedence information - a list of four hash tables, for initial,
+left (medial), right (medial), and aggregate operators.  Each of these
+hash tables gives a binding number for a given operator; higher numbers
+bind tighter.")
 
 ;;; Unparse takes the following keywords:
 ;;; :string :stream :char-width :file :sb-tex :style
@@ -456,7 +528,7 @@
   (with-slots (type-expr chain?) decl
     (if (typep decl 'nonempty-type-decl)
 	(write (case (keyword decl)
-		 (nonempty_type 'NONEMPTY_TYPE)
+		 (nonempty-type 'NONEMPTY_TYPE)
 		 (t 'TYPE+)))
 	(write 'TYPE))
     (when (typep decl 'type-def-decl)
@@ -610,11 +682,16 @@
     (pprint-indent :block 2)))
 
 (defmethod pp* :around ((decl name-judgement))
-  (with-slots (name chain? declared-type) decl
+  (with-slots (id name chain? declared-type semi) decl
     (when (or (not *pretty-printing-decl-list*)
 	      (not *pretty-printed-prefix*))
       (when *pretty-printing-decl-list*
 	(setq *pretty-printed-prefix* t))
+      (when id
+	(write id)
+	(write-char #\:)
+	(write-char #\space)
+	(pprint-newline :miser))
       (write 'JUDGEMENT)
       (write-char #\space)
       (pprint-newline :miser))
@@ -630,20 +707,26 @@
 	     (write-char #\space)
 	     (pprint-newline :fill)
 	     (pp* declared-type)
-	     (pprint-indent :block 2)
-	     (setq *pretty-printed-prefix* nil)))
-    (pprint-newline :mandatory)))
+	     (when semi (write-char #\;))
+	     (pprint-indent :block 0)
+	     (setq *pretty-printed-prefix* nil)))))
 
 (defmethod pp* :around ((decl application-judgement))
-  (with-slots (name chain? declared-type) decl
+  (with-slots (id name formals chain? declared-type semi) decl
     (when (or (not *pretty-printing-decl-list*)
 	      (not *pretty-printed-prefix*))
       (when *pretty-printing-decl-list*
 	(setq *pretty-printed-prefix* t))
+      (when id
+	(write id)
+	(write-char #\:)
+	(write-char #\space)
+	(pprint-newline :miser))
       (write 'JUDGEMENT)
       (write-char #\space)
       (pprint-newline :miser))
     (pp* name)
+    (pp-decl-formals formals)
     (cond ((and chain?
 		*pretty-printing-decl-list*)
 	   (write-char #\,)
@@ -655,16 +738,21 @@
 	     (write-char #\space)
 	     (pprint-newline :fill)
 	     (pp* declared-type)
-	     (pprint-indent :block 2)
-	     (setq *pretty-printed-prefix* nil)))
-    (pprint-newline :mandatory)))
+	     (when semi (write-char #\;))
+	     (pprint-indent :block 0)
+	     (setq *pretty-printed-prefix* nil)))))
 
 (defmethod pp* :around ((decl number-judgement))
-  (with-slots (number chain? declared-type) decl
+  (with-slots (id number chain? declared-type semi) decl
     (when (or (not *pretty-printing-decl-list*)
 	      (not *pretty-printed-prefix*))
       (when *pretty-printing-decl-list*
 	(setq *pretty-printed-prefix* t))
+      (when id
+	(write id)
+	(write-char #\:)
+	(write-char #\space)
+	(pprint-newline :miser))
       (write 'JUDGEMENT)
       (write-char #\space)
       (pprint-newline :miser))
@@ -673,20 +761,27 @@
 		*pretty-printing-decl-list*)
 	   (write-char #\,)
 	   (write-char #\space))
-	  (t (write-char #\space)
+	  (t (pprint-indent :block 4)
+	     (write-char #\space)
 	     (write 'HAS_TYPE)
 	     (write-char #\space)
 	     (pprint-newline :fill)
 	     (pp* declared-type)
-	     (setq *pretty-printed-prefix* nil))))
-    (pprint-newline :mandatory))
+	     (when semi (write-char #\;))
+	     (pprint-indent :block 0)
+	     (setq *pretty-printed-prefix* nil)))))
 
 (defmethod pp* :around ((decl subtype-judgement))
-  (with-slots (declared-subtype chain? declared-type) decl
+  (with-slots (id declared-subtype chain? declared-type semi) decl
     (when (or (not *pretty-printing-decl-list*)
 	      (not *pretty-printed-prefix*))
       (when *pretty-printing-decl-list*
 	(setq *pretty-printed-prefix* t))
+      (when id
+	(write id)
+	(write-char #\:)
+	(write-char #\space)
+	(pprint-newline :miser))
       (write 'JUDGEMENT)
       (write-char #\space)
       (pprint-newline :miser))
@@ -695,13 +790,15 @@
 		*pretty-printing-decl-list*)
 	   (write-char #\,)
 	   (write-char #\space))
-	  (t (write-char #\space)
+	  (t (pprint-indent :block 4)
+	     (write-char #\space)
 	     (write 'SUBTYPE_OF)
 	     (write-char #\space)
 	     (pprint-newline :fill)
 	     (pp* declared-type)
-	     (setq *pretty-printed-prefix* nil)))
-    (pprint-newline :mandatory)))
+	     (when semi (write-char #\;))
+	     (pprint-indent :block 0)
+	     (setq *pretty-printed-prefix* nil)))))
 
 (defmethod pp* :around ((decl conversion-decl))
   (with-slots (name chain?) decl
@@ -1771,12 +1868,6 @@
   (if (plusp (parens expr))
       most-positive-fixnum
       (call-next-method)))
-
-(defparameter *expr-prec-info* (gethash 'expr pvs-prec-info)
-  "The precedence information - a list of four hash tables, for initial,
-left (medial), right (medial), and aggregate operators.  Each of these
-hash tables gives a binding number for a given operator; higher numbers
-bind tighter.")
 
 ;; Most types of expressions cannot be ambiguous (e.g. tuples, if-exprs).
 (defmethod precedence ((expr expr) ctx)

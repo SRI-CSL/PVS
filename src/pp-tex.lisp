@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Tue Jan 12 03:25:25 1999
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Tue Jan 26 16:37:07 1999
-;; Update Count    : 7
+;; Last Modified On: Tue Jan 26 18:28:57 1999
+;; Update Count    : 10
 ;; Status          : Unknown, Use with caution!
 ;; 
 ;; HISTORY
@@ -187,6 +187,7 @@
 (defun pp-tex-assuming (assuming)
   (when assuming
     (let ((*pretty-printing-decl-list* t)
+	  (*pretty-printed-prefix* nil)
 	  (last-one (car (last assuming))))
       (pprint-newline :mandatory)
       (pprint-logical-block (nil nil)
@@ -195,6 +196,8 @@
 	(pprint-newline :mandatory)
 	(pprint-logical-block (nil (check-chained-syntax assuming))
 	  (loop (let ((decl (pprint-pop)))
+		  (unless (chain? decl)
+		    (setq *pretty-printed-prefix* nil))
 		  (if (typep decl 'importing)
 		      (let ((imps (list decl)))
 			(loop while (chain? (car imps))
@@ -222,10 +225,13 @@
 (defun pp-tex-theory (theory)
   (when theory
     (let ((*pretty-printing-decl-list* t)
+	  (*pretty-printed-prefix* nil)
 	  (last-one (car (last theory))))
       (pprint-newline :mandatory)
       (pprint-logical-block (nil (check-chained-syntax theory))
 	(loop (let ((decl (pprint-pop)))
+		(unless (chain? decl)
+		  (setq *pretty-printed-prefix* nil))
 		(if (typep decl 'importing)
 		    (let ((imps (list decl)))
 		      (loop while (chain? (car imps))
@@ -367,7 +373,8 @@
 		 (pprint-newline :miser)
 		 (call-next-method)
 		 (when semi (write-char #\;))
-		 (write "\\vspace*{\\pvsdeclspacing}")))))))
+		 (unless (typep decl 'formal-decl)
+		   (write "\\vspace*{\\pvsdeclspacing}"))))))))
 
 (defun pp-tex-const-decl (id pre-formals theory-id &optional post-formals)
   (cond (pre-formals
@@ -376,7 +383,8 @@
 	   (cond (funsym
 		  (unless *in-tex-math-mode*
 		    (write "\\("))
-		  (let ((*in-tex-math-mode* t))
+		  (let ((*in-tex-math-mode* t)
+			(*print-right-margin* most-positive-fixnum))
 		    (write funsym)
 		    (dolist (args pre-formals)
 		      (dolist (a args)
@@ -564,7 +572,7 @@
     (pprint-indent :block 2)))
 
 (defmethod pp-tex* :around ((decl name-judgement))
-  (with-slots (name chain? declared-type) decl
+  (with-slots (name chain? declared-type semi) decl
     (when (or (not *pretty-printing-decl-list*)
 	      (not *pretty-printed-prefix*))
       (when *pretty-printing-decl-list*
@@ -584,12 +592,40 @@
 	     (write-char #\space)
 	     (pprint-newline :fill)
 	     (pp-tex* declared-type)
-	     (pprint-indent :block 2)
-	     (setq *pretty-printed-prefix* nil)))
-    (pprint-newline :mandatory)))
+	     (when semi (write-char #\;))
+	     (write "\\vspace*{\\pvsdeclspacing}")
+	     (pprint-indent :block 0)
+	     (setq *pretty-printed-prefix* nil)))))
+
+(defmethod pp-tex* :around ((decl application-judgement))
+  (with-slots (name formals chain? declared-type semi) decl
+    (when (or (not *pretty-printing-decl-list*)
+	      (not *pretty-printed-prefix*))
+      (when *pretty-printing-decl-list*
+	(setq *pretty-printed-prefix* t))
+      (pp-tex-keyword 'JUDGEMENT)
+      (write-char #\space)
+      (pprint-newline :miser))
+    (pp-tex* name)
+    (pp-tex-decl-formals formals)
+    (cond ((and chain?
+		*pretty-printing-decl-list*)
+	   (write-char #\,)
+	   (write-char #\space))
+	  (t (pprint-indent :block 4)
+	     (write-char #\space)
+	     (pprint-newline :fill)
+	     (pp-tex-keyword 'HAS_TYPE)
+	     (write-char #\space)
+	     (pprint-newline :fill)
+	     (pp-tex* declared-type)
+	     (when semi (write-char #\;))
+	     (write "\\vspace*{\\pvsdeclspacing}")
+	     (pprint-indent :block 0)
+	     (setq *pretty-printed-prefix* nil)))))
 
 (defmethod pp-tex* :around ((decl number-judgement))
-  (with-slots (number chain? declared-type) decl
+  (with-slots (number chain? declared-type semi) decl
     (when (or (not *pretty-printing-decl-list*)
 	      (not *pretty-printed-prefix*))
       (when *pretty-printing-decl-list*
@@ -602,16 +638,19 @@
 		*pretty-printing-decl-list*)
 	   (write-char #\,)
 	   (write-char #\space))
-	  (t (write-char #\space)
+	  (t (pprint-indent :block 4)
+	     (write-char #\space)
 	     (pp-tex-keyword 'HAS_TYPE)
 	     (write-char #\space)
 	     (pprint-newline :fill)
 	     (pp-tex* declared-type)
-	     (setq *pretty-printed-prefix* nil))))
-    (pprint-newline :mandatory))
+	     (when semi (write-char #\;))
+	     (write "\\vspace*{\\pvsdeclspacing}")
+	     (pprint-indent :block 0)
+	     (setq *pretty-printed-prefix* nil)))))
 
 (defmethod pp-tex* :around ((decl subtype-judgement))
-  (with-slots (declared-subtype chain? declared-type) decl
+  (with-slots (declared-subtype chain? declared-type semi) decl
     (when (or (not *pretty-printing-decl-list*)
 	      (not *pretty-printed-prefix*))
       (when *pretty-printing-decl-list*
@@ -624,13 +663,16 @@
 		*pretty-printing-decl-list*)
 	   (write-char #\,)
 	   (write-char #\space))
-	  (t (write-char #\space)
+	  (t (pprint-indent :block 4)
+	     (write-char #\space)
 	     (pp-tex-keyword 'SUBTYPE_OF)
 	     (write-char #\space)
 	     (pprint-newline :fill)
 	     (pp-tex* declared-type)
-	     (setq *pretty-printed-prefix* nil)))
-    (pprint-newline :mandatory)))
+	     (when semi (write-char #\;))
+	     (write "\\vspace*{\\pvsdeclspacing}")
+	     (pprint-indent :block 0)
+	     (setq *pretty-printed-prefix* nil)))))
 
 (defmethod pp-tex* :around ((decl conversion-decl))
   (with-slots (name chain?) decl
@@ -649,8 +691,7 @@
     (when (and chain?
 	       *pretty-printing-decl-list*)
       (write-char #\,)
-      (write-char #\space))
-    (pprint-newline :mandatory)))
+      (write-char #\space))))
 
 
 ;;; Type expressions
@@ -699,7 +740,7 @@
 		     (expression (predicate te))
 		     (let ((var (mk-name-expr (id (car bindings)))))
 		       (mk-application (predicate te) var)))))
-      (pprint-logical-block (nil nil :prefix "{" :suffix "}")
+      (pprint-logical-block (nil nil :prefix "\\{" :suffix "\\}")
 	(pp-tex-bindings bindings)
 	(write-char #\space)
 	(write-char #\|)
@@ -824,11 +865,13 @@
 	       (write-char #\))))))
 
 (defmethod pp-tex* ((ex number-expr))
-  (unless *in-tex-math-mode*
-    (write "\\("))
-  (write (number ex))
-  (unless *in-tex-math-mode*
-    (write "\\)")))
+  (if *in-tex-math-mode*
+      (write (number ex))
+      (let* ((len (length (format nil "~d" (number ex))))
+	     (str (make-new-tex-string len)))
+	(setf (gethash str *pvs-tex-substitution-hash*)
+	      (format nil "\\(~d\\)" (number ex)))
+	(write str))))
 
 (defmethod pp-tex* ((ex string-expr))
   (unless (string-value ex)
@@ -944,7 +987,8 @@
     (pprint-logical-block (nil nil)
       (pprint-indent :current 2)
       (pp-tex* operator)
-      (pprint-newline :miser)
+      (unless *in-tex-math-mode*
+	(pprint-newline :miser))
       (pp-tex-arguments (argument-list argument)))))
 
 (defmethod pp-tex* ((ex infix-application))
@@ -1083,7 +1127,7 @@
 
 (defmethod pp-tex* ((ex set-expr))
   (with-slots (bindings expression) ex
-    (pprint-logical-block (nil nil :prefix "{" :suffix "}")
+    (pprint-logical-block (nil nil :prefix "\\{" :suffix "\\}")
       (pprint-indent :current 2)
       (pp-tex-bindings bindings)
       (write-char #\space)
@@ -1664,7 +1708,8 @@
 				(if *in-tex-math-mode*
 				    ktrans
 				    (format nil "\\(~a\\)" ktrans))
-				(format nil "\\pvskey{~a}" symbol)))
+				(format nil "\\pvskey{~a}"
+				  (latex-protect (string symbol)))))
 		     (len (or (cdr (assq symbol *latex-keyword-length-list*))
 			      (length (string symbol))))
 		     (str (make-new-tex-string len)))

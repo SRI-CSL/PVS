@@ -437,7 +437,7 @@ col-heading ::= {'|[' expr^1 {'|' {expr | 'ELSE'}}+ ']|'}
 table-entries ::= {table-entry+} <table-entries(table-entry+)>;
 
 table-entry ::= {{'|' [{expr | 'ELSE'}]}+ '||'}
-			<table-entry([notableentry()|{expr|else()}]+)>
+			<table-entry([notableentry()|{expr|else()}]+)>;
 
 bind ::= {{simplebind | {'(' simplebind++',' ')'}} '=' expr}
 	 <bind({simplebind|binds(doubleplus)},expr)>;
