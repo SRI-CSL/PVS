@@ -261,8 +261,8 @@ generated")
   (set-adt-nonemptiness adt)
   (when (formals adt)
     (set-adt-positive-formal-types adt))
-  (when *generate-all-adt-axioms*
-    (generate-adt-ord-function adt))
+  (generate-adt-uninterpreted-ord-function-and-axiom adt)
+  (generate-adt-ord-function adt)
   (if (or (enumtype? adt)
 	  (every #'(lambda (c) (null (arguments c))) (constructors adt)))
       (progn (generate-inclusive-axiom adt)
@@ -1120,6 +1120,53 @@ generated")
   (let ((rpred (mk-name-expr rec-id)))
     (mk-expr-as-type rpred)))
 
+;;; Ord axiom
+
+(defun generate-adt-uninterpreted-ord-function-and-axiom (adt)
+  (generate-adt-uninterpreted-ord-function adt)
+  (generate-adt-uninterpreted-ord-axiom adt))
+
+(defun generate-adt-uninterpreted-ord-function (adt)
+  (let ((len (length (constructors adt)))
+	(fname (makesym "~a_ord" (id adt))))
+    (typecheck-adt-decl
+     (mk-const-decl fname
+       (mk-funtype (mk-type-name (id adt))
+		   (make-instance 'type-application
+		     'type (mk-type-name '|upto|)
+		     'parameters (list (mk-number-expr (1- len)))))))))
+
+(defun generate-adt-uninterpreted-ord-axiom (adt)
+  (let* ((fname (makesym "~a_ord" (id adt))))
+    (typecheck-adt-decl
+     (mk-formula-decl (makesym "~a_ord_defaxiom" (id adt))
+       (mk-conjunction
+	(generate-adt-uninterpreted-ord-axiom-conjuncts
+	 (constructors adt) fname 0))
+       'AXIOM))))
+
+(defun generate-adt-uninterpreted-ord-axiom-conjuncts (constrs fname num
+							       &optional conjs)
+  (if (null constrs)
+      (nreverse conjs)
+      (generate-adt-uninterpreted-ord-axiom-conjuncts
+       (cdr constrs) fname (1+ num)
+       (let ((conj (generate-adt-uninterpreted-ord-conjunct
+		     (car constrs) fname num)))
+	 (cons conj conjs)))))
+
+(defun generate-adt-uninterpreted-ord-conjunct (c fname num)
+  (if (arguments c)
+      (let* ((bindings (mapcar #'bind-decl (arguments c)))
+	     (vars (mapcar #'mk-name-expr bindings)))
+	(mk-forall-expr (mapcar #'bind-decl (arguments c))
+	  (mk-application '=
+	    (mk-application fname
+	      (mk-application* (id c) vars))
+	    (mk-number-expr num))))
+      (mk-application '=
+	(mk-application fname (mk-name-expr (id c)))
+	(mk-number-expr num))))
 
 ;;; Ord function
 
@@ -2385,7 +2432,9 @@ generated")
 	    (nvars (mapcar #'(lambda (v)
 			       (lcopy v
 				 'type (gensubst (type v)
-					 #'(lambda (ex) (car vars))
+					 #'(lambda (ex)
+					     (declare (ignore ex))
+					     (car vars))
 					 #'(lambda (ex)
 					     (and (name-expr? ex)
 						  (eq (declaration ex)
@@ -2877,7 +2926,9 @@ generated")
 	     (conjunct (adt-every-rel
 			(type (car abds)) pvars aex bex ptypes fpairs adt))
 	     (nabds (gensubst (cdr abds)
-		      #'(lambda (ex) aex)
+		      #'(lambda (ex)
+			  (declare (ignore ex))
+			  aex)
 		      #'(lambda (ex)
 			  (and (name-expr? ex)
 			       (eq (declaration ex) (car abds)))))))
