@@ -29,7 +29,9 @@
 	*integer* nil
 	*naturalnumber* nil
 	*posint* nil
-	*ordinal* nil)
+	*ordinal* nil
+	*even_int* nil
+	*odd_int* nil)
   (when *pvs-initialized*
     (clear-theories t))
   (let ((cdir (or *pvs-context-path* (working-directory)))
