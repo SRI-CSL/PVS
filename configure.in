@@ -188,6 +188,6 @@ PLATFORM=`./bin/pvs-platform`
 export PLATFORM
 
 # Finally create all the generated files
-AC_OUTPUT(Makefile pvs src/make-allegro-pvs.lisp src/make-pvs.lisp pvs.system ess/dist-ess.lisp ess/allegro-runtime.lisp emacs/emacs-src/pvs-set-prelude-info.el doc/user-guide/Makefile doc/language/Makefile doc/prover/Makefile)
+AC_OUTPUT(Makefile pvs src/make-allegro-pvs.lisp src/make-pvs.lisp pvs.system ess/dist-ess.lisp ess/allegro-runtime.lisp emacs/emacs-src/pvs-set-prelude-info.el doc/user-guide/Makefile doc/language/Makefile doc/language/pvs-doc.el.in doc/prover/Makefile)
 
 chmod a+x pvs
