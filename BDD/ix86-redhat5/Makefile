@@ -27,7 +27,7 @@ bdd.so : libutils.a ${bddobj}
 	$(LD) ../bdd-ld-table $(LDFLAGS) -o bdd.so ${bddobj} -lutils -lm
 
 mu.so : ${muobj}
-	$(LD) $(LDFLAGS) -o  mu.so  ${obj} -lutils  -lm 
+	$(LD) ../mu-ld-table $(LDFLAGS) -o  mu.so  ${muobj} -lutils  -lm 
 
 utils : libutils.a
 
