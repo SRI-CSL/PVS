@@ -350,6 +350,22 @@
 	 (t   (cons (char string pos) result))))
       (coerce (nreverse result) 'string)))
 
+(defun protect-string-output (string)
+  (if (stringp string)
+      (protect-string-output* string 0)
+      string))
+
+(defun protect-string-output* (string pos &optional result)
+  (if (< pos (length string))
+      (protect-string-output*
+       string
+       (1+ pos)
+       (case (char string pos)
+	 (#\\ (append '(#\\ #\\) result))
+	 (#\" (append '(#\" #\\) result))
+	 (t   (cons (char string pos) result))))
+      (coerce (nreverse result) 'string)))
+
 (defun protect-format-string (string &optional (pos 0) result)
   (if (< pos (length string))
       (protect-format-string
