@@ -230,7 +230,7 @@
     (multiple-value-bind (lib-path err-msg)
 	(libref-to-pathname lib-ref)
       (if lib-path
-	  (load-prelude-library lib-path t)
+	  (load-prelude-library lib-path)
 	  (pvs-error err-msg
 	    (format nil
 		"Library reference ~a not found~
@@ -239,38 +239,78 @@
 	      lib-ref))))))
 
 ;;; This is called from the Emacs load-prelude-library command as well.
-(defun load-prelude-library (lib-path &optional restoring?)
-  (multiple-value-bind (lib-ref err-msg)
-      (pathname-to-libref lib-path)
+;;; Loads the .pvscontext, associated PVS files, pvs-lib.lisp file
+;;; (and any libloaded file), and pvs-lib.el.  Note that pvs-strategies is
+;;; not loaded here, but when the prover is invoked.
+(defun load-prelude-library (lib &optional force?)
+  (declare (global loading-libraries))
+  (multiple-value-bind (lib-ref lib-path err-msg)
+      (get-prelude-library-refs lib)
     (cond (err-msg
 	   (pvs-message err-msg))
-	  ((prelude-library-loaded? lib-ref)
-	   (pvs-message "Library ~a is already loaded." lib-path))
-	  (t (load-prelude-library* lib-ref lib-path)
-	     (unless (member lib-ref (cadr *pvs-context*) :test #'string=)
-	       (push lib-ref (cadr *pvs-context*))
-	       (pvs-message
-		   "Added prelude library ~a and reset the current context"
-		 lib-ref)
-	       (reset-context)
-	       (setq *pvs-context-changed* t))
-	     (add-to-prelude-libraries lib-ref)
-	     (load-pvs-lib-lisp-file lib-path)
-	     ;; If restoring? is t, then we are restoring the context, and
-	     ;; we need to load the pvs-lib.el file if it exists.  Otherwise
-	     ;; the user invoked M-x load-prelude-library explicitly
-	     ;; From Emacs, which does the loading itself.
-	     (when restoring?
-	       ;; Note that this is a noop if Emacs is not there
-	       (pvs-emacs-eval
-		(format nil "(load-pvs-lib-file ~s)" lib-path)))))))
+	  ((and (not force?)
+		(prelude-library-loaded? lib-ref))
+	   (pvs-message "Prelude library ~a is already loaded." lib))
+	  ((member lib-ref loading-libraries :test #'string=)
+	   (pvs-error "Load Prelude Error"
+	     "Detected circular calls to load-prelude-library,~%~
+              check pvs-lib.lisp files in ~{~a~^, ~}"
+	     loading-libraries))
+	  (t (let ((loading-libraries (cons lib-ref loading-libraries))
+		   (pvs-files-loaded
+		    (load-prelude-library-context lib-ref lib-path))
+		   (lisp-files-loaded (load-pvs-lib-lisp-file lib-path))
+		   (emacs-files-loaded (load-pvs-lib-emacs-file lib-path)))
+	       (when (or pvs-files-loaded
+			 lisp-files-loaded
+			 emacs-files-loaded)
+		 (unless (member lib-ref (cadr *pvs-context*) :test #'string=)
+		   (if (cdr *pvs-context*)
+		       (push lib-ref (cadr *pvs-context*))
+		       (nconc *pvs-context* (list (list lib-ref)))))
+		 (update-prelude-libraries-files
+		  lib-ref lib-path
+		  pvs-files-loaded lisp-files-loaded emacs-files-loaded)
+		 t))))))
+
+(defun update-prelude-libraries-files (lib-ref lib-path pvs-files-loaded
+					       lisp-files-loaded
+					       emacs-files-loaded)
+  (flet ((fdates (files)
+		 (mapcar #'(lambda (file)
+			     (cons file (file-write-date file)))
+		   files)))
+    (let ((oldentry (assoc lib-ref *prelude-libraries-files* :test #'string=))
+	  (newentry (list lib-path
+			  (fdates pvs-files-loaded)
+			  (fdates lisp-files-loaded)
+			  (fdates emacs-files-loaded))))
+      (if oldentry
+	  (setf (cdr oldentry) newentry)
+	  (setf *prelude-libraries-files*
+		(acons lib-ref newentry *prelude-libraries-files*))))))
+
+(defun get-prelude-library-refs (lib)
+  (let ((libstr (if (char= (char lib (- (length lib) 1)) #\/)
+		    lib
+		    (concatenate 'string lib "/"))))
+    (if (file-exists-p libstr)
+	(values (pathname-to-libref libstr) libstr)
+	(let ((lib-path (pvs-library-path-ref libstr)))
+	  (if lib-path
+	      (values libstr lib-path)
+	      (values nil nil
+		      (format nil "Prelude library ~a not found" lib)))))))
+
+(defvar *libloads* nil)
 
 (defun load-pvs-lib-lisp-file (lib-path)
   ;; Set up *default-pathname-defaults* and sys:*load-search-list*
   ;; so that simple loads from the pvs-lib.lisp file work.
   (let* ((*default-pathname-defaults* lib-path)
 	 (sys:*load-search-list* *pvs-library-path*)
-	 (lfile (format nil "~apvs-lib.lisp" lib-path)))
+	 (lfile (format nil "~apvs-lib.lisp" lib-path))
+	 (*suppress-printing* t))
     (when (file-exists-p lfile)
       (let ((bfile (format nil "~apvs-lib.~a" lib-path *pvs-binary-type*)))
 	(when (or (not (file-exists-p bfile))
@@ -286,53 +326,124 @@
 		  (t
 		   (chmod "ug+w" (namestring bfile))))))
 	(pvs-message "Loading ~a..." (or bfile lfile))
-	(multiple-value-bind (ignore error)
-	    (ignore-errors (load (or bfile lfile)))
-	  (declare (ignore ignore))
-	  (if error
-	      (pvs-message "Error loading ~a:~%  ~a"
-		(or bfile lfile) error)
-	      (pvs-message "~a loaded" (or bfile lfile))))))))
+	(let ((*libloads* nil))
+	  (multiple-value-bind (ignore error)
+	      (load (or bfile lfile))
+	    (declare (ignore ignore))
+	    (cond (error
+		   (pvs-message "Error loading ~a:~%  ~a"
+		     (or bfile lfile) error))
+		  (t (pvs-message "~a loaded" (or bfile lfile))
+		     (cons lfile *libloads*)))))))))
 
-(defun load-prelude-library* (lib-ref lib-path)
-  (if (gethash lib-ref *loaded-libraries*)
-      (setf (gethash lib-ref *prelude-libraries*)
-	    (gethash lib-ref *loaded-libraries*))
-      (with-pvs-context lib-ref
-	(let ((*current-theory* *current-theory*)
-	      (*pvs-modules* (make-hash-table :test #'eq))
-	      (*pvs-files* (make-hash-table :test #'equal))
-	      (*pvs-context-writable* (write-permission? *pvs-context-path*))
-	      (*pvs-context-changed* nil))
-	  (restore-context)
-	  (cond ((cddr *pvs-context*)
-		 (unwind-protect
-		     (progn
-		       (dolist (ce (pvs-context-entries))
-			 (typecheck-file (ce-file ce)))
-		       (save-context)
-		       (maphash #'(lambda (id th)
-				    (declare (ignore id))
-				    (when (typechecked? th)
-				      (unless (library-datatype-or-theory? th)
-					(if (module? th)
-					    (change-class th 'library-theory)
-					    (change-class th 'library-datatype)))
-				      (setf (lib-ref th) lib-ref)
-				      (update-prelude-library-context th)))
-				*pvs-modules*)
-		       (setf (gethash lib-ref *prelude-libraries*)
-			     (list *pvs-files* *pvs-modules*)))
-		   (maphash #'(lambda (thid theory)
-				(unless (library-datatype-or-theory?
-					 theory)
-				  (remhash thid *pvs-modules*)
-				  (remhash (filename theory)
-					   *pvs-files*)))
-			    *pvs-modules*)))
-		(t (type-error lib-path
-		     "~a.pvscontext is empty - library not loaded"
-		     lib-path)))))))
+(defun list-pvs-libraries ()
+  (dolist (path *pvs-library-path*)
+    (dolist (lib (directory path))
+      (when (directory-p lib)
+	(format t "~%~a/ - ~a" (file-namestring lib) lib)))))
+
+(defun libload (filestr)
+  (declare (global libloads))
+  (let* ((lib (directory-namestring filestr))
+	 (filename (file-namestring filestr))
+	 (libpath (libref-to-pathname lib))
+	 (*default-pathname-defaults* (if (string= libpath "./")
+					  *default-pathname-defaults*
+					  libpath))
+	 (file (namestring
+		(merge-pathnames filename *default-pathname-defaults*))))
+    (cond ((member file libloads :test #'string=)
+	   (pvs-error "Error in libload"
+	     "Detected circular calls to libload,~%check files in ~{~a~^, ~}"
+	     libloads))
+	  (t (pvs-message "Loading file ~a" file)
+	     (unwind-protect
+		 (progn (excl:set-case-mode :case-insensitive-lower)
+			(multiple-value-bind (ignore error)
+			    (ignore-errors (load filename))
+			  (declare (ignore ignore))
+			  (cond (error
+				 (pvs-message "Error loading ~a:~%  ~a"
+				   filestr error))
+				(t (pvs-message "~a loaded" filestr)
+				   (push file *libloads*)))))
+	       (excl:set-case-mode :case-sensitive-lower)
+	       (add-lowercase-prover-ids))))))
+
+
+(defun load-pvs-lib-emacs-file (lib-path)
+  (let ((emacs-file (concatenate 'string lib-path "pvs-lib.el")))
+    (when (file-exists-p emacs-file)
+      ;; Note that this is a noop if Emacs is not there
+      (pvs-message "Loading prelude library Emacs file ~a" emacs-file)
+      (let ((result (pvs-emacs-eval
+		     (format nil "(load-pvs-lib-file ~s)" lib-path))))
+	(cond ((and (stringp result)
+		    (string= result "t"))
+	       (pvs-message "~a loaded" emacs-file)
+	       (list emacs-file))
+	      (t (pvs-message "Error in loading ~a" emacs-file)))))))
+
+
+(defun load-prelude-library-context (lib-ref lib-path)
+  (let ((loaded-files nil))
+    (with-pvs-context lib-ref
+      (let ((*current-theory* *current-theory*)
+	    (*pvs-modules* (make-hash-table :test #'eq))
+	    (*pvs-files* (make-hash-table :test #'equal))
+	    (*pvs-context-writable* (write-permission? *pvs-context-path*))
+	    (*pvs-context-changed* nil))
+	(pvs-message "Loading prelude library context from ~a..." lib-path)
+	(restore-context)
+	(cond ((cddr *pvs-context*)
+	       (unwind-protect
+		   (progn
+		     (dolist (ce (pvs-context-entries))
+		       (typecheck-file (ce-file ce)))
+		     (save-context)
+		     (maphash #'(lambda (id th)
+				  (declare (ignore id))
+				  (when (typechecked? th)
+				    (unless (library-datatype-or-theory? th)
+				      (if (module? th)
+					  (change-class th 'library-theory)
+					  (change-class th 'library-datatype)))
+				    (setf (lib-ref th) lib-ref)
+				    (update-prelude-library-context th)
+				    (when (filename th)
+				      (pushnew (filename th) loaded-files
+					       :test #'string=))))
+			      *pvs-modules*)
+		     (setf (gethash lib-ref *prelude-libraries*)
+			   (list *pvs-files* *pvs-modules*)))
+		 (maphash #'(lambda (thid theory)
+			      (unless (library-datatype-or-theory? theory)
+				(remhash thid *pvs-modules*)
+				(remhash (filename theory) *pvs-files*)
+				(setf loaded-files
+				      (remove (filename theory)
+					      loaded-files
+					      :test #'string=))))
+			  *pvs-modules*))
+	       (if loaded-files
+		   (pvs-message
+		       "Loaded prelude library context from ~a~
+                            ~%  and reset the context"
+		     lib-path)
+		   (pvs-message "Error loading prelude library context ~a~
+                                     ~%  no pvs files loaded"
+		     lib-path)))
+	      (t (pvs-message lib-path
+		   "~a.pvscontext is empty~%  no PVS files loaded"
+		   lib-path)))))
+    (add-to-prelude-libraries lib-ref)
+    (when loaded-files
+      (reset-context)
+      (setq *pvs-context-changed* t))
+    (mapcar #'(lambda (file)
+		(namestring (make-pathname :name file :type "pvs"
+					   :defaults lib-path)))
+      loaded-files)))
 
 (defun add-to-prelude-libraries (lib-ref)
   (setf (gethash lib-ref *loaded-libraries*)
@@ -383,7 +494,7 @@
 
 
 (defun prelude-library-loaded? (lib)
-  (gethash lib *prelude-libraries*))
+  (assoc lib *prelude-libraries-files* :test #'string=))
 
 
 ;;; Called from restore-theories*; the dep-file-ref comes from the
@@ -525,36 +636,46 @@
 		(let ((path (probe-file (pvs-file-path th))))
 		  (parsed?* path)))))))
 
-(defun remove-prelude-library (lib-ref)
-  (let ((libhash (gethash lib-ref *prelude-libraries*)))
-    (cond (libhash
-	   (remhash lib-ref *prelude-libraries*)
-	   (maphash #'(lambda (id theory)
-			(declare (ignore id))
-			(setf *prelude-libraries-uselist*
-			      (delete (assq theory
-					    *prelude-libraries-uselist*)
-				      *prelude-libraries-uselist*)))
-		    (cadr libhash))
-	   (setq *pvs-context-changed* t)
-	   (reset-context)
-	   (setf (cadr *pvs-context*)
-		 (remove lib-ref (cadr *pvs-context*) :test #'string=))
-	   (pvs-message "Library ~a has been removed, and the context reset"
-	     lib-ref))
-	  (t (pvs-message "Library ~a is not loaded" lib-ref)))))
+(defun remove-prelude-library (lib)
+  (multiple-value-bind (lib-ref lib-path err-msg)
+      (get-prelude-library-refs lib)
+    (declare (ignore lib-path))
+    (if err-msg
+	(pvs-message err-msg)
+	(let ((libhash (gethash lib-ref *prelude-libraries*)))
+	  (cond (libhash
+		 (remhash lib-ref *prelude-libraries*)
+		 (maphash #'(lambda (id theory)
+			      (declare (ignore id))
+			      (setf *prelude-libraries-uselist*
+				    (delete (assq theory
+						  *prelude-libraries-uselist*)
+					    *prelude-libraries-uselist*)))
+			  (cadr libhash))
+		 (setq *pvs-context-changed* t)
+		 (reset-context)
+		 (setf (cadr *pvs-context*)
+		       (remove lib-ref (cadr *pvs-context*) :test #'string=))
+		 (pvs-message "Library ~a has been removed, and the context reset"
+		   lib-ref))
+		(t (pvs-message "Library ~a is not loaded" lib-ref)))))))
 
 (defun list-prelude-libraries ()
-  (let ((plibs (prelude-libraries)))
-    (if plibs
-	(let ((liblen (min (reduce #'max plibs
-				   :key #'(lambda (x) (length (car x))))
-			   25)))
-	  (pvs-buffer "PVS Prelude Libraries"
-	    (format nil "~{~%~{~va - ~a~}~}"
-	      (mapcar #'(lambda (plib) (cons liblen plib)) plibs))
-	    t t))
-	(pvs-message "No prelude-libraries found in the current context"))))
+  (if *prelude-libraries-files*
+      (pvs-buffer "PVS Prelude Libraries"
+	(format nil "Loaded prelude libraries and their associated files~%~
+                     ~{~%~{~a~%  Full path: ~a~
+                     ~@[~%  PVS files:~{~%    ~/pvs:fmt-prlib/~}~]~
+                     ~@[~%  Lisp files:~{~%    ~/pvs:fmt-prlib/~}~]~
+                     ~@[~%  Emacs files:~{~%    ~/pvs:fmt-prlib/~}~]~
+                     ~}~^~%~}"
+	  *prelude-libraries-files*)
+	t t)
+      (pvs-message "No prelude-libraries found in the current context")))
+
+(defun fmt-prlib (stream file&date &optional colon? atsign?)
+  (declare (ignore colon? atsign?))
+  (format stream "~a" (file-namestring (car file&date))))
 
 (defun prelude-libraries ()
   (let ((libs nil))
