@@ -973,13 +973,6 @@ pvs-strategies files.")
 					       *pvs-context-path*)))))))
 	      (ce-dependencies entry))))
 
-(defmethod valid-proofs-file (entry)
-  (and (valid-context-entry entry)
-       (let ((prf-file (make-prf-pathname (ce-file entry))))
-	 (and (file-exists-p prf-file)
-	      (eql (file-write-date prf-file)
-		   (ce-proofs-date entry))))))
-
 (defmethod get-context-file-entry ((filename string))
   (car (member filename (pvs-context-entries)
 	       :test #'(lambda (x y)
