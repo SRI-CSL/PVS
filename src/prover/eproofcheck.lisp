@@ -84,6 +84,8 @@
 
 (defvar *force-dp* nil)
 
+(defvar *dump-sequents-to-file* nil)
+
 (defmethod prove-decl ((decl formula-decl) &key strategy)
   (let ((init-real-time (get-internal-real-time))
 	(init-run-time (get-run-time))
@@ -239,12 +241,29 @@
   (unless *proving-tcc*
     (pvs-emacs-eval "(setq pvs-in-checker nil)")
     (display-proofstate nil))
+  (when *dump-sequents-to-file*
+    (dump-sequents-to-file *top-proofstate*))
   (when *subgoals*
     (setq *subgoals*
 	  (mapcar #'current-goal
 	    (collect-all-remaining-subgoals *top-proofstate*))))
   (unless *recursive-prove-decl-call*
     (clear-proof-hashes)))
+
+(defun dump-sequents-to-file (ps)
+  (let* ((*prover-print-length* nil)
+	 (*prover-print-depth* nil)
+	 (*prover-print-lines* nil)
+	 (decl (declaration ps))
+         (theory (current-theory))
+         (file (format nil "~a-~a.sequents" (id theory) (id decl))))
+    (if (eq (status-flag *top-proofstate*) '!)
+        (when (file-exists-p file)
+          (delete-file file))
+        (with-open-file (out file
+                             :direction :output
+                             :if-exists :supersede)
+          (format out "~{~%~a~}" (collect-all-remaining-subgoals ps))))))
 
 (defun clear-proof-hashes ()
   (clrhash *assert-if-arith-hash*)
