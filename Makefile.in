@@ -367,7 +367,8 @@ inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
                     src/inst-by-unif/inst-by-unif.lisp
 
 ics-lisp = @ICSPATH@/obj/$(ICSPLATFORM)/ics.lisp \
-	   @ICSPATH@/obj/$(ICSPLATFORM)/ics-pvs.lisp
+	   @ICSPATH@/obj/$(ICSPLATFORM)/ics-pvs.lisp \
+           src/prover/ics-strategies.lisp
 
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
