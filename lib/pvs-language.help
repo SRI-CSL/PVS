@@ -151,6 +151,10 @@ ints: TYPE = setof[int]                  % == [int -> bool]
 
 tuptype: TYPE = [int, bool, [int -> int]]
 
+---------------------------------Cotuple Types--------------------------------
+
+cotuptype: TYPE = [int + bool + [int -> int]]
+
 --------------------------------Record types----------------------------------
 
 stack: TYPE = [# pointer: nat, astack: [nat -> t] #]
@@ -218,6 +222,8 @@ rat_plus_rat_is_rat: JUDGEMENT +(x, y: rat) HAS_TYPE rat
 -------------------------------Conversions------------------------------------
 
 CONVERSION extend[T, S, bool, false]
+CONVERSION+ K_conversion  % Enables conversion - same as CONVERSION
+CONVERSION- K_conversion  % Disables conversion
 
 =================================Expressions==================================
 
@@ -250,6 +256,14 @@ Pattern matching on datatypes.
   CASES x OF
     cons(x,y): append(reverse(y), cons(x, null))
     ELSE null
+  ENDCASES
+
+Or on cotuple types, x: [int + bool + [int -> bool]]
+
+  CASES x OF
+    IN_1(i): i > 0,
+    IN_2(b): b,
+    IN_3(f): f(0),
   ENDCASES
 
 -----------------------------------COND---------------------------------------
@@ -292,15 +306,19 @@ f WITH [(0) := 1, (1) := 0]
 ------------Record construction, field selection & record update--------------
 
 (# pointer := 1, astack := (LAMBDA x: 0) #)
-astack(r)                                   % r.astack NOT allowed
-r WITH [pointer := 2, (astack)(1) := 1]
+r`astack
+r WITH [`pointer := 2, `astack(1) := 1]
 
------------------------Tuple construction & projection------------------------
+----------------Tuple construction, projection & tuple update-----------------
 
 (1, true, (LAMBDA (x:int) x + 37))
 tup`3    % same as proj_3(tup)
 
-----------------------------LET & WHERE------------------------------
+-----------------------------Datatype update----------------------------------
+
+l WITH [`car := 0]  % Generates TCC "cons?(l)"
+
+--------------------------------LET & WHERE-----------------------------------
 
 WHERE is like LET, but with the assignments and expression reversed.
 
@@ -312,7 +330,9 @@ LET sq(x: int): int = x * x IN sq(sq(3))
 
 Coercion indicates the expected type to the typechecker to resolve ambiguity.
 
-a + b::nat    % Same as a + (LAMBDA (x: nat): x)(b)
+a + b::nat      % Same as a + (LAMBDA (x: nat): x)(b)
+f::[nat -> nat] % Same as (LAMBDA (x: [nat -> nat]): x)(f)
+                % NOT     (LAMBDA (x: nat): f(x))
 
 ------------------------------------Names-------------------------------------
 
