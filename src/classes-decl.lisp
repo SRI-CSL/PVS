@@ -411,7 +411,8 @@
 
 (defcl type-application (type-expr)
   (type :parse t)
-  (parameters :parse t))
+  (parameters :parse t)
+  (contains :parse t))
 
 
 ;;; Subtypes are of the form {x [: type] | expr} [CONTAINING expr],
