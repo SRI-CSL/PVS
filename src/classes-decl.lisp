@@ -200,7 +200,7 @@
   (chain? :parse t)
   refers-to
   generated
-  saved-context)
+  (saved-context :fetch-as nil))
 
 ;;; DECLARATION Classes.  Many of these have both a declared-type and a
 ;;; type slot.  The declared-type is set by the parser and used by the
@@ -284,7 +284,7 @@
 
 (defcl mod-decl (declaration)
   (modname :parse t)
-  saved-context)
+  (saved-context :fetch-as nil))
 
 (defcl var-decl (typed-declaration))
 
