@@ -178,7 +178,8 @@
 			   *pvs-path* "/BDD/"
 			   #+(and allegro sun4 sunos4) "SunOS4"
 			   #+(and allegro sun4 (not sunos4)) "SunOS5"
-			   #+(and allegro x86) "Linux")))
+			   #+(and allegro x86 redhat5) "redhat5"
+			   #+(and allegro x86 redhat4) "Linux")))
 		    #+(and allegro dlfcn)
 		    (load (format nil "~a/bdd/bdd.so" bddpath))
 		    #+(and allegro dlfcn)
@@ -226,7 +227,7 @@
 		(pvs::load-prelude))
   :components
   ((:module ground-prover
-     :source-pathname "ground-prover/"
+     :source-pathname "src/ground-prover/"
      :components ((:file "prmacros")
 		  (:file "interface"
 			 :depends-on ("prmacros"))
@@ -387,4 +388,12 @@
      :components ((:file "forward-chain-pvs")
 		  (:file "forward-chain"))
      :depends-on ("dc-structure"))
+;   (:module groundeval
+;     :source-pathname "src/groundeval"
+;     :components ((:file "eval-macros")
+;		  (:file "eval-utils")
+;		  (:file "groundp")
+;		  (:file "static-update")
+;		  (:file "pvseval-update")
+;		  (:file "cl2pvs")))
    ))

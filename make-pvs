@@ -20,7 +20,8 @@ case $opsys in
 	    then echo "Can only build under Solaris or Redhat Linux"; exit 1
 	 fi
 	 arch=ix86
-	 majvers=`cut -d" " -f2 /etc/redhat-release | cut -d"." -f1`
+	 majvers=`sed 's/.*release \([0-9]*\)\.\([0-9]*\) .*/\1/' \
+	            /etc/redhat-release`
 	 opsys=redhat
 	 lisp=/pkg/allegro5.0/$opsys$majvers/lisp
 	 lispext=lfasl;;
@@ -30,7 +31,8 @@ esac
 imagepath=$pvspath/bin/$arch-$opsys$majvers
 
 cmdline=""
-
+runtimep=0
+image=""
 # Extract the PVS-specific flags
 while [ $# -gt 0 ]
 do
@@ -44,9 +46,9 @@ do
   shift
 done
 
-if [ ! $runtimep ]; then full="-full"; else full=""; fi
+if [ ! "$runtimep" ]; then full="-full"; else full=""; fi
 # If the image variable hasn't been set, use the lisp name
-if [ ! $image ]; then image=pvs-allegro${full}5.0; fi
+if [ ! "$image" ]; then image=pvs-allegro${full}5.0; fi
 
 pvsimage=$imagepath/$image
 
