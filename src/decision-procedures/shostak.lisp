@@ -58,8 +58,8 @@
 
 (defun canon-neq (neq cong-state)
   (let* ((eq (lhs neq))
-	 (new-lhs (dp-find (lhs eq) cong-state))
-	 (new-rhs (dp-find (rhs eq) cong-state)))
+	 (new-lhs (canon (lhs eq) cong-state 'nomod))
+	 (new-rhs (canon (rhs eq) cong-state 'nomod)))
     (if (eq new-lhs new-rhs)
 	*false*
 	(mk-nequality new-lhs new-rhs))))
