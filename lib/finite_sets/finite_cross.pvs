@@ -1,0 +1,15 @@
+% proof that the cartesian product of two finite sets is finite
+%
+% Author: Alfons Geser, National Institute of Aerospace
+
+finite_cross[T1, T2: TYPE]: THEORY
+
+BEGIN
+
+  X: VAR set[T1]
+  Y: VAR set[T2]
+
+  is_finite_cross: LEMMA is_finite_type[T1] AND is_finite_type[T2] 
+                            IMPLIES is_finite_type[[T1,T2]]
+
+END finite_cross

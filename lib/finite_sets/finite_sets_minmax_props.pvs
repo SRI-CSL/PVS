@@ -1,0 +1,19 @@
+finite_sets_minmax_props[T: TYPE, <= : (total_order?[T])]: THEORY
+%----------------------------------------------------------------------------
+% Some useful properties about min and max of finite sets
+%
+% Author : Alfons Geser, National Institute of Aerospace
+% Date   : Aug 26, 2003
+%----------------------------------------------------------------------------
+BEGIN
+
+  IMPORTING finite_sets_minmax[T,<=]
+
+  a,x,y: VAR T
+  SS: VAR non_empty_finite_set
+
+  max_le: LEMMA max(SS) <= a IFF (FORALL (x: T): SS(x) => x <= a)
+
+  le_max: LEMMA a <= max(SS) IFF (EXISTS (x: T): SS(x) & a <= x)
+
+END finite_sets_minmax_props
