@@ -465,7 +465,7 @@ src/pvs-lexer.lisp : ${pvs-parser-in}
 src/pvs-methods.lisp : src/make-pvs-methods.lisp src/defcl.lisp \
                        src/classes-expr.lisp src/classes-decl.lisp
 	umask 002; \
-	$(PVSLISP) -e '(defvar *pvs-path* "${PWD}")' \
+	$(PVSLISP) -e '(defvar *pvs-path* "@PVSPATH@")' \
 		-L src/make-pvs-methods.lisp
 
 ${LISP} :
