@@ -83,6 +83,12 @@
   (dolist (*current-decision-procedure* *decision-procedures*)
     (dpi-init)))
 
+(defmethod dpi-init* (dp)
+  (setq *decision-procedures* (delete dp *decision-procedures*))
+  (pvs-message
+      "Decision procedure ~a is unknown and removed from *decision-procedures*"
+    dp))
+
 ;;; This is how we can test for the existence of particular eql methods
 ;; (find-method #'dpi-start* nil (list (intern-eql-specializer 'shostak)))
 
