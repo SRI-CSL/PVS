@@ -128,12 +128,11 @@
 (defmethod typecheck* ((expr number-expr) expected kind arguments)
   (declare (ignore expected kind arguments))
   ;;(assert (typep *number* 'type-expr))
-  (setf (types expr) (list *number*)))
+  (setf (types expr) (list *real*)))
 
 (defun available-numeric-type (num)
   (or (unless (zerop num) *posint*)
-      *naturalnumber* *integer* *rational* *real*
-      *ordered_number* *number*
+      *naturalnumber* *integer* *rational* *real* *number*
       (error "No type available for numerals")))
 
 ;;; Record-expr typechecking involves typechecking the assignments and
