@@ -26,6 +26,7 @@
 
 #include "alloc.h"
 #include "bdd_fns.h"
+#include "bdd_list.h"
 
 /* ------------------------------------------------------------------------ */
 /* LOCAL DEFINES                                                            */
@@ -1392,6 +1393,62 @@ BDDPTR bdd_subst_par (BDDPTR *f_vec, BDD_LIST vars, BDDPTR g)
 
   MA_FREE_ARRAY (substs, nr_vars+1, subst_rec);
   return R;
+}
+
+BDDPTR bdd_subst_par_list (BDD_LIST f_list, BDD_LIST vars, BDDPTR g)
+{
+  int save_bdd_do_dynamic_ordering;
+  BDDPTR R;
+  BDD_ELEM f_elem;
+  subst_rec *substs;
+  int nr_substs, nr_vars;
+
+  if (!vars || BDD_VOID_P (g) || BDD_TERM_P (g))
+    return bdd_assign (g);
+
+  nr_vars = BDD_LIST_SIZE (vars);
+  if (nr_vars != BDD_LIST_SIZE (f_list)) 
+    fprintf (stderr,
+	     "ERROR bdd_subst_par_list arguments are not the same size.\n");
+  else {
+    substs  = MALLOC_ARRAY (nr_vars+1, subst_rec);
+    nr_substs = 0;
+    f_elem = (BDD_ELEM) BDD_LIST_FIRST (f_list);
+    BDD_LIST_FOR_EACH_ELEM (vars, elem) {
+      substs[nr_substs  ].sub      = BDD_ELEM_CONTENTS (f_elem);
+      substs[nr_substs++].var_rank = BDD_VAR_RANK (BDD_ELEM_CONTENTS_I (elem));
+      f_elem = BDD_LIST_NEXT (f_elem);
+    } BDD_LIST_END_FOR_EACH_ELEM;
+
+    if (nr_substs) {
+      qsort ((void *) substs, (size_t) nr_substs,
+	     (size_t) sizeof (subst_rec),
+	     (int (*) (const void *, const void *)) subst_par_comp);
+
+      /* Attach sentinel element: */
+      substs[nr_substs].sub      = BDD_VOID;
+      substs[nr_substs].var_rank = BDD_TERMID;
+
+      save_bdd_do_dynamic_ordering = bdd_do_dynamic_ordering;
+      bdd_do_dynamic_ordering = 0;
+
+      bdd_subst_par_aux (substs, g);
+      R = subst_interpret_mod_bits (g);
+
+      bdd_do_dynamic_ordering = save_bdd_do_dynamic_ordering;
+
+      /* Also resets marks: */
+      if (bdd_use_inv_edges)
+	bdd_traverse_pre (g, bdd_free_aux1_and_aux2_action);
+      else
+	bdd_traverse_pre (g, bdd_free_aux1_action);
+    }
+    else
+      R = bdd_assign (g);
+
+    MA_FREE_ARRAY (substs, nr_vars+1, subst_rec);
+    return R;
+  }
 }
 
 /* Replace var BDD_VARID (g) in f by h. */
