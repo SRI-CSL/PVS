@@ -369,7 +369,10 @@ returned."
 	  (echo-keystrokes 0)
 	  char)
       (while (progn (message prompt)
-		    (let ((event (read-event)))
+		    (let ((event (if (memq +ilisp-emacs-version-id+
+					   '(xemacs-20 xemacs-19))
+				     (read-char)
+				     (read-event))))
 		      (not (memq (setq char (if (integerp event)
 						(downcase event)
 						0))
