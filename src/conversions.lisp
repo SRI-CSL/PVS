@@ -453,7 +453,8 @@
 	     (let* ((bindings1 (tc-match optype (domain ctype)
 					 (mapcar #'list fmls)))
 		    (dtypes (domain-types (find-supertype (range ctype))))
-		    (bindings (when (= (length args) (length dtypes))
+		    (bindings (when (and bindings1
+					 (= (length args) (length dtypes)))
 				(car (find-compatible-bindings args dtypes
 							       bindings1)))))
 	       (when (and bindings (every #'cdr bindings))
