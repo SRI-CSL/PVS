@@ -117,11 +117,11 @@
 		 (type-error expr
 		   "~%Given expression does not typecheck uniquely.~%")))
 	   (type-ambiguity expr))
-	  ((not (fully-instantiated? (car (types expr))))
+	  ((not (fully-instantiated? (car (ptypes expr))))
 	   (unless *suppress-printing*
 	     (type-error expr
 	       "Could not determine the full theory instance")))
-	  (t (set-type expr (car (types expr))))))
+	  (t (set-type expr (car (ptypes expr))))))
   expr)
 
 

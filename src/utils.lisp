@@ -1732,7 +1732,7 @@
   nil)
 
 (defmethod ppr ((obj hash-table))
-  (maphash #'(lambda (x y) (format t "~%~a - ~a" x y))
+  (maphash #'(lambda (x y) (format t "~%~s - ~s" x y))
 	   obj))
 
 (defmethod ref-to-id ((ref symbol))
@@ -2441,6 +2441,9 @@ space")
 (defmethod untyped* ((te type-name))
   (values (not (resolution te))
 	  te))
+
+(defmethod k-combinator? ((n name-expr))
+  (k-combinator? (declaration n)))
 
 (defmethod k-combinator? ((c const-decl))
   (and (definition c)
