@@ -260,8 +260,9 @@
 	   (setq nmodinst (set-type-actuals inst))
 	   (check-compatible-params (formals-sans-usings mod)
 				    (actuals inst) nil))
-	  (t (typecheck-mappings (mappings inst) inst)
-	     (setq nmodinst (set-type-actuals inst))))
+	  ((mappings inst)
+	   (typecheck-mappings (mappings inst) inst)
+	   (setq nmodinst (set-type-actuals inst))))
     (add-to-using nmodinst mod)
     (unless (eq nmodinst inst)
       (pushnew inst (gethash (get-theory inst) (current-using-hash))))
@@ -566,7 +567,8 @@
       (get-new-imported-conversions
        (cdr imported-convs)
        current-convs
-       (if (memq (car imported-convs) current-convs)
+       (if (member (expr (car imported-convs)) current-convs
+		   :test #'tc-eq :key #'expr)
 	   new-convs
 	   (cons (car imported-convs) new-convs)))))
 
