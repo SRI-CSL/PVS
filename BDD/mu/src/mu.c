@@ -752,7 +752,7 @@ static BDDPTR mu_reachable_aux (BDDPTR N, BDDPTR S0, BDDPTR Inv, int n)
 	bdd_free (Tk);
 	Tk = Tkplus1;
 	if (mu_verbose) {
-	  fputs ("+\r", stdout);
+	  fputs ("+", stdout);
 	  fflush (stdout);
 	}
 	continue;
@@ -763,7 +763,7 @@ static BDDPTR mu_reachable_aux (BDDPTR N, BDDPTR S0, BDDPTR Inv, int n)
     Tk = Tkplus1;
     Front = bdd_assign (Tk);
     if (mu_verbose) {
-      fputs (" \r", stdout);
+      fputs (" ", stdout);
       fflush (stdout);
     }
   } /*forever*/
@@ -907,10 +907,10 @@ static BDDPTR mu_reachable (Term T, R_Interpret Ip, Term FT)
     }
 
     D_sprintf (buf, bdd_count_sat_assignments (R, Domain), 0);
-    /*   fprintf (stdout, "Reachable took %3.2f msec (%d BDD nodes, %s states).\n",
-	       (clock () - start_t)   / CLOCKS_PER_MSEC, 
-         bdd_size (R),
-	     buf);  */
+    fprintf (stdout, "Reachable took %u msec (%u BDD nodes, %s states).\n",
+	             (clock () - start_t) / CLOCKS_PER_MSEC, 
+                     bdd_size (R),
+        	     buf);
     bdd_free (Domain);
   }
   return R;
