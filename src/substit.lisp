@@ -156,10 +156,7 @@
       (lcopy act
 	'expr (cond ((and ntype (eq ntype type-value))
 		     expr)
-		    ((and ntype (typep expr 'application))
-		     (lcopy expr
-		       'argument (substit* (argument expr) alist)))
-		    (type-value (substit* expr alist))
+		    (type-value ntype)
 		    (t (pseudo-normalize (substit* expr alist))))
 	'type-value ntype))))
 
@@ -437,10 +434,9 @@
     'print-type (substit* (print-type te) alist)))
 
 (defmethod substit* ((fd field-decl) alist)
-  (let ((ntype (substit* (type fd) alist)))
-    (if (eq (type fd) ntype)
-	fd
-	(copy fd 'type ntype 'declared-type ntype))))
+  (let ((ntype (substit* (type fd) alist))
+	(dtype (substit* (declared-type fd) alist)))
+    (lcopy fd 'type ntype 'declared-type dtype)))
 
 (defmethod substit* ((db dep-binding) alist)
   (let ((ntype (substit* (type db) alist)))
