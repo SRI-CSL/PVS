@@ -513,7 +513,7 @@
      (when (member id *track-rewrites* :test #'same-id)
        (let ((expr-string (format nil "~a" ,expr)))
 	 (format t "~%;;~a failed to rewrite " id)
-	 (if (> (+ (length id)(length expr-string) 21) *default-char-width*)
+	 (if (> (+ (length (string id))(length expr-string) 21) *default-char-width*)
 	     (format t "~%;;~a" (unpindent ,expr 2 :string T))
 	     (format t "~a" expr-string))
 	 (format t "~%;;;;")
