@@ -1855,8 +1855,8 @@
 
 (defun arith-ord-translate (x y)
   (let ((*sequent-typealist* nil))
-    (old-arithord (top-translate-to-prove x)
-		  (top-translate-to-prove y))))
+    (old-arithord (top-translate-to-prove x t)
+		  (top-translate-to-prove y t))))
 
 (defun make-prod* (list type)
   (cond ((null list) (make!-number-expr 1))
