@@ -63,16 +63,15 @@
   (loop for x in list collect `(trap-undefined ,x)))
 
 (defmacro install-definition (expr restore body)
-  `(let* ((result  (catch  'no-defn ,body))
-	 (throw-string
-	  (when (stringp result)
-	    (format nil "~%Definition of ~a failed." ,expr))))
-     (cond ((stringp result)
-	    (format t "~a  ~a" throw-string result)
-	    ,restore
-	    (throw 'no-defn throw-string))
-	   (t result))))
-    
+  `(multiple-value-bind (result error)
+       (catch 'no-defn ,body)
+     (if result
+	 result
+	 (progn ,restore
+		(throw 'no-defn
+		       (values nil 
+			       (format nil "~%Definition of ~a failed.~%~a"
+				 ,expr error)))))))
 
 (defstruct pvs-array
   contents diffs size)
@@ -252,7 +251,7 @@
 	 (if context context *current-context*))
 	(*current-theory* (theory *current-context*))
 	(*generate-tccs* 'NONE))
-    (catch 'no-defn (pvs2cl_up* expr nil nil))))
+    (pvs2cl_up* expr nil nil)))
 
 ;;Should be a macro.  applied function name to argument list.
 (defun mk-funapp (fun args)
@@ -519,7 +518,7 @@
   (declare (ignore livevars))
   (let ((result (assoc expr bindings)))
     (if result (cdr result)
-	(throw 'no-defn (format nil "No binding for ~a" expr)))))
+	(throw 'no-defn (values nil (format nil "No binding for ~a" expr))))))
 
 (defun pvs2cl-declare-vars (vars exprs)
   (let ((decls (pvs2cl-declare-vars* vars exprs)))
@@ -621,7 +620,7 @@
 						livevars))
 			(list ,@(pvs2cl_up* (constructors typ1)
 					    bindings livevars))))
-		(sub
+		((car sub)
 		  (let ((i (gentemp)))
 		    `(loop for ,i
 			   from ,(car sub)
@@ -633,8 +632,8 @@
 							(append (updateable-vars expr)
 								livevars))
 					,i))))
-		(t (throw 'no-defn
-			  "Cannot handle non-scalar/subrange quantifiers."))))
+		(t (throw 'no-defn (values nil 
+			  "Cannot handle non-scalar/subrange quantifiers.")))))
 	(pvs2cl_up* body bindings livevars))))
 
 (defmethod pvs2cl_up* ((expr exists-expr) bindings livevars)
@@ -658,7 +657,7 @@
 						livevars))
 			(list ,@(pvs2cl_up* (constructors typ1)
 					    bindings livevars))))
-		(sub
+		((car sub)
 		  (let ((i (gentemp)))
 		    `(loop for ,i
 			   from ,(car sub)
@@ -670,8 +669,8 @@
 							(append (updateable-vars expr)
 								livevars))
 					,i))))
-		(t (throw 'no-defn
-			  "Cannot handle non-scalar/subrange quantifiers."))))
+		(t (throw 'no-defn (values nil
+			  "Cannot handle non-scalar/subrange quantifiers.")))))
 	(pvs2cl_up* body bindings livevars))))
 			
 
@@ -688,7 +687,7 @@
 	(if (const-decl? decl)
 	    (pvs2cl-constant expr bindings livevars)
 	    (let ((str (format NIL "~%~a is not translateable." expr)))
-	      (throw 'no-defn str)
+	      (throw 'no-defn (values nil str))
 	      )))))
 
 (defmethod pvs2cl_up* ((expr list) bindings livevars)
@@ -1237,14 +1236,14 @@
 (defun pvs2cl-external-lisp-function (decl)
   (let* ((defax (def-axiom decl))
 	 (*external* (module decl))
-	 (*current-theory* (module decl)))
+	 (*current-theory* (module decl))
+	 (undef (undefined decl)))
     (cond ((null defax)
 	   (make-eval-info decl)
-	   (let ((undef (undefined decl)))
-	     (setf (ex-name decl) undef
-		   (ex-name-m decl) undef
-		   (ex-name-d decl) undef)
-	     undef))
+	   (setf (ex-name decl) undef
+		 (ex-name-m decl) undef
+		 (ex-name-d decl) undef)
+	   undef)
 	  (t (let
 		 ((formals (loop for x in (formals (module decl))
 				 when (formal-const-decl? x)
@@ -1283,7 +1282,7 @@
 			   )
 		       (install-definition
 			(id decl)
-			(setf (ex-name-m decl) 'no-defn)
+			(setf (ex-name-m decl) undef)
 			(progn (setf (ex-name-m decl) id2)
 			       (let ((*destructive?* nil))
 				 (setf (definition (ex-defn-m decl))
@@ -1303,7 +1302,7 @@
 			       id2)))
 		     (install-definition
 		      (id decl)
-		      (setf (ex-name-d decl) 'no-defn)
+		      (setf (ex-name-d decl) undef)
 		      (progn (setf (ex-name-d decl) id-d)
 			     (let ((*destructive?* T)
 				   (*output-vars* NIL))
@@ -1326,7 +1325,7 @@
 			     id-d))
 		     (install-definition
 		      (id decl)
-		      (setf (ex-name decl) 'no-defn)
+		      (setf (ex-name decl) undef)
 		      (progn
 			(let ((*destructive?* NIL)
 			      (declarations (pvs2cl-declare-vars formal-ids formals)))
@@ -1343,13 +1342,13 @@
 
 (defun pvs2cl-lisp-function (decl)
   (let* ((defax (def-axiom decl))
-	 (*external* nil))
+	 (*external* nil)
+	 (undef (undefined decl)))
     (cond ((null defax)
-	   (let ((undef (undefined decl)))
-	     (setf (in-name decl) undef
-		   (in-name-m decl) undef
-		   (in-name-d decl) undef)
-	     undef))
+	   (setf (in-name decl) undef
+		 (in-name-m decl) undef
+		 (in-name-d decl) undef)
+	   undef)
 	  (t (let* 
 		 ((id (mk-newsymb  (id decl)))
 		  (id-d (mk-newsymb (format nil "~a!" (id decl))))
@@ -1367,7 +1366,7 @@
 		     )
 		 (install-definition
 		  (id decl)
-		  (setf (in-name-m decl) 'no-defn)
+		  (setf (in-name-m decl) undef)
 		  (progn
 		    (when *eval-verbose*
 		      (format t "~%~a <internal_app> ~a" (id decl) id2))
@@ -1388,7 +1387,7 @@
 		    id2)))
 	       (install-definition
 		(id decl)
-		(setf (in-name-d decl) 'no-defn)
+		(setf (in-name-d decl) undef)
 		(progn (when *eval-verbose*
 			 (format t "~%~a <internal_dest> ~a" (id decl) id-d))
 		       (setf (in-name-d decl) id-d)
@@ -1411,7 +1410,7 @@
 		       id-d))
 	       (install-definition
 		(id decl)
-		(setf (in-name decl) 'no-defn)
+		(setf (in-name decl) undef)
 		(progn
 		  (when *eval-verbose*
 		    (format t "~%~a <internal_0> ~a" (id decl) id))
