@@ -85,7 +85,7 @@
     (multiple-value-bind (srec-expr vdecl)
 	(subst-var-for-recs expr vdecl1)
       (let* ((osubsts (get-tcc-binding-substitutions
-		      (reverse (cons srec-expr conditions))))
+		       (reverse (cons srec-expr conditions))))
 	     (substs (if vdecl
 			 (acons vdecl
 				(lcopy vdecl
