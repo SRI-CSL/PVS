@@ -218,12 +218,10 @@
 					(get-theory (module-instance
 						     (resolution farg))))
 				       bindings))
-		    (tc-match-names arg farg bindings)
-		    (call-next-method))
+		    (tc-match-names arg farg bindings))
 		(or;;(and (typep (declaration arg) 'formal-type-decl)
 		 ;;   bindings)
-		 (tc-match-names arg farg bindings)
-		 (call-next-method)))))))
+		 (tc-match-names arg farg bindings)))))))
 
 ;(defun tc-match-other-formals (arg farg bindings)
 ;  (when (typep (declaration arg) 'formal-type-decl)
