@@ -261,21 +261,18 @@
       (lcopy expr 'argument (beta-reduce (argument expr)))
       (call-next-method)))
 
-
-;;; SO 8/31/94 - commented out projection case
 (defmethod beta-reduce* ((expr application))
   (let* ((oper (if (lambda? (operator expr))
-		   (operator expr) ;;since it will be reduced anyway.
+		   (operator expr);;since it will be reduced anyway.
 		   (beta-reduce* (operator expr))))
 	 (arg (beta-reduce* (argument expr)))
 	 (newexpr (lcopy expr
-			 'operator oper
-			 'argument  arg)))
+		    'operator oper
+		    'argument  arg)))
     (cond ((and (is-predicate? oper)
 		(typep (type arg) 'subtype))
-	   (cond ((member oper
-			  (type-constraints (type arg) T)
-			  :test #'tc-eq-ops)
+	   (cond ((member expr (type-constraints arg T)
+			  :test #'tc-eq)
 		  *true*)
 		 ((and (adt? (supertype (type arg)))
 		       (recognizer? oper)
@@ -283,13 +280,13 @@
 		  *false*)
 		 ((lambda? oper)
 		  (beta-reduce* (substit (expression oper)
-					(pairlis-args (bindings oper)
-						      (arguments newexpr)))))
+				  (pairlis-args (bindings oper)
+						(arguments newexpr)))))
 		 (t newexpr)))
 	  ((lambda? oper)
 	   (beta-reduce* (substit (expression oper)
-				 (pairlis-args (bindings oper)
-					  (arguments newexpr)))))
+			   (pairlis-args (bindings oper)
+					 (arguments newexpr)))))
 	  ((function-update-redex? newexpr)
 	   (simplify-function-update-redex newexpr T))
 	  ((and (typep oper 'name-expr)
@@ -303,8 +300,8 @@
 		 (argument arg))))
 	  (t (if (lambda? oper)
 		 (beta-reduce* (substit (expression oper)
-				       (pairlis-args (bindings oper)
-						(arguments newexpr))))
+				 (pairlis-args (bindings oper)
+					       (arguments newexpr))))
 		 newexpr)))))
 
 (defmethod beta-reduce* ((list list))
