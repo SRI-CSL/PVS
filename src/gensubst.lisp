@@ -449,12 +449,13 @@
 ;;;            the expr.
 ;;;         2. Caches the result for each call to mapobject.
 
-(defvar *mapobject-cache* nil)
+(defvar *mapobject-cache* (make-hash-table :test #'eq :size 37))
 
 (defun mapobject (fn obj)
-  (let ((*mapobject-cache* (make-hash-table :test #'eq :size 37)))
-    (mapobject* fn obj)
-    obj))
+  (unwind-protect
+      (mapobject* fn obj)
+    (clrhash *mapobject-cache*))
+  obj)
 
 (defmethod mapobject* :around (fn obj)
   (unless (gethash obj *mapobject-cache*)
