@@ -17,6 +17,10 @@
 
 (defvar *add-declaration-info* nil)
 
+(defvar *insert-add-decl* t
+  "Flag used for the add-declaration and modify-declaration commands to
+   allow typechecking without side effects.")
+
 (defun add-declaration-at (filename line)
   (typecheck-file filename nil)
   (let ((theory (find-theory-at filename line)))
@@ -154,6 +158,20 @@
     (set-visibility decl)
     (mapc #'(lambda (d) (add-declaration-to-theory d assuming?))
 	  (generated decl))))
+
+
+;;; Add-decl is used to incorporate newly generated declarations.  It
+;;; inserts the new declaration after the current declaration found in
+;;; the context.
+
+;;; Side effects:
+;;;   (module decl)
+;;;   (generated-by decl)
+;;;   (generated (declaration *current-context*))
+;;;   (assuming (module *current-context*))
+;;;   (theory (module *current-context*))
+;;;   (local-decls *current-context*)
+;;;   (declarations (module *current-context*))
 
 (defun add-decl (decl &optional (insert? t) (generated? t) (assuming? nil))
   (when (or (adt-def-decl? decl)

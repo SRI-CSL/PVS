@@ -780,7 +780,7 @@
 	  'module theory
 	  'mod-name (mk-modname (id theory))))))
 
-(defmethod copy-context (context)
+(defun copy-context (context)
   (copy context
     'local-decls (copy (local-decls context))
     'local-proof-decls (make-hash-table :test #'eq)
@@ -788,7 +788,14 @@
     'judgements (copy-judgements (judgements context))
     'conversions (copy-list (conversions context))
     'known-subtypes (copy-tree (known-subtypes context))))
-    
+
+(defun copy-prover-context (&optional (context *current-context*))
+  (assert *in-checker*)
+  (copy context
+    'local-proof-decls (copy (local-proof-decls context))
+    'judgements (copy (judgements context)
+		  'judgement-types-hash
+		  (copy (judgement-types-hash (judgements context))))))
     
 
 (defmethod context (ignore)
@@ -990,16 +997,10 @@
 ;;; formula, which is used in create-formula.
 
 (defun make-def-axiom (decl)
-  (let* (;;(*generating-tcc* t)		; TCCs have already been generated
-	 (*generate-tccs* 'none)
-	 ;;mk-application (NSH:8/91)
-	 (def (mk-lambda-exprs (formals decl) (definition decl)))
+  (let* ((*generate-tccs* 'none)
+	 (def (make!-lambda-exprs (formals decl) (definition decl)))
 	 (name (typecheck* (mk-name-expr (id decl)) (type decl) nil nil))
-	 (eqtype (mk-funtype (list (type decl) (type decl)) *boolean*))
-	 (eqname (typecheck* (mk-name-expr '=
-			       (list (mk-actual (copy (type decl)))))
-			     eqtype nil nil))
-	 (appl (typecheck* (mk-application eqname name def) *boolean* nil nil))
+	 (appl (make!-equation name def))
 	 (depth (lambda-depth decl)))
     (assert (eq (declaration name) decl))
     (loop for i from 0 to depth
@@ -1015,6 +1016,14 @@
       expr
       (let ((lexpr (mk-lambda-expr (car varslist)
 		     (mk-lambda-exprs (cdr varslist) expr))))
+	(setf (place lexpr) (place expr))
+	lexpr)))
+
+(defun make!-lambda-exprs (varslist expr)
+  (if (null varslist)
+      expr
+      (let ((lexpr (make!-lambda-expr (car varslist)
+		     (make!-lambda-exprs (cdr varslist) expr))))
 	(setf (place lexpr) (place expr))
 	lexpr)))
 
