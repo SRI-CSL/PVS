@@ -2049,7 +2049,7 @@
 
 (defun get-resolution-conversions* (conversions res arguments result)
   (if (null conversions)
-      result
+      (nreverse result)
       (let ((conv (compatible-resolution-conversion (car conversions)
 						    res arguments)))
 	(get-resolution-conversions* (cdr conversions) res arguments
