@@ -12,6 +12,7 @@
 (defvar *contradiction* nil)
 
 (defvar *max-node-index* 0)
+(defvar *fresh-prefix* "d")
 
 
 (eval-when (eval compile load)
@@ -50,6 +51,9 @@
   (initial-type nil :type symbol)
   (type initial-type :type symbol)
   (constructor? nil :type boolean)
+  (constructor-accessors nil :type list)
+  (accessor-indices nil :type list)
+  (fresh? nil :type boolean)
   (external-info nil :type list)
   (index :type integer)
   (sxhash nil :type (integer 0 65535)))
@@ -259,6 +263,12 @@
 
 (defun mk-new-constant (id type)
   (mk-constant* id type))
+
+(defun mk-fresh-constant ()
+  (let* ((fresh-id (gentemp *fresh-prefix*))
+	 (res (mk-constant fresh-id)))
+    (setf (node-fresh? res) t)
+    res))
 
 (defun mk-variable (id &optional (type nil))
   (let ((hashed-variable (dp-gethash id *term-hash*)))
