@@ -64,7 +64,9 @@
 	(t (add-to-local-prtype-hash (id expr) expr)
 	   (dc-add-to-reverse-prover-name (id expr) expr)
 	   (dc-add-to-pvs-typealist (id expr) expr)
-	   (dp::mk-variable (id expr)))))
+	   (if *translate-rewrite-rule*
+	       (dp::mk-variable (id expr))
+	       (dp::mk-constant (id expr))))))
 
 (defun dc-get-pvs-name (func)
   (or (cdr (assoc func *dc-reverse-prover-name*))
