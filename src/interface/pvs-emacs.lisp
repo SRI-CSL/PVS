@@ -710,8 +710,7 @@
   (format nil "~@[~a~]~@[~a~]~@[[~{~a~^,~}]~].~a~@[ : ~a~]"
     (let ((th (module (declaration res))))
       (when (typep th 'library-theory)
-	(or (cdr (assoc (library th) *library-alist* :test #'equal))
-	    (namestring (library th)))))
+	(libref-to-libid (lib-ref th))))
     (when (module-instance res)
       (id (module-instance res)))
     (mapcar #'(lambda (act) (unparse (full-name act 1) :string t))
