@@ -908,6 +908,7 @@
 	 (add-usings-to-context* th thname))))))
 
 (defmethod update-context-importing-for-mapped-tcc (decl)
+  (declare (ignore decl))
   nil)
 
 (defmethod saved-context ((adt recursive-type))
