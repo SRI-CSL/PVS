@@ -214,6 +214,7 @@ rewrite-name ::= {name ['!' ['!']^m]^e [':' {type-expr|formula-name}]}
                                 [noqual()|
                                  {type(type-expr)|formula(formula-name)}])}> ;
 
+% called 'Bindings' in language doc.
 pdformals ::= {'(' adformals ')'} <adformals>;
 
 adformals ::= {adformal++','} <adformals(adformal+)>;
