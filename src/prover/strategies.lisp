@@ -3555,3 +3555,19 @@ If CASES-REWRITE is NIL, this turns off rewriting within the
 selections of unsimplified CASES expressions.  The optional arguments
 DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
   "By rewriting and mu-simplifying")
+
+(defstep expand* (&rest names)
+  (expand1* names)
+  "Expands all the given names and simplifies. "
+  "Expanding the definition(s) of ~a")
+
+(defstep auto-rewrite-theory-always (thlist)
+  (if (null thlist)
+      (skip)
+      (let ((hd (car thlist))
+	    (tl (cdr thlist)))
+	(then
+	 (auto-rewrite-theory hd :always? T)
+	 (auto-rewrite-theory-always tl))))
+  "Applies (auto-rewrite-theory :always? T) on a given list of theories."
+  "Auto-rewriting given theories ~a with :always? T option")
