@@ -1280,7 +1280,6 @@
 
 (defun argument-conversion (name arguments)
   (let ((*found-one* nil)
-	(*ignored-conversions* (list "K_conversion"))
 	(reses (remove-if-not #'(lambda (r)
 				  (typep (find-supertype (type r)) 'funtype))
 		 (resolve name 'expr nil))))
