@@ -410,7 +410,8 @@
 ;;; list if foo imports (an instance of) list.
 
 (defmethod all-importings ((theory datatype-or-module))
-  (let ((*current-context* (saved-context theory)))
+  (let ((*current-context* (saved-context theory))
+	(*current-theory* theory))
     (delete theory (all-importings (list theory)))))
 
 (defmethod all-importings ((list list))
@@ -568,7 +569,8 @@
 	(cond ((and (not forced?)
 		    theories
 		    (every #'(lambda (th)
-			       (let ((*current-theory* th))
+			       (let ((*current-context* (saved-context th))
+				     (*current-theory* th))
 				 (typechecked? th)))
 			   theories))
 	       (unless (or nomsg? restored?)
@@ -603,6 +605,7 @@
     (dolist (theory (sort-theories theories))
       (let ((start-time (get-internal-real-time))
 	    (*current-context* (make-new-context theory))
+	    (*current-theory* theory)
 	    (*old-tcc-names* nil))
 	(dolist (u (get-immediate-context-usings theory))
 	  (unless (library u)
@@ -642,8 +645,10 @@
                    ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
 		  (id theory) time tot prv mat obl
 		  (length (warnings theory)) (length (info theory))))))))
-    (setq *current-theory* (car (last theories))))
-  (let ((*current-context* (saved-context *current-theory*)))
+    (unless *current-context*
+      (setq *current-theory* (car (last theories)))))
+  (let* ((*current-theory* (car (last theories)))
+	 (*current-context* (saved-context *current-theory*)))
     (let ((dep (assoc filename *circular-file-dependencies* :test #'equal)))
       (when dep
 	(setq *circular-file-dependencies*
@@ -696,7 +701,9 @@
       (let ((tccs (collect-tccs theory))
 	    (*justifications-changed?* nil))
 	(unless (every #'proved? tccs)
-	  (let ((*current-theory* theory))
+	  (let ((*current-context* (or (saved-context theory)
+				       (context theory)))
+		(*current-theory* theory))
 	    (mapc #'(lambda (d)
 		      (when (tcc? d)
 			(let ((*current-context* (context d)))
@@ -705,7 +712,7 @@
 			  (incf (cadr (tcc-info theory))))))
 		  (append (assuming theory) (theory theory)))))
 	(when *justifications-changed?*
-	  (save-all-proofs *current-theory*))
+	  (save-all-proofs theory))
 	(setf (tccs-tried? theory) t)
 	(update-tcc-info theory tccs))))
 
@@ -1027,6 +1034,7 @@
       (and (memq 'typechecked (status theory))
 	   (saved-context theory)
 	   (let* ((*current-context* (saved-context theory))
+		  (*current-theory* theory)
 		  (importings (all-importings (list theory))))
 	     (every #'(lambda (th)
 			(and (parsed? th)
@@ -1037,6 +1045,7 @@
   (and (memq 'typechecked (status theory))
        (saved-context theory)
        (let* ((*current-context* (saved-context theory))
+	      (*current-theory* theory)
 	      (importings (all-importings (list theory))))
 	 (every #'(lambda (th)
 		    (and (parsed? th)
