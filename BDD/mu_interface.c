@@ -8,9 +8,10 @@ Date: 05/09/98
 
 
 /*
- #include <stdio.h>
 
- #include "alloc.h"
+#include <stdio.h>
+
+#include "alloc.h"
 #include "hash.h"  */
 
 #include "bdd_fns.h" 
@@ -141,15 +142,15 @@ Main function
 BDDPTR modelcheck_formula (Formula fml)
  { BDDPTR R;
    bdd_use_neg_edges = 1;
-   bdd_do_dynamic_ordering = 1 ;
-   bdd_do_gc  = 1 ;
+   bdd_do_dynamic_ordering = 1;
+   bdd_do_gc  = 1;
    bdd_use_inv_edges = 0;
    mu_verbose = 1;  /* 1 */
-   mu_echo = 1 ;  /* 1 */
+   mu_echo = 1;  /* 1 */
    mu_use_and_smooth = 1;
-/*     fprintf (stdout, "  \n");  */
-/*     mu_print_formula_infix (stdout, fml);  */ 
-/*     fprintf (stdout, ";\n ");  */
+     fprintf (stdout, "  \n");  
+     mu_print_formula_infix (stdout, fml); 
+     fprintf (stdout, ";\n ");  */
    R = mu_interpret_formula (fml, Ip, NULL);
    mu_free_formula(fml);
  /*   bdd_print_as_sum_of_cubes (stdout, R,0) ; */
