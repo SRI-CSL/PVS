@@ -83,7 +83,8 @@
 
 (defmethod typecheck* ((name modname) expected kind argument)
   (declare (ignore expected kind argument))
-  (let ((theory (get-typechecked-theory name)))
+  (let* ((aliases (get-theory-aliases name))
+	 (theory (get-typechecked-theory (or (car aliases) name))))
     (cond ((actuals name)
 	   (unless (= (length (formals-sans-usings theory))
 		      (length (actuals name)))
@@ -172,12 +173,18 @@
 	 (cdr theory-aliases) adecls kind args
 	 (nconc reses res)))))
 
-(defun get-theory-aliases (name)
+(defmethod get-theory-aliases (name)
   (when (mod-id name)
     (let ((mod-decls (remove-if-not #'(lambda (d)
 					(typep d 'theory-abbreviation-decl))
 		       (get-declarations (mod-id name)))))
       (get-theory-aliases* mod-decls))))
+
+(defmethod get-theory-aliases ((name modname))
+  (let ((mod-decls (remove-if-not #'(lambda (d)
+				      (typep d 'theory-abbreviation-decl))
+		     (get-declarations (id name)))))
+    (get-theory-aliases* mod-decls)))
 
 (defun get-theory-aliases* (mod-decls &optional modnames)
   (if (null mod-decls)
@@ -294,7 +301,7 @@
 (defun get-mapping-lhs-resolutions (name kind args)
   (declare (ignore args kind))
   (when (mod-id name)
-    (if (assoc (id name) (mappings name) :key #'id)
+    (if (find (id name) (mappings name) :key #'(lambda (m) (id (lhs m))))
 	(break "In given mappings")
 	(let* ((theory (get-theory (mod-id name)))
 	       (aliases (get-theory-aliases name))
