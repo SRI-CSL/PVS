@@ -20,7 +20,8 @@ suspend-pvs (C-x C-z)       Suspend PVS
 ------------------------------Getting Help------------------------------------
 
 help-pvs, pvs-help (C-c h)  - Display help for the PVS system commands
-help-pvs-bnf (C-c C-h b)    - Display help for the PVS grammar
+help-pvs-bnf, pvs-help-bnf (C-c C-h b)
+                            - Display help for the PVS grammar
 help-pvs-language, pvs-help-language (C-c C-h l)
                             - Display help for the PVS language
 help-pvs-prover, pvs-help-prover (C-c C-h p)
@@ -67,16 +68,16 @@ prove-pvs-file,   prf (C-c C-p f)  Do all the proofs in current file
 prove-importchain,pri (C-c C-p i)  Do all proofs in IMPORT chain
 prove-importchain-subtree,pris     Do proofs in subtree of IMPORT chain
 prove-proofchain, prp (C-c C-p c)  Do all proofs in proofchain of formula
+prove-untried-theory               Try untried proofs with specified strategy
+prove-untried-pvs-file             Try untried proofs with specified strategy
+new-decision-procedures		   Use the new decision procedures by default
+old-decision-procedures		   Use the old decision procedures by default
 prove-theory-using-default-dp      Do proofs with default decision procedures
 prove-theories-using-default-dp    Do proofs with default decision procedures
 prove-pvs-file-using-default-dp    Do proofs with default decision procedures
 prove-importchain-using-default-dp Do proofs with default decision procedures
 prove-importchain-subtree-using-default-dp Do proofs with default dec. procs.
 prove-proofchain-using-default-dp  Do proofs with default decision procedures
-prove-untried-theory               Try untried proofs with specified strategy
-prove-untried-pvs-file             Try untried proofs with specified strategy
-new-decision-procedures		   Use the new decision procedures by default
-old-decision-procedures		   Use the old decision procedures by default
 
 ------------------------Proof Editing Commands--------------------------------
 
