@@ -1148,7 +1148,7 @@
 (defun make!-application* (op arguments)
   (make!-application op
 		     (if (cdr arguments)
-			 (make!-arg-tuple-expr arguments)
+			 (make!-arg-tuple-expr* arguments)
 			 (car arguments))))
 
 (defun make!-application (op arg)
