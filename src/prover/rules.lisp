@@ -200,13 +200,11 @@ used since the undo by (undo undo)")
 	    (values '! nil)
 	    (values 'X nil)))))
 
-(defun negate (formula)
-  (if (and (typep formula 'application)
-	   (typep (operator formula) 'name-expr))
-      (if (negation? formula)
-	  (fstarg formula)
-	  (make-negation formula))
-      (make-negation formula)))
+(defmethod negate ((formula negation))
+  (argument formula))
+
+(defmethod negate (formula)
+  (make!-negation formula))
 
 (defun check-prop-axiom (s-forms)
   (let ((forms (mapcar #'formula s-forms)))
