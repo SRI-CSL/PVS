@@ -1527,7 +1527,7 @@ proc reset-options {} {
 	option add $pvs*theory-hierarchy*ySep 100 startupFile
     } else {
 	option add Tk.displayfont 7x13bold startupFile
-	option add Tk.buttonfont 6x9 startupFile
+	option add Tk.buttonfont 6x10 startupFile
 	if {[tk colormodel .]=={color} && !$mono} {
 	    option add Tk.windowbackground wheat startupFile
 	    option add Tk.displaybackground white startupFile
