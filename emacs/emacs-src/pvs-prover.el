@@ -19,7 +19,6 @@
 ;; edit-proof           - edit-proof
 ;; install-proof        -
 ;; remove-proof         - remove-proof-at
-;; revert-proof         - revert-proof-at
 ;; install-pvs-proof-file -
 ;; show-proof-file      -
 ;; show-orphaned-proofs -
@@ -638,8 +637,7 @@ buffer."
   "Removes the proof associated with the specified formula
 
 The remove-proof command removes the proof associated with the specified
-formula.  It may be recovered using revert-proof, as long as you have not
-changed contexts, restarted the system, or retypechecked the file."
+formula."
   (interactive)
   (let* ((name-and-origin (pvs-formula-origin))
 	 (name (car name-and-origin))
@@ -648,21 +646,6 @@ changed contexts, restarted the system, or retypechecked the file."
 	 (line (+ (current-line-number) prelude-offset)))
     (pvs-send
      (format "(remove-proof-at \"%s\" %d \"%s\")"
-	 name line origin))))
-
-(defpvs revert-proof edit-proof ()
-  "Reverts the specified proof
-
-The revert-proof command reverts the proof of the specified formula back
-to the earlier version, if there is one."
-  (interactive)
-  (let* ((name-and-origin (pvs-formula-origin))
-	 (name (car name-and-origin))
-	 (origin (cadr name-and-origin))
-	 (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
-	 (line (+ (current-line-number) prelude-offset)))
-    (pvs-send
-     (format "(revert-proof-at \"%s\" %d \"%s\")"
 	 name line origin))))
 
 (defpvs install-pvs-proof-file edit-proof (filename)
@@ -686,6 +669,22 @@ proofs are the `real' ones."
     (define-key pvs-show-proofs-map "h" 'pvs-show-proofs-help)
     (define-key pvs-show-proofs-map "?" 'pvs-show-proofs-help))
 
+(defun pvs-show-proofs-mode ()
+  "Mode for the \"Proofs\" buffer, used for displaying a set of proofs.
+
+The \"Proofs\" buffer displays the proofs for all the formulas of a PVS
+file or theory (M-x show-proofs-pvs-file or M-x show-proofs-theory), or
+the orphaned proofs (M-x show-orphaned-proofs).
+
+Key bindings are:
+\\{pvs-show-proofs-map}"
+  (interactive)
+  (use-local-map pvs-show-proofs-map)
+  (setq major-mode 'pvs-show-proofs-mode)
+  (setq mode-name "PVS Proofs")
+  (set-syntax-table pvs-mode-syntax-table)
+  )
+
 (defpvs show-proof-file edit-proof (context filename)
   "Display proofs of a PVS file
 
@@ -706,8 +705,7 @@ edit-proof command."
   (when (pvs-send-and-wait (format "(show-proof-file \"%s\" \"%s\")"
 			       context filename)
 			   nil nil 'bool)
-    (pop-to-buffer "Proofs")
-    (use-local-map pvs-show-proofs-map)))
+    (pop-to-buffer "Proofs")))
 
 (defpvs show-orphaned-proofs edit-proof ()
   "Show the orphaned proofs file
@@ -718,8 +716,7 @@ proof is displayed in the \"Proof\" buffer and may be installed on a
 formula - see the edit-proof command."
   (interactive)
   (when (pvs-send-and-wait "(show-orphaned-proofs)" nil nil 'bool)
-    (pop-to-buffer "Proofs")
-    (use-local-map pvs-show-proofs-map)))
+    (pop-to-buffer "Proofs")))
 
 (defpvs show-proofs-importchain edit-proof (theoryname)
   "Displays all the proofs of the importchain
@@ -1601,9 +1598,11 @@ Letters do not insert themselves; instead, they are commands:
   (if (eq (point) (point-max))
       (error "At end of buffer")
       (let ((start (point)))
-	(insert "!!")
-	(overlay-put (make-overlay start (point))
-		     'face 'font-lock-pvs-checkpoint-face))))
+	(cond ((memq pvs-emacs-system '(xemacs19 xemacs20))
+	       (insert-face "!!" 'font-lock-pvs-checkpoint-face))
+	      (t (insert "!!")
+		 (overlay-put (make-overlay start (point))
+			      'face 'font-lock-pvs-checkpoint-face))))))
 
 (defun remove-proof-checkpoint ()
   (interactive)

@@ -552,6 +552,7 @@ window."
 
 (defvar *pvs-buffer-mode-alist*
   '(("Proof" . edit-proof-mode)
+    ("Proofs" . pvs-show-proofs-mode)
     ("Display Proofs" . pvs-browse-proofs-mode)
     ("Declaration" . pvs-view-mode))
   "Associates buffer names with modes, e.g. ((\"Foo\" . foo-mode))")
