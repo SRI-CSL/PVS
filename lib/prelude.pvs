@@ -1221,7 +1221,11 @@ number_fields: THEORY
   /: [numfield, nznum -> numfield]
   -: [numfield -> numfield]
 
-  % Field Axioms
+  % Field Axioms - these are not provable using the decision
+  % procedures, as the operators are translated to uninterpreted
+  % functions, so that x * x = -1 is consistent.  When the
+  % arguments are (a subtype of) real, then the translation is to
+  % interpreted symbols.
 
   x, y, z: VAR numfield
   n0x: VAR nznum
@@ -1232,19 +1236,19 @@ number_fields: THEORY
 
   identity_add    : POSTULATE x + 0 = x
 
-  inverse_add     : POSTULATE x + -x = 0
+  inverse_add     : AXIOM x + -x = 0
 
-  minus_add       : POSTULATE x - y = x + -y
+  minus_add       : AXIOM x - y = x + -y
 
-  commutative_mult: POSTULATE x * y = y * x
+  commutative_mult: AXIOM x * y = y * x
 
-  associative_mult: POSTULATE x * (y * z) =  (x * y) * z
+  associative_mult: AXIOM x * (y * z) =  (x * y) * z
 
-  identity_mult   : POSTULATE 1 * x = x
+  identity_mult   : AXIOM 1 * x = x
 
-  inverse_mult    : POSTULATE n0x * (1/n0x) = 1
+  inverse_mult    : AXIOM n0x * (1/n0x) = 1
 
-  div_def         : POSTULATE y/n0x = y * (1/n0x)
+  div_def         : AXIOM y/n0x = y * (1/n0x)
 
   distributive    : POSTULATE x * (y + z) = (x * y) + (x * z)
 
@@ -3100,17 +3104,6 @@ finite_sets_def[T: TYPE]: THEORY
 END finite_sets_def
 
 
-finite_sets_of_sets[T: TYPE]: THEORY
- BEGIN
-  A, B: VAR finite_set[T]
-  powerset_finite: JUDGEMENT
-    powerset(A) HAS_TYPE finite_set[set[T]]
-  powerset_finite_finite: JUDGEMENT
-    powerset(A) HAS_TYPE finite_set[finite_set[T]]
-  % Judgement forms are not expressive enough for Union, Intersection
- END finite_sets_of_sets
-
-
 % function_iterate provides the iterate function, which composes a
 % function with itself a specified number of times.  The function must
 % have the same domain and range.  Two useful properties of iterate are
@@ -4146,4 +4139,3 @@ BEGIN
                                bv ^ (i, j) ^ k = bv^(j+k))
 
 END bv_caret 
-  
