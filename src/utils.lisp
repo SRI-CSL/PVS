@@ -2343,8 +2343,6 @@ space")
 					(typealist typealist))
 				   (newcounter *translate-id-counter*)
 				   (assert-if-simplify expr)))))
-		 (when (and nil (not (tc-eq result expr)))
-		   (break "pseudo-norm changed expr"))
 		 (when key
 		   (setf (gethash key *pseudo-normalize-hash*) result))
 		 result)))))))
@@ -3035,10 +3033,34 @@ space")
 	(setf (gethash x *term-print-strings*)
 	      (format nil "~a" x)))))
 
-(defun remove-coercions (obj)
-  (gensubst obj
-    #'(lambda (ex) (argument ex))
-    #'(lambda (ex) (typep ex 'coercion))))
+;; (defun remove-coercions (obj)
+;;   (gensubst obj
+;;     #'(lambda (ex) (argument ex))
+;;     #'(lambda (ex) (typep ex 'coercion))))
+
+(defun remove-coercions (ex)
+  (remove-coercions* ex))
+
+(defmethod remove-coercions* ((name modname))
+  (lcopy name 'actuals (remove-coercions* (actuals name))))
+
+(defmethod remove-coercions* ((list list))
+  (let ((nlist (mapcar #'remove-coercions* list)))
+    (if (equal list nlist)
+	list
+	nlist)))
+
+(defmethod remove-coercions* ((act actual))
+  (if (type-value act)
+      act
+      (lcopy act
+	'expr (remove-coercions* (expr act)))))
+
+(defmethod remove-coercions* ((ex expr))
+  ex)
+
+(defmethod remove-coercions* ((ex coercion))
+  (argument ex))
 
 (defun file-equal (file1 file2)
   (let ((finfo1 (get-file-info file1)))
