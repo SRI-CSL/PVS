@@ -1464,7 +1464,7 @@
   (if (and (cdr reses)
 	   (memq (id (module-instance (car reses)))
 		 '(|equalities| |notequal|)))
-      (filter-equality-resolutions* reses)
+      (filter-equality-resolutions* (nreverse reses))
       reses))
 
 (defun filter-equality-resolutions* (reses &optional result)
