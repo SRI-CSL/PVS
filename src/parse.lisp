@@ -5,12 +5,9 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Wed Nov  4 18:13:31 1998
 ;; Update Count    : 54
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
-
 
 (in-package :pvs)
 
@@ -903,27 +900,33 @@
 	 (place (term-place type-decl)))
     (when (and contains (enumtype? texpr))
       (parse-error tcont "CONTAINING not expected here"))
-    (if (eq tkey 'TYPE)
-	(if eq?
-	    (make-instance 'type-eq-decl
-	      'type-expr texpr
-	      'contains contains
-	      'place place)
-	    (make-instance 'type-from-decl
-	      'type-expr texpr
-	      'contains contains
-	      'place place))
-	(if eq?
-	    (make-instance 'nonempty-type-eq-decl
-	      'keyword tkey
-	      'type-expr texpr
-	      'contains contains
-	      'place place)
-	    (make-instance 'nonempty-type-from-decl
-	      'keyword tkey
-	      'type-expr texpr
-	      'contains contains
-	      'place place)))))
+    (cond ((enumtype? texpr)
+	   (unless eq?
+	     (parse-error (term-arg0 tdef)
+	       "Cannot use FROM on an enumeration type declaration"))
+	   texpr)
+	  ((eq tkey 'TYPE)
+	   (if eq?
+	       (make-instance 'type-eq-decl
+		 'type-expr texpr
+		 'contains contains
+		 'place place)
+	       (make-instance 'type-from-decl
+		 'type-expr texpr
+		 'contains contains
+		 'place place)))
+	  (t
+	   (if eq?
+	       (make-instance 'nonempty-type-eq-decl
+		 'keyword tkey
+		 'type-expr texpr
+		 'contains contains
+		 'place place)
+	       (make-instance 'nonempty-type-from-decl
+		 'keyword tkey
+		 'type-expr texpr
+		 'contains contains
+		 'place place))))))
 
 (defun xt-var-decl (var-decl)
   (let ((dtype (term-arg0 var-decl)))
@@ -1151,7 +1154,7 @@
 	(gensubst range
 	  #'(lambda (ex)
 	      (let ((index (cdr (assq (id ex) bindings))))
-		(make-instance 'projection-application
+		(make-instance 'projappl
 		  'id (makesym "PROJ_~d" index)
 		  'index index
 		  'argument (make-instance 'name-expr 'id tvar))))
@@ -1243,6 +1246,8 @@
     (TUPLE-EXPR (xt-tuple-expr expr))
     (TERM-EXPR (xt-term-expr expr))
     (UNARY-TERM-EXPR (xt-unary-term-expr expr))
+    (FIELDEX (xt-fieldex expr))
+    (PROJEX (xt-projex expr))
     (FIELDAPPL (xt-fieldappl expr))
     (PROJAPPL (xt-projappl expr))
     ;;(intype (xt-intype expr))
@@ -1569,11 +1574,24 @@
 	  (t (incf (parens (car exprs)))
 	     (car exprs)))))
 
+(defun xt-fieldex (expr)
+  (make-instance 'fieldex
+    'id (ds-id (term-arg0 expr))
+    'actuals (unless (is-sop 'NOACTUALS (term-arg1 expr))
+	       (xt-actuals (term-arg1 expr)))
+    'place (term-place expr)))
+
 (defun xt-fieldappl (expr)
   (make-instance 'fieldappl
     'id (ds-id (term-arg1 expr))
     'argument (xt-expr (term-arg0 expr))
     'place (term-place expr)))
+
+(defun xt-projex (expr)
+  (make-instance 'projex
+    'index (ds-number (term-arg0 expr))
+    'actuals (unless (is-sop 'NOACTUALS (term-arg1 expr))
+	       (xt-actuals (term-arg1 expr)))))
 
 (defun xt-projappl (expr)
   (let ((index (ds-number (term-arg1 expr))))
