@@ -5,13 +5,11 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Thu Mar 31 22:53:34 1994
 ;; Update Count    : 2
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
-;; 31-Mar-1994		Sam Owre	
-;;    Last Modified: Thu Mar 31 22:53:34 1994 #2 (Sam Owre)
-;;    Removed endid reference.
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
+
+(in-package :pvs)
 
 
 ;;; Given a typechecked theory (omod) and a parsed theory (nmod) of the
@@ -30,8 +28,6 @@
 ;;; level changes, all declaration references are marked as
 ;;; untypechecked and the new theory simply replaces the old in the
 ;;; context.
-
-(in-package 'pvs)
 
 (defvar *last-diffs* nil "For debugging purposes")
 
@@ -153,22 +149,6 @@
       (lexical (call-next-method)
 	       odecl)
       (t odecl))))
-
-(defun referred-by-proof-decls (odecl)
-  (let* ((refs (append (referred-by odecl)
-		       (mapcan #'(lambda (d) (copy-list (referred-by d)))
-			       (generated odecl))))
-	 (pdecls (remove-if-not #'(lambda (d)
-				    (or (typep d 'proof-decl)
-					(typep d 'formula-decl)))
-			 refs)))
-    (if (and (typep odecl 'const-decl)
-	     (eq (kind odecl) 'literal))
-	(nconc pdecls (mapcan #'referred-by-proof-decls
-			      (remove-if-not #'(lambda (d)
-						 (typep d 'formula-decl))
-					     refs)))
-	pdecls)))
 
 
 ;;; If we are in the stuff below, then we only have lexical differences.
@@ -492,7 +472,7 @@
   (declare (ignore ign))
   (setf (lexical-start osobj) (lexical-start nsobj)
 	(lexical-end osobj) (lexical-end nsobj)
-	(newline-comment osobj) (newline-comment nsobj)
+	;;(newline-comment osobj) (newline-comment nsobj)
 	(delimited-comment osobj) (delimited-comment nsobj)))
 
 (defmethod update ((osvar setvar) (nsvar setvar) &optional ign)
