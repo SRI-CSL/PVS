@@ -271,9 +271,6 @@
 					:id id)))
     new-variable))
 
-(defun mk-new-variable (id type)
-  (mk-variable* id type))
-
 (defun mk-interpreted-constant (sym &optional type)
   (let ((result (mk-constant sym type)))
     (setf (node-interpreted? result) t)
@@ -434,6 +431,17 @@
 			       (application-arguments application))
 	    for i from 1 below (length (the simple-vector arguments))
 	    collect (svref (the simple-vector arguments) i))))
+
+
+(defun congruence-class-of (term cs)
+  (let ((repr (dp-find term cs))
+	(*terms* nil))
+    (maphash #'(lambda (key val)
+		 (declare (ignore key))
+		 (when (eq (dp-find val cs) repr)
+		   (setf *terms* (adjoin val *terms*))))
+	     *term-hash*)
+    *terms*))
 
 (defun mk-predicate-sym (sym)
   (let ((result (mk-constant sym)))
@@ -1017,7 +1025,6 @@
 
 (defmacro previous (reverse-cong-state-stack)
   `(cdr ,reverse-cong-state-stack))
-
 
 
 ;(defvar *cong-state* (null-single-cong-state))
@@ -1692,8 +1699,8 @@
   (cond ((dp-variable-p trm)
         (list trm))
        ((application-p trm)
-	(append (vars-of (funsym trm))
-		(mapcan #'vars-of (funargs trm))))
+	(mapcan #'vars-of
+	  (application-arguments trm)))
        (t nil)))
 
 (defun occurs-p (x trm)
@@ -1702,10 +1709,9 @@
 	((constant-p trm)
 	 (eq x trm))
 	((application-p trm)
-	 (or (occurs-p x (funsym trm))
-	     (some #'(lambda (arg)
+	 (some #'(lambda (arg)
 		       (occurs-p x arg))
-		   (funargs trm))))
+		   (application-arguments trm)))
 	(t nil)))
 
 (defun replace-by (trm subst)
@@ -1719,8 +1725,8 @@
 	 (let ((res (lookup trm *subst*)))
 	   (if res (cdr res) trm)))
 	((application-p trm)
-	 (mk-term (cons (replace-by* (funsym trm))
-		        (mapcar #'replace-by* (funargs trm)))))
+	 (mapcar #'replace-by*
+	   (application-arguments trm)))
 	(t
 	 trm)))
 
@@ -1733,16 +1739,16 @@
 	       (equality-p trm))
 	   (some #'(lambda (arg)
 		     (occurs-in-scope-of-uninterp-p x arg))
-		 (funargs trm))
+		 (application-arguments trm))
          (some #'(lambda (arg)
 	           (occurs-p x arg))
-	       (funargs trm)))))
+	       (application-arguments trm)))))
 
 (defun well-formed-node-p (trm)
   (or (leaf-p trm)
       (and (application-p trm)
-	   (well-formed-node-p (funsym trm))
-	   (every #'well-formed-node-p (funargs trm)))))
+	   (every #'well-formed-node-p
+		  (application-arguments trm)))))
 
 ;; Additional Symbols, Recognizers etc.
 
@@ -1751,6 +1757,7 @@
 (setf *preds* (cons *implies* *preds*))
 
 (defun mk-conjunction (trm1 trm2)
+  (declare (type node trm))
   (mk-term (list *and* trm1 trm2)))
 
 (defun mk-disjunction (trm1 trm2)
@@ -1758,10 +1765,6 @@
 
 (defun mk-implication (trm1 trm2)
   (mk-term (list *implies* trm1 trm2)))
-
-(defun negation-p (term)
-  (and (application-p term)
-       (eq (funsym term) *not*)))
 
 (defun conjunction-p (term)
   (and (application-p term)
