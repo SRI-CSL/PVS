@@ -5,9 +5,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Thu Jul  1 18:50:34 1999
 ;; Update Count    : 56
-;; Status          : Beta test
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -15,6 +13,31 @@
 ;;; summary, which leaves out many of the slots and some of the classes
 ;;; which are mostly useful for unparsing.  This list is mostly useful
 ;;; for defining methods.
+
+;;; This uses the defcl macro, which is similar to defclass, but it
+;;; always creates an :accessor and :initarg, and if an :initarg is
+;;; not given, it defaults to nil rather than being unbound.  Besides
+;;; generating a defclass, this also generates a predicate (the class
+;;; name followed by '?') which may be used as a shorthand in place of
+;;; typep.  It also updates the *slot-info* global variable, which is
+;;; used by write-deferred-methods-to-file to create the
+;;; pvs-methods.lisp file containing the copy, store-object*,
+;;; update-fetched, and restore-object* methods.  The latter three are
+;;; used solely for saving and restoring bin files.  There are also
+;;; slot keywords that control the generated methods treatment of
+;;; slots.  The :parse slot is currently not used; it is intended for
+;;; a automatically generated untypecheck methods, but currently these
+;;; have been developed manually.  The :ignore flag indicates that the
+;;; slot is not to be copied in the copy method.  The :store-as
+;;; indicates the function to be called when storing a given slot.  If
+;;; not provided, store-object* is recursively called on the slot.  If
+;;; nil, then it is stored as nil.  Otherwise the specified function
+;;; is invoked when the bin file is created.  This is needed in order
+;;; to not save session-dependent information, and to break some kinds
+;;; of circularities.  The :fetch-as and :restore-as flags are
+;;; similar, see save-theories.lisp for details.  Note that
+;;; :restore-as nil simply means that there is no need to restore this
+;;; slot, update-fetched did the job.
 
 ;;; Module level
 ;;;   modules		- modules
@@ -94,7 +117,7 @@
 ;;; id, formals, assuming are set by the parser
 
 (defcl datatype-or-module (syntax)
-  (id :type symbol :parse t)
+  (id :type symbol :parse t :restore-as nil)
   (formals :type list
 	   :documentation "a list of formal-decls"
 	   :parse t)
@@ -232,7 +255,7 @@
 (defcl theory-interpretation (module)
   (from-theory :restore-as nil)
   (from-theory-name :restore-as nil)
-  (generated-by-decl :restore-as nil :fetch-as nil)
+  (generated-by-decl :fetch-as nil :restore-as nil)
   (mapping :documentation
 	   "An alist mapping declarations of the from-theory to this theory"))
 
@@ -268,7 +291,7 @@
   (formals :type list :parse t)
   (module :restore-as nil)
   (refers-to :type list :restore-as nil)
-  (referred-by :type list :fetch-as nil)
+  ;;(referred-by :type list :fetch-as nil)
   (chain? :type symbol :parse t :restore-as nil)
   (typechecked? :type symbol :restore-as nil)
   (visible? :type symbol :restore-as nil)
@@ -577,6 +600,8 @@
 (defcl tup-type-variable (type-var))
 
 (defcl cotup-type-variable (type-var))
+
+(defcl rec-type-variable (type-var))
 
 
 ;;; Subtypes are of the form {x [: type] | expr},
