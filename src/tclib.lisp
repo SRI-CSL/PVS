@@ -109,10 +109,13 @@
 								var-decl)))
 				     decls)))
 			 ndecls-hash)
-		(setq *prelude-context*
-		      (copy ctx
-			'declarations-hash ndecls-hash
-			'using-hash nusing-hash)))
+		(let ((pusing-hash (copy nusing-hash)))
+		  (setf (gethash (theory ctx) pusing-hash)
+			(list (theory-name ctx)))
+		  (setq *prelude-context*
+			(copy ctx
+			  'declarations-hash ndecls-hash
+			  'using-hash pusing-hash))))
 	      (when (eq (id m) '|booleans|)
 		(let ((*current-context* (saved-context m)))
 		  (setq *true*
@@ -245,31 +248,28 @@
 		   (typecheck-file (ce-file ce)))
 		 (save-context)
 		 (maphash #'(lambda (id th)
+			      (declare (ignore id))
 			      (if (module? th)
 				  (change-class th 'library-theory)
 				  (change-class th 'library-datatype))
 			      (setf (library th) lib)
-			      (setq *prelude-library-context*
-				    (if (null *prelude-library-context*)
-					(copy-context (saved-context th))
-					(let ((*current-context*
-					       *prelude-library-context*))
-					  (assert *prelude-library-context*)
-					  (assert *current-context*)
-					  (update-current-context
-					   th (mk-modname id))
-					  (dolist (decl (append (assuming th)
-								(theory th)))
-					    (when (and (declaration? decl)
-						       (visible? decl))
-					      (put-decl
-					       decl
-					       (current-declarations-hash))))))))
+			      (update-prelude-library-context th))
 			  *pvs-modules*)
 		 (setf (gethash lib *prelude-libraries*)
 		       (list *pvs-files* *pvs-modules*)))
 		(t (pvs-message "~a.pvscontext is empty - library not loaded"
 		     (namestring lib))))))))
+
+(defun update-prelude-library-context (th)
+  (unless *prelude-library-context*
+    (setq *prelude-library-context* (copy-context (saved-context th))))
+  (let ((*current-context* *prelude-library-context*)
+	(thname (mk-modname (id th))))
+    (update-current-context th thname)
+    (dolist (decl (append (assuming th) (theory th)))
+      (when (and (declaration? decl) (visible? decl))
+	(put-decl decl (current-declarations-hash))))
+    (setf (gethash th (current-using-hash)) (list thname))))
 
 ;;; Given a string, determine whether it is a simple string or a directory
 ;;; name, and add the pvs lib directory to the latter.
