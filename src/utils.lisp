@@ -621,7 +621,9 @@
 (defun add-decl-test (x y)
   (and (eq (kind-of x) (kind-of y))
        (case (kind-of x)
-	 ((expr judgement conversion) (tc-eq (type x) (type y)))
+	 (expr (tc-eq (type x) (type y)))
+	 ((judgement conversion) (and (eq (class-of x) (class-of y))
+				      (tc-eq (type x) (type y))))
 	 (auto-rewrite (and (if (auto-rewrite-minus-decl? x)
 				(auto-rewrite-minus-decl? y)
 				(not (auto-rewrite-minus-decl? y)))
@@ -827,25 +829,25 @@
 	 (*current-theory* theory)
 	 (*current-context*
 	  (if (or (not prev-imp) (saved-context prev-imp))
-	      (copy-context (cond (prev-imp
-				   (saved-context prev-imp))
-				  ((from-prelude? decl)
-				   (let ((prevp
-					  (cadr (memq theory
-						      (reverse
-						       *prelude-theories*)))))
-				     (saved-context
+	      (cond (prev-imp
+		     (copy-context (saved-context prev-imp)
+				   theory (reverse rem-decls)
+				   (or (car rem-decls) decl)))
+		    ((from-prelude? decl)
+		     (let ((prevp
+			    (cadr (memq theory
+					(reverse
+					 *prelude-theories*)))))
+		       (copy-context (saved-context
 				      (if (datatype? prevp)
 					  (or (adt-reduce-theory prevp)
 					      (adt-map-theory prevp)
 					      (adt-theory prevp))
-					  prevp))))
-				  (t (or *prelude-library-context*
-					 *prelude-context*)))
-			    theory
-			    (reverse rem-decls)
-			    (or (car rem-decls) decl))
-	      (make-new-context theory))))
+					  prevp))
+				     theory
+				     (reverse rem-decls)
+				     (or (car rem-decls) decl))))
+		    (t (make-new-context theory))))))
     ;;; Need to clear this hash or the known-subtypes table won't get
     ;;; updated properly - see add-to-known-subtypes.
     (clrhash *subtype-of-hash*)
@@ -866,7 +868,7 @@
 	   (add-usings-to-context* th thname))
 	 (setf (saved-context d) (copy-context *current-context*)))
 	(subtype-judgement (add-to-known-subtypes (subtype d) (type d)))
-	(judgement (add-judgement-decl d))
+	(judgement (add-judgement-decl d t))
 	(conversionminus-decl (disable-conversion d))
 	(conversion-decl (push d (conversions *current-context*)))
 	(auto-rewrite-minus-decl (push d (disabled-auto-rewrites
@@ -1044,7 +1046,9 @@
 	   'auto-rewrites (copy-list (auto-rewrites context))
 	   'disabled-auto-rewrites (copy-list (disabled-auto-rewrites context)))))
     (setf (judgements *current-context*)
-	  (copy-judgements (judgements context)))
+	  (if (from-prelude? *current-theory*)
+	      (set-prelude-context-judgements (judgements context))
+	      (copy-judgements (judgements context))))
     *current-context*))
 
 (defun copy-prover-context (&optional (context *current-context*))
@@ -1774,6 +1778,9 @@
 (defmethod constructors ((te subtype))
   (constructors (supertype te)))
 
+(defmethod constructors ((te datatype-subtype))
+  (constructors (declared-type te)))
+
 (defmethod recognizers ((tn type-name))
   (when (adt? tn)
     (if (and (recognizer-names tn)
@@ -1915,6 +1922,12 @@
 		      (not (eq (id (module-instance (resolution x)))
 			       (id (current-theory)))))
 	      (id (module-instance (resolution x))))
+    'library (or (library x)
+		 (library (module-instance (resolution x)))
+		 (when (and (declaration x)
+			    (library-datatype-or-theory?
+			     (module (declaration x))))
+		   (libref-to-libid (lib-ref (module (declaration x))))))
     'actuals (full-name (actuals (module-instance (resolution x)))
 			(when *full-name-depth*
 			  (1- *full-name-depth*)))
@@ -1933,27 +1946,34 @@
 			 (or (null (current-theory))
 			     (not (eq modid (id (current-theory))))))
 		modid)
+      'library (or (library x)
+		   (library (module-instance (resolution x)))
+		   (when (and (declaration x)
+			      (library-datatype-or-theory?
+			       (module (declaration x))))
+		     (libref-to-libid (lib-ref (module (declaration x))))))
       'actuals (full-name (actuals mi)
 			  (when *full-name-depth*
-			    (1- *full-name-depth*))))))
+			    (1- *full-name-depth*)))
+      'mappings (mappings (module-instance (resolution x))))))
 
 (defmethod full-name? ((x injection-expr))
   (null (actuals x)))
 
 (defmethod full-name! ((x injection-expr))
-  (lcopy x 'actuals (list (mk-actual (break)))))
+  (lcopy x 'actuals (list (mk-actual (range (type x))))))
 
 (defmethod full-name? ((x extraction-expr))
   (null (actuals x)))
 
 (defmethod full-name! ((x extraction-expr))
-  (lcopy x 'actuals (list (mk-actual (break)))))
+  (lcopy x 'actuals (list (mk-actual (domain (type x))))))
 
 (defmethod full-name? ((x injection?-expr))
   (null (actuals x)))
 
 (defmethod full-name! ((x injection?-expr))
-  (lcopy x 'actuals (list (mk-actual (break)))))
+  (lcopy x 'actuals (list (mk-actual (domain (type x))))))
 
 (defmethod full-name? ((x injection-application))
   (null (actuals x)))
@@ -2534,10 +2554,8 @@ space")
   (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
 
 (defun reset-pseudo-normalize-caches ()
-  (if *pseudo-normalize-hash*
-      (clrhash *pseudo-normalize-hash*)
-      (setq *pseudo-normalize-hash*
-	    (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq)))
+  (setq *pseudo-normalize-hash*
+	(make-lhash-table :hash-function 'pvs-sxhash :test 'tc-eq))
   (if *pseudo-normalize-translate-to-prove-hash*
       (clrhash *pseudo-normalize-translate-to-prove-hash*)
       (setq *pseudo-normalize-translate-to-prove-hash*
@@ -2561,7 +2579,7 @@ space")
       (let* ((fvars (freevars expr))
 	     (key (unless nil;fvars
 		    (cons expr include-typepreds?)))
-	     (nexpr (when key (gethash key *pseudo-normalize-hash*))))
+	     (nexpr (when key (get-lhash key *pseudo-normalize-hash*))))
 	;;(push expr pnexprs)
 	(if nexpr
 	    (if (tc-eq nexpr expr)
@@ -2599,7 +2617,7 @@ space")
 				   (newcounter *translate-id-counter*)
 				   (assert-if-simplify expr)))))
 		 (when key
-		   (setf (gethash key *pseudo-normalize-hash*) result))
+		   (setf (get-lhash key *pseudo-normalize-hash*) result))
 		 ;; (unless (tc-eq result (partial-normalize expr))
 		 ;;   (break "Different pseudo-normalize results"))
 		 result)))))))
@@ -3720,3 +3738,62 @@ space")
 		    (a (mapcar #'class-name (method-specializers m))))
 		`(method ,funsym ,@q ,a)))
     (generic-function-methods (symbol-function funsym))))
+
+;;; equals is like equalp, but is case-sensitive
+(defun equals (x y)
+  (or (eq x y)
+      (typecase x
+	(number (and (numberp y) (= x y)))
+	(character (and (characterp y) (char= x y)))
+	(string (if (stringp y)
+		    (excl::simple-string= x y)
+		    (and (arrayp y)
+			 (equals-arrays x y))))
+	(cons (and (consp y)
+		   (equals (car x) (car y))
+		   (equals (cdr x) (cdr y))))
+	;; Note that this also works for strings, as well as comparing a string
+	;; to an array of chars
+	(array (and (arrayp y)
+		    (equals-arrays x y)))
+	(hash-table (and (hash-table-p y)
+			 (equals-hashes x y)))
+	(structure-object
+	 (and (eq (type-of x) (type-of y))
+	      (let ((slots (class-slots (class-of x))))
+		(every #'(lambda (slot)
+			   (let ((name (slot-definition-name slot)))
+			     (equals (slot-value x name) (slot-value y name))))
+		       slots)))))))
+		     
+(defun equals-arrays (x y)
+  (and (equal (array-dimensions x) (array-dimensions y))
+       (let ((size (array-total-size x)))
+	 (or (zerop size)
+	     (equals-arrays* x y (1- size))))))
+
+(defun equals-arrays* (x y i)
+  (declare (type (array *) x) (type (array *) y) (type fixnum i))
+  (and (equals (row-major-aref x i) (row-major-aref y i))
+       (or (zerop i)
+	   (equals-arrays* x y (1- i)))))
+
+(defun equals-hashes (x y)
+  (and (eq (hash-table-test x) (hash-table-test y))
+       (= (hash-table-count x) (hash-table-count y))
+       (let ((equals? t))
+	 (maphash #'(lambda (key value1)
+		      (multiple-value-bind (value2 there?)
+			  (gethash key y)
+			(unless (and there?
+				     (equals value1 value2))
+			  (setf equals? nil))))
+		  x)
+	 equals?)))
+
+(defun equals-structs (x y)
+  (let ((slots (class-slots (class-of x))))
+    (every #'(lambda (slot)
+	       (let ((name (slot-value slot 'excl::name)))
+		 (equals (slot-value x name) (slot-value y name))))
+	   slots)))
