@@ -3,8 +3,8 @@
 ## Author          : Sam Owre
 ## Created On      : Wed Dec 30 19:29:47 1998
 ## Last Modified By: Sam Owre
-## Last Modified On: Sat Jan  2 23:46:17 1999
-## Update Count    : 20
+## Last Modified On: Sun Jan  3 03:00:40 1999
+## Update Count    : 21
 ## Status          : Alpha test
 ###############################################################################
 .SUFFIXES:
@@ -27,6 +27,12 @@ ifeq ($(PLATFORM),ix86-redhat5)
 endif
 endif
 endif
+
+EMACS20 = /usr/bin/emacs-20.3
+EMACS19 = /pkg/bin/emacs19
+XEMACS20 = /usr/local/bin/xemacs-20.4
+XEMACS19 = /pkg/bin/xemacs-19.15
+
 bindir = bin/$(PLATFORM)
 binfiles = pvs-${lisp}-full pvs-${lisp} atob btoa chunk
 pvsfull = ${bindir}/full/pvs-${lisp}
@@ -219,6 +225,14 @@ ilisp = emacs/emacs-src/ilisp/cl-ilisp.lisp \
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
              ${pvs-prover} ${bddlisp} ${decision-procedures} ${ilisp}
 
+emacs-src = $(wildcard emacs/emacs-src/*.el) \
+            $(wildcard emacs/emacs-src/ilisp/*.el)
+
+emacs20-src = $(addprefix emacs/emacs20/,$(notdir ${pvs-emacs-src}))
+emacs19-src = $(addprefix emacs/emacs19/,$(notdir ${pvs-emacs-src}))
+xemacs20-src = $(addprefix emacs/xemacs20/,$(notdir ${pvs-emacs-src}))
+xemacs19-src = $(addprefix emacs/xemacs19/,$(notdir ${pvs-emacs-src}))
+
 fasl-files = $(lisp-files:.lisp=.$(LISPEXT))
 
 all : makebdd makepolylib ${pvsfull} ${pvsrt}
@@ -259,3 +273,39 @@ makebdd :
 	$(MAKE) -C BDD/$(PLATFORM)
 makepolylib :
 	$(MAKE) -C src/decision-procedures/polylib/$(PLATFORM)
+
+${emacs20-src} : ${emacs-src}
+	(cd emacs/emacs20; ln -s ../emacs-src/*el ../emacs-src/ilisp/*el .)
+
+${emacs19-src} : ${emacs-src}
+	(cd emacs/emacs19; ln -s ../emacs-src/*el ../emacs-src/ilisp/*el .)
+
+${xemacs20-src} : ${emacs-src}
+	(cd emacs/xemacs20; ln -s ../emacs-src/*el ../emacs-src/ilisp/*el .)
+
+${xemacs19-src} : ${emacs-src}
+	(cd emacs/xemacs19; ln -s ../emacs-src/*el ../emacs-src/ilisp/*el .)
+
+ifeq ($(shell if [ -x ${emacs20} ] ; then echo OK ; fi), OK)
+emacs20-elc = $(emacs20-src:.el=.elc)
+${emacs20-elc} : ${emacs20-src}
+	(cd emacs/emacs20; $(EMACS20) -batch -l pvs-byte-compile.el)
+endif
+
+ifeq ($(shell if [ -x ${emacs19} ] ; then echo OK ; fi), OK)
+emacs19-elc = $(emacs19-src:.el=.elc)
+${emacs19-elc} : ${emacs19-src}
+	(cd emacs/emacs19; $(EMACS19) -batch -l pvs-byte-compile.el)
+endif
+
+ifeq ($(shell if [ -x ${xemacs20} ] ; then echo OK ; fi), OK)
+xemacs20-elc = $(xemacs20-src:.el=.elc)
+${xemacs20-elc} : ${xemacs20-src}
+	(cd emacs/xemacs20; $(XEMACS20) -batch -l pvs-byte-compile.el)
+endif
+
+ifeq ($(shell if [ -x ${xemacs19} ] ; then echo OK ; fi), OK)
+xemacs19-elc = $(xemacs19-src:.el=.elc)
+${xemacs19-elc} : ${xemacs19-src}
+	(cd emacs/xemacs19; $(XEMACS19) -batch -l pvs-byte-compile.el)
+endif
