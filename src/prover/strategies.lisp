@@ -45,6 +45,25 @@
 	  ((not (stringp format))
 	   (error "Format-string ~a is not a string (in double quotes)."
 		  format))))
+  (defun extract-lisp-exprs-from-strat-body (body &optional lispexprs)
+    (cond ((null body)
+	   (nreverse lispexprs))
+	  ((consp body)
+	   (cond ((eq (car body) 'if)
+		  (extract-lisp-exprs-from-strat-body
+		   (cddr body) (cons (cadr body) lispexprs)))
+		 ((eq (car body) 'let)
+		  (let ((nexprs (extract-lisp-exprs-from-strat-body
+				 (cddr body))))
+		    (nreverse (cons `(let* ,(cadr body)
+				       ,@(cons `(list ,@(mapcar #'car
+							  (cadr body)))
+					       nexprs))
+				    lispexprs))))
+		 (t (extract-lisp-exprs-from-strat-body
+		     (cdr body)
+		     (extract-lisp-exprs-from-strat-body (car body) lispexprs)))))
+	  (t (nreverse lispexprs))))
   )
 
 ;DAVESC
@@ -173,27 +192,6 @@
 	     (cons ',(makesym "~a/$" name) ',args)
 	     ,doc)
 	   (format nil "~%~a," ,format)))))
-
-(defun extract-lisp-exprs-from-strat-body (body &optional lispexprs)
-  (cond ((null body)
-	 (nreverse lispexprs))
-	((consp body)
-	 (cond ((eq (car body) 'if)
-		(extract-lisp-exprs-from-strat-body
-		 (cddr body) (cons (cadr body) lispexprs)))
-	       ((eq (car body) 'let)
-		(let ((nexprs (extract-lisp-exprs-from-strat-body
-			       (cddr body))))
-		  (nreverse (cons `(let* ,(cadr body)
-				     ,@(cons `(list ,@(mapcar #'car
-							(cadr body)))
-					     nexprs))
-				  lispexprs))))
-	       (t (extract-lisp-exprs-from-strat-body
-		   (cdr body)
-		   (extract-lisp-exprs-from-strat-body (car body) lispexprs)))))
-	(t (nreverse lispexprs))))
-						    
 
 
 (defmacro defhelper (name args body doc format)
