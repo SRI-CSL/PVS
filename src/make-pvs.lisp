@@ -34,10 +34,10 @@
 	     :debug-on-error t
 	     ;; :destination-directory nil
 	     :discard-arglists nil
-	     :discard-compiler nil
+	     :discard-compiler *runtime*
 	     :discard-local-name-info nil
-	     :discard-source-file-info nil
-	     :discard-xref-info nil
+	     :discard-source-file-info *runtime*
+	     :discard-xref-info *runtime*
 	     ;; :dribble-file nil
 	     :dst t
 	     :exit-after-image-build t
@@ -46,8 +46,8 @@
 	     ;; :include-common-graphics nil ;Windows
 	     :include-compiler t
 	     :include-composer nil
-	     :include-debugger t
-	     :include-devel-env t
+	     :include-debugger (not *runtime*)
+	     :include-devel-env (not *runtime*)
 	     ;; :include-ide nil ;Windows
 	     :include-tpl t
 	     :include-xcw nil
@@ -56,8 +56,8 @@
 	     :lisp-heap-start nil
 	     ;; :lisp-files nil
 	     :load-local-names-info nil
-	     :load-source-file-info t
-	     :load-xref-info t
+	     :load-source-file-info (not *runtime*)
+	     :load-xref-info (not *runtime*)
 	     :newspace 4000000
 	     :oldspace 512000
 	     :opt-debug 1
@@ -75,11 +75,11 @@
 	     ;; :presto-lib nil
 	     ;; :print-startup-message t
 	     :read-init-files nil
-	     :record-source-file-info t
-	     :record-xref-info t
+	     :record-source-file-info (not *runtime*)
+	     :record-xref-info (not *runtime*)
 	     :restart-app-function nil
 	     :restart-init-function nil
-	     :runtime nil
+	     :runtime (when *runtime* :standard)
 	     :server-name nil
 	     ;; :show-window nil ;Windows
 	     ;; :splash-from-file nil ;Windows
