@@ -25,10 +25,18 @@
   (let ((lhs (lhs eqn))
 	(rhs (rhs eqn)))
     (cond
-     ((record-p lhs)
+     ((and
+       (record-p lhs)
+       (record-p rhs))
       (record-solve-1 lhs rhs cong-state))
+     ((record-p lhs)
+      (if (occurs-under-interp rhs lhs)
+	  (record-solve-1 lhs rhs cong-state)
+	  (list (mk-equality rhs lhs))))
      ((record-p rhs)
-      (record-solve-1 rhs lhs cong-state))
+      (if (occurs-under-interp lhs rhs)
+	  (record-solve-1 rhs lhs cong-state)
+	  (list eqn)))
      (t (break "Should not be here.")))))
 
 (defun record-solve-1 (lhs rhs cong-state)
