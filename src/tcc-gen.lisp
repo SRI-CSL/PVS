@@ -272,13 +272,13 @@
       ;; Now we can build the universal closure
       (let* ((nbody (substit (if antes
 				 (make!-implication
-				  (make!-conjunction* antes)
+				  (make!-conjunction* (reverse antes))
 				  expr)
 				 expr)
 		      substs))
 	     (nbindings (get-tcc-closure-bindings bindings nbody))
 	     (nexpr (if nbindings
-			(make!-forall-expr nbindings nbody)
+			(make!-forall-expr (reverse nbindings) nbody)
 			nbody)))
 	(add-tcc-conditions* nexpr conditions substs nil))))
 
