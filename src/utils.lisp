@@ -2211,7 +2211,8 @@
     (if (and adt
 	     (positive-types adt)
 	     (not (every #'null (positive-types adt))))
-	(let* ((nmodinst (adt-modinst (module-instance te))))
+	(let* ((nmodinst (adt-modinst (module-instance te)
+				      (module (declaration te)))))
 	  (if (tc-eq nmodinst (module-instance te))
 	      te
 	      (let* ((res (mk-resolution (declaration te) nmodinst nil))
