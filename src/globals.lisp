@@ -19,7 +19,7 @@
 
 (defparameter *pvs-directories*
   '("" "src" "ground-prover" "src/prover" "src/decision-procedures"
-    "src/decision-procedures/polylib" "src/utils" "BDD"
+    "src/decision-procedures/polylib" "src/utils" "BDD" "src/interface"
     "src/prover/groundeval" "src/WS1S/lisp"))
 
 (defparameter *pvs-version* "2.3 Alpha")
