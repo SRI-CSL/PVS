@@ -108,6 +108,9 @@
 (defmethod judgement-eq ((d1 application-judgement) (d2 application-judgement))
   (tc-eq (judgement-type d1) (judgement-type d2)))
 
+(defmethod judgement-eq ((d1 number-judgement) (d2 number-judgement))
+  (tc-eq (type d1) (type d2)))
+
 (defmethod judgement-lt ((d1 number-judgement) (d2 number-judgement))
   (and (not (tc-eq (type d1) (type d2)))
        (subtype-of? (type d1) (type d2))))
@@ -1115,20 +1118,27 @@
 
 (defun merge-number-judgements (from-hash to-hash theory theoryname)
   (unless (zerop (hash-table-count from-hash))
-    (maphash #'(lambda (num jdecls)
-		 (let* ((to-judgements (gethash num to-hash))
-			(subst-judgements
-			 (subst-params-decls jdecls theory theoryname))
-			(sjdecls (minimal-judgement-decls
-				  (remove-if #'(lambda (sj)
-						 (member sj to-judgements
-							 :test #'tc-eq))
-				    subst-judgements)
-				  to-judgements)))
-		   (unless (equal sjdecls to-judgements)
-		     (setf (gethash num to-hash) sjdecls)
-		     (setf *judgements-added* t))))
-	     from-hash)))
+    (if (and (zerop (hash-table-count to-hash))
+	     (null (actuals theoryname)))
+	(maphash #'(lambda (num jdecls)
+		     (setf (gethash num to-hash) jdecls))
+		 from-hash)
+	(maphash #'(lambda (num jdecls)
+		     (let* ((to-judgements (gethash num to-hash))
+			    (subst-judgements
+			     (subst-params-decls jdecls theory theoryname))
+			    (sjdecls (minimal-judgement-decls
+				      (remove-if #'(lambda (sj)
+						     (member (type sj)
+							     to-judgements
+							     :test #'tc-eq
+							     :key #'type))
+					subst-judgements)
+				      to-judgements)))
+		       (unless (equal sjdecls to-judgements)
+			 (setf (gethash num to-hash) sjdecls)
+			 (setf *judgements-added* t))))
+		 from-hash))))
 
 (defun merge-name-judgements (from-hash to-hash theory theoryname)
   (unless (zerop (hash-table-count from-hash))
