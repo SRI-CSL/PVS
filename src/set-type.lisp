@@ -524,7 +524,11 @@ required a context.")
 		 ((null threses)
 		  (type-error (expr rhs)
 		    "No resolution for theory name ~a" (expr rhs)))
-		 (t (setf (resolutions (expr rhs)) threses)))))
+		 (t (setf (resolutions (expr rhs)) threses)
+		    (when (mappings (expr rhs))
+		      (set-type-mappings (mappings (expr rhs))
+					 (name-to-modname
+					  (expr rhs))))))))
 	(t (let* ((ptypes (remove-if-not #'type-expr? (ptypes (expr rhs))))
 		  (types (get-compatible-rhs-types
 			  (type (declaration lhs))
