@@ -1542,6 +1542,8 @@
 (defun occurs-p (x trm)
   (cond ((dp-variable-p trm)
 	 (eq x trm))
+	((constant-p trm)
+	 (eq x trm))
 	((application-p trm)
 	 (some #'(lambda (e)
 		   (occurs-p x e))
