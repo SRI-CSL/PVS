@@ -1,13 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Diploma Thesis:
-;;; "Solving Bit-Vector Equations 
-;;;  - A Decision Procedure for Hardware Verifikation"
-;;;
 ;;; M. Oliver M"oller
 ;;; University of Ulm
-;;; Faculty of Computer Science (Informatik)
-;;; AI Department (Abteilung f"ur k"unstliche Intelligenz)
-;;; Supervising Professor:  Friedrich W. von Henke
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; ------------------------------------------------------------
@@ -30,96 +23,9 @@
 ;;; Begun:         October, 12th 1997
 ;;; Last Changes:  March, 16th    1998
 ;;; Version 2.0
-
-(in-package bvec)
-
-(defconstant *ifsafe* nil) ;;; Process Assertions and safety-requests?
-
-(defmacro ifassert (body)
-  (if *ifsafe* `(assert ,body)))
-
-(if *ifsafe*
-    (proclaim '(optimize (speed 1) (safety 3) (space 0) (debug 3)))
-  (proclaim '(optimize (speed 3) (safety 1) (space 0) (debug 0))))
-
-
-;;; BOOLEAN SECTION
-(defvar *true_bit* dp::*TRUE*)
-(defvar *false_bit* dp::*FALSE*)
-(defvar *bvec_value_range* `(,*true_bit* ,*false_bit*))
-
-
-(defun mk-bv-predicate-sym (sym)
-  (let ((result (dp::mk-constant sym)))
-    (setf (dp::node-type result) 'bv-predicate)
-    (setf (dp::node-interpreted? result) t)
-    result))
-
-
-(defvar *bv-not* (mk-bv-predicate-sym 'bv-not))
-(defvar *bv-and* (mk-bv-predicate-sym 'bv-and))
-(defvar *bv-or* (mk-bv-predicate-sym 'bv-or))
-(defvar *bv-xor* (mk-bv-predicate-sym 'bv-xor))
-(defvar *bv-ite* (mk-bv-predicate-sym 'bv-ite))
-(defvar *bv-equiv* (mk-bv-predicate-sym 'bv-equiv))
-(defvar *bv-equal* (mk-bv-predicate-sym 'bv-equal))
-
-(defvar *bvec_bool_mops* `(,*BV-NOT*))
-(defvar *bvec_bool_binops*
-  `(,*BV-AND* ,*BV-OR* ,*BV-XOR* ,*BV-EQUIV* ,*BV-EQUAL*))
-(defvar *bvec_bool_ternops*   '() ) ;;BV-ITE))
-(defvar *bvec_bool_ops*
-    (append *bvec_bool_mops*
-	    *bvec_bool_binops*
-	    *bvec_bool_ternops*))
-
-
-(defconstant *inf* EXCL::*INFINITY-DOUBLE*)
-
-(defun mk-bv-operator (sym)
-  (let ((result (dp::mk-constant sym)))
-    (setf (dp::node-type result) 'bv-op)
-    (setf (dp::node-interpreted? result) t)
-    result))
-
-(defvar *bv-compose* (mk-bv-operator 'bv-compose))
-(defvar *bv-extract* (mk-bv-operator 'bv-extract))
-(defvar *bv-var* (mk-bv-operator 'bv-var))
-(defvar *bv-const* (mk-bv-operator 'bv-const))
-(defvar *bv-fill* (mk-bv-operator 'bv-fill))
-
-(defvar   *bvec_recognizers*
-  (list
-   *BV-COMPOSE*
-   *BV-EXTRACT*
-   *BV-VAR*
-   *BV-CONST*
-   *BV-FILL*
-   *BV-AND*
-   *BV-OR*
-   *BV-NOT*
-   *BV-XOR*
-   *BV-ITE*
-   *BV-EQUIV*
-   *BV-EQUAL*
-   ))
-
-(defvar *nat2bv* (mk-bv-operator 'nat2bv))
-(defvar *bv2nat* (mk-bv-operator 'bv2nat))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; NOTE: 
-;;;  The term notation is NOT identic with the one in the
-;;;   Diploma Thesis!
-;;;  Due to an (obsolete) design decision, the least significant
-;;,  bit is at the rightmost position and concatenations are the
-;;;  other way round as a consequence;
-;;;  eg. ( x{4} o y{4} ) ^ (1,0) = y{4} ^ (1,0)
-;;;
-;;;  "composition" is a synonym to concatenation
 ;;;
 ;;; ----------------------------------------------------------------------
-;;; - Access to the data-structures
+;;; Data-structures
 ;;; ----------------------------------------------------------------------
 ;;;
 ;;; <bvec>               ::= <bv-var>|<bv-const>|<composition>|<extraction>
@@ -179,27 +85,70 @@
 ;;; - <nat-less>            make-nat-less
 ;;;
 ;;; The theory also contains the empty bit-vector BV-EPSILON : bvec[0]
-;;;  due to structural reasons.
-;;; This is not consitent with the concept in the diploma thesis but
-;;;  turned out to make canonization of variable width much simpler.
 ;;;------------------------------------------------------------------------
 
+(in-package bvec)
 
-;;; -------------------------------------------------------------
-;;;   Checking of (Sub-)types
-;;; -------------------------------------------------------------
+;; Miscellaneous
+
+(defconstant *inf* EXCL::*INFINITY-DOUBLE*)
+
+(defvar *true_bit* dp::*TRUE*)
+(defvar *false_bit* dp::*FALSE*)
+(defvar *bvec_value_range* `(,*true_bit* ,*false_bit*))
+
+(defun mk-bv-predicate-sym (sym)
+  (let ((result (dp::mk-constant sym)))
+    (setf (dp::node-type result) 'bv-predicate)
+    (setf (dp::node-interpreted? result) t)
+    result))
+
+;; Signature
+
+(defvar *bv-compose* (mk-bv-operator 'bv-compose))
+(defvar *bv-extract* (mk-bv-operator 'bv-extract))
+(defvar *bv-var* (mk-bv-operator 'bv-var))
+(defvar *bv-const* (mk-bv-operator 'bv-const))
+(defvar *bv-fill* (mk-bv-operator 'bv-fill))
+
+(defvar *bv-not* (mk-bv-predicate-sym 'bv-not))
+(defvar *bv-and* (mk-bv-predicate-sym 'bv-and))
+(defvar *bv-or* (mk-bv-predicate-sym 'bv-or))
+(defvar *bv-xor* (mk-bv-predicate-sym 'bv-xor))
+(defvar *bv-ite* (mk-bv-predicate-sym 'bv-ite))
+(defvar *bv-equiv* (mk-bv-predicate-sym 'bv-equiv))
+(defvar *bv-equal* (mk-bv-predicate-sym 'bv-equal))
+
+(defvar *nat2bv* (mk-bv-operator 'nat2bv))
+(defvar *bv2nat* (mk-bv-operator 'bv2nat))
+
+
+(defvar *bvec_recognizers*
+  (list *BV-COMPOSE* *BV-EXTRACT* *BV-VAR* *BV-CONST* *BV-FILL*
+	*BV-AND* *BV-OR* *BV-NOT* *BV-XOR* *BV-ITE* *BV-EQUIV* *BV-EQUAL*))
+
+(defvar *bvec_bool_mops* `(,*BV-NOT*))
+
+(defvar *bvec_bool_binops*
+  `(,*BV-AND* ,*BV-OR* ,*BV-XOR* ,*BV-EQUIV* ,*BV-EQUAL*))
+
+(defvar *bvec_bool_ternops*   '() ) ;;BV-ITE))
+(defvar *bvec_bool_ops*
+  (append *bvec_bool_mops* *bvec_bool_binops* *bvec_bool_ternops*))
+
+; predicates
 
 (defun is-bv? (l) 
-  (or   (is-bv-epsilon? l)
-        (is-bv-var? l)
-	(is-bv-const? l)
-        (is-bv-extraction? l)
-        (is-bv-composition? l)
-	(is-bdd? l)
-	))
+  (or (eq (dp::node-type l) 'bv-op) ; added -hr
+      (is-bv-epsilon? l)
+      (is-bv-var? l)
+      (is-bv-const? l)
+      (is-bv-extraction? l)
+      (is-bv-composition? l)
+      (is-bdd? l)))
 
-(defun is-bv-var? (var) 
-  (and (dp::application-p var)
+(defun is-bv-var? (trm) 
+  (and (dp::application-p trm)
        (eq (dp::funsym var) *BV-VAR*)))
 
 (defun is-bv-const? (l)
@@ -235,7 +184,6 @@
   (or (is-nat-var? l)
       (is-fixed-nat? l)))
 
-
 (defun is-nat-var? (l)
   (and (dp::application-p l)
        (= (dp::arity l) 1)
@@ -246,14 +194,12 @@
    (>= (dp::constant-id l) 0)))
 
 (defun is-fixed-int? (l)
-  (or
-   (dp::dp-integerp l)
-   (eq (dp::constant-id l) *inf*)
-   (eq (dp::constant-id l) (- 0 *inf*))))
+  (or (dp::dp-integerp l)
+      (eq (dp::constant-id l) *inf*)
+      (eq (dp::constant-id l) (- 0 *inf*))))
 
 (defmacro rec-fixed-int? (l)
   `(dp::dp-integerp ,l))
-
 
 (defun is-fixed-posnat? (l)
   (and (dp::dp-integerp l)
@@ -262,7 +208,6 @@
 ;;; ------------------------------------------------------------
 ;;;  Recognizing Types
 ;;; ------------------------------------------------------------
-
 
 (defmacro rec-bv-var? (bv)
   `(and (dp::application-p ,bv)
@@ -412,33 +357,33 @@
 ;;; ----------------------------------------------------------------------
 
 (defun make-bv-var (name len)
-  (ifassert (or (not (stringp name))
-	      (not (string= (EXCL::substring-simple name 0 6)
-			    "FRESH_"))))
+  #+dbg(assert (or (not (stringp name))
+		   (not (string= (EXCL::substring-simple name 0 6)
+				 "FRESH_"))))
   (dp::mk-term `(,*BV-VAR* ,name ,len)))
 
 (defun make-bv-const (val len)
-  (dp::mk-term `(,*BV-CONST* ,(dp::mk-dp-number val) ,(dp::mk-dp-number len))))
+  (dp::mk-term `(,*BV-CONST* ,(dp::mk-dp-number val)
+			     ,(dp::mk-dp-number len))))
 
 (defun append-bv-const (c1 c2)
-  (dp::mk-term
-   `(,*BV-CONST* ,(dp::mk-dp-number
-		   (+ (bv-const-value c2)
-		      (* (bv-const-value c1) (expt 2 (bv-const-length c2)))))
-		 ,(dp::mk-dp-number
-		   (+ (bv-const-length c1)
-		      (bv-const-length c2))))))
+  (dp::mk-term `(,*BV-CONST* ,(dp::mk-dp-number
+			       (+ (bv-const-value c2)
+				  (* (bv-const-value c1)
+				     (expt 2 (bv-const-length c2)))))
+			     ,(dp::mk-dp-number
+			       (+ (bv-const-length c1)
+				  (bv-const-length c2))))))
 
 (defun extract-bv-const (value left right)
-  (dp::mk-term 
-   `(,*BV-CONST* ,(dp::mk-dp-number
-		   (mod (div value (expt 2 right))
-			(expt 2 (1+ (- left right)))))
-		 ,(dp::mk-dp-number
-		   (1+ (- left right))))))
+  (dp::mk-term `(,*BV-CONST* ,(dp::mk-dp-number
+			       (mod (div value (expt 2 right))
+				    (expt 2 (1+ (- left right)))))
+			     ,(dp::mk-dp-number
+			       (1+ (- left right))))))
 
 (defun flatten-bv-constants (bv)
-  ;; Turn constants into >> fills <<
+  "Turn constants into >> fills <<"
   (let ((cont (bv-flat-term-content bv)))
     (make-bv-composition-from-list
      (loop for b in cont append
@@ -449,12 +394,11 @@
 	      (flatten-bv-const b)))
 	    ((rec-bv-extraction? b) (list b))
 	    ((rec-bv-bool? b)  (list b))
-	    (t (error-misc "flatten-bv" bv "hit unexpected structure.")))))))
+	    (t (error "flatten-bv ~a hit unexpected structure." bv)))))))
      
-
 (defun flatten-bv-const (const)
-  (ifassert (rec-bv-const? const))
-  ;; turn into a composition of terms containing only 0s or 1s
+  "turn into a composition of terms containing only 0s or 1s"
+  #+dbg(assert (rec-bv-const? const))
   (let* ((bools (nat2bools (bv-const-value const) (bv-const-length const)))
 	 (chunks nil)
 	 (now (car bools))
@@ -568,7 +512,7 @@
   (cond
    ((numberp len)
     (cond
-     ((< len 0) (error-misc "make-fresh-bv-var" len "negative size"))
+     ((< len 0) (error "make-fresh-bv-var ~a negative size" len))
      ((= len 0) *BV-EPSILON*)
      (t (let* ((name (dp::mk-constant
 		      (intern
@@ -579,7 +523,7 @@
 					     ,(dp::mk-dp-number len)))))
 	  (ifuncall fresh-var-call var)
 	  var))))
-   (t (error-misc "make-fresh-bv-var" len "not caught."))))
+   (t (error "make-fresh-bv-var ~a not caught." len))))
 	      
 
 ;;; ----------------------------------------------------------------------
@@ -606,7 +550,7 @@
     ((rec-bv-addition? l)
      (bv-addition-modulo l))
     
-    (t (error-misc "bv-length" l "not caught."))))
+    (t (error "bv-length ~a not caught." l))))
 
 ;;-
 
@@ -699,7 +643,7 @@
    ((rec-bv-bool-apply? bv)
     (loop for n in (cdr bv) append
 	  (all-vars-in-bv-term n)))
-   (t (error-misc "all-vars-in-bv-term" bv "not caught."))))
+   (t (error "all-vars-in-bv-term ~a not caught." bv))))
    
 ;;; ********************
 ;;;  Dealing Higher-Level Macros
@@ -785,17 +729,17 @@
       ((eq op *CS-LIST*)
        (make-cs-list (mapcar #'canonize-nat-term arg)))
 
-      (t (error-misc "canonize-nat-term" term "not caught.")))))))
+      (t (error "canonize-nat-term ~a not caught." term)))))))
 
 (defun canonize-nat-equation (eq)
-  (ifassert (rec-nat-equation? eq))
+  #+dbg(assert (rec-nat-equation? eq))
   (make-nat-equal
    dp::*zero*
    (canonize-nat-term 
     (dp::mk-term `(,*-* ,(dp::arg 1 eq) ,(dp::arg 2 eq))))))
 
 (defun canonize-nat-leq (leq)
-  (ifassert (rec-nat-leq? leq))
+  #+dbg(assert (rec-nat-leq? leq))
   (let* ((less (canonize-nat-term (dp::arg 1 leq)))
 	 (more (canonize-nat-term (dp::arg 2 leq)))
 	 (new-more (canonize-subtraction (dp::mk-term `(,*-* ,more ,less))))
@@ -812,45 +756,48 @@
 
 
 (defun canonize-multiplication (term)
-  (let ((fac1 (dp::arg 1 term))
-	(fac2 (canonize-nat-term (dp::arg 2 term))))
-    (ifassert (dp::dp-numberp fac1))
-  (cond
-   ((rec-fixed-int? fac2) (dp::mk-dp-number
-			   (* (dp::constant-id fac1)
-			      (dp::constant-id fac2))))
-   ((dp::dp-zerop fac1) fac1)
-   ((= dp::*one* fac1) fac2)
-   ((and (application-p fac2)
-	 (eq (dp::funsym fac2) *times*))
-    (dp::mk-term `(,*times* ,(* (dp::constant-id fac1)
-			    (dp::constant-id (dp::arg 1 fac2)))
-			,(dp::arg 2 fac2))))
-   ((and (dp::application-p fac2)
-	 (eq (dp::funsym fac2) '+)
-	  (canonize-addition
-	   (dp::mk-term `(,*+* ,@(mapcar #'(lambda (x) (dp::mk-term
-							`(,*times* ,fac1 ,x)))
+  (let ((fac1 (dp::lhs term))
+	(fac2 (canonize-nat-term (dp::rhs term))))
+    #+dbg(assert (dp::dp-numberp fac1))
+    (cond ((rec-fixed-int? fac2) (dp::mk-dp-number
+				  (* (dp::constant-id fac1)
+				     (dp::constant-id fac2))))
+	  ((dp::dp-zerop fac1) fac1)
+	  ((= dp::*one* fac1) fac2)
+	  ((and (application-p fac2)
+		(eq (dp::funsym fac2) *times*))
+	   (dp::mk-term `(,*times* ,(* (dp::constant-id fac1)
+				       (dp::constant-id (dp::arg 1 fac2)))
+				   ,(dp::arg 2 fac2))))
+	  ((and (dp::application-p fac2)
+		(eq (dp::funsym fac2) '+)
+		(canonize-addition
+		 (dp::mk-term `(,*+* ,@(mapcar #'(lambda (x) (dp::mk-term
+							      `(,*times* ,fac1 ,x)))
 					 (dp::funargs fac2)))))))
-   (t (dp::mk-term `(,*times* ,fac1 ,fac2))))))
+	  (t (dp::mk-term `(,*times* ,fac1 ,fac2))))))
 
 (defun dp-+-2 (term1 term2)
-  (dp::mk-dp-number (+ (dp::constant-id term1) (dp::constant-id term1))))
+  (dp::mk-dp-number (+ (dp::constant-id term1)
+		       (dp::constant-id term1))))
 
 (defun dp-+ (&rest args)
   (reduce #'dp-+-2 args :initial-value dp::*zero*))
 
 (defun dp-*-2 (term1 term2)
-  (dp::mk-dp-number (* (dp::constant-id term1) (dp::constant-id term1))))
+  (dp::mk-dp-number (* (dp::constant-id term1)
+		       (dp::constant-id term1))))
 
 (defun dp-* (&rest args)
  (reduce #'dp-*-2 args :initial-value dp::*one*))
 
 (defun dp-mod (term1 term2)
-  (dp::mk-dp-number (mod (dp::constant-id term1) (dp::constant-id term1))))
+  (dp::mk-dp-number (mod (dp::constant-id term1)
+			 (dp::constant-id term1))))
 
 (defun dp-div (term1 term2)
-  (dp::mk-dp-number (div (dp::constant-id term1) (dp::constant-id term1))))
+  (dp::mk-dp-number (div (dp::constant-id term1)
+			 (dp::constant-id term1))))
 
 (defun dp-/ (&rest terms)
   (dp::mk-dp-number (apply #'/ (mapcar #'dp::constant-id terms))))
@@ -1052,7 +999,7 @@
 	   (all-visible-vars-in-nat-term e)))
    ((rec-var-hiding-construct? term)
     nil)
-   (t (error-misc "all-visible-vars-in-nat-term" term "not caught."))))
+   (t (error "all-visible-vars-in-nat-term ~a not caught." term))))
 
 ;; Nat Equations
 
@@ -1100,7 +1047,7 @@
   ;; replace destructively the element a of seq with list
   `(let ((pos (position ,a ,seq :TEST #'equal)))
      (if (null pos)
-	 (error-misc "ninsert-list" a "not a member.")
+	 (error "ninsert-list ~a not a member." a)
        (setf ,seq
 	 (append (subseq ,seq 0 pos)
 		 ,list
@@ -1205,7 +1152,7 @@
    ((rec-mod? term) 6)
    ((rec-div? term) 7)
    ((rec-expt2? term) 8)
-   (t (error-misc "nat-term-level" term "not caught."))))
+   (t (error "nat-term-level ~a not caught." term))))
 
 
 ;;; General AUX Functions
@@ -1214,8 +1161,8 @@
   (/ (- a (mod a b)) b))
 
 (defun pairlis-pad (a b)
-  (ifassert (listp a))
-  (ifassert (listp b))
+  ;(ifassert (listp a))
+  ;(ifassert (listp b))
   ;; like pairlis, but pads missing elements with nil at the list end
   (let* ((na (length a))
 	 (nb (length b))
@@ -1227,7 +1174,7 @@
 (defun ziplis (args)
   ;; similar to pairlis, but turns m lists of n elements
   ;; into n lists of m elements
-  (ifassert (consp args))
+  ;(ifassert (consp args))
   (let* ((len (length (car args)))
 	 (n (length args))
 	 (res (make-list len)))
@@ -1245,30 +1192,3 @@
 (defun count-up (n)
   (loop for i from 0 to (1- n)
 	collect i))
-
-
-;;; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-;;; Error report
-;;; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-(defun error-type (s1 s2)
-  (progn (princ "ERROR in [")
-	 (princ s1)
-	 (princ "]:  Wrong argument type(s)")
-	 (dolist (e s2) (progn (princ " <")
-			       (princ e)
-			       (princ ">")))
-	 (terpri)
-	 (break)))
-
-(defun error-misc (s1 s2 s3)
-  (progn (princ "ERROR in [")
-	 (princ s1)
-	 (princ "]:  ")
-	 (dolist (e s2) (progn (princ " <")
-			       (princ e)
-			       (princ ">")))
-	 (princ " ")
-	 (princ s3)
-	 (terpri)
-	 (break)))
