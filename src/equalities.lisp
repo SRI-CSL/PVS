@@ -9,6 +9,7 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 ;;; This file provides the various equalities needed by the type system.
 ;;;  ps-eq is used to check for syntactic equality - useful when the
@@ -20,7 +21,7 @@
 ;;;  compatible-preds is the list of predicates needed to coerce an
 ;;;                   element of the first type to the second type
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (defvar *dep-bindings* nil
   "An alist of dep-bindings: each elt is of the form (db db1 db2),
@@ -153,11 +154,16 @@ where db is to replace db1 and db2")
 ;;; the canonical form.
 
 (defmethod tc-eq* :around ((t1 type-expr) (t2 type-expr) bindings)
-   (or (eq t1 t2)
-       (and (call-next-method)
-	    (or (not *strong-tc-eq-flag*)
-		(and (tc-eq* (print-type t1) (print-type t2) bindings)
-		     (eq (from-conversion t1) (from-conversion t2)))))))
+   (with-slots ((pt1 print-type) (fc1 from-conversion)) t1
+     (with-slots ((pt2 print-type) (fc2 from-conversion)) t2
+       (or (eq t1 t2)
+	   (and (call-next-method)
+		(or (not *strong-tc-eq-flag*)
+		    (and (if pt1
+			     (and pt2
+				  (tc-eq* pt1 pt2 bindings))
+			     (null pt2))
+			 (eq fc1 fc2))))))))
 
 (defmethod tc-eq* ((t1 subtype) (t2 subtype) bindings)
   (with-slots ((st1 supertype) (p1 predicate)) t1
@@ -168,13 +174,15 @@ where db is to replace db1 and db2")
 (defmethod tc-eq* ((t1 subtype) (t2 type-name) bindings)
   (when (or (everywhere-true? (predicate t1))
 	    (and (adt-type-name? (supertype t1))
-		 (singleton? (constructors (supertype t1)))))
+		 (adt? (supertype t1))
+		 (singleton? (constructors (adt (supertype t1))))))
     (tc-eq* (supertype t1) t2 bindings)))
 
 (defmethod tc-eq* ((t1 type-name) (t2 subtype) bindings)
   (when (or (everywhere-true? (predicate t2))
 	    (and (adt-type-name? (supertype t2))
-		 (singleton? (constructors (supertype t2)))))
+		 (adt? (supertype t2))
+		 (singleton? (constructors (adt (supertype t2))))))
     (tc-eq* t1 (supertype t2) bindings)))
 
 ;;; This is needed since expr-as-type is used as a print-type, in which
@@ -697,6 +705,12 @@ where db is to replace db1 and db2")
 	   (typep (type (car b1)) 'tupletype))
       (let ((types1 (types (type (car b1)))))
 	(when (and (length= (the list types1) b2)
+		   (tc-eq* (if (dep-binding? (car types1))
+			       (type (car types1))
+			       (car types1))
+			   (type (car b2))
+			   bindings)
+		   (compatible-binding-types? (cdr b2) (cdr types1))
 		   (tc-eq-types (the list types1)
 				(bindings-to-types b2 types1)
 				bindings))
@@ -705,10 +719,21 @@ where db is to replace db1 and db2")
 		 (typep (type (car b2)) 'tupletype))
 	(let ((types2 (types (type (car b2)))))
 	  (when (and (length= b1 (the list types2))
+		     (tc-eq* (type (car b1))
+			     (if (dep-binding? (car types2))
+				 (type (car types2))
+				 (car types2))
+			     bindings)
+		     (compatible-binding-types? (cdr b1) (cdr types2))
 		     (tc-eq-types (bindings-to-types b1 types2)
 				  (the list types2)
 				  bindings))
 	    (make-compatible-bindings* b2 b1 bindings t))))))
+
+(defun compatible-binding-types? (bindings types)
+  (or (null bindings)
+      (and (compatible? (type (car bindings)) (car types))
+	   (compatible-binding-types? (cdr bindings) (cdr types)))))
 
 (defun make-compatible-bindings* (b1 b2 bindings rev?)
   (let* ((var (make-variable-expr (car b1)))
@@ -792,10 +817,18 @@ where db is to replace db1 and db2")
   nil)
 
 (defmethod tc-eq* ((n1 name) (n2 name) bindings)
-  (with-slots ((id1 id) (res1 resolutions)) n1
-    (with-slots ((id2 id) (res2 resolutions)) n2
+  (with-slots ((id1 id) (res1 resolutions) (mi1 mod-id) (l1 library)
+	       (act1 actuals) (m1 mappings) (t1 target)) n1
+    (with-slots ((id2 id) (res2 resolutions) (mi2 mod-id) (l2 library)
+		 (act2 actuals) (m2 mappings) (t2 target)) n2
       (or (eq n1 n2)
-	  (tc-eq* (car res1) (car res2) bindings)))))
+	  (and (or (not *strong-tc-eq-flag*)
+		   (and (eq mi1 mi2)
+			(eq l1 l2)
+			(tc-eq* act1 act2 bindings)
+			(tc-eq* m1 m2 bindings)
+			(tc-eq* t1 t2 bindings)))
+	       (tc-eq* (car res1) (car res2) bindings))))))
 
 (defmethod tc-eq* ((res1 resolution) (res2 resolution) bindings)
   (with-slots ((decl1 declaration) (mi1 module-instance)) res1
@@ -914,6 +947,7 @@ where db is to replace db1 and db2")
   (unless *strong-tc-eq-flag*
     (let ((decl (declaration type-name)))
       (and (typep decl 'formal-decl)
+	   (current-theory)
 	   (not (memq decl (formals (current-theory))))))))
 
 (defun actuals-are-outside-formals? (actuals)
@@ -1289,9 +1323,14 @@ where db is to replace db1 and db2")
 (defun compatible-tupletypes (atypes etypes types)
   (if (null atypes)
       (mk-tupletype (nreverse types))
-      (let* ((stype (compatible-type* (car atypes) (car etypes))))
-	(compatible-tupletypes (cdr atypes) (cdr etypes)
-			       (cons stype types)))))
+      (let* ((stype (compatible-type* (car atypes) (car etypes)))
+	     (dtype (if (dep-binding? (car atypes))
+			(mk-dep-binding (id (car atypes)) stype)
+			stype))
+	     (acdr (if (dep-binding? dtype)
+		       (substit (cdr atypes) (acons (car atypes) dtype nil))
+		       (cdr atypes))))
+	(compatible-tupletypes acdr (cdr etypes) (cons dtype types)))))
 
 (defmethod compatible-type* ((atype cotupletype) (etype cotupletype))
   (compatible-cotupletypes (types atype) (types etype) nil))
@@ -1774,20 +1813,15 @@ where db is to replace db1 and db2")
 (defmethod subtype-of*? :around (t1 t2)
   (or (tc-eq t1 t2)
       (if *subtype-of-hash*
-	  (let ((subhash (gethash t1 (the hash-table *subtype-of-hash*))))
-	    (if subhash
-		(multiple-value-bind (st? there?)
-		    (gethash t2 (the hash-table subhash))
-		  (if there?
-		      st?
-		      (let ((nvalue (or (call-next-method)
-					(known-subtype-of? t1 t2))))
-			(setf (gethash t2 (the hash-table subhash)) nvalue))))
-		(let ((ht (make-hash-table :test #'eq)))
-		  (setf (gethash t1 (the hash-table *subtype-of-hash*)) ht)
+	  (let ((pair (cons t1 t2)))
+	    (multiple-value-bind (st? there?)
+		(gethash pair (the hash-table *subtype-of-hash*))
+	      (if there?
+		  st?
 		  (let ((nvalue (or (call-next-method)
 				    (known-subtype-of? t1 t2))))
-		    (setf (gethash t2 (the hash-table ht)) nvalue)))))
+		    (setf (gethash pair (the hash-table *subtype-of-hash*))
+			  nvalue)))))
 	  (or (call-next-method)
 	      (known-subtype-of? t1 t2)))))
 	 
@@ -2473,3 +2507,18 @@ where db is to replace db1 and db2")
       (make!-conjunction* (gensubst (cdr predicates)
 			  #'(lambda (ex) (declare (ignore ex)) nvar)
 			  #'(lambda (ex) (tc-eq ex (car predicates))))))))
+
+(defun lift-subtype-predicates (type)
+  (lift-subtype-predicates* type))
+
+;;; [{x: T1 | p1(x)}, ... , {x: Tn | pn(x)} ==>
+;;;   {z: [T1, ..., Tn] | p1(z`1) & ... & pn(z`n)}
+(defmethod lift-subtype-predicates* ((te tupletype))
+  (or (lift-subtype-predicates-tuptype (types te))
+      te))
+
+;; (defun lift-subtype-predicates-tuptype (types &optional stypes preds)
+;;   (if (null types)
+;;       (unless (null pred)
+;; 	(mk-subtype (mk-tupletype types)
+;; 	  (preds
