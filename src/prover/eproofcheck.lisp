@@ -159,6 +159,8 @@
 	(*current-context* (context decl))
 	(*current-theory* (module decl)))
     (initprover)			;initialize prover
+    (when *new-ground?*
+      (init-dc))
     (newcounter  *skovar-counter*)
     (newcounter  *skofun-counter*)
     (newcounter  *bind-counter*)
@@ -235,8 +237,6 @@
     (setq *subgoals*
 	  (mapcar #'current-goal
 	    (collect-all-remaining-subgoals *top-proofstate*))))
-  (when *new-ground?*
-    (free-all-remaining-dp-states))
   (unless *recursive-prove-decl-call*
     (clear-proof-hashes)))
 
