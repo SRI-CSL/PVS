@@ -43,8 +43,8 @@
 (defvar *process-types* t)
 
 
-(defun dp-rational-atom-p (term)
-  (dp-integer-atom-p term))
+(defun dp-rational-atom-p (term cong-state)
+  (dp-integer-atom-p term cong-state))
 
 (defun dp-real-atom-p (term)
   t)
@@ -54,11 +54,11 @@
   (if *process-types*
       (case (node-initial-type (dp::funsym term))
 	(integer-pred
-	 (if (dp-integer-atom-p (dp::arg 1 term))
+	 (if (dp-integer-atom-p (dp::arg 1 term) cong-state)
 	     *true*
 	     term))
 	(rational-pred
-	 (if (dp-rational-atom-p (dp::arg 1 term))
+	 (if (dp-rational-atom-p (dp::arg 1 term) cong-state)
 	     *true*
 	     term))
 	(real-pred
@@ -66,6 +66,14 @@
 	     *true*
 	     term)))
       *true*))
+
+(defun solve-type (term cong-state)
+  (when *process-types*
+    (case (node-initial-type (dp::funsym term))
+      (integer-pred
+       (setf (dp-type (arg 1 term) cong-state)
+	     *integer*))))
+  (list (mk-equality term *true*)))
 
 (defun sigbool (term cong-state)
   (cond
@@ -178,9 +186,9 @@
    ((negation-p bool-term)
     (solve-neq (mk-equality (arg 1 bool-term) *false*) cong-state))
    ((bool-p bool-term)
-    (solve-bool bool-term))
+    (solve-bool bool-term cong-state))
    (t ;;(error "~%No solver for ~A." bool-term)
-      (solve-bool bool-term))))
+      (solve-bool bool-term cong-state))))
 
 (defun solve-neq (neq cong-state)
   (unless (member neq (nequals cong-state))
@@ -194,10 +202,12 @@
       (bv (bv-solve-neq neq cong-state))
       (t (list neq)))))
 
-(defun solve-bool (bool)
+(defun solve-bool (bool cong-state)
   (cond
    ((eq bool *true*) ())
    ((eq bool *false*) (list *false*))
+   ((number-type-p bool)
+    (solve-type bool cong-state))
    ((negation-p bool) (list (mk-equality (arg 1 bool) *false*)))
    (t (list (mk-equality bool *true*)))))
 
@@ -249,7 +259,7 @@
   (let* ((eqn (arg 1 neq))
 	 (t1 (lhs (lhs neq)))
 	 (t2 (rhs (lhs neq))))
-    (when (number-equality-p eqn)
+    (when (number-equality-p eqn cong-state)
       (let ((t1-gt-t2 (simplify-ineq-constraint
 		       (mk-term `(,*greatereqp* ,t1 ,t2)) cong-state))
 	    (t1-lt-t2 (simplify-ineq-constraint
@@ -275,21 +285,21 @@
     ((ineq-var-p (lhs eqn)) 'number)
     (t nil))))
 
-(defun number-theory-p (term)
+(defun number-theory-p (term cong-state)
   (or (arith-p term)
-      (member (node-initial-type term)
+      (member (dp-type term cong-state)
 	      (list *integer* *number*))))
 	    
 
-(defun number-equality-p (eqn)
+(defun number-equality-p (eqn cong-state)
   (and
    (equality-p eqn)
-   (number-theory-p (lhs eqn))
-   (number-theory-p (rhs eqn))))
+   (number-theory-p (lhs eqn) cong-state)
+   (number-theory-p (rhs eqn) cong-state)))
 
-(defun more-pure-theory? (eqn)
+(defun more-pure-theory? (eqn cong-state)
   (cond
    ((arith-bool-p eqn) 'number)
-   ((number-equality-p eqn)
+   ((number-equality-p eqn cong-state)
     'number)
    (t nil)))
