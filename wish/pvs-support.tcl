@@ -585,10 +585,12 @@ proc show-sequent {proofwin top} {
 	wm maxsize $seqwin 80 $height
     }
     pack $seqwin.fr.text -expand yes -fill both
-    button $seqwin.dismiss -text Dismiss -command "destroy .sequent$label"
+    button $seqwin.dismiss -text Dismiss -bd 2 -command "destroy .sequent$label"
     pack $seqwin.dismiss -side left -padx 2 -pady 2
-    button $seqwin.stick -text Stick -command "stick $seqwin $path"
+    button $seqwin.stick -text Stick -bd 2 -command "stick $seqwin $path"
     pack $seqwin.stick -side left -padx 2 -pady 2
+    button $seqwin.help -text Help -bd 2 -command "help-sequent"
+    pack $seqwin.help -side right -padx 2 -pady 2
     bind $seqwin <Destroy> "catch {$proofwin delete $path.label$label}"
     bind $seqwin <Destroy> "+catch {unset pathtolabel($path)}"
     bind $seqwin <Destroy> "+after 1 {destroy-sequent $seqwin}"
@@ -842,7 +844,7 @@ proc setup-dag-win {title icon PSname win_name class} {
     $top.ps.menu add command -label Landscape -command "gen-ps $top $PSname 1"
     pack $top.ps -side left -padx 2 -pady 2
     button $top.help -text "Help" -bd 2 \
-	-command "help-$class $win_name"
+	-command "help-$class"
     pack $top.help -side right -padx 2 -pady 2
     menubutton $top.conf -text Config -menu $top.conf.menu -relief raised -bd 2
     pack $top.conf -side right -padx 2 -pady 2
@@ -1033,8 +1035,8 @@ proc parse-bool {str} {
     return $val
 }
 
-proc help-Proof {top} {
-    set win $top.helptext
+proc help-Proof {} {
+    set win .proverhelp
     catch {destroy $win}
     toplevel $win -relief raised -bd 2
     message $win.text -aspect 390 -text "This is a proof display.  The turnstiles represent sequents, and are connected by proof commands.
@@ -1048,10 +1050,12 @@ C-Middle on turnstile or rule - moves the turnstile/rule pair only"
     button $win.dismiss -text Dismiss -command "destroy $win"
     pack $win.text -side top
     pack $win.dismiss -side left -padx 2 -pady 2
+    wm iconname $win {PVS help prooftree}
+    wm title $win "Prooftree Help"
 }
 
-proc help-TheoryHierarchy {top} {
-    set win $top.helptext
+proc help-TheoryHierarchy {} {
+    set win .hierarchyhelp
     catch {destroy $win}
     toplevel $win -relief raised -bd 2
     message $win.text -aspect 390 -text "This is a theory hierarchy display.  Each name represents a theory, and the arcs represent IMPORTINGs between theories, where the imported theory is below the importing theory.
@@ -1063,4 +1067,27 @@ C-Left on theory name - moves the name"
     button $win.dismiss -text Dismiss -command "destroy $win"
     pack $win.text -side top
     pack $win.dismiss -side left -padx 2 -pady 2
+    wm iconname $win {PVS help hierarchy}
+    wm title $win "Theory Hierarchy Help"
 }
+
+proc help-sequent {} {
+    set win .sequenthelp
+    catch {destroy $win}
+    toplevel $win -relief raised -bd 2
+    message $win.text -aspect 390 -text "This is a sequent display.
+The titlebar should give a sequent number along with the formula name.
+The sequent number is associated with the corresponding number next to
+one of the sequents of the proof tree; it may not be visible.
+
+The Dismiss button removes the sequent window.  The window is also
+removed when the proof tree is modified so that the associated sequent
+no longer exists.  The Stick button causes the sequent to remain even in
+this case.  When the stick button is depressed, it disappears."
+    button $win.dismiss -text Dismiss -command "destroy $win"
+    pack $win.text -side top
+    pack $win.dismiss -side left -padx 2 -pady 2
+    wm iconname $win {PVS help sequent}
+    wm title $win "Sequent Help"
+}
+
