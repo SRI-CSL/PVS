@@ -402,7 +402,7 @@
       (if entry
 	  (unless (member tname entry :test #'tc-eq)
 	    (if (actuals tname)
-		(let ((imps (immediate-usings (current-theory))))
+		(let ((imps (get-immediate-usings (current-theory))))
 		  (setf (gethash theory (current-using-hash))
 			(nconc (delete-if
 				   #'(lambda (imp)
