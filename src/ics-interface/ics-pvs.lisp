@@ -25,8 +25,9 @@
 
 (defvar *unique-name-ics-counter* 0)
 
-(defvar *ics-apply-name* "apply")
+(defvar *ics-nonlin* nil)
 
+(defvar *ics-debug* nil)
 
 (defun pvs-to-ics-reset ()
   (clrhash *pvs-to-ics-hash*)
@@ -68,6 +69,22 @@
   (assert (wrap? w))
   (ics_deregister (unwrap w)))
 
+(defstruct (term-wrap
+	    (:include wrap)
+	    (:predicate term-wrap?)
+	    (:constructor make-term-wrap (address))
+	    (:print-function
+	     (lambda (p s k)
+	       (declare (ignore k))
+	       (format s "<#term: ~a>" (wrap-address p))))))
+
+(defun term-wrap (value)
+   (assert (integerp value))
+   (make-term-wrap value))
+
+(defun term-unwrap (w)
+  (assert (term-wrap? w))
+  (wrap-address w))
 
 (defstruct (atom-wrap
 	    (:include wrap)
@@ -133,6 +150,13 @@
   ;;(ics_init verbose)
   )
 
+
+(defun ics-current-context-pp ()
+  (declare (special *dp-state*))
+  (ics_context_pp (state-unwrap *dp-state*)))
+
+
+
 (defun ics-empty-state ()
   (let ((empty (state-wrap (ics_context_empty))))
     (wrap-finalize! empty)
@@ -144,11 +168,43 @@
     (wrap-finalize! state)
     state))
 
-(defun ics-process (state atom)
+
+(defmethod ics-process :around (state atom)
+  (when *ics-debug*
+    (format t "~%assert ")
+    (ics_atom_pp (atom-unwrap atom))
+    (format t "."))
+  (let ((result (call-next-method)))
+    (when *ics-debug*
+      (cond ((eql result :unsat) 
+	     (format t "~%\% Inconsistent"))
+	    ((eql result :valid)
+	     (format t "~%\% Valid"))
+	    ((not (null result))
+	     (format t "~%\% Ok")))
+      (terpri))
+    result))
+    
+(defmethod ics-process (state atom)
   (assert (state-wrap? state))
   (assert (atom-wrap? atom))
-  (ics_process (state-unwrap state) (atom-unwrap atom)))
+  (let ((result (ics_process (state-unwrap state) (atom-unwrap atom))))
+    (cond ((not (zerop (ics_is_consistent result)))
+	   (ics-d-consistent result))
+	  ((not (zerop (ics_is_inconsistent result)))
+	   :unsat)
+	  ((not (zerop (ics_is_redundant result)))
+	   :valid))))
 
+(defun ics-is-valid (state atom)
+  (assert (state-wrap? state))
+  (assert (atom-wrap? atom))
+  (eql (ics-process state atom) :valid))
+
+(defun ics-is-unsat (state atom)
+  (assert (state-wrap? state))
+  (assert (atom-wrap? atom))
+  (eql (ics-process state atom) :unsat))      
 
 (defun ics-state-unchanged? (state1 state2)
    (assert (state-wrap? state1))
@@ -172,7 +228,10 @@
 ;; An atom is either an equality, disequality, an arithmetic
 ;; constraint, or some other expression of Boolean type
 
-(defun translate-to-ics (expr)
+(defmethod translate-to-ics :around (expr)
+  (call-next-method))
+
+(defmethod translate-to-ics (expr)
   (or (gethash expr *pvs-to-ics-hash*)
       (let ((atom (translate-posatom-to-ics* expr)))
 	(assert (integerp atom))
@@ -278,6 +337,9 @@
 	     (call-next-method))))))
 
 
+(defmethod translate-term-to-ics* :around ((expr expr))
+  (call-next-method))
+
 (defmethod translate-term-to-ics* ((expr expr))
   (ics_term_mk_var (unique-name-ics expr)))
 
@@ -292,8 +354,10 @@
 	 (call-next-method))))
 
 (defmethod translate-term-to-ics* ((expr number-expr))
-  (let ((q (ics_num_of_string (write-to-string (number expr)))))
-    (ics_term_mk_num q)))
+  (ics_term_mk_num (q-of-number-expr expr)))
+
+(defun q-of-number-expr (expr)
+  (ics_num_of_string (write-to-string (number expr))))
 
 (defmethod translate-term-to-ics* ((expr application))
   (let ((op (operator expr)))
@@ -306,19 +370,37 @@
 	  ((tc-eq op (unary-minus-operator))
 	   (ics_term_mk_unary_minus (translate-term-to-ics* (args1 expr))))
 	  ((tc-eq op (times-operator))
-	   (ics_term_mk_mult (translate-term-to-ics* (args1 expr))
-			      (translate-term-to-ics* (args2 expr))))
-	  ((tc-eq op (floor-operator))
-	   (ics_term_mk_floor (ics_context_empty)
-			      (translate-term-to-ics* (args1 expr))))
-	  ((tc-eq op (divides-operator))
-	   (ics_term_mk_div (ics_context_empty)
-			    (translate-term-to-ics* (args1 expr))
+	   (translate-mult-to-ics* (args1 expr) (args2 expr)))
+	  ((and *ics-nonlin*
+		(tc-eq op (floor-operator)))
+	   (ics_term_mk_floor (translate-term-to-ics* (args1 expr))))
+	  ((and *ics-nonlin*
+		(tc-eq op (divides-operator)))
+	   (ics_term_mk_div (translate-term-to-ics* (args1 expr))
 			    (translate-term-to-ics* (args2 expr))))
 	  (t
 	   (let ((opterm (translate-term-to-ics* op))
 		 (argterms (translate-term-list-to-ics* (arguments expr))))
-	     (ics_term_mk_uninterp *ics-apply-name* (ics_cons opterm argterms)))))))
+	     (ics_term_mk_apply opterm argterms))))))
+
+
+(defmethod translate-mult-to-ics* ((expr1 number-expr) (expr2 expr))
+  (ics_term_mk_multq (q-of-number-expr expr1)
+		     (translate-term-to-ics*I expr2)))
+
+(defmethod translate-mult-to-ics* ((expr1 expr) (expr2 number-expr))
+  (ics_term_mk_multq (q-of-number-expr expr2)
+		     (translate-term-to-ics*I expr1)))
+
+(defmethod translate-mult-to-ics* ((expr1 expr) (expr2 expr))
+  (let ((term1 (translate-term-to-ics* expr1))
+	(term2 (translate-term-to-ics* expr2)))
+    (if *ics-nonlin*
+	(ics_term_mk_mult term1 term2)
+      (let ((mult (translate-term-to-ics* (times-operator)))
+	    (args (ics_cons term1 (ics_cons term2 (ics_nil)))))
+	(ics_term_mk_apply mult args)))))
+      
 	
 (defmethod translate-term-to-ics* ((expr let-expr))
   (with-slots (operator argument) expr
@@ -462,11 +544,9 @@
 	     (translate-term-to-ics* (caar args))
 	     trbasis)))))
     (ics_term_mk_update
-     (ics_context_empty)
-     (ics_triple
       trbasis 
       (ics_term_mk_num (ics_num_of_int position)) 
-      (translate-assign-args-to-ics* (cdr args) value next-trbasis next-trbasis-type)))))
+      (translate-assign-args-to-ics* (cdr args) value next-trbasis next-trbasis-type))))
 
 (defun make-ics-field-application (field-accessor-type fieldnum length term)
   "Forget about the 'field-accessor-type' for now"
@@ -485,4 +565,4 @@
 (defun make-ics-assign-application (fun-type term term-args)
   "Forget about the 'fun-type' for now"
   (declare (ignore fun-type))
-  (ics_term_mk_select (ics_context_empty) (ics_par term term-args)))
+  (ics_term_mk_select term term-args))
