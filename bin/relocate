@@ -3,15 +3,13 @@
 pvspath=`pwd`
 
 # Relocate PVSPATH and reset PVSALLEGRO in the pvs shell script.
-if [ -f pvs.template ]
- then
+if [ -f pvs.template ]; then
   echo Relocating PVSPATH in the \"pvs\" shell script to $pvspath
   sed -e "s,^PVSPATH=.*$,PVSPATH=$pvspath," \
       -e "s,allegro-full,allegro," \
       pvs.template > pvs
   chmod a+x pvs
-elif [-f pvs ]
- then 
+elif [-f pvs ]; then 
   echo Relocating PVSPATH in the \"pvs\" shell script to $pvspath
   sed -e "s,^PVSPATH=.*$,PVSPATH=$pvspath," \
       -e "s,allegro-full,allegro," \
@@ -24,38 +22,37 @@ elif [-f pvs ]
 fi
 
 # Create the Makefile from Makefile.template, if it exists
-if [ -f Makefile.template -a ! -f Makefile ]
- then
+if [ -f Makefile.template ]; then
   echo Creating Makefile from Makefile.template
+  if [ ! -x /pkg/allegro5.0 ]; then
+    echo "/pkg/allegro5.0 does not exist!"
+    echo "Either install it or modify the lispdir variable in the Makefile."
+  fi
   cp Makefile.template Makefile
 fi
 
 # Relocate *pvs-path* in make-allegro-pvs.lisp, if it exists
-if [ -f src/make-allegro-pvs.lisp.template ]
- then
+if [ -f src/make-allegro-pvs.lisp.template ]; then
   echo Relocating *pvs-path* in src/make-allegro-pvs.lisp to $pvspath
   sed -e "/^(defvar \*pvs-path\*/s,\"[^\"]*\",\"$pvspath\"," \
       src/make-allegro-pvs.lisp.template > src/make-allegro-pvs.lisp
 fi
 
 # Relocate *pvs-path* in pvs.system if it exists
-if [ -f pvs.system.template ]
- then
+if [ -f pvs.system.template ]; then
   echo Relocating *pvs-path* in pvs.system to $pvspath
   sed -e "/(defparameter \*pvs-path\*/s,\"[^\"]*\",\"$pvspath\"," \
       pvs.system.template > pvs.system
 fi
 
 # Relocate *ess-path* in ess/dist-ess.lisp and ess/allegro-runtime.lisp
-if [ -f ess/dist-ess.lisp.template ]
- then
+if [ -f ess/dist-ess.lisp.template ]; then
   echo Relocating *ess-path* in ess/dist-ess.lisp to $pvspath/ess
   sed -e "/(defvar \*ess-path\*/s,\"[^\"]*\",\"$pvspath/ess\"," \
       ess/dist-ess.lisp.template > ess/dist-ess.lisp
 fi
 
-if [ -f ess/allegro-runtime.lisp.template ]
- then
+if [ -f ess/allegro-runtime.lisp.template ]; then
   echo Relocating *ess-path* in ess/allegro-runtime.lisp to $pvspath/ess
   sed -e "/(defvar \*ess-path\*/s,\"[^\"]*\",\"$pvspath/ess\"," \
       ess/allegro-runtime.lisp.template > ess/allegro-runtime.lisp
