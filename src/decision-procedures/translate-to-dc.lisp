@@ -801,6 +801,29 @@
 (defmethod dc-prover-type ((te dep-binding))
   (dc-prover-type (type te)))
 
+
+(defmethod translate-to-dc ((expr iff-or-boolean-equation))
+  (let ((lhs (translate-to-dc (args1 expr)))
+	(rhs (translate-to-dc (args2 expr))))
+    (dp::mk-conjunction (dp::mk-implication lhs rhs)
+			(dp::mk-implication rhs lhs))))
+
+(defmethod translate-to-dc ((expr implication))
+  (dp::mk-implication (translate-to-dc (args1 expr))
+		      (translate-to-dc (args2 expr))))
+
+(defmethod translate-to-dc ((expr conjunction))
+  (dp::mk-conjunction (translate-to-dc (args1 expr))
+		      (translate-to-dc (args2 expr))))
+
+(defmethod translate-to-dc ((expr disjunction))
+  (dp::mk-disjunction (translate-to-dc (args1 expr))
+		      (translate-to-dc (args2 expr))))
+
+(defmethod translate-to-dc ((expr negation))
+  (dp::mk-negation (translate-to-dc (args1 expr))))
+
+
 ;(defmethod make-apply-name ((te type-expr))
 ;  (let* ((type (find-supertype te))
 ;	 (name (makesym "APPLY-~d-~a"
