@@ -238,9 +238,8 @@
   (with-slots (expression assignments) expr
     (with-slots ((etypes types)) expected
       (check-for-tccs* expression (type expression))
-      (let ((atype (find-supertype (type expression))))
-	(check-tup-assignment-types (complete-assignments expr expected)
-				    expression etypes atype)))))
+      (check-tup-assignment-types (complete-assignments expr expected)
+				  expression etypes expected))))
 
 (defun check-rec-assignment-types (assns expr fields rectype nfields)
   (when assns
@@ -287,7 +286,7 @@
     (let* ((ass (car assns))
 	   (type (nth (1- (number (caar (arguments ass)))) types)))
       (check-assignment-types ass expr tuptype)
-      (let* ((dep? (typep (car types) 'dep-binding))
+      (let* ((dep? (typep type 'dep-binding))
 	     (aexpr (when dep?
 		      (make-assignment-subst-expr ass (type type) expr)))
 	     (subst-types (if dep?
