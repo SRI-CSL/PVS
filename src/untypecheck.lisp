@@ -67,7 +67,6 @@
   (setf (declarations theory) (make-hash-table :test #'eq :size 20))
   (dolist (ty (types theory))
     (setf (nonempty? ty) nil))
-  (setf (types theory) nil)
   (untypecheck-theory (exporting theory))
   (setf (all-usings theory) nil)
   (setf (immediate-usings theory) 'unbound)
