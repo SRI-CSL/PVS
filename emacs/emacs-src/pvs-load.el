@@ -90,7 +90,6 @@
 (condition-case ()
     (load "pvs-prelude-files-and-regions" nil nil)
   (error 0))
-(load "pvs-cmds" nil noninteractive)
 (load "pvs-print" nil noninteractive)
 (load "pvs-prover" nil noninteractive)
 (load "pvs-abbreviations" nil noninteractive)
