@@ -187,6 +187,7 @@
 	 (add-exporting-with-theories mod modinst)
 	 (add-to-using modinst))
       (typecheck-using (modname decl)))
+  (put-decl decl (current-declarations-hash))
   (setf (saved-context decl) (copy-context *current-context*))
   ;; Need to allow id to be used as abbreviation
   )
