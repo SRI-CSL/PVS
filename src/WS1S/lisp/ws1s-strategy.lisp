@@ -3,13 +3,11 @@
 (defvar *output-examples* nil)
 (defvar *output-automaton* nil)
 (defvar *output-traces* nil)
-(defvar *presburger* nil)
 
 (defstep ws1s (&optional (fnums *)
 			 (examples? T)
 			 (automaton? nil)
 			 (traces? nil)
-			 (presburger? nil)
 			 (verbose? T)
 			 (defs !)
 			 theories
@@ -39,7 +37,7 @@
 	   (assert fnums :cases-rewrite? T)
 	   (if rewrite-msg (skip) (rewrite-msg-on)) ; restore if necessary
 	   (skip-msg "WS1S decision procedure..." :force-printing? T)
-	   (ws1s-simp fnums presburger? examples? automaton? traces? verbose?)))
+	   (ws1s-simp fnums examples? automaton? traces? verbose?)))
   "Decision procedure for Weak Second-order monadic logic of 1 Successor (WS1S)
    based on the Mona package developed at BRICS (http://www.brics.dk/~mona).
    Expands definitions in the formulas specified by FNUMS, applies Boolean
@@ -72,23 +70,22 @@
                  (R(t) = P(t) = Q(t) = C(t))});"
   "By rewriting and WS1S decision procedure")
 
-(addrule 'ws1s-simp nil ((fnums *) (presburger? nil) (examples? T) (automaton? T) (traces? nil) (verbose? T))
-	 (ws1s-step fnums presburger? examples? automaton? traces? verbose?)
+
+(addrule 'ws1s-simp nil ((fnums *) (examples? T) (automaton? nil) (traces? nil) (verbose? T))
+	 (ws1s-step fnums examples? automaton? traces? verbose?)
 	 "WS1S Decision Procedure.")
 
 
-(defun ws1s-step (fnums presburger examples automaton traces verbose)
+(defun ws1s-step (fnums examples automaton traces verbose)
   #'(lambda (ps)
       (let* ((*output-examples* examples)
 	     (*output-automaton* automaton)
 	     (*output-traces* traces)
-	     (*presburger* presburger)
 	     (*verbose* verbose)
 	     (sforms (s-forms (current-goal ps)))
 	     (selected-sforms (select-seq sforms fnums))
 	     (remaining-sforms (delete-seq sforms fnums)))
-	(declare (special *presburger*
-		          *output-examples* *output-automaton*
+	(declare (special *output-examples* *output-automaton*
 			  *output-traces* *verbose*))
 	(multiple-value-bind (signal newform)
 	    (ws1s-sforms selected-sforms)
@@ -114,6 +111,7 @@
 	(values 'X nil))))
 
 (defun ws1s-simplify (fmla)
+  (declare (special *output-examples* *output-automaton*))
   (multiple-value-bind (dfa symtab)
       (bool-to-dfa fmla)
     (assert (dfa? dfa))
@@ -122,23 +120,18 @@
 			  ((eq status :inconsistent) *false*)
 			  (t fmla))))
       (ws1s-output fmla newfmla)
-      (unless (tc-eq fmla newfmla)
+      (when (or *output-examples* *output-automaton*)
 	(multiple-value-bind (symtab num offsets fvars types)
 	    (symtab-strip symtab)
 	  (multiple-value-bind (counterex length-of-counterex)
 	      (dfa-counterexample dfa num offsets)
 	    (multiple-value-bind (witness length-of-witness)
 		(dfa-witness dfa num offsets)
-	      (when (not (eq counterex :null))
-		(when (eq witness :null)
-		  (ws1s-example-output "Counterexample: "
-				       counterex length-of-counterex num types fvars)))
-	      (when (not (eq witness :null))
-		(when (> ( length (symtab-freevars symtab)))
-		  (ws1s-example-output "Witness: "
-				     witness length-of-witness num types fvars)))))
-	  (ws1s-automaton-output dfa num fvars offsets)
-	  (format t "~%")))
+	      (when *output-examples*
+		(ws1s-example-output "Counterexample: " counterex length-of-counterex num types fvars)
+		(ws1s-example-output "Witness: " witness length-of-witness num types fvars))
+	      (when *output-automaton*
+		(ws1s-automaton-output dfa num fvars offsets))))))
       newfmla)))
  
 (defun ws1s-output (fmla newfmla)
@@ -151,8 +144,7 @@
 	 (format t "is satisfiable but not valid."))))
 
 (defun ws1s-example-output (str example length num types fvars)
-  (declare (special *output-examples*))
-  (when (and *output-examples* (not (eq example :null)) (> num 0))
+  (when (and (not (eq example :null)) (> num 0))
     (format t "~2%~a~%" str)
     (loop for i from 0 below num do
 	  (format t "~%~a = ~a"
@@ -184,11 +176,9 @@
     (loop* 0 (empty-fset-of-nats))))
 
 (defun ws1s-automaton-output (p num fvars offsets)
-  (declare (special *output-automaton*))
-  (when *output-automaton*
-    (format t "~2%Free vars:~2%" fvars)
-    (dfa-print p num fvars offsets)
-    (format t "~%")))
+  (format t "~2%Free vars:~2%" fvars)
+  (dfa-print p num fvars offsets)
+  (format t "~%"))
 
 
 
