@@ -1143,21 +1143,20 @@ See also INDUCT."
 			 nil)))
     (if fmla
 	(try (simple-induct var fmla name)
-	     (if *new-fmla-nums*  ;;NSH(4.25.97) record fnum here
+	     (if *new-fmla-nums*;;NSH(4.25.97) record fnum here
 		 (let ((fnum (find-sform (s-forms (current-goal *ps*))
 					 '+
 					 #'(lambda (sform)
 					     (eq (formula sform)
-						 fmla)))))
+						 fmla))))
+		       (x (car *new-fmla-nums*)))
 		   (then (beta)
-			 (let ((fmla ;;NSH(4.25.97) record fmla here
-				(let ((sforms (select-seq
-					       (s-forms (current-goal *ps*))
-					       (list fnum))))
-				  (when sforms (formula (car sforms))))))
-			   (then (let ((x (car *new-fmla-nums*)))
-				   (then (inst? x)
-					 (split x)))
+			 (let ((fmla (let ((sforms (select-seq
+						    (s-forms (current-goal *ps*))
+						    (list fnum))))
+				       (when sforms (formula (car sforms))))))
+			   (then (inst? x)
+				 (split x)
 				 (let ((num (find-sform
 					     (s-forms (current-goal *ps*))
 					     '+
@@ -1416,9 +1415,9 @@ See also SIMPLE-MEASURE-INDUCT."
   (try-branch (simple-measure-induct$ measure vars fnum order)
 	      ((if *new-fmla-nums*
 		   (branch
-		    (then (beta)
-			  (let ((x (car *new-fmla-nums*)))
-			    (split x)))
+		    (let ((x (car *new-fmla-nums*)))
+		      (beta)
+		      (split x))
 		    ((then (let ((skoterms
 				  (fill-up-terms fnum nil *ps*))
 				 (bndvars (bindings
@@ -1448,7 +1447,7 @@ See also SIMPLE-MEASURE-INDUCT."
 							  :test #'same-id))
 					collect skosymb))
 				 (inst-rule1 `(inst -
-					      ,var-skoterm))
+						    ,var-skoterm))
 				 (inst-rule2 `(inst -
 						    ,@rest-skoterms)))
 			     (then (skolem fnum skoterms)
@@ -1458,7 +1457,7 @@ See also SIMPLE-MEASURE-INDUCT."
 				   (prop)
 				   ))
 			   (skip))
-		     (let ((incfnum ;;NSH(5.23.99)
+		     (let ((incfnum;;NSH(5.23.99)
 			    (length (loop for x in *new-fmla-nums*
 					  when (and (> x 0)
 						    (<= x fnum))
@@ -1471,7 +1470,7 @@ See also SIMPLE-MEASURE-INDUCT."
 				 (skip))))))
 		   (skip))
 	       (skip))
-    (skip-msg "Could not find suitable induction scheme,"))
+	      (skip-msg "Could not find suitable induction scheme,"))
   "This is a helper strategy; use MEASURE-INDUCT+ instead."
   "Inducting on ~a")
 
