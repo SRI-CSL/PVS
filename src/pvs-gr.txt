@@ -507,7 +507,13 @@ actual ::= expr | comp-type-expr;
 
 mappings ::= {'{{' mapping++ ',' '}}'} <mappings(mapping+)>;
 
-mapping ::= {unique-name ':=' mapping-rhs} <mapping(unique-name,mapping-rhs)>;
+mapping ::= {mapping-lhs '=' mapping-rhs}
+              <mapping(mapping-lhs,mapping-rhs)>;
+
+mapping-lhs ::= {idop [pdformals+]^a [':' {'TYPE'|'THEORY'|type-expr}]^q}
+                  <mapping-lhs(idop,
+                               [noformals()|pdf(plus)]^a,
+                               [noqual()|{type()|theory()|typed(type-expr)}]^q)>;
 
 mapping-rhs ::= expr | comp-type-expr;
 
