@@ -162,8 +162,8 @@
 	(display-current *ps*))
       (pvs-message "No proof is currently in progress")))
 
-(defun call-x-show-proof-at (filename line origin)
-  (let ((fdecl (formula-decl-to-prove filename line origin)))
+(defun call-x-show-proof-at (filename declname line origin)
+  (let ((fdecl (formula-decl-to-prove filename declname line origin)))
     (cond ((null fdecl)
 	   (pvs-message "Not at a formula declaration"))
 	  ((justification fdecl)
