@@ -2,10 +2,10 @@
 
 # Relocate PVSPATH and reset PVSALLEGRO in the pvs shell script.
 echo Relocating PVSPATH in the \"pvs\" shell script to $PWD
-chmod u+w pvs
 sed -e "s,^PVSPATH=.*$,PVSPATH=$PWD," \
     -e "s,allegro-full,allegro," \
-    pvs.template > pvs && chmod a+x pvs
+    pvs.template > pvs
+chmod a+x pvs
 
 # Relocate *pvs-path* in make-allegro-pvs.lisp, if it exists
 if [ -e src/make-allegro-pvs.lisp.template ]
