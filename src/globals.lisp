@@ -11,8 +11,19 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; provide
 
 (in-package 'pvs)
+
+;; shadow
+
+(export '(*current-context* *current-theory* *typechecking-module* *pvs-directories*))
+
+;; require
+
+;; use-package
+
+;; import
 
 (defvar *pvs-path* nil
   "Set by Emacs")
