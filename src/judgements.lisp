@@ -589,6 +589,11 @@
       (compute-appl-judgement-range-type
        arguments argtypes rdomains domains range))))
 
+
+;;; argtypes here is a list of either
+;;;  1. vectors of types, if the argument is a record or tuple expr.
+;;;  2. lists of types, otherwise
+
 (defun compute-appl-judgement-range-type (arguments argtypes rdomains domains
 						    range)
   (if (null arguments)
@@ -617,6 +622,11 @@
       (subtype-wrt? (type argument) jdomain rdomain)
       (judgement-arguments-match*? argtypes rdomain jdomain)))
 
+
+;;; argtypes here is either
+;;;  1. a vector of types, if the argument is a record or tuple expr.
+;;;  2. a list of types, otherwise
+
 (defun judgement-arguments-match*? (argtypes rdomain jdomain)
   (if (listp argtypes)
       (judgement-list-arguments-match? argtypes rdomain jdomain)
@@ -632,9 +642,13 @@
   (types (type te)))
 
 (defun judgement-list-arguments-match? (argtypes rdomain jdomain)
+  (or (judgement-list-arguments-match*? argtypes rdomain jdomain)
+      (argtype-intersection-in-judgement-type? argtypes jdomain)))
+
+(defun judgement-list-arguments-match*? (argtypes rdomain jdomain)
   (when argtypes
     (or (subtype-wrt? (car argtypes) jdomain rdomain)
-	(judgement-list-arguments-match? (cdr argtypes) rdomain jdomain))))
+	(judgement-list-arguments-match*? (cdr argtypes) rdomain jdomain))))
 
 (defun judgement-record-arguments-match? (argflds rfields jfields)
   (or (null rfields)
@@ -649,8 +663,10 @@
 (defun judgement-vector-arguments-match? (argtypes rdomain jdomain num
 						   &optional bindings)
   (or (>= num (length argtypes))
-      (and (judgement-vector-arguments-match*?
-	    (aref argtypes num) (car rdomain) (car jdomain) bindings)
+      (and (or (judgement-vector-arguments-match*?
+		(aref argtypes num) (car rdomain) (car jdomain) bindings)
+	       (argtype-intersection-in-judgement-type?
+		(aref argtypes num) (car jdomain)))
 	   (judgement-vector-arguments-match?
 	    argtypes (cdr rdomain) (cdr jdomain) (1+ num)
 	    (if (and (typep (car rdomain) 'dep-binding)
@@ -664,6 +680,29 @@
     (or (subtype-wrt? (car argtypes) jtype rtype bindings)
 	(judgement-vector-arguments-match*? (cdr argtypes) rtype jtype
 					    bindings))))
+
+(defun argtype-intersection-in-judgement-type? (argtypes jtype)
+  (let* ((types (cons jtype argtypes))
+	 (ctype (reduce #'compatible-type types))
+	 (bid '%)
+	 (bd (make!-bind-decl bid ctype))
+	 (bvar (make-variable-expr bd))
+	 (jpreds (collect-judgement-preds jtype ctype bvar))
+	 (apreds (collect-intersection-judgement-preds argtypes ctype bvar)))
+    (subsetp jpreds apreds :test #'tc-eq)))
+
+(defun collect-judgement-preds (type supertype var)
+  (let ((preds (nth-value 1 (subtype-preds type supertype))))
+    (make-preds-with-same-binding* var preds)))
+
+(defun collect-intersection-judgement-preds (types supertype var
+						   &optional preds)
+  (if (null types)
+      preds
+      (collect-intersection-judgement-preds
+       (cdr types) supertype var
+       (nunion (collect-judgement-preds (car types) supertype var) preds
+	       :test #'tc-eq))))
 
 (defmethod judgement-vector-arguments-match*? ((argtypes vector)
 					       rtype jtype bindings)
