@@ -28,7 +28,9 @@
 
 (defun build-pvs (builddir runtime?)
   (excl:generate-application
-	     (format nil "~a-@LISP@" (or (sys:getenv "SYSTEM") "pvs"))
+	     (format nil "~a-~a"
+	       (or (sys:getenv "SYSTEM") "pvs")
+	       (or (sys:getenv "LISP") "allegro7.0"))
 	     builddir	     
 	     (list :list2 "@PVSPATH@/src/make-allegro-pvs.lisp")
 	     :additional-arguments nil
@@ -37,7 +39,7 @@
 	     :allow-existing-directory (not runtime?)
 	     :autoload-warning t
 	     #+(version>= 6) :build-debug #+(version>= 6) t
-	     :c-heap-start "2752512K" ;; (/ #xa8000000 1024)
+	     #-macosx :c-heap-start #-macosx "2752512K" ;; (/ #xa8000000 1024)
 	     #+(version>= 6) :case-mode #+(version>= 6) :case-sensitive-lower
 	     #-(version>= 6) :debug-on-error #-(version>= 6) t
 	     :discard-arglists nil
@@ -58,7 +60,7 @@
 	     :include-xcw nil
 	     :internal-debug nil
 	     :lisp-heap-size 20000000
-	     :lisp-heap-start #x20000000
+	     #-macosx :lisp-heap-start #-macosx #x20000000
 	     :load-local-names-info nil
 	     :load-source-file-info (not runtime?)
 	     :load-xref-info (not runtime?)
@@ -83,7 +85,7 @@
 	     :runtime (when runtime? :dynamic)
 	     :runtime-bundle runtime?
 	     :server-name nil
-	     :temporary-directory "/usr/tmp/"
+	     :temporary-directory "/tmp/"
 	     :us-government nil
 	     :verbose t ))
 
