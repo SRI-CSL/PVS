@@ -284,7 +284,8 @@
       (add-theory-parameters-importings mod nmodinst))
     (when (mappings nmodinst)
       (generate-mapped-axiom-tccs nmodinst))
-    ))
+    (unless *ignore-exportings*
+      (add-exporting-with-theories mod nmodinst t))))
 
 (defun add-theory-parameters-importings (theory inst)
   (when (and (formals-sans-usings theory)
@@ -338,7 +339,7 @@
 ;;; The function will be called with (#m1 m1[t]), (#m2 m2[t])
 ;;; The theory is associated with the inst (i.e., they have the same id)
 
-(defun add-exporting-with-theories (theory inst)
+(defun add-exporting-with-theories (theory inst &optional skip-add-to-using?)
   (when (exporting theory)
     (dolist (entry (the list (closure (exporting theory))))
       (let* ((itheory (cdr entry))
@@ -360,7 +361,8 @@
 	  ;; Add this to the assuming-instances list if fully instantiated
 	  (pushnew iname (assuming-instances (current-theory))
 		   :test #'tc-eq))
-	(add-to-using iname itheory)))))
+	(unless skip-add-to-using?
+	  (add-to-using iname itheory))))))
 
 
 ;;; Returns all of the theorynames directly used by the specified
