@@ -1269,7 +1269,7 @@
 	   (typep (find-supertype (type (car list1))) 'tupletype)
 	   (not (singleton? list2)))
       (list (cons (car list1)
-		  (make!-tuple-expr list2 (type (car list1)))))
+		  (make!-tuple-expr list2)))
       (if (and (not (singleton? list1))
 	       (singleton? list2)
 	       (typep (find-supertype (type (car list2)))
