@@ -222,7 +222,7 @@
 	(if *new-ground?*
 	    (old-ground)
 	    (new-ground)))
-      (pvs-message "Using ~:[old~;new~] decision procedures" *new-ground?*)
+      ;;(pvs-message "Using ~:[old~;new~] decision procedures" *new-ground?*)
       (let ((*dp-state* (when *new-ground?*
 			  (dp::push-new-cong-state *init-dp-state*)))
 	    (*top-dp-state* (when *new-ground?*
@@ -246,10 +246,9 @@
 	     (id decl) (id *current-theory*)))
 
 (defun before-prove* ()
-  (unless *proving-tcc*
-    (when *start-proof-display*
-      (let ((*ps* *top-proofstate*))
-	(call-x-show-proof))))
+  (when *start-proof-display*
+    (let ((*ps* *top-proofstate*))
+      (call-x-show-proof)))
   (when (or (not *proving-tcc*)
 	    *noninteractive*)
     (pvs-emacs-eval "(setq pvs-in-checker t)")))

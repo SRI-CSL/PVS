@@ -3092,9 +3092,12 @@
     (nprotecting-cong-state  ;;changed from LET on alists
      ((*dp-state* *dp-state*)
       (*alists* *alists*))
-     (when *pseudo-normalizing*
-       (mapc #'assert-typepreds *assert-typepreds*))
-     (call-process fmla *dp-state* *alists*))))
+     (let ((typealist typealist))
+       (when (eq *pseudo-normalizing* 'include-typepreds?)
+	 (unless (assq (caar primtypealist) typealist)
+	   (setq typealist (append typealist primtypealist)))
+	 (assert-typepreds *assert-typepreds*))
+       (call-process fmla *dp-state* *alists*)))))
 
 (defun assert-test0 (fmla)
   (unless (check-for-connectives? fmla)

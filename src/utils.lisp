@@ -2117,7 +2117,7 @@ space")
   (setq *pseudo-normalize-hash* nil)
   (setq *pseudo-normalize-translate-id-hash* nil))
 
-(defun pseudo-normalize (expr)
+(defun pseudo-normalize (expr &optional include-typepreds?)
   (if (or *pseudo-normalizing*		; Don't allow recursion
 	  (typep (declaration *current-context*)
 		 '(or adt-constructor-decl adt-recognizer-decl
@@ -2131,7 +2131,11 @@ space")
 	    (if (tc-eq nexpr expr)
 		expr
 		nexpr)
-	    (let* ((*pseudo-normalizing* t)
+	    (let* ((*pseudo-normalizing* (if include-typepreds?
+					     'include-typepreds?
+					     t))
+		   (*subtype-hash* (when include-typepreds?
+				     (clrhash *pseudo-normalize-subtype-hash*)))
 		   (*generate-tccs* 'none)
 		   ;;(typealist primtypealist);;NSH(2.16.94)
 		   (*assert-flag* 'simplify)

@@ -306,7 +306,9 @@
   (let* ((nop (gensubst* (operator ex) substfn testfn))
 	 (narg (gensubst* (argument ex) substfn testfn))
 	 (ntype (cond ((or *parsing-or-unparsing*
-			   *visible-only*)
+			   *visible-only*
+			   (and (eq nop (operator ex))
+				(eq narg (argument ex))))
 		       (type ex))
 		      ((dep-binding? (domain (find-supertype (type nop))))
 		       (substit (range (find-supertype (type nop)))

@@ -1448,7 +1448,8 @@
 	  (check-edited-justification sexpr)
 	(if subexpr
 	    (justification-error subexpr sexpr msg)
-	    (let ((just (revert-justification sexpr)))
+	    (let ((just (revert-justification
+			 (complete-checkpointed-proof sexpr))))
 	      (multiple-value-bind (fdecl place)
 		  (if origin
 		      (formula-decl-to-prove name line origin)

@@ -930,8 +930,6 @@ is T) and disjunctively simplifies."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;simple induction strategy
-
 (defmethod predtype? ((te subtype))
   (with-slots (supertype) te
     (predtype? supertype)))
@@ -2988,14 +2986,14 @@ is needed, the best option is to use CASE."
 		    (constant-variable-alist
 		     (loop for (x . y) in constant-bind-decl-alist
 			   collect (cons x (make-variable-expr y))))
-		    (newform (gensubst form
+		    (newform1 (gensubst form
 			       #'(lambda (x)
 				   (cdr (assoc x constant-variable-alist
 					       :test #'tc-eq)))
 			       #'(lambda (x)
 				   (assoc x constant-variable-alist
 					  :test #'tc-eq))))
-		    (newform (universal-closure newform))
+		    (newform (universal-closure newform1))
 		    (instantiation-list
 		     (when (forall? newform)
 		       (loop for bd in (bindings newform)
@@ -3007,7 +3005,12 @@ is needed, the best option is to use CASE."
 		 (case newform)
 		 ((then (inst -1 :terms instantiation-list)
 			(prop))
-		  (hide 2))))
+		  (let ((hfnums (find-all-sformnums
+				 (s-forms (current-goal *ps*))
+				 '*
+				 #'(lambda (x)
+				     (member x sforms :key #'formula)))))
+		    (hide hfnums)))))
 	      (skip-msg "Merge-fnums failed."))))
   "Merges the formulas and universally generalizes the skolem constants
 in the given fnums."
@@ -3148,30 +3151,32 @@ invokes apply-extensionality.  Otherwise it decomposes the
 			rec-subtypes)))
     (if lhs-subtype
 	(let ((accessors (accessors (constructor (predicate lhs-subtype)))))
-	  (if (subtype-of? (type rhs) lhs-subtype)
-	      (mapcar #'(lambda (a)
-			  (make-equality
-			   (make-application a lhs)
-			   (make-application a rhs)))
-		accessors)
-	      (cons (make-application (predicate lhs-subtype) rhs)
-		    (mapcar #'(lambda (a)
-				(make-equality
-				 (make-application a lhs)
-				 (make-application a rhs)))
-		      accessors))))
+	  (make-conjunction
+	   (if (subtype-of? (type rhs) lhs-subtype)
+	       (mapcar #'(lambda (a)
+			   (make-equality
+			    (make-application a lhs)
+			    (make-application a rhs)))
+		 accessors)
+	       (cons (make-application (predicate lhs-subtype) rhs)
+		     (mapcar #'(lambda (a)
+				 (make-equality
+				  (make-application a lhs)
+				  (make-application a rhs)))
+		       accessors)))))
 	(let ((rhs-subtype (find-if #'(lambda (rst)
 					(subtype-of? (type rhs) rst))
 			     rec-subtypes)))
 	  (if rhs-subtype
 	      (let ((accessors
 		     (accessors (constructor (predicate rhs-subtype)))))
-		(cons (make-application (predicate rhs-subtype) lhs)
-		      (mapcar #'(lambda (a)
-				  (make-equality
-				   (make-application a lhs)
-				   (make-application a rhs)))
-			accessors)))
+		(make-conjunction
+		 (cons (make-application (predicate rhs-subtype) lhs)
+		       (mapcar #'(lambda (a)
+				   (make-equality
+				    (make-application a lhs)
+				    (make-application a rhs)))
+			 accessors))))
 	      (make-disjunction
 	       (mapcar #'(lambda (r c)
 			   (make-conjunction

@@ -2019,7 +2019,7 @@ required a context.")
 (defmethod set-type* ((expr update-expr) (expected recordtype))
   (with-slots (expression assignments) expr
     (with-slots (fields) expected
-      (let ((etypes (collect-compatible-recordtypes (types expression)
+      (let ((etypes (collect-compatible-recordtypes (ptypes expression)
 						    expected)))
 	(check-unique-type etypes expr expected)
 	(set-type* expression (contract-expected expr expected))
@@ -2035,7 +2035,7 @@ required a context.")
   (let* ((new-ids (mapcar #'(lambda (a) (id (caar (arguments a))))
 		    (remove-if-not #'maplet? (assignments expr))))
 	 (types (collect-compatible-recordtypes
-		 (types (expression expr)) expected new-ids)))
+		 (ptypes (expression expr)) expected new-ids)))
     (check-unique-type types (expression expr) expected)
     (let ((fields (fields (find-supertype (car types)))))
       ;; Remove those fields added by maplets, and replace fields changed

@@ -270,6 +270,26 @@
 )
 
 
+(defvar *ignore-boolean-equalities?* nil)
+
+(defun bdd-simplify (expr &optional ignore-boolean-equalities?)
+  (unless *bdd-initialized* (bdd_init))
+  (let* ((*pvs-bdd-hash* (make-hash-table
+			  :hash-function 'pvs-sxhash :test 'tc-eq))
+	 (*bdd-pvs-hash* (make-hash-table))
+	 (*recognizer-forms-alist* nil)
+	 (*ignore-boolean-equalities?* ignore-boolean-equalities?)
+	 (bdd (bdd_not (translate-to-bdd expr)))
+	 (ebdd (add-enum-bdds bdd *recognizer-forms-alist*))
+	 (bdd-list (translate-from-bdd-list (bdd_sum_of_cubes ebdd 1)))
+	 (pvs-list (from-bdd-list-to-pvs-list (nreverse bdd-list))))
+    (cond ((zerop bdd_interrupted)
+	   (prog1 (make!-conjunction*
+		   (mapcar #'make!-disjunction* pvs-list))
+	     (unless *bdd-initialized* (bdd_quit))))
+	  (t (format t "~%BDD Simplifier interrupted")
+	     expr))))
+
 (defun from-bdd-list-to-pvs-list (list-of-conjuncts)
    (init-hash-tables) ;; definition in mu.lisp
   (let* ((lit-list (mapcar #'(lambda (conj)
@@ -378,8 +398,11 @@
 	 (bdd-and (translate-to-bdd* (args1 expr))
 		  (translate-to-bdd* (args2 expr))))
 	((iff-or-boolean-equation? expr)
-	 (bdd-equiv (translate-to-bdd* (args1 expr))
-		    (translate-to-bdd* (args2 expr))))
+	 (if (or (not *ignore-boolean-equalities?*)
+		 (iff? expr))
+	     (bdd-equiv (translate-to-bdd* (args1 expr))
+			(translate-to-bdd* (args2 expr)))
+	     (make-bdd-var expr)))
 	((and (disequation? expr)
 	      (tc-eq (type (args1 expr)) *boolean*))
 	 (bdd-not (bdd-equiv (translate-to-bdd* (args1 expr))
