@@ -118,6 +118,7 @@
 (defvar *build-arguments* nil)
 (defvar *build-access-var* nil) ;; t when mu_check_bool_var and nil otherwise.
 
+(defvar *expand-term* nil) ;; t when a term should be fully expanded
 
 (defvar *convert-list* nil)
 (defvar *list-of-relational-vars* nil) ;; list of expressions
@@ -269,18 +270,24 @@
 (defun convert-pvs-to-mu-formula (expr)
   ;; building a Formula
   (let* ((*build-mu-term* nil)
+	 (*expand-term* nil)
 	 (fml (convert-pvs-to-mu* expr)))
-    ;;(pvs_mu_print_formula fml)
     fml))
 
 
 (defun convert-pvs-to-mu-term (expr)
   ;; building a Term
   (let* ((*build-mu-term* t)
+	 (*expand-term* nil)
 	 (trm (convert-pvs-to-mu* expr)))
-    ;;(pvs_mu_print_term trm)
     trm))
 
+(defun convert-pvs-to-mu-term-expanded (expr)
+  ;; building a Term
+  (let* ((*build-mu-term* t)
+         (*expand-term* t)
+	 (trm (convert-pvs-to-mu* expr)))
+    trm))
 
 (defvar *mu-nu-lambda-bindings-list* nil
   "lookup list containing vars that are bound by lambda operated on mu/nu")
@@ -551,7 +558,8 @@
 (defun convert-pvs-to-mu-reachable (expr)
   (let* ((mu-list-args (let ((*build-arguments* t))
 			 (convert-pvs-to-mu-formula (arguments expr))))
-         (reach-list-args (convert-pvs-to-mu-term (arguments (operator expr))))
+         (reach-list-args (convert-pvs-to-mu-term-expanded
+			   (arguments (operator expr))))
          (nbofargs (length (arguments (operator expr))))
          (mu-reach-expr
 	  (cond ((equal 2 nbofargs)
@@ -575,7 +583,7 @@
       (convert-pvs-to-mu-equality-with-case-args expr )) 
      ((or (branch? (args2 expr))
 	  (cases-expr? (args2 expr)))
-      (convert-pvs-to-mu-equality-with-case-arg
+      (convert-pvs-to-mu-equality-with-case-args
        (make-equality (args2 expr) (args1 expr))))
      ((or (scalar-constant? (args1 expr))
 	  (scalar-constant? (args2 expr)))           
@@ -631,33 +639,41 @@
 ;;msb of the position bit string.  
 
 (defun make-mu-variable (expr);; new-make-variable
-  (let ((bddname (gethash expr *pvs-bdd-hash*)))
-    (if bddname
-	(if (consp bddname)
-	    (let ((new-bddname (cadr bddname)))
-	      (cond (*build-arguments*
-		     (make-argument-vars-scalar new-bddname))
-		    (*build-access-var*
-		     (make-binding-vars-scalar new-bddname))
-		    (t new-bddname)))
-	    (mu-make-bool-var (format nil "b~d" bddname)))
-	(cond ((sub-range? (type expr))
-	       (make-subrange-names expr))
-	      ((scalar? expr)
-	       (make-scalar-names expr))
-	      ((recognizer-application? expr)
-	       (make-mu-variable-recognizer-application expr))
-	      (t (let* ((bddhash-name (make-bdd-var-id))
-			(mu-expression (mu-create-bool-var bddhash-name))
-			(is-rel-var (and *build-rel-var*
-					 (not *build-access-var*)))
-			(is-access-var *build-access-var*))
-		   (when (null (freevars expr))
-		     (setf (gethash expr *pvs-bdd-hash*) bddhash-name)
-		     (setf (gethash bddhash-name *bdd-pvs-hash*) expr))
-		   (when (or is-access-var is-rel-var)
-		     (push expr *list-of-relational-vars*))
-		   mu-expression))))))
+ (when (and *expand-term*
+	    (funtype? (find-supertype (type expr))))
+   ;; case where a variable is created for an expression that 
+   ;; is expected to be expanded
+   (pvs-error "Can not model-check" 
+     (format nil "Expession ~a should be expanded"
+       (unparse expr :string t))))
+ (let ((bddname (gethash expr *pvs-bdd-hash*)))
+   (if bddname
+       (if (consp bddname)
+	   (let ((new-bddname (cadr bddname)))
+	     (cond (*build-arguments*
+		    (make-argument-vars-scalar new-bddname))
+		   (*build-access-var*
+		    (make-binding-vars-scalar new-bddname))
+		   (t new-bddname)))
+	   (mu-make-bool-var (format nil "b~d" bddname)))
+       (cond ((sub-range? (type expr))
+	      (make-subrange-names expr))
+	     ((scalar? expr)
+	      (make-scalar-names expr))
+	     ((recognizer-application? expr)
+	      (make-mu-variable-recognizer-application expr))
+	     (t (let* ((bddhash-name (make-bdd-var-id))
+		       (mu-expression (mu-create-bool-var bddhash-name))
+		       (is-rel-var (and *build-rel-var*
+					(not *build-access-var*)))
+		       (is-access-var *build-access-var*))
+		  (when (null (freevars expr))
+		    (setf (gethash expr *pvs-bdd-hash*) bddhash-name)
+		    (setf (gethash bddhash-name *bdd-pvs-hash*) expr))
+		  (when (or is-access-var is-rel-var)
+		    (push expr *list-of-relational-vars*))
+		  mu-expression)))))))
+
 
 
 ;; negates a particular element in a list of boolean lits (symbols)
