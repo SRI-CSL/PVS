@@ -15,11 +15,11 @@
 (defmacro addrule (name required-args optional-args body docstring
 			&optional format-string)
   `(let* ((entry (gethash ,name *rulebase*))
-	  (form '(,name (append ',required-args
-				(when (consp ',optional-args)
-				  (if (eq (car ',optional-args) '&rest)
-				      ',optional-args
-				      '(&optional ',optional-args))))))
+	  (form (cons ,name (append ',required-args
+				    (when (consp ',optional-args)
+				      (if (eq (car ',optional-args) '&rest)
+					  ',optional-args
+					  '(&optional ',optional-args))))))
 	  (docstr (format nil "~s: ~%    ~a" form ,docstring)))
      (cond ((null entry)
 	    (add-symbol-entry ,name
