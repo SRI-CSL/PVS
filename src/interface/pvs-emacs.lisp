@@ -190,7 +190,7 @@
 ;;; Conversions are treated separately
 
 (defun pvs-conversion-msg (ctl &rest args)
-  (when *noninteractive*
+  (when (or *noninteractive* *in-checker* *in-evaluator*)
     (pvs-message "~% ~?~%" ctl args)
     ;;(format-if "~% ~?~%" ctl args)
     )
