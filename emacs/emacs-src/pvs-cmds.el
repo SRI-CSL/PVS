@@ -1150,9 +1150,12 @@ if necessary)."
     (if (file-equal dir *pvs-current-directory*)
 	(message "Cannot use current context as a prelude")
 	(pvs-send (format "(load-prelude-library \"%s\")" dir)))
-    (let ((load-path (cons dir load-path)))
-      (message "Loading %s" "pvs-lib.el")
-      (load "pvs-lib" t nil nil t))))
+    (load-pvs-lib-file dir)))
+
+(defun load-pvs-lib-file (dir)
+  (let ((load-path (cons dir load-path)))
+    (message "Loading %s" "pvs-lib.el")
+    (load "pvs-lib" t nil nil t)))
 
 
 (defpvs remove-prelude-library library (dir)
