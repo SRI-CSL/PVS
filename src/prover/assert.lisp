@@ -462,7 +462,7 @@
     (or (quant-occurs? operator)
 	(quant-occurs? argument))))
 
-(defmethod quant-occurs? ((expr if-expr))
+(defmethod quant-occurs? ((expr branch))
   (or (quant-occurs? (condition expr))
       (quant-occurs? (then-part expr))
       (quant-occurs? (else-part expr))))
@@ -513,7 +513,7 @@
 (defmethod connective-occurs? ((expr name-expr))
   NIL)
 
-(defmethod connective-occurs? ((expr if-expr))
+(defmethod connective-occurs? ((expr branch))
     T)
 
 (defmethod connective-occurs? ((expr cases-expr))
@@ -636,7 +636,8 @@
 		(reduce-proj-application sigarg newarg index))))
 
 (defun assert-if-inside-sign (expr sign)
-  (cond ((and (application? expr)(not (branch? expr)))
+  (cond ((and (application? expr)
+	      (not (branch? expr)))
 	 (multiple-value-bind (sigop newop)
 	     (assert-if (operator expr))
 	   (multiple-value-bind (sigargs newargs)
@@ -688,7 +689,7 @@
 			    (values sig expr)))))))))
 	(t (assert-if-inside expr))))
 
-(defmethod assert-if-inside ((expr if-expr))
+(defmethod assert-if-inside ((expr branch))
   (assert-if expr))
 
 (defun check-no-other-recognizers (recog arg)
@@ -981,9 +982,8 @@
   (let ((*top-assert-flag* NIL))
       (assert-if expr)))
 
-(defmethod assert-if ((expr if-expr))  ;;;change to rec. branch?
-  (if (or (eq *assert-flag* 'rewrite)
-	  (not (branch? expr)))
+(defmethod assert-if ((expr branch))  ;;;change to rec. branch?
+  (if (eq *assert-flag* 'rewrite)
       (call-next-method expr)
       (let ((newtest (nth-value 1 (assert-if-simp (condition expr)))))
 	(cond ((tc-eq newtest *true*)
@@ -1898,7 +1898,7 @@
 			   (t (do-auto-rewrite expr sig))))))))))
 
 (defun assert-if-application (expr newop newargs sig)
-  (cond ((eq *assert-flag* 'rewrite)(do-auto-rewrite expr sig))
+  (cond ((eq *assert-flag* 'rewrite) (do-auto-rewrite expr sig))
 	((and (not (negation? expr))
 	      (branch? newargs))
 	 (let ((thenval (nth-value 1
@@ -2636,48 +2636,44 @@
 (defun case-or-branch? (expr)
   (or (branch? expr)(cases? expr)))
 
-(defmethod lazy-assert-if-with-subst ((expr if-expr) subst &optional if-flag)
-  (if (not (branch? expr))
-      (assert-if (substit expr subst))
-      (let ((newtest (assert-if-simplify (substit (condition expr) subst))))
-	;;check if assert-if-simplify is needed.  Why another assert-test
-	;;below.
-	(if (check-for-connectives? newtest)
-	    (if if-flag
-		(values 'X expr);;expr is irrelevant
-		(values '? (substit expr subst)))
-	    (let ((result newtest));;instead of (assert-test newtest)
-	      (cond ((tc-eq result *true*)
-		     (let ((newthen
-			    (nth-value 1 (lazy-assert-if-with-subst
-					  (then-part expr) subst))))
-		       (values-assert-if '? newthen expr)))
-		    ((tc-eq result *false*)
-		     (let ((newelse
-			    (nth-value 1 (lazy-assert-if-with-subst
-					  (else-part expr) subst))))
-		       (values-assert-if  '? newelse expr)))
-		    (if-flag (values 'X expr))
-		    (t (values '? (substit expr subst)))))))))
+(defmethod lazy-assert-if-with-subst ((expr branch) subst &optional if-flag)
+  (let ((newtest (assert-if-simplify (substit (condition expr) subst))))
+    ;;check if assert-if-simplify is needed.  Why another assert-test
+    ;;below.
+    (if (check-for-connectives? newtest)
+	(if if-flag
+	    (values 'X expr);;expr is irrelevant
+	    (values '? (substit expr subst)))
+	(let ((result newtest));;instead of (assert-test newtest)
+	  (cond ((tc-eq result *true*)
+		 (let ((newthen
+			(nth-value 1 (lazy-assert-if-with-subst
+				      (then-part expr) subst))))
+		   (values-assert-if '? newthen expr)))
+		((tc-eq result *false*)
+		 (let ((newelse
+			(nth-value 1 (lazy-assert-if-with-subst
+				      (else-part expr) subst))))
+		   (values-assert-if  '? newelse expr)))
+		(if-flag (values 'X expr))
+		(t (values '? (substit expr subst))))))))
 
-(defmethod lazy-assert-if ((expr if-expr))
-  (if (not (branch? expr))
-      (call-next-method expr)
-      (let ((newtest (assert-if-simplify (condition expr))))
-	;;check if assert-if-simplify is needed.  Why another assert-test
-	;;below.  
-	(if (check-for-connectives? newtest)
-	    (values 'X expr)
-	    (let ((result newtest));;instead of (assert-test newtest)
-	      (cond ((tc-eq result *true*)
-		     (let ((newthen (nth-value 1
-				      (lazy-assert-if (then-part expr)))))
-		       (values-assert-if '? newthen expr)))
-		    ((tc-eq result *false*)
-		     (let ((newelse (nth-value 1
-				      (lazy-assert-if (else-part expr)))))
-		       (values-assert-if  '? newelse expr)))
-		    (t (values 'X expr))))))))
+(defmethod lazy-assert-if ((expr branch))
+  (let ((newtest (assert-if-simplify (condition expr))))
+    ;;check if assert-if-simplify is needed.  Why another assert-test
+    ;;below.  
+    (if (check-for-connectives? newtest)
+	(values 'X expr)
+	(let ((result newtest));;instead of (assert-test newtest)
+	  (cond ((tc-eq result *true*)
+		 (let ((newthen (nth-value 1
+				  (lazy-assert-if (then-part expr)))))
+		   (values-assert-if '? newthen expr)))
+		((tc-eq result *false*)
+		 (let ((newelse (nth-value 1
+				  (lazy-assert-if (else-part expr)))))
+		   (values-assert-if  '? newelse expr)))
+		(t (values 'X expr)))))))
 
 (defun sig-assert-if (expr sig)
   (multiple-value-bind (newsig newexpr)

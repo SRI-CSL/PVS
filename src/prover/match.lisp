@@ -782,7 +782,7 @@
 		 'fail)))
 	(t 'fail)))
     
-(defmethod match* ((lhs if-expr)(instance if-expr) bind-alist subst)
+(defmethod match* ((lhs branch)(instance branch) bind-alist subst)
   (match* (else-part lhs)(else-part instance) bind-alist
 	 (match* (then-part lhs)(then-part instance) bind-alist
 		 (match* (condition lhs)(condition instance)

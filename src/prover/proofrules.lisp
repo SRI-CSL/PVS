@@ -353,7 +353,7 @@
 		 
 
 ;;; SO 8/17/94 - use new form of application
-(defmethod simplify-ifs ((expr if-expr) trueconds falseconds)
+(defmethod simplify-ifs ((expr branch) trueconds falseconds)
   (let ((simple-condition (simplify-ifs (condition expr) trueconds falseconds)))
     ;;(break "simplify if")
     (if (truecond? simple-condition trueconds falseconds)
@@ -402,7 +402,7 @@
 (defmethod simplify-ifs ((expr application) trueconds falseconds)
   (if (and *lift-if-updates* (update-expr? (operator* expr)))
       (let ((translation (translate-update-to-if expr)))
-	(if (and (if-expr? translation)
+	(if (and (branch? translation)
 		 (or (truecond? (condition translation)
 				trueconds falseconds)
 		     (falsecond? (condition translation)
@@ -504,7 +504,7 @@
 ; 	 (eq (id op) 'if)
 ; 	 (eq (id (module-instance (resolution op))) '|if_def|)))))
 
-(defmethod top-collect-conds ((expr if-expr))
+(defmethod top-collect-conds ((expr branch))
   (let ((if-conds (collect-conds (condition expr))))
     (if (null if-conds)
 	(let ((then-conds (top-collect-conds (then-part expr))))
@@ -529,7 +529,7 @@
       (top-collect-conds (args1 expr))
       (collect-conds expr)))
 
-(defmethod collect-conds ((expr if-expr)  &optional  boundvars)
+(defmethod collect-conds ((expr branch)  &optional  boundvars)
   (cond ((branch? expr)
 	 (let ((condn (condition expr)))
 	   (if (null (intersection (freevars condn) boundvars

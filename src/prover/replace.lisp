@@ -250,7 +250,7 @@
 				     nil))))
 	  
 
-(defmethod replace-expr* (lhs rhs (expr if-expr)
+(defmethod replace-expr* (lhs rhs (expr branch)
 			      lastopinfix?)
   (if (replace-eq expr lhs)
       (parenthesize rhs lastopinfix?)

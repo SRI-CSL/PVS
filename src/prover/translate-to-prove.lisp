@@ -218,7 +218,7 @@
 ;(defmethod translate-to-prove ((expr coercion))
 ;  (translate-to-prove (expression expr)))
 
-(defmethod translate-to-prove ((expr if-expr))
+(defmethod translate-to-prove ((expr branch))
   (if (eq (id (module-instance (resolution (operator expr))))
 	  '|if_def|)
       (list 'IF
