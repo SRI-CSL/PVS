@@ -495,6 +495,7 @@ bind tighter.")
   (with-slots (id arguments recognizer) constr
     (pprint-logical-block (nil nil)
       (write id)
+      (pprint-indent :current 0)
       (when arguments
 	(pprint-logical-block (nil arguments :prefix "(" :suffix ")")
 	  (loop (pp* (pprint-pop))
@@ -502,6 +503,7 @@ bind tighter.")
 		(write-char #\,)
 		(write-char #\space)
 		(pprint-newline :fill))))
+      (pprint-newline :fill)
       (write-char #\:)
       (write-char #\space)
       (write recognizer)
@@ -548,7 +550,7 @@ bind tighter.")
     (pp* theory-name)))
 
 (defmethod pp* :around ((decl declaration))
-  (with-slots (id formals chain? semi) decl
+  (with-slots (id module formals chain? semi) decl
     (when (or *unparse-expanded*
 	      *adt*
 	      (not (generated-by decl)))
@@ -570,12 +572,14 @@ bind tighter.")
 		 (format t "  % ~a~%" (proof-status-string decl)))
 	       ;;(pprint-indent :block 2)
 	       (write id)
+	       (pprint-indent :block 6)
 	       (pp-decl-formals formals)
 	       (write-char #\:)
 	       (write-char #\space)
-	       (pprint-newline :fill)
+	       ;;(pprint-newline :fill)
 	       (call-next-method)
-	       (when semi (write-char #\;)))))))
+	       (when semi (write-char #\;))
+	       (pprint-indent :block 0))))))
 
 (defun pp-decl-formals (formals)
   (when formals
