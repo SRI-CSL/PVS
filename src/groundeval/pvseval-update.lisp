@@ -15,14 +15,6 @@
   "Ground evaluation of expression expr."
   "")
 
-(defmacro pvs-funcall (fun &rest args)
-  `(let ((funval ,fun))
-     (if (arrayp funval)
-	 (svref funval ,@args)
-	 (if (pvs-outer-array-p funval)
-	     (pvs-outer-array-lookup funval ,@args) 
-	     (funcall funval ,@args)))))
-
 (defvar *destructive?* nil)
 (defvar *output-vars* nil)
 (defvar *external* nil)
