@@ -1,0 +1,25 @@
+sources = prover.tex
+
+all : prover.dvi prover.ps prover.ps.gz prover.pdf
+
+prover.dvi: $(sources)
+	latex $<;
+	makeindex -c prover.idx
+	bibtex prover || echo
+	latex $<
+	latex $<
+
+prover.ps.gz : prover.ps
+	gzip -c $< > $@
+
+prover.ps : prover.dvi
+	dvips -o $@ $<
+
+prover.pdf : ${sources}
+	pdflatex $<
+
+.PHONY: clean
+clean :
+	rm -f Makefile prover.dvi prover.pdf prover.ps prover.ps.gz \
+              *.log *.bbl *.ind *.ilg *.blg *.bbl *.aux \
+              *.toc *.idx *.brf 
