@@ -288,24 +288,28 @@ ${xemacs19-src} : ${emacs-src}
 
 ifeq ($(shell if [ -x ${emacs20} ] ; then echo OK ; fi), OK)
 emacs20-elc = $(emacs20-src:.el=.elc)
+all =+ ${emacs20-elc}
 ${emacs20-elc} : ${emacs20-src}
 	(cd emacs/emacs20; $(EMACS20) -batch -l pvs-byte-compile.el)
 endif
 
 ifeq ($(shell if [ -x ${emacs19} ] ; then echo OK ; fi), OK)
 emacs19-elc = $(emacs19-src:.el=.elc)
+all =+ ${emacs19-elc}
 ${emacs19-elc} : ${emacs19-src}
 	(cd emacs/emacs19; $(EMACS19) -batch -l pvs-byte-compile.el)
 endif
 
 ifeq ($(shell if [ -x ${xemacs20} ] ; then echo OK ; fi), OK)
 xemacs20-elc = $(xemacs20-src:.el=.elc)
+all =+ ${xemacs20-elc}
 ${xemacs20-elc} : ${xemacs20-src}
 	(cd emacs/xemacs20; $(XEMACS20) -batch -l pvs-byte-compile.el)
 endif
 
 ifeq ($(shell if [ -x ${xemacs19} ] ; then echo OK ; fi), OK)
 xemacs19-elc = $(xemacs19-src:.el=.elc)
+all =+ ${xemacs19-elc}
 ${xemacs19-elc} : ${xemacs19-src}
 	(cd emacs/xemacs19; $(XEMACS19) -batch -l pvs-byte-compile.el)
 endif
