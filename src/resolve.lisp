@@ -326,7 +326,10 @@
 				    unint-modinsts)
 				  unint-modinsts)))
 		(mapcar #'(lambda (thinst)
-			    (make-resolution decl thinst))
+			    (if mappings
+				(make-resolution-with-mappings
+				 decl thinst mappings)
+				(make-resolution decl thinst)))
 		  thinsts)))
 	  (when (length= acts (formals-sans-usings dth))
 	    (let* ((thinsts (gethash dth (current-using-hash)))
@@ -359,6 +362,24 @@
 
 (defun copy-actuals (acts)
   acts)
+
+(defun make-resolution-with-mappings (decl thinst mappings)
+  (if (every #'(lambda (m)
+		     (member (lhs m) (mappings thinst)
+			     :test #'same-id :key #'lhs))
+	     mappings)
+      (make-resolution decl thinst)
+      (let* ((nmappings (append mappings
+				(remove-if #'(lambda (m)
+					       (member (lhs m) mappings
+						       :test #'same-id
+						       :key #'lhs))
+				  (mappings thinst))))
+	      (nthinst (copy thinst
+			'mappings nmappings)))
+	(typecheck-mappings nmappings nthinst)
+	(make-resolution decl nthinst))))
+	
 
 (defun decl-args-compatible? (decl args)
   (if (eq (module decl) (current-theory))
@@ -752,25 +773,26 @@
 
 ;;; End of matching-actuals code
 
-;;; matching-mappings
+;;; matching-mappings - mappings is attached to the name, inst is the
+;;; theory that we are comparing to.
 
 (defun matching-mappings (mappings inst)
   (let* ((th (get-theory inst))
 	 (decls (interpretable-declarations th)))
-    (every #'(lambda (m)
-	       (matching-mapping m (mappings inst) decls))
+    (every #'(lambda (m) (matching-mapping m (mappings inst) decls))
 	   mappings)))
 
 (defun matching-mapping (map mappings decls)
-  (let ((mmap (find (lhs map) mappings :test #'same-id :key #'lhs)))
-    (when mmap
-      (if (type-value (rhs map))
-	  (and (type-value (rhs mmap))
-	       (tc-eq (type-value (rhs map)) (type-value (rhs mmap))))
-	  (and (not (type-value (rhs mmap)))
-	       (some #'(lambda (pty)
-			 (tc-eq (type (expr (rhs mmap))) pty))
-		     (types (expr (rhs map)))))))))
+  (and (member (lhs map) decls :test #'same-id)
+       (let ((mmap (find (lhs map) mappings :test #'same-id :key #'lhs)))
+	 (or (null mmap)
+	     (if (type-value (rhs map))
+		 (and (type-value (rhs mmap))
+		      (tc-eq (type-value (rhs map)) (type-value (rhs mmap))))
+		 (and (not (type-value (rhs mmap)))
+		      (some #'(lambda (pty)
+				(tc-eq (type (expr (rhs mmap))) pty))
+			    (types (expr (rhs map))))))))))
 
 (defun can-use-for-assuming-tcc? (d)
   (or (not *in-checker*)
@@ -1709,7 +1731,7 @@
 	    (values
 	     name
 	     (format nil
-		 "Expecting a~a~%No resolution for ~a~
+		 "~%Expecting a~a~%No resolution for ~a~
                   ~@[ with arguments of possible types: ~:{~%  ~<~a~3i : ~{~_ ~a~^,~}~>~}~]~
                   ~@[~% Check the actual parameters; the following ~
                         instances are visible,~% but don't match the ~
