@@ -406,7 +406,8 @@
 
 (defcl adt-type-name (type-name)
   adt
-  recognizer-names)
+  recognizer-names
+  struct-name)
 
 (defcl type-application (type-expr)
   (type :parse t)
