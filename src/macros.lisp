@@ -290,15 +290,19 @@
 	 (pushnew ',reset-name ,hook)
 	 (defun ,name ()
 	   (or ,var
-	       (let* ((*current-theory* (get-typechecked-theory ,theory))
-		      (*current-context* (saved-context *current-theory*))
+	       (let* ((*current-theory* (get-theory ,theory))
+		      (*current-context* (when *current-theory*
+					   (saved-context *current-theory*)))
 		      (*generate-tccs* 'none)
 		      ,@(when expected
 			  `((expected-type
-			     (pc-typecheck (pc-parse ,expected 'type-expr))))))
-		 (assert *current-context*)
-		 (setq ,var (pc-typecheck (pc-parse ,term ',nt)
-			      ,@(when expected '(:expected expected-type)))))))
+			     (when *current-context*
+			       (pc-typecheck (pc-parse ,expected
+					       'type-expr)))))))
+		 (when *current-context*
+		   (setq ,var (pc-typecheck (pc-parse ,term ',nt)
+				,@(when expected
+				    '(:expected expected-type))))))))
 	 (defun ,reset-name ()
 	   (setq ,var nil))))))
 
