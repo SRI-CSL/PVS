@@ -188,7 +188,10 @@
     (list-declarations* theory)
     (setq *list-declarations*
 	  (sort *list-declarations* #'string<
-		:key #'(lambda (x) (id (car x)))))
+		:key #'(lambda (x)
+			 (if (importing? (car x))
+			     (id (theory-name (car x)))
+			     (id (car x))))))
     (let ((declarations (mapcar #'(lambda (idecl)
 				    (format-decl-list (car idecl)
 						      (ptype-of (car idecl))
