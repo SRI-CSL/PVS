@@ -769,6 +769,9 @@
 (defmethod subtype-wrt?* ((te1 type-expr) (te2 dep-binding) reltype bindings)
   (subtype-wrt?* te1 (type te2) reltype bindings))
 
+(defmethod subtype-wrt?* ((te1 dep-binding) (te2 dep-binding) reltype bindings)
+  (subtype-wrt?* (type te1) (type te2) reltype bindings))
+
 (defmethod subtype-wrt?* ((te1 type-expr) (te2 type-expr) (reltype dep-binding)
 			  bindings)
   (subtype-wrt?* te1 te2 (type reltype) bindings))
