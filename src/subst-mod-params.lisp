@@ -1,16 +1,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; subst-mod-params.lisp -- 
+;; subst-mod-params.lisp -- performs substitution of actual parameters for
+;;                          formals 
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec  9 13:10:41 1993
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Fri Oct 30 14:19:51 1998
 ;; Update Count    : 72
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
+(in-package :pvs)
 
 ;;; Substitutes the actuals for the formals in an expression or
 ;;; type-expr.  The result is an expr with all resolutions fully
@@ -28,8 +28,6 @@
 
 ;;; Complications come about because of declarations which point to
 ;;; themselves, missing module instances, 
-
-(in-package 'pvs)
 
 
 ;;; This is the set of caches for subst-mod-params - it is a
@@ -136,9 +134,7 @@
 			     alist))))
 	(sterm term))
     (dolist (th theories)
-      (let ((lib-id (when (library-datatype-or-theory? th)
-		      (car (rassoc (lib-ref th) (current-library-alist)
-				   :test #'equal)))))
+      (let ((lib-id (get-lib-id th)))
 	(assert (or lib-id (not (library-datatype-or-theory? th))))
 	(setf sterm
 	      (subst-mod-params
@@ -267,6 +263,7 @@
 			       (extended-mappings thname interpreted-theory
 						  source-theory)
 			       nil)))
+	   (assert interpreted-theory)
 	   (append (mapcar #'(lambda (x)
 			       (let ((interp
 				      (assq (car x)
@@ -738,6 +735,7 @@
 			(assert (or lib
 				    (not (library-datatype-or-theory?
 					  (module decl)))
+				    (from-prelude-library? decl)
 				    (library-datatype-or-theory?
 				     (current-theory))
 				    (file-equal (lib-ref (module decl))
@@ -910,6 +908,10 @@
 	  (let ((ndt (subst-mod-params* declared-type modinst bindings)))
 	    (lcopy field 'type ntype 'declared-type ndt))))))
 
+(defmethod subst-mod-params* ((conv conversion-result) modinst bindings)
+  (with-slots (expr) conv
+    (let ((nexpr (subst-mod-params* expr modinst bindings)))
+      (lcopy conv 'expr nexpr))))
 
 ;;; Expressions
 
@@ -1243,8 +1245,8 @@
 	     (typep (declaration ex) 'formal-decl)
 	     #+pvsdebug (null (assert (memq (declaration ex)
 					    (formals (current-theory)))))
-	     ;; If the first one is, the rest should also be.
-	     #+pvsdebug (actuals-are-formals? (cdr actuals))))))
+	     ;; Even if the first one is, the rest may not be.
+	     (actuals-are-formals? (cdr actuals))))))
 
 
 ;;; For resolutions, first check whether there are any actuals; if not,
@@ -1274,7 +1276,8 @@
 			     (list (mk-actual (find-supertype
 					       (type-value (car nacts)))))
 			     nacts)
-			 (or (library mi) (library modinst)))
+			 (when (library-datatype-or-theory? (module decl))
+			   (get-lib-id (module decl))))
 		       (subst-mod-params* type modinst bindings)))))))))
 
 (defmethod make-resolution (decl modinst &optional type)
