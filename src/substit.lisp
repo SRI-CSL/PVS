@@ -178,9 +178,16 @@
       (if (and (eq op operator)
 	       (eq arg argument))
 	  expr
-	  (let* ((stype (find-supertype (type op)))
+	  (let* ((nop (if (and (implicit-conversion? op)
+			       (name-expr? (operator op))
+			       (eq (id (operator op)) '|restrict|)
+			       (eq (id (module-instance (resolution (operator op))))
+				   '|restrict|))
+			  (argument op)
+			  op))
+		 (stype (find-supertype (type op)))
 		 (nex (copy expr
-			'operator op
+			'operator nop
 			'argument arg
 			'type (if (typep (domain stype) 'dep-binding)
 				  (substit (range stype)
