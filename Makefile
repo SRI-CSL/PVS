@@ -410,9 +410,9 @@ ess/allegro-runtime.lisp : ess/allegro-runtime.lisp.template
 	rm ess/allegro-runtime.lisp
 	exit 1
 
-full : makefileutils makebdd makepolylib makews1s ${pvsfull} ${emacs}
+full : makefileutils makebdd makepolylib makews1s makeics ${pvsfull} ${emacs}
 
-runtime : makefileutils makebdd makepolylib makews1s ${pvsrt} ${emacs}
+runtime : makefileutils makebdd makepolylib makews1s makeics ${pvsrt} ${emacs}
 
 ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files} \
              lib/prelude.pvs lib/prelude.prf
