@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Wed Dec  1 15:00:38 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Tue Apr 14 16:23:16 1998
-;; Update Count    : 91
+;; Last Modified On: Mon Jan 25 19:00:18 1999
+;; Update Count    : 92
 ;; Status          : Alpha test
 ;; 
 ;; HISTORY
@@ -537,45 +537,44 @@
 
 (defun typecheck-file (filename &optional forced? prove-tccs? importchain?
 				nomsg?)
-  (let ((force (if (and forced? importchain?) 'all forced?)))
-    (multiple-value-bind (theories restored?)
-	(parse-file filename forced? t)
-      (let ((*current-file* filename)
-	    (*typechecking-module* nil)
-	    (*tc-theories* *tc-theories*)
-	    ;;(start-time (get-internal-real-time))
-	    )
-	(when theories
-	  (cond ((and (not forced?)
-		      theories
-		      (every #'(lambda (th)
-				 (let ((*current-theory* th))
-				   (typechecked? th)))
-			     theories))
-		 (unless (or nomsg? restored?)
-		   (pvs-message
-		       "~a ~:[is already typechecked~;is typechecked~]~a"
-		     filename
-		     restored?
-		     (if (and prove-tccs? (not *in-checker*))
-			 " - attempting proofs of TCCs" ""))))
-		(*in-checker*
-		 (pvs-message "Must exit the prover first"))
-		(t (pvs-message "Typechecking ~a" filename)
-		   (typecheck-theories filename theories)
-		   ;;(assert (every #'typechecked? theories))
-		   (update-context filename)))
-	  (when prove-tccs?
-	    (if *in-checker*
-		(pvs-message
-		    "Must exit the prover before running typecheck-prove")
-		(if importchain?
-		    (prove-unproved-tccs
-		     (delete-duplicates (mapcan #'collect-theory-usings theories)
-					:test #'eq)
-		     t)
-		    (prove-unproved-tccs theories))))
-	  theories)))))
+  (multiple-value-bind (theories restored?)
+      (parse-file filename forced? t)
+    (let ((*current-file* filename)
+	  (*typechecking-module* nil)
+	  (*tc-theories* *tc-theories*)
+	  ;;(start-time (get-internal-real-time))
+	  )
+      (when theories
+	(cond ((and (not forced?)
+		    theories
+		    (every #'(lambda (th)
+			       (let ((*current-theory* th))
+				 (typechecked? th)))
+			   theories))
+	       (unless (or nomsg? restored?)
+		 (pvs-message
+		     "~a ~:[is already typechecked~;is typechecked~]~a"
+		   filename
+		   restored?
+		   (if (and prove-tccs? (not *in-checker*))
+		       " - attempting proofs of TCCs" ""))))
+	      (*in-checker*
+	       (pvs-message "Must exit the prover first"))
+	      (t (pvs-message "Typechecking ~a" filename)
+		 (typecheck-theories filename theories)
+		 ;;(assert (every #'typechecked? theories))
+		 (update-context filename)))
+	(when prove-tccs?
+	  (if *in-checker*
+	      (pvs-message
+		  "Must exit the prover before running typecheck-prove")
+	      (if importchain?
+		  (prove-unproved-tccs
+		   (delete-duplicates (mapcan #'collect-theory-usings theories)
+				      :test #'eq)
+		   t)
+		  (prove-unproved-tccs theories))))
+	theories))))
 
 (defun typecheck-theories (filename theories)
   (dolist (theory (sort-theories theories))
@@ -632,9 +631,10 @@
 	(subsumed (reduce #'+ (mapcar #'(lambda (th)
 					  (or (caddr (tcc-info th)) 0))
 				      theories)))
-	(trivial (reduce #'+ (mapcar #'(lambda (th)
-					 (or (cadddr (tcc-info th)) 0))
-				     theories))))
+	;;(trivial (reduce #'+ (mapcar #'(lambda (th)
+	;;				 (or (cadddr (tcc-info th)) 0))
+	;;			     theories)))
+	)
     (if (zerop tot)
 	(pvs-message "File ~a typechecked: No TCCs to prove~a"
 	  (filename (car theories)) (if importchain? "on importchain" ""))
@@ -789,31 +789,41 @@
 
 (defun prettyprint-decls (theory pos1 pos2)
   (let ((*no-comments* nil))
-    (mapc #'(lambda (d) (prettyprint-decl d theory nil))
-	  (reverse
-	   (xf-chained-decls
+    (mapc #'(lambda (d) (prettyprint-decl d theory))
+	  (nreverse
+	   (chained-decls-list
 	    (remove-if #'(lambda (d)
 			   (or (> (car pos1) (line-end (place d)))
 			       (> (line-begin (place d)) (car pos2))))
-	      (remove-some-decls (theory theory))))))
-    (mapc #'(lambda (d) (prettyprint-decl d theory t))
-	  (reverse
-	   (xf-chained-decls
+	      (remove-if #'generated-by (theory theory))))))
+    (mapc #'(lambda (d) (prettyprint-decl d theory))
+	  (nreverse
+	   (chained-decls-list
 	    (remove-if #'(lambda (d)
 			   (or (> (car pos1) (line-end (place d)))
 			       (> (line-begin (place d)) (car pos2))))
-	      (remove-some-decls (assuming theory))))))))
+	      (remove-if #'generated-by (assuming theory))))))))
 
-(defun prettyprint-decl (d theory assuming?)
-  (let* ((dabs (if assuming? (xf-assuming d) (xf-theory d)))
-         (place (place (if (consp d) (car d) d)))
-         (dstr (sbrt:unparse-term dabs :string t
-                                  :char-width
-                                  (- *default-char-width* (col-begin place))))
-         (dind (with-output-to-string (*standard-output*)
-                  (unpindent* dstr (col-begin place)
-                              0 (position #\linefeed dstr) nil nil)))
-         (dfinal (string-trim '(#\Space #\Tab #\Newline) dind)))
+(defun chained-decls-list (decls &optional ldecls decls-list)
+  (if (null decls)
+      (if ldecls
+	  (nreverse (cons (nreverse ldecls) decls-list))
+	  (nreverse decls-list))
+      (if (or (null ldecls)
+	      (and (chain? (car ldecls))
+		   (compatible-chain? (car ldecls) (car decls))))
+	  (chained-decls-list (cdr decls)
+			      (cons (car decls) ldecls)
+			      decls-list)
+	  (chained-decls-list (cdr decls)
+			      (list (car decls))
+			      (cons (nreverse ldecls) decls-list)))))
+
+(defun prettyprint-decl (d theory)
+  (let* ((place (place (if (consp d) (car d) d)))
+	 (indent (- *default-char-width* (col-begin place)))
+	 (dstr (unpindent decls indent :string t :comment? t))
+         (dfinal (string-trim '(#\Space #\Tab #\Newline) dstr)))
     (pvs-modify-buffer (shortname (working-directory))
                        (filename theory)
                        place dfinal)))
@@ -857,12 +867,13 @@
 ;;; View Theory
 
 (defun prettyprint-expanded (theoryref)
-  (let ((*no-comments* nil))
+  (let ((*no-comments* nil)
+	(*unparse-expanded* t))
     (pvs-buffer (format nil "~a.ppe" theoryref)
       (let* ((theory (get-typechecked-theory theoryref))
-	     (thstring (unparse-all theory
-				    :string t
-				    :char-width *default-char-width*)))
+	     (thstring (unparse theory
+			 :string t
+			 :char-width *default-char-width*)))
 	(unless (datatype? theory)
 	  (setf (ppe-form theory) (parse :string thstring)))
 	thstring)
@@ -890,12 +901,10 @@
 					   (or (not unproved-only?)
 					       (unproved? d))))
 		     (append (assuming theory) (theory theory))))
-	     (term (let ((*no-comments* t)
-			 (*unparse-expanded* t))
-		     (xf-theory-part tccs)))
-	     (str (when tccs
+	     (str (let ((*no-comments* t)
+			(*unparse-expanded* t))
 		    (string-trim '(#\Space #\Tab #\Newline)
-				 (sbrt:unparse-term term :string t))))
+				 (unparse tccs :string t))))
 	     (buffer (when theory (format nil "~a.tccs" (id theory)))))
 	(cond (tccs
 	       (let ((*valid-id-check* nil))
