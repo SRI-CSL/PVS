@@ -216,9 +216,6 @@
    `(setq ,name (let ((x 0))
 		 #'(lambda () (incf x)))))
 
-(defmacro fstarg (application)
-  `(car (arguments ,application)))
-
 ;;; Used in prove-decl to decide whether to simply use the existing hash
 ;;; table or to create a new one if this is a recursive call.
 (defmacro init-if-rec (gvar)
