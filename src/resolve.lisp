@@ -313,8 +313,10 @@
 				      (singleton? args)))))
 		     (t nil))))
       (if (null acts)
-	  (if (and (or (null (formals-sans-usings dth))
-		       (eq dth (current-theory)))
+	  (if (and (or (eq dth (current-theory))
+		       (and (null (formals-sans-usings dth))
+			    (every (complement #'mappings)
+				   (gethash dth (current-using-hash)))))
 		   (null args))
 	      (list (mk-resolution decl (mk-modname (id (module decl)))
 				   (case kind
