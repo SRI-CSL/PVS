@@ -28,7 +28,8 @@
 	((type ex)
 	 (when (and expected
 		    (not (eq *generate-tccs* 'none)))
-	   (check-for-subtype-tcc ex expected)))
+	   (let ((*no-conversions-allowed* t))
+	     (check-for-subtype-tcc ex expected))))
 	(t (call-next-method)
 	   (when expected
 	     (set-type ex expected))))
