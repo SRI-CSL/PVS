@@ -444,24 +444,29 @@
   (if (null gen-judgements)
       jtypes
       (let* ((jdecl (car gen-judgements))
-	     (jtype (instantiate-generic-appl-judgement-type ex jdecl))
-	     (arguments (argument* ex))
-	     (argtypes (mapcar #'judgement-types* arguments))
-	     (domains (operator-domain* jtype arguments nil))
-	     (range (operator-range* jtype arguments))
-	     (rdomains (operator-domain ex))
-	     (jrange (when (length= argtypes (formals jdecl))
-		       (compute-appl-judgement-range-type
-			arguments argtypes rdomains domains range))))
-	(generic-application-judgement-types
-	 ex
-	 (cdr gen-judgements)
-	 (if (or (null jrange)
-		 (some #'(lambda (jty) (subtype-of? jty jrange)) jtypes))
-	     jtypes
-	     (cons jrange
-		   (delete-if #'(lambda (jty)
-				  (subtype-of? jrange jty)) jtypes)))))))
+	     (jtype (instantiate-generic-appl-judgement-type ex jdecl)))
+	(if jtype
+	    (let* ((arguments (argument* ex))
+		   (argtypes (mapcar #'judgement-types* arguments))
+		   (domains (operator-domain* jtype arguments nil))
+		   (range (operator-range* jtype arguments))
+		   (rdomains (operator-domain ex))
+		   (jrange (when (length= argtypes (formals jdecl))
+			     (compute-appl-judgement-range-type
+			      arguments argtypes rdomains domains range))))
+	      (generic-application-judgement-types
+	       ex
+	       (cdr gen-judgements)
+	       (if (or (null jrange)
+		       (some #'(lambda (jty) (subtype-of? jty jrange)) jtypes))
+		   jtypes
+		   (cons jrange
+			 (delete-if #'(lambda (jty)
+					(subtype-of? jrange jty)) jtypes))))
+	      (generic-application-judgement-types
+	       ex
+	       (cdr gen-judgements)
+	       jtypes))))))
 
 (defun instantiate-generic-appl-judgement-types (ex judgements &optional types)
   (if (null judgements)
@@ -474,14 +479,22 @@
 	 (if type (cons type types) types)))))
 
 (defun instantiate-generic-appl-judgement-type (ex judgement)
-  (let ((bindings (tc-match (operator ex) (name judgement)
-			    (mapcar #'list
-			      (formals-sans-usings (module judgement))))))
-    (assert (every #'cdr bindings))
-    (let ((jthinst (mk-modname (id (module judgement))
-		     (mapcar #'(lambda (a) (mk-actual (cdr a)))
-		       bindings))))
-      (subst-mod-params (judgement-type judgement) jthinst))))
+  (let* ((bindings1 (tc-match (operator ex) (name judgement)
+			     (mapcar #'list
+			       (formals-sans-usings (module judgement)))))
+	 (bindings (if (or (null (formals judgement))
+			   (every #'cdr bindings1))
+		       bindings1
+		       (tc-match (car (judgement-types+ (argument ex)))
+				 (if (cdr (car (formals judgement)))
+				     (mk-tupletype (mapcar #'type (car (formals judgement))))
+				     (type (caar (formals judgement))))
+				 bindings1))))
+    (when (every #'cdr bindings)
+      (let ((jthinst (mk-modname (id (module judgement))
+		       (mapcar #'(lambda (a) (mk-actual (cdr a)))
+			 bindings))))
+	(subst-mod-params (judgement-type judgement) jthinst)))))
 
 (defmethod no-dep-bindings ((te funtype))
   (no-dep-bindings (domain te)))
@@ -998,8 +1011,13 @@
   (unless (zerop (hash-table-count from-hash))
     (maphash #'(lambda (num jdecls)
 		 (let* ((to-judgements (gethash num to-hash))
+			(subst-judgements
+			 (subst-params-decls jdecls theory theoryname))
 			(sjdecls (minimal-judgement-decls
-				  (subst-params-decls jdecls theory theoryname)
+				  (remove-if #'(lambda (sj)
+						 (member sj to-judgements
+							 :test #'tc-eq))
+				    subst-judgements)
 				  to-judgements)))
 		   (unless (equal sjdecls to-judgements)
 		     (setf (gethash num to-hash) sjdecls)
@@ -1128,7 +1146,7 @@
 ;;; theory.
 
 (defun judgement-uninstantiable? (jdecl)
-  (let ((nfrees (free-params (name jdecl)))
+  (let ((nfrees (free-params (cons (name jdecl) (formals jdecl))))
 	(tfrees (formals-sans-usings (module jdecl))))
     (some #'(lambda (tf) (not (memq tf nfrees))) tfrees)))
   
@@ -1318,14 +1336,20 @@
 	     (append found-subtypes
 		     (substit (cdar known-subtypes) subst)))))))
 
+(defvar *subtype-of-tests* nil)
+
 (defun subtype-of-test (tt1 tt2)
   (if (freevars tt2)
       (let ((subst (simple-match tt2 tt1)))
 	(if (and (not (eq subst 'fail))
 		 (every #'(lambda (sub)
-			    (some #'(lambda (jty)
-				      (subtype-of? jty (type (car sub))))
-				  (judgement-types+ (cdr sub))))
+			    (unless (memq (cdr sub) *subtype-of-tests*)
+			      (let* ((*subtype-of-tests*
+				      (cons (cdr sub) *subtype-of-tests*))
+				     (stypes (judgement-types+ (cdr sub))))
+				(some #'(lambda (jty)
+					  (subtype-of? jty (type (car sub))))
+				      stypes))))
 			subst))
 	    subst
 	    'fail))
