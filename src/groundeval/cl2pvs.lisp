@@ -1,4 +1,4 @@
-(in-package 'pvs)
+(in-package :pvs)
 
 (defun cl2pvs (sexpr type &optional context)
   (let* ((context (or context *current-context*))
@@ -77,7 +77,7 @@
 	   (tc-eq (type domtype) domaindep)
 	   (range type)))))
   
-(defmethod get-seq-range-type ((type T) domaindep)
+(defmethod get-seq-range-type ((type t) domaindep)
   nil)
 
 (defun char-type? (type)

@@ -146,7 +146,7 @@ theory from the list of theories will import the associated file."
       buf)))
 
 (defun make-files-listing (files)
-  (if (equal files 'NIL)
+  (if (member files '(nil NIL))
       (error "No files in context %s" *pvs-list-files-directory*)
       (let* ((colsize (+ (max-string-length files) 2))
 	     (numcols (/ (window-width) colsize))

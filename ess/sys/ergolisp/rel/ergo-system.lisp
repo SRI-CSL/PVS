@@ -17,8 +17,8 @@
 
 
 #-gcl
-(defpackage "ERGO-SYSTEM")
-(in-package :ERGO-SYSTEM) (use-package :ergolisp)
+(defpackage :ergo-system)
+(in-package :ergo-system) (use-package :ergolisp)
 
 #-(or allegro lucid cmu)
 (eexport '(memq))

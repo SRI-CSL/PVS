@@ -40,8 +40,8 @@
 
 
 ;;; *pvs-context-changed* controls the saving of the PVS context.  It is
-;;; initially NIL, and is set to T when a change occurs that affects the
-;;; context, and reset to NIL after the context is written again.  The changes
+;;; initially nil, and is set to t when a change occurs that affects the
+;;; context, and reset to nil after the context is written again.  The changes
 ;;; that affect the context are:
 ;;;   - A new file is parsed
 ;;;   - A file has been modified
@@ -49,7 +49,7 @@
 ;;;   - The status of a proof has changed
 
 (defvar *pvs-context-changed* nil
-  "Set to T when the context has changed, NIL after it's been saved.")
+  "Set to T when the context has changed, nil after it's been saved.")
 
 ;;; The pvs-context is a list whose first element is the version, second
 ;;; element is a list of prelude libraries, and the rest are context entries.
@@ -1247,7 +1247,7 @@ pvs-strategies files.")
 
 (defun invalid-proof-file* (input &optional proofs)
   (multiple-value-bind (prfs condition)
-      (ignore-errors (read input NIL NIL))
+      (ignore-errors (read input nil nil))
     (cond (condition
 	   (values nil condition))
 	  ((null prfs)
@@ -1341,7 +1341,7 @@ pvs-strategies files.")
 	      (pvs-log (format nil "  ~a" error))))))))
 
 (defun restore-theory-proofs-from-file (input filestring theory)
-  (let ((theory-proofs (read input NIL NIL)))
+  (let ((theory-proofs (read input nil nil)))
     (when theory-proofs
       (let* ((theoryid (car theory-proofs))
 	     (proofs (cdr theory-proofs)))
@@ -1468,7 +1468,9 @@ pvs-strategies files.")
 	      (t proofs))))))
 
 (defun read-pvs-file-proofs (filename &optional (dir *pvs-context-path*))
-  (let ((prf-file (make-prf-pathname filename dir)))
+  (let ((prf-file (make-prf-pathname filename dir))
+	(*readtable* (copy-readtable nil)))
+    (setf (readtable-case *readtable*) :downcase)
     (when (file-exists-p prf-file)
       (multiple-value-bind (proofs error)
 	  (ignore-errors
@@ -1617,9 +1619,8 @@ pvs-strategies files.")
     (let ((fwd (file-write-date file)))
       (unless (= fwd (car dates))
 	(setf (car dates) fwd)
-	(with-open-file (str file :direction :input)
-	  (unless (ignore-errors (load str :verbose nil))
-	    (pvs-message "Error in loading ~a" file)))))))
+	(unless (ignore-errors (load file :verbose nil))
+	  (pvs-message "Error in loading ~a" file))))))
 
 (defun make-prf-pathname (fname &optional (dir *pvs-context-path*))
   (assert (or (stringp fname) (pathnamep fname)))
@@ -1810,16 +1811,16 @@ pvs-strategies files.")
 ;;;   justification - this is what is generated during proof
 ;;;   justification-sexp - what is saved to file:
 ;;     ("" (INDUCT "i")
-;;      (("1" (INST + "1" "1") (("1" (ASSERT) NIL NIL)) NIL)
+;;      (("1" (INST + "1" "1") (("1" (ASSERT) nil nil)) nil)
 ;;       ("2" (SKOSIMP*)
 ;; 	  (("2" (CASE-REPLACE "n5!1=0")
 ;; 	    (("1" (INST 1 "n3!1-3" "2")
-;; 	      (("1" (ASSERT) NIL NIL) ("2" (ASSERT) NIL NIL)) NIL)
+;; 	      (("1" (ASSERT) nil nil) ("2" (ASSERT) nil nil)) nil)
 ;; 	     ("2" (INST + "n3!1+2" "n5!1-1")
-;; 	      (("1" (ASSERT) NIL NIL) ("2" (ASSERT) NIL NIL)) NIL))
-;; 	    NIL))
-;; 	  NIL))
-;;      NIL)
+;; 	      (("1" (ASSERT) nil nil) ("2" (ASSERT) nil nil)) nil))
+;; 	    nil))
+;; 	  nil))
+;;      nil)
 ;;;   justification-view - what is shown to users
 ;;     ("" (INDUCT "i")
 ;;      (("1" (INST + "1" "1") (ASSERT))

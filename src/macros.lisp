@@ -10,7 +10,9 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'pvs)
+(in-package :pvs)
+
+(export '(length= singleton? add-to-alist))
 
 (defmacro tcdebug (ctl &rest args)
   `(when *tcdebug*

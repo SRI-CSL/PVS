@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'sbrt)
+(in-package :sbrt)
 
 (export '(*num-keywords-skipped* *last-syntax* *last-newline-comment*
 				 *hold-a4* *hold-b4*))
@@ -45,7 +45,7 @@
 ;;; and loaded before the pvs-parser.lisp file, otherwise the built-in macro
 ;;; will be used instead.
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (defparameter *infix-operators*
   '(O IFF <=> IMPLIES => WHEN OR \\/ AND /\\ & XOR ANDTHEN ORELSE
@@ -146,14 +146,14 @@
 (defun reader ()
   (multiple-value-bind (token place comment)
       (lexical-read *lexical-stream* :eof)
-    ;;(format t "~%reader: token = ~s, place = ~s, comment = ~s"
-    ;;  token place comment)
+;     (format t "~%reader: token = ~s, place = ~s, comment = ~s"
+;       token place comment)
     (cond ((consp token)
 	   (case (car token)
 	     (:literal
 	      (values 'sbst::!literal!
 		      (let ((name (if (symbolp (cdr token))
-				      (if *case-sensitive*
+				      (if sbrt:*case-sensitive*
 					  (symbol-name (cdr token))
 					  (string-upcase
 					   (symbol-name (cdr token))))
@@ -236,11 +236,11 @@ with the comment so as to put it in the proper place")
 	     (values (prog1 *hold-a1* (setf *hold-a1* nil))
 		     *hold-a2* *hold-a3* *hold-a4*))
 	    (t (funcall *reader-fun*)))
-    ;;(format t "~%gettoken: type = ~s, token = ~s, place = ~s, comment = ~s"
-    ;;  type token place comment)
+;     (format t "~%gettoken: type = ~s, token = ~s, place = ~s, comment = ~s"
+;       type token place comment)
     (setq *end-place* (list type token place))
     (setq *last-newline-comment* (nconc *last-newline-comment* comment))
-    ;;(format t "~%gettoken comment = ~s" comment)
+;    (format t "~%gettoken comment = ~s" comment)
     (cond (;; This branch of the COND is completely meaningless because
 	   ;; there is currently no way to cause a generated parser to return
 	   ;; a lex'ed keyword (e.g., 'begin', 'then', ':=').  Parsers merely
@@ -267,8 +267,8 @@ with the comment so as to put it in the proper place")
 	       (values (prog1 *hold-a1* (setq *hold-a1* nil))
 		       *hold-a2* *hold-a3* *hold-a4*))
 	      (t (funcall *reader-fun*)))
-      ;;(format t "~%gobble-token: type = ~s, token = ~s, place = ~s, comment = ~s"
-	;;v1 v2 v3 v4)
+;       (format t "~%gobble-token: type = ~s, token = ~s, place = ~s, comment = ~s"
+; 	v1 v2 v3 v4)
       (when (eq v1 'sbst::elsif)
 	(push v3 pvs::*elsif-places*))
       (setq *end-place* (list v1 v2 v3))
@@ -340,8 +340,8 @@ with the comment so as to put it in the proper place")
 	   (if *last-syntax*
 	       (incf *num-keywords-skipped*))
 	   (setq *last-syntax* lterm)
-	   ;;(setq *last-newline-comment*
-		;; (append *last-newline-comment* *hold-comments*))
+	   (setq *last-newline-comment*
+		 (append *last-newline-comment* *hold-comments*))
 	   (setq *hold-comments* nil)
 	   ;;(format t "~%Found ~a, resetting num-comments" token)
 	   ;;(when *last-newline-comment*
@@ -378,17 +378,17 @@ with the comment so as to put it in the proper place")
 					      (lexical-read-char self nil))))
 			  (if (and (symbolp a)
 				   (memq (intern (string-upcase a) 'sbst)
-					 '(sbst::type sbst::conversion)))
+					 '(sbst::TYPE sbst::CONVERSION)))
 			      (let ((nch (lexical-read-char self nil)))
 				(cond ((and nch (char= nch #\+))
 				       (if (eq (intern (string-upcase a) 'sbst)
-					       'sbst::type)
-					   'sbst::type+
-					   'sbst::conversion+))
+					       'sbst::TYPE)
+					   'sbst::TYPE+
+					   'sbst::CONVERSION+))
 				      ((and nch (char= nch #\-)
 					    (eq (intern (string-upcase a) 'sbst)
-						'sbst::conversion))
-				       'sbst::conversion-)
+						'sbst::CONVERSION))
+				       'sbst::CONVERSION-)
 				      (t (lexical-unread-char self)
 					 a)))
 			      a)))
@@ -415,7 +415,7 @@ with the comment so as to put it in the proper place")
   (set-term-place term splace (or eplace *end-of-last-token*))
   (when (and *last-newline-comment* 
 	     (is-leaf-term lterm))
-    ;;(format t "~%~a gets comment ~s" lterm comment)
+;    (format t "~%~a gets comment ~s" lterm comment)
     (setf (getf (term:term-attr term) :comment)
 	  *last-newline-comment*)
     (setq *last-newline-comment* nil))
@@ -450,13 +450,13 @@ with the comment so as to put it in the proper place")
 		(append *newline-comments*
 			(list (list comment *num-keywords-skipped*
 				    newline?)))))
-;	(if *collect-comments*
-;	    (setq *hold-comments*
-;		  (append *hold-comments* (list (list comment 0 newline?))))
-;	    (setq *last-newline-comment*
-;		  (append *last-newline-comment*
-;			  (list (list comment *num-keywords-skipped*
-;				      newline?)))))
+	(if *collect-comments*
+	    (setq *hold-comments*
+		  (append *hold-comments* (list (list comment 0 newline?))))
+	    (setq *last-newline-comment*
+		  (append *last-newline-comment*
+			  (list (list comment *num-keywords-skipped*
+				      newline?)))))
 	(values))
       (let ((*close-comment-char* #\newline))
 	(lex-comment stream open-comment))))
@@ -718,8 +718,8 @@ with the comment so as to put it in the proper place")
 
 (defun show-comments (term)
   (let ((cmt (getf (term:term-attr term) :comment)))
-    (when cmt
-      (format t "~%~s - ~s" term cmt))
+;     (when cmt
+;       (format t "~%~s - ~s" term cmt))
     (mapc #'show-comments (term-args term))
     nil))
 

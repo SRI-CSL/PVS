@@ -1,648 +1,647 @@
-;;; -*- Mode: Lisp; Package: CONSTRG -*-
-(in-package "CONSTR-TERM-REP")  ;; creates package for abstract syntax. 
+;;; -*- Mode: Lisp; Package: :constrg -*-
+(in-package :constr-term-rep)  ;; creates package for abstract syntax. 
 
-(in-package "CONSTRG")  ;; enters package for generated code.  
+(in-package :constrg)  ;; enters package for generated code.  
 
-(use-package '("NEWATTR" "LANG" "SB-RUNTIME" "SORT" "TERM" "OCC" "OPER"
-               "ERGOLISP"))
+(use-package '(:newattr :lang :sb-runtime :sort :term :occ :oper :ergolisp))
 
 
-(export '( CONSTR-PARSE ))
+(export '( constr-parse ))
 
-(DEFPARAMETER CONSTR-ABS-SYN-PACKAGE (FIND-PACKAGE "CONSTR-TERM-REP"))
+(defparameter constr-abs-syn-package (find-package :constr-term-rep))
 
-(DEFUN CONSTR-PARSE
-    (&KEY (NT 'CONSTR-TERM-REP::ITEMS) ERROR-THRESHOLD ASK-ABOUT-BAD-TOKENS
-     (RETURN-ERRORS NIL) (STREAM NIL STREAMP) STRING FILE
-     (EXHAUST-STREAM NIL))
-  (COND (STREAM)
-        (STRING (SETF STREAM (MAKE-STRING-INPUT-STREAM STRING)))
-        (FILE (SETF STREAM (OPEN FILE)))
-        (T
-         (ERROR "Must provide an input means -- either :stream, ~
+(defun constr-parse
+    (&key (nt 'constr-term-rep::items) error-threshold ask-about-bad-tokens
+     (return-errors nil) (stream nil streamp) string file
+     (exhaust-stream nil))
+  (cond (stream)
+        (string (setf stream (make-string-input-stream string)))
+        (file (setf stream (open file)))
+        (t
+         (error "Must provide an input means -- either :stream, ~
 			:string, or :file.")))
-  (SETQ *CONSTR-KEYWORD-TABLE* (INIT-KEYWORD-TABLE CONSTR-KEYWORD-LIST))
-  (LET ((*PARSER-ERROR* NIL)
-        (*PARSER-ERROR-COUNT* 0)
-        (*PARSER-RETURN-ERRORS* RETURN-ERRORS)
-        (*PARSER-ABORT-THRESHOLD* ERROR-THRESHOLD)
-        (*ASK-ABOUT-BAD-TOKENS* ASK-ABOUT-BAD-TOKENS)
-        (*LEXICAL-STREAM* (OPEN-LEXICAL-STREAM (OPEN-PLACESTREAM STREAM)))
-        (*HOLD-A1* NIL)
-        (*HOLD-A2* NIL)
-        (*HOLD-B1* NIL)
-        (*HOLD-B2* NIL)
-        (*ABS-SYN-PACKAGE* CONSTR-ABS-SYN-PACKAGE)
-        (*READER-FUN* #'READER)
-        (*APPLY-LEX-TERM-CONSTR-FUN* #'APPLY-LEXICAL-TERMINAL-CONSTRUCTOR)
-        (*KEYWORD-TABLE* *CONSTR-KEYWORD-TABLE*)
-        (*CLOSE-COMMENT-CHAR* CONSTR-CLOSE-COMMENT-CHAR)
-        (*CASE-SENSITIVE* CONSTR-CASE-SENSITIVE))
-    (INIT-LEXER *LEXICAL-STREAM*)
-    (MULTIPLE-VALUE-BIND (ABS-SYNTAX ERROR-STRING ERROR-ARGS ERROR-PLACE)
-        (UNWIND-PROTECT
-            (CATCH 'PARSER-ABORT-CATCH
-              (PROG1 (CASE NT
-                       (CONSTR-TERM-REP::ITEMS (!ITEMS! 0))
-                       (CONSTR-TERM-REP::ITEM (!ITEM! 0))
-                       (CONSTR-TERM-REP::ABBREV (!ABBREV! 0))
-                       (CONSTR-TERM-REP::DATATYPE (!DATATYPE! 0))
-                       (CONSTR-TERM-REP::DTARM (!DTARM! 0))
-                       (CONSTR-TERM-REP::PART (!PART! 0))
-                       (CONSTR-TERM-REP::PTYPE (!PTYPE! 0))
-                       (T (ERROR "Unknown nonterminal ~A." NT)))
-                     (WHEN (OR FILE STRING EXHAUST-STREAM)
-                       (CLET* (((TOKEN IGNORE PLACE) (PEEK-FIRST)))
-                              (UNLESS (OR (EQ TOKEN :EOF) (EQ TOKEN 'EOF))
-                                (DO-SYNTAX-ERROR "There is garbage at the end of your ~
-			      file or string:~%~A" PLACE))))))
-          (UNLESS STREAMP (CLOSE STREAM)))
-      (IF RETURN-ERRORS
-          (VALUES ABS-SYNTAX *PARSER-ERROR* ERROR-PLACE ERROR-STRING
-                  ERROR-ARGS)
-        (VALUES ABS-SYNTAX *PARSER-ERROR*)))))
+  (setq *constr-keyword-table* (init-keyword-table constr-keyword-list))
+  (let ((*parser-error* nil)
+        (*parser-error-count* 0)
+        (*parser-return-errors* return-errors)
+        (*parser-abort-threshold* error-threshold)
+        (*ask-about-bad-tokens* ask-about-bad-tokens)
+        (*lexical-stream* (open-lexical-stream (open-placestream stream)))
+        (*hold-a1* nil)
+        (*hold-a2* nil)
+        (*hold-b1* nil)
+        (*hold-b2* nil)
+        (*abs-syn-package* constr-abs-syn-package)
+        (*reader-fun* #'reader)
+        (*apply-lex-term-constr-fun* #'apply-lexical-terminal-constructor)
+        (*keyword-table* *constr-keyword-table*)
+        (*close-comment-char* constr-close-comment-char)
+        (*case-sensitive* constr-case-sensitive))
+    (init-lexer *lexical-stream*)
+    (multiple-value-bind (abs-syntax error-string error-args error-place)
+        (unwind-protect
+            (catch 'parser-abort-catch
+              (prog1 (case nt
+                       (constr-term-rep::items (!items! 0))
+                       (constr-term-rep::item (!item! 0))
+                       (constr-term-rep::abbrev (!abbrev! 0))
+                       (constr-term-rep::datatype (!datatype! 0))
+                       (constr-term-rep::dtarm (!dtarm! 0))
+                       (constr-term-rep::part (!part! 0))
+                       (constr-term-rep::ptype (!ptype! 0))
+                       (t (error "Unknown nonterminal ~A." nt)))
+                     (when (or file string exhaust-stream)
+                       (clet* (((token ignore place) (peek-first)))
+                              (unless (or (eq token :eof) (eq token 'eof))
+                                (do-syntax-error "There is garbage at the end of your ~
+			      file or string:~%~A" place))))))
+          (unless streamp (close stream)))
+      (if return-errors
+          (values abs-syntax *parser-error* error-place error-string
+                  error-args)
+        (values abs-syntax *parser-error*)))))
 
 
-(DEFUN !PTYPE! (RBP &OPTIONAL (BRACKET-LIST (EMPTY-BRACKET-LIST)))
-  (LET (MTEMP V0 V1 V2 V3)
-    (ERGO-IGNORE-IF-UNUSED V0 V1 V2 V3)
-    (STACK-BRACKETS SBST::|(| PTYPE)
-    (INITIALS ((LA-MATCH ((SBST::|'|)))
-               (PROGN (LAM ((SBST::|'| EPSILON)) (GOBBLE-TOKEN))
-                      (LAM ((SBST::!ID! EPSILON)) (GOBBLE-TO-SLOT V2))
-                      (VALUE-TO-SLOT V0 11)
-                      (AS-TO-SLOT V1
-                                  (MAKE-SB-TERM 'CONSTR-TERM-REP::PTYPE-TV
-                                                (LIST V2)))))
-              ((LA-MATCH ((SBST::{ SBST::})))
-               (PROGN (LAM ((SBST::{ EPSILON)) (GOBBLE-TOKEN))
-                      (LAM ((SBST::} EPSILON)) (GOBBLE-TOKEN))
-                      (VALUE-TO-SLOT V0 9)
-                      (AS-TO-SLOT V1
-                                  (MAKE-SB-TERM 'CONSTR-TERM-REP::PTYPE-MEMBERS
-                                                (DS-TEMP-REPT
-                                                 (CK-REPT-REF V2))))))
-              ((LA-MATCH ((SBST::{ SBST::NOT SBST::{ SBST::UNIT SBST::|'|
-                           SBST::!ID! SBST::|(|)))
-               (PROGN (LAM ((SBST::{ EPSILON)) (GOBBLE-TOKEN))
-                      (CODE-TO-SLOT V3 (!PTYPE! 0)) (CONS-TO-SLOT V2 V3)
-                      (GEN-STAR-PARSE ((SBST::|,|
-                                        SBST::|(|
-                                        SBST::!ID!
-                                        SBST::|'|
-                                        SBST::UNIT
-                                        SBST::{
-                                        SBST::NOT))
-                                      (PROGN
-                                       (LAM
-                                        ((SBST::|,| EPSILON))
-                                        (GOBBLE-TOKEN))
-                                       (CODE-TO-SLOT V3 (!PTYPE! 0)))
-                                      V2 V3)
-                      (LAM ((SBST::} EPSILON)) (GOBBLE-TOKEN))
-                      (VALUE-TO-SLOT V0 9)
-                      (AS-TO-SLOT V1
-                                  (MAKE-SB-TERM 'CONSTR-TERM-REP::PTYPE-MEMBERS
-                                                (DS-TEMP-REPT
-                                                 (CK-REPT-REF V2))))))
-              ((LA-MATCH ((SBST::NOT)))
-               (PROGN (LAM ((SBST::NOT EPSILON)) (GOBBLE-TOKEN))
-                      (CODE-TO-SLOT V2 (!PTYPE! 50)) (VALUE-TO-SLOT V0 6)
-                      (AS-TO-SLOT V1
-                                  (MAKE-SB-TERM 'CONSTR-TERM-REP::PTYPE-APPL
-                                                (LIST
-                                                 (MAKE-SB-TERM
-                                                  'CONSTR-TERM-REP::PTYPE-CON
-                                                  (LIST (MK-ID 'NOT)))
-                                                 V2)))))
-              ((LA-MATCH ((SBST::!ID!)))
-               (PROGN (LAM ((SBST::!ID! EPSILON)) (GOBBLE-TO-SLOT V1))
-                      (VALUE-TO-SLOT V0 12)
-                      (AS-TO-SLOT V1
-                                  (MAKE-SB-TERM 'CONSTR-TERM-REP::PTYPE-CON
-                                                (LIST V1)))))
-              ((LA-MATCH ((SBST::UNIT)))
-               (PROGN (LAM ((SBST::UNIT EPSILON)) (GOBBLE-TOKEN))
-                      (VALUE-TO-SLOT V0 10)
-                      (AS-TO-SLOT V1
-                                  (MAKE-SB-TERM 'CONSTR-TERM-REP::PTYPE-CON
-                                                (LIST
-                                                 (MK-ID
-                                                  'CONSTR-TERM-REP::UNIT))))))
-              (T
-               (INITIAL-ERROR '((SBST::NOT SBST::|(| SBST::!ID! SBST::|'|
-                                 SBST::UNIT SBST::{ SBST::NOT)
-                                (SBST::{ SBST::NOT SBST::{ SBST::UNIT
-                                 SBST::|'| SBST::!ID! SBST::|(| SBST::})
-                                (SBST::UNIT EPSILON) (SBST::|'| SBST::!ID!)
-                                (SBST::!ID! EPSILON)
-                                (SBST::|(| SBST::|(| SBST::!ID! SBST::|'|
-                                 SBST::UNIT SBST::{ SBST::NOT)))))
-    (VALUE-TO-SLOT V0 V1)
-    (EAT-BRACKETS (SBST::|)| SBST::|(|) PTYPE)
-    (COND ((> (COND ((MEMBER (PEEK-FIRST)
-                             '(SBST::* SBST::? SBST::-> SBST::|#| SBST::AND
-                               SBST::OR SBST::SATS SBST::NOT-SATS))
-                     (SETQ MTEMP (PEEK-FIRST))
-                     (CADR (ASSOC (PEEK-FIRST)
-                                  '((SBST::NOT-SATS 80) (SBST::SATS 80)
-                                    (SBST::? 70) (SBST::* 70) (SBST::JUX 60)
-                                    (SBST::AND 41) (SBST::OR 31)
-                                    (SBST::|#| 21) (SBST::-> 11)))))
-                    ((MEMBER (PEEK-FIRST)
-                             '(SBST::|(| SBST::!ID! SBST::|'| SBST::UNIT
-                               SBST::{ SBST::NOT))
-                     (SETQ MTEMP 'G45180)
+(defun !ptype! (rbp &optional (bracket-list (empty-bracket-list)))
+  (let (mtemp v0 v1 v2 v3)
+    (ergo-ignore-if-unused v0 v1 v2 v3)
+    (stack-brackets sbst::|(| ptype)
+    (initials ((la-match ((sbst::|'|)))
+               (progn (lam ((sbst::|'| epsilon)) (gobble-token))
+                      (lam ((sbst::!id! epsilon)) (gobble-to-slot v2))
+                      (value-to-slot v0 11)
+                      (as-to-slot v1
+                                  (make-sb-term 'constr-term-rep::ptype-tv
+                                                (list v2)))))
+              ((la-match ((sbst::{ sbst::})))
+               (progn (lam ((sbst::{ epsilon)) (gobble-token))
+                      (lam ((sbst::} epsilon)) (gobble-token))
+                      (value-to-slot v0 9)
+                      (as-to-slot v1
+                                  (make-sb-term 'constr-term-rep::ptype-members
+                                                (ds-temp-rept
+                                                 (ck-rept-ref v2))))))
+              ((la-match ((sbst::{ sbst::not sbst::{ sbst::unit sbst::|'|
+                           sbst::!id! sbst::|(|)))
+               (progn (lam ((sbst::{ epsilon)) (gobble-token))
+                      (code-to-slot v3 (!ptype! 0)) (cons-to-slot v2 v3)
+                      (gen-star-parse ((sbst::|,|
+                                        sbst::|(|
+                                        sbst::!id!
+                                        sbst::|'|
+                                        sbst::unit
+                                        sbst::{
+                                        sbst::not))
+                                      (progn
+                                       (lam
+                                        ((sbst::|,| epsilon))
+                                        (gobble-token))
+                                       (code-to-slot v3 (!ptype! 0)))
+                                      v2 v3)
+                      (lam ((sbst::} epsilon)) (gobble-token))
+                      (value-to-slot v0 9)
+                      (as-to-slot v1
+                                  (make-sb-term 'constr-term-rep::ptype-members
+                                                (ds-temp-rept
+                                                 (ck-rept-ref v2))))))
+              ((la-match ((sbst::not)))
+               (progn (lam ((sbst::not epsilon)) (gobble-token))
+                      (code-to-slot v2 (!ptype! 50)) (value-to-slot v0 6)
+                      (as-to-slot v1
+                                  (make-sb-term 'constr-term-rep::ptype-appl
+                                                (list
+                                                 (make-sb-term
+                                                  'constr-term-rep::ptype-con
+                                                  (list (mk-id 'not)))
+                                                 v2)))))
+              ((la-match ((sbst::!id!)))
+               (progn (lam ((sbst::!id! epsilon)) (gobble-to-slot v1))
+                      (value-to-slot v0 12)
+                      (as-to-slot v1
+                                  (make-sb-term 'constr-term-rep::ptype-con
+                                                (list v1)))))
+              ((la-match ((sbst::unit)))
+               (progn (lam ((sbst::unit epsilon)) (gobble-token))
+                      (value-to-slot v0 10)
+                      (as-to-slot v1
+                                  (make-sb-term 'constr-term-rep::ptype-con
+                                                (list
+                                                 (mk-id
+                                                  'constr-term-rep::unit))))))
+              (t
+               (initial-error '((sbst::not sbst::|(| sbst::!id! sbst::|'|
+                                 sbst::unit sbst::{ sbst::not)
+                                (sbst::{ sbst::not sbst::{ sbst::unit
+                                 sbst::|'| sbst::!id! sbst::|(| sbst::})
+                                (sbst::unit epsilon) (sbst::|'| sbst::!id!)
+                                (sbst::!id! epsilon)
+                                (sbst::|(| sbst::|(| sbst::!id! sbst::|'|
+                                 sbst::unit sbst::{ sbst::not)))))
+    (value-to-slot v0 v1)
+    (eat-brackets (sbst::|)| sbst::|(|) ptype)
+    (cond ((> (cond ((member (peek-first)
+                             '(sbst::* sbst::? sbst::-> sbst::|#| sbst::and
+                               sbst::or sbst::sats sbst::not-sats))
+                     (setq mtemp (peek-first))
+                     (cadr (assoc (peek-first)
+                                  '((sbst::not-sats 80) (sbst::sats 80)
+                                    (sbst::? 70) (sbst::* 70) (sbst::jux 60)
+                                    (sbst::and 41) (sbst::or 31)
+                                    (sbst::|#| 21) (sbst::-> 11)))))
+                    ((member (peek-first)
+                             '(sbst::|(| sbst::!id! sbst::|'| sbst::unit
+                               sbst::{ sbst::not))
+                     (setq mtemp 'g45180)
                      60)
-                    (T 0))
-              RBP)
-           (LOOP (CLEAN-VARIABLES (V1 V2 V3))
-                 (CASE MTEMP
-                   (G45180
-                    (PROGN (SLOT-TO-SLOT V2 V0) (CODE-TO-SLOT V3 (!PTYPE! 61))
-                           (VALUE-TO-SLOT V0 13)
-                           (AS-TO-SLOT V1
-                                       (MAKE-SB-TERM
-                                        'CONSTR-TERM-REP::PTYPE-APPL
-                                        (LIST V2 V3)))))
-                   (SBST::NOT-SATS
-                    (PROGN (SLOT-TO-SLOT V2 V0)
-                           (LAM ((SBST::NOT-SATS EPSILON)) (GOBBLE-TOKEN))
-                           (LAM ((SBST::!ID! EPSILON)) (GOBBLE-TO-SLOT V3))
-                           (VALUE-TO-SLOT V0 8)
-                           (AS-TO-SLOT V1
-                                       (MAKE-SB-TERM
-                                        'CONSTR-TERM-REP::PTYPE-APPL
-                                        (LIST
-                                         (MAKE-SB-TERM
-                                          'CONSTR-TERM-REP::PTYPE-APPL
-                                          (LIST
-                                           (MAKE-SB-TERM
-                                            'CONSTR-TERM-REP::PTYPE-CON
-                                            (LIST (MK-ID 'AND)))
-                                           V2))
-                                         (MAKE-SB-TERM
-                                          'CONSTR-TERM-REP::PTYPE-APPL
-                                          (LIST
-                                           (MAKE-SB-TERM
-                                            'CONSTR-TERM-REP::PTYPE-CON
-                                            (LIST (MK-ID 'NOT)))
-                                           (MAKE-SB-TERM
-                                            'CONSTR-TERM-REP::PTYPE-APPL
-                                            (LIST
-                                             (MAKE-SB-TERM
-                                              'CONSTR-TERM-REP::PTYPE-CON
-                                              (LIST (MK-ID 'SATISFIES)))
-                                             (MAKE-SB-TERM
-                                              'CONSTR-TERM-REP::PTYPE-CON
-                                              (LIST V3)))))))))))
-                   (SBST::SATS
-                    (PROGN (SLOT-TO-SLOT V2 V0)
-                           (LAM ((SBST::SATS EPSILON)) (GOBBLE-TOKEN))
-                           (LAM ((SBST::!ID! EPSILON)) (GOBBLE-TO-SLOT V3))
-                           (VALUE-TO-SLOT V0 7)
-                           (AS-TO-SLOT V1
-                                       (MAKE-SB-TERM
-                                        'CONSTR-TERM-REP::PTYPE-APPL
-                                        (LIST
-                                         (MAKE-SB-TERM
-                                          'CONSTR-TERM-REP::PTYPE-APPL
-                                          (LIST
-                                           (MAKE-SB-TERM
-                                            'CONSTR-TERM-REP::PTYPE-CON
-                                            (LIST (MK-ID 'AND)))
-                                           V2))
-                                         (MAKE-SB-TERM
-                                          'CONSTR-TERM-REP::PTYPE-APPL
-                                          (LIST
-                                           (MAKE-SB-TERM
-                                            'CONSTR-TERM-REP::PTYPE-CON
-                                            (LIST (MK-ID 'SATISFIES)))
-                                           (MAKE-SB-TERM
-                                            'CONSTR-TERM-REP::PTYPE-CON
-                                            (LIST V3)))))))))
-                   (SBST::OR
-                    (PROGN (SLOT-TO-SLOT V2 V0)
-                           (LAM ((SBST::OR EPSILON)) (GOBBLE-TOKEN))
-                           (CODE-TO-SLOT V3 (!PTYPE! 30)) (VALUE-TO-SLOT V0 5)
-                           (AS-TO-SLOT V1
-                                       (MAKE-SB-TERM
-                                        'CONSTR-TERM-REP::PTYPE-APPL
-                                        (LIST
-                                         (MAKE-SB-TERM
-                                          'CONSTR-TERM-REP::PTYPE-APPL
-                                          (LIST
-                                           (MAKE-SB-TERM
-                                            'CONSTR-TERM-REP::PTYPE-CON
-                                            (LIST (MK-ID 'OR)))
-                                           V2))
-                                         V3)))))
-                   (SBST::AND
-                    (PROGN (SLOT-TO-SLOT V2 V0)
-                           (LAM ((SBST::AND EPSILON)) (GOBBLE-TOKEN))
-                           (CODE-TO-SLOT V3 (!PTYPE! 40)) (VALUE-TO-SLOT V0 4)
-                           (AS-TO-SLOT V1
-                                       (MAKE-SB-TERM
-                                        'CONSTR-TERM-REP::PTYPE-APPL
-                                        (LIST
-                                         (MAKE-SB-TERM
-                                          'CONSTR-TERM-REP::PTYPE-APPL
-                                          (LIST
-                                           (MAKE-SB-TERM
-                                            'CONSTR-TERM-REP::PTYPE-CON
-                                            (LIST (MK-ID 'AND)))
-                                           V2))
-                                         V3)))))
-                   (SBST::|#|
-                    (PROGN (SLOT-TO-SLOT V2 V0)
-                           (LAM ((SBST::|#| EPSILON)) (GOBBLE-TOKEN))
-                           (CODE-TO-SLOT V3 (!PTYPE! 20)) (VALUE-TO-SLOT V0 3)
-                           (AS-TO-SLOT V1
-                                       (MAKE-SB-TERM
-                                        'CONSTR-TERM-REP::PTYPE-APPL
-                                        (LIST
-                                         (MAKE-SB-TERM
-                                          'CONSTR-TERM-REP::PTYPE-APPL
-                                          (LIST
-                                           (MAKE-SB-TERM
-                                            'CONSTR-TERM-REP::PTYPE-CON
-                                            (LIST
-                                             (MK-ID 'CONSTR-TERM-REP::PROD)))
-                                           V2))
-                                         V3)))))
-                   (SBST::->
-                    (PROGN (SLOT-TO-SLOT V2 V0)
-                           (LAM ((SBST::-> EPSILON)) (GOBBLE-TOKEN))
-                           (CODE-TO-SLOT V3 (!PTYPE! 10)) (VALUE-TO-SLOT V0 2)
-                           (AS-TO-SLOT V1
-                                       (MAKE-SB-TERM
-                                        'CONSTR-TERM-REP::PTYPE-APPL
-                                        (LIST
-                                         (MAKE-SB-TERM
-                                          'CONSTR-TERM-REP::PTYPE-APPL
-                                          (LIST
-                                           (MAKE-SB-TERM
-                                            'CONSTR-TERM-REP::PTYPE-CON
-                                            (LIST
-                                             (MK-ID 'CONSTR-TERM-REP::ARROW)))
-                                           V2))
-                                         V3)))))
-                   (SBST::?
-                    (PROGN (SLOT-TO-SLOT V2 V0)
-                           (LAM ((SBST::? EPSILON)) (GOBBLE-TOKEN))
-                           (VALUE-TO-SLOT V0 1)
-                           (AS-TO-SLOT V1
-                                       (MAKE-SB-TERM
-                                        'CONSTR-TERM-REP::PTYPE-APPL
-                                        (LIST
-                                         (MAKE-SB-TERM
-                                          'CONSTR-TERM-REP::PTYPE-CON
-                                          (LIST (MK-ID 'OPTIONAL)))
-                                         V2)))))
-                   (SBST::*
-                    (PROGN (SLOT-TO-SLOT V2 V0)
-                           (LAM ((SBST::* EPSILON)) (GOBBLE-TOKEN))
-                           (VALUE-TO-SLOT V0 0)
-                           (AS-TO-SLOT V1
-                                       (MAKE-SB-TERM
-                                        'CONSTR-TERM-REP::PTYPE-APPL
-                                        (LIST
-                                         (MAKE-SB-TERM
-                                          'CONSTR-TERM-REP::PTYPE-CON
-                                          (LIST (MK-ID 'LIST-OF)))
-                                         V2)))))
-                   (T
-                    (MEDIAL-ERROR '(SBST::* SBST::? SBST::-> SBST::|#|
-                                    SBST::AND SBST::OR SBST::SATS
-                                    SBST::NOT-SATS SBST::|(| SBST::!ID!
-                                    SBST::|'| SBST::UNIT SBST::{ SBST::NOT))))
-                 (VALUE-TO-SLOT V0 V1)
-                 (EAT-BRACKETS (SBST::|)| SBST::|(|) PTYPE)
-                 (WHEN (<= (COND ((MEMBER (PEEK-FIRST)
-                                          '(SBST::*
-                                            SBST::?
-                                            SBST::->
-                                            SBST::|#|
-                                            SBST::AND
-                                            SBST::OR
-                                            SBST::SATS
-                                            SBST::NOT-SATS))
-                                  (SETQ MTEMP (PEEK-FIRST))
-                                  (CADR (ASSOC
+                    (t 0))
+              rbp)
+           (loop (clean-variables (v1 v2 v3))
+                 (case mtemp
+                   (g45180
+                    (progn (slot-to-slot v2 v0) (code-to-slot v3 (!ptype! 61))
+                           (value-to-slot v0 13)
+                           (as-to-slot v1
+                                       (make-sb-term
+                                        'constr-term-rep::ptype-appl
+                                        (list v2 v3)))))
+                   (sbst::not-sats
+                    (progn (slot-to-slot v2 v0)
+                           (lam ((sbst::not-sats epsilon)) (gobble-token))
+                           (lam ((sbst::!id! epsilon)) (gobble-to-slot v3))
+                           (value-to-slot v0 8)
+                           (as-to-slot v1
+                                       (make-sb-term
+                                        'constr-term-rep::ptype-appl
+                                        (list
+                                         (make-sb-term
+                                          'constr-term-rep::ptype-appl
+                                          (list
+                                           (make-sb-term
+                                            'constr-term-rep::ptype-con
+                                            (list (mk-id 'and)))
+                                           v2))
+                                         (make-sb-term
+                                          'constr-term-rep::ptype-appl
+                                          (list
+                                           (make-sb-term
+                                            'constr-term-rep::ptype-con
+                                            (list (mk-id 'not)))
+                                           (make-sb-term
+                                            'constr-term-rep::ptype-appl
+                                            (list
+                                             (make-sb-term
+                                              'constr-term-rep::ptype-con
+                                              (list (mk-id 'satisfies)))
+                                             (make-sb-term
+                                              'constr-term-rep::ptype-con
+                                              (list v3)))))))))))
+                   (sbst::sats
+                    (progn (slot-to-slot v2 v0)
+                           (lam ((sbst::sats epsilon)) (gobble-token))
+                           (lam ((sbst::!id! epsilon)) (gobble-to-slot v3))
+                           (value-to-slot v0 7)
+                           (as-to-slot v1
+                                       (make-sb-term
+                                        'constr-term-rep::ptype-appl
+                                        (list
+                                         (make-sb-term
+                                          'constr-term-rep::ptype-appl
+                                          (list
+                                           (make-sb-term
+                                            'constr-term-rep::ptype-con
+                                            (list (mk-id 'and)))
+                                           v2))
+                                         (make-sb-term
+                                          'constr-term-rep::ptype-appl
+                                          (list
+                                           (make-sb-term
+                                            'constr-term-rep::ptype-con
+                                            (list (mk-id 'satisfies)))
+                                           (make-sb-term
+                                            'constr-term-rep::ptype-con
+                                            (list v3)))))))))
+                   (sbst::or
+                    (progn (slot-to-slot v2 v0)
+                           (lam ((sbst::or epsilon)) (gobble-token))
+                           (code-to-slot v3 (!ptype! 30)) (value-to-slot v0 5)
+                           (as-to-slot v1
+                                       (make-sb-term
+                                        'constr-term-rep::ptype-appl
+                                        (list
+                                         (make-sb-term
+                                          'constr-term-rep::ptype-appl
+                                          (list
+                                           (make-sb-term
+                                            'constr-term-rep::ptype-con
+                                            (list (mk-id 'or)))
+                                           v2))
+                                         v3)))))
+                   (sbst::and
+                    (progn (slot-to-slot v2 v0)
+                           (lam ((sbst::and epsilon)) (gobble-token))
+                           (code-to-slot v3 (!ptype! 40)) (value-to-slot v0 4)
+                           (as-to-slot v1
+                                       (make-sb-term
+                                        'constr-term-rep::ptype-appl
+                                        (list
+                                         (make-sb-term
+                                          'constr-term-rep::ptype-appl
+                                          (list
+                                           (make-sb-term
+                                            'constr-term-rep::ptype-con
+                                            (list (mk-id 'and)))
+                                           v2))
+                                         v3)))))
+                   (sbst::|#|
+                    (progn (slot-to-slot v2 v0)
+                           (lam ((sbst::|#| epsilon)) (gobble-token))
+                           (code-to-slot v3 (!ptype! 20)) (value-to-slot v0 3)
+                           (as-to-slot v1
+                                       (make-sb-term
+                                        'constr-term-rep::ptype-appl
+                                        (list
+                                         (make-sb-term
+                                          'constr-term-rep::ptype-appl
+                                          (list
+                                           (make-sb-term
+                                            'constr-term-rep::ptype-con
+                                            (list
+                                             (mk-id 'constr-term-rep::prod)))
+                                           v2))
+                                         v3)))))
+                   (sbst::->
+                    (progn (slot-to-slot v2 v0)
+                           (lam ((sbst::-> epsilon)) (gobble-token))
+                           (code-to-slot v3 (!ptype! 10)) (value-to-slot v0 2)
+                           (as-to-slot v1
+                                       (make-sb-term
+                                        'constr-term-rep::ptype-appl
+                                        (list
+                                         (make-sb-term
+                                          'constr-term-rep::ptype-appl
+                                          (list
+                                           (make-sb-term
+                                            'constr-term-rep::ptype-con
+                                            (list
+                                             (mk-id 'constr-term-rep::arrow)))
+                                           v2))
+                                         v3)))))
+                   (sbst::?
+                    (progn (slot-to-slot v2 v0)
+                           (lam ((sbst::? epsilon)) (gobble-token))
+                           (value-to-slot v0 1)
+                           (as-to-slot v1
+                                       (make-sb-term
+                                        'constr-term-rep::ptype-appl
+                                        (list
+                                         (make-sb-term
+                                          'constr-term-rep::ptype-con
+                                          (list (mk-id 'optional)))
+                                         v2)))))
+                   (sbst::*
+                    (progn (slot-to-slot v2 v0)
+                           (lam ((sbst::* epsilon)) (gobble-token))
+                           (value-to-slot v0 0)
+                           (as-to-slot v1
+                                       (make-sb-term
+                                        'constr-term-rep::ptype-appl
+                                        (list
+                                         (make-sb-term
+                                          'constr-term-rep::ptype-con
+                                          (list (mk-id 'list-of)))
+                                         v2)))))
+                   (t
+                    (medial-error '(sbst::* sbst::? sbst::-> sbst::|#|
+                                    sbst::and sbst::or sbst::sats
+                                    sbst::not-sats sbst::|(| sbst::!id!
+                                    sbst::|'| sbst::unit sbst::{ sbst::not))))
+                 (value-to-slot v0 v1)
+                 (eat-brackets (sbst::|)| sbst::|(|) ptype)
+                 (when (<= (cond ((member (peek-first)
+                                          '(sbst::*
+                                            sbst::?
+                                            sbst::->
+                                            sbst::|#|
+                                            sbst::and
+                                            sbst::or
+                                            sbst::sats
+                                            sbst::not-sats))
+                                  (setq mtemp (peek-first))
+                                  (cadr (assoc
 
-                                         (PEEK-FIRST)
-                                         '((SBST::NOT-SATS 80)
-                                           (SBST::SATS 80)
-                                           (SBST::? 70)
-                                           (SBST::* 70)
-                                           (SBST::JUX 60)
-                                           (SBST::AND 41)
-                                           (SBST::OR 31)
-                                           (SBST::|#| 21)
-                                           (SBST::-> 11)))))
-                                 ((MEMBER (PEEK-FIRST)
-                                          '(SBST::|(|
-                                            SBST::!ID!
-                                            SBST::|'|
-                                            SBST::UNIT
-                                            SBST::{
-                                            SBST::NOT))
-                                  (SETQ MTEMP 'G45180)
+                                         (peek-first)
+                                         '((sbst::not-sats 80)
+                                           (sbst::sats 80)
+                                           (sbst::? 70)
+                                           (sbst::* 70)
+                                           (sbst::jux 60)
+                                           (sbst::and 41)
+                                           (sbst::or 31)
+                                           (sbst::|#| 21)
+                                           (sbst::-> 11)))))
+                                 ((member (peek-first)
+                                          '(sbst::|(|
+                                            sbst::!id!
+                                            sbst::|'|
+                                            sbst::unit
+                                            sbst::{
+                                            sbst::not))
+                                  (setq mtemp 'g45180)
                                   60)
-                                 (T 0))
-                           RBP)
-                   (RETURN NIL)))))
-    V0))
+                                 (t 0))
+                           rbp)
+                   (return nil)))))
+    v0))
 
 
-(DEFUN !PART! (RBP &OPTIONAL (BRACKET-LIST (EMPTY-BRACKET-LIST)))
-  (DECLARE (IGNORE RBP))
-  (DECLARE (IGNORE BRACKET-LIST))
-  (LET (V0 V1 V2 V3)
-    (ERGO-IGNORE-IF-UNUSED V0 V1 V2 V3)
-    (INITIALS-ONLY ((LA-MATCH ((SBST::!ID! SBST::|:|)))
-                    (PROGN (LAM ((SBST::!ID! EPSILON)) (GOBBLE-TO-SLOT V2))
-                           (LAM ((SBST::|:| EPSILON)) (GOBBLE-TOKEN))
-                           (VALUE-TO-SLOT V1 1) (CODE-TO-SLOT V3 (!PTYPE! 0))
-                           (AS-TO-SLOT V0
-                                       (MAKE-SB-TERM
-                                        'CONSTR-TERM-REP::PART
-                                        (LIST
-                                         (IF (= V1 0) (MK-ID 'NIL) V2)
-                                         V3)))))
-                   ((LA-MATCH ((SBST::NOT) (SBST::{) (SBST::UNIT) (SBST::|'|)
-                               (SBST::!ID! EPSILON SBST::* SBST::? SBST::->
-                                SBST::|#| SBST::AND SBST::OR SBST::SATS
-                                SBST::NOT-SATS SBST::|(| SBST::!ID! SBST::|'|
-                                SBST::UNIT SBST::{ SBST::NOT)
-                               (SBST::|(|)))
-                    (PROGN (CODE-TO-SLOT V3 (!PTYPE! 0)) (VALUE-TO-SLOT V1 0)
-                           (AS-TO-SLOT V0
-                                       (MAKE-SB-TERM
-                                        'CONSTR-TERM-REP::PART
-                                        (LIST
-                                         (IF (= V1 0) (MK-ID 'NIL) V2)
-                                         V3)))))
-                   (T
-                    (INITIAL-ERROR '((SBST::!ID! SBST::|:| EPSILON SBST::*
-                                      SBST::? SBST::-> SBST::|#| SBST::AND
-                                      SBST::OR SBST::SATS SBST::NOT-SATS
-                                      SBST::|(| SBST::!ID! SBST::|'|
-                                      SBST::UNIT SBST::{ SBST::NOT)
-                                     (SBST::|(| SBST::|(| SBST::!ID! SBST::|'|
-                                      SBST::UNIT SBST::{ SBST::NOT)
-                                     (SBST::|'| SBST::!ID!)
-                                     (SBST::UNIT EPSILON SBST::* SBST::?
-                                      SBST::-> SBST::|#| SBST::AND SBST::OR
-                                      SBST::SATS SBST::NOT-SATS SBST::|(|
-                                      SBST::!ID! SBST::|'| SBST::UNIT SBST::{
-                                      SBST::NOT)
-                                     (SBST::{ SBST::} SBST::|(| SBST::!ID!
-                                      SBST::|'| SBST::UNIT SBST::{ SBST::NOT)
-                                     (SBST::NOT SBST::|(| SBST::!ID! SBST::|'|
-                                      SBST::UNIT SBST::{ SBST::NOT)))))
-    NIL
-    V0))
+(defun !part! (rbp &optional (bracket-list (empty-bracket-list)))
+  (declare (ignore rbp))
+  (declare (ignore bracket-list))
+  (let (v0 v1 v2 v3)
+    (ergo-ignore-if-unused v0 v1 v2 v3)
+    (initials-only ((la-match ((sbst::!id! sbst::|:|)))
+                    (progn (lam ((sbst::!id! epsilon)) (gobble-to-slot v2))
+                           (lam ((sbst::|:| epsilon)) (gobble-token))
+                           (value-to-slot v1 1) (code-to-slot v3 (!ptype! 0))
+                           (as-to-slot v0
+                                       (make-sb-term
+                                        'constr-term-rep::part
+                                        (list
+                                         (if (= v1 0) (mk-id 'nil) v2)
+                                         v3)))))
+                   ((la-match ((sbst::not) (sbst::{) (sbst::unit) (sbst::|'|)
+                               (sbst::!id! epsilon sbst::* sbst::? sbst::->
+                                sbst::|#| sbst::and sbst::or sbst::sats
+                                sbst::not-sats sbst::|(| sbst::!id! sbst::|'|
+                                sbst::unit sbst::{ sbst::not)
+                               (sbst::|(|)))
+                    (progn (code-to-slot v3 (!ptype! 0)) (value-to-slot v1 0)
+                           (as-to-slot v0
+                                       (make-sb-term
+                                        'constr-term-rep::part
+                                        (list
+                                         (if (= v1 0) (mk-id 'nil) v2)
+                                         v3)))))
+                   (t
+                    (initial-error '((sbst::!id! sbst::|:| epsilon sbst::*
+                                      sbst::? sbst::-> sbst::|#| sbst::and
+                                      sbst::or sbst::sats sbst::not-sats
+                                      sbst::|(| sbst::!id! sbst::|'|
+                                      sbst::unit sbst::{ sbst::not)
+                                     (sbst::|(| sbst::|(| sbst::!id! sbst::|'|
+                                      sbst::unit sbst::{ sbst::not)
+                                     (sbst::|'| sbst::!id!)
+                                     (sbst::unit epsilon sbst::* sbst::?
+                                      sbst::-> sbst::|#| sbst::and sbst::or
+                                      sbst::sats sbst::not-sats sbst::|(|
+                                      sbst::!id! sbst::|'| sbst::unit sbst::{
+                                      sbst::not)
+                                     (sbst::{ sbst::} sbst::|(| sbst::!id!
+                                      sbst::|'| sbst::unit sbst::{ sbst::not)
+                                     (sbst::not sbst::|(| sbst::!id! sbst::|'|
+                                      sbst::unit sbst::{ sbst::not)))))
+    nil
+    v0))
 
 
-(DEFUN !DTARM! (RBP &OPTIONAL (BRACKET-LIST (EMPTY-BRACKET-LIST)))
-  (DECLARE (IGNORE RBP))
-  (DECLARE (IGNORE BRACKET-LIST))
-  (LET (V0 V1 V2 V3 V4)
-    (ERGO-IGNORE-IF-UNUSED V0 V1 V2 V3 V4)
-    (INITIALS-ONLY ((LA-MATCH ((SBST::!ID!)))
-                    (PROGN (LAM ((SBST::!ID! EPSILON)) (GOBBLE-TO-SLOT V1))
-                           (OPT-PARSE ((SBST::OF
-                                        EPSILON
-                                        SBST::!ID!
-                                        SBST::NOT
-                                        SBST::{
-                                        SBST::UNIT
-                                        SBST::|'|
-                                        SBST::|(|))
-                                      (PROGN
-                                       (LAM
-                                        ((SBST::OF EPSILON))
-                                        (GOBBLE-TOKEN))
-                                       (DOUBLESTAR-PARSE
-                                        ((SBST::|(|
-                                          SBST::|(|
-                                          SBST::!ID!
-                                          SBST::|'|
-                                          SBST::UNIT
-                                          SBST::{
-                                          SBST::NOT)
-                                         (SBST::|'| SBST::!ID!)
-                                         (SBST::UNIT
-                                          EPSILON
-                                          SBST::*
-                                          SBST::?
-                                          SBST::->
-                                          SBST::|#|
-                                          SBST::AND
-                                          SBST::OR
-                                          SBST::SATS
-                                          SBST::NOT-SATS
-                                          SBST::|(|
-                                          SBST::!ID!
-                                          SBST::|'|
-                                          SBST::UNIT
-                                          SBST::{
-                                          SBST::NOT)
-                                         (SBST::{
-                                          SBST::}
-                                          SBST::|(|
-                                          SBST::!ID!
-                                          SBST::|'|
-                                          SBST::UNIT
-                                          SBST::{
-                                          SBST::NOT)
-                                         (SBST::NOT
-                                          SBST::|(|
-                                          SBST::!ID!
-                                          SBST::|'|
-                                          SBST::UNIT
-                                          SBST::{
-                                          SBST::NOT)
-                                         (SBST::!ID!
-                                          SBST::|:|
-                                          EPSILON
-                                          SBST::*
-                                          SBST::?
-                                          SBST::->
-                                          SBST::|#|
-                                          SBST::AND
-                                          SBST::OR
-                                          SBST::SATS
-                                          SBST::NOT-SATS
-                                          SBST::|(|
-                                          SBST::!ID!
-                                          SBST::|'|
-                                          SBST::UNIT
-                                          SBST::{
-                                          SBST::NOT))
-                                        (PROGN
-                                         (CODE-TO-SLOT V4 (!PART! 0))
-                                         NIL)
-                                        V3
-                                        V4
-                                        'SBST::|,|))
-                                      V2)
-                           (AS-TO-SLOT V0
-                                       (MAKE-SB-TERM
-                                        'CONSTR-TERM-REP::DTARM
-                                        (LIST
-                                         V1
-                                         (IF
-                                          (= V2 0)
-                                          (MAKE-SB-TERM
-                                           'CONSTR-TERM-REP::PARTS
-                                           NIL)
-                                          (MAKE-SB-TERM
-                                           'CONSTR-TERM-REP::PARTS
-                                           (DS-TEMP-REPT
-                                            (CK-REPT-REF V3)))))))))
-                   (T (INITIAL-ERROR '((SBST::!ID! EPSILON SBST::OF)))))
-    NIL
-    V0))
+(defun !dtarm! (rbp &optional (bracket-list (empty-bracket-list)))
+  (declare (ignore rbp))
+  (declare (ignore bracket-list))
+  (let (v0 v1 v2 v3 v4)
+    (ergo-ignore-if-unused v0 v1 v2 v3 v4)
+    (initials-only ((la-match ((sbst::!id!)))
+                    (progn (lam ((sbst::!id! epsilon)) (gobble-to-slot v1))
+                           (opt-parse ((sbst::of
+                                        epsilon
+                                        sbst::!id!
+                                        sbst::not
+                                        sbst::{
+                                        sbst::unit
+                                        sbst::|'|
+                                        sbst::|(|))
+                                      (progn
+                                       (lam
+                                        ((sbst::of epsilon))
+                                        (gobble-token))
+                                       (doublestar-parse
+                                        ((sbst::|(|
+                                          sbst::|(|
+                                          sbst::!id!
+                                          sbst::|'|
+                                          sbst::unit
+                                          sbst::{
+                                          sbst::not)
+                                         (sbst::|'| sbst::!id!)
+                                         (sbst::unit
+                                          epsilon
+                                          sbst::*
+                                          sbst::?
+                                          sbst::->
+                                          sbst::|#|
+                                          sbst::and
+                                          sbst::or
+                                          sbst::sats
+                                          sbst::not-sats
+                                          sbst::|(|
+                                          sbst::!id!
+                                          sbst::|'|
+                                          sbst::unit
+                                          sbst::{
+                                          sbst::not)
+                                         (sbst::{
+                                          sbst::}
+                                          sbst::|(|
+                                          sbst::!id!
+                                          sbst::|'|
+                                          sbst::unit
+                                          sbst::{
+                                          sbst::not)
+                                         (sbst::not
+                                          sbst::|(|
+                                          sbst::!id!
+                                          sbst::|'|
+                                          sbst::unit
+                                          sbst::{
+                                          sbst::not)
+                                         (sbst::!id!
+                                          sbst::|:|
+                                          epsilon
+                                          sbst::*
+                                          sbst::?
+                                          sbst::->
+                                          sbst::|#|
+                                          sbst::and
+                                          sbst::or
+                                          sbst::sats
+                                          sbst::not-sats
+                                          sbst::|(|
+                                          sbst::!id!
+                                          sbst::|'|
+                                          sbst::unit
+                                          sbst::{
+                                          sbst::not))
+                                        (progn
+                                         (code-to-slot v4 (!part! 0))
+                                         nil)
+                                        v3
+                                        v4
+                                        'sbst::|,|))
+                                      v2)
+                           (as-to-slot v0
+                                       (make-sb-term
+                                        'constr-term-rep::dtarm
+                                        (list
+                                         v1
+                                         (if
+                                          (= v2 0)
+                                          (make-sb-term
+                                           'constr-term-rep::parts
+                                           nil)
+                                          (make-sb-term
+                                           'constr-term-rep::parts
+                                           (ds-temp-rept
+                                            (ck-rept-ref v3)))))))))
+                   (t (initial-error '((sbst::!id! epsilon sbst::of)))))
+    nil
+    v0))
 
 
-(DEFUN !DATATYPE! (RBP &OPTIONAL (BRACKET-LIST (EMPTY-BRACKET-LIST)))
-  (DECLARE (IGNORE RBP))
-  (DECLARE (IGNORE BRACKET-LIST))
-  (LET (V0 V1 V2 V3 V4)
-    (ERGO-IGNORE-IF-UNUSED V0 V1 V2 V3 V4)
-    (INITIALS-ONLY ((LA-MATCH ((SBST::DATATYPE)))
-                    (PROGN (LAM ((SBST::DATATYPE EPSILON)) (GOBBLE-TOKEN))
-                           (ALT-PARSE ((LA-MATCH ((SBST::!ID! SBST::=)))
-                                       (VALUE-TO-SLOT V1 0)
-                                       (PROGN
-                                        (LAM
-                                         ((SBST::!ID! EPSILON))
-                                         (GOBBLE-TO-SLOT V2))
-                                        (LAM
-                                         ((SBST::= EPSILON))
-                                         (GOBBLE-TOKEN))
-                                        (DOUBLESTAR-PARSE
-                                         ((SBST::!ID! SBST::OF EPSILON))
-                                         (PROGN
-                                          (CODE-TO-SLOT V4 (!DTARM! 0))
-                                          NIL)
-                                         V3
-                                         V4
-                                         'SBST::|\||)))
-                                      ((LA-MATCH
-                                        ((SBST::!ID! SBST::OF EPSILON)))
-                                       (VALUE-TO-SLOT V1 1)
-                                       (CODE-TO-SLOT V2 (!DTARM! 0)))
-                                      (T
-                                       (INITIAL-ERROR
-                                        '((SBST::!ID!
-                                           SBST::=
-                                           SBST::OF
-                                           EPSILON)))))
-                           (AS-TO-SLOT V0
-                                       (CASE
-                                        V1
+(defun !datatype! (rbp &optional (bracket-list (empty-bracket-list)))
+  (declare (ignore rbp))
+  (declare (ignore bracket-list))
+  (let (v0 v1 v2 v3 v4)
+    (ergo-ignore-if-unused v0 v1 v2 v3 v4)
+    (initials-only ((la-match ((sbst::datatype)))
+                    (progn (lam ((sbst::datatype epsilon)) (gobble-token))
+                           (alt-parse ((la-match ((sbst::!id! sbst::=)))
+                                       (value-to-slot v1 0)
+                                       (progn
+                                        (lam
+                                         ((sbst::!id! epsilon))
+                                         (gobble-to-slot v2))
+                                        (lam
+                                         ((sbst::= epsilon))
+                                         (gobble-token))
+                                        (doublestar-parse
+                                         ((sbst::!id! sbst::of epsilon))
+                                         (progn
+                                          (code-to-slot v4 (!dtarm! 0))
+                                          nil)
+                                         v3
+                                         v4
+                                         'sbst::|\||)))
+                                      ((la-match
+                                        ((sbst::!id! sbst::of epsilon)))
+                                       (value-to-slot v1 1)
+                                       (code-to-slot v2 (!dtarm! 0)))
+                                      (t
+                                       (initial-error
+                                        '((sbst::!id!
+                                           sbst::=
+                                           sbst::of
+                                           epsilon)))))
+                           (as-to-slot v0
+                                       (case
+                                        v1
                                         (1
-                                         (MAKE-SB-TERM
-                                          'CONSTR-TERM-REP::CONSTR
-                                          (LIST V2)))
+                                         (make-sb-term
+                                          'constr-term-rep::constr
+                                          (list v2)))
                                         (0
-                                         (MAKE-SB-TERM
-                                          'CONSTR-TERM-REP::MCONSTR
-                                          (LIST
-                                           V2
-                                           (MAKE-SB-TERM
-                                            'CONSTR-TERM-REP::CONSTRS
-                                            (DS-TEMP-REPT
-                                             (CK-REPT-REF V3))))))))))
-                   (T (INITIAL-ERROR '((SBST::DATATYPE SBST::!ID!)))))
-    NIL
-    V0))
+                                         (make-sb-term
+                                          'constr-term-rep::mconstr
+                                          (list
+                                           v2
+                                           (make-sb-term
+                                            'constr-term-rep::constrs
+                                            (ds-temp-rept
+                                             (ck-rept-ref v3))))))))))
+                   (t (initial-error '((sbst::datatype sbst::!id!)))))
+    nil
+    v0))
 
 
-(DEFUN !ABBREV! (RBP &OPTIONAL (BRACKET-LIST (EMPTY-BRACKET-LIST)))
-  (DECLARE (IGNORE RBP))
-  (DECLARE (IGNORE BRACKET-LIST))
-  (LET (V0 V1 V2 V3)
-    (ERGO-IGNORE-IF-UNUSED V0 V1 V2 V3)
-    (INITIALS-ONLY ((LA-MATCH ((SBST::ABBREV)))
-                    (PROGN (LAM ((SBST::ABBREV EPSILON)) (GOBBLE-TOKEN))
-                           (LAM ((SBST::!ID! EPSILON)) (GOBBLE-TO-SLOT V1))
-                           (ALT-PARSE ((LA-MATCH ((SBST::==)))
-                                       (VALUE-TO-SLOT V2 0)
-                                       (LAM
-                                        ((SBST::== EPSILON))
-                                        (GOBBLE-TOKEN)))
-                                      ((LA-MATCH ((SBST::=)))
-                                       (VALUE-TO-SLOT V2 1)
-                                       (LAM
-                                        ((SBST::= EPSILON))
-                                        (GOBBLE-TOKEN)))
-                                      (T
-                                       (INITIAL-ERROR
-                                        '((SBST::== EPSILON)
-                                          (SBST::= EPSILON)))))
-                           (CODE-TO-SLOT V3 (!PTYPE! 0))
-                           (AS-TO-SLOT V0
-                                       (MAKE-SB-TERM
-                                        'CONSTR-TERM-REP::ABBREV
-                                        (LIST V1 V3)))))
-                   (T (INITIAL-ERROR '((SBST::ABBREV SBST::!ID!)))))
-    NIL
-    V0))
+(defun !abbrev! (rbp &optional (bracket-list (empty-bracket-list)))
+  (declare (ignore rbp))
+  (declare (ignore bracket-list))
+  (let (v0 v1 v2 v3)
+    (ergo-ignore-if-unused v0 v1 v2 v3)
+    (initials-only ((la-match ((sbst::abbrev)))
+                    (progn (lam ((sbst::abbrev epsilon)) (gobble-token))
+                           (lam ((sbst::!id! epsilon)) (gobble-to-slot v1))
+                           (alt-parse ((la-match ((sbst::==)))
+                                       (value-to-slot v2 0)
+                                       (lam
+                                        ((sbst::== epsilon))
+                                        (gobble-token)))
+                                      ((la-match ((sbst::=)))
+                                       (value-to-slot v2 1)
+                                       (lam
+                                        ((sbst::= epsilon))
+                                        (gobble-token)))
+                                      (t
+                                       (initial-error
+                                        '((sbst::== epsilon)
+                                          (sbst::= epsilon)))))
+                           (code-to-slot v3 (!ptype! 0))
+                           (as-to-slot v0
+                                       (make-sb-term
+                                        'constr-term-rep::abbrev
+                                        (list v1 v3)))))
+                   (t (initial-error '((sbst::abbrev sbst::!id!)))))
+    nil
+    v0))
 
 
-(DEFUN !ITEM! (RBP &OPTIONAL (BRACKET-LIST (EMPTY-BRACKET-LIST)))
-  (DECLARE (IGNORE RBP))
-  (DECLARE (IGNORE BRACKET-LIST))
-  (LET (V0 V1)
-    (ERGO-IGNORE-IF-UNUSED V0 V1)
-    (INITIALS-ONLY ((LA-MATCH ((SBST::ABBREV)))
-                    (PROGN (CODE-TO-SLOT V1 (!ABBREV! 0)) (VALUE-TO-SLOT V0 0)
-                           (AS-TO-SLOT V1
-                                       (MAKE-SB-TERM
-                                        'CONSTR-TERM-REP::ABBREV-ITEM
-                                        (LIST V1)))))
-                   ((LA-MATCH ((SBST::DATATYPE)))
-                    (PROGN (CODE-TO-SLOT V1 (!DATATYPE! 0))
-                           (VALUE-TO-SLOT V0 1)
-                           (AS-TO-SLOT V1
-                                       (MAKE-SB-TERM
-                                        'CONSTR-TERM-REP::MCONSTR-ITEM
-                                        (LIST V1)))))
-                   (T
-                    (INITIAL-ERROR '((SBST::DATATYPE SBST::!ID! SBST::!ID!)
-                                     (SBST::ABBREV SBST::!ID!)))))
-    (VALUE-TO-SLOT V0 V1)
-    V0))
+(defun !item! (rbp &optional (bracket-list (empty-bracket-list)))
+  (declare (ignore rbp))
+  (declare (ignore bracket-list))
+  (let (v0 v1)
+    (ergo-ignore-if-unused v0 v1)
+    (initials-only ((la-match ((sbst::abbrev)))
+                    (progn (code-to-slot v1 (!abbrev! 0)) (value-to-slot v0 0)
+                           (as-to-slot v1
+                                       (make-sb-term
+                                        'constr-term-rep::abbrev-item
+                                        (list v1)))))
+                   ((la-match ((sbst::datatype)))
+                    (progn (code-to-slot v1 (!datatype! 0))
+                           (value-to-slot v0 1)
+                           (as-to-slot v1
+                                       (make-sb-term
+                                        'constr-term-rep::mconstr-item
+                                        (list v1)))))
+                   (t
+                    (initial-error '((sbst::datatype sbst::!id! sbst::!id!)
+                                     (sbst::abbrev sbst::!id!)))))
+    (value-to-slot v0 v1)
+    v0))
 
 
-(DEFUN !ITEMS! (RBP &OPTIONAL (BRACKET-LIST (EMPTY-BRACKET-LIST)))
-  (DECLARE (IGNORE RBP))
-  (DECLARE (IGNORE BRACKET-LIST))
-  (LET (V0 V1)
-    (ERGO-IGNORE-IF-UNUSED V0 V1)
-    (INITIALS-ONLY ((LA-MATCH ((SBST::DATATYPE) (SBST::ABBREV)))
-                    (PROGN (CODE-TO-SLOT V1 (!ITEM! 0)) NIL
-                           (CONS-TO-SLOT V0 V1)
-                           (GEN-STAR-PARSE ((SBST::DATATYPE
-                                             SBST::!ID!
-                                             SBST::!ID!)
-                                            (SBST::ABBREV SBST::!ID!))
-                                           (PROGN
-                                            (CODE-TO-SLOT V1 (!ITEM! 0))
-                                            NIL)
-                                           V0 V1)
-                           (AS-TO-SLOT V0
-                                       (MAKE-SB-TERM
-                                        'CONSTR-TERM-REP::ITEMS
-                                        (DS-TEMP-REPT (CK-REPT-REF V0))))))
-                   (T
-                    (INITIAL-ERROR '((SBST::ABBREV SBST::!ID!)
-                                     (SBST::DATATYPE SBST::!ID!
-                                      SBST::!ID!)))))
-    NIL
-    V0))
+(defun !items! (rbp &optional (bracket-list (empty-bracket-list)))
+  (declare (ignore rbp))
+  (declare (ignore bracket-list))
+  (let (v0 v1)
+    (ergo-ignore-if-unused v0 v1)
+    (initials-only ((la-match ((sbst::datatype) (sbst::abbrev)))
+                    (progn (code-to-slot v1 (!item! 0)) nil
+                           (cons-to-slot v0 v1)
+                           (gen-star-parse ((sbst::datatype
+                                             sbst::!id!
+                                             sbst::!id!)
+                                            (sbst::abbrev sbst::!id!))
+                                           (progn
+                                            (code-to-slot v1 (!item! 0))
+                                            nil)
+                                           v0 v1)
+                           (as-to-slot v0
+                                       (make-sb-term
+                                        'constr-term-rep::items
+                                        (ds-temp-rept (ck-rept-ref v0))))))
+                   (t
+                    (initial-error '((sbst::abbrev sbst::!id!)
+                                     (sbst::datatype sbst::!id!
+                                      sbst::!id!)))))
+    nil
+    v0))
 

@@ -56,30 +56,30 @@
 ;;;
 
 #-(and nil gcl)
-(defpackage "ILISP" (:use "LISP" #+:CMU "CONDITIONS")
+(defpackage :ilisp (:use :lisp #+:CMU "CONDITIONS")
   ;; The following symbols should properly 'shadow' the inherited
   ;; ones.
-  (:export "ILISP-ERRORS"
-	   "ILISP-SAVE"
-	   "ILISP-RESTORE"
-	   "ILISP-SYMBOL-NAME"
-	   "ILISP-FIND-SYMBOL"
-	   "ILISP-FIND-PACKAGE"
-	   "ILISP-EVAL"
-	   "ILISP-COMPILE"
-	   "ILISP-DESCRIBE"
-	   "ILISP-INSPECT"
-	   "ILISP-ARGLIST"
-	   "ILISP-DOCUMENTATION"
-	   "ILISP-MACROEXPAND"
-	   "ILISP-MACROEXPAND-1"
-	   "ILISP-TRACE"
-	   "ILISP-UNTRACE"
-	   "ILISP-COMPILE-FILE"
-	   "ILISP-CASIFY"
-	   "ILISP-MATCHING-SYMBOLS"
-	   "ILISP-CALLERS"
-	   "ILISP-SOURCE-FILES")
+  (:export "ilisp-errors"
+	   "ilisp-save"
+	   "ilisp-restore"
+	   "ilisp-symbol-name"
+	   "ilisp-find-symbol"
+	   "ilisp-find-package"
+	   "ilisp-eval"
+	   "ilisp-compile"
+	   "ilisp-describe"
+	   "ilisp-inspect"
+	   "ilisp-arglist"
+	   "ilisp-documentation"
+	   "ilisp-macroexpand"
+	   "ilisp-macroexpand-1"
+	   "ilisp-trace"
+	   "ilisp-untrace"
+	   "ilisp-compile-file"
+	   "ilisp-casify"
+	   "ilisp-matching-symbols"
+	   "ilisp-callers"
+	   "ilisp-source-files")
   )
 ;;; ILISP --
 

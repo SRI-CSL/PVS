@@ -17,46 +17,46 @@
 
 (defvar *table-bracket-counter* 0)
 
-(DEFUN LEX-\|
-       (STREAM SYMBOL)
-       (DECLARE (IGNORE SYMBOL))
-       (LET (HOLDCHAR)
-         (SETF HOLDCHAR
-               (LEXICAL-READ-CHAR STREAM :EOF))
-         (IF (AND PVS-ESCAPE-CHAR
-                  (EQL HOLDCHAR PVS-ESCAPE-CHAR))
-             (SETF HOLDCHAR
-                   (LEXICAL-READ-CHAR STREAM :EOF)))
-         (COND ((EQL HOLDCHAR #\-)
-                (SETF HOLDCHAR
-                      (LEXICAL-READ-CHAR STREAM :EOF))
-                (IF (AND PVS-ESCAPE-CHAR
-                         (EQL HOLDCHAR PVS-ESCAPE-CHAR))
-                    (SETF HOLDCHAR
-                          (LEXICAL-READ-CHAR STREAM :EOF)))
-                (COND ((EQL HOLDCHAR #\>) 'SBST::\|->)
-                      (T (LEXICAL-UNREAD-CHAR STREAM) 'SBST::\|-)))
-               ((EQL HOLDCHAR #\]) 'SBST::\|])
-               ((EQL HOLDCHAR #\[)
+(defun lex-\|
+       (stream symbol)
+       (declare (ignore symbol))
+       (let (holdchar)
+         (setf holdchar
+               (lexical-read-char stream :eof))
+         (if (and pvs-escape-char
+                  (eql holdchar pvs-escape-char))
+             (setf holdchar
+                   (lexical-read-char stream :eof)))
+         (cond ((eql holdchar #\-)
+                (setf holdchar
+                      (lexical-read-char stream :eof))
+                (if (and pvs-escape-char
+                         (eql holdchar pvs-escape-char))
+                    (setf holdchar
+                          (lexical-read-char stream :eof)))
+                (cond ((eql holdchar #\>) 'sbst::\|->)
+                      (t (lexical-unread-char stream) 'sbst::\|-)))
+               ((eql holdchar #\]) 'sbst::\|])
+               ((eql holdchar #\[)
 		(incf *table-bracket-counter*)
-		'SBST::\|[)
-               ((EQL HOLDCHAR #\|) 'SBST::\|\|)
-               ((EQL HOLDCHAR #\=) 'SBST::\|=)
-               ((EQL HOLDCHAR #\>) 'SBST::\|>)
-               (T (LEXICAL-UNREAD-CHAR STREAM) 'SBST::\|))))
+		'sbst::\|[)
+               ((eql holdchar #\|) 'sbst::\|\|)
+               ((eql holdchar #\=) 'sbst::\|=)
+               ((eql holdchar #\>) 'sbst::\|>)
+               (t (lexical-unread-char stream) 'sbst::\|))))
 
-(DEFUN LEX-]
-       (STREAM SYMBOL)
-       (DECLARE (IGNORE SYMBOL))
-       (LET (HOLDCHAR)
-         (SETF HOLDCHAR
-               (LEXICAL-READ-CHAR STREAM :EOF))
-         (IF (AND PVS-ESCAPE-CHAR
-                  (EQL HOLDCHAR PVS-ESCAPE-CHAR))
-             (SETF HOLDCHAR
-                   (LEXICAL-READ-CHAR STREAM :EOF)))
-         (COND ((and (EQL HOLDCHAR #\|)
+(defun lex-]
+       (stream symbol)
+       (declare (ignore symbol))
+       (let (holdchar)
+         (setf holdchar
+               (lexical-read-char stream :eof))
+         (if (and pvs-escape-char
+                  (eql holdchar pvs-escape-char))
+             (setf holdchar
+                   (lexical-read-char stream :eof)))
+         (cond ((and (eql holdchar #\|)
 		     (plusp *table-bracket-counter*))
 		(decf *table-bracket-counter*)
-		'SBST::]\|)
-               (T (LEXICAL-UNREAD-CHAR STREAM) 'SBST::]))))
+		'sbst::]\|)
+               (t (lexical-unread-char stream) 'sbst::]))))

@@ -20,7 +20,7 @@
 ;;; parsing repetitive patterns. 
 
 
-(in-package "SB-RUNTIME")  (use-package :ergolisp)
+(in-package :sb-runtime)  (use-package :ergolisp)
 
 (export '(leading-epsilon-p make-var-name      ;; rt-second-epsilon-p
 	  epsilon full-la-match
@@ -161,7 +161,7 @@
   `(cond ((la-match ,fs-list)
 	  (value-to-slot ,flag 1)
 	  ,code)
-	 (T (value-to-slot ,flag 0))))
+	 (t (value-to-slot ,flag 0))))
 
 
 
@@ -200,7 +200,7 @@
 	   (when (not (la-match ,fs-list)) (return nil)))
 	  (setq ,result (mk-temp-plus (nreverse ,result))))
 					; srd revised. 
-	 (T (initial-error (quote ,fs-list)))))
+	 (t (initial-error (quote ,fs-list)))))
 
 
 (defmacro doublestar-parse (fs-list code result partial sep)

@@ -14,9 +14,9 @@
 ;;; Scott Dietzen, Sat Jun 13 15:43:19 1987
 
 
-(in-package "SYNTAX-BOX")   (use-package :ergolisp)
+(in-package :syntax-box)   (use-package :ergolisp)
 
-(use-package '("SB-RUNTIME" "SORT" "OPER"))
+(use-package '(:sb-runtime :sort :oper))
 
 
 
@@ -50,7 +50,8 @@
 
 (defun lang-intern (x)
   (intern (if (stringp x)
-	      (string-upcase x)
+	      #+allegro-v6.0 (string-downcase x)
+	      #-allegro-v6.0 (string-upcase x)
 	      (symbol-name x))
 	  (lang:lang-abs-syn-package *language*)))
 
@@ -109,7 +110,7 @@
          ((and (eq (pattern-kind pat) 'nonterminal)
                (is-lexical-terminal (pattern-leaf-ds pat) *grammar-term*))
           (sort:mk-sort-ttype (intern (symbol-name (pattern-leaf-ds pat))
-				      (find-package "SB-RUNTIME"))))
+				      (find-package :sb-runtime))))
          ((eq (pattern-kind pat) 'nonterminal)
           (sort:mk-sort-ttype (lang-intern (pattern-leaf-ds pat))))
          ((eq (pattern-kind pat) 'ext-nonterminal)
@@ -583,13 +584,13 @@
      
 
 (defun construct-sort-table-function ()
-  `(DEFPARAMETER ,(lang-sort-table-name *language*)
-     (SORT:MAKE-SORT-TABLE ',(sort:sort-table-contents *sort-table*))))
+  `(defparameter ,(lang-sort-table-name *language*)
+     (sort:make-sort-table ',(sort:sort-table-contents *sort-table*))))
 
 
 (defun construct-opsig-table-function ()
-  `(DEFPARAMETER ,(lang-opsig-table-name *language*)  
-     (SORT:MAKE-OPSIG-TABLE ',(sort:opsig-table-contents *opsig-table*))))
+  `(defparameter ,(lang-opsig-table-name *language*)  
+     (sort:make-opsig-table ',(sort:opsig-table-contents *opsig-table*))))
 
 
 

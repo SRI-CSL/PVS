@@ -1,5 +1,7 @@
-(in-package 'pvs)
+(in-package :pvs)
 (require :foreign)
+(export '(file-exists-p directory-p read-permission? write-permission?
+			file-write-time get-file-info))
 
 (ff:def-foreign-call fileutils___file_exists_p
     ((filename (* :char)))

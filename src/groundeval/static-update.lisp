@@ -54,8 +54,8 @@
 ;(defmethod updateable? ((texpr actual))
 ;  (updateable? (type-value texpr)))
 
-(defmethod updateable? ((texpr T))
-  T) ;;It is okay to say  updateable? for uninterpreted
+(defmethod updateable? ((texpr t))
+  t) ;;It is okay to say  updateable? for uninterpreted
 ;;or actuals since these will not be updated destructively or otherwise.
 
 ;;For use in pvs2cl-update* (recordtypes)
@@ -80,20 +80,20 @@
       (cons type accum) ;;no need to go into range since 
       accum))         ;;dest. updates stop with funtypes.
 
-(defmethod top-updateable-types ((type T) accum)
+(defmethod top-updateable-types ((type t) accum)
   accum)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod contains-updateable? ((texpr tupletype))
-  T)
+  t)
 
 (defmethod contains-updateable? ((texpr funtype))
   (or (simple-below? (domain texpr))(simple-upto? (domain texpr))
        (contains-updateable? (range texpr))))
 
 (defmethod contains-updateable? ((texpr recordtype))
-  T)
+  t)
 
 (defmethod contains-updateable? ((texpr subtype))
   (contains-updateable? (find-supertype texpr)))
@@ -127,15 +127,15 @@
 (defmethod contains-updateable? ((texpr actual))
   (contains-updateable? (type-value texpr)))
 
-(defmethod contains-updateable? ((texpr T))
-  NIL) ;;It is okay to say not updateable? for uninterpreted
+(defmethod contains-updateable? ((texpr t))
+  nil) ;;It is okay to say not updateable? for uninterpreted
 ;;since these cannot be updated if nothing is known
 ;;about their type.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod contains-possibly-updateable? ((texpr tupletype))
-  T)
+  t)
 
 (defmethod contains-possibly-updateable? ((texpr funtype))
   (or (simple-below? (domain texpr))(simple-upto? (domain texpr))
@@ -143,7 +143,7 @@
 
 
 (defmethod contains-possibly-updateable? ((texpr recordtype))
-  T)
+  t)
 
 (defmethod contains-possibly-updateable? ((texpr subtype))
   (contains-possibly-updateable? (find-supertype texpr)))
@@ -182,8 +182,8 @@
 ;;In the context, formal type parameters can later become
 ;;updateable.  
 
-(defmethod contains-possibly-updateable? ((texpr T))
-  NIL) ;;It is okay to say not updateable? for uninterpreted
+(defmethod contains-possibly-updateable? ((texpr t))
+  nil) ;;It is okay to say not updateable? for uninterpreted
 ;;since these cannot be updated if nothing is known
 ;;about their type.  
 
@@ -196,13 +196,13 @@
 ;;live in the value.   Used in updateable-free-formal-vars.
 
 (defmethod contains-possibly-updateable-or-closure? ((texpr tupletype))
-  T)
+  t)
 
 (defmethod contains-possibly-updateable-or-closure? ((texpr funtype))
-  T)
+  t)
 
 (defmethod contains-possibly-updateable-or-closure? ((texpr recordtype))
-  T)
+  t)
 
 (defmethod contains-possibly-updateable-or-closure? ((texpr subtype))
   (contains-possibly-updateable-or-closure? (find-supertype texpr)))
@@ -234,8 +234,8 @@
 ;;In the context, formal type parameters can later become
 ;;updateable.  
 
-(defmethod contains-possibly-updateable-or-closure? ((texpr T))
-  NIL) ;;It is okay to say not updateable? for uninterpreted
+(defmethod contains-possibly-updateable-or-closure? ((texpr t))
+  nil) ;;It is okay to say not updateable? for uninterpreted
 ;;since these cannot be updated if nothing is known
 ;;about their type.  
 
@@ -252,7 +252,7 @@
   (contains-possible-closure? (types texpr)))
 
 (defmethod contains-possible-closure? ((texpr funtype))
-  T)
+  t)
 
 (defmethod contains-possible-closure? ((texpr recordtype))
   (contains-possible-closure? (mapcar #'type (fields texpr))))
@@ -287,8 +287,8 @@
 ;;In the context, formal type parameters can later become
 ;;updateable.  
 
-(defmethod contains-possible-closure? ((texpr T))
-  NIL) ;;It is okay to say not updateable? for uninterpreted
+(defmethod contains-possible-closure? ((texpr t))
+  nil) ;;It is okay to say not updateable? for uninterpreted
 ;;since these cannot be updated if nothing is known
 ;;about their type.  
 
@@ -315,14 +315,14 @@
 (defmethod updateable-free-formal-vars ((expr list))
   (loop for ex in expr nconc (updateable-free-formal-vars ex)))
 
-(defmethod updateable-free-formal-vars ((expr T))
+(defmethod updateable-free-formal-vars ((expr t))
   (when (contains-possibly-updateable-or-closure? (type expr))
     (updateable-vars expr)))  ;was free-formal-vars
 
 (defmethod updateable-output-vars ((expr list))
   (loop for ex in expr nconc (updateable-output-vars ex)))
 
-(defmethod updateable-output-vars ((expr T))
+(defmethod updateable-output-vars ((expr t))
   (when (contains-updateable? (type expr))
     (updateable-outputs expr)))
 			     
@@ -352,7 +352,7 @@
   (with-slots (argument) expr
     (structure* argument)))
 
-(defmethod structure* ((expr T))
+(defmethod structure* ((expr t))
   expr)
 
 
@@ -415,9 +415,9 @@
 	always (check-update-argument x updated-variables)))
 
 (defmethod check-update-argument ((expr name-expr) updated-variables)
-  T)
+  t)
 
-(defmethod check-update-argument ((expr T) updated-variables)
+(defmethod check-update-argument ((expr t) updated-variables)
   (null (intersection (updateable-vars expr)
 		      updated-variables
 		      :test #'same-declaration)))

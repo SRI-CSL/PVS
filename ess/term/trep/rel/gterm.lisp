@@ -29,9 +29,9 @@
 ;;; instead of a real operator.
 ;;; 
 
-(in-package "TERM" :nicknames '("GTERM")) (use-package :ergolisp)
+(in-package :term :nicknames '(:gterm)) (use-package :ergolisp)
 
-(export '(Term  termp mk-term ds-term term-op term-args
+(export '(term  termp mk-term ds-term term-op term-args
 		term-attr set-term-attr))
 (export '(*default-mk-term-impl* *default-ds-term-impl*
 	  *default-get-term-attr-impl* *default-set-term-attr-impl*))
@@ -52,25 +52,25 @@
 
 ;;;  Primitive Term support
 
-(deftype Term ()
+(deftype term ()
   "Generic terms, supporting multiple representations.  See termp."
   `(satisfies termp))
 
 (defun termp (obj)
   "Is OBJ a term?  True iff there has been a ds-term-impl installed
 for (type-of OBJ)."
-  (declare-ftype termp (T) Boolean)
+  (declare-ftype termp (t) boolean)
   (not (eq (ds-term-impl (type-of obj))
 	   'ds-bogus-term)))
 
 (deftype term-attr ()
   "The type for values of the attribute slot.  Don't know the real
 value of this, so I use T."
-  T)
+  t)
 
 (defun mk-term (op args)
   "Construct a term out of OP and ARGS"
-  (declare-ftype mk-term (oper:Oper (List-of Term)) Term)
+  (declare-ftype mk-term (oper:oper (list-of term)) term)
   ;; The function "oper-sort" is fictitious.  I don't know how we are
   ;; supposed to get the language and/or sort.
   (funcall (mk-term-impl (oper-sort op))
@@ -79,12 +79,12 @@ value of this, so I use T."
 
 (defun term-attr (term)
   "Get the attribute slot of the term."
-  (declare-ftype term-attr (Term) term-attr)
+  (declare-ftype term-attr (term) term-attr)
   (funcall (get-term-attr-impl (type-of term)) term))
 
 (defun set-term-attr (term slot)
   "Set the attribute slot of the term."
-  (declare-ftype set-term-attr (Term term-attr))
+  (declare-ftype set-term-attr (term term-attr))
   (funcall (set-term-attr-impl (type-of term)) term slot)
   (values))
 
@@ -121,7 +121,7 @@ and list of args.")
   "Get the operator and args (as multi values) of a generic term.  This version
 does caching if the variable *cache-ds-term-p* is true."
   (if *cache-ds-term-p*
-      (let ((cached (cdr (assoc term *ds-term-alist* :test #'EQ))))
+      (let ((cached (cdr (assoc term *ds-term-alist* :test #'eq))))
 	(if cached
 	    (values (car cached) (cdr cached))
 	    (progn
@@ -134,7 +134,7 @@ does caching if the variable *cache-ds-term-p* is true."
 ;;; to better trace the effort expended.
 (defun do-ds-term (term)
   "Do the work of ds-term, calling the established implementation."
-  (declare-ftype do-ds-term (Term) oper:Oper (List-of Term))
+  (declare-ftype do-ds-term (Term) oper:oper (list-of term))
   (funcall (ds-term-impl (type-of term))
 	   term))
 
@@ -144,14 +144,14 @@ does caching if the variable *cache-ds-term-p* is true."
 
 (defun term-op (term)
   "Get the operator of a generic term"
-  (declare-ftype term-op (Term) oper:Oper)
+  (declare-ftype term-op (term) oper:oper)
   (multiple-value-bind (op args) (ds-term term)
     (declare (ignore args))
     op))
 
 (defun term-args (term)
   "Get the args of a generic term"
-  (declare-ftype term-args (Term) (List-of Term))
+  (declare-ftype term-args (term) (list-of term))
   (multiple-value-bind (op args) (ds-term term)
     (declare (ignore op))
     args))
@@ -180,13 +180,13 @@ does caching if the variable *cache-ds-term-p* is true."
 (defun mk-term-impl (sort-sym)
   "Given a sort, return the term construction function.  Setf-able."
   (declare-ftype mk-term-impl
-    (Symbol) (Afunction (oper:Oper (List-of Term)) Term))
+    (symbol) (afunction (oper:oper (list-of term)) term))
   (get sort-sym 'mk-term-impl *default-mk-term-impl*))
 
 (defun ds-term-impl (type-spec)
   "Given a lisp type, return the term op extraction function.  Setf-able if the
 type is a symbol."
-  (declare-ftype ds-term-impl (T) (Afunction (Term) oper:Oper))
+  (declare-ftype ds-term-impl (t) (afunction (term) oper:oper))
   (if (symbolp type-spec)
       (get type-spec 'ds-term-impl *default-ds-term-impl*)
       *default-ds-term-impl*))
@@ -199,7 +199,7 @@ type is a symbol."
 
 (defun get-term-attr-impl (sort-sym)
   "Given a sort, return a function to fetch the attribute slot.  Setf-able."
-  (declare-ftype set-term-attr-impl (Symbol) (Afunction (Term) T))
+  (declare-ftype set-term-attr-impl (symbol) (afunction (term) t))
   (get sort-sym 'get-term-attr-impl *default-get-term-attr-impl*))
 
 (defsetf get-term-attr-impl (sort-sym) (fun)
@@ -207,7 +207,7 @@ type is a symbol."
 
 (defun set-term-attr-impl (sort-sym)
   "Given a sort, return a function to fetch the attribute slot.  Setf-able."
-  (declare-ftype set-term-attr-impl (Symbol) (Afunction (Term T)))
+  (declare-ftype set-term-attr-impl (symbol) (afunction (term t)))
   (get sort-sym 'set-term-attr-impl *default-set-term-attr-impl*))
 
 (defsetf set-term-attr-impl (sort-sym) (fun)
@@ -223,7 +223,7 @@ as a term representation."
 
 ;;;; Default representation
 
-(defstruct (Default-Term (:predicate default-termp)
+(defstruct (default-term (:predicate default-termp)
 			 (:print-function print-default-term)
 			 (:constructor mk-default-term (op args)))
   op					; The operator (:Oper)
@@ -231,7 +231,7 @@ as a term representation."
   attribute-slot
   )
 
-(proclaim-ftype mk-default-term (oper:Oper (List-of Term)) Default-Term)
+(proclaim-ftype mk-default-term (oper:oper (list-of term)) default-term)
 
 (defun print-default-term (term stream depth)
   ;; Simple-minded default-term-printer.  Haven't been able to get
@@ -256,7 +256,7 @@ as a term representation."
 (defun ds-default-term (term)
   "default-term version of getting the operator and arguments of a term."
   (declare-ftype ds-default-term
-    (Default-Term) oper:Oper (List-of Term))
+    (default-term) oper:oper (list-of term))
   (values (default-term-op term)
 	  (default-term-args term)))
 
@@ -264,11 +264,11 @@ as a term representation."
 ;;; represented by the lisp type defined here, default-term:Term, will be
 ;;; destructed correctly.
 
-(setf (ds-term-impl 'Default-Term) 'ds-default-term)
+(setf (ds-term-impl 'default-term) 'ds-default-term)
 
-(setf (get-term-attr-impl 'Default-Term) 'get-default-attribute-slot)
+(setf (get-term-attr-impl 'default-term) 'get-default-attribute-slot)
 
-(setf (set-term-attr-impl 'Default-Term) 'set-default-attribute-slot)
+(setf (set-term-attr-impl 'default-term) 'set-default-attribute-slot)
 
 (defun get-default-attribute-slot (term)
   (default-term-attribute-slot term))
@@ -279,8 +279,8 @@ as a term representation."
 
 ;;;; Macros for defining term representations.
 
-(defun op-sym-arg () (intern "OP-SYM"))
-(defun args-arg () (intern "ARGS"))
+(defun op-sym-arg () (intern (string :op-sym)))
+(defun args-arg () (intern (string :args)))
 
 (defun constr-name (sort-sym)
   (intern (format nil "~:@(~a~)-MK-TERM-IMPL" sort-sym)))
@@ -391,7 +391,7 @@ list ARGS of term args."
 (defun oper-sort (op)
   "Map an operator to the symbol part of its result sort.  Returns silly
 sort if none known"
-  (declare-ftype oper-sort (oper:Oper) Symbol)
+  (declare-ftype oper-sort (oper:oper) Symbol)
   (let ((opsig (sort:opsig-table-lookup op)))
     (if opsig
 	(let ((sort (sort:ds-sort-ttype (sort:opsig-output opsig))))

@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'pvs)
+(in-package :pvs)
 
 ;;NSH(5.10.94) NOte that match is used by inst?, rewrite, and replace.
 ;;It has to be used by replace so that a rewrite occurs when a match
@@ -23,14 +23,14 @@
 (defun merge-subst (given hashed)
   (if (every #'(lambda (x)
 		  (let ((y (assoc (car x) given :test #'same-declaration)))
-		    (if y (tc-eq (cdr x)(cdr y)) T)))
+		    (if y (tc-eq (cdr x)(cdr y)) t)))
 	      hashed)
       (append hashed
 	      (set-difference
 	       given hashed
 	       :key #'car
 	       :test #'same-declaration))
-      'FAIL))
+      'fail))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;NSH(10.16.95): augmented match with the ability to postponed
@@ -69,8 +69,8 @@
 	 (*dont-cache-match?* nil)
 	 (*remaining-actuals-matches* nil))
     (cond ((and hashed-value
-		(eq hashed-result 'FAIL))
-	   'FAIL)
+		(eq hashed-result 'fail))
+	   'fail)
 	  (hashed-value (setq *modsubst* hashed-modsubst)
 			(if subst
 			    (merge-subst subst hashed-result)
@@ -369,7 +369,7 @@
     result))
 
 (defun light-cancel-terms (lhs-terms rhs-terms)
-  (light-cancel-terms* lhs-terms rhs-terms NIL 'X))
+  (light-cancel-terms* lhs-terms rhs-terms nil 'X))
 
 (defun light-cancel-terms* (lhs* rhs* lhs-accum sig)
   (cond ((null lhs*)(values sig (nreverse lhs-accum)

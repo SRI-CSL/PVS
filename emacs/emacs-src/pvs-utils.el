@@ -738,11 +738,12 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	       (file-exists-p *pvs-current-directory*))
     (let ((ndir (pvs-send-and-wait "(pvs-current-directory)"
 				   nil nil 'string)))
-      (while (not (and (stringp ndir)
-		       (file-exists-p ndir)))
+      (while (and (stringp ndir)
+		  (not (file-exists-p ndir)))
 	(setq ndir (pvs-send-and-wait "(pvs-current-directory)"
 				      nil nil 'string)))
-      (unless (string-equal ndir "/dev/null")
+      (when (and (stringp ndir)
+		 (not (string-equal ndir "/dev/null")))
 	(setq *pvs-current-directory* ndir))))
   *pvs-current-directory*)
 

@@ -16,7 +16,7 @@
 ;;; Revised, Scott Dietzen, Mon Oct 13 16:05:43 1986
 
 
-(in-package 'syntax-box)   (use-package :ergolisp)
+(in-package :syntax-box)   (use-package :ergolisp)
 
 
 ;;; srd revised: moved global varaible definitions to globals.lisp 
@@ -113,7 +113,7 @@
   (let (temp)
     (cond (*parser-gen-error*
 	   (write-string "Not writing file...errors") (terpri))
-	  (T
+	  (t
 	   (setq temp (open file-spec :direction :output
 			    :if-exists :new-version))
 	   (format t "   writing file ~S.~%" file-spec)
@@ -177,7 +177,7 @@
       (push `(,(intern (symbol-name (caar nts))
 		       (lang:lang-abs-syn-package *language*))
 	      (,(make-function-name (caar nts)) 0)) guts))
-    (push `(T (error "Unknown nonterminal ~A." nt)) guts)
+    (push `(t (error "Unknown nonterminal ~A." nt)) guts)
     (save-function
      `(defun ,(sb-intern-nupcase (lang:lang-parse-routine-name *language*))
 	(&key (nt
@@ -310,7 +310,9 @@
 (defun get-external-grammars-info-aux (lang-name)
   (let ((info-file-name (lang:get-lang-info-file lang-name))
 	(lang-name (if (stringp lang-name)
-		       (intern (string-upcase lang-name) *sb-package*)
+		       (intern #+allegro-v6.0 (string-downcase lang-name)
+			       #-allegro-v6.0 (string-upcase lang-name)
+			       *sb-package*)
 		       lang-name)))
     (with-open-file (s info-file-name :if-does-not-exist nil)
       (if s
@@ -387,7 +389,7 @@
 	     (cadr temp)))
 	  (temp (cadr temp))
 
-	  (T
+	  (t
 	       ; ow.  Get lexer-information for all nonterminals in component
 	   (let ((ops nil) (t-ops nil) (nt-info nil))
 

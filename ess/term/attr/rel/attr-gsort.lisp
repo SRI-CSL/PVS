@@ -14,7 +14,7 @@
 ;;;
 ;;; Author: fp
 
-(in-package "NEWATTR")  (use-package :ergolisp)
+(in-package :newattr)  (use-package :ergolisp)
 
 (export '(sort))			; Global context and attribute.
 

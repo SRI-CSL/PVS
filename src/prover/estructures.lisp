@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (defcl s-formula ()
   formula
@@ -44,6 +44,7 @@
   (subgoalnum :initform 0)
   (justification :initform nil)
   (current-input :initform nil)
+  (parsed-input :initform nil)
   (printout :initform nil)
   (comment :initform nil)
   strategy
@@ -86,7 +87,7 @@
 (defmethod rewrites ((proofstate proofstate))
   (rewrites (current-auto-rewrites proofstate)))
 
-(defmethod rewrites ((proofstate T))
+(defmethod rewrites ((proofstate t))
   nil)
 
 (defmethod macro-names ((proofstate proofstate))
@@ -95,14 +96,14 @@
 (defmethod all-rewrites-names ((proofstate proofstate))
   (all-rewrites-names (current-auto-rewrites proofstate)))
 
-(defmethod all-rewrites-names ((x T)) nil)
+(defmethod all-rewrites-names ((x t)) nil)
 
 (defmethod auto-rewrites-names ((proofstate proofstate))
   (auto-rewrites-names (current-auto-rewrites proofstate)))
 
-(defmethod auto-rewrites-names ((x T)) nil)
+(defmethod auto-rewrites-names ((x t)) nil)
 
-(defmethod auto-rewrites!-names ((x T)) nil)
+(defmethod auto-rewrites!-names ((x t)) nil)
 
 (defmethod auto-rewrites!-names ((proofstate proofstate))
   (auto-rewrites!-names (current-auto-rewrites proofstate)))

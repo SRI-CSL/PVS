@@ -42,7 +42,7 @@
 ;from tc-pr-interface
 (defun is-lambda (form)
   (and (consp form)
-       (eq (car form) 'LAMBDA) ))
+       (eq (car form) 'lambda) ))
 
 ;from pr-top
 
@@ -74,7 +74,7 @@
 	       (db-bump (nth (- (lamvar-index exp) (+ depth 1)) bindings)
 		     depth 0)))))
      (t exp)))
-   ((eq (funsym exp) 'LAMBDA)
+   ((eq (funsym exp) 'lambda)
     `(lambda ,(arg1 exp) ,(substandard (arg2 exp) bindings
 				     (+ depth (arg1 exp)))))
    (t
@@ -84,7 +84,7 @@
 
 (defun isapplylambda (exp)
   (and (listp (arg1 exp))
-       (eq (funsym (arg1 exp)) 'LAMBDA)
+       (eq (funsym (arg1 exp)) 'lambda)
        (let ((result (is-apply-n-x-n (car exp))))
 	 (and result (eq result (arg1 (arg1 exp)))))))
 
@@ -109,7 +109,7 @@
   (cond ((eq form old) new)
 	((atom form) form)
 	((equal form old) new)
-	(T (cons (subst-expr new old (car form))
+	(t (cons (subst-expr new old (car form))
 		 (subst-expr new old (cdr form)) ))))
 
 ;from prpp
@@ -119,7 +119,7 @@
 ;  (prog (chars first6)
 ;    (setq chars (symbol-to-charlist name))				
 ;    (setq first6 (loop for i from 1 to 6 for c in chars collect c))
-;    (cond ((same-printname-p (charlist-to-symbol first6) 'APPLY- )	
+;    (cond ((same-printname-p (charlist-to-symbol first6) 'apply- )	
 ;	   (return (nth 6 chars)))
 ;	  (t (return nil)))))
 
@@ -127,7 +127,7 @@
   (and (symbolp name)
        (let ((str (string name)))
 	 (and (>= (length str) 6)
-	      (string= name "APPLY-" :end1 6)))))
+	      (string= name "apply-" :end1 6)))))
 
 (defun string->integer (string)
   (do ((j 0 (+ j 1))
@@ -139,7 +139,7 @@
   (and (symbolp name)
        (let ((str (string name)))
 	 (and (>= (length str) 6)
-	      (string= str "APPLY-" :end1 6)
+	      (string= str "apply-" :end1 6)
 	      (digit-char-p (char str 6))
 	      (parse-integer str :start 6 :junk-allowed t)))))
 
@@ -159,7 +159,7 @@
 
 (defun applysym1 (type nargs)
   (prog (sym)
-    (setq sym (combine-symbols 'APPLY- nargs '- type))
+    (setq sym (combine-symbols 'apply- nargs '- type))
     (cond
      ((and type (not (assq sym typealist)))
       (push (cons sym type) typealist)))       ;add return type to alist 

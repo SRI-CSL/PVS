@@ -15,7 +15,7 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
-(in-package "TOOLS") (use-package :ergolisp)
+(in-package :tools) (use-package :ergolisp)
 
 (export '(*plain-readtable*))
 

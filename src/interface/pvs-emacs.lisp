@@ -13,7 +13,7 @@
 
 (in-package 'pvs)
 
-(export '(pvs-message))
+(export '(pvs-message pvs-error))
 
 (defvar *to-emacs* nil)
 (defvar *output-to-emacs* "")

@@ -14,7 +14,7 @@
 
 ;;; Scott Dietzen, Tue Jul 26 13:35:17 1988
 
-(in-package "SB-RUNTIME")  (use-package :ergolisp)
+(in-package :sb-runtime)  (use-package :ergolisp)
 
 
 

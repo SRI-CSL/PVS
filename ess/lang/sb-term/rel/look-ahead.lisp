@@ -253,7 +253,7 @@
    (setq *current-nt* (nt-name nt-def))
    (cond ((eq (get-kind (nt-pattern nt-def)) 'alt)
 	  (alt-first-symbols nt-def gram-struct))
-	 (T (single-first-symbols nt-def gram-struct))))
+	 (t (single-first-symbols nt-def gram-struct))))
 
 
 
@@ -307,7 +307,7 @@
 		    ; for a regular nonterminal add (NT epsilon) to f/s pairs
 		    ; Add Nt to the leading nts.  And add an edge from
 		    ; current-NT -> NT to the dependency graph
-		(T (let ((entry (make-nt first-son)))
+		(t (let ((entry (make-nt first-son)))
 		     (push (make-pair entry 'epsilon) pairs)
 		     (push entry first-nt)
 		     (addedge name-vertex entry *dependency-graph*)))))
@@ -370,9 +370,9 @@
 			   medial-nt))
 		    ((lt-p right gram-struct)
 		     (push (make-lt right-fs gram-struct) msymbols))
-		    (T (push (make-nt right-fs) medial-nt))))
+		    (t (push (make-nt right-fs) medial-nt))))
 	         ; if left side is not recursive, the right side must be.
-	     (T (if (recursive-p right name)
+	     (t (if (recursive-p right name)
 		    (let ((entry (make-nt left-fs)))
 		      (push (make-pair entry name-vertex) pairs)
 		      (push entry first-nt)
@@ -405,9 +405,9 @@
 				 ((lt-p left gram-struct)
 				  (make-lt left-fs gram-struct))
 
-				 (T (make-nt left-fs)))))
+				 (t (make-nt left-fs)))))
 			((eq ss-kind 'just-as) (make-epsilon))
-			(T (make-keyword (get-first-son second-son))))))
+			(t (make-keyword (get-first-son second-son))))))
 	    ;; if the first son is a nonterminal
 	    (cond ((eq (get-kind first-son) 'nonterminal)
 		       ; it could be a lexical terminal then add
@@ -422,7 +422,7 @@
 			    ; if it is a recursive instance then save sse
 			    ; in the correct medial list
 			 ((eq fs-first-son name)
-			  (setq recursive T)
+			  (setq recursive t)
 			  (cond ((or (lt-p second-son gram-struct)
 				     (eq (get-kind second-son) 'just-as)
 				     (eq (get-kind second-son) 'ukeyword))
@@ -430,12 +430,12 @@
 				;; error -- A :: A B .... should be
 				;; using a jux.  Otherwise there is no op
 				;; for the parser to test.
-				(T (my-error 37)
+				(t (my-error 37)
 				   (push sse medial-nt))))
 			 ;; If it is a normal nonterminal add (NT sse)
 			 ;; to f/s pairs, and NT to leading nts, and
 			 ;; add an edge from NT -> fs-first-son to G
-			 (T (let ((entry (make-nt fs-first-son)))
+			 (t (let ((entry (make-nt fs-first-son)))
 			      (push (make-pair entry sse) pairs)
 			      (push entry first-nt)
 			      (addedge name-vertex entry *dependency-graph*)))))
@@ -453,7 +453,7 @@
 		      ; or it is a keyword.  Just add (keyword sse) to f/s
 		      ; pairs and add keyword to the first symbols
 		   
-		  (T (push (make-pair (make-keyword fs-first-son) sse) pairs)
+		  (t (push (make-pair (make-keyword fs-first-son) sse) pairs)
 		     (push (make-keyword fs-first-son) fsymbols))))))))
 
       ;; If the nt definition pattern has abstract syntax associated with
@@ -466,12 +466,12 @@
 		    (mapcar #'(lambda (x) (add-known-branch count result x))
 			    flattened-patterns)
 		    (setq new-def (append new-def flattened-patterns)))
-		   (T (add-known-branch count result alt)
+		   (t (add-known-branch count result alt)
 		      (push alt new-def))))
 
 	    (recursive
 	     (setq new-def (append new-def flattened-patterns)))
-	    (T (push alt new-def))))
+	    (t (push alt new-def))))
         ; Save the new productions in this NT's entry in NT-list.
     (set-nt-pattern nt-def		; srd revised
 		    (make-pattern :kind 'alt
@@ -536,7 +536,7 @@
 	       ((eq first-son name)
 		(my-error 19))
 	    
-	       (T (let ((entry (make-nt first-son)))
+	       (t (let ((entry (make-nt first-son)))
 		    (push (make-pair entry 'epsilon) pairs)
 		    (push entry first-nt)
 		    (addedge name-vertex entry *dependency-graph*)))))
@@ -561,7 +561,7 @@
 		(second-son (cond ((memq (get-kind second)
 					 '(seq internal-seq))
 				   (get-first-son second))
-				  (T second)))
+				  (t second)))
 		(ss-kind (get-kind second-son))
 
 		(sse
@@ -580,7 +580,7 @@
 		       ((eq ss-kind 'ukeyword)
 			(make-keyword (get-first-son second-son)))
 
-		       (T (my-error 38)))))
+		       (t (my-error 38)))))
 
 	   (cond ((eq (get-kind first-son) 'nonterminal)
 		  (cond ((is-lexical-terminal fs-first-son
@@ -591,14 +591,14 @@
 			 (push (make-lt fs-first-son gram-struct) fsymbols))
 
 			((eq fs-first-son name)
-			 (setq recursive T)
+			 (setq recursive t)
 			 (cond ((or (lt-p second-son gram-struct)
 				    (eq (get-kind second-son) 'just-as)
 				    (eq (get-kind second-son) 'ukeyword))
 				(push sse msymbols))
-			       (T (push sse medial-nt))))
+			       (t (push sse medial-nt))))
 
-			(T (let ((entry (make-nt fs-first-son)))
+			(t (let ((entry (make-nt fs-first-son)))
 			     (push (make-pair entry sse) pairs)
 			     (push entry first-nt)
 			     (addedge name-vertex entry *dependency-graph*)))))
@@ -610,10 +610,10 @@
 		    (push entry first-nt)
 		    (addedge name-vertex entry *dependency-graph*)))
 
-		 (T (push (make-pair (make-keyword fs-first-son) sse) pairs)
+		 (t (push (make-pair (make-keyword fs-first-son) sse) pairs)
 		    (push (make-keyword fs-first-son) fsymbols)))))
 
-	(T (my-error 23))))
+	(t (my-error 23))))
 
 	(if recursive (setq new-def flattened-patterns))
 
@@ -668,7 +668,7 @@
 ; Generate-firsts-for-components
 ;   Component -> {NT-Name x first-symbols}*
 
-(defun generate-firsts-for-components (C)
+(defun generate-firsts-for-components (c)
   (let (component-fsymbols)
 
     ; For each nonterminal in the component
@@ -689,7 +689,7 @@
 	        ; to the component's first symbol list.
 	    (mapcar
 	     #'(lambda (x)
-		 (cond ((not (member x C))
+		 (cond ((not (member x c))
 			(setq component-fsymbols
 			      (union component-fsymbols (get-first-list x))))))
 	     (look-nti-fnt node)))))
@@ -706,7 +706,7 @@
 ; Generate-Component-LAS
 ;  Component -> {Nt-name x first-symbols}*
 
-(defun generate-component-las (C)
+(defun generate-component-las (c)
   (let (component-las epsilon-list epsilon-symbols new-las)
 
         ; For each nonterminal in the component
@@ -761,7 +761,7 @@
 			      (append `(,(caar entries) epsilon) epsilon-list))))
 
 	       ; otherwise just save the entry.
-	    (T (setq new-las (add-entry new-las (car entries))))))
+	    (t (setq new-las (add-entry new-las (car entries))))))
 
         ; Save (Name x Look-ahead-set) for each nonterminal
         ; in the component.
@@ -780,7 +780,7 @@
 ; Deal-with-pairs:
 ;   Pair* x component x LAS -> LAS
 
-(defun deal-with-pairs (pair-list C component-las)
+(defun deal-with-pairs (pair-list c component-las)
   (let (epsilon-list)
 
        ; For each pair
@@ -793,15 +793,15 @@
       (setq y (cond ((eq y 'epsilon) '(epsilon))
 		    ((or (is-nt y) (is-ext-nt y))
 		     (get-first-list y))
-		    (T (list y))))
+		    (t (list y))))
 
          ; IF x is a member of C then the members of y belong to epsilon-list.
 
       (cond ((and (is-nt x)
-		  (member x C :test #'equal))
+		  (member x c :test #'equal))
 	     (setq epsilon-list (union epsilon-list y)))
 	        ; otherwise deal with the pair.
-	    (T (setq component-las
+	    (t (setq component-las
 		     (deal-with-single-pairs x y component-las)))))
 
     (values epsilon-list component-las)))
@@ -830,11 +830,11 @@
 		  (setq component-las
 			(add-entry component-las (cons (caar entries) y))))
 
-		 (T (setq component-las
+		 (t (setq component-las
 			  (add-entry component-las (car entries)))))))
 
 	    ; otherwise just add the pair entry to the LAS.
-	(T (setq component-las (add-entry component-las (cons x y)))))
+	(t (setq component-las (add-entry component-las (cons x y)))))
   component-las)
 
 
@@ -850,6 +850,6 @@
            (setq las
 		 (cons (append temp (cdr entry))
 		       (remove temp las))))
-	  (T (push entry las)))
+	  (t (push entry las)))
     las))
 

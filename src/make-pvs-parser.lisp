@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package "USER")
+(in-package :user)
 
 #+allegro
 (eval-when (eval load)
@@ -46,6 +46,6 @@
 (load "src/ergo-gen-fixes")
 ;;(compile-file-if-needed "src/ergo-runtime-fixes")
 ;;(load "src/ergo-runtime-fixes")
-(let ((sbmake (intern "SB-MAKE" :sb)))
+(let ((sbmake (intern (string :sb-make) :sb)))
   (funcall sbmake :language "pvs" :working-dir "./src/" :unparser? nil))
 (excl:exit)

@@ -17,9 +17,9 @@
 
 ;;;    Basic Function: Look ahead set comparison functions
 
-(in-package 'syntax-box)   (use-package :ergolisp)
+(in-package :syntax-box)   (use-package :ergolisp)
 
-(use-package '(sb-runtime))
+(use-package '(:sb-runtime))
 
 
 
@@ -59,7 +59,7 @@
           ; sure that they don't overlap with existing seconds)
 
       (cond ((second-epsilon-p (car list1))
-	     (Cond ((setq e-note
+	     (cond ((setq e-note
 			  (intersection (remove 'epsilon (cdar list1)) initials))
 		    (my-error 12 e-note)
 		        ; Build an entry anyway.  It may point out errors later 
@@ -67,7 +67,7 @@
 		    (setq new-second
 			  (union (remove 'epsilon (cdar list1)) initials)))
 
-		   (T (setq new-second
+		   (t (setq new-second
 			    (append (remove 'epsilon (cdar list1)) initials))))
 		     
 	     (push (cons (caar list1) new-second) result))
@@ -76,7 +76,7 @@
 	    ((eq (length (car list1)) 1)
 	     (push (append (car list1) initials) result))
 
-	    (T (push (car list1) result))))
+	    (t (push (car list1) result))))
        
 
         ; If first can go to epsilon then we have to add the back fs-list
@@ -87,14 +87,14 @@
 		     
 	         ; If first symbols overlap make sure that the 
 	         ; seconds don't.
-	     (Cond ((setq temp (assoc (caar list2) result))
+	     (cond ((setq temp (assoc (caar list2) result))
 		    (setq result (remove temp result))
 
 		    (if (setq new-entry (compare-build temp (car list2) 12))
 			(push new-entry result)))
 		   
 		       ; Save if no overlap in first symbols
-		   (T (push (car list2) result))))))
+		   (t (push (car list2) result))))))
     result))
 
 
@@ -130,12 +130,12 @@
 	       (cond ((setq new-fs (compare-build (car fs-temp) temp 13))
 		      (push new-fs result))
 
-		     (T (setq final-result 'bad))))
+		     (t (setq final-result 'bad))))
 
-	      (T (push (car fs-temp) result)))))
+	      (t (push (car fs-temp) result)))))
 
-    (cond ((eq final-result 'bad) NIL)
-	  (T result))))
+    (cond ((eq final-result 'bad) nil)
+	  (t result))))
 
 
 
@@ -163,11 +163,11 @@
 	  ((setq e-note (intersection (cdr l1) (cdr l2)))
 	   (my-error error-number (cons (car l1) e-note)))
 
-	  (T (cons (car l1) (append (cdr l1) (cdr l2)))))))
+	  (t (cons (car l1) (append (cdr l1) (cdr l2)))))))
 
 
 
-(Defun compare-two-fs-lists (l1 l2)
+(defun compare-two-fs-lists (l1 l2)
   (compare-fs-list (list l1 l2)))
 
 

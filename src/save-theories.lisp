@@ -99,7 +99,8 @@
 	 (theory (get-theory mod-name)))
     (unless theory
       ;;(break "Attempt to fetch unknown theory ~s" mod-name)
-      (error "Attempt to fetch unknown theory ~s" mod-name))
+      (error "Attempt to fetch unknown theory ~s" mod-name)
+      )
     theory))
 
 (defmethod update-fetched :around ((obj datatype-or-module))
@@ -114,7 +115,8 @@
     (if (and module (not (eq module *saving-theory*)))
 	(reserve-space 3
 	  (unless (or (from-prelude? module)
-		      (typep module '(or library-theory library-datatype))
+		      (typep module '(or library-theory library-datatype
+					 theory-interpretation))
 		      (memq (id module)
 			    (gethash (id *saving-theory*) *stored-mod-depend*)))
 	    (error "Attempt to store declaration in illegal theory"))
@@ -135,6 +137,17 @@
       (unless decl
 	(break "Declaration was not found"))
       decl)))
+
+(defmethod update-fetched :around ((obj lib-decl))
+  (call-next-method)
+  (setf (library-pathname obj)
+	(nth-value 1 (get-library-pathname (library obj)))))
+
+(defmethod update-fetched :around ((obj mod-decl))
+  (break "update-fetched (mod-decl)")
+  (call-next-method)
+  (typecheck-named-theory obj)
+  obj)
 
 (defmethod store-object* :around ((obj type-name))
   (when (typep (adt obj) 'datatype)

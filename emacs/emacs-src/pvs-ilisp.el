@@ -163,7 +163,7 @@ intervenes."
 	 (file (pvs-send-and-wait fstring message status 'tmp-file))
 	 (buf (find-file-noselect file))
 	 (raw-value (read buf))
-	 (value (unless (eq raw-value 'NIL) raw-value)))
+	 (value (unless (member raw-value '(nil NIL)) raw-value)))
     (unless (typep value expected)
       (pop-to-buffer buf)
       (error "Expect %s return values in file %s" expected file))
@@ -185,7 +185,7 @@ intervenes."
     (save-match-data
       (let* ((str output)
 	     (val (pvs-read-from-string str)))
-	(unless (eq val 'NIL)
+	(unless (member val '(nil NIL))
 	  val)))))
 
 (defun pvs-read-from-string (string)
@@ -249,7 +249,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
 			     (substring pvs-process-output 0 line-end))))
 	    (when (and noninteractive
 		       pvs-in-checker
-		       (not (string-match "^NIL$" pvs-output)))
+		       (not (string-match "^\\(nil\\|NIL\\)$" pvs-output)))
 	      (when pvs-validating
 		(princ pvs-output))
 	      (when (> pvs-verbose 2)
@@ -425,7 +425,7 @@ want to set this to nil for slow terminals, or connections over a modem.")
 		 'external-debugging-output)))
       (let ((pos (pvs-get-place place)))
 	(when pos
-	  (if (equal dir "NIL")
+	  (if (member dir '("nil" "NIL"))
 	      (pvs-display-buffer file pos)
 	      (pvs-display-file file dir pos)))
 	(comint-display-file-output err "PVS Error")
@@ -467,7 +467,7 @@ window."
 
 (defun pvs-buffer* (bufname file display read-only &optional append)
   (if noninteractive
-      (when (not (equal file "NIL"))
+      (when (not (member file '("nil" "NIL")))
 	(let* ((buf (get-buffer-create bufname))
 	       (bufstr (save-excursion
 			 (set-buffer buf)
@@ -481,13 +481,14 @@ window."
 	    (princ bufstr 'external-debugging-output)
 	    (terpri 'external-debugging-output))))
       (let ((obuf (current-buffer)))
-	(if (equal file "NIL")
+	(if (member file '("nil" "NIL"))
 	    (when (get-buffer bufname)
 	      (delete-windows-on bufname)
 	      (kill-buffer bufname))
 	    (let* ((buf (get-buffer-create bufname))
 		   (cpoint (save-excursion (set-buffer buf) (point)))
-		   (append-p (not (or (null append) (equal append "NIL"))))
+		   (append-p (not (or (null append)
+				      (member append '("nil" "NIL")))))
 		   (at-end (save-excursion (set-buffer buf)
 					   (= (point) (point-max)))))
 	      (save-excursion
@@ -505,7 +506,7 @@ window."
 		    (delete-initial-blank-lines)
 		    (when same
 		      (set-buffer-modified-p nil)))
-		  (when (not (equal read-only "NIL"))
+		  (when (not (member read-only '("nil" "NIL")))
 		    (set-buffer-modified-p nil)
 		    (setq buffer-read-only t))
 		  (when (or (eq major-mode default-major-mode)
@@ -514,22 +515,15 @@ window."
 		  (when (and append-p at-end)
 		    (goto-char (point-max))))
 		(case (intern display)
-		  (NIL nil)
-		  (T (pop-to-buffer buf)
-		     (ilisp-show-output buf)
-		     (cond (append-p
-			    (when at-end
-			      (goto-char (point-max))))
-			   (t (goto-char (point-min)) ;was cpoint
-			      (beginning-of-line)))
-		     (pop-to-buffer obuf))
-		  (POPTO (pop-to-buffer buf)
-			 (cond (append-p
-				(when at-end
-				  (goto-char (point-max))))
-			       (t (goto-char cpoint)
-				  (beginning-of-line))))
-		  (TEMP
+		  ((nil NIL) nil)
+		  ((popto POPTO)
+		   (pop-to-buffer buf)
+		   (cond (append-p
+			  (when at-end
+			    (goto-char (point-max))))
+			 (t (goto-char cpoint)
+			    (beginning-of-line))))
+		  ((temp TEMP)
 		   (with-output-to-temp-buffer bufname
 		     (set-buffer bufname)
 		     (insert-file-contents file nil))
@@ -540,7 +534,17 @@ window."
 		     (message
 		      (format 
 			  "%s removes help window, %s scrolls, M-- %s scrolls back"
-			  rh s s))))))
+			  rh s s))))
+		  (t
+		   (when (member (intern display) '(t T))
+		     (pop-to-buffer buf)
+		     (ilisp-show-output buf)
+		     (cond (append-p
+			    (when at-end
+			      (goto-char (point-max))))
+			   (t (goto-char (point-min)) ;was cpoint
+			      (beginning-of-line)))
+		     (pop-to-buffer obuf)))))
 	      (delete-file file)))
 	t)))
 
@@ -649,7 +653,7 @@ window."
   ;; If the file is the current buffer, put point at pos.
   ;; o.w. if there is one window, make two and display file
   ;; If there are two windows, display file in non-current one.
-  (let ((buf (if (equal dir "NIL")
+  (let ((buf (if (member dir '("nil" "NIL"))
 		 (get-buffer file)
 		 (if (file-equal dir *pvs-current-directory*)
 		     (get-pvs-file-buffer file)
@@ -819,9 +823,10 @@ This displays information about the PVS command queue in the minibuffer."
 (defun pvs-prompt (out)
   (condition-case ()
       (case (car (read-from-string (car out)))
-	(DIRECTORY (comint-simple-send (ilisp-process)
-				       (format "\"%s\""
-					   (read-file-name (cadr out)))))
+	((directory DIRECTORY)
+	 (comint-simple-send (ilisp-process)
+			     (format "\"%s\""
+				 (read-file-name (cadr out)))))
 	(t (error "Unknown prompt type - %s" (car out))))
     (error (comint-simple-send (ilisp-process) ":abort")
 	   (keyboard-quit))
@@ -856,17 +861,17 @@ This displays information about the PVS command queue in the minibuffer."
 
 (defun pvs-modify-buffer* (dir file pos textfile)
   (let ((place (car (read-from-string pos))))
-    (cond ((equal dir "NIL")
+    (cond ((member dir '("nil" "NIL"))
 	   (save-excursion
 	     (set-buffer file)
 	     (apply 'kill-region (pvs-region place))
-	     (unless (equal textfile "NIL")
+	     (unless (member textfile '("nil" "NIL"))
 	       (insert-file-contents textfile))
 	     (goto-char (point-min))))
 	  (t (pvs-display-file file dir place)
 	     (let ((beg (point)))
 	       (pvs-display-file file dir (cddr place))
-	       (unless (and (not (equal textfile "NIL"))
+	       (unless (and (not (member textfile '("nil" "NIL")))
 			    (equal (buffer-substring beg (point))
 				   (save-excursion
 				     (let ((buf (find-file-noselect textfile)))
@@ -874,13 +879,13 @@ This displays information about the PVS command queue in the minibuffer."
 				       (prog1 (buffer-string)
 					 (kill-buffer buf))))))
 		 (kill-region beg (point))
-		 (unless (equal textfile "NIL")
+		 (unless (member textfile '("nil" "NIL"))
 		   (insert-file-contents textfile)
 		   ;;(forward-char -1)
 		   ;;(when (looking-at "\n")
 		   ;;  (delete-char 1))
 		 )))))
-    (unless (equal textfile "NIL")
+    (unless (member textfile '("nil" "NIL"))
       (delete-file textfile))))
 
 ;(defun pvs-modify-buffer (output)
@@ -942,7 +947,7 @@ This displays information about the PVS command queue in the minibuffer."
 			   ((string-equal value "!") "done")
 			   ((string-equal value "X") "fail")
 			   ((string-equal value "*") "wait")
-			   ((string-equal value "NIL") "    ")
+			   ((member value '("nil" "NIL")) "    ")
 			   (t "????"))))
 	    ((string-equal type "CHILD")
 	     (goto-char (point-min))

@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'pvs)
+(in-package :pvs)
 
 
 ;;NSH(3/3/93)commented out conversion of boolean equality to iff overriding
@@ -18,12 +18,12 @@
 (defun needs-bool-lifting1 (exp)
   (cond
     ((atom exp) nil)
-    ((memq (funsym exp) '(AND OR IMPLIES NOT IF IFF))
+    ((memq (funsym exp) '(and or implies not if iff))
      (throw 'bool-lifting t))
     ;; the next case probably wont occur -  need to check ***
-;NSH    ((and (eq (funsym exp) 'EQUAL) (eq (prtype (arg1 exp)) 'bool))
+;NSH    ((and (eq (funsym exp) 'equal) (eq (prtype (arg1 exp)) 'bool))
 ;     (throw 'bool-lifting t))
-    ((eq (funsym exp) 'LAMBDA) nil)
+    ((eq (funsym exp) 'lambda) nil)
     (t (loop for subexp in (argsof exp) thereis (needs-bool-lifting1 subexp)))))
  
 ;;need to load prmacros, process, 
@@ -74,7 +74,7 @@
 
 (defun disjunction (list)
   (if (cdr list)
-      `(OR ,(car list) ,(disjunction (cdr list)))
+      `(or ,(car list) ,(disjunction (cdr list)))
       (car list)))
 
 (defmethod translate-to-prove ((list list))
@@ -118,8 +118,8 @@
 	     (let* ((norm-expr (normalize-name-expr-actuals expr))
 		    (id-hash (gethash norm-expr *translate-id-hash*))
 		    (newconst (or id-hash
-				  (when (tc-eq expr *true*) '(TRUE))
-				  (when (tc-eq expr *false*) '(FALSE))
+				  (when (tc-eq expr *true*) '(true))
+				  (when (tc-eq expr *false*) '(false))
 				  (list (intern (concatenate 'string
 						  (string (id expr))
 						  "_"
@@ -226,13 +226,13 @@
 	  name))))
 
 (defmethod translate-to-prove ((expr tuple-expr))
-  (cons 'TUPCONS (translate-to-prove (exprs expr))))
+  (cons 'tupcons (translate-to-prove (exprs expr))))
 	
 ;(defmethod translate-to-prove ((expr coercion))
 ;  (translate-to-prove (expression expr)))
 
 (defmethod translate-to-prove ((expr branch))
-  (list 'IF
+  (list 'if
 	(translate-to-prove (condition expr))
 	(translate-to-prove (then-part expr))
 	(translate-to-prove (else-part expr))))
@@ -261,17 +261,17 @@
 		      (let ((translated-arg
 			     (translate-to-prove
 			      (car arguments))))
-			(loop for I from 0
+			(loop for i from 0
 			      upto (1- (length expected))
 			      collect
 			      `(,(intern (concatenate 'string
-					   "TUPSEL-"
+					   "tupsel-"
 					   (string
 					    (or (prover-type
-					       (nth I (types (type
+					       (nth i (types (type
 							      (car arguments)))))
 						'||))))
-				,I
+				,i
 				,translated-arg)))
 		      (translate-to-prove arguments)))
 	      (translate-to-prove arguments)))))
@@ -279,7 +279,7 @@
 (defmethod translate-to-prove ((expr projection-application))
   (let ((arg (translate-to-prove (argument expr))))
     `(,(intern (concatenate 'string
-		 "TUPSEL-" (string (or (prover-type (type expr)) '||))))
+		 "tupsel-" (string (or (prover-type (type expr)) '||))))
       ,(1- (index expr)) ,arg)))
 
 (defmethod translate-to-prove ((expr field-application))
@@ -308,9 +308,9 @@
 		      (cons 'minus args))
 		     ((eq op '/=)
 		      (list 'not (cons 'equal args)))
-		     ((and (eq op 'NOT)
+		     ((and (eq op 'not)
 			   (consp (car args))
-			   (eq (caar args) 'NOT))
+			   (eq (caar args) 'not))
 		      (cadar args))
 		     (t (cons op args)))))
 	    ((and (or (not (typep operator 'name-expr))
@@ -352,9 +352,7 @@
 
 (defmethod interpreted? ((expr name-expr))
   (with-slots (id resolutions) expr
-    (let ((interp (cdr (assq id (if *newdc*
-				    *dc-interpreted-alist*
-				    *interpreted-alist*)))))
+    (let ((interp (cdr (assq id *interpreted-alist*))))
       (and interp
 	   (let ((mi (module-instance (car resolutions))))
 	     (and mi (eq (mod-id interp) (id mi))))))))
@@ -371,13 +369,13 @@
 
 
 (defmethod operator ((expr lambda-expr))
-  'lambda)
+  'LAMBDA)
 
 (defmethod operator ((expr forall-expr))
-  'forall)
+  'FORALL)
 
 (defmethod operator ((expr exists-expr))
-  'exists)
+  'EXISTS)
 
 (defvar *integer-pred* nil)
 
@@ -386,7 +384,7 @@
 
 (defun top-translate-to-prove (expr)
   (let ((*bindings* nil)
-	(*generate-tccs* 'NONE))
+	(*generate-tccs* 'none))
     (cond ((hash-table-p *translate-to-prove-hash*)
 	   (when *integer*
 	     (setq *integer-pred* (translate-to-ground (predicate *integer*))))
@@ -433,7 +431,7 @@
 		       (*bindings*
 			(let* ((apname (intern
 					(concatenate 'string
-					  "APPLY-"
+					  "apply-"
 					  (princ-to-string (length tr-vars))
 					  "-"
 					  (string (or prtype '||)))))
@@ -451,7 +449,7 @@
 	      (translate-to-prove (expression expr))))
 	 (tr-operator (unique-binding-operator expr))
 	 (tr-lambda-expr
-	  (cons 'LAMBDA
+	  (cons 'lambda
 		(cons (length (bindings expr))
 		      (if (or connective? (null tr-freevars))
 			  (list tr-expr)
@@ -459,7 +457,7 @@
 				(list
 				 (intern
 				  (concatenate 'string
-				    "APPLY-"
+				    "apply-"
 				    (princ-to-string (length tr-bndvars))
 				    "-"))
 				 tr-operator
@@ -468,7 +466,7 @@
 	tr-lambda-expr
 	 (list (intern
 		(concatenate 'string
-		  "APPLY-1-" (or (string prtype) "")))
+		  "apply-1-" (or (string prtype) "")))
 	       tr-operator
 	       tr-lambda-expr))))
 
@@ -483,13 +481,13 @@
 			 (funcall *translate-id-counter*))))))))
 
 (defmethod unique-binding-operator ((ex lambda-expr))
-  'LAMBDA)
+  'lambda)
 
 ;;; Update expressions
 ;;; Translate expressions of the form
 ;;; A WITH [ (0) := 1 ],
 ;;;    where A is an array of type int->int, into
-;;; (APPLY int ARRAYSTORE A 0 1)
+;;; (apply int ARRAYSTORE A 0 1)
 ;;;
 ;;; f WITH [ (0,0) := 0],
 ;;;    where f is a function of type int,int->int into
@@ -501,15 +499,15 @@
 ;;;
 ;;; This generates the form
 ;;;
-;;; (APPLY function[state[T0],state[T0] -> int]
-;;;        UPDATE
-;;;        (APPLY function[state[T0],state[T0] -> int]
-;;;               UPDATE
-;;;               (APPLY function[state[T0],state[T0] -> int]
-;;;                      UPDATE
+;;; (apply function[state[T0],state[T0] -> int]
+;;;        update
+;;;        (apply function[state[T0],state[T0] -> int]
+;;;               update
+;;;               (apply function[state[T0],state[T0] -> int]
+;;;                      update
 ;;;                      g (0) h)
-;;;               (1) (APPLY int UPDATE g(1) (x y) 0))
-;;;        (1) (APPLY int UPDATE g(1) (x' y') 1))
+;;;               (1) (apply int update g(1) (x y) 0))
+;;;        (1) (apply int update g(1) (x' y') 1))
 
 (defmethod translate-to-prove ((expr update-expr))
   (translate-assignments (assignments expr)
@@ -539,7 +537,7 @@
       (let ((sorted-fields (when (recordtype? type)
 			     ;;(sort-fields (fields type))
 			     (fields type))))
-	(list 'UPDATE
+	(list 'update
 	      trbasis
 	      (typecase type
 		(recordtype
@@ -576,7 +574,7 @@
 			    trbasis
 			    (if (singleton? (car args))
 				(translate-to-prove (caar args))
-				(cons 'TUPCONS (translate-to-prove (car args)))))))))
+				(cons 'tupcons (translate-to-prove (car args)))))))))
 		(translate-assign-args (cdr args)
 				       value
 				       ntrbasis
@@ -589,7 +587,7 @@
 
 (defun make-tr-projection-application (type number expr)
   `(,(intern (concatenate 'string
-	       "TUPSEL-" (string (or (prover-type type) '||))))
+	       "tupsel-" (string (or (prover-type type) '||))))
     ,(1- number) ,expr))
 
 (defun make-tr-assign-application (fun-type expr args)
@@ -599,7 +597,7 @@
 (defmethod make-apply-name ((te type-expr))
   (let* ((type (find-supertype te))
 	 (name (intern (concatenate 'string
-			 "APPLY-"
+			 "apply-"
 			 (princ-to-string (length (domain-types type)))
 			 "-" (string (or (prover-type (range type)) '||)))))
 	 (prtype (prover-type (range type))))
@@ -649,7 +647,7 @@
 (defparameter *interpreted-alist*
   (mapcar #'(lambda (x) (cons (id x) x)) *interpreted-names*))
 
-(defun shostak-interpretation (name)
+(defun interpretation (name)
   (or (cdr (assoc (id name) *interpretations*))
       (id name)))
 
@@ -662,4 +660,8 @@
     (+ . plus)
     (- . difference)
     (* . times)
-    (/ . divide)))
+    (/ . divide)
+    (AND . and)
+    (OR . or)
+    (NOT . not)
+    (IMPLIES . implies)))

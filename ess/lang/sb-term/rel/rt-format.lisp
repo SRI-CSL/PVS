@@ -13,7 +13,7 @@
 
 ;;; Scott Dietzen, Wed Aug 26 17:16:29 1987
 
-(in-package 'sb-runtime)  (use-package :ergolisp)
+(in-package :sb-runtime)  (use-package :ergolisp)
 
 (export '(
 	  format-uterm 
@@ -165,27 +165,27 @@
    (cond ((and (eq (token-kind token2) :keyword)
 	       (memq (token-value token2) *unparser-op-list*)
 	       (memq (token-value token2)
-		     '( SBST::|,|
-			      SBST::|;|
-			      SBST::|:|
-			      SBST::|.|
-			      SBST::|)|    
-			      SBST::|]|
-			      SBST::|}| )))
+		     '( sbst::|,|
+			      sbst::|;|
+			      sbst::|:|
+			      sbst::|.|
+			      sbst::|)|    
+			      sbst::|]|
+			      sbst::|}| )))
 	  0)
 	 ((and (eq (token-kind token1) :keyword)
 	       (memq (token-value token1) *unparser-op-list*)
 	       (memq (token-value token1)
-		     '(SBST::|(|
-			     SBST::|[|
-			     SBST::|{| )))
+		     '(sbst::|(|
+			     sbst::|[|
+			     sbst::|{| )))
 	  0)
 	 ((and (not (eq (token-kind token1) :keyword))
 	       (eq (token-kind token2) :keyword)
 	       (memq (token-value token2) *unparser-op-list*)
 	       (memq (token-value token2)
-		     '(SBST::|(| 
-			     SBST::|[| )))
+		     '(sbst::|(| 
+			     sbst::|[| )))
 	  0))))
 
 

@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'pvs)
+(in-package :pvs)
 
 
 
@@ -29,7 +29,7 @@
 	 ;;(remaining-s-forms (delete-seq (s-forms goalsequent)
 	 ;;(list sformnum)))
 	 (*replace-in-actuals?* actuals?)
-	 (*modsubst* T))
+	 (*modsubst* t))
     (cond ((null selected-s-forms)
 	   (if (memq sformnum '(- + *))
 	       (error-format-if "~%Can only replace single formulae.  Look at (help replace*)~%")
@@ -45,7 +45,7 @@
 		     (if  (negation? fmla)
 			  (if (or (equation? (args1 fmla))
 				  (iff-or-boolean-equation? (args1 fmla)))
-			      (if (eq direction 'RL)
+			      (if (eq direction 'rl)
 				  (args2 (args1 fmla))
 				  (args1 (args1 fmla)))
 			      (args1 fmla))
@@ -54,7 +54,7 @@
 		     (if  (negation? fmla)
 			  (if (or (equation? (args1 fmla))
 				  (iff-or-boolean-equation? (args1 fmla)))
-			      (if (eq direction 'RL)
+			      (if (eq direction 'rl)
 				  (args1 (args1 fmla))
 				  (args2 (args1 fmla)))
 			      *true*)
@@ -130,7 +130,7 @@
 
 (defmethod replace-expr* (lhs rhs (list list) lastopinfix?)
   (declare (ignore lastopinfix?))
-  (cond ((null list) NIL)
+  (cond ((null list) nil)
 	(t (let ((car-expr (replace-expr* lhs rhs (car list) nil))
 		 (cdr-expr (replace-expr* lhs rhs (cdr list) nil)))
 	     (if (and (eql car-expr (car list))

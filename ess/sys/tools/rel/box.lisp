@@ -36,7 +36,7 @@
 ;;;   Took out the patch (previous note) and moved to box-system.lisp, into
 ;;;   the lisp-compile function.
 
-(in-package "TOOLS") (use-package :ergolisp)
+(in-package :tools) (use-package :ergolisp)
 
 (export '(defbox eload egen eforce eload-force eflag))
 (export '(boxload boxgen boxforce boxload-force boxflag))
@@ -238,7 +238,7 @@
 	efile)))
 
 (defun get-box (boxspec)
-  (gethash (string-upcase (string boxspec)) *boxtable*))
+  (gethash (string boxspec) *boxtable*))
 
 (defun get-existent-box (boxspec)
   (let ((box (get-box boxspec)))
@@ -303,7 +303,7 @@ warning.  T means the current value of *error-output*.")
 
 (defun boxwarn (format-string &rest args)
   (when *box-warn*
-    (if *break-on-warnings*
+    (if excl::*break-on-warnings*
 	(break "~&[WARNING: ~?]~%" format-string args)
 	(format (if (eq *box-warn* t) *error-output* *box-warn*)
 		"~&[WARNING: ~?]~%" format-string args))))
@@ -706,7 +706,7 @@ pass makes the governing files known and available for flagging."
 ;;;
 
 (defun get-crate (cratespec)
-  (gethash (string-upcase (string cratespec)) *cratetable*))
+  (gethash (string cratespec) *cratetable*))
 
 (defun get-existent-crate (cratespec)
   (let ((crate (get-crate cratespec)))
@@ -870,7 +870,7 @@ Assuming it's in box ~S." file box))
   "Returns the efile associated with `file' in the *efiletable*.  Default
 extension is *lisp-compiled-extension*.  If `file' is not found, it is
 assumed to be in *default-box*, which may lead to warning messages later."
-  (get-default-efile-box file (get-existent-box "*DEFAULT-BOX*") t))
+  (get-default-efile-box file (get-existent-box (string :*default-box*)) t))
 
 (defun get-default-efile-in-box (file box)
   "Like `get-default-efile', but assumes `file' to be in box, rather than

@@ -1,909 +1,909 @@
-;;; -*- Mode: Lisp; Package: SYNTAX-BOX -*-
-(in-package "SYNTAX-BOX")  ;; creates package for abstract syntax. 
+;;; -*- mode: lisp; package: syntax-box -*-
+(in-package :syntax-box)  ;; creates package for abstract syntax. 
 
-(in-package "SYNTAX-BOX")  ;; enters package for generated code.  
+(in-package :syntax-box)  ;; enters package for generated code.  
 
-(use-package '("ERGOLISP" "OPER" "OCC" "TERM" "SORT" "SB-RUNTIME" "LANG" "NEWATTR"))
+(use-package '(:ergolisp :oper :occ :term :sort :sb-runtime :lang :newattr))
 
 
 (export '())
 
-(DEFPARAMETER *SB-OPSIG-TABLE*
-              (MAKE-OPSIG-TABLE
-               '((#^STRING-AUG .
+(defparameter *sb-opsig-table*
+              (make-opsig-table
+               '((#^string-aug .
                   #@("meta-grammar" :=
-                                                           (#t(:SORT STRING))
+                                                           (#t(:sort string))
                                                            :->
-                                                           #t(:SORT AUGMENT-ALT-0)))
-                (#^BRACKET-ENTRY .
+                                                           #t(:sort augment-alt-0)))
+                (#^bracket-entry .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT SB-RUNTIME::ID)
-                                                                      #t(:SORT KEYWORD)
-                                                                      #t(:SORT KEYWORD))
+                                                                      (#t(:sort sb-runtime::id)
+                                                                      #t(:sort keyword)
+                                                                      #t(:sort keyword))
                                                                       :->
-                                                                      #t(:SORT
-                                                                      BRACKET-ENTRY)))
-                (#^EXT-GRAM .
+                                                                      #t(:sort
+                                                                      bracket-entry)))
+                (#^ext-gram .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST (:SORT SB-RUNTIME::ID)))
+                                                                      (#t(:list (:sort sb-runtime::id)))
                                                                       :->
-                                                                      #t(:SORT EXTERNAL-GRAMMARS)))
-                (#^NUMBER-AUG .
+                                                                      #t(:sort external-grammars)))
+                (#^number-aug .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT NUMBER))
+                                                                      (#t(:sort number))
                                                                       :->
-                                                                      #t(:SORT AUGMENT)))
-                (#^OPT-AUG .
+                                                                      #t(:sort augment)))
+                (#^opt-aug .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT AUGMENT))
+                                                                      (#t(:sort augment))
                                                                       :->
-                                                                      #t(:SORT AUGMENT)))
-                (#^ALT-AUG .
+                                                                      #t(:sort augment)))
+                (#^alt-aug .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST (:SORT AUGMENT)))
+                                                                      (#t(:list (:sort augment)))
                                                                       :->
-                                                                      #t(:SORT AUGMENT)))
-                (#^PUSH-TAB-RIGHT .
+                                                                      #t(:sort augment)))
+                (#^push-tab-right .
                  #@("meta-grammar"
                                                                       :=
-                                                                      NIL
+                                                                      nil
                                                                       :->
-                                                                      #t(:SORT FORMAT-COMMAND)))
-                (#^UPATS .
+                                                                      #t(:sort format-command)))
+                (#^upats .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST (:OP #^UPAT)))
+                                                                      (#t(:list (:op #^upat)))
                                                                       :->
-                                                                      #t(:SORT UPATS)))
-                (#^SP .
+                                                                      #t(:sort upats)))
+                (#^sp .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT NUMBER))
+                                                                      (#t(:sort number))
                                                                       :->
-                                                                      #t(:SORT FORMAT-COMMAND)))
-                (#^JUX .
+                                                                      #t(:sort format-command)))
+                (#^jux .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT PATTERN)
-                                                                      #t(:SORT PATTERN)
-                                                                      #t(:SORT WS-SPECS))
+                                                                      (#t(:sort pattern)
+                                                                      #t(:sort pattern)
+                                                                      #t(:sort ws-specs))
                                                                       :->
-                                                                      #t(:SORT
-                                                                      PATTERN)))
-                (#^ID-AUG .
+                                                                      #t(:sort
+                                                                      pattern)))
+                (#^id-aug .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT SB-RUNTIME::ID))
+                                                                      (#t(:sort sb-runtime::id))
                                                                       :->
-                                                                      #t(:SORT AUGMENT-ALT-0)))
-                (#^DOUBLESTAR .
+                                                                      #t(:sort augment-alt-0)))
+                (#^doublestar .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT PATTERN)
-                                                                      #t(:SORT FORMAT))
+                                                                      (#t(:sort pattern)
+                                                                      #t(:sort format))
                                                                       :->
-                                                                      #t(:SORT PATTERN)))
-                (#^PLUS-AUG .
+                                                                      #t(:sort pattern)))
+                (#^plus-aug .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT AUGMENT))
+                                                                      (#t(:sort augment))
                                                                       :->
-                                                                      #t(:SORT AUGMENT)))
-                (#^PREC-ENTRIES .
+                                                                      #t(:sort augment)))
+                (#^prec-entries .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST (:OP #^PREC-ENTRY)))
+                                                                      (#t(:list (:op #^prec-entry)))
                                                                       :->
-                                                                      #t(:SORT PRECEDENCE-INFORMATION)))
-                (#^INCR-BP .
+                                                                      #t(:sort precedence-information)))
+                (#^incr-bp .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT NUMBER))
+                                                                      (#t(:sort number))
                                                                       :->
-                                                                      #t(:SORT FORMAT-COMMAND)))
-                (#^ALT .
+                                                                      #t(:sort format-command)))
+                (#^alt .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST (:SORT PATTERN)))
+                                                                      (#t(:list (:sort pattern)))
                                                                       :->
-                                                                      #t(:SORT PATTERN)))
-                (#^OPT .
+                                                                      #t(:sort pattern)))
+                (#^opt .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT SEQ))
+                                                                      (#t(:sort seq))
                                                                       :->
-                                                                      #t(:SORT PATTERN)))
-                (#^AUGMENT .
+                                                                      #t(:sort pattern)))
+                (#^augment .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT PATTERN)
-                                                                      #t(:SORT AUGMENT))
+                                                                      (#t(:sort pattern)
+                                                                      #t(:sort augment))
                                                                       :->
-                                                                      #t(:SORT PATTERN)))
-                (#^NTS .
+                                                                      #t(:sort pattern)))
+                (#^nts .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST (:SORT NONTERMINAL-DEFINITION)))
+                                                                      (#t(:list (:sort nonterminal-definition)))
                                                                       :->
-                                                                      #t(:SORT NTS)))
-                (#^DELIMITER .
+                                                                      #t(:sort nts)))
+                (#^delimiter .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT SB-RUNTIME::ID)
-                                                                      #t(:SORT KEYWORD))
+                                                                      (#t(:sort sb-runtime::id)
+                                                                      #t(:sort keyword))
                                                                       :->
-                                                                      #t(:SORT
-                                                               LEXICAL-TERMINALS-OPT-0)))
-                (#^KEYWORD-OP .
+                                                                      #t(:sort
+                                                               lexical-terminals-opt-0)))
+                (#^keyword-op .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT KEYWORD))
+                                                                      (#t(:sort keyword))
                                                                       :->
-                                                                      #t(:SORT SINGLE-OP-PRECEDENCE-ALT-0)))
-                (#^UNITE .
+                                                                      #t(:sort single-op-precedence-alt-0)))
+                (#^unite .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT PATTERN-ALT-0))
+                                                                      (#t(:sort pattern-alt-0))
                                                                       :->
-                                                                      #t(:SORT FORMAT-COMMAND)))
-                (#^PREC-LEVELS .
+                                                                      #t(:sort format-command)))
+                (#^prec-levels .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST (:SORT SINGLE-LEVEL)))
+                                                                      (#t(:list (:sort single-level)))
                                                                       :->
-                                                                      #t(:SORT MULTIPLE-LEVELS)))
-                (#^COMMENT-CHARACTER .
+                                                                      #t(:sort multiple-levels)))
+                (#^comment-character .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT COMMENT-CHARACTER-OPT-0)
-                                                                      #t(:SORT
-                                                    COMMENT-CHARACTER-OPT-0)
-                                                                      #t(:SORT
-                                                                      COMMENT-CHARACTER-OPT-0))
+                                                                      (#t(:sort comment-character-opt-0)
+                                                                      #t(:sort
+                                                    comment-character-opt-0)
+                                                                      #t(:sort
+                                                                      comment-character-opt-0))
                                                                       :->
-                                                                      #t(:SORT
-                                                                      COMMENT-CHARACTER)))
-                (#^SPACE-COM .
+                                                                      #t(:sort
+                                                                      comment-character)))
+                (#^space-com .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT SPACING-INFORMATION-ALT-0)
-                                                                      #t(:SORT WS-SPECS)
-                                                                      #t(:SORT
-                                                                      SPACING-INFORMATION-ALT-0))
+                                                                      (#t(:sort spacing-information-alt-0)
+                                                                      #t(:sort ws-specs)
+                                                                      #t(:sort
+                                                                      spacing-information-alt-0))
                                                                       :->
-                                                                      #t(:SORT
-                                                                      SPACE-COM)))
-                (#^META-GRAMMAR-NULL-4 .
+                                                                      #t(:sort
+                                                                      space-com)))
+                (#^meta-grammar-null-4 .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:NULL))
+                                                                      (#t(:null))
                                                                       :->
-                                                                      #t(:SORT META-GRAMMAR-OPT-8)))
-                (#^META-GRAMMAR-NULL-9 .
+                                                                      #t(:sort meta-grammar-opt-8)))
+                (#^meta-grammar-null-9 .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:NULL))
+                                                                      (#t(:null))
                                                                       :->
-                                                                      #t(:SORT META-GRAMMAR-OPT-7)))
-                (#^META-GRAMMAR-NULL-8 .
+                                                                      #t(:sort meta-grammar-opt-7)))
+                (#^meta-grammar-null-8 .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:NULL))
+                                                                      (#t(:null))
                                                                       :->
-                                                                      #t(:SORT META-GRAMMAR-OPT-6)))
-                (#^META-GRAMMAR-NULL-7 .
+                                                                      #t(:sort meta-grammar-opt-6)))
+                (#^meta-grammar-null-7 .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:NULL))
+                                                                      (#t(:null))
                                                                       :->
-                                                                      #t(:SORT META-GRAMMAR-OPT-5)))
-                (#^META-GRAMMAR-NULL-6 .
+                                                                      #t(:sort meta-grammar-opt-5)))
+                (#^meta-grammar-null-6 .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:NULL))
+                                                                      (#t(:null))
                                                                       :->
-                                                                      #t(:SORT META-GRAMMAR-OPT-4)))
-                (#^META-GRAMMAR-NULL-5 .
+                                                                      #t(:sort meta-grammar-opt-4)))
+                (#^meta-grammar-null-5 .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:NULL))
+                                                                      (#t(:null))
                                                                       :->
-                                                                      #t(:SORT META-GRAMMAR-OPT-3)))
-                (#^META-GRAMMAR-NULL-3 .
+                                                                      #t(:sort meta-grammar-opt-3)))
+                (#^meta-grammar-null-3 .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:NULL))
+                                                                      (#t(:null))
                                                                       :->
-                                                                      #t(:SORT META-GRAMMAR-OPT-2)))
-                (#^META-GRAMMAR-NULL-2 .
+                                                                      #t(:sort meta-grammar-opt-2)))
+                (#^meta-grammar-null-2 .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:NULL))
+                                                                      (#t(:null))
                                                                       :->
-                                                                      #t(:SORT META-GRAMMAR-OPT-1)))
-                (#^META-GRAMMAR-NULL-1 .
+                                                                      #t(:sort meta-grammar-opt-1)))
+                (#^meta-grammar-null-1 .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:NULL))
+                                                                      (#t(:null))
                                                                       :->
-                                                                      #t(:SORT META-GRAMMAR-OPT-0)))
-                (#^APPEND .
+                                                                      #t(:sort meta-grammar-opt-0)))
+                (#^append .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT AUGMENT)
-                                                                      #t(:SORT AUGMENT))
+                                                                      (#t(:sort augment)
+                                                                      #t(:sort augment))
                                                                       :->
-                                                                      #t(:SORT AUGMENT)))
-                (#^GRAMMAR .
+                                                                      #t(:sort augment)))
+                (#^grammar .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT META-GRAMMAR-OPT-0)
-                                                                      #t(:SORT META-GRAMMAR-OPT-1)
-                                                                      #t(:SORT
-                                                                      META-GRAMMAR-OPT-2)
-                                                                      #t(:SORT
-                                                                      META-GRAMMAR-OPT-3)
-                                                                      #t(:SORT
-                                                                      META-GRAMMAR-OPT-4)
-                                                                      #t(:SORT
-                                                                      META-GRAMMAR-OPT-5)
-                                                                      #t(:SORT
-                                                                      META-GRAMMAR-OPT-6)
-                                                                      #t(:SORT
-                                                                      META-GRAMMAR-OPT-7)
-                                                                      #t(:SORT
-                                                                      NTS)
-                                                                      #t(:SORT
-                                                                      SB-RUNTIME::ID)
-                                                                      #t(:SORT
-                                                                      META-GRAMMAR-OPT-8))
+                                                                      (#t(:sort meta-grammar-opt-0)
+                                                                      #t(:sort meta-grammar-opt-1)
+                                                                      #t(:sort
+                                                                      meta-grammar-opt-2)
+                                                                      #t(:sort
+                                                                      meta-grammar-opt-3)
+                                                                      #t(:sort
+                                                                      meta-grammar-opt-4)
+                                                                      #t(:sort
+                                                                      meta-grammar-opt-5)
+                                                                      #t(:sort
+                                                                      meta-grammar-opt-6)
+                                                                      #t(:sort
+                                                                      meta-grammar-opt-7)
+                                                                      #t(:sort
+                                                                      nts)
+                                                                      #t(:sort
+                                                                      sb-runtime::id)
+                                                                      #t(:sort
+                                                                      meta-grammar-opt-8))
                                                                       :->
-                                                                      #t(:SORT
-                                                                      META-GRAMMAR)))
-                (#^UPATTERN .
+                                                                      #t(:sort
+                                                                      meta-grammar)))
+                (#^upattern .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT PATTERN)
-                                                                      #t(:SORT UPATS))
+                                                                      (#t(:sort pattern)
+                                                                      #t(:sort upats))
                                                                       :->
-                                                                      #t(:SORT PATTERN)))
-                (#^NT-DEF .
+                                                                      #t(:sort pattern)))
+                (#^nt-def .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT SB-RUNTIME::ID)
-                                                                      #t(:SORT PATTERN))
+                                                                      (#t(:sort sb-runtime::id)
+                                                                      #t(:sort pattern))
                                                                       :->
-                                                                      #t(:SORT
-                                                               NONTERMINAL-DEFINITION)))
-                (#^OP-INFO .
+                                                                      #t(:sort
+                                                               nonterminal-definition)))
+                (#^op-info .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST (:SORT KEYWORD)))
+                                                                      (#t(:list (:sort keyword)))
                                                                       :->
-                                                                      #t(:SORT OPERATOR-INFORMATION)))
-                (#^LIST .
+                                                                      #t(:sort operator-information)))
+                (#^list .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST (:SORT AUGMENT)))
+                                                                      (#t(:list (:sort augment)))
                                                                       :->
-                                                                      #t(:SORT AUGMENT)))
-                (#^STAR .
+                                                                      #t(:sort augment)))
+                (#^star .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT PATTERN))
+                                                                      (#t(:sort pattern))
                                                                       :->
-                                                                      #t(:SORT PATTERN)))
-                (#^TAG-AUG .
+                                                                      #t(:sort pattern)))
+                (#^tag-aug .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT AUGMENT)
-                                                                      #t(:SORT PATTERN-ALT-0))
+                                                                      (#t(:sort augment)
+                                                                      #t(:sort pattern-alt-0))
                                                                       :->
-                                                                      #t(:SORT AUGMENT)))
-                (#^DECR-BP .
+                                                                      #t(:sort augment)))
+                (#^decr-bp .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT NUMBER))
+                                                                      (#t(:sort number))
                                                                       :->
-                                                                      #t(:SORT FORMAT-COMMAND)))
-                (#^NAME .
+                                                                      #t(:sort format-command)))
+                (#^name .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT SB-RUNTIME::ID))
+                                                                      (#t(:sort sb-runtime::id))
                                                                       :->
-                                                                      #t(:SORT AUGMENT)))
-                (#^TERM-CONST .
+                                                                      #t(:sort augment)))
+                (#^term-const .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST
-                   (:UNION (:OP #^STRING-AUG) (:OP #^LITERAL-AUG)
-                    (:OP #^ID-AUG) (:SORT AUGMENT))))
+                                                                      (#t(:list
+                   (:union (:op #^string-aug) (:op #^literal-aug)
+                    (:op #^id-aug) (:sort augment))))
                                                                       :->
-                                                                      #t(:SORT AUGMENT)))
-                (#^WS-SPECS .
+                                                                      #t(:sort augment)))
+                (#^ws-specs .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST (:SORT FORMAT-COMMAND)))
+                                                                      (#t(:list (:sort format-command)))
                                                                       :->
-                                                                      #t(:SORT WS-SPECS)))
-                (#^PUSH-TAB-LEFT .
+                                                                      #t(:sort ws-specs)))
+                (#^push-tab-left .
                  #@("meta-grammar"
                                                                       :=
-                                                                      NIL
+                                                                      nil
                                                                       :->
-                                                                      #t(:SORT FORMAT-COMMAND)))
-                (#^ESCAPE-CHARACTER .
+                                                                      #t(:sort format-command)))
+                (#^escape-character .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT KEYWORD))
+                                                                      (#t(:sort keyword))
                                                                       :->
-                                                                      #t(:SORT ESCAPE-CHARACTER)))
-                (#^NONTERMINAL .
+                                                                      #t(:sort escape-character)))
+                (#^nonterminal .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT SB-RUNTIME::ID))
+                                                                      (#t(:sort sb-runtime::id))
                                                                       :->
-                                                                      #t(:SORT PATTERN)))
-                (#^PREC-ENTRY .
+                                                                      #t(:sort pattern)))
+                (#^prec-entry .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT SB-RUNTIME::ID)
-                                                                      #t(:SORT MULTIPLE-LEVELS))
+                                                                      (#t(:sort sb-runtime::id)
+                                                                      #t(:sort multiple-levels))
                                                                       :->
-                                                                      #t(:SORT
-                                                                      PREC-ENTRY)))
-                (#^LITERAL-AUG .
+                                                                      #t(:sort
+                                                                      prec-entry)))
+                (#^literal-aug .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT SB-RUNTIME::LITERAL))
+                                                                      (#t(:sort sb-runtime::literal))
                                                                       :->
-                                                                      #t(:SORT AUGMENT-ALT-0)))
-                (#^UPAT .
+                                                                      #t(:sort augment-alt-0)))
+                (#^upat .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT UIDS)
-                                                                      #t(:SORT SEQ))
+                                                                      (#t(:sort uids)
+                                                                      #t(:sort seq))
                                                                       :->
-                                                                      #t(:SORT UPAT)))
-                (#^STAR-AUG .
+                                                                      #t(:sort upat)))
+                (#^star-aug .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT AUGMENT))
+                                                                      (#t(:sort augment))
                                                                       :->
-                                                                      #t(:SORT AUGMENT)))
-                (#^POP-INDENT .
+                                                                      #t(:sort augment)))
+                (#^pop-indent .
                  #@("meta-grammar"
                                                                       :=
-                                                                      NIL
+                                                                      nil
                                                                       :->
-                                                                      #t(:SORT FORMAT-COMMAND)))
-                (#^BCONS .
+                                                                      #t(:sort format-command)))
+                (#^bcons .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT AUGMENT)
-                                                                      #t(:SORT AUGMENT))
+                                                                      (#t(:sort augment)
+                                                                      #t(:sort augment))
                                                                       :->
-                                                                      #t(:SORT AUGMENT)))
-                (#^LEX-TERMS .
+                                                                      #t(:sort augment)))
+                (#^lex-terms .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST (:UNION (:SORT SB-RUNTIME::ID) (:OP #^DELIMITER))))
+                                                                      (#t(:list (:union (:sort sb-runtime::id) (:op #^delimiter))))
                                                                       :->
-                                                                      #t(:SORT
-                                                                      LEXICAL-TERMINALS)))
-                (#^DOUBLEPLUS .
+                                                                      #t(:sort
+                                                                      lexical-terminals)))
+                (#^doubleplus .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT PATTERN)
-                                                                      #t(:SORT FORMAT))
+                                                                      (#t(:sort pattern)
+                                                                      #t(:sort format))
                                                                       :->
-                                                                      #t(:SORT PATTERN)))
-                (#^UKEYWORD .
+                                                                      #t(:sort pattern)))
+                (#^ukeyword .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT KEYWORD))
+                                                                      (#t(:sort keyword))
                                                                       :->
-                                                                      #t(:SORT UKEYWORD)))
-                (#^PREC-LEVEL .
+                                                                      #t(:sort ukeyword)))
+                (#^prec-level .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST (:SORT SINGLE-OP-PRECEDENCE)))
+                                                                      (#t(:list (:sort single-op-precedence)))
                                                                       :->
-                                                                      #t(:SORT SINGLE-LEVEL)))
-                (#^SEQ .
+                                                                      #t(:sort single-level)))
+                (#^seq .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST (:SORT PATTERN)))
+                                                                      (#t(:list (:sort pattern)))
                                                                       :->
-                                                                      #t(:SORT SEQ)))
-                (#^INITIAL .
+                                                                      #t(:sort seq)))
+                (#^initial .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT SINGLE-OP-PRECEDENCE-ALT-0))
+                                                                      (#t(:sort single-op-precedence-alt-0))
                                                                       :->
-                                                                      #t(:SORT
-                                                          SINGLE-OP-PRECEDENCE)))
-                (#^FORMAT .
+                                                                      #t(:sort
+                                                          single-op-precedence)))
+                (#^format .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT PATTERN)
-                                                                      #t(:SORT WS-SPECS))
+                                                                      (#t(:sort pattern)
+                                                                      #t(:sort ws-specs))
                                                                       :->
-                                                                      #t(:SORT PATTERN)))
-                (#^TAG .
+                                                                      #t(:sort pattern)))
+                (#^tag .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT PATTERN)
-                                                                      #t(:SORT PATTERN-ALT-0))
+                                                                      (#t(:sort pattern)
+                                                                      #t(:sort pattern-alt-0))
                                                                       :->
-                                                                      #t(:SORT PATTERN)))
-                (#^AGGREGATE .
+                                                                      #t(:sort pattern)))
+                (#^aggregate .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT SINGLE-OP-PRECEDENCE-ALT-0))
+                                                                      (#t(:sort single-op-precedence-alt-0))
                                                                       :->
-                                                                      #t(:SORT
-                                                          SINGLE-OP-PRECEDENCE)))
-                (#^POP-TAB .
+                                                                      #t(:sort
+                                                          single-op-precedence)))
+                (#^pop-tab .
                  #@("meta-grammar"
                                                                       :=
-                                                                      NIL
+                                                                      nil
                                                                       :->
-                                                                      #t(:SORT FORMAT-COMMAND)))
-                (#^NULL .
+                                                                      #t(:sort format-command)))
+                (#^null .
                  #@("meta-grammar"
                                                                       :=
-                                                                      NIL
+                                                                      nil
                                                                       :->
-                                                                      #t(:SORT AUGMENT)))
-                (#^UIDS .
+                                                                      #t(:sort augment)))
+                (#^uids .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST (:SORT SB-RUNTIME::ID)))
+                                                                      (#t(:list (:sort sb-runtime::id)))
                                                                       :->
-                                                                      #t(:SORT UIDS)))
-                (#^CONS .
+                                                                      #t(:sort uids)))
+                (#^cons .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT AUGMENT)
-                                                                      #t(:SORT AUGMENT))
+                                                                      (#t(:sort augment)
+                                                                      #t(:sort augment))
                                                                       :->
-                                                                      #t(:SORT AUGMENT)))
-                (#^EXT-NONTERMINAL .
+                                                                      #t(:sort augment)))
+                (#^ext-nonterminal .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT SB-RUNTIME::ID)
-                                                                      #t(:SORT SB-RUNTIME::ID))
+                                                                      (#t(:sort sb-runtime::id)
+                                                                      #t(:sort sb-runtime::id))
                                                                       :->
-                                                                      #t(:SORT
-                                                                      PATTERN)))
-                (#^MEDIAL .
+                                                                      #t(:sort
+                                                                      pattern)))
+                (#^medial .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT SINGLE-OP-PRECEDENCE-ALT-0)
-                                                                      #t(:SORT SB-RUNTIME::ID))
+                                                                      (#t(:sort single-op-precedence-alt-0)
+                                                                      #t(:sort sb-runtime::id))
                                                                       :->
-                                                                      #t(:SORT
-                                                                      SINGLE-OP-PRECEDENCE)))
-                (#^PUSH-INDENT .
+                                                                      #t(:sort
+                                                                      single-op-precedence)))
+                (#^push-indent .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT NUMBER))
+                                                                      (#t(:sort number))
                                                                       :->
-                                                                      #t(:SORT FORMAT-COMMAND)))
-                (#^BRACKET-ENTRIES .
+                                                                      #t(:sort format-command)))
+                (#^bracket-entries .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST (:OP #^BRACKET-ENTRY)))
+                                                                      (#t(:list (:op #^bracket-entry)))
                                                                       :->
-                                                                      #t(:SORT
-                                                     BRACKETING-INFORMATION)))
-                (#^PLUS .
+                                                                      #t(:sort
+                                                     bracketing-information)))
+                (#^plus .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT PATTERN))
+                                                                      (#t(:sort pattern))
                                                                       :->
-                                                                      #t(:SORT PATTERN)))
-                (#^CR .
+                                                                      #t(:sort pattern)))
+                (#^cr .
                  #@("meta-grammar"
                                                                       :=
-                                                                      NIL
+                                                                      nil
                                                                       :->
-                                                                      #t(:SORT FORMAT-COMMAND)))
-                (#^EXT-NAME .
+                                                                      #t(:sort format-command)))
+                (#^ext-name .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT SB-RUNTIME::ID)
-                                                                      #t(:SORT SB-RUNTIME::ID))
+                                                                      (#t(:sort sb-runtime::id)
+                                                                      #t(:sort sb-runtime::id))
                                                                       :->
-                                                                      #t(:SORT
-                                                                      AUGMENT)))
-                (#^SPACING .
+                                                                      #t(:sort
+                                                                      augment)))
+                (#^spacing .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:LIST (:OP #^SPACE-COM)))
+                                                                      (#t(:list (:op #^space-com)))
                                                                       :->
-                                                                      #t(:SORT SPACING-INFORMATION)))
-                (#^JUX-OP .
+                                                                      #t(:sort spacing-information)))
+                (#^jux-op .
                  #@("meta-grammar"
                                                                       :=
-                                                                      (#t(:SORT SPACING-INFORMATION-OPT-0))
+                                                                      (#t(:sort spacing-information-opt-0))
                                                                       :->
-                                                                      #t(:SORT
-                                                         SINGLE-OP-PRECEDENCE-ALT-0)))))) 
+                                                                      #t(:sort
+                                                         single-op-precedence-alt-0)))))) 
 
 
-(DEFPARAMETER *SB-SORT-TABLE*
-              (MAKE-SORT-TABLE
-               '((#t(:SORT SPACING-INFORMATION-OPT-0) .
-                  #t(:UNION
-                                                                      (:SORT
-                                                                      NUMBER)
-                                                                      (:SORT
-                                                                      SB-RUNTIME::ID)
-                                                                      (:OP
-                                                                      #^NULL)))
-                (#t(:SORT
-                                                                      PATTERN)
+(defparameter *sb-sort-table*
+              (make-sort-table
+               '((#t(:sort spacing-information-opt-0) .
+                  #t(:union
+                                                                      (:sort
+                                                                      number)
+                                                                      (:sort
+                                                                      sb-runtime::id)
+                                                                      (:op
+                                                                      #^null)))
+                (#t(:sort
+                                                                      pattern)
                  .
-                 #t(:UNION
-                                                                      (:OP
-                                                                      #^UPATTERN)
-                                                                      (:OP
-                                                                      #^AUGMENT)
-                                                                      (:OP
-                                                                      #^FORMAT)
-                                                                      (:OP
-                                                                      #^TAG)
-                                                                      (:OP
-                                                                      #^DOUBLESTAR)
-                                                                      (:OP
-                                                                      #^DOUBLEPLUS)
-                                                                      (:OP
-                                                                      #^PLUS)
-                                                                      (:OP
-                                                                      #^STAR)
-                                                                      (:OP
-                                                                      #^ALT)
-                                                                      (:OP
-                                                                      #^SEQ)
-                                                                      (:OP
-                                                                      #^OPT)
-                                                                      (:OP
-                                                                      #^JUX)
-                                                                      (:OP
-                                                                      #^UKEYWORD)
-                                                                      (:OP
-                                                                      #^EXT-NONTERMINAL)
-                                                                      (:OP
-                                                                      #^NONTERMINAL)))
-                (#t(:SORT
-                                                                      META-GRAMMAR-OPT-4)
+                 #t(:union
+                                                                      (:op
+                                                                      #^upattern)
+                                                                      (:op
+                                                                      #^augment)
+                                                                      (:op
+                                                                      #^format)
+                                                                      (:op
+                                                                      #^tag)
+                                                                      (:op
+                                                                      #^doublestar)
+                                                                      (:op
+                                                                      #^doubleplus)
+                                                                      (:op
+                                                                      #^plus)
+                                                                      (:op
+                                                                      #^star)
+                                                                      (:op
+                                                                      #^alt)
+                                                                      (:op
+                                                                      #^seq)
+                                                                      (:op
+                                                                      #^opt)
+                                                                      (:op
+                                                                      #^jux)
+                                                                      (:op
+                                                                      #^ukeyword)
+                                                                      (:op
+                                                                      #^ext-nonterminal)
+                                                                      (:op
+                                                                      #^nonterminal)))
+                (#t(:sort
+                                                                      meta-grammar-opt-4)
                  .
-                 #t(:UNION
-                                                                      (:SORT
-                                                                      LEXICAL-TERMINALS)
-                                                                      (:OP
-                                                                      #^META-GRAMMAR-NULL-6)))
-                (#t(:SORT
-                                                                      COMMENT-CHARACTER)
+                 #t(:union
+                                                                      (:sort
+                                                                      lexical-terminals)
+                                                                      (:op
+                                                                      #^meta-grammar-null-6)))
+                (#t(:sort
+                                                                      comment-character)
                  .
-                 #t(:OP
-                                                                      #^COMMENT-CHARACTER))
-                (#t(:SORT
-                                                                      FORMAT)
+                 #t(:op
+                                                                      #^comment-character))
+                (#t(:sort
+                                                                      format)
                  .
-                 #t(:OP
-                                                                      #^FORMAT))
-                (#t(:SORT
-                                                                      NTS)
+                 #t(:op
+                                                                      #^format))
+                (#t(:sort
+                                                                      nts)
                  .
-                 #t(:OP
-                                                                      #^NTS))
-                (#t(:SORT
-                                                                      SPACE-COM)
+                 #t(:op
+                                                                      #^nts))
+                (#t(:sort
+                                                                      space-com)
                  .
-                 #t(:OP
-                                                                      #^SPACE-COM))
-                (#t(:SORT
-                                                                      MULTIPLE-LEVELS)
+                 #t(:op
+                                                                      #^space-com))
+                (#t(:sort
+                                                                      multiple-levels)
                  .
-                 #t(:OP
-                                                                      #^PREC-LEVELS))
-                (#t(:SORT
-                                                                      META-GRAMMAR-OPT-7)
+                 #t(:op
+                                                                      #^prec-levels))
+                (#t(:sort
+                                                                      meta-grammar-opt-7)
                  .
-                 #t(:UNION
-                                                                      (:SORT
-                                                                      SPACING-INFORMATION)
-                                                                      (:OP
-                                                                      #^META-GRAMMAR-NULL-9)))
-                (#t(:SORT
-                                                                      ESCAPE-CHARACTER)
+                 #t(:union
+                                                                      (:sort
+                                                                      spacing-information)
+                                                                      (:op
+                                                                      #^meta-grammar-null-9)))
+                (#t(:sort
+                                                                      escape-character)
                  .
-                 #t(:OP
-                                                                      #^ESCAPE-CHARACTER))
-                (#t(:SORT
-                                                                      SINGLE-OP-PRECEDENCE)
+                 #t(:op
+                                                                      #^escape-character))
+                (#t(:sort
+                                                                      single-op-precedence)
                  .
-                 #t(:UNION
-                                                                      (:OP
-                                                                      #^AGGREGATE)
-                                                                      (:OP
-                                                                      #^MEDIAL)
-                                                                      (:OP
-                                                                      #^INITIAL)))
-                (#t(:SORT
-                                                                      BRACKET-ENTRY)
+                 #t(:union
+                                                                      (:op
+                                                                      #^aggregate)
+                                                                      (:op
+                                                                      #^medial)
+                                                                      (:op
+                                                                      #^initial)))
+                (#t(:sort
+                                                                      bracket-entry)
                  .
-                 #t(:OP
-                                                                      #^BRACKET-ENTRY))
-                (#t(:SORT
-                                                                      LEXICAL-TERMINALS)
+                 #t(:op
+                                                                      #^bracket-entry))
+                (#t(:sort
+                                                                      lexical-terminals)
                  .
-                 #t(:OP
-                                                                      #^LEX-TERMS))
-                (#t(:SORT
-                                                                      UIDS)
+                 #t(:op
+                                                                      #^lex-terms))
+                (#t(:sort
+                                                                      uids)
                  .
-                 #t(:OP
-                                                                      #^UIDS))
-                (#t(:SORT
-                                                                      SINGLE-LEVEL)
+                 #t(:op
+                                                                      #^uids))
+                (#t(:sort
+                                                                      single-level)
                  .
-                 #t(:OP
-                                                                      #^PREC-LEVEL))
-                (#t(:SORT
-                                                                      META-GRAMMAR-OPT-2)
+                 #t(:op
+                                                                      #^prec-level))
+                (#t(:sort
+                                                                      meta-grammar-opt-2)
                  .
-                 #t(:UNION
-                                                                      (:SORT
-                                                                      COMMENT-CHARACTER)
-                                                                      (:OP
-                                                                      #^META-GRAMMAR-NULL-3)))
-                (#t(:SORT
-                                                                      META-GRAMMAR)
+                 #t(:union
+                                                                      (:sort
+                                                                      comment-character)
+                                                                      (:op
+                                                                      #^meta-grammar-null-3)))
+                (#t(:sort
+                                                                      meta-grammar)
                  .
-                 #t(:OP
-                                                                      #^GRAMMAR))
-                (#t(:SORT
-                                                                      PRECEDENCE-INFORMATION)
+                 #t(:op
+                                                                      #^grammar))
+                (#t(:sort
+                                                                      precedence-information)
                  .
-                 #t(:OP
-                                                                      #^PREC-ENTRIES))
-                (#t(:SORT
-                                                                      SPACING-INFORMATION-ALT-0)
+                 #t(:op
+                                                                      #^prec-entries))
+                (#t(:sort
+                                                                      spacing-information-alt-0)
                  .
-                 #t(:UNION
-                                                                      (:OP
-                                                                      #^JUX-OP)
-                                                                      (:SORT
-                                                                      SB-RUNTIME::ID)
-                                                                      (:SORT
-                                                                      KEYWORD)))
-                (#t(:SORT
-                                                                      UKEYWORD)
+                 #t(:union
+                                                                      (:op
+                                                                      #^jux-op)
+                                                                      (:sort
+                                                                      sb-runtime::id)
+                                                                      (:sort
+                                                                      keyword)))
+                (#t(:sort
+                                                                      ukeyword)
                  .
-                 #t(:OP
-                                                                      #^UKEYWORD))
-                (#t(:SORT
-                                                                      WS-SPECS)
+                 #t(:op
+                                                                      #^ukeyword))
+                (#t(:sort
+                                                                      ws-specs)
                  .
-                 #t(:OP
-                                                                      #^WS-SPECS))
-                (#t(:SORT
-                                                                      META-GRAMMAR-OPT-5)
+                 #t(:op
+                                                                      #^ws-specs))
+                (#t(:sort
+                                                                      meta-grammar-opt-5)
                  .
-                 #t(:UNION
-                                                                      (:SORT
-                                                                      BRACKETING-INFORMATION)
-                                                                      (:OP
-                                                                      #^META-GRAMMAR-NULL-7)))
-                (#t(:SORT
-                                                                      OPERATOR-INFORMATION)
+                 #t(:union
+                                                                      (:sort
+                                                                      bracketing-information)
+                                                                      (:op
+                                                                      #^meta-grammar-null-7)))
+                (#t(:sort
+                                                                      operator-information)
                  .
-                 #t(:OP
-                                                                      #^OP-INFO))
-                (#t(:SORT
-                                                                      BRACKETING-INFORMATION)
+                 #t(:op
+                                                                      #^op-info))
+                (#t(:sort
+                                                                      bracketing-information)
                  .
-                 #t(:OP
-                                                                      #^BRACKET-ENTRIES))
-                (#t(:SORT
-                                                                      META-GRAMMAR-OPT-8)
+                 #t(:op
+                                                                      #^bracket-entries))
+                (#t(:sort
+                                                                      meta-grammar-opt-8)
                  .
-                 #t(:UNION
-                                                                      (:SORT
-                                                                      ESCAPE-CHARACTER)
-                                                                      (:OP
-                                                                      #^META-GRAMMAR-NULL-4)))
-                (#t(:SORT
-                                                                      UPATS)
+                 #t(:union
+                                                                      (:sort
+                                                                      escape-character)
+                                                                      (:op
+                                                                      #^meta-grammar-null-4)))
+                (#t(:sort
+                                                                      upats)
                  .
-                 #t(:OP
-                                                                      #^UPATS))
-                (#t(:SORT
-                                                                      FORMAT-COMMAND)
+                 #t(:op
+                                                                      #^upats))
+                (#t(:sort
+                                                                      format-command)
                  .
-                 #t(:UNION
-                                                                      (:OP
-                                                                      #^POP-TAB)
-                                                                      (:OP
-                                                                      #^PUSH-TAB-RIGHT)
-                                                                      (:OP
-                                                                      #^PUSH-TAB-LEFT)
-                                                                      (:OP
-                                                                      #^POP-INDENT)
-                                                                      (:OP
-                                                                      #^PUSH-INDENT)
-                                                                      (:OP
-                                                                      #^UNITE)
-                                                                      (:OP
-                                                                      #^DECR-BP)
-                                                                      (:OP
-                                                                      #^INCR-BP)
-                                                                      (:OP
-                                                                      #^CR)
-                                                                      (:OP
-                                                                      #^SP)))
-                (#t(:SORT
-                                                                      AUGMENT)
+                 #t(:union
+                                                                      (:op
+                                                                      #^pop-tab)
+                                                                      (:op
+                                                                      #^push-tab-right)
+                                                                      (:op
+                                                                      #^push-tab-left)
+                                                                      (:op
+                                                                      #^pop-indent)
+                                                                      (:op
+                                                                      #^push-indent)
+                                                                      (:op
+                                                                      #^unite)
+                                                                      (:op
+                                                                      #^decr-bp)
+                                                                      (:op
+                                                                      #^incr-bp)
+                                                                      (:op
+                                                                      #^cr)
+                                                                      (:op
+                                                                      #^sp)))
+                (#t(:sort
+                                                                      augment)
                  .
-                 #t(:UNION
-                                                                      (:OP
-                                                                      #^TAG-AUG)
-                                                                      (:OP
-                                                                      #^OPT-AUG)
-                                                                      (:OP
-                                                                      #^ALT-AUG)
-                                                                      (:OP
-                                                                      #^PLUS-AUG)
-                                                                      (:OP
-                                                                      #^STAR-AUG)
-                                                                      (:OP
-                                                                      #^TERM-CONST)
-                                                                      (:OP
-                                                                      #^APPEND)
-                                                                      (:OP
-                                                                      #^BCONS)
-                                                                      (:OP
-                                                                      #^CONS)
-                                                                      (:OP
-                                                                      #^LIST)
-                                                                      (:OP
-                                                                      #^NULL)
-                                                                      (:OP
-                                                                      #^EXT-NAME)
-                                                                      (:OP
-                                                                      #^NAME)
-                                                                      (:OP
-                                                                      #^LITERAL-AUG)
-                                                                      (:OP
-                                                                      #^NUMBER-AUG)
-                                                                      (:OP
-                                                                      #^STRING-AUG)))
-                (#t(:SORT
-                                                                      META-GRAMMAR-OPT-0)
+                 #t(:union
+                                                                      (:op
+                                                                      #^tag-aug)
+                                                                      (:op
+                                                                      #^opt-aug)
+                                                                      (:op
+                                                                      #^alt-aug)
+                                                                      (:op
+                                                                      #^plus-aug)
+                                                                      (:op
+                                                                      #^star-aug)
+                                                                      (:op
+                                                                      #^term-const)
+                                                                      (:op
+                                                                      #^append)
+                                                                      (:op
+                                                                      #^bcons)
+                                                                      (:op
+                                                                      #^cons)
+                                                                      (:op
+                                                                      #^list)
+                                                                      (:op
+                                                                      #^null)
+                                                                      (:op
+                                                                      #^ext-name)
+                                                                      (:op
+                                                                      #^name)
+                                                                      (:op
+                                                                      #^literal-aug)
+                                                                      (:op
+                                                                      #^number-aug)
+                                                                      (:op
+                                                                      #^string-aug)))
+                (#t(:sort
+                                                                      meta-grammar-opt-0)
                  .
-                 #t(:UNION
-                                                                      (:SORT
-                                                                      SB-RUNTIME::ID)
-                                                                      (:OP
-                                                                      #^META-GRAMMAR-NULL-1)))
-                (#t(:SORT
-                                                                      COMMENT-CHARACTER-OPT-0)
+                 #t(:union
+                                                                      (:sort
+                                                                      sb-runtime::id)
+                                                                      (:op
+                                                                      #^meta-grammar-null-1)))
+                (#t(:sort
+                                                                      comment-character-opt-0)
                  .
-                 #t(:UNION
-                                                                      (:SORT
-                                                                      KEYWORD)
-                                                                      (:OP
-                                                                      #^NULL)))
-                (#t(:SORT
-                                                                      META-GRAMMAR-OPT-3)
+                 #t(:union
+                                                                      (:sort
+                                                                      keyword)
+                                                                      (:op
+                                                                      #^null)))
+                (#t(:sort
+                                                                      meta-grammar-opt-3)
                  .
-                 #t(:UNION
-                                                                      (:SORT
-                                                                      OPERATOR-INFORMATION)
-                                                                      (:OP
-                                                                      #^META-GRAMMAR-NULL-5)))
-                (#t(:SORT
-                                                                      UPAT)
+                 #t(:union
+                                                                      (:sort
+                                                                      operator-information)
+                                                                      (:op
+                                                                      #^meta-grammar-null-5)))
+                (#t(:sort
+                                                                      upat)
                  .
-                 #t(:OP
-                                                                      #^UPAT))
-                (#t(:SORT
-                                                                      PATTERN-ALT-0)
+                 #t(:op
+                                                                      #^upat))
+                (#t(:sort
+                                                                      pattern-alt-0)
                  .
-                 #t(:UNION
-                                                                      (:SORT
-                                                                      NUMBER)
-                                                                      (:SORT
-                                                                      SB-RUNTIME::ID)))
-                (#t(:SORT
-                                                                      SPACING-INFORMATION)
+                 #t(:union
+                                                                      (:sort
+                                                                      number)
+                                                                      (:sort
+                                                                      sb-runtime::id)))
+                (#t(:sort
+                                                                      spacing-information)
                  .
-                 #t(:OP
-                                                                      #^SPACING))
-                (#t(:SORT
-                                                                      SEQ)
+                 #t(:op
+                                                                      #^spacing))
+                (#t(:sort
+                                                                      seq)
                  .
-                 #t(:OP
-                                                                      #^SEQ))
-                (#t(:SORT
-                                                                      META-GRAMMAR-OPT-6)
+                 #t(:op
+                                                                      #^seq))
+                (#t(:sort
+                                                                      meta-grammar-opt-6)
                  .
-                 #t(:UNION
-                                                                      (:SORT
-                                                                      PRECEDENCE-INFORMATION)
-                                                                      (:OP
-                                                                      #^META-GRAMMAR-NULL-8)))
-                (#t(:SORT
-                                                                      PREC-ENTRY)
+                 #t(:union
+                                                                      (:sort
+                                                                      precedence-information)
+                                                                      (:op
+                                                                      #^meta-grammar-null-8)))
+                (#t(:sort
+                                                                      prec-entry)
                  .
-                 #t(:OP
-                                                                      #^PREC-ENTRY))
-                (#t(:SORT
-                                                                      SINGLE-OP-PRECEDENCE-ALT-0)
+                 #t(:op
+                                                                      #^prec-entry))
+                (#t(:sort
+                                                                      single-op-precedence-alt-0)
                  .
-                 #t(:UNION
-                                                                      (:OP
-                                                                      #^JUX-OP)
-                                                                      (:OP
-                                                                      #^KEYWORD-OP)))
-                (#t(:SORT
-                                                                      EXTERNAL-GRAMMARS)
+                 #t(:union
+                                                                      (:op
+                                                                      #^jux-op)
+                                                                      (:op
+                                                                      #^keyword-op)))
+                (#t(:sort
+                                                                      external-grammars)
                  .
-                 #t(:OP
-                                                                      #^EXT-GRAM))
-                (#t(:SORT
-                                                                      AUGMENT-ALT-0)
+                 #t(:op
+                                                                      #^ext-gram))
+                (#t(:sort
+                                                                      augment-alt-0)
                  .
-                 #t(:UNION
-                                                                      (:OP
-                                                                      #^STRING-AUG)
-                                                                      (:OP
-                                                                      #^LITERAL-AUG)
-                                                                      (:OP
-                                                                      #^ID-AUG)))
-                (#t(:SORT
-                                                                      LEXICAL-TERMINALS-OPT-0)
+                 #t(:union
+                                                                      (:op
+                                                                      #^string-aug)
+                                                                      (:op
+                                                                      #^literal-aug)
+                                                                      (:op
+                                                                      #^id-aug)))
+                (#t(:sort
+                                                                      lexical-terminals-opt-0)
                  .
-                 #t(:UNION
-                                                                      (:OP
-                                                                      #^DELIMITER)
-                                                                      (:SORT
-                                                                      SB-RUNTIME::ID)))
-                (#t(:SORT
-                                                                      META-GRAMMAR-OPT-1)
+                 #t(:union
+                                                                      (:op
+                                                                      #^delimiter)
+                                                                      (:sort
+                                                                      sb-runtime::id)))
+                (#t(:sort
+                                                                      meta-grammar-opt-1)
                  .
-                 #t(:UNION
-                                                                      (:SORT
-                                                                      EXTERNAL-GRAMMARS)
-                                                                      (:OP
-                                                                      #^META-GRAMMAR-NULL-2)))
-                (#t(:SORT
-                                                                      NONTERMINAL-DEFINITION)
+                 #t(:union
+                                                                      (:sort
+                                                                      external-grammars)
+                                                                      (:op
+                                                                      #^meta-grammar-null-2)))
+                (#t(:sort
+                                                                      nonterminal-definition)
                  .
-                 #t(:OP
-                                                                      #^NT-DEF))))) 
+                 #t(:op
+                                                                      #^nt-def))))) 
 
 (lang:lang-define 
 :name "meta-grammar"
 :conc-name "sb"
-:code-package "SYNTAX-BOX"
-:abs-syn-package "SYNTAX-BOX"
-:use-packages '("ERGOLISP" "OPER" "OCC" "TERM" "SORT" "SB-RUNTIME" "LANG" "NEWATTR")
-:sub-languages '("LEXICAL-TERMINALS")
-:unparse-nts 'T
-:parse-routine-name 'SYNTAX-BOX::SB-PARSE
-:unparse-routine-name 'SYNTAX-BOX::SB-UNPARSE
-:win-unparse-routine-name 'SYNTAX-BOX::SB-WIN-UNPARSE
-:sort-table-name 'SYNTAX-BOX::*SB-SORT-TABLE*
-:opsig-table-name 'SYNTAX-BOX::*SB-OPSIG-TABLE*
+:code-package "syntax-box"
+:abs-syn-package "syntax-box"
+:use-packages '("ergolisp" "oper" "occ" "term" "sort" "sb-runtime" "lang" "newattr")
+:sub-languages '("lexical-terminals")
+:unparse-nts 't
+:parse-routine-name 'syntax-box::sb-parse
+:unparse-routine-name 'syntax-box::sb-unparse
+:win-unparse-routine-name 'syntax-box::sb-win-unparse
+:sort-table-name 'syntax-box::*sb-sort-table*
+:opsig-table-name 'syntax-box::*sb-opsig-table*
 )
 

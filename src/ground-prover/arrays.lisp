@@ -27,10 +27,10 @@
 	 (arity (car (nthcdr 6 chars))))
 ;					    (format t "~%first6= ~a" first6)
 ;					    (format t "~%arity= ~a" arity)
-    (and (equal first6 '(A P P L Y -))
+    (and (equal first6 '(a p p l y -))
 	 (equal arity '|1|))))
 
-;forms (APPLY-n-type A args)
+;forms (apply-n-type a args)
 (defun make-ary-apply (ret-type array args)
   (cons (applysym1
 	 ret-type
@@ -42,8 +42,8 @@
 (defmacro argrest (n args) `(nthcdr ,n ,args))
 
 (defun sigapply (term)
-  ; term is assumed to be of the form (APPLY-N-type fun args)
-  (when *arrayflg* (TERPRI) (princ "sigapply: ") (pprint term))
+  ; term is assumed to be of the form (apply-N-type fun args)
+  (when *arrayflg* (terpri) (princ "sigapply: ") (pprint term))
 ;  (prog (ans array0 array1 i j val ijeq))
  (let ((array0 (arg1 term))
        (jlst (nthcdr 2 term)))
@@ -56,19 +56,19 @@
 				(if (consp (cdr jlst)) ;multiary
 				    (newcontext
 				     (process-no-canon
-				      `(EQUAL ,i
-					      ,(cons 'TUPCONS jlst))))
+				      `(equal ,i
+					      ,(cons 'tupcons jlst))))
 				    (newcontext
 				     (process-no-canon
-				      `(EQUAL ,i ,(car jlst)))))))
-			   (cond ((eq ijeq 'TRUE)  val)
-				 ((eq ijeq 'FALSE)
+				      `(equal ,i ,(car jlst)))))))
+			   (cond ((eq ijeq 'true)  val)
+				 ((eq ijeq 'false)
 				  (sigapply (cons (funsym term)
 						 (cons array1 jlst)) ))
 				 (t
 				  (setq needed-if* t)
-				  `(IF* (EQUAL ,i ,(if (consp (cdr jlst))
-						       (cons 'TUPCONS jlst)
+				  `(if* (equal ,i ,(if (consp (cdr jlst))
+						       (cons 'tupcons jlst)
 						       (car jlst)))
 					,val
 					,(cons (funsym term)
@@ -79,12 +79,12 @@
 
 (defun sigupdate (term)
 ;term is assumed to be a list whose funsym is 'update
-  (when *arrayflg* (TERPRI) (princ "sigupdate: ") (pprint term))
+  (when *arrayflg* (terpri) (princ "sigupdate: ") (pprint term))
   (let
       ((array0 (arg1 term))
        (j (arg2 term)))
     (cond ((not (consp array0))				       
-	   (when *arrayflg* (TERPRI) (princ "       ==> ") (pprint ans))
+	   (when *arrayflg* (terpri) (princ "       ==> ") (pprint term))
 	   term)
 	  (t
 	   (case (funsym array0)
@@ -93,13 +93,13 @@
 			    (val  (arg3 array0) )
 			    (ieqj (newcontext
 					    (process-no-canon
-					     `(EQUAL ,i ,j)))))
-		       (cond ((eq ieqj 'TRUE)
+					     `(equal ,i ,j)))))
+		       (cond ((eq ieqj 'true)
 			      (list 'update
 				    array1
 				    j
 				    (arg3 term)))
-			     ((eq ieqj 'FALSE)
+			     ((eq ieqj 'false)
 			      ; DAC: 3-18-91
 			      ; when i > j have to call sigupdate recursively
 			      ; so that if there is an index j' in array1
@@ -111,12 +111,12 @@
 					 ,i ,val)))
 			     ((expr< i j)
 			      (setq needed-if* t)
-			      `(IF* (EQUAL ,i ,j)
+			      `(if* (equal ,i ,j)
 				    (update ,array1 ,j ,(arg3 term))
 				    (update (update ,array1 ,i ,val)
 					    ,j ,(arg3 term))))
 			     (t (setq needed-if* t)
-				`(IF* (EQUAL ,j ,i)
+				`(if* (equal ,j ,i)
 				      (update ,array1 ,j ,(arg3 term))
 				      (update (update ,array1 ,j ,(arg3 term))
 					    ,i ,val))))))
@@ -161,61 +161,61 @@
 (defun process-result2 (leftside new-rightside)
   (let ((result (newcontext
 		 (process-no-canon
-		  `(EQUAL ,leftside ,new-rightside)))))
+		  `(equal ,leftside ,new-rightside)))))
     (if (not (updatep new-rightside))
-	(if (equal result 'TRUE) 'TRUE nil)
+	(if (equal result 'true) 'true nil)
 	result)))
 
 (defun arraysolve (atf) 
-  (when *arrayflg* (TERPRI) (princ "arraysolve: ") (pprint atf))
+  (when *arrayflg* (terpri) (princ "arraysolve: ") (pprint atf))
   (let
     ((ans
       (case (funsym atf)						
-        (EQUAL
+        (equal
 	  (let ((leftside (lside atf))
 		(rightside (rside atf)) )
 	    (cond
-	       ((equal leftside rightside) '(TRUE))
+	       ((equal leftside rightside) '(true))
 	       ((and (updatep leftside) (not (updatep rightside)))
-		(arraysolve `(EQUAL ,rightside ,leftside)) )
+		(arraysolve `(equal ,rightside ,leftside)) )
 	       ((and (updatep leftside) (updatep rightside))
 		  ; "do" goes thru 3 args of update in reverse order,
 		  ; because last is most likely to achieve a shortcut
-		  ; by causing (RETFALSE).
+		  ; by causing (retfalse).
 		(let* ((largs (argsof leftside))
 		       (rargs (argsof rightside))
 		       (resarray (newcontext
 				 (process-no-canon
-				  `(EQUAL ,(car largs) ,(car rargs)))))
+				  `(equal ,(car largs) ,(car rargs)))))
 		       (resindex (newcontext
 				  (process-no-canon
-				   `(EQUAL ,(arg2 leftside)
+				   `(equal ,(arg2 leftside)
 					   ,(arg2 rightside)))))
 		       (resval nil))
-		  (cond ((and (eq resarray 'TRUE)(eq resindex 'TRUE))
+		  (cond ((and (eq resarray 'true)(eq resindex 'true))
 			 (setq resval
 			       (newcontext
 				(process-no-canon
-				 `(EQUAL ,(arg3 leftside)
+				 `(equal ,(arg3 leftside)
 					 ,(arg3 rightside)))))
-			 (cond ((null resval) (list `(EQUAL ,(arg3 leftside)
+			 (cond ((null resval) (list `(equal ,(arg3 leftside)
 							    ,(arg3 rightside))))
-			       ((memq resval '(TRUE FALSE))
+			       ((memq resval '(true false))
 				(ncons resval))
 			       (t resval)))
-			((eq resarray 'TRUE)
+			((eq resarray 'true)
 			 (let* ((leftarg2
-				 (if (eq (prtype (arg2 leftside)) 'TUPLE)
+				 (if (eq (prtype (arg2 leftside)) 'tuple)
 					  (cdr (arg2 leftside))
 					  (list (arg2 leftside))))
 				(rightarg2
-				 (if (eq (prtype (arg2 rightside)) 'TUPLE)
+				 (if (eq (prtype (arg2 rightside)) 'tuple)
 					  (cdr (arg2 rightside))
 					  (list (arg2 rightside))))
 				(res1
 				(newcontext
 				 (process-no-canon
-				  `(EQUAL 
+				  `(equal 
 				    ,(make-ary-apply
 				      (prtype (arg3 rightside))
 				      (arg1 leftside)
@@ -224,23 +224,23 @@
 			       (res2
 				(newcontext
 				 (process-no-canon
-				  `(EQUAL 
+				  `(equal 
 				    ,(make-ary-apply
 				      (prtype (arg3 leftside))
 				      (arg1 rightside)
 				      rightarg2)
 				    ,(arg3 leftside))))))
-			   (cond ((or (eq res1 'FALSE)(eq res2 'FALSE))
-				  (list `(EQUAL ,(arg2 leftside)
+			   (cond ((or (eq res1 'false)(eq res2 'false))
+				  (list `(equal ,(arg2 leftside)
 						,(arg2 rightside))
-					`(EQUAL ,(arg3 leftside)
+					`(equal ,(arg3 leftside)
 						,(arg3 rightside))))
 				 ((and (null res1)(null res2))
 				  (ncons atf))
-				 ((eq res1 'TRUE)
-				  (if (eq res2 'TRUE) (ncons 'TRUE)
+				 ((eq res1 'true)
+				  (if (eq res2 'true) (ncons 'true)
 				    res2))
-				 ((eq res2 'TRUE) res1)
+				 ((eq res2 'true) res1)
 				 (t (append res1 res2)))))
 			(t (ncons atf)))))
 	       ((and (not (updatep leftside))
@@ -254,17 +254,17 @@
 			     (result1   ;
 			      (newcontext
 			      (process-no-canon
-			       `(EQUAL ,(make-ary-apply
+			       `(equal ,(make-ary-apply
 					  (prtype (arg3 rightside))
 					  leftside
-					  (if (eq (prtype (arg2 rightside)) 'TUPLE)
+					  (if (eq (prtype (arg2 rightside)) 'tuple)
 					      (cdr (arg2 rightside))
 					      (list (arg2 rightside))))
 					 ,(arg3 rightside) ))))
 			     (result2 (process-result2 leftside (arg1 rightside))))
 			     ; DAC see comment above for process-result2.
 			 (cond ((eq result1 'false)
-				'(FALSE))
+				'(false))
 			       ((eq result2 'false)
 				; DAC (12/6/94): Fixed unsoundness bug:
 				; B(i) = v & A = B WITH [i := u] & u \= v
@@ -282,35 +282,35 @@
 				(let ((test-equal-at-right-index
 				       (newcontext
 					(process-no-canon
-					 `(EQUAL
+					 `(equal
 					   ,(make-ary-apply
 					     (prtype (arg3 rightside))
 					     leftside
 					     (if (eq (prtype (arg2 rightside))
-						     'TUPLE)
+						     'tuple)
 						 (cdr (arg2 rightside))
 						 (list (arg2 rightside))))
 					   ,(make-ary-apply
 					     (prtype (arg3 rightside))
 					     (arg1 rightside)
 					     (if (eq (prtype (arg2 rightside))
-						     'TUPLE)
+						     'tuple)
 						 (cdr (arg2 rightside))
 						 (list (arg2 rightside)))))))))
 				  (if (eq test-equal-at-right-index 'true)
-				      '(FALSE)
+				      '(false)
 				      (ncons atf))))
-			       ((eq result1 'TRUE)
-				(if (eq result2 'TRUE)
-				    '(TRUE)
+			       ((eq result1 'true)
+				(if (eq result2 'true)
+				    '(true)
 				    (or result2 (ncons atf))))
-			       ((eq result2 'TRUE)
+			       ((eq result2 'true)
 				(or result1
 				    (ncons
-				     `(EQUAL ,(make-ary-apply
+				     `(equal ,(make-ary-apply
 					  (prtype (arg3 rightside))
 					  leftside
-					  (if (eq (prtype (arg2 rightside)) 'TUPLE)
+					  (if (eq (prtype (arg2 rightside)) 'tuple)
 					      (cdr (arg2 rightside))
 					      (list (arg2 rightside))))
 					 ,(arg3 rightside) ))))
@@ -319,8 +319,8 @@
 			       (t (append result2 result1)))))
 		      (t (ncons atf)) ))
 	       (t (ncons atf)))))
-	(t `((EQUAL ,atf TRUE))) ) ))
-    (when *arrayflg* (TERPRI) (princ "      ==> ") (pprint ans))
+	(t `((equal ,atf true))) ) ))
+    (when *arrayflg* (terpri) (princ "      ==> ") (pprint ans))
     ans ))
 
 ; ------------------------------------------------------------------------
@@ -329,9 +329,9 @@
 ; 24-10-89 using function common to both tuples and arrays (see tuples.lisp)
 
 (defun arraynsolve (atf)
-  (when *arrayflg* (TERPRI) (princ "arraynsolve: ") (pprint atf))
+  (when *arrayflg* (terpri) (princ "arraynsolve: ") (pprint atf))
   (let ((ans (common-nsolve atf)))
-    (when *arrayflg* (TERPRI) (princ "       ==> ") (pprint ans))
+    (when *arrayflg* (terpri) (princ "       ==> ") (pprint ans))
     ans ))
 
 ;------------------------------------------------------------------
@@ -342,18 +342,18 @@
       (if (consp exp2)
 	  (or (expr< (car exp1)(car exp2))
 	      (expr< (cdr exp1)(cdr exp2)))
-	NIL)
+	nil)
     (if (consp exp2)
-	T
+	t
       (atom< exp1 exp2))))
 
 (defun atom< (exp1 exp2)
   (if (numberp exp1)
       (if (numberp exp2)
 	  (< exp1 exp2)
-	T)
+	t)
     (if (numberp exp2)
-	NIL
+	nil
       (string< exp1 exp2))))
 	      
 

@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'PVS)
+(in-package :pvs)
 
 
 
@@ -29,7 +29,7 @@
   (let* ((goalsequent (current-goal ps))
 	 (*assert-flag* (if (eq assert? 'none) 'none
 			    (if assert? 'assert 'simplify)))
-	 (*hash-rewrites?* T)
+	 (*hash-rewrites?* t)
 	 (*rewrite-hash* ;;if *hash-rewrites?*
 	  (copy (rewrite-hash ps)))
 	 (sformnums (if (memq sformnum '(* + -))
@@ -120,7 +120,7 @@ list of positive numbers" occurrence)
 
 (defun match-defns (expr def-axioms)
   (cond ((null def-axioms) 'fail)
-	(t (let* ((*modsubst* T)
+	(t (let* ((*modsubst* t)
 		  (ax (car def-axioms))
 		  (def-expr (if (forall-expr? ax)
 				(expression ax)

@@ -11,7 +11,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (export '(typecheck typecheck*))
 
@@ -21,7 +21,7 @@
 
 (defmethod typecheck ((m module) &key expected context tccs)
   (declare (ignore expected context tccs))
-  (let ((*generate-tccs* 'ALL))
+  (let ((*generate-tccs* 'all))
     (typecheck* m nil nil nil)))
 
 
@@ -478,14 +478,62 @@
 	  (progn (update-current-context theory theoryname)
 		 (dolist (decl (append (assuming theory) (theory theory)))
 		   (when (and (declaration? decl)
-			      (visible? decl)
-			      (not (find decl (mappings theoryname)
-					 :key #'(lambda (m)
-						  (declaration (lhs m))))))
-		     (check-for-importing-conflicts decl)
-		     (put-decl decl (current-declarations-hash))))
+			      (visible? decl))
+		     (let ((map (find decl (mappings theoryname)
+				      :key #'(lambda (m)
+					       (declaration (lhs m))))))
+		       (unless (mapping-subst? map)
+			 (check-for-importing-conflicts decl)
+			 (put-decl decl (current-declarations-hash))))))
 		 (setf (gethash theory (current-using-hash))
 		       (list tname)))))))
+
+(defmethod get-mapped-decl ((map mapping-def))
+  (break)
+  (or (mapped-decl map)
+      (let ((decl (declaration (lhs map))))
+	(setf (mapped-decl map)
+	      (typecase decl
+		(type-decl
+		 (copy decl
+		   'module (current-theory)
+		   'type-value (type-value (rhs map))))
+		(const-decl
+		 (let ((mdecl (copy decl
+				'module (current-theory)
+				'type (type (expr (rhs map)))
+				'declared-type (or (print-type
+						    (type (expr (rhs map))))
+						   (type (expr (rhs map))))
+				'definition (expr (rhs map)))))
+		   (make-def-axiom mdecl)
+		   mdecl))
+		(t (break "get-mapped-decl")
+		   decl))))))
+
+(defmethod get-mapped-decl ((map mapping-rename))
+  (break)
+  (or (mapped-decl map)
+      (let ((decl (declaration (lhs map))))
+	(typecase decl
+	  (type-decl
+	   (let* ((id (id (expr (rhs map))))
+		  (tn (mk-type-name id)))
+	     (setf (resolutions tn)
+		   (list (mk-resolution decl (current-theory-name) tn)))
+	     (setf (mapped-decl map)
+		   (copy decl
+		     'id id
+		     'type-value tn))))
+	  (const-decl
+	   (let ((id (id (expr (rhs map)))))
+	     (assert (type (expr (rhs map))))
+	     (break "get-mapped-decl (mapping-rename) const-decl")
+	     (setf (mapped-decl map)
+		   (copy decl
+		     'id (id (expr (rhs map)))
+		     ))))
+	  (t (break "get-mapped-decl (mapping-rename) theory"))))))
 
 (defmethod check-for-importing-conflicts ((decl lib-decl))
   (let ((lib (get-library-pathname (library decl))))
@@ -519,15 +567,19 @@
 
 (defun update-conversions-of-current-context (theory theoryname)
   (dolist (conversion (conversions (saved-context theory)))
-    (when (eq (module conversion) theory)
-      (pushnew (subst-params-decl conversion theoryname)
-	       (conversions *current-context*)
-	       :test #'eq)))
+    (if (eq (module conversion) theory)
+	(pushnew (subst-params-decl conversion theoryname)
+		 (conversions *current-context*)
+		 :test #'eq)
+	(pushnew conversion (conversions *current-context*)
+		 :test #'eq)))
   (dolist (conversion (disabled-conversions (saved-context theory)))
-    (when (eq (module conversion) theory)
-      (pushnew (subst-params-decl conversion theoryname)
-	       (disabled-conversions *current-context*)
-	       :test #'eq))))
+    (if (eq (module conversion) theory)
+	(pushnew (subst-params-decl conversion theoryname)
+		 (disabled-conversions *current-context*)
+		 :test #'eq)
+	(pushnew conversion (disabled-conversions *current-context*)
+		 :test #'eq))))
 
 (defmethod subst-params-decl ((c conversion-decl) modinst)
   (lcopy c
@@ -615,19 +667,29 @@
 	(dolist (mapping mappings)
 	  (let* ((*current-theory* lhs-theory)
 		 (*current-context* lhs-context)
+		 (lhs-theory-decls (interpretable-declarations lhs-theory))
 		 (*generate-tccs* 'none)
 		 (tres (unless (and (kind mapping)
 				    (not (eq (kind mapping) 'type)))
-			 (with-no-type-errors
-			  (resolve* (lhs mapping) 'type nil))))
+			 (delete-if-not
+			     #'(lambda (r)
+				 (memq (declaration r) lhs-theory-decls))
+			   (with-no-type-errors
+			    (resolve* (lhs mapping) 'type nil)))))
 		 (eres (unless (and (kind mapping)
 				    (not (eq (kind mapping) 'expr)))
-			 (with-no-type-errors
-			  (resolve* (lhs mapping) 'expr nil))))
+			 (delete-if-not
+			     #'(lambda (r)
+				 (memq (declaration r) lhs-theory-decls))
+			   (with-no-type-errors
+			    (resolve* (lhs mapping) 'expr nil)))))
 		 (thres (unless (and (kind mapping)
 				     (not (eq (kind mapping) 'theory)))
-			  (with-no-type-errors
-			   (resolve* (lhs mapping) 'module nil)))))
+			 (delete-if-not
+			     #'(lambda (r)
+				 (memq (declaration r) lhs-theory-decls))
+			   (with-no-type-errors
+			    (resolve* (lhs mapping) 'module nil))))))
 	    (unless (or eres tres thres)
 	      (type-error (lhs mapping) "Map lhs does not resolve"))
 	    (if (cdr tres)
@@ -636,8 +698,16 @@
 		      (t (setf (resolutions (lhs mapping)) tres)
 			 (type-ambiguity (lhs mapping))))
 		(setf (resolutions (lhs mapping)) (nconc tres eres thres)))
-	    (assert (resolutions (lhs mapping))))
-	  (typecheck-mapping-rhs mapping)
+	    (assert (resolutions (lhs mapping)))
+	    (when (mapping-rename? mapping)
+	      (if (cdr (resolutions (lhs mapping)))
+		  (type-ambiguity (lhs mapping))
+		  (check-duplication (copy (declaration
+					    (car (resolutions (lhs mapping))))
+				       'id (id (expr (rhs mapping)))
+				       'module (current-theory))))))
+	  (unless (mapping-rename? mapping)
+	    (typecheck-mapping-rhs mapping))
 	  ;;(assert (ptypes (expr (rhs mapping))))
 	  )))))
 
@@ -647,18 +717,25 @@
     (if (mod-id name)
 	(typecheck-mappings mappings (name-to-modname name))
 	(dolist (mapping mappings)
-	  (typecheck-mapping-rhs (rhs mapping))))))
+	  (typecheck-mapping-rhs mapping)))))
 
 (defmethod typecheck-mappings (mappings (n number-expr))
   nil)
 
-(defun typecheck-mapping-rhs (mapping)
+(defmethod typecheck-mapping-rhs ((mapping mapping))
   (when (declared-type mapping)
     (setf (type mapping) (typecheck* dtype nil nil nil)))
   (typecheck-mapping-rhs* (expr (rhs mapping))
 			  (kind mapping)
 			  (type mapping)
 			  (rhs mapping)))
+
+(defmethod typecheck-mapping-rhs ((mapping mapping-rename))
+  (when (declared-type mapping)
+    (setf (type mapping) (typecheck* dtype nil nil nil)))
+  ;; Just check that the rhs won't clash with any existing names of the
+  ;; source theory.
+  )
 
 (defmethod typecheck-mapping-rhs* ((ex name-expr) kind type rhs)
   (let ((tres (unless (and kind
@@ -820,11 +897,11 @@
 (defun check-exported-completeness (exporting expdecls)
   (check-exported-internal-completeness (names exporting) expdecls)
   (case (kind exporting)
-    ((all default)
+    ((ALL DEFAULT)
      (setf (closure exporting)
 	   (collect-all-exporting-with-theories
 	    (get-immediate-usings (current-theory)))))
-    (closure
+    (CLOSURE
      (setf (closure exporting)
 	   (let ((insts nil))
 	     (mapobject #'(lambda (ex)

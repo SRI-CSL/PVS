@@ -274,6 +274,9 @@
 
 (defmethod generate-xref ((m mapping))
   (generate-xref (rhs m)))
+
+(defmethod generate-xref ((m mapping-rename))
+  nil)
   
 (defmethod generate-xref ((a mapping-rhs))
   (if (type-value a)

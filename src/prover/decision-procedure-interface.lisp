@@ -1,4 +1,4 @@
-(in-package 'pvs)
+(in-package :pvs)
 
 ;;; The following macros allow new decision procedures to be plugged in,
 ;;; as long as they provide corresponding methods (with the same name with
@@ -32,7 +32,7 @@
 (defvar *default-decision-procedure* 'shostak)
 
 (defvar *decision-procedures*
-  (list 'shostak 'cyrluk 'ics))
+  (list 'shostak 'ics))
 
 (defmacro dpi-init ()
   `(dpi-init* *current-decision-procedure*))
@@ -104,8 +104,8 @@
 	 (*subtype-names* nil)
 	 (*named-exprs* nil)
 	 (*rec-type-dummies* nil)
-	 (*prtype-hash* (init-if-rec *prtype-hash*))
-	 (*local-prtype-hash* (init-if-rec *local-prtype-hash*))
+	 ;;(*prtype-hash* (init-if-rec *prtype-hash*))
+	 ;;(*local-prtype-hash* (init-if-rec *local-prtype-hash*))
 	 (*local-typealist* *local-typealist*)
 	 (applysymlist nil)
 	 (sigalist sigalist)
@@ -197,79 +197,6 @@
   (when (consp term) (cdr term)))
 
 
-;;; Dave Cyrluk's decision procedure
-
-(defmethod dpi-init* ((dp (eql 'cyrluk)))
-  (dp::init-dp-0 t)
-  (dp::return-all-cong-states dp::*made-cong-states*)
-  (reset-translate-from-dc)
-  (reset-translate-to-dc))
-
-(defmethod dpi-start* ((dp (eql 'cyrluk)) prove-body)
-  (let* ((*dc-named-exprs* (init-if-rec *dc-named-exprs*))
-	 (*translate-to-dc-hash* (init-if-rec *translate-to-dc-hash*))
-	 (*dc-translate-id-hash* (init-if-rec *dc-translate-id-hash*))
-	 (*dc-translate-id-counter* nil)
-	 (*newdc* t))
-    (newcounter *dc-translate-id-counter*)
-    (dp::init-dp-0)
-    (dp::return-all-cong-states dp::*made-cong-states*)
-    (reset-translate-from-dc)
-    (reset-translate-to-dc)
-    (funcall prove-body)))
-
-(defmethod dpi-empty-state* ((dp (eql 'cyrluk)))
-  (dp::null-single-cong-state))
-
-(defmethod dpi-process* ((dp (eql 'cyrluk)) (pvs-expr expr) state)
-  (let* ((dp-expr (top-translate-to-dc pvs-expr))
-	 (result (translate-from-dc (dp::invoke-process dp-expr state))))
-    (values result state)))
-
-(defmethod dpi-process* ((dp (eql 'cyrluk)) dp-expr state)
-  (let ((result (translate-from-dc (dp::invoke-process dp-expr state))))
-    (values result state)))
-
-(defmethod dpi-valid?* ((dp (eql 'cyrluk)) state pvs-expr)
-  (let* ((dp-expr (top-translate-to-dc pvs-expr))
-	 (result (translate-from-dc (dp::invoke-process dp-expr state))))
-    result))
-
-(defmethod dpi-push-state* ((dp (eql 'cyrluk)) state)
-  (dp::push-new-cong-state state))
-
-(defmethod dpi-pop-state* ((dp (eql 'cyrluk)) state)
-  (dp::npop-cong-state state))
-
-(defmethod dpi-copy-state* ((dp (eql 'cyrluk)) state)
-  (dp::copy-cong-state state))
-
-(defmethod dpi-restore-state* ((dp (eql 'cyrluk)) state)
-  (dp::npop-cong-state state))
-
-(defmethod dpi-state-changed?* ((dp (eql 'cyrluk)) old-state new-state)
-  (dp::dp-changed old-state new-state))
-
-(defmethod dpi-end* ((dp (eql 'cyrluk)) proofstate)
-  (let* ((dp-state (dp-state proofstate))
-	 (dp-stack (dp::cong-state-stack dp-state))
-	 (done-subgoals (done-subgoals proofstate)))
-    (loop for ps in done-subgoals
-	  for subgoal-dp-state = (dp-state ps)
-	  for subgoal-stack = (dp::cong-state-stack subgoal-dp-state)
-	  unless (eq dp-stack subgoal-stack)
-	  do (dp::npop-cong-state subgoal-dp-state))))
-
-(defmethod dpi-disjunction?* ((dp (eql 'cyrluk)) term)
-  (break))
-
-(defmethod dpi-proposition?* ((dp (eql 'cyrluk)) term)
-  (break))
-
-(defmethod dpi-term-arguments* ((dp (eql 'cyrluk)) term)
-  (break))
-
-
 ;;; ICS interface
 
 (defmethod dpi-init* ((dp (eql 'ics)))
@@ -303,11 +230,9 @@
     ;;(ics_flush)
     (cond ((not (zerop (ics_is_consistent ics-value)))
 	   (let ((nstate (ics-d-consistent ics-value)))
-	     (if (ics-valid? nstate *false*)
-		 (values *false* state)
-		 (values *true* nstate))))
+	     (values nil nstate)))
 	  ((not (zerop (ics_is_redundant ics-value)))
-	   (values nil state))
+	   (values *true* state))
 	  (t (values *false* state)))))
 
 (defmethod dpi-process* ((dp (eql 'ics)) ics-expr state)
@@ -318,11 +243,9 @@
     ;;(ics_flush)
     (cond ((not (zerop (ics_is_consistent ics-value)))
 	   (let ((nstate (ics-d-consistent ics-value)))
-	     (if (ics-valid? nstate *false*)
-		 (values *false* state)
-		 (values *true* nstate))))
+	     (values nil nstate)))
 	  ((not (zerop (ics_is_redundant ics-value)))
-	   (values nil state))
+	   (values *true* state))
 	  (t (values *false* state)))))
 
 (defmethod dpi-valid?* ((dp (eql 'ics)) state pvs-expr)

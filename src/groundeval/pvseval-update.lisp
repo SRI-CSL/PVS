@@ -1,4 +1,4 @@
-(in-package 'pvs)
+(in-package :pvs)
 
 
 (defstep eval (expr &optional destructive?)
@@ -25,7 +25,7 @@
 
 (defvar *destructive?* nil)
 (defvar *output-vars* nil)
-(defvar *external* NIL)
+(defvar *external* nil)
 
 
 ;need to exploit the fact that at most one makes sense
@@ -276,9 +276,9 @@
 		    (check-output-vars (cdr output-vars) alist livevars))
 	       (push-output-vars vterm-updateables lterm-updateables)
 			;	 *output-vars*
-	       T)
-	      (t NIL)))
-      T))
+	       t)
+	      (t nil)))
+      t))
 
 
 (defmethod pvs2cl_up* :around ((expr expr) bindings livevars)
@@ -382,7 +382,7 @@
 				     ;;parameters of already evaluated
 				     ;;exprs needed.
 				     livevars))))
-	(mk-funapp (pvs2cl-operator2 op NIL args livevars bindings)
+	(mk-funapp (pvs2cl-operator2 op nil args livevars bindings)
 		   ;;(pvs2cl-resolution2 op)
 		   (pvs2cl_up* args  bindings livevars)))))
 
@@ -783,7 +783,7 @@
   (no-livevars? (expression expr) livevars
 		(append (assignments expr) assignments)))
 
-(defmethod no-livevars? ((expr T) livevars assignments)
+(defmethod no-livevars? ((expr t) livevars assignments)
   (let* ((updateable-outputs
 	  (updateable-outputs expr))
 	 (check-updateables
@@ -1194,7 +1194,7 @@
 		      (cons (cons bind newid) bindings)))
       bindings))
 
-(defparameter *primitive-constants* '(TRUE FALSE |null|))
+(defparameter *primitive-constants* '(true false |null|))
 
 (defun pvs2cl-constant (expr bindings livevars)
   (cond ((pvs2cl-primitive? expr)
@@ -1361,8 +1361,8 @@
 		       (assert id2)
 		       (compile id2))
 		     (setf (ex-name-d decl) id-d)
-		     (let ((*destructive?* T)
-			   (*output-vars* NIL))
+		     (let ((*destructive?* t)
+			   (*output-vars* nil))
 		       (setf (definition (ex-defn-d decl))
 			     `(defun ,id-d ,formal-ids2
 				,declarations
@@ -1382,7 +1382,7 @@
 		     (eval (definition (ex-defn-d decl)))
 		     (assert id-d)
 		     (compile id-d)
-		     (let ((*destructive?* NIL)
+		     (let ((*destructive?* nil)
 			   (declarations (pvs2cl-declare-vars formal-ids formals)))
 		       (setf (definition (ex-defn decl))
 			     `(defun ,id ,formal-ids
@@ -1446,8 +1446,8 @@
 	       (when *eval-verbose*
 		 (format t "~%~a <internal_dest> ~a" (id decl) id-d))
 	       (setf (in-name-d decl) id-d)
-	       (let ((*destructive?* T)
-		     (*output-vars* NIL))
+	       (let ((*destructive?* t)
+		     (*output-vars* nil))
 		 (setf (definition (in-defn-d decl))
 		       `(defun ,id-d ,defn-binding-ids
 			  ,@(append (when declarations
@@ -1468,7 +1468,7 @@
 	       (compile id-d)
 	       (when *eval-verbose*
 		 (format t "~%~a <internal_0> ~a" (id decl) id))
-	       (let ((*destructive?* NIL))
+	       (let ((*destructive?* nil))
 		 (setf (definition (in-defn decl))
 		       `(defun ,id ()
 			  ,(pvs2cl_up* defn nil nil))))
@@ -1632,9 +1632,9 @@
 ; different theory)
 ;
 (defun pvs2cl-primitive (expr)
-  (cond ((eq (id expr) 'TRUE) T)
-	((eq (id expr) 'FALSE) NIL)
-	((eq (id expr) '|null|) NIL)
+  (cond ((eq (id expr) 'TRUE) t)
+	((eq (id expr) 'FALSE) nil)
+	((eq (id expr) '|null|) nil)
 	((and (eq (id expr) '-) ;;hard to distinguish unary,binary.
 	      (tupletype? (domain (find-supertype (type expr)))))
 	 (intern (format nil "PVS_--")))
@@ -1708,7 +1708,7 @@
 	      do (write-decl-defns dec output)))
       (loop for dec in (theory (get-theory theory))
 	      when (and (const-decl? dec)(eval-info dec))
-	      do (write-decl-defns dec NIL))))
+	      do (write-decl-defns dec nil))))
 
 (defun pvs2cl-lisp-type (type)
   (pvs2cl-lisp-type* type))
@@ -1793,6 +1793,6 @@
 	 'list)
 	(t nil)))
 
-(defmethod pvs2cl-lisp-type* ((type T))
+(defmethod pvs2cl-lisp-type* ((type t))
   (cond ((eq type *boolean*) 'boolean)
 	(t nil)));;was T, but need to distinguish proper types.

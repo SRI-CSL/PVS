@@ -19,7 +19,7 @@
 ;; disjuncts, and the others, mainly those that return modifications or
 ;; signals.   
 
-(in-package 'pvs)
+(in-package :pvs)
 
 
 (defun sform-search (sformlist pred pos neg)
@@ -32,7 +32,7 @@
 
 ;;simplifier:[sform -> sform/list of sforms]
 (defun sform-reduce (sformlist simplifier sformnums pos neg)
-  (if (null sformlist) (values 'X NIL)
+  (if (null sformlist) (values 'X nil)
     (let* ((x (car sformlist))
 	   (sign (not (negation? (formula x)))))
       (multiple-value-bind
@@ -690,7 +690,7 @@
 ;;when an irrelevant variable is given.(NSH:6/6/91)
 (defun make-bindalist (vars simple-alist ps)
   (if (null vars)
-      NIL
+      nil
     (let* ((var (car vars))
 	   (pair (assoc (id var) simple-alist
 			:test #'format-equal)))
@@ -725,14 +725,14 @@
 			      (if (every #'cdr match)
 				  match
 				  nil)
-			      T))
+			      t))
 	((null (car rhs-typelists)) nil)
 	(t (let* (
 		  (rhs1 (caar rhs-typelists))
 		  (first-match
 		   (if match
 		       (tc-unify rhs1 (car lhs-types) match)
-		       (if (compatible? (car lhs-types) rhs1) T NIL))))
+		       (if (compatible? (car lhs-types) rhs1) t nil))))
 	     (if (null first-match)
 		 (tc-unify-over lhs-types
 				rhs-exprs
@@ -743,7 +743,7 @@
 			(tc-unify-over (cdr lhs-types)
 				       (cdr rhs-exprs)
 				       (cdr rhs-typelists)
-				       (if (eq first-match T)
+				       (if (eq first-match t)
 					   nil
 					   first-match))))
 		   (cond ((null rest-first-match)
@@ -843,7 +843,7 @@
 		  (check-with-subst* (cdr forms) subalist mod-inst
 				     res-params))
 		 (t (let ((newform
-			   (if (eq formal-inst T)
+			   (if (eq formal-inst t)
 			       (car forms)
 			       (subst-mod-params-alist (car forms)
 						       formal-inst))))
@@ -914,7 +914,7 @@
 				(*in-typechecker* yex))
 			   (cons x (internal-pc-typecheck yex
 				     :context *current-context*
-				     :uniquely? NIL)))))
+				     :uniquely? nil)))))
 	  ;;tccs ALL is checked in tc-alist below.
 	  )
      (cond ((not (listp substs))
@@ -959,9 +959,9 @@ The following are not possible variables: ~{~a,~}" badnames)
 						:test #'same-id)))))))
 					;	       (loop for (x . y) in newalist
 					;		     do (setf (type y) nil))
-		(when form;;NSH(10.20.94)(let ((*generate-tccs* 'ALL)))
+		(when form;;NSH(10.20.94)(let ((*generate-tccs* 'all)))
 		  (typecheck (module-instance res)
-		    :tccs 'ALL)
+		    :tccs 'all)
 		  (tc-alist newalist);;does tccs all.
 		  )
 		(let ((subfreevars (loop for (nil . y) in newalist
@@ -1005,7 +1005,7 @@ or supply more substitutions."
 							   (s-forms
 							    (current-goal
 							     ps)))))
-			      (dependent-decls NIL))
+			      (dependent-decls nil))
 			   (push-references-list
 			    (module-instance res) dependent-decls)
 			   (push-references-list newalist
@@ -1047,7 +1047,7 @@ or supply more substitutions."
 			      'formula
 			      (negate fmla)))
 		  preds))
-	       (references NIL))
+	       (references nil))
 	  (push-references-list
 	   (mapcar #'formula new-sforms)
 	   references)
@@ -1139,12 +1139,12 @@ or supply more substitutions."
 (defun case-rule-fun (fmlas)
   #'(lambda (ps)
       (let* ((fmlas (if (listp fmlas) fmlas (list fmlas)))
-	     ;;(*generate-tccs* 'ALL) ;;(NSH:10.20.94)
+	     ;;(*generate-tccs* 'all) ;;(NSH:10.20.94)
 	     (tc-fmlas (loop for fml in fmlas
 			    collect
 			    (internal-pc-typecheck (pc-parse fml 'expr)
 				       :expected *boolean*
-				       :tccs 'ALL 
+				       :tccs 'all 
 				       :context *current-context*)))
 	     (freevars (freevars tc-fmlas)))
 	(cond ((null tc-fmlas)
@@ -1335,10 +1335,10 @@ or supply more substitutions."
 (defun extensionality (texpr)
   #'(lambda (ps)
       (let* ((expr (pc-parse texpr 'type-expr))
-	     ;;(*generate-tccs* 'ALL) ;;NSH(10.20.94)
-	     (tc-expr (typecheck expr :tccs 'ALL
+	     ;;(*generate-tccs* 'all) ;;NSH(10.20.94)
+	     (tc-expr (typecheck expr :tccs 'all
 				 :context *current-context*))
-	     ;;(*generate-tccs* NIL)
+	     ;;(*generate-tccs* nil)
 	     (freevars (freevars tc-expr)))
 	(cond (freevars
 	       (error-format-if "~%The following irrelevant free variables
@@ -1353,7 +1353,7 @@ which should be fully instantiated. Please supply actual parameters.")
 	      (t (extensionality-step tc-expr tc-expr ps))))))
 
 (defmethod extensionality-step ((texpr funtype) given ps)
-  (let* ((references NIL))
+  (let* ((references nil))
     (push-references-list texpr references)
     (values '?
 	     (list
@@ -1370,7 +1370,7 @@ which should be fully instantiated. Please supply actual parameters.")
 	      references))))
 
 (defmethod extensionality-step ((texpr tupletype) given ps)
-  (let* ((references NIL))
+  (let* ((references nil))
     (push-references-list texpr references)
     (values '?
 	     (list (copy (current-goal ps)
@@ -1386,7 +1386,7 @@ which should be fully instantiated. Please supply actual parameters.")
 		   references))))
 
 (defmethod extensionality-step ((texpr recordtype) given ps)
-  (let* ((references NIL))
+  (let* ((references nil))
     (push-references-list texpr references)
     (values '?
 	   (list (copy (current-goal ps)
@@ -1441,7 +1441,7 @@ which should be fully instantiated. Please supply actual parameters.")
 			  (module-instance
 			   (resolution constructor))))))
 	(cond (new-fmla
-	       (let* ((references NIL))
+	       (let* ((references nil))
 		 (push-references-list texpr references)
 		 (pushnew fmla-decl references)
 		 (values '?
@@ -1481,10 +1481,10 @@ which should be fully instantiated. Please supply actual parameters.")
 ;; to change that much code)
 (defun add-name-step (name expr ps)
   (let* ((name (if (stringp name) (intern name) name))
-	 ;;(*generate-tccs* 'ALL)
+	 ;;(*generate-tccs* 'all)
 	 (pc-name (pc-parse name 'expr))
 	 (tc-expr (internal-pc-typecheck (pc-parse expr 'expr)
-		    :tccs 'ALL
+		    :tccs 'all
 		    :context *current-context*))
 	 (context (copy-prover-context)))
      (cond ((not (valid-pvs-id* name))
@@ -1502,10 +1502,10 @@ which should be fully instantiated. Please supply actual parameters.")
 			  'module (module context))
 			(declarations-hash context))
 	      (let* ((name (typecheck (pc-parse name 'expr)
-			     :tccs 'ALL
+			     :tccs 'all
 			     :context context))
 		     (formula (make-equality tc-expr name))
-		     (references NIL)
+		     (references nil)
 		     (fvars (freevars formula)))
 	       (cond (fvars
 		      (error-format-if "~%Free variables ~a in expr = name" fvars)

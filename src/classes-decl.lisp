@@ -83,7 +83,7 @@
 
 (in-package 'pvs)
 
-(export '(id status type declared-type))
+(export '(id status type declared-type ))
 
 ;;; So we can unparse a list of modules into a single file.
 
@@ -316,7 +316,8 @@
 
 (defcl lib-decl (declaration)
   (lib-string :parse t)
-  (library :parse t))
+  (library :parse t)
+  (library-pathname :fetch-as nil))
 
 (defcl lib-eq-decl (lib-decl))
 

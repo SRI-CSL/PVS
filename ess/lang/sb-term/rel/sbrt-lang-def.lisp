@@ -1,18 +1,18 @@
 ;;; Added the use-package of :ergolisp, since this is the first time
 ;;; package SB-RUNTIME is seen.  fp, Mon Jan  2 11:07:17 1989.
 #-gcl
-(defpackage "SB-RUNTIME")
-(in-package "SB-RUNTIME") (use-package :ergolisp)
+(defpackage :sb-runtime)
+(in-package :sb-runtime) (use-package :ergolisp)
 
-(use-package '("OPER" "OCC" "TERM" "SORT" "LANG"))
+(use-package '(:oper :occ :term :sort :lang))
 
 (lang:lang-define 
 :name "lexical-terminals"
 :conc-name "sbrt"
 :working-dir "/usr/ergo/ess/lang/sb-term/rel/"
-:code-package "SB-RUNTIME"
-:abs-syn-package "SB-RUNTIME"
-:use-packages '("OPER" "OCC" "TERM" "SORT" "LANG")
+:code-package :sb-runtime
+:abs-syn-package :sb-runtime
+:use-packages '(:oper :occ :term :sort :lang)
 :grammar-file ""
 :sub-languages 'nil
 :lexer-file ""
@@ -21,11 +21,11 @@
 :unparser-file ""
 :info-file ""
 :sorts-file "/usr/ergo/ess/lang/sb-term/rel/sbrt-sorts.lisp"
-:parse-routine-name 'SB-RUNTIME::SBRT-PARSE
-:unparse-routine-name 'SB-RUNTIME::SBRT-UNPARSE
-:win-unparse-routine-name 'SB-RUNTIME::SBRT-WIN-UNPARSE
-:sort-table-name 'SB-RUNTIME::*SBRT-SORT-TABLE*
-:opsig-table-name 'SB-RUNTIME::*SBRT-OPSIG-TABLE*
+:parse-routine-name 'sb-runtime::sbrt-parse
+:unparse-routine-name 'sb-runtime::sbrt-unparse
+:win-unparse-routine-name 'sb-runtime::sbrt-win-unparse
+:sort-table-name 'sb-runtime::*sbrt-sort-table*
+:opsig-table-name 'sb-runtime::*sbrt-opsig-table*
 :lang-def-file "/usr/ergo/ess/lang/sb-term/rel/sbrt-lang-def.lisp"
 )
 

@@ -24,7 +24,7 @@ Operators
 %  ----------		----
 %  *pvs-operators*	utils.lisp
 %  
-	'('  ')'  '-'  '+'  '*' '/' ':=' '|->'  ';'  ','  '='  '/='
+	'('  ')'  '-'  '+'  '*' '/' ':=' '::=' '|->'  ';'  ','  '='  '/='
 	'<'  '<='  '>'  '>=' '{' '}' '[' ']' '.' '&' '<=>'
 	'->' ':' '=>' '[#' '#]' '(#' '#)' '(:' ':)' '{{' '}}' '|'
         '^' '/\\' '\\/' '[]' '<>' '~' '==' '++' '**' '//' '^^'
@@ -120,7 +120,8 @@ theory-formal ::= {[{'(' importing ')'}
 theory-formal-decl ::= {type-keyword ['FROM' type-expr]}
 		        <ftype-decl(type-keyword,[notype()|type-expr])>
 		     | {type-expr} <fconst-decl(type-expr)>
-		     | {'THEORY' modname} <ftheory-decl(modname)>
+		     | {'THEORY' theory-decl-modname}
+                           <ftheory-decl(theory-decl-modname)>
 		     ;
 
 exporting ::= {'EXPORTING' exportings [{ 'WITH' exportingmods}]}
@@ -207,7 +208,8 @@ theory-declaration ::= lib-decl | theory-decl | type-decl | var-decl
 
 lib-decl ::= {'LIBRARY' ['='] string} <lib-decl([noeq()|eq()],string)>;
 
-theory-decl ::= {'THEORY' '=' modname} <theory-decl(modname)>;
+theory-decl ::= {'THEORY' '=' theory-decl-modname}
+                   <theory-decl(theory-decl-modname)>;
 
 type-decl ::= {type-keyword [type-def ['CONTAINING' expr]^c]}
                 <[uninterp-type-decl(type-keyword)
@@ -453,6 +455,10 @@ modname ::= {[{id^1 '@'}]^p id [actuals] [mappings]^m}
 	    <modname(id,[nolib()|id^1]^p,[noactuals()|actuals],
                         [nomap()|mappings]^m)>;
 
+theory-decl-modname ::= {[{id^1 '@'}]^p id [actuals] [theory-decl-mappings]^m}
+	    <modname(id,[nolib()|id^1]^p,[noactuals()|actuals],
+                        [nomap()|theory-decl-mappings]^m)>;
+
 names ::= {name ++ ','}	<names(name+)>;
 
 fun-arguments ::= {'(' {expr ** ','} ')'} <fun-arguments(expr*)>;
@@ -509,8 +515,16 @@ actual ::= expr | comp-type-expr;
 
 mappings ::= {'{{' mapping++ ',' '}}'} <mappings(mapping+)>;
 
-mapping ::= {mapping-lhs '=' mapping-rhs}
-              <mapping(mapping-lhs,mapping-rhs)>;
+mapping ::= {mapping-lhs ':=' mapping-rhs}
+              <{mapping-subst(mapping-lhs,mapping-rhs)}>;
+
+theory-decl-mappings ::= {'{{' theory-decl-mapping++ ',' '}}'}
+                           <mappings(theory-decl-mapping+)>;
+
+theory-decl-mapping ::= {mapping-lhs {'='|':='|'::='} mapping-rhs}
+              <{mapping-def(mapping-lhs,mapping-rhs)
+               |mapping-subst(mapping-lhs,mapping-rhs)
+               |mapping-rename(mapping-lhs,mapping-rhs)}>;
 
 mapping-lhs ::= {idop [pdformals+]^a [':' {'TYPE'|'THEORY'|type-expr}]^q}
                   <mapping-lhs(idop,

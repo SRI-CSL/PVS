@@ -1,4 +1,4 @@
-(in-package "USER")
+(in-package :user)
 (defvar *pvs-path* "@PVSPATH@")
 (eval-when (load eval)
   (require 'tpl-debug)

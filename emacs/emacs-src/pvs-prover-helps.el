@@ -866,10 +866,10 @@ Assumes that an Proof buffer exists."
 (defun pvs-prover-goto-next-step ()
   "Called from an Edit Proof buffer, goes to next step in proof.
 NOTE: This will fail to work properly if there exists within a proof
-statement a substring of the form ([A-Z][A-Z] or (|."
+statement a substring of the form ([a-zA-Z][a-zA-Z] or (|."
   (interactive "p")
   (let ((case-fold-search nil))
-    (if (not (re-search-forward "(\\(|.\\|[A-Z][A-Z]\\)" (point-max) t))
+    (if (not (re-search-forward "(\\(|.\\|[a-zA-Z][a-zA-Z]\\)" (point-max) t))
 	(progn
 	  (goto-char (point-max))
 	  (message "No more proof statements."))
@@ -888,9 +888,9 @@ statement a substring of the form ([A-Z][A-Z] or (|."
 (defun pvs-prover-goto-prev-step (&optional undop)
   "Called from an Edit Proof buffer, goes to prev step in proof.
 NOTE: This will fail to work properly if there exists within a proof
-statement a substring of the form ([A-Z][A-Z] or (|."
+statement a substring of the form ([a-zA-Z][a-zA-Z] or (|."
   (interactive "p")
-  (if (not (re-search-backward "(\\(|.\\|[A-Z][A-Z]\\)" (point-min) t))
+  (if (not (re-search-backward "(\\(|.\\|[a-zA-Z][a-zA-Z]\\)" (point-min) t))
       (progn
 	(goto-char (1+ (point-min)))
 	(pvs-prover-goto-next-step)
@@ -902,7 +902,7 @@ statement a substring of the form ([A-Z][A-Z] or (|."
 	    (progn
 	      (re-search-forward "[ \n\t\)]*")
 	      (forward-sexp -1)
-	      (unless (re-search-backward "(\\(|.\\|[A-Z][A-Z]\\)" (point-min) t)
+	      (unless (re-search-backward "(\\(|.\\|[a-zA-Z][a-zA-Z]\\)" (point-min) t)
 		(goto-char (1+ (point-min)))
 		(pvs-prover-goto-next-step)
 		(message "No earlier proof statements.")))))
@@ -912,7 +912,7 @@ statement a substring of the form ([A-Z][A-Z] or (|."
 (defun pvs-prover-goto-prev-step (&optional undop)
   "Called from an Edit Proof buffer, goes to prev step in proof.
 NOTE: This will fail to work properly if there exists within a proof
-statement a substring of the form ([A-Z][A-Z] or (|."
+statement a substring of the form ([a-zA-Z][a-zA-Z] or (|."
   (interactive "p")
   (let ((cpoint (point)))
     (goto-char (point-min))

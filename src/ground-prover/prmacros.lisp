@@ -10,7 +10,7 @@
      (catch 'context 
        ,form )))
 
-(defmacro RETFALSE () `(throw 'context 'FALSE))
+(defmacro retfalse () `(throw 'context 'false))
 
 ; term accessor macros
 

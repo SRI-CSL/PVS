@@ -24,11 +24,11 @@
        (is-tupsel-n (funsym term))))
 
 (defun make-tupsel (type)
-  (intern (if type (format nil "TUPSEL-~a" type) (format nil "TUPSEL-"))))
+  (intern (if type (format nil "tupsel-~a" type) (format nil "tupsel-"))))
 
 (defun sigtupsel (term)
   ; currently an error if term is an atom.
-  (when *tupleflg* (TERPRI) (princ "sigtupsel: ") (pprint  term))
+  (when *tupleflg* (terpri) (princ "sigtupsel: ") (pprint  term))
   (prog (ans tuple1)
     (setq ans
 	  (cond
@@ -39,7 +39,7 @@
 		     (nth (arg1 term) (argsof tuple1)) )
 		   (t term) ))
 	    (t       term) ))
-    (when *tupleflg* (TERPRI) (princ "       ==> ") (pprint ans))
+    (when *tupleflg* (terpri) (princ "       ==> ") (pprint ans))
     (return ans) ))
 
 
@@ -57,32 +57,32 @@
 	(leftside (lside atf))
 	(rightside (rside atf)))
     (case fun
-      (EQUAL
-       (cond ((equal leftside rightside) '(TRUE))
+      (equal
+       (cond ((equal leftside rightside) '(true))
 	     ((and (tupconsp leftside)
 		   (not (tupconsp rightside)) )
-	      (tupsolve `(EQUAL ,rightside ,leftside)) )
+	      (tupsolve `(equal ,rightside ,leftside)) )
 	     ((and (tupconsp leftside)
 		   (tupconsp rightside) )
 	      (do ((lcols (argsof leftside) (cdr lcols))
 		   (rcols (argsof rightside) (cdr rcols))
-		   (results '(TRUE))
+		   (results '(true))
 		   (result) )
 		  ((null rcols) results)
-		(let ((eqn `(EQUAL ,(car lcols) ,(car rcols))))
+		(let ((eqn `(equal ,(car lcols) ,(car rcols))))
 		  (setq result
 			(newcontext (process eqn) ))
 		  ; Following relies on the fact that process does
-		  ; (RETFALSE) if its result is FALSE, and only
-		  ; non-list value returned is 'TRUE.  See below too.
-		  (cond ((eq result 'FALSE)(RETFALSE))
+		  ; (retfalse) if its result is false, and only
+		  ; non-list value returned is 'true.  See below too.
+		  (cond ((eq result 'false)(retfalse))
 			((null result)
 			 (setq results
-			       (if (equal results '(TRUE))
+			       (if (equal results '(true))
 				   (solve eqn)
 				   (append (solve eqn) results))))
 			((listp result)
-			 (setq results (if (equal results '(TRUE))
+			 (setq results (if (equal results '(true))
 					   result
 					   (append result results)) ))))))
 	     ((and (not (tupconsp leftside))
@@ -92,7 +92,7 @@
 	      (cond ((or t (subtermof leftside rightside))
 		     (do ((selnum 0 (1+ selnum))
 			  (rcols (argsof rightside) (cdr rcols))
-			  (results '(TRUE))
+			  (results '(true))
 			  (result) )
 			 ((null rcols) results)
 		       ;;; DAC 6/12/98: Reversed the orientation of
@@ -103,33 +103,33 @@
 					,selnum ,leftside))
 			      (eqn (if (or (qnumberp newrhs)
 					   (subtermof newrhs newlhs))
-				       `(EQUAL ,newlhs
+				       `(equal ,newlhs
 					       ,newrhs)
-				       `(EQUAL ,newrhs
+				       `(equal ,newrhs
 					       ,newlhs))))
 			 (setq result
 			       (newcontext
 				(process eqn)))
-			 (cond ((eq result 'FALSE)(RETFALSE))
+			 (cond ((eq result 'false)(retfalse))
 			       ((null result)
 				(setq results
-				      (if (equal results '(TRUE))
+				      (if (equal results '(true))
 					  (ncons eqn)
 					  (cons eqn results))))
 			       ((listp result)
 				(setq results
-				      (if (equal results '(TRUE))
+				      (if (equal results '(true))
 					  result
 					  (append result results)) ))))))
 		    (t (ncons atf)) ))
 	     (t (ncons atf))))
       ;;NSH: tuples are only used internally for array/function/record access
       ;;so it is assumed that both args are tupconses.
-      (LESSP (tupineqprocess (argsof leftside)(argsof rightside) 'LESSP))
-      (LESSEQP (tupineqprocess (argsof leftside)(argsof rightside) 'LESSEQP))
-      (GREATERP (tupineqprocess (argsof rightside)(argsof leftside) 'LESSP))
-      (GREATEREQP (tupineqprocess (argsof rightside)(argsof leftside) 'LESSEQP))
-      (t `((EQUAL ,atf TRUE))) )))
+      (lessp (tupineqprocess (argsof leftside)(argsof rightside) 'lessp))
+      (lesseqp (tupineqprocess (argsof leftside)(argsof rightside) 'lesseqp))
+      (greaterp (tupineqprocess (argsof rightside)(argsof leftside) 'lessp))
+      (greatereqp (tupineqprocess (argsof rightside)(argsof leftside) 'lesseqp))
+      (t `((equal ,atf true))) )))
 
 
 
@@ -139,9 +139,9 @@
 ; 24-10-89 using function common to both tuples and arrays
 
 (defun tupnsolve (atf)
-  (when *tupleflg* (TERPRI) (princ "tupnsolve: ") (pprint atf))
+  (when *tupleflg* (terpri) (princ "tupnsolve: ") (pprint atf))
   (let ((ans (common-nsolve atf)))
-    (when *tupleflg* (TERPRI) (princ "       ==> ") (pprint ans))
+    (when *tupleflg* (terpri) (princ "       ==> ") (pprint ans))
     ans ))
 
 
@@ -149,19 +149,19 @@
   (let ((leftside (lside atf))
 	    (rightside (rside atf)) )
     (case (funsym atf)
-      (EQUAL
+      (equal
        (if (equal leftside rightside)  ;NSH eq->equal
-	   '(FALSE)
+	   '(false)
 	   (let ((result (newcontext (process atf))))
-	     (cond ((eq result 'FALSE) '(TRUE))
-		   ((eq result 'TRUE)  '(FALSE))
-		   (t `((NEQUAL ,leftside ,rightside))) ))))
-      ((LESSP LESSEQP GREATERP GREATEREQP)
+	     (cond ((eq result 'false) '(true))
+		   ((eq result 'true)  '(false))
+		   (t `((nequal ,leftside ,rightside))) ))))
+      ((lessp lesseqp greaterp greatereqp)
        (let ((result (newcontext (process atf))))
-	 (cond ((eq result 'FALSE) '(TRUE))
-	       ((eq result 'TRUE) '(FALSE))
+	 (cond ((eq result 'false) '(true))
+	       ((eq result 'true) '(false))
 	       (t (list (negineq atf))))))
-      (t `((EQUAL ,atf FALSE)) ))))
+      (t `((equal ,atf false)) ))))
 
 ;;_____________________________________________________________________________
 
@@ -170,35 +170,35 @@
        (eq (prtype (arg2 exp)) 'tuple)))
 
 ;called by sigupdate
-(defun tupineqprocess0 (left right rel)  ;converts (TRUE) and (FALSE)
-                                         ;to TRUE and FALSE, resp
+(defun tupineqprocess0 (left right rel)  ;converts (true) and (false)
+                                         ;to true and false, resp
   (let ((result0 (tupineqprocess left right rel))) 
-    (cond ((equal result0 '(FALSE)) 'FALSE)
-	  ((equal result0 '(TRUE)) 'TRUE)
+    (cond ((equal result0 '(false)) 'false)
+	  ((equal result0 '(true)) 'true)
 	  (t result0))))
 
 (defun tupineqprocess (left right rel) ;;generates process for 
   (if (and (consp left)(consp right))  ;;lex ineq. <,<=, on tups.
       (let ((lex1 (newcontext
-		   (prove1 (list `(LESSP ,(car left) ,(car right))) NIL))))
+		   (prove1 (list `(lessp ,(car left) ,(car right))) nil))))
 	(case  lex1
-	  (TRUE '(TRUE))
-	  (FALSE
+	  (true '(true))
+	  (false
 	   (let ((lexeq1
 		    (newcontext
-		     (process `(EQUAL ,(car left) ,(car right))))))
+		     (process `(equal ,(car left) ,(car right))))))
 	       (case lexeq1
-		 (TRUE
+		 (true
 		  (tupineqprocess (cdr left)(cdr right) rel))
-		 (FALSE (RETFALSE))
-		 (t `((EQUAL (,rel ,(cons 'TUPCONS left)
-				   ,(cons 'TUPCONS right))
-			     TRUE))))))
-	  (t `((EQUAL (,rel ,(cons 'TUPCONS left)
-				   ,(cons 'TUPCONS right))
-			     TRUE)))))
-      (case rel          ;;rel is either LESSP or LESSEQP
-	(LESSP '(FALSE))
-	(t '(TRUE)))))     ;;left and right assumed same length
+		 (false (retfalse))
+		 (t `((equal (,rel ,(cons 'tupcons left)
+				   ,(cons 'tupcons right))
+			     true))))))
+	  (t `((equal (,rel ,(cons 'tupcons left)
+				   ,(cons 'tupcons right))
+			     true)))))
+      (case rel          ;;rel is either lessp or lesseqp
+	(lessp '(false))
+	(t '(true)))))     ;;left and right assumed same length
 
 

@@ -204,7 +204,11 @@
       (setf (generated-theory decl) interpreted-copy))))
 
 (defun make-interpreted-copy (theory theory-name decl)
-  (let* ((stheory (subst-mod-params theory theory-name))
+  (let* ((*all-subst-mod-params-caches*
+	  (if (every #'mapping-subst? (mappings theory-name))
+	      *all-subst-mod-params-caches*
+	      nil))
+	 (stheory (subst-mod-params theory theory-name))
 	 (ntheory (pc-parse (unparse (copy stheory 'id (id decl)) :string t)
 		    'adt-or-theory))
 	 (*generate-tccs* 'none)
@@ -241,6 +245,7 @@
     (declare (ignore path))
     (when msg
       (type-error decl msg (lib-string decl)))
+    (setf (library-pathname decl) path)
     (dolist (d (gethash (id decl) (current-declarations-hash)))
       (when (and (lib-decl? d)
 		 (not (string= lib (get-library-pathname (library d)))))
@@ -949,7 +954,7 @@
 	 (bd2 (make-bind-decl pid2 ptype))
 	 (var1 (make-variable-expr bd1))
 	 (var2 (make-variable-expr bd2)))
-    (if (tc-eq ptype *boolean*)
+    (if (tc-eq (find-supertype ptype) *boolean*)
 	(make-forall-expr (list bd1 bd2)
 	  (make-implication (make-implication var1 var2)
 			    (make-implication
@@ -1167,7 +1172,7 @@
   (make-ind-implication* (supertype te) x y))
 
 (defmethod make-ind-implication* ((te type-name) x y)
-  (assert (tc-eq te *boolean*))
+  (assert (tc-eq (find-supertype te) *boolean*))
   (make-implication x y))
 
 (defun subst-pred-for-ind (nvar fixed-vars expr decl)
@@ -1310,7 +1315,7 @@
   (make-ind-conjunction* (supertype te) x y))
 
 (defmethod make-ind-conjunction* ((te type-name) x y)
-  (assert (tc-eq te *boolean*))
+  (assert (tc-eq (find-supertype te) *boolean*))
   (make!-conjunction x y))
 
 (defun make-ind-disjunction (x y)
@@ -1334,7 +1339,7 @@
   (make-ind-disjunction* (supertype te) x y))
 
 (defmethod make-ind-disjunction* ((te type-name) x y)
-  (assert (tc-eq te *boolean*))
+  (assert (tc-eq (find-supertype te) *boolean*))
   (make!-disjunction x y))
 
 (defun make-inductive-conclusion (var rem-vars decl)
@@ -1390,7 +1395,7 @@
   (setf (closed-definition decl)
 	(universal-closure (definition decl)))
   (when (eq (spelling decl) 'ASSUMPTION)
-    (remove-defined-type-names decl)
+    ;;(remove-defined-type-names decl)
     (handle-existence-assuming-on-formals decl)
     (check-assumption-visibility decl))
   decl)
@@ -1456,7 +1461,7 @@
   (let ((badobj (find-local-nonparameter-reference decl)))
     (when badobj
       (type-error badobj
-	"Assumption refers to ~a, which is not visible prior to importing this theory"
+	"Error: assumption refers to ~a, which would not be visible in the associated TCC"
 	badobj))))
 
 (defun find-local-nonparameter-reference (decl)
@@ -1466,6 +1471,9 @@
 		       (when (and (name? ex)
 				  (resolution ex)
 				  (not (formal-decl? (declaration ex)))
+				  (not (and (const-decl? (declaration ex))
+					    (formal-subtype-decl?
+					     (generated-by (declaration ex)))))
 				  (not (binding? (declaration ex)))
 				  (eq (module (declaration ex))
 				      (current-theory)))
@@ -1585,7 +1593,8 @@
 					(and (not (from-conversion ty))
 					     (let ((sty (find-supertype ty)))
 					       (and (funtype? sty)
-						    (tc-eq (range sty)
+						    (tc-eq (find-supertype
+							    (range sty))
 							   *boolean*)))))
 		       (types (expr type)))
 		     (prog1 (look-for-expected-from-conversion (expr type))
@@ -1620,7 +1629,7 @@
     (let ((ftype (find-supertype (or (type (expr type))
 				     (car types)))))
       (unless (and (funtype? ftype)
-		   (tc-eq (range ftype) *boolean*))
+		   (tc-eq (find-supertype (range ftype)) *boolean*))
 	(type-error (expr type) "Does not resolve to a predicate"))
       (set-type (expr type) ftype)
       (let ((tval (mk-subtype (domain ftype)
@@ -1938,8 +1947,9 @@
 (defmethod copy-judgement-subtype-without-types ((te type-application))
   (lcopy te
     'parameters (mapcar #'(lambda (p)
-			    (if (bind-decl? p)
-				(mk-name-expr p)
+			    (if (and (bind-decl? p)
+				     (not (untyped-bind-decl? p)))
+				(change-class (copy p) 'untyped-bind-decl)
 				p))
 		  (parameters te))))
 

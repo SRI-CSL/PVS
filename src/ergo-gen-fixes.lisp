@@ -2,7 +2,7 @@
 ;;; Makes jux operator symbol local to package of grammar, rather than
 ;;; package sbst.  Spacing info for jux is now obeyed.
 
-(in-package 'syntax-box)
+(in-package :syntax-box)
 
 (defun build-parse (gram-struct)
   (let (guts)
@@ -11,7 +11,7 @@
       (push `(,(intern (symbol-name (caar nts))
 		       (lang:lang-abs-syn-package *language*))
 	      (,(make-function-name (caar nts)) 0)) guts))
-    (push `(T (error "Unknown nonterminal ~A." nt)) guts)
+    (push `(t (error "Unknown nonterminal ~A." nt)) guts)
     (save-function
      `(defun ,(sb-intern-nupcase (lang:lang-parse-routine-name *language*))
 	(&key (nt
@@ -72,43 +72,43 @@
 ;;; Get rid of keyword args in an attempt to speed things up.
 
 (defun gen-nt-unparse-routine ()
-  `(DEFUN ,(mk-unparse-name) (NT AS &KEY (STYLE *UNPARSE-STYLE*))
-     (LET* ((*UNPARSER-OP-LIST* ,*conc-all-operators-list*)
-	    (*KEY-TOKEN-MAP* ,(mk-key-token-table-name))
-	    (*KEY-ESC-TOKEN-MAP* ,(mk-key-esc-token-table-name))
-	    (*LT-TOKEN-MAP* ,(mk-lt-token-table-name))
-	    (*LT-ESC-TOKEN-MAP* ,(mk-lt-esc-token-table-name))
-	    (*APPLY-LT-DIS-FUN* #'APPLY-LEXICAL-TERMINAL-DISCRIMINATOR)
-	    (*APPLY-LT-DES-FUN* #'APPLY-LEXICAL-TERMINAL-DESTRUCTOR)
-	    (*APPLY-LT-TOKEN-CONS-FUN* #'APPLY-LT-TOKEN-CONSTRUCTOR)
-	    (*BRACKET-INFO* ,(mk-bracket-table-name))
-	    (*PREC-INFO* ,(mk-prec-table-name))
-	    (SORT (SORT:OPSIG-OUTPUT
-		   (SORT:OPSIG-TABLE-LOOKUP (TERM:TERM-OP AS))))
-	    (NT-NAME (COND (NT)
-			   ((SORT:IS-SORT-TTYPE SORT)
-			    (SORT:DS-SORT-TTYPE SORT))
-			   (T 
+  `(defun ,(mk-unparse-name) (nt as &key (style *unparse-style*))
+     (let* ((*unparser-op-list* ,*conc-all-operators-list*)
+	    (*key-token-map* ,(mk-key-token-table-name))
+	    (*key-esc-token-map* ,(mk-key-esc-token-table-name))
+	    (*lt-token-map* ,(mk-lt-token-table-name))
+	    (*lt-esc-token-map* ,(mk-lt-esc-token-table-name))
+	    (*apply-lt-dis-fun* #'apply-lexical-terminal-discriminator)
+	    (*apply-lt-des-fun* #'apply-lexical-terminal-destructor)
+	    (*apply-lt-token-cons-fun* #'apply-lt-token-constructor)
+	    (*bracket-info* ,(mk-bracket-table-name))
+	    (*prec-info* ,(mk-prec-table-name))
+	    (sort (sort:opsig-output
+		   (sort:opsig-table-lookup (term:term-op as))))
+	    (nt-name (cond (nt)
+			   ((sort:is-sort-ttype sort)
+			    (sort:ds-sort-ttype sort))
+			   (t 
 			    ',(nt-name-abs-package
 			       (car (grammar-nonterminal-definitions
 				     *grammar-term*))))))
 
-	    (*CASE-SENSITIVE* ,*conc-case-sensitive*)
-	    (*ESCAPE-CHARACTER* ,*conc-escape-char*)
-	    (*RESTRICTED-CHARS* ,*conc-restricted-chars*)
-	    (*STRING-CHAR* ,*conc-string-char*)
-	    (*LITERAL-CHAR* ,*conc-literal-char*)
-	    (*KEYWORD-CHAR* ,*conc-keyword-char*)
-	    (*UNPARSE-STYLE* (IF (AND STYLE
-				      (NOT (CONSP STYLE)))
-				 (LIST STYLE)
-				 STYLE))
-	    (*NO-ESCAPES* (OR *NO-ESCAPES*
-			      (NULL (INSERT-ESCAPES?))))
-	    (*CURRENT-PRINT-DEPTH* 1))
+	    (*case-sensitive* ,*conc-case-sensitive*)
+	    (*escape-character* ,*conc-escape-char*)
+	    (*restricted-chars* ,*conc-restricted-chars*)
+	    (*string-char* ,*conc-string-char*)
+	    (*literal-char* ,*conc-literal-char*)
+	    (*keyword-char* ,*conc-keyword-char*)
+	    (*unparse-style* (if (and style
+				      (not (consp style)))
+				 (list style)
+				 style))
+	    (*no-escapes* (or *no-escapes*
+			      (null (insert-escapes?))))
+	    (*current-print-depth* 1))
 
-       (LET ((UTERM
-	      (CASE NT-NAME
+       (let ((uterm
+	      (case nt-name
 		    ,@(do ((runner (grammar-nonterminal-definitions
 				    *grammar-term*)
  				   (cdr runner))
@@ -117,24 +117,24 @@
 				    `(,(nt-name-abs-package (car runner))
 				      (,(mk-unparse-routine-name
 					 (nt-name (car runner)))
-				       AS
-				       T)) ; was :TOP-LEVEL? T
+				       as
+				       t)) ; was :TOP-LEVEL? T
 				    result)))
 			  ((null runner)
 			   (reverse
-			    (cons `(T (UNPARSE-RUNTIME-ERROR
+			    (cons `(t (unparse-runtime-error
 				       "Nonterminal not unparsable:"
-				       NT-NAME NIL)
+				       nt-name nil)
 				      ());; return nil to avoid mapping above.
 				  result)))))))
-	    UTERM))))
+	    uterm))))
 
 (defun gen-nt-attr (nt)
   (let ((nt-name (nt-name nt)))
-    `(DEFUN ,(mk-unparse-routine-name nt-name) (AS
-						&OPTIONAL (TOP-LEVEL? NIL))
-       (MEMO-UTERM AS #',(mk-aux-unparse-routine-name nt-name)
-		   TOP-LEVEL?))))
+    `(defun ,(mk-unparse-routine-name nt-name) (as
+						&optional (top-level? nil))
+       (memo-uterm as #',(mk-aux-unparse-routine-name nt-name)
+		   top-level?))))
 
 
 ;;; Handle jux correctly
@@ -184,7 +184,7 @@
 ;;; stores the current place, and can be used in calls to make-sb-term,
 ;;; so that lexical position can be stored with terms.
 
-(defun collapse-I-only (fragment-numbers fragment-list number-of-slots 
+(defun collapse-i-only (fragment-numbers fragment-list number-of-slots 
 			nt nt-as fs-list need-brackets)
   (let* (branch-list fragment
              ; list of the main fragments.		    
@@ -214,7 +214,7 @@
 	    branch-list))
     	
         ; catch errors.
-    (push `(T (initial-error (quote ,fs-list))) branch-list)
+    (push `(t (initial-error (quote ,fs-list))) branch-list)
     (setq branch-list (cons 'initials-only (nreverse branch-list)))
 
     (save-function
@@ -238,7 +238,7 @@
 
 
 
-(defun collapse-bracket-I-only (fragment-numbers fragment-list number-of-slots 
+(defun collapse-bracket-i-only (fragment-numbers fragment-list number-of-slots 
 						 nt nt-as fs-list gram-struct)
 
   (let* ((branch-list nil) (fragment nil)
@@ -273,7 +273,7 @@
 	    branch-list))
     	
        ; catch errors -- do not want to fall out of the bottom.
-    (push `(T (initial-error (quote ,fs-list))) branch-list)
+    (push `(t (initial-error (quote ,fs-list))) branch-list)
     (setq branch-list (cons 'initials-only (nreverse branch-list)))
 
     (save-function
@@ -304,7 +304,7 @@
 
 
 
-(defun collapse-IM (initials medials number-of-slots fragment-list nt nt-as
+(defun collapse-im (initials medials number-of-slots fragment-list nt nt-as
 			     gram-struct initial-fs-list medial-fs-list
 			     need-brackets jux-branches)
 
@@ -341,7 +341,7 @@
 
     	
        ; catch errors
-    (push `(T (initial-error (quote ,initial-fs-list))) init-list)
+    (push `(t (initial-error (quote ,initial-fs-list))) init-list)
     (setq init-list (cons 'initials (nreverse init-list)))
 
 
@@ -359,7 +359,7 @@
 			 (collapse (get-code fragment) fragment-list))
 		   medial-list))
 
-	    (T
+	    (t
 	         ; add an entry for the medial case statement
 	         ; Medials only have one symbol of look ahead.
 	     (let ((medial-fragment-las
@@ -377,7 +377,7 @@
 			    medial-fragment-las))
 		     medial-list)))))
 
-    (push `(T (medial-error (quote ,medial-fs-list))) medial-list)
+    (push `(t (medial-error (quote ,medial-fs-list))) medial-list)
     (setq medial-list (append `(case ,mvar) (nreverse medial-list)))
 	 
 
@@ -422,7 +422,7 @@
 ;;; of the operator, so that make-sb-term can grab it and put it in the
 ;;; name of the application corresponding to a term-expr.
 
-(defun collapse-bracket-IM (initials medials number-of-slots fragment-list nt
+(defun collapse-bracket-im (initials medials number-of-slots fragment-list nt
 			    nt-as gram-struct initial-fs-list medial-fs-list
 			    jux-branches)
 
@@ -462,7 +462,7 @@
 
 
         ; catch errors
-    (push `(T (initial-error (quote ,initial-fs-list))) init-list)
+    (push `(t (initial-error (quote ,initial-fs-list))) init-list)
     (setq init-list (cons 'initials (nreverse init-list)))
 
         ; for each medial
@@ -480,7 +480,7 @@
 			 (collapse (get-code fragment) fragment-list))
 		   medial-list))
 
-	    (T
+	    (t
 	         ; build entry for branch in the medial case statement.
 	     (let ((medial-fragment-las
 		    (make-medial-branch-las (get-fs fragment))))
@@ -498,7 +498,7 @@
 		     medial-list)))))
     
         ; catch errors
-    (push `(T (medial-error (quote ,medial-fs-list))) medial-list)
+    (push `(t (medial-error (quote ,medial-fs-list))) medial-list)
     (setq medial-list (append `(case ,mvar) (nreverse medial-list)))
 	 
 
@@ -713,7 +713,7 @@
 		 (if temp (setf (cdr temp) (cons count (cdr temp)))
 		          (push (list as-code count) optimize-results)))
 
-		(T (push (list count as-code) branches))))
+		(t (push (list count as-code) branches))))
 
            ; special case -- if branches is empty then we only have slot name
 	   ; references and if we only have one entry in optimize results
@@ -723,7 +723,7 @@
        (cond ((and (null branches) (= (length optimize-results) 1))
 	      (caar optimize-results))
 
-	     (T (do ((entries optimize-results (cdr entries)))
+	     (t (do ((entries optimize-results (cdr entries)))
 		    ((null entries))
 
 		  (if (= (length (car entries)) 2)
@@ -746,25 +746,12 @@
 	 (append
 	  (if (funcall ,(get-discriminator as-pat gram-struct) first)
 	      (car (funcall ,(get-destructor as-pat gram-struct) first))
-
-
-
-
-
-
-
-
-
-
-
-
-
 	      (list first))
 	  (if (funcall ,(get-discriminator as-pat gram-struct) second)
 	      (car (funcall ,(get-destructor as-pat gram-struct) second))
 	      (list second))))))
 
-    (T
+    (t
      (sb-system-error))))
 
 

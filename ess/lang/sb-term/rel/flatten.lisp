@@ -108,7 +108,7 @@
       ((ukeyword nonterminal ext-nonterminal jux)
        (push pat results))
 
-      (T (my-error 15)))
+      (t (my-error 15)))
 
     results))
 			
@@ -157,7 +157,7 @@
 		    (flatten-pattern second-son))))))
 
 	      ; if the first son is not atomic flatten again.
-	  (T (flatten-pattern pat)))))
+	  (t (flatten-pattern pat)))))
 			       
 
 
@@ -318,10 +318,10 @@
 	   ((alt plus doubleplus seq internal-seq)
 	    (seq-combine-first-list (flatten-pattern first-son) rest pat-as))
 	   
-	   (T (my-error 18)))))
+	   (t (my-error 18)))))
 
           ; fall out the end.
-      (T (my-error 18)))))
+      (t (my-error 18)))))
 
 
 
@@ -376,7 +376,7 @@
 ;  Take a star or plus pattern and build an identical gen-star pattern
 ;
 
-(defun Build-star (pat)
+(defun build-star (pat)
   (make-pattern :kind 'gen-star
 		:slot (get-result pat)
 		:augment (get-as pat)
@@ -534,7 +534,7 @@
 			 :sons (list (car (get-sons front))
 				     (combine (cadr (get-sons front)) back
 					      front-seq-as))))
-	  (T (if front-seq-as
+	  (t (if front-seq-as
 		 (setq front
 		       (car (no-flag-add-as-to-results
 			     (list front) front-seq-as))))

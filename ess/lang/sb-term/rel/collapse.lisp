@@ -33,7 +33,7 @@
 ; need-brackets will be true if the functions produced uses the bracket-list 
 ; argument.
 
-(defun collapse-I-only (fragment-numbers fragment-list number-of-slots 
+(defun collapse-i-only (fragment-numbers fragment-list number-of-slots 
 			nt nt-as fs-list need-brackets)
   (let* (branch-list fragment
              ; list of the main fragments.		    
@@ -63,7 +63,7 @@
 	    branch-list))
     	
         ; catch errors.
-    (push `(T (initial-error (quote ,fs-list))) branch-list)
+    (push `(t (initial-error (quote ,fs-list))) branch-list)
     (setq branch-list (cons 'initials-only (nreverse branch-list)))
 
     (save-function
@@ -90,7 +90,7 @@
 ;    Initials only, with brackets -- Except for the brackets this routine
 ;    is identical to collapse-I-only.
 
-(defun collapse-bracket-I-only (fragment-numbers fragment-list number-of-slots 
+(defun collapse-bracket-i-only (fragment-numbers fragment-list number-of-slots 
 						 nt nt-as fs-list gram-struct)
 
   (let* ((branch-list nil) (fragment nil)
@@ -125,7 +125,7 @@
 	    branch-list))
     	
        ; catch errors -- do not want to fall out of the bottom.
-    (push `(T (initial-error (quote ,fs-list))) branch-list)
+    (push `(t (initial-error (quote ,fs-list))) branch-list)
     (setq branch-list (cons 'initials-only (nreverse branch-list)))
 
     (save-function
@@ -161,7 +161,7 @@
 
 
 (defun build-lbp-code (var-name regulars jux-branches lbps)
-  (let ((code '((T 0))))
+  (let ((code '((t 0))))
 
     (do ((juxes jux-branches (cdr juxes))
 	 (temp nil))
@@ -218,7 +218,7 @@
 ;    Initials and Medials, no brackets.  Need-brackets will be true if the
 ;    function produced needs the bracket-list argument.
 
-(defun collapse-IM (initials medials number-of-slots fragment-list nt nt-as
+(defun collapse-im (initials medials number-of-slots fragment-list nt nt-as
 			     gram-struct initial-fs-list medial-fs-list
 			     need-brackets jux-branches)
 
@@ -255,7 +255,7 @@
 
     	
        ; catch errors
-    (push `(T (initial-error (quote ,initial-fs-list))) init-list)
+    (push `(t (initial-error (quote ,initial-fs-list))) init-list)
     (setq init-list (cons 'initials (nreverse init-list)))
 
 
@@ -273,7 +273,7 @@
 			 (collapse (get-code fragment) fragment-list))
 		   medial-list))
 
-	    (T
+	    (t
 	         ; add an entry for the medial case statement
 	         ; Medials only have one symbol of look ahead.
 	     (let ((medial-fragment-las
@@ -291,7 +291,7 @@
 			    medial-fragment-las))
 		     medial-list)))))
 
-    (push `(T (medial-error (quote ,medial-fs-list))) medial-list)
+    (push `(t (medial-error (quote ,medial-fs-list))) medial-list)
     (setq medial-list (append `(case ,mvar) (nreverse medial-list)))
 	 
 
@@ -347,7 +347,7 @@
 ;    Initials and Medials, with brackets.  Same as Collapse except for
 ;     bracket stuff.
 
-(defun collapse-bracket-IM (initials medials number-of-slots fragment-list nt
+(defun collapse-bracket-im (initials medials number-of-slots fragment-list nt
 			    nt-as gram-struct initial-fs-list medial-fs-list
 			    jux-branches)
 
@@ -387,7 +387,7 @@
 
 
         ; catch errors
-    (push `(T (initial-error (quote ,initial-fs-list))) init-list)
+    (push `(t (initial-error (quote ,initial-fs-list))) init-list)
     (setq init-list (cons 'initials (nreverse init-list)))
 
         ; for each medial
@@ -405,7 +405,7 @@
 			 (collapse (get-code fragment) fragment-list))
 		   medial-list))
 
-	    (T
+	    (t
 	         ; build entry for branch in the medial case statement.
 	     (let ((medial-fragment-las
 		    (make-medial-branch-las (get-fs fragment))))
@@ -423,7 +423,7 @@
 		     medial-list)))))
     
         ; catch errors
-    (push `(T (medial-error (quote ,medial-fs-list))) medial-list)
+    (push `(t (medial-error (quote ,medial-fs-list))) medial-list)
     (setq medial-list (append `(case ,mvar) (nreverse medial-list)))
 	 
 
@@ -469,7 +469,7 @@
 (defun collapse (code fragment-list)
 
   (cond ((atom code) code)
-	(T (case (car code)
+	(t (case (car code)
 	         ; (opt-parse LAS code)
 	     (opt-parse 
 	      (let ((fragment (assoc (nth 2 code) fragment-list)))
@@ -524,7 +524,7 @@
 			clause-list))
 
 		    ; catch erros    
-		(push `(T (initial-error (quote ,(compare-fs-list error-list))))
+		(push `(t (initial-error (quote ,(compare-fs-list error-list))))
 		      clause-list)
 		(cons 'alt-parse (reverse clause-list))))
 
@@ -607,7 +607,7 @@
 		  (cond ((eq (car temp) 'progn)
 			 (setq clause-list
 			       (append (reverse (cdr temp)) clause-list)))
-			(T (push temp clause-list))))
+			(t (push temp clause-list))))
 		      
 		(if (= (length clause-list) 1)
 		    (car clause-list)
@@ -627,7 +627,7 @@
 		  `(code-to-slot ,(nth 2 (cadr code)) 
 				 ,(collapse (nth 2 code) fragment-list))))
 					
-	     (T code)))))
+	     (t code)))))
 
 
 
@@ -679,7 +679,7 @@
 	(do ((i 0 (+ i 1)))
 	    ((= i n) (reverse vars))
 
-	  (push (intern (format nil "V~D" i) *sb-package*)
+	  (push (intern (format nil "~A~D" :v i) *sb-package*)
 		vars))))
 
 

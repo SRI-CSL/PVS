@@ -14,7 +14,7 @@
 
 ;;; This is the unparser generator written by Scott Dietzen.
 
-(in-package 'syntax-box)  (use-package :ergolisp)
+(in-package :syntax-box)  (use-package :ergolisp)
 
 
 (eval-when (eval compile load)
@@ -165,14 +165,14 @@
 (defun output-bracket-info (grammar output-file)
   (let ((table-name (mk-bracket-table-name)))
     (sb-write
-     (pprint `(DEFVAR ,table-name (MAKE-HASH-TABLE :TEST #'EQ))
+     (pprint `(defvar ,table-name (make-hash-table :test #'eq))
 	     output-file)
-     (pprint `(CLRHASH ,table-name) output-file)
+     (pprint `(clrhash ,table-name) output-file)
      (pprint
-      `(MAPC #'(LAMBDA (ENTRY)
-		  (SET-BRACKET-INFO (CAR ENTRY)
-				    (CADR ENTRY)
-				    (CADDR ENTRY)
+      `(mapc #'(lambda (entry)
+		  (set-bracket-info (car entry)
+				    (cadr entry)
+				    (caddr entry)
 				    ,table-name))
 	     ',(mapcan #'(lambda (nt-entry)
 			   (let ((brackets
@@ -189,12 +189,12 @@
 (defun output-precedence-info (grammar output-file)
   (let ((table-name (mk-prec-table-name)))
     (sb-write
-     (pprint `(DEFVAR ,table-name (MAKE-HASH-TABLE :TEST #'EQ))
+     (pprint `(defvar ,table-name (make-hash-table :test #'eq))
 	     output-file)
-     (pprint `(CLRHASH ,table-name) output-file)
+     (pprint `(clrhash ,table-name) output-file)
      (pprint
-      `(MAPC #'(LAMBDA (NT)
-		 (INIT-PREC-INFO NT ,table-name))
+      `(mapc #'(lambda (nt)
+		 (init-prec-info nt ,table-name))
 	     ',(mapcan #'(lambda (nt-entry)
 			   (cond ((get-nt-prec (nt-name nt-entry) grammar)
 				  (list (nt-name-abs-package nt-entry)))))
@@ -225,11 +225,11 @@
 
       (sb-write
        (pprint
-	`(MAPC #'(LAMBDA (ENTRY)
-		   (SET-PREC-INFO (CAR ENTRY)
-				  (CADR ENTRY)
-				  (CADDR ENTRY)
-				  (CADDDR ENTRY)
+	`(mapc #'(lambda (entry)
+		   (set-prec-info (car entry)
+				  (cadr entry)
+				  (caddr entry)
+				  (cadddr entry)
 				  ,table-name))
 	       ',result)
         output-file)))))
@@ -254,20 +254,20 @@
      (intern (if (stringp x)
 		 x 
 		 (symbol-name x))
-	     (find-package "KEYWORD")))))
+	     (find-package :keyword)))))
 
 
 (defun output-spacing-info (grammar output-file)
   (let ((spacing-table-name (mk-spacing-table-name)))
     (sb-write
-     (pprint `(DEFVAR ,spacing-table-name (MAKE-HASH-TABLE :TEST #'EQ))
+     (pprint `(defvar ,spacing-table-name (make-hash-table :test #'eq))
 	     output-file)
-     (pprint `(CLRHASH ,spacing-table-name) output-file))
+     (pprint `(clrhash ,spacing-table-name) output-file))
     (do ((clauses (grammar-spacing grammar)
 		  (cdr clauses))
-	 (T1s nil
+	 (t1s nil
 	      (cons (get-spacing-symbol (term-arg0 (car clauses)))
-		    T1s))
+		    t1s))
 	 (sps nil
 	      (cons (let ((bp-spec (make-bp-spec (term-arg1 (car clauses)))))
 		      (cond ((nth 8 bp-spec)	; crs field
@@ -278,19 +278,19 @@
 		    sps))
 	 (t2s nil
 	      (cons (get-spacing-symbol (term-arg2 (car clauses)))
-		    T2s)))
+		    t2s)))
 	((null clauses)
 	 (sb-write
 	  (pprint
-	   `(MAPC #'(LAMBDA (T1 T2 BP)
-		      (COND ((ASSOC T2 (GETHASH T1 ,spacing-table-name)))
+	   `(mapc #'(lambda (t1 t2 bp)
+		      (cond ((assoc t2 (gethash t1 ,spacing-table-name)))
 					; already set
-			    (T
-			     (SETF (GETHASH T1 ,spacing-table-name)
-				   (CONS (LIST T2 BP)
-					 (GETHASH T1 ,spacing-table-name))))))
-		  ,@(setup-spacing-table (nreverse T1s)
-					 (nreverse T2s)
+			    (t
+			     (setf (gethash t1 ,spacing-table-name)
+				   (cons (list t2 bp)
+					 (gethash t1 ,spacing-table-name))))))
+		  ,@(setup-spacing-table (nreverse t1s)
+					 (nreverse t2s)
 					 (nreverse sps)))
 	   output-file))))))
 
@@ -366,60 +366,60 @@
 	(lt-table-name (mk-lt-token-table-name))
 	(lt-esc-table-name (mk-lt-esc-token-table-name)))
     (sb-write
-     (pprint `(DEFVAR ,key-table-name (MAKE-HASH-TABLE :TEST #'EQ))
+     (pprint `(defvar ,key-table-name (make-hash-table :test #'eq))
 	     output-file)
-     (pprint `(DEFVAR ,key-esc-table-name
-		      (IF ,*conc-escape-char*
-			  (MAKE-HASH-TABLE :TEST #'EQ)))
+     (pprint `(defvar ,key-esc-table-name
+		      (if ,*conc-escape-char*
+			  (make-hash-table :test #'eq)))
 	     output-file)
-     (pprint `(DEFVAR ,lt-table-name (MAKE-HASH-TABLE :TEST #'EQUAL))
+     (pprint `(defvar ,lt-table-name (make-hash-table :test #'equal))
 	     output-file)
-     (pprint `(DEFVAR ,lt-esc-table-name 
-		      (IF ,*conc-escape-char*
-			  (MAKE-HASH-TABLE :TEST #'EQUAL)))
+     (pprint `(defvar ,lt-esc-table-name 
+		      (if ,*conc-escape-char*
+			  (make-hash-table :test #'equal)))
 	     output-file))))
 
 
 
 
 (defun gen-nt-unparse-routine ()
-  `(DEFUN ,(mk-unparse-name) (NT AS &KEY (STYLE *UNPARSE-STYLE*))
-     (LET* ((*UNPARSER-OP-LIST* ,*conc-all-operators-list*)
-	    (*KEY-TOKEN-MAP* ,(mk-key-token-table-name))
-	    (*KEY-ESC-TOKEN-MAP* ,(mk-key-esc-token-table-name))
-	    (*LT-TOKEN-MAP* ,(mk-lt-token-table-name))
-	    (*LT-ESC-TOKEN-MAP* ,(mk-lt-esc-token-table-name))
-	    (*APPLY-LT-DIS-FUN* #'APPLY-LEXICAL-TERMINAL-DISCRIMINATOR)
-	    (*APPLY-LT-DES-FUN* #'APPLY-LEXICAL-TERMINAL-DESTRUCTOR)
-	    (*APPLY-LT-TOKEN-CONS-FUN* #'APPLY-LT-TOKEN-CONSTRUCTOR)
-	    (*BRACKET-INFO* ,(mk-bracket-table-name))
-	    (*PREC-INFO* ,(mk-prec-table-name))
-	    (SORT (SORT:OPSIG-OUTPUT
-		   (SORT:OPSIG-TABLE-LOOKUP (TERM:TERM-OP AS))))
-	    (NT-NAME (COND (NT)
-			   ((SORT:IS-SORT-TTYPE SORT)
-			    (SORT:DS-SORT-TTYPE SORT))
-			   (T 
+  `(defun ,(mk-unparse-name) (nt as &key (style *unparse-style*))
+     (let* ((*unparser-op-list* ,*conc-all-operators-list*)
+	    (*key-token-map* ,(mk-key-token-table-name))
+	    (*key-esc-token-map* ,(mk-key-esc-token-table-name))
+	    (*lt-token-map* ,(mk-lt-token-table-name))
+	    (*lt-esc-token-map* ,(mk-lt-esc-token-table-name))
+	    (*apply-lt-dis-fun* #'apply-lexical-terminal-discriminator)
+	    (*apply-lt-des-fun* #'apply-lexical-terminal-destructor)
+	    (*apply-lt-token-cons-fun* #'apply-lt-token-constructor)
+	    (*bracket-info* ,(mk-bracket-table-name))
+	    (*prec-info* ,(mk-prec-table-name))
+	    (sort (sort:opsig-output
+		   (sort:opsig-table-lookup (term:term-op as))))
+	    (nt-name (cond (nt)
+			   ((sort:is-sort-ttype sort)
+			    (sort:ds-sort-ttype sort))
+			   (t 
 			    ',(nt-name-abs-package
 			       (car (grammar-nonterminal-definitions
 				     *grammar-term*))))))
 
-	    (*CASE-SENSITIVE* ,*conc-case-sensitive*)
-	    (*ESCAPE-CHARACTER* ,*conc-escape-char*)
-	    (*RESTRICTED-CHARS* ,*conc-restricted-chars*)
-	    (*STRING-CHAR* ,*conc-string-char*)
-	    (*LITERAL-CHAR* ,*conc-literal-char*)
-	    (*KEYWORD-CHAR* ,*conc-keyword-char*)
-	    (*UNPARSE-STYLE* (IF (AND STYLE
-				      (NOT (CONSP STYLE)))
-				 (LIST STYLE)
-				 STYLE))
-	    (*NO-ESCAPES* (OR *NO-ESCAPES*
-			      (NULL (INSERT-ESCAPES?))))
-	    (*CURRENT-PRINT-DEPTH* 1))
+	    (*case-sensitive* ,*conc-case-sensitive*)
+	    (*escape-character* ,*conc-escape-char*)
+	    (*restricted-chars* ,*conc-restricted-chars*)
+	    (*string-char* ,*conc-string-char*)
+	    (*literal-char* ,*conc-literal-char*)
+	    (*keyword-char* ,*conc-keyword-char*)
+	    (*unparse-style* (if (and style
+				      (not (consp style)))
+				 (list style)
+				 style))
+	    (*no-escapes* (or *no-escapes*
+			      (null (insert-escapes?))))
+	    (*current-print-depth* 1))
 
-       (LET ((UTERM
-	      (CASE NT-NAME
+       (let ((uterm
+	      (case nt-name
 		    ,@(do ((runner (grammar-nonterminal-definitions
 				    *grammar-term*)
  				   (cdr runner))
@@ -428,30 +428,30 @@
 				    `(,(nt-name-abs-package (car runner))
 				      (,(mk-unparse-routine-name
 					 (nt-name (car runner)))
-				       AS
-				       :TOP-LEVEL? T))
+				       as
+				       :top-level? t))
 				    result)))
 			  ((null runner)
 			   (reverse
-			    (cons `(T (UNPARSE-RUNTIME-ERROR
-				       "Nonterminal not unparsable:"
-				       NT-NAME NIL)
+			    (cons `(t (unparse-runtime-error
+				       "nonterminal not unparsable:"
+				       nt-name nil)
 				      ());; return nil to avoid mapping above.
 				  result)))))))
-	    UTERM))))
+	    uterm))))
 
 
 
 (defun gen-uterm-format-routine ()
-  `(DEFUN ,(mk-win-unparse-name) (UTERM WIDTH
-					&KEY 
-					(FONTWIDTH SBRT::SB-DEFFONTWIDTH)
-					(FONTHEIGHT SBRT::SB-DEFFONTHEIGHT))
-     (LET* ((*CASE-SENSITIVE* ,*conc-case-sensitive*)
-	    (*UNPARSER-OP-LIST* ,*conc-all-operators-list*)
-	    (*SPACING-INFO* ,(mk-spacing-table-name)))
-       (FORMAT-UTERM UTERM WIDTH :FONTWIDTH FONTWIDTH
-		                 :FONTHEIGHT FONTHEIGHT))))
+  `(defun ,(mk-win-unparse-name) (uterm width
+					&key 
+					(fontwidth sbrt::sb-deffontwidth)
+					(fontheight sbrt::sb-deffontheight))
+     (let* ((*case-sensitive* ,*conc-case-sensitive*)
+	    (*unparser-op-list* ,*conc-all-operators-list*)
+	    (*spacing-info* ,(mk-spacing-table-name)))
+       (format-uterm uterm width :fontwidth fontwidth
+		                 :fontheight fontheight))))
 	   
 
 
@@ -493,10 +493,10 @@
 
 (defun gen-nt-attr (nt)
   (let ((nt-name (nt-name nt)))
-    `(DEFUN ,(mk-unparse-routine-name nt-name) (AS
-						&KEY (TOP-LEVEL? NIL))
-       (MEMO-UTERM AS #',(mk-aux-unparse-routine-name nt-name)
-		   :TOP-LEVEL? TOP-LEVEL?))))
+    `(defun ,(mk-unparse-routine-name nt-name) (as
+						&key (top-level? nil))
+       (memo-uterm as #',(mk-aux-unparse-routine-name nt-name)
+		   :top-level? top-level?))))
 
 
 
@@ -504,16 +504,16 @@
 (defun gen-nt-unparser (nt)
   (let ((nt-name (nt-name-abs-package nt))
 	(nt-pat (nt-pattern nt)))
-    `(DEFUN ,(mk-aux-unparse-routine-name nt-name) (AS)
-	    (LET (,@(do ((i (1- (get-nt-slot-total nt)) (1- i))
+    `(defun ,(mk-aux-unparse-routine-name nt-name) (as)
+	    (let (,@(do ((i (1- (get-nt-slot-total nt)) (1- i))
 			 (result () (cons (var i) result)))
 			((= i -1) result)))
 		 ;; suppresses compiler warnings if available
-		 (ERGO-IGNORE-IF-UNUSED 
+		 (ergo-ignore-if-unused 
 		  ,@(do ((i (1- (get-nt-slot-total nt)) (1- i))
 			 (result () (cons (var i) result)))
 			((= i -1) result)))
-		 (SETF ,(var (cond ((and (memq (pattern-kind nt-pat)
+		 (setf ,(var (cond ((and (memq (pattern-kind nt-pat)
 					       '(alt opt))
 					 (not (memq nt-pat
 						    *top-level-alts*)))
@@ -521,10 +521,10 @@
 				    (+ 1 (get-pattern-slot nt-pat)))
 				   (t 
 				    (get-pattern-slot nt-pat))))
-		       AS)
-		 (NT-UNP
+		       as)
+		 (nt-unp
 		  ',nt-name
-		  AS
+		  as
 		   ,(gen-pattern-&-upattern-unparser nt-pat))))))
 
 
@@ -533,8 +533,8 @@
 (defun gen-pattern-&-upattern-unparser (pat)
   (if (null (pattern-upats pat))
       (gen-pattern-&-augment-unparser pat)
-      `((UPATS
-	 ,@(let ((parse-code `((:PARSE) ,@(gen-pattern-&-augment-unparser pat)))
+      `((upats
+	 ,@(let ((parse-code `((:parse) ,@(gen-pattern-&-augment-unparser pat)))
 		 (branches nil)
 		 (default-code nil))
 	     (do ((upats (pattern-upats pat)
@@ -543,7 +543,7 @@
 		  (if default-code
 		      (cons parse-code
 			    (nreverse (cons default-code branches)))
-		      (nreverse (cons `(T ,@(cdr parse-code))
+		      (nreverse (cons `(t ,@(cdr parse-code))
 				      branches))))
 	       (if (or (null (upat-uids (car upats)))
 		       (member :default (upat-uids (car upats)) :test #'eq))
@@ -553,7 +553,7 @@
 			   patterns.  Ignoring additional ones.~%")
 			nil)
 		       (setq default-code
-			     `(T ,@(gen-pattern-&-augment-unparser
+			     `(t ,@(gen-pattern-&-augment-unparser
 				    (upat-pattern (car upats))))))
 		   (setq branches
 			 (cons `(,(upat-uids (car upats))
@@ -572,7 +572,7 @@
 		 (gen-augment-unparser (get-pattern-augment pat))))
 	  (gen-pattern-unparser pat))))
     (if (pattern-gets-uterm? pat)
-	`((UNP-UTERM ,(var (cond ((and (memq (pattern-kind pat)
+	`((unp-uterm ,(var (cond ((and (memq (pattern-kind pat)
 					     '(alt opt))
 				       (not (memq pat
 						  *top-level-alts*)))
@@ -603,28 +603,34 @@
 	   (pattern-format pat))
          ;; In the above case the bp will not be written out be ordinary means
 	 ;; so we have to fake it.  
-      `((UNP-SEQ (,(gen-pattern-unparser pat :format-done t))
+      `((unp-seq (,(gen-pattern-unparser pat :format-done t))
 		 (,(make-bp-spec (pattern-format pat)))))
       ;;  Indentation shift <----				       
   (ecase (pattern-kind pat)
     (nonterminal
      (cond ((is-lexical-terminal (pattern-leaf-ds pat)
 				 *grammar-term*)
-	    `((UNP-LT ',(sbst-intern-case (pattern-leaf-ds pat))
+	    `((unp-lt ',(sbst-intern-case (pattern-leaf-ds pat))
 		      ,(var (get-pattern-slot pat)))))
 	   (t
-	    `((UNP-NT ,(mk-unparse-routine-name (pattern-leaf-ds pat))
+	    `((unp-nt ,(mk-unparse-routine-name (pattern-leaf-ds pat))
 		      ,(var (get-pattern-slot pat)))))))
 
 
     (ext-nonterminal
      (multiple-value-bind (nt lg-name)
 	 (pattern-leaf-ds pat)
-       `((UNP-EXT-NT
+       `((unp-ext-nt
 	  ,(intern (if *grammar-case-sensitive?*
 		       (symbol-name 
 			(mk-unparse-routine-name nt
 						 :lg-name lg-name))
+		       #+allegro-v6.0
+		       (string-downcase
+			(symbol-name 
+			 (mk-unparse-routine-name nt
+						  :lg-name lg-name)))
+		       #-allegro-v6.0
 		       (string-upcase
 			(symbol-name 
 			 (mk-unparse-routine-name nt
@@ -632,20 +638,21 @@
 		   (lang:get-lang-code-package lg-name))
 	  ,(intern (if *grammar-case-sensitive?*
 		       (symbol-name nt)
-		       (string-upcase (symbol-name nt)))
+		       #+allegro-v6.0 (string-dwoncase (symbol-name nt))
+		       #-allegro-v6.0 (string-upcase (symbol-name nt)))
 		   (lang:get-lang-abs-syn-package lg-name))
 	  ,(var (get-pattern-slot pat))))))
     
     (ukeyword
-     `((UNP-KEYWORD ',(sbst-intern-case (pattern-leaf-ds pat)))))
+     `((unp-keyword ',(sbst-intern-case (pattern-leaf-ds pat)))))
 
     (alt
-     `((UNP-ALT ,(var (get-pattern-slot pat))
+     `((unp-alt ,(var (get-pattern-slot pat))
 		,(mapcar #'gen-pattern-&-upattern-unparser
 			 (pattern-sons pat)))))
 
     (opt
-     `((UNP-OPT ,(var (get-pattern-slot pat))
+     `((unp-opt ,(var (get-pattern-slot pat))
 		,(gen-pattern-&-upattern-unparser (car (pattern-sons pat))))))
 
     ((plus star)
@@ -658,8 +665,8 @@
 	    (body (gen-pattern-&-upattern-unparser (pattern-son0 pat)))
 	    (uterm-body (if (pattern-gets-uterm? (pattern-son0 pat))
 			    body
-			    `((UNP-UTERM ,indiv-slot ,body)))))
-     `((UNP-REPT
+			    `((unp-uterm ,indiv-slot ,body)))))
+     `((unp-rept
 	,(var (get-pattern-slot pat))
 	,uterm-body
 	,indiv-slot
@@ -675,8 +682,8 @@
 	    (body (gen-pattern-&-upattern-unparser (pattern-son0 pat)))
 	    (uterm-body (if (pattern-gets-uterm? (pattern-son0 pat))
 			    body
-			    `((UNP-UTERM ,indiv-slot ,body)))))
-       `((UNP-DOUBLE-REPT 
+			    `((unp-uterm ,indiv-slot ,body)))))
+       `((unp-double-rept 
 	  ,(var (get-pattern-slot pat))
 	  ,uterm-body
 	  ,(gen-pattern-&-upattern-unparser (pattern-son1 pat))
@@ -697,7 +704,7 @@
 				 (pattern-leaf-ds
 				  (pattern-son1 pat)))))))))))
     (seq 
-     `((UNP-SEQ
+     `((unp-seq
 	,(mapcar #'gen-pattern-&-upattern-unparser
 		 (pattern-sons pat))
 	,(mapcar #'(lambda (x)
@@ -705,7 +712,7 @@
 		 (pattern-sons pat)))))
 
     (jux
-     `((UNP-JUX
+     `((unp-jux
 	,(gen-pattern-&-upattern-unparser (car (pattern-sons pat)))
 	',(mk-jux-name (pattern-name pat))
 	,(gen-pattern-&-upattern-unparser (cadr (pattern-sons pat)))
@@ -721,21 +728,21 @@
 (defun gen-augment-unparser (aug)
   (ecase (augment-kind aug)
 
-    (id `((UNP-BASE-ID)))
-    (literal `((UNP-BASE-LIT)))
-    (number `((UNP-BASE-NUM)))
-    (string `((UNP-BASE-STR)))
+    (id `((unp-base-id)))
+    (literal `((unp-base-lit)))
+    (number `((unp-base-num)))
+    (string `((unp-base-str)))
 
     (cons
-     `((UNP-CONS)
+     `((unp-cons)
        ,@(map-append #'gen-augment-unparser
 		     (augment-args aug))))
     (bcons
-     `((UNP-BCONS)
+     `((unp-bcons)
        ,@(map-append #'gen-augment-unparser
 		     (augment-args aug))))
     (list
-     `((UNP-LIST)
+     `((unp-list)
        ,@(map-append #'gen-augment-unparser
 		     (augment-args aug))))
     (append
@@ -745,29 +752,29 @@
 
     (term-const
      (cond ((has-elist-arg? aug)	; routines imported from sort-gen.
-	    `((UNP-ELIST-CONST)))
+	    `((unp-elist-const)))
 	   ((has-null-arg? aug)
-	    `((UNP-NULL-CONST)))
+	    `((unp-null-const)))
 	   ((has-list-arg? aug)
-	    `((UNP-LIST-CONST)
+	    `((unp-list-const)
 	      ,@(map-append #'gen-augment-unparser
 			    (cdr (augment-args aug)))))
 					; CDR to get rid of op field.
 	   (t
-	    `((UNP-TERM-CONST ',(augment-leaf-ds (augment-arg0 aug)))
+	    `((unp-term-const ',(augment-leaf-ds (augment-arg0 aug)))
 	      ,@(map-append #'gen-augment-unparser
 			    (cdr (augment-args aug)))))))
 					; CDR to get rid of op field.
     
     ((name ext-name)
      (if (augment-key-slot aug)
-	 `((UNP-NAME ',(augment-leaf-ds aug)
+	 `((unp-name ',(augment-leaf-ds aug)
 		     ,(var (augment-key-slot aug))))
-	 `((TOSS-NAME ',(augment-leaf-ds aug))))) ; for upatterns not used.
+	 `((toss-name ',(augment-leaf-ds aug))))) ; for upatterns not used.
      
     
     ((bind internal-bind)
-     `((UNP-BIND ',(augment-name aug)
+     `((unp-bind ',(augment-name aug)
 		 ,(var (augment-result-slot aug)))
        ,@(gen-augment-unparser (car (augment-args aug)))))
 
@@ -779,15 +786,15 @@
 	   ;; discriminated by prevsiously encountered abstract syntax.
 	(cond (discrim?
 	       (set-pattern-is-discriminated (car (augment-path aug)) t)
-	       `((DIS-OPT
+	       `((dis-opt
 		  ,(var (augment-key-slot aug))
-		  (LAMBDA (X)
+		  (lambda (x)
 		    ,(choose-discriminator-aux (augment-arg0 aug)
-					       'X))
-		  (LAMBDA (X)
+					       'x))
+		  (lambda (x)
 		    ,(choose-discriminator-aux (augment-arg1 aug)
-					       'X)))))))
-      `((UNP-OPT-AUG ,(var (augment-key-slot aug))
+					       'x)))))))
+      `((unp-opt-aug ,(var (augment-key-slot aug))
 		     ,(gen-augment-unparser (augment-arg0 aug))
 		     ,(gen-augment-unparser (augment-arg1 aug))))))
 
@@ -800,18 +807,18 @@
 	   ;; discriminated by prevsiously encountered abstract syntax.
 	(cond (discrim?
 	       (set-pattern-is-discriminated (car (augment-path aug)) t)
-	       `((DIS-ALT
+	       `((dis-alt
 		  ,(var (augment-key-slot aug))
 		  ,(mapcar #'(lambda (au)
-			       `(LAMBDA (X)
-				  ,(choose-discriminator-aux au 'X)))
+			       `(lambda (x)
+				  ,(choose-discriminator-aux au 'x)))
 			   (augment-args aug)))))))
-      `((UNP-ALT-AUG ,(var (augment-key-slot aug))
+      `((unp-alt-aug ,(var (augment-key-slot aug))
 		     ,(mapcar #'gen-augment-unparser
 			      (augment-args aug))))))
 
     ((star plus)
-     `((TOSS-REPT)))
+     `((toss-rept)))
 
     ;; The above will only be used for upatterns.  Pattern/aug iterators are
     ;;   removed. 
@@ -851,41 +858,41 @@
 
 
 (defun gen-nt-discriminator (nt)
-  `(DEFUN ,(mk-discrim-routine-name (nt-name nt))
-	  (AS)
+  `(defun ,(mk-discrim-routine-name (nt-name nt))
+	  (as)
 	  
-     (OR (IS-NT-OPSIG? ',(nt-name-abs-package nt) AS)
+     (or (is-nt-opsig? ',(nt-name-abs-package nt) as)
 	 (,(make-discriminator-ttype
 	    (sort:sort-table-lookup (sort:mk-sort-ttype
 				     (nt-name-abs-package nt))
 				    *sort-table*))
-	  AS))))
+	  as))))
 
 
 (defun make-discriminator-ttype (ttype)
   (assert (ttypep ttype))
   (cond
    ((sort:is-id-ttype ttype)
-    `(LAMBDA (X)
-	     (MATCH-ID ',(sort:ds-id-ttype ttype) X)))
+    `(lambda (x)
+	     (match-id ',(sort:ds-id-ttype ttype) x)))
    ((sort:is-num-ttype ttype)
-    `(LAMBDA (X)
-	     (MATCH-NUM ,(sort:ds-num-ttype ttype) X)))
+    `(lambda (x)
+	     (match-num ,(sort:ds-num-ttype ttype) x)))
    ((sort:is-str-ttype ttype)
-    `(LAMBDA (X)
-	     (MATCH-STR ,(sort:ds-str-ttype ttype) X)))
+    `(lambda (x)
+	     (match-str ,(sort:ds-str-ttype ttype) x)))
    ((sort:is-lit-ttype ttype)
-    `(LAMBDA (X)
-	     (MATCH-LIT ',(sort:ds-lit-ttype ttype) X)))
+    `(lambda (x)
+	     (match-lit ',(sort:ds-lit-ttype ttype) x)))
    
    ((sort:is-null-ttype ttype)
     (error "Internal Error (see maintainer) ~%~
             The null ttype is not discriminatable."))
 
    ((sort:is-op-ttype ttype)
-    `(LAMBDA (X) 
-	     (DIS-OP ',(oper:ds-sim-op (sort:ds-op-ttype ttype))
-		     X)))
+    `(lambda (x) 
+	     (dis-op ',(oper:ds-sim-op (sort:ds-op-ttype ttype))
+		     x)))
 
    ((sort:is-sort-ttype ttype)
     (cond ((member (sort:ds-sort-ttype ttype)
@@ -895,9 +902,9 @@
 	   (mk-discrim-routine-name (sort:ds-sort-ttype ttype)))
 	  ((is-lexical-terminal (sb-intern-ncase (sort:ds-sort-ttype ttype))
 				*grammar-term*)
-	   `(LAMBDA (X)
-	      (DIS-LT ',(sbst-intern-ncase (sort:ds-sort-ttype ttype))
-		      X)))
+	   `(lambda (x)
+	      (dis-lt ',(sbst-intern-ncase (sort:ds-sort-ttype ttype))
+		      x)))
 	  ((sort:sort-table-lookup ttype)
 	   (make-discriminator-ttype (sort:sort-table-lookup ttype)))
 	  (t
@@ -911,9 +918,9 @@
 
 			   
    ((is-union-ttype ttype)
-    `(LAMBDA (X)
-       (OR ,@(mapcar #'(lambda (y)
-			 `(,(make-discriminator-ttype y) X))
+    `(lambda (x)
+       (or ,@(mapcar #'(lambda (y)
+			 `(,(make-discriminator-ttype y) x))
 		     (sort:ds-union-ttype ttype)))))
 
    (t
@@ -940,16 +947,16 @@
 (defun choose-discriminator (aug argument)
   (ecase (augment-kind aug)
     (literal
-     `(MATCH-ID ',(augment-leaf-ds aug)
+     `(match-id ',(augment-leaf-ds aug)
 		,argument))
     (id
-     `(MATCH-ID ',(augment-leaf-ds aug)
+     `(match-id ',(augment-leaf-ds aug)
 		,argument))
     (number
-     `(MATCH-NUM ,(augment-leaf-ds aug)
+     `(match-num ,(augment-leaf-ds aug)
 		 ,argument))
     (string
-     `(MATCH-STR ,(augment-leaf-ds aug)
+     `(match-str ,(augment-leaf-ds aug)
 		 ,argument))
 
     (bind
@@ -963,7 +970,7 @@
 	    (choose-discriminator (car (augment-path aug)) argument))))
 
     ((alt opt)
-     `(OR ,@(mapcar #'(lambda (au)
+     `(or ,@(mapcar #'(lambda (au)
 			(choose-discriminator au argument))
 		    (augment-args aug))))
 
@@ -978,11 +985,11 @@
 
     (term-const 
      (cond ((has-elist-arg? aug)	; routines imported from sort-gen.
-	    `(AND (DIS-OP ',(augment-term-const-op aug)
+	    `(and (dis-op ',(augment-term-const-op aug)
 			  ,argument)
-		  (NULL (GET-TERM-ARGS ,argument))))
+		  (null (get-term-args ,argument))))
 	   (t
-	    `(AND (DIS-OP ',(augment-term-const-op aug)
+	    `(and (dis-op ',(augment-term-const-op aug)
 			  ,argument)
 		  ,@(let (result)
 		      (do ((sons (cdr (augment-args aug)) (cdr sons))
@@ -992,7 +999,7 @@
 			  ((term-const literal string number id)
 			   (push (choose-discriminator
 				  (car sons)
-				  `(TERM-ARGN ,argument ,i))
+				  `(term-argn ,argument ,i))
 				 result)))))))))))
 
 
@@ -1028,7 +1035,7 @@
 		    ((is-lexical-terminal (sb-intern-ncase
 					   (sort:ds-sort-ttype ttype))
 					  *grammar-term*)
-		     `(DIS-LT ',(sbst-intern-case (sort:ds-sort-ttype ttype))
+		     `(dis-lt ',(sbst-intern-case (sort:ds-sort-ttype ttype))
 			      ,argument))
 		    ((sort:sort-table-lookup ttype)
 		     `(,(make-discriminator-ttype

@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (defmacro addrule (name required-args optional-args body docstring
 			&optional format-string)
@@ -64,7 +64,7 @@
 (defun internal-pc-typecheck (expr &key expected fnums
 				   (context *current-context*)
 				   (tccs nil given)
-				   (uniquely? T))
+				   (uniquely? t))
   (let ((*generate-tccs* (if given tccs *generate-tccs*))
 	(*current-context* context))
     (pc-typecheck expr :expected expected :fnums fnums
@@ -287,7 +287,7 @@ See also HIDE, REVEAL"
 
 (defun apply-step-body (ps step comment save? time?)
   (declare (ignore comment))
-  (let* ((*generate-tccs* 'NONE)
+  (let* ((*generate-tccs* 'none)
 	 (strat (let ((*in-apply* ps))
 		  (strat-eval* step ps))))
     (cond ((or (typep strat 'strategy)
@@ -317,7 +317,7 @@ See also HIDE, REVEAL"
 		    (xrule `(apply
 				(rerun
 				 ,(editable-justification
-				   justif nil T)))))
+				   justif nil t)))))
 	       ;; (format t "~%step= ~a~%decls = ~a" step *dependent-decls*)
 	       (when time? (format t "~%;;;Used ~,2F seconds in ~s." end-time step))
 	       (if (eq (status-flag newps) 'XX)
@@ -401,7 +401,7 @@ negative OR, IMPLIES, or IF-THEN-ELSE."
   "~%Splitting conjunctions,")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(addrule 'lift-if () (fnums (updates? T))
+(addrule 'lift-if () (fnums (updates? t))
   (liftif-step fnums updates?)
   "Lifts IF occurrences to the top of chosen formulas.
 CASES, COND, and WITH applications, are treated as IF occurrences.
@@ -567,7 +567,7 @@ REWRITE and REWRITE-LEMMA.  Example reduction steps are:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (addrule 'simplify ()
 	 ((fnums *) record? rewrite? 
-	  rewrite-flag flush? linear? cases-rewrite? (type-constraints? T)
+	  rewrite-flag flush? linear? cases-rewrite? (type-constraints? t)
 	  ignore-prover-output?)
   (invoke-simplification fnums record? rewrite?
 			 rewrite-flag flush? linear?
@@ -680,13 +680,13 @@ Example: (same-name \"bvec0[i + j]\" \"bvec0[j + i]\")."
   #'(lambda (ps)
       (let* ((type (when type
 		     (typecheck (pc-parse type 'type-expr)
-		       :tccs 'ALL)))
+		       :tccs 'all)))
 	     (name1 (internal-pc-typecheck (pc-parse name1 'expr)
 			  :expected type
-			  :tccs 'ALL))
+			  :tccs 'all))
 	     (name2 (internal-pc-typecheck (pc-parse name2 'expr)
 			  :expected type
-			  :tccs 'ALL)))
+			  :tccs 'all)))
 	(cond ((not (name-expr? name1))
 	       (error-format-if "~%Argument ~a is not a name." name1)
 	       (values 'X nil nil))

@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (defmethod prove (name &key  strategy)
   (let ((decl (get-formula *current-theory*
@@ -60,11 +60,11 @@
 
 (defun simplify-expression (expr module-name strategy
 				 &optional display? (id 'simplify-expr))
-  (let* ((*suppress-printing* T)
+  (let* ((*suppress-printing* t)
 	 (*printproofstate* nil)
-	 (*proving-tcc* T)
-	 (*generate-tccs* T)
-	 (*subgoals* T)
+	 (*proving-tcc* t)
+	 (*generate-tccs* t)
+	 (*subgoals* t)
 	 (*current-theory* (get-theory module-name))
 	 (*current-context* (context *current-theory*))
 	 (expr (typecheck-uniquely (pc-parse expr 'expr)))
@@ -134,11 +134,11 @@
 (defun simplify-expr (expr module-name strategy
 			   &optional display? (id 'simplify-expr))
   ;;in the context of decl, simplify the boolean expr using strategy
-  (let* ((*suppress-printing* T)
+  (let* ((*suppress-printing* t)
 	 (*printproofstate* nil)
-	 (*proving-tcc* T)
-	 (*generate-tccs* T)
-	 (*subgoals* T)
+	 (*proving-tcc* t)
+	 (*generate-tccs* t)
+	 (*subgoals* t)
 	 (*current-theory* (get-theory module-name))
 	 (*current-context* (context *current-theory*))
 	 (expr (typecheck (pc-parse expr 'expr)
@@ -196,9 +196,9 @@
 	(*subtype-of-hash* (init-if-rec *subtype-of-hash*))
 	(*track-rewrites* nil)
 	(*context-modified* nil)
-	(*generate-tccs* 'NONE)
+	(*generate-tccs* 'none)
 	(*rewrite-msg-off* *rewrite-msg-off*)
-	(*ruletrace* NIL)
+	(*ruletrace* nil)
 	(*ruletracedepth* 0)
 	;; Hash tables
 	(*assert-if-arith-hash* (init-if-rec *assert-if-arith-hash*))
@@ -347,11 +347,11 @@
   (clrhash *create-formulas-cache*)
   (clrhash *translate-id-hash*)
   (clrhash *translate-to-prove-hash*)
-  (clrhash *dc-named-exprs*)
-  (clrhash *translate-to-dc-hash*)
-  (clrhash *dc-translate-id-hash*)
-  (clrhash *prtype-hash*)
-  (clrhash *local-prtype-hash*)
+  ;;(clrhash *dc-named-exprs*)
+  ;;(clrhash *translate-to-dc-hash*)
+  ;;(clrhash *dc-translate-id-hash*)
+  ;;(clrhash *prtype-hash*)
+  ;;(clrhash *local-prtype-hash*)
   (clrhash *term-print-strings*)) 
 
 (defun save-proof-info (decl init-real-time init-run-time)
@@ -362,7 +362,7 @@
 	   (setf (script prinfo) script))
 	  ((and (not *proving-tcc*);; interactive
 		script
-		(not (equal script '("" (POSTPONE) NIL NIL)))
+		(not (equal script '("" (postpone) nil nil)))
 		(not (equal (script prinfo) script))
 		(let ((ids (mapcar #'id
 			     (remove-if-not #'(lambda (prinfo)
@@ -426,28 +426,28 @@
       (let ((*suppress-printing* nil)
 	    (*proving-tcc* t))
 	(prove-decl decl :strategy `(then (then (rerun) (postpone)) (quit))))
-      (let ((*suppress-printing* T)
+      (let ((*suppress-printing* t)
 	    (*printproofstate* nil)
-	    (*proving-tcc* T))
+	    (*proving-tcc* t))
 	(prove-decl decl :strategy `(then (then (rerun) (postpone)) (quit))))))
 
 (defun recheck-prove (decl)
-    (let ((*suppress-printing* T)
+    (let ((*suppress-printing* t)
 	  (*printproofstate* nil)
-	  (*proving-tcc* T)
+	  (*proving-tcc* t)
 	  (justif (justification decl))
 	  )
       (cond ((typep justif 'justification)
 	     (prove-decl decl
 			 :strategy
-			 `(then (then (rerun :recheck? T)
+			 `(then (then (rerun :recheck? t)
 				 (postpone))
 			   (quit))))
-	    (t (let ((*proving-tcc* 'TCC));;to save new justification.
+	    (t (let ((*proving-tcc* 'tcc));;to save new justification.
 		 (rerun-prove decl))
 	       (prove-decl decl
 			 :strategy
-			 `(then (then (rerun :recheck? T)
+			 `(then (then (rerun :recheck? t)
 				 (postpone))
 			   (quit)))))))
 
@@ -463,10 +463,10 @@
 			   ;;(not (null (strategy proofstate)))
 			   ;;(NSH:11.17.94): commented out
 			   )
-		  ;;(let ((*to-emacs* T))
+		  ;;(let ((*to-emacs* t))
 		  ;;      (pvs-buffer "*goal*"
 		  ;;		      proofstate
-		  ;;		      T T))
+		  ;;		      t t))
 		  ;;  (break)
 		  (print-proofstate-if proofstate)
 		  (unless *suppress-printing*
@@ -627,12 +627,11 @@
 				     (current-rule (parent-proofstate proofstate))
 				     (current-input (parent-proofstate proofstate))))
 			  (display-proofstate proofstate))
-			(let* ((*rule-args-alist* nil)
-			       (strategy
+			(let* ((strategy
 				(strat-eval*
 				 (if (strategy proofstate)
 				     (strategy proofstate)
-				     '(postpone T));;if no strat, move on.
+				     '(postpone t));;if no strat, move on.
 				 proofstate)))
 			  (setf (strategy proofstate) strategy)
 			  (rule-apply strategy proofstate))))))))
@@ -694,7 +693,7 @@
 		   
 ;	     (when (eq (status-flag newps) '*)
 ;	       (if (null (remaining-subgoals newps));;leaf node
-;		   (setf (status-flag newps) NIL;;make it fresh
+;		   (setf (status-flag newps) nil;;make it fresh
 ;			 (strategy newps)
 ;			 (strategy proofstate))
 ;;			   (post-subgoal-strat (strategy proofstate))
@@ -870,8 +869,7 @@
 		 `(apply ,def-expr))
 		(result (strat-eval new-def-expr)))
 	   (setq *rule-args-alist*
-		 (nconc *rule-args-alist* (mapcar #'list
-					    (remove-if-not #'stringp args))))
+		 (collect-prover-input-strings args *rule-args-alist*))
 	   (setf (rule-input result)
 		 strat
 		 (rule-format result)
@@ -974,7 +972,7 @@
 			    (cadr formals))
 			   (when (listp args) args))))))
 	((eq (car formals) '&optional)
-	 (pair-formals-args (cdr formals) args T))
+	 (pair-formals-args (cdr formals) args t))
 	((null args) (if opt-flag
 			 (collect-default-values formals)
 			 (progn (error-format-if "~%Not enough actuals.")
@@ -1090,7 +1088,7 @@
 	       expr))))
 
 (defun label-suffix (label)
-  (let ((pos (position #\. label :from-end T)))
+  (let ((pos (position #\. label :from-end t)))
     (if pos
 	(let* ((suffix (subseq label (1+ pos)))
 	       (check (every #'digit-char-p suffix)))
@@ -1157,7 +1155,7 @@
       (non-strat-subgoal-proofstate (car (done-subgoals ps)))))
 
 (defun report-proof (proofstate)
-  (let ((*report-mode* T)
+  (let ((*report-mode* t)
 	(*top-proofstate* proofstate)
 	(ps (non-strat-subgoal-proofstate proofstate)))
     (report-proof* ps)
@@ -1236,7 +1234,7 @@
 	      (format t " then")
 	      (if (eql flag 2)
 		  (format t " and then"))))
-      (format t "~VT~a" *prover-indent* (format-printout proofstate T)))
+      (format t "~VT~a" *prover-indent* (format-printout proofstate t)))
     (let ((*print-ancestor*
 	   (if (and (or (null flag)(eql flag 0))(printout proofstate))
 	       proofstate
@@ -1352,7 +1350,7 @@
 							   accum)))
 	(t accum)))
 
-(defmethod collect-dependents ((x T)  accum)
+(defmethod collect-dependents ((x t)  accum)
   accum)
 
 (defun collect-dependent-decls (proofstate)
@@ -1571,9 +1569,8 @@
 				  (optional-args entry)
 				  match))))
 	       (setq *rule-args-alist*
-		     (nconc *rule-args-alist*
-			    (mapcar #'list (remove-if-not #'stringp
-					     rule-args))))
+		     (collect-prover-input-strings rule-args
+						   *rule-args-alist*))
 	       (make-instance 'rule-instance
 		 'rule (apply (rule-function entry)
 			 args)
@@ -1583,7 +1580,7 @@
 				      args))))))))
 
 (defun extract-optionals (optionals match)
-  (cond ((null optionals) NIL)
+  (cond ((null optionals) nil)
 	((eq (car optionals) '&rest)
 	 (when (cdr optionals)
 	   (cdr (assoc (optional-name (cadr optionals)) match))))
@@ -1666,7 +1663,7 @@
 			 'topstep step)
 		       ps));;else step is a strategy
 	  ((typep (topstep step) 'rule-instance)
-	   (let* ((*tccforms* NIL)
+	   (let* ((*tccforms* nil)
 		  (topstep (topstep step))
 		  (name (if (consp (rule-input topstep))
 			    (car (rule-input topstep))
@@ -1684,6 +1681,10 @@
 			  *ruletracedepth* name ))
 		      (setf (status-flag ps) '!      
 			    (current-rule ps) (rule-input topstep)
+			    (parsed-input ps) (sublis (remove-if #'null
+								*rule-args-alist*
+								:key #'cdr)
+							      (rule-input topstep))
 			    (printout ps) (sublis (remove-if #'null
 						    *rule-args-alist*
 						    :key #'cdr)
@@ -1769,7 +1770,7 @@
 				    do
 				    (setf (gethash (tccinfo-formula tcc)
 						   new-tcc-hash)
-					  T))
+					  t))
 			      (assert
 			       (every #'(lambda (sps)
 					  (every #'(lambda (sfmla)
@@ -1788,6 +1789,10 @@
 			      (push-references *tccforms* ps)
 			      (setf (status-flag ps) '?
 				    (current-rule ps) (rule-input topstep)
+				    (parsed-input ps) (sublis (remove-if #'null
+								*rule-args-alist*
+								:key #'cdr)
+							      (rule-input topstep))
 				    (printout ps) (sublis (remove-if #'null
 							    *rule-args-alist*
 							    :key #'cdr)
@@ -1877,16 +1882,16 @@
 				(list newps (copy newps) ps))
 			  (setf (justification newps)
 				(collect-justification newps)
-				(status-flag newps) NIL
-				(remaining-subgoals newps) NIL
-				(pending-subgoals newps) NIL
-				(done-subgoals newps) NIL
-				(current-subgoal newps) NIL
-				(dependent-decls newps) NIL;;NSH(12.14.94)
+				(status-flag newps) nil
+				(remaining-subgoals newps) nil
+				(pending-subgoals newps) nil
+				(done-subgoals newps) nil
+				(current-subgoal newps) nil
+				(dependent-decls newps) nil;;NSH(12.14.94)
 				;;d-d was commented, now uncommented(4.9.99)
-				(current-rule newps) NIL
-				(current-xrule newps) NIL
-				(printout newps) NIL
+				(current-rule newps) nil
+				(current-xrule newps) nil
+				(printout newps) nil
 				(strategy newps) (query*-step))
 			  newps)
 			 (t (setf (strategy ps) (query*-step))
@@ -1917,7 +1922,7 @@
 
 
 ;;find-ps-info returns the undo distance between target and
-;;current proofstates.  Returns NIL, if target isn't found.
+;;current proofstates.  Returns nil, if target isn't found.
 (defun find-ps-info (target-ps current-ps &optional (info 0))
   (cond ((eq target-ps current-ps)
 	 info)
@@ -2011,7 +2016,7 @@
 		    'subgoalnum (1- goalnum)
 		    'proof-dependent-decls proof-dependent-decls
 		    'dependent-decls (dependent-decls proofstate)
-		    ;;d-d can be NIL but inheriting from parent is okay.
+		    ;;d-d can be nil but inheriting from parent is okay.
 		    'dp-state (dpi-copy-state (dp-state proofstate))
 		    'current-auto-rewrites
 		    (current-auto-rewrites proofstate)
@@ -2122,7 +2127,7 @@
 	    (typecheck (parse :string (caddr sexp)
 			      :nt 'type-expr)
 	      :context *current-context*)
-	    :tccs 'NONE;;NSH(10.20.94) tccs generated
+	    :tccs 'none;;NSH(10.20.94) tccs generated
 	    ;;at rule-application       
 	    :context *current-context*)
 	  (cons (retypecheck-sexp (car sexp) ps)
@@ -2217,14 +2222,14 @@
 	     (when (slot-exists-p form 'type)
 	       (type form)))
 	 (list 'typechecked (unparse form
-				     :string T)
+				     :string t)
 	       (unparse (raise-actuals
 			 (or ;;(type-value (type form))
 			     (and (slot-exists-p form 'declared-type)
 				  (declared-type form))
 			     (type form)))
-			:string T)))
-	(t (unparse form :string T))))
+			:string t)))
+	(t (unparse form :string t))))
 
 (defmethod extract-justification-sexp ((list list))
   (cond ((null list) nil)
@@ -2340,11 +2345,11 @@
   (cond ((null justification)
 	 nil)
 	(t (when (comment justification)
-	     (format T "~%~a" (comment justification)))
+	     (format t "~%~a" (comment justification)))
 	   (cond ((equal (label justification) label)
-		  (format T "~%")
-		  (format T "~V@T" (+ 3 (length (string label)))))
-		 (t (format T "~%~a : " (label justification))))
+		  (format t "~%")
+		  (format t "~V@T" (+ 3 (length (string label)))))
+		 (t (format t "~%~a : " (label justification))))
 	   (write (format-rule (rule justification)) :pretty t)
 	   (loop for entry in (reverse (subgoals justification))
 		 do (pp-justification* entry (car justification))))))
@@ -2355,8 +2360,8 @@
 	      (stringp sexp))
 	 (protect-string-output sexp))
 	((not (consp sexp)) sexp)
-	((eq (car sexp) 'TYPECHECKED)
-	 (list (cadr sexp) '!TYPE (caddr sexp)))
+	((eq (car sexp) 'typechecked)
+	 (list (cadr sexp) '!type (caddr sexp)))
 	(t (cons (format-rule (car sexp) no-escape?)
 		 (format-rule (cdr sexp) no-escape?)))))
 
@@ -2366,9 +2371,9 @@
 	  ((and (consp (cdr sexp))
 		(consp (cddr sexp))
 		(stringp (car sexp))
-		(memq (cadr sexp) '(:TYPE !TYPE))
+		(memq (cadr sexp) '(:type !type))
 		(null (cdddr sexp)))
-	   (list 'TYPECHECKED (car sexp)(caddr sexp)))
+	   (list 'typechecked (car sexp)(caddr sexp)))
 	  (t (cons (unformat-rule (car sexp))
 		   (unformat-rule (cdr sexp)))))))
   
@@ -2384,10 +2389,10 @@
   (if (listp (car list)) (cadddr list) (caddr list)))
 
 ;;catchall methods for label, rule, subgoals
-(defmethod decision-procedure-used ((x T)) *default-decision-procedure*)
-(defmethod label ((x T)) "9999")
-(defmethod rule ((x T)) '(skip))
-(defmethod subgoals ((x T)) NIL)
+(defmethod decision-procedure-used ((x t)) *default-decision-procedure*)
+(defmethod label ((x t)) "9999")
+(defmethod rule ((x t)) '(skip))
+(defmethod subgoals ((x t)) nil)
 
 		 
 (defun collect-module-proofs (module)
@@ -2399,7 +2404,7 @@
 			  (justification decl)))))
 
 (defun collect-proofs (modnames)
-  (let ((proofs NIL))
+  (let ((proofs nil))
     (maphash #'(lambda (key mod)
 		 (when (or (null modnames)
 			   (memq key modnames))
@@ -2413,7 +2418,7 @@
     (with-open-file (output filestring :direction :output
 			    :if-exists :supersede)
       (loop for x in proofs do
-	    (write x  :length nil :level nil :escape T :stream output)))
+	    (write x  :length nil :level nil :escape t :stream output)))
     ;(format t "~%Saved proofs in ~a" filestring)
     ))
 
@@ -2422,10 +2427,10 @@
     (load-module-proofs input filestring)))
 
 (defun load-module-proofs (input filestring)
-  (let ((modproofs (read input NIL NIL)))
+  (let ((modproofs (read input nil nil)))
     (cond ((null modproofs) ;(format t "~%Read proofs from ~a"
 				;	    filestring)
-	   NIL)
+	   nil)
 	  (t (let* (
 		   (mod (car modproofs))
 		   (proofs (cdr modproofs))
@@ -2597,12 +2602,12 @@
 		       (t (list disjunct))))
 		   (if (and (typep (car (arguments disjunct)) 'name-expr)
 			    (equal (args1 disjunct) *true*))
-		       NIL
+		       nil
 		       (list disjunct))))
 	      (t (list disjunct)))
 	    (if (and (typep disjunct 'name-expr)
 		     (equal  disjunct *false*))
-		NIL
+		nil
 		(list disjunct)))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -2813,11 +2818,11 @@
 ;	  ((or (integerp nums)(stringp nums)) ;;NSH(4.3.97)commented
 ;	   (select-seq1 seq (list nums) +1 -1))
 	  ((consp nums)(select-seq1 seq nums +1 -1))
-	  (t NIL))))
+	  (t nil))))
 
 (defun delete-seq (seq nums)
   (let ((nums (cleanup-fnums nums)));;NSH(4.3.97)
-    (cond ((eq nums '*) NIL)
+    (cond ((eq nums '*) nil)
 	  ((eq nums '-) (loop for sform in seq
 			      when (not (negation? (formula sform)))
 			      collect sform))
@@ -2825,7 +2830,7 @@
 			      when (negation? (formula sform))
 			      collect sform))
 	  ((consp nums) (delete-seq1 seq nums +1 -1))
-	  (t NIL))))
+	  (t nil))))
 
 (defun gather-seq (seq yesnums nonums
 		       &optional (pred #'always-t) (pos 1) (neg -1))
@@ -2932,7 +2937,7 @@
 (defun unparse-sform (sform)
   (unpindent (seq-formula sform)
 	     (+ 6 *prover-indent*)
-	     :string T
+	     :string t
 	     :length *prover-print-length*
 	     :level *prover-print-depth*
 	     :lines *prover-print-lines*))
@@ -3131,24 +3136,24 @@
 
 (defmethod termsubst-testfn ((exprs list) testfn)
   (declare (ignore testfn))
-  NIL)
+  nil)
 
 (defmethod termsubst-testfn ((expr assignment) testfn)
   (declare (ignore testfn))
-  NIL)
+  nil)
 
 (defmethod termsubst-testfn ((exprs selection) testfn)
   (declare (ignore testfn))
-  NIL)
+  nil)
 
-(defmethod termsubst-testfn ((expr T) testfn)
+(defmethod termsubst-testfn ((expr t) testfn)
   (declare (ignore testfn))
-  T)
+  t)
 
 (defmethod termsubst-substfn ((expr expr) substfn)
   (funcall substfn expr))
 
-(defmethod termsubst-substfn ((expr T) substfn)
+(defmethod termsubst-substfn ((expr t) substfn)
   (declare (ignore substfn))
   expr)
 
@@ -3222,7 +3227,7 @@
 			    
 
 (defun just-install-proof-step (proof ps)
-  (progn (setq *context-modified* T)
+  (progn (setq *context-modified* t)
 	 (values '! nil (list 'justification
 			      (make-instance 'justification
 				'label (label-suffix (label ps))
@@ -3345,3 +3350,18 @@
 	 (#\newline (append '(#\n #\\) result))
 	 (t   (cons (char string pos) result))))
       (coerce (nreverse result) 'string)))
+
+(defun collect-prover-input-strings (input &optional alist)
+  (cond ((null input)
+	 alist)
+	((stringp input)
+	 (if (or (equal input "")
+		 (assq input alist))
+	     alist
+	     (acons input nil alist)))
+	((symbolp input) alist)
+	((consp input)
+	 (collect-prover-input-strings
+	  (cdr input)
+	  (collect-prover-input-strings (car input) alist)))
+	(t alist)))

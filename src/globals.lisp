@@ -230,6 +230,8 @@ NIL (the default), TOP, ALL, or NONE.")
 (defvar *typecheck-args* nil)
 (defvar *tcc-conditions* nil)
 
+(defvar *generating-mapped-axiom-tcc* nil)
+
 (defvar *valid-id-check* t
   "Indicates whether the parser should check for valid ids.")
 

@@ -22,13 +22,13 @@
 
 ;;(in-package "SB" :nicknames '("SYNTAX-BOX"))
 
-(in-package "SYNTAX-BOX" :nicknames '("SB")) (use-package :ergolisp)
+(in-package :syntax-box :nicknames '(:sb)) (use-package :ergolisp)
 
 
-(use-package '("OPER" "TERM" "SORT" "SB-RUNTIME" "LANG"))
+(use-package '(:oper :term :sort :sb-runtime :lang))
 
 
-(defparameter *sb-package* (find-package "SB"))
+(defparameter *sb-package* (find-package :sb))
 
 (defvar *abs-syn-lisp-package*
   "Package of client abstract syntax.")
@@ -85,7 +85,8 @@
       (let ((str (if (stringp x)
 		     x
 		     (symbol-name x))))
-	(intern (string-upcase str)
+	(intern #+allegro-v6.0 (string-downcase str)
+		#-allegro-v6.0 (string-upcase str)
 		*sbst-package*))))
 
 (defun sbst-intern-case (x)
@@ -97,7 +98,8 @@
 		     (symbol-name x))))
 	(intern (if *grammar-case-sensitive?*
 		    str
-		    (string-upcase x))
+		    #+allegro-v6.0 (string-downcase str)
+		    #-allegro-v6.0 (string-upcase str))
 		*sbst-package*))))
 
 (defun sb-intern-upcase (x)
@@ -107,7 +109,8 @@
       (let ((str (if (stringp x)
 		     x
 		     (symbol-name x))))
-	(intern (string-upcase str)
+	(intern #+allegro-v6.0 (string-downcase str)
+		#-allegro-v6.0 (string-upcase str)
 		*sb-package*))))
 
 (defun sb-intern-case (x)
@@ -119,7 +122,8 @@
 		     (symbol-name x))))
 	(intern (if *grammar-case-sensitive?*
 		    str
-		    (string-upcase x))
+		    #+allegro-v6.0 (string-downcase str)
+		    #-allegro-v6.0 (string-upcase str))
 		*sb-package*))))
 
 
@@ -1165,7 +1169,7 @@
 (defun augment-term-const-op (aug)
   (assert-sb (and (augment-p aug)
 		  (eq 'term-const (augment-kind aug))))
-  (augment-leaf-ds (augment-arg0 aug)))
+  (intern (string-upcase (symbol-name (augment-leaf-ds (augment-arg0 aug))))))
 
 
 

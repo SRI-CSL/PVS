@@ -11,7 +11,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(in-package 'pvs)
+(in-package :pvs)
 
 ;;; Find-compatible-bindings takes a set of arguments (all of whose
 ;;; types slot is set to the possible types), a set of formal types
@@ -486,7 +486,7 @@
 	  ((null (cdr binding))
 	   (setf (cdr binding) arg)
 	   bindings)
-	  (t (if (tc-eq arg (cdr binding)) bindings NIL)))))
+	  (t (if (tc-eq arg (cdr binding)) bindings nil)))))
 
 (defmethod tc-match* ((arg record-expr) (farg record-expr) bindings)
   (tc-match* (assignments arg) (assignments farg) bindings))
@@ -516,11 +516,11 @@
       (tc-match* (operator arg) (operator farg)
 		 (tc-match* (arguments arg) (arguments farg) bindings))))
 
-(defvar *tc-match-boundvars* NIL) ;;NSH: see below.
+(defvar *tc-match-boundvars* nil) ;;NSH: see below.
 
 (defun tc-match-bindings (argbinds fargbinds bindings)
   ;;NSH: introduced for handling bound variables.
-  (cond ((null bindings) NIL)
+  (cond ((null bindings) nil)
 	((and (null argbinds)(null fargbinds)) bindings)
 	((not (or  (null argbinds)(null fargbinds)))
 	 (let ((*tc-match-boundvars*
@@ -530,7 +530,7 @@
 			      (tc-match* (type (car argbinds))
 					(type (car fargbinds))
 					bindings))))
-	(t NIL)))
+	(t nil)))
 
 (defmethod tc-match* ((arg binding-expr) (farg binding-expr) bindings)
   (and (eq (operator arg) (operator farg))

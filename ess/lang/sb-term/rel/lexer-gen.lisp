@@ -101,8 +101,8 @@
 			   (schar (get-lt-delimiter 'literal grammar) 0)))
 		    
 		    (defparameter ,*conc-restricted-chars*
-		      (reduce #'(lambda (R S)
-				  (union R S :test #'char=))
+		      (reduce #'(lambda (r s)
+				  (union r s :test #'char=))
 			      (list ,*conc-single-char-op-list*
 				    (if ,*conc-new-line-comment-char*
 					(list ,*conc-new-line-comment-char*))

@@ -485,7 +485,7 @@
 				  t))
 			     (set-pattern-referenced pat t)))))
 					; aug does match
-	       T))			
+	       t))			
 
 	(cond ((or
 		(and (eq (augment-kind aug) 'name)
@@ -519,7 +519,7 @@
 					; definition.
 		     (t
 		      (set-pattern-referenced pat t)))
-	       T)))))
+	       t)))))
 					; augment does match!
 
 
@@ -745,7 +745,7 @@
      :path (list pat)
      :args
      (do ((sons (pattern-sons pat) (cdr sons))
-	  (AUG-list ()
+	  (aug-list ()
 		    (cons
 		     (make-augment
 		      :kind 'name
@@ -760,9 +760,9 @@
 			       (list nt ext-name)))
 			    (t 
 			     (pattern-kind (car sons)))))
-		     AUG-list)))
+		     aug-list)))
 	 ((null sons)
-	  (reverse AUG-list))
+	  (reverse aug-list))
        (set-pattern-referenced (car sons) t))))))
 
 
@@ -903,12 +903,12 @@
   (and (not (augment-base-p aug))
        (or (not (eq (augment-kind aug) 'term-const))
 	   (and (eq (augment-kind aug) 'term-const)
-		(do ((L (mapcar (function should-move-down)
+		(do ((l (mapcar (function should-move-down)
 				(augment-args aug))
-			(cdr L))
+			(cdr l))
 		     (result nil
-			     (or result (car L))))
-		    ((null L) result))))))
+			     (or result (car l))))
+		    ((null l) result))))))
 
 
 

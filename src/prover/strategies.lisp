@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (eval-when (eval compile load)
   (defun check-formals (formals &optional opt-flag)
@@ -157,7 +157,7 @@
 		       (remove-if #'(lambda (a)
 				      (memq a '(&optional &rest)))
 			 args))))
-	  `(progn (defun ,(makesym "(DEFSTRAT) ~a" name) ,largs
+	  `(progn (defun ,(makesym "(defstrat) ~a" name) ,largs
 		    ,@lbody
 		    (list ,@largs))
 		  (defstrat* ',name ',args ',body
@@ -178,7 +178,7 @@
 		       (remove-if #'(lambda (a)
 				      (memq a '(&optional &rest)))
 			 args))))
-	  `(progn (defun ,(makesym "(DEFSTEP) ~a" name) ,largs
+	  `(progn (defun ,(makesym "(defstep) ~a" name) ,largs
 		    ,@lbody
 		    (list ,@largs))
 		  (defstep* ',name ',args ',body
@@ -237,10 +237,10 @@ computations.  E.g.,
 
 
 (defstep assert  (&optional (fnums *) rewrite-flag
-			    flush? linear? cases-rewrite? (type-constraints? T)
+			    flush? linear? cases-rewrite? (type-constraints? t)
 			    ignore-prover-output?) 
 	 (simplify
-	  fnums T T rewrite-flag flush? linear? cases-rewrite? type-constraints? ignore-prover-output?) 
+	  fnums t t rewrite-flag flush? linear? cases-rewrite? type-constraints? ignore-prover-output?) 
  "Simplifies/rewrites/records formulas in FNUMS using decision
 procedures.  Variant of SIMPLIFY with RECORD? and REWRITE? flags set
 to T. If REWRITE-FLAG is RL(LR) then only lhs(rhs) of equality
@@ -260,10 +260,10 @@ Examples:
 "Simplifying, rewriting, and recording with decision procedures")
 
 (defstep record (&optional (fnums *) rewrite-flag
-			    flush? linear? (type-constraints? T)
+			    flush? linear? (type-constraints? t)
 			    ignore-prover-output?)
 	 (simplify
-	  fnums T NIL rewrite-flag flush? linear? type-constraints?
+	  fnums t nil rewrite-flag flush? linear? type-constraints?
 	  ignore-prover-output?)
 	 "Uses decision procedures to simplify and record the formulas
 in FNUMS for further simplification.   Variant of SIMPLIFY with RECORD?
@@ -275,9 +275,9 @@ then multiplication and division are uninterpreted.  Example:
 	 "Simplifying and recording with decision procedures")
 
 (defstep do-rewrite (&optional (fnums *) rewrite-flag
-			    flush? linear? cases-rewrite? (type-constraints? T))
+			    flush? linear? cases-rewrite? (type-constraints? t))
 	 (simplify
-	  fnums NIL T rewrite-flag flush? linear? cases-rewrite? type-constraints?) 
+	  fnums nil t rewrite-flag flush? linear? cases-rewrite? type-constraints?) 
 	 "Uses decision procedures to rewrite the formulas in FNUMS.
 Variant of SIMPLIFY with RECORD? flag set to NIL and REWRITE? flags set to
 T. If REWRITE-FLAG is RL(LR) then only lhs(rhs) is simplified.  If FLUSH?
@@ -413,7 +413,7 @@ Examples:
 	 (try rule (skip)
 	      (let ((string (format nil "Warning: Auto-rewrite-theory on ~a failed."
 			      theory)))
-		(skip-msg string :force-printing? T)))
+		(skip-msg string :force-printing? t)))
 	 (auto-rewrite-theories$ :theories rest))))
   "Iterated version of auto-rewrite-theory.  Each entry in
 THEORIES must either be a theory name or a list in the form of
@@ -552,7 +552,7 @@ bddsimp, and assert, until nothing works.  DEFS is either
   "Obsolete - subsumed by (TCC)."
   "Trying repeated skolemization, instantiation, and if-lifting")
 
-(defstep bash (&optional (if-match T)(updates? T) polarity? (instantiator inst?))
+(defstep bash (&optional (if-match t)(updates? t) polarity? (instantiator inst?))
   (then (assert)(bddsimp)
 	(if if-match (let ((command (generate-instantiator-command
 				     if-match polarity? instantiator)))
@@ -594,7 +594,7 @@ reasoning, quantifier instantiation, skolemization, if-lifting.")
 	'(fail))))
 
 	 
-(defstep reduce (&optional (if-match T)(updates? T) polarity? (instantiator inst?))
+(defstep reduce (&optional (if-match t)(updates? t) polarity? (instantiator inst?))
     (repeat* (try (bash$ :if-match if-match :updates? updates?
 			 :polarity? polarity? :instantiator instantiator)
                (replace*)
@@ -606,7 +606,7 @@ See BASH for more explanation."
   propositional reasoning, quantifier instantiation, skolemization,
  if-lifting and equality replacement")
 
-(defstep smash (&optional (updates? T))
+(defstep smash (&optional (updates? t))
   (repeat* (then (bddsimp)(assert)(lift-if :updates? updates?)))
   "Repeatedly tries BDDSIMP, ASSERT, and LIFT-IF.  If the UPDATES?
 option is NIL, update applications are not if-lifted."
@@ -619,13 +619,13 @@ and if-lifting")
    (if (eq defs '!!)
        (auto-rewrite-defs :always? !!)
        (if (eq defs '!)
-	   (auto-rewrite-defs :always? T)
+	   (auto-rewrite-defs :always? t)
 	   (if (eq defs 'explicit)
-	       (auto-rewrite-defs :explicit? T)
+	       (auto-rewrite-defs :explicit? t)
 	       (if (eq defs 'explicit!!)
-		   (auto-rewrite-defs :always? !! :explicit? T)
+		   (auto-rewrite-defs :always? !! :explicit? t)
 		   (if (eq defs 'explicit!)
-		       (auto-rewrite-defs :always? T :explicit? T)
+		       (auto-rewrite-defs :always? t :explicit? t)
 		       (if defs (auto-rewrite-defs) (skip)))))))
    (auto-rewrite-theories :theories theories)
    (auto-rewrite :names rewrites)
@@ -658,12 +658,12 @@ EXCLUDE is a list of rewrite rules. "
 ~@[,~%and excluding theories: ~a~]~
 ~@[,~%and excluding rewrites: ~a~]")
 
-(defstep grind (&optional (defs !); NIL, T, !, explicit, or explicit!
+(defstep grind (&optional (defs !); nil, t, !, explicit, or explicit!
 			  theories
 			  rewrites
 			  exclude
-			  (if-match T)
-			  (updates? T)
+			  (if-match t)
+			  (updates? t)
 			  polarity?
 			  (instantiator inst?))
   (then
@@ -734,15 +734,16 @@ then turns off all the installed rewrites.  Examples:
 ;; The query strategy is the basic interactive strategy where the user
 ;; is alway queried.
 
-(defun query*-step ()  '(if *proving-tcc* (quit)(query*)))
+(defun query*-step () '(if *proving-tcc* (quit) (query*)))
 
 (defstrat query* ()
   (if (or *proving-tcc* *in-apply*)
       (postpone)
-    (let ((input (let ((input (qread "Rule? ")))
+      (let ((input (let ((input (qread "Rule? ")))
 		     (setf (current-input *ps*)
 			   input)
 		     input))
+	    (dummy (setq *rule-args-alist* nil))
 	    (rule (retypecheck-sexp
 		   (unformat-rule input)
 		   *ps*)))
@@ -804,7 +805,7 @@ then turns off all the installed rewrites.  Examples:
 			       steplist)
 			  '(skip))))
 	       x)
-    (let ((x (if (consp steplist)(car steplist) '(postpone T)))) x))
+    (let ((x (if (consp steplist)(car steplist) '(postpone t)))) x))
   "Applies STEP and then pairs the steps in STEPLIST with the subgoals")
 
 (defstrat spread@ (step steplist)
@@ -830,7 +831,7 @@ Fewer subgoals (~s) than subproofs (~s)"
 			       steplist)
 			  '(skip))))
 	       x)
-    (let ((x (if (consp steplist)(car steplist) '(postpone T)))) x))
+    (let ((x (if (consp steplist)(car steplist) '(postpone t)))) x))
   "Like SPREAD, applies STEP and then pairs the steps in STEPLIST with
 the subgoals, but generates warnings if number of subgoals do not match
 the number of subproofs.")
@@ -849,14 +850,14 @@ the number of subproofs.")
 Fewer subproofs (~s) than subgoals (~s)"
 			       (length steplist)
 			       (1+ (length (remaining-subgoals par-ps))))
-			     T)
+			     t)
 			    ((< (1+ (length (remaining-subgoals par-ps)))
 				(length steplist))
 			     (format t "~%***Error: ~
 Fewer subgoals (~s) than subproofs (~s)"
 			       (1+ (length (remaining-subgoals par-ps)))
 			       (length steplist))
-			     T))))
+			     t))))
 		   (x (if (consp steplist)
 			  (nth (1- goalnum)
 			       steplist)
@@ -1227,7 +1228,7 @@ as the optional NAME argument.
   "Inducting on ~a~@[ on formula ~a~]~@[ using induction scheme ~a~]")
 
 (defstep induct-and-simplify (var &optional (fnum 1) name
-				  (defs T)
+				  (defs t)
 				  (if-match best)
 				  theories
 				  rewrites
@@ -1496,7 +1497,7 @@ See also SIMPLE-MEASURE-INDUCT."
 		       (then (delete delfnum)
 			     (if (and (consp vars);;NSH(8.28.96)
 				      (> (length vars) 1))
-				 (detuple-boundvars 1 :singles? T)
+				 (detuple-boundvars 1 :singles? t)
 				 (skip))))))
 		   (skip))
 	       (skip))
@@ -1569,7 +1570,7 @@ Example:  (measure-induct+ \"length(x) + length(y)\" (\"x\" \"y\"))."
   "Inducting on measure: ~a, ~% with variables: ~a" )
 
 (defstep measure-induct-and-simplify
-  (measure vars &optional (fnum 1) order expand (defs T)
+  (measure vars &optional (fnum 1) order expand (defs t)
 	   (if-match best)
 	   theories
 	   rewrites
@@ -1836,7 +1837,7 @@ See also CASE, CASE*"
     x)
   "Apply left-to-right replacement with formulas in FNUMS."
   "Repeatedly applying the replace rule")
-				   
+
 (defstep skolem! (&optional (fnum *) keep-underscore? )
   (let ((sformnum (find-!quant fnum *ps*)))
     (let ((newterms (fill-up-terms sformnum nil *ps* keep-underscore?)))
@@ -1894,9 +1895,9 @@ introduce a duplicate formula."
 			   #'(lambda (sform)
 			      (if (negation? (formula sform))
 				  (check-inst-quant (args1 (formula sform))
-						    terms NIL)
+						    terms nil)
 				  (check-inst-quant (formula sform)
-						    terms T)))))
+						    terms t)))))
 	(bindings (let* ((sforms (select-seq (s-forms (current-goal *ps*))
 					   fnum))
 			(fmla (when sforms (formula (car sforms)))))
@@ -1926,9 +1927,9 @@ quantified formula."
 			   #'(lambda (sform)
 			      (if (negation? (formula sform))
 				  (check-inst-quant (args1 (formula sform))
-						    terms NIL)
+						    terms nil)
 				  (check-inst-quant (formula sform)
-						    terms T)))))
+						    terms t)))))
 	(bindings (let* ((sforms (select-seq (s-forms (current-goal *ps*))
 					   fnum))
 			(fmla (when sforms (formula (car sforms)))))
@@ -1938,12 +1939,12 @@ quantified formula."
 			  (bindings fmla))))))
     (if fnum
 	(if (eql (length terms)(length bindings))
-	    (instantiate-one$ fnum terms T)
+	    (instantiate-one$ fnum terms t)
 	    (if (< (length bindings)(length terms))
 		(let ((current-terms (loop for x in terms as nil in bindings
 					   collect x))
 		      (remaining-terms (nthcdr (length bindings) terms)))
-			  (try (instantiate-one$ fnum current-terms T)
+			  (try (instantiate-one$ fnum current-terms t)
 			       	(let ((fnum
 				       (if (minusp fnum)(1- fnum)(1+ fnum))))
 				  (inst fnum :terms remaining-terms))
@@ -1957,7 +1958,7 @@ See INST for a non-copying version."
 ~{~a~^, ~}")
 
 (defstep inst? (&optional (fnums *) subst (where *)
-		   copy? if-match polarity? (TCC? T))
+		   copy? if-match polarity? (tcc? t))
   (let (;(sformnum (find-?quant fnum subst *ps*))
 	 (sforms (remove-if-not
 		     #'exists-sform?
@@ -1976,10 +1977,10 @@ See INST for a non-copying version."
 	    (let ((dummy (format-if "~%Trying instantiation with ~
 IF-MATCH set to NIL~%"))
 		       (search (find-quant-terms sforms subst where
-					    NIL polarity? tcc? *ps*))
+					    nil polarity? tcc? *ps*))
 		      (sformnum (when search (car search)))
 		      (newterms (when search (cdr search)))
-		      (x (make-inst?-rule sformnum newterms copy? NIL)))
+		      (x (make-inst?-rule sformnum newterms copy? nil)))
 		  x)
 		(skip))))
   "Tries to automatically instantiate a quantifier:
@@ -2056,7 +2057,7 @@ empty, and for the named rewrite rules, otherwise.  Behaves like (SKIP) otherwis
   "Turning off tracking")
 
 (defrule rewrite-msg-off ()
-  (let ((dummy (setq *rewrite-msg-off* T)))
+  (let ((dummy (setq *rewrite-msg-off* t)))
     (skip-msg "Turning off rewriting commentary,"))
   "Turns off listing of applied auto rewrites and skips."
   "")
@@ -2102,12 +2103,12 @@ else auto-rewrite."
 	 "Auto-rewriting with all the definitions relevant to conjecture")
 
 (defstep auto-rewrite-explicit (&optional always?)
-  (auto-rewrite-defs T always?)
+  (auto-rewrite-defs t always?)
   "Installs all the explicit definitions in the original statement.
 If always? is T, then it uses auto-rewrite! else auto-rewrite."
   "Auto-rewriting with all the explicit definitions relevant to statement")
 
-(defhelper rewrite-directly-with-fnum (fnum  &optional (fnums *) (dir LR))
+(defhelper rewrite-directly-with-fnum (fnum  &optional (fnums *) (dir lr))
     (if (select-seq (s-forms (current-goal *ps*)) fnums)
 	(then (beta fnum dir)
 	      (branch (split fnum)
@@ -2165,7 +2166,7 @@ corresponding to dir (left-to-right when LR, and right-to-left when RL)."
 		       'fail)))
     in-subst))
 
-(defstep rewrite-with-fnum (fnum &optional subst (fnums *) (dir LR))
+(defstep rewrite-with-fnum (fnum &optional subst (fnums *) (dir lr))
   (let ((fnum (find-sform (s-forms (current-goal *ps*)) fnum))
 	;;NSH(5.9.99): numeralizes labels.
 	 (sforms (select-seq (s-forms (current-goal *ps*))
@@ -2194,13 +2195,13 @@ corresponding to dir (left-to-right when LR, and right-to-left when RL)."
 						(mapcar #'formula
 						  fnums-sforms)
 						in-subst
-						T))))
+						t))))
 	      (subs (unless (eq out-subst 'fail)
 		      (if (negation? fmla)
 			  (quant-subs* form ;cons NIL needed for quant-subs*
-				       (cons NIL out-subst) nil nil)
-			  (quant-subs* fmla (cons NIL out-subst)
-				       T nil)))))
+				       (cons nil out-subst) nil nil)
+			  (quant-subs* fmla (cons nil out-subst)
+				       t nil)))))
 	  (if (eq out-subst 'fail)
 	      (skip-msg "No matching substitution found")
 	      (let ((fnum1 (inc-fnum fnum))  
@@ -2219,7 +2220,7 @@ DIR (LR for left-to-right, and RL, otherwise)."
   "Rewriting with ~a")
 
 (defstep rewrite-lemma (lemma subst &optional (fnums *)
-			  (dir LR))
+			  (dir lr))
   (let ((in-sformnums (if (consp fnums)
 			   (loop for x in fnums
 				 collect (if (and (integerp x)
@@ -2242,7 +2243,7 @@ DIR (LR for left-to-right, and RL, otherwise)."
    "Rewriting using ~a~@[ where~{~%   ~a gets ~a~^,~}~]")
 
 (defstep rewrite (lemma-or-fnum &optional (fnums *)  subst (target-fnums *)
-		    (dir LR) (order IN) ) ;;(hash-rewrites? T) NSH(9.21.95)
+		    (dir lr) (order in) ) ;;(hash-rewrites? t) NSH(9.21.95)
   (if (find-sform (s-forms (current-goal *ps*)) lemma-or-fnum) ;integerp lemma-or-fnum)
       (rewrite-with-fnum lemma-or-fnum subst target-fnums dir)
   (let ((x (rewrite-step lemma-or-fnum fnums subst
@@ -2381,13 +2382,13 @@ found. "
 	 (formals (unless current-mod?
 		    (formals-sans-usings theory)))
 	 (*modsubst*
-	  (if formals (if actuals T
+	  (if formals (if actuals t
 			  (mapcar #'(lambda (x) (list x)) formals))
-	      T)))
+	      t)))
     (forward-match* conc antec-fmlas formlist formlist nil)))
 
 (defun forward-match* (conc antec-fmlas formlist all-formlist subst)
-  (let ((*modsubst* (if *modsubst* *modsubst* T)))
+  (let ((*modsubst* (if *modsubst* *modsubst* t)))
     (forward-match*-rec conc antec-fmlas formlist all-formlist subst)))
 
 (defun forward-match*-rec (conc antec-fmlas formlist all-formlist subst)
@@ -2399,7 +2400,7 @@ found. "
 	((null formlist) 'fail)
 	(t (let* ((antec1 (car antec-fmlas))
 		  (fmla1 (car formlist))
-		  ;;(*modsubst* T)
+		  ;;(*modsubst* t)
 		  (sub1 (match antec1 fmla1 nil subst)))
 	     (if (eq sub1 'fail)
 		 (forward-match*-rec conc antec-fmlas (cdr formlist)
@@ -2414,10 +2415,10 @@ found. "
 
 (defun find-trans-match (info)
   (let ((resolution (car info))
-	(A (cadr info))
-	(B (caddr info))
-	(C (cadddr info)))
-  (loop for F1 in *-* thereis
+	(a (cadr info))
+	(b (caddr info))
+	(c (cadddr info)))
+  (loop for f1 in *-* thereis
 	(let* ((mod-inst (module-instance resolution))
 	       (theory (get-theory mod-inst))
 	       (current-mod? (eq theory *current-theory*))
@@ -2425,17 +2426,17 @@ found. "
 	       (formals (unless current-mod?
 			  (formals-sans-usings theory)))
 	       (*modsubst*
-		(if formals (if actuals T
+		(if formals (if actuals t
 				(mapcar #'(lambda (x) (list x)) formals))
-		    T))
-	       (subst1 (match A F1 nil nil)))
+		    t))
+	       (subst1 (match a f1 nil nil)))
 	    (unless (eq subst1 'fail)
-	      (loop for F2 in *-*
+	      (loop for f2 in *-*
 		    thereis
-		    (and (not (eq F1 F2))
-		    (let ((subst2 (match B F2 nil subst1)))
+		    (and (not (eq f1 f2))
+		    (let ((subst2 (match b f2 nil subst1)))
 		      (unless (or (eq subst2 'fail)
-				  (member (substit C subst2) *-*
+				  (member (substit c subst2) *-*
 					  :test #'tc-eq))
 			subst2)))))))))
 			  
@@ -2623,7 +2624,7 @@ found. "
 	expr
 	new-expr)))
 
-(defmethod detuple* ((expr T))
+(defmethod detuple* ((expr t))
   expr)
 
 
@@ -2644,7 +2645,7 @@ or (LAMBDA x: ...)."
 (defhelper detuple-boundvars-in-formulas (formulas singles?)
   (if (consp formulas)
       (let ((fmla (car formulas))
-	    (de-fmla (let ((*detuple-singletons?* T))
+	    (de-fmla (let ((*detuple-singletons?* t))
 		       (detuple* fmla)))
 	    (equality (make-equality fmla de-fmla))
 	    (fmlas (cdr formulas)))
@@ -2666,17 +2667,17 @@ or (LAMBDA x: ...)."
 (defstep skolem-typepred (&optional (fnum *))
   (let ((sformnum (find-!quant fnum *ps*))
 	(newterms (fill-up-terms sformnum nil *ps*))
-	(X `(typepred ,@newterms))) 
+	(x `(typepred ,@newterms))) 
     
     (then (skolem sformnum newterms)
-	  X))
+	  x))
   "Skolemizes and then introduces type-constraints of the Skolem
 constants.
 See also SKOLEM!, TYPEPRED."
   "Skolemizing (with typepred on new Skolem constants)")
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defstep name-replace (name expr &optional (hide? T))
+(defstep name-replace (name expr &optional (hide? t))
   (try (name name expr)
        (then (replace -1)
 	     (if hide? (hide -1)(skip)))
@@ -2685,7 +2686,7 @@ See also SKOLEM!, TYPEPRED."
 newly chosen name"
   "Using ~a to name and replace ~a")
 
-(defstep name-replace* (name-and-exprs &optional (hide? T))
+(defstep name-replace* (name-and-exprs &optional (hide? t))
   (if (consp name-and-exprs)
       (if (consp (cdr name-and-exprs))
 	  (let ((name (car name-and-exprs))
@@ -2811,7 +2812,7 @@ or succedent formula in the sequent."
   "Merges indicated FNUMS into a single formula in the sequent."
   "Merging formulas: ~a")
 
-(defmethod pc-typecheck ((expr expr) &key expected (fnums '*) (uniquely? T))
+(defmethod pc-typecheck ((expr expr) &key expected (fnums '*) (uniquely? t))
   ;;assumption is that expr is pc-parsed, and expected is typechecked.
   (protect-types-hash
    expr
@@ -2851,12 +2852,12 @@ or succedent formula in the sequent."
 		      (type-ambiguity expr)
 		      expr)))))))
 
-(defmethod pc-typecheck ((expr T) &key expected (fnums '*) (uniquely? T))
+(defmethod pc-typecheck ((expr t) &key expected (fnums '*) (uniquely? t))
   (declare (ignore expected fnums uniquely?))
   (typecheck expr))
 
 (defstep generalize (term var  &optional type (fnums *)
-			  (subterms-only? T))
+			  (subterms-only? t))
   (branch (merge-fnums fnums)
 	  ((let ((sforms
 		  (select-seq (s-forms (current-goal *ps*)) '(1)))
@@ -2951,11 +2952,11 @@ is needed, the best option is to use CASE."
 
 (defun sko-symbol-prefix (id)
   (let* ((string (string (op-to-id id)))
-	 (pos (position #\! string :from-end T))
+	 (pos (position #\! string :from-end t))
 	 (prefix (if pos (subseq string 0 pos)
 		     string))
 	 (index (when pos  ;;NSH(9.20.95)
-		  (parse-integer string :start (1+ pos) :junk-allowed T))))
+		  (parse-integer string :start (1+ pos) :junk-allowed t))))
     (if index (intern prefix) id)))
 
 (defun make-constant-bind-decl-alist (constants done-alist)
@@ -3412,7 +3413,7 @@ skolem constants for the induction scheme to make sense."
 (defmethod bindings* ((expr binding-expr))
   (cons (bindings expr)(bindings* (expression expr))))
 
-(defmethod bindings* ((expr T))
+(defmethod bindings* ((expr t))
   nil)
 
 (defstep apply-eta (term &optional type)
@@ -3586,7 +3587,7 @@ top-level antecedent conjunctions, equivalences, and negations, and
 succedent disjunctions, implications, and negations from the sequent."
  "Applying disjunctive simplification to flatten sequent")
 
-(defstep model-check (&optional (dynamic-ordering? T) (cases-rewrite? T)
+(defstep model-check (&optional (dynamic-ordering? t) (cases-rewrite? t)
 				defs	; NIL, T, !, explicit, or explicit!
 				theories
 				rewrites
@@ -3599,10 +3600,10 @@ succedent disjunctions, implications, and negations from the sequent."
     (then* (skolem-typepred)
 	   (install-rewrites$ :defs defs :theories theories
 			      :rewrites rewrites :exclude exclude)
-	   (auto-rewrite-theory cuthstr :always? T)
-	   (auto-rewrite-theory "ctlops" :defs T :always? !!)
-	   (auto-rewrite-theory "fairctlops" :defs T :always? !!)
-	   (auto-rewrite-theory "Fairctlops" :defs T :always? !!)
+	   (auto-rewrite-theory cuthstr :always? t)
+	   (auto-rewrite-theory "ctlops" :defs t :always? !!)
+	   (auto-rewrite-theory "fairctlops" :defs t :always? !!)
+	   (auto-rewrite-theory "Fairctlops" :defs t :always? !!)
 	   (auto-rewrite "/=")
 	   (auto-rewrite "K_conversion")
 	   (stop-rewrite "mucalculus.mu" "mucalculus.nu"
@@ -3640,7 +3641,7 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
 	  (let ((hd (if (listp thlist) (car thlist) thlist))
 		(tl (if (listp thlist) (cdr thlist) nil)))
 	    (then
-	     (auto-rewrite-theory hd :always? T)
+	     (auto-rewrite-theory hd :always? t)
 	     (auto-rewrite-theory-always tl))))
       (let ((dummy (error-format-if
 		    "Argument to auto-rewrite-theory-always must be a~%  ~

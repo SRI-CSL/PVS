@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'pvs)
+(in-package :pvs)
 
 ;;; Moved from proofrules.lisp
 
@@ -26,7 +26,7 @@
 
 (defun beta-sform (sform &optional rewrite-flag)
   (let* ((fmla (formula sform))
-	 (newfmla (if (memq rewrite-flag '(LR RL))
+	 (newfmla (if (memq rewrite-flag '(lr rl))
 		      (if (and (negation? fmla)
 			       (equation? (args1 fmla)))
 			  (lcopy fmla
@@ -34,7 +34,7 @@
 			    (lcopy (args1 fmla)
 			      'argument
 			      (make!-arg-tuple-expr*
-			       (if (eq rewrite-flag 'RL)
+			       (if (eq rewrite-flag 'rl)
 				   (list (beta-reduce (args1
 						       (args1 fmla)))
 					 (args2 (args1 fmla)))
@@ -278,7 +278,7 @@
 	                             ;;;a(exp WITH [((a)(i)):= e])
 	    (let ((newexpr;;NSH(9.15.94): otherwise TCCs
 		   ;;are generated when domain is subtype.
-		   ;;(let ((*generate-tccs* 'NONE)))
+		   ;;(let ((*generate-tccs* 'none)))
 		   (make!-update-expr
 		    (make-record-update-reduced-application
 		     op expr-of-arg)
@@ -336,7 +336,7 @@
 		    'argument  arg)))
     (cond ((and (is-predicate? oper)
 		(typep (type arg) 'subtype))
-	   (cond ((member expr (type-constraints arg T)
+	   (cond ((member expr (type-constraints arg t)
 			  :test #'tc-eq)
 		  *true*)
 		 ((and (adt? (supertype (type arg)))
@@ -355,7 +355,7 @@
 			   (pairlis-args (bindings oper)
 					 (arguments newexpr)))))
 	  ((function-update-redex? newexpr)
-	   (simplify-function-update-redex newexpr T))
+	   (simplify-function-update-redex newexpr t))
 	  ((and (typep oper 'name-expr)
 		(accessor? oper)
 		(typep arg 'application)

@@ -27,7 +27,7 @@
 	     :additional-plus-arguments nil
 	     :allow-existing-directory (not runtime?)
 	     :autoload-warning t
-	     :case-mode :case-insensitive-upper
+	     :case-mode :case-sensitive-lower
 	     :debug-on-error t
 	     :discard-arglists nil
 	     :discard-compiler nil

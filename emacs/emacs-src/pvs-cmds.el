@@ -977,13 +977,13 @@ making use of outline mode."
 
 (defun insert-pvs-patch-information ()
   (let ((versions (get-pvs-version-information)))
-    (unless (eq (cadr versions) 'NIL)
+    (unless (member (cadr versions) '(nil NIL))
       (insert (format "%%Patch files loaded: patch2 version %s\n"
 		  (cadr versions))))
-    (unless (eq (caddr versions) 'NIL)
+    (unless (member (caddr versions) '(nil NIL))
       (insert (format "%%                    patch2-test version %s\n"
 		  (caddr versions))))
-    (unless (eq (cadddr versions) 'NIL)
+    (unless (member (cadddr versions) '(nil NIL))
       (insert (format "%%                    patch2-exp version %s\n"
 		  (cadddr versions))))))
 
@@ -1375,18 +1375,18 @@ underlying Lisp in the minibuffer."
   (let ((vers (get-pvs-version-information)))
     (format "PVS Version %s (%s)"
 	(car vers)
-      (if (and (eq (cadr vers) 'NIL)
-	       (eq (caddr vers) 'NIL)
-	       (eq (cadddr vers) 'NIL))
+      (if (and (member (cadr vers) '(nil NIL))
+	       (member (caddr vers) '(nil NIL))
+	       (member (cadddr vers) '(nil NIL)))
 	  "No patches loaded"
 	  (format "patch level %s%s%s"
-	      (if (eq (cadr vers) 'NIL)
+	      (if (member (cadr vers) '(nil NIL))
 		  ""
 		  (format "%s" (cadr vers)))
-	      (if (eq (caddr vers) 'NIL)
+	      (if (member (caddr vers) '(nil NIL))
 		  ""
 		  (format ", %s" (caddr vers)))
-	      (if (eq (cadddr vers) 'NIL)
+	      (if (member (cadddr vers) '(nil NIL))
 		  ""
 		  (format ", %s" (cadddr vers))))))))
 

@@ -1,6 +1,6 @@
 ;; This loads some files on startup.
 
-(in-package "USER")
+(in-package :user)
 
 (defvar *lisp-initialized* nil
   "Have we loaded the standard lisp environment?  Useful for disksaving.")

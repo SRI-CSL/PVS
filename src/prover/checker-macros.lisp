@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'pvs)
+(in-package :pvs)
 
 ;
 ; *prover-keywords* is an alist of the form
@@ -110,7 +110,7 @@
 (defvar *replace-cache* nil)
 (defvar *recursive-prove-decl-call* nil)
 (defparameter *init-usealist*
-  '((FALSE ((TRUE . FALSE) FALSE)) (TRUE ((TRUE . FALSE) TRUE))))
+  '((false ((true . false) false)) (true ((true . false) true))))
 (defvar *init-alists*
   (make-instance 'dpinfo
     'dpinfo-sigalist nil
@@ -133,14 +133,13 @@
 (defvar *macro-names* nil)
 (defvar *subst-type-hash* ;;used in assert-sformnums
   ;;(make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq)
-  nil) ;; Make this NIL till we can analyze this further.
+  nil) ;; Make this nil till we can analyze this further.
 (defvar *checkpointed-branches* nil)
 (defvar *dp-print-incompatible-warning* t)
 (defvar *print-expanded-dpinfo* t)
 (defvar *init-dp-state*)
 (defvar *top-dp-state*)
 (defvar *dp-state*)
-(defvar *newdc* nil) ;;needs to be set to T to get new ground prover
 (defvar *dp-changed*)
 (defvar *infinity* (gensym "*-infinity"))
 
@@ -265,8 +264,8 @@
 		      (lhs-length (length lhs-string)))
 		 (if (< lhs-length (- *default-char-width* (+ id-length 12)))
 		     (format t "~a" lhs-string)
-		     (format t "~%~V@T~a" 2 (unpindent ,lhs 2 :string T)))
-		 (format t "~%  to ~a" (unpindent ,rhs 6 :string T))))))))
+		     (format t "~%~V@T~a" 2 (unpindent ,lhs 2 :string t)))
+		 (format t "~%  to ~a" (unpindent ,rhs 6 :string t))))))))
 	     
 ;    (format t "~%~a rewrites ~a to ~a"
 ;      ,id ,lhs ,rhs)))
@@ -391,16 +390,16 @@
 	(sfnums (gentemp)))
     `(let ((,sign (not (negation? (formula ,sform))))
 	   (,sfnums (cleanup-fnums ,sformnums)))
-       (cond ((eql ,sfnums '*) T)
+       (cond ((eql ,sfnums '*) t)
 	     ((eql ,sfnums '+) ,sign)
 	     ((eql ,sfnums '-) (not ,sign))
 	     ((eql ,sfnums ,pos) ,sign)
 	     ((eql ,sfnums ,neg) (not ,sign))
-	     ((and (label ,sform) (memq ,sfnums (label ,sform))) T)
+	     ((and (label ,sform) (memq ,sfnums (label ,sform))) t)
 	     ;;NSH(12-23-91): Turning this off; restore if formula labels are used.
 	     ;;NSH(4.3.97): restoring labels	
 	     ((consp ,sfnums)
-	      (cond ((memq '* ,sfnums) T)
+	      (cond ((memq '* ,sfnums) t)
 		    ((memq '+ ,sfnums) ,sign)
 		    ((memq '- ,sfnums) (not ,sign))
 		    ((and (label ,sform)(intersection (label ,sform) ,sfnums)))
@@ -470,12 +469,12 @@
   `(let* ((*tccforms* nil)
 	  (*keep-unbound*  *bound-variables*)
 	  (*generate-tccs* (if (and *generate-tccs*
-				    (not (eq *generate-tccs* 'NONE)))
+				    (not (eq *generate-tccs* 'none)))
 			       *generate-tccs*
-			       'ALL))
+			       'all))
 	  (*false-tcc-error-flag* nil)
 	  (expr ,expr)
-	  (tcc-fmlas (when (not (eq *generate-tccs* 'NONE))
+	  (tcc-fmlas (when (not (eq *generate-tccs* 'none))
 		       (loop for tccinfo in *tccforms*
 			     when (not (forall-expr?;;NSH(8.19.98)
 					;;prunes out TCCs w/freevars
@@ -484,7 +483,7 @@
 	  (test (loop for tcc-fmla in tcc-fmlas always
 		      (let ((test (assert-test tcc-fmla)))
 			(if (not (or (true-p test) (false-p test)))
-			    (setq *dont-cache-match?* T)) ;NSH(6.12.95)
+			    (setq *dont-cache-match?* t)) ;NSH(6.12.95)
 			(true-p test)))))
      (when test expr)))
 
@@ -495,14 +494,14 @@
        (let ((expr-string (format nil "~a" ,expr)))
 	 (format t "~%;;~a failed to rewrite " id)
 	 (if (> (+ (length (string id))(length expr-string) 21) *default-char-width*)
-	     (format t "~%;;~a" (unpindent ,expr 2 :string T))
+	     (format t "~%;;~a" (unpindent ,expr 2 :string t))
 	     (format t "~a" expr-string))
 	 (format t "~%;;;;")
 	 (format t ,format-string ,@args)))))
 
 
 (defmacro replace-eq (lhs rhs)
-  `(let ((*modsubst* T)
+  `(let ((*modsubst* t)
 	 (subst (pairlis *bound-variables*
 			 *bound-variables*))
 	 (*bound-variables* nil))
@@ -528,7 +527,7 @@
   `(if (every #'digit-char-p ,string) (parse-integer ,string) 0))
 
 (defmacro no-tccs (expr)
-  `(let ((*generate-tccs* 'NONE))
+  `(let ((*generate-tccs* 'none))
     ,expr))
 
 (defmacro push-references (expr ps)
@@ -567,22 +566,14 @@
        (car ,result))))
 
 (defmacro translate-to-ground (expr)
-  `(if *newdc*
-      (translate-to-dc ,expr)
-      (translate-to-prove ,expr)))
+  `(translate-to-prove ,expr))
 
 (defmacro translate-with-new-hash (&rest body)
-  `(if *newdc*
-       (let ((*translate-to-dc-hash*
-	      (make-hash-table  ;;NSH(2.5.95)
-	       :hash-function 'pvs-sxhash ;;hash to pvs-hash
-	       :test 'tc-eq)))
-	 ,@body)
-      (let ((*translate-to-prove-hash*
-	      (make-hash-table  ;;NSH(2.5.95)
-	       :hash-function 'pvs-sxhash ;;hash to pvs-hash
-	       :test 'tc-eq)))
-	 ,@body)))
+  `(let ((*translate-to-prove-hash*
+	  (make-hash-table;;NSH(2.5.95)
+	   :hash-function 'pvs-sxhash;;hash to pvs-hash
+	   :test 'tc-eq)))
+     ,@body))
 
 (defmacro inc-rewrite-depth (res)
   `(let ((id (if (consp ,res) (car ,res)(id ,res))))
@@ -592,7 +583,7 @@
 	 *auto-rewrite-depth* id))))
   
 (defmacro match! (pattern expr bind-alist subst)
-  `(let ((*modsubst* T))
+  `(let ((*modsubst* t))
     (match ,pattern ,expr ,bind-alist ,subst)))
 
 (defmacro with-zero-context (lisp-expr)

@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'pvs)
+(in-package :pvs)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;The rulefun rewrite finds the matching instantiations automatically.
@@ -63,7 +63,7 @@
 					dir order))
 		   (t rule))))))
 
-(defun tc-alist (in-alist &optional out-alist (tccs 'ALL))
+(defun tc-alist (in-alist &optional out-alist (tccs 'all))
   (cond ((null in-alist)
 	 out-alist)
 	(t (tc-alist (cdr in-alist)
@@ -87,7 +87,7 @@
 		     tccs))))
 
 (defun check-modsubst (modsubst)
-  (cond ((or (null modsubst)(eq modsubst T))
+  (cond ((or (null modsubst)(eq modsubst t))
 	 modsubst)
 	((loop for (nil . y) in modsubst
 	       thereis (null y))
@@ -133,7 +133,7 @@
 	   (res-params (external-free-params res))
 	   (*modsubst* (if res-params
 			   (mapcar #'list res-params)
-			   T)));;(break "search-rw*")
+			   t)));;(break "search-rw*")
       (multiple-value-bind
 	  (subst modsubst)
 	  (if (not check) 'fail
@@ -153,7 +153,7 @@
 					in-subst context
 					in-sformnums dir order)))
 	      (t (let* ((modinst
-			 (unless (eq modsubst T)
+			 (unless (eq modsubst t)
 			   (let* ((module (module (caar modsubst)))
 				  (mod-id (id module))
 				  (formals (formals-sans-usings module))
@@ -165,7 +165,7 @@
 			       'id mod-id 
 			       'actuals (mapcar #'(lambda (x) (mk-actual (cdr x))) alist)))))
 			(newres
-			 (if (eq modsubst T)
+			 (if (eq modsubst t)
 			     res
 			     (subst-mod-params res modinst)))
 			(full-name-expr
@@ -187,8 +187,8 @@
 
 (defun flatten-and-unparse-sub (subst)
   (cond ((null subst) nil)
-	(t (cons (unparse (caar subst) :string T)
-		 (cons (unparse (cdar subst) :string T)
+	(t (cons (unparse (caar subst) :string t)
+		 (cons (unparse (cdar subst) :string t)
 		       (flatten-and-unparse-sub (cdr subst)))))))
 
 (defun flatten-sub (subst)
@@ -203,7 +203,7 @@
 
 (defun call-match (lhs expr bind-alist subst)
   (let* ((*modsubst* *modsubst*)
-	 (*no-bound-variables-in-match* T)
+	 (*no-bound-variables-in-match* t)
 ;	 (new-subst
 ;	  (loop for (x . y) in subst
 ;		collect
@@ -234,13 +234,13 @@
        (find-match-arith-polarity lhs-template
 				  (cdr expr) bind-alist subst
 				  order polarity))
-      'FAIL))
+      'fail))
 
 (defmethod find-match-arith-polarity
-    (lhs-template (expr T)
+    (lhs-template (expr t)
 		  bind-alist subst order polarity)
   (find-out-match-polarity lhs-template expr bind-alist
-			   subst order 'FAIL nil polarity))
+			   subst order 'fail nil polarity))
 
 (defmethod find-match-arith-polarity
     (lhs-template (expr application)
@@ -286,8 +286,8 @@
 	    (find-match-arith-polarity
 	     lhs-template
 	     (argument op) bind-alist subst order (toggle polarity)))
-	   (t 'FAIL))
-	'FAIL)  
+	   (t 'fail))
+	'fail)  
     (find-out-match-polarity lhs-template
 			     expr bind-alist subst
 			     order insub inmodsubst polarity))))
@@ -361,7 +361,7 @@
 
 ;;;if it isn't an application, list or binding, then the polarit
 ;;;doesn't count, and find-match can be called.
-(defmethod find-match-polarity (lhs-template (expr T) bind-alist subst
+(defmethod find-match-polarity (lhs-template (expr t) bind-alist subst
 					     order polarity)
   (declare (ignore polarity))
   (find-match (template-expression lhs-template) expr bind-alist subst order))
@@ -409,7 +409,7 @@
       accum))
 
 (defmethod find-all-matches-arith-polarity
-    (lhs-template (expr T)
+    (lhs-template (expr t)
 		  bind-alist subst accum polarity)
   (find-out-all-matches-polarity lhs-template expr bind-alist subst
 				 accum polarity))
@@ -532,7 +532,7 @@
 				  polarity)
        polarity)))
 
-(defmethod find-all-matches-polarity (lhs-template (expr T) bind-alist subst
+(defmethod find-all-matches-polarity (lhs-template (expr t) bind-alist subst
 						   accum polarity)
   (find-out-all-matches-polarity lhs-template expr bind-alist subst
 				 accum polarity))
@@ -817,8 +817,8 @@
 (defun split-rewrite* (form vars dir)
   (cond ((or (equation? form)(iff? form))
 	 ;;checks if rhs freevars are in given + lhs freevars.
-	 (let ((lhs (if (eq dir 'RL)(args2 form)(args1 form)))
-	       (rhs (if (eq dir 'RL)(args1 form)(args2 form))))
+	 (let ((lhs (if (eq dir 'rl)(args2 form)(args1 form)))
+	       (rhs (if (eq dir 'rl)(args1 form)(args2 form))))
 	   (if
 	     (subsetp (freevars rhs)
 		      (append vars
@@ -838,7 +838,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun tc-eq-or-unify (lhs rhs modsubst)
-  (if (eq modsubst T)
+  (if (eq modsubst t)
       (strict-compatible? lhs rhs)
       (tc-unify rhs lhs modsubst)))
 

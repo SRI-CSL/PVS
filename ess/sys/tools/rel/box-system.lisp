@@ -14,7 +14,7 @@
 ;;; ******************************************************************* ;;;
 
 
-(in-package :TOOLS) (use-package :ergolisp)
+(in-package :tools) (use-package :ergolisp)
 ;; For some reason the next line does NOT work in compiled code in Lucid.
 ;; It is therefore repeated in the init-load file.
 #+lucid (import '(system::cd) :tools)

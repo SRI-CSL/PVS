@@ -33,7 +33,7 @@
 	(parse-error place (parse-error-msg msg args)))
       (let* ((nt (cadr (member :nt keys)))
 	     (fn (if nt
-		     (makesym "XT-~a" (sim-term-op term))
+		     (makesym "xt-~(~a~)" (sim-term-op term))
 		     #'xt-adt-or-modules))
 	     (*parsing-or-unparsing* t)
 	     (parsed-object (funcall fn term)))
@@ -101,11 +101,11 @@
 	 (formals (term-arg1 adt-or-module))
 	 (adt-or-mod (term-arg2 adt-or-module))
 	 (aorm (case (sim-term-op adt-or-mod)
-		 (module (funcall #'xt-module adt-or-mod id))
-		 ((datatype codatatype)
+		 (MODULE (funcall #'xt-module adt-or-mod id))
+		 ((DATATYPE CODATATYPE)
 		  (funcall #'xt-datatype (sim-term-op adt-or-mod)
 			   adt-or-mod id))
-		 ((datatypes codatatypes)
+		 ((DATATYPES CODATATYPES)
 		  (funcall #'xt-datatypes (sim-term-op adt-or-mod)
 			   adt-or-mod id)))))
     (setf (id aorm) id
@@ -128,10 +128,10 @@
 				 'place (term-place st)))
 			   (term-args subtypes-term)))
 	 (assuming-term (term-arg1 datatype))
-	 (assuming (unless (is-sop 'datatype-null-2 assuming-term)
+	 (assuming (unless (is-sop 'DATATYPE-NULL-2 assuming-term)
 		     (xt-assumings assuming-term)))
 	 (importing-term (term-arg2 datatype))
-	 (importings (unless (is-sop 'datatype-null-1 importing-term)
+	 (importings (unless (is-sop 'DATATYPE-NULL-1 importing-term)
 		  (xt-importing-elt importing-term)))
 	 (adtcases-term (term-arg3 datatype))
 	 (adtcases (xt-adtcases adtcases-term))
@@ -142,7 +142,7 @@
       (parse-error (term-arg4 datatype)
 	"End id ~a does not match datatype id ~a" endid id))
     (if (or (null id) inline)
-	(make-instance (if (eq class 'datatypes)
+	(make-instance (if (eq class 'DATATYPES)
 			   'inline-datatype-with-subtypes
 			   'inline-codatatype-with-subtypes)
 	  'subtypes subtypes
@@ -150,7 +150,7 @@
 	  'importings importings
 	  'constructors adtcases
 	  'place (term-place datatype))
-	(make-instance (if (eq class 'datatypes)
+	(make-instance (if (eq class 'DATATYPES)
 			   'datatype-with-subtypes
 			   'codatatype-with-subtypes)
 	  'subtypes subtypes
@@ -195,7 +195,7 @@
 	 (decl-body (term-arg2 theory-formal)))
     (multiple-value-bind (decl dtype)
 	(xt-declaration-body decl-body)
-      (append (unless (is-sop 'theory-formal-null-1 importing)
+      (append (unless (is-sop 'THEORY-FORMAL-NULL-1 importing)
 		(xt-importing-elt importing))
 	      (xt-chained-decls (term-args idops) dtype nil decl
 				theory-formal)))))
@@ -210,15 +210,15 @@
       (parse-error (term-arg3 datatype)
 	"End id ~a does not match datatype id ~a" endid id))
     (make-instance (if (or (null id) inline)
-		       (if (eq class 'datatype)
+		       (if (eq class 'DATATYPE)
 			   'inline-datatype
 			   'inline-codatatype)
-		       (if (eq class 'datatype)
+		       (if (eq class 'DATATYPE)
 			   'datatype
 			   'codatatype))
-      'assuming (unless (is-sop 'datatype-null-2 assuming)
+      'assuming (unless (is-sop 'DATATYPE-NULL-2 assuming)
 		  (xt-assumings assuming))
-      'importings (unless (is-sop 'datatype-null-1 importing)
+      'importings (unless (is-sop 'DATATYPE-NULL-1 importing)
 		   (xt-importing-elt importing))
       'constructors (xt-adtcases adtcases)
       'place (term-place datatype))))
@@ -230,7 +230,7 @@
   (let* ((constructor (term-arg0 adtcase))
 	 (recognizer (term-arg1 adtcase))
 	 (constr (xt-constructor constructor))
-	 (subtype (when (is-sop 'adtcase-subtype adtcase)
+	 (subtype (when (is-sop 'ADTCASE-SUBTYPE adtcase)
 		    (make-instance 'type-name
 		      'id (ds-id (term-arg2 adtcase))
 		      'place (term-place (term-arg2 adtcase))))))
@@ -246,7 +246,7 @@
 	(adtdecls (term-arg1 constructor)))
     (make-instance 'simple-constructor
       'id (xt-idop idop)
-      'arguments (unless (is-sop 'constructor-null-1 adtdecls)
+      'arguments (unless (is-sop 'CONSTRUCTOR-NULL-1 adtdecls)
 		   (xt-adtdecls adtdecls))
       'place (term-place constructor))))
 
@@ -267,16 +267,16 @@
 
 (defun xt-module (theory &optional id)
   (let* ((exp-t (term-arg0 theory))
-	 (exp (if (is-sop 'noexp exp-t)
+	 (exp (if (is-sop 'NOEXP exp-t)
 		  (make-instance 'exporting
 		    'kind 'DEFAULT
 		    'place (term-place exp-t))
 		  (xt-exporting exp-t)))
 	 (assum-t (term-arg1 theory))
-	 (assum (unless (is-sop 'noass assum-t)
+	 (assum (unless (is-sop 'NOASS assum-t)
 		  (xt-assumings assum-t)))
 	 (tpart-t (term-arg2 theory))
-	 (tpart (unless (is-sop 'notheory tpart-t)
+	 (tpart (unless (is-sop 'NOTHEORY tpart-t)
 		  (xt-theory-part tpart-t)))
 	 (endid (ds-vid (term-arg3 theory))))
     (unless (or (null id) (eq id endid))
@@ -296,21 +296,21 @@
 	(modnames (term-arg1 exporting)))
     (make-instance 'exporting
       'names (case (sim-term-op names)
-	       (exporting-all 'ALL)
-	       (expnames (mapcar #'xt-expname (term-args names)))
+	       (EXPORTING-ALL 'all)
+	       (EXPNAMES (mapcar #'xt-expname (term-args names)))
 	       (t (break "Something's wrong with the parser")))
-      'but-names (when (and (is-sop 'exporting-all names)
-			    (not (is-sop 'noexpbuts (term-arg0 names))))
+      'but-names (when (and (is-sop 'EXPORTING-ALL names)
+			    (not (is-sop 'NOEXPBUTS (term-arg0 names))))
 		   (mapcar #'xt-expname
 			   (term-args (term-arg0 names))))
       'kind (case (sim-term-op modnames)
-	      (expmodall 'ALL)
-	      (expmodclosure 'CLOSURE)
+	      (EXPMODALL 'all)
+	      (EXPMODCLOSURE 'closure)
 	      (t nil))
       'modules (case (sim-term-op modnames)
-		 (noexportingmods nil)
-		 (expmodall nil)
-		 (expmodclosure nil)
+		 (NOEXPORTINGMODS nil)
+		 (EXPMODALL nil)
+		 (EXPMODCLOSURE nil)
 		 (t (mapcar #'xt-modname (term-args modnames))))
       'place (term-place exporting))))
 
@@ -320,36 +320,36 @@
     (make-instance 'expname
       'id id
       'kind (case (sim-term-op kind)
-	      (noexpkind nil)
-	      (exptype 'TYPE)
-	      (expformula 'FORMULA)
+	      (NOEXPKIND nil)
+	      (EXPTYPE 'type)
+	      (EXPFORMULA 'formula)
 	      (t (xt-not-enum-type-expr kind)))
       'place (term-place expname))))
 
 (defun xt-assuming-part (assumings)
   (mapcan #'(lambda (ass)
-	      (if (is-sop 'importing-elt ass)
+	      (if (is-sop 'IMPORTING-ELT ass)
 		  (xt-importing-elt ass)
 		  (xt-assuming ass)))
 	  (term-args assumings)))
 
 (defun xt-assumings (assumings)
   (mapcan #'(lambda (ass)
-	      (if (is-sop 'importing-elt ass)
+	      (if (is-sop 'IMPORTING-ELT ass)
 		  (xt-importing-elt ass)
 		  (xt-assuming ass)))
 	  (term-args assumings)))
 
 (defun xt-assuming (assuming)
   (let* ((idops (term-arg0 assuming))
-	 (formals (unless (is-sop 'noformals (term-arg1 assuming))
+	 (formals (unless (is-sop 'NOFORMALS (term-arg1 assuming))
 		    (xt-pdf (term-arg1 assuming))))
 	 (decl (term-arg2 assuming))
 	 (semi (term-arg3 assuming)))
     (when (and (cdr (term-args idops)) formals)
       (parse-error formals ": expected here"))
     (case (sim-term-op decl)
-      ((lib-decl theory-decl type-decl datatype)
+      ((LIB-DECL THEORY-DECL TYPE-DECL DATATYPE)
        (let ((badid (find-if #'(lambda (tid)
 				 (assq (ds-id (term-arg0 tid))
 				       *pvs-operators*))
@@ -363,38 +363,38 @@
 				     formals
 				     pdecl
 				     assuming)))
-	(setf (semi pdecl) (when (is-sop 'semic semi) t))
+	(setf (semi pdecl) (when (is-sop 'SEMIC semi) t))
 	decls))))
 
 (defun xt-theory-part (theory)
   (mapcan #'(lambda (decl)
 	      (case (sim-term-op decl)
-		(importing-elt (xt-importing-elt decl))
-		(judgement-elt (xt-judgement-elt decl))
-		(conversion-elt (xt-conversion-elt decl))
+		(IMPORTING-ELT (xt-importing-elt decl))
+		(JUDGEMENT-ELT (xt-judgement-elt decl))
+		(CONVERSION-ELT (xt-conversion-elt decl))
 		(t (xt-theory decl))))
 	  (term-args theory)))
 
 (defun xt-theory (tdecl)
   (let* ((idops (term-arg0 tdecl))
 	 (formals (term-arg1 tdecl))
-	 (pformals (unless (is-sop 'noformals formals)
+	 (pformals (unless (is-sop 'NOFORMALS formals)
 		     (xt-pdf formals)))
 	 (decl (term-arg2 tdecl))
 	 (semi (term-arg3 tdecl)))
     (when (and (cdr (term-args idops)) pformals)
       (parse-error formals ": expected here"))
     (case (sim-term-op decl)
-      ((lib-decl theory-decl type-decl datatype)
+      ((LIB-DECL THEORY-DECL TYPE-DECL DATATYPE)
        (let ((badid (find-if #'(lambda (tid)
 				 (assq (ds-id (term-arg0 tid))
 				       *pvs-operators*))
 		      (term-args idops))))
 	 (when badid
 	   (parse-error badid "Id expected here")))))
-    (cond ((is-sop 'datatype decl)
+    (cond ((is-sop 'DATATYPE decl)
 	   (xt-theory-datatype idops formals decl semi))
-	  ((is-sop 'datatypes decl)
+	  ((is-sop 'DATATYPES decl)
 	   (xt-theory-datatypes idops formals decl semi))
 	  (t (multiple-value-bind (pdecl type-decl)
 		 (xt-declaration-body decl idops)
@@ -403,11 +403,11 @@
 					      pformals
 					      pdecl
 					      tdecl)))
-		 (setf (semi pdecl) (when (is-sop 'semic semi) t))
+		 (setf (semi pdecl) (when (is-sop 'SEMIC semi) t))
 		 decls))))))
 
 (defun xt-theory-datatypes (idops formals decl semi)
-  (cond ((is-sop 'pdf formals)
+  (cond ((is-sop 'PDF formals)
 	 (parse-error (term-arg0 formals)
 	   "Inline datatypes may not have parameters"))
 	((cdr (term-args idops))
@@ -421,11 +421,11 @@
 				decl id t)))
 	     (setf (id adt) id
 		   (formals adt) (xt-theory-formals formals)
-		   (semi adt) (when (is-sop 'semic semi) t))
+		   (semi adt) (when (is-sop 'SEMIC semi) t))
 	     (list adt)))))
 
 (defun xt-theory-datatype (idops formals decl semi)
-  (cond ((is-sop 'pdf formals)
+  (cond ((is-sop 'PDF formals)
 	 (parse-error (term-arg0 formals)
 	   "Inline datatypes may not have parameters"))
 	((cdr (term-args idops))
@@ -439,23 +439,23 @@
 				decl id t)))
 	     (setf (id adt) id
 		   (formals adt) (xt-theory-formals formals)
-		   (semi adt) (when (is-sop 'semic semi) t))
+		   (semi adt) (when (is-sop 'SEMIC semi) t))
 	     (list adt)))))
 
 (defun xt-importing-elt (importing)
   (let ((importings
 	 (mapcar #'(lambda (item)
-		     (if (is-sop 'theory-abbreviation-decl item)
+		     (if (is-sop 'THEORY-ABBREVIATION-DECL item)
 			 (make-instance 'theory-abbreviation-decl
 			   'id (ds-id (term-arg1 item))
 			   'theory-name (xt-modname (term-arg0 item))
 			   'place (term-place item)
-			   'semi (when (is-sop 'semic (term-arg1 importing)) t)
+			   'semi (when (is-sop 'SEMIC (term-arg1 importing)) t)
 			   'chain? t)
 			 (make-instance 'importing
 			   'theory-name (xt-modname item)
 			   'place (term-place item)
-			   'semi (when (is-sop 'semic (term-arg1 importing)) t)
+			   'semi (when (is-sop 'SEMIC (term-arg1 importing)) t)
 			   'chain? t)))
 	   (term-args (term-arg0 importing)))))
     (setf (chain? (car (last importings))) nil)
@@ -464,7 +464,7 @@
 (defun xt-judgement-elt (decl)
   (let ((jdecls (xt-judgement (term-arg0 decl))))
     (dolist (jdecl jdecls)
-      (setf (semi jdecl) (when (is-sop 'semic (term-arg1 decl)) t)))
+      (setf (semi jdecl) (when (is-sop 'SEMIC (term-arg1 decl)) t)))
     jdecls))
 
 (defun xt-judgement-decl (decl idops)
@@ -484,7 +484,7 @@
 	 (type (term-arg2 decl))
 	 (dtype (xt-not-enum-type-expr type))
 	 (place (term-place decl)))
-    (values (if (eq class 'subtype-of)
+    (values (if (eq class 'SUBTYPE-OF)
 		(xt-subtype-judgement jdecls dtype place)
 		(xt-const-judgement jdecls dtype place))
 	    type)))
@@ -497,21 +497,21 @@
     decls))
 
 (defun xt-subtype-judgement* (jdecl dtype place)
-  (cond ((is-sop 'jsubtypedecl jdecl)
+  (cond ((is-sop 'JSUBTYPEDECL jdecl)
 	 (let ((type (xt-not-enum-type-expr (term-arg0 jdecl))))
 	   (make-instance 'subtype-judgement
 	     'declared-subtype type
 	     'declared-type dtype
 	     'chain? t
 	     'place place)))
-	((is-sop 'jnamedecl jdecl)
+	((is-sop 'JNAMEDECL jdecl)
 	 (let ((name (xt-name (term-arg0 jdecl))))
 	   (make-instance 'subtype-judgement
 	     'declared-subtype (change-class name 'type-name)
 	     'declared-type dtype
 	     'chain? t
 	     'place place)))
-	((is-sop 'jappldecl jdecl)
+	((is-sop 'JAPPLDECL jdecl)
 	 (let ((name (xt-name (term-arg0 jdecl)))
 	       (formals (xt-pdf (term-arg1 jdecl))))
 	   (when (cdr formals)
@@ -541,18 +541,20 @@
 
 (defun xt-const-judgement* (jdecl dtype place)
   (case (sim-term-op jdecl)
-    (jnumberdecl (make-instance 'number-judgement
-		   'number-expr (make-instance 'number-expr
-				  'number (ds-number (term-arg0 jdecl)))
-		   'declared-type dtype
-		   'chain? t
-		   'place place))
-    (jnamedecl (make-instance 'name-judgement
-		 'name (change-class (xt-name (term-arg0 jdecl)) 'name-expr)
-		 'declared-type dtype
-		 'chain? t
-		 'place place))
-    (jappldecl (make-instance 'application-judgement
+    (JNAMEDECL
+     (let ((ex (xt-name (term-arg0 jdecl))))
+       (if (number-expr? ex)
+	   (make-instance 'number-judgement
+	     'number-expr ex
+	     'declared-type dtype
+	     'chain? t
+	     'place place)
+	   (make-instance 'name-judgement
+	     'name (change-class ex 'name-expr)
+	     'declared-type dtype
+	     'chain? t
+	     'place place))))
+    (JAPPLDECL (make-instance 'application-judgement
 		 'name (change-class (xt-name (term-arg0 jdecl)) 'name-expr)
 		 'formals (xt-pdf (term-arg1 jdecl))
 		 'declared-type dtype
@@ -563,7 +565,7 @@
 (defun xt-conversion-elt (decl)
   (let ((cdecls (xt-conversion (term-arg0 decl))))
     (dolist (cdecl cdecls)
-      (setf (semi cdecl) (when (is-sop 'semic (term-arg1 decl)) t)))
+      (setf (semi cdecl) (when (is-sop 'SEMIC (term-arg1 decl)) t)))
     cdecls))
 
 (defun xt-conversion (decl)
@@ -582,15 +584,15 @@
 (defun xt-conversion** (ename last? convkey)
   (let ((name (xt-name (term-arg0 ename)))
 	(ntype (term-arg1 ename)))
-    (if (is-sop 'notype ntype)
+    (if (is-sop 'NOTYPE ntype)
 	(case convkey
-	  (conversionplus
+	  (CONVERSIONPLUS
 	   (make-instance 'conversionplus-decl
 	     'id (id name)
 	     'name (change-class name 'name-expr)
 	     'chain? (not last?)
 	     'place (term-place name)))
-	  (conversionminus
+	  (CONVERSIONMINUS
 	   (make-instance 'conversionminus-decl
 	     'id (id name)
 	     'name (change-class name 'name-expr)
@@ -603,14 +605,14 @@
 	     'chain? (not last?)
 	     'place (term-place name))))
 	(case convkey
-	  (conversionplus
+	  (CONVERSIONPLUS
 	   (make-instance 'typed-conversionplus-decl
 	     'id (id name)
 	     'name (change-class name 'name-expr)
 	     'declared-type (xt-not-enum-type-expr ntype)
 	     'chain? (not last?)
 	     'place (term-place name)))
-	  (conversionminus
+	  (CONVERSIONMINUS
 	   (make-instance 'typed-conversionminus-decl
 	     'id (id name)
 	     'name (change-class name 'name-expr)
@@ -642,7 +644,7 @@
 			      decl))))
 	(when (and (slot-exists-p ndecl 'declared-type)
 		   (declared-type ndecl)
-		   (not (eq (sim-term-op dtype) 'no-type-expr))
+		   (not (eq (sim-term-op dtype) 'NO-TYPE-EXPR))
 		   (not (typep decl 'pred-bind-decl)))
 	  (assert dtype)
 	  (setf (declared-type ndecl)
@@ -671,7 +673,7 @@
   (if (null adformals)
       (nconc formals untyped)
       (let ((df (car adformals)))
-	(if (is-sop 'typed-ids df)
+	(if (is-sop 'TYPED-IDS df)
 	    (xt-adformals* (cdr adformals)
 			   nil
 			   (nconc formals untyped (xt-typed-ids df)))
@@ -693,8 +695,8 @@
   (let* ((idops (term-arg0 typed-ids))
 	 (type-expr (term-arg1 typed-ids))
 	 (expr (term-arg2 typed-ids))
-	 (no-pred (is-sop 'no-pred expr))
-	 (type (unless (is-sop 'no-type-expr type-expr)
+	 (no-pred (is-sop 'NO-PRED expr))
+	 (type (unless (is-sop 'NO-TYPE-EXPR type-expr)
 		 (xt-not-enum-type-expr type-expr))))
     (unless (or no-pred (not (cdr (term-args idops))))
       (parse-error (term-arg0 (term-arg1 (term-arg0 typed-ids)))
@@ -722,8 +724,8 @@
   (let* ((idop (term-arg0 typed-id))
 	 (type-expr (term-arg1 typed-id))
 	 (expr (term-arg2 typed-id))
-	 (no-pred (is-sop 'no-pred expr))
-	 (type (unless (is-sop 'no-type-expr type-expr)
+	 (no-pred (is-sop 'NO-PRED expr))
+	 (type (unless (is-sop 'NO-TYPE-EXPR type-expr)
 		 (xt-not-enum-type-expr type-expr))))
     (if no-pred
 	(xt-typed-id-bind-decl (xt-idop idop) type (term-place typed-id))
@@ -754,36 +756,36 @@
 
 (defun xt-declaration-body (body &optional idops)
   (case (sim-term-op body)
-    (ftype-decl (xt-ftype-decl body))
-    (fconst-decl (xt-fconst-decl body))
-    (ftheory-decl (xt-ftheory-decl body))
-    (lib-decl (xt-lib-decl body))
-    (theory-decl (xt-theory-decl body))
-    (uninterp-type-decl (xt-uninterp-type-decl body))
-    (type-decl (xt-type-decl body))
-    (judgement (xt-judgement-decl body idops))
-    (var-decl (xt-var-decl body))
-    (uninterp-const-decl (xt-const-decl body))
-    (const-decl (xt-const-decl body))
-    (def-decl (xt-def-decl body))
-    (ind-decl (xt-ind-decl body))
-    (corec-decl (xt-corec-decl body))
-    (coind-decl (xt-coind-decl body))
-    (assumption (xt-assumption body))
-    (formula-decl (xt-formula-decl body))
+    (FTYPE-DECL (xt-ftype-decl body))
+    (FCONST-DECL (xt-fconst-decl body))
+    (FTHEORY-DECL (xt-ftheory-decl body))
+    (LIB-DECL (xt-lib-decl body))
+    (THEORY-DECL (xt-theory-decl body))
+    (UNINTERP-TYPE-DECL (xt-uninterp-type-decl body))
+    (TYPE-DECL (xt-type-decl body))
+    (JUDGEMENT (xt-judgement-decl body idops))
+    (VAR-DECL (xt-var-decl body))
+    (UNINTERP-CONST-DECL (xt-const-decl body))
+    (CONST-DECL (xt-const-decl body))
+    (DEF-DECL (xt-def-decl body))
+    (IND-DECL (xt-ind-decl body))
+    (COREC-DECL (xt-corec-decl body))
+    (COIND-DECL (xt-coind-decl body))
+    (ASSUMPTION (xt-assumption body))
+    (FORMULA-DECL (xt-formula-decl body))
     (t (error "Decl not recognized - ~a" body))))
 
 (defun xt-ftype-decl (ftype-decl)
   (let ((tkey (sim-term-op (term-arg0 ftype-decl)))
 	(type-expr (term-arg1 ftype-decl)))
-    (if (eq tkey 'type)
-	(if (is-sop 'notype type-expr)
+    (if (eq tkey 'TYPE)
+	(if (is-sop 'NOTYPE type-expr)
 	    (make-instance 'formal-type-decl
 	      'place (term-place ftype-decl))
 	    (make-instance 'formal-subtype-decl
 	      'type-expr (xt-not-enum-type-expr type-expr)
 	      'place (term-place ftype-decl)))
-	(if (is-sop 'notype type-expr)
+	(if (is-sop 'NOTYPE type-expr)
 	    (make-instance 'formal-nonempty-type-decl
 	      'keyword tkey
 	      'place (term-place ftype-decl))
@@ -811,7 +813,7 @@
 	 (dirstr (if (char= (char libstr (1- (length libstr))) #\/)
 		       libstr
 		       (concatenate 'string libstr "/"))))
-    (make-instance (if (is-sop 'noeq (term-arg0 lib-decl))
+    (make-instance (if (is-sop 'NOEQ (term-arg0 lib-decl))
 		       'lib-decl
 		       'lib-eq-decl)
       'lib-string libstr
@@ -826,7 +828,7 @@
 (defun xt-uninterp-type-decl (utd)
   (let ((tkey (sim-term-op (term-arg0 utd)))
 	(place (term-place utd)))
-    (if (eq tkey 'type)
+    (if (eq tkey 'TYPE)
 	(make-instance 'type-decl
 	  'place place)
 	(make-instance 'nonempty-type-decl
@@ -836,15 +838,15 @@
 (defun xt-type-decl (type-decl)
   (let* ((tkey (sim-term-op (term-arg0 type-decl)))
 	 (tdef (term-arg1 type-decl))
-	 (eq? (is-sop 'equal (term-arg0 tdef)))
+	 (eq? (is-sop 'EQUAL (term-arg0 tdef)))
 	 (texpr (xt-type-expr (term-arg1 tdef)))
 	 (tcont (term-arg2 type-decl))
-	 (contains (unless (is-sop 'nocontains tcont)
+	 (contains (unless (is-sop 'NOCONTAINS tcont)
 		     (xt-expr tcont)))
 	 (place (term-place type-decl)))
     (when (and contains (enumtype? texpr))
       (parse-error tcont "CONTAINING not expected here"))
-    (if (eq tkey 'type)
+    (if (eq tkey 'TYPE)
 	(if eq?
 	    (make-instance 'type-eq-decl
 	      'type-expr texpr
@@ -892,7 +894,7 @@
 	      'declared-type (xt-not-enum-type-expr type-expr)
 	      'definition (xt-expr def)
 	      'declared-measure (xt-expr meas)
-	      'ordering (unless (is-sop 'noexpr ordering)
+	      'ordering (unless (is-sop 'NOEXPR ordering)
 			  (xt-expr ordering))
 	      'place (term-place def-decl))
 	    type-expr)))
@@ -934,7 +936,7 @@
   (let ((fname (term-arg0 formula-decl))
 	(expr (term-arg1 formula-decl)))
     (when (and *no-obligations-allowed*
-	       (is-sop 'obligation fname))
+	       (is-sop 'OBLIGATION fname))
       (parse-error fname
 	"The OBLIGATION keyword is not allowed here"))
     (make-instance 'formula-decl
@@ -954,16 +956,16 @@
 
 (defun xt-type-expr (type-expr)
   (case (sim-term-op type-expr)
-    ((type-name name-expr)		; Allow name-exprs from actuals
+    ((TYPE-NAME NAME-EXPR)		; Allow name-exprs from actuals
      (xt-type-name type-expr))
-    (type-appl (xt-type-appl type-expr))
+    (TYPE-APPL (xt-type-appl type-expr))
     ;;(quotienttype (xt-quotienttype type-expr))
-    (subtype (xt-subtype type-expr))
-    (expr-as-type (xt-expr-as-type type-expr))
+    (SUBTYPE (xt-subtype type-expr))
+    (EXPR-AS-TYPE (xt-expr-as-type type-expr))
     ;;(enum-or-subtype (xt-enum-or-subtype type-expr))
-    (enumtype (xt-enumtype type-expr))
-    (funtype (xt-funtype type-expr))
-    (recordtype (xt-recordtype type-expr))
+    (ENUMTYPE (xt-enumtype type-expr))
+    (FUNTYPE (xt-funtype type-expr))
+    (RECORDTYPE (xt-recordtype type-expr))
     (t (error "type-expr not recognized - ~a" type-expr))))
 
 (defun xt-type-name (type-name)
@@ -1003,8 +1005,8 @@
       'place (term-place enum))))
 
 (defun xt-enumtype-args (args &optional result)
-  (if (is-sop 'set-formals args)
-      (if (is-sop 'comma (term-arg1 args))
+  (if (is-sop 'SET-FORMALS args)
+      (if (is-sop 'COMMA (term-arg1 args))
 	  (xt-enumtype-args (term-arg2 args)
 			    (cons (xt-enumtype-arg (term-arg0 args))
 				  result))
@@ -1012,9 +1014,9 @@
       (nreverse (cons (xt-enumtype-arg args) result))))
 
 (defun xt-enumtype-arg (arg)
-  (unless (is-sop 'set-id arg)
+  (unless (is-sop 'SET-ID arg)
     (parse-error arg "( not expected here"))
-  (unless (is-sop 'notype (term-arg1 arg))
+  (unless (is-sop 'NOTYPE (term-arg1 arg))
     (parse-error (term-arg1 arg) ": not expected here"))
   (term-arg0 arg))
 
@@ -1040,10 +1042,10 @@
   (let ((kind (term-arg0 funtype))
 	(dep-type-exprs (term-arg1 funtype))
 	(range (term-arg2 funtype)))
-    (if (is-sop 'comp-type-expr-null-2 range)
-	(if (is-sop 'comp-type-expr-null-1 kind)
+    (if (is-sop 'COMP-TYPE-EXPR-NULL-2 range)
+	(if (is-sop 'COMP-TYPE-EXPR-NULL-1 kind)
 	    (let ((dep-types (xt-dep-type-exprs dep-type-exprs)))
-	      (if (is-sop 'cotupletype dep-type-exprs)
+	      (if (is-sop 'COTUPLETYPE dep-type-exprs)
 		  (if (some #'dep-binding? dep-types)
 		      (parse-error dep-type-exprs
 			"Dependent types not allowed in cotuple types")
@@ -1062,9 +1064,9 @@
 	       (tvar (make-new-variable '|t| (cons range dom)))
 	       (domain (xt-funtype-domain dom tvar)))
 	  (make-instance (case (sim-term-op kind)
-			   (comp-type-expr-null-1 'funtype)
-			   (function 'functiontype)
-			   (array 'arraytype))
+			   (COMP-TYPE-EXPR-NULL-1 'funtype)
+			   (FUNCTION 'functiontype)
+			   (ARRAY 'arraytype))
 	    'domain domain
 	    'range (xt-subst-new-domain-dep domain range)
 	    'place (term-place funtype))))))
@@ -1127,7 +1129,7 @@
   (mapcar #'xt-dep-type-expr (term-args dep-type-exprs)))
 
 (defun xt-dep-type-expr (dep-type-expr)
-  (if (is-sop 'dep-binding dep-type-expr)
+  (if (is-sop 'DEP-BINDING dep-type-expr)
       (xt-dep-binding dep-type-expr)
       (xt-not-enum-type-expr dep-type-expr)))
 
@@ -1162,34 +1164,34 @@
 
 (defun xt-expr (expr)
   (case (sim-term-op expr)
-    (number-expr (xt-number-expr expr))
-    (string-expr (xt-string-expr expr))
-    (name-expr (xt-name-expr expr))
-    (list-expr (xt-list-expr expr))
+    (NUMBER-EXPR (xt-number-expr expr))
+    (STRING-EXPR (xt-string-expr expr))
+    (NAME-EXPR (xt-name-expr expr))
+    (LIST-EXPR (xt-list-expr expr))
     ;;(true (xt-true expr))
     ;;(false (xt-false expr))
-    (rec-expr (xt-rec-expr expr))
-    (tuple-expr (xt-tuple-expr expr))
-    (term-expr (xt-term-expr expr))
-    (unary-term-expr (xt-unary-term-expr expr))
-    (fieldappl (xt-fieldappl expr))
-    (projappl (xt-projappl expr))
+    (REC-EXPR (xt-rec-expr expr))
+    (TUPLE-EXPR (xt-tuple-expr expr))
+    (TERM-EXPR (xt-term-expr expr))
+    (UNARY-TERM-EXPR (xt-unary-term-expr expr))
+    (FIELDAPPL (xt-fieldappl expr))
+    (PROJAPPL (xt-projappl expr))
     ;;(intype (xt-intype expr))
-    (coercion (xt-coercion expr))
-    (if-expr (xt-if-expr expr))
-    (application (xt-application expr))
-    (bind-expr (xt-bind-expr expr))
-    (name-bind-expr (xt-name-bind-expr expr))
-    (set-expr (xt-set-expr expr))
-    (let-expr (xt-let-expr expr))
-    (where-expr (xt-where-expr expr))
-    (update-expr (xt-update-expr expr))
+    (COERCION (xt-coercion expr))
+    (IF-EXPR (xt-if-expr expr))
+    (APPLICATION (xt-application expr))
+    (BIND-EXPR (xt-bind-expr expr))
+    (NAME-BIND-EXPR (xt-name-bind-expr expr))
+    (SET-EXPR (xt-set-expr expr))
+    (LET-EXPR (xt-let-expr expr))
+    (WHERE-EXPR (xt-where-expr expr))
+    (UPDATE-EXPR (xt-update-expr expr))
     ;;(override-expr (xt-override-expr expr))
-    (cases-expr (xt-cases-expr expr))
-    (cond-expr (xt-cond-expr expr))
-    (table-expr (xt-table-expr expr))
-    (skovar (xt-skovar expr))
-    (brack-expr (xt-brack-expr expr))
+    (CASES-EXPR (xt-cases-expr expr))
+    (COND-EXPR (xt-cond-expr expr))
+    (TABLE-EXPR (xt-table-expr expr))
+    (SKOVAR (xt-skovar expr))
+    (BRACK-EXPR (xt-brack-expr expr))
     (t (error "Unrecognized expr - ~a" expr))))
 
 (defun xt-number-expr (expr)
@@ -1453,7 +1455,7 @@
 		     (vector (starting-row place) (starting-col place)
 			     (starting-row place) (+ (starting-col place) 2))))
 	 (if-name (make-instance 'name-expr
-		    'id 'if
+		    'id 'IF
 		    'place if-place)))
     (make-instance 'if-expr
       'operator if-name
@@ -1474,7 +1476,7 @@
 			      (starting-row tplace) (+ (starting-col tplace) 5)))))
 	(make-instance 'chained-if-expr
 	  'operator (make-instance 'name-expr
-		      'id 'if
+		      'id 'IF
 		      'place place)
 	  'argument (make-instance 'arg-tuple-expr
 		      'exprs (list (xt-expr (term-arg0 (car elsifs)))
@@ -1507,7 +1509,9 @@
 (defun xt-bind-expr (bexpr)
   (let ((op (term-arg0 bexpr))
 	(body (term-arg1 bexpr)))
-    (make-xt-bind-expr (sim-term-op op) body bexpr)))
+    (make-xt-bind-expr
+     (intern (string-downcase (symbol-name (sim-term-op op))))
+     body bexpr)))
 
 (defun xt-name-bind-expr (bexpr)
   (let ((op (term-arg0 bexpr))
@@ -1527,7 +1531,7 @@
     'place (term-place expr)))
 
 (defun make-xt-bind-expr (class body save-as)
-  (let* ((set-expr? (is-sop 'set-expr body))
+  (let* ((set-expr? (is-sop 'SET-EXPR body))
 	 (commas? (xt-lambda-formals-check (term-arg0 body)))
 	 (bindings (xt-lambda-formals (term-arg0 body) commas?))
 	 (expr (xt-expr (term-arg1 body))))
@@ -1544,50 +1548,50 @@
 ;;; between (LAMBDA x: x) and (LAMBDA (x): x) --- returns T and NIL, resp.
 
 (defun xt-lambda-formals-check (lambda-formals &optional comma-needed?)
-  (if (or (is-sop 'lambda-formals lambda-formals)
-	  (is-sop 'set-formals lambda-formals))
+  (if (or (is-sop 'LAMBDA-FORMALS lambda-formals)
+	  (is-sop 'SET-FORMALS lambda-formals))
       (let ((lambda-formal (term-arg0 lambda-formals))
 	    (comma (term-arg1 lambda-formals)))
 	(xt-lambda-formal-check lambda-formal comma comma-needed?)
 	(xt-lambda-formals-check (term-arg2 lambda-formals)
-				 (if (is-sop 'comma comma) 'yes 'no)))
+				 (if (is-sop 'COMMA comma) 'yes 'no)))
       (xt-lambda-formal-check lambda-formals nil comma-needed?)))
 
 (defun xt-lambda-formal-check (lambda-formal comma comma-needed?)
   (when (or (and (eq comma-needed? 'yes)
 		 comma
-		 (is-sop 'nocomma comma))
+		 (is-sop 'NOCOMMA comma))
 	    (and (eq comma-needed? 'no)
 		 comma
-		 (is-sop 'idop lambda-formal)))
+		 (is-sop 'IDOP lambda-formal)))
     (parse-error comma ", expected here"))
   (when (and (eq comma-needed? 'no)
 	     comma
-	     (is-sop 'comma comma))
+	     (is-sop 'COMMA comma))
     (parse-error comma ", not allowed here"))
   (when (and (eq comma-needed? 'no)
-	     (is-sop 'idop lambda-formal))
+	     (is-sop 'IDOP lambda-formal))
     (parse-error lambda-formal "( expected here"))
-  (when (is-sop 'adformals lambda-formal)
+  (when (is-sop 'ADFORMALS lambda-formal)
     (let ((notype-or-pred (find-if #'(lambda (adf)
-				       (and (is-sop 'typed-ids adf)
-					    (is-sop 'no-type-expr (term-arg1 adf))
-					    (is-sop 'no-pred (term-arg2 adf))))
+				       (and (is-sop 'TYPED-IDS adf)
+					    (is-sop 'NO-TYPE-EXPR (term-arg1 adf))
+					    (is-sop 'NO-PRED (term-arg2 adf))))
 			    (term-args lambda-formal))))
       (when notype-or-pred
 	(parse-error (car (term-args lambda-formal))
 	  "Remove parentheses or give a type or predicate"))))
   (when (and (eq comma-needed? 'yes)
-	     (is-sop 'adformals lambda-formal))
+	     (is-sop 'ADFORMALS lambda-formal))
     (let* ((adformals (term-args lambda-formal))
 	   (too-many-parens (find-if #'(lambda (adf)
-					 (is-sop 'typed-ids adf))
+					 (is-sop 'TYPED-IDS adf))
 			      adformals))
 	   (has-pred (find-if-not #'(lambda (adf)
-				      (is-sop 'no-pred (term-arg2 adf)))
+				      (is-sop 'NO-PRED (term-arg2 adf)))
 		       adformals))
 	   (has-type (find-if-not #'(lambda (adf)
-				      (is-sop 'no-type-expr (term-arg1 adf)))
+				      (is-sop 'NO-TYPE-EXPR (term-arg1 adf)))
 		       adformals)))
       (when too-many-parens
 	(parse-error too-many-parens "id expected here"))
@@ -1611,22 +1615,22 @@
       (xt-formal-at-level-one? lambda-formal)))
 
 (defun xt-formal-at-level-one? (lambda-formal)
-  (or (and (is-sop 'idop lambda-formal) t)
+  (or (and (is-sop 'IDOP lambda-formal) t)
       (let ((adformals (term-args lambda-formal)))
-	(and (every #'(lambda (adf) (is-sop 'typed-id adf))
+	(and (every #'(lambda (adf) (is-sop 'TYPED-ID adf))
 		    adformals)
 	     (every #'(lambda (adf)
-			(and (is-sop 'no-type-expr (term-arg1 adf))
-			     (is-sop 'no-pred (term-arg2 adf))))
+			(and (is-sop 'NO-TYPE-EXPR (term-arg1 adf))
+			     (is-sop 'NO-PRED (term-arg2 adf))))
 		    (butlast adformals))
-	     (not (and (is-sop 'no-type-expr
+	     (not (and (is-sop 'NO-TYPE-EXPR
 			       (term-arg1 (car (last adformals))))
-		       (is-sop 'no-pred
+		       (is-sop 'NO-PRED
 			       (term-arg2 (car (last adformals))))))))))
 
 (defun xt-lambda-formals (lambda-formals &optional commas? bindings lbindings)
-  (if (or (is-sop 'lambda-formals lambda-formals)
-	  (is-sop 'set-formals lambda-formals))
+  (if (or (is-sop 'LAMBDA-FORMALS lambda-formals)
+	  (is-sop 'SET-FORMALS lambda-formals))
       (let* ((formals (xt-lambda-formal (term-arg0 lambda-formals)))
 	     (lambda-formals-rest (term-arg2 lambda-formals))
 	     (nbindings (cons formals bindings)))
@@ -1648,12 +1652,12 @@
 	bindings)))
 
 (defun xt-lambda-formal (formal)
-  (cond ((is-sop 'idop formal)
+  (cond ((is-sop 'IDOP formal)
 	 (make-instance 'bind-decl
 	   'id (xt-idop formal)
 	   'place (term-place formal)))
-	((is-sop 'set-id formal)
-	 (if (is-sop 'notype (term-arg1 formal))
+	((is-sop 'SET-ID formal)
+	 (if (is-sop 'NOTYPE (term-arg1 formal))
 	     (make-instance 'untyped-bind-decl
 	       'id (xt-idop (term-arg0 formal))
 	       'place (term-place formal))
@@ -1671,7 +1675,7 @@
       (nreverse bindings)
       (xt-ladformals
        (cdr formals)
-       (cons (if (is-sop 'typed-id (car formals))
+       (cons (if (is-sop 'TYPED-ID (car formals))
 		 (xt-typed-id (car formals))
 		 (xt-typed-ids (car formals)))
 	     bindings))))
@@ -1795,13 +1799,13 @@
 
 (defun xt-let-bind (lbind)
   (let ((let-bind (term-arg0 lbind)))
-    (if (is-sop 'simplebind let-bind)
+    (if (is-sop 'SIMPLEBIND let-bind)
 	(xt-simplebind let-bind)
 	(mapcar #'xt-simplebind (term-args let-bind)))))
 
 (defun xt-simplebind (bind)
   (let ((formals (xt-pdf (term-arg1 bind))))
-    (if (or (is-sop 'notype (term-arg2 bind))
+    (if (or (is-sop 'NOTYPE (term-arg2 bind))
 	    (some #'(lambda (fmls)
 		      (some #'(lambda (fml)
 				(not (declared-type fml)))
@@ -1844,7 +1848,7 @@
 
 (defun xt-let-formals* (lbind)
   (let ((let-bind (term-arg0 lbind)))
-    (if (is-sop 'simplebind let-bind)
+    (if (is-sop 'SIMPLEBIND let-bind)
 	(xt-let-formals** let-bind)
 	(progn (mapc #'xt-check-let-formals (term-args let-bind))
 	       nil))))
@@ -1880,7 +1884,7 @@
     (make-instance 'cases-expr
       'expression (xt-expr expr)
       'selections (xt-selections selections)
-      'else-part (unless (is-sop 'expr-null-1 else)
+      'else-part (unless (is-sop 'EXPR-NULL-1 else)
 		   (xt-expr else))
       'place (term-place cexpr))))
 
@@ -1904,7 +1908,7 @@
 	(setf (place constr) (term-place selector))
 	(make-instance 'selection
 	  'constructor constr
-	  'args (unless (is-sop 'selection-null-1 args)
+	  'args (unless (is-sop 'SELECTION-NULL-1 args)
 		  (mapcar #'(lambda (a) (make-instance 'bind-decl
 					  'id (xt-idop a)
 					  'place (term-place a)))
@@ -1914,7 +1918,7 @@
 
 (defun xt-cond-expr (expr)
   (let* ((cases (term-args (term-arg0 expr)))
-	 (else (unless (is-sop 'noelse (term-arg1 expr))
+	 (else (unless (is-sop 'NOELSE (term-arg1 expr))
 		 (xt-expr (term-arg1 expr))))
 	 (cond-expr (xt-cond-expr* cases else nil)))
     (if (typep cond-expr 'last-cond-expr)
@@ -1929,7 +1933,7 @@
 	     (then-part (xt-expr (term-arg1 (car cases))))
 	     (else-part (xt-cond-expr* (cdr cases) else
 				       (cons condition conditions)))
-	     (ifname (mk-name-expr 'if)))
+	     (ifname (mk-name-expr 'IF)))
 	(setf (place ifname) (term-place (car cases)))
 	(if else-part
 	    (make-instance 'cond-expr
@@ -1950,7 +1954,7 @@
 	      'place (term-place (car cases)))))
       (when else
 	(make-instance 'last-cond-expr
-	  'operator (mk-name-expr 'if)
+	  'operator (mk-name-expr 'IF)
 	  'argument (make-instance 'arg-tuple-expr
 		      'exprs (list (mk-else-condition nil conditions)
 				   else
@@ -1958,11 +1962,11 @@
 		      'place (place else))))))
 
 (defun xt-table-expr (expr)
-  (let ((row-expr (unless (is-sop 'norowvar (term-arg0 expr))
+  (let ((row-expr (unless (is-sop 'NOROWVAR (term-arg0 expr))
 		    (xt-expr (term-arg0 expr))))
-	(col-expr (unless (is-sop 'nocolvar (term-arg1 expr))
+	(col-expr (unless (is-sop 'NOCOLVAR (term-arg1 expr))
 		    (xt-expr (term-arg1 expr))))
-	(col-headings (unless (is-sop 'nocolheading (term-arg2 expr))
+	(col-headings (unless (is-sop 'NOCOLHEADING (term-arg2 expr))
 		       (xt-col-headings (term-arg2 expr)))))
     (multiple-value-bind (row-headings rows)
 	(xt-table-entries* (term-args (term-arg3 expr)) col-headings)
@@ -1986,7 +1990,7 @@
 	(exprs (mapcar #'xt-table-entry* (term-args (term-arg1 col-heading)))))
     (when (some #'(lambda (ch) (eq ch 'else)) (butlast exprs))
       (let ((term (find-if #'(lambda (te)
-			       (is-sop 'else te))
+			       (is-sop 'ELSE te))
 		    (term-args (term-arg1 col-heading)))))
 	(parse-error term "ELSE not allowed here")))
     (cons expr exprs)))
@@ -2016,12 +2020,12 @@
 (defun xt-check-row-headings (headings entries)
   (when (some #'null headings)
     (let ((term (find-if #'(lambda (te)
-			     (is-sop 'notableentry te))
+			     (is-sop 'NOTABLEENTRY te))
 		  entries)))
       (parse-error term "Empty entry not allowed in row headings")))
   (when (some #'(lambda (ch) (eq ch 'else)) (butlast headings))
     (let ((term (find-if #'(lambda (te)
-			     (is-sop 'else te))
+			     (is-sop 'ELSE te))
 		  entries)))
       (parse-error term "ELSE not allowed here"))))
 
@@ -2031,14 +2035,14 @@
 (defun xt-check-table-row (row entries)
   (when (some #'(lambda (ch) (eq ch 'else)) row)
     (let ((term (find-if #'(lambda (te)
-			     (is-sop 'else te))
+			     (is-sop 'ELSE te))
 		  (term-args entries))))
       (parse-error term "ELSE not allowed here"))))
   
 (defun xt-table-entry* (table-entry)
   (case (sim-term-op table-entry)
-    (notableentry nil)
-    (else 'else)
+    (NOTABLEENTRY nil)
+    (ELSE 'else)
     (t (xt-expr table-entry))))
 
 (defun xt-table-entry (table-entry)
@@ -2065,13 +2069,13 @@
     (when (cdr (term-args assign))
       (let ((bad-arg (find-if #'(lambda (x)
 				  (memq (sim-term-op x)
-					'(assign-id assign-num)))
+					'(ASSIGN-ID ASSIGN-NUM)))
 		       (term-args assign))))
 	(when bad-arg
 	  (parse-error bad-arg "Parentheses expected here"))))
     (if (and (null (cdr (term-args assign)))
 	     (memq (sim-term-op (term-arg0 assign))
-		   '(assign-id assign-skoname assign-num)))
+		   '(ASSIGN-ID ASSIGN-SKONAME ASSIGN-NUM)))
 	(if (eq sep 'ceq)
 	    (make-instance 'uni-assignment
 	      'arguments (xt-assign assign)
@@ -2096,27 +2100,27 @@
 
 (defun xt-assign* (ass-arg)
   (case (sim-term-op ass-arg)
-    (field-assign (list (make-instance 'field-assign
+    (FIELD-ASSIGN (list (make-instance 'field-assign
 			  'id (ds-id (term-arg0 ass-arg)))))
-    (proj-assign (list (make-instance 'proj-assign
+    (PROJ-ASSIGN (list (make-instance 'proj-assign
 			 'number (ds-number (term-arg0 ass-arg)))))
-    (assign-id (list (make-instance 'name-expr
+    (ASSIGN-ID (list (make-instance 'name-expr
 		       'id (ds-id (term-arg0 ass-arg)))))
-    (assign-skoname (list (make-instance 'name-expr
+    (ASSIGN-SKONAME (list (make-instance 'name-expr
 			    'id (makesym "~a!~d"
 					 (ds-id (term-arg0 ass-arg))
 					 (ds-number (term-arg1 ass-arg))))))
-    (assign-num (list (make-instance 'number-expr
+    (ASSIGN-NUM (list (make-instance 'number-expr
 			'number (ds-number (term-arg0 ass-arg)))))
-    (assign-tuple (mapcar #'xt-expr (term-args ass-arg)))))
+    (ASSIGN-TUPLE (mapcar #'xt-expr (term-args ass-arg)))))
 
 (defun xt-assign-application (ass &optional args)
   (case (sim-term-op ass)
-    (application (xt-assign-application
+    (APPLICATION (xt-assign-application
 		  (term-arg0 ass)
 		  (cons (mapcar #'xt-expr (term-args (term-arg1 ass)))
 			args)))
-    (tuple-expr (cons (mapcar #'xt-expr (term-args ass)) args))
+    (TUPLE-EXPR (cons (mapcar #'xt-expr (term-args ass)) args))
     (t (parse-error ass "Parentheses expected here"))))
 
 (defmethod separator ((ass assignment))
@@ -2133,14 +2137,14 @@
 	 (lib (term-arg1 modname))
 	 (actuals (term-arg2 modname))
 	 (mappings (term-arg3 modname)))
-    (make-instance (if (is-sop 'noactuals actuals)
+    (make-instance (if (is-sop 'NOACTUALS actuals)
 		       'modname 'full-modname)
       'id (ds-vid id)
-      'library (unless (is-sop 'nolib lib)
+      'library (unless (is-sop 'NOLIB lib)
 		 (ds-vid lib))
-      'actuals (unless (is-sop 'noactuals actuals)
+      'actuals (unless (is-sop 'NOACTUALS actuals)
 		 (xt-actuals actuals))
-      'mappings (unless (is-sop 'nomap mappings)
+      'mappings (unless (is-sop 'NOMAP mappings)
 		  (xt-mappings mappings))
       'place (term-place modname))))
 
@@ -2153,25 +2157,25 @@
 	(idop2 (term-arg3 name))
 	(mappings (term-arg4 name)))
     (if (and (not name!)
-	     (is-sop 'nomod idop2)
-	     (is-sop 'nolib lib)
-	     (is-sop 'noacts actuals)
-	     (is-sop 'nomap mappings)
+	     (is-sop 'NOMOD idop2)
+	     (is-sop 'NOLIB lib)
+	     (is-sop 'NOACTS actuals)
+	     (is-sop 'NOMAP mappings)
 	     (is-number (term-arg0 idop)))
 	(make-instance 'number-expr
 	  'number (ds-number (term-arg0 idop))
 	  'place (term-place name))
 	(make-instance 'name
-	  'id (if (is-sop 'nomod idop2)
+	  'id (if (is-sop 'NOMOD idop2)
 		  (xt-idop idop)
 		  (xt-idop idop2))
-	  'library (unless (is-sop 'nolib lib)
+	  'library (unless (is-sop 'NOLIB lib)
 		     (ds-vid lib))
-	  'actuals (unless (is-sop 'noacts actuals)
+	  'actuals (unless (is-sop 'NOACTS actuals)
 		     (xt-actuals actuals))
-	  'mappings (unless (is-sop 'nomap mappings)
+	  'mappings (unless (is-sop 'NOMAP mappings)
 		      (xt-mappings mappings))
-	  'mod-id (unless (is-sop 'nomod idop2)
+	  'mod-id (unless (is-sop 'NOMOD idop2)
 		    (xt-idop idop))
 	  'place (term-place name)))))
 
@@ -2181,9 +2185,9 @@
 (defun xt-actual (act)
   (make-instance 'actual
     'expr (if (member (sim-term-op act)
-		      '(subtype expr-as-type enum-or-subtype
-			funtype ;; predtype
-			recordtype))
+		      '(SUBTYPE EXPR-AS-TYPE ENUM-OR-SUBTYPE
+			FUNTYPE ;; PREDTYPE
+			RECORDTYPE))
 	      (xt-not-enum-type-expr act)
 	      (xt-expr act))
     'place (term-place act)))
@@ -2194,32 +2198,81 @@
 (defun xt-mapping (mapping)
   (let* ((lhs (term-arg0 mapping))
 	 (rhs (term-arg1 mapping))
-	 (kind (unless (is-sop 'noqual (term-arg2 lhs))
+	 (kind (unless (is-sop 'NOQUAL (term-arg2 lhs))
 		 (case (sim-term-op (term-arg2 lhs))
-		   (type 'type)
-		   (theory 'theory)
+		   (TYPE 'type)
+		   (THEORY 'theory)
 		   (t 'expr))))
-	 (dtype (when (is-sop 'typed (term-arg2 lhs))
+	 (dtype (when (is-sop 'TYPED (term-arg2 lhs))
 		  (xt-not-enum-type-expr (term-arg0 (term-arg2 lhs)))))
-	 (expr (if (memq (sim-term-op rhs)
-			 '(subtype expr-as-type enum-or-subtype
-				   funtype recordtype))
-		   (xt-not-enum-type-expr rhs)
-		   (xt-expr rhs))))
-    (if (is-sop 'noformals (term-arg1 lhs))
-	(make-instance 'mapping
-	  'lhs (xt-mapping-lhs (term-arg0 mapping))
-	  'rhs (make-instance 'mapping-rhs 'expr expr)
-	  'kind kind
-	  'declared-type dtype)
+	 (expr (cond ((is-sop 'MAPPING-RENAME mapping)
+		      ;; Only allow idops or numbers at this point
+		      (let ((ex (xt-expr rhs)))
+			(cond ((name-expr? ex)
+			       (if (or (library ex)
+				       (actuals ex)
+				       (mappings ex)
+				       (mod-id ex))
+				   (parse-error rhs
+				     "RHS must be an id or number")
+				   ex))
+			       ((number-expr? ex)
+				(make-instance 'name-expr
+				  'id (number ex)
+				  'place (place ex)))
+			       (t (parse-error rhs
+				    "RHS must be an id or number")))))
+		     ((memq (sim-term-op rhs)
+			    '(SUBTYPE EXPR-AS-TYPE ENUM-OR-SUBTYPE
+				      FUNTYPE RECORDTYPE))
+		      (xt-not-enum-type-expr rhs))
+		     (t (xt-expr rhs)))))
+    (if (is-sop 'NOFORMALS (term-arg1 lhs))
+	(case (sim-term-op mapping)
+	  (MAPPING-DEF
+	   (make-instance 'mapping-def
+	     'lhs (xt-mapping-lhs (term-arg0 mapping))
+	     'rhs (make-instance 'mapping-rhs 'expr expr)
+	     'kind kind
+	     'declared-type dtype))
+	  (MAPPING-SUBST
+	   (make-instance 'mapping-subst
+	     'lhs (xt-mapping-lhs (term-arg0 mapping))
+	     'rhs (make-instance 'mapping-rhs 'expr expr)
+	     'kind kind
+	     'declared-type dtype))
+	  (MAPPING-RENAME
+	   (make-instance 'mapping-rename
+	     'lhs (xt-mapping-lhs (term-arg0 mapping))
+	     'rhs (make-instance 'mapping-rhs 'expr expr)
+	     'kind kind
+	     'declared-type dtype)))
 	(let ((formals (xt-pdf (term-arg1 lhs))))
-	  (make-instance 'mapping-with-formals
-	    'lhs (xt-mapping-lhs (term-arg0 mapping))
-	    'rhs (make-instance 'mapping-rhs
-		   'expr (mk-lambda-exprs formals expr))
-	    'formals formals
-	    'kind kind
-	    'declared-type dtype)))))
+	  (case (sim-term-op mapping)
+	  (MAPPING-DEF
+	   (make-instance 'mapping-def-with-formals
+	     'lhs (xt-mapping-lhs (term-arg0 mapping))
+	     'rhs (make-instance 'mapping-rhs
+		    'expr (mk-lambda-exprs formals expr))
+	     'formals formals
+	     'kind kind
+	     'declared-type dtype))
+	  (MAPPING-SUBST
+	   (make-instance 'mapping-subst-with-formals
+	     'lhs (xt-mapping-lhs (term-arg0 mapping))
+	     'rhs (make-instance 'mapping-rhs
+		    'expr (mk-lambda-exprs formals expr))
+	     'formals formals
+	     'kind kind
+	     'declared-type dtype))
+	  (MAPPING-RENAME
+	   (make-instance 'mapping-rename-with-formals
+	     'lhs (xt-mapping-lhs (term-arg0 mapping))
+	     'rhs (make-instance 'mapping-rhs
+		    'expr (mk-lambda-exprs formals expr))
+	     'formals formals
+	     'kind kind
+	     'declared-type dtype)))))))
 
 (defun xt-mapping-lhs (lhs)
   (make-instance 'name
@@ -2229,9 +2282,9 @@
   (let ((uname (xt-name (term-arg0 name) t))
 	(qual (term-arg1 name)))
     (case (sim-term-op qual)
-      (typed (change-class uname 'unique-typed-name)
+      (TYPED (change-class uname 'unique-typed-name)
 	     (setf (declared-type uname) (xt-type-expr (term-arg0 qual))))
-      (formula (change-class uname 'unique-formula-name)
+      (FORMULA (change-class uname 'unique-formula-name)
 	       (setf (spelling uname) (sim-term-op (term-arg0 qual)))))
     uname))
 

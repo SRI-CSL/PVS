@@ -1,4 +1,4 @@
-;;; -*- Mode: Lisp; Package: TDEFUN -*-
+;;; -*- Mode: Lisp; Package: :tdefun -*-
 ;;;
 ;;; Alternative to defun, given an explicit function type and doing argument
 ;;; destructuring.  Also, similar alternatives to defvar and defstype.
@@ -15,8 +15,8 @@
 ;;; ******************************************************************* ;;;
 
 #-gcl
-(defpackage "TDEFUN")
-(in-package :TDEFUN) (use-package :ergolisp)
+(defpackage :tdefun)
+(in-package :tdefun) (use-package :ergolisp)
 
 (eexport '(tdefun tdefvar defstype))
 

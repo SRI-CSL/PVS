@@ -8,7 +8,7 @@
 ;; Status          : Beta
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'PVS)
+(in-package :pvs)
 
 ;;assert-sformnums calls sequent-reduce with a list of sformnums and
 ;;invokes assert-sform on each selected sform.  assert-sform invokes
@@ -33,17 +33,17 @@
 	    (if rewrite?
 		(assert-sformnums
 		 sformnums rewrite-flag flush? linear? nil
-		 T type-constraints? ps)
+		 t type-constraints? ps)
 		(assert-sformnums
-		 sformnums rewrite-flag flush? linear? 'RECORD
-		 T type-constraints? ps))
+		 sformnums rewrite-flag flush? linear? 'record
+		 t type-constraints? ps))
 	    (if rewrite?
 		(assert-sformnums
-		 sformnums rewrite-flag flush? linear? 'REWRITE
-		 T type-constraints? ps)
+		 sformnums rewrite-flag flush? linear? 'rewrite
+		 t type-constraints? ps)
 		(assert-sformnums
-		 sformnums rewrite-flag flush? linear? 'SIMPLIFY
-		 T type-constraints? ps))))))
+		 sformnums rewrite-flag flush? linear? 'simplify
+		 t type-constraints? ps))))))
       
  
 (defun assert-sformnums (sformnums 
@@ -120,7 +120,7 @@
 		      #'(lambda (sform)
 			  (assert-sform sform
 					rewrite-flag
-					T))
+					t))
 		      simplifiable-sformnums))
 	       (cond ((eq newsignal '!)
 		      (dpi-pop-state *dp-state*)
@@ -257,7 +257,7 @@
     (cond (rewrite-flag
 	   (multiple-value-bind (sig newbodypart)
 	       (if (or (iff? body)(equation? body))
-		   (if (eq rewrite-flag 'RL)
+		   (if (eq rewrite-flag 'rl)
 		       (assert-if (args1 body))
 		       (assert-if (args2 body)))
 		   (values 'X body))
@@ -270,7 +270,7 @@
 			(copy body
 			  'argument
 			  (make!-arg-tuple-expr*
-			   (if (eq rewrite-flag 'RL)
+			   (if (eq rewrite-flag 'rl)
 			       (list newbodypart (args2 body))
 			       (list (args1 body) newbodypart))))))
 		   (values '? (copy sform
@@ -333,13 +333,8 @@
 		(values '? sform) 
 		(values 'X sform))))))
 
-(defun top-translate-to-dc (expr)
-  (let ((*newdc* t))
-    (top-translate-to-prove expr)))
-
 (defun top-translate-to-old-prove (expr)
-  (let ((*newdc* nil))
-    (top-translate-to-prove expr)))
+  (top-translate-to-prove expr))
 
 (defun translate-from-prove (expr)
   (cond
@@ -426,11 +421,11 @@
 
 (defmethod connective-occurs?* ((expr branch) accum)
   (declare (ignore accum))
-    T)
+    t)
 
 (defmethod connective-occurs?* ((expr cases-expr) accum)
   (declare (ignore accum))
-  T)
+  t)
 
 (defmethod connective-occurs?* ((expr projection-application) accum)
   (with-slots (argument) expr
@@ -455,7 +450,7 @@
 
 (defmethod connective-occurs?* ((expr propositional-application) accum)
   (declare (ignore accum))
-  T)
+  t)
 
 (defmethod connective-occurs?* ((expr negation) accum)
   (with-slots (argument) expr
@@ -494,8 +489,8 @@
     (connective-occurs?* assignments (cons expression accum))))
 ;    (or (connective-occurs? expression)
 ;	(connective-occurs? assignments))))
-   ;;NSH(5/8/99): update-or-connective-occurs? is T on updates.
-   ;;NSH(6/2/99): changed from NIL to look inside for connectives.
+   ;;NSH(5/8/99): update-or-connective-occurs? is t on updates.
+   ;;NSH(6/2/99): changed from nil to look inside for connectives.
 
 (defmethod connective-occurs?* ((expr expr) accum)
   (accum-connective-occurs?* accum))
@@ -517,11 +512,11 @@
 
 (defmethod update-or-connective-occurs?* ((expr branch) accum)
   (declare (ignore accum))
-    T)
+    t)
 
 (defmethod update-or-connective-occurs?* ((expr cases-expr) accum)
   (declare (ignore accum))
-  T)
+  t)
 
 (defmethod update-or-connective-occurs?* ((expr projection-application) accum)
   (with-slots (argument) expr
@@ -546,7 +541,7 @@
 
 (defmethod update-or-connective-occurs?* ((expr propositional-application) accum)
   (declare (ignore accum))
-  T)
+  t)
 
 (defmethod update-or-connective-occurs?* ((expr negation) accum)
   (with-slots (argument) expr
@@ -572,7 +567,7 @@
     ;;or the translations get HUGE.
     ((expr update-expr) accum)
   (declare (ignore accum))
-  T)
+  t)
 
 (defmethod update-or-connective-occurs?* ((expr expr) accum)
   (accum-update-or-connective-occurs?* accum))
@@ -598,7 +593,7 @@
 			 (not (check-for-connectives? condition)))
 	       do (setq condition-result
 			(call-process condition *dp-state*)))
-	 ;;    (format T "~%  Simplifying ~a under conditions ~{~a, ~}"
+	 ;;    (format t "~%  Simplifying ~a under conditions ~{~a, ~}"
 	 ;;	       expr conditions);;NSH(10.10.94)omitting for now.
 	 (if (false-p condition-result)
 	     (nprotecting-cong-state
@@ -632,7 +627,7 @@
 		       (lcopy expr
 			      'argument newarg))
 	       (values 'X expr))))
-	(t (assert-if-inside-sign expr T))))   ;;NSH(3.21.94) sign.
+	(t (assert-if-inside-sign expr t))))   ;;NSH(3.21.94) sign.
 
 ;;NSH(11.22.94)
 (defmethod assert-if-inside ((expr field-application))
@@ -676,7 +671,7 @@
 			   (typep newop 'name-expr)
 			   (recognizer? newop))
 		      (let ((result (check-other-recognizers
-				     newop newargs T)))
+				     newop newargs t)))
 			(if (and (false-p result) (null sign))
 			    (values '? *false*)
 			    (if (and (true-p result) sign)
@@ -733,15 +728,15 @@
 	  (loop for rec in recs
 		collect
 		(if (same-id cons-rec rec)
-		    (cons rec *TRUE*)
-		    (cons rec *FALSE*))))	     
+		    (cons rec *true*)
+		    (cons rec *false*))))	     
 	(loop for rec in recs
 	      collect
 	      (cons rec (assert-test (make!-application rec arg)))))))
 
 
 (defun check-rest-recognizers (rec all-result &optional indirect)
-  (cond ((null all-result) 'RESTFALSE)
+  (cond ((null all-result) 'restfalse)
         ((same-id rec (caar all-result))
          (if (and (or (true-p (cdar all-result))
 		      (false-p (cdar all-result)))
@@ -749,22 +744,22 @@
              (cdar all-result)
              (check-rest-recognizers rec (cdr all-result) indirect)))
         (t (if (true-p (cdar all-result))
-                *FALSE*
+                *false*
                (let ((rest (check-rest-recognizers rec (cdr all-result)
 						   indirect))) 
                   (cond ((or (true-p rest)
 			     (false-p rest))
 			 rest)
-                        ((eq rest 'RESTFALSE)
+                        ((eq rest 'restfalse)
                          (if (false-p (cdar all-result))
-                             'RESTFALSE
+                             'restfalse
                              nil))
                         (t nil)))))))
 
 (defun check-some-recognizer (rec all-result &optional indirect) ;;;all-result comes from
 					      ;;;check-all-recognizers
     (let ((rest (check-rest-recognizers rec all-result indirect)))
-       (if (eq rest 'RESTFALSE) *TRUE*
+       (if (eq rest 'restfalse) *true*
            rest)))
 
 
@@ -850,7 +845,7 @@
       (if accum-assignments
 	  (let ((final-override
 		 (some #'(lambda (x)
-			   (and (eq (car x) T) x)) accum-assignments)))
+			   (and (eq (car x) t) x)) accum-assignments)))
 	    (if final-override
 		(cdr final-override)
 		(let* ((naccum-assignments (nreverse accum-assignments))
@@ -883,7 +878,7 @@
 	   (consp args2)
 	   (tc-eq (car args1)(car args2)))
     (match-update-args-prefix? (cdr args1)(cdr args2))
-    (when (null args1) (if (null args2) T args2))))
+    (when (null args1) (if (null args2) t args2))))
 
 (defmethod simplify-nested-updates
     (expr outer-assignments update-expr)
@@ -916,7 +911,7 @@
       (when (and *subtype-hash* constraints)
 	(dolist (constraint constraints)
 	  (pushnew constraint *assert-typepreds* :test #'tc-eq))
-	(setf (gethash expr *subtype-hash*) T)))))
+	(setf (gethash expr *subtype-hash*) t)))))
 
 
 (defmethod assert-if :around ((expr expr))
@@ -947,14 +942,14 @@
   ;;condition-flg indicates whether test is assertable.
  (multiple-value-bind
        (sigthen newthen)
-     ;;(progn (format T "~% Assuming test ~a true." test))
+     ;;(progn (format t "~% Assuming test ~a true." test))
 	    (cond-assert-if (then-part expr)
 			    (if  condition-flg
 				 (and+ test)
 				 nil))
    (multiple-value-bind
 	 (sigelse newelse)
-       ;(progn (format T "~%Assuming test ~a false." test))
+       ;(progn (format t "~%Assuming test ~a false." test))
 	      (cond-assert-if (else-part expr)
 			      (if  (and condition-flg
 					(not (cond-expr? expr))) ;NSH(4.7.96)
@@ -992,13 +987,13 @@
 	  (values 'X expr)))))
 
 (defun assert-if-simplify (expr)
-  (let ((*top-assert-flag* NIL))
+  (let ((*top-assert-flag* nil))
   (multiple-value-bind (sig newexpr)
       (assert-if expr)
     (if (eq sig 'X) expr newexpr))))
 
 (defun assert-if-simp (expr)
-  (let ((*top-assert-flag* NIL))
+  (let ((*top-assert-flag* nil))
       (assert-if expr)))
 
 (defmethod assert-if ((expr branch))  ;;;change to rec. branch?
@@ -1018,7 +1013,7 @@
 	      ;;once the typechecker becomes consistent about type
 	      ;;assignment. 
 	      (t (let ((*assert-typepreds-off* t))
-		   (assert-then-else newtest expr T)))))))
+		   (assert-then-else newtest expr t)))))))
 
 
 (defun find-selection (constructor-id args cases-expr)
@@ -1098,7 +1093,7 @@
 	    (if (eq *assert-flag* 'rewrite)
 		(values 'X nil)
 		(assert-cases expression expr)) ; ((selections expr))
-					;((else-part expr) T)
+					;((else-part expr) t)
 	  (if (eq sig 'X)
 	      (if *cases-rewrite*
 		  (multiple-value-bind (sigsel newselections)
@@ -1211,20 +1206,20 @@
 		   (check-update-args*  updates args
 				       in-beta-reduce?)
 		   args
-		   in-beta-reduce? NIL)))
+		   in-beta-reduce? nil)))
 
 (defun check-update-args* (updates args in-beta-reduce?)
   ;;returns a list of matching updates, or 'NOIDEA if there
   ;;is an assignment that does resolve to TRUE or FALSE.
   (if (null updates)
-      NIL
+      nil
       (let* ((update-args (arguments (car updates)))
 	     ;;(update-expr (expression (car updates)))
 	     (first (check-update-args (car update-args)
 				      args
 				      in-beta-reduce?)))
-	(if (eq first 'NOIDEA)
-	    'NOIDEA
+	(if (eq first 'noidea)
+	    'noidea
 	    (if (false-p first)
 		(check-update-args* (cdr updates)
 				    args
@@ -1234,8 +1229,8 @@
 		    (let ((rest (check-update-args* (cdr updates)
 						    args
 						    in-beta-reduce?)))
-		      (if (eq rest 'NOIDEA)
-			  'NOIDEA
+		      (if (eq rest 'noidea)
+			  'noidea
 			  (cons (car updates)
 				rest)))))))))
 
@@ -1244,8 +1239,8 @@
 			    new-updates)
   ;;reduce-update constructs the reduced form of the given
   ;;update redex.
-  (let ((*generate-tccs* 'NONE)));;NSH(9.15.94): prevents TCCS.
-    (if (eq updates 'NOIDEA)
+  (let ((*generate-tccs* 'none)));;NSH(9.15.94): prevents TCCS.
+    (if (eq updates 'noidea)
 	redex
 	(if (null updates)
 	    (let* ((newexpr (make!-application* expr args))
@@ -1283,30 +1278,30 @@
   (and (constructor? x)(scalar? x)))			 
 
 (defun check-update-args (update-args args &optional in-beta-reduce?)
-  (if (null update-args) 'TRUE
+  (if (null update-args) 'true
       (let* ((uarg1 (car update-args))
 	     (arg1 (car args))
 	     (equality (make!-equation uarg1 arg1))
 	     (result
 	      (if in-beta-reduce?
 		  (if (tc-eq uarg1 arg1)
-		      'TRUE
+		      'true
 		      (if (or (and (number-expr? uarg1)
 				   (number-expr? arg1))
 			      (and (scalar-constant? uarg1)
 				   (scalar-constant? arg1)))
-			  'FALSE
-			  'NOIDEA))
+			  'false
+			  'noidea))
 		  (if (connective-occurs? equality)
-		      'NOIDEA
+		      'noidea
 		      (let ((newresult (nth-value 1
 					 (assert-equality
 					  equality (list uarg1 arg1) 'X))))
 			(assert-test newresult))))))
 	(cond ((true-p result)
 	       (check-update-args (cdr update-args) (cdr args)))
-	      ((false-p result) 'FALSE)
-	      (t 'NOIDEA)))))
+	      ((false-p result) 'false)
+	      (t 'noidea)))))
 
 (defmethod assert-if ((expr tuple-expr))
   (multiple-value-bind (sig newexprs)
@@ -1354,7 +1349,7 @@
 	                             ;;;a(exp WITH [((a)(i)):= e])
 	    (let ((newexpr;;NSH(9.15.94): otherwise TCCs
 		   ;;are generated when domain is subtype.
-		   ;;(let ((*generate-tccs* 'NONE)))
+		   ;;(let ((*generate-tccs* 'none)))
 		   (make!-update-expr
 		    (make-record-update-reduced-application
 		     op expr-of-arg)
@@ -1414,7 +1409,7 @@
 (defmethod arity* ((te type-expr))
   1)
 
-(defmethod arith ((expr T))
+(defmethod arith ((expr t))
   0)
 
 (defun is-plus? (op)
@@ -1447,7 +1442,7 @@
     (and (is-div? operator)
 	 (= (length (arguments expr)) 2))))
 
-(defmethod is-division? ((expr T))
+(defmethod is-division? ((expr t))
   nil)
 
 (defmethod is-addition? ((expr application))
@@ -1456,7 +1451,7 @@
     (and (is-plus? operator)
 	 (= (length (arguments expr)) 2))))
 
-(defmethod is-addition? ((expr T))
+(defmethod is-addition? ((expr t))
   nil)
 
 (defmethod is-subtraction? ((expr application))
@@ -1466,7 +1461,7 @@
 	 (tuple-expr? arg)
 	 (= (length (exprs arg)) 2))))
 
-(defmethod is-subtraction? ((expr T))
+(defmethod is-subtraction? ((expr t))
   nil)
 
 (defmethod is-unary-minus? ((expr application))
@@ -1474,7 +1469,7 @@
     (and (is-minus? op)
 	 (not (tuple-expr? arg)))))
 
-(defmethod is-unary-minus? ((expr T))
+(defmethod is-unary-minus? ((expr t))
   nil)
 
 (defmethod is-multiplication? ((expr application))
@@ -1483,7 +1478,7 @@
     (and (is-mult? operator)
 	 (= (length (arguments expr)) 2))))
 
-(defmethod is-multiplication? ((expr T))
+(defmethod is-multiplication? ((expr t))
   nil)
 
 (defun norm-addition (expr)
@@ -1609,8 +1604,7 @@
 (defun make-sum (list type)
   (if (connective-occurs? list)
       (make-sum* list type)
-      (let ((*newdc* nil))
-	(make-sum* (sort list #'arith-order) type))))
+      (make-sum* (sort list #'arith-order) type)))
 
 (defun arith-order (x y)
   (arithord (top-translate-to-prove x)
@@ -1620,23 +1614,22 @@
   (cond ((null list) (make!-number-expr 0))
 	((null (cdr list)) (car list))
 	(t 
-	 (let* ((A1 (car list))
-		(A2 (cadr list))
-		(E1 (cond ((<  (coefficient A2) 0)
-			   (make!-difference A1 (make-minus A2)))
-			  ((<  (coefficient A1) 0)
-			   (make!-difference A2 (make-minus A1)))
-			  ((eql (coefficient A2) 0) A1)
-			  ((eql (coefficient A1) 0) A2)
-			  (t (make!-plus A1 A2)))))
-	   (make-sum* (cons E1 (cddr list)) type)))))
+	 (let* ((a1 (car list))
+		(a2 (cadr list))
+		(e1 (cond ((<  (coefficient a2) 0)
+			   (make!-difference a1 (make-minus a2)))
+			  ((<  (coefficient a1) 0)
+			   (make!-difference a2 (make-minus a1)))
+			  ((eql (coefficient a2) 0) a1)
+			  ((eql (coefficient a1) 0) a2)
+			  (t (make!-plus a1 a2)))))
+	   (make-sum* (cons e1 (cddr list)) type)))))
 
 (defun make-prod (list type)
-  (let ((*newdc* nil))
-    (make-prod* (sort list #'(lambda (x y)
-			       (arithord (top-translate-to-prove x)
-					 (top-translate-to-prove y))))
-		type)))
+  (make-prod* (sort list #'(lambda (x y)
+			     (arithord (top-translate-to-prove x)
+				       (top-translate-to-prove y))))
+	      type))
 
 (defun arith-ord-translate (x y)
   (arithord (top-translate-to-prove x)
@@ -1648,25 +1641,25 @@
 	((or (eql (coefficient (car list)) 0)
 	     (eql (coefficient (cadr list)) 0))
 	 (make!-number-expr 0))
-	(t (let* ((A1 (car list))
-		  (A2 (cadr list))
-		  (prod (* (coefficient A1) (coefficient A2)))
+	(t (let* ((a1 (car list))
+		  (a2 (cadr list))
+		  (prod (* (coefficient a1) (coefficient a2)))
 		  (coeff (if (minusp prod)
 			     (make!-minus (make!-number-expr (- prod)))
 			     (make!-number-expr prod)))
-		  (A1B (noncoefficient A1))
-		  (A2B (noncoefficient A2))
-		  (body (if (null A1B)
-			    A2B
-			    (if (null A2B)
-				A1B
-				(make!-times A1B A2B))))
-		      (E (if (null body) coeff
+		  (a1b (noncoefficient a1))
+		  (a2b (noncoefficient a2))
+		  (body (if (null a1b)
+			    a2b
+			    (if (null a2b)
+				a1b
+				(make!-times a1b a2b))))
+		      (e (if (null body) coeff
 			     (if (and (typep coeff 'number-expr)
 				      (eql (number coeff) 1))
 				 body
 				 (make!-times coeff body)))))
-	     (make-prod* (cons E (cddr list)) type)))))
+	     (make-prod* (cons e (cddr list)) type)))))
 
 (defun negative-number? (expr)
   (and (typep  expr 'unary-application)
@@ -1699,26 +1692,26 @@
 (defun mergesums* (list1 list2 type)
   (cond ((null list1) list2)
 	((null list2) list1)
-	(t (let* ((L1 (car list1))
-		  (L1C (coefficient L1))
-		  (L1B (noncoefficient L1))
-		  (L1Blist2 (loop for exp in list2
+	(t (let* ((l1 (car list1))
+		  (l1c (coefficient l1))
+		  (l1b (noncoefficient l1))
+		  (l1blist2 (loop for exp in list2
 				  sum
-				  (if (tc-eq L1B (noncoefficient exp))
+				  (if (tc-eq l1b (noncoefficient exp))
 				      (coefficient exp)
 				      0)))
 		  (newlist2 (loop for exp in list2
-				  when (not (tc-eq L1B (noncoefficient exp)))
+				  when (not (tc-eq l1b (noncoefficient exp)))
 				  collect exp))
-		  (newcoeff (+ L1C L1Blist2))
+		  (newcoeff (+ l1c l1blist2))
 		  (ncoeff (if (minusp newcoeff)
 			      (make!-minus (make!-number-expr (- newcoeff)))
 			      (make!-number-expr newcoeff)))
-		  (newterm (if (null L1B)
+		  (newterm (if (null l1b)
 			       ncoeff
 			       (if (eql newcoeff 1)
-				   L1B
-				   (make-prod (list ncoeff L1B)
+				   l1b
+				   (make-prod (list ncoeff l1b)
 					      type))))
 		  (restlist (if (or (cdr list1) newlist2)
 				(mergesums* (cdr list1) newlist2 type)
@@ -1732,28 +1725,28 @@
   (make-sum (mergesums* list1 list2 type) type))
 
 
-(defun merge-products (L R type)
-  (cond ((or (is-addition? L)
-	     (is-subtraction? L))
-	 (let ((list (loop for x in (addends L)
+(defun merge-products (l r type)
+  (cond ((or (is-addition? l)
+	     (is-subtraction? l))
+	 (let ((list (loop for x in (addends l)
 			  collect
-			  (merge-products x R type))))
+			  (merge-products x r type))))
 	   (make-sum list type)))
-	((or (is-addition? R)
-	     (is-subtraction? R))
-	 (let ((list (loop for x in (addends R)
+	((or (is-addition? r)
+	     (is-subtraction? r))
+	 (let ((list (loop for x in (addends r)
 			  collect
-			  (merge-products L x type))))
+			  (merge-products l x type))))
 	   (make-sum list type)))
-	(t (let* ((Lcoeff (coefficient L))
-		  (LB (noncoefficient L))
-		  (Rcoeff (coefficient R))
-		  (RB (noncoefficient R))
-		  (newcoeff (* Lcoeff Rcoeff))
-		  (prodlist (if LB (if RB (append (multiplicands LB)
-						  (multiplicands RB))
-				       (multiplicands LB))
-				(if RB (multiplicands RB) nil))))
+	(t (let* ((lcoeff (coefficient l))
+		  (lb (noncoefficient l))
+		  (rcoeff (coefficient r))
+		  (rb (noncoefficient r))
+		  (newcoeff (* lcoeff rcoeff))
+		  (prodlist (if lb (if rb (append (multiplicands lb)
+						  (multiplicands rb))
+				       (multiplicands lb))
+				(if rb (multiplicands rb) nil))))
 	     (if (eql newcoeff 0)
 		 (make!-number-expr 0)
 		 (if (eql newcoeff 1)
@@ -1837,7 +1830,7 @@
 			    
 	
 (defun cancel-terms (lhs-terms rhs-terms)
-  (cancel-terms* lhs-terms rhs-terms NIL 'X))
+  (cancel-terms* lhs-terms rhs-terms nil 'X))
 
 (defun cancel-terms* (lhs* rhs* lhs-accum sig)
   (if (null lhs*)
@@ -1931,7 +1924,7 @@
 		     (cond ((null pred)(do-auto-rewrite expr sig))
 			   ((false-p result)
 			    (values '? *false*))
-			   ((and (eq result 'RESTFALSE)
+			   ((and (eq result 'restfalse)
 				 (null (accessors (constructor pred))))
 			    (values '? *true*))
 			   (t (do-auto-rewrite expr sig))))))))))
@@ -2233,7 +2226,7 @@
 		 (assert-if arg1)
 	       (multiple-value-bind
 		   (sig2 new-arg2)
-		   (let ((*assert-typepreds-off* T))
+		   (let ((*assert-typepreds-off* t))
 		     (assert-if arg2))
 		 (if (memq '? (list sig1 sig2))
 		     (do-auto-rewrite
@@ -2461,10 +2454,10 @@
 				    (formals-sans-usings
 				     (get-theory mod-inst)))))
 		    (if (or (null formals) actuals)
-			T
+			t
 			(mapcar #'(lambda (x) (list x))
 			  formals)))
-		  T))
+		  t))
 	     (lhs-hashentry (lhs hashentry1)))
 	(cond ((and (eq expr op*)
 		    (is-res-macro res)
@@ -2522,15 +2515,15 @@
 				  nconc (pairlis-args
 					 (mapcar #'declaration vars)
 					 args))
-			    T)
+			    t)
 			   (if lhs
 			       (let ((*modsubst* modsubst);;no tccs in match
-				     (*generate-tccs* 'NONE));;NSH(11.24.98)
+				     (*generate-tccs* 'none));;NSH(11.24.98)
 				 (values (match lhs expr nil nil)
 					 *modsubst*))
 			       'fail))
 		     (let* ((modsubst (unless  (or (eq psubst 'fail)
-						   (eq modsubst T))
+						   (eq modsubst t))
 					(if (every #'cdr modsubst)
 					    (mk-modname
 						(id mod-inst)
@@ -2541,7 +2534,7 @@
 					    'fail)))
 			    (subst (if (or (eq psubst 'fail)
 					   (null modsubst)
-					   (eq modsubst 'FAIL))
+					   (eq modsubst 'fail))
 				       psubst
 				       (loop for (x . y) in psubst
 					     collect
@@ -2607,16 +2600,16 @@
 					     (values '? newrhs))))
 				  (multiple-value-bind
 				      (subst tccforms)
-				      (let* ((*tccforms* NIL)
+				      (let* ((*tccforms* nil)
 					     (*keep-unbound* *bound-variables*)
 					     (subst (sort-alist subst))
-					     (subst (tc-alist subst NIL 'TOP))
+					     (subst (tc-alist subst nil 'top))
 					     )
 					(values subst *tccforms*))
 				    (when (modname? modsubst);;NSH(2.8.97)
 				      ;;ensure generation of assumption TCCS
 				      ;;for generic rewrites.
-				      (typecheck modsubst :tccs 'ALL))
+				      (typecheck modsubst :tccs 'all))
 				    (let ((newhyp
 					   (nth-value 1
 					     (when (hyp hashentry1)
@@ -2955,7 +2948,7 @@
 (defmethod assert-if ((expr binding-expr));;(break "assert-if-binding")
   (with-slots (bindings expression) expr
     (let* ((*subtype-hash* (when *subtype-hash* (copy *subtype-hash*)))
-	   (*assert-typepreds-off* T) 
+	   (*assert-typepreds-off* t) 
 	   (*bound-variables* (append bindings
 				      *bound-variables*))
 	   (*local-typealist* *local-typealist*);;shadowing
@@ -2981,18 +2974,65 @@
 (defmethod assert-if ((expr expr))
 	   (values 'X expr))
 
+
+;;JMR's 4/19/01 bug suggests that assert-test should collect and
+;;assert inner typepreds before the main assert.
+
+(defun collect-subexpr-typepreds (expr)
+  (collect-subexpr-typepreds* expr))
+
+(defmethod collect-subexpr-typepreds* :around ((expr expr))
+  (let ((constraints (type-constraints expr)))
+    (dolist (constraint constraints)
+	  (pushnew constraint *assert-typepreds* :test #'tc-eq))
+    (call-next-method)))
+
+(defmethod collect-subexpr-typepreds* ((expr application))
+  (with-slots (operator argument) expr
+      (and (collect-subexpr-typepreds* operator)
+	   (collect-subexpr-typepreds* argument))))
+
+(defmethod collect-subexpr-typepreds* ((expr t))
+  t) ;;ignoring bound variable contexts.
+
+(defmethod collect-subexpr-typepreds*((expr list))
+  (or (null expr)
+      (and (collect-subexpr-typepreds* (car expr))
+	   (collect-subexpr-typepreds* (cdr  expr)))))
+
+(defmethod collect-subexpr-typepreds* ((expr tuple-expr))
+  (with-slots (exprs) expr
+    (collect-subexpr-typepreds* exprs)))
+
+(defmethod collect-subexpr-typepreds* ((expr record-expr))
+  (with-slots (assignments) expr
+    (collect-subexpr-typepreds* assignments)))
+
+(defmethod collect-subexpr-typepreds* ((expr assignment))
+  (with-slots (expression) expr
+    (collect-subexpr-typepreds* expression)))
+
+(defmethod collect-subexpr-typepreds* ((expr field-application))
+  (with-slots (argument) expr
+    (collect-subexpr-typepreds* argument)))
+
+(defmethod collect-subexpr-typepreds* ((expr projection-application))
+  (with-slots (argument) expr
+    (collect-subexpr-typepreds* argument)))
+
+
+
 ;;tests the value of a formula in the current dec. procedure alist.
 (defun assert-test (fmla)
   (unless (check-for-connectives? fmla)
-    (nprotecting-cong-state  ;;changed from LET on alists
+    (nprotecting-cong-state;;changed from LET on alists
      ((*dp-state* *dp-state*))
-     (if (eq *pseudo-normalizing* 'include-typepreds?)
-	 (let ((typealist typealist))
-	   (unless (assq (caar primtypealist) typealist)
-	     (setq typealist (append typealist primtypealist)))
-	   (assert-typepreds *assert-typepreds*)
-	   (call-process fmla *dp-state*))
-	 (call-process fmla *dp-state*)))))
+     (let ((*assert-typepreds* *assert-typepreds*))
+       (collect-subexpr-typepreds fmla)
+       (unless (assq (caar primtypealist) typealist)
+	 (setq typealist (append typealist primtypealist)))
+       (assert-typepreds *assert-typepreds*))
+     (call-process fmla *dp-state*))))
 
 (defun assert-test0 (fmla)
   (unless (check-for-connectives? fmla)
@@ -3009,7 +3049,7 @@
   (loop for name in names
 	do (let ((force? (or force?
 			     (and (consp name)
-				  (if (consp (car name)) '!! T))))
+				  (if (consp (car name)) '!! t))))
 		 (name (if (consp name)
 			   (if (consp (car name)) (car name) name)
 			   (list name))))
@@ -3063,10 +3103,10 @@ cannot be used for rewriting." name)
 		 nil))
       (let* ((name (pc-parse name 'name))
 	     (formula-resolutions
-	      ;(let ((*generate-tccs* 'ALL))
+	      ;(let ((*generate-tccs* 'all))
 		(resolve name 'formula nil context));)
 	     (constant-resolutions
-	      ;(let ((*generate-tccs* 'ALL))
+	      ;(let ((*generate-tccs* 'all))
 		(loop for res in (resolve name 'expr nil context)
 		      when (with-slots (declaration) res
 			     (and (slot-exists-p declaration
@@ -3074,7 +3114,7 @@ cannot be used for rewriting." name)
 				  (definition
 				    declaration)))
 		      collect res));)
-	     ;;(*generate-tccs* NIL)
+	     ;;(*generate-tccs* nil)
 	     (formulas (loop for res in formula-resolutions
 			     collect
 			     (select-from-fmlas
@@ -3176,7 +3216,7 @@ Free parameters in the LHS of rewrite must contain all theory formals."
   'cases)
 
 (defmethod auto-rewrite-hashname ((expr expr))
-  NIL)
+  nil)
 
 
 (defun auto-rewrite-res (res always? context)
@@ -3217,7 +3257,7 @@ Free parameters in the LHS of rewrite must contain all theory formals."
 	(error-format-if "~%Can't rewrite using ~a: inductive definition cannot be used." name))
        (t
 	(unless (consp res);;(6.16.95)avoids antecedent rewrites
-	  (typecheck (module-instance res) :tccs 'ALL))
+	  (typecheck (module-instance res) :tccs 'all))
 	;;NSH(6.14.95): above typecheck needed to generate
 	;;assuming TCCS.  
 	(pushnew
@@ -3261,7 +3301,7 @@ Free parameters in the LHS of rewrite must contain all theory formals."
 		     (remove res *macro-names*))
 			       ;;:test #'tc-eq
 		 (format-if "~%Installing rewrite rule ~a" name)))
-	(setf (gethash (rewrite-declaration hashname) *auto-rewrites-ops*) T)
+	(setf (gethash (rewrite-declaration hashname) *auto-rewrites-ops*) t)
 	(format-if "~%Installing rewrite rule ~a" name))))))
 
 
@@ -3315,8 +3355,8 @@ Free parameters in the LHS of rewrite must contain all theory formals."
 	     '(|numbers| |reals| |rationals|
 	       |integers| |naturalnumbers|))))
 
-(defmethod arithop-decl? ((x T))
-  NIL)
+(defmethod arithop-decl? ((x t))
+  nil)
 
 ;;NSH(7.25.94): Sam's improved collect-explicit-names.  The earlier one
 ;;was inefficient in exploring paths repeatedly.
@@ -3407,7 +3447,7 @@ Free parameters in the LHS of rewrite must contain all theory formals."
 			    always? tccs? ps))
 
 (defun check-theory-names (names modules &optional defs-only?)
-  (cond ((null modules) T)
+  (cond ((null modules) t)
 	((null (car modules))
 	 (error-format-if "~%Could not find theory ~a" (car names))
 	 nil)
@@ -3432,13 +3472,13 @@ Free parameters in the LHS of rewrite must contain all theory formals."
   (let* (;(*auto-rewrites-names* *auto-rewrites-names* )
 	 ;(*auto-rewrites!-names* *auto-rewrites!-names* )
 	 (names (list name)) ;;historical, names->name in args.
-	 ;;(*generate-tccs* 'ALL)
+	 ;;(*generate-tccs* 'all)
 	 (names (loop for name in names
 		      collect (typecheck
 			       (pc-parse name 'modname)
-			       :tccs 'ALL
+			       :tccs 'all
 			       :context *current-context*)))
-	 ;;(*generate-tccs* NIL)
+	 ;;(*generate-tccs* nil)
 	 (modules (loop for name in names
 			collect (get-theory name)))
 	(check (check-theory-names names modules defs-only?)))
@@ -3723,7 +3763,7 @@ Free parameters in the LHS of rewrite must contain all theory formals."
 		 (format t "~a: ~a~2%" (car res)
 			 (unpindent (cadr res)
 				    (+ (length (string (car res))) 2)
-				    :string T))
+				    :string t))
 		 (let* ((name (make-instance 'name
 			       'id (id (declaration res))
 			       'actuals (actuals (module-instance res))))
@@ -3735,7 +3775,7 @@ Free parameters in the LHS of rewrite must contain all theory formals."
 				(if (> (length name-string) 15)
 				    4
 				    (+ (length name-string) 2))
-				:string T)
+				:string t)
 		     )))))
   (format t "~2%The remaining rewrites of function definitions only occur 
 when an expression matches the most curried form of the LHS of the
@@ -3748,7 +3788,7 @@ in reverse chronological order: ~3%")
 		 (format t "~a: ~a~2%" (car res)
 			 (unpindent (cadr res)
 				    (+ (length (string (car res))) 2)
-				    :string T))
+				    :string t))
 		 (let* ((name (make-instance 'name
 			       'id (id (declaration res))
 			       'actuals (actuals (module-instance res))))
@@ -3760,7 +3800,7 @@ in reverse chronological order: ~3%")
 				(if (> (length name-string) 15)
 				    4
 				    (+ (length name-string) 2))
-				:string T)
+				:string t)
 		     ))))
     (format t "~3%"))
   (when (auto-rewrites-names *ps*)
@@ -3773,7 +3813,7 @@ chronological order are:~3%")
 		(format t "~a: ~a~2%" (car res)
 			(unpindent (cadr res)
 				   (+ (length (string (car res))) 2)
-				   :string T))
+				   :string t))
 		(let* ((name (make-instance 'name
 			       'id (id (declaration res))
 			       'actuals (actuals (module-instance res))))
@@ -3785,7 +3825,7 @@ chronological order are:~3%")
 				(if (> (length name-string) 15)
 				    4
 				    (+ (length name-string) 2))
-				:string T)
+				:string t)
 		     )))))))
 
 (defun show-auto-rewrites ()

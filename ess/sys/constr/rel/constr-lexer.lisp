@@ -1,70 +1,69 @@
 ;;; -*- Mode: Lisp; Package: CONSTRG -*-
-(in-package "CONSTR-TERM-REP")  ;; creates package for abstract syntax. 
+(in-package :constr-term-rep)  ;; creates package for abstract syntax. 
 
-(in-package "CONSTRG")  ;; enters package for generated code.  
+(in-package :constrg)  ;; enters package for generated code.  
 
-(use-package '("NEWATTR" "LANG" "SB-RUNTIME" "SORT" "TERM" "OCC" "OPER"
-               "ERGOLISP"))
+(use-package '(:newattr :lang :sb-runtime :sort :term :occ :oper :ergolisp))
 
 
 (export '())
 
-(DEFPARAMETER CONSTR-KEYWORD-LIST
-    (QUOTE
-     (SBST::|:| SBST::|\|| SBST::= SBST::DATATYPE SBST::ABBREV SBST::==
-      SBST::OF SBST::|'| SBST::UNIT SBST::} SBST::{ SBST::} SBST::|,| SBST::{
-      SBST::NOT-SATS SBST::SATS SBST::NOT SBST::OR SBST::AND SBST::|#|
-      SBST::-> SBST::? SBST::* SBST::|(| SBST::|)|)))
-(DEFPARAMETER CONSTR-SINGLE-CHAR-OP-LIST
-    (QUOTE (#\} #\{ #\# #\] #\[ #\* #\? #\' #\) #\( #\| #\,)))
-(DEFPARAMETER CONSTR-MULTI-CHAR-OP-LIST (QUOTE ((#\= . LEX-=))))
-(DEFPARAMETER CONSTR-ALL-OPERATORS-LIST
-    (QUOTE
-     (SBST::} SBST::{ SBST::|#| SBST::] SBST::[ SBST::* SBST::? SBST::|'|
-      SBST::|)| SBST::|(| SBST::|\|| SBST::= SBST::== SBST::|,|)))
-(DEFPARAMETER CONSTR-NEW-LINE-COMMENT-CHAR #\%)
-(DEFPARAMETER CONSTR-OPEN-COMMENT-CHAR ())
-(DEFPARAMETER CONSTR-CLOSE-COMMENT-CHAR ())
-(DEFPARAMETER CONSTR-ESCAPE-CHAR ())
-(DEFPARAMETER CONSTR-CASE-SENSITIVE ())
-(DEFPARAMETER CONSTR-STRING-CHAR #\")
-(DEFPARAMETER CONSTR-KEYWORD-CHAR ())
-(DEFPARAMETER CONSTR-LITERAL-CHAR ())
-(DEFPARAMETER CONSTR-RESTRICTED-CHARS
-    (REDUCE #'(LAMBDA (R S) (UNION R S :TEST #'CHAR=))
-     (LIST CONSTR-SINGLE-CHAR-OP-LIST
-           (IF CONSTR-NEW-LINE-COMMENT-CHAR
-               (LIST CONSTR-NEW-LINE-COMMENT-CHAR))
-           (IF CONSTR-OPEN-COMMENT-CHAR (LIST CONSTR-OPEN-COMMENT-CHAR))
-           (IF CONSTR-CLOSE-COMMENT-CHAR (LIST CONSTR-CLOSE-COMMENT-CHAR))
-           (IF CONSTR-ESCAPE-CHAR (LIST CONSTR-ESCAPE-CHAR))
-           (IF CONSTR-STRING-CHAR (LIST CONSTR-STRING-CHAR))
-           (IF CONSTR-KEYWORD-CHAR (LIST CONSTR-KEYWORD-CHAR))
-           (IF CONSTR-LITERAL-CHAR (LIST CONSTR-LITERAL-CHAR)))))
-(DEFVAR *CONSTR-KEYWORD-TABLE* ())
-(DEFUN INIT-LEXER-AUX (LEXSTREAM)
-  (INIT-LEXICAL-READTABLE LEXSTREAM
-    :SINGLE-CHAR-OP-LIST CONSTR-SINGLE-CHAR-OP-LIST
-    :NEW-LINE-COMMENT-CHAR CONSTR-NEW-LINE-COMMENT-CHAR
-    :OPEN-COMMENT-CHAR CONSTR-OPEN-COMMENT-CHAR
-    :ESCAPE-CHAR CONSTR-ESCAPE-CHAR
-    :MULTI-CHAR-OP-LIST CONSTR-MULTI-CHAR-OP-LIST))
+(defparameter constr-keyword-list
+    (quote
+     (sbst::|:| sbst::|\|| sbst::= sbst::datatype sbst::abbrev sbst::==
+      sbst::of sbst::|'| sbst::unit sbst::} sbst::{ sbst::} sbst::|,| sbst::{
+      sbst::not-sats sbst::sats sbst::not sbst::or sbst::and sbst::|#|
+      sbst::-> sbst::? sbst::* sbst::|(| sbst::|)|)))
+(defparameter constr-single-char-op-list
+    (quote (#\} #\{ #\# #\] #\[ #\* #\? #\' #\) #\( #\| #\,)))
+(defparameter constr-multi-char-op-list (quote ((#\= . lex-=))))
+(defparameter constr-all-operators-list
+    (quote
+     (sbst::} sbst::{ sbst::|#| sbst::] sbst::[ sbst::* sbst::? sbst::|'|
+      sbst::|)| sbst::|(| sbst::|\|| sbst::= sbst::== sbst::|,|)))
+(defparameter constr-new-line-comment-char #\%)
+(defparameter constr-open-comment-char ())
+(defparameter constr-close-comment-char ())
+(defparameter constr-escape-char ())
+(defparameter constr-case-sensitive ())
+(defparameter constr-string-char #\")
+(defparameter constr-keyword-char ())
+(defparameter constr-literal-char ())
+(defparameter constr-restricted-chars
+    (reduce #'(lambda (r s) (union r s :test #'char=))
+     (list constr-single-char-op-list
+           (if constr-new-line-comment-char
+               (list constr-new-line-comment-char))
+           (if constr-open-comment-char (list constr-open-comment-char))
+           (if constr-close-comment-char (list constr-close-comment-char))
+           (if constr-escape-char (list constr-escape-char))
+           (if constr-string-char (list constr-string-char))
+           (if constr-keyword-char (list constr-keyword-char))
+           (if constr-literal-char (list constr-literal-char)))))
+(defvar *constr-keyword-table* ())
+(defun init-lexer-aux (lexstream)
+  (init-lexical-readtable lexstream
+    :single-char-op-list constr-single-char-op-list
+    :new-line-comment-char constr-new-line-comment-char
+    :open-comment-char constr-open-comment-char
+    :escape-char constr-escape-char
+    :multi-char-op-list constr-multi-char-op-list))
 
-(DEFUN INIT-LEXER (LEXSTREAM)
-  (INIT-LEXER-AUX LEXSTREAM)
-  (IF CONSTR-STRING-CHAR
-      (LEXICAL-MAKE-MACRO LEXSTREAM CONSTR-STRING-CHAR #'READ-SB-STRING))
-  (IF CONSTR-KEYWORD-CHAR
-      (LEXICAL-MAKE-MACRO LEXSTREAM CONSTR-KEYWORD-CHAR
-                          #'READ-KEYWORD-STRING))
-  (IF CONSTR-LITERAL-CHAR
-      (LEXICAL-MAKE-MACRO LEXSTREAM CONSTR-LITERAL-CHAR #'READ-LITERAL)))
+(defun init-lexer (lexstream)
+  (init-lexer-aux lexstream)
+  (if constr-string-char
+      (lexical-make-macro lexstream constr-string-char #'read-sb-string))
+  (if constr-keyword-char
+      (lexical-make-macro lexstream constr-keyword-char
+                          #'read-keyword-string))
+  (if constr-literal-char
+      (lexical-make-macro lexstream constr-literal-char #'read-literal)))
 
-(DEFUN LEX-= (STREAM SYMBOL)
-  (DECLARE (IGNORE SYMBOL))
-  (LET (HOLDCHAR)
-    (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF))
-    (IF (AND CONSTR-ESCAPE-CHAR (CHAR= HOLDCHAR CONSTR-ESCAPE-CHAR))
-        (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF)))
-    (COND ((CHAR= HOLDCHAR #\=) 'SBST::==)
-          (T (LEXICAL-UNREAD-CHAR STREAM) 'SBST::=))))
+(defun lex-= (stream symbol)
+  (declare (ignore symbol))
+  (let (holdchar)
+    (setf holdchar (lexical-read-char stream :eof))
+    (if (and constr-escape-char (char= holdchar constr-escape-char))
+        (setf holdchar (lexical-read-char stream :eof)))
+    (cond ((char= holdchar #\=) 'sbst::==)
+          (t (lexical-unread-char stream) 'sbst::=))))

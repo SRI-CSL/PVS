@@ -24,8 +24,8 @@
 ;     be completely re-initialized, which is desirable in itself for
 ;     debugging, and also serves as valuable documentation.
 
-(defconstant  TRUE 'TRUE  )
-(defconstant  FALSE 'FALSE )
+(defconstant  true 'true  )
+(defconstant  false 'false )
 
 (defconstant  primtypealist
     '((true .  bool)

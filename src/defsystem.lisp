@@ -418,12 +418,12 @@
 (eval-when (compile load eval)
   (unless (or (fboundp 'lisp::require) (fboundp 'user::require)
 	      #+(and :excl :allegro-v4.0) (fboundp 'cltl1::require))
-    (in-package "LISP")
+    (in-package :lisp)
     (export '(*modules* provide require))
 
     ;; Documentation strings taken almost literally from CLtL1.
   
-    (defvar *MODULES* ()
+    (defvar *modules* ()
       "List of names of the modules that have been loaded into Lisp so far.
      It is used by PROVIDE and REQUIRE.")
 
@@ -457,7 +457,7 @@
     (defun module-files (name)
       (gethash name *module-files*))
 
-    (defun PROVIDE (name)
+    (defun provide (name)
       "Adds a new module name to the list of modules maintained in the
      variable *modules*, thereby indicating that the module has been 
      loaded. Name may be a string or symbol -- strings are case-senstive,
@@ -470,7 +470,7 @@
 	  (push module *modules*)
 	  t)))
 
-    (defun REQUIRE (name &optional pathname)
+    (defun require (name &optional pathname)
       "Tests whether a module is already present. If the module is not
      present, loads the appropriate file or set of files. The pathname
      argument, if present, is a single pathname or list of pathnames
@@ -503,7 +503,7 @@
 		  ;; a load error.
 		  (setf pathname nil))))
 	  ;; Now that we've got the list of pathnames, let's load them.
-	  (dolist (pname pathname T)
+	  (dolist (pname pathname t)
 	    (load pname :verbose nil)))))))
 
 ;;; ********************************
@@ -518,16 +518,16 @@
 ;;; MK is my initials.
 
 #-(or cltl2 gcl)
-(in-package "MAKE" :nicknames '("MK"))
+(in-package :make :nicknames '(:mk))
 
 #+gcl
-(in-package "MAKE")
+(in-package :make)
 
 #+gcl
 (import '(operate-on-system oos afs-binary-directory afs-source-directory
-			 files-in-system) "USER")
+			 files-in-system) :user)
 #+gcl
-(import '(defsystem compile-system load-system) "USER")
+(import '(defsystem compile-system load-system) :user)
 
 #+gcl
 (export '(operate-on-system oos afs-binary-directory afs-source-directory
@@ -555,26 +555,26 @@
 
 ;;; For CLtL2 compatible lisps...
 #+(and :excl :allegro-v4.0 :cltl2)
-(defpackage "MAKE" (:nicknames "MK") (:use "COMMON-LISP") 
+(defpackage :make (:nicknames :mk) (:use :common-lisp) 
   (:import-from cltl1 *modules* provide require))
 #+:mcl                                  
-(defpackage "MAKE" (:nicknames "MK") (:use "COMMON-LISP") 
+(defpackage :make (:nicknames :mk) (:use :common-lisp) 
   (:import-from ccl *modules* provide require))
 #+(and :cltl2 (not (or (and :excl :allegro-v4.0) :mcl)))   
-(unless (find-package "MAKE") 
-  (make-package "MAKE" :nicknames '("MK") :use '("COMMON-LISP")))
+(unless (find-package :make) 
+  (make-package :make :nicknames '(:mk) :use '(:common-lisp)))
 
 #+:cltl2
-(in-package "MAKE")
+(in-package :make)
 
 #+(and :excl :allegro-v4.0 :cltl2)
-(cltl1:provide 'make)
+(cltl1:provide :make)
 #+:mcl
-(ccl:provide 'make)
+(ccl:provide :make)
 #+(and :cltl2 (not (or (and :excl :allegro-v4.0) :mcl)))
-(provide 'make)
+(provide :make)
 #-:cltl2
-(provide 'make)
+(provide :make)
 
 (pushnew :mk-defsystem *features*)
 
@@ -615,18 +615,18 @@
 ;;; We import these symbols into the USER package to make them
 ;;; easier to use. Since some lisps have already defined defsystem
 ;;; in the user package, we may have to shadowing-import it.
-#-(OR :CMU :CCL :ALLEGRO :EXCL :GCL)
+#-(or :cmu :ccl :allegro :excl :gcl)
 (eval-when (compile load eval)
-  (import *exports* #-:cltl2 "USER" #+:cltl2 "COMMON-LISP-USER")
-  (import *special-exports* #-:cltl2 "USER" #+:cltl2 "COMMON-LISP-USER"))
-#+(OR :CMU :CCL :ALLEGRO :EXCL)
+  (import *exports* #-:cltl2 :user #+:cltl2 :common-lisp-user)
+  (import *special-exports* #-:cltl2 :user #+:cltl2 :common-lisp-user))
+#+(or :cmu :ccl :allegro :excl)
 (eval-when (compile load eval)
-  (import *exports* #-:cltl2 "USER" #+:cltl2 "COMMON-LISP-USER")
+  (import *exports* #-:cltl2 :user #+:cltl2 :common-lisp-user)
   (shadowing-import *special-exports* 
-		    #-:cltl2 "USER" 
-		    #+:cltl2 "COMMON-LISP-USER"))
+		    #-:cltl2 :user 
+		    #+:cltl2 :common-lisp-user))
 
-#-PCL(when (find-package "PCL") 
+#-PCL(when (find-package :pcl) 
        (pushnew :pcl *modules*)
        (pushnew :pcl *features*))
 
@@ -706,8 +706,8 @@
 (eval-when (compile load eval)  
   (dolist (feature *features*)
     (when (and (symbolp feature)   ; 3600
-               (equal (symbol-name feature) "CMU"))
-      (pushnew :CMU *features*)))
+               (equal (symbol-name feature) :cmu))
+      (pushnew :cmu *features*)))
   
   #+Lucid
   (when (search "IBM RT PC" (machine-type))
@@ -2002,7 +2002,7 @@ D
 	    (operate-on-component system operation force))))
     (when dribble (dribble))))
 
-(defun COMPILE-SYSTEM (name &key force
+(defun compile-system (name &key force
 			    (version *version*)
 			    (test *oos-test*) (verbose *oos-verbose*)
 			    (load-source-instead-of-binary *load-source-instead-of-binary*)
@@ -2025,7 +2025,7 @@ D
    :dribble dribble
    :minimal-load minimal-load))
 
-(defun LOAD-SYSTEM (name &key force
+(defun load-system (name &key force
 			 (version *version*)
 			 (test *oos-test*) (verbose *oos-verbose*)
 			 (load-source-instead-of-binary *load-source-instead-of-binary*)
@@ -2447,7 +2447,7 @@ D
 		     (load binary-pname)
 		     (setf (component-load-time component)
 			   (file-write-date binary-pname)))))
-	     T)
+	     t)
 	    ((and source-exists
 		  (or (and load-source	; implicit needs-comp...
 			   (or *load-source-instead-of-binary*
@@ -2465,7 +2465,7 @@ D
 		     (load source-pname)
 		     (setf (component-load-time component)
 			   (file-write-date source-pname)))))
-	     T)
+	     t)
 	    ((and binary-exists load-binary)
 	     (with-tell-user ("Loading binary"   component :binary)
 	       (or *oos-test*
@@ -2473,7 +2473,7 @@ D
 		     (load binary-pname)
 		     (setf (component-load-time component)
 			   (file-write-date binary-pname)))))
-	     T)
+	     t)
 	    ((and (not binary-exists) (not source-exists))
 	     (tell-user-no-files component :force)
 	     (when *files-missing-is-an-error*

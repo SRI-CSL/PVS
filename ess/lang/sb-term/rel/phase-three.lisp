@@ -16,9 +16,9 @@
 
 
 
-(in-package 'syntax-box)   (use-package :ergolisp)
+(in-package :syntax-box)   (use-package :ergolisp)
 
-(use-package '(sb-runtime))
+(use-package '(:sb-runtime))
 
 
 ; process-grammar
@@ -162,7 +162,7 @@
 		             ; look ahead set with the medial look-ahead-sets
 		             ; and save the fragment number in the medial fragment
 		             ; list.
-			 (T (if jux-value (push jux-value jux-branches))
+			 (t (if jux-value (push jux-value jux-branches))
 			    (push (get-number (car ps-result)) medials)
 			    (push (get-fs (car ps-result)) medial-la-check)))
 
@@ -187,7 +187,7 @@
 	     (setq medial-la-check (compare-medial-fs-list medial-la-check)))
 
 
-	    (T
+	    (t
 	        ; Do the same thing but for singleton nonterminal definitions.
 	        ; Must flatten to one symbol.
 	     (do ((flat-sons (flatten-first pattern) (cdr flat-sons)))
@@ -217,7 +217,7 @@
 
 		           ; can not have medials for a singleton nonterminal
 		           ; definition.
-		       (T (my-error 31)))))
+		       (t (my-error 31)))))
 
 	         ; again deal with brackets if there are any.
 	     (if brackets
@@ -234,7 +234,7 @@
 	      ; routine that will generate code to eat them.  Ow.  call the
 	      ; standard initials-only routine.
 	  (if brackets
-	      (collapse-bracket-I-only (append initials s-elist)
+	      (collapse-bracket-i-only (append initials s-elist)
 				       aux-list
 				       number-of-slots
 				       nt
@@ -242,7 +242,7 @@
 				       initial-la-check
 				       gram-struct)
 
-	      (collapse-I-only (append initials s-elist)
+	      (collapse-i-only (append initials s-elist)
 			       aux-list
 			       number-of-slots
 			       nt
@@ -254,7 +254,7 @@
 	      ; left recursive patterns.  Again, if there are brackets then
 	      ; call the routine that generates code todeal with brackets.
 	  (if brackets
-	      (collapse-bracket-IM (append initials s-elist)
+	      (collapse-bracket-im (append initials s-elist)
 				   medials
 				   number-of-slots
 				   aux-list
@@ -265,7 +265,7 @@
 				   medial-la-check
 				   jux-branches)
 
-	      (collapse-IM (append initials s-elist)
+	      (collapse-im (append initials s-elist)
 			   medials
 			   number-of-slots
 			   aux-list
@@ -312,7 +312,7 @@
       ((ukeyword nonterminal ext-nonterminal jux)
        (push pat results))
 
-      (T (my-error 15)))
+      (t (my-error 15)))
 
     results))
 			
@@ -351,7 +351,7 @@
 ;    (fragment-number jux-name LAS LBP).
 
 (defun process-son (pat nt-name gram-struct)
-  (let ((result nil) (init-flag T) (jux-value nil))
+  (let ((result nil) (init-flag t) (jux-value nil))
 
     (case (get-kind pat)
       
@@ -360,7 +360,7 @@
           ; and have already been checked for.)
           ; Pattern-initial is True for any symbol that starts a production.
       ((nonterminal ukeyword ext-nonterminal)
-       (set-initial pat T)
+       (set-initial pat t)
        (setq result (process-pattern nt-name pat 0 gram-struct)))
 
           ; singleton jux -- if pattern is left recursive 
@@ -370,7 +370,7 @@
           ;    Parse right-son with jux's rbp.
           ;    If pattern has abstract syntax, handle it here.
       (jux
-       (set-initial pat T)
+       (set-initial pat t)
        (if (recursive-p (get-first-son pat) nt-name)
 	   (let ((left (get-first-son pat)) (code nil))
 
@@ -406,7 +406,7 @@
        (let ((first (get-first-son pat)))
 		
 	    ; First is the leading symbol for this production.
-	 (set-initial first T)
+	 (set-initial first t)
 
 	 (case (get-kind first)
 
@@ -473,12 +473,12 @@
 		    ((not (eq (get-kind second) 'ukeyword))
 		     (my-error 37))
 
-		    (T  ; left recursive -- we have a medial.
+		    (t  ; left recursive -- we have a medial.
 		     (let ((code nil))
 
 		       (setq init-flag nil)
 		           ; make sure we get the right RBP for the medial.
-		       (set-medial second T)
+		       (set-medial second t)
 		       (setq result
 			     (process-pattern nt-name temp 0 gram-struct))
 
@@ -494,9 +494,9 @@
 		       (push (make-fragment (get-fs (car result)) (add-let code))
 			     result))))))
 	       
-	   (T (my-error 32)))))
+	   (t (my-error 32)))))
 
-      (T (my-error 32)))
+      (t (my-error 32)))
 				 
   (values init-flag result jux-value)))
 
@@ -541,7 +541,7 @@
     (just-as (list (make-fragment nil
 				  (as-parse-gen (get-as pat) gram-struct))))
 
-    (T (my-error 11))))
+    (t (my-error 11))))
 
 
 
@@ -600,7 +600,7 @@
 		  (list (make-fragment
 			 (remove-brackets full-name *current-nt* gram-struct)
 			 (add-let code))))
-		 (T
+		 (t
 		  (if slot
 		      (push `(code-to-slot ,slot (,fun-name 0)) code)
 		      (push `(toss-value (,fun-name 0)) code))
@@ -609,7 +609,7 @@
 				       (add-let code))))))
 
 	     ; ow.  just generate a normal function call with an rbp of 0.
-	  (T
+	  (t
 	       ; the keywords of this nonterminal can be seen from the current
                ; nonterminal.
 	   (addedge (list 'nonterminal nt-name) full-name *keyword-graph*)
@@ -645,7 +645,7 @@
 
         ; we need to keep the brackting information argument the current-
         ; nonterminal.
-    (if result (setq *need-brackets* T))
+    (if result (setq *need-brackets* t))
     result))
 
 
@@ -682,8 +682,8 @@
 		    (push (list (caar entries) (cadr b1)) new-las))
 		   
 		       ; ow.  just keep the entry.
-		   (T (push (car entries) new-las)))))
-	  (T las))))
+		   (t (push (car entries) new-las)))))
+	  (t las))))
 
 
 
@@ -724,7 +724,7 @@
 		  (list (make-fragment
 			 (remove-brackets full-name *current-nt* gram-struct)
 			 (add-let code))))
-		 (T
+		 (t
 		  (if slot
 		      (push `(code-to-slot ,slot (,fun-name 0)) code)
 		      (push `(toss-value (,fun-name 0)) code))
@@ -734,7 +734,7 @@
 
 
 	     ; ow.  just generate a normal function call with an rbp of 0.
-	  (T (if slot
+	  (t (if slot
 		 (push `(code-to-slot ,slot (,fun-name 0)) code)
 		 (push `(toss-value (,fun-name 0)) code))
 
@@ -815,7 +815,7 @@
 				      gram-struct))
 
 		         ; ow. we must have an aggregate.
-		     (T (get-nt-op-prec (get-first-son first)
+		     (t (get-nt-op-prec (get-first-son first)
 					nt-name
 					'aggregate
 					gram-struct)))))
@@ -1095,7 +1095,7 @@
 
 	    ; Everywhere we see an epsilon as a possible second we have to
 	    ; add the initials as possible seconds too.  
-	(T (do ((fs-temp fs-list (cdr fs-temp)) (new-fs))
+	(t (do ((fs-temp fs-list (cdr fs-temp)) (new-fs))
 	       ((null fs-temp) new-fs)
 			  
 	         ; implicit epsilon.
@@ -1107,7 +1107,7 @@
 			(my-error 30)
 			(push (append (car fs-temp) initials) new-fs)))
 
-		   (T (push (car fs-temp) new-fs)))))))
+		   (t (push (car fs-temp) new-fs)))))))
 
 
 
@@ -1268,7 +1268,7 @@
 		 (if temp (setf (cdr temp) (cons count (cdr temp)))
 		          (push (list as-code count) optimize-results)))
 
-		(T (push (list count as-code) branches))))
+		(t (push (list count as-code) branches))))
 
            ; special case -- if branches is empty then we only have slot name
 	   ; references and if we only have one entry in optimize results
@@ -1278,7 +1278,7 @@
        (cond ((and (null branches) (= (length optimize-results) 1))
 	      (caar optimize-results))
 
-	     (T (do ((entries optimize-results (cdr entries)))
+	     (t (do ((entries optimize-results (cdr entries)))
 		    ((null entries))
 
 		  (if (= (length (car entries)) 2)
@@ -1306,7 +1306,7 @@
 	      (car (funcall ,(get-destructor as-pat gram-struct) second))
 	      (list second))))))
 
-    (T
+    (t
      (sb-system-error))))
      
      ;; (cons (get-as-kind as-pat) (mapcar #'(lambda (x) (as-parse-gen  x

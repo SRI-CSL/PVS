@@ -288,7 +288,7 @@
 (defun get-lib-theory (lib-decls library id)
   (if (null lib-decls)
       (get-theory* id (string library))
-      (or (get-theory* id (lib-string (car lib-decls)))
+      (or (get-theory* id (library-pathname (car lib-decls)))
 	  (get-lib-theory (cdr lib-decls) library id))))
       
 
@@ -3225,3 +3225,23 @@ space")
 
 (defmethod negate! (formula)
   (make!-negation formula))
+
+(defun collect-theory-instances (theory)
+  (let ((th (get-theory theory))
+	(theory-instances nil))
+    (mapobject
+     #'(lambda (x)
+	 (when (and (name? x)
+		    (resolution x)
+		    (not (eq (id (module-instance x)) (id th))))
+	   (cond ((freevars (module-instance x))
+		  (format t
+		      "~%The generic for ~a is collected since it contains free variables"
+		    (module-instance x))
+		  (pushnew (copy (module-instance x) 'actuals nil)
+			   theory-instances
+			   :test #'tc-eq))
+		 (t (pushnew (module-instance x) theory-instances
+			     :test #'tc-eq)))))
+     th)
+    theory-instances))

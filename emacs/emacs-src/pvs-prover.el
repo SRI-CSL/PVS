@@ -121,7 +121,7 @@ the formula.  With an argument, runs the proof in the background."
 					nil 'tc nil)
 	       (error "%s is not typechecked" name))))
       (unless *pvs-error*
-	(pvs-prove-formula name origin 'T (and current-prefix-arg t)
+	(pvs-prove-formula name origin 't (and current-prefix-arg t)
 			   pvs-x-show-proofs)))))
 
 
@@ -139,11 +139,11 @@ the formula.  With an argument, runs the proof in the background."
 	 (rerun (pvs-send-and-wait
 		 (format "(rerun-proof-at? \"%s\" %d \"%s\" %s %s)"
 		     name line origin rerun-proof unproved)
-		 nil nil "T\\|NIL")))
+		 nil nil "t\\|T\\|nil\\|NIL")))
     (if rerun
 	(ilisp-send
 	 (format "(prove-file-at \"%s\" %d %s \"%s\" \"%s\" %d %s %s %s)"
-	     name line (eq rerun 'T) origin (buffer-name)
+	     name line (when (member rerun '(t T)) t) origin (buffer-name)
 	     prelude-offset background display unproved)
 	 nil 'pr (not background))
 	(setq *pvs-error* t))))
@@ -538,7 +538,7 @@ documentation for edit-proof-mode for more information."
 	       (pvs-prover-goto-next-step)
 	       (hilit-next-prover-command)
 	       (when (pvs-send-and-wait "(when *in-checker* t)"
-					nil nil "T\\|NIL")
+					nil nil "t\\|T\\|nil\\|NIL")
 		 (other-window 1)
 		 (switch-to-buffer (ilisp-buffer))))
 	      (t (pop-to-buffer (get-buffer-create "Proof"))))))))
@@ -1170,7 +1170,7 @@ debugging."
 		     name (+ (current-line-number)
 			     (if (equal origin "prelude")
 				 (or pvs-prelude 0) 0))
-		     'T origin
+		     't origin
 		     (buffer-name) (if (equal origin "prelude")
 				       (or pvs-prelude 0) 0)
 		     nil)))

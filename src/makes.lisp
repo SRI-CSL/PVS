@@ -10,7 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (def-pvs-term not-operator "NOT" "booleans")
 (def-pvs-term and-operator "AND" "booleans")
@@ -464,7 +464,7 @@
 		(memq id *infix-operators*))
 	   'infix-application)
 	  ((and (symbolp id)
-		(eq id 'if)
+		(eq id 'IF)
 		(= (length args) 3))
 	   'if-expr)
 	  (t 'application))))
@@ -478,11 +478,11 @@
 (defun mk-if-expr* (class cond then else)
   (if (eq class 'if-expr)
       (make-instance 'if-expr
-	'operator (mk-name-expr 'if)
+	'operator (mk-name-expr 'IF)
 	'argument (make-instance 'arg-tuple-expr
 		    'exprs (list cond then else)))
       (make-instance 'chained-if-expr
-	'operator (mk-name-expr 'if)
+	'operator (mk-name-expr 'IF)
 	'argument (make-instance 'arg-tuple-expr
 		    'exprs (list cond then else)))))
 
@@ -493,13 +493,13 @@
   (mk-application 'IFF ante succ))
 
 (defun mk-conjunction (args)
-  (mk-rec-application 'and *true*
+  (mk-rec-application 'AND *true*
 		      (remove-if #'(lambda (a)
 				     (tc-eq a *true*))
 			args)))
 
 (defun mk-disjunction (args)
-  (mk-rec-application 'or *false*
+  (mk-rec-application 'OR *false*
 		      (remove-if #'(lambda (a)
 				     (tc-eq a *false*))
 			args)))
@@ -1387,7 +1387,7 @@
 		   (mk-modname '|if_def| (list (mk-actual stype)))
 		   ifoptype))
 	 (if-name (make-instance 'name-expr
-		    'id 'if
+		    'id 'IF
 		    'type ifoptype
 		    'resolutions (list if-res)))
 	 (if-args (make-instance 'arg-tuple-expr

@@ -13,8 +13,8 @@
 ;;; ******************************************************************* ;;;
 
 #-gcl
-(defpackage "RETRY")
-(in-package "RETRY") (use-package :ergolisp)
+(defpackage :retry)
+(in-package :retry) (use-package :ergolisp)
 
 ;;; The next three forms should be replaced by eexport, once this is moved
 ;;; to the ergolisp box.
@@ -22,7 +22,7 @@
 ;;; First a lucid 2.1 bug workaround.
 #+(or (and lucid (not lcl3.0)) harlequin-common-lisp)
 (eval-when (load compile eval)
-  (dolist (s '("*CATCHERS*" "RETRY" "RETRY-CATCH" "REINIT-RETRY-CATCH"))
+  (dolist (s '("*catchers*" "retry" "retry-catch" "reinit-retry-catch"))
     (export (list (intern s :lisp)) :lisp)))
 
 (export '(lisp::*catchers* #-allegro lisp::retry

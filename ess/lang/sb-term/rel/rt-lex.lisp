@@ -133,7 +133,8 @@
   (declare (ignore stream))
   (intern (if *case-sensitive*
 	      (string op)
-	      (string-upcase (string op)))
+	      #+allegro-v6.0 (string-downcase (string op))
+	      #-allegro-v6.0 (string-upcase (string op)))
 	  *sbst-package*))
 
 (defun lex-newline-comment (stream open-comment)
@@ -355,6 +356,10 @@
 		      (let ((name (if (symbolp (cdr token))
 				      (if *case-sensitive*
 					  (symbol-name (cdr token))
+					  #+allegro-v6.0
+					  (string-downcase
+					   (symbol-name (cdr token)))
+					  #-allegro-v6.0
 					  (string-upcase
 					   (symbol-name (cdr token))))
 				      (cdr token))))
@@ -384,6 +389,9 @@
 	  (t (values 'sbst::!id!
 		     (intern (if *case-sensitive*
 				 (symbol-name token)
+				 #+allegro-v6.0
+				 (string-downcase (symbol-name token))
+				 #-allegro-v6.0
 				 (string-upcase (symbol-name token)))
 			     *abs-syn-package*)
 		     place)))))

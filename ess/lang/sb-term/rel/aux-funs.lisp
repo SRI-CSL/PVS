@@ -20,7 +20,7 @@
 (in-package 'syntax-box)  (use-package :ergolisp)
 
 
-(defparameter *sb-package* (find-package "SB"))
+(defparameter *sb-package* (find-package :sb))
 
 (use-package '(sb-runtime))
 (import '(*sbst-package*))
@@ -270,11 +270,11 @@
 
 (defun num (node &optional number)
   (cond (number (push `(,node ,number) *num-list*))
-	(T (cadr (assoc node *num-list* :test #'equal)))))
+	(t (cadr (assoc node *num-list* :test #'equal)))))
 
 (defun ll (node &optional number)
   (cond (number (push `(,node ,number) *ll-list*))
-	(T (cadr (assoc node *ll-list* :test #'equal)))))
+	(t (cadr (assoc node *ll-list* :test #'equal)))))
 
 
 ; Reduce-graph -- takes a dependency graph and reduces each strongly
@@ -365,7 +365,7 @@
 ;;; numbers.
 (defun my-better-error (formatstr &rest args)
   (format t "Current nonterminal is ~A.~%" *current-nt*)
-  (setq *parser-gen-error* T)
+  (setq *parser-gen-error* t)
   (format t "Error: ~?~%" formatstr args))
 
 (defun my-warning (formatstr &rest args)

@@ -646,7 +646,7 @@
     (cond (table-expr
 	   (change-class table-expr 'cond-table-expr)
 	   (cond (then-part
-		  (setf (operator table-expr) (mk-name-expr 'if))
+		  (setf (operator table-expr) (mk-name-expr 'IF))
 		  (setf (argument table-expr)
 			(make-instance 'arg-tuple-expr
 			  'exprs (list condition then-part else-part))))
@@ -654,7 +654,7 @@
 		    (setf (argument table-expr) (argument else-part))))
 	   table-expr)
 	  (t (make-instance 'first-cond-expr
-	       'operator (mk-name-expr 'if)
+	       'operator (mk-name-expr 'IF)
 	       'argument (make-instance 'arg-tuple-expr
 			   'exprs (list condition then-part else-part)))))))
 
@@ -670,7 +670,7 @@
 					    (cdr table-entries))))
       (cond ((and then-part else-part)
 	     (make-instance 'cond-expr
-	       'operator (mk-name-expr 'if)
+	       'operator (mk-name-expr 'IF)
 	       'argument (make-instance 'arg-tuple-expr
 			   'exprs (list condition
 					then-part
@@ -678,7 +678,7 @@
 			   'place (place condition))))
 	    (then-part
 	     (make-instance 'last-cond-expr
-	       'operator (mk-name-expr 'if)
+	       'operator (mk-name-expr 'IF)
 	       'argument (make-instance 'arg-tuple-expr
 			   'exprs (list condition
 					then-part

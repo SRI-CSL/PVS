@@ -303,7 +303,7 @@
     (pfs decls nil)))
 
 (defmethod provable-formula? ((decl formula-decl))
-  (or (not (memq (spelling decl) '(ASSUMPTION AXIOM)))
+  (or (not (memq (spelling decl) '(assumption axiom)))
       (justification decl)))
 
 (defmethod provable-formula? (obj)
@@ -664,7 +664,7 @@
     (remove-if-not #'assuming-tcc?
       (ldiff theory-decls (cdr (memq decl theory-decls))))))
 
-(defmethod pc-analyze ((decl T))
+(defmethod pc-analyze ((decl t))
   nil)
 
 (defun axiom-or-defn? (x)
@@ -674,12 +674,12 @@
 		   
 (defun axiom? (x)
   (and (typep x 'formula-decl)
-       (memq (spelling x) '(AXIOM POSTULATE))))
+       (memq (spelling x) '(axiom postulate))))
 
 
 (defun assumption? (x)
   (and (typep x 'formula-decl)
-       (eq (spelling x) 'ASSUMPTION)))
+       (eq (spelling x) 'assumption)))
     
 
 
@@ -744,7 +744,7 @@
       (pvs-message "~a is not typechecked" bufname)
       (case (intern (string-upcase origin))
 	(ppe (let* ((theories (ppe-form (get-theory bufname)))
-		    (decl (get-decl-at line T theories)))
+		    (decl (get-decl-at line t theories)))
 	       (values (find-if #'(lambda (d) (and (declaration? d)
 						   (eq (id d) (id decl))))
 			 (all-decls (get-theory bufname)))
@@ -762,11 +762,11 @@
 				      (list theory)
 				      (remove-if #'generated-by
 					*prelude-theories*)))
-			(decl (get-decl-at line T theories)))
+			(decl (get-decl-at line t theories)))
 		   (values decl (place decl))))
 	(t (let ((theory (get-theory bufname)))
 	     (if theory
-		 (let ((decl (get-decl-at line T (list theory))))
+		 (let ((decl (get-decl-at line t (list theory))))
 		   (if decl
 		       (values decl (place decl))
 		       (progn (pvs-message "No declaration found near point")

@@ -625,7 +625,7 @@
 	 (tform (add-tcc-conditions (typecheck* form *boolean* nil nil)))
 	 (uform (universal-closure tform))
 	 (id (make-tcc-name)))
-    (typecheck* (if (eq fclass 'obligation)
+    (typecheck* (if (eq fclass 'OBLIGATION)
 		    (mk-existence-tcc id uform)
 		    (mk-formula-decl id uform fclass))
 		nil nil nil)))

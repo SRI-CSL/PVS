@@ -1,174 +1,174 @@
-;;; -*- Mode: Lisp; Package: SYNTAX-BOX -*-
-(in-package "SYNTAX-BOX")  ;; creates package for abstract syntax. 
+;;; -*- mode: lisp; package: syntax-box -*-
+(in-package :syntax-box)  ;; creates package for abstract syntax. 
 
-(in-package "SYNTAX-BOX")  ;; enters package for generated code.  
+(in-package :syntax-box)  ;; enters package for generated code.  
 
-(use-package '("ERGOLISP" "OPER" "OCC" "TERM" "SORT" "SB-RUNTIME" "LANG" "NEWATTR"))
+(use-package '(:ergolisp :oper :occ :term :sort :sb-runtime :lang :newattr))
 
 
 (export '())
 
-(DEFPARAMETER SB-KEYWORD-LIST
-              '(SBST::} SBST::{ SBST::|(| SBST::|,| SBST::|)| SBST::APPEND
-               SBST::|(| SBST::|,| SBST::|)| SBST::BCONS SBST::|(| SBST::|,|
-               SBST::|)| SBST::CONS SBST::|(| SBST::|,| SBST::|)| SBST::LIST
-               SBST::|(| SBST::|,| SBST::|)| SBST::NULL SBST::@ SBST::SEQ
-               SBST::DOUBLESTAR SBST::STAR SBST::DOUBLEPLUS SBST::PLUS
-               SBST::ALT SBST::OPT SBST::* SBST::+ SBST::\| SBST::\| SBST::[
-               SBST::] SBST::^ SBST::|::=| SBST::INITIAL SBST::MEDIAL
-               SBST::LEFT SBST::RIGHT SBST::LBIND SBST::RBIND SBST::AGGREGATE
-               SBST::BRACKETING SBST::OPERATORS SBST::COMMENT SBST::NEWLINE
-               SBST::DELIMITED SBST::|;| SBST::SENSITIVE SBST::CASE
-               SBST::GRAMMAR SBST::GRAMMARS SBST::EXTERNAL SBST::CHARACTER
-               SBST::ESCAPE SBST::TERMINALS SBST::LEXICAL SBST::PRECEDENCE
-               SBST::SPACING SBST::INFORMATION SBST::OP SBST::LT SBST::ARB
-               SBST::OP SBST::LT SBST::ARB SBST::> SBST::|:| SBST::> SBST::<<
-               SBST::> SBST::|:| SBST::> SBST::<< SBST::> SBST::< SBST::**
-               SBST::++ SBST::JUXFORM SBST::JUX SBST::_ SBST::|#| SBST::/+
-               SBST::/- SBST::? SBST::!+ SBST::!- SBST::@< SBST::@> SBST::@^)) 
-(DEFPARAMETER SB-SINGLE-CHAR-OP-LIST
+(defparameter sb-keyword-list
+              '(sbst::} sbst::{ sbst::|(| sbst::|,| sbst::|)| sbst::append
+               sbst::|(| sbst::|,| sbst::|)| sbst::bcons sbst::|(| sbst::|,|
+               sbst::|)| sbst::cons sbst::|(| sbst::|,| sbst::|)| sbst::list
+               sbst::|(| sbst::|,| sbst::|)| sbst::null sbst::@ sbst::seq
+               sbst::doublestar sbst::star sbst::doubleplus sbst::plus
+               sbst::alt sbst::opt sbst::* sbst::+ sbst::\| sbst::\| sbst::[
+               sbst::] sbst::^ sbst::|::=| sbst::initial sbst::medial
+               sbst::left sbst::right sbst::lbind sbst::rbind sbst::aggregate
+               sbst::bracketing sbst::operators sbst::comment sbst::newline
+               sbst::delimited sbst::|;| sbst::sensitive sbst::case
+               sbst::grammar sbst::grammars sbst::external sbst::character
+               sbst::escape sbst::terminals sbst::lexical sbst::precedence
+               sbst::spacing sbst::information sbst::op sbst::lt sbst::arb
+               sbst::op sbst::lt sbst::arb sbst::> sbst::|:| sbst::> sbst::<<
+               sbst::> sbst::|:| sbst::> sbst::<< sbst::> sbst::< sbst::**
+               sbst::++ sbst::juxform sbst::jux sbst::_ sbst::|#| sbst::/+
+               sbst::/- sbst::? sbst::!+ sbst::!- sbst::@< sbst::@> sbst::@^)) 
+(defparameter sb-single-char-op-list
               '(#\? #\# #\_ #\^ #\| #\; #\, #\> #\} #\{ #\] #\[ #\) #\()) 
-(DEFPARAMETER SB-MULTI-CHAR-OP-LIST
-              '((#\< . LEX-<) (#\: . |LEX-:|) (#\+ . LEX-+) (#\* . LEX-*)
-               (#\! . LEX-!) (#\/ . LEX-/) (#\@ . LEX-@))) 
-(DEFPARAMETER SB-ALL-OPERATORS-LIST
-              '(SBST::@^ SBST::@< SBST::@> SBST::/- SBST::/+ SBST::? SBST::|#|
-               SBST::_ SBST::!+ SBST::!- SBST::** SBST::* SBST::++ SBST::+
-               SBST::|::=| SBST::|:| SBST::@ SBST::^ SBST::\| SBST::|;|
-               SBST::|,| SBST::<< SBST::> SBST::< SBST::} SBST::{ SBST::]
-               SBST::[ SBST::|)| SBST::|(|)) 
-(DEFPARAMETER SB-NEW-LINE-COMMENT-CHAR #\%) 
-(DEFPARAMETER SB-OPEN-COMMENT-CHAR NIL) 
-(DEFPARAMETER SB-CLOSE-COMMENT-CHAR NIL) 
-(DEFPARAMETER SB-ESCAPE-CHAR #\\) 
-(DEFPARAMETER SB-CASE-SENSITIVE NIL) 
-(DEFPARAMETER SB-STRING-CHAR #\") 
-(DEFPARAMETER SB-KEYWORD-CHAR #\') 
-(DEFPARAMETER SB-LITERAL-CHAR #\`) 
-(DEFPARAMETER SB-RESTRICTED-CHARS
-              (REDUCE #'(LAMBDA (R
-                                 S)
-                          (UNION R S :TEST #'CHAR=))
-                      (LIST SB-SINGLE-CHAR-OP-LIST
-                            (IF SB-NEW-LINE-COMMENT-CHAR
-                                (LIST SB-NEW-LINE-COMMENT-CHAR))
-                            (IF SB-OPEN-COMMENT-CHAR
-                                (LIST SB-OPEN-COMMENT-CHAR))
-                            (IF SB-CLOSE-COMMENT-CHAR
-                                (LIST SB-CLOSE-COMMENT-CHAR))
-                            (IF SB-ESCAPE-CHAR (LIST SB-ESCAPE-CHAR))
-                            (IF SB-STRING-CHAR (LIST SB-STRING-CHAR))
-                            (IF SB-KEYWORD-CHAR (LIST SB-KEYWORD-CHAR))
-                            (IF SB-LITERAL-CHAR (LIST SB-LITERAL-CHAR))))) 
-(DEFVAR *SB-KEYWORD-TABLE* NIL) 
-(DEFUN INIT-LEXER-AUX (LEXSTREAM)
-  (INIT-LEXICAL-READTABLE LEXSTREAM :SINGLE-CHAR-OP-LIST SB-SINGLE-CHAR-OP-LIST
-                          :NEW-LINE-COMMENT-CHAR SB-NEW-LINE-COMMENT-CHAR
-                          :OPEN-COMMENT-CHAR SB-OPEN-COMMENT-CHAR :ESCAPE-CHAR
-                          SB-ESCAPE-CHAR :MULTI-CHAR-OP-LIST
-                          SB-MULTI-CHAR-OP-LIST)) 
+(defparameter sb-multi-char-op-list
+              '((#\< . lex-<) (#\: . |lex-:|) (#\+ . lex-+) (#\* . lex-*)
+               (#\! . lex-!) (#\/ . lex-/) (#\@ . lex-@))) 
+(defparameter sb-all-operators-list
+              '(sbst::@^ sbst::@< sbst::@> sbst::/- sbst::/+ sbst::? sbst::|#|
+               sbst::_ sbst::!+ sbst::!- sbst::** sbst::* sbst::++ sbst::+
+               sbst::|::=| sbst::|:| sbst::@ sbst::^ sbst::\| sbst::|;|
+               sbst::|,| sbst::<< sbst::> sbst::< sbst::} sbst::{ sbst::]
+               sbst::[ sbst::|)| sbst::|(|)) 
+(defparameter sb-new-line-comment-char #\%) 
+(defparameter sb-open-comment-char nil) 
+(defparameter sb-close-comment-char nil) 
+(defparameter sb-escape-char #\\) 
+(defparameter sb-case-sensitive nil) 
+(defparameter sb-string-char #\") 
+(defparameter sb-keyword-char #\') 
+(defparameter sb-literal-char #\`) 
+(defparameter sb-restricted-chars
+              (reduce #'(lambda (r
+                                 s)
+                          (union r s :test #'char=))
+                      (list sb-single-char-op-list
+                            (if sb-new-line-comment-char
+                                (list sb-new-line-comment-char))
+                            (if sb-open-comment-char
+                                (list sb-open-comment-char))
+                            (if sb-close-comment-char
+                                (list sb-close-comment-char))
+                            (if sb-escape-char (list sb-escape-char))
+                            (if sb-string-char (list sb-string-char))
+                            (if sb-keyword-char (list sb-keyword-char))
+                            (if sb-literal-char (list sb-literal-char))))) 
+(defvar *sb-keyword-table* nil) 
+(defun init-lexer-aux (lexstream)
+  (init-lexical-readtable lexstream :single-char-op-list sb-single-char-op-list
+                          :new-line-comment-char sb-new-line-comment-char
+                          :open-comment-char sb-open-comment-char :escape-char
+                          sb-escape-char :multi-char-op-list
+                          sb-multi-char-op-list)) 
 
-(DEFUN INIT-LEXER (LEXSTREAM)
-  (INIT-LEXER-AUX LEXSTREAM)
-  (IF SB-STRING-CHAR
-      (LEXICAL-MAKE-MACRO LEXSTREAM SB-STRING-CHAR #'READ-SB-STRING))
-  (IF SB-KEYWORD-CHAR
-      (LEXICAL-MAKE-MACRO LEXSTREAM SB-KEYWORD-CHAR #'READ-KEYWORD-STRING))
-  (IF SB-LITERAL-CHAR
-      (LEXICAL-MAKE-MACRO LEXSTREAM SB-LITERAL-CHAR #'READ-LITERAL))) 
+(defun init-lexer (lexstream)
+  (init-lexer-aux lexstream)
+  (if sb-string-char
+      (lexical-make-macro lexstream sb-string-char #'read-sb-string))
+  (if sb-keyword-char
+      (lexical-make-macro lexstream sb-keyword-char #'read-keyword-string))
+  (if sb-literal-char
+      (lexical-make-macro lexstream sb-literal-char #'read-literal))) 
 
-(DEFUN LEX-@ (STREAM SYMBOL)
-  (DECLARE (IGNORE SYMBOL))
-  (LET (HOLDCHAR)
-    (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF))
-    (IF (AND SB-ESCAPE-CHAR (CHAR= HOLDCHAR SB-ESCAPE-CHAR))
-        (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF)))
-    (COND ((CHAR= HOLDCHAR #\^)
-           'SBST::@^)
-          ((CHAR= HOLDCHAR #\<)
-           'SBST::@<)
-          ((CHAR= HOLDCHAR #\>)
-           'SBST::@>)
-          (T
-           (LEXICAL-UNREAD-CHAR STREAM)
-           'SBST::@)))) 
-(DEFUN LEX-/ (STREAM SYMBOL)
-  (DECLARE (IGNORE SYMBOL))
-  (LET (HOLDCHAR)
-    (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF))
-    (IF (AND SB-ESCAPE-CHAR (CHAR= HOLDCHAR SB-ESCAPE-CHAR))
-        (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF)))
-    (COND ((CHAR= HOLDCHAR #\-)
-           'SBST::/-)
-          ((CHAR= HOLDCHAR #\+)
-           'SBST::/+)
-          (T
-           (LEXICAL-UNREAD-CHAR STREAM)
-           (ILLEGAL-TOKEN-ERROR "/")
-           :ILLEGAL-TOKEN)))) 
-(DEFUN LEX-! (STREAM SYMBOL)
-  (DECLARE (IGNORE SYMBOL))
-  (LET (HOLDCHAR)
-    (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF))
-    (IF (AND SB-ESCAPE-CHAR (CHAR= HOLDCHAR SB-ESCAPE-CHAR))
-        (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF)))
-    (COND ((CHAR= HOLDCHAR #\+)
-           'SBST::!+)
-          ((CHAR= HOLDCHAR #\-)
-           'SBST::!-)
-          (T
-           (LEXICAL-UNREAD-CHAR STREAM)
-           (ILLEGAL-TOKEN-ERROR "!")
-           :ILLEGAL-TOKEN)))) 
-(DEFUN LEX-* (STREAM SYMBOL)
-  (DECLARE (IGNORE SYMBOL))
-  (LET (HOLDCHAR)
-    (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF))
-    (IF (AND SB-ESCAPE-CHAR (CHAR= HOLDCHAR SB-ESCAPE-CHAR))
-        (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF)))
-    (COND ((CHAR= HOLDCHAR #\*)
-           'SBST::**)
-          (T
-           (LEXICAL-UNREAD-CHAR STREAM)
-           'SBST::*)))) 
-(DEFUN LEX-+ (STREAM SYMBOL)
-  (DECLARE (IGNORE SYMBOL))
-  (LET (HOLDCHAR)
-    (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF))
-    (IF (AND SB-ESCAPE-CHAR (CHAR= HOLDCHAR SB-ESCAPE-CHAR))
-        (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF)))
-    (COND ((CHAR= HOLDCHAR #\+)
-           'SBST::++)
-          (T
-           (LEXICAL-UNREAD-CHAR STREAM)
-           'SBST::+)))) 
-(DEFUN |LEX-:| (STREAM SYMBOL)
-  (DECLARE (IGNORE SYMBOL))
-  (LET (HOLDCHAR)
-    (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF))
-    (IF (AND SB-ESCAPE-CHAR (CHAR= HOLDCHAR SB-ESCAPE-CHAR))
-        (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF)))
-    (COND ((CHAR= HOLDCHAR #\:)
-           (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF))
-           (IF (AND SB-ESCAPE-CHAR (CHAR= HOLDCHAR SB-ESCAPE-CHAR))
-               (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF)))
-           (COND ((CHAR= HOLDCHAR #\=)
-                  'SBST::|::=|)
-                 (T
-                  (LEXICAL-UNREAD-CHAR STREAM)
-                  (ILLEGAL-TOKEN-ERROR "::")
-                  :ILLEGAL-TOKEN)))
-          (T
-           (LEXICAL-UNREAD-CHAR STREAM)
-           'SBST::|:|)))) 
-(DEFUN LEX-< (STREAM SYMBOL)
-  (DECLARE (IGNORE SYMBOL))
-  (LET (HOLDCHAR)
-    (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF))
-    (IF (AND SB-ESCAPE-CHAR (CHAR= HOLDCHAR SB-ESCAPE-CHAR))
-        (SETF HOLDCHAR (LEXICAL-READ-CHAR STREAM :EOF)))
-    (COND ((CHAR= HOLDCHAR #\<)
-           'SBST::<<)
-          (T
-           (LEXICAL-UNREAD-CHAR STREAM)
-           'SBST::<)))) 
+(defun lex-@ (stream symbol)
+  (declare (ignore symbol))
+  (let (holdchar)
+    (setf holdchar (lexical-read-char stream :eof))
+    (if (and sb-escape-char (char= holdchar sb-escape-char))
+        (setf holdchar (lexical-read-char stream :eof)))
+    (cond ((char= holdchar #\^)
+           'sbst::@^)
+          ((char= holdchar #\<)
+           'sbst::@<)
+          ((char= holdchar #\>)
+           'sbst::@>)
+          (t
+           (lexical-unread-char stream)
+           'sbst::@)))) 
+(defun lex-/ (stream symbol)
+  (declare (ignore symbol))
+  (let (holdchar)
+    (setf holdchar (lexical-read-char stream :eof))
+    (if (and sb-escape-char (char= holdchar sb-escape-char))
+        (setf holdchar (lexical-read-char stream :eof)))
+    (cond ((char= holdchar #\-)
+           'sbst::/-)
+          ((char= holdchar #\+)
+           'sbst::/+)
+          (t
+           (lexical-unread-char stream)
+           (illegal-token-error "/")
+           :illegal-token)))) 
+(defun lex-! (stream symbol)
+  (declare (ignore symbol))
+  (let (holdchar)
+    (setf holdchar (lexical-read-char stream :eof))
+    (if (and sb-escape-char (char= holdchar sb-escape-char))
+        (setf holdchar (lexical-read-char stream :eof)))
+    (cond ((char= holdchar #\+)
+           'sbst::!+)
+          ((char= holdchar #\-)
+           'sbst::!-)
+          (t
+           (lexical-unread-char stream)
+           (illegal-token-error "!")
+           :illegal-token)))) 
+(defun lex-* (stream symbol)
+  (declare (ignore symbol))
+  (let (holdchar)
+    (setf holdchar (lexical-read-char stream :eof))
+    (if (and sb-escape-char (char= holdchar sb-escape-char))
+        (setf holdchar (lexical-read-char stream :eof)))
+    (cond ((char= holdchar #\*)
+           'sbst::**)
+          (t
+           (lexical-unread-char stream)
+           'sbst::*)))) 
+(defun lex-+ (stream symbol)
+  (declare (ignore symbol))
+  (let (holdchar)
+    (setf holdchar (lexical-read-char stream :eof))
+    (if (and sb-escape-char (char= holdchar sb-escape-char))
+        (setf holdchar (lexical-read-char stream :eof)))
+    (cond ((char= holdchar #\+)
+           'sbst::++)
+          (t
+           (lexical-unread-char stream)
+           'sbst::+)))) 
+(defun |lex-:| (stream symbol)
+  (declare (ignore symbol))
+  (let (holdchar)
+    (setf holdchar (lexical-read-char stream :eof))
+    (if (and sb-escape-char (char= holdchar sb-escape-char))
+        (setf holdchar (lexical-read-char stream :eof)))
+    (cond ((char= holdchar #\:)
+           (setf holdchar (lexical-read-char stream :eof))
+           (if (and sb-escape-char (char= holdchar sb-escape-char))
+               (setf holdchar (lexical-read-char stream :eof)))
+           (cond ((char= holdchar #\=)
+                  'sbst::|::=|)
+                 (t
+                  (lexical-unread-char stream)
+                  (illegal-token-error "::")
+                  :illegal-token)))
+          (t
+           (lexical-unread-char stream)
+           'sbst::|:|)))) 
+(defun lex-< (stream symbol)
+  (declare (ignore symbol))
+  (let (holdchar)
+    (setf holdchar (lexical-read-char stream :eof))
+    (if (and sb-escape-char (char= holdchar sb-escape-char))
+        (setf holdchar (lexical-read-char stream :eof)))
+    (cond ((char= holdchar #\<)
+           'sbst::<<)
+          (t
+           (lexical-unread-char stream)
+           'sbst::<)))) 

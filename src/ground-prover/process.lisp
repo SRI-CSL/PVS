@@ -68,7 +68,7 @@
   (setq  usealist nil )
   (setq  applysymlist nil )
 
-  (process '(NOT (EQUAL TRUE FALSE)))
+  (process '(not (equal true false)))
 )
 
 
@@ -94,21 +94,21 @@
 
 (defun process(lit)
    (prog(s)
-     (cond ( (and (consp lit) (eq (funsym lit) 'NOT))
+     (cond ( (and (consp lit) (eq (funsym lit) 'not))
 	     (setq s (nsolvecan (arg1 lit)))
 	   )
-	   ((or (and (consp lit) (eq (car lit) 'TRUE))
-		(eq lit 'TRUE))
-	    (return 'TRUE))
-	   ((or (and (consp lit) (eq (car lit) 'FALSE))
-		(eq lit 'FALSE))
-	    (RETFALSE))
+	   ((or (and (consp lit) (eq (car lit) 'true))
+		(eq lit 'true))
+	    (return 'true))
+	   ((or (and (consp lit) (eq (car lit) 'false))
+		(eq lit 'false))
+	    (retfalse))
 	   ( t
 	     (setq s (solvecan lit))
 	   )
      )
-     (cond ( (equal s '(TRUE))  (return 'TRUE))
-	   ( (equal s '(FALSE)) (RETFALSE))
+     (cond ( (equal s '(true))  (return 'true))
+	   ( (equal s '(false)) (retfalse))
 	   ( t                  (return (process1 s)))
      )
    )
@@ -126,21 +126,21 @@
 
 (defun process-no-canon (lit)
   (prog(s)
-     (cond ( (and (consp lit) (eq (funsym lit) 'NOT))
+     (cond ( (and (consp lit) (eq (funsym lit) 'not))
 	     (setq s (nsolve (arg1 lit)))
 	   )
-	   ((or (and (consp lit) (eq (car lit) 'TRUE))
-		(eq lit 'TRUE))
-	    (return 'TRUE))
-	   ((or (and (consp lit) (eq (car lit) 'FALSE))
-		(eq lit 'FALSE))
-	    (RETFALSE))
+	   ((or (and (consp lit) (eq (car lit) 'true))
+		(eq lit 'true))
+	    (return 'true))
+	   ((or (and (consp lit) (eq (car lit) 'false))
+		(eq lit 'false))
+	    (retfalse))
 	   ( t
 	     (setq s (solve lit))
 	   )
      )
-     (cond ( (equal s '(TRUE))  (return 'TRUE))
-	   ( (equal s '(FALSE)) (RETFALSE))
+     (cond ( (equal s '(true))  (return 'true))
+	   ( (equal s '(false)) (retfalse))
 	   ( t                  (return (process1 s)))
      )
    )
@@ -148,7 +148,7 @@
 
 
 (defun solvecan(atf)
-  (cond ((and (consp atf) (eq (funsym atf) 'EQUAL))
+  (cond ((and (consp atf) (eq (funsym atf) 'equal))
 	 (let ((lside (canon (lside atf)))
 	       (rside (canon (rside atf))))
 	   (if (subtermof lside rside)
@@ -159,7 +159,7 @@
 
 
 (defun nsolvecan(atf)
-  (cond ((and (consp atf) (eq (funsym atf) 'EQUAL))
+  (cond ((and (consp atf) (eq (funsym atf) 'equal))
 	 (let ((lside (canon (lside atf)))
 	       (rside (canon (rside atf))))
 	   (if (subtermof lside rside)
@@ -185,16 +185,16 @@
     (loop while s do
 	   (setq exp (pop s))
 	   (cond
-	    ((eq exp 'TRUE))
-	    ((eq exp 'FALSE) (RETFALSE))
+	    ((eq exp 'true))
+	    ((eq exp 'false) (retfalse))
 	    (t 
 	     (case (funsym exp)
-	       (EQUAL       (pr-merge (lside exp) (rside exp)))
-	       (NEQUAL      (addneq exp))
-	       (LESSEQP     (addineq exp))
-	       (LESSP       (addineq exp))
-	       (GREATEREQP  (addineq exp))
-	       (GREATERP    (addineq exp))
+	       (equal       (pr-merge (lside exp) (rside exp)))
+	       (nequal      (addneq exp))
+	       (lesseqp     (addineq exp))
+	       (lessp       (addineq exp))
+	       (greatereqp  (addineq exp))
+	       (greaterp    (addineq exp))
 	       (t           (push exp bools))
 	       )
 	     )
@@ -221,20 +221,20 @@
      (setq number_ineq (member (or (prtype term1) (prtype term2))
 			       '(integer number)))
      (when number_ineq
-       (setq t1>t2 (newcontext (process `(GREATEREQP ,term1 ,term2))))
-       (setq t2>t1 (newcontext (process `(GREATEREQP ,term2 ,term1)))))
-     ;(setq t1>t2 (or (equal (pr-find `(GREATEREQP ,term1 ,term2)) 'TRUE)
-     ;                (equal (pr-find `(LESSEQP ,term2 ,term1)) 'TRUE)))
-     ;(setq t2>t1 (or (equal (pr-find `(GREATEREQP ,term2 ,term1)) 'TRUE)
-     ;                (equal (pr-find `(LESSEQP ,term1 ,term2)) 'TRUE)))
+       (setq t1>t2 (newcontext (process `(greatereqp ,term1 ,term2))))
+       (setq t2>t1 (newcontext (process `(greatereqp ,term2 ,term1)))))
+     ;(setq t1>t2 (or (equal (pr-find `(greatereqp ,term1 ,term2)) 'true)
+     ;                (equal (pr-find `(lesseqp ,term2 ,term1)) 'true)))
+     ;(setq t2>t1 (or (equal (pr-find `(greatereqp ,term2 ,term1)) 'true)
+     ;                (equal (pr-find `(lesseqp ,term1 ,term2)) 'true)))
      (when number_ineq
-       (cond ((AND
-	       (equal t1>t2 'TRUE)
-	       (equal t2>t1 'TRUE)) (RETFALSE))
-	     ((equal t1>t2 'TRUE)
-	      (setq s (append (solve `(GREATERP ,term1 ,term2)) s)))
-	     ((equal t2>t1 'TRUE)
-	      (setq s (append (solve `(GREATERP ,term2 ,term1)) s)))))
+       (cond ((and
+	       (equal t1>t2 'true)
+	       (equal t2>t1 'true)) (retfalse))
+	     ((equal t1>t2 'true)
+	      (setq s (append (solve `(greaterp ,term1 ,term2)) s)))
+	     ((equal t2>t1 'true)
+	      (setq s (append (solve `(greaterp ,term2 ,term1)) s)))))
      (setq fnsym (cons term1 term2))
      (adduse (list fnsym term1) term1)
      (adduse (list fnsym term2) term2)))
@@ -257,7 +257,7 @@
     (cond
      ((equal t1 t2) (return nil))
      ((and (consp t1) (consp (car t1)))    ;t1, t2 known to be unequal	
-      (RETFALSE) ))
+      (retfalse) ))
     (cond ((and (consp t1) (is-lambda-expr t1))  ; (SJ 5/13/86) added:
 	   (setq t2 (prog1 t1 (setq t1 t2)))     ; swap to make lambda expr the find.
 	   (setq t2-is-lambda t))
@@ -287,11 +287,11 @@
 		(eq (apply-operator u) t1))
 	   (setq newsig
 		 (sigma newsig))
-	   (setq s (append (solve `(EQUAL ,(pr-find u) ,(canonsig-merge newsig))) s))
+	   (setq s (append (solve `(equal ,(pr-find u) ,(canonsig-merge newsig))) s))
 	   )
 	  ((uninterp newsig)		; SO 9/28/90 was u - is now newsig
 	   (putsig newsig u)
-	   (SETQ USE2 (COPY-LIST (USE T2))) ; MES 6/22/88 (CANONSIG call in interpreted term case below can add to (USE T2))
+	   (setq use2 (copy-list (use t2))) ; MES 6/22/88 (CANONSIG call in interpreted term case below can add to (USE T2))
 	   (setq vptr (push u use2)) ;;;DAC 2/15/94: Changed (push u use2) to (push newsig use2) since u would not contain t2.
 	   ;;; DAC 2/28/94: Undid previous change: It is ok for u to not
 	   ;;; contain t2 as long as sig(u) does.
@@ -302,7 +302,7 @@
 			(setq s 
 			      (append
 			       (solve
-				`(EQUAL ,(pr-find u) 
+				`(equal ,(pr-find u) 
 					,(pr-find (cadr vptr))))
 			       s )))
 
@@ -326,18 +326,18 @@
 					   (if (equal arg t1) t2 arg)))
 		    (solvelist (solve
 				(cons (funsym u) args))))
-	       (cond ((and (memq (funsym u) '(GREATEREQP LESSEQP))
-			   (equal solvelist '(TRUE)))
+	       (cond ((and (memq (funsym u) '(greatereqp lesseqp))
+			   (equal solvelist '(true)))
 		      (if (equal
 			   (catch 'context
 			       (solve
-				(cons (if (eq (funsym u) 'GREATEREQP)
-					  'LESSEQP
-					  'GREATEREQP)
+				(cons (if (eq (funsym u) 'greatereqp)
+					  'lesseqp
+					  'greatereqp)
 				      args)))
 			     
-			   '(TRUE))
-			  (setq s (append (solvecan `(EQUAL ,@args)) s))
+			   '(true))
+			  (setq s (append (solvecan `(equal ,@args)) s))
 			  (setq s (append solvelist s))))
 		     (t (setq s (append solvelist s))))))
 	    ((or (isapplyupdate newsig) (isapplylambda newsig))
@@ -347,7 +347,7 @@
 					; and as apply`s of updates and lambdas.
 	     (setq newsig
 		   (sigma newsig))
-	     (push `(EQUAL ,u ,(canonsig-merge newsig)) s))
+	     (push `(equal ,u ,(canonsig-merge newsig)) s))
 
 	    ((equal (pr-find u) (pr-find 'false))
 	     (print "msg from merge - this should not have occurred
@@ -358,7 +358,7 @@
 		; (sigma newsig))
 	   ; 7-24-91: dac changed above sigma no longer needed due to change in canonsig.
 	   ; bug manifested itself in needing recursive call for sigupdate.
-	   (push `(EQUAL ,u ,(canonsig-merge newsig)) s))) ))) 
+	   (push `(equal ,u ,(canonsig-merge newsig)) s))) ))) 
 
 ; ------------------------------------------------------------------------
 
@@ -382,7 +382,7 @@
   (cond
    ((and (not *protecting-applications*)
 	 (consp term)
-	 (eq (funsym term) 'PROTECT))
+	 (eq (funsym term) 'protect))
     (let ((*protecting-applications* t))
       (canonsig-canon (signature term dont-add-use) dont-add-use)))
    (t (canonsig-canon (signature term dont-add-use) dont-add-use))))
@@ -483,16 +483,16 @@
    ((is-apply-n-x (funsym term)) (sigapply term))
    ((is-tupsel-n (funsym term)) (sigtupsel term))
    (t (case (funsym term)
-	(PLUS       (sigplus term))
-	(TIMES      (sigtimes term))
-	(DIVIDE     (sigdivide term))
-	(MINUS      (sigminus term))
-	(DIFFERENCE (sigdifference term))
-;	(TUPSEL     (sigtupsel term))
-;	(ARRAYSEL   (sigapply term))
-	(UPDATE     (sigupdate term))
-;	(ARRAYREST  (sigarrayrest term))
-	(FLOOR      (sigfloor term))
+	(plus       (sigplus term))
+	(times      (sigtimes term))
+	(divide     (sigdivide term))
+	(minus      (sigminus term))
+	(difference (sigdifference term))
+;	(tupsel     (sigtupsel term))
+;	(arraysel   (sigapply term))
+	(update     (sigupdate term))
+;	(arrayrest  (sigarrayrest term))
+	(floor      (sigfloor term))
 	(t          term)
       ))))
 
@@ -520,9 +520,9 @@
     (cond
      ((atom atf)
       (ncons (case atf
-	       (TRUE  'TRUE)
-	       (FALSE 'FALSE)
-	       (t     `(EQUAL ,atf TRUE))
+	       (true  'true)
+	       (false 'false)
+	       (t     `(equal ,atf true))
 	       )))
      ((and *lift-if-in-solve*
 	   *lambda-reduced* (needs-bool-lifting atf))	; added for bool lifting (sj).
@@ -530,12 +530,12 @@
        (needed-if*
 	(ncons (lift-bools (liftif atf))))
        (t (ncons (lift-bools atf))))) 
-     ((memq (funsym atf) '(IF IF*))
+     ((memq (funsym atf) '(if if*))
       (if *split-on-if-in-solve*
 	  (let ((leftsolve (catch 'context (solve (arg2 atf))))
 		(rightsolve (catch 'context (solve (arg3 atf)))))
 	    (if (equal leftsolve rightsolve)
-		(if (member leftsolve '(FALSE TRUE))
+		(if (member leftsolve '(false true))
 					; Sept 14, 1990: DAC
 					; solve should always return a list
 					; but catching 'context might not.
@@ -545,7 +545,7 @@
 	(if (equal (arg2 atf) (arg3 atf))
 	    (solve (arg2 atf))
 	  (ncons atf))))
-     ((memq (funsym atf) '(LESSP LESSEQP GREATERP GREATEREQP))
+     ((memq (funsym atf) '(lessp lesseqp greaterp greatereqp))
       (arithsolve atf))
      (t
       ;; KLUDGE -- look at arg2 if arg1 is nil
@@ -556,14 +556,14 @@
 	  functional
 	  bool )
 	 (ncons (case (funsym atf)		
-		  (EQUAL  (cond ((equal (arg1 atf) (arg2 atf)) 'TRUE)
+		  (equal  (cond ((equal (arg1 atf) (arg2 atf)) 'true)
 				((and (memq (arg1 atf) '(true false))
 				      (not (memq (arg2 atf) '(true false))))
-				 `(EQUAL ,(arg2 atf) ,(arg1 atf)))
+				 `(equal ,(arg2 atf) ,(arg1 atf)))
 				(t atf)
 				))
-		  ;;		   ((LESSP NEQUAL LESSEQP GREATERP GREATEREQP) atf) ;NSH
-		  (t      `(EQUAL ,atf TRUE)) )))
+		  ;;		   ((lessp nequal lesseqp greaterp greatereqp) atf) ;NSH
+		  (t      `(equal ,atf true)) )))
 	(number  (arithsolve atf))
 	(integer (arithsolve atf))
 ;	(set     (setsolve atf))
@@ -591,31 +591,31 @@
     (cond
      ((atom atf)
       (ncons (case atf
-	       (TRUE  'FALSE)
-	       (FALSE 'TRUE)
-	       (t     `(EQUAL ,atf FALSE)) )))
+	       (true  'false)
+	       (false 'true)
+	       (t     `(equal ,atf false)) )))
      ((and *lift-if-in-solve*
 	   *lambda-reduced* (needs-bool-lifting atf)) ; added for bool lifting (sj).
       (cond
        (needed-if*
-	(ncons (list 'NOT (lift-bools (liftif atf)))))
-       (t (ncons (list 'NOT (lift-bools atf))))))
+	(ncons (list 'not (lift-bools (liftif atf)))))
+       (t (ncons (list 'not (lift-bools atf))))))
      ((memq (funsym atf) '(if if*))
       (if *split-on-if-in-solve*
 	  (let ((leftnsolve (catch 'context (nsolve (arg2 atf))))
 		(rightnsolve (catch 'context (nsolve (arg3 atf)))))
 	    (if (equal leftnsolve rightnsolve)
-		(if (member leftnsolve '(FALSE TRUE))
+		(if (member leftnsolve '(false true))
 					; Sept 14, 1990: DAC
 					; nsolve should always return a list
 					; but catching 'context might not.
 		    (ncons leftnsolve)
 		  leftnsolve)
-	      (ncons (list 'NOT (liftif* atf)))))
+	      (ncons (list 'not (liftif* atf)))))
 	(if (equal (arg2 atf) (arg3 atf))
 	    (nsolve (arg2 atf))
-	  (ncons (list 'NOT (liftif* atf))))))
-     ((memq (funsym atf) '(LESSP LESSEQP GREATERP GREATEREQP))
+	  (ncons (list 'not (liftif* atf))))))
+     ((memq (funsym atf) '(lessp lesseqp greaterp greatereqp))
       (arithnsolve atf))
      (t
 					; KLUDGE -- look at arg2 if arg1 is nil
@@ -626,23 +626,23 @@
 	  nil
 	  functional ) 
 	 (ncons (case (funsym atf)		
-		  (EQUAL  (cond
-			   ((equal (arg1 atf) (arg2 atf)) 'FALSE)
+		  (equal  (cond
+			   ((equal (arg1 atf) (arg2 atf)) 'false)
 			   (t
 			    (prog (result)
 			      (setq result
 				    (newcontext (process1 (ncons atf)))
 				    )
 			      (return
-			       (cond ((eq result 'TRUE) (RETFALSE))
-				     ((eq result 'FALSE) 'TRUE)
-				     (t  `(NEQUAL ,(arg1 atf)
+			       (cond ((eq result 'true) (retfalse))
+				     ((eq result 'false) 'true)
+				     (t  `(nequal ,(arg1 atf)
 						  ,(arg2 atf)
 						  ))))))))
-		  (NEQUAL (cond ((equal (arg1 atf)(arg2 atf)) 'TRUE)
-				(t `(EQUAL ,(arg1 atf) ,(arg2 atf)))))
-		  ((LESSP LESSEQP GREATERP GREATEREQP) (negineq atf)) ;NSH
-		  (t      `(EQUAL ,atf FALSE)) )))
+		  (nequal (cond ((equal (arg1 atf)(arg2 atf)) 'true)
+				(t `(equal ,(arg1 atf) ,(arg2 atf)))))
+		  ((lessp lesseqp greaterp greatereqp) (negineq atf)) ;NSH
+		  (t      `(equal ,atf false)) )))
 	(number  (arithnsolve atf))
 	(integer (arithnsolve atf))
 ;	(set     (setnsolve atf))
@@ -704,8 +704,8 @@
 (defun adduse(u v)
   (unless (and (consp u)
 	       (or (equal (car u) 'equal)
-		   (equal (car u) 'IF)
-		   (equal (car u) 'IF*)))
+		   (equal (car u) 'if)
+		   (equal (car u) 'if*)))
     (prog(ul)
        (or (member u (setq ul (use v)) :test #'equal)
 	   (push (cons v (cons u ul)) usealist)
@@ -725,7 +725,7 @@
   (and (consp exp)
        (is-apply-n-x (funsym exp))
        (listp (arg1 exp))
-       (eq (funsym (arg1 exp)) 'UPDATE)))
+       (eq (funsym (arg1 exp)) 'update)))
 
 ;;; 13-AUG-90 DAC: made applies of updates and applies of lambdas interpreted.
 
@@ -769,7 +769,7 @@
   )
 )
 
-(defun boolp(u) (eq (prtype u) 'BOOL))
+(defun boolp(u) (eq (prtype u) 'bool))
 
 
 ; ------------------------------------------------------------------------
@@ -891,7 +891,7 @@
 ; to see if it still works correctly when IFs become IF*'s there.
 
 (defun liftif* (exp &optional (in-prover t))
-  (make-if*-exp exp (collect-conditionals exp NIL T) NIL in-prover))
+  (make-if*-exp exp (collect-conditionals exp nil t) nil in-prover))
 
 (defun lamvar-in-exp? (exp)
   (cond
@@ -901,7 +901,7 @@
 
 (defun unbound-lamvar-in-exp? (exp &optional (arity-sum 0))
   (if (consp exp)
-      (if (eq (funsym exp) 'LAMBDA)
+      (if (eq (funsym exp) 'lambda)
 	  (unbound-lamvar-in-exp? (caddr exp) (+ arity-sum (cadr exp)))
 	(loop for e in exp do
 	      (if (unbound-lamvar-in-exp? e arity-sum) (return t))))
@@ -921,39 +921,39 @@
 				      (pushnew (arg1 exp) conds :test #'equal))
 				    t)
 	      t))
-	    (t (collect-conditionals (argsof exp) conds NIL)))
+	    (t (collect-conditionals (argsof exp) conds nil)))
 	conds)
     (if (consp exp)
 	(collect-conditionals (cdr exp)
-			      (collect-conditionals (car exp) conds t) NIL)
+			      (collect-conditionals (car exp) conds t) nil)
       conds)))
 
 (defun make-if*-exp (exp conds alist in-prover)
   (if (consp conds)
       `(,(if in-prover
-	     'IF*
-	   'IF)
+	     'if*
+	   'if)
 	,(liftif* (car conds)) ;; 6-Dec-90: DAC added lifitif* to lift ifs from conditional.
 	,(make-if*-exp exp (cdr conds)
-		       (cons (cons (car conds) 'TRUE) alist) in-prover)
+		       (cons (cons (car conds) 'true) alist) in-prover)
 	,(make-if*-exp exp (cdr conds)
-		       (cons (cons (car conds) 'FALSE) alist) in-prover))
+		       (cons (cons (car conds) 'false) alist) in-prover))
     (if (consp exp)
 	(case (funsym exp)
 	  ((if* if)
 	   (cond
 	    ((eq (cdr (assoc (arg1 exp) alist :test #'equal))
-		 'TRUE)
+		 'true)
 	     (make-if*-exp (arg2 exp) conds alist in-prover))
 	    ((eq (cdr (assoc (arg1 exp) alist :test #'equal))
-		 'FALSE)
+		 'false)
 	     (make-if*-exp (arg3 exp) conds alist in-prover))
 	    (t (cons (funsym exp)
 		     (loop for e in (argsof exp) collect
 			   (make-if*-exp e conds alist in-prover))))))
 	  (t (cons (funsym exp)
 		   (loop for e in (argsof exp) collect
-			 (make-if*-exp e NIL alist in-prover)))))
+			 (make-if*-exp e nil alist in-prover)))))
       exp)))
 
 ;;NSH(12/17):  newexpandbools only lifts IFs up to the top-level 
@@ -1014,12 +1014,12 @@
 (defun needs-bool-lifting1 (exp)
   (cond
     ((atom exp) nil)
-    ((memq (funsym exp) '(AND OR IMPLIES NOT IF IFF))
+    ((memq (funsym exp) '(and or implies not if iff))
      (throw 'bool-lifting t))
     ;; the next case probably wont occur -  need to check ***
-    ((and (eq (funsym exp) 'EQUAL) (eq (prtype (arg1 exp)) 'bool))
+    ((and (eq (funsym exp) 'equal) (eq (prtype (arg1 exp)) 'bool))
      (throw 'bool-lifting t))
-    ((eq (funsym exp) 'LAMBDA) nil)
+    ((eq (funsym exp) 'lambda) nil)
     (t (loop for subexp in (argsof exp) thereis (needs-bool-lifting1 subexp)))))
 				    
 
@@ -1059,24 +1059,24 @@
 
 (defun lift-embedded-bools1 (f embeddedf bool-level)
   (cond
-   ((or (equal f 'TRUE) (equal f 'FALSE))
+   ((or (equal f 'true) (equal f 'false))
     f)
    ;; dont go inside lambdas.
-   ((and (consp f) (eq (funsym f) 'LAMBDA))
+   ((and (consp f) (eq (funsym f) 'lambda))
     f)
    ((eq (prtype f) 'bool)
     (throw 'lift-embedded  
       (lift-bools
-       `(IF ,f ,
-	    (subst-expr 'TRUE f embeddedf)
-	    ,(subst-expr 'FALSE f embeddedf))
+       `(if ,f ,
+	    (subst-expr 'true f embeddedf)
+	    ,(subst-expr 'false f embeddedf))
        bool-level)))
    ((qnumberp f) f)
    ((symbolp f) f)
-   ((eq (funsym f) 'IF)
+   ((eq (funsym f) 'if)
     (throw 'lift-embedded
       (lift-bools
-      `(IF ,(arg1 f)
+      `(if ,(arg1 f)
 	   ,(subst-expr (arg2 f) f embeddedf)
 	   ,(subst-expr (arg3 f) f embeddedf))
       bool-level)))

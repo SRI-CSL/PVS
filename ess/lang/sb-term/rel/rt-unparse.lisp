@@ -28,8 +28,8 @@
  	  *uterm-bp-count* *uterm-son-count* *uterm-nt-name*
 	  bracket-nesting-const
 	  *as-stack* *uterm*
-	  *apply-LT-dis-fun* *apply-LT-des-fun*
-	  *apply-LT-token-cons-fun* apply-LT-token-constructor
+	  *apply-lt-dis-fun* *apply-lt-des-fun*
+	  *apply-lt-token-cons-fun* apply-lt-token-constructor
 	  dis-op get-term-args mk-unp-rept
 	  init-as-stack as-peek as-pop as-push as-push-args
 	  token
@@ -105,9 +105,9 @@
 
 (defvar *uterm-nt-name* nil)
 
-(defvar *apply-LT-dis-fun* nil)
-(defvar *apply-LT-des-fun* nil)
-(defvar *apply-LT-token-cons-fun* nil)
+(defvar *apply-lt-dis-fun* nil)
+(defvar *apply-lt-des-fun* nil)
+(defvar *apply-lt-token-cons-fun* nil)
 
 (defvar *as-stack* nil)
 (defvar *uterm* nil)
@@ -196,7 +196,7 @@
 					     :omit-first t))))
 					     
 
-(defun apply-LT-token-constructor (kind value)
+(defun apply-lt-token-constructor (kind value)
   (ecase kind
     ((sbst::id sbst::identifier :id :identifier)
      (make-token :kind :lt
@@ -590,12 +590,12 @@
   (let* ((token-map (if *no-escapes*
 			*lt-token-map*
 			*lt-esc-token-map*))
-	 (value (funcall (the compiled-function *apply-LT-des-fun*) kind as))
+	 (value (funcall (the compiled-function *apply-lt-des-fun*) kind as))
 	 (token (cond ((gethash (cons kind value) token-map))
 		      (t
 		       (setf (gethash (cons kind value) token-map)
 			     (funcall (the compiled-function
-					   *apply-LT-token-cons-fun*)
+					   *apply-lt-token-cons-fun*)
 				      kind
 				      value))))))
     (queue-uterm-son (make-uterm-lt kind as token))))
@@ -605,7 +605,7 @@
 (eval-when (compile eval load)
 
 (defmacro dis-lt (kind as)
-  `(funcall *apply-LT-dis-fun*
+  `(funcall *apply-lt-dis-fun*
 	    ,kind
 	    ,as))
 

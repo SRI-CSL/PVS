@@ -329,11 +329,13 @@
 			(fetch-symbol)
 			(let* ((type (fetch-obj (object-store ptr)))
 			       (fetcher (get type 'fetcher)))
+			  ;;(format t "~%Type = ~a, fetcher = ~a" type fetcher)
 			  (if fetcher
 			      (funcall fetcher)
 			      (progn
 				(register-for-updating)
 				(fast-make-instance type)))))))
+	  ;;(format t "~%val = ~a" val)
 	  (when *registered-for-updating*
 	    (queue-update-fetched val ptr))
 	  (setf (svref *fetch-object-table* ptr) val)

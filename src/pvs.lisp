@@ -1227,7 +1227,7 @@
   (if (and (member origin '("ppe" "tccs") :test #'string=)
 	   (not (get-theory name)))
       (pvs-message "~a is not typechecked" name)
-      (case (intern (string-upcase origin))
+      (case (intern (string-downcase origin))
 	(ppe (let* ((theories (ppe-form (get-theory name)))
 		    (typespec (if unproved?
 				  'unproved-formula-decl
@@ -1287,8 +1287,8 @@
 			(pvs-y-or-n-p-with-timeout
 			 "Formula has already been proved: try again? "))
 		    (if (pvs-y-or-n-p-with-timeout "Rerun Existing proof? ")
-			t 'NO))
-	       'NO))
+			t 'no))
+	       'no))
 	  (unproved? (pvs-message "No more unproved formulas below"))
 	  (t (pvs-message "Not at a formula declaration")))))
 
@@ -2280,7 +2280,7 @@
   *prove-formula-proof*)
 
 (defun show-strategy (strat-name)
-  (let* ((strat-id (intern (string-upcase strat-name)))
+  (let* ((strat-id (intern (string-downcase strat-name)))
 	 (strategy (or (gethash strat-id *rulebase*)
 		       (gethash strat-id *steps*)
 		       (gethash strat-id *rules*))))

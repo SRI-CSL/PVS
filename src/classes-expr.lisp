@@ -10,7 +10,9 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(in-package 'pvs)
+(in-package :pvs)
+
+(export '(index assignments))
 
 ;;; Provide a class on which to hang syntactic information
 
@@ -356,12 +358,22 @@
   (declared-type :parse t)
   type)
 
+(defcl mapping-def (mapping)
+  mapped-decl)
+(defcl mapping-subst (mapping))
+(defcl mapping-rename (mapping)
+  mapped-decl)
+
 ;;; Mapping-with-formals is used for mappings of the form
 ;;;  f(a,b:int)(x:bool) = g(a,x,b)
 ;;; which is treated the same as
 ;;;  f = lambda (a,b:int)(x:bool): g(a,x,b)
 (defcl mapping-with-formals (mapping)
   (formals :parse t))
+
+(defcl mapping-def-with-formals (mapping-with-formals mapping-def))
+(defcl mapping-subst-with-formals (mapping-with-formals mapping-subst))
+(defcl mapping-rename-with-formals (mapping-with-formals mapping-rename))
 
 (defcl mapping-rhs (actual)
   (expr :parse t)
