@@ -90,7 +90,9 @@
 (defstruct (formula-entry (:conc-name fe-))
   id
   status
-  proof-refers-to)
+  proof-refers-to
+  new-ground?
+  proof-time)
 
 (defstruct (declaration-entry (:conc-name de-))
   id
@@ -455,11 +457,18 @@ pvs-strategies files.")
 		    (if valid?
 			(fe-status fentry)
 			(case (fe-status fentry)
-			  ((proved-complete proved-incomplete proved unchecked)
+			  ((proved-complete proved-incomplete proved
+					    unchecked)
 			   'unchecked)
 			  (unfinished 'unfinished)
 			  (t 'untried))))
 		   (t 'untried))
+     :new-ground? (cond ((typechecked? decl)
+			 (new-ground? decl))
+			(fentry (fe-new-ground? fentry)))
+     :proof-time (cond ((typechecked? decl)
+			(proof-time decl))
+		       (fentry (fe-proof-time fentry)))
      :proof-refers-to (if (proof-refers-to decl)
 			  (mapcar #'create-declaration-entry
 				  (remove-if-not
@@ -683,16 +692,12 @@ pvs-strategies files.")
 	    (t (setf (gethash filename *pvs-files*)
 		     (cons (file-write-date (make-specpath filename))
 			   theories))
-;	       (mapc #'(lambda (th)
-;			 (setf (gethash (id th) *pvs-modules*) th))
-;		     theories)
 	       (dolist (theory theories)
 		 (update-restored-theories theory))
-	       (pvs-message "Restored file ~a (~{~a~^, ~}) in ~,2f seconds"
-			filename
-			(mapcar #'id theories)
-			(/ (- (get-internal-real-time) start-time)
-			   internal-time-units-per-second 1.0)))))))
+	       (pvs-message "Restored file ~a (~{~a~^, ~}) in ~,2,-3f seconds"
+		 filename
+		 (mapcar #'id theories)
+		 (realtime-since start-time)))))))
 
 (defun restore-filename-error (filename condition)
   (remhash filename *pvs-files*)
