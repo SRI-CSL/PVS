@@ -866,13 +866,14 @@ generated")
 (defun generate-accessor (entry adt)
   ;; entry is of the form (((adtdecl range-type deps) adtdecl ...)
   ;;                       ((adtdecl range-type deps) adtdecl ...) ...)
+  ;; where each element reflects a different, but common, range type.
   (let* ((domain (get-accessor-domain-type entry adt))
 	 (range (get-accessor-range-type entry domain adt))
 	 (acc-type (make-accessor-funtype domain range (caddr (caar entry))))
 	 (acc-decl (mk-adt-accessor-decl (id (caaar entry)) acc-type)))
     (typecheck-adt-decl acc-decl)
-    (when (cddr entry)
-      (make-common-accessor-subtype-judgements (cdr entry) domain adt))
+    (when (cddr (car entry))
+      (make-common-accessor-subtype-judgements (cdar entry) domain adt))
     acc-decl))
 
 (defun make-common-accessor-subtype-judgements (adtdecls domain adt)
@@ -2297,7 +2298,7 @@ generated")
 	 (frtype (if (null adt-subtypes)
 		     rtype
 		     (generate-adt-map-subtypes-rangetype
-		      adt-subtypes adt postype-pairs avar rtype)))
+		      adt-subtypes adt fpairs avar rtype)))
 	 (adtinst (typecheck (mk-map-adtinst fpairs adt)))
 	 (curried-cases
 	  (mk-cases-expr avar
