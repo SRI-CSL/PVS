@@ -1754,7 +1754,8 @@
 		(acons bvar "judgement" *compatible-pred-reason*))
 	       (incs (compatible-preds (subtype decl) (type decl) bvar)))
 	  (cond (incs
-		 (generate-subtype-tcc bvar (type decl) incs)
+		 (unless (eq *generate-tccs* 'none)
+		   (generate-subtype-tcc bvar (type decl) incs))
 		 (add-to-known-subtypes (subtype decl) (type decl)))
 		(t (pvs-warning
 		       "Subtype judgement is superfluous~@[ (on line ~d)~]:~
@@ -1764,9 +1765,8 @@
 (defmethod copy-judgement-subtype-without-types ((te type-application))
   (lcopy te
     'parameters (mapcar #'(lambda (p)
-			    (if (and (bind-decl? p)
-				     (not (untyped-bind-decl? p)))
-				(change-class (copy p) 'untyped-bind-decl)
+			    (if (bind-decl? p)
+				(mk-name-expr p)
 				p))
 		  (parameters te))))
 
