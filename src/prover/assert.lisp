@@ -578,7 +578,11 @@
 
 (defmethod connective-occurs? 
     ((expr update-expr))
-  NIL);;NSH(5/8/99): update-or-connective-occurs? is T on updates.
+  (with-slots (expression assignments) expr
+    (or (connective-occurs? expression)
+	(connective-occurs? assignments))))
+   ;;NSH(5/8/99): update-or-connective-occurs? is T on updates.
+   ;;NSH(6/2/99): changed from NIL to look inside for connectives.
 
 (defmethod connective-occurs? ((expr expr))
   NIL)
