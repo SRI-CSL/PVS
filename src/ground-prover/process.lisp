@@ -182,7 +182,7 @@
 (defun process1(s)
   (prog(bools exp)
     (loop while s do
-	   (setq exp (pop s))
+	   (setq exp (pop s));; (format t "~%Process1: ~a " exp)
 	   (cond
 	    ((eq exp 'true))
 	    ((eq exp 'false) (retfalse))
