@@ -347,7 +347,8 @@
 	    (multiple-value-bind (sig newfmla)
 		(assert-if-inside fmla)
 					;(break "2")
-	      (if (memq *assert-flag* '(simplify rewrite))
+	      (if (or (connective-occurs? newfmla)
+		      (memq *assert-flag* '(simplify rewrite)))
 		  (values sig (if (eq sig '?) (copy sform
 						'formula newfmla)
 				  sform))
@@ -647,6 +648,7 @@
 	    (conditions (if (not (listp conditions))
 			    (list conditions)
 			    conditions))
+	    (condition-result nil)
 	    )
 	(loop for condition
 	      in conditions  ;;NSH(5.18.97):restored check to catch
@@ -654,10 +656,16 @@
 	      when (and (not (false-p condition)) ;;; DAC: condition
 			;;;should never be false
 			(not (check-for-connectives? condition)))
-	      do (call-process condition *dp-state* *alists*))
+	      do (setq condition-result
+		       (call-process condition *dp-state* *alists*)))
 	;;    (format T "~%  Simplifying ~a under conditions ~{~a, ~}"
 	;;	       expr conditions);;NSH(10.10.94)omitting for now.
-	(assert-if expr)))))
+	(if (false-p condition-result)
+	    (nprotecting-cong-state
+	     ((*dp-state* *top-dp-state*)
+	      (*alists* *top-alists*))
+	     (assert-if expr))
+	    (assert-if expr))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;assert-if-inside rewrites only inside the expression but leaves
