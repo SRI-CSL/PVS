@@ -1160,6 +1160,8 @@ extended.  Thus the next time this context is entered, the prelude will
 automatically be extended (by typechecking the libraries if necessary)."
   (interactive (list (pvs-complete-library-path
 		      "(Load prelude library from) directory: ")))
+  (unless (interactive-p)
+    (setq dir (pvs-get-library-path dir)))
   (let ((default-directory (pvs-current-directory t)))
     (unless (file-directory-p dir)
       (error "Must specify an existing directory"))
