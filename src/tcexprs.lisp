@@ -29,7 +29,9 @@
 	 (when (and expected
 		    (not (eq *generate-tccs* 'none)))
 	   (let ((*no-conversions-allowed* t))
-	     (check-for-subtype-tcc ex expected))))
+	     (if (eq *generate-tccs* 'all)
+		 (check-for-tccs ex expected)
+		 (check-for-subtype-tcc ex expected)))))
 	(t (call-next-method)
 	   (when expected
 	     (set-type ex expected))))
