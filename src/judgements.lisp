@@ -221,12 +221,13 @@
     (let ((sjdecl (find-if #'(lambda (jd) (subtype-of? (type jd) (type jdecl)))
 		    (minimal-judgements entry))))
       (cond (sjdecl
-	     (pvs-warning
-		 "Judgement ~a.~a (line ~d) is not needed;~%~
-                  it is subsumed by ~a.~a (line ~d)"
-	       (id (module jdecl)) (ref-to-id jdecl) (line-begin (place jdecl))
-	       (id (module sjdecl)) (ref-to-id sjdecl)
-	       (line-begin (place sjdecl))))
+;; 	     (pvs-warning
+;; 		 "Judgement ~a.~a (line ~d) is not needed;~%~
+;;                   it is subsumed by ~a.~a (line ~d)"
+;; 	       (id (module jdecl)) (ref-to-id jdecl) (line-begin (place jdecl))
+;; 	       (id (module sjdecl)) (ref-to-id sjdecl)
+;; 	       (line-begin (place sjdecl)))
+	     )
 	    (t (clrhash (judgement-types-hash (current-judgements)))
 	       (setf (minimal-judgements entry)
 		     (cons jdecl
@@ -1773,24 +1774,26 @@
   (assert (saved-context theory))
   (let ((theory-known-subtypes (known-subtypes (saved-context theory))))
     (dolist (elt theory-known-subtypes)
-      (let ((th-subtype-elt
-	     (if (or (and (memq elt (dependent-known-subtypes theory))
-			  (actuals theoryname))
-		     (mappings theoryname))
-		 (subst-mod-params elt theoryname theory)
-		 elt)))
-	(unless (member th-subtype-elt (current-known-subtypes) :test #'equal)
-	  (let* ((cur-elt (get-known-subtypes (car th-subtype-elt)))
-		 (new-elt (if (or (null cur-elt)
-				  (member cur-elt theory-known-subtypes
-					  :test #'equal))
-			      elt
-			      (merge-known-subtypes-elts
-			       cur-elt th-subtype-elt))))
-	    (remove-compatible-subtype-of-hash-entries (car new-elt))
-	    (setf (current-known-subtypes)
-		  (cons new-elt
-			(remove cur-elt (current-known-subtypes))))))))))
+      (when t ;(safe-mappings? elt theory theoryname)
+	(let ((th-subtype-elt
+	       (if (or (and (memq elt (dependent-known-subtypes theory))
+			    (actuals theoryname))
+		       (mappings theoryname))
+		   (subst-mod-params elt theoryname theory)
+		   elt)))
+	  (unless (member th-subtype-elt (current-known-subtypes)
+			  :test #'equal)
+	    (let* ((cur-elt (get-known-subtypes (car th-subtype-elt)))
+		   (new-elt (if (or (null cur-elt)
+				    (member cur-elt theory-known-subtypes
+					    :test #'equal))
+				elt
+				(merge-known-subtypes-elts
+				 cur-elt th-subtype-elt))))
+	      (remove-compatible-subtype-of-hash-entries (car new-elt))
+	      (setf (current-known-subtypes)
+		    (cons new-elt
+			  (remove cur-elt (current-known-subtypes)))))))))))
 
 (defun merge-known-subtypes-elts (cur-elt new-elt)
   (merge-known-subtypes-elts* (reverse new-elt) (cdr cur-elt)))
