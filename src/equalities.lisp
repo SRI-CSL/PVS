@@ -1592,148 +1592,116 @@ where db is to replace db1 and db2")
 ;;; judgements.
 
 (defun subtype-of? (t1 t2)
-  (subtype-of*? t1 t2 0))
+  (subtype-of*? t1 t2))
 
 (defun strict-subtype-of? (t1 t2)
-  (let ((dist (subtype-of? t1 t2)))
-    (and dist (plusp dist))))
+  (and (not (tc-eq t1 t2))
+       (subtype-of? t1 t2)))
 
-(defmethod subtype-of*? :around (t1 t2 dist)
-  (if (tc-eq t1 t2)
-      dist
+(defmethod subtype-of*? :around (t1 t2)
+  (or (tc-eq t1 t2)
       (if *subtype-of-hash*
 	  (let ((subhash (gethash t1 *subtype-of-hash*)))
 	    (if subhash
-		(multiple-value-bind (ndist there?)
+		(multiple-value-bind (st? there?)
 		    (gethash t2 subhash)
 		  (if there?
-		      (when ndist
-			(+ dist ndist))
-		      (let ((nvalue (or (known-subtype-of? t1 t2 dist)
-					(call-next-method))))
-			(setf (gethash t2 subhash)
-			      (when nvalue (- nvalue dist)))
-			nvalue)))
+		      st?
+		      (let ((nvalue (or (call-next-method)
+					(known-subtype-of? t1 t2))))
+			(setf (gethash t2 subhash) nvalue))))
 		(let ((ht (make-hash-table :test #'eq)))
 		  (setf (gethash t1 *subtype-of-hash*) ht)
-		  (let ((nvalue (or (known-subtype-of? t1 t2 dist)
-				    (call-next-method))))
-		    (setf (gethash t2 ht)
-			  (when nvalue (- nvalue dist)))
-		    nvalue))))
-	  (or (known-subtype-of? t1 t2 dist)
-	      (call-next-method)))))
+		  (let ((nvalue (or (call-next-method)
+				    (known-subtype-of? t1 t2))))
+		    (setf (gethash t2 ht) nvalue)))))
+	  (or (call-next-method)
+	      (known-subtype-of? t1 t2)))))
 
-(defmethod subtype-of*? :around (t1 (t2 subtype) dist)
+(defun known-subtype-of? (t1 t2)
+  (let ((known-subtypes (assoc t1 (known-subtypes *current-context*)
+			       :test #'tc-eq)))
+    (some #'(lambda (ks) (subtype-of*? ks t2))
+	  (cdr known-subtypes))))
+
+(defmethod subtype-of*? :around (t1 (t2 subtype))
    (if (everywhere-true? (predicate t2))
-       (subtype-of*? t1 (supertype t2) dist)
+       (subtype-of*? t1 (supertype t2))
        (call-next-method)))
 
-(defun known-subtype-of? (t1 t2 dist)
-  (let ((subst-subtypes
-	 (when *substituted-subtypes*
-	   (assoc t1 *substituted-subtypes* :test #'tc-eq))))
-    (if subst-subtypes
-	(let ((ndist (cdr (assoc t2 (cdr subst-subtypes) :test #'tc-eq))))
-	  (when ndist (+ ndist dist)))
-	(let ((known-subtypes (assoc t1 (known-subtypes *current-context*)
-				     :test #'tc-eq-for-subtypes)))
-	  (when known-subtypes
-	    (let ((ndist (cdr (assoc t2 (cdr known-subtypes)
-				     :test #'tc-eq-for-subtypes))))
-	      (when ndist (+ ndist dist))))))))
+(defmethod subtype-of*? ((t1 dep-binding) t2)
+  (subtype-of*? (type t1) t2))
 
-(defun tc-eq-for-subtypes (t1 t2)
-  (or (tc-eq t1 t2)
-      (when (freevars t2)
-	(let ((subst (tc-match t1 t2 (mapcar #'list
-				       (mapcar #'declaration (freevars t2))))))
-	  (and subst
-	       (every #'cdr subst)
-	       (tc-eq t1 (substit t2 subst))
-	       subst)))))
+(defmethod subtype-of*? (t1 (t2 dep-binding))
+  (subtype-of*? t1 (type t2)))
 
-(defmethod subtype-of*? ((t1 dep-binding) t2 dist)
-  (subtype-of*? (type t1) t2 dist))
-
-(defmethod subtype-of*? (t1 (t2 dep-binding) dist)
-  (subtype-of*? t1 (type t2) dist))
-
-(defmethod subtype-of*? ((t1 datatype-subtype) (t2 datatype-subtype) dist)
+(defmethod subtype-of*? ((t1 datatype-subtype) (t2 datatype-subtype))
   (adt-subtype-of?
    (actuals (module-instance t1))
    (actuals (module-instance t2))
    (formals-sans-usings (adt t1))
    (declared-type t1)
-   (positive-types (adt t1))
-   dist))
+   (positive-types (adt t1))))
 
-(defun adt-subtype-of? (acts1 acts2 formals type postypes dist)
-  (cond ((null acts1) dist)
+(defun adt-subtype-of? (acts1 acts2 formals type postypes)
+  (cond ((null acts1) t)
 	((null acts2) nil)
 	((tc-eq (car acts1) (car acts2))
 	 (adt-subtype-of? (cdr acts1) (cdr acts2) (cdr formals) type
-			  postypes dist))
+			  postypes))
 	((member (car formals) postypes
 		 :test #'(lambda (x y)
 			   (let ((ydecl (declaration y)))
 			     (and (typep ydecl 'formal-type-decl)
 				  (same-id x ydecl)))))
-	 (let ((ndist (subtype-of*? (type-value (car acts1))
-				    (type-value (car acts2))
-				    dist)))
-	   (when ndist
-	     (adt-subtype-of? (cdr acts1) (cdr acts2) (cdr formals) type
-			      postypes ndist))))
+	 (and (subtype-of*? (type-value (car acts1))
+			    (type-value (car acts2)))
+	      (adt-subtype-of? (cdr acts1) (cdr acts2) (cdr formals) type
+			       postypes)))
 	(t nil)))
 
-(defmethod subtype-of*? ((t1 subtype) (t2 subtype) dist)
+(defmethod subtype-of*? ((t1 subtype) (t2 subtype))
   (with-slots ((st1 supertype) (pr1 predicate)) t1
     (with-slots ((st2 supertype) (pr2 predicate)) t2
       (if (and (typep pr1 'recognizer-name-expr)
 	       (typep pr2 'recognizer-name-expr)
 	       (tc-eq-ops pr1 pr2))
-	  (subtype-of*? st1 st2 dist)
+	  (subtype-of*? st1 st2)
 	  (call-next-method)))))
 
-(defmethod subtype-of*? ((t1 adt-type-name) (t2 subtype) dist)
-  (when (and (adt t1)
-	     (singleton? (constructors (adt t1)))
-	     (tc-eq t1 (supertype t2))
-	     (recognizer-name-expr? (predicate t2)))
-    dist))
+(defmethod subtype-of*? ((t1 adt-type-name) (t2 subtype))
+  (and (adt t1)
+       (singleton? (constructors (adt t1)))
+       (tc-eq t1 (supertype t2))
+       (recognizer-name-expr? (predicate t2))))
 
-(defmethod subtype-of*? ((t1 subtype) (t2 type-expr) dist)
-  (subtype-of*? (supertype t1) t2 (1+ dist)))
+(defmethod subtype-of*? ((t1 subtype) (t2 type-expr))
+  (subtype-of*? (supertype t1) t2))
 
-(defmethod subtype-of*? ((t1 funtype) (t2 funtype) dist)
+(defmethod subtype-of*? ((t1 funtype) (t2 funtype))
   (when (tc-eq (domain t1) (domain t2))
-    (subtype-of*? (range t1) (range t2) dist)))
+    (subtype-of*? (range t1) (range t2))))
 
-(defmethod subtype-of*? ((t1 tupletype) (t2 tupletype) dist)
+(defmethod subtype-of*? ((t1 tupletype) (t2 tupletype))
   (when (length= (types t1) (types t2))
-    (subtype-of-list (types t1) (types t2) dist)))
+    (subtype-of-list (types t1) (types t2))))
 
-(defun subtype-of-list (t1 t2 dist)
-  (if (null t1)
-      dist
-      (let ((ndist (subtype-of*? (car t1) (car t2) dist)))
-	(when ndist
-	  (subtype-of-list (cdr t1) (cdr t2) ndist)))))
+(defun subtype-of-list (t1 t2)
+  (or (null t1)
+      (and (subtype-of*? (car t1) (car t2))
+	   (subtype-of-list (cdr t1) (cdr t2)))))
 
-(defmethod subtype-of*? ((r1 recordtype) (r2 recordtype) dist)
+(defmethod subtype-of*? ((r1 recordtype) (r2 recordtype))
   (when (length= (fields r1) (fields r2))
-    (subtype-of-fields (fields r1) (fields r2) dist)))
+    (subtype-of-fields (fields r1) (fields r2))))
 
-(defun subtype-of-fields (t1 t2 dist)
-  (if (null t1)
-      dist
+(defun subtype-of-fields (t1 t2)
+  (or (null t1)
       (when (eq (id (car t1)) (id (car t2)))
-	(let ((ndist (subtype-of*? (type (car t1)) (type (car t2)) dist)))
-	  (when ndist
-	    (subtype-of-fields (cdr t1) (cdr t2) ndist))))))
+	(and (subtype-of*? (type (car t1)) (type (car t2)))
+	     (subtype-of-fields (cdr t1) (cdr t2))))))
 
-(defmethod subtype-of*? ((t1 type-expr) (t2 type-expr) dist)
+(defmethod subtype-of*? ((t1 type-expr) (t2 type-expr))
   nil)
 
 
@@ -1858,15 +1826,13 @@ where db is to replace db1 and db2")
 				       'variable))
 		    (npred (make!-lambda-expr (list vb)
 			     (make!-forall-expr (list xb)
-			       (mk-conjunction
+			       (make!-conjunction*
 				(mapcar #'(lambda (pred)
 					    (beta-reduce
-					     (typecheck*
-					      (mk-application pred
-						(mk-application (copy var)
-						  (copy xvar)))
-					      *boolean* nil nil)))
-					preds))))))
+					      (make!-application pred
+						(make!-application var
+						  xvar))))
+				  preds))))))
 	       (values t2 (cons npred incs))))))))
 
 (defun extract-domain (ftype)
