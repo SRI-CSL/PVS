@@ -396,11 +396,11 @@
 (defun cancel-reciprocal (lit divterms)
   (if (consp lit)
       (if (eq (funsym lit) 'PLUS)
-	  `(PLUS ,@(cancel-reciprocal-list (argsof lit) divterms))
+	  (sigplus `(PLUS ,@(cancel-reciprocal-list (argsof lit) divterms)))
 	  (if (eq (funsym lit) 'TIMES)
 	      (cancel-times-reciprocal (argsof lit) divterms)
 	      (cancel-times-reciprocal (list lit) divterms)))
-      `(TIMES ,lit ,@(loop for x in divterms collect (reciprocal x)))))
+      (sigtimes `(TIMES ,lit ,@(loop for x in divterms collect (reciprocal x))))))
 
 (defun cancel-reciprocal-list (lit-list divterms)
   (loop for a in lit-list collect (cancel-reciprocal a divterms)))
@@ -410,7 +410,7 @@
     (if (consp result)
 	(if (null (cdr result))
 	    (car result)
-	    `(TIMES ,@result))
+	    (sigtimes `(TIMES ,@result)))
 	1)))
 
 (defun cancel-times-reciprocal* (factors divterms accum)
