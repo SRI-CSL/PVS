@@ -979,6 +979,8 @@
 				       (when (typep d 'formal-subtype-decl)
 					 (remove-if #'tcc? (generated d))))
 			     (formals theory))
+			   (when (recursive-type? theory)
+			     (importings theory))
 			   (assuming theory)
 			   (theory theory))))
 	(when (memq 'typechecked (status theory))
