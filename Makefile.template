@@ -321,7 +321,11 @@ xemacs19-elc = $(pvs-xemacs19-src:.el=.elc) $(ilisp-xemacs19-src:.el=.elc)
 emacs += emacs/xemacs19/pvs-load.elc
 endif
 
-all : makefileutils makebdd makepolylib makews1s ${pvsfull} ${pvsrt} ${emacs}
+all : full
+
+full : makefileutils makebdd makepolylib makews1s ${pvsfull} ${emacs}
+
+runtime : makefileutils makebdd makepolylib makews1s ${pvsrt} ${emacs}
 
 src/pvs-lexer.${LISPEXT} : ${pvs-make-files} ${ff-files} ${lisp-files}
 	umask 002; \
