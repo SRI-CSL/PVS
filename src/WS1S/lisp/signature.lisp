@@ -50,6 +50,9 @@
       (and (number-expr? expr)
 	   (integerp (number expr))
 	   (>= (number expr) 0))
+      (and (application? expr)
+	   (or (tc-eq (operator expr) (plus1))
+	       (tc-eq (operator expr) (minus1))))
       (some #'subtype-of-nat? (judgement-types+ expr))))
 
 (defun subtype-of-nat? (type)
