@@ -1,0 +1,33 @@
+pvs-path = @PVSPATH@
+
+headers=../pvstex.tex 
+sources=user-guide.tex ug-intro.tex ug-tutorial.tex ug-commands.tex \
+        customization.tex pvs-batch.tex emacs.tex
+
+all : user-guide.dvi user-guide.ps user-guide.ps.gz user-guide.pdf
+
+user-guide.dvi: $(headers) $(sources) pvs-screen1.ps \
+                sum-nosub.tex sum-sub.tex sum-tccs.tex
+	latex user-guide
+	bibtex user-guide || echo
+	makeindex -o user-guide.ind user-guide.idx
+	latex user-guide
+	latex user-guide
+
+user-guide.ps.gz : user-guide.ps
+	gzip -c $< > $@
+
+user-guide.ps : user-guide.dvi
+	dvips -o $@ $<
+
+user-guide.pdf : ${sources} pvs-screen1.pdf
+	pdflatex $<
+
+sum-nosub.tex sum-sub.tex sum-tccs.tex : sum.pvs sum.el
+	@PVSPATH@/pvs -batch -q -l sum.el -f kill-process
+
+.PHONY: clean
+clean :
+	rm -f Makefile sum-nosub.tex sum-sub.tex sum-tccs.tex \
+              user-guide.dvi user-guide.ps.gz user-guide.ps user-guide.pdf \
+              *.log *.bbl *.ind *.ilg *.blg *.bbl *.aux *.toc *.idx *.brf
