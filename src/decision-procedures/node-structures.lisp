@@ -719,7 +719,7 @@
 	      (:print-function
 	       (lambda (cs* s k)
 		 (declare (ignore k))
-		 (format s "<~D: ~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type, ~D rewrites, ~D forward-chains>"
+		 (format s "<~D: ~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type, ~D rewrites, ~D forward-chains, ~D schmas>"
 		   (cong-state*-id cs*)
 		   (length (cong-state*-assertions cs*))
 		   (hash-table-count (cong-state*-use-hash cs*))
@@ -732,7 +732,8 @@
 		      (length (rewrite-rules-rules
 			       (cong-state*-rewrite-rules cs*))))
 		   (length (forward-chains-orig-rules
-			    (cong-state*-forward-chains cs*)))))))
+			    (cong-state*-forward-chains cs*)))
+		   (hash-table-count (cong-state*-schema-hash cs*)))))) ; added -h2 3/99
   (assertions nil)
   (seen-hash (dp-make-eq-hash-table))
   (find-hash (dp-make-eq-hash-table))
@@ -744,10 +745,11 @@
   (fourier-motzkin (initial-fourier-motzkin))
   (rewrite-rules (initial-rewrite-rules))
   (forward-chains (initial-forward-chains))
-  (id 0))
+  (id 0)
+  (schema-hash (dp-make-eq-hash-table)))    ; added -hr 2/99
 
 (defun print-cong-state* (cs* s)
-  (format s "<~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type, ~D rewrites, ~D forward-chains>"
+  (format s "<~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type, ~D rewrites, ~D forward-chains, ~D schemas>"
     (length (cong-state*-assertions cs*))
     (hash-table-count (cong-state*-use-hash cs*))
     (hash-table-count (cong-state*-find-hash cs*))
@@ -757,7 +759,8 @@
     (+ (length (rewrite-rules-rules! (cong-state*-rewrite-rules cs*)))
        (length (rewrite-rules-rules (cong-state*-rewrite-rules cs*))))
     (length (forward-chains-orig-rules
-	     (cong-state*-forward-chains cs*)))))
+	     (cong-state*-forward-chains cs*)))
+   (hash-table-count (cong-state*-schema-hash cs*)))) ; added -hr 3/99
 
 (defun clear-cong-state* (cong-state*)
   (setf (cong-state*-assertions cong-state*) nil)
@@ -771,6 +774,7 @@
   (clr-fourier-motzkin (cong-state*-fourier-motzkin cong-state*))
   (clr-rewrite-rules (cong-state*-rewrite-rules cong-state*))
   (clr-forward-chains (cong-state*-forward-chains cong-state*))
+  (dp-clrhash (cong-state*-schema-hash cong-state*))         ; added -hr 2/99
   cong-state*)
 
 (defdpstruct (made-cong-states
@@ -1200,14 +1204,81 @@
 	(find+ hash-term cong-state*)
 	term)))
 
+(defun setf-schema* (term cong-state* term-schema)
+  (setf (dp-gethash term (cong-state*-schema-hash cong-state*))
+        term-schema))
+
+(defsetf schema* setf-schema*)
+
+(defun dp-schema (term cong-state)
+  (if *reverse-find*
+      (schema-from-reverse-stack term
+                               (cong-state-reverse cong-state))
+      (schema-from-stack-top term (cong-state-stack cong-state))))
+
+(defun schema-from-stack-top (term cong-state-stack)
+  (let ((schema (schema-from-stack term cong-state-stack cong-state-stack)))
+    (or schema
+        (setf (schema* term cong-state-stack)
+              schema))))
+
+(defun schema-from-stack (term cong-state-stack top-cong-state-stack)
+  (if cong-state-stack
+      (let ((schema (schema-for* term (top cong-state-stack))))
+        (if schema
+            (if (or (eq cong-state-stack top-cong-state-stack)
+                    (eq schema term))
+                schema
+                (schema-from-stack-top schema top-cong-state-stack))
+            (let ((rest-schema (schema-from-stack term (rest cong-state-stack)
+                                              cong-state-stack)))
+              (cond
+               (rest-schema
+                (setf (schema* term (top cong-state-stack))
+                      rest-schema)
+                (schema-from-stack-top rest-schema top-cong-state-stack))
+               (t (setf (schema* term (top cong-state-stack))
+                        term))))))
+      nil))
+
+(defun schema-from-reverse-stack (term cong-state-stack)
+  (if cong-state-stack
+      (let ((new-term (schema+ term (top cong-state-stack))))
+        (schema-from-reverse-stack new-term (previous cong-state-stack)))
+      term))
+
+(defun schema-for* (term cong-state*)
+  (let ((hash-term (dp-gethash term (cong-state*-schema-hash cong-state*))))
+    (if hash-term
+        (if (not (eq hash-term term))
+            (schema+ hash-term cong-state*)
+            hash-term)
+        nil)))
+
+(defun schema* (term cong-state*)
+  (let ((hash-term (dp-gethash term (cong-state*-schema-hash cong-state*))))
+    (if hash-term
+        (schema* hash-term cong-state*)
+        term)))
+
+(defun schema+ (term cong-state*)
+  (let ((hash-term (dp-gethash term (cong-state*-schema-hash cong-state*))))
+    (if (and hash-term (not (eq hash-term term)))
+        (schema+ hash-term cong-state*)
+        term)))
+
 (defun dp-union (term1 term2 cong-state)
   (declare (special *dp-changed*))
   (setq *dp-changed* t)
   (union* term1 term2 (top (cong-state-stack cong-state))))
 
 (defun union* (term1 term2 cong-state*)
+  (when (dp-variable-p (schema+ term2 cong-state*))                     ; added -hr 2/99
+    (setf (schema* (schema+ (find+ term2 cong-state*) cong-state*) cong-state*)
+	  (schema+ (find+ term1 cong-state*) cong-state*)))
   (setf (find* (find+ term1 cong-state*) cong-state*)
 	(find+ term2 cong-state*)))
+
 
 (defun setf-use* (term cong-state* term-use)
   (assert term-use)
@@ -1457,3 +1528,21 @@
   (setq *record* (mk-interpreted-constant 'record 'record-op))
   (setq *project* (mk-interpreted-constant 'project 'project-op))
   (setq *th-app* (mk-interpreted-constant 'th-app 'th-app-op)))
+
+;; Miscellaneous Functions
+
+(defun vars-of (trm)
+  (cond ((dp-variable-p trm)
+        (list trm))
+       ((application-p trm)
+        (mapcan #'vars-of
+          (funargs trm)))
+       (t nil)))
+
+(defun occurs-p (x trm)
+  (cond ((dp-variable-p trm)
+	 (eq x trm))
+	((application-p trm)
+	 (some #'occurs-p (funargs trm)))
+	(t nil)))
+ 
