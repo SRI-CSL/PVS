@@ -340,12 +340,10 @@ pvs-strategies files.")
 (defmethod binpath-id (th)
   (id th))
 
-(defmethod binpath-name (inm (th theory-interpretation))
-  (if (mod-id inm)
-      (break "Needs looking into...")
-      (copy inm 'mod-id (id (module (generated-by-decl th))))))
+(defmethod binpath-name ((inm modname) (th theory-interpretation))
+  (copy inm 'mod-id (id (module (generated-by-decl th)))))
 
-(defmethod binpath-name (inm th)
+(defmethod binpath-name ((inm modname) th)
   inm)
 
 
