@@ -502,24 +502,6 @@ Please provide skolem constants for these variables." overlap)
 		      (if sign skobody
 			  (negate skobody)))))))
 
-#+lucid
-(defmethod copy ((ht hash-table) &rest args)
-  (let ((new-ht (make-hash-table :test (hash-table-test ht))))
-    (maphash #'(lambda (id data)
-		 (setf (gethash id new-ht) data))
-	     ht)
-    new-ht))
-
-#-lucid
-(defmethod copy (obj &rest args)
-  (if (typep obj 'hash-table)
-      (let ((new-ht (make-hash-table :test (hash-table-test obj))))
-	(maphash #'(lambda (id data)
-		     (setf (gethash id new-ht) data))
-		 obj)
-	new-ht)
-      (error "copy called for unknown type: ~a" (type-of obj))))
-
 
 (defun find-all-sformnums (sforms sformnums pred
 				  &optional (pos 1)(neg -1)(acc nil))
