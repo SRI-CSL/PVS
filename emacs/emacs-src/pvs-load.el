@@ -107,7 +107,6 @@
 	     (>= emacs-minor-version 29))
 	(eq pvs-emacs-system 'emacs20))
     (load "pvs-menu" nil noninteractive))
-(load "tcl" nil noninteractive)
 (load "pvs-tcl" nil noninteractive)
 (load "pvs-prover-helps" nil noninteractive)
 (load "pvs-eval" nil noninteractive)
