@@ -367,10 +367,9 @@
 	(if (generic-judgements entry)
 	    (let ((inst-types (instantiate-generic-judgement-types
 			       ex (generic-judgements entry))))
-	      (assert (every #'fully-instantiated? inst-types))
-	      (minimal-types (nconc inst-types
-				    (mapcar #'type
-				      (minimal-judgements entry)))))
+	      (minimal-types
+	       (nconc (delete-if (complement #'fully-instantiated?) inst-types)
+		      (mapcar #'type (minimal-judgements entry)))))
 	    (mapcar #'type (minimal-judgements entry)))))))
 
 (defun instantiate-generic-judgement-types (name judgements &optional types)
@@ -479,21 +478,25 @@
 	 (if type (cons type types) types)))))
 
 (defun instantiate-generic-appl-judgement-type (ex judgement)
-  (let* ((bindings1 (tc-match (operator ex) (name judgement)
+  (let* ((bindings1 (tc-match (operator* ex) (name judgement)
 			     (mapcar #'list
 			       (formals-sans-usings (module judgement)))))
-	 (bindings (if (or (null (formals judgement))
-			   (every #'cdr bindings1))
-		       bindings1
-		       (tc-match (car (judgement-types+ (argument ex)))
-				 (if (cdr (car (formals judgement)))
-				     (mk-tupletype (mapcar #'type (car (formals judgement))))
-				     (type (caar (formals judgement))))
-				 bindings1))))
-    (when (every #'cdr bindings)
+	 (bindings (when bindings1
+		     (if (or (null (formals judgement))
+			     (every #'cdr bindings1))
+			 bindings1
+			 (tc-match (car (judgement-types+ (argument ex)))
+				   (if (cdr (car (formals judgement)))
+				       (mk-tupletype
+					(mapcar #'type
+					  (car (formals judgement))))
+				       (type (caar (formals judgement))))
+				   bindings1)))))
+    (when (and bindings (every #'cdr bindings))
       (let ((jthinst (mk-modname (id (module judgement))
 		       (mapcar #'(lambda (a) (mk-actual (cdr a)))
 			 bindings))))
+	(assert (fully-instantiated? jthinst))
 	(subst-mod-params (judgement-type judgement) jthinst)))))
 
 (defmethod no-dep-bindings ((te funtype))
@@ -575,7 +578,7 @@
 	     (cons range
 		   (delete-if #'(lambda (r) (subtype-of? range r)) jtypes)))
 	 (if (or range excluded?)
-	     (union (car graph) exclude)
+	     (append (car graph) exclude)
 	     exclude)))))
 
 (defun compute-appl-judgement-types* (arguments argtypes rdomains jdecl)
@@ -682,14 +685,39 @@
 					    bindings))))
 
 (defun argtype-intersection-in-judgement-type? (argtypes jtype)
-  (let* ((types (cons jtype argtypes))
-	 (ctype (reduce #'compatible-type types))
-	 (bid '%)
-	 (bd (make!-bind-decl bid ctype))
-	 (bvar (make-variable-expr bd))
-	 (jpreds (collect-judgement-preds jtype ctype bvar))
-	 (apreds (collect-intersection-judgement-preds argtypes ctype bvar)))
-    (subsetp jpreds apreds :test #'tc-eq)))
+  (if (listp argtypes)
+      (let* ((types (cons jtype argtypes))
+	     (ctype (reduce #'compatible-type types)))
+	(when ctype
+	  (let* ((bid '%)
+		 (bd (make!-bind-decl bid ctype))
+		 (bvar (make-variable-expr bd))
+		 (jpreds (collect-judgement-preds jtype ctype bvar))
+		 (apreds (collect-intersection-judgement-preds
+			  argtypes ctype bvar)))
+	    (and jpreds
+		 (subsetp jpreds apreds :test #'tc-eq)))))
+      (if (recordtype? (find-supertype jtype))
+	  (argtype-intersection-in-record-judgement-type?
+	   (delete-duplicates (coerce argtypes 'list) :from-end t :key #'car)
+	   (fields (find-supertype jtype)))
+	  (argtype-intersection-in-vector-judgement-type?
+	   argtypes (types (find-supertype jtype)) 0))))
+
+(defun argtype-intersection-in-record-judgement-type? (argflds jfields)
+  (or (null jfields)
+      (let ((atypes (cdr (assq (id (car jfields)) argflds))))
+	(and (argtype-intersection-in-judgement-type?
+	      atypes (type (car jfields)))
+	     (argtype-intersection-in-record-judgement-type?
+	      argflds (cdr jfields))))))
+
+(defun argtype-intersection-in-vector-judgement-type? (argtypes jdomain num)
+  (or (>= num (length argtypes))
+      (and (argtype-intersection-in-judgement-type?
+	    (aref argtypes num) (car jdomain))
+	   (argtype-intersection-in-vector-judgement-type?
+	    argtypes (cdr jdomain) (1+ num)))))
 
 (defun collect-judgement-preds (type supertype var)
   (let ((preds (nth-value 1 (subtype-preds type supertype))))
@@ -887,6 +915,10 @@
 (defmethod subtype-wrt?* ((te1 recordtype) (te2 recordtype) reltype bindings)
   (subtype-wrt?-fields (fields te1) (fields te2) (fields reltype) bindings))
 
+(defmethod subtype-wrt?* ((te1 recordtype) (te2 recordtype)
+			  (reltype dep-binding) bindings)
+  (subtype-wrt?* te1 te2 (type reltype) bindings))
+
 (defun subtype-wrt?-fields (flds1 flds2 relflds bindings)
   (or (null flds1)
       (and (eq (id (car flds1)) (id (car flds2)))
@@ -1011,22 +1043,6 @@
 (defmethod type-predicates* (te preds all?)
   (declare (ignore te all?))
   (nreverse preds))
-
-(defmethod make!-reduced-application ((op lambda-expr) (arg tuple-expr))
-  (if (singleton? (bindings op))
-      (call-next-method)
-      (substit (expression op)
-	(pairlis (bindings op) (exprs arg)))))
-
-(defmethod make!-reduced-application ((op lambda-expr) arg)
-  (if (singleton? (bindings op))
-      (substit (expression op)
-	(acons (car (bindings op)) arg nil))
-      (substit (expression op)
-	(pairlis (bindings op) (make!-projections arg)))))
-
-(defmethod make!-reduced-application (op arg)
-  (make!-application op arg))
 
 (defmethod argument-application-number ((ex application) &optional (num 0))
   (argument-application-number (operator ex) (1+ num)))
