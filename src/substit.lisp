@@ -16,6 +16,7 @@
 (defun substit (obj alist)
   ;; At some point, should verify that car of every element of the
   ;; alist is a declaration.
+  #+pvsdebug
   (assert (every #'(lambda (a)
 		     (and (typep (car a)
 				 '(or simple-decl declaration))
@@ -36,8 +37,7 @@
 ;      nobj)))
 
 (defmethod substit* :around ((expr T) alist)
-  (cond ((null (freevars expr));;NSH(2.21.96)
-                            ;;removed (rassoc expr alist :test #'eq)
+  (cond ((null (freevars expr))
 	 expr)
 	((type-expr? expr)
 	 (if *subst-type-hash*
@@ -47,8 +47,7 @@
 		     (install-subst-hash expr alist result *subst-type-hash*)
 		     result)))
 	     (call-next-method)))
-	(t ;;(when (funtype? expr) (break "substit"))
-	   (call-next-method))))
+	(t (call-next-method))))
 
 ;(defmethod substit* :around (expr alist)
 ;  (if (null (freevars expr)) ;; (substit-possible? expr alist)
