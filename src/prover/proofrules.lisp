@@ -1195,7 +1195,7 @@ or supply more substitutions."
 	  (resolutions var) 
 	  (list
 	   (make-resolution (mk-bind-decl id type type)
-	     (mod-name context))))
+	     (theory-name context))))
     var))
 
 ;;; SO 8/17/94 - Fixed for new form of application
