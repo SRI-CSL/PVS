@@ -189,13 +189,13 @@
 ;;; e1 -> a1, e2 -> a2, ELSE -> a2 ENDCOND which translate to the same
 ;;; if-expressions.
 
-(defcl first-cond-expr (if-expr))
+(defcl first-cond-expr (branch))
 
-(defcl single-cond-expr (if-expr))
+(defcl single-cond-expr (branch))
 
-(defcl cond-expr (if-expr))
+(defcl cond-expr (branch))
 
-(defcl last-cond-expr (if-expr))
+(defcl last-cond-expr (branch))
 
 (defcl else-condition (unary-application))
 

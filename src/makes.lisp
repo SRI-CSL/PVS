@@ -1199,6 +1199,7 @@
 		    (dep-substit (range ftype) (acons (domain ftype) arg nil))
 		    (range ftype))))
     (setf (type appl) rtype)
+    (change-application-class-if-needed appl)
     appl))
 
 (defun make!-number-expr (num)
@@ -1265,10 +1266,15 @@
 		   'resolutions (list res)
 		   'kind 'constant))
 	 (arg (make!-arg-tuple-expr lhs rhs)))
-    (make-instance 'infix-application
-      'operator eqname
-      'argument arg
-      'type *boolean*)))
+    (if (compatible? type *boolean*)
+	(make-instance 'infix-boolean-equation
+	  'operator eqname
+	  'argument arg
+	  'type *boolean*)
+	(make-instance 'infix-equation
+	  'operator eqname
+	  'argument arg
+	  'type *boolean*))))
 
 (defun make!-if-expr (cond then else)
   (assert (and (type cond) (type then) (type else)))
@@ -1294,7 +1300,7 @@
 		    'exprs (list cond then else)
 		    'type (make-instance 'tupletype
 			    'types (list *boolean* (type then) (type else))))))
-    (make-instance 'if-expr
+    (make-instance 'mixfix-branch
       'type stype
       'operator if-name
       'argument if-args)))
@@ -1486,6 +1492,7 @@
   (assert (type ex2))
   (assert (tc-eq (find-supertype (type ex1)) *number*))
   (assert (tc-eq (find-supertype (type ex2)) *number*))
+  (assert (eq *generate-tccs* 'none))
   (make-instance 'infix-application
     'operator (difference-operator)
     'argument (make!-arg-tuple-expr ex1 ex2)

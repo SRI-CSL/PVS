@@ -29,114 +29,9 @@ where db is to replace db1 and db2")
 ;;; ps-eq is used to determine whether two entities are syntactically
 ;;; equal; the types and resolutions are ignored.
 
-(defmethod ps-eq (x y)
-  (eql x y))
-
-(defmethod ps-eq ((l1 list) (l2 list))
-  (or (equal l1 l2)
-      (and (length= l1 l2)
-	   (every #'ps-eq l1 l2))))
-
-(defmethod ps-eq ((a1 adtdecl) (a2 adtdecl))
-  (and (eq (id a1) (id a2))
-       (ps-eq (declared-type a1) (declared-type a2))))
-
-(defmethod ps-eq ((t1 type-name) (t2 type-name))
-  ;; Check that names are ps-eq
-  (or (eq t1 t2)
-      (call-next-method)))
-
-(defmethod ps-eq ((t1 type-application) (t2 type-application))
-  (and (ps-eq (type t1) (type t2))
-       (ps-eq (parameters t1) (parameters t2))))
-
-(defmethod ps-eq ((t1 subtype) (t2 subtype))
-  (or (eq t1 t2)
-      (and (ps-eq (supertype t1) (supertype t2))
-	   (ps-eq (predicate t1) (predicate t2)))))
-
-(defmethod ps-eq ((t1 funtype) (t2 funtype))
-  (or (eq t1 t2)
-      (and (ps-eq (domain t1) (domain t2))
-	   (ps-eq (range t1) (range t2)))))
-
-(defmethod ps-eq ((t1 tupletype) (t2 tupletype))
-  (or (eq t1 t2)
-      (ps-eq (types t1) (types t2))))
-
-(defmethod ps-eq ((t1 recordtype) (t2 recordtype))
-  (or (eq t1 t2)
-      (ps-eq (fields t1) (fields t2))))
-
-(defmethod ps-eq ((f1 field-decl) (f2 field-decl))
-  (or (eq f1 f2)
-      (and (same-id f1 f2)
-	   (ps-eq (declared-type f1) (declared-type f2)))))
-
-
-;;; Expressions
-
-(defmethod ps-eq ((e1 name-expr) (e2 name-expr))
-  (or (eq e1 e2)
-      (call-next-method)))
-
-(defmethod ps-eq ((e1 number-expr) (e2 number-expr))
-  (= (number e1) (number e2)))
-
-(defmethod ps-eq ((e1 record-expr) (e2 record-expr))
-  (or (eq e1 e2)
-      (ps-eq (assignments e1) (assignments e2))))
-
-(defmethod ps-eq ((e1 tuple-expr) (e2 tuple-expr))
-  (or (eq e1 e2)
-      (ps-eq (exprs e1) (exprs e2))))
-
-(defmethod ps-eq ((e1 projection-application) (e2 projection-application))
-  (or (eq e1 e2)
-      (and (eq (id e1) (id e2))
-	   (ps-eq (argument e1) (argument e2)))))
-
-(defmethod ps-eq ((e1 field-application) (e2 field-application))
-  (or (eq e1 e2)
-      (and (eq (id e1) (id e2))
-	   (ps-eq (argument e1) (argument e2)))))
-
-(defmethod ps-eq ((e1 application) (e2 application))
-  (or (eq e1 e2)
-      (and (ps-eq (operator e1) (operator e2))
-	   (ps-eq (argument e1) (argument e2)))))
-
-(defmethod ps-eq ((e1 binding-expr) (e2 binding-expr))
-  (or (eq e1 e2)
-      (and (same-binding-op? e1 e2)
-	   (ps-eq (bindings e1) (bindings e2))	
-	   (ps-eq (expression e1) (expression e2)))))
-
-(defmethod ps-eq ((e1 update-expr) (e2 update-expr))
-  (or (eq e1 e2)
-      (and (ps-eq (expression e1) (expression e2))
-	   (ps-eq (assignments e1) (assignments e2)))))
-
-(defmethod ps-eq ((a1 assignment) (a2 assignment))
-  (or (eq a1 a2)
-      (and (ps-eq (arguments a1) (arguments a2))
-	   (ps-eq (expression a1) (expression a2)))))
-
-(defmethod ps-eq ((n1 name) (n2 name))
-  (or (eq n1 n2)
-      (and (eq (id n1) (id n2))
-	   (ps-eq (actuals n1) (actuals n2))
-	   (eq (mod-id n1) (mod-id n2)))))
-
-(defmethod ps-eq ((a1 actual) (a2 actual))
-  (or (eq a1 a2)
-      (ps-eq (expr a1) (expr a2))))
-
-(defmethod ps-eq ((b1 bind-decl) (b2 bind-decl))
-  (or (eq b1 b2)
-      (and (eq (id b1) (id b2))
-	   (ps-eq (declared-type b1) (declared-type b2)))))
-
+(defun ps-eq (x y)
+  (string= (unparse x :string t :char-width most-positive-fixnum)
+	   (unparse y :string t :char-width most-positive-fixnum)))
 
 ;;; tc-eq determines when two entities are "the same".  This is defined
 ;;; only when both entities have been typechecked; for types this means
@@ -190,16 +85,18 @@ where db is to replace db1 and db2")
   (eq x y))
 
 (defmethod tc-eq* ((l1 cons) (l2 cons) bindings)
-  (tc-eq-lists l1 l2 bindings))
+  (and (tc-eq* (car l1) (car l2) bindings)
+       (tc-eq* (cdr l1) (cdr l2)
+	       (new-tc-eq-list-bindings (car l1) (car l2) bindings))))
 
-(defun tc-eq-lists (l1 l2 bindings)
-  (declare (list l1 l2))
-  (cond ((null l1) (null l2))
-	((null l2) nil)
-	(t (and (tc-eq* (car l1) (car l2) bindings)
-		(tc-eq* (cdr l1) (cdr l2)
-			(new-tc-eq-list-bindings (car l1) (car l2)
-						 bindings))))))
+(defmethod tc-eq* ((l1 null) (l2 cons) bindings)
+  nil)
+
+(defmethod tc-eq* ((l1 cons) (l2 null) bindings)
+  nil)
+
+(defmethod tc-eq* ((l1 null) (l2 null) bindings)
+  t)
 
 (defmethod new-tc-eq-list-bindings ((b1 binding) (b2 binding) bindings)
   (acons b1 b2 bindings))
@@ -428,12 +325,96 @@ where db is to replace db1 and db2")
 	(call-next-method)
 	(tc-eq-ops e1 e2 bindings))))
 
+(defmethod tc-eq* ((e1 negation) (e2 negation) bindings)
+  (or (eq e1 e2)
+      (with-slots ((arg1 argument)) e1
+	(with-slots ((arg2 argument)) e2
+	  (tc-eq* arg1 arg2 bindings)))))
+
+(defmethod tc-eq* ((e1 negation) (e2 expr) bindings)
+  nil)
+
+(defmethod tc-eq* ((e1 application) (e2 negation) bindings)
+  nil)
+
+(defmethod tc-eq* ((e1 conjunction) (e2 conjunction) bindings)
+  (or (eq e1 e2)
+      (with-slots ((arg1 argument)) e1
+	(with-slots ((arg2 argument)) e2
+	  (tc-eq* arg1 arg2 bindings)))))
+
+(defmethod tc-eq* ((e1 conjunction) (e2 expr) bindings)
+  nil)
+
+(defmethod tc-eq* ((e1 application) (e2 conjunction) bindings)
+  nil)
+
+(defmethod tc-eq* ((e1 disjunction) (e2 disjunction) bindings)
+  (or (eq e1 e2)
+      (with-slots ((arg1 argument)) e1
+	(with-slots ((arg2 argument)) e2
+	  (tc-eq* arg1 arg2 bindings)))))
+
+(defmethod tc-eq* ((e1 disjunction) (e2 expr) bindings)
+  nil)
+
+(defmethod tc-eq* ((e1 application) (e2 disjunction) bindings)
+  nil)
+
+(defmethod tc-eq* ((e1 implication) (e2 implication) bindings)
+  (or (eq e1 e2)
+      (with-slots ((arg1 argument)) e1
+	(with-slots ((arg2 argument)) e2
+	  (tc-eq* arg1 arg2 bindings)))))
+
+(defmethod tc-eq* ((e1 implication) (e2 expr) bindings)
+  nil)
+
+(defmethod tc-eq* ((e1 application) (e2 implication) bindings)
+  nil)
+
+(defmethod tc-eq* ((e1 iff) (e2 iff) bindings)
+  (or (eq e1 e2)
+      (with-slots ((arg1 argument)) e1
+	(with-slots ((arg2 argument)) e2
+	  (tc-eq* arg1 arg2 bindings)))))
+
+(defmethod tc-eq* ((e1 iff) (e2 expr) bindings)
+  nil)
+
+(defmethod tc-eq* ((e1 application) (e2 iff) bindings)
+  nil)
+
+(defmethod tc-eq* ((e1 equation) (e2 equation) bindings)
+  (or (eq e1 e2)
+      (with-slots ((arg1 argument)) e1
+	(with-slots ((arg2 argument)) e2
+	  (tc-eq* arg1 arg2 bindings)))))
+
+(defmethod tc-eq* ((e1 equation) (e2 expr) bindings)
+  nil)
+
+(defmethod tc-eq* ((e1 application) (e2 equation) bindings)
+  nil)
+
+(defmethod tc-eq* ((e1 branch) (e2 branch) bindings)
+  (or (eq e1 e2)
+      (with-slots ((arg1 argument)) e1
+	(with-slots ((arg2 argument)) e2
+	  (tc-eq* arg1 arg2 bindings)))))
+
+(defmethod tc-eq* ((e1 branch) (e2 expr) bindings)
+  nil)
+
+(defmethod tc-eq* ((e1 application) (e2 branch) bindings)
+  nil)
+
 (defmethod tc-eq* ((e1 application) (e2 application) bindings)
   (or (eq e1 e2)
       (with-slots ((op1 operator) (arg1 argument)) e1
 	(with-slots ((op2 operator) (arg2 argument)) e2
-	  (and (tc-eq-ops op1 op2 bindings)
-	       (tc-eq* arg1 arg2 bindings))))))
+	  (and (tc-eq* arg1 arg2 bindings)
+	       (tc-eq-ops op1 op2 bindings))))))
 
 (defmethod tc-eq-ops ((op1 field-name-expr) (op2 field-name-expr)
 		      &optional bindings)
@@ -656,10 +637,17 @@ where db is to replace db1 and db2")
 	  (and (eq decl1 decl2)
 	       (if mi1
 		   (and mi2
-			(eq (id mi1) (id mi2))
-			(tc-eq* (actuals mi1) (actuals mi2) bindings))
+			(tc-eq* mi1 mi2 bindings))
 		   (null mi2)))
-	  (tc-eq-operators decl1 decl2)))))
+	  ;;(tc-eq-operators decl1 decl2)
+	  ))))
+
+(defmethod tc-eq* ((tn1 modname) (tn2 modname) bindings)
+  (with-slots ((id1 id) (acts1 actuals)) tn1
+    (with-slots ((id2 id) (acts2 actuals)) tn2
+      (and (eq id1 id2)
+	   (tc-eq* acts1 acts2 bindings)))))
+
 
 (defun tc-eq-operators (decl1 decl2)
   (let ((id1 (id decl1))
@@ -1602,12 +1590,7 @@ where db is to replace db1 and db2")
 		    (setf (gethash t2 ht) nvalue)))))
 	  (or (call-next-method)
 	      (known-subtype-of? t1 t2)))))
-
-(defun known-subtype-of? (t1 t2)
-  (let ((known-subtypes (assoc t1 (known-subtypes *current-context*)
-			       :test #'tc-eq)))
-    (some #'(lambda (ks) (subtype-of*? ks t2))
-	  (cdr known-subtypes))))
+	 
 
 (defmethod subtype-of*? :around (t1 (t2 subtype))
    (if (everywhere-true? (predicate t2))

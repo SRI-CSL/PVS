@@ -390,6 +390,15 @@
 (defmethod else-part ((expr if-expr))
   (caddr (arguments expr)))
 
+(defmethod condition ((expr branch))
+  (car (arguments expr)))
+
+(defmethod then-part ((expr branch))
+  (cadr (arguments expr)))
+
+(defmethod else-part ((expr branch))
+  (caddr (arguments expr)))
+
 (defmethod theory ((adt datatype))
   nil)
 
@@ -824,19 +833,23 @@
     new-ht))
 
 (defun copy-context (context &optional theory decls)
-  (copy context
-    'theory (or theory (theory context))
-    'theory-name (if theory
-		     (mk-modname (id theory))
-		     (theory-name context))
-    'declarations-hash (let ((dhash (copy (declarations-hash context))))
-			 (dolist (decl decls)
-			   (put-decl decl dhash))
-			 dhash)
-    'using-hash (copy (using-hash context))
-    'judgements (copy-judgements (judgements context))
-    'conversions (copy-list (conversions context))
-    'known-subtypes (copy-tree (known-subtypes context))))
+  (let ((*current-context*
+	 (make-instance 'context
+	   'theory (or theory (theory context))
+	   'theory-name (if theory
+			    (mk-modname (id theory))
+			    (theory-name context))
+	   'declaration (or (car (last decls)) (declaration context))
+	   'declarations-hash (let ((dhash (copy (declarations-hash context))))
+				(dolist (decl decls)
+				  (put-decl decl dhash))
+				dhash)
+	   'using-hash (copy (using-hash context))
+	   'conversions (copy-list (conversions context))
+	   'known-subtypes (copy-tree (known-subtypes context)))))
+    (setf (judgements *current-context*)
+	  (copy-judgements (judgements context)))
+    *current-context*))
 
 (defun copy-prover-context (&optional (context *current-context*))
   (assert *in-checker*)

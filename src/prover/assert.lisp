@@ -888,7 +888,7 @@
     (collect-type-constraints* expr)))
 
 (defun collect-type-constraints* (ex)
-  (type-constraints ex))
+  (type-constraints ex t))
 
 ;;NSH(7.11.94): old code triggered a loop since collect-type-constraints
 ;;calls substit which calls pseudo-normalize which calls

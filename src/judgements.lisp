@@ -372,6 +372,9 @@
       (list (type expr))))
 
 (defmethod judgement-types ((ex expr))
+  (judgement-types-expr ex))
+
+(defun judgement-types-expr (ex)
   (let ((jhash (judgement-types-hash (judgements *current-context*))))
     (multiple-value-bind (jtypes there?)
 	(gethash ex jhash)
@@ -458,12 +461,15 @@
 	     (jrange (when (length= argtypes (formals jdecl))
 		       (compute-appl-judgement-range-type
 			arguments argtypes rdomains domains range))))
-	(if (or (null jrange)
-		(some #'(lambda (jty) (subtype-of? jty jrange)) jtypes))
-	    jtypes
-	    (cons jrange
-		  (delete-if #'(lambda (jty)
-				 (subtype-of? jrange jty)) jtypes))))))
+	(generic-application-judgement-types
+	 ex
+	 (cdr gen-judgements)
+	 (if (or (null jrange)
+		 (some #'(lambda (jty) (subtype-of? jty jrange)) jtypes))
+	     jtypes
+	     (cons jrange
+		   (delete-if #'(lambda (jty)
+				  (subtype-of? jrange jty)) jtypes)))))))
 
 (defun instantiate-generic-appl-judgement-types (ex judgements &optional types)
   (if (null judgements)
@@ -599,6 +605,7 @@
 (defun judgement-arguments-match? (argument argtypes rdomain jdomain)
   (assert (fully-instantiated? rdomain))
   (assert (fully-instantiated? jdomain))
+  (assert (every #'fully-instantiated? argtypes))
   (if (null argtypes)
       (subtype-wrt? (type argument) jdomain rdomain)
       (judgement-arguments-match*? argtypes rdomain jdomain)))
@@ -1101,12 +1108,17 @@
   (let ((new-hash (make-hash-table :test 'eq)))
     (maphash
      #'(lambda (decl judgements)
-	 (setf (gethash decl new-hash)
-	       (copy judgements
-		 'minimal-judgements (copy-list
-				      (minimal-judgements judgements))
-		 'generic-judgements (copy-list
-				      (generic-judgements judgements)))))
+	 (multiple-value-bind (ijudgements gjudgements)
+	     (split-on #'(lambda (jd)
+			   (fully-instantiated? (type jd)))
+		       (minimal-judgements judgements))
+	   (setf (gethash decl new-hash)
+		 (copy judgements
+		   'minimal-judgements
+		   ijudgements
+		   'generic-judgements
+		   (append gjudgements
+			   (copy-list (generic-judgements judgements)))))))
      name-hash)
     new-hash))
 
@@ -1259,3 +1271,184 @@
 	    (mapcar #'(lambda (ety) (add-to-known-subtypes aty ety))
 		    etypes))))))
 
+(defun known-subtype-of? (t1 t2)
+  (let ((known-subtypes (assoc t1 (known-subtypes *current-context*)
+			       :test #'subtype-of-test)))
+    (some #'(lambda (ks) (subtype-of*? ks t2))
+	  (cdr known-subtypes))))
+
+(defun subtype-of-test (tt1 tt2)
+  (if (freevars tt2)
+      (let ((subst (simple-match tt2 tt1)))
+	(and (not (eq subst 'fail))
+	     (every #'(lambda (sub)
+			(some #'(lambda (jty)
+				  (subtype-of? jty (type (car sub))))
+			      (judgement-types+ (cdr sub))))
+		    subst)))
+      (tc-eq tt1 tt2)))
+
+(defun simple-match (ex inst)
+  (simple-match* ex inst nil nil))
+
+(defmethod simple-match* ((ex type-name) (inst type-name) bindings subst)
+  (if (tc-eq ex inst)
+      subst
+      'fail))
+
+(defmethod simple-match* ((ex subtype) (inst subtype) bindings subst)
+  (let ((nsubst (simple-match* (supertype ex) (supertype inst)
+			       bindings subst)))
+    (if (eq nsubst 'fail)
+	'fail
+	(simple-match* (predicate ex) (predicate inst) bindings nsubst))))
+
+(defmethod simple-match* ((ex funtype) (inst funtype) bindings subst)
+  (let ((nsubst (simple-match* (domain ex) (domain inst) bindings subst)))
+    (if (eq nsubst 'fail)
+	'fail
+	(simple-match* (range ex) (range inst)
+		       (if (typep (domain ex) 'dep-binding)
+			   (acons (domain ex) (domain inst) bindings)
+			   bindings)
+		       nsubst))))
+
+(defmethod simple-match* ((ex tupletype) (inst tupletype) bindings subst)
+  (simple-match* (types ex) (types inst) bindings subst))
+
+(defmethod simple-match* ((ex list) (inst list) bindings subst)
+  (simple-match-list ex inst bindings subst))
+
+(defun simple-match-list (list ilist bindings subst)
+  (cond ((null list)
+	 (if (null ilist) subst 'fail))
+	((null ilist) 'fail)
+	(t (let ((nsubst (simple-match* (car list) (car ilist)
+					bindings subst)))
+	     (if (eq nsubst 'fail)
+		 'fail
+		 (simple-match-list (cdr list) (cdr ilist)
+				    (if (typep (car list) 'binding)
+					(acons (car list) (car ilist) bindings)
+					bindings)
+				    nsubst))))))
+
+(defmethod simple-match* ((ex recordtype) (inst recordtype) bindings subst)
+  (simple-match* (fields ex) (fields inst) bindings subst))
+
+(defmethod simple-match* ((ex binding) (inst binding) bindings subst)
+  (if (eq (id ex) (id inst))
+      (simple-match* (type ex) (type inst) bindings subst)
+      'fail))
+
+(defmethod simple-match* ((ex name-expr) (inst expr) bindings subst)
+  (if (variable? ex)
+      (let ((binding (assq (declaration ex) bindings)))
+	(if binding
+	    (if (if (and (typep (cdr binding) 'binding)
+			 (typep inst 'name-expr))
+		    (eq (cdr binding) (declaration inst))
+		    (tc-eq (cdr binding) inst))
+		subst
+		'fail)
+	    (let ((sub (assq (declaration ex) subst)))
+	      (if sub
+		  (if (tc-eq (cdr sub) inst)
+		      subst
+		      'fail)
+		  (if (assq (declaration ex) bindings)
+		      subst
+		      (acons (declaration ex) inst subst))))))
+      (if (and (typep inst 'name-expr)
+	       (eq (declaration ex) (declaration inst)))
+	  (simple-match* (module-instance ex) (module-instance inst)
+			 bindings subst)
+	  'fail)))
+
+(defmethod simple-match* ((ex field-application) (inst field-application)
+			  bindings subst)
+  (if (eq (id ex) (id inst))
+      (simple-match* (argument ex) (argument inst))
+      'fail))
+
+(defmethod simple-match* ((ex projection-application)
+			  (inst projection-application)
+			  bindings subst)
+  (if (eq (id ex) (id inst))
+      (simple-match* (argument ex) (argument inst))
+      'fail))
+
+(defmethod simple-match* ((ex number-expr) (inst number-expr) bindings subst)
+  (if (= (number ex) (number inst))
+      subst
+      'fail))
+
+(defmethod simple-match* ((ex tuple-expr) (inst tuple-expr) bindings subst)
+  (simple-match* (exprs ex) (exprs inst) bindings subst))
+
+(defmethod simple-match* ((ex record-expr) (inst record-expr) bindings subst)
+  (simple-match* (assignments ex) (assignments inst) bindings subst))
+
+(defmethod simple-match* ((ex cases-expr) (inst cases-expr) bindings subst)
+  (simple-match* (selections ex) (selections inst) bindings subst))
+
+(defmethod simple-match* ((ex application) (inst application) bindings subst)
+  (let ((nsubst (simple-match* (operator ex) (operator inst) bindings subst)))
+    (if (eq nsubst 'fail)
+	'fail
+	(simple-match* (argument ex) (argument inst) bindings nsubst))))
+
+(defmethod simple-match* ((ex forall-expr) (inst forall-expr) bindings subst)
+  (let ((nsubst (simple-match* (bindings ex) (bindings inst) bindings subst)))
+    (if (eq nsubst 'fail)
+	'fail
+	(simple-match* (expression ex) (expression inst)
+		       (pairlis (bindings ex) (bindings inst) bindings)
+		       nsubst))))
+
+(defmethod simple-match* ((ex exists-expr) (inst exists-expr) bindings subst)
+  (let ((nsubst (simple-match* (bindings ex) (bindings inst) bindings subst)))
+    (if (eq nsubst 'fail)
+	'fail
+	(simple-match* (expression ex) (expression inst)
+		       (pairlis (bindings ex) (bindings inst) bindings)
+		       nsubst))))
+
+(defmethod simple-match* ((ex lambda-expr) (inst lambda-expr) bindings subst)
+  (let ((nsubst (simple-match* (bindings ex) (bindings inst) bindings subst)))
+    (if (eq nsubst 'fail)
+	'fail
+	(simple-match* (expression ex) (expression inst)
+		       (pairlis (bindings ex) (bindings inst) bindings)
+		       nsubst))))
+
+(defmethod simple-match* ((ex update-expr) (inst update-expr) bindings subst)
+  (let ((nsubst (simple-match* (expression ex) (expression inst)
+			       bindings subst)))
+    (if (eq nsubst 'fail)
+	'fail
+	(simple-match* (assignments ex) (assignments inst) bindings nsubst))))
+
+(defmethod simple-match* ((ex assignment) (inst assignment) bindings subst)
+  (let ((nsubst (simple-match* (arguments ex) (arguments inst)
+			       bindings subst)))
+    (if (eq nsubst 'fail)
+	'fail
+	(simple-match* (expression ex) (expression inst) bindings nsubst))))
+
+(defmethod simple-match* ((ex modname) (inst modname) bindings subst)
+  (if (eq (id ex) (id inst))
+      (simple-match* (actuals ex) (actuals inst) bindings subst)
+      'fail))
+
+(defmethod simple-match* ((ex actual) (inst actual) bindings subst)
+  (if (type-value ex)
+      (if (type-value inst)
+	  (simple-match* (type-value ex) (type-value inst) bindings subst)
+	  'fail)
+      (if (type-value inst)
+	  'fail
+	  (simple-match* (expr ex) (expr inst) bindings subst))))
+
+(defmethod simple-match* (ex inst bindings subst)
+  'fail)

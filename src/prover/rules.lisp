@@ -231,31 +231,39 @@ command name, command")
       (make-negation formula)))
 
 (defun check-prop-axiom (s-forms)
-  (check-prop-axiom* s-forms s-forms))
+  (let ((forms (mapcar #'formula s-forms)))
+    (check-prop-axiom* forms)))
 
-(defun check-prop-axiom* (s-forms all-s-forms)
-  (if (consp s-forms)
-      (let ((form1 (formula (car s-forms))))
-	(cond ((and (typep form1 'name-expr)
-		    (exequal form1 *true*))
-	       '!)
-	      ((and (not-expr? form1)
-		    (or (and (typep (args1 form1)
-				    'name-expr)
-			     (exequal (args1 form1)
-				      *false*))
-			(member (args1 form1) all-s-forms
-				:test #'(lambda (x y)
-					  (exequal x (formula y))))))
-	       '!)
-	      ((and (not (not-expr? form1))
-		    (equality? form1)
-		    (exequal (args1 form1)
-			     (args2 form1)))
-	       '!)
-	      (t (check-prop-axiom* (cdr s-forms) all-s-forms))))
+(defun check-prop-axiom* (forms)
+  (if (consp forms)
+      (if (essentially-true? (car forms) (cdr forms))
+	  '!
+	  (check-prop-axiom* (cdr forms)))
       'X))
 
+(defmethod essentially-true? ((form name-expr) remforms)
+  (or (tc-eq form *true*)
+      (member form remforms :test #'neg-tc-eq)))
+
+(defmethod essentially-true? ((form negation) remforms)
+  (with-slots (argument) form
+    (or (tc-eq argument *false*)
+	(member argument remforms :test #'tc-eq))))
+
+(defmethod essentially-true? ((form equation) remforms)
+  (with-slots (argument) form
+    (or (apply #'tc-eq (exprs argument))
+	(member form remforms :test #'neg-tc-eq))))
+
+(defmethod essentially-true? ((form expr) remforms)
+  (member form remforms :test #'neg-tc-eq))
+
+(defmethod neg-tc-eq ((e1 expr) (e2 negation))
+  (with-slots ((arg2 argument)) e2
+    (tc-eq e1 arg2)))
+
+(defmethod neg-tc-eq ((e1 expr) (e2 expr))
+  nil)
 
 (addrule 'propax nil nil (prop-axiom-rule)
 	 "Checks if sequent has form ...,A |- ...A or ...|- a = a, ..., in
