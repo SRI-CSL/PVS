@@ -130,15 +130,15 @@ case $opsys in
   *) echo "PVS 2.3 only runs under Solaris or Linux"; exit 1
 esac
 
-if [ ! $PVSLISP ]
+if [ ! "$PVSLISP" ]
    then PVSLISP=pvs-allegro5.0
 fi
 
 binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
 
-if [ -e $binpath/full -a -x $binpath/full/$PVSIMAGE ]
+if [ -d $binpath/full -a -x $binpath/full/$PVSIMAGE ]
    then PATH=$binpath/full:$binpath:$PVSPATH/bin:$PATH
-elif [ -e $binpath/runtime -a -x $binpath/runtime/$PVSIMAGE ]
+elif [ -d $binpath/runtime -a -x $binpath/runtime/$PVSIMAGE ]
    then PATH=$binpath/runtime:$binpath:$PVSPATH/bin:$PATH
    else echo "Cannot find $binpath/runtime/$PVSIMAGE"
         echo "Check the values of PVSPATH and PVSLISP"
