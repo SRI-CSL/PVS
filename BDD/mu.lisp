@@ -1373,7 +1373,7 @@ time)."
 
 
 (defun subrange!? (type)
-  (let* ((subrange (type-value (declaration (subrange-res))))
+  (let* ((subrange (subrange-subtype))
 	 (*modsubst* T)
 	 (subst (match subrange type nil nil))) ;(break)
     (when (and (not (eq subst 'fail))
@@ -1383,7 +1383,7 @@ time)."
 	
 
 (defun below!? (type)
-  (let* ((below (type-value (declaration (below-res))))
+  (let* ((below (below-subtype))
 	 (*modsubst* T)
 	 (subst (match below type nil nil)))
     (when (and (not (eq subst 'fail))
@@ -1392,7 +1392,7 @@ time)."
 		   (cdr (assoc '|i| subst :test #'same-id))))))))
 
 (defun upto!? (type)
-  (let* ((upto (type-value (declaration (upto-res))))
+  (let* ((upto (upto-subtype))
 	 (*modsubst* T)
 	 (subst (match upto type nil nil)))
     (when (and (not (eq subst 'fail))
