@@ -281,10 +281,12 @@
 	     (ics_atom_mk_le (translate-term-to-ics* (args1 expr))
 			     (translate-term-to-ics* (args2 expr))))
 	    ((tc-eq op (integer_pred))
-	     (ics_atom_mk_int (translate-term-to-ics* (args1 expr))))
+             (ics_atom_mk_true))  ; ignore for now
+	     ; (ics_atom_mk_int (translate-term-to-ics* (args1 expr))))
 	    ((or (tc-eq op (real_pred))
 		 (tc-eq op (rational_pred)))
-	     (ics_atom_mk_real (translate-term-to-ics* (args1 expr))))
+             (ics_atom_mk_true)) ; ignore for now
+	     ; (ics_atom_mk_real (translate-term-to-ics* (args1 expr))))
 	    ((tc-eq op (number-field_pred)) ; ignore
 	     (ics_atom_mk_true))
 	    (t
