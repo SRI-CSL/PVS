@@ -135,7 +135,8 @@
 (defun run-musimp (ps fnums dynamic-ordering?)
  (bdd_init)
  (mu_init)
-  (let* ((*pvs-bdd-hash* (make-hash-table
+  (let* ((*bdd-initialized* t)
+	 (*pvs-bdd-hash* (make-hash-table
 			  :hash-function 'pvs-sxhash :test 'tc-eq))
 	 (*bdd-pvs-hash* (make-hash-table))
 	 (*pvs-bdd-inclusivity-formulas* nil)

@@ -130,6 +130,7 @@ selections of unsimplified CASES expressions."
 ;;  (setq *zozo* list-state-predicates) ;; to remove later...
   (let* (;;(*current-theory* *current-theory*)
          ;;(*current-context* (context *current-theory*))
+	 (*bdd-initialized* t)
          (*generate-tccs* 'NONE)
          (*abstraction-strategy* nil)
          (*max-proof-counter* proof-counter)
