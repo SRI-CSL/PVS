@@ -10,28 +10,81 @@
 .SUFFIXES:
 .SUFFIXES: .c .o
 SHELL=/bin/sh
+lispdir = /pkg/allegro5.0
 lisp = allegro5.0
 PLATFORM = $(shell bin/pvs-platform)
 export PLATFORM
 ifeq ($(PLATFORM),sun4-SunOS5)
-	LISP=/pkg/allegro5.0/sol24/lisp
+	LISP=$(lispdir)/sol24/lisp
 	LISPEXT=fasl
 else
 ifeq ($(PLATFORM),ix86-redhat4)
-	LISP=/pkg/allegro5.0/redhat4/lisp
+	LISP=$(lispdir)/redhat4/lisp
 	LISPEXT=lfasl
 else
 ifeq ($(PLATFORM),ix86-redhat5)
-	LISP=/pkg/allegro5.0/redhat5/lisp
+	LISP=$(lispdir)/redhat5/lisp
 	LISPEXT=lfasl
 endif
 endif
 endif
 
-EMACS20 = emacs-20.3
-EMACS19 = emacs-19.34
-XEMACS20 = xemacs-20.4
-XEMACS19 = xemacs-19.16
+# Determine which versions of Emacs are available
+EMACS = "$(shell which emacs)"
+XEMACS = "$(shell which xemacs)"
+
+emacsversion = $(shell expr "`emacs --version 2> /dev/null`" \
+                            : '[^X]*\(X\?Emacs [0-9]\+\)')
+xemacsversion = $(shell expr "`xemacs --version 2> /dev/null`" \
+                            : '[^X]*\(X\?Emacs [0-9]\+\)')
+
+ifeq ("$(emacsversion)", "Emacs 20")
+EMACS20 = "$(shell which emacs)"
+else
+emacs20version = $(shell expr "`emacs-20.3 --version 2> /dev/null`" \
+                              : '[^X]*\(X\?Emacs [0-9]\+\)')
+ifeq ("$(emacs20version)", "Emacs 20")
+EMACS20 = "$(shell which emacs-20.3)"
+endif
+endif
+
+ifeq ("$(emacsversion)", "Emacs 19")
+EMACS19 = "$(shell which emacs)"
+else
+emacs19version = $(shell expr "`emacs-19.34 --version 2> /dev/null`" \
+                              : '[^X]*\(X\?Emacs [0-9]\+\)')
+ifeq ("$(emacs19version)", "Emacs 19")
+EMACS19 = "$(shell which emacs-19.34)"
+endif
+endif
+
+ifeq ("$(emacsversion)", "XEmacs 20")
+XEMACS20 = "$(shell which emacs)"
+else
+ifeq ("$(xemacsversion)", "XEmacs 20")
+XEMACS20 = "$(shell which xemacs)"
+else
+xemacs20version = $(shell expr "`xemacs-20.4 --version 2> /dev/null`" \
+                               : '[^X]*\(X\?Emacs [0-9]\+\)')
+ifeq ("$(xemacs20version)", "XEmacs 20")
+XEMACS20 = "$(shell which xemacs-20.4)"
+endif
+endif
+endif
+
+ifeq ("$(emacsversion)", "XEmacs 19")
+XEMACS19 = "$(shell which emacs)"
+else
+ifeq ("$(xemacsversion)", "XEmacs 19")
+XEMACS19 = "$(shell which xemacs)"
+else
+xemacs19version = $(shell expr "`xemacs-19.16 --version 2> /dev/null`" \
+                               : '[^X]*\(X\?Emacs [0-9]\+\)')
+ifeq ("$(xemacs19version)", "XEmacs 19")
+XEMACS19 = "$(shell which xemacs-19.16)"
+endif
+endif
+endif
 
 bindir = bin/$(PLATFORM)
 pvsfull = ${bindir}/full/pvs-${lisp}
@@ -40,7 +93,8 @@ pvsrt = ${bindir}/runtime/pvs-${lisp}
 pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
 		 src/closopt.lisp
 
-ff-files = BDD/$(PLATFORM)/mu.so \
+ff-files = src/utils/$(PLATFORM)/file_utils.so \
+           BDD/$(PLATFORM)/mu.so \
            src/decision-procedures/polylib/$(PLATFORM)/polylib.so \
            src/WS1S/$(PLATFORM)/ws1s.so
 
@@ -139,6 +193,7 @@ pvs-src = src/store-object.lisp \
           src/prover/estructures.lisp \
           src/pvs-methods.lisp \
           src/utils/hashfn.lisp \
+          src/utils/file-utils.lisp \
           src/macros.lisp \
           src/globals.lisp \
           src/optimize.lisp \
@@ -239,22 +294,22 @@ lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 
 fasl-files = $(lisp-files:.lisp=.$(LISPEXT))
 
-ifeq ($(shell if [ -x ${EMACS20} ] ; then echo OK ; fi), OK)
+ifneq ($(strip $(EMACS20)),)
 emacs20-elc = $(pvs-emacs20-src:.el=.elc) $(ilisp-emacs20-src:.el=.elc)
 emacs += emacs/emacs20/pvs-load.elc
 endif
 
-ifeq ($(shell if [ -x ${EMACS19} ] ; then echo OK ; fi), OK)
+ifneq ($(strip $(EMACS19)),)
 emacs19-elc = $(pvs-emacs19-src:.el=.elc) $(ilisp-emacs19-src:.el=.elc)
 emacs += emacs/emacs19/pvs-load.elc
 endif
 
-ifeq ($(shell if [ -x ${XEMACS20} ] ; then echo OK ; fi), OK)
+ifneq ($(strip $(XEMACS20)),)
 xemacs20-elc = $(pvs-xemacs20-src:.el=.elc) $(ilisp-xemacs20-src:.el=.elc)
 emacs += emacs/xemacs20/pvs-load.elc
 endif
 
-ifeq ($(shell if [ -x ${XEMACS19} ] ; then echo OK ; fi), OK)
+ifneq ($(strip $(XEMACS19)),)
 xemacs19-elc = $(pvs-xemacs19-src:.el=.elc) $(ilisp-xemacs19-src:.el=.elc)
 emacs += emacs/xemacs19/pvs-load.elc
 endif
@@ -262,6 +317,7 @@ endif
 all : makebdd makepolylib makews1s ${pvsfull} ${pvsrt} ${emacs}
 
 src/pvs-lexer.${LISPEXT} : ${pvs-make-files} ${ff-files} ${lisp-files}
+	umask 002; \
 	$(LISP) -e '(load "pvs.system")' \
 		-e "(let ((code 1)) \
                       (unwind-protect \
@@ -272,25 +328,30 @@ src/pvs-lexer.${LISPEXT} : ${pvs-make-files} ${ff-files} ${lisp-files}
                                      (format t \"~a\" err)) \
                                    (setq code 0)))) \
                         (excl:exit code)))"
+	umask 002; etags ${lisp-files} ${pvs-emacs-src}
 	touch src/pvs-lexer.${LISPEXT}
 
 ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${fasl-files}
 	rm -rf ${bindir}/full
+	umask 002; \
 	$(LISP) -e '(defvar *runtime* nil)' \
 		-L src/make-pvs.lisp
 	touch ${pvsfull}
 
 ${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${fasl-files}
 	rm -rf ${bindir}/runtime
+	umask 002; \
 	$(LISP) -e '(defvar *runtime* t)' \
 		-L src/make-pvs.lisp
 	touch ${pvsrt}
 
 src/pvs-lexer.lisp : ${pvs-parser-in}
+	umask 002; \
 	$(LISP) -L src/make-pvs-parser
 
 src/pvs-methods.lisp : src/make-pvs-methods.lisp src/defcl.lisp \
                        src/classes-expr.lisp src/classes-decl.lisp
+	umask 002; \
 	$(LISP) -e '(defvar *pvs-path* "${PWD}")' \
 		-L src/make-pvs-methods.lisp
 
@@ -298,12 +359,18 @@ ${LISP} :
 	echo "Need to set the LISP variable in Makefile to a valid"
 	echo "allegro 5.0 lisp executable for this platform"
 
-.PHONY: all makebdd makepolylib makews1s
+.PHONY: all makefileutils makebdd makepolylib makews1s
+makefileutils :
+	umask 002; \
+	$(MAKE) -C src/utils/$(PLATFORM)
 makebdd :
+	umask 002; \
 	$(MAKE) -C BDD/$(PLATFORM)
 makepolylib :
+	umask 002; \
 	$(MAKE) -C src/decision-procedures/polylib/$(PLATFORM)
 makews1s :
+	umask 002; \
 	$(MAKE) -C src/WS1S/$(PLATFORM)
 
 pvs-emacs-src = $(wildcard emacs/emacs-src/*.el)
