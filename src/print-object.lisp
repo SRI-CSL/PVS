@@ -96,7 +96,8 @@ print object produces an error, and won't allow inspection of the object.")
   (if *debugging-print-object*
       (call-next-method)
       (format stream "#<Context ~a.~a>"
-	      (id (module ctx))
+	      (when (module ctx)
+		(id (module ctx)))
 	      (when (declaration ctx)
 		(if (importing? (declaration ctx))
 		    (declaration ctx)

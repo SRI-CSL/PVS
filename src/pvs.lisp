@@ -27,7 +27,8 @@
 ;;; Invoked from Emacs
 
 (defun pvs-init (&optional dont-load-patches)
-  (setq *print-pretty* nil)
+  (setq excl:*enclose-printer-errors* nil)
+  (setq *print-pretty* t)
   (setf (symbol-function 'ilisp::ilisp-restore) #'pvs-ilisp-restore)
   #+allegro (setq top-level::*print-length* nil
 		  top-level::*print-level* nil)
