@@ -179,7 +179,6 @@
     'spelling 'OBLIGATION
     'kind 'tcc
     'definition expr
-    'reason reason
     'semi t))
 
 (defun mk-termination-tcc (id expr)
