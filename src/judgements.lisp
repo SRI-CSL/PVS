@@ -1421,7 +1421,6 @@
 		     (minimal-judgements to-name-judgements)))
 	   (to-gen (when to-name-judgements
 		     (generic-judgements to-name-judgements))))
-      (assert (every #'fully-instantiated? to-min))
       (unless (and to-name-judgements
 		   (eq from-min to-min)
 		   (fully-instantiated? to-min)
@@ -1430,7 +1429,6 @@
 	    (merge-name-judgements* (append from-min from-gen) to-min to-gen)
 	  (unless (and (eq new-min to-min)
 		       (eq new-gen to-gen))
-	    (assert (every #'fully-instantiated? new-min))
 	    (setq to-alist
 		  (acons decl
 			 (make-instance 'name-judgements
@@ -1447,19 +1445,15 @@
 ;;; to become generic.  That's why we have a single list of
 ;;; from-name-judgements.
 (defun merge-name-judgements* (from-name-judgements to-min to-gen)
-  (assert (every #'fully-instantiated? to-min) () "Bah!")
   (dolist (jdecl from-name-judgements)
     (if (fully-instantiated? (type jdecl))
 	(unless (some #'(lambda (jd) (subtype-of? (type jd) (type jdecl)))
 		      to-min)
-	  (let ((new-to-min
-		 (cons jdecl
-		       (remove-if #'(lambda (jd)
-				      (subtype-of? (type jdecl) (type jd)))
-			 to-min))))
-	    (assert (every #'fully-instantiated? to-min))
-	    (assert (every #'fully-instantiated? new-to-min))
-	    (setq to-min new-to-min)))
+	  (setq to-min
+		(cons jdecl
+		      (remove-if #'(lambda (jd)
+				     (subtype-of? (type jdecl) (type jd)))
+			to-min))))
 	(unless (or (memq jdecl to-gen)
 		    (judgement-uninstantiable? jdecl)
 		    (some #'(lambda (jd) (subtype-of? (type jd) (type jdecl)))
