@@ -747,11 +747,9 @@
 	(assert-if-arg expr)
       (let* ((sig (if (eq sigop '?) '? sigargs))
 	     (expr ;;shadowing expr
-	      (lcopy expr 'operator
-		     (if (eq sigop '?) newop (operator expr))
-		     'argument
-		     (if (eq sigargs '?) newargs
-			 (argument expr)))))
+	      (lcopy expr
+		'operator (if (eq sigop '?) newop (operator expr))
+		'argument (if (eq sigargs '?) newargs (argument expr)))))
 	(cond ((and (eq sigop '?)
 		    (typep newop 'lambda-expr))
 	       (multiple-value-bind (sig val)
@@ -789,6 +787,7 @@
 		     (values sig expr)))))))))
 
 (defmethod assert-if-inside-sign* ((expr branch) sign)
+  (declare (ignore sign))
   (assert-if expr))
 
 (defmethod assert-if-inside-sign* ((expr quant-expr) sign)
@@ -801,6 +800,7 @@
 	  (values sig newexpr)))))
 
 (defmethod assert-if-inside-sign* ((expr t) sign)
+  (declare (ignore sign))
   (assert-if expr))
 
 
@@ -1303,10 +1303,12 @@
 (defmethod assert-cases (expression (case-expr unpack-expr))
   ;; In this case all we can do is see if every selection expression
   ;; is the same, in which case that is the result.
+  (declare (ignore expression))
   (assert (selections case-expr))
-  (let ((result (expression (car selections))))
+  (let ((result (expression (car (selections case-expr)))))
     (if (and (every #'(lambda (sel)
-			(tc-eq (expression sel) result)))
+			(tc-eq (expression sel) result))
+		    (selections case-expr))
 	     (or (null (else-part case-expr))
 		 (tc-eq (else-part case-expr) result)))
 	(assert-subgoal result)
@@ -1357,6 +1359,11 @@
 				       in-beta-reduce?)
 		   args
 		   in-beta-reduce? nil)))
+
+(defun accessor-update-redex? (expr)
+  (and (typep expr 'application)
+       (typep (operator expr) 'accessor-name-expr)
+       (typep (argument expr) 'update-expr)))
 
 (defun check-update-args* (updates args in-beta-reduce?)
   ;;returns a list of matching updates, or 'NOIDEA if there
@@ -1481,6 +1488,12 @@
   (let* ((new-application (make!-field-application op arg)))
     (if (record-update-redex? new-application)
 	(nth-value 1 (record-update-reduce new-application op arg))
+	new-application)))
+
+(defun make-accessor-update-reduced-application (op arg)
+  (let* ((new-application (make!-application op arg)))
+    (if (accessor-update-redex? new-application)
+	(nth-value 1 (accessor-update-reduce new-application op arg))
 	new-application)))
 
 
@@ -2181,15 +2194,15 @@
 		  (values '? *true*))
 		 (t (do-auto-rewrite expr sig)))))
 
-(defmethod assert-if-application* ((expr equation) newop  newargs sig)
+(defmethod assert-if-application* ((expr equation) newop newargs sig)
   (declare (ignore newop))  
   (assert-equality expr newargs sig))
 
-(defmethod assert-if-application* ((expr disequation) newop  newargs sig)
+(defmethod assert-if-application* ((expr disequation) newop newargs sig)
   (declare (ignore newop))
   (assert-disequality expr newargs sig))
 
-(defmethod assert-if-application* (expr newop  newargs sig)
+(defmethod assert-if-application* (expr newop newargs sig)
   (cond ((or (is-addition? expr) (is-subtraction? expr))
 	 (assert-if-addition  expr newargs sig))
 	((is-multiplication? expr)
@@ -2219,8 +2232,39 @@
 	   (if (tc-eq result expr)
 	       (do-auto-rewrite expr sig)
 	       (values '? result))))
+	((accessor-update-redex? expr)
+	 (let ((result
+		(simplify-accessor-update-redex expr)))
+	   (if (tc-eq result expr)
+	       (do-auto-rewrite expr sig)
+	       (values '? result))))
 	(t (do-auto-rewrite expr sig))))
-	
+
+(defun simplify-accessor-update-redex (expr)
+  (let* ((op (operator expr))
+	 (arg (argument expr))
+	 (updates
+	  (loop for assn in (assignments arg)
+		when (eq (id op) (id (caar (arguments assn))))
+		collect assn))
+	 (expr-of-arg (expression arg)))
+    (if updates
+	(if (every #'(lambda (x) (cdr (arguments x)))
+		   updates) ;;;a curried update::
+	                             ;;;a(exp WITH [((a)(i)):= e])
+	    (let ((newexpr;;NSH(9.15.94): otherwise TCCs
+		   ;;are generated when domain is subtype.
+		   ;;(let ((*generate-tccs* 'none)))
+		   (make!-update-expr
+		    (make-accessor-update-reduced-application
+		     op expr-of-arg)
+		    (mapcar #'(lambda (x)
+				(lcopy x 'arguments
+				       (cdr (arguments x))))
+		      updates))))
+	      newexpr)
+	    (nth-value 1 (make-update-expr-from-updates updates)))
+	(make-accessor-update-reduced-application op expr-of-arg))))
   
 
 (defun assert-if-application (expr newop newargs sig)
@@ -3221,7 +3265,7 @@
 				  :key #'declaration)
 		     collect pair))
 	 (rest-substs (set-difference substs keeps))
-	 (more-new-bindings (loop for (x . y) in keeps
+	 (more-new-bindings (loop for (x . nil) in keeps
 				  collect (declaration x))))
     (if keeps
 	(keep-bindings rest-substs (append more-new-bindings new-bindings)
@@ -3250,7 +3294,7 @@
 	 (substs (collect-subst-equalities conjuncts bindings)))
     (if substs
 	(let* ((substs (order-subst-equalities substs nil))
-	       (varsubsts (loop for (x . y) in substs
+	       (varsubsts (loop for (x . nil) in substs
 				collect (declaration x)))
 	       (new-bindings (loop for x in bindings
 				   when (not (member x varsubsts))
@@ -3259,7 +3303,7 @@
 					    (freevars new-bindings)))
 	       (substs (self-apply-substitution substs new-bindings)))
 	  (if substs
-	      (let* ((*boundvariables* (append bindings *bound-variables*))
+	      (let* ((*bound-variables* (append bindings *bound-variables*))
 		     (*keep-unbound* *bound-variables*)
 		     (newbody (substit newbody substs))
 		     (*tccforms* nil)
@@ -3277,6 +3321,7 @@
 					   *true*
 					   (make!-exists-expr new-bindings newbody)))
 				   newbody)))
+		(declare (ignore dummy))
 		(do-auto-rewrite new-expr '?))
 	      (do-auto-rewrite (lcopy expr 'expression newbody) sig)))
 	(do-auto-rewrite (lcopy expr 'expression newbody) sig))))
@@ -3300,7 +3345,7 @@
 	 (substs (collect-subst-equalities ndisjuncts bindings)))
     (if substs
 	(let* ((substs (order-subst-equalities substs nil))
-	       (varsubsts (loop for (x . y) in substs
+	       (varsubsts (loop for (x . nil) in substs
 				collect (declaration x)))
 	       (new-bindings (loop for x in bindings
 				   when (not (member x varsubsts))
@@ -3309,7 +3354,7 @@
 					    (freevars new-bindings)))
 	       (substs (self-apply-substitution substs new-bindings)))
 	  (if substs
-	      (let* ((*boundvariables* (append bindings *bound-variables*))
+	      (let* ((*bound-variables* (append bindings *bound-variables*))
 		     (*keep-unbound* *bound-variables*)
 		     (newbody (substit newbody substs))
 		     (*tccforms* nil)
@@ -3327,6 +3372,7 @@
 					   *false*
 					   (make!-forall-expr new-bindings newbody)))
 				   newbody)))
+		(declare (ignore dummy))
 		(do-auto-rewrite new-expr '?))
 	      (do-auto-rewrite (lcopy expr 'expression newbody) sig)))
 	(do-auto-rewrite (lcopy expr 'expression newbody) sig))))

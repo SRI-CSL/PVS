@@ -383,6 +383,8 @@
 					 (arguments newexpr)))))
 	  ((function-update-redex? newexpr)
 	   (simplify-function-update-redex newexpr t))
+	  ((accessor-update-redex? newexpr)
+	   (beta-reduce-accessor-update-redex newexpr))
 	  ((and (typep oper 'name-expr)
 		(accessor? oper)
 		(typep arg 'application)
@@ -401,6 +403,33 @@
 				 (pairlis-args (bindings oper)
 					       (arguments newexpr))))
 		 newexpr)))))
+
+(defun beta-reduce-accessor-update-redex (expr)
+  (let* ((op (operator expr))
+	 (arg (argument expr))
+	 (updates
+	  (loop for assn in (assignments arg)
+		when (eq (id op) (id (caar (arguments assn))))
+		collect assn))
+	 (expr-of-arg (expression arg)))
+    (if updates
+	(if (every #'(lambda (x) (cdr (arguments x)))
+		   updates) ;;;a curried update::
+	                             ;;;a(exp WITH [((a)(i)):= e])
+	    (let ((newexpr;;NSH(9.15.94): otherwise TCCs
+		   ;;are generated when domain is subtype.
+		   ;;(let ((*generate-tccs* 'none)))
+		   (make!-update-expr
+		    (make-accessor-update-reduced-application
+		     op expr-of-arg)
+		    (mapcar #'(lambda (x)
+				(lcopy x 'arguments
+				       (cdr (arguments x))))
+		      updates))))
+	       newexpr)
+	    (make-beta-update-expr-from-updates
+	     updates))
+	(make-accessor-update-reduced-application op expr-of-arg))))
 
 (defmethod beta-reduce* ((list list))
   (let ((nlist (beta-reduce*-list list nil)))

@@ -290,7 +290,7 @@
 	 (varex (make-variable-expr bd)))
     (translate-to-prove
      (make!-lambda-expr (list bd)
-       (make!-injection-application (index expr) varex)))))
+       (make!-injection-application (index expr) varex (type expr))))))
 
 (defmethod translate-to-prove ((expr injection?-expr))
   (let* ((id (make-new-variable '|x| expr))
@@ -593,9 +593,12 @@
 			   :test #'eq :key #'id))
 		(tupletype
 		 (1- (number (caar args))))
-		(t (if (singleton? (car args))
-		       (translate-to-prove (caar args))
-		       (cons 'tupcons (translate-to-prove (car args))))))
+		(funtype
+		 (if (singleton? (car args))
+		     (translate-to-prove (caar args))
+		     (cons 'tupcons (translate-to-prove (car args)))))
+		(t
+		 (translate-to-prove (caar args))))
 	      (let* ((ntrbasis-type
 		      (find-supertype 
 		       (typecase type
@@ -605,7 +608,10 @@
 			 (tupletype
 			  (nth (1- (number (caar args)))
 			       (types type)))
-			 (t (range type)))))
+			 (funtype
+			  (range type))
+			 (t
+			  (range (type (caar args)))))))
 		     (ntrbasis
 		      (typecase type
 			(recordtype
@@ -617,12 +623,18 @@
 			(tupletype
 			 (make-tr-projection-application
 			  ntrbasis-type (number (caar args)) trbasis))
-			(t (make-tr-assign-application
-			    type
-			    trbasis
-			    (if (singleton? (car args))
-				(translate-to-prove (caar args))
-				(cons 'tupcons (translate-to-prove (car args)))))))))
+			(funtype
+			 (make-tr-assign-application
+			  type
+			  trbasis
+			  (if (singleton? (car args))
+			      (translate-to-prove (caar args))
+			      (cons 'tupcons (translate-to-prove (car args))))))
+			(t
+			 (make-tr-assign-application
+			  (type (caar args))
+			  (translate-to-prove (caar args))
+			  trbasis)))))
 		(translate-assign-args (cdr args)
 				       value
 				       ntrbasis
