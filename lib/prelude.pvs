@@ -2112,7 +2112,7 @@ integers: THEORY
   odd_plus_even_is_odd:	   JUDGEMENT +(o1,e2) HAS_TYPE odd_int
   odd_minus_even_is_odd:   JUDGEMENT -(o1,e2) HAS_TYPE odd_int
   even_plus_odd_is_odd:	   JUDGEMENT +(e1,o2) HAS_TYPE odd_int
-  even_minus_odd_id_odd:   JUDGEMENT -(e1,o2) HAS_TYPE odd_int
+  even_minus_odd_is_odd:   JUDGEMENT -(e1,o2) HAS_TYPE odd_int
   even_times_int_is_even:  JUDGEMENT *(e1,i)  HAS_TYPE even_int
   int_times_even_is_even:  JUDGEMENT *(i,e2)  HAS_TYPE even_int
   odd_times_odd_is_odd:	   JUDGEMENT *(o1,o2) HAS_TYPE odd_int
