@@ -437,11 +437,16 @@
   (let ((error (format nil
 		   "~?~@[~%~a~]~:[~;~%You may need to add a semicolon (;) ~
                     to the end of the previous declaration~]"
-		 message args *type-error* *in-coercion*))
+		 (if args
+		     message
+		     (protect-format-string message))
+		 args *type-error* *in-coercion*))
 	(obj-conv? (conversion-occurs-in? obj)))
-    (if (or obj-conv?
-	    (and *type-error-argument*
-		 (conversion-occurs-in? *type-error-argument*)))
+    (if (and *typechecking-module*
+	     (null *type-error-catch*)
+	     (or obj-conv?
+		 (and *type-error-argument*
+		      (conversion-occurs-in? *type-error-argument*))))
 	(let* ((ex (if obj-conv?
 		       obj
 		       (mk-application* obj
@@ -459,7 +464,9 @@
 				      (not (dep-binding? (domain (type obj)))))
 			    (range (type obj))))))
 	  (untypecheck-theory ex)
-	  (typecheck ex :expected etype))
+	  (if etype
+	      (typecheck ex :expected etype)
+	      (typecheck-uniquely ex)))
 	error)))
 
 (defun conversion-occurs-in? (obj)
@@ -572,7 +579,7 @@
 	  "Incompatible types for ~a~%     Found: ~{~a~%~^~12T~}  Expected: ~a"
 	  expr
 	  (mapcar #'(lambda (fn) (unpindent fn 12 :string t))
-		  (full-name types 1))
+		  (full-name rtypes 1))
 	  (unpindent (full-name expected 1) 12 :string t))
 	(type-error expr "Type provided where an expression is expected"))))
 
