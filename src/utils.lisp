@@ -360,24 +360,12 @@
 		(not (typep (car res) 'resolution)))
       (car res))))
 
-(defmethod resolution ((te datatype-subtype))
-  (resolution (declared-type te)))
-
-(defmethod module-instance ((te datatype-subtype))
-  (module-instance (declared-type te)))
-
-(defmethod declaration ((te datatype-subtype))
-  (declaration (declared-type te)))
-
-(defmethod actuals ((te datatype-subtype))
-  (actuals (declared-type te)))
-
-(defmethod adt ((te datatype-subtype))
-  (adt (declared-type te)))
-
-(defmethod adt? ((te datatype-subtype))
-  (adt? (declared-type te)))
-
+(defmethod declaration ((act actual))
+  (if (type-value act)
+      (when (typep (type-value act) 'type-name)
+	(declaration (resolution (type-value act))))
+      (when (typep (expr act) 'name-expr)
+	(declaration (expr act)))))
 
 (defmethod declaration ((name name))
   (let ((res (resolutions name)))
@@ -469,117 +457,6 @@
 	  ((not (probe-file dirslash))
 	   (values nil (format nil "~a is not a directory." dir)))
 	  (t (pathname dirslash)))))
-
-
-;;; tc-add-decl both typechecks and adds the declaration, setting
-;;; *in-checker* to nil in order to ensure that TCCs are not passed to
-;;; the prover.
-
-(defun tc-add-decl (decl)
-  (let ((*in-checker* nil))
-    (add-decl (typecheck* decl nil nil nil))))
-
-
-;;; Add-decl is used to incorporate newly generated declarations.  It
-;;; inserts the new declaration after the current declaration found in
-;;; the context.
-
-;;; Side effects:
-;;;   (module decl)
-;;;   (generated-by decl)
-;;;   (generated (declaration *current-context*))
-;;;   (assuming (module *current-context*))
-;;;   (theory (module *current-context*))
-;;;   (local-decls *current-context*)
-;;;   (declarations (module *current-context*))
-
-(defvar *insert-add-decl* t
-  "Flag used for the add-declaration and modify-declaration commands to
-   allow typechecking without side effects.")
-
-(defun add-decl (decl &optional (insert? t) (generated? t) (assuming? nil))
-  (when (or (adt-def-decl? decl)
-	    ;;(and (const-decl? decl)
-		;; (eq (adt-kind decl) 'recursion))
-	    (using? decl)
-	    (not (member decl (gethash (id decl)
-				       (local-decls *current-context*))
-			 :test #'add-decl-test)))
-    (let* ((thry (module *current-context*))
-	   (cdecl (when (declaration *current-context*)
-		    (if (tcc? decl)
-			(declaration *current-context*)
-			(or (find-if-not #'(lambda (d)
-					     (or (typep d 'field-decl)
-						 (tcc? d)))
-			      (generated (declaration *current-context*)))
-			    (declaration *current-context*)))))
-	   (atail0 (unless (and cdecl
-				(typep cdecl 'formal-decl)
-				(tcc? decl))
-		     (if cdecl
-			 (if (memq cdecl (formals thry))
-			     (assuming thry)
-			     (memq cdecl (assuming thry)))
-			 (when assuming?
-			   (assuming thry)))))
-	   (atail (if (or (null cdecl)
-			  (tcc? decl)
-                          (and (formula-decl? decl)
-                               (eq (spelling decl) 'assumption)))
-                       atail0 (cdr atail0)))
-	   (ttail0 (if cdecl
-		       (if (formal-decl? cdecl)
-			   (theory thry)
-			   (member cdecl (theory thry)))
-		       (unless assuming?
-			 (theory thry))))
-	   (ttail (if (or (null cdecl)
-			  (tcc? decl)
-                          (and (formula-decl? decl)
-                               (eq (spelling decl) 'assumption)))
-                      ttail0 (cdr ttail0))))
-      (assert (or cdecl (not generated?)))
-      (assert (or atail0 ttail0 (field-decl? decl)
-		  (not insert?) (not *insert-add-decl*)
-		  (formal-decl? (declaration *current-context*))))
-      (unless (using? decl)
-	(unless (binding? decl)
-	  (setf (module decl) thry)
-	  (when generated?
-	    (setf (generated-by decl) (or (generated-by cdecl) cdecl))))
-	(when generated?
-	  (pushnew decl (generated (declaration *current-context*)))))
-      (when (tcc? decl)
-	(setq atail (remove-previous-formal-tccs decl atail))
-	(setq ttail (remove-previous-formal-tccs decl ttail)))
-      (when (and insert? *insert-add-decl*)
-	(cond (atail0
-	       (setf (assuming thry)
-		     (if cdecl
-			 (append (ldiff (assuming thry) atail)
-				 (cons decl atail))
-			 (cons decl atail))))
-	      (t ;;ttail
-	       (setf (theory thry)
-		     (if cdecl
-			 (append (ldiff (theory thry) ttail)
-				 (cons decl ttail))
-			 (cons decl ttail))))))
-      (unless (or (using? decl)
-		  (null *insert-add-decl*))
-	(put-decl decl (local-decls *current-context*))
-	(put-decl decl (declarations thry)))
-      decl)))
-
-(defun remove-previous-formal-tccs (decl decls)
-  (if (and (car decls)
-	   (tcc? (car decls))
-	   (typep (generated-by decl) 'formal-decl)
-	   (typep (generated-by (car decls)) 'formal-decl)
-	   (not (eq (generated-by decl) (generated-by (car decls)))))
-      (remove-previous-formal-tccs decl (cdr decls))
-      decls))
 
 (defun splice (new-elt after-elt list)
   (let ((tail (and after-elt (memq after-elt list))))
@@ -816,9 +693,11 @@
   (add-usings-to-context (list (theory-instance decl))))
 
 (defmethod add-imported-assumings (decl)
+  (declare (ignore decl))
   nil)
 
 (defmethod add-formal-importings-to-context (decl)
+  (declare (ignore decl))
   nil)
 
 (defmethod add-formal-importings-to-context ((decl tcc-decl))
@@ -836,6 +715,7 @@
     (add-formal-importings-to-context* (cdr formals) modinst fml)))
 
 (defmethod add-immediate-importings-to-context (decl)
+  (declare (ignore decl))
   nil)
 
 (defmethod add-immediate-importings-to-context ((decl tcc-decl))
@@ -868,7 +748,8 @@
       prevdecls))
 
 (defmethod add-conversions-to-context (decl)
-  )
+  (declare (ignore decl))
+  nil)
 
 (defmethod add-conversions-to-context ((decl conversion-decl))
   (push decl (conversions *current-context*)))
@@ -1327,6 +1208,7 @@
 ;;; Given a type-name, determine whether it is an adt
 
 (defmethod adt? (te)
+  (declare (ignore te))
   nil)
 
 (defmethod adt? ((te type-name))
@@ -1341,12 +1223,6 @@
 
 (defmethod adt? ((te datatype-subtype))
   (adt? (declared-type te)))
-
-(defmethod adt :around ((te type-name))
-  (with-slots (adt) te
-    (if (and adt (symbolp adt))
-	(restore-adt-slot te)
-	adt)))
 
 (defun restore-adt-slot (te)
   (setf (adt te) (get-adt-slot-value te)))
@@ -1436,10 +1312,8 @@
 
 (defmethod adt ((fn constructor-name-expr))
   (or (adt-type fn)
-      (let* ((res (resolution fn))
-	     (adt (find-declared-adt-supertype
+      (let* ((adt (find-declared-adt-supertype
 		   (if (typep (type fn) 'funtype)
-		       ;;checks if res is function or constant.
 		       (range (type fn))
 		       (type fn)))))
 	(setf (adt-type fn) adt))))
@@ -1489,8 +1363,6 @@
 
 (defmethod accessors ((fn name-expr))
   (when (constructor? fn)
-    (when (symbolp (adt (adt fn)))
-      (reset-restored-types* (adt fn)))
     (let* ((con (car (member fn (constructors (adt (adt fn)))
 			     :test #'same-id))))
        (mapcar #'(lambda (acc)
@@ -1927,6 +1799,7 @@
       'types (list type))))
 
 (defmethod translate-update-to-if* ((op expr) args)
+  (declare (ignore args))
   nil)
 
 (defun translate-update-to-if-ass (assignments expr args &optional chain?)
@@ -1987,6 +1860,7 @@
   (translate-update-to-if!* (supertype type) ex args exprs))
 
 (defmethod translate-update-to-if!* (type ex args exprs)
+  (declare (ignore type args))
   (or (car (last exprs)) ex))
 
 ;;; This one recurses down assignments
@@ -2291,8 +2165,7 @@ space")
   (compatible-conversions (conversions *current-context*) type))
 
 (defmethod get-conversions ((type dep-binding))
-  (let ((*adding-conversions* t))
-    (get-conversions (type type))))
+  (get-conversions (type type)))
 
 (defun compatible-conversions (conversions type &optional result)
   (if (null conversions)
@@ -2337,24 +2210,6 @@ space")
     (unless (strict-compatible? (domain type) (range type))
       (setf (types name) (list (type name)))
       name)))
-
-(defun compatible-conversion (conversion type)
-  (let* ((theory (module conversion))
-	 (ctype (find-supertype (type conversion)))
-	 (fmls (formals-sans-usings theory)))
-    (if fmls
-	(let ((bindings (tc-match type ctype (mapcar #'list fmls))))
-	  (when (and bindings (every #'cdr bindings))
-	    (let* ((acts (mapcar #'(lambda (a)
-				     (mk-res-actual (cdr a) theory))
-				 bindings))
-		   (nmi (mk-modname (id theory) acts))
-		   (*generate-tccs* 'none))
-	      (and (subtypes-satisfied? acts fmls)
-		   (check-conversion
-		    (subst-mod-params (name conversion) nmi))))))
-	(when (compatible? ctype type)
-	  (name conversion)))))
 
 
 ;;; Given a type, find the set of compatible k-conversion names (properly
@@ -2492,6 +2347,20 @@ space")
   ex)
 
 (defmethod module ((db dep-binding)) nil)
+
+;;;
+
+(defun domain-types (type)
+  (domain-types* (domain type)))
+
+(defmethod domain-types* ((type dep-binding))
+  (domain-types* (type type)))
+
+(defmethod domain-types* ((type tupletype))
+  (types type))
+
+(defmethod domain-types* ((type type-expr))
+  (list type))
 
 ;;;
 
@@ -2639,19 +2508,6 @@ space")
 (defmethod constructor ((expr coercion))
   (constructor (argument expr)))
 
-(defmethod non-recursive-construction? ((ex application))
-  (let ((op (operator ex)))
-    (and (constructor? op)
-	 (let* ((adt (adt (adt op)))
-		(type (adt-type-name adt)))
-	   (non-recursive-constructor (find-if #'(lambda (c)
-						   (same-id op c))
-					(constructors adt))
-				      type)))))
-
-(defmethod non-recursive-construction? ((ex expr))
-  nil)
-
 (defun make-negated-conjunction (e1 e2)
   (make!-negation (make!-conjunction e1 e2)))
 
@@ -2736,20 +2592,18 @@ space")
 (defmethod adt ((te datatype-subtype))
   (adt (declared-type te)))
 
-(defmethod adt? ((te datatype-subtype))
-  (adt? (declared-type te)))
-
 (defmethod id ((te datatype-subtype))
   (id (declared-type te)))
 
 (defun expr-size (expr)
   (let ((depth 0))
-    (mapobject #'(lambda (ex) (incf depth) nil) expr)
+    (mapobject #'(lambda (ex) (declare (ignore ex)) (incf depth) nil) expr)
     depth))
 
 (defun date-string (time)
   (multiple-value-bind (sec min hour date month year day-of-week dst time-zone)
       (decode-universal-time time)
+    (declare (ignore dst time-zone))
     (format nil "~a ~a ~d ~2,'0d:~2,'0d:~2,'0d ~d"
       (nth day-of-week '("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun"))
       (nth month '("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul"
@@ -2757,6 +2611,7 @@ space")
       date hour min sec year)))
 
 (defmethod change-application-class-if-necessary (expr new-expr)
+  (declare (ignore expr))
   new-expr)
 
 (defmethod change-application-class-if-necessary ((expr application) new-expr)
@@ -2805,47 +2660,47 @@ space")
 (defmethod infix-op? ((id string))
   (memq (intern id) *infix-operators*))
 
-(defstruct (pvs-tables (:conc-name nil))
-  ;;(judgement-types-cache
-  ;; (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
-  (subst-mod-params-cache
-   (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
-  )
-
-(defun reset-pvs-tables (table)
-  ;;(clrhash (judgement-types-cache table))
-  (clrhash (subst-mod-params-cache table))
-  )
-
-(defmacro lookup-table (obj table &key (test #'eq))
-  `(lookup-table* ,obj ,table *pvs-global-tables* ,test))
-
-(defun lookup-table* (obj table tables test)
-  (when tables
-    (multiple-value-bind (value there?)
-	(lookup-table** obj (funcall table (car tables)) test)
-      (if there?
-	  (values value there?)
-	  (lookup-table* obj table (cdr tables) test)))))
-
-(defun lookup-table** (obj table test)
-  (if (hash-table-p table)
-      (gethash obj table)
-      (let ((pair (assoc obj table :test test)))
-	(values (cdr pair) (when pair t)))))
-
-(defsetf lookup-table (obj table &key (test #'eq)) (new)
-  `(setf-lookup-table* ,obj ,new ,table ,test))
-
-(defun setf-lookup-table* (obj new table test)
-  (let ((tbl (funcall table (car *pvs-global-tables*))))
-    (if (hash-table-p tbl)
-	(setf (gethash obj tbl) new)
-	(let ((pair (assoc obj tbl :test test)))
-	  (if pair
-	      (setf (cdr pair) new)
-	      (push (cons obj new)
-		    (table (car *pvs-global-tables*))))))))
+;(defstruct (pvs-tables (:conc-name nil))
+;  ;;(judgement-types-cache
+;  ;; (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+;  (subst-mod-params-cache
+;   (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+;  )
+;
+;(defun reset-pvs-tables (table)
+;  ;;(clrhash (judgement-types-cache table))
+;  (clrhash (subst-mod-params-cache table))
+;  )
+;
+;(defmacro lookup-table (obj table &key (test #'eq))
+;  `(lookup-table* ,obj ,table *pvs-global-tables* ,test))
+;
+;(defun lookup-table* (obj table tables test)
+;  (when tables
+;    (multiple-value-bind (value there?)
+;	(lookup-table** obj (funcall table (car tables)) test)
+;      (if there?
+;	  (values value there?)
+;	  (lookup-table* obj table (cdr tables) test)))))
+;
+;(defun lookup-table** (obj table test)
+;  (if (hash-table-p table)
+;      (gethash obj table)
+;      (let ((pair (assoc obj table :test test)))
+;	(values (cdr pair) (when pair t)))))
+;
+;(defsetf lookup-table (obj table &key (test #'eq)) (new)
+;  `(setf-lookup-table* ,obj ,new ,table ,test))
+;
+;(defun setf-lookup-table* (obj new table test)
+;  (let ((tbl (funcall table (car *pvs-global-tables*))))
+;    (if (hash-table-p tbl)
+;	(setf (gethash obj tbl) new)
+;	(let ((pair (assoc obj tbl :test test)))
+;	  (if pair
+;	      (setf (cdr pair) new)
+;	      (push (cons obj new)
+;		    (funcall table (car *pvs-global-tables*))))))))
 
 (defvar *dependent-type-substitutions*
   (make-hash-table :test 'tc-eq :hash-function 'pvs-sxhash))
@@ -2854,10 +2709,11 @@ space")
   (let ((elt (cons list alist)))
     (or (gethash elt *dependent-type-substitutions*)
 	(let ((nlist (substit list alist)))
-	  (mapc #'cache-dep-substitutions list nlist)
+	  (mapc #'(lambda (e ne) (cache-dep-substitutions e ne alist))
+		list nlist)
 	  (setf (gethash elt *dependent-type-substitutions*) nlist)))))
 
-(defun cache-dep-substitutions (old new)
+(defun cache-dep-substitutions (old new alist)
   (setf (gethash (cons old alist) *dependent-type-substitutions*) new))
 
 (defmethod dep-substit (obj alist)
