@@ -483,3 +483,5 @@
   "Forget about the 'fun-type' for now"
   (declare (ignore fun-type))
   (ics_term_mk_select (ics_context_empty) (ics_par term term-args)))
+
+;; foo
