@@ -431,11 +431,6 @@ delimiter."
  (pvs-send-and-wait (format "(and (parsed? (get-theory \"%s\")) t)" theory)
 		    nil nil 'bool))
 
-(defun all-theories-parsed-p (root)
-  (pvs-send-and-wait
-   (format "(and (all-theories-parsed? (get-theory \"%s\")) t)" root)
-   nil nil 'bool))
-
 (defun typechecked-p (theory)
   (pvs-send-and-wait
    (format "(and (typechecked? (get-theory \"%s\")) t)" theory)
