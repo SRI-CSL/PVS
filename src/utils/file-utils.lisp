@@ -45,11 +45,12 @@
 	 (zerop (fileutils___file_exists_p exp-file)))))
 
 (defun directory-p (filename)
-  (let* ((filestring (expanded-tilde-namestring filename)))
-    (unless (zerop (fileutils___directory_p filestring))
-      (pathname (if (char= (char filestring (1- (length filestring))) #\/)
-		    filestring
-		    (concatenate 'string filestring "/"))))))
+  (when filename
+    (let* ((filestring (expanded-tilde-namestring filename)))
+      (unless (zerop (fileutils___directory_p filestring))
+	(pathname (if (char= (char filestring (1- (length filestring))) #\/)
+		      filestring
+		      (concatenate 'string filestring "/")))))))
 
 (defun read-permission? (filename)
   (let ((errno (fileutils___read_permission_p
