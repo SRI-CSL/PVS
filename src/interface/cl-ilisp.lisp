@@ -94,7 +94,7 @@
 ;;;
 (defvar *ilisp-old-result* nil "Used for save/restore of top level values.")
 
-#+:ANSI-CL
+#+:ansi-cl
 (defun special-form-p (symbol)
   "Backward compatibility for non ANSI CL's."
   (special-operator-p symbol))
