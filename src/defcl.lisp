@@ -10,6 +10,7 @@
 ;; 
 ;; HISTORY 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -47,9 +48,11 @@ unignored slots, saved-slots, and unsaved-slots.")
 			    (remove-keyword
 			     :ignore
 			     (remove-keyword
-			      :ignorc
+			      :store-as
 			      (remove-keyword
-			       :fetch-as a)))))
+			       :restore-as
+			       (remove-keyword
+				:fetch-as a))))))
 		   (append a (list :accessor (car a)
 				   :initarg (car a)
 				   :initarg (intern (string (car a))
@@ -78,7 +81,7 @@ unignored slots, saved-slots, and unsaved-slots.")
 			    `(setf (slot-value obj ',slot)
 			      ,(cadr (memq :initform a))))))
 		  args))
-    ))
+    ',name))
 
 
 ; (defmacro defcl* (name classes &rest args)
@@ -166,7 +169,9 @@ unignored slots, saved-slots, and unsaved-slots.")
   (let* ((slots (get-all-slots-of (list name)))
 	 (unignored-slots (mapcar #'car (unignored-slots% slots)))
 	 (saved-slots (saved-slots% slots))
-	 (unsaved-slots (unsaved-slots% slots)))
+	 (stored-slots (stored-slots% slots))
+	 (fetched-slots (fetched-slots% slots))
+	 (restored-slots (restored-slots% saved-slots)))
     (format out "~2%")
     (write `(defmethod copy ((obj ,name) &rest initargs)
 	      (with-slots ,unignored-slots obj
@@ -183,36 +188,73 @@ unignored slots, saved-slots, and unsaved-slots.")
 			    slots))))
 	   :stream out :level nil :length nil :pretty t)
     (format out "~2%")
-;     (write `(defmethod copy-slots ((to ,name) (from ,name))
-; 	      (with-slots ,unignored-slots to
-; 		,@(mapcar #'(lambda (sl) `(setf ,sl (,sl from)))
-; 		    unignored-slots)))
-; 	   :stream out :level nil :length nil :pretty t)
-;     (format out "~2%")
     (write `(defmethod store-object* ((obj ,name))
-	      (reserve-space ,(1+ (length saved-slots))
-		(with-slots ,(mapcar #'car saved-slots) obj
+	      (reserve-space ,(+ (length saved-slots) (length stored-slots) 1)
+		(with-slots ,(mapcar #'car (append saved-slots stored-slots))
+		    obj
 		  (push-word (store-obj ',name))
 		  ,@(mapcar #'(lambda (a)
 				`(push-word (store-obj ,(car a))))
-			    saved-slots))))
+		      saved-slots)
+		  ,@(mapcar #'(lambda (a)
+				`(push-word
+				  (store-obj
+				   (,(getf (cdr a) :store-as) obj))))
+		      stored-slots))))
 	   :stream out :level nil :length nil :pretty t)
     (format out "~2%")
     (write `(defmethod update-fetched ((obj ,name))
 	      (with-slots (,@(mapcar #'car saved-slots)
-			     ,@(mapcar #'car unsaved-slots)) obj
+			     ,@(mapcar #'car stored-slots)
+			     ,@(mapcar #'car fetched-slots)) obj
 		,@(let ((arg-setters nil))
 		    (dotimes (i (length saved-slots))
 		      (let ((a (nth i saved-slots)))
 			(push `(setf ,(car a)
 				     (fetch-obj (stored-word ,(1+ i))))
 			      arg-setters)))
-		    (dolist (a unsaved-slots)
+		    (dotimes (i (length stored-slots))
+		      (let ((a (nth i stored-slots)))
+			(push `(setf ,(car a)
+				     (fetch-obj (stored-word
+						 ,(+ (length saved-slots)
+						     i 1))))
+			      arg-setters)))
+		    (dolist (a fetched-slots)
 		      (push `(setf ,(car a)
 				   ,(getf (cdr a) :fetch-as))
 			    arg-setters))
 		    (nreverse arg-setters))))
-	   :stream out :level nil :length nil :pretty t)))
+	   :stream out :level nil :length nil :pretty t)
+    (format out "~2%")
+    (write `(defmethod restore-object* ((obj ,name))
+	      (let ((*restore-object-parent* obj))
+		(with-slots ,(mapcar #'car restored-slots) obj
+		  ,@(mapcar #'(lambda (a)
+				`(when ,(car a)
+				   (let ((*restore-object-parent-slot*
+					  ',(car a)))
+				     (restore-object* (,(car a) obj)))))
+		      restored-slots)
+		  obj)))
+	   :stream out :level nil :length nil :pretty t)
+;;     (format out "~2%")
+;;     (write `(defmethod count-instances* ((obj ,name))
+;; 	      (with-slots (,@(mapcar #'car slots)) obj
+;; 		(let ((entry (assq ',name *instance-count*)))
+;; 		  (if entry
+;; 		      (incf (cdr entry))
+;; 		      (push (cons ',name 1) *instance-count*)))
+;; 		(dolist (ss ',(mapcar #'car slots))
+;; 		  (count-instances* (slot-value obj ss)))))
+;; 	   :stream out :level nil :length nil :pretty t)
+;;     (format out "~2%")
+;;     (write `(defmethod collect-common-objects* ((obj ,name))
+;; 	      (with-slots (,@(mapcar #'car slots)) obj
+;; 		(dolist (ss ',(mapcar #'car slots))
+;; 		  (collect-common-objects* (slot-value obj ss)))))
+;; 	   :stream out :level nil :length nil :pretty t)
+    ))
 
 (defun get-all-slots-of (classes &optional slots)
   (if (null classes)
@@ -226,14 +268,19 @@ unignored slots, saved-slots, and unsaved-slots.")
   (remove-if #'ignored-slot% args))
 
 (defun ignored-slot% (arg)
-  (or (cadr (memq :ignore arg))
-      (cadr (memq :ignorc arg))))
+  (cadr (memq :ignore arg)))
 
 (defun saved-slots% (args)
   (remove-if #'(lambda (a) (memq :fetch-as a)) args))
 
-(defun unsaved-slots% (args)
-  (remove-if-not #'(lambda (a) (memq :fetch-as a)) args))
+(defun stored-slots% (args)
+  (remove-if (complement #'(lambda (a) (memq :store-as a))) args))
+
+(defun fetched-slots% (args)
+  (remove-if (complement #'(lambda (a) (memq :fetch-as a))) args))
+
+(defun restored-slots% (args)
+  (remove-if #'(lambda (a) (memq :restore-as a)) args))
 
 
 ;;; Grabbed off the net, from jmorrill@bbn.com (Jeff Morrill)
