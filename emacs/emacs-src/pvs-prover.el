@@ -65,8 +65,11 @@ prover to overwrite it at the end of the proof session."
   (confirm-not-in-checker)
   (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
-	 (name (car name-and-origin))
-	 (origin (cadr name-and-origin)))
+	 (oname (car name-and-origin))
+	 (origin (cadr name-and-origin))
+	 (dotpos (position ?. oname))
+	 (name (if dotpos (substring oname 0 dotpos) oname))
+	 (declname (when dotpos (substring oname (1+ dotpos)))))
     (let ((*pvs-error* nil))
       (cond ((equal origin "pvs")
 	     (save-some-pvs-buffers)
@@ -78,7 +81,7 @@ prover to overwrite it at the end of the proof session."
 					nil 'tc nil)
 	       (error "%s is not typechecked" name))))
       (unless *pvs-error*
-	(pvs-prove-formula name origin rerun nil pvs-x-show-proofs)
+	(pvs-prove-formula name declname origin rerun nil pvs-x-show-proofs)
 	(unless *pvs-error*
 	  (switch-to-lisp t t))))))
 
@@ -108,8 +111,11 @@ the formula.  With an argument, runs the proof in the background."
   (confirm-not-in-checker)
   (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
-	 (name (car name-and-origin))
-	 (origin (cadr name-and-origin)))
+	 (oname (car name-and-origin))
+	 (origin (cadr name-and-origin))
+	 (dotpos (position ?. oname))
+	 (name (if dotpos (substring oname 0 dotpos) oname))
+	 (declname (when dotpos (substring oname (1+ dotpos)))))
     (let ((*pvs-error* nil))
       (cond ((equal origin "pvs")
 	     (save-some-pvs-buffers)
@@ -121,7 +127,7 @@ the formula.  With an argument, runs the proof in the background."
 					nil 'tc nil)
 	       (error "%s is not typechecked" name))))
       (unless *pvs-error*
-	(pvs-prove-formula name origin 't (and current-prefix-arg t)
+	(pvs-prove-formula name declname origin 't (and current-prefix-arg t)
 			   pvs-x-show-proofs)))))
 
 
@@ -132,18 +138,20 @@ the formula.  With an argument, runs the proof in the background."
 ;;; will attempt to get back to the beginning of the formula that was
 ;;; attempted.
 
-(defun pvs-prove-formula (name origin &optional rerun-proof background display
+(defun pvs-prove-formula (name declname origin &optional rerun-proof background display
 			       unproved)
   (let* ((prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
 	 (line (+ (current-line-number) prelude-offset))
 	 (rerun (pvs-send-and-wait
-		 (format "(rerun-proof-at? \"%s\" %d \"%s\" %s %s)"
-		     name line origin rerun-proof unproved)
+		 (format "(rerun-proof-at? \"%s\" %s %d \"%s\" %s %s)"
+		     name (when declname (format "\"%s\"" declname))
+		     line origin rerun-proof unproved)
 		 nil nil "t\\|T\\|nil\\|NIL")))
     (if rerun
 	(ilisp-send
-	 (format "(prove-file-at \"%s\" %d %s \"%s\" \"%s\" %d %s %s %s)"
-	     name line (when (member rerun '(t T)) t) origin (buffer-name)
+	 (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s %s)"
+	     name (when declname (format "\"%s\"" declname))
+	     line (when (member rerun '(t T)) t) origin (buffer-name)
 	     prelude-offset background display unproved)
 	 nil 'pr (not background))
 	(setq *pvs-error* t))))
@@ -160,8 +168,11 @@ prover to overwrite it at the end of the proof session."
   (confirm-not-in-checker)
   (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
-	 (name (car name-and-origin))
+	 (oname (car name-and-origin))
 	 (origin (cadr name-and-origin))
+	 (dotpos (position ?. oname))
+	 (name (if dotpos (substring oname 0 dotpos) oname))
+	 (declname (when dotpos (substring oname (1+ dotpos))))
 	 (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
 	 (line (+ (current-line-number) prelude-offset)))
     (let ((*pvs-error* nil))
@@ -175,7 +186,7 @@ prover to overwrite it at the end of the proof session."
 					nil 'tc nil)
 	       (error "%s is not typechecked" name))))
       (unless *pvs-error*
-	(pvs-prove-formula name origin nil nil pvs-x-show-proofs t)))))
+	(pvs-prove-formula name declname origin nil nil pvs-x-show-proofs t)))))
 
 (defpvs prove-theory prove (theory)
   "Attempt to prove all the formulas of a theory.
@@ -267,10 +278,14 @@ proof scripts, including those already proved."
   (confirm-not-in-checker)
   (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
-	 (name (car name-and-origin))
-	 (origin (cadr name-and-origin)))
-    (pvs-send (format "(prove-proofchain \"%s\" %d '%s %s)"
-		  name (+ (current-line-number)
+	 (oname (car name-and-origin))
+	 (origin (cadr name-and-origin))
+	 (dotpos (position ?. oname))
+	 (name (if dotpos (substring oname 0 dotpos) oname))
+	 (declname (when dotpos (substring oname (1+ dotpos)))))
+    (pvs-send (format "(prove-proofchain \"%s\" %s %d '%s %s)"
+		  name (when declname (format "\"%s\"" declname))
+		(+ (current-line-number)
 			  (if (equal origin "prelude")
 			      (or pvs-prelude 0) 0))
 		  origin (and current-prefix-arg t))
@@ -366,10 +381,14 @@ proof scripts, including those already proved."
   (confirm-not-in-checker)
   (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
-	 (name (car name-and-origin))
-	 (origin (cadr name-and-origin)))
-    (pvs-send (format "(prove-proofchain \"%s\" %d '%s %s t)"
-		  name (+ (current-line-number)
+	 (oname (car name-and-origin))
+	 (origin (cadr name-and-origin))
+	 (dotpos (position ?. oname))
+	 (name (if dotpos (substring oname 0 dotpos) oname))
+	 (declname (when dotpos (substring oname (1+ dotpos)))))
+    (pvs-send (format "(prove-proofchain \"%s\" %s %d '%s %s t)"
+		  name (when declname (format "\"%s\"" declname))
+		(+ (current-line-number)
 			  (if (equal origin "prelude")
 			      (or pvs-prelude 0) 0))
 		  origin (and current-prefix-arg t))
@@ -544,8 +563,11 @@ documentation for edit-proof-mode for more information."
   (interactive)
   (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
-	 (name (car name-and-origin))
-	 (origin (cadr name-and-origin)))
+	 (oname (car name-and-origin))
+	 (origin (cadr name-and-origin))
+	 (dotpos (position ?. oname))
+	 (name (if dotpos (substring oname 0 dotpos) oname))
+	 (declname (when dotpos (substring oname (1+ dotpos)))))
     (let* ((*pvs-error* nil)
 	   (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
 	   (line (+ (current-line-number) prelude-offset)))
@@ -563,8 +585,9 @@ documentation for edit-proof-mode for more information."
 	  (kill-buffer "Proof"))
 	(set-proof-script-font-lock-keywords)
 	(pvs-send-and-wait
-	 (format "(edit-proof-at \"%s\" %d \"%s\" \"%s\" %d %s)"
-	     name line origin (buffer-name) prelude-offset
+	 (format "(edit-proof-at \"%s\" %s %d \"%s\" \"%s\" %d %s)"
+	     name (when declname (format "\"%s\"" declname))
+	     line origin (buffer-name) prelude-offset
 	     (and current-prefix-arg t))
 	 nil 'EditProof 'dont-care)
 	(cond ((get-buffer "Proof")
@@ -628,9 +651,12 @@ buffer."
 	  (if (equal (buffer-name) "Proof")
 	      (install-proof* nil nil step)
 	      (let* ((name-and-origin (pvs-formula-origin))
-		     (name (car name-and-origin))
-		     (origin (cadr name-and-origin)))
-		(install-proof* name origin step)))))))
+		     (oname (car name-and-origin))
+		     (origin (cadr name-and-origin))
+		     (dotpos (position ?. oname))
+		     (name (if dotpos (substring oname 0 dotpos) oname))
+		     (declname (when dotpos (substring oname (1+ dotpos)))))
+		(install-proof* name declname origin step)))))))
 
 (defpvs install-and-step-proof edit-proof ()
   (interactive)
@@ -688,13 +714,16 @@ formula.  There is usually no need to do this, as multiple proofs may be
 approaches to managing proofs."
   (interactive)
   (let* ((name-and-origin (pvs-formula-origin))
-	 (name (car name-and-origin))
+	 (oname (car name-and-origin))
 	 (origin (cadr name-and-origin))
+	 (dotpos (position ?. oname))
+	 (name (if dotpos (substring oname 0 dotpos) oname))
+	 (declname (when dotpos (substring oname (1+ dotpos))))
 	 (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
 	 (line (+ (current-line-number) prelude-offset)))
     (pvs-send
-     (format "(remove-proof-at \"%s\" %d \"%s\")"
-	 name line origin))))
+     (format "(remove-proof-at \"%s\" %s %d \"%s\")"
+	 name (when declname (format "\"%s\"" declname) line origin)))))
 
 (defpvs install-pvs-proof-file edit-proof (filename)
   "Installs the specified proof file
@@ -1222,12 +1251,16 @@ debugging."
   (confirm-not-in-checker)
   (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
-	 (name (car name-and-origin))
-	 (origin (cadr name-and-origin)))
-    (let ((input (format "(prove-file-at \"%s\" %d %s \"%s\" \"%s\" %d %s)"
-		     name (+ (current-line-number)
-			     (if (equal origin "prelude")
-				 (or pvs-prelude 0) 0))
+	 (oname (car name-and-origin))
+	 (origin (cadr name-and-origin))
+	 (dotpos (position ?. oname))
+	 (name (if dotpos (substring oname 0 dotpos) oname))
+	 (declname (when dotpos (substring oname (1+ dotpos)))))
+    (let ((input (format "(prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s)"
+		     name (when declname (format "\"%s\"" declname))
+		   (+ (current-line-number)
+		      (if (equal origin "prelude")
+			  (or pvs-prelude 0) 0))
 		     't origin
 		     (buffer-name) (if (equal origin "prelude")
 				       (or pvs-prelude 0) 0)
@@ -1244,8 +1277,11 @@ through using the edit-proof command."
   (confirm-not-in-checker)
   (delete-other-windows)
   (let* ((name-and-origin (pvs-formula-origin))
-	 (name (car name-and-origin))
+	 (oname (car name-and-origin))
 	 (origin (cadr name-and-origin))
+	 (dotpos (position ?. oname))
+	 (name (if dotpos (substring oname 0 dotpos) oname))
+	 (declname (when dotpos (substring oname (1+ dotpos))))
 	 (line (current-line-number))
 	 (bname (buffer-name)))
     (let ((*pvs-error* nil))
@@ -1266,8 +1302,9 @@ through using the edit-proof command."
 	    (kill-buffer "Proof"))
 	  (set-proof-script-font-lock-keywords)
 	  (pvs-send-and-wait
-	   (format "(edit-proof-at \"%s\" %d \"%s\" \"%s\" %d %s)"
-	       name line origin (buffer-name) prelude-offset
+	   (format "(edit-proof-at \"%s\" %s %d \"%s\" \"%s\" %d %s)"
+	       name (when declname (format "\"%s\"" declname))
+	       line origin (buffer-name) prelude-offset
 	       (and current-prefix-arg t))
 	   nil 'EditProof 'dont-care))
 	(when (get-buffer "Proof")
@@ -1278,10 +1315,11 @@ through using the edit-proof command."
 	  (pvs-prover-goto-next-step)
 	  (hilit-next-prover-command))
 	(ilisp-send
-	 (format "(lisp (prove-file-at \"%s\" %d %s \"%s\" \"%s\" %d %s %s))"
-	     name (+ line
-		     (if (equal origin "prelude")
-			 (or pvs-prelude 0) 0))
+	 (format "(lisp (prove-file-at \"%s\" %s %d %s \"%s\" \"%s\" %d %s %s))"
+	     name (when declname (format "\"%s\"" declname))
+	     (+ line
+		(if (equal origin "prelude")
+		    (or pvs-prelude 0) 0))
 	     nil origin bname
 	     (if (equal origin "prelude")
 		 (or pvs-prelude 0) 0)
@@ -1685,12 +1723,16 @@ the current cursor position using the Tcl/Tk proof display facility."
   (interactive)
   (if (getenv "DISPLAY")
       (let* ((name-and-origin (pvs-formula-origin))
-	     (name (car name-and-origin))
-	     (origin (cadr name-and-origin)))
-	(pvs-send (format "(call-x-show-proof-at \"%s\" %d \"%s\")"
-		      name (+ (current-line-number)
-			      (if (equal origin "prelude")
-				  (or pvs-prelude 0) 0))
+	     (oname (car name-and-origin))
+	     (origin (cadr name-and-origin))
+	     (dotpos (position ?. oname))
+	     (name (if dotpos (substring oname 0 dotpos) oname))
+	     (declname (when dotpos (substring oname (1+ dotpos)))))
+	(pvs-send (format "(call-x-show-proof-at \"%s\" %s %d \"%s\")"
+		      name (when declname (format "\"%s\"" declname))
+		      (+ (current-line-number)
+			 (if (equal origin "prelude")
+			     (or pvs-prelude 0) 0))
 		      origin)))
       (message "DISPLAY variable not set, cannot popup proof display")))
 
@@ -1871,13 +1913,16 @@ Letters do not insert themselves; instead, they are commands:
   (interactive)
   (pvs-bury-output)
   (let* ((name-and-origin (pvs-formula-origin))
-	 (name (car name-and-origin))
+	 (oname (car name-and-origin))
 	 (origin (cadr name-and-origin))
+	 (dotpos (position ?. oname))
+	 (name (if dotpos (substring oname 0 dotpos) oname))
+	 (declname (when dotpos (substring oname (1+ dotpos))))
 	 (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
 	 (line (+ (current-line-number) prelude-offset)))
     (pvs-send-and-wait
-     (format "(display-proofs-formula-at \"%s\" \"%s\" %d)"
-	 name origin line)
+     (format "(display-proofs-formula-at \"%s\" %s \"%s\" %d)"
+	 name (when declname (format "\"%s\"" declname)) origin line)
      nil 'proofs 'dont-care)))
 
 (defpvs display-proofs-theory browse (theoryname)
@@ -1984,7 +2029,7 @@ Letters do not insert themselves; instead, they are commands:
 ;; 			(point) (point-max)))))
 ;;     (ilisp-send (format "(prove-with-checkpoint %s)" proof))))
 
-(defun install-proof* (name origin &optional step)
+(defun install-proof* (name declname origin &optional step)
   (save-excursion
     (set-buffer "Proof")
     (goto-char (point-min))
@@ -1998,8 +2043,9 @@ Letters do not insert themselves; instead, they are commands:
 	 (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
 	 (line (+ (current-line-number) prelude-offset))
 	 (installed (pvs-send-and-wait
-		     (format "(install-proof \"%s\" %s %d %s \"%s\" %d)"
+		     (format "(install-proof \"%s\" %s %s %d %s \"%s\" %d)"
 			 *pvs-tmp-file* (when name (format "\"%s\"" name))
+			 (when declname (format "\"%s\"" declname))
 			 line (when origin (format "\"%s\"" origin))
 			 (buffer-name) prelude-offset)
 		     nil nil 'bool)))
@@ -2023,8 +2069,9 @@ Letters do not insert themselves; instead, they are commands:
 			  (current-line-number) step pvs-x-show-proofs)
 		      "" 'pr t)
 	  (ilisp-send (format
-			  "(prove-file-at \"%s\" %d %s '%s \"%s\" %d nil %s)"
-			  name line (not step) origin (buffer-name)
+			  "(prove-file-at \"%s\" %s %d %s '%s \"%s\" %d nil %s)"
+			  name (when declname (format "\"%s\"" declname))
+			  line (not step) origin (buffer-name)
 			  prelude-offset pvs-x-show-proofs)
 		      "" 'pr t)))))
 
