@@ -340,8 +340,8 @@ with the comment so as to put it in the proper place")
 	   (if *last-syntax*
 	       (incf *num-keywords-skipped*))
 	   (setq *last-syntax* lterm)
-	   (setq *last-newline-comment*
-		 (append *last-newline-comment* *hold-comments*))
+	   ;;(setq *last-newline-comment*
+		;; (append *last-newline-comment* *hold-comments*))
 	   (setq *hold-comments* nil)
 	   ;;(format t "~%Found ~a, resetting num-comments" token)
 	   ;;(when *last-newline-comment*
@@ -378,17 +378,23 @@ with the comment so as to put it in the proper place")
 					      (lexical-read-char self nil))))
 			  (if (and (symbolp a)
 				   (memq (intern (string-upcase a) 'sbst)
-					 '(sbst::TYPE sbst::CONVERSION)))
+					 '(sbst::TYPE
+					   sbst::CONVERSION
+					   sbst::AUTO_REWRITE)))
 			      (let ((nch (lexical-read-char self nil)))
 				(cond ((and nch (char= nch #\+))
-				       (if (eq (intern (string-upcase a) 'sbst)
-					       'sbst::TYPE)
-					   'sbst::TYPE+
-					   'sbst::CONVERSION+))
-				      ((and nch (char= nch #\-)
-					    (eq (intern (string-upcase a) 'sbst)
-						'sbst::CONVERSION))
-				       'sbst::CONVERSION-)
+				       (case (intern (string-upcase a) 'sbst)
+					 (sbst::TYPE 'sbst::TYPE+)
+					 (sbst::CONVERSION 'sbst::CONVERSION+)
+					 (sbst::AUTO_REWRITE 'sbst::AUTO_REWRITE+)
+					 (t (lexical-unread-char self)
+					    a)))
+				      ((and nch (char= nch #\-))
+				       (case (intern (string-upcase a) 'sbst)
+					 (sbst::CONVERSION 'sbst::CONVERSION-)
+					 (sbst::AUTO_REWRITE 'sbst::AUTO_REWRITE-)
+					 (t (lexical-unread-char self)
+					    a)))
 				      (t (lexical-unread-char self)
 					 a)))
 			      a)))
@@ -450,13 +456,13 @@ with the comment so as to put it in the proper place")
 		(append *newline-comments*
 			(list (list comment *num-keywords-skipped*
 				    newline?)))))
-	(if *collect-comments*
-	    (setq *hold-comments*
-		  (append *hold-comments* (list (list comment 0 newline?))))
-	    (setq *last-newline-comment*
-		  (append *last-newline-comment*
-			  (list (list comment *num-keywords-skipped*
-				      newline?)))))
+; 	(if *collect-comments*
+; 	    (setq *hold-comments*
+; 		  (append *hold-comments* (list (list comment 0 newline?))))
+; 	    (setq *last-newline-comment*
+; 		  (append *last-newline-comment*
+; 			  (list (list comment *num-keywords-skipped*
+; 				      newline?)))))
 	(values))
       (let ((*close-comment-char* #\newline))
 	(lex-comment stream open-comment))))
