@@ -1,0 +1,202 @@
+#!/bin/sh
+# Script for starting PVS
+# This script starts up Emacs, which in turn invokes the PVS lisp image.
+# The image is in the main PVS directory, and is named
+#   pvs-PVSLISP-PVSARCH
+# where PVSLISP reflects the lisp name and version, and PVSARCH is determined
+# from the system on which PVS is invoked.
+
+# command line arguments:
+#   -h           prints a help line and exits
+#   -lisp        allegro4.2 or allegro4.3
+#   -emacs       emacs, xemacs, or pathname
+#   -patchlevel  indicates the patch level:
+#       0 (none). No patches
+#       1 (rel).  Released patches (patch2.lisp)
+#       2 (test). Test patches (patch2-test.lisp) (the default)
+#       3 (exp).  Experimental patches (patch2-exp.lisp)
+#   -v           the (verbose) level number - 0-3
+#   any emacs parameters (e.g. -q -batch -l foo)
+#   any X window parameters (e.g. -geometry 80x60+0-0)
+#
+# If the corresponding command line argument is not given, the following
+# environment variables are used if set:
+#   PVSLISP       - corresponds to the -lisp argument
+#   PVSEMACS      - corresponds to the -emacs argument
+#   PVSPATCHLEVEL - corresponds to the -patchlevel argument
+#   PVSXINIT      - X window parameters; e.g., "-g '-0-0'"
+#   PVSVERBOSE    - corresponds to the -v argument
+#
+# The following environment variables are used by PVS, and are set below:
+#   PVSPATH     pvs system path - this should not normally be set by the user  
+#   PVSARCH	sun4, ix86, or powerpc-ibm
+#
+# The PVS binary paths are appended to the front of the PATH variable 
+
+# PVSPATH should be set after installation by <PVS>/bin/relocate or by hand
+# to the location of the PVS installation
+PVSPATH=/project/pvs/pvs2.3
+
+#-------------------------------------------------
+# Nothing below this line should need modification
+
+
+# get the command-line options
+opsys=`uname -s`
+flags=
+batch=
+if [ -f $HOME/.emacs ]
+  then dotemacs="-l $HOME/.emacs"
+  else dotemacs=
+fi
+PVSXINIT=${PVSXINIT:-""}
+while [ $# -gt 0 ]
+do
+   case $1 in
+     -emacs) PVSEMACS="$2"
+             shift;;
+     -lisp)  PVSLISP="$2"
+             shift;;
+     -redhat) if [ $opsys = Linux ]
+		 then majvers="$2"
+		 else echo "The -redhat flag only makes sense under Linux"
+	      fi
+	      shift;;
+     -nw)    nowin=1
+             flags="$flags $1";;
+     -patchlevel)
+        case $2 in
+	  none) PVSPATCHLEVEL=0;;
+	  rel)  PVSPATCHLEVEL=1;;
+	  test) PVSPATCHLEVEL=2;;
+	  exp)  PVSPATCHLEVEL=3;;
+	  0|1|2|3) PVSPATCHLEVEL=$2;;
+	  *) echo "The patchlevel must be none, rel, test, exp, or 0-3"
+             exit 1;;
+	esac
+        shift;;
+     -batch) batch="$1";;
+     -v) PVSVERBOSE=$2
+         shift;;
+     -name|-title|-xrm) PVSXINIT="$PVSXINIT $1 $2"
+                        shift;;
+     -q|-no-init-file) flags="$flags $1"
+		       dotemacs= ;;
+     -h|-help|--help)  echo "usage:
+       pvs [-options ...] [file]
+where options include:
+    -h, -help          print out this message
+    -emacs emacspath   emacs to use (e.g., emacs, xemacs, /usr/local/bin/emacs)
+    -lisp lispversion  lisp image to use (e.g., allegro5.0)
+    -redhat number     the number corresponding to the Redhat release (4 or 5)
+    -patchlevel level  patchlevel (none, rel, test, exp)
+    -batch             run in batch mode
+    -v number          verbosity level for batch mode (0-3)
+  and any Emacs or X window options
+To change the title and icon names, use -title and -xrm, for example,
+  pvs -title foo -xrm \"pvs*iconName:bar\""
+	            exit 0;;
+     *)      flags="$flags $1";;
+   esac
+   shift
+done
+
+PVSEMACS=${PVSEMACS:-"emacs"}
+
+# Determine the system type and set PVSARCH accordingly
+case $opsys in
+  SunOS) majvers=`uname -r | cut -d"." -f1`
+	 if [ $majvers = 4 ]
+	    then echo "PVS 2.3 only runs under Solaris or Linux"; exit 1
+	 fi
+	 PVSARCH=sun4;;
+  Linux) # If Linux, we need to determine the Redhat version to use.
+	 opsys=redhat
+	 if [ ! $majvers ]; then
+	    if [ -f /etc/redhat-release ]
+	       then majvers=`cut -d" " -f2 /etc/redhat-release | cut -d"." -f1`
+	       # Not Redhat; use the libc version to try and figure it out.
+	       else if [ -f /lib/libc.so.6 ]
+		       then majvers=5; othervers=4 
+		       else majvers=4; othervers=5
+		    fi
+		    echo "Using redhat$majvers; if it doesn't work try running"
+		    echo "$0 -redhat $othervers $*"
+	    fi
+	 fi
+	 PVSARCH=ix86;;
+  *) echo "PVS 2.3 only runs under Solaris or Linux"; exit 1
+esac
+
+if [ ! $PVSLISP ]
+   then if [ -f $PVSPATH/bin/$PVSARCH-$opsys${majvers}/pvs-allegro-full5.0 ]
+	   then PVSLISP=pvs-allegro-full5.0
+	   else PVSLISP=pvs-allegro5.0
+	fi
+fi
+PATH=$PVSPATH/bin/$PVSARCH-$opsys${majvers}:$PVSPATH/bin:$PATH
+ALLEGRO_CL_HOME=$PVSPATH/bin/$PVSARCH-$opsys${majvers}/home
+PVSPATCHLEVEL=${PVSPATCHLEVEL:-2}
+
+
+case $PVSPATCHLEVEL in
+    none) PVSPATCHLEVEL=0;;
+    rel)  PVSPATCHLEVEL=1;;
+    test) PVSPATCHLEVEL=2;;
+    exp)  PVSPATCHLEVEL=3;;
+esac
+
+if [ "$PVSVERBOSE" -a ! "$batch" ]
+ then echo "The -verbose flag is used only with -batch; it will be ignored"
+fi
+
+PVSVERBOSE=${PVSVERBOSE:-0}
+PVSIMAGE="$PVSLISP"
+
+export ALLEGRO_CL_HOME DISPLAY
+export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSPATCHLEVEL
+
+if [ ! -x "$PVSPATH/bin/$PVSARCH-$opsys$majvers/$PVSIMAGE" ]
+ then echo "Cannot find $PVSPATH/bin/$PVSARCH-$opsys$majvers/$PVSIMAGE"
+      echo "Check the values of PVSPATH and PVSLISP"
+      exit 1
+fi
+
+pvsemacsinit="-load $PVSPATH/emacs/pvs-load"
+
+if [ -f "$HOME/.pvsemacs" ]
+ then pvsemacsinit="$pvsemacsinit -load $HOME/.pvsemacs"
+fi
+
+if [ ! "$batch" -a "$DISPLAY" != "" -a "$nowin" != 1 ]
+ then
+  HOST=${HOST:-`uname -n`}
+
+  # Now try to determine which version of Emacs we're running, and set
+  # PVSXINIT accordingly.
+
+  case $PVSEMACS in
+    *epoch*) emacsversion="epoch";;
+    *) emacsversion=`$PVSEMACS -batch -l $PVSPATH/emacs/eversion.el 2>&1 |tail -1`;;
+  esac
+
+  case $emacsversion in
+    emacs18) \
+      ($PVSEMACS $flags -rn pvs -in PVS@$HOST -wn PVS@$HOST \
+                 $PVSXINIT $pvsemacsinit&);;
+    emacs19|emacs20) \
+      ($PVSEMACS $flags -name pvs -xrm "pvs*title:PVS@$HOST
+                                        pvs*iconName:PVS@$HOST" \
+		 $PVSXINIT $pvsemacsinit &);;
+    [xl]emacs) \
+      ($PVSEMACS $flags -name pvs -in PVS@$HOST -wn PVS@$HOST \
+                 $PVSXINIT $pvsemacsinit &);;
+    *) echo "You're running an unsupported Emacs...Good Luck"
+       ($PVSEMACS $flags $PVSXINIT $pvsemacsinit &);;
+  esac
+elif [ $batch ]
+  then
+    $PVSEMACS $batch $dotemacs $pvsemacsinit $flags 2>&1
+else
+  $PVSEMACS $pvsemacsinit $flags
+fi
