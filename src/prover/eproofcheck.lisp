@@ -2782,7 +2782,7 @@
 	(make!-implication (negate! (condition form)) (else-part form))))
 
 (defmethod and++ ((form negation) depth)
-  (or (and+-negation (argument form) (when depth (1- depth)))
+  (or (and+-negation (argument form) depth)
       (list form)))
 
 (defmethod and+-negation ((form implication) depth)
