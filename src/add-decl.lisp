@@ -18,7 +18,7 @@
 (defvar *add-declaration-info* nil)
 
 (defun add-declaration-at (filename line)
-  (parse-file filename nil t)
+  (typecheck-file filename nil t)
   (let ((theory (find-theory-at filename line)))
     (if theory
 	(let* ((decl (get-decl-at line t (list theory)))
@@ -26,7 +26,7 @@
 	       (date (file-write-date (make-specpath filename))))
 	  (cond ((or decl pdecl)
 		 (when *add-declaration-info*
-		   (pvs-info "Discarding previous add-declaration"))
+		   (pvs-message "Discarding previous add-declaration"))
 		 (setq *add-declaration-info*
 		       (list pdecl decl theory filename date line))
 		 t)
@@ -356,6 +356,9 @@
 		  (mapc #'(lambda (d)
 			    (put-decl d (local-decls *current-context*)))
 			(generated decl))))
+	      (when (and (typep decl 'formula-decl)
+			 (eq (proof-status decl) 'proved))
+		(setf (proof-status decl) 'unchecked))
 	      (let ((fe (get-context-file-entry filename)))
 		(ignore-errors (delete-file (make-binpath filename)))
 		(when fe
