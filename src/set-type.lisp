@@ -571,7 +571,7 @@ required a context.")
 (defmethod set-type* ((ex number-expr) expected)
   (unless (compatible? expected *number*)
     (type-incompatible ex (ptypes ex) expected))
-  (setf (type ex) *number*))
+  (setf (type ex) *real*))
 
 (defun check-for-subtype-tcc (ex expected)
   #+pvsdebug (assert (fully-instantiated? expected))
