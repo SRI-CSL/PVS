@@ -183,6 +183,7 @@ pvs-strategies files.")
     (setf (caddr *strat-file-dates*) 0)
     (set-working-directory dir)
     (setq *pvs-context-path* (working-directory))
+    (setq *default-pathname-defaults* *pvs-context-path*)
     (clear-theories)
     (restore-context)
     (unless (probe-file (context-pathname dir))
@@ -1079,9 +1080,10 @@ pvs-strategies files.")
 		 (mapc #'(lambda (prf)
 			   (write prf :length nil :level nil :escape t
 				  :pretty *save-proofs-pretty*
-				  :stream out))
+				  :stream out)
+			   (when *save-proofs-pretty* (terpri out)))
 		       curproofs)
-		 (format out "~%")))
+		 (terpri out)))
 	    (declare (ignore value))
 	    (cond ((or condition
 		       (setq condition
@@ -1187,8 +1189,9 @@ pvs-strategies files.")
 	     (prf (when (and (formula-decl? decl)
 			     (justification decl))
 		    (cons (id decl)
-			  (extract-justification-sexp
-			   (justification decl))))))
+			  (cons (list :new-ground? (new-ground? decl))
+				(extract-justification-sexp
+				 (justification decl)))))))
 	(collect-theory-proofs*
 	 (cdr decls)
 	 (if prf
@@ -1227,7 +1230,8 @@ pvs-strategies files.")
 	(if (eq theoryid (id theory))
 	    (let ((restored (mapcar #'(lambda (decl)
 					(restore-theory-proofs* decl proofs))
-				    (append (assuming theory) (theory theory)))))
+				    (append (assuming theory)
+					    (theory theory)))))
 	      (copy-proofs-to-orphan-file
 	       theoryid (set-difference proofs restored :test #'equal)))
 	    (restore-theory-proofs input filestring theory))))))
@@ -1236,16 +1240,21 @@ pvs-strategies files.")
   (when (formula-decl? decl)
     (let ((prf-entry (assoc (id decl) proofs :test #'eql)))
       (when prf-entry
-	(let ((script (if (integerp (cadr prf-entry))
-			  (fifth (caddr prf-entry))
-			  (cdr prf-entry))))
+	(let ((script (cond ((integerp (cadr prf-entry))
+			     (fifth (caddr prf-entry)))
+			    ((listp (cadr prf-entry))
+			     (cddr prf-entry))
+			    (t (cdr prf-entry))))
+	      (new-ground? (and (listp (cadr prf-entry))
+				(getf (cadr prf-entry) :new-ground?))))
 	  (if (justification decl)
 	      (unless (equal (extract-justification-sexp
 			      (justification decl))
 			     script)
 		(setf (justification2 decl) (justification decl))
 		(setf (justification decl) script))
-	      (setf (justification decl) script))))
+	      (setf (justification decl) script))
+	  (setf (new-ground? decl) new-ground?)))
       prf-entry)))
 
 
@@ -1406,6 +1415,8 @@ pvs-strategies files.")
     (if proof
 	(pvs-buffer "Proof"
 	  (with-output-to-string (out)
+	    (format out ";;; Proof for formula ~a.~a~%"
+	      (cadr proof) (caddr proof))
 	    (write (editable-justification (cdddr proof))
 		   :stream out :pretty t :escape t :level nil :length nil
 		   :pprint-dispatch *proof-script-pprint-dispatch*))
@@ -1577,8 +1588,10 @@ pvs-strategies files.")
 (defvar *auto-save-proof-file* nil)
 
 (defun auto-save-proof-setup (decl)
-  (setq *auto-save-proof-file*
-	(format nil "#~a.prf#" (filename (module decl)))))
+  (when *in-checker*
+    (setq *auto-save-proof-file*
+	  (merge-pathnames (format nil "#~a.prf#" (filename (module decl)))
+			   *pvs-context-path*))))
 
 (defun auto-save-proof ()
   (assert *in-checker*)
@@ -1650,3 +1663,29 @@ pvs-strategies files.")
 	 ;; theories
 	 ;; extension
 	 )))
+
+;;; There are 3 forms of justification used in PVS.
+;;;   justification - this is what is generated during proof
+;;;   justification-sexp - what is saved to file:
+;;     ("" (INDUCT "i")
+;;      (("1" (INST + "1" "1") (("1" (ASSERT) NIL NIL)) NIL)
+;;       ("2" (SKOSIMP*)
+;; 	  (("2" (CASE-REPLACE "n5!1=0")
+;; 	    (("1" (INST 1 "n3!1-3" "2")
+;; 	      (("1" (ASSERT) NIL NIL) ("2" (ASSERT) NIL NIL)) NIL)
+;; 	     ("2" (INST + "n3!1+2" "n5!1-1")
+;; 	      (("1" (ASSERT) NIL NIL) ("2" (ASSERT) NIL NIL)) NIL))
+;; 	    NIL))
+;; 	  NIL))
+;;      NIL)
+;;;   justification-view - what is shown to users
+;;     ("" (INDUCT "i")
+;;      (("1" (INST + "1" "1") (ASSERT))
+;;       ("2" (SKOSIMP*) (CASE-REPLACE "n5!1=0")
+;;        (("1" (INST 1 "n3!1-3" "2") (("1" (ASSERT)) ("2" (ASSERT))))
+;; 	   ("2" (INST + "n3!1+2" "n5!1-1") (("1" (ASSERT)) ("2" (ASSERT))))))))
+
+;;(defun editable-justification-to-sexp (just)
+  
+       
+       
