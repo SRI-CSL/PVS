@@ -239,44 +239,48 @@ want to set this to nil for slow terminals, or connections over a modem.")
   (setq output (pvs-process-gc-messages output))
   (if pvs-recursive-process-filter
       (setq pvs-process-output (concat pvs-process-output output))
-      (let ((pvs-recursive-process-filter t))
-	(setq output (concat (ilisp-value 'pvs-partial-line) output))
-	(let ((pvs-process-output output)
-	      line-end)
-	  (while (string-match "\n" pvs-process-output)
-	    (setq line-end (match-end 0))
-	    ;; Note that pvs-process-output can get longer
-	    ;; during this next call.
-	    (let ((pvs-output (pvs-output-filter
-			       (substring pvs-process-output 0 line-end))))
-	      (when (and noninteractive
-			 pvs-in-checker
-			 (not (string-match "^NIL$" pvs-output)))
-		(when pvs-validating
-		  (princ pvs-output))
-		(when (> pvs-verbose 2)
-		  (princ pvs-output 'external-debugging-output)))
-	      (comint-process-filter process pvs-output))
-	    (setq pvs-process-output
-		  (substring pvs-process-output line-end)))
-	  (if (string-match (ilisp-value 'comint-prompt-regexp)
-			    pvs-process-output)
-	      (progn
-		(set-ilisp-value 'comint-fix-error
-				 (if pvs-in-checker "(restore)" pvs-fix-error))
-		(when (and (string-match "(Y or N):\\|(Yes or No)"
-					 pvs-process-output)
-			   (not (eq (current-buffer) (ilisp-buffer))))
-		  (switch-to-lisp t)
-		  (message "Please answer Yes or No"))
-		(comint-process-filter process pvs-process-output)
-		(set-ilisp-value 'pvs-partial-line "")
-		(when (and *pvs-maximize-proof-display*
-			   (eq (current-buffer) (ilisp-buffer))
-			   (string-match "Rule\\? " pvs-process-output))
-		  (recenter -1)))
-	      (set-ilisp-value 'pvs-partial-line
-			       pvs-process-output))))))
+    (let ((pvs-recursive-process-filter t))
+      (setq output (concat (ilisp-value 'pvs-partial-line) output))
+      (let ((pvs-process-output output)
+	    line-end)
+	(while (string-match "\n" pvs-process-output)
+	  (setq line-end (match-end 0))
+	  ;; Note that pvs-process-output can get longer
+	  ;; during this next call.
+	  (let ((pvs-output (pvs-output-filter
+			     (substring pvs-process-output 0 line-end))))
+	    (when (and noninteractive
+		       pvs-in-checker
+		       (not (string-match "^NIL$" pvs-output)))
+	      (when pvs-validating
+		(princ pvs-output))
+	      (when (> pvs-verbose 2)
+		(princ pvs-output 'external-debugging-output)))
+	    (comint-process-filter process pvs-output))
+	  (setq pvs-process-output
+		(substring pvs-process-output line-end)))
+	(if (string-match (ilisp-value 'comint-prompt-regexp)
+			  pvs-process-output)
+	    (progn
+	      (set-ilisp-value 'comint-fix-error
+			       (if pvs-in-checker "(restore)" pvs-fix-error))
+	      (when (and (string-match "(Y or N):\\|(Yes or No)"
+				       pvs-process-output)
+			 (not (eq (current-buffer) (ilisp-buffer))))
+		(switch-to-lisp t)
+		(message "Please answer Yes or No"))
+	      (comint-process-filter process pvs-process-output)
+	      (set-ilisp-value 'pvs-partial-line "")
+	      (when (and *pvs-maximize-proof-display*
+			 (eq (current-buffer) (ilisp-buffer))
+			 (string-match "Rule\\? " pvs-process-output))
+		(save-excursion
+		  (let ((owin (selected-window))
+			(select-window (get-buffer-window "*pvs*"))
+			(recenter -1)
+			(select-window owin))))))
+	  (set-ilisp-value 'pvs-partial-line
+			   pvs-process-output))))))
 
 (defun pvs-output-filter (output)
   (if (string-match
