@@ -567,19 +567,20 @@
 ; returns semantic signature of term
 
 (defun signature(term &optional (dont-add-use nil))
-   (cond
-    ((atom term) term)
-    ((and (null (argsof term)) (uninterp term)) (funsym term))
-    (t 
-     (sigma
-      (cons
-       (funsym term)
-       (loop for arg in (argsof term) collect (canon* arg dont-add-use))
-      )
-     )
-    )
-   )
-)
+  (cond
+   ((atom term) term)
+   ((and (null (argsof term)) (uninterp term)) (funsym term))
+   (t
+    (let ((term (if (and (eq (car term) 'not)(isineq? (arg1 term)))
+		    (negineq (arg1 term)) ;;replace not ineq by negation
+		    term)))
+      (sigma
+       (cons
+	(funsym term)
+	(loop for arg in (argsof term) collect (canon* arg dont-add-use))
+	)
+       )))))
+
 
 
 ;;; if *canon-beta-reduce-on* is non-nil then sigma attempts to 
