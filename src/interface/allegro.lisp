@@ -27,7 +27,7 @@
 
 (in-package "ILISP")
 
-(use-package 'xref)
+;;(use-package 'xref)
 ;;;
 (defun ilisp-callers (symbol package)
   "Print a list of all of the functions that call FUNCTION and return
