@@ -226,7 +226,9 @@
   (unless *proving-tcc*
     (when *start-proof-display*
       (let ((*ps* *top-proofstate*))
-	(call-x-show-proof)))
+	(call-x-show-proof))))
+  (when (or (not *proving-tcc*)
+	    *noninteractive*)
     (pvs-emacs-eval "(setq pvs-in-checker t)")))
 
 (defun after-prove* ()
