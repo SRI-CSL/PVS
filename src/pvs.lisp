@@ -2228,15 +2228,3 @@
   (let ((file (ignore-errors (get-source-file (name strat) 'strategy))))
     (when file
       (format out "~2%Defined in file: ~s" (namestring file)))))
-
-(defun dump-sequents-to-file (ps)
-  (let* ((decl (declaration ps))
-	 (theory *current-theory*)
-	 (file (format nil "~a-~a.sequents" (id theory) (id decl))))
-    (if (eq (status-flag *top-proofstate*) '!)
-	(when (file-exists-p file)
-	  (delete-file file))
-	(with-open-file (out file
-			     :direction :output
-			     :if-file-exists :supersede)
-	  (format out "~{~%~a~}" (collect-all-remaining-subgoals ps))))))
