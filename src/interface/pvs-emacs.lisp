@@ -191,7 +191,7 @@
 (defun pvs-conversion-msg (ctl &rest args)
   (if *noninteractive*
       (pvs-message "~% ~?~%" ctl args)
-      (format t "~% ~?~%" ctl args))
+      (format-if "~% ~?~%" ctl args))
   (when (and (current-theory)
 	     (not *in-checker*)
 	     (not *in-evaluator*))
@@ -600,7 +600,8 @@
 	  (t error))))
 
 (defun check-if-k-conversion-would-work (ex arguments)
-  (and (not *skip-k-conversion-check*)
+  (and (gethash "K_conversion" *prelude*)
+       (not *skip-k-conversion-check*)
        *typechecking-module*
        (null *type-error-catch*)
        (not (some #'k-combinator? (conversions *current-context*)))
