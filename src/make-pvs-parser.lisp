@@ -43,7 +43,7 @@
 	      #p(:type "cl") #p(:type "lisp"))))
 
 (load "ess/dist-ess.lisp")
-(generate-ess sb)
+(generate-ess ergolisp sb)
 
 (compile-file-if-needed "src/ergo-gen-fixes")
 (load "src/ergo-gen-fixes")
