@@ -1,4 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; judgements.lisp -- 
 ;; Author          : Sam Owre
 ;; Created On      : Thu Oct 29 22:40:53 1998
@@ -13,31 +13,29 @@
 (in-package :pvs)
 
 ;;; The context has a judgements slot, which consists of a judgements
-;;; instance, which in turn has slots for number-judgements,
-;;; name-judgements and application-judgements.
-;;; number-judgements:
-;;;   eql hashtable on numbers; returns a list of judgements
-;;; name-judgements:
-;;;   eq hashtable on declarations; what it returns depends on whether the
-;;;   name has theory parameters or not:
-;;;   If not:
-;;;     returns a list of judgements
-;;;   Otherwise returns a list:
-;;;     1. car is a list of generic judgements
-;;;     2. cdr is an assoc list of theory instances to judgements
-;;; application-judgements:
-;;;   eq hashtable on declarations; returns a list with three elements:
-;;;     1. a hashtable of applications to judgements
-;;;     2. a hashtable of argument type lists to judgements
-;;;     3. If no theory params, a list of judgements
-;;;        else a list whose car is a list of generic judgements and
-;;;             cdr is an assoc list of theory instances to judgements
+;;; instance, which in turn has slots:
+;;;   judgement-types-hash: maps expressions to judgement types
+;;;   number-judgements-hash:
+;;;     eql hashtable on numbers; returns a list of judgements
+;;;   name-judgements-hash:
+;;;     eq hashtable on declarations; returns a name-judgements instance
+;;;     with slots:
+;;;       minimal-judgements: a list of fully-instantiated judgements
+;;;       generic-judgements: an assoc list of theory instances to judgements
+;;;   application-judgements-hash:
+;;;     eq hashtable on declarations; returns a application-judgements instance
+;;;     with slots:
+;;;       argtype-hash: maps argument type lists to judgement types
+;;;       judgements-graph: a graph of the fully-instantiated judgements
+;;;       generic-judgements: an assoc list of theory instances to judgements
 
 ;;; There are three places where judgement declarations are added to the
 ;;; context:
 ;;;   1. when typechecking a judgement declaration: add-judgement-decl
-;;;   2. when importing a theory that has judgements: merge-judgements
-;;;   3. when building up a context: merge-judgements
+;;;   2. when typechecking a new theory: copy-judgements
+;;;   3. when importing a theory that has judgements: merge-judgements
+;;; When the prover gets a new context, the judgements do not need to be
+;;; copied.
 
 ;;; There are two times that judgements are looked up in the context:
 ;;;   1. during set-type, and
@@ -194,25 +192,24 @@
 
 ;;; Accessors and update functions for the above
 
-;(defun number-judgements (number)
-;  (gethash number
-;	   (number-judgements-hash (judgements *current-context*))))
+(defun number-judgements (number)
+  (gethash number
+	   (number-judgements-hash (judgements *current-context*))))
 
-;(defsetf number-judgements (number) (judgement-decl)
-;  `(pushnew ,judgement-decl
-;	    (gethash ,number
-;		     (number-judgements-hash (judgements *current-context*)))
-;	    :key #'type :test #'tc-eq))
+(defsetf number-judgements (number) (judgement-decl)
+  `(pushnew ,judgement-decl
+	    (gethash ,number
+		     (number-judgements-hash (judgements *current-context*)))
+	    :key #'type :test #'tc-eq))
 
-;(defun name-judgements (name)
-;  (gethash (declaration name)
-;	   (name-judgements-hash (judgements *current-context*))))
+(defun name-judgements (name)
+  (gethash (declaration name)
+	   (name-judgements-hash (judgements *current-context*))))
 
-;(defsetf name-judgements (name) (entry)
-;  `(pushnew ,entry
-;	    (gethash ,(declaration name)
-;		     (name-judgements-hash (judgements *current-context*)))
-;	    :key #'type :test #'same-name-judgement-entry))
+(defsetf name-judgements (name) (entry)
+  `(setf (gethash (declaration ,name)
+		  (name-judgements-hash (judgements *current-context*)))
+	 ,entry))
 
 (defun application-judgements (application)
   (let ((op (operator* application)))
@@ -237,76 +234,80 @@
 ;;; typecheck* (subtype-judgement)
 
 (defmethod add-judgement-decl ((decl subtype-judgement))
+  (assert (not *in-checker*))
   (add-to-known-subtypes (subtype decl) (type decl)))
 
 ;;; Invoked from typecheck* (number-judgement)
 
 (defmethod add-judgement-decl ((decl number-judgement))
+  (assert (not *in-checker*))
   (setf (number-judgements (number (number decl))) decl))
 
 ;;; Invoked from typecheck* (name-judgement)
 
 (defmethod add-judgement-decl ((jdecl name-judgement))
+  (assert (not *in-checker*))
   (let* ((decl (declaration (name jdecl)))
-	 (simple? (or (eq (module decl) *current-theory*)
-		      (null (formals-sans-usings (module decl))))))
-    (if simple?
-	;; just add the declaration in this case
-	(pushnew decl (name-judgements decl) :key #'type :test #'tc-eq)
-	;; entry is a list whose car is a list of generic judgement decls,
-	;; cdr is an assoc-list that maps theory instances to judgements.
-	(let ((entry (name-judgements decl)))
-	  (if entry
-	      (let* ((thinst (module-instance (name jdecl)))
-		     (thentry (assoc thinst (cdr entry) :teset #'tc-eq)))
-		(if thentry
-		    (pushnew jdecl (cdr thentry) :key #'type :test #'tc-eq)
-		    (push (list thinst jdecl) (cdr entry))))
-	      (push (list nil (list thinst jdecl)) (name-judgements decl)))))))
+	 (entry (name-judgements decl)))
+    (unless entry
+      (setq entry
+	    (setf (name-judgements decl)
+		  (make-instance 'name-judgements))))
+    (let ((sjdecl (find-if #'(lambda (jd) (subtype-of? (type jd) (type jdecl)))
+		    (minimal-judgements entry))))
+      (cond (sjdecl
+	     (pvs-warning
+		 "Judgement ~a is not needed; it is subsumed by ~a"
+	       (id jdecl) (id sjdecl)))
+	    (t (clrhash (judgement-types-hash (judgements *current-context*)))
+	       (setf (minimal-judgements entry)
+		     (cons jdecl
+			   (delete-if
+			       #'(lambda (jd)
+				   (subtype-of? (type jdecl) (type jd)))
+			     (minimal-judgements entry)))))))))
 
 (defmethod add-judgement-decl (decl)
+  (assert (not *in-checker*))
   nil)
 
 ;;; Invoked from typecheck* (application-judgement)
 
 (defmethod add-judgement-decl ((jdecl application-judgement))
+  (assert (not *in-checker*))
   (let* ((decl (declaration (name jdecl)))
-	 (simple? (or (eq (module decl) *current-theory*)
-		      (null (formals-sans-usings (module decl)))
-		      (fully-instantiated? jdecl)))
 	 (currynum (length (formals jdecl)))
 	 (applhash (application-judgements-hash
 		    (judgements *current-context*))))
-    (if simple?
-	;; Add to the tree pointed to by the vector
-	(let ((vector (gethash decl applhash)))
-	  (cond ((null vector)
-		 (setq vector (make-array currynum :adjustable t
-					  :initial-element nil))
-		 (setf (gethash decl applhash) vector))
-		((> currynum (length vector))
-		 (adjust-array vector currynum :initial-element nil)))
-	  (let ((entry (aref vector (1- currynum))))
-	    (cond ((null entry)
-		   (setf (aref vector (1- currynum))
-			 (make-instance 'application-judgements
-			   'judgements-graph (list (list jdecl))
-			   'argtype-hash (when (and (no-dep-bindings
-						     (judgement-type jdecl))
-						    (no-dep-bindings
-						     (type decl)))
-					   (make-hash-table
-					    :hash-function 'pvs-sxhash
-					    :test 'tc-eq)))))
-		  (t (add-judgement-decl-to-graph jdecl entry)
-		     (when (and (argtype-hash entry)
-				(no-dep-bindings (judgement-type jdecl)))
-		       (clrhash (argtype-hash entry)))))))
-	;; Not simple; the decl has theory parameters
-	(break "add-application-judgement"))))
+    ;; Add to the tree pointed to by the vector
+    (let ((vector (gethash decl applhash)))
+      (cond ((null vector)
+	     (setq vector (make-array currynum :adjustable t
+				      :initial-element nil))
+	     (setf (gethash decl applhash) vector))
+	    ((> currynum (length vector))
+	     (adjust-array vector currynum :initial-element nil)))
+      (let ((entry (aref vector (1- currynum))))
+	(cond ((null entry)
+	       (setf (aref vector (1- currynum))
+		     (make-instance 'application-judgements
+		       'judgements-graph (list (list jdecl))
+;		       'argtype-hash (when (and (no-dep-bindings
+;						 (judgement-type jdecl))
+;						(no-dep-bindings
+;						 (type decl)))
+;				       (make-hash-table
+;					:hash-function 'pvs-sxhash
+;					:test 'tc-eq))
+		       )))
+	      (t (add-judgement-decl-to-graph jdecl entry)
+;		 (when (and (argtype-hash entry)
+;			    (no-dep-bindings (judgement-type jdecl)))
+;		   (clrhash (argtype-hash entry)))
+		 ))))))
 
-(defun add-judgement-decl-to-graph (jdecl entry)
-  (unless (some-judgement-subsumes jdecl (judgements-graph entry))
+(defun add-judgement-decl-to-graph (jdecl entry &optional quiet?)
+  (unless (some-judgement-subsumes jdecl (judgements-graph entry) quiet?)
     (clrhash (judgement-types-hash (judgements *current-context*)))
     (setf (judgements-graph entry)
 	  (add-application-judgement jdecl (judgements-graph entry)))
@@ -335,14 +336,15 @@
 		    (cdar graph))
 		  new-graph)))))
 
-(defun some-judgement-subsumes (jdecl graph)
+(defun some-judgement-subsumes (jdecl graph quiet?)
   (let ((sjdecl (find-if #'(lambda (adjlist)
 			     (judgement-subsumes (car adjlist) jdecl))
 		  graph)))
     (when sjdecl
-      (pvs-warning
-	  "Judgement ~a is not needed; it is subsumed by ~a"
-	(id jdecl) (id sjdecl))
+      (unless quiet?
+	(pvs-warning
+	    "Judgement ~a is not needed; it is subsumed by ~a"
+	  (id jdecl) (id (car sjdecl))))
       t)))
 
 (defun show-judgements-graph (decl)
@@ -394,14 +396,17 @@
 	  (list (available-numeric-type (number ex)))))
 
 (defmethod judgement-types* ((ex name-expr))
-  (let* ((decl (declaration ex))
-	 (entry (gethash decl
-			 (name-judgements-hash
-			  (judgements *current-context*)))))
+  (let ((entry (name-judgements ex)))
     (when entry
-      (if (simple-parameters? decl)
-	  entry
-	  (break)))))
+      (if (generic-judgements entry)
+	  (let* ((thinst (module-instance (resolution ex)))
+		 (inst-types (mapcar #'(lambda (jd)
+					 (subst-mod-params (type jd) thinst))
+			       (generic-judgements entry))))
+	    (assert (every #'fully-instantiated? inst-types))
+	    (minimal-types (nconc inst-types
+				  (mapcar #'type (minimal-judgements entry)))))
+	  (mapcar #'type (minimal-judgements entry))))))
 
 (defmethod judgement-types* ((ex application))
   (let* ((op (operator* ex)))
@@ -415,20 +420,22 @@
 		 (entry (when (<= currynum (length vector))
 			  (aref vector (1- currynum)))))
 	    (when entry
-	      (let ((argtypes (judgement-arg-types ex)))
-		(multiple-value-bind (jatypes there?)
-		    (when (argtype-hash entry)
-		      (gethash argtypes (argtype-hash entry)))
-		  (if there?
-		      jatypes
+	      (let ((argtypes (judgement-types+ (argument ex))))
+;		(multiple-value-bind (jatypes there?)
+;		    (when (argtype-hash entry)
+;		      (gethash argtypes (argtype-hash entry)))
+;		  (if there?
+;		      jatypes
 		      (let* ((gtypes (compute-application-judgement-types
 				      ex
 				      (judgements-graph entry)))
 			     (jtypes (generic-application-judgement-types
 				      ex (generic-judgements entry) gtypes)))
-			(when (argtype-hash entry)
-			  (setf (gethash argtypes (argtype-hash entry)) jtypes))
-			jtypes)))))))))))
+;			(when (argtype-hash entry)
+;			  (setf (gethash argtypes (argtype-hash entry)) jtypes))
+			jtypes)
+;		      ))
+		      ))))))))
 
 (defun generic-application-judgement-types (ex gen-judgements jtypes)
   (if (null gen-judgements)
@@ -459,8 +466,38 @@
     (compute-appl-judgement-types
      args-list
      (mapcar #'judgement-types* args-list)
-     (domain* (type (operator* ex)))
+     (operator-domain ex)
      graph)))
+
+(defun operator-domain (ex)
+  (operator-domain* (type (operator* ex)) (argument* ex) nil))
+
+(defmethod operator-domain* ((te funtype) (args cons) domains)
+  (operator-domain* (range te) (cdr args) (cons (domain te) domains)))
+
+(defmethod operator-domain* ((te subtype) (args cons) domains)
+  (operator-domain* (supertype te) args domains))
+
+(defmethod operator-domain* ((te dep-binding) (args cons) domains)
+  (operator-domain* (type te) args domains))
+
+(defmethod operator-domain* ((te type-expr) (args null) domains)
+  (nreverse domains))
+
+(defun operator-range (ex)
+  (operator-range* (type (operator* ex)) (argument* ex)))
+
+(defmethod operator-range* ((te funtype) (args cons))
+  (operator-range* (range te) (cdr args)))
+
+(defmethod operator-range* ((te subtype) (args cons))
+  (operator-range* (supertype te) args))
+
+(defmethod operator-range* ((te dep-binding) (args cons))
+  (operator-range* (type te) args))
+
+(defmethod operator-range* ((te type-expr) (args null))
+  te)
 
 (defun compute-appl-judgement-types (arguments argtypes rdomains graph
 					       &optional jtypes exclude)
@@ -487,9 +524,10 @@
 
 (defun compute-appl-judgement-types* (arguments argtypes rdomains jdecl)
   (let* ((jtype (judgement-type jdecl))
-	 (domains (domain* jtype))
-	 (range (range* jtype)))
-    (when (length= argtypes domains)
+	 (domains (operator-domain* jtype arguments nil))
+	 (range (operator-range* jtype arguments)))
+    (when (length= argtypes (formals jdecl))
+      (assert (length= argtypes domains))
       (assert (length= argtypes rdomains))
       (assert (length= argtypes arguments))
       (compute-appl-judgement-range-type
@@ -516,6 +554,8 @@
 	     range)))))
 
 (defun judgement-arguments-match? (argument argtypes rdomain jdomain)
+  (assert (fully-instantiated? rdomain))
+  (assert (fully-instantiated? jdomain))
   (if (null argtypes)
       (subtype-wrt? (type argument) jdomain rdomain)
       (judgement-arguments-match*? argtypes rdomain jdomain)))
@@ -594,47 +634,47 @@
 (defmethod judgement-types* ((ex cases-expr))
   nil)
 
+(defun subst-params-decls (jdecls theory theoryname)
+  (mapcar #'(lambda (jd)
+	      (subst-params-decl jd theoryname))
+    jdecls))
+
 (defmethod subst-params-decl ((j subtype-judgement) modinst)
-  (let* ((gj (or (generated-by j) j))
-	 (nj (lcopy gj
-	       'declared-type (subst-mod-params (declared-type gj) modinst)
-	       'type (subst-mod-params (type gj) modinst)
-	       'name (subst-mod-params (subtype gj) modinst)
-	       'declared-subtype (subst-mod-params (declared-subtype gj)
-						     modinst))))
-    (unless (eq gj nj)
-      (setf (generated-by nj) gj))
+  (let ((nj (lcopy j
+	      'declared-type (subst-mod-params (declared-type j) modinst)
+	      'declared-subtype (subst-mod-params (declared-subtype j) modinst)
+	      'type (subst-mod-params (type j) modinst)
+	      'name (subst-mod-params (subtype j) modinst))))
+    (unless (eq j nj)
+      (setf (generated-by nj) (or (generated-by j) j)))
     nj))
 
 (defmethod subst-params-decl ((j number-judgement) modinst)
-  (let* ((gj (or (generated-by j) j))
-	 (nj (lcopy gj
-	       'declared-type (subst-mod-params (declared-type gj) modinst)
-	       'type (subst-mod-params (type gj) modinst))))
-    (unless (eq gj nj)
-      (setf (generated-by nj) gj))
+  (let ((nj (lcopy j
+	      'declared-type (subst-mod-params (declared-type j) modinst)
+	      'type (subst-mod-params (type j) modinst))))
+    (unless (eq j nj)
+      (setf (generated-by nj) (or (generated-by j) j)))
     nj))
 
 (defmethod subst-params-decl ((j name-judgement) modinst)
-  (let* ((gj (or (generated-by j) j))
-	 (nj (lcopy gj
-	       'declared-type (subst-mod-params (declared-type gj) modinst)
-	       'type (subst-mod-params (type gj) modinst)
-	       'name (subst-mod-params (name gj) modinst))))
-    (unless (eq gj nj)
-      (setf (generated-by nj) gj))
+  (let ((nj (lcopy j
+	      'declared-type (subst-mod-params (declared-type j) modinst)
+	      'type (subst-mod-params (type j) modinst)
+	      'name (subst-mod-params (name j) modinst))))
+    (unless (eq j nj)
+      (setf (generated-by nj) (or (generated-by j) j)))
     nj))
 
 (defmethod subst-params-decl ((j application-judgement) modinst)
-  (let* ((gj (or (generated-by j) j))
-	 (nj (lcopy gj
-	       'declared-type (subst-mod-params (declared-type gj) modinst)
-	       'type (subst-mod-params (type gj) modinst)
-	       'name (subst-mod-params (name gj) modinst)
-	       'formals (subst-mod-params (formals gj) modinst)
-	       'formal-types (subst-mod-params (formal-types gj) modinst))))
-    (unless (eq gj nj)
-      (setf (generated-by nj) gj))
+  (let ((nj (lcopy j
+	      'declared-type (subst-mod-params (declared-type j) modinst)
+	      'type (subst-mod-params (type j) modinst)
+	      'judgement-type (subst-mod-params (judgement-type j) modinst)
+	      'name (subst-mod-params (name j) modinst)
+	      'formals (subst-mod-params (formals j) modinst))))
+    (unless (eq j nj)
+      (setf (generated-by nj) (or (generated-by j) j)))
     nj))
 
 
@@ -753,23 +793,61 @@
 
 (defvar *subtypes-seen* nil)
 
-(defun type-predicates (ex)
+(defun type-constraints (ex &optional all?)
   (let* ((jtypes (judgement-types ex))
 	 (*subtypes-seen* nil)
-	 (preds (collect-type-predicates (or jtypes (type ex)) ex nil)))
+	 (preds (type-constraints* (or jtypes (type ex)) ex nil all?)))
     preds))
 
-(defmethod collect-type-predicates ((list cons) ex preds)
-  (let ((car-preds (collect-type-predicates (car list) ex nil)))
-    (collect-type-predicates (cdr list) ex (nconc car-preds preds))))
+(defmethod type-constraints* ((list cons) ex preds all?)
+  (let ((car-preds (type-constraints* (car list) ex nil all?)))
+    (type-constraints* (cdr list) ex (nconc car-preds preds) all?)))
 
-(defmethod collect-type-predicates ((te subtype) ex preds)
-  (unless (member te *subtypes-seen* :test #'tc-eq)
+(defmethod type-constraints* ((te subtype) ex preds all?)
+  (cond ((or (member te *subtypes-seen* :test #'tc-eq)
+	     (and (not all?)
+		  (ignored-type-constraint te)))
+	 (nreverse preds))
+	(t (push te *subtypes-seen*)
+	   (let ((pred (make!-reduced-application (predicate te) ex)))
+	     (type-constraints* (supertype te) ex (cons pred preds) all?)))))
+
+(defmethod type-constraints* ((te dep-binding) ex preds all?)
+  (type-constraints* (type te) ex preds all?))
+
+(defmethod type-constraints* (te ex preds all?)
+  (nreverse preds))
+
+(let ((ignored-type-constraints nil))
+  (defun push-ignored-type-constraints (te)
+    (push te ignored-type-constraints))
+  (defun ignored-type-constraint (type)
+    (member type ignored-type-constraints :test #'tc-eq))
+  (defun clear-ignored-type-constraints ()
+    (setq ignored-type-constraints nil)))
+
+
+(defun type-predicates (ex &optional all?)
+  (let ((*subtypes-seen* nil))
+    (type-predicates* ex nil all?)))
+
+(defmethod type-predicates* ((list cons) preds all?)
+  (let ((car-preds (type-predicates* (car list) nil all?)))
+    (type-predicates* (cdr list) (nconc car-preds preds) all?)))
+
+(defmethod type-predicates* ((te subtype) preds all?)
+  (unless (or (member te *subtypes-seen* :test #'tc-eq)
+	      (and (not all?)
+		   (ignored-type-constraint te)))
     (push te *subtypes-seen*)
-    (let ((pred (make!-reduced-application (predicate te) ex)))
-      (collect-type-predicates (supertype te)
-			       ex
-			       (cons pred preds)))))
+    (let ((pred (predicate te)))
+      (type-predicates* (supertype te) (cons pred preds) all?))))
+
+(defmethod type-predicates* ((te dep-binding) preds all?)
+  (type-predicates* (type te) preds all?))
+
+(defmethod type-predicates* (te preds all?)
+  (nreverse preds))
 
 (defmethod make!-reduced-application ((op lambda-expr) (arg tuple-expr))
   (if (singleton? (bindings op))
@@ -785,9 +863,6 @@
 
 (defmethod make!-reduced-application (op arg)
   (make!-application op arg))
-
-(defmethod collect-type-predicates (te ex preds)
-  preds)
 
 
 (defmethod argument-application-number ((ex application) &optional (num 0))
@@ -828,15 +903,41 @@
 
 (defun merge-name-judgements (from-hash to-hash theory theoryname)
   (unless (zerop (hash-table-count from-hash))
-    (maphash #'(lambda (decl jdecls)
-		 (let* ((to-judgements (gethash decl to-hash))
-			(sjdecls (minimal-judgement-decls
-				  (subst-params-decls jdecls theory theoryname)
-				  to-judgements)))
-		   (unless (equal sjdecls to-judgements)
-		     (setf (gethash decl to-hash) sjdecls)
-		     (setf *judgements-added* t))))
+    (maphash #'(lambda (decl from-judgements)
+		 (let* ((from-min (subst-params-decls
+				   (minimal-judgements from-judgements)
+				   theory theoryname))
+			(from-gen (subst-params-decls
+				   (generic-judgements from-judgements)
+				   theory theoryname))
+			(to-judgements (gethash decl to-hash)))
+		   (unless to-judgements
+		     (setq to-judgements
+			   (setf (gethash decl to-hash)
+				 (make-instance 'name-judgements))))
+		   (merge-name-judgements* (nconc from-min from-gen)
+					   to-judgements)))
 	     from-hash)))
+
+(defun merge-name-judgements* (from-judgements to-judgements)
+  (dolist (jdecl from-judgements)
+    (if (fully-instantiated? (type jdecl))
+	(unless (some #'(lambda (jd) (subtype-of? (type jd) (type jdecl)))
+		      (minimal-judgements to-judgements))
+	  (setq *judgements-added* t)
+	  (setf (minimal-judgements to-judgements)
+		(cons jdecl
+		      (delete-if #'(lambda (jd)
+				     (subtype-of? (type jdecl) (type jd)))
+			(minimal-judgements to-judgements)))))
+	(unless (some #'(lambda (jd) (subtype-of? (type jd) (type jdecl)))
+		      (generic-judgements to-judgements))
+	  (setq *judgements-added* t)
+	  (setf (generic-judgements to-judgements)
+		(cons jdecl
+		      (delete-if #'(lambda (jd)
+				     (subtype-of? (type jdecl) (type jd)))
+			(generic-judgements to-judgements))))))))
 
 (defun minimal-judgement-decls (newdecls olddecls &optional mindecls)
   (cond (olddecls
@@ -863,12 +964,14 @@
     (maphash
      #'(lambda (decl from-vector)
 	 (let ((to-vector (gethash decl to-hash)))
+	   (unless to-vector
+	     (setq to-vector
+		   (setf (gethash decl to-hash)
+			 (make-array (length from-vector)
+				     :adjustable t :initial-element nil))))
 	   (setf (gethash decl to-hash)
-		 (if to-vector
-		     (merge-appl-judgement-vectors decl from-vector to-vector
-						   theory theoryname)
-		     (copy-appl-judgement-vectors decl from-vector
-						  theory theoryname)))))
+		 (merge-appl-judgement-vectors decl from-vector to-vector
+					       theory theoryname))))
      from-hash)))
 
 (defun merge-appl-judgement-vectors (decl from-vector to-vector
@@ -877,42 +980,40 @@
     (setq to-vector (resize-array to-vector (length from-vector))))
   (dotimes (i (length from-vector))
     (when (aref from-vector i)
-      (cond ((aref to-vector i)
-	     (merge-appl-judgements-entries
-	      decl (aref from-vector i) (svref to-vector i)
-	      theory theoryname))
-	    (t (setf (aref to-vector i)
-		     (copy-application-judgements (aref from-vector i)
-						  theory theoryname))
-	       (setq *judgements-added* t)))))
+      (unless (aref to-vector i)
+	(setf (aref to-vector i)
+	      (make-instance 'application-judgements
+;		'argtype-hash (when (argtype-hash (aref from-vector i))
+;				(make-hash-table
+;				 :hash-function 'pvs-sxhash :test 'tc-eq))
+		)))
+      (setf (aref to-vector i)
+	    (merge-appl-judgements-entries
+	     decl (aref from-vector i) (aref to-vector i)
+	     theory theoryname))))
   to-vector)
 
 ;;; Entry here is an instance of application-judgements
 
 (defun merge-appl-judgements-entries (decl from-entry to-entry
 					   theory theoryname)
-  (unless (equal (judgements-graph from-entry)
-		 (judgements-graph to-entry))
-    (merge-judgement-graphs decl
-			    to-entry
-			    (judgements-graph from-entry)
-			    (judgements-graph to-entry)
-			    theory theoryname)))
+  (merge-judgement-graphs decl to-entry (judgements-graph from-entry)
+			  theory theoryname))
 
-(defun merge-judgement-graphs (decl to-entry from-graph to-graph
-				    theory theoryname)
-  
-  (let* ((jdecl (judgement-decl (car from-nodes)))
-	 (sjdecl (if (eq (module jdecl) theory)
-		     (subst-params-decl jdecl theory theoryname)
-		     jdecl))
-	 (simple? (or (eq (module decl) *current-theory*)
-		      (null (formals-sans-usings (module decl)))
-		      (fully-instantiated? (judgement-type sjdecl)))))
-    (if simple?
-	(add-judgement-decl-to-graph sjdecl to-entry)
-	(unless (judgement-uninstantiable? decl sjdecl)
-	  (push sjdecl (generic-judgements to-entry))))))
+(defun merge-judgement-graphs (decl to-entry from-graph theory theoryname)
+  (when from-graph
+    (let* ((jdecl (caar from-graph))
+	   (sjdecl (subst-params-decl jdecl theoryname)))
+      (if (fully-instantiated? (judgement-type sjdecl))
+	  (add-judgement-decl-to-graph sjdecl to-entry t)
+	  (unless (or (some #'(lambda (jd) (judgement-subsumes jd jdecl))
+			    (generic-judgements to-entry))
+		      (judgement-uninstantiable? decl sjdecl))
+	    (cons sjdecl
+		  (delete-if #'(lambda (jd)
+				 (judgement-subsumes jdecl jd))
+		    (generic-judgements to-entry))))))
+    (merge-judgement-graphs decl to-entry (cdr from-graph) theory theoryname)))
 
 (defun judgement-uninstantiable? (decl jdecl)
   nil)
@@ -941,9 +1042,15 @@
 
 (defmethod copy-name-judgements-hash (name-hash)
   (let ((new-hash (make-hash-table :test 'eq)))
-    (maphash #'(lambda (decl judgements)
-		 (setf (gethash decl new-hash) (copy-list judgements)))
-	     name-hash)
+    (maphash
+     #'(lambda (decl judgements)
+	 (setf (gethash decl new-hash)
+	       (copy judgements
+		 'minimal-judgements (copy-list
+				      (minimal-judgements judgements))
+		 'generic-judgements (copy-list
+				      (generic-judgements judgements)))))
+     name-hash)
     new-hash))
 
 (defun copy-application-judgements-hash (appl-hash)
@@ -958,14 +1065,143 @@
   (map 'simple-vector
        #'(lambda (x)
 	   (when x
-	     (copy-application-judgements x)))
+	     (copy-application-judgements decl x)))
        from-vector))
 
-(defun copy-application-judgements (appl-judgement)
-  (make-instance 'application-judgements
-    'argtype-hash (copy (argtype-hash appl-judgement))
-    'judgements-graph (copy-judgements-graph
-		       (judgements-graph appl-judgement))))
+(defun copy-application-judgements (decl appl-judgement)
+  (let ((nappl-judgement
+	 (make-instance 'application-judgements
+;	   'argtype-hash (copy (argtype-hash appl-judgement))
+	   'generic-judgements (copy-list
+				(generic-judgements appl-judgement)))))
+    (if (formals-sans-usings (module decl))
+	(copy-judgements-graph (reverse (judgements-graph appl-judgement))
+			       nappl-judgement)
+	(setf (judgements-graph nappl-judgement)
+	      (copy-tree (judgements-graph appl-judgement))))
+    nappl-judgement))
 
-(defun copy-judgements-graph (graph)
-  (copy-tree graph))
+(defun copy-judgements-graph (graph appl-judgement)
+  (when graph
+    (if (fully-instantiated? (judgement-type (caar graph)))
+	(push (remove-if-not #'(lambda (jd)
+				 (fully-instantiated? (judgement-type jd)))
+		(car graph))
+	      (judgements-graph appl-judgement))
+	(unless (judgement-uninstantiable? (declaration (name (caar graph)))
+					   (caar graph))
+	  (push (caar graph) (generic-judgements appl-judgement))))
+    (copy-judgements-graph (cdr graph) appl-judgement)))
+
+
+;;; Subtype judgement handling
+
+
+;;; add-to-known-subtypes updates the known-subtypes of the current
+;;; context.  It first checks to see whether the subtype relation is
+;;; already known, in which case it does nothing.  If it needs to update the 
+
+(defun add-to-known-subtypes (atype etype)
+  (let ((aty (if (typep atype 'dep-binding) (type atype) atype))
+	(ety (if (typep etype 'dep-binding) (type etype) etype)))
+    (unless (subtype-of? aty ety)
+      (let* ((entry (get-known-subtypes aty))
+	     (atypes (or (cdr entry)
+			 (get-direct-subtype-alist aty)))
+	     (etypes (or (cdr (get-known-subtypes ety))
+			 (get-direct-subtype-alist ety)))
+	     (inc-types (mapcar #'(lambda (ety)
+				    (cons (car ety) (1+ (cdr ety))))
+				etypes))
+	     (mtypes (sort (append inc-types
+				   (remove-if #'(lambda (at)
+						  (assoc (car at) inc-types
+							 :test #'tc-eq))
+				     atypes))
+			   #'< :key #'cdr)))
+	(when (> (length (known-subtypes *current-context*)) 20)
+	  (break "Long subtypes list"))
+	(when (> (length entry) 20) (break "Long subtype entry"))
+	(when *subtype-of-hash*
+	  (let ((ht (gethash aty *subtype-of-hash*)))
+	    (when ht
+	      (clrhash *subtype-of-hash*))))
+	(if entry
+	    (setf (cdr entry)
+		  (acons ety 1 mtypes))
+	    (set-known-subtypes aty (acons ety 1 mtypes)))))))
+
+(defun add-to-known-subtypes (atype etype)
+  (let ((aty (if (typep atype 'dep-binding) (type atype) atype))
+	(ety (if (typep etype 'dep-binding) (type etype) etype)))
+    (unless (subtype-of? aty ety)
+      (let ((entry (get-known-subtypes aty)))
+	(if (null entry)
+	    (push (list aty ety) (known-subtypes *current-context*))
+	    (push ety (cdr entry)))))))
+
+(defun get-known-subtypes (aty)
+  (assoc aty (known-subtypes *current-context*) :test #'tc-eq-for-subtypes))
+
+(defun set-known-subtypes (type subtypes)
+  (break "set-known-subtypes")
+  (push (cons type subtypes)
+	(known-subtypes *current-context*)))
+    
+
+(defun copy-known-subtypes (known-subtypes)
+  (copy-tree known-subtypes))
+
+(defun merge-known-subtypes (direct-types transitive-types)
+  (if (null direct-types)
+      transitive-types
+      (let* ((dtype (car direct-types))
+	     (found (assoc (car dtype) transitive-types :test #'tc-eq)))
+	(when (and found
+		   (< (cdr dtype) (cdr found)))
+	  (setf (cdr found) (cdr dtype)))
+	(merge-known-subtypes (cdr direct-types)
+			      (if found
+				  transitive-types
+				  (cons dtype transitive-types))))))
+
+(defmethod get-direct-subtype-alist ((te subtype) &optional endtype)
+  (get-direct-subtype-alist* (supertype te) 1 nil endtype))
+
+(defmethod get-direct-subtype-alist ((te dep-binding) &optional endtype)
+  (get-direct-subtype-alist* (type te) 1 nil endtype))
+
+(defmethod get-direct-subtype-alist ((te type-expr) &optional endtype)
+  (declare (ignore endtype))
+  nil)
+
+(defmethod get-direct-subtype-alist* :around (te dist alist endtype)
+  (declare (ignore dist))
+  (if (and endtype
+	   (tc-eq te endtype))
+      (nreverse alist)
+      (call-next-method)))
+
+(defmethod get-direct-subtype-alist* ((te subtype) dist alist endtype)
+  (get-direct-subtype-alist* (supertype te) (1+ dist)
+			     (acons te dist alist)
+			     endtype))
+
+(defmethod get-direct-subtype-alist* ((te type-expr) dist alist endtype)
+  (declare (ignore endtype))
+  (nreverse (acons te dist alist)))
+
+(defun update-known-subtypes (theory theoryname)
+  (when (saved-context theory)
+    (dolist (subtype (known-subtypes (saved-context theory)))
+      (if (fully-instantiated? (car subtype))
+	  (mapcar #'(lambda (ety)
+		      (add-to-known-subtypes (car subtype) ety))
+		  (cdr subtype))
+	  (let ((aty (subst-mod-params (car subtype) theoryname))
+		(etypes (mapcar #'(lambda (ety)
+				    (subst-mod-params ety theoryname))
+				(cdr subtype))))
+	    (mapcar #'(lambda (ety) (add-to-known-subtypes aty ety))
+		    etypes))))))
+
