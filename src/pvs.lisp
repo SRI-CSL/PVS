@@ -327,13 +327,14 @@
       (check-for-duplicate-theories (cdr new-theories)))))
 
 (defun check-for-prelude-theory-clashes (new-theories)
-  (let ((clash (find-if #'(lambda (nth)
-			    (assoc nth *prelude-names* :test #'same-id))
-		 new-theories)))
-    (when clash
-      (parse-error clash
-	"Theory ~a is in the prelude and may not be redefined"
-	(id clash)))))
+  (when new-theories
+    (let* ((theory (car new-theories))
+	   (clash (gethash (id theory) *prelude*)))
+      (when clash
+	(parse-error theory
+	  "~a is in use as a prelude ~a name and may not be redefined"
+	  (if (datatype? clash) "datatype" "theory") (id clash)))
+      (check-for-prelude-theory-clashes (cdr new-theories)))))
 
 (defun check-for-context-theory-clashes (new-theories filename)
   (unless *generating-adt*
