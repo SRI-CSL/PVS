@@ -264,24 +264,26 @@
   "Find the window directly below us, if any.  This is probably the 
  window from which enlarge-window would steal lines."
   (if (or (not (string-match "XEmacs" emacs-version))
-	  (< emacs-minor-version 12))
+	  (and (= emacs-major-version 19)
+	       (< emacs-minor-version 12)))
       (let* ((bottom (nth 3 (window-edges window)))
 	     (window* nil)
 	     (win window))
 	(while (not (eq (setq win (next-window win 'no))
 			window))
 	  (if (and (= (nth 1 (window-edges win))
-		  bottom)
+		      bottom)
 		   (null window*))
 	      (setq window* win)))
 	window*)
-    (next-vertical-window window)))
+      (next-vertical-window window)))
 
 ;; XEmacs change -- There is now a primitive to do this.
 (defun ilisp-find-top-left-most-window ()
   "Return the leftmost topmost window on the current screen."
   (if (or (not (string-match "XEmacs" emacs-version))
-	  (< emacs-minor-version 12))
+	  (and (= emacs-major-version 19)
+	       (< emacs-minor-version 12)))
       (let* ((window* (selected-window))
 	     (edges* (window-edges window*))
 	     (win nil)
@@ -296,7 +298,7 @@
 	      (setq window* win
 		    edges* edges)))
 	window*)
-    (frame-highest-window (selected-frame) 0)))
+      (frame-highest-window (selected-frame) 0)))
 
 
 ;; This causes the typeout window to be created by splitting or using the

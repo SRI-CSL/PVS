@@ -41,20 +41,6 @@
 Declared as '(member xemacs-20 xemacs-19 fsf-20 fsf-19).
 Set in ilcompat.el")
 
-
-;
-; dave_sc - the following needs analysis of where it is used.
-;
-;(defconst +ilisp-emacs-minor-version-number+
-;    (cond ((eq +ilisp-emacs-version-id+ 'fsf-18) 59)
-;	  ((or  (eq +ilisp-emacs-version-id+ 'lucid-19)
-;		(eq +ilisp-emacs-version-id+ 'lucid-19-new)
-;		)
-;	   12)				; Does emacs-minor-version work?
-;	  ((eq +ilisp-emacs-version-id+ 'xemacs) 14)
-;	  (t emacs-minor-version)))
-
-
 ;;;============================================================================
 ;;; Code
 
