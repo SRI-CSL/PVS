@@ -1473,8 +1473,7 @@ Point will be on the offending delimiter."
 	       (set-buffer logbuf)	; body may have changed active buffer
 	       (when pvs-expected-output
 		 (let ((standard-output logbuf))
-		   (pvs-message "Checking for expected output:\n  %s"
-		     pvs-expected-output)
+		   (pvs-message "Checking for expected output:")
 		   (let ((foundit nil))
 		     (save-excursion
 		       (goto-char (point-min))
@@ -1486,8 +1485,7 @@ Point will be on the offending delimiter."
 			   logfile)))))
 	       (when pvs-unexpected-output
 		 (let ((standard-output logbuf))
-		   (pvs-message "Checking for unexpected output:\n  %s"
-		     pvs-unexpected-output)
+		   (pvs-message "Checking for unexpected output:")
 		   (let ((foundit nil))
 		     (save-excursion
 		       (goto-char (point-min))
