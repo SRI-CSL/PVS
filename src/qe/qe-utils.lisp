@@ -5,6 +5,14 @@
   (assert (compatible? (type lhs) (type rhs)))
   (make!-negation (make!-equation lhs rhs)))
 
+(defmethod destructure-disequality ((fml disequation))
+  (values (args1 fml) (args2 fml)))
+
+(defmethod destructure-disequality ((fml negation))
+  (let ((arg (args1 fml)))
+    (when (equation? arg)
+      (values (args1 arg) (args2 arg)))))
+
 (defun make!-lt* (ex)
   (assert (type ex))
   (assert (compatible? (find-supertype (type ex)) (number-cross-number)))
@@ -126,16 +134,6 @@
 
 (defun nonstrict-ineq? (expr)
   (or (lesseq? expr) (greatereq? expr)))
- 
-(defun integer? (expr)
-  (or (and (type expr)
-	   (subtype-of? (type expr) *integer*))
-      (and (number-expr? expr)
-	   (integerp (number expr)))
-      (some #'(lambda (type)
-		(subtype-of? type *integer*))
-	    (judgement-types+ expr))))
-
 
 
 
