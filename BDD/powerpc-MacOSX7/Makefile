@@ -4,8 +4,8 @@ UTILS = ../bdd/utils
 INCLUDES = -I/usr/include -I$(BDD) -I$(UTILS) -I$(MU)
 LD = ld
 LDFLAGS = -bundle /usr/lib/bundle1.o -flat_namespace -undefined suppress -L./
-CC = gcc
-CFLAGS = -DNDEBUG $(INCLUDES)
+CC = cc
+CFLAGS = -dynamic -DNDEBUG $(INCLUDES)
 XCFLAGS = -O
 SHELL = /bin/sh
 VPATH = ..:../bdd/utils:../bdd/src:../mu/src
@@ -21,8 +21,8 @@ utilobj = double.o list.o hash.o alloc.o
 
 all : mu.dylib
 
-mu.dylib : ${muobj} bdd_table.o mu_table.o libutils.a
-	$(LD) $(LDFLAGS) -o mu.dylib ${muobj} bdd_table.o mu_table.o -lutils -lm
+mu.dylib : ${muobj} bdd_table.o mu_table.o ${utilobj}
+	$(LD) $(LDFLAGS) -o mu.dylib ${muobj} ${utilobj} bdd_table.o mu_table.o -lm -lc -lgcc
 
 libutils.a : ${utilobj}
 	ar r libutils.a ${utilobj}
