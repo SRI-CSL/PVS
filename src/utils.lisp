@@ -1033,6 +1033,9 @@
 	     *pvs-modules*)
     utheory))
 
+(defmethod module ((ctx context))
+  (theory ctx))
+
 
 ;;; lambda-depth - returns the number of lambdas in the
 ;;; right-hand-side of the given definition.  E.g.
