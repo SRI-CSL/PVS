@@ -100,7 +100,8 @@
     (clrhash *imported-libraries*)
     (setf (cadr *pvs-context*) nil)
     (setq *prelude-libraries-uselist* nil)
-    (setq *prelude-library-context* nil)))
+    (setq *prelude-library-context* nil)
+    (setq *prelude-libraries-files* nil)))
 
 (defun get-pvs-library-path ()
   (setq *pvs-library-path* nil)
@@ -1285,7 +1286,7 @@
 (defmethod decl-to-declname ((imp importing))
   (let* ((theory (module imp))
 	 (imps (remove-if (complement #'importing?) (all-decls theory)))
-	 (pos (position decl imps)))
+	 (pos (position imp imps)))
     (assert pos)
     (format nil "IMPORTING-~d" (1+ pos))))
 
@@ -1294,7 +1295,7 @@
 	 (excl:split-regexp "-" declname)))
     (if (string= (car decl-and-pos) "IMPORTING")
 	(let ((pos (parse-integer (cdr decl-and-pos)))
-	      (imps (remove-if (complement #'importing? (all-decls theory)))))
+	      (imps (remove-if (complement #'importing?) (all-decls theory))))
 	  (nth (1- pos) imps))
 	(let* ((declid (intern (car decl-and-pos)))
 	       (pos (if (cadr decl-and-pos)
