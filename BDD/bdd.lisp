@@ -251,8 +251,8 @@
      (bdd_quit))))
 
 (defun bddsimp-conjuncts (selected-sforms irredundant?)
-  (let* ((*pvs-bdd-hash* (make-pvs-hash-table
-			  :hashfn #'pvs-sxhash :test #'tc-eq))
+  (let* ((*pvs-bdd-hash* (make-hash-table
+			  :hash-function 'pvs-sxhash :test 'tc-eq))
 	 (*bdd-pvs-hash* (make-hash-table))
 	 (sforms-bdd (make-sforms-bdd selected-sforms))
 	 (list-of-conjuncts (translate-from-bdd-list
@@ -266,6 +266,7 @@
 						(gethash lit *bdd-pvs-hash*))))
 				 conj))
 		     list-of-conjuncts)))
+    (assert (hash-table-p *pvs-bdd-hash*))
     lit-list))
 
 (defun add-bdd-subgoals (ps sforms conjuncts remaining-sforms)
@@ -336,10 +337,10 @@
   ;;and exclusivity asserts NOT(a?(x) & x = a) which is unsound.
   (let* ((rec-appln? (recognizer-application? expr)) ;;
 	 (expr (if rec-appln? rec-appln? expr))      ;;normalized.
-	 (varid (pvs-gethash expr *pvs-bdd-hash*)))
+	 (varid (gethash expr *pvs-bdd-hash*)))
     (cond ((null varid)
 	   (let ((new-varid (funcall *bdd-counter*)))
-	       (setf (pvs-gethash expr *pvs-bdd-hash*)
+	       (setf (gethash expr *pvs-bdd-hash*)
 		     new-varid)
 	       (setf (gethash new-varid *bdd-pvs-hash*)
 		     expr)
@@ -347,6 +348,36 @@
 	       (bdd_create_var new-varid)))
 	  (t (enter-into-recognizer-form-alist expr varid)
 	     (bdd_create_var varid)))))
+
+(defun unit-constructor? (expr)
+  (and (constructor? expr)
+       (null (accessors expr))))
+
+(defun recognizer-application? (expr)
+  (if (and (application? expr)
+	   (recognizer? (operator expr)))
+      expr
+      (if (equality? expr)
+	  (if (unit-constructor? (args1 expr))
+	      (make-application (recognizer (args1 expr)) (args2 expr))
+	      (if (unit-constructor? (args2 expr))
+		  (make-application (recognizer (args2 expr)) (args1 expr))
+		  nil))
+	  nil)))
+
+(defun enter-into-recognizer-form-alist (expr name)
+  (let ((recexpr (recognizer-application? expr)))
+    (when (not (null recexpr))
+      (let* ((op (operator recexpr))
+	     (arg (args1 recexpr))
+	     (entry (assoc  arg *recognizer-forms-alist*
+			    :test #'tc-eq)))
+	(cond ((null entry)
+	       (push (cons arg (list (cons op name)))
+		     *recognizer-forms-alist*))
+	      (t (pushnew (cons op name)
+			  (cdr entry)
+			  :test #'(lambda(x y) (eql (cdr x) (cdr y))))))))))
 
 (defun translate-from-bdd-list (bddlist)
   (let ((bdds (unless (zerop bddlist)
