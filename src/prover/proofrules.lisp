@@ -877,9 +877,7 @@
 
 (defun lemma-step (name substs ps)
   (let* ((name-expr (pc-parse name 'name))
-	 (resolutions (append
-		       (resolve name-expr 'formula nil)
-		       (resolve name-expr 'expr nil)))
+	 (resolutions (formula-or-definition-resolutions name-expr))
 	 (resolutions
 	  (cond ((freevars resolutions)
 		 (error-format-if "~%Free variables in lemma name: ~a" name)

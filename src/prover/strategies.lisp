@@ -932,10 +932,20 @@ is T) and disjunctively simplifies."
 
 ;;simple induction strategy
 
-(defun predtype? (type)
-  (let ((type (find-supertype type)))
-    (and (funtype? type)
-	 (tc-eq (find-supertype (range type)) *boolean*))))
+(defmethod predtype? ((te subtype))
+  (with-slots (supertype) te
+    (predtype? supertype)))
+
+(defmethod predtype? ((te funtype))
+  (with-slots (range) te
+    (tc-eq range *boolean*)))
+
+(defmethod predtype? ((te dep-binding))
+  (with-slots (type) te
+    (predtype? type)))
+
+(defmethod predtype? ((te type-expr))
+  nil)
 
 ;(def-pvs-term upfrom-subtype "upfrom" "int_types" :nt type-expr)
 ;(def-pvs-term below-subtype "below" "nat_types" :nt type-expr)

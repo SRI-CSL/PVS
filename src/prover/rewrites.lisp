@@ -18,14 +18,7 @@
 (defun rewrite-step (lemma fnums &optional subst target-fnums
 			       dir order)
   (let* ((lemmaname-expr (pc-parse lemma 'name))
-	 (resolutions ;;(remove-if-not #'fully-instantiated? ; SO-12/9/92
-			(nconc
-			 (resolve lemmaname-expr 'formula nil
-				  *current-context*)
-			 (resolve lemmaname-expr 'expr nil
-				  *current-context*))
-	   ;;)
-	   )
+	 (resolutions (formula-or-definition-resolutions lemmaname-expr))
 	 (sforms (select-seq (s-forms *goal*)
 			     (if (numberp fnums) (list fnums)
 				 fnums)))
