@@ -5,6 +5,7 @@
 ;;; These are defined here so they are available in byte compilation
 ;;;
 
+(require 'cl)
 
 ;;;
 ;;; originally in pvs-load.el
