@@ -538,8 +538,8 @@ M-x show-hidden-formulas to see the hidden formulas."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(addrule 'replace (fnum) ((fnums *) dir hide? actuals?)
-  (replace-rule-fun fnum fnums dir hide? actuals?)
+(addrule 'replace (fnum) ((fnums *) dir hide? actuals? dont-delete?)
+  (replace-rule-fun fnum fnums dir hide? actuals? dont-delete?)
   "Rewrites the given formulas in FNUMS with the formula FNUM.  If
 FNUM is an antecedent equality, then it rewrites left-to-right if DIR is
 LR (the default), and right-to-left if DIR is RL.  If FNUM is not an
@@ -547,7 +547,8 @@ antecedent equality, then any occurrence of the formula FNUM in FNUMS is
 replaced by TRUE if FNUM is an antecedent, FALSE for a succedent.  If
 HIDE? is T, then FNUM is hidden afterward.  When ACTUALS?  is T, the
 replacement is done within actuals of names in addition to the expression
-level replacements."
+level replacements.  When the DONT-DELETE? flag is T, top-level sequent
+formulas are not deleted through being replaced by TRUE/FALSE."
   "~%Replacing using formula ~a,")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
