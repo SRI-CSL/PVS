@@ -15,21 +15,13 @@
 
 ;;NSH(3/3/93)commented out conversion of boolean equality to iff overriding
 ;;corresponding code in process.
-(defun needs-bool-lifting1 (exp)
-  (cond
-    ((atom exp) nil)
-    ((memq (funsym exp) '(and or implies not if iff))
-     (throw 'bool-lifting t))
-    ;; the next case probably wont occur -  need to check ***
-;NSH    ((and (eq (funsym exp) 'equal) (eq (prtype (arg1 exp)) 'bool))
-;     (throw 'bool-lifting t))
-    ((eq (funsym exp) 'lambda) nil)
-    (t (loop for subexp in (argsof exp) thereis (needs-bool-lifting1 subexp)))))
+;;SO (2002-07-31) Made this change to needs-bool-lifting1 in porcess.lisp
+;;                to keep from having duplicate functions.
+
  
 ;;need to load prmacros, process, 
 ;;arith, q.lisp, etc. 
 
-(defvar needed-if* nil)
 (defvar *bindings* nil)
 (defvar *embeddedf* nil)
 
