@@ -152,7 +152,8 @@ bind tighter.")
 
 (defun pp (obj)
   (let ((*disable-gc-printout* t))
-    (pp* obj)))
+    (pprint-logical-block (nil nil)
+      (pp* obj))))
 
 ;(defmethod pp* :around ((syn syntax))
 ;  (call-next-method)
