@@ -1642,12 +1642,12 @@ foo.prf.~6~ is added."
 			   num)))))
     (pvs-send (format "(setq *number-of-proof-backups* %s)" n))))
 
-(defpvs new-decision-procedures ()
+(defpvs new-decision-procedures prove ()
   "Sets the default to the new decision procedures"
   (interactive)
   (pvs-send-and-wait "(new-decision-procedures)"))
 
-(defpvs old-decision-procedures ()
+(defpvs old-decision-procedures prove ()
   "Sets the default to the old decision procedures"
   (interactive)
   (pvs-send-and-wait "(old-decision-procedures)"))
