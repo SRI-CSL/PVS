@@ -1507,7 +1507,8 @@ where db is to replace db1 and db2")
 ;;; judgements.
 
 (defun subtype-of? (t1 t2)
-  (subtype-of*? t1 t2))
+  (let ((*subtypes-matched* nil))
+    (subtype-of*? t1 t2)))
 
 (defun strict-subtype-of? (t1 t2)
   (and (not (tc-eq t1 t2))
