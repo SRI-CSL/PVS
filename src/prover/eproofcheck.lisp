@@ -228,9 +228,6 @@
 	 (*create-formulas-cache* (init-if-rec *create-formulas-cache*))
 	 (*term-print-strings* (init-if-rec *term-print-strings*))
 	 (*all-subst-mod-params-caches* (copy-subst-mod-params-cache))
-	 (*pseudo-normalize-hash* (copy *pseudo-normalize-hash*))
-	 (*pseudo-normalize-translate-id-hash*
-	  (copy *pseudo-normalize-translate-id-hash*))
 	 ;;
 	 (*current-context* (or context (context decl)))
 	 (*current-theory* (module decl))
@@ -246,6 +243,7 @@
 	 (*local-typealist* *local-typealist*)
 	 (*rec-type-dummies* nil)
 	 (*named-exprs* nil))
+    (reset-pseudo-normalize-caches)
     (newcounter *translate-id-counter*)
     (initprover)
     ;; remove above once term-lt is written
