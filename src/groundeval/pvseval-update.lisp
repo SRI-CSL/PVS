@@ -1419,7 +1419,7 @@
   (let* ((const-str (format nil "~a_~a" id counter))
 	 (const-str? (find-symbol const-str))
 	 (mk-str? (find-symbol (format nil "MAKE-~a" const-str)))
-	 (rec-str? (find-symbol (format nil "~a-p" const-str)))
+	 (rec-str? (find-symbol (format nil "~a?" const-str)))
 	 (acc-strs? (loop for acc in accessor-ids
 			 thereis
 			 (find-symbol (format nil "~a_~a"
@@ -1457,9 +1457,11 @@
 		       (accessor-ids (mapcar #'id accessors))
 		       (struct-id (mk-newconstructor id
 						     accessor-ids))
+		       (recognizer-id (makesym "~a?" struct-id))
 		       (constructor-symbol (makesym "MAKE-~a" struct-id))
 		       (defn `(defstruct (,struct-id (:constructor ,constructor-symbol 
-								   ,accessor-ids))
+								   ,accessor-ids)
+						     (:predicate ,recognizer-id))
 				,@accessor-ids)))
 		  (make-eval-info (declaration constructor))
 		  (setf (definition (in-defn (declaration constructor)))
@@ -1468,7 +1470,7 @@
 			constructor-symbol)
 		  (make-eval-info (declaration (recognizer constructor)))
 		  (setf (in-name (declaration (recognizer constructor)))
-			(makesym "~a-p" struct-id))
+			(makesym "~a?" struct-id))
 		  (eval defn)
 		  (loop for x in accessors
 			do (progn (make-eval-info (declaration x))
