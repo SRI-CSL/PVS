@@ -526,7 +526,8 @@
 
 (defcl judgements ()
   (judgement-types-hash
-   :initform (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq)
+   :initform (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq
+			      :weak-keys t)
    :fetch-as nil)
   number-judgements-alist
   name-judgements-alist
