@@ -225,7 +225,8 @@
     (let* ((thry (current-theory))
 	   (curdecl (current-declaration))
 	   (cdecl (when curdecl
-		    (if (tcc? decl)
+		    (if (or (tcc? decl)
+			    (importing? decl)) 
 			curdecl
 			(or (find-if-not #'(lambda (d) (tcc? d))
 			      (generated curdecl))
