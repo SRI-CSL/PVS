@@ -3148,6 +3148,31 @@
 	      (t (error-format-if "~%Label ~a is not a string." label)
 		 (values 'X nil nil))))))
 
+(defun unlabel-step (fnums)
+  #'(lambda (ps)
+      (let* ((goalsequent (current-goal ps))
+	     (nfnums (cond ((null fnums) '*)
+			   ((consp fnums) fnums)
+			   (t (list fnums))))
+	     (sforms (find-all-sformnums (s-forms goalsequent) nfnums
+					  #'always-true)))
+	(cond (sforms
+	       (multiple-value-bind
+		   (signal subgoal)
+		   (sequent-reduce goalsequent
+				   #'(lambda (sform)
+				       (values '?
+					       (lcopy sform 'label nil)))
+				   sforms)
+		 (values signal (list subgoal))))
+	      (t
+	       (error-format-if "~%No formulas match ~a" (or fnums '*))
+	       (values 'X nil nil))))))
+	
+	
+	 
+			    
+
 (defun just-install-proof-step (proof ps)
   (progn (setq *context-modified* T)
 	 (values '! nil (list 'justification

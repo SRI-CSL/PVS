@@ -2087,26 +2087,28 @@ If always? is T, then it uses auto-rewrite! else auto-rewrite."
   "Auto-rewriting with all the explicit definitions relevant to statement")
 
 (defhelper rewrite-directly-with-fnum (fnum  &optional (fnums *) (dir LR))
-  (then (beta fnum dir)
-	  (branch (split fnum)
-		  ((if *new-fmla-nums*
-		       (let ((newnum  (car *new-fmla-nums*)))
-			 (let ((newnums (list newnum)))
-			   (then (assert newnums dir)
-				 (try (replace newnum
+    (if (select-seq (s-forms (current-goal *ps*)) fnums)
+	(then (beta fnum dir)
+	      (branch (split fnum)
+		      ((if *new-fmla-nums*
+			   (let ((newnum  (car *new-fmla-nums*)))
+			     (let ((newnums (list newnum)))
+			       (then (assert newnums dir)
+				     (try (replace newnum
+						   fnums
+						   dir)
+					  (delete newnums)
+					  (skip)))))
+			   (then (assert fnum dir)
+				 (try (replace fnum
 					       fnums
 					       dir)
-				      (delete newnums)
-				      (skip)))))
-		       (then (assert fnum dir)
-			     (try (replace fnum
-					   fnums
-					   dir)
-				  (delete fnum)
-				  (skip))))
-		   (then (beta *)
-			 (assert *)))))
-  "Beta-reduces, splits, and simplifies FNUM, and does a replacement in FNUMS
+				      (delete fnum)
+				      (skip))))
+		       (then (beta *)
+			     (assert *)))))
+	(skip-msg "Invalid target formula(s) given to rewrite-directly-with-fnum"))
+    "Beta-reduces, splits, and simplifies FNUM, and does a replacement in FNUMS
 corresponding to dir (left-to-right when LR, and right-to-left when RL)."
   "Rewriting directly with ~a")
 
@@ -2143,7 +2145,7 @@ corresponding to dir (left-to-right when LR, and right-to-left when RL)."
     in-subst))
 
 (defstep rewrite-with-fnum (fnum &optional subst (fnums *) (dir LR))
-  (let ((fnum (find-sform (s-forms (current-goal *ps*))  fnum))
+  (let ((fnum (find-sform (s-forms (current-goal *ps*)) fnum))
 	;;NSH(5.9.99): numeralizes labels.
 	 (sforms (select-seq (s-forms (current-goal *ps*))
 			    (list fnum))))
@@ -2209,17 +2211,18 @@ DIR (LR for left-to-right, and RL, otherwise)."
 	  (try-branch (lemma lemma subst)
 	   ((if *new-fmla-nums*
 		(let ((num (car *new-fmla-nums*)))
-		  (rewrite-directly-with-fnum num fnums dir))
+		  (rewrite-directly-with-fnum num in-sformnums dir))
 		(skip))
 	    (then (beta *)(assert *)))
 	   (skip )))
-  "Rewrites using the given (conditional) FNUM or rewrite rule and
- substitution in the given sequent formulas. (See REWRITE.)"
+  "Rewrites using the given lemma/defintion as a (conditional) rewrite
+ rule, relative to the given substitution (which must provide substitutions
+ for all of the substitutable variables).  See REWRITE."
    "Rewriting using ~a~@[ where~{~%   ~a gets ~a~^,~}~]")
 
 (defstep rewrite (lemma-or-fnum &optional (fnums *)  subst (target-fnums *)
 		    (dir LR) (order IN) ) ;;(hash-rewrites? T) NSH(9.21.95)
-  (if (integerp lemma-or-fnum)
+  (if (find-sform (s-forms (current-goal *ps*)) lemma-or-fnum) ;integerp lemma-or-fnum)
       (rewrite-with-fnum lemma-or-fnum subst target-fnums dir)
   (let ((x (rewrite-step lemma-or-fnum fnums subst
 			  target-fnums dir order)))
@@ -2948,45 +2951,47 @@ is needed, the best option is to use CASE."
 
 (defstep generalize-skolem-constants (&optional (fnums *))
   (then (merge-fnums fnums)
-	(if (or *new-fmla-nums*
-		(singleton? (s-forms (current-goal *ps*))))
-	    (let ((fnums (if *new-fmla-nums* *new-fmla-nums* fnums))
-		  (sforms (select-seq (s-forms (current-goal *ps*)) fnums))
-		  (sform (car sforms))
-		  (form (formula sform))
-		  (skolem-constants
-		   (collect-subterms form
-				     #'skolem-constant?))
-		  (skolem-constants
-		   (sort skolem-constants
-			 #'(lambda (x y)
-			     (member x (collect-subterms y #'skolem-constant?)))))
-		  (constant-bind-decl-alist
-		   (make-constant-bind-decl-alist skolem-constants nil))
-		  (constant-variable-alist
-		   (loop for (x . y) in constant-bind-decl-alist
-			 collect (cons x (make-variable-expr y))))
-		  (newform (gensubst form
-			     #'(lambda (x)
-				 (cdr (assoc x constant-variable-alist
-					     :test #'tc-eq)))
-			     #'(lambda (x)
-				 (assoc x constant-variable-alist
-					:test #'tc-eq))))
-		  (newform (universal-closure newform))
-		  (instantiation-list
-		   (when (forall? newform)
-		     (loop for bd in (bindings newform)
-			   collect
-			   (let ((entry (rassoc bd constant-bind-decl-alist
-						:test #'tc-eq)))
-			     (if entry (car entry) "_"))))))
-	      (branch
-	       (case newform)
-	       ((then (inst -1 :terms instantiation-list)
-		      (prop))
-		(hide 2))))
-	    (skip-msg "Merge-fnums failed.")))
+	(let ((sforms (s-forms (current-goal *ps*))))
+	  (if (or *new-fmla-nums*
+		  (and (singleton? sforms)
+		       (find-sform sforms fnums)))
+	      (let ((fnums (if *new-fmla-nums* *new-fmla-nums* fnums))
+		    (sforms (select-seq sforms fnums))
+		    (sform (car sforms))
+		    (form (formula sform))
+		    (skolem-constants
+		     (collect-subterms form
+				       #'skolem-constant?))
+		    (skolem-constants
+		     (sort skolem-constants
+			   #'(lambda (x y)
+			       (member x (collect-subterms y #'skolem-constant?)))))
+		    (constant-bind-decl-alist
+		     (make-constant-bind-decl-alist skolem-constants nil))
+		    (constant-variable-alist
+		     (loop for (x . y) in constant-bind-decl-alist
+			   collect (cons x (make-variable-expr y))))
+		    (newform (gensubst form
+			       #'(lambda (x)
+				   (cdr (assoc x constant-variable-alist
+					       :test #'tc-eq)))
+			       #'(lambda (x)
+				   (assoc x constant-variable-alist
+					  :test #'tc-eq))))
+		    (newform (universal-closure newform))
+		    (instantiation-list
+		     (when (forall? newform)
+		       (loop for bd in (bindings newform)
+			     collect
+			     (let ((entry (rassoc bd constant-bind-decl-alist
+						  :test #'tc-eq)))
+			       (if entry (car entry) "_"))))))
+		(branch
+		 (case newform)
+		 ((then (inst -1 :terms instantiation-list)
+			(prop))
+		  (hide 2))))
+	      (skip-msg "Merge-fnums failed."))))
   "Merges the formulas and universally generalizes the skolem constants
 in the given fnums."
   "Merging and generalizing")

@@ -29,6 +29,7 @@
 	 (sforms (select-seq (s-forms *goal*)
 			     (if (numberp fnums) (list fnums)
 				 fnums)))
+	 
 	 (alists (alists *ps*));;NSH(9.9.93)changed to set context for match.
 	 (findalist (dpinfo-findalist alists))
 	 (usealist (dpinfo-usealist alists))

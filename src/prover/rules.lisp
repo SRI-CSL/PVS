@@ -731,6 +731,13 @@ string  LABEL.  If PUSH? is T, then the new label is added to any existing
 ones.  Otherwise, the new labels replaces all existing ones."
   "Using ~a to label formula(s) ~a")
 
+(addrule 'unlabel () (fnums)
+  (unlabel-step fnums)
+  "Removes all labels from the formulas FNUMS, or when FNUMS
+is not specified, from all formulas."
+  "Removing labels")
+	 
+
 (addrule 'just-install-proof (proof) ()
   #'(lambda (ps)
       (just-install-proof-step proof ps))

@@ -443,10 +443,6 @@ Please provide skolem constants for these variables." overlap)
 			      acc)))  ;;(break "find-all")
 		 (find-all-sformnums (cdr sforms) sformnums pred
 				     newpos newneg newacc)))))
-				     
-		 
-
-	      
 
 (defun find-sform (sforms sformnum &optional (pred #'always-true))
   (find-sform* sforms sformnum pred 1 -1))
@@ -1484,19 +1480,20 @@ is not of the form: (<var> <term>...)" subst)
 	      (loop for sf in sformnums
 		    append (if (consp sf) sf (list sf))))
 	     (sforms (select-seq (s-forms (current-goal ps))
-				sformnums))
+				 sformnums))
 	     (remaining-sforms (delete-seq (s-forms (current-goal ps))
-				sformnums))
+					   sformnums))
 	     (hforms (appendnew sforms
 				(hidden-s-forms (current-goal ps))
 				:test
 				#'(lambda (x y)
-				    (tc-eq (formula x)(formula y))))))
+				    (and (subsetp (label x)(label y))
+					 (tc-eq (formula x)(formula y)))))))
 	(cond ((null sforms)(values 'X NIL))
 	      (t (values '?
 			 (list (copy (current-goal ps)
-				     's-forms remaining-sforms
-				     'hidden-s-forms hforms))))))))
+				 's-forms remaining-sforms
+				 'hidden-s-forms hforms))))))))
 
 (defun appendnew (list1 list2 &key test)
   (if list1
