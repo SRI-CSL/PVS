@@ -14,9 +14,10 @@
 
 ;;; pvs-mode.el
 
-(pushnew '("\\.pvs$" . pvs-mode) auto-mode-alist)
-(pushnew '("\\.ppe$" . pvs-mode) auto-mode-alist)
-(pushnew '("\\.tccs$" . pvs-mode) auto-mode-alist)
+(pushnew '("\\.pvs\\'" . pvs-mode) auto-mode-alist)
+(pushnew '("\\.ppe\\'" . pvs-mode) auto-mode-alist)
+(pushnew '("\\.tccs\\'" . pvs-mode) auto-mode-alist)
+(pushnew '("pvs-strategies\\'" . lisp-mode) auto-mode-alist)
 (pushnew ".prf" completion-ignored-extensions)
 
 (defvar *pvs-menu-type* 'simple)
