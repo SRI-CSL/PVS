@@ -1289,6 +1289,7 @@
 		    'type (make-instance 'tupletype
 			    'types (list *boolean* (type then) (type else))))))
     (make-instance 'if-expr
+      'type stype
       'operator if-name
       'argument if-args)))
 
