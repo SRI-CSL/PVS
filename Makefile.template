@@ -14,13 +14,13 @@ lisp = allegro5.0
 PLATFORM = $(shell bin/pvs-platform)
 export PLATFORM
 ifeq ($(PLATFORM),sun4-SunOS5)
-	LISP=
+	LISP=/pkg/allegro5.0/sol24/lisp
 else
 ifeq ($(PLATFORM),ix86-redhat4)
-	LISP=
+	LISP=/pkg/allegro5.0/redhat4/lisp
 else
 ifeq ($(PLATFORM),ix86-redhat5)
-	LISP=
+	LISP=/pkg/allegro5.0/redhat5/lisp
 endif
 endif
 endif
@@ -238,6 +238,10 @@ src/pvs-methods.lisp : src/make-pvs-methods.lisp src/defcl.lisp \
                        src/classes-expr.lisp src/classes-decl.lisp
 	$(LISP) -e '(defvar *pvs-path* "${PWD}")' \
 		-L src/make-pvs-methods.lisp
+
+${LISP} :
+	echo "Need to set the LISP variable in Makefile to a valid"
+	echo "allegro 5.0 lisp executable for this platform"
 
 .PHONY: all makebdd makepolylib
 makebdd :
