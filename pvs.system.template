@@ -14,7 +14,8 @@
   (setq *record-source-file-info* t
 	*load-source-file-info* t
 	*record-xref-info* t
-	*ignore-package-name-case* t))
+	*ignore-package-name-case* t
+	excl:*enclose-printer-errors* nil))
 
 (eval-when (eval load)
   (defparameter *pvs-path* "")
