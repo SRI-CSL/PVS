@@ -706,10 +706,17 @@
 	       (write-char #\])))))
 
 (defmethod pp-tex* ((te type-application))
-  (with-slots (type parameters) te
+  (with-slots (type parameters contains) te
     (pprint-logical-block (nil nil)
       (pp-tex* type)
-      (pp-tex-arguments parameters))))
+      (pp-tex-arguments parameters)
+      (when contains
+	(write-char #\space)
+	(pprint-newline :fill)
+	(pp-tex-keyword 'CONTAINING)
+	(write-char #\space)
+	(pprint-newline :miser)
+	(pp-tex* contains)))))
 
 (defun pp-tex-arguments* (args)
   (pprint-logical-block (nil args)

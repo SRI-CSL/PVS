@@ -156,8 +156,6 @@
 
 (defmethod typecheck* ((decl lib-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (when (formals decl)
-    (type-error decl "Formals are not allowed in ~(~a~)s" (type-of decl)))
   ;;;(check-duplication decl)
   (multiple-value-bind (path msg)
       (get-library-pathname (library decl))
@@ -169,8 +167,6 @@
 
 (defmethod typecheck* ((decl mod-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (when (formals decl)
-    (type-error decl "Formals are not allowed in ~(~a~)s" (type-of decl)))
   (check-duplication decl)
   (typecheck-using (modname decl))
   (setf (saved-context decl) (copy-context *current-context*))
@@ -1179,8 +1175,14 @@
 					(module-instance
 					 (resolution (type type)))))))
       (mapc #'set-type (parameters type) (car typeslist)))
-    (substit te (pairlis (car (formals (declaration (type type))))
-			 (parameters type)))))
+    (let ((tval (substit te (pairlis (car (formals (declaration (type type))))
+				     (parameters type)))))
+      (setf (print-type tval) (lcopy type 'contains nil))
+      (when (contains type)
+	(typecheck* (contains type) tval nil nil)
+	(set-nonempty-type type)
+	(set-nonempty-type tval))
+      tval)))
 
 (defun make-formals-type-app (formals)
   (let ((typeslist (mapcar #'(lambda (fm)
@@ -1742,6 +1744,7 @@
      (push-ignored-type-constraints *rational*))
     (|integer| (setq *integer* type)
      (push-ignored-type-constraints *integer*))
-    (|naturalnumber| (setq *naturalnumber* type))
+    (|naturalnumber| (setq *naturalnumber* type)
+     (push-ignored-type-constraints *integer*))
     (|posint| (setq *posint* type))
     (|ordinal| (setq *ordinal* type))))

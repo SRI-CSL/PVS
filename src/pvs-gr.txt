@@ -89,8 +89,8 @@ theory ::= {'THEORY' [exporting]^e 'BEGIN' [assuming-part]^a
                       [notheory()|theory-part]^t,id)>;
 
 datatype ::= {'DATATYPE' ['WITH' 'SUBTYPES' {id^s ++ ','}]
-	      'BEGIN' [{using [';']^u}
-                        <using-elt(using,[nosemic()|semic()]^u)>]^2
+	      'BEGIN' [{importing [';']^u}
+                        <importing-elt(importing,[nosemic()|semic()]^u)>]^2
               [assuming-part]^1
 	      adtcase+ 'END' id}
 	        <[datatype(opt^1,opt^2,adtcases(plus),id)
@@ -109,7 +109,7 @@ constructor ::= {idop [{'(' {{{idops ':' type-expr}
 theory-formals	::= {'[' {theory-formal ++ ','} ']'}
 			<theory-formals(theory-formal+)>;
 
-theory-formal ::= {[{'(' using ')'} <using-elt(using,nosemic())>]
+theory-formal ::= {[{'(' importing ')'} <importing-elt(importing,nosemic())>]
                    idops ':' theory-formal-decl}
 		     <theory-formal(opt,idops,theory-formal-decl)>;
 
@@ -147,8 +147,8 @@ assuming-part ::= {'ASSUMING' assumings 'ENDASSUMING'} <assumings>;
 
 assumings ::= {assuming+} <assuming-part(plus)>;
 
-assuming ::= {using [';']}
-               <using-elt(using,[nosemic()|semic()])>
+assuming ::= {importing [';']}
+               <importing-elt(importing,[nosemic()|semic()])>
            | {judgement [';']}
                  <judgement-elt(judgement,[nosemic()|semic()])>
 	   | {conversion [';']}
@@ -159,8 +159,8 @@ assuming ::= {using [';']}
 
 theory-part ::= {theory-elt+} <theory-part(plus)>;
 
-theory-elt ::= {using [';']}
-                 <using-elt(using,[nosemic()|semic()])>
+theory-elt ::= {importing [';']}
+                 <importing-elt(importing,[nosemic()|semic()])>
 	     | {judgement [';']}
                  <judgement-elt(judgement,[nosemic()|semic()])>
 	     | {conversion [';']}
@@ -170,7 +170,7 @@ theory-elt ::= {using [';']}
                          theory-decl,[nosemic()|semic()]^s)>
 	     ;
 
-using ::= {'IMPORTING' {modname ++ ','}} <using(modname+)>;
+importing ::= {'IMPORTING' {modname ++ ','}} <importing(modname+)>;
 
 judgement ::= {'JUDGEMENT' {jdecl++','} {'HAS_TYPE'|'SUBTYPE_OF'} type-expr}
 	      <{judgement(jdecls(doubleplus),
@@ -231,8 +231,9 @@ formula-decl ::= {formula-name expr} <formula-decl(formula-name,expr)>;
 type-def ::= {{'=' <equal()> | 'FROM' <from()>} type-expr}
 			<type-def(alt,type-expr)>;
 
-type-expr ::= {name [arguments]}
-                <[type-name(name) | type-appl(name,arguments)]>
+type-expr ::= {name [arguments ['CONTAINING' expr]^c]}
+                <[type-name(name)
+                 |type-appl(name,arguments,[nocontaining()|expr]^c)]>
 	    | type-expr-sans-name
 	    ;
 

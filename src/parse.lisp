@@ -313,30 +313,39 @@
 
 (defun xt-assuming-part (assumings)
   (mapcan #'(lambda (ass)
-	      (if (is-sop 'using-elt ass)
+	      (if (is-sop 'importing-elt ass)
 		  (xt-importing-elt ass)
 		  (xt-assuming ass)))
 	  (term-args assumings)))
 
 (defun xt-assumings (assumings)
   (mapcan #'(lambda (ass)
-	      (if (is-sop 'using-elt ass)
+	      (if (is-sop 'importing-elt ass)
 		  (xt-importing-elt ass)
 		  (xt-assuming ass)))
 	  (term-args assumings)))
 
 (defun xt-assuming (assuming)
   (let* ((idops (term-arg0 assuming))
-	 (formals (term-arg1 assuming))
+	 (formals (unless (is-sop 'noformals (term-arg1 assuming))
+		    (xt-pdf (term-arg1 assuming))))
 	 (decl (term-arg2 assuming))
 	 (semi (term-arg3 assuming)))
+    (when (and (cdr (term-args idops)) formals)
+      (parse-error formals ": expected here"))
+    (case (sim-term-op decl)
+      ((lib-decl mod-decl type-decl netype-decl datatype)
+       (let ((badid (find-if #'(lambda (tid)
+				 (assq (ds-id (term-arg0 tid))
+				       *pvs-operators*))
+		      (term-args idops))))
+	 (when badid
+	   (parse-error badid "Id expected here")))))
     (multiple-value-bind (pdecl tdecl)
 	(xt-declaration-body decl idops)
       (let ((decls (xt-chained-decls (term-args idops)
 				     tdecl
-				     (unless (is-sop 'noformals
-						     formals)
-				       (xt-pdf formals))
+				     formals
 				     pdecl
 				     assuming)))
 	(setf (semi pdecl) (when (is-sop 'semic semi) t))
@@ -345,17 +354,29 @@
 (defun xt-theory-part (theory)
   (mapcan #'(lambda (decl)
 	      (case (sim-term-op decl)
-		(using-elt (xt-importing-elt decl))
+		(importing-elt (xt-importing-elt decl))
 		(judgement-elt (xt-judgement-elt decl))
 		(conversion-elt (xt-conversion-elt decl))
 		(t (xt-theory decl))))
 	  (term-args theory)))
 
 (defun xt-theory (tdecl)
-  (let ((idops (term-arg0 tdecl))
-	(formals (term-arg1 tdecl))
-	(decl (term-arg2 tdecl))
-	(semi (term-arg3 tdecl)))
+  (let* ((idops (term-arg0 tdecl))
+	 (formals (term-arg1 tdecl))
+	 (pformals (unless (is-sop 'noformals formals)
+		     (xt-pdf formals)))
+	 (decl (term-arg2 tdecl))
+	 (semi (term-arg3 tdecl)))
+    (when (and (cdr (term-args idops)) pformals)
+      (parse-error formals ": expected here"))
+    (case (sim-term-op decl)
+      ((lib-decl mod-decl type-decl netype-decl datatype)
+       (let ((badid (find-if #'(lambda (tid)
+				 (assq (ds-id (term-arg0 tid))
+				       *pvs-operators*))
+		      (term-args idops))))
+	 (when badid
+	   (parse-error badid "Id expected here")))))
     (cond ((is-sop 'datatype decl)
 	   (xt-theory-datatype idops formals decl semi))
 	  ((is-sop 'datatypes decl)
@@ -364,9 +385,7 @@
 		 (xt-declaration-body decl idops)
 	       (let ((decls (xt-chained-decls (term-args idops)
 					      type-decl
-					      (unless (is-sop 'noformals
-							      formals)
-						(xt-pdf formals))
+					      pformals
 					      pdecl
 					      tdecl)))
 		 (setf (semi pdecl) (when (is-sop 'semic semi) t))
@@ -863,10 +882,13 @@
 
 (defun xt-type-appl (type-expr)
   (let ((type (term-arg0 type-expr))
-	(args (term-arg1 type-expr)))
+	(args (term-arg1 type-expr))
+	(containing (term-arg2 type-expr)))
     (make-instance 'type-application
       'type (change-class (xt-name type) 'type-name)
       'parameters (mapcar #'xt-expr (term-args args))
+      'contains (unless (is-sop 'nocontaining containing)
+		  (xt-expr containing))
       'place (term-place type-expr))))
 
 (defun xt-enumtype (type-expr)
