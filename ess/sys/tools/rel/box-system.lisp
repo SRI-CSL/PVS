@@ -380,6 +380,7 @@ Currently only #'get-universal-time is supported.")
   #+(and allegro sparc) "fasl"		; Sun4
   #+(and allegro rios) "rfasl"		; PowerPC/RS6000
   #+(and allegro hpux) "hfasl"		; HP 9000
+  #+(and allegro macosx) "mfasl"	; Mac OS X
   #+(and allegro x86) "lfasl"		; Intel x86
   #+(and lucid lcl4.1 sparc) "sbin"	; Sun4 new Lucid
   #+(and lucid (not lcl4.1) sparc) "obin" ; Sun4 old Lucid
