@@ -66,3 +66,10 @@
 
 (defmacro addprm2pot (atoms)
   `(add2pot ,atoms))
+
+(defmacro arithlist (x)
+  `(let ((xx ,x))
+     (if (and (consp xx)
+	   (qnumberp (car xx)))
+      (cdr xx)
+      xx)))
