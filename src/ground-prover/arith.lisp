@@ -8,6 +8,11 @@
 ;;; SO 11/26/90 - now driven off emacs variable *printerpdivide*
 ;(defvar *uninterp-divide* t)
 
+(declaim (notinline canonsig-arith))
+
+(defun canonsig-arith (term &optional (dont-add-use nil))
+  (canonsig term dont-add-use))
+
 (defun arithord (u v)
   (let ((up (if (and (consp u) (eq (car u) 'times) (qnumberp (cadr u)))
 		(caddr u)
@@ -405,8 +410,8 @@
     ineq))
 
 (defun normalize-new-eqn (eqn)
-  (normineq `(EQUAL ,(canonsig (arg1 eqn))
-		    ,(canonsig (arg2 eqn)))))
+  (normineq `(EQUAL ,(canonsig-arith (arg1 eqn))
+		    ,(canonsig-arith (arg2 eqn)))))
 
 (defun transclosure(ineq)		;(break)
   (cond ((member ineq *ineqstack* :test #'equal) NIL)
@@ -447,8 +452,8 @@
 		     (let ((new-eqn
 			    (if *tc-ehdm-test*
 				`(EQUAL ,(arg1 ineq) ,(arg2 ineq))
-				(normineq `(EQUAL ,(canonsig (arg1 ineq))
-						  ,(canonsig (arg2 ineq)))))))
+				(normineq `(EQUAL ,(canonsig-arith (arg1 ineq))
+						  ,(canonsig-arith (arg2 ineq)))))))
 		       (unless (if *tc-ehdm-test*
 				   (subtermof (arg1 ineq) (arg2 ineq))
 				   (bad-eqn new-eqn))
