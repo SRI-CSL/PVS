@@ -135,7 +135,10 @@
   (cond (typechecked?
 	 ;; Check that declarations are unique
 	 (dolist (d (remove-if #'importing? decls))
-	   (let ((tdecls (gethash (id d) (declarations (module d)))))
+	   (let ((tdecls (remove-if-not #'(lambda (td)
+					    (and (typep td 'declaration)
+						 (eq (id td) (id d))))
+			   (all-decls (module d)))))
 	     (mapc #'(lambda (td) (duplicate-decls d td)) tdecls)))
 	 (dolist (d decls)
 	   (add-declaration-to-theory d assuming?)))
@@ -348,16 +351,16 @@
 					  (caddr oplace))))
 	      (setf (generated decl) (generated (car decls)))
 	      (dolist (d (generated decl))
-		(setf (gethash (id d) (declarations theory))
-		      (remove d (gethash (id d)
-					 (declarations theory))))
+; 		(setf (gethash (id d) (declarations theory))
+; 		      (remove d (gethash (id d)
+; 					 (declarations theory))))
 		(when (and *in-checker*
 			   *current-context*)
 		  (setf (gethash (id d) (current-declarations-hash))
 			(remove d (gethash (id d)
 					   (current-declarations-hash))))))
 	      (dolist (d (generated decl))
-		(put-decl d (declarations theory))
+;		(put-decl d (declarations theory))
 		(when (and *in-checker*
 			   *current-context*
 			   (eq theory (theory *current-context*))
