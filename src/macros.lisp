@@ -185,10 +185,12 @@
 
 (defmacro with-pvs-context (lib-ref &rest forms)
   (let ((dir (gentemp))
-	(shortdir (gentemp)))
+	(shortdir (gentemp))
+	(orig-dir (gentemp)))
     `(let ((,dir (directory-p (libref-to-pathname ,lib-ref))))
       (if (pathnamep ,dir)
-	  (let* ((,shortdir (shortpath ,dir))
+	  (let* ((,orig-dir (working-directory))
+		 (,shortdir (shortpath ,dir))
 		 (*pvs-context-path* ,shortdir)
 		 (*default-pathname-defaults* ,shortdir)
 		 (*pvs-context-writable* (write-permission? ,shortdir))
@@ -197,7 +199,10 @@
 		 (*current-context* nil)
 		 (*current-theory* nil)
 		 (*all-subst-mod-params-caches* nil))
-	    ,@forms)
+	    (unwind-protect 
+		(progn (set-working-directory ,shortdir)
+		       ,@forms)
+	      (set-working-directory ,orig-dir)))
 	  (pvs-message "Library ~a does not exist" ,dir)))))
 
 (defmacro add-to-alist (key entry alist)
