@@ -67,6 +67,5 @@
   (defun get-file-info (filename)
     (when (zerop (fileutils___getfileinfo (expanded-tilde-namestring filename)
 					  fstat-array))
-      (values (aref fstat-array 0)
-	      (aref fstat-array 1)))))
-  
+      (list (aref fstat-array 0)
+	    (aref fstat-array 1)))))
