@@ -89,11 +89,19 @@
 			     apos)))) 
     (cond ((and (null pos)(null bpos))
 	   (unique-prover-name expr))
-	  (bpos (let ((id (makesym "*~a_~a*" (id expr) bpos)))
+	  (bpos (let ((id (intern
+			   (concatenate 'string
+			     "*" (string (id expr)) "_"
+			     (princ-to-string bpos) "*"))
+			  ;;(makesym "*~a_~a*" (id expr) bpos)
+			  ))
 		  (add-to-local-typealist id expr)
 		  id)) ;;NSH(4.2.95) id was (id expr) and unsound!
 	  ;;eg. proved (FORALL i, (j|j<i): (FORALL (j| j>i): j<i).
-	  (t (let ((nvar (makesym "*~a*" (1+ pos))))
+	  (t (let ((nvar (intern (concatenate 'string
+				   "*" (princ-to-string (1+ pos)) "*"))
+			 ;;(makesym "*~a*" (1+ pos))
+			 ))
 	       (list (get-subtype-coercion expr) nvar))))))
 
 (defmethod translate-to-prove ((expr constructor-name-expr))
@@ -155,7 +163,10 @@
 (defun get-subtype-coercion (expr)
   (let ((stname (cdr (assoc (type expr) *subtype-names* :test #'tc-eq))))
     (or stname
-	(let ((name (makesym "*~a*" (gentemp "subtype"))))
+	(let ((name (intern (concatenate 'string
+			      "*" (string (gentemp "subtype")) "*"))
+		    ;;(makesym "*~a*" (gentemp "subtype"))
+		    ))
 	  (push (cons (type expr) name) *subtype-names*)
 	  name))))
 	
@@ -194,7 +205,10 @@
 (defun get-rec-type-dummy-name (rectype)
   (let ((rtype (find-supertype rectype)))
     (or (cdr (assoc rtype *rec-type-dummies* :test #'tc-eq))
-	(let ((name (makesym "*~a*" (gentemp "%%dummy"))))
+	(let ((name (intern (concatenate 'string
+			      "*" (string (gentemp "%%dummy")) "*"))
+		    ;;(makesym "*~a*" (gentemp "%%dummy"))
+		    ))
 	  (push (cons rtype name) *rec-type-dummies*)
 	  name))))
 
@@ -240,11 +254,13 @@
 			(loop for I from 0
 			      upto (1- (length expected))
 			      collect
-			      `(,(makesym "TUPSEL-~a"
-					  (or (prover-type
+			      `(,(intern (concatenate 'string
+					   "TUPSEL-"
+					   (string
+					    (or (prover-type
 					       (nth I (types (type
 							      (car arguments)))))
-					      ""))
+						'||))))
 				,I
 				,translated-arg)))
 		      (translate-to-prove arguments)))
@@ -252,7 +268,8 @@
 
 (defmethod translate-to-prove ((expr projection-application))
   (let ((arg (translate-to-prove (argument expr))))
-    `(,(makesym "TUPSEL-~a" (or (prover-type (type expr)) ""))
+    `(,(intern (concatenate 'string
+		 "TUPSEL-" (string (or (prover-type (type expr)) '||))))
       ,(1- (index expr)) ,arg)))
 
 (defmethod translate-to-prove ((expr field-application))
@@ -410,9 +427,12 @@
 		      ;;(freevars expr).
 		      (cond
 		       (*bindings*
-			(let* ((apname (makesym "APPLY-~d-~a"
-						(length tr-vars)
-						(or prtype "")))
+			(let* ((apname (intern
+					(concatenate 'string
+					  "APPLY-"
+					  (princ-to-string (length tr-vars))
+					  "-"
+					  (string (or prtype '||)))))
 			       (apform (cons apname (cons newid tr-vars))))
 			  (unless (or (null prtype)
 				      (assoc apname typealist))
@@ -432,12 +452,18 @@
 			  (list tr-expr)
 			  (list tr-expr
 				(list
-				 (makesym "APPLY-~d-" (length tr-bndvars))
+				 (intern
+				  (concatenate 'string
+				    "APPLY-"
+				    (princ-to-string (length tr-bndvars))
+				    "-"))
 				 (operator expr)
 				 tr-bndvars)))))))
     (if (lambda-expr? expr)
 	tr-lambda-expr
-	 (list (makesym "APPLY-~d-~a" 1 (or prtype ""))
+	 (list (intern
+		(concatenate 'string
+		  "APPLY-1-" (or (string prtype) "")))
 	       (operator expr)
 	       tr-lambda-expr))))
 
@@ -546,8 +572,9 @@
 	tr-expr fieldnum))
 
 (defun make-tr-projection-application (type number expr)
-  `(,(makesym "TUPSEL-~a" (or (prover-type type) ""))
-      ,(1- number) ,expr))
+  `(,(intern (concatenate 'string
+	       "TUPSEL-" (string (or (prover-type type) '||))))
+    ,(1- number) ,expr))
 
 (defun make-tr-assign-application (fun-type expr args)
   (list (make-apply-name fun-type)
@@ -560,9 +587,10 @@
 
 (defmethod make-apply-name ((te type-expr))
   (let* ((type (find-supertype te))
-	 (name (makesym "APPLY-~d-~a"
-			(length (domain-types type))
-			(or (prover-type (range type)) "")))
+	 (name (intern (concatenate 'string
+			 "APPLY-"
+			 (princ-to-string (length (domain-types type)))
+			 "-" (string (or (prover-type (range type)) '||)))))
 	 (prtype (prover-type (range type))))
     (unless (or (not prtype)
 		(assoc name typealist))
