@@ -402,8 +402,6 @@ runtime : makefileutils makebdd makepolylib makews1s ${pvsrt} ${emacs}
 ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files} \
              lib/prelude.pvs lib/prelude.prf
 	rm -rf ${bindir}/full
-	rm -f bin/.runtime-$(LISPEXT)s
-	if [ ! -f bin/.full-$(LISPEXT)s ]; then rm -f ${all-fasl-files}; fi
 	umask 002; \
 	$(PVSLISP) -e '(load "pvs.system")' \
 		-e "(let ((code 1)) \
@@ -426,8 +424,6 @@ ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files} \
 ${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files} \
            lib/prelude.pvs lib/prelude.prf
 	rm -rf ${bindir}/runtime
-	rm -f bin/.full-$(LISPEXT)s
-	if [ ! -f bin/.runtime-$(LISPEXT)s ]; then rm -f ${all-fasl-files}; fi
 	umask 002; \
 	$(PVSLISP) -e '(load "pvs.system")' \
 		-e "(let ((code 1)) \
@@ -535,8 +531,12 @@ install :
 	      ess/allegro-runtime.lisp.template > ess/allegro-runtime.lisp; \
 	fi
 
-clean :
+clean : 
 	rm -f ${all-fasl-files}
+	$(MAKE) -C src/utils/$(PLATFORM) clean
+	$(MAKE) -C BDD/$(PLATFORM) clean
+	$(MAKE) -C src/decision-procedures/polylib/$(PLATFORM) clean
+	$(MAKE) -C src/WS1S/$(PLATFORM) clean
 
 pvs-emacs-src = $(wildcard emacs/emacs-src/*.el)
 ilisp-emacs-src = $(wildcard emacs/emacs-src/ilisp/*.el)
