@@ -270,13 +270,13 @@ Estimated total monitoring overhead: 0.88 seconds
 	  monitoring-encapsulate monitoring-unencapsulate))
 
 ;;; Warn user if they're loading the source instead of compiling it first.
-(eval-when (compile load eval)
-  (defvar compiled-p nil))
-(eval-when (compile)
-  (setq compiled-p t))
-(eval-when (load eval)
-  (unless compiled-p
-    (warn "This file should be compiled before loading for best results.")))
+;; (eval-when (compile load eval)
+;;   (defvar compiled-p nil))
+;; (eval-when (compile)
+;;   (setq compiled-p t))
+;; (eval-when (load eval)
+;;   (unless compiled-p
+;;     (warn "This file should be compiled before loading for best results.")))
 
 ;;; ****************************************
 ;;; Implementation Dependent Definitions ***
@@ -288,7 +288,7 @@ Estimated total monitoring overhead: 0.88 seconds
 ;;; to seconds.
 
 (progn
-  #-:cmu
+  #-(or cmu allegro)
   (eval-when (compile eval)
     (warn
      "You may want to supply implementation-specific get-time functions."))
