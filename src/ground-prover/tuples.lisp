@@ -98,10 +98,11 @@
 		       ;;; DAC 6/12/98: Reversed the orientation of
 		       ;;; the generated equation. See bug 182.
 		       (let* ((newrhs (car rcols))
-			      (newlhs (arithcan
+			      (newlhs (canonsig ;;NSH(10-13-02)
 				       `(,(make-tupsel
 					  (prtype (car rcols)))
-					,selnum ,leftside)))
+					,selnum ,leftside)
+				       'dont-add-use))
 			      (eqn (if (or (qnumberp newrhs)
 					   (subtermof newrhs newlhs))
 				       `(equal ,newlhs
