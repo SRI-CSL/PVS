@@ -837,6 +837,11 @@
     ((lesseqp lessp)(or (eq fnsym2 'greatereqp)(eq fnsym2 'greaterp)))
     ((greaterp greatereqp)(or (eq fnsym2 'lesseqp)(eq fnsym2 'lessp)))))
 
+(defun samesensep(fnsym1 fnsym2)
+  (case fnsym1
+    ((lesseqp lessp)(or (eq fnsym2 'lesseqp)(eq fnsym2 'lessp)))
+    ((greaterp greatereqp)(or (eq fnsym2 'greatereqp)(eq fnsym2 'greaterp)))))
+
 ; returns the residue obtained by chaining two inequalities with
 ; same first arg and with inequality operators having opposite sense
 
