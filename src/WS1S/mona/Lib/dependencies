@@ -1,4 +1,0 @@
-dfa2dot.o: dfa2dot.c dfalib.h bddlib.h
-gta2dot.o: gta2dot.c gtalib.h bddlib.h
-dfalib.o: dfalib.c dfalib.h bddlib.h
-gtalib.o: gtalib.c gtalib.h bddlib.h
