@@ -1047,6 +1047,8 @@
     (ENUMTYPE (xt-enumtype type-expr))
     (FUNTYPE (xt-funtype type-expr))
     (RECORDTYPE (xt-recordtype type-expr))
+    (VARIANTTYPE (parse-error type-expr
+		   "Variant record types are not yet supported"))
     (t (error "type-expr not recognized - ~a" type-expr))))
 
 (defun xt-type-name (type-name)
