@@ -716,7 +716,7 @@
 
 (defmethod judgement-types* ((ex lambda-expr))
   (let ((jtypes (judgement-types* (expression ex))))
-    (when jtypes
+    (when (consp jtypes)
       (let ((dom (domain (type ex))))
 	(mapcar #'(lambda (jty) (mk-funtype dom jty)) jtypes)))))
 

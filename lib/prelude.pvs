@@ -2931,20 +2931,6 @@ finite_sequences [T: TYPE]: THEORY
  END finite_sequences
 
 
-lift[T: TYPE]: DATATYPE
- BEGIN
-  bottom: bottom?
-  up(down: T): up?
- END lift
-
-
-union[T1, T2: TYPE]: DATATYPE
- BEGIN
-  inl(left: T1): inl?
-  inr(right: T2): inr?
- END union
-
-
 % ordstruct provides the building blocks for defining the
 % ordinals up to epsilon_0.
 
@@ -3298,6 +3284,20 @@ strings: THEORY
 
   char_lem: LEMMA (c1 = c2) = (code(c1) = code(c2))
  END strings
+
+
+lift[T: TYPE]: DATATYPE
+ BEGIN
+  bottom: bottom?
+  up(down: T): up?
+ END lift
+
+
+union[T1, T2: TYPE]: DATATYPE
+ BEGIN
+  inl(left: T1): inl?
+  inr(right: T2): inr?
+ END union
 
 
 % Defines fixpoints for sets, needed to support the mucalculus model checker.
