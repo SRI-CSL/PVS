@@ -77,13 +77,22 @@
 (defvar *substitute-let-bindings* nil)
 
 (defun add-tcc-conditions (expr)
-  (let* ((conditions (subst-var-for-recs
-		      (remove-duplicates *tcc-conditions* :test #'equal)))
-	 (srec-expr (subst-var-for-recs expr))
-	 (substs (get-tcc-binding-substitutions
-		  (reverse (cons srec-expr conditions)))))
-    (universal-closure (add-tcc-conditions* (raise-actuals srec-expr)
-					    conditions substs nil))))
+  (multiple-value-bind (conditions vdecl1)
+      (subst-var-for-recs (remove-duplicates *tcc-conditions* :test #'equal))
+    (multiple-value-bind (srec-expr vdecl)
+	(subst-var-for-recs expr vdecl1)
+      (let* ((osubsts (get-tcc-binding-substitutions
+		      (reverse (cons srec-expr conditions))))
+	     (substs (if vdecl
+			 (acons vdecl
+				(lcopy vdecl
+				  'type (substit (type vdecl) osubsts)
+				  'declared-type (substit (declared-type vdecl)
+						   osubsts))
+				osubsts)
+			 osubsts)))
+	(universal-closure (add-tcc-conditions* (raise-actuals srec-expr)
+						conditions substs nil))))))
 
 (defun add-tcc-conditions* (expr conditions substs antes)
   (if (null conditions)
@@ -1013,23 +1022,25 @@
   (let ((imp (current-declaration)))
     (makesym "IMP_~a" (id (theory-name imp)))))
 
-(defun subst-var-for-recs (expr)
+(defun subst-var-for-recs (expr &optional vdecl)
   (let ((recdecl (declaration *current-context*)))
     (if (and (def-decl? recdecl)
 	     (recursive-signature recdecl))
-	(let* ((vid (make-new-variable '|v| expr))
-	       (vname (make-new-variable-name-expr
-		       vid (recursive-signature recdecl) ;; was (type recdecl)
-		       ))
+	(let* ((vid (if vdecl (id vdecl) (make-new-variable '|v| expr)))
+	       (vbd (or vdecl
+			(make-bind-decl vid (recursive-signature recdecl))))
+	       (vname (make-variable-expr vbd))
 	       (sexpr (gensubst expr
 			#'(lambda (x) (declare (ignore x)) (copy vname))
 			#'(lambda (x) (and (name-expr? x)
 					   (eq (declaration x) recdecl))))))
-	  (if (and (not (eq sexpr expr))
-		   (forall-expr? sexpr))
-	      (copy sexpr
-		'bindings (append (bindings sexpr) (list (declaration vname))))
-	      sexpr))
+	  (values (if (and (not (eq sexpr expr))
+			   (forall-expr? sexpr))
+		      (copy sexpr
+			'bindings (append (bindings sexpr)
+					  (list (declaration vname))))
+		      sexpr)
+		  vbd))
 	expr)))
 
 (defun make-new-variable (base expr &optional num)
