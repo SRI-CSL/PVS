@@ -874,6 +874,21 @@
 	      (qlessp bnd lower))
 	     (t nil)))))
 
+(defun qmin (qnum &rest more-qnums)
+  (let ((min qnum))
+    (dolist (num more-qnums)
+      (when (qlessp num min)
+	(setq min num)))
+    min))
+
+(defun qmax (qnum &rest more-qnums)
+  (let ((max qnum))
+    (dolist (num more-qnums)
+      (when (qgreaterp num max)
+	(setq max num)))
+    max))
+  
+
 (defun chainineqs(ineq)
   (let* ((ineqs 
 	  (append
@@ -884,9 +899,9 @@
 			   (eq (pr-find u) 'true))
 		 collect u)))
 	 (uppers (numeric-upper-bounds ineqs))
-	 (bestupper (when uppers (apply #'min uppers)))
+	 (bestupper (when uppers (apply #'qmin uppers)))
 	 (lowers (numeric-lower-bounds ineqs))
-	 (bestlower (when lowers (apply #'max lowers)))
+	 (bestlower (when lowers (apply #'qmax lowers)))
 	 (okay-ineqs (loop for ineq in ineqs
 			   when (not (subsumed-ineq? ineq bestupper bestlower))
 			   collect ineq)))
