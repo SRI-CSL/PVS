@@ -1,15 +1,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; tc-unify.lisp -- 
+;; tc-unify.lisp -- Matches terms to get bindings for formal parameters
 ;; Author          : Sam Owre
 ;; Created On      : Fri Dec 17 02:44:21 1993
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Fri Oct 30 17:05:57 1998
 ;; Update Count    : 10
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -130,13 +128,14 @@
 (defun tc-unify (t1 t2 bindings)
   (tc-match t1 t2 bindings))
 
-(defun tc-match (t1 t2 bindings)
+(defun tc-match (t1 t2 bindings &optional strict-matches)
   #+pvsdebug (assert (every #'(lambda (b) (typep (car b) 'formal-decl))
 			    bindings)
 		     () "tc-match: bindings must be formal declarations")
   (let* ((*formals-theory* (module (caar bindings)))
-	 (*tc-strict-matches* nil))
-    (tc-match* t1 t2 bindings)))
+	 (*tc-strict-matches* strict-matches))
+    (values (tc-match* t1 t2 bindings)
+	    *tc-strict-matches*)))
 
 (defmethod tc-match* (t1 t2 bindings)
   (declare (ignore t1 t2 bindings))
@@ -206,8 +205,12 @@
 (defun set-tc-match-binding (binding arg bindings &optional (last-attempt? t))
   (let ((type (compatible-type (cdr binding) arg)))
     (cond (type
-	   (unless (or (dependent-type? type)
-		       (memq (cdr binding) *tc-strict-matches*))
+	   (unless (or (and (dependent-type? type)
+			    (not (has-type-vars? (cdr binding))))
+		       (and (member (cdr binding) *tc-strict-matches*
+				    :test #'tc-eq)
+			    (or (fully-instantiated? (cdr binding))
+				(not (fully-instantiated? arg)))))
 	     (cond (*tc-match-strictly*
 		    (push arg *tc-strict-matches*)
 		    (setf (cdr binding) arg))
@@ -283,7 +286,8 @@
 
 ;;; Called by match* (modname modname)
 (defun tc-match-acts (acts formals bindings)
-  (let ((*tc-match-strictly* t))
+  (let ((*tc-match-strictly* t)
+	(*tc-strict-matches* nil))
     (tc-match-acts1 acts formals bindings)))
 
 (defun tc-match-acts1 (acts formals bindings)
