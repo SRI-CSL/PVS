@@ -554,6 +554,8 @@
 
 (defvar *split-on-if-in-solve* nil)
 
+(defvar *lift-if-in-solve* nil)
+
 (defun solve (atf)
   (let ((atf (if (and *lift-if-in-solve* needed-if*)
 		 (liftif* atf)
@@ -1091,14 +1093,15 @@
 (defun needs-bool-lifting (exp)
   (catch 'bool-lifting (needs-bool-lifting1 exp)))
 
+;;NSH(3/3/93)commented out conversion of boolean equality to iff 
 (defun needs-bool-lifting1 (exp)
   (cond
     ((atom exp) nil)
     ((memq (funsym exp) '(and or implies not if iff))
      (throw 'bool-lifting t))
     ;; the next case probably wont occur -  need to check ***
-    ((and (eq (funsym exp) 'equal) (eq (prtype (arg1 exp)) 'bool))
-     (throw 'bool-lifting t))
+    ;;((and (eq (funsym exp) 'equal) (eq (prtype (arg1 exp)) 'bool))
+    ;; (throw 'bool-lifting t))
     ((eq (funsym exp) 'lambda) nil)
     (t (loop for subexp in (argsof exp) thereis (needs-bool-lifting1 subexp)))))
 				    
