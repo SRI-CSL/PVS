@@ -155,7 +155,8 @@
   (with-slots (actuals) modinst
     (assert *current-context*)
     (assert (modname? modinst))
-    (let ((formals (formals-sans-usings (or theory (get-theory modinst)))))
+    (let* ((th (or theory (get-theory modinst)))
+	   (formals (formals-sans-usings th)))
       (if (or (and actuals
 		   (some #'(lambda (ofp) (memq ofp formals))
 			 (free-params obj)))
@@ -992,11 +993,11 @@
 	(nsels (subst-mod-params* (selections expr) modinst bindings))
 	(nelse (subst-mod-params* (else-part expr) modinst bindings))
 	(type (subst-mod-params* (type expr) modinst bindings)))
-    (lcopy expr
-      'expression nexpr
-      'selections nsels
-      'else-part nelse
-      'type type)))
+	  (lcopy expr
+	    'expression nexpr
+	    'selections nsels
+	    'else-part nelse
+	    'type type)))
 
 (defmethod subst-mod-params* ((expr application) modinst bindings)
   (with-slots (operator argument) expr
@@ -1008,23 +1009,36 @@
       (if (and (eq op operator)
 	       (eq arg argument))
 	  expr
-	  (let* ((nop (if (and (implicit-conversion? op)
-			       (name-expr? (operator op))
-			       (eq (id (operator op)) '|restrict|)
-			       (eq (id (module-instance (resolution (operator op))))
-				   '|restrict|))
-			  (argument op)
-			  op))
-		 (optype (find-supertype (type op)))
-		 (rtype (if (and (not (eq arg argument))
-				 (typep (domain optype) 'dep-binding))
-			    (substit (range optype)
-			      (acons (domain optype) arg nil))
-			    (range optype)))
-		 (nex (lcopy expr 'operator nop 'argument arg 'type rtype)))
-	    ;; Note: the copy :around (application) method takes care of
-	    ;; changing the class if it is needed.
-	    nex)))))
+	  (if (and (implicit-conversion? expr)
+		   (name-expr? op)
+		   (or (and (eq (id op) '|extend|)
+			    (eq (id (module-instance (resolution op)))
+				'|extend|))
+		       (and (eq (id op) '|restrict|)
+			    (eq (id (module-instance (resolution op)))
+				'|restrict|)))
+		   (tc-eq (car (actuals (module-instance (resolution op))))
+			  (cadr (actuals (module-instance (resolution op))))))
+	      arg
+	      (let* ((nop (if (and (implicit-conversion? op)
+				   (name-expr? (operator op))
+				   (eq (id (operator op)) '|restrict|)
+				   (eq (id (module-instance
+					    (resolution (operator op))))
+				       '|restrict|))
+			      (argument op)
+			      op))
+		     (optype (find-supertype (type op)))
+		     (rtype (if (and (or (not (eq arg argument))
+					 (not (eq op operator)))
+				     (typep (domain optype) 'dep-binding))
+				(substit (range optype)
+				  (acons (domain optype) arg nil))
+				(range optype)))
+		     (nex (lcopy expr 'operator nop 'argument arg 'type rtype)))
+		;; Note: the copy :around (application) method takes care of
+		;; changing the class if it is needed.
+		nex))))))
 
 (defmethod subst-mod-params* :around ((expr table-expr) modinst bindings)
   (let ((nexpr (call-next-method)))
