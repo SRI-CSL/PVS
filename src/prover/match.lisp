@@ -755,16 +755,17 @@
 	      (tc-eq (find-supertype (type instance)) *number*))
 	 (if (is-addition? lhs)
 	     (if (number-expr? (args1 lhs))
-		 (let ((diff
-		       (make-assert-expr
-			(make!-difference instance (args1 lhs)))))
+		 (let ((diff (make-assert-expr
+			      (make-difference instance (args1 lhs)
+					       (type (args2 lhs))))))
 		   (if diff
 		       (match* (args2 lhs) diff
 			      bind-alist subst)
 		       'fail))
 		 (if (number-expr? (args2 lhs))
 		     (let ((diff (make-assert-expr
-				  (make!-difference instance (args2 lhs)))))
+				  (make-difference instance (args2 lhs)
+						   (type (args1 lhs))))))
 		       (if diff (match* (args1 lhs) diff
 				       bind-alist subst)
 			   'fail))
