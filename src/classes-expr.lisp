@@ -22,7 +22,7 @@
 ;;; Expressions
 
 (defcl expr (syntax)
-  (parens :initform 0 :parse t :ignore t)
+  (parens :initform 0 :parse t)
   type
   (free-variables :ignore t :initform 'unbound :fetch-as 'unbound)
   (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound))
