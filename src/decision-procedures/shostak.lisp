@@ -37,7 +37,7 @@
 	  (invoke-process-neg eqn cong-state)))))
 
 (defun need-neg-processing (eqn cong-state)
-  (integer-inequality-p eqn cong-state))
+  (integer-inequality-p (recursive-sigma eqn cong-state) cong-state))
 
 (defun invoke-process* (eqn cong-state)
   (when (and nil
