@@ -118,7 +118,6 @@
   (let* ((fdecls (memq decl (formals theory)))
 	 (adecls (unless fdecls (memq decl (assuming theory))))
 	 (tdecls (unless (or fdecls adecls) (memq decl (theory theory)))))
-    (assert (or fdecls adecls tdecls))
     (cond (fdecls
 	   (setf (formals theory)
 		 (append (ldiff (formals theory) fdecls)
@@ -148,19 +147,20 @@
 				(and (declaration? d)
 				     (generated-by d)))
 		   (theory theory))))
-	  (t
+	  (tdecls
 	   (setf (theory theory)
 		 (append (ldiff (theory theory) tdecls)
 			 (remove-if #'(lambda (d)
 					(and (declaration? d)
 					     (generated-by d)))
-			   tdecls)))))
+			   tdecls))))
+	  (t nil))
     (let* ((untc-decls (cond (fdecls
 			      (append fdecls
 				      (assuming theory) (theory theory)))
 			     (adecls
 			      (append adecls (theory theory)))
-			     (t tdecls))))
+			     (tdecls tdecls))))
       (untypecheck-theory untc-decls)))
   (setf (all-declarations theory) nil)
   (setf (tccs-tried? theory) nil)
