@@ -10,7 +10,7 @@
    ((arith-p term) 'arith)
    ((record-p term) 'record)
    ((tuple-p term) 'tuple)
-   ((array-p term) 'array)
+   ((update-p term) 'array)
    ((bv-p term) 'bv)
    (t nil)))
 
@@ -186,6 +186,11 @@
 
 (defun sigineq (term cong-state)
   (normineq term cong-state))
+
+(defun add-interp-use-of-term (term cong-state)
+  (let ((theory (dp-theory term)))
+    (if (eq theory 'array)
+	(add-use-of-update term cong-state))))
 
 (defun solve (eqn cong-state)
   (let ((solved (solve* eqn cong-state)))
