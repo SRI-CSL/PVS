@@ -83,6 +83,13 @@
 		      (free-params* (judgement-type jdecl) nil))))))
 	free-parameters)))
 
+(defmethod free-params* ((cdecl conversion-decl) frees)
+  (with-slots (free-parameters) cdecl
+    (if (eq free-parameters 'unbound)
+	(setf free-parameters
+	      (free-params* (expr cdecl) nil))
+	free-parameters)))
+
 ;;; Type expressions
 
 (defmethod free-params* :around ((texpr type-expr) frees) 
