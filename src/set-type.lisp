@@ -717,6 +717,7 @@ required a context.")
 	 (texp (type-value formal))
 	 (vid (make-new-variable '|x| act))
 	 (vb (typecheck* (mk-bind-decl vid tact) nil nil nil))
+	 (*tcc-conditions* (cons vb *tcc-conditions*))
 	 (svar (mk-name-expr vid nil nil
 			     (make-resolution vb (current-theory-name) tact))))
     (check-for-subtype-tcc svar (supertype texp))))
@@ -2604,8 +2605,8 @@ required a context.")
        (get-arithmetic-value (args2 expr))))
 
 (defmethod get-arithmetic-value ((expr disequation))
-  (eql (get-arithmetic-value (args1 expr))
-       (get-arithmetic-value (args2 expr))))
+  (not (eql (get-arithmetic-value (args1 expr))
+	    (get-arithmetic-value (args2 expr)))))
 
 (defmethod get-arithmetic-value ((expr branch))
   (if (get-arithmetic-value (condition expr))
@@ -2970,8 +2971,10 @@ required a context.")
     (set-assignment-arg-types* (cdr args-list) (cdr values) ex expected)))
 
 (defmethod set-assignment-arg-types* (args-list values ex (expected subtype))
-  (declare (ignore args-list values ex))
-  (set-assignment-arg-types* args-list values ex (supertype expected)))
+  (if (typep (find-supertype expected)
+	     '(or funtype recordtype tupletype adt-type-name))
+      (set-assignment-arg-types* args-list values ex (supertype expected))
+      (call-next-method)))
 
 (defmethod set-assignment-arg-types* (args-list values ex (expected recordtype))
   (with-slots (fields) expected
@@ -3096,10 +3099,10 @@ required a context.")
 	   (args (when pos (nth pos args-list)))
 	   (value (when pos (nth pos values)))
 	   (rem-args (if args
-			 (remove args args-list)
+			 (remove args args-list :count 1 :start pos)
 			 args-list))
 	   (rem-values (if value
-			   (remove value values)
+			   (remove value values :count 1 :start pos)
 			   values))
 	   (done-with-field? (not (member (car fields) rem-args
 					  :test #'same-id :key #'caar))))
