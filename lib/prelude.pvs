@@ -1167,6 +1167,18 @@ function_inverse_def[D: TYPE, R: TYPE]: THEORY
   bijective_inverse_exists: LEMMA
     FORALL (f: (bijective?[D, R])): exists1(inverse?(f))
 
+  % The following are provided as support for discharging the
+  % assumption TCCs arising from the use of function_inverse_alt
+
+  exists_inv1: LEMMA
+    (EXISTS g: TRUE) IFF ((EXISTS (d: D): TRUE) OR (FORALL (r: R): FALSE))
+  exists_inv2: LEMMA
+    (EXISTS (f: (surjective?[D, R])): TRUE) =>
+       ((EXISTS (d: D): TRUE) OR (FORALL (r: R): FALSE))
+  exists_inv3: LEMMA
+    (EXISTS f: NOT injective?(f)) =>
+       ((EXISTS (d: D): TRUE) OR (FORALL (r: R): FALSE))
+
  END function_inverse_def
 
 
@@ -1260,15 +1272,6 @@ function_inverse_alt[D: TYPE, R: TYPE]: THEORY
   r: VAR R
   f: VAR [D -> R]
   g: VAR [R -> D]
-
-  exists_inv1: LEMMA
-    ((EXISTS (d: D): TRUE) OR (FORALL (r: R): FALSE)) IFF (EXISTS g: TRUE)
-  exists_inv2: LEMMA
-    (EXISTS (f: (surjective?[D, R])): TRUE) =>
-       ((EXISTS (d: D): TRUE) OR (FORALL (r: R): FALSE))
-  exists_inv3: LEMMA
-    (EXISTS f: NOT injective?(f)) =>
-       ((EXISTS (d: D): TRUE) OR (FORALL (r: R): FALSE))
 
   inverses(f): TYPE+ = (inverse?(f))
 
