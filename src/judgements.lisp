@@ -491,7 +491,7 @@
   (let ((args-list (argument* ex)))
     (compute-appl-judgement-types
      args-list
-     (mapcar #'judgement-types* args-list)
+     (mapcar #'judgement-types+ args-list)
      (operator-domain ex)
      graph)))
 
@@ -743,10 +743,51 @@
 (defun subtype-wrt? (type1 type2 reltype &optional bindings)
   ;; returns true when type1 is a subtype of type2, given that it must be
   ;; of type reltype, e.g., (subtype-wrt? rat nzrat nzreal) is true.
-  (or (subtype-of? type1 type2)
-      (and (subtype? type2)
-	   (same-predicate? type2 reltype bindings)
-	   (subtype-of? type1 (supertype type2)))))
+  (subtype-wrt?* type1 type2 reltype bindings))
+
+(defmethod subtype-wrt?* ((te1 type-expr) (te2 type-expr) reltype bindings)
+  (or (subtype-of? te1 te2)
+      (and (subtype? te2)
+	   (same-predicate? te2 reltype bindings)
+	   (subtype-of? te1 (supertype te2)))))
+
+(defmethod subtype-wrt?* ((te1 dep-binding) (te2 type-expr) reltype bindings)
+  (subtype-wrt?* (type te1) te2 reltype bindings))
+
+(defmethod subtype-wrt?* ((te1 type-expr) (te2 dep-binding) reltype bindings)
+  (subtype-wrt?* te1 (type te2) reltype bindings))
+
+(defmethod subtype-wrt?* ((te1 funtype) (te2 funtype) reltype bindings)
+  (and (subtype-wrt?* (domain te1) (domain te2) (domain reltype) bindings)
+       (subtype-wrt?* (range te1) (range te2) (range reltype)
+		      (if (and (dep-binding? (domain te2))
+			       (dep-binding? (domain reltype)))
+			  (acons (domain te2) (domain reltype) bindings)
+			  bindings))))
+
+(defmethod subtype-wrt?* ((te1 tupletype) (te2 tupletype) reltype bindings)
+  (subtype-wrt?-list (types te1) (types te2) (types reltype) bindings))
+
+(defun subtype-wrt?-list (types1 types2 reltypes bindings)
+  (or (null types1)
+      (and (subtype-wrt?* (car types1) (car types2) (car reltypes) bindings)
+	   (subtype-wrt?-list (cdr types1) (cdr types2) (cdr reltypes)
+			      (if (and (dep-binding? (car types2))
+				       (dep-binding? (car reltypes)))
+				  (acons (car types2) (car reltypes) bindings)
+				  bindings)))))
+
+(defmethod subtype-wrt?* ((te1 recordtype) (te2 recordtype) reltype bindings)
+  (subtype-wrt?-fields (fields te1) (fields te2) (fields reltype) bindings))
+
+(defun subtype-wrt?-fields (flds1 flds2 relflds bindings)
+  (or (null flds1)
+      (and (eq (id (car flds1)) (id (car flds2)))
+	   (eq (id (car flds1)) (id (car relflds)))
+	   (subtype-wrt?* (type (car flds1)) (type (car flds2))
+			  (type (car relflds)) bindings)
+	   (subtype-wrt?-fields (cdr flds1) (cdr flds2) (cdr relflds)
+				(acons (car flds2) (car relflds) bindings)))))
 
 (defmethod same-predicate? ((t1 subtype) (t2 subtype) bindings)
   (same-predicate? (predicate t1) (predicate t2) bindings))
