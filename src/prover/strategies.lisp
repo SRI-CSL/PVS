@@ -1358,9 +1358,10 @@ simplifies using given REWRITES. "
 					;; SO 1997-06-25: took the range
 					(range (car measure-types))
 					nil))))
-		(measure (pc-typecheck measure
-			   :expected (mk-funtype domain-type range-type)))
-		(measure-freevars (freevars measure))
+		(measure (when range-type ;;NSH(5.8.99)
+			   (pc-typecheck measure
+			     :expected (mk-funtype domain-type range-type))))
+		(measure-freevars (when range-type (freevars measure)))
 		(order-type (when range-type 
 			      (make-predtype (make-tupletype
 							 (list range-type
@@ -1379,8 +1380,9 @@ simplifies using given REWRITES. "
 					 'expr)
 			       :expected order-type))))
 		(induction-name
-		 (mk-name (intern "measure_induction")
-			  (mapcar #'mk-actual (list domain-type range-type measure order))))
+		 (when range-type 
+		   (mk-name (intern "measure_induction")
+			  (mapcar #'mk-actual (list domain-type range-type measure order)))))
 		)
 	    (if measure-freevars
 		(let ((msg (format nil "Given measure contains free variables ~a" measure-freevars)))
