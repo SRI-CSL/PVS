@@ -798,7 +798,7 @@
 	       (make-instance 'context
 		 'theory theory
 		 'theory-name (mk-modname (id theory))
-		 'using-hash (copy (using-hash pctx))
+		 'using-hash (copy-using-hash (using-hash pctx))
 		 'declarations-hash (copy (declarations-hash pctx))
 		 'known-subtypes (copy-tree (known-subtypes pctx))
 		 'conversions (copy-list (conversions pctx)))))
@@ -810,6 +810,15 @@
 	  'theory-name (mk-modname (id theory))
 	  'using-hash (make-hash-table)
 	  'declarations-hash (make-hash-table)))))
+
+(defun copy-using-hash (ht)
+  (let* ((size (floor (hash-table-size ht) 1.5384616))
+	 (new-ht (make-hash-table :test 'eq :size size)))
+    (maphash #'(lambda (th thinsts)
+		 (setf (gethash th (the hash-table new-ht))
+		       (copy-list thinsts)))
+	     (the hash-table ht))
+    new-ht))
 
 (defun copy-context (context &optional theory decls)
   (copy context
