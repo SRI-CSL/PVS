@@ -372,6 +372,7 @@
 		(IMPORTING-ELT (xt-importing-elt decl))
 		(JUDGEMENT-ELT (xt-judgement-elt decl))
 		(CONVERSION-ELT (xt-conversion-elt decl))
+		(AUTO-REWRITE-ELT (xt-auto-rewrite-elt decl))
 		(t (xt-theory decl))))
 	  (term-args theory)))
 
@@ -628,6 +629,66 @@
 	     'place (term-place name)))))))
 
 
+;;; auto-rewrites
+
+(defun xt-auto-rewrite-elt (decl)
+  (let ((adecl (xt-auto-rewrite (term-arg0 decl))))
+    (setf (semi adecl) (when (is-sop 'SEMIC (term-arg1 decl)) t))
+    (list adecl)))
+
+(defun xt-auto-rewrite (decl)
+  (let ((rnames (xt-rewrite-names (term-args decl))))
+    (case (sim-term-op decl)
+      (AUTO-REWRITE (make-instance 'auto-rewrite-decl
+		      'rewrite-names rnames))
+      (AUTO-REWRITEPLUS (make-instance 'auto-rewrite-plus-decl
+			  'rewrite-names rnames))
+      (AUTO-REWRITEMINUS (make-instance 'auto-rewrite-minus-decl
+			   'rewrite-names rnames)))))
+
+(defun xt-rewrite-names (rnames)
+  (mapcar #'xt-rewrite-name rnames))
+
+(defun xt-rewrite-name (rname)
+  (let ((name (xt-name (term-arg0 rname)))
+	(kind (term-arg1 rname))
+	(qual (term-arg2 rname)))
+    (case (sim-term-op kind)
+      (LAZY (case (sim-term-op qual)
+	      (TYPE (change-class name 'lazy-constant-rewrite-name
+				  'declared-type (xt-not-enum-type-expr
+						  (term-arg0 qual))))
+	      (FORMULA (change-class name 'lazy-formula-rewrite-name
+				     'spelling (sim-term-op (term-arg0 qual))))
+	      (t (change-class name 'lazy-rewrite-name))))
+      (EAGER (case (sim-term-op qual)
+	       (TYPE (change-class name 'eager-constant-rewrite-name
+		       'declared-type (xt-not-enum-type-expr
+				       (term-arg0 qual))))
+	       (FORMULA (change-class name 'eager-formula-rewrite-name
+			  'spelling (sim-term-op (term-arg0 qual))))
+	       (t (change-class name 'eager-rewrite-name))))
+      (MACRO (case (sim-term-op qual)
+	       (TYPE (change-class name 'macro-constant-rewrite-name
+		       'declared-type (xt-not-enum-type-expr
+				       (term-arg0 qual))))
+	       (FORMULA (change-class name 'macro-formula-rewrite-name
+			  'spelling (sim-term-op (term-arg0 qual))))
+	       (t (change-class name 'macro-rewrite-name)))))))
+
+(defun xt-rewrite-fnum (fnum)
+  (let* ((num (ds-number (term-arg0 (term-arg0 fnum))))
+	 (number (case (sim-term-op (term-arg1 (term-arg0 fnum)))
+		   (- (- num))
+		   (+ num))))
+    (case (sim-term-op (term-arg1 fnum))
+      (LAZY (make-instance 'lazy-fnum-rewrite
+	      'fnum number))
+      (EAGER (make-instance 'eager-fnum-rewrite
+	       'fnum number))
+      (MACRO (make-instance 'macro-fnum-rewrite
+	       'fnum number)))))
+
 (defun xt-chained-decls (idops dtype formals decl absyn &optional result)
   (if (null idops)
       (nreverse result)
@@ -663,20 +724,27 @@
 	(xt-chained-decls (cdr idops) dtype formals decl absyn
 			  (cons ndecl result)))))
 
+;;; pdformals ::= {'(' adformals ')'} <adformals>;
+
 (defun xt-pdf (pdf)
   (mapcar #'xt-adformals (term-args pdf)))
 
+;;; adformals ::= {adformal++','} <adformals(adformal+)>;
+
 (defun xt-adformals (adformals)
   (xt-adformals* (term-args adformals)))
+
+;;; adformal ::= typed-id | {'(' typed-ids ')'} <typed-ids>;
 
 (defun xt-adformals* (adformals &optional untyped formals)
   (if (null adformals)
       (nconc formals untyped)
       (let ((df (car adformals)))
 	(if (is-sop 'TYPED-IDS df)
-	    (xt-adformals* (cdr adformals)
-			   nil
-			   (nconc formals untyped (xt-typed-ids df)))
+	    (let ((tids (xt-typed-ids df)))
+	      (dolist (x tids)
+		(setf (parens x) 1))
+	      (xt-adformals* (cdr adformals) nil (nconc formals untyped tids)))
 	    (let ((formal (xt-typed-id df)))
 	      (cond ((declared-type formal)
 		     (mapc #'(lambda (un)
@@ -690,6 +758,10 @@
 		    (t (xt-adformals* (cdr adformals)
 				      (nconc untyped (list formal))
 				      formals))))))))
+
+;;; typed-ids ::= {idops [':' type-expr]^t ['|' expr]^e}
+;;; 	      <{typed-ids(idops,[no-type-expr()|type-expr]^t,
+;;; 				[no-pred()|expr]^e)>;
 
 (defun xt-typed-ids (typed-ids)
   (let* ((idops (term-arg0 typed-ids))
@@ -767,6 +839,7 @@
     (VAR-DECL (xt-var-decl body))
     (UNINTERP-CONST-DECL (xt-const-decl body))
     (CONST-DECL (xt-const-decl body))
+    (MACRO-DECL (xt-macro-decl body))
     (DEF-DECL (xt-def-decl body))
     (IND-DECL (xt-ind-decl body))
     (COREC-DECL (xt-corec-decl body))
@@ -883,6 +956,16 @@
 	      'declared-type type-expr
 	      'definition (when value (xt-expr value))
 	      'place (term-place const-decl))
+	    dtype)))
+
+(defun xt-macro-decl (macro-decl)
+  (let* ((dtype (term-arg0 macro-decl))
+	 (type-expr (xt-not-enum-type-expr dtype))
+	 (value (term-arg1 macro-decl)))
+    (values (make-instance 'macro-decl
+	      'declared-type type-expr
+	      'definition (xt-expr value)
+	      'place (term-place macro-decl))
 	    dtype)))
 
 (defun xt-def-decl (def-decl)
@@ -1059,16 +1142,16 @@
 		      (progn (incf (parens (car dep-types)))
 			     (car dep-types)))))
 	    (parse-error funtype "Function type must have a range"))
-	(let* ((range (xt-not-enum-type-expr range))
+	(let* ((ran (xt-not-enum-type-expr range))
 	       (dom (xt-dep-type-exprs dep-type-exprs))
-	       (tvar (make-new-variable '|t| (cons range dom)))
+	       (tvar (make-new-variable '|t| (cons ran dom)))
 	       (domain (xt-funtype-domain dom tvar)))
 	  (make-instance (case (sim-term-op kind)
 			   (COMP-TYPE-EXPR-NULL-1 'funtype)
 			   (FUNCTION 'functiontype)
 			   (ARRAY 'arraytype))
 	    'domain domain
-	    'range (xt-subst-new-domain-dep domain range)
+	    'range (xt-subst-new-domain-dep domain ran)
 	    'place (term-place funtype))))))
 
 (defmethod xt-subst-new-domain-dep (domain range)
@@ -1192,6 +1275,8 @@
     (TABLE-EXPR (xt-table-expr expr))
     (SKOVAR (xt-skovar expr))
     (BRACK-EXPR (xt-brack-expr expr))
+    (PAREN-EXPR (xt-paren-expr expr))
+    (BRACE-EXPR (xt-brace-expr expr))
     (t (error "Unrecognized expr - ~a" expr))))
 
 (defun xt-number-expr (expr)
@@ -1201,7 +1286,7 @@
 
 (defun xt-string-expr (expr)
   (let ((string (ds-string (term-arg0 expr)))
-	(ne (mk-name-expr '|char?|)))
+	(ne (mk-name-expr '|character|)))
     (setf (parens ne) 1)
     (make-instance 'string-expr
       'string-value string
@@ -1326,6 +1411,32 @@
 	  'id '[\|\|]
 	  'place (term-place expr)))))
 
+(defun xt-paren-vbar-expr (expr)
+  (let ((args (term-args expr)))
+    (if args
+	(make-instance 'paren-vbar-expr
+	  'operator (make-instance 'name-expr
+		      'id '\(\|\|\)
+		      'place (term-place expr))
+	  'argument (xt-arg-expr args)
+	  'place (term-place expr))
+	(make-instance 'name-expr
+	  'id '\(\|\|\)
+	  'place (term-place expr)))))
+
+(defun xt-brace-vbar-expr (expr)
+  (let ((args (term-args expr)))
+    (if args
+	(make-instance 'brace-vbar-expr
+	  'operator (make-instance 'name-expr
+		      'id '{\|\|}
+		      'place (term-place expr))
+	  'argument (xt-arg-expr args)
+	  'place (term-place expr))
+	(make-instance 'name-expr
+	  'id '{\|\|}
+	  'place (term-place expr)))))
+
 (defun xt-arg-expr (args)
   (if (cdr args)
       (let ((exprs (mapcar #'xt-expr args)))
@@ -1435,13 +1546,15 @@
       'argument (xt-expr expr)
       'place (term-place uexpr))))
 
+(defvar *coercion-var-counter* (let ((x 0)) #'(lambda ()  (incf x))))
+
 (defun xt-coercion (coercion)
   (let* ((expr (term-arg0 coercion))
-	 (type (term-arg0 (term-arg1 coercion))))
+	 (type (term-arg0 (term-arg1 coercion)))
+	 (var (makesym "x%~a" (funcall *coercion-var-counter*))))
     (make-instance 'coercion
-      'operator (mk-lambda-expr (list (mk-bind-decl '|x|
-					(xt-type-expr type)))
-		  (mk-name-expr '|x|))
+      'operator (mk-lambda-expr (list (mk-bind-decl var (xt-type-expr type)))
+		  (mk-name-expr var))
       'argument (xt-expr expr)
       'place (term-place coercion))))
 
@@ -1510,7 +1623,7 @@
   (let ((op (term-arg0 bexpr))
 	(body (term-arg1 bexpr)))
     (make-xt-bind-expr
-     (intern (string-downcase (symbol-name (sim-term-op op))))
+     (intern (string-downcase (symbol-name (sim-term-op op))) :pvs)
      body bexpr)))
 
 (defun xt-name-bind-expr (bexpr)
@@ -2072,7 +2185,7 @@
 					'(ASSIGN-ID ASSIGN-NUM)))
 		       (term-args assign))))
 	(when bad-arg
-	  (parse-error bad-arg "Parentheses expected here"))))
+	  (parse-error bad-arg "( or ` expected here"))))
     (if (and (null (cdr (term-args assign)))
 	     (memq (sim-term-op (term-arg0 assign))
 		   '(ASSIGN-ID ASSIGN-SKONAME ASSIGN-NUM)))
@@ -2101,17 +2214,22 @@
 (defun xt-assign* (ass-arg)
   (case (sim-term-op ass-arg)
     (FIELD-ASSIGN (list (make-instance 'field-assign
-			  'id (ds-id (term-arg0 ass-arg)))))
+			  'id (ds-id (term-arg0 ass-arg))
+			  'place (term-place ass-arg))))
     (PROJ-ASSIGN (list (make-instance 'proj-assign
-			 'number (ds-number (term-arg0 ass-arg)))))
+			 'number (ds-number (term-arg0 ass-arg))
+			 'place (term-place ass-arg))))
     (ASSIGN-ID (list (make-instance 'name-expr
-		       'id (ds-id (term-arg0 ass-arg)))))
+		       'id (ds-id (term-arg0 ass-arg))
+		       'place (term-place ass-arg))))
     (ASSIGN-SKONAME (list (make-instance 'name-expr
 			    'id (makesym "~a!~d"
 					 (ds-id (term-arg0 ass-arg))
-					 (ds-number (term-arg1 ass-arg))))))
+					 (ds-number (term-arg1 ass-arg)))
+			    'place (term-place ass-arg))))
     (ASSIGN-NUM (list (make-instance 'number-expr
-			'number (ds-number (term-arg0 ass-arg)))))
+			'number (ds-number (term-arg0 ass-arg))
+			'place (term-place ass-arg))))
     (ASSIGN-TUPLE (mapcar #'xt-expr (term-args ass-arg)))))
 
 (defun xt-assign-application (ass &optional args)
@@ -2121,7 +2239,7 @@
 		  (cons (mapcar #'xt-expr (term-args (term-arg1 ass)))
 			args)))
     (TUPLE-EXPR (cons (mapcar #'xt-expr (term-args ass)) args))
-    (t (parse-error ass "Parentheses expected here"))))
+    (t (parse-error ass "( expected here"))))
 
 (defmethod separator ((ass assignment))
   'ceq)
@@ -2290,6 +2408,16 @@
 
 (defun xt-idop (idop)
   (ds-vid (term-arg0 idop)))
+
+(defun xt-bname (bname)
+  (let ((name (xt-name (term-arg0 bname)))
+	(number (ds-number (term-arg1 bname))))
+    (when (or (mod-id name)
+	      (library name)
+	      (actuals name))
+      (parse-error name "~a!~d is not a valid name" name number))
+    (make-instance 'name
+      'id (makesym "~a!~d" (id name) number))))
 
 (defun ds-vid (term)
   (let ((id (ds-id term)))
