@@ -220,10 +220,10 @@
     `(let ((,val ,gvar))
        (assert (hash-table-p ,val))
        (if *recursive-prove-decl-call*
-	   (if (excl::ha_hash-fcn ,val)
-	       (make-hash-table :hash-function (excl::ha_hash-fcn ,val)
-				:test (hash-table-test ,val))
-	       (make-hash-table :test (hash-table-test ,val)))
+	   (let ((test (hash-table-test ,val)))
+	     (if (memq test '(eq eql equal equalp))
+		 (make-hash-table :test test)
+		 (make-hash-table :test test :hash-function 'pvs-sxhash)))
 	   ,val))))
 
 ;;The rulebase is represented as a hash-table.

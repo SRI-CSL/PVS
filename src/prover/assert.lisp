@@ -2999,12 +2999,12 @@ cannot be used for rewriting." name)
 
 (defun check-auto-rewrite (res fmla)
   (let* ((mod-inst (module-instance res))
-	 (current-mod? (eq (get-theory (id mod-inst))
-			   *current-theory*))
+	 (theory (get-theory mod-inst))
+	 (current-mod? (eq theory (current-theory)))
 	 (actuals (unless current-mod?
 		    (actuals mod-inst)))
 	 (formals (unless current-mod?
-		    (formals-sans-usings (get-theory mod-inst)))))
+		    (formals-sans-usings theory))))
     (multiple-value-bind
 	(lhs rhs hyp)
 	(split-rewrite fmla)

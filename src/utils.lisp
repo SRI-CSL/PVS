@@ -14,12 +14,16 @@
 
 ;;(proclaim '(inline resolution))
 
+#+allegro
+(defun file-exists-p (file)
+  (excl::filesys-inode (namestring file)))
+
+#-allegro
+(defun file-exists-p (file)
+  (probe-file file))
+
 (defun mapappend (fun list)
   (mapcan #'copy-list (mapcar fun list)))
-
-(defun place-list (place)
-  (list (line-begin place) (col-begin place)
-	(line-end place) (col-end place)))
 
 #+lucid
 (defmethod copy ((ht hash-table) &rest args)
@@ -53,6 +57,7 @@
     new-ht))
 
 (defmethod copy :around ((ex application) &rest args)
+  (declare (ignore args))
   (let ((nex (call-next-method)))
     (if (or (not (type ex))
 	    (eq (operator ex) (operator nex)))
@@ -262,77 +267,69 @@
 	npath
 	pathname)))
 
-(defun get-formula (module id)
-  (let ((mod (if (typep module 'module) module (get-module module))))
-    (or (find-if #'(lambda (decl)
-		     (and (typep decl 'formula-decl)
-			  (eq (id decl) id)))
-	  (assuming module))
-	(find-if #'(lambda (decl)
-		     (and (typep decl 'formula-decl)
-			  (eq (id decl) id)))
-	  (theory module)))))
+(defun get-formula (theory id)
+  (or (find-if #'(lambda (decl)
+		   (and (typep decl 'formula-decl)
+			(eq (id decl) id)))
+	(assuming theory))
+      (find-if #'(lambda (decl)
+		   (and (typep decl 'formula-decl)
+			(eq (id decl) id)))
+	(theory theory))))
 
-(defun get-decl (module id)
-  (let* ((mod (if (typep module 'module) module (get-module module))))
-    (remove-if-not #'(lambda (d)
-		       (and (declaration? d)
-			    (eq (id d) id)))
-      (all-decls mod))))
+(defun get-decl (theory id)
+  (remove-if-not #'(lambda (d)
+		     (and (declaration? d)
+			  (eq (id d) id)))
+      (all-decls theory)))
 
-(defmethod get-module ((id symbol))
-  (get-theory id))
+(defmethod get-theory ((name modname))
+  (with-slots (library id) name
+    (get-theory* id library)))
 
-(defmethod get-module ((str string))
-  (get-module (intern str)))
+(defmethod get-theory ((str string))
+  (get-theory* (intern str) nil))
 
-(defmethod get-module ((mod module))
+(defmethod get-theory ((id symbol))
+  (get-theory* id nil))
+
+(defmethod get-theory ((mod module))
   mod)
 
-(defmethod get-module ((dt datatype))
+(defmethod get-theory ((dt datatype))
   dt)
 
-(defmethod get-module ((name name))
-  (get-module (id name)))
-
-(defmethod get-module ((name modname))
-  (get-theory name))
-
 #+(or gcl cmu)
-(defmethod get-module (pathname)
+(defmethod get-theory (pathname)
   (when (pathnamep pathname)
-    (get-module (pathname-name pathname))))
+    (get-theory (pathname-name pathname))))
 
 #-(or gcl cmu)
-(defmethod get-module ((path pathname))
-  (get-module (pathname-name path)))
+(defmethod get-theory ((path pathname))
+  (get-theory (pathname-name path)))
 
-
-(defmethod get-theory ((id symbol) &optional lib)
-  (assert (or (null lib) (current-theory)))
-  (if lib
-      (let* ((libpath (get-library-pathname lib (current-theory)))
-	     (imphash (cadr (gethash libpath *imported-libraries*)))
-	     (prehash (cadr (gethash libpath *prelude-libraries*))))
-	(if (and libpath
-		 (equal (pvs-truename libpath) (working-directory)))
-	    (get-theory id)
-	    (or (and imphash (gethash id imphash))
-		(and prehash (gethash id prehash))
-		(gethash id *prelude*))))
-      (or (gethash id *prelude*)
-	  ;;(gethash id *pvs-modules*)
-	  (car (assoc id (prelude-libraries-uselist)
-		      :test #'(lambda (x y) (eq x (id y)))))
-	  (when *current-library*
-	    (let ((clib *current-library*)
-		  (*current-library* nil))
-	      (get-theory id clib)))
-	  (let ((theories (get-imported-theories id)))
-	    (cond ((cdr theories)
-		   (pvs-message "Ambiguous theories - ~a" (id (car theories))))
-		  ((car theories))
-		  (t (gethash id *pvs-modules*)))))))
+(defun get-theory* (id library)
+  (let ((*current-context* (or *current-context* *prelude-context*)))
+    (if library
+	(let* ((libpath (get-library-pathname library))
+	       (imphash (cadr (gethash libpath *imported-libraries*)))
+	       (prehash (cadr (gethash libpath *prelude-libraries*))))
+	  (if (and libpath
+		   (equal (pvs-truename libpath) (working-directory)))
+	      (gethash id *pvs-modules*)
+	      (or (and imphash (gethash id imphash))
+		  (and prehash (gethash id prehash))
+		  (gethash id *prelude*))))
+	(or (gethash id *prelude*)
+	    ;;(gethash id *pvs-modules*)
+	    (car (assoc id (prelude-libraries-uselist)
+			:test #'(lambda (x y) (eq x (id y)))))
+	    (let ((theories (get-imported-theories id)))
+	      (cond ((cdr theories)
+		     (pvs-message "Ambiguous theories - ~a"
+		       (id (car theories))))
+		    ((car theories))
+		    (t (gethash id *pvs-modules*))))))))
 
 (defun get-imported-theories (id)
   (let ((theories nil))
@@ -343,31 +340,6 @@
 		     (push th theories))))
 	     *imported-libraries*)
     theories))
-
-(defmethod get-theory ((str string) &optional lib)
-  (get-theory (intern str :pvs) lib))
-
-(defmethod get-theory ((mod module) &optional lib)
-  (if lib
-      (get-theory (id mod) lib)
-      mod))
-
-(defmethod get-theory ((dt datatype) &optional lib)
-  (if lib
-      (get-theory (id dt) lib)
-      dt))
-
-(defmethod get-theory ((name name) &optional lib)
-  (get-theory (id name) (or (library name) lib)))
-
-#+(or gcl cmu)
-(defmethod get-theory (pathname &optional lib)
-  (when (pathnamep pathname)
-    (get-theory (pathname-name pathname))))
-
-#-(or gcl cmu)
-(defmethod get-theory ((path pathname) &optional lib)
-  (get-theory (pathname-name path) lib))
 
 ;;; Useful methods - can almost be used as accessors.
 
@@ -2296,19 +2268,6 @@ space")
 	(when (compatible? ctype type)
 	  (name conversion)))))
 
-(defun get-all-k-conversions ()
-  (break)
-  (append (remove-if-not #'k-combinator? (conversions *current-context*))
-	  (mapappend #'(lambda (th)
-			 (remove-if-not #'k-combinator? (conversions (car th))))
-		     (using *current-context*))))
-
-(defun get-all-conversions ()
-  (break)
-  (append (conversions *current-context*)
-	  (mapappend #'(lambda (th) (conversions (car th)))
-		     (using *current-context*))))
-
 #-gcl
 (defun direct-superclasses (class)
   (slot-value class 'clos::direct-superclasses))
@@ -2494,19 +2453,6 @@ space")
 (defmethod arguments* ((expr expr) &optional accum)
   accum)
 
-(defun modname-in-current-context? (modname)
-  (let* ((th (get-theory modname))
-	 (theory (if (typep th 'datatype)
-		     (adt-theory th)
-		     th))
-	 (mn (if (typep th 'datatype)
-		 (copy modname 'id (id (adt-theory th)))
-		 modname))
-	 (usings (gethash theory (using-hash *current-context*))))
-    (or (some #'(lambda (u) (not (actuals u))) usings)
-	(member mn usings :test #'tc-eq))))
-
-
 (defmethod ptypes ((expr expr))
   (if (type expr) (list (type expr)) (types expr))
   ;;(or (types expr) (and (type expr) (list (type expr))))
@@ -2523,10 +2469,11 @@ space")
 	  (split-on* pred (cdr list) match (cons (car list) rest)))))
 
 (defun current-theory ()
-  (assert *current-context*)
-  (theory *current-context*))
+  (when *current-context*
+    (theory *current-context*)))
 
 (defsetf current-theory () (theory)
+  (assert *current-context*)
   `(setf (theory *current-context*) ,theory))
 
 (defun current-theory-name ()
@@ -2556,22 +2503,6 @@ space")
 
 (defsetf current-using-hash () (using-hash)
   `(setf (using-hash *current-context*) ,using-hash))
-
-
-(defun current-decl-is (string)
-  (when *current-context*
-    (let ((cd (current-decl)))
-      (and (typep cd 'declaration)
-	   (eq (id cd) (if (stringp string)
-			   (intern string)
-			   string))))))
-
-(defun current-decl-id ()
-  (when *current-context*
-    (let ((cd (current-decl)))
-      (if (typep cd 'declaration)
-	  (id cd)
-	  'IMPORTING))))
 
 (defmethod assuming-instances ((decl declaration))
   (let* ((theory (module decl))

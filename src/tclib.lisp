@@ -30,7 +30,7 @@
 	*naturalnumber* nil
 	*posint* nil
 	*ordinal* nil)
-  (let ((cdir (working-directory))
+  (let ((cdir (or *pvs-context-path* (working-directory)))
 	(*pvs-context-path* nil)
 	(*pvs-modules* (make-hash-table :test #'eq :size 20 :rehash-size 10))
 	(*pvs-files* (make-hash-table :test #'equal))
@@ -43,10 +43,9 @@
 	(mods (parse :file (format nil "~a/lib/~a"
 			     *pvs-path* *prelude-filename*))))
     (clear-theories t)
+    (dolist (fn *load-prelude-hook*)
+      (funcall fn))
     (setq *prelude-context* nil)
-    (clrnumhash)
-    (clear-ignored-type-constraints)
-    (reset-all-operators)
     (reset-equality-decl)
     (reset-if-declaration)
     (reset-boolean-aliases)
@@ -126,7 +125,7 @@
 (defun restore-prelude-proofs ()
   (let ((prfile (merge-pathnames (format nil "~a/lib/" *pvs-path*)
 				 "prelude.prf")))
-    (when (probe-file prfile)
+    (when (file-exists-p prfile)
       (maphash #'(lambda (id theory)
 		   (declare (ignore id))
 		   (restore-proofs prfile theory)
@@ -205,9 +204,9 @@
 	     (unless (member libname (cadr *pvs-context*) :test #'string=)
 	       (push libname (cadr *pvs-context*))
 	       (setq *pvs-context-changed* t))
-	     (add-to-prelude-libraries lib libname)))))
+	     (add-to-prelude-libraries lib)))))
 
-(defun add-to-prelude-libraries (lib libname)
+(defun add-to-prelude-libraries (lib)
   (setf (gethash lib *loaded-libraries*)
 	(gethash lib *prelude-libraries*))
   (setq *prelude-libraries-uselist*
@@ -264,7 +263,7 @@
 		      (concatenate 'string libstr "/"))))
     (or (let ((libr (rassoc libname *library-alist* :test #'string=)))
 	  (when libr
-	    (cond ((probe-file (car libr))
+	    (cond ((file-exists-p (car libr))
 		   (car libr))
 		  (t (setf *library-alist* (delete libr *library-alist*))
 		     nil))))
@@ -276,14 +275,14 @@
 				    :defaults (format nil "~a/lib/"
 						*pvs-path*)))
 		      (make-pathname :directory libname
-				     :defaults (working-directory)))
+				     :defaults *pvs-context-path*))
 		  (make-pathname :directory libname
-				     :defaults (working-directory))))
+				     :defaults *pvs-context-path*)))
 	  (cond (condition
 		 (values nil (format nil "~a" condition)))
-		((not (probe-file lib))
+		((not (file-exists-p lib))
 		 (values nil "Library ~a does not exist"))
-		((not (probe-file (context-pathname lib)))
+		((not (file-exists-p (context-pathname lib)))
 		 (values nil "Library ~a does not have a PVS context"))
 		(t (let ((lib (pvs-truename lib)))
 		     (pushnew (cons lib libname) *library-alist*
@@ -297,15 +296,13 @@
 ;;; the associated path if it is found, otherwise it checks for the name as
 ;;; part of the default library.
 
-(defun get-library-pathname (libname theory)
-  (let ((libn (if (pathnamep libname)
-		  (namestring libname)
-		  libname)))
-    (multiple-value-bind (lib msg)
-	(library-of libname)
-      (or lib
-	  (find-library-pathname libname theory)
-	  (values nil msg)))))
+(defun get-library-pathname (libname)
+  (assert *current-context*)
+  (multiple-value-bind (lib msg)
+      (library-of libname)
+    (or lib
+	(find-library-pathname libname (current-theory))
+	(values nil msg))))
 
 (defun find-library-pathname (libname theory)
   (let ((lib-decl (find-if #'(lambda (d)
@@ -365,26 +362,12 @@
        (probe-file (context-pathname lib))))
 
 (defun prelude-library-loaded? (lib)
-  (and (gethash lib *prelude-libraries*)
-       (library-current? lib)))
-
-;;; Checks that the library context file is current, and that all of the
-;;; pvs-files of that context have not changed.
-
-(defun library-current? (lib)
-  (and (library-context-current? lib)
-       (library-files-current? lib)))
-
-(defun library-context-current? (lib)
-  t)
-
-(defun library-files-current? (lib)
-  t)
+  (gethash lib *prelude-libraries*))
 
 
 (defmethod load-imported-library-file (lib filename)
   (unless (or (gethash lib *prelude-libraries*)
-	      (equal (pvs-truename lib) (working-directory)))
+	      (equal (pvs-truename lib) *pvs-context-path*))
     (with-pvs-context lib
       (let ((*pvs-context-writable* (write-permission? lib))
 	    (*pvs-context-changed* nil))
@@ -451,7 +434,7 @@
 
 (defun load-library-theory (lib theoryname)
   (if (or (gethash lib *prelude-libraries*)
-	  (equal (pvs-truename lib) (working-directory)))
+	  (equal (pvs-truename lib) *pvs-context-path*))
       (get-theory (copy theoryname 'library nil))
       (with-pvs-context lib
 	(let ((*pvs-context-writable* (write-permission? lib))
@@ -606,12 +589,14 @@
   (let ((files nil))
     (maphash #'(lambda (lib files&theories)
 		 (maphash #'(lambda (file date&theories)
+			      (declare (ignore date&theories))
 			      (pushnew (format nil "~a~a" lib file) files
 				       :test #'equal))
 			  (car files&theories)))
 	     *imported-libraries*)
     (maphash #'(lambda (lib files&theories)
 		 (maphash #'(lambda (file date&theories)
+			      (declare (ignore date&theories))
 			      (pushnew (format nil "~a~a" lib file) files
 				       :test #'equal))
 			  (car files&theories)))
@@ -643,9 +628,11 @@
 (defun current-libraries ()
   (let ((libs nil))
     (maphash #'(lambda (lib files&theories)
+		 (declare (ignore files&theories))
 		 (pushnew (namestring lib) libs :test #'equal))
 	     *imported-libraries*)
     (maphash #'(lambda (lib files&theories)
+		 (declare (ignore files&theories))
 		 (pushnew (namestring lib) libs :test #'equal))
 	     *prelude-libraries*)
     (sort libs #'string<)))

@@ -53,6 +53,8 @@
     (pvs-emacs-eval "(setq *pvs-initialized* t)")))
 
 (defun reset-typecheck-caches ()
+  (dolist (fn *untypecheck-hook*)
+    (funcall fn))
   (reset-subst-mod-params-cache)
   (reset-pseudo-normalize-caches)
   ;;(reset-fully-instantiated-cache)
@@ -209,7 +211,6 @@
 (defmethod parse-file ((filename string) &optional forced? no-message?)
   (let* ((file (make-specpath filename))
 	 (*current-file* filename)
-	 (*current-theory* nil)
 	 (theories (get-theories file)))
     (cond ((not (probe-file file))
 	   (unless no-message?
@@ -304,10 +305,9 @@
     ;;(check-import-circularities new-theories filename)
     (update-parsed-file filename file theories new-theories forced?)
     (pvs-message "~a parsed in ~d seconds" filename time)
-    #+pvsdebug (assert (every #'(lambda (nth)
-				  (get-theory (mk-modname (id nth))))
+    #+pvsdebug (assert (every #'(lambda (nth) (get-theory (id nth)))
 			      new-theories))
-    (mapcar #'(lambda (nth) (get-theory (mk-modname (id nth)))) new-theories)))
+    (mapcar #'(lambda (nth) (get-theory (id nth))) new-theories)))
 
 (defun check-for-theory-clashes (new-theories filename)
   (check-for-duplicate-theories new-theories)
@@ -403,8 +403,8 @@
   (unless (or (null theory)
 	      (memq theory *theories-visited*))
     (push theory *theories-visited*)
-    (dolist (m (get-immediate-usings theory))
-      (all-importings* (get-theory m)))))
+    (dolist (ith (get-immediate-usings theory))
+      (all-importings* (get-theory ith)))))
 
 
 (defun update-parsed-file (filename file theories new-theories forced?)
@@ -472,7 +472,7 @@
 				(cons (if kept? oth nth) result)))))
 
 (defun untypecheck-usedbys (theory)
-  (dolist (tid (find-all-usedbys (id theory)))
+  (dolist (tid (find-all-usedbys theory))
     (let ((th (get-theory tid)))
       (reset-proof-statuses th)
       (untypecheck-theory th))))
@@ -577,9 +577,8 @@
 
 (defun typecheck-theories (filename theories)
   (dolist (theory (sort-theories theories))
-    (let ((start-time (get-universal-time))
-	  (*current-theory* theory))
-      (mapc #'(lambda (u) (get-typechecked-theory u theory))
+    (let ((start-time (get-universal-time)))
+      (mapc #'(lambda (u) (get-typechecked-theory u))
 	    (get-immediate-usings theory))
       (unless (typechecked? theory)
 	(typecheck theory)
@@ -755,13 +754,16 @@
   (typecheck-file modname forced? t))
 
 
-(defun grind-untried-formulas (file)
-  (dolist (theory (get-theories file))
-    (grind-untried-formulas* theory nil))
-  (status-proof-pvs-file file))
+(defun grind-untried-of-pvs-file (filename)
+  (dolist (theory (get-theories filename))
+    (grind-untried-formulas theory nil))
+  (status-proof-pvs-file filename))
 
-(defun grind-untried-formulas* (theory &optional (show? t))
-  (dolist (fmla (provable-formulas (get-theory theory)))
+(defun grind-untried-of-theory (theoryname)
+  (grind-untried-formulas (get-theory theoryname) t))
+
+(defun grind-untried-formulas (theory &optional (show? t))
+  (dolist (fmla (provable-formulas theory))
     (unless (justification fmla)
       (pvs-message "Grinding ~a" (id fmla))
       (setf (justification fmla) '("" (grind) nil))
@@ -857,9 +859,9 @@
 		theories))
       t)))
 
-(defmethod prettyprint (theory)
-  (let ((*no-comments* nil))
-    (prettyprint (get-parsed-theory theory))))
+; (defmethod prettyprint (theory)
+;   (let ((*no-comments* nil))
+;     (prettyprint (get-parsed-theory theory))))
 
 ;(defun pp (theory)
 ;  (prettyprint theory))
@@ -916,7 +918,10 @@
     (eql (parsed-date file)
 	 (file-write-date file))))
 
-(defun parsed? (modref)
+(defmethod parsed? ((mod datatype-or-module))
+  (parsed?* mod))
+
+(defmethod parsed? ((modref modname))
   (parsed?* (get-theory modref)))
 
 (defmethod parsed?* ((mod datatype-or-module))
@@ -997,7 +1002,13 @@
 	   importings)))
 
 (defmethod typechecked? (theoryref)
+  (break "typechecked? being called with ~a" (type-of theoryref))
   (let ((theory (get-theory theoryref)))
+    (and theory
+	 (typechecked? theory))))
+
+(defmethod typechecked? ((tname modname))
+  (let ((theory (get-theory tname)))
     (and theory
 	 (typechecked? theory))))
 
@@ -1536,34 +1547,7 @@
 	(progn ;(pvs-message "Theory already exists")
 	       nil)
 	(namestring (make-pathname :name modname :type "pvs"
-				   :defaults (working-directory)))
-	)))
-
-;;; Import Theory
-
-;(defun im (filename &optional modname)
-;  (import-module filename modname))
-;
-;(defun import-module (filename &optional modname)
-;  ;;(save-some-modules)
-;  (let ((newfile (if modname
-;		     (make-specpath modname)
-;		     filename)))
-;    (cond ((not (probe-file filename))
-;	   (pvs-error "File ~a does not exist." filename))
-;	  ((and (get-theory newfile)
-;		(not (pvs-y-or-n-p "Theory ~a already exists - overwrite? "
-;				  (pathname-name newfile)))))
-;	  ((and modname
-;		(probe-file newfile)
-;		(not (equal (truename filename) (truename newfile)))
-;		(not (pvs-y-or-n-p "File ~a already exists - overwrite? "
-;				  (pathname-name newfile)))))
-;	  (t (unless (or *to-emacs*
-;			 (equal (pathname-directory (truename filename))
-;				(pathname-directory
-;				 (truename (working-directory)))))
-;	       (copy-file filename newfile))))))
+				   :defaults (working-directory))))))
 
 
 ;;; Delete Theory
@@ -1593,42 +1577,6 @@
       (when (typechecked? theory)
 	(untypecheck-theory theory))
       (remhash (id theory) *pvs-modules*))))
-
-
-;;; get-using-chain returns a list of ids representing the transitive
-;;; closure of all the theories used by the specified one (itself
-;;; included).
-
-(defun get-using-chain (modname &key parse? sort? (string? t))
-  (let ((*modules-visited* nil))
-    (get-using-chain* modname parse?)
-    (if string?
-	(mapcar #'string
-		(if sort?
-		    (sort *modules-visited* #'string<)
-		    *modules-visited*))
-	*modules-visited*)))
-
-(defun get-using-chain* (modname parse?)
-  (let ((*current-theory* (if parse?
-			      (get-parsed-theory modname)
-			      (get-theory modname)))
-	(cname (makesym "~@[~a@~]~a" (get-libname-of modname) (id modname))))
-    (when *current-theory*
-      (unless (member cname *modules-visited*)
-	(push cname *modules-visited*)
-	(when *current-theory*
-	  (dolist (m (get-immediate-usings *current-theory*))
-	    (get-using-chain* m parse?)))))))
-
-(defmethod get-libname-of ((theory module))
-  nil)
-
-(defmethod get-libname-of ((adt datatype))
-  nil)
-
-(defmethod get-libname-of ((name modname))
-  (library name))
 
 
 ;;; List Theories
@@ -1744,22 +1692,20 @@
 ;;; get-parsed-theory gets the parsed theory, but will not save the context
 ;;; (last argument to parse-file)
 
-(defun get-parsed-theory (theoryref &optional in-theory)
+(defun get-parsed-theory (theoryref)
   (let ((mod (get-theory theoryref)))
     (cond ((and mod (gethash (id mod) *prelude*))
 	   mod)
-	  ((parsed? mod)
+	  ((and mod (parsed? mod))
 	   mod)
-	  ((and (typep theoryref 'modname)
-		(library theoryref))
-	   (when in-theory
-	     (multiple-value-bind (lib msg)
-		 (get-library-pathname (library theoryref) in-theory)
-	       (if lib
-		   (load-imported-library lib theoryref)
-		   (type-error theoryref
-		     (or msg "Library ~a could not be found")
-		     (library theoryref))))))
+	  ((library theoryref)
+	   (multiple-value-bind (lib msg)
+	       (get-library-pathname (library theoryref))
+	     (if lib
+		 (load-imported-library lib theoryref)
+		 (type-error theoryref
+		   (or msg "Library ~a could not be found")
+		   (library theoryref)))))
 	  ((and mod (filename mod))
 	   (parse-file (filename mod) nil t)
 	   (get-theory theoryref))
@@ -1784,22 +1730,16 @@
 	   theory)
 	  (t (pvs-message "~a has not been parsed." theoryref)))))
 
-(defun get-typechecked-theory (theoryref &optional in-theory)
+(defun get-typechecked-theory (theoryref)
   (or (and (or *in-checker*
 	       *generating-adt*)
 	   (get-theory theoryref))
-      (let* ((*current-theory* (or in-theory *current-theory*))
-	     (theory (get-parsed-theory theoryref *current-theory*)))
+      (let* ((theory (get-parsed-theory theoryref)))
 	(when theory
 	  (unless (or *in-checker* (typechecked? theory))
-	    (let ((*current-theory* *current-theory*)
-		  (*generating-adt* nil))
+	    (let ((*generating-adt* nil))
 	      (typecheck-file (filename theory)))))
 	theory)))
-
-(defun all-modules-parsed? (root)
-  (every #'(lambda (m) (parsed? (get-theory m)))
-	 (get-using-chain root)))
 
 (defun parsed-date (filename)
   (car (gethash (pathname-name filename) *pvs-files*)))
@@ -2005,14 +1945,6 @@
 	      (format t "~%Q.E.D."))))
 	t t)
       (pvs-message "No proof has been run yet")))
-
-(defun alltt-proof (file terse?)
-  (pvs-buffer " alltt proof"
-    (with-open-file (*standard-output* file :direction :output)
-      (let ((*report-mode* terse?)
-	    (*prover-indent* *prover-indent*))
-	(report-proof *last-proof*)))
-    t t))
 
 (defun show-expanded-sequent (&optional all?)
   (if (and *in-checker* *ps*)
@@ -2225,17 +2157,3 @@
 			     :direction :output
 			     :if-file-exists :supersede)
 	  (format out "~{~%~a~}" (collect-all-remaining-subgoals ps))))))
-
-(defun collect-all-remaining-subgoals (proofstate)
-  (if (eq (status-flag proofstate) '!) nil
-      (let* ((subgoals  (append (pending-subgoals proofstate)
-			       (remaining-subgoals proofstate)))
-	     (subgoals (if (current-subgoal proofstate)
-			   (cons (current-subgoal proofstate) subgoals)
-			   subgoals)))
-	  (if subgoals
-	      (mapcan #'collect-all-remaining-subgoals
-		(sort subgoals
-		      #'<
-		      :key #'(lambda (x) (safe-parse-integer (label x)))))
-	      (list proofstate)))))

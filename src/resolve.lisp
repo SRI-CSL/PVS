@@ -102,13 +102,37 @@
       (break "get-resolutions")
       (let* ((adecls (gethash (id name) (current-declarations-hash)))
 	     (decls (if (mod-id name)
-			(remove-if-not #'(lambda (d)
-					   (eq (id (module d)) (mod-id name)))
+			(remove-if-not
+			    #'(lambda (d) (eq (id (module d)) (mod-id name)))
 			  adecls)
-			adecls)))
+			adecls))
+	     (theory-aliases (get-theory-aliases name)))
 	(nconc (get-binding-resolutions name kind args)
 	       (get-record-arg-resolutions name kind args)
-	       (get-decls-resolutions decls (actuals name) kind args)))))
+	       (get-decls-resolutions decls (actuals name) kind args)
+	       (get-theory-alias-decls-resolutions theory-aliases adecls
+						   kind args)))))
+
+(defun get-theory-alias-decls-resolutions (theory-aliases adecls kind args
+							  &optional reses)
+  (if (null theory-aliases)
+      reses
+      (let* ((thalias (car theory-aliases))
+	     (decls (remove-if-not #'(lambda (d)
+				       (eq (id (module d)) (id thalias)))
+		      adecls))
+	     (res (get-decls-resolutions decls (actuals thalias) kind args)))
+	(get-theory-alias-decls-resolutions
+	 (cdr theory-aliases) adecls kind args
+	 (nconc reses res)))))
+
+(defun get-theory-aliases (name)
+  (when (mod-id name)
+    (let ((mod-decls (remove-if-not #'mod-decl?
+		       (gethash (mod-id name) (current-declarations-hash)))))
+      (assert (every #'(lambda (md) (fully-instantiated? (modname md)))
+		     mod-decls))
+      (mapcar #'modname mod-decls))))
 
 (defmethod get-binding-resolutions ((name name) kind args)
   (with-slots (mod-id library actuals id) name
@@ -198,6 +222,7 @@
 		     (expr (let ((ftype (find-supertype (type decl))))
 			     (and (typep ftype 'funtype)
 				  (or (length= (domain-types ftype) args)
+				      (singleton? (domain-types ftype))
 				      (singleton? args)))))
 		     (t nil))))
       (if (null acts)
@@ -372,29 +397,6 @@
 
 (defun eq-id (x y)
   (eq x (id y)))
-
-(defun module-synonym-instance (name)
-  (when (mod-id name)
-    (let ((mdecl (find-if #'(lambda (d) (typep d 'mod-decl))
-		   (gethash (mod-id name)
-			    (current-declarations-hash)))))
-      (if mdecl
-	  (list (list (get-theory (modname mdecl)) (modname mdecl)))
-	  (used-mod-syn (mod-id name) (using *current-context*))))))
-
-(defun used-mod-syn (mid usings)
-  (when usings
-    (let ((mdecl (find-if #'(lambda (d)
-			      (and (typep d 'mod-decl)
-				   (eq (id d) mid)
-				   (visible? d)))
-		   (all-decls (caar usings)))))
-      (if mdecl
-	  (list (cons (get-typechecked-theory (id (modname mdecl)))
-		      (mapcar #'(lambda (u)
-				  (subst-mod-params (modname mdecl) u))
-			      (cdar usings))))
-	  (used-mod-syn mid (cdr usings))))))
 
 
 ;;; At this point, we know that the module has the right id, the right
@@ -715,65 +717,6 @@
       ;;; FIXME - create resolutions here
       (matching-decls* name fdecls modinsts args nil))))
 
-
-;;; Returns the set of resolutions which match the name, in that it is the
-;;; right kind and has compatible arguments.  Each pair is composed of a
-;;; declaration and a name representing the module instance; thus the id
-;;; is the module name, and the actuals specifies the instance.
-;;; In the future, we may carry bindings as well, so that the actual
-;;; parameters can be inferred.  For now, if the module has not been
-;;; instantiated either in the USING clause or in the name itself, and
-;;; the context doesn't eliminate the resulting pair, then it is an error.
-;;;   name	- is the name to be resolved
-;;;   kind	- is the kind of name expected (module, type, expr or field)
-;;;   modnames	- is the names of the modules to search in
-;;;   args	- the arguments provided if it is an application
-
-(defun match-local-decls (name kind args)
-  (when (and (or (null (mod-id name))
-		 (eq (mod-id name) (id (theory-name *current-context*))))
-	     (null (library name))
-	     (null (actuals name)))
-    #+pvsdebug (assert (every #'binding? *bound-variables*))
-    (let* ((bvars (get-distinct-bound-variables *bound-variables* name))
-	   (ldecls (append (gethash (id name)
-				    (local-decls *current-context*))
-			   (gethash (id name)
-				    (local-proof-decls *current-context*))))
-	   (decls (if bvars
-		      (append bvars (remove-if #'var-decl? ldecls))
-		      ldecls))
-	   (pdecls (possible-decls (id name) decls kind))
-	   (modinsts (list (theory-name *current-context*))))
-      (matching-decls* name pdecls modinsts args nil))))
-
-(defun get-distinct-bound-variables (bvars name &optional result)
-  (if (null bvars)
-      (nreverse result)
-      (get-distinct-bound-variables
-       (cdr bvars)
-       name
-       (if (and (eq (id (car bvars)) (id name))
-		;;(not (eq (car bvars) name))
-		(not (member (type (car bvars)) result
-			     :test #'compatible? :key #'type)))
-	   (cons (car bvars) result)
-	   result))))
-
-(defun possible-decls (id decls kind &optional result)
-  (if (null decls)
-      result
-      (possible-decls id (cdr decls) kind
-		      (let ((d (car decls)))
-			(if (and (kind-match (kind-of d) kind)
-				 (or (memq d *bound-variables*)
-				     ;; (typep d 'binding)
-				     (eq (module d) (theory *current-context*))
-				     (and (visible? d)
-					  (can-use-for-assuming-tcc? d))))
-			    (cons d result)
-			    result)))))
-
 (defun can-use-for-assuming-tcc? (d)
   (or (not *in-checker*)
       (not *top-proofstate*)
@@ -1058,7 +1001,8 @@
       reses))
 
 (defun filter-bindings (reses args)
-  (or (delete-if-not #'(lambda (r) (typep (declaration r) 'bind-decl))
+  (or (delete-if-not #'(lambda (r)
+			 (typep (declaration r) '(or bind-decl var-decl)))
 	reses)
       (and args
 	   (delete-if-not #'(lambda (r)
@@ -1211,31 +1155,6 @@
 		  modname)))
 	    modname)
 	  (resolve-theory-abbreviation modname))))
-
-(defun resolve-theory-abbreviation (modname)
-  (let ((thabbr (find-if #'(lambda (d) (typep d 'mod-decl))
-		  (gethash (id modname) (current-declarations-hash)))))
-    (if thabbr
-	(if (actuals modname)
-	    (type-error modname
-	      "May not provide actuals for entities defined locally")
-	    (modname thabbr))
-	(resolve-imported-theory-abbreviation modname
-					      (using-hash *current-context*)))))
-
-(defun resolve-imported-theory-abbreviation (modname importings)
-  (when importings
-    (let ((mdecl (find-if #'imported-theory-abbreviation
-		   (gethash (id modname) (declarations (caar importings))))))
-      (if mdecl
-	  (cond ((actuals modname)
-		 (resolve-theory-name (copy (modname mdecl)
-					'actuals (actuals modname))))
-		((singleton? (cdar importings))
-		 (resolve-theory-name (subst-mod-params (modname mdecl)
-							(cadar importings))))
-		(t (resolve-theory-name (modname mdecl))))
-	  (resolve-imported-theory-abbreviation modname (cdr importings))))))
 
 (defmethod imported-theory-abbreviation (decl)
   (declare (ignore decl))

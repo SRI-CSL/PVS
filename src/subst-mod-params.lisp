@@ -100,8 +100,6 @@
 ;;; and returns it if necessary.
 
 (defun get-subst-mod-params-cache (modinst)
-  (declare (ignore modinst))
-  ;;  (pvs-clrhash *subst-mod-params-cache*)
   (unless *all-subst-mod-params-caches*
     (reset-subst-mod-params-cache))
   (let ((cache (gethash modinst *all-subst-mod-params-caches*)))
@@ -113,35 +111,33 @@
 	  ncache))))
 
 
-
 ;;; The main entry point to subst-mod-params.
 
 (defun subst-mod-params (obj modinst)
   (assert *current-context*)
   ;;(assert *current-theory*)
-  (let ((*current-library* (when modinst (library modinst))))
-    (if (and modinst (free-params obj))
-	(with-slots (actuals) modinst
-	  #+pvsdebug (assert (every #'(lambda (a) (not (null a))) actuals))
-	  (if actuals
-	      (let* ((*generate-tccs* 'none)
-		     (*subst-mod-params-cache*
-		      (get-subst-mod-params-cache modinst))
-		     (formals (formals-sans-usings (get-theory modinst)))
-		     (bindings (make-subst-mod-params-bindings
-				modinst formals actuals nil))
-		     (nobj (subst-mod-params* obj modinst bindings)))
-		#+pvsdebug (assert (or (eq obj nobj) (not (tc-eq obj nobj))))
-		#+pvsdebug (assert (equal bindings (pairlis formals actuals)))
-		#+pvsdebug (assert (or (typep nobj 'modname)
-				       (fully-instantiated? nobj)))
-		nobj)
-	      obj))
-	obj)))
+  (if (and modinst (free-params obj))
+      (with-slots (actuals) modinst
+	#+pvsdebug (assert (every #'(lambda (a) (not (null a))) actuals))
+	(if actuals
+	    (let* ((*generate-tccs* 'none)
+		   (*subst-mod-params-cache*
+		    (get-subst-mod-params-cache modinst))
+		   (formals (formals-sans-usings (get-theory modinst)))
+		   (bindings (make-subst-mod-params-bindings
+			      modinst formals actuals nil))
+		   (nobj (subst-mod-params* obj modinst bindings)))
+	      #+pvsdebug (assert (or (eq obj nobj) (not (tc-eq obj nobj))))
+	      #+pvsdebug (assert (equal bindings (pairlis formals actuals)))
+	      #+pvsdebug (assert (or (typep nobj 'modname)
+				     (fully-instantiated? nobj)))
+	      nobj)
+	    obj))
+      obj))
 
 (defun adt-modinst (modinst)
   (let* ((th (get-theory modinst))
-	 (dth (get-theory (generated-by th))))
+	 (dth (get-theory* (generated-by th) (library modinst))))
     (if (and dth
 	     (typep dth 'datatype))
 	(adt-modinst* (positive-types dth) (actuals modinst)
@@ -224,8 +220,7 @@
 ;;; only cares about the argument type.
 
 (defmethod subst-mod-params* :around (obj modinst bindings)
-  (declare (ignore modinst bindings)
-	   (type ht *subst-mod-params-cache*))
+  (declare (type hash-table *subst-mod-params-cache*))
   (let ((hobj (gethash obj *subst-mod-params-cache*)))
     (or hobj
 	(let ((nobj (if (fully-instantiated? obj)
@@ -251,6 +246,7 @@
 
 
 (defmethod subst-mod-params* :around ((obj expr) modinst bindings)
+  (declare (ignore modinst bindings))
   (with-slots (free-parameters) obj
     (cond (free-parameters
 	   (let ((nobj (call-next-method)))
@@ -328,6 +324,7 @@
        (not (every #'null (positive-types (adt ex))))))
 
 (defmethod adt-expand-positive-subtypes? (ex)
+  (declare (ignore ex))
   nil)
 
 (defmethod adt-expand-positive-subtypes! ((type type-name))
@@ -459,6 +456,7 @@
 ;;; Expressions
 
 (defmethod subst-mod-params* ((expr name-expr) modinst bindings)
+  (declare (ignore modinst))
   (let* ((decl (declaration expr))
 	 (act (cdr (assq decl bindings))))
     (if act
@@ -478,6 +476,7 @@
 	     nexpr))))
 
 (defmethod subst-mod-params* ((expr constructor-name-expr) modinst bindings)
+  (declare (ignore modinst bindings))
   (let ((nexpr (call-next-method)))
     (if (eq nexpr expr)
 	expr
@@ -486,6 +485,7 @@
 	  'accessor-names 'unbound))))
 
 (defmethod subst-mod-params* ((expr recognizer-name-expr) modinst bindings)
+  (declare (ignore modinst bindings))
   (let ((nexpr (call-next-method)))
     (if (eq nexpr expr)
 	expr
@@ -608,6 +608,7 @@
 					    modinst bindings)))))
 
 (defmethod subst-mod-params* ((sym symbol) modinst bindings)
+  (declare (ignore modinst bindings))
   sym)
 
 (defmethod subst-mod-params* ((expr binding-expr) modinst bindings)
@@ -653,6 +654,7 @@
       (lcopy ass 'arguments args 'expression expr))))
 
 (defmethod subst-mod-params* ((expr field-assignment-arg) modinst bindings)
+  (declare (ignore modinst bindings))
   expr)
 
 (defmethod subst-mod-params* ((sel selection) modinst bindings)
@@ -756,8 +758,8 @@
 					       (type-value (car nacts)))))
 			     nacts)
 			 (when (and (typep (module decl) 'library-theory)
-				    (get-theory (id (module decl))
-						(library modinst)))
+				    (get-theory* (id (module decl))
+						 (library modinst)))
 			   (library modinst)))
 		       'type (subst-mod-params* type modinst bindings)))))))))
 
@@ -802,6 +804,7 @@
       'type rtype)))
 
 (defmethod make-resolution ((decl bind-decl) modinst &optional type)
+  (declare (ignore modinst type))
   (let ((res (resolution decl)))
     (if (and res (eq (declaration res) decl))
 	(copy res)

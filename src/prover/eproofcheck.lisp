@@ -46,8 +46,7 @@
 	 (*proving-tcc* T)
 	 (*generate-tccs* T)
 	 (*subgoals* T)
-	 (*current-theory* (get-theory module-name))
-	 (*current-context* (context *current-theory*))
+	 (*current-context* (context (get-theory module-name)))
 	 (expr (typecheck (pc-parse expr 'expr)
 		 :expected *boolean*))
 	 (closed-expr (universal-closure expr))
@@ -75,12 +74,6 @@
 	(*auto-rewrites-ops* (init-if-rec *auto-rewrites-ops*))
 	(*auto-rewrites* (init-if-rec *auto-rewrites*))
 	(*auto-rewrites-off* nil)
-	(auto-rewrites-info
-	 (make-instance 'auto-rewrites-info
-	   'rewrites (init-symbol-table)
-	   'auto-rewrites-names nil
-	   'auto-rewrites!-names nil
-	   'macro-names nil))	
 	(*subtype-names* nil)
 	(*named-exprs* nil)
 	(*rec-type-dummies* nil)
@@ -182,6 +175,7 @@
       *top-proofstate*)))
 
 (defmethod prove-decl ((decl declaration) &key strategy)
+  (declare (ignore strategy))
   (format-if "~%Couldn't find formula ~a in module ~a."
 	     (id decl) (id *current-theory*)))
 
@@ -870,7 +864,8 @@ Would you like to rerun the proof?~%")))
 (defun isfun? (sym)
   (and (symbolp sym)
        (or (fboundp sym)
-	   (special-form-p sym))))
+	   ;;(special-form-p sym)
+	   )))
 
 (defun expr-eval (expr)
   (cond ((consp expr)
@@ -883,80 +878,6 @@ Would you like to rerun the proof?~%")))
 		   (special-variable-p expr))
 	       (eval expr)
 	       expr))))
-
-(defun groovy-cakes (expr)
-  (cond ((consp expr)
-	 (if (or (gethash (car expr) *rulebase*)
-		 (step-or-rule-defn (car expr))
-		 (not (isfun? (car expr))))
-	     expr
-	     (eval expr)))
-	(t (if (or (numberp expr)
-		   (special-variable-p expr))
-	       (eval expr)
-	       expr))))
-
-;(defun expr-eval (expr ps &optional alist)
-;  (cond ((null expr) nil)
-;	((global? expr) (global-value expr ps))
-;	((typep expr 'symbol)
-;	 (let ((preval (assoc expr alist)))
-;	   (if (null preval) nil (cdr preval))
-;	   )))
-;	((quote? expr) (cadr expr))
-;	((if-form? expr)
-;	 (if (expr-eval (cadr expr) ps alist)
-;	     (expr-eval (caddr expr) ps alist)
-;	     (expr-eval (cadddr expr) ps alist)))
-;	((let-form? expr)
-;	 (expr-eval (body expr) ps
-;		     (loop for x in (let-bindings expr)
-;			   collect (cons (car x)
-;					 (expr-eval (cadr x) ps alist)))))
-;	((and (eq (car expr 'equal)
-;		  (> (length expr) 2)))
-;	     (tc-eq (expr-eval (cadr expr) ps alist)
-;		    (expr-eval (caddr expr) ps alist)))
-;	((expr-primitive? (car expr))
-;	 (eval `(,(car expr) @,(loop for x in (cdr expr)
-;				collect (expr-eval x ps alist)))))
-;	(t (let ((def (expr-definition (car expr))))
-;	     (if (null def) (break "in-expr-eval")
-;		 (expr-eval (definition def) ps
-;			    (pair-formals-args (formals def)
-;					       (loop for x in (cdr expr)
-;						     collect (expr-eval
-;							      x ps alist))))))))
-
-
-;(defun expr-special (expr)
-;  (and (not (null expr))
-;       (memq (car expr) '(equal parse unparse typecheck))))
-;
-;(defun special-eval (expr ps alist)
-;  (case (car expr)
-;    (equal (tc-eq (expr-eval (cadr expr) ps alist)
-;		  (expr-eval (caddr expr) ps alist)))
-;    (parse (parse :string (expr-eval (cadr expr) ps alist)
-;		  :nt (expr-eval (caddr expr) ps alist)))
-;    (unparse (unparse (expr-eval (cadr expr) ps alist)))
-;    (typecheck (typecheck (expr-eval (cadr expr) ps alist)
-;			  :expected (expr-eval (caddr expr) ps alist)
-;			  :context  (expr-eval (cadddr expr) ps alist)
-;			  :kind  (expr-eval (caddddr expr) ps alist)))))
-;
-;(defun expr-primitive? (symb)
-;  (memq symb '(null car cdr cons equal and or not + -
-;	       symbolp stringp typep
-;	       variable? constant? application? binding-expr?
-;	       forall-expr? exists-expr? lambda-expr?
-;	       record-expr? tuple-expr? neg-expr?
-;	       disjunction? conjunction? implication? iff?
-;	       make-application make-bind-expr make-record-expr
-;	       make-tuple-expr funtype? tuple-type? record-type?
-;	       make-funtype make-tuple-type make-record-type
-;	       subst match find-match)))
-
 
 (defun label-suffix (label)
   (let ((pos (position #\. label :from-end T)))
@@ -1073,8 +994,7 @@ Would you like to rerun the proof?~%")))
   (sort (all-subgoals proofstate) #'mystring<= :key #'label))
 
 (defun report-proof* (proofstate &optional flag)
-  (let*	((done-subgoals (done-subgoals proofstate))
-	 (all-subgoals (all-subgoals-sorted proofstate)))
+  (let ((all-subgoals (all-subgoals-sorted proofstate)))
     (when (or (and (or (null flag)(eql flag 0))(printout proofstate))
 	      (null all-subgoals)) ;(done-subgoals proofstate)
       (let* ((ps (if (null flag) *top-proofstate* proofstate))
@@ -1209,9 +1129,6 @@ Would you like to rerun the proof?~%")))
   accum)
 
 (defun collect-dependent-decls (proofstate)
-  (collect-dependents proofstate nil))
-
-(defun collect-dependent-decls (proofstate)
   (when proofstate
     (let ((present (dependent-decls proofstate))
 	  (current (collect-dependent-decls
@@ -1228,9 +1145,9 @@ Would you like to rerun the proof?~%")))
 
 ;;these make sure that the default values returned for the ops below
 ;;are nil.
-(defmethod topstep (x) nil)
-(defmethod subgoal-strategy (x) nil)
-(defmethod failure-strategy (x) nil)
+(defmethod topstep (x) (declare (ignore x)) nil)
+(defmethod subgoal-strategy (x) (declare (ignore x)) nil)
+(defmethod failure-strategy (x) (declare (ignore x)) nil)
 
 (defun post-processing-step (proofstate)
   (cond ((null (subgoal-strategy 
@@ -1825,9 +1742,7 @@ Would you like to rerun the proof?~%")))
 ;  (when (and (tcc-proofstate? proofstate)
 ;	     (not (tcc-sequent? (current-goal proofstate))))
 ;    (break "bad ps"))
-  (let* ((allsubgoals (append subgoals tcc-subgoals))
-	 (numsubgoals (length allsubgoals))
-	 (colwidth (length (format nil "~a" numsubgoals))))
+  (let ((allsubgoals (append subgoals tcc-subgoals)))
 ;;    (cond ((consp allsubgoals)))
     (loop for goal in allsubgoals
 	  as goalnum from 1
@@ -1958,6 +1873,7 @@ Would you like to rerun the proof?~%")))
   (parse :string (format nil "~a" input) :nt nt))
 
 (defmethod pc-parse ((input syntax) nt)
+  (declare (ignore nt))
   input)
 
 
@@ -2713,11 +2629,14 @@ Would you like to rerun the proof?~%")))
 	  (t NIL))))
 
 (defun gather-seq (seq yesnums nonums
-		       &optional (pred #'(lambda (x) T))
-		       (pos 1) (neg -1))
+		       &optional (pred #'always-t) (pos 1) (neg -1))
   (let ((yesnums (cleanup-fnums yesnums))
 	(nonums (cleanup-fnums nonums)))
     (gather-seq* seq yesnums nonums pred pos neg)))
+
+(defun always-t (x)
+  (declare (ignore x))
+  t)
 
 (defun gather-seq* (seq yesnums nonums
 		       pred pos neg)
@@ -2954,8 +2873,7 @@ Would you like to rerun the proof?~%")))
 		      (expr (expr goal))
 		      (type (type goal))
 		      (kind (kind goal))
-		      (tcc (tcc goal))
-		      (reason (reason goal)))
+		      (tcc (tcc goal)))
 		 (case kind
 		   ((subtype)(format t "Subtype "))
 		   ((termination) (format t "Termination "))
@@ -2969,18 +2887,6 @@ Would you like to rerun the proof?~%")))
 	   (pvs-message "Current goal is not a TCC goal"))
       (pvs-message "No current proof")))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;NSH(7/23/93) lambda-closure modelled on universal closure.
-
-(defun lambda-closure (form)
-   (let ((freevars-form (sort-freevars (freevars form))))
-     (multiple-value-bind (newbindings new?)
-	 (var-to-binding freevars-form)
-       (let ((lform (make-lambda-expr newbindings form)))
-	 (if new?
-	     (reset-bindings lform freevars-form)
-	     lform)))))
-
 (defun quant-to-lambda (form)
   (if (quant-expr? form)
       (make-lambda-expr (bindings form)(expression form))
@@ -2993,21 +2899,26 @@ Would you like to rerun the proof?~%")))
   (funcall testfn expr))
 
 (defmethod termsubst-testfn ((exprs list) testfn)
+  (declare (ignore testfn))
   NIL)
 
 (defmethod termsubst-testfn ((expr assignment) testfn)
+  (declare (ignore testfn))
   NIL)
 
 (defmethod termsubst-testfn ((exprs selection) testfn)
+  (declare (ignore testfn))
   NIL)
 
 (defmethod termsubst-testfn ((expr T) testfn)
+  (declare (ignore testfn))
   T)
 
 (defmethod termsubst-substfn ((expr expr) substfn)
   (funcall substfn expr))
 
 (defmethod termsubst-substfn ((expr T) substfn)
+  (declare (ignore substfn))
   expr)
 
 (defun termsubst (expr substfn testfn)
@@ -3023,6 +2934,7 @@ Would you like to rerun the proof?~%")))
 	 (mapcar #'(lambda (ht)
 		     (let ((keys nil))
 		       (maphash #'(lambda (key val)
+				    (declare (ignore val))
 				    (push key keys))
 				ht)
 		       keys))

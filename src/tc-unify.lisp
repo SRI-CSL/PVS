@@ -121,14 +121,10 @@
 	((and (singleton? args)
 	      (typep (car args) 'tupletype)
 	      (not (singleton? fargs)))
-	 (tc-match* (or (type (car args)) (types (car args)))
-		    fargs
-		    bindings))
+	 (tc-match* (types (car args)) fargs bindings))
 	((and (singleton? fargs)
 	      (typep (car fargs) 'tupletype))
-	 (tc-match* args
-		    (or (type (car fargs)) (types (car fargs)))
-		    bindings))
+	 (tc-match* args (types (car fargs)) bindings))
 	(t (tc-match* (cdr args) (cdr fargs)
 		      (tc-match* (car args) (car fargs) bindings)))))
 
@@ -355,8 +351,7 @@
       (if binding
 	  (cond ((null (cdr binding))
 		 (when (or *tc-matching-domain*
-			   (member farg *tc-fixed-types*
-				   :test #'same-declaration))
+			   (member farg *tc-fixed-types* :test #'tc-eq))
 		   (push arg *tc-domain-matches*))
 		 (setf (cdr binding) arg)
 		 bindings)
@@ -369,7 +364,7 @@
 					      *tc-domain-matches*))
 			      (cond ((or *tc-matching-domain*
 					 (member farg *tc-fixed-types*
-						 :test #'same-declaration))
+						 :test #'tc-eq))
 				     (push arg *tc-domain-matches*)
 				     (setf (cdr binding) arg))
 				    (t (setf (cdr binding) type))))

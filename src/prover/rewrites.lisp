@@ -64,7 +64,6 @@
 	 '(skip))
 	(t (let* ((res (car resolutions))
 		  (mod-inst (module-instance res))
-		  (current-mod? (eq (get-theory (id mod-inst)) *current-theory*))
 		  (forms (create-formulas res context))
 		  (rule (search-and-rewrite* name-expr res mod-inst
 					      forms sforms
@@ -102,103 +101,96 @@
 (defun check-modsubst (modsubst)
   (cond ((or (null modsubst)(eq modsubst T))
 	 modsubst)
-	((loop for (x . y) in modsubst
+	((loop for (nil . y) in modsubst
 	       thereis (null y))
 	 nil)
-	((loop for (x . y) in modsubst
+	((loop for (x . nil) in modsubst
 	       thereis (not (eq (module x)
 				(module (caar modsubst)))))
 	 nil)
 	(t (let* ((module (module (caar modsubst)))
 		  (formals (formals-sans-usings module)))
 	     (when (subsetp formals modsubst
-			  :test #'(lambda (x y)
-				    (tc-eq x (car y))))
-		 modsubst)))))
+			    :test #'(lambda (x y) (tc-eq x (car y))))
+	       modsubst)))))
 
 (defun search-and-rewrite* (name-expr res mod-inst 
 				      forms sforms
 				      in-subst context in-sformnums dir order)
-  (cond ((null forms) nil)
-	((null sforms) nil)
-	(t (let* ((form (car forms))  ;;it's always a universal closure
-		  (outervars (substitutable-vars form))
-		  (check (loop for (x . y) in in-subst
-			       always
-			       (member x outervars
-				       :test #'same-id)))
-		  (subvars (when check
-			     (loop for x in outervars
-				   when (member x in-subst
-						:test
-						#'(lambda (y z)
-						    (same-id y
-							     (car z))))
-				 collect x)))
-		  (temp-subst
-		   (when check
-		     (loop for x in subvars
-			   collect (cons x
-					 (cdr (assoc x in-subst
-						     :test #'same-id))))))
-		  (in-subst (if check
-				(let ((*tccforms* *tccforms*));;protecting
-				  ;NSH(11/17/93: too strong a check
-				  ;(tc-alist temp-subst)
-				  (loop for (x . y) in temp-subst
-					do (typecheck y))
-				  temp-subst)
-				in-subst))
-		  (res-params (external-free-params res))
-		  (*modsubst* (if res-params
-				  (mapcar #'list res-params)
-				  T)));;(break "search-rw*")
-	     (multiple-value-bind
-		   (subst modsubst)
-		 (if (not check) 'fail
-		     (multiple-value-bind (lhs rhs hyp)
-			 (split-rewrite (car forms) subvars dir)
-		       (find-match lhs
-				   (formula (car sforms)) nil
-				   in-subst order)));;NSH(10.10.94)
-	                                   ;;dir->order.
-	       (cond ((or (eq subst 'fail)
-			  (null (check-modsubst modsubst)))
-		      (or (search-and-rewrite* name-expr res mod-inst 
-					      forms (cdr sforms)
-					      in-subst context
-					      in-sformnums dir order)
-			  (search-and-rewrite* name-expr res mod-inst 
-					       (cdr forms) sforms
-					      in-subst context
-					      in-sformnums dir order)))
-		   (t (let* ((modinst
-			      (unless (eq modsubst T)
-				(let* ((module (module (caar modsubst)))
-				       (mod-id (id module))
-				       (formals (formals-sans-usings module))
-				       (alist
-					(mapcar #'(lambda (fml)
-						    (assoc fml modsubst))
-					  formals)))
-				  (make-instance 'modname
-				    'id mod-id 
-				    'actuals (mapcar #'(lambda (x) (mk-actual (cdr x))) alist)))))
-			     (newres
-			      (if (eq modsubst T)
-				  res
-				  (subst-mod-params res modinst)))
-			     (full-name-expr
-			      (copy name-expr
-				    'resolutions (list newres)
-				    'actuals (actuals (module-instance newres)))))
-			(format-if "~%Found matching substitution:")
-			(loop for (x . y) in subst
-			      do (format-if "~%~a gets ~a," x y))
-			`(rewrite-lemma$ ,full-name-expr
-			 ,(flatten-sub subst)
-			 ,in-sformnums
-			  ,dir)))))))))
+  (when (and forms sforms)
+    (let* ((form (car forms));;it's always a universal closure
+	   (outervars (substitutable-vars form))
+	   (check (loop for (x . nil) in in-subst
+			always
+			(member x outervars :test #'same-id)))
+	   (subvars (when check
+		      (loop for x in outervars
+			    when (member x in-subst
+					 :test #'(lambda (y z)
+						   (same-id y (car z))))
+			    collect x)))
+	   (temp-subst
+	    (when check
+	      (loop for x in subvars
+		    collect (cons x (cdr (assoc x in-subst
+						:test #'same-id))))))
+	   (in-subst (if check
+			 (let ((*tccforms* *tccforms*));;protecting
+					;NSH(11/17/93: too strong a check
+					;(tc-alist temp-subst)
+			   (loop for (nil . y) in temp-subst
+				 do (typecheck y))
+			   temp-subst)
+			 in-subst))
+	   (res-params (external-free-params res))
+	   (*modsubst* (if res-params
+			   (mapcar #'list res-params)
+			   T)));;(break "search-rw*")
+      (multiple-value-bind
+	  (subst modsubst)
+	  (if (not check) 'fail
+	      (let ((lhs (split-rewrite (car forms) subvars dir)))
+		(find-match lhs
+			    (formula (car sforms)) nil
+			    in-subst order)));;NSH(10.10.94)
+	;;dir->order.
+	(cond ((or (eq subst 'fail)
+		   (null (check-modsubst modsubst)))
+	       (or (search-and-rewrite* name-expr res mod-inst 
+					forms (cdr sforms)
+					in-subst context
+					in-sformnums dir order)
+		   (search-and-rewrite* name-expr res mod-inst 
+					(cdr forms) sforms
+					in-subst context
+					in-sformnums dir order)))
+	      (t (let* ((modinst
+			 (unless (eq modsubst T)
+			   (let* ((module (module (caar modsubst)))
+				  (mod-id (id module))
+				  (formals (formals-sans-usings module))
+				  (alist
+				   (mapcar #'(lambda (fml)
+					       (assoc fml modsubst))
+				     formals)))
+			     (make-instance 'modname
+			       'id mod-id 
+			       'actuals (mapcar #'(lambda (x) (mk-actual (cdr x))) alist)))))
+			(newres
+			 (if (eq modsubst T)
+			     res
+			     (subst-mod-params res modinst)))
+			(full-name-expr
+			 (copy name-expr
+			   'resolutions (list newres)
+			   'actuals (actuals (module-instance newres)))))
+		   (format-if "~%Found matching substitution:")
+		   (loop for (x . y) in subst
+			 do (format-if "~%~a gets ~a," x y))
+		   `(rewrite-lemma$ ,full-name-expr
+				    ,(flatten-sub subst)
+				    ,in-sformnums
+				    ,dir))))))))
 					
 (defun get-formulas (name context)
   (create-formulas name context))
@@ -382,8 +374,9 @@
 
 ;;;if it isn't an application, list or binding, then the polarit
 ;;;doesn't count, and find-match can be called.
-(defmethod find-match-polarity  (lhs-template (expr T) bind-alist subst
-				    order polarity)
+(defmethod find-match-polarity (lhs-template (expr T) bind-alist subst
+					     order polarity)
+  (declare (ignore polarity))
   (find-match (template-expression lhs-template) expr bind-alist subst order))
 
 (defun find-out-match-polarity (lhs-template expr bind-alist subst order
@@ -553,9 +546,11 @@
 			   polarity))))
 
 (defmethod find-match (lhs (expr  name-expr) bind-alist subst order)
+  (declare (ignore order))
   (call-match lhs expr bind-alist subst))
 
 (defmethod find-match (lhs (expr number-expr) bind-alist subst order)
+  (declare (ignore order))
   (call-match lhs expr bind-alist subst))
 
 (defun find-out-match (lhs expr bind-alist subst order

@@ -70,10 +70,11 @@
     ex))
 
 (defmethod typecheck :around (obj &key expected context tccs)
-   (prog1 (let ((*in-typechecker* t))
-	    (call-next-method))
-     (unless *in-typechecker*
-       (clrhash *expression-types*))))
+  (declare (ignore obj expected context tccs))
+  (prog1 (let ((*in-typechecker* t))
+	   (call-next-method))
+    (unless *in-typechecker*
+      (clrhash *expression-types*))))
 
 (defmethod types ((ex expr))
   (gethash ex *expression-types*))
@@ -300,17 +301,17 @@
 (defmethod get-immediate-usings ((theory module))
   (with-slots (immediate-usings formals assuming (theory-part theory))
       theory
-    (if (eq immediate-usings 'unbound)
-	(setf immediate-usings
-	      (mapcan #'(lambda (thname)
-			  (let ((th (get-theory thname)))
-			    (or (and (typep th 'datatype)
-				     (datatype-instances thname))
-				(list thname))))
-		(mapcar #'theory-name
-		  (remove-if-not #'mod-or-using?
-		    (all-decls theory)))))
-	immediate-usings)))
+      (if (eq immediate-usings 'unbound)
+	  (setf immediate-usings
+		(mapcan #'(lambda (thname)
+			    (let ((th (get-theory thname)))
+			      (or (and (typep th 'datatype)
+				       (datatype-instances thname))
+				  (list thname))))
+		  (mapcar #'theory-name
+		    (remove-if-not #'mod-or-using?
+		      (all-decls theory)))))
+	  immediate-usings)))
 
 (defmethod theory-name ((mdecl mod-decl))
   (modname mdecl))
@@ -436,31 +437,6 @@
   (lcopy (call-next-method)
     'declared-type (subst-mod-params (declared-type c) modinst)))
 
-
-(defun theoryname-in-context-using (typename theory)
-  (and (same-id typename theory)
-       (if (library typename)
-	   (and (typep theory '(or library-theory library-datatype))
-		(equal (pvs-truename (library theory))
-		       (pvs-truename (get-library-pathname (library typename)
-							   (current-theory)))))
-	   (not (typep theory '(or library-theory library-datatype))))))
-
-(defun modname-equal (m1 m2)
-  (and (same-id m1 m2)
-       (if (null (library m1))
-	   (null (library m2))
-	   (and (library m2)
-		(eq (library-of (library m1))
-		    (library-of (library m2)))))))
-
-;(defun add-visible-records (theoryname theory)
-;  (dolist (rtype (visible-records theory))
-;    (when t ;;(visible? rtype)
-;      (pushnew (subst-mod-params rtype theoryname)
-;	       (visible-records (current-theory)) :test #'tc-eq))))
-
-
 ;;; Remove formals that are not a part of the current module.  This
 ;;; handles the following circumstance:
 ;;;
@@ -517,11 +493,12 @@
   t)
 
 (defun subst-types (type assoc)
-  (when assoc
-    (gensubst type
-      #'(lambda (te) (cdr (assoc (declaration te) assoc)))
-      #'(lambda (te) (and (name? te)
-			  (assoc (declaration te) assoc))))))
+  (if assoc
+      (gensubst type
+	#'(lambda (te) (cdr (assoc (declaration te) assoc)))
+	#'(lambda (te) (and (name? te)
+			    (assoc (declaration te) assoc))))
+      type))
 
 
 ;;; check-exporting checks the names and theory instances being exported.
@@ -726,7 +703,6 @@
   (unless (symbolp theories);; Handles NIL, ALL, and CLOSURE
     (when (actuals (car theories))
       (typecheck-actuals (car theories)))
-    (break)
     (unless (member (car theories) (using-hash *current-context*)
 		    :test #'(lambda (x y)
 			      (member x (cdr y)

@@ -394,7 +394,7 @@ E.g.: (auto-rewrite-theories \"real_props\" (\"sets\" :defs explicit))."
 	(exclude-theory-names
 	 (mapcar #'(lambda (x) (pc-parse x 'modname))
 	   exclude-theories))
-	(theory (get-theory name))
+	(theory (get-theory theory-name))
 	(usings (if importchain?
 		    (apply #'append
 		      (mapcar #'cdr (all-usings theory)))
@@ -2141,33 +2141,28 @@ corresponding to dir (left-to-right when LR, and right-to-left when RL)."
 
 (defun check-subst-wrt-formula (fmla subst)
   (let* ((in-subst (pc-parse-subst subst))
-	(outervars (substitutable-vars fmla))
-	(check (loop for (x . y) in in-subst
-		     always
-		     (member x outervars
-			     :test #'same-id)))
-	(subvars (when check
-		   (loop for x in outervars
-			 when (member x in-subst
-				      :test
-				      #'(lambda (y z)
-					  (same-id y
-						   (car z))))
-			 collect x)))
-	(temp-subst
-	 (when check
-	   (loop for x in subvars
-		 collect (cons x
-			       (cdr (assoc x in-subst
-					   :test #'same-id))))))
-	(in-subst (if check
-		      (let ((*tccforms* *tccforms*));;protecting
+	 (outervars (substitutable-vars fmla))
+	 (check (loop for (x . nil) in in-subst
+		      always
+		      (member x outervars :test #'same-id)))
+	 (subvars (when check
+		    (loop for x in outervars
+			  when (member x in-subst
+				       :test #'(lambda (y z)
+						 (same-id y (car z))))
+			  collect x)))
+	 (temp-subst
+	  (when check
+	    (loop for x in subvars
+		  collect (cons x (cdr (assoc x in-subst :test #'same-id))))))
+	 (in-subst (if check
+		       (let ((*tccforms* *tccforms*));;protecting
 					;NSH(11/17/93: too strong a check
 					;(tc-alist temp-subst)
-			(loop for (x . y) in temp-subst
-			      do (typecheck y))
-			temp-subst)
-		      'fail)))
+			 (loop for (nil . y) in temp-subst
+			       do (typecheck y))
+			 temp-subst)
+		       'fail)))
     in-subst))
 
 (defstep rewrite-with-fnum (fnum &optional subst (fnums *) (dir LR))
@@ -2366,11 +2361,11 @@ found. "
 
 (defun forward-match (res conc antec-fmlas formlist)
   (let* ((mod-inst (module-instance res))
-	 (current-mod? (eq (get-theory (id mod-inst))
-			   *current-theory*))
+	 (theory (get-theory mod-inst))
+	 (current-mod? (eq theory *current-theory*))
 	 (actuals (unless current-mod? (actuals mod-inst)))
 	 (formals (unless current-mod?
-		    (formals-sans-usings (get-theory mod-inst))))
+		    (formals-sans-usings theory)))
 	 (*modsubst*
 	  (if formals (if actuals T
 			  (mapcar #'(lambda (x) (list x)) formals))
@@ -2410,11 +2405,11 @@ found. "
 	(C (cadddr info)))
   (loop for F1 in *-* thereis
 	(let* ((mod-inst (module-instance resolution))
-	       (current-mod? (eq (get-theory (id mod-inst))
-				 *current-theory*))
+	       (theory (get-theory mod-inst))
+	       (current-mod? (eq theory *current-theory*))
 	       (actuals (unless current-mod? (actuals mod-inst)))
 	       (formals (unless current-mod?
-			  (formals-sans-usings (get-theory mod-inst))))
+			  (formals-sans-usings theory)))
 	       (*modsubst*
 		(if formals (if actuals T
 				(mapcar #'(lambda (x) (list x)) formals))
@@ -2487,34 +2482,6 @@ found. "
 	    'bindings new-bvars
 	    'expression (detuple* (substit expression alist)))))))
       
-(defun make-new-detupled-bindings (bindings alist bvars)
-  (cond ((null bindings) (cons alist bvars))
-	((tupletype? (type (car bindings)))
-	 (let* ((bind1 (car bindings))
-		(type (type bind1))
-		(types (types type))
-		(new-bvars (make-new-detupled-binding-list
-			    bind1 types alist))
-		(new-vars (loop for x in new-bvars
-				collect
-				(let ((y
-				       (change-class (copy x)
-					      'name-expr)))
-				  (setf (kind y) 'VARIABLE)
-				  y)))
-		(new-tuple (make-tuple-expr new-vars type)))
-	   (make-new-detupled-bindings (cdr bindings)
-				       (cons (cons bind1
-						   new-tuple)
-					     alist)
-				       (nconc bvars new-bvars))))
-	(t (make-new-detupled-bindings (cdr bindings)
-				       (cons (cons (car bindings)
-						   (car bindings))
-					     alist)
-				       (append bvars (list (car bindings)))))))
-		
-
 (defun make-new-detupled-binding-list (boundvar types alist)
   (if (null types) nil
       (let* ((type1 (car types))
@@ -2871,6 +2838,7 @@ or succedent formula in the sequent."
 		     expr))))))
 
 (defmethod pc-typecheck ((expr T) &key expected (fnums '*) (uniquely? T))
+  (declare (ignore expected fnums uniquely?))
   (typecheck expr))
 
 (defstep generalize (term var  &optional type (fnums *)
@@ -2942,15 +2910,19 @@ is needed, the best option is to use CASE."
 	 (t nil)))
 
 (defmethod collect-terms-fun (pred (ps proofstate))
+  (declare (ignore pred))
   nil)
 
 (defmethod collect-terms-fun (pred (sf s-formula))
+  (declare (ignore pred))
   nil)
 
 (defmethod collect-terms-fun (pred (list list))
+  (declare (ignore pred))
   nil)
 
 (defmethod collect-terms-fun (pred (obj t))
+  (declare (ignore pred))
   t)
 
 (defun collect-applications-of-fun (id obj)
@@ -3044,8 +3016,7 @@ in the given fnums."
 	(t (list fnums))))
 
 (defun gather-fnums (sforms yesnums nonums
-		       &optional (pred #'(lambda (x) T))
-		       (pos 1) (neg -1))
+		       &optional (pred #'always-t) (pos 1) (neg -1))
   (let ((yesnums (cleanup-fnums yesnums))
 	(nonums (cleanup-fnums nonums)))
     (gather-fnums* sforms yesnums nonums pred pos neg)))
