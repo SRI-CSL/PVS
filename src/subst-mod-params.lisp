@@ -331,7 +331,7 @@
       (make-subst-mod-params-map-bindings
        modinst
        (cdr mappings)
-       (let ((decl (declaration (lhs (car mappings))))
+       (let ((decl (declaration (car (resolutions (lhs (car mappings))))))
 	     (bind-rhs (rhs (car mappings))))
 	 (assert decl)
 	 (make-subst-mod-params-map-bindings*
@@ -701,6 +701,16 @@
     (setf (type nres) ntype)
     (adt-expand-positive-subtypes ntype)))
 
+;;; just goes ahead and creates new resolution with the
+;;; specified module instance
+(defun subst-mod-params-res (res modinst)
+  (with-slots (declaration module-instance) res
+    (mk-resolution declaration
+      (lcopy module-instance
+	'actuals (actuals modinst))
+      nil)))
+
+
 (defun adt-expand-positive-subtypes (type)
   (if (fully-instantiated? type)
       (gensubst type
@@ -732,12 +742,6 @@
 			'declared-type type)))
 	  (setf (print-type stype) type)
 	  stype))))
-
-;;; just goes ahead and creates new resolution with the
-;;; specified module instance
-(defun subst-mod-params-res (res modinst)
-  (with-slots (declaration module-instance) res
-    (mk-resolution declaration modinst nil)))
 
 
 (defmethod subst-mod-params* ((type type-application) modinst bindings)
