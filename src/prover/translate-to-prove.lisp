@@ -609,23 +609,10 @@
 	(mk-name '<= nil '|reals|)
 	(mk-name '> nil '|reals|)
 	(mk-name '>= nil '|reals|)
-;	(mk-name '+ nil '|reals|)
-;	(mk-name '- nil '|reals|)
-;	(mk-name '* nil '|reals|)
-;	(mk-name '/ nil '|reals|)
-;	(mk-name '+ nil '|rationals|)
-;	(mk-name '- nil '|rationals|)
-;	(mk-name '* nil '|rationals|)
-;	(mk-name '/ nil '|rationals|)
-;	(mk-name '+ nil '|integers|)
-;	(mk-name '- nil '|integers|)
-;	(mk-name '* nil '|integers|)
-;	(mk-name '/ nil '|integers|)
-;	(mk-name '+ nil '|naturalnumbers|)
-;	(mk-name '- nil '|naturalnumbers|)
-;	(mk-name '* nil '|naturalnumbers|)
-;	(mk-name '/ nil '|naturalnumbers|)
 	))
+
+(defparameter *interpreted-alist*
+  (mapcar #'(lambda (x) (cons (id x) x)) *interpreted-names*))
 
 (defparameter *interpretations*
   '((= . equal)
