@@ -193,7 +193,7 @@
   (let* ((dummy (get-rec-type-dummy-name (type expr)))
 	 (decl (mk-const-decl dummy (type expr)))
 	 (res (make-resolution decl (current-theory-name) (type expr)))
-	 (nexpr (make!-name-expr dummy nil nil res 'CONSTANT)))
+	 (nexpr (make!-name-expr dummy nil nil res)))
     (setf (type nexpr) (type expr))
     (translate-assignments (assignments expr)
 			   ;nexpr ;NSH(3.16.97)
@@ -326,10 +326,11 @@
   (if op?
       (let ((res (make-resolution (declaration ex)
 		   (module-instance (resolution (find-supertype (adt ex)))))))
-	(mk-name-expr (id ex) nil nil res 'constant))
+	(mk-name-expr (id ex) nil nil res))
       ex))
 
 (defmethod lift-adt (ex &optional op?)
+  (declare (ignore op?))
   ex)
 
 
@@ -347,18 +348,6 @@
        (not (typep (range (type expr)) 'funtype)))
   nil)
 
-
-(defmethod interpreted? ((expr name-expr))
-  (member expr *interpreted-names*
-	  :test #'(lambda (n i)
-		    (and (eq (id n) (id i))
-			 (module-instance n)
-			 (eq (mod-id i)
-			     (id (module-instance n)))))))
-
-(defun interpretation (expr)
-  (or (cdr (assoc (id expr) *interpretations*))
-      (id expr)))
 
 (defmethod operator ((expr lambda-expr))
   'lambda)
@@ -577,11 +566,6 @@
 (defun make-tr-assign-application (fun-type expr args)
   (list (make-apply-name fun-type)
 	expr args))
-
-(defun mk-assign-application (op args)
-  (let ((appl (mk-application* op args)))
-    (setf (type appl) (range (type op)))
-    appl))
 
 (defmethod make-apply-name ((te type-expr))
   (let* ((type (find-supertype te))
