@@ -47,7 +47,7 @@
 			*prover-keywords*)
 	    #+lucid (record-source-file ,name 'strategy)
 	    (format t "~%Added rule ~a.~%" ,name))
-	   (t;;NSH(8-5)(y-or-n-p "Do you really want to change rule ~a?" ,name)
+	   (t
 	    (setf (required-args entry) (quote ,required-args)
 		  (optional-args entry) (quote ,optional-args)
 		  (docstring entry) docstr
@@ -65,8 +65,7 @@
 				       (quote ,optional-args))))
 			*prover-keywords*)))
 	    #+lucid (record-source-file ,name 'strategy)
-	    (format t "~%Changed rule ~a.~%" ,name))
-	   (t (format t "~%No change.~%")))))
+	    (format t "~%Changed rule ~a" ,name)))))
 
 (defun internal-pc-typecheck (expr &key expected fnums
 				   (context *current-context*)
@@ -80,7 +79,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun sort-hashtable (htable &key key)
   (let ((list nil))
-    (maphash #'(lambda (x y) (push y list)) htable)
+    (maphash #'(lambda (x y) (declare (ignore x)) (push y list)) htable)
     (sort list #'string< :key key)))
 
 ;;The help rule
@@ -120,9 +119,9 @@
 		 (format t "~%~a~%" (docstring entry))))))
   (values 'X nil nil)))
 
-(addrule 'help () ((name  *) )
-	 (help-rule-fun name) 
-	 "Describes rule or all the rules but behaves like SKIP otherwise.
+(addrule 'help () ((name *))
+  (help-rule-fun name) 
+  "Describes rule or all the rules but behaves like SKIP otherwise.
  (HELP <rule-or-strategy-name>) returns the help information for the
      given rule or strategy;
  (HELP rules) returns help for all the primitive commands;
@@ -143,8 +142,9 @@
     'rule-part #'failure-rule
     ))
 
-(addrule 'fail nil nil (failure-rule)
-	 "Signals a failure.  This is primarily used within strategies.
+(addrule 'fail nil nil
+  (failure-rule)
+  "Signals a failure.  This is primarily used within strategies.
 For example, a top-level strategy of the form (then (strat1)(fail))
 applies strat1 and quits the proof unless strat1 completes the proof.
 See the prover manual for more details.")
@@ -165,6 +165,7 @@ See the prover manual for more details.")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;The postpone rule
 (defun postpone (&optional print?)
+  (declare (ignore print?))
   #'(lambda (ps)
       (declare (ignore ps))
       (format-if "~%Postponing ~a.~%" *label*)
@@ -175,8 +176,9 @@ See the prover manual for more details.")
     'rule-part #'postpone
     ))
 
-(addrule 'postpone nil (print?) (postpone)
-	"Places current goal on parent's list of pending (unproved)
+(addrule 'postpone nil (print?)
+  (postpone print?)
+  "Places current goal on parent's list of pending (unproved)
 subgoals, moving to the next one.  Repeated POSTPONEs cycle through the
 pending subgoals.  When PRINT? is T, commentary is suppressed." )
 
@@ -200,7 +202,8 @@ pending subgoals.  When PRINT? is T, commentary is suppressed." )
       (values to nil nil)
       (values 'X nil nil)))
 	    
-(addrule 'undo () ((to 1)) (undo to)
+(addrule 'undo () ((to 1))
+  (undo to)
   "(undo <to[1]>): Undoes proof back n steps or to label,
 command name, command")
 
@@ -211,8 +214,9 @@ command name, command")
 	     (format t "~%~s~%"  (eval lexp))
 	     (values 'X nil nil)))
 
-(addrule 'lisp (lexp) nil (lisp-rule lexp)
-	 "(lisp <exp>):  Evaluates a Lisp expression.")
+(addrule 'lisp (lexp) nil
+  (lisp-rule lexp)
+  "(lisp <exp>):  Evaluates a Lisp expression.")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;The propositional axiom rule
 (defun prop-axiom-rule ()
@@ -265,8 +269,9 @@ command name, command")
 (defmethod neg-tc-eq ((e1 expr) (e2 expr))
   nil)
 
-(addrule 'propax nil nil (prop-axiom-rule)
-	 "Checks if sequent has form ...,A |- ...A or ...|- a = a, ..., in
+(addrule 'propax nil nil
+  (prop-axiom-rule)
+  "Checks if sequent has form ...,A |- ...A or ...|- a = a, ..., in
 which case it considers the subgoal proved and moves to the next pending
 (unproved) subgoal, if any.  If there are no more pending subgoals, the
 proof is complete.  Note that this rule is processed automatically after
@@ -290,17 +295,17 @@ every proof step, and is rarely invoked by the user."
 				(declare (ignore sform))
 				(values '? nil))
 			    sformnums)
-	  (declare (ignore signal))
 	  (values signal (list subgoal);;(substitution ps)
 		  )))))
 
 
-(addrule 'delete nil (&rest fnums)  (delete-rule-fun fnums)
-	 "Deletes a list of formulas that may have become irrelevant.
+(addrule 'delete nil (&rest fnums)
+  (delete-rule-fun fnums)
+  "Deletes a list of formulas that may have become irrelevant.
 The HIDE rule is a more conservative alternative, since hidden formulas
 may be revealed.
 See also HIDE, REVEAL"
-	 "~%Deleting some formulas,")
+  "~%Deleting some formulas,")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -309,6 +314,7 @@ See also HIDE, REVEAL"
       (apply-step-body ps step comment save? time?)))
 
 (defun apply-step-body (ps step comment save? time?)
+  (declare (ignore comment))
   (let* ((*generate-tccs* 'NONE)
 	 (strat (let ((*in-apply* ps));;NSH(8.22.94)
 		  ;;otherwise (apply (query*)) misbehaves.
@@ -342,6 +348,7 @@ See also HIDE, REVEAL"
 	     ;;		     if *in-apply*
 	     ;;			 (throw 'abort-in-apply nil)
 	     ;;			 (values 'X nil nil)
+	     (declare (ignore result))
 	     (let* ((subgoals (collect-subgoals newps))
 		    (justif (collect-justification newps))
 		    (xrule `(apply
@@ -407,8 +414,9 @@ See also HIDE, REVEAL"
 			     (collect-subgoals (cdr pslist) accum)))))
 
 			    
-(addrule 'apply (strategy) (comment save? time?) (apply-step strategy comment save? time?) 
-	 "Applies STRATEGY as if it were a rule, and prints COMMENT string.
+(addrule 'apply (strategy) (comment save? time?)
+  (apply-step strategy comment save? time?) 
+  "Applies STRATEGY as if it were a rule, and prints COMMENT string.
 If SAVE? is T, then the APPLY step is saved even if the strategy
 does nothing, e.g., (SKIP), which is useful for setting values of
 globals, e.g., (APPLY (LISP (setq *xx* ...)) \"recording value of *xx*\" T).
@@ -417,17 +425,17 @@ atomic step so that internal execution of the strategy is hidden
 and only the resulting subgoals are returned.  E.g.,
  (apply (then (skosimp*)(flatten)(inst?))
       \"Skolemizing, flattening, and instantiating\")."
-	 "~%Applying ~%   ~s,~@[~%~a~]")
+  "~%Applying ~%   ~s,~@[~%~a~]")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(addrule 'split () ((fnum *) depth) ;; labels
-	 (split-rule-fun fnum depth)
- "Conjunctively splits formula FNUM.  If FNUM is -, + or *, then
+(addrule 'split () ((fnum *) depth);; labels
+  (split-rule-fun fnum depth)
+  "Conjunctively splits formula FNUM.  If FNUM is -, + or *, then
 the first conjunctive sequent formula is chosen from the antecedent,
 succedent, or the entire sequent.  Splitting eliminates any
 top-level conjunction, i.e., positive AND, IFF, or IF-THEN-ELSE, and
 negative OR, IMPLIES, or IF-THEN-ELSE."
-"~%Splitting conjunctions,")
+  "~%Splitting conjunctions,")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;(addrule 'flatten () (&rest fnums) (flatten fnums)
@@ -437,8 +445,9 @@ negative OR, IMPLIES, or IF-THEN-ELSE."
 ; "~%Applying disjunctive simplification to flatten sequent,")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(addrule 'lift-if () (fnums (updates? T))  (liftif-step fnums updates?)
-	 "Lifts IF occurrences to the top of chosen formulas.
+(addrule 'lift-if () (fnums (updates? T))
+  (liftif-step fnums updates?)
+  "Lifts IF occurrences to the top of chosen formulas.
 CASES, COND, and WITH applications, are treated as IF occurrences.
 The UPDATE? flag controls whether update-applications are converted
 into IF-THEN-ELSE form and lifted.  IF-lifting is the transformation
@@ -449,53 +458,59 @@ have to be applied repeatedly to lift all the conditionals. E.g.,
  (lift-if) : applies IF-lifting to every sequent formula.
  (lift-if - :updates? nil): lifts only antecedent IF that are not
   applications of updates."
-	 "~%Lifting IF-conditions to the top level," )
+  "~%Lifting IF-conditions to the top level,")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(addrule 'lemma (name) (subst) (lemma-rule-fun name subst)
-	 "Adds lemma named NAME as the first antecedent formula
+(addrule 'lemma (name) (subst)
+  (lemma-rule-fun name subst)
+  "Adds lemma named NAME as the first antecedent formula
  after applying the substitutions in SUBST to it.  Example:
   (LEMMA \"assoc\" (\"x\" 1 \"y\" 2 \"z\" 3))."
-	 "~%Applying ~a ~@[where ~{~%  ~a gets ~a,~}~]")
+  "~%Applying ~a ~@[where ~{~%  ~a gets ~a,~}~]")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(addrule 'typepred ()(&rest exprs) (typepred-fun exprs nil)
-	 "Extract subtype constraints for EXPRS and add as antecedents.
+(addrule 'typepred ()(&rest exprs)
+  (typepred-fun exprs nil)
+  "Extract subtype constraints for EXPRS and add as antecedents.
  Note that subtype constraints are also automatically recorded by
 the decision procedures. E.g.,
  (typepred \"abs(c)\"): Adds abs(c) > 0 to the antecedent."
-	 "~%Adding type constraints for ~@{ ~a,~}")
+  "~%Adding type constraints for ~@{ ~a,~}")
 
-(addrule 'typepred! (exprs)(all?) (typepred-fun exprs all?)
-	 "Extract subtype constraints for EXPRS and add as antecedents.
+(addrule 'typepred! (exprs)(all?)
+  (typepred-fun exprs all?)
+  "Extract subtype constraints for EXPRS and add as antecedents.
 ALL? flag when T also brings in integer_pred, rational_pred,
 real_pred type constraints.  Note that subtype constraints are
 also automatically recorded by the decision procedures. E.g.,
  (typepred! \"abs(c)\"): Adds abs(c) > 0 to the antecedent."
-	 "~%Adding type constraints for ~a")
+  "~%Adding type constraints for ~a")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(addrule 'iff nil (&rest fnums)  (iff-rule-fun fnums)
-	 "Converts top level Boolean equality into an IFF.
+(addrule 'iff nil (&rest fnums)
+  (iff-rule-fun fnums)
+  "Converts top level Boolean equality into an IFF.
 Otherwise, propositional simplification (other than by BDDSIMP)
 is not applied to such equalities."
-	 "~%Converting equality to IFF,")
+  "~%Converting equality to IFF,")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(addrule 'case nil (&rest formulas) (case-rule-fun formulas)
-	 "Splits according to the truth or falsity of the formulas in FORMULAS.
+(addrule 'case nil (&rest formulas)
+  (case-rule-fun formulas)
+  "Splits according to the truth or falsity of the formulas in FORMULAS.
  (CASE a b c) on a sequent A |- B generates subgoals:
  a, b, c, A  |- B;
    a, b, A |- c, B;
    a, A |- b, B;
    A |- a, B.
  See also CASE-REPLACE, CASE*"
-	 "~%Case splitting on ~@{~%   ~a, ~}")
+  "~%Case splitting on ~@{~%   ~a, ~}")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(addrule 'extensionality (type) nil (extensionality type)
-	 "Adds extensionality axiom for given TYPE as a sequent formula.
+(addrule 'extensionality (type) nil
+  (extensionality type)
+  "Adds extensionality axiom for given TYPE as a sequent formula.
  Example axioms for given type include:
   [nat->nat]: (FORALL (f, g: [nat->nat]): (FORALL (i:nat): f(i) = g(i))
                  IMPLIES f = g);
@@ -508,22 +523,23 @@ is not applied to such equalities."
                                     IMPLIES l = m).
  See also ETA,  APPLY-EXTENSIONALITY and REPLACE-EXTENSIONALITY."
 
-	 "~%Adding extensionality axioms for type: ~a,")
+  "~%Adding extensionality axioms for type: ~a,")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(addrule 'name (name expr) nil (add-name name expr)
-	 "Introduces an EXPR = NAME premise.
+(addrule 'name (name expr) nil
+  (add-name name expr)
+  "Introduces an EXPR = NAME premise.
 Useful for generalizing the goal, and replacing exprs with bound
 variables, so that the ground prover can be applied to them.
 See also NAME-REPLACE"
-	 "~%Letting ~a name ~a," )
+  "~%Letting ~a name ~a," )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (addrule 'instantiate (fnum terms) (copy?)
-	 (quant-rule-fun fnum terms copy?)
- "Instantiates the top quantifier in the formula FNUM with the TERMS.
+  (quant-rule-fun fnum terms copy?)
+  "Instantiates the top quantifier in the formula FNUM with the TERMS.
 FNUM can also be *, +, or -, in which case the first suitably quantified
 formula is chosen for instantiation.  Each term in TERMS is typechecked
 against the type of the variable it instantiates.  A copy of the
@@ -535,38 +551,39 @@ are to be left uninstantiated.
  Example: (instantiate 2 (\"x\" _ \"2\"))
    Instantiates the first and third bound variables in formula number 2.
  See also INST, INST?"
- "~%Instantiating the top quantifier in ~a with the terms: ~% ~a,")
+  "~%Instantiating the top quantifier in ~a with the terms: ~% ~a,")
 
 
 (addrule 'skolem  (fnum constants) ()
-	 (skolem-rule-fun fnum constants)
-	 "Replaces the universally quantified variables in FNUM with new
+  (skolem-rule-fun fnum constants)
+  "Replaces the universally quantified variables in FNUM with new
 skolem constants in CONSTANTS.
 Example: (skolem 1 (\"A\" \"B\"))
 See also SKOLEM!, SKOSIMP, SKOSIMP*."
-"~%For the top quantifier in ~a, we introduce Skolem constants: ~a,")
+  "~%For the top quantifier in ~a, we introduce Skolem constants: ~a,")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (addrule 'reveal () (&rest fnums)
-	 (reveal-step fnums)
-	 "Moves the hidden formulas (hidden by HIDE or quantifier
+  (reveal-step fnums)
+  "Moves the hidden formulas (hidden by HIDE or quantifier
 instantiation) in FNUMS back to the sequent.  Use the Emacs command
 M-x show-hidden-formulas to see the hidden formulas."
-	 "~%Revealing hidden formulas,")
+  "~%Revealing hidden formulas,")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(addrule 'hide () (&rest fnums) (hide-step fnums)
-	 "(hide <fnums>): Hides the formulas in FNUMS.
+(addrule 'hide () (&rest fnums)
+  (hide-step fnums)
+  "(hide <fnums>): Hides the formulas in FNUMS.
   See REVEAL and DELETE, and also the Emacs command M-x show-hidden-formulas."
-	 "~%Hiding formulas: ~@{ ~a,~}")
+  "~%Hiding formulas: ~@{ ~a,~}")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (addrule 'replace (fnum) ((fnums *) dir hide? actuals?)
-	 (replace-rule-fun fnum fnums dir hide? actuals?)
-	 "Rewrites the given formulas in FNUMS with the formula FNUM.  If
+  (replace-rule-fun fnum fnums dir hide? actuals?)
+  "Rewrites the given formulas in FNUMS with the formula FNUM.  If
 FNUM is an antecedent equality, then it rewrites left-to-right if DIR is
 LR (the default), and right-to-left if DIR is RL.  If FNUM is not an
 antecedent equality, then any occurrence of the formula FNUM in FNUMS is
@@ -574,13 +591,13 @@ replaced by TRUE if FNUM is an antecedent, FALSE for a succedent.  If
 HIDE? is T, then FNUM is hidden afterward.  When ACTUALS?  is T, the
 replacement is done within actuals of names in addition to the expression
 level replacements."
-	 "~%Replacing using formula ~a,")
+  "~%Replacing using formula ~a,")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (addrule 'beta ()((fnums *) rewrite-flag)
-	 (beta-step fnums rewrite-flag)
- "Beta-reduces chosen formulas. If REWRITE-FLAG is LR(RL), then
+  (beta-step fnums rewrite-flag)
+  "Beta-reduces chosen formulas. If REWRITE-FLAG is LR(RL), then
 left(right)-hand-side is left undisturbed for rewriting using
 REWRITE and REWRITE-LEMMA.  Example reduction steps are:
  (LAMBDA x, y: x + y)(2, 3) to 2 + 3
@@ -589,23 +606,22 @@ REWRITE and REWRITE-LEMMA.  Example reduction steps are:
  PROJ_2(2, 3) to 3
  cons?(nil) to FALSE
  car(cons(2, nil)) to 2." 
-	 "~%Applying beta-reduction,")
+  "~%Applying beta-reduction,")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(addrule 'simplify
-	 ()
+(addrule 'simplify ()
 	 ((fnums *) record? rewrite? 
-	   rewrite-flag flush? linear? cases-rewrite? (type-constraints? T)
-	   ignore-prover-output?
-	   ;(assert-connectives? T)
-	   )
-	 (invoke-simplification fnums record? rewrite?
-				rewrite-flag flush? linear?
-				cases-rewrite? type-constraints?
-				ignore-prover-output?
-				;assert-connectives?
-				)
-	 "Uses the decision procedures to to simplify the formulas in
+	  rewrite-flag flush? linear? cases-rewrite? (type-constraints? T)
+	  ignore-prover-output?
+	  ;;(assert-connectives? T)
+	  )
+  (invoke-simplification fnums record? rewrite?
+			 rewrite-flag flush? linear?
+			 cases-rewrite? type-constraints?
+			 ignore-prover-output?
+			 ;;assert-connectives?
+			 )
+  "Uses the decision procedures to to simplify the formulas in
 FNUM and record them for further simplification.  The proof steps
 ASSERT, RECORD, SIMPLIFY, DO-REWRITE are instances of this primitive
 rule and should always be preferred.  The arguments have the following
@@ -641,10 +657,11 @@ effect:
          disjunctions is unsatisfiable using the ground prover.  This step
          can sometimes be expensive and fruitless, and setting
          IGNORE-PROVER-OUTPUT? to T, cases this step to be skipped." 
-	 "~%Simplifying with decision procedures,")
+  "~%Simplifying with decision procedures,")
 
-(addrule 'auto-rewrite () (&rest names) (auto-rewrite-step names)
-	 "Installs automatic rewrite rules given in the NAMES list.
+(addrule 'auto-rewrite () (&rest names)
+  (auto-rewrite-step names)
+  "Installs automatic rewrite rules given in the NAMES list.
 The rewrites are applied by the ASSERT and DO-REWRITE commands.
 Each entry in the list NAMES is either an antecedent formula number or
 names a definition, assumption or
@@ -661,7 +678,7 @@ always match any occurrence of the function.
   E.g.,
   (auto-rewrite \"assoc\" (\"delete\" \"union\") -3 (-4 -5))
   (auto-rewrite :names (\"assoc\" (\"delete\" \"union\"))). "
-	 "~%Installing automatic rewrites from: ~@{~%  ~a~}")
+  "~%Installing automatic rewrites from: ~@{~%  ~a~}")
 
 
 
@@ -679,12 +696,13 @@ always match any occurrence of the function.
 ;effect (see auto-rewrite!)."
 ;	 "~%Rewriting relative to the theory: ~a,")
 
-(addrule 'stop-rewrite () (&rest names) (stop-rewrite-step names)
-	 "Turns off automatic rewriting.  Disables all rewrites if no
+(addrule 'stop-rewrite () (&rest names)
+  (stop-rewrite-step names)
+  "Turns off automatic rewriting.  Disables all rewrites if no
 arguments are given.  Disabled rewrites have to be enabled by
 AUTO-REWRITE, AUTO-REWRITE!, or AUTO-REWRITE-THEORY. E.g.,
  (stop-rewrite \"assoc\" \"delete\"). "
- "~%Turning off ~#[all auto-rewrites~;automatic rewriting for: ~@{~%   ~a,~}~]")
+  "~%Turning off ~#[all auto-rewrites~;automatic rewriting for: ~@{~%   ~a,~}~]")
 
 ;(addrule 'stop-rewrite-theory () (&rest names) (stop-rewrite-theory names)
 ;	 "Turns off rewriting for a theory."
@@ -694,8 +712,8 @@ AUTO-REWRITE, AUTO-REWRITE!, or AUTO-REWRITE-THEORY. E.g.,
 
 (addrule 'expand (function-name)
 	 ((fnum *) occurrence if-simplifies assert?)
-	 (expand function-name fnum occurrence if-simplifies assert?)
- "Expands (and simplifies) the definition of FUNCTION-NAME at a given
+  (expand function-name fnum occurrence if-simplifies assert?)
+  "Expands (and simplifies) the definition of FUNCTION-NAME at a given
 OCCURRENCE.  If no OCCURRENCE is given, then all instances of the
 definition are expanded.  The OCCURRENCE is given as a number n
 referring to the nth occurrence of the function symbol counting
@@ -711,18 +729,18 @@ ASSERT? can be either NONE (meaning no simplification),
 NIL (meaning simplify using SIMPLIFY), or T (meaning simplify using
 ASSERT).  Another change is that the HASH-REWRITES? flag has also been
 removed since all rewrites are now hashed for efficiency.)"
- "~%Expanding the definition of ~a,")
+  "~%Expanding the definition of ~a,")
 
 
 (addrule 'same-name (name1 name2)
 	 (type)
-	 (same-name name1 name2 type)
-	 "Assume given constants are identical if their actuals are equal.
+  (same-name name1 name2 type)
+  "Assume given constants are identical if their actuals are equal.
 This is used to indicate that names are equal even if their actuals are
 not syntactically equal.  TYPE can be given to disambiguate NAME1 and
 NAME2.
 Example: (same-name \"bvec0[i + j]\" \"bvec0[j + i]\")."
-	 "By checking name equality between  ~a and ~a")
+  "By checking name equality between  ~a and ~a")
 	 
 
 (defun same-name (name1 name2 &optional type)
@@ -773,50 +791,56 @@ Example: (same-name \"bvec0[i + j]\" \"bvec0[j + i]\")."
 identifiers" name1 name2)
 	       (values 'X nil nil))))))
 
-(addrule 'label (label fnums) (push?)  (label-step label fnums push?)
-	 "Labels a collection of formulas given by FNUMS by the
+(addrule 'label (label fnums) (push?)
+  (label-step label fnums push?)
+  "Labels a collection of formulas given by FNUMS by the
 string  LABEL.  If PUSH? is T, then the new label is added to any existing
 ones.  Otherwise, the new labels replaces all existing ones."
-	 "Labelling formulas ~a by ~a")
+  "Labelling formulas ~a by ~a")
 
 (addrule 'just-install-proof (proof) ()
-	 #'(lambda (ps)
-	     (just-install-proof-step proof ps))
-	 "Installs an edited PROOF without actually checking it,
+  #'(lambda (ps)
+      (just-install-proof-step proof ps))
+  "Installs an edited PROOF without actually checking it,
 declares the subgoal as finished, but then marks the proof as
 unfinished."
-	 "Installing without checking, the proof ~a")
+  "Installing without checking, the proof ~a")
 
-(addrule 'comment (string) () (comment-step string)
-	 "Adds a comment to the sequent."
-	 "Adding comment: ~a")
+(addrule 'comment (string) ()
+  (comment-step string)
+  "Adds a comment to the sequent."
+  "Adding comment: ~a")
 
-(addrule 'flatten-disjunct () (fnums depth) (flatten fnums depth)
- "Disjunctively simplifies chosen formulas.  It simplifies 
+(addrule 'flatten-disjunct () (fnums depth)
+  (flatten fnums depth)
+  "Disjunctively simplifies chosen formulas.  It simplifies 
 top-level antecedent conjunctions, equivalences, and negations, and
 succedent disjunctions, implications, and negations from the sequent.
 The DEPTH argument can either be a non-negative integer indicating
 the nesting of top-level disjunctions to be elimnated, or NIL
 which eliminates all top-level disjuncts in the indicated FNUMS."
- "~%Applying disjunctive simplification to flatten sequent,")
+  "~%Applying disjunctive simplification to flatten sequent,")
 
 (addrule 'set-print-lines () (lines)
-	 #'(lambda (ps)
-	     (setq *prover-print-lines* (unless (zerop lines) lines))
-	     (values 'X nil nil))
-	 "Sets the number of lines to print to LINES."
-	 "Setting print lines to ~a")
+  #'(lambda (ps)
+      (declare (ignore ps))
+      (setq *prover-print-lines* (unless (zerop lines) lines))
+      (values 'X nil nil))
+  "Sets the number of lines to print to LINES."
+  "Setting print lines to ~a")
 
 (addrule 'set-print-length () (length)
-	 #'(lambda (ps)
-	     (setq *prover-print-length* (unless (zerop length) length))
-	     (values 'X nil nil))
-	 "Sets the print length"
-	 "Setting print length to ~a")
+  #'(lambda (ps)
+      (declare (ignore ps))
+      (setq *prover-print-length* (unless (zerop length) length))
+      (values 'X nil nil))
+  "Sets the print length"
+  "Setting print length to ~a")
 
 (addrule 'set-print-depth () (depth)
-	 #'(lambda (ps)
-	     (setq *prover-print-depth* (unless (zerop depth) depth))
-	     (values 'X nil nil))
-	 "Sets the print depth."
-	 "Setting print depth to ~a")
+  #'(lambda (ps)
+      (declare (ignore ps))
+      (setq *prover-print-depth* (unless (zerop depth) depth))
+      (values 'X nil nil))
+  "Sets the print depth."
+  "Setting print depth to ~a")
