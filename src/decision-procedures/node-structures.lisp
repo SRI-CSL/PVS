@@ -4,7 +4,7 @@
   (defvar *develop* t)
   (defvar *node-type* 'array)
   (defvar *argument-type* 'list)
-  (defvar *use-alists* t))
+  (defvar *use-alists* nil))
 
 (declaim (special *dp-changed*))
 (defvar *dp-changed* nil)
@@ -378,6 +378,24 @@
 	    (type function ,fn))
   (expand-map-funargs-list fn application more-args))
 
+(defun expand-map-funargs-nconc (fn application more-args)
+  (if (eq *argument-type* 'list)
+      `(loop with arguments = (the list
+				(application-arguments ,application))
+	     for arg in (cdr arguments)
+	     nconc (funcall ,fn arg
+		       .,more-args))
+      `(loop with arguments = (the simple-vector
+				(application-arguments ,application))
+	     for i from 1 to (arity ,application)
+	     nconc (funcall ,fn (svref (the simple-vector arguments) i)
+			    .,more-args))))
+
+(defmacro map-funargs-nconc (fn application &rest more-args)
+  `(declare (type application ,application)
+	    (type function ,fn))
+  (expand-map-funargs-nconc fn application more-args))
+
 (defun expand-map-funargs-array (fn application more-args)
   (if (eq *argument-type* 'list)
       (expand-map-funargs-array-for-list fn application more-args)
@@ -553,7 +571,8 @@
 	    'arith-pred)))
    ((constant-p term)
     (or (eq term *true*)
-	(eq term *false*)))
+	(eq term *false*)
+	(eq (node-initial-type term) *boolean*)))
    (t nil)))
 
 (defun arith-pred-p (constant)
@@ -1433,9 +1452,9 @@
 (defun find-from-alists (term findalist)
   (multiple-value-bind (new-term found)
       (dp-get-from-cong-state*-entry term findalist)
-    (if found
+    (if (and found (not (eq new-term term)))
 	(find-from-alists new-term findalist)
-	term)))	
+	term)))
 
 (defun find-from-stack (term cong-state-stack top-cong-state-stack)
   (if cong-state-stack
@@ -1643,7 +1662,8 @@
 
 (defun sig (term cong-state)
   (if *use-alists*
-      (sig* term (top (cong-state-stack cong-state)))
+      (or (sig* term (top (cong-state-stack cong-state)))
+	  term)
       (sig-from-stack term (cong-state-stack cong-state))))
 
 (defun sig-from-stack (term cong-state-stack)
@@ -1656,7 +1676,7 @@
 (defun sig* (term cong-state*)
   (let ((hash-sig (dp-get-from-cong-state*-entry
 		   term (cong-state*-sig-hash cong-state*))))
-    (or hash-sig term)))
+    hash-sig))
 
 (defun setf-sig (term cong-state term-sig)
   (declare (special *dp-changed*))
