@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Wed Dec  1 15:00:38 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Mon Jan 25 19:00:18 1999
-;; Update Count    : 92
+;; Last Modified On: Thu Jan 28 16:58:59 1999
+;; Update Count    : 93
 ;; Status          : Alpha test
 ;; 
 ;; HISTORY
@@ -1111,17 +1111,20 @@
       (case (intern (string-upcase origin))
 	(ppe (let* ((theories (ppe-form (get-theory name)))
 		    (decl (get-decl-at line 'formula-decl theories)))
-	       (values (find-if #'formula-decl?
-				(gethash (id decl)
-					 (declarations (get-theory name))))
+	       (values (find-if #'(lambda (d)
+				    (and (formula-decl? d)
+					 (eq (id d) id)))
+			 (all-decls (get-theory name)))
 		       (place decl))))
-	(tccs (let* ((decls (tcc-form (get-theory name)))
+	(tccs (let* ((theory (get-theory name))
+		     (decls (tcc-form theory))
 		     (decl (find-if #'(lambda (d)
 					(>= (line-end (place d)) line))
 				    decls)))
-		(values (find-if #'formula-decl?
-				 (gethash (id decl)
-					  (declarations (get-theory name))))
+		(values (find-if #'(lambda (d) (and (eq (module d) theory)
+						    (formula-decl? d)
+						    (eq (id d) (id decl))))
+			  (all-decls theory))
 			(place decl))))
 	(prelude (let* ((theory (get-theory name))
 			(theories (if (and theory (generated-by theory))
@@ -1160,9 +1163,10 @@
 
 (defun prove-formula (modname formname rerun?)
   (declare (ignore modname))
-  (let* ((fdecl (find-if #'formula-decl?
-			 (gethash (intern formname)
-				  (declarations *current-theory*))))
+  (let* ((fid (intern formname))
+	 (fdecl (find-if #'(lambda (d) (and (formula-decl? d)
+					    (eq (id d) fid)))
+		  (all-decls (current-theory))))
 	 (strat (when rerun? '(rerun))))
     (cond (fdecl
 	   (setq *current-theory* (slot-value fdecl 'module))
@@ -1171,9 +1175,10 @@
 
 (defun rerun-proof-of? (modname formname)
   (setq *current-theory* (get-theory modname))
-  (let ((fdecl (find-if #'formula-decl?
-			 (gethash (intern formname)
-				  (declarations *current-theory*)))))
+  (let* ((fid (intern formname))
+	 (fdecl (find-if #'(lambda (d) (and (formula-decl? d)
+					    (eq (id d) fid)))
+		  (all-decls (current-theory)))))
     (and fdecl
 	 (justification fdecl)
 	 (pvs-y-or-n-p "Rerun Existing proof? "))))
