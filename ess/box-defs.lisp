@@ -28,6 +28,7 @@
   (:files)				; No files predefined.
   )
 
+#-gcl
 (defbox lisp-loader
   "The Lisp loader.  This box does only loads compiled files to avoid
 a conflict with the lisp-processor for files with .lisp extension."
@@ -38,11 +39,30 @@ a conflict with the lisp-processor for files with .lisp extension."
 	      (file #,(concatenate 'string "*" *lisp-compiled-suffix-string*)
 		    :input)))
 
+#+gcl
+(defbox lisp-loader
+  "The Lisp loader.  This box does only loads compiled files to avoid
+a conflict with the lisp-processor for files with .lisp extension."
+  (:maintainers)
+  (:needs)
+  (:path)
+  (:generates "tools::lisp-load" &key
+	      (file #.(concatenate 'string "*" *lisp-compiled-suffix-string*)
+		    :input)))
+
+#-gcl
 (defbox lisp-source-loader
   (:generates "tools::lisp-load" &key
 	      (file #,(concatenate 'string "*" *lisp-source-suffix-string*)
 		    :input)))
 
+#+gcl
+(defbox lisp-source-loader
+  (:generates "tools::lisp-load" &key
+	      (file #.(concatenate 'string "*" *lisp-source-suffix-string*)
+		    :input)))
+
+#-gcl
 (defbox ccom
   "The C compiler."
   (:maintainers "tsf")
@@ -56,6 +76,7 @@ a conflict with the lisp-processor for files with .lisp extension."
 
 ;;; The function lisp-load and global variables are now in box-system.lisp.
 
+#-gcl
 (defbox lisp-compiler
   "The Lisp compiler."
   (:needs)
@@ -65,6 +86,17 @@ a conflict with the lisp-processor for files with .lisp extension."
 	      (compiled-file #,(concatenate 'string "*" *lisp-compiled-suffix-string*)
 			     :output)))
 
+#+gcl
+(defbox lisp-compiler
+  "The Lisp compiler."
+  (:needs)
+  (:path)
+  (:generates "tools::lisp-compile" &key
+	      (source-file #.(concatenate 'string "*" *lisp-source-suffix-string*) :input)
+	      (compiled-file #.(concatenate 'string "*" *lisp-compiled-suffix-string*)
+			     :output)))
+
+#-gcl
 (defbox cload
   "The foreign function loader."
   (:maintainers "tsf")

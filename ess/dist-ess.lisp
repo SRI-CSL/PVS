@@ -103,7 +103,8 @@ accessible via anonymous ftp.")
 
 (defun save-ess-lisp (ess-filename features)
   (let ((feature-alist (filter-features features)))
-    (let ((ess-string (format nil "~{~A~:^, ~}."
+    (let ((ess-string (format nil #-GCL "~{~A~:^, ~}."
+			          #+GCL "~{~A~^, ~}."
 			      (mapcar #'fourth feature-alist))))
       (format t "Now disksaving ... ")
       (let ((in-reborn-image-p nil)
