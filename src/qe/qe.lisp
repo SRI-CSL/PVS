@@ -14,6 +14,82 @@
 
 ;; Prover Interface
 
+;; Strategy for quantifier-elimination
+
+
+(addrule 'qe nil ((fnums *))
+	 (qe-step fnums)
+	 "Quantifier elimination.")
+
+
+(defun qe-step (fnums)
+  #'(lambda (ps)
+      (let* ((sforms (s-forms (current-goal ps)))
+	     (selected-sforms (select-seq sforms fnums))
+	     (remaining-sforms (delete-seq sforms fnums)))
+	(multiple-value-bind (signal newform)
+	    (qe-sforms selected-sforms)
+	  (case signal
+	    (! (values '! nil))
+	    (X (values 'X (current-goal ps)))
+	    (? (values '? (list
+			   (lcopy (current-goal ps)
+			     's-forms (cons newform remaining-sforms))))))))))
+
+(defun qe-sforms (sforms)
+  (let* ((new-fmla (make!-disjunction*
+		   (mapcar #'(lambda (sform)
+			       (qe-sform (formula sform)))
+		     sforms)))
+	 (new-sform (unless (or (tc-eq fmla newfmla)
+				(tc-eq new-fmla *false*)
+				(and (negation? newfmla)
+				     (tc-eq (args1 new-fmla) *true*)))
+		      (make-instance 's-formula 'formula new-fmla))))
+    (if new-sform
+	(values '? new-sform)
+	(values 'X nil))))
+
+
+(defun qe-sform (sform)
+  (let* ((fmla (formula sform))
+	 (newfmla (unwind-protect
+		      (qe-fmla fmla)
+		    fmla))
+	 (new-sform (unless (or (tc-eq fmla newfmla)
+				(tc-eq newfmla *false*)
+				(and (negation? newfmla)
+				     (tc-eq (args1 newfmla) *true*)))
+		      (make-instance 's-formula 'formula newfmla))))
+    (if new-sform
+	(values '? new-sform)
+	(values 'X nil))))
+
+(defun qe-fmla (fmla)
+  (qe-fmla* fmla))
+
+;(defmethod qe-fmla* ((fmla exists-expr))
+;  (multiple-value-bind (vars types preds)
+;      (destructure-bindings (bindings fml))
+;    (let ((body (make!-conjunction* preds (expression fmla))))
+;      (mapcar #'translate-to-ics vars)              ;; Initialize tables
+;      (let ((result (ics_process (unwrap *dp-state*)
+;				 (translate-to-ics body))))
+;	(cond ((ics_is_redundant result)
+;	       *true*)
+;	      ((ics_is_inconsistent result)
+;	       *false*)
+;	      (t
+;	       (let* ((st (ics_d_consistent result))
+;		      (subst (mapcar #'(lambda (var)
+;					 (let ((trm0 (ics_solution st var)))
+;					   (when (ics_is_none trm0)
+;					     (throw 'not-solvable))
+;					   (let ((trm (translate-from-ics (ics_value_of trm0))))
+;					     (cons var trm)))))))
+;		 (substit fmla subst))))))))
+				
+
 (addrule 'qe nil ((fnums '*) verbose?)
     (qe-step fnums nil verbose?)
     "Replaces each sequent formula in FNUMS with an equivalent
@@ -85,22 +161,22 @@
 (defmethod qe* ((fml expr))
   fml)
 
-(defmethod qe* ((fml exists-expr))
-  (let ((fml1 (lift-quantifier fml)))
-    (multiple-value-bind (bndngs body)
-	(destructure-existential fml1)
-      (let ((*bound-variables* (append bndngs *bound-variables*)))
-	(declare (special *bound-variables*))
-	(qe1 bndngs (qe* body))))))
+;(defmethod qe* ((fml exists-expr))
+;  (let ((fml1 (lift-quantifier fml)))
+;    (multiple-value-bind (bndngs body)
+;	(destructure-existential fml1)
+;      (let ((*bound-variables* (append bndngs *bound-variables*)))
+;	(declare (special *bound-variables*))
+;	(qe1 bndngs (qe* body))))))
 
-(defmethod qe* ((fml forall-expr))
-  (let ((fml1 (lift-quantifier fml)))
-    (multiple-value-bind (bndngs body)
-	(destructure-universal fml1)
-      (let ((*bound-variables* (append bndngs *bound-variables*)))
-	(declare (special *bound-variables*))
-	(simplified-negation (qe1 bndngs
-				 (simplified-negation (qe* body))))))))
+;(defmethod qe* ((fml forall-expr))
+;  (let ((fml1 (lift-quantifier fml)))
+;    (multiple-value-bind (bndngs body)
+;	(destructure-universal fml1)
+;      (let ((*bound-variables* (append bndngs *bound-variables*)))
+;	(declare (special *bound-variables*))
+;	(simplified-negation (qe1 bndngs
+;				 (simplified-negation (qe* body))))))))
 
 (defun lift-quantifier (fml)
   (let ((stop-types (list *integer* *rational* *real*)))
