@@ -1478,10 +1478,10 @@ which should be fully instantiated. Please supply actual parameters.")
   (let* ((name (if (stringp name) (intern name) name))
 	 ;;(*generate-tccs* 'ALL)
 	 (pc-name (pc-parse name 'expr))
-	 (expr (internal-pc-typecheck (pc-parse expr 'expr)
-		  :tccs 'ALL
-		  :context *current-context*))
-	  (context (copy-prover-context)))
+	 (tc-expr (internal-pc-typecheck (pc-parse expr 'expr)
+		    :tccs 'ALL
+		    :context *current-context*))
+	 (context (copy-prover-context)))
      (cond ((not (valid-pvs-id* name))
 	    (error-format-if "~%Error: ~a is not a valid symbol." name)
 	    (values 'X nil nil))
@@ -1493,20 +1493,21 @@ which should be fully instantiated. Please supply actual parameters.")
 	      (put-decl (make-instance
 			    'skolem-const-decl
 			  'id name
-			  'type (type expr)
+			  'type (type tc-expr)
 			  'module (module context))
 			(declarations-hash context))
 	      (let* ((name (typecheck (pc-parse name 'expr)
 			     :tccs 'ALL
 			     :context context))
-		     (formula (make-equality expr name))
+		     (formula (make-equality tc-expr name))
 		     (references NIL)
 		     (fvars (freevars formula)))
 	       (cond (fvars
 		      (error-format-if "~%Free variables ~a in expr = name" fvars)
 		      (values 'X nil nil))
 	       ;;(push-references expr ps)
-		     (t (push-references-list formula references)
+		     (t (update-judgements-with-new-name name tc-expr context)
+			(push-references-list formula references)
 			(values '?
 				(list
 				 (cons (copy (current-goal ps)
@@ -1518,6 +1519,25 @@ which should be fully instantiated. Please supply actual parameters.")
 				       (list 'context context
 					     'dependent-decls
 					     references)))))))))))
-	  
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun update-judgements-with-new-name (name expr context)
+  (let ((judgements-copied? nil)
+	(jtypes (judgement-types expr)))
+    (when jtypes
+      (let ((jthash (copy (judgement-types-hash (judgements context)))))
+	(setf (gethash name jthash) jtypes)
+	(setf (judgements context)
+	      (copy (judgements context) 'judgement-types-hash jthash))
+	(setq judgements-copied? t)))
+    (when (name-expr? expr)
+      (let* ((applhash (application-judgements-hash (judgements context)))
+	     (appl-judgements (gethash (declaration expr) applhash)))
+	(when appl-judgements
+	  (let ((capplhash (copy applhash)))
+	    (setf (gethash (declaration name) capplhash) appl-judgements)
+	    (if judgements-copied?
+		(setf (application-judgements-hash (judgements context))
+		      capplhash)
+		(setf (judgements context)
+		      (copy (judgements context)
+			'application-judgements-hash capplhash)))))))))
