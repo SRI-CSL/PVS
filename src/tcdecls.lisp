@@ -2193,6 +2193,8 @@
 	   (expr (mk-application-for-formals (name decl) (formals decl)))
 	   (*compatible-pred-reason*
 	    (acons expr "judgement" *compatible-pred-reason*)))
+      (unless (place expr)
+	(setf (place expr) (place (name decl))))
       (typecheck* expr (type decl) nil nil)))
   (setf (judgement-type decl)
 	(make-formals-funtype (formals decl) (type decl)))
