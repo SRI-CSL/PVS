@@ -79,7 +79,7 @@
 		      (starting-row place) (starting-col place))))
 	   (tccstr (format nil
 		       "% The ~@[~a ~]~a TCC ~@[~a~]for~
-                        ~:[ ~;~%    ~]~a~@[~%    % ~a~]~%  ~a"
+                        ~:[ ~;~%    % ~]~a~@[~%    % ~a~]~%  ~a"
 		     (cdr (assq expr *compatible-pred-reason*))
 		     kind plstr
 		     (> (+ (length (cdr (assq expr
