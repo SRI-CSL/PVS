@@ -1,4 +1,4 @@
-(in-package :pvs)
+(in-package :dp)
 
 ;; Propositional flattening, relabeling, and categorization
 
