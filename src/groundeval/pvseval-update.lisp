@@ -1587,7 +1587,7 @@
   (let* ((const-str (format nil "~a_~a" id counter))
 	 (const-str? (find-symbol const-str))
 	 (mk-str? (find-symbol (format nil "MAKE-~a" const-str)))
-	 (rec-str? (find-symbol (format nil "~a-P" const-str)))
+	 (rec-str? (find-symbol (format nil "~a-p" const-str)))
 	 (acc-strs? (loop for acc in accessor-ids
 			 thereis
 			 (find-symbol (format nil "~a_~a"
@@ -1633,7 +1633,7 @@
 		    constructor-symbol)
 	      (make-eval-info (declaration (recognizer constructor)))
 	      (setf (in-name (declaration (recognizer constructor)))
-		    (makesym "~a-P" struct-id))
+		    (makesym "~a-p" struct-id))
 	      (eval defn)
 	      (loop for x in accessors
 		    do (progn (make-eval-info (declaration x))
