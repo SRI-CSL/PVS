@@ -295,48 +295,38 @@
 ;      (change-name-expr-class-if-needed (declaration nres) nex))
 ;    nex))
 
-(defmethod mk-name-expr ((id symbol) &optional actuals mod-id res kind)
-  (assert (or (null res) kind))
+(defmethod mk-name-expr ((id symbol) &optional actuals mod-id res)
   (if res
-      (make!-name-expr id actuals mod-id res kind)
+      (make!-name-expr id actuals mod-id res)
       (make-instance 'name-expr
 	'id id
 	'mod-id mod-id
-	'actuals actuals
-	;;'type (when res (type res))
-	;;'resolutions (when res (list res))
-	'kind kind
-	)))
+	'actuals actuals)))
 
-(defmethod mk-name-expr ((obj bind-decl) &optional actuals mod-id res kind)
+(defmethod mk-name-expr ((obj bind-decl) &optional actuals mod-id res)
   (if res
-      (make!-name-expr (id obj) actuals mod-id res (or kind 'variable))
+      (make!-name-expr (id obj) actuals mod-id res)
       (make-instance 'name-expr
 	'id (id obj)
 	'mod-id mod-id
 	'actuals actuals
 	'type (type obj)
-	'kind 'variable
 	'resolutions (list (mk-resolution obj
 			     (current-theory-name) (type obj))))))
 
-(defmethod mk-name-expr ((obj name) &optional actuals mod-id res kind)
+(defmethod mk-name-expr ((obj name) &optional actuals mod-id res)
   (if (or res (resolution obj))
-      (make!-name-expr (id obj) actuals mod-id (or res (resolution obj))
-		       (or kind 'variable))
+      (make!-name-expr (id obj) actuals mod-id (or res (resolution obj)))
       (make-instance 'name-expr
 	'id (id obj)
 	'mod-id mod-id
 	'actuals actuals
 	'type (when (expr? obj) (type obj))
-	'kind (or kind
-		  (when (name-expr? obj)
-		    (kind obj)))
 	'resolutions (when (name? obj) (resolutions obj)))))
 
-(defmethod mk-name-expr (obj &optional actuals mod-id res kind)
+(defmethod mk-name-expr (obj &optional actuals mod-id res)
   (if res
-      (make!-name-expr (id obj) actuals mod-id res kind)
+      (make!-name-expr (id obj) actuals mod-id res)
       (make-instance 'name-expr
 	'id (id obj)
 	'mod-id mod-id
@@ -482,14 +472,12 @@
 (defun mk-forall-expr (vars expr)
   (make-instance 'forall-expr
     'bindings (mk-bindings vars)
-    'expression expr
-    'parens 1))
+    'expression expr))
 
 (defun mk-exists-expr (vars expr)
   (make-instance 'exists-expr
     'bindings (mk-bindings vars)
-    'expression expr
-    'parens 1))
+    'expression expr))
 
 (defun mk-equation (lhs rhs)
   (mk-application '= lhs rhs))
@@ -547,12 +535,9 @@
 
 (defun make-variable-expr (bd)
   (assert (typep bd 'binding))
-  (let ((var (mk-name-expr bd nil nil
-			   (make-resolution bd
-			     (current-theory-name) (type bd)))))
-    (setf (kind var) 'variable)
-    var))
-  
+  (mk-name-expr bd nil nil
+		(make-resolution bd
+		  (current-theory-name) (type bd))))
 
 (defun mk-bindings (vars)
   (assert vars)
@@ -653,8 +638,7 @@
 		'id (id arg)
 		'mod-id (mod-id arg)
 		'actuals (actuals arg)
-		'resolutions (resolutions arg)
-		'kind 'constant))
+		'resolutions (resolutions arg)))
 	(type-value (lcopy arg 'from-conversion nil)))
     (make-instance 'actual 'expr expr 'type-value type-value)))
 
@@ -905,8 +889,7 @@
 	     (eqname (make-instance 'name-expr
 		       'id '=
 		       'type (type res)
-		       'resolutions (list res)
-		       'kind 'constant))
+		       'resolutions (list res)))
 	     (appl (mk-application eqname lhs rhs)))
 	(typecheck* appl *boolean* nil nil)
 	(setf (mod-id eqname) nil
@@ -1003,13 +986,11 @@
 
 (defun make-forall-expr (vars expr)
   (let ((nexpr (mk-forall-expr vars expr)))
-    (setf (parens nexpr) 1)
     (assert *current-context*)
     (typecheck nexpr :expected *boolean*)))
 
 (defun make-exists-expr (vars expr)
   (let ((nexpr (mk-exists-expr vars expr)))
-    (setf (parens nexpr) 1)
     (assert *current-context*)
     (typecheck nexpr :expected *boolean*)))
 
@@ -1035,12 +1016,11 @@
 	       'argument (make!-arg-tuple-expr a1 a2))
     :expected type))
 
-(defun mk-field-name-expr (id res kind)
+(defun mk-field-name-expr (id res)
   (make-instance 'field-name-expr
     'id id
     'type (when res (type res))
-    'resolutions (when res (list res))
-    'kind kind))
+    'resolutions (when res (list res))))
 
 (defmethod make-name ((res resolution))
   (make-instance 'name
@@ -1182,7 +1162,7 @@
     'number num
     'type *number*))
 
-(defun make!-name-expr (id actuals mod-id res kind)
+(defun make!-name-expr (id actuals mod-id res)
   (assert res)
   (typecase (declaration res)
     (field-decl (make-instance 'field-name-expr
@@ -1190,38 +1170,31 @@
 		  'actuals actuals
 		  'mod-id mod-id
 		  'type (type res)
-		  'resolutions (list res)
-		  'kind (if (memq (declaration res) *bound-variables*)
-			    'variable 'constant)))
+		  'resolutions (list res)))
     (adt-constructor-decl (make-instance 'constructor-name-expr
 			    'id id
 			    'actuals actuals
 			    'mod-id mod-id
 			    'type (type res)
-			    'resolutions (list res)
-			    'kind 'constant))
+			    'resolutions (list res)))
     (adt-recognizer-decl (make-instance 'recognizer-name-expr
 			   'id id
 			   'actuals actuals
 			   'mod-id mod-id
 			   'type (type res)
-			   'resolutions (list res)
-			   'kind 'constant))
+			   'resolutions (list res)))
     (adt-accessor-decl (make-instance 'accessor-name-expr
 			   'id id
 			   'actuals actuals
 			   'mod-id mod-id
 			   'type (type res)
-			   'resolutions (list res)
-			   'kind 'constant))
-    (t (assert kind)
-       (make-instance 'name-expr
+			   'resolutions (list res)))
+    (t (make-instance 'name-expr
 	 'id id
 	 'actuals actuals
 	 'mod-id mod-id
 	 'type (type res)
-	 'resolutions (list res)
-	 'kind kind))))
+	 'resolutions (list res)))))
     
 
 (defun make!-equation (lhs rhs)
@@ -1234,8 +1207,7 @@
 	 (eqname (make-instance 'name-expr
 		   'id '=
 		   'type (type res)
-		   'resolutions (list res)
-		   'kind 'constant))
+		   'resolutions (list res)))
 	 (arg (make!-arg-tuple-expr lhs rhs)))
     (if (compatible? type *boolean*)
 	(make-instance 'infix-boolean-equation
@@ -1262,8 +1234,7 @@
 	 (if-name (make-instance 'name-expr
 		    'id 'if
 		    'type ifoptype
-		    'resolutions (list if-res)
-		    'kind 'constant))
+		    'resolutions (list if-res)))
 	 (if-args (make-instance 'arg-tuple-expr
 		    'exprs (list cond then else)
 		    'type (make-instance 'tupletype
