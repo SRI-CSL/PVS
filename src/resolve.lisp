@@ -88,7 +88,8 @@
 	(check-compatible-params (formals-sans-usings theory)
 				 (actuals name) nil)))
     (when (mappings name)
-      (typecheck-mappings (mappings name) name))))
+      (typecheck-mappings (mappings name) name))
+    name))
 
 (defmethod module (binding)
   (declare (ignore binding))
@@ -278,6 +279,16 @@
 	(get-decls-resolutions (cdr decls) acts mappings kind args
 			       (nconc dreses reses)))))
 
+
+;;; get-decl-resolutions takes a declaration decl, the actuals
+;;; acts of the name, the kind, and the args and returns a list
+;;; of resolutions.  First a check is made that the decl matches
+;;; the kind, is visible, and is not a var-decl outside of a
+;;; formula.  If there are args, a check is made that the decl is
+;;; a function with the right arity, though if either the args or
+;;; the function domain are singletons then it is treated as a
+;;; match.
+
 (defun get-decl-resolutions (decl acts mappings kind args)
   (let ((dth (module decl)))
     (when (and (kind-match (kind-of decl) kind)
@@ -298,26 +309,22 @@
 				      (singleton? args)))))
 		     (t nil))))
       (if (null acts)
-	  (if (or (and (null (formals-sans-usings dth))
-		       (not (interpretable? dth)))
-		  (eq dth (current-theory)))
-	      (if (null args)
-		  (list (mk-resolution decl
-			  (mk-modname (id (module decl)))
-			  (case kind
-			    (expr (type decl))
-			    (type (type-value decl)))))
-		  (let ((modinsts (decl-args-compatible? decl args)))
-		    (mapcar #'(lambda (thinst)
-				(make-resolution decl thinst))
-		      modinsts)))
+	  (if (and (or (null (formals-sans-usings dth))
+		       (eq dth (current-theory)))
+		   (null args))
+	      (list (mk-resolution decl (mk-modname (id (module decl)))
+				   (case kind
+				     (expr (type decl))
+				     (type (type-value decl)))))
 	      (let* ((modinsts (decl-args-compatible? decl args))
 		     (unint-modinsts
-		      (remove-if #'(lambda (mi)
-				     (and (mappings mi)
-					  (find decl (mappings mi)
-						:key #'(lambda (m)
-							 (declaration (lhs m))))))
+		      (remove-if
+			  #'(lambda (mi)
+			      (and (mappings mi)
+				   (find decl (mappings mi)
+					 :key #'(lambda (m)
+						  (and (mapping-def? m)
+						       (declaration (lhs m)))))))
 			modinsts))
 		     (thinsts (if mappings
 				  (remove-if-not
@@ -346,19 +353,21 @@
 						   (current-theory))
 			(list (make-resolution decl dthi)))))
 		  (let* ((modinsts (decl-args-compatible? decl args))
-			 (thinst (or (find-if
-					 #'(lambda (thinst)
-					     (tc-eq acts (actuals thinst)))
-				       modinsts)
-				     (find-if
-					 #'(lambda (dth)
-					     (every #'matching-actual
-						    acts (actuals dth)
-						    (formals-sans-usings
-						     (get-theory dth))))
-				       modinsts))))
-		    (when thinst
-		      (list (make-resolution decl thinst)))))))))))
+			 (thinsts (matching-decl-theory-instances
+				   acts dth modinsts)))
+		    (when thinsts
+		      (mapcar #'(lambda (thinst)
+				  (make-resolution decl thinst))
+			thinsts))))))))))
+
+(defun matching-decl-theory-instances (acts theory thinsts &optional matches)
+  (if (null thinsts)
+      (nreverse matches)
+      (let ((mthinst (matching-actuals acts theory (car thinsts))))
+	(matching-decl-theory-instances acts theory (cdr thinsts)
+					(if mthinst
+					    (cons mthinst matches)
+					    matches)))))
 
 (defun copy-actuals (acts)
   acts)
@@ -389,7 +398,7 @@
 		    (compatible-arguments? decl thinst args (current-theory)))
 	  thinsts))))
 
-;;; This will set the types of the actual paramters.
+;;; This will set the types of the actual parameters.
 ;;; Name-exprs are typechecked twice; once as an expression and once as
 ;;; a type.  This is where any restriction of actuals is enforced, as
 ;;; the grammar allows arbitrary expressions and type expressions.  Note
@@ -402,8 +411,7 @@
 (defmethod typecheck* ((act actual) expected kind arguments)
   (declare (ignore expected kind arguments))
   #+pvsdebug (when (type (expr act)) (break "Type set already???"))
-  (unless (and ;;*in-checker*
-	       (typed? act))
+  (unless (typed? act)
     (typecase (expr act)
       (name-expr (let* ((name (expr act))
 			(tres (with-no-type-errors (resolve* name 'type nil)))
@@ -426,7 +434,9 @@
 				(some #'(lambda (ty)
 					  (let ((sty (find-supertype ty)))
 					    (and (funtype? sty)
-						 (tc-eq (range sty) *boolean*))))
+						 (tc-eq (find-supertype
+							 (range sty))
+							*boolean*))))
 				      (ptypes (expr act))))
 		       (setf (type-value act)
 			     (typecheck* (make-instance 'expr-as-type
@@ -444,17 +454,15 @@
 			     (setf (mod-id (type (car tres)))
 				   (mod-id (expr act))))
 			   (setf (type-value act) (type (car tres)))
-			   (push 'type (types (expr act))))))
-		   (when thres
-		     ;; So far, nothing needed here for theory resolutions
-		     )))
+			   (push 'type (types (expr act))))))))
       ;; with-no-type-errors not needed here;
       ;; the expr typechecks iff the subtype does.
       (set-expr (typecheck* (expr act) nil nil nil)
 		(let ((texpr (typecheck* (setsubtype-from-set-expr (expr act))
 					 nil nil nil)))
 		  (when texpr
-		    (setf (type-value act) texpr))))
+		    (setf (type-value act) texpr)
+		    (push 'type (types (expr act))))))
       (application (with-no-type-errors
 		    (typecheck* (expr act) nil nil nil))
 		   (cond ((and (zerop (parens (expr act)))
@@ -472,7 +480,9 @@
 			       (some #'(lambda (ty)
 					 (let ((sty (find-supertype ty)))
 					   (and (funtype? sty)
-						(tc-eq (range sty) *boolean*))))
+						(tc-eq (find-supertype
+							(range sty))
+						       *boolean*))))
 				     (ptypes (expr act))))
 			  (setf (type-value act)
 				(typecheck* (make-instance 'expr-as-type
@@ -488,7 +498,8 @@
 		       (some #'(lambda (ty)
 				 (let ((sty (find-supertype ty)))
 				   (and (funtype? sty)
-					(tc-eq (range sty) *boolean*))))
+					(tc-eq (find-supertype (range sty))
+					       *boolean*))))
 			     (ptypes (expr act))))
 	      (setf (type-value act)
 		    (typecheck* (make-instance 'expr-as-type
@@ -511,6 +522,67 @@
 (defun eq-id (x y)
   (eq x (id y)))
 
+
+;;; At this point, we know that the module has the right id, the
+;;; right number of parameters, and that the name and theory
+;;; instance have actuals - the generic form of the theory is not
+;;; available.  This function tests whether the given theory
+;;; instance matches the name by comparing the actuals of the
+;;; name with the actuals of the theory instance.
+
+;;; The tricky part here is that the theory instance actuals may contain
+;;; formal parameters (not in the current theory).  For example,
+;;;  A[T1: TYPE]: THEORY BEGIN a: TYPE END A
+;;;  B[T2: TYPE]: THEORY BEGIN IMPORTING A[T2] END B
+;;;  C[T3: TYPE]: THEORY BEGIN IMPORTING B; x: a[T3] END C
+;;; In this case the theory instance for A in the context of theory C is
+;;; A[T2], and we need to substitute (a typechecked copy of) T3 for T2 and
+;;; return A[T3].
+
+(defun matching-actuals (actuals theory thinst)
+  (let* ((theory-actuals (actuals thinst))
+	 (theory-frees (free-params theory-actuals))
+	 (current-formals (formals-sans-usings (current-theory))))
+    ;; mactuals are fully typechecked, though they may involve
+    ;; non-local formal parameters, in which case we need to use
+    ;; tc-match; otherwise we simply call matching-actual
+    (if (and theory-frees
+	     (some #'(lambda (free) (not (memq free current-formals)))
+		   theory-frees))
+	(matching-actuals-with-nonlocal-formals actuals theory theory-actuals
+						theory-frees)
+	(when (every #'matching-actual actuals theory-actuals
+		     (formals-sans-usings theory))
+	  thinst))))
+
+;;; In the example above, actuals = (T3), theory = A,
+;;; theory-actuals = (T2), and theory-frees = (T2).  We create
+;;; the theory-instance A[T3] by substituting the actuals for the
+;;; theory-frees in the theory-instance.  Subst-mod-params
+;;; doesn't work here, as it needs the theory instance we're
+;;; trying to create.
+
+(defun matching-actuals-with-nonlocal-formals (actuals theory theory-actuals
+					       theory-frees)
+  (let ((bindings (tc-match actuals theory-actuals
+			    (mapcar #'list theory-frees))))
+    (when (and bindings
+	       (every #'cdr bindings))
+      (let* ((sactuals (gensubst theory-actuals
+			 #'(lambda (ex)
+			     (cdr (assq (declaration ex) bindings)))
+			 #'(lambda (ex)
+			     (and (name? ex)
+				  (assq (declaration ex) bindings)))))
+	     (thinst (mk-modname (id theory) sactuals)))
+	(with-no-type-errors
+	    (typecheck* (pc-parse (unparse thinst :string t) 'modname)
+			nil nil nil))))))
+
+
+;;; compatible-parameters? checks that the actuals and formals of a given
+;;; theory are compatible.  The actuals do not have to be fully-typed, but
+;;; at least typechecked by typecheck-actuals.
 
 (defun compatible-parameters? (actuals formals)
   (when (length= actuals formals)
@@ -542,16 +614,21 @@
 				(compatible? ptype (type formal))))
 	      (ptypes (expr actual))))))
 
+
+;;; matching-actual is called to check that the actual from the
+;;; name matches the actual from the theory instance.  This is
+;;; essentially tc-eq, but allows for the actual from the name
+;;; (the first argument) to have multiple types.  The actual from
+;;; the theory instance (the second argument) is fully typed, and
+;;; has no free parameters (other than those of the current
+;;; theory).  If the name actual has a type-value it is
+;;; fully-typed, which is why tc-eq works in this case.
+
 (defun matching-actual (actual mactual formal)
   (if (formal-type-decl? formal)
       (let ((atv (type-value actual)))
 	(and atv
-	     (or (null mactual)
-		 (tc-eq atv (type-value mactual))
-		 (and (name? (type-value mactual))
-		      (formal-type-decl? (declaration (type-value mactual)))
-		      (not (memq (declaration (type-value mactual))
-				 (formals (current-theory))))))))
+	     (tc-eq atv (type-value mactual))))
       (matching-actual-expr (expr actual) mactual)))
 
 (defmethod matching-actual-expr ((aex expr) (maex implicit-conversion))
@@ -774,6 +851,25 @@
 	    (and alias (eq (cdr alias) d2)))
 	  (let ((alias (assq d2 (boolean-aliases))))
 	    (and alias (eq d1 (cdr alias))))))))
+
+(defun match-record-arg-decls (name kind args)
+  (when (and (eq kind 'expr)
+	     (singleton? args)
+	     (null (mod-id name))
+	     (null (actuals name))
+	     (null (library name)))
+    (let ((fdecls (mapcan #'(lambda (pty)
+			      (let ((sty (find-supertype pty)))
+				(when (typep sty 'recordtype)
+				  (let ((fdecl (find name (fields sty)
+						     :test #'same-id)))
+				    (when fdecl
+				      (push (cons fdecl sty) *field-records*)
+				      (list fdecl))))))
+			  (ptypes (car args))))
+	  (modinsts (list (theory-name *current-context*))))
+      ;;; FIXME - create resolutions here
+      (matching-decls* name fdecls modinsts args nil))))
 
 ;;; End of matching-actuals code
 
@@ -1048,8 +1144,7 @@
       (compatible? atype etype)))
 
 (defun disallowed-free-variable? (decl)
-  (and (not *allow-free-variables*)
-       (typep decl 'var-decl)
+  (and (typep decl 'var-decl)
        (not (typep (declaration *current-context*) 'formula-decl))))
 
 
@@ -1063,12 +1158,11 @@
   (declare (ignore name))
   (if (cdr reses)
       (let* ((dreses (remove-duplicates reses :test #'tc-eq))
-	     (treses (remove-smaller-types-of-same-theories dreses))
 	     (res (or (remove-if
 			  #'(lambda (r)
 			      (typep (module-instance r) 'datatype-modname))
-			treses)
-		      treses)))
+			dreses)
+		      dreses)))
 	(if (eq kind 'expr)
 	    (if (cdr res)
 		(filter-equality-resolutions
