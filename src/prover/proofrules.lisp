@@ -998,173 +998,10 @@ or supply more substitutions."
 						dependent-decls)
 			  (pushnew (declaration res)
 				   dependent-decls)
-;			  (push-references (module-instance  res) ps)
-;			  (push-references newalist ps)
-;			  (pushnew (declaration res)
-;				   (dependent-decls ps))
 			  (values '? (list (list newsequent
 						 'dependent-decls
 						 dependent-decls))))))))))))
    
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;beta reduction
-;
-;;(defun beta-rule (sformnums)
-;;  (make-instance 'rule
-;;		 'rule-part (beta-step sformnums)
-;;		 'rule-input `(beta ,sformnums)))
-;
-;(addrule 'beta () ((sformnums *) rewrite-flag) (beta-step sformnums rewrite-flag)
-;	 "(beta  &optional */<formula-number-list> <rewrite-flag>):
-;Beta-reduces chosen formulas. If rewrite-flag is T, then left-hand-side
-;is left undisturbed for rewriting.") 
-;
-;(defun beta-sform (sform &optional rewrite-flag)
-;  (let* ((fmla (formula sform))
-;	 (newfmla (if rewrite-flag
-;		      (if (and (negation? fmla)
-;			       (equality? (args1 fmla)))
-;			  (lcopy fmla
-;				 'arguments
-;				 (list
-;				  (lcopy (args1 fmla)
-;					 'arguments
-;					 (list (args1 (args1 fmla))
-;					       (beta-reduce (args2 (args1 fmla)))))))
-;			  fmla)
-;		      (beta-reduce fmla)))
-;	 (new-sform (if (exequal fmla newfmla) sform
-;			(lcopy sform 'formula newfmla))))
-;    (if (s-form-equal? sform new-sform) (values 'X sform)
-;	(values '? new-sform))))
-;
-;(defun beta-step (sformnums &optional rewrite-flag)
-;  #'(lambda (ps)
-;      (multiple-value-bind
-;	    (signal subgoal)
-;	  (sequent-reduce (current-goal ps)
-;			  #'(lambda (x) (beta-sform x rewrite-flag))
-;			   sformnums)
-;	(if (eq signal '?)
-;	    (format-if "~%Beta reducing the formulas ~a," sformnums)
-;	    (format-if "~%No suitable redexes found."))
-;	(values signal (list subgoal) ))))
-
-      
-;Moved to beta-reduce.lisp.
-;(defmethod beta-reduce ((expr expr))
-;  expr)
-;
-;(defmethod beta-reduce ((expr cases-expr))
-;  (let ((expression (beta-reduce (expression expr))))
-;    (cond ((and (typep expression 'application)
-;		(typep (operator expression) 'name-expr)
-;		(constructor? (operator expression)))
-;	   (beta-reduce (find-selection (id (operator expression))
-;			   (arguments expression)
-;			   expr)))
-;	  ((and (typep expression 'name-expr)
-;		(constructor? expression))
-;	   (beta-reduce (find-selection (id expression) nil expr)))
-;	  (t expr))))
-;	  
-;	   
-;
-;(defmethod beta-reduce ((expr binding-expr))
-;  (lcopy expr
-;	'expression (beta-reduce (expression expr))))
-;
-;;(defmethod beta-reduce ((expr if-expr)) ;;NSH(7/30) get rid
-;;  (lcopy expr
-;;	'arguments (beta-reduce (arguments expr))))
-;;	'condition (beta-reduce (condition expr))
-;;	'then-part (beta-reduce (then-part expr))
-;;	'else-part (beta-reduce (else-part expr))))
-;
-;(defmethod beta-reduce ((expr record-expr))
-;  (lcopy expr
-;	'assignments (beta-reduce (assignments expr))))
-;
-;(defmethod beta-reduce ((expr assignment))
-;  (lcopy expr 'expression  (beta-reduce (expression expr))))
-;
-;(defmethod beta-reduce ((expr tuple-expr))
-;  (lcopy expr 'exprs (beta-reduce (exprs expr))))
-;
-;(defmethod beta-reduce ((expr update-expr))
-;  (lcopy expr
-;	'expression (beta-reduce (expression expr))
-;	'assignments (beta-reduce (assignments expr))))
-;
-;
-;
-;(defmethod beta-reduce ((expr application))
-;  (let* ((oper (if (lambda? (operator expr))
-;		   (operator expr);;since it will be reduced anyway.
-;		   (beta-reduce (operator expr))))
-;	 (args (beta-reduce (arguments expr)))
-;	 (newexpr (lcopy expr
-;			 'operator oper
-;			 'arguments  args)))
-;    (cond ((and (is-predicate? oper)
-;		(typep (type (car args)) 'subtype))
-;	   (cond ((member oper
-;			  (type-constraints  (type (car args)))
-;			  :test #'exequal)
-;		  *true*)
-;		 ((and (adt? (supertype (type (car args))))
-;		       (typep oper 'name-expr)
-;		       (recognizer? oper)
-;		       (typep (predicate (type (car args))) 'name-expr)
-;		       (recognizer?
-;			(predicate (type (car args)))))
-;		  *false*)
-;		 ((lambda? oper)
-;		  (beta-reduce (substit (expression oper)
-;					(pairlis (bindings oper)
-;						 args))))
-;		 (t newexpr)))
-;	  ((lambda? oper)
-;	   (beta-reduce (substit (expression oper)
-;				 (pairlis (bindings oper)
-;					  args))))
-;	  ((record-redex? newexpr)
-;	   (expression
-;	    (find oper
-;		  (assignments (car args))
-;		  :test
-;		  #'(lambda (x y)
-;		      (same-id x (caar (arguments y)))))))
-;	  ((record-update-redex? newexpr)
-;	   (let ((update-field (find oper
-;				     (assignments (car args))
-;				     :test
-;				     #'(lambda (x y)
-;					 (same-id x (caar (arguments y)))))))
-;	     (if update-field
-;		 (beta-reduce (expression update-field))
-;		 (beta-reduce
-;		  (make-application oper (expression (car args)))))))
-;	  ((function-update-redex? newexpr)
-;	   (simplify-function-update-redex newexpr T))
-;	  ((and (typep oper 'name-expr)
-;		(accessor? oper)
-;		(typep (car args) 'application)
-;		(exequal (constructor oper) (operator (car args))))
-;	   (nth (position oper (accessors (operator (car args)))
-;			  :test #'exequal)
-;		(arguments (car args))))
-;	  (t (if (lambda? oper)
-;		 (beta-reduce (substit (expression oper)
-;				       (pairlis (bindings oper)
-;						args)))
-;		 newexpr)))))
-;
-;(defmethod beta-reduce ((list list))
-;  (cond ((null list) nil)
-;	(t (cons (beta-reduce (car list))
-;		 (beta-reduce (cdr list))))))
 		     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(NSH:4-12-91) rule for extracting the subtyping predicates
@@ -1178,22 +1015,23 @@ or supply more substitutions."
 ;		 'rule-input `(lemma ,expr)))
 
 (defun typepred-fun (exprs all?)
-  #'(lambda (ps)(if (listp exprs)
-		    (typepred-step exprs all? ps)
-		    (typepred-step (list exprs) all? ps))))
+  #'(lambda (ps)
+      (if (listp exprs)
+	  (typepred-step exprs all? ps)
+	  (typepred-step (list exprs) all? ps))))
 
-(defun typepred-step (exprs all? ps) ;;(6.18.96) added all?
+(defun typepred-step (exprs all? ps);;(6.18.96) added all?
   (let ((preds (loop for expr in exprs
 		     append (collect-typepreds expr ps all?))))
     (if (null preds)
 	(values 'X nil nil)
 	(let* ((new-sforms
-	       (mapcar #'(lambda (fmla)
-			   (make-instance 's-formula
-			     'formula
-			     (negate fmla)))
-		       preds))
-	      (references NIL))
+		(mapcar #'(lambda (fmla)
+			    (make-instance 's-formula
+			      'formula
+			      (negate fmla)))
+		  preds))
+	       (references NIL))
 	  (push-references-list
 	   (mapcar #'formula new-sforms)
 	   references)
@@ -1208,11 +1046,11 @@ or supply more substitutions."
 			 references)))))))
 		
 
-(defun collect-typepreds (expr ps &optional all?);;(6.18.96) added all?
+(defun collect-typepreds (expr ps &optional all?)
   (if (consp expr)
       (loop for x in expr append (collect-typepreds x ps all?))
       (let* ((tc-expr
-	      (let ((*generate-tccs* 'all)) ;;NSH(8.27.96) needed or unsound.
+	      (let ((*generate-tccs* 'all))
 		(pc-typecheck (pc-parse expr 'expr))))
 	     (freevars-expr (freevars tc-expr))
 	     (freevars-seq (loop for sform in
@@ -1222,75 +1060,12 @@ or supply more substitutions."
 		     thereis (not (member var freevars-seq :test #'tc-eq)))
 	       (format-if "~%Irrelevant free variables in ~a" tc-expr)
 	       nil)
-	      (t (let* ((jtypes (judgement-types+ tc-expr))
-			(typepreds (type-constraints jtypes all?))
-			(pred-applications
-			 (mapcar #'(lambda (c)
-				     (let ((*generate-tccs* 'all))
-				       (typecheck
-					   (mk-application (copy c)
-					     tc-expr)
-					 :context *current-context*
-					 :expected *boolean*)))
-				 typepreds))
-			(constraints
-			 (mapcar
-			  #'(lambda (fmla)
-			      (if (lambda? (operator fmla))
-				  (substit
-				      (expression
-				       (operator fmla))
-				    (pvs-pairlis
-				     (bindings (operator fmla))
-				     (arguments fmla)))
-				  fmla))
-			  pred-applications))
+	      (t (let* ((constraints (type-constraints tc-expr all?))
 			(reduced-constraints
 			 (loop for fmla in constraints
 			       nconc (and+ fmla))))
-		   ;;(push-references tc-expr ps)
 		   reduced-constraints))))))
 
-(defmethod type-constraints ((types list) &optional all? result)
-  (if (null types)
-      result
-      (let ((tconstraints (type-constraints (car types) all? result)))
-	(type-constraints (cdr types) all? tconstraints))))
-
-(defvar *ignored-type-constraints* nil)
-
-(defun ignored-type-constraint (type)
-  (when (and *integer* (null *ignored-type-constraints*))
-    (setq *ignored-type-constraints* (list *integer* *rational* *real*)))
-  (member type *ignored-type-constraints* :test #'tc-eq))
-
-(defmethod type-constraints ((type subtype) &optional all? result)
-  (with-slots (predicate supertype) type
-    (let ((pred (if (and (typep predicate 'name-expr)
-			 (null (actuals predicate)))
-		    (copy predicate
-		      'actuals (actuals (module-instance predicate)))
-		    predicate)))
-      (if (member pred result :test #'tc-eq)
-	  result
-	  (let* ((nresult
-		  (if (and (not all?)
-			   (ignored-type-constraint supertype))
-		      (cons pred result)
-		      (type-constraints supertype all? (cons pred result))))
-		 (ptype (domain (type predicate))))
-	    (if (or (tc-eq supertype ptype)
-		    (break "Why are the predicate domain type and supertype different?")
-		    (and (not all?)
-			 (ignored-type-constraint ptype)))
-		nresult
-		(type-constraints ptype all? nresult)))))))
-
-(defmethod type-constraints ((type dep-binding) &optional all? result)
-  (type-constraints (type type) all? result))
-
-(defmethod type-constraints ((type type-expr) &optional all? result)
-  (nreverse result))
 
 
 ;;;One of the points of having simplify is so that steps that do not
