@@ -158,11 +158,10 @@ required a context.")
       (add-conversion-info (from-conversion ctype) expr)
       (let* ((nexpr (copy expr))
 	     ;;(dom (domain (type (from-conversion ctype))))
-	     (lconv (expand1 (from-conversion ctype))))
+	     (lconv (from-conversion ctype)))
 	(change-class expr 'lambda-conversion)
 	(setf (bindings expr) (bindings (expression lconv))
 	      (expression expr) nexpr)
-	;; If expr already has a type, this doesn't do anything
 	(typecheck* expr expected nil nil)))
      (t
       #+pvsdebug (assert (typep (from-conversion ctype) 'expr))
@@ -178,7 +177,6 @@ required a context.")
 	(when (typep (argument expr) 'name-expr)
 	  (setf (resolutions (argument expr)) nil
 		(types (argument expr)) nil))
-	;; If expr already has a type, this doesn't do anything
 	(typecheck* expr expected nil nil))))))
 
 
