@@ -1355,7 +1355,7 @@ trap references." expr))
 					,@(append (when declarations
 						    (list declarations))
 						  (list 
-						   (pvs2cl_till-output-stable
+						   (pvs2cl-till-output-stable
 						    (ex-defn-d decl)
 						    defn-expr
 						    (append (pairlis defn-bindings
