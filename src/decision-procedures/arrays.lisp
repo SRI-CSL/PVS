@@ -30,6 +30,7 @@
   `(arg 1 ,term))
 
 (defun test-equality (term1 term2 cong-state)
+  "Cheap incomplete test for whether term1 = term2 is entailed by cong-state."
   (let* ((equality (mk-equality term1 term2))
 	 (norm-equality (sigma equality cong-state)))
     (if (eq (dp-theory norm-equality) 'arith)
@@ -79,6 +80,15 @@
 	  (t term))))
 
 (defun add-use-of-update (term cong-state)
+  "If term is update(a, i, v). Then a syntactic use of
+term is apply(update(a, i, v), i) which is simplified to v.
+If apply(a, i) = v then apply(a, i) is in the use of
+apply(update(a, i, v), i). To handle this possibility we put
+apply(a, i) immediately on the use of udpate(a, i, v).
+I think we alternatively could have put v on the use.
+The bottom line is this allows the congruence closure algorithm
+to automatically update the normal-forms whenever v is found
+to be equivalent to something else."
   (let* ((index (update-index term))
 	 (use-of-update (mk-term (list term index))))
     (add-use term use-of-update cong-state)))
