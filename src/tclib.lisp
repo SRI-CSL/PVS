@@ -244,11 +244,26 @@
 		   (typecheck-file (ce-file ce)))
 		 (save-context)
 		 (maphash #'(lambda (id th)
-			      (declare (ignore id))
-			      (if (typep th 'module)
+			      (if (module? th)
 				  (change-class th 'library-theory)
 				  (change-class th 'library-datatype))
-			      (setf (library th) lib))
+			      (setf (library th) lib)
+			      (setq *prelude-library-context*
+				    (if (null *prelude-library-context*)
+					(copy-context (saved-context th))
+					(let ((*current-context*
+					       *prelude-library-context*))
+					  (assert *prelude-library-context*)
+					  (assert *current-context*)
+					  (update-current-context
+					   th (mk-modname id))
+					  (dolist (decl (append (assuming th)
+								(theory th)))
+					    (when (and (declaration? decl)
+						       (visible? decl))
+					      (put-decl
+					       decl
+					       (current-declarations-hash))))))))
 			  *pvs-modules*)
 		 (setf (gethash lib *prelude-libraries*)
 		       (list *pvs-files* *pvs-modules*)))
