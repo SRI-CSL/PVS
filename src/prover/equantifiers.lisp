@@ -1174,7 +1174,7 @@ is not of the form: (<var> <term>...)" subst)
 (defun connective-expr? (expr)
   (or ;;NSH(4.8.96) (negation? expr)
 	(implication? expr)(conjunction? expr)
-	(disjunction? expr)(ifff? expr)))
+	(disjunction? expr)(iff? expr)))
 
 (defun toggle (polarity)
   (if (eq polarity 'positive) 'negative

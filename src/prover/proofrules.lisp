@@ -158,7 +158,7 @@
 				(list (make-equality (args1 arg)(args2 arg))))
 			       ((negation? arg)
 				(simplify-disjunct (args1 arg) depth))
-			       ((ifff? arg)
+			       ((iff? arg)
 				(nconc
 				 (simplify-disjunct
 				  (negate
