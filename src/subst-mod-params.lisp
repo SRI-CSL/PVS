@@ -118,7 +118,7 @@
 	  ncaches))))
 
 (defmethod subst-theory-params (term (alist cons))
-  (assert (every #'(lambda (elt) (formal-decl? (car elt))) alist))
+  ;;(assert (every #'(lambda (elt) (formal-decl? (car elt))) alist))
   (let ((new-alist (mapcar #'(lambda (elt)
 			       (cons (car elt)
 				     (if (actual? (cdr elt))
@@ -652,7 +652,9 @@
 ;;; Type Expressions
 
 (defmethod subst-mod-params* ((list list) modinst bindings)
-  (let ((nlist (subst-mod-params-list list modinst bindings)))
+  (let ((nlist   (if (every #'binding? list)
+		     (subst-mod-params-bindings list modinst bindings)
+		     (subst-mod-params-list list modinst bindings))))
     (if (equal list nlist)
 	list
 	nlist)))
@@ -879,6 +881,8 @@
     (cond ((eq nexpr expr)
 	   expr)
 	  ((constructor-name-expr? nexpr)
+	   (unless (adt (adt nexpr))
+	     (restore-adt-slot (adt nexpr)))
 	   (lcopy nexpr
 	     'recognizer-name nil
 	     'accessor-names 'unbound))
