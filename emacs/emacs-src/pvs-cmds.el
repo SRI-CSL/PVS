@@ -1173,9 +1173,11 @@ if necessary)."
     (load-pvs-lib-file dir)))
 
 (defun load-pvs-lib-file (dir)
-  (let ((load-path (cons dir load-path)))
-    (message "Loading %s" "pvs-lib.el")
-    (load "pvs-lib" t nil nil t)))
+  (let ((load-path (list dir)))
+    (pvs-msg "Attempting to load %s/pvs-lib.el..." dir)
+    (if (load "pvs-lib" t nil nil t)
+	(pvs-msg "%s/pvs-lib.el loaded" dir)
+	(pvs-msg "%s/pvs-lib.el not found" dir))))
 
 
 (defpvs remove-prelude-library library (dir)
