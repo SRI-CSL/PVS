@@ -161,7 +161,7 @@
 	for i from 0
 	when (> i ua) return nil
 	when (> i va) return t
-	when (arith-term-< (arg i u) (arg i v)) return t
+	when (monom-< (arg i u) (arg i v)) return t
 	unless (eq (arg i u) (arg i v)) return nil))
 
 (defun arith-term-< (u v)
@@ -265,7 +265,7 @@
 	(let ((return-product
 	       (and product
 		    (if (cdr product)
-			(mk-times (sort product 'arith-term-<))
+			(mk-times (sort product 'monom-<))
 			(car product)))))
 	  ;(break)
 	  (if return-product
@@ -362,7 +362,7 @@
 		(setq product
 		      (cond
 		       ((cdr product)
-			(sigtimes (mk-times (sort product 'arith-term-<))))
+			(sigtimes (mk-times (sort product 'monom-<))))
 		       (t (car product))))
 		(cond
 		 ((equal coef 1) product)
@@ -412,7 +412,7 @@
 		(eq (caadr ptr) u) return (setf (cdr (cadr ptr))
 						(+ (cdadr ptr) coef))
 		when ;;;Splice it in here.
-		(arith-term-< u (caadr ptr)) return (setf (cdr ptr)
+		(monom-< u (caadr ptr)) return (setf (cdr ptr)
 							  (cons (cons u coef)
 								(cdr ptr)))))
 	 (buildsum
@@ -549,20 +549,20 @@
   (member (funsym ineq) (list *lessp* *greaterp*) :test #'eq))
 
 (defun normineq (ineq cong-state &optional (var nil))
-  (let ((i-ineq (integercut ineq cong-state)))
-    (if (constant-p i-ineq) i-ineq
-	(integercut (normineq-rational i-ineq
-				       cong-state var)
-		    cong-state))))
+  (integercut (normineq-first ineq cong-state var) cong-state))
 
 ;;canonizes inequalities a {<, <=, >, >=, =} b by
 ;;canonizing a - b and picking the head term as the lhs of
 ;;the normalized ineq.
-(defun normineq-rational (ineq cong-state var)
+(defun normineq-first (ineq cong-state var)
   (let ((ineq-pred (funsym ineq))
 	(dif (sigdifference (mk-difference (arg 1 ineq)
 					   (arg 2 ineq)))))
-    (mk-diff-into-ineq ineq-pred dif cong-state var)))
+    (if (plus-p dif)
+	(let* ((lcm (mk-constant (apply #'lcm (plus-denoms dif))))
+	       (lcm-normed-diff (sigtimes (mk-times (list lcm dif)))))
+	  (mk-diff-into-ineq ineq-pred lcm-normed-diff cong-state var))
+	(mk-diff-into-ineq ineq-pred dif cong-state var))))
 
 ;;converts normalized difference into normalized inequality.
 (defun mk-diff-into-ineq (ineq-pred dif cong-state var)
@@ -576,8 +576,8 @@
 
 (defun mk-no-sign-type-into-ineq (ineq-pred dif cong-state var)
   (multiple-value-bind (head-term rest-dif)
-	    (pick-head-term dif var)
-	  (mk-norm-ineq ineq-pred head-term rest-dif)))
+      (pick-head-term dif var)
+    (mk-norm-ineq ineq-pred head-term rest-dif cong-state)))
 
 (defun sign-type (term cong-state)
   (cond
@@ -762,15 +762,21 @@
 
 ;;if the normalized difference is not a number, then moves the head term
 ;; to the left of the normalized inequality.
-(defun mk-norm-ineq (ineq-pred head tail)
-  (let ((coef (term-coef head))
-	(var (term-var head)))
-    (mk-ineq (if (dp-minusp coef)
-		 (opposite-ineq-pred ineq-pred)
-		 ineq-pred)
-	     var
-	     (sigtimes (mk-times (cons (mk-constant (/ -1 (constant-id coef)))
-				       (list tail)))))))
+(defun mk-norm-ineq (ineq-pred head tail cong-state)
+  (let* ((integered-ineq (mk-ineq
+			  ineq-pred head
+			  (sigtimes (mk-times (list *neg-one* tail)))))
+	 (integer-normed-ineq (integercut integered-ineq cong-state)))
+    (let ((coef (term-coef (arg 1 integer-normed-ineq)))
+	  (var (term-var (arg 1 integer-normed-ineq)))
+	  (ineq-pred (funsym integer-normed-ineq)))
+      (mk-ineq (if (dp-minusp coef)
+		   (opposite-ineq-pred ineq-pred)
+		   ineq-pred)
+	       var
+	       (sigtimes (mk-times
+			  (cons (mk-constant (/ 1 (constant-id coef)))
+				(list (arg 2 integer-normed-ineq)))))))))
 
 ;;flips inequality relation.
 (defun opposite-ineq-pred (ineq-pred)
