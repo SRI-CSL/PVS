@@ -114,6 +114,8 @@
 ;;; The main entry point to subst-mod-params.
 
 (defun subst-mod-params (obj modinst)
+  (assert *current-context*)
+  (assert *current-theory*)
   (let ((*current-library* (when modinst (library modinst))))
     (if (and modinst (free-params obj))
 	(with-slots (actuals) modinst
