@@ -20,6 +20,7 @@
   (cond
    ((number-type-p term) (sigtype term cong-state))
    ((arith-p term) (sigarith term cong-state))
+   ((update-p term) (sigupdate term cong-state))
    ((applyupdate-p term) (sigapplyupdate term cong-state))
    ((equality-p term) (sigequal term cong-state))
    ((bool-p term) (sigbool term cong-state))
