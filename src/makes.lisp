@@ -1268,7 +1268,7 @@
 	(make-instance 'mixfix-branch
 	  'type stype
 	  'operator if-name
-	  'argument if-args)))
+	  'argument if-args))))
 
 (defun make!-arg-tuple-expr (&rest args)
   (funcall #'make!-arg-tuple-expr* args))
