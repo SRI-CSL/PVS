@@ -5,16 +5,23 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Wed Jun 30 17:22:59 1999
 ;; Update Count    : 92
-;; Status          : Beta test
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
 ;;(proclaim '(inline resolution))
 
 (export '(make-new-context copy-context lf show))
+
+(defmethod initialize-instance :around ((obj syntax) &rest initargs)
+  (let ((place (getf initargs 'place)))
+    (when place
+      (remf initargs 'place))
+    (call-next-method)
+    (when place
+      (setf (place obj) place))))
 
 #-allegro
 (defun file-exists-p (file)
@@ -44,7 +51,7 @@
 #+allegro
 (defmethod copy ((ht hash-table) &rest args)
   (let* ((test (hash-table-test ht))
-	 (size (floor (hash-table-size ht) 1.5384616))
+	 (size (hash-table-count ht))
 	 (new-ht (if (memq test '(eq eql equal equalp))
 		     (make-hash-table :test test :size size)
 		     (make-hash-table :test test :size size
@@ -53,6 +60,29 @@
 		 (setf (gethash id (the hash-table new-ht)) data))
 	     (the hash-table ht))
     new-ht))
+
+;;; Used to copy a hash table that is not expected to grow
+(defun copy-static-hash (ht)
+  (let* ((test (hash-table-test ht))
+	 (size (floor (hash-table-count ht) .95))
+	 (new-ht (if (memq test '(eq eql equal equalp))
+		     (make-hash-table :test test :size size
+				      :rehash-threshold 1.0)
+		     (make-hash-table :test test :size size
+				      :hash-function 'pvs-sxhash
+				      :rehash-threshold 1.0))))
+    (maphash #'(lambda (id data)
+		 (setf (gethash id (the hash-table new-ht)) data))
+	     (the hash-table ht))
+    new-ht))
+
+(defmethod copy ((lht linked-hash-table) &rest args)
+  (declare (ignore args))
+  (make-linked-hash-table
+   :table (if (hash-table-p (lhash-table lht))
+	      (copy (lhash-table lht))
+	      (lhash-table lht))
+   :next (lhash-next lht)))
 
 (defmethod copy :around ((ex application) &rest args)
   (declare (ignore args))
@@ -249,7 +279,6 @@
       (shortname *pvs-context-path*)
       "/dev/null"))
 
-
 (defun get-formula (theory id)
   (or (find-if #'(lambda (decl)
 		   (and (typep decl 'formula-decl)
@@ -259,12 +288,6 @@
 		   (and (typep decl 'formula-decl)
 			(eq (id decl) id)))
 	(theory theory))))
-
-(defun get-decl (theory id)
-  (remove-if-not #'(lambda (d)
-		     (and (declaration? d)
-			  (eq (id d) id)))
-      (all-decls theory)))
 
 (defmethod get-theory ((name modname))
   (with-slots (library id) name
@@ -322,11 +345,15 @@
 	    (car (assoc id (prelude-libraries-uselist)
 			:test #'eq :key #'id))
 	    (find id (named-theories *current-context*) :key #'id)
-	    (let ((theories (get-imported-theories id)))
-	      (if (cdr theories)
-		  (pvs-message "Ambiguous theories - ~a"
-		    (id (car theories)))
-		  (car theories)))))))
+	    (unless *current-context*
+	      ;; We only allow this from top-level calls, in effect,
+	      ;; when there is no context.
+	      (let ((theories (get-imported-theories id)))
+		(if (cdr theories)
+		    (pvs-message "Ambiguous theories: need to include library - ~a"
+		      (id (car theories)))
+		    (car theories))))
+	    ))))
 
 (defun get-imported-theories (id)
   (let ((theories nil))
@@ -337,6 +364,18 @@
 		     (push th theories))))
 	     *imported-libraries*)
     theories))
+
+
+(defmethod get-lib-id ((th library-datatype-or-theory))
+  (get-lib-id (lib-ref th)))
+
+(defmethod get-lib-id ((str string))
+  (car (rassoc str (current-library-alist) :test #'equal)))
+
+(defmethod get-lib-id ((th datatype-or-module))
+  nil)
+
+
 
 ;;; Useful methods - can almost be used as accessors.
 
@@ -425,12 +464,12 @@
   (make-specpath (id name) ext))
 
 (defmethod make-binpath ((name symbol))
-  (make-pathname :defaults *pvs-context-path*
-		 :name name
-		 :type "bin"))
+  (make-binpath (string name)))
 
 (defmethod make-binpath ((name string))
   (make-pathname :defaults *pvs-context-path*
+		 :directory (append (pathname-directory *pvs-context-path*)
+				    (list "pvsbin"))
 		 :name name
 		 :type "bin"))
 
@@ -530,8 +569,14 @@
 
 (defun add-decl-test (x y)
   (and (eq (kind-of x) (kind-of y))
-       (or (not (eq (kind-of x) 'expr))
-	   (tc-eq (type x) (type y)))))
+       (case (kind-of x)
+	 ((expr judgement conversion) (tc-eq (type x) (type y)))
+	 (auto-rewrite (and (if (auto-rewrite-minus-decl? x)
+				(auto-rewrite-minus-decl? y)
+				(not (auto-rewrite-minus-decl? y)))
+			    (tc-eq (rewrite-names x)
+				   (rewrite-names y))))
+	 (t t))))
 
 
 ;;; Simple file copy function.  See SunCL Advanced User's Guide for
@@ -757,12 +802,12 @@
       (typecase d
 	(lib-decl
 	 (check-for-importing-conflicts d)
-	 (put-decl d (current-declarations-hash)))
+	 (put-decl d))
 	((or mod-decl theory-abbreviation-decl formal-theory-decl)
-	 (put-decl d (current-declarations-hash))
+	 (put-decl d)
 	 (let* ((thname (theory-name d))
 		(th (get-theory thname)))
-	   (add-exporting-with-theories th thname))
+	   (add-usings-to-context* th thname))
 	 (setf (saved-context d) (copy-context *current-context*)))
 	(importing
 	 (let* ((thname (theory-name d))
@@ -777,8 +822,8 @@
 					 *current-context*)))
 	(auto-rewrite-decl (add-auto-rewrite-to-context  d))
 	(type-def-decl (unless (enumtype? (type-expr d))
-			 (put-decl d (current-declarations-hash))))
-	(declaration (put-decl d (current-declarations-hash)))
+			 (put-decl d)))
+	(declaration (put-decl d))
 	(datatype nil)))
     (when (from-prelude? decl)
       (let* ((prevp (cadr (memq theory
@@ -790,10 +835,40 @@
 			       (adt-reduce-theory prevp)))
 		       (list prevp))))
 	(dolist (pth pths)
-	  (setf (gethash pth (using-hash *current-context*))
+	  (setf (get-importings pth)
 		(list (mk-modname (id pth)))))))
     (setf (declaration *current-context*) decl)
+    (update-context-importing-for-mapped-tcc decl)
     *current-context*))
+
+(defmethod update-context-importing-for-mapped-tcc ((decl mapped-axiom-tcc))
+  (let* ((thname (theory-name (generated-by decl)))
+	 (th (module (generating-axiom decl)))
+	 (thdecls (all-decls th))
+	 (prev-decls (ldiff thdecls (memq decl thdecls))))
+    ;;; Want something like add-usings-to-context*, but only for those
+    ;;; importings that precede the given declaration.
+    (add-to-using thname th)
+    (add-preceding-importings prev-decls th thname)))
+
+(defmethod update-context-importing-for-mapped-tcc ((decl assuming-tcc))
+  (let* ((thname (theory-name (generated-by decl)))
+	 (th (module (generating-assumption decl)))
+	 (thdecls (all-decls th))
+	 (prev-decls (ldiff thdecls (memq decl thdecls))))
+    (add-to-using thname th)
+    (add-preceding-importings prev-decls th thname)))
+
+(defun add-preceding-importings (prev-decls theory thinst)
+  (dolist (d prev-decls)
+    (typecase d
+      ((or importing mod-decl theory-abbreviation-decl formal-theory-decl)
+       (let* ((thname (subst-mod-params (theory-name d) thinst theory))
+	      (th (get-theory thname)))
+	 (add-usings-to-context* th thname))))))
+
+(defmethod update-context-importing-for-mapped-tcc (decl)
+  nil)
 
 (defmethod saved-context ((adt recursive-type))
   (when (adt-theory adt)
@@ -806,24 +881,6 @@
 (defmethod add-imported-assumings (decl)
   (declare (ignore decl))
   nil)
-
-(defmethod add-formal-importings-to-context (decl)
-  (declare (ignore decl))
-  nil)
-
-(defmethod add-formal-importings-to-context ((decl tcc-decl))
-  (let ((modinst (car (importing-instance decl)))
-	(fml (cadr (importing-instance decl))))
-    (when modinst
-      (add-formal-importings-to-context*
-       (formals (get-theory modinst)) modinst fml))))
-
-(defun add-formal-importings-to-context* (formals modinst fml)
-  (unless (eq fml (car formals))
-    (when (typep (car formals) 'importing)
-      (dolist (m (modules (car formals)))
-	(add-to-using (subst-mod-params m modinst))))
-    (add-formal-importings-to-context* (cdr formals) modinst fml)))
 
 (defmethod add-immediate-importings-to-context (decl)
   (declare (ignore decl))
@@ -864,19 +921,6 @@
   (push decl (conversions *current-context*)))
 
 
-(defun add-prelude-info-to-context (prelude-name)
-  (let ((theory (car prelude-name)))
-    (when (saved-context theory)
-      (dolist (c (conversions (saved-context theory)))
-	(pushnew (copy-tree c) (conversions *current-context*) :test #'equal))
-      (dolist (c (disabled-conversions (saved-context theory)))
-	(pushnew (copy-tree c) (disabled-conversions *current-context*)
-		 :test #'equal))
-      (setf (judgements *current-context*)
-	    (copy-judgements (judgements (saved-context theory))))
-      (setf (known-subtypes *current-context*)
-	    (copy-known-subtypes (known-subtypes (saved-context theory)))))))
-
 (defun make-new-context (theory)
   (let ((pctx (or *prelude-library-context*
 		  *prelude-context*)))
@@ -885,22 +929,30 @@
 	       (make-instance 'context
 		 'theory theory
 		 'theory-name (mk-modname (id theory))
-		 'using-hash (copy-using-hash (using-hash pctx))
-		 'declarations-hash (copy (declarations-hash pctx))
-		 'known-subtypes (copy-tree (known-subtypes pctx))
-		 'conversions (copy-list (conversions pctx))
+		 'using-hash (if *loading-prelude*
+				 (copy (using-hash pctx))
+				 (copy-lhash-table (using-hash pctx)))
+		 'declarations-hash (if *loading-prelude*
+					(copy (declarations-hash pctx))
+					(copy-lhash-table
+					 (declarations-hash pctx)))
+		 'known-subtypes (known-subtypes pctx)
+		 'conversions (conversions pctx)
 		 'disabled-conversions (copy-list (disabled-conversions pctx))
 		 'auto-rewrites (copy-list (auto-rewrites pctx))
 		 'disabled-auto-rewrites (copy-list
 					  (disabled-auto-rewrites pctx)))))
+	  
 	  (setf (judgements *current-context*)
-		(copy-judgements (judgements pctx)))
+		(if *loading-prelude*
+		    (set-prelude-context-judgements (judgements pctx))
+		    (copy-judgements (judgements pctx))))
 	  *current-context*)
 	(make-instance 'context
 	  'theory theory
 	  'theory-name (mk-modname (id theory))
-	  'using-hash (make-hash-table)
-	  'declarations-hash (make-hash-table)))))
+	  'using-hash (make-lhash-table :test 'eq)
+	  'declarations-hash (make-lhash-table :test 'eq)))))
 
 (defun copy-using-hash (ht)
   (let* ((size (floor (hash-table-size ht) 1.5384616))
@@ -924,10 +976,11 @@
 			    (declaration context))
 	   'declarations-hash (copy (declarations-hash context))
 	   'using-hash (copy (using-hash context))
+	   'library-alist (library-alist context)
 	   'named-theories (copy-list (named-theories context))
-	   'conversions (copy-list (conversions context))
+	   'conversions (conversions context)
 	   'disabled-conversions (copy-list (disabled-conversions context))
-	   'known-subtypes (copy-tree (known-subtypes context))
+	   'known-subtypes (known-subtypes context)
 	   'auto-rewrites (copy-list (auto-rewrites context))
 	   'disabled-auto-rewrites (copy-list (disabled-auto-rewrites context)))))
     (setf (judgements *current-context*)
@@ -949,7 +1002,7 @@
     (add-usings-to-context (cdr modinsts))))
 
 (defmethod add-usings-to-context* ((theory module) inst)
-  (add-to-using inst)
+  (add-to-using inst theory)
   (add-exporting-with-theories theory inst))
 
 (defmethod add-usings-to-context* ((adt recursive-type) inst)
@@ -1049,10 +1102,12 @@
 	 (let ((*no-expected* t))
 	   (list
 	    (subst-mod-params (closed-definition decl)
-			      (module-instance res)))))
+			      (module-instance res)
+			      (module decl)))))
 	((typep decl '(or const-decl def-decl))
 	 (copy-list (subst-mod-params (def-axiom decl)
-				      (module-instance res))))
+				      (module-instance res)
+				      (module decl))))
 	(t nil)))
 
 ;(defun create-formula (decl modinst num)
@@ -1104,8 +1159,11 @@
 	     (new-lhs (typecheck (mk-application* (args1 equality) varlist)
 			:expected (find-supertype (type (expression rhs)))))
 	     (new-rhs (expression rhs))
-	     (new-appl (make!-equation new-lhs new-rhs)))
-	(close-freevars new-appl *current-context* newbindings nil nil))))
+	     (new-appl (make!-equation new-lhs new-rhs))
+	     (def-form (close-freevars new-appl *current-context*
+				       newbindings nil nil)))o
+	(assert (equation? (expression def-form)))
+	def-form)))
 
 ;(defmethod expression ((ex implicit-coercion))
 ;  (expression (args1 ex)))
@@ -1139,6 +1197,9 @@
     (loop for i from 0 to depth
 	  do (push (create-definition-formula appl i)
 		   (def-axiom decl)))))
+
+(defmethod def-axiom ((map mapping))
+  (full-name (def-axiom (declaration (expr (rhs map)))) 1 t))
 
 (defmethod def-axiom (obj)
   (declare (ignore obj))
@@ -1202,7 +1263,7 @@
 		    (and (exists-expr? form)
 			 exist?)))
 	   (multiple-value-bind (newbindings new?)
-	       (var-to-binding freevars-form)
+	       (var-to-binding freevars-form form)
 	     ;; CRW 7/27/94: fixed to do the substit before changing the
 	     ;; bindings (when it was using the other order, substit
 	     ;; was alpha-renaming the bindings to avoid capture)
@@ -1210,11 +1271,16 @@
 		    (if new?
 			(freevar-substit form freevars-form newbindings)
 			form)))
+	       (when (and (not (eq (car (last newbindings))
+				   (declaration (car (last freevars-form)))))
+			  (tc-eq (type (car (last newbindings)))
+				 (type (car (bindings nform)))))
+		 (setf (chain? (car (last newbindings))) t))
 	       (copy nform
 		 'bindings (append newbindings (bindings nform))))))
 	  (t
 	   (multiple-value-bind (newbindings new?)
-	       (var-to-binding freevars-form)
+	       (var-to-binding freevars-form form)
 	     (let* ((qform (make-instance (if exist?
 					      'exists-expr
 					      'forall-expr)
@@ -1230,7 +1296,8 @@
 	       tform))))))
 
 (defun freevar-substit (form freevars-form newbindings)
-  (let ((*bound-variables* (append newbindings *bound-variables*)))
+  (let ((*bound-variables* (append newbindings *bound-variables*))
+	(*substit-dont-simplify* t))
     (substit form (pairlis (mapcar #'declaration freevars-form) newbindings))))
 
 ;(defun sort-freevars (freevars)
@@ -1282,7 +1349,7 @@
 		      :test #'(lambda (u v)
 				(eq u (declaration v))))))))
 
-(defun var-to-binding (varlist)
+(defun var-to-binding (varlist expr)
   (let ((newvars? nil))
     (labels ((vtb (vars result new?)
 		  (if (null vars)
@@ -1296,7 +1363,7 @@
 			(setq newvars? new?)
 			bindings)
 		      (multiple-value-bind (newbind bnew?)
-			  (var-to-binding* (car vars))
+			  (var-to-binding* (car vars) expr)
 			(vtb (cdr vars) (cons newbind result)
 			     (or new? bnew?))))))
       (let ((nbindings (vtb varlist nil nil)))
@@ -1304,6 +1371,40 @@
 		    (substit-bindings nbindings varlist)
 		    nbindings)
 		newvars?)))))
+
+(defun var-to-binding* (var expr)
+  (cond ((needs-naming-apart? var expr)
+	 (let* ((new-id (make-new-variable (id var) expr 1))
+		(bind-decl (mk-bind-decl new-id
+			     (get-declared-type var) (type var))))
+	   (values bind-decl t)))
+	((and (bind-decl? (declaration var))
+	      (tc-eq (type var) (type (declaration var))))
+	 (declaration var))
+	(t (let ((bind-decl (mk-bind-decl (id var)
+			      (get-declared-type var) (type var))))
+	     (values bind-decl t)))))
+	       
+
+(defun needs-naming-apart? (var form)
+  (let ((foundone nil))
+    (mapobject #'(lambda (x)
+		   (or foundone
+		       (or (and (type-expr? x)
+				(not (member var (freevars x)
+				       :test
+				       #'(lambda (u v)
+					   (and (eq (id u) (id v))
+						(not (eq (declaration u)
+							 (declaration v))))))))
+			   (and (name-expr? x)
+				(not (binding? x))
+				(eq (id x) (id var))
+				(declaration x)
+				(not (same-declaration x var))
+				(setq foundone t)))))
+	       form)
+    foundone))
 
 (defun substit-bindings (nbindings varlist &optional newbs)
   (if (null nbindings)
@@ -1314,16 +1415,6 @@
 				 nil))
 			(cdr varlist)
 			(cons (car nbindings) newbs))))
-
-(defun var-to-binding* (var)
-  ;;(change-class (copy var) 'bind-decl)
-  (if (and ;; nil
-	   (bind-decl? (declaration var))
-	   (tc-eq (type var) (type (declaration var))))
-      (declaration var)
-      (let ((bind-decl (mk-bind-decl (id var)
-			 (get-declared-type var) (type var))))
-	(values bind-decl t))))
 
 (defun get-declared-type (var)
   (or (and (slot-exists-p var 'declared-type)
@@ -1364,7 +1455,12 @@
   (adt? (declared-type te)))
 
 (defun restore-adt-slot (te)
-  (setf (adt te) (get-adt-slot-value te)))
+  (let ((adt (get-adt-slot-value te)))
+    (when adt
+      (if (adt-type-name? te)
+	  (setf (adt te) adt)
+	  (change-class te 'adt-type-name
+			'adt adt)))))
 
 (defun get-adt-slot-value (te)
   ;; te must be a type-name
@@ -1430,6 +1526,9 @@
 (defmethod accessor? ((fn accessor-name-expr))
   t)
 
+(defmethod accessor? ((fn injection-expr))
+  nil)
+
 (defmethod accessor? ((fn name-expr))
   (when (accessor? (resolution fn))
     (change-class fn 'accessor-name-expr)
@@ -1445,11 +1544,8 @@
 ;;; Given a constructor name, return the appropriately instantiated adt
 ;;; type name.
 
-(defmethod adt :around ((te type-name))
-  (with-slots (adt) te
-    (if (and adt (symbolp adt))
-	(restore-adt-slot te)
-	adt)))
+(defmethod adt ((te type-name))
+  nil)
 
 (defmethod adt ((fn constructor-name-expr))
   (or (adt-type fn)
@@ -1616,7 +1712,8 @@
 	(recognizer-names tn)
 	(setf (recognizer-names tn)
 	      (subst-mod-params (mapcar #'recognizer (constructors tn))
-				(module-instance tn))))))
+				(module-instance tn)
+				(module (declaration tn)))))))
 
 (defmethod recognizers ((te cotupletype))
   (let ((index 0))
@@ -1764,7 +1861,41 @@
 			  (when *full-name-depth*
 			    (1- *full-name-depth*))))))
 
+(defmethod full-name? ((x injection-expr))
+  (null (actuals x)))
 
+(defmethod full-name! ((x injection-expr))
+  (lcopy x 'actuals (list (mk-actual (break)))))
+
+(defmethod full-name? ((x extraction-expr))
+  (null (actuals x)))
+
+(defmethod full-name! ((x extraction-expr))
+  (lcopy x 'actuals (list (mk-actual (break)))))
+
+(defmethod full-name? ((x injection?-expr))
+  (null (actuals x)))
+
+(defmethod full-name! ((x injection?-expr))
+  (lcopy x 'actuals (list (mk-actual (break)))))
+
+(defmethod full-name? ((x injection-application))
+  (null (actuals x)))
+
+(defmethod full-name! ((x injection-application))
+  (lcopy x 'actuals (list (mk-actual (find-supertype (type x))))))
+
+(defmethod full-name? ((x extraction-application))
+  (null (actuals x)))
+
+(defmethod full-name! ((x extraction-application))
+  (lcopy x 'actuals (list (mk-actual (type (argument x))))))
+
+(defmethod full-name? ((x injection?-application))
+  (null (actuals x)))
+
+(defmethod full-name! ((x injection?-application))
+  (lcopy x 'actuals (list (mk-actual (type (argument x))))))
 
 ;;; Raise-actuals
 
@@ -1945,7 +2076,9 @@
 		  (make-applications (cadr if-args) (cdr args))))
 	   (else (translate-update-to-if
 		  (make-applications (caddr if-args) (cdr args)))))
-      (make-if-expr cond then else))))
+      (if (tc-eq then else)
+	  then
+	  (make-if-expr cond then else)))))
 
 (defun make-applications (expr args)
   (if (null args)
@@ -1953,12 +2086,8 @@
       (make-applications (make-application* expr (car args)) (cdr args))))
 
 (defmethod translate-update-to-if* ((op update-expr) applargs)
-  (translate-applied-update-to-if
-   (expression op)
-   applargs
-   (nreverse (mapcar #'arguments (assignments op)))
-   (nreverse (mapcar #'expression (assignments op)))
-   nil nil))
+  (let ((if-op (translate-update-to-if! op)))
+    (make!-applications if-op applargs)))
 
 (defun translate-applied-update-to-if (op applargs args exprs recargs recexprs)
   (cond ((and args (null (car args)))
@@ -1981,7 +2110,9 @@
 		 (else-part (translate-applied-update-to-if
 			     op applargs (cdr args) (cdr exprs)
 			     recargs recexprs)))
-	     (make-if-expr condition then-part else-part)))))
+	     (if (tc-eq then-part else-part)
+		 then-part
+		 (make-if-expr condition then-part else-part))))))
 
 (defun translate-applied-update-leaf (op args exprs)
   (if args
@@ -2015,9 +2146,11 @@
 			  (make-applications ass-expr remargs)))
 		(else (translate-update-to-if-ass
 		       (cdr assignments) expr args t)))
-	    (if chain?
-		(make-chained-if-expr cond then else)
-		(make-if-expr cond then else)))))))
+	    (if (tc-eq then else)
+		then
+		(if chain?
+		    (make-chained-if-expr cond then else)
+		    (make-if-expr cond then else))))))))
 
 (defun make-update-condition (ass-args args &optional equalities)
   (cond ((null ass-args)
@@ -2046,9 +2179,12 @@
 ;;; translate-update-to-if! is like translate-update-to-if, but works even
 ;;; if the update is not applied.
 
+(defvar *translate-update-conditions*)
+
 (defmethod translate-update-to-if! ((expr update-expr))
   (with-slots (type expression assignments) expr
-    (let ((*generate-tccs* 'none))
+    (let ((*generate-tccs* 'none)
+	  (*translate-update-conditions* nil))
       (translate-update-to-if!*
        type expression
        (mapcar #'arguments assignments)
@@ -2065,8 +2201,9 @@
 (defmethod translate-update-to-if!* ((type funtype) ex args-list exprs)
   (if (null args-list)
       ex
-      (let ((nex (translate-update-to-if-funtype
-		  type ex (car args-list) (car exprs))))
+      (let* ((*translate-update-conditions* *translate-update-conditions*)
+	     (nex (translate-update-to-if-funtype
+		   type ex (car args-list) (car exprs))))
 	(translate-update-to-if!* type nex (cdr args-list) (cdr exprs)))))
 
 ;;; This one recurses down the arguments of a single assignment
@@ -2078,10 +2215,11 @@
 	     (car-arg (if (cdar args)
 			  (make-tuple-expr (car args))
 			  (caar args)))
-	     (eqn (make-equation bvar car-arg))
-	     (nex (make-update-if-application ex bvar)))
-	(make-lambda-expr (list bd)
-	  (make-update-function-if-expr eqn type nex (cdr args) expr)))
+	     (eqn (make-equation bvar car-arg)))
+	(push car-arg *translate-update-conditions*)
+	(let ((nex (make-update-if-application ex bvar)))
+	  (make-lambda-expr (list bd)
+	    (make-update-function-if-expr eqn type nex (cdr args) expr))))
       (translate-update-to-if! expr)))
 
 (defmethod make-update-if-application ((ex if-expr) arg)
@@ -2096,12 +2234,27 @@
     
   
 (defun make-update-function-if-expr (eqn type ex args expr)
-  (make-if-expr
-   eqn
-   (if args
-       (translate-update-to-if!* (range type) ex (list args) (list expr))
-       expr)
-   ex))
+  (let ((then (if args
+		  (translate-update-to-if!* (range type) ex
+					    (list args) (list expr))
+		  expr)))
+    (if (tc-eq then ex)
+	ex
+	(let* ((needs-reducing? (member (car *translate-update-conditions*)
+					(cdr *translate-update-conditions*)
+					:test #'tc-eq))
+	       (nthen (if needs-reducing?
+			  (reduce-update-if-expr then eqn t)
+			  then))
+	       (nex (if needs-reducing?
+			(reduce-update-if-expr ex eqn nil)
+			ex)))
+	  (make-if-expr eqn nthen nex)))))
+
+(defun reduce-update-if-expr (ex eqn true?)
+  (gensubst ex
+    #'(lambda (x) (if true? (then-part x) (else-part x)))
+    #'(lambda (x) (and (branch? x) (tc-eq (condition x) eqn)))))
 
 (defmethod translate-update-to-if!* ((type recordtype) ex args exprs)
   (make-record-expr
@@ -2208,8 +2361,10 @@
 
 (defmethod find-supertype ((te type-name))
   #+lucid (restore-adt te)
-  (let ((adt (adt te)))
+  (let ((adt (adt te))
+	(modinst (module-instance te)))
     (if (and adt
+	     (actuals modinst)
 	     (positive-types adt)
 	     (not (every #'null (positive-types adt))))
 	(let* ((nmodinst (adt-modinst (module-instance te)
@@ -2285,6 +2440,8 @@ space")
 
 (defvar *pseudo-normalize-translate-id-hash* nil)
 
+(defvar *pseudo-normalize-translate-to-prove-hash* nil)
+
 (defvar *pseudo-normalizing* nil)
 
 (defvar *pseudo-normalize-subtype-hash*
@@ -2294,6 +2451,10 @@ space")
   (if *pseudo-normalize-hash*
       (clrhash *pseudo-normalize-hash*)
       (setq *pseudo-normalize-hash*
+	    (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq)))
+  (if *pseudo-normalize-translate-to-prove-hash*
+      (clrhash *pseudo-normalize-translate-to-prove-hash*)
+      (setq *pseudo-normalize-translate-to-prove-hash*
 	    (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq)))
   (if *pseudo-normalize-translate-id-hash*
       (clrhash *pseudo-normalize-translate-id-hash*)
@@ -2338,7 +2499,10 @@ space")
 	       ((*dp-state* (dpi-empty-state)))
 	       (let ((result (if *translate-id-counter*
 				 (assert-if-simplify expr)
-				 (let* ((*translate-id-hash*
+				 (let* ((*translate-to-prove-hash*
+					 (clrhash
+					  *pseudo-normalize-translate-to-prove-hash*))
+					(*translate-id-hash*
 					 (clrhash
 					  *pseudo-normalize-translate-id-hash*))
 					(*translate-id-counter* nil)
@@ -2347,346 +2511,26 @@ space")
 				   (assert-if-simplify expr)))))
 		 (when key
 		   (setf (gethash key *pseudo-normalize-hash*) result))
+		 ;; (unless (tc-eq result (partial-normalize expr))
+		 ;;   (break "Different pseudo-normalize results"))
 		 result)))))))
 
+;; (defun partial-normalize (expr)
+;;   (partial-normalize* expr))
 
-(defmethod get-conversions ((name name-expr))
-  (assert (resolution name))
-  (get-conversions (resolution name)))
+;; (defmethod partial-normalize* ((ex lambda-expr))
+;;   (lcopy ex 'expression (partial-normalize* (expression ex))))
 
+;; (defmethod partial-normalize* ((ex application))
+;;   (cond ((or (is-addition? ex)
+;; 	     (is-subtraction? ex))
+;; 	 (partial-normalize-addition (arguments ex)))
+;; 	((is-plus? (operator ex))
+;; 	 (partial-normalize-sums (arguments ex)))
+;; 	((is-times? (operator ex))
+;; 	 (partial-normalize-times (arguments ex)))
+;;   (lcopy 
 
-(defmethod find-conversions-for ((atype recordtype) (etype recordtype))
-  (append (call-next-method)
-	  (when (and (= (length (fields atype)) (length (fields etype)))
-		     (every #'(lambda (afld)
-				(some #'(lambda (efld)
-					  (eq (id afld) (id efld)))
-				      (fields etype)))
-			    (fields atype)))
-	    ;; Create a conversion of the form
-	    ;; LAMBDA (x: atype): (# f1 := conv(x`f1) ... #)
-	    (let* ((aid (make-new-variable '|x| (list atype etype)))
-		   (abd (make-bind-decl aid atype))
-		   (avar (make-variable-expr abd)))
-	      (multiple-value-bind (assigns convs)
-		  (find-record-assignment-conversions
-		   (fields atype) (fields etype) avar
-		   (dependent? atype) (dependent? etype))
-		(when assigns
-		  (list (change-class
-			 (make!-lambda-expr (list abd)
-			   (make-record-expr assigns etype))
-			 'rectype-conversion
-			 'conversions convs))))))))
-
-(defun find-record-assignment-conversions (afields efields avar adep? edep?
-						   &optional assigns convs)
-  (if (null afields)
-      (values (nreverse assigns) (nreverse convs))
-      (let* ((afld (car afields))
-	     (efld (find (id afld) efields :key #'id)))
-	(multiple-value-bind (assign conv aarg earg)
-	    (find-record-assignment-conversion afld efld avar adep? edep?)
-	  (when assign
-	    (find-record-assignment-conversions
-	     (if aarg
-		 (substit (cdr afields) (acons afld aarg nil))
-		 (cdr afields))
-	     (if earg
-		 (substit efields (acons efld earg nil))
-		 efields)
-	     avar adep? edep?
-	     (cons assign assigns)
-	     (cons conv convs)))))))
-
-(defun find-record-assignment-conversion (afld efld avar adep? edep?)
-  (let* ((arg (list (list (make-instance 'field-assignment-arg
-			    'id (id afld)))))
-	 (fappl (make!-field-application efld avar))
-	 (conv (unless (tc-eq (type afld) (type efld))
-		 (car (find-conversions-for (type afld) (type efld)))))
-	 (expr (if (tc-eq (type afld) (type efld))
-		   fappl
-		   (when conv
-		     (make!-application conv fappl)))))
-    (when expr
-      (values (mk-assignment 'uni arg expr) conv
-	      (when adep? fappl) (when edep? expr)))))
-
-(defmethod find-conversions-for ((atype tupletype) (etype tupletype))
-  (append (call-next-method)
-	  (when (= (length (types atype)) (length (types etype)))
-	    ;; Create a conversion of the form
-	    ;; LAMBDA (x: atype): (conv(x`1) ... )
-	    (let* ((aid (make-new-variable '|x| (list atype etype)))
-		   (abd (make-bind-decl aid atype))
-		   (avar (make-variable-expr abd)))
-	      (multiple-value-bind (args convs)
-		  (find-tupletype-conversions
-		   (types atype) (types etype) 1 avar)
-		(when args
-		  (list (change-class
-			 (make!-lambda-expr (list abd)
-			   (make!-tuple-expr* args))
-			 'tuptype-conversion
-			 'conversions convs))))))))
-
-(defun find-tupletype-conversions (atypes etypes index avar
-					  &optional args convs)
-  (if (null atypes)
-      (values (nreverse args) (nreverse convs))
-      (let* ((atype (car atypes))
-	     (etype (car etypes)))
-	(multiple-value-bind (arg conv aarg earg)
-	    (find-tupletype-conversion atype etype index avar)
-	  (when arg
-	    (find-tupletype-conversions
-	     (if aarg
-		 (substit (cdr atypes) (acons (car atypes) aarg nil))
-		 (cdr atypes))
-	     (if earg
-		 (substit (cdr etypes) (acons (car etypes) earg nil))
-		 (cdr etypes))
-	     (1+ index) avar
-	     (cons arg args)
-	     (cons conv convs)))))))
-
-(defun find-tupletype-conversion (atype etype index avar)
-  (let* ((pappl (make!-projection-application index avar))
-	 (conv (unless (tc-eq atype etype)
-		 (car (find-conversions-for atype etype))))
-	 (expr (if (tc-eq atype etype)
-		   pappl
-		   (when conv
-		     (make!-application conv pappl)))))
-    (when expr
-      (values expr conv
-	      (when (dep-binding? atype) pappl)
-	      (when (dep-binding? etype) expr)))))
-
-(defmethod find-conversions-for ((atype funtype) (etype funtype))
-  (let* ((nconvs (call-next-method))
-	 (sconvs (remove-if
-		     (complement
-		      #'(lambda (c)
-			  (let ((ctype (find-supertype (type c))))
-			    (and (strict-compatible? (domain ctype) atype)
-				 (strict-compatible? (range ctype) etype)))))
-		   nconvs))
-	 (fid (make-new-variable '|f| (list atype etype)))
-	 (fbd (make-bind-decl fid atype))
-	 (fvar (make-variable-expr fbd))
-	 (datype (if (dep-binding? (domain atype))
-		     (type (domain atype))
-		     (domain atype)))
-	 (detype (if (dep-binding? (domain etype))
-		     (type (domain etype))
-		     (domain etype)))
-	 (daid (make-new-variable '|x| (list atype etype)))
-	 (dabd (make-bind-decl daid detype))
-	 (davar (make-variable-expr dabd))
-	 (dconv (unless (tc-eq datype detype)
-		  ;; Note contravariance
-		  (car (find-conversions-for detype datype))))
-	 (arg (if (tc-eq datype detype)
-		  davar
-		  (when dconv
-		    (make!-application dconv davar))))
-	 (ratype (if (dep-binding? (domain atype))
-		     (when arg
-		       (substit (range atype) (acons (domain atype) arg nil)))
-		     (range atype)))
-	 (retype (if (dep-binding? (domain etype))
-		     (substit (range etype) (acons (domain etype) davar nil))
-		     (range etype)))
-	 (rconv (unless (or (null ratype)
-			    (tc-eq ratype retype))
-		  ;; covariant
-		  (car (find-conversions-for ratype retype))))
-	 (fconvs (when arg
-		   (let* ((appl (make!-application fvar arg))
-			  (expr (if (tc-eq ratype retype)
-				    appl
-				    (when rconv
-				      (make!-application rconv appl)))))
-		     (when expr
-		       (list (change-class
-			      (make!-lambda-expr (list fbd)
-				(make!-lambda-expr (list dabd)
-				  expr))
-			      'funtype-conversion
-			      'domain-conversion dconv
-			      'range-conversion rconv)))))))
-    (or sconvs
-	nconvs
-	fconvs)))
-
-(defmethod find-conversions-for (atype etype)
-  (find-conversions* (conversions *current-context*)
-		     (mk-funtype atype etype)))
-
-(defvar *only-use-conversions* nil)
-(defvar *ignored-conversions* nil)
-
-(defmethod conversions :around ((context context))
-  (let ((convs (call-next-method)))
-    (cond (*only-use-conversions*
-	   (remove-if-not #'(lambda (x)
-			      (member (string (id x)) *only-use-conversions*
-				      :test #'string=))
-	     convs))
-	  (*ignored-conversions*
-	   (remove-if #'(lambda (x)
-			  (member (string (id x)) *ignored-conversions*
-				  :test #'string=))
-	     convs))
-	  (t convs))))
-
-(defun find-conversions* (conversions ftype &optional result)
-  (if (null conversions)
-      result
-      (append (get-conversions ftype) result)))
-
-;;; Given a type, find the set of compatible conversion names.  These are
-;;; in the order of preference.  Note that the conversion name has the
-;;; conversion-decl as its declaration.
-
-(defmethod get-conversions ((type type-expr))
-  (compatible-conversions (conversions *current-context*)
-			  type
-			  (disabled-conversions *current-context*)))
-
-(defmethod get-conversions ((type dep-binding))
-  (get-conversions (type type)))
-
-(defun compatible-conversions (conversions type disabled-convs
-					   &optional result)
-  (if (null conversions)
-      (nreverse result)
-      (let ((cos (compatible-conversion (car conversions) type)))
-	(compatible-conversions
-	 (cdr conversions)
-	 type
-	 disabled-convs
-	 (if (and cos
-		  (not (member cos disabled-convs :test #'tc-eq :key #'name)))
-	     (cons cos result)
-	     result)))))
-
-(defun compatible-conversion (conversion type)
-  (let* ((ctype (find-supertype (type conversion)))
-	 (fparams (remove-if #'(lambda (fp)
-				 (memq fp (formals-sans-usings
-					     (current-theory))))
-		    (free-params ctype)))
-	 (theory (when fparams (module (car fparams))))
-	 (fmls (when theory (formals-sans-usings theory))))
-    (if (and fmls
-	     (not (eq theory (current-theory)))
-	     (not (fully-instantiated? ctype)))
-	(let ((bindings (tc-match-conversion conversion type ctype
-					     (mapcar #'list fmls))))
-	  (when (and bindings (every #'cdr bindings))
-	    (let* ((acts (mapcar #'(lambda (a)
-				     (mk-res-actual (cdr a) theory))
-				 bindings))
-		   (nmi (mk-modname (id theory) acts))
-		   (*generate-tccs* 'none)
-		   (*smp-include-actuals* t))
-	      (and (with-no-type-errors
-		    (let ((*current-context*
-			   (if (free-params type)
-			       (or (saved-context
-				    (module (car (free-params type))))
-				   *current-context*)
-			       *current-context*)))
-		      (subtypes-satisfied? acts fmls)))
-		   (check-conversion
-		    (subst-mod-params (expr conversion) nmi))))))
-	(when (compatible? ctype type)
-	  (expr conversion)))))
-
-(defun tc-match-conversion (conversion type ctype bindings)
-  (let ((nbindings (tc-match type ctype bindings)))
-    (when nbindings
-      (if (every #'cdr nbindings)
-	  nbindings
-	  (tc-match-conversion* (expr conversion) nbindings)))))
-
-(defmethod tc-match-conversion* ((expr application) bindings)
-  (let ((nbindings (tc-match (type (argument expr))
-			     (domain (type (operator expr)))
-			     bindings)))
-    (if nbindings
-	(if (every #'cdr nbindings)
-	    nbindings
-	    (tc-match (domain (type (operator expr)))
-		      (type (argument expr))
-		      nbindings))
-	(tc-match (domain (type (operator expr)))
-		  (type (argument expr))
-		  bindings))))
-
-(defmethod tc-match-conversion* ((expr name-expr) bindings)
-  bindings)
-
-(defun subtypes-satisfied? (actuals formals &optional alist)
-  (or (notany #'(lambda (fm) (typep fm 'formal-subtype-decl)) formals)
-      (multiple-value-bind (nfml nalist)
-	  (subst-actuals-in-next-formal (car actuals) (car formals) alist)
-	(and (or (not (typep nfml 'formal-subtype-decl))
-		 (subtype-of? (type-canon (type-value (car actuals)))
-			      (type-canon (type-value nfml))))
-	     (subtypes-satisfied? (cdr actuals) (cdr formals) nalist)))))
-
-(defun check-conversion (name)
-  (let ((type (find-supertype (type name))))
-    (unless (strict-compatible? (domain type) (range type))
-      (setf (types name) (list (type name)))
-      name)))
-
-
-;;; Given a type, find the set of compatible k-conversion names (properly
-;;; instantiated).  This differs from get-conversions in that we are only using
-;;; conversions that are k-combinators, and matching against the range rather
-;;; than the domain of the conversion type.
-
-(defmethod get-k-conversions ((type type-expr))
-  (compatible-k-conversions (conversions *current-context*) type
-			    (disabled-conversions *current-context*)))
-
-(defun compatible-k-conversions (conversions type disabled-convs
-					     &optional result)
-  (if (null conversions)
-      (nreverse result)
-      (compatible-k-conversions
-       (cdr conversions)
-       type
-       disabled-convs
-       (let ((cos (when (k-combinator? (car conversions))
-		    (compatible-k-conversion (car conversions) type))))
-	 (if (and cos
-		  (not (member cos disabled-convs :test #'tc-eq :key #'name)))
-	     (cons cos result)
-	     result)))))
-
-(defun compatible-k-conversion (conversion type)
-  (let* ((ctype (range (find-supertype (type conversion))))
-	 (fparams (free-params ctype))
-	 (ctheory (when fparams (module (car fparams))))
-	 (fmls (when ctheory (formals-sans-usings ctheory))))
-    (if (and fmls
-	     (not (fully-instantiated? ctype)))
-	(let ((bindings (tc-match type ctype (mapcar #'list fmls))))
-	  (when (and bindings (every #'cdr bindings))
-	    (let ((*smp-include-actuals* t)
-		  (nmi (mk-modname (id ctheory)
-			 (mapcar #'(lambda (a)
-				     (mk-res-actual (cdr a) ctheory))
-				 bindings))))
-	      (subst-mod-params (expr conversion) nmi))))
-	(when (compatible? ctype type)
-	  (expr conversion)))))
 
 #-gcl
 (defun direct-superclasses (class)
@@ -2728,18 +2572,16 @@ space")
   (declare (ignore obj))
   nil)
 
-(defmethod untyped* ((act actual))
-  (multiple-value-bind (typed? ex)
-      (fully-typed? (or (type-value act)
-			(expr act)))
-    (values (not typed?) ex)))
-
 (defmethod untyped* ((expr expr))
   (values (not (type expr))
 	  expr))
 
 (defmethod untyped* ((expr bind-decl))
   (values (not (type expr)) expr))
+
+(defmethod untyped* ((expr extraction-expr))
+  (values (not (type expr))
+	  expr))
 
 (defmethod untyped* ((expr name-expr))
   (values (not (and (type expr) (resolution expr)))
@@ -2751,6 +2593,12 @@ space")
 (defmethod untyped* ((te type-name))
   (values (not (resolution te))
 	  te))
+
+(defmethod k-combinator? ((n adt-name-expr))
+  nil)
+
+(defmethod k-combinator? ((n projection-expr))
+  nil)
 
 (defmethod k-combinator? ((n name-expr))
   (k-combinator? (declaration n)))
@@ -2956,6 +2804,34 @@ space")
 (defsetf current-using-hash () (using-hash)
   `(setf (using-hash *current-context*) ,using-hash))
 
+(defun current-library-alist ()
+  (assert *current-context*)
+  (library-alist *current-context*))
+
+(defsetf current-library-alist () (lib-alist)
+  `(setf (library-alist *current-context*) ,lib-alist))
+
+(defun current-known-subtypes ()
+  (assert *current-context*)
+  (known-subtypes *current-context*))
+
+(defsetf current-known-subtypes () (known-subtypes)
+  `(setf (known-subtypes *current-context*) ,known-subtypes))
+
+(defun current-judgements ()
+  (assert *current-context*)
+  (judgements *current-context*))
+
+(defsetf current-judgements () (judgements)
+  `(setf (judgements *current-context*) ,judgements))
+
+(defun current-conversions ()
+  (assert *current-context*)
+  (conversions *current-context*))
+
+(defsetf current-conversions () (conversions)
+  `(setf (conversions *current-context*) ,conversions))
+
 (defmethod assuming-instances ((decl declaration))
   (let* ((theory (module decl))
 	 (decls (all-decls theory))
@@ -2967,6 +2843,9 @@ space")
 #+gcl
 (defun hash-table-test (ht)
   #'equal)
+
+(defmethod id ((map mapping))
+  (id (lhs map)))
 
 (defmethod id ((expr coercion))
   (id (argument expr)))
@@ -3458,6 +3337,8 @@ space")
 
 (defmethod formals ((decl field-decl)) nil)
 
+(defmethod formals ((map mapping)) nil)
+
 ;;; sexp converts a given object to a list; 
 
 (defmethod sexp ((prinfo proof-info))
@@ -3609,6 +3490,17 @@ space")
 (defmethod negate! (formula)
   (make!-negation formula))
 
+(defmethod from-macro ((ex expr))
+  (assert (current-theory))
+  (cdr (assq ex (macro-expressions (current-theory)))))
+
+(defmethod macro-expressions ((dt recursive-type))
+  nil)
+  
+(defmethod (setf from-macro) (ex1 (ex2 expr))
+  (assert (current-theory))
+  (push (cons ex2 ex1) (macro-expressions (current-theory))))
+
 (defun collect-theory-instances (theory)
   (let ((th (get-theory theory))
 	(theory-instances nil))
@@ -3662,3 +3554,80 @@ space")
   ((prev expr) (cur expr) &rest initargs)
   (setf (free-variables cur) 'unbound)
   (setf (free-parameters cur) 'unbound))
+
+
+;; Like remove, but only copies as much as necessary
+(defun remove* (elt list &optional (olist list) elts pelts)
+  (cond ((null list)
+	 (nconc (nreverse pelts) olist))
+	((eq elt (car list))
+	 (remove* elt (cdr list) (cdr list) nil (nconc elts pelts)))
+	(t (remove* elt (cdr list) olist (cons (car list) elts) pelts))))
+
+
+;; (defmethod initialize-instance :around ((res resolution) &rest initargs)
+;;   (prog1 (call-next-method)
+;;     (when (and (module-instance res)
+;; 	       (string= (unparse (module-instance res) :string t) "bv[2 * n]")
+;; 	       (type res)
+;; 	       (string= (unparse (type res) :string t) "bvec[k]"))
+;;       (break "Strange"))
+;;     (unless (or (null (module-instance res))
+;; 		(null (declaration res))
+;; 		(library (module-instance res))
+;; 		(not (library-datatype-or-theory? (module (declaration res)))))
+;;       (break "Bad init"))))
+
+;; (defmethod (setf module-instance) :around (v (res resolution))
+;;   (unless (or (null v)
+;; 	      (null (declaration res))
+;; 	      (library v)
+;; 	      (not (library-datatype-or-theory? (module (declaration res)))))
+;;     (break "Bad setf"))
+;;   (call-next-method))
+
+
+;;; An improved trace, in that it expands generic functions to their
+;;; method forms, so that the individual methods can be determined
+;;; from the trace.  Otherwise only the function name is produced,
+;;; which is not easy to debug.
+;;;
+;;; Use this exactly like trace, e.g., (trace* substit substit*) or (trace*  
+
+(defmacro trace* (&rest trace-forms)
+  `(trace ,@(expand-trace-form-methods trace-forms)))
+
+(defun expand-trace-form-methods (trace-forms &optional nforms)
+  (if (null trace-forms)
+      (nreverse nforms)
+      (let ((nform (expand-trace-form-method (car trace-forms))))
+	(expand-trace-form-methods
+	 (cdr trace-forms)
+	 (if (consp nform)
+	     (append nform nforms)
+	     (cons nform nforms))))))
+
+(defun expand-trace-form-method (trace-form)
+  (if (consp trace-form)
+      (if (or (eq (car trace-form) 'method)
+	      (consp (car trace-form))
+	      (not (typep (symbol-function (car trace-form))
+			  'generic-function)))
+	  trace-form
+	  (mapcar #'(lambda (method-form)
+		      (cons method-form (cdr trace-form)))
+	    (collect-method-forms (car trace-form))))
+      (if (typep (symbol-function trace-form) 'generic-function)
+	  (mapcar #'list (collect-method-forms trace-form))
+	  trace-form)))
+
+(defun trace-methods (funsym)
+  (dolist (frm (collect-method-forms funsym))
+    (eval `(trace (,frm)))))
+
+(defun collect-method-forms (funsym)
+  (mapcar #'(lambda (m)
+	      (let ((q (method-qualifiers m))
+		    (a (mapcar #'class-name (method-specializers m))))
+		`(method ,funsym ,@q ,a)))
+    (generic-function-methods (symbol-function funsym))))
