@@ -896,6 +896,47 @@ proc make-setter {top orient} {
 }
 
 
+# Proof Command Support
+
+proc show-proof-commands {commands} {
+    set win .proof-commands
+    catch {destroy $win}
+    toplevel $win -relief raised -bd 2
+    scrollbar $win.scrollbar -command "$win.text yview"
+    pack $win.scrollbar -side right -fill y
+    listbox $win.text -bd 2 -relief raised -geometry 25x25\
+	-yscrollcommand "$win.scrollbar set"
+    bind $win.text <Button-1> "send-command $win.text %y"
+    bind $win.text <Button-2> "help-command $win.text %y"
+    bind $win.text <Button-3> "help-strategy $win.text %y"
+    tk_listboxSingleSelect $win.text
+    pack $win.text -side left
+    foreach cmd $commands {
+	$win.text insert end $cmd
+    }
+}
+
+proc send-command {win y} {
+    set index [$win nearest $y]
+    set cmd [$win get $index]
+    emacs-evaln "(progn (set-buffer (ilisp-buffer)) \
+                   (goto-char (point-max)) (pvs-prover-any-command \"$cmd\"))"
+}
+
+proc help-command {win y} {
+    set index [$win nearest $y]
+    set cmd [$win get $index]
+    emacs-evaln "(help-pvs-prover-command \"$cmd\")"
+}
+
+proc help-strategy {win y} {
+    set index [$win nearest $y]
+    set cmd [$win get $index]
+    emacs-evaln "(help-pvs-prover-strategy \"$cmd\")"
+}
+
+    
+
 # Theory hierarchy support
 
 proc module-hierarchy {name file directory dag} {
