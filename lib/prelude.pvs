@@ -54,7 +54,7 @@ notequal[T: TYPE]: THEORY
 
 % if_def provides the polymorphic declaration of the IF-THEN-ELSE
 % connective.  Note that the declaration for IF is for a 3-ary function,
-% and that the IF-THEN-ELSE form is simply an alternative.
+% and that the IF-THEN-ELSE form is simply an alternative syntax.
 
 if_def [T: TYPE]: THEORY
  BEGIN
@@ -174,8 +174,7 @@ exists1 [T: TYPE]: THEORY
  END exists1
 
 
-% equality_props provides the declaration for /= and some properties of
-% =.
+% equality_props provides some properties of IF and =.
 
 equality_props[T: TYPE]: THEORY
  BEGIN
@@ -248,6 +247,10 @@ functions [D, R: TYPE]: THEORY
 
   bijective?(f): bool = injective?(f) & surjective?(f)
 
+  bij_is_inj: JUDGEMENT (bijective?) SUBTYPE_OF (injective?)
+  
+  bij_is_surj: JUDGEMENT (bijective?) SUBTYPE_OF (surjective?)
+
   domain(f): TYPE = D
 
   range(f): TYPE = R
@@ -257,10 +260,24 @@ functions [D, R: TYPE]: THEORY
   preserves(f, Drel, Rrel): bool =
       FORALL x1, x2: Drel(x1, x2) IMPLIES Rrel(f(x1), f(x2))
 
+  % Curried form
+  preserves(Drel, Rrel)(f): bool = preserves(f, Drel, Rrel)
+
   inverts(f, Drel, Rrel): bool =
       FORALL x1, x2: Drel(x1, x2) IMPLIES Rrel(f(x2), f(x1))
 
+  % Curried form
+  inverts(Drel, Rrel)(f): bool = inverts(f, Drel, Rrel)
+
  END functions
+
+
+functions_alt [D, R: TYPE, Drel: PRED[[D, D]], Rrel: PRED[[R, R]]]: THEORY
+ BEGIN
+  f: VAR [D -> R]
+  preserves: [[D -> R] -> bool] = preserves(Drel, Rrel)
+  inverts: [[D -> R] -> bool] = inverts(Drel, Rrel)
+ END functions_alt
 
 
 % restrict is the restriction operator on functions, allowing a
@@ -278,6 +295,9 @@ restrict [T: TYPE, S: TYPE FROM T, R: TYPE]: THEORY
 
   injective_restrict: LEMMA
     injective?(f) IMPLIES injective?(restrict(f))
+
+  restrict_of_inj_is_inj: JUDGEMENT
+    restrict(f: (injective?[T,R])) HAS_TYPE (injective?[S,R])
 
  END restrict
 
@@ -312,13 +332,16 @@ extend_bool [T: TYPE, S: TYPE FROM T]: THEORY
 
 % The K combinator is used to trigger lambda conversions.
 
-K_conversion[T1, T2: TYPE]: THEORY
+K_conversion [T1, T2: TYPE]: THEORY
  BEGIN
- 
   K_conversion(x:T1)(y:T2): T1 = x
   CONVERSION K_conversion
-  
  END K_conversion
+
+K_props [T1, T2: TYPE, S: TYPE FROM T1]: THEORY
+ BEGIN
+  K_preserves: JUDGEMENT K_conversion[T1, T2](x:S)(y:T2) HAS_TYPE S
+ END K_props
 
 % identity simply defines the identity function.  The identity is used for
 % conversion expressions.  For example, "foo: T" is translated to
@@ -331,6 +354,15 @@ identity [T: TYPE]: THEORY
   id: (bijective?[T, T]) = (LAMBDA x: x)
   identity: (bijective?[T, T]) = (LAMBDA x: x)
  END identity
+
+
+identity_props [T: TYPE, S: TYPE FROM T]: THEORY
+ BEGIN
+  x: VAR S
+  I_preserves: JUDGEMENT I[T](x) HAS_TYPE S
+  id_preserves: JUDGEMENT id[T](x) HAS_TYPE S
+  identity_preserves: JUDGEMENT identity[T](x) HAS_TYPE S
+ END identity_props
 
 
 % relations defines properties that are useful in specifying binary
@@ -358,6 +390,10 @@ relations [T: TYPE]: THEORY
 
   equivalence?(R): bool = reflexive?(R) AND symmetric?(R) AND transitive?(R)
 
+  equiv_is_reflexive:  JUDGEMENT (equivalence?) SUBTYPE_OF (reflexive?)
+  equiv_is_symmetric:  JUDGEMENT (equivalence?) SUBTYPE_OF (symmetric?)
+  equiv_is_transitive: JUDGEMENT (equivalence?) SUBTYPE_OF (transitive?)
+
  END relations
 
 
@@ -374,43 +410,95 @@ orders [T: TYPE]: THEORY
 
   preorder?(<=): bool = reflexive?(<=) & transitive?(<=)
 
+  preorder_is_reflexive:  JUDGEMENT (preorder?) SUBTYPE_OF (reflexive?[T])
+  preorder_is_transitive: JUDGEMENT (preorder?) SUBTYPE_OF (transitive?[T])
+  equiv_is_preorder:      JUDGEMENT (equivalence?[T]) SUBTYPE_OF (preorder?)
+
   partial_order?(<=): bool = preorder?(<=) & antisymmetric?(<=)
 
+  po_is_preorder:      JUDGEMENT (partial_order?) SUBTYPE_OF (preorder?)
+  po_is_antisymmetric: JUDGEMENT
+    (partial_order?) SUBTYPE_OF (antisymmetric?[T])
+
   strict_order?(<): bool = irreflexive?(<) & transitive?(<)
+
+  strict_is_irreflexive: JUDGEMENT (strict_order?) SUBTYPE_OF (irreflexive?[T])
+  strict_is_transitive:  JUDGEMENT (strict_order?) SUBTYPE_OF (transitive?[T])
 
   dichotomous?(<=): bool = (FORALL x, y: (x <= y OR y <= x))
 
   total_order?(<=): bool = partial_order?(<=) & dichotomous?(<=)
 
+  total_is_po:          JUDGEMENT (total_order?) SUBTYPE_OF (partial_order?)
+  total_is_dichotomous: JUDGEMENT (total_order?) SUBTYPE_OF (dichotomous?)
+
   linear_order?(<=): bool = total_order?(<=)
+
+  linear_is_total: JUDGEMENT (linear_order?) SUBTYPE_OF (total_order?)
+  total_is_linear: JUDGEMENT (total_order?)  SUBTYPE_OF (linear_order?)
 
   trichotomous?(<): bool = (FORALL x, y: x < y OR y < x OR x = y)
 
   strict_total_order?(<): bool = strict_order?(<) & trichotomous?(<)
+
+  strict_total_is_strict: JUDGEMENT
+    (strict_total_order?) SUBTYPE_OF (strict_total_order?)
+  strict_total_is_trichotomous: JUDGEMENT
+    (strict_total_order?) SUBTYPE_OF (trichotomous?)
 
   well_founded?(<): bool =
      (FORALL p:
         (EXISTS y: p(y))
 	   IMPLIES (EXISTS (y:(p)): (FORALL (x:(p)): (NOT x < y))))
 
-  well_ordered?(<): bool =
-     strict_total_order?(<) & well_founded?(<)
+  well_ordered?(<): bool = strict_total_order?(<) & well_founded?(<)
 
-  pe: VAR {p: pred[T] | EXISTS (x: T): p(x)}
+  well_ordered_is_strict_total: JUDGEMENT
+    (well_ordered?) SUBTYPE_OF (strict_total_order?)
+  well_ordered_is_well_founded: JUDGEMENT
+    (well_ordered?) SUBTYPE_OF (well_founded?)
+
+  nonempty_pred: TYPE = {p: pred[T] | EXISTS (x: T): p(x)}
+
+  pe: VAR nonempty_pred
 
   upper_bound?(<)(x, pe): bool = FORALL (y: (pe)): y < x
 
+  upper_bound?(<)(pe)(x): bool = upper_bound?(<)(x, pe)
+
   lower_bound?(<)(x, pe): bool = FORALL (y: (pe)): x < y
+
+  lower_bound?(<)(pe)(x): bool = lower_bound?(<)(x, pe)
 
   least_upper_bound?(<)(x, pe): bool =
     upper_bound?(<)(x, pe) AND
       FORALL y: upper_bound?(<)(y, pe) IMPLIES (x < y OR x = y)
 
+  least_upper_bound?(<)(pe)(x): bool = least_upper_bound?(<)(x, pe)
+
   greatest_lower_bound?(<)(x, pe): bool =
     lower_bound?(<)(x, pe) AND
       FORALL y: lower_bound?(<)(y, pe) IMPLIES (y < x OR x = y)
 
+  greatest_lower_bound?(<)(pe)(x): bool = greatest_lower_bound?(<)(x, pe)
+
  END orders
+
+
+orders_alt [T: TYPE, <: pred[[T, T]], pe: nonempty_pred[T]]: THEORY
+ BEGIN
+  x: VAR T
+  upper_bound?: [T -> bool] = upper_bound?(<)(pe)
+  least_upper_bound?: [T -> bool] = least_upper_bound?(<)(pe)
+  lower_bound?: [T -> bool] = lower_bound?(<)(pe)
+  greatest_lower_bound?: [T -> bool] = greatest_lower_bound?(<)(pe)
+  
+  least_upper_bound_is_upper_bound: JUDGEMENT
+    (least_upper_bound?) SUBTYPE_OF (upper_bound?)
+
+  greatest_lower_bound_is_lower_bound: JUDGEMENT
+    (greatest_lower_bound?) SUBTYPE_OF (lower_bound?)
+ END orders_alt
 
 
 % wf_induction defines induction for any type that has a well-founded
@@ -520,9 +608,9 @@ sets [T: TYPE]: THEORY
 
   singleton?(a): bool = (EXISTS (x:(a)): (FORALL (y:(a)): x = y))
 
-  singleton(x): set = {y | y = x}
+  singleton(x): (singleton?) = {y | y = x}
 
-  add(x, a): set = {y | x = y OR member(y, a)}
+  add(x, a): (nonempty?) = {y | x = y OR member(y, a)}
 
   remove(x, a): set = {y | x /= y AND member(y, a)}
 
@@ -532,6 +620,10 @@ sets [T: TYPE]: THEORY
   the(p: (singleton?)): (p) = epsilon(p)
 
   rest(a): set = IF empty?(a) THEN a ELSE remove(choose(a), a) ENDIF
+
+  nonempty_singleton: JUDGEMENT (singleton?) SUBTYPE_OF (nonempty?)
+  nonempty_union1: JUDGEMENT union(a: (nonempty?), b: set) HAS_TYPE (nonempty?)
+  nonempty_union2: JUDGEMENT union(a: set, b: (nonempty?)) HAS_TYPE (nonempty?)
 
  END sets
 
@@ -777,6 +869,11 @@ function_inverse[D: NONEMPTY_TYPE, R: TYPE]: THEORY
 
   surj_inv: LEMMA injective?(f) IMPLIES surjective?(inverse(f))
 
+  inv_inj_is_surj: JUDGEMENT
+    inverse(f: (injective?[D, R])) HAS_TYPE (surjective?[R, D])
+  inv_surj_is_inj: JUDGEMENT
+    inverse(f: (surjective?[D, R])) HAS_TYPE (injective?[R, D])
+
   comp_inverse_right_surj: LEMMA
 	FORALL (f:(surjective?[D,R])): f(inverse(f)(y)) = y
 
@@ -809,7 +906,11 @@ function_image [D, R: TYPE]: THEORY
 
   image(f, X): set[R] = {y: R | (EXISTS (x:(X)): y = f(x))}
 
+  image(f)(X): set[R] = image(f, X)
+
   inverse_image(f, Y): set[D] = {x: D | member(f(x), Y)}
+
+  inverse_image(f)(Y): set[D] = inverse_image(f, Y)
 
   image_inverse_image: LEMMA
     subset?(image(f, inverse_image(f, Y)), Y)
@@ -853,28 +954,57 @@ function_props [T1, T2, T3: TYPE]: THEORY
   f1: VAR [T1 -> T2]
   f2: VAR [T2 -> T3]
   X: VAR set[T1]
-  T1rel: VAR PRED[[T1, T1]]
-  T2rel: VAR PRED[[T2, T2]]
-  T3rel: VAR PRED[[T3, T3]]
+  R1: VAR PRED[[T1, T1]]
+  R2: VAR PRED[[T2, T2]]
+  R3: VAR PRED[[T3, T3]]
 
   o(f2, f1)(x): T3 = f2(f1(x))
+
+  composition_injective: JUDGEMENT
+    o(f2: (injective?[T2, T3]), f1: (injective?[T1, T2]))
+      HAS_TYPE (injective?[T1, T3])
+
+  composition_surjective: JUDGEMENT
+    o(f2: (surjective?[T2, T3]), f1: (surjective?[T1, T2]))
+      HAS_TYPE (surjective?[T1, T3])
+
+  composition_bijective: JUDGEMENT
+    o(f2: (bijective?[T2, T3]), f1: (bijective?[T1, T2]))
+      HAS_TYPE (bijective?[T1, T3])
 
   image_composition: LEMMA
     image(f2, image(f1, X)) = image(f2 o f1, X)
 
   preserves_composition: LEMMA
-    preserves(f1, T1rel, T2rel) AND preserves(f2, T2rel, T3rel)
-      IMPLIES preserves(f2 o f1, T1rel, T3rel)
+    preserves(f1, R1, R2) AND preserves(f2, R2, R3)
+      IMPLIES preserves(f2 o f1, R1, R3)
 
   inverts_composition1: LEMMA
-    preserves(f1, T1rel, T2rel) AND inverts(f2, T2rel, T3rel)
-      IMPLIES inverts(f2 o f1, T1rel, T3rel)
+    preserves(f1, R1, R2) AND inverts(f2, R2, R3)
+      IMPLIES inverts(f2 o f1, R1, R3)
 
   inverts_composition2: LEMMA
-    inverts(f1, T1rel, T2rel) AND preserves(f2, T2rel, T3rel)
-      IMPLIES inverts(f2 o f1, T1rel, T3rel)
-
+    inverts(f1, R1, R2) AND preserves(f2, R2, R3)
+      IMPLIES inverts(f2 o f1, R1, R3)
+      
  END function_props
+
+
+function_props_alt [T1, T2, T3: TYPE, R1: PRED[[T1, T1]],
+                    R2: PRED[[T2, T2]], R3: PRED[[T3, T3]]]: THEORY
+ BEGIN 
+   composition_preserves: JUDGEMENT
+     o(f2: (preserves[T2, T3, R2, R3]), f1: (preserves[T1, T2, R1, R2]))
+       HAS_TYPE (preserves[T1, T3, R1, R3])
+
+   composition_inverts1: JUDGEMENT
+     o(f2: (preserves[T2, T3, R2, R3]), f1: (inverts[T1, T2, R1, R2]))
+       HAS_TYPE (inverts[T1, T3, R1, R3])
+
+   composition_inverts2: JUDGEMENT
+     o(f2: (inverts[T2, T3, R2, R3]), f1: (preserves[T1, T2, R1, R2]))
+       HAS_TYPE (inverts[T1, T3, R1, R3])
+ END function_props_alt  
 
 
 % function_props2 defines the associativity of function composition.  It
@@ -899,32 +1029,73 @@ relation_defs [T1, T2: TYPE]: THEORY
  BEGIN
   R: VAR pred[[T1, T2]]
   X: VAR set[T1]
+  Y: VAR set[T2]
 
-  image(R, X): set[T2] = {y: T2 | (EXISTS (x: (X)): R(x, y))}
+  domain(R): TYPE = {x: T1 | EXISTS (y: T2): R(x, y)}
+
+  range(R): TYPE = {y: T2 | EXISTS (x: T1): R(x, y)}
+
+  image(R, X): set[T2] = {y: T2 | EXISTS (x: (X)): R(x, y)}
+
+  image(R)(X): set[T2] = image(R, X)
+
+  preimage(R, Y): set[T1] = {x: T1 | EXISTS (y: (Y)): R(x, y)}
+
+  preimage(R)(Y): set[T1] = preimage(R, Y)
+
+  postcondition(R, X): set[T2] = {y: T2 | FORALL (x: (X)): R(x, y)}
+
+  postcondition(R)(X): set[T2] = postcondition(R, X)
+
+  precondition(R, Y): set[T1] = {x: T1 | FORALL (y: (Y)): R(x, y)}
+
+  precondition(R)(Y): set[T1] = precondition(R, Y)
 
   converse(R): pred[[T2, T1]] = (LAMBDA (y: T2), (x: T1): R(x, y))
 
   isomorphism?(R): bool =
     (EXISTS (f: (bijective?[T1, T2])): R = graph(f))
 
-  domain(R): TYPE = T1
+  total?(R): bool = FORALL (x: T1): EXISTS (y: T2): R(x, y)
 
-  range(R): TYPE = T2
+  onto?(R): bool = FORALL (y: T2): EXISTS (x: T1): R(x, y)
 
  END relation_defs
 
 
-% relational_composition
+% relation_props
 
-relational_composition [T1, T2, T3: TYPE]: THEORY
+relation_props [T1, T2, T3: TYPE]: THEORY
  BEGIN
   R1: VAR pred[[T1, T2]]
   R2: VAR pred[[T2, T3]]
+  x: VAR T1
+  y: VAR T2
+  z: VAR T3
 
-  o(R1, R2): pred[[T1, T3]] =
-    (LAMBDA (x: T1), (z: T3): (EXISTS (y: T2): R1(x, y) AND R2(y, z)))
+  o(R1, R2)(x, z): bool = EXISTS y: R1(x, y) AND R2(y, z)
 
- END relational_composition
+  total_composition: LEMMA total?(R1) & total?(R2) => total?(R1 o R2)
+
+  onto_composition: LEMMA onto?(R1) & onto?(R2) => onto?(R1 o R2)
+
+  composition_total: JUDGEMENT
+    o(R1: (total?[T1, T2]), R2: (total?[T2, T3])) HAS_TYPE (total?[T1, T3])
+
+  composition_onto: JUDGEMENT
+    o(R1: (onto?[T1, T2]), R2: (onto?[T2, T3])) HAS_TYPE (onto?[T1, T3])
+
+ END relation_props
+
+
+relation_props2 [T1, T2, T3, T4: TYPE]: THEORY
+ BEGIN
+  R1: VAR pred[[T1, T2]]
+  R2: VAR pred[[T2, T3]]
+  R3: VAR pred[[T3, T4]]
+
+  assoc: LEMMA (R1 o R2) o R3 = R1 o (R2 o R3)
+ END relation_props2
 
 
 % operator_defs
@@ -1079,15 +1250,23 @@ BEGIN
 
   upper_bound?(x, S): bool = FORALL (s: (S)): s <= x
 
+  upper_bound?(S)(x): bool = upper_bound?(x, S)
+
   lower_bound?(x, S): bool = FORALL (s: (S)): x <= s
+
+  lower_bound?(S)(x): bool = lower_bound?(x, S)
 
   least_upper_bound?(x, S): bool =
     upper_bound?(x, S) AND
       FORALL y: upper_bound?(y, S) IMPLIES (x <= y)
 
+  least_upper_bound?(S)(x): bool = least_upper_bound?(x, S)
+
   greatest_lower_bound?(x, S): bool =
     lower_bound?(x, S) AND
       FORALL y: lower_bound?(y, S) IMPLIES (y <= x)
+
+  greatest_lower_bound?(S)(x): bool = greatest_lower_bound?(x, S)
 
   real_complete: AXIOM
     FORALL S:
@@ -1127,6 +1306,24 @@ BEGIN
   glb_lem: LEMMA glb(SB) = x IFF greatest_lower_bound?(x, SB)
 
 END bounded_real_defs
+
+
+bounded_real_defs_alt [S: (nonempty?[real])]: THEORY
+ BEGIN
+  x: VAR real
+  
+  upper_bound?: [real -> bool] = upper_bound?(S)
+  lower_bound?: [real -> bool] = lower_bound?(S)
+  least_upper_bound?: [real -> bool] = least_upper_bound?(S)
+  greatest_lower_bound?: [real -> bool] = greatest_lower_bound?(S)
+
+  lub_is_upper_bound: JUDGEMENT
+    (least_upper_bound?) SUBTYPE_OF (upper_bound?)
+
+  glb_is_lower_bound: JUDGEMENT
+    (greatest_lower_bound?) SUBTYPE_OF (lower_bound?)
+    
+ END bounded_real_defs_alt
 
 
 % reals_types declares some useful subtypes of the reals and some
@@ -1354,6 +1551,11 @@ integers: THEORY
   even_int: NONEMPTY_TYPE = (even?) CONTAINING 0
   odd_int:  NONEMPTY_TYPE = (odd?)  CONTAINING 1
 
+  % The following declarations, if they could be expanded, are built in to
+  %  the typechecker:
+  % JUDGEMENT 0, 2, 4, ... HAS_TYPE even_int
+  % JUDGEMENT 1, 3, 5, ... HAS_TYPE odd_int
+  
   e1, e2: VAR even_int
   o1, o2: VAR odd_int
 
@@ -1372,9 +1574,6 @@ integers: THEORY
   odd_times_odd_is_odd:	   JUDGEMENT *(o1,o2) HAS_TYPE odd_int
   minus_even_is_even:	   JUDGEMENT -(e1)    HAS_TYPE even_int
   minus_odd_is_odd:	   JUDGEMENT -(o1)    HAS_TYPE odd_int
-
-  % Note that there are no built-in judgements for 0, 1, 2, ...
-  % relating to even/odd types
 
  END integers
 
@@ -1430,6 +1629,21 @@ naturalnumbers: THEORY
        IMPLIES (FORALL i: p(i))
 
  END naturalnumbers
+
+
+min_nat[T: TYPE FROM nat]: THEORY
+ BEGIN
+  S: VAR (nonempty?[T])
+  a, x: VAR T
+
+  min(S): {a | S(a) AND (FORALL x: S(x) IMPLIES a <= x)}
+
+  minimum?(a, S) : bool = S(a) AND (FORALL x: S(x) IMPLIES a <= x)
+
+  min_def : LEMMA 
+     FORALL (S: (nonempty?[T])) : min(S) = a IFF minimum?(a, S)
+
+ END min_nat
 
 
 % real_defs defines some useful real functions and
@@ -1674,37 +1888,25 @@ real_props: THEORY
 
   both_sides_div_neg_lt3: LEMMA nz/nx < nz/ny IFF nx < ny
 
-%  lt_plus_lt: LEMMA x < y AND z < w IMPLIES x + z < y + w
-
   lt_plus_lt1: LEMMA x <= y AND z < w IMPLIES x + z < y + w
 
   lt_plus_lt2: LEMMA x < y AND z <= w IMPLIES x + z < y + w
-
-%  lt_minus_lt: LEMMA x < y AND w < z IMPLIES x - z < y - w
 
   lt_minus_lt1: LEMMA x <= y AND w < z IMPLIES x - z < y - w
 
   lt_minus_lt2: LEMMA x < y AND w <= z IMPLIES x - z < y - w
 
-%  lt_times_lt_pos: LEMMA nnx < y AND nnz < w IMPLIES nnx * nnz < y * w
-
   lt_times_lt_pos1: LEMMA px <= y AND nnz < w IMPLIES px * nnz < y * w
 
   lt_times_lt_pos2: LEMMA nnx < y AND pz <= w IMPLIES nnx * pz < y * w
-
-%  lt_div_lt_pos: LEMMA nnx < y AND pz < w IMPLIES nnx/w < y/pz
 
   lt_div_lt_pos1: LEMMA px <= y AND pz < w IMPLIES px/w < y/pz
 
   lt_div_lt_pos2: LEMMA nnx < y AND pz <= w IMPLIES nnx/w < y/pz
 
-%  lt_times_lt_neg: LEMMA x < npy AND z < npw IMPLIES npy * npw < x * z
-
   lt_times_lt_neg1: LEMMA x <= ny AND z < npw IMPLIES ny * npw < x * z
 
   lt_times_lt_neg2: LEMMA x < npy AND z <= nw IMPLIES npy * nw < x * z
-
-%  lt_div_lt_neg: LEMMA x < npy AND z < nw IMPLIES npy/z < x/nw
 
   lt_div_lt_neg1: LEMMA x <= ny AND z < nw IMPLIES ny/z < x/nw
 
@@ -1755,8 +1957,6 @@ real_props: THEORY
   both_sides_minus_le2: LEMMA z - x <= z - y IFF y <= x
 
   both_sides_times_pos_le1: LEMMA x * pz <= y * pz IFF x <= y
-
-% xxx  both_sides_times_pos_le11: LEMMA x * nnz <= y * nnz WHEN x <= y
 
   both_sides_times_pos_le2: LEMMA pz * x <= pz * y IFF x <= y
 
@@ -1854,37 +2054,25 @@ real_props: THEORY
 
   both_sides_div_neg_gt3: LEMMA nz/nx > nz/ny IFF nx > ny
 
-%  gt_plus_gt: LEMMA x > y AND z > w IMPLIES x + z > y + w
-
   gt_plus_gt1: LEMMA x >= y AND z > w IMPLIES x + z > y + w
 
   gt_plus_gt2: LEMMA x > y AND z >= w IMPLIES x + z > y + w
-
-%  gt_minus_gt: LEMMA x > y AND w > z IMPLIES x - z > y - w
 
   gt_minus_gt1: LEMMA x >= y AND w > z IMPLIES x - z > y - w
 
   gt_minus_gt2: LEMMA x > y AND w >= z IMPLIES x - z > y - w
 
-%  gt_times_gt_pos: LEMMA x > nny AND z > nnw IMPLIES x * z > nny * nnw
-
   gt_times_gt_pos1: LEMMA x >= py AND z > nnw IMPLIES x * z > py * nnw
 
   gt_times_gt_pos2: LEMMA x > nny AND z >= pw IMPLIES x * z > nny * pw
-
-%  gt_div_gt_pos: LEMMA x > nny AND z > pw IMPLIES x/pw > nny/z
 
   gt_div_gt_pos1: LEMMA x >= py AND z > pw IMPLIES x/pw > py/z
 
   gt_div_gt_pos2: LEMMA x > nny AND z >= pw IMPLIES x/pw > nny/z
 
-%  gt_times_gt_neg: LEMMA npx > y AND npz > w IMPLIES y * w > npx * npz
-
   gt_times_gt_neg1: LEMMA nx >= y AND npz > w IMPLIES y * w > nx * npz
 
   gt_times_gt_neg2: LEMMA npx > y AND nz >= w IMPLIES y * w > npx * nz
-
-%  gt_div_gt_neg: LEMMA npx > y AND nz > w IMPLIES y/nz > npx/w
 
   gt_div_gt_neg1: LEMMA nx >= y AND nz > w IMPLIES y/nz > nx/w
 
@@ -1966,8 +2154,6 @@ real_props: THEORY
 
   ge_div_ge_neg: LEMMA npx >= y AND nz >= w IMPLIES y/nz >= npx/w
 
-  %
-
   nonzero_times1: LEMMA n0x * y = 0 IFF y = 0
 
   nonzero_times2: LEMMA x * n0y = 0 IFF x = 0
@@ -2009,47 +2195,13 @@ real_props: THEORY
   abs_limits: LEMMA -(abs(x) + abs(y)) <= x + y AND x + y <= abs(x) + abs(y)
 
 
-  % Properties of min and max
-
-  min_is_le: LEMMA min(x, y) <= x
-
-  max_is_ge: LEMMA max(x, y) >= x
-
-  min_le_max: LEMMA min(x, y) <= max(x, y)
-
-
-%  % lub and glb
-%
-%  S: VAR (nonempty?[real])
-%
-%  bounded_above?(S): bool = (EXISTS x: upper_bound?(<=)(x, S))
-%
-%  bounded_below?(S): bool = (EXISTS x: lower_bound?(<=)(x, S))
-%
-%  bounded?(S): bool = bounded_above?(S) AND bounded_below?(S)
-%
-%  bounded_set: TYPE = (bounded?)
-%
-%  SA: VAR (bounded_above?)
-%
-%  lub_exists: LEMMA (EXISTS x: least_upper_bound?(<=)(x, SA))
-%
-%  lub(SA): {x | least_upper_bound?(<=)(x, SA)}
-%
-%  lub_lem: LEMMA lub(SA) = x IFF least_upper_bound?(<=)(x, SA)
-%
-%  SB: VAR (bounded_below?)
-%
-%  glb_exists: LEMMA (EXISTS x: greatest_lower_bound?(<=)(x, SB))
-%
-%  glb(SB): {x | greatest_lower_bound?(<=)(x, SB)}
-%
-%  glb_lem: LEMMA glb(SB) = x IFF greatest_lower_bound?(<=)(x, SB)
-
-
   % The axiom of Archimedes 
 
-  axiom_of_archimedes: LEMMA EXISTS i: x < i
+  axiom_of_archimedes: LEMMA
+    FORALL (x: real): EXISTS (i: int): x < i
+
+  archimedean: LEMMA
+    FORALL (px: posreal): EXISTS (n: posnat): 1/n < px
 
  END real_props
 
@@ -2067,7 +2219,10 @@ rational_props: THEORY
 
   rational_pred_ax: AXIOM EXISTS i, n0j: r = i/n0j
 
-  density: AXIOM x < y IMPLIES (EXISTS r: x < r AND r < y)
+  density_positive : LEMMA
+      0 <= x AND x < y IMPLIES (EXISTS r: x < r AND r < y)
+  
+  density: LEMMA x < y IMPLIES (EXISTS r: x < r AND r < y)
 
  END rational_props
 
@@ -2087,8 +2242,6 @@ integer_props: THEORY
   integer_pred_ax: LEMMA EXISTS n: i = n OR i = -n
 
   div_simple: LEMMA (EXISTS k: i = k*n0j) = integer_pred(i/n0j)
-
-  % Are these needed now?
 
   lub_nat: LEMMA
     upper_bound?(m, N)
@@ -2359,6 +2512,8 @@ exponentiation: THEORY
  END exponentiation
 
 
+% Euclidean division courtesy of Bruno Dutertre
+
 euclidean_division : THEORY
  BEGIN
   a, i : VAR nat
@@ -2376,10 +2531,10 @@ euclidean_division : THEORY
   %  Euclidean division
   %-----------------------
 
-  euclide_nat : LEMMA
+  euclid_nat : LEMMA
         EXISTS (q : nat), (r : mod(b)) : a = b * q + r
 
-  euclide_int : PROPOSITION
+  euclid_int : PROPOSITION
         EXISTS (q : int), (r : mod(b)) : n = b * q + r
 
   unique_quotient : PROPOSITION
@@ -2411,6 +2566,11 @@ divides : THEORY
   %--------------------
 
   divides(n, m): bool = EXISTS x : m = n * x
+
+  divides(n)(m): bool = divides(n, m)
+
+  mult_divides1: JUDGEMENT *(n, m) HAS_TYPE (divides(n))
+  mult_divides2: JUDGEMENT *(n, m) HAS_TYPE (divides(m))
 
   %----------------
   %  Easy lemmas
@@ -2489,21 +2649,6 @@ divides : THEORY
  END divides
 
 
-min_nat[T: TYPE FROM nat]: THEORY
- BEGIN
-  S: VAR (nonempty?[T])
-  a, x: VAR T
-
-  min(S): {a | S(a) AND (FORALL x: S(x) IMPLIES a <= x)}
-
-  minimum?(a, S) : bool = S(a) AND (FORALL x: S(x) IMPLIES a <= x)
-
-  min_def : LEMMA 
-     FORALL (S: (nonempty?[T])) : min(S) = a IFF minimum?(a, S)
-
- END min_nat
-
-
 % Modulo arithmetic defines rem and associated properties
 % Provided by Bruno Dutertre
 modulo_arithmetic : THEORY
@@ -2517,7 +2662,7 @@ modulo_arithmetic : THEORY
   %  Remainder of x/b
   %---------------------
 
-  rem(b)(x): mod(b) = epsilon! (r: mod(b)): EXISTS q: x = b * q + r
+  rem(b)(x): {r: mod(b) | EXISTS q: x = b * q + r}
 
   rem_def: LEMMA
      FORALL (r : mod(b)): rem(b)(x) = r IFF EXISTS q: x = b * q + r
@@ -2697,7 +2842,7 @@ bounded_nat_inductions[m: nat]: THEORY
  END bounded_nat_inductions
 
 
-% int_types defines the subrange type as a parameterized type.
+% subrange_type
 
 subrange_type[m, n: int] : THEORY
  BEGIN
@@ -3339,12 +3484,14 @@ mucalculus[T:TYPE]: THEORY
 
   <=(p1,p2): bool = FORALL s: p1(s) IMPLIES p2(s)
 
-  ismono(pp): bool =
+  monotonic?(pp): bool =
       FORALL p1, p2: p1 <= p2 IMPLIES pp(p1) <= pp(p2)
 
-  isfix (pp,p): bool = (pp(p) = p)
+  fixpoint?(pp, p): bool = (pp(p) = p)
 
-  glb (setofpred): pred[T] =
+  fixpoint?(pp)(p): bool = fixpoint?(pp, p)
+
+  glb(setofpred): pred[T] =
       LAMBDA s: (FORALL p: member(p,setofpred) IMPLIES p(s))
 
   % least fixpoint
@@ -3352,8 +3499,10 @@ mucalculus[T:TYPE]: THEORY
 
   mu(pp): pred[T] = lfp(pp)
 
-  islfp(pp, p1): bool =
-    isfix (pp, p1) AND FORALL p2: isfix(pp,p2) IMPLIES p1 <= p2
+  lfp?(pp, p1): bool =
+    fixpoint?(pp, p1) AND FORALL p2: fixpoint?(pp,p2) IMPLIES p1 <= p2
+
+  lfp?(pp)(p1): bool = lfp?(pp, p1)
 
   lub(setofpred): pred[T] = LAMBDA s: EXISTS p: member(p,setofpred) AND p(s)
 
@@ -3362,8 +3511,10 @@ mucalculus[T:TYPE]: THEORY
 
   nu(pp): pred[T] = gfp(pp)
 
-  isgfp(pp,p1): bool =
-    isfix (pp,p1) AND FORALL p2: isfix (pp,p2) IMPLIES p2 <= p1
+  gfp?(pp, p1): bool =
+    fixpoint?(pp,p1) AND FORALL p2: fixpoint?(pp,p2) IMPLIES p2 <= p1
+
+  gfp?(pp)(p1): bool = gfp?(pp, p1)
 
  END mucalculus
 
@@ -3385,11 +3536,11 @@ ctlops[state : TYPE]: THEORY
   EU(N,f,g):pred[state] = mu(LAMBDA Q: (g OR (f AND EX(N,Q))))
 
   % Other operator definitions
-  EF(N,f):pred[state] = EU(N,(LAMBDA u: TRUE),f)
+  EF(N,f):pred[state] = EU(N, TRUE, f)
   AX(N,f):pred[state] = NOT EX(N, NOT f)
   AF(N,f):pred[state] = NOT EG(N, NOT f)
   AG(N,f):pred[state] = NOT EF(N, NOT f)
-  AU(N,f,g):pred[state] = NOT EU(N, NOT g, (NOT f AND NOT g)) AND AF(N,g)
+  AU(N,f,g):pred[state] = NOT EU(N, NOT g, (NOT f AND NOT g)) AND AF(N, g)
 
  END ctlops
 
@@ -3476,44 +3627,3 @@ Fairctlops[state : TYPE]: THEORY
 	    AND FairAF(N,g)(Fflist)
 
  END Fairctlops
-
-
-% The rest of the prelude contains examples meant to illustrate language
-% features not illustrated in the preceding theories.  Note that these
-% theories are not meant to be imported.
-
-% Tuples - this is just an example that both indicates what is known by
-% the theorem prover, and provides an example.
-
-tuple_prelude_example: THEORY
- BEGIN
-  T_prelude: TYPE = [a: int, b: {x: int | x < a}]
-  t1, t2: VAR T_prelude
-
-  T_prelude_extensionality: POSTULATE
-    (t1`1 = t2`1 AND t1`2 = t2`2) IMPLIES t1 = t2
-
-  t_prelude: T_prelude = (3, 2)
-
-  tupaccess_prelude: FORMULA (3,2)`1 = (7,3)`2
-
-  tupform_prelude: FORMULA t_prelude WITH [`1 := 4] = (4, 2)
- END tuple_prelude_example
-
-
-% Records - this is just an example that both indicates what is known by
-% the theorem prover, and provides an example.
-
-record_prelude_example: THEORY
- BEGIN
-  R_prelude: TYPE = [# a: int, b: {x: int | x < a} #]
-  r1, r2: VAR R_prelude
-
-  R_prelude_extensionality: POSTULATE
-    (r1`a = r2`a AND r1`b = r2`b)
-   IMPLIES r1 = r2
-
-  r_prelude: R_prelude = (# a := 3, b := 2 #)
-
-  recform_prelude: FORMULA r_prelude WITH [`a := 4] = (# a := 4, b := 2 #)
- END record_prelude_example
