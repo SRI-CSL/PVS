@@ -197,12 +197,21 @@
   (declare (ignore cong-state))
   (list eqn))
 
+(defun occurs-under-interp (term1 term2)
+  (cond
+   ((eq term1 term2) t)
+   ((constant-p term2) nil)
+   ((uninterp? term2) nil)
+   (t (some #'(lambda (x) (occurs-under-interp term1 x))
+	    (funargs term2)))))
+
 (defun solve-normed-arith-eq (eqn cong-state)
   (let* ((head (lhs eqn))
 	 (headsgn (neg-sgn (term-sgn head)))
 	 (head-var (term-var head))
 	 (head-var-type (term-var-type head-var cong-state))
-	 (tail (termsof (rhs eqn))))
+	 (rhs (rhs eqn))
+	 (tail (termsof rhs)))
     (cond
      (head-var-type
       (loop with new-eqns = nil
@@ -226,7 +235,20 @@
 	    finally (return (if strict (list *false*)
 				(cons (mk-equality head-var *zero*)
 				      new-eqns)))))
+     ((occurs-under-interp head rhs)
+      (solve-normed-arith-loop-eq eqn cong-state))
      (t (list eqn)))))
+
+
+(defun solve-normed-arith-loop-eq (eqn cong-state)
+  (let* ((lhs (lhs eqn))
+	 (rhs (rhs eqn))
+	 (less-ineq (mk-term `(,*lesseqp* ,lhs ,rhs)))
+	 (greater-ineq (mk-term `(,*greatereqp* ,lhs ,rhs)))
+	 (less-res (add-pure-ineq less-ineq cong-state))
+	 (greater-res (add-pure-ineq greater-ineq cong-state)))
+    (remove eqn (append less-res greater-res)
+	    :test #'eq)))
 
 (defun old-solve-normed-arith-eq (eqn cong-state)
   (let* ((head (lhs eqn))
