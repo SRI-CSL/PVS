@@ -1,17 +1,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; replace.lisp -- 
-;; Author          : Sam Owre
+;; replace.lisp -- Body of the replace primitive rule.
+;; Author          : N. Shankar and Sam Owre
 ;; Created On      : Sat Oct 31 02:59:42 1998
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Sat Oct 31 03:00:29 1998
 ;; Update Count    : 1
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (in-package :pvs)
-
 
 
 (defun replace-rule-fun (sformnum &optional sformnums dir hide? 
@@ -412,7 +409,14 @@
 
 (defmethod replace-expr* (lhs rhs (expr actual) lastopinfix?)
   (declare (ignore lastopinfix?))
-  (if (type-value expr) expr ;;NSH(7.15.94): no replace on types.
+  (if (type-value expr)
+      (let ((ntype (replace-expr* lhs rhs (type-value expr) nil)))
+	(if (eq ntype (type-value expr))
+	    (lcopy expr
+	      'expr (replace-expr* lhs rhs (expr expr) nil))
+	    (lcopy expr
+	      'expr ntype
+	      'type-value ntype)))
       (let ((nexpr (replace-expr* lhs rhs (expr expr) nil)))
 	(if (eq nexpr (expr expr))
 	    expr
@@ -426,3 +430,95 @@
 (defmethod replace-expr* (lhs rhs (expr expr) lastopinfix?)
   (declare (ignore lhs rhs lastopinfix?))
   expr)
+
+;;; Type exprs may be triggered in actuals if *replace-in-actuals?* is set
+
+(defmethod replace-expr* (lhs rhs (expr type-name) lastopinfix?)
+  (if *replace-in-actuals?* ;; Probably not needed - can't get here unless set
+      (lcopy expr
+	'actuals (replace-expr* lhs rhs (actuals expr) nil)
+	'resolutions (replace-expr* lhs rhs (resolutions expr) nil))
+      expr))
+
+(defmethod replace-expr* (lhs rhs (expr subtype) lastopinfix?)
+  (let ((ntype (replace-expr* lhs rhs (supertype expr) nil))
+	(npred (replace-expr* lhs rhs (predicate expr) nil)))
+    (if (and (eq ntype (supertype expr))
+	     (eq npred (predicate expr)))
+	(lcopy expr
+	  'print-type (replace-expr* lhs rhs (print-type expr) nil))
+	(copy expr
+	  'supertype ntype
+	  'predicate (pseudo-normalize npred)
+	  'print-type nil))))
+
+(defmethod replace-expr* (lhs rhs (expr funtype) lastopinfix?)
+  (let* ((ndom (replace-expr* lhs rhs (domain expr) nil))
+	 (*bound-variables* (if (dep-binding? (domain expr))
+				(cons (domain expr) *bound-variables*)
+				*bound-variables*))
+	 (nrng (replace-expr* lhs rhs (range expr) nil)))
+    (if (eq ndom (domain expr))
+	(lcopy expr 'range nrng
+	       'print-type (when (eq nrng (range expr))
+			     (replace-expr* lhs rhs (print-type expr) nil)))
+	(if (dep-binding? (domain expr))
+	    (lcopy expr
+	      'domain ndom
+	      'range (substit nrng (acons (domain expr) ndom nil))
+	      'print-type nil)
+	    (lcopy expr 'domain ndom 'range nrng 'print-type nil)))))
+
+(defmethod replace-expr* (lhs rhs (expr tupletype) lastopinfix?)
+  (let ((ntypes (replace-expr-types lhs rhs (types expr))))
+    (lcopy expr
+      'types ntypes
+      'print-type (when (eq ntypes (types expr))
+		    (replace-expr-types lhs rhs (print-type expr))))))
+
+(defmethod replace-expr* (lhs rhs (expr cotupletype) lastopinfix?)
+  (let ((ntypes (replace-expr-types lhs rhs (types expr))))
+    (lcopy expr
+      'types ntypes
+      'print-type (when (eq ntypes (types expr))
+		    (replace-expr-types lhs rhs (print-type expr))))))
+
+(defun replace-expr-types (lhs rhs types)
+  (let ((ntypes (replace-expr-types* lhs rhs types)))
+    (if (equal ntypes types)
+	types
+	ntypes)))
+
+(defun replace-expr-types* (lhs rhs types &optional result)
+  (if (null types)
+      (nreverse result)
+      (let* ((ncar (replace-expr* lhs rhs (car types) nil))
+	     (*bound-variables* (if (binding? (car types))
+				    (cons ncar *bound-variables*)
+				    *bound-variables*)))
+	(replace-expr-types*
+	 lhs rhs
+	 (if (or (not (binding? (car types)))
+		 (eq ncar (car types)))
+	     (cdr types)
+	     (substit (cdr types) (acons (car types) ncar nil)))
+	 (cons ncar result)))))
+
+(defmethod replace-expr* (lhs rhs (expr recordtype) lastopinfix?)
+  (let ((nfields (replace-expr-types lhs rhs (fields expr))))
+    (lcopy expr
+      'fields nfields
+      'print-type (when (eq nfields (fields expr))
+		    (replace-expr-types lhs rhs (print-type expr))))))
+
+(defmethod replace-expr* (lhs rhs (expr dep-binding) lastopinfix?)
+  (let ((ntype (replace-expr* lhs rhs (type expr) nil)))
+    (lcopy expr 'type ntype)))
+
+(defmethod replace-expr* (lhs rhs (expr field-decl) lastopinfix?)
+  (let ((ntype (replace-expr* lhs rhs (type expr) nil)))
+    (lcopy expr
+      'type ntype
+      'declared-type (if (eq ntype (type expr))
+			 (replace-expr* lhs rhs (declared-type expr) nil)
+			 ntype))))
