@@ -1,0 +1,339 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; wish.lisp -- Interface between PVS Lisp and Tcl/Tk
+;; Author          : Carl Witty, modified by Sam Owre
+;; Created On      : Wed Apr 26 15:12:47 1995
+;; Last Modified By: Sam Owre
+;; Last Modified On: Fri May  5 21:55:09 1995
+;; Update Count    : 10
+;; Status          : Alpha test
+;; 
+;; HISTORY
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(in-package :pvs)
+
+;;; The functions of pvs-support.tcl that are called from here:
+;;;  setup-proof
+;;;  display-proof-from
+;;;  display-current
+;;;  proof-num-children
+;;;  proof-rule
+;;;  proof-done
+;;;  proof-show
+;;;  layout-proof
+;;;  proof-current
+;;;  delete-proof-subtree
+;;;  proof-current
+;;;  show-sequent
+;;;  module-hierarchy
+
+;;; prove-decl, undo-proof, proofstepper, success-step, and rule-apply
+;;; call various functions defined here.
+
+(defun wish-top-proofstate (&optional (from (or *top-proofstate* *last-proof*)))
+  (if (wish-current-rule from)
+      from
+      (let ((current (current-subgoal from))
+	    (subs (append (done-subgoals from)
+			  (pending-subgoals from)
+			  (remaining-subgoals from))))
+
+	(when (and current (not (eq (status-flag from) '*)))
+	  (pushnew current subs))
+	(if (null subs);;NSH(9.8.94): added this clause.
+	    from
+;	(assert (= (length subs) 1))
+	    (wish-top-proofstate (car subs))))))
+
+(defun wish-current-rule (ps)
+  (and (or (children ps)
+	   (eq (status-flag ps) '!))
+       (or (current-rule ps)
+	   (current-input ps))))
+
+(defmethod children ((ps proofstate))
+  (append (when (current-subgoal ps)
+	    (list (current-subgoal ps)))
+	  (done-subgoals ps)
+	  (pending-subgoals ps)
+	  (remaining-subgoals ps)))
+
+(defun x-subgoals (ps &optional cur)
+  (if (eq ps cur)
+      (list cur)
+      (let ((current (current-subgoal ps))
+	    (subs (append (done-subgoals ps)
+			  (pending-subgoals ps)
+			  (remaining-subgoals ps))))
+	(when (and current (not (eq (status-flag ps) '*)))
+	  (let ((subsubs (x-subgoals current cur)))
+	    (if (and subsubs (null (wish-current-rule current)));;(strat-proofstate? current)
+		(setq subs (append (x-subgoals current cur)
+				   subs))
+		(pushnew current subs))))
+	(when (> (length subs) 1)
+	  (setf subs (sort (copy-list subs) #'<
+			   :key #'(lambda (x)
+				    (parse-integer
+				     (label-suffix (label x)))))))
+	(if (and (= (length subs) 1)(null (wish-current-rule (car subs))))
+	    (let ((subsubs (x-subgoals (car subs) cur)))
+	      (or subsubs subs))
+	    subs))))
+
+(defun path-to-proofstate (ps path)
+  (if (null path)
+      ps
+      (path-to-proofstate (nth (car path) (x-subgoals ps)) (cdr path))))
+
+(defun display-proof-from (ps)
+  (let* ((top-ps (or *top-proofstate* *last-proof*))
+	 (path (path-to-subgoal (wish-top-proofstate) ps))
+	 (tcl-path (path-to-tcl-path path))
+	 (fdecl (declaration top-ps))
+	 (fid (id fdecl))
+	 (thid (id (module fdecl))))
+    (unless  (member nil path)  ;;NSH(8.17.95)
+      (pvs-wish-source
+       (with-output-to-temp-file
+	(format t "delete-proof-subtree ~a ~a ~a~%" fid thid tcl-path)
+	(write-proof-status ps path)
+	(format t "layout-proof ~a ~a 1~%" fid thid))))))
+
+(defun display-current (ps)
+  (pvs-long-wish
+   (let* ((fdecl (declaration (or *top-proofstate* *last-proof*)))
+	  (fid (id fdecl))
+	  (thid (id (module fdecl))))
+     (if ps
+	 (format nil "proof-current ~a ~a ~a"
+	   fid thid
+	   (path-to-tcl-path
+	    (path-to-subgoal (wish-top-proofstate) ps)))
+	 (format nil "proof-current ~a ~a {}" fid thid))))
+  (setf *current-displayed* ps))
+
+(defun display-proofstate (proofstate)
+  (when (and (not *in-apply*) *displaying-proof*)
+    (let ((changed (and *current-displayed*
+			(not (eq *current-displayed* proofstate)))))
+      (when changed
+	(if *flush-displayed*
+	    (progn
+	      (display-proof-from *flush-displayed*)
+	      (setf *flush-displayed* nil))
+	    (display-proof-from *current-displayed*))
+	(display-current proofstate)))))
+
+(defvar *displaying-proof-counter* 0)
+
+(defun stop-displaying-proof (n)
+  (setf *displaying-proof* (remove-if #'(lambda (x) (<= x n))
+			     *displaying-proof*)))
+
+(defun request-sequent (path)
+  (if *top-proofstate*
+      (let* ((tcl-path (path-to-tcl-path path))
+	     (top-ps *top-proofstate*)
+	     (sequent (path-subgoal (wish-top-proofstate) path))
+	     (fdecl (declaration top-ps))
+	     (fid (id fdecl))
+	     (thid (id (module fdecl))))
+	(with-output-to-temp-file
+	 (format t "show-sequent ~a ~a ~a {~a} {~a}"
+	   fid thid tcl-path (label sequent) sequent)))
+      (with-output-to-temp-file
+       (format t ""))))
+
+(defun call-x-show-proof ()
+  (if (and *in-checker* *ps*)
+      (progn
+	(incf *displaying-proof-counter*)
+	(push *displaying-proof-counter* *displaying-proof*)
+	(setf *current-displayed* nil)
+	(setf *flush-displayed* nil)
+	(pvs-long-wish
+	 (format nil "setup-proof ~a ~a ~a ~a 1"
+	   (label *top-proofstate*)
+	   (id (module (declaration *top-proofstate*)))
+	   (shortname (working-directory))
+	   *displaying-proof-counter*))
+	(display-proof-from (wish-top-proofstate))
+	(display-current *ps*))
+      (pvs-message "No proof is currently in progress")))
+
+(defun call-x-show-proof-at (filename line origin)
+  (let ((fdecl (formula-decl-to-prove filename line origin)))
+    (cond ((null fdecl)
+	   (pvs-message "Not at a formula declaration"))
+	  ((justification fdecl)
+	   (let* ((fid (id fdecl))
+		  (thid (id (module fdecl)))
+		  ;;(subwin (format nil "~a-~a" thid fid))
+		  )
+	     (incf *displaying-proof-counter*)
+	     (pvs-long-wish
+	      (format nil "setup-proof ~a ~a ~a ~a 0"
+		fid thid (shortname (working-directory))
+		*displaying-proof-counter*))
+	     (pvs-long-wish
+	      (format nil "~a~%layout-proof ~a ~a 0~%"
+		(with-output-to-string (*standard-output*)
+		  (write-justification-status
+		   (justification fdecl) nil fid thid))
+		fid thid))))
+	  (t (pvs-message "Formula has no associated proof")))))
+
+(defun proof-window-name (fdecl)
+  (format nil ".proof-~a-~a" (id (module fdecl)) (id fdecl)))
+
+
+(defun x-prover-commands ()
+  (let ((commands (collect-strategy-names)))
+    (pvs-wish-source
+     (with-output-to-temp-file
+      (format t "show-proof-commands {~{~a ~}}" commands)))))
+
+(defun x-module-hierarchy (theoryname)
+  (let ((theory (get-typechecked-theory theoryname)))
+    (let ((*modules-visited* nil))
+      (pvs-wish-source
+       (with-output-to-temp-file
+	 (format t "module-hierarchy ~a ~a ~a {~%"
+	   (id theory)
+	   (filename theory)
+	   (shortname (working-directory)))
+	 (module-hierarchy* theory)
+	 (format t "}"))))))
+
+(defun module-hierarchy* (theory)
+  (unless (member theory *modules-visited*)
+    (push theory *modules-visited*)
+    (let ((deps (delete-if #'null
+		  (mapcar #'get-theory
+			  (get-immediate-usings theory)))))
+      (format t "{~a {~{~a ~}}}~%" (id theory) (mapcar #'id deps))
+      (mapc #'module-hierarchy* deps))))
+
+(defun write-proof-status (ps path)
+  (let* ((tcl-path (path-to-tcl-path path))
+	 (subs (x-subgoals ps))
+	 (rule (sexp-unparse (wish-current-rule ps)))
+	 (sequent (path-subgoal (wish-top-proofstate) path))
+	 (fdecl (declaration (or *top-proofstate* *last-proof*)))
+	 (fid (id fdecl))
+	 (thid (id (module fdecl))))
+    (cond ((and (null rule) (eql (length subs) 1)) ;;NSH(8.19.95):
+	                             ;;see comment in display-proof-from above
+	   (write-proof-status (car subs) path))
+	  (t (format t "proof-num-children ~a ~a ~a ~a~%"
+	       fid thid tcl-path (length subs))
+	     (when rule
+	       (format t "proof-rule ~a ~a ~a {~a}~%" fid thid tcl-path
+		       (let ((*print-case* :downcase))
+			 (format nil "~@[+~*~]~s" (null (current-rule ps))
+				 rule))))
+	     (when sequent
+	       (format t "proof-sequent ~a ~a ~a {~a} {~a}~%"
+		 fid thid tcl-path (label sequent) sequent))
+	     (when (eq (status-flag ps) '!)
+	       (format t "proof-done ~a ~a ~a 1~%" fid thid tcl-path))
+	     (when (typep ps 'tcc-proofstate)
+	       (format t "proof-tcc ~a~%" tcl-path))
+	     (format t "proof-show ~a ~a ~a 1~%" fid thid tcl-path)
+	     (dotimes (i (length subs))
+	       (write-proof-status (nth i subs) (append path (list i))))))))
+
+(defun wish-parent-proofstate (ps)
+  (let ((pp (parent-proofstate ps)))
+    (if (null pp) nil
+	(if (and (not (eq pp *current-displayed*))
+		 (null (wish-current-rule pp)))
+	    (wish-parent-proofstate pp)
+	    pp))))
+
+(defun write-justification-status (just path fid thid)
+  (let ((tcl-path (path-to-tcl-path path))
+	(subs (subgoals just)))
+    (format t "proof-num-children ~a ~a ~a ~a~%"
+      fid thid tcl-path (length subs))
+    (when (rule just)
+      (format t "proof-rule ~a ~a ~a {~a}~%"
+	fid thid tcl-path
+	(let ((*print-case* :downcase))
+	  (format nil "~s" (rule just)))))
+    (format t "proof-done ~a ~a ~a 0~%" fid thid tcl-path)
+    (format t "proof-show ~a ~a ~a 0~%" fid thid tcl-path)
+    (dotimes (i (length subs))
+      (write-justification-status
+       (nth i subs) (append path (list i)) fid thid))))
+  
+
+(defun wish-done-proof (proofstate)
+  (unless *in-apply*
+    (when *displaying-proof*
+      (let* ((path (path-to-subgoal (wish-top-proofstate)
+				    proofstate))
+	     (fdecl (declaration (or *top-proofstate* *last-proof*)))
+	     (fid (id fdecl))
+	     (thid (id (module fdecl))))
+	(unless (eq path :none)
+	  (pvs-long-wish
+	   (format nil "proof-done ~a ~a ~a 1"
+	     fid thid (path-to-tcl-path path))))))))
+
+(defun path-subgoal (cur path)
+  (if (null path)
+      cur
+      (path-subgoal (nth (car path) (x-subgoals cur)) (cdr path))))
+
+
+;;; Returns a list of numbers representing the branch from the top
+;;; proofstate to the cur proofstate.  The numbers are zero-based, so that
+;;; (0 0 0 0) represents the left-most branch.
+
+(defun path-to-subgoal (top cur &optional path)
+  (if (eq top cur)
+      path
+      (let ((pp ;(nonstrat-parent-proofstate)
+	     (wish-parent-proofstate cur)))
+	(if (null pp)
+	    nil
+	    (path-to-subgoal top pp
+			     (cons (position cur (x-subgoals pp cur))
+				       path))))))
+
+
+;;; A path is of the form, e.g., (0 1 0 2)
+;;; This generates the string "top.0.1.0.2"
+
+(defun path-to-tcl-path (path)
+  (format nil "top~{.~a~}" path))
+
+(defun tcl-justification (just)
+  (with-output-to-string (*standard-output*)
+    (let ((*print-case* :downcase))
+      (tcl-just just))))
+
+(defun tcl-just (just)
+  (format t "{{~a} {~s} {" (label just) (rule just))
+  (mapc #'tcl-just (subgoals just))
+  (format t "}} "))
+
+
+;; Don't use this for anything over 250 characters long...use
+;; pvs-long-wish instead.
+
+(defun pvs-wish (cmd)
+  (let ((*output-to-emacs*
+	 (format nil ":pvs-wish ~a :end-pvs-wish" cmd)))
+    (to-emacs)))
+
+;(defun pvs-wish-source (file)
+;  (pvs-wish (format nil "source ~a" file)))
+
+(defun pvs-wish-source (file)
+  (pvs-wish (format nil "catch {source ~a}; exec rm -f ~a" file file)))
+
+(defun pvs-long-wish (cmd)
+  (pvs-wish-source (write-to-temp-file cmd)))
