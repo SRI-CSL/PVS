@@ -12,7 +12,7 @@
 
 (in-package :pvs)
 
-(defparameter *binfile-version* 9)
+(defparameter *binfile-version* 10)
 
 (defun save-theories (file)
   ;;(update-stored-mod-depend)
