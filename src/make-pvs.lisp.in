@@ -9,6 +9,7 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 
 ; Note - the call to (excl::translate-shlib-filenames t) was the result
@@ -16,6 +17,14 @@
 ; symbol from excl, it's technically not supported.
 
 (defvar *runtime* nil)
+
+(eval-when (eval compile load)
+(defun startup-pvs ()
+  (tpl:setq-default *package* (find-package :pvs))
+  (rplacd (assoc 'tpl::*saved-package*
+		 tpl:*default-lisp-listener-bindings*)
+	  'common-lisp:*package*)
+  ))
 
 (defun build-pvs (builddir runtime?)
   (excl:generate-application
@@ -28,7 +37,7 @@
 	     :allow-existing-directory (not runtime?)
 	     :autoload-warning t
 	     #+(version>= 6) :build-debug #+(version>= 6) t
-	     :c-heap-start #x64000000
+	     :c-heap-start "2752512K" ;; (/ #xa8000000 1024)
 	     #+(version>= 6) :case-mode #+(version>= 6) :case-sensitive-lower
 	     #-(version>= 6) :debug-on-error #-(version>= 6) t
 	     :discard-arglists nil
@@ -70,7 +79,7 @@
 	     :record-source-file-info (not runtime?)
 	     :record-xref-info (not runtime?)
 	     :restart-app-function nil
-	     :restart-init-function nil
+	     :restart-init-function 'startup-pvs
 	     :runtime (when runtime? :dynamic)
 	     :runtime-bundle runtime?
 	     :server-name nil
