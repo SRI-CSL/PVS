@@ -69,8 +69,8 @@
   (if (null sequents) score-substs
       (let ((new-score-substs
 	     (destructuring-bind (hyps concs) (car sequents)
-	       (let ((*state* (init-dp-state
-			       (collect-equalities hyps))))
+	       (let ((*state* (init-dp-state nil)))
+			    ;   (collect-equalities hyps))))
 		 (declare (special *state*))
 		 (score-substs-union score-substs
 				     (gensubsts-sequent hyps concs
