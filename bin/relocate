@@ -1,3 +1,10 @@
 #! /bin/sh
-echo bin/relocate is obsolete.
-echo Use 'make install' instead.
+
+# Relocate PVSPATH and in the pvs shell script.
+
+echo Setting PVSPATH in the \"pvs\" shell script to $PWD
+echo If this is not the right path, edit the \"pvs\" script
+chmod u+w pvs
+sed -e "s,^PVSPATH=.*$,PVSPATH=$PWD," < pvs > /tmp/tmp.$$
+mv /tmp/tmp.$$ pvs
+chmod a+x pvs

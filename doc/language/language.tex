@@ -2,23 +2,17 @@
 % Master File: language.tex
 \documentclass[12pt]{book}
 
-%\usepackage{t1enc}
 \usepackage{alltt}
 \usepackage{makeidx}
 \usepackage{relsize}
 \usepackage{boxedminipage}
 \usepackage{fancyheadings}
-\usepackage{epsf}
-%\usepackage{/project/pvs/pvs2.3/pvs}
+%\usepackage{../../pvs}
 \usepackage{url}
 \usepackage{../makebnf}
 \usepackage{latexsym}
-%\usepackage{supertabular}
-%\usepackage{longfig}
-%\usepackage{float}
-%\usepackage{afterpage}
 %\usepackage{showidx} % shows index entries in the margin
-\usepackage[chapter]{/homes/owre/tex/tocbibind}
+\usepackage[chapter]{tocbibind}
 \usepackage[bookmarks=true,hyperindex=true,colorlinks=true,backref=true,pagebackref=true]{hyperref}
 
 % \makeatletter
@@ -44,8 +38,7 @@
 \raggedbottom
 
 %\input{pvstex}
-\input{/project/pvs/doc/pvstex}
-%\input{../pvs-macros}
+\input{../pvstex}
 
 %\setcounter{secnumdepth}{1}
 
@@ -134,7 +127,7 @@ F49620-95-C0044, and DARPA Orders E276, A721, D431, D855, and E301.
 
 %\addcontentsline{toc}{chapter}{Bibliography}
 \bibliographystyle{plain}
-\bibliography{/project/pvs/doc/pvs,/homes/rushby/jmr}
+\bibliography{../pvs}
 
 %\addcontentsline{toc}{chapter}{Index}   %% Put entry in T-O-C
 %%\printindex  %% printindex makes extra call to "theindex"

@@ -1,9 +1,10 @@
 % Document Type: LaTeX
 % Master File: prover.tex
 \documentclass[12pt,twoside]{book}
-\usepackage{relsize,alltt,makeidx,url,boxedminipage,fancyheadings,/project/pvs/pvs2.0/pvs}
+\usepackage{relsize,alltt,makeidx,url,boxedminipage,fancyheadings}
+%\usepackage{../../pvs}
 \usepackage{../makebnf}
-\usepackage[chapter]{/homes/owre/tex/tocbibind}
+\usepackage[chapter]{tocbibind}
 \usepackage[bookmarks=true,hyperindex=true,colorlinks=true,backref=true,pagebackref=true]{hyperref}
 \newcommand{\allttinput}[1]{\hozline{\smaller\smaller\smaller\begin{alltt}\input{#1}\end{alltt}}\hozline}
 \topmargin -10pt
@@ -66,10 +67,16 @@ induct-and-rewrite!}\index{induct-and-rewrite"!@{\texttt{induct-and-rewrite"!}}}
 \newenvironment{pagegroup}{}{}
 %\newenvironment{smalltt}{\begin{alltt}\small\tt}{\end{alltt}}
 \newenvironment{tdisplay}{\begin{alltt}\footnotesize\tt\vspace{0.3\baselineskip}}{\vspace{0.3\baselineskip}\end{alltt}}
-\input{/project/pvs/doc/pvstex}
-%\input{/homes/csla/rushby/tex/prelude}
-\input{/project/pvs/doc/jmacros}
-\input{/project/pvs/doc/lmacros}
+\input{../pvstex}
+%\input{/project/pvs/doc/jmacros}
+\newcommand{\Infrule}[3]{
+{{\displaystyle\strut #1}\over{\displaystyle\strut #2}}\;\mbox{\scriptsize$\bf #3$}
+}
+\newcommand{\imp}{\supset}
+\newcommand{\pair}[1]{\langle #1 \rangle}
+\newcommand{\seq}[2]{#1_{1} \ldots #1_{#2}}  
+\newcommand{\implies}{\supset}
+
 \def\id#1{\hbox\texttt{#1}} %changing ids from roman to tt.
 %\bibliographystyle{alpha}
 %\input{title}
@@ -6543,7 +6550,7 @@ attempted on the original subgoal.
 
 %\addcontentsline{toc}{chapter}{References}
 \bibliographystyle{plain}
-\bibliography{/project/pvs/doc/pvs,/homes/rushby/jmr,/homes/shankar/tex}
+\bibliography{../pvs}
 
 %\addcontentsline{toc}{chapter}{Index}   %% Put entry in T-O-C
 {\smaller\smaller\printindex}
