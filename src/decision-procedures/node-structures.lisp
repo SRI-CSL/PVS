@@ -1549,4 +1549,16 @@
 		   (occurs-p x e))
 	       (funargs trm)))
 	(t nil)))
+
+(defun occurs-in-scope-of-uninterp-p (x trm)
+  (and (application-p trm)
+       (if (uninterp? (funsym trm))
+	   (some #'(lambda (arg)
+		     (occurs-in x arg))
+		 (funargs trm))
+	 (some #'(lambda (arg)
+		   (occurs-in-scope-of-uninterp-p x arg))
+	       (funargs trm)))))
+       
+       
  
