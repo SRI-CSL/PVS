@@ -1068,6 +1068,14 @@ required a context.")
 				   rtypes))
 	    optypes)))))
 
+(defmethod local-operator-types ((op lambda-expr) optypes argument)
+  (let* ((*bound-variables* (append (bindings op) *bound-variables*))
+	 (pos (optypes-for-local-arguments* (expression op)
+					    (mapcar #'range optypes))))
+    (if pos
+	(list (nth pos optypes))
+	optypes)))
+
 (defmethod local-operator-types (op optypes argument)
   (declare (ignore op))
   (optypes-for-local-arguments argument optypes))
@@ -1125,6 +1133,12 @@ required a context.")
 				   dtype))
 		 (types (operator ex))))
      domtypes)))
+
+(defmethod optypes-for-local-arguments* ((ex update-expr) domtypes)
+  (optypes-for-local-arguments* (expression ex) domtypes))
+
+(defmethod optypes-for-local-arguments* (ex domtypes)
+  nil)
 
 (defun instantiable-operator-types (op optypes args expected &optional result)
   (if (null optypes)
