@@ -1352,18 +1352,28 @@
 	(assert-subgoal (else-part case-expr)))))
 
 (defmethod assert-cases (expression (case-expr unpack-expr))
-  ;; In this case all we can do is see if every selection expression
-  ;; is the same, in which case that is the result.
-  (declare (ignore expression))
   (assert (selections case-expr))
-  (let ((result (expression (car (selections case-expr)))))
-    (if (and (every #'(lambda (sel)
-			(tc-eq (expression sel) result))
-		    (selections case-expr))
-	     (or (null (else-part case-expr))
-		 (tc-eq (else-part case-expr) result)))
-	(assert-subgoal result)
-	(values 'X case-expr))))
+  (let* ((all-result (check-all-injection?s expression))
+	 (selections (selections case-expr))
+	 (select (loop for sel in selections
+		       thereis
+		       (let ((check
+			      (check-some-injection?
+			       (recognizer (constructor sel))
+			       all-result)))
+			 (when (true-p check) sel)))))
+    (if (null select)
+	;; In this case all we can do is see if every selection expression
+	;; is the same, in which case that is the result.
+	(let ((result (expression (car (selections case-expr)))))
+	  (if (and (every #'(lambda (sel)
+			      (tc-eq (expression sel) result))
+			  (selections case-expr))
+		   (or (null (else-part case-expr))
+		       (tc-eq (else-part case-expr) result)))
+	      (assert-subgoal result)
+	      (values 'X case-expr)))
+	(assert-subgoal (subst-accessors-in-selection expression select)))))
 
 
 ;;pvs-pairlis is careful to treat tuples as lists in pairing
