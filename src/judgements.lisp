@@ -312,8 +312,11 @@
 ;;; judgement-types
 
 (defun judgement-types+ (expr)
-  (or (judgement-types expr)
-      (list (type expr))))
+  (let ((jtypes (judgement-types expr)))
+    (if (some #'(lambda (jty) (subtype-of? jty (type expr)))
+	      jtypes)
+	jtypes
+	(cons (type expr) jtypes))))
 
 (defmethod judgement-types ((ex expr))
   (judgement-types-expr ex))
@@ -851,9 +854,9 @@
 (defvar *subtypes-seen* nil)
 
 (defun type-constraints (ex &optional all?)
-  (let* ((jtypes (judgement-types ex))
+  (let* ((jtypes (judgement-types+ ex))
 	 (*subtypes-seen* nil)
-	 (preds (type-constraints* (or jtypes (type ex)) ex nil all?)))
+	 (preds (type-constraints* jtypes ex nil all?)))
     (delete-duplicates preds :test #'tc-eq)))
 
 (defmethod type-constraints* ((list cons) ex preds all?)
