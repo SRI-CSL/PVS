@@ -2152,9 +2152,9 @@ statement.  If always? is T, then it uses auto-rewrite! else auto-rewrite."
 				 (replace fnum
 					       fnums
 					       dir :dont-delete? dont-delete?)
-				 (delete fnum))))
+				 (delete fnum)))
 		       (then (beta *)
-			     (assert *))))
+			     (assert *)))))
 	(skip-msg "Invalid target formula(s) given to rewrite-directly-with-fnum"))
     "Beta-reduces, splits, and simplifies FNUM, and does a replacement in FNUMS
 corresponding to dir (left-to-right when LR, and right-to-left when RL)."
