@@ -174,8 +174,9 @@
 ;;; BDDPTR bdd_else (BDDPTR f)
 (ff:def-foreign-call (bdd_else "bdd___bdd_else") ())
 ;;; BDDPTR bdd_apply (BDDPTR (*f)(BDDPTR,BDDPTR),BDDPTR a,BDDPTR b)
-(ff:def-foreign-call (bdd_constrain "bdd___bdd_constrain") ())
+(ff:def-foreign-call (bdd_apply "bdd___bdd_apply") ())
 ;;; BDDPTR bdd_constrain (BDDPTR f, BDDPTR c)
+(ff:def-foreign-call (bdd_constrain "bdd___bdd_constrain") ())
 
 (ff:def-foreign-call (bdd_top_var "bdd___bdd_top_var") ())
 

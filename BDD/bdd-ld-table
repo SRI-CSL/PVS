@@ -59,6 +59,7 @@ bdd___bdd_X = bdd_X ;
 bdd___bdd_assign = bdd_assign ;
 bdd___bdd_then = bdd_then ;
 bdd___bdd_else = bdd_else ;
+bdd___bdd_apply = bdd_apply ;
 bdd___bdd_constrain = bdd_constrain ;
 /* bdd___bdd_sum_of_cubes = bdd_sum_of_cubes ; */
 bdd___bdd_reorder_var = bdd_reorder_var ;
