@@ -144,7 +144,7 @@
       (if (listp l1)
 	  (pvs-sxhash-lists-b
 	   (cdr l1)
-	   (cons (cons (car l1) num) bindings)
+	   (acons (car l1) num bindings)
 	   (pvs-sxhash-1+ (the positive-fixnum num))
 	   (pvs-sxhash-+ (the positive-fixnum
 			   (ldb pvs-sxhash-byte
@@ -200,9 +200,9 @@
 ;       (pvs-sxhash* p1 bindings))))
 
 (defmethod pvs-sxhash* ((t1 subtype) bindings)
-  (with-slots ((st1 supertype) (p1 predicate)) t1
-    (pvs-sxhash-+ (the positive-fixnum (pvs-sxhash* st1 bindings))
-		  (the positive-fixnum (pvs-sxhash* p1 bindings)))))
+  ;; Ignore the supertype
+  (with-slots (predicate) t1
+    (pvs-sxhash-+ 103 (the positive-fixnum (pvs-sxhash* predicate bindings)))))
 
 ;(defmethod tc-eq* ((t1 funtype) (t2 funtype) bindings)
 ;  (or (eq t1 t2)
@@ -227,7 +227,7 @@
 
 (defmethod pvs-sxhash* ((t1 tupletype) bindings)
   (with-slots ((ty1 types)) t1
-    (pvs-sxhash* ty1 bindings)))
+    (pvs-sxhash-lists-b ty1 bindings (pvs-sxhash-1+ (length bindings)) 127)))
 
 ;(defmethod pvs-sxhash* ((t1 tupletype) bindings)
 ;  (declare (ignore bindings))
@@ -356,7 +356,7 @@
 (defmethod pvs-sxhash-ops ((op1 adt-name-expr) bindings)
   (declare (ignore bindings))
   (with-slots (id) op1
-    (the integer (sxhash id))))
+    (the positive-fixnum (sxhash id))))
 
 
 ;(defmethod tc-eq* ((ne name-expr) (ap application) bindings)
@@ -417,7 +417,7 @@
 
 (defmethod pvs-sxhash* ((t1 recordtype) bindings)
   (with-slots ((fields1 fields)) t1
-    (pvs-sxhash* fields1 bindings)))
+    (pvs-sxhash-lists-b fields1 bindings (pvs-sxhash-1+ (length bindings)) 127)))
 
 ;(defmethod pvs-sxhash* ((t1 recordtype) bindings)
 ;  (declare (ignore bindings))
@@ -443,10 +443,10 @@
   (cond ((null flds1) (sxhash nil))
 	(t (let* ((fld1 (car flds1)))
 	     (pvs-sxhash-+
-	      (the integer (pvs-sxhash-id fld1))
+	      (the positive-fixnum (pvs-sxhash-id fld1))
 	      (pvs-sxhash-+
-	       (the integer (pvs-sxhash* (type fld1) nil))
-	       (the integer
+	       (the positive-fixnum (pvs-sxhash* (type fld1) nil))
+	       (the positive-fixnum
 		 (pvs-sxhash-fields-type (cdr flds1)
 					 (cons fld1 bindings)))))))))
 
@@ -468,14 +468,17 @@
 ;		  (tc-eq* (expression (car flds1)) (expression fld2) bindings)
 ;		  (tc-eq-fields (cdr flds1) (remove@ fld2 flds2) bindings))))))
 
-(defun pvs-sxhash-fields (flds1 bindings)
+(defun pvs-sxhash-fields (flds1 bindings hnum)
   (if (null flds1)
-      (sxhash nil)
-      (pvs-sxhash-+
-       (the integer (pvs-sxhash-id (caar (arguments (car flds1)))))
+      hnum
+      (pvs-sxhash-fields
+       (cdr flds1)
+       bindings
        (pvs-sxhash-+
-	(the integer (pvs-sxhash* (expression (car flds1)) bindings))
-	(the integer (pvs-sxhash-fields (cdr flds1) bindings))))))
+	(the positive-fixnum (pvs-sxhash-id (caar (arguments (car flds1)))))
+	(pvs-sxhash-+
+	 (the positive-fixnum (pvs-sxhash* (expression (car flds1)) bindings))
+	 (the positive-fixnum hnum))))))
 
 ;(defmethod tc-eq* ((f1 field-decl) (f2 field-decl) bindings)
 ;  (with-slots ((id1 id) (ty1 type)) f1
@@ -486,8 +489,8 @@
 
 (defmethod pvs-sxhash* ((f1 field-decl) bindings)
   (with-slots ((id1 id) (ty1 type)) f1
-    (pvs-sxhash-+ (the integer (sxhash id1))
-		  (the integer (pvs-sxhash* ty1 bindings)))))
+    (pvs-sxhash-+ (the positive-fixnum (sxhash id1))
+		  (the positive-fixnum (pvs-sxhash* ty1 bindings)))))
 
 
 ;;; Expressions
@@ -502,7 +505,7 @@
 (defmethod pvs-sxhash* ((e1 field-name-expr) bindings)
   (with-slots ((id1 id) (ty1 type)) e1
     (pvs-sxhash-+ (sxhash id1)
-		  (the integer (pvs-sxhash* ty1 bindings)))))
+		  (the positive-fixnum (pvs-sxhash* ty1 bindings)))))
 
 ;(defmethod tc-eq* ((e1 projection-application) (e2 projection-application)
 ;		   bindings)
@@ -513,9 +516,9 @@
 ;	       (tc-eq* arg1 arg2 bindings))))))
 
 (defmethod pvs-sxhash* ((e1 projection-application) bindings)
-  (with-slots ((id1 id) (arg1 argument)) e1
-    (pvs-sxhash-+ (the integer (sxhash id1))
-		  (pvs-sxhash* arg1 bindings))))
+  (with-slots (index argument) e1
+    (pvs-sxhash-+ (the positive-fixnum index)
+		  (pvs-sxhash* argument bindings))))
 
 ;(defmethod tc-eq* ((e1 field-application) (e2 field-application)
 ;		   bindings)
@@ -527,37 +530,8 @@
 
 (defmethod pvs-sxhash* ((e1 field-application) bindings)
   (with-slots ((id1 id) (arg1 argument)) e1
-    (pvs-sxhash-+ (the integer (sxhash id1))
+    (pvs-sxhash-+ (the positive-fixnum (sxhash id1))
 		  (pvs-sxhash* arg1 bindings))))
-
-;;; Not in current code (9-13-94):
-
-;(defmethod tc-eq* ((e1 projection-expr) (e2 projection-expr) bindings)
-;  (or (eq e1 e2)
-;      (with-slots ((id1 id) (ty1 type)) e1
-;	(with-slots ((id2 id) (ty2 type)) e2
-;	  (and (eq id1 id2)
-;	       (tc-eq* ty1 ty2 bindings))))))
-
-(defmethod pvs-sxhash* ((e1 projection-expr) bindings)
-  (with-slots ((id1 id) (ty1 type)) e1
-    (pvs-sxhash-+ (sxhash id1)
-		  (the integer (pvs-sxhash* ty1 bindings)))))
-
-;(defmethod tc-eq* ((e1 projection-expr) e2 bindings)
-;  (declare (ignore bindings e2))
-;  (break "Should never happen")
-;  nil)
-
-;(defmethod tc-eq* (e1 (e2 projection-expr) bindings)
-;  (declare (ignore bindings e1))
-;  (break "Should never happen")
-;  nil)
-
-;(defmethod tc-eq* ((e1 name) (e2 projection-expr) bindings)
-;  (declare (ignore bindings))
-;  (break "Should never happen")
-;  nil)
 
 ;(defmethod tc-eq* ((e1 number-expr) (e2 number-expr) bindings)
 ;  (declare (ignore bindings))
@@ -568,7 +542,7 @@
 (defmethod pvs-sxhash* ((e1 number-expr) bindings)
   (declare (ignore bindings))
   (with-slots ((n1 number)) e1
-    (sxhash (the integer n1))))
+    (sxhash (the positive-fixnum n1))))
 
 ;(defmethod tc-eq* ((e1 record-expr) (e2 record-expr) bindings)
 ;  (or (eq e1 e2)
@@ -578,7 +552,7 @@
 
 (defmethod pvs-sxhash* ((e1 record-expr) bindings)
   (with-slots ((ass1 assignments)) e1
-    (pvs-sxhash-fields ass1 bindings)))
+    (pvs-sxhash-fields ass1 bindings 0)))
 
 ;(defmethod tc-eq* ((e1 tuple-expr) (e2 tuple-expr) bindings)
 ;  (or (eq e1 e2)
@@ -588,7 +562,7 @@
 
 (defmethod pvs-sxhash* ((e1 tuple-expr) bindings)
   (with-slots ((ex1 exprs)) e1
-    (pvs-sxhash* ex1 bindings)))
+    (pvs-sxhash-lists-a ex1 bindings 127)))
 
 ;(defmethod tc-eq* ((e1 cases-expr) (e2 cases-expr) bindings)
 ;  (with-slots ((expr1 expression) (sel1 selections) (else1 else-part)) e1
@@ -615,9 +589,11 @@
 ;	     (tc-eq* ex1 ex2 abindings))))))
 
 (defmethod pvs-sxhash* ((e1 cases-expr) bindings)
-  (with-slots (expression selections else-part) e1
-    (pvs-sxhash-+ (the integer (pvs-sxhash* expression bindings))
-		  (the integer (pvs-sxhash* else-part bindings)))))
+  (with-slots (expression else-part) e1
+    (pvs-sxhash-+ (the positive-fixnum (pvs-sxhash* expression bindings))
+		  ;; Left out selections on purpose; speeds up sxhash
+		  ;; computation and only occasionally leads to collision.
+		  (the positive-fixnum (pvs-sxhash* else-part bindings)))))
 
 ;(defmethod tc-eq* ((e1 application) (e2 application) bindings)
 ;  (or (eq e1 e2)
@@ -669,7 +645,7 @@
 (defmethod pvs-sxhash-ops ((op1 field-name-expr) bindings)
   (declare (ignore bindings))
   (with-slots ((id1 id) (ty1 type)) op1
-    (the integer (sxhash id1))))
+    (the positive-fixnum (sxhash id1))))
        
 ;(defmethod tc-eq-ops ((op1 field-name-expr) (op2 name-expr) bindings)
 ;  (declare (ignore bindings))
@@ -718,7 +694,7 @@
 ;; (Assuming it will go away some time.)
 (defun pvs-sxhash-bindings-eq (b1 bindings num)
   (declare (list b1))
-  (pvs-sxhash-bindings-eq* b1 bindings nil num))
+  (pvs-sxhash-bindings-eq* b1 bindings num 0 nil))
 
 ;(defun bindings-eq* (b1 b2 bindings result)
 ;  (cond ((null b1)
@@ -731,17 +707,16 @@
 ;			   (cons (cons (car b1) (car b2))
 ;				 result))))))
 
-(defun pvs-sxhash-bindings-eq* (b1 bindings result num)
-  (cond ((null b1)
-	 (values 0 result))
-	(t (multiple-value-bind (rest-hash rest-bindings)
-	       (pvs-sxhash-bindings-eq* (cdr b1) bindings
-					(acons (car b1) num result)
-					(pvs-sxhash-1+ num))
-	     (values
-	      (pvs-sxhash-+ (the integer (pvs-sxhash* (type (car b1)) bindings))
-			    (the integer rest-hash))
-	      rest-bindings)))))
+(defun pvs-sxhash-bindings-eq* (b1 bindings bnum hnum nbindings)
+  (if (null b1)
+      (values hnum nbindings)
+      (pvs-sxhash-bindings-eq*
+       (cdr b1)
+       bindings
+       (pvs-sxhash-1+ bnum)
+       (pvs-sxhash-+ (the positive-fixnum (pvs-sxhash* (type (car b1)) bindings))
+		     (the positive-fixnum hnum))
+       (acons (car b1) bnum nbindings))))
 
 ;(defun bindings-eq (b1 b2 bindings)
 ;  (declare (list b1 b2))
@@ -828,8 +803,8 @@
 
 (defmethod pvs-sxhash* ((e1 update-expr) bindings)
   (with-slots ((ex1 expression) (ass1 assignments)) e1
-    (pvs-sxhash-+ (the integer (pvs-sxhash* ex1 bindings))
-		  (the integer (pvs-sxhash* ass1 bindings)))))
+    (pvs-sxhash-+ (the positive-fixnum (pvs-sxhash* ex1 bindings))
+		  (the positive-fixnum (pvs-sxhash* ass1 bindings)))))
 
 ;(defmethod tc-eq* ((a1 assignment) (a2 assignment) bindings)
 ;  (or (eq a1 a2)
@@ -840,8 +815,8 @@
 
 (defmethod pvs-sxhash* ((a1 assignment) bindings)
   (with-slots ((args1 arguments) (ex1 expression)) a1
-    (pvs-sxhash-+ (the integer (pvs-sxhash* args1 bindings))
-		  (the integer (pvs-sxhash* ex1 bindings)))))
+    (pvs-sxhash-+ (the positive-fixnum (pvs-sxhash* args1 bindings))
+		  (the positive-fixnum (pvs-sxhash* ex1 bindings)))))
 
 ;(defmethod tc-eq* ((n1 binding) (n2 binding) bindings)
 ;  (declare (ignore bindings))
@@ -962,16 +937,14 @@
 
 (defmethod pvs-sxhash* ((r1 resolution) bindings)
   (with-slots ((d1 declaration) (mi1 module-instance)) r1
-    (let* ((id (id d1))
-	   (dnum (case id
-		   ((& AND) 1)
-		   ((=> IMPLIES) 2)
-		   ((<=> IFF) 3)
-		   (t (sxhash id)))))
-      (pvs-sxhash-+ (the positive-fixnum dnum)
-		    (if (binding? d1)
-			17
-			(the positive-fixnum (pvs-sxhash* mi1 bindings)))))))
+    (or (cdr (assq d1 bindings))
+	(let* ((id (id d1))
+	       (dnum (sxhash id)))
+	  (pvs-sxhash-+ (the positive-fixnum dnum)
+			(if (binding? d1)
+			    17
+			    (the positive-fixnum
+			      (pvs-sxhash* mi1 bindings))))))))
 
 ;;; for testing:
 
