@@ -179,6 +179,7 @@
     `(let ((,dir (directory-p ,directory)))
       (if (pathnamep ,dir)
 	  (let ((,curdir (working-directory))
+		(*default-pathname-defaults* nil)
 		(*pvs-context-path* nil)
 		(*pvs-context* nil))
 	    (unwind-protect
