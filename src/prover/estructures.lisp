@@ -12,90 +12,25 @@
 
 (in-package 'pvs)
 
-;Syntax taken from CLOS definitions in ~ehdm/6/src/classes.lisp
-;and makes.lisp    
-
-;;NSH(7.27.94) commented out make-apply.
-;;;;an application consists of a result type, [ope]rator and [ope]rand.
-;;;;mk-application takes op and &rest args.
-;(defun make-apply (op args)
-;  (make-instance (if (built-in? op)
-;		     (if (= (length args) 2)
-;			 'infix-application
-;			 'unary-application)
-;		     'application)
-;    'operator (if (typep op 'expr) op (mk-name-expr op))
-;    'arguments args))
-
-
-
-;;;;an abstraction consists of a result type, list of formals and a
-;;;;body.  It's not clear that using a list of formals, rather than a
-;;;;single formal is a wise choice, and should be reconsidered when some
-;;;;real proofs are carried out.
-
-;(defmacro make-lambda (formals  body)
-;  `(mk-lambda-expr ,formals ,body))
-;
-;(defun mk-negation (arg)
-;  (typecheck (make-apply 'NOT (list arg))
-;	     :context (context nil) :expected *boolean*))
-;
-;;;;;a quantification consists of a formals type (the target type is
-;;;;;automatically boolean, and a list of formals, and the body.
-;
-;(defmacro make-exists (formals  body)
-;  `(make-quant-expr  'exists ,formals ,body))
-;
-;
-;(defmacro make-forall (formals  body)
-;  `(make-quant-expr  'forall ,formals ,body))
-
-
-
-;;;That completes the syntax of expressions.  The symbol-table
-;;;won't be necessary since each symbol contains its own
-;;;declaration.
-
-;;;Next, I would like a proof state to consist of 
-;;;a current goal which is a list of sequents,
-;;;a label to number the cases with,
-;;;a list of pending label/sequent pairs
-;;;a substitution for the Herbrand variables,
-;;;and the next proof state.
-
-;;;A sequent has  left and right parts, and an induction part.
-;;;An s-formula consists of the formula and its governing 
-;;;Herbrand variables.
-
-;;(NSH:4-10-91) I'm making an important change by throwing out skolem
-;;variables.  It does not seem that important to allow these in an
-;;interactive prover.  The advantages of not having skolem variables are
-;;that  rules like generalization, and induction are easier to
-;;justify.  
 (defcl s-formula ()
   formula
-  ;;(printout :initform nil :ignorc t)
   (label :initform nil)
   (new? :initform nil :ignorc t)
   (asserted? :initform nil))
 
 
 (defcl sequent ()
-;;  (label :initform (format nil ""))
   (s-forms :initform nil)
+  (p-sforms :initform 'unbound :ignore t)
+  (n-sforms :initform 'unbound :ignore t)
   (hidden-s-forms :initform nil)
   (info :initform nil))
 
 (defcl dpinfo ()       ;;decision proc. information.
   (dpinfo-sigalist :initform nil)
   (dpinfo-findalist :initform nil)
-  (dpinfo-usealist :initform nil)
-;;  (typealist :initform primtypealist) ;;NSH(2.16.94):it is now global across
-                                        ;;  a proof.
-  )
+  (dpinfo-usealist :initform nil))
 
-;;(NSH:4-10-91) modified to get rid of substitutions and out-context
 (defcl proofstate ()
   (label :initform " ")
   current-goal         ;;is a sequent
@@ -128,7 +63,11 @@
 
 
 (defcl tcc-sequent (sequent)
- tcc expr type reason kind) ;;NSH(8.3.94) (formula) 
+  tcc
+  expr
+  type
+  reason
+  kind)
 
 (defcl tcc-proofstate (proofstate))
 
@@ -184,33 +123,18 @@
 	'all-rewrites-names all-names)))
 
 (defcl top-proofstate (proofstate)
-    (in-justification :initform nil)
-    declaration
-)
+  (in-justification :initform nil)
+  declaration)
 
 (defcl strat-proofstate (proofstate))
-
 
 (defcl strategy ()
   topstep
   (subgoal-strategy :initform nil)
   (failure-strategy :initform nil))
 
-
-;(defcl genrule ()
-;  rule-input) ;;for generating the print representation.
-;
-;(defcl rule (genrule)
-;  ;;rule will have subclasses for various situations. 
-;  rule-part   
-;  ;;rule-part is a function  (args -> (proofstate -> values))
-;  )
-
-(defcl rulemacro () ;(genrule)
+(defcl rulemacro ()
   (rule-list :initform nil))
-;;the idea of a rule macro is that it applies the first rule,
-;;then applies the second rule to each of the subgoals, and so on.
-;;The updates will be accumulated along each branch.
 
 (defcl entry ()
   name
@@ -251,9 +175,6 @@
   comment
   )
 
-
-;used in makeskoconst and needed to avoid chasing references for skolem
-;constants. 
 (defcl skolem-const-decl (const-decl))
 
 ;;;9-18-90: I need an equality predicate for expressions as eequal,

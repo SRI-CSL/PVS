@@ -685,9 +685,9 @@
 	 (*goal* (current-goal ps))
 	 (*label* (label (current-goal ps)))
 					;	 (*subgoalnum* (subgoalnum ps))
-	 (*+* (mapcar #'formula (pos-s-forms (s-forms (current-goal ps)))))
+	 (*+* (mapcar #'formula (pos-s-forms (current-goal ps))))
 	 (*-* (mapcar #'(lambda (x) (args1 (formula x)))
-		      (neg-s-forms (s-forms (current-goal ps)))))
+		      (neg-s-forms (current-goal ps))))
 	 (*par-label* (when *par-ps* (label *par-ps*)))
 	 ;(label (parent-proofstate ps))
 	 (*par-goal* (when *par-ps*
@@ -950,8 +950,8 @@
      (*label* (label ps))
      (*subgoalnum* (subgoalnum ps))
      (*goal* (current-goal ps))
-     (*+* (mapcar #'formula (pos-s-forms (current-goal ps))))
-     (*-* (mapcar #'formula (neg-s-forms (current-goal ps))))
+     (*+* (mapcar #'formula (pos-s-forms ps)))
+     (*-* (mapcar #'formula (neg-s-forms ps)))
      (*par-label* (when (parent-proofstate ps)
 		    (label (parent-proofstate ps))))
      (*par-goal* (when (parent-proofstate ps)
@@ -1570,8 +1570,8 @@
 	 (*goal* (current-goal ps))
 	 (*label* (label  ps))
 	 ;; (*subgoalnum* (subgoalnum ps))
-	 (*+* (mapcar #'formula (pos-s-forms (s-forms (current-goal ps)))))
-	 (*-* (mapcar #'formula (neg-s-forms (s-forms (current-goal ps)))))
+	 (*+* (mapcar #'formula (pos-s-forms (current-goal ps))))
+	 (*-* (mapcar #'formula (neg-s-forms (current-goal ps))))
 	 (*par-label* (when (parent-proofstate ps)
 			(label (parent-proofstate ps))))
 	 (*par-goal* (when (parent-proofstate ps)
@@ -2812,11 +2812,34 @@
 	      (current-goal ps)))))
 
 (defun pos-s-forms (s-forms)
-  (loop for sf in s-forms when (not (negation? (formula sf))) collect
-	sf))
+  (pos-s-forms* s-forms))
+
 (defun neg-s-forms (s-forms)
-  (loop for sf in s-forms when  (negation? (formula sf)) collect
-	sf))
+  (neg-s-forms* s-forms))
+
+(defmethod pos-s-forms* ((seq sequent))
+  (with-slots (p-sforms) seq
+    (if (eq p-sforms 'unbound)
+	(setf p-sforms (pos-s-forms* (s-forms seq)))
+	p-sforms)))
+
+(defmethod pos-s-forms* (s-forms)
+  (loop for sf in s-forms
+	when (not (negation? (formula sf)))
+	collect sf))
+
+(defmethod neg-s-forms* ((seq sequent))
+  (with-slots (n-sforms) seq
+    (if (eq n-sforms 'unbound)
+	(setf n-sforms (neg-s-forms* (s-forms seq)))
+	n-sforms)))
+
+(defmethod neg-s-forms* (s-forms)
+  (loop for sf in s-forms
+	when (negation? (formula sf))
+	collect sf))
+
+  
 
 (defmethod print-object ((sform s-formula) stream)
   (if *debugging-print-object*
@@ -2862,36 +2885,34 @@
 	     (label sform) (label sform))
 	   (write (unparse-sform sform) :stream stream)))))
 
-(defmethod print-object ((sequent sequent) stream);;ignoring printing
-  ;;skovars for
-  ;;now.[11/90]
+(defmethod print-object ((sequent sequent) stream)
   (let ((par-sforms
 	 (when *print-ancestor*
 	   (s-forms (current-goal *print-ancestor*)))))
-  (cond (*debugging-print-object*
-	 (call-next-method))
-	(t (let ((neg-s-forms (neg-s-forms (s-forms sequent)))
-		 (pos-s-forms (pos-s-forms (s-forms sequent))))
-	     (loop for sf in neg-s-forms as
-		   sfnum downfrom -1  
-		   do
-		   (display-sform sf sfnum stream))
-	     (when (and *report-mode*
-			(loop for sf in  neg-s-forms
-			      thereis
-			      (and (memq sf par-sforms)
-				   (in-every-print-descendant? sf))))
-	       (format stream "~%~V@T ..." *prover-indent*))
-	     (format stream "~%~V@T  |-------" *prover-indent*)
-	     (loop for sf in pos-s-forms as sfnum from 1 
-		   do
-		   (display-sform sf sfnum stream))
-	     (when (and *report-mode*
-			(loop for sf in  pos-s-forms
-			      thereis (and (memq sf par-sforms)
-					   (in-every-print-descendant? sf))))
-	       (format stream "~%~V@T ..." *prover-indent*))
-	     (format stream "~%"))))))
+    (cond (*debugging-print-object*
+	   (call-next-method))
+	  (t (let ((neg-s-forms (neg-s-forms sequent))
+		   (pos-s-forms (pos-s-forms sequent)))
+	       (loop for sf in neg-s-forms as
+		     sfnum downfrom -1  
+		     do
+		     (display-sform sf sfnum stream))
+	       (when (and *report-mode*
+			  (loop for sf in  neg-s-forms
+				thereis
+				(and (memq sf par-sforms)
+				     (in-every-print-descendant? sf))))
+		 (format stream "~%~V@T ..." *prover-indent*))
+	       (format stream "~%~V@T  |-------" *prover-indent*)
+	       (loop for sf in pos-s-forms as sfnum from 1 
+		     do
+		     (display-sform sf sfnum stream))
+	       (when (and *report-mode*
+			  (loop for sf in  pos-s-forms
+				thereis (and (memq sf par-sforms)
+					     (in-every-print-descendant? sf))))
+		 (format stream "~%~V@T ..." *prover-indent*))
+	       (format stream "~%"))))))
 
 (defun show-proof-skeleton (proofstate)
   (when (current-input proofstate)
