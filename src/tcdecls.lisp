@@ -942,10 +942,10 @@
 	 (sprem (strong-induction-hypothesis svar fixed-vars rem-vars body decl))
 	 (wconc (make-inductive-conclusion wvar rem-vars decl))
 	 (sconc (make-inductive-conclusion svar rem-vars decl))
-	 (wform (make-forall-expr (append fixed-vars (list wbd))
-		  (make-implication wprem wconc)))
-	 (sform (make-forall-expr (append fixed-vars (list sbd))
-		  (make-implication sprem sconc)))
+	 (wform (make!-forall-expr (append fixed-vars (list wbd))
+		  (make!-implication wprem wconc)))
+	 (sform (make!-forall-expr (append fixed-vars (list sbd))
+		  (make!-implication sprem sconc)))
 	 (wid (makesym "~a_weak_induction" (id decl)))
 	 (sid (makesym "~a_induction" (id decl)))
 	 (wdecl (typecheck* (mk-formula-decl wid wform 'AXIOM) nil nil nil))
@@ -1049,11 +1049,11 @@
 	      (application
 	       (make-inductive-conjunction
 		(copy ex)
-		(make-ind-pred-application nvar ex)
-		fmls
-		fixed-vars))
+		(make-ind-pred-application nvar ex fixed-vars fmls)
+		(argument* ex)
+		fmls))
 	      (name-expr
-	       (make-inductive-conjunction ex nvar fmls fixed-vars)))))
+	       (make-inductive-conjunction ex nvar nil fmls)))))
       #'(lambda (ex)
 	  (typecase ex
 	    (application
@@ -1061,16 +1061,26 @@
 	    (name-expr
 	     (eq (declaration ex) decl)))))))
 
-(defun make-ind-pred-application (pred ex)
-  (make-ind-pred-application* pred ex (argument* ex)))
+(defun make-ind-pred-application (pred ex fixed-vars fmls)
+  (make-ind-pred-application* pred (argument* ex) fixed-vars fmls))
 
-(defun make-ind-pred-application* (pred ex args)
-  (if (tc-eq (type pred) (type ex))
-      pred
+(defun make-ind-pred-application* (pred args fixed-vars formals
+					&optional pargs)
+  (if (null args)
+      (if pargs
+	  (make!-application* pred pargs)
+	  pred)
       (make-ind-pred-application*
-       (make!-application pred (car args))
-       ex
-       (cdr args))))
+       pred (cdr args) fixed-vars (cdr formals)
+       (nconc (mapcan #'(lambda (arg fml)
+			  (unless (memq fml fixed-vars)
+			    (list arg)))
+		(if (and (cdr (car formals))
+			 (tuple-expr? (car args)))
+		    (exprs (car args))
+		    (list (car args)))
+		(car formals))
+	      pargs))))
 
 (defun collect-decl-formals (decl)
   (append (formals decl)
@@ -1084,29 +1094,23 @@
   (declare (ignore ex))
   nil)
 
-(defun make-inductive-conjunction (inddef pred fmls fixed-vars &optional vars)
-  (if (tc-eq (type inddef) *boolean*)
-      (make!-conjunction
-       inddef
-       (if vars
-	   (make!-application* pred vars)
-	   pred))
-      (let* ((bds (mapcar #'(lambda (x)
-			      (make-bind-decl
-				  (make-new-variable (id x) (list inddef pred))
-				  (or (declared-type x) (type x))))
-		    (car fmls)))
-	     (bvars (mapcar #'make-variable-expr bds)))
-	(make!-set-expr bds
-	  (make-inductive-conjunction
-	   (make!-application* inddef bvars)
-	   pred
-	   (cdr fmls)
-	   fixed-vars
-	   (nconc vars (mapcan #'(lambda (x y)
-				   (unless (memq x fixed-vars)
-				     (list y)))
-			 (car fmls) bvars)))))))
+(defun make-inductive-conjunction (inddef pred args fmls)
+  (cond ((null fmls)
+	 (make!-conjunction inddef pred))
+	(args
+	 (make-inductive-conjunction inddef pred (cdr args) (cdr fmls)))
+	(t (let* ((c (list inddef pred))
+		  (bds (mapcar #'(lambda (x)
+				   (make-bind-decl (make-new-variable (id x) c)
+				     (or (declared-type x) (type x))))
+			 (car fmls)))
+		  (bvars (mapcar #'make-variable-expr bds)))
+	     (make!-set-expr bds
+	       (make-inductive-conjunction
+		(make!-application* inddef bvars)
+		(make!-application* pred bvars)
+		(cdr args)
+		(cdr fmls)))))))
 
 (defun make-inductive-conclusion (var rem-vars decl)
   (let* ((dname (mk-name-expr (id decl) nil nil
