@@ -157,9 +157,8 @@
     (assert (modname? modinst))
     (let ((formals (formals-sans-usings (or theory (get-theory modinst)))))
       (if (or (and actuals
-		   ;;(some #'(lambda (ofp)
-		   ;;	     (memq ofp formals)) (free-params obj))
-		   )
+		   (some #'(lambda (ofp) (memq ofp formals))
+			 (free-params obj)))
 	      (mappings modinst))
 	  (let* ((*generate-tccs* 'none)
 		 (caches (get-subst-mod-params-caches modinst))
