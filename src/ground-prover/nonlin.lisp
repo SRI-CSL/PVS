@@ -97,7 +97,7 @@
        (return
 	(cond
 	 ((qnumberp dif)(normconstdif fnsymbol dif)) ; constant dif
-	 ((solvable dif nil)
+	 ((solvable dif)
 	  (list
 	   (cond ((qminusp coef)(antifnsym fnsymbol))(t fnsymbol))
 	   var
@@ -118,7 +118,7 @@
 	 ((eq *printerpmult* 'normal) lit)
 	 ((eq *printerpmult* 'experimental)
 	  (let ((*jmr-mult* t))
-	    (if (solvable dif (and t (eq fnsymbol 'EQUAL)))
+	    (if (solvable dif)
 		(list
 		 (cond ((qminusp coef)(antifnsym fnsymbol))(t fnsymbol))
 		 var
