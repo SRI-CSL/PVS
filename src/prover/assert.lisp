@@ -24,13 +24,14 @@
 				   rewrite-flag flush? linear?
 				   cases-rewrite? type-constraints?
 				   ignore-prover-output? let-reduce?
-				   quant-simp?)
+				   quant-simp? implicit-typepreds?)
   #'(lambda (ps)
       (let ((*cases-rewrite* cases-rewrite?)
 	    (*false-tcc-error-flag* nil)
 	    (*ignore-prover-output?* ignore-prover-output?)
 	    (*let-reduce?* let-reduce?)
-	    (*quant-simp?* quant-simp?))
+	    (*quant-simp?* quant-simp?)
+	    (*implicit-typepreds?* implicit-typepreds?))
 	(if record?
 	    (if rewrite?
 		(assert-sformnums
@@ -1004,6 +1005,101 @@
 		'expression new-expr
 		'assignments outer-outer-assigns))))))
 
+(defmethod simplify-nested-updates ((expr tuple-expr) outer-assignments
+				    update-expr)
+  (with-slots (exprs) expr
+    (let ((new-exprs (copy-list exprs))
+	  (assignment-parts (partition-tup-assignments outer-assignments)))
+      (dolist (assigns assignment-parts)
+	(let* ((index (car assigns))
+	       (tupexpr (nth index exprs))
+	       (new-expr (create-tup-nested-update (cdr assigns) tupexpr)))
+	  (setf (nth index new-exprs) new-expr)))
+      (lcopy expr 'exprs new-exprs))))
+
+(defun create-tup-nested-update (assigns expr &optional new-assigns)
+  (if (null assigns)
+      (if (null new-assigns)
+	  expr
+	  (make!-update-expr expr (nreverse new-assigns)))
+      (let ((args (cdr (arguments (car assigns))))
+	    (aexpr (expression (car assigns))))
+	(if (null args)
+	    (create-tup-nested-update nil aexpr new-assigns)
+	    (create-tup-nested-update (cdr assigns) expr
+				      (cons (mk-assignment nil args aexpr)
+					    new-assigns))))))
+
+(defun partition-tup-assignments (assignments &optional parts)
+  (if (null assignments)
+      parts
+      (let* ((index (1- (number (caar (arguments (car assignments))))))
+	     (part (assoc index parts :test #'=)))
+	(partition-tup-assignments
+	 (cdr assignments)
+	 (cond (part
+		(nconc part (list (car assignments)))
+		parts)
+	       (t (acons index (list (car assignments)) parts)))))))
+
+(defmethod simplify-nested-updates ((expr application) outer-assignments
+				    update-expr)
+  (if (constructor-name-expr? (operator expr))
+      (simplify-constructor-nested-update outer-assignments expr)
+      (call-next-method)))
+
+(defun simplify-constructor-nested-update (assigns expr)
+  (if (null assigns)
+      expr
+      (let* ((ass-args (arguments (car assigns)))
+	     (acc (caar ass-args))
+	     (value (expression (car assigns)))
+	     (pos (position acc (accessors (operator expr)) :test #'same-id))
+	     (expr-args (arguments expr))
+	     (expr-arg (nth pos expr-args))
+	     (new-arg (if (cdr ass-args)
+			  (let ((assign (make-assignment (cdr ass-args) value)))
+			    (simplify-nested-updates
+			     expr-arg (list assign)
+			     (make!-update-expr expr-arg (list assign))))
+			  value))
+	     (new-expr (if (tc-eq expr-arg new-arg)
+			   expr
+			   (copy expr
+			     'argument (if (tuple-expr? (argument expr))
+					   (copy (argument expr)
+					     'exprs (let ((nargs
+							   (copy-list expr-args)))
+						      (setf (nth pos nargs)
+							    new-arg)
+						      nargs))
+					   new-arg)))))
+	(simplify-constructor-nested-update (cdr assigns) new-expr))))
+
+(defun simplify-constructor-nested-update* (arguments value expr)
+  (let* ((acc (caar arguments))
+	 (pos (position acc (accessors (operator expr)) :test #'same-id))
+	 (expr-args (arguments expr))
+	 (expr-arg (nth pos args))
+	 (new-arg (if (cdr arguments)
+		      (let ((assign (make-assignment (cdr arguments) value)))
+			(simplify-nested-updates
+			 expr-arg assign (make!-update-expr expr-arg assign)))
+		      value))
+	 (new-expr (if (tc-eq arg new-arg)
+		       expr
+		       (copy expr
+			 'argument (if (tuple-expr? (argument expr))
+				       (copy (argument expr)
+					 'exprs (let ((nargs
+						       (copy-list args)))
+						  (setf (nth pos nargs)
+							new-arg)
+						  nargs))
+				       new-arg)))))
+    (break)
+    new-expr))
+
 (defmethod simplify-nested-updates ((expr update-expr) outer-assignments
 				    update-expr)
   (declare (ignore update-expr))
@@ -1084,19 +1180,19 @@
     'expression expr
     'assignments outer-assignments))
   
-;; (defmethod assert-if-inside ((expr expr))
-;;   (assert-if expr))
-  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun collect-type-constraints (expr) ;(break "in-ctc")
-  (when (and ;(not *assert-typepreds-off*) ;checked record-type-constraints
-	     (not (null *subtype-hash*))
+(defun collect-type-constraints (expr)
+  (when (and (not (null *subtype-hash*))
 	     (not (gethash expr *subtype-hash*)))
     (collect-type-constraints* expr)))
 
 (defun collect-type-constraints* (ex)
-  (type-constraints ex t))
+  ;; SO 2004-09-17: Added implicit-type-predictes
+  (if *implicit-typepreds?*
+      (implicit-type-predicates ex t (type-constraints ex t))
+      (type-constraints ex t)))
+
 
 ;;NSH(7.11.94): old code triggered a loop since collect-type-constraints
 ;;calls substit which calls pseudo-normalize which calls
