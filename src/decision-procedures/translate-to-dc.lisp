@@ -263,9 +263,8 @@
 
 (defun translate-dc-record-constructor (type)
   (let* ((sorted-fields (dc-sort-fields (fields type)))
-	 (tr-sorted-values (mapcar #'(lambda (ass)
-				       (translate-to-dc (expression ass)))
-				   sorted-assignments)))
+	 (tr-sorted-fields (mapcar #'translate-to-dc
+				   sorted-fields)))
     (dp::mk-term
      (cons dp::*record* tr-sorted-fields))))
 
