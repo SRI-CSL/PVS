@@ -990,7 +990,9 @@
 	    (pprint-newline :fill)
 	    (pprint-logical-block (nil nil)
 	      (pprint-indent :block 1)
-	      (pp* (id operator))
+	      (if (eq (id operator) 'O)
+		  (pp* '|o|)
+		  (pp* (id operator)))
 	      (write-char #\space)
 	      (if (>= oplen 4)
 		  (pprint-newline :fill)
@@ -1683,35 +1685,6 @@
 		(cons (nreverse (cons (car decls) cdecls)) part))
 	       (t (cons (list (car decls))
 			(if cdecls (cons (nreverse cdecls) part) part))))))))
-  
 
-(defvar *prover-lines* nil)
-(defvar *print-lines* nil)
-
-(defun display-sform (sform sfnum stream)
-  (let ((par-sforms
-	 (when *print-ancestor*
-	   (s-forms (current-goal *print-ancestor*)))))
-    (cond (*report-mode*
-	   (unless (and (memq sform par-sforms)
-			(every #'(lambda (ps)
-				   (memq sform
-					 (s-forms (current-goal ps))))
-			       *print-descendants*))
-	     (format stream "~%~V@T" *prover-indent*)
-	     (format stream "{~a}   ~a" sfnum
-		     (unparse-sform sform))))
-	  (t
-	   (format stream "~%~V@T~6@<~:[{~a~@[,~a~]}~;[~a~@[,~a~]]~]~>~:[~;~%~6<~>~]"
-	     *prover-indent* (memq sform par-sforms) sfnum
-	     (label sform) (label sform))
-	   (unparse (seq-formula sform) :stream stream)))))
-
-(defun unparse-sform (sform)
-  (let ((*print-lines* *prover-lines*))
-    (unpindent (seq-formula sform)
-	       (+ 6 *prover-indent*)
-	       :string T)))
-  
 (defmethod pp* ((ex symbol))
   (write ex))
