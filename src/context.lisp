@@ -98,7 +98,8 @@
   id
   class
   type
-  theory-id)
+  theory-id
+  (library nil))
 
 (defun ce-eq (ce1 ce2)
   (and (equal (ce-file ce1) (ce-file ce2))
@@ -454,7 +455,7 @@ pvs-strategies files.")
   (let ((fentry (find-if #'(lambda (fe)
 			     (and (typep fe 'formula-entry)
 				  (same-id fe decl)))
-			 fentries)))
+		  fentries)))
     (make-formula-entry
      :id (id decl)
      :status (cond ((typechecked? decl)
@@ -473,16 +474,20 @@ pvs-strategies files.")
 			 (new-ground? decl))
 			(fentry (fe-new-ground? fentry)))
      :proof-time (cond ((typechecked? decl)
-			(proof-time decl))
+			(let ((dpr (default-proof decl)))
+			  (when dpr
+			    (list (run-time dpr)
+				  (real-time dpr)
+				  (interactive? dpr)))))
 		       (fentry (fe-proof-time fentry)))
      :proof-refers-to (if (proof-refers-to decl)
 			  (mapcar #'create-declaration-entry
-				  (remove-if-not
-				      #'(lambda (d)
-					  (typep d '(and declaration
-							 (not skolem-const-decl))))
+			    (remove-if-not
+				#'(lambda (d)
+				    (typep d '(and declaration
+						   (not skolem-const-decl))))
 							  
-				    (proof-refers-to decl)))
+			      (proof-refers-to decl)))
 			  (if fentry
 			      (fe-proof-refers-to fentry))))))
 
@@ -1062,32 +1067,64 @@ pvs-strategies files.")
 	      (if (eq stat t) 'proved stat)))
     (when finfo
       (unless (consp finfo)
-	(setf (proof-refers-to decl)
-	      (mapcar #'get-declaration-entry-decl
-		      (fe-proof-refers-to finfo)))))))
+	(dolist (dref (fe-proof-refers-to finfo))
+	  (pushnew (get-declaration-entry-decl dref)
+		   (proof-refers-to decl)))))))
 
 (defun get-declaration-entry-decl (de)
-  (let ((theory (get-theory (de-theory-id de))))
+  (get-referenced-declaration*
+   (de-id de)
+   (de-class de)
+   (de-type de)
+   (de-theory-id de)
+   (de-library de)))
+
+(defun get-referenced-declaration (declref)
+  (apply #'get-referenced-declaration* declref))
+
+(defun get-referenced-declaration* (id class type theory-id library)
+  (let ((theory (get-theory (mk-modname theory-id library))))
     (when theory
       (let ((decls (remove-if-not
 		       #'(lambda (d)
 			   (and (typep d 'declaration)
-				(eq (id d) (de-id de))
-				(eq (type-of d) (de-class de))))
+				(eq (id d) id)
+				(eq (type-of d) class)))
 		     (all-decls theory))))
 	(cond ((singleton? decls)
 	       (car decls))
-	      ((and (cdr decls)
-		    (de-type de))
+	      ((and (cdr decls) type)
 	       (let ((ndecls (remove-if-not
 				 #'(lambda (d)
 				     (string= (unparse (declared-type d)
 						:string t)
-					      (de-type de)))
+					      type))
 			       decls)))
 		 (when (singleton? ndecls)
 		   (car ndecls)))))))))
 
+(defun invalidate-proofs (theory)
+  (when theory
+    (mapc #'(lambda (d)
+	      (when (typep d 'formula-decl)
+		(mapc #'(lambda (prinfo)
+			  (when (eq (status prinfo) 'proved)
+			    (setf (status prinfo) 'unchecked)))
+		      (proofs d))))
+	  (append (assuming theory) (theory theory)))))
+
+(defmethod valid-proofs-file ((entry context-entry))
+  (and (valid-context-entry entry)
+       (valid-proofs-file (ce-file entry))))
+
+(defmethod valid-proofs-file (filename)
+  (multiple-value-bind (valid? entry)
+      (valid-context-entry filename)
+    (and valid?
+	 (let ((prf-file (make-prf-pathname filename)))
+	   (and (probe-file prf-file)
+		(eql (file-write-date prf-file)
+		     (ce-proofs-date entry)))))))
 
 ;;; Proof handling functions - originally provided by Shankar.
 
@@ -1239,20 +1276,23 @@ pvs-strategies files.")
   (if (null decls)
       (nreverse proofs)
       (let* ((decl (car decls))
-	     (prf (when (and (formula-decl? decl)
-			     (justification decl))
-		    (cons (id decl)
-			  (if (new-ground? decl)
-			      (cons (list :new-ground? (new-ground? decl))
-				    (extract-justification-sexp
-				     (justification decl)))
-			      (extract-justification-sexp
-			       (justification decl)))))))
+	     (prfs (collect-decl-proofs decl)))
 	(collect-theory-proofs*
 	 (cdr decls)
-	 (if prf
-	     (cons prf proofs)
+	 (if prfs
+	     (cons prfs proofs)
 	     proofs)))))
+
+(defmethod collect-decl-proofs ((decl formula-decl))
+  (let ((prfs (proofs decl)))
+    (when prfs
+      (cons (id decl)
+	    (cons (position (default-proof decl) prfs)
+		  (mapcar #'sexp prfs))))))
+
+(defmethod collect-decl-proofs (obj)
+  (declare (ignore obj))
+  nil)
 
 (defun merge-proofs (oldproofs proofs)
   (if (null oldproofs)
@@ -1302,23 +1342,26 @@ pvs-strategies files.")
 (defun restore-theory-proofs* (decl proofs)
   (when (formula-decl? decl)
     (let ((prf-entry (find-associated-proof-entry decl proofs)))
-      (when prf-entry
-	(let ((script (cond ((integerp (cadr prf-entry))
-			     (fifth (caddr prf-entry)))
-			    ((listp (cadr prf-entry))
-			     (cddr prf-entry))
-			    (t (cdr prf-entry))))
-	      (new-ground? (and (true-listp (cadr prf-entry))
-				(evenp (length (cadr prf-entry)))
-				(getf (cadr prf-entry) :new-ground?))))
-	  (if (justification decl)
-	      (unless (equal (extract-justification-sexp
-			      (justification decl))
-			     script)
-		(setf (justification2 decl) (justification decl))
-		(setf (justification decl) script))
-	      (setf (justification decl) script))
-	  (setf (new-ground? decl) new-ground?)))
+      (cond ((integerp (cadr prf-entry))
+	     (setf (proofs decl)
+		   (mapcar #'(lambda (p) (apply #'mk-proof-info p))
+		     (cddr prf-entry)))
+	     (setf (default-proof decl)
+		   (nth (cadr prf-entry) (proofs decl))))
+	    (prf-entry
+	     (unless (some #'(lambda (prinfo)
+			       (equal (script prinfo) (cdr prf-entry)))
+			   (proofs decl))
+	       (let ((prinfo (make-proof-info (cdr prf-entry)
+					      (next-proof-id decl)))
+		     (fe (get-context-formula-entry decl)))
+		 (when fe
+		   (dolist (dref (fe-proof-refers-to fe))
+		     (pushnew (get-declaration-entry-decl dref)
+			      (refers-to prinfo)))
+		   (setf (status prinfo) (fe-status fe)))
+		 (push prinfo (proofs decl))
+		 (setf (default-proof decl) prinfo)))))
       prf-entry)))
 
 (defmethod find-associated-proof-entry ((decl tcc-decl) proofs)

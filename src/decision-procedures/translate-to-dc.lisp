@@ -155,11 +155,17 @@
 	    (cdr assoc)
 	  (choose-interpretation id mod-id (cdr alist))))))
 
+(defmethod interpretation (expr)
+  nil)
+
 (defmethod interpretation ((expr name-expr))
+  (if *newdc*
+      (dc-interpretation expr)
+      (shostak-interpretation expr)))
+
+(defmethod dc-interpretation ((expr name-expr))
   (with-slots (id resolutions) expr
-    (let ((alist (cdr (assq id (if *newdc*
-				   (interpreted-alist)
-				   *interpreted-alist*)))))
+    (let ((alist (cdr (assq id (interpreted-alist)))))
       (and alist
 	   (let ((mi (module-instance (car resolutions))))
 	     (and mi
@@ -168,9 +174,6 @@
 		      (if (eq (dp::node-type dp-sym) 'bvec::bv-op)
 			  (and (interpreted-bv-op? expr) dp-sym)
 			  dp-sym)))))))))
-
-(defmethod interpretation (expr)
-  nil)
 
 ;;; Translate into list representation for passing to the prover.
 ;;; This also sets up the global variables typealist, and inserts

@@ -227,14 +227,15 @@
 	(let* ((fdecls (provable-formulas theory))
 	       (maxtime (/ (reduce #'max fdecls
 				   :key #'(lambda (d)
-					    (or (run-proof-time d) 0))
+					    (or (run-time (default-proof d))
+						0))
 				   :initial-value 0)
 			   internal-time-units-per-second))
 	       (timelength (length (format nil "~,2f" maxtime)))
 	       (idlength (- 48 timelength)))
 	  (dolist (decl fdecls)
-	    (let ((tm (if (run-proof-time decl)
-			  (/ (run-proof-time decl)
+	    (let ((tm (if (run-time (default-proof decl))
+			  (/ (run-time (default-proof decl))
 			     internal-time-units-per-second 1.0)
 			  0)))
 	      (incf tot)
@@ -248,7 +249,7 @@
 		(id decl)
 		(proof-status-string decl)
 		(if (justification decl) (if (new-ground? decl) 'N 'O) 'U)
-		(if (run-proof-time decl)
+		(if (run-time (default-proof decl))
 		    (format nil "~v,2f" timelength tm)
 		    (format nil "~v<n/a~>" timelength))))))
 	(let ((te (get-context-theory-entry theory-id)))
@@ -271,16 +272,18 @@
                (~,2f s)"
 	tot (+ proved unfin) proved
 	(/ (reduce #'+ (provable-formulas theory)
-		    :key #'(lambda (d) (or (run-proof-time d) 0))
+		    :key #'(lambda (d) (or (run-time (default-proof d)) 0))
 		    :initial-value 0)
 	    internal-time-units-per-second))
     (values tot proved unfin untried time)))
 
 (defun run-proof-time (decl)
- (car (proof-time decl)))
+  (let ((dpr (default-proof decl)))
+    (when dpr (run-time dpr))))
 
 (defun real-proof-time (decl)
- (cadr (proof-time decl)))
+  (let ((dpr (default-proof decl)))
+    (when dpr (run-time dpr))))
 
 (defmethod provable-formulas ((theory module))
   (provable-formulas (append (assuming theory) (theory theory))))
@@ -567,11 +570,7 @@
 	  (if (run-proof-time decl)
 	      (format nil "~,2,-3f" (run-proof-time decl))
 	      (format nil "n/a")))
-	(write (editable-justification
-		(if (and (listp (cadr prf))
-			 (keywordp (caadr prf)))
-		    (cddr prf)
-		    (cdr prf)))
+	(write (get-editable-justification prf)
 	       :stream outstr :pretty t :escape t :level nil
 	       :length nil :pprint-dispatch *proof-script-pprint-dispatch*)))))
 
@@ -582,11 +581,7 @@
 	   (status (or (and fe (fe-proof-status-string fe valid?))
 		       "unchecked")))
       (format outstr "~3%~a.~a: ~a~2%" thid (car prf) status)
-      (write (editable-justification
-	      (if (and (listp (cadr prf))
-		       (keywordp (caadr prf)))
-		  (cddr prf)
-		  (cdr prf)))
+      (write (get-editable-justification prf)
 	     :stream outstr :pretty t :escape t :level nil :length nil
 	     :pprint-dispatch *proof-script-pprint-dispatch*))))
   
@@ -797,3 +792,248 @@
 		      (memq udecl (proof-refers-to decl)))
 	     (push decl usedbys)))))
     usedbys))
+
+;;; Support for browsing proofs
+
+;;; The *show-proofs-info* variable contains the header and proofs.  The
+;;; car is the string representing the header, and the cdr is the list of
+;;; proofs.
+
+(defvar *show-proofs-info* nil)
+
+(defun display-proofs-formula-at (name origin line)
+  (let ((fdecl (formula-decl-to-prove name line origin)))
+    (cond ((null fdecl)
+	   (pvs-message "Not at a formula declaration"))
+	  ((null (proofs fdecl))
+	   (pvs-message "Formula ~a does not have any proofs" (id fdecl)))
+	  (t (setq *show-proofs-info*
+		   (cons 'formula
+			 (cons fdecl
+			       (mapcar #'(lambda (p) (cons fdecl p))
+				 (proofs fdecl)))))
+	     (display-proofs-buffer)))))
+
+(defun display-proofs-theory (theoryname)
+  (let ((theory (get-theory theoryname)))
+    (cond (theory
+	   (setq *show-proofs-info*
+		 (cons 'theory
+		       (cons theory
+			     (mapcan #'(lambda (d)
+					 (when (typep d 'formula-decl)
+					   (mapcar #'(lambda (p) (cons d p))
+					     (proofs d))))
+			       (all-decls theory)))))
+	   (display-proofs-buffer))
+	  (t (pvs-message "~a has not been typechecked" theoryname)))))
+
+(defun display-proofs-pvs-file (filename)
+  (let ((theories (get-theories filename)))
+    (cond (theories
+	   (setq *show-proofs-info*
+		 (cons 'pvs-file
+		       (cons filename
+			     (mapcan
+				 #'(lambda (theory)
+				     (mapcan #'(lambda (d)
+						 (when (typep d 'formula-decl)
+						   (mapcar #'(lambda (p)
+							       (cons d p))
+						     (proofs d))))
+				       (all-decls theory)))
+			       theories))))
+	   (display-proofs-buffer))
+	  (t (pvs-message "PVS file ~a is not in the current context"
+	       filename)))))
+
+(defun display-proofs-buffer (&optional line)
+  (let ((idsize (max 8
+		     (apply #'max
+		       (mapcar #'(lambda (fs)
+				   (length (string (id (cdr fs)))))
+			 (cddr *show-proofs-info*)))))
+	(declsize (max 11
+		       (apply #'max
+			 (mapcar #'(lambda (fs)
+				     (length (string (id (car fs)))))
+			   (cddr *show-proofs-info*)))))
+	(thsize (max 6
+		     (apply #'max
+			 (mapcar #'(lambda (fs)
+				     (length (string (id (module (car fs))))))
+			   (cddr *show-proofs-info*))))))
+    (pvs-buffer "Display Proofs"
+      (format nil "~a~%~{~a~%~}"
+	(display-proofs-header (car *show-proofs-info*)
+			       (cadr *show-proofs-info*)
+			       idsize declsize thsize)
+	(proofs-formula-strings (car *show-proofs-info*)
+				(cddr *show-proofs-info*)
+				idsize declsize thsize))
+      t t))
+  (when line
+    (pvs-locate "Display Proofs" nil (list line 0))))
+
+(defparameter *proofs-format-string*
+  "~a~va ~:[~*~;~:*~va ~]~:[~*~;~:*~va ~]~10a ~17a ~a")
+
+(defun display-proofs-header (type obj idsize declsize thsize)
+  (declare (ignore obj))
+  (concatenate 'string
+    (format nil "~?" *proofs-format-string*
+	    (list "  "
+		  idsize
+		  "Proof Id"
+		  (unless (eq type 'formula) declsize)
+		  (unless (eq type 'formula) "Declaration")
+		  (when (eq type 'pvs-file) thsize)
+		  (when (eq type 'pvs-file) "Theory")
+		  "Status"
+		  "Date"
+		  "Description"))
+    (format nil "~%~?" *proofs-format-string*
+	    (list "  "
+		  idsize
+		  "--------"
+		  (unless (eq type 'formula) declsize)
+		  (unless (eq type 'formula) "----")
+		  (when (eq type 'pvs-file) thsize)
+		  (when (eq type 'pvs-file) "------")
+		  "------"
+		  "----"
+		  "----------------"))))
+
+(defun proofs-formula-strings (type proofs idsize declsize thsize)
+  (mapcar #'(lambda (prf)
+	      (proof-formula-string type (car prf) (cdr prf)
+				    idsize declsize thsize))
+    proofs))
+
+(defun proof-formula-string (type fdecl prf idsize declsize thsize)
+  (format nil "~?" *proofs-format-string*
+	  (list (if (eq prf (default-proof fdecl)) "+ " "  ")
+		idsize
+		(id prf)
+		(unless (eq type 'formula) declsize)
+		(unless (eq type 'formula) (id fdecl))
+		(when (eq type 'pvs-file) thsize)
+		(when (eq type 'pvs-file) (id (module fdecl)))
+		(string-downcase (string (status prf)))
+		(if (run-date prf)
+		    (date-string (run-date prf))
+		    "")
+		(or (description prf) ""))))
+
+(defun proofs-get-proof-at (line)
+  (let ((pair (proofs-get-pair-at line)))
+    (values (car pair) (cdr pair))))
+
+(defun proofs-get-pair-at (line)
+  (nth (+ (case (car *show-proofs-info*)
+	    (formula -3)
+	    (theory -3)
+	    (pvs-file -3))
+	  line)
+       (cddr *show-proofs-info*)))
+
+(defun set-proofs-default (line)
+  (multiple-value-bind (fdecl prf)
+      (proofs-get-proof-at line)
+    (setf (default-proof fdecl) prf)
+    (display-proofs-buffer line)))
+
+(defun proofs-delete-proof (line)
+  (let* ((pair (proofs-get-pair-at line))
+	 (fdecl (car pair))
+	 (prf (cdr pair)))
+    (setf (cdr *show-proofs-info*)
+	  (delete pair (cdr *show-proofs-info*)))
+    (setf (proofs fdecl) (delete prf (proofs fdecl)))
+    (when (eq prf (default-proof fdecl))
+      (setf (default-proof fdecl) (car (proofs fdecl))))
+    (display-proofs-buffer line)))
+
+(defun proofs-rename (line id)
+  (multiple-value-bind (fdecl prf)
+      (proofs-get-proof-at line)
+    (declare (ignore fdecl))
+    (setf (id prf) id)
+    (display-proofs-buffer line)))
+
+(defun proofs-show-proof (line)
+  (multiple-value-bind (fdecl prf)
+      (proofs-get-proof-at line)
+    (pvs-buffer (format nil "Proof:~a" (id prf))
+      (with-output-to-string (out)
+	(format out "Id: ~a~%Description: ~a~%Status: ~a~%~
+                     Formula Declaration: ~a~%Decision Procedures: ~a~%~
+                     Creation Date: ~a~%~
+                     Date Last Run: ~a~%Run Time: ~,2,-3f seconds~%Proof:~%"
+	  (id prf)
+	  (or (description prf) "None")
+	  (string-downcase (status prf))
+	  (id fdecl)
+	  (if (new-ground? prf) "New" "Old")
+	  (if (create-date prf)
+	      (date-string (create-date prf))
+	      "Unknown")
+	  (if (run-date prf)
+	      (date-string (run-date prf))
+	      "Unknown")
+	  (or (run-time prf)
+	      "Unknown"))
+	(write (editable-justification (script prf))
+	       :stream out :pretty t :escape t
+	       :level nil :length nil
+	       :pprint-dispatch *proof-script-pprint-dispatch*))
+      t)))
+
+(defun proofs-change-description (line description)
+  (multiple-value-bind (fdecl prf)
+      (proofs-get-proof-at line)
+    (declare (ignore fdecl))
+    (setf (description prf) description)
+    (display-proofs-buffer line)))
+
+(defun proofs-rerun-proof (line)
+  (multiple-value-bind (fdecl prf)
+      (proofs-get-proof-at line)
+    (setf (default-proof fdecl) prf)
+    (let ((*current-theory* (module fdecl)))
+      (read-strategies-files)
+      (auto-save-proof-setup fdecl)
+      (setq *last-proof* (prove (id fdecl) :strategy '(rerun)))
+      (unless (from-prelude? fdecl)
+	(save-all-proofs *current-theory*)
+	;; If the proof status has changed, update the context.
+	(update-context-proof-status fdecl))
+      (remove-auto-save-proof-file))
+    (let ((*to-emacs* t))
+      (display-proofs-buffer line))))
+
+(defun proofs-edit-proof (line)
+  (multiple-value-bind (fdecl prf)
+      (proofs-get-proof-at line)
+    (setq *edit-proof-info* (list fdecl (place fdecl) "Display Proofs" 0))
+    (pvs-buffer "Proof"
+      (with-output-to-string (out)
+	(write (editable-justification (script prf))
+	       :stream out :pretty t :escape t
+	       :level nil :length nil
+	       :pprint-dispatch *proof-script-pprint-dispatch*))
+      'popto)))
+
+(defun show-all-proofs-nostatus (outstr theoryid proofs)
+  (dolist (prf proofs)
+    (format outstr "~3%~a.~a~2%"
+      theoryid (car prf))
+    (write (get-editable-justification prf)
+	   :stream outstr :pretty t :escape t :level nil :length nil
+	   :pprint-dispatch *proof-script-pprint-dispatch*)))
+
+(defun get-editable-justification (prf)
+  (if (integerp (cadr prf))
+      (editable-justification
+       (fifth (nth (cadr prf) (cddr prf))))
+      (editable-justification (cdr prf))))

@@ -350,20 +350,29 @@
 
 (defcl coinductive-decl (fixpoint-decl))
 
+
+;;; Formula-decl slots have the following meaning:
+;;;   spelling:   One of FORMULA, AXIOM, LEMMA, etc.
+;;;   definition: The body of the formula declaration
+;;;   closed-definition: The closure of the body of the definition
+;;;   kind:       The kind of formula-decl (e.g., TCC, EXISTENCE)
+;;;   justification: The default justification
+;;;   justifications: The justifications for this delaration - the default
+;;;                   justification is one of these
+;;;   proof-status: The status of the default justification - one of
+;;;                   proved, unproved, unfinished, or unchecked
+;;;   proof-refers-to: The delarations that the default justification refers to
+;;;   proof-time: The times associated with the proof; a list of the form
+;;;               (runtime, realtime, interactive?)
+
 (defcl formula-decl (declaration)
   (spelling :documentation "One of formula, axiom, lemma, etc." :parse t)
   (definition :parse t)
   ;; The universal closure of the definition, used in create-formulas
   (closed-definition :fetch-as nil)
   kind
-  (justification :fetch-as nil)
-  (justification2 :fetch-as nil)
-  (new-ground? :fetch-as nil)
-  (modified-proof? :fetch-as nil)
-  (proof-status
-   :documentation "One of proved, unproved, unfinished, or unchecked")
-  proof-refers-to
-  proof-time)
+  (default-proof :fetch-as nil)
+  (proofs :fetch-as nil))
 
 (defcl tcc-decl (formula-decl)
   (tcc-disjuncts
@@ -534,3 +543,36 @@
 
 (defcl destructive-eval-defn (eval-defn)
   side-effects) ;;alist of updated variables/live vars when updated.
+
+
+;;; A proof-info object contains the information pertaining to a given
+;;; proof.  A formula-decl has a list of these, and if there is a default
+;;; proof, it is one of these.  The id is an optional identifier
+;;; associated with the proof.  The description is an optional string
+;;; describing the proof.  The script is the proof script or justification
+;;; that is run to get the proof.  The status is one of PROVED, UNTRIED,
+;;; UNFINISHED, or UNCHECKED.  The refers-to is a list of declarations
+;;; that are referred to during the proof.  Real-time and run-time are
+;;; times in internal time units reflecting the clock time and CPU time
+;;; for the given proof.  Interactive? is T or NIL indicating whether the
+;;; last attempt of this proof script was interactive or not.  The 
+
+(defcl proof-info ()
+  id
+  description
+  create-date
+  run-date
+  script
+  status
+  refers-to
+  real-time
+  run-time
+  interactive?
+  new-ground?)
+
+(defcl decl-reference ()
+  id
+  class
+  type
+  theory-id
+  library)

@@ -644,6 +644,10 @@
 (defparameter *interpreted-alist*
   (mapcar #'(lambda (x) (cons (id x) x)) *interpreted-names*))
 
+(defun shostak-interpretation (name)
+  (or (cdr (assoc (id name) *interpretations*))
+      (id name)))
+
 (defparameter *interpretations*
   '((= . equal)
     (< . lessp)

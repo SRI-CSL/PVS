@@ -441,11 +441,9 @@ modname ::= {[{id^1 '@'}]^p id [actuals] [mappings]^m}
 	    <modname(id,[nolib()|id^1]^p,[noactuals()|actuals],
                         [nomap()|mappings]^m)>;
 
-mappings ::= {'{' mapdecl++ ',' '}'} <mappings(mapdecl+)>;
+mappings ::= {'{' mapping++ ',' '}'} <mappings(mapping+)>;
 
-mapdecl ::= {idops [pdformals+ <pdf(plus)>|theory-formals]
-                   ':' {type-decl|const-decl} [';' <semic()>]^s}
-	    <mapdecl(idops,opt,{type-decl|const-decl},opt^s)>;
+mapping ::= {idop '<-' expr} <mapping(idop,expr)>;
 
 names ::= {name ++ ','}	<names(name+)>;
 

@@ -197,10 +197,12 @@ print object produces an error, and won't allow inspection of the object.")
 ;      (call-next-method)
 ;      (format stream "~&~@:<~{~d~^ ~:@_~}~:>" list)))
 
-#-(or allegro-v4.3 allegro-v5.0)
-(defmethod print-object ((ht ht) stream)
-  (format stream "<pvs-hash-table with ~d element~:p>"
-    (ht-num-elements ht)))
+(defmethod print-object ((prinfo proof-info) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (format stream "<#PROOF-INFO~@[ ~a:~] ~a>"
+	(id prinfo) (if (run-date prinfo)
+			(date-string (run-date prinfo))))))
 
 #+allegro
 (defmethod describe-object :around (obj stream)

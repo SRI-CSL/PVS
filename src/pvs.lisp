@@ -508,12 +508,7 @@
       (untypecheck-theory th))))
 
 (defun reset-proof-statuses (theory)
-  (let ((fdecls (remove-if-not #'proved? (provable-formulas theory))))
-    (when fdecls
-      (setq *pvs-context-changed* t)
-      (dolist (fdecl fdecls)
-	(setf (proof-status fdecl) 'unchecked)
-	(update-context-proof-status fdecl)))))
+  (invalidate-proofs theory))
 
 
 ;;; collect-theory-clashes takes a list of theories and their associated
@@ -751,11 +746,10 @@
   t)
 
 (defun prove-tcc (decl)
-  (unless (and (proved? decl)
-	       (justification decl))
-    (unless (justification decl)
-      (setf (justification decl) (tcc-strategy decl))
-      (setf (proof-status decl) nil)
+  (unless (and (default-proof decl)
+	       (proved? decl))
+    (unless (default-proof decl)
+      (make-default-proof decl (tcc-strategy decl))
       (setq *justifications-changed?* t))
     (let* ((*proving-tcc* 'TCC)
 	   (proof (rerun-prove decl)))
@@ -1152,8 +1146,8 @@
 		      (when (typep proof 'proofstate)
 			(setq *last-proof* proof)))
 		    (unless (or background?
-				(null (proof-time fdecl)))
-		      (setf (caddr (proof-time fdecl)) t))
+				(null (default-proof fdecl)))
+		      (setf (interactive? (default-proof fdecl)) t))
 		    ;; Save the proof if it is different.
 		    (unless (or (equal origin "prelude")
 				(from-prelude? fdecl))
@@ -1426,8 +1420,8 @@
 	   ;;(setq *current-theory* (module fdecl))
 	   (pvs-buffer "Proof"
 	     (with-output-to-string (out)
-	       (format out ";;; Proof for formula ~a.~a~%"
-		 (id (module fdecl)) (id fdecl))
+	       (format out ";;; Proof ~a for formula ~a.~a~%"
+		 (id (default-proof fdecl)) (id (module fdecl)) (id fdecl))
 	       (format out
 		   ";;; developed with ~:[old~;new~] decision procedures~%"
 		 (new-ground? fdecl))
@@ -1476,12 +1470,30 @@
 			      just)
 		       (pvs-message "Proof was not changed")
 		       t)
-		      (t (setf (justification2 fdecl) (justification fdecl))
-			 (setf (justification fdecl) just)
-			 (setf (proof-status fdecl) 'unfinished)
+		      ((some #'(lambda (prinfo)
+				 (equal (script prinfo) just))
+			     (proofs fdecl))
+		       (let ((prinfo (find #'(lambda (prinfo)
+					       (equal (script prinfo) just))
+					   (proofs fdecl))))
+			 (setf (default-proof fdecl) prinfo)
 			 (unless (from-prelude? (module fdecl))
-			   (save-all-proofs (module fdecl)))
-			 (pvs-message "Proof installed on ~a" (id fdecl))
+			     (save-all-proofs (module fdecl)))
+			 (pvs-message "Proof installed on ~a as ~a"
+			   (id fdecl) (id prinfo))
+			 t))
+		      (t (let ((prinfo (make-proof-info
+					just
+					(next-proof-id fdecl)
+					(description
+					 (default-proof
+					   (car *edit-proof-info*))))))
+			   (push prinfo (proofs fdecl))
+			   (setf (default-proof fdecl) prinfo)
+			   (unless (from-prelude? (module fdecl))
+			     (save-all-proofs (module fdecl)))
+			   (pvs-message "Proof installed on ~a as ~a"
+			     (id fdecl) (id prinfo)))
 			 t)))))))))
 
 
@@ -1508,8 +1520,8 @@
     (when (typep fdecl 'tcc-decl)
       (update-tcc-info (module fdecl) (collect-tccs (module fdecl))))
     (remove-auto-save-proof-file)
-    (when (proof-time fdecl)
-      (setf (caddr (proof-time fdecl)) t))
+    (when (default-proof fdecl)
+      (setf (interactive? (default-proof fdecl)) t))
     (let* ((*to-emacs* t)
 	   (place (second *edit-proof-info*))
 	   (buffer (third *edit-proof-info*))
@@ -1525,43 +1537,19 @@
 
 (defun remove-proof-at (name line origin)
   (let ((fdecl (formula-decl-to-prove name line origin)))
-    (cond ((and fdecl (justification fdecl))
-	   (let ((just (justification fdecl)))
-	     (setf (justification fdecl) nil)
-	     (setf (justification2 fdecl) just)
+    (cond ((and fdecl (default-proof fdecl))
+	   (let ((prf (default-proof fdecl)))
+	     (setf (proofs fdecl) (delete prf (proofs fdecl)))
+	     (setf (default-proof fdecl) (car (proofs fdecl)))
 	     (when (tcc? fdecl)
 	       (setf (tccs-tried? (module fdecl)) nil))
-	     (setf (proof-status fdecl) nil)
 	     (update-context-proof-status fdecl)
 	     (save-all-proofs *current-theory*)
-	     (pvs-message
-		 "Proof removed from ~a, use M-x revert-proof to get it back"
-	       (id fdecl))))
+	     (pvs-message "Proof ~a removed from ~a"
+	       (id prf) (id fdecl))))
 	  (fdecl
 	   (pvs-message "Formula ~a has no proof to remove" (id fdecl)))
 	  (t (pvs-message "Unable to find formula declaration")))))
-
-(defun revert-proof-at (name line origin)
-  (let ((fdecl (formula-decl-to-prove name line origin)))
-    (cond ((and fdecl (justification2 fdecl))
-	   (let ((just (justification fdecl)))
-	     (setf (justification fdecl) (justification2 fdecl))
-	     (setf (justification2 fdecl) just)
-	     (setf (proof-status fdecl)
-		   (if (postpone-occurs-in-justification?
-			(justification fdecl))
-		       'unfinished
-		       'unchecked))
-	     (update-context-proof-status fdecl)
-	     (save-all-proofs *current-theory*)
-	     (pvs-message "Proof reverted")))
-	  ((and fdecl (justification fdecl))
-	   (pvs-message "Formula ~a has no proof to revert to"
-	     (id fdecl)))
-	  (fdecl
-	   (pvs-message "Formula ~a has no proof"
-	     (id fdecl)))
-	  (t (pvs-message "Unable to find formula declaration")))))  
 
 (defun postpone-occurs-in-justification? (justification)
   (postpone-in? (editable-justification justification)))

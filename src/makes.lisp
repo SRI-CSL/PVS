@@ -687,6 +687,43 @@
 (defmethod mk-actual ((arg expr))
   (make-instance 'actual 'expr arg))
 
+(defun mk-proof-info (id description create-date run-date script status
+			 refers-to real-time run-time interactive?
+			 &optional new-ground?)
+  (make-instance 'proof-info
+    'id id
+    'description description
+    'create-date create-date
+    'run-date run-date
+    'script (if (= (length script) 3)
+		(append script (list nil))
+		script)
+    'status status
+    'refers-to (typecase (car refers-to)
+		 (declaration refers-to)
+		 (declaration-entry
+		  (mapcar #'get-declaration-entry-decl refers-to))
+		 (t (mapcar #'get-referenced-declaration
+		      (remove-if #'null refers-to))))
+    'real-time real-time
+    'run-time run-time
+    'interactive? interactive?
+    'new-ground? new-ground?))
+
+(defun make-proof-info (script &optional id description)
+  (assert (symbolp id))
+  (assert (or (null description) (stringp description)))
+  (assert (typep script '(or list justification)))
+  ;;(assert (not (null script)))
+  (make-instance 'proof-info
+    'id id
+    'description description
+    'script (if (= (length script) 3)
+		(append script (list nil))
+		script)
+    'create-date (get-universal-time)
+    'status 'unchecked))
+
 (defun make-recordtype (fields)
   #+pvsdebug (assert (every@ #'(lambda (fd)
 				 (and (field-decl? fd)
