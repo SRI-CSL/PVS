@@ -930,45 +930,70 @@
       'expression (copy-untyped* expression))))
 
 (defmethod copy-untyped* ((ex projection-expr))
-  (copy ex 'type nil))
+  (with-slots (actuals) ex
+    (copy ex
+      'actuals (copy-untyped* actuals)
+      'type nil)))
 
 (defmethod copy-untyped* ((ex injection-expr))
-  (copy ex 'type nil))
+  (with-slots (actuals) ex
+    (copy ex
+      'actuals (copy-untyped* actuals)
+      'type nil)))
 
 (defmethod copy-untyped* ((ex injection?-expr))
-  (copy ex 'type nil))
+  (with-slots (actuals) ex
+    (copy ex
+      'actuals (copy-untyped* actuals)
+      'type nil)))
 
 (defmethod copy-untyped* ((ex extraction-expr))
-  (copy ex 'type nil))
+  (with-slots (actuals) ex
+    (copy ex
+      'actuals (copy-untyped* actuals)
+      'type nil)))
 
 (defmethod copy-untyped* ((ex projection-application))
-  (with-slots (argument) ex
+  (with-slots (actuals argument) ex
     (copy ex
       'type nil
+      'actuals (copy-untyped* actuals)
       'argument (copy-untyped* argument))))
 
 (defmethod copy-untyped* ((ex injection-application))
-  (with-slots (argument) ex
+  (with-slots (actuals argument) ex
     (copy ex
       'type nil
+      'actuals (copy-untyped* actuals)
       'argument (copy-untyped* argument))))
 
 (defmethod copy-untyped* ((ex injection?-application))
-  (with-slots (argument) ex
+  (with-slots (actuals argument) ex
     (copy ex
       'type nil
+      'actuals (copy-untyped* actuals)
       'argument (copy-untyped* argument))))
 
 (defmethod copy-untyped* ((ex extraction-application))
-  (with-slots (argument) ex
+  (with-slots (actuals argument) ex
     (copy ex
       'type nil
+      'actuals (copy-untyped* actuals)
       'argument (copy-untyped* argument))))
 
 (defmethod copy-untyped* ((ex field-application))
   (with-slots (id argument) ex
     (make-instance 'application
+      'place (place ex)
+      'parens (parens ex)
       'operator (make-instance 'name-expr 'id id)
+      'argument (copy-untyped* argument))))
+
+(defmethod copy-untyped* ((ex fieldappl))
+  (with-slots (id actuals argument) ex
+    (copy ex
+      'id id
+      'actuals (copy-untyped* actuals)
       'argument (copy-untyped* argument))))
 
 (defmethod copy-untyped* ((ex application))
