@@ -20,9 +20,10 @@
       (let* ((formal (car formals))
 	     (nresult (if (memq formal '(&optional &rest))
 			  result
-		          (cons (excl::make-keyword (if (consp formal)
-						        (car formal)
-						        formal))
+		          (cons (intern (string (if (consp formal)
+						    (car formal)
+						    formal))
+					'keyword)
 				result))))
 	(make-prover-keywords (cdr formals) nresult))))
 
