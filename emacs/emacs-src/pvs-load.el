@@ -259,7 +259,9 @@ get to the same state."
   (setq *pvs-version-information* nil)
   (sleep-for 1)
   ;; sets *pvs-current-directory* and pops up the welcome buffer
-  (init-change-context *pvs-current-directory*)
+  (condition-case ()
+      (init-change-context *pvs-current-directory*)
+    (quit nil))
   (setq pvs-in-checker nil)
   (setq pvs-in-evaluator nil)
   (unless noninteractive
