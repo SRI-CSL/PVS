@@ -183,7 +183,9 @@ jdecl ::= type-expr-sans-name <jsubtypedecl(type-expr-sans-name)>
 
 ename ::= {name [':' type-expr]} <ename(name,[notype()|type-expr])>;
 
-conversion ::= {'CONVERSION' {ename++','}} <conversion(ename+)>;
+
+conversion ::= {{'CONVERSION'|'CONVERSION+'|'CONVERSION-'} {ename++','}}
+          <{conversion(ename+)|conversionplus(ename+)|conversionminus(ename+)}>;
 
 pdformals ::= {'(' adformals ')'} <adformals>;
 
