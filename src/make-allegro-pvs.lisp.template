@@ -1,6 +1,8 @@
 (in-package "USER")
 (defvar *pvs-path* "")
+(defvar *runtime* nil)
 (eval-when (load eval)
   (require 'tpl-debug)
+  (unless *runtime* (require 'prof))
   (load (format nil "~a/pvs.system" *pvs-path*)))
 (operate-on-system :pvs :compile)
