@@ -19,14 +19,14 @@
      (setf *index* (1+ *index*)))
   
   (defun symtab-index (expr)
-    (let ((result (rassoc expr *symtab* :test #'tc-eq)))
+    (let ((result (rassoc expr *bvars* :test #'tc-eq)))
       (if result
-	  (values (car result) :lookup)
-	(values (symtab-add-index expr) :new))))
+	  (values (car result) :bound)
+	  (let ((result (rassoc expr *symtab* :test #'tc-eq)))
+	    (if result
+		(values (car result) :free)
+		(values (symtab-add-index expr) :new))))))
 
-  (defun symtab-expr (index)
-    (cdr (assoc index *symtab* :test #'=)))
-  
   (defun symtab-add-index (expr)
     (prog1
       (setf *index* (1+ *index*))
@@ -34,21 +34,26 @@
       (setf *symtab* (acons *index* expr *symtab*))))
 
   (defun symtab-shadow (expr)
+    (assert (typep expr 'name-expr))
     (prog1
       (setf *index* (1+ *index*))
-      (push expr *bvars*)
-      (setf *symtab* (acons *index* expr *symtab*))))
-   
-  (defun symtab-unshadow (expr)
-    (flet ((test (expr1) (tc-eq expr expr1)))
-      (pop *bvars*)
-      (setf *symtab* (delete-if #'test *symtab* :key #'cdr :count 1))))
+      (push (cons *index* expr) *bvars*)))
 
-  (defun symtab-remove (expr)
-    (setf *size* (1- *size*))
-    (setf *symtab* (remove-if #'(lambda (entry) (tc-eq (cdr entry) expr)) *symtab*)))
+  (defun symtab-shadow* (exprs &optional acc)
+    (if (null exprs)
+	(nreverse acc)
+      (symtab-shadow* (cdr exprs)
+		      (cons (symtab-shadow (car exprs)) acc))))
+   
+  (defun symtab-unshadow ()
+    (pop *bvars*))
+
+  (defun symtab-unshadow* (n)
+    (loop for i from 1 upto n
+       do (symtab-unshadow)))
   
   (defun symtab-strip ()
+    (assert (null *bvars*))
     (let ((offsets (make-array *size* :element-type 'fixnum))
 	  (fvars   (make-array *size* :element-type 'string))
 	  (types   (make-string *size*))
@@ -65,8 +70,9 @@
       (values *symtab* *size* offsets fvars types)))
 
   (defun shielding? (expr)
-    nil)
-     ; (intersection *bvars* (freevars expr) :test #'tc-eq))
+    (some #'(lambda (bvar)
+	      (occurs-in bvar expr))
+	  *bvars*))
 
   (defun fvars (l &optional acc)
     (if (null l)
