@@ -54,7 +54,7 @@
 	   (,resultsym nil))
        (unwind-protect
 	   (setq ,resultsym
-		 (multiple-value-list ,@body))
+		 (multiple-value-list (progn ,@body)))
 	 (restore-old-cs ,new-cong-state))
        (values-list ,resultsym))))
 
@@ -66,7 +66,7 @@
 	   (,new-cong-state (new-cs ,old-cong-state))
 	   (,resultsym nil))
        (setq ,resultsym
-	     (multiple-value-list ,@body))
+	     (multiple-value-list (progn ,@body)))
        (values-list ,resultsym))))
 
 (defun alists-changed (old-alists new-alists)
