@@ -254,15 +254,16 @@
 	    (let* ((thinsts (gethash dth (current-using-hash)))
 		   (genthinst (find-if-not #'actuals thinsts)))
 	      (if genthinst
-		  (when (and (decl-args-compatible? decl args)
-			     (compatible-parameters?
-			      acts (formals-sans-usings dth)))
+		  (when (compatible-parameters?
+			 acts (formals-sans-usings dth))
 		    (let* ((nacts (copy-actuals acts))
 			   (dthi (mk-modname-no-tccs (id dth) nacts))
 			   (*generate-tccs* 'none))
 		      (set-type-actuals dthi)
 		      #+pvsdebug (assert (fully-typed? dthi))
-		      (list (make-resolution decl dthi))))
+		      (when (compatible-arguments? decl dthi args
+						   (current-theory))
+			(list (make-resolution decl dthi)))))
 		  (let* ((modinsts (decl-args-compatible? decl args))
 			 (thinst (or (find-if
 					 #'(lambda (thinst)
