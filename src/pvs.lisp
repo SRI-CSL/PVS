@@ -1204,8 +1204,7 @@
     (typecheck-file filename))
   (let ((theory (get-typechecked-theory theoryname)))
     (when theory
-      (let ((*use-default-dp?* use-default-dp?))
-	(prove-theories theoryname (list theory) retry?))
+      (prove-theories theoryname (list theory) retry? use-default-dp?)
       (status-proof-theory theoryname))))
 
 
