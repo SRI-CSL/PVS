@@ -101,7 +101,7 @@
 	(setq *dp-changed* t)
 	eqn))))
 
-(defun add-neq-constraint (neq cong-state)
+(defun poly-add-neq-constraint (neq cong-state)
   (declare (special *dp-changed*))
   (declare (special *contradiction*))
   (let* ((eqn (arg 1 neq))
@@ -156,7 +156,7 @@
 	    (cons neq
 		  brand-new-equalities)))))))
 
-(defun add-ineq-constraint (eqn cong-state)
+(defun poly-add-ineq-constraint (eqn cong-state)
   (declare (special *dp-changed*))
   (declare (special *contradiction*))
   (let ((diff (make-ineq-to-difference eqn))
