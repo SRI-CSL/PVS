@@ -368,6 +368,15 @@
 	  (when (importings adt)
 	    (mapcar #'theory-name (importings adt)))))
 
+(defmethod get-immediate-context-usings ((adt datatype))
+  (append (mapcar #'theory-name
+	    (remove-if-not #'mod-or-using?
+	      (append (formals adt)
+		      (assuming adt))))
+	  (when (importings adt)
+	    (mapcar #'theory-name
+	      (remove-if #'library (importings adt))))))
+
 (defun mod-or-using? (obj)
   (typep obj '(or mod-decl importing)))
 
