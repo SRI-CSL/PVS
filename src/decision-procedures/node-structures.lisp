@@ -1570,6 +1570,3 @@
          (some #'(lambda (arg)
 	           (occurs-p x arg))
 	       (funargs trm)))))
-	
-       
- 
