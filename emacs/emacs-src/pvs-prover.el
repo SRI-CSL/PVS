@@ -592,6 +592,17 @@ documentation for edit-proof-mode for more information."
 	 nil 'EditProof 'dont-care)
 	(cond ((get-buffer "Proof")
 	       (pop-to-buffer (get-buffer "Proof"))
+	       (save-excursion
+		 (goto-char (point-min))
+		 (while (search-forward "(checkpoint)" nil t)
+		   (cond ((memq pvs-emacs-system '(emacs20 emacs19))
+			  (replace-match "!!!" nil t)
+			  (overlay-put (make-overlay (- (point) 3) (point))
+				       'face 'font-lock-pvs-checkpoint-face))
+			 ((memq pvs-emacs-system '(xemacs21 xemacs20 xemacs19))
+			  (delete-region (match-beginning 0) (match-end 0))
+			  (insert-face "!!!" 'font-lock-pvs-checkpoint-face))
+			 (t (replace-match "!!!" nil t)))))
 	       (fix-edit-proof-comments)
 	       (setq buffer-modified-p nil)
 	       (goto-char (point-min))
@@ -2014,7 +2025,7 @@ Letters do not insert themselves; instead, they are commands:
   (save-excursion
     (goto-char (point-min))
     (while (search-forward "!!!" nil t)
-      (delete-char -2))))
+      (delete-char -3))))
 
 ;; (defun prove-with-checkpoint ()
 ;;   (interactive)
