@@ -1,6 +1,6 @@
 ;; Polyhedral library interface
 
-(in-package dp)
+(in-package poly)
 
 (use-package :ff) ;; use foreign function package
 (require :foreign)
