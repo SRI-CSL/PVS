@@ -621,7 +621,11 @@ buffer."
 
 (defun pvs-find-next-string ()
   (let ((start (progn (re-search-forward "\"" nil t)
-		      (point))))
+		      (point)))
+	(lisp-comment-p (or (save-excursion
+			      (forward-word -1)
+			      (looking-at "COMMENT"))
+			    (looking-at "[ \t\n]*;"))))
     (when start
       (let ((end nil))
 	(while (and (null end)
@@ -630,8 +634,10 @@ buffer."
 		    (forward-char -3)
 		    (looking-at "[^\\\\]\\\\"))
 	    (setq end (point))))
-	(when end
-	  (cons start (- end 1)))))))
+	(if lisp-comment-p
+	    (pvs-find-next-string)
+	    (when end
+	      (cons start (- end 1))))))))
 
 (defpvs remove-proof edit-proof ()
   "Removes the proof associated with the specified formula
