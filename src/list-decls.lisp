@@ -9,6 +9,7 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 
 ;;; ---------------------------------------------
@@ -18,7 +19,7 @@
 ;;; because the list could get large.
 
 
-(in-package 'pvs)
+(in-package :pvs)
 
 (defvar *list-declarations* nil)
 
@@ -364,7 +365,6 @@
 ;;;    location		- (startline startcol endline endcol)
 
 (defun format-decl-list (decl type theory)
-  (assert (or (place decl) (from-prelude? decl)))
   (list (format nil "~25A ~25A ~25A"
 	  (struncate (if (typep decl 'importing)
 			 (unparse decl :string t)
@@ -378,7 +378,9 @@
 	(string (id theory))
 	(when (filename theory)
 	  (pvs-filename theory))
-	(place-list (place decl))
+	(if (place decl)
+	    (place-list (place decl))
+	    nil)
 	(unparse-decl decl)))
 
 (defmethod pvs-filename ((theory datatype-or-module))
