@@ -99,7 +99,18 @@
 	 (*default-pathname-defaults* (if (string= libpath "./")
 					  *default-pathname-defaults*
 					  libpath)))
-    (load file)))
+    (pvs-message "Loading file ~a" filestr)
+    (unwind-protect
+	(progn (excl:set-case-mode :case-insensitive-lower)
+	       (multiple-value-bind (ignore error)
+		   (ignore-errors (load file))
+		 (declare (ignore ignore))
+		 (if error
+		     (pvs-message "Error loading ~a:~%  ~a"
+		       filestr error)
+		     (pvs-message "~a loaded" filestr))))
+      (excl:set-case-mode :case-sensitive-lower)
+      (add-lowercase-prover-ids))))
 
 (defmacro lf (file &optional force)
   `(make-file ,file ,force))
