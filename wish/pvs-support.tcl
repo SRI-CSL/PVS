@@ -26,13 +26,68 @@ proc create-dag {win} {
     catch {unset dag}
 }
 
-proc dag-add-item {win tag succs} {
+proc dag-bind-move {win suffix modifier button update} {
+    upvar #0 dag-$win dag
+
+    $win bind dag-item <$modifier-$button> \
+	"dag-motion-click $win %x %y {$suffix}"
+    $win bind dag-item <$modifier-B$button-Motion> \
+	"dag-motion-drag $win %x %y $update"
+}
+
+proc dag-motion-click {win x y suffix} {
+    upvar #0 dag-$win dag
+    global moving
+
+    catch {unset moving}
+
+    set dag(oldX) $x
+    set dag(oldY) $y
+
+    set dag(drag_path) $dag(idtotag,[$win find withtag current])
+
+    $win dtag selected
+    $win addtag selected withtag $dag(drag_path)$suffix
+
+    foreach id [$win find withtag selected] {
+	catch {
+	    set moving($dag(idtotag,$id)) 1
+	}
+    }	
+}
+
+proc dag-motion-drag {win x y update} {
+    upvar #0 dag-$win dag
+    global moving
+
+    set dx [expr $x-$dag(oldX)]
+    set dy [expr $y-$dag(oldY)]
+
+    $win move selected $dx $dy
+    set dag(oldX) $x
+    set dag(oldY) $y
+
+    foreach tag [array names moving] {
+	incr dag(topx,$tag) $dx
+	incr dag(topy,$tag) $dy
+	incr dag(botx,$tag) $dx
+	incr dag(boty,$tag) $dy
+    }
+
+    update-lines-to $win $dag(drag_path)
+    if {$update=={both}} {
+	update-lines-from $win $dag(drag_path)
+    }
+}
+
+proc dag-add-item {win tag succs linetags} {
     upvar #0 dag-$win dag
 
     set dag(succs,$tag) $succs
 
     foreach item [$win find withtag $tag] {
 	set dag(idtotag,$item) $tag
+	$win addtag dag-item withtag $item
     }
 
     set bbox [$win bbox $tag.real]
@@ -46,9 +101,13 @@ proc dag-add-item {win tag succs} {
     set dag(boty,$tag) 0
 
     foreach s $succs {
+	# In my opinion, on the X11R6 server, width 0 lines look better
+	# than width 1 lines.
 	set lineid \
 	    [$win create line 0 0 0 0 \
-		 -tags "$s dagline$tag,$s dagline.from$tag dagline.to$s dagline"]
+		 -tags "$s dagline$tag,$s dagline.from$tag dagline.to$s dagline $linetags" \
+		 -fill [get-option otherColor] \
+		 -width 0]
 	set dag(linefrom,$lineid) $tag
 	set dag(lineto,$lineid) $s
     }
@@ -184,10 +243,10 @@ proc move-tree {win tag {x 0} {y 0}} {
 
 proc ancestors {path {suffix {}}} {
     if {$path=={top}} {
-	return {}
+	return $path$suffix
     } else {
 	regexp {^(.*)\.([^.]+)$} $path whole pre post
-	return [concat $pre$suffix [ancestors $pre $suffix]]
+	return [concat $path$suffix [ancestors $pre $suffix]]
     }
 }
 
@@ -227,7 +286,7 @@ proc proof-done {path} {
 
     set ${path}(done) 1
 
-    my-foreground $proofwin $path blue
+    my-foreground $proofwin $path [get-option doneColor]
 }
 
 proc proof-tcc {path} {
@@ -246,25 +305,28 @@ proc proof-show {path} {
 	    [$proofwin create bitmap 0 0 \
 		 -bitmap @$env(PVSPATH)/wish/sequent.xbm \
 		 -tags "$path.sequent $path $path.real sequent [ancestors $path .desc]" \
-		 -anchor n]
+		 -anchor n \
+		 -foreground [get-option otherColor]]
 	if [info exists ${path}(rule)] {
 	    set bbox [$proofwin bbox $seq]
 	    set seqbot [lindex $bbox 3]
 	    set linebot [expr $seqbot+$proof_y_sep]
 	    $proofwin create line 0 $seqbot 0 $linebot \
-		-tags "$path.line $path $path.real [ancestors $path .desc]"
+		-tags "$path.line $path $path.real [ancestors $path .desc]" \
+		-fill [get-option otherColor]
 	    $proofwin create text 0 $linebot -text [set ${path}(rule)] \
 		-tags "$path.rule $path $path.real rule [ancestors $path .desc]" \
-		-anchor n
+		-anchor n \
+		-fill [get-option otherColor]
 	}
     }
 
 
-    dag-add-item $proofwin $path [kids $path [set ${path}(kids)]]
+    dag-add-item $proofwin $path [kids $path [set ${path}(kids)]] [ancestors $path .desc]
     if [info exists ${path}(done)] {
-	my-foreground $proofwin $path blue
+	my-foreground $proofwin $path [get-option doneColor]
     } elseif [info exists ${path}(tcc)] {
-	my-foreground $proofwin $path green4
+	my-foreground $proofwin $path [get-option tccColor]
     }
 }
 
@@ -298,10 +360,27 @@ proc show-sequent {path seq_label text} {
     
     frame .sequent$label
     toplevel $win -class Sequent
-    text $win.text -setgrid true
-    $win.text insert end $text
-    set height [lindex [split [$win.text index end] .] 0]
-    pack $win.text
+    frame $win.fr
+    pack $win.fr -expand yes -fill both
+    text $win.fr.text -bd 2 -relief raised -height 2 -width 80 -setgrid true
+    set text [string range $text 1 [expr [string length $text]-2]]
+    $win.fr.text insert end $text
+    set height [lindex [split [$win.fr.text index end] .] 0]
+    $win.fr.text config -state disabled
+    if {$height>5} {
+	scrollbar $win.fr.s -command "$win.fr.text yview"
+	$win.fr.text config -yscrollcommand "$win.fr.s set"
+	pack $win.fr.s -fill y -side right
+	wm minsize $win 80 2
+	wm maxsize $win 80 $height
+	if {$height>[get-option maxHeight]} {
+	    set height [get-option maxHeight]
+	}
+    } else {
+	wm minsize $win 80 $height
+	wm maxsize $win 80 $height
+    }
+    pack $win.fr.text -expand yes -fill both
     button $win.dismiss -text Dismiss -command "destroy $win"
     pack $win.dismiss -side left -padx 2 -pady 2
     bind $win <Destroy> "catch {$proofwin delete $path.label$label}"
@@ -322,15 +401,21 @@ proc path-to-lisp-path {path} {
 }
 
 proc my-foreground {win tag color} {
-    my-itemconfig $win $tag -foreground $color
-    my-itemconfig $win $tag -fill $color
+    my-foregroundconfig $win $tag -foreground $color
+    my-foregroundconfig $win $tag -fill $color
 }
 
 proc update-color {path tag} {
-    global proofwin $path
+    global proofwin $path curpath
 
     if [info exists ${path}(done)] {
-	my-foreground $proofwin $tag blue
+	my-foreground $proofwin $tag [get-option doneColor]
+	return
+    }
+
+    if {$path==$curpath} {
+	my-foreground $proofwin $tag [get-option currentColor]
+	$proofwin addtag current-subgoal withtag $tag
 	return
     }
 
@@ -338,23 +423,26 @@ proc update-color {path tag} {
     set tags [$proofwin gettags $seqid]
     foreach t $tags {
 	if {$t=={current-subgoal}} {
-	    my-foreground $proofwin $tag firebrick
+	    my-foreground $proofwin $tag [get-option ancestorColor]
 	    $proofwin addtag current-subgoal withtag $tag
 	    return
 	}
     }
 
     if [info exists ${path}(tcc)] {
-	my-foreground $proofwin $tag green4
+	my-foreground $proofwin $tag [get-option tccColor]
 	return
     }
     
-    my-foreground $proofwin $tag black
+    my-foreground $proofwin $tag [get-option otherColor]
 }
 
-proc my-itemconfig {win tag opt val} {
+
+proc my-foregroundconfig {win tag opt val} {
     foreach id [$win find withtag $tag] {
-	catch {$win itemconfig $id $opt $val}
+	if {!([$win type $id]=={oval} && $opt=={-foreground})} {
+	    catch {$win itemconfig $id $opt $val}
+	}
     }
 }
 
@@ -381,17 +469,19 @@ proc proof-current {path} {
     global proofwin curpath
 
     if {[info exists curpath]} {
+	$proofwin delete current-circle
 	$proofwin dtag current-subgoal
-	foreach tag [concat $curpath [ancestors $curpath]] {
+	set ancs [ancestors $curpath]
+	set curpath {}
+	foreach tag $ancs {
 	    update-color $tag $tag
 	}
     }
-    $proofwin addtag current-subgoal withtag $path
     foreach tag [ancestors $path] {
 	$proofwin addtag current-subgoal withtag $tag
     }
-    my-foreground $proofwin current-subgoal firebrick
-    my-foreground $proofwin $path orange
+    my-foreground $proofwin current-subgoal [get-option ancestorColor]
+    my-foreground $proofwin $path [get-option currentColor]
 
     set bbox [$proofwin bbox $path.real]
     regexp {^(.*).c} $proofwin whole fr
@@ -425,6 +515,20 @@ proc proof-current {path} {
 	$proofwin xview [expr ([lindex $bbox 0]-10-[lindex $allbbox 0])/$units]
     }				      
 
+    set pwid [expr [lindex $bbox 2]-[lindex $bbox 0]]
+    set phit [expr [lindex $bbox 3]-[lindex $bbox 1]]
+    
+    if {[parse-bool [get-option circleCurrent]]} {
+	$proofwin create oval \
+	    [expr [lindex $bbox 0]-$pwid/2.8] \
+	    [expr [lindex $bbox 1]-$phit/2.8] \
+	    [expr [lindex $bbox 2]+$pwid/2.8] \
+	    [expr [lindex $bbox 3]+$phit/2.8] \
+	    -tags "$path $path.outline current-circle [ancestors $path .desc]" \
+	    -outline [get-option currentColor] \
+	    -width 2
+    }
+    
     set curpath $path
 }
 
@@ -485,13 +589,15 @@ proc gen-ps {top} {
     show-message $top "Saved PS to $psfile"
 }
 
-proc setup-proof {name file directory} {
+proc setup-proof {name file directory counter} {
     global proof proofwin
     set proof(name) $name
     set proof(file) $file
     set proof(directory) $directory
+    set proof(counter) $counter
     catch {destroy .show-proof}
-    set top [toplevel .show-proof -geometry 400x400]
+    reset-options
+    set top [toplevel .show-proof -geometry 400x400 -class Proof]
     pack propagate $top 0
     wm title $top "Proof of $name in $directory$file"
     wm iconname $top "PVS Proof"
@@ -503,6 +609,8 @@ proc setup-proof {name file directory} {
 	      -height 1 -width 1]
     set proofwin $c
     create-dag $c
+    dag-bind-move $c .desc Control 1 to
+    dag-bind-move $c {} Control 2 both
     scrollbar $fr.vscroll -relief sunken -command "$c yview"
     scrollbar $fr.hscroll -relief sunken -command "$c xview" -orient horiz
     pack $fr.vscroll -side right -fill y
@@ -515,7 +623,7 @@ proc setup-proof {name file directory} {
     pack $top.dismiss -side left -padx 2 -pady 2
     button $top.ps -text "Gen PS" -command "gen-ps $top"
     pack $top.ps -side left -padx 2 -pady 2
-    bind $top <Destroy> {pvs-send (stop-displaying-proof)}
+    bind $top <Destroy> "pvs-send {(stop-displaying-proof $counter)}"
     bind $top <Destroy> {+
 	foreach kid [winfo children .] {
 	    if {[string match .sequent* $kid]} {
@@ -525,41 +633,37 @@ proc setup-proof {name file directory} {
     }
 }    
 
-proc show-proof {prf name file directory} {
-    global proof
-    set proof(proof) $prf
-    set proof(name) $name
-    set proof(file) $file
-    set proof(directory) $directory
-    catch {destroy .show-proof}
-    catch {unset path_width}
-    set top [toplevel .show-proof -geometry 400x400]
-    pack propagate $top 0
-    wm title $top "Proof of $name in $directory$file"
-    wm iconname $top "PVS Proof"
-    wm minsize $top 100 100
-    wm maxsize $top 10000 10000
-    set fr [frame $top.fr]
-    pack $fr -expand yes -fill both
-    set c [canvas $fr.c -xscroll "$fr.hscroll set" -yscroll "$fr.vscroll set"]
-    scrollbar $fr.vscroll -relief sunken -command "$c yview"
-    scrollbar $fr.hscroll -relief sunken -command "$c xview" -orient horiz
-    pack $fr.vscroll -side right -fill y
-    pack $fr.hscroll -side bottom -fill x
-    pack $c -expand yes -fill both
-    insert-proof $prf top $c
-    $c delete top.totop
-    $c raise sequent
-    $c raise rule
-    $c bind sequent <Control-1> "thingDown $c %x %y"
-    $c bind rule <Control-1> "thingDown $c %x %y"
-    $c bind any <Any-ButtonRelease-1> "$c dtag selected"
-    bind $c <Any-B1-Motion> "thingMove $c %x %y"
-    update-proof $prf top $c
-    label $top.message -text ""
-    pack $top.message -fill x
-    button $top.dismiss -text "Dismiss" -command {destroy .show-proof}
-    pack $top.dismiss -side left -padx 2 -pady 2
-    button $top.ps -text "Gen PS" -command "gen-ps $top"
-    pack $top.ps -side left -padx 2 -pady 2
+proc reset-options {} {
+    option clear
+    option add Tk.tccColor green4 startupFile
+    option add Tk.doneColor blue startupFile
+    option add Tk.ancestorColor firebrick startupFile
+    option add Tk.otherColor black startupFile
+
+    if {[tk colormodel .]=={color}} {
+	option add Tk.currentColor DarkOrchid startupFile
+	option add Tk.circleCurrent no startupFile
+    } else {
+	option add Tk.currentColor black startupFile
+	option add Tk.circleCurrent yes startupFile
+    }
+
+    option add Tk.maxHeight 30 startupFile
+}
+
+proc get-option {opt} {
+    set upper [string toupper [string range $opt 0 0]][string range $opt 1 end]
+
+    option get . $opt $upper
+}
+
+proc parse-bool {str} {
+    set val 0
+    catch {
+	if "{$str}" {
+	    set val 1
+	} 
+    }
+
+    return $val
 }
