@@ -1,18 +1,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; expand.lisp -- 
-;; Author          : Sam Owre
+;; Author          : N. Shankar and Sam Owre
 ;; Created On      : Sat Oct 31 02:31:26 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sat Oct 31 02:35:40 1998
-;; Update Count    : 1
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Last Modified On: Thu May 20 21:20:29 2004
+;; Update Count    : 2
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
-
-
 
 (defvar *count-occurrences* 0)
 (defvar *if-simplifies*)
@@ -37,7 +34,7 @@
 			sformnum
 		       (list sformnum)))
 	 (sforms (s-forms goalsequent))
-	 (name (pc-parse name 'bname))
+	 (pname (pc-parse name 'bname))
 	 (occurrence (if (numberp occurrence)
 			 (list occurrence)
 			 occurrence))
@@ -46,8 +43,11 @@
 			       0))
 	 (*dependent-decls* nil)
 	 (*if-simplifies* if-simplifies))
-    (cond 
-	  ((not (or (null occurrence)
+    (when (or (actuals pname)
+	      (mappings pname)
+	      (target pname))
+      (pc-typecheck pname))
+    (cond ((not (or (null occurrence)
 		    (and (listp occurrence)
 			 (every #'(lambda (x)
 				    (and (numberp x)
@@ -58,7 +58,7 @@ list of positive numbers" occurrence)
 	   (values 'X nil nil))
 	  (t 
 	   (let ((new-sforms
-		  (expand-sforms name sforms sformnums occurrence)))
+		  (expand-sforms pname sforms sformnums occurrence)))
 	     (cond ((every #'eq sforms new-sforms)
 		    (values 'X nil nil))
 		   (t (mapcar #'(lambda (x)
@@ -196,7 +196,7 @@ list of positive numbers" occurrence)
       expr
       (let* ((op* (operator* expr)))
 	(if (and (name? op*)
-		 (same-id op* name)
+		 (same-expand-name op* name)
 		 (null occurrence)
 		 *if-simplifies*)
 	    (let* ((def-axioms (create-formulas (resolution op*))))
@@ -235,7 +235,7 @@ list of positive numbers" occurrence)
 	 (newargs (expand-defn name arg occurrence)))
     (if (and (not (eq oper newoper))
 	     (typep  op* 'name-expr)
-	     (same-id op* name)
+	     (same-expand-name op* name)
 	     (typep newoper 'lambda-expr))
 	(substit (expression newoper)
 	  (pairlis-args (bindings newoper)
@@ -292,7 +292,7 @@ list of positive numbers" occurrence)
   (if (and (plusp *max-occurrence*)
 	   (< *max-occurrence* *count-occurrences*))
       expr
-      (cond ((same-id name expr)
+      (cond ((same-expand-name expr name)
 	     (setf *count-occurrences* (1+ *count-occurrences*))
 	     (if (and (or (null occurrence)
 			  (member *count-occurrences* occurrence
@@ -388,3 +388,18 @@ list of positive numbers" occurrence)
 (defmethod expand-defn (name (expr expr) occurrence)
   (declare (ignore name occurrence))
   expr)
+
+;;; Compares the tgt-name from the sequent to the pat-name given by the user
+;;; Whatever is not nil in the pat-name must match.
+(defun same-expand-name (tgt-name pat-name)
+  (and (eq (id tgt-name) (id pat-name))
+       (or (null (library pat-name))
+	   (eq (library tgt-name) (library pat-name)))
+       (or (null (mod-id pat-name))
+	   (eq (mod-id tgt-name) (mod-id pat-name)))
+       (or (null (actuals pat-name))
+	   (tc-eq (actuals tgt-name) (actuals pat-name)))
+       (or (null (mappings pat-name))
+	   (tc-eq (mappings tgt-name) (mappings pat-name)))
+       (or (null (target pat-name))
+	   (tc-eq (target tgt-name) (target pat-name)))))
