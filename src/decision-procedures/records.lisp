@@ -44,3 +44,27 @@
 	   (incf index))))
   (let ((new-eqns (map-funargs-list #'mk-project-eqn lhs rhs)))
     new-eqns))))
+
+(defun tuple-solve (eqn cong-state)
+  (let ((lhs (lhs eqn))
+	(rhs (rhs eqn)))
+    (cond
+     ((tuple-p lhs)
+      (tuple-solve-1 lhs rhs cong-state))
+     ((tuple-p rhs)
+      (tuple-solve-1 rhs lhs cong-state))
+     (t (break "Should not be here.")))))
+
+(defun tuple-solve-1 (lhs rhs cong-state)
+  (let ((index 0))
+  (labels
+      ((mk-project-eqn (field1 record2)
+         (prog1
+	     (mk-equality field1
+			  (sigproject
+			   (mk-term
+			       `(,*project*
+				 ,(mk-constant index) ,record2))))
+	   (incf index))))
+  (let ((new-eqns (map-funargs-list #'mk-project-eqn lhs rhs)))
+    new-eqns))))
