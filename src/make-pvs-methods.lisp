@@ -14,10 +14,7 @@
 
 #+allegro
 (eval-when (eval load)
-  (setq *record-source-file-info* t
-	*load-source-file-info* t
-	*record-xref-info* t
-	*ignore-package-name-case* t))
+  (setq *ignore-package-name-case* t))
 
 (eval-when (eval load)
   (defvar *pvs-binary-type*
