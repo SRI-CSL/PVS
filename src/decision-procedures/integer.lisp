@@ -1,7 +1,8 @@
 (in-package dp)
 
 (defun dp-integer-atom-p (l)
-  (eq (node-initial-type l) *integer*))
+  (or (eq (node-initial-type l) *integer*)
+      (floor-p l)))
 
 (defun integer-equality-p (lit)
   (let ((fract (and (or (arith-bool-p lit)
