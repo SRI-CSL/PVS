@@ -49,7 +49,7 @@
 
 (defmethod herbrandize* ((fmla expr) xs subst)
   (let ((term (dp::replace-by (top-translate-to-dc fmla)
-			      subst)))
+	             subst)))
     (values term xs subst)))
 
 (defmethod herbrandize* ((fmla forall-expr) xs subst)
