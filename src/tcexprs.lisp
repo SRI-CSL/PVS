@@ -50,8 +50,7 @@
   (declare (ignore expected kind arguments))
   (call-next-method)			; This will set the resolutions
   (setf (types expr)
-	(remove-duplicates (mapcar #'type (resolutions expr))
-	  :test #'tc-eq))
+	(delete-duplicates (mapcar #'type (resolutions expr)) :test #'tc-eq))
   (assert (types expr)))
 
 
@@ -269,17 +268,17 @@
 (defmethod typecheck* ((expr cases-expr) expected kind arguments)
   (declare (ignore expected kind))
   (unless (type (expression expr))
-    (typecheck* (expression expr) nil nil nil)
-    (let ((atypes	(remove-if-not #'(lambda (ty) (adt? (find-supertype ty)))
-			  (ptypes (expression expr)))))
-      (unless (singleton? atypes)
-	(if atypes
-	    (type-ambiguity (expression expr))
-	    (type-error (expression expr) "Expression type must be a datatype")))
-      (setf (types (expression expr)) atypes)))
-  (let ((type (car (ptypes (expression expr)))))
-    (typecheck-selections expr (adt (find-supertype type))
-			  (find-declared-adt-supertype type) arguments))
+    (typecheck* (expression expr) nil nil nil))
+  (let ((atypes	(remove-if-not #'(lambda (ty) (adt? (find-supertype ty)))
+		  (ptypes (expression expr)))))
+    (unless (singleton? atypes)
+      (if atypes
+	  (type-ambiguity (expression expr))
+	  (type-error (expression expr) "Expression type must be a datatype")))
+    (setf (types (expression expr)) atypes)
+    (let ((type (car atypes)))
+      (typecheck-selections expr (adt (find-supertype type))
+			    (find-declared-adt-supertype type) arguments)))
   (setf (types expr)
 	(compatible-types
 	 (nconc (mapcar #'(lambda (s) (ptypes (expression s)))
@@ -359,7 +358,7 @@
 
 (defun set-selection-types (selargs type arg-decls)
   (when selargs
-    (let* ((rtype (type (car arg-decls)))
+    (let* ((rtype (declared-type (car arg-decls)))
 	   (atype (if (type-name? rtype)
 		      (copy rtype
 			'actuals (or (actuals rtype)
@@ -370,6 +369,9 @@
 	    (if (typep dtype 'datatype-subtype)
 		(declared-type dtype)
 		dtype))
+      (unless (fully-instantiated? (declared-type (car selargs)))
+	(type-error (declared-type (car selargs))
+	    "Could not determine the full theory instance"))
       (set-selection-types
        (cdr selargs)
        type
@@ -378,10 +380,13 @@
 	     (let* ((ntype (typecheck* dtype nil nil nil))
 		    (narg (mk-name-expr (id (car selargs))
 			    nil nil (make-resolution (car selargs) nil ntype)
-			    'variable)))
+			    'variable))
+		    (alist (acons bd narg nil)))
 	       (mapcar #'(lambda (a)
-			   (lcopy a
-			     'type (substit (type a) (acons bd narg nil))))
+			   (let ((stype (substit (type a) alist)))
+			     (lcopy a
+			       'type stype
+			       'declared-type (or (print-type stype) stype))))
 		       (cdr arg-decls)))
 	     (cdr arg-decls)))))))
 
@@ -761,50 +766,51 @@
 	    (all-possible-tupletypes (exprs arg))))))
 
 (defun set-possible-argument-types* (optypes arg &optional result)
-  (if (null optypes)
-      (setf (types arg) result)
-      (let ((dtypes (domain-types (car optypes))))
-	(if (length= dtypes (exprs arg))
-	    (let ((atypes (mapcar #'(lambda (dty a)
-				      (remove-if-not
-					  #'(lambda (aty)
-					      (compatible? aty dty))
-					(ptypes a)))
-			    dtypes (exprs arg))))
-	      (set-possible-argument-types*
-	       (cdr optypes)
-	       arg
-	       (nconc result
-		      (mapcar #'mk-tupletype
-			(cartesian-product atypes)))))
-	    (set-possible-argument-types*
-	     (cdr optypes)
-	     arg
-	     (if (null (cdr dtypes))
-		 (let ((stype (find-supertype (car dtypes))))
-		   (if (and (typep stype 'tupletype)
-			    (length= (types stype) (exprs arg)))
-		       (let ((atypes (mapcar #'(lambda (dty a)
-						 (remove-if-not
-						     #'(lambda (aty)
-							 (compatible? aty dty))
-						   (ptypes a)))
-				       (types stype) (exprs arg))))
-			  (nconc result
-				 (mapcar #'mk-tupletype
-				   (cartesian-product atypes))))
-		       (progn (break "Strange domain type")
-			      result)))
-		 (progn (break "Strange domain type")
-			result)))))))
+  (cond ((null optypes)
+	 (setf (types arg) result))
+	((typep (find-supertype (car optypes)) 'funtype)
+	 (let ((dtypes (domain-types (car optypes))))
+	   (if (length= dtypes (exprs arg))
+	       (let ((atypes (mapcar #'(lambda (dty a)
+					 (remove-if-not
+					     #'(lambda (aty)
+						 (compatible? aty dty))
+					   (ptypes a)))
+			       dtypes (exprs arg))))
+		 (set-possible-argument-types*
+		  (cdr optypes)
+		  arg
+		  (nconc result
+			 (mapcar #'mk-tupletype
+			   (cartesian-product atypes)))))
+	       (set-possible-argument-types*
+		(cdr optypes)
+		arg
+		(if (null (cdr dtypes))
+		    (let ((stype (find-supertype (car dtypes))))
+		      (if (and (typep stype 'tupletype)
+			       (length= (types stype) (exprs arg)))
+			  (let ((atypes (mapcar
+					    #'(lambda (dty a)
+						(remove-if-not
+						    #'(lambda (aty)
+							(compatible? aty dty))
+						  (ptypes a)))
+					  (types stype) (exprs arg))))
+			    (nconc result
+				   (mapcar #'mk-tupletype
+				     (cartesian-product atypes))))
+			  ;; This is possible only if there is a type mismatch;
+			  ;; but we let this go to allow for conversions 
+			  result))
+		    result)))))
+	(t (set-possible-argument-types* (cdr optypes) arg result))))
 
 
 ;;; Application-range-types takes an application and returns the list of
 ;;; possible types of that application.  In the simple cases, this is just
 ;;; the range of the possible types of the operator.  However, judgements
 ;;; and dependencies ruin this utopia.
-
-(defvar *operator-resolutions* nil)
 
 (defmethod application-range-types ((expr application))
   (with-slots (operator argument) expr
@@ -825,34 +831,11 @@
 (defun application-range-types-args (arg-types op-type op arg result)
   (if (null arg-types)
       result
-      (let ((rtypes (application-range-types-arg op arg op-type
-						 (car arg-types))))
+      (let ((rtype (application-range-type-arg arg op-type (car arg-types))))
 	(application-range-types-args (cdr arg-types) op-type op arg
-				      (append rtypes result)))))
-
-(defun application-range-types-arg (op arg op-type argtype)
-  (declare (ignore op))
-  (let ((rtype (application-range-type-arg arg op-type argtype)))
-    (when rtype (list rtype))))
-    
-
-;;; This is essentially the same as find-best-judgment-optype in
-;;; set-type.lisp, except that the expected is not provided, and it
-;;; returns a list of types.
-
-(defun find-best-judgement-optypes (args optype jtypes)
-  ;; jtypes is a list of types and judgement-resolutions
-  (let ((best-optypes (find-best-operator-types args (cons optype jtypes))))
-    (assert best-optypes)
-    best-optypes))
-
-(defun find-best-operator-types (args optypes)
-  (assert optypes)
-  (let* ((*generate-tccs* 'none)
-	 (*substituted-subtypes* nil)
-	 (distances (optype-distances args optypes nil nil)))
-    (minimal-optypes* distances optypes (apply #'min distances) nil)))
-
+				      (if rtype
+					  (cons rtype result)
+					  result)))))
 
 ;;; This can come about through conversions
 (defmethod application-range-type-arg (arg optype argtype)
@@ -881,7 +864,7 @@
 				   argtype
 				   domain)
 			       nil nil))))
-    ;;(assert (fully-typed? narg))
+    (assert (fully-typed? narg))
     (substit range (acons domain narg nil))))
 
 (defmethod application-range-type-arg* (arg domain range argtype)
@@ -1136,7 +1119,6 @@
 		   substs))
 	   (res (make-resolution bd (mod-name *current-context*) type)))
       (setf (type bd) type
-	    ;;(types bd) (list type)
 	    (resolutions bd) (list res))
       (unless (fully-instantiated? type)
 	(type-error (car bindings)
@@ -1301,28 +1283,41 @@
 
 (defun update-expr-types (expr)
   (if (some #'maplet? (assignments expr))
-      (mapcar #'(lambda (ty)
-		  (update-expr-type
-		   (assignments expr)
-		   (typecheck* (copy-untyped (expression expr)) ty nil nil)
-		   ty))
-	(ptypes (expression expr)))
-      (ptypes (expression expr))))
+      (let ((*dont-worry-about-full-instantiations* t)
+	    (*generate-tccs* 'none))
+	(mapcar #'(lambda (ty)
+		    (update-expr-type
+		     (assignments expr)
+		     (typecheck* (copy-untyped (expression expr)) ty nil nil)
+		     ty))
+	  (mapcar #'find-supertype (ptypes (expression expr)))))
+      (mapcar #'find-supertype (ptypes (expression expr)))))
 
 (defmethod update-expr-type (assignments expr (te tupletype))
-  (update-expr-type-types assignments expr (types te)))
+  (let ((type (update-expr-type-types assignments expr
+				      (copy-list (types te)))))
+    (if (some #'null (types type))
+	(let* ((pos (position nil (types type)))
+	       (ass (find-if #'(lambda (a)
+				 (> (number (caar (arguments a))) pos))
+		      assignments)))
+	  (type-error ass
+	    "Need to include an assignment for ~d along with the assignment ~a"
+	    (1+ pos) ass))
+	type)))
 
-(defmethod update-expr-type-types (assignments expr types)
+(defun update-expr-type-types (assignments expr types)
   (if (null assignments)
       (mk-tupletype types)
       (let* ((assign (car assignments))
 	     (index (number (caar (arguments assign)))))
 	(if (typep assign 'maplet)
-	    (let* ((dep (nth (1- index) types))
+	    (let* ((dep (when (cdr (arguments assign))
+			  (nth (1- index) types)))
 		   (type (when dep
 			   (if (dep-binding? dep) (type dep) dep))))
 	      (if type
-		  (let* ((ntype (update-expr-type*
+		  (let* ((ntype (update-expr-type-for-maplet
 				 (cdr (arguments assign))
 				 (expression assign)
 				 (make-projection-application index expr)
@@ -1342,21 +1337,27 @@
 		      (let ((etype (car (types (expression assign)))))
 			(update-expr-type-types
 			 (cdr assignments) expr
-			 (append types (list etype)))))))
+			 (cond ((>= (length types) index)
+				(setf (nth (1- index) types) etype)
+				types)
+			       (t (append types
+					  (make-list (- index (length types) 1))
+					  (list etype)))))))))
 	    (update-expr-type-types (cdr assignments) expr types)))))
 
 (defmethod update-expr-type (assignments expr (te recordtype))
   (update-expr-type-fields assignments expr (fields te)))
 
-(defmethod update-expr-type-fields (assignments expr fields)
+(defun update-expr-type-fields (assignments expr fields)
   (if (null assignments)
-      (make-recordtype fields)
+      (mk-recordtype fields (dependent-fields? fields))
       (let ((assign (car assignments)))
 	(if (typep assign 'maplet)
-	    (let ((fld (car (member (caar (arguments assign)) fields
-				     :test #'same-id))))
+	    (let ((fld (when (cdr (arguments assign))
+			 (car (member (caar (arguments assign)) fields
+				      :test #'same-id)))))
 	      (if fld
-		  (let* ((ntype (update-expr-type*
+		  (let* ((ntype (update-expr-type-for-maplet
 				 (cdr (arguments assign))
 				 (expression assign)
 				 (make-field-application fld expr)
@@ -1378,11 +1379,12 @@
 				(id (caar (arguments assign)))
 				(or (print-type etype) etype)
 				etype)
-			       fields))))))
+			       (remove (id (caar (arguments assign)))
+				       fields :key #'id)))))))
 	    (update-expr-type-fields (cdr assignments) expr fields)))))
 
 (defmethod update-expr-type (assignments expr (te funtype))
-  (unless (fully-instantiated? te) (break "update-expr-type (funtype)"))
+  ;;; Note that te may not be fully instantiated
   (if (typep (domain te) 'subtype)
       (update-expr-type-funtype assignments expr te)
       te))
@@ -1395,23 +1397,124 @@
 	 (cdr assignments)
 	 expr
 	 (if (typep assign 'maplet)
-	     (update-expr-type* (arguments assign) (expression assign)
-			       expr funtype)
+	     (update-expr-type-for-maplet
+	      (arguments assign) (expression assign) expr funtype)
 	     funtype)))))
 
-(defmethod update-expr-type* (arguments value-expr expr (te recordtype))
-  (break))
+(defmethod update-expr-type-for-maplet ((arguments null) value expr te)
+  (unless (some #'(lambda (ty) (compatible? ty te))
+		(types value))
+    (type-incompatible value (types value) te))
+  (extend-domain-type value te expr))
 
-(defmethod update-expr-type* (arguments value-expr expr (te tupletype))
-  (break))
+(defmethod update-expr-type-for-maplet (arguments value expr (te recordtype))
+  (cond ((member (caar arguments) (fields te) :test #'same-id)
+	 (let* ((fld (find (caar arguments) (fields te) :test #'same-id))
+		(fty (type fld))
+		(nexpr (make-field-application fld expr))
+		(ty (update-expr-type-for-maplet
+		     (cdr arguments) value nexpr fty)))
+	   (if (eq ty fty)
+	       te
+	       (let ((nfld (mk-field-decl (id fld) ty ty)))
+		 (lcopy te
+		   'print-type nil
+		   'fields (substitute nfld fld (fields te)))))))
+	(t (type-error (caar arguments)
+	      "Field ~a not found in ~a~
+               ~%  May not use nested arguments in extending records"
+	      (id (caar arguments)) te))))
 
-(defmethod update-expr-type* (arguments value-expr expr (te funtype))
-  (if (and (typep (domain te) 'subtype)
-	   (null (cdr arguments)))
-      (make-update-expr-funtype (car arguments) value-expr expr te)
-      (break)))
+(defmethod update-expr-type-for-maplet (arguments value expr (te tupletype))
+  (let ((types (types te))
+	(index (number (caar arguments))))
+    (cond ((<= index (length types))
+	   (let* ((tty (nth (1- index) types))
+		  (nexpr (make-projection-application index expr))
+		  (ty (update-expr-type-for-maplet
+		       (cdr arguments) value nexpr tty)))
+	     (if (eq ty tty)
+		 te
+		 (lcopy te
+		   'print-type nil
+		   'types (substitute ty tty types)))))
+	  (t (type-error (caar arguments)
+	       "Index ~a out of range in ~a~
+                ~%  May not use nested arguments in extending tuples"
+	       (id (caar arguments)) te)))))
 
-(defun make-update-expr-funtype (args value-expr expr type)
+(defmethod update-expr-type-for-maplet (arguments value expr (te funtype))
+  (let* ((dtype (extend-domain-types (car arguments) (domain te) expr))
+	 (rtype (update-expr-type-for-maplet
+		 (cdr arguments) value
+		 (make-application* expr (car arguments))
+		 (if (or (eq dtype (domain te))
+			 (not (typep (domain te) 'dep-binding)))
+		     (range te)
+		     (substit (range te) (acons (domain te) dtype nil))))))
+    (if (and (eq dtype (domain te))
+	     (eq rtype (range te)))
+	te
+	(mk-funtype dtype rtype))))
+
+(defmethod extend-domain-types (args (te tupletype) expr)
+  (if (cdr args)
+      (extend-domain-types* args (types te) expr)
+      (extend-domain-type (car args) te expr)))
+
+(defmethod extend-domain-types (args te expr)
+  (if (cdr args)
+      (let ((targ (mk-arg-tuple-expr* args)))
+	(setf (types targ) (all-possible-tupletypes args))
+	(extend-domain-type targ te expr))
+      (extend-domain-type (car args) te expr)))
+
+(defun extend-domain-types* (args types expr &optional ntypes)
+  (if (null args)
+      (mk-tupletype (nreverse ntypes))
+      (let* ((type (if (typep (car types) 'dep-binding)
+		       (type (car types))
+		       (car types)))
+	     (ntype (extend-domain-type (car args) type expr))
+	     (dtype (if (typep (car types) 'dep-binding)
+			(if (eq type ntype)
+			    (car types)
+			    (mk-dep-binding (id type) ntype))
+			ntype)))
+	(extend-domain-types*
+	 (cdr args)
+	 (if (and (not (eq (car types) dtype))
+		  (typep (car types) 'dep-binding))
+	     (substit (cdr types) (acons (car types) dtype nil))
+	     (cdr types))
+	 expr
+	 (cons dtype ntypes)))))
+
+(defmethod extend-domain-type (arg (type subtype) expr)
+  (if (some #'(lambda (ty) (subtype-of? ty type))
+	    (types arg))
+      type
+      (let* ((*generate-tccs* 'none)
+	     (stype (supertype type))
+	     (pred (predicate type))
+	     (var (mk-name-expr (make-new-variable '|x| expr)))
+	     (vb (mk-bind-decl (id var) stype))
+	     (upred (mk-lambda-expr (list vb)
+		      (mk-disjunction
+		       (cons (mk-application pred var)
+			     (list (mk-application '= var arg))))))
+	     (tpred (beta-reduce
+		     (typecheck* upred (mk-funtype (list stype) *boolean*)
+				 nil nil))))
+	(mk-subtype stype tpred))))
+
+(defmethod extend-domain-type (arg (type dep-binding) expr)
+  (let ((ntype (extend-domain-type arg (type type) expr)))
+    (if (eq ntype (type type))
+	type
+	(mk-dep-binding (id type) ntype))))
+
+(defun make-update-expr-funtype (args value expr type)
   (if (every #'(lambda (arg)
 		 (some #'(lambda (ty)
 			   (subtype-of? ty (domain type)))
@@ -1433,9 +1536,9 @@
 				 nil nil)))
 	     (vtype (find-if #'(lambda (ty)
 				 (compatible? ty (range type)))
-		      (types value-expr))))
+		      (types value))))
 	(unless vtype
-	  (type-incompatible value-expr (types value-expr) (range type)))
+	  (type-incompatible value (types value) (range type)))
 	(mk-funtype (list (mk-subtype stype tpred))
 		    (compatible-type (range type) vtype)))))
 
@@ -1473,12 +1576,10 @@
     (unless (and (null (cdar args))
 		 (number-expr? (caar args)))
       (type-error (caar args) "Number expected"))
-    (unless (or (< (number (caar args)) (1+ (length (types tuptype))))
-		(and (= (number (caar args)) (1+ (length (types tuptype))))
-		     maplet?
-		     (null (cdr args))))
-	  (type-error (caar args)
-	    "Number out of range for type ~a" tuptype))
+    (unless (or (<= (number (caar args)) (length (types tuptype)))
+		maplet?)
+      (type-error (caar args)
+	"Number out of range for type ~a" tuptype))
     (when (cdr args)
       (typecheck-ass-args (cdr args)
 			  (nth (1- (number (caar args))) (types tuptype))
@@ -1514,9 +1615,7 @@
 	    "Could not determine the full theory instance"))
 	(set-type (declared-type decl) nil)
 	(setf (type decl) type
-	      (resolutions decl) (list res)
-	      ;;(types decl) (list type)
-	      ))
+	      (resolutions decl) (list res)))
       (let ((vdecls (remove-if-not #'(lambda (d) (typep d 'var-decl))
 		      (gethash (id decl)
 			       (local-decls *current-context*)))))
@@ -1527,8 +1626,6 @@
 	       (setf (type decl) (type (car vdecls))
 		     (resolutions decl) (list (make-resolution decl
 						(mod-name *current-context*)
-						(type decl))))
-	       ;;(setf (types decl) (list (type decl)))
-	       )
+						(type decl)))))
 	      (t (type-error decl "Variable ~a is ambiguous" (id decl))))))
   decl)
