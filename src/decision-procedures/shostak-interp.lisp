@@ -42,9 +42,29 @@
 
 (defvar *process-types* t)
 
+
+(defun dp-rational-atom-p (term)
+  (dp-integer-atom-p term))
+
+(defun dp-real-atom-p (term)
+  t)
+
+
 (defun sigtype (term cong-state)
   (if *process-types*
-      term
+      (case (node-initial-type (dp::funsym term))
+	(integer-pred
+	 (if (dp-integer-atom-p (dp::arg 1 term))
+	     *true*
+	     term))
+	(rational-pred
+	 (if (dp-rational-atom-p (dp::arg 1 term))
+	     *true*
+	     term))
+	(real-pred
+	 (if (dp-real-atom-p (dp::arg 1 term))
+	     *true*
+	     term)))
       *true*))
 
 (defun sigbool (term cong-state)
