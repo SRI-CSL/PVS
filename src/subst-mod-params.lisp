@@ -63,6 +63,8 @@
 
 (defvar *free-bindings* nil)
 
+(defvar *smp-mappings* nil)
+
 ;;; This resets the *all-subst-mod-params-caches* hash table.  It is
 ;;; called from the parser whenever a newly parsed theory replaces the old
 ;;; theory, to ensure that the garbage collector can remove the objects.
@@ -126,6 +128,7 @@
 	  (let* ((*generate-tccs* 'none)
 		 (*subst-mod-params-cache*
 		  (get-subst-mod-params-cache modinst))
+		 (*smp-mappings* (mappings modinst))
 		 (bindings (make-subst-mod-params-bindings
 			    modinst formals actuals (mappings modinst) nil))
 		 (nobj (subst-mod-params* obj modinst bindings)))
@@ -285,10 +288,11 @@
       (make-subst-mod-params-map-bindings
        modinst
        (cdr mappings)
-       (let ((decl (declaration (lhs (car mappings)))))
+       (let ((decl (declaration (lhs (car mappings))))
+	     (bind-rhs (rhs (car mappings))))
 	 (assert decl)
 	 (make-subst-mod-params-map-bindings*
-	  decl (rhs (car mappings)) bindings)))))
+	  decl bind-rhs bindings))))))
 
 (defmethod make-subst-mod-params-map-bindings* ((decl mod-decl) rhs bindings)
   (let* ((thname (expr rhs))
@@ -349,7 +353,8 @@
 		(setq nobj (lcopy nobj 'from-conversion fconv)))))
 	  (when (or (eq obj nobj)
 		    (and (null (freevars nobj))
-			 (fully-instantiated? nobj)))
+			 (relatively-fully-instantiated?
+			  nobj (free-params modinst))))
 	    (setf (gethash obj *subst-mod-params-cache*) nobj))
 	  #+pvsdebug
 	  (assert (every #'(lambda (fv)
@@ -361,6 +366,11 @@
 			 (freevars nobj)))
 	  nobj))))
 
+(defun relatively-fully-instantiated? (obj free-params)
+  (let ((frees (set-difference (free-params obj) free-params)))
+    (or (null frees)
+	(let ((formals (formals-sans-usings (current-theory))))
+	  (every #'(lambda (fp) (memq fp formals)) frees)))))
 
 (defmethod subst-mod-params* :around ((obj expr) modinst bindings)
   (declare (ignore bindings))
@@ -378,21 +388,33 @@
 (defmethod subst-mod-params* ((th module) modinst bindings)
   (with-slots (formals assuming theory exporting) th
     (let ((rformals (remove-if #'(lambda (d) (assq d bindings)) formals))
-	  (rassuming (remove-if #'(lambda (d)
-				    (or (generated-by d)
-					(assq d bindings)))
+	  (rassuming (remove-if
+			 #'(lambda (d) (substituted-map-decl d bindings))
 		       assuming))
-	  (rtheory (remove-if #'(lambda (d)
-				  (or (generated-by d)
-				      (and (assq d bindings)
-					   (not (mod-decl? d)))))
+	  (rtheory (remove-if
+		       #'(lambda (d) (substituted-map-decl d bindings))
 		     theory)))
       (lcopy th
 	'formals (subst-mod-params* rformals modinst bindings)
-	'assuming (subst-mod-params* rassuming modinst bindings)
+	'assuming (remove-if #'null
+		    (subst-mod-params* rassuming modinst bindings))
 	'theory (append (create-importings-for-bindings bindings)
-			(subst-mod-params* rtheory modinst bindings))
+			(remove-if #'null
+			  (subst-mod-params* rtheory modinst bindings)))
 	'exporting (subst-mod-params* exporting modinst bindings)))))
+
+(defun substituted-map-decl (d bindings)
+  (or (generated-by d)
+;       (and (axiom? d)
+; 	   (find d (collect-tccs (current-theory))
+; 		 :key #'(lambda (tcc) (and (mapped-axiom-tcc? tcc)
+; 					   (generating-axiom tcc)))))
+      (and (assq d bindings)
+	   (not (mod-decl? d))
+	   (find d *smp-mappings*
+		 :key #'(lambda (m)
+			  (and (mapping-subst? m)
+			       (declaration (lhs m))))))))
 
 (defun create-importings-for-bindings (bindings &optional importings)
   (if (null bindings)
@@ -446,12 +468,19 @@
 
 (defmethod subst-mod-params* ((decl type-decl) modinst bindings)
   (with-slots (type-value contains) decl
-    (if (assq decl bindings)
-	(let ((ndecl (change-class (copy decl) 'type-def-decl
-				   'type-expr (cdr (assq decl bindings)))))
-	  ndecl)
-	(lcopy decl
-	  'type-value (subst-mod-params* type-value modinst bindings)))))
+    (let ((map (find decl *smp-mappings*
+		     :key #'(lambda (m)
+			      (and (mapping-rename? m)
+				   (declaration (lhs m)))))))
+      (cond (map
+	     (copy decl 'id (id (expr (rhs map))) 'semi t))
+	    ((assq decl bindings)
+	     (let ((ndecl (change-class (copy decl) 'type-eq-decl
+					'type-expr (cdr (assq decl bindings)))))
+	       (setf (semi ndecl) t)
+	       ndecl))
+	    (t (lcopy decl
+		 'type-value (subst-mod-params* type-value modinst bindings)))))))
 
 (defmethod subst-mod-params* ((decl type-def-decl) modinst bindings)
   (with-slots (type-value type-expr contains) decl
@@ -481,18 +510,37 @@
 
 (defmethod subst-mod-params* ((decl const-decl) modinst bindings)
   (with-slots (formals declared-type type definition def-axiom) decl
-    (if (assq decl bindings)
-	(copy decl
-	  'formals (subst-mod-params* formals modinst bindings)
-	  'definition (cdr (assq decl bindings))
-	  'type (subst-mod-params* type modinst bindings)
-	  'declared-type (subst-mod-params* declared-type modinst bindings))
-	(lcopy decl
-	  'formals (subst-mod-params* formals modinst bindings)
-	  'declared-type (subst-mod-params* declared-type modinst bindings)
-	  'type (subst-mod-params* type modinst bindings)
-	  'definition (subst-mod-params* definition modinst bindings)
-	  'def-axiom (subst-mod-params* def-axiom modinst bindings)))))
+    (let ((map (find decl *smp-mappings*
+		     :key #'(lambda (m)
+			      (and (or (mapping-rename? m)
+				       (mapping-def? m))
+				   (declaration (lhs m)))))))
+      (cond ((mapping-def? map)
+	     (copy decl
+	       'formals (subst-mod-params* formals modinst bindings)
+	       'definition (expr (rhs map))
+	       'type (subst-mod-params* type modinst bindings)
+	       'declared-type (subst-mod-params* declared-type modinst bindings)
+	       'semi t))
+	    ((mapping-rename? map)
+	     (copy decl
+	       'id (id (expr (rhs map)))
+	       'formals (subst-mod-params* formals modinst bindings)
+	       'type (subst-mod-params* type modinst bindings)
+	       'declared-type (subst-mod-params* declared-type modinst bindings)
+	       'semi t))
+	    ((assq decl bindings)
+	     (copy decl
+	       'formals (subst-mod-params* formals modinst bindings)
+	       'definition (cdr (assq decl bindings))
+	       'type (subst-mod-params* type modinst bindings)
+	       'declared-type (subst-mod-params* declared-type modinst bindings)))
+	    (t (lcopy decl
+		 'formals (subst-mod-params* formals modinst bindings)
+		 'declared-type (subst-mod-params* declared-type modinst bindings)
+		 'type (subst-mod-params* type modinst bindings)
+		 'definition (subst-mod-params* definition modinst bindings)
+		 'def-axiom (subst-mod-params* def-axiom modinst bindings)))))))
 
 (defmethod subst-mod-params* ((decl def-decl) modinst bindings)
   (with-slots (declared-type definition declared-measure ordering) decl
@@ -504,8 +552,14 @@
 
 (defmethod subst-mod-params* ((decl formula-decl) modinst bindings)
   (with-slots (definition) decl
-    (lcopy decl
-      'definition (subst-mod-params* definition modinst bindings))))
+    (let ((ndef (subst-mod-params* definition modinst bindings)))
+      (unless (and (axiom? decl)
+		   (let ((refs (collect-references ndef)))
+		     (not (some #'(lambda (d)
+				    (same-id (module d) modinst))
+				refs))))
+	(lcopy decl
+	  'definition ndef)))))
 
 (defmethod subst-mod-params* ((decl subtype-judgement) modinst bindings)
   (with-slots (declared-subtype) decl
@@ -832,13 +886,20 @@
       (if (and (eq op operator)
 	       (eq arg argument))
 	  expr
-	  (let* ((optype (find-supertype (type op)))
+	  (let* ((nop (if (and (implicit-conversion? op)
+			       (name-expr? (operator op))
+			       (eq (id (operator op)) '|restrict|)
+			       (eq (id (module-instance (resolution (operator op))))
+				   '|restrict|))
+			  (argument op)
+			  op))
+		 (optype (find-supertype (type op)))
 		 (rtype (if (and (not (eq arg argument))
 				 (typep (domain optype) 'dep-binding))
 			    (substit (range optype)
 			      (acons (domain optype) arg nil))
 			    (range optype)))
-		 (nex (lcopy expr 'operator op 'argument arg 'type rtype)))
+		 (nex (lcopy expr 'operator nop 'argument arg 'type rtype)))
 	    ;; Note: the copy :around (application) method takes care of
 	    ;; changing the class if it is needed.
 	    nex)))))
