@@ -546,8 +546,8 @@ pvs-strategies files.")
 				      theories))
 		      (when (and (typep dth '(or library-theory
 						 library-datatype))
-				 (not (equal (library dth)
-					     *pvs-context-path*)))
+				 (not (equal (library-path dth)
+					     (namestring *pvs-context-path*))))
 			(setq depname
 			      (enough-namestring
 			       (merge-pathnames (library dth) (filename dth))
