@@ -1574,6 +1574,10 @@
 	type
 	(mk-dep-binding (id type) ntype))))
 
+(defmethod extend-domain-type (arg type expr)
+  (declare (ignore arg expr))
+  type)
+
 (defun make-update-expr-funtype (args value expr type)
   (if (every #'(lambda (arg)
 		 (some #'(lambda (ty)
