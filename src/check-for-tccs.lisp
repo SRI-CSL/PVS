@@ -6,9 +6,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Mon Jul 20 18:36:08 1998
 ;; Update Count    : 7
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -32,12 +30,13 @@
 (defvar *inner-check-for-tccs* nil)
 
 (defmethod check-for-tccs* :around (ex expected)
-   (declare (ignore ex expected))
-   (if (eq *generate-tccs* 'top)
-       (unless *inner-check-for-tccs*
-	 (let ((*inner-check-for-tccs* t))
-	   (call-next-method)))
-       (call-next-method)))
+  (declare (ignore expected))
+  (let ((*generate-tccs* (reset-generate-tccs ex)))
+    (if (eq *generate-tccs* 'top)
+	(unless *inner-check-for-tccs*
+	  (let ((*inner-check-for-tccs* t))
+	    (call-next-method)))
+	(call-next-method))))
 
 (defmethod check-for-tccs* :around ((ex expr) expected)
    (call-next-method)
