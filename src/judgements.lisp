@@ -603,9 +603,9 @@
 	     range)))))
 
 (defun judgement-arguments-match? (argument argtypes rdomain jdomain)
-  (assert (fully-instantiated? rdomain))
-  (assert (fully-instantiated? jdomain))
-  (assert (every #'fully-instantiated? argtypes))
+  ;;(assert (fully-instantiated? rdomain))
+  ;;(assert (fully-instantiated? jdomain))
+  ;;(assert (every #'fully-instantiated? argtypes))
   (if (null argtypes)
       (subtype-wrt? (type argument) jdomain rdomain)
       (judgement-arguments-match*? argtypes rdomain jdomain)))
@@ -636,16 +636,27 @@
 		(acons (car jdomain) (car rdomain) bindings)
 		bindings)))))
 
-(defun judgement-vector-arguments-match*? (argtypes rtype jtype bindings)
+(defmethod judgement-vector-arguments-match*? ((argtypes list)
+					       rtype jtype bindings)
   (when argtypes
     (or (subtype-wrt? (car argtypes) jtype rtype bindings)
 	(judgement-vector-arguments-match*? (cdr argtypes) rtype jtype
 					    bindings))))
 
+(defmethod judgement-vector-arguments-match*? ((argtypes vector)
+					       rtype jtype bindings)
+  (let ((stype (find-supertype rtype)))
+    (when (and (tupletype? stype)
+	       (length= argtypes (types stype)))
+      (judgement-vector-arguments-match?
+       argtypes (types stype) (types (find-supertype jtype)) 0))))
+
 (defmethod judgement-types* ((ex field-application))
-  (let ((atypes (judgement-types* (argument ex))))
-    (when atypes
-      (field-application-types atypes ex))))
+  (if (record-expr? (argument ex))
+      (judgement-types* (beta-reduce ex))
+      (let ((atypes (judgement-types* (argument ex))))
+	(when atypes
+	  (field-application-types atypes ex)))))
 
 (defmethod judgement-types* ((ex projection-application))
   (let ((atypes (judgement-types* (argument ex))))
@@ -869,7 +880,8 @@
 	 (nreverse preds))
 	(t (push te *subtypes-seen*)
 	   (let ((pred (make!-reduced-application (predicate te) ex)))
-	     (type-constraints* (supertype te) ex (cons pred preds) all?)))))
+	     (type-constraints* (supertype te) ex (nconc (and+ pred) preds)
+				all?)))))
 
 (defmethod type-constraints* ((te dep-binding) ex preds all?)
   (type-constraints* (type te) ex preds all?))
