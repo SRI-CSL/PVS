@@ -166,58 +166,58 @@
      ["suspend-pvs" suspend-pvs t]
      ["exit-pvs" exit-pvs t])))
 
-;(when (memq pvs-emacs-system '(emacs20 emacs19))
+(when (memq pvs-emacs-system '(emacs20 emacs19))
 
-;  (defvar easy-menu-fast-menus nil)
+  (defvar easy-menu-fast-menus nil)
 
-;  (defun easy-menu-create-keymaps-old (menu-name menu-items)
-;    (let ((menu (make-sparse-keymap menu-name)))
-;      ;; Process items in reverse order,
-;      ;; since the define-key loop reverses them again.
-;      (setq menu-items (reverse menu-items))
-;      (while menu-items
-;	(let* ((item (car menu-items))
-;	       (callback (if (vectorp item) (aref item 1)))
-;	       command enabler name)
-;	  (cond ((stringp item)
-;		 (setq command nil)
-;		 (setq name (if (string-match "^-+$" item) "" item)))
-;		((consp item)
-;		 (setq command (easy-menu-create-keymaps (car item) (cdr item)))
-;		 (setq name (car item)))
-;		((vectorp item)
-;		 (setq command
-;		       (if easy-menu-fast-menus
-;			   callback
-;			   (make-symbol (format "menu-function-%d"
-;					    easy-menu-item-count))))
-;		 (setq easy-menu-item-count (1+ easy-menu-item-count))
-;		 (put command 'menu-enable (aref item 2))
-;		 (setq name (aref item 0))	       
-;		 (if (keymapp callback)
-;		     (setq name (concat name " ...")))
-;		 (if (not easy-menu-fast-menus)
-;		     (if (symbolp callback)
-;			 (fset command callback)
-;			 (fset command (list 'lambda () '(interactive) callback))))))
-;	  (if (null command)
-;	      ;; Handle inactive strings specially--allow any number
-;	      ;; of identical ones.
-;	      (setcdr menu (cons (list nil name) (cdr menu)))
-;	      (if name 
-;		  (define-key menu (vector (intern name)) (cons name command)))))
-;	(setq menu-items (cdr menu-items)))
-;      menu))
+  (defun easy-menu-create-keymaps-old (menu-name menu-items)
+    (let ((menu (make-sparse-keymap menu-name)))
+      ;; Process items in reverse order,
+      ;; since the define-key loop reverses them again.
+      (setq menu-items (reverse menu-items))
+      (while menu-items
+	(let* ((item (car menu-items))
+	       (callback (if (vectorp item) (aref item 1)))
+	       command enabler name)
+	  (cond ((stringp item)
+		 (setq command nil)
+		 (setq name (if (string-match "^-+$" item) "" item)))
+		((consp item)
+		 (setq command (easy-menu-create-keymaps (car item) (cdr item)))
+		 (setq name (car item)))
+		((vectorp item)
+		 (setq command
+		       (if easy-menu-fast-menus
+			   callback
+			   (make-symbol (format "menu-function-%d"
+					    easy-menu-item-count))))
+		 (setq easy-menu-item-count (1+ easy-menu-item-count))
+		 (put command 'menu-enable (aref item 2))
+		 (setq name (aref item 0))	       
+		 (if (keymapp callback)
+		     (setq name (concat name " ...")))
+		 (if (not easy-menu-fast-menus)
+		     (if (symbolp callback)
+			 (fset command callback)
+			 (fset command (list 'lambda () '(interactive) callback))))))
+	  (if (null command)
+	      ;; Handle inactive strings specially--allow any number
+	      ;; of identical ones.
+	      (setcdr menu (cons (list nil name) (cdr menu)))
+	      (if name 
+		  (define-key menu (vector (intern name)) (cons name command)))))
+	(setq menu-items (cdr menu-items)))
+      menu))
 
-;  (let ((easy-menu-fast-menus t))
-;    (easy-menu-define PVS global-map "PVS menus" pvs-mode-menus))
-;  )
+  (let ((easy-menu-fast-menus t))
+    (easy-menu-define PVS global-map "PVS menus" pvs-mode-menus))
+  )
 
-;(when (memq pvs-emacs-system '(xemacs19 xemacs20))
-;  (add-submenu nil pvs-mode-menus "")
-;  (add-hook 'pvs-mode-hook
-;    '(lambda ()
-;       (add-submenu nil pvs-mode-menus ""))))
+(when (memq pvs-emacs-system '(xemacs19 xemacs20))
+  (add-submenu nil pvs-mode-menus "")
+  (add-hook 'pvs-mode-hook
+    '(lambda ()
+       (add-submenu nil pvs-mode-menus ""))))
 
 (require 'font-lock)
 
