@@ -121,9 +121,9 @@
 	      (when (eq (id m) '|booleans|)
 		(let ((*current-context* (saved-context m)))
 		  (setq *true*
-			(typecheck* (mk-name-expr 'true) *boolean* nil nil))
+			(typecheck* (mk-name-expr 'TRUE) *boolean* nil nil))
 		  (setq *false*
-			(typecheck* (mk-name-expr 'false) *boolean* nil
+			(typecheck* (mk-name-expr 'FALSE) *boolean* nil
 				    nil))))))
 	  (format t "~%Done typechecking the prelude; restoring the proofs")
 	  (restore-prelude-proofs))
@@ -254,8 +254,10 @@
 			      (if (module? th)
 				  (change-class th 'library-theory)
 				  (change-class th 'library-datatype))
-			      (setf (library th) lib
-				    (library-path th) (namestring libpath))
+			      (let ((rlib (enough-namestring
+					   path *pvs-current-context-path*)))
+				(setf (library th) lib
+				      (library-path th) rlib))
 			      (update-prelude-library-context th))
 			  *pvs-modules*)
 		 (setf (gethash lib *prelude-libraries*)
@@ -303,8 +305,12 @@
 				      (if (typep th 'module)
 					  (change-class th 'library-theory)
 					  (change-class th 'library-datatype))
-				      (setf (library th) lib
-					    (library-path th) (namestring path)))
+				      (let ((rlib
+					     (enough-namestring
+					      path
+					      *pvs-current-context-path*)))
+					(setf (library th) lib
+					      (library-path th) rlib)))
 				  *pvs-modules*))
 			(t
 			 (remhash filename *pvs-files*)
@@ -331,7 +337,7 @@
 
 (defun load-library-theory (lib path theoryname)
   (if (or (gethash lib *prelude-libraries*)
-	  (file-equal lib *pvs-context-path*))
+	  (file-equal path *pvs-context-path*))
       (get-theory (copy theoryname 'library nil))
       (let ((value nil))
 	(with-pvs-context path
@@ -357,8 +363,11 @@
 				  (if (typep th 'module)
 				      (change-class th 'library-theory)
 				      (change-class th 'library-datatype))
-				  (setf (library th) lib
-					(library-path th) (namestring path)))
+				  (let ((rlib
+					 (enough-namestring
+					  path *pvs-current-context-path*)))
+				    (setf (library th) lib
+					  (library-path th) rlib)))
 			      *pvs-modules*)
 			     (setq value theory))
 			    (t (setq value
@@ -377,8 +386,7 @@
 
 
 (defun parsed-library-file? (mod)
-  (let ((lib (library mod))
-	(path (library-path mod)))
+  (let ((lib (library mod)))
     (and lib
 	 (let* ((impfiles (car (gethash lib *imported-libraries*)))
 		(prefiles (car (gethash lib *prelude-libraries*)))
@@ -389,9 +397,8 @@
 				    prefiles)
 				   (t (make-hash-table :test #'equal)))))
 	   (and (filename mod)
-		(parsed?* (make-pathname :defaults path
-					 :name (filename mod)
-					 :type "pvs")))))))
+		(let ((path (probe-file (path mod))))
+		  (parsed?* path)))))))
 
 
 (defun add-to-visible-libraries (lib libname)
@@ -514,16 +521,22 @@
 (defun library-files ()
   (let ((files nil))
     (maphash #'(lambda (lib files&theories)
+		 (declare (ignore lib))
 		 (maphash #'(lambda (file date&theories)
-			      (declare (ignore date&theories))
-			      (pushnew (format nil "~a~a" lib file) files
+			      (pushnew (format nil "~a~a"
+					 (library-path (cadr date&theories))
+					 file)
+				       files
 				       :test #'equal))
 			  (car files&theories)))
 	     *imported-libraries*)
     (maphash #'(lambda (lib files&theories)
+		 (declare (ignore lib))
 		 (maphash #'(lambda (file date&theories)
-			      (declare (ignore date&theories))
-			      (pushnew (format nil "~a~a" lib file) files
+			      (pushnew (format nil "~a~a"
+					 (library-path (cadr date&theories))
+					 file)
+				       files
 				       :test #'equal))
 			  (car files&theories)))
 	     *prelude-libraries*)
@@ -532,19 +545,25 @@
 (defun library-theories ()
   (let ((theories nil))
     (maphash #'(lambda (lib files&theories)
+		 (declare (ignore lib))
 		 (maphash #'(lambda (file date&theories)
 			      (dolist (th (cdr date&theories))
-				(push (list (format nil "~a~a" lib (id th))
-					    (format nil "~a~a" lib file)
+				(push (list (format nil "~a~a"
+					      (library-path th) (id th))
+					    (format nil "~a~a"
+					      (library-path th) file)
 					    (place-list (place th)))
 				      theories)))
 			  (car files&theories)))
 	     *imported-libraries*)
     (maphash #'(lambda (lib files&theories)
+		 (declare (ignore lib))
 		 (maphash #'(lambda (file date&theories)
 			      (dolist (th (cdr date&theories))
-				(push (list (format nil "~a~a" lib (id th))
-					    (format nil "~a~a" lib file)
+				(push (list (format nil "~a~a"
+					      (library-path th) (id th))
+					    (format nil "~a~a"
+					      (library-path th) file)
 					    (place-list (place th)))
 				      theories)))
 			  (car files&theories)))
