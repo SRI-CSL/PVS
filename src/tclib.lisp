@@ -891,7 +891,7 @@
 (defun get-most-local-reference (list &optional (min 1)
 				      most-local most-local-num)
   (if (null list)
-      most-local
+      (id most-local)
       (let ((lnum (locality (car list))))
 	(if (<= lnum min)
 	    (car list)
@@ -900,7 +900,7 @@
 		(get-most-local-reference
 		 (cdr list) min (car list) lnum)
 		(get-most-local-reference
-		 (cdr list) most-local most-local-num))))))
+		 (cdr list) min most-local most-local-num))))))
 		 
 
 (defun get-all-lib-decls ()
