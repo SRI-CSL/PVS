@@ -28,6 +28,13 @@
 (def-pvs-term less-operator "<" "reals")
 (def-pvs-term floor-operator "floor" "floor_ceil")
 (def-pvs-term unary-minus-operator "-" "reals" :expected "[real -> real]")
+
+(def-pvs-term number-cross-number "[number, number]" "reals" :nt type-expr)
+
+(let ((*one-constant* nil))
+  (defun one-constant ()
+    (or *one-constant*
+	(make!-number-expr 1))))
   
 ;;; This file provides make-class for the useful classes in classes.
 ;;; For each such class, it basically provides a nicer syntax to replace
