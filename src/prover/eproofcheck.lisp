@@ -2872,19 +2872,11 @@ The rules in *rulebase* are: ~%"
   (let ((fmla (formula sform)))
     (if (not-expr? fmla)(args1 fmla)
 	fmla)))
-;;NSH(5.11.94): unparse-form caches the printout in the sform along with
-;;the *default-char-width.
+
 (defun unparse-sform (sform)
-  (with-slots (printout) sform
-  (cond ((and printout
-	      (eql (car printout) *default-char-width*))
-	 (cdr printout))
-	(t (let ((string (unpindent (seq-formula sform)
-				(+ 6 *prover-indent*)
-				:string T)))
-	     (setf (printout sform)
-		   (cons *default-char-width* string))
-	     string)))))
+  (unpindent (seq-formula sform)
+	     (+ 6 *prover-indent*)
+	     :string T))
 
 (defun in-every-print-descendant? (sform)
   (every #'(lambda (ps)
