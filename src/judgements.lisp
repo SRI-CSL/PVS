@@ -1427,7 +1427,7 @@
 	  (assert (or (null to-vector) (vectorp to-vector)))
 	  ;; Note: from-vector and to-vector may be eq
 	  (if (null to-vector)
-	      (if (or (actuals theoryname)
+	      (if (or (formals-sans-usings theory)
 		      (mappings theoryname))
 		  (setq to-alist
 			(acons decl
@@ -1547,6 +1547,7 @@
       (merge-appl-judgement-graphs from-graph to-graph to-gens
 				   theory theoryname)
     ;;(assert (every #'(lambda (x) (every #'judgement? x)) new-to-graph))
+    (assert (every #'(lambda (g) (fully-instantiated? (car g))) new-to-graph))
     (merge-appl-judgement-generics
      from-gens
      (if (equal new-to-gens to-gens)
