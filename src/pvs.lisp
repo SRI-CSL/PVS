@@ -1837,29 +1837,26 @@
   (let ((decls nil))
     (maphash #'(lambda (mid mod)
 		 (declare (ignore mid))
-		 (when (and (module? mod)
-			    (declarations mod))
-		   (setq decls (append (gethash (ref-to-id ref)
-						(declarations mod))
-				       decls))))
+		 (when (module? mod)
+		   (setq decls
+			 (append (remove-if-not
+				     #'(lambda (d)
+					 (and (declaration? d)
+					      (eq (id d) (ref-to-id ref))))
+				   (all-decls mod))
+				 decls))))
 	     *pvs-modules*)
     (maphash #'(lambda (mid mod)
 		 (declare (ignore mid))
 		 (when (module? mod)
-		   (setq decls (append (gethash (ref-to-id ref)
-						(declarations mod))
-				       decls))))
+		   (setq decls
+			 (append (remove-if-not
+				     #'(lambda (d)
+					 (and (declaration? d)
+					      (eq (id d) (ref-to-id ref))))
+				   (all-decls mod))
+				 decls))))
 	     *prelude*)
-    (when *current-context*
-      (maphash #'(lambda (id declarations)
-		   (when (eq id (ref-to-id ref))
-		     (setq decls
-			   (append (remove-if-not
-				       #'(lambda (d)
-					   (eq (module d) (current-theory)))
-				     declarations)
-				   decls))))
-	       (local-decls *current-context*)))
     (delete-duplicates decls :test #'eq)))
 
 
