@@ -6,9 +6,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Fri Apr  3 12:47:44 1998
 ;; Update Count    : 30
-;; Status          : Alpha test
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -44,7 +42,12 @@
   (let ((end (position #\space excl::cl-release-date :from-end t)))
     (subseq excl::cl-release-date 0 end)))
 
-(defparameter *pvs-version* "3.2")
+(eval-when (eval compile load)
+  (defparameter *pvs-version* "3.2")
+
+  ;; Not used in PVS sources, but may be useful for patches, strategies, etc.
+  (pushnew (intern (format nil "pvs~a" *pvs-version*) :keyword) *features*)
+  )
 
 (defparameter *binfile-version* 20)
 
