@@ -31,6 +31,7 @@
   #'(lambda (ps)
       (let ((*cases-rewrite* cases-rewrite?)
 	    ;;(*assert-connectives?* assert-connectives?)
+	    (*false-tcc-error-flag* nil)
 	    (*ignore-prover-output?* ignore-prover-output?))
 	(if record?
 	    (if rewrite?
@@ -223,39 +224,39 @@
       (cond ((eq signal '!)(values signal sform))
 	    ((or (eq signal '?) *assert-typepreds*)
 	     ;;(break "assert-typepreds")
-	     (if (some #'(lambda (fmla)
-			   (let* ((sign (not (negation? fmla)))
-				  (body (if sign fmla (args1 fmla)))
-				  ;;(*update-occurs?* T)
-				  )
-			     ;;NSH(5.13.97): rearranged lets
-			     ;;so translation avoided
-			     ;;when there is a connective.
-			     ;;want to check for connectives even if
-			     ;;assert-connectives? is T
-			     (and (not (connective-occurs? body))
-				  (let* (
-					 ;(translated-body
-					 ; (top-translate-to-prove
-					 ;  body))
-					 ;(translated-fmla
-					 ; (if sign translated-body
-					 ;     (list 'NOT translated-body)))
-					 (res (call-process fmla
-							    *dp-state*
-							    *alists*)))
-				    (when
-					(and
-					 (consp res)
-					 (not (update-or-connective-occurs?
-					       body)));;NSH(4.7.99)
-				      (loop for x in res
-					    do (push x *process-output*)))
-				    (false-p res)))))
+	     (if (some #'process-typepred
 		       *assert-typepreds*)
 		 (values '! sform)
 		 (values '? sform)))
 	    (t (values signal sform))))))
+
+(defun process-typepred (fmla)
+  (let* ((sign (not (negation? fmla)))
+	 (body (if sign fmla (args1 fmla)))
+	 ;;(*update-occurs?* T)
+	 )
+    ;;NSH(5.13.97): rearranged lets
+    ;;so translation avoided
+    ;;when there is a connective.
+    ;;want to check for connectives even if
+    ;;assert-connectives? is T
+    (and (not (connective-occurs? body))
+	 (let* (
+		;;(translated-body
+		;; (top-translate-to-prove
+		;;  body))
+		;;(translated-fmla
+		;; (if sign translated-body
+		;;     (list 'NOT translated-body)))
+		(res (call-process fmla
+				   *dp-state*
+				   *alists*)))
+	   (when (and (consp res)
+		      (not (update-or-connective-occurs?
+			    body)));;NSH(4.7.99)
+	     (loop for x in res
+		   do (push x *process-output*)))
+	   (false-p res)))))
 
 (defun assert-typepreds (typepreds)
   (when (consp typepreds)
@@ -1029,7 +1030,8 @@
 	   ;;   (update-or-connective-occurs? expr)
     (let ((constraints (collect-type-constraints expr)))
       (when (and *subtype-hash* constraints)
-	(setq *assert-typepreds* (nconc constraints *assert-typepreds*))
+	(dolist (constraint constraints)
+	  (pushnew constraint *assert-typepreds* :test #'tc-eq))
 	(setf (gethash expr *subtype-hash*) T)))))
 
 
@@ -1606,8 +1608,9 @@
     (unless hashvalue
       (setf (gethash expr *assert-if-arith-hash*)
 	    msum)
-      (setf (gethash msum *assert-if-arith-hash*)
-	    msum))
+      (unless (eq expr msum)
+	(setf (gethash msum *assert-if-arith-hash*)
+	      msum)))
     msum))
 
 (defun get-merged-sum (expr newargs)
@@ -1652,8 +1655,9 @@
     (unless hashvalue
       (setf (gethash expr *assert-if-arith-hash*)
 	    msum)
-      (setf (gethash msum *assert-if-arith-hash*)
-	    msum))
+      (unless (eq expr msum)
+	(setf (gethash msum *assert-if-arith-hash*)
+	      msum)))
     (if (tc-eq msum expr)
 	(do-auto-rewrite expr sig)
 	(do-auto-rewrite msum '?))))
@@ -1890,7 +1894,8 @@
 ;    (when hashvalue (format t "~%arith"))
     (unless hashvalue
       (setf (gethash expr *assert-if-arith-hash*) prod)
-      (setf (gethash prod *assert-if-arith-hash*) prod))
+      (unless (eq expr prod)
+	(setf (gethash prod *assert-if-arith-hash*) prod)))
     (if (tc-eq prod expr)
 	(do-auto-rewrite expr sig)
 	(do-auto-rewrite prod '?))))
@@ -2163,8 +2168,11 @@
 	  '?
 	  (let ((accessors (accessors (operator newargs))))
 	    (if (cdr accessors)
-		(nth (position newop accessors :test #'tc-eq-ops)
-		     (arguments newargs))
+		(let ((args (arguments newargs))
+		      (pos (position newop accessors :test #'tc-eq-ops)))
+		  (if (cdr args)
+		      (nth pos (arguments newargs))
+		      (make!-projection-application (1+ pos) (car args))))
 		(argument newargs)))
 	  expr))
 	((function-update-redex? expr)
@@ -3092,12 +3100,13 @@
     (nprotecting-cong-state  ;;changed from LET on alists
      ((*dp-state* *dp-state*)
       (*alists* *alists*))
-     (let ((typealist typealist))
-       (when (eq *pseudo-normalizing* 'include-typepreds?)
-	 (unless (assq (caar primtypealist) typealist)
-	   (setq typealist (append typealist primtypealist)))
-	 (assert-typepreds *assert-typepreds*))
-       (call-process fmla *dp-state* *alists*)))))
+     (if (eq *pseudo-normalizing* 'include-typepreds?)
+	 (let ((typealist typealist))
+	   (unless (assq (caar primtypealist) typealist)
+	     (setq typealist (append typealist primtypealist)))
+	   (assert-typepreds *assert-typepreds*)
+	   (call-process fmla *dp-state* *alists*))
+	 (call-process fmla *dp-state* *alists*)))))
 
 (defun assert-test0 (fmla)
   (unless (check-for-connectives? fmla)

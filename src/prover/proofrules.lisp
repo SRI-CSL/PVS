@@ -361,25 +361,24 @@
 			 (t result))))))
 		 
 
-;;; SO 8/17/94 - use new form of application
 (defmethod simplify-ifs ((expr branch) trueconds falseconds)
   (let ((simple-condition (simplify-ifs (condition expr) trueconds falseconds)))
     ;;(break "simplify if")
     (if (eq simple-condition *true*)
-	;(truecond? simple-condition trueconds falseconds)
+	;;(truecond? simple-condition trueconds falseconds)
 	(simplify-ifs (then-part expr) trueconds falseconds)
 	(if (eq simple-condition *false*)
-	;(falsecond? simple-condition trueconds falseconds)
+	;;(falsecond? simple-condition trueconds falseconds)
 	    (simplify-ifs (else-part expr) trueconds falseconds)
 	    (let* ((new-then  ;;NSH(9.27.95) fixed leaky hash
 		   (simplify-ifs (then-part expr)
 				 (cons simple-condition trueconds)
 				 falseconds))
-;		   (new-then (truefalsecond-reduce new-then trueconds falseconds))
+		   ;; (new-then (truefalsecond-reduce new-then trueconds falseconds))
 		   (new-else (simplify-ifs (else-part expr)
 					   trueconds
 					   (cons simple-condition falseconds)))
-;		   (new-else (truefalsecond-reduce new-else trueconds falseconds))
+		   ;; (new-else (truefalsecond-reduce new-else trueconds falseconds))
 		   )
 	      (if (tc-eq new-then new-else);;NSH(9.27.95) equality test
 		  new-then
@@ -391,28 +390,37 @@
 			       (eq new-else (else-part expr)))
 			  expr;;NSH(8.2.95) was destroying eq-ness without
 			  ;; this case.
-			  (lcopy expr
-			    `argument
-			    (make-arg-tuple-expr
-			     (list simple-condition
-				   new-then
-				   new-else)))))))))))
+			  (make!-if-expr* simple-condition
+					  new-then
+					  new-else
+					  (chained-branch? expr))))))))))
 
 (defmethod simplify-ifs ((expr binding-expr) trueconds falseconds)
   (with-slots (expression) expr
     (lcopy expr
       'expression (simplify-ifs expression trueconds falseconds))))
 
-;;; SO 9/5/94 - Added projection-application and field-application methods
 (defmethod simplify-ifs ((expr projection-application) trueconds falseconds)
-  (with-slots (argument) expr
-  (lcopy expr
-    'argument (simplify-ifs argument trueconds falseconds))))
+  (with-slots (index argument) expr
+    (let ((arg (simplify-ifs argument trueconds falseconds)))
+      (if (eq arg argument)
+	  expr
+	  (let* ((stype (find-supertype (type arg)))
+		 (projtype (make!-projection-type* (types stype) index 1 arg)))
+	    (copy expr
+	      'argument arg
+	      'type projtype))))))
 
 (defmethod simplify-ifs ((expr field-application) trueconds falseconds)
-  (with-slots (argument) expr
-    (lcopy expr
-      'argument (simplify-ifs argument trueconds falseconds))))
+  (with-slots (id argument) expr
+    (let ((arg (simplify-ifs argument trueconds falseconds)))
+      (if (eq arg argument)
+	  expr
+	  (let* ((ftype (make!-field-application-type
+			 id (find-supertype (type arg))arg)))
+	    (copy expr
+	      'argument arg
+	      'type ftype))))))
 
 (defmethod simplify-ifs ((expr application) trueconds falseconds)
   (with-slots (operator argument) expr
@@ -424,15 +432,26 @@
 		       (falsecond? (condition translation)
 				   trueconds falseconds)))
 	      (simplify-ifs translation trueconds falseconds)
-	      (lcopy expr
-		'operator (simplify-ifs operator
-					trueconds falseconds)
-		'argument (simplify-ifs argument trueconds
-					falseconds))))
-	(lcopy expr
-	  'operator (simplify-ifs operator trueconds falseconds)
-	  'argument (simplify-ifs argument trueconds
-				  falseconds)))))
+	      (let* ((op (simplify-ifs operator trueconds falseconds))
+		     (arg (simplify-ifs argument trueconds falseconds))
+		     (stype (find-supertype (type op))))
+		(lcopy expr
+		  'operator op
+		  'argument arg
+		  'type (if (typep (domain stype) 'dep-binding)
+			    (substit (range stype)
+			      (acons (domain stype) arg nil))
+			    (range stype))))))
+	(let* ((op (simplify-ifs operator trueconds falseconds))
+	       (arg (simplify-ifs argument trueconds falseconds))
+	       (stype (find-supertype (type op))))
+	  (lcopy expr
+	    'operator op
+	    'argument arg
+	    'type (if (typep (domain stype) 'dep-binding)
+		      (substit (range stype)
+			(acons (domain stype) arg nil))
+		      (range stype)))))))
 
 (defmethod simplify-ifs ((expr record-expr) trueconds falseconds)
   (with-slots (assignments) expr
@@ -876,125 +895,128 @@
 ;;;;;;;;;;;;;
 
 (defun lemma-step (name substs ps)
-  (let* ((name-expr (pc-parse name 'name))
-	 (resolutions (formula-or-definition-resolutions name-expr))
-	 (resolutions
-	  (cond ((freevars resolutions)
-		 (error-format-if "~%Free variables in lemma name: ~a" name)
-		 nil)
-		(t resolutions)))
-	 (pre-alist (make-alist substs))
-	 (badnames (loop for (x . nil) in pre-alist
-			 when (not (typep (pc-parse x 'expr) 'name-expr))
-			 collect x))
-	 (subalist (loop for (x . y) in pre-alist
-			 collect (cons x (internal-pc-typecheck
-					  (pc-parse y 'expr)
-					  :context
-					  *current-context*
-					  :uniquely? NIL))))
-	 ;;tccs ALL is checked in tc-alist below.
-	 )
-    (cond ((not (listp substs))
-	   (error-format-if
-	    "~%The form of a substitution is: (<var1> <term1>...<varn> <termn>).")
-	   (values 'X nil))
-	  ((not (null badnames))
-	   (error-format-if
-	    "~%The form of a substitution is: (<var1> <term1>...<varn> <termn>).
+  (protect-types-hash
+   name
+   (let* ((name-expr (pc-parse name 'name))
+	  (resolutions (formula-or-definition-resolutions name-expr))
+	  (resolutions
+	   (cond ((freevars resolutions)
+		  (error-format-if "~%Free variables in lemma name: ~a" name)
+		  nil)
+		 (t resolutions)))
+	  (pre-alist (make-alist substs))
+	  (badnames (loop for (x . nil) in pre-alist
+			  when (not (typep (pc-parse x 'expr) 'name-expr))
+			  collect x))
+	  (subalist
+	   (loop for (x . y) in pre-alist
+		 collect (let* ((yex (pc-parse y 'expr))
+				(*in-typechecker* yex))
+			   (cons x (internal-pc-typecheck yex
+				     :context *current-context*
+				     :uniquely? NIL)))))
+	  ;;tccs ALL is checked in tc-alist below.
+	  )
+     (cond ((not (listp substs))
+	    (error-format-if
+	     "~%The form of a substitution is: (<var1> <term1>...<varn> <termn>).")
+	    (values 'X nil))
+	   ((not (null badnames))
+	    (error-format-if
+	     "~%The form of a substitution is: (<var1> <term1>...<varn> <termn>).
 The following are not possible variables: ~{~a,~}" badnames)
-	   (values 'X nil))
-	  ((oddp (length substs))
-	   (error-format-if
-	    "~%The form of a substitution is: (<varn> <termn>...<varn> <termn>).")
-	   (values 'X nil))
-;	  (subfreevars
-;	   (format-if "~%Irrelevant free variables ~a in substitution."
-;		      subfreevars)
-;	   (values 'X nil))
-	  (t (let* ((all-possibilities
-		     (check-with-subst resolutions
-				       subalist
-				       *current-context*))
-		    (possibilities
-		     (or (remove-if-not #'(lambda (poss)
-					    (typep (declaration (cdr poss))
-						   'formula-decl))
-			   all-possibilities)
-			 all-possibilities))
-		    (form (when (singleton? possibilities)
-			    (caar possibilities)))
-		    (res  (when (singleton? possibilities)
-			    (cdar possibilities)))
-		    (newalist
-		     (when form
-		       (loop for x in
-			     (substitutable-vars form)
-			     when (assoc x subalist :test #'same-id)
-			     collect
-			     (cons x
-				   (cdr (assoc x subalist
-					       :test #'same-id)))))))
-;	       (loop for (x . y) in newalist
-;		     do (setf (type y) nil))
-	       (when form ;;NSH(10.20.94)(let ((*generate-tccs* 'ALL)))
-			    (typecheck (module-instance res)
-			      :tccs 'ALL)
-			    (tc-alist newalist);;does tccs all.
-			    )
-	       (let ((subfreevars (loop for (nil . y) in newalist
-					append (freevars y)))) ;;was nconc
-		 (cond ((null resolutions)
-		      (error-format-if "~%Couldn't find a definition or lemma named ~a" name)
-		      (values 'X nil))
-		     ((null form)
-		      (error-format-if "~%Found ~a resolutions for ~a relative to the substitution.
+	    (values 'X nil))
+	   ((oddp (length substs))
+	    (error-format-if
+	     "~%The form of a substitution is: (<varn> <termn>...<varn> <termn>).")
+	    (values 'X nil))
+					;	  (subfreevars
+					;	   (format-if "~%Irrelevant free variables ~a in substitution."
+					;		      subfreevars)
+					;	   (values 'X nil))
+	   (t (let* ((all-possibilities
+		      (check-with-subst resolutions
+					subalist
+					*current-context*))
+		     (possibilities
+		      (or (remove-if-not #'(lambda (poss)
+					     (typep (declaration (cdr poss))
+						    'formula-decl))
+			    all-possibilities)
+			  all-possibilities))
+		     (form (when (singleton? possibilities)
+			     (caar possibilities)))
+		     (res  (when (singleton? possibilities)
+			     (cdar possibilities)))
+		     (newalist
+		      (when form
+			(loop for x in
+			      (substitutable-vars form)
+			      when (assoc x subalist :test #'same-id)
+			      collect
+			      (cons x
+				    (cdr (assoc x subalist
+						:test #'same-id)))))))
+					;	       (loop for (x . y) in newalist
+					;		     do (setf (type y) nil))
+		(when form;;NSH(10.20.94)(let ((*generate-tccs* 'ALL)))
+		  (typecheck (module-instance res)
+		    :tccs 'ALL)
+		  (tc-alist newalist);;does tccs all.
+		  )
+		(let ((subfreevars (loop for (nil . y) in newalist
+					 append (freevars y))));;was nconc
+		  (cond ((null resolutions)
+			 (error-format-if "~%Couldn't find a definition or lemma named ~a" name)
+			 (values 'X nil))
+			((null form)
+			 (error-format-if "~%Found ~a resolutions for ~a relative to the substitution.
 Please check substitution, provide actual parameters for lemma name,
 or supply more substitutions."
-				 (length possibilities) name)
-		      (values 'X nil))
-		     (subfreevars
-		      (error-format-if "~%Irrelevant free variables ~a in substitution."
-				 subfreevars)
-		      (values 'X nil))
-		     (t
-			(let* 
-			    ((subvars (substitutable-vars form))
-			     (remaining-vars
-			      (delete-first-occurrence
-			       (mapcar #'car subalist)
-			       subvars :test #'same-id))
-			     (bindalist newalist)
-;;			      (make-bindalist subvars subalist ps)
-			     ;;(intermediate-body (forall-body* form))
-			     (intermediate-form (if (forall? form)
-						    (if  (null remaining-vars)
-							 (expression form)
-							 (make-forall-expr
-							     remaining-vars
-							   (forall-body* form)))
-						    form))
-			     (subform
-			      (substit intermediate-form bindalist))
-			     (sform    (make-instance 's-formula
-					 'formula (negate subform)))
-			     (newsequent (lcopy (current-goal ps)
-						's-forms (cons sform
-							       (s-forms
-								(current-goal
-								 ps)))))
-			     (dependent-decls NIL))
-			  (push-references-list
-			   (module-instance res) dependent-decls)
-			  (push-references-list newalist
-						dependent-decls)
-			  (pushnew (declaration res)
-				   dependent-decls)
-			  (values '? (list newsequent)
-					   ;NSH(4.9.99)
-					   ;changed d-d to update parent.
-					(list   'dependent-decls
-					   dependent-decls)))))))))))
+					  (length possibilities) name)
+			 (values 'X nil))
+			(subfreevars
+			 (error-format-if "~%Irrelevant free variables ~a in substitution."
+					  subfreevars)
+			 (values 'X nil))
+			(t
+			 (let* 
+			     ((subvars (substitutable-vars form))
+			      (remaining-vars
+			       (delete-first-occurrence
+				(mapcar #'car subalist)
+				subvars :test #'same-id))
+			      (bindalist newalist)
+			      ;;			      (make-bindalist subvars subalist ps)
+			      ;;(intermediate-body (forall-body* form))
+			      (intermediate-form (if (forall? form)
+						     (if  (null remaining-vars)
+							  (expression form)
+							  (make-forall-expr
+							      remaining-vars
+							    (forall-body* form)))
+						     form))
+			      (subform
+			       (substit intermediate-form bindalist))
+			      (sform    (make-instance 's-formula
+					  'formula (negate subform)))
+			      (newsequent (lcopy (current-goal ps)
+					    's-forms (cons sform
+							   (s-forms
+							    (current-goal
+							     ps)))))
+			      (dependent-decls NIL))
+			   (push-references-list
+			    (module-instance res) dependent-decls)
+			   (push-references-list newalist
+						 dependent-decls)
+			   (pushnew (declaration res)
+				    dependent-decls)
+			   (values '? (list newsequent)
+					;NSH(4.9.99)
+					;changed d-d to update parent.
+				   (list   'dependent-decls
+					   dependent-decls))))))))))))
    
 		     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

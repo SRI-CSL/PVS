@@ -58,13 +58,70 @@
 
 (defvar *ops* (init-symbol-table))
 
+(defun simplify-expression (expr module-name strategy
+				 &optional display? (id 'simplify-expr))
+  (let* ((*suppress-printing* T)
+	 (*printproofstate* nil)
+	 (*proving-tcc* T)
+	 (*generate-tccs* T)
+	 (*subgoals* T)
+	 (*current-theory* (get-theory module-name))
+	 (*current-context* (context *current-theory*))
+	 (expr (typecheck-uniquely (pc-parse expr 'expr)))
+	 (id 'F!1)
+	 (bexpr (if (tc-eq (type expr) *boolean*)
+		    expr
+		    (let* ((ftype (mk-funtype (type expr) *boolean*))
+			   (skdecl (make-instance 'skolem-const-decl
+				     'id id
+				     'type ftype
+				     'module *current-theory*))
+			   (*in-checker* t))
+		      (copy-prover-context)
+		      (setf (declarations-hash *current-context*)
+			    (copy (current-declarations-hash)))
+		      (put-decl skdecl (current-declarations-hash))
+		      (make!-application (typecheck (pc-parse id 'expr)
+					   :expected ftype)
+					 expr))))
+	 (cexpr (universal-closure bexpr))
+	 (expr-decl (make-instance 'formula-decl
+		      'id (ref-to-id id)
+		      'module *current-theory*
+		      'spelling 'formula
+		      'definition cexpr))
+	 (*start-proof-display* display?))
+    (prove-decl expr-decl :strategy `(then (then ,strategy (postpone)) (quit)))
+    (let ((mform (merge-subgoals *subgoals*)))
+      (remove-skolem-constants
+       (gensubst mform
+	 #'(lambda (ex) (argument ex))
+	 #'(lambda (ex) (and (application? ex)
+			     (name-expr? (operator ex))
+			     (eq (id (operator ex)) id))))))))
+
+(defun remove-skolem-constants (expr)
+  (let* ((alist nil)
+	 (nex (gensubst expr
+		#'(lambda (ex)
+		    (or (cdr (assoc ex alist :test #'tc-eq))
+			(let* ((str (string (id ex)))
+			       (id (intern (subseq str 0 (position #\! str))))
+			       (nid (make-new-variable id expr))
+			       (nbd (mk-bind-decl nid (type ex))))
+			  (push (cons ex nbd) alist)
+			  nbd)))
+		#'(lambda (ex)
+		    (and (name-expr? ex)
+			 (skolem-constant? (declaration ex)))))))
+    (universal-closure nex)))
+
 (defvar *subgoals* nil)
 
 (defun simplify-expr (expr module-name strategy
 			   &optional display? (id 'simplify-expr))
   ;;in the context of decl, simplify the boolean expr using strategy
-  (let* ((*in-checker* t)
-	 (*suppress-printing* T)
+  (let* ((*suppress-printing* T)
 	 (*printproofstate* nil)
 	 (*proving-tcc* T)
 	 (*generate-tccs* T)
@@ -210,6 +267,7 @@
 	      'declaration decl
 	      'current-auto-rewrites auto-rewrites-info)))
       (unless (or *force-dp*
+		  *recursive-prove-decl-call*
 		  (eq *new-ground?* (new-ground? decl))
 		  (and *proving-tcc* *use-default-dp?*)
 		  (and (not *proving-tcc*)
@@ -2144,7 +2202,7 @@
 				      (xrule justif))
 				 (xrule justif)
 				 (rule justif))))
-	   (format-if "~%Rerunning step: ~s" (format-rule top-rule-in))
+	   (format-if "~%Rerunning step: ~s" (format-rule top-rule-in t))
 	   (if nil ;(and (consp top-rule-in)
 		    ;(not (step-or-rule-defn (car top-rule-in))))
 	       (rerun-step (when (subgoals justif)
@@ -2233,7 +2291,8 @@
 (defmethod extract-justification-sexp (x)
   x)
 
-(defun editable-justification (justif &optional label xflag full-label)
+(defun editable-justification (justif &optional
+				      label xflag full-label no-escape?)
   ;;NSH(1.3.98) if full-label is given, then the full label is
   ;;printed rather than just the branch numbers.
   (unless (null justif)
@@ -2244,8 +2303,8 @@
 	       (equal (label (cadr rule)) jlabel))
 	  (cadr rule)
 	  (let* ((top-step (if (and xflag (xrule justif))
-			       (format-rule (xrule justif))
-			       (format-rule rule)))
+			       (format-rule (xrule justif) no-escape?)
+			       (format-rule rule no-escape?)))
 		 (full-label (if (and full-label
 				      (not (equal jlabel label))
 				      (> (length jlabel) 0))
@@ -2255,7 +2314,8 @@
 				(editable-justification* (subgoals justif)
 							 jlabel
 							 xflag
-							 full-label)))
+							 full-label
+							 no-escape?)))
 		 (ejustif (if (comment justif)
 			      (cons (comment justif) ejustif)
 			      ejustif)))
@@ -2263,13 +2323,15 @@
 		ejustif
 		(cons (or full-label jlabel) ejustif)))))))
 
-(defun editable-justification* (justifs &optional label xflag full-label)
+(defun editable-justification* (justifs &optional
+					label xflag full-label no-escape?)
   (unless (null justifs)
     (if (singleton? justifs)
-	(editable-justification (car justifs) label xflag full-label)
+	(editable-justification (car justifs) label xflag full-label
+				no-escape?)
 	(list (loop for justif in justifs
 		    collect (editable-justification
-			       justif nil xflag full-label))))))
+			       justif nil xflag full-label no-escape?))))))
 
 ; DAVESC
 (defun check-edited-justification (ejustif &optional label)
@@ -2330,13 +2392,16 @@
 	   (loop for entry in (reverse (subgoals justification))
 		 do (pp-justification* entry (car justification))))))
 
-(defun format-rule (sexp)
+(defun format-rule (sexp &optional no-escape?)
   (cond ((null sexp) nil)
+	((and (null no-escape?)
+	      (stringp sexp))
+	 (protect-emacs-output sexp))
 	((not (consp sexp)) sexp)
 	((eq (car sexp) 'TYPECHECKED)
 	 (list (cadr sexp) '!TYPE (caddr sexp)))
-	(t (cons (format-rule (car sexp))
-		 (format-rule (cdr sexp))))))
+	(t (cons (format-rule (car sexp) no-escape?)
+		 (format-rule (cdr sexp) no-escape?)))))
 
 (defun unformat-rule (sexp)
   (when sexp
@@ -3244,7 +3309,9 @@
 	      (stringp (car form)))
 	 (cond ((member '(checkpoint) (cdr form) :test #'equal)
 		(push form *checkpointed-branches*)
-		(ldiff form (cdr (member '(checkpoint) (cdr form) :test #'equal))))
+		form
+		;;(ldiff form (cdr (member '(checkpoint) (cdr form) :test #'equal)))
+		)
 	       ((and (consp (car (last form)))
 		     (every #'consp (car (last form))))
 		(let ((nlast (mapcar #'complete-checkpointed-proof*
@@ -3302,3 +3369,16 @@
 		       #'pprint-comment-strings
 		       1
 		       *proof-script-pprint-dispatch*))
+
+(defun protect-emacs-output* (string pos &optional result)
+  (if (< pos (length string))
+      (protect-emacs-output*
+       string
+       (1+ pos)
+       (case (char string pos)
+	 (#\& (append '(#\& #\\) result))
+	 (#\\ (append '(#\\ #\\) result))
+	 (#\" (append '(#\" #\\) result))
+	 (#\newline (append '(#\n #\\) result))
+	 (t   (cons (char string pos) result))))
+      (coerce (nreverse result) 'string)))

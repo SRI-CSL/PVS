@@ -528,7 +528,12 @@ AUTO-REWRITE-THEORY, or AUTO-REWRITE-THEORIES. E.g.,
   "The strategy used for cond-coverage TCCs"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
-(defstep tcc (&optional (defs !))
+(defhelper monotonicity-tcc ()
+  (tcc$ explicit)
+  "The strategy used for monotonicity TCCs"
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
+(defhelper tcc (&optional (defs !))
   (grind$ :defs defs)
   "The guts of the tcc-strategy defined as (GRIND :DEFS DEFS).
 Does auto-rewrite-explicit, then applies skolem!, inst?, lift-if,
@@ -542,7 +547,7 @@ bddsimp, and assert, until nothing works.  DEFS is either
     "Trying repeated skolemization, instantiation, and if-lifting")
 
 ;;NSH(12.15.94): For backward compatibility.
-(defstep tcc-bdd (&optional (defs !))
+(defhelper tcc-bdd (&optional (defs !))
   (grind$ :defs defs)
   "Obsolete - subsumed by (TCC)."
   "Trying repeated skolemization, instantiation, and if-lifting")
@@ -3562,29 +3567,6 @@ fnums."
 KEEP-FNUMS.  Useful when all but a few formulas need to be hidden."
   "Keeping ~a and hiding ~a")
 
-(defstep skolem_inst (&optional (sk_fnum *) (inst_fnum *))
-  (let ((sk_fnum (find-!quant sk_fnum *ps*))
-	(sforms (select-seq (s-forms (current-goal *ps*))(list sk_fnum)))
-	(bindings (when sforms (seq-form-bindings (formula (car sforms)))))
-	(newterms (fill-up-terms sk_fnum nil *ps*))
-	(inst_fnums (gather-fnums
-		     (s-forms (current-goal *ps*))
-		     inst_fnum nil
-		     #'(lambda (sform)
-			 (and (exists-sform? sform)
-			      (eql (length (seq-form-bindings (formula sform)))
-				   (length newterms))
-			      (subsetp (seq-form-bindings (formula sform))
-				       bindings
-				       :test #'same-id)))))
-	(inst_fnum (when inst_fnums (car inst_fnums))))
-    (if inst_fnums
-	(then (skolem sk_fnum newterms)
-	      (inst inst_fnum :terms newterms))
-	(skip-msg "Couldn't find matching top-level quantifiers.")))
-    ""
-    "Simultaneously skolemizing and instantiating with skolem constants")
-
 (defstep flatten (&rest fnums) (flatten-disjunct fnums nil)
  "Disjunctively simplifies chosen formulas.  It simplifies 
 top-level antecedent conjunctions, equivalences, and negations, and
@@ -3601,7 +3583,7 @@ succedent disjunctions, implications, and negations from the sequent."
 	(cuthstr (string (id cuth)))
 	(init-real-time (get-internal-real-time))
 	(init-run-time (get-run-time)))
-    (then* (skolem!)
+    (then* (skolem-typepred)
 	   (install-rewrites$ :defs defs :theories theories
 			      :rewrites rewrites :exclude exclude)
 	   (auto-rewrite-theory cuthstr :always? T)
@@ -3609,6 +3591,7 @@ succedent disjunctions, implications, and negations from the sequent."
 	   (auto-rewrite-theory "fairctlops" :defs T :always? !!)
 	   (auto-rewrite-theory "Fairctlops" :defs T :always? !!)
 	   (auto-rewrite "/=")
+	   (auto-rewrite "K_conversion")
 	   (stop-rewrite "mucalculus.mu" "mucalculus.nu"
 			 "Reachable.Reachable")
 	   (rewrite-msg-off)
