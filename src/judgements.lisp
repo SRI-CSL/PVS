@@ -497,7 +497,7 @@
       (let ((jthinst (mk-modname (id (module judgement))
 		       (mapcar #'(lambda (a) (mk-actual (cdr a)))
 			 bindings))))
-	(assert (fully-instantiated? jthinst))
+	;;(assert (fully-instantiated? jthinst))
 	(subst-mod-params (judgement-type judgement) jthinst)))))
 
 (defmethod no-dep-bindings ((te funtype))
@@ -590,9 +590,9 @@
 	 (domains (operator-domain* jtype arguments nil))
 	 (range (operator-range* jtype arguments)))
     (when (length= argtypes (formals jdecl))
-      (assert (length= argtypes domains))
-      (assert (length= argtypes rdomains))
-      (assert (length= argtypes arguments))
+      ;;(assert (length= argtypes domains))
+      ;;(assert (length= argtypes rdomains))
+      ;;(assert (length= argtypes arguments))
       (compute-appl-judgement-range-type
        arguments argtypes rdomains domains range))))
 
@@ -1489,14 +1489,14 @@
 ;;; already known, in which case it does nothing.
 
 (defun add-to-known-subtypes (atype etype)
-  (let ((aty (if (typep atype 'dep-binding) (type atype) atype))
-	(ety (if (typep etype 'dep-binding) (type etype) etype)))
-    (unless (subtype-of? aty ety)
+  (let* ((aty (if (typep atype 'dep-binding) (type atype) atype))
+	 (ety (if (typep etype 'dep-binding) (type etype) etype))
+	 (entry (get-known-subtypes aty)))
+    (unless (member ety (cdr entry) :test #'tc-eq)
       (remove-compatible-subtype-of-hash-entries etype)
-      (let ((entry (get-known-subtypes aty)))
-	(if (null entry)
-	    (push (list aty ety) (known-subtypes *current-context*))
-	    (push ety (cdr entry)))))))
+      (if (null entry)
+	  (push (list aty ety) (known-subtypes *current-context*))
+	  (push ety (cdr entry))))))
 
 
 ;;; We remove the compatible *subtype-of-hash* that return nil, as the
@@ -1596,50 +1596,84 @@
 (defun known-subtype-of? (t1 t2)
   (let ((it (cons t1 t2)))
     (unless (member it *subtypes-seen* :test #'tc-eq)
-      (let ((*subtypes-seen* (cons it *subtypes-seen*))
-	    (known-subtypes (find-known-subtypes t1)))
-	(some #'(lambda (ks) (subtype-of*? ks t2))
-	      known-subtypes)))))
+      (let ((*subtypes-seen* (cons it *subtypes-seen*)))
+	(check-known-subtypes t1 t2)))))
 
-(defun find-known-subtypes (type-expr)
-  (find-known-subtypes* type-expr (known-subtypes *current-context*) nil))
+(defun check-known-subtypes (t1 t2)
+  (check-known-subtypes* t1 t2 (known-subtypes *current-context*)))
 
-(defun find-known-subtypes* (type-expr known-subtypes found-subtypes)
-  (if (null known-subtypes)
-      (reverse found-subtypes)
-      (let ((subst (if (memq (caar known-subtypes) *subtypes-matched*)
-		       'fail
-		       (subtype-of-test type-expr (caar known-subtypes)))))
-	(unless (eq subst 'fail)
-	  (push (caar known-subtypes) *subtypes-matched*))
-	(find-known-subtypes*
-	 type-expr
-	 (cdr known-subtypes)
-	 (if (eq subst 'fail)
-	     found-subtypes
-	     (append found-subtypes
-		     (substit (cdar known-subtypes) subst)))))))
+(defun check-known-subtypes* (t1 t2 known-subtypes)
+  (when known-subtypes
+    (or (subtype-of-test t1 t2 (car known-subtypes))
+	(check-known-subtypes* t1 t2 (cdr known-subtypes)))))
 
 (defvar *subtype-of-tests* nil)
 
-(defun subtype-of-test (tt1 tt2)
-  (if (freevars tt2)
-      (let ((subst (simple-match tt2 tt1)))
-	(if (and (not (eq subst 'fail))
-		 (every #'(lambda (sub)
-			    (unless (memq (cdr sub) *subtype-of-tests*)
-			      (let* ((*subtype-of-tests*
-				      (cons (cdr sub) *subtype-of-tests*))
-				     (stypes (judgement-types+ (cdr sub))))
-				(some #'(lambda (jty)
-					  (subtype-of? jty (type (car sub))))
-				      stypes))))
-			subst))
-	    subst
-	    'fail))
-      (if (tc-eq tt1 tt2)
-	  nil
-	  'fail)))
+;;; ksubtypes is of the form (T T1 T2 T3 ...) and represents that T is a
+;;; known subtype of Ti.  We check if tt1 matches T, where match means
+;;; that substitutions can be found for the free variables and free
+;;; parameters occuring in T s.t. tt1 is tc-eq to the substituted form of
+;;; T.  If it does match, then for each Ti the same substitution is done,
+;;; and it is checked if this is a subtype-of*? tt2.
+(defun subtype-of-test (tt1 tt2 ksubtypes)
+  (if (compatible? tt1 (car ksubtypes))
+      (let* ((frees (when (fully-instantiated? tt1)
+		      (mapcar #'list
+			(remove-if #'(lambda (x)
+				       (eq (module x) (current-theory)))
+			  (free-params (car ksubtypes))))))
+	     (bindings (when frees (tc-match tt1 (car ksubtypes) frees)))
+	     (thinst (subst-theory-inst-from-free-params bindings))
+	     (kt (if frees
+		     (when thinst
+		       (subst-mod-params (car ksubtypes) thinst))
+		     (car ksubtypes))))
+	(when kt
+	  (let ((subst (when (freevars kt) (simple-match kt tt1))))
+	    (when (if subst
+		      (and (not (eq subst 'fail))
+			   (every
+			    #'(lambda (sub)
+				(unless (memq (cdr sub) *subtype-of-tests*)
+				  (let* ((*subtype-of-tests*
+					  (cons (cdr sub) *subtype-of-tests*))
+					 (stypes (judgement-types+ (cdr sub))))
+				    (some #'(lambda (jty)
+					      (subtype-of? jty (type (car sub))))
+					  stypes))))
+			    subst))
+		      (tc-eq tt1 kt))
+	      (some #'(lambda (ks)
+			(subtype-of*?
+			 (substit (if thinst
+				      (subst-mod-params ks thinst)
+				      ks)
+			   subst)
+			 tt2))
+		    (cdr ksubtypes))))))))
+
+(defun subst-theory-inst-from-free-params (bindings)
+  (when (and bindings
+	     (every #'cdr bindings))
+    (let* ((th (module (caar bindings)))
+	   (nbindings (mapcar #'(lambda (elt)
+				  (cons (car elt)
+					(if (actual? (cdr elt))
+					    (cdr elt)
+					    (mk-actual (cdr elt)))))
+			bindings))
+	   (thinst (mk-modname (id th)
+		     (mapcar #'(lambda (fp)
+				 (or (cdr (assq fp nbindings))
+				     (mk-res-actual
+				      (mk-name-expr (id fp)
+					nil nil
+					(make-resolution fp (mk-modname (id th))))
+				      th)))
+		       (formals-sans-usings th)))))
+      (when (fully-instantiated? thinst)
+	thinst))))
+    
 
 (defun simple-match (ex inst)
   (simple-match* ex inst nil nil))
