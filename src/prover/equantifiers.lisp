@@ -355,7 +355,7 @@ Please provide skolem constants for these variables." overlap)
 		  (or (and (exists-expr? (formula sform))
 			   (eql (length (bindings (formula sform)))
 				(length terms)))
-		      (and (not-expr? (formula sform))
+		      (and (negation? (formula sform))
 			   (forall-expr?
 			    (args1 (formula sform)))
 			   (eql (length (bindings
@@ -450,7 +450,7 @@ Please provide skolem constants for these variables." overlap)
 
 (defun quant-step-sform (ps sform terms copy?)
   (let* ((fmla (formula sform))
-	 (sign (not (not-expr? fmla)))
+	 (sign (not (negation? fmla)))
 	 (body (if sign fmla (args1 fmla)))
 	 (terms (if (listp terms) terms (list terms)))
 	 (instantiable?
@@ -480,7 +480,7 @@ Please provide skolem constants for these variables." overlap)
 
 (defun skolem-step-sform (ps sform  new-context &optional terms)
   (let* ((fmla (formula sform))
-	 (sign (not (not-expr? fmla)))
+	 (sign (not (negation? fmla)))
 	 (body (if sign fmla (args1 fmla)))
 	 (skolemizable? (or (and sign (forall-expr? body))
 			   (and (not sign)(exists-expr? body))))
@@ -506,7 +506,7 @@ Please provide skolem constants for these variables." overlap)
 (defun find-all-sformnums (sforms sformnums pred
 				  &optional (pos 1)(neg -1)(acc nil))
   (cond ((null sforms) (nreverse acc))
-	(t (let* ((sign (not (not-expr? (formula (car sforms)))))
+	(t (let* ((sign (not (negation? (formula (car sforms)))))
 		  (newpos (if sign (1+ pos) pos))
 		  (newneg (if sign neg (1- neg)))
 		  (newacc (if (and (in-sformnums?
@@ -527,7 +527,7 @@ Please provide skolem constants for these variables." overlap)
 
 (defun find-sform* (sforms sformnum pred pos neg)
   (cond ((null sforms) nil)
-	((not-expr? (formula (car sforms)))
+	((negation? (formula (car sforms)))
 	 (if (and (or (memq sformnum '(* -))
 		      (equal sformnum neg)
 		      (and (label (car sforms))
@@ -627,7 +627,7 @@ Please provide skolem constants for these variables." overlap)
 					    (eql (length (bindings
 							  (formula sform)))
 						 (length terms)))
-				       (and (not-expr? (formula sform))
+				       (and (negation? (formula sform))
 					    (exists-expr?
 					     (args1 (formula sform)))
 					    (eql (length (bindings
@@ -649,7 +649,7 @@ Please provide skolem constants for these variables." overlap)
 				  (list sformnum))
 		(if (eq signal 'X)(values 'X nil nil)
 		    (if (some #'(lambda (fmla)
-				  (let* ((sign (not (not-expr? fmla)))
+				  (let* ((sign (not (negation? fmla)))
 					 (body (if sign
 						   fmla
 						   (args1 fmla)))
@@ -685,7 +685,7 @@ Please provide skolem constants for these variables." overlap)
   (find-sform (s-forms (current-goal ps)) sformnum
 	      #'(lambda (sform)
 		  (or (forall-expr? (formula sform))
-		      (and (not-expr? (formula sform))
+		      (and (negation? (formula sform))
 			   (exists-expr?
 			    (args1 (formula sform))))))))
 
@@ -760,7 +760,7 @@ Please provide skolem constants for these variables." overlap)
 
 
 ;      (let ((formula (when sforms
-;		       (if (not-expr? (formula (car sforms)))
+;		       (if (negation? (formula (car sforms)))
 ;			   (args1 (formula (car sforms)))
 ;			   (formula (car sforms))))))
 ;    (if (and sforms
@@ -791,7 +791,7 @@ Please provide skolem constants for these variables." overlap)
 				     (formula sform) T)
 				    :test #'(lambda (x y)
 					      (format-equal (id x)(id y)))))
-		      (and (not-expr? (formula sform))
+		      (and (negation? (formula sform))
 			   (forall-expr?
 			    (args1 (formula sform)))
 			   (subsetp subnames
@@ -897,13 +897,13 @@ Please provide skolem constants for these variables." overlap)
 
 (defun forall-sform?  (sform)
   (let ((formula  (formula sform)))
-    (if (not-expr? formula)
+    (if (negation? formula)
 	(exists-expr? (args1 formula))
 	(forall-expr? formula))))
 
 (defun exists-sform? (sform)
   (let ((formula  (formula sform)))
-    (if (not-expr? formula)
+    (if (negation? formula)
 	(forall-expr? (args1 formula))
 	(exists-expr? formula))))
 
@@ -917,7 +917,7 @@ quantified  formula.  Please provide partial instantiation.")
 	   (format-if "~%Given substitution ~a
 is not of the form: (<var> <term>...)" subst)
 	   nil)
-	  ((not (quant-expr? (if (not-expr? (formula (car sforms)))
+	  ((not (quant-expr? (if (negation? (formula (car sforms)))
 				 (args1 (formula (car sforms)))
 				 (formula (car sforms)))))
 	   (find-quant-terms* (cdr sforms) subst where if-match
@@ -926,7 +926,7 @@ is not of the form: (<var> <term>...)" subst)
 	   (let* 
 	       ((sform  (car sforms))
 		(formula  (formula sform))
-		(sign (not (not-expr? formula)))
+		(sign (not (negation? formula)))
 		(fmla (quant-body* (if sign formula (args1 formula))
 				   sign))
 		(boundvars (quant-bndvars* (if sign formula (args1 formula))
@@ -1524,15 +1524,15 @@ is not of the form: (<var> <term>...)" subst)
 ;	((consp fmla)
 ;	 (find-templates (car fmla) boundvars
 ;			 (find-templates (cdr fmla) boundvars accum)))
-;	((or (not-expr? fmla)
-;	     (and-expr? fmla)
-;	     (or-expr? fmla)
-;	     (iff-expr? fmla))
+;	((or (negation? fmla)
+;	     (conjunction? fmla)
+;	     (disjunction? fmla)
+;	     (iff? fmla))
 ;	 (find-templates (arguments fmla) boundvars accum))
-;	((or (implies-expr? fmla)
+;	((or (implication? fmla)
 ;	     (branch? fmla))
 ;	 (find-templates (reverse (arguments fmla)) boundvars accum))
-;	((or (equality? fmla)(inequality? fmla))
+;	((or (equation? fmla)(disequation? fmla))
 ;	 (append (when (subsetp boundvars
 ;			      (freevars fmla)
 ;			      :key #'declaration)

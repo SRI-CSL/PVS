@@ -86,7 +86,7 @@
 					&optional (pos 1)(neg -1)(acc nil))
   (if (null sforms)
       (nreverse acc)
-      (let* ((sign (not (not-expr? (formula (car sforms)))))
+      (let* ((sign (not (negation? (formula (car sforms)))))
 	     (newpos (if sign (1+ pos) pos))
 	     (newneg (if sign neg (1- neg)))
 	     (newacc (if (and (in-sformnums? (car sforms) pos neg sformnums)
@@ -101,7 +101,7 @@
   (let* ((simplifiable-sformnums
 	  (find-all-sformnums (s-forms sequent) sformnums
 			      #'(lambda (fmla)
-				  (if (not-expr? fmla)
+				  (if (negation? fmla)
 				      (connective-occurs? (args1 fmla))
 				      (connective-occurs? fmla)))))
 	 (other-sformnums
@@ -198,7 +198,7 @@
       (unit? rec)))
 
 (defun unit-derecognize (expr)
-  (if (not-expr? expr)
+  (if (negation? expr)
       (negate (unit-derecognize (args1 expr)))
       (if (application? expr)
 	  (let ((unit (unit-recognizer? (operator expr))))
@@ -219,7 +219,7 @@
 	    ((or (eq signal '?) *assert-typepreds*)
 	     ;;(break "assert-typepreds")
 	     (if (some #'(lambda (fmla)
-			   (let* ((sign (not (not-expr? fmla)))
+			   (let* ((sign (not (negation? fmla)))
 				  (body (if sign fmla (args1 fmla)))
 				  ;;(*update-occurs?* T)
 				  )
@@ -251,7 +251,7 @@
 (defun assert-typepreds (typepreds)
   (when (consp typepreds)
       (let* ((fmla (car typepreds))
-	     (sign (not (not-expr? fmla)))
+	     (sign (not (negation? fmla)))
 	     (body (if sign
 		       fmla
 		       (args1 fmla)))
@@ -281,7 +281,7 @@
 
 (defun assert-sform* (sform &optional rewrite-flag simplifiable?)
   (let* ((fmla (formula sform))
-	 (sign (not (not-expr? fmla)))
+	 (sign (not (negation? fmla)))
 	 (body (if sign fmla (args1 fmla)))
 	 (*bound-variables* nil)
 	 (*top-rewrite-hash* *rewrite-hash*))
@@ -291,7 +291,7 @@
      ;(break "0")
      (cond (rewrite-flag
 	    (multiple-value-bind (sig newbodypart)
-		(if (or (iff-expr? body)(equality? body))
+		(if (or (iff? body)(equation? body))
 		    (if (eq rewrite-flag 'RL)
 			(assert-if (args1 body))
 			(assert-if (args2 body)))
@@ -539,11 +539,11 @@
     (or ;;NSH(4.8.96) (negation? expr)
 	(implication? expr)(conjunction? expr)
 	(disjunction? expr)(iff? expr)
-;	(and (equality? expr)(typep (args1 expr) 'tuple-expr)
+;	(and (equation? expr)(typep (args1 expr) 'tuple-expr)
 ;	     (typep (args2 expr) 'tuple-expr))
-;	(and (equality? expr)(typep (args1 expr) 'record-expr)
+;	(and (equation? expr)(typep (args1 expr) 'record-expr)
 ;	     (typep (args2 expr) 'record-expr))
-;;	(and (equality? expr)(adt-subtype? (type (args1 expr)))
+;;	(and (equation? expr)(adt-subtype? (type (args1 expr)))
 ;;	     (adt-subtype? (type (args2 expr))))
 ;	(and (projection? (operator expr))
 ;	     (typep (args1 expr) 'tuple-expr))
@@ -611,7 +611,7 @@
 ;	(do-auto-rewrite (lcopy expr 'argument newarg) sig))))
   
 (defmethod assert-if-inside ((expr application))
-  (cond ((not-expr? expr)
+  (cond ((negation? expr)
 	 (multiple-value-bind (sig newarg)
 	     (assert-if-inside-sign (args1 expr) nil) ;;NSH(3.21.94) sign.
 	   (if (eq sig '?)
@@ -2002,9 +2002,9 @@
 		 ((tc-eq (car nargs)(cadr nargs))
 		  (values '? *true*))
 		 (t (do-auto-rewrite expr sig)))))
-	((equality? expr)
+	((equation? expr)
 	 (assert-equality expr newargs sig)) ;;NSH(8.9.95) newop gone
-	((inequality? expr) ;;NSH(4.22.97) should be disequality?
+	((disequation? expr)
 	 (assert-disequality expr newargs sig))
 	((function-update-redex? expr)
 	 (let ((result
@@ -2206,7 +2206,7 @@
 		 (values-assert-if '? *true* expr))
 		;;NSH(9.10.93) The case above is kept here so that assert-if-inside doesn't
 		;;remove something brought in by typepred.
-		((and (equality? expr);;moved here from
+		((and (equation? expr);;moved here from
 		      ;;assert-if-application so that
 		      ;;assert-if-inside does not
 		      ;;self-simplify antecedent

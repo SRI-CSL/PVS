@@ -567,7 +567,7 @@ Would you like to rerun the proof?~%")))
 
 (defun new-formula-nums (sforms par-sforms &optional (pos 1) (neg -1))
   (when sforms
-    (let* ((sign (not (not-expr? (formula (car sforms)))))
+    (let* ((sign (not (negation? (formula (car sforms)))))
 	   (result
 	    (if sign
 		(new-formula-nums (cdr sforms) par-sforms (1+ pos) neg)
@@ -1721,7 +1721,7 @@ Would you like to rerun the proof?~%")))
   
 (defun clean-goal (goal)
   (let ((new-s-forms (loop for sf in (s-forms goal)
-			   when (not (or (and (not-expr? (formula sf))
+			   when (not (or (and (negation? (formula sf))
 					      (tc-eq (args1 (formula sf))
 						     *true*))
 					 (tc-eq (formula sf) *false*)))
@@ -2214,7 +2214,7 @@ Would you like to rerun the proof?~%")))
 
 (defun find-pos-and-form (s-forms index)
   (if (consp s-forms)
-      (if  (not (not-expr? (formula (car s-forms))))
+      (if  (not (negation? (formula (car s-forms))))
 	   (if (and+form? (formula (car s-forms)))
 	       index
 	       (find-pos-and-form (cdr s-forms) (1+ index)))
@@ -2223,7 +2223,7 @@ Would you like to rerun the proof?~%")))
 
 (defun find-neg-and-form (s-forms index)
   (if (consp s-forms)
-      (if  (not-expr? (formula (car s-forms)))
+      (if  (negation? (formula (car s-forms)))
 	   (if (and+form? (formula (car s-forms)))
 	       index
 	       (find-neg-and-form (cdr s-forms) (1- index)))
@@ -2566,7 +2566,7 @@ Would you like to rerun the proof?~%")))
 
 (defun select-seq1 (seq nums pos neg)
        (if (consp seq)
-	   (if (not-expr? (formula (car seq)))
+	   (if (negation? (formula (car seq)))
 	       (if (or (memq neg nums)
 		       (and (label (car seq))
 			    (intersection (label (car seq))
@@ -2585,7 +2585,7 @@ Would you like to rerun the proof?~%")))
 
 (defun delete-seq1 (seq nums pos neg)
        (if (consp seq)
-	   (if (not-expr? (formula (car seq)))
+	   (if (negation? (formula (car seq)))
 	       (if (or (memq neg nums)
 		       (and (label (car seq))
 			    (intersection (label (car seq))
@@ -2606,10 +2606,10 @@ Would you like to rerun the proof?~%")))
   (let ((nums (cleanup-fnums nums)));;NSH(4.3.97)
     (cond ((eq nums '*) seq)
 	  ((eq nums '+) (loop for sform in seq
-			      when (not (not-expr? (formula sform)))
+			      when (not (negation? (formula sform)))
 			      collect sform))
 	  ((eq nums '-) (loop for sform in seq
-			      when (not-expr? (formula sform))
+			      when (negation? (formula sform))
 			      collect sform))
 ;	  ((or (integerp nums)(stringp nums)) ;;NSH(4.3.97)commented
 ;	   (select-seq1 seq (list nums) +1 -1))
@@ -2620,10 +2620,10 @@ Would you like to rerun the proof?~%")))
   (let ((nums (cleanup-fnums nums)));;NSH(4.3.97)
     (cond ((eq nums '*) NIL)
 	  ((eq nums '-) (loop for sform in seq
-			      when (not (not-expr? (formula sform)))
+			      when (not (negation? (formula sform)))
 			      collect sform))
 	  ((eq nums '+) (loop for sform in seq
-			      when (not-expr? (formula sform))
+			      when (negation? (formula sform))
 			      collect sform))
 	  ((consp nums) (delete-seq1 seq nums +1 -1))
 	  (t NIL))))
@@ -2641,7 +2641,7 @@ Would you like to rerun the proof?~%")))
 (defun gather-seq* (seq yesnums nonums
 		       pred pos neg)
    (cond ((null seq) nil)
-	 ((not-expr? (formula (car seq)))
+	 ((negation? (formula (car seq)))
 	  (if (and (in-sformnums? (car seq) pos neg yesnums)
 		   (not (in-sformnums? (car seq) pos neg nonums))
 		   (funcall pred (car seq)))
@@ -2687,10 +2687,10 @@ Would you like to rerun the proof?~%")))
 	      (current-goal ps)))))
 
 (defun pos-s-forms (s-forms)
-  (loop for sf in s-forms when (not (not-expr? (formula sf))) collect
+  (loop for sf in s-forms when (not (negation? (formula sf))) collect
 	sf))
 (defun neg-s-forms (s-forms)
-  (loop for sf in s-forms when  (not-expr? (formula sf)) collect
+  (loop for sf in s-forms when  (negation? (formula sf)) collect
 	sf))
 
 (defmethod print-object ((sform s-formula) stream)
@@ -2701,7 +2701,7 @@ Would you like to rerun the proof?~%")))
 
 (defun seq-formula (sform)
   (let ((fmla (formula sform)))
-    (if (not-expr? fmla)(args1 fmla)
+    (if (negation? fmla)(args1 fmla)
 	fmla)))
 
 (defun unparse-sform (sform)
@@ -3053,7 +3053,7 @@ Would you like to rerun the proof?~%")))
   (if (or (exists-expr? formula)
 	  (forall-expr? formula))
       (bindings formula)
-      (if (and (not-expr? formula)
+      (if (and (negation? formula)
 	       (or (exists-expr? (args1 formula))
 		   (forall-expr? (args1 formula))))
 	  (bindings (args1 formula))
