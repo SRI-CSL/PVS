@@ -68,9 +68,9 @@ a message to let the user know what is going on."
 	      (save-excursion
 		(goto-char end)
 		(insert ?\n)
-		(insert result))
+		(insert result))))
 	    ;; Display the output in the usual way.
-	    (lisp-display-output result)))
+	    ;;(lisp-display-output result)))
       result)))
 
 ;;;%%Eval
@@ -111,9 +111,9 @@ a message to let the user know what is going on."
   (let* ((form (lisp-defun-region-and-name))
 	 (result
 	  (eval-region-lisp (car form) (car (cdr form)) (or switch 'result)
-			    (format "Evaluating %s" (car (cdr (cdr form)))))))
+			    (format "Evaluating %s" (car (cdr (cdr form)))))))))
     ;; Display the returned value. -fmw
-    (lisp-display-output result)))
+    ;; no we don't... dave_sc ... (lisp-display-output result)))
 
 
 ;;;%%%And go

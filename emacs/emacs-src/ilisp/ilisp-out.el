@@ -86,10 +86,12 @@
 ;;; Popper replacement
 
 
-(defun ilisp-bury-output ()
+(defun ilisp-bury-output (&optional buffer)
   "Delete the typeout window, if any"
   (interactive)
-  (let* ((buffer (ilisp-output-buffer))
+  (let* ((buffer (or (and buffer
+			  (get-buffer buffer))
+		     (ilisp-output-buffer)))
 	 (window (and buffer (get-buffer-window buffer))))
     (if buffer
 	(bury-buffer buffer))
