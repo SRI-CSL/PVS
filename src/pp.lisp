@@ -1504,12 +1504,6 @@ bind tighter.")
       (write-char #\space)
       (pp* expression))))
 
-(defmethod separator ((ass assignment))
-  'ceq)
-
-(defmethod separator ((ass maplet))
-  'arr)
-
 (defmethod pp* ((ex table-expr))
   (with-slots (row-expr col-expr row-headings col-headings table-entries) ex
     (pp-table-expr row-expr col-expr row-headings col-headings table-entries)))
