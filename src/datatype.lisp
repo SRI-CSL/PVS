@@ -654,13 +654,8 @@ generated")
     (setf (generated-by tdecl) (id adt))
     (setf (adt-type-name adt) (type-value tdecl))))
 
-(defvar *common-accessor-types* nil)
-
 (defun generate-adt-decls (adt)
   (let* ((ptype (mk-predtype (adt-type-name adt)))
-	 (*common-accessor-types* nil)
-	 (common-accessors (when (cdr (constructors adt))
-			     (generate-common-accessors adt)))
 	 (last (car (last (constructors adt)))))
     (unless (inline-datatype? adt)
       (dolist (fm (formals adt))
@@ -674,8 +669,8 @@ generated")
 	(setf (chain? rec) (not (eq c last)))))
     (generate-adt-subtypes adt)
     (dolist (c (constructors adt))
-      (generate-adt-constructor c)
-      (generate-accessors c adt common-accessors))))
+      (generate-adt-constructor c))
+    (generate-accessors adt)))
 
 
 ;;; Generate the subtype type declarations
@@ -683,12 +678,14 @@ generated")
 (defmethod generate-adt-subtypes ((adt recursive-type))
   nil)
 
-(defmethod generate-adt-subtypes ((adt datatype-with-subtypes))
+(defmethod generate-adt-subtypes ((adt recursive-type-with-subtypes))
   (dolist (subtype (subtypes adt))
+    ;; First generate the predicate
     (let* ((pred-decl (mk-adt-subtype-pred subtype (constructors adt)))
 	   (*adt-decl* pred-decl))
       (typecheck-adt-decl pred-decl)
       (put-decl pred-decl (current-declarations-hash))
+      ;; Then the (sub)type declaration
       (let* ((sdecl (mk-adt-subtype-decl
 		     subtype (mk-adt-subtype subtype (constructors adt))))
 	     (*adt-decl* sdecl))
@@ -696,6 +693,10 @@ generated")
 	(put-decl sdecl (current-declarations-hash))
 	(typecheck* subtype nil nil nil))))
   (let ((*generate-tccs* 'none))
+    ;; Now make sure the subtype field of each constructor is typechecked
+    (dolist (c (constructors adt))
+      (typecheck* (subtype c) nil nil nil))
+    ;; Finally set up judgements for subtypes with more than one constructor
     (dolist (c (constructors adt))
       (when (multiple-recognizer-subtypes? c (constructors adt))
 	(let ((jdecl (make-instance 'subtype-judgement
@@ -824,24 +825,187 @@ generated")
 
 ;;; Generate the accessor constant declarations.
 
-(defun generate-common-accessors (adt)
-  (dolist (c (constructors adt))
-    (dolist (a (arguments c))
-      (let* ((copy-type (pc-parse (unparse (declared-type a) :string t)
-				  'type-expr))
-	     (type (with-no-type-errors (typecheck copy-type))))
-	(when type (push (cons a type) *common-accessor-types*)))))
-  (let* ((args (arguments (car (constructors adt))))
-	 (common-args
-	  (remove-if-not
-	      #'(lambda (arg)
-		  (and (assq arg *common-accessor-types*)
-		       (every #'(lambda (c)
-				  (member arg (arguments c)
-					  :test #'same-adt-arg))
-			      (cdr (constructors adt)))))
-	    args)))
-    (generate-common-accessors* common-args args adt)))
+(defun generate-accessors (adt)
+  (let* ((common-accessors (collect-common-accessors adt))
+	 (acc-decls (mapcar #'(lambda (entry)
+				(generate-accessor entry adt))
+		      common-accessors)))
+    (dolist (c (constructors adt))
+      (setf (acc-decls c)
+	    (find-corresponding-acc-decls
+	     (arguments c) common-accessors acc-decls)))
+    acc-decls))
+
+(defun find-corresponding-acc-decls (accs common-accessors acc-decls
+					  &optional result)
+  (if (null accs)
+      (nreverse result)
+      (let ((corr-act (find-corresponding-acc-decl
+		       (car accs) common-accessors acc-decls)))
+	(assert corr-act)
+	(find-corresponding-acc-decls
+	 (cdr accs)
+	 common-accessors
+	 acc-decls
+	 (cons corr-act result)))))
+
+(defun find-corresponding-acc-decl (acc common-accessors acc-decls)
+  (if (memq acc (cdar common-accessors))
+      (car acc-decls)
+      (find-corresponding-acc-decl acc
+				   (cdr common-accessors) (cdr acc-decls))))
+
+(defun generate-accessor (entry adt)
+  ;; entry is of the form ((adtdecl range-type deps) adtdecl ...)
+  (let* ((domain (get-accessor-domain-type entry adt))
+	 (range (cadar entry))
+	 (acc-type (make-accessor-funtype domain range (caddar entry)))
+	 (acc-decl (mk-adt-accessor-decl (id (caar entry)) acc-type)))
+    (typecheck-adt-decl acc-decl)
+    acc-decl))
+
+(defun make-accessor-funtype (domain range deps)
+  (if deps
+      (let* ((dep-id (make-new-variable '|x| (list domain range)))
+	     (dep-binding (mk-dep-binding dep-id domain))
+	     (dep-name (make-variable-expr dep-binding))
+	     (*bound-variables* (cons dep-binding *bound-variables*))
+	     (subst-range (substit range
+			    (pairlis
+			     (mapcar #'declaration deps)
+			     (mapcar #'(lambda (dep)
+					 (typecheck* (mk-application (id dep)
+						       dep-name)
+						     (type dep) nil nil))
+			       deps)))))
+	(mk-funtype dep-binding subst-range))
+      (mk-funtype domain range)))
+
+(defun get-accessor-domain-type (entry adt)
+  (if (= (length (cdr entry)) (length (constructors adt)))
+      (mk-type-name (id adt))
+      (if (subtypes adt)
+	  (multiple-value-bind (subtypes recognizers)
+	      (get-accessor-covered-subtypes (copy-list (cdr entry)) adt)
+	    (get-accessor-domain-type* subtypes recognizers))
+	  (get-accessor-domain-type* nil (cdr entry)))))
+
+(defun get-accessor-domain-type* (subtypes recognizers)
+  (cond ((and (singleton? subtypes)
+	      (null recognizers))
+	 (car subtypes))
+	((and (singleton? recognizers)
+	      (null subtypes))
+	 (let ((*generate-tccs* 'none))
+	   (typecheck* (mk-expr-as-type (mk-name-expr (car recognizers)))
+		       nil nil nil)))
+	(t
+	 (let* ((*generate-tccs* 'none)
+		(preds (append subtypes recognizers))
+		(var (make-new-variable '|x| preds))
+		(bd (mk-bind-decl var (adt-type-name *adt*)))
+		(appreds (mapcar #'(lambda (p)
+				     (if (subtype? p)
+					 (mk-application (id (print-type p))
+					   (mk-name-expr var))
+					 (mk-application p
+					   (mk-name-expr var))))
+			   preds))
+		(pred (mk-lambda-expr (list bd) (mk-disjunction appreds)))
+		(subtype (mk-setsubtype (adt-type-name *adt*) pred)))
+	   (typecheck* subtype nil nil nil)))))
+
+(defun get-accessor-covered-subtypes (accs adt &optional subtypes recs)
+  (if (null accs)
+      (values (nreverse subtypes) (nreverse recs))
+      (let ((constr (find (car accs) (constructors adt)
+			  :key #'arguments :test #'memq)))
+	(assert constr)
+	(multiple-value-bind (subtype-accs subtype-recs covers?)
+	    (get-accessors-for-subtype
+	     (car accs) (subtype constr) (constructors adt))
+	  ;; subtype-accs has all accessors of that name for the given subtype
+	  ;; covers? is true if every constructor of that subtype has an
+	  ;; accessor of that name
+	  (multiple-value-bind (in-accs out-accs)
+	      (split-on #'(lambda (acc) (memq acc subtype-accs)) accs)
+	    (if covers?
+		;; We got it covered - can use the subtype
+		(get-accessor-covered-subtypes
+		 out-accs
+		 adt
+		 (cons (type-value (declaration (subtype constr))) subtypes)
+		 recs)
+		(get-accessor-covered-subtypes
+		 out-accs
+		 adt
+		 subtypes
+		 (append recs (reverse subtype-recs)))))))))
+
+(defun get-accessors-for-subtype (acc subtype constructors
+				      &optional accs recs (covered? t))
+  (if (null constructors)
+      (values (nreverse accs) (nreverse recs) covered?)
+      (if (same-id (subtype (car constructors)) subtype)
+	  (let ((sim-acc (find acc (arguments (car constructors))
+			       :test #'same-id)))
+	    (if sim-acc
+		(get-accessors-for-subtype
+		 acc subtype (cdr constructors)
+		 (cons sim-acc accs)
+		 (cons (recognizer (car constructors)) recs)
+		 covered?)
+		(get-accessors-for-subtype acc subtype (cdr constructors)
+					   accs recs nil)))
+	  (get-accessors-for-subtype acc subtype (cdr constructors)
+				     accs recs covered?))))
+
+(defun collect-common-accessors (adt)
+  (let ((common-accessors nil))
+    (dolist (c (constructors adt))
+      (let ((*bound-variables* nil))
+	(dolist (a (arguments c))
+	  (let* ((copy-type (pc-parse (unparse (declared-type a) :string t)
+			      'type-expr))
+		 (type (with-no-type-errors (typecheck copy-type))))
+	    (assert type)
+	    (push (typecheck* (mk-dep-binding (id a) copy-type type)
+			      nil nil nil)
+		  *bound-variables*)
+	    (let* ((arg&type (list a type
+				   (sort-freevars (freevars type))))
+		   (entry (assoc arg&type common-accessors
+				 :test #'same-arg&type)))
+	      (if entry
+		  (nconc entry (list a))
+		  (setq common-accessors
+			(nconc common-accessors
+			       (list (list arg&type a))))))))))
+    common-accessors))
+
+(defun same-arg&type (a&t1 a&t2)
+  (and (same-id (car a&t1) (car a&t2))
+       (multiple-value-bind (bindings mismatch?)
+	   (collect-same-arg&type-bindings (caddr a&t1) (caddr a&t2))
+	 (unless mismatch?
+	   (tc-eq-with-bindings (cadr a&t1) (cadr a&t2) bindings)))))
+
+(defun collect-same-arg&type-bindings (deps1 deps2 &optional bindings)
+  ;; bindings are sorted already
+  (if (null deps1)
+      (if (null deps2)
+	  bindings
+	  (values nil t))
+      (if (and deps2
+	       (same-id (car deps1) (car deps2))
+	       (tc-eq-with-bindings (type (car deps1)) (type (car deps2))
+				    bindings))
+	  (collect-same-arg&type-bindings
+	   (cdr deps1) (cdr deps2)
+	   (acons (declaration (car deps1)) (declaration (car deps2))
+		  bindings))
+	  (values nil t))))
+
 
 (defun same-adt-arg (a1 a2)
   (and (same-id a1 a2)
@@ -849,114 +1013,9 @@ generated")
 	     (t2 (cdr (assq a2 *common-accessor-types*))))
 	 (and t1 t2 (tc-eq t1 t2)))))
 
-(defun generate-common-accessors* (common-args args adt &optional decls)
-  (if (null common-args)
-      (nreverse decls)
-      (let* ((arg (car common-args))
-	     (dep? (some #'(lambda (a) (id-occurs-in (id a) arg))
-			 (remove arg args)))
-	     (dtype (if dep?
-			(mk-dep-binding (get-adt-var adt)
-					(mk-type-name (id adt)))
-			(mk-type-name (id adt))))
-	     (ftype (mk-funtype (list dtype)
-				(cdr (assq arg *common-accessor-types*))))
-	     (cdecl (mk-adt-accessor-decl (id arg) ftype)))
-	(typecheck-adt-decl cdecl)
-	(generate-common-accessors* (cdr common-args) args adt
-				    (cons (cons arg cdecl) decls)))))
-
-(defun generate-accessors (c adt comacc)
-  (let* ((rtype (mk-recognizer-type (recognizer c) adt))
-	 (accdecls (generate-accessors* (arguments c)
-					(get-adt-var adt)
-					rtype
-					comacc)))
-    (mapc #'add-adt-decl accdecls)
-    (setf (acc-decls c) accdecls)))
-
 (defun mk-recognizer-type (rec-id adt)
-  (let* ((rname (mk-name-expr rec-id))
-	 (rpred (if (> (count-if #'(lambda (d)
-				     (eq (module d) (current-theory)))
-				 (gethash rec-id (current-declarations-hash)))
-		       1)
-		    (make-instance 'coercion
-		      'operator (mk-lambda-expr
-				    (list (mk-bind-decl '|x|
-					    (mk-funtype
-					     (mk-type-name (id adt))
-					     (copy *boolean*))))
-				  (mk-name-expr '|x|))
-		      'argument rname)
-		    rname)))
+  (let ((rpred (mk-name-expr rec-id)))
     (mk-expr-as-type rpred)))
-
-(defun generate-accessors* (args var rtype comacc &optional pargs result)
-  (if (null args)
-      (nreverse result)
-      (let ((cacc (assoc (car args) comacc :test #'same-adt-arg)))
-	(if cacc
-	    (let* ((bd (typecheck* (mk-dep-binding (id (car args))
-						   (declared-type (car args))
-						   (type (car args)))
-				   nil nil nil))
-		   (*bound-variables* (cons bd *bound-variables*)))
-	      (generate-accessors* (cdr args) var rtype comacc
-				   (cons (car args) pargs)
-				   (cons (cdr cacc) result)))
-	    (let* ((dtype (declared-type (car args)))
-		   (type (typecheck* (pc-parse (unparse dtype :string t)
-					       'type-expr)
-				     nil nil nil))
-		   (ftype (make-accessor-funtype type pargs rtype dtype var
-						 result))
-		   (cdecl (mk-adt-accessor-decl (id (car args)) ftype)))
-	      (typecheck-adt-decl cdecl 'no)
-	      (let* ((bd (typecheck* (mk-dep-binding (id (car args)) dtype
-						     (type (car args)))
-				     nil nil nil))
-		     (*bound-variables* (cons bd *bound-variables*)))
-		(generate-accessors* (cdr args)
-				     var rtype comacc
-				     (cons (car args) pargs)
-				     (cons cdecl result))))))))
-
-(defun make-accessor-funtype (type pargs rtype dtype var accdecls)
-  (if (freevars type)
-      (let* ((*generate-tccs* 'none)
-	     (dom (typecheck* (mk-dep-binding var rtype) nil nil nil))
-	     (*bound-variables* (cons dom *bound-variables*))
-	     (vname (mk-name-expr var nil nil
-				  (make-resolution dom
-				    (current-theory-name) rtype))))
-	(dolist (ad accdecls)
-	  (put-decl ad (current-declarations-hash)))
-	(let* ((rng (subst-dependent-accessor-type vname pargs dtype))
-	       (ftype (mk-funtype (list dom) rng)))
-	  (pc-parse (unparse ftype :string t) 'type-expr)))
-      (mk-funtype (list rtype) dtype)))
-
-(defun subst-dependent-accessor-type (var pargs dtype)
-  (let ((*parsing-or-unparsing* t))
-    (gensubst dtype
-      #'(lambda (x) (subst-dependent-accessor-type! x var pargs))
-      #'(lambda (x) (subst-dependent-accessor-type? x var pargs)))))
-
-(defmethod subst-dependent-accessor-type? ((ex name-expr) var pargs)
-  (and (typep (declaration ex) 'dep-binding)
-       (member (id ex) pargs :test #'same-id)))
-
-(defmethod subst-dependent-accessor-type? (ex var pargs)
-  (declare (ignore ex var pargs))
-  nil)
-
-(defmethod subst-dependent-accessor-type! ((ex name-expr) var pargs)
-  (declare (ignore pargs))
-  (let ((appl (mk-application (lcopy ex 'parens 0) var)))
-    (setf (parens appl) (parens ex))
-    (typecheck* (pc-parse (unparse appl :string t) 'expr)
-		(type ex) nil nil)))
 
 
 ;;; Ord function
