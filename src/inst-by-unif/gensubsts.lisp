@@ -70,14 +70,20 @@
       (let ((new-score-substs
 	     (destructuring-bind (hyps concs) (car sequents)
 	       (let ((*state* (init-dp-state
-			       (mapcar #'(lambda (trm)
-					   (equality-p trm))
-				 hyps))))
+			       (collect-equalities hyps))))
 		 (declare (special *state*))
 		 (score-substs-union score-substs
 				     (gensubsts-sequent hyps concs
 							(extended-score-substs score-substs)))))))
 	(gensubsts-sequents (cdr sequents) new-score-substs))))
+
+(defun collect-equalities (fmlas &optional acc)
+  (if (null fmlas) (nreverse acc)
+    (let* ((fmla (car fmlas))
+	   (newacc (if (equality-p fmla)
+		       (cons fmla acc)
+		     acc)))
+      (collect-equalities (cdr fmlas) newacc))))
 			 
 (defun extended-score-substs (score-substs)
   (if (some #'(lambda (score-subst)
