@@ -167,7 +167,7 @@
 	     (add-to-prtype-hash  newconst expr))
 	   newconst))
 	(t (add-to-local-prtype-hash (id expr) expr)
-	   (dp::mk-constant (id expr)))))
+	   (dp::mk-variable (id expr)))))
 
 ;(defmethod normalize-name-expr-actuals ((expr name-expr))
 ;  (with-slots (resolutions) expr
