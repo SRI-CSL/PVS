@@ -258,16 +258,19 @@
    (t (dp-find term cong-state))))
 
 (defun canon (term cong-state &optional (no-mod nil))
-  (cond
-   ((seen term cong-state)
-    (let ((t-f (find-top term cong-state))
-	  (t-c (canon* term cong-state no-mod)))
-      (cond
-       ((eq t-f t-c) t-f)
-       (*use-t-c* t-c)
-       (t (break "Please contact Cyrluk and do a :cont 0 to continue")
-	  t-c))))
-   (t (canon* term cong-state no-mod))))
+  (let ((canon-hash (canon-hash term cong-state)))
+    (cond
+     (canon-hash
+      (let ((t-f (find-top canon-hash cong-state))
+	    (t-c (canon* term cong-state no-mod)))
+	(cond
+	 ((eq t-f t-c) t-f)
+	 (*use-t-c* t-c)
+	 (t (break "Please contact Cyrluk and do a :cont 0 to continue")
+	    t-c))))
+     (t (let ((result (canon* term cong-state no-mod)))
+	  (setf (canon-hash term cong-state) canon-hash)
+	  result)))))
 
 (defun canon* (term cong-state &optional (no-mod nil))
   (canonsig-canon (signature term cong-state no-mod) cong-state no-mod))
