@@ -2030,7 +2030,8 @@
     (dolist (file pvs-files)
       (let ((fname (pathname-name file)))
 	(unless (gethash fname *pvs-files*)
-	  (let ((theories (ignore-errors (parse :file file))))
+	  (let ((theories (ignore-errors (with-no-parse-errors
+					  (parse :file file)))))
 	    (when (member (id theoryref) theories :key #'id)
 	      ;; Make sure we're not introducing a name clash
 	      ;; E.g., file1 has theories th1 and th2
