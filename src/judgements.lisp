@@ -1385,7 +1385,9 @@
   (nreverse (acons te dist alist)))
 
 (defun update-known-subtypes (theory theoryname)
-  (when (saved-context theory)
+  (when (and (saved-context theory)
+	     (not (equal (known-subtypes (saved-context theory))
+			 (known-subtypes *current-context*))))
     (dolist (subtype (known-subtypes (saved-context theory)))
       (cond ((fully-instantiated? (car subtype))
 	     (mapcar #'(lambda (ety)
