@@ -21,11 +21,28 @@
 
 (defvar *restoring-type-application* nil)
 
+(defvar *bin-theories-set*)
+
 (defun save-theory (theory)
   (format t "~%Saving ~a" (binpath-id theory))
-  (let ((*store-mapped-theories* nil))
+  (let ((*store-mapped-theories* (accessible-interpreted-theories theory)))
     (store-object-to-file (cons *binfile-version* theory)
 			  (make-binpath (binpath-id theory)))))
+
+(defun accessible-interpreted-theories (theory)
+  (let ((*store-mapped-theories* nil)
+	(*modules-visited* nil))
+    (accessible-interpreted-theories* (all-usings theory))
+    *store-mapped-theories*))
+
+(defun accessible-interpreted-theories* (usings)
+  (dolist (use usings)
+    (unless (memq (car use) *modules-visited*)
+      (when (theory-interpretation? (car use))
+	(pushnew (car use) *store-mapped-theories*))
+      (push (car use) *modules-visited*)
+      (accessible-interpreted-theories* (all-usings (car use))))))
+
 
 (defmethod get-theories-to-save (file)
   (mapcan #'get-theories-to-save (sort-theories (get-theories file))))
@@ -40,9 +57,9 @@
 (defun get-theory-from-binfile (filename)
   (let* ((file (make-binpath filename))
 	 (start-time (get-internal-real-time))
+	 (*bin-theories-set* nil)
 	 (vtheory (ignore-lisp-errors (fetch-object-from-file file)))
-	 (load-time (get-internal-real-time))
-	 (*bin-theories-set* nil))
+	 (load-time (get-internal-real-time)))
     (if (and (listp vtheory)
 	     (integerp (car vtheory))
 	     (= (car vtheory) *binfile-version*))
@@ -194,6 +211,7 @@
 	     (setf (adt atn) obj))
 	   (setf *adt-type-name-pending*
 		 (delete atns *adt-type-name-pending*))))
+       ;;(assert (listp *bin-theories-set*))
        (pushnew (id obj) *bin-theories-set*)
        (setf (gethash (id obj) *pvs-modules*) obj))))
 
