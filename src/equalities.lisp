@@ -1968,10 +1968,11 @@ where db is to replace db1 and db2")
 
 (defun make-preds-with-same-binding* (nvar predicates &optional result)
   (if (null predicates)
-      (nreverse result)
-      (let ((npred (make-pred-with-same-binding nvar (car predicates))))
+      result
+      (let ((npreds (and+ (make-pred-with-same-binding
+			   nvar (car predicates)))))
 	(make-preds-with-same-binding* nvar (cdr predicates)
-				       (cons npred result)))))
+				       (nconc result npreds)))))
 
 (defmethod make-pred-with-same-binding (nvar (pred lambda-expr))
   (substit (expression pred)
