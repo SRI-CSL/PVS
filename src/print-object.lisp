@@ -5,9 +5,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Fri Jan 22 15:56:53 1999
 ;; Update Count    : 14
-;; Status          : Beta test
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -187,7 +185,8 @@ print object produces an error, and won't allow inspection of the object.")
   (if *debugging-print-object*
       (call-next-method)
       (format stream
-	  "#<Resolution ~@<~a~@[~I~<[~;~@{~W~^, ~:_~}~;]~:>~]~@[~I~<{{~;~@{~W~^, ~:_~}~;}}~:>~]~@[.~a~]~:_:~a~:>>"
+	  "#<Resolution ~@<~@[~a@~]~a~@[~I~<[~;~@{~W~^, ~:_~}~;]~:>~]~@[~I~<{{~;~@{~W~^, ~:_~}~;}}~:>~]~@[.~a~]~:_:~a~:>>"
+	(and (module-instance res) (library (module-instance res)))
 	(and (module-instance res) (id (module-instance res)))
 	(and (module-instance res) (actuals (module-instance res)))
 	(and (module-instance res) (mappings (module-instance res)))
@@ -239,6 +238,11 @@ print object produces an error, and won't allow inspection of the object.")
       (call-next-method)
       (format stream "<#store-print-type ~a>"
 	(print-type pt))))
+
+(defmethod print-object ((cr conversion-result) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (format stream "<#conversion-result ~a>" (expr cr))))
 
 (defmethod pp* ((pt store-print-type))
   (format t "<#store-print-type ~a>"
