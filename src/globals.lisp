@@ -46,7 +46,8 @@
   (defparameter *pvs-version* "3.2-beta")
 
   ;; Not used in PVS sources, but may be useful for patches, strategies, etc.
-  (pushnew (intern (format nil "pvs~a" *pvs-version*) :keyword) *features*)
+  ;;(pushnew (intern (format nil "pvs~a" *pvs-version*) :keyword) *features*)
+  (pushnew :pvs3.2 *features*)
   )
 
 (defparameter *binfile-version* 20)
