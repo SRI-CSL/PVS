@@ -211,7 +211,7 @@ decision-procedures = src/decision-procedures/types.lisp \
                       src/decision-procedures/forward-chain-pvs.lisp \
                       src/decision-procedures/forward-chain.lisp
 
-ilisp : emacs/emacs-src/ilisp/cl-ilisp.lisp emacs/emacs-src/ilisp/allegro.lisp
+ilisp = emacs/emacs-src/ilisp/cl-ilisp.lisp emacs/emacs-src/ilisp/allegro.lisp
 
 all : makebdd makepolylib ${pvsfull} ${pvsrt}
 
