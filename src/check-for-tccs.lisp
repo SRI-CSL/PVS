@@ -332,6 +332,7 @@
      (when (some-dependent-arg-domain-type args expected) expr))))
 
 (defmethod check-assignment-types* ((args null) expr expected maplet? oexpr)
+  (declare (ignore maplet? oexpr))
   (check-for-tccs* expr expected))
 
 (defmethod check-assignment-types* (args expr (expected funtype) maplet? oexpr)
