@@ -359,15 +359,6 @@ pvs-strategies files.")
 			    *default-decision-procedure*)
 		      (sort-context context))))))
 
-(defun prelude-libraries-pathnames ()
-  (let ((paths nil))
-    (maphash #'(lambda (p ht)
-		 (declare (ignore ht))
-		 (let ((str (cdr (assoc p *library-alist* :test #'equal))))
-		   (push str paths)))
-	     *prelude-libraries*)
-    paths))
-
 
 ;;; update-context is called by parse-file after parsing a file.  It compares
 ;;; the context-entry of the file with the write-date of the file.  If the
@@ -692,8 +683,7 @@ pvs-strategies files.")
 			 (cons (mk-modname (generated-by theory)
 				 nil
 				 (when (library-theory? theory)
-				   (cdr (assoc (library theory) *library-alist*
-					       :test #'equal))))
+				   (lib-ref theory)))
 			       imps)
 			 imps)))
       (dolist (th all-imps)
