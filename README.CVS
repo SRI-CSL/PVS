@@ -26,6 +26,9 @@ explained below.
 Here are some of the most useful commands:
  Shell commands (read the CVS info for options to these commands):
 
+  cvs checkout pvs2.3
+     Checks out the entire pvs2.3 hierarchy, putting a copy in the current
+     directory.
   cvs update pvs2.3
      Run this to update the entire directory.  It will fold in all the
      changes that may have been made to the repository.
