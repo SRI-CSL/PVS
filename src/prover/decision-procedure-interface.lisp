@@ -254,7 +254,7 @@
   state)
 
 (defmethod dpi-state-changed?* ((dp (eql 'ics)) old-state new-state)
-  (not (eql old-state new-state)))
+  (ics-state-unchanged? old-state new-state))
 
 ;;; Comparison interface
 
