@@ -2494,8 +2494,9 @@
 	       (result			;(nil)
 		(when (and (tc-eq (find-supertype (type expr)) *boolean*)
 			   (not (eq *top-assert-flag* 'rewrite))
-			   (not (connective-occurs? expr)))
-
+			   (not (connective-occurs? expr))
+			   (not (negation? expr)) ;;NSH(11.27.02)
+                            )               ;;this would be wasted work
 		  (assert-test expr))
 		))			;(break "assert-if-ap2")
 	  (cond ((true-p result) (values '? *true*))
