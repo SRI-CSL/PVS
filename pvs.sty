@@ -1,0 +1,230 @@
+% pvs.sty file for LaTeX-printing PVS theories
+% Sam Owre, Wed, Mar 12 1992
+% Derived by concatenating the files sb-prog-mode.tex and sb-tabbing.tex
+% from the ERGO system.  Some additions have been made to support PVS.
+
+% SB progam mode for LaTeX. 
+% Scott Dietzen, Fri Aug 26 13:02:26 1988
+%   (Original by Bill Scherlis)
+% Extensions to Latex
+%  Bill Scherlis  12/84
+
+
+% 12/84 (uj):  The features marked with a * are now globally available.
+%
+% 6-14-85,   \q command added
+%                8-11-85    \lrangle added
+%                           \: added
+%			    programs are printed in normalsize
+%			    (but with slightly less space)
+%
+% --- PROGRAM MODE ---
+%
+%  This mode simplifies display of indented program text. Text is read 
+%    in math mode and may contain the following PROGRAM mode commands.
+%
+%	\\	Go to the next line (with the usual options).
+%
+%	\zi	Indent one unit starting on this line.
+%	\zo	Restore previous indentation (for \zi).
+%
+%	\ii	Set indentation to current x-location.
+%	\oo	Restore previous indentation (for \ii).
+%		   (Use just after \\.)
+%	\ooo	\oo for last line.  (Use after final line.)
+%
+%	\z,\zz,\zzz,\zzzz	Move in 1,2,3,4 units (see \programindent).
+%
+%	\cc	Start a comment (in text mode) at inner margin.
+%	\c	Start a text comment rightified.
+%
+%	\label{<label:>}	Insert a roman label at the far left.
+%
+% *	\.<keyword>.	Put out a boldface keyword with trailing space.
+%	"		Insert a space (usually before a keyword).
+% *	\'<function>'	Put out a sans serif function constant.
+% *	\,<identifier>,	Put out an italic identifier.  
+% *	\:<text>:	Typewriter text.
+% *	\qkey{<keyword>} (or \q)	Bold keyword without any trail space.
+% *	\qlabel{<label>}		Roman label name (e.g., for GOTO).
+%
+% -- NOTES --
+%  (1) \zi,\zo,and \oo should appear at the start of a line, before any
+%	text (but, for example, \oo\zo may appear together).
+%  (1') WARNING: Program mode will quietly ignore any text preceding one
+%	of these control sequences after the previous \\, so BE CAREFUL!
+%  (2) Combinations such as \zz\zi may be used to indent more than a
+%	single quad at a time.
+%  (3) Every \ii must have a matching \oo or \ooo.  Nesting of \ii and
+%	\oo(o) must not conflict with nesting of \zi and \zo.
+%  (4) TABBING mode commands may also be used (but with caution).  The
+%	\' command has altered meaning (see above)!
+%  (5) \cc, \c should appear only at the end of a line.
+%  (6) Single-letter identifiers can stand alone (i.e., without \,).
+%  (7) \. inserts a trailing space.  If a keyword FOLLOWS an expression,
+%	then " (or \..) should be used to insert an additional space.
+%
+% -- PARAMETERS --			(set below using \def)
+% DIMEN \commentsize			Inner margin for comments (from right).
+% DIMEN \programindent			Indentation increment for \zi.
+% DIMEN \programlmar			Initial left margin.
+
+% -- EXAMPLE --
+%
+% \begin{program}
+%   \.begin.\c(3.14)\\				% program number.
+% \zi x\ggets a			\cc Save initial values\\
+%   y\ggets b			\cc\z of $a$ and $b$.\\
+%   \,product,\ggets 0\\
+%   \,loop-counter,\ggets 0\\
+%   \.repeat.\\
+% \zi \label{Inv:}\.if.x=0"\.then.\.exit.\\
+%   \.if.\'even'(y)\\
+% \z\zi\.then.\ii\.begin.\\					% ii
+% \zi y\ggets y \div 2		\cc Divide hack.\\
+%   x\ggets x' + x\\
+% \zo \.end.\\  \oo						% oo
+%   \.else.\ii\.begin.\\					% ii
+% \zi y\ggets y - 1\\
+%   \label{Accum:}\,product,\ggets\,product, + x  
+% 				\cc Label for assertion.\\
+% \zo \.end.\\  \oo						% oo
+% \zo \,loop-counter, \ggets \,loop-counter,+1\\
+% \zo \.end.\\
+% \zo \.end.\\
+% \end{program}
+
+% -- IMPLEMENTATION --
+%	The definitions below use the TABBING environment as a
+%	 basis for the simple-minded PROGRAM environment.
+
+% LATEX TABBING ENVIRONMENT.
+% 
+% Modified to support SB Program mode, simply by increasing the number of tabs. 
+%    (revisions flagged with $SB.
+%
+% Scott Dietzen, Fri Aug 26 13:00:17 1988
+%
+% ****************************************************************************
+%
+
+\makeatletter
+
+\newcount\@firsttab
+\newcount\@maxtab
+\newdimen\@gtempa \@firsttab=\allocationnumber
+\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa
+\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa
+\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa
+\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa  % $SB.
+\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa  % $SB.
+\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa  % $SB.
+\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa  % $SB.
+\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa  % $SB.
+\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa\newdimen\@gtempa  % $SB.
+\newdimen\@getempa \@maxtab=\allocationnumber
+\dimen\@firsttab=0pt
+
+% Parameters
+\newdimen\programindent		% indent increment
+\newdimen\programlmar		% left margin location (from true left margin)
+\newdimen\commentsize		% comment start location (from right margin)
+
+\def\programfontsize{}		% set to a size IF OTHER THAN SMALL.
+\def\pfontsize{\small\programfontsize} % font size for program displays.
+				% hack to get losing LaTeX to see baselin...
+\def\proglinestretch{1}
+\programindent .6em
+\programlmar 0.0truein
+\commentsize 2truein
+
+\newcount\pvslinecount
+
+\makeatletter
+
+% Set up for renaming on environment entry.
+\def\@@startfield{\global\setbox\@curfield\hbox\bgroup\(}
+\def\@@stopfield{\ifmmode\)\else\hfil\egroup\fi\egroup}  % for comments!
+\def\@@contfield{\global\setbox\@curfield\hbox\bgroup\unhbox\@curfield\(}
+\def\@zi{\hskip\programindent\@settab\@tabplus\kill}  % lmar right one unit
+\def\@zo{\@tabminus\kill} 		% lmar outward to previous (for \zi).
+\def\@ii{\null\pushtabs\@settab\@tabplus} % move lmar in to point of this call.
+\def\@oo{\@tabminus\poptabs\kill}	% move lmar out to previous (for \ii).
+\def\@ooo{\\[-\baselineskip]\@tabminus\poptabs}    % \oo for last line.
+
+\def\@c{\`\)\bgroup}			% text comment rightified.
+\def\@cc{\`\)\hbox to\commentsize\bgroup} 
+				% text comment at inner margin.
+
+\def\@tablab@{\@stopfield\setbox\@curline\hbox{\box\@curline
+     \hskip -\wd\@curline \hskip-\dimen\@curtabmar
+     \hskip -\wd\@curfield \hskip -\tabbingsep
+     \hskip \programlmar \box\@curfield \hskip -\programlmar
+     \hskip\dimen\@curtabmar
+     \hskip \tabbingsep \hskip \wd\@curline}\@startfield\ignorespaces}
+\def\@@z{\hskip\programindent\relax} \def\@@zz{\z\z} \def\@@zzz{\z\z\z}
+\def\@@zzzz{\z\z\z\z}
+\def\@@label#1{\hbox{\rm #1}\@tablab@}	% label (to current location!!)
+\let\@@tablab=\@tablab		% save old \@tablab (just in case)
+\def\@tablab#1'{\hbox{\sf #1}}% function constants (ZAPS: \', \@tablab)
+{\catcode`\"=\active
+ \gdef\@@doubleq{\catcode`\"=\active\gdef"{\;}}}
+\newif\iflinenums
+\def\pvsnewline{\iflinenums\global\advance\pvslinecount by1\`\hbox{\sevrm\the\pvslinecount}\fi\\}
+
+\def\program{
+ \par \def\baselinestretch{\proglinestretch} \pfontsize
+ \let\@startfield=\@@startfield  \let\@stopfield=\@@stopfield
+ \let\@contfield=\@@contfield
+ \let\zi=\@zi   \let\ii=\@ii   \let\c=\@c
+ \let\zo=\@zo   \let\oo=\@oo   \let\cc=\@cc
+ \let\ooo=\@ooo
+ \let\label=\@@label
+ \let\z=\@@z  \let\zz=\@@zz \let\zzz=\@@zzz \let\zzzz=\@@zzzz
+ \@@doubleq			% extra (leading) space
+ \pvslinecount=0
+ \tabbing
+ \hskip\programlmar\@settab\@tabplus\kill}	% set initial left margin
+
+\def\endprogram{\endtabbing}
+
+
+\makeatother
+
+% Global font macros, etc.
+%	by uj 5/85
+
+%\def\,#1,{\hbox{\it #1\/}}		% variables (italic)
+%\def\.#1.{\hbox{\bf #1}}	        % keywords 
+
+% New values and alternatives, SJP 5/91:
+%\def\,#1,{\sf \mbox{#1}}		% variables (italic)
+%\def\.#1.{\sf \bf \mbox{#1}}	        % keywords 
+%
+%\def\'#1'{\hbox{\normalsize\sf #1\/}}	% function constants (sans
+%				     	% serif), not used above
+%\def\:#1:{\hbox{\tt #1\/}}		% typewriter font
+%\def\!#1!{\hbox{\sc #1\/}}		% small caps, not used above
+\def\qkey#1{\hbox{\bf #1}}		% quoted keyword (no trailing
+					% space), not used above
+\def\q#1{\hbox{\bf #1\/}}		% quoted keyword (no trailing
+					% space), not used above
+\def\qlabel#1{\hbox{\rm #1}}		% quoted label (for goto), not
+					% used above
+\def\lrangle{\langle\rangle}            % <>, not used above
+
+% eqns environment
+
+\makeatletter
+
+\def\eqns{\def\@eqncr{\nonumber\@seqncr}\eqnarray}
+\def\endeqns{\nonumber\endeqnarray}
+\parskip4pt plus4pt minus3pt	% (see ART10 for original value)
+
+\def\proglinestretch{1}		% Set to \baselinestretch in article.
+\def\pvsid#1{\hbox{\rm #1}}		% variables (typewriter)
+\def\pvskey#1{\hbox{\sc\lowercase{#1}}}	        % keywords
+\def\pvscmt#1{\hbox{\sf #1}}
+
+%\long\def\comment#1{} % multi-line comments
+\makeatother

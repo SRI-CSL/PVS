@@ -1,0 +1,132 @@
+->		key	2	\rightarrow
+<-		key	2	\leftarrow
+exists		key	1	\exists
+forall		key	1	\forall
+lambda		key	1	\lambda
+|		key	2	\mbox{ }|\mbox{ }
+
+=>		id	2	\Rightarrow
+>=		id	2	\geq
+>		id	1	>
+<=		id	2	\leq
+<		id	1	<
+/=		id	2	\neq
+=		id	2	=
+implies		id	2	\supset
+and		id	1	\wedge
+&		id	1	\wedge
+or		id	1	\vee
+not		id	1	\neg
+iff		id	2	\Leftrightarrow
+<=>		id	2	\Leftrightarrow
+exists1		id	2	{\exists_1}
+*		id	1	\times
+
+IMPLIES		id	2	\supset
+AND		id	1	\wedge
+OR		id	1	\vee
+NOT		id	1	\neg
+IFF		id	2	\Leftrightarrow
+
+Implies		id	2	\supset
+And		id	1	\wedge
+Or		id	1	\vee
+Not		id	1	\neg
+Iff		id	2	\Leftrightarrow
+
+/\		id	1	\wedge
+\/		id	1	\vee
+^		id	1	{}^{\scriptscriptstyle\wedge}
+==		id	1	\equiv
+[]		id	1	\Box
+<>		id	1	\Diamond
+~		id	1	\sim
+
+alpha		id	1	\alpha
+beta		id	1	\beta
+gamma		id	1	\gamma
+delta		id	1	\delta
+epsilon		id	1	\varepsilon
+zeta		id	1	\zeta
+eta		id	1	\eta
+theta		id	1	\theta
+iota		id	1	\iota
+kappa		id	1	\kappa
+mu		id	1	\mu
+nu		id	1	\nu
+xi		id	1	\xi
+pi		id	1	\pi
+rho		id	1	\rho
+sigma		id	1	\sigma
+tau		id	1	\tau
+upsilon		id	1	\upsilon
+phi		id	1	\phi
+chi		id	1	\chi
+psi		id	1	\psi
+omega		id	1	\omega
+Gamma		id	1	\Gamma
+Delta		id	1	\Delta
+Theta		id	1	\Theta
+Xi		id	1	\Xi
+Pi		id	1	\Pi
+Sigma		id	1	\Sigma
+Upsilon		id	1	\Upsilon
+Phi		id	1	\Phi
+Psi		id	1	\Psi
+Omega		id	1	\Omega
+GAMMA		id	1	\Gamma
+DELTA		id	1	\Delta
+THETA		id	1	\Theta
+XI		id	1	\Xi
+PI		id	1	\Pi
+SIGMA		id	1	\Sigma
+UPSILON		id	1	\Upsilon
+PHI		id	1	\Phi
+PSI		id	1	\Psi
+OMEGA		id	1	\Omega
+
+=>		2	1	{#1 \Rightarrow #2}
+>=		2	1	{#1 \geq #2}
+<=		2	1	{#1 \leq #2}
+/=		2	1	{#1 \neq #2}
+=		2	1       {#1 = #2}
+and		2	1	{#1 \wedge #2}
+&		2	1	{#1 \wedge #2}
+implies		2	1	{#1 \supset #2}
+or		2	1	{#1 \vee #2}
+not		1	1	{\neg #1}
+iff		2	1	{#1 \Leftrightarrow #2}
+<=>		2	1	{#1 \Leftrightarrow #2}
+*		2	1	{#1 \times #2}
+
+/\		2	1	{#1 \wedge #2}
+\/		2	1	{#1 \vee #2}
+^		2	1	{{#1}^{\scriptscriptstyle\wedge}{#2}}
+==		2	1	{#1 \equiv #2}
+[]		1	1	{\Box #1}
+<>		1	1	{\Diamond #1}
+~		1	1	{\sim #1}
+
+AND		2	1	{#1 \wedge #2}
+IMPLIES		2	1	{#1 \supset #2}
+OR		2	1	{#1 \vee #2}
+NOT		1	1	{\neg #1}
+IFF		2	1	{#1 \Leftrightarrow #2}
+
+And		2	1	{#1 \wedge #2}
+Implies		2	1	{#1 \supset #2}
+Or		2	1	{#1 \vee #2}
+Not		1	1	{\neg #1}
+Iff		2	1	{#1 \Leftrightarrow #2}
+
+member		2	1	{(#1 \in #2)}
+member		0	4	{(\star1 \in \star2)}
+emptyset        0       1       {\emptyset}
+subset?         2       1       {(#1 \subseteq #2)}
+strict_subset?  2       1       {(#1 \subset #2)}
+union           2       1       {(#1 \cup #2)}
+intersection    2       1       {(#1 \cap #2)}
+complement      1       1       {\overline{#1}}
+difference      2       1       {(#1 \setminus #2)}
+add		2	2	{(#2 \cup \{#1\})}
+remove		2	2	{(#2 \setminus \{#1\})}
