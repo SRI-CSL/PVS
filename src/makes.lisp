@@ -948,14 +948,24 @@
     appl))
 
 (let ((equality-decl nil))
-    (defun equality-decl ()
-      (or equality-decl
-	  (setq equality-decl
-		(find-if #'(lambda (d)
-			     (eq (id (module d)) '|equalities|))
-		  (gethash '= (current-declarations-hash))))))
-    (defun reset-equality-decl ()
-      (setq equality-decl nil)))
+  (defun equality-decl ()
+    (or equality-decl
+	(setq equality-decl
+	      (find-if #'(lambda (d)
+			   (eq (id (module d)) '|equalities|))
+		(gethash '= (current-declarations-hash))))))
+  (defun reset-equality-decl ()
+    (setq equality-decl nil)))
+
+(let ((if-decl nil))
+  (defun if-declaration ()
+    (or if-decl
+	(setq if-decl
+	      (find-if #'(lambda (d)
+			   (eq (id (module d)) '|if_def|))
+		(gethash 'IF (current-declarations-hash))))))
+  (defun reset-if-declaration ()
+    (setq if-decl nil)))
 
 (defun make-implication (ante succ)
   (if (and (eq *generate-tccs* 'none)
@@ -1168,6 +1178,12 @@
 
 ;;; make!- forms assume that the provided expressions are fully
 ;;; typechecked, and generate typed expressions accordingly.
+
+(defun make!-application* (op arguments)
+  (make!-application op
+		     (if (cdr arguments)
+			 (make!-arg-tuple-expr arguments)
+			 (car arguments))))
 
 (defun make!-application (op arg)
   (assert (type op))

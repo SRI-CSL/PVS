@@ -48,6 +48,7 @@
     (clear-ignored-type-constraints)
     (reset-all-operators)
     (reset-equality-decl)
+    (reset-if-declaration)
     (unwind-protect
 	(progn
 	  (set-working-directory (format nil "~a/lib/" *pvs-path*))
