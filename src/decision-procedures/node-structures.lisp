@@ -700,6 +700,8 @@
   (and (application-p term)
        (th-app-op-p (funsym term))))
 
+(defvar *lambda* (mk-constant 'lambda))
+
 (defvar *print-polyhedron* nil)
 
 (defdpstruct (polyhedral-structure
@@ -1864,7 +1866,8 @@
   (setq *tuple* (mk-interpreted-constant 'tuple 'tuple-op))
   (setq *record* (mk-interpreted-constant 'record 'record-op))
   (setq *project* (mk-interpreted-constant 'project 'project-op))
-  (setq *th-app* (mk-interpreted-constant 'th-app 'th-app-op)))
+  (setq *th-app* (mk-interpreted-constant 'th-app 'th-app-op))
+  (setq *lambda* (mk-constant 'lambda)))
 
 ;; Miscellaneous Functions
 
