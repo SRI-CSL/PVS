@@ -2451,7 +2451,7 @@
 					 (is-res-auto-rewrite-non! res))
 				     (is-res-auto-rewrite-non! res))))
 		   (multiple-value-bind
-		       (subst modsubst)
+		       (psubst modsubst)
 		       (if defn;;NSH(5.8.98) Optimizes defns
 			   (values
 			    (loop for vars in (arguments* lhs)
@@ -2466,7 +2466,7 @@
 				 (values (match lhs expr nil nil)
 					 *modsubst*))
 			       'fail))
-		     (let* ((modsubst (unless  (or (eq subst 'fail)
+		     (let* ((modsubst (unless  (or (eq psubst 'fail)
 						   (eq modsubst T))
 					(if (every #'cdr modsubst)
 					    (mk-modname
@@ -2476,21 +2476,27 @@
 						      (mk-actual (cdr x)))
 						modsubst))
 					    'fail)))
-			    (subst (if (or (eq subst 'fail)
+			    (subst (if (or (eq psubst 'fail)
 					   (null modsubst)
 					   (eq modsubst 'FAIL))
-				       subst
-				       (loop for (x . y) in subst
+				       psubst
+				       (loop for (x . y) in psubst
 					     collect
 					     (cons (subst-mod-params x modsubst)
 						   y))))
-			    (hyp (hyp hashentry1))
+			    (nsubst (when (consp subst)
+				      (mapcan #'(lambda (p1 p2)
+						  (unless (eq (car p1) (car p2))
+						    (list (cons (car p1) (car p2)))))
+					psubst subst)))
+			    (hyp (substit (hyp hashentry1) nsubst))
 			    (hyp (unless (or (null hyp)
 					     (eq subst 'fail)
 					     (eq modsubst 'fail))
 				   (if (null modsubst)
 				       hyp
 				       (subst-mod-params hyp modsubst))))
+			    (rhs (substit rhs nsubst))
 			    (rhs (unless (or (eq subst 'fail)
 					     (eq modsubst 'fail))
 				   (if (null modsubst)
@@ -2894,8 +2900,7 @@
 			    nconc
 			    (let ((y (make!-name-expr
 				      (id x) nil nil
-				      (make-resolution x nil (type x))
-				      'VARIABLE))
+				      (make-resolution x nil (type x))))
 				  (*keep-unbound* *bound-variables*))
 			      ;; NSH(12.30.93)not sure if *keep-unbound*
 			      ;; needs to be set.
