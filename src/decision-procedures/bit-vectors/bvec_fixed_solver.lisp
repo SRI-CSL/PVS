@@ -58,10 +58,10 @@
 
 ;;; observing
 
-(defconstant *obs-fs* nil)
-
-(defmacro obs-fs (arg)
-  (if *obs-fs* arg))
+(eval-when (eval load compile)
+  (defvar *obs-fs* nil)
+  (defmacro obs-fs (arg)
+    (if *obs-fs* arg)))
 
 (defvar *heuristic-node-prior* 0)
 (defvar *heuristic-node-post* 0)
@@ -121,7 +121,7 @@
     (lift-bdd-if bv))
    ((rec-bv-addition? bv)
     (fixed-delta bv))
-   (t (error-misc "fixed-alpha" bv "not caught."))))
+   (t (error-misc "fixed-alpha" (list bv) "not caught."))))
 
 (defun fixed-alpha-extraction (bv)
   (let* ((arg (fixed-alpha (bv-extraction-bv bv)))
