@@ -2363,6 +2363,8 @@
 (defmethod typecheck* ((rname rewrite-name) expected kind arguments)
   (declare (ignore expected kind arguments))
   (let ((reses (formula-or-definition-resolutions rname)))
+    (unless reses
+      (resolution-error rname 'rewrite-name nil))
     (setf (resolutions rname) reses))
   rname)
 
@@ -2372,12 +2374,16 @@
     (setf (type rname) (typecheck* (declared-type rname) nil nil nil)))
   (set-type (declared-type rname) nil)
   (let ((reses (definition-resolutions rname)))
+    (unless reses
+      (resolution-error rname 'rewrite-name nil))
     (setf (resolutions rname) reses))
   rname)
 
 (defmethod typecheck* ((rname formula-rewrite-name) expected kind arguments)
   (declare (ignore expected kind arguments))
   (let ((reses (formula-resolutions rname)))
+    (unless reses
+      (resolution-error rname 'rewrite-name nil))
     (setf (resolutions rname) reses))
   rname)
 
