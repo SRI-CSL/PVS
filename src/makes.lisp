@@ -9,6 +9,7 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -61,6 +62,8 @@
 (def-pvs-term plus1  "+" "naturalnumbers" :expected "[nat, nat -> nat]")
 
 (def-pvs-term number-cross-number "[number, number]" "reals" :nt type-expr)
+
+(def-pvs-term string-type "string" "strings" :nt type-expr)
 
 
 (let ((*one-constant* nil))
@@ -273,13 +276,17 @@
     'definition expr
     'semi t))
 
-(defun mk-type-name (id &optional actuals mod-id resolution)
+(defun mk-type-name (id &optional actuals mod-id resolution mappings
+			library target)
   (cond ((type-name? id)
 	 (copy id))
 	((name? id)
 	 (make-instance 'type-name
 	   'id (id id)
 	   'actuals (actuals id)
+	   'mappings (mappings id)
+	   'library library
+	   'target target
 	   'mod-id (mod-id id)
 	   'parens (parens id)
 	   'library (library id)
@@ -287,8 +294,32 @@
 	(t (make-instance 'type-name
 	     'id id
 	     'actuals actuals
+	     'mappings mappings
+	     'library library
+	     'target target
 	     'mod-id mod-id
 	     'resolutions (when resolution (list resolution))))))
+
+(defun mk-adt-type-name (id &optional actuals mod-id resolution adt)
+  (cond ((adt-type-name? id)
+	 (copy id 'adt (or adt (adt id))))
+	((type-name? id)
+	 (change-class (copy id) 'adt-type-name 'adt adt))
+	((name? id)
+	 (make-instance 'adt-type-name
+	   'id (id id)
+	   'actuals (actuals id)
+	   'mod-id (mod-id id)
+	   'parens (parens id)
+	   'library (library id)
+	   'place (place id)
+	   'adt adt))
+	(t (make-instance 'adt-type-name
+	     'id id
+	     'actuals actuals
+	     'mod-id mod-id
+	     'resolutions (when resolution (list resolution))
+	     'adt adt))))
 
 (defun mk-dep-binding (id &optional type dtype)
   (assert (or dtype type))
@@ -375,50 +406,71 @@
 ;      (change-name-expr-class-if-needed (declaration nres) nex))
 ;    nex))
 
-(defmethod mk-name-expr ((id number) &optional actuals mod-id res)
+(defmethod mk-name-expr ((id number) &optional actuals mod-id res
+			 mappings library target)
   (if res
-      (make!-name-expr id actuals mod-id res)
+      (make!-name-expr id actuals mod-id res mappings library target)
       (make-instance 'name-expr
 	'id id
 	'mod-id mod-id
-	'actuals actuals)))
+	'actuals actuals
+	'mappings mappings
+	'library library
+	'target target)))
 
-(defmethod mk-name-expr ((id symbol) &optional actuals mod-id res)
+(defmethod mk-name-expr ((id symbol) &optional actuals mod-id res
+			 mappings library target)
   (if res
-      (make!-name-expr id actuals mod-id res)
+      (make!-name-expr id actuals mod-id res mappings library target)
       (make-instance 'name-expr
 	'id id
 	'mod-id mod-id
-	'actuals actuals)))
+	'actuals actuals
+	'mappings mappings
+	'library library
+	'target target)))
 
-(defmethod mk-name-expr ((obj bind-decl) &optional actuals mod-id res)
+(defmethod mk-name-expr ((obj bind-decl) &optional actuals mod-id res
+			 mappings library target)
   (if res
-      (make!-name-expr (id obj) actuals mod-id res)
+      (make!-name-expr (id obj) actuals mod-id res mappings library target)
       (make-instance 'name-expr
 	'id (id obj)
 	'mod-id mod-id
 	'actuals actuals
+	'mappings mappings
+	'library library
+	'target target
 	'type (type obj)
 	'resolutions (list (mk-resolution obj
 			     (current-theory-name) (type obj))))))
 
-(defmethod mk-name-expr ((obj name) &optional actuals mod-id res)
+(defmethod mk-name-expr ((obj name) &optional actuals mod-id res
+			 mappings library target)
   (if (or res (resolution obj))
-      (make!-name-expr (id obj) actuals mod-id (or res (resolution obj)))
+      (make!-name-expr (id obj) actuals mod-id (or res (resolution obj))
+		       mappings library target)
       (make-instance 'name-expr
 	'id (id obj)
 	'mod-id mod-id
 	'actuals actuals
+	'mappings mappings
+	'library library
+	'target target
 	'type (when (expr? obj) (type obj))
 	'resolutions (when (name? obj) (resolutions obj)))))
 
-(defmethod mk-name-expr (obj &optional actuals mod-id res)
+(defmethod mk-name-expr (obj &optional actuals mod-id res
+			     mappings library target)
   (if res
-      (make!-name-expr (id obj) actuals mod-id res)
+      (make!-name-expr (id obj) actuals mod-id res mappings library target)
       (make-instance 'name-expr
 	'id (id obj)
 	'mod-id mod-id
-	'actuals actuals)))
+	'actuals actuals
+	'mappings mappings
+	'library library
+	'target target)))
 
 (defun mk-number-expr (num)
   (make-instance 'number-expr
@@ -659,8 +711,7 @@
 (defun make-variable-expr (bd)
   (assert (typep bd 'binding))
   (mk-name-expr bd nil nil
-		(make-resolution bd
-		  (current-theory-name) (type bd))))
+		(make-resolution bd (current-theory-name) (type bd))))
 
 (defun mk-bindings (vars)
   (assert vars)
@@ -736,13 +787,14 @@
     'library library
     'mappings mappings))
 
-(defun mk-modname-no-tccs (id &optional actuals mappings)
+(defun mk-modname-no-tccs (id &optional actuals library mappings)
   (make-instance 'modname-no-tccs
     'id id
     'actuals (mapcar #'(lambda (a) (make-instance 'actual
 				     'expr (expr a)
 				     'type-value (type-value a)))
 		     actuals)
+    'library library
     'mappings mappings))
 
 (defmethod mk-auto-rewrite-name ((decl declaration) theory-name always?)
@@ -785,7 +837,7 @@
   (make-instance 'actual 'expr arg))
 
 (defun mk-mapping (lhs rhs)
-  (make-instance 'mapping
+  (make-instance 'mapping-subst
     'lhs lhs
     'rhs (mk-mapping-rhs rhs)))
 
@@ -1095,9 +1147,8 @@
   (defun equality-decl ()
     (or equality-decl
 	(setq equality-decl
-	      (find-if #'(lambda (d)
-			   (eq (id (module d)) '|equalities|))
-		(gethash '= (current-declarations-hash))))))
+	      (find-if #'(lambda (d) (eq (id (module d)) '|equalities|))
+		(get-declarations '=)))))
   (defun reset-equality-decl ()
     (setq equality-decl nil)))
 
@@ -1107,7 +1158,7 @@
 	(setq if-decl
 	      (find-if #'(lambda (d)
 			   (eq (id (module d)) '|if_def|))
-		(gethash 'IF (current-declarations-hash))))))
+		(get-declarations 'IF)))))
   (defun reset-if-declaration ()
     (setq if-decl nil)))
 
@@ -1419,7 +1470,8 @@
 	(make!-minus nexpr)
 	nexpr)))
 
-(defun make!-name-expr (id actuals mod-id res)
+(defun make!-name-expr (id actuals mod-id res
+			   &optional mappings library target)
   (assert res)
   (typecase (declaration res)
     (field-decl (make-instance 'field-name-expr
@@ -1451,7 +1503,10 @@
 	 'actuals actuals
 	 'mod-id mod-id
 	 'type (type res)
-	 'resolutions (list res)))))
+	 'resolutions (list res)
+	 'mappings mappings
+	 'target target
+	 'library library))))
     
 (defun make!-equation (lhs rhs)
   (assert (and (type lhs) (type rhs)))
@@ -1618,6 +1673,14 @@
 			     (cdr types))))
 	  (make!-projection-type* cdrtypes index (1+ ctr) arg)))))
 
+(defun make!-injection?-expr (index type)
+  (assert (cotupletype? type))
+  (make-instance 'injection?-expr
+    'id (makesym "IN?_~d" index)
+    'index index
+    'actuals (list (mk-actual type))
+    'type (mk-funtype type *boolean*)))
+
 (defun make!-injection-application (index arg type)
   (assert (type arg))
   (assert (cotupletype? (find-supertype type)))
@@ -1691,6 +1754,16 @@
     'assignments assignments
     'type (type expression)))
 
+(defun make!-recognizer-name-expr (rec-id adt-type-name)
+  (let* ((adt (adt adt-type-name))
+	 (constr (find rec-id (constructors adt) :key #'recognizer))
+	 (rec-decl (rec-decl constr)))
+    (make-instance 'recognizer-name-expr
+      'id rec-id
+      'type (mk-funtype adt-type-name *boolean*)
+      'resolutions (list (make-resolution rec-decl
+			   (module-instance adt-type-name)
+			   (mk-funtype adt-type-name *boolean*))))))
 
 ;;; The following create special forms that are used frequently
 
