@@ -1667,7 +1667,7 @@
 	     name
 	     (format nil
 		 "Expecting a~a~%No resolution for ~a~
-                  ~@[ with arguments of types: ~:{~%  ~a : ~{~a~^, ~}~}~]~
+                  ~@[ with arguments of possible types: ~:{~%  ~<~a~3i : ~{~_ ~a~^,~}~>~}~]~
                   ~@[~% Check the actual parameters; the following ~
                         instances are visible,~% but don't match the ~
                         given actuals:~%   ~{~a~^, ~}~]
