@@ -53,7 +53,7 @@
 	       (eq k 'expr))
       ;; argument-conversion may add to the types of args, and if it returns
       ;; a resolution we are done, otherwise try function-conversion.
-      (setq res (or (argument-conversion name args) 
+      (setq res (or (argument-conversion name args)
 		    (function-conversion name args))))
     (when (memq name *recursive-calls-without-enough-args*)
       (dolist (r res)
@@ -1872,19 +1872,20 @@
 							  &optional result)
   (if (null resolutions)
       result
-      (let* ((rtype (find-supertype (type (car resolutions))))
-	     (compats (compatible-arg-conversions? rtype arguments)))
-	(resolutions-with-argument-conversions
-	 (cdr resolutions)
-	 arguments
-	 (if (and compats
-		  (some #'(lambda (x) (not (eq x 't))) compats))
-	     (cons (make-function-conversion-resolution
-		    (car resolutions) arguments compats)
-		   result)
-	     result)))))
+      (let ((rtype (find-supertype (type (car resolutions)))))
+	(multiple-value-bind (compats k-conv-type)
+	    (compatible-arg-conversions? rtype arguments)
+	  (resolutions-with-argument-conversions
+	   (cdr resolutions)
+	   arguments
+	   (if (and compats
+		    (some #'(lambda (x) (not (eq x 't))) compats))
+	       (cons (make-function-conversion-resolution
+		      (car resolutions) arguments compats k-conv-type)
+		     result)
+	       result))))))
 
-(defun make-function-conversion-resolution (res args compats)
+(defun make-function-conversion-resolution (res args compats k-conv-type)
   (declare (ignore args))
   (let ((theories (delete *current-theory*
 			  (delete-duplicates (mapcar #'module
@@ -1909,7 +1910,7 @@
 				 bindings))))))))
 	    dtypes compats))
     (change-class nres 'lambda-conversion-resolution)
-    (setf (conversion nres) compats)
+    (setf (k-conv-type nres) k-conv-type)
     (let* ((ktype (type (find-if #'name-expr? compats)))
 	   (ftype (mk-funtype (domain ktype)
 			      (mk-funtype (domain (range ktype))
@@ -1942,7 +1943,7 @@
 					       (compatible-arguments-k-conversions
 						dty arguments))
 				     ndtypes-list)))
-		    (or ncompats compats))))))))
+		    (values (or ncompats compats) k-convtype))))))))
 
 (defun get-k-conversion-type (compats &optional type)
   (if (null compats)
@@ -2081,8 +2082,9 @@
 					 result)))))
 
 (defun compatible-resolution-conversion (conversion res arguments)
-  (let ((nconv (compatible-operator-conversion conversion (type res) arguments)))
-    (when nconv (name nconv))))
+  (let ((nconv (compatible-operator-conversion
+		conversion (type res) arguments)))
+    (when nconv (expr nconv))))
 
 (defun compatible-resolution-conversion-args (bindings ctype arguments)
   (let* ((cran (find-supertype (range ctype)))
