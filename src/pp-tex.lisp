@@ -88,7 +88,7 @@
       (pp-tex* exporting)
       (pp-tex-keyword 'BEGIN)
       (pprint-indent :block 2)
-      (pprint-newline :mandatory)
+      ;;(pprint-newline :mandatory)
       (pp-tex-assuming (if *unparse-expanded*
 		       assuming
 		       (remove-if #'generated-by assuming)))
@@ -547,7 +547,7 @@
       (write-char #\space)
       (pprint-newline :fill)
       (pp-tex* definition)
-      (pprint-indent :block 2))))
+      (pprint-indent :block 0))))
 
 ;; (defmethod pp-tex* ((decl proj-decl)) )
 
@@ -1158,7 +1158,7 @@
       (pp-tex* (args2 ex))
       (write-char #\space)
       (pprint-newline :miser)
-      (pp-tex-id 'when)
+      (pp-tex-keyword 'when)
       (write-char #\space)
       (pprint-newline :fill)
       (pp-tex* (args1 ex)))))
