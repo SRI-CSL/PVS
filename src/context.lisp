@@ -1552,7 +1552,7 @@ pvs-strategies files.")
 					    (cons (car nproof)
 						  (cons (cadr nproof)
 							(convert-proof-form-to-lowercase
-							 (cddr proof))))))
+							 (cddr nproof))))))
 				       (reader (if (member cproof proofs
 							   :test #'equal)
 						   proofs
