@@ -589,8 +589,8 @@
 			      (acons (domain optype) arg nil))
 			    (range optype)))
 		 (nex (lcopy expr 'operator op 'argument arg 'type rtype)))
-	    (unless (eq op operator)
-	      (change-application-class-if-necessary expr nex))
+	    ;; Note: the copy :around (application) method takes care of
+	    ;; changing the class if it is needed.
 	    nex)))))
 
 (defmethod subst-mod-params* :around ((expr table-expr) modinst bindings)

@@ -736,19 +736,21 @@
 
 
 (defun make-tcc-name (&optional (num 1))
-  (let* ((decl-id (if (importing? (current-declaration))
-		      (make-tcc-using-id)
-		      (op-to-id
-		       (or (if (declaration?
-				(generated-by
-				 (declaration *current-context*)))
-			       (generated-by (declaration *current-context*))
-			       (declaration *current-context*))))))
-	 (tcc-name (makesym "~a_TCC~d" decl-id num)))
-    (assert decl-id)
-    (if (gethash tcc-name (current-declarations-hash))
-	(make-tcc-name (1+ num))
-	tcc-name)))
+  (if *in-checker*
+      (gensym)
+      (let* ((decl-id (if (importing? (current-declaration))
+			  (make-tcc-using-id)
+			  (op-to-id
+			   (or (if (declaration?
+				    (generated-by
+				     (declaration *current-context*)))
+				   (generated-by (declaration *current-context*))
+				   (declaration *current-context*))))))
+	     (tcc-name (makesym "~a_TCC~d" decl-id num)))
+	(assert decl-id)
+	(if (gethash tcc-name (current-declarations-hash))
+	    (make-tcc-name (1+ num))
+	    tcc-name))))
 
 (defmethod generating-judgement-tcc? ((decl number-judgement) expr)
   (id decl))

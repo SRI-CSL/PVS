@@ -99,15 +99,8 @@ required a context.")
 	       (type-incompatible ex (types ex) expected))))
     (setf (types ex) nil))
   ;;(assert (fully-typed? ex))
-  (unless (real-if-expr? ex)
+  (unless (branch? ex)
     (check-for-subtype-tcc ex expected)))
-
-(defmethod real-if-expr? ((ex if-expr))
-  (eq (id (module-instance (resolution (operator ex)))) '|if_def|))
-
-(defmethod real-if-expr? (ex)
-  (declare (ignore ex))
-  nil)
 
 (defun look-for-conversion (expr expected)
   (let ((ctypes (argument-conversions** (types expr) expected)))

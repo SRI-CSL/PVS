@@ -165,8 +165,8 @@
 				  (substit (range stype)
 				    (acons (domain stype) arg alist))
 				  (range stype)))))
-	    (unless (eq op operator)
-	      (change-application-class-if-necessary expr nex))
+	    ;; Note: the copy :around (application) method takes care of
+	    ;; changing the class if it is needed.
 	    nex)))))
 
 (defmethod change-to-infix-appl? ((expr infix-application))

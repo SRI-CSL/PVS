@@ -52,6 +52,12 @@
 	     (the hash-table ht))
     new-ht))
 
+(defmethod copy :around ((ex application) &rest args)
+  (let ((nex (call-next-method)))
+    (if (eq (operator ex) (operator nex))
+	nex
+	(change-application-class-if-necessary ex nex))))
+
 ;;; The following allows slot-exists-p to be called on anything.
 ;#+gcl
 ;(defmethod pcl::find-slot-definition (obj slot)
@@ -301,27 +307,10 @@
   (get-module (pathname-name path)))
 
 
-;;; get-theory! is like get-theory, but it spits out a message if the
-;;; theory is not found.
-
-(defun get-theory! (theoryref &optional typechecked)
-  (let* ((theoryid (ref-to-id theoryref))
-	 (theory (get-theory theoryid)))
-    (if theory
-	(if (or (null typechecked)
-		(typechecked? theory))
-	    theory
-	    (pvs-message "Theory ~a has not been typechecked" theoryid))
-	(if (get-context-theory-entry theoryref)
-	    (pvs-message "Theory ~a has not been ~a"
-	      theoryid (if typechecked "typechecked" "parsed"))
-	    (pvs-message "Theory ~a is not in the current context"
-	      theoryid)))))
-
 (defmethod get-theory ((id symbol) &optional lib)
-  (assert (or (null lib) *current-theory*))
+  (assert (or (null lib) (current-theory)))
   (if lib
-      (let* ((libpath (get-library-pathname lib *current-theory*))
+      (let* ((libpath (get-library-pathname lib (current-theory)))
 	     (imphash (cadr (gethash libpath *imported-libraries*)))
 	     (prehash (cadr (gethash libpath *prelude-libraries*))))
 	(if (and libpath
@@ -705,8 +694,11 @@
 			  (saved-context prev-imp)
 			  *prelude-context*)
 		      (module decl)
-		      rem-decls)
+		      (reverse rem-decls)
+		      (or (car rem-decls) decl))
 	(let ((*current-context* (make-new-context (module decl))))
+	  (setf (declaration *current-context*)
+		(or (car prev-decls) decl))
 	  (dolist (d (reverse prev-decls))
 	    (typecase d
 	      (mod-decl
@@ -832,14 +824,16 @@
 	     (the hash-table ht))
     new-ht))
 
-(defun copy-context (context &optional theory decls)
+(defun copy-context (context &optional theory decls current-decl)
   (let ((*current-context*
 	 (make-instance 'context
 	   'theory (or theory (theory context))
 	   'theory-name (if theory
 			    (mk-modname (id theory))
 			    (theory-name context))
-	   'declaration (or (car (last decls)) (declaration context))
+	   'declaration (or (car (last decls))
+			    current-decl
+			    (declaration context))
 	   'declarations-hash (let ((dhash (copy (declarations-hash context))))
 				(dolist (decl decls)
 				  (put-decl decl dhash))
@@ -853,9 +847,8 @@
 
 (defun copy-prover-context (&optional (context *current-context*))
   (assert *in-checker*)
-  (copy context
-    ;;'declarations-hash (copy (declarations-hash context))
-    ))
+  (assert (declaration context))
+  (copy context))
 
 (defmethod context (ignore)
   (declare (ignore ignore))
@@ -959,8 +952,7 @@
 (defun create-formulas* (res decl)	  
   (cond ((formula-decl? decl)
 	 (unless (closed-definition decl)
-	   (let ((*current-theory* (module decl))
-		 (*current-context* (context decl)))
+	   (let ((*current-context* (context decl)))
 	     (setf (closed-definition decl)
 		   (universal-closure (definition decl)))))
 	 (let ((*no-expected* t))
@@ -1592,9 +1584,9 @@
 (defmethod full-name? ((x name))
   (and (resolution x)
        (module-instance (resolution x))
-       (or (null *current-theory*)
+       (or (null (current-theory))
 	   (not (eq (id (module-instance (resolution x)))
-		    (id *current-theory*)))
+		    (id (current-theory))))
 	   (actuals (module-instance (resolution x))))
        (or (not *exclude-prelude-names*)
 	   (not (and (from-prelude? (declaration x))
@@ -1610,16 +1602,16 @@
 (defmethod full-name? ((x type-name))
   (and (resolution x)
        (module-instance (resolution x))
-       (or (null *current-theory*)
+       (or (null (current-theory))
 	   (not (eq (id (module-instance (resolution x)))
-		    (id *current-theory*)))
+		    (id (current-theory))))
 	   (actuals (module-instance (resolution x))))))
 
 (defmethod full-name! ((x name))
   (copy x
-    'mod-id (when (or (null *current-theory*)
+    'mod-id (when (or (null (current-theory))
 		      (not (eq (id (module-instance (resolution x)))
-			       (id *current-theory*))))
+			       (id (current-theory)))))
 	      (id (module-instance (resolution x))))
     'actuals (full-name (actuals (module-instance (resolution x)))
 			(when *full-name-depth*
@@ -1635,8 +1627,8 @@
     (copy x
       'mod-id (when (and (or (not *exclude-prelude-names*)
 			     (not (gethash modid *prelude*)))
-			 (or (null *current-theory*)
-			     (not (eq modid (id *current-theory*)))))
+			 (or (null (current-theory))
+			     (not (eq modid (id (current-theory))))))
 		modid)
       'actuals (full-name (actuals mi)
 			  (when *full-name-depth*
@@ -2237,7 +2229,7 @@ space")
 	 (ctype (find-supertype (type conversion)))
 	 (fmls (formals-sans-usings theory)))
     (if (and fmls
-	     (not (eq theory *current-theory*))
+	     (not (eq theory (current-theory)))
 	     (not (fully-instantiated? ctype)))
 	(let ((bindings (tc-match type ctype (mapcar #'list fmls))))
 	  (when (and bindings (every #'cdr bindings))
