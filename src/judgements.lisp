@@ -313,10 +313,12 @@
 
 (defun judgement-types+ (expr)
   (let ((jtypes (judgement-types expr)))
-    (if (some #'(lambda (jty) (subtype-of? jty (type expr)))
-	      jtypes)
-	jtypes
-	(cons (type expr) jtypes))))
+    (if (consp jtypes)
+	(if (some #'(lambda (jty) (subtype-of? jty (type expr)))
+		  jtypes)
+	    jtypes
+	    (cons (type expr) jtypes))
+	(list (type expr)))))
 
 (defmethod judgement-types ((ex expr))
   (judgement-types-expr ex))
