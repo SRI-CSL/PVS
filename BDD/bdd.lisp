@@ -751,15 +751,14 @@
     (cond ((null selected-sforms)
 	   (values 'X nil nil))
 	  (t (unless *bdd-initialized* (bdd_init))
-	     ;; Need to look at this, or somehow it gets a nonzero value
-	     bdd_interrupted
 	     (if dynamic-ordering?
 		 (set_bdd_do_dynamic_ordering 1)
 		 (set_bdd_do_dynamic_ordering 0))
 	     (let* ((remaining-sforms (delete-seq sforms fnums))
 		    (conjuncts (bddsimp-conjuncts selected-sforms
 						  irredundant?)))
-	       (cond ((zerop bdd_interrupted)
+	       (cond ((zerop (eval 'bdd_interrupted))
+		      ;; Must eval, or allegro breaks on signal 10 (bus error)
 		      (multiple-value-prog1
 		       (add-bdd-subgoals ps sforms conjuncts remaining-sforms)
 		       (unless *bdd-initialized* (bdd_quit))))
