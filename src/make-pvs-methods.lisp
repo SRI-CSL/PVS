@@ -53,7 +53,8 @@
   (load "src/defcl.lisp")
   (load "src/store-object.lisp")
   (load "src/classes-expr.lisp")
-  (load "src/classes-decl.lisp"))
+  (load "src/classes-decl.lisp")
+  (load "src/prover/estructures.lisp"))
 
 (write-deferred-methods-to-file t)
 (excl:exit)
