@@ -2298,6 +2298,10 @@ Useful for generating error messages in strategies."
 			    (skip-msg "No forward match for given lemma.")
 			    (let ((fsub (flatten-sub sub)))
 			      (then* (lemma lemma fsub)
+				     (if (loop for x in fsub
+					       thereis (lambda-expr? x))
+					 (beta -1)
+					 (skip))
 				     (let ((x (car *new-fmla-nums*)))
 				       (split x))
 				     (flatten)))))
