@@ -298,39 +298,31 @@
 	  *false*
 	  cond)))
 
-  
+
 (defun make-top-if-expr (expr conds &optional trueconds falseconds)
-  (if (null conds)
-;      (let ((*local-simplify-ifs-hash*  ;;NSH(9.28.95) removing local hash
-;              ;;since it is unlikely to be as useful as a top-level hash.  
-;	     (make-hash-table :test #'eq));;faster than pvs-hash
-;;	     (make-pvs-hash-table :hashfn #'pvs-sxhash
-;;				  :test #'tc-eq)
-;	    )
-      (simplify-ifs expr trueconds falseconds)
-      (let ((cond (car conds)))
-	(if (truecond? cond trueconds falseconds)
-	  (make-top-if-expr expr  (cadr conds) trueconds falseconds)
-	  (if (falsecond? cond trueconds falseconds)
-	      (make-top-if-expr expr (caddr conds) trueconds falseconds)
-	      (let* ((newthen
-		      (make-top-if-expr expr (cadr conds)
-					(cons (car conds) trueconds)
-					falseconds))
-		     (newthen (truefalsecond-reduce newthen trueconds falseconds))
-		    (newelse
-		     (make-top-if-expr expr (caddr conds) trueconds
-					    (cons (car conds) falseconds)))
-		    (newelse (truefalsecond-reduce newelse trueconds falseconds)))
-		(if (tc-eq newthen newelse)
-		    newthen
-		    (if (and (eq newthen *true*)
-			     (eq newelse *false*))
-			(car conds)
-			(mk-if-expr (car conds)
-				    newthen
-				    newelse
-				    )))))))))
+  (cond ((null conds)
+	 (simplify-ifs expr trueconds falseconds))
+	((truecond? (car conds) trueconds falseconds)
+	 (make-top-if-expr expr (cadr conds) trueconds falseconds))
+	((falsecond? (car conds) trueconds falseconds)
+	 (make-top-if-expr expr (caddr conds) trueconds falseconds))
+	(t (let* ((newthen1
+		   (make-top-if-expr expr (cadr conds)
+				     (cons (car conds) trueconds)
+				     falseconds))
+		  (newthen (truefalsecond-reduce
+			    newthen1 trueconds falseconds))
+		  (newelse1
+		   (make-top-if-expr expr (caddr conds) trueconds
+				     (cons (car conds) falseconds)))
+		  (newelse (truefalsecond-reduce
+			    newelse1 trueconds falseconds)))
+	     (if (tc-eq newthen newelse)
+		 newthen
+		 (if (and (eq newthen *true*)
+			  (eq newelse *false*))
+		     (car conds)
+		     (mk-if-expr (car conds) newthen newelse)))))))
 
 
 (defmethod simplify-ifs :around ((expr expr) trueconds falseconds)
@@ -456,7 +448,7 @@
 			     trueconds :test #'tc-eq)
 		return (subst-accessors-in-selection expression
 						     sel))))
-    (if (and (null selections)(else-part expr));;NSH(4.24.97)
+    (if (and (null selections) (else-part expr));;NSH(4.24.97)
 	;;if all selections are false, there better be an else-part.
 	(simplify-ifs (else-part expr) trueconds falseconds)
 	(if (and (singleton? selections) (null (else-part expr)))
@@ -465,12 +457,14 @@
 	    (simplify-ifs  (subst-accessors-in-selection
 			    expression (car selections))
 			   trueconds falseconds)
-	(if true-selection
-	    (simplify-ifs true-selection trueconds falseconds)
-	    (lcopy expr
-	      'expression expression
-	      'selections (simplify-ifs (selections expr) trueconds falseconds)
-	      'else-part (simplify-ifs (else-part expr) trueconds falseconds)))))))
+	    (if true-selection
+		(simplify-ifs true-selection trueconds falseconds)
+		(lcopy expr
+		  'expression expression
+		  'selections (simplify-ifs (selections expr)
+					    trueconds falseconds)
+		  'else-part (simplify-ifs (else-part expr)
+					   trueconds falseconds)))))))
 
 (defmethod simplify-ifs ((expr selection) trueconds falseconds)
   (lcopy expr
@@ -529,37 +523,19 @@
       (top-collect-conds (args1 expr))
       (collect-conds expr)))
 
-(defmethod collect-conds ((expr branch)  &optional  boundvars)
-  (cond ((branch? expr)
-	 (let ((condn (condition expr)))
-	   (if (null (intersection (freevars condn) boundvars
-				   :test #'same-declaration))
-	       ;;no bound variables in the conditional
-	       (let ((conds
-		      (collect-conds (condition expr) boundvars)))
-		 (if (null conds)
-		     (list condn (collect-conds (then-part expr) boundvars)
-			   (collect-conds (else-part expr) boundvars))
-		     conds))
-	       nil)))
-	(t 
-	(collect-conds (arguments expr)
-		       boundvars))))
-
-;	(collect-conds
-;	     (else-part expr)
-;	     (collect-conds (then-part expr)
-;				  (pushnew (condition expr)
-;					   conds
-;					   :test
-;					   #'exequal)))
-;      (collect-conds
-;	     (else-part expr)
-;	     (collect-conds (then-part expr)
-;				  (collect-conds cond
-;							conds boundvars)
-;				  boundvars)
-;	     boundvars))))
+(defmethod collect-conds ((expr branch) &optional boundvars)
+  (if (branch? expr)
+      (let ((condn (condition expr)))
+	(unless (intersection (freevars condn) boundvars
+			      :test #'same-declaration)
+	  ;;no bound variables in the conditional
+	  (let ((conds (collect-conds condn boundvars)))
+	    (if (null conds)
+		(list condn
+		      (collect-conds (then-part expr) boundvars)
+		      (collect-conds (else-part expr) boundvars))
+		conds))))
+      (collect-conds (arguments expr) boundvars)))
 
 (defmethod collect-conds ((expr binding-expr) &optional  boundvars)
   (collect-conds (expression expr) 
@@ -613,19 +589,9 @@
   (collect-conds (expression expr) boundvars))
 
 (defmethod collect-conds ((expr cases-expr) &optional boundvars)
-  ;;CRW(8/5/94) changed tc-eq to same-declaration
-  (if (null (intersection (freevars (expression expr)) boundvars
-			  :test #'same-declaration))
-      (collect-conds (translate-cases-to-if expr) boundvars) ;;added boundvars
-      nil))
-
-;(let ((expr-conds (collect-conds (expression expr) boundvars)))
-;    (if (null expr-conds)
-;	(let ((sel-conds (collect-conds (selections expr) boundvars)))
-;	  (if (null sel-conds)
-;	      (collect-conds (else-part expr) boundvars)
-;	      sel-conds))
-;	expr-conds))
+  (unless (intersection (freevars (expression expr)) boundvars
+			:test #'same-declaration)
+    (collect-conds (translate-cases-to-if expr) boundvars)))
 
 (defmethod collect-conds ((expr selection) &optional boundvars)
   (collect-conds (expression expr)
