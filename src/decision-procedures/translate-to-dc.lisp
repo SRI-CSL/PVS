@@ -453,7 +453,7 @@
 		      ;;(skolem-application? expr)
 		      ))
 	     (break))
-	    (t (dc-mk-typed-term (cons (translate-to-dc (lift-adt operator)) args)
+	    (t (dc-mk-typed-term (cons (translate-to-dc (lift-adt operator t)) args)
 				 (dc-prover-type (type expr))))))))
 
 (defun dc-mk-typed-term (args dc-type)
