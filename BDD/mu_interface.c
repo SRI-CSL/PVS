@@ -152,7 +152,7 @@ Make bool variables
 */
 
 Term mu_mk_rel_var_ (char *name)
-{mu_mk_rel_var (Ip,name);}
+{return mu_mk_rel_var (Ip,name);}
 
 Formula mu_check_mk_bool_var (char *name)
  { Formula R ;

@@ -344,7 +344,6 @@ time).  Verbose? set to T provides more information."
   (convert-pvs-to-mu* (translate-cases-to-if expr))
 )
 
-;; Shankar
 (defmethod translateable-binding-expr? ((expr lambda-expr))
   (every #'(lambda (x)(mu-translateable?  (type x)))
 		     (bindings expr)))
@@ -352,13 +351,43 @@ time).  Verbose? set to T provides more information."
 (defmethod translateable-binding-expr? ((expr binding-expr))
   (every #'(lambda (x)(strict-mu-translateable?  (type x)))
 		     (bindings expr)))
-;;
+
+(defun collect-mu-translateable-supertypes (types trans)
+  (if (null types)
+      trans
+      (let ((stype (collect-mu-translateable-supertype (car types))))
+	(collect-mu-translateable-supertypes
+	 (cdr types)
+	 (if (member stype trans :test #'tc-eq)
+	     trans
+	     (cons stype trans))))))
+
+(defmethod collect-mu-translateable-supertype ((type subtype))
+  (if (strict-mu-translateable? type)
+      type
+      (collect-mu-translateable-supertype (supertype type))))
+
+(defmethod collect-mu-translateable-supertype ((type type-expr))
+  (assert (strict-mu-translateable? type))
+  type)
+
+(defmethod convert-pvs-to-mu* ((expr quant-expr))
+  (let ((btypes (mapcar #'type (bindings expr))))
+    (multiple-value-bind (trans untrans)
+	(split-on #'strict-mu-translateable? btypes)
+      (if (null untrans)
+	  (convert-pvs-to-mu-binding-expr expr)
+	  (if (every #'mu-translateable? untrans)
+	      (let* ((strans (collect-mu-translateable-supertypes untrans trans))
+		     (lexpr (lift-predicates-in-quantifier expr strans)))
+		(convert-pvs-to-mu-binding-expr lexpr))
+	      (make-mu-variable expr))))))
 
 (defmethod convert-pvs-to-mu* ((expr expr));;NSH(8.17.95) added find-supertype
   (cond ((tc-eq expr *true*) (mu-mk-true))
 	((tc-eq expr *false*) (mu-mk-false))
 	;;((reachable? expr) (reach_pf))
-	((and (binding-expr? expr);;NSH(6.19.98):remove find-supertype
+	((and (binding-expr? expr)
               (translateable-binding-expr? expr))
 	 (convert-pvs-to-mu-binding-expr expr))
         ((scalar-constant? expr) (make-scalar-constant-bits expr))
