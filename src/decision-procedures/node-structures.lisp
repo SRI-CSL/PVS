@@ -417,7 +417,7 @@
 	  'array-op)
     result))
 
-(defun update-op-p (constant)
+(defun array-op-p (constant)
   (declare (type node constant))
   (eq (node-type constant) 'array-op))
 
