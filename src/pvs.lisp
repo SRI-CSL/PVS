@@ -344,18 +344,19 @@
 		   (setq *parsed-theories* (append nth *parsed-theories*))
 		   (parse-importchain* nth)))))))))
 		     
-  
+(defvar *dont-use-bin-files* nil)
 
 (defun valid-binfile? (filename)
-  (let ((fe (get-context-file-entry filename)))
-    (and fe
-	 (ce-object-date fe)
-	 (let ((specdate (file-write-date (make-specpath filename)))
-	       (bindate (file-write-date (make-binpath filename))))
-	   (and bindate
-		specdate
-		(= bindate (ce-object-date fe))
-		(<= specdate bindate))))))
+  (unless *dont-use-bin-files*
+    (let ((fe (get-context-file-entry filename)))
+      (and fe
+	   (ce-object-date fe)
+	   (let ((specdate (file-write-date (make-specpath filename)))
+		 (bindate (file-write-date (make-binpath filename))))
+	     (and bindate
+		  specdate
+		  (= bindate (ce-object-date fe))
+		  (<= specdate bindate)))))))
 
 (defun parse-file* (filename file theories forced?)
   ;;(save-context)
@@ -469,13 +470,16 @@
     (remove-if-not #'datatype-or-module?
       *theories-visited*)))
 
-(defun all-importings* (theory)
+(defun all-importings* (theory &optional lib)
   (declare (special *theories-visited*))
   (unless (or (null theory)
 	      (memq theory *theories-visited*))
     (push theory *theories-visited*)
     (dolist (ith (get-immediate-usings theory))
-      (all-importings* (get-theory ith)))))
+      (let ((lib (or (library ith)
+		     (and (library-datatype-or-theory? theory)
+			  lib))))
+	(all-importings* (get-theory* (id ith) lib) lib)))))
 
 
 (defun update-parsed-file (filename file theories new-theories forced?)
