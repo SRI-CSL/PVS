@@ -2979,10 +2979,13 @@ required a context.")
     (set-assignment-arg-types* (cdr args-list) (cdr values) ex expected)))
 
 (defmethod set-assignment-arg-types* (args-list values ex (expected subtype))
-  (if (typep (find-supertype expected)
-	     '(or funtype recordtype tupletype adt-type-name))
-      (set-assignment-arg-types* args-list values ex (supertype expected))
-      (call-next-method)))
+  (typecase (find-supertype expected)
+    ((or funtype recordtype tupletype adt-type-name)
+     (set-assignment-arg-types* args-list values ex (supertype expected))
+     (mapc #'(lambda (a v)
+	      (unless a (set-type* v expected)))
+	  args-list values))
+    (t (call-next-method))))
 
 (defmethod set-assignment-arg-types* (args-list values ex (expected recordtype))
   (with-slots (fields) expected
