@@ -115,6 +115,7 @@
   strategy
   (context :initform nil)
   (parent-proofstate :initform nil)
+  (proof-dependent-decls :initform nil);;collects decls seen so far
   (dependent-decls :initform nil)
   (current-auto-rewrites :initform nil)
   (tcc-hash :initform
