@@ -50,6 +50,7 @@ if [ -f $HOME/.emacs ]
   else dotemacs=
 fi
 PVSXINIT=${PVSXINIT:-""}
+PVSFORCEDP=nil
 while [ $# -gt 0 ]
 do
    case $1 in
@@ -62,6 +63,14 @@ do
 		 else echo "The -redhat flag only makes sense under Linux"
 	      fi
 	      shift;;
+     -decision-procedures)
+        case $2 in
+	  new)  PVSFORCEDP=:new;;
+	  old)  PVSFORCEDP=:old;;
+	  *)    echo "The decision-procedures argument must be new or old"
+	        exit 1;;
+	esac
+	shift;;
      -nw)    nowin=1
              flags="$flags $1";;
      -patchlevel)
@@ -163,7 +172,7 @@ PVSVERBOSE=${PVSVERBOSE:-0}
 PVSIMAGE="$PVSLISP"
 
 export ALLEGRO_CL_HOME DISPLAY
-export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSPATCHLEVEL PVSMINUSQ
+export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSPATCHLEVEL PVSMINUSQ PVSFORCEDP
 
 pvsemacsinit="-load $PVSPATH/emacs/go-pvs.el"
 
