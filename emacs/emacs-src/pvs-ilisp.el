@@ -429,12 +429,13 @@ want to set this to nil for slow terminals, or connections over a modem.")
 (defun comint-display-file-output (file buffer)
   "Put TEXT of file in optional BUFFER and show it in a small temporary
 window."
-  (setq buffer (or buffer comint-output-buffer))
+  (setq buffer (or buffer ilisp-output-buffer))
   (with-output-to-temp-buffer buffer
     (save-excursion
       (set-buffer buffer)
       (insert-file-contents file)
       (set-buffer-modified-p nil)))
+  (ilisp-show-output (get-buffer buffer))
   (save-excursion
     (set-buffer buffer)
     (when noninteractive
@@ -518,7 +519,7 @@ window."
 		 (with-output-to-temp-buffer bufname
 		   (set-buffer bufname)
 		   (insert-file-contents file nil))
-		 (let ((rh (substitute-command-keys "\\[ilisp-bury-output]"))                   ;;; FIXME - test this...
+		 (let ((rh (substitute-command-keys "\\[ilisp-bury-output]")) 
 		       (s (substitute-command-keys "\\[ilisp-scroll-output]")))
 		   (message
 		    (format 
