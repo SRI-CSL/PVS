@@ -517,7 +517,7 @@ skolem constants in CONSTANTS.  If SKOLEM-TYPEPREDS? is T, then typepreds
 will be generated for the introduced constants.
 Example: (skolem 1 (\"A\" \"B\"))
 See also SKOLEM!, SKOSIMP, SKOSIMP*."
-  "~%For the top quantifier in ~a, we introduce Skolem constants: ~a,")
+  "~%For the top quantifier in ~a, we introduce Skolem constants: ~2I~:_~a,")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
