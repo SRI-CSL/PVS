@@ -1235,6 +1235,12 @@
 	  'type *boolean*))))
 
 (defun make!-if-expr (cond then else)
+  (make!-if-expr* cond then else nil))
+
+(defun make!-chained-if-expr (cond then else)
+  (make!-if-expr* cond then else t))
+
+(defun make!-if-expr* (cond then else chained?)
   (assert (and (type cond) (type then) (type else)))
   (assert (tc-eq (type cond) *boolean*))
   (assert (compatible? (type then) (type else)))
@@ -1254,10 +1260,15 @@
 		    'exprs (list cond then else)
 		    'type (make-instance 'tupletype
 			    'types (list *boolean* (type then) (type else))))))
-    (make-instance 'mixfix-branch
-      'type stype
-      'operator if-name
-      'argument if-args)))
+    (if chained?
+	(make-instance 'chained-branch
+	  'type stype
+	  'operator if-name
+	  'argument if-args)
+	(make-instance 'mixfix-branch
+	  'type stype
+	  'operator if-name
+	  'argument if-args)))
 
 (defun make!-arg-tuple-expr (&rest args)
   (funcall #'make!-arg-tuple-expr* args))
