@@ -537,8 +537,8 @@
 				  (e2 projection-application)
 				  bindings)
   (or (eq e1 e2)
-      (with-slots ((id1 id) (arg1 argument)) e1
-	(with-slots ((id2 id) (arg2 argument)) e2
+      (with-slots ((id1 index) (arg1 argument)) e1
+	(with-slots ((id2 index) (arg2 argument)) e2
 	  (and (eq id1 id2)
 	       (matching-actual-expr* arg1 arg2 bindings))))))
 
