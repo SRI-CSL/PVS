@@ -3,7 +3,7 @@ BDD = ../bdd/src
 MU = ../mu/src
 UTILS = ../bdd/utils
 INCLUDES = -I$(BDD) -I$(UTILS) -I$(MU)
-LD = /pkg/binutils/bin/ld
+LD = ld
 LDFLAGS = -G -L./
 CC = gcc
 CFLAGS = -D_POSIX_SOURCE -DSYSV $(INCLUDES)
@@ -24,8 +24,8 @@ utilobj = double.o list.o hash.o alloc.o
 
 all : mu.so
 
-mu.so : ${muobj} libutils.a ../bdd-ld-table ../mu-ld-table
-	$(LD) ../bdd-ld-table ../mu-ld-table $(LDFLAGS) -o mu.so ${muobj}  -lutils -lm
+mu.so : ${muobj} libutils.a ../bdd-ld-table ../mu-ld-table ../mu-and-bdd-ld-symbols
+	$(LD) ../bdd-ld-table ../mu-ld-table $(LDFLAGS) --retain-symbols-file ../mu-and-bdd-ld-symbols -o mu.so ${muobj}  -lutils -lm
 
 libutils.a : ${utilobj}
 	ar r libutils.a ${utilobj}
