@@ -1,0 +1,189 @@
+%%% ADT file generated from stack
+
+stack_adt[T: TYPE]: THEORY
+ BEGIN
+
+  stack: TYPE
+
+  empty?, nonempty?: [stack -> boolean]
+
+  empty: (empty?)
+
+  push: [[T, stack] -> (nonempty?)]
+
+  top: [(nonempty?) -> T]
+
+  pop: [(nonempty?) -> stack]
+
+  ord(x: stack): upto(1) =
+      CASES x OF empty: 0, push(push1_var, push2_var): 1 ENDCASES
+
+  stack_empty_extensionality: AXIOM
+    FORALL (empty?_var: (empty?), empty?_var2: (empty?)):
+      empty?_var = empty?_var2;
+
+  stack_push_extensionality: AXIOM
+    FORALL (nonempty?_var: (nonempty?), nonempty?_var2: (nonempty?)):
+      top(nonempty?_var) = top(nonempty?_var2) AND
+       pop(nonempty?_var) = pop(nonempty?_var2)
+       IMPLIES nonempty?_var = nonempty?_var2;
+
+  stack_push_eta: AXIOM
+    FORALL (nonempty?_var: (nonempty?)):
+      push(top(nonempty?_var), pop(nonempty?_var)) = nonempty?_var;
+
+  stack_top_push: AXIOM
+    FORALL (push1_var: T, push2_var: stack):
+      top(push(push1_var, push2_var)) = push1_var;
+
+  stack_pop_push: AXIOM
+    FORALL (push1_var: T, push2_var: stack):
+      pop(push(push1_var, push2_var)) = push2_var;
+
+  stack_inclusive: AXIOM
+    FORALL (stack_var: stack): empty?(stack_var) OR nonempty?(stack_var);
+
+  stack_disjoint: AXIOM
+    FORALL (stack_var: stack):
+      NOT (empty?(stack_var) AND nonempty?(stack_var));
+
+  stack_induction: AXIOM
+    FORALL (p: [stack -> boolean]):
+      (p(empty) AND
+        (FORALL (push1_var: T, push2_var: stack):
+           p(push2_var) IMPLIES p(push(push1_var, push2_var))))
+       IMPLIES (FORALL (stack_var: stack): p(stack_var));
+
+  every(p: PRED[T])(a: stack):  boolean =
+      CASES a
+        OF empty: TRUE,
+           push(push1_var, push2_var): p(push1_var) AND every(p)(push2_var)
+        ENDCASES;
+
+  every(p: PRED[T], a: stack):  boolean =
+      CASES a
+        OF empty: TRUE,
+           push(push1_var, push2_var): p(push1_var) AND every(p, push2_var)
+        ENDCASES;
+
+  some(p: PRED[T])(a: stack):  boolean =
+      CASES a
+        OF empty: FALSE,
+           push(push1_var, push2_var): p(push1_var) OR some(p)(push2_var)
+        ENDCASES;
+
+  some(p: PRED[T], a: stack):  boolean =
+      CASES a
+        OF empty: FALSE,
+           push(push1_var, push2_var): p(push1_var) OR some(p, push2_var)
+        ENDCASES;
+
+  subterm(x, y: stack):  boolean =
+      x = y OR
+       CASES y
+         OF empty: FALSE, push(push1_var, push2_var): subterm(x, push2_var)
+         ENDCASES;
+
+  <<:  (well_founded?[stack]) =
+      LAMBDA (x, y: stack):
+        CASES y
+          OF empty: FALSE,
+             push(push1_var, push2_var): x = push2_var OR x << push2_var
+          ENDCASES;
+
+  stack_well_founded: AXIOM well_founded?[stack](<<);
+
+  reduce_nat(empty?_fun: nat, nonempty?_fun: [[T, nat] -> nat]):
+  [stack -> nat] =
+      LAMBDA (stack_adtvar: stack):
+        LET red: [stack -> nat] = reduce_nat(empty?_fun, nonempty?_fun) IN
+          CASES stack_adtvar
+            OF empty: empty?_fun,
+               push(push1_var, push2_var):
+                 nonempty?_fun(push1_var, red(push2_var))
+            ENDCASES;
+
+  REDUCE_nat(empty?_fun: [stack -> nat],
+             nonempty?_fun: [[T, nat, stack] -> nat]):
+   [stack -> nat] =
+      LAMBDA (stack_adtvar: stack):
+        LET red: [stack -> nat] = REDUCE_nat(empty?_fun, nonempty?_fun) IN
+          CASES stack_adtvar
+            OF empty: empty?_fun(stack_adtvar),
+               push(push1_var, push2_var):
+                 nonempty?_fun(push1_var, red(push2_var), stack_adtvar)
+            ENDCASES;
+
+  reduce_ordinal(empty?_fun: ordinal,
+                 nonempty?_fun: [[T, ordinal] -> ordinal]):
+   [stack -> ordinal] =
+      LAMBDA (stack_adtvar: stack):
+        LET red: [stack -> ordinal] =
+              reduce_ordinal(empty?_fun, nonempty?_fun)
+          IN
+          CASES stack_adtvar
+            OF empty: empty?_fun,
+               push(push1_var, push2_var):
+                 nonempty?_fun(push1_var, red(push2_var))
+            ENDCASES;
+
+  REDUCE_ordinal(empty?_fun: [stack -> ordinal],
+                 nonempty?_fun: [[T, ordinal, stack] -> ordinal]):
+   [stack -> ordinal] =
+      LAMBDA (stack_adtvar: stack):
+        LET red: [stack -> ordinal] =
+              REDUCE_ordinal(empty?_fun, nonempty?_fun)
+          IN
+          CASES stack_adtvar
+            OF empty: empty?_fun(stack_adtvar),
+               push(push1_var, push2_var):
+                 nonempty?_fun(push1_var, red(push2_var), stack_adtvar)
+            ENDCASES;
+ END stack_adt
+
+stack_adt_map[T: TYPE, T1: TYPE]: THEORY
+ BEGIN
+
+  IMPORTING stack_adt
+
+  map(f: [T -> T1])(a: stack[T]):  stack[T1] =
+      CASES a
+        OF empty: empty,
+           push(push1_var, push2_var):
+             push(f(push1_var), map(f)(push2_var))
+        ENDCASES;
+
+  map(f: [T -> T1], a: stack[T]):  stack[T1] =
+      CASES a
+        OF empty: empty,
+           push(push1_var, push2_var):
+             push(f(push1_var), map(f, push2_var))
+        ENDCASES;
+ END stack_adt_map
+
+stack_adt_reduce[T: TYPE, range: TYPE]: THEORY
+ BEGIN
+
+  IMPORTING stack_adt[T]
+
+  reduce(empty?_fun: range, nonempty?_fun: [[T, range] -> range]):
+  [stack -> range] =
+      LAMBDA (stack_adtvar: stack):
+        LET red: [stack -> range] = reduce(empty?_fun, nonempty?_fun) IN
+          CASES stack_adtvar
+            OF empty: empty?_fun,
+               push(push1_var, push2_var):
+                 nonempty?_fun(push1_var, red(push2_var))
+            ENDCASES;
+
+  REDUCE(empty?_fun: [stack -> range],
+         nonempty?_fun: [[T, range, stack] -> range]):
+   [stack -> range] =
+      LAMBDA (stack_adtvar: stack):
+        LET red: [stack -> range] = REDUCE(empty?_fun, nonempty?_fun) IN
+          CASES stack_adtvar
+            OF empty: empty?_fun(stack_adtvar),
+               push(push1_var, push2_var):
+                 nonempty?_fun(push1_var, red(push2_var), stack_adtvar)
+            ENDCASES;
+ END stack_adt_reduce

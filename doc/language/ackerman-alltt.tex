@@ -1,0 +1,18 @@
+ackerman: THEORY
+  BEGIN
+  
+  m, n: VAR nat
+  ackmeas(m, n): ordinal =
+      (IF m = 0 THEN zero
+       ELSIF n = 0 THEN add(m, add(1, zero, zero), zero)
+       ELSE add(m, add(1, zero, zero), add(n, zero, zero))
+       ENDIF)
+      
+  ack(m, n): RECURSIVE nat =
+      (IF m = 0 THEN n + 1
+       ELSIF n = 0 THEN ack(m - 1, 1)
+       ELSE ack(m - 1, ack(m, n - 1))
+       ENDIF)
+    MEASURE ackmeas
+    
+  END ackerman

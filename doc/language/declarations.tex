@@ -1,0 +1,810 @@
+% Document Type: LaTeX
+% Master File: language.tex
+
+\chapter{Declarations}\label{declarations}
+\index{declaration|(pidx}
+
+Entities of PVS are introduced by means of \emph{declarations}, which are
+the main constituents of PVS specifications.  Declarations are used to
+introduce types, variables, constants, formulas, judgements and
+conversions.  Each declaration has an \emph{identifier} and belongs to a
+unique theory.  Declarations also have a body which indicates the
+\emph{kind} of the declaration and provides the signature and definition
+of the declaration.  \emph{Top-level}
+declarations\index{declaration!top-level} occur in the formal parameters,
+the assertion section and the body of a theory.  \emph{Local}
+declarations\index{declaration!local} for variables may be given, in
+association with constant and recursive declarations and \emph{binding
+expressions} (\eg\ involving \texttt{FORALL} or \texttt{LAMBDA}).  Declarations
+are ordered within a theory; earlier declarations may not reference later
+ones.\footnote{Thus mutual recursion is not directly supported.  The
+effect can be achieved with a simple recursive function that has an
+argument that serves as a switch for selecting between two or more
+expressions.}
+
+\index{exporting|(}\index{importing|(} Declarations introduced in one
+theory may be referenced in another by means of the \texttt{IMPORTING} and
+\texttt{EXPORTING} clauses.  The \texttt{EXPORTING} clause of a theory
+indicates those entities that may be referenced from outside the theory.
+There is only one such clause for a given theory.  The \texttt{IMPORTING}
+clauses provide access to the entities exported by another theory.  There
+can be many \texttt{IMPORTING} clauses in a theory; in general they may
+appear anywhere a top-level declaration is allowed.  See
+Section~\ref{importings} for more details.
+\index{importing|)}\index{exporting|)}
+
+PVS allows the overloading\index{overloading} of declaration identifiers.
+Thus a theory named \texttt{foo} may declare a constant \texttt{foo} and a
+formula \texttt{foo}.  To support this \emph{ad hoc} overloading,
+declarations are classified according to kind\index{declaration!kind}; in
+PVS the kinds are \emph{type}\index{declaration!kind!type},
+\emph{prop}\index{declaration!kind!prop},
+\emph{expr}\index{declaration!kind!expr}, and
+\emph{theory}\index{declaration!kind!theory}.  Type declarations are of
+kind \emph{type}, and may be referenced in type declarations, actual
+parameters, signatures, and expressions.  Formula declarations are of kind
+\emph{prop}, and may only be referenced in proofs (see the PVS Prover
+Guide~\cite{PVS:prover}).  Variable, constant, and recursive definition
+declarations are of kind \emph{expr}; these may be referenced in
+expressions and actual parameters.  Newly introduced names need only be
+unique within a kind, as there is no way, for example, to use an
+expression where a type is expected.\footnote{The only exception is actual
+parameters to theories, since theories may be instantiated with types or
+expressions.}
+
+\pvsbnf{bnf-decls}{Declarations Syntax}
+\index{syntax!declarations}
+
+Declarations consist of an
+\emph{identifier}\index{declaration!identifier}, an optional list of
+\emph{bindings}\index{declaration!binding}, and a
+\emph{body}\index{declaration!body}.  The body determines the kind of the
+declaration, and the bindings and the body together determine the
+signature and definition of the declared entity.  Multiple
+declarations\index{declaration!multiple} may be given in compressed form
+in which one body is specified for multiple identifiers; for example
+%
+\begin{pvsex}
+  x, y, z: VAR int
+\end{pvsex}
+In every case this is treated as equivalent to the expanded form, thus
+the above is equivalent to:
+\begin{pvsex}
+  x: VAR int
+  y: VAR int
+  z: VAR int
+\end{pvsex}
+
+In the rest of this section we describe declarations for types,
+variables, constants, recursive definitions, and formulas.  The
+declarations for theory parameters and theory abbreviations are given in
+Section~\ref{theories}.  Figure~\ref{bnf-decls} gives the grammar for
+declarations.
+
+
+\section{Type Declarations}\label{type-declarations}
+\index{type declarations|(}
+
+Type declarations are used to introduce new type names to the context.
+There are four kinds of type declaration:
+
+\begin{itemize}
+
+\item \emph{uninterpreted type declaration}: \texttt{T:\ TYPE}
+\index{uninterpreted type}\index{type!uninterpreted}
+
+\item \emph{uninterpreted subtype declaration}: \texttt{S:\ TYPE FROM T}
+\index{uninterpreted subtype}\index{type!uninterpreted subtype}
+
+\item \emph{interpreted type declaration}: \texttt{T:\ TYPE =
+int}\index{interpreted type}\index{type!interpreted}
+
+\item \emph{enumeration type declarations}: \texttt{T:\ TYPE = \{r,
+g, b\}} \index{enumeration types}\index{type!enumeration}
+
+\end{itemize}
+
+These type declarations introduce \emph{type names}\index{type!name}
+that may be referenced in type expressions (see Section~\ref{types}).
+They are introduced using one of the keywords
+\keyword{TYPE}\index{type@\texttt{TYPE}},
+\keyword{NONEMPTY\_TYPE}\index{type@\texttt{NONEMPTY\_TYPE}}, or
+\keyword{TYPE+}\index{type+@\texttt{TYPE+}}.
+
+\subsection{Uninterpreted Type Declarations}
+\index{type!uninterpreted|(}
+
+Uninterpreted types support abstraction by providing a means of
+introducing a type with a minimum of assumptions on the type.  An
+uninterpreted type imposes almost no constraints on an implementation of
+the specification.  The only assumption made on an uninterpreted type
+\texttt{T} is that it is disjoint from all other types, except for
+subtypes of \texttt{T}.  For example,
+\begin{pvsex}
+  T1, T2, T3: TYPE
+\end{pvsex}
+%
+introduces three new pairwise disjoint types.  If desired,
+further constraints may be put on these types by means of \texttt{AXIOM}s
+(see Section~\ref{formula-declarations}).
+
+It should be emphasized that uninterpreted types are important in
+providing the right level of abstraction in a specification.  Specifying
+the type in detail may have the undesired effect of restricting the
+possible implementations, and cluttering the specification with needless
+detail.
+
+\index{type!uninterpreted|)}\index{uninterpreted type|)}
+
+
+\subsection{Uninterpreted Subtype Declarations}
+\index{uninterpreted subtype|(}
+
+Uninterpreted subtype declarations are of the form
+\begin{pvsex}
+  s: TYPE FROM t
+\end{pvsex}
+\index{FROM@\texttt{FROM}}
+This introduces an uninterpreted
+\emph{subtype}\index{subtypes}\index{type!subtype} \texttt{s} of
+the \emph{supertype}\index{supertype}\index{type!supertype}
+\texttt{t}.  This has the same meaning as
+\begin{pvsex}
+  s_pred: [t -> bool]
+  s: TYPE = (s_pred)
+\end{pvsex}
+%
+in which a new predicate is introduced in the first line and the type
+\texttt{s} is declared as a \emph{predicated} subtype in the second
+line\footnote{This is described in Section~\ref{subtypes}
+(page~\pageref{subtypes}).}.  No assumptions are made about uninterpreted
+subtypes; in particular, they may or may not be empty, and two different
+uninterpreted subtypes of the same supertype may or may not be disjoint.
+Of course, if the supertypes themselves are disjoint, then the
+uninterpreted subtypes are also.
+
+\index{uninterpreted subtype|)}
+
+\subsection{Interpreted Type Declarations}
+\index{interpreted type declarations|(}\index{type!interpreted|(}
+
+Interpreted type declarations are primarily a means for providing names
+for type expressions.  For example,
+\begin{pvsex}
+  intfun: TYPE = [int -> int]
+\end{pvsex}
+%
+introduces the type name \texttt{intfun} as an abbreviation for the type
+of functions with integer domain and range.  Because PVS uses
+\emph{structural equivalence}\index{structural equivalence} instead of
+\emph{name equivalence}\index{name equivalence}, any type expression
+\texttt{T} involving \texttt{intfun} is equivalent to the type expression
+obtained by substituting \texttt{[int -> int]} for \texttt{intfun} in
+\texttt{T}.  The available type expressions include subtypes, function
+types, tuple types, and record types.  These are described in
+Section~\ref{types} on page~\pageref{types}.
+
+Interpreted type declarations may be given
+parameters.\index{parameterized type names} For example, the type of
+integer subranges may be given as
+\begin{pvsex}
+  subrange(m, n: int): TYPE = \{i:int | m <= i AND i <= n\}
+\end{pvsex}
+and \texttt{subrange} with two integer parameters may subsequently be used
+wherever a type is expected.  Any use of a parameterized type must include
+all of the parameters, so currying of the parameters is not allowed.  Note
+that \texttt{subrange} may be used to declare a different type without any
+ambiguity, as long as the number of parameters is different.
+
+\index{type!interpreted|)}\index{interpreted type declarations|)}
+
+
+\subsection{Enumeration Type Declarations}\label{enum-types}
+\index{enumeration types|(}\index{type!enumeration|(}
+
+Enumeration type declarations are of the form
+\begin{pvsex}
+  enum: TYPE = \{e_1,\ldots, e_n\}
+\end{pvsex}
+%
+where the \texttt{e\_i} are distinct identifiers which are taken to
+completely enumerate the type.  This is actually a shorthand for the
+datatype specification
+\begin{pvsex}
+  enum: DATATYPE
+    e_1: e_1?
+         \vdots
+    e_n: e_n?
+  END enum
+\end{pvsex}
+%
+explained in Section~\ref{adts}.  Because of this, enumeration types may
+only be given as top-level declarations, and are \emph{not} type
+expressions.  The advantage of treating them as datatypes is that the
+necessary axioms are automatically generated, and the prover has built-in
+facilities for handling datatypes.
+
+\index{type!enumeration|)}\index{enumeration types|)}
+
+\index{type declarations|)}
+
+
+\subsection{Empty versus Nonempty Types}
+\label{emptytypes}
+\index{nonempty type}
+\index{empty type}
+\index{type!nonempty|(}\index{type!empty|(}
+
+As noted before, PVS allows empty types, and the term \emph{type} refers
+to either empty or nonempty types.  Constants declared to be of a given
+type provide elements of the type, so the type must be nonempty or
+there is an inconsistency.  Thus whenever a constant is declared, the
+system checks whether the type is nonempty, and if it cannot decide that
+it is nonempty it generates an \emph{existence TCC}.\index{existence
+TCC}\index{TCC!existence} This is the simple explanation, but it is made
+somewhat complicated by the considerations of formal parameters,
+uninterpreted versus interpreted type declarations, explicit declarations
+of nonemptiness, and \keyword{CONTAINING}\index{CONTAINING@\texttt{CONTAINING}} clauses on subtypes, as well as
+a desire to keep the number of TCCs generated to a minimum, while
+guaranteeing soundness.  The details are provided below.
+
+First note that having variables range over an empty type causes no
+difficulties,\footnote{If the type \texttt{T} is empty, then the following
+two equivalences hold:
+\begin{pvsex}
+  (FORALL (x: T): p(x)) IFF TRUE, 
+  (EXISTS (x: T): p(x)) IFF FALSE
+\end{pvsex}}
+so variable declarations and variable bindings never trigger the
+nonemptiness check.
+
+During typechecking, type declarations may indicate that the type is
+nonempty, and constant declarations of a given type require that the type
+be nonempty.  When a type is determined to be nonempty, it is marked as
+such so that future checks of constants do not trigger more TCCs.  Below
+we describe how type declarations are handled first for declarations in the
+body of a theory, and then for type declarations that appear in the formal
+parameters, as they require special handling.
+
+\paragraph{Theory Body Type Declarations}
+
+\begin{itemize}
+
+\item Uninterpreted type or subtype declarations introduced with the
+keyword \keyword{TYPE} may be empty.  Declaring a constant of that type
+will lead to a TCC that is unprovable without further axioms.
+
+\item Uninterpreted type declarations introduced with the keyword
+\keyword{NONEMPTY\_TYPE}\index{nonempty_type@\keyword{NONEMPTY\_TYPE}}
+or \keyword{TYPE+}\index{type+@\texttt{TYPE+}} are assumed to be nonempty.
+Thus the type is marked nonempty.
+
+\item Uninterpreted subtype declarations introduced with the keyword
+\keyword{NONEMPTY\_TYPE} or \keyword{TYPE+} are assumed to be nonempty, as long as the
+supertype is nonempty.  Thus the supertype is checked, and an existence
+TCC is generated if the supertype is not known to be nonempty.  Then the
+subtype is marked nonempty.
+
+\item The type of an interpreted constant is nonempty, as the definition
+provides a witness.
+
+\item Interpreted type declarations introduced with the keyword
+\keyword{TYPE} may be nonempty, depending on the type definition.
+
+\item Any interpreted subtype declaration with a \keyword{CONTAINING}
+clause is marked nonempty, and the \keyword{CONTAINING} expression is
+typechecked against the specified type.  In this case no existence TCC is
+generated, since the \keyword{CONTAINING} expression is a witness to the
+type.  Of course, other TCCs may be generated as a result of typechecking
+the \keyword{CONTAINING} expression.
+
+\end{itemize}
+
+\paragraph{Formal Type Declarations}
+
+Only uninterpreted (sub)type declarations may appear in the formal
+parameters list.
+
+\begin{itemize}
+
+\item Formal type declarations introduced with the \texttt{TYPE} keyword may
+be empty.  This is handled according to the occurrences of constant
+declarations involving the type.
+
+\item If there is a constant declaration of that type in the formal
+parameter list, then no TCCs are generated, since
+any instance of the theory will need to provide both the type and a
+witness.  The type is marked nonempty in this case.
+
+\item If the type declaration is a formal parameter and a constant is
+declared whose type involves the type, but is not the type itself (e.g.
+\texttt{[t:\ TYPE, f:\ [t -> t]]}), then a
+TCC may be generated, and a comment is added to the TCC indicating that an
+assuming clause may be needed in order to discharge the TCC.  This TCC
+will be generated only if an earlier constant declaration hasn't already
+forced the type to be marked nonempty.  Note that there are circumstances
+in which the formal type may be empty but the type expression involving
+that type is nonempty.  This is discussed further below.
+
+\end{itemize}
+
+\subsection{Checking Nonemptiness}
+\index{type!nonempty}
+The typechecker knows a type to be nonempty under the
+following circumstances:
+\begin{itemize}
+
+\item The type was declared to be nonempty, using either the
+\keyword{NONEMPTY\_TYPE}\index{nonempty_type@\keyword{NONEMPTY\_TYPE}} or
+the synonymous \keyword{TYPE+}\index{type+@\texttt{TYPE+}} keyword.  If the
+type is uninterpreted, this amounts to an assumption that the type is
+nonempty.  If the type has a definition, then an existence TCC is
+generated unless the defining type expression is known to be nonempty.
+
+\item The type was declared to have an element using a
+\keyword{CONTAINING}\index{CONTAINING@\texttt{CONTAINING}} expression.
+
+\item A constant was declared for the type.  In this case an existence TCC
+is generated for the first such constant, after which the type is marked
+as nonempty.
+
+\item It was marked as nonempty from an earlier check.
+
+\end{itemize}
+
+Once an unmarked type is determined to be nonempty, it is marked by the
+typechecker so that later checks will not generate existence TCCs.  In
+addition, the type components are marked as nonempty.  Thus the types that
+make up a tuple type, the field types of a record type, and the supertype
+of a subtype are all marked.
+
+It is possible for two equivalent types to be marked differently, for
+example:
+\begin{pvsex}
+  t1: TYPE = \{x: int | x > 2\}
+  t2: TYPE = \{x: int | x > 2\}
+  c1: t1
+\end{pvsex}
+only marks the first type (\texttt{t1}).  Hence, it is best to name your types and
+to use those names uniformly.
+
+\index{type!empty|)}
+\index{type!nonempty|)}
+
+\section{Variable Declarations}
+\index{variables|(}\index{declaration!variables|(}
+
+Variable declarations introduce new variables and associate a type with
+them.  These are \emph{logical} variables, not program variables; they
+have nothing to do with state---they simply provide a name and associated
+type so that binding expressions and formulas can be succinct.
+Variables may not be exported.  Variable
+declarations also appear in binding expressions such as \texttt{FORALL} and
+\texttt{LAMBDA}.  Such local declarations ``shadow'' any earlier
+declarations.  For example, in
+\begin{pvsex}
+  x: VAR bool
+  f: FORMULA (FORALL (x: int): (EXISTS (x: nat): p(x)) AND q(x))
+\end{pvsex}
+%
+The occurrence of \texttt{x} as an argument to \texttt{p} is of type
+\texttt{nat}, shadowing the one of type \texttt{int}.  Similarly, the
+occurrence of \texttt{x} as an argument to \texttt{q} is of type
+\texttt{int}, shadowing the one of type \texttt{bool}.
+
+\index{variables|)}\index{declaration!variables|)}
+
+\section{Constant Declarations}\label{constants}
+\index{constants|(}\index{declaration!constants|(}
+
+Constant declarations introduce new constants, specifying their type and
+optionally providing a value.  Since PVS is a higher order logic, the term
+\emph{constant} refers to functions and relations, as well as the usual
+(0-ary) constants.  As with types, there are both \emph{uninterpreted} and
+\emph{interpreted} \index{constants!interpreted}%
+\index{constants!uninterpreted} constants.  Uninterpreted constants make
+no assumptions, although they require that the type be nonempty (see
+Section~\ref{subtypes}, page~\pageref{subtypes}).  Here are some examples
+of constant declarations:
+\begin{pvsex}
+  n: int
+  c: int = 3
+  f: [int -> int] = (lambda (x: int): x + 1)
+  g(x: int): int = x + 1
+\end{pvsex}
+%
+The declaration for \texttt{n} simply introduces a new integer constant.
+Nothing is known about this constant other than its type, unless further
+properties are provided by \texttt{AXIOM}s.  The other three constants are
+interpreted.  Each is equivalent to specifying two declarations: \eg\
+the third line is equivalent to
+\begin{pvsex}
+  f: [int -> int]
+  f: AXIOM  f = (LAMBDA (x: int): x + 1)
+\end{pvsex}
+%
+except that the definition is guaranteed to form a \emph{conservative
+extension}\index{conservative extension} of the theory.  Thus the
+theory remains consistent after the declaration is given if it was
+consistent before.
+
+The declarations for \texttt{f} and \texttt{g} above are two different ways to
+declare the same function.  This extends to more complex arguments, for
+example
+\begin{pvsex}
+  f: [int -> [int, nat -> [int -> int]]] =
+     (LAMBDA (x: int): (LAMBDA (y: int), (z: nat): (LAMBDA (w: int):
+       x * (y + w) - z)))
+\end{pvsex}
+%
+is equivalent to
+\begin{pvsex}
+  f(x: int)(y: int, z: nat)(w: int): int = x * (y + w) - z
+\end{pvsex}
+%
+This can be shortened even further if the variables are declared first:
+\begin{pvsex}
+  x, y, w: VAR int
+  z: VAR nat
+  f(x)(y,z)(w): int = x * (y + w) - z
+\end{pvsex}
+%
+Finally, a mix of predeclared and locally declared variables is possible:
+\begin{pvsex}
+  x, y: VAR int
+  f(x)(y,(z: nat))(w: int): int = x * (y + w) - z
+\end{pvsex}
+%
+Note the parentheses around \texttt{z:\ nat}; without these, \texttt{y} would
+also be treated as if it were declared to be of type \texttt{nat}.
+
+A construct that is frequently encountered when subtypes are involved is
+shown by this example
+\begin{pvsex}
+  f(x: \{x: int | p(x)\}): int = x + 1
+\end{pvsex}
+%
+There are two useful abbreviations for this expression.  In the first, we
+use the fact that the type \texttt{\{x:\ int | p(x)\}} is equivalent to
+the type expression \texttt{(p)} when \texttt{p} has type \texttt{[int ->
+bool]}, and we can write
+\begin{pvsex}
+  f(x: (p)): int = x + 1
+\end{pvsex}
+%
+The second form of abbreviation basically removes the set braces and the
+redundant references to the variable, though extra parentheses are
+required:
+\begin{pvsex}
+  f((x: int | p(x))): int = x + 1
+\end{pvsex}
+%
+Which of these forms to use is mostly a matter of taste; in general,
+choose the form that is clearest to read for a given declaration.
+
+Note that functions with range type \texttt{bool} are generally referred
+to as \emph{predicates}, and can also be regarded as relations or sets.
+For example, the set of positive odd numbers can be characterized by a
+predicate as follows:
+\begin{pvsex}
+  odd: [nat -> bool] = (LAMBDA (n: nat): EXISTS (m: nat): n = 2 * m + 1)
+\end{pvsex}
+%
+PVS allows an alternate syntax for predicates that encourages a
+set-theoretic interpretation:
+\begin{pvsex}
+  odd: [nat -> bool] = \{n: nat | EXISTS (m: nat): n = 2 * m + 1\}
+\end{pvsex}
+
+\index{constants|)}
+
+\section{Recursive Definitions}\label{recursive-definitions}
+\index{recursive definitions|(}
+
+Recursive definitions are treated as constant declarations, except that
+the defining expression is required, and a \emph{measure}\index{measure
+function} must be provided, along with an optional well-founded order
+relation.\index{well-founded order releation} The same syntax for
+arguments is available as for constant declarations; see the preceding
+section.
+
+PVS allows a restricted form of recursive definition; mutual
+recursion\index{recursion!mutual}\index{mutual recursion} is not allowed,
+and the function must be \emph{total},\index{total function} so that the
+function is defined for every value of its domain.  In order to ensure
+this, recursive functions must be specified with a
+\emph{measure}\index{measure}, which is a function whose signature matches
+that of the recursive function, but with range type the domain of the
+order relation, which defaults to \texttt{<} on \texttt{nat} or
+\texttt{ordinal}\index{ordinal}\index{type!ordinal}.  If the order
+relation is provided, then it must be a binary relation on the range type
+of the measure, and it must be well-founded; a \emph{well-founded} \tcc\
+\index{well-founded TCC}\index{TCC!well-founded} is generated if the order
+is not declared to be well-founded.
+
+Here is the classic example of the
+\texttt{factorial}\index{factorial@\texttt{factorial}} function:
+%
+\begin{pvsex}
+  factorial(x: nat): RECURSIVE nat =
+    IF x = 0 THEN 1 ELSE x * factorial(x - 1) ENDIF
+    MEASURE (LAMBDA (x: nat): x)
+\end{pvsex}
+%
+The measure is the expression following the \texttt{MEASURE} keyword (the
+optional order relation follows a \texttt{BY} keyword after the
+measure).  This definition generates a \emph{termination
+TCC};\index{TCC!termination}\index{termination TCC} a proof obligation
+which must be discharged in order that the function be well-defined.  In
+this case the obligation is
+%
+\begin{pvsex}
+  factorial_TCC2: OBLIGATION
+    FORALL (x: nat): NOT x = 0 IMPLIES x - 1 < x
+\end{pvsex}
+
+It is possible to abbreviate the given \texttt{MEASURE} function by
+leaving out the \texttt{LAMBDA} binding.  For example, the measure
+function of the factorial definition may be abbreviated to:
+\begin{pvsex}
+  MEASURE x
+\end{pvsex}
+The typechecker will automatically insert a lambda binding corresponding
+to the arguments to the recursive function if the measure is not already
+of the correct type, and will generate a typecheck error if this process
+cannot determine an appropriate function from what has been specified.
+
+A termination \tcc\ is generated for each recursive occurrence of the
+defined entity within the body of the definition.\footnote{Some of these
+may be subsumed by earlier TCCs, and hence will not be displayed with the
+\texttt{M-x show-tccs} command.}  It is obtained in one of two ways.  If a
+given recursive reference has at least as many arguments provided as
+needed by the measure, then the \tcc\ is generated by applying the measure
+to the arguments of the recursive call and comparing that to the measure
+applied to the original arguments using the order relation.  The
+\texttt{factorial} \tcc\ is of this form.  The context of the occurrence
+is included in the \tcc; in this case the occurrence is within the
+\texttt{ELSE} part of an \texttt{IF-THEN-ELSE} so the negated condition is
+an antecedent to the proof obligation.
+
+If the reference does not have enough arguments available, then the
+reference is actually given a \emph{recursive signature}\index{recursive
+signature} derived from the recursive function as described below.  This
+type constrains the domain to satisfy the measure, and the termination
+\tcc\ is generated as a \emph{termination-subtype}
+\tcc.\index{termination-subtype TCC}\index{TCC!termination-subtype}
+Termination-subtype \tccs\ are recognized as such by the occurrence of the
+order in the goal of the \tcc.  For example, we could define a
+substitution function for terms as follows.
+\begin{pvsex}
+  term: DATATYPE
+  BEGIN
+   mk_var(index: nat): var?
+   mk_const(index: nat): const?
+   mk_apply(fun: term, args: list[term]): apply?
+  END term
+
+  subst(x: (var?), y: term)(s: term): RECURSIVE term =
+    (CASES s OF
+      mk_var(i): (IF index(x) = i THEN y ELSE s ENDIF),
+      mk_const(i): s,
+      mk_apply(t, ss): mk_apply(subst(x, y)(t), map(subst(x, y))(ss))
+     ENDCASES)
+  MEASURE s BY <<
+\end{pvsex}
+Now the first recursive occurrence of \texttt{subst} has all arguments
+provided, so the termination TCC is as expected.  The second occurrence
+does not have enough arguments.  The recursive signature of that
+occurrence is
+\begin{pvsex}
+  [[(var?), term] -> [\{z1: term | z1 << s\} -> term]]
+\end{pvsex}
+Hence the signature of \texttt{subst(x, y)} is \texttt{[\{z1:\ term | z1 <<
+s\} -> term]}, and map is instantiated to \texttt{map[\{z1:\ term | z1 <<
+s\}, term]}, which leads to the TCC
+\begin{pvsex}
+subst_TCC2: OBLIGATION
+  FORALL (ss: list[term], t: term, s: term, x: (var?)):
+    s = mk_apply(t, ss) IMPLIES every[term](LAMBDA (z: term): z << s)(ss);
+\end{pvsex}
+Note that this \texttt{map} instance could be given directly, just don't
+make the mistake of providing \texttt{map[term, term]}, as this leads to a
+TCC that says every \texttt{term} is \texttt{<<} \texttt{s}.
+For the same reason, if the uncurried form of this definition is given,
+then a lambda expression will have to be provided and the type will have
+to include the measure, for example,
+\begin{pvsex}
+   subst(x: (var?), y, s: term): RECURSIVE term =
+     (CASES s OF
+       mk_var(i): (IF index(x) = i THEN y ELSE s ENDIF),
+       mk_const(i): s,
+       mk_apply(t, ss): mk_apply(subst(x, y, t),
+                                 map(LAMBDA (s1: \{z: term|z<<s\}):
+                                       subst(x, y, s1))(ss))
+      ENDCASES)
+   MEASURE s BY <<
+\end{pvsex}
+
+The recursive signature is generated based on the type of the recursive
+function and the measure.  For curried functions, it may be that the
+measure does not have the entire domain of the recursive function, but
+only the first few.  For example, consider the measure for the function
+\texttt{f}.
+\begin{pvsex}
+  f(r: real)(x, y: nat)(b: boolean): RECURSIVE boolean
+    = ...
+   MEASURE LAMBDA (r: real): LAMBDA (x, y: nat): x
+\end{pvsex}
+The type of the measure function is \texttt{[real -> [nat, nat -> nat]]},
+which is a prefix of the function type.  In deriving the recursive
+signature, the last domain type of the measure is constrained (using a
+subtype) in the corresponding position of the recursive function type.  In
+this case the recursive signature is
+\begin{pvsex}
+  [real -> [\{z: [nat, nat] | z`1 < x\} -> [boolean -> boolean]]]
+\end{pvsex}
+Note that the recursive signature is a dependent type that depends on the
+arguments of the recursive function (\texttt{x} in this case), and hence
+only applies within the body of the recursive definition.
+
+The formal argument that typechecking the body of a recursive function
+using the recursive signature is sounde will appear in a future version of
+the semantics manual, for now note that simple attempts to subvert this
+mechanism do not work, as the following example illustrates.
+\begin{pvsex}
+  fbad: RECURSIVE [nat -> nat] = fbad
+   MEASURE lambda (n: nat): n
+\end{pvsex}
+This leads an unprovable TCC.
+\begin{pvsex}
+  fbad_TCC1: OBLIGATION FORALL (x1: nat, x: nat): x < x1;
+\end{pvsex}
+The TCC results from the comaprison of the expected type \texttt{[nat ->
+nat]} to the derived type \texttt{[\{z:\ nat | z < x1\} -> nat]}.  Remember
+that in PVS domains of function types must be equal in order for the
+function types to satisfy the subtype relation, and this is exactly what
+the TCC states.
+
+\pvstheory{f91-alltt}{Theory \texttt{f91}}{f91-alltt}
+\index{f91@{\texttt{f91}}}
+
+When a doubly recursive call is found, the inner recursive calls are
+replaced by variables in the termination \tccs\ generated for the outer
+calls.  For example, in Figure~\ref{f91-alltt} the termination \tcc\ is
+
+\begin{pvsex}
+f91_TCC5: OBLIGATION
+  FORALL (i: nat,
+          v: [i1:
+               \{z: nat |
+                        (IF z > 101 THEN 0 ELSE 101 - z ENDIF) <
+                         (IF i > 101 THEN 0 ELSE 101 - i ENDIF)\} ->
+               \{j: nat | IF i1 > 100 THEN j = i1 - 10 ELSE j = 91 ENDIF\}]):
+    NOT i > 100 IMPLIES
+     IF i > 100 THEN v(v(i + 11)) = i - 10 ELSE v(v(i + 11)) = 91 ENDIF;
+\end{pvsex}
+where the inner calls to \texttt{f91} have been replaced by the
+higher-order variable \texttt{v}, with the recursive signature as shown.
+Since the obligation forces us to prove the termination condition for all
+functions whose type is that of \texttt{f91}, it will also hold for
+\texttt{f91}.  This example also illustrates the use of dependent types,
+discussed in Section~\ref{dependent-types}.
+
+\pvstheory{ackerman-alltt}{Theory \texttt{ackerman}}{ackerman-alltt}
+\index{ackerman@{\texttt{ackerman}}}
+
+In some cases the natural numbers are not a convenient measure; PVS
+also provides the \texttt{ordinal}s, which allow recursion with measures up
+to $\varepsilon_0$.  This is primarily useful in handling
+lexicographical orderings.  For example, in the definition of the
+Ackerman function in Figure~\ref{ackerman-alltt},\footnote{There are
+ways of specifying \texttt{ackerman} using higher-order functionals, in
+which case the measure is again on the natural numbers.} there are two
+termination \tccs\ generated (along with a number of subtype \tccs).
+The first termination \tcc\ is
+\begin{pvsex}
+  ack_TCC2:
+    OBLIGATION
+      (FORALL m, n:
+        NOT m = 0 AND n = 0 IMPLIES ackmeas(m - 1, 1) < ackmeas(m, n))
+\end{pvsex}
+%
+and corresponds to the first recursive call of \texttt{ack} in the body of
+\texttt{ack}.  In this occurrence, it is known that \texttt{m $\neq$ 0}
+and \texttt{n = 0}.  The remaining expression says that the measure
+applied to the arguments of the recursive call to \texttt{ack} is less
+than the measure applied to the initial arguments of \texttt{ack}.  Note
+that the \texttt{<} in this expression is over the \texttt{ordinal}s, not
+the \texttt{real}s.
+
+\index{recursive definitions|)}
+
+
+\section{Macros}\label{macro-declarations}
+\index{macros|(}
+
+There are some definitions that are convenient to use, but it's preferable
+to have them expanded whenever they are referenced.  To some extent this
+can be accomplished using auto-rewrites in the prover, but rewriting is
+restricted.  In particular terms in types or actual parameters are not
+rewritten; \texttt{typepred} and \texttt{same-name} must be used.  These
+both require the terms to be given as arguments, making it difficult to
+automate proofs.
+
+The \texttt{MACRO} declaration is used to indicate definitions that are
+expanded at typecheck time.  Macro declarations are normal constant
+declarations, with the \texttt{MACRO} keyword preceding the
+type.\footnote{This is similar to the \texttt{==} form of E\textsc{hdm}.}
+For example, after the declaration
+\begin{pvsex}
+  N: MACRO nat = 100
+\end{pvsex}
+any reference to \texttt{N} is now automatically replaced by \texttt{100},
+including such forms as \texttt{below[N]}.
+
+Macros are not expanded until they have been typechecked.  This is because
+the name overloading allowed by PVS precludes expanding during parsing.
+TCCs are generated before the definition is expanded.
+\index{macros|)}
+
+\input{inductive_defs}
+
+\section{Formula Declarations}\label{formula-declarations}
+\index{formula declarations|(}\index{declaration!formulas|(}
+
+Formula declarations introduce \emph{axioms}\index{axioms},
+\emph{assumptions}\index{assumptions}, \emph{theorems}\index{theorems},
+and \emph{obligations}\index{obligations}.  The identifier associated with
+the declaration may be referenced during proofs (see the \texttt{lemma}
+command in the PVS Prover Guide~\cite{PVS:prover}).  The expression
+that makes up the body of the formula is a boolean expression.  Axioms,
+assumptions, and obligations are introduced with the keywords
+\texttt{AXIOM}, \texttt{ASSUMPTION}, and \texttt{OBLIGATION},
+respectively.  Axioms may also be introduced using the keyword
+\texttt{POSTULATE}\index{postulate}.  In the prelude postulates are used
+to indicate axioms that are provable by the decision procedures, but not
+from other axioms.  Theorems may be introduced with any of the keywords
+\texttt{CHALLENGE}\index{claim@{\texttt{CHALLENGE}}},
+\texttt{CLAIM}\index{claim@{\texttt{CLAIM}}},
+\texttt{CONJECTURE}\index{conjecture@{\texttt{CONJECTURE}}},
+\texttt{COROLLARY}\index{corollary@{\texttt{COROLLARY}}},
+\texttt{FACT}\index{fact@{\texttt{FACT}}},
+\texttt{FORMULA}\index{formula@{\texttt{FORMULA}}},
+\texttt{LAW}\index{law@{\texttt{LAW}}},
+\texttt{LEMMA}\index{lemma@{\texttt{LEMMA}}},
+\texttt{PROPOSITION}\index{proposition@{\texttt{PROPOSITION}}},
+\texttt{SUBLEMMA}\index{sublemma@{\texttt{SUBLEMMA}}}, or
+\texttt{THEOREM}\index{theorem@{\texttt{THEOREM}}}.
+
+Assumptions are only allowed in assuming clauses (see
+Section~\ref{assuming}).  Obligations are generated by the system for
+\tccs, and cannot be specified by the user.  Axioms are treated
+specially when a proof is analyzed, in that they are not expected to
+have an associated proof.  Otherwise they are treated exactly like
+theorems.  All the keywords associated with theorems have the same
+semantics, they are there simply to allow for greater diversity in
+classifying formulas.
+
+Formula declarations may contain free variables\index{free variables}, in
+which case they are equivalent to the universal closure\index{universal
+closure} of the formula.\footnote{The universal closure of a formula is
+obtained by surrounding the formula with a \texttt{FORALL} binding
+operator whose bindings are the free variables of the formula.  For
+example, the universal closure of \texttt{p(x,y) => q(z)} is
+\texttt{(FORALL x,y,z:\ p(x,y) => q(z))} (assuming \texttt{x}, \texttt{y}
+and \texttt{z} resolve to variables).} In fact, the prover actually uses
+the universal closure when it introduces a formula to a proof.  Formula
+declarations are the only declarations in which free variables are
+allowed.
+
+\index{declaration!formulas|)}\index{formula declarations|)}
+
+\input{judgements}
+
+\input{conversions}
+
+\input{libraries}
+
+\input{auto-rewrite}
+
+\index{declaration|)}

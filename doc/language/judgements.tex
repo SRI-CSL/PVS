@@ -1,0 +1,212 @@
+% Document Type: LaTeX
+% Master File: language.tex
+\section{Judgements}
+\label{judgements}\index{judgements|(}
+
+The facility for defining predicate subtypes is one of the most useful
+features provided by PVS, but it can lead to a lot of redundant TCCs.
+\emph{Judgements}\footnote{We prefer this spelling, though many spell
+checkers do not.} provide a means for controlling this by allowing
+properties of operators on subtypes to be made available to the
+typechecker.  There are two kinds of judgements available in PVS\@.  The
+\emph{constant judgement}\index{constant judgement} states that a
+particular constant (or number) has a type more specific than its declared
+type.  The \emph{subtype judgement}\index{subtype judgement} states that
+one type is a subtype of another.
+
+\subsection{Constant Judgements}
+\index{constant judgement}
+
+There are two kinds of constant judgements.  The simpler kind 
+states that a constant or number belongs to a type different than its
+declared type.\footnote{Remember that all numbers are implicitly declared to
+be of type \texttt{real}.}  For example, the constant judgement
+declaration
+\begin{pvsex}
+  JUDGEMENT c, 17 HAS_TYPE (prime?)
+\end{pvsex}
+simply states that the constant \texttt{c} and the number \texttt{17} are
+both prime numbers.  This declaration leads to the TCC formulas
+\texttt{prime?(c)} and \texttt{prime?(17)}, but in any context in which
+this declaration is visible, these TCCs will not be generated.  Thus no
+TCCs are generated for the formula \texttt{F} in
+\begin{pvsex}
+  RP: [(prime?), (prime?) -> bool]
+  F: FORMULA RP(c, 17) IMPLIES RP(17, c)
+\end{pvsex}
+
+The second kind of constant judgement is for functions; argument types are
+provided and the judgement states that when the function is applied to
+arguments of the given types, then the result has the type following the
+\texttt{HAS\_TYPE} keyword.  Here is an example that illustrates the need
+for this kind of judgement:
+\begin{pvsex}
+  x, y: VAR real
+  f(x,y): real = x*x - y*y
+  n: int = IF f(1,2) > 0 THEN f(4,3) ELSE f(3,2) ENDIF
+\end{pvsex}
+This leads to two TCCs:
+\begin{pvsex}
+  n_TCC1: OBLIGATION
+    f(1, 2) > 0 IMPLIES
+      rational_pred(f(4, 3)) AND integer_pred(f(4, 3))
+  n_TCC2: OBLIGATION
+    NOT f(1, 2) > 0 IMPLIES
+      rational_pred(f(3, 2)) AND integer_pred(f(3, 2))
+\end{pvsex}
+The problem here is that although we know that \texttt{f} is closed under
+the integers, the typechecker does not.  If \texttt{f} is heavily used,
+dealing with these TCCs becomes cumbersome.  We can try the \emph{ad hoc}
+solution of adding new overloaded declarations for \texttt{f}:
+\begin{pvsex}
+  i, j: VAR nat
+  f(i, j): int = f(i, j)
+\end{pvsex}
+But now proofs require an extra definition expansion, and such overloading
+leads to confusion.\footnote{This is one of the motivations for providing
+the \texttt{M-x~show-expanded-sequent} command.}  A more elegant solution
+is to use a judgement declaration:
+\begin{pvsex}
+  f_int_is_int: JUDGEMENT f(i, j: int) HAS\_TYPE int
+\end{pvsex}
+This generates the TCC
+\begin{pvsex}
+  f_int_is_int: FORALL (x:int, y:int):
+                  rational_pred(f(x, y)) AND integer_pred(f(x, y))
+\end{pvsex}
+But now the declaration of \texttt{n} given above generates \emph{no}
+TCCs, as the typechecker ``knows'' that \texttt{f} is closed on the
+integers.  Note that this is different than the simple judgement
+\begin{pvsex}
+  f_int: JUDGEMENT f HAS\_TYPE [int, int -> int]
+\end{pvsex}
+In this case, the TCC generated is unprovable:
+\begin{pvsex}
+  f_int: OBLIGATION
+    ((FORALL (x: real): rational_pred(x) AND integer_pred(x)) AND
+      (FORALL (x: real): rational_pred(x) AND integer_pred(x)))
+     AND
+     (FORALL (x1: [real, real]): rational_pred(f(x1)) AND integer_pred(f(x1)));
+\end{pvsex}
+A warning is generated when simple constant judgements are declared to be
+of a function type.\footnote{Earlier versions of PVS simply interpreted
+this form as a closure condition, but this is less flexible.}  In
+addition, this judgement will not help with the declaration \texttt{n}
+above; it can only be used in higher-order functions, for example:
+\begin{pvsex}
+  F: [[int, int -> int] -> bool]
+  FF: FORMULA F(f)
+\end{pvsex}
+
+The arguments for a function judgement follow the syntax for function
+declarations; so a curried function may be given multiple judgements:
+\begin{pvsex}
+  f(x, y: real)(z: real): real
+  f_closed: JUDGEMENT f(x, y: nat)(z: int) HAS\_TYPE int
+  f2_closed: JUDGEMENT f(x, y: int) HAS\_TYPE [real -> int]
+\end{pvsex}
+
+If a constant judgement declaration specifies a name, it must refer to a
+unique constant and its type must be compatible with the type expression
+following the \texttt{HAS\_TYPE} keyword.  If it is a number, then its
+type must be compatible with the \texttt{number} type.
+
+Constant judgements generally lead to TCCs.  If no TCC is generated, then
+the judgement is not actually needed, and a warning to this effect is
+produced.  Simple (non-functional) constant judgements generate TCCs
+indicating that the constant belongs to the specified type.  Constant
+function judgements generate TCCs that reflect closure conditions.
+
+The judgement facility cannot be used to remove all redundant TCCs; the
+variables used for arguments must be unique, and full expressions may not
+be included.  Hence the following are not legal:
+\begin{pvsex}
+  x: VAR real
+  x_times_x_is_nonneg: JUDGEMENT *(x, x) HAS\_TYPE nonneg_real
+  c: real
+  x_times_c_is_even: JUDGEMENT *(x, c) HAS\_TYPE (even?)
+\end{pvsex}
+
+
+\subsection{Subtype Judgements}
+\index{subtype judgement}
+
+The subtype judgement is used to fill in edges of the subtype graph that
+otherwise are unknown to the typechecker.  For example, consider the
+following declarations:
+\begin{pvsex}
+  nonzero_real: NONEMPTY_TYPE = \{r: real | r /= 0\} CONTAINING 1
+  rational: NONEMPTY_TYPE FROM real
+  nonneg_rat: NONEMPTY_TYPE = \{r: rational | r >= 0\} CONTAINING 0
+  posrat: NONEMPTY_TYPE = \{r: nonneg_rat | r > 0\}  CONTAINING 1
+  /: [real, nonzero_real -> real]
+\end{pvsex}
+For \texttt{r} of type \texttt{real} and \texttt{q} of type
+\texttt{posrat}, the expression \texttt{r / q} leads to the TCC \texttt{q
+/= 0}.  One solution, if \texttt{q} is a constant, is to use a constant
+judgement as described above.  But if there are many constants involving
+the type \texttt{posrat}, this requires a lot of judgement declarations,
+and does not help at all for variables or compound expressions.  The
+subtype judgement solves this by stating that \texttt{posrat} is a subtype
+of \texttt{nzrat}.  Another subtype judgement states that \texttt{nzrat}
+is a subtype of \texttt{nzreal}:
+\begin{pvsex}
+  JUDGEMENT posrat SUBTYPE_OF nzrat
+  JUDGEMENT nzrat SUBTYPE_OF nzreal
+\end{pvsex}
+With these judgements, TCCs will not be generated for any denominator that
+is of type \texttt{posrat}.  With the (prelude) judgement declarations
+\begin{pvsex}
+  nnrat_plus_posrat_is_posrat:   JUDGEMENT +(nnx, py) HAS_TYPE posrat
+  posrat_times_posrat_is_posrat: JUDGEMENT *(px, py)  HAS_TYPE posrat
+\end{pvsex}
+not only are there no TCCs generated for \texttt{r / q}, but none are
+generated for \texttt{r / (q + 2)}, \texttt{r / ((q + 2) * q)}, etc.
+
+Given a subtype judgement declaration of the form
+\begin{pvsex}
+  JUDGEMENT S SUBTYPE_OF T
+\end{pvsex}
+it is an error if \texttt{S} is already known to be a subtype of
+\texttt{T}, or if they are not compatible.  Otherwise, \texttt{T} must be
+of the form \texttt{\{x:\ ST | p(x)\}}, where \texttt{ST} is the least
+compatible type of \texttt{S} and \texttt{T}, and a TCC will is generated
+of the form \texttt{FORALL (x:S): p(x)}.  Remember that subtyping on
+functions only works on range types, so the subtype judgement
+\begin{pvsex}
+  JUDGEMENT [nat -> nat] SUBTYPE_OF [int -> int]
+\end{pvsex}
+leads to the unprovable TCC
+\begin{pvsex}
+FORALL (x1:nat, y1:int): y1 >= 0 AND TRUE
+\end{pvsex}
+
+\subsection{Judgement Processing}
+
+When a judgement declaration is typechecked, TCCs are generated as
+explained above and the judgement is added to the current context for use
+in typechecking expressions.  The typechecker typechecks expressions in
+two passes; in the first pass it simply collects possible types for
+subexpressions, and in the second pass it recursively tries to determine a
+unique type based on the expected type, and generates TCCs accordingly;
+this is where judgements are used.  If the expression is a constant (name
+or number), then all non-functional judgements are collected for that
+constant and used to generate a minimal TCC relative to the expected type.
+
+If it is an application whose operator is a name, then functional
+judgements of the corresponding arity are collected for the operator, and
+those judgements for which the application arguments are all known to be
+of the corresponding judgement argument types are extracted, and a minimal
+TCC is generated from these.
+
+In addition to inhibiting the generation of TCCs during typechecking,
+judgements are also important to the prover; they are used explicitly in
+the \texttt{typepred} command, and implicitly in \texttt{assert}, where
+the judgement type information is provided to the ground decision
+procedures.
+
+Subtype judgements are used in determining when one type is a subtype of
+another, which is tested frequently during typechecking and proving,
+including in the test on argument types described above.
+
+\index{judgements|)}

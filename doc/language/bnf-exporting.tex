@@ -1,0 +1,19 @@
+\begin{bnf}
+
+\production{Exporting}
+{\lit{EXPORTING} \hlink{ExportingNames} \opt{\lit{WITH} \hlink{ExportingTheories}}}
+
+\production{ExportingNames}
+{\lit{ALL} \opt{\lit{BUT} \ites{\hlink{ExportingName}}{,}} \\[-0.1in]
+& \choice & \ites{\hlink{ExportingName}}{,}}
+
+\production{ExportingName}
+{\hlink{IdOp} \opt{\lit{:} \brc{\hlink{TypeExpr} \choice \lit{TYPE} \choice \lit{FORMULA}}}}
+
+\production{ExportingTheories}
+{\lit{ALL} \choice \lit{CLOSURE} \choice \hlink{TheoryNames}}
+
+\production{Importing}
+{\lit{IMPORTING} \hlink{TheoryNames}}
+
+\end{bnf}

@@ -1,0 +1,33 @@
+  
+  stack_induction: AXIOM
+    (FORALL (p: [stack -> boolean]):
+       p(empty)
+         AND
+         (FORALL (push1_var: T), (push2_var: stack):
+            p(push2_var) IMPLIES p(push(push1_var, push2_var)))
+         IMPLIES (FORALL (stack_var: stack): p(stack_var)))
+  
+  stack_nat_rec((empty?_fun: nat), (nonempty?_fun: [T, nat -> nat])):
+    [stack -> nat] =
+        LAMBDA (stack_var: stack):
+          CASES stack_var OF
+            empty: empty?_fun,
+            push(push1_var, push2_var):
+                nonempty?_fun(push1_var,
+                              stack_nat_rec(empty?_fun,
+                                            nonempty?_fun)(push2_var))
+          ENDCASES
+  
+  stack_ordinal_rec((empty?_fun: ordinal),
+                    (nonempty?_fun: [T, ordinal -> ordinal])):
+    [stack -> ordinal] =
+        LAMBDA (stack_var: stack):
+          CASES stack_var OF
+            empty: empty?_fun,
+            push(push1_var, push2_var):
+                nonempty?_fun(push1_var,
+                              stack_ordinal_rec(empty?_fun,
+                                                nonempty?_fun)(push2_var))
+          ENDCASES
+  
+  END stack_adt

@@ -1,0 +1,30 @@
+\begin{bnf}
+
+\production{Specification}
+{\ite{\brc{\hlink{Theory} \choice \hlink{Datatype}}}}
+
+\production{Theory}
+{\hlink{Id} \opt{\hlink{TheoryFormals}} \lit{:} \lit{THEORY}\\[-0.1in]
+&& \opt{\hlink{Exporting}}\\[-0.1in]
+&& \lit{BEGIN}\\[-0.1in]
+&& \opt{\hlink{AssumingPart}}\\[-0.1in]
+&& \opt{\hlink{TheoryPart}}\\[-0.1in]
+&& \lit{END} \hlink{Id}}
+
+\production{TheoryFormals}
+{\lit{[}\ \ites{\hlink{TheoryFormal}}{,} \lit{]}}
+
+\production{TheoryFormal}
+{\opt{\lit{(} \hlink{Importing} \lit{)}} \hlink{TheoryFormalDecl}}
+
+\production{TheoryFormalDecl}
+{\hlink{TheoryFormalType} \choice \hlink{TheoryFormalConst}}
+
+\production{TheoryFormalType}
+{\hlink{Ids} \lit{:} \brc{\lit{TYPE} \choice \lit{NONEMPTY\_TYPE} \choice \lit{TYPE+}} \\[-0.1in]
+& & \hspace{0.5in}\opt{\lit{FROM} \hlink{TypeExpr}}}
+
+\production{TheoryFormalConst}
+{\hlink{IdOps} \lit{:} \hlink{TypeExpr}}
+
+\end{bnf}

@@ -1,0 +1,9 @@
+f91: THEORY
+  BEGIN
+  i: VAR nat
+  f91(i):
+    RECURSIVE \{j: nat | IF i > 100 THEN j = i - 10 ELSE j = 91 ENDIF\} =
+      (IF i > 100 THEN i - 10 ELSE f91(f91(i + 11)) ENDIF)
+    MEASURE (LAMBDA i: (IF i > 101 THEN 0 ELSE 101 - i ENDIF))
+     
+  END f91

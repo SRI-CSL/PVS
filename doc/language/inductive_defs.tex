@@ -1,0 +1,123 @@
+\section{Inductive Definitions}
+\label{inductive-definitions}
+\index{inductive definition|(}
+
+PVS provides support for constructing inductive definitions.  Inductive
+definitions are usually presented by giving some rules for generating
+elements of a set and then stating that an object is in the set only if it
+has been generated according to the rules; hence, it is the smallest set
+closed under the rules.  Inductive definitions are similar to recursive
+definitions, in that both involve induction, and both must satisfy
+additional constraints to guarantee that they are total.
+
+The even integers provide a simple example of an inductive
+definition:\footnote{This is an alternative to the more traditional
+definition of \texttt{even?} in the prelude.}
+\begin{pvsex}
+  even(n:nat): INDUCTIVE bool =
+    n = 0 OR (n > 1 AND even(n - 2))
+\end{pvsex}
+With this definition, it is easy to prove, for example, that \texttt{0} or
+\texttt{1000} are even, simply by expanding the definition enough
+times.\footnote{In the latter case, \texttt{(apply (repeat (expand
+"even")))} is a good strategy to use, though it should be used with care
+since it does not terminate in all cases.}  More is needed, however, in
+proving general facts, such as if $n$ is even, then $n+1$ is not even.  To
+deal with these, we need a means of stating that an integer is even iff it
+is so as a result of this definition.  In PVS, this is accomplished by the
+automatic creation of two induction schemas, that may be viewed using the
+\texttt{M-x~prettyprint-expanded} command:
+\begin{pvsex}
+  even_weak_induction: AXIOM
+        (FORALL (P: [nat -> boolean]):
+           (FORALL (n: nat): n = 0 OR (n > 1 AND P(n - 2)) IMPLIES P(n))
+               IMPLIES (FORALL (n: nat): even(n) IMPLIES P(n)));
+  
+  even_induction: AXIOM
+        (FORALL (P: [nat -> boolean]):
+           (FORALL (n: nat):
+              n = 0 OR (n > 1 AND even(n - 2) AND P(n - 2)) IMPLIES P(n))
+               IMPLIES (FORALL (n: nat): even(n) IMPLIES P(n)));
+\end{pvsex}
+The weak induction axiom states that if \texttt{P} is another predicate
+that satisfies the \texttt{even} form, then any \texttt{even} number
+satisfies \texttt{P}.  Thus \texttt{even} is the smallest such \texttt{P}.
+The second (strong) axiom allows the \texttt{even} predicate to be carried
+along, which can make proofs easier.  These axioms are used by the
+\texttt{rule-induct} strategy described in the Prover
+Guide~\cite{PVS:prover}.
+
+Inductive definitions are predicates, hence must be functions with
+eventual range type \texttt{boolean}.  For example, in
+\begin{pvsex}
+  f1(n,m:int) INDUCTIVE int = n
+  f2(n,m:int)(x,y:int)(z:int): INDUCTIVE [int,int,int -> bool] =
+      LAMBDA (a,b,c:int): n = m IMPLIES f2(n,m)(x,y)(z)(a,b,c)
+\end{pvsex}
+\texttt{f1} is illegal, while \texttt{f2} returns a boolean value if
+applied to enough arguments, hence is valid.
+
+Every occurrence of the definition within the defining body must be
+\emph{positive}.\index{positive occurrence} For this we need to define the
+parity of an occurrence of a term in an expression $A$: If a term occurs
+in $A$ with a given parity, then the occurrence retains its parity in
+\texttt{$A$ AND $B$}, \texttt{$A$ OR $B$}, \texttt{$B$ IMPLIES $A$},
+\texttt{FORALL y:$A$}, \texttt{EXISTS y:$A$}, and reverses it in
+\texttt{$A$ IMPLIES $B$} and \texttt{NOT $A$}.  Any other occurrence is of
+unknown parity.
+
+The parity of the inductive definition in the definition body is checked,
+and if some occurrence of the definition is negative, a type error is
+generated.  If some occurrence is of unknown parity, then a
+\emph{monotonicity TCC}\index{TCC!monotonicity}\index{monotonicity TCC} is
+generated.  For example, given the declarations
+\begin{pvsex}
+  f: [nat, bool -> bool]
+  G(n:nat): INDUCTIVE bool =
+    n = 0 OR f(n, G(n-1))
+\end{pvsex}
+the monotonicity TCC has the form
+\begin{pvsex}
+  (FORALL (P1: [nat -> boolean], P2: [nat -> boolean]):
+     (FORALL (x: nat): P1(x) IMPLIES P2(x))
+         IMPLIES
+       (FORALL (x: nat):
+          x = 0 OR f(x, P1(x - 1)) IMPLIES x = 0 OR f(x, P2(x - 1))));
+\end{pvsex}
+
+Inductive definitions act as constants for the most part, so they may be
+expanded or used as rewrite rules in proofs.  However, they are not usable
+as auto-rewrite rules, as there is no easy way to determine when to stop
+rewriting.
+
+To provide induction schemes in the most usable form, they are generated
+as follows.  First, the variables in the definition are partitioned into
+fixed\index{fixed inductive variable} and non-fixed variables.  For
+example, in the transitive-reflexive closure
+\begin{pvsex}
+  TC(R)(x, y) : INDUCTIVE bool =
+     R(x, y) OR (EXISTS z: TC(R)(x, z) AND TC(R)(z, y))
+\end{pvsex}
+\texttt{R} is fixed since every occurrence of \texttt{TC} has \texttt{R}
+as an argument in exactly the same position, whereas \texttt{x} and
+\texttt{y} are not fixed.  The induction is then over predicates $P$ that
+take the non-fixed variables as arguments.  If the inductive definition is
+defined for variable $V$ partitioned into fixed variables $F$, and
+non-fixed variables $N$, the general form of the (weak) induction scheme
+is
+\begin{pvsex}
+  FORALL (\(F\), \(P\)):
+   (FORALL (\(N\)):
+     \emph{inductive_body}(\(N\))\([P/\emph{def}]\) IMPLIES \(P\)(\(N\)))
+      IMPLIES
+     (FORALL (\(N\)): \emph{def}(\(V\)) IMPLIES \(P\)(\(N\)))
+\end{pvsex}
+In the case of \texttt{TC}, this becomes
+\begin{pvsex}
+  TC_weak_induction: AXIOM
+        (FORALL (R: relation, P: [[T, T] -> boolean]):
+           (FORALL (x: T, y: T):
+              R(x, y) OR (EXISTS z: (P(x, z) AND P(z, y))) IMPLIES P(x, y))
+               IMPLIES (FORALL (x: T, y: T): TC(R)(x, y) IMPLIES P(x, y)));
+\end{pvsex}
+\index{inductive definition|)}

@@ -1,0 +1,255 @@
+% Document Type: LaTeX
+% Master File: language.tex
+\section{Conversions}
+\label{coercion-decls}\index{conversions|(}
+
+Conversions are functions that the typechecker can insert automatically
+whenever there is a type mismatch.  They are similar to the implicit
+coercions for converting integers to floating point used in many
+programming languages.  PVS provides some builtin conversions in the
+prelude, but conversions may also be provided by the user using
+\emph{conversion declarations}.
+
+\subsection{Conversion Examples}
+\label{conversion-examples}
+
+Here is a simple example.
+\begin{pvsex}
+  c: [int -> bool]
+  CONVERSION c
+  two: FORMULA 2
+\end{pvsex}
+Here, since formulas must be of type boolean, the typechecker
+automatically invokes the conversion and changes the formula to
+\texttt{c(2)}.  This is done internally, and is only visible to the user
+on explicit command\footnote{The \texttt{M-x~prettyprint-expanded} command.}
+and in the proof checker.
+
+A more complex conversion is illustrated in the following example:
+\begin{pvsex}
+  g: [int -> int]
+  F: [[nat -> int] -> bool]
+  F_app: FORMULA F(g)
+\end{pvsex}
+As this stands, \texttt{F\_app} is not type-correct, because a function of
+type \texttt{[int -> int]} is supplied where one of type \texttt{[nat ->
+int]} is required, and PVS requires equality on domain types.  However it
+is clear that \texttt{g} naturally induces a function from \texttt{nat} to
+\texttt{int} by simply restricting its domain.  Such a domain restriction
+is achieved by the \texttt{restrict} conversion that is defined in the PVS
+prelude as follows:
+\begin{pvsex}
+  restrict [T: TYPE, S: TYPE FROM T, R: TYPE]: THEORY
+   BEGIN
+    f: VAR [T -> R]
+    s: VAR S
+    restrict(f)(s): R = f(s)
+    CONVERSION restrict
+   END restrict
+\end{pvsex}
+The construction \texttt{S: TYPE FROM T} specifies that the actual
+parameter supplied for \texttt{S} must be a subtype of the one supplied
+for \texttt{T}.  The specification states that \texttt{restrict(f)} is a
+function from \texttt{S} to \texttt{R} whose values agree with \texttt{f}
+(which is defined on the larger domain \texttt{T}).  Using this approach,
+a type correct version of \texttt{F\_app} can be written as
+\texttt{F(restrict[int,nat,int](g))}.  This provides the convenience of
+contravariant subtyping, but without the inherent complexity (in
+particular, with contravariant subtyping the type of equality must be
+correct in substituting equals for equals, making proofs less
+perspicuous).
+
+It is not so obvious how to expand the domain of a function in the general
+case, so this approach does not work automatically in the other direction.
+It does, however, work well for the important special case of sets (or,
+equivalently, predicates): a set on some type \texttt{S} can be extended
+naturally to one on a supertype \texttt{T} by assuming that the members of
+the type-extended set are just those of the original set.  Thus, if
+\texttt{extend(s)} is the type-extended version of the original set
+\texttt{s}, we have \texttt{extend(s)(x) = s(x)} if \texttt{x} is in the
+subtype \texttt{S}, and \texttt{extend(s)(x) = false} otherwise.  We can
+say that \texttt{false} is the ``default'' value for the type-extended
+function.  Building on this idea, we arrive at the following specification
+for a general type-extension function.
+\begin{pvsex}
+  extend [T: TYPE, S: TYPE FROM T, R: TYPE, d: R]: THEORY
+   BEGIN
+    f: VAR [S -> R]
+    t: VAR T
+    extend(f)(t): R = IF S_pred(t) THEN f(t) ELSE d ENDIF
+   END extend
+\end{pvsex}
+The function \texttt{extend(f)} has type \texttt{[T -> R]} and is
+constructed from the function \texttt{f} of type \texttt{ [S -> R]} (where
+\texttt{S} is a subtype of \texttt{T}) by supplying the default value
+\texttt{d} whenever its argument is not in \texttt{S} (\texttt{S\_pred} is
+the {\em recognizer\/} predicate for \texttt{ S}).  Because of the need to
+supply the default \texttt{d}, this construction cannot be applied
+automatically as a conversion.  However, as noted above, \texttt{false} is
+a natural default for functions with range type \texttt{bool} (i.e., sets
+and predicates), and the following theory establishes the corresponding
+conversion.
+\begin{pvsex}
+extend_bool [T: TYPE, S: TYPE FROM T]: THEORY
+ BEGIN
+  CONVERSION extend[T, S, bool, false]
+ END extend_bool
+\end{pvsex}
+In the presence of this conversion, the type-incorrect formula
+\texttt{B\_app} in the following specification
+\begin{pvsex}
+  b: [nat -> bool]
+  B: [[int -> bool] -> bool]
+  B_app: FORMULA B(b)
+\end{pvsex}
+is automatically transformed to \texttt{B(extend[int,nat,bool,false](b))}.
+
+Conversions are also useful (for example, in semantic encodings of dynamic
+or temporal logics) in ``lifting'' operations to apply pointwise to
+sequences over their argument types.  Here is an example, where
+\texttt{state} is an uninterpreted (nonempty) type, and a state variable
+\texttt{v} of type real is represented as a constant of type
+\texttt{[state -> real]}.  
+\begin{pvsex}
+  th: THEORY
+   BEGIN
+    state: TYPE+
+    l: [state -> list[int]]
+    x: [state -> real]
+    b: [state -> bool]
+    bv: VAR [state -> bool]
+    s: VAR state
+    box(bv): bool = FORALL s: bv(s)
+    F1: FORMULA box(x > 1)
+    F2: FORMULA box(b IMPLIES length(l) + 3 > x)
+   END th
+\end{pvsex}
+In this example, the formulas \texttt{F1} and \texttt{F2} are not type
+correct as they stand, but with a \emph{lambda conversion}, triggered by
+the \texttt{K\_conversion} in the PVS prelude, these formulas
+are converted to the forms
+\begin{pvsex}
+  F1: FORMULA box(LAMBDA (x1: state): x(x1) > 1)
+  
+  F2: FORMULA
+    box(LAMBDA (x3: state):
+          b(x3) IMPLIES
+           (LAMBDA (x2: state):
+              (LAMBDA (x1: state): (LAMBDA (x: state): length(l(x)))(x1) + 3)
+                  (x2)
+               > x(x2))
+               (x3))
+\end{pvsex}
+
+
+\subsection{Conversion Processing}
+
+In general, conversions are applied by the typechecker whenever it would
+otherwise emit a type error.  In the simplest case, if an expression
+\texttt{e} of type \texttt{T$_1$} occurs where an incompatible type
+\texttt{T$_2$} is expected, the most recent compatible conversion
+\texttt{C} is found in the context and the occurrence of \texttt{e} is
+replaced by \texttt{C(e)}.  \texttt{C} is compatible if its type is
+\texttt{[D -> R]}, where \texttt{D} is compatible with \texttt{T$_1$} and
+\texttt{R} is compatible with \texttt{T$_2$}.
+
+Conversions are ordered in the context; if multiple compatible conversions
+are available,  the most recently declared conversion is used.  Hence, in
+
+\begin{pvsex}
+  CONVERSION c1
+  \(\cdots\)
+  IMPORTING th1, th2
+  \(\cdots\)
+  CONVERSION c2
+  \(\cdots\)
+  F: FORMULA 2
+\end{pvsex}
+
+For formula \texttt{F}, \texttt{c2} is the most recent conversion,
+followed by the conversions in theory \texttt{th2}, those in \texttt{th1},
+and finally \texttt{c1}.  Note that the relative order of the constant
+declarations (e.g., \texttt{c1} and \texttt{c2} above) doesn't matter,
+only the \texttt{CONVERSION} declarations.
+
+When conversions are available on either the argument(s) or the operator
+of an application, the arguments get precedence.
+
+For an application \texttt{e(x$_1$, \ldots, x$_n$)} the possible types of
+the operator \texttt{e}, and the arguments \texttt{x$_i$} are determined,
+and for each operator type \texttt{[D$_1$, \ldots, D$_n$ -> R]} and
+argument type \texttt{T$_i$}, if \texttt{D$_i$} is not compatible with
+\texttt{T$_i$}, conversions of type \texttt{[T$_i$ -> D$_i$]} are
+collected.  If such conversions are found for every argument that doesn't
+have a compatible type, then those conversions are applied.  Otherwise an
+operator conversion is looked for.
+
+Note that compositions of conversion are never searched for, as this would
+slow down processing too much.  If you want to have a composition looked
+for, define a new constant explicitly and include a conversion
+declaration for it.  Here is an example:
+\begin{pvsex}
+  T1, T2, T3: TYPE+
+  f1: [T1 -> T2]
+  f2: [T2 -> T3]
+  x: T1
+  g: [T3 -> bool]
+  CONVERSION f1, f2
+  F1: FORMULA g(x)
+  f3: [T1 -> T3] = f2 o f1
+  CONVERSION f3
+  F2: FORMULA g(x)
+\end{pvsex}
+In this example, \texttt{F1} leads to a type error, but when we make the
+composition function \texttt{f3} a conversion, the same expression in
+\texttt{F2} applies the conversion rather than give a type error.
+
+\subsection{Conversion Control}
+
+As stated above, conversions are only applied when typechecking otherwise
+fails.  In some cases, a conversion can allow a specification to
+typecheck, but the meaning is different than what was intended.  This is
+most likely for the \texttt{K\_conversion}, which was introduced when the
+\texttt{mucalculus} theory was added to the prelude in support of the
+model checker.  When a conversion is applied that fact is noted as a
+message, and may be viewed using the \texttt{show-theory-messages}
+command.  However, these messages are easily overlooked, so instead PVS
+allows finer control over conversions.
+
+Thus in addition to the \texttt{CONVERSION} form, the \texttt{CONVERSION-}
+form is available allowing conversions to be turned off.  For uniformity,
+the \texttt{CONVERSION+} form is also available as an alias for
+\texttt{CONVERSION}.  \texttt{CONVERSION-} disables conversions.
+
+The following theory illustrates the idea:
+\begin{alltt}
+  t1: THEORY
+  BEGIN
+   c: [int -> bool]
+   CONVERSION+ c
+   f1: FORMULA 3
+   CONVERSION- c
+   f2: FORMULA 3
+  END t1
+\end{alltt}
+Here \texttt{f2} leads to a type error.
+
+Another example is provided by the definition of the CTL temporal
+operators in the prelude theory \texttt{ctlops}, which are surrounded by
+\texttt{CONVERSION+} and \texttt{CONVERSION-} declarations that first
+enable the \texttt{K\_conversion} then disable it at the end of the
+theory.  All other conversions declared in the prelude remain enabled.
+They may be disabled within any theory by using the \texttt{CONVERSION-}
+form.
+
+When theories containing conversion declarations are imported, the
+conversions are imported as well.  Thus if \texttt{t2} has the
+\texttt{CONVERSION+ c} declaration but no \texttt{CONVERSION-}
+declaration, then \texttt{IMPORTING t1, t2} would enable the conversion,
+but \texttt{IMPORTING t2, t1} would leave it disabled.
+
+Conversion declarations may be generic or instantiated.  This
+allows, for example, enabling the generic form of a conversion while
+disabling particular instances.
+
+\index{conversions|)}

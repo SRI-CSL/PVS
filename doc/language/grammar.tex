@@ -1,0 +1,88 @@
+\chapter{The Grammar}\label{grammar}
+
+The complete \pvs\ grammar is presented in this Appendix, along with a
+discussion of the notation used in presenting the grammar.
+
+The conventions used in the presentation of the syntax are as follows.
+\index{syntax!conventions}
+
+\begin{itemize}
+
+\item Names in {\it italics\/} indicate syntactic classes and
+metavariables ranging over syntactic classes.
+
+\item The reserved words of the language are
+      printed in \lit{tt font, UPPERCASE}.
+
+\item An optional part {\it A\/} of a clause is enclosed in square brackets:
+\opt{{\it A\/}}.
+
+\item Alternatives in a syntax production are separated by a bar
+(``\choice''); a list of alternatives that is embedded in the right-hand
+side of a syntax production is enclosed in brackets, as in
+
+\begin{bnf}
+\production{ExportingName}
+{IdOp \opt{\lit{:} \brc{TypeExpr \choice \lit{TYPE} \choice \lit{FORMULA}}}}
+\end{bnf}
+
+
+\item Iteration of a clause {\it B\/} one or more times is indicated by
+enclosing it in brackets followed by a plus sign: \ite{{\it B\/}};
+repetition zero or more times is indicated by an asterisk instead of the
+plus sign: \rep{{\it B\/}}.
+
+\item A double plus or double asterisk indicates a clause separator; for
+example, \reps{{\it B\/}}{,} indicates zero or more repetitions of the
+clause {\it B} separated by commas.
+
+\item Other items printed in tt font on the right hand side of
+      productions are literals.  Be careful to distinguish where BNF
+symbols occur as literals, \eg\ the BNF brackets \brc{} versus the
+literal brackets \lit{\{\}}.
+
+\end{itemize}
+
+\subsubsection*{Specification}
+\par\noindent
+\spvsbnf{bnf-theory}
+
+\subsubsection*{Importings and Exportings}
+\par\noindent
+\spvsbnf{bnf-exporting}
+
+\subsubsection*{Assumings}
+\par\noindent
+\spvsbnf{bnf-assuming}
+
+\subsubsection*{Theory Part}
+\par\noindent
+\spvsbnf{bnf-theory-part}
+
+\subsubsection*{Declarations}
+\par\noindent
+\spvsbnf{bnf-decls}
+
+\subsubsection*{Type Expressions}
+\par\noindent
+\spvsbnf{bnf-type-expr}
+
+\subsubsection*{Expressions}
+\par\noindent
+\spvsbnf{bnf-expr}
+
+\subsubsection*{Expressions (continued)}
+\par\noindent
+\spvsbnf{bnf-expr-aux}
+
+\subsubsection*{Names}
+\par\noindent
+\spvsbnf{bnf-names}
+
+\subsubsection*{Identifiers}
+\par\noindent
+\spvsbnf{bnf-lexical}
+
+\subsubsection*{Datatypes}
+\par\noindent
+\spvsbnf{bnf-adts}

@@ -1,0 +1,18 @@
+\begin{bnf}
+
+\production{TheoryPart}
+{\ite{\{\hlink{TheoryElement} \opt{\lit{;}}\}}}
+
+\production{TheoryElement}
+{\hlink{Importing} \choice \hlink{TheoryDecl}}
+
+\production{TheoryDecl}
+{\hlink{LibDecl} \choice \hlink{TheoryAbbrDecl} \choice \hlink{TypeDecl}
+\choice \hlink{VarDecl} \\[-0.1in]
+& \choice & \hlink{ConstDecl} \choice \hlink{RecursiveDecl} \choice
+\hlink{MacroDecl} \choice \hlink{InductiveDecl} \\[-0.1in]
+& \choice & \hlink{FormulaDecl} \choice \hlink{Judgement} \choice \hlink{Conversion} \choice
+\hlink{InlineDatatype} \\[-0.1in]
+& \choice & \hlink{AutoRewriteDecl}}
+
+\end{bnf}

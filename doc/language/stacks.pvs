@@ -1,0 +1,29 @@
+
+stacks [t: TYPE] : THEORY
+  BEGIN
+
+  stack : TYPE
+  nonemptystack? : PRED[stack]
+
+  empty : stack
+  push: [t, stack -> (nonemptystack?)]
+  pop: [(nonemptystack?) -> stack]
+  top: [(nonemptystack?) -> t]
+
+  s: VAR stack
+  x,y: VAR t
+
+  pop_push: AXIOM pop(push(x, s)) = s
+
+  top_push: AXIOM top(push(x, s)) = x
+
+  push_pop_top: AXIOM
+    nonemptystack?(s) IFF push(top(s), pop(s)) = s
+
+  push_empty: AXIOM empty /= push(x, s)
+
+  nonempty_empty: THEOREM NOT nonemptystack?(empty)
+
+  push_push: THEOREM pop(pop(push(x, push(y, s)))) = s   
+
+END stacks 

@@ -1,0 +1,35 @@
+
+\begin{bnf}
+
+\production{TypeExpr}
+{\hlink{Name} \\[-0.1in]
+& \choice & \hlink{EnumerationType} \\[-0.1in]
+& \choice & \hlink{Subtype} \\[-0.1in]
+& \choice & \hlink{TypeApplication} \\[-0.1in]
+& \choice & \hlink{FunctionType} \\[-0.1in]
+& \choice & \hlink{TupleType} \\[-0.1in]
+& \choice & \hlink{RecordType}}
+
+\production{EnumerationType}
+{\lit{\{} \hlink{IdOps} \lit{\}}}
+
+\production{Subtype}
+{\lit{\{} \hlink{SetBindings} \lit{|} \hlink{Expr} \lit{\}} \\[-0.1in]
+& \choice & \lit{(} \hlink{Expr} \lit{)} }
+
+\production{TypeApplication}
+{\hlink{Name}\ \hlink{Arguments}}
+
+\production{FunctionType}
+{\opt{\lit{FUNCTION} \choice \lit{ARRAY}} \\[-0.1in]
+& & \lit{[} \ites{\{ \opt{\hlink{IdOp} \lit{:}} \hlink{TypeExpr} \}}{,} \lit{->} \hlink{TypeExpr} \lit{]}}
+
+\production{TupleType}
+{\lit{[} \ites{\{ \opt{\hlink{IdOp} \lit{:}} \hlink{TypeExpr} \}}{,} \lit{]}}
+
+\production{RecordType}
+{\lit{[\#} \ites{\hlink{FieldDecls}}{,} \lit{\#]}}
+
+\production{FieldDecls}
+{\hlink{Ids}\ \lit{:} \hlink{TypeExpr}}
+\end{bnf}

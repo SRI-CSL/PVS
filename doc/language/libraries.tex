@@ -1,0 +1,38 @@
+\section{Library Declarations}
+\label{library-decls}
+\index{library declaration|(}
+\index{declaration!library|(}
+
+Library declarations are used to introduce a new PVS context\index{PVS Context} into a
+specification.  Thus a specification may be developed in one context, and
+used in many other contexts.  This provides more flexibility, at the cost
+of less portability.  Any PVS context other than the current one may be
+considered a library.  An example of a library declaration
+is\index{LIBRARY@{\tt LIBRARY}}
+\begin{pvsex}
+  lib: LIBRARY = "~/pvs/protocols"
+\end{pvsex}
+When encountered, the system verifies that the directory specified within
+the quotation marks exists, and that it has a PVS context file
+\index{.pvscontext@{\tt .pvscontext}}%
+(\texttt{.pvscontext}).  The library declaration is made use of by
+including the library id in an importing name:\index{IMPORTING@{\tt IMPORTING}}
+\begin{pvsex}
+  IMPORTING lib@sliding_window[n]
+\end{pvsex}
+This has the effect of bringing in the \texttt{sliding\_window} theory,
+exactly as if the theory belonged to the current context.
+
+There are several libraries distributed with PVS, in the directory {\tt lib}.
+It is not necessary to give a library declaration for libraries in this
+directory, as it will be automatically searched for library importings.
+For example, to import the finite sets library over the natural numbers:
+\begin{pvsex}
+  IMPORTING finite\_sets@finite\_sets[nat]
+\end{pvsex}
+An alternative approach (described in the \emph{PVS User
+Guide}\cite{PVS:userguide}) is to use the {\tt M-x load-prelude-library},
+which augments the PVS prelude with the the theories from a given context.
+
+\index{declaration!library|)}
+\index{library declaration|)}

@@ -1,0 +1,35 @@
+
+\begin{bnf}
+\production{Expr}{
+\hlink{Number} \\[-0.1in] & \choice &
+\hlink{String} \\[-0.1in] & \choice &
+\hlink{Name} \\[-0.1in] & \choice &
+\hlink{Id} \lit{!} \hlink{Number}  \\[-0.1in] & \choice &
+Expr\ \hlink{Arguments} \\[-0.1in] & \choice &
+Expr\ \hlink{Binop}\ Expr \\[-0.1in] & \choice &
+\hlink{Unaryop}\ Expr \\[-0.1in] & \choice &
+Expr \lit{`} \{ \hlink{Id} \choice \hlink{Number} \} \\[-0.1in] & \choice &
+\lit{(} \ites{Expr}{,} \lit{)} \\[-0.1in] & \choice &
+\lit{(:} \reps{Expr}{,} \lit{:)} \\[-0.1in] & \choice &
+\lit{[|} \reps{Expr}{,} \lit{|]} \\[-0.1in] & \choice &
+\lit{(|} \reps{Expr}{,} \lit{|)} \\[-0.1in] & \choice &
+\lit{\{|} \reps{Expr}{,} \lit{|\}} \\[-0.1in] & \choice &
+\lit{(\#} \ites{\hlink{Assignment}}{,} \lit{\#)} \\[-0.1in] & \choice &
+Expr \lit{::} \hlink{TypeExpr} \\[-0.1in] & \choice &
+\hlink{IfExpr} \\[-0.1in] & \choice &
+\hlink{BindingExpr} \\[-0.1in] & \choice &
+\lit{\{} \hlink{SetBindings} \lit{|} Expr \lit{\}} \\[-0.1in] & \choice &
+\lit{LET} \ites{\hlink{LetBinding}}{,} \lit{IN} Expr  \\[-0.1in] & \choice &
+Expr \lit{WHERE} \ites{\hlink{LetBinding}}{,}  \\[-0.1in] & \choice &
+Expr \lit{WITH} \lit{[} \ites{\hlink{Assignment}}{,} \lit{]} \\[-0.1in] & \choice &
+\lit{CASES} Expr \lit{OF} \ites{\hlink{Selection}}{,} \opt{\lit{ELSE} Expr} \lit{ENDCASES} \\[-0.1in] & \choice &
+\lit{COND} \ites{\brc{Expr \lit{->} Expr}}{,} \opt{\lit{,} \lit{ELSE} \lit{->} Expr} \lit{ENDCOND} \\[-0.1in] & \choice &
+\hlink{TableExpr}}
+\end{bnf}
+
+
+
+%
+% The supporting productions have been moved to the file
+% bnf-expr-aux.tex so that the figure gets split into two
+%

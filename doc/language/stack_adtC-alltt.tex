@@ -1,0 +1,42 @@
+
+  <<:  (well_founded?[stack]) =
+      LAMBDA (x, y: stack):
+        CASES y
+          OF empty: FALSE,
+             push(push1_var, push2_var): x = push2_var OR x << push2_var
+          ENDCASES;
+
+  stack_well_founded: AXIOM well_founded?[stack](<<);
+
+  reduce_nat(empty?_fun: nat, nonempty?_fun: [[T, nat] -> nat]):
+  [stack -> nat] =
+      LAMBDA (stack_adtvar: stack):
+        LET red: [stack -> nat] = reduce_nat(empty?_fun, nonempty?_fun) IN
+          CASES stack_adtvar
+            OF empty: empty?_fun,
+               push(push1_var, push2_var):
+                 nonempty?_fun(push1_var, red(push2_var))
+            ENDCASES;
+
+  REDUCE_nat(empty?_fun: [stack -> nat],
+             nonempty?_fun: [[T, nat, stack] -> nat]):
+   [stack -> nat] =
+      LAMBDA (stack_adtvar: stack):
+        LET red: [stack -> nat] = REDUCE_nat(empty?_fun, nonempty?_fun) IN
+          CASES stack_adtvar
+            OF empty: empty?_fun(stack_adtvar),
+               push(push1_var, push2_var):
+                 nonempty?_fun(push1_var, red(push2_var), stack_adtvar)
+            ENDCASES;
+
+  reduce_ordinal(empty?_fun: ordinal,
+                 nonempty?_fun: [[T, ordinal] -> ordinal]):
+   [stack -> ordinal] =
+      LAMBDA (stack_adtvar: stack):
+        LET red: [stack -> ordinal] = reduce_ordinal(empty?_fun, nonempty?_fun)
+          IN
+          CASES stack_adtvar
+            OF empty: empty?_fun,
+               push(push1_var, push2_var):
+                 nonempty?_fun(push1_var, red(push2_var))
+            ENDCASES;

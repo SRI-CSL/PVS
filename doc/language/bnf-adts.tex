@@ -1,0 +1,25 @@
+
+\begin{bnf}
+\production{Datatype}
+{\hlink{Id} \opt{\hlink{TheoryFormals}} \lit{:} \lit{DATATYPE} \opt{\lit{WITH} \lit{SUBTYPES} \hlink{Ids}}\\[-0.1in]
+&& \lit{BEGIN}\\[-0.1in]
+&& \opt{\hlink{Importing} \opt{\lit{;}}} \\[-0.1in]
+&& \opt{\hlink{AssumingPart}} \\[-0.1in]
+&& \hlink{DatatypePart} \\[-0.1in]
+&& \lit{END} \hlink{Id}}
+
+\production{InlineDatatype}
+{\hlink{Id} \lit{:} \lit{DATATYPE} \opt{\lit{WITH} \lit{SUBTYPES} \hlink{Ids}}\\[-0.1in]
+&& \lit{BEGIN}\\[-0.1in]
+&& \opt{\hlink{Importing} \opt{\lit{;}}} \\[-0.1in]
+&& \opt{\hlink{AssumingPart}} \\[-0.1in]
+&& \hlink{DatatypePart} \\[-0.1in]
+&& \lit{END} \hlink{id}}
+
+\production{DatatypePart}
+{\ite{\brc{\hlink{Constructor} \lit{:} \hlink{IdOp} \opt{\lit{:} \hlink{Id}}}}}
+
+\production{Constructor}
+{\hlink{IdOp} \opt{\lit{(} \ites{\{\hlink{IdOps} \lit{:} \hlink{TypeExpr} \}}{,} \lit{)}}}
+
+\end{bnf}

@@ -1,0 +1,146 @@
+% Document Type: LaTeX
+% Master File: language.tex
+\documentclass[12pt]{book}
+
+%\usepackage{t1enc}
+\usepackage{alltt}
+\usepackage{makeidx}
+\usepackage{relsize}
+\usepackage{boxedminipage}
+\usepackage{fancyheadings}
+\usepackage{epsf}
+%\usepackage{/project/pvs/pvs2.3/pvs}
+\usepackage{url}
+\usepackage{../makebnf}
+\usepackage{latexsym}
+%\usepackage{supertabular}
+%\usepackage{longfig}
+%\usepackage{float}
+%\usepackage{afterpage}
+%\usepackage{showidx} % shows index entries in the margin
+\usepackage[chapter]{/homes/owre/tex/tocbibind}
+\usepackage[bookmarks=true,hyperindex=true,colorlinks=true,backref=true,pagebackref=true]{hyperref}
+
+% \makeatletter
+% \@ifpackagelater{hyperref}{2000/03/23}%
+% {}{\PackageWarning{language}{Package hyperref too old (older than v6.70a).}%
+% \makeatother
+
+\topmargin -10pt
+\textheight 8.5in
+\textwidth 6.0in
+\headheight 15 pt
+\columnwidth \textwidth
+\oddsidemargin 0.5in
+\evensidemargin 0.5in   % fool system for page 0
+\setcounter{topnumber}{9}
+\renewcommand{\topfraction}{.99}
+\setcounter{bottomnumber}{9}
+\renewcommand{\bottomfraction}{.99}
+\setcounter{totalnumber}{10}
+\renewcommand{\textfraction}{.01}
+\renewcommand{\floatpagefraction}{.01}
+
+\raggedbottom
+
+%\input{pvstex}
+\input{/project/pvs/doc/pvstex}
+%\input{../pvs-macros}
+
+%\setcounter{secnumdepth}{1}
+
+\index{type correctness condition|see{TCC}}
+\makeindex
+
+
+\begin{document}
+
+\begin{titlepage}
+\vspace*{1in}
+\noindent
+\rule[1pt]{\textwidth}{2pt}
+\begin{center}
+\newfont{\pvstitle}{cmss17 scaled \magstep4}
+\textbf{\pvstitle PVS Language Reference}
+\end{center}
+\begin{flushright}
+{\Large Version 2.4 {\smaller$\bullet$} December 2001}
+\end{flushright}
+\rule[1in]{\textwidth}{2pt}
+\vspace*{2in}
+\begin{flushleft}
+S.~Owre\\
+N.~Shankar\\
+J.~M.~Rushby\\
+D.~W.~J.~Stringer-Calvert\\
+{\smaller\url{{Owre,Shankar,Rushby,Dave_SC}@csl.sri.com}}\\
+{\smaller\url{http://pvs.csl.sri.com/}}
+\end{flushleft}
+\vspace*{1in}
+\vbox{\hbox to \textwidth{{\Large SRI International\hfill}}%
+\hbox to \textwidth{{\small\sf
+Computer Science Laboratory $\bullet$ 333 Ravenswood Avenue $\bullet$ Menlo Park CA 94025}}}
+\end{titlepage}
+
+\pagestyle{fancy}
+\renewcommand{\chaptermark}[1]{\markboth{{\em #1}}{}\markright{{\em #1}}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection \em \ #1}}
+\lhead[\thepage]{\rightmark}
+%\cfoot{\protect\small\bf \fbox{PVS 2.3 DRAFT}}
+\cfoot{}
+\rhead[\leftmark]{\thepage}
+\pagenumbering{roman}
+\thispagestyle{empty}
+
+\newpage
+\vspace*{6in}\noindent
+The initial development of PVS was funded by SRI International.
+Subsequent enhancements were partially funded by SRI and by NASA
+Contracts NAS1-18969 and NAS1-20334, NRL Contract N00014-96-C-2106,
+NSF Grants CCR-9300044, CCR-9509931, and CCR-9712383, AFOSR contract
+F49620-95-C0044, and DARPA Orders E276, A721, D431, D855, and E301.
+\newpage\setcounter{page}{1}
+
+\tableofcontents
+%\listoffigures
+
+%\chapter{The PVS Specification Language}
+
+%\include{preface}
+\newpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\setcounter{topnumber}{9}
+\renewcommand{\topfraction}{.99}
+\setcounter{bottomnumber}{9}
+\renewcommand{\bottomfraction}{.99}
+\setcounter{totalnumber}{10}
+\renewcommand{\textfraction}{.01}
+\renewcommand{\floatpagefraction}{.01}
+
+\include{intro}
+\include{lexical}
+\include{declarations}
+\include{types}
+\include{expressions}
+\include{theories}
+\include{names}
+\include{adts}
+
+\appendix
+\include{grammar}
+%%%%%%%%%%%\include{prelude}
+
+%\addcontentsline{toc}{chapter}{Bibliography}
+\bibliographystyle{plain}
+\bibliography{/project/pvs/doc/pvs,/homes/rushby/jmr}
+
+%\addcontentsline{toc}{chapter}{Index}   %% Put entry in T-O-C
+%%\printindex  %% printindex makes extra call to "theindex"
+{\smaller
+\printindex
+%\input{language.ind}
+}
+
+\end{document}

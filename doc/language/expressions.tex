@@ -1,0 +1,536 @@
+% Document Type: LaTeX
+% Master File: language.tex
+
+\chapter{Expressions}\label{expressions}
+\index{expressions|(}
+
+The PVS language offers the usual panoply of expression constructs,
+including logical and arithmetic operators, quantifiers, lambda
+abstractions, function application, tuples, a polymorphic
+\texttt{IF-THEN-ELSE}, and function and record overrides.  Expressions may
+appear in the body of a formula or constant declaration, as the predicate
+of a subtype, or as an actual parameter of a theory instance.  The syntax
+for PVS expressions is shown in Figure~\ref{bnf-expr} and
+Figure~\ref{bnf-expr-aux}.
+
+\pvsbnf{bnf-expr}{Expression syntax}
+
+\pvsbnf{bnf-expr-aux}{Expression syntax (continued)}
+
+\index{precedence|(} The language has a number of predefined operators
+(although not all of these have a predefined meaning).
+These are given in Figure~\ref{precedenceops} below, along with their
+relative precedences from lowest to highest.  Most of these operators
+are described in the following sections.  \texttt{IN} is a part of \texttt{
+LET} expressions, \texttt{WITH} goes with override expressions, and the
+double colon
+(\texttt{::}) is for coercion expressions.  The \texttt{o} operator is defined
+in the prelude as the function composition operator.  Note that most of
+these operators may be overloaded, see Section~\ref{names} (page~\pageref{names}) for details.
+
+\begin{figure}[htb]
+\begin{center}{\small\tt
+\begin{tabular}{|l|l|} \hline
+{\rm Operators} & {\rm Associativity} \\ \hline
+FORALL, EXISTS, LAMBDA, IN & None \\
+\verb/|/ & Left \\
+\verb/|-/, \verb/|=/ & Right \\
+IFF, <=> & Right \\
+IMPLIES, =>, WHEN & Right \\
+OR, \verb|\/|, XOR, ORELSE & Right \\
+AND, \&, \&\&, \verb|/\|, ANDTHEN & Right \\
+NOT, \verb|~| & None \\
+=, /=, ==, <, <=, >, >=, <<, >>, <<=, >>=, <|, |> & Left \\
+WITH & Left \\
+WHERE & Left \\
+@, \# & Left \\
+@@, \#\#, || & Left \\
++, -, ++, ~ & Left \\
+*, /, **, // & Left \\
+- & None \\
+o & Left \\
+:, ::, HAS\_TYPE & Left \\
+\verb|[]|, <> & None \\
+\verb|^|, \verb|^^| & Left \\
+` & Left \\ \hline
+\end{tabular}}
+\end{center}\caption{Precedence Table}\label{precedenceops}
+\end{figure}
+\index{precedence|)}
+
+\index{operator symbols|(}
+
+Many of the operators may be overloaded by the user and retain their
+precedence and form (\eg\ infix).  All of the infix operators may also be
+given in prefix form; \texttt{x + 1} and \texttt{+(x,1)} are semantically equivalent.  Care must be taken in redefining these operators---if the
+preceding declaration ends in an expression there could be an ambiguity.
+To handle this situation the language allows declarations to be terminated
+with a '\texttt{;}'.  For example,
+\begin{pvsex}
+  AND: [state, state -> state] = (LAMBDA a,b: (LAMBDA t: a(t) AND b(t)));
+  OR: [state, state -> state] = (LAMBDA a,b: (LAMBDA t: a(t) OR b(t)));
+\end{pvsex}
+%
+without the semicolon the second declaration would be seen as an infix
+\texttt{OR} and the result would be a parse error.
+
+Another common mistake when overloading operators with predefined meanings
+is the assumption that overloading, for example, {\tt IMPLIES} automatically
+provides an overloading for {\tt =>}.  This is not the case---they are distinct
+operators (which happen to have the same meaning by default) and not syntactic
+sugar.
+
+\index{operator symbols|)}
+
+\section{Boolean Expressions}\label{bool-exprs}
+\index{boolean expressions}
+
+The Boolean expressions include the constants \texttt{TRUE}\index{true@{\texttt{TRUE}}} and
+\texttt{FALSE}\index{false@{\texttt{FALSE}}},
+the unary operator \texttt{NOT}\index{not@{\texttt{NOT}}}, and
+the binary operators \texttt{AND}\index{and@{\texttt{AND}}} (also written
+\texttt{ \&}\index{\&}), \texttt{OR}\index{or@{\texttt{OR}}}, \texttt{
+IMPLIES}\index{implies@{\texttt{IMPLIES}}}
+(\texttt{=>}\index{=>@\texttt{=>}}),
+\texttt{WHEN}\index{when@{\texttt{WHEN}}}, and
+\texttt{IFF}\index{iff@{\texttt{IFF}}}
+(\texttt{<=>}\index{<=>@\texttt{<=>}}).  The declarations for these are in
+the \texttt{booleans} prelude theory.  All of these have their standard
+meaning, except for \texttt{WHEN}, which is the converse of
+\texttt{IMPLIES} (\ie\ $A$ \texttt{WHEN} $B$ $\equiv$ $B$ \texttt{IMPLIES}
+$A$).
+
+Equality\index{equality} (\texttt{=}\index{=}) and
+disequality\index{disequality} (\texttt{/=}\index{/=}) are declared in the
+prelude theories \texttt{equalities} and \texttt{notequal}.  They are both
+polymorphic, the type depending on the types of the left- and right-hand
+sides.  If the types are compatible, meaning that there is a common
+supertype, then the (dis)equality is of the greatest common supertype.  Otherwise it is a type
+error.  For example,
+\begin{pvsex}
+  S,T: TYPE
+  s: VAR S
+  t: VAR T
+  eq1: FORMULA s = t
+  i: VAR \{x: int | x < 10\}
+  j: VAR \{x: int | x > 100\}
+  eq2: FORMULA i = j
+\end{pvsex}
+%
+\texttt{eq1} will cause a type error---remember that \texttt{S} and \texttt{T}
+are assumed to be disjoint.  \texttt{eq2} is perfectly typesafe because
+they have a common supertype \texttt{int} even though the subtypes have no
+elements in common; the equality simply has the value \texttt{FALSE}.
+
+When the equality is between terms of type \texttt{bool}, the semantics
+are the same as for \texttt{IFF}.  There is a pragmatic difference in the
+way the PVS prover processes these operators.  Equalities may be
+used for rewriting, which makes for efficient proofs but is incomplete,
+\ie\ the prover may fail to find the proof of a true formula.  On the other
+hand the \texttt{IFF} form is complete, but may lead to a large number of
+cases.  When in doubt, use equality as the prover provides commands
+which turn an equality into an \texttt{IFF}.
+
+%The decision to disallow \texttt{eq1} is a pragmatic one; the
+%utility of such a declaration is questionable, and most likely the user
+%has made an error in the specification.
+
+
+\section{\texttt{IF-THEN-ELSE} Expressions}
+\index{if-then-else@{\texttt{IF-THEN-ELSE}}}
+
+The \texttt{IF-THEN-ELSE} expression \texttt{IF} {\em cond\/} \texttt{THEN} {\em
+expr1\/} \texttt{ELSE} {\em expr2\/} \texttt{ENDIF} is polymorphic; its type is the
+common type of {\em expr1\/} and {\em expr2\/}.  The {\em cond\/} must
+be of type \texttt{boolean}.  Note that the \texttt{ELSE} part is not
+optional as this is an expression, not an operational statement.  The
+declaration for \texttt{IF} is in the \texttt{if\_def} prelude theory.  \texttt{
+IF-THEN-ELSE} may be redeclared by the user in the same way as \texttt{
+AND}, \texttt{OR}, etc.  Note that only \texttt{IF} is explicitly redeclared,
+the \texttt{THEN} and \texttt{ELSE} are implicit.
+
+Any number of \texttt{ELSIF} clauses may be present; they are translated into nested
+\texttt{IF-THEN-ELSE} expressions.  Thus the expression
+\begin{pvsex}
+  IF A THEN B
+  ELSIF C THEN D
+  ELSE E
+  ENDIF
+\end{pvsex}
+%
+translates to
+\begin{pvsex}
+  IF A THEN B
+  ELSE (IF C THEN D
+        ELSE E
+        ENDIF)
+  ENDIF
+\end{pvsex}
+
+\section{Numeric Expressions}
+\index{numeric expressions}
+
+The numeric expressions include the \emph{numerals}\index{numerals} (0, 1,
+2, \ldots), the unary operator \texttt{-}\index{-}, and the binary infix
+operators \texttt{\char94}\index{\^}, \texttt{+}\index{+},
+\texttt{-}\index{-}, \texttt{*}\index{*}, and \texttt{/}\index{/}.  The
+numerals are all of type \texttt{real}\index{real@\texttt{real}}.
+The typechecker has implicit judgements on numbers; \texttt{0} is known to
+be \texttt{real}, \texttt{rat}, \texttt{int} and \texttt{nat}; all others
+are known to be non zero and greater than zero.  The relational operators
+on numeric types are \texttt{<}\index{<@\texttt{<}}, \texttt{
+<=}\index{<=@\texttt{<=}}, \texttt{>}\index{>@\texttt{>}}, and
+\texttt{>=}\index{>=@\texttt{>=}}.  The numeric operators and axioms are
+all defined in the prelude.  As with the boolean operators, all of these
+operators may be defined on new types and retain their original precedences.
+
+\section{Applications}
+\index{application expressions}
+
+Function application is specified as in ordinary mathematics; thus the
+application of function \texttt{f} to expression \texttt{x} is denoted \texttt{
+f(x)}.  Those operator symbols that are binary functions, and their
+applications, may be written in prefix or the usual infix notation.  For
+example, \texttt{(3 + 5) = (2 * 4)} may be written as \texttt{=(+(3,5),
+*(2,4))}.
+
+PVS supports higher-order types, so that functions may yield functions
+as values or be curried\index{curried applications}.  For example, given
+\texttt{f} of type \texttt{[int -> [int, int -> int]]}, \texttt{f(0)(2,3)}
+yields an \texttt{int}.
+
+If the application involves a dependent function type then the result
+type of the application is substituted for accordingly.  For example,
+\begin{pvsex}
+  f: [a:int, b:\{x:int | a < x\} -> \{y:int | a < y & y <= b\}]
+\end{pvsex}
+the application \texttt{f(2,3)} is of type \texttt{\{y:int | 2 < y \& y <=
+3\}}.  This application will also lead to the subtype \tcc
+\begin{pvsex}
+  2 < 3
+\end{pvsex}
+
+Application and tuple expressions have a special relation, due to the
+type equivalence of \texttt{[t$_1$,\ldots,t$_n$ -> t]} and \texttt{
+[[t$_1$,\ldots,t$_n$] -> t]}, see Section~\ref{tuple-exprs} for details.
+
+\section{Binding Expressions}\label{binding-expressions}
+\index{binding expressions}
+
+The binding expressions are those which create a local scope for
+variables, including the quantified expressions and
+$\lambda$-expressions.  Binding expressions consist of an operator, a
+list of bindings, and an expression.  The operator is one of the
+keywords \texttt{FORALL}\index{forall@\texttt{FORALL}}, \texttt{
+EXISTS}\index{exists@\texttt{EXISTS}}, or \texttt{LAMBDA}\index{lambda@{\texttt{LAMBDA}}}.\footnote{Set
+expressions are also binding expressions; see Section~\ref{set-exprs} (page~\pageref{set-exprs}).}
+The bindings specify the variables bound by the operator; each variable
+has an id and may also include a type or a constraint.  Here is a
+contrived example:
+\begin{pvsex}
+  x,y,z,d,e: VAR real
+  ex1: AXIOM FORALL x,y,z: (x + y) + z = x + (y + z)
+  ex2: AXIOM FORALL (x,y,z: nat): x * (y + z) = (x * y) + (x * z)
+  ex3: AXIOM FORALL (n: num | n /= 0): EXISTS (x | x /= 0): x = 1/n
+\end{pvsex}
+%
+In \texttt{ex1}, variables \texttt{x}, \texttt{y}, and \texttt{z} are all of type
+\texttt{real}.  In \texttt{ex2} these same variables are of type \texttt{nat},
+shadowing the global declarations.  \texttt{ex3} illustrates
+the use of constraints; this is equivalent to the declaration
+\begin{pvsex}
+  ex3: AXIOM FORALL (n: \{n: num | n /= 0\}):
+               EXISTS (x: \{x | x /= 0\}): x = 1/n
+\end{pvsex}
+
+Quantified expressions\index{quantified expressions} are introduced with
+the keywords \texttt{FORALL} and \texttt{EXISTS}.  These expressions are of type
+\texttt{boolean}.
+
+Lambda expressions\index{lambda expressions} denote unnamed functions.
+For example, the function which adds \texttt{3} to an integer may be
+written
+\begin{pvsex}
+  (LAMBDA (x: int): x + 3)
+\end{pvsex}
+%
+The type of this expression is the function type \texttt{[int -> int]}.
+In addition, when the
+range is \texttt{bool}, a lambda expression may be represented as a set
+expression; see Section~\ref{set-exprs}.
+
+All of the binding expressions may involve dependent
+types\index{dependent types} in the bindings, \eg
+\begin{pvsex}
+  FORALL (x: int), (y: \{z: int | x < z\}): p(x,y)
+\end{pvsex}
+%
+Note that in the instantiation of such an expression during a proof will
+generally lead to a subtype \tcc.  For example, substituting \texttt{e$_1$} for
+\texttt{x} and \texttt{e$_2$} for \texttt{y} will lead to the \tcc\ \texttt{e$_1$ <
+e$_2$}.\footnote{Such \tccs\ may never be seen, as they tend to be
+proved automatically during a proof; more complicated examples may be
+given, for which the prover would need help from the user.  In addition,
+a false \tcc\ can show up, \eg\ substituting \texttt{2} for \texttt{x} and
+\texttt{1} for \texttt{y}.  This means that the corresponding expression is
+not type correct.}
+
+Constant names may be treated as binding expressions by using a
+\texttt{!}  suffix.  For example,
+\begin{pvsex}
+foo! (x : int) : e
+\end{pvsex}
+is equivalent to
+\begin{pvsex}
+foo( LAMBDA (x : int) : e)
+\end{pvsex}
+
+\section{\texttt{LET} and \texttt{WHERE} Expressions}
+\index{let expressions@{\texttt{LET} expressions}}
+\index{where expressions@{\texttt{WHERE} expressions}}
+
+\texttt{LET} and \texttt{WHERE} expressions are provided for convenience,
+making some forms easier to read.  Both of these forms provide local
+bindings for variables that may then be referenced in the body of the
+expression, thus reducing redundancy and allowing names to be provided for common subterms.
+Here are two examples:
+\begin{pvsex}
+  LET x:int = 2, y:int = x * x IN x + y
+
+  x + y WHERE x:int = 2, y:int = x * x
+\end{pvsex}
+%
+The value of each of these expressions is 6.
+
+\texttt{LET} and \texttt{WHERE} expressions are internally translated to
+applications of lambda expressions; in this case both expressions
+translate to
+\begin{pvsex}
+  (LAMBDA (x:int) : (LAMBDA (y:int) : x + y)(x * x))(2)
+\end{pvsex}
+%
+These translations should be kept in mind when the semantics of these
+expressions is in question.
+
+The type declaration is optional, so the above could be written as
+\begin{pvsex}
+  LET x = 2, y = x * x IN x + y
+
+  x + y WHERE x = 2, y = x * x
+\end{pvsex}
+In this case the typechecking of these expressions depends on whether
+\texttt{x} and/or \texttt{y} have been previously declared as variables.
+If they have, then those delarations are used to determine the type.
+Otherwise, the right-hand side of the \texttt{=} is typechecked, and if it
+is unambiguous is used to determine the type of the variable.  This is 
+one way in which these expressions differ from their translation.
+It is usually better to either reference a variable or give the type, as
+the typechecker uses the ``natural'' type of the expression as the type of
+the variable, which can lead to extra TCCs.
+
+The \texttt{LET} expression has a limited form of pattern matching over
+tuples.  An example is
+\begin{pvsex}
+  p: VAR [int, int]
+  +(p): int = LET (m, n) = p IN m + n
+\end{pvsex}
+which is shorter than the equivalent
+\begin{pvsex}
+  p: VAR [int, int]
+  +(p): int = LET m = p`1, n = p`2 IN m + n
+\end{pvsex}
+
+
+\section{Set Expressions}\label{set-exprs}
+
+In PVS, sets of elements of a type \texttt{t} are represented as
+predicates, \ie\ functions from \texttt{t} to \texttt{bool}.  The type of a
+set may be given as \texttt{[t -> bool]}, \texttt{pred[t]}, or \texttt{
+setof[t]}, which are all type equivalent.\footnote{The prelude theory
+\texttt{defined\_types} also defines \texttt{PRED}, \texttt{predicate}, \texttt{
+PREDICATE}, and \texttt{SETOF} as alternate equivalents.}
+The choice depends wholly on the intended use of the type.
+Similarly, a set may be given in the form \texttt{(LAMBDA (x:\ t):\
+p(x))} or \texttt{\{x:\ t | p(x)\}}; these are equivalent
+expressions.\footnote{In fact, internally they are represented by the
+same abstract syntax, they simply print differently.} Note that the
+latter form may also represent a type---this usually causes no
+confusion as the context generally makes it clear which is expected.
+The usual functions and properties of sets are provided in the prelude
+theory \texttt{sets}.
+
+
+\section{Tuple Expressions}\label{tuple-exprs}
+\index{tuple expressions}
+
+A tuple expression of the type \texttt{[t$_1$,\ldots,t$_n$]} has the form
+\texttt{(e$_1$,\ldots,e$_n$)}.  For example, \texttt{(2, TRUE, (LAMBDA x:\ x +
+1))} is of type \texttt{[nat, bool, [nat -> nat]]}.  0-tuples are not
+allowed, and 1-tuples are treated simply as parenthesized expressions.
+The following relation holds between function types and tuple types:
+\begin{pvsex}
+  [[t\(_1\),\ldots,t\(_n\)] -> t] \(\equiv\) [t\(_1\),\ldots,t\(_n\) -> t]
+\end{pvsex}
+%
+This equivalence is most important in theory parameters; it allows one
+theory to take the place of many.  For example the \texttt{functions}
+theory from the prelude may be instantiated by the reference
+\texttt{injective?[[int,int,int],int]}.  Applications of an element \texttt{f} of
+this type include \texttt{f(1,2,3)}, \texttt{f((1,2,3))}, and \texttt{f(e)},
+where \texttt{e} is of type \texttt{[int,int,int]}.
+
+\section{Projection Expressions}\label{projection-exprs}
+\index{projection expressions}
+
+The components of an expression whose type is a tuple can be accessed
+using the projection operators \texttt{`1}, \texttt{`2}, \ldots or
+\texttt{PROJ\_1}, \texttt{PROJ\_2}, \ldots.  The former are preferred.
+Like reserved words, projection expressions are case insensitive and may
+not be redeclared.  For the most part, projection expressions are
+analogous to field accessors for record types.  For example,
+\begin{pvsex}
+  t: [int, bool, [int -> int]]
+  ft: FORMULA t`2 AND t`1 > t`3(0)
+  ft_deprecated: FORMULA PROJ_2(t) AND PROJ_1(t) > (PROJ_3(t))(0)
+\end{pvsex}
+
+\section{Record Expressions}
+\index{record expressions}
+
+Record expressions are of the form \texttt{(\# a$_1$ := e$_1$, \ldots,
+a$_n$ := e$_n$ \#)}, which has type \texttt{[\# a$_1$:\ t$_1$, \ldots,
+a$_n$:\ t$_n$ \#]}, where each \texttt{e$_i$} is of type \texttt{t$_i$}.
+Partial record expressions are not allowed; all fields must be given.  If
+it is desired to give a partial record, declare an uninterpreted constant
+or variable of the record type, and use override expressions to specify
+the given record at the fields of interest.  For example,
+\begin{pvsex}
+  rc: [# a, b : int #]
+  re: [# a, b : int #] = rc WITH [`a := 0]
+\end{pvsex}
+
+Record types may be dependent, and a record expression of a dependent
+type may lead to \tccs.  For example,
+\begin{pvsex}
+  R: TYPE = [# a: int, b: \{x: int | x < a\} #]
+  r: R = (# a := 3, b := 4 #)
+\end{pvsex}
+%
+leads to the (unprovable) TCC \texttt{4 < 3}.
+
+Record expressions may be introduced without introducing the record type
+first, and the type of a record expression is determined by its
+components, independently of any previously declared record type.  For
+this reason record types do not automatically generate associated accessor
+functions.  However, you can define your own functions to provide this
+capability, and even use the same name.  For example:
+\begin{pvsex}
+  point: TYPE = [# x, y: real #]
+  x(p:point): real = p`x
+  y(p:point): real = p`y
+\end{pvsex}
+Now \texttt{x} and \texttt{y} may be provided wherever a function is
+expected.  Note that this means that a subsequent expression of the form
+\texttt{x(p)} could be ambiguous, but the record field accessor is always
+preferred, so in practice such ambiguities don't arise.
+
+\section{Record Accessors}
+
+The components of an expression of a record type are accessed using the
+corresponding field name.  There are two forms of access.  For example if
+\texttt{r} is of type \texttt{[\# x, y: real \#]}, the x-component may be
+accessed using either \texttt{r`x} or \texttt{x(r)}.  The first form is
+preferred, as there is less chance for ambiguity.
+
+\section{Override Expressions}
+\index{override expression}
+\index{update expression}
+\index{with expression}
+
+Functions, tuples, and records may be ``modified'' by means of the
+override expression.  The result of an override expression is a function,
+tuple, or record that is exactly the same as the original, except that at
+the specified arguments it takes the new values.  For example,
+\begin{pvsex}
+  identity WITH [(0) := 1, (1) := 2]
+\end{pvsex}
+%
+is the same function as the \texttt{identity} function (defined in the
+prelude) except at argument values \texttt{0} and \texttt{1}.  This is exactly
+the same expression as either of
+\begin{pvsex}
+  (id WITH [(0) := 1]) WITH [(1) := 2] {\rm or}
+  (LAMBDA x: IF x = 1 THEN 2 ELSIF x = 0 THEN 1 ELSE id(x))
+\end{pvsex}
+
+This order of evaluation ensures that functions remain total, and allows
+for the possibility of expressions such as
+\begin{pvsex}
+  id WITH [(c) := 1, (d) := 2]
+\end{pvsex}
+where \texttt{c} and \texttt{d} may or may not be equal.  If they are
+equal, then the value of the override expression at the common argument is
+\texttt{2}.
+
+More complex overrides can be made; for example,
+\begin{pvsex}
+  R: TYPE = [# a: int, b: [int -> [int, int]] #]
+  r1: R
+  r2: R = r1 WITH [`a := 0, `b(1)`2 := 4]
+\end{pvsex}
+{\tt r2} is equivalent to
+\begin{pvsex}
+  (# a := 0,
+     b := LAMBDA (x: int):
+           IF x = 1
+           THEN (r1`b(x)`1, 4)
+           ELSE r2`b(x)
+           ENDIF #)
+\end{pvsex}
+
+Another form of override expression is the maplet, indicated using
+\texttt{|->} in place of \texttt{:=}.  This is used to extend the domain
+of the corresponding element; for example, if \texttt{f:[nat -> int]} is
+given, then \texttt{f WITH [(-1) |-> 0]} is a function of type
+\texttt{[\{i:int | i >= 0 OR i = -1\} -> int]}.  This is especially useful
+with dependent types, see Section~\ref{dependent-types}.  Domain extension
+is also possible for record and tuple types; for example, \texttt{r1 WITH
+[`c |-> 3]} is of type \texttt{[\# a : int, b : [int -> [int,int]], c: int
+\#]}, and if \texttt{t1} is of type \texttt{[int, bool]}, then \texttt{t1
+WITH [`3 |-> 1]} is of type \texttt{[int, bool, int]}.  It is an error to
+extend a tuple type such that gaps are left, so \texttt{t1 WITH [`4 |->
+1]} is illegal, though \texttt{t1 WITH [`3 |-> 1, `4 |-> 1]} is allowed.
+
+In the past, the two forms of assignment (using \texttt{:=} and
+\texttt{|->}) were merely alternative notation, and domains would be
+extended automatically whenever the typechecker could not determine that
+the argument belonged to the domain.  In most cases, extending the domain
+unnecessarily is harmless.  However, when terms get large, the types can
+get cumbersome, slowing down the system dramatically.  Even worse, when
+domains are extended and matched against a rewrite rule with the original
+type, the match can fail, and the automatic rewrite will not be triggered.
+
+\section{Coercion Expressions}\label{coercions}
+
+Coercion expressions are of the form \texttt{expr ::\ type-expr}, indicating
+that the expression \texttt{expr} is expected to be of type \texttt{
+type-expr}.  This serves two purposes.  First, although PVS allows a
+liberal amount of overloading, it cannot always disambiguate things for
+itself, and coercion may be needed.  For example, in
+\begin{pvsex}
+  foo: int
+  foo: [int -> int]
+  foo: LEMMA foo = foo::int
+\end{pvsex}
+%
+the coercion of \texttt{foo} to \texttt{int} is needed, because otherwise the
+typechecker cannot determine the type.  Note that only one of the sides
+of the equation needs to be disambiguated.
+
+The second purpose of coercion is as an aid to typechecking; by
+providing the expected type in key places within complex expressions,
+the resulting \tccs\ may be considerably simplified.
+
+\input{tables}
+
+\index{expression|)}

@@ -1,0 +1,16 @@
+stack_rec_mod[T: TYPE, range: TYPE]: THEORY
+  BEGIN
+  
+  IMPORTING stack_adt[T]
+  stack_rec((empty?_fun: range), (nonempty?_fun: [T, range -> range])):
+    [stack -> range] =
+        LAMBDA (stack_var: stack):
+          CASES stack_var OF
+            empty: empty?_fun,
+            push(push1_var, push2_var):
+                nonempty?_fun(push1_var,
+                              stack_rec(empty?_fun,
+                                        nonempty?_fun)(push2_var))
+          ENDCASES
+  
+  END stack_rec_mod

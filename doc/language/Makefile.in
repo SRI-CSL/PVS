@@ -1,0 +1,49 @@
+pvs-path = @PVSPATH@
+pvs-grammar-file = ${pvs-path}/src/pvs-gr.txt
+
+bnf-sources = bnf-adts.tex bnf-decls.tex bnf-expr.tex bnf-expr-aux.tex \
+              bnf-theory.tex bnf-exporting.tex bnf-assuming.tex \
+              bnf-theory-part.tex bnf-type-expr.tex bnf-names.tex \
+              bnf-lexical.tex bnf-cond-expr.tex
+
+alltt-sources = stack_adtA-alltt.tex stack_adtB-alltt.tex \
+                stack_adtC-alltt.tex stack_adtD-alltt.tex stack_adtE-alltt.tex 
+
+sources = language.tex ../makebnf.sty ../pvstex.tex intro.tex lexical.tex \
+          declarations.tex types.tex expressions.tex theories.tex names.tex \
+          adts.tex grammar.tex inductive_defs.tex judgements.tex \
+          conversions.tex libraries.tex tables.tex \
+          ${bnf-sources} ${alltt-sources}
+
+all : language.dvi language.ps language.ps.gz language.pdf
+
+keywords.tex : pvs-doc.el ${pvs-grammar-file}
+	emacs -batch -q -l pvs-doc.el -f pvs-keyword-table-5 > keywords.tex 2>&1 
+
+operator-table.tex : pvs-doc.el ${pvs-grammar-file}
+	emacs -batch -q -l pvs-doc.el -f pvs-operator-table-6 > operator-table.tex 2>&1 
+
+opsym-table.tex : pvs-doc.el ${pvs-grammar-file}
+	emacs -batch -q -l pvs-doc.el -f pvs-opsym-table-6 > opsym-table.tex 2>&1 
+
+language.dvi : ${sources} keywords.tex
+	latex $<;
+	makeindex -c language.idx;
+	bibtex language || echo;
+	latex $<;
+	latex $<
+
+language.ps.gz : language.ps
+	gzip -c $< > $@
+
+language.ps : language.dvi
+	dvips -o $@ $<
+
+language.pdf : ${sources} keywords.tex
+	pdflatex $<
+
+.PHONY: clean
+clean :
+	rm -f *.dvi *.pdf *.ps *.ps.gz *.log *.bbl *.ind *.ilg *.blg *.bbl \
+              *.aux *.toc *.idx *.brf \
+              keywords.tex operator-table.tex opsym-table.tex

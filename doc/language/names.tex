@@ -1,0 +1,83 @@
+% Master File: language.tex
+% Document Type: LaTeX
+
+\chapter{Name Resolution}\label{names}\label{resolution}
+
+Names in \pvs\ are used to denote theories, variables, constants, and
+formulas.  New names are introduced by declarations.  The syntax of names
+is given in Figure~\ref{bnf-names}.
+
+\pvsbnf{bnf-names}{Name Syntax}
+
+The simplest form of a name is an \emph{idop}, \ie\ an identifier or
+operator symbol.  This is generally all that is needed, unless names are
+overloaded.
+
+The overloading of names, both from different theories and within a single
+theory, is allowed as long as there is some way for the system to
+distinguish references to them.  Names from different theories may be
+distinguished by prefixing them with the theory name.  Within a theory,
+all names of the same kind must be unique, except for expression kinds;
+which need only be unique up to the signature.  This is because the
+signature is enough to distinguish these declarations.  For example, if
+{\tt <} is declared to have signature {\tt [bool,int -> bool]}, the system
+will recognize from the context that {\tt TRUE < 3} contains a reference
+to this declaration, whereas {\tt 2 < 3} does not.\footnote{Of course,
+this assumes that \texttt{TRUE} has not itself been overloaded.}  If the
+use of the name is not enough to distinguish, coercion may be used to
+specify the signature directly (see page~\pageref{coercions}).  Theory
+parameters must be unique across all kinds.
+
+There are three possible forms for names (two for theory names, which
+appear in {\tt IMPORTING}s, {\tt EXPORTING} {\tt WITH}s, and theory
+declarations).  Given a theory named {\em theoryid\/}, with formal
+parameters $f_1,\ldots,f_n$, that contains a declaration named {\em
+id\/}, the following three forms may be used to reference the
+declaration in a theory that imports {\em theoryid\/}:
+\begin{itemize}
+\item {\em theoryid\/}{\tt [$a_1,\ldots,a_n$]}.{\em id\/}
+
+\item {\em id\/}{\tt [$a_1,\ldots,a_n$]}
+
+\item {\em id}
+
+\end{itemize}
+where the $a_i$ are expressions or type expressions that are compatible
+with the formal parameters as described in Section~\ref{parameters}.
+These forms are listed in order of increasing ambiguity---that is, names
+that are given with just an id are far more likely to produce an ambiguity
+than those further up.  Note that even the top form may be
+ambiguous, as {\em id\/} may be declared more than once in {\em theoryid\/}.
+If this is the case, then either the context will disambiguate the name or
+a type will have to be supplied in the form of a coercion expression, \eg\
+{\tt {\em id\/}:~nat}.  This kind of ambiguity is allowed only for
+constants (including functions and recursive functions) and variables.
+
+Names are resolved based on the expected type and the number and types of
+arguments to which the name is applied.  The expected type is generally
+determined from the context of the name, for example in
+\begin{pvsex}
+  c1: int = c2
+\end{pvsex}
+\texttt{c2} has expected type \texttt{int}.  For most expressions, this is
+straight-forward, but applications create special problems.  For example,
+in
+\begin{pvsex}
+  f: FORMULA c1 = c2
+\end{pvsex}
+we know that the equality (which \emph{is} an application) has range type
+\texttt{boolean} since it is a formula, but this gives no information
+about the types of the arguments.  We will first describe the simpler
+situation, and then explain how names used as operators of an application
+are resolved.
+
+In general, the typechecker works by first collecting possible types for
+the expressions, and then chooses from among the possible types using the
+expected type, which is determined from the context of the expression.
+The expected type is used to resolve ambiguities, but otherwise does not
+contribute to the type of an expression.  Thus if \texttt{2 + 3}
+typechecks, and \texttt{+} has not been redeclared, then it has type
+\texttt{real} regardless of its context.  However, for the purpose of
+checking for TCCs, it may be treated as having a different type depending
+on the expected type and the available judgements.
+

@@ -1,0 +1,26 @@
+stack_adt_reduce[T: TYPE, range: TYPE]: THEORY
+ BEGIN
+
+  IMPORTING stack_adt[T]
+
+  reduce(empty?_fun: range, nonempty?_fun: [[T, range] -> range]):
+  [stack -> range] =
+      LAMBDA (stack_adtvar: stack):
+        LET red: [stack -> range] = reduce(empty?_fun, nonempty?_fun) IN
+          CASES stack_adtvar
+            OF empty: empty?_fun,
+               push(push1_var, push2_var):
+                 nonempty?_fun(push1_var, red(push2_var))
+            ENDCASES;
+
+  REDUCE(empty?_fun: [stack -> range],
+         nonempty?_fun: [[T, range, stack] -> range]):
+   [stack -> range] =
+      LAMBDA (stack_adtvar: stack):
+        LET red: [stack -> range] = REDUCE(empty?_fun, nonempty?_fun) IN
+          CASES stack_adtvar
+            OF empty: empty?_fun(stack_adtvar),
+               push(push1_var, push2_var):
+                 nonempty?_fun(push1_var, red(push2_var), stack_adtvar)
+            ENDCASES;
+ END stack_adt_reduce

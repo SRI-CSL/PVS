@@ -1,0 +1,43 @@
+  stack_inclusive: AXIOM
+    FORALL (stack_var: stack): empty?(stack_var) OR nonempty?(stack_var);
+
+  stack_disjoint: AXIOM
+    FORALL (stack_var: stack):
+      NOT (empty?(stack_var) AND nonempty?(stack_var));
+
+  stack_induction: AXIOM
+    FORALL (p: [stack -> boolean]):
+      (p(empty) AND
+        (FORALL (push1_var: T, push2_var: stack):
+           p(push2_var) IMPLIES p(push(push1_var, push2_var))))
+       IMPLIES (FORALL (stack_var: stack): p(stack_var));
+
+  every(p: PRED[T])(a: stack):  boolean =
+      CASES a
+        OF empty: TRUE,
+           push(push1_var, push2_var): p(push1_var) AND every(p)(push2_var)
+        ENDCASES;
+
+  every(p: PRED[T], a: stack):  boolean =
+      CASES a
+        OF empty: TRUE,
+           push(push1_var, push2_var): p(push1_var) AND every(p, push2_var)
+        ENDCASES;
+
+  some(p: PRED[T])(a: stack):  boolean =
+      CASES a
+        OF empty: FALSE,
+           push(push1_var, push2_var): p(push1_var) OR some(p)(push2_var)
+        ENDCASES;
+
+  some(p: PRED[T], a: stack):  boolean =
+      CASES a
+        OF empty: FALSE,
+           push(push1_var, push2_var): p(push1_var) OR some(p, push2_var)
+        ENDCASES;
+
+  subterm(x, y: stack):  boolean =
+      x = y OR
+       CASES y
+         OF empty: FALSE, push(push1_var, push2_var): subterm(x, push2_var)
+         ENDCASES;

@@ -1,0 +1,78 @@
+\begin{bnf}
+
+\production{LibDecl}
+{\hlink{Ids}\ \lit{:} \lit{LIBRARY} \opt{\lit{=}} \hlink{String}}
+
+\production{TheoryAbbrDecl}
+{\hlink{Ids}\ \lit{:} \lit{THEORY} \lit{=} \hlink{TheoryName}}
+
+\production{TypeDecl}
+{\hlink{Id}\ \opt{\{\lit{,} \hlink{Ids}\} \choice \hlink{Bindings}} \lit{:} \\[-0.1in]
+& & \quad \{\lit{TYPE} \choice \lit{NONEMPTY\_TYPE} \choice \lit{TYPE+}\} \\[-0.1in]
+& & \quad \opt{\brc{\lit{=} \choice \lit{FROM}} \hlink{TypeExpr} \opt{\lit{CONTAINING} \hlink{Expr}}}}
+
+\production{VarDecl}
+{\hlink{IdOps}\ \lit{:} \lit{VAR} \hlink{TypeExpr}}
+
+\production{ConstDecl}
+{\hlink{IdOp}\ \opt{\{\lit{,} \hlink{IdOps} \} \choice \ite{\hlink{Bindings}}} \lit{:} \hlink{TypeExpr} \opt{\lit{=} \hlink{Expr}}}
+
+\production{RecursiveDecl}
+{\hlink{IdOp}\ \opt{\{\lit{,} \hlink{IdOps} \} \choice \ite{\hlink{Bindings}}} \lit{:} \lit{RECURSIVE} \\[-0.1in]
+& & \hlink{TypeExpr} \lit{=} \hlink{Expr} \lit{MEASURE} \hlink{Expr} \opt{\lit{BY} \hlink{Expr}}}
+
+\production{MacroDecl}
+{\hlink{IdOp}\ \opt{\{\lit{,} \hlink{IdOps} \} \choice
+\ite{\hlink{Bindings}}} \lit{:} \lit{MACRO} \\[-0.1in]
+& & \quad \hlink{TypeExpr} \lit{=} \hlink{Expr}}
+
+\production{InductiveDecl}
+{\hlink{IdOp}\ \opt{\{\lit{,} \hlink{IdOps} \} \choice \ite{\hlink{Bindings}}} \lit{:} \lit{INDUCTIVE}  \\[-0.1in]
+& & \quad \hlink{TypeExpr} \lit{=} \hlink{Expr}}
+
+\production{Assumption}
+{\hlink{Ids}\ \lit{:} \lit{ASSUMPTION} \hlink{Expr}}
+
+\production{FormulaDecl}
+{\hlink{Ids}\ \lit{:} \hlink{FormulaName} \hlink{Expr}}
+
+\production{Judgement}
+{\hlink{SubtypeJudgement} \choice \hlink{ConstantJudgement}}
+
+\production{SubtypeJudgement}
+{\opt{\hlink{IdOp} \lit{:}} \lit{JUDGEMENT} \ites{\hlink{TypeExpr}}{,} \lit{SUBTYPE\_OF} \hlink{TypeExpr}}
+
+\production{ConstantJudgement}
+{\opt{\hlink{IdOp} \lit{:}} \lit{JUDGEMENT} \ites{\hlink{ConstantReference}}{,}  \\[-0.1in]
+& & \lit{HAS\_TYPE} \hlink{TypeExpr}}
+
+\production{ConstantReference}
+{\hlink{Number} \choice \{\hlink{Name} \rep{\hlink{Bindings}}\} }
+
+\production{Conversion}
+{\brc{\lit{CONVERSION} \choice \lit{CONVERSION+} \choice
+\lit{CONVERSION-}} \\[-0.1in]
+& & \ites{\{ \hlink{Name} \opt{\lit{:} \hlink{TypeExpr}} \}}{,}}
+
+\production{AutoRewriteDecl}
+{\brc{\lit{AUTO\_REWRITE} \choice \lit{AUTO\_REWRITE+} \choice
+\lit{AUTO\_REWRITE-}} \\[-0.1in]
+& & \ites{\hlink{RewriteName}}{,}}
+
+\production{RewriteName}
+{\hlink{Name} \opt{\lit{!} \opt{\lit{!}}} \opt{\lit{:}
+\brc{\hlink{TypeExpr} \choice \hlink{FormulaName}}}}
+
+\production{Bindings}
+{\lit{(} \ites{\hlink{Binding}}{,} \lit{)}}
+
+\production{Binding}
+{\hlink{TypedId} \choice \{ \lit{(} \hlink{TypedIds} \lit{)} \} }
+
+\production{TypedIds}
+{\hlink{IdOps} \opt{\lit{:} \hlink{TypeExpr}} \opt{\lit{|} \hlink{Expr}}}
+
+\production{TypedId}
+{\hlink{IdOp} \opt{\lit{:} \hlink{TypeExpr}} \opt{\lit{|} \hlink{Expr}}}
+
+\end{bnf}

@@ -1,0 +1,12 @@
+\chapter{Language Differences between Versions 1 and 2}
+
+\section{Incompatibilities}
+
+\begin{description}
+
+\item[Binding expressions (\texttt{LAMBDA}, \texttt{FORALL}, etc.)] -
+binding expressions may no longer take a simple operator (\emph{opsym}).
+Thus \texttt{LAMBDA <: 3 < 4} is not allowed.  This is because the new
+grammar allows user-defined bindings, and the parser generator used in PVS
+forces this restriction.  The workaround is simply to enclose the opsym in
+parentheses: \texttt{LAMBDA (<): 3 < 4}.

@@ -1,0 +1,56 @@
+\begin{bnf}
+
+\production{TheoryNames}
+{\ites{\hlink{TheoryName}}{,}}
+
+\production{TheoryName}
+{\opt{\hlink{Id} \lit{@}} \hlink{Id} \opt{\hlink{Actuals}}}
+
+\production{Names}
+{\ites{\hlink{Name}}{,}}
+
+\production{Name}
+{\opt{\hlink{Id} \lit{@}} \hlink{IdOp} \opt{\hlink{Actuals}} \opt{\lit{.} \hlink{IdOp}}}
+
+\production{Actuals}
+{\lit{[} \ites{\hlink{Actual}}{,} \lit{]}}
+
+\production{Actual}
+{\hlink{Expr} \choice \hlink{TypeExpr}}
+
+\production{IdOps}
+{\ites{\hlink{IdOp}}{,}}
+
+\production{IdOp}
+{\hlink{Id} \ch \hlink{Opsym}}
+
+\production{Opsym}
+{\hlink{Binop} \choice \hlink{Unaryop} \choice \lit{IF} \choice \lit{TRUE}
+\choice \lit{FALSE} \choice \lit{[||]} \choice \lit{(||)} \choice \lit{\{||\}}}
+
+\production{Binop}
+{\lit{o} \choice \lit{IFF} \choice \lit{<=>} \choice \lit{IMPLIES} \choice \lit{=>} \choice \lit{WHEN} \choice 
+ \lit{OR} \choice \lit{\char'134/} \choice \lit{AND} \\[-0.1in]
+& \choice & 
+ \lit{/\char'134} \choice \lit{\&} \choice \lit{XOR}
+ \choice  \lit{ANDTHEN} \choice \lit{ORELSE} \choice \lit{\char'136} \choice \lit{+} \choice \lit{-} \choice
+ \lit{*} \choice \lit{/} \\[-0.1in]
+& \choice & \lit{++} \choice \lit{\char'176} \choice \lit{**} \choice \lit{//}
+ \choice \lit{\char'136\char'136} \choice \lit{|-} \choice \lit{|=} \choice \lit{<|} \choice \lit{|>} \choice
+ \lit{=} \\[-0.1in]
+& \choice & \lit{/=} \choice \lit{==} \choice \lit{<} \choice \lit{<=}
+ \choice \lit{>} \choice \lit{>=} \choice \lit{<<} \\[-0.1in]
+& \choice & \lit{>>} \choice \lit{<<=} \choice \lit{>>=} \choice \lit{\#}
+\choice \lit{@@} \choice \lit{\#\#}
+}
+
+\production{Unaryop}
+{\lit{NOT} \choice \lit{\char'176} \choice \lit{[]} \choice \lit{<>} \choice \lit{-}}
+
+
+\production{FormulaName}
+{\lit{AXIOM} \choice \lit{CHALLENGE} \choice
+\lit{CLAIM} \choice \lit{CONJECTURE} \choice \lit{COROLLARY}  \\[-0.1in]
+&\choice & \lit{FACT} \choice \lit{FORMULA} \choice \lit{LAW} \choice \lit{LEMMA} \choice \lit{OBLIGATION}\\[-0.1in]
+&\choice & \lit{POSTULATE} \choice \lit{PROPOSITION} \choice \lit{SUBLEMMA} \choice \lit{THEOREM} }
+\end{bnf}

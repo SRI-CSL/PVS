@@ -1,0 +1,30 @@
+  REDUCE_ordinal(empty?_fun: [stack -> ordinal],
+                 nonempty?_fun: [[T, ordinal, stack] -> ordinal]):
+   [stack -> ordinal] =
+      LAMBDA (stack_adtvar: stack):
+        LET red: [stack -> ordinal] = REDUCE_ordinal(empty?_fun, nonempty?_fun)
+          IN
+          CASES stack_adtvar
+            OF empty: empty?_fun(stack_adtvar),
+               push(push1_var, push2_var):
+                 nonempty?_fun(push1_var, red(push2_var), stack_adtvar)
+            ENDCASES;
+ END stack_adt
+
+stack_adt_map[T: TYPE, T1: TYPE]: THEORY
+ BEGIN
+
+  IMPORTING stack_adt
+
+  map(f: [T -> T1])(a: stack[T]):  stack[T1] =
+      CASES a
+        OF empty: empty,
+           push(push1_var, push2_var): push(f(push1_var), map(f)(push2_var))
+        ENDCASES;
+
+  map(f: [T -> T1], a: stack[T]):  stack[T1] =
+      CASES a
+        OF empty: empty,
+           push(push1_var, push2_var): push(f(push1_var), map(f, push2_var))
+        ENDCASES;
+ END stack_adt_map

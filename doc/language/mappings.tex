@@ -1,0 +1,22 @@
+\chapter{Mappings}
+
+If module $A$ is declared to {\em implement\/} module $B$, then 
+$A$ and $B$ must have matching module parameter lists (ignoring
+usings, though it is very likely that the usings will need to match
+for typechecking), and
+\begin{enumerate}
+  \item the exported signature of $B$ is a subset of the exported
+signature of $A$, except that an abstracted entity in $B$ can be
+unabstracted in $A$.
+ \item The exported type definitions in $B$ are syntactically identical
+to the corresponding definitions in $A$.
+ \item The exported constant definitions in $B$ are either syntactically
+identical to the corresponding ones in $A$ or are theorems of $A$.
+ \item The exported axioms of $B$ are either axioms or theorems of $A$.
+  \item The exported theorems of $B$ can be {\em inherited theorems\/} of
+$A$, i.e., they do not need to be proved.  
+\end{enumerate}
+
+Note that {\tt IMPLEMENTING} modules are likely to be automatically
+generated, perhaps as a result of a mapping that is declared between two
+modules.  

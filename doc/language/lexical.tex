@@ -1,0 +1,87 @@
+% Document Type: LaTeX
+% Master File: language.tex
+\chapter{The Lexical Structure}\label{lexical}
+
+\pvs\ specifications are text files, each composed of a sequence of
+lexical elements which in turn are made up of characters.  The lexical
+elements of \pvs\ are the identifiers, reserved words, special symbols,
+numbers, whitespace characters, and comments.
+
+Identifiers\index{identifiers} are composed of letters, digits, and the characters
+{\tt \_} or {\tt ?}; they must begin with a letter.
+They may be arbitrarily long, constrained only by the limits imposed by
+the underlying Common Lisp system.  Identifiers are case-sensitive; {\tt
+FOO}, {\tt Foo}, and {\tt foo} are different identifiers.  PVS strings
+contain any ASCII character:  to include a {\tt "} in the string,
+use {\tt \char'134 "} and to include a {\tt \char'134} use {\tt \char'134\char'134}.
+
+\pvsbnf{bnf-lexical}{Lexical Syntax}
+
+The reserved words\index{reserved words} are shown in
+Figure~\ref{reserved-words}.  Unlike identifiers, they are not
+case-sensitive.  In this document, reserved words are always displayed in
+upper case.  Note that identifiers may have reserved words embedded in
+them, thus {\tt ARRAYALL} is a valid identifier and will not be confused
+with the two embedded reserved words.  The meaning of the reserved words
+are given in the appropriate sections; they are collected here for
+reference.
+
+\begin{figure}[tb]
+{\smaller\tt
+\begin{tabular}{|*{5}{p{1.03in}}|}\hline
+\input{keywords}
+\hline
+\end{tabular}}
+\caption{\pvs\ Reserved Words}\label{reserved-words}
+\end{figure}
+
+The special symbols\index{special symbols} are listed in
+Figure~\ref{special-symbols}.  All of these symbols are separators; they
+separate identifiers, numbers, and reserved words.
+
+\begin{figure}[tb]
+\begin{center}
+{\small\tt
+\begin{tabular}{|*{6}{@{\hspace*{.2in}}c@{\extracolsep{.5in}}}@{\hspace*{.25in}}|}\hline
+\input{operator-table}
+\hline
+\end{tabular}}
+\end{center}
+\caption{\pvs\ Special Symbols}\label{special-symbols}
+\end{figure}
+
+The whitespace characters are space, tab, newline, return, and newpage;
+they are used to separate other lexical elements.  At least one whitespace
+character must separate adjacent identifiers, numbers, and reserved words.
+
+Comments\index{comments} may appear anywhere that a whitespace character
+is allowed.  They consist of the `{\tt \%}'\index{\%@{\tt \%}} character
+followed by any sequence of characters and terminated by a newline.
+
+The \emph{definable} symbols are shown in table~\ref{definable-symbols}.
+These keywords and symbols may be given declarations.  Some of them have
+declarations given in the prelude.  Any of these may be (re)declared any
+number of times, though this may lead to ambiguities.  Symbols that are
+binary infix (\hyperlink{Binop}{\emph{Binop}}), for example \texttt{AND}
+and \texttt{+}, may be declared with any number of arguments.  If they are
+declared with two arguments then they may subsequently be used in prefix
+or infix form.  Otherwise they may only be used in prefix form.
+Similarly for unary operators.
+
+The symbol pairs \lit{[|} and \lit{|]}, \lit{(|} and \lit{|)}, and
+\lit{\{|} and \lit{|\}} are available as outfix operators.  They are
+declared using \lit{[||]}, \lit{(||)}, and \lit{\{||\}}, respectively.
+For example, with the declaration \texttt{[||]:\ [bool, int -> int]} the
+outfix term \texttt{[| TRUE, 0 |]} is equivalent to the prefix form
+\texttt{[||](TRUE, 0)}.
+
+\begin{figure}[tb]
+\begin{center}
+{\small\tt
+\begin{tabular}{|*{6}{@{\hspace*{.2in}}c@{\extracolsep{.5in}}}@{\hspace*{.25in}}|}\hline
+\input{opsym-table}
+\hline
+\end{tabular}}
+\end{center}
+\caption{\pvs\ Definable Symbols}\label{definable-symbols}
+\end{figure}

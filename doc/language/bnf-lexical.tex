@@ -1,0 +1,9 @@
+\begin{bnf}
+\production{Ids}{\ites{\hlink{Id}}{,}}
+\production{Id}{\hlink{Letter} \ite{\hlink{IdChar}}}
+\production{Number}{\ite{\hlink{Digit}}}
+\production{String}{\lit{"} \rep{ASCII-character} \lit{"}}
+\production{IdChar}{\hlink{Letter} \choice \hlink{Digit} \choice \lit{\_} \choice \lit{?}}
+\production{Letter}{\lit{A} \choice \ldots \choice \lit{Z} \choice \lit{a} \choice \ldots \choice \lit{z}}
+\production{Digit}{\lit{0} \choice \ldots \choice \lit{9}}
+\end{bnf}

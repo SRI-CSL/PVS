@@ -1,0 +1,273 @@
+% Document Type: LaTeX
+% Master File: intro.tex
+
+\chapter{Introduction}
+
+PVS is a \emph{P}rototype \emph{V}erification \emph{S}ystem for the
+development and analysis of formal specifications.  The PVS system
+consists of a specification language, a parser, a typechecker, a prover,
+specification libraries, and various browsing tools.  This document
+primarily describes the specification language and is meant to be used as
+a reference manual.  The \emph{PVS System Guide}~\cite{PVS:userguide} is to
+be consulted for information on how to use the system to develop
+specifications and proofs.  The \emph{PVS Prover Guide}~\cite{PVS:prover}
+is a reference manual for the commands used to construct proofs.
+
+In this section, we provide a brief summary of the PVS specification
+language, enumerate the key design principles behind the language, and
+provide a brief example.
+
+The following sections provide more details on the various features of
+the language.  The lexical aspects of the language are detailed in
+Section~\ref{lexical}.  Section~\ref{declarations} describes
+declarations, Section~\ref{types} describes type expressions,
+Section~\ref{expressions} describes expressions, and
+Section~\ref{theories} describes theories, theory parameters, and
+imports and exports of names.  Section~\ref{names} describes names and
+name resolution, and Section~\ref{adts} describes the datatype
+facility of PVS.  Finally, 
+Appendix~\ref{grammar} provides the grammar of the language.
+
+\section{Summary of the PVS Language}
+
+A PVS specification consists of a collection of \emph{theories}.
+Each theory consists of a \emph{signature} for the type names and
+constants introduced in the theory, and the axioms, definitions, and
+theorems associated with the signature.  For example, a typical
+specification for a queue would introduce the \texttt{queue} type and the
+operations of \texttt{enq}, \texttt{deq}, and \texttt{front} with their
+associated types.  In such a theory, one can either define a
+representation for the \texttt{queue} type and its associated operations in
+terms of some more primitive types and operations, or merely axiomatize
+their properties.  A theory can build on other theories: for example, a
+theory for ordered binary trees could build on the theory for
+binary trees.  A theory can be \emph{parametric} in certain specified
+types and values: as examples, a theory of queues can be parametric in
+the maximum queue length, and a theory of ordered binary trees can be
+parametric in the element type as well as the ordering relation.  It is
+possible to place constraints, called \emph{assumptions}, on the
+parameters of a theory so that, for instance, the ordering relation
+parameter of an ordered binary tree can be constrained to be a total
+ordering.
+
+The PVS specification language is based on simply typed higher-order
+logic.  Within a theory, \emph{types} can be defined starting from
+\emph{base} types (Booleans, numbers, etc.) using the function, record,
+and tuple type constructions.  The \emph{terms} of the language can be
+constructed using function application, lambda abstraction, and record and
+tuple construction.
+
+There are a few significant enhancements to the simply typed language
+above that lend considerable power and sophistication to PVS.  New
+uninterpreted base types may be introduced.  One can define a
+\emph{predicate subtype} of a given type as the subset of individuals in a
+type satisfying a given predicate: the subtype of nonzero reals is
+written as \texttt{\{x:real | x /= 0\}}.  One benefit of such
+subtyping is that when an operation is not defined on all the elements of
+a type, the signature can directly reflect this.  For example, the
+division operation on reals is given a type where the denominator is
+constrained to be nonzero.  Typechecking then ensures that
+division is never applied to a zero denominator.  Since the predicate used
+in defining a predicate subtype is arbitrary, typechecking is undecidable
+and may lead to proof obligations called \emph{type correctness
+conditions} (TCCs).  The user is expected to discharge these proof
+obligations with the assistance of the PVS prover.  The PVS type system
+also features dependent function, record, and tuple type constructions.
+There is also a facility for defining a certain class of abstract datatype
+(namely well-founded trees) theories automatically.
+
+\section{PVS Language Design Principles}
+
+There are several basic principles that have motivated the design of
+PVS which are explicated in this section.
+
+\paragraph{Specification vs. Programming Languages.}
+A specification represents requirements or a design whereas a program
+text represents an implementation of a design.  A program can be seen as
+a specification, but a specification need not be a program.  Typically,
+a specification expresses \emph{what} is being
+computed whereas a program expresses \emph{how} it is computed.  A
+specification can be incomplete and still be meaningful whereas an
+incomplete program will typically not be executable.  A specification
+need not be executable; it may use high-level constructs, quantifiers
+and the like, that need have no computational meaning.  However, there
+are a number of aspects of programming languages that a specification
+language should include, such as:
+\begin{itemize}
+
+\item the usual basic types: booleans, integers, and rational numbers
+
+\item the familiar datatypes of programming languages such as arrays,
+records, lists, sequences, and abstract datatypes
+
+\item the higher-order capabilities provided by modern functional
+programming languages so that extremely general-purpose operations can
+be defined
+
+\item definition by recursion
+
+\item support for dividing large specifications into parameterized
+modules
+
+\end{itemize}
+
+It is clearly not enough to say that a specification language shares some
+important features of a programming language but need not be executable.
+Any useful formal language must have a clearly defined
+semantics\footnote{The PVS semantics are presented in a technical
+report~\cite{PVS:semantics}.} and must be capable of being manipulated in
+ways that are meaningful relative to the semantics.  A programming
+language for example can be given a denotational semantics so that the
+execution of the program respects its denotational meaning.  The reason
+one writes a specification in a formal language is typically to ensure
+that it is sensible, to derive some useful consequences from it, and to
+demonstrate that one specification implements another.  All of these
+activities require the notion of a justification or a proof based on the
+specification, a notion that can only be captured meaningfully within the
+framework of logic.
+
+\paragraph{Untyped set theory versus higher-order logic}
+\index{set theory}\index{higher-order logic}
+Which logic should be chosen?  There is a wide variety of choices:
+simple propositional logics, which can be classical or intuitionistic,
+equational logics, quantificational logics, modal and temporal logics,
+set theory, higher-order logic, etc.  Some propositional and modal
+logics are appropriate for dealing with finite state machines where one
+is primarily interested in efficiently deciding certain finite state
+machine properties.  For a general purpose specification language,
+however, only a set theory or a higher-order logic would provide the
+needed expressiveness.  Higher-order logic requires strict typing to
+avoid inconsistencies whereas set theory restricts the rules for forming
+sets.  Set theory is inherently untyped, and grafting a typechecker onto
+a language based on set theory is likely to be too strict and arbitrary.
+Typechecking, however, is an extremely important and easy way of
+checking whether a specification makes semantic sense (although 
+for an opposing view, the reader is referred to a report by Lamport
+and Paulson~\cite{Lamport&Paulson97}).  Higher-order
+logic does admit effective typechecking but at the expense of an
+inflexible type system.  Recent advances in type theory have made it
+possible to design more flexible type systems for higher-order logic
+without losing the benefits of typechecking.  We have therefore chosen
+to base PVS on higher-order logic.
+
+\paragraph{Total versus partial functions}
+\index{function!total}\index{function!partial} In the PVS higher-order
+logic, an individual is either a function, a tuple, a record, or the
+member of a base type.  Functions are extremely important in higher-order
+logic.  They are \emph{first-class} individuals, i.e., variables can range
+over functions.  In general, functions can represent either \emph{total}
+or \emph{partial} maps.  A total map from domain $A$ to range $B$ maps
+each element of $A$ to some element of $B$, whereas a partial map only
+maps some of the elements of $A$ to elements of $B$.  Most traditional
+logics build in the assumption that functions represent total maps.
+Partial functions arise quite naturally in specifications.  For example,
+the division operation is undefined on a zero denominator and the
+operation of popping a stack is undefined on an empty stack.
+
+Some recent logics, notably those of VDM~\cite{Jones:VDM},
+LUTINS~\cite{Farmer:functions}, RAISE~\cite{RAISE-tutorial},
+Beeson~\cite{Beeson:book} and Scott~\cite{Scott79}, admit partial
+functions.  In these logics, some terms may be \emph{undefined} by not
+denoting any individuals.  Some of these logics have mechanisms for
+distinguishing defined and undefined terms, while others allow
+``undefined'' to propagate from terms to expressions and therefore must
+employ multiple truth values.  In all these cases, the ability to
+formalize partially defined functions comes at the cost of complicating
+the deductive apparatus, even when the specification does not involve any
+partial functions.  Though logics that allow partial functions are
+extremely interesting, we have chosen to avoid partial functions in PVS.
+We have instead employed the notion of a \emph{predicate
+subtype}\index{predicate subtype}, a type that consists of those elements
+of a given type satisfying a given predicate.  Using predicate subtypes,
+the type of the division operator, for example, can be constrained to
+admit only nonzero denominators.  Division then becomes a total operation
+on the domain consisting of arbitrary numerators and nonzero denominators.
+The domain of a \emph{pop} operation on stacks can be similarly restricted
+to nonempty stacks.  PVS thus admits partial functions within the
+framework of a logic of total functions by enriching the type system to
+include predicate subtypes.  We find this use of predicate subtypes to be
+significantly in tune with conventional mathematical practice of being
+explicit about the domain over which a function is defined.
+
+\section{An Example: \texttt{stacks}}\label{stacks-example}
+\index{stacks example@\texttt{stacks} example}
+
+In this section we discuss a specific example, the theory of
+\texttt{stacks}, in order to give a feel for the various aspects of the
+PVS language before going into detail.  Apart from the basic notation for
+defining a theory, this example illustrates the use of type parameters at
+the theory level, the general format of declarations, the use of predicate
+subtyping to define the type of nonempty stacks, and the generation of
+typechecking obligations.
+
+\pvstheory{stacks-alltt}{{Theory \texttt{stacks}}}{stacks-alltt}
+
+Figure~\ref{stacks-alltt} illustrates a theory for stacks of an arbitrary
+type with corresponding stack operations.  Note that this is not the
+recommended approach to specifying stacks; a more convenient and complete
+specification is provided in Section~\ref{stacks-adt},
+page~\pageref{stacks-adt}.
+
+The first line introduces a theory named \texttt{stacks} that is
+parameterized by a type \texttt{t} (the \emph{formal parameter} of
+\texttt{stacks}).  The keyword \texttt{TYPE+} indicates that \texttt{t} is
+a \emph{non-empty} type.  The uninterpreted (nonempty) type \texttt{stack}
+is declared, and the constant \texttt{empty} and variable \texttt{s} are
+declared to be of type \texttt{stack}.  The defined predicate
+\texttt{nonemptystack?}~is then declared on elements of type
+\texttt{stack}; it is \texttt{true} for a given \texttt{stack} element
+iff\footnote{Iff is short for ``if and only if''.} that element is not
+equal to \texttt{empty}.  The functions \texttt{push}, \texttt{pop}, and
+\texttt{top} are then declared.  Note that the predicate
+\texttt{nonemptystack?}~is being used as a type in specifying the
+signatures of these functions; any predicate may be used as a type simply
+by putting parentheses around it.
+
+The variables \texttt{x} and \texttt{y} are then declared, followed by the
+usual axioms for \texttt{push}, \texttt{pop}, and \texttt{top}, which make
+\texttt{push} a stack constructor and \texttt{pop} and \texttt{top} stack
+accessors.  Finally, there is the theorem \texttt{pop2push2}, that can
+easily be proved by two applications of the \texttt{pop\_push} axiom.
+
+This simple theorem has an additional facet that shows up during
+typechecking.  Note that \texttt{pop} expects an element of type
+\texttt{(nonemptystack?)} and returns a value of type \texttt{stack}.
+This works fine for the inner \texttt{pop} because it is applied to
+\texttt{push}, which returns an element of type \texttt{(nonemptystack?)};
+but the outer occurrence of \texttt{pop} cannot be seen to be type correct
+by such syntactic means.  In cases like these, where a subtype is expected
+but not directly provided, the system generates a \emph{type-correctness
+condition} (TCC).  In this case, the TCC is
+\begin{pvsex}
+  pop2push2_TCC1: OBLIGATION
+    (FORALL (s: stack, y: t, x: t):
+      nonemptystack?(pop(push(x, push(y, s)))))
+\end{pvsex}
+and is easily proved using the \texttt{pop\_push} axiom.  The system keeps
+track of all such obligations and will flag the unproved ones during proof
+chain analysis.
+
+Parameterized theories such as \texttt{stacks} introduce theory schemas,
+where the type \texttt{t} may be instantiated with any other nonempty
+type.  To use the types, constants, and formulas of the \texttt{stacks}
+theory from another theory, the \texttt{stacks} theory must be imported,
+with \emph{actual parameters} provided for the corresponding theory
+parameters.  This is done by means of an \texttt{IMPORTING} clause. For
+example, the theory
+\begin{pvsex}
+  ustacks : THEORY
+    BEGIN
+    IMPORTING stacks[int], stacks[stack[int]]
+
+    si : stack[int]
+    sos : stack[stack[int]] = push(si, empty)
+    END ustacks
+\end{pvsex}
+imports stacks of integers and stacks of stacks of integers.  The constant
+\texttt{si} is then declared to be a stack of integers, and the constant
+\texttt{sos} is a stack of stacks of integers whose top element is
+\texttt{si}.  Note that the system is able to determine which instance of
+\texttt{push} and \texttt{empty} is meant from the type of the first
+argument.  In general, the typechecker infers the type of an expression
+from its context.  
+

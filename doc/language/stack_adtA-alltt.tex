@@ -1,0 +1,41 @@
+%%% ADT file generated from stack
+
+stack_adt[T: TYPE]: THEORY
+ BEGIN
+
+  stack: TYPE
+
+  empty?, nonempty?: [stack -> boolean]
+
+  empty: (empty?)
+
+  push: [[T, stack] -> (nonempty?)]
+
+  top: [(nonempty?) -> T]
+
+  pop: [(nonempty?) -> stack]
+
+  ord(x: stack): upto(1) =
+      CASES x OF empty: 0, push(push1_var, push2_var): 1 ENDCASES
+
+  stack_empty_extensionality: AXIOM
+    FORALL (empty?_var: (empty?), empty?_var2: (empty?)):
+      empty?_var = empty?_var2;
+
+  stack_push_extensionality: AXIOM
+    FORALL (nonempty?_var: (nonempty?), nonempty?_var2: (nonempty?)):
+      top(nonempty?_var) = top(nonempty?_var2) AND
+       pop(nonempty?_var) = pop(nonempty?_var2)
+       IMPLIES nonempty?_var = nonempty?_var2;
+
+  stack_push_eta: AXIOM
+    FORALL (nonempty?_var: (nonempty?)):
+      push(top(nonempty?_var), pop(nonempty?_var)) = nonempty?_var;
+
+  stack_top_push: AXIOM
+    FORALL (push1_var: T, push2_var: stack):
+      top(push(push1_var, push2_var)) = push1_var;
+
+  stack_pop_push: AXIOM
+    FORALL (push1_var: T, push2_var: stack):
+      pop(push(push1_var, push2_var)) = push2_var;

@@ -1,0 +1,5 @@
+stack [T: TYPE] : DATATYPE
+ BEGIN
+  empty: empty?
+  push(top: T, pop: stack): nonempty?
+ END stack

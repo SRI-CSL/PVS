@@ -1,0 +1,22 @@
+
+groups [G : TYPE,
+	e : G,
+	o : [G,G->G],
+	inv : [G->G] ] : THEORY
+BEGIN
+  ASSUMING
+    a, b, c: VAR G
+ 
+    associativity :  ASSUMPTION  a o (b o c) = (a o b) o c
+
+    unit : ASSUMPTION  e o a = a AND a o e = a
+
+    inverse : ASSUMPTION inv(a) o a = e AND a o inv(a) = e
+
+  ENDASSUMING
+
+  left_cancellation: THEOREM a o b = a o c IMPLIES b = c
+
+  right_cancellation: THEOREM b o a = c o a IMPLIES b = c
+ 
+END groups

@@ -1,0 +1,496 @@
+% Document Type: LaTeX
+% Master File: language.tex
+
+\chapter{Abstract Datatypes}\label{datatypes}\label{adts}
+
+PVS provides a powerful mechanism for defining abstract datatypes.  This
+mechanism is akin to, but more sophisticated than, the \emph{shell}
+principle of the Boyer-Moore prover~\cite{Boyer-Moore79}).  A PVS datatype
+is specified by providing a set of \emph{constructors} along with
+associated \emph{accessors} and \emph{recognizers}.  When a datatype is
+typechecked, a new theory is created that provides the axioms and
+induction principles needed to ensure that the datatype is the initial
+algebra defined by the constructors.
+
+\pvsbnf{bnf-adts}{Datatype Syntax}
+
+The syntax for PVS datatypes is given in Figure~\ref{bnf-adts}.  Datatypes
+may appear at the \emph{top-level} as with theory declarations, or
+\emph{in-line} as a declaration within a theory.\footnote{Enumeration
+types are actually in-line datatypes---see Section~\ref{enum-types}.}
+Typechecking a top-level datatype named \texttt{foo} causes the generation
+of a new PVS file named \texttt{foo\_adt.pvs} containing up to three
+theories as described below.  Typechecking an in-line datatype has the
+effect of adding new declarations to the current theory, effectively
+replacing the in-line datatype.  In-line datatypes are more restricted:
+they may not have formal parameters or assuming parts, and they will not
+generate the recursive combinators (described below).  The declarations
+generated for an in-line datatype may be viewed using the 
+\texttt{M-x~prettyprint-expanded} command (see the \emph{PVS System
+Guide}~\cite{PVS:userguide}).
+
+\section{A Datatype Example: \texttt{stack}}\label{stacks-adt}
+An example of a datatype is \texttt{stack}:
+\begin{pvsex}
+  stack[T: TYPE]: DATATYPE
+   BEGIN
+    empty: empty?
+    push(top:T, pop:stack): nonempty?
+   END stack
+\end{pvsex}
+The \texttt{stack} datatype has two \emph{constructors}, \texttt{empty} and
+\texttt{push}, that allow stack elements to be constructed.  For example,
+the term \texttt{push(1, empty)} is an element of type \texttt{stack[int]}.
+The \emph{recognizers} \texttt{empty?}\ and \texttt{nonempty?}\ are predicates
+over the \texttt{stack} datatype that are true when their argument is
+constructed using the corresponding constructor.  Given a \texttt{stack}
+element that is known to be \texttt{nonempty?}, the \emph{accessors}
+\texttt{top} and \texttt{pop} may be used to extract the first and second
+arguments.
+
+Typechecking the \texttt{stack} specification automatically creates a new
+file \texttt{stack\_adt.pvs}, that contains the material found in
+the next five figures.  This new file contains three theories:
+\texttt{stack\_adt}, \texttt{stack\_adt\_map}, and
+\texttt{stack\_adt\_reduce}.
+
+\pvstheory{stack_adtA-alltt}{Theory \texttt{stack\_adt} (continues)}{stack_adtA-alltt}
+\pvstheory{stack_adtB-alltt}{Theory \texttt{stack\_adt} (continues)}{stack_adtB-alltt}
+\pvstheory{stack_adtC-alltt}{Theory \texttt{stack\_adt} (continues)}{stack_adtC-alltt}
+\pvstheory{stack_adtD-alltt}{Theory \texttt{stack\_adt\_map}}{stack_adtD-alltt}
+\pvstheory{stack_adtE-alltt}{Theory \texttt{stack\_adt\_reduce}}{stack_adtE-alltt}
+
+The first theory \texttt{stack\_adt} is parametric in type \texttt{T}.
+This is a specification of ``stacks of \texttt{T}'', where \texttt{T} may
+be instantiated by any defined type when the stacks datatype is imported.
+Thus ``stacks of integers'' as well as ``stacks of stacks of integers''
+may be defined using this theory.  The first few lines of the theory
+define the main type of stacks \texttt{stack}, the recognizers
+\texttt{emptystack?} and \texttt{nonemptystack?}, the constructors
+\texttt{empty} and \texttt{push}, and the accessors \texttt{top} and
+\texttt{pop} are declared.  The \texttt{ord} function is then defined to
+return \texttt{0} on an empty stack and \texttt{1} on a nonempty stack.
+
+Then a series of axioms are given.  The
+\texttt{stack\_empty\_extensionality} axiom states that there is only one
+bottom element of the datatype: \texttt{empty}.
+\texttt{stack\_push\_extensionality} states that any two stacks that have
+the same \texttt{top} and \texttt{pop} (have the same components) are the
+same.  The \texttt{stack\_push\_eta} axiom states that \texttt{pop}ping
+and \texttt{push}ing the same element off and onto a stack results in a
+stack identical to the original.  \texttt{stack\_top\_push} says that if
+you \texttt{push} and element on a stack, you get that same element when
+you \texttt{pop} it back off.  \texttt{stack\_pop\_push} says that pushing
+something on a stack and then popping it back off results in the original
+stack.
+
+The \texttt{stack\_inclusive} axiom states that all stacks are either
+\texttt{empty?} or \texttt{nonempty?}.  The PVS prover builds this axiom
+in, so that it rarely needs be cited by a user.  Another related axiom
+\texttt{stack\_disjointness} is implicitly available but is not output
+explicitly in the generated theory.  In the case of the stacks datatype
+this axiom would be as follows.
+\begin{pvsex}
+  stack_disjointness: AXIOM
+        (FORALL (stack_var: stack):
+           NOT (emptystack?(stack_var) AND nonemptystack?(stack_var)));
+\end{pvsex}
+For datatypes with several constructors\footnote{For example, enumeration
+types with a lot of elements.} such an axiom could grow prohibitively
+large, slowing down the generation of datatypes as well as some prooftime
+operations.  Thus the explicit generation of this axiom is suppressed.
+Since this axiom is built in to the prover when the \texttt{stacks} theory
+is typechecked, there is no need for this axiom.
+
+\newpage
+The next axiom, \texttt{stack\_induction}, introduces an induction formula
+for stacks stating that any predicate $p$ of stacks that
+\begin{enumerate}
+\item holds for the empty stack (the base case), and
+\item if $p$ holds for some stack then $p$ holds for the result of
+\texttt{push}ing anything of the right type onto that stack (the induction
+step),
+\end{enumerate}
+then $p$ holds for all stacks.
+
+Then some useful functions are defined over stacks.  The stack predicate
+\texttt{every} takes as arguments a predicate over \texttt{T} and a stack
+and returns \texttt{TRUE} iff all elements on the stack satisfy the given
+predicate.  \texttt{every} is introduced in both curried and uncurried
+forms.  The stack predicate \texttt{some} is dual to \texttt{every},
+returning \texttt{TRUE} iff there is some element on the stack that
+satisfies the predicate.  The \texttt{subterm} predicate takes two stacks
+and returns \texttt{TRUE} if and only if the first argument stack is a
+subterm of the second.  That is, if the second stack consists of the first
+stack with some (perhaps zero) elements pushed onto it.  The \texttt{<<}
+predicate is the strict (irreflexive) \texttt{subterm} predicate.  Thus
+for all stacks $s$, \texttt{subterm}$(s,s)$ holds, but for no stack $s$
+does \texttt{<<}$(s,s)$ hold.  An alternative equivalent definition of
+\texttt{<<} is as follows:
+\begin{pvsex}
+  <<(x: stack, y: stack): boolean = subterm(x,y) AND NOT x = y
+\end{pvsex}
+However, this definition is more awkward to use in a proof, as the
+recursion is hidden in the definition of \texttt{subterm}.  For this
+reason the definitions for \texttt{every}, \texttt{some},
+\texttt{subterm}, and \texttt{<<}, are each defined as standalone
+functions, though some of them could be defined in terms of the others.
+
+The last four declarations of the theory \texttt{stack\_adt} are functions
+which reduce a stack to a natural number or to an ordinal.  These
+functions are useful for simplifying the proof of termination of
+user-defined functions over stacks.  Recall that PVS requires recursive
+functions to include a \emph{measure}, which is used to generate
+termination conditions.  The primary use of the recursive combinator is to
+allow measure functions to be specified.  The function
+\texttt{reduce\_nat} takes a natural number and a function.  The natural
+number is used for the empty stack, and then for each element on the
+stack, the input function is applied to the element from the stack and the
+current reduced natural number, returning a natural number.  The function
+\texttt{reduce\_nat} returns the final natural number.  The function
+\texttt{REDUCE\_nat} is analogous to \texttt{reduce\_nat}, except that the
+reducing function is also given the entire contents of the stack.  This
+version of reduction can be useful for complicated measures that involve,
+for example, the number of repeated elements appearing on the stack.  The
+simpler form of reduce is difficult to apply to such situations.  The
+functions \texttt{reduce\_ordinal} and \texttt{REDUCE\_ordinal} are
+analogous to \texttt{reduce\_nat} and \texttt{REDUCE\_nat} except that
+they return ordinal numbers instead of natural numbers.  It is rare that a
+termination argument requires the use of ordinals, so the simpler
+\texttt{reduce\_nat} form is more often used.  This completes the
+description of the \texttt{stack\_adt} theory.
+
+The second theory in the file \texttt{stack\_adt.pvs} is
+\texttt{stack\_adt\_map}.  This theory takes two types \texttt{T} and
+\texttt{T1} as parameters, imports the \texttt{stack\_adt} theory, and
+defines a mapping from \texttt{stacks[T]} to \texttt{stacks[T1]}.  The
+higher-order \texttt{map} function takes a function \texttt{f} of type
+\texttt{[T -> T1]}, and a stack of \texttt{T}, and returns a stack of
+\texttt{T1} obtained by applying \texttt{f} to each element on the input
+stack.  \texttt{map} is defined in both curried and uncurried forms.
+\texttt{map} couldn't reside in the \texttt{stack\_adt} theory because
+that theory has only one type parameter, while the \texttt{map} functions
+require two: In order to construct and access stacks in two theories,
+\texttt{map} must be parameterized in the two types.
+
+The third and final theory in file \texttt{stack\_adt.pvs} generated from
+\texttt{stack\_pvs} is \texttt{stack\_adt\_reduce}.  This theory provides
+a generalized version of \texttt{reduce\_nat} and \texttt{REDUCE\_nat}.
+The theory \texttt{stack\_adt\_reduce} takes as parameters a type
+\texttt{T} and a range type \texttt{range}.  It defines a generalized
+\texttt{reduce} which reduces stacks of \texttt{T} to elements of
+\texttt{range}.  The functions \texttt{reduce\_nat}, \texttt{REDUCE\_nat},
+\texttt{reduce\_ordinal}, and \texttt{REDUCE\_ordinal} could have been
+defined using \texttt{stack\_adt\_reduce}, but the direct definitions are
+provided for additional user convenience.  The generalized \texttt{reduce}
+can be used to provide evidence of termination of user-defined functions,
+but the predefined versions such as \texttt{reduce\_nat} are easier to use
+in most cases.
+
+\section{Datatype Details}
+
+In general, a datatype declaration has the form
+\begin{pvsex}
+  adt: DATATYPE WITH SUBTYPES S\(\sb{1}\), \ldots, S\(\sb{n}\)
+    BEGIN
+     cons\(\sb1\)(acc\(\sb{11}\): T\(\sb{11}\), \ldots, acc\(\sb{1{n\sb1}}\): T\(\sb{1{n\sb1}}\)): rec\(\sb1\) : S\(\sb{i\sb{1}}\)
+     \vdots
+     cons\(\sb{m}\)(acc\(\sb{m1}\): T\(\sb{m1}\), \ldots, acc\(\sb{1n\sb{m}}\): T\(\sb{1n\sb{m}}\)): rec\(\sb{m}\) : S\(\sb{i\sb{m}}\)
+    END adt
+\end{pvsex}
+%
+where the \texttt{cons$_i$} are the
+\emph{constructors}\index{constructor}\index{datatype!constructor}, the
+\texttt{acc$_{ij}$} are the
+\emph{accessors}\index{accessor}\index{datatype!accessor}, the
+\texttt{T$_{ij}$} are type expressions, and the \texttt{rec$_i$} are
+\emph{recognizers}\index{recognizer}\index{datatype!recognizer}.  Each
+line is referred to as a \emph{constructor
+specification}\index{constructor specification}\index{datatype!constructor
+specification}.  There are a number of restrictions enforced on
+constructor specifications:
+\begin{itemize}
+
+\item The datatype identifier may not be used for a recognizer,
+accessor, or subtype:\newline
+($\texttt{adt} \not\equiv \texttt{rec}_i$ for all $i$, $\texttt{adt}
+\not\equiv \texttt{acc}_{ij}$ for all $i$ and $j$, and $\texttt{adt}
+\not\equiv \texttt{S}_i$ for all $i$).
+
+\item The subtype names must be unique:
+($i \neq j \Rightarrow \texttt{S}_i \not\equiv \texttt{S}_j$)
+
+\item Each subtype name must be used at least once.
+
+\item The constructor names must be unique:
+($i \neq j \Rightarrow \texttt{cons}_i \not\equiv \texttt{cons}_j$).
+
+\item The recognizer names must be unique:
+($i \neq j \Rightarrow \texttt{rec}_i \not\equiv \texttt{rec}_j$).
+
+\item No identifier may be used as both a constructor and a recognizer:\newline
+($\texttt{cons}_i \not\equiv \texttt{rec}_j$ forall $i$ and $j$).
+
+\item Duplicate accessor identifiers are not allowed within a single
+constructor specification:
+($j \neq k \Rightarrow \texttt{acc}_{ij} \not\equiv \texttt{acc}_{ik}$).
+
+\end{itemize}
+
+As seen in the \texttt{stack} example, datatypes may be recursive; this is
+the case when the type of one or more of the accessors reference the
+datatype.  In PVS, all such occurrences must be positive, where a type
+occurrence \texttt{T} is positive in a type expression $\tau$ iff either
+\begin{itemize}
+\item $\tau\equiv \texttt{T}$.
+
+\item $\tau\equiv \{x:\tau'|p(x)\}$ and the occurrence \texttt{T} is
+positive in $\tau'$.
+
+\item $\tau\equiv [{\tau_1} \rightarrow {\tau_2}]$ and the occurrence
+\texttt{T} is positive in $\tau_2$\@.  For example, \texttt{T} occurs
+positively in \texttt{sequence[T]} where \texttt{sequence[T]} is defined
+in the PVS prelude as the function type \texttt{[nat -> T]}\@.
+
+\item $\tau \equiv [\tau_1,\ldots, \tau_n]$ and the occurrence \texttt{T}
+is positive in some $\tau_i$.
+
+\item $\tau\equiv [\#\ l_1 : \tau_1, \ldots, l_n : \tau_n\ \#]$ and the occurrence \texttt{T} is positive in some $\tau_i$\@. 
+
+\item $\tau\equiv \mbox{\emph{datatype}}[\tau_1,\ldots, \tau_n]$, where
+\emph{datatype} is a previously defined datatype and the occurrence
+\texttt{T} is positive in $\tau_i$, where $\tau_i$ is a \emph{positive
+parameter} of \emph{datatype}\@.
+\end{itemize}
+
+When a top-level datatype is given with formal type parameters, they are
+checked for whether their occurrences are all positive; this is used as
+described above for any datatype that imports this one, as well as
+determining some of the declarations described below.
+
+When a datatype is typechecked, a number of new declarations are
+generated:
+\begin{itemize}
+
+\item The datatype identifier is used to create an uninterpreted type
+declaration.  In general, the term \emph{datatype} refers to this type.
+
+\item Each recognizer is used to declare an uninterpreted subtype of the
+datatype.
+
+\item Each subtype identifier is used to declare an interpreted type that
+is the disjunction of the types given by the recognizers that reference
+the subtype identifier in the constructor specification.
+
+\item Each constructor and accessor is used to generate a constant
+declaration.
+
+\item An \texttt{ord} function is generated that gives a zero-based number
+to each constructor (e.g., \texttt{ord(null) = 0} and \texttt{cons(1,null)
+= 1}).  This is mostly useful for enumeration types.
+
+\item An extensionality axiom is generated for each constructor
+specification.
+
+\item An eta axiom is generated for each constructor specification
+that has accessors.
+
+\item For each accessor an axiom is created that says that the accessor
+composed with the corresponding constructor returns the correct value; \eg\
+\begin{pvsex}
+  acc\(\sb{ij}\)(cons\(\sb{i}\)(e\(\sb{i1}\),\ldots, e\(\sb{i{m\sb{i}}})\) = e\(\sb{ij}\)
+\end{pvsex}
+
+% \item A disjointness axiom is generated that says that no element of the
+% datatype can belong to more than one recognizer subtype.
+
+\item An inclusive axiom is generated that says that every element of
+the datatype belongs to at least one recognizer subtype.  This axiom is
+not actually needed as the prover checks for this directly.
+
+\item Two induction schemes are provided for proving properties of the
+datatype.
+
+\item If there are positive type parameters to the datatype, then
+\texttt{every} and \texttt{some} functions are defined that provide a
+predicate on the datatype in terms of the positive types.
+
+\item The \texttt{subterm} and \texttt{<<} (irreflexive subterm) functions
+are defined, and an axiom is generated that states that \texttt{<<} is
+well-founded.  This allows it to be used as an ordering relation in
+recursive function definitions.
+
+\item The recursive combinators \texttt{reduce\_nat},
+\texttt{REDUCE\_nat}, \texttt{reduce\_ordinal}, and
+\texttt{REDUCE\_ordinal} are defined.  These provide a means for defining
+notions like the size or depth of a datatype term.
+
+\item If all type parameters are positive and no accessor type involves a
+subtype of the datatype,\footnote{These constraints are too strong, and
+may be modified in the future.} a \texttt{map} function is generated in a
+separate theory.  Every positive type parameter in the datatype is
+associated with a pair of \texttt{map} parameters, which form the domain
+and range of a corresponding function argument.  Given a set of such
+functions and a term of the datatype, \texttt{map} returns a term that has
+the same structure, but with the ``leaf'' elements replaced by the
+function values.
+
+\item A separate theory is generated for the \texttt{reduce} and
+\texttt{REDUCE} functions.  These generalize the \texttt{reduce} functions
+above to an arbitrary range type.
+
+\end{itemize}
+
+Note that \texttt{stack} is nonempty, since \texttt{empty} is an element
+of \texttt{stack} even if the parameter type \texttt{T} is instantiated
+with an empty type.  However, there is no requirement that a datatype be
+nonempty, though if it is imported and a constant is declared to be of
+that type, a TCC will be generated as described on
+page~\pageref{emptytypes} in section~\ref{emptytypes}.
+
+The \texttt{stack\_adt} theory is parameterized in the type \texttt{T}, and
+introduces the uninterpreted type \texttt{stack}.  Under normal
+circumstances, this would imply no relation between, for example,
+\texttt{stack[nat]} and \texttt{stack[int]}.  However, since every
+occurrence of \texttt{T} in the accessor types is positive, we can infer
+that \texttt{stack[nat]} is a subtype of \texttt{stack[int]}.  In general,
+given a type $T$ and a subtype $S \equiv \{x:T | p(x)\}$, then
+\texttt{stack[$S$]} is treated the same as
+$\{s: \texttt{stack[}T\texttt{]} | \texttt{every}(p)(s)\}$.
+When a datatype has a mix of positive and nonpositive type parameters, the
+subtype relation only holds for the positive ones.  For example,
+in the datatype
+\begin{pvsex}
+  dt[T1, T2: TYPE, c: T1]: DATATYPE
+   BEGIN
+    c(a1: T1, a2: [T2 -> T1]): c?
+   END dt
+\end{pvsex}
+\texttt{T1} is positive and \texttt{T2} is not, so \texttt{dt[nat, nat,
+0]} is a subtype of \texttt{dt[int, nat, 0]}, but is not a subtype of
+\texttt{dt[nat, int, 0]}, nor is it a subtype of \texttt{dt[nat, nat, 1]}.
+
+More complex datatypes lead to correspondingly more complex declarations;
+for example, in the following contrived datatype
+\begin{pvsex}
+  adt1[t1,t2: TYPE, c:t1]: DATATYPE
+   BEGIN
+    bottom: bottom?
+    c1(a11:t1, a12: [t2 -> int]): c1?
+    c2(a21:adt1, a22:[nat -> adt1], a23: list[adt1]): c2?
+    c3(a31:[list[int] -> adt1],
+       a32:[# a: adt1, b: [int -> adt1] #],
+       a33:[adt1, [set[int] -> adt1]]) : c3?
+   END adt1
+\end{pvsex}
+the curried \texttt{every} is generated as follows:
+\begin{pvsex}
+  every(p: PRED[t1])(a1: adt1): boolean =
+    CASES a1 OF
+      bottom: TRUE,
+      c1(c11_var, c12_var): p(c11_var),
+      c2(c21_var, c22_var, c23_var):
+          every(p)(c21_var)
+              AND every(every(p))(c22_var)
+                AND every[adt1](every(p))(c23_var),
+      c3(c31_var, c32_var, c33_var):
+          (FORALL (x1: list[int]): every(p)(c31_var(x1)))
+              AND
+            (every(p)(a(c32_var))
+                 AND (FORALL (x: int): every(p)(b(c32_var)(x))))
+                AND every(p)(c33_var`1)
+                  AND
+                (FORALL (x: set[int]):
+                   every(p)(c33_var`2(x)))
+      ENDCASES;
+\end{pvsex}
+Note that this is only defined for predicates over \texttt{t1}, since
+the occurrence of \texttt{t2} in the constructor specification for
+\texttt{c2} is not positive.
+
+Like record types, constructor selectors may be dependent
+
+\paragraph{Datatype Subtypes}
+
+The \texttt{WITH SUBTYPES} keyword introduces a set of subtype names.
+These are useful, for example, in defining the nonterminals of a language.
+For example, we might try to describe a simple typed lambda calculus:
+\begin{eqnarray*}
+T & ::= & B \;|\; T \rightarrow T \\
+E & ::= & x \;|\; \lambda x:T.E \;|\; E(E)
+\end{eqnarray*}
+This is difficult to express using datatypes without subtypes, but is
+reasonably straightforward with them:\footnote{\texttt{TYPE},
+\texttt{LAMBDA}, and \texttt{VAR} are PVS keywords, so variants are used
+here.}
+\begin{pvsex}
+tlc: DATATYPE WITH SUBTYPES typ, expr
+ BEGIN
+ base_type(n:nat): base_type? : typ
+ fun_type(dom, ran: typ): fun_type? : typ
+ expr_var(n:nat): expr_var? : expr
+ lambda_expr(lvar:(expr_var?), ltype: typ, lexpr: expr)
+                            : lambda_expr? : expr
+ application(fun, arg: expr): application? : expr
+ END tlc
+\end{pvsex}
+In addition to the usual generated declarations, this generates
+\begin{pvsex}
+  typ((x: tlc)): boolean = base_type?(x) OR fun_type?(x);
+  typ: TYPE = \{x: tlc | base_type?(x) OR fun_type?(x)\}
+  expr((x: tlc)): boolean =
+     expr_var?(x) OR lambda_expr?(x) OR application?(x);
+  expr: TYPE =
+     \{x: tlc | expr_var?(x) OR lambda_expr?(x) OR application?(x)\}
+\end{pvsex}
+immediately after the declarations generated for the recognizers, so they
+may be referenced in the accessor types.  Note that only a single
+induction scheme is generated.  To induct over a particular subtype,
+extend the property of interest to the entire datatype so that it returns
+true for everything else.
+
+
+\section{\texttt{CASES} Expressions}
+\index{cases expressions}
+
+The \texttt{CASES} expression uses a simple form of pattern-matching on
+abstract datatypes.  Patterns are of the form $c(x_1,\ldots, x_n)$ where
+$c$ is an $n$-ary constructor and $x_1,\ldots, x_n$ is a list of distinct
+variables.  Patterns here are simple so that certain logical properties of
+the expression are easy to check.  Patterns are not defined in the grammar
+but in the type rules, since the notion of a variable or a constructor is
+only defined in the type rules.
+
+For example, if \texttt{x} is of type \texttt{stack}, the cases expression
+\begin{pvsex}
+  CASES x OF
+    empty : FALSE,
+    push(y, z) : even?(y) AND empty?(z)
+  ENDCASES
+\end{pvsex}
+is \texttt{TRUE} if \texttt{x} is a singleton even integer, and otherwise is
+false.  This expression can be translated into
+\begin{pvsex}
+  IF empty?(x)
+     THEN FALSE
+     ELSE LET (y, z) = (car(x), cdr(x))
+           IN even?(y) AND empty?(z)
+  ENDIF
+\end{pvsex}
+
+The \texttt{CASES} expression also allows an \texttt{ELSE} clause, which
+comes last and covers all constructors not previously mentioned in a
+pattern.  If the \texttt{ELSE} clause is missing, and not all constructors
+have been mentioned, then a \emph{cases TCC}\index{cases
+TCC}\index{TCC!cases} is generated which states that the expression is not
+any of the missing elements.  For example, if the \texttt{x} above is
+declared to be a subtype of \texttt{stack} in which \texttt{empty} is
+excluded, then the \texttt{empty} case can safely be left out, and a \tcc\
+will be generated that obligates the user to prove that \texttt{x} is not
+\texttt{empty}.  There is a trade-off here between simpler specifications
+and simpler verifications; if the \texttt{empty} case is left in, then
+there is no obligation to prove, but the extra case clutters up the
+specification, and can mislead the reader into thinking that the
+\texttt{empty} case is possible.  In general, we feel that the
+specification should be as perspicuous as possible, even if it means a
+little more work behind the scenes.

@@ -1,0 +1,111 @@
+For a general example, say that we are given a datatype
+
+adt'[s1, s2: TYPE, c:s1]: DATATYPE
+
+positive in both s1 and s2.
+
+and now want to typecheck the datatype
+
+adt[t1, t2: TYPE, c: t1]: DATATYPE
+ BEGIN
+  n: n?
+  c(a1: T,
+    a2: adt,
+    a3: sequence[adt],
+    a4: adt'[T',adt,c'])
+ END adt
+
+Where T and T' are metavariables representing type constructions, adt
+does not occur in T or T', and t1 and t2 occur positively, if at all,
+in T and T'.  This is a restricted notion of positive, in which the
+types are not allowed to appear at all in function types, tuple types,
+or record types, although they may appear in subtypes.  This is not a
+theoretical restriction, but should make it easier to explain the
+resulting constructions.
+
+Below we describe the induction axiom and the every, map, and reduce,
+functions.
+
+\subsection{every}
+The function every is defined as follows:
+
+every(p1:PRED[t1], p2:PRED[t2])(a:adt): bool =
+  CASES a OF
+    n: TRUE
+    c(x1, x2, x3, x4):
+      E(x1, T) AND
+      every(p1,p2)(x2) AND
+      every(every(p1,p2))(x3) AND
+      every((LAMBDA (x:T'): E(x, T')), every(p1,p2))(x4)
+  ENDCASES
+
+Where
+
+E(x,T) = pi(x),		if T == ti, i = 1,2
+         E(x,S),	if T == {y:S | q(y)}
+         E(proj_1(x),T1) AND ... AND E(proj_n(x),Tn), if T == [T1,...,Tn]
+         E(a1(x),T1) AND ... AND E(an(x),Tn), if T == [# a1:T1, ..., an:Tn #]
+         (FORALL (y:D): E(x(y), R), if T == [D -> R]
+       	 TRUE,		otherwise
+
+Note: every will be defined even if there are non-positive parameters
+around, as long as there is at least one positive one.
+
+\subsection{map}
+map is defined in its own theory:
+
+adt_map[t1, t2: TYPE, c:t1, r1, r2: TYPE, rc:r1]: THEORY
+ BEGIN
+  IMPORTING adt
+  map(f1:[t1 -> r1], f2:[t2 -> r2])(a:adt[t1,t2,c]): adt[r1,r2,rc] =
+    CASES a OF
+      n: n
+      c(x1,x2,x3,x4):
+        c(M(x1,T),
+          map(f1,f2)(x2),
+          map(map(f1,f2))(x3),
+          map((LAMBDA (x:T'): M(x, T')), map(f1,f2))(x4))
+     ENDCASES
+ END adt_map
+
+where
+
+M(x,T) = fi(x),		if T == ti, i = 1,2
+         M(x,S),	if T == {y:S | q(y)}
+         (M(proj_1(x),T1), ..., M(proj_n(x),Tn), if T == [T1,...,Tn]
+         (# a1 := M(a1(x),T1),..., an:= M(an(x),Tn) #),
+                        if T == [# a1:T1, ..., an:Tn #]
+         (LAMBDA (y:D): M(x(y), R), if T == [D -> R]
+       	 x,		otherwise
+
+
+\subsection{reduce}
+
+The function reduce requires yet another theory:
+
+adt_reduce[t1, t2: TYPE, c:t1, range: TYPE]: THEORY
+ BEGIN
+  IMPORTING adt
+  reduce(n?_fun: range,
+         c?_fun: [T, range, sequence[range], adt'[T',range,c'] -> range])
+        (a: adt) :range =
+    CASES a OF
+      n: n?_fun
+      c(x1,x2,x3,x4):
+        c?_fun(x1,
+               reduce(n?_fun, c?_fun)(x2),
+               map(reduce(n?_fun, c?_fun))(x3),
+	       map(id[T'], reduce(n?_fun, c?_fun))(x4))
+    ENDCASES
+ END adt_reduce
+
+\subsection{induction}
+
+adt_induction: AXIOM
+  (FORALL (p: PRED[adt]):
+    (p(n) AND
+      (FORALL (c1_var: T), (c2_var: adt), (c3_var: seq[adt]),
+             (c4_var: adt'[T',adt,c']):
+        p(c2_var) & every(p)(c3_var) & every((LAMBDA (x:T'): true),p)(c4_var)
+	  => p(c(c1_var, c2_var, c3_var, c4_var))))
+       => (FORALL (adt_var: adt): p(adt_var)))

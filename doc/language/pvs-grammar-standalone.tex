@@ -1,0 +1,603 @@
+\documentclass[12pt]{book}
+\usepackage{boxedminipage}
+\topmargin -10pt
+\textheight 8.5in
+\textwidth 6.0in
+\headheight 15 pt
+\columnwidth \textwidth
+\oddsidemargin 0.5in
+\evensidemargin 0.5in   % fool system for page 0
+\raggedbottom
+
+\newenvironment{bnf}%
+{\renewcommand{\arraystretch}{1.5}\small\it\begin{tabular*}{.8\textwidth}{lcl}}%
+{\end{tabular*}\rm\renewcommand{\arraystretch}{1}}
+
+\def\sbnf{\@bsphack
+          \@ifundefined{mbnf}
+              {\begingroup\def\production##1##2{}}
+              {\begingroup\def\production##1##2{
+		                 \@bsphack
+                                 \begingroup
+		                    \@sanitize
+                                    \@wrprod\@bnffile{##1}{##2}}}}
+\def\endsbnf{\endgroup\@esphack}
+
+
+%%%%
+%%%% makebnf: should be included in the preamble if an section or appendix is
+%%%%	to be included containing the set of all productions.  Including this
+%%%%    command will cause a file jobname.syn to be written containing all bnf
+%%%%    productions listed in the document.
+%%%%
+\def\makebnf{\if@filesw \newwrite\@bnffile
+  \immediate\openout\@bnffile=\jobname.syn
+  \xdef\mbnf{1} 
+  \def\production##1##2{\begingroup
+               \@sanitize
+               \@wrprod\@bnffile{##1}{##2}
+	       \@production{##1}{##2}}
+  \typeout{Writing bnf file \jobname.syn }\fi}
+
+
+%%%%
+%%%% @preamblecmds is redefined to protect the user from accidentially placing
+%%%%	makebnf anywhere except the preamble.
+%%%%
+\def\@preamblecmds{\do\document \do\documentstyle \do\@documentstyle
+   \do\@options \do\@preamblecmds \do\@optionlist \do\@optionfiles
+   \do\nofiles \do\includeonly \do\makeindex \do\makeglossary
+   \do\makebnf}
+
+%%%%
+%%%% unexpandedwrite: writes to file #1 the exact image of #2 without expansion.
+%%%%
+\long\def\unexpandedwrite#1#2{\def\finwrite{\write#1}%
+  {\aftergroup\finwrite\aftergroup{\sanitize#2\endsanity}}}
+\def\sanitize{\futurelet\next\sanswitch}
+\def\\{\let\stoken= } \\
+\def\sanswitch{\ifx\next\endsanity
+  \else\ifcat\noexpand\next\stoken\aftergroup\space\let\next=\eat
+   \else\ifcat\noexpand\next\bgroup\aftergroup{\let\next=\eat
+    \else\ifcat\noexpand\next\egroup\aftergroup}\let\next=\eat
+     \else\let\next=\copytoken\fi\fi\fi\fi \next}
+\def\eat{\afterassignment\sanitize \let\next= }
+\long\def\copytoken#1{\ifcat\noexpand#1\relax\aftergroup\noexpand
+  \else\ifcat\noexpand#1\noexpand~\aftergroup\noexpand\fi\fi
+  \aftergroup#1\sanitize}
+\def\endsanity\endsanity{}
+
+%%%%
+%%%% @wrprod: actually writes the production to the given file.
+%%%%
+\def\@wrprod#1#2#3{
+        \endgroup\unexpandedwrite#1{#2 & \is & #3 \\}
+        \if@nobreak \ifvmode\nobreak\fi\fi}
+    
+%%%%
+%%%% production and @production: format a production to be an array entry
+%%%%	with the proper array separators and line-terminators.
+%%%%
+\def\production #1#2{#1 & \is & #2 \\}
+\def\@production #1#2{#1 & \is & #2 \\}
+
+
+%%%%
+%%%% printbnf: to be placed in the document (after the final occurance of
+%%%%	a bnf production entry) where the total bnf productions are to be
+%%%%	included.
+%%%%
+\def\printbnf{
+            \begingroup
+%               \@ifundefined{mbnf}{}{\immediate\closeout\@bnffile}
+                \begin{bnf}
+                   \@input{\jobname.bnf}
+                \end{bnf}
+              \endgroup}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%           New Commands for use with the BNF environment           %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%
+%%%%\is: the production symbol (normally `::=')
+%%%%
+\newcommand {\is} {$::=$}
+
+%%%%
+%%%% \choice: inserts the BNF "or" symbol into the text
+%%%%
+\newcommand {\choice} {$\ \mid\ $}
+\newcommand{\ch}{\choice}
+%%%%
+%%%% \opt: encloses its argument in square brackets (optional)
+%%%%
+\newcommand {\opt}[1]{{$\,[\,$#1$\,]\,$}}
+
+%%%%
+%%%% \brc: encloses its argument in curly braces (BNF grouping)
+%%%%
+\newcommand {\brc}[1]{{$\,\{\,$#1$\,\}\,$}}
+
+%%%%
+%%%% \rep: argument followed by a asterix (0 or more repetitions)
+%%%%
+\newcommand {\rep}[1]{{\,{#1}$*$}}
+
+%%%%
+%%%% \reps: like rep, but second argument to desingate separator
+%%%%
+\newcommand {\reps}[2]{{\,{#1}$**$'\lit{#2}'}}
+
+
+%%%%
+%%%% \ite: argument followed by a plus
+%%%%
+\newcommand {\ite}[1]{{\,{#1}{\tiny  $+$}}}
+
+%%%%
+%%%% \ites: like ite except a comma as separator is included
+%%%%
+\newcommand {\ites}[2]{{\,{#1}{\tiny $++$}'\lit{#2}'}}
+
+%%%%
+%%%% \lit: inserts a literal character into a bnf description
+%%%%
+\newcommand {\lit}[1]{{\tt #1}}
+
+
+\begin{document}
+
+\chapter{The Grammar}\label{grammar}
+
+The complete PVS grammar is presented in this Appendix, along with a
+discussion of the notation used in presenting the grammar.
+
+The conventions used in the presentation of the syntax are as follows.
+\index{syntax!conventions}
+
+\begin{itemize}
+
+\item Names in {\it italics\/} indicate syntactic classes and
+metavariables ranging over syntactic classes.
+
+\item The reserved words of the language are
+      printed in \lit{tt font, UPPERCASE}.
+
+\item An optional part {\it A\/} of a clause is enclosed in square brackets:
+\opt{{\it A\/}}.
+
+\item Alternatives in a syntax production are separated by a bar
+(``\choice''); a list of alternatives that is embedded in the right-hand
+side of a syntax production is enclosed in brackets, as in
+
+\begin{bnf}
+\production{ExportingName}
+{IdOp \opt{\lit{:} \brc{TypeExpr \choice \lit{TYPE} \choice \lit{FORMULA}}}}
+\end{bnf}
+
+
+\item Iteration of a clause {\it B\/} one or more times is indicated by
+enclosing it in brackets followed by a plus sign: \ite{{\it B\/}};
+repetition zero or more times is indicated by an asterisk instead of the
+plus sign: \rep{{\it B\/}}.
+
+\item A double plus or double asterisk indicates a clause separator; for
+example, \reps{{\it B\/}}{,} indicates zero or more repetitions of the
+clause {\it B} separated by commas.
+
+\item Other items printed in tt font on the right hand side of
+      productions are literals.  Be careful to distinguish where BNF
+symbols occur as literals, e.g,, the BNF brackets \brc{} versus the
+literal brackets \lit{\{\}}.
+
+\end{itemize}
+
+\subsubsection*{Specification}
+\par\noindent
+\begin{boxedminipage}{\textwidth}
+\begin{bnf}
+
+\production{Specification}
+{\ite{\brc{Theory \choice Datatype}}}
+
+\production{Theory}
+{Id \opt{TheoryFormals} \lit{:} \lit{THEORY}\\[-0.1in]
+&& \opt{Exporting}\\[-0.1in]
+&& \lit{BEGIN}\\[-0.1in]
+&& \opt{AssumingPart}\\[-0.1in]
+&& \opt{TheoryPart}\\[-0.1in]
+&& \lit{END} Id}
+
+\production{TheoryFormals}
+{\lit{[}\ \ites{TheoryFormal}{,} \lit{]}}
+
+\production{TheoryFormal}
+{\opt{\lit{(} Importing \lit{)}} TheoryFormalDecl}
+
+\production{TheoryFormalDecl}
+{TheoryFormalType \choice TheoryFormalConst}
+
+\production{TheoryFormalType}
+{Ids \lit{:} \brc{\lit{TYPE} \choice \lit{NONEMPTY\_TYPE} \choice \lit{TYPE+}} \\[-0.1in]
+& & \hspace{0.5in}\opt{\lit{FROM} TypeExpr}}
+
+\production{TheoryFormalConst}
+{IdOps \lit{:} TypeExpr}
+
+\end{bnf}
+\end{boxedminipage}
+
+\subsubsection*{Importings and Exportings}
+\par\noindent
+\begin{boxedminipage}{\textwidth}
+\begin{bnf}
+
+\production{Exporting}
+{\lit{EXPORTING} ExportingNames \opt{\lit{WITH} ExportingTheories}}
+
+\production{ExportingNames}
+{\lit{ALL} \opt{\lit{BUT} \ites{ExportingName}{,}} \\[-0.1in]
+& \choice & \ites{ExportingName}{,}}
+
+\production{ExportingName}
+{IdOp \opt{\lit{:} \brc{TypeExpr \choice \lit{TYPE} \choice \lit{FORMULA}}}}
+
+\production{ExportingTheories}
+{\lit{ALL} \choice \lit{CLOSURE} \choice TheoryNames}
+
+\production{Importing}
+{\lit{IMPORTING} TheoryNames}
+
+\end{bnf}
+\end{boxedminipage}
+
+\subsubsection*{Assumings}
+\par\noindent
+\begin{boxedminipage}{\textwidth}
+\begin{bnf}
+
+\production{AssumingPart}
+{\lit{ASSUMING} \ite{\{AssumingElement \opt{\lit{;}}\}} \lit{ENDASSUMING}}
+
+\production{AssumingElement}
+{Importing \\[-0.1in]
+& \choice & TheoryDecl \\[-0.1in]
+& \choice & Assumption}
+\end{bnf}
+\end{boxedminipage}
+
+
+\subsubsection*{Theory Part}
+\par\noindent
+\begin{boxedminipage}{\textwidth}
+\begin{bnf}
+
+\production{TheoryPart}
+{\ite{\{TheoryElement \opt{\lit{;}}\}}}
+
+\production{TheoryElement}
+{importing \choice TheoryDecl}
+
+\production{TheoryDecl}
+{LibDecl \choice TheoryAbbrDecl \choice TypeDecl \choice VarDecl\\[-0.1in]
+& \choice & ConstDecl \choice RecursiveDecl \choice InductiveDecl \choice FormulaDecl\\[-0.1in]
+& \choice & Judgement \choice Conversion \choice InlineDatatype}
+
+\end{bnf}
+\end{boxedminipage}
+
+
+\subsubsection*{Declarations}
+\par\noindent
+\begin{boxedminipage}{\textwidth}
+\begin{bnf}
+
+\production{LibDecl}
+{Ids\ \lit{:} \lit{LIBRARY} \opt{\lit{=}} String}
+
+\production{TheoryAbbrDecl}
+{Ids\ \lit{:} \lit{THEORY} \lit{=} TheoryName}
+
+\production{TypeDecl}
+{Id\ \opt{\{\lit{,} Ids\} \choice Bindings} \lit{:} \\[-0.1in]
+& & \quad \{\lit{TYPE} \choice \lit{NONEMPTY\_TYPE} \choice \lit{TYPE+}\} \\[-0.1in]
+& & \quad \opt{\brc{\lit{=} \choice \lit{FROM}} TypeExpr \opt{\lit{CONTAINING} Expr}}}
+
+\production{VarDecl}
+{IdOps\ \lit{:} \lit{VAR} TypeExpr}
+
+\production{ConstDecl}
+{IdOp\ \opt{\{\lit{,} IdOps \} \choice \ite{Bindings}} \lit{:} TypeExpr \opt{\lit{=} Expr}}
+
+\production{RecursiveDecl}
+{IdOp\ \opt{\{\lit{,} IdOps \} \choice \ite{Bindings}} \lit{:} \lit{RECURSIVE} \\[-0.1in]
+& & TypeExpr \lit{=} Expr \lit{MEASURE} Expr \opt{\lit{BY} Expr}}
+
+\production{InductiveDecl}
+{IdOp\ \opt{\{\lit{,} IdOps \} \choice \ite{Bindings}} \lit{:} \lit{INDUCTIVE}  \\[-0.1in]
+& & TypeExpr \lit{=} Expr}
+
+\production{Assumption}
+{Ids\ \lit{:} \lit{ASSUMPTION} Expr}
+
+\production{FormulaDecl}
+{Ids\ \lit{:} FormulaName Expr}
+
+\production{Judgement}
+{SubtypeJudgement \choice ConstantJudgement}
+
+\production{SubtypeJudgement}
+{\opt{IdOp \lit{:}} \lit{JUDGEMENT} \ites{TypeExpr}{,} \lit{SUBTYPE\_OF} TypeExpr}
+
+\production{ConstantJudgement}
+{\opt{IdOp \lit{:}} \lit{JUDGEMENT} \ites{ConstantReference}{,}  \\[-0.1in]
+& & \lit{HAS\_TYPE} TypeExpr}
+
+\production{ConstantReference}
+{Number \choice \{Name \rep{Bindings}\} }
+
+\production{Conversion}
+{\lit{CONVERSION} \ites{\{ Name \opt{\lit{:} TypeExpr} \} }{,}}
+
+\production{Bindings}
+{\lit{(} \ites{Binding}{,} \lit{)}}
+
+\production{Binding}
+{TypedId \choice \{ \lit{(} TypedIds \lit{)} \} }
+
+\production{TypedIds}
+{IdOps \opt{\lit{:} TypeExpr} \opt{\lit{|} Expr}}
+
+\production{TypedId}
+{IdOp \opt{\lit{:} TypeExpr} \opt{\lit{|} Expr}}
+
+\end{bnf}
+\end{boxedminipage}
+
+
+\subsubsection*{Type Expressions}
+\par\noindent
+\begin{boxedminipage}{\textwidth}
+\begin{bnf}
+
+\production{TypeExpr}
+{Name \\[-0.1in]
+& \choice & EnumerationType \\[-0.1in]
+& \choice & Subtype \\[-0.1in]
+& \choice & TypeApplication \\[-0.1in]
+& \choice & FunctionType \\[-0.1in]
+& \choice & TupleType \\[-0.1in]
+& \choice & RecordType}
+
+\production{EnumerationType}
+{\lit{\{} IdOps \lit{\}}}
+
+\production{Subtype}
+{\lit{\{} SetBindings \lit{|} Expr \lit{\}} \\[-0.1in]
+& \choice & \lit{(} Expr \lit{)} }
+
+\production{TypeApplication}
+{Name\ Arguments}
+
+\production{FunctionType}
+{\opt{\lit{FUNCTION} \choice \lit{ARRAY}} \\[-0.1in]
+& & \lit{[} \ites{\{ \opt{IdOp \lit{:}} TypeExpr \}}{,} \lit{->} TypeExpr \lit{]}}
+
+\production{TupleType}
+{\lit{[} \ites{\{ \opt{IdOp \lit{:}} TypeExpr \}}{,} \lit{]}}
+
+\production{RecordType}
+{\lit{[\#} \ites{FieldDecls}{,} \lit{\#]}}
+
+\production{FieldDecls}
+{Ids\ \lit{:} TypeExpr}
+\end{bnf}
+\end{boxedminipage}
+
+
+\subsubsection*{Expressions}
+\par\noindent
+\begin{boxedminipage}{\textwidth}
+\begin{bnf}
+\production{Expr}{
+Number \\[-0.1in] & \choice &
+String \\[-0.1in] & \choice &
+Name \\[-0.1in] & \choice &
+Id \lit{!} Number  \\[-0.1in] & \choice &
+Expr\ Arguments \\[-0.1in] & \choice &
+Expr\ Binop\ Expr \\[-0.1in] & \choice &
+Unaryop\ Expr \\[-0.1in] & \choice &
+Expr \lit{`} \{ Id \choice Number \} \\[-0.1in] & \choice &
+\lit{(} \ites{Expr}{,} \lit{)} \\[-0.1in] & \choice &
+\lit{(:} \reps{Expr}{,} \lit{:)} \\[-0.1in] & \choice &
+\lit{[|} \reps{Expr}{,} \lit{|]} \\[-0.1in] & \choice &
+\lit{(\#} \ites{Assignment}{,} \lit{\#)} \\[-0.1in] & \choice &
+Expr \lit{::} TypeExpr \\[-0.1in] & \choice &
+IfExpr \\[-0.1in] & \choice &
+BindingExpr \\[-0.1in] & \choice &
+\lit{\{} SetBindings \lit{|} Expr \lit{\}} \\[-0.1in] & \choice &
+\lit{LET} \ites{LetBinding}{,} \lit{IN} Expr  \\[-0.1in] & \choice &
+Expr \lit{WHERE} \ites{LetBinding}{,}  \\[-0.1in] & \choice &
+Expr \lit{WITH} \lit{[} \ites{Assignment}{,} \lit{]} \\[-0.1in] & \choice &
+\lit{CASES} Expr \lit{OF} \ites{Selection}{,} \opt{\lit{ELSE} Expr} \lit{ENDCASES} \\[-0.1in] & \choice &
+\lit{COND} \ites{\brc{Expr \lit{->} Expr}}{,} \opt{\lit{,} \lit{ELSE} \lit{->} Expr} \lit{ENDCOND} \\[-0.1in] & \choice &
+TableExpr}
+\end{bnf}
+\end{boxedminipage}
+
+
+\subsubsection*{Expressions (continued)}
+\par\noindent
+\begin{boxedminipage}{\textwidth}
+\begin{bnf}
+\production{IfExpr}
+{\lit{IF} Expr \lit{THEN} Expr \\[-0.1in]
+& & \rep{\brc{\lit{ELSIF} Expr \lit{THEN} Expr}} \lit{ELSE} Expr \lit{ENDIF}}
+
+\production{BindingExpr}
+{BindingOp\ LambdaBindings \lit{:} Expr}
+
+\production{BindingOp}
+{\lit{LAMBDA} \choice \lit{FORALL} \choice \lit{EXISTS} \choice \{ IdOp \lit{!} \}} 
+
+\production{LambdaBindings}
+{LambdaBinding \opt{\opt{,} LambdaBindings}}
+
+\production{LambdaBinding}
+{IdOp \choice Bindings}
+
+\production{SetBindings}
+{SetBinding \opt{\opt{,} SetBindings}}
+
+\production{SetBinding}
+{\{IdOp \opt{\lit{:} TypeExpr} \} \choice Bindings}
+
+\production{Assignment}
+{AssignArgs \brc{\lit{:=} \choice \lit{|->}} Expr}
+
+\production{AssignArgs}
+{Id \opt{\lit{!} Number}\\[-0.1in]
+& \choice & Number\\[-0.1in]
+& \choice & \ite{AssignArg}}
+
+
+\production{AssignArg}
+{\lit{(} \ites{Expr}{,} \lit{)} \\[-0.1in]
+& \choice & \lit{`} Id \\[-0.1in]
+& \choice & \lit{`} Number}
+
+\production{Selection}
+{IdOp \opt{\lit{(} IdOps \lit{)}} \lit{:} Expr}
+
+\production{TableExpr}
+{\lit{TABLE} \opt{Expr} \opt{\lit{,} Expr} \\[-0.1in]
+& & \opt{ColHeading}\\[-0.1in]
+& & \ite{TableEntry} \lit{ENDTABLE}}
+
+\production{ColHeading}
+{\lit{|[} Expr \ite{\brc{\lit{|} \brc{Expr \choice \lit{ELSE}}}} \lit{]|}}
+
+\production{TableEntry}
+{\ite{\brc{\lit{|} \opt{Expr \choice \lit{ELSE}}}} \lit{||}}
+
+\production{LetBinding}
+{\brc{LetBind \choice \lit{(} \ites{LetBind}{,} \lit{)}} \lit{=} Expr}
+
+\production{LetBind}
+{IdOp\ \rep{Bindings} \opt{\lit{:} TypeExpr}}
+
+\production{Arguments}
+{\lit{(} \ites{Expr}{,} \lit{)}}
+
+\end{bnf}
+\end{boxedminipage}
+
+
+\subsubsection*{Names}
+\par\noindent
+\begin{boxedminipage}{\textwidth}
+\begin{bnf}
+
+\production{TheoryNames}
+{\ites{TheoryName}{,}}
+
+\production{TheoryName}
+{\opt{Id \lit{@}} Id \opt{Actuals}}
+
+\production{Names}
+{\ites{Name}{,}}
+
+\production{Name}
+{\opt{Id \lit{@}} IdOp \opt{Actuals} \opt{\lit{.} IdOp}}
+
+\production{Actuals}
+{\lit{[} \ites{Actual}{,} \lit{]}}
+
+\production{Actual}
+{Expr \choice TypeExpr}
+
+\production{IdOps}
+{\ites{IdOp}{,}}
+
+\production{IdOp}
+{Id \ch Opsym}
+
+\production{Opsym}
+{Binop \choice Unaryop \choice \lit{IF} \choice \lit{TRUE} \choice \lit{FALSE} \choice \lit{[||]}}
+
+\production{Binop}
+{\lit{o} \choice \lit{IFF} \choice \lit{<=>} \choice \lit{IMPLIES} \choice \lit{=>} \choice \lit{WHEN} \choice 
+ \lit{OR} \choice \lit{\char'134/} \choice \lit{AND} \\[-0.1in]
+& \choice & 
+ \lit{/\char'134} \choice \lit{\&} \choice \lit{XOR}
+ \choice  \lit{ANDTHEN} \choice \lit{ORELSE} \choice \lit{\char'136} \choice \lit{+} \choice \lit{-} \choice
+ \lit{*} \choice \lit{/} \\[-0.1in]
+& \choice & \lit{++} \choice \lit{\char'176} \choice \lit{**} \choice \lit{//}
+ \choice \lit{\char'136\char'136} \choice \lit{|-} \choice \lit{|=} \choice \lit{<|} \choice \lit{|>} \choice
+ \lit{=} \\[-0.1in]
+& \choice & \lit{/=} \choice \lit{==} \choice \lit{<} \choice \lit{<=}
+ \choice \lit{>} \choice \lit{>=} \choice \lit{<<} \\[-0.1in]
+& \choice & \lit{>>} \choice \lit{<<=} \choice \lit{>>=} \choice \lit{\#}
+\choice \lit{@@} \choice \lit{\#\#}
+}
+
+\production{Unaryop}
+{\lit{NOT} \choice \lit{\char'176} \choice \lit{[]} \choice \lit{<>} \choice \lit{-}}
+
+
+\production{FormulaName}
+{\lit{AXIOM} \choice \lit{CHALLENGE} \choice
+\lit{CLAIM} \choice \lit{CONJECTURE} \choice \lit{COROLLARY}  \\[-0.1in]
+&\choice & \lit{FACT} \choice \lit{FORMULA} \choice \lit{LAW} \choice \lit{LEMMA} \choice \lit{OBLIGATION}\\[-0.1in]
+&\choice & \lit{POSTULATE} \choice \lit{PROPOSITION} \choice \lit{SUBLEMMA} \choice \lit{THEOREM} }
+\end{bnf}
+\end{boxedminipage}
+
+
+\subsubsection*{Identifiers}
+\par\noindent
+\begin{boxedminipage}{\textwidth}
+\begin{bnf}
+\production{Ids}{\ites{Id}{,}}
+\production{Id}{Letter \ite{IdChar}}
+\production{Number}{\ite{Digit}}
+\production{String}{\lit{"} \rep{ASCII-character} \lit{"}}
+\production{IdChar}{Letter \choice Digit \choice \lit{\_} \choice \lit{?}}
+\production{Letter}{\lit{A} \choice \ldots \choice \lit{Z} \choice \lit{a} \choice \ldots \choice \lit{z}}
+\production{Digit}{\lit{0} \choice \ldots \choice \lit{9}}
+\end{bnf}
+\end{boxedminipage}
+
+
+\subsubsection*{Datatypes}
+\par\noindent
+\begin{boxedminipage}{\textwidth}
+\begin{bnf}
+\production{Datatype}
+{Id \opt{TheoryFormals} \lit{:} \lit{DATATYPE} \opt{\lit{WITH} \lit{SUBTYPES} Ids}\\[-0.1in]
+&& \lit{BEGIN}\\[-0.1in]
+&& \opt{Importing \opt{\lit{;}}} \\[-0.1in]
+&& \opt{AssumingPart} \\[-0.1in]
+&& DatatypePart\\[-0.1in]
+&& \lit{END} Id}
+
+\production{InlineDatatype}
+{Id \lit{:} \lit{DATATYPE} \opt{\lit{WITH} \lit{SUBTYPES} Ids}\\[-0.1in]
+&& \lit{BEGIN}\\[-0.1in]
+&& \opt{Importing \opt{\lit{;}}} \\[-0.1in]
+&& \opt{AssumingPart} \\[-0.1in]
+&& DatatypePart\\[-0.1in]
+&& \lit{END} id}
+
+\production{DatatypePart}
+{\ite{\brc{Constructor \lit{:} IdOp \opt{\lit{:} Id}}}}
+
+\production{Constructor}
+{IdOp \opt{\lit{(} \ites{\{IdOps \lit{:} TypeExpr \}}{,} \lit{)}}}
+
+\end{bnf}
+\end{boxedminipage}
+
+\end{document}

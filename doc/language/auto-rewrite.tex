@@ -1,0 +1,101 @@
+
+\section{Auto-rewrite Declarations}
+\label{auto-rewrite-decls}\index{auto-rewrites|(}
+
+One of the problems with writing useful theories or libraries is that
+there is no easy way to convey how the theory is to be used, other than in
+comments or documentation.  In particular, the specifier of a theory
+usually knows which lemmas should always be used as rewrites, and which
+should never appear as rewrites.  Auto-rewrite declarations allow for both
+forms of control.  Those that should always be used as rewrites are
+declared with the \texttt{AUTO\_REWRITE+} or \texttt{AUTO\_REWRITE}
+keyword, and those that should not are declared with
+\texttt{AUTO\_REWRITE-}.  
+
+When a proof is initiated for a given formula, all the
+\texttt{AUTO\_REWRITE+} names in the current context that haven't
+subsequently been removed by \texttt{AUTO\_REWRITE-} declarations are
+collected and added to the initial proof state.  The
+\texttt{AUTO\_REWRITE-} declaration, in addition to removing
+\texttt{AUTO\_REWRITE+} names, also affects the
+\texttt{auto-rewrite-theory}, \texttt{auto-rewrite-theories},
+\texttt{auto-rewrite-theory-with-importings},
+\texttt{simplify-with-rewrites}, \texttt{auto-rewrite-defs},
+\texttt{install-rewrites}, \texttt{auto-rewrite-explicit}, \texttt{grind},
+\texttt{induct-and-simplify}, \texttt{measure-induct-and-simplify}, and
+\texttt{model-check} commands, described in the Prover manual.  These
+commands collect all definitions and formulas except those that appear in
+\texttt{AUTO\_REWRITE-} delcarations.  Thus suppose a theory \texttt{T}
+contains the lemmas \texttt{lem1}, \texttt{lem2}, and \texttt{lem3} and
+the declarations
+\begin{alltt}
+  AUTO_REWRITE+ lem1
+  AUTO_REWRITE- lem3
+\end{alltt}
+Then in proving a formula of a theory that imports \texttt{T},
+\texttt{lem1} is initially an auto-rewrite, and the command
+\texttt{(auto-rewrite-theory "T")} will additionally install
+\texttt{lem2}.  To auto-rewrite with \texttt{lem3}, simply use
+\texttt{(auto-rewrite "lem3")}.  To exclude \texttt{lem1}, use
+\texttt{(stop-auto-rewrite "lem1")} or \texttt{(auto-rewrite-theory "T"
+:exclude "lem1")}.
+
+The syntax for auto-rewrite declarations is as follows.
+\begin{bnf}
+\production{AutoRewriteDecl}
+{AutoRewriteKeyword\ \ites{RewriteName}{,}}
+
+\production{AutoRewriteKeyword}
+{\lit{AUTO\_REWRITE}\ \choice\ \lit{AUTO\_REWRITE+}\ \choice\ \lit{AUTO\_REWRITE-}}
+
+\production{RewriteName}
+{Name \opt{\lit{!} \opt{\lit{!}}} \opt{\lit{:}\ \brc{TypeExpr \choice FormulaName}}}
+\end{bnf}
+
+The \texttt{autorewrites} theory shows a simple example.
+\begin{alltt}
+autorewrites: THEORY
+BEGIN
+ AUTO_REWRITE+ zero_times3
+ a, b: real
+ f1: FORMULA a * b = 0 AND a /= 0 IMPLIES b = 0
+ AUTO_REWRITE- zero_times3
+ f2: FORMULA a * b = 0 AND a /= 0 IMPLIES b = 0
+END autorewrites
+\end{alltt}
+Here \texttt{f1} may be proved using only \texttt{assert}, but \texttt{f2}
+requires more.
+
+Rewrite names may have suffixes, for example, \texttt{foo!} or
+\texttt{foo!!}.  Without the suffix, the rewrite is \emph{lazy}, meaning
+that the rewrite will only take place if conditions and TCCs simplify to
+true.  A condition in this case is a top-level \texttt{IF} or
+\texttt{CASES} expression.  With a single exclamation point the
+auto-rewrite is \emph{eager}, in which case the conditions are irrelevant,
+though if it is a function definition it must have all arguments supplied.
+With two exclamation points it is a \emph{macro} rewrite, and terms will
+be rewritten even if not all arguments are provided.  See the prover guide
+for more details; the notation is derived from the prover commands
+\texttt{auto-rewrite}, \texttt{auto-rewrite!}, and
+\texttt{auto-rewrite!!}.
+
+In addition, a rewrite name may be disambiguated by stating that it is a
+formula, or giving its type if it is a constant.  Without this any
+definition or lemma in the context with the same name will be installed as
+an auto-rewrite.
+
+In order to be more uniform, these new forms of name are also available
+for the \texttt{auto-rewrite} prover commands.  Thus the command
+\begin{alltt}
+  (auto-rewrite "A" ("B" "-2") "C" (("1" "D")))
+\end{alltt}
+may now be given instead as
+\begin{alltt}
+  (auto-rewrite "A" "B!" "-2!" "C" "1!!" "D!!")
+\end{alltt}
+The older form is still allowed, but is deprecated, and may not be mixed
+with the new form.  Notice that in the auto-rewrite commands formula
+numbers may also be used, and these may be followed by exclamation points,
+but not by a formula keyword or type.
+
+\index{auto-rewrites|)}
