@@ -1877,6 +1877,7 @@
 
 (defmethod full-name? ((x name))
   (and (resolution x)
+       (not (variable? x))
        (module-instance (resolution x))
        (or (null (current-theory))
 	   (not (eq (id (module-instance (resolution x)))
