@@ -598,7 +598,7 @@
 
 (defun judgement-list-arguments-match? (argtypes rdomain jdomain)
   (when argtypes
-    (or (subtype-wrt? rdomain (car argtypes) jdomain)
+    (or (subtype-wrt? (car argtypes) jdomain rdomain)
 	(judgement-list-arguments-match? (cdr argtypes) rdomain jdomain))))
 
 (defun judgement-vector-arguments-match? (argtypes rdomain jdomain num
