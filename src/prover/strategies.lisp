@@ -3,12 +3,11 @@
 ;; Author          : N. Shankar
 ;; Created On      : Thu Jan  8 15:02:25 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Jan 29 17:24:08 1999
-;; Update Count    : 3
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Last Modified On: Thu May 20 22:22:42 2004
+;; Update Count    : 5
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -236,12 +235,12 @@ computations.  E.g.,
   "")
 
 
-(defstep assert  (&optional (fnums *) rewrite-flag
-			    flush? linear? cases-rewrite? (type-constraints? t)
-			    ignore-prover-output? (let-reduce? t) quant-simp?)
-	 (simplify
-	  fnums t t rewrite-flag flush? linear? cases-rewrite? type-constraints? ignore-prover-output? let-reduce? quant-simp?) 
- "Simplifies/rewrites/records formulas in FNUMS using decision
+(defstep assert (&optional (fnums *) rewrite-flag
+			   flush? linear? cases-rewrite? (type-constraints? t)
+			   ignore-prover-output? (let-reduce? t) quant-simp?)
+  (simplify
+   fnums t t rewrite-flag flush? linear? cases-rewrite? type-constraints? ignore-prover-output? let-reduce? quant-simp?) 
+  "Simplifies/rewrites/records formulas in FNUMS using decision
 procedures.  Variant of SIMPLIFY with RECORD? and REWRITE? flags set
 to T. If REWRITE-FLAG is RL(LR) then only lhs(rhs) of equality
 is simplified. If FLUSH? is T then the current asserted facts are
@@ -256,28 +255,28 @@ Examples:
     RHS untouched if the formula is an equality.
  (assert :flush? T): Apply assert after flushing existing decision procedure
   database."
-"Simplifying, rewriting, and recording with decision procedures")
+  "Simplifying, rewriting, and recording with decision procedures")
 
 (defstep record (&optional (fnums *) rewrite-flag
-			    flush? linear? (type-constraints? t)
-			    ignore-prover-output?)
-	 (simplify
-	  fnums t nil rewrite-flag flush? linear? type-constraints?
-	  ignore-prover-output?)
-	 "Uses decision procedures to simplify and record the formulas
+			   flush? linear? (type-constraints? t)
+			   ignore-prover-output?)
+  (simplify
+   fnums t nil rewrite-flag flush? linear? type-constraints?
+   ignore-prover-output?)
+  "Uses decision procedures to simplify and record the formulas
 in FNUMS for further simplification.   Variant of SIMPLIFY with RECORD?
 flag set to T and REWRITE? flags set to NIL. If REWRITE-FLAG is
 RL(LR) then only lhs(rhs) is simplified.  If FLUSH? is T then the
 current asserted facts are deleted for efficiency.  LINEAR? is ignored.
 Example:
  (record - :flush? T): flushes database and records antecedent formulas."
-	 "Simplifying and recording with decision procedures")
+  "Simplifying and recording with decision procedures")
 
 (defstep do-rewrite (&optional (fnums *) rewrite-flag
-			    flush? linear? cases-rewrite? (type-constraints? t))
-	 (simplify
-	  fnums nil t rewrite-flag flush? linear? cases-rewrite? type-constraints?) 
-	 "Uses decision procedures to rewrite the formulas in FNUMS.
+			       flush? linear? cases-rewrite? (type-constraints? t))
+  (simplify
+   fnums nil t rewrite-flag flush? linear? cases-rewrite? type-constraints?) 
+  "Uses decision procedures to rewrite the formulas in FNUMS.
 Variant of SIMPLIFY with RECORD? flag set to NIL and REWRITE? flags set to
 T. If REWRITE-FLAG is RL(LR) then only lhs(rhs) is simplified.  If FLUSH?
 is T then the current asserted facts are deleted for efficiency.  If
@@ -288,7 +287,7 @@ simplification selects a case.
 Examples: (do-rewrite): Simplify every sequent formula with rewriting.
 (do-rewrite :rewrite-flag RL :linear? T): Apply rewriting only to left-hand
           sides of any equalities with uninterpreted nonlinear arithmetic."
- "Simplifying and recording with decision procedures")
+  "Simplifying and recording with decision procedures")
 
 
 (defstep auto-rewrite!! (&rest names)
@@ -503,6 +502,12 @@ definitions as auto-rewrites"
 definitions as auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
+(defhelper mapped-axiom-tcc ()
+  (tcc$ explicit)
+  "The strategy used for mapped axiom TCCs - invokes GRIND with non-recursive
+definitions as auto-rewrites"
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
 (defhelper cases-tcc ()
   (tcc$ explicit)
   "The strategy used for cases TCCs - invokes GRIND with non-recursive
@@ -557,6 +562,22 @@ bddsimp, and assert, until nothing works.  DEFS is either
   (grind$ :defs defs)
   "Obsolete - subsumed by (TCC)."
   "Trying repeated skolemization, instantiation, and if-lifting")
+
+(defstep default-strategy ()
+  (let ((theory (when *current-context* (current-theory)))
+	(thstrat (when theory (makesym "~a-default-strategy" (id theory))))
+	(defstrat (cond ((and thstrat (assq thstrat *prover-keywords*))
+			 thstrat)
+			((assq 'context-default-strategy *prover-keywords*)
+			 'context-default-strategy)
+			(t 'grind)))
+	(dummy (format-if "~%Using default strategy:  ~a," defstrat)))
+    (defstrat))
+  "This invokes user defined default strategies.  It first looks for a strategy
+of the name 'foo-strategy', where 'foo' is the current theory.  If that is not
+defined, it looks for 'context-strategy', and if that is not found, it
+invokes 'grind'."
+  "")
 
 (defstep bash (&optional (if-match t)(updates? t) polarity? (instantiator inst?) (let-reduce? t) quant-simp?)
   (then (assert :let-reduce? let-reduce? :quant-simp? quant-simp?)(bddsimp)
@@ -835,13 +856,13 @@ then turns off all the installed rewrites.  Examples:
 		(cond ((> (1+ (length (remaining-subgoals par-ps)))
 			  (length steplist))
 		       (format t "~%***Warning: ~
-Fewer subproofs (~s) than subgoals (~s)"
+                                  Fewer subproofs (~s) than subgoals (~s)"
 			 (length steplist)
 			 (1+ (length (remaining-subgoals par-ps)))))
 		      ((< (1+ (length (remaining-subgoals par-ps)))
 			  (length steplist))
 		       (format t "~%***Warning: ~
-Fewer subgoals (~s) than subproofs (~s)"
+                                  Fewer subgoals (~s) than subproofs (~s)"
 			 (1+ (length (remaining-subgoals par-ps)))
 			 (length steplist))))))
 	      (x (if (consp steplist)
@@ -864,15 +885,17 @@ the number of subproofs.")
 		    (when (eql goalnum 1)
 		      (cond ((> (1+ (length (remaining-subgoals par-ps)))
 				(length steplist))
-			     (format t "~%***Error: ~
-Fewer subproofs (~s) than subgoals (~s)"
+			     (format t
+				 "~%***Error: ~
+                                  Fewer subproofs (~s) than subgoals (~s)"
 			       (length steplist)
 			       (1+ (length (remaining-subgoals par-ps))))
 			     t)
 			    ((< (1+ (length (remaining-subgoals par-ps)))
 				(length steplist))
-			     (format t "~%***Error: ~
-Fewer subgoals (~s) than subproofs (~s)"
+			     (format t
+				 "~%***Error: ~
+                                  Fewer subgoals (~s) than subproofs (~s)"
 			       (1+ (length (remaining-subgoals par-ps)))
 			       (length steplist))
 			     t))))
@@ -933,6 +956,16 @@ If STEP does nothing, then ELSE-STEP is applied.")
 used to rerun an entire proof causes an expanded proof using only primitive
 proof steps to be rerun."
   "")
+
+
+;; (defstrat run-proof-list (proof-list)
+;;   (let ((*standard-input* (make-string-input-stream
+;; 			   (format nil "~{~a ~}" proof-list))))
+;;     )
+;;   "Strategy to run the given sequence of commands, as if they were
+;; typed in individually by the user.  This is not the same as rerun, as
+;; rerun expects a tree structure, and only applies to the current sequent."
+;;   "")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defstep skosimp (&optional (fnum *) preds?)
@@ -1658,44 +1691,44 @@ Example:
   "Invoking measure induction and simplifying")
 
 (defstep replace-extensionality (f g &optional expected keep?)
-  (let ((tt (when expected (typecheck (pc-parse expected 'type-expr)
-				       :context *current-context*))))
-    (let ((ff (pc-typecheck (pc-parse f 'expr)
-			 :expected tt))
-	  (gg (pc-typecheck (pc-parse g 'expr)
-			 :expected tt)))
-      (let ((tf (type ff))
-	    (tg (type gg)))
-	(try (if tt (extensionality tt)
-		 (try (extensionality tf)(skip)
-		      (extensionality tg)))
-	     (branch (inst - ff gg)
-		     ((branch (split -1)
-			   ((then (replace -1)
-				  (if keep? (skip)
-				      (delete -1)))
-			    (then* (skolem! 1);;NSH(5.19.95)
-				   (beta 1);;changed from + to 1.
-				   (assert 1))))
-		      (assert)))
-	     (skip)))))
+  (let ((tt (when expected (typecheck (pc-parse expected 'type-expr))))
+	(ff (pc-typecheck (pc-parse f 'expr) :expected tt))
+	(gg (pc-typecheck (pc-parse g 'expr) :expected tt))
+	(tf (type ff))
+	(tg (type gg)))
+    (try (if tt
+	     (extensionality tt)
+	     (try (extensionality tf) (skip) (extensionality tg)))
+	 (branch (inst - ff gg)
+		 ((branch (split -1)
+			  ((then (replace -1)
+				 (if keep? (skip) (delete -1)))
+			   (then* (skolem! 1)
+				  (beta 1)
+				  (assert 1))))
+		  (assert)))
+	 (skip)))
   "Uses the extensionality axiom on the type of F (or with
 EXPECTED as the type when given) to replace F by G.  Retains the
 extensionality axiom scheme if KEEP? is T, and discards it otherwise.
 See also EXTENSIONALITY, APPLY-EXTENSIONALITY."
   "Replacing ~a by ~a using extensionality")
 
-(defstep apply-extensionality (&optional  (fnum +) keep? hide?)
+(defstep apply-extensionality (&optional (fnum +) keep? hide?)
   (let ((sforms (select-seq (s-forms (current-goal *ps*))
-			     (if (memq fnum '(* + -)) fnum
-				       (list fnum))))
-	 (fmla (loop for sf in sforms thereis
-		     (when (equation? (formula sf))
-		       (formula sf))))
-	 (lhs (when fmla (args1 fmla)))
-	 (rhs (when fmla (args2 fmla))))
+			    (if (memq fnum '(* + -)) fnum
+				(list fnum))))
+	(fmla (loop for sf in sforms thereis
+		    (when (equation? (formula sf))
+		      (formula sf))))
+	(lhs (when fmla (args1 fmla)))
+	(rhs (when fmla (args2 fmla)))
+	(type (when fmla
+		(typecase (type lhs)
+		  (adt-type-name (ext-find-recognizer-subtype lhs rhs))
+		  (cotupletype (ext-find-injective?-subtype lhs rhs))))))
     (if fmla
-	(try (replace-extensionality$  lhs rhs :keep? keep?)
+	(try (replace-extensionality$ lhs rhs :keep? keep? :expected type)
 	     (then
 	      (let ((fnums (find-all-sformnums (s-forms
 						(current-goal *ps*))
@@ -1713,6 +1746,25 @@ If HIDE? is T, the equality formula to which extensionality is applied,
 is hidden.
 See also EXTENSIONALITY."
   "Applying extensionality")
+
+(defun ext-find-recognizer-subtype (lhs rhs)
+  (dolist (c (constructors (adt (type lhs))))
+    (let* ((rec (make!-recognizer-name-expr (recognizer c) (type lhs)))
+	   (lhs-rec (make!-application rec lhs)))
+      (when (true-p (assert-test lhs-rec))
+	(let ((rhs-rec (make!-application rec rhs)))
+	  (when (true-p (assert-test rhs-rec))
+	    (return (make!-expr-as-type rec))))))))
+
+(defun ext-find-injective?-subtype (lhs rhs)
+  (dotimes (i (length (types (type lhs))))
+    (let ((lhs-inj? (make!-injection?-application (1+ i) lhs)))
+      (when (true-p (assert-test lhs-inj?))
+	(let ((rhs-inj? (make!-injection?-application (1+ i) rhs)))
+	  (when (true-p (assert-test rhs-inj?))
+	    (return
+	     (make!-expr-as-type
+	      (make!-injection?-expr (1+ i) (type lhs))))))))))
 
 (defstep eta (type)
   (let ((type (typecheck (pc-parse type 'type-expr))))
@@ -1995,31 +2047,28 @@ See INST for a non-copying version."
 ~{~a~^, ~}")
 
 (defstep inst? (&optional (fnums *) subst (where *)
-		   copy? if-match polarity? (tcc? t))
-  (let (;(sformnum (find-?quant fnum subst *ps*))
-	 (sforms (remove-if-not
-		     #'exists-sform?
-		   (select-seq (s-forms (current-goal *ps*))
-				 fnums)))
-	           
-	 (search (find-quant-terms sforms subst where
-				     if-match polarity? tcc? *ps*))
-         (sformnum (when search (car search)))
-	 (newterms (when search (cdr search))))
+			  copy? if-match polarity? (tcc? t))
+  (let ((sforms (remove-if-not #'exists-sform?
+		  (select-seq (s-forms (current-goal *ps*))
+			      fnums)))
+	(search (find-quant-terms sforms subst where
+				  if-match polarity? tcc? *ps*))
+	(sformnum (when search (car search)))
+	(newterms (when search (cdr search))))
     (if newterms
 	(let ((x (make-inst?-rule sformnum newterms copy? if-match)))
-	      x)
-	(if  (all-or-best? if-match)
+	  x)
+	(if (all-or-best? if-match)
 	    ;;try again with no polarity
 	    (let ((dummy (format-if "~%Trying instantiation with ~
-IF-MATCH set to NIL~%"))
-		       (search (find-quant-terms sforms subst where
+                                      IF-MATCH set to NIL~%"))
+		  (search (find-quant-terms sforms subst where
 					    nil polarity? tcc? *ps*))
-		      (sformnum (when search (car search)))
-		      (newterms (when search (cdr search)))
-		      (x (make-inst?-rule sformnum newterms copy? nil)))
-		  x)
-		(skip))))
+		  (sformnum (when search (car search)))
+		  (newterms (when search (cdr search)))
+		  (x (make-inst?-rule sformnum newterms copy? nil)))
+	      x)
+	    (skip))))
   "Tries to automatically instantiate a quantifier:
 FNUMS indicates which quantified formula:  *,-, +, or (n1, n2,..)
 SUBST is a partial substitution for the bound variable names.
@@ -2316,7 +2365,7 @@ Useful for generating error messages in strategies."
       (and (listp fnum)
 	   (every #'forward-fnum? fnum))))
 
-(defstep forward-chain (lemma-or-fnum)
+(defstep forward-chain (lemma-or-fnum &optional quiet?)
   (if (forward-fnum? lemma-or-fnum);;added (7.17.98)
       (chain-antecedent$ lemma-or-fnum)
       (let ((lemma lemma-or-fnum);;NSH(7.17.98): dummy to preserve previous name
@@ -2331,10 +2380,20 @@ Useful for generating error messages in strategies."
 			    (antec-fmlas (cdr info))
 			    (formlist (append *-*
 					      (mapcar #'negate *+*)))
-			    (sub (forward-match res conc antec-fmlas
-						formlist)))
+			    (sub-list (multiple-value-list
+				       (forward-match res conc antec-fmlas
+						      formlist)))
+			    (sub (car sub-list)))
 			(if (eq sub 'fail)
-			    (skip-msg "No forward match for given lemma.")
+			    (if quiet?
+				(skip)
+				(let ((msg
+				       (if (cadr sub-list)
+					   (format nil "Forward match for ~a already in sequent."
+					     lemma-or-fnum)
+					   (format nil "No forward match for ~a."
+					     lemma-or-fnum))))
+				  (skip-msg msg)))
 			    (let ((fsub (flatten-sub sub)))
 			      (then* (lemma lemma fsub)
 				     (if (loop for x in fsub
@@ -2358,6 +2417,71 @@ current goal.  If the instance B' already exists as an antecedent,
 this rule backtracks to find a fresh instance.  Note that the free variables
 in B must occur among the free variables in the Ai."  
       "Forward chaining on ~a")
+
+(defstep forward-chain-theory (theory-name)
+  (let ((name (pc-parse theory-name 'modname))
+	(current? (eq (id name)(id *current-theory*)))
+	(theory-name (resolve-theory-name name))
+	(theory (get-theory theory-name)))
+    (if theory
+	(let ((fc-formulas (collect-forward-chain-formulas
+			    theory theory-name))
+	      (step `(forward-chain*$ ,@fc-formulas)))
+	  step)
+	(skip-msg "No such theory in current context.")))
+  "Forward-chains on all applicable formulas of the given theory-name"
+  "forward-chaining on formulas of theory: ~a")
+
+(defun collect-forward-chain-formulas (theory theory-name)
+  (collect-forward-chain-formulas* (all-decls theory) theory theory-name))
+
+(defun collect-forward-chain-formulas* (decls theory theory-name
+					      &optional fc-forms)
+  (if (null decls)
+      fc-forms
+      (collect-forward-chain-formulas*
+       (cdr decls) theory theory-name
+       (if (and (formula-decl? (car decls))
+		(not (tcc? (car decls))))
+	   (let ((decl (car decls)))
+	     (unless (closed-definition decl)
+	       (let* ((*in-checker* nil)
+		      (*current-context* (context decl)))
+		 (setf (closed-definition decl)
+		       (universal-closure (definition decl)))))
+	     (let ((def (subst-mod-params (closed-definition decl)
+					  theory-name theory)))
+	       (if (check-forward-formula def)
+		   (cons (mk-name-expr (id decl)
+			   (actuals theory-name)
+			   (id theory-name)
+			   (mappings theory-name)
+			   (library theory-name)
+			   (target theory-name))
+			 fc-forms)
+		   fc-forms)))
+	   fc-forms))))
+
+(defstep forward-chain* (&rest lemmas-or-fnums)
+  (let ((fc-step `(forward-chain@$ ,@lemmas-or-fnums)))
+    (repeat* fc-step))
+  "Given a list of forward chain lemmas or formula numbers, apply forward-chaining
+repeatedly until no more changes occur.  The rules are applied in the order
+given, but if any succeeds, it starts over from the beginning."
+  "forward-chaining on formulas or fnums ~{~a~^, ~}")
+
+(defstep forward-chain@ (&rest lemmas-or-fnums)
+  (let ((first `(forward-chain$ ,(car lemmas-or-fnums) :quiet? t))
+	(msg (format nil "Forward-chaining on: ~a" (car lemmas-or-fnums)))
+	(rest (if lemmas-or-fnums
+		  `(forward-chain@$ ,@(cdr lemmas-or-fnums))
+		  '(skip))))
+    (try first (skip-msg msg :force-printing? t) rest))
+  "Given a list of forward chain lemmas or formula numbers, this tries each in
+turn until one succeeds."
+  ;; Leave this blank, skip-msg prints the one actually used, unless
+  ;; the proof of the given branch succeeds.
+  "")
 
 
 (defhelper chain-antecedent (fnum)
@@ -2425,17 +2549,21 @@ found. "
 	      t)))
     (forward-match* conc antec-fmlas formlist formlist nil)))
 
+(defvar *forward-match-dup?*)
+
 (defun forward-match* (conc antec-fmlas formlist all-formlist subst)
-  (let ((*modsubst* (if *modsubst* *modsubst* t)))
+  (let ((*modsubst* (if *modsubst* *modsubst* t))
+	(*forward-match-dup?* nil))
     (forward-match*-rec conc antec-fmlas formlist all-formlist subst)))
 
 (defun forward-match*-rec (conc antec-fmlas formlist all-formlist subst)
   (cond ((null antec-fmlas)
-	 (if (subsetp (and+ (substit conc subst)) all-formlist
-		     :test #'tc-eq)
-	     'fail
-	     subst))
-	((null formlist) 'fail)
+	 (cond ((subsetp (and+ (substit conc subst)) all-formlist
+			:test #'tc-eq)
+		(setq *forward-match-dup?* t)
+		(values 'fail t))
+	       (t subst)))
+	((null formlist) (values 'fail *forward-match-dup?*))
 	(t (let* ((antec1 (car antec-fmlas))
 		  (fmla1 (car formlist))
 		  ;;(*modsubst* t)
@@ -2444,12 +2572,12 @@ found. "
 		 (forward-match*-rec conc antec-fmlas (cdr formlist)
 				 all-formlist subst)
 		 (let ((result (forward-match*-rec conc (cdr antec-fmlas)
-					       all-formlist
-					       all-formlist sub1)))
+						   all-formlist
+						   all-formlist sub1)))
 		   (if (eq result 'fail)
 		       (forward-match*-rec conc antec-fmlas (cdr formlist)
 				       all-formlist subst)
-		       result)))))))
+		       (values result *forward-match-dup?*))))))))
 
 (defun find-trans-match (info)
   (let ((resolution (car info))
@@ -3743,3 +3871,89 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
   "Does a combination of (lemma) and (grind); if lazy-match? is t,
      postpones instantiations to follow a first round of simplification."
   "~%Grinding away with the supplied lemmas,")
+
+(defstep crush (&optional (defs !); nil, t, !, explicit, or explicit!
+			  theories
+			  rewrites
+			  exclude
+			  (if-match t)
+			  (updates? t)
+			  polarity?
+			  (instantiator inst?)
+			  (let-reduce? t)
+			  quant-simp?)
+  (then
+   (install-rewrites$ :defs defs :theories theories
+		     :rewrites rewrites :exclude exclude)
+   (then (bddsimp) (assert :let-reduce? let-reduce?))
+   (replace*)
+   (reduce-ext$ :if-match if-match :updates? updates?
+		:polarity? polarity? :instantiator instantiator
+		:let-reduce? let-reduce? :quant-simp? quant-simp?))
+  "Like GRIND, but calls REDUCE-EXT, which also uses extensionality."
+  "Trying repeated skolemization, instantiation, if-lifting, and extensionality")
+
+(defstep reduce-ext (&optional (if-match t)(updates? t) polarity?
+			       (instantiator inst?) (let-reduce? t)
+			       quant-simp?)
+    (repeat* (try (bash$ :if-match if-match :updates? updates?
+			 :polarity? polarity? :instantiator instantiator
+			 :let-reduce? let-reduce?
+			 :quant-simp? quant-simp?)
+		  (then (apply-extensionality$ :hide? t)
+			(replace*))
+		  (skip)))
+"Core of CRUSH (ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, FLATTEN,
+LIFT-IF, i.e., BASH then REPLACE*), like REDUCE, but includes extensionality."
+"Repeatedly simplifying with decision procedures, rewriting,
+  propositional reasoning, quantifier instantiation, skolemization,
+ if-lifting, extensionality, and equality replacement")
+
+
+(defstep all-typepreds (&optional (fnums *))
+  (let ((sforms (select-seq (s-forms (current-goal *ps*)) fnums))
+        (cmd (make-all-typepreds-cmd sforms)))
+    cmd)
+  ""
+  "Adding type information on subexpressions")
+
+(defun make-all-typepreds-cmd (sforms)
+  (let* ((exprlis (collect-all-subexprs-with-useful-typepreds sforms))
+         (cmdlis (loop for x in exprlis collect `(typepred ,x)))
+         (cmd (cons 'then cmdlis)))
+    (format t "Generating typepreds for expressions:~{~%  ~a~^~}" exprlis)
+    cmd))
+
+(defun collect-all-subexprs-with-useful-typepreds (sforms)
+  (let ((exprs nil))
+    (mapobject #'(lambda (ex)
+		   (when (and (expr? ex)
+			      (null (freevars ex)))
+		     (let ((preds (type-constraints ex)))
+		       (unless (member ex exprs :test #'tc-eq)
+			 (when (useful-typepred? preds)
+			   (push ex exprs)))))
+		   (binding-expr? ex))
+	       sforms)
+    exprs))
+
+(defun useful-typepred? (preds)
+  ;; A predicate is useful if it contains an expandible definition or
+  ;; is propositional, since these will be treated as uninterpreted in
+  ;; the ground prover.
+  (let ((found-one nil))
+    (mapobject #'(lambda (ex)
+		   (or found-one
+		       (when (or (propositional-application? ex)
+				 (quant-expr? ex)
+				 (and (name-expr? ex)
+				      (const-decl? (declaration ex))
+				      (definition (declaration ex))))
+			 (setq found-one t))))
+	       preds)
+    found-one))
+	     
+
+;; Don't go down: (or type-expr field-decl symbol lambda-expr)
+;; Collect if: (and (or name-expr application field-application)
+;;                  (not boolean?))
