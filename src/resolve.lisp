@@ -2154,7 +2154,7 @@
 		     (formula " formula")
 		     (expr-or-formula " formula or constant")
 		     (expr-or-type "n expression or type")
-		     (t kind)))
+		     (t (format nil " ~a" kind))))
 	       name
 	       (mapcar #'(lambda (a) (list a (full-name (ptypes a) 1)))
 		 arguments)
