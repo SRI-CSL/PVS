@@ -332,11 +332,10 @@ generated")
 
 (defun generate-adt-importing (importings)
   (when importings
-    (let ((cimportings (mapcar #'copy-importing importings)))
-      (dolist (imp importings)
-	(let* ((cimp (copy-importing imp))
-	       (*adt-decl* imp))
-	  (typecheck-adt-decl cimp))))))
+    (dolist (imp importings)
+      (let* ((cimp (copy-importing imp))
+	     (*adt-decl* imp))
+	(typecheck-adt-decl cimp)))))
 
 (defun copy-importing (imp)
   (make-instance 'importing
@@ -607,8 +606,7 @@ generated")
 	     (*bound-variables* (cons dom *bound-variables*))
 	     (vname (mk-name-expr var nil nil
 				  (make-resolution dom
-				    (current-theory-name) rtype)
-				  'variable)))
+				    (current-theory-name) rtype))))
 	(dolist (ad accdecls)
 	  (put-decl ad (current-declarations-hash)))
 	(let* ((rng (subst-dependent-accessor-type vname pargs dtype))
@@ -897,8 +895,7 @@ generated")
 		   (declared-type (car bds)) (type (car bds))))
 	     (var (mk-name-expr (id (car vars)) nil nil
 				(make-resolution nbd
-				  (current-theory-name) (type nbd))
-				'variable)))
+				  (current-theory-name) (type nbd)))))
 	(adt-forall-bindings (cdr vars)
 			     (substit (cdr bds)
 			       (acons (car bds) var nil))
@@ -1019,8 +1016,7 @@ generated")
 	 (fbd (make-bind-decl fid (domain te)))
 	 (fvar (mk-name-expr fid nil nil
 			     (make-resolution fbd
-			       (current-theory-name) (domain te))
-			     'variable))
+			       (current-theory-name) (domain te))))
 	 (pred (acc-induction-hypothesis*
 		(if (typep (domain te) 'dep-binding)
 		    (substit (range te) (acons (domain te) fvar nil))
@@ -1034,8 +1030,7 @@ generated")
 		 (lbd (make-bind-decl lid te))
 		 (lvar (mk-name-expr lid nil nil
 				     (make-resolution lbd
-				       (current-theory-name) te)
-				     'variable)))
+				       (current-theory-name) te))))
 	    (mk-lambda-expr (list lbd)
 	      (mk-forall-expr (list fbd)
 		(mk-application pred
@@ -1046,8 +1041,7 @@ generated")
 	 (rbd (make-bind-decl rid te))
 	 (rvar (mk-name-expr rid nil nil
 			     (make-resolution rbd
-			       (current-theory-name) te)
-			     'variable))
+			       (current-theory-name) te)))
 	 (preds (acc-induction-fields (fields te) rvar adt (dependent? te))))
     (unless (every #'(lambda (p) (or (null p) (everywhere-true? p))) preds)
       (mk-lambda-expr (list rbd)
@@ -1077,8 +1071,7 @@ generated")
 	 (tbd (make-bind-decl tid te))
 	 (tvar (mk-name-expr tid nil nil
 			     (make-resolution tbd
-			       (current-theory-name) te)
-			     'variable))
+			       (current-theory-name) te)))
 	 (preds (acc-induction-tuples (types te) tvar adt)))
     (unless (every #'null preds)
       (mk-lambda-expr (list tbd)
@@ -1204,8 +1197,8 @@ generated")
 	     (vars (mapcar #'(lambda (b)
 			       (mk-name-expr (id b) nil nil
 					     (make-resolution b
-					       (current-theory-name) (type b))
-					     'variable))
+					       (current-theory-name)
+					       (type b))))
 		     bindings)))
 	(mk-selection (mk-name-expr (id c))
 	  bindings
@@ -1266,8 +1259,7 @@ generated")
 	     (fbd (make-bind-decl fid (domain te)))
 	     (fvar (mk-name-expr fid nil nil
 				 (make-resolution fbd
-				   (current-theory-name) (domain te))
-				 'variable))
+				   (current-theory-name) (domain te))))
 	     (fun (acc-predicate-selection*
 		   (if (typep (domain te) 'dep-binding)
 		       (substit (range te) (acons (domain te) fvar nil))
@@ -1292,8 +1284,7 @@ generated")
   (let* ((rbd (make-bind-decl (id arg) te))
 	 (rvar (mk-name-expr (id arg) nil nil
 			     (make-resolution rbd
-			       (current-theory-name) te)
-			     'variable))
+			       (current-theory-name) te)))
 	 (preds (acc-predicate-fields (fields te) rvar pvars ptypes adt funid
 				      (dependent? te))))
     (if (if (eq funid '|every|)
@@ -1399,8 +1390,7 @@ generated")
 	     (fbd (make-bind-decl fid (domain te)))
 	     (fvar (mk-name-expr fid nil nil
 				 (make-resolution fbd
-				   (current-theory-name) (domain te))
-				 'variable))
+				   (current-theory-name) (domain te))))
 	     (fun (acc-predicate-selection*
 		   (if (typep (domain te) 'dep-binding)
 		       (substit (range te) (acons (domain te) fvar nil))
@@ -1414,8 +1404,7 @@ generated")
 		   (lbd (make-bind-decl lid te))
 		   (lvar (mk-name-expr lid nil nil
 				       (make-resolution lbd
-					 (current-theory-name) te)
-				       'variable)))
+					 (current-theory-name) te))))
 	      (mk-lambda-expr (list lbd)
 		(if (eq funid '|every|)
 		    (mk-forall-expr (list fbd)
@@ -1430,8 +1419,7 @@ generated")
 	 (rbd (make-bind-decl rid te))
 	 (rvar (mk-name-expr rid nil nil
 			     (make-resolution rbd
-			       (current-theory-name) te)
-			     'variable))
+			       (current-theory-name) te)))
 	 (preds (acc-predicate-fields (fields te) rvar pvars ptypes adt funid
 				      (dependent? te))))
     (if (if (eq funid '|every|)
@@ -1453,8 +1441,7 @@ generated")
 	 (tbd (make-bind-decl tid te))
 	 (tvar (mk-name-expr tid nil nil
 			     (make-resolution tbd
-			       (current-theory-name) te)
-			     'variable))
+			       (current-theory-name) te)))
 	 (preds (acc-predicate-types (types te) tvar pvars ptypes adt funid)))
     (if (if (eq funid '|every|)
 	    (every #'everywhere-true? preds)
@@ -1660,8 +1647,8 @@ generated")
 	     (vars (mapcar #'(lambda (b)
 			       (mk-name-expr (id b) nil nil
 					     (make-resolution b
-					       (current-theory-name) (type b))
-					     'variable))
+					       (current-theory-name)
+					       (type b))))
 		     bindings)))
 	(mk-selection (mk-name-expr (id c))
 	  bindings
@@ -1751,8 +1738,7 @@ generated")
 	 (fbd (make-bind-decl fid (domain te)))
 	 (fvar (mk-name-expr fid nil nil
 			     (make-resolution fbd
-			       (current-theory-name) (domain te))
-			     'variable))
+			       (current-theory-name) (domain te))))
 	 (map (acc-map-selection*
 	       (if (typep (domain te) 'dep-binding)
 		   (substit (range te) (acons (domain te) fvar nil))
@@ -1861,8 +1847,7 @@ generated")
 	 (fbd (make-bind-decl fid (domain te)))
 	 (fvar (mk-name-expr fid nil nil
 			     (make-resolution fbd
-			       (current-theory-name) (domain te))
-			     'variable))
+			       (current-theory-name) (domain te))))
 	 (map (acc-map-selection*
 	       (if (typep (domain te) 'dep-binding)
 		   (substit (range te) (acons (domain te) fvar nil))
@@ -1877,8 +1862,7 @@ generated")
 		  (lbd (make-bind-decl lid te))
 		  (lvar (mk-name-expr lid nil nil
 				      (make-resolution lbd
-					(current-theory-name) te)
-				      'variable)))
+					(current-theory-name) te))))
 	     (mk-lambda-expr (list lbd)
 	       (mk-lambda-expr (list fbd)
 		 (mk-application map
@@ -1889,8 +1873,7 @@ generated")
 	 (rbd (make-bind-decl rid te))
 	 (rvar (mk-name-expr rid nil nil
 			     (make-resolution rbd
-			       (current-theory-name) te)
-			     'variable))
+			       (current-theory-name) te)))
 	 (maps (acc-map-selection-fields
 		(fields te) rvar pvars ptypes fpairs adt (dependent? te))))
     (if (every #'identity-fun? maps)
@@ -1911,8 +1894,7 @@ generated")
 	 (tbd (make-bind-decl tid te))
 	 (tvar (mk-name-expr tid nil nil
 			     (make-resolution tbd
-			       (current-theory-name) te)
-			     'variable))
+			       (current-theory-name) te)))
 	 (maps (acc-map-selection-types
 		(types te) tvar pvars ptypes fpairs adt)))
     (if (every #'identity-fun? maps)
@@ -2135,8 +2117,8 @@ generated")
 	     (vars (mapcar #'(lambda (b)
 			       (mk-name-expr (id b) nil nil
 					     (make-resolution b
-					       (current-theory-name) (type b))
-					     'variable))
+					       (current-theory-name)
+					       (type b))))
 		     bindings)))
 	(mk-selection (mk-name-expr (id c))
 	  bindings
@@ -2201,8 +2183,7 @@ generated")
 	 (fbd (make-bind-decl fid (domain fdom)))
 	 (fvar (mk-name-expr fid nil nil
 			     (make-resolution fbd
-			       (current-theory-name) (domain fdom))
-			     'variable))
+			       (current-theory-name) (domain fdom))))
 	 (fun (acc-reduce-selection*
 	       (if (typep (domain te) 'dep-binding)
 		   (substit (range te) (acons (domain te) fvar nil))
@@ -2303,8 +2284,7 @@ generated")
 	 (fbd (make-bind-decl fid (domain fdom)))
 	 (fvar (mk-name-expr fid nil nil
 			     (make-resolution fbd
-			       (current-theory-name) (domain fdom))
-			     'variable))
+			       (current-theory-name) (domain fdom))))
 	 (fun (acc-reduce-selection*
 	       (if (typep (domain te) 'dep-binding)
 		   (substit (range te) (acons (domain te) fvar nil))
@@ -2324,8 +2304,7 @@ generated")
 		  (abd (make-bind-decl aid te))
 		  (avar (mk-name-expr aid nil nil
 				      (make-resolution abd
-					(current-theory-name) te)
-				      'variable)))
+					(current-theory-name) te))))
 	     (mk-lambda-expr (list abd)
 	       (mk-lambda-expr (list fbd)
 		 (mk-application fun
@@ -2337,8 +2316,7 @@ generated")
 	 (rbd (make-bind-decl rid te))
 	 (rvar (mk-name-expr rid nil nil
 			     (make-resolution rbd
-			       (current-theory-name) te)
-			     'variable))
+			       (current-theory-name) te)))
 	 (funs (acc-reduce-selection-fields
 		(fields te) (fields fdom) rvar funlist fname fdom adt
 		(dependent? te) (dependent? fdom))))
@@ -2360,8 +2338,7 @@ generated")
 	 (tbd (make-bind-decl tid te))
 	 (tvar (mk-name-expr tid nil nil
 			     (make-resolution tbd
-			       (current-theory-name) te)
-			     'variable))
+			       (current-theory-name) te)))
 	 (funs (acc-reduce-selection-types
 		(types te) (types fdom) tvar funlist fname adt)))
     (if (every #'identity-fun? funs)
@@ -2450,8 +2427,7 @@ generated")
 	  (let* ((dep (mk-dep-binding (id (car vars)) (type (car bds))))
 		 (var (mk-name-expr (id (car vars)) nil nil
 				    (make-resolution dep
-				      (current-theory-name) (type dep))
-				    'variable)))
+				      (current-theory-name) (type dep)))))
 	    (adt-dependent-bindings (cdr vars)
 				    (substit (cdr bds)
 				      (acons (car bds) var nil))
@@ -2470,8 +2446,7 @@ generated")
 				   (cons atype result))
 	    (let ((var (mk-name-expr (id atype) nil nil
 				     (make-resolution atype
-				       (current-theory-name) (type atype))
-				     'variable)))
+				       (current-theory-name) (type atype)))))
 	      (gen-adt-reduce-domain (substit (cdr args)
 				       (acons (car args) var nil))
 				     rtype adt adtinst
@@ -2537,8 +2512,8 @@ generated")
 	     (vars (mapcar #'(lambda (b)
 			       (mk-name-expr (id b) nil nil
 					     (make-resolution b
-					       (current-theory-name) (type b))
-					     'variable))
+					       (current-theory-name)
+					       (type b))))
 		     bindings)))      
 	(mk-selection (mk-name-expr (id c))
 	  bindings
@@ -2644,8 +2619,7 @@ generated")
 				    (cons atype result))
 	    (let ((var (mk-name-expr (id atype) nil nil
 				     (make-resolution atype
-				       (current-theory-name) (type atype))
-				     'variable)))
+				       (current-theory-name) (type atype)))))
 	      (gen-adt-reduce-domain2 (substit (cdr args)
 					(acons (car args) var nil))
 				      rtype adt adtinst
@@ -2759,8 +2733,7 @@ generated")
 	 (zbd (make-bind-decl zid (domain te)))
 	 (zvar (mk-name-expr zid nil nil
 			     (make-resolution zbd
-			       (current-theory-name) (domain te))
-			     'variable))
+			       (current-theory-name) (domain te))))
 	 (sub (acc-subterm-selection*
 	       (if (typep (domain te) 'dep-binding)
 		   (substit (range te) (acons (domain te) zvar nil))
@@ -2774,8 +2747,7 @@ generated")
 		   (fbd (make-bind-decl fid te))
 		   (fvar (mk-name-expr fid nil nil
 				       (make-resolution fbd
-					 (current-theory-name) te)
-				       'variable)))
+					 (current-theory-name) te))))
 	      (mk-lambda-expr (list fbd)
 		(mk-exists-expr (list zbd)
 		  (mk-application sub
@@ -2786,8 +2758,7 @@ generated")
 	 (rbd (make-bind-decl rid te))
 	 (rvar (mk-name-expr rid nil nil
 			     (make-resolution rbd
-			       (current-theory-name) te)
-			     'variable))
+			       (current-theory-name) te)))
 	 (subs (acc-subterm-fields (fields te) xvar rvar adt (dependent? te))))
     (if (every #'everywhere-false? subs)
 	(call-next-method)
@@ -2818,8 +2789,7 @@ generated")
 	 (tbd (make-bind-decl tid te))
 	 (tvar (mk-name-expr tid nil nil
 			     (make-resolution tbd
-			       (current-theory-name) te)
-			     'variable))
+			       (current-theory-name) te)))
 	 (subs (acc-subterm-types (types te) xvar tvar adt)))
     (if (every #'everywhere-false? subs)
 	(call-next-method)
@@ -2927,8 +2897,7 @@ generated")
 	     (zbd (make-bind-decl zid (domain te)))
 	     (zvar (mk-name-expr zid nil nil
 				 (make-resolution zbd
-				   (current-theory-name) (domain te))
-				 'variable))
+				   (current-theory-name) (domain te))))
 	     (sub (acc-subterm-selection*
 		   (if (typep (domain te) 'dep-binding)
 		       (substit (range te) (acons (domain te) zvar nil))
@@ -2940,8 +2909,7 @@ generated")
 		   (fbd (make-bind-decl fid te))
 		   (fvar (mk-name-expr fid nil nil
 				       (make-resolution fbd
-					 (current-theory-name) te)
-				       'variable)))
+					 (current-theory-name) te))))
 	      (mk-lambda-expr (list fbd)
 		(mk-exists-expr (list zbd)
 		  (mk-application sub

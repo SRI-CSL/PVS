@@ -1060,8 +1060,7 @@ where db is to replace db1 and db2")
 			    (let* ((nres (make-resolution nfield
 					   (current-theory-name)
 					   (type afld)))
-				   (fne (mk-field-name-expr (id afld) nres
-							    'variable)))
+				   (fne (mk-field-name-expr (id afld) nres)))
 			      (substit (cdr afields)
 				(acons afld fne nil))))))
 	(compatible-recordtypes cdrfields
@@ -1083,8 +1082,7 @@ where db is to replace db1 and db2")
 	  (ex (if (typep aexpr 'binding)
 		  (mk-name-expr (id aexpr) nil nil
 				(make-resolution aexpr
-				  (current-theory-name) (type aexpr))
-				'variable)
+				  (current-theory-name) (type aexpr)))
 		  aexpr)))
       (delete-if #'(lambda (inc) (eq inc *true*))
 	(compatible-preds* atype etype ex nil)))))
@@ -1181,7 +1179,7 @@ where db is to replace db1 and db2")
 	 (decl (find '|every| (theory adtth) :key #'id))
 	 (modname (mk-modname (id adtth) (actuals atype)))
 	 (res (make-resolution decl modname)))
-    (mk-name-expr '|every| nil nil res 'constant)))
+    (mk-name-expr '|every| nil nil res)))
 
 (defun make-compatible-every-pred* (pospred)
   (cond ((null (cdr pospred))
@@ -1221,8 +1219,7 @@ where db is to replace db1 and db2")
 				      nil nil nil))
 		      (var (mk-name-expr id nil nil
 					 (make-resolution bd
-					   (current-theory-name) stype)
-				 'variable))
+					   (current-theory-name) stype)))
 		      (aconj (make!-conjunction*
 			      (mapcar #'(lambda (o)
 					  (beta-reduce (make!-application o var)))
@@ -1341,9 +1338,7 @@ where db is to replace db1 and db2")
   (let* ((ty (if (typep type 'dep-binding) (type type) type))
 	 (bd (typecheck* (mk-bind-decl id ty ty) nil nil nil))
 	 (ne (mk-name-expr id nil nil (make-resolution bd
-					(current-theory-name) ty)
-			   'variable)))
-    (setf (kind ne) 'variable)
+					(current-theory-name) ty))))
     ne))
 
 (defun subst-var-into-deptypes (var type types)
@@ -1698,8 +1693,7 @@ where db is to replace db1 and db2")
   (let* ((vid (make-new-variable '|v| t2))
 	 (vb (typecheck* (mk-bind-decl vid t2 t2) nil nil nil))
 	 (svar (mk-name-expr vid nil nil
-			     (make-resolution vb (current-theory-name) t2)
-			     'variable))
+			     (make-resolution vb (current-theory-name) t2)))
 	 (preds (compatible-preds t2 t1 svar)))
     (if preds
 	(let ((lpred (make!-lambda-expr (list vb)
@@ -1733,8 +1727,7 @@ where db is to replace db1 and db2")
 		     (vb (typecheck* (mk-bind-decl vid t2 t2) nil nil nil))
 		     (svar (mk-name-expr vid nil nil
 					 (make-resolution vb
-					   (current-theory-name) t2)
-					 'variable))
+					   (current-theory-name) t2)))
 		     (lpred (make!-lambda-expr (list vb)
 			      (make!-conjunction*
 			       (mapcar #'(lambda (p) (make!-application p svar))
@@ -1748,8 +1741,7 @@ where db is to replace db1 and db2")
 	 (bd (typecheck* (mk-bind-decl id t2 t2)
 			 nil nil nil))
 	 (var (mk-name-expr id nil nil
-			    (make-resolution bd (current-theory-name) t2)
-			    'variable))
+			    (make-resolution bd (current-theory-name) t2)))
 	 (preds (adt-compatible-preds t2 t1 var nil)))
     (values t2
 	    (if preds
@@ -1777,14 +1769,12 @@ where db is to replace db1 and db2")
 		    (xb (typecheck* (mk-bind-decl xid tupty tupty) nil nil nil))
 		    (xvar (mk-name-expr xid nil nil
 					(make-resolution xb
-					  (current-theory-name) tupty)
-					'variable))
+					  (current-theory-name) tupty)))
 		    (vid (make-new-variable '|f| (list t1 t2)))
 		    (vb (typecheck* (mk-bind-decl vid t2 t2) nil nil nil))
 		    (var (mk-name-expr vid nil nil
 				       (make-resolution vb
-					 (current-theory-name) t2)
-				       'variable))
+					 (current-theory-name) t2)))
 		    (npred (make!-lambda-expr (list vb)
 			     (make!-forall-expr (list xb)
 			       (make!-conjunction*
@@ -1809,8 +1799,7 @@ where db is to replace db1 and db2")
 	   (vb (typecheck* (mk-bind-decl vid t2 t2) nil nil nil))
 	   (var (mk-name-expr vid nil nil
 			      (make-resolution vb
-				(current-theory-name) t2)
-			      'variable)))
+				(current-theory-name) t2))))
       (multiple-value-bind (ty pred)
 	  (subtype-tuple-preds (types t1) (types t2) t2 vb var)
 	(when ty
@@ -1855,8 +1844,7 @@ where db is to replace db1 and db2")
 	   (vb (typecheck* (mk-bind-decl vid t2 t2) nil nil nil))
 	   (var (mk-name-expr vid nil nil
 			      (make-resolution vb
-				(current-theory-name) t2)
-			      'variable)))
+				(current-theory-name) t2))))
       (multiple-value-bind (ty pred)
 	  (subtype-record-preds (fields t1) (fields t2) t2 vb var
 				(dependent? t1))
@@ -1913,8 +1901,7 @@ where db is to replace db1 and db2")
 		(if (binding? dep)
 		    (current-theory-name)
 		    (module-instance dep))
-		type)
-      'variable)))
+		type))))
 
 (defmethod subst-deps? (ex)
   (declare (ignore ex))
@@ -1922,7 +1909,6 @@ where db is to replace db1 and db2")
 
 (defmethod subst-deps? ((ex name-expr))
   (and (rassoc (declaration ex) *dep-bindings* :test #'member)
-       (eq (kind ex) 'VARIABLE)
        (or ;;(not (slot-exists-p (declaration ex) 'recordtype))
 	   (not (funtype? (type ex)))
 	   (not (singleton? (domain (type ex))))
@@ -2026,8 +2012,7 @@ where db is to replace db1 and db2")
   (let* ((id (make-new-variable '|x| predicates))
 	 (bd (typecheck* (mk-bind-decl id te te) nil nil nil))
 	 (nvar (mk-name-expr id nil nil (make-resolution bd
-					  (current-theory-name) te)
-			     'variable)))
+					  (current-theory-name) te))))
     (values (make-preds-with-same-binding* nvar predicates)
 	    nvar)))
 
@@ -2087,7 +2072,7 @@ where db is to replace db1 and db2")
 
 (defun subst-for-binding (binding nbinding obj)
   (let* ((nres (make-resolution nbinding (current-theory-name)))
-	 (nname (mk-name-expr nbinding nil nil nres 'variable)))
+	 (nname (mk-name-expr nbinding nil nil nres)))
     (substit obj (list (cons binding nname)))))
 
 (defun make-new-tupletype-preds (te predicates)
@@ -2095,8 +2080,7 @@ where db is to replace db1 and db2")
 	 (type (if (typep te 'dep-binding) (type te) te))
 	 (bd (typecheck* (mk-bind-decl id type type) nil nil nil))
 	 (nvar (mk-name-expr id nil nil (make-resolution bd
-					  (current-theory-name) type)
-			     'variable))
+					  (current-theory-name) type)))
 	 (conj (make!-conjunction* (gensubst (cdr predicates)
 				   #'(lambda (ex) (declare (ignore ex)) nvar)
 				   #'(lambda (ex)
@@ -2213,8 +2197,7 @@ where db is to replace db1 and db2")
 	 (te (type field))
 	 (bd (typecheck* (mk-bind-decl id te te) nil nil nil))
 	 (nvar (mk-name-expr id nil nil (make-resolution bd
-					  (current-theory-name) te)
-			     'variable)))
+					  (current-theory-name) te))))
     (make!-lambda-expr (list bd)
       (make!-conjunction* (gensubst (cdr predicates)
 			  #'(lambda (ex) (declare (ignore ex)) nvar)
