@@ -351,7 +351,17 @@
 
 (defcl mapping (syntax)
   (lhs :parse t)
-  (rhs :parse t))
+  (rhs :parse t)
+  (kind :parse t)
+  (declared-type :parse t)
+  type)
+
+;;; Mapping-with-formals is used for mappings of the form
+;;;  f(a,b:int)(x:bool) = g(a,x,b)
+;;; which is treated the same as
+;;;  f = lambda (a,b:int)(x:bool): g(a,x,b)
+(defcl mapping-with-formals (mapping)
+  (formals :parse t))
 
 (defcl mapping-rhs (actual)
   (expr :parse t)
