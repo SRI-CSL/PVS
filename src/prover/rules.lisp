@@ -454,13 +454,18 @@ the decision procedures. E.g.,
  (typepred \"abs(c)\"): Adds abs(c) > 0 to the antecedent."
   "~%Adding type constraints for ~@{ ~a,~}")
 
-(addrule 'typepred! (exprs) (all?)
-  (typepred-fun exprs all?)
+(addrule 'typepred! (exprs) (all? implicit?)
+  (typepred-fun exprs all? implicit?)
   "Extract subtype constraints for EXPRS and add as antecedents.
-ALL? flag when T also brings in integer_pred, rational_pred,
-real_pred type constraints.  Note that subtype constraints are
-also automatically recorded by the decision procedures. E.g.,
- (typepred! \"abs(c)\"): Adds abs(c) > 0 to the antecedent."
+ALL? flag when T also brings in nat (>= 0), integer_pred,
+rational_pred, real_pred type constraints.  IMPLICIT? when T means
+bring in subtype constraints that are implicit.  An imlpicit
+constraint is one that is implied by the terms of the sequent, e.g.,
+if the sequent contains the formula \"1/(x*y) < 0\", then
+ (typepred! \"x*y\" :implicit? t) adds \"x * y /= 0\" as an antecedent.
+The reason TYPEPRED is not used for this is that keywords may not be used
+with &rest arguments.  Note that subtype constraints are also automatically
+recorded by the decision procedures."
   "~%Adding type constraints for ~a")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -593,11 +598,12 @@ are reduced.  Example reduction steps are:
 (addrule 'simplify ()
 	 ((fnums *) record? rewrite? 
 	  rewrite-flag flush? linear? cases-rewrite? (type-constraints? t)
-	  ignore-prover-output? let-reduce? quant-simp?)
+	  ignore-prover-output? let-reduce? quant-simp? implicit-typepreds?)
   (invoke-simplification fnums record? rewrite?
 			 rewrite-flag flush? nil ;;NSH(10-26-01)was linear?
 			 cases-rewrite? type-constraints?
-			 ignore-prover-output? let-reduce? quant-simp?)
+			 ignore-prover-output? let-reduce? quant-simp?
+			 implicit-typepreds?)
   "Uses the decision procedures to to simplify the formulas in
 FNUM and record them for further simplification.  The proof steps
 ASSERT, RECORD, SIMPLIFY, DO-REWRITE are instances of this primitive
@@ -637,7 +643,9 @@ effect:
  LET-REDUCE?: LET expressions are normally beta-reduced, unless LET-REDUCE?
           is NIL.
  QUANT-SIMP?: Carries out quantifier simplifications like reducing
-         (EXISTS x: x = t AND P(x)) to P(t)."
+         (EXISTS x: x = t AND P(x)) to P(t).
+ IMPLICIT-TYPEPREDS?: If T asserts implicit subtype constraints of each
+         sub-expression to the ground prover.  See TYPEPRED! for details."
   "~%Simplifying with decision procedures,")
 
 (addrule 'auto-rewrite () (&rest names)
