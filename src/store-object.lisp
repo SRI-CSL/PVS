@@ -137,7 +137,8 @@
     (error "Attempt to store object while in ~s~@
             (sorry, these functions are not reentrant)" *storing-or-fetching*))
   (clrhash *store-object-hash*)
-  (let ((*store-object-ptr* 2)
+  (let ((*package* (find-package :pvs))
+	(*store-object-ptr* 2)
 	(*storing-or-fetching* 'store-object))
     (store-obj obj)
     (setf (object-store 0) 1)
@@ -244,7 +245,8 @@
   (when *storing-or-fetching*
     (error "Attempt to fetch object while in ~s~@
             (sorry, these functions are not reentrant)" *storing-or-fetching*))
-  (let ((*fetch-object-not-present* (cons nil nil))
+  (let ((*package* (find-package :pvs))
+	(*fetch-object-not-present* (cons nil nil))
 	(*fetch-object-update-end* 0)
 	(*storing-or-fetching* 'fetch-object)
 	(*fetch-object-case-ok?* nil))
@@ -374,7 +376,7 @@
 
 #+allegro
 (defun int-char (int)
-  (coerce int 'character))
+  (code-char int))
 
 (defun fetch-symbol ()
   (let ((str (fetch-temp-string 1)))
