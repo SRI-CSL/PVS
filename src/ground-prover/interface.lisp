@@ -128,7 +128,7 @@
   (and (symbolp name)
        (let ((str (string name)))
 	 (and (>= (length str) 6)
-	      (string= name "apply-" :end1 6)))))
+	      (string= name "APPLY-" :end1 6)))))
 
 (defun string->integer (string)
   (do ((j 0 (+ j 1))
@@ -140,7 +140,7 @@
   (and (symbolp name)
        (let ((str (string name)))
 	 (and (>= (length str) 6)
-	      (string= str "apply-" :end1 6)
+	      (string= str "APPLY-" :end1 6)
 	      (digit-char-p (char str 6))
 	      (parse-integer str :start 6 :junk-allowed t)))))
 
@@ -160,7 +160,7 @@
 
 (defun applysym1 (type nargs)
   (prog (sym)
-    (setq sym (combine-symbols 'apply- nargs '- type))
+    (setq sym (combine-symbols 'APPLY- nargs '- type))
     (cond
      ((and type (not (assq sym typealist)))
       (push (cons sym type) typealist)))       ;add return type to alist 
