@@ -339,11 +339,10 @@
 	       (list (mk-modname (id th3))))))))
 
 (defmethod get-immediate-usings ((adt datatype))
-  (append (apply #'append
-		 (mapcar #'modules
-			 (remove-if-not #'mod-or-using?
-			   (append (formals adt)
-				   (assuming adt)))))
+  (append (mapcar #'theory-name
+	    (remove-if-not #'mod-or-using?
+	      (append (formals adt)
+		      (assuming adt))))
 	  (when (importings adt)
 	    (mapcar #'theory-name (importings adt)))))
 
