@@ -27,7 +27,7 @@
 	 (arity (car (nthcdr 6 chars))))
 ;					    (format t "~%first6= ~a" first6)
 ;					    (format t "~%arity= ~a" arity)
-    (and (equal first6 '(a p p l y -))
+    (and (equal first6 '(A P P L Y -))
 	 (equal arity '|1|))))
 
 ;forms (apply-n-type a args)
