@@ -407,7 +407,7 @@
         (singleton? pcmd)
         (check-command-arguments (car pcmd) keywords (cdr pcmd)))))
 
-(defun qread (prompt &optional checkargs)
+(defun qread (prompt)
   (format t "~%~a"  prompt)
   (force-output)
   (let ((input (ignore-errors (read))))
@@ -421,8 +421,7 @@
 	       (throw 'abort nil)
 	       (qread prompt)))
 	  (t (auto-save-proof)
-	     (if (and (consp input)
-		      checkargs)
+	     (if (consp input)
 		 (if (check-arguments input)
 		     input
 		     (qread prompt))

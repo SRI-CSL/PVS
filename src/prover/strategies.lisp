@@ -701,7 +701,7 @@ then turns off all the installed rewrites.  Examples:
 (defstrat query* ()
   (if (or *proving-tcc* *in-apply*)
       (postpone)
-      (let ((input (let ((input (qread "Rule? " t)))
+    (let ((input (let ((input (qread "Rule? ")))
 		     (setf (current-input *ps*)
 			   input)
 		     input))
