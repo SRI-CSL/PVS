@@ -85,8 +85,10 @@
 
 (let* ((exitcode 1)
        (platform (or (sys:getenv "PLATFORM") "ix86-redhat5"))
-       (runtimedir (format nil "./bin/~a/runtime/" platform))
-       (fulldir (format nil "./bin/~a/full/" platform)))
+       (runtimedir (format nil "~a/bin/~a/runtime/"
+		     (or (getenv "TARGETPATH") ".") platform))
+       (fulldir (format nil "~a/bin/~a/full/"
+		  (or (getenv "TARGETPATH") ".") platform)))
  (unwind-protect
      (multiple-value-bind (v err)
 	 (ignore-errors
