@@ -329,10 +329,7 @@
 	     (lname (if (typep itheory 'library-theory)
 			(copy ename
 			  'library
-			  (makesym "~a"
-				   (cdr (assoc (lib-ref itheory)
-					       *library-alist*
-					       :test #'string=))))
+			  (libref-to-libid (lib-ref itheory)))
 			ename))
 	     (iname (if (actuals inst)
 			(subst-mod-params lname inst)
