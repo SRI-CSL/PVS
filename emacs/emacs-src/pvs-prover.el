@@ -432,6 +432,7 @@ proof scripts, including those already proved."
     (define-key edit-proof-mode-map "\M-," 'find-declaration)
     (define-key edit-proof-mode-map "\M-;" 'whereis-declaration-used)
     (define-key edit-proof-mode-map "\M-:" 'list-declarations)
+    (define-key edit-proof-mode-map [(control ?.)] 'show-expanded-form)
     (define-key edit-proof-mode-map "\C-c\C-l" nil)
     (define-key edit-proof-mode-map "\C-zk" nil)
     (define-key edit-proof-mode-map "\C-zl" nil)
@@ -487,6 +488,7 @@ commands are available.
   remove-proof-checkpoint (\\[remove-proof-checkpoint])
   remove-all-proof-checkpoints (\\[remove-all-proof-checkpoints])
   quit (C-c q)"
+  (kill-all-local-variables)
   (use-local-map edit-proof-mode-map)
     ;; fix up comment handling
   (make-local-variable 'comment-start)
@@ -640,7 +642,8 @@ buffer."
   "Removes the proof associated with the specified formula
 
 The remove-proof command removes the proof associated with the specified
-formula."
+formula.  It may be recovered using revert-proof, as long as you have not
+changed contexts, restarted the system, or retypechecked the file."
   (interactive)
   (let* ((name-and-origin (pvs-formula-origin))
 	 (name (car name-and-origin))
@@ -658,7 +661,7 @@ The install-pvs-proof-file command installs the specified proof file.
 This is needed when a proof file is directly edited or copied into the
 current context, since otherwise the system assumes that the internal
 proofs are the `real' ones."
-  (interactive (complete-pvs-file-name "Find PVS file named: "))
+  (interactive (complete-pvs-file-name "Install proof for PVS file named: "))
   (pvs-send (format "(install-pvs-proof-file \"%s\")" filename))
   (message "Proof file installed."))
 
@@ -682,6 +685,7 @@ the orphaned proofs (M-x show-orphaned-proofs).
 Key bindings are:
 \\{pvs-show-proofs-map}"
   (interactive)
+  (kill-all-local-variables)
   (use-local-map pvs-show-proofs-map)
   (setq major-mode 'pvs-show-proofs-mode)
   (setq mode-name "PVS Proofs")
@@ -829,6 +833,7 @@ are invoked")
 (defun add-declaration-mode ()
   "Major mode for editing declarations"
   ;;(interactive)
+  (kill-all-local-variables)
   (use-local-map add-declaration-mode-map)
   ;; fix up comment handling
   (make-local-variable 'comment-start)
@@ -928,6 +933,7 @@ declarations will not be installed."
 (defun modify-declaration-mode ()
   "Major mode for editing proofs"
   ;;(interactive)
+  (kill-all-local-variables)
   (use-local-map modify-declaration-mode-map)
   ;; fix up comment handling
   (make-local-variable 'comment-start)
@@ -1245,26 +1251,80 @@ display for the indicated formula"
 
 (defvar default-untried-strategy "(grind)")
 
-(defpvs prove-untried-pvs-file prove (file strategy)
-  "Attempt to prove the untried formulas in the specified PVS FILE using
-the given STRATEGY.
+(defpvs prove-untried-importchain prove (theory &optional strategy)
+  "Prove untried formulas in the importchain using the given STRATEGY.
+
+Attempts all untried formulas in the importchain rooted at the specified
+THEORY which have no associated proofs, using the specified STRATEGY which
+initially defaults to \"(grind)\".  With an argument (e.g., M-0 or C-u)
+proves untried TCCs as well.  Note that after this command formulas will
+no longer be untried, so running it a second time with a different
+strategy will not work - use prove-formulas-importchain to do this.  If a
+strategy is supplied, it becomes the default for the next invocation of
+a prove-untried- command."
+  (interactive (append (complete-theory-name
+			"Prove untried formulas in IMPORT of theory named: ")
+		       (get-pvs-strategy "Strategy to use: "
+					 default-untried-strategy)))
+  (when (null strategy) (setq strategy default-untried-strategy))
+  (unless (equal strategy default-untried-strategy)
+    (check-pvs-strategy strategy)
+    (setq default-untried-strategy strategy))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(prove-untried-importchain \"%s\" '%s %s nil)"
+		file strategy (and current-prefix-arg t))
+	    nil))
+
+(defpvs prove-untried-importchain-subtree prove (theory &optional strategy
+							&rest exclude)
+  "Prove untried formulas in the importchain subtree using the given STRATEGY.
+
+Attempts all untried formulas in the importchain subtree rooted at the
+specified THEORY which have no associated proofs, using the specified
+STRATEGY which initially defaults to \"(grind)\" and excluding theories in
+any of the subtrees rooted at the theories named in the EXCLUDE list.
+With an argument (e.g., M-0 or C-u) proves untried TCCs as well.  Note
+that after this command formulas will no longer be untried, so running it
+a second time with a different strategy will not work - use
+prove-formulas-importchain-subtree to do this.  If a strategy is supplied,
+it becomes the default for the next invocation of a prove-untried-
+command."
+  (interactive (append (complete-theory-name
+			"Prove untried in IMPORT subtree of theory named: ")
+		       (get-pvs-strategy "Strategy to use: "
+					 default-untried-strategy)
+		       (complete-theory-name-list "Theory to exclude: ")))
+  (when (null strategy) (setq strategy default-untried-strategy))
+  (unless (equal strategy default-untried-strategy)
+    (check-pvs-strategy strategy)
+    (setq default-untried-strategy strategy))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(prove-untried-importchain \"%s\" '%s %s %s)"
+		file strategy (and current-prefix-arg t)
+		(mapcar '(lambda (x) (format "\"%s\"" x)) exclude))
+	    nil))
+
+(defpvs prove-untried-pvs-file prove (file &optional strategy)
+  "Prove untried formulas in the FILE using the given STRATEGY.
 
 Attempts all untried formulas in the specified PVS FILE which have no
-associated proofs, using the specified STRATEGY which defaults to (GRIND).
-With an argument (e.g., M-0 or C-u) proves untried TCCs as well.  If a
-strategy is supplied, it becomes the default for the next invocation of
-prove-untried-pvs-file or prove-untried-theory."
+associated proofs, using the specified STRATEGY which initially defaults
+to \"(grind)\".  With an argument (e.g., M-0 or C-u) proves untried TCCs
+as well.  Note that after this command formulas will no longer be untried,
+so running it a second time with a different strategy will not work - use
+prove-formulas-pvs-file to do this.  If a strategy is supplied, it
+becomes the default for the next invocation of a prove-untried- command."
   (interactive (append (complete-pvs-file-name
 			"Prove untried in PVS file named: ")
-		       (list (read-from-minibuffer
-			      "Strategy to use: "
-			      default-untried-strategy))))
-  (let ((end (cdr (condition-case nil
-		      (read-from-string strategy)
-		    (error (error "invalid strategy syntax"))))))
-    (unless (= end (length strategy))
-      (error "invalid strategy syntax")))
+		       (get-pvs-strategy "Strategy to use: "
+					 default-untried-strategy)))
+  (when (null strategy) (setq strategy default-untried-strategy))
   (unless (equal strategy default-untried-strategy)
+    (check-pvs-strategy strategy)
     (setq default-untried-strategy strategy))
   (confirm-not-in-checker)
   (pvs-bury-output)
@@ -1273,35 +1333,259 @@ prove-untried-pvs-file or prove-untried-theory."
 		file strategy (and current-prefix-arg t))
 	    nil))
 
-(defpvs prove-untried-theory prove (theory strategy)
-  "Attempt to prove the untried formulas in the specified THEORY using
-the given STRATEGY.
+(defpvs prove-untried-theory prove (theory &optional strategy)
+  "Prove untried formulas in the THEORY using the given STRATEGY.
 
 Attempts all untried formulas in the specified THEORY which have no
-associated proofs, using the specified STRATEGY which defaults to (GRIND).
-With an argument (e.g., M-0 or C-u) proves untried TCCs as well.  If a
-strategy is supplied, it becomes the default for the next invocation of
-prove-untried-pvs-file or prove-untried-theory."
+associated proofs, using the specified STRATEGY which defaults to
+\"(grind)\".  With an argument (e.g., M-0 or C-u) proves untried TCCs as
+well.  Note that after this command formulas will no longer be untried, so
+running it a second time with a different strategy will not work - use
+prove-formulas-theory to do this.  If a strategy is supplied, it becomes
+the default for the next invocation of a prove-untried- command."
   (interactive (append (complete-theory-name
 			"Prove untried in theory named: ")
-		       (list (read-from-minibuffer
-			      "Strategy to use: "
-			      default-untried-strategy))))
-  (let ((end (cdr (condition-case nil
-		      (read-from-string strategy)
-		    (error (error "invalid strategy syntax"))))))
-    (unless (= end (length strategy))
-      (error "invalid strategy syntax")))
+		       (get-pvs-strategy "Strategy to use: "
+					 default-untried-strategy)))
+  (when (null strategy) (setq strategy default-untried-strategy))
   (unless (equal strategy default-untried-strategy)
+    (check-pvs-strategy strategy)
     (setq default-untried-strategy strategy))
   (confirm-not-in-checker)
   (pvs-bury-output)
   (save-some-pvs-buffers)
-  (pvs-send (format "(prove-untried-theory \"%s\" '%s %s)"
+  (pvs-send (format "(prove-untried-theory \"%s\" '%s %s %s)"
 		theory strategy (and current-prefix-arg t)
 		(when (equal theory (current-theory))
 		  (format "\"%s\"" (current-pvs-file t))))
 	    nil 'prut))
+
+
+(defvar default-formula-strategy "(grind)")
+
+(defpvs prove-formulas-importchain prove (theory &optional strategy)
+  "Attempt to prove all formulas in the importchain using the given STRATEGY.
+
+Attempts all unproved formulas in the importchain rooted at the specified
+THEORY, using the specified STRATEGY that initially defaults to
+\"(grind)\".  With an argument (e.g., M-0 or C-u) attempts already proved
+formulas as well.  If a given formula has no pre-existing proof, it gets
+the new proof associated with it regardless of whether the proof succeeds.
+If the STRATEGY proves a given formula that already has a proof, then the
+original proof is copied to the orphaned-proofs.prf file and replaced by
+the new proof, otherwise the original proof is kept.  If a STRATEGY is
+supplied, it becomes the default for the next invocation of a
+prove-formulas- command."
+  (interactive (append (complete-theory-name
+			"Prove formulas in IMPORT of theory named: ")
+		       (get-pvs-strategy "Strategy to use: "
+					 default-formula-strategy)))
+  (when (null strategy) (setq strategy default-formula-strategy))
+  (unless (equal strategy default-formula-strategy)
+    (check-pvs-strategy strategy)
+    (setq default-formula-strategy strategy))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(prove-formulas-importchain \"%s\" '%s %s nil)"
+		theory strategy (and current-prefix-arg t))
+	    nil))
+
+(defpvs prove-formulas-importchain-subtree prove (theory &optional strategy
+							 &rest exclude)
+  "Prove formulas in the importchain subtree using the given STRATEGY.
+
+Attempts all unproved formulas in the importchain rooted at the specified
+THEORY excluding the subtrees rooted at some theory in the EXCLUDE list,
+using the specified STRATEGY which initially defaults to \"(grind)\".
+With an argument (e.g., M-0 or C-u) attempts already proved formulas as
+well.  If the strategy proves a given formula that already has a proof,
+then the original proof is copied to the orphaned-proofs.prf file and
+replaced by the new proof, otherwise the original proof is kept.  If a
+STRATEGY is supplied, it becomes the default for the next invocation of a
+prove-formulas- command."
+  (interactive (append (complete-theory-name
+			"Prove formulas in IMPORT of theory named: ")
+		       (get-pvs-strategy "Strategy to use: "
+					 default-formula-strategy)
+		       (complete-theory-name-list "Theory to exclude: ")))
+  (when (null strategy) (setq strategy default-formula-strategy))
+  (unless (equal strategy default-formula-strategy)
+    (check-pvs-strategy strategy)
+    (setq default-formula-strategy strategy))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(prove-formulas-importchain \"%s\" '%s %s %s)"
+		theory strategy (and current-prefix-arg t)
+		(mapcar '(lambda (x) (format "\"%s\"" x)) exclude))
+	    nil))
+
+(defpvs prove-formulas-pvs-file prove (file &optional strategy)
+  "Attempt to prove all formulas in FILE using the given STRATEGY.
+
+Attempts all unproved formulas in the specified PVS FILE using the
+specified STRATEGY which defaults to \"(grind)\".  With an argument (e.g.,
+M-0 or C-u) attempts already proved formulas as well.  If a given formula
+has no pre-existing proof, it gets the new proof associated with it
+regardless of whether the proof succeeds.  If the STRATEGY proves a given
+formula that already has a proof, then the original proof is copied to the
+orphaned-proofs.prf file and replaced by the new proof, otherwise the
+original proof is kept.  If a STRATEGY is supplied, it becomes the default
+for the next invocation of a prove-formulas- command."
+  (interactive (append (complete-pvs-file-name
+			"Prove formulas in PVS file named: ")
+		       (get-pvs-strategy "Strategy to use: "
+					 default-formula-strategy)))
+  (when (null strategy) (setq strategy default-formula-strategy))
+  (unless (equal strategy default-formula-strategy)
+    (check-pvs-strategy strategy)
+    (setq default-formula-strategy strategy))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(prove-formulas-pvs-file \"%s\" '%s %s)"
+		file strategy (and current-prefix-arg t))
+	    nil))
+
+(defpvs prove-formulas-theory prove (theory &optional strategy)
+  "Attempt to prove all formulas in THEORY using the given STRATEGY.
+
+Attempts all unproved formulas in the specified THEORY using the specified
+STRATEGY which defaults to \"(grind)\".  With an argument (e.g., M-0 or
+C-u) attempts already proved formulas as well.  If a given formula has no
+pre-existing proof, it gets the new proof associated with it regardless of
+whether the proof succeeds.  If the STRATEGY proves a given formula that
+already has a proof, then the original proof is copied to the
+orphaned-proofs.prf file and replaced by the new proof, otherwise the
+original proof is kept.  If a STRATEGY is supplied, it becomes the default
+for the next invocation of a prove-formulas- command."
+  (interactive (append (complete-theory-name
+			"Prove formulas in theory named: ")
+		       (get-pvs-strategy "Strategy to use: "
+					 default-formula-strategy)))
+  (when (null strategy) (setq strategy default-formula-strategy))
+  (unless (equal strategy default-formula-strategy)
+    (check-pvs-strategy strategy)
+    (setq default-formula-strategy strategy))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(prove-formulas-theory \"%s\" '%s %s %s)"
+		theory strategy (and current-prefix-arg t)
+		(when (equal theory (current-theory))
+		  (format "\"%s\"" (current-pvs-file t))))
+	    nil))
+
+
+(defvar default-tccs-strategy "(tcc)")
+
+(defpvs prove-tccs-importchain prove (theory &optional strategy)
+  "Attempt to prove TCCs in the importchain using the given STRATEGY.
+
+Attempts all unproved TCCs in the importchain rooted at the specified
+THEORY, using the specified STRATEGY which initially defaults to
+\"(tcc)\".  With an argument (e.g., M-0 or C-u) attempts already proved
+TCCs as well.  If the STRATEGY proves a given TCC that already has a
+proof, then the original proof is copied to the orphaned-proofs.prf file
+and replaced by the new proof, otherwise the original proof is kept.  If a
+STRATEGY is supplied, it becomes the default for the next invocation of a
+prove-tccs- command."
+  (interactive (append (complete-theory-name
+			"Prove TCCs in IMPORT of theory named: ")
+		       (get-pvs-strategy "Strategy to use: "
+					 default-tccs-strategy)))
+  (when (null strategy) (setq strategy default-tccs-strategy))
+  (unless (equal strategy default-tccs-strategy)
+    (check-pvs-strategy strategy)
+    (setq default-tccs-strategy strategy))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(prove-tccs-importchain \"%s\" '%s %s nil)"
+		theory strategy (and current-prefix-arg t))
+	    nil))
+
+(defpvs prove-tccs-importchain-subtree prove (theory &optional strategy
+						     &rest exclude)
+  "Prove TCCs in the importchain subtree using the given STRATEGY.
+
+Attempts all unproved TCCs in the importchain rooted at the specified
+THEORY excluding the subtrees rooted at some theory in the EXCLUDE list,
+using the specified STRATEGY which initially defaults to \"(tcc)\".  If
+the STRATEGY proves a given TCC that already has a proof, then the
+original proof is copied to the orphaned-proofs.prf file and replaced by
+the new proof, otherwise the original proof is kept.  If a STRATEGY is
+supplied, it becomes the default for the next invocation of a prove-tccs-
+command."
+  (interactive (append (complete-theory-name
+			"Prove TCCs in IMPORT subtree of theory named: ")
+		       (get-pvs-strategy "Strategy to use: "
+					 default-tccs-strategy)
+		       (complete-theory-name-list "Theory to exclude: ")))
+  (when (null strategy) (setq strategy default-tccs-strategy))
+  (unless (equal strategy default-formula-strategy)
+    (check-pvs-strategy strategy)
+    (setq default-formula-strategy strategy))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(prove-tccs-importchain \"%s\" '%s %s %s)"
+		theory strategy (and current-prefix-arg t)
+		(mapcar '(lambda (x) (format "\"%s\"" x)) exclude))
+	    nil))
+
+(defpvs prove-tccs-pvs-file prove (file &optional strategy)
+  "Attempt to prove TCCs in FILE using the given STRATEGY.
+
+Attempts all unproved TCCs in the specified PVS FILE using the specified
+STRATEGY which defaults to \"(tcc)\".  With an argument (e.g., M-0 or C-u)
+attempts already proved TCCs as well.  If the STRATEGY proves a given TCC
+that already has a proof, then the original proof is copied to the
+orphaned-proofs.prf file and replaced by the new proof, otherwise the
+original proof is kept.  If a STRATEGY is supplied, it becomes the default
+for the next invocation of a prove-tccs- command."
+  (interactive (append (complete-pvs-file-name
+			"Prove TCCs in PVS file named: ")
+		       (get-pvs-strategy "Strategy to use: "
+					 default-tccs-strategy)))
+  (when (null strategy) (setq strategy default-tccs-strategy))
+  (unless (equal strategy default-tccs-strategy)
+    (check-pvs-strategy strategy)
+    (setq default-tccs-strategy strategy))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(prove-tccs-pvs-file \"%s\" '%s %s)"
+		file strategy (and current-prefix-arg t))
+	    nil))
+
+(defpvs prove-tccs-theory prove (theory &optional strategy)
+  "Attempt to prove TCCs in THEORY using the given STRATEGY.
+
+Attempts all unproved TCCs in the specified THEORY using the specified
+STRATEGY which defaults to \"(tcc)\".  With an argument (e.g., M-0 or C-u)
+attempts already proved TCCs as well.  If the STRATEGY proves a given TCC
+that already has a proof, then the original proof is copied to the
+orphaned-proofs.prf file and replaced by the new proof, otherwise the
+original proof is kept.  If a STRATEGY is supplied, it becomes the default
+for the next invocation of a prove-tccs- command."
+  (interactive (append (complete-theory-name
+			"Prove TCCs in theory named: ")
+		       (get-pvs-strategy "Strategy to use: "
+					 default-tccs-strategy)))
+  (when (null strategy) (setq strategy default-tccs-strategy))
+  (unless (equal strategy default-tccs-strategy)
+    (check-pvs-strategy strategy)
+    (setq default-tccs-strategy strategy))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(prove-tccs-theory \"%s\" '%s %s %s)"
+		theory strategy (and current-prefix-arg t)
+		(when (equal theory (current-theory))
+		  (format "\"%s\"" (current-pvs-file t))))
+	    nil))
 
 
 ;;; These all pertain only to a proof in progress
@@ -1589,8 +1873,8 @@ Letters do not insert themselves; instead, they are commands:
     (fix-edit-proof-comments)))
 
 
-  (make-face 'font-lock-pvs-checkpoint-face)
-  (set-face-background 'font-lock-pvs-checkpoint-face "red")
+(make-face 'font-lock-pvs-checkpoint-face)
+(set-face-background 'font-lock-pvs-checkpoint-face "red")
 
 (defun install-proof-checkpoint ()
   (interactive)
@@ -1741,8 +2025,18 @@ Set a flag indicating whether expressions in displayed proofs should be
 fully parenthesized.  If show-p is t, then all infix expressions are
 parenthesized, otherwise only those provided by the user or needed because
 of precedence rules are provided.  This is mostly useful for proofs
-involving large arithmetic terms, where it may be otherwise difficult to
+involving large arithmetic terms, where it may otherwise be difficult to
 figure out whether a given rewrite rule should apply."
   (interactive (list (y-or-n-p "Show parentheses in proofs? ")))
   (pvs-send-and-wait (format "(setq *show-parens-in-proof* %s)" show-p)
 		     nil nil nil))
+
+(defun get-pvs-strategy (prompt default)
+  (list (read-from-minibuffer prompt default)))
+
+(defun check-pvs-strategy (strategy)
+  (let ((end (cdr (condition-case nil
+		      (read-from-string strategy)
+		    (error (error "invalid strategy syntax"))))))
+    (unless (= end (length strategy))
+      (error "invalid strategy syntax"))))

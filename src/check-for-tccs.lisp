@@ -129,6 +129,11 @@
   (with-slots (index argument) expr
     (check-for-tccs* argument (type argument))))
 
+(defmethod check-for-tccs* ((expr injection-application) expected)
+  (declare (ignore expected))
+  (with-slots (index argument) expr
+    (check-for-tccs* argument (type argument))))
+
 (defmethod check-for-tccs* ((expr field-application) expected)
   (declare (ignore expected))
   (with-slots (id argument) expr

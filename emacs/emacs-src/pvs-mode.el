@@ -47,8 +47,11 @@
     (define-key pvs-mode-map "\C-c\C-pc" 'prove-proofchain)
     (define-key pvs-mode-map "\C-c\C-pt" 'prove-theory)
     (define-key pvs-mode-map "\C-c\C-pi" 'prove-importchain)
+    (define-key pvs-mode-map "\C-c\C-pn" 'prove-next-unproved-formula)
     (define-key pvs-mode-map "\C-c\C-ps" 'step-proof)
     (define-key pvs-mode-map "\C-c\C-pr" 'redo-proof)
+    (define-key pvs-mode-map "\C-c\C-pu" 'prove-untried-theory)
+    (define-key pvs-mode-map "\C-c\C-pU" 'prove-untried-pvs-file)
     (define-key pvs-mode-map "\C-c\C-qs" 'show-tccs)
     (define-key pvs-mode-map "\C-c\C-qe" 'prettyprint-expanded)    
     (define-key pvs-mode-map "\C-c\C-qf" 'prettyprint-pvs-file)    
@@ -71,12 +74,13 @@
 	(define-key pvs-mode-map
 	  [(control meta ?;)] 'whereis-identifier-used)
     (define-key pvs-mode-map "\M-:"      'list-declarations)
+    (define-key pvs-mode-map [(control ?.)] 'show-expanded-form)
     (define-key pvs-mode-map "\M-{"      'backward-theory)
     (define-key pvs-mode-map "\M-}"      'forward-theory)
     (define-key pvs-mode-map "\e\034"    'prettyprint-region)
     (define-key pvs-mode-map "\e\C-q"    'prettyprint-declaration)
     (define-key pvs-mode-map "\C-c\C-c"  'pvs-interrupt-subjob)
-    (if (memq pvs-emacs-system '(xemacs19 xemacs20))
+    (if (memq pvs-emacs-system '(xemacs21 xemacs20 xemacs19))
 	(define-key pvs-mode-map [(shift button2)] 'mouse-show-declaration)
 	(if (memq pvs-emacs-system '(emacs20 emacs19))
 	    (define-key pvs-mode-map [S-mouse-2] 'mouse-show-declaration))))
@@ -104,6 +108,7 @@ The pvs-mode command puts the current buffer in PVS mode.  This command is
 not normally needed; buffers with a .pvs extension and buffers created by
 PVS are automatically put in the proper mode."
   (interactive)
+  (kill-all-local-variables)
   (use-local-map pvs-mode-map)
   ;; fix up comment handling
   (make-local-variable 'comment-start)

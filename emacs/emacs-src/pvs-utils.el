@@ -9,6 +9,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (eval-when-compile (require 'pvs-macros))
+(require 'compare-w)
 
 (defvar *pvs-theories* nil)
 (defvar *pvs-current-directory* nil)
@@ -17,7 +18,7 @@
 
 (defvar pvs-string-positions nil)
 
-;;; Misc functions ;;;
+;;; Misc functions 
 
 (defpvs forward-theory editing (&optional nomsg)
   "Move forward to the beginning of the next theory
@@ -738,12 +739,11 @@ The save-pvs-file command saves the PVS file of the current buffer."
 	       (file-exists-p *pvs-current-directory*))
     (let ((ndir (pvs-send-and-wait "(pvs-current-directory)"
 				   nil nil 'string)))
-      (while (and (stringp ndir)
-		  (not (file-exists-p ndir)))
+      (while (not (and (stringp ndir)
+		       (file-exists-p ndir)))
 	(setq ndir (pvs-send-and-wait "(pvs-current-directory)"
 				      nil nil 'string)))
-      (when (and (stringp ndir)
-		 (not (string-equal ndir "/dev/null")))
+      (unless (string-equal ndir "/dev/null")
 	(setq *pvs-current-directory* ndir))))
   *pvs-current-directory*)
 
@@ -1275,7 +1275,8 @@ Point will be on the offending delimiter."
 	(use-local-map lmap))
       (define-key lmap "\M-," 'find-declaration)
       (define-key lmap "\M-;" 'whereis-declaration-used)
-      (define-key lmap "\M-:" 'list-declarations))))
+      (define-key lmap "\M-:" 'list-declarations)
+      (define-key lmap [(control ?.)] 'show-expanded-form))))
 
 (defun all-pvs-commands ()
   (let ((pvs-commands nil))
@@ -1433,114 +1434,104 @@ Point will be on the offending delimiter."
 ;;; Entering debugger message:
 ;;;  e (progn (set-buffer "*Backtrace*") (buffer-string))
 
-(autoload 'vc-checkout-writable-buffer "vc" "" t)
-(autoload 'vc-admin "vc" "" t)
+
+;; NB - log file is deliberately in default-directory rather than the
+;; desired context, to allow for "remote" validation, potentially without
+;; write permission on the directory
 
 (defmacro pvs-validate (file directory &rest body)
-  (` (let* ((logfile (concat default-directory (, file)))
-	    (rcs-file-exists (vc-name logfile)))
-       (pvs-ensure-rcs-directory logfile)
-       (when (file-exists-p logfile)
-	 (delete-file logfile))
-       (unless rcs-file-exists
-	 (save-excursion
-	   (set-buffer (find-file-noselect logfile t))
-	   (vc-register t nil)
-	   ;;(vc-admin logfile nil)
-	   (kill-buffer nil)))
-       (when (file-exists-p logfile)
-	 (delete-file logfile))
-       (vc-checkout-writable-buffer logfile)
+  (` (let* ((logfile (concat default-directory (, file))))
+       (pvs-backup-logfile logfile)
        (let ((logbuf (find-file-noselect logfile t)))
-	 (save-excursion
-	   (set-buffer logbuf)
-	   (when buffer-read-only (toggle-read-only))
-	   (clear-buffer logbuf)
-	   (let ((standard-output logbuf)
-		 (pvs-validating t)
-		 (default-directory default-directory))
-	     (pvs-message (pvs-version-string))
-	     (let ((pvs-disable-messages nil))
-	       (change-context (, directory)))
-	     (pvs-send-and-wait "(setq *pvs-verbose* t)" nil nil 'dont-care)
-	     (,@ body))
-	   (pvs-wait-for-it)
-	   (pvs-send-and-wait "(setq *pvs-verbose* nil)" nil nil 'dont-care)
-	   ;;(save-buffer 0) ;writes a message-use the following 3 lines
-	   (write-region (point-min) (point-max) (buffer-file-name) nil 'nomsg)
-	   (set-buffer-modified-p nil)
-	   (clear-visited-file-modtime)
-	   (if rcs-file-exists
-	       (let* ((version (vc-latest-version buffer-file-name))
-		      (filename (concat buffer-file-name ".~" version "~")))
-		 (unless (file-exists-p filename)
-		   (vc-backend-checkout logfile nil version filename))
-		 (let ((prevlog (find-file-noselect filename)))
-		   (cond ((pvs-same-validation-buffers-p logbuf prevlog)
-			  (delete-file filename)
-			  (pvs-message "No significant changes in %s" (, file)))
-			 (t
-			  (pvs-message "Differences found since last run:")
-			  (pvs-message "  Compare %s to %s" (, file)
-				       (file-name-nondirectory filename))))))
-	       (pvs-message "Nothing to compare %s to" (, file)))
-	   (vc-checkin logfile nil
-		       (format "Validation run for %s:\n%s"
-			   (current-time-string)
-			 (quote (, body)))))))))
+	 (unwind-protect
+	     (save-excursion
+	       (fset 'ask-user-about-lock 'pvs-log-ignore-lock)
+	       (set-buffer logbuf)
+	       (when buffer-read-only (toggle-read-only))
+	       (clear-buffer logbuf)
+	       (let ((standard-output logbuf)
+		     (pvs-validating t)
+		     (default-directory default-directory))
+		 (pvs-message (pvs-version-string))
+		 (let ((pvs-disable-messages nil))
+		   (change-context (, directory)))
+		 (,@ body))
+	       (pvs-wait-for-it)
+	       ;;(save-buffer 0) ;writes a message-use the following 3 lines
+	       (set-buffer logbuf)	; body may have changed active buffer
+	       (write-region (point-min) (point-max) (buffer-file-name) nil 'nomsg)
+	       (set-buffer-modified-p nil)
+	       (clear-visited-file-modtime)
+	       (if (file-exists-p "baseline.log")
+		   (let ((baseline-log (find-file-noselect "baseline.log")))
+		     (if (pvs-same-validation-buffers-p logbuf baseline-log)
+			 (pvs-message "No significant changes since baseline")
+			 (pvs-message "WARNING: Differences found - check %s" logfile)))
+		   (progn
+		     (pvs-message "NO BASELINE - using this run to create baseline.log")
+		     (copy-file (buffer-file-name) "baseline.log"))))
+	   (fset 'pvs-log-ignore-lock 'ask-user-about-lock))))))
 
-(defun pvs-ensure-rcs-directory (file)
-  (let ((rcsdir (concat (file-name-directory file) "RCS")))
-    (unless (file-exists-p rcsdir)
-      (pvs-message "Creating RCS directory: %s" rcsdir)
-      (condition-case nil
-	  (make-directory rcsdir)
-	(error (pvs-message "Could not create RCS directory"))))))
+(defun pvs-log-ignore-lock (file opponent)
+  nil)
+
+(defvar *pvs-backup-logfiles* 4
+  "Number of backup logfiles to keep after a validation run.")
+
+(defun pvs-backup-logfile (logfile)
+  (or (not (file-exists-p logfile))
+      (let ((logbuf (find-file-noselect logfile t)))
+	(save-excursion
+	  (set-buffer logbuf)
+	  (let ((delete-old-versions t)
+		(kept-old-versions 0)
+		(kept-new-versions *pvs-backup-logfiles*)
+		(version-control t)
+		(backup-inhibited nil))
+	    (backup-buffer))))))
 
 (defvar pvs-validation-regexp
-  "[ \t\n]\\|^PVS Version.*$\\|[0-9]+\\(\.[0-9]+\\)? ?s\\(ec\\|,\\| \\|:\\)"
+  "^PVS Version.*$\\|^Validating /.*$\\|[0-9]+ files removed$\\|Deleted file /.*\\|Proving \..*\\|No bin files found\\|\\(\( ?\\)?[0-9]+\\(\.[0-9]+\\)? s\)\\|[0-9]+\\(\.[0-9]+\\)?\\( seconds\\|s:\\)\\|[0-9]+\\(\.[0-9]+\\)?\\( real,\\| cpu seconds\\)\\| \(library /.*\)$\\|[ \t\n]"
   "Regexp used in pvs-compare-windows-whitespace.  Because of the way
 pvs-compare-windows-skip-whitespace is defined, it must either match at
 the point where the buffers would otherwise differ, or match at the
-beginning of the line.  The default is to consider patch levels and time
-differences to be whitespace")
+beginning of the line.  The default is to consider patch levels, bin file
+existence and time differences to be whitespace")
 
 (defun pvs-same-validation-buffers-p (log1 log2)
   (not (pvs-find-validation-buffers-mismatch log1 log2)))
 
-;;; Derived from compare-windows-skip-whitespace in
-;;; <gnu-emacs>/lisp/compare-w.el.  In addition to the default behavior,
-;;; it checks whether there is a match at the beginning of the current
-;;; line.
-(defun pvs-compare-windows-skip-whitespace (start)
-  (let ((end (point))
-	(beg (point))
-	(opoint (point)))
-    (while (or (and (looking-at pvs-validation-regexp)
-		    (<= end (match-end 0))
-		    ;; This match goes past END, so advance END.
-		    (progn (setq end (match-end 0))
-			   (> (point) start)))
-	       (and (/= (point) start)
-		    ;; Consider at least the char before point,
-		    ;; unless it is also before START.
-		    (= (point) opoint)))
-      ;; keep going back until whitespace
-      ;; doesn't extend to or past end
-      (forward-char -1))
-    (setq beg (point))
-    (beginning-of-line)
-    (if (and (looking-at pvs-validation-regexp)
-	     (<= end (match-end 0)))
-	(setq end (match-end 0)))
-    (goto-char end)
-    (or (/= beg opoint)
-	(/= end opoint))))
 
+;; derived from compare-windows 
 (defun pvs-compare-validation-windows ()
   (interactive)
-  (let ((compare-windows-whitespace 'pvs-compare-windows-skip-whitespace))
-    (compare-windows t)))
+  (let ((p1 (point))
+	(b1 (current-buffer))
+	(p1max (point-max))
+	p2 b2 p2max
+	(w2 (next-window (selected-window))))
+    (if (eq w2 (selected-window))
+	(setq w2 (next-window (selected-window) nil 'visible)))
+    (if (eq w2 (selected-window))
+	(error "No other window"))
+    (setq p2 (window-point w2)
+	  b2 (window-buffer w2))
+    (save-excursion
+      (set-buffer b2)
+      (setq p2max (point-max))
+      (push-mark p2 t))
+    (push-mark)
+    
+    (let ((mismatch (pvs-find-validation-buffers-mismatch b1 b2 p1 p2)))
+      (cond (mismatch
+	     (goto-char (car mismatch))
+	     (set-window-point w2 (cadr mismatch))
+	     (message "Window difference found")
+	     (ding))
+	    (t
+	     (goto-char p1max)
+	     (set-window-point w2 p2max)
+	     (message "Windows match"))))))
 
 (defun pvs-find-validation-buffers-mismatch (log1 log2 &optional spos1 spos2)
   (let* ((pos1 (or spos1 1))
@@ -1550,21 +1541,46 @@ differences to be whitespace")
 	 (dpos (compare-buffer-substrings log1 pos1 end1 log2 pos2 end2))
 	 (match t))
     (while (and (/= dpos 0) match)
-      (if (and (save-excursion
-		 (set-buffer log1)
-		 (goto-char (+ (abs dpos) pos1 -1))
-		 (when (looking-at pvs-validation-regexp)
-		   (setq pos1 (match-end 0))))
-	       (save-excursion
-		 (set-buffer log2)
-		 (goto-char (+ (abs dpos) pos2 -1))
-		 (when (looking-at pvs-validation-regexp)
-		   (setq pos2 (match-end 0)))))
-	  (setq dpos
-		(compare-buffer-substrings log1 pos1 end1 log2 pos2 end2))
+      (setq pos1 (+ (abs dpos) pos1 -1) ipos1 pos1)
+      (setq pos2 (+ (abs dpos) pos2 -1) ipos2 pos2)
+      (if (or (let ((p1match (save-excursion
+			       (set-buffer log1)
+			       (goto-char pos1)
+			       (when (looking-at pvs-validation-regexp)
+				 (setq pos1
+				       (if (eq (match-end 0) (line-end-position))
+					   (1+ (match-end 0))
+					   (match-end 0)))))))
+		(or (save-excursion
+		      (set-buffer log2)
+		      (goto-char pos2)
+		      (when (looking-at pvs-validation-regexp)
+			(setq pos2
+			      (if (eq (match-end 0) (line-end-position))
+				  (1+ (match-end 0))
+				  (match-end 0)))))
+		    p1match))
+	      ;; the following allows for diffs where something in the regexp
+	      ;; matches the *entire* line.
+	      (let ((p1match (save-excursion
+			       (set-buffer log1)
+			       (goto-char ipos1)
+			       (beginning-of-line)
+			       (when (and (looking-at pvs-validation-regexp)
+					  (eq (match-end 0) (line-end-position)))
+				 (setq pos1 (1+ (match-end 0)))))))
+		(or (save-excursion
+		      (set-buffer log2)
+		      (goto-char ipos2)
+		      (beginning-of-line)
+		      (when (and (looking-at pvs-validation-regexp)
+				 (eq (match-end 0) (line-end-position)))
+			(setq pos2 (1+ (match-end 0)))))
+		    p1match)))
+	  (setq dpos (compare-buffer-substrings log1 pos1 end1 log2 pos2 end2))
 	  (setq match nil)))
     (unless match
-      (list (+ (abs dpos) pos1 -1) (+ (abs dpos) pos2 -1)))))
+      (list pos1 pos2))))
 
 (defvar pvs-waiting nil)
 
@@ -1599,7 +1615,7 @@ differences to be whitespace")
 	   (eq (process-status (ilisp-process)) 'run))
       (progn
 	(save-some-buffers nil t)
-	(comint-simple-send (ilisp-process) "(exit-pvs)")
+	(comint-simple-send (ilisp-process) "(pvs::lisp (pvs::exit-pvs))")
 	(while (equal (process-status (ilisp-process)) 'run)
 	  (sleep-for 1)))
       (message "PVS not running - context not saved"))

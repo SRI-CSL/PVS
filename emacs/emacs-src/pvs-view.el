@@ -23,6 +23,7 @@
     (define-key pvs-view-mode-map "\M-," 'find-declaration)
     (define-key pvs-view-mode-map "\M-;" 'whereis-declaration-used)
     (define-key pvs-view-mode-map "\M-:" 'list-declarations)
+    (define-key pvs-view-mode-map [(control ?.)] 'show-expanded-form)
     (define-key pvs-view-mode-map "<" 'beginning-of-buffer)
     (define-key pvs-view-mode-map ">" 'end-of-buffer)
     (define-key pvs-view-mode-map " " 'scroll-up)
@@ -50,6 +51,7 @@ these commands are provided.
 Key bindings are:
 \\{pvs-view-mode-map}"
   (interactive)
+  (kill-all-local-variables)
   (use-local-map pvs-view-mode-map)
   (setq major-mode 'pvs-view-mode)
   (setq mode-name "PVS View")

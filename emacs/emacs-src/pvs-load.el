@@ -29,6 +29,7 @@
   (let ((m (apply 'format msg args)))
     (cond (noninteractive
 	   (princ m)
+	   (princ m 'external-debugging-output)
 	   (terpri))
 	  (t
 	   (pvs-log-message 'MSG m)
@@ -81,7 +82,7 @@
 (load "pvs-print" nil noninteractive)
 (load "pvs-prover" nil noninteractive)
 (load "pvs-abbreviations" nil noninteractive)
-(if (or (and (memq pvs-emacs-system '(xemacs19 xemacs20))
+(if (or (and (memq pvs-emacs-system '(xemacs21 xemacs20 xemacs19))
 	     (boundp 'emacs-major-version)
 	     (or (>= emacs-major-version 20)
 		 (and (= emacs-major-version 19)
@@ -109,7 +110,8 @@
 
 ; fancy PVS logo for XEmacs startup
 
-(when (memq pvs-emacs-system '(xemacs19 xemacs20))
+(when (and (memq pvs-emacs-system '(xemacs21 xemacs20 xemacs19))
+	   (valid-image-instantiator-format-p 'xpm))
   (push (concat pvs-path "/emacs/emacs-src") x-bitmap-file-path)
   (setq pvs-logo
         (make-glyph (make-image-specifier `[xpm :file "pvs.xpm"])
@@ -251,14 +253,17 @@ get to the same state."
       (let ((comint-log nil))
 	(pvs-send-and-wait
 	 (format "(progn (setq *pvs-path* \"%s\")
+                     (setq *pvs-emacs-interface* t)
                      (pvs-init nil %s)
                      (setq *noninteractive* %s)
+                     (setq *noninteractive-timeout* %s)
                      (setq *pvs-verbose* %d)
                      (setq *force-dp* %s)
                      (when '%s
                        (set-decision-procedure '%s)))"
 	     pvs-path (equal (getenv "PVSMINUSQ") "-q")
-	     noninteractive pvs-verbose
+	     noninteractive (getenv "PVSTIMEOUT")
+	     pvs-verbose
 	     (getenv "PVSFORCEDP")
 	     (getenv "PVSDEFAULTDP")
 	     (getenv "PVSDEFAULTDP"))

@@ -203,8 +203,6 @@
 			 :depends-on ("prmacros"))
 		  (:file "q"
 			 :depends-on ("prmacros"))
-		  (:file "nonlin"
-			 :depends-on ("prmacros"))
 		  (:file "pvs-patch"
 			 :depends-on ("prmacros"))))
    (:module classes
@@ -253,13 +251,6 @@
 		  (:file "gensubst")
 		  (:file "substit"))
      :depends-on (language))
-;    (:module dc-structure
-;      :source-pathname "src/decision-procedures"
-;      :components ((:file "types")
-; 		  (:file "node-structures"
-; 			 :depends-on ("types"))
-; 		  (:file "interpreted-node-structures"
-; 			 :depends-on ("node-structures"))))
    (:module emacs-interface
      :source-pathname "src/interface"
      :components ((:file "pvs-emacs")
@@ -327,57 +318,6 @@
 		  ;;(:file "strategies")
 		  )
      :depends-on (proof-checker))
-;    (:module dc-interface
-;      :source-pathname "src/decision-procedures"
-;      :components (;;(:file "dc-pvs")
-; 		  ;;(:file "translate-from-prove")
-; 		  (:file "translate-to-dc")
-; 		  (:file "translate-from-dc")))
-;    (:module polylib
-;      :source-pathname "/src/decision-procedures/polylib"
-;      :components ((:file "foreign")
-; 		  (:file "dp-foreign"))
-;      :depends-on ("dc-structure"))
-;    (:module rewrite
-;      :source-pathname "src/decision-procedures"
-;      :components ((:file "rewrite")
-; 		  ;;(:file "rewrite-2")
-; 		  (:file "rewrite-pvs")
-; 		  (:file "datatypes-pvs")
-; 		  (:file "datatypes")
-; 		  (:file "records")
-; 		  (:file "rewrite-optimize")
-; 		  (:file "simplify"))
-;      :depends-on ("dc-structure"))
-;    (:module forward-chain
-;      :source-pathname "src/decision-procedures"
-;      :components ((:file "forward-chain-pvs")
-; 		  (:file "forward-chain"))
-;      :depends-on ("dc-structure"))
-;    (:module dc-prototypes
-;      :source-pathname "src/decision-procedures"
-;      :components ((:file "integer")
-; 		  (:file "fourier-motzkin")
-; 		  (:file "polyhedron")
-; 		  (:file "cong-state" :depends-on ("polyhedron"
-; 						   "fourier-motzkin"))
-; 		  (:file "shostak" :depends-on ("cong-state"))
-; 		  (:file "arithmetic" :depends-on ("shostak"))
-; 		  (:file "arrays")
-; 		  (:file "boolean")
-; 		  (:file "shostak-interp")
-; 		  (:file "arith-solve")
-; 		  (:file "sets")
-; 		  (:file "bdd-solve"))
-;      :depends-on ("dc-structure"))
-;    (:module bvec
-;      :source-pathname "src/decision-procedures/bit-vectors"
-;      :components ((:file "bvec_structure")
-; 		  (:file "bvec_arith")
-; 		  (:file "bvec_fixed_solver")
-; 		  (:file "bvec_bdd_solve")
-; 		  (:file "bvec_slicing"))
-;      :depends-on ("dc-structure"))
    (:module groundeval
      :source-pathname "src/groundeval"
      :components ((:file "eval-utils")

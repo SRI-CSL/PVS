@@ -27,6 +27,7 @@
     (define-key pvs-browse-mode-map "\M-," 'find-declaration)
     (define-key pvs-browse-mode-map "\M-;" 'whereis-declaration-used)
     (define-key pvs-browse-mode-map "\M-:" 'list-declarations)
+    (define-key pvs-browse-mode-map [(control ?.)] 'show-expanded-form)
     (define-key pvs-browse-mode-map [(control meta ?.)]  'goto-declaration)
     (define-key pvs-browse-mode-map
 	  [(control meta ?;)] 'whereis-identifier-used)
@@ -34,8 +35,8 @@
     (define-key pvs-browse-mode-map "n" 'next-line)
     (define-key pvs-browse-mode-map "p" 'previous-line)
     (define-key pvs-browse-mode-map "\177" 'previous-line)
-    (define-key pvs-browse-mode-map "h" 'pvs-browse-help)
-    (define-key pvs-browse-mode-map "?" 'pvs-browse-help))
+    (define-key pvs-browse-mode-map "h" 'describe-mode)
+    (define-key pvs-browse-mode-map "?" 'describe-mode))
 
 
 (defun pvs-browse-mode ()
@@ -44,7 +45,7 @@ Each line describes one of the declarations in the current context.
 The most useful key bindings for this mode are:
   s -- pvs-browse-select
   v -- pvs-browse-view
-  h -- pvs-browse-help
+  h -- describe-mode
   q -- pvs-browse-quit
 
 The complete set of bindings is:
@@ -82,10 +83,9 @@ or the resolution determined by the typechecker for an overloaded name."
   (if (member-equal origin '("tccs" "ppe"))
       (message
        "The show-declaration command is not available in this buffer.")
-    (progn 
       (pvs-send-and-wait (format "(show-declaration \"%s\" \"%s\" '(%d %d))"
-				 bufname origin line (real-current-column))
-			 nil 'declaration 'dont-care))))
+			     bufname origin line (real-current-column))
+			 nil 'declaration 'dont-care)))
      
 (defpvs goto-declaration browse (bufname origin line column)
   "Go to declaration of symbol at cursor
@@ -127,10 +127,7 @@ declaration.  A `q' quits and removes the declaration buffer."
     (unless pvs-decls
       (error "No declarations matching %s were found" symbol))
     (setq *pvs-decls* pvs-decls)
-    (pop-to-buffer (pvs-make-browse-buffer))
-    (optimize-window-height)
-    (goto-line 3)
-    (pvs-browse-mode)))
+    (pvs-make-browse-buffer)))
 
 (defpvs whereis-declaration-used browse (bufname origin line column)
   "Search for declarations which reference the declaration at point
@@ -164,10 +161,7 @@ and removes the declaration buffer."
 	(unless pvs-decls
 	  (error "No declarations using were found"))
 	(setq *pvs-decls* pvs-decls)
-	(pop-to-buffer (pvs-make-browse-buffer))
-	(optimize-window-height)
-	(goto-line 3)
-	(pvs-browse-mode))))
+	(pvs-make-browse-buffer))))
 
 (defpvs whereis-identifier-used browse (symbol)
   "Search for declarations which reference symbol
@@ -187,10 +181,7 @@ declaration buffer."
     (unless pvs-decls
       (error "No declarations using %s were found" symbol))
     (setq *pvs-decls* pvs-decls)
-    (pop-to-buffer (pvs-make-browse-buffer))
-    (optimize-window-height)
-    (goto-line 3)
-    (pvs-browse-mode)))
+    (pvs-make-browse-buffer)))
 
 (defpvs list-declarations browse (theory)
   "Produce list of declarations in import chain
@@ -212,11 +203,7 @@ and removes the declaration buffer."
     (unless pvs-decls
       (error "No declarations in theory %s were found" theory))
     (setq *pvs-decls* pvs-decls)
-    (pop-to-buffer (pvs-make-browse-buffer))
-    (optimize-window-height)
-    (goto-line 3)
-    (message "")
-    (pvs-browse-mode)))
+    (pvs-make-browse-buffer)))
 
 
 ;;; Functions to support PVS browse mode
@@ -228,9 +215,10 @@ and removes the declaration buffer."
       (if buffer-read-only (toggle-read-only))
       (erase-buffer)
       (pvs-insert-declarations)
-      (goto-char (point-min))
+      (goto-line 3)
       (toggle-read-only)
-      (ilisp-display-buffer-in-typeout-window buf)
+      (pvs-browse-mode)
+      (pvs-display-browse-buffer buf)
       buf)))
 
 (defun pvs-insert-declarations ()
@@ -242,6 +230,8 @@ and removes the declaration buffer."
 (defun pvs-browse-select ()
   "Select this line's declaration in full screen."
   (interactive)
+  (unless (string-equal (buffer-name) "Browse")
+    (error "The pvs-browse-view command is not available in this buffer"))
   (if (<= (current-line-number) 2)
       (error "Please select from list of choices below."))
   (let* ((entry (nth (- (current-line-number) 3) *pvs-decls*))
@@ -264,14 +254,17 @@ and removes the declaration buffer."
 		 (forward-char (cadr loc))))
 	      (t (find-file file)
 		 (goto-line (car loc))
-		 ;;(recenter)
-		 (forward-char (cadr loc)))))))
+		 (forward-char (cadr loc))))))
+  (delete-other-windows)
+  (recenter))
 
 
 (defun pvs-browse-view ()
   "View declaration on current line in Declaration list.
 Returns to Declaration List when done."
   (interactive)
+  (unless (string-equal (buffer-name) "Browse")
+    (error "The pvs-browse-view command is not available in this buffer"))
   (if (<= (current-line-number) 2)
       (error "Please select from list of choices below."))
   (let* ((cbuf (current-buffer))
@@ -285,16 +278,23 @@ Returns to Declaration List when done."
       (set-buffer-modified-p nil)
       (toggle-read-only)
       (goto-char (point-min))
-      ;;(popper-other-window 1)
-      ;;(popper-show buf)
-      ;;(pop-to-buffer cbuf)
-      )))
+      (let ((view-window (get-buffer-window-list buf)))
+	(cond (view-window
+	       (ilisp-shrink-wrap-window (car view-window)))
+	      (t
+	       (other-window 1)
+	       (split-window-vertically (ilisp-desired-height buf))
+	       (set-window-buffer (selected-window) buf)
+	       (other-window -1)))))))
 
 (defun pvs-browse-quit ()
   (interactive)
   (remove-buffer (current-buffer))
   (pvs-bury-output)
-  )
+  (when (and (not *pvs-popup-windows*)
+	     (window-configuration-p *pvs-popup-old-window-configuration*))
+    (set-window-configuration *pvs-popup-old-window-configuration*)
+    (setq *pvs-popup-old-window-configuration* nil)))
 
 (defun pvs-browse-help ()
   (interactive)
@@ -346,7 +346,81 @@ or the resolution determined by the typechecker for an overloaded name."
 			"Listing..." 'listing 'list)))
 	(when pvs-decls
 	  (setq *pvs-decls* pvs-decls)
-	  (pop-to-buffer (pvs-make-browse-buffer))
-	  (optimize-window-height)
-	  (goto-line 3)
-	  (pvs-browse-mode)))))
+	  (pvs-make-browse-buffer)))))
+
+(defvar expanded-form-face 'expanded-form-face)
+(make-face 'expanded-form-face)
+(set-face-background 'expanded-form-face "violet")
+(defvar expanded-form-overlay nil)
+
+(defpvs show-expanded-form browse (bufname origin beg end)
+  "Shows the expanded form of the specified region
+
+The show-expanded-form command displays the expanded form of the given
+region.  By default, names from the prelude are not expanded, but with an
+argument they are expanded as well."
+  (interactive
+   (let* ((name-and-origin (if (string-equal (buffer-name) "Declaration")
+			       (list nil "Declaration")
+			       (pvs-formula-origin)))
+	  (bufname (car name-and-origin))
+	  (origin (cadr name-and-origin)))
+     (list bufname origin
+	   (if (mark t) (region-beginning) (point))
+	   (if (mark t) (region-end) (point)))))
+  (let* ((prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
+	 (pos1 (save-excursion
+		 (goto-char beg)
+		 (list (+ (current-line-number) prelude-offset)
+		       (real-current-column))))
+	 (pos2 (save-excursion
+		 (goto-char end)
+		 (list (+ (current-line-number) prelude-offset)
+		       (real-current-column)))))
+    (save-some-pvs-files)
+    (pvs-bury-output)
+    (let ((place (pvs-send-and-wait
+		  (format "(show-expanded-form \"%s\" \"%s\" '%s '%s %s)"
+		      bufname origin pos1 pos2
+		      (and current-prefix-arg t))
+		  nil 'expanded-form 'list)))
+      (let ((tbeg (save-excursion
+		    (goto-line (- (car place) prelude-offset))
+		    (forward-char (cadr place))
+		    (point)))
+	    (tend (save-excursion
+		    (goto-line (- (caddr place) prelude-offset))
+		    (forward-char (cadddr place))
+		    (point))))
+	(setq expanded-form-overlay (make-overlay tbeg tend))
+	(overlay-put expanded-form-overlay 'face 'expanded-form-face)))))
+
+(defvar *pvs-popup-windows* nil
+  "Controls behavior of browser functions.
+nil    = use current frame
+'frame = use a (potentially new) browser frame
+'x     = use dedicated X windows popups")
+
+(defvar *pvs-popup-browse-frame* nil
+  "The frame to use for browse windows when *pvs-popup-windows* is 'frame")
+
+(defvar *pvs-popup-old-window-configuration* nil
+  "The window configuration to pop back to after quitting a brose window
+when *pvs-popup-windows* is nil")
+
+
+(defun pvs-display-browse-buffer (buf)
+  "Popup a top level buffer, dependent on the value of *pvs-popup-windows*"
+  (cond ((not *pvs-popup-windows*)
+	 (setq *pvs-popup-old-window-configuration* (current-window-configuration))
+	 (delete-other-windows)
+	 (let ((top-window (selected-window))
+	       (bottom-window (split-window-vertically (ilisp-desired-height buf))))
+	   (set-window-buffer top-window buf)
+	   (select-window bottom-window)))
+	 ((eq *pvs-popup-windows* 'frame)
+	 (unless (frame-live-p *pvs-popup-browse-frame*)
+	   (setq *pvs-popup-browse-frame* (make-frame))))
+	((eq *pvs-popup-windows* 'x)
+	 (error "*pvs-popup-windows* as x not yet implemented"))
+	(t (error "*pvs-popup-windows* is not one of nil, 'frame or 'x"))))

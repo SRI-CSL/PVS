@@ -1,12 +1,17 @@
 			  PVS Language Summary
+			  --------------------
+This simply provides examples of the various language elements available in
+PVS, and allows a quick reference for "typical" uses of these elements.
+For the complete grammar, see the BNF (M-x help-pvs-bnf).
+For a complete description, see the PVS Language Reference.
 
 ============================Example Theories==================================
 
 orderings[t: TYPE] : THEORY
   BEGIN
     x, y, z: VAR t
-    pp, qq: VAR predicate[t]
-    <= : VAR predicate[[t,t]]
+    pp, qq: VAR PRED[t]
+    <= : VAR PRED[[t,t]]
 
     reflexive?(<=) : bool = (FORALL x: x <= x)
 
@@ -44,7 +49,26 @@ list[t:TYPE] : DATATYPE
     null: null?
     cons (car: t, cdr :list) :cons?
   END list
+state: THEORY
+   BEGIN
+    state: TYPE+
+    l: [state -> list[int]]
+    x: [state -> real]
+    b: [state -> bool]
+    box(bv: pred[state]): bool = FORALL (s: state): bv(s)
+    F: FORMULA box(b IMPLIES length(l) + 3 > x)
+   END state
 
+K_conversion automatically converts F to
+
+  F2: FORMULA
+    box(LAMBDA (x3: state):
+          b(x3) IMPLIES
+           (LAMBDA (x2: state):
+              (LAMBDA (x1: state): (LAMBDA (x: state): length(l(x)))(x1) + 3)
+                  (x2)
+               > x(x2))
+               (x3))
 
 =============================Lexical Rules====================================
 
@@ -58,18 +82,21 @@ Numbers are composed of digits; floating point numbers are not supported.
 
 ============================Reserved Words====================================
 
-ALL         COROLLARY    FALSE       LEMMA         SUBLEMMA   
-AND  	    DATATYPE     FORALL      LET           THEN       
-ARRAY  	    ELSE         FORMULA     MEASURE       THEOREM    
-ASSUMING    ELSIF        FROM        NOT           THEORY     
-ASSUMPTION  END          FUNCTION    O             TRUE       
-AXIOM  	    ENDASSUMING  IF          OBLIGATION    TYPE       
-BEGIN  	    ENDCASES     IFF         OF            IMPORTING  
-BUT  	    ENDIF        IMPLIES     OR            VAR        
-CASES  	    EPSILON      IN          PLET          WHEN       
-CLAIM  	    EXISTS       LAM         PROPOSITION   WHERE      
-CONJECTURE  EXPORTING    LAMBDA      RECURSIVE     WITH       
-CONTAINING  FACT         LAW         SOME
+AND         CONTAINING  FALSE       LEMMA          SUBTYPES
+ANDTHEN     CONVERSION  FORALL      LET            SUBTYPE_OF
+ARRAY       COROLLARY   FORMULA     LIBRARY        TABLE
+ASSUMING    DATATYPE    FROM        MEASURE        THEN
+ASSUMPTION  ELSE        FUNCTION    NONEMPTY_TYPE  THEOREM
+AXIOM       ELSIF       HAS_TYPE    NOT            THEORY
+BEGIN       END         IF          O              TRUE
+BUT         ENDASSUMING IFF         OBLIGATION     TYPE
+BY          ENDCASES    IMPLIES     OF             TYPE+
+CASES       ENDCOND     IMPORTING   OR             VAR 
+CHALLENGE   ENDIF       IN          ORELSE         WHEN
+CLAIM       ENDTABLE    INDUCTIVE   POSTULATE      WHERE
+CLOSURE     EXISTS      JUDGEMENT   PROPOSITION    WITH
+COND        EXPORTING   LAMBDA      RECURSIVE      XOR
+CONJECTURE  FACT        LAW         SUBLEMMA
 
 ===============================Special Symbols================================
 
@@ -85,15 +112,17 @@ CONTAINING  FACT         LAW         SOME
 ----------------------Uninterpreted types and subtypes------------------------
 foo: TYPE
 some_nums: TYPE FROM number
-nat_to_10: TYPE = {x:nat | x <= 10}
-posint: TYPE = {x:integer | x > 0} CONTAINING 1
-ptype: TYPE = (pred?)                    % same as {x | pred?(x)}
+nat_to_10: TYPE+ = {x:nat | x <= 10}    % TYPE+ == NONEMPTY_TYPE
+posint: NONEMPTY_TYPE = {x:integer | x > 0} CONTAINING 1
+ptype: TYPE = (pred?)                    % == {x | pred?(x)}
 
 -------------------------------Function types---------------------------------
 
-intf: TYPE = FUNCTION[int, int -> int]
+intf: TYPE = [int, int -> int]
 altf: TYPE = [int, int -> int]           % same as above
 inta: TYPE = ARRAY[int,int -> int]       % same as above
+intp: TYPE = pred[int]                   % == [int -> bool]
+ints: TYPE = setof[int]                  % == [int -> bool]
 
 ---------------------------------Tuple Types----------------------------------
 
@@ -101,11 +130,11 @@ tuptype: TYPE = [int, bool, [int -> int]]
 
 --------------------------------Record types----------------------------------
 
-stack: TYPE = [# pointer: nat, astack: ARRAY[nat -> t] #]
+stack: TYPE = [# pointer: nat, astack: [nat -> t] #]
 
 -------------------------------Dependent Types--------------------------------
 
-pfun: TYPE = [# dom: predicate[t1], pfn:[(dom)->t2] #]
+pfun: TYPE = [# dom: PRED[t1], pfn:[(dom)->t2] #]
 date: TYPE = [y,m:nat, {d:nat | d <= days(m,y))}]
 tmod: TYPE = [n,m:int -> {x:nat | x < m}]
 
@@ -137,7 +166,14 @@ sum(f,x,y): int                      % f,x,y prev declared VAR
 sum(f,(x,y:int)): int                % f prev declared VAR
 fac(n): RECURSIVE nat =
    (IF n = 0 THEN 1 ELSE n * fac(n-1) ENDIF)
-   MEASURE (LAMBDA n: n)
+   MEASURE n
+depth(l: list) RECURSIVE nat =
+  CASES l OF
+    null: 0,
+    cons(a, b): depth(b) + 1
+  ENDCASES
+  MEASURE l BY <<    % uses subterm ordering
+even(n: nat) INDUCTIVE bool = n = 0 OR (n > 1 AND even(n - 2))
 
 ----------------------------Variable Declarations-----------------------------
 
@@ -149,6 +185,16 @@ f: VAR [int -> [int -> int]]
 transitive: AXIOM x < y AND y < z IMPLIES x < z
 nonzero_fac: THEOREM fac(n) /= 0
 poset: ASSUMPTION poset?(T,<=)   % Only in ASSUMINGs
+
+--------------------------Judgement Declarations------------------------------
+
+nzrat_is_nzreal: JUDGEMENT nonzero_rational SUBTYPE_OF nonzero_real
+seventeen_is_prime: JUDGEMENT 17 HAS_TYPE prime
+rat_plus_rat_is_rat: JUDGEMENT +(x, y: rat) HAS_TYPE rat
+
+-------------------------------Conversions------------------------------------
+
+CONVERSION extend[T, S, bool, false]
 
 =================================Expressions==================================
 
@@ -183,6 +229,37 @@ Pattern matching on datatypes.
     ELSE null
   ENDCASES
 
+-----------------------------------COND---------------------------------------
+  Generates coverage & disjoint TCCs:     Generates disjoint TCC:
+    COND                                    COND
+      x<0 -> -1,                              x<0 -> -1,
+      x=0 -> 0,                               x=0 -> 0,
+      x>0 -> 1                                ELSE -> 1
+    ENDCOND                                ENDCOND
+
+----------------------------------TABLE---------------------------------------
+TABLE                  TABLE                             TABLE state, input 
+  %-------+----++        %--------+-------+------++           %+---+---++   
+  | x < 0 | -1 ||        |[ x < 0 | x = 0 | ELSE ]|           |[ x | y ]|   
+  %-------+----++        %--------+-------+------++        %---+---+---++   
+  | x = 0 | 0  ||        | -1     | 0     | 1    ||        | a | a | b ||   
+  %-------+----++        %--------+-------+------++        %---+---+---++   
+  | ELSE  | 1  ||      ENDTABLE                            | b | b | b ||   
+  %-------+----++				           %---+---+---++   
+ENDTABLE					         ENDTABLE           
+
+TABLE
+         %+---------------------+---------------------+---------------------++
+         |[ y = 27              | y > 27              | y < 27              ]|
+  %-------+---------------------+---------------------+---------------------++
+  | x = 3 | 27 + sqrt(27)       | 54 + sqrt(27)       | y ^ 2 + 3           ||
+  %-------+---------------------+---------------------+---------------------++
+  | x < 3 | 27 + sqrt(-(x - 4)) | y + sqrt(-(x - 5))  | y ^ 2 + (x - 3) ^ 2 ||
+  %-------+---------------------+---------------------+---------------------++
+  | x > 3 | 27 + sqrt(x - 3)    | 2 * y + sqrt(x - 3) | y ^ 2 + (3 - x) ^ 2 ||
+  %-------+---------------------+---------------------+---------------------++
+ENDTABLE                                                    
+
 ---------Function application, lambda-abstraction & function update-----------
 
 f(1,2)(0)
@@ -198,29 +275,28 @@ r WITH [pointer := 2, (astack)(1) := 1]
 -----------------------Tuple construction & projection------------------------
 
 (1, true, (LAMBDA (x:int) x + 37))
-proj_3(tup)
+tup`3    % same as proj_3(tup)
 
-----------------------------LET, PLET, & WHERE------------------------------
+----------------------------LET & WHERE------------------------------
 
-PLET is a parallel let; in the example below y depends on an outside x.
 WHERE is like LET, but with the assignments and expression reversed.
 
 LET x = 2, y:nat = x*x IN f(x,y)   % == f(2,4)
-PLET x = 2, y:nat = x*x IN f(x,y)
 f(x,y) WHERE x = 2, y:nat = x*x    % Like LET
+LET sq(x: int): int = x * x IN sq(sq(3))
 
 ----------------------------------Coercion------------------------------------
 
 Coercion indicates the expected type to the typechecker to resolve ambiguity.
 
-a + b:natural
-(LAMBDA n -> nat: n - m)     % LAMBDA coercion
+a + b::nat    % Same as a + (LAMBDA (x: nat): x)(b)
 
 ------------------------------------Names-------------------------------------
 
 If foo is declared in theory bar, then the following are allowable references
-(the first two may be ambiguous).
+(the first three may be ambiguous).
 
 foo
 foo[int]
 bar[int].foo
+lib@bar[int].foo

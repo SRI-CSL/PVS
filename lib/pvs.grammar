@@ -50,6 +50,26 @@ list[t:TYPE] : DATATYPE
     cons (car: t, cdr :list) :cons?
   END list
 
+state: THEORY
+   BEGIN
+    state: TYPE+
+    l: [state -> list[int]]
+    x: [state -> real]
+    b: [state -> bool]
+    box(bv: pred[state]): bool = FORALL (s: state): bv(s)
+    F: FORMULA box(b IMPLIES length(l) + 3 > x)
+   END state
+
+K_conversion automatically converts F to
+
+  F2: FORMULA
+    box(LAMBDA (x3: state):
+          b(x3) IMPLIES
+           (LAMBDA (x2: state):
+              (LAMBDA (x1: state): (LAMBDA (x: state): length(l(x)))(x1) + 3)
+                  (x2)
+               > x(x2))
+               (x3))
 
 =============================Lexical Rules====================================
 
@@ -137,7 +157,13 @@ sum(f,x,y): int                      % f,x,y prev declared VAR
 sum(f,(x,y:int)): int                % f prev declared VAR
 fac(n): RECURSIVE nat =
    (IF n = 0 THEN 1 ELSE n * fac(n-1) ENDIF)
-   MEASURE (LAMBDA n: n)
+   MEASURE n
+depth(l: list) RECURSIVE nat =
+  CASES l OF
+    null: 0,
+    cons(a, b): depth(b) + 1
+  ENDCASES
+  MEASURE l BY <<    % uses subterm ordering
 even(n: nat) INDUCTIVE bool = n = 0 OR (n > 1 AND even(n - 2))
 
 ----------------------------Variable Declarations-----------------------------
@@ -150,6 +176,16 @@ f: VAR [int -> [int -> int]]
 transitive: AXIOM x < y AND y < z IMPLIES x < z
 nonzero_fac: THEOREM fac(n) /= 0
 poset: ASSUMPTION poset?(T,<=)   % Only in ASSUMINGs
+
+--------------------------Judgement Declarations------------------------------
+
+nzrat_is_nzreal: JUDGEMENT nonzero_rational SUBTYPE_OF nonzero_real
+seventeen_is_prime: JUDGEMENT 17 HAS_TYPE prime
+rat_plus_rat_is_rat: JUDGEMENT +(x, y: rat) HAS_TYPE rat
+
+-------------------------------Conversions------------------------------------
+
+CONVERSION extend[T, S, bool, false]
 
 =================================Expressions==================================
 

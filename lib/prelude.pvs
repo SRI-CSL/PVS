@@ -444,7 +444,7 @@ orders [T: TYPE]: THEORY
   strict_total_order?(<): bool = strict_order?(<) & trichotomous?(<)
 
   strict_total_is_strict: JUDGEMENT
-    (strict_total_order?) SUBTYPE_OF (strict_total_order?)
+    (strict_total_order?) SUBTYPE_OF (strict_order?)
   strict_total_is_trichotomous: JUDGEMENT
     (strict_total_order?) SUBTYPE_OF (trichotomous?)
 
@@ -2807,7 +2807,11 @@ modulo_arithmetic : THEORY
      rem(b)(- x) = rem(b)(- y) IFF rem(b)(x) = rem(b)(y)
 
   % Provide a name for the function asserted to exist by euclid_int
-  ndiv(n,b) : {q: int | n = b * q + rem(b)(n)}
+  ndiv(x,b) : {q: int | x = b * q + rem(b)(x)}
+
+  ndiv_lt: LEMMA ndiv(x,b) <= x/b
+
+  JUDGEMENT ndiv(n,b) HAS_TYPE upto(n)
 
   END modulo_arithmetic
 

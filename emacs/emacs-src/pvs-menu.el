@@ -21,7 +21,8 @@
      ["help-pvs-prover" help-pvs-prover t]
      ["help-pvs-prover-command" help-pvs-prover-command t]
      ["help-pvs-prover-strategy" help-pvs-prover-strategy t]
-     ["help-pvs-prover-emacs" help-pvs-prover-emacs t])
+     ["help-pvs-prover-emacs" help-pvs-prover-emacs t]
+     ["pvs-release-notes" pvs-release-notes t])
     ("Editing PVS Files"
      ["forward-theory" forward-theory (current-pvs-file t)]
      ["backward-theory" backward-theory (current-pvs-file t)]
@@ -69,7 +70,8 @@
      ["show-hidden-formulas" show-hidden-formulas pvs-in-checker]
      ["show-auto-rewrites" show-auto-rewrites pvs-in-checker]
      ["show-expanded-sequent" show-expanded-sequent pvs-in-checker]
-     ["show-skolem-constants" show-skolem-constants pvs-in-checker])
+     ["show-skolem-constants" show-skolem-constants pvs-in-checker]
+     ["pvs-set-proof-parens" pvs-set-proof-parens t])
     ("Adding and Modifying Declarations"
      ["add-declaration" add-declaration (current-pvs-file t)]
      ["modify-declaration" modify-declaration (current-pvs-file t)])
@@ -135,7 +137,8 @@
      ["show-declaration" show-declaration (current-pvs-file t)]
      ["find-declaration" find-declaration (current-pvs-file t)]
      ["whereis-declaration-used" whereis-declaration-used (current-pvs-file t)]
-     ["list-declarations" list-declarations (current-pvs-file t)])
+     ["list-declarations" list-declarations (current-pvs-file t)]
+     ["show-expanded-form" show-expanded-form (current-pvs-file t)])
     ("Status"
      ["status-theory" status-theory (current-pvs-file t)]
      ["status-pvs-file" status-pvs-file (current-pvs-file t)]
@@ -213,7 +216,7 @@
     (easy-menu-define PVS global-map "PVS menus" pvs-mode-menus))
   )
 
-(when (memq pvs-emacs-system '(xemacs19 xemacs20))
+(when (memq pvs-emacs-system '(xemacs21 xemacs20 xemacs19))
   (add-submenu nil pvs-mode-menus "")
   (add-hook 'pvs-mode-hook
     '(lambda ()
@@ -222,18 +225,18 @@
 (require 'font-lock)
 
 (defvar pvs-keywords
-  '("ALL" "AND" "ANDTHEN" "ARRAY" "ASSUMING" "ASSUMPTION" "AXIOM" "BEGIN"
-    "BUT" "BY" "CASES" "CHALLENGE" "CLAIM" "CLOSURE" "CODATATYPE"
-    "COINDUCTIVE" "COND" "CONJECTURE" "CONTAINING" "CONVERSION"
-    "CORECURSIVE" "COROLLARY" "DATATYPE" "ELSE" "ELSIF" "END"
-    "ENDASSUMING" "ENDCASES" "ENDCOND" "ENDIF" "ENDTABLE" "EXISTS"
-    "EXPORTING" "FACT" "FALSE" "FORALL" "FORMULA" "FROM" "FUNCTION"
-    "HAS_TYPE" "IF" "IFF" "IMPLIES" "IMPORTING" "IN" "INDUCTIVE"
-    "JUDGEMENT" "LAMBDA" "LAW" "LEMMA" "LET" "LIBRARY" "MEASURE"
-    "NONEMPTY_TYPE" "NOT" "O" "OBLIGATION" "OF" "OR" "ORELSE" "POSTULATE"
-    "PROPOSITION" "RECURSIVE" "SUBLEMMA" "SUBTYPES" "SUBTYPE_OF" "TABLE"
-    "THEN" "THEOREM" "THEORY" "TRUE" "TYPE" "TYPE+" "VAR" "WHEN" "WHERE"
-    "WITH" "XOR"))
+  '("AND" "ANDTHEN" "ARRAY" "ASSUMING" "ASSUMPTION" "AUTO_REWRITE"
+    "AUTO_REWRITE+" "AUTO_REWRITE-" "AXIOM" "BEGIN" "BUT" "BY" "CASES"
+    "CHALLENGE" "CLAIM" "CLOSURE" "COND" "CONJECTURE" "CONTAINING"
+    "CONVERSION" "CONVERSION+" "CONVERSION-" "COROLLARY" "DATATYPE"
+    "ELSE" "ELSIF" "END" "ENDASSUMING" "ENDCASES" "ENDCOND" "ENDIF"
+    "ENDTABLE" "EXISTS" "EXPORTING" "FACT" "FALSE" "FORALL" "FORMULA"
+    "FROM" "FUNCTION" "HAS_TYPE" "IF" "IFF" "IMPLIES" "IMPORTING" "IN"
+    "INDUCTIVE" "JUDGEMENT" "LAMBDA" "LAW" "LEMMA" "LET" "LIBRARY" "MACRO"
+    "MEASURE" "NONEMPTY_TYPE" "NOT" "O" "OBLIGATION" "OF" "OR" "ORELSE"
+    "POSTULATE" "PROPOSITION" "RECURSIVE" "SUBLEMMA" "SUBTYPES"
+    "SUBTYPE_OF" "TABLE" "THEN" "THEOREM" "THEORY" "TRUE" "TYPE" "TYPE+"
+    "VAR" "WHEN" "WHERE" "WITH" "XOR"))
 
 (defvar pvs-operators
   '("!" "!!" "#" "##" "\\$" "\\$\\$" "&" "&&"
@@ -298,13 +301,13 @@
    (list
     (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
     ;; These have to come first or they will match too soon.
-    (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\)"
+    (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
 	  1 'font-lock-function-name-face)
-    (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 1 'font-lock-keyword-face)
+    (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-keyword-face)
     (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-keyword-face)
     (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-keyword-face)
     (list "\\({\\||\\|}\\)" 1 'font-lock-keyword-face)
-    (list "\\(\\[\\|\\->\\|\\]\\)" 1 'font-lock-keyword-face)
+    (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-keyword-face)
     (list (concat "\\("
 		  (mapconcat 'identity pvs-operators "\\|")
 		  "\\)")
@@ -316,13 +319,13 @@
    (list
     (mapconcat 'pvs-keyword-match pvs-keywords "\\|")
     ;; These have to come first or they will match too soon.
-    (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\)"
+    (list "\\(<|\\||-\\||->\\||=\\||>\\|\\[\\]\\|/\\\\\\)"
 	  1 'font-lock-function-name-face)
-    (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 1 'font-lock-pvs-record-parens-face)
+    (list "\\((#\\|#)\\|\\[#\\|#\\]\\)" 0 'font-lock-pvs-record-parens-face)
     (list "\\((:\\|:)\\|(|\\||)\\|(\\|)\\)" 1 'font-lock-pvs-parens-face)
     (list "\\(\\[|\\||\\]\\||\\[\\|\\]|\\|||\\)" 1 'font-lock-pvs-table-face)
     (list "\\({\\||\\|}\\)" 1 'font-lock-pvs-set-brace-face)
-    (list "\\(\\[\\|\\->\\|\\]\\)" 1 'font-lock-pvs-function-type-face)
+    (list "\\(\\[\\|->\\|\\]\\)" 1 'font-lock-pvs-function-type-face)
     (list (concat "\\("
 		  (mapconcat 'identity pvs-operators "\\|")
 		  "\\)")

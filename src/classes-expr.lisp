@@ -109,6 +109,10 @@
   (args :parse t)
   (expression :parse t))
 
+(defcl unpack-expr (cases-expr))
+
+(defcl in-selection (selection)
+  index)
 
 (defcl application (expr)
   (operator :parse t)

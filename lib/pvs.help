@@ -32,6 +32,8 @@ help-pvs-prover-strategy, pvs-help-prover-strategy (C-c C-h s)
                             - Display the specified strategy
 help-pvs-prover-emacs, pvs-help-prover-emacs (C-c C-h e)
                             - Display help for the PVS prover Emacs commands
+pvs-release-notes (C-c C-h r)
+                            - Display the release notes			 
 x-prover-commands           - Display prover commands in a popup window
 
 ---------------------------Editing PVS Files----------------------------------
@@ -62,17 +64,32 @@ x-prove,          xpr (C-c C-p x)  Start proof along with X display
 step-proof,       prs (C-c C-p s)  Start proof and set up for stepping
 x-step-proof,     xsp (C-c C-p X)  Combines x-prove and step-proof
 redo-proof,       prr (C-c C-p r)  Redo proof of formula at cursor
-prove-next-unproved-formula        Start proof on next unproved formula
+prove-next-unproved-formula        
+                  prnext (C-c C-p n) Start proof on next unproved formula
 prove-theory,     prt (C-c C-p t)  Do all proofs in specified theory
 prove-theories			   Do all proofs in specified theories
 prove-pvs-file,   prf (C-c C-p f)  Do all the proofs in current file
 prove-importchain,pri (C-c C-p i)  Do all proofs in IMPORT chain
 prove-importchain-subtree,pris     Do proofs in subtree of IMPORT chain
 prove-proofchain, prp (C-c C-p c)  Do all proofs in proofchain of formula
-prove-untried-theory               Try untried proofs with specified strategy
-prove-untried-pvs-file             Try untried proofs with specified strategy
-new-decision-procedures		   Use the new decision procedures by default
-old-decision-procedures		   Use the old decision procedures by default
+prove-formulas-theory, prft        Try formulas with given strategy
+prove-formulas-pvs-file, prff      Try formulas with given strategy
+prove-formulas-importchain, prfi   Try formulas with given strategy
+prove-formulas-importchain-subtree, prfs
+                                   Try untried proofs with given strategy
+prove-tccs-theory, prtt            Try formulas with given strategy
+prove-tccs-pvs-file, prtf          Try formulas with given strategy
+prove-tccs-importchain, prti       Try formulas with given strategy
+prove-tccs-importchain-subtree, prts
+                                   Try untried proofs with given strategy
+prove-untried-theory, prut (C-c C-p u)
+                                   Try untried proofs with given strategy
+prove-untried-pvs-file, pruf (C-c C-p U)
+                                   Try untried proofs with given strategy
+prove-untried-importchain, prui    Try untried proofs with given strategy
+prove-untried-importchain-subtree, prus
+                                   Try untried proofs with given strategy
+set-decision-procedure		   Set the default decision procedures
 prove-theory-using-default-dp      Do proofs with default decision procedures
 prove-theories-using-default-dp    Do proofs with default decision procedures
 prove-pvs-file-using-default-dp    Do proofs with default decision procedures
@@ -120,6 +137,7 @@ show-skolem-constants       Display Skolem constants with types of sequent
 explain-tcc                 Explain why the TCC sequent was generated
 usedby-proofs               Display formulas whose proofs refer to the
                               declaration at cursor
+pvs-set-proof-parens        Control parentheses display in proofs
 
 ---------------------------Evaluation Commands--------------------------------
 
@@ -220,6 +238,7 @@ find-declaration         (M-,)   Search for declarations of given symbol
 whereis-declaration-used (M-;)   Search for declarations which reference decl
 whereis-identifier-used  (C-M-;) Search for declarations which reference symbol
 list-declarations        (M-:)   Show list of declarations of current context
+show-expanded-form       (C-.)   Show expanded form of term containing region
 
 ----------------------------Status Commands-----------------------------------
 

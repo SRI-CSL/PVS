@@ -689,7 +689,7 @@ context.  In addition, the corresponding proof file is copied."
     (error "File does not exist"))
   (setq pvs-last-import-dir (pathname-directory file))
   (let* ((nfile (pvs-file-name name))
-	 (pfile (format "%s%s.prf" (pathname-directory file) name))
+	 (pfile (format "%s%s.prf" (pathname-directory file) (pathname-name file)))
 	 (npfile (pvs-file-name name "prf")))
     (when (or (not (file-exists-p nfile))
 	      (y-or-n-p "File already exists - overwrite? "))
@@ -1299,6 +1299,19 @@ Provides an example specification, along with the PVS grammar."
     (pop-to-buffer buf)
     (pvs-view-mode)))
   
+(defpvs pvs-release-notes help ()
+  "Display the release notes."
+  (interactive)
+  (let ((buf (get-buffer-create "PVS Release Notes")))
+    (set-buffer buf)
+    (if buffer-read-only (toggle-read-only))
+    (erase-buffer)
+    (insert-file-contents (concat pvs-path "/lib/release-notes"))
+    (goto-char (point-min))
+    (unless buffer-read-only (toggle-read-only))
+    (pop-to-buffer buf)
+    (pvs-view-mode)))
+
 
 ;;; suspend-pvs
 
@@ -1374,13 +1387,13 @@ underlying Lisp in the minibuffer."
 
 (defun pvs-version-string ()
   (let ((vers (get-pvs-version-information)))
-    (format "PVS Version %s (%s)"
+    (format "PVS Version %s%s"
 	(car vers)
       (if (and (member (cadr vers) '(nil NIL))
 	       (member (caddr vers) '(nil NIL))
 	       (member (cadddr vers) '(nil NIL)))
-	  "No patches loaded"
-	  (format "patch level %s%s%s"
+	  ""
+	  (format "(patch level %s%s%s)"
 	      (if (member (cadr vers) '(nil NIL))
 		  ""
 		  (format "%s" (cadr vers)))
@@ -1787,5 +1800,3 @@ With an argument, only performs a scavenge and not a full gc."
    (format "(excl:gc %s)" (and current-prefix-arg t))
    nil nil 'dont-care)
   (message "Garbage collection completed"))
-
-

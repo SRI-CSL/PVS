@@ -228,7 +228,6 @@ ground-prover = src/ground-prover/prmacros.lisp \
 		src/ground-prover/tuples.lisp \
 		src/ground-prover/arith.lisp \
 		src/ground-prover/q.lisp \
-		src/ground-prover/nonlin.lisp \
 		src/ground-prover/pvs-patch.lisp \
 
 pvs-src = src/closopt.lisp \
