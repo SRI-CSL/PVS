@@ -34,7 +34,7 @@
 	     :debug-on-error t
 	     ;; :destination-directory nil
 	     :discard-arglists nil
-	     :discard-compiler *runtime*
+	     :discard-compiler nil
 	     :discard-local-name-info nil
 	     :discard-source-file-info *runtime*
 	     :discard-xref-info *runtime*
@@ -79,7 +79,7 @@
 	     :record-xref-info (not *runtime*)
 	     :restart-app-function nil
 	     :restart-init-function nil
-	     :runtime (when *runtime* :standard)
+	     :runtime (when *runtime* :dynamic)
 	     :server-name nil
 	     ;; :show-window nil ;Windows
 	     ;; :splash-from-file nil ;Windows
