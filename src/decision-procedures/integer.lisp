@@ -1,3 +1,10 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; arrays.lisp -- 
+;; Author          : David Cyrluk
+;; Created On      : 1998/06/12 22:55:47
+;;
+;; HISTORY
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package dp)
 
 (defun dp-integer-atom-p (l cong-state)
@@ -23,7 +30,17 @@
   (and (not (equality-p lit))
        (integer-equality-p lit cong-state)))  
 
+
+(defun ineq-initial-type (ineq cong-state)
+  (if (dp-integer-atom-p (lhs ineq) cong-state)
+      (let ((frac (fractpt (rhs ineq) cong-state)))
+	(if (and frac (zerop frac))
+	    *integer*
+	    *number*))
+      *number*))
+
 (defun strong-integercut (lit cong-state)
+  "Like integercut, but multiplies by the lcm first."
   (let ((diff (make-ineq-to-difference lit)))
     (if (plus-p diff)
 	(let* ((lcm (mk-constant (apply #'lcm (plus-denoms diff))))
@@ -35,6 +52,7 @@
 	lit)))
 
 (defun integercut (lit cong-state)
+  "Cuts out the fractional part of an integer inequality."
   (let ((fract (and (or (arith-bool-p lit)
 			(equality-p lit))
 		    (dp-integer-atom-p (lhs lit) cong-state)
@@ -137,10 +155,3 @@
       (map-funargs #'times-fract-pt l)
       0)))
 
-(defun ineq-initial-type (ineq cong-state)
-  (if (dp-integer-atom-p (lhs ineq) cong-state)
-      (let ((frac (fractpt (rhs ineq) cong-state)))
-	(if (and frac (zerop frac))
-	    *integer*
-	    *number*))
-      *number*))

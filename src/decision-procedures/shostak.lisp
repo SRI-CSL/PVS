@@ -1,53 +1,34 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; arrays.lisp -- 
+;; Author          : David Cyrluk
+;; Created On      : 1998/06/12 22:56:47
+;;
+;; HISTORY
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package dp)
 
-(defmacro uninterp? (term)
-  `(not (interp? ,term)))
-
-(defmacro interpsym? (sym)
-  `(node-interpreted? ,sym))
-
-(defun interp? (term)
-  (or (true-p term)
-      (false-p term)
-      (dp-numberp term)
-      (and (application-p term)
-	   (or (interpsym? (funsym term))
-	       (and (application-p (funsym term))
-		    (interpsym? (funsym (funsym term))))))
-      (applyupdate-p term)))
-
-(declaim (notinline canonsig-merge canonsig-canon))
-
-(defun canonsig-merge (w cong-state &optional (no-mod nil))
-  (canonsig w cong-state no-mod))
-
-(defun canonsig-canon (w cong-state &optional (no-mod nil))
-  ;(format t "~%Canonizing: ~S" (node-to-list w))
-  (canonsig w cong-state no-mod))
-
-(defvar *current-cs* nil)
-
-(defun test-process (eqns equality &optional (cs (null-single-cong-state)))
-  (return-all-cong-states *made-cong-states*)
-  (let ((new-cs (process eqns cs)))
-    (setq *current-cs* new-cs)
-    (canon equality new-cs)))
-
-;  (let ((lhs-canon (canon (lhs equality) cs))
-;	(rhs-canon (canon (rhs equality) cs)))
-;    (if (eq lhs-canon rhs-canon)
-;	*true*
-;	(mk-equality lhs-canon rhs-canon cs)))
-
-(defvar *bass* nil)
-
 (defun invoke-process (eqn cong-state)
+  "Main api interface to the dps.
+This is the only function that should be called to add constraints
+to the decision procedures.
+eqn is an atomic formula, either an equality or a boolean term.
+Invoke-process processes eqn in cong-state. If eqn is entailed by
+cong-state invoke-process returns *true*, and cong-state is unchanged.
+If eqn is contradictory to cong-state, invoke-process returns *false*.
+Otherwise cong-state is modified to include the consequences of eqn,
+and invoke-process returns nil.
+eqn needn't be canonized, but should be part of *term-hash*,
+i.e. created using the apis (mk-constant, mk-term, (mk-dp-variable ?))"
   (if (need-neg-processing eqn cong-state)
       (let ((neg-res (invoke-process-neg eqn cong-state)))
 	(or neg-res (invoke-process* eqn cong-state)))
       (invoke-process* eqn cong-state)))
 
 (defun need-neg-processing (eqn cong-state)
+  "This is a heuristic for deciding whether to try to refute eqn
+in the hopes of getting a contradiction showing that eqn is true.
+This is necessary because the combination of dps does not necessarily
+reduce all true assertions to true."
   (let ((norm-eqn (recursive-sigma eqn cong-state)))
     (or (integer-inequality-p norm-eqn cong-state)
 	(and (ineq-p norm-eqn)
@@ -55,29 +36,16 @@
 	(negation-p norm-eqn))))
 
 (defun invoke-process* (eqn cong-state)
-  (when (and nil
-	     (eq eqn pvs::*beqn*)
-	     (equal (cong-state-used-assertions cong-state)
-		    (cdr pvs::*bused*)))
-    (break))
-  ;(declare (special *dp-changed*))
-  (when (or (and nil (and (application-p eqn)
-			  (eq (funsym eqn) *greatereqp*)))
-	    (and nil (eq eqn *bass*))) (break))
+  "The main workhorse for invoke-process."
   (let* ((*dp-changed* nil)
-	 (*contradiction* nil) ;(x (break))
+	 (*contradiction* nil)
 	 (canon-eqn (canon eqn cong-state 'no-mod))
-	 ;(x (when (false-p canon-eqn) (break)))
-	 ;(x (break))
-	 (result (process* canon-eqn (add-assertion eqn cong-state))))
+	 (result (process* canon-eqn (unless (false-p canon-eqn)
+				       (add-assertion eqn cong-state)))))
     (declare (special *dp-changed*))
     (declare (special *contradiction*))
-    ;(break "~%dp-changed=~A" *dp-changed*)
     (cond
      ((or *contradiction* (eq result *false*))
-      (when (false-p canon-eqn)
-	(setf (cong-state-used-assertions cong-state)
-	      (cdr (cong-state-used-assertions cong-state))))
       *false*)
      (*dp-changed* (invoke-process-changed canon-eqn cong-state))
      (t (setf (cong-state-used-assertions result)
@@ -85,17 +53,8 @@
 	*true*))))
 
 
-(defvar *dbg-diseqs* nil)
-
 (defun invoke-process-changed (canon-eqn cong-state)
-  (when *dbg-diseqs*
-    (let ((check-neqs (check-and-canonize-neqs cong-state)))
-      (cond
-       ((false-p check-neqs) (break)
-	(setf (cong-state-used-assertions cong-state)
-	      (cdr (cong-state-used-assertions cong-state)))
-	*false*)
-       (t nil)))))
+  nil)
 
 (defun invoke-process-neg (eqn cong-state)
   (let ((neg-result (negate-and-check-eqn eqn cong-state)))
@@ -109,8 +68,7 @@
 (defun negate-and-check-eqn (eqn cong-state)
   (nprotecting-cong-state
    (new-cong-state cong-state)
-   (invoke-process* (signegation (mk-negation eqn) new-cong-state)
-		    new-cong-state)))
+   (invoke-process* (mk-negation eqn) new-cong-state)))
 
 (defun make-nequality (lhs rhs cong-state)
   (let ((new-eq (sigma (mk-equality lhs rhs) cong-state)))
@@ -119,27 +77,6 @@
      ((false-p new-eq) *true*)
      (t (mk-equality new-eq *false*)))))
 
-(defun canon-neq (neq cong-state)
-  (cond
-   ((false-p neq) neq)
-   (t
-    (let* ((eq (lhs neq))
-	   (lhs (if (equality-p eq) (lhs eq) eq))
-	   (rhs (if (equality-p eq) (rhs eq) *true*))
-	   (new-lhs (canon lhs cong-state 'nomod))
-	   (new-rhs (canon rhs cong-state 'nomod)))
-      (if (eq new-lhs new-rhs)
-	  (prog1 *false* (break))
-	  (make-nequality new-lhs new-rhs cong-state))))))
-
-(defun find-neq (neq cong-state)
-  (if (false-p neq) neq
-      (let* ((eq (lhs neq))
-	     (new-lhs (dp-find (lhs eq) cong-state))
-	     (new-rhs (dp-find (rhs eq) cong-state)))
-	(if (eq new-lhs new-rhs)
-	    *false*
-	    (make-nequality new-lhs new-rhs cong-state)))))
 
 (defvar *use-t-c* t)
 
@@ -286,61 +223,39 @@
    ((equality-p term) (find-eq term cong-state))
    (t (dp-find term cong-state))))
 
+(defvar *use-canon-hash* nil) ;;; If t hashes the results of canon.
+;;; Canon is a very expensive operation because it recursively traverses the
+;;; whole term.
+;;; Once a term is canonized you should not need to recursively traverse the
+;;; term again. So hashing canons should be faster.
+;;; But, at least when used in pvs, there are very few terms that are canon'd
+;;; many times, since terms are lazily introduced to the dps,
+;;; and thus the speedup is minimal.
+
 (defun canon (term cong-state &optional (no-mod nil))
-  (let ((canon-hash (canon-hash term cong-state)))
-    (cond
-     (canon-hash
-      (let (;(t-f (find-top canon-hash cong-state))
-	    (t-c (canon* term cong-state no-mod))
-	    )
+  (if *use-canon-hash*
+      (let ((canon-hash (canon-hash term cong-state)))
 	(cond
-	 (t t-c)
-	 ((eq t-f t-c) t-f)
-	 (*use-t-c* t-c)
-	 (t (break "Please contact Cyrluk and do a :cont 0 to continue")
-	    t-c))))
-     (t (let ((result (canon* term cong-state no-mod)))
-	  (setf (canon-hash term cong-state) canon-hash)
-	  result)))))
+	 (canon-hash canon-hash)
+	 (t (let ((result (canon* term cong-state no-mod)))
+	      (setf (canon-hash term cong-state) canon-hash)
+	      result))))
+      (canon* term cong-state no-mod)))
 
 (defun canon* (term cong-state &optional (no-mod nil))
-  (canonsig-canon (signature term cong-state no-mod) cong-state no-mod))
-
-(defun mk-term-cs (list)
-  (mk-term list))
-
-(defun need-equality-use (eqn cong-state)
-  (let ((uses (use eqn cong-state)))
-    (loop for u in uses
-	  thereis (not (or (equality-p u)
-			   (negation-p u))))))
+  (canonsig (signature term cong-state no-mod) cong-state no-mod))
 
 (defun canonsig (w cong-state &optional (no-mod nil))
-  (declare (notinline mk-term-cs))
   (cond
    ((interpsym? w) w)
-   ;((and (equality-p w) (not (need-equality-use w cong-state))) w)
    ((application-p w)
-    ;(when (and (equality-p w) (need-equality-use w cong-state)) (break))
     (let ((ww (if (and (interp? w)
 		       (not (project-p w)))
-		 (or (sigma
-		      (mk-term-cs
-			  (cons (funsym w)
-				(map-funargs-list #'canonsig
-						  w cong-state no-mod)))
-		      cong-state)
-		     t
-		     (full-replace-args-with-canonsig w cong-state no-mod)
-		     t
-		     (replace-args-with-canonsig w cong-state no-mod)
-		     t
-		     (replace-args-with-canonsig w cong-state no-mod))
-		 w)))
+		  (replace-args-with-canonsig w cong-state no-mod)
+		  w)))
       (if (application-p ww)
 	  (loop for u in (use (arg 1 ww) cong-state)
-		when (or		;(break)
-		      (eq ww (sig u cong-state)))
+		when (eq ww (sig u cong-state))
 		return (dp-find u cong-state)
 		finally (unless no-mod
 			  (map-args #'add-use ww ww cong-state))
@@ -370,15 +285,6 @@
 		   (map-funargs-list #'canonsig w cong-state no-mod)))))
     (setf (node-external-info result)
 	  (node-external-info w))
-    result))
-
-(defun full-replace-args-with-canonsig (w cong-state &optional (no-mod ni l))
-  (let ((result
-	 (mk-term
-	     (cons (funsym w)
-		   (map-funargs-list #'canonsig w cong-state no-mod)))))
-    (setf (node-external-info result)
-	  (node-external-info w))
     (sigma result cong-state)))
 
 (defun adduse-of-term (term cong-state)
@@ -392,8 +298,6 @@
   (declare (type node term)
 	   (type cong-state cong-state))
   (cond
-   ;((and (equality-p term) (not (need-equality-use term cong-state))) term)
-   ;((equality-p term) term)
    ((application-p term)
     (map-args #'add-use (the application term)
 	      (the application term) (the cong-state cong-state)))

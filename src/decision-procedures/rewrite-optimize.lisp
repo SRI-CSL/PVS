@@ -1,3 +1,10 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; arrays.lisp -- 
+;; Author          : David Cyrluk
+;; Created On      : 1998/12/01 19:14:57
+;;
+;; HISTORY
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package dp)
 
 
@@ -20,7 +27,6 @@
 (defun add-to-rewrite-index (rewrite rewrite-rules)
   (let ((index-op (index-operator (rr-lhs rewrite)))
 	(index-hash (rewrite-rules-index-hash rewrite-rules)))
-    ;(when (string= (rr-name rewrite) "stack") (break))
     (setf (gethash index-op index-hash)
 	  (pushnew rewrite (gethash index-op index-hash)))))
 

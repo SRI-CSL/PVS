@@ -1,16 +1,16 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; arithmetic.lisp -- 
+;; Author          : David Cyrluk
+;; Created On      : 1998/06/12 22:55:04
+;;
+;; HISTORY
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package dp)
 
 
-;(defstruct (dp-number (:include constant (id nil :type number))))
+(defvar *printerpdivide* t
+  "Is division intepreted or not?")
 
-;;is division intepreted or not?
-(defvar *printerpdivide* t)
-
-;(deftype divide-array ()
-;  '(and (array node (3))
-;	(satisfies (lambda (x) (eq (arg 0 x) *divides*)))))
-
-;(defstruct (divide :include application (arguments nil :type divide-array)))
 
 ;;recognizer for division
 (defun divide-p (term)
@@ -116,7 +116,7 @@
 ;;returns monomials of a polynomial
 (defun termsof (expr)  ;;;expr must be arithmetic.
   (if (plus-p expr)
-      (funargs expr)  ;;;clumsy
+      (funargs expr)
       (list expr)))
 
 ;;is fun an inequality symbol.
@@ -146,24 +146,6 @@
 		v)))
     (arith-term-< up vp)))
 
-(defun old-arithord1(u v)
-  (cond
-   ((null u) nil)
-   ((null v) t)
-   ((symbolp u)
-    (cond
-     ((symbolp v)(alphalessp u v))
-     ((numberp v) nil)
-     (t t)))
-   ((symbolp v)(numberp u))
-   ((numberp u)
-    (cond
-     ((numberp v)(< u v))
-     (t t)))
-   ((numberp v) nil)
-   ((equal (car u)(car v))(old-arithord1 (cdr u)(cdr v)))
-   (t (old-arithord1 (car u)(car v)))))
-
 ;;arith-term-< puts an ordering on arithmetic terms
 ;;(uninterpreted terms, symbols, numbers, or their products)
 ;;so that the sum of monomials will be ordered from
@@ -171,24 +153,6 @@
 ;;Also, when solving for a variable, the solver
 ;;will pick the smallest non-numeric term to solve for.
 ;;The ordering is numbers < symbols < uninterpreted terms < products.
-
-(defun arith-term-< (u v)
-  (cond
-   ((dp-numberp u) (if (dp-numberp v)
-		       (< (constant-id u)
-			  (constant-id v))
-		       t))
-   ((dp-numberp v) nil)
-   ((constant-p u) (if (constant-p v)
-		       (string< (constant-id u)
-				(constant-id v))
-		       t))
-   ((constant-p v) nil)
-   ((times-p u) (if (times-p v)
-		    (times-< u v)
-		    nil))
-   ((times-p v) t)
-   (t (application-< u v))))
 
 (defun times-< (u v)
   (application-< u v))
@@ -233,43 +197,9 @@
    ((times-p v) nil)
    (t (application-< u v))))
 
-;;like old-arithord1 but treats nonneg/strict-nonneg-vars
-;;as biggest in ordering
-;;should be fixed to respect abstract syntax.
-(defun arithord1(u v)
-  (cond
-   ((null u) nil)
-   ((null v) t)
-   ((symbolp u)
-    (cond
-     ((symbolp v)
-      (cond
-       ((or (nonneg-var? u) (strict-nonneg-var? u))
-	(cond
-	 ((or (nonneg-var? v) (strict-nonneg-var? v)) (alphalessp u v))
-	 (t nil)))
-       ((or (nonneg-var? v) (strict-nonneg-var? v)) t)
-       (t (alphalessp u v))))
-     ((numberp v) nil)
-     ((nonneg-var? u) nil)
-     ((strict-nonneg-var? u) nil)
-     (t t)))
-   ((symbolp v)
-    (or (numberp u)
-	(nonneg-var? v)
-	(strict-nonneg-var? v)))
-   ((numberp u)
-    (cond
-     ((numberp v)(< u v))
-     (t t)))
-   ((numberp v) nil)
-   ((equal (car u)(car v))(arithord1 (cdr u)(cdr v)))
-   (t (arithord1 (car u)(car v)))))
-
 ;;canonizer for times:  returns a sum of monomials where each monomial
 ;;is sorted according to arith-term-<.  Input assumption is that subterms of
 ;;u have been canonized.
-;;Needs to be rewritten to look nice.
 (defun sigtimes(u)
   (let ((product nil)
 	(coef 1))
@@ -305,7 +235,6 @@
 		    (if (cdr product)
 			(mk-times (sort product 'monom-<))
 			(car product)))))
-	  ;(break)
 	  (if return-product
 	      (if (= coef 1)
 		  return-product
@@ -441,7 +370,6 @@
     (labels
 	((addtosum
 	  (u coef)
-	  ;;;(format t "~%Entering addtosum: ~A, ~A" u coef)
 	  (loop for ptr on sum
 		when ;;;couldn't find u. Enter it at end.
 		(null (cdr ptr)) return (setf (cdr ptr)
@@ -455,7 +383,6 @@
 								(cdr ptr)))))
 	 (buildsum
 	  (u)
-	  ;;;(format t "~%Entering buildsum: ~A" u)
 	  (cond
 	   ((dp-numberp u) (setq const (+ (constant-id u) const)))
 	   ((constant-p u) (addtosum u 1))
@@ -554,6 +481,7 @@
 
 ;;returns -1, 0, or +1 depending on whether coeff is neg, zero, or pos.
 (defun term-sgn (term)
+  "Sign of the coefficient of the term."
   (cond
    ((dp-numberp term)
     (cond
@@ -587,6 +515,9 @@
   (member (funsym ineq) (list *lessp* *greaterp*) :test #'eq))
 
 (defun normineq (ineq cong-state &optional (var nil))
+  "Canonizer for arithmetic equalities and inequalities.
+Assumes that the arguments of ineq are canonical.
+Solves for either the smallest (arith-term-<) term or for var if non-nil."
   (integercut (normineq-first ineq cong-state var) cong-state))
 
 ;;canonizes inequalities a {<, <=, >, >=, =} b by

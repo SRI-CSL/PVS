@@ -1,3 +1,10 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; arrays.lisp -- 
+;; Author          : David Cyrluk
+;; Created On      : 1998/06/24 21:51:32
+;;
+;; HISTORY
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package dp)
 
 (defvar *use-rewrite-hash* t)
@@ -10,8 +17,29 @@
 (defdpfield hash-consed)
 (defdpfield normal-form)
 
+(defdpstruct (rewrite-rules
+	      (:print-function
+	       (lambda (rr s k)
+		 (declare (ignore k))
+		 (format s "<~D Rewrite rules>"
+		   (+ (length (rewrite-rules-rules rr))
+		      (length (rewrite-rules-rules! rr)))))))
+  (rules nil)
+  (rules! nil)
+  (hash (dp-make-eq-hash-table))
+  (index-hash (dp-make-eq-hash-table)))
+
 (defun initial-rewrite-rules ()
   (make-rewrite-rules))
+
+(defun copy-rewrite-rules-and-hash (new-rewrite-rules old-rewrite-rules)
+  (setf (rewrite-rules-rules new-rewrite-rules)
+	(rewrite-rules-rules old-rewrite-rules))
+  (setf (rewrite-rules-rules! new-rewrite-rules)
+	(rewrite-rules-rules! old-rewrite-rules))
+  (copy-hash-table (rewrite-rules-index-hash new-rewrite-rules)
+		   (rewrite-rules-index-hash old-rewrite-rules))
+  new-rewrite-rules)
 
 (defdpstruct (rewrite-rule
 	      (:conc-name "RR-")
@@ -106,6 +134,9 @@
       (multiple-value-bind (new-subst success)
 	  (match-args term lhs subst)
 	(if success (values new-subst t)
+	    ;;; Put e-matching here
+	    ;;; look for terms that are equivalent to term
+	    ;;; that can possibly match lhs.
 	    (match-arith term lhs subst)))))
 
 (defun match-arith (term lhs subst)
@@ -152,12 +183,13 @@
 
 
 (defun normalize-term-top (term cong-state)
+  "Main entry point for rewriting."
   (normalize-term term cong-state))
 
 (defun normalize-term (term cong-state)
+  "Left-most, inner-most."
   (let ((hash-term (and *use-rewrite-hash*
 			(getrewhash term cong-state))))
-    ;(break)
     (cond
      (hash-term (if (eq hash-term '*no-change*)
 		    (values term nil)
@@ -165,12 +197,16 @@
      (t
       (multiple-value-bind (new-term change)
 	  (normalize-term-no-memo term cong-state)
-	(when (and (application-p new-term)
-		   (not (record-p new-term))
-		   (record-p (funsym new-term)))
-	  (break))
+	;;; do not know that this assert is real.
+	;;; might only be for debugging.
+	(assert (not
+		 (and (application-p new-term)
+		      (not (record-p new-term))
+		      (record-p (funsym new-term)))))
 	(cond
 	 (change (when *print-rewrite*
+		   ;;; There might be better places to trace the rewriting.
+		   ;;; or not.
 		   (print-rewrite* term new-term))
 		 (setf (getrewhash term cong-state)
 		       new-term)
@@ -199,12 +235,18 @@
      ((false-p new-cond)
      (values (normalize-term (if-else term) cong-state) t))
      (cond-change (values old-term t))
+     ;;; There are different heuristics for how to handle this case.
+     ;;; Choose one or use flags or make it different for different
+     ;;; types of rewrite rules as in pvs.
      (cond-change (values (mk-if-then-else new-cond (if-then term)
 					   (if-else term))
 			  t))
      (t (values term nil)))))
 
 (defun normalize-if-then-else-subst (old-term term subst cong-state)
+  "Normalizes if-then-else when given a substitution.
+The idea is not to apply the substitution to the then and else
+branches unless necessary."
   (multiple-value-bind (new-cond cond-change)
       (normalize-term (apply-subst (if-cond term) subst) cong-state)
     (cond
@@ -215,6 +257,9 @@
       (values (normalize-term (apply-subst (if-else term) subst)
 			      cong-state) t))
      (cond-change (values old-term t))
+     ;;; There are different heuristics for how to handle this case.
+     ;;; Choose one or use flags or make it different for different
+     ;;; types of rewrite rules as in pvs.
      (cond-change (values (mk-if-then-else new-cond
 					   (apply-subst (if-then term) subst)
 					   (apply-subst (if-else term) subst))
@@ -230,6 +275,7 @@
 	      (rewrite-rules-rules! (rewrite-rules cong-state)))))
 
 (defun rewrite-then-normalize (term cong-state)
+  "Either term is a leaf or its arguments have already been normalized."
   (multiple-value-bind (new-term change)
       (rewrite-term term (get-applicable-rewrites term cong-state)
 		    cong-state)
@@ -247,36 +293,25 @@
       (simplify-term term cong-state)))
 
 (defun extended-dp-find (term cong-state)
+  "Either does a find wrt cong-state or if term is an inequality
+query's the inequality database of cong-state (polyhedron)
+for the status of the inequality."
   (cond
    ((ineq-p term)
     (simplify-ineq-constraint term cong-state))
    (t (dp-find term cong-state))))
 
 (defun simplify-wrt-cong-state (term cong-state)
+  ;;; There is no need to do a canon here because we are alredy
+  ;;; doing innermost simplification.
   (if (bool-p term)
-      (pvs::nprotecting-cong-state
-       ((new-cong-state cong-state)
-	(new-alists nil))
+      (nprotecting-cong-state (new-cong-state cong-state)
        (let ((result (dp::invoke-process term new-cong-state)))
 	 (cond
 	  ((true-p result) *true*)
 	  ((false-p result) *false*)
 	  (t (sigma (dp-find term cong-state) cong-state)))))
-      (sigma (dp-find term cong-state) cong-state) ))
-
-
-(defun simplify-term-old (term cong-state)
-  (let* ((simp-term (sigma (extended-dp-find term cong-state)
-			   cong-state))
-	 (new-term
-	  (if (and (equality-p simp-term)
-		   (member simp-term (nequals cong-state)
-			   :test #'(lambda (x y) (eq x (lhs y)))))
-	      *false*
-	      simp-term)))
-    (if (eq term new-term)
-	(values term nil)
-	(values new-term t))))
+      (sigma (dp-find term cong-state) cong-state)))
 
 (defun simplify-term (term cong-state)
   (let* ((new-term
@@ -284,20 +319,6 @@
     (if (eq term new-term)
 	(values term nil)
 	(values new-term t))))
-
-(defun simplify-= (term)
-  (let ((arg1 (arg1 term))
-	(arg2 (arg2 term)))
-    (cond
-     ((equal arg1 arg2) (values 'TRUE t))
-     ((and (numberp arg1) (numberp arg2))
-      (values 'FALSE t))
-     ((some #'(lambda (distinct-list)
-		(and (member arg1 distinct-list :test #'equal)
-		     (member arg2 distinct-list :test #'equal)))
-	    *distinct-lists*)
-      (values 'FALSE t))
-     (t (values term nil)))))
 
 (defun match-rewrite (term rewrite)
   (if *use-match-automaton*
@@ -310,10 +331,6 @@
 	(condition (rr-condition rewrite)))
     (multiple-value-bind (subst succ)
 	(match-rewrite term rewrite)
-      (when (and (application-p term) (application-p lhs)
-		 (eq (funsym term) (funsym lhs))
-		 (eq (funsym term) 'aref))
-	nil)
       (if succ
 	  (if condition
 	      (rewrite-term-1-condition term condition rhs subst
@@ -349,6 +366,7 @@
 	(values new-term change)))))
 
 (defun big-size (term)
+  "Computes the size of the dag term if all structure sharing were removed."
   (let ((*size-alist* nil))
     (declare (special *size-alist*))
     (big-size* term)))

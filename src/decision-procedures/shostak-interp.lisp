@@ -1,8 +1,15 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; arrays.lisp -- 
+;; Author          : David Cyrluk
+;; Created On      : 1998/06/12 22:56:41
+;;
+;; HISTORY
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package dp)
 
-(defvar *distinct-lists* nil)
-
 (defun dp-theory (term)
+  "As you add new theories add them to this function.
+Used by solve to determine which solver to call."
   (cond
    ((equality-p term)
     (or (dp-theory (lhs term))
@@ -16,26 +23,10 @@
    ((set-p term) 'set)
    (t nil)))
 
-(defun occurs-under-interp (term1 term2)
-  (cond
-   ((eq term1 term2) t)
-   ((constant-p term2) nil)
-   ((uninterp? term2) nil)
-   (t (some #'(lambda (x) (occurs-under-interp term1 x))
-	    (funargs term2)))))
-
-(defun array-p (term) nil)
-
-(defun bv-p (term)
-  (bvec::is-bv? term))
-
-(defun sigbvec (term cong-state)
-  (declare (ignore cong-state))
-  (bvec::fixed-sigma term))
-
 (defun sigma (term cong-state &optional (after-solve nil))
-  ;;; assumes immediate args are already in sigma-normal form.
-  ;(break)
+  "Main interface to interpreted canonizers.
+Add new theory canonizers here.
+Assumes immediate args are already in sigma-normal form."
   (cond
    ((number-type-p term) (sigtype term cong-state))
    ((arith-p term) (sigarith term cong-state))
@@ -63,111 +54,27 @@
 	term))
    (t term)))
 	
-(defvar *process-types* t)
-
-(defun dp-rational-atom-p (term cong-state)
-  (dp-integer-atom-p term cong-state))
-
-(defun dp-real-atom-p (term)
-  t)
-
 (defun sigtype (term cong-state)
-  (if *process-types*
-      (case (node-initial-type (dp::funsym term))
-	(integer-pred
-	 (if (dp-integer-atom-p (dp::arg 1 term) cong-state)
-	     *true*
-	     term))
-	(rational-pred
-	 (if (dp-rational-atom-p (dp::arg 1 term) cong-state)
-	     *true*
-	     term))
-	(real-pred
-	 (if (dp-real-atom-p (dp::arg 1 term))
-	     *true*
-	     term)))
-      *true*))
+  (case (node-initial-type (dp::funsym term))
+    (integer-pred
+     (if (dp-integer-atom-p (dp::arg 1 term) cong-state)
+	 *true*
+	 term))
+    (rational-pred
+     (if (dp-rational-atom-p (dp::arg 1 term) cong-state)
+	 *true*
+	 term))
+    (real-pred
+     (if (dp-real-atom-p (dp::arg 1 term))
+	 *true*
+	 term))))
 
 (defun solve-type (term cong-state)
-  (when *process-types*
-    (case (node-initial-type (dp::funsym term))
-      (integer-pred
-       (setf (dp-type (arg 1 term) cong-state)
-	     *integer*))))
+  (case (node-initial-type (dp::funsym term))
+    (integer-pred
+     (setf (dp-type (arg 1 term) cong-state)
+	   *integer*)))
   (list (mk-equality term *true*)))
-
-(defun sigbool (term cong-state &optional (after-solve nil))
-  (cond
-   ((equality-p term)
-    (let ((lhs (lhs term))
-	  (rhs (rhs term)))
-      (cond
-       ((eq rhs *true*)
-	(cond
-	 ((eq lhs *true*) *true*)
-	 ((eq lhs *false*) *false*)
-	 (t lhs)))
-       ((eq rhs *false*)
-	(cond
-	 ((eq lhs *true*) *false*)
-	 ((eq lhs *false*) *true*)
-	 (t (sigma (mk-term (list *not* lhs)) cong-state after-solve))))
-       ((eq lhs *true*) rhs)
-       ((eq lhs *false*)
-	(sigma (mk-term (list *not* rhs)) cong-state after-solve))
-       ((monom-< lhs rhs) term)
-       (t (mk-equality rhs lhs)))))
-   ((ineq-p term) (sigineq term cong-state))
-   ((negation-p term)
-    (signegation term cong-state))
-   ((and-p term)
-    (sigand term cong-state))
-   ((or-p term)
-    (sigor term cong-state))
-   ((nequal-p term)
-    (sigma (mk-negation (mk-equality (lhs term) (rhs term)))
-	   cong-state after-solve))
-   (t term)))
-
-(defun sigand (term cong-state)
-  (let ((arg1 (arg 1 term))
-	(arg2 (arg 2 term)))
-    (cond
-     ((false-p arg1) *false*)
-     ((false-p arg2) *false*)
-     ((true-p arg1) arg2)
-     ((true-p arg2) arg1)
-     (t term))))
-
-(defun sigor (term cong-state)
-  (let ((arg1 (arg 1 term))
-	(arg2 (arg 2 term)))
-    (cond
-     ((true-p arg1) *true*)
-     ((true-p arg2) *true*)
-     ((false-p arg1) arg2)
-     ((false-p arg2) arg1)
-     (t term))))
-
-(defun sigif (term cong-state)
-  (let ((cond (arg 1 term))
-	(then (arg 2 term))
-	(else (arg 3 term)))
-    (cond
-     ((true-p cond) then)
-     ((false-p cond) else)
-     ((eq then else) then)
-     (t term))))
-
-(defun signegation (term cong-state)
-  (cond
-   ((ineq-p (arg 1 term))
-    (sigineq (negineq (arg 1 term)) cong-state))
-   ((true-p (arg 1 term)) *false*)
-   ((false-p (arg 1 term)) *true*)
-   ((negation-p (arg 1 term))
-    (arg 1 (arg 1 term)))
-   (t term)))
 
 (defun sigequal (term cong-state &optional (after-solve nil))
   (let ((lhs (lhs term))
@@ -184,11 +91,6 @@
      ((and (node-constructor? lhs)
 	   (node-constructor? rhs))
       *false*)
-     ((some #'(lambda (distinct-list)
-		(and (member lhs distinct-list :test #'eq)
-		     (member rhs distinct-list :test #'eq)))
-	    *distinct-lists*)
-      *false*)
      (after-solve term)
      ((monom-< lhs rhs) term)
      (t (mk-equality rhs lhs)))))
@@ -196,22 +98,39 @@
 (defun sigineq (term cong-state)
   (normineq term cong-state))
 
+(defun sigbvec (term cong-state)
+  (declare (ignore cong-state))
+  (bvec::fixed-sigma term))
+
 (defun add-interp-use-of-term (term cong-state)
+  "Some theory's are such that there are interpreted uses of
+terms in addition to the simple syntactic uses.
+This function should be modified as those theories are added."
   (let ((theory (dp-theory term)))
     (if (eq theory 'array)
 	(add-use-of-update term cong-state))))
 
 (defun solve (eqn cong-state)
+  "Main interface for the solvers.
+Eqn is assumed to be canonical, but not
+necessarily in the cong-state use universe.
+Solve first calls the individual solvers and then
+adds those results to the use universe."
   (let ((solved (solve* eqn cong-state)))
     (loop for seqn in solved
 	  collect (sigma-after-solve seqn cong-state))))
 
 (defun sigma-after-solve (seqn cong-state)
+  "Called on solved equations.
+This function respects the orientation that the
+solvers return and adds the terms gernerated by
+the solvers to the use universe."
   (let ((sigma-eqn (after-solve-sigma seqn cong-state)))
     (adduse-of-term sigma-eqn cong-state)
     sigma-eqn))
 
 (defun after-solve-sigma (seqn cong-state)
+  "Like sigma, but won't reorient equations."
   (cond
    ((and (equality-p seqn)
 	 (not (equality-p (lhs seqn)))
@@ -224,13 +143,11 @@
       (sigma (mk-equality new-lhs new-rhs) cong-state t)))
    (t (sigma seqn cong-state t))))
 
-(defun canon-after-solve (eqn cong-state)
-  (if (or (false-p eqn) (true-p eqn)) eqn
-      (let ((c-lhs (canon (lhs eqn) cong-state))
-	    (c-rhs (canon (rhs eqn) cong-state)))
-	(mk-equality c-lhs c-rhs))))
-
 (defun solve* (bool-term cong-state)
+  "This calls the individual theory solvers.
+This looks at the top level predicate to decide
+which theory to call. All equalities are passed to solve-equality.
+Modify this function as new theories are added."
   (cond
    ((equality-p bool-term)
     (solve-equality bool-term cong-state))
@@ -248,6 +165,8 @@
     (solve-new-neq neq cong-state)))
 
 (defun solve-new-neq (neq cong-state)
+  "Solver for disequalities.
+If a new theory has a disequality solver, add it here."
   (let ((theory (dp-theory (arg 1 neq))))
     (case theory
       (arith (arith-solve-neq neq cong-state))
@@ -255,15 +174,6 @@
       (bv (bv-solve-neq neq cong-state))
       (set (set-solve-neq neq cong-state))
       (t (list neq)))))
-
-(defun solve-bool (bool cong-state)
-  (cond
-   ((eq bool *true*) ())
-   ((eq bool *false*) (list *false*))
-   ((number-type-p bool)
-    (solve-type bool cong-state))
-   ((negation-p bool) (list (mk-equality (arg 1 bool) *false*)))
-   (t (list (mk-equality bool *true*)))))
 
 (defun solve-equality (eqn cong-state)
   (let ((normed-eqn eqn))
@@ -276,6 +186,10 @@
    (t (solve-nontriv-normed-equality eqn cong-state))))
 
 (defun solve-nontriv-normed-equality (eqn cong-state)
+  "This function is the main work-horse for solving equalities.
+It looks at the theories of the lhs or rhs of the equality to
+decide which theory solver to call.
+Modify this function as you add new theories."
   (let* ((theory (dp-theory eqn)))
     (case theory
       (arith (arith-solve eqn cong-state))
@@ -296,12 +210,6 @@
   (list neq)
   ;(bvec::fixed-bv-solve neq)
   )
-
-(defun add-if-pure-to-theory (eqn cong-state)
-  (let ((theory (pure-theory? eqn)))
-    (case theory
-      (number (add-ineq-var-eqn-constraint eqn cong-state))
-      (t eqn))))
 
 (defun add-neq (neq cong-state)
   (declare (special *dp-changed*))
@@ -331,33 +239,3 @@
 	 ((true-p t1-lt-t2)
 	  (process* (sigma (mk-term `(,*lessp* ,t1 ,t2)) cong-state)
 		    cong-state)))))))
-
-(defun pure-theory? (eqn) ;(break)
-  (simple-pure-theory? eqn))
-
-
-(defun simple-pure-theory? (eqn)
-  (and
-   nil
-   (cond
-    ((ineq-var-p (lhs eqn)) 'number)
-    (t nil))))
-
-(defun number-theory-p (term cong-state)
-  (or (arith-p term)
-      (member (dp-type term cong-state)
-	      (list *integer* *number*))))
-	    
-
-(defun number-equality-p (eqn cong-state)
-  (and
-   (equality-p eqn)
-   (number-theory-p (lhs eqn) cong-state)
-   (number-theory-p (rhs eqn) cong-state)))
-
-(defun more-pure-theory? (eqn cong-state)
-  (cond
-   ((arith-bool-p eqn) 'number)
-   ((number-equality-p eqn cong-state)
-    'number)
-   (t nil)))
