@@ -210,7 +210,7 @@ useful if more than one specification is to be included in one document")
 
 (defun read-tex-substitutions (path &optional (name "pvs-tex"))
   (let ((file (merge-pathnames path (format nil "~a.sub" name))))
-    (when (probe-file file)
+    (when (file-exists-p file)
       (let ((newsubs nil))
 	(let ((*latex-newcommands-list* nil))
 	  ;;(push "\\setlength{\\fboxsep}{1pt} " *latex-newcommands-list*)
