@@ -12,6 +12,9 @@
 
 (in-package :pvs)
 
+;; The variable excl:*enclose-printer-errors* is supposed to allow
+;; errors to be seen when they happen.
+
 (defvar *use-pp* t)
 
 ;;; Controls whether to pay attention to chained declarations
@@ -666,7 +669,9 @@ bind tighter.")
 (defmethod pp* ((decl mod-decl))
   (with-slots (modname) decl
     (write 'THEORY)
-    (write-char #\=)
+    (when (typep decl 'lib-eq-decl)
+      (write-char #\space)
+      (write-char #\=))
     (write-char #\space)
     (pprint-newline :fill)
     (pp* modname)))
@@ -918,7 +923,7 @@ bind tighter.")
     (pprint-newline :mandatory)))
 
 (defmethod pp* :around ((decl auto-rewrite-decl))
-  (with-slots (name chain?) decl
+  (with-slots (rewrite-names semi) decl
     (when (or (not *pretty-printing-decl-list*)
 	      (not *pretty-printed-prefix*))
       (when *pretty-printing-decl-list*
@@ -929,16 +934,19 @@ bind tighter.")
 	(auto-rewrite-minus-decl (write '-)))
       (write-char #\space)
       (pprint-newline :miser))
-    (pp* name)
-    (when (typep decl 'typed-auto-rewrite-decl)
-      (write-char #\:)
-      (write-char #\space)
-      (pp* (declared-type decl)))
-    (when (and chain?
-	       *pretty-printing-decl-list*)
-      (write-char #\,)
-      (write-char #\space))
+    (pp-rewrite-names rewrite-names)
+    (when semi
+      (write-char #\;))
     (pprint-newline :mandatory)))
+
+(defun pp-rewrite-names (names)
+  (pprint-logical-block (nil names)
+    (loop (pp* (pprint-pop))
+	  (pprint-exit-if-list-exhausted)
+	  (write-char #\,)
+	  (write-char #\space)
+	  (pprint-newline :fill))))
+    
 
 ;;; Type expressions
 
@@ -2142,20 +2150,26 @@ bind tighter.")
 	(pprint-newline :fill)
 	(pp* declared-type)))))
 
+
 (defmethod pp* ((ex name))
-  (with-slots (library mod-id actuals id mappings) ex
+  (with-slots (library mod-id actuals id mappings target) ex
     (pprint-logical-block (nil (list ex))
+      (pprint-indent :block 4)
       (when library
 	(write library)
 	(write-char #\@))
       (cond (mod-id
 	     (write mod-id)
-	     (pprint-indent :current 0)
 	     (when actuals
+	       (pprint-newline :fill)
 	       (pp-actuals actuals))
 	     (when mappings
 	       (pprint-newline :fill)
 	       (pp-mappings mappings))
+	     (when target
+	       (write " :-> ")
+	       (pprint-newline :fill)
+	       (pp* target))
 	     (write-char #\.)
 	     (if (eq id 'O)
 		 (write '|o|)
@@ -2166,12 +2180,16 @@ bind tighter.")
 	     (if (eq id 'O)
 		 (write '|o|)
 		 (write id))
-	     (pprint-indent :current 0)
 	     (when actuals
+	       (pprint-newline :fill)
 	       (pp-actuals actuals))
 	     (when mappings
 	       (pprint-newline :fill)
-	       (pp-mappings mappings)))))))
+	       (pp-mappings mappings))
+	     (when target
+	       (write " :-> ")
+	       (pprint-newline :fill)
+	       (pp* target)))))))
 
 (defun pp-mappings (mappings)
   (pprint-logical-block (nil mappings :prefix "{{ " :suffix " }}")
