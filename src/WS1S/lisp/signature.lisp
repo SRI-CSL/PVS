@@ -12,22 +12,26 @@
 (def-pvs-term add-to-fset "add[nat]" "record_prelude_example"
                           :expected "[nat, finite_set[nat] -> finite_set[nat]]")
 
+
 (def-pvs-term the1      "the[nat]" "naturalnumbers")
 (def-pvs-term the2      "the[finite_set[nat]]" "record_prelude_example")
 (def-pvs-term minus1 "-" "naturalnumbers" :expected "[nat, nat -> nat]")
 (def-pvs-term plus1  "+" "naturalnumbers" :expected "[nat, nat -> nat]")
 
-(def-pvs-term union-operator    "union[nat]" "record_prelude_example"
+(def-pvs-term add-operator "add" "record_prelude_example"
+                           :expected "[nat, set[nat] -> set[nat]]")
+(def-pvs-term remove-operator "remove" "record_prelude_example"
+                           :expected "[nat, set[nat] -> set[nat]]")
+(def-pvs-term singleton-operator "singleton" "record_prelude_example"
+                           :expected "[nat -> set[nat]]")
+(def-pvs-term union-operator    "union" "record_prelude_example"
                                     :expected "[set[nat], set[nat] -> set[nat]]")
-(def-pvs-term intersection-operator "intersection[nat]" "record_prelude_example"
+(def-pvs-term intersection-operator "intersection" "record_prelude_example"
                                     :expected "[set[nat], set[nat] -> set[nat]]")
-(def-pvs-term set-difference-operator "difference[nat]" "record_prelude_example"
+(def-pvs-term set-difference-operator "difference" "record_prelude_example"
                                     :expected "[set[nat], set[nat] -> set[nat]]")
-(def-pvs-term emptyset-operator "emptyset[nat]" "record_prelude_example"
+(def-pvs-term emptyset-operator "emptyset" "record_prelude_example"
                                     :expected "set[nat]")
-(def-pvs-term singleton-operator "singleton[nat]" "record_prelude_example"
-                                    :expected "[nat -> set[nat]]")
-
 
 (defun ws1s-types ()
   (list *boolean*
@@ -43,6 +47,9 @@
 (defun 1st-order? (expr)
   (assert (typep expr 'expr))
   (or (subtype-of? (type expr) *naturalnumber*)
+      (and (number-expr? expr)
+	   (integerp (number expr))
+	   (>= (number expr) 0))
       (some #'subtype-of-nat? (judgement-types+ expr))))
 
 (defun subtype-of-nat? (type)
@@ -50,7 +57,17 @@
   
 (defun 2nd-order? (expr)
   (or (subtype-of? (type expr) (fset-of-nats))
-      (finite-set-of-nat? expr)))
+      (finite-set-of-nat? expr)
+      (tc-eq expr (emptyset-operator))
+      (and (application? expr)
+	   (let ((op (operator expr))
+		 (args (arguments expr)))
+	     (or (and (tc-eq op (singleton-operator))
+		      (1st-order? (first args)))
+		 (and (or (tc-eq op (add-operator))
+			  (tc-eq op (remove-operator)))
+		      (1st-order? (first args))
+		      (2nd-order? (second args))))))))
  
 (defun level (expr)
   (cond ((boolean? expr) 0)
