@@ -196,8 +196,7 @@
 		 (*pvs-context-changed* nil)
 		 (*current-context* nil)
 		 (*current-theory* nil)
-		 (*all-subst-mod-params-caches* nil)
-		 (*file-dependencies* nil))
+		 (*all-subst-mod-params-caches* nil))
 	    ,@forms)
 	  (pvs-message "Library ~a does not exist" ,dir)))))
 
