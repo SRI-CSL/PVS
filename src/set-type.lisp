@@ -584,7 +584,6 @@ required a context.")
       (or (and (not (strict-compatible? type expected))
 	       (find-funtype-conversion type expected ex))
 	  (let* ((jtypes (judgement-types+ ex))
-		 (*compatible-pred-reason* nil)
 		 (incs (compatible-predicates jtypes expected ex)))
 	    (when incs
 	      (generate-subtype-tcc ex expected incs)))))))
