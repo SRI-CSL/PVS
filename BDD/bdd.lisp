@@ -239,7 +239,7 @@
 	 (selected-sforms (select-seq sforms fnums)))
     (cond ((null selected-sforms)
 	   (values 'X nil nil))
-	  (t (bdd_init)
+	  (t (unless *bdd-initialized* (bdd_init))
 	     (if dynamic-ordering?
 		 (set_bdd_do_dynamic_ordering 1)
 		 (set_bdd_do_dynamic_ordering 0))
@@ -248,7 +248,7 @@
 						  irredundant?)))
 	       (multiple-value-prog1
 		(add-bdd-subgoals ps sforms conjuncts remaining-sforms)
-		(bdd_quit)))))))
+		(unless *bdd-initialized* (bdd_quit))))))))
 
 (defun bddsimp-conjuncts (selected-sforms irredundant?)
   (let* ((*pvs-bdd-hash* (make-hash-table
