@@ -654,56 +654,15 @@
 	 (prev-decls (if include?
 			 (memq decl all-decls)
 			 (cdr (memq decl all-decls))))
-	 (prev-imp (find-if #'using-decl? prev-decls))
+	 (prev-imp (find-if #'importing? prev-decls))
 	 (rem-decls (if prev-imp
 			(ldiff prev-decls (memq prev-imp prev-decls))
-			prev-decls))
-	 (context (copy-context
-		   (if prev-imp
-		       (copy-context (saved-context prev-imp))
-		       (copy-context *prelude-context*)))))))
-    
-	 
-
-(defun decl-context (decl &optional include? th)
-  (let* ((*generate-tccs* 'none)
-	 (theory (or th (module decl)))
-	 (*current-theory* theory)
-	 (alldecls (when decl (all-decls theory)))
-	 (prevdecls (ldiff alldecls
-			   (cond ((and include? (def-decl? decl))
-				  (cddr (memq decl alldecls)))
-				 ((or include? (def-decl? decl))
-				  (cdr (memq decl alldecls)))
-				 (t (memq decl alldecls)))))
-	 (adecls (remove-disallowed-decls-from-context decl prevdecls))
-	 (decls (remove-if-not #'(lambda (d)
-				   (and (typep d 'declaration)
-					(not (and (type-def-decl? d)
-						  (enumtype? (type-expr d))))))
-		  adecls))
-	 (ctx (mk-context
-	       theory
-	       (if nil;;(gethash (id theory) *prelude*)
-		   (formals theory)
-		   decls)
-	       (append (prelude-libraries-uselist)
-		       prelude-names)))
-	 (*current-context* ctx))
-    (add-prelude-info-to-context (car prelude-names))
-    (mapc #'(lambda (u) (add-usings-to-context (modules u)))
-	  (remove-if-not #'mod-or-using? prevdecls))
-    (add-formal-importings-to-context decl)
-    (add-immediate-importings-to-context decl)
-    (add-imported-assumings decl)
-    (mapc #'add-judgement-decl prevdecls)
-    (mapc #'add-conversions-to-context prevdecls)
-    (mapc #'(lambda (c)
-	      (push c (conversions *current-context*)))
-	  (remove-if-not #'(lambda (d) (typep d 'conversion-decl))
-	    prevdecls))
-    (setf (declaration ctx) decl)
-    ctx))
+			prev-decls)))
+    (copy-context (if prev-imp
+		      (saved-context prev-imp)
+		      *prelude-context*)
+		  (module decl)
+		  rem-decls)))
 
 (defmethod add-imported-assumings ((decl assuming-tcc))
   (add-usings-to-context (list (theory-instance decl))))
@@ -799,11 +758,16 @@
 	  'using-hash (make-hash-table)
 	  'declarations-hash (make-hash-table)))))
 
-(defun copy-context (context)
+(defun copy-context (context &optional theory decls)
   (copy context
-;    'local-decls (copy (local-decls context))
-;    'local-proof-decls (make-hash-table :test #'eq)
-    'declarations-hash (copy (declarations-hash context))
+    'theory (or theory (theory context))
+    'theory-name (if theory
+		     (mk-modname (id theory))
+		     (theory-name context))
+    'declarations-hash (let ((dhash (copy (declarations-hash context))))
+			 (dolist (decl decls)
+			   (put-decl decl dhash))
+			 dhash)
     'using-hash (copy (using-hash context))
     'judgements (copy-judgements (judgements context))
     'conversions (copy-list (conversions context))
@@ -812,11 +776,8 @@
 (defun copy-prover-context (&optional (context *current-context*))
   (assert *in-checker*)
   (copy context
-;    'local-proof-decls (copy (local-proof-decls context))
-    'judgements (copy (judgements context)
-		  'judgement-types-hash
-		  (copy (judgement-types-hash (judgements context))))))
-    
+    ;;'declarations-hash (copy (declarations-hash context))
+    ))
 
 (defmethod context (ignore)
   (declare (ignore ignore))
