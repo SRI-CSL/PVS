@@ -1923,8 +1923,10 @@
 	      (do-auto-rewrite expr sig))))))
 
 (defun assert-disequality (expr newargs sig)
-  (let* ((nargs (argument-list newargs))
-	(equality (make!-equation (car nargs)(cadr nargs))))
+  (let* ((nargs (if (tuple-expr? newargs)
+		    (exprs newargs)
+		    (make!-projections newargs)))
+	 (equality (make!-equation (car nargs) (cadr nargs))))
     (multiple-value-bind (sig newequality)
 	(assert-equality equality newargs sig)
       (if (eq sig '?)
