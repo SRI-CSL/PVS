@@ -465,7 +465,7 @@
 	     ((is-minus? op)
 	      (find-all-matches-arith-polarity
 	       lhs-template
-	       (argument op) bind-alist subst
+	       (argument expr) bind-alist subst
 	        accum (toggle polarity)))
 	     (t nil)))))
     (find-out-all-matches-polarity lhs-template
