@@ -265,7 +265,7 @@ elif [ $getversion ]
     $PVSIMAGE -qq -e "(progn (format t \"PVS version ~a~%\" pvs::*pvs-version*) (excl:exit nil :quiet t))"
 elif [ $rawmode ]
   then
-    $PVSIMAGE -qq
+    $PVSIMAGE -qq $flags
 elif [ $batch ]
   then
     $PVSEMACS $batch $dotemacs $pvsemacsinit $flags 2>&1
