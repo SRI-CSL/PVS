@@ -70,6 +70,14 @@
 
 (defcl projappl (projection-application))
 
+(defcl injection-expr (name-expr)
+  (index :parse t))
+
+(defcl injection-application (expr)
+  id
+  index
+  argument)
+
 (defcl number-expr (expr)
   (number :parse t))
 
@@ -178,7 +186,7 @@
 
 ;;(defcl parlet-expr (application))
 
-(defcl where-expr (application))
+(defcl where-expr (let-expr))
 
 (defcl chained-where-expr (where-expr))
 
@@ -370,13 +378,12 @@
   conversion)
 
 (defcl context ()
-  theory ; was module
-  theory-name ; was mod-name
+  theory
+  theory-name
   declaration
-  declarations-hash ; new
-  ;;(local-decls :type hash-table :initform (make-hash-table :test #'eq))
-  ;;(local-proof-decls :type hash-table :initform (make-hash-table :test #'eq))
-  using-hash ; was using
+  declarations-hash
+  using-hash
+  named-theories
   (judgements :initform (make-instance 'judgements))
   (known-subtypes :initform nil)
   (conversions :initform nil)
