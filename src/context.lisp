@@ -1238,7 +1238,7 @@ pvs-strategies files.")
 
 (defun restore-theory-proofs* (decl proofs)
   (when (formula-decl? decl)
-    (let ((prf-entry (assoc (id decl) proofs :test #'eql)))
+    (let ((prf-entry (find-associated-proof-entry decl proofs)))
       (when prf-entry
 	(let ((script (cond ((integerp (cadr prf-entry))
 			     (fifth (caddr prf-entry)))
@@ -1257,6 +1257,14 @@ pvs-strategies files.")
 	  (setf (new-ground? decl) new-ground?)))
       prf-entry)))
 
+(defmethod find-associated-proof-entry ((decl tcc-decl) proofs)
+  (or (assq (id decl) proofs)
+      (let ((old-id (cdr (assq (id decl) *old-tcc-names*))))
+	(when old-id
+	  (assq old-id proofs)))))
+
+(defmethod find-associated-proof-entry ((decl declaration) proofs)
+  (assq (id decl) proofs))
 
 (defun copy-theory-proofs-to-orphan-file (theoryref)
   (when *pvs-context-writable*
