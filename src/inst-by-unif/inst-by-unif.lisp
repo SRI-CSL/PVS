@@ -6,7 +6,7 @@
 			  copy?
 			  (if-match best)
 			  complete?
-			  relativize?
+			  (relativize? T)
 			  verbose?)
   (let ((sforms (s-forms (current-goal *ps*)))
 	(inst-sforms (gather-seq sforms fnums nil
