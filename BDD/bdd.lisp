@@ -174,6 +174,8 @@
 
 (ff:defforeign 'bdd_sum_of_cubes :entry-point '"bdd___bdd_sum_of_cubes")
 
+(ff:def-foreign-variable bdd_interrupted)
+
 (eval-when (eval load)
   (bdd_init))
 
@@ -223,12 +225,12 @@
 (addrule 'bddsimp () ((fnums *)
 		      (dynamic-ordering? nil)
 		      (irredundant? t))
-	 (bddsimp-fun fnums dynamic-ordering? irredundant?)
-	 "Propositional simplification using Binary Decision Diagrams (BDDs).
+  (bddsimp-fun fnums dynamic-ordering? irredundant?)
+  "Propositional simplification using Binary Decision Diagrams (BDDs).
   Dynamic ordering means the BDD package can reorder literals
   to reduce BDD size.
   See also PROP."
-	 "~%Applying bddsimp,")
+  "~%Applying bddsimp,")
 
 (defun bddsimp-fun (&optional fnums dynamic-ordering? irredundant?)
   #'(lambda (ps)
@@ -246,9 +248,12 @@
 	     (let* ((remaining-sforms (delete-seq sforms fnums))
 		    (conjuncts (bddsimp-conjuncts selected-sforms
 						  irredundant?)))
-	       (multiple-value-prog1
-		(add-bdd-subgoals ps sforms conjuncts remaining-sforms)
-		(unless *bdd-initialized* (bdd_quit))))))))
+	       (cond ((zerop bdd_interrupted)
+		      (multiple-value-prog1
+		       (add-bdd-subgoals ps sforms conjuncts remaining-sforms)
+		       (unless *bdd-initialized* (bdd_quit))))
+		     (t (format t "~%BDD Simplifier interrupted")
+			(values 'X nil))))))))
 
 (defun bddsimp-conjuncts (selected-sforms irredundant?)
   (let* ((*pvs-bdd-hash* (make-hash-table
