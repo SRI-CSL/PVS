@@ -754,8 +754,7 @@ and pvs-tex.sub files from your home directory."
     (when (search-forward pvs-email-info-string nil t)
       (delete-region (match-beginning 0) (match-end 0)))
     (goto-char (point-max))
-    (insert (format "\n\n Patch version: %s"
-		(pvs-send-and-wait "(get-patch-version)" nil nil 'list)))
+    (insert (format "\n\n Patch version: %s" (get-pvs-version-information)))
     (mail-send-and-exit nil)
     (let ((default-directory *pvs-current-directory*))
       (shell-command (format "%s %s" cmd homedir)))))
