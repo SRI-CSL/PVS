@@ -1414,8 +1414,9 @@
     creses))
 
 (defun get-resolution-conversions (res arguments)
-  (get-resolution-conversions* (conversions *current-context*)
-			       res arguments nil))
+  (get-resolution-conversions*
+   (remove-if #'k-combinator? (conversions *current-context*))
+   res arguments nil))
 
 (defun get-resolution-conversions* (conversions res arguments result)
   (if (null conversions)
