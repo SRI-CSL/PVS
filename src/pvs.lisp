@@ -49,7 +49,7 @@
   (setq *last-proof* nil)
   (clrnumhash)
   (setq *pvs-context-writable* (write-permission?))
-  (restore-context)
+  ;;(restore-context)
   (setq *pvs-initialized* t)
   (when *to-emacs*
     (pvs-emacs-eval "(setq *pvs-initialized* t)")))
@@ -307,7 +307,7 @@
     (check-for-theory-clashes new-theories filename)
     ;;(check-import-circularities new-theories filename)
     (update-parsed-file filename file theories new-theories forced?)
-    (pvs-message "~a parsed in ~d seconds" filename time)
+    (pvs-message "~a parsed in ~,2f seconds" filename time)
     #+pvsdebug (assert (every #'(lambda (nth) (get-theory (id nth)))
 			      new-theories))
     (mapcar #'(lambda (nth) (get-theory (id nth))) new-theories)))
@@ -581,7 +581,7 @@
 
 (defun typecheck-theories (filename theories)
   (dolist (theory (sort-theories theories))
-    (let ((start-time (get-universal-time))
+    (let ((start-time (get-internal-real-time))
 	  (*current-context* (make-new-context theory))
 	  (*old-tcc-names* nil))
       (mapc #'(lambda (u) (get-typechecked-theory u))
@@ -608,14 +608,15 @@
 	       (prv (cadr (tcc-info theory)))
 	       (mat (caddr (tcc-info theory)))
 	       (obl (- tot prv mat))
-	       (time (- (get-universal-time) start-time)))
+	       (time (/ (- (get-internal-real-time) start-time)
+			internal-time-units-per-second 1.0)))
 	  (if (zerop tot)
-	      (pvs-message "~a typechecked in ~ds: No TCCs generated~
+	      (pvs-message "~a typechecked in ~,2fs: No TCCs generated~
                             ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
 		(id theory) time (length (warnings theory))
 		(length (info theory)))
 	      (pvs-message
-		  "~a typechecked in ~ds: ~d TCC~:p, ~
+		  "~a typechecked in ~,2fs: ~d TCC~:p, ~
                    ~d proved, ~d subsumed, ~d unproved~
                    ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
 		(id theory) time tot prv mat obl
@@ -700,12 +701,13 @@
     (unless (justification decl)
       (setf (justification decl) (tcc-strategy decl))
       (setq *justifications-changed?* t))
-    (let* ((start-time (get-universal-time))
+    (let* ((start-time (get-internal-real-time))
 	   (*proving-tcc* 'TCC)
 	   (proof (rerun-prove decl))
-	   (proof-time (- (get-universal-time) start-time)))
+	   (proof-time (/ (- (get-internal-real-time) start-time)
+			  internal-time-units-per-second 1.0)))
       (pvs-message
-	  "~:[Unable to prove~;Proved~] ~:[~;TCC ~]~a in ~d seconds"
+	  "~:[Unable to prove~;Proved~] ~:[~;TCC ~]~a in ~,2f seconds"
 	(eq (status-flag proof) '!) (tcc? decl) (id decl) proof-time)
       ;; Must return non-NIL if proved, NIL otherwise.
       (if (eq (status-flag proof) '!)
@@ -832,7 +834,7 @@
 	 (indent (- *default-char-width* (col-begin place)))
 	 (dstr (unpindent d indent :string t :comment? t))
          (dfinal (string-trim '(#\Space #\Tab #\Newline) dstr)))
-    (pvs-modify-buffer (shortname (working-directory))
+    (pvs-modify-buffer (shortname *pvs-context-path*)
                        (filename theory)
                        place dfinal)))
 
@@ -847,7 +849,7 @@
       (let ((string (unparse theory
 		      :string t
 		      :char-width *default-char-width*)))
-	(pvs-modify-buffer (shortname (working-directory))
+	(pvs-modify-buffer (shortname *pvs-context-path*)
 			   (filename theory)
 			   (place theory)
 			   (string-right-trim '(#\space #\tab #\newline)
@@ -1197,49 +1199,53 @@
 
 ;;; Non-interactive Proving
 
-(defun prove-theory (theoryname &optional retry? filename)
+(defun prove-theory (theoryname &optional retry? filename use-default-dp?)
   (when filename
     (typecheck-file filename))
   (let ((theory (get-typechecked-theory theoryname)))
     (when theory
-      (prove-theories theoryname (list theory) retry?)
+      (let ((*use-default-dp?* use-default-dp?))
+	(prove-theories theoryname (list theory) retry?))
       (status-proof-theory theoryname))))
 
 
-(defun prove-pvs-file (file retry?)
-  (let ((theories (typecheck-file file)))
-    (prove-theories file theories retry?)
+(defun prove-pvs-file (file retry? &optional use-default-dp?)
+  (let ((theories (typecheck-file file))
+	(*use-default-dp?* use-default-dp?))
+    (prove-theories file theories retry? use-default-dp?)
     (status-proof-pvs-file file)))
 
-(defun prove-pvs-theories (theory-names retry?)
+(defun prove-pvs-theories (theory-names retry? &optional use-default-dp?)
   (when theory-names
-    (let ((theories (mapcar #'get-typechecked-theory theory-names)))
-      (prove-theories "" theories retry?)
+    (let ((theories (mapcar #'get-typechecked-theory theory-names))
+	  (*use-default-dp?* use-default-dp?))
+      (prove-theories "" theories retry? use-default-dp?)
       (status-proof-theories theories))))
 
-(defun prove-usingchain (theoryname retry? &optional exclude)
-  (let ((theory (get-typechecked-theory theoryname)))
+(defun prove-usingchain (theoryname retry? &optional exclude use-default-dp?)
+  (let ((theory (get-typechecked-theory theoryname))
+	(*use-default-dp?* use-default-dp?))
     (when theory
       (prove-theories theoryname
 		      (remove-if #'(lambda (th)
 				     (typep th '(or library-datatype
 						    library-theory)))
 			(collect-theory-usings theoryname exclude))
-		      retry?))
+		      retry?
+		      use-default-dp?))
     (status-proof-importchain theoryname)))
 
 
-(defun prove-proofchain (filename line origin retry?)
-  (multiple-value-bind (fdecl place)
-      (formula-decl-to-prove filename line origin)
-    (declare (ignore place))
+(defun prove-proofchain (filename line origin retry? &optional use-default-dp?)
+  (let ((fdecl (formula-decl-to-prove filename line origin)))
     (cond ((null fdecl)
 	   (pvs-message "Unable to find formula declaration"))
 	  ((null (justification fdecl))
 	   (pvs-message "~a has no proof" (id fdecl)))
-	  (t (prove-proofchain-decl fdecl retry?)))))
+	  (t (let ((*use-default-dp?* use-default-dp?))
+	       (prove-proofchain-decl fdecl retry?))))))
 
-(defun prove-proofchain-decl (fdecl retry?)
+(defun prove-proofchain-decl (fdecl retry? &optional use-default-dp?)
   (let ((decls-tried nil) (total 0) (proved 0) (time 0) (unfin 0))
     (read-strategies-files)
     (labels ((ppd (decl)
@@ -1247,7 +1253,8 @@
 		 (let ((*justifications-changed?* nil))
 		   (push decl decls-tried)
 		   (incf total)
-		   (incf time (nth-value 1 (pvs-prove-decl decl retry?)))
+		   (incf time (nth-value 1
+				(pvs-prove-decl decl retry? use-default-dp?)))
 		   (if (unproved? decl) (incf unfin) (incf proved))
 		   (when *justifications-changed?*
 		     (save-all-proofs (module decl))))
@@ -1268,30 +1275,29 @@
 	  total (+ proved unfin) proved))
       t)))
 
-(defun pvs-prove-decl (decl retry?)
+(defun pvs-prove-decl (decl retry? &optional use-default-dp?)
   (setq *current-theory* (module decl))
   (cond ((and (or (justification decl)
 		  (eq (kind decl) 'tcc))
 	      (or retry?
 		  (unproved? decl)))
-	 (let ((start-time (get-universal-time))
+	 (let ((start-time (get-internal-real-time))
 	       (*rerunning-proof* (format nil "Proving ~a.~a"
 				    (id *current-theory*) (id decl))))
 	   (setf (proof-status decl) 'unproved)
 	   (cond ((justification decl)
 		  (pvs-message "Rerunning proof of ~a" (id decl))
-		  (let ((pstat (rerun-prove decl))
-			(time (- (get-universal-time) start-time)))
-		    (pvs-message "~a ~aproved in ~d seconds"
-		      (id decl) (if (unproved? decl) "un" "")
-		      (- (get-universal-time) start-time))
+		  (let ((pstat (rerun-prove decl use-default-dp?))
+			(time (/ (- (get-internal-real-time) start-time)
+				 internal-time-units-per-second 1.0)))
+		    (pvs-message "~a ~aproved in ~,2f seconds"
+		      (id decl) (if (unproved? decl) "un" "") time)
 		    (when (eq (proof-status decl) 'unproved)
 		      (setf (proof-status decl) 'unfinished))
 		    (update-context-proof-status decl)
 		    (values pstat time)))
 		 (t (pvs-message "Proving ~a..." (id decl))
-		    (values (prove-tcc decl)
-			    (- (get-universal-time) start-time))))))
+		    (values (prove-tcc decl) time)))))
 	((or (justification decl)
 	     (not (unproved? decl)))
 	 (pvs-message "~a is already proved" (id decl))
@@ -1303,39 +1309,14 @@
 (defun get-proofchain (fdecl)
   (union (refers-to fdecl) (proof-refers-to fdecl)))
 
-(defun prove-proofchain-decls (decls fdecl retry?)
-  (let ((total 1) (proved (if (unproved? fdecl) 0 1)) (time 0))
-    (mapc #'(lambda (d)
-	      (incf total)
-	      (cond ((and (justification d)
-			  (or retry?
-			      (unproved? d)))
-		     (let ((start-time (get-universal-time))
-			   (*rerunning-proof* (format nil "Proving ~a"
-						      (id d))))
-		       (setq *current-theory* (slot-value d 'module))
-		       (setf (proof-status d) 'unfinished)
-		       (rerun-prove d)
-		       (unless (unproved? d) (incf proved))
-		       (incf time (- (get-universal-time) start-time))
-		       (pvs-message "~a ~aproved in ~d seconds"
-				      (id d) (if (unproved? d) "un" "")
-				      (- (get-universal-time) start-time))))
-		    ((justification d)
-		     (incf proved)
-		     (pvs-message "~a is already proved" (id d)))
-		    (t (pvs-message "~a has no proof" (id d)))))
-	   decls)))
-
-
-(defun prove-theories (name theories retry?)
+(defun prove-theories (name theories retry? &optional use-default-dp?)
   (let ((total 0) (proved 0) (time 0))
     (read-strategies-files)
     (dolist (theory theories)
       (let ((*justifications-changed?* nil))
 	(dolist (d (provable-formulas theory))
 	  (incf total)
-	  (incf time (nth-value 1 (pvs-prove-decl d retry?)))
+	  (incf time (nth-value 1 (pvs-prove-decl d retry? use-default-dp?)))
 	  (unless (unproved? d) (incf proved)))
 	(when *justifications-changed?*
 	  (save-all-proofs *current-theory*))))
@@ -1560,7 +1541,7 @@
 	(progn ;(pvs-message "Theory already exists")
 	       nil)
 	(namestring (make-pathname :name modname :type "pvs"
-				   :defaults (working-directory))))))
+				   :defaults *pvs-context-path*)))))
 
 
 ;;; Delete Theory
@@ -1599,7 +1580,7 @@
 
 (defun list-theories (&optional context)
   (if (or (null context)
-	  (equal (truename context) (truename (working-directory))))
+	  (equal (truename context) (truename *pvs-context-path*)))
       (let ((theories nil))
 	(maphash #'(lambda (id mod)
 		     (declare (ignore mod))
