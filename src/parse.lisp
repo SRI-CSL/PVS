@@ -277,8 +277,7 @@
   (let* ((exp-t (term-arg0 theory))
 	 (exp (if (is-sop 'NOEXP exp-t)
 		  (make-instance 'exporting
-		    'kind 'default
-		    'place (term-place exp-t))
+		    'kind 'default)
 		  (xt-exporting exp-t)))
 	 (assum-t (term-arg1 theory))
 	 (assum (unless (is-sop 'NOASS assum-t)
