@@ -1477,7 +1477,13 @@
   (multiple-value-bind (sig newexprs)
       (assert-if (exprs expr))
     (if (eq sig '?)
-	(do-auto-rewrite (lcopy expr 'exprs newexprs) '?)
+	(do-auto-rewrite
+	 (if (eq newexprs (exprs expr))
+	     expr
+	     (lcopy expr
+	       'exprs newexprs
+	       'type (mk-tupletype (mapcar #'type newexprs))))
+	 '?)
 	(do-auto-rewrite expr 'X))))
 	    
 	
