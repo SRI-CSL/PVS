@@ -36,7 +36,8 @@
 	    (pvs-buffer "Expanded Form"
 	      (unparse (full-name object nil (not all?)) :string t)
 	      t))
-	  (place-list (place object))))))
+	  (place-list (place object))))
+      (pvs-message "~a is not typechecked" oname)))
 
 ;;; Called by Emacs - show-declaration command
 
@@ -190,7 +191,7 @@
 	(let ((decl2 (find-element-containing-pos decls pos2)))
 	  (unless decl2
 	    (setq decl2
-		  (find-decl-before-pos pos2)))
+		  (find-decl-before-pos decls pos2)))
 	  (or (when (and decl decl2)
 		(ldiff (memq decl decls) (cdr (memq decl2 decls))))
 	      (when decl
@@ -200,17 +201,19 @@
 
 (defun find-decl-after-pos (decls pos)
   (when decls
-    (if (or (< (car pos) (starting-row (place (car decls))))
-	    (and (= (car pos) (starting-row (place (car decls))))
-		 (<= (cadr pos) (starting-col (place (car decls))))))
+    (if (and (place (car decls))
+	     (or (< (car pos) (starting-row (place (car decls))))
+		 (and (= (car pos) (starting-row (place (car decls))))
+		      (<= (cadr pos) (starting-col (place (car decls)))))))
 	(car decls)
 	(find-decl-after-pos (cdr decls) pos))))
 
 (defun find-decl-before-pos (decls pos &optional prev)
   (when decls
-    (if (or (< (car pos) (starting-row (place (car decls))))
-	    (and (= (car pos) (starting-row (place (car decls))))
-		 (<= (cadr pos) (starting-col (place (car decls))))))
+    (if (and (place (car decls))
+	     (or (< (car pos) (starting-row (place (car decls))))
+		 (and (= (car pos) (starting-row (place (car decls))))
+		      (<= (cadr pos) (starting-col (place (car decls)))))))
 	prev
 	(find-decl-before-pos (cdr decls) pos (car decls)))))
 
