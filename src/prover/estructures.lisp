@@ -35,7 +35,6 @@
   (label :initform " ")
   current-goal         ;;is a sequent
   (current-rule :initform nil)
-  (alists :initform nil)       ;dpinfo
   (dp-state :initform *init-dp-state*)
   (done-subgoals :initform nil)
   (pending-subgoals :initform nil)

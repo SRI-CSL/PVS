@@ -176,9 +176,6 @@
 	(*flush-displayed* nil)
 	(*auto-rewrites-names* nil)
 	(*auto-rewrites-off* nil)
-	(*subtype-names* nil)
-	(*named-exprs* nil)
-	(*rec-type-dummies* nil)
 	(*assert-typepreds* nil)
 	(*pvs-bdd-hash* nil)
 	(*bdd-pvs-hash* nil)
@@ -190,13 +187,6 @@
 	(*rewrite-msg-off* *rewrite-msg-off*)
 	(*ruletrace* NIL)
 	(*ruletracedepth* 0)
-	(*dc-named-exprs* (init-if-rec *dc-named-exprs*))
-	(*translate-id-counter* nil)
-	(*translate-to-dc-hash* (init-if-rec *translate-to-dc-hash*))
-	(*dc-translate-id-hash* (init-if-rec *dc-translate-id-hash*))
-	(*dc-translate-id-counter* nil)
-	(*prtype-hash* (init-if-rec *prtype-hash*))
-	(*local-prtype-hash* (init-if-rec *local-prtype-hash*))
 	;; Hash tables
 	(*assert-if-arith-hash* (init-if-rec *assert-if-arith-hash*))
 	(*auto-rewrites* (init-if-rec *auto-rewrites*))
@@ -206,19 +196,11 @@
 	(*subtype-of-hash* (init-if-rec *subtype-of-hash*))
 	(*create-formulas-cache* (init-if-rec *create-formulas-cache*))
 	(*term-print-strings* (init-if-rec *term-print-strings*))
-	(*translate-id-hash* (init-if-rec *translate-id-hash*))
-	(*translate-to-prove-hash* (init-if-rec *translate-to-prove-hash*))
 	(*all-subst-mod-params-caches* (copy-subst-mod-params-cache))
 	(*pseudo-normalize-hash* (copy *pseudo-normalize-hash*))
 	(*pseudo-normalize-translate-id-hash*
 	 (copy *pseudo-normalize-translate-id-hash*))
 	;;
-	(typealist primtypealist)
-	(*local-typealist* *local-typealist*)
-	(applysymlist nil)
-	(sigalist sigalist)
-	(usealist usealist)
-	(findalist findalist)
 	(auto-rewrites-info
 	 (make-instance 'auto-rewrites-info
 	   'rewrites (init-symbol-table)
@@ -233,23 +215,12 @@
 			'dpinfo-sigalist sigalist
 			'dpinfo-findalist findalist
 			'dpinfo-usealist usealist))
-	(*init-ics-state* (ics_empty_state))
-	(*ics-state* (ics_empty_state))
-	(*top-ics-state* (ics_empty_state))
 	(*current-context* (or context (context decl)))
-	(*current-theory* (module decl)))
-    (initprover)			;initialize prover
-    (init-ics)
-    (cond ((eq *force-dp* :old)
-	   (old-ground))
-	  ((eq *force-dp* :new)
-	   (new-ground)))
-    (when *new-ground?*
-      (init-dc))
-    (newcounter  *skovar-counter*)
-    (newcounter  *skofun-counter*)
-    (newcounter  *bind-counter*)
-    (newcounter *translate-id-counter*)
+	(*current-theory* (module decl))
+	(*current-decision-procedure* (determine-decision-procedure decl)))
+    (newcounter *skovar-counter*)
+    (newcounter *skofun-counter*)
+    (newcounter *bind-counter*)
     (newcounter *dc-translate-id-counter*)
     (unless (closed-definition decl)
       (setf (closed-definition decl)
@@ -257,9 +228,9 @@
     (let* ((top-formula (closed-definition decl))
 	   (s-form (make-instance 's-formula 'formula top-formula))
 	   (sequent (make-instance 'sequent 's-forms (list s-form)))
-	   (*newdc* *newdc*)
-	   (*new-ground?* *new-ground?*)
-	   (*old-ground?* *old-ground?*)
+	   (*init-dp-state* (dpi-empty-state))
+	   (*dp-state* (dpi-push-state *init-dp-state*))
+	   (*top-dp-state* (dpi-push-state *init-dp-state*))
 	   (*top-proofstate*
 	    (make-instance 'top-proofstate
 	      'current-goal sequent
@@ -268,43 +239,36 @@
 			    strategy
 			    (query*-step))
 	      'context *current-context*
-	      'alists (make-dpinfo sigalist findalist usealist)
 	      'dp-state *dp-state*
-	      'ics-state *ics-state*
 	      'justification (justification decl)
 	      'declaration decl
 	      'current-auto-rewrites auto-rewrites-info)))
-      (unless (or *force-dp*
-		  *recursive-prove-decl-call*
-		  (eq *new-ground?* (new-ground? decl))
-		  (and *proving-tcc* *use-default-dp?*)
-		  (and (not *proving-tcc*)
-		       (not
-			(pvs-yes-or-no-p
-			 "~%This proof was originally done with the ~:[old~;new~] ~
-                          decision procedures,~%which is not the default.~%~
-                          Use the ~:[old~;new~] ones (for this proof only)? "
-			 (new-ground? decl) (new-ground? decl)))))
-	(if *new-ground?*
-	    (old-ground)
-	    (new-ground)))
-      ;;(pvs-message "Using ~:[old~;new~] decision procedures" *new-ground?*)
-      (let ((*dp-state* (when *new-ground?*
-			  (dp::push-new-cong-state *init-dp-state*)))
-	    (*top-dp-state* (when *new-ground?*
-			  (dp::push-new-cong-state *init-dp-state*))))
-	(setf (dp-state *top-proofstate*) *dp-state*)
-	(before-prove*)
-	(unwind-protect
-	    (catch 'quit		;to quit proofs
-	      (if *please-interrupt*
-		  (prove* *top-proofstate*)
-		  (with-interrupts-deferred
-		   (prove* *top-proofstate*))))
-	  (after-prove*)
-	  (unless *recursive-prove-decl-call*
-	    (save-proof-info decl init-real-time init-run-time)))
-	*top-proofstate*))))
+      (before-prove*)
+      (dpi-init #'prove-decl-body)
+      (after-prove*)
+      (unless *recursive-prove-decl-call*
+	(save-proof-info decl init-real-time init-run-time))
+      *top-proofstate*)))
+
+(defun determine-decision-procedure (decl)
+  (or (if (or *force-dp*
+	      *recursive-prove-decl-call*
+	      (eq *default-decision-procedure* (decision-procedure-used decl))
+	      (and *proving-tcc* *use-default-dp?*)
+	      (and (not *proving-tcc*)
+		   (pvs-yes-or-no-p
+		    "~%This proof was originally done with the ~a ~
+                   decision procedure,~%which is not the default.~%~
+                   Do you want to use the default ~a instead? "
+		    (decision-procedure-used decl)
+		    *default-decision-procedure*)))
+	  (car (member *default-decision-procedure* *decision-procedures*
+		       :key #'dp-interface-name))
+	  (car (member (decision-procedure-used decl) *decision-procedures*
+		       :key #'dp-interface-name)))
+      (pvs-error "Proof Error"
+	(format nil "Can't find the ~a decision procedure"
+	  (decision-procedure-used decl)))))
 
 (defmethod prove-decl ((decl declaration) &key strategy)
   (declare (ignore strategy))
@@ -318,6 +282,14 @@
   (when (or (not *proving-tcc*)
 	    *noninteractive*)
     (pvs-emacs-eval "(setq pvs-in-checker t)")))
+
+(defun prove-decl-body ()
+  (unwind-protect
+      (catch 'quit			;to quit proofs
+	(if *please-interrupt*
+	    (prove* *top-proofstate*)
+	    (with-interrupts-deferred
+	     (prove* *top-proofstate*))))))
 
 (defun after-prove* ()
   (unless *recursive-prove-decl-call*
@@ -1585,9 +1557,9 @@
     (context (setf (context ps) value))
 ;    (out-context (setf (out-context ps) value))
 ;    (out-substitution (setf (out-substitution ps) value))
-    (alists (setf (alists ps) value))
+;    (alists (setf (alists ps) value))
     (dp-state (setf (dp-state ps) value))
-    (ics-state (setf (ics-state ps) value))
+;    (ics-state (setf (ics-state ps) value))
     (current-auto-rewrites (setf (current-auto-rewrites ps) value))
     (rewrite-hash (setf (rewrite-hash ps) value))
     (subtype-hash (setf (subtype-hash ps) value))
@@ -1667,13 +1639,9 @@
 
 (defun assert-tccforms (tccforms ps)
   (when tccforms
-    (let* ((dp-state (dp-state ps))
-	   (alists (alists ps))
-	   (ics-state (ics-state ps)))
+    (let* ((dp-state (dp-state ps)))
       (nprotecting-cong-state
-       ((*dp-state* dp-state)
-	(*alists* alists)
-	(*ics-state* ics-state))
+       ((*dp-state* dp-state))
        ;;(break "atc")
        (let ((*rewrite-hash* (copy (rewrite-hash ps)))
 	     (*subtype-hash* (copy (subtype-hash ps))))
@@ -1717,9 +1685,7 @@
 	 (*auto-rewrites!-names* (auto-rewrites!-names ps))
  	 (*macro-names* (macro-names ps))	 
 	 (*rewrite-hash* (rewrite-hash ps))
-	 (*alists* (alists ps))
-	 (*dp-state* (dp-state ps))
-	 (*ics-state* (ics-state ps)))
+	 (*dp-state* (dp-state ps)))
     ;;(break)
     (cond ((typep step 'rule-instance);;if step is a rule, then
 	   ;;reinvoke rule-apply with corresponding strategy. 
@@ -1736,8 +1702,7 @@
 	       (format t "~%~vTEnter: ~a" *ruletracedepth*
 		       (rule-input topstep))
 	       (incf *ruletracedepth*))
-	     (multiple-value-bind (signal subgoals
-					  updates)
+	     (multiple-value-bind (signal subgoals updates)
 		 (funcall (rule topstep) ps);;(break "rule-ap")
 	       (cond ((eq signal '!);;success
 		      (when (memq name *ruletrace*)
@@ -1900,9 +1865,7 @@
 	 (dp-state (dp-state ps))
 	 (ics-state (ics-state ps)))
     (nprotecting-cong-state
-     ((*dp-state* dp-state)
-      (*alists* alists)
-      (*ics-state* ics-state))
+     ((*dp-state* dp-state))
      (let ((*rewrite-hash* (copy (rewrite-hash ps)))
 	   (*subtype-hash* (copy (subtype-hash ps))))
        (loop for fmla in fmla-list
@@ -2094,10 +2057,7 @@
 		    'proof-dependent-decls proof-dependent-decls
 		    'dependent-decls (dependent-decls proofstate)
 		    ;;d-d can be NIL but inheriting from parent is okay.
-		    'alists (copy (alists proofstate))
-		    'dp-state (when *new-ground?*
-				(dp::copy-cong-state (dp-state proofstate)))
-		    'ics-state (ics-state proofstate)
+		    'dp-state (dpi-copy-state (dp-state proofstate))
 		    'current-auto-rewrites
 		    (current-auto-rewrites proofstate)
 		    'rewrite-hash (rewrite-hash proofstate)

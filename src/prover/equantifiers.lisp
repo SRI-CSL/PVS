@@ -541,11 +541,6 @@ Please provide skolem constants for these variables." overlap)
   (let* ((*assert-typepreds* nil)
 	 (*subtype-hash* (copy (subtype-hash ps)))
 	 (*dp-state* (dp-state ps))
-	 (*alists* (alists ps))
-	 ;;	 (alists (alists ps))
-	 ;;	 (findalist (dpinfo-findalist alists))
-	 ;;	 (usealist (dpinfo-usealist alists))
-	 ;;	 (sigalist (dpinfo-sigalist alists))
 	 (new-context (copy-prover-context))
 	 (terms (if (consp terms) terms (list terms)))
 	 (sformnum (find-sform (s-forms (current-goal ps)) sformnum
@@ -562,8 +557,7 @@ Please provide skolem constants for these variables." overlap)
 							   (formula sform))))
 						 (length terms))))))))
     (protecting-cong-state
-     ((*dp-state* *dp-state*)
-      (*alists* *alists*))
+     ((*dp-state* *dp-state*))
      (cond ((null sformnum)
 	    (error-format-if "~%No suitable (+ve FORALL/-ve EXISTS) quantified expression found.")
 	    (values 'X nil nil))
@@ -582,9 +576,8 @@ Please provide skolem constants for these variables." overlap)
 						   (args1 fmla))))
 				    (top-translate-to-prove body)
 				    (and (not (connective-occurs? body))
-					 (let ((res (call-process
-						     fmla
-						     *dp-state* *alists*)))
+					 (let ((res (call-process fmla
+								  *dp-state*)))
 					   (when (consp res)
 					     (loop for x in res
 						   do (push x *process-output*)))
@@ -596,8 +589,7 @@ Please provide skolem constants for these variables." overlap)
 				 (cons subgoal
 				       (list 'context new-context
 					     'subtype-hash *subtype-hash*
-					     'dp-state *dp-state*
-					     'alists *alists*))))))))))))
+					     'dp-state *dp-state*))))))))))))
 		      
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -800,14 +792,12 @@ Please provide skolem constants for these variables." overlap)
 	 (error-format-if "~%Couldn't find a suitable quantified formula.")
 	 NIL)
 	(t (let* ((*dp-state* (dp-state ps))
-		  (*alists* (alists ps))
 		  (if-match (if (or (all-or-best-or-first*? if-match)
 				    tcc?)
 				if-match
 				'best)))
 	     (nprotecting-cong-state
-	      ((*dp-state* *dp-state*)
-	       (*alists* *alists*))
+	      ((*dp-state* *dp-state*))
 	      (find-quant-terms* sforms subst where if-match polarity? tcc? ps))))))
 
 (defun forall-sform?  (sform)
