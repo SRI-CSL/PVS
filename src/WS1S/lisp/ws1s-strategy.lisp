@@ -3,22 +3,28 @@
 (defvar *output-examples* nil)
 (defvar *output-automaton* nil)
 (defvar *output-traces* nil)
+(defvar *babble* nil)
 
 
-(addrule 'ws1s nil ((fnums *) (examples T) (automaton nil) (traces nil))
-	   (ws1s-step fnums examples automaton traces)
-	   "WS1S Decision Procedure.")
+(addrule 'ws1s nil ((fnums *) (examples T) (automaton nil) (traces nil) (babble nil))
+	 (ws1s-step fnums examples automaton traces babble)
+	 "WS1S Decision Procedure.")
 
-(defun ws1s-step (fnums examples automaton traces)
+(defun ws1s-message (format-string &rest args)
+  (when *babble*
+    (apply #'format-if (cons format-string args))))
+
+(defun ws1s-step (fnums examples automaton traces babble)
   #'(lambda (ps)
       (let* ((*output-examples* examples)
 	     (*output-automaton* automaton)
 	     (*output-traces* traces)
+	     (*babble* babble)
 	     (sforms (s-forms (current-goal ps)))
 	     (selected-sforms (select-seq sforms fnums))
 	     (remaining-sforms (delete-seq sforms fnums)))
 	(declare (special *output-examples* *output-automaton*
-			  *output-traces*))
+			  *output-traces*) *babble*)
 	(multiple-value-bind (signal newform)
 	    (ws1s-sforms selected-sforms)
 	  (case signal
@@ -61,9 +67,7 @@
 					 (t fmla))))
 		      (ws1s-output fmla newfmla)
 		      (when (and (not (eq newfmla *true*)) (not (eq newfmla *false*)))
-			(ws1s-example-output "Counterexample (assertion => main)"
-					     counterex length-of-counterex num types fvars)
-			(ws1s-example-output "Witness (assertion & main)"
+			(ws1s-example-output "Witness: "
 					     witness length-of-witness num types fvars))
 		      (ws1s-automaton-output conj num fvars offsets)
 		      (format t "~%")
@@ -114,10 +118,11 @@
   (labels ((loop* (j acc)
 	     (if (= j length) acc
 	       (let ((newacc (if (set? (elt example (+ (* i length) j 1)))
-				 (format nil "add(~d, ~a)" j acc)
+				 (make!-application (add-to-fset)
+						    (list (make!-number-expr j) acc))
 			       acc)))
 		 (loop* (1+ j) newacc)))))
-    (mk-expr (loop* 0 "sets[nat].emptyset") :expected "finite_set[nat]")))
+    (loop* 0 (empty-fset-of-nats))))
 
 (defun ws1s-automaton-output (p num fvars offsets)
   (when *output-automaton*
