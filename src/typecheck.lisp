@@ -485,6 +485,11 @@
     (when (eq (module conversion) theory)
       (pushnew (subst-params-decl conversion theoryname)
 	       (conversions *current-context*)
+	       :test #'eq)))
+  (dolist (conversion (disabled-conversions (saved-context theory)))
+    (when (eq (module conversion) theory)
+      (pushnew (subst-params-decl conversion theoryname)
+	       (disabled-conversions *current-context*)
 	       :test #'eq))))
 
 (defmethod subst-params-decl ((c conversion-decl) modinst)
