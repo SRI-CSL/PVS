@@ -68,7 +68,7 @@
 		   (eq (funsym head) 'TIMES))
 	      (list `(LESSEQP ,(arg1 norm) ,(arg2 norm))
 		  `(GREATEREQP ,(arg1 norm) ,(arg2 norm)))
-	    (if (onlyoccurrencep head head all-terms t)
+	    (if (onlyoccurrencep head head all-terms)
 		(ncons norm)
 	      (list `(LESSEQP ,(arg1 norm) ,(arg2 norm))
 		    `(GREATEREQP ,(arg1 norm) ,(arg2 norm))))))
@@ -82,7 +82,7 @@
 		      (head (car all-terms)))
 		 (if (not (and (consp head)
 			       (eq (funsym head) 'TIMES)))
-		     (not (onlyoccurrencep head head all-terms t))
+		     (not (onlyoccurrencep head head all-terms))
 		   nil))))))
 
 (setq *jmr-mult* t)
