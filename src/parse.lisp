@@ -451,18 +451,26 @@
 (defun xt-importing-elt (importing)
   (let ((importings
 	 (mapcar #'(lambda (item)
-		     (if (is-sop 'THEORY-ABBREVIATION-DECL item)
-			 (make-instance 'theory-abbreviation-decl
-			   'id (ds-id (term-arg1 item))
-			   'theory-name (xt-modname (term-arg0 item))
-			   'place (term-place item)
-			   'semi (when (is-sop 'SEMIC (term-arg1 importing)) t)
-			   'chain? t)
-			 (make-instance 'importing
-			   'theory-name (xt-modname item)
-			   'place (term-place item)
-			   'semi (when (is-sop 'SEMIC (term-arg1 importing)) t)
-			   'chain? t)))
+		     (let* ((imp-place (term-place importing))
+			    (it-place (term-place item))
+			    (place (vector (starting-row imp-place)
+					   (starting-col imp-place)
+					   (ending-row it-place)
+					   (ending-col it-place))))
+		       (if (is-sop 'THEORY-ABBREVIATION-DECL item)
+			   (make-instance 'theory-abbreviation-decl
+			     'id (ds-id (term-arg1 item))
+			     'theory-name (xt-modname (term-arg0 item))
+			     'place place
+			     'semi (when (is-sop 'SEMIC (term-arg1 importing))
+				     t)
+			     'chain? t)
+			   (make-instance 'importing
+			     'theory-name (xt-modname item)
+			     'place place
+			     'semi (when (is-sop 'SEMIC (term-arg1 importing))
+				     t)
+			     'chain? t))))
 	   (term-args (term-arg0 importing)))))
     (setf (chain? (car (last importings))) nil)
     importings))
