@@ -742,32 +742,37 @@ Please provide skolem constants for these variables." overlap)
 	    (cons entry (order-subst subst (cdr boundvars)))
 	    (order-subst subst (cdr boundvars))))))
 
-(defun filter-subst (fmla subst sign boundvars if-match)
-  (if (all-or-first*? if-match)
-      (rem-dups
-	  subst
-	:test #'tc-eq
-	:key #'(lambda (sub) (quant-subs* fmla sub sign nil)))
-      (if (eq if-match 'best)
-	  (let* ((all-subst
-		  (rem-dups
-		      subst 
+(defun filter-subst (fmla subst sign boundvars if-match tcc?)
+  (if (all-or-best-or-first*? if-match)
+      (let ((subst (rem-dups
+		    subst
 		    :test #'tc-eq
-		    :key #'(lambda (sub) (quant-subs* fmla sub sign nil))))
-		 (tcc-all-subst
-		  (loop for sub in all-subst
-			collect
-			(let ((*tccforms* nil))
-			  (tc-alist (order-subst (cdr sub) boundvars))
-			  (cons (length *tccforms*)
-				sub))))
-		 (tccnums (mapcar #'car tcc-all-subst))
-		 (min-tccnums (if tccnums (apply #'min tccnums) 0))
-		 (best-sub (loop for (x . y) in tcc-all-subst
-				thereis (when (eq x min-tccnums)
-					  y))))
-	    best-sub)
-	  subst)))
+		    :key #'(lambda (sub) (quant-subs* fmla sub sign nil)))))
+	(if (and tcc? (all-or-first*? if-match))
+	    subst
+	  (let (
+		(tcc-all-subst
+		 (loop for sub in subst
+		       collect
+		       (let ((*tccforms* nil))
+			 (tc-alist (order-subst (cdr sub) boundvars))
+			 (cons (length *tccforms*)
+			       sub)))))
+	    (if (eq if-match 'best)
+		(let* ((tccnums (mapcar #'car tcc-all-subst))
+		      (min-tccnums (if tccnums (apply #'min tccnums) 0))
+		      (best-sub (loop for (x . y) in tcc-all-subst
+				      thereis (when (equal x min-tccnums)
+						y))))
+		  (and (or tcc? (eql min-tccnums 0))
+		       best-sub))
+		(loop for (x . y) in tcc-all-subst
+		      when (eql x 0)
+		      collect y)))))
+	  (if tcc? subst
+	      (let* ((*tccforms* nil))
+		(tc-alist (order-subst (cdr subst) boundvars))
+		(if *tccforms* nil subst)))))
 
 (defun quant-subs* (fmla subst sign if-match)
   (if (all-or-first*? if-match)
@@ -794,16 +799,20 @@ Please provide skolem constants for these variables." overlap)
 	      nil))))
 	       
  
-(defun find-quant-terms (sforms subst where if-match polarity? ps)
+(defun find-quant-terms (sforms subst where if-match polarity? tcc? ps)
   (cond ((null sforms)
 	 (error-format-if "~%Couldn't find a suitable quantified formula.")
 	 NIL)
 	(t (let* ((*dp-state* (dp-state ps))
-		  (*alists* (alists ps)))
+		  (*alists* (alists ps))
+		  (if-match (if (or (all-or-best-or-first*? if-match)
+				    tcc?)
+				if-match
+				'best)))
 	     (nprotecting-cong-state
 	      ((*dp-state* *dp-state*)
 	       (*alists* *alists*))
-	      (find-quant-terms* sforms subst where if-match polarity? ps))))))
+	      (find-quant-terms* sforms subst where if-match polarity? tcc? ps))))))
 
 (defun forall-sform?  (sform)
   (let ((formula  (formula sform)))
@@ -817,7 +826,7 @@ Please provide skolem constants for these variables." overlap)
 	(forall-expr? (args1 formula))
 	(exists-expr? formula))))
 
-(defun find-quant-terms* (sforms subst where if-match polarity? ps)
+(defun find-quant-terms* (sforms subst where if-match polarity? tcc? ps)
   (cond ((null sforms)
 	 (error-format-if "~%Couldn't find a suitable instantiation for any
 quantified  formula.  Please provide partial instantiation.")
@@ -831,7 +840,7 @@ is not of the form: (<var> <term>...)" subst)
 			       (args1 (formula (car sforms)))
 			       (formula (car sforms)))))
 	 (find-quant-terms* (cdr sforms) subst where if-match
-			    polarity? ps))
+			    polarity? tcc? ps))
 	(t 
 	 (let* ((sform (car sforms))
 		(formula (formula sform))
@@ -852,12 +861,12 @@ is not of the form: (<var> <term>...)" subst)
 				   x))))
 	   (cond (bad-subst
 		  (find-quant-terms* (cdr sforms) subst where
-				     if-match polarity? ps))
+				     if-match polarity? tcc? ps))
 		 (t (let ((sub
 			   (find-quant-subst (car sforms) pre-alist
 					     boundvars sign fmla
 					     where if-match
-					     polarity? ps)))
+					     polarity? tcc? ps)))
 		      (if sub
 			  (cons (find-sform (s-forms
 					     (current-goal *ps*))
@@ -867,12 +876,12 @@ is not of the form: (<var> <term>...)" subst)
 				sub)
 			  (find-quant-terms* (cdr sforms) subst
 					     where if-match
-					     polarity? ps)))))
+					     polarity? tcc? ps)))))
 	   ))))
 
 
 (defun find-quant-subst (sform pre-alist boundvars sign fmla
-			       where if-match polarity? ps)
+			       where if-match polarity? tcc? ps)
   (let* ((alist
 	  (loop for (x . y) in pre-alist
 		collect
@@ -910,7 +919,7 @@ is not of the form: (<var> <term>...)" subst)
 	      (mapcar #'formula other-sforms))))
     (find-quant-subst* sform sign fmla
 		       all-fmlas alist rest-boundvars if-match
-		       polarity?
+		       polarity? tcc?
 		       (length rest-boundvars))))
 
 (defun top-find-match-list (template fmlas alist if-match polarity polarity?)
@@ -943,7 +952,7 @@ is not of the form: (<var> <term>...)" subst)
 
 (defun find-quant-subst* (sform sign fmla
 				other-fmlas alist rest-boundvars if-match
-				polarity? n)
+				polarity? tcc? n)
   (let* ((polarity (if sign 'positive 'negative))
 	 (templates (find-templates fmla rest-boundvars n nil polarity
 				    polarity?))
@@ -960,7 +969,7 @@ is not of the form: (<var> <term>...)" subst)
 				  (if (all-or-best? if-match)
 				      (list (cons NIL alist))
 				      (cons NIL alist)))) ;for null template
-			    sign rest-boundvars if-match))
+			    sign rest-boundvars if-match tcc?))
 	 (subs (quant-subs* (if sign
 				(formula sform)
 				(args1 (formula sform)))
@@ -974,7 +983,7 @@ is not of the form: (<var> <term>...)" subst)
 		     (not (eq if-match 'all)))
 	       (find-quant-subst* sform sign fmla other-fmlas
 				   alist rest-boundvars
-				  if-match polarity? (1- n))
+				  if-match polarity? tcc? (1- n))
 	   ;(format-if "~%Couldn't find a matching substitution.")
 	   nil))
 	  ((and (null subst) subs)

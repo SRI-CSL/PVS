@@ -1936,7 +1936,7 @@ See INST for a non-copying version."
 ~{~a~^, ~}")
 
 (defstep inst? (&optional (fnums *) subst (where *)
-		   copy? if-match polarity?)
+		   copy? if-match polarity? (TCC? T))
   (let (;(sformnum (find-?quant fnum subst *ps*))
 	 (sforms (remove-if-not
 		     #'exists-sform?
@@ -1944,7 +1944,7 @@ See INST for a non-copying version."
 				 fnums)))
 	           
 	 (search (find-quant-terms sforms subst where
-				     if-match polarity? *ps*))
+				     if-match polarity? tcc? *ps*))
          (sformnum (when search (car search)))
 	 (newterms (when search (cdr search))))
     (if newterms
@@ -1955,7 +1955,7 @@ See INST for a non-copying version."
 	    (let ((dummy (format-if "~%Trying instantiation with ~
 IF-MATCH set to NIL~%"))
 		       (search (find-quant-terms sforms subst where
-					    NIL polarity? *ps*))
+					    NIL polarity? tcc? *ps*))
 		      (sformnum (when search (car search)))
 		      (newterms (when search (cdr search)))
 		      (x (make-inst?-rule sformnum newterms copy? NIL)))
@@ -1979,7 +1979,10 @@ IF-MATCH if all, all possible instantiations of a chosen template
 POLARITY? if T, a positively occurring template is only matched against
                 negatively occuring subexpressions, and less-than
                 term occurrences are matched against greater-than
-                occurrences. "
+                occurrences.
+TCC? if NIL only selects instantiations that do not generate any TCCs.
+     The default value is T.  There is no check to see if the TCCs are
+     true in the given context."
   "Instantiating quantified variables")
 
  (defstep quant? (&optional (fnums *) subst (where *)
