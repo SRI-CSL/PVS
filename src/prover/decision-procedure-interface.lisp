@@ -228,7 +228,7 @@
 	   (values *true* state)))))
 
 (defmethod dpi-process* ((dp (eql 'ics)) ics-expr state)
-  (let* ((ics-value (ics_process_wrapper ics-expr)))
+  (let* ((ics-value (wrap ics-expr)))
     (cond ((not (zerop (ics_is_consistent ics-value)))
 	   (let ((nstate (ics-d-consistent ics-value)))
 	     (values nil nstate)))
@@ -287,7 +287,7 @@
 	(ics-result (dpi-valid?* 'ics (cdr state) pvs-expr)))
     (unless (tc-eq shostak-result ics-result)
       (format t "~%ICS-SHOSTAK-DIFFERENCE dpi-valid?* shostak and ICS differ on ~a"
-	expr))
+	pvs-expr))
     shostak-result))
 
 (defmethod dpi-push-state* ((dp (eql 'shostak-and-ics)) state)
