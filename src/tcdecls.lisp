@@ -236,11 +236,7 @@
 	 (ptype (if (formals decl)
 		    (make-instance 'type-application
 		      'type tn
-		      'parameters (mapcar #'(lambda (x)
-					      (let ((name (mk-name-expr x)))
-						(setf (kind name) 'VARIABLE)
-						name))
-					  (car (formals decl))))
+		      'parameters (mapcar #'mk-name-expr (car (formals decl))))
 		    tn))
 	 (tval (type-def-decl-value decl ptype)))
     (setf (resolutions tn) (list res))
@@ -395,8 +391,7 @@
 	     (ndep (mk-dep-binding nvar ndom))
 	     (nvar (mk-name-expr nvar nil nil
 				 (make-resolution ndep
-				   (theory-name *current-context*) ndom)
-				 'variable))
+				   (theory-name *current-context*) ndom)))
 	     (nrange (subst-formals-funtype formals range ndep nvar)))
 	(mk-funtype ndep nrange))
       (mk-funtype (make-formals-domain formals) range)))
@@ -431,8 +426,7 @@
 		 (nvar (mk-name-expr (id (car formals)) nil nil
 				     (make-resolution dbinding
 				       (theory-name *current-context*)
-				       (type (car formals)))
-				     'variable)))
+				       (type (car formals))))))
 	    (make-formals-domain* (substit (cdr formals)
 				   (acons (car formals) nvar nil))
 				 (cons dbinding domtypes)))
@@ -1056,8 +1050,7 @@
   (let* ((dname (mk-name-expr (id decl) nil nil
 			      (make-resolution decl
 				(theory-name *current-context*)
-				(type decl))
-			      'constant))
+				(type decl))))
 	 (dargs (mapcar #'(lambda (blist)
 			    (mapcar #'mk-name-expr blist))
 			(append (formals decl)
@@ -1210,12 +1203,16 @@
 		       (setq used-a-conversion? t))))
 	 (ftypes (remove-if-not #'fully-instantiated? ptypes))
 	 (types (if (typep (expr type) 'name-expr)
-		    (let ((nreses (filter-local-resolutions
-				   (remove-if-not #'(lambda (r)
-						      (some #'(lambda (fty)
-								(tc-eq fty (type r)))
-							    ftypes))
-				     (resolutions (expr type))))))
+		    (let* ((reses (resolutions (expr type)))
+			   (bres (bound-variable-resolution reses))
+			   (breses (if bres (list bres) reses))
+			   (nreses (filter-local-resolutions
+				   (remove-if-not
+				       #'(lambda (r)
+					   (some #'(lambda (fty)
+						     (tc-eq fty (type r)))
+						 ftypes))
+				     breses))))
 		      (or (mapcar #'type nreses)
 			  ftypes))
 		    ftypes)))
@@ -1645,10 +1642,9 @@
   (typecheck-conversion decl))
 
 (defun typecheck-conversion (decl)
-  (if (typep (declaration (name decl)) 'const-decl)
-      (setf (kind (name decl)) 'constant)
-      (type-error (name decl)
-	"Conversion must be a constant"))
+  (unless (typep (declaration (name decl)) 'const-decl)
+    (type-error (name decl)
+      "Conversion must be a constant"))
   (let ((type (find-supertype (type (name decl)))))
 ;    (unless (and (typep type 'funtype)
 ;		 (singleton? (domain type)))
