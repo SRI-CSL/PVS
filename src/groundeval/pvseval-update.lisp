@@ -1211,22 +1211,29 @@
 			 `(function ,fun))));;actuals irrelevant for datatypes
 	       (let* ((actuals (expr-actuals (module-instance expr)))
 		      (decl (declaration expr))
+		      (internal-actuals
+		       (or actuals
+			   (and (eq (module decl) *external*)
+				(loop for x in (formals (module decl))
+				      when (formal-const-decl? x)
+				      collect (make-constant-from-decl x)))))
 		      (defns (def-axiom decl))
 		      (defn (when defns(args2 (car (last (def-axiom decl))))))
 		      (def-formals (when (lambda-expr? defn)
 				     (bindings defn)))
 		      (fun (if defns
 			       (if def-formals
-				   (if actuals
+				   (if internal-actuals
 				       (external-lisp-function (declaration expr))
 				       (lisp-function (declaration expr)))
 				   (pvs2cl-operator2 expr actuals nil
 						     livevars bindings))
-			       (if actuals
+			       (if internal-actuals
 				   (external-lisp-function (declaration expr))
 				   (lisp-function (declaration expr))))))
-	    (mk-funapp fun (pvs2cl_up* actuals
-				       bindings livevars)))))))
+		 (assert fun)
+		 (mk-funapp fun (pvs2cl_up* internal-actuals
+					    bindings livevars)))))))
 
 (defun expr-actuals (modinst)
   (loop for act in (actuals modinst)
