@@ -2861,9 +2861,11 @@ or succedent formula in the sequent."
   (protect-types-hash
    expr
    (typecheck expr :expected expected)
-   (cond ((type expr)
+   (cond ((and (type expr)
+	       (fully-instantiated? (type expr)))
 	  expr)
-	 ((singleton? (types expr))
+	 ((and (singleton? (types expr))
+	       (fully-instantiated? (car (types expr))))
 	  (set-type expr (car (types expr)))
 	  expr)
 	 (t (let* ((sforms
@@ -2888,7 +2890,8 @@ or succedent formula in the sequent."
 						   (compatible? pty type))
 				  (ptypes expr))))
 		    (set-type expr
-			      (if (singleton? ptypes)
+			      (if (and (singleton? ptypes)
+				       (fully-instantiated? (car ptypes)))
 				  (car ptypes)
 				  type))
 		    expr)
