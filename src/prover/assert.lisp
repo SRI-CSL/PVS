@@ -1725,7 +1725,10 @@
 		 (if (eql newcoeff 1)
 		     (make-prod prodlist
 				type)
-		     (make-prod (list (make!-number-expr newcoeff)
+		     (make-prod (list (if (minusp newcoeff)
+					  (make!-minus (make!-number-expr
+							(- newcoeff)))
+					  (make!-number-expr newcoeff))
 				      (make-prod prodlist type))
 				type)))))))
 		    
