@@ -245,7 +245,7 @@
 		  (:file "emacs-calls")
 		  (:file "ilisp-pkg")
 		  (:file "cl-ilisp")
-		  (:file "allegro"))
+		  (:file "allegro")))
    (:module typechecker
      :source-pathname "src/"
      :components ((:file "freeparams")
