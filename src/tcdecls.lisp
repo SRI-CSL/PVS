@@ -156,11 +156,23 @@
 (defmethod typecheck* ((decl lib-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   ;;;(check-duplication decl)
-  (multiple-value-bind (path msg)
+  (multiple-value-bind (lib path msg)
       (get-library-pathname (library decl))
     (declare (ignore path))
     (when msg
-      (type-error decl msg (lib-string decl)))))
+      (type-error decl msg (lib-string decl)))
+    (dolist (d (gethash (id decl) (current-declarations-hash)))
+      (when (and (lib-decl? d)
+		 (not (string= lib (get-library-pathname (library d)))))
+	(if (eq (module d) (current-theory))
+	    (type-error decl
+	      "Library id ~a declared earlier in this theory (~a) ~
+               with a different path."
+	      (id decl) (id (current-theory)))
+	    (pvs-warning
+	      "Library id ~a declared in imported theory ~a ~
+               with a different path."
+	      (id decl) (id (module d))))))))
 
 
 ;;; Module declarations

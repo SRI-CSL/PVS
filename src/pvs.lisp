@@ -408,7 +408,8 @@
 ;;; list if foo imports (an instance of) list.
 
 (defmethod all-importings ((theory datatype-or-module))
-  (delete theory (all-importings (list theory))))
+  (let ((*current-context* (saved-context theory)))
+    (delete theory (all-importings (list theory)))))
 
 (defmethod all-importings ((list list))
   (let ((*theories-visited* nil))
@@ -599,8 +600,9 @@
       (let ((start-time (get-internal-real-time))
 	    (*current-context* (make-new-context theory))
 	    (*old-tcc-names* nil))
-	(mapc #'(lambda (u) (get-typechecked-theory u))
-	      (get-immediate-usings theory))
+	(dolist (u (get-immediate-usings theory))
+	  (unless (library u)
+	    (get-typechecked-theory u)))
 	(unless (typechecked? theory)
 	  (typecheck theory)
 	  #+pvsdebug (assert (typechecked? theory))
@@ -636,19 +638,20 @@
 		  (id theory) time tot prv mat obl
 		  (length (warnings theory)) (length (info theory))))))))
     (setq *current-theory* (car (last theories))))
-  (let ((dep (assoc filename *circular-file-dependencies* :test #'equal)))
-    (when dep
-      (setq *circular-file-dependencies*
-	    (delete dep *circular-file-dependencies*))))
-  (let ((deplist (mapcar #'(lambda (d)
-			     (list (id d) (filename d)))
-		   (circular-file-dependencies filename))))
-    (when deplist
-      (pvs-warning
-	  "Circularity detected in file dependencies:~%~
+  (let ((*current-context* (saved-context *current-theory*)))
+    (let ((dep (assoc filename *circular-file-dependencies* :test #'equal)))
+      (when dep
+	(setq *circular-file-dependencies*
+	      (delete dep *circular-file-dependencies*))))
+    (let ((deplist (mapcar #'(lambda (d)
+			       (list (id d) (filename d)))
+		     (circular-file-dependencies filename))))
+      (when deplist
+	(pvs-warning
+	    "Circularity detected in file dependencies:~%~
            ~{  ~{~a from ~a.pvs~}~^, which imports~%~}~%~
            bin files will not be generated for any of these pvs files."
-	deplist)))
+	  deplist))))
   theories)
 
 (defun prove-unproved-tccs (theories &optional importchain?)
@@ -758,7 +761,7 @@
 
 (defun sort-theories (theories)
   (let ((usings (mapcar #'(lambda (th)
-			    (cons th (mapcar #'id (get-immediate-usings th))))
+			    (cons th (get-immediate-using-ids th)))
 			theories)))
     (sort-theories* usings)))
 
@@ -777,6 +780,13 @@
 	      (type-error (caar usings)
 		"Circularity found in importings of theor~@P:~%  ~{~a~^, ~}"
 		(length theories) theories))))))
+
+(defmethod get-immediate-using-ids (theory)
+  (mapcan #'(lambda (d)
+	      (let ((tn (theory-name d)))
+		(unless (library tn)
+		  (list (id tn)))))
+    (remove-if-not #'mod-or-using? (all-decls theory))))
 
 (defmethod tcc-info ((d datatype))
   '(0 0 0))
@@ -978,39 +988,11 @@
 		(file-write-date (path mod))))))
 
 (defmethod parsed?* ((mod library-theory))
-  (let* ((impfiles (car (gethash (library mod) *imported-libraries*)))
-	 (prefiles (car (gethash (library mod) *prelude-libraries*)))
-	 (*pvs-files* (cond ((and (hash-table-p impfiles)
-				  (gethash (filename mod) impfiles))
-			     impfiles)
-			    ((hash-table-p prefiles)
-			     prefiles)
-			    (t (make-hash-table :test #'equal)))))
-    (and (filename mod)
-	 (parsed?* (make-pathname :defaults (library mod)
-				  :name (filename mod)
-				  :type "pvs")))))
+  (parsed-library-file? mod))
 
 (defmethod parsed?* ((mod library-datatype))
-  (let ((*pvs-files* (nth-value 0 (get-imported-files-and-theories
-				   (library mod)))))
-    (and (filename mod)
-	 (parsed?* (make-pathname :defaults (library mod)
-				 :name (filename mod)
-				 :type "pvs")))))
+  (parsed-library-file? mod))
 
-(defun get-imported-files-and-theories (lib)
-  (get-library-files-and-theories lib *imported-libraries*))
-
-(defun get-library-files-and-theories (lib libhash)
-  (let ((files&theories (gethash lib libhash)))
-    (if files&theories
-	(values-list files&theories)
-	(let ((fileshash (make-hash-table :test #'equal))
-	      (theorieshash (make-hash-table
-			     :test #'eq :size 20 :rehash-size 10)))
-	  (setf (gethash lib libhash) (list fileshash theorieshash))
-	  (values fileshash theorieshash)))))
 
 #-gcl
 (defmethod parsed?* ((path pathname))
@@ -1037,18 +1019,22 @@
 
 (defmethod typechecked? ((theory datatype-or-module))
   (or *in-checker*
-      (let ((importings (all-importings (list theory))))
-	(every #'(lambda (th)
-		   (and (parsed? th)
-			(memq 'typechecked (status th))))
-	       importings))))
+      (and (memq 'typechecked (status theory))
+	   (let ((importings (all-importings (list theory))))
+	     (every #'(lambda (th)
+			(and (parsed? th)
+			     (memq 'typechecked (status th))))
+		    importings)))))
 
 (defmethod typechecked? ((theory module))
-  (let ((importings (all-importings (list theory))))
-    (every #'(lambda (th)
-	       (and (parsed? th)
-		    (memq 'typechecked (status th))))
-	   importings)))
+  (and (memq 'typechecked (status theory))
+       (saved-context theory)
+       (let* ((*current-context* (saved-context theory))
+	      (importings (all-importings (list theory))))
+	 (every #'(lambda (th)
+		    (and (parsed? th)
+			 (memq 'typechecked (status th))))
+		importings))))
 
 (defmethod typechecked? ((theoryref string))
   (let ((theory (get-theory (pc-parse theoryref 'modname))))
@@ -1642,7 +1628,7 @@
 
 (defun list-theories (&optional context)
   (if (or (null context)
-	  (equal (truename context) (truename *pvs-context-path*)))
+	  (file-equal context *pvs-context-path*))
       (let ((theories nil))
 	(maphash #'(lambda (id mod)
 		     (declare (ignore mod))
@@ -1757,13 +1743,7 @@
 	   mod)
 	  ((and (name? theoryref)
 		(library theoryref))
-	   (multiple-value-bind (lib msg)
-	       (get-library-pathname (library theoryref))
-	     (if lib
-		 (load-imported-library lib theoryref)
-		 (type-error theoryref
-		   (or msg "Library ~a could not be found")
-		   (library theoryref)))))
+	   (get-parsed-library-theory theoryref))
 	  ((and mod (filename mod))
 	   (parse-file (filename mod) nil t)
 	   (get-theory theoryref))
@@ -1776,6 +1756,23 @@
 		     (type-error theoryref
 		       (format nil "Can't find file for theory ~a"
 			 theoryref)))))))))
+
+(defun get-parsed-library-theory (theoryname)
+  (let ((lib-decls (remove-if-not #'lib-decl?
+		     (gethash (library theoryname)
+			      (current-declarations-hash)))))
+    (get-parsed-library-theory*
+     (sort lib-decls #'< :key #'locality)
+     (library theoryname)
+     theoryname)))
+
+(defun get-parsed-library-theory* (lib-decls library theoryname)
+  (if (null lib-decls)
+      (or (load-imported-library (string library) theoryname)
+	  (type-error theoryname "Library with theory ~a not found"
+		      theoryname))
+      (or (load-imported-library (library (car lib-decls)) theoryname)
+	  (get-parsed-library-theory* (cdr lib-decls) library theoryname))))
 
 
 (defun get-parsed?-theory (theoryref)

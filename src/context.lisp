@@ -230,8 +230,7 @@ pvs-strategies files.")
   (cond ((not (file-exists-p *pvs-context-path*))
 	 (pvs-message "Directory ~a seems to have disappeared!"
 	   (namestring *pvs-context-path*)))
-	(t (unless (or *loading-prelude*
-		       *loading-library*)
+	(t (unless *loading-prelude*
 	     (unless (or *dont-write-object-files*
 			 (not *pvs-context-writable*))
 	       (write-object-files))
@@ -551,8 +550,7 @@ pvs-strategies files.")
 					     *pvs-context-path*)))
 			(setq depname
 			      (enough-namestring
-			       (merge-pathnames
-				(pvs-truename (library dth)) (filename dth))
+			       (merge-pathnames (library dth) (filename dth))
 			       (format nil "~a/lib/" *pvs-path*))))
 		      (pushnew depname depfiles
 			       :test #'(lambda (x y)
@@ -597,12 +595,16 @@ pvs-strategies files.")
 						 deps circs))))))
 
 (defun dependencies (theory)
-  (let ((*modules-visited* nil))
+  (let ((*current-context* (or *current-context*
+			       (and (memq 'typechecked (status theory))
+				    (context theory))))
+	(*modules-visited* nil))
     (dependencies* theory)
     (remove theory *modules-visited*)))
 
 (defun dependencies* (theory)
   (unless (or (null theory)
+	      (not (memq 'typechecked (status theory)))
 	      (from-prelude? theory)
 	      (memq theory *modules-visited*))
     (push theory *modules-visited*)
@@ -705,7 +707,7 @@ pvs-strategies files.")
 		 (file (subseq dep (1+ pos))))
 	    (multiple-value-bind (imports errcond)
 		(with-no-type-errors 
-		 (load-imported-library-file lib file))
+		 (restore-imported-library-file lib file))
 	      (declare (ignore imports))
 	      (when errcond
 		(restore-filename-error file errcond))))
@@ -909,7 +911,7 @@ pvs-strategies files.")
   (when (or (null context)
 	    (file-exists-p context))
     (if (or (null context)
-	    (equal (truename context) (truename *pvs-context-path*)))
+	    (file-equal context *pvs-context-path*))
 	(sort (mapcan #'(lambda (e)
 			  (let ((file (format nil "~a.~a"
 					(ce-file e)

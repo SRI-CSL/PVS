@@ -253,9 +253,9 @@
 	   (check-compatible-params (formals-sans-usings mod)
 				    (actuals inst) nil))
 	  (t (setq nmodinst (set-type-actuals inst))))
+    (add-to-using nmodinst)
     (unless *ignore-exportings*
-      (add-exporting-with-theories mod nmodinst))
-    (add-to-using nmodinst)))
+      (add-exporting-with-theories mod nmodinst))))
 
 (defmethod typecheck-using* ((adt datatype) inst)
   (let* ((th1 (adt-theory adt))
@@ -423,9 +423,34 @@
 	  (progn (update-current-context theory theoryname)
 		 (dolist (decl (append (assuming theory) (theory theory)))
 		   (when (and (declaration? decl) (visible? decl))
+		     (check-for-importing-conflicts decl)
 		     (put-decl decl (current-declarations-hash))))
 		 (setf (gethash theory (current-using-hash))
 		       (list tname)))))))
+
+(defmethod check-for-importing-conflicts ((decl lib-decl))
+  (let ((lib (get-library-pathname (library decl))))
+    (dolist (d (gethash (id decl) (current-declarations-hash)))
+      (when (and (lib-decl? d)
+		 (not (string= lib (get-library-pathname (library d)))))
+	(if (= (locality d) (locality decl))
+	    (pvs-warning
+		"Library id ~a declared in imported theory ~a and ~a ~
+               with a different path.~%References to this library id will ~
+               lead to ambiguity errors."
+	      (id decl) (id (module d)))
+	    (pvs-warning 
+		"Library id ~a declared in imported theories ~a and ~a ~
+               with a different path.~%References to this library id will ~
+               use the path~%  ~a"
+	      (id decl) (id (current-theory))
+	      (if (< (locality d) (locality decl))
+		  (library d)
+		  (library decl))))))))
+
+(defmethod check-for-importing-conflicts (decl)
+  (declare (ignore decl))
+  nil)
 
 (defun update-current-context (theory theoryname)
   (assert (saved-context theory))

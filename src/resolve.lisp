@@ -100,12 +100,12 @@
 (defun get-resolutions (name kind args)
   (let* ((adecls (gethash (id name) (current-declarations-hash)))
 	 (ldecls (if (library name)
-		     (let ((lpath (get-library-pathname (library name))))
-		       (if lpath
+		     (let ((lib (get-library-pathname (library name))))
+		       (if lib
 			   (remove-if-not
 			       #'(lambda (d)
 				   (and (library-theory? (module d))
-					(equal lpath (library (module d)))))
+					(equal lib (library (module d)))))
 			     adecls)
 			   (type-error name "~a is an unknown library"
 				       (library name))))
