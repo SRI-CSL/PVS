@@ -1635,6 +1635,9 @@ is not of the form: (<var> <term>...)" subst)
 (defmethod args1 ((expr application))
   (args1* (argument expr)))
 
+(defmethod args1 ((expr assignment))
+  (car (arguments expr)))
+
 (defmethod args1 ((expr projection-application))
   (args1* (argument expr)))
 
