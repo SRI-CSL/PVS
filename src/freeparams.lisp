@@ -17,16 +17,17 @@
 
 (defun free-params (obj)
   (let ((frees (free-params* obj nil)))
-    (assert (null (set-exclusive-or frees (free-params* obj nil))))
+    ;;(assert (null (set-exclusive-or frees (free-params* obj nil))))
     frees))
 
 (defun no-free-params? (obj)
   (null (free-params obj)))
 
 (defun fully-instantiated? (obj)
-  (let ((formals (formals-sans-usings (current-theory))))
-    (every #'(lambda (fp) (memq fp formals))
-	   (free-params obj))))
+  (let ((frees (free-params obj)))
+    (or (null frees)
+	(let ((formals (formals-sans-usings (current-theory))))
+	  (every #'(lambda (fp) (memq fp formals)) frees)))))
 
 
 ;;; Type expressions
