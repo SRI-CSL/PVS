@@ -361,7 +361,8 @@
 	       (product
 		(setq product
 		      (cond
-		       ((cdr product) (mk-times (sort product 'arith-term-<)))
+		       ((cdr product)
+			(sigtimes (mk-times (sort product 'arith-term-<))))
 		       (t (car product))))
 		(cond
 		 ((equal coef 1) product)
