@@ -84,7 +84,7 @@
 
 (defmethod prove-decl ((decl formula-decl) &key strategy)
   (let ((init-real-time (get-internal-real-time))
-	(init-run-time (get-internal-run-time))
+	(init-run-time (get-run-time))
 	(*skovar-counter* nil)
 	(*skofun-counter* nil)
 	(*bind-counter* nil)
@@ -199,6 +199,7 @@
 	    (old-ground)
 	    (new-ground)))
       (pvs-message "Using ~:[old~;new~] decision procedures" *new-ground?*)
+      (setf (new-ground? decl) *new-ground?*)
       (let ((*dp-state* (when *new-ground?*
 			  (dp::push-new-cong-state *init-dp-state*))))
 	(setf (dp-state *top-proofstate*) *dp-state*)
@@ -259,8 +260,8 @@
 
 (defun save-proof-info (decl init-real-time init-run-time)
   (setf (proof-time decl)
-	(list (- (get-internal-run-time) init-run-time)
-	      (- (get-internal-real-time) init-real-time)
+	(list (runtime-since init-run-time)
+	      (realtime-since init-real-time)
 	      nil))
   (cond ((eq (status-flag *top-proofstate*) '!)
 	 ;;(not *proving-tcc*)
@@ -271,8 +272,8 @@
 	 (when *context-modified*
 	   (setf (proof-status decl) 'unfinished)
 	   (let ((ans (pvs-yes-or-no-p
-		       "~%Context was modified in mid-proof.
-Would you like to rerun the proof?~%")))
+		       "~%Context was modified in mid-proof.~
+                        ~%Would you like to rerun the proof? ")))
 	     (if ans (prove-decl decl
 				 :strategy
 				 '(then (rerun)
@@ -281,7 +282,8 @@ Would you like to rerun the proof?~%")))
 	 (let ((ans (or (null (justification decl))
 			(and (not *proving-tcc*)
 			     (pvs-yes-or-no-p
-			      "~%Would you like the partial proof to be saved? ~%(***Old proof will be overwritten.***)~%")))))
+			      "~%Would you like the partial proof to be saved?~
+                               ~%(***Old proof will be overwritten.***)~%")))))
 	   (when ans
 	     (when (justification decl)
 	       (format t "~%Use M-x revert-proof to revert to previous proof."))
