@@ -54,6 +54,7 @@
 	   (format t "  noconvert      : don't convert resulting expressions~%")
 	   (format t "  verbose        : enable verbose compilation messages~%")
 	   (format t "  quiet          : disable verbose compilation messages~%")
+	   (format t "~%~%Use M-x pvs-lisp-theory to see the generated lisp for a PVS theory")
 	   (format t "~%~%Evaluator input should be enclosed in double quotes~%")
 	   (gqread))
 	  ((eq input 'abort)
