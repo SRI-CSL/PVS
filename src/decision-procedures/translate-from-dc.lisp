@@ -5,35 +5,16 @@
 
 (defvar *dc-reverse-prover-name* nil)
 (defvar *dc-pvs-typealist* nil)
-(defvar *translate-from-dc-hash* (dp::dp-make-eq-hash-table))
 
 (defun get-inverse-translation (expr)
   (if *use-translate-from-dc-hash*
       (gethash expr *translate-from-dc-hash*)
       (dp::node-external-info expr)))
 
-(defun set-inverse-translation (expr inverse)
-  (if *use-translate-from-dc-hash*
-      (setf (gethash expr *translate-from-dc-hash*) inverse)
-      (setf (dp::node-external-info expr) inverse)))
-
 (defun reset-translate-from-dc ()
   (setq *dc-reverse-prover-name* nil)
   (setq *dc-pvs-typealist* nil)
   (dp::dp-clrhash *translate-from-dc-hash*))
-
-
-(defmethod translate-to-dc :around (obj)
-  (let ((hashed-value (gethash obj *translate-to-dc-hash*)))
-    (or hashed-value
-	(let ((result (call-next-method)))
-	  (unless (or *bound-variables* *bindings*)
-	    (when (dp::node-p result)
-	      (setf (gethash obj *translate-to-dc-hash*) result)))
-	  ;(setf (gethash result *translate-from-dc-hash*) obj)
-	  (when (dp::node-p result)
-	    (set-inverse-translation result obj))
-	  result))))
 
 (defun dc-add-to-reverse-prover-name (const expr)
   (when (symbolp expr) (break))
