@@ -1,0 +1,405 @@
+@node PVS 3.2 Release Notes
+@chapter PVS 3.2 Release Notes
+
+PVS 3.2 contains a number of enhancements and bug fixes.
+
+@ifinfo
+@menu
+* 3.2 Installation Notes::
+* 3.2 New Features::
+* 3.2 Bug Fixes::
+* 3.2 Incompatibilities::
+@end menu
+@end ifinfo
+
+@node    3.2 Installation Notes
+@section Installation Notes
+
+Installation is the same as usual.  However, if you have received
+patches from SRI that you have put into your @code{~/.pvs.lisp} file,
+they should be removed.  If you anticipate wanting to try the newer
+and older versions together, you can do this by using @code{#-pvs3.2}
+in front of the patches.  This is a directive to the Lisp reader, and
+causes the following s-expression to be ignored unless it is an
+earlier version of PVS.
+
+@node 3.2 New Features
+@section New Features
+
+@menu
+* Theory Interpretation Enhancements::
+* References to Mapped Entities::
+* Cleaning up Specifications::
+* Binary Files:: 
+* Generating HTML:: 
+* Default Strategies::
+* all-typepreds strategy::
+@end menu
+
+@node Theory Interpretation Enhancements
+@subsection Theory Interpretation Enhancements
+
+There are a number of changes related to theory interpretations, as
+well as many bug fixes.
+
+There is now a new form of mapping that makes it simpler to
+systematically interpret theories.  This is the @emph{Theory View},
+and it allows names to be associated without having to directly list
+them.  For example, given a theory of timed automaton:
+@example
+  automaton:THEORY	
+  BEGIN
+    actions: TYPE+;
+    visible(a:actions):bool;
+    states: TYPE+;
+    enabled(a:actions, s:states): bool;
+    trans(a:actions, s:states):states;
+    equivalent(a1, s2:states):bool;
+    reachable(s:states):bool
+    start(s:states):bool;
+  END automaton
+@end example
+One can create a @code{machine} with definitions for @code{actions}, etc.,
+and create the corresponding interpretation simply by typing
+@example
+    IMPORTING automaton :-> machine
+@end example
+This is read as a @emph{machine viewed as an automaton}, and is equivalent to
+@example
+    IMPORTING machine
+    IMPORTING automaton @{@{ actions := machine.actions, ... @}@}
+@end example
+Here the theory view was in an importing, but it is really a theory name,
+and hence may be used as part of any name.  However, the implicit
+importing of the target is done only for theory declarations and
+importings.  In all other cases, the instance needed must already be
+imported.  Thus it is an error to reference
+@example
+  automaton :-> machine.start(s)
+@end example
+unless @code{machine} has already been imported.  This is not
+very readable,@footnote{Parentheses seem like they would help, but it is
+difficult to do this with the current parser.} so it is best to introduce
+a theory abbreviation:
+@example
+  IMPORTING automaton :-> machine AS M1a
+@end example
+or a theory declaration:
+@example
+  M1t: THEORY = automaton :-> machine
+@end example
+The difference is that @code{M1a} is just an abbreviation for an
+instance of an existing theory, whereas @code{M1t} is a new copy of that
+theory, that introduces new entities.  Thus consider
+@example
+  IMPORTING automaton :-> machine AS M2a
+  M2t: THEORY = automaton :-> machine
+@end example
+The formula @code{M1a.actions = M2a.actions} is type correct, and
+trivially true, whereas @code{M1t.actions = M2t.actions} is not even
+type correct, as there are two separate @code{actions} declarations
+involved, and each of those is distinct from @code{machine.actions}.
+
+The grammar for @emph{Name} and @emph{TheoryName} has been changed to
+reflect the new syntax:
+@example
+  TheoryName := [Id '@'] Id [Actuals] [Mappings] [':->' TheoryName]
+  
+  Name := [Id '@'] IdOp [Actuals] [Mappings] [':->' TheoryName] ['.' IdOp]
+@end example
+The left side of @code{:->} is called the @emph{source}, and the
+right side is called the @emph{target}.  Note that in this case the target
+provides a @emph{refinement} for the source.
+
+For a given theory view, names are matched as follows.  The
+uninterpreted types and constants of the target are collected, and
+matched to the types and constants of the source.  Partial matching is
+allowed, though it is an error if nothing matches.  After finding the
+matches, the mapping is created and typechecked.
+
+@node References to Mapped Entities
+@subsection References to Mapped Entities
+
+Mapping an entity typically means that it is not accessible in the
+context.  For example, one may have
+@example
+  IMPORTING T@{@{x := @emph{e}@}@} AS T1
+@end example
+where the @emph{e} is an expression of the current context.  The @code{x},
+having been mapped, is not available, but it is easy to forget this and
+one is often tempted to refer to @code{T1.x}.  One possible work-around
+is to use theory declarations with @code{=} in place of @code{:=}, but
+then a new copy of @code{T} will be created,
+which may not be desirable (or in some cases even possible - see the Theory
+Interpretations Report @uref{}).
+
+To make mappings more convenient, such references are now allowed.  Thus
+in a name of the form @code{T1.x}, @code{x} is first looked for in
+@code{T1} in the usual way, but if a compatible @code{x} cannot be
+found, and @code{T1} has mappings, then @code{x} is searched for in
+the left sides, and treated as a macro for the right side if found.  Note
+that @code{x} by itself cannot be referenced in this way; the theory
+name must be included.
+
+
+@node Cleaning up Specifications
+@subsection Cleaning up Specifications
+
+Developing specifications and proofs often leads to the creation of
+definitions and lemmas that turn out not to be necessary for the proof
+of the properties of interest.  This results in specifications that are
+difficult to read.  Removing the unneeded declarations is not easy, as
+it is difficult to know whether they are actually used or not.
+
+The new commands @code{unusedby-proof-of-formula} and
+@code{unusedby-proofs-of-formulas} facilitate this.  The
+@code{unusedby-proof-of-formula} command creates a '@code{Browse}' buffer
+listing all the declarations that are unused in the proof of the given
+formula.  Removing all these declarations and those that follow the
+given formula should give a theory that typechecks and for which the
+proofchain is still complete, if it was in the full theory.
+
+@node Binary Files
+@subsection Binary Files
+
+PVS specifications are saved as binary (@code{.bin}) files, in order
+to make restarting the system faster.  Unfortunately, it often turned
+out that loading them caused problems.  This was handled by simply
+catching any errors, and simply retypechecking.  Thus in many cases
+the binary files actually made things slower.
+
+Until PVS version 3.2, binary files corresponded to the specification
+files.  This means that if there is a circularity in the files (i.e.,
+theories @code{A} and @code{C} are in one file, @code{B} in another,
+with @code{A} importing @code{B} importing @code{C}) then there is no
+way to load these files.  In 3.2, bin files correspond to theories.
+These are kept in a @code{pvsbin} subdirectory of the current context.
+
+However, there was a more serious problem with the binary files.  It
+turns out that loading a binary file took more space, and the proofs
+took longer to run.  The reason for this is that the shared structure
+that is created when typechecking sources is mostly lost when loading
+binary files.  Only the structure shared within a given specification
+file was actually shared.  In particular, types are kept in canonical
+form, and when shared, testing if two types are equal or compatible is
+much faster.
+
+The binary files are now saved in a way that allows the shared
+structure to be regained.  In fact, there is now more sharing than
+obtained by typechecking.  This is one of the main reasons that this
+release took so long, as this forced many new invariants on the
+typechecker.
+
+The payoff is that, in general, binary files load around five times
+faster than typechecking them, and proofs run a little faster because
+of the increased sharing.  This is based on only a few samples, in the
+future we plan on systematically timing the specifications in our
+validation suite.
+
+@node Generating HTML
+@subsection Generating HTML
+
+The commands @code{html-pvs-file} and @code{html-pvs-files} generate a
+@code{pvshtml} subdirectory and create HTML files corresponding to the
+PVS files.  This is done by copying the PVS file, and adding link
+information so that comments and whitespace are preserved.  Note that
+there is no @code{html-theory} command.  This is not an oversight;
+in creating the HTML file links are created to point to the
+declarations of external HTML files.  Hence if there was as way to
+generate HTML corresponding to both theory and PVS file, it would be
+difficult to decide which a link should refer to.
+
+HTML files can be generated in any order, and may point to library
+files and the prelude.  Of course, if these files do not exist then
+following these links will produce a browser error.
+
+Keep in mind that links to libraries and the prelude are for absolute
+pathnames, and if you want to bundle them up for someone else to use
+you should also provide a script that resets the links.  This is
+due to HTML limitations; there is no equivalent to
+@code{PVS_LIBRARY_PATH} in HTML.
+
+@node Default Strategies
+@subsection Default Strategies
+
+There is now a @code{default-strategy} that is used by the prover for
+the prove-using-default commands, and may be used as a parameter in
+pvs-strategies files.  For example, the @code{pvs-strategies} file in
+the home directory may reference this, which is set to different
+values in different contexts.
+
+@node all-typepreds strategy
+@subsection @code{all-typepreds} strategy
+
+There is now a new strategy, @code{all-typepreds}, that collects the
+typepreds for each subexpression of the specified formula numbers.
+This can be especially handy for automating proofs, though they will
+not be particularly fast since a lot of irrelevant formulas may be
+added to the sequent.
+
+
+@node 3.2 Bug Fixes
+@section Bug Fixes
+
+The bugs are shown in
+@uref{http://www.csl.sri.com/cgi-bin/pvs/pvs-bug-list/,the PVS Bugs
+List}.  Not all of these have been fixed yet.  Those marked
+@code{feedback} are the ones that have been fixed for this release.
+The more significant bug fixes include the following.
+
+@menu
+* Retypechecking:: Retypechecking
+@end menu
+
+@node Retypechecking
+@subsection Retypechecking
+
+PVS specifications often span many files, with complex dependencies.
+The typechecker is lazy, so that only those theories affected by a
+change will need to be retypechecked.  In addition, not all changes
+require retypechecking.  In particular, adding comments or whitespace
+will cause the typechecker to reparse and compare the theories to see
+if there was a real change.  If not, then the place information is
+updated and nothing needs to be retypechecked.  Otherwise, any theory
+that depends on the changed theory must be untypechecked.  This means
+that the typechecker cannot decide if something needs to be
+untypechecked until it actually reparses the file that was modified.
+
+Thus when a file is retypechecked, it essentially skips typechecking
+declarations until it reaches an importing, at which point it
+retypechecks that theory.  When it reaches a theory that has actually
+changed, untypechecking is triggered for all theories that import the
+changed theory.  The bug was that only the top level theory was
+untypechecked correctly; any others would be fully untypechecked, but
+since they were already in the process of being typechecked, earlier
+declarations would no longer be valid.
+
+The fix is to keep a stack of the theories being typechecked and the
+importing they are processing, and when a change is needed, the
+theories are only untypechecked after the importing.
+
+
+@node 3.2 Incompatibilities
+@section Incompatibilities
+
+@menu
+* Referencing Library Theories::
+* Renaming of Bound Variables::
+* bddsimp and Enumeration Types::
+* Prettyprinting Theory Instances::
+* Assuming and Mapped Axiom TCC Visibility Rules::
+* Better handling of TCCs in Proofs::
+@end menu
+
+@node Referencing Library Theories
+@subsection Referencing Library Theories
+
+In earlier versions of PVS, once a library theory was typechecked, it
+could be referenced without including the library id.  This is no
+longer valid.  First of all, if the given theory appears in two
+different libraries, it is ambiguous.  Worse, if it also appears in
+the current context, there is no way to disambiguate.  Finally, even
+if there is no ambiguity at all, there can still be a problem.
+Consider the following:
+@example
+A: THEORY ... IMPORTING B, C ... END A
+
+B: THEORY ... IMPORTING lib@@D ... END B
+
+C: THEORY ... IMPORTING D ... END C
+@end example
+This typechecks fine in earlier versions of PVS, but if in the next
+session the user decides to typecheck @code{C} first, a type error is
+produced.
+
+@node Renaming of Bound Variables
+@subsection Renaming of Bound Variables
+
+This has been improved, so that variables are generally named apart.
+In some cases, this leads to proofs failing for obvious reasons (an
+inst variable does not exist, or a skolem constant has a different
+name).
+
+@node bddsimp and Enumeration Types
+@subsection @code{bddsimp} and Enumeration Types
+
+Fixed bddsimp to return nicer formulas when enumeration types are
+involved.  These are translated when input to the BDD package,
+but the output was untranslated.  For example, if the enumeration type
+is @code{@{a, b, c@}}, the resulting sequents could have the form
+@example
+  a?(x)        b?(x)
+  |----        |----        |----
+               a?(x)        b?(x)
+                            a?(x)
+@end example
+With this change, instead one gets
+@example
+  a?(x)        b?(x)        c?(x)
+  |----        |----        |----
+  
+@end example
+Which is nicer, and matches what is returned by prop.  This makes
+certain proofs faster, because they can use the positive information,
+rather than the long and irrelevant negative information.  Of course,
+the different formula numbering can affect existing proofs.
+
+@node Prettyprinting Theory Instances
+@subsection Prettyprinting Theory Instances
+
+The @code{prettyprint-theory-instance} command was introduced along
+with theory interpretations, but it was restricted to theory instances
+that came from theory declarations, and would simply prettyprint
+these.  Unfortunately, such theories are very restricted, as
+they may not refer to any local declarations.  The
+@code{prettyprint-theory-instance} now allows any theory instance to
+be given, and displays the theory with actuals and mappings
+performed.  This is not a real theory, just a convenient way of
+looking at all the parts of the theory instance.
+
+@node Assuming and Mapped Axiom TCC Visibility Rules
+@subsection Assuming and Mapped Axiom TCC Visibility Rules
+
+The visibility rules for assumings and mapped axioms has been
+modified.  Most TCCs are generated so that the entity that generated
+them is not visible in a proof.  This is done simply by inserting the
+TCCs before the generating declaration.  Assuming and Mapped Axiom
+TCCs are a little different, in that they may legitimately refer to
+declarations that precede them in the imported theory.  To handle
+this, these TCCs are treated specially when creating the context.  All
+declarations preceding the assuming or axiom that generated the TCC
+are visible in the proof of the TCC.
+
+@node Better handling of TCCs in Proofs
+@subsection Better handling of TCCs in Proofs
+
+While in the prover, the typechecker now checks the sequent to see if
+the given expression needs to have a TCC generated.  It does this by
+examining the formulas of the sequent, to see if the given expression
+occurs at the top level, or in a position from which an unguarded TCC
+would be generated.  Thus if @code{1/x} appears in the sequent in an
+equation @code{y = 1/x}, no TCC will be generated.  But if the
+expression only appears in a guarded formula, for example, @code{x = 0
+IMPLIES y = 1/x}, then the TCC will still be generated.
+
+This is sound, because for the expression to appear in the sequent
+necessary TCCs must already have been generated.  This greatly
+simplifies proofs where annoying TCCs pop up over and over, and where
+the judgment mechanism is too restrictive (for example, judgements
+cannot currently state that @code{x * x >= 0} for any real @code{x}).
+
+Obviously, this could affect existing proofs, though it generally
+makes them much simpler.
+
+@node expand Rule uses Full Name
+@subsection @code{expand} Rule uses Full Name
+
+When the @code{expand} rule was given a full name it would ignore
+everything but the id.  This has been fixed, so that other information
+is also used.  For this command, the name is treated as a pattern, and
+any unspecified part of the name is treated as matching anything.
+Thus @code{th.foo} will match @code{foo} only if it is from theory
+@code{th}, but will match any instance or mapping of @code{th}.
+@code{foo[int]} will match any occurrence of @code{foo} of any theory,
+as long as it has a single parameter matching @code{int}.  The
+@code{occurrence} number counts only the matching instances.
