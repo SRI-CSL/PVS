@@ -2131,6 +2131,9 @@ space")
 
 (defun pseudo-normalize (expr)
   (if (or *pseudo-normalizing*		; Don't allow recursion
+	  (typep (declaration *current-context*)
+		 '(or adt-constructor-decl adt-recognizer-decl
+		      adt-accessor-decl))
 	  (not (fully-instantiated? expr)))
       expr
       (let* ((fvars (freevars expr))
