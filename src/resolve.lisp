@@ -1646,6 +1646,8 @@
   (let* ((*resolve-error-info* nil)
 	 (reses (append (resolve name 'formula nil)
 			(resolve name 'expr nil))))
+    (dolist (res reses)
+      (set-type-actuals (module-instance res)))
     (or reses
 	(resolution-error name 'expr-or-formula nil nil))))
 
