@@ -1059,8 +1059,8 @@
 	    (t (call-next-method))))))
 
 (defmethod pp-tex* ((ex application))
-  (let ((operator (get-pp-operator* ex))
-	(args (get-pp-argument* ex)))
+  (let ((operator (get-pp-operator* (operator ex)))
+	(args (get-pp-argument* (operator ex) (list (argument ex)))))
     (pprint-logical-block (nil nil)
       (pprint-indent :current 2)
       (if (and (zerop (parens operator))
