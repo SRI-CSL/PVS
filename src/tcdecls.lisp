@@ -29,11 +29,12 @@
 	(importing (tcdebug "~%    Processing importing")
 		   (let ((*generating-adt* nil))
 		     (typecheck* decl nil nil nil)))
-	(datatype (unless (typechecked? decl)
-		    (tcdebug "~%    Processing Datatype ~a" (id decl))
-		    (unwind-protect
-			(typecheck* decl nil nil nil)
-		      (cleanup-datatype decl)))))
+	(recursive-type (unless (typechecked? decl)
+			  (tcdebug "~%    Processing (Co)Datatype ~a"
+				   (id decl))
+			  (unwind-protect
+			      (typecheck* decl nil nil nil)
+			    (cleanup-datatype decl)))))
       (typecheck-decls (cdr decls)))))
 
 (defun typecheck-decl (decl)
@@ -44,7 +45,7 @@
       (unwind-protect
 	  (progn
 	    (assert (typep (theory *current-context*)
-			   '(or module datatype)))
+			   '(or module recursive-type)))
 	    (setf (module decl) (theory *current-context*))
 	    (tcdebug "~%    Typechecking ~a" decl)
 	    (let ((stime (get-run-time)))
@@ -766,7 +767,7 @@
 
 ;;; inductive-decl
 
-(defmethod typecheck* ((decl inductive-decl) expected kind arguments)
+(defmethod typecheck* ((decl fixpoint-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (typecheck* (formals decl) nil nil nil)
   (set-formals-types (apply #'append (formals decl)))
@@ -778,10 +779,10 @@
 	  (make-formals-funtype (formals decl) rtype))
     (check-duplication decl)
     (unless (funtype? (find-supertype (type decl)))
-      (type-error decl "Inductive definition must be a function type"))
+      (type-error decl "(Co)Inductive definition must be a function type"))
     (unless (tc-eq (range* (type decl)) *boolean*)
       (type-error decl
-	"Inductive definitions must have (eventual) range type boolean"))
+	"(Co)Inductive definitions must have (eventual) range type boolean"))
     (set-nonempty-type rtype)
     (put-decl decl (current-declarations-hash))
     (typecheck* (definition decl) rtype nil nil)
@@ -789,25 +790,25 @@
 	   (fixed-vars (fixed-inductive-variables decl all-vars))
 	   (rem-vars (remove-if #'(lambda (avar) (memq avar fixed-vars))
 		       all-vars))
-	   (pred-type (inductive-pred-type rem-vars)))
+	   (pred-type (inductive-pred-type rem-vars rtype)))
       (check-inductive-occurrences decl pred-type fixed-vars rem-vars)
       (make-def-axiom decl)
       (make-inductive-def-inductions decl pred-type fixed-vars rem-vars)))
   decl)
 
-(defun inductive-pred-type (vars)
+(defun inductive-pred-type (vars rtype)
   (if (null vars)
-      *boolean*
+      rtype
       (let ((dom-types (mapcar #'(lambda (var)
 				   (or (declared-type var)
 				       (print-type (type var))
 				       (type var)))
 			 vars)))
-	(typecheck* (mk-funtype dom-types *boolean*) nil nil nil))))
+	(typecheck* (mk-funtype dom-types rtype) nil nil nil))))
 
 (defun check-inductive-occurrences (decl pred-type fixed-vars rem-vars)
   (unless (check-inductive-occurrences* (definition-body decl) decl 1)
-    (let* ((pid (make-new-variable 'P (definition decl)))
+    (let* ((pid (make-new-variable 'P (cons (definition decl) (formals decl))))
 	   (bd (make-bind-decl pid pred-type))
 	   (var (make-variable-expr bd))
 	   (body (definition-body decl))
@@ -968,8 +969,10 @@
 		  (make!-implication wprem wconc)))
 	 (sform (make!-forall-expr (append fixed-vars (list sbd))
 		  (make!-implication sprem sconc)))
-	 (wid (makesym "~a_weak_induction" (id decl)))
-	 (sid (makesym "~a_induction" (id decl)))
+	 (wid (makesym "~a_weak_~ainduction" (id decl)
+		       (if (inductive-decl? decl) "" "co")))
+	 (sid (makesym "~a_~ainduction" (id decl)
+		       (if (inductive-decl? decl) "" "co")))
 	 (wdecl (typecheck* (mk-formula-decl wid wform 'AXIOM) nil nil nil))
 	 (sdecl (typecheck* (mk-formula-decl sid sform 'AXIOM) nil nil nil)))
     (add-decl wdecl)
@@ -1023,11 +1026,41 @@
 
 (defun weak-induction-hypothesis (nvar fixed-vars rem-vars expr decl)
   (if (null rem-vars)
-      (make-implication (subst-pred-for-ind nvar fixed-vars expr decl) nvar)
+      (if (inductive-decl? decl)
+	  (make-ind-implication (subst-pred-for-ind nvar fixed-vars expr decl) nvar)
+	  (make-ind-implication nvar (subst-pred-for-ind nvar fixed-vars expr decl)))
       (make-forall-expr rem-vars
-	(make-implication
-	 (subst-pred-for-ind nvar fixed-vars expr decl)
-	 (make-application* nvar (mapcar #'make-variable-expr rem-vars))))))
+	(if (inductive-decl? decl)
+	    (make-ind-implication
+	     (subst-pred-for-ind nvar fixed-vars expr decl)
+	     (make-application* nvar (mapcar #'make-variable-expr rem-vars)))
+	    (make-ind-implication
+	     (make-application* nvar (mapcar #'make-variable-expr rem-vars))
+	     (subst-pred-for-ind nvar fixed-vars expr decl))))))
+
+(defun make-ind-implication (x y)
+  (make-ind-implication* (type x) x y))
+
+(defmethod make-ind-implication* ((te funtype) x y)
+  (let* ((nvid (make-new-variable '|x| (list x y)))
+	 (nbd (make-bind-decl nvid (if (dep-binding? (domain te))
+				       (type (domain te))
+				       (domain te))))
+	 (nvar (make-variable-expr nbd)))
+    (make-forall-expr (list nbd)
+      (make-ind-implication*
+       (if (dep-binding? (domain te))
+	   (substit (range te) (acons (domain te) nvar nil))
+	   (range te))
+       (make-application x nvar)
+       (make-application y nvar)))))
+
+(defmethod make-ind-implication* ((te subtype) x y)
+  (make-ind-implication* (supertype te) x y))
+
+(defmethod make-ind-implication* ((te type-name) x y)
+  (assert (tc-eq te *boolean*))
+  (make-implication x y))
 
 (defun subst-pred-for-ind (nvar fixed-vars expr decl)
   (let ((*generate-tccs* 'none))
@@ -1054,13 +1087,21 @@
 (defun strong-induction-hypothesis (nvar fixed-vars rem-vars expr decl)
   (let ((*generate-tccs* 'none))
     (if (null rem-vars)
-	(make-implication
-	 (subst-strong-pred-for-ind nvar fixed-vars expr decl)
-	 nvar)
+	(if (inductive-decl? decl)
+	    (make-ind-implication
+	     (subst-strong-pred-for-ind nvar fixed-vars expr decl)
+	     nvar)
+	    (make-ind-implication
+	     nvar
+	     (subst-strong-pred-for-ind nvar fixed-vars expr decl)))
 	(make-forall-expr rem-vars
-	  (make-implication
-	   (subst-strong-pred-for-ind nvar fixed-vars expr decl)
-	   (make-application* nvar (mapcar #'make-variable-expr rem-vars)))))))
+	  (if (inductive-decl? decl)
+	      (make-ind-implication
+	       (subst-strong-pred-for-ind nvar fixed-vars expr decl)
+	       (make-application* nvar (mapcar #'make-variable-expr rem-vars)))
+	      (make-ind-implication
+	       (make-application* nvar (mapcar #'make-variable-expr rem-vars))
+	       (subst-strong-pred-for-ind nvar fixed-vars expr decl)))))))
 
 (defun subst-strong-pred-for-ind (nvar fixed-vars expr decl)
   (let ((stype (find-supertype (type decl))))
@@ -1073,9 +1114,11 @@
 		(copy ex)
 		(make-ind-pred-application nvar ex fixed-vars fmls)
 		(argument* ex)
-		fmls))
+		fmls
+		(inductive-decl? decl)))
 	      (name-expr
-	       (make-inductive-conjunction ex nvar nil fmls)))))
+	       (make-inductive-conjunction ex nvar nil fmls
+					   (inductive-decl? decl))))))
       #'(lambda (ex)
 	  (typecase ex
 	    (application
@@ -1116,11 +1159,13 @@
   (declare (ignore ex))
   nil)
 
-(defun make-inductive-conjunction (inddef pred args fmls)
+(defun make-inductive-conjunction (inddef pred args fmls ind?)
   (cond ((null fmls)
-	 (make!-conjunction inddef pred))
+	 (if ind?
+	     (make-ind-conjunction inddef pred)
+	     (make-ind-disjunction inddef pred)))
 	(args
-	 (make-inductive-conjunction inddef pred (cdr args) (cdr fmls)))
+	 (make-inductive-conjunction inddef pred (cdr args) (cdr fmls) ind?))
 	(t (let* ((bds (mapcar #'(lambda (x)
 				   (typecheck* (mk-bind-decl (id x)
 						 (or (declared-type x)
@@ -1133,7 +1178,56 @@
 		(make!-application* inddef bvars)
 		(make!-application* pred bvars)
 		(cdr args)
-		(cdr fmls)))))))
+		(cdr fmls)
+		ind?))))))
+
+(defun make-ind-conjunction (x y)
+  (make-ind-conjunction* (type x) x y))
+
+(defmethod make-ind-conjunction* ((te funtype) x y)
+  (let* ((nvid (make-new-variable '|x| (list x y)))
+	 (nbd (make-bind-decl nvid (if (dep-binding? (domain te))
+				       (type (domain te))
+				       (domain te))))
+	 (nvar (make-variable-expr nbd)))
+    (make-lambda-expr (list nbd)
+      (make-ind-conjunction*
+       (if (dep-binding? (domain te))
+	   (substit (range te) (acons (domain te) nvar nil))
+	   (range te))
+       (make-application x nvar)
+       (make-application y nvar)))))
+
+(defmethod make-ind-conjunction* ((te subtype) x y)
+  (make-ind-conjunction* (supertype te) x y))
+
+(defmethod make-ind-conjunction* ((te type-name) x y)
+  (assert (tc-eq te *boolean*))
+  (make!-conjunction x y))
+
+(defun make-ind-disjunction (x y)
+  (make-ind-disjunction* (type x) x y))
+
+(defmethod make-ind-disjunction* ((te funtype) x y)
+  (let* ((nvid (make-new-variable '|x| (list x y)))
+	 (nbd (make-bind-decl nvid (if (dep-binding? (domain te))
+				       (type (domain te))
+				       (domain te))))
+	 (nvar (make-variable-expr nbd)))
+    (make-lambda-expr (list nbd)
+      (make-ind-disjunction*
+       (if (dep-binding? (domain te))
+	   (substit (range te) (acons (domain te) nvar nil))
+	   (range te))
+       (make-application x nvar)
+       (make-application y nvar)))))
+
+(defmethod make-ind-disjunction* ((te subtype) x y)
+  (make-ind-disjunction* (supertype te) x y))
+
+(defmethod make-ind-disjunction* ((te type-name) x y)
+  (assert (tc-eq te *boolean*))
+  (make!-disjunction x y))
 
 (defun make-inductive-conclusion (var rem-vars decl)
   (let* ((dname (mk-name-expr (id decl) nil nil
@@ -1151,11 +1245,17 @@
 			      op
 			      (make-appl (make-application* op (car args))
 					 (cdr args)))))
-		 (make-implication
-		  (make-appl dname dargs)
-		  (if (null pargs)
-		      (copy var)
-		      (make-application* (copy var) pargs))))))
+		 (if (inductive-decl? decl)
+		     (make-ind-implication
+		      (make-appl dname dargs)
+		      (if (null pargs)
+			  (copy var)
+			  (make-application* (copy var) pargs)))
+		     (make-ind-implication
+		      (if (null pargs)
+			  (copy var)
+			  (make-application* (copy var) pargs))
+		      (make-appl dname dargs))))))
     (if (null rem-vars)
 	impl
 	(make-forall-expr rem-vars impl))))
@@ -1788,7 +1888,7 @@
 		   "~a has previously been declared with type ~a, which may lead to ambiguity"
 		   (id x) (unparse (type y) :string t)))))
 	(unless (or (and (typep y 'type-def-decl)
-			 (typep (type-expr y) 'datatype))
+			 (typep (type-expr y) 'recursive-type))
 		    (and (typep y 'type-decl)
 			 (not (types-with-same-signatures x y))))
 	  (type-error x
