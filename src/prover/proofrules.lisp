@@ -278,11 +278,9 @@
 	(values '?
 		(lcopy sform
 		  'formula
-		  (typecheck (if (negation? formula)
-				 (negate if-expr)
-				 if-expr)
-		    :expected *boolean* :context
-		    *current-context*))))))
+		  (if (negation? formula)
+		      (negate if-expr)
+		      if-expr))))))
 
 (defun truecond? (cond trueconds falseconds)   ;;NSH(9.27.95)
   (or (equal cond *true*)
@@ -332,7 +330,7 @@
 		 (if (and (eq newthen *true*)
 			  (eq newelse *false*))
 		     (car conds)
-		     (mk-if-expr (car conds) newthen newelse)))))))
+		     (make!-if-expr (car conds) newthen newelse)))))))
 
 
 (defmethod simplify-ifs :around ((expr expr) trueconds falseconds)
