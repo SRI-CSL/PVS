@@ -942,14 +942,14 @@
     (if (or (argument-conversions (types op) args)
 	    (argument-conversions (types op) (list arg)))
 	(set-possible-argument-types op (argument expr))
-	(let ((conversions (find-operator-conversions (types op) args)))
+	(let ((conversions (unless *no-conversions-allowed*
+			     (find-operator-conversions (types op) args))))
 	  (if conversions
 	      (let* ((conv (car conversions))
 		     (ctype (type (name conv)))
 		     (dom (domain (find-supertype ctype)))
 		     ;;(ran (range (find-supertype ctype)))
 		     (nop (copy op)))
-		(break)
 		(add-conversion-info (name conv) op)
 		(change-class op 'implicit-conversion)
 		(setf (argument op) nop)
@@ -1111,24 +1111,39 @@
   (declare (ignore conv vars))
   arg)
 
-(defun type-mismatch-error (expr)
+(defmethod type-mismatch-error (expr)
   (let ((exprstr (unpindent expr 4 :string t)))
-    (if (coercion? expr)
+    (type-error expr
+	 "Type mismatch in application~
+          ~%    ~a~2%  Operator types: ~{~a~%~^~12T~}  Argument types: ~a"
+	 exprstr
+	 (ptypes (operator expr))
+	 (mapcar #'(lambda (arg)
+		     (car (ptypes arg)))
+	   (arguments expr)))))
+
+(defmethod type-mismatch-error ((expr coercion))
+  (let ((exprstr (unpindent expr 4 :string t)))
+    (type-error expr
+      "Type mismatch in coercion~
+          ~%    ~a~2%  Possible expression types: ~{~a~%~^~12T~}"
+      exprstr
+      (mapcar #'(lambda (arg)
+		  (car (ptypes arg)))
+	(arguments expr)))))
+
+(defmethod type-mismatch-error ((expr let-expr))
+  (if (lambda-expr? (operator expr))
+      (let ((exprstr (unpindent expr 4 :string t)))
 	(type-error expr
-	  "Type mismatch in coercion~
-           ~%    ~a~2%  Possible expression types: ~{~a~%~^~12T~}"
+	  "Type mismatch in LET bindings~
+           ~%    ~a~2%  Binding types: ~{~a~%~^~12T~}  Argument types: ~a"
 	  exprstr
+	  (mapcar #'type (bindings (operator expr)))
 	  (mapcar #'(lambda (arg)
 		      (car (ptypes arg)))
-		  (arguments expr)))
-	(type-error expr
-	  "Type mismatch in application~
-           ~%    ~a~2%  Operator types: ~{~a~%~^~12T~}  Argument types: ~a"
-	  exprstr
-	  (ptypes (operator expr))
-	  (mapcar #'(lambda (arg)
-		      (car (ptypes arg)))
-		  (arguments expr))))))
+	    (arguments expr))))
+      (call-next-method)))
 
 
 ;;; LET and WHERE expressions are handled specially wrt bindings without
