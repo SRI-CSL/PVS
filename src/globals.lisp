@@ -289,6 +289,8 @@ current proof is suspect.")
 ;;; Used to speed up subtype-of? calculations
 (defvar *subtype-of-hash* (make-hash-table :test #'eq))
 
+(defvar *subtypes-matched* nil)
+
 (defvar *named-exprs* nil
   "A list of (expr . gensym) pairs, where expr is a binding-expr in which
 a connective occurs.")
