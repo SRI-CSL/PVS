@@ -1769,10 +1769,9 @@
 	 (let ((res (lookup trm *subst*)))
 	   (if res (cdr res) trm)))
 	((application-p trm)
-	 (mapcar #'replace-by*
-	   (application-arguments trm)))
-	(t
-	 trm)))
+	 (mk-term (mapcar #'replace-by*
+		    (application-arguments trm))))
+	(t trm)))
 
 (defun lookup (trm subst)
   (assoc trm subst))
