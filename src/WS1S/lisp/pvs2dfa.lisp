@@ -174,7 +174,6 @@
 
 (defmethod atom-to-dfa* ((atom expr) free)
   (declare (ignore free))
-  (ws1s-msg (format nil "Not translatable: ~a" atom))
   (throw 'not-ws1s-translatable nil))
 
 (defmethod atom-to-dfa* ((atom name-expr) free)
