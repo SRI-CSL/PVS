@@ -1026,9 +1026,13 @@
 	   ((and (tc-eq test (condition expr)) ;;sigtest is irrelevant
 		 (eq sigthen 'X)(eq sigelse 'X))
 	    (values 'X expr))
-	   (t (values '? (copy expr
-			       'argument (make!-arg-tuple-expr
-					  test newthen newelse))))))))
+	   (t (values '?
+		      (let ((nex (copy expr
+				   'argument (make!-arg-tuple-expr
+					      test newthen newelse))))
+			(if (cond-table-expr? nex)
+			    (change-class nex 'cond-expr)
+			    nex))))))))
 
 
 (defmethod assert-if ((expr assignment))
@@ -1165,10 +1169,14 @@
 			(assert-if (else-part expr))
 		      (if (memq '? (list sigexpr sigsel sigelse))
 			  (values '?
-				  (lcopy expr
-				    'expression newexpr
-				    'selections newselections
-				    'else-part newelse))
+				  (let ((nex (lcopy expr
+					       'expression newexpr
+					       'selections newselections
+					       'else-part newelse)))
+				    (if (and (not (eq expr nex))
+					     (table-expr? nex))
+					(change-class nex 'cases-expr)
+					nex)))
 			  (values 'X expr))))
 		  (if (eq sigexpr 'X)
 		      (values 'X expr)
