@@ -9,35 +9,29 @@
     (setf *index* 0)
     (setf *size* 0)
     (setf *bvars* nil)
-    (setf *symtab* nil))
-
-  (defun symtab () *symtab*)
+    (if *symtab*
+	(clrhash *symtab*)
+	(setf *symtab* (make-hash-table :hash-function 'pvs-sxhash
+					:test 'tc-eq))))
   
-  (defun size () *size*)
-	
   (defun symtab-new-index ()
      (setf *index* (1+ *index*)))
   
   (defun symtab-index (expr)
-    (let ((result (rassoc expr *bvars* :test #'tc-eq)))
-      (if result
-	  (values (car result) :bound)
-	  (let ((result (rassoc expr *symtab* :test #'tc-eq)))
-	    (if result
-		(values (car result) :free)
-		(values (symtab-add-index expr) :new))))))
-
+    (or (gethash expr *symtab*)
+	(symtab-add-index expr)))
+	
   (defun symtab-add-index (expr)
     (prog1
       (setf *index* (1+ *index*))
       (setf *size* (1+ *size*))
-      (setf *symtab* (acons *index* expr *symtab*))))
+      (setf (gethash *symtab* expr) *index*)))
 
   (defun symtab-shadow (expr)
     (assert (typep expr 'name-expr))
     (prog1
-      (setf *index* (1+ *index*))
-      (push (cons *index* expr) *bvars*)))
+      (symtab-add-index expr)
+      (push expr *bvars*)))
 
   (defun symtab-shadow* (exprs &optional acc)
     (if (null exprs)
@@ -81,3 +75,4 @@
 	     (newacc (cons (cdr entry) acc)))
 	(fvars (cdr l) newacc))))
 )
+
