@@ -9,6 +9,7 @@
 	(dp-theory (rhs term))))
    ((arith-p term) 'arith)
    ((record-p term) 'record)
+   ((tuple-p term) 'tuple)
    ((array-p term) 'array)
    ((bv-p term) 'bv)
    (t nil)))
@@ -244,6 +245,7 @@
     (case theory
       (arith (arith-solve eqn cong-state))
       (record (record-solve eqn cong-state))
+      (tuple (tuple-solve eqn cong-state))
       (array (array-solve eqn cong-state))
       (bv (bv-solve eqn cong-state))
       (t (list eqn)))))
