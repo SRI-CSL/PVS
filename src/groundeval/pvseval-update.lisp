@@ -1,33 +1,5 @@
 (in-package 'pvs)
 
-;(defun gqread (prompt)
-;  (format t "~%~a"  prompt)
-;  (force-output)
-;  (let ((input (ignore-errors (read))))
-;    (cond ((member input '(quit q exit (quit)(exit)(q))
-;		   :test #'equal)
-;	   (if (pvs-y-or-n-p "~%Do you really want to quit?  ")
-;	       (throw 'quit nil)
-;	       (gqread prompt)))
-;	  ((eq input 'abort)
-;	   (if (pvs-y-or-n-p "~%Do you really want to abort?  ")
-;	       (throw 'abort T)
-;	       (gqread prompt)))
-;	  (t 
-;	     input))))
-;
-;(defun ground-rep ()
-;  (let ((result
-;	 (catch 'quit 
-;	   (catch 'abort
-;	    (let* ((input (ignore-errors (gqread "Eval>")))
-;		   (pr-input (pc-parse input 'expr))
-;		   (tc-input (pc-typecheck pr-input)))
-;	      (format t "~%==> ~%  ~a" (norm tc-input))
-;	      T)))))
-;  (if result  
-;      (ground-rep)
-;      (restore))))
 
 (defstep eval (expr &optional destructive?)
   (let ((tc-expr (pc-typecheck (pc-parse expr 'expr)))
@@ -43,9 +15,24 @@
   "Ground evaluation of expression expr."
   "")
 
+(defmacro pvs-funcall (fun &rest args)
+  `(let ((funval ,fun))
+     (if (arrayp funval)
+	 (svref funval ,@args)
+;	 (if (consp funval) ;;(pvs-simple-array-p funval)
+;	     (pvs-simple-array-lookup funval ,@args)
+	 (if (pvs-outer-array-p funval)
+	     (pvs-outer-array-lookup funval ,@args) 
+	     (funcall funval ,@args)))))
+
 (defvar *destructive?* nil)
 (defvar *output-vars* nil)
 (defvar *external* NIL)
+
+(defcl const-decl (typed-declaration)
+  (definition :parse t)
+  def-axiom
+  (eval-info :fetch-as nil)) ;;added eval-info
 
  ;need to exploit the fact that at most one makes sense
             ;if external needs actuals, then internal will crash.
@@ -134,6 +121,210 @@
 (defcl destructive-eval-defn (eval-defn)
   side-effects) ;;alist of updated variables/live vars when updated.
 
+(defstruct pvs-array
+  contents diffs size)
+
+(defstruct pvs-outer-array
+  inner-array offset diffs size)
+
+(defun insert-array-diffs (diffs array)
+  (insert-array-diffs* diffs array))
+
+(defun insert-array-diffs* (diffs array)  
+      (if (consp diffs)
+	  (let ((array (insert-array-diffs* (cdr diffs) array)))
+	    (setf (svref array (caar diffs))(cdar diffs))
+	    array)
+	  array))
+
+(defun copy-pvs-array! (array arraysize)
+  (cond ((pvs-array-p array) (copy-pvs-array array))
+	((simple-vector-p array)
+	 (let ((arr (make-array arraysize :initial-element 0)))
+	   (loop for i from 0 to (1- arraysize) do
+		 (setf (svref arr i)(svref array i)))
+	   (make-pvs-array :contents arr :size 0)))
+	(t (make-pvs-array
+	    :contents (mk-fun-array array arraysize)
+	    :size 0))))
+
+(defun mk-pvs-array! (array arraysize)
+  (cond ((and (pvs-array-p array) (zerop (pvs-array-size array)))
+	 array)
+	(t (make-pvs-array
+	    :contents (mk-fun-array array arraysize)
+	    :size 0))))
+
+(defun copy-pvs-outer-array! (array arraysize)
+  (cond ((pvs-outer-array-p array) (copy-pvs-outer-array array))
+	((simple-vector-p array)
+	 (let ((arr (make-array arraysize :initial-element 0)))
+	   (loop for i from 0 to (1- arraysize) do
+		 (setf (svref arr i)(svref array i)))
+	   (make-pvs-outer-array
+	    :inner-array (make-pvs-array :contents arr :size 0)
+	    :offset 0
+	    :size 0)))
+	(t (make-pvs-outer-array
+	    :inner-array (make-pvs-array
+			  :contents (mk-fun-array array arraysize)
+			  :size 0)
+	    :offset 0
+	    :size 0))))
+
+(defun pvs-array-update (pvs-array at with arraysize)
+  (let* ((x (copy-pvs-array! pvs-array arraysize))
+	 (diffs (pvs-array-diffs x))
+	 (contents (pvs-array-contents x)))
+    (cond ((> (pvs-array-size x)
+	      (sqrt (array-total-size contents)))
+	   (let ((newarray (copy-seq contents)))
+	     (setf (pvs-array-contents x)
+		   (insert-array-diffs (cons (cons at with)
+					     diffs)
+				       newarray)
+		   (pvs-array-diffs x) nil
+		   (pvs-array-size x) 0)
+	     x))
+	  ((consp diffs)
+	   (push (cons at with) (pvs-array-diffs x))
+	   (incf (pvs-array-size x))
+	   x)
+	  (t (when (pvs-array-p pvs-array)
+	       (push (cons at (svref contents at))
+		     (pvs-array-diffs pvs-array))
+	       (incf (pvs-array-size pvs-array)))
+	     (setf (svref (pvs-array-contents x) at) with)
+	     x))))
+
+(defun size-limit (x) (sqrt x))
+
+(defun pvs-outer-array-update (pvs-outer-array at with arraysize)
+  (let* ((x (copy-pvs-outer-array! pvs-outer-array arraysize))
+	 (diffs (pvs-outer-array-diffs x))
+	 (offset (pvs-outer-array-offset x))
+	 (outer-size (pvs-outer-array-size x))
+	 (inner-array (pvs-outer-array-inner-array x))
+	 (inner-size (pvs-array-size inner-array))
+	 (inner-diffs (pvs-array-diffs inner-array))
+	 (contents (pvs-array-contents inner-array))
+	 (oldval (svref contents at))
+	 (main? (eql offset inner-size)))
+    (cond (main?
+	   (when (not (null diffs)) (break "main diffs not null."))
+	   (push (cons at oldval) (pvs-array-diffs inner-array))
+	   (incf (pvs-array-size inner-array))
+	   (setf (svref contents at) with
+		 (pvs-outer-array-offset x)
+		 (pvs-array-size inner-array))
+	   x)
+	  (t
+	    (push (cons at with) (pvs-outer-array-diffs x))
+	    (incf (pvs-outer-array-size x))
+	    (when (> (+ inner-size
+			outer-size)
+		     (size-limit (array-total-size contents)))
+	      (let ((newarray (copy-seq contents)))
+		(loop for (x . y) in inner-diffs ;restore inner values
+		      as i from (1+ offset) to inner-size
+		      do (setf (svref newarray x) y))
+		(setf (pvs-outer-array-inner-array pvs-outer-array)
+		      (make-pvs-array ;;restore outer diffs
+			:contents 
+			(insert-array-diffs
+			 diffs
+			 newarray)
+		      :size 0)
+		      (pvs-outer-array-diffs pvs-outer-array) nil
+		      (pvs-outer-array-offset pvs-outer-array) 0
+		      (pvs-outer-array-size pvs-outer-array)  0)))
+	    x))))
+
+(defun assoc-last (index alist count)
+  (if (and (consp alist)(> count 0))
+      (let ((rest-assoc (assoc-last index (cdr alist) (1- count))))
+	(if (null rest-assoc)
+	    (if (eql index (caar alist))
+		(car alist)
+		nil)
+	    rest-assoc))
+      nil))
+
+(defun pvs-outer-array-lookup (outer-array index)
+  (let* ((arr outer-array)
+	  (ind index)
+	  (inner-array (pvs-outer-array-inner-array arr)))
+     (or (and (null (pvs-outer-array-diffs arr))
+	      (null (pvs-array-diffs inner-array))
+	      (svref (pvs-array-contents inner-array) ind))
+	 (let ((lookup-diffs (assoc ind (pvs-outer-array-diffs arr))))
+	   (and lookup-diffs
+		(cdr lookup-diffs)))
+	 (let ((lookup-inner-diffs
+		(assoc-last ind (pvs-array-diffs
+				inner-array)
+			    (- (pvs-array-size inner-array)
+			       (pvs-outer-array-offset arr)))))
+	   (when lookup-inner-diffs (cdr lookup-inner-diffs)))
+	 (svref (pvs-array-contents inner-array) ind))))
+
+(defmacro pvs-array-lookup (pvs-array val)
+  `(let ((arr ,pvs-array)
+	 (ind ,val))
+     (let ((lookup-diffs (assoc ind (pvs-array-diffs arr))))
+    (or (and lookup-diffs
+	     (cdr lookup-diffs))
+	(svref (pvs-array-contents arr) ind)))))
+
+;(defstruct pvs-simple-array
+;  array updates size)
+
+;(defun pvs-simple-array-update (simple-array ind val)
+;  (let ((new-array (copy-pvs-simple-array simple-array)))
+;     (push (cons ind val)
+;	   (pvs-simple-array-updates new-array))
+;     (let ((new-size (incf (pvs-simple-array-size new-array))))
+;       (if (> new-size
+;	      (size-limit (array-total-size (pvs-simple-array-array simple-array))))
+;	   (insert-array-diffs (pvs-simple-array-updates new-array)
+;			       (copy-seq (pvs-simple-array-contents new-array)))
+;	   new-array))))
+
+;(defmacro pvs-simple-array-lookup (simple-array ind)
+;  `(let ((index ,ind)
+;	 (array ,simple-array))
+;     (let ((lookup (assoc index (pvs-simple-array-updates array))))
+;       (or (and lookup (cdr lookup))
+;	   (svref array index)))))
+
+;;Simple arrays are alists terminated by arrays.  Lookup is
+;;too slow along the main branch though they are space-efficient
+;;relative to the 2-level outer/inner array representation above.
+;(defun pvs-simple-array-update (simple-array ind val bound)
+;  (let ((simple-array (if (or (consp simple-array)
+;			      (simple-vector-p simple-array))
+;			  simple-array
+;			  (mk-fun-array simple-array bound))))
+;    (cons (cons ind val) simple-array)))
+
+;(defun simple-array-lookup (simple-array ind steps)
+;  (if (consp simple-array)
+;      (if (eql (caar simple-array) ind)
+;	  (values (cdar simple-array) steps nil)
+;	  (simple-array-lookup (cdr simple-array) ind (1+ steps)))
+;      (values (pvs-funcall simple-array ind) steps simple-array)))
+
+;(defun pvs-simple-array-lookup (simple-array ind)
+;  (multiple-value-bind (val steps array)
+;      (simple-array-lookup simple-array ind 0)
+;    (if (> steps 500)  ;;(and array )
+;	(let* ((old-array (cdr (last simple-array)))
+;	       (new-array (copy-seq old-array)));;(break)
+;	  (setf (cdr simple-array)
+;		(insert-array-diffs simple-array new-array))
+;	  val)
+;	val)))
+  
 
 ;  lisp-function
 ;  lisp-function2
@@ -167,11 +358,7 @@
 
 ;;Function application for non-name functions.
 ;;If function is an array, then svref, else funcall
-(defmacro pvs-funcall (fun &rest args)
-  `(let ((funval ,fun))
-     (if (arrayp funval)
-	 (svref funval ,@args)
-	 (funcall funval ,@args))))
+
 
 ;;mk-funcall defined to be pvs-funcall for backward compatibility.
 (defun mk-funcall (fun args)
@@ -184,8 +371,8 @@
 	     (vterm (cdr (assoc var alist :test #'same-declaration)))
 	     (lterms (mapcar #'(lambda (x) (cdr (assoc x alist :test #'same-declaration)))
 		       lvars))
-	     (vterm-updateables (updateable-vars vterm))
-	     (lterm-updateables (updateable-vars lterms)))
+	     (vterm-updateables (updateable-output-vars vterm))
+	     (lterm-updateables (updateable-free-formal-vars lterms)))
 	(cond ((and (null (intersection vterm-updateables
 					lterm-updateables
 					:test #'same-declaration))
@@ -261,14 +448,14 @@
 	 (res (make-resolution decl
 	       (mk-modname (id (module decl)) nil)
 	       type)))
-    (mk-name-expr (id decl) nil nil res 'constant)))
+    (mk-name-expr (id decl) nil nil res)))
 
 (defmethod make-constant-from-decl ((decl formal-const-decl))
   (let* ((type (type decl))
 	 (res (make-resolution decl
 	       (mk-modname (id (module decl)) nil)
 	       type)))
-    (mk-name-expr (id decl) nil nil res 'constant)))
+    (mk-name-expr (id decl) nil nil res)))
     
 
 ;;External application.  Actuals, if any, are appended to the
@@ -282,7 +469,7 @@
 		   (loop for x in (formals (module decl))
 			 when (formal-const-decl? x)
 			 collect (make-constant-from-decl x)))))
-	 (args-free-formals (free-formal-vars arguments))
+	 (args-free-formals (updateable-vars arguments))
 	 (args-livevars (append args-free-formals livevars)))
     (if internal-actuals
 	(mk-funapp (pvs2cl-operator2 op actuals arguments bindings)
@@ -326,11 +513,12 @@
 		  (mk-fun2-application op (arguments expr)
 				       bindings livevars)
 		  (let ((clop (pvs2cl_up* op bindings ;in case of actuals
-				       (append (free-formal-vars (argument expr))
+				       (append (updateable-vars (argument expr))
 					       livevars)))
 			(clargs (list (pvs2cl_up* (argument expr)
 						  bindings
-						  (append (free-formal-vars op)
+						  (append
+						   (updateable-free-formal-vars op)
 							  livevars)))))
 		    (if (and (symbolp clop)
 			     (not (member clop bindings
@@ -338,10 +526,10 @@
 			(mk-funapp clop clargs)
 			(mk-funcall clop clargs)))))))
       (mk-funcall (pvs2cl_up* op bindings
-			      (append (free-formal-vars (argument expr))
+			      (append (updateable-vars (argument expr))
 				      livevars))
 		  (list (pvs2cl_up* (argument expr) bindings
-				    (append (free-formal-vars op)
+				    (append (updateable-free-formal-vars op)
 					     livevars)))))))
 
 (defun pvs2cl-let-pairs (let-bindings args bindings livevars)
@@ -436,7 +624,7 @@
 		       let-variables
 		       args bindings ;;operator free-formal-vars
 		                     ;;are always updateable.
-		       (append (free-formal-vars (operator expr))
+		       (append (updateable-vars (operator expr))
 			       livevars)))
 	   (declaration (pvs2cl-declare-vars let-variables args))
 	   (cl-expression (pvs2cl-let-expression
@@ -455,8 +643,8 @@
 	       (then-part (then-part expr))
 	       (else-part (else-part expr)))
 	 `(if ,(pvs2cl_up* condition bindings
-			   (append (free-formal-vars then-part)
-				   (append (free-formal-vars else-part)
+			   (append (updateable-vars then-part)
+				   (append (updateable-vars else-part)
 					   livevars)))
 	      ,(pvs2cl_up* (then-part expr) bindings livevars)
 	      ,(pvs2cl_up* (else-part expr) bindings livevars))))
@@ -467,7 +655,7 @@
 
 (defmethod pvs2cl_up* ((expr lambda-expr) bindings livevars)
   (pvs2cl-lambda (bindings expr) (expression expr) bindings
-		 (free-formal-vars expr))) ;;unsafe to update any freevar
+		 (updateable-vars expr))) ;;unsafe to update any freevar
 
 (defmethod pvs2cl_up* ((expr forall-expr) bindings livevars)
   (let* ((binds (bindings expr))
@@ -486,7 +674,9 @@
 	  (cond ((enum-adt? styp1)
 		 `(every ,(pvs2cl-lambda (list bind1)
 					expr-rest
-					bindings livevars)
+					bindings
+					(append (updateable-vars expr)
+						livevars))
 			(list ,@(pvs2cl_up* (constructors styp1)
 					    bindings livevars))))
 		(sub
@@ -497,8 +687,10 @@
 			   always
 			   (pvs-funcall ,(pvs2cl-lambda (list bind1)
 							expr-rest
-							bindings livevars)
-					i))))
+							bindings
+							(append (updateable-vars expr)
+								livevars))
+					,i))))
 		(t (throw 'no-defn
 			  "Cannot handle non-scalar/subrange quantifiers."))))
 	(pvs2cl_up* body bindings livevars))))
@@ -520,7 +712,9 @@
 	  (cond ((enum-adt? styp1)
 		 `(some ,(pvs2cl-lambda (list bind1)
 					expr-rest
-					bindings livevars)
+					bindings
+					(append (updateable-vars expr)
+						livevars))
 			(list ,@(pvs2cl_up* (constructors styp1)
 					    bindings livevars))))
 		(sub
@@ -531,8 +725,10 @@
 			   thereis
 			   (pvs-funcall ,(pvs2cl-lambda (list bind1)
 							expr-rest
-							bindings livevars)
-					i))))
+							bindings
+							(append (updateable-vars expr)
+								livevars))
+					,i))))
 		(t (throw 'no-defn
 			  "Cannot handle non-scalar/subrange quantifiers."))))
 	(pvs2cl_up* body bindings livevars))))
@@ -558,7 +754,7 @@
 (defmethod pvs2cl_up* ((expr list) bindings livevars)
   (if (consp expr)
       (cons (pvs2cl_up* (car expr) bindings
-			(append (free-formal-vars (cdr expr)) livevars))
+			(append (updateable-vars (cdr expr)) livevars))
 	    (pvs2cl_up* (cdr expr) bindings  ;;need car's freevars
 			(append (updateable-free-formal-vars (car expr)) ;;f(A, A WITH ..)
 				livevars)))
@@ -577,6 +773,13 @@
 
 (defmethod pvs2cl_up*((expr projection-expr) bindings livevars)
   `(project ,(index expr) ,(pvs2cl_up* (argument expr) bindings livevars)))
+
+
+(defun sort-assignments (assigns)                
+  (let ((restructure   (copy-list assigns)))     
+    (sort restructure                            
+          #'string-lessp                         
+          :key #'(lambda (x) (id (caar (arguments x)))))))
 
 (defun sorted-fields (typ)                
   (let ((restructure   (copy-list (fields typ))))     
@@ -602,16 +805,16 @@
   (no-livevars? (expression expr) livevars))
 
 (defmethod no-livevars? ((expr T) livevars)
-  (let ((updateable-vars
-	 (loop for var in (free-formal-vars expr)
-	       when (contains-updateable? (type var))
-	       collect var)))
-    (and (null (intersection  updateable-vars
+  (let ((updateable-outputs
+	 (updateable-outputs expr)))
+    (and (null (intersection  updateable-outputs
 			 livevars
 			 :test #'same-declaration))
-	 (cons updateable-vars livevars))))
+	 (cons updateable-outputs livevars))))
 
 (defvar *fun-lhs* nil)
+(defvar *update-args-bindings* nil)
+(defvar *lhs-args* nil)
 
 (defun array-bound (type)
   (and (funtype? type)
@@ -621,121 +824,299 @@
 	       (and y (1+ y) ))))))
 
 (defun pvs2cl-update (expr assigns bindings livevars)
- (let* ((expr-type (type expr))
-	(cl-expr (pvs2cl_up* expr bindings livevars))
-	;;the livevars are irrelevant and can be set to nil since
-	;;we have already check expr in pvs2cl_up*(update-expr).
-	(expr-stype (find-supertype expr-type))
-	(bound (array-bound expr-stype))
-	(cl-expr-array (if bound
-			   `(the simple-array
-			      (mk-fun-array ,cl-expr
-					    ,(pvs2cl_up* bound bindings livevars)))
-			   cl-expr))
-	(var (gentemp))
-	(expr-livevars (updateable-free-formal-vars expr))
-	(cl-assign-exprs
-	 (pvs2cl-assign-exprs assigns bindings
-			      (append expr-livevars livevars)))
-	(assign-var-bindings
-	 (loop for x in cl-assign-exprs collect
-	       (list (gentemp)
-		     x)))
-	(assign-expr-livevars
-	 (loop for x in assigns append
-	       (updateable-free-formal-vars (expression x)))) 
-	(*fun-lhs* nil)
-	(cl-assigns (pvs2cl-assigns expr-stype var assigns
-				    assign-var-bindings 
-				    bindings
-				    (append assign-expr-livevars
-					    (append expr-livevars
-						    livevars))))
-	(cl-mk-array (loop for (x . y) in *fun-lhs*
-			   nconc (list x `(mk-fun-array ,x ,y))))
-	(cl-setf (cons 'setf (append cl-mk-array
-				     (loop for x in cl-assigns nconc x)))))
-   `(let ,assign-var-bindings (let ((,var ,cl-expr-array)) ,cl-setf ,var))))
+  (let* ((expr-type (type expr))
+	 (cl-expr (pvs2cl_up* expr bindings
+			     (append (loop for x in assigns
+					   nconc
+					   (updateable-free-formal-vars
+					    (expression x)))
+				     livevars))))
+    (pvs2cl-update* expr-type cl-expr
+		    assigns bindings
+		    (append (updateable-vars expr) livevars)))) 
 
-(defun pvs2cl-assigns (type exprvar assigns  assign-var-bindings
-			    bindings
-			    livevars)
-  (when (consp  assigns)
-      (cons (pvs2cl-assign type exprvar (car assigns)
-			   (car assign-var-bindings)
-			   bindings
-			   (append (free-formal-vars (cdr assigns))
-				   livevars))
-	    (pvs2cl-assigns type exprvar (cdr assigns)
-			    (cdr assign-var-bindings)
-			    bindings livevars)))) ;;check livevars here
+(defun pvs2cl-update* (type cl-expr assigns bindings livevars)
+    (if (consp assigns)
+      (let* ((args (arguments (car assigns)))
+	    (rhs-expr (expression (car assigns)))
+	    (rhsvar (gentemp "RHS"))
+	    (rhs (pvs2cl_up* rhs-expr bindings
+			     livevars))
+	    (cl-expr (if (funtype? type)
+			 (let* ((bound (array-bound type))
+				(cl-bound (pvs2cl_up* bound
+						      bindings livevars)))
+			   `(mk-fun-array ,cl-expr ,cl-bound))
+			 cl-expr))
+	    (exprvar (gentemp "E")))
+	(let* ((*lhs-args* nil)
+	       (new-cl-expr
+		(pvs2cl-update-assign-args type exprvar args rhsvar
+					   bindings
+					   (append (updateable-vars rhs-expr)
+						   livevars)))
+	       (lhs-bindings (nreverse *lhs-args*))
+	       (new-expr-body `(let ((,rhsvar ,rhs)
+				     (,exprvar ,cl-expr))
+				 ,new-cl-expr
+				 ,exprvar))
+	       (newexpr-with-let
+		(if lhs-bindings 
+		    `(let ,lhs-bindings ,new-expr-body)
+		    new-expr-body))
+		   )
+	  (pvs2cl-update*
+	   type newexpr-with-let (cdr assigns) bindings
+	   ;;because later assignments are evaluated first.
+	   (append (updateable-vars (car assigns))
+			   livevars))))
+      cl-expr))
 
-(defun pvs2cl-assign-exprs (assigns bindings livevars)
-  (if (consp assigns)
-      (cons
-       (pvs2cl_up* (expression (car assigns)) bindings
-		   (append (free-formal-vars (arguments (car assigns)))
-			   (append (free-formal-vars (cdr assigns)) livevars)))
-       (pvs2cl-assign-exprs (cdr assigns) bindings
-			    (append (updateable-free-formal-vars
-				     (expression (car assigns)))
-				    livevars)))
-      nil))
+;;main point is that nested translations for arrays must be
+;;nondestructive since there is a possibility of aliasing.
+(defmethod pvs2cl-update-assign-args ((type funtype) cl-expr args rhs
+					 bindings livevars)
+      (let* ((args1 (car args))
+	     (cl-args1 (pvs2cl_up* (car args1) bindings
+					   livevars))
+	     (lhsvar (gentemp "LHS"))
+	     (bound (array-bound type))
+	     (cl-bound (pvs2cl_up* bound
+				   bindings livevars))
+	     (cl-expr `(mk-fun-array ,cl-expr ,cl-bound))
+	     (cl-expr-var (gentemp "E"))
+	     (newexpr `(svref ,cl-expr-var ,lhsvar))
+	     (newrhs (if (null (cdr args))
+		      rhs
+		      (pvs2cl-update-nd-type
+		      (range type) newexpr (cdr args) rhs
+		      bindings livevars))))
+	(push (list lhsvar cl-args1) *lhs-args*)
+	`(let ((,cl-expr-var ,cl-expr))
+	   (setf ,newexpr ,newrhs)
+	   ,cl-expr-var)))
 
-(defun pvs2cl-assign (type exprvar assign assign-var-binding bindings livevars)
-  (pvs2cl-assign-args type exprvar (arguments assign)
-		      (car assign-var-binding) bindings livevars)) 
 
-(defun pvs2cl-assign-args (type exprvar args uexpr bindings livevars)
-  (list (pvs2cl-type-assign-args type
-				 exprvar
-				 args
-				 bindings livevars)
-	uexpr ;(pvs2cl_up* uexpr bindings livevars)
-	))
-
-(defun pvs2cl-type-assign-args (type expr args bindings livevars)
-  (if (consp args)
-      (pvs2cl-type-assign-args* (find-supertype type)
-			       expr args bindings livevars)
-      expr))
-
-(defmethod pvs2cl-type-assign-args* ((type recordtype) expr args
-				     bindings livevars) 
-  (let* ((id (id (caar args)))
+(defmethod pvs2cl-update-assign-args ((type recordtype) cl-expr args rhs
+					 bindings livevars)
+  (let* ((args1 (car args))
+	 (id (id (car args1)))
 	 (field-num (get-field-num  id type))
-	 (new-expr `(svref ,expr ,field-num))
-	 (field-type (type (find id (fields type) :key #'id) )))
-    (pvs2cl-type-assign-args field-type new-expr (cdr args)
-			     bindings livevars)))
+	 (cl-expr-var (gentemp "E"))	 
+	 (newexpr `(svref ,cl-expr-var ,field-num))
+	 (field-type (type (find id (fields type) :key #'id) ))
+	 (other-updateable-types
+	  (loop for fld in (fields type)
+		when (not (eq id (id fld)))
+		nconc (top-updateable-types (type fld) nil)))
+	 (newrhs  (if (null (cdr args))
+		      rhs
+		      (if (member field-type
+				  other-updateable-types
+				  :test #'compatible?)
+			  (pvs2cl-update-nd-type
+			   field-type newexpr (cdr args) rhs
+			   bindings livevars)
+			  (pvs2cl-update-assign-args
+			   field-type newexpr (cdr args) rhs
+			   bindings livevars)))))
+    `(let ((,cl-expr-var ,cl-expr))
+       (setf ,newexpr ,newrhs)
+       ,cl-expr-var)))
 
-(defmethod pvs2cl-type-assign-args* ((type tupletype) expr args
-				     bindings livevars) 
-  (let* ((num (caar args))
-	 (new-expr `(svref ,expr ,(1- num)))
-	 (tupsel-type (nth (1- num)(types type))))
-    (pvs2cl-type-assign-args tupsel-type new-expr (cdr args) bindings
-			     livevars)))
+(defmethod pvs2cl-update-assign-args ((type tupletype) cl-expr args rhs
+					 bindings livevars)
+  (let* ((args1 (car args))
+	 (num (car args1))
+	 (cl-expr-var (gentemp "E"))
+	 (newexpr `(svref ,cl-expr-var ,(1- num)))
+	 (tupsel-type (nth (1- num)(types type)))
+	 (other-updateable-types
+	  (loop for fld in (types type)
+		as pos from 1  
+		when (not (eql pos num))
+		nconc (top-updateable-types (type fld) nil)))
+	 (newrhs  (if (null (cdr args))
+		      rhs
+		      (if (member tupsel-type
+			      other-updateable-types
+			      :test #'compatible?)
+		      (pvs2cl-update-nd-type
+		       tupsel-type newexpr (cdr args) rhs
+		       bindings livevars)
+		      (pvs2cl-update-assign-args
+		       tupsel-type newexpr (cdr args) rhs
+		       bindings livevars)))))
+    `(let ((,cl-expr-var ,cl-expr))
+       (setf ,newexpr ,newrhs)
+       ,cl-expr-var)))
+	      
+  
+	 
+
+;(defun pvs2cl-update (expr assigns bindings livevars)
+; (let* ((expr-type (type expr))
+;	(cl-expr (pvs2cl_up* expr bindings
+;			     (append (loop for x in assigns
+;					   nconc
+;					   (updateable-free-formal-vars
+;					    (expression x)))
+;				     livevars)))
+;	;;though we've checked livevars for the update, need to
+;	;;augment livevars for the updates embedded within expr.  
+;	(expr-stype (find-supertype expr-type))
+;	(bound (array-bound expr-stype))
+;	(cl-expr-array (if bound
+;			   `(the simple-array
+;			      (mk-fun-array ,cl-expr
+;					    ,(pvs2cl_up* bound bindings livevars)))
+;			   cl-expr))
+;	(var (gentemp))
+;	(expr-livevars (updateable-vars expr))
+;	(*fun-lhs* nil)
+;	(*update-args-bindings* nil)
+;	(cl-args
+;	 (pvs2cl-update-args expr-stype var assigns
+;			     bindings (append expr-livevars livevars)))
+					      
+;	(cl-assign-exprs
+;	 (pvs2cl-assign-exprs assigns bindings
+;			      (append expr-livevars livevars)))
+;	(assign-vars (loop for x in cl-assign-exprs collect
+;		      (gentemp "RHS")))
+;	(assign-var-bindings 
+;	 (append *update-args-bindings*
+;		 (loop for x in cl-assign-exprs
+;		       as y in assign-vars
+;		       collect (list y x))))
+;	(cl-mk-array (loop for (x . y) in *fun-lhs*
+;			   nconc (list x `(mk-fun-array ,x ,y))))
+;	(cl-setf (cons 'setf (append cl-mk-array
+;				     (loop for x in cl-args
+;					   as y in assign-vars
+;					   nconc (list x y))))))
+;   `(let ,assign-var-bindings (let ((,var ,cl-expr-array)) ,cl-setf ,var))))
+
+;(defun pvs2cl-assigns (type exprvar assigns  assign-var-bindings
+;			    bindings
+;			    livevars)
+;  (when (consp  assigns)
+;      (cons (pvs2cl-assign type exprvar (car assigns)
+;			   (car assign-var-bindings)
+;			   bindings
+;			   (append (updateable-vars (cdr assigns))
+;				   livevars))
+;	    (pvs2cl-assigns type exprvar (cdr assigns)
+;			    (cdr assign-var-bindings)
+;			    bindings livevars)))) ;;check livevars here
+
+;(defun pvs2cl-assign-exprs (assigns bindings livevars)
+;  (if (consp assigns)
+;      (cons
+;       (pvs2cl_up* (expression (car assigns)) bindings
+;		   (append (updateable-vars (arguments (car assigns)))
+;			   (append (updateable-vars (cdr assigns)) livevars)))
+;       (pvs2cl-assign-exprs (cdr assigns) bindings
+;			    (append (updateable-free-formal-vars
+;				     (expression (car assigns)))
+;				    livevars)))
+;      nil))
+
+;(defun pvs2cl-assign (type exprvar assign assign-var-binding bindings livevars)
+;  (pvs2cl-assign-args type exprvar (arguments assign)
+;		      (car assign-var-binding) bindings livevars)) 
+
+;(defun pvs2cl-assign-args (type exprvar args uexpr bindings livevars)
+;  (list (pvs2cl-type-assign-args type
+;				 exprvar
+;				 args
+;				 bindings livevars)
+;	uexpr ;(pvs2cl_up* uexpr bindings livevars)
+;	))
+
+;(defun pvs2cl-update-args (type expr-var assigns bindings livevars)
+;  (if (consp assigns)
+;      (cons (pvs2cl-type-assign-args type expr-var (arguments (car assigns))
+;			       bindings (append (updateable-vars (cdr assigns))
+;						livevars))
+;	    (pvs2cl-update-args type expr-var
+;				     (cdr assigns) bindings
+;				     livevars;;no need to augment livevars
+;				     ;;since args are not of updateable type.
+;				     ))
+;      nil))
+
+;(defun pvs2cl-type-assign-args (type expr args bindings livevars)
+;  (if (consp args)
+;      (pvs2cl-type-assign-args* (find-supertype type)
+;			       expr args bindings livevars)
+;      expr))
+
+;(defmethod pvs2cl-type-assign-args* ((type recordtype) expr args
+;				     bindings livevars) 
+;  (let* ((id (id (caar args)))
+;	 (field-num (get-field-num  id type))
+;	 (new-expr `(svref ,expr ,field-num))
+;	 (field-type (type (find id (fields type) :key #'id) )))
+;    (pvs2cl-type-assign-args field-type new-expr (cdr args)
+;			     bindings livevars)))
+
+;(defmethod pvs2cl-type-assign-args* ((type tupletype) expr args
+;				     bindings livevars) 
+;  (let* ((num (caar args))
+;	 (new-expr `(svref ,expr ,(1- num)))
+;	 (tupsel-type (nth (1- num)(types type))))
+;    (pvs2cl-type-assign-args tupsel-type new-expr (cdr args) bindings
+;;			     livevars)))
 
 (defun mk-fun-array (expr size) 
   (if (or (simple-vector-p expr)(null size))
       expr
-      (let* ((arr (make-array size :initial-element 0)))
-	(loop for i from 0 to (1- size) do
-	      (setf (svref arr i)(funcall expr i)))
-	arr)))
+      (cond ;((pvs-simple-array-p expr)
+;	     (if (zerop (pvs-simple-array-size expr))
+;		 (pvs-simple-array-array expr)
+;		 (insert-array-diffs (pvs-simple-array-updates expr)
+;			       (copy-seq (pvs-simple-array-contents expr)))))
+;       ((consp expr)
+;	(let ((array (cdr (last expr))))
+;		(insert-array-diffs expr (copy-seq array))))
+
+	     ((pvs-outer-array-p expr)
+;;	     (if (zerop (pvs-array-size expr))
+;;		 (pvs-array-contents expr)
+		 (let* ((arr (make-array size :initial-element 0))
+			(inner-array (pvs-outer-array-inner-array expr))
+			(contents (pvs-array-contents inner-array))
+			(inner-size (pvs-array-size inner-array))
+			(offset (pvs-outer-array-offset expr))
+			(outer-diffs (pvs-outer-array-diffs expr))
+			(inner-diffs (pvs-array-diffs inner-array)))
+		   (loop for i from 0 to (1- size) do
+			 (setf (svref arr i)(svref contents i)))
+		   (loop for (x . y) in inner-diffs
+			 as i from (1+ offset) to inner-size
+			 do (setf (svref arr x) y))
+		   (insert-array-diffs outer-diffs arr)))
+	      (t (let ((arr (make-array size :initial-element 0)))
+		   (loop for i from 0 to (1- size) do
+		       (setf (svref arr i)(funcall expr i)))
+		   arr)))))
 
 
 (defmethod pvs2cl-type-assign-args* ((type funtype) expr args
 				     bindings livevars)
   (let* ((carargs (car args))
-	 (args1 (if (> (length carargs) 1)
+	 (args1 (if (> (length carargs) 1) ;;ought not to be possible
 		    (pvs2cl_up* (mk-tuple-expr carargs) bindings livevars)
-		    (pvs2cl_up* (car carargs) bindings livevars)))
+		    (pvs2cl_up* (car carargs) bindings
+				(append (updateable-vars (cdr args))
+					livevars))))
 	 (hi (or (below? (domain type))(upto? (domain type))))
 	 (hi-cl (when hi (pvs2cl_up* hi bindings livevars)))
-	 (new-expr `(svref ,expr  ,args1))
+	 (argvar (gentemp "LHS"))
+	 (new-expr `(svref ,expr  ,argvar))
 	 (rangetype (range type)))
+    (push (list argvar args1) *update-args-bindings*)
     (when (and (not (symbolp expr)) hi)
       (pushnew (cons expr hi-cl) *fun-lhs* :test #'equal :key #'car))
     (pvs2cl-type-assign-args rangetype new-expr (cdr args) bindings livevars)))
@@ -753,34 +1134,146 @@
 	      do (pushnew y (cdr x-output)
 			  :test #'same-declaration))
 	(push (cons updateable-var livevars) *output-vars*))))
-		   
+
+(defmethod pvs2cl-update-nondestructive
+    ((expr update-expr) bindings livevars)
+  (with-slots (type expression assignments) expr
+    (let* ((assign-exprs (mapcar #'expression assignments))
+	   (cl-expr (pvs2cl_up* expression bindings
+				(append (updateable-free-formal-vars
+					 assign-exprs)
+					;;assign-args can be ignored
+					livevars))))
+    (pvs2cl-update-nondestructive* (type expression)
+				   cl-expr
+				   (mapcar #'arguments assignments)
+				   assign-exprs
+				   bindings
+				   (append (updateable-vars expression)
+					   livevars)))))
+
+;;recursion over updates in an update expression
+(defun pvs2cl-update-nondestructive*
+    (type expr assign-args assign-exprs bindings livevars)
+  (if (consp assign-args)
+      (let* ((*lhs-args* nil)
+	     (exprvar (gentemp "E"))
+	     (assign-exprvar (gentemp "N"))
+	     (cl-assign-expr
+	      (pvs2cl_up* (car assign-exprs)
+			  bindings
+			  (append (updateable-vars (cdr assign-exprs))
+				  (append (updateable-vars (cdr assign-args))
+					  livevars))))
+	     (newexpr (pvs2cl-update-nd-type
+		       type exprvar
+		       (car assign-args)
+		       assign-exprvar
+		       bindings
+		       (append (updateable-vars (car assign-exprs))
+			       (append (updateable-vars (cdr assign-exprs))
+				       (append (updateable-vars (cdr assign-args))
+					       livevars)))))
+	     (lhs-bindings (nreverse *lhs-args*))
+	     (newexpr-with-let
+	      `(let ,lhs-bindings
+		 (let ((,assign-exprvar ,cl-assign-expr)
+		       (,exprvar ,expr))
+		   ,newexpr))))
+	(pvs2cl-update-nondestructive*
+	 type 
+	 newexpr-with-let
+	 (cdr assign-args)(cdr assign-exprs) bindings
+	 (append (updateable-free-formal-vars (car assign-exprs))
+		 livevars)))
+      expr))
+
+
+;;recursion over nested update arguments in a single update.
+(defun pvs2cl-update-nd-type (type expr args assign-expr
+					   bindings livevars)
+  (if (consp args)
+      (pvs2cl-update-nd-type* type expr (car args) (cdr args) assign-expr
+			      bindings livevars)
+      assign-expr))
+
+(defmethod pvs2cl-update-nd-type* ((type funtype) expr arg1 restargs
+				   assign-expr bindings livevars)
+  (let* ((bound (array-bound type))
+	 (cl-bound (pvs2cl_up* bound bindings livevars))
+	 (arg1var (gentemp "A"))
+	 (cl-arg1 (pvs2cl_up*  (car arg1) bindings
+			      (append (updateable-vars restargs)
+				      livevars)))
+	 (newexpr (pvs2cl-update-nd-type 
+		   (range type) (mk-funcall expr (list arg1var))
+		   restargs assign-expr bindings livevars)))
+    (push (list arg1var cl-arg1) *lhs-args*)
+    `(pvs-outer-array-update ,expr ,arg1var ,newexpr ,cl-bound)))
+
+(defmacro nd-rec-tup-update (rec fieldnum newval)
+  `(let ((val ,newval)
+	(newrec  (copy-seq ,rec)))
+    (setf (svref newrec ,fieldnum) val)
+    newrec))
+
+(defmethod pvs2cl-update-nd-type* ((type recordtype) expr arg1 restargs
+				   assign-expr bindings livevars)
+  (let* ((id (id (car arg1)))
+	 (field-num (get-field-num  id type))
+	 (new-expr `(svref ,expr ,field-num))	 
+	 (field-type (type (find id (fields type) :key #'id) ))
+	 (newval (pvs2cl-update-nd-type field-type new-expr
+					restargs assign-expr bindings
+					livevars)))
+    `(nd-rec-tup-update ,expr ,field-num ,newval)))
+
+(defmethod pvs2cl-update-nd-type* ((type tupletype)  expr arg1 restargs
+				   assign-expr bindings livevars)
+  (let* ((num arg1)
+	 (new-expr `(svref ,expr ,(1- num)))
+	 (tupsel-type (nth (1- num)(types type)))
+	 (newval (pvs2cl-update-nd-type tupsel-type new-expr
+					restargs assign-expr bindings
+					livevars)))
+    `(nd-rec-tup-update ,expr ,num ,newval)))
+
+(defmethod pvs2cl-update-nd-type* ((type subtype)  expr arg1 restargs
+				   assign-expr bindings livevars)
+  (pvs2cl-update-nd-type* (find-supertype type) expr arg1 restargs
+			  assign-expr bindings livevars))
+
 
 (defmethod pvs2cl_up* ((expr update-expr) bindings livevars)
-  (if (and *destructive?*
-	   (updateable? (type (expression expr))))
-      (let* ((expression (expression expr))
-	     (assignments (assignments expr))
-	     (assign-arg-livevars (loop for asgn in assignments
-					append (free-formal-vars
-						(arguments asgn))))
-	     (assign-expr-livevars (loop for asgn in assignments
-					append (updateable-free-formal-vars
-						(expression asgn))))
-	     (assign-livevars (free-formal-vars assignments))
-	     (updatable-livevars
-	     (no-livevars? expression
-			   (append assign-expr-livevars
-				   (append assign-arg-livevars livevars)))));;very unrefined: uses all
-	;;freevars of eventually updated expression.
-	(cond (updatable-livevars
-	       (push-output-vars (car updatable-livevars)
-				 (cdr updatable-livevars))
-;				 *output-vars*
-	       (pvs2cl-update expression
-			      assignments
-			      bindings livevars))
-	      (t (pvs2cl_up* (translate-update-to-if! expr)
-			     bindings livevars))))
+  (if (updateable? (type (expression expr)))
+      (if *destructive?*
+	  (let* ((expression (expression expr))
+		 (assignments (assignments expr))
+;;assign-arg-livevars can be ignored since args are evaluated before
+;;expression and have no updateable results. 		 
+;		 (assign-arg-livevars (loop for asgn in assignments
+;					    append (updateable-vars
+;						    (arguments asgn))))
+		 (assign-expr-livevars (loop for asgn in assignments
+					     append
+					     (updateable-free-formal-vars
+						     (expression asgn))))
+		 ;;	     (assign-livevars (free-formal-vars assignments))
+		 (updateable-livevars
+		  (no-livevars? expression
+				(append assign-expr-livevars
+						livevars))))
+	    ;;very unrefined: uses all
+	    ;;freevars of eventually updated expression.
+	    (cond (updateable-livevars
+		   (push-output-vars (car updateable-livevars)
+				     (cdr updateable-livevars))
+		   (pvs2cl-update expression
+				  assignments
+				  bindings livevars))
+		  (t (pvs2cl-update-nondestructive  expr
+						    bindings livevars))))
+	  (pvs2cl-update-nondestructive expr bindings livevars))
       (pvs2cl_up* (translate-update-to-if! expr)
 		  bindings livevars)))
 
@@ -852,7 +1345,8 @@
 			  (external-lisp-function (declaration expr))
 			  (lisp-function (declaration expr)))))
 	(if (datatype-constant? expr)
-	    (if (scalar-constant? expr)
+	    (if (or (scalar-constant? expr)
+		    (not (funtype? (find-supertype (type expr)))))
 		(mk-funapp fun nil)
 		`(function ,fun)) ;;actuals irrelevant for datatypes
 	    (mk-funapp fun (pvs2cl_up* (expr-actuals (module-instance expr))
@@ -1133,6 +1627,53 @@
 	     (compile id)
 	     id))))))
 
+;;This should be in the patch.  *match-cache* is initialized
+;;if needed since it is called in checking sub-type?.  
+(defun match (expr instance bind-alist subst)
+  (let* ((*match-cache* (or *match-cache* ;;for initialization
+			                   ;;not shadowing
+			    (make-hash-table :test #'eq)))
+	  (hashed-table-expr
+	  (unless *no-bound-variables-in-match* ;;NSH(10.19.95)
+	      (gethash expr *match-cache*)))  ;;should not cache or lookup
+	 (hashed-value (when hashed-table-expr
+			 (gethash instance hashed-table-expr)))
+	 (hashed-result (when hashed-value (car hashed-value)))
+	 (hashed-modsubst (when hashed-value (cdr hashed-value)))
+	 (*dont-cache-match?* nil)
+	 (*remaining-actuals-matches* nil)) ;;(break "match1")
+    (cond ((and hashed-value
+		(eq hashed-result 'FAIL))
+	   'FAIL)
+	  (hashed-value
+	   (setq *modsubst* hashed-modsubst)
+	   (if subst
+	       (merge-subst subst hashed-result)
+	       hashed-result))
+	  (t (let* ((frees (freevars expr)) ;just to set no-freevars?
+		    (res (match* expr instance bind-alist subst))
+		    (result
+		     (if (or (eq res 'fail)
+			     (not (subsetp frees res :test
+					   #'(lambda (x y) ;;nsh(7.12.95)
+					       ;;was tc-eq.
+					       (same-declaration x (car y))))))
+			 'fail
+			 (match-remaining-actuals
+			  *remaining-actuals-matches* res)))) ;;(break "match2")
+	       (when (and (null subst)
+			  (null *dont-cache-match?*)
+			  (null *no-bound-variables-in-match*))
+		 (if hashed-table-expr
+		   (setf (gethash instance hashed-table-expr)
+			 (cons result *modsubst*))
+		   (setf (gethash expr *match-cache*)
+			 (let ((hash (make-hash-table :test #'eq)))
+			   (setf (gethash instance hash)
+				 (cons result *modsubst*))
+			   hash))))
+	       result)))))
+
 (defun pvs2cl-theory (theory)
   (let* ((theory (get-theory theory))
 	 (*current-context* (context theory)))
@@ -1181,13 +1722,16 @@
 	 (accessor-ids (mapcar #'id accessors))
 	 (struct-id (mk-newconstructor id
 				       accessor-ids))
-	 (defn `(defstruct ,struct-id ,@accessor-ids)))
-    (setf (struct-name (adt-type-name datatype)) struct-id)
+	 (constructor-symbol (makesym "MAKE-~a" struct-id))
+	 (defn `(defstruct (,struct-id (:constructor ,constructor-symbol 
+						     ,accessor-ids))
+		  ,@accessor-ids)))
+;;    (setf (struct-name  datatype) struct-id) ;was (adt-type-name datatype)
     (make-eval-info (declaration constructor))
     (setf (definition (in-defn (declaration constructor)))
 	  defn)
     (setf (in-name (declaration constructor))
-	  (makesym "MAKE-~a" struct-id))
+	  constructor-symbol)
     (make-eval-info (declaration (recognizer constructor)))
     (setf (in-name (declaration (recognizer constructor)))
 	  (makesym "~a-P" struct-id))
@@ -1332,9 +1876,7 @@
 			      :if-exists
 			      (if supersede? :supersede :append)
 			      :if-does-not-exist :create)
-	(when supersede?
-	  (format output "; Generated from theory ~a~%(in-package 'PVS)~%"
-	    theory))
+	(when supersede? (format output "(in-package 'PVS)~%"))
 	(loop for dec in (theory (get-theory theory))
 	      when (and (const-decl? dec)(eval-info dec))
 	      do (write-decl-defns dec output)))
@@ -1349,8 +1891,8 @@
   (pvs2cl-lisp-type* type))
 
 (defmethod psv2cl-lisp-type* ((type funtype))
-  `(function ,(pvs2cl-lisp-type* (domain type))
-	    ,(pvs2cl-lisp-type* (range type))))
+  nil) ;  `(function ,(pvs2cl-lisp-type* (domain type))
+	;    ,(pvs2cl-lisp-type* (range type)))
 
 (defmethod pvs2cl-lisp-type* ((type tupletype))
   '(simple-array *))
@@ -1378,22 +1920,27 @@
 		    
 
 (defmethod pvs2cl-lisp-type* ((type subtype))
-  (cond ((tc-eq type *naturalnumber*) '(integer 0 *))
+  (cond ((tc-eq type *naturalnumber*) '(integer 0))
 	((tc-eq type *integer*) 'integer)
 	(t (let ((sub (subrange-index type)))
 	     (if sub
 		 `(integer ,@sub)
 		 (pvs2cl-lisp-type* (supertype type)))))))
 
+(defcl adt-type-name (type-name)
+  recognizer-names
+  struct-name)
+
 
 (defmethod pvs2cl-lisp-type* ((type adt-type-name))
   (cond ((eq (id type) '|list|)
 	 'list)
-	(t (struct-name type))))
+	(t nil)))  ;;(struct-name type)
 
 (defmethod pvs2cl-lisp-type* ((type T))
   (cond ((eq type *boolean*) 'boolean)
 	(t nil)));;was T, but need to distinguish proper types.
+
 
 
 

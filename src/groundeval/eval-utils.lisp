@@ -23,7 +23,7 @@
 			       'id '|if_def|
 			       'actuals actuals)
 	    'type (mk-funtype (list type) *boolean*))))
-    (mk-name-expr 'if actuals '|if_def| res 'CONSTANT)))
+    (mk-name-expr 'if actuals '|if_def| res)))
     
 
 (defun mk-branch-expr (cond then else  type)
