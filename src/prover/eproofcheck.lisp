@@ -1649,10 +1649,6 @@
 ;				     ps)
 ;			    'strategy-input rule))
 ;	   (t )
-	
-(defun is-lambda (x)
-  (and (functionp x)
-       (not (symbolp x))))
 
 (defun assert-tccforms (tccforms ps)
   (when tccforms
