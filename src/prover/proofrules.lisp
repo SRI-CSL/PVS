@@ -1547,12 +1547,6 @@ which should be fully instantiated. Please supply actual parameters.")
 	   (values 'X nil nil))
 	   (t (setf (declarations-hash context)
 		    (copy (declarations-hash context)))
-	      (put-decl (make-instance
-			    'skolem-const-decl
-			  'id name
-			  'type (car (judgement-types+ tc-expr))
-			  'module (module context))
-			(declarations-hash context))
 	      (let ((decl (make-instance
 			     'skolem-const-decl
 			   'definition tc-expr
