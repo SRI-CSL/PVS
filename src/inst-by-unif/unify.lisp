@@ -3,7 +3,7 @@
 (defvar *fail* :fail)
 
 (defun fail? (subst)
-  (eq sub *fail*))
+  (eq subst *fail*))
 
 ;; Top-Level Unification
 
@@ -17,9 +17,9 @@
     (unwind-protect
 	(let ((res (unify trm1 trm2 cs)))
 	  (if (symbolp res) *fail*
-	      (let ((xs (union (vars-of trm1)
-			       (vars-of trm2)
-			       (mapcar #'car subst))))
+	      (let ((xs (union (union (vars-of trm1)
+				      (vars-of trm2))
+			              (dom subst))))
 		(make-subst xs res))))
       (npop-cong-state cs))))
 
@@ -174,10 +174,15 @@
   (dp::dp-union e1 e2 cs))
 
 (defun subst= (subst1 subst2)
-  (every #'(lambda (x)
-	     (eq (cdr (assoc x subst1))
-		 (cdr (assoc x subst2))))
-	 (union (dom subst1) (dom subst2))))
+  (or (and (fail? subst1) (fail? subst2))
+      (let ((d1 (dom subst1))
+	    (d2 (dom subst2)))
+	(and (subsetp d1 d2)
+	     (subsetp d2 d1)
+	     (every #'(lambda (x)
+			(eq (cdr (lookup x subst1))
+			    (cdr (lookup x subst2))))
+		    d1)))))
 
 (defun dom (subst)
   (mapcar #'car subst))
