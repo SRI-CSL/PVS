@@ -216,6 +216,39 @@ undo (C-x u or C-_) or M-x revert-buffer to return to the old version."
        "prettyprinted file - use C-x u to undo changes.")
       (message "No changes were made")))
 
+(defpvs prettyprint-theory-instance prettyprint (theoryname context-theoryname)
+  "Prettyprints the specified theory instance
+
+The prettyprint-theory-instance command prettyprints the specified theory
+instance."
+  (interactive (append
+		(complete-theory-instance-name "Prettyprint theory instance: ")
+		(complete-theory-name "In context of theory: ")))
+  (unless (interactive-p) (pvs-collect-theories))
+  (pvs-bury-output)
+  (save-some-pvs-buffers t)
+  (pvs-send-and-wait (format "(prettyprint-theory-instance \"%s\" \"%s\")"
+			 theoryname context-theoryname)
+		     "Prettyprinting"
+		     (pvs-get-abbreviation 'prettyprint-theory-instance)
+		     'dont-care))
+
+(defun complete-theory-instance-name (prompt)
+  "Perform completion on PVS theory names"
+  (let ((default (save-excursion
+		   (forward-word -1)
+		   (let ((start (point)))
+		     (forward-word 1)
+		     (when (looking-at "[ \t\n]*\\[")
+		       (forward-sexp 1))
+		     (when (looking-at "[ \t\n]*{{")
+		       (forward-sexp 1))
+		     (buffer-substring start (point))))))
+    (list (completing-read (format "%s%s " prompt
+			     (if default
+				 (format "(default %s)" default)
+				 ""))
+	    nil nil nil nil nil default))))
 
 ;;; prettyprint-expanded
 
