@@ -1173,7 +1173,7 @@ if necessary)."
     (load-pvs-lib-file dir)))
 
 (defun load-pvs-lib-file (dir)
-  (let ((load-path (list dir)))
+  (let ((load-path (cons dir load-path)))
     (pvs-msg "Attempting to load %s/pvs-lib.el..." dir)
     (if (load "pvs-lib" t nil nil t)
 	(pvs-msg "%s/pvs-lib.el loaded" dir)
