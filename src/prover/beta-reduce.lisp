@@ -24,7 +24,7 @@
 
  
 
-(defun beta-sform (sform &optional rewrite-flag)
+(defun beta-sform (sform &optional rewrite-flag (let-reduce? t))
   (let* ((fmla (formula sform))
 	 (newfmla (if (memq rewrite-flag '(lr rl))
 		      (if (and (negation? fmla)
@@ -35,13 +35,14 @@
 			      'argument
 			      (make!-arg-tuple-expr*
 			       (if (eq rewrite-flag 'rl)
-				   (list (beta-reduce (args1
-						       (args1 fmla)))
+				   (list (beta-reduce (args1 (args1 fmla))
+						      let-reduce?)
 					 (args2 (args1 fmla)))
 				   (list (args1 (args1 fmla))
-					 (beta-reduce (args2 (args1 fmla))))))))
+					 (beta-reduce (args2 (args1 fmla))
+						      let-reduce?))))))
 			  fmla)
-		      (beta-reduce fmla)))
+		      (beta-reduce fmla let-reduce?)))
 	 (new-sform (if (or (tc-eq fmla newfmla)
 			    (tc-eq newfmla *false*) ;;NSH(4.26.95)
 			    (and (negation? newfmla)
@@ -51,16 +52,18 @@
     (if (s-form-equal? sform new-sform) (values 'X sform)
 	(values '? new-sform))))
 
-(defun beta-step (sformnums &optional rewrite-flag)
+(defvar *let-reduce-beta-cache* (make-hash-table :test #'eq))
+
+(defun beta-step (sformnums &optional rewrite-flag (let-reduce? t))
   #'(lambda (ps)
       (multiple-value-bind
-	    (signal subgoal)
+	  (signal subgoal)
 	  (sequent-reduce (current-goal ps)
-			  #'(lambda (x) (beta-sform x rewrite-flag))
-			   sformnums)
+			  #'(lambda (x) (beta-sform x rewrite-flag let-reduce?))
+			  sformnums)
 	(when (not (eq signal '?))
-;;	    (format-if "~%Beta reducing the formulas ~a," sformnums)
-	    (error-format-if "~%No suitable redexes found."))
+	  ;;	    (format-if "~%Beta reducing the formulas ~a," sformnums)
+	  (error-format-if "~%No suitable redexes found."))
 	(values signal (list subgoal) ))))
 
 
@@ -76,9 +79,12 @@
 (defun remove-beta-cache ()
   (setq *beta-cache* nil))
 
-(defun beta-reduce (obj)
-  ;;(reset-beta-cache) ;;NSH(3.29.95)
-  (beta-reduce* obj))
+(defun beta-reduce (obj &optional (let-reduce? t))
+  (let ((*beta-cache* (if let-reduce?
+			  *beta-cache*
+			  *let-reduce-beta-cache*))
+	(*let-reduce?* let-reduce?))
+    (beta-reduce* obj)))
 
 (defmethod beta-reduce* :around (obj)
   (or (gethash obj *beta-cache*)
@@ -349,9 +355,11 @@
 
 ;;NSH(10.27.94): needed to avoid betareducing lets in TCCs.
 (defmethod beta-reduce* ((expr let-expr))
-  (if *dont-beta-reduce-let-exprs*
-      (lcopy expr 'argument (beta-reduce (argument expr)))
-      (call-next-method)))
+  (if *let-reduce?*
+      (call-next-method)
+      (lcopy expr
+	'operator (beta-reduce* (operator expr))
+	'argument (beta-reduce* (argument expr)))))
 
 (defmethod beta-reduce* ((expr application))
   (let* ((oper (if (lambda? (operator expr))
