@@ -56,6 +56,7 @@
   (declare (ignore args))
   (let ((nex (call-next-method)))
     (if (or (not (type ex))
+	    (not (type nex))
 	    (eq (operator ex) (operator nex)))
 	nex
 	(change-application-class-if-necessary ex nex))))
