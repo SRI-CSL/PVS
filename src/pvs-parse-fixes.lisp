@@ -17,7 +17,7 @@
 
 (defvar *table-bracket-counter* 0)
 
-(defun lex-\|
+(defun LEX-\|
        (stream symbol)
        (declare (ignore symbol))
        (let (holdchar)
@@ -45,7 +45,7 @@
                ((eql holdchar #\>) 'sbst::\|>)
                (t (lexical-unread-char stream) 'sbst::\|))))
 
-(defun lex-]
+(defun LEX-]
        (stream symbol)
        (declare (ignore symbol))
        (let (holdchar)
