@@ -1466,8 +1466,8 @@
 
 (defmethod update-expr-type-for-maplet ((arguments null) value expr te)
   (unless (some #'(lambda (ty) (compatible? ty te))
-		(types value))
-    (type-incompatible value (types value) te))
+		(ptypes value))
+    (type-incompatible value (ptypes value) te))
   (extend-domain-type value te expr))
 
 (defmethod update-expr-type-for-maplet (arguments value expr (te recordtype))
