@@ -83,7 +83,8 @@
 (defun char-list-type? (type)
   (and (list-type? type)
        (let ((act (type-value (car (actuals (find-supertype type))))))
-	 (and (eq (id act) '|character|)
+	 (and (type-name? act)
+	      (eq (id act) '|character|)
 	      (module-instance act)
 	      (eq (id (module-instance act)) '|character_adt|)))))
 
