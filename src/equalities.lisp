@@ -1504,7 +1504,10 @@ where db is to replace db1 and db2")
 ;;; we can recurse on both supertypes at the same time.
 
 (defmethod compatible-preds* ((atype subtype) (etype subtype) aexpr incs)
-  (if (subtype-of? atype etype)
+  (if (or (subtype-of? atype etype)
+	  (some #'(lambda (jty)
+		    (subtype-of? jty etype))
+		(judgement-types aexpr)))
       incs
       (compatible-preds* atype (supertype etype) aexpr
 			 (cons (make!-reduced-application (predicate etype)
@@ -1590,20 +1593,19 @@ where db is to replace db1 and db2")
 				    (list adom edom)
 				    *dep-bindings*)
 			     *dep-bindings*))
+	 (appl (make!-reduced-application
+		;; Since avar is already declared to be of the given
+		;; subtype, restrict is just the identity.
+		(if (and (implicit-conversion? aexpr)
+			 (name-expr? (operator aexpr))
+			 (eq (id (operator aexpr)) '|restrict|)
+			 (eq (id (module-instance (operator aexpr)))
+			     '|restrict|))
+		    (argument aexpr)
+		    aexpr)
+		avar))
 	 (rpreds (compatible-preds*
-		  (subst-deps arng) (subst-deps erng)
-		  (make!-reduced-application
-		   ;; Since avar is already declared to be of the given
-		   ;; subtype, restrict is just the identity.
-		   (if (and (implicit-conversion? aexpr)
-			    (name-expr? (operator aexpr))
-			    (eq (id (operator aexpr)) '|restrict|)
-			    (eq (id (module-instance (operator aexpr)))
-				'|restrict|))
-		       (argument aexpr)
-		       aexpr)
-		    avar)
-		  nil))
+		  (subst-deps arng) (subst-deps erng) appl nil))
 	 (ran-preds (remove *true* rpreds :test #'tc-eq))
 	 (rpred (when ran-preds
 		  (if (and (singleton? ran-preds)
