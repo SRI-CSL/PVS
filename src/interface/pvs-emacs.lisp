@@ -100,13 +100,15 @@
 (defun show-pvs-file-warnings (filename)
   (let ((theories (get-theories filename)))
     (if theories
-	(pvs-buffer "PVS Warnings"
-	  (format nil
-	      "Warnings for file ~a.pvs:~
+	(if (some #'warnings theories)
+	    (pvs-buffer "PVS Warnings"
+	      (format nil
+		  "Warnings for file ~a.pvs:~
                ~:{~2%Warnings for theory ~a:~@{~{~2%~a~}~}~}"
-	    filename
-	    (mapcar #'(lambda (th) (list (id th) (warnings th))) theories))
-	  t t)
+		filename
+		(mapcar #'(lambda (th) (list (id th) (warnings th))) theories))
+	      t t)
+	    (pvs-message "No warnings associated with ~a.pvs" filename))
 	(pvs-message "~a.pvs has not been typechecked" filename))))
 
 (defun pvs-info (ctl &rest args)
@@ -138,13 +140,15 @@
 (defun show-pvs-file-messages (filename)
   (let ((theories (get-theories filename)))
     (if theories
-	(pvs-buffer "PVS Messages"
-	  (format nil
-	      "Messages for file ~a.pvs:~
+	(if (some #'info theories)
+	    (pvs-buffer "PVS Messages"
+	      (format nil
+		  "Messages for file ~a.pvs:~
                ~:{~2%Messages for theory ~a:~@{~{~2%~a~}~}~}"
-	    filename
-	    (mapcar #'(lambda (th) (list (id th) (info th))) theories))
-	  t t)
+		filename
+		(mapcar #'(lambda (th) (list (id th) (info th))) theories))
+	      t t)
+	    (pvs-message "No messages associated with ~a.pvs" filename))
 	(pvs-message "~a.pvs has not been typechecked" filename))))
 
 ;;; Used to put messages in a log file
