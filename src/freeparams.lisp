@@ -342,6 +342,16 @@
 	      (setq frees (pushnew x frees :test #'eq))))
 	  frees))))
 
+(defmethod free-params-res ((theory module) (mi modname) type frees)
+  (declare (ignore type))
+  (with-slots (actuals) mi
+    (if actuals
+	(let ((afrees (free-params* actuals nil)))
+	  (union afrees frees :test #'eq))
+	(progn (dolist (x (formals-sans-usings theory))
+		 (setq frees (pushnew x frees :test #'eq)))
+	       frees))))
+
 (defmethod free-params-res ((decl mapping) mi type frees)
   (declare (ignore type))
   (if (memq decl (mappings mi))
