@@ -529,7 +529,8 @@ sets [T: TYPE]: THEORY
  END sets
 
 
-% Lemmas about sets
+% Lemmas about sets - many of these came from Bruno Dutertre in the
+% more_set_lemmas theory of the finite_sets library
 
 sets_lemmas [T: TYPE]: THEORY
  BEGIN
@@ -2433,7 +2434,6 @@ nat_types[m: nat] : THEORY
  END nat_types
 
 
-finite_sets_def[T: TYPE]: THEORY
 %------------------------------------------------------------------------
 %
 %  finite sets (basic definitions and closure properties)
@@ -2449,8 +2449,8 @@ finite_sets_def[T: TYPE]: THEORY
 %
 %------------------------------------------------------------------------
 
-BEGIN
-
+finite_sets_def[T: TYPE]: THEORY
+ BEGIN
   x, y, z: VAR T
   S: VAR set[T]
   N: VAR nat
