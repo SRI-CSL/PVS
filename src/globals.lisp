@@ -22,8 +22,8 @@
     "src/decision-procedures/polylib" "src/utils" "BDD" "src/interface"
     "src/prover/groundeval" "src/WS1S/lisp"))
 
-(defparameter *pvs-version* "2.3 Alpha")
-(defparameter *binfile-version* 15)
+(defparameter *pvs-version* "2.3 Beta")
+(defparameter *binfile-version* 16)
 
 (defparameter *context-name* ".pvscontext")
 
@@ -181,6 +181,8 @@ prelude libraries")
 (defvar *integer* nil)
 (defvar *naturalnumber* nil)
 (defvar *posint* nil)
+(defvar *even_int* nil)
+(defvar *odd_int* nil)
 (defvar *ordinal* nil)
 
 (defvar *tcdebug* nil)
