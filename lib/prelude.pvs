@@ -1897,6 +1897,8 @@ real_props: THEORY
 
   div_cancel3: LEMMA x/n0z = y IFF x = y * n0z
 
+  div_cancel4: LEMMA y = x/n0z IFF y * n0z = x
+
   cross_mult: LEMMA (x/n0x = y/n0y) IFF (x * n0y = y * n0x)
 
   add_div: LEMMA (x/n0x) + (y/n0y) = (x * n0y + y * n0x)/(n0x * n0y)
