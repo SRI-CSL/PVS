@@ -625,12 +625,12 @@
 		       (symbol-name 
 			(mk-unparse-routine-name nt
 						 :lg-name lg-name))
-		       #+(or allegro-v6.0 allegro-v6.2)
+		       #+(and allegro (version>= 6))
 		       (string-downcase
 			(symbol-name 
 			 (mk-unparse-routine-name nt
 						  :lg-name lg-name)))
-		       #-(or allegro-v6.0 allegro-v6.2)
+		       #-(and allegro (version>= 6))
 		       (string-upcase
 			(symbol-name 
 			 (mk-unparse-routine-name nt
@@ -638,8 +638,10 @@
 		   (lang:get-lang-code-package lg-name))
 	  ,(intern (if *grammar-case-sensitive?*
 		       (symbol-name nt)
-		       #+(or allegro-v6.0 allegro-v6.2) (string-dwoncase (symbol-name nt))
-		       #-(or allegro-v6.0 allegro-v6.2) (string-upcase (symbol-name nt)))
+		       #+(and allegro (version>= 6))
+		       (string-dwoncase (symbol-name nt))
+		       #-(and allegro (version>= 6))
+		       (string-upcase (symbol-name nt)))
 		   (lang:get-lang-abs-syn-package lg-name))
 	  ,(var (get-pattern-slot pat))))))
     

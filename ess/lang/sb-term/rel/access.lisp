@@ -85,8 +85,8 @@
       (let ((str (if (stringp x)
 		     x
 		     (symbol-name x))))
-	(intern #+(or allegro-v6.0 allegro-v6.2) (string-downcase str)
-		#-(or allegro-v6.0 allegro-v6.2) (string-upcase str)
+	(intern #+(and allegro (version>= 6)) (string-downcase str)
+		#-(and allegro (version>= 6)) (string-upcase str)
 		*sbst-package*))))
 
 (defun sbst-intern-case (x)
@@ -98,8 +98,8 @@
 		     (symbol-name x))))
 	(intern (if *grammar-case-sensitive?*
 		    str
-		    #+(or allegro-v6.0 allegro-v6.2) (string-downcase str)
-		    #-(or allegro-v6.0 allegro-v6.2) (string-upcase str))
+		    #+(and allegro (version>= 6)) (string-downcase str)
+		    #-(and allegro (version>= 6)) (string-upcase str))
 		*sbst-package*))))
 
 (defun sb-intern-upcase (x)
@@ -109,8 +109,8 @@
       (let ((str (if (stringp x)
 		     x
 		     (symbol-name x))))
-	(intern #+(or allegro-v6.0 allegro-v6.2) (string-downcase str)
-		#-(or allegro-v6.0 allegro-v6.2) (string-upcase str)
+	(intern #+(and allegro (version>= 6)) (string-downcase str)
+		#-(and allegro (version>= 6)) (string-upcase str)
 		*sb-package*))))
 
 (defun sb-intern-case (x)
@@ -122,8 +122,8 @@
 		     (symbol-name x))))
 	(intern (if *grammar-case-sensitive?*
 		    str
-		    #+(or allegro-v6.0 allegro-v6.2) (string-downcase str)
-		    #-(or allegro-v6.0 allegro-v6.2) (string-upcase str))
+		    #+(and allegro (version>= 6)) (string-downcase str)
+		    #-(and allegro (version>= 6)) (string-upcase str))
 		*sb-package*))))
 
 
