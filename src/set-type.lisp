@@ -912,33 +912,6 @@ required a context.")
   (declare (ignore op argument))
   nil)
 
-
-(defun subtype-wrt? (type1 type2 reltype)
-  ;; returns true when type1 is a subtype of type2, given that it must be
-  ;; of type reltype, e.g., (subtype-wrt? rat nzrat nzreal) is true.
-  (or (subtype-of? type1 type2)
-      (and (same-predicate? type2 reltype)
-	   (subtype-of? type1 (supertype type2)))))
-
-(defmethod same-predicate? ((t1 subtype) (t2 subtype))
-  (same-predicate? (predicate t1) (predicate t2)))
-
-(defmethod same-predicate? ((p1 lambda-expr) (p2 lambda-expr))
-  (with-slots ((ex1 expression) (b1 bindings)) p1
-    (with-slots ((ex2 expression) (b2 bindings)) p2
-      (tc-eq-with-bindings ex1 ex2 (acons (car b1) (car b2) nil)))))
-
-(defmethod same-predicate? (p1 p2)
-  (tc-eq p1 p2))
-
-(defun minimal-types (types &optional mintypes)
-  (cond ((null types)
-	 mintypes)
-	((or (some #'(lambda (ty) (subtype-of? ty (car types))) (cdr types))
-	     (some #'(lambda (ty) (subtype-of? ty (car types))) mintypes))
-	 (minimal-types (cdr types) mintypes))
-	(t (minimal-types (cdr types) (cons (car types) mintypes)))))
-
 (defun set-conditional-arg-types (op arg1 arg2)
   (case op
     ((and & implies =>)
