@@ -885,28 +885,26 @@
 ;;; typechecking, and then unsetting them when done so that it prints nicely.
 
 (defun make-equation (lhs rhs)
-  (let* ((type (find-supertype (or (type lhs) (type rhs))))
-	 (res (mk-resolution (equality-decl)
-		(make-instance 'modname
-		  'id '|equalities|
-		  'actuals (list (mk-actual type)))
-		(mk-funtype (list type type) *boolean*)))
-	 (eqname (make-instance 'name-expr
-		   'id '=
-		   'type (type res)
-		   'resolutions (list res)
-		   'kind 'constant))
-	 (appl (mk-application eqname lhs rhs)))
-    (if (and (eq *generate-tccs* 'none)
-	     (type lhs)
-	     (type rhs))
-	(let ((argtype (mk-tupletype (list type type))))
-	  (setf (type (argument appl)) argtype)
-	  (setf (type appl) *boolean*))
-	(typecheck* appl *boolean* nil nil))
-    (setf (mod-id eqname) nil
-	  (actuals eqname) nil)
-    appl))
+  (if (and (eq *generate-tccs* 'none)
+	   (type lhs)
+	   (type rhs))
+      (make!-equation lhs rhs)
+      (let* ((type (find-supertype (or (type lhs) (type rhs))))
+	     (res (mk-resolution (equality-decl)
+		    (make-instance 'modname
+		      'id '|equalities|
+		      'actuals (list (mk-actual type)))
+		    (mk-funtype (list type type) *boolean*)))
+	     (eqname (make-instance 'name-expr
+		       'id '=
+		       'type (type res)
+		       'resolutions (list res)
+		       'kind 'constant))
+	     (appl (mk-application eqname lhs rhs)))
+	(typecheck* appl *boolean* nil nil)
+	(setf (mod-id eqname) nil
+	      (actuals eqname) nil)
+	appl)))
 
 (let ((equality-decl nil))
   (defun equality-decl ()
