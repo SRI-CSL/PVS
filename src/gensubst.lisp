@@ -45,7 +45,7 @@
       'exporting (gensubst* (exporting obj) substfn testfn)
       'theory (gensubst* (theory obj) substfn testfn))))
 
-(defmethod gensubst* ((obj datatype) substfn testfn)
+(defmethod gensubst* ((obj recursive-type) substfn testfn)
   (let* ((formals (gensubst* (formals obj) substfn testfn))
 	 (formals-sans-usings (if (eq formals (formals obj))
 				  (formals-sans-usings obj)
