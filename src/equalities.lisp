@@ -366,9 +366,16 @@ where db is to replace db1 and db2")
 
 (defmethod tc-eq* ((e1 conjunction) (e2 conjunction) bindings)
   (or (eq e1 e2)
-      (with-slots ((arg1 argument)) e1
-	(with-slots ((arg2 argument)) e2
-	  (tc-eq* arg1 arg2 bindings)))))
+      (tc-eq* (collect-conjuncts e1)
+	      (collect-conjuncts e2)
+	      bindings)))
+
+(defmethod collect-conjuncts ((ex conjunction))
+  (nconc (collect-conjuncts (args1 ex))
+	 (collect-conjuncts (args2 ex))))
+
+(defmethod collect-conjuncts (ex)
+  (list ex))
 
 (defmethod tc-eq* ((e1 conjunction) (e2 expr) bindings)
   (declare (ignore bindings))
@@ -383,6 +390,13 @@ where db is to replace db1 and db2")
       (with-slots ((arg1 argument)) e1
 	(with-slots ((arg2 argument)) e2
 	  (tc-eq* arg1 arg2 bindings)))))
+
+(defmethod collect-disjuncts ((ex disjunction))
+  (nconc (collect-disjuncts (args1 ex))
+	 (collect-disjuncts (args2 ex))))
+
+(defmethod collect-disjuncts (ex)
+  (list ex))
 
 (defmethod tc-eq* ((e1 disjunction) (e2 expr) bindings)
   (declare (ignore bindings))
@@ -498,13 +512,15 @@ where db is to replace db1 and db2")
 		    (acts2 (actuals (module-instance
 				     (resolution
 				      (or (print-type adt2) adt2))))))
-		(or (null acts1)
-		    (null acts2)
-		    (tc-eq-adt-actuals acts1
-				       acts2
-				       bindings
-				       (formals-sans-usings (adt adt1))
-				       (positive-types (adt adt1)))))))))
+		(cond ((null acts1)
+		       (null acts2))
+		      ((null acts2)
+		       nil)
+		      (t (tc-eq-adt-actuals acts1
+					    acts2
+					    bindings
+					    (formals-sans-usings (adt adt1))
+					    (positive-types (adt adt1))))))))))
 
 (defun tc-eq-adt-actuals (acts1 acts2 bindings formals postypes)
   (or (null acts1)
@@ -960,6 +976,39 @@ where db is to replace db1 and db2")
   (strict-compatible-types (fields atype) (fields etype) bindings))
 
 
+;;; disjoint-types? returns t if the two types are known to be disjoint.
+;;; Currently only recognizes disjointness of types involving recognizers.
+;;; In the long run it will use a disjoint judgement as well.
+
+(defun disjoint-types? (t1 t2)
+  (disjoint-types?* t1 t2))
+
+(defmethod disjoint-types?* ((t1 subtype) (t2 subtype))
+  (let ((recs1 (collect-recognizer-preds t1)))
+    (and recs1
+	 (let ((recs2 (collect-recognizer-preds t2)))
+	   (and recs2
+		(null (intersection recs1 recs2 :test #'tc-eq)))))))
+
+(defmethod disjoint-types?* (t1 t2)
+  nil)
+
+(defun collect-recognizer-preds (type)
+  (when (subtype? type)
+    (typecase (predicate type)
+      (lambda-expr (let ((disjuncts
+			  (or+ (list (expression (predicate type)))))
+			 (bd (car (bindings (predicate type)))))
+		     (when (every #'(lambda (d)
+				      (and (recognizer-application? d)
+					   (name-expr? (argument d))
+					   (eq (declaration (argument d)) bd)))
+				  disjuncts)
+		       (mapcar #'operator disjuncts))))
+      (name-expr (when (recognizer? (predicate type))
+		   (list (predicate type)))))))
+
+
 ;;; Compatible-Type for types checks whether two types have a common
 ;;; supertype.  It returns the (least) common supertype.
 
@@ -1258,11 +1307,11 @@ where db is to replace db1 and db2")
 					   (current-theory-name) stype)))
 		      (aconj (make!-conjunction*
 			      (mapcar #'(lambda (o)
-					  (beta-reduce (make!-application o var)))
+					  (make!-reduced-application o var))
 				apred)))
 		      (econj (make!-conjunction*
 			      (mapcar #'(lambda (o)
-					  (beta-reduce (make!-application o var)))
+					  (make!-reduced-application o var))
 				epred))))
 		 (make!-forall-expr
 		  (list bd)
@@ -1282,8 +1331,7 @@ where db is to replace db1 and db2")
 
 (defmethod compatible-preds* ((atype type-expr) (etype subtype) aexpr incs)
   (compatible-preds* atype (supertype etype) aexpr
-		     (cons (beta-reduce (make!-application (predicate etype)
-					  aexpr))
+		     (cons (make!-reduced-application (predicate etype) aexpr)
 			   incs)))
 
 ;;; This is the tricky one, since we don't want to go higher than
@@ -1296,14 +1344,13 @@ where db is to replace db1 and db2")
   (if (subtype-of? atype etype)
       incs
       (compatible-preds* atype (supertype etype) aexpr
-			 (cons (mk-red-appl (predicate etype) aexpr) incs))))
+			 (cons (make!-reduced-application (predicate etype)
+							  aexpr)
+			       incs))))
 
 (defmethod compatible-preds* ((atype datatype-subtype) (etype datatype-subtype)
 			      aexpr incs)
   (adt-compatible-preds atype etype aexpr incs))
-
-(defun mk-red-appl (op &rest args)
-  (beta-reduce (apply #'make!-application op args)))
 
 
 ;;; An actual funtype is compatible with a given funtype only if the
@@ -1380,16 +1427,15 @@ where db is to replace db1 and db2")
 			     *dep-bindings*))
 	 (rpreds (compatible-preds*
 		  (subst-deps arng) (subst-deps erng)
-		  (beta-reduce
-		   (make!-application
-		    (if (and (implicit-conversion? aexpr)
-			     (name-expr? (operator aexpr))
-			     (eq (id (operator aexpr)) '|restrict|)
-			     (eq (id (module-instance (resolution (operator aexpr))))
-				 '|restrict|))
-			(argument aexpr)
-			aexpr)
-		    avar))
+		  (make!-reduced-application
+		   (if (and (implicit-conversion? aexpr)
+			    (name-expr? (operator aexpr))
+			    (eq (id (operator aexpr)) '|restrict|)
+			    (eq (id (module-instance (resolution (operator aexpr))))
+				'|restrict|))
+		       (argument aexpr)
+		       aexpr)
+		    avar)
 		  nil))
 	 (ran-preds (remove *true* rpreds :test #'tc-eq))
 	 (rpred (when ran-preds
@@ -1482,8 +1528,7 @@ where db is to replace db1 and db2")
 	      (append preds incs))))))
 
 (defun get-field-application (field expr)
-  (let ((appl (make!-field-application (id field) expr)))
-    (beta-reduce appl)))
+  (make!-field-application (id field) expr))
 
 (defun subst-var-application (field fields aexpr)
   (let* ((ne aexpr)
@@ -1685,7 +1730,7 @@ where db is to replace db1 and db2")
 
 (defmethod subtype-preds ((t1 type-name) (t2 type-name) &optional incs)
   (let* ((vid (make-new-variable '|v| t2))
-	 (vb (typecheck* (mk-bind-decl vid t2 t2) nil nil nil))
+	 (vb (mk-bind-decl vid t2 t2))
 	 (svar (mk-name-expr vid nil nil
 			     (make-resolution vb (current-theory-name) t2)))
 	 (preds (compatible-preds t2 t1 svar)))
@@ -1718,7 +1763,7 @@ where db is to replace db1 and db2")
 	(when ty
 	  (if preds
 	      (let* ((vid (make-new-variable '|v| t2))
-		     (vb (typecheck* (mk-bind-decl vid t2 t2) nil nil nil))
+		     (vb (mk-bind-decl vid t2 t2))
 		     (svar (mk-name-expr vid nil nil
 					 (make-resolution vb
 					   (current-theory-name) t2)))
@@ -1732,8 +1777,7 @@ where db is to replace db1 and db2")
 (defmethod subtype-preds ((t1 datatype-subtype) (t2 datatype-subtype)
 			  &optional incs)
   (let* ((id (make-new-variable '|x| (list t1 t2)))
-	 (bd (typecheck* (mk-bind-decl id t2 t2)
-			 nil nil nil))
+	 (bd (mk-bind-decl id t2 t2))
 	 (var (mk-name-expr id nil nil
 			    (make-resolution bd (current-theory-name) t2)))
 	 (preds (adt-compatible-preds t2 t1 var nil)))
@@ -1760,12 +1804,12 @@ where db is to replace db1 and db2")
 	   (when ty
 	     (let* ((xid (make-new-variable '|x| (list t1 t2)))
 		    (tupty (domain t2))
-		    (xb (typecheck* (mk-bind-decl xid tupty tupty) nil nil nil))
+		    (xb (mk-bind-decl xid tupty tupty))
 		    (xvar (mk-name-expr xid nil nil
 					(make-resolution xb
 					  (current-theory-name) tupty)))
 		    (vid (make-new-variable '|f| (list t1 t2)))
-		    (vb (typecheck* (mk-bind-decl vid t2 t2) nil nil nil))
+		    (vb (mk-bind-decl vid t2 t2))
 		    (var (mk-name-expr vid nil nil
 				       (make-resolution vb
 					 (current-theory-name) t2)))
@@ -1773,10 +1817,9 @@ where db is to replace db1 and db2")
 			     (make!-forall-expr (list xb)
 			       (make!-conjunction*
 				(mapcar #'(lambda (pred)
-					    (beta-reduce
-					      (make!-application pred
-						(make!-application var
-						  xvar))))
+					    (make!-application pred
+					      (make!-application var
+						xvar)))
 				  preds))))))
 	       (values t2 (cons npred incs))))))))
 
@@ -1790,7 +1833,7 @@ where db is to replace db1 and db2")
 (defmethod subtype-preds ((t1 tupletype) (t2 tupletype) &optional incs)
   (when (length= (types t1) (types t2))
     (let* ((vid (make-new-variable '|t| (list t1 t2)))
-	   (vb (typecheck* (mk-bind-decl vid t2 t2) nil nil nil))
+	   (vb (mk-bind-decl vid t2 t2))
 	   (var (mk-name-expr vid nil nil
 			      (make-resolution vb
 				(current-theory-name) t2))))
@@ -1828,14 +1871,14 @@ where db is to replace db1 and db2")
 (defun subtype-tuple-preds* (cpreds var num &optional preds)
   (if (null cpreds)
       preds
-      (let ((npred (make!-application (car cpreds)
+      (let ((npred (make!-reduced-application (car cpreds)
 		     (make!-projection-application num var))))
 	(subtype-tuple-preds* (cdr cpreds) var num (cons npred preds))))) 
 
 (defmethod subtype-preds ((t1 recordtype) (t2 recordtype) &optional incs)
   (when (length= (fields t1) (fields t2))
     (let* ((vid (make-new-variable '|t| (list t1 t2)))
-	   (vb (typecheck* (mk-bind-decl vid t2 t2) nil nil nil))
+	   (vb (mk-bind-decl vid t2 t2))
 	   (var (mk-name-expr vid nil nil
 			      (make-resolution vb
 				(current-theory-name) t2))))
@@ -2147,7 +2190,7 @@ where db is to replace db1 and db2")
       parts
       (let* ((field (which-field-predicate var (car predicates)))
 	     (part (assoc field parts :test #'tc-eq)))
-	(partition-projection-predicates
+	(partition-field-predicates
 	 var
 	 (cdr predicates)
 	 (if part
@@ -2176,15 +2219,16 @@ where db is to replace db1 and db2")
 (defun add-field-type-preds (fields parts &optional nfields)
   (if (null fields)
       (nreverse nfields)
-      (let* ((preds (assoc (car fields) parts
-			   :test #'(lambda (x y)
-				     (and y (eq (id x) (id y))))))
+      (let* ((preds (assoc (id (car fields)) parts
+			   :key #'(lambda (x) (and x (id x)))))
 	     (npreds (when preds
 		       (make-new-field-type-preds (car fields) preds)))
 	     (ntype (type-canon* (type (car fields))
 				 (when npreds (list npreds)))))
 	(add-field-type-preds (cdr fields) parts
-			      (cons (lcopy (car fields) 'type ntype)
+			      (cons (lcopy (car fields)
+				      'type ntype
+				      'declared-type ntype)
 				    nfields)))))
 
 (defun make-new-field-type-preds (field predicates)
