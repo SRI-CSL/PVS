@@ -15,12 +15,12 @@
 
 
 (defun replace-rule-fun (sformnum &optional sformnums dir hide? 
-				  actuals? keep?) 
+				  actuals? dont-delete?) 
   #'(lambda (ps)(replace-step sformnum sformnums dir hide?
-			      actuals?  keep? ps)))
+			      actuals?  dont-delete? ps)))
 
 (defun replace-step (source-sformnum target-sformnums direction hide?
-			      actuals? keep? ps)  
+			      actuals? dont-delete? ps)  
   (let* ((goalsequent (current-goal ps))
 	 (sformnum (find-sform (s-forms goalsequent) source-sformnum))
 	 (selected-s-forms (select-seq (s-forms goalsequent)
@@ -65,7 +65,7 @@
 				    (if (null sformnums)
 					'* sformnums)
 				    (s-forms goalsequent)
-				    1 -1 keep?))) 
+				    1 -1 dont-delete?))) 
 		 (if (every #'eql  new-s-forms (s-forms goalsequent))
 		     (values 'X nil nil)
 		     (let* ((new-s-forms
@@ -97,7 +97,7 @@
 ;  (not (eq (match lhs rhs nil nil) 'fail))))
 
 
-(defun replace-loop (lhs rhs sformnum sformnums sforms pos neg keep?)
+(defun replace-loop (lhs rhs sformnum sformnums sforms pos neg dont-delete?)
   (let ((*replace-cache*
 	 (make-hash-table :test #'eq)))
     (if (null sforms) nil
@@ -106,32 +106,32 @@
 		    (not (in-sformnums? (car sforms) pos neg sformnums)))
 		(cons (car sforms)
 		      (replace-loop lhs rhs sformnum sformnums  (cdr sforms)
-				    pos (1- neg) keep?))
+				    pos (1- neg) dont-delete?))
 		(let* ((result (replace-expr lhs rhs (car sforms)))
 		       (new-fmla (formula result))
 		       (keep-result 
-			(if (and keep?
+			(if (and dont-delete?
 				 (tc-eq new-fmla *false*))
 			    (car sforms)
 			    result)))
 		  (cons keep-result
 			(replace-loop lhs rhs sformnum sformnums (cdr sforms)
-				      pos (1- neg) keep?))))
+				      pos (1- neg) dont-delete?))))
 	    (if (or (eq sformnum pos)
 		    (not (in-sformnums? (car sforms) pos neg sformnums)))
 		(cons (car sforms)
 		      (replace-loop lhs rhs sformnum sformnums (cdr sforms)
-				    (1+ pos) neg keep?))
+				    (1+ pos) neg dont-delete?))
 		(let* ((result (replace-expr lhs rhs (car sforms)))
 		       (new-fmla (formula result))
 		       (keep-result 
-			(if (and keep?
+			(if (and dont-delete?
 				 (tc-eq new-fmla *false*))
 			    (car sforms)
 			    result)))
 		(cons keep-result
 		      (replace-loop lhs rhs sformnum sformnums (cdr sforms)
-				    (1+ pos) neg keep?))))))))
+				    (1+ pos) neg dont-delete?))))))))
 
 	       
 (defun replace-expr (lhs rhs sequent)

@@ -2136,7 +2136,7 @@ statement.  If always? is T, then it uses auto-rewrite! else auto-rewrite."
   "Auto-rewriting with all the explicit definitions relevant to statement")
 
 (defhelper rewrite-directly-with-fnum (fnum  &optional (fnums *) (dir lr)
-					     keep?)
+					     dont-delete?)
     (if (select-seq (s-forms (current-goal *ps*)) fnums)
 	(then (beta fnum dir)
 	      (branch (split fnum)
@@ -2146,12 +2146,12 @@ statement.  If always? is T, then it uses auto-rewrite! else auto-rewrite."
 			       (then (assert newnums dir)
 				     (replace newnum
 					      fnums
-					      dir :keep? keep?)
+					      dir :dont-delete? dont-delete?)
 				     (delete newnums))))
 			   (then (assert fnum dir)
 				 (replace fnum
 					       fnums
-					       dir :keep? keep?)
+					       dir :dont-delete? dont-delete?)
 				 (delete fnum))))
 		       (then (beta *)
 			     (assert *))))
@@ -2192,7 +2192,7 @@ corresponding to dir (left-to-right when LR, and right-to-left when RL)."
 		       'fail)))
     in-subst))
 
-(defstep rewrite-with-fnum (fnum &optional subst (fnums *) (dir lr) keep?)
+(defstep rewrite-with-fnum (fnum &optional subst (fnums *) (dir lr) dont-delete?)
   (let ((fnum (find-sform (s-forms (current-goal *ps*)) fnum))
 	;;NSH(5.9.99): numeralizes labels.
 	 (sforms (select-seq (s-forms (current-goal *ps*))
@@ -2239,7 +2239,7 @@ corresponding to dir (left-to-right when LR, and right-to-left when RL)."
 				     `(inst ,fnum1 :terms ,sub)))
 			 (list `(copy ,fnum)))))
 		(then (then :steps rules)
-		      (rewrite-directly-with-fnum fnum1 fnums dir keep?)))))
+		      (rewrite-directly-with-fnum fnum1 fnums dir dont-delete?)))))
 	(skip-msg "No rewritable FNUM found.")))
   "Rewrites using the formula named in FNUM given input substitution
 SUBST, target FNUMS where rewrites are to occur, and the rewrite direction
@@ -2247,7 +2247,7 @@ DIR (LR for left-to-right, and RL, otherwise)."
   "Rewriting with ~a")
 
 (defstep rewrite-lemma (lemma subst &optional (fnums *)
-			  (dir lr) keep?)
+			  (dir lr) dont-delete?)
   (let ((in-sformnums (if (consp fnums)
 			   (loop for x in fnums
 				 collect (if (and (integerp x)
@@ -2260,7 +2260,7 @@ DIR (LR for left-to-right, and RL, otherwise)."
 	  (try-branch (lemma lemma subst)
 	   ((if *new-fmla-nums*
 		(let ((num (car *new-fmla-nums*)))
-		  (rewrite-directly-with-fnum num in-sformnums dir keep?))
+		  (rewrite-directly-with-fnum num in-sformnums dir dont-delete?))
 		(skip))
 	    (then (beta *)(assert *)))
 	   (skip )))
@@ -2270,11 +2270,11 @@ DIR (LR for left-to-right, and RL, otherwise)."
    "Rewriting using ~a~@[ where~{~%   ~a gets ~a~^,~}~]")
 
 (defstep rewrite (lemma-or-fnum &optional (fnums *)  subst (target-fnums *)
-		    (dir lr) (order in) keep?) ;;(hash-rewrites? t) NSH(9.21.95)
+		    (dir lr) (order in) dont-delete?) ;;(hash-rewrites? t) NSH(9.21.95)
   (if (find-sform (s-forms (current-goal *ps*)) lemma-or-fnum) ;integerp lemma-or-fnum)
-      (rewrite-with-fnum lemma-or-fnum subst target-fnums dir keep?)
+      (rewrite-with-fnum lemma-or-fnum subst target-fnums dir dont-delete?)
   (let ((x (rewrite-step lemma-or-fnum fnums subst
-			  target-fnums dir order keep?)))
+			  target-fnums dir order dont-delete?)))
     x))
   "Rewrites using LEMMA-OR-FNUM (lemma name or fnum) of the form
 H IMPLIES L = R by finding match L' for L and replacing L' by R' with
@@ -2285,7 +2285,7 @@ SUBST takes a partial substitution and tries to find a match extending this,
 TARGET-FNUMS constrains where the rewriting occurs,
 DIR is left-to-right(LR) or right-to-left(RL),
 ORDER is inside-out(IN) or outside-in (OUT),
-KEEP? prevents antecedent/succedent formulas from being rewritten to
+DONT-DELETE? prevents antecedent/succedent formulas from being rewritten to
       true/false."
   "Rewriting using ~a~@[, matching in ~a~]~@[ where~{~%  ~a gets ~a~^,~}~]")
 
