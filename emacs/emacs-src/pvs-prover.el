@@ -699,12 +699,12 @@ Key bindings are:
   )
 
 (defpvs show-proof-file edit-proof (context filename)
-  "Display proofs of a PVS file
+  "Display proofs of a PVS file from any context
 
 The show-proof-file command displays the proofs of the specified PVS file
-in a buffer that allows them to selected or deleted.  A selected proof is
-displayed in the Proof buffer and may be installed on a formula - see the
-edit-proof command."
+in the specified context in a buffer that allows them to selected or
+deleted.  A selected proof is displayed in the Proof buffer and may be
+installed on a formula - see the edit-proof command."
   (interactive
    (let* ((cdir (pvs-current-directory))
 	  (dir (read-file-name "Show proof file of context: "
@@ -732,10 +732,13 @@ formula - see the edit-proof command."
     (pop-to-buffer "Proofs")))
 
 (defpvs show-proofs-importchain edit-proof (theoryname)
-  "Displays all the proofs of the importchain
+  "Displays all the default proofs of the importchain
 
-The show-proofs-importchain command displays all the proofs of the
-importchain with the specified theory at the root."
+As of PVS 3.0, formulas may have multiple proofs attached, and one of them
+is always the default.  The show-proofs-importchain command displays all
+the default proof scripts of all the formulas of the importchain with the
+specified theory at the root.  See also display-proofs-pvs-file, which
+allows access to all the proofs, not just the defaults."
   (interactive (complete-theory-name
 		"Show proofs of importchain of theory named: "))
   (when (pvs-send-and-wait (format "(show-proofs-importchain \"%s\")"
@@ -746,10 +749,13 @@ importchain with the specified theory at the root."
     (use-local-map pvs-show-proofs-map))
 
 (defpvs show-proofs-pvs-file edit-proof (filename)
-  "Displays all the proofs of the PVS file
+  "Displays all the default proof scripts of the PVS file
 
-The show-proofs-pvs-file command displays all the proofs of the specified
-PVS file."
+As of PVS 3.0, formulas may have multiple proofs attached, and one of them
+is always the default.  The show-proofs-pvs-file command displays all the
+default proof scripts of all the formulas of the specified PVS file.  See
+also display-proofs-pvs-file, which allows access to all the proofs, not
+just the defaults."
   (interactive (complete-pvs-file-name "Show proofs of PVS file named: "))
   (when (pvs-send-and-wait (format "(show-proofs-pvs-file \"%s\")" filename)
 			   nil nil 'bool))
@@ -758,10 +764,13 @@ PVS file."
     (use-local-map pvs-show-proofs-map))
 
 (defpvs show-proofs-theory edit-proof (theoryname)
-  "Displays all the proofs of the PVS file
+  "Displays all the default proof scripts of the theory
 
-The show-proofs-theory command displays all the proofs of the specified
-theory."
+As of PVS 3.0, formulas may have multiple proofs attached, and one of them
+is always the default.  The show-proofs-theory command displays all the
+default proof scripts of all the formulas of the specified theory.  See
+also display-proofs-theory, which allows access to all the proofs, not
+just the defaults."
   (interactive (complete-theory-name "Show proofs of theory named: "))
   (when (pvs-send-and-wait (format "(show-proofs-theory \"%s\")" theoryname)
 			   nil nil 'bool))
