@@ -212,9 +212,24 @@
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (definition decl))
   (setf (def-axiom decl) nil)
+  (when (eval-info decl) (remove-eval-info decl))
   ;;(setf (adt-kind decl) nil)
   )
 
+; in-name etc are macros, defined in eval-macros.lisp
+(defun remove-eval-info (decl)
+  (eval-unintern (in-name   decl))
+  (eval-unintern (in-name-m decl))
+  (eval-unintern (in-name-d decl))
+  (eval-unintern (ex-name   decl))
+  (eval-unintern (ex-name-m decl))
+  (eval-unintern (ex-name-d decl))
+  (setf (eval-info decl) nil))
+
+(defun eval-unintern (name)
+  (when (and name (symbolp name))
+    (unintern name)))
+   
 (defmethod untypecheck-theory ((decl def-decl))
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (declared-measure decl))

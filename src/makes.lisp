@@ -31,6 +31,13 @@
 
 (def-pvs-term number-cross-number "[number, number]" "reals" :nt type-expr)
 
+(def-pvs-term upfrom-subtype "upfrom" "int_types" :nt type-expr)
+(def-pvs-term below-subtype "below" "nat_types" :nt type-expr)
+(def-pvs-term upto-subtype "upto" "nat_types" :nt type-expr)
+(def-pvs-term subrange-subtype "subrange" "subrange_type" :nt type-expr)
+(def-pvs-term above-subtype "above" "int_types" :nt type-expr)
+
+
 (let ((*one-constant* nil))
   (defun one-constant ()
     (or *one-constant*
