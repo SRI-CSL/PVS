@@ -2416,24 +2416,25 @@
 				      FUNTYPE RECORDTYPE))
 		      (xt-not-enum-type-expr rhs))
 		     (t (xt-expr rhs)))))
+    (assert (place expr))
     (if (is-sop 'NOFORMALS (term-arg1 lhs))
 	(case (sim-term-op mapping)
 	  (MAPPING-DEF
 	   (make-instance 'mapping-def
 	     'lhs (xt-mapping-lhs (term-arg0 mapping))
-	     'rhs (make-instance 'mapping-rhs 'expr expr)
+	     'rhs (make-instance 'mapping-rhs 'expr expr 'place (place expr))
 	     'kind kind
 	     'declared-type dtype))
 	  (MAPPING-SUBST
 	   (make-instance 'mapping-subst
 	     'lhs (xt-mapping-lhs (term-arg0 mapping))
-	     'rhs (make-instance 'mapping-rhs 'expr expr)
+	     'rhs (make-instance 'mapping-rhs 'expr expr 'place (place expr))
 	     'kind kind
 	     'declared-type dtype))
 	  (MAPPING-RENAME
 	   (make-instance 'mapping-rename
 	     'lhs (xt-mapping-lhs (term-arg0 mapping))
-	     'rhs (make-instance 'mapping-rhs 'expr expr)
+	     'rhs (make-instance 'mapping-rhs 'expr expr 'place (place expr))
 	     'kind kind
 	     'declared-type dtype)))
 	(let ((formals (xt-pdf (term-arg1 lhs))))
@@ -2465,7 +2466,8 @@
 
 (defun xt-mapping-lhs (lhs)
   (make-instance 'name
-    'id (xt-idop (term-arg0 lhs))))
+    'id (xt-idop (term-arg0 lhs))
+    'place (term-place lhs)))
 
 (defun xt-unique-name (name)
   (let ((uname (xt-name (term-arg0 name) t))

@@ -640,10 +640,25 @@
   ;;(mapobject* fn (justification obj))
   (call-next-method))
 
+(defmethod mapobject* (fn (obj subtype-judgement))
+  (mapobject* fn (subtype obj))
+  (call-next-method))
+
+(defmethod mapobject* (fn (obj name-judgement))
+  (mapobject* fn (name obj))
+  (call-next-method))
+
+(defmethod mapobject* (fn (obj application-judgement))
+  (mapobject* fn (name obj))
+  (mapobject* fn (formals obj))
+  (call-next-method))
+
 ;;; Type Expressions
 
 (defmethod mapobject* :around (fn (te type-expr))
-  (call-next-method)
+  (unless (and *parsing-or-unparsing*
+	       (print-type te))
+    (call-next-method))
   (mapobject* fn (print-type te)))
 
 (defmethod mapobject* (fn (te subtype))
@@ -997,6 +1012,11 @@
 (defmethod copy-untyped* ((ex implicit-conversion))
   (with-slots (argument) ex
     (copy-untyped* argument)))
+
+(defmethod copy-untyped* :around ((ex type-expr))
+  (if (print-type ex)
+      (copy-untyped* (print-type ex))
+      (call-next-method)))
 
 (defmethod copy-untyped* ((ex type-application))
   (with-slots (type parameters) ex
