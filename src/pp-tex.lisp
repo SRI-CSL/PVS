@@ -796,7 +796,7 @@
 
 (defun pp-tex-arguments (args)
   (pprint-logical-block (nil args :prefix "(" :suffix ")")
-    (pprint-indent :current 1)
+    (pprint-indent :current 0)
     (loop (pp-tex* (pprint-pop))
 	  (pprint-exit-if-list-exhausted)
 	  (write-char #\,)
@@ -1073,7 +1073,7 @@
       (pprint-indent :block 4)
       (unless *in-tex-math-mode*
 	(if (and (name? operator)
-		 (< (length (string (id operator))) 4))
+		 (< (length (string (id operator))) 6))
 	    (pprint-newline :miser)
 	    (pprint-newline :fill)))
       (pp-tex-arguments-list args))))
