@@ -243,13 +243,16 @@
   (multiple-value-bind (lib-ref err-msg)
       (pathname-to-libref lib-path)
     (cond (err-msg
-	   (break)
 	   (pvs-message err-msg))
 	  ((prelude-library-loaded? lib-ref)
 	   (pvs-message "Library ~a is already loaded." lib-path))
 	  (t (load-prelude-library* lib-ref lib-path)
 	     (unless (member lib-ref (cadr *pvs-context*) :test #'string=)
 	       (push lib-ref (cadr *pvs-context*))
+	       (pvs-message
+		   "Added prelude library ~a and reset the current context"
+		 lib-ref)
+	       (reset-context)
 	       (setq *pvs-context-changed* t))
 	     (add-to-prelude-libraries lib-ref)
 	     (load-pvs-lib-lisp-file lib-path)
