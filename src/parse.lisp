@@ -1870,7 +1870,8 @@
 	(when bad-arg
 	  (parse-error bad-arg "Parentheses expected here"))))
     (if (and (null (cdr (term-args assign)))
-	     (memq (sim-term-op (term-arg0 assign)) '(assign-id assign-num)))
+	     (memq (sim-term-op (term-arg0 assign))
+		   '(assign-id assign-skoname assign-num)))
 	(if (eq sep 'ceq)
 	    (make-instance 'uni-assignment
 	      'arguments (xt-assign assign)
@@ -1901,6 +1902,10 @@
 			 'number (ds-number (term-arg0 ass-arg)))))
     (assign-id (list (make-instance 'name-expr
 		       'id (ds-id (term-arg0 ass-arg)))))
+    (assign-skoname (list (make-instance 'name-expr
+			    'id (makesym "~a!~d"
+					 (ds-id (term-arg0 ass-arg))
+					 (ds-number (term-arg1 ass-arg))))))
     (assign-num (list (make-instance 'number-expr
 			'number (ds-number (term-arg0 ass-arg)))))
     (assign-tuple (mapcar #'xt-expr (term-args ass-arg)))))
