@@ -190,7 +190,7 @@ case $opsys in
 esac
 
 if [ ! "$PVSLISP" ]
-   then PVSLISP=pvs-allegro6.0
+   then PVSLISP=pvs-@LISP@
 fi
 
 binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}

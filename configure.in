@@ -23,18 +23,28 @@ AC_SUBST(ICSOBJ)
 
 dnl Check for allegro path
 AC_MSG_CHECKING(allegropath)
-AC_ARG_WITH(allegropath, [ --with-allegro=/path/to/allegro6 ])
+AC_ARG_WITH(allegropath, [ --with-allegro=/path/to/allegro ])
 if test "x$with_allegro" = "x"; then
-   ALLEGRODIR=/csl/allegro/allegro6.0
+   ALLEGRODIR=/csl/allegro/allegro6.2
 else
    ALLEGRODIR=$with_allegro
 fi
-if ! test -f $ALLEGRODIR/mlisp ; then
-  echo
-  AC_MSG_ERROR(Invalid allegropath - can't find $ALLEGRODIR/mlisp)
+if test -f $ALLEGRODIR/mlisp ; then
+   LISP=allegro6.2
+   LISPEXE=mlisp
+else   
+   if test -f $ALLEGRODIR/lisp  ; then
+   LISP=allegro5.0
+   LISPEXE=lisp
+   else
+   echo
+   AC_MSG_ERROR(Invalid allegropath - can't find $ALLEGRODIR/libacl\*.so)
+   fi
 fi
 AC_MSG_RESULT($ALLEGRODIR)
 AC_SUBST(ALLEGRODIR)
+AC_SUBST(LISP)
+AC_SUBST(LISPEXE)
 	
 dnl Giving pvspath is optional
 AC_MSG_CHECKING(pvspath)
@@ -99,6 +109,6 @@ PLATFORM=`./bin/pvs-platform`
 export PLATFORM
 
 # Finally create all the generated files
-AC_OUTPUT(Makefile pvs src/make-allegro-pvs.lisp pvs.system ess/dist-ess.lisp ess/allegro-runtime.lisp doc/user-guide/Makefile doc/language/Makefile doc/prover/Makefile)
+AC_OUTPUT(Makefile pvs src/make-allegro-pvs.lisp src/make-pvs.lisp pvs.system ess/dist-ess.lisp ess/allegro-runtime.lisp doc/user-guide/Makefile doc/language/Makefile doc/prover/Makefile)
 
 chmod a+x pvs
