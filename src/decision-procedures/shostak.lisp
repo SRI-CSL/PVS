@@ -48,8 +48,9 @@
 (defun need-neg-processing (eqn cong-state)
   (let ((norm-eqn (recursive-sigma eqn cong-state)))
     (or (integer-inequality-p norm-eqn cong-state)
-	(and (ineq-p eqn)
-	     (dp-numberp (rhs eqn))))))
+	(and (ineq-p norm-eqn)
+	     (dp-numberp (rhs norm-eqn)))
+	(negation-p norm-eqn))))
 
 (defun invoke-process* (eqn cong-state)
   (when (and nil
@@ -59,7 +60,7 @@
     (break))
   ;(declare (special *dp-changed*))
   (when (or (and nil (and (application-p eqn)
-			  (eq (funsym eqn) *greaterp*)))
+			  (eq (funsym eqn) *greatereqp*)))
 	    (and nil (eq eqn *bass*))) (break))
   (let* ((*dp-changed* nil)
 	 (*contradiction* nil) ;(x (break))
@@ -269,7 +270,7 @@
 	 (t (break "Please contact Cyrluk and do a :cont 0 to continue")
 	    t-c))))
      (t (let ((result (canon* term cong-state no-mod)))
-	  (unless no-mod (setf (canon-hash term cong-state) canon-hash))
+	  (setf (canon-hash term cong-state) canon-hash)
 	  result)))))
 
 (defun canon* (term cong-state &optional (no-mod nil))
