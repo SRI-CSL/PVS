@@ -132,13 +132,13 @@
 	  ((and (= (length args) 2)
 		(1st-order? (first args))
 		(1st-order? (second args)))
-	   (cond ((is? op '|<| '|reals|)
+	   (cond ((tc-eq op (less-operator))
 		  (process-binrel1 (first args) (second args) #'dfa-less))
-		 ((is? op '|>| '|reals|)
+		 ((tc-eq op (greater-operator))
 		  (process-binrel1 (second args) (first args) #'dfa-less))
-		 ((is? op '|<=| '|reals|)
+		 ((tc-eq op (lesseq-operator))
 		  (process-binrel1 (first args) (second args) #'dfa-lesseq))
-		 ((is? op '|>=| '|reals|)
+		 ((tc-eq op (greatereq-operator))
 		  (process-binrel1 (second args) (first args) #'dfa-lesseq))
 		 (t
 		  (error-format-if "1st-order application ~a not translatable" fml)
@@ -326,6 +326,12 @@
 		 (values k
 			 (cons k (union xs ys :test #'=))
 			 (dfa-conjunction* (list a a1 a2)))))))
+	;((singleton2? trm)
+	; (multiple-value-bind (i xs a1)
+	;     (nat-to-dfa* (argument trm))
+	;   (let* ((k (symtab-new-index))
+	;	   (a (dfa-op #'dfa-single k i)))
+	;     (values k xs (dfa-conjunction* (list a a1))))))
 	(t
 	 (error-format-if "Application ~a is not 2nd-order" trm)
 	 (call-next-method))))
@@ -343,10 +349,14 @@
        (2nd-order? trm)))
   
 (defun the2? (trm)
-  (and (is? (operator trm) '|the| '|sets|)
+  (and (tc-eq (operator trm) (the2))
        (2nd-order? trm)
        (typep (argument trm) 'lambda-expr)
        (= (length (bindings (argument trm)) 1))))
+
+(defun singleton2? (trm)
+  (and (tc-eq (operator trm) (singleton-operator))
+       (1st-order? (argument trm))))
 
 ;; Translation of naturals
 
@@ -401,7 +411,7 @@
 
 (defmethod nat-to-dfa* ((trm application))
   (let ((op (operator trm)))
-    (cond ((is? op '|-| '|reals|)                                ; p_i = p_j - n    
+    (cond ((tc-eq op (minus1))
 	   (let ((lhs (args1 trm))
 		 (rhs (pseudo-normalize (args2 trm))))
 	     (if (and (natural-number-expr? rhs)
@@ -414,7 +424,7 @@
 	       (progn
 		 (error-format-if "Subtraction ~a not 1st-order" trm)
 		 (call-next-method)))))
-	  ((is? op '|+| '|reals|)                               ; p_i = p_j + n, p_i = n + p_j
+	  ((tc-eq op (plus1))
 	   (let* ((ntrm (pseudo-normalize trm))                 ; now canonized to p_i =  n + p_j   
 		  (lhs (args1 ntrm))
 		  (rhs (args2 ntrm)))
@@ -447,7 +457,7 @@
 	   (call-next-method)))))
 
 (defun the1? (trm)
-  (and (is? (operator trm) '|the| '|sets|)
+  (and (tc-eq (operator trm) (the1))
        (1st-order? trm)
        (typep (argument trm) 'lambda-expr)
        (= (length (bindings (argument trm)) 1))))
