@@ -574,8 +574,8 @@
 
 (defmethod connective-occurs?* ((expr list) accum)
   (if (consp expr)
-      (connective-occurs?* (cdr list)
-			  (cons (car list) accum))
+      (connective-occurs?* (cdr expr)
+			  (cons (car expr) accum))
       (if (consp accum)
 	  (connective-occurs?* (car accum)(cdr accum))
 	  nil)))
