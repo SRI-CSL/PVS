@@ -4,7 +4,7 @@
 (defun apply-dp-func (dp-func dp-state &rest pvs-args)
   (let* ((dp-args (mapcar #'top-translate-to-dc pvs-args))
 	 (dp-result (apply dp-func (append dp-args (list dp-state))))
-	 (result (translate-from-dc dp-result)))
+	 (result (translate-from-dc-list dp-result)))
     result))
 
 (defun dp::arithsimp (term dp-state)
