@@ -231,7 +231,8 @@
 	    (let ((pte (subst-mod-params* (print-type obj) modinst bindings)))
 	      (setq nobj (lcopy nobj 'print-type pte))))
 	  (when (or (eq obj nobj)
-		    (null (freevars nobj)))
+		    (and (null (freevars nobj))
+			 (null (free-params nobj))))
 	    (setf (gethash obj *subst-mod-params-cache*) nobj))
 	  #+pvsdebug
 	  (assert (every #'(lambda (fv)
