@@ -899,10 +899,13 @@
 (defun xt-enum (args enum)
   (let ((constrs
 	 (mapcar #'(lambda (e)
-		     (let ((constr (make-instance 'simple-constructor
-				     'id (xt-idop e)
+		     (let* ((id (xt-idop e))
+			    (constr (make-instance 'simple-constructor
+				     'id id
 				     'recognizer
-				     (makesym "~a?" (op-to-id (xt-idop e))))))
+				     (makesym "~a?" (if (memq id '(O |o|))
+							'O
+							(op-to-id id))))))
 		       ;;(unparse constr :string t)
 		       (setf (place constr) (term-place e))
 		       constr))
