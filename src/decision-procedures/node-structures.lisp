@@ -1543,6 +1543,8 @@
   (cond ((dp-variable-p trm)
 	 (eq x trm))
 	((application-p trm)
-	 (some #'occurs-p (funargs trm)))
+	 (some #'(lambda (e)
+		   (occurs-p x e))
+	       (funargs trm)))
 	(t nil)))
  
