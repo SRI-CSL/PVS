@@ -225,6 +225,7 @@ print object produces an error, and won't allow inspection of the object.")
     (format stream "  Its source file is ~a" (excl:source-file obj))))
 
 (defmethod kind-of ((decl module)) 'module)
+(defmethod kind-of ((decl datatype)) 'module)
 (defmethod kind-of ((decl type-decl)) 'type)
 (defmethod kind-of ((decl formal-type-decl)) 'type)
 (defmethod kind-of ((decl formal-theory-decl)) 'module)
