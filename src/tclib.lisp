@@ -11,87 +11,6 @@
 
 (in-package :pvs)
 
-
-;;; The *imported libraries* hash table and (library-alist *current-context*)
-;;; are indexed from a relative reference.  They use this because the lib-ref
-;;; may ultimately be part of the .pvscontext, which should be portable if no
-;;; absolute pathnames are involved.
-;;;       
-;;; This macro temporarily changes the *imported-libraries* hash table,
-;;; allowing nested library references to work, then puts the new information
-;;; into the original hash table.
-;;; Note that the lib-ref slots of existing library-theories may be modified;
-;;; unwind-protect is used to ensure that they are put back correctly.
-;;; This macro is used by load-imported-library and
-;;; restore-imported-library-files - it is not needed for prelude-libraries.
-;;;
-;;; On entry, existing imported libraries need to be relativized, and on exit,
-;;; the changed ones need to be put back, and any new ones need to be
-;;; relativized.  So we copy the original, then make modifications to any
-;;; relative lib-refs (which are strings beginning with a '.').  The lib-ref
-;;; that is passed in may be one of the entries; it is removed.  Thus this
-;;; macro must be used AFTER the call to get-imported-files-and-theories.
-;;; *pvs-context-path* has thus already been modified.
-(defmacro relativize-imported-libraries (lib-ref orig-context-path &rest forms)
-  (let ((mods (gentemp))
-	(entry (gentemp))
-	(lref (gentemp))
-	(cpath (gentemp)))
-    `(let ((,lref ,lib-ref)
-	   (,cpath ,orig-context-path)
-	   (,mods nil)
-	   (,entry nil))
-       (unwind-protect
-	   (progn
-	     (setq ,entry (gethash ,lref *imported-libraries*))
-	     (remhash ,lref *imported-libraries*)
-	     (setq ,mods
-		   (relativize-imported-library ,cpath *pvs-context-path*))
-	     (maphash #'(lambda (id th)
-			  (declare (ignore id))
-			  (change-from-library-class th))
-		      (cadr ,entry))
-	     ,@forms)
-	 (relativize-imported-library
-	  *pvs-context-path* ,cpath ,mods)
-	 (maphash #'(lambda (id th)
-		      (declare (ignore id))
-		      (change-to-library-class th ,lref))
-		  (cadr ,entry))
-	 (setf (gethash ,lref *imported-libraries*) ,entry)))))
-
-(defun relativize-imported-library (old-context-path new-context-path
-						     &optional mods)
-  (let ((new-mods nil))
-    (maphash #'(lambda (ref files&theories)
-		 (when (char= (char ref 0) #\.)
-		   (let* ((new-lref (cdr (assoc ref mods :test #'string=)))
-			  (old-lib-dir (unless new-lref
-					 (merge-pathnames ref old-context-path)))
-			  (new-lib-ref (or new-lref
-					   (relative-path old-lib-dir
-							  new-context-path))))
-		     (unless (string= new-lib-ref ref) ;; a sibling directory
-		       (assert (or (null old-lib-dir)
-				   (file-exists-p old-lib-dir)))
-		       (assert (file-exists-p
-				(merge-pathnames
-				 new-lib-ref new-context-path)))
-		       (push (cons new-lib-ref ref) new-mods)
-		       (maphash #'(lambda (id theory)
-				    (declare (ignore id))
-				    (assert (string= ref (lib-ref theory)))
-				    (setf (lib-ref theory) new-lib-ref))
-				(cadr files&theories))))))
-	     *imported-libraries*)
-    ;; We mapped the theories, now change the *imported-libraries* keys
-    (loop for (new . old) in new-mods
-	  do (let ((val (gethash old *imported-libraries*)))
-	       (assert val)
-	       (remhash old *imported-libraries*)
-	       (setf (gethash new *imported-libraries*) val)))
-    new-mods))
-
 ;;; Load-prelude initializes the *prelude*, *prelude-context*, and
 ;;; *prelude-theories* variables
 
@@ -321,7 +240,7 @@
     (multiple-value-bind (lib-path err-msg)
 	(libref-to-pathname lib-ref)
       (if lib-path
-	  (load-prelude-library lib-path)
+	  (load-prelude-library lib-path nil t)
 	  (pvs-error err-msg
 	    (format nil
 		"Library reference ~a not found~
@@ -335,14 +254,15 @@
 ;;; Loads the .pvscontext, associated PVS files, pvs-lib.lisp file
 ;;; (and any libloaded file), and pvs-lib.el.  Note that pvs-strategies is
 ;;; not loaded here, but when the prover is invoked.
-(defun load-prelude-library (lib &optional force?)
+(defun load-prelude-library (lib &optional force? quiet?)
   (multiple-value-bind (lib-ref lib-path err-msg)
       (get-prelude-library-refs lib)
     (cond (err-msg
 	   (pvs-message err-msg))
 	  ((and (not force?)
 		(prelude-library-loaded? lib-ref))
-	   (pvs-message "Prelude library ~a is already loaded." lib))
+	   (unless quiet?
+	     (pvs-message "Prelude library ~a is already loaded." lib)))
 	  ((member lib-ref *loading-libraries* :test #'string=)
 	   (pvs-error "Load Prelude Error"
 	     "Detected circular calls to load-prelude-library,~%~
@@ -1229,3 +1149,35 @@
      (change-class th 'codatatype))
     (t th))
   th)
+
+(defun relativize-imported-library (old-context-path new-context-path
+						     &optional mods)
+  (let ((new-mods nil))
+    (maphash #'(lambda (ref files&theories)
+		 (when (char= (char ref 0) #\.)
+		   (let* ((new-lref (cdr (assoc ref mods :test #'string=)))
+			  (old-lib-dir (unless new-lref
+					 (merge-pathnames ref old-context-path)))
+			  (new-lib-ref (or new-lref
+					   (relative-path old-lib-dir
+							  new-context-path))))
+		     (unless (string= new-lib-ref ref) ;; a sibling directory
+		       (assert (or (null old-lib-dir)
+				   (file-exists-p old-lib-dir)))
+		       (assert (file-exists-p
+				(merge-pathnames
+				 new-lib-ref new-context-path)))
+		       (push (cons new-lib-ref ref) new-mods)
+		       (maphash #'(lambda (id theory)
+				    (declare (ignore id))
+				    (assert (string= ref (lib-ref theory)))
+				    (setf (lib-ref theory) new-lib-ref))
+				(cadr files&theories))))))
+	     *imported-libraries*)
+    ;; We mapped the theories, now change the *imported-libraries* keys
+    (loop for (new . old) in new-mods
+	  do (let ((val (gethash old *imported-libraries*)))
+	       (assert val)
+	       (remhash old *imported-libraries*)
+	       (setf (gethash new *imported-libraries*) val)))
+    new-mods))
