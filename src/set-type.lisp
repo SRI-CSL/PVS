@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Wed Oct 20 00:42:24 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Fri Jan 29 18:14:49 1999
-;; Update Count    : 159
+;; Last Modified On: Tue May 25 17:58:36 2004
+;; Update Count    : 161
 ;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
@@ -756,7 +756,7 @@ required a context.")
 
 (defun set-type-mappings (modinst)
   (when (mappings modinst)
-    (set-type-mappings* (mappings modinst) modinst)))
+    (set-type-mappings* (mappings modinst) (copy modinst 'mappings nil))))
 
 (defun set-type-mappings* (mappings modinst &optional previous-mappings)
   (when mappings
@@ -788,8 +788,8 @@ required a context.")
 	       (copy decl 'id id 'module (current-theory) 'type-value tn))))
       (const-decl
        (let ((subst-type (subst-mod-params
-			      (type (declaration lhs))
-			      (lcopy modinst 'mappings previous-mappings))))
+			  (type (declaration lhs))
+			  (lcopy modinst 'mappings previous-mappings))))
 	 (setf (mapped-decl map)
 	       (copy decl
 		 'id (id (expr rhs))
@@ -807,18 +807,21 @@ required a context.")
      (if (type-value rhs)
 	 (set-type* (type-value rhs) nil)
 	 (type-error (expr rhs) "Type expected here")))
-    (mod-decl
-     (let ((threses (remove-if
-			(complement
-			 #'(lambda (r)
-			     (and (typep (declaration r)
-					 '(or module mod-decl
-					      formal-theory-decl))
-				  (eq (id (modname (declaration lhs)))
-				      (id (if (module? (declaration r))
-					      (declaration r)
-					      (theory-ref (declaration r))))))))
-		      (resolutions (expr rhs)))))
+    ((or mod-decl module)
+     (let* ((thid (if (module? (declaration lhs))
+		      (id (declaration lhs))
+		      (id (modname (declaration lhs)))))
+	    (threses (remove-if
+			 (complement
+			  #'(lambda (r)
+			      (and (typep (declaration r)
+					  '(or module mod-decl
+					       formal-theory-decl))
+				   (eq (id (if (module? (declaration r))
+					       (declaration r)
+					       (theory-ref (declaration r))))
+				       thid))))
+		       (resolutions (expr rhs)))))
        (cond ((cdr threses)
 	      (type-error (expr rhs)
 		"Theory name ~a is ambiguous" (expr rhs)))
@@ -927,9 +930,11 @@ required a context.")
   (if (formal-theory-decl? formal)
       (let* ((mdecl (declaration (resolution (expr act))))
 	     (fmappings (mapping (generated-theory formal)))
-	     (amappings (if (theory-abbreviation-decl? mdecl)
-			    (mapping mdecl)
-			    (mapping (generated-theory mdecl))))
+	     (amappings (typecase mdecl
+			  (theory-abbreviation-decl (mapping mdecl))
+			  (mod-decl (mapping (generated-theory mdecl)))
+			  (t (make-subst-mod-params-map-bindings
+			      (expr act) (mappings (expr act)) nil))))
 	     (nalist (compose-formal-to-actual-mapping fmappings amappings)))
 	(assert (= (length fmappings) (length amappings)))
 	(values formal (nconc nalist alist)))
