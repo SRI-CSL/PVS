@@ -84,6 +84,14 @@
 ; Side effects, accomplished via process1, take care of interpreted
 ; predicates, such as =, <, etc.
 
+(declaim (notinline canonsig-merge canonsig-canon))
+
+(defun canonsig-merge (x &optional (dont-add-use nil))
+  (canonsig x dont-add-use))
+
+(defun canonsig-canon (x &optional (dont-add-use nil))
+  (canonsig x dont-add-use))
+
 (defun process(lit)
    (prog(s)
      (cond ( (and (consp lit) (eq (funsym lit) 'NOT))
@@ -279,7 +287,7 @@
 		(eq (apply-operator u) t1))
 	   (setq newsig
 		 (sigma newsig))
-	   (setq s (append (solve `(EQUAL ,(pr-find u) ,(canonsig newsig))) s))
+	   (setq s (append (solve `(EQUAL ,(pr-find u) ,(canonsig-merge newsig))) s))
 	   )
 	  ((uninterp newsig)		; SO 9/28/90 was u - is now newsig
 	   (putsig newsig u)
@@ -339,7 +347,7 @@
 					; and as apply`s of updates and lambdas.
 	     (setq newsig
 		   (sigma newsig))
-	     (push `(EQUAL ,u ,(canonsig newsig)) s))
+	     (push `(EQUAL ,u ,(canonsig-merge newsig)) s))
 
 	    ((equal (pr-find u) (pr-find 'false))
 	     (print "msg from merge - this should not have occurred
@@ -350,7 +358,7 @@
 		; (sigma newsig))
 	   ; 7-24-91: dac changed above sigma no longer needed due to change in canonsig.
 	   ; bug manifested itself in needing recursive call for sigupdate.
-	   (push `(EQUAL ,u ,(canonsig newsig)) s))) ))) 
+	   (push `(EQUAL ,u ,(canonsig-merge newsig)) s))) ))) 
 
 ; ------------------------------------------------------------------------
 
@@ -376,8 +384,8 @@
 	 (consp term)
 	 (eq (funsym term) 'PROTECT))
     (let ((*protecting-applications* t))
-      (canonsig (signature term dont-add-use) dont-add-use)))
-   (t (canonsig (signature term dont-add-use) dont-add-use))))
+      (canonsig-canon (signature term dont-add-use) dont-add-use)))
+   (t (canonsig-canon (signature term dont-add-use) dont-add-use))))
 
 (defun canon-hash (term &optional (dont-add-use nil))
   (let ((hash (gethash term *canon-hash*)))
@@ -406,13 +414,15 @@
       (t
        (cond
          ( (interp s)
-           (setq s (sigma ;;; 7-24-91: dac Added this sigma so that interpretted
+           (setq s (or (sigma ;;; 7-24-91: dac Added this sigma so that interpretted
 		          ;;; terms are put in canonical form.
 	                  ;;; bug manifested itself in needing recursive call for sigupdate.
 		    (cons (funsym s)
 			  (loop for arg in (argsof s) collect
 				(canonsig arg dont-add-use)))
 		   )
+		       t
+		   (replace-args-with-canonsig s dont-add-use))
            )
          )
        )
@@ -427,6 +437,11 @@
      )
    )
 )
+
+(defun replace-args-with-canonsig (term &optional (dont-add-use nil))
+  (sigma (cons (funsym term)
+	       (loop for arg in (argsof term) collect
+		     (canonsig arg dont-add-use)))))
 
 
 ; returns semantic signature of term
