@@ -72,6 +72,8 @@ prove-pvs-file-using-default-dp    Do proofs with default decision procedures
 prove-importchain-using-default-dp Do proofs with default decision procedures
 prove-importchain-subtree-using-default-dp Do proofs with default dec. procs.
 prove-proofchain-using-default-dp  Do proofs with default decision procedures
+prove-untried-theory               Try untried proofs with specified strategy
+prove-untried-pvs-file             Try untried proofs with specified strategy
 
 ------------------------Proof Editing Commands--------------------------------
 

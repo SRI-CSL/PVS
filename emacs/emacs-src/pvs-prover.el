@@ -1237,6 +1237,60 @@ display for the indicated formula"
 	   (sleep-for 1)
 	   (step-proof))))
 
+(defvar default-untried-strategy "(grind)")
+
+(defpvs prove-untried-pvs-file prove (file strategy)
+  "Attempt to prove the untried formulas in the specified PVS FILE using
+the given STRATEGY.
+
+Attempts all untried formulas in the specified PVS FILE which have no
+associated proofs, using the specified STRATEGY which defaults to (GRIND).
+With an argument (e.g., M-0 or C-u) proves untried TCCs as well."
+  (interactive (append (complete-pvs-file-name
+			"Prove untried in PVS file named: ")
+		       (list (read-from-minibuffer
+			      "Strategy to use: "
+			      default-untried-strategy))))
+  (let ((end (cdr (condition-case nil
+		      (read-from-string strategy)
+		    (error (error "invalid strategy syntax"))))))
+    (unless (= end (length strategy))
+      (error "invalid strategy syntax")))
+  (unless (equal strategy default-untried-strategy)
+    (setq default-untried-strategy strategy))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(prove-untried-pvs-file \"%s\" '%s %s)"
+		file strategy (and current-prefix-arg t))
+	    nil))
+
+(defpvs prove-untried-theory prove (theory strategy)
+  "Attempt to prove the untried formulas in the specified THEORY using
+the given STRATEGY.
+
+Attempts all untried formulas in the specified THEORY which have no
+associated proofs, using the specified STRATEGY which defaults to (GRIND).
+With an argument (e.g., M-0 or C-u) proves untried TCCs as well."
+  (interactive (append (complete-theory-name
+			"Prove untried in theory named: ")
+		       (list (read-from-minibuffer
+			      "Strategy to use: "
+			      default-untried-strategy))))
+  (let ((end (cdr (condition-case nil
+		      (read-from-string strategy)
+		    (error (error "invalid strategy syntax"))))))
+    (unless (= end (length strategy))
+      (error "invalid strategy syntax")))
+  (unless (equal strategy default-untried-strategy)
+    (setq default-untried-strategy strategy))
+  (confirm-not-in-checker)
+  (pvs-bury-output)
+  (save-some-pvs-buffers)
+  (pvs-send (format "(prove-untried-theory \"%s\" '%s %s)"
+		theory strategy (and current-prefix-arg t))
+	    nil))
+
 
 ;;; These all pertain only to a proof in progress
 
