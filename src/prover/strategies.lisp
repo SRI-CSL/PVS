@@ -3097,7 +3097,8 @@ in the given fnums."
 	(comp-equalities (when (and fmla (not equality?))
 			   (component-equalities
 			    lhs rhs
-			    (find-declared-adt-supertype (type lhs))))))
+			    (find-declared-adt-supertype (type lhs)))))
+	(fnum-count (length (s-forms (current-goal *ps*)))))
     (if fmla
 	(if equality?
 	    (apply-extensionality :hide? hide)
@@ -3108,7 +3109,11 @@ in the given fnums."
 					 (s-forms (current-goal *ps*))
 					 '* #'(lambda (x) (eq x ffm))))
 				 (fnum (if fnums (car fnums) nil)))
-			     (if (and hide? fnum) (delete fnum) (skip)))
+			     (if (and hide? fnum
+				      (/= (length (s-forms (current-goal *ps*)))
+					  fnum-count))
+				 (delete fnum)
+				 (skip)))
 			   (flatten))
 		     (then (flatten) (replace*)
 			   (grind :defs nil :if-match nil)))))
