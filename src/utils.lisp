@@ -683,7 +683,7 @@
 						      (reverse
 						       *prelude-theories*)))))
 				     (saved-context
-				      (if (recursive-type? prevp)
+				      (if (datatype? prevp)
 					  (or (adt-reduce-theory prevp)
 					      (adt-map-theory prevp)
 					      (adt-theory prevp))
@@ -715,15 +715,16 @@
 	 (setf (saved-context d) (copy-context *current-context*)))
 	(subtype-judgement (add-to-known-subtypes (subtype d) (type d)))
 	(judgement (add-judgement-decl d))
+	(conversionminus-decl (disable-conversion d))
 	(conversion-decl (push d (conversions *current-context*)))
 	(type-def-decl (unless (enumtype? (type-expr d))
 			 (put-decl d (current-declarations-hash))))
 	(declaration (put-decl d (current-declarations-hash)))
-	(recursive-type nil)))
+	(datatype nil)))
     (when (from-prelude? decl)
       (let* ((prevp (cadr (memq (module decl)
 				(reverse *prelude-theories*))))
-	     (pths (if (recursive-type? prevp)
+	     (pths (if (datatype? prevp)
 		       (delete-if #'null
 			 (list (adt-theory prevp)
 			       (adt-map-theory prevp)
@@ -809,6 +810,9 @@
     (when (saved-context theory)
       (dolist (c (conversions (saved-context theory)))
 	(pushnew (copy-tree c) (conversions *current-context*) :test #'equal))
+      (dolist (c (disabled-conversions (saved-context theory)))
+	(pushnew (copy-tree c) (disabled-conversions *current-context*)
+		 :test #'equal))
       (setf (judgements *current-context*)
 	    (copy-judgements (judgements (saved-context theory))))
       (setf (known-subtypes *current-context*)
@@ -825,7 +829,8 @@
 		 'using-hash (copy-using-hash (using-hash pctx))
 		 'declarations-hash (copy (declarations-hash pctx))
 		 'known-subtypes (copy-tree (known-subtypes pctx))
-		 'conversions (copy-list (conversions pctx)))))
+		 'conversions (copy-list (conversions pctx))
+		 'disabled-conversions (copy-list (disabled-conversions pctx)))))
 	  (setf (judgements *current-context*)
 		(copy-judgements (judgements pctx)))
 	  *current-context*)
@@ -857,6 +862,7 @@
 	   'declarations-hash (copy (declarations-hash context))
 	   'using-hash (copy (using-hash context))
 	   'conversions (copy-list (conversions context))
+	   'disabled-conversions (copy-list (disabled-conversions context))
 	   'known-subtypes (copy-tree (known-subtypes context)))))
     (setf (judgements *current-context*)
 	  (copy-judgements (judgements context)))
@@ -2198,13 +2204,6 @@ space")
 		 result)))))))
 
 
-(defmethod get-coercions ((res resolution))
-  (let ((conversions (get-conversions (type res))))
-    (mapcar #'(lambda (c)
-		(lcopy c 'type (subst-mod-params (type c)
-						 (module-instance res))))
-	    conversions)))
-
 (defmethod get-conversions ((name name-expr))
   (assert (resolution name))
   (get-conversions (resolution name)))
@@ -2241,19 +2240,26 @@ space")
 ;;; conversion-decl as its declaration.
 
 (defmethod get-conversions ((type type-expr))
-  (compatible-conversions (conversions *current-context*) type))
+  (compatible-conversions (conversions *current-context*)
+			  type
+			  (disabled-conversions *current-context*)))
 
 (defmethod get-conversions ((type dep-binding))
   (get-conversions (type type)))
 
-(defun compatible-conversions (conversions type &optional result)
+(defun compatible-conversions (conversions type disabled-convs
+					   &optional result)
   (if (null conversions)
       result
       (let ((cos (compatible-conversion (car conversions) type)))
-	(compatible-conversions (cdr conversions) type
-				(if cos
-				    (cons cos result)
-				    result)))))
+	(compatible-conversions
+	 (cdr conversions)
+	 type
+	 disabled-convs
+	 (if (and cos
+		  (not (member cos disabled-convs :test #'tc-eq :key #'name)))
+	     (cons cos result)
+	     result)))))
 
 (defun compatible-conversion (conversion type)
   (let* ((theory (module conversion))
@@ -2304,17 +2310,21 @@ space")
 ;;; than the domain of the conversion type.
 
 (defmethod get-k-conversions ((type type-expr))
-  (compatible-k-conversions (conversions *current-context*) type))
+  (compatible-k-conversions (conversions *current-context*) type
+			    (disabled-conversions *current-context*)))
 
-(defun compatible-k-conversions (conversions type &optional result)
+(defun compatible-k-conversions (conversions type disabled-convs
+					     &optional result)
   (if (null conversions)
       (nreverse result)
       (compatible-k-conversions
        (cdr conversions)
        type
+       disabled-convs
        (let ((cos (when (k-combinator? (car conversions))
 		    (compatible-k-conversion (car conversions) type))))
-	 (if cos
+	 (if (and cos
+		  (not (member cos disabled-convs :test #'tc-eq :key #'name)))
 	     (cons cos result)
 	     result)))))
 
