@@ -53,11 +53,6 @@
   (clrnumhash)
   (setq *pvs-context-writable* (write-permission? (working-directory)))
   (setq *pvs-library-path* (get-pvs-library-path))
-  ;;(restore-context)
-  ;; This strange-looking line just looks at the bdd_interrupted variable.
-  ;; This is because the first time lisp looks at the variable, it returns
-  ;; a bogus value.  I suspect this is an Allegro bug.
-  bdd_interrupted
   (setq *pvs-initialized* t)
   (when *to-emacs*
     (pvs-emacs-eval "(setq *pvs-initialized* t)")))
@@ -1636,17 +1631,18 @@
 	  (unproved? (pvs-message "No more unproved formulas below"))
 	  (t (pvs-message "Not at a formula declaration")))))
 
-(defun prove-formula (modname formname rerun?)
-  (declare (ignore modname))
-  (let* ((fid (intern formname))
-	 (fdecl (find-if #'(lambda (d) (and (formula-decl? d)
-					    (eq (id d) fid)))
-		  (all-decls (current-theory))))
-	 (strat (when rerun? '(rerun))))
-    (cond (fdecl
-	   (setq *current-theory* (slot-value fdecl 'module))
-	   (prove formname :strategy strat))
-	  (t (pvs-message "Formula ~a not found" formname)))))
+(defun prove-formula (theoryname formname rerun?)
+  (let ((theory (get-typechecked-theory theoryname)))
+    (if theory
+	(let* ((fid (intern formname))
+	       (fdecl (find-if #'(lambda (d) (and (formula-decl? d)
+						  (eq (id d) fid)))
+			(all-decls theory)))
+	       (strat (when rerun? '(rerun))))
+	  (if fdecl
+	      (prove formname :strategy strat)
+	      (pvs-message "Formula ~a not found" formname)))
+	(pvs-message "No such theory: ~a" theoryname))))
 
 (defun rerun-proof-of? (modname formname)
   (setq *current-theory* (get-theory modname))
