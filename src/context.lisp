@@ -188,10 +188,6 @@ pvs-strategies files.")
     (when *pvs-initialized*
       (save-context))
     (setq *pvs-context-writable* (write-permission? dir))
-    (clrhash *prelude-libraries*)
-    (setq *prelude-libraries-uselist* nil)
-    (setq *prelude-library-context* nil)
-    (clrhash *imported-libraries*)
     (setf (caddr *strat-file-dates*) 0)
     (set-working-directory dir)
     (setq *pvs-context-path* (shortpath (working-directory)))
@@ -199,8 +195,6 @@ pvs-strategies files.")
     (setq *default-pathname-defaults* *pvs-context-path*)
     (clear-theories t)
     (restore-context)
-    (unless (file-exists-p (context-pathname dir))
-      (write-context))
     (pvs-message "Context changed to ~a"
       (shortname *pvs-context-path*))
     (when *pvs-context-writable*
@@ -222,10 +216,10 @@ pvs-strategies files.")
     (cond ((not (pathnamep dir))
 	   (get-valid-context-directory nil (format nil "~a  cc to: "
 					      (protect-format-string reason))))
-	  ((and (write-permission? dir)
-		(not (file-exists-p (context-pathname dir)))
-		(not (pvs-y-or-n-p "Context not found - create new one? ")))
-	   (get-valid-context-directory nil nil))
+;; 	  ((and (write-permission? dir)
+;; 		(not (file-exists-p (context-pathname dir)))
+;; 		(not (pvs-y-or-n-p "Context not found - create new one? ")))
+;; 	   (get-valid-context-directory nil nil))
 	  (t dir))))
 
 (defun context-pathname (&optional (dir *pvs-context-path*))
@@ -251,8 +245,7 @@ pvs-strategies files.")
 
 
 (defun write-context ()
-  (when (or *pvs-context-changed*
-	    (not (file-exists-p (context-pathname))))
+  (when *pvs-context-changed*
     (if *pvs-context-writable*
 	(let ((context (make-pvs-context)))
 	  (multiple-value-bind (value condition)
