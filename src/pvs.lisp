@@ -1721,13 +1721,20 @@
     (and theory
 	 (typechecked? theory))))
 
-(defun get-theories (filename)
-  (let ((fn (if (pathnamep filename)
-		(pathname-name filename)
-		filename)))
-    (or (cdr (gethash fn *pvs-files*))
-	(and (equal fn "prelude")
-	     *prelude-theories*))))
+(defun get-theories (filename &optional libref)
+  (if libref
+      (let ((nlibref (get-library-reference libref)))
+	(and nlibref
+	     (let* ((imphash (car (gethash nlibref *imported-libraries*)))
+		    (prehash (car (gethash nlibref *prelude-libraries*))))
+	       (or (and imphash (cdr (gethash filename imphash)))
+		   (and prehash (cdr (gethash filename prehash)))))))
+      (let ((fn (if (pathnamep filename)
+		    (pathname-name filename)
+		    filename)))
+	(or (cdr (gethash fn *pvs-files*))
+	    (and (equal fn "prelude")
+		 *prelude-theories*)))))
 
 (defun tca (theory &optional forced?)
   (typecheckall theory forced?))
