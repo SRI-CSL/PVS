@@ -987,17 +987,21 @@
 
 (defun merge-judgement-graphs (decl to-entry from-graph theory theoryname)
   (when from-graph
-    (let* ((jdecl (caar from-graph))
-	   (sjdecl (subst-params-decl jdecl theoryname)))
-      (if (fully-instantiated? (judgement-type sjdecl))
-	  (add-judgement-decl-to-graph sjdecl to-entry t)
-	  (unless (or (some #'(lambda (jd) (judgement-subsumes jd jdecl))
-			    (generic-judgements to-entry))
-		      (judgement-uninstantiable? decl sjdecl))
-	    (cons sjdecl
-		  (delete-if #'(lambda (jd)
-				 (judgement-subsumes jdecl jd))
-		    (generic-judgements to-entry))))))
+    (let ((jdecl (caar from-graph)))
+      (unless (member jdecl (judgements-graph to-entry) :test #'eq :key #'car)
+	(let ((sjdecl (subst-params-decl jdecl theoryname)))
+	  (unless (and (not (eq sjdecl jdecl))
+		       (member sjdecl (judgements-graph to-entry)
+			       :test #'eq :key #'car))
+	    (if (fully-instantiated? (judgement-type sjdecl))
+		(add-judgement-decl-to-graph sjdecl to-entry t)
+		(unless (or (some #'(lambda (jd) (judgement-subsumes jd jdecl))
+				  (generic-judgements to-entry))
+			    (judgement-uninstantiable? decl sjdecl))
+		  (cons sjdecl
+			(delete-if #'(lambda (jd)
+				       (judgement-subsumes jdecl jd))
+			  (generic-judgements to-entry)))))))))
     (merge-judgement-graphs decl to-entry (cdr from-graph) theory theoryname)))
 
 (defun judgement-uninstantiable? (decl jdecl)
