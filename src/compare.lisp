@@ -549,7 +549,8 @@
        (compare* (expr old) (expr new))))
 
 (defmethod compare* ((old mapping) (new mapping))
-  (and (compare* (lhs old) (lhs new))
+  (and (eq (class-of old) (class-of new))
+       (compare* (lhs old) (lhs new))
        (compare* (rhs old) (rhs new))))
 
 (defmethod compare* ((old mapping-rhs) (new mapping-rhs))
