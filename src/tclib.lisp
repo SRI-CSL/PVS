@@ -790,13 +790,18 @@
 ;; 			  (values rdir libpath))))))))))
 
 (defun all-decls (theory)
-  (append (formals theory)
-	  (mapcan #'(lambda (d)
-		      (when (typep d 'formal-subtype-decl)
-			(remove-if #'tcc? (generated d))))
-		  (formals theory))
-	  (assuming theory)
-	  (theory theory)))
+  (or (all-declarations theory)
+      (let ((decls (append (formals theory)
+			   (mapcan #'(lambda (d)
+				       (when (typep d 'formal-subtype-decl)
+					 (remove-if #'tcc? (generated d))))
+			     (formals theory))
+			   (assuming theory)
+			   (theory theory))))
+	(when (memq 'typechecked (status theory))
+	  (setf (all-declarations theory) decls))
+	decls)))
+
 
 ;;; lib-ref in this case is always relative to the pvs-context-path
 ;;; NOT necessarily the pvs-current-context-path.
