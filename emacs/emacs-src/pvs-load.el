@@ -72,7 +72,6 @@
 
 (load "ilisp" nil noninteractive)
 (load "pvs-ilisp" nil noninteractive)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;(load "pvs-ilisp-mods" nil noninteractive)
 (load "pvs-mode" nil noninteractive)
 (load "pvs-view" nil noninteractive)
 (load "pvs-file-list" nil noninteractive)
