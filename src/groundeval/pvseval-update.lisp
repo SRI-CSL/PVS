@@ -931,7 +931,7 @@
 (defmethod pvs2cl-update-assign-args ((type tupletype) cl-expr args rhs
 					 bindings livevars)
   (let* ((args1 (car args))
-	 (num (car args1))
+	 (num (number (car args1)))
 	 (cl-expr-var (gentemp "E"))
 	 (newexpr `(svref ,cl-expr-var ,(1- num)))
 	 (tupsel-type (nth (1- num)(types type)))
@@ -939,7 +939,7 @@
 	  (loop for fld in (types type)
 		as pos from 1  
 		when (not (eql pos num))
-		nconc (top-updateable-types (type fld) nil)))
+		nconc (top-updateable-types fld nil)))
 	 (newrhs  (if (null (cdr args))
 		      rhs
 		      (if (member tupsel-type
@@ -1088,7 +1088,7 @@
 
 (defmethod pvs2cl-update-nd-type* ((type tupletype)  expr arg1 restargs
 				   assign-expr bindings livevars)
-  (let* ((num arg1)
+  (let* ((num (number (if (consp arg1) (car arg1) arg1)))
 	 (new-expr `(svref ,expr ,(1- num)))
 	 (tupsel-type (nth (1- num)(types type)))
 	 (newval (pvs2cl-update-nd-type tupsel-type new-expr
