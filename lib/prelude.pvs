@@ -2330,9 +2330,11 @@ rational_props: THEORY
   x, y: VAR real
   i: VAR int
   n0j: VAR nzint
+  p: VAR posnat
   r: VAR rat
 
   rational_pred_ax: AXIOM EXISTS i, n0j: r = i/n0j
+  rational_pred_ax2: LEMMA EXISTS i, p: r = i/p
 
   density_positive : LEMMA
       0 <= x AND x < y IMPLIES (EXISTS r: x < r AND r < y)
