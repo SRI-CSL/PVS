@@ -28,7 +28,7 @@ if [ -f Makefile.template ]; then
     echo "/pkg/allegro5.0 does not exist!"
     echo "Either install it or modify the lispdir variable in the Makefile."
   fi
-  cp Makefile.template Makefile
+  cp -f Makefile.template Makefile
 fi
 
 # Relocate *pvs-path* in make-allegro-pvs.lisp, if it exists
