@@ -1110,7 +1110,7 @@ is emptied."
 	  (message "PVS has been reset"))
       (message "PVS is no longer running - exit and start again")))
   
-(defun pvs-interrupt-subjob ()
+(defpvs pvs-interrupt-subjob environment ()
   "Interrupt PVS lisp."
   (interactive)
   (when *pvs-is-garbage*
