@@ -71,7 +71,7 @@
 		  ((null rcols) results)
 		(let ((eqn `(equal ,(car lcols) ,(car rcols))))
 		  (setq result
-			(newcontext (process-arithcan eqn) ))
+			(newcontext (process-no-canon eqn) ))
 		  ; Following relies on the fact that process does
 		  ; (retfalse) if its result is false, and only
 		  ; non-list value returned is 'true.  See below too.
@@ -98,9 +98,10 @@
 		       ;;; DAC 6/12/98: Reversed the orientation of
 		       ;;; the generated equation. See bug 182.
 		       (let* ((newrhs (car rcols))
-			      (newlhs `(,(make-tupsel
+			      (newlhs (arithcan
+				       `(,(make-tupsel
 					  (prtype (car rcols)))
-					,selnum ,leftside))
+					,selnum ,leftside)))
 			      (eqn (if (or (qnumberp newrhs)
 					   (subtermof newrhs newlhs))
 				       `(equal ,newlhs
@@ -109,7 +110,7 @@
 					       ,newlhs))))
 			 (setq result
 			       (newcontext
-				(process-arithcan eqn)))
+				(process-no-canon eqn)))
 			 (cond ((eq result 'false)(retfalse))
 			       ((null result)
 				(setq results
@@ -152,12 +153,12 @@
       (equal
        (if (equal leftside rightside)  ;NSH eq->equal
 	   '(false)
-	   (let ((result (newcontext (process-arithcan atf))))
+	   (let ((result (newcontext (process-no-canon atf))))
 	     (cond ((eq result 'false) '(true))
 		   ((eq result 'true)  '(false))
 		   (t `((nequal ,leftside ,rightside))) ))))
       ((lessp lesseqp greaterp greatereqp)
-       (let ((result (newcontext (process-arithcan atf))))
+       (let ((result (newcontext (process-no-canon atf))))
 	 (cond ((eq result 'false) '(true))
 	       ((eq result 'true) '(false))
 	       (t (list (negineq atf))))))
@@ -186,7 +187,7 @@
 	  (false
 	   (let ((lexeq1
 		    (newcontext
-		     (process-arithcan `(equal ,(car left) ,(car right))))))
+		     (process-no-canon `(equal ,(car left) ,(car right))))))
 	       (case lexeq1
 		 (true
 		  (tupineqprocess (cdr left)(cdr right) rel))
