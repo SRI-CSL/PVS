@@ -677,11 +677,11 @@ measure_induction [T: TYPE, M: TYPE, m: [T -> M], <: (well_founded?[M])]: THEORY
 
 
 % epsilons provides a "choice" function that does not have a nonemptiness
-% requirement.  Given a predicate over the type t, epsilon produces an
-% element of satisfying that predicate if one exists, and otherwise
-% produces an arbitrary element of that type.
+% requirement on the predicate.  Given a predicate over the type t,
+% epsilon produces an element of satisfying that predicate if one exists,
+% and otherwise produces an arbitrary element of that type.
 % "epsilon! (x:t): p(x)" is translated to "epsilon(LAMBDA (x:t): p(x))".
-% Note that the type parameter is given as nonempty, whihc means that
+% Note that the type parameter is given as nonempty, which means that
 % there is an nonempty ASSUMPTION automatically generated for this theory.
 
 epsilons [T: NONEMPTY_TYPE]: THEORY
