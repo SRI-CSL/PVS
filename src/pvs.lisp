@@ -37,9 +37,7 @@
   (setq *started-with-minus-q* dont-load-user-lisp)
   (unless dont-load-patches
     (load-pvs-patches))
-  (pvs-init-globals)
-  (let ((*new-ground?* t))
-    (init-dc t)))
+  (pvs-init-globals))
 
 (defun pvs-init-globals ()
   (setq *pvs-modules* (make-hash-table :test #'eq :size 20 :rehash-size 10))
@@ -1149,7 +1147,7 @@
 			(*start-proof-display* display?)
 			(ojust (extract-justification-sexp
 				(justification fdecl)))
-			(new-ground? (new-ground? fdecl))
+			(decision-procedure (decision-procedure-used fdecl))
 			(*justifications-changed?* nil))
 		    (read-strategies-files)
 		    (let ((proof (cond (background?
@@ -1170,7 +1168,8 @@
 				(not (equal ojust
 					    (extract-justification-sexp
 					     (justification fdecl))))
-				(not (eq (new-ground? fdecl) new-ground?)))
+				(not (eq (decision-procedure-used fdecl)
+					 decision-procedure)))
 			(save-all-proofs *current-theory*))
 		      ;; If the proof status has changed, update the context.
 		      (update-context-proof-status fdecl))
@@ -1351,7 +1350,9 @@
 	      idlength
 	      (id decl)
 	      (proof-status-string decl)
-	      (if (justification decl) (if (new-ground? decl) 'N 'O) 'U)
+	      (if (justification decl)
+		  (decision-procedure-used decl)
+		  "Untried")
 	      (if (run-proof-time decl)
 		  (format nil "~v,2,-3f" timelength (run-proof-time decl))
 		  (format nil "~v<n/a~>" timelength))))
@@ -1438,8 +1439,8 @@
 	       (format out ";;; Proof ~a for formula ~a.~a~%"
 		 (id (default-proof fdecl)) (id (module fdecl)) (id fdecl))
 	       (format out
-		   ";;; developed with ~:[old~;new~] decision procedures~%"
-		 (new-ground? fdecl))
+		   ";;; developed with ~a decision procedures~%"
+		 (decision-procedure-used fdecl))
 	       (write (editable-justification (justification fdecl)
 					      nil nil (when full-label ""))
 		      :stream out :pretty t :escape t

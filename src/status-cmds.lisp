@@ -248,7 +248,9 @@
 		idlength
 		(id decl)
 		(proof-status-string decl)
-		(if (justification decl) (if (new-ground? decl) 'N 'O) 'U)
+		(if (justification decl)
+		    (decision-procedure-used decl)
+		    "Untried")
 		(if (run-time (default-proof decl))
 		    (format nil "~v,2f" timelength tm)
 		    (format nil "~v<n/a~>" timelength))))))
@@ -566,7 +568,7 @@
 	(format outstr "~3%~a.~a: ~a [~a](~a s)~2%"
 	  (id theory) (id decl)
 	  (proof-status-string decl)
-	  (if (justification decl) (if (new-ground? decl) 'N 'O) 'U)
+	  (if (justification decl) (decision-procedure-used decl) "Untried")
 	  (if (run-proof-time decl)
 	      (format nil "~,2,-3f" (run-proof-time decl))
 	      (format nil "n/a")))
@@ -974,7 +976,7 @@
 	  (or (description prf) "None")
 	  (string-downcase (status prf))
 	  (id fdecl)
-	  (if (new-ground? prf) "New" "Old")
+	  (if (justification fdecl) (decision-procedure-used fdecl) "None")
 	  (if (create-date prf)
 	      (date-string (create-date prf))
 	      "Unknown")

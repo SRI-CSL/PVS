@@ -138,13 +138,11 @@
 (defun load-parser-source ()
   (lf "pvs-lexer" :source)
   (lf "pvs-parser" :source)
-  (lf "pvs-unparser" :source)
   (lf "pvs-sorts" :source))
 
 (defun load-parser ()
   (lf "pvs-lexer")
   (lf "pvs-parser")
-  (lf "pvs-unparser")
   (lf "pvs-sorts"))
 
 (defun show (obj)
@@ -2180,13 +2178,9 @@ space")
 		    (if *assert-if-arith-hash*;;NSH(11.30.95) 
 			*assert-if-arith-hash*;;not real shadowing
 			(make-hash-table :test #'eq)))
-		   (*newdc* nil)
-		   (*new-ground?* nil)
-		   (*old-ground?* t))
+		   (*current-decision-procedure* *shostak-dpi*))
 	      (nprotecting-cong-state
-	       ((*dp-state* *init-dp-state*)
-		(*alists* *init-alists*)
-		(*ics-state* (ics_empty_state)))
+	       ((*dp-state* (dpi-empty-state)))
 	       (let ((result (if *translate-id-counter*
 				 (assert-if-simplify expr)
 				 (let* ((*translate-id-hash*
@@ -3062,10 +3056,10 @@ space")
 
 (defmethod sexp ((prinfo proof-info))
   (with-slots (id description create-date run-date script status refers-to
-		  real-time run-time interactive? new-ground?)
+		  real-time run-time interactive? decision-procedure-used)
       prinfo
     (list id description create-date run-date script status (sexp refers-to)
-	  real-time run-time interactive? new-ground?)))
+	  real-time run-time interactive? decision-procedure-used)))
 
 (defmethod sexp ((list list))
   (mapcar #'sexp list))
@@ -3122,14 +3116,14 @@ space")
   (ensure-default-proof decl)
   (setf (status (default-proof decl)) stat))
 
-(defmethod new-ground? ((decl formula-decl))
+(defmethod decision-procedure-used ((decl formula-decl))
   (when (proofs decl)
     (ensure-default-proof decl)
-    (new-ground? (default-proof decl))))
+    (decision-procedure-used (default-proof decl))))
 
-(defmethod (setf new-ground?) (new? (decl formula-decl))
+(defmethod (setf decision-procedure-used) (dp (decl formula-decl))
   (ensure-default-proof decl)
-  (setf (new-ground? (default-proof decl)) new?))
+  (setf (decision-procedure-used (default-proof decl)) dp))
 
 (defmethod proof-refers-to ((decl formula-decl))
   (when (proofs decl)
@@ -3149,7 +3143,7 @@ space")
 (defun make-default-proof (fdecl script &optional id description)
   (let* ((pid (or id (next-proof-id fdecl)))
 	 (prinfo (make-proof-info script pid description)))
-    (setf (new-ground? prinfo) *new-ground?*)
+    (setf (decision-procedure-used prinfo) *default-decision-procedure*)
     (push prinfo (proofs fdecl))
     (setf (default-proof fdecl) prinfo)))
 
