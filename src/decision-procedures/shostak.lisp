@@ -174,7 +174,7 @@ reduce all true assertions to true."
 	    (add-use t2 u cong-state))
 	   (t (let* ((u-find (dp-find u cong-state))
 		     (u_sig (replace-term-in-term t1 t2 u))
-		     (u_sigma (canonsig-merge (sigma u_sig cong-state) cong-state)))
+		     (u_sigma (canonsig (sigma u_sig cong-state) cong-state)))
 		(when *dbg* (break "interp"))
 		(cond
 		 ((true-p u-find) ;(when (false-p u_sigma) (break))
