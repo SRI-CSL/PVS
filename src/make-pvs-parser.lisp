@@ -12,6 +12,10 @@
 
 (in-package :user)
 
+(eval-when (eval load)
+  (unless (boundp '*pvs-path*)
+    (defvar *pvs-path* (sys:getenv "PVSPATH"))))
+
 #+allegro
 (eval-when (eval load)
   (setq *ignore-package-name-case* t))
@@ -39,13 +43,16 @@
 	(list #p"" (make-pathname :type *pvs-binary-type*)
 	      #p(:type "cl") #p(:type "lisp"))))
 
-(load "ess/dist-ess.lisp")
+(load (format nil "~a/ess/dist-ess.lisp" *pvs-path*))
 (generate-ess ergolisp sb)
 
-(compile-file-if-needed "src/ergo-gen-fixes")
-(load "src/ergo-gen-fixes")
+(compile-file-if-needed (format nil "~a/src/ergo-gen-fixes" *pvs-path*))
+(load (format nil "~a/src/ergo-gen-fixes" *pvs-path*))
 ;;(compile-file-if-needed "src/ergo-runtime-fixes")
 ;;(load "src/ergo-runtime-fixes")
 (let ((sbmake (intern (string :sb-make) :sb)))
-  (funcall sbmake :language "pvs" :working-dir "./src/" :unparser? nil))
+  (funcall sbmake
+	   :language "pvs"
+	   :working-dir (format nil "~a/src/" *pvs-path*)
+	   :unparser? nil))
 (excl:exit)

@@ -467,12 +467,15 @@
   (untypecheck-theory (argument ex)))
 
 (defmethod untypecheck-theory ((ex field-application))
-  (let ((op (mk-name-expr (id ex))))
-    (change-class ex 'application)
-    (setf (operator ex) op)
-    (untypecheck-theory ex)))
+  (if (fieldappl? ex)
+      (call-next-method)
+      (let ((op (mk-name-expr (id ex))))
+	(change-class ex 'application)
+	(setf (operator ex) op)
+	(untypecheck-theory ex))))
 
 (defmethod untypecheck-theory ((ex fieldappl))
+  (call-next-method)
   (untypecheck-theory (argument ex)))
 
 (defmethod untypecheck-theory ((ex application))

@@ -775,7 +775,7 @@
 	(conversion-decl (push d (conversions *current-context*)))
 	(auto-rewrite-minus-decl (push d (disabled-auto-rewrites
 					 *current-context*)))
-	(auto-rewrite-decl (push d (auto-rewrites *current-context*)))
+	(auto-rewrite-decl (add-auto-rewrite-to-context  d))
 	(type-def-decl (unless (enumtype? (type-expr d))
 			 (put-decl d (current-declarations-hash))))
 	(declaration (put-decl d (current-declarations-hash)))
@@ -3574,7 +3574,8 @@ space")
 
 (defun make-default-proof (fdecl script &optional id description)
   (let* ((pid (or id (next-proof-id fdecl)))
-	 (prinfo (make-proof-info script pid description)))
+	 (prinfo (make-proof-info (or script (tcc-strategy fdecl))
+				  pid description)))
     (setf (decision-procedure-used prinfo) *default-decision-procedure*)
     (push prinfo (proofs fdecl))
     (setf (default-proof fdecl) prinfo)))

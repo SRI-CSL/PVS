@@ -704,7 +704,8 @@
 			   (with-no-type-errors
 			    (resolve* (lhs mapping) 'module nil))))))
 	    (unless (or eres tres thres)
-	      (type-error (lhs mapping) "Map lhs does not resolve"))
+	      (type-error (lhs mapping)
+		"Map lhs does not resolve to an uninterpreted type or constant"))
 	    (if (cdr tres)
 		(cond (eres
 		       (setf (resolutions (lhs mapping)) eres))
