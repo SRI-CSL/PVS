@@ -239,7 +239,8 @@
       (setf (gethash lib *prelude-libraries*)
 	    (gethash lib *loaded-libraries*))
       (with-pvs-context libpath
-	(let ((*pvs-modules* (make-hash-table :test #'eq))
+	(let ((*current-theory* *current-theory*)
+	      (*pvs-modules* (make-hash-table :test #'eq))
 	      (*pvs-files* (make-hash-table :test #'equal))
 	      (*pvs-context-writable* (write-permission? libpath))
 	      (*pvs-context-changed* nil))
@@ -286,7 +287,8 @@
 	(unless (or (gethash lib *prelude-libraries*)
 		    (file-equal path *pvs-context-path*))
 	  (with-pvs-context path
-	    (let ((*pvs-context-writable* (write-permission? path))
+	    (let ((*current-theory* *current-theory*)
+		  (*pvs-context-writable* (write-permission? path))
 		  (*pvs-context-changed* nil))
 	      (restore-context)
 	      (multiple-value-bind (*pvs-files* *pvs-modules*)
@@ -332,7 +334,8 @@
 	  (file-equal lib *pvs-context-path*))
       (get-theory (copy theoryname 'library nil))
       (with-pvs-context path
-	(let ((*pvs-context-writable* (write-permission? path))
+	(let ((*current-theory* *current-theory*)
+	      (*pvs-context-writable* (write-permission? path))
 	      (*pvs-context-changed* nil))
 	  (restore-context)
 	  (multiple-value-bind (*pvs-files* *pvs-modules*)
