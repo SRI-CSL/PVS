@@ -719,7 +719,8 @@
 				 (remove-if-not #'tcc? (generated decl))))))))
 
 (defmethod pc-analyze* ((theory module))
-  (break))
+  ;; From theory mappings
+  nil)
 
 (defmethod pc-analyze* ((list list))
   (cond ((null list)
