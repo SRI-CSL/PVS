@@ -58,7 +58,7 @@
 			 res))
 		  (fres (or (delete-if-not #'fully-instantiated? nres) nres)))
 	     (setf (resolutions name) fres)
-	     (when (cdr nres)
+	     (when (cdr fres)
 	       (type-ambiguity name))))
 	  (t (setf (resolutions name) res))))
   name)
