@@ -518,11 +518,11 @@ your specification.
 @node 3.2 Bug Fixes
 @section Bug Fixes
 
-The bugs are shown in
-@uref{http://www.csl.sri.com/cgi-bin/pvs/pvs-bug-list/,the PVS Bugs
-List}.  Not all of these have been fixed yet.  Those marked
-@code{feedback} are the ones that have been fixed for this release.
-The more significant bug fixes include the following.
+@uref{http://www.csl.sri.com/cgi-bin/pvs/pvs-bug-list/,The PVS Bugs
+List} shows the status of reported bugs.  Not all of these have been
+fixed as of PVS version 3.2.  Those marked @code{feedback} or
+@code{closed} are the ones that have been fixed.  The more significant
+bug fixes are described in the following subsections.
 
 @menu
 * Retypechecking::
@@ -607,9 +607,9 @@ backtrace.  If it shows something like the following, then you know
 you are in the ground decision procedure.
 @example
  find1 <-
-   pr-find <- chainineqs <- transclosure <- addineq <- process1 <- ineqsolve <-
-   arithsolve <- solve <- pr-merge <- process1 <- ineqsolve <- arithsolve <-
-   solve
+   pr-find <- chainineqs <- transclosure <- addineq <- process1 <-
+   ineqsolve <- arithsolve <- solve <- pr-merge <- process1 <-
+   ineqsolve <- arithsolve <- solve
 @end example
 At this point, you can either run @code{(restore)} to try a different
 command (like @code{name-replace}), or @code{:cont} in the hope that
