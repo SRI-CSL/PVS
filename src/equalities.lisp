@@ -1616,9 +1616,10 @@ where db is to replace db1 and db2")
 (defmethod subtype-of*? ((t1 subtype) (t2 subtype))
   (with-slots ((st1 supertype) (pr1 predicate)) t1
     (with-slots ((st2 supertype) (pr2 predicate)) t2
-      (if (and (typep pr1 'recognizer-name-expr)
-	       (typep pr2 'recognizer-name-expr)
-	       (tc-eq-ops pr1 pr2))
+      (if (or (and (typep pr1 'recognizer-name-expr)
+		   (typep pr2 'recognizer-name-expr)
+		   (tc-eq-ops pr1 pr2))
+	      (same-predicate? t1 t2 nil))
 	  (subtype-of*? st1 st2)
 	  (call-next-method)))))
 
