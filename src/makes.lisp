@@ -1585,7 +1585,6 @@
 (defun make!-implication (ex1 ex2)
   (assert (and (type ex1) (type ex2)
 	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
-  
   (cond ((tc-eq ex1 *true*)
 	 ex2)
 	((tc-eq ex1 *false*)
