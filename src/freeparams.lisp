@@ -265,17 +265,21 @@
     (free-params* (car resolutions) frees)))
 
 (defmethod free-params* ((res resolution) frees)
-  (with-slots ((decl declaration) (mi module-instance)) res
-    (free-params-res decl mi frees)))
+  (with-slots ((decl declaration) (mi module-instance) type) res
+    (free-params-res decl mi type frees)))
 
-(defmethod free-params-res ((decl formal-decl) mi frees)
-  (declare (ignore mi))
+(defmethod free-params-res ((decl formal-decl) mi type frees)
+  (declare (ignore mi type))
   (if (memq decl frees)
       frees
       (cons decl frees)))
 
-(defmethod free-params-res (decl (mi modname) frees)
-  (declare (ignore decl))
+(defmethod free-params-res ((decl field-decl) mi type frees)
+  (declare (ignore mi))
+  (free-params* type frees))
+
+(defmethod free-params-res (decl (mi modname) type frees)
+  (declare (ignore decl type))
   (with-slots (actuals) mi
     (if actuals
 	(let ((afrees (free-params* actuals nil)))
