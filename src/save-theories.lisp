@@ -921,6 +921,10 @@
 		(put-decl obj))))
 	  (call-next-method))))
 
+(defmethod restore-object* :around ((obj nonempty-type-decl))
+  (call-next-method)
+  (set-nonempty-type (type-value obj)))
+
 (defmethod restore-object* :around ((obj type-decl))
   (call-next-method)
   (assert (not (store-print-type? (type-value obj))))
