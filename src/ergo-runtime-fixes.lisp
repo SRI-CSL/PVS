@@ -36,7 +36,6 @@
 (setq sbrt::indent-unit 0)
 
 
-
 ;;; PARSE: From here until UNPARSE: the functions are for parsing
 
 
@@ -64,7 +63,8 @@
 ;;; This function is invoked by the generated parser.
 
 (defun make-sb-term (sim-op args &optional splace comment)
-  (assert splace)
+  (declare (ignore comment))
+  ;;(assert splace)
   (let* ((result (term:mk-sim-term sim-op args))
 	 (eplace (get-end-place sim-op args splace nil)))
     (when (and (eq sim-op 'elsif)
@@ -182,41 +182,6 @@
 			     *abs-syn-package*)))
 	       (values 'sbst::!id! id place comment))))))
 
-(DEFUN LEX-[ (STREAM SYMBOL)
-       (DECLARE (IGNORE SYMBOL))
-       (if *last-token-was-with*
-	   'sbst::[
-       (LET (HOLDCHAR)
-         (SETF HOLDCHAR
-               (LEXICAL-READ-CHAR STREAM :EOF))
-         (IF (AND PVS-ESCAPE-CHAR
-                  (EQL HOLDCHAR PVS-ESCAPE-CHAR))
-             (SETF HOLDCHAR
-                   (LEXICAL-READ-CHAR STREAM :EOF)))
-         (COND ((EQL HOLDCHAR #\#) 'SBST::[#)
-               ((EQL HOLDCHAR #\]) 'SBST::[])
-               ((EQL HOLDCHAR #\|)
-                (SETF HOLDCHAR
-                      (LEXICAL-READ-CHAR STREAM :EOF))
-                (IF (AND PVS-ESCAPE-CHAR
-                         (EQL HOLDCHAR PVS-ESCAPE-CHAR))
-                    (SETF HOLDCHAR
-                          (LEXICAL-READ-CHAR STREAM :EOF)))
-                (COND ((EQL HOLDCHAR #\|)
-                       (SETF HOLDCHAR
-                             (LEXICAL-READ-CHAR STREAM :EOF))
-                       (IF (AND PVS-ESCAPE-CHAR
-                                (EQL HOLDCHAR PVS-ESCAPE-CHAR))
-                           (SETF HOLDCHAR
-                                 (LEXICAL-READ-CHAR STREAM :EOF)))
-                       (COND ((EQL HOLDCHAR #\]) 'SBST::[\|\|])
-                             (T
-                              (LEXICAL-UNREAD-CHAR STREAM)
-                              (ILLEGAL-TOKEN-ERROR "[||")
-                              :ILLEGAL-TOKEN)))
-                      (T (LEXICAL-UNREAD-CHAR STREAM) 'SBST::[\|)))
-               (T (LEXICAL-UNREAD-CHAR STREAM) 'SBST::[)))))
-
 (in-package 'sbrt)
 
 ;;; Sets *end-of-last-token* to the place in the lexical stream before
@@ -225,8 +190,6 @@
 (defvar *end-of-last-token* nil "place where reading of the
   last token ended, points to beginning of white space before current
   first token in token stream")
-
-(defvar *last-token-was-with* nil)
 
 (defvar *collect-comments* nil
   "Flag indicating that it is all right to collect comments.  Set by gettoken
@@ -284,6 +247,7 @@ with the comment so as to put it in the proper place")
 		      *hold-a4*)
 		     (t (multiple-value-bind (v1 v2 v3 v4)
 			    (funcall *reader-fun*)
+			  (declare (ignore v2))
 			  (when (eq v1 'sbst::elsif)
 			    (push v3 pvs::*elsif-places*))
 			  v4)))))
@@ -340,6 +304,7 @@ with the comment so as to put it in the proper place")
 
 (defun apply-lexical-terminal-constructor (type token &optional place
 						comment)
+  (declare (ignore comment))
   (let ((lterm (ecase type
 		 (sbst::!id! (mk-id token))
 		 (sbst::!string! (mk-string token))
@@ -557,12 +522,13 @@ with the comment so as to put it in the proper place")
       (let ((first? t))
 	(dolist (cmt *newline-comments-to-output*)
 	  (when (= (second cmt) *num-keywords-skipped*)
-	    (let ((indent (floor (car *indent*))))
+	    ;;(let ((indent (floor (car *indent*))))
 	      (format *s* "~V%~V,0@T~a~%~V,0@T"
 		(if (or (third cmt) (not first?)) 0 0)
 		(if (= (second cmt) -1) 0 2)
 		(first cmt)
-		0)) ;was indent
+		0)
+	      ;;) ;was indent
 	    ;;(setq *newline-printed* t)
 	    (setq *newline-comments-to-output*
 		  (remove cmt *newline-comments-to-output*))))))
@@ -579,6 +545,7 @@ with the comment so as to put it in the proper place")
 
 (defun compute-octs-and-string-aux (aw leftx topy topdent
 				    more-on-topline? more-on-botline?)
+  (declare (ignore leftx))
   ;;(assert (>= topdent leftx))
   (let ((x topdent)  
 	(y topy)
