@@ -83,6 +83,8 @@ list of positive numbers" occurrence)
 		  (expand-defn name fmla occurrence)
 		  fmla))
 	     )
+	#+pvsdebug (assert (fully-instantiated? new-fmla))
+	#+pvsdebug (assert (fully-typed? new-fmla))
 	(if (eq fmla new-fmla)
 	    (expand-sforms* name (cdr sforms)
 			    sformnums occurrence
@@ -193,23 +195,21 @@ list of positive numbers" occurrence)
 	   (< *max-occurrence* *count-occurrences*))
       expr
       (let* ((op* (operator* expr)))
-	(if (and (name? op*);; SO - 12-18-92
+	(if (and (name? op*)
 		 (same-id op* name)
 		 (null occurrence)
 		 *if-simplifies*)
 	    (let* ((def-axioms (create-formulas (resolution op*))))
-	      (multiple-value-bind
-		  (subst rhs)
+	      (multiple-value-bind (subst rhs)
 		  (match-defns expr def-axioms)
 		(if (not (eq subst 'fail))
 		    (let* ((xsubst
 			    (loop for (x . y) in subst
 				  collect
 				  (cons x (expand-defn name y occurrence))))
-			   (subexpr  (substit rhs xsubst)))
-		      (multiple-value-bind
-			  (sig value)
-			  (lazy-assert-if  subexpr)
+			   (subexpr (substit rhs xsubst)))
+		      (multiple-value-bind (sig value)
+			  (lazy-assert-if subexpr)
 			(cond ((and (or (typep subexpr 'cases-expr)
 					(branch? subexpr))
 				    (eq sig 'X))
