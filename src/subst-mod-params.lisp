@@ -318,9 +318,11 @@
     (adt-expand-positive-subtypes ntype)))
 
 (defun adt-expand-positive-subtypes (type)
-  (gensubst type
-    #'adt-expand-positive-subtypes!
-    #'adt-expand-positive-subtypes?))
+  (if (fully-instantiated? type)
+      (gensubst type
+	#'adt-expand-positive-subtypes!
+	#'adt-expand-positive-subtypes?)
+      type))
 
 (defmethod adt-expand-positive-subtypes? ((ex type-name))
   #+lucid (restore-adt ex)
