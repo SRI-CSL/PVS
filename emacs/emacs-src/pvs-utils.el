@@ -1632,7 +1632,7 @@ Point will be on the offending delimiter."
 ;;; files, typechecking a file, then running prove-importchain on it.
 ;;; After, it runs any functions in pvs-validate-hooks.
 (defun pvs-validate-typecheck-and-prove (filename &optional show-proof?
-						  importchain? theory)
+						  importchain? theory formula)
   (pvs-validate-typecheck filename)
   (set-rewrite-depth 0)
   (let ((current-prefix-arg t)
@@ -1644,12 +1644,18 @@ Point will be on the offending delimiter."
       (setq pvs-verbose 3)
       (pvs-send-and-wait "(setq *pvs-verbose* 3)"))
     (if importchain?
-	(if theory
-	    (prove-importchain theory)
-	    (prove-importchain filename))
-	(if theory
-	    (prove-theory theory)
-	    (prove-pvs-file filename)))
+	(if formula
+	    (pvs-message "Don't set importchain? and include formula")
+	    (if theory
+		(prove-importchain theory)
+		(prove-importchain filename)))
+	(if formula
+	    (ilisp-send (format "(prove-formula \"%s\" \"%s\" t)"
+			    (or theory filename) formula)
+			nil 'pr t 'pvs-handler)
+	    (if theory
+		(prove-theory theory)
+		(prove-pvs-file filename))))
     (setq pvs-verbose overbose)
     (pvs-send-and-wait (format "(setq *pvs-verbose* %s)" overbose)))
   (run-hooks 'pvs-validate-proof-hooks))
