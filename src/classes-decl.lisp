@@ -412,6 +412,8 @@
 
 (defcl termination-tcc (tcc-decl))
 
+(defcl judgement-tcc (subtype-tcc))
+
 (defcl existence-tcc (tcc-decl))
 
 (defcl assuming-tcc (tcc-decl)
