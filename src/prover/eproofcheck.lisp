@@ -570,7 +570,7 @@ Would you like to rerun the proof?~%")))
 					   x))
 				   (cdr pp)))
 		    pp)))
-	(if quiet-flag pp (format-if pp))))))
+	(if quiet-flag pp (format-if "~a" pp))))))
 
 
 (defun if-form? (x) (and (typep x 'sequence)
