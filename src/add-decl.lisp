@@ -76,7 +76,7 @@
 		(setq *context-modified* t))
 	      (let ((*current-context* (when typechecked? (context pdecl))))
 		(add-declarations-to-theory decls typechecked? assuming?))
-	      (add-new-decls-to-context pdecl decls theory)
+	      (add-new-decls-to-contexts pdecl decls theory)
 	      (reset-add-decl-places odecl decls theory filename)
 	      (let ((fe (get-context-file-entry filename)))
 		(ignore-errors (delete-file (make-binpath filename)))
@@ -87,18 +87,53 @@
 	  (pvs-message "File has been modified"))
       (pvs-message "Not adding declaration")))
 
-(defun add-new-decls-to-context (pdecl decls theory)
-  (let ((*current-context* (saved-context theory)))
+(defun add-new-decls-to-contexts (pdecl decls theory)
+  ;; First add to the contexts of the local theory
+  (dolist (elt (memq pdecl (all-decls theory)))
+    (when (importing? elt)
+      (add-new-decls-to-context decls (saved-context elt)))
+    (add-new-decls-to-context decls (saved-context theory)))
+  ;; Now add to all other theory contexts
+  (maphash #'(lambda (id th)
+	       (declare (ignore id))
+	       (unless (eq th theory)
+		 (dolist (elt (all-decls th))
+		   (when (and (importing? elt)
+			      (saved-context elt)
+			      (gethash theory
+				       (using-hash (saved-context elt))))
+		     (add-new-decls-to-context decls (saved-context elt))))
+		 (when (and (saved-context th)
+			    (gethash theory (using-hash (saved-context th))))
+		   (add-new-decls-to-context decls (saved-context th)))))
+	   *pvs-modules*)
+  ;; Finally add to the prover/evaluator contexts
+  (when (and *current-context*
+	     (if (eq theory (theory *current-context*))
+		 (memq (declaration *current-context*)
+		       (memq pdecl (all-decls theory)))
+		 (gethash theory (using-hash *current-context*))))
+    (cond (*in-checker*
+	   (add-new-decls-to-prover-contexts decls *top-proofstate*))
+	  (*in-evaluator*
+	   (add-new-decls-to-context decls *current-context*)))))
+
+(defun add-new-decls-to-prover-contexts (decls proofstate)
+  (let ((*symbol-tables* nil))
+    (declare (special *symbol-tables*))
+    (add-new-decls-to-prover-contexts* decls proofstate)))
+
+(defun add-new-decls-to-prover-contexts* (decls proofstate)
+  (declare (special *symbol-tables*))
+  (unless (memq (declarations-hash (context proofstate)) *symbol-tables*)
+    (add-new-decls-to-context decls (context proofstate)))
+  (dolist (ps (children proofstate))
+    (add-new-decls-to-prover-contexts* decls ps)))
+
+(defun add-new-decls-to-context (decls context)
+  (let ((*current-context* context))
     (dolist (d decls)
-      (put-decl d (current-declarations-hash))))
-  (when (and *in-checker*
-	     *current-context*
-	     (eq theory (theory *current-context*))
-	     (memq (declaration *current-context*)
-		   (cdr (memq pdecl (append (assuming theory)
-					    (theory theory))))))
-    (dolist (d decls)
-      (put-decl d (current-declarations-hash)))))
+      (put-decl d (declarations-hash context)))))
 
 (defun typecheck-new-decls (decls pdecl)
   (let ((*insert-add-decl* nil)
