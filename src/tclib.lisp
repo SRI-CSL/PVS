@@ -287,7 +287,7 @@
 		   (chmod "ug+w" (namestring bfile))))))
 	(pvs-message "Loading ~a..." (or bfile lfile))
 	(multiple-value-bind (ignore error)
-	    (load (or bfile lfile))
+	    (ignore-errors (load (or bfile lfile)))
 	  (declare (ignore ignore))
 	  (if error
 	      (pvs-message "Error loading ~a:~%  ~a"
@@ -544,11 +544,23 @@
 	     lib-ref))
 	  (t (pvs-message "Library ~a is not loaded" lib-ref)))))
 
+(defun list-prelude-libraries ()
+  (let ((plibs (prelude-libraries)))
+    (if plibs
+	(let ((liblen (min (reduce #'max plibs
+				   :key #'(lambda (x) (length (car x))))
+			   25)))
+	  (pvs-buffer "PVS Prelude Libraries"
+	    (format nil "~{~%~{~va - ~a~}~}"
+	      (mapcar #'(lambda (plib) (cons liblen plib)) plibs))
+	    t t))
+	(pvs-message "No prelude-libraries found in the current context"))))
+
 (defun prelude-libraries ()
   (let ((libs nil))
     (maphash #'(lambda (lib theories)
 		 (declare (ignore theories))
-		 (push lib libs))
+		 (push (list lib (libref-to-pathname lib)) libs))
 	     *prelude-libraries*)
     libs))
 
