@@ -67,6 +67,7 @@
 (defvar *judgements-added* nil)
 
 (defun add-appl-judgement-node (jdecl graph)
+  (assert (application-judgement? jdecl))
   (add-appl-judgement-node* jdecl graph (list jdecl) nil nil))
 
 (defun add-appl-judgement-node* (jdecl graph new-node new-graph ignore)
@@ -176,15 +177,17 @@
 ;;; add-judgement-decl (subtype-judgement) is invoked from
 ;;; typecheck* (subtype-judgement)
 
-(defmethod add-judgement-decl ((decl subtype-judgement))
+(defmethod add-judgement-decl ((decl subtype-judgement) &optional quiet?)
   ;; Note that this can be called by prove-decl before *in-checker* is t
+  (declare (ignore quiet?))
   (assert (not *in-checker*))
   (add-to-known-subtypes (subtype decl) (type decl)))
 
 ;;; Invoked from typecheck* (number-judgement)
 
-(defmethod add-judgement-decl ((decl number-judgement))
+(defmethod add-judgement-decl ((decl number-judgement) &optional quiet?)
   ;; Note that this can be called by prove-decl before *in-checker* is t
+  (declare (ignore quiet?))
   (assert (not *in-checker*))
   (clrhash (judgement-types-hash (current-judgements)))
   (let* ((num (number (number-expr decl)))
@@ -203,8 +206,9 @@
 
 ;;; Invoked from typecheck* (name-judgement)
 
-(defmethod add-judgement-decl ((jdecl name-judgement))
+(defmethod add-judgement-decl ((jdecl name-judgement) &optional quiet?)
   ;; Note that this can be called by prove-decl before *in-checker* is t
+  (declare (ignore quiet?))
   (assert (not *in-checker*))
   (let* ((decl (declaration (name jdecl)))
 	 (entry (assq decl (name-judgements-alist (current-judgements)))))
@@ -241,9 +245,9 @@
 				     (name-judgements-alist
 				      (current-judgements))))))))))
 
-;;; Invoked from typecheck* (application-judgement)
+;;; Invoked from typecheck* (application-judgement) and from decl-context
 
-(defmethod add-judgement-decl ((jdecl application-judgement))
+(defmethod add-judgement-decl ((jdecl application-judgement) &optional quiet?)
   ;; Note that this can be called by prove-decl before *in-checker* is t
   (assert (not *in-checker*))
   (let* ((decl (declaration (name jdecl)))
@@ -256,7 +260,7 @@
 			      (< (1- currynum) (length vector)))
 		     (aref vector (1- currynum))))
 	   (new-ventry (if ventry
-			   (add-judgement-decl-to-graph jdecl ventry)
+			   (add-judgement-decl-to-graph jdecl ventry quiet?)
 			   (make-instance 'application-judgements
 			     'judgements-graph (list (list jdecl))))))
       (unless (eq ventry new-ventry)
@@ -894,23 +898,7 @@
 	  (memq theory (free-params-theories j)))
       (let* ((smphash (cdr (get-subst-mod-params-caches thname)))
 	     (hj (gethash j smphash)))
-	(if hj
-	    (if (and (fully-instantiated? thname)
-		     (eq (module hj) (current-theory)))
-		hj
-		(let* ((nj (copy hj 'module (current-theory)))
-		       (oj (car (member nj
-					(remove-if-not
-					    #'(lambda (d)
-						(eq (module d)
-						    (current-theory)))
-					  (get-declarations (id nj)))
-					:test #'add-decl-test))))
-		  (cond (oj oj)
-			(t (add-decl nj)
-			   (assert (or (null *insert-add-decl*)
-				       (memq nj (all-decls (current-theory)))))
-			   nj))))
+	(or hj
 	    (let* ((nj (lcopy j
 			 'declared-type (subst-mod-params (declared-type j)
 							  thname theory)
@@ -940,23 +928,7 @@
 	  (memq theory (free-params-theories j)))
       (let* ((smphash (cdr (get-subst-mod-params-caches thname)))
 	     (hj (gethash j smphash)))
-	(if hj
-	    (if (and (fully-instantiated? thname)
-		     (eq (module hj) (current-theory)))
-		hj
-		(let* ((nj (copy hj 'module (current-theory)))
-		       (oj (car (member nj
-					(remove-if-not
-					    #'(lambda (d)
-						(eq (module d)
-						    (current-theory)))
-					  (get-declarations (id nj)))
-					:test #'add-decl-test))))
-		  (cond (oj oj)
-			(t (add-decl nj)
-			   (assert (or (null *insert-add-decl*)
-				       (memq nj (all-decls (current-theory)))))
-			   nj))))
+	(or hj
 	    (let* ((nj (lcopy j
 			 'declared-type (subst-mod-params (declared-type j)
 							  thname theory)
@@ -987,25 +959,7 @@
 	  (memq theory (free-params-theories j)))
       (let* ((smphash (cdr (get-subst-mod-params-caches thname)))
 	     (hj (gethash j smphash)))
-	(if hj
-	    (if (and (fully-instantiated? thname)
-		     (eq (module hj) (current-theory)))
-		hj
-		(let* ((nj (copy hj 'module (current-theory)))
-		       (oj (car (member nj
-					(remove-if-not
-					    #'(lambda (d)
-						(eq (module d)
-						    (current-theory)))
-					  (get-declarations (id nj)))
-					:test #'add-decl-test))))
-		  (cond (oj
-			 (assert (memq oj (all-decls (current-theory))))
-			 oj)
-			(t (add-decl nj)
-			   (assert (or (null *insert-add-decl*)
-				       (memq nj (all-decls (current-theory)))))
-			   nj))))
+	(or hj
 	    (let* ((nj (lcopy j
 			 'declared-type (subst-mod-params (declared-type j)
 							  thname theory)
@@ -1023,7 +977,11 @@
 	      (cond (oj
 		     (assert (memq oj (all-decls (current-theory))))
 		     oj)
-		    (t (setf (gethash j smphash) nj)
+		    (t (assert (or (eq nj j)
+				   (every #'(lambda (fp)
+					      (eq (module fp) (current-theory)))
+					  (free-params nj))))
+		       (setf (gethash j smphash) nj)
 		       (unless (eq j nj)
 			 (add-decl nj)
 			 (assert (or (null *insert-add-decl*)
@@ -1190,7 +1148,9 @@
     (type-constraints* (cdr list) ex (nconc car-preds preds) all?)))
 
 (defmethod type-constraints* ((te subtype) ex preds all?)
-  (cond ((or (member te *subtypes-seen* :test #'tc-eq)
+  (cond ((everywhere-true? (predicate te))
+	 (type-constraints* (supertype te) ex preds all?))
+	((or (member te *subtypes-seen* :test #'tc-eq)
 	     (and (not all?)
 		  preds
 		  (ignored-type-constraint te)))
