@@ -844,9 +844,17 @@
 ;;NSH(1.15.94): Added WHEN clause in front of push of nrmineq.  This is needed
 ;;to prevent loops where increasingly large inequalities are introduced.
 ;;DAC(1/28/94): Added nrmineq-unchanged and pushed more often.
-
+;;NSH(10.15.02): added preprocessing integercut to eliminate integer
+;;incompleteness: 3f<n => 3f <= n-1.
 (defun normineq(lit)
-  (integercut (normineq1 lit)))
+  (let* ((ilit (integercut lit))  
+	 (result (if (consp ilit)  
+		     (integercut (normineq1 ilit))
+		     ilit)))
+    (if (and (eq result 'ident)
+	     (not (eq lit ilit)))
+	'true
+	result)))
   
 ; normalization other than Gomery cut
 
