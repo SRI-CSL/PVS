@@ -3358,7 +3358,8 @@ list2finseq[T: TYPE]: THEORY
   finseq2list_rec(fs, (n: nat | n <= length(fs))): RECURSIVE list[T] =
     IF n = 0
        THEN null
-       ELSE cons(seq(fs)(n-1), finseq2list_rec(fs, n-1))
+       ELSE cons(fs`seq(length(fs) - n),
+                 finseq2list_rec(fs, n-1))
     ENDIF
     MEASURE n
 
