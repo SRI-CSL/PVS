@@ -22,6 +22,8 @@
 
 (export '(all none))
 
+(export '(*abs-syn-package*))
+
 ;; require
 
 ;; use-package
