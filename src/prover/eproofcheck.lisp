@@ -982,7 +982,7 @@
 	   (pvs-message
 	       "Cannot change default decision procedures while in the prover")))
 	(t (new-ground)
-	   (pvs-message "New decision procedures are now the defualt"))))
+	   (pvs-message "New decision procedures are now the default"))))
 
 (defun old-decision-procedures ()
   (cond (*in-checker*
@@ -990,7 +990,7 @@
 	   (pvs-message
 	       "Cannot change default decision procedures while in the prover")))
 	(t (old-ground)
-	   (pvs-message "Old decision procedures are now the defualt"))))
+	   (pvs-message "Old decision procedures are now the default"))))
 
 (defvar *report-mode* nil)
 (defvar *print-ancestor* nil)
