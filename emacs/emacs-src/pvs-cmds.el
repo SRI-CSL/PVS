@@ -1193,6 +1193,13 @@ built-in prelude may not be removed this way."
   (save-some-pvs-files)
   (pvs-send (format "(remove-prelude-library \"%s\")" dir)))
 
+(defpvs list-prelude-libraries library ()
+  "List the prelude-libraries of the current context
+
+Shows the currently loaded prelude libraries."
+  (interactive)
+  (pvs-send-and-wait "(list-prelude-libraries)"
+		     'list-prelude-libraries nil 'dont-care))
 
 (defun pvs-complete-prelude-library ()
   (let ((prelude-libs (pvs-send-and-wait "(prelude-libraries)"
@@ -1200,7 +1207,7 @@ built-in prelude may not be removed this way."
     (if (null prelude-libs)
 	(error "There are no prelude libraries in this context")
 	(list (completing-read "Remove library: "
-		(mapcar 'list prelude-libs) nil 't nil)))))
+		prelude-libs nil 't nil)))))
 
 
 ;;;---------------------------------------------
