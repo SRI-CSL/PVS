@@ -1395,7 +1395,7 @@ where db is to replace db1 and db2")
 	     (aexp (car aexprs))
 	     (aty (if (dep-binding? adep) (type adep) adep))
 	     (ety (if (dep-binding? edep) (type edep) edep))
-	     (preds (compatible-preds* aty ety aexp nil)))
+	     (preds (compatible-predicates (judgement-types+ aexp) ety aexp)))
 	(compatible-tupletype-preds
 	 (if (dep-binding? adep)
 	     (substit (cdr atypes) (acons adep aexp nil))
@@ -1440,8 +1440,8 @@ where db is to replace db1 and db2")
 		  (aex (unless (tc-eq (type afld) (type efld))
 			 (get-field-application afld aexpr)))
 		  (preds (when aex
-			   (compatible-preds*
-			    (type afld) (type efld) aex nil))))
+			   (compatible-predicates
+			    (judgement-types+ aex) (type efld) aex))))
 	     (compatible-recordtype-preds
 	      (remove afld aflds :test #'eq)
 	      (cdr eflds)
