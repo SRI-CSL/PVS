@@ -4406,10 +4406,7 @@ might be necessary in some rare cases.  For the most part, the new
 decision procedures should subsume the old ones. 
 The PVS Emacs command \emacstt{new-decision-procedures} switches from the
 old to the new decision procedures and \emacstt{old-decision-procedures}
-can be used to switch back to the old ones.  \comment{The commands
-\indtt{ground-forward-chain}, \indtt{ground-rewrite}, and
-\indtt{install-ground-rewrites} are relevant only when the new decision
-procedures are being employed.  }
+can be used to switch back to the old ones.
 
 
 
@@ -4696,93 +4693,6 @@ beta-reduction,  simplification using ground decision procedures, and
 rewriting with respect to the installed rewrite rules.
 
 \end{description}
-
-\comment{
-\prsubsection{ground forward chain}{Installing Automatic Ground Forward
-Chain Rules}
-\begin{description}
-
-\item[syntax:] \texttt{(ground-forward-chain \rest\ \emph{names})}
-
-\item[effect:] The definitions, lemmas, and antecedent formulas named (or
-numbered) in \emph{names} are made available for the descendant nodes of
-the current proof node as automatic ground forward chain rules to be used
-for simplification by the \texttt{assert} rule.  Only formulas of a certain
-special form can be considered as automatic ground forward chain rules.
-An automatic ground forward chain rule is of the form $A_1 \wedge
-\ldots\wedge A_n \supset C$.
-
-An example forward chain formula is: $x >= y \wedge y >= x \supset x = y$.
-After this rule has been declared a ground forward chain rule whenever the
-decision procedures discover in its state for some ground terms $t_1,
-t_2$, that $t_1 >= t_2$ and $t_2 >= t_1$, it will automatically add $t_1 =
-t_2$ to its set of known facts.  It will then be able to automatically
-discharge sequents that previously would require the user to explicitly
-invoke the AntiSymmetry axiom.
-
-It is important to note that \indtt{ground-forward-chain} has no visible effect
-on the sequent, but  
-it affects the subsequent behavior of \indtt{assert} in any lower branch
-of the proof.  The scope of an \indtt{ground-forward-chain} declaration is
-restricted to the branch of the proof below it.
-
-The \indtt{ground-forward-chain} command works only in conjunction with
-the new decision procedures.   
-
-
-\item[usage:] \texttt{(ground-forward-chain "AntiSymmetry" "Transitivity")}
-
-\item[errors:] Due to the presence of actual parameters, {\tt
-ground-forward-chain} can generate parsing and typechecking errors, in
-addition to those listed below.
-\begin{description}
-
-\item[{\bf No resolutions for \ldots}:] The system was unable to find
-ground forward chain declarations corresponding to the given names.
-\end{description}
-
-\end{description}
-
-\prdolsubsection{ground-forward-chain-theory}{Automatic Ground Forward 
-Chaining Relative to a Theory}
-
-\begin{description}
-
-\item[syntax:] \texttt{(ground-forward-chain-theory \emph{name} \optl\  {\em
-exclude} \emph{tccs?})}
-
-\item[effect:] 	 "Takes all the ground forward chain rules in the theory
-\emph{name} and declares these to be ground forward chain rules.
-Declarations named in EXCLUDE are not introduced.
-By default, TCCs in the theory are excluded but they can be included
-when the TCC? flag is T.  When \texttt{ground-forward-chain-theory} is
-applied to the current theory, all of the ground forward chain rules that
-precede the formula being proved in the theory are declared to be
-automatic.
-
-The \indtt{ground-forward-chain-theory} command works only in conjunction with
-the new decision procedures.   
-
-
-\begin{usage}{}
-
-\item[]\texttt{(ground-forward-chain-theory "ban_second_logic")}
-\end{usage}
-
-\item[errors:] Apart from parsing and typechecking errors, the following
-error messages are possible:
-\begin{description}
-
-\item[{\bf Could not find theory \ldots}:] The named theory does not
-appear in the current context.  Add the theory to the \texttt{USING} list
-if needed.
-
-\item[{\bf \ldots is not a fully instantiated theory}:] Provide the
-relevant actual parameters.
-\end{description}
-   
-\end{description}
-}
 
 
 \prdolsubsection{record}{Recording assumptions for the decision procedures}
@@ -6007,7 +5917,7 @@ Negation & \texttt{(negation?\ expr)} \\\hline
 Disjunction & \texttt{(disjunction?\ expr)} \\\hline
 Conjunction & \texttt{(conjunction?\ expr)} \\\hline
 Implication & \texttt{(implication?\ expr)} \\\hline
-Equality & \texttt{(equality?\ expr)} \\\hline
+Equality & \texttt{(equation?\ expr)} \\\hline
 Equivalence/Equality & \texttt{(iff?\ expr)} \\\hline
 Conditional & \texttt{(branch?\ expr)} \\\hline
 Universal Formula & \texttt{(forall-expr?\ expr)} \\\hline
@@ -6192,14 +6102,15 @@ step1} does nothing, \ie\ behaves as a \texttt{(skip)} step, then {\em
 step3} is applied to the current goal.  The \indtt{try} step thus
 provides a backtracking mechanism for proof search that can be
 controlled by appropriately signalling failure.  The following
-identities describe the behavior of the \indtt{try} strategy:
+identities describe the behavior of the \indtt{try} strategy (assuming
+that the \texttt{lemma} step succeeds):
 \begin{enumerate}\label{trypage}
 \item \texttt{(try (skip) (assert) (split)) = (split)}
 \item \texttt{(try (try (skip) (assert) (fail)) (split) (flatten)) = (flatten)} 
 \item \texttt{(try (try (lemma "assoc") (fail) (assert)) (split) (flatten))
 = (flatten)}
 \item \texttt{(try (try (lemma "assoc") (assert) (fail)) (split) (flatten))
-= (flatten)}
+= (then (lemma "assoc") (assert) (split))}
 \end{enumerate}
 
 The important thing to note is that if step $A$ succeeds on the current

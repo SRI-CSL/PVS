@@ -8,7 +8,15 @@ whenever there is a type mismatch.  They are similar to the implicit
 coercions for converting integers to floating point used in many
 programming languages.  PVS provides some builtin conversions in the
 prelude, but conversions may also be provided by the user using
-\emph{conversion declarations}.
+\emph{conversion declarations}.  A conversion declaration consists of the
+keyword \texttt{CONVERSION}, optionally followed by `\texttt{+}' or
+`\texttt{-}' and an expression.  \texttt{CONVERSION+} is equivalent to
+\texttt{CONVERSION}.  The expression must be of type a (subtype of) a
+function type, where the domain and range are not compatible.  This is
+because conversions are only triggered when there would otherwise be a
+type error, and compatible types may lead to unproveable TCCs, but not to
+type errors.  Judgements are the proper way to control the generation of
+TCCs, see Section~\ref{judgements} for details.
 
 \subsection{Conversion Examples}
 \label{conversion-examples}
@@ -25,7 +33,7 @@ automatically invokes the conversion and changes the formula to
 on explicit command\footnote{The \texttt{M-x~prettyprint-expanded} command.}
 and in the proof checker.
 
-A more complex conversion is illustrated in the following example:
+A more complex conversion is illustrated in the following example.
 \begin{pvsex}
   g: [int -> int]
   F: [[nat -> int] -> bool]
@@ -33,12 +41,14 @@ A more complex conversion is illustrated in the following example:
 \end{pvsex}
 As this stands, \texttt{F\_app} is not type-correct, because a function of
 type \texttt{[int -> int]} is supplied where one of type \texttt{[nat ->
-int]} is required, and PVS requires equality on domain types.  However it
-is clear that \texttt{g} naturally induces a function from \texttt{nat} to
-\texttt{int} by simply restricting its domain.  Such a domain restriction
-is achieved by the \texttt{restrict} conversion that is defined in the PVS
-prelude as follows:
-\begin{pvsex}
+int]} is required, and PVS requires equality on domain types for function
+types to be compatible.  However it is clear that \texttt{g} naturally
+induces a function from \texttt{nat} to \texttt{int} by simply restricting
+its domain.  Such a domain restriction is achieved by the
+\texttt{restrict} conversion\index{restrict
+conversion}\index{conversion!restrict} that is defined in the PVS prelude
+as follows:
+\begin{session}
   restrict [T: TYPE, S: TYPE FROM T, R: TYPE]: THEORY
    BEGIN
     f: VAR [T -> R]
@@ -46,7 +56,7 @@ prelude as follows:
     restrict(f)(s): R = f(s)
     CONVERSION restrict
    END restrict
-\end{pvsex}
+\end{session}
 The construction \texttt{S: TYPE FROM T} specifies that the actual
 parameter supplied for \texttt{S} must be a subtype of the one supplied
 for \texttt{T}.  The specification states that \texttt{restrict(f)} is a
@@ -71,14 +81,14 @@ subtype \texttt{S}, and \texttt{extend(s)(x) = false} otherwise.  We can
 say that \texttt{false} is the ``default'' value for the type-extended
 function.  Building on this idea, we arrive at the following specification
 for a general type-extension function.
-\begin{pvsex}
+\begin{session}
   extend [T: TYPE, S: TYPE FROM T, R: TYPE, d: R]: THEORY
    BEGIN
     f: VAR [S -> R]
     t: VAR T
     extend(f)(t): R = IF S_pred(t) THEN f(t) ELSE d ENDIF
    END extend
-\end{pvsex}
+\end{session}
 The function \texttt{extend(f)} has type \texttt{[T -> R]} and is
 constructed from the function \texttt{f} of type \texttt{ [S -> R]} (where
 \texttt{S} is a subtype of \texttt{T}) by supplying the default value
@@ -88,13 +98,13 @@ supply the default \texttt{d}, this construction cannot be applied
 automatically as a conversion.  However, as noted above, \texttt{false} is
 a natural default for functions with range type \texttt{bool} (i.e., sets
 and predicates), and the following theory establishes the corresponding
-conversion.
-\begin{pvsex}
+conversion.\index{extend\_bool conversion}\index{conversion!extend\_bool}
+\begin{session}
 extend_bool [T: TYPE, S: TYPE FROM T]: THEORY
  BEGIN
   CONVERSION extend[T, S, bool, false]
  END extend_bool
-\end{pvsex}
+\end{session}
 In the presence of this conversion, the type-incorrect formula
 \texttt{B\_app} in the following specification
 \begin{pvsex}
@@ -104,15 +114,19 @@ In the presence of this conversion, the type-incorrect formula
 \end{pvsex}
 is automatically transformed to \texttt{B(extend[int,nat,bool,false](b))}.
 
+\subsection{Lambda conversions}\label{lambda-conversion}
+\index{lambda conversion}\index{conversion!lambda}
+
 Conversions are also useful (for example, in semantic encodings of dynamic
 or temporal logics) in ``lifting'' operations to apply pointwise to
 sequences over their argument types.  Here is an example, where
 \texttt{state} is an uninterpreted (nonempty) type, and a state variable
 \texttt{v} of type real is represented as a constant of type
-\texttt{[state -> real]}.  
-\begin{pvsex}
+\texttt{[state -> real]}.
+\begin{session}
   th: THEORY
    BEGIN
+    CONVERSION+ K_conversion
     state: TYPE+
     l: [state -> list[int]]
     x: [state -> real]
@@ -123,23 +137,24 @@ sequences over their argument types.  Here is an example, where
     F1: FORMULA box(x > 1)
     F2: FORMULA box(b IMPLIES length(l) + 3 > x)
    END th
-\end{pvsex}
+\end{session}
 In this example, the formulas \texttt{F1} and \texttt{F2} are not type
-correct as they stand, but with a \emph{lambda conversion}, triggered by
-the \texttt{K\_conversion} in the PVS prelude, these formulas
-are converted to the forms
-\begin{pvsex}
+correct as they stand, but with a \emph{lambda conversion},\index{lambda
+conversion}\index{conversion!lambda} triggered by the
+\texttt{K\_conversion} in the PVS prelude, these formulas are converted to
+the forms
+\begin{session}
   F1: FORMULA box(LAMBDA (x1: state): x(x1) > 1)
   
   F2: FORMULA
     box(LAMBDA (x3: state):
           b(x3) IMPLIES
            (LAMBDA (x2: state):
-              (LAMBDA (x1: state): (LAMBDA (x: state): length(l(x)))(x1) + 3)
-                  (x2)
-               > x(x2))
-               (x3))
-\end{pvsex}
+              (LAMBDA (x1: state):
+                 (LAMBDA (x: state): length(l(x)))(x1) + 3)
+                (x2)
+             > x(x2))(x3))
+\end{session}
 
 
 \subsection{Conversion Processing}
@@ -185,10 +200,9 @@ have a compatible type, then those conversions are applied.  Otherwise an
 operator conversion is looked for.
 
 Note that compositions of conversion are never searched for, as this would
-slow down processing too much.  If you want to have a composition looked
-for, define a new constant explicitly and include a conversion
-declaration for it.  Here is an example:
-\begin{pvsex}
+slow down processing too much.  If you want to use a composition, include
+a conversion declaration for it.  Here is an example:
+\begin{session}
   T1, T2, T3: TYPE+
   f1: [T1 -> T2]
   f2: [T2 -> T3]
@@ -196,13 +210,12 @@ declaration for it.  Here is an example:
   g: [T3 -> bool]
   CONVERSION f1, f2
   F1: FORMULA g(x)
-  f3: [T1 -> T3] = f2 o f1
-  CONVERSION f3
+  CONVERSION f2 o f1
   F2: FORMULA g(x)
-\end{pvsex}
+\end{session}
 In this example, \texttt{F1} leads to a type error, but when we make the
-composition function \texttt{f3} a conversion, the same expression in
-\texttt{F2} applies the conversion rather than give a type error.
+composition a conversion, the same expression in \texttt{F2} applies the
+conversion rather than give a type error.
 
 \subsection{Conversion Control}
 
@@ -222,7 +235,7 @@ the \texttt{CONVERSION+} form is also available as an alias for
 \texttt{CONVERSION}.  \texttt{CONVERSION-} disables conversions.
 
 The following theory illustrates the idea:
-\begin{alltt}
+\begin{session}
   t1: THEORY
   BEGIN
    c: [int -> bool]
@@ -231,7 +244,7 @@ The following theory illustrates the idea:
    CONVERSION- c
    f2: FORMULA 3
   END t1
-\end{alltt}
+\end{session}
 Here \texttt{f2} leads to a type error.
 
 Another example is provided by the definition of the CTL temporal

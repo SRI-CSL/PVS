@@ -13,7 +13,13 @@
 \usepackage{latexsym}
 %\usepackage{showidx} % shows index entries in the margin
 \usepackage[chapter]{tocbibind}
-\usepackage[bookmarks=true,hyperindex=true,colorlinks=true,backref=true,pagebackref=true]{hyperref}
+\makeatletter
+\@ifundefined{pdfoutput}%
+{\usepackage[bookmarks=true,hyperindex=true]{hyperref}}%
+{\usepackage[pdftex,dvipsnames,usenames]{color}%
+\usepackage[bookmarks=true,hyperindex=true,colorlinks=true,linkcolor=Brown,citecolor=blue,backref=page,pagebackref=true,plainpages=false,pdfpagelabels]{hyperref}%
+}%
+\makeatother
 
 % \makeatletter
 % \@ifpackagelater{hyperref}{2000/03/23}%
@@ -37,7 +43,6 @@
 
 \raggedbottom
 
-%\input{pvstex}
 \input{../pvstex}
 
 %\setcounter{secnumdepth}{1}
@@ -57,7 +62,7 @@
 \textbf{\pvstitle PVS Language Reference}
 \end{center}
 \begin{flushright}
-{\Large Version 2.4 {\smaller$\bullet$} December 2001}
+{\Large Version 3.0 {\smaller$\bullet$} January 2003}
 \end{flushright}
 \rule[1in]{\textwidth}{2pt}
 \vspace*{2in}
@@ -71,8 +76,8 @@ D.~W.~J.~Stringer-Calvert\\
 \end{flushleft}
 \vspace*{1in}
 \vbox{\hbox to \textwidth{{\Large SRI International\hfill}}%
-\hbox to \textwidth{{\small\sf
-Computer Science Laboratory $\bullet$ 333 Ravenswood Avenue $\bullet$ Menlo Park CA 94025}}}
+\hbox to \textwidth{{\small\sf%
+Computer Science Laboratory $\bullet$ 333 Ravenswood Avenue $\bullet$ Menlo Park CA 94025\hfil}}}
 \end{titlepage}
 
 \pagestyle{fancy}
@@ -100,7 +105,7 @@ F49620-95-C0044, and DARPA Orders E276, A721, D431, D855, and E301.
 %\chapter{The PVS Specification Language}
 
 %\include{preface}
-\newpage
+\cleardoublepage
 \pagenumbering{arabic}
 \setcounter{page}{1}
 
@@ -118,12 +123,13 @@ F49620-95-C0044, and DARPA Orders E276, A721, D431, D855, and E301.
 \include{types}
 \include{expressions}
 \include{theories}
+\include{interpretations}
 \include{names}
 \include{adts}
 
 \appendix
 \include{grammar}
-%%%%%%%%%%%\include{prelude}
+\include{prelude}
 
 %\addcontentsline{toc}{chapter}{Bibliography}
 \bibliographystyle{plain}

@@ -244,7 +244,7 @@ occurrence \texttt{T} is positive in a type expression $\tau$ iff either
 \begin{itemize}
 \item $\tau\equiv \texttt{T}$.
 
-\item $\tau\equiv \{x:\tau'|p(x)\}$ and the occurrence \texttt{T} is
+\item $\tau\equiv \\setb{}x:\tau'|p(x)\}$ and the occurrence \texttt{T} is
 positive in $\tau'$.
 
 \item $\tau\equiv [{\tau_1} \rightarrow {\tau_2}]$ and the occurrence
@@ -320,10 +320,10 @@ are defined, and an axiom is generated that states that \texttt{<<} is
 well-founded.  This allows it to be used as an ordering relation in
 recursive function definitions.
 
-\item The recursive combinators \texttt{reduce\_nat},
-\texttt{REDUCE\_nat}, \texttt{reduce\_ordinal}, and
-\texttt{REDUCE\_ordinal} are defined.  These provide a means for defining
-notions like the size or depth of a datatype term.
+\item The \texttt{reduce\_nat}, \texttt{REDUCE\_nat},
+\texttt{reduce\_ordinal}, and \texttt{REDUCE\_ordinal} recursion
+combinators are defined.  These provide a means for defining notions like
+the size or depth of a datatype term.
 
 \item If some type parameter is positive and no accessor type involves a
 subtype of the datatype, a \texttt{map} function is generated in a
@@ -369,9 +369,9 @@ circumstances, this would imply no relation between, for example,
 \texttt{stack[nat]} and \texttt{stack[int]}.  However, since every
 occurrence of \texttt{T} in the accessor types is positive, we can infer
 that \texttt{stack[nat]} is a subtype of \texttt{stack[int]}.  In general,
-given a type $T$ and a subtype $S \equiv \{x:T | p(x)\}$, then
+given a type $T$ and a subtype $S \equiv \setb{}x:T | p(x)\sete$, then
 \texttt{stack[$S$]} is treated the same as
-$\{s: \texttt{stack[}T\texttt{]} | \texttt{every}(p)(s)\}$.
+$\setb{}s: \texttt{stack[}T\texttt{]} | \texttt{every}(p)(s)\sete$.
 When a datatype has a mix of positive and nonpositive type parameters, the
 subtype relation only holds for the positive ones.  For example,
 in the datatype
@@ -452,11 +452,11 @@ tlc: DATATYPE WITH SUBTYPES typ, expr
 In addition to the usual generated declarations, this generates
 \begin{pvsex}
   typ((x: tlc)): boolean = base_type?(x) OR fun_type?(x);
-  typ: TYPE = \{x: tlc | base_type?(x) OR fun_type?(x)\}
+  typ: TYPE = \setb{}x: tlc | base_type?(x) OR fun_type?(x)\sete
   expr((x: tlc)): boolean =
      expr_var?(x) OR lambda_expr?(x) OR application?(x);
   expr: TYPE =
-     \{x: tlc | expr_var?(x) OR lambda_expr?(x) OR application?(x)\}
+     \setb{}x: tlc | expr_var?(x) OR lambda_expr?(x) OR application?(x)\sete
 \end{pvsex}
 immediately after the declarations generated for the recognizers, so they
 may be referenced in the accessor types.  Note that only a single
@@ -465,7 +465,7 @@ extend the property of interest to the entire datatype so that it returns
 true for everything else.
 
 
-\section{\texttt{CASES} Expressions}
+\section{\texttt{CASES} Expressions}\label{cases-expressions}
 \index{cases expressions}
 
 The \texttt{CASES} expression uses a simple form of pattern-matching on

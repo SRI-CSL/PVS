@@ -1,5 +1,8 @@
 \chapter{The Grammar}\label{grammar}
 
+% Redefine \htarget so that only the earlier hypertargets are used.
+\def\htarget #1{#1}
+
 The complete \pvs\ grammar is presented in this Appendix, along with a
 discussion of the notation used in presenting the grammar.
 
@@ -39,7 +42,7 @@ clause {\it B} separated by commas.
 \item Other items printed in tt font on the right hand side of
       productions are literals.  Be careful to distinguish where BNF
 symbols occur as literals, \eg\ the BNF brackets \brc{} versus the
-literal brackets \lit{\{\}}.
+literal brackets \lit{\setb\sete}.
 
 \end{itemize}
 

@@ -21,7 +21,8 @@ Copyright 2002 SRI International
 
 @end titlepage
 
-@node Top, Overview, (dir), (dir)
+@node Top
+@top Top
 
 @ifinfo
 
@@ -40,8 +41,7 @@ in the @code{doc/release-notes} subdirectory of the PVS distribution.
 @end menu
 @end ifinfo
 
-@node    Overview,  New Features, Top,      Top
-@comment node-name, next,         previous, up
+@node    Overview
 @chapter Overview
 
 We are still working on updating the documentation, and completion of
@@ -59,13 +59,13 @@ reason we strongly suggest that you copy existing directories
 (especially the proof files) before running PVS 3.0 on existing
 specifications.
 
-@node    New Features, Bug Fixes, Overview, Top
-@comment node-name, next, previous, up
+@node    New Features
 @chapter New Features
+
 There are a number of new features in PVS 3.0.
 
 @menu
-* Allegro6.0:: Allegro 6.0 Port
+* Allegro6.2:: Allegro 6.2 Port
 * Interpretations:: Theory Interpretations
 * Multiple Proofs:: Multiple Proofs
 * Library Support:: Improved Library Support
@@ -91,13 +91,12 @@ There are a number of new features in PVS 3.0.
 @end menu
 
 
-@node    Allegro6.0, Interpretations, New Features, New Features
-@comment node-name,     next,           previous, up
+@node    Allegro6.2
 @section Allegro 6.2 port
 
 PVS 3.0 has been ported to the case-sensitive version of Allegro
-version 6.0.  This was done in order to be able to use the XML support
-provided by Allegro 6.0.  We plan to both write and read XML abstract
+version 6.2.  This was done in order to be able to use the XML support
+provided by Allegro 6.2.  We plan to both write and read XML abstract
 syntax for PVS, which should make it easier to interact with other
 systems.
 
@@ -106,21 +105,21 @@ Note: for the most part, you may continue to define pvs-strategies
 cannot always be done correctly, and it means that you cannot load
 such files directly at the lisp prompt.  If you suspect that your
 strategies are not being handled properly, try changing it to all
-lower case (except in specific cases), and see if that helps.  If not,
-send the strategies file to
+lower case (except in specific instances), and see if that helps.  If
+not, send the strategies file to
 @uref{mailto:pvs-bugs@@csl-sri.com,pvs-bugs} and we'll fix it as
 quickly as we can.  Because there is no way to handle it robustly, and
-since case-sensitivity can actually be useful, in the future we may no
-longer support mixed cases in strategy files.
+since case-sensitivity can actually be useful, in the future we may
+not support mixed cases in strategy files.
 
-@node    Interpretations, Multiple Proofs, Allegro6.0,      New Features
-@comment node-name,     next,           previous, up
+@node    Interpretations
 @section Theory Interpretations
 
 Theory interpretations are described fully in
 @uref{doc/interpretations.html,Theory Interpretations in PVS}
 
 @strong{NOTES:}
+
 @itemize @bullet
 @item
 This introduces one backward incompatible change; theory abbreviations
@@ -149,8 +148,7 @@ pop := LAMBDA (A: E[cstack, ce] | cnonempty?(rep(A))):
 Otherwise unprovable TCCs result (e.g., every stack is nonempty).
 @end itemize
 
-@node    Multiple Proofs, Library Support, Interpretations, New Features
-@comment node-name,     next,           previous, up
+@node    Multiple Proofs
 @section Multiple Proofs
 
 PVS now supports multiple proofs for a given formula.  When a proof
@@ -200,15 +198,18 @@ Delete proof: delete the specified proof from the formula
 @end table
 
 At the end of a proof a number of questions may be asked:
+
 @itemize @bullet
 @item Would you like the proof to be saved?
 @item Would you like to overwrite the current proof?
 @item Please enter an id
 @item Please enter a description:
 @end itemize
+
 This may be annoying to some users, so the command @code{M-x
 pvs-set-proof-prompt-behavior} was added to control this.  The
 possible values are:
+
 @table @code
 @item :ask
 the default; all four questions are asked
@@ -219,18 +220,18 @@ saved and then simply overwrites the earlier one.
 asks if the proof should be saved, then creates a new proof with a
 generated id and empty description.
 @end table
+
 Note that the id and description may be modified later using the
 commands described earlier in this section.
    
-@node    Library Support, Cotuples, Multiple Proofs,      New Features
-@comment node-name,     next,           previous, up
+@node    Library Support
 @section Better Library Support
 
 PVS now uses the @code{PVS_LIBRARY_PATH} environment variable to look
 for library pathnames, allowing libraries to be specified as simple
 (subdirectory) names.  This is an extension of the way, for example,
 the @code{finite_sets} library is found relative to the PVS
-installation path - in fact it is implicitly appended to the end the
+installation path---in fact it is implicitly appended to the end the
 @code{PVS_LIBRARY_PATH}.
 
 The @code{.pvscontext} file stores, amongst other things, library
@@ -271,8 +272,7 @@ A new command, @code{M-x list-prelude-libraries}, has been added that
 shows the prelude library and supplemental files that have been
 loaded in the current context.
    
-@node    Cotuples, Coinduction, Library Support,      New Features
-@comment node-name,     next,           previous, up
+@node    Cotuples
 @section Cotuples
 
 PVS now supports cotuple types (also known as coproduct or sum types)
@@ -351,8 +351,7 @@ LAMBDA (x: [int, int]): PROJ_1(x)
 The prover has been updated to handle extensionality and reduction rules
 as expected.
    
-@node    Coinduction, Datatype Updates, Cotuples,      New Features
-@comment node-name,     next,           previous, up
+@node    Coinduction
 @section Coinduction
 
 Coinductive definitions are now supported.  They are like inductive
@@ -360,8 +359,7 @@ definitions, but introduced with the keyword `@code{COINDUCTIVE}', and
 generate the greatest fixed point.
 
    
-@node    Datatype Updates, Datatype Additions, Coinduction,      New Features
-@comment node-name,     next,           previous, up
+@node    Datatype Updates
 @section Datatype Updates
 
 Update expressions now work on datatypes, in much the same way they work
@@ -401,8 +399,7 @@ f_TCC1: OBLIGATION
 
 
    
-@node    Datatype Additions, Conversion Extensions, Datatype Updates,      New Features
-@comment node-name,     next,           previous, up
+@node    Datatype Additions
 @section Datatype Additions
 
 There are two additions to the theory generated from a datatype: a new
@@ -441,8 +438,7 @@ Thus, @code{every(<)(x, y: list[nat])} returns true if the
 lists x and y are of the same length, and each element of @code{x} is
 less than the corresponding element of @code{y}.
 
-@node    Conversion Extensions, Conversion Messages, Datatype Additions,      New Features
-@comment node-name,     next,           previous, up
+@node    Conversion Extensions
 @section Conversion Extensions
 
 Conversions are now applied to the components of tuple, record, and
@@ -465,8 +461,7 @@ conversion pointwise.  Of course, this is rarely what is intended; it
 says that the two state variables are the same, i.e., aliases.  The
 conversion mechanism has been modified to deal with this properly.
 
-@node Conversion Messages, More TCC information, Conversion Extensions, New Features
-@comment node-name,     next,           previous, up
+@node Conversion Messages
 @section Conversion Messages
 
 Messages related to conversions have been separated out, so that if any
@@ -478,26 +473,25 @@ po_lems typechecked in 9.56s: 10 TCCs, 0 proved, 3 subsumed,
 In addition, the commands @code{M-x show-theory-conversions} and @code{M-x
 show-pvs-file-conversions} have been added to view the conversions.
 
-@node More TCC information, Show Declaration TCCs, Conversion Messages, New Features
-@comment node-name,     next,           previous, up
+@node More TCC information
 @section More TCC Information
+
 Trivial TCCs of the form @code{x /= 0 IMPLIES x /= 0} and @code{45 <
 256} used to quietly be suppressed.  Now they are added to the
 messages associated with a theory, along with subsumed TCCs.  In addition,
 both trivial and subsumed TCCs are now displayed in commented form in the
 show-tccs buffer.
 
-@node Show Declaration TCCs, Numbers as constants, More TCC information, New Features
-@comment node-name,     next,           previous, up
+@node Show Declaration TCCs
 @section Show Declaration TCCs
 
 The command @code{M-x show-declaration-tccs} has been added.  It shows
 the TCCs associated with the declaration at the cursor, including the
 trivial and subsumed TCCs as described above.
 
-@node    Numbers as constants, Theory Search, Show Declaration TCCs, New Features
-@comment node-name,     next,           previous, up
+@node    Numbers as constants
 @section Numbers as Constants
+
 Numbers may now be declared as constants, e.g.,
 
 @example
@@ -516,8 +510,7 @@ e.g.,
 Even if the typechecker doesn't get confused, most users would.
 
 
-@node    Theory Search, Improved Decision Procedures, Numbers as constants, New Features
-@comment node-name,     next,           previous, up
+@node    Theory Search
 @section Theory Search
 
    When the parser encounters an importing for a theory @code{foo} that
@@ -545,18 +538,18 @@ updated accordingly, and this check is no longer needed.
 @end itemize
 
 
-@node    Improved Decision Procedures, ICS Integration, Theory Search, New Features
-@comment node-name,     next,           previous, up
+@node    Improved Decision Procedures
 @section Improved Decision Procedures
-   The existing (named Shostak, for the original author) decision
-procedures have been made more complete.  Note that this sometimes breaks
-existing proofs, though they are generally easy to repair, especially if
-the proof is rerun in parallel with the older PVS version.  If you have
-difficulties repairing your proofs, please let us know.
+
+The existing (named Shostak, for the original author) decision
+procedures have been made more complete.  Note that this sometimes
+breaks existing proofs, though they are generally easy to repair,
+especially if the proof is rerun in parallel with the older PVS
+version.  If you have difficulties repairing your proofs, please let
+us know.
 
 
-@node    ICS Integration, LET Reduce, Improved Decision Procedures, New Features
-@comment node-name,     next,           previous, up
+@node    ICS Integration
 @section ICS Integration
 
 PVS 3.0 now has an alpha test integration of the
@@ -566,9 +559,9 @@ to change, so don't count on proofs created using ICS to work in
 future releases.  Please let us know of any bugs encountered.
 
 
-@node    LET Reduce, Prelude Changes, ICS Integration,      New Features
-@comment node-name,     next,           previous, up
+@node    LET Reduce
 @section LET Reduce
+
    The @code{BETA} and @code{SIMPLIFY} rules, and the @code{ASSERT},
 @code{BASH}, @code{REDUCE}, @code{SMASH}, @code{GRIND},
 @code{GROUND}, @code{USE}, and @code{LAZY-GRIND} strategies now all
@@ -576,8 +569,7 @@ take an optional @code{LET-REDUCE?} flag.  It defaults to @code{t},
 and if set to @code{nil} keeps @code{LET} expressions from being
 reduced.
 
-@node    Prelude Changes, New Theories, LET Reduce, New Features
-@comment node-name, next, previous, up
+@node    Prelude Changes
 @section Prelude Changes
 
 @menu
@@ -586,8 +578,9 @@ reduced.
 * Modified Declarations:: Modified Declarations
 @end menu
 
-@node New Theories, New Declarations, Prelude Changes, Prelude Changes
+@node New Theories
 @subsection New Theories
+
 @table @code
 @item restrict_props, extend_props
 Provides lemmas that @code{restrict} and @code{extend} are identities when the
@@ -628,8 +621,9 @@ Bart Jacobs also provided definitions for partial functions:
 @code{PartialFunctionComposition}.
 @end table
 
-@node New Declarations, Modified Declarations, New Theories, Prelude Changes
+@node New Declarations
 @subsection New Declarations
+
 The following declarations have been added to the prelude:
 @code{relations.equivalence type}, @code{sets.setofsets},
 @code{sets.powerset}, @code{sets.Union}, @code{sets.Intersection},
@@ -637,8 +631,9 @@ The following declarations have been added to the prelude:
 @code{sets_lemmas.nonempty_powerset}, @code{real_props.div_cancel4},
 and @code{rational_props.rational_pred_ax2}.
 
-@node Modified Declarations, Conversion Expressions, New Declarations, Prelude Changes
+@node Modified Declarations
 @subsection Modified Declarations
+
 The following declarations have been modified.
 @code{finite_sets.is_finite_surj} was turned into an IFF and extended
 from posnat to nat.
@@ -648,7 +643,7 @@ restricted to monotonic predicates.  This affects the declarations
 @code{fixpoint?}, @code{lfp}, @code{mu}, @code{lfp?}, @code{gfp},
 @code{nu}, and @code{gfp?}.
 
-@node Conversion Expressions, Judgement TCC proofs, Modified Declarations, New Features
+@node Conversion Expressions
 @section Conversion Expressions
 
 Conversions may now be any function valued expression, for example,
@@ -659,8 +654,9 @@ This introduces a possible incompatibility if the following
 declaration is for an infix operator.  In that case the conversion
 must be followed with a semi-colon '@code{;}'.
 
-@node Judgement TCC proofs, PVS Startup Change, Conversion Expressions, New Features
+@node Judgement TCC proofs
 @section Judgement TCC proofs
+
 Judgement TCCs may now be proved directly, without having to show the
 TCCs using @code{M-x show-tccs} or @code{M-x prettyprint-expanded}.
 Simple place the cursor on the judgement, and run one of the proof
@@ -668,7 +664,7 @@ commands.  Note that there may be several TCCs associated with the
 judgement, but only one of them is the judgement TCC.  To prove the
 others you still need to show the TCCs first.
 
-@node PVS Startup Change, Dump File Change, Judgement TCC proofs, New Features
+@node PVS Startup Change
 @section PVS Startup Change
 
 On startup, PVS no longer asks whether to create a context file if
@@ -677,7 +673,7 @@ none exists, and if you simply change to another directory no
 typing input before the question is asked caused PVS to get into a bad
 state.
 
-@node Dump File Change, Bitvector Library, PVS Startup Change, New Features
+@node Dump File Change
 @section Dump File Change
 
 The @code{M-x dump-pvs-files} command now includes PVS version
@@ -685,7 +681,7 @@ information, Allegro build information, and prelude library
 dependencies.  Note that since the proof files have changed, the dumps
 may look quite different.  See the Multiple Proofs section for details.
 
-@node Bitvector Library, , Dump File Change, New Features
+@node Bitvector Library
 @section Bitvector Library
 
 Bart Jacobs kindly provided some additional theories for the bitvector
@@ -698,16 +694,18 @@ generally useful.  The new files are @code{BitvectorUtil},
 @code{BitvectorTwoComplementDivisionWidenNarrow}, and are included in
 the libraries tar file.
 
-@node Bug Fixes, Incompatibilities, New Features, Top
+@node Bug Fixes
 @chapter Bug Fixes
+
 Although there are still a number of bugs still outstanding, a large
 number of bugs have been fixed in this release.  All those in the
 @uref{http://pvs.csl.sri.com/cgi-bin/pvs/pvs-bug-list/?bugs=open&bugs=analyzed,
 pvs-bugs list} that are marked as analyzed have been fixed, at least
 for the specific specs that caused the bugs.
 
-@node Incompatibilities, , Bug Fixes, Top
+@node Incompatibilities
 @chapter Incompatibilities
+
 Most of these are covered elsewhere, they are collected here for easy
 reference.
 

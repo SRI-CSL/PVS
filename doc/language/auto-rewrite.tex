@@ -10,24 +10,33 @@ should never appear as rewrites.  Auto-rewrite declarations allow for both
 forms of control.  Those that should always be used as rewrites are
 declared with the \texttt{AUTO\_REWRITE+} or \texttt{AUTO\_REWRITE}
 keyword, and those that should not are declared with
-\texttt{AUTO\_REWRITE-}.  
+\texttt{AUTO\_REWRITE-}.  These will be referred to as
+\emph{auto-rewrites} and \emph{stop-auto-rewrites} below.
 
-When a proof is initiated for a given formula, all the
-\texttt{AUTO\_REWRITE+} names in the current context that haven't
-subsequently been removed by \texttt{AUTO\_REWRITE-} declarations are
-collected and added to the initial proof state.  The
-\texttt{AUTO\_REWRITE-} declaration, in addition to removing
-\texttt{AUTO\_REWRITE+} names, also affects the
-\texttt{auto-rewrite-theory}, \texttt{auto-rewrite-theories},
-\texttt{auto-rewrite-theory-with-importings},
-\texttt{simplify-with-rewrites}, \texttt{auto-rewrite-defs},
-\texttt{install-rewrites}, \texttt{auto-rewrite-explicit}, \texttt{grind},
-\texttt{induct-and-simplify}, \texttt{measure-induct-and-simplify}, and
-\texttt{model-check} commands, described in the Prover manual.  These
-commands collect all definitions and formulas except those that appear in
-\texttt{AUTO\_REWRITE-} delcarations.  Thus suppose a theory \texttt{T}
-contains the lemmas \texttt{lem1}, \texttt{lem2}, and \texttt{lem3} and
-the declarations
+When a proof is initiated for a given formula, all of the auto-rewrite
+names in the current context that haven't subsequently been removed by
+stop-auto-rewrite declarations are collected and added to the initial proof
+state.  The stop-auto-rewrite declaration, in addition to removing
+auto-rewrite names, also affects the following commands described in the
+Prover manual.
+\begin{itemize}
+\setlength{\itemsep}{-5pt}
+\item \texttt{auto-rewrite-theory},
+\item \texttt{auto-rewrite-theories},
+\item \texttt{auto-rewrite-theory-with-importings},
+\item \texttt{simplify-with-rewrites},
+\item \texttt{auto\-rewrite-defs},
+\item \texttt{install-rewrites},
+\item \texttt{auto-rewrite-explicit},
+\item \texttt{grind},
+\item \texttt{induct\-and-simplify},
+\item \texttt{measure-induct-and-simplify}, and
+\item \texttt{model-check}
+\end{itemize}
+These commands collect all definitions and formulas except those that
+appear in \texttt{AUTO\_\-REWRITE-} declarations.  Thus suppose a theory
+\texttt{T} contains the lemmas \texttt{lem1}, \texttt{lem2}, and
+\texttt{lem3} and the declarations
 \begin{alltt}
   AUTO_REWRITE+ lem1
   AUTO_REWRITE- lem3
@@ -40,20 +49,8 @@ Then in proving a formula of a theory that imports \texttt{T},
 \texttt{(stop-auto-rewrite "lem1")} or \texttt{(auto-rewrite-theory "T"
 :exclude "lem1")}.
 
-The syntax for auto-rewrite declarations is as follows.
-\begin{bnf}
-\production{AutoRewriteDecl}
-{AutoRewriteKeyword\ \ites{RewriteName}{,}}
-
-\production{AutoRewriteKeyword}
-{\lit{AUTO\_REWRITE}\ \choice\ \lit{AUTO\_REWRITE+}\ \choice\ \lit{AUTO\_REWRITE-}}
-
-\production{RewriteName}
-{Name \opt{\lit{!} \opt{\lit{!}}} \opt{\lit{:}\ \brc{TypeExpr \choice FormulaName}}}
-\end{bnf}
-
 The \texttt{autorewrites} theory shows a simple example.
-\begin{alltt}
+\begin{session}
 autorewrites: THEORY
 BEGIN
  AUTO_REWRITE+ zero_times3
@@ -62,7 +59,7 @@ BEGIN
  AUTO_REWRITE- zero_times3
  f2: FORMULA a * b = 0 AND a /= 0 IMPLIES b = 0
 END autorewrites
-\end{alltt}
+\end{session}
 Here \texttt{f1} may be proved using only \texttt{assert}, but \texttt{f2}
 requires more.
 

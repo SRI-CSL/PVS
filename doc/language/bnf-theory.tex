@@ -18,7 +18,9 @@
 {\opt{\lit{(} \hlink{Importing} \lit{)}} \hlink{TheoryFormalDecl}}
 
 \production{TheoryFormalDecl}
-{\hlink{TheoryFormalType} \choice \hlink{TheoryFormalConst}}
+{\hlink{TheoryFormalType} \\[-0.1in]
+& \choice & \hlink{TheoryFormalConst} \\[-0.1in]
+& \choice & \hlink{TheoryFormalTheory}}
 
 \production{TheoryFormalType}
 {\hlink{Ids} \lit{:} \brc{\lit{TYPE} \choice \lit{NONEMPTY\_TYPE} \choice \lit{TYPE+}} \\[-0.1in]
@@ -26,5 +28,8 @@
 
 \production{TheoryFormalConst}
 {\hlink{IdOps} \lit{:} \hlink{TypeExpr}}
+
+\production{TheoryFormalTheory}
+{\hlink{IdOps} \lit{:} \lit{THEORY} \hlink{TheoryDeclName}}
 
 \end{bnf}

@@ -5,28 +5,19 @@
 
 PVS is a \emph{P}rototype \emph{V}erification \emph{S}ystem for the
 development and analysis of formal specifications.  The PVS system
-consists of a specification language, a parser, a typechecker, a prover,
-specification libraries, and various browsing tools.  This document
-primarily describes the specification language and is meant to be used as
-a reference manual.  The \emph{PVS System Guide}~\cite{PVS:userguide} is to
+primarily consists of a specification language, a parser, a typechecker, a
+prover, specification libraries, and various browsing tools.  This
+document describes the specification language and is meant to be used as a
+reference manual.  The \emph{PVS System Guide}~\cite{PVS:userguide} is to
 be consulted for information on how to use the system to develop
 specifications and proofs.  The \emph{PVS Prover Guide}~\cite{PVS:prover}
-is a reference manual for the commands used to construct proofs.
+is a reference manual for the commands used to construct proofs.  The web
+site \url{http://pvs.csl.sri.com} provides many useful links, including
+various tutorials and examples.
 
 In this section, we provide a brief summary of the PVS specification
 language, enumerate the key design principles behind the language, and
-provide a brief example.
-
-The following sections provide more details on the various features of
-the language.  The lexical aspects of the language are detailed in
-Section~\ref{lexical}.  Section~\ref{declarations} describes
-declarations, Section~\ref{types} describes type expressions,
-Section~\ref{expressions} describes expressions, and
-Section~\ref{theories} describes theories, theory parameters, and
-imports and exports of names.  Section~\ref{names} describes names and
-name resolution, and Section~\ref{adts} describes the datatype
-facility of PVS.  Finally, 
-Appendix~\ref{grammar} provides the grammar of the language.
+discuss a simple \texttt{stacks} example.
 
 \section{Summary of the PVS Language}
 
@@ -52,17 +43,17 @@ ordering.
 
 The PVS specification language is based on simply typed higher-order
 logic.  Within a theory, \emph{types} can be defined starting from
-\emph{base} types (Booleans, numbers, etc.) using the function, record,
-and tuple type constructions.  The \emph{terms} of the language can be
-constructed using function application, lambda abstraction, and record and
-tuple construction.
+\emph{base} types (Booleans, numbers, etc.) using type constructors such
+as function, record, and tuple types.  The \emph{terms} of the language
+can be constructed using, for example, function application, lambda
+abstraction, and record or tuple constructions.
 
 There are a few significant enhancements to the simply typed language
 above that lend considerable power and sophistication to PVS.  New
 uninterpreted base types may be introduced.  One can define a
 \emph{predicate subtype} of a given type as the subset of individuals in a
 type satisfying a given predicate: the subtype of nonzero reals is
-written as \texttt{\{x:real | x /= 0\}}.  One benefit of such
+written as \texttt{$\{$x:real | x /= 0$\}$}.  One benefit of such
 subtyping is that when an operation is not defined on all the elements of
 a type, the signature can directly reflect this.  For example, the
 division operation on reals is given a type where the denominator is
@@ -216,12 +207,15 @@ is declared, and the constant \texttt{empty} and variable \texttt{s} are
 declared to be of type \texttt{stack}.  The defined predicate
 \texttt{nonemptystack?}~is then declared on elements of type
 \texttt{stack}; it is \texttt{true} for a given \texttt{stack} element
-iff\footnote{Iff is short for ``if and only if''.} that element is not
-equal to \texttt{empty}.  The functions \texttt{push}, \texttt{pop}, and
-\texttt{top} are then declared.  Note that the predicate
-\texttt{nonemptystack?}~is being used as a type in specifying the
-signatures of these functions; any predicate may be used as a type simply
-by putting parentheses around it.
+iff\footnote{If and only if.} that element is not equal to
+\texttt{empty}.\footnote{The \texttt{bool} type and \texttt{/=} operator
+are declared in the \emph{prelude}, which is a large body of theories that
+are preloaded into PVS.  This is described in Appendix~/ref{prelude}.}
+The functions \texttt{push}, \texttt{pop}, and \texttt{top} are then
+declared.  Note that the predicate \texttt{nonemptystack?}~is being used
+as a type in specifying the signatures of these functions; any predicate
+may be used where a type is expected simply by putting parentheses around
+it.
 
 The variables \texttt{x} and \texttt{y} are then declared, followed by the
 usual axioms for \texttt{push}, \texttt{pop}, and \texttt{top}, which make
@@ -240,8 +234,7 @@ but not directly provided, the system generates a \emph{type-correctness
 condition} (TCC).  In this case, the TCC is
 \begin{pvsex}
   pop2push2_TCC1: OBLIGATION
-    (FORALL (s: stack, y: t, x: t):
-      nonemptystack?(pop(push(x, push(y, s)))))
+    FORALL (s: stack, x, y: t): nonemptystack?(pop(push(x, push(y, s))));
 \end{pvsex}
 and is easily proved using the \texttt{pop\_push} axiom.  The system keeps
 track of all such obligations and will flag the unproved ones during proof
@@ -253,17 +246,17 @@ type.  To use the types, constants, and formulas of the \texttt{stacks}
 theory from another theory, the \texttt{stacks} theory must be imported,
 with \emph{actual parameters} provided for the corresponding theory
 parameters.  This is done by means of an \texttt{IMPORTING} clause. For
-example, the theory
-\begin{pvsex}
+example, consider the theory \texttt{ustacks}.
+\begin{session}
   ustacks : THEORY
-    BEGIN
+   BEGIN
     IMPORTING stacks[int], stacks[stack[int]]
 
     si : stack[int]
     sos : stack[stack[int]] = push(si, empty)
-    END ustacks
-\end{pvsex}
-imports stacks of integers and stacks of stacks of integers.  The constant
+   END ustacks
+\end{session}
+It imports stacks of integers and stacks of stacks of integers.  The constant
 \texttt{si} is then declared to be a stack of integers, and the constant
 \texttt{sos} is a stack of stacks of integers whose top element is
 \texttt{si}.  Note that the system is able to determine which instance of
@@ -271,3 +264,15 @@ imports stacks of integers and stacks of stacks of integers.  The constant
 argument.  In general, the typechecker infers the type of an expression
 from its context.  
 
+The following chapters provide more details on the various features of the
+language.  The lexical aspects of the language are explained in
+Chapter~\ref{lexical}.  Chapter~\ref{declarations} describes declarations,
+Chapters~\ref{types} and~\ref{expressions} describe type expressions and
+expressions, and Chapter~\ref{theories} explains theories, theory
+parameters, and the importing and exporting of names.  Theory
+interpretaions and mappings are described in
+Chapter~\ref{interpretations}.  Chapter~\ref{names} describes names and
+name resolution, and Chapter~\ref{adts} details the datatype facility of
+PVS.  Finally, Appendix~\ref{grammar} provides the grammar of the
+language and Appendix~\ref{prelude} gives a brief overview of the theories
+of the PVS prelude.

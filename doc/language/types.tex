@@ -2,7 +2,7 @@
 % Master File: language.tex
 
 \chapter{Types}\label{types}
-\index{type|(}
+\index{type|(pidx}
 
 PVS specifications are strongly typed, meaning that every expression has
 an associated type (although it need not be unique, more on this later).
@@ -16,25 +16,25 @@ expressions\index{type expressions} are built from these using \emph{type
 constructors}\index{type constructors}.  There are type constructors for
 \emph{subtypes}\index{subtypes}\index{type!subtype}, \emph{function
 types}\index{function types}\index{type!function}, \emph{tuple
-types}\index{tuple types}\index{type!tuple}, and \emph{record
-types}\index{record types}\index{type!record}.  Function, record,
-and tuple types may also be \emph{dependent}\index{dependent
+types}\index{tuple types}\index{type!tuple}, \emph{cotuple
+types}\index{cotuple types}\index{type!cotuple}, and \emph{record
+types}\index{record types}\index{type!record}.  Function, record, and
+tuple types may also be \emph{dependent}\index{dependent
 types}\index{type!dependent}.  A form of \emph{type
-application}\index{type application}\index{type!application} is
-provided that makes it more convenient to specify parameterized subtypes.
-There are also provisions for creating \emph{abstract datatypes},
-described in Chapter~\ref{datatypes}.
+application}\index{type application}\index{type!application} is provided
+that makes it more convenient to specify parameterized subtypes.  There
+are also provisions for creating \emph{abstract datatypes}, described in
+Chapter~\ref{datatypes}.
 
 Type expressions occur throughout a specification; in particular, they may
 appear in theory parameters, type declarations, variable declarations,
 constant declarations, recursive and inductive definitions, conversions,
-and judgements.  In
-addition, they may appear in certain expressions (coercions and local
-bindings, see pages~\pageref{coercions} and~\pageref{binding-expressions},
-respectively), and as actual parameters in names (page~\pageref{names}).
-In the many examples which follow, type expressions will be presented in
-the context of type declarations; but it must be remembered that they can
-appear in any of the above places.
+and judgements.  In addition, they may appear in certain expressions
+(coercions and local bindings, see pages~\pageref{coercions}
+and~\pageref{binding-expressions}, respectively), and as actual parameters
+in names (page~\pageref{names}).  In the many examples which follow, type
+expressions will be presented in the context of type declarations; but it
+must be remembered that they can appear in any of the above places.
 
 \pvsbnf{bnf-type-expr}{Type Expression Syntax}
 
@@ -51,12 +51,12 @@ Subtypes in PVS provide much of the expressive power of the language,
 at the cost of making typechecking undecidable.  There are two forms of
 subtypes.  The first is similar to the notation used to define a set:
 \begin{pvsex}
-  t: TYPE = \{x: s | p(x)\}
+  t: TYPE = \setb{}x: s | p(x)\sete
 \end{pvsex}
 %
-where {\tt p} is a predicate on the type {\tt s}.\footnote{If {\tt x}
-has been previously declared as a variable of type {\tt s}, then the
-``{\tt :~s}'' may be omitted.} This has the usual set-theoretical
+where \texttt{p} is a predicate on the type \texttt{s}.\footnote{If \texttt{x}
+has been previously declared as a variable of type \texttt{s}, then the
+``\texttt{:~s}'' may be omitted.} This has the usual set-theoretical
 meaning, since types in PVS are modeled as sets.  Subtypes may also
 be presented in an abbreviated form, by giving a predicate surrounded by
 parentheses:
@@ -83,103 +83,73 @@ equivalent
   FORALL (i:nat): (EXISTS (j:nat): j > i))
 \end{pvsex}
 %
-where {\tt nat} is defined in the prelude as
+where \texttt{nat} is defined in the prelude as
 \begin{pvsex}
-  naturalnumber: NONEMPTY\_TYPE = \{i:integer | i >= 0\} CONTAINING 0
+  naturalnumber: NONEMPTY\_TYPE = \setb{}i:integer | i >= 0\sete CONTAINING 0
   nat: NONEMPTY\_TYPE = naturalnumber
 \end{pvsex}
 
-Subtype constructors consist of a \emph{supertype}\index{supertype} and
-an optional predicate on the supertype.  The primary property of a
-subtype is that any element which belongs to the subtype automatically
-belongs to the supertype.  In addition, functions defined on a type
-automatically carry over to the subtype.
+Subtype constructors consist of a \emph{supertype}\index{supertype} and a
+\emph{subtype predicate}\index{subtype predicate} on the supertype.  The
+primary property of a subtype is that any element which belongs to the
+subtype automatically belongs to the supertype.  In addition, functions
+defined on a type automatically apply to the subtype.
 
 \index{TCC|(}
 
 There are two \emph{type-correctness conditions} (\tccs) associated with
 subtypes.  The first concerns \emph{empty types}\index{empty
-type}\index{type!empty} as described in section~\ref{emptytypes}.  PVS
-allows empty types as long as only variables range over them.  However,
-allowing declarations of constants involving empty types leads to
-inconsistencies.  Whenever a constant is declared, the typechecker checks
-the types involved, and generates \emph{ existence} \tccs\ \index{existence
-TCC}\index{TCC!existence} for those types which must be nonempty.  For
-example,
-%
-\begin{pvsex}
-  f: [int -> \{x:int | p(x)\}]
-\end{pvsex}
-leads to the \tcc\
-\begin{pvsex}
-  f_TCC1: OBLIGATION (EXISTS (x: int): p(x))
-\end{pvsex}
-These \tccs\ are recorded, so that the nonemptiness of a subtype need
-be established only once in a theory.  However, the same \tcc\ may be
-generated in different theories.  In particular, if a theory declares a
-type but no constant of that type, then any theory which imports that
-theory and declares a constant of that type will generate the nonempty
-\tcc.  
-
-A subtype may be guaranteed nonempty by providing a
-\emph{witness},\index{witness} in which case no existence \tcc\ is
-generated, though typechecking the witness itself may generate a \tcc.
-The witness is provided using the {\tt
-CONTAINING}\index{CONTAINING@\texttt{CONTAINING}} clause of a subtype
-expression, as illustrated in the following:
-\begin{pvsex}
-  t: TYPE = \{x: int | 0 < x AND x < 10\} CONTAINING 1
-\end{pvsex}
-In this case a \tcc\ is generated with the witness in place of the
-existential variable, resulting in the trivial \tcc\footnote{This \tcc\
-will be proved automatically by PVS; see the
-\cmd{typecheck-prove} command in the PVS System Guide~\cite{PVS:userguide}.}
-\begin{pvsex}
-  t_TCC1: OBLIGATION 0 < 1 AND 1 < 10
-\end{pvsex}
-
-The second \tcc\ associated with subtypes is the \emph{subtype}
-\tcc,\index{subtype TCC}\index{TCC!subtype}, which come about from the use
-of operations defined on subtypes which are applied to elements of the
+type}\index{type!empty} as described in section~\ref{emptytypes}.  The
+second \tcc\ associated with subtypes is the \emph{subtype}
+\tcc,\index{subtype TCC}\index{TCC!subtype}, which comes about from the
+use of operations defined on subtypes that are applied to elements of the
 supertype.  By this means partial functions may be handled directly,
 without recourse to a partial term logic or some form of multi-valued
 logic.  For instance, division in PVS is a total function, with signature
-{\tt [real, nonzero\_real -> real]}.  So given the formula
+\texttt{[real, nonzero\_real -> real]}.  So given the formula
 \begin{pvsex}
-  div_form: FORMULA (FORALL (x,y: int):
+  div_form: FORMULA (FORALL (x, y: int):
                       x /= y IMPLIES (x - y)/(y - x) = -1)
 \end{pvsex}
 %
-the denominator is of type integer, but the signature for {\tt /} demands
-a {\tt nonzero\_real}.  The typechecker thus generates a \emph{subtype}
-\tcc\ whose conclusion is {\tt (y - x) /= 0}.  The premises of the \tcc\
-are obtained from the expression's \emph{context}---the conditions which
-lead to the {\tt /} operator---in this case {\tt x /= y}.  The \tcc\ is
-then
+the denominator is of type integer, but the signature for \texttt{/}
+demands a \texttt{nonzero\_real}.  The typechecker thus generates a
+\emph{subtype} \tcc\ whose conclusion is \texttt{(y - x) /= 0}.  The
+premises of the \tcc\ are obtained from the expressions
+\emph{context}\index{context}---the conditions which lead to the
+\texttt{/} operator---in this case \texttt{x /= y}.\footnote{As described
+in the Formal Semantics~\cite{PVS:semantics}, the context containing
+declarations is extended to allow boolean expressions.}  The \tcc\ is then
 \begin{pvsex}
   div_form_TCC1: OBLIGATION
     (FORALL (x,y: int): x /= y IMPLIES (y - x) /= 0)
 \end{pvsex}
 which is easily discharged by the prover.  In general, the context of an
-expression is obtained from expressions involving {\tt IF-THEN-ELSE},
-{\tt AND}, {\tt OR}, and {\tt IMPLIES} by translating to the {\tt
-IF-THEN-ELSE} form.  Specifically,
+expression is obtained from expressions involving \texttt{IF-THEN-ELSE},
+\texttt{AND}, \texttt{OR}, and \texttt{IMPLIES} by translating to the \texttt{IF-THEN-ELSE} form.  Specifically,
 \begin{center}
 \begin{tabular}{|lc|} \hline
-Expression & Context for {\tt E} \\ \hline
-{\tt IF A THEN E ELSE C ENDIF} & {\tt A} \\
-{\tt IF A THEN B ELSE E ENDIF} & {\tt NOT A} \\
-{\tt A AND E} & {\tt A} \\
-{\tt A OR E} & {\tt NOT A} \\
-{\tt A IMPLIES E} & {\tt A} \\ \hline
+Expression & Context for $e$ \\ \hline
+\texttt{IF $a$ THEN $e$ ELSE $c$ ENDIF} & $a$ \\
+\texttt{IF $a$ THEN $b$ ELSE $e$ ENDIF} & \texttt{NOT $a$} \\
+\texttt{$a$ AND $e$} & $a$ \\
+\texttt{$a$ OR $e$} & \texttt{NOT $a$} \\
+\texttt{$a$ IMPLIES $e$} & $a$ \\ \hline
 \end{tabular}
 \end{center}
 Note that only these operators are treated this way; if, for example,
 \texttt{IMPLIES} is overloaded it will not include the left-hand side in
 the context for typechecking the right-hand side.  The \tccs\ generated
 from the context of expression involving a subtype are sufficient, but not
-necessary conditions which ensure that the value of the expression does
+necessary conditions that ensure that the value of the expression does
 not depend on the value of functions applied outside their domain.
+
+Subtype \tccs\ may occur anywhere there is a mismatch between the type of
+a term and the use of it, not just in function applications.  For example,
+the following use of record types leads to an unprovable subtype \tcc.
+\begin{pvsex}
+  r: [# a, b: nzint #] = (# a := 0, b := 0 #)
+\end{pvsex}
 
 \index{TCC|)}
 
@@ -190,39 +160,38 @@ not depend on the value of functions applied outside their domain.
 
 Function types have three equivalent forms:
 \begin{itemize}
-\item {\tt [t\(_1\), \ldots, t\(_n\) -> t]}
+\item \texttt{[t\(_1\), \ldots, t\(_n\) -> t]}
 
-\item {\tt FUNCTION[t\(_1\), \ldots, t\(_n\) -> t]}
+\item \texttt{FUNCTION[t\(_1\), \ldots, t\(_n\) -> t]}
 
-\item {\tt ARRAY[t\(_1\), \ldots, t\(_n\) -> t]}
+\item \texttt{ARRAY[t\(_1\), \ldots, t\(_n\) -> t]}
 \end{itemize}
 %
-where each {\tt t$_i$} is a type expression.  An element of this type is
-simply a function whose domain is the sequence of types {\tt t$_1$},
-\ldots, {\tt t$_n$}, and whose range is {\tt t}.  A function type is empty
+where each \texttt{t$_i$} is a type expression.  An element of this type is
+simply a function whose domain is the sequence of types \texttt{t$_1$},
+\ldots, \texttt{t$_n$}, and whose range is \texttt{t}.  A function type is empty
 if the range is empty and the domain is not.  There is no difference in
 meaning between these three forms; they are provided to support different
 intensional uses of the type, and may suggest how to handle the given type
 when an implementation is created for the specification.
 
-The two forms {\tt pred[t]}\index{pred@{{\tt pred}}} and {\tt
-setof[t]}\index{setof@{{\tt setof}}} are both provided in the
-prelude as shorthand for {\tt [t ->
+The two forms \texttt{pred[t]}\index{pred@{\texttt{pred}}} and \texttt{setof[t]}\index{setof@{\texttt{setof}}} are both provided in the
+prelude as shorthand for \texttt{[t ->
 bool]}.  There is no difference in semantics, as sets in
 PVS are represented as predicates.  The different keywords are
-provided to support different intentions; {\tt pred} focuses on
-properties while {\tt setof} tends to emphasize elements.
+provided to support different intentions; \texttt{pred} focuses on
+properties while \texttt{setof} tends to emphasize elements.
 
 A function type \texttt{[t$_1$,\ldots,t$_n$ -> t]} is a subtype of
 \texttt{[s$_1$,\ldots,s$_m$ -> s]} iff \texttt{s} is a subtype of
-\texttt{t}, $n = m$, and {\tt s$_i$} = {\tt t$_i$} for $1 \leq i \leq n$.
-This leads to subtype TCCs (called \emph{domain mismatch
-TCCs})\index{domain mismatch TCC}\index{TCC!domain mismatch} that state
+\texttt{t}, $n = m$, and \texttt{s$_i$} = \texttt{t$_i$} for $1 \leq i \leq n$.
+This leads to subtype \tccs\ (called \emph{domain mismatch
+\tccs})\index{domain mismatch TCC}\index{TCC!domain mismatch} that state
 the equivalence of the domain types.  For example, given
 \begin{pvsex}
-  p,q: pred[int]
-  f: [\{x: int | p(x)\} -> int]
-  g: [\{x: int | q(x)\} -> int]
+  p, q: pred[int]
+  f: [\setb{}x: int | p(x)\sete -> int]
+  g: [\setb{}x: int | q(x)\sete -> int]
   h: [int -> int]
   eq1: FORMULA f = g
   eq2: FORMULA f = h
@@ -231,17 +200,17 @@ the equivalence of the domain types.  For example, given
 The following \tccs\ are generated:
 \begin{pvsex}
 eq1_TCC1: OBLIGATION
-  (FORALL (x1: \{x : int | q(x)\}, y1 : \{x : int | p(x)\}) :
+  (FORALL (x1: \setb{}x : int | q(x)\sete, y1 : \setb{}x : int | p(x)\sete) :
      q(y1) AND p(x1))
 
 eq2_TCC1: OBLIGATION
-  (FORALL (x1: int, y1 : \{x : int | p(x)\}) :
+  (FORALL (x1: int, y1 : \setb{}x : int | p(x)\sete) :
      TRUE AND p(x1))
 \end{pvsex}
 
 Section~\ref{conversion-examples} on page~\pageref{conversion-examples}
 explains how the \texttt{restrict} conversion may be automatically applied
-in some cases to eliminate the production of these TCCs.
+in some cases to eliminate the production of these \tccs.
 
 \index{type!function|)}\index{function types|)}
 
@@ -249,31 +218,34 @@ in some cases to eliminate the production of these TCCs.
 \section{Tuple Types}\label{tuple-types}
 \index{tuple types|(}\index{type!tuple|(}
 
-Tuple types (also called product types) have the form {\tt [t$_1$, \ldots,
-t$_n$]}, where the {\tt t$_i$} are type expressions.  Note that the 0-ary
-tuple type is not allowed.  Elements of this type are tuples whose
-components are elements of the corresponding type.  For example, {\tt (1,
-TRUE, (LAMBDA (x:int): x + 1))} is an expression of type {\tt [int, bool,
-[int -> int]]}.  Order is important.  Associated with every $n$-tuple type
-is a set of projection functions: \texttt{`1}, \texttt{`2}, \ldots, (or
-{\tt proj\_1}, \texttt{proj\_2}, \ldots) where the $i$th projection is of
-type {\tt [[t$_1$, \ldots, t$_n$] -> t$_i$]}.  A tuple type is empty if
-any of its component types is empty.  Function type domains and tuple
-types are closely related, as the types {\tt [t$_1$,\ldots, t$_n$ -> t]}
-and {\tt [[t$_1$,\ldots, t$_n$] -> t]} are equivalent; see
-Section~\ref{tuple-exprs} for more details.
+Tuple types (also called product types) have the form \texttt{[t$_1$,
+\ldots, t$_n$]}, where the \texttt{t$_i$} are type expressions.  Note that
+the 0-ary tuple type is not allowed.  Elements of this type are tuples
+whose components are elements of the corresponding type.  For example,
+\texttt{(1, TRUE, (LAMBDA (x:int):\ x + 1))} is an expression of type
+\texttt{[int, bool, [int -> int]]}.  Order is important.  Associated with
+every $n$-tuple type is a set of projection functions: \texttt{`1},
+\texttt{`2}, \ldots, (or \texttt{proj\_1}, \texttt{proj\_2}, \ldots) where
+the $i$th projection is of type \texttt{[[t$_1$, \ldots, t$_n$] ->
+t$_i$]}.  A tuple type is empty if any of its component types is empty.
+Function type domains and tuple types are closely related, as the types
+\texttt{[t$_1$,\ldots, t$_n$ -> t]} and \texttt{[[t$_1$,\ldots, t$_n$] ->
+t]} are equivalent; see Section~\ref{tuple-exprs} for more details.
 
 \index{type!tuple|)}\index{tuple types|)}
 
 \section{Record Types}\label{record-types}
 \index{record types|(}\index{type!record|(}
 
-Record types are of the form {\tt [\# a$_1$:t$_1$, \ldots, a$_n$:t$_n$
-\#]}.  The {\tt a$_i$} are called \emph{record accessors}\index{record
-accessors} or fields and the {\tt t$_i$} are types.  Record types are
+Record types are of the form \texttt{[\# a$_1$:t$_1$, \ldots, a$_n$:t$_n$
+\#]}.  The \texttt{a$_i$} are called \emph{record accessors}\index{record
+accessors} or fields and the \texttt{t$_i$} are types.  Record types are
 similar to tuple types, except that the order is unimportant and accessors
 are used instead of projections.  Record types are empty if any of the
 component types is empty.
+
+Note that the fields of a record type must be applied, they are not
+understood as functions.  See Section~\ref{record-expressions}.
 
 \index{type!record|)}\index{record types|)}
 
@@ -284,35 +256,35 @@ Function, tuple, and record types may be dependent; in other words, some
 of the type components may depend on earlier components.  Here are some
 examples:
 \begin{pvsex}
-  rem: [nat, d: \{n: nat | n /= 0\} -> \{r: nat | r < d\}]
+  rem: [nat, d: \setb{}n: nat | n /= 0\sete -> \setb{}r: nat | r < d\sete]
   pfn: [d:pred[dom], [(d) -> ran]]
-  stack: [\# size: nat, elements: [\{n:nat | n < size\} -> t] \#]
+  stack: [\# size: nat, elements: [\setb{}n:nat | n < size\sete -> t] \#]
 \end{pvsex}
-The declaration for {\tt rem} indicates explicitly the range of the
+The declaration for \texttt{rem} indicates explicitly the range of the
 remainder function, which depends on the second argument.  Function types
 may also have dependencies within the domain types; \eg\ the second domain
 type may depend on the first.  Note that for function and tuple dependent
-types, local identifiers need be associated only with those types on which
+types, local identifiers need to be given only for those types on which
 later types depend.
 
-The tuple type {\tt pfn} encodes partial functions as pairs consisting
+The tuple type \texttt{pfn} encodes partial functions as pairs consisting
 of a predicate on the domain type and a function from the subtype
-defined by that predicate to the range {\tt ran}.  If the second
-component were given instead as a function of type {\tt [dom -> ran]},
+defined by that predicate to the range \texttt{ran}.  If the second
+component were given instead as a function of type \texttt{[dom -> ran]},
 then equality no longer works as intended.  For example, the absolute
-value function {\tt abs} and the identity function {\tt id} are the same
-on the domain {\tt nat}, so we would like to have
+value function \texttt{abs} and the identity function \texttt{id} are the same
+on the domain \texttt{nat}, so we would like to have
 \begin{pvsex}
   ((LAMBDA (x:int):x >= 0),abs) = ((LAMBDA (x:int):x >= 0),id)
 \end{pvsex}
 %
-but without the dependency this would be equivalent to {\tt abs = id}.
+but without the dependency this would be equivalent to \texttt{abs = id}.
 
-{\tt stack} encodes a stack as a pair consisting of a size and an array
-mapping initial segments of the natural numbers to {\tt t}.  This is
-similar to the {\tt pfn} example---in fact, if we were willing to use a
-tuple instead of a record encoding, {\tt stack} could be declared as an
-instance of the type of {\tt pfn}.
+\texttt{stack} encodes a stack as a pair consisting of a size and an array
+mapping initial segments of the natural numbers to \texttt{t}.  This is
+similar to the \texttt{pfn} example---in fact, if we were willing to use a
+tuple instead of a record encoding, \texttt{stack} could be declared as an
+instance of the type of \texttt{pfn}.
 
 Another example, presented in~\cite{Cheng&Jones90} as a ``challenge'' to
 specification languages without partial functions, is easily handled
@@ -327,8 +299,26 @@ well-formed in PVS:
 \begin{pvsex}
   subp_lemma: LEMMA subp(i, 0) = i OR subp(0, i) = i
 \end{pvsex}
-This generates unprovable TCCs.  In practice this is rarely a problem.
+This generates unprovable \tccs.  In practice this is rarely a problem.
 
 \index{type!dependent|)}\index{dependent types|)}
+\section{Cotuple Types}\label{cotuple-types}
+\index{cotuple types|(}\index{type!cotuple|(}
+\index{coproduct types|see{cotuple type}}
+\index{sum types|see{cotuple type}}
+
+\emph{Cotuple types} (also called \emph{coproduct} or \emph{sum} types)
+provide a way to form the disjoint union of types.  The syntax is similar
+to that for tuple types, but with `\texttt{+}' in place of `\texttt{,}',
+so have the form \texttt{[t$_1$ + \ldots + t$_n$]}.  Elements of this type
+are essentially pairs consisting of an index and a value for the type
+corresponding to the index.  In PVS the syntax for this is
+\texttt{IN\_$i(e)$}, where $e$ is an expression of type \texttt{t$_i$}.
+For example, \texttt{IN\_2(3)} is an expression of type \texttt{[bool + int
++ [int -> int]]}, or any other cotuple type whose second component type
+contains \texttt{3}.  A cotuple type is empty iff all its component types
+are empty.
+
+\index{type!cotuple|)}\index{cotuple types|)}
 
 \index{type|)}

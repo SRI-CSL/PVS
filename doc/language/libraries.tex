@@ -23,10 +23,13 @@ including the library id in an importing name:\index{IMPORTING@{\tt IMPORTING}}
 This has the effect of bringing in the \texttt{sliding\_window} theory,
 exactly as if the theory belonged to the current context.
 
-There are several libraries distributed with PVS, in the directory {\tt lib}.
-It is not necessary to give a library declaration for libraries in this
-directory, as it will be automatically searched for library importings.
-For example, to import the finite sets library over the natural numbers:
+There are several libraries distributed with PVS, in the directory {\tt
+lib}.  It is not necessary to give a library declaration for libraries in
+this directory, as it will be automatically searched for library
+importings.  Also, as described in the PVS System Guide, any libraries
+found on the environment variable \texttt{PVS\_LIBRARY\_PATH} do not need
+library declarations.  For example, to import the finite sets library over
+the natural numbers:
 \begin{pvsex}
   IMPORTING finite\_sets@finite\_sets[nat]
 \end{pvsex}

@@ -2,18 +2,19 @@
 % Master File: language.tex
 \chapter{The Lexical Structure}\label{lexical}
 
-\pvs\ specifications are text files, each composed of a sequence of
-lexical elements which in turn are made up of characters.  The lexical
-elements of \pvs\ are the identifiers, reserved words, special symbols,
-numbers, whitespace characters, and comments.
+PVS specifications are text files, each composed of a sequence of lexical
+elements which in turn are made up of characters.  The lexical elements of
+PVS are the identifiers, reserved words, special symbols, numbers,
+whitespace characters, and comments.
 
-Identifiers\index{identifiers} are composed of letters, digits, and the characters
-{\tt \_} or {\tt ?}; they must begin with a letter.
-They may be arbitrarily long, constrained only by the limits imposed by
-the underlying Common Lisp system.  Identifiers are case-sensitive; {\tt
-FOO}, {\tt Foo}, and {\tt foo} are different identifiers.  PVS strings
-contain any ASCII character:  to include a {\tt "} in the string,
-use {\tt \char'134 "} and to include a {\tt \char'134} use {\tt \char'134\char'134}.
+Identifiers\index{identifiers} are composed of letters, digits, and the
+characters \texttt{\_} or \texttt{?}; they must begin with a letter.  They
+may be arbitrarily long, constrained only by the limits imposed by the
+underlying Common Lisp system.  Identifiers are case-sensitive;
+\texttt{FOO}, \texttt{Foo}, and \texttt{foo} are different identifiers.
+PVS strings contain any ASCII character: to include a \texttt{"} in the
+string, use \texttt{\char'134 "} and to include a \texttt{\char'134} use
+\texttt{\char'134\char'134}.
 
 \pvsbnf{bnf-lexical}{Lexical Syntax}
 
@@ -21,10 +22,10 @@ The reserved words\index{reserved words} are shown in
 Figure~\ref{reserved-words}.  Unlike identifiers, they are not
 case-sensitive.  In this document, reserved words are always displayed in
 upper case.  Note that identifiers may have reserved words embedded in
-them, thus {\tt ARRAYALL} is a valid identifier and will not be confused
-with the two embedded reserved words.  The meaning of the reserved words
-are given in the appropriate sections; they are collected here for
-reference.
+them, thus \texttt{ARRAYALL} is a valid identifier and will not be
+confused with the two embedded reserved words.  The meaning of the
+reserved words are given in the appropriate sections; they are collected
+here for reference.
 
 \begin{figure}[tb]
 {\smaller\tt
@@ -55,22 +56,39 @@ they are used to separate other lexical elements.  At least one whitespace
 character must separate adjacent identifiers, numbers, and reserved words.
 
 Comments\index{comments} may appear anywhere that a whitespace character
-is allowed.  They consist of the `{\tt \%}'\index{\%@{\tt \%}} character
+is allowed.  They consist of the `\texttt{\%}'\index{\%@\texttt{\%}} character
 followed by any sequence of characters and terminated by a newline.
 
 The \emph{definable} symbols are shown in table~\ref{definable-symbols}.
 These keywords and symbols may be given declarations.  Some of them have
-declarations given in the prelude.  Any of these may be (re)declared any
-number of times, though this may lead to ambiguities.  Symbols that are
-binary infix (\hyperlink{Binop}{\emph{Binop}}), for example \texttt{AND}
-and \texttt{+}, may be declared with any number of arguments.  If they are
-declared with two arguments then they may subsequently be used in prefix
-or infix form.  Otherwise they may only be used in prefix form.
-Similarly for unary operators.
+declarations given in the prelude.\footnote{In particular,
+\texttt{\char38}, \texttt{*}, \texttt{+}, \texttt{-}, \texttt{/},
+\texttt{/=}, \texttt{<}, \texttt{<<}, \texttt{<=}, \texttt{<=>},
+\texttt{=}, \texttt{=>}, \texttt{>}, \texttt{>=}, \texttt{AND},
+\texttt{IFF}, \texttt{IMPLIES}, \texttt{NOT}, \texttt{O}, \texttt{OR},
+\texttt{WHEN}, \texttt{XOR}, \texttt{\char94}, and \texttt{\char126} are
+declared there.  Note that many of these are overloaded, for example,
+\texttt{\char94} has three different definitions.}  Any of these may be
+(re)declared any number of times, though this may lead to ambiguities.
+Such ambiguities may be resolved by including the theory name, actual
+parameters,  and possibly the type as a coercion.
+
+Symbols that are binary infix (\hyperlink{Binop}{\emph{Binop}}), for
+example \texttt{AND} and \texttt{+}, may be declared with any number of
+arguments.  If they are declared with two arguments then they may
+subsequently be used in prefix or infix form.  Otherwise they may only be
+used in prefix form.  Similarly for unary operators, and the \texttt{IF}
+operator, which may be used in \texttt{IF-THEN-ELSE-ENDIF} form if
+declared with three arguments.
+
+Note that when typing the operators \texttt{/\\} or \texttt{\\/} outside
+of a specification, the backslash may need to be doubled (or in rare
+cases, quadrupled).  This is because it is commonly used as an ``escape''
+character, and the character following may be interpreted specially.
 
 The symbol pairs \lit{[|} and \lit{|]}, \lit{(|} and \lit{|)}, and
-\lit{\{|} and \lit{|\}} are available as outfix operators.  They are
-declared using \lit{[||]}, \lit{(||)}, and \lit{\{||\}}, respectively.
+\lit{$\{$|} and \lit{|$\}$} are available as outfix operators.  They are
+declared using \lit{[||]}, \lit{(||)}, and \lit{$\{$||$\}$}, respectively.
 For example, with the declaration \texttt{[||]:\ [bool, int -> int]} the
 outfix term \texttt{[| TRUE, 0 |]} is equivalent to the prefix form
 \texttt{[||](TRUE, 0)}.
@@ -78,7 +96,7 @@ outfix term \texttt{[| TRUE, 0 |]} is equivalent to the prefix form
 \begin{figure}[tb]
 \begin{center}
 {\small\tt
-\begin{tabular}{|*{6}{@{\hspace*{.2in}}c@{\extracolsep{.5in}}}@{\hspace*{.25in}}|}\hline
+\begin{tabular}{|*{6}{@{\hspace*{.2in}}c@{\extracolsep{.4in minus .4in}}}@{\hspace*{.2in}}|}\hline
 \input{opsym-table}
 \hline
 \end{tabular}}

@@ -4,11 +4,11 @@
 \chapter{Theories}\label{theories}
 \index{theories}
 
-Specifications in \pvs\ are built from {\em theories}, which provide
+Specifications in \pvs\ are built from \emph{theories}, which provide
 genericity, reusability, and structuring.  \pvs\ theories may be
-parameterized.  A theory consists of a {\em theory
-identifier\/}, a list of formal {\em parameters\/}, an {\tt EXPORTING}
-clause, an {\em assuming part\/}, a {\em theory body\/}, and an ending
+parameterized.  A theory consists of a \emph{theory
+identifier}, a list of formal \emph{parameters}, an \texttt{EXPORTING}
+clause, an \emph{assuming part}, a \emph{theory body}, and an ending
 id.  The syntax for theories is shown in Figure~\ref{bnf-theory}.
 
 \pvsbnf{bnf-theory}{Theory Syntax}
@@ -22,31 +22,22 @@ the simplest theory has the form
 \end{pvsex}
 
 The formal parameters, assuming, and theory body consist of declarations
-and {\tt IMPORTING}s.  The various declarations are described in
+and \emph{importings}.  The various declarations are described in
 Section~\ref{declarations}.  In this section we discuss the restrictions
-on the allowable declarations within each section, the formal
-parameters, the assuming part, and the {\tt EXPORTING}s and {\tt IMPORTING}s.
+on the allowable declarations within each section, the formal parameters,
+the assuming part, and the exportings and importings.
 
-%Theories are used to introduce
-%variables, constants, functions, and formulas.  They may be
-%parameterized by types or constants,\footnote{Future releases of \pvs\
-%will allow theory and subtype parameters.} and may specify constraints
-%on the use of the theory by providing an assuming part.  Entities from
-%other theories may be introduced by means of {\tt IMPORTING} clauses.
-%Entities declared in a theory may be exported with an {\tt EXPORTING}
-%clause.
+The \texttt{groups} theory below illustrates these concepts.  It views a
+group as a 4-tuple consisting of a type \texttt{G}, an identity element
+\texttt{e} of \texttt{G}, and operations \texttt{o}\footnote{Recall that
+\texttt{o} is an infix operator.} and \texttt{inv}.  Note the use of the
+type parameter \texttt{G} in the rest of the formal parameter list.  The
+assuming part provides the group axioms.  Any use of the \texttt{groups}
+theory incurs the obligation to prove all of the \texttt{ASSUMPTION}s.
+The body of the \texttt{groups} theory consists of two theorems, which can
+be proved from the assumptions.
 
-The {\tt groups} theory below illustrates these concepts.  It views a
-group as a 4-tuple consisting of a type {\tt G}, an identity element
-{\tt e} of {\tt G}, and operations {\tt o}\footnote{Recall that {\tt o}
-is an infix operator.} and {\tt inv}.  Note the use of the type
-parameter {\tt G} in the rest of the formal parameter list.  The
-assuming part provides the group axioms.  Any use of the {\tt groups}
-theory incurs the obligation to prove all of the {\tt ASSUMPTION}s.  The
-body of the {\tt groups} theory consists of two theorems, which can be
-proved from the assumptions.
-
-\pvstheory{groups-alltt}{Theory {\tt groups}}{groups-alltt}
+\pvstheory{groups-alltt}{Theory \texttt{groups}}{groups-alltt}
 
 \section{Theory Identifiers}
 
@@ -55,13 +46,14 @@ Section~\ref{names}, this identifier can be used to help disambiguate
 references to declarations of the theory.
 
 In the \pvs\ system, the set of theories currently available to the
-session form a {\em context\/}.  Within the context theory names must be
-unique.  There is an initial context available, called the prelude,
-which provides, among other things, the Boolean operators, equality, and
-the {\tt real}, {\tt rational}, {\tt integer}, and {\tt naturalnumber}
-types and their associated properties.  The only difference between the prelude and
-user-defined theories is that the prelude is automatically imported in
-every theory, without requiring an explicit \rsv{IMPORTING} clause.
+session form a \emph{context}.  Within the context theory names must be
+unique.  There is an initial context available, called the prelude
+(described in Appendix~\ref{prelude}), that provides, among other things,
+the Boolean operators, equality, and the \texttt{real}, \texttt{rational},
+\texttt{integer}, and \texttt{naturalnumber} types and their associated
+properties.  The only difference between the prelude and user-defined
+theories is that the prelude is automatically imported in every theory,
+without requiring an explicit \rsv{IMPORTING} clause.
 
 The end identifier must match the theory identifier, or an error is
 signaled.
@@ -72,21 +64,21 @@ signaled.
 \index{formal parameters|see{theory parameters}}
 
 The theory parameters allow theory schemas to be specified.  This
-provides support for {\em universal polymorphism\/}\index{polymorphism}
+provides support for \emph{universal polymorphism}\index{polymorphism}
 
-Theory parameters may be types, subtypes, or constants, and {\tt
-IMPORTING}s may be interspersed.  Theory parameters must have unique
-identifiers.  The parameters are ordered, allowing later parameters to
-refer to earlier ones.  This is another form of dependency, akin to
-dependent types (see Section~\ref{dependent-types}).  A theory is {\em
-instantiated\/} from within another theory by providing {\em actual
-parameters\/}\index{actual parameters} to substitute for the formals.
-Actual parameters may occur in {\tt IMPORTING}s, {\tt EXPORTING}s, theory
-declarations, and names.  In each case they are enclosed in braces ({\tt
-[} and {\tt ]}) and separated with commas.
+Theory parameters may be types, subtypes, or constants, and importings may
+be interspersed.  Theory parameters must have unique identifiers.  The
+parameters are ordered, allowing later parameters to refer to earlier
+ones.  This is another form of dependency, akin to dependent types (see
+Section~\ref{dependent-types}).  A theory is \emph{ instantiated} from
+within another theory by providing \emph{actual parameters}\index{actual
+parameters} to substitute for the formals.  Actual parameters may occur in
+importings, exportings, theory declarations, and names.  In each case they
+are enclosed in braces (\texttt{[} and \texttt{]}) and separated with
+commas.
 
 The actuals must match the formals in number, kind, and (where
-applicable) type.  In this matching process the {\tt IMPORTING}s, which
+applicable) type.  In this matching process the importings, which
 must be enclosed in parentheses, are ignored.  For example, given the
 theory declaration
 \begin{pvsex}
@@ -94,11 +86,11 @@ theory declaration
      subt: TYPE FROM t
      (IMPORTING orders[subt]) <=: (partial_order?),
      c: subt,
-     d: \{x:subt | c <= x\}]
+     d: \setb{}x:subt | c <= x\sete]
 \end{pvsex}
 a valid instance has five actual parameters; an example is
 \begin{pvsex}
-  T[int, \{x:nat | x < 10\}, <=, 5, 6]
+  T[int, \setb{}x:nat | x < 10\sete, <=, 5, 6]
 \end{pvsex}
 %
 Note that the matching process may lead to the generation of \emph{actual}
@@ -107,53 +99,53 @@ Note that the matching process may lead to the generation of \emph{actual}
 \index{theory parameters|)}
 
 
-\section{{\tt IMPORTING}s and {\tt EXPORTING}s}\label{importings}
+\section{Importings and Exportings}\label{importings}
 
-The \rsv{IMPORTING} and \rsv{EXPORTING} clauses form a hierarchy,
-much like the subroutine hierarchy of a programming
-language.
+The importing and exporting clauses form a hierarchy, much like the
+subroutine hierarchy of a programming language.
 
-Names declared in a theory may be made available to other theories in
-the same context by means of the {\tt EXPORTING} clause.  Names exported
-by a given theory may be imported into a second theory by means of the
-{\tt IMPORTING} clause.  Names that are exported from one theory are said to
-be {\em visible\/} to any theory which uses the given theory.  In this
-section we describe the syntax of the {\tt EXPORTING} and {\tt IMPORTING}
-clauses and give some simple examples.
+Names declared in a theory may be made available to other theories in the
+same context by means of the \texttt{EXPORTING} clause.  Names exported by
+a given theory may be imported into a second theory by means of the
+\texttt{IMPORTING} clause.  Names that are exported from one theory are
+said to be \emph{visible} to any theory which uses the given theory.  In
+this section we describe the syntax of the \texttt{EXPORTING} and
+\texttt{IMPORTING} clauses and give some simple examples.
 
 \pvsbnf{bnf-exporting}{Importing and Exporting Syntax}
 
 
-\subsection{The {\tt EXPORTING} Clause}
-\index{exporting@{\tt EXPORTING}|(}
+\subsection{The \texttt{EXPORTING} Clause}
+\index{exporting@\texttt{EXPORTING}|(}
 
-The {\tt EXPORTING} clause specifies the names declared in the theory
+The \texttt{EXPORTING} clause specifies the names declared in the theory
 which are to be made available to any theory \texttt{IMPORTING} it.  It may
 also specify instances of the theories which it imported to be exported.
-The syntax of the {\tt EXPORTING} clause is given in
+The syntax of the \texttt{EXPORTING} clause is given in
 Figure~\ref{bnf-exporting}.
 
 \noindent
-The {\tt EXPORTING} clause is optional; if omitted, it defaults to
+The \texttt{EXPORTING} clause is optional; if omitted, it defaults to
 \begin{alltt}
   EXPORTING ALL WITH ALL
 \end{alltt}
 
 Any declared name may be exported except for variable declarations and formal parameters.
-When {\tt ALL} is specified for the {\em ExportingNames\/}, all
+When \texttt{ALL} is specified for the \emph{ExportingNames}, all
 entities declared in the theory aside from the variables are exported.
 If a list of names is specified, then these are exported.  Finally, when
-a list of names follows {\tt ALL BUT}, all names aside from these are exported.
+a list of names follows \texttt{ALL BUT}, all names aside from these are exported.
 
-Since PVS supports overloading, it is possible that the exported name
-will be ambiguous.  Such names may be disambiguated by including the
-type, if it is a constant, or by including one of the keywords {\tt
-TYPE} or {\tt FORMULA}.  The keyword {\tt TYPE} is used for any type
-declaration, and {\tt FORMULA} is used for any formula declaration
-(including {\tt AXIOM}s, {\tt LEMMA}s, etc.)  If not disambiguated, all
-declarations (except variables and formals) with the specified id will be exported.
+Since PVS supports overloading, it is possible that the exported name will
+be ambiguous.  Such names may be disambiguated by including the type, if
+it is a constant, or by including one of the keywords \texttt{TYPE} or
+\texttt{FORMULA}.  The keyword \texttt{TYPE} is used for any type
+declaration, and \texttt{FORMULA} is used for any formula declaration
+(including \texttt{AXIOM}s, \texttt{LEMMA}s, etc.)  If not disambiguated,
+all declarations (except variables and formals) with the specified id will
+be exported.
 
-When names are specified they are checked for {\em completeness\/}.
+When names are specified they are checked for \emph{completeness}.
 This means that when a name is exported all of the names on which the
 corresponding declaration(s) depend must also be exported.  Thus, for
 example, given the following declarations
@@ -161,18 +153,18 @@ example, given the following declarations
   sometype: TYPE
   someconst: sometype
 \end{alltt}
-it would be illegal to export {\tt someconst} without also exporting
-{\tt sometype}.  Note that this check is unnecessary if exporting {\tt
-ALL} without {\tt BUT}.
+it would be illegal to export \texttt{someconst} without also exporting
+\texttt{sometype}.  Note that this check is unnecessary if exporting
+\texttt{ALL} without \texttt{BUT}.
 
 In some cases it is desirable (or necessary for completeness) to
 export some of the instances of the theories which are used by the
-given theory.  This is done by specifying a {\tt WITH} subclause as a
-part of the {\tt EXPORTING} clause.  The {\tt WITH} subclause may be
-{\tt ALL}, indicating that all instances of theories used by the given
-theory are exported.  If {\tt CLOSURE} is specified, then the
-typechecker determines the instances to be exported by a {\em
-completion analysis\/}\index{completion analysis} on the exported
+given theory.  This is done by specifying a \texttt{WITH} subclause as a
+part of the \texttt{EXPORTING} clause.  The \texttt{WITH} subclause may be
+\texttt{ALL}, indicating that all instances of theories used by the given
+theory are exported.  If \texttt{CLOSURE} is specified, then the
+typechecker determines the instances to be exported by a \emph{
+completion analysis}\index{completion analysis} on the exported
 names.  Completion analysis determines those entities that are
 directly or indirectly referenced by one of the exported
 names.\footnote{Proofs are not used in completion analysis.} Finally,
@@ -180,49 +172,51 @@ a list of theory names may be given; in this case the theory names
 must be complete in the sense that if an exported name refers to an
 entity in another theory instance, then that theory instance must be
 exported also.  Other theory instances may also be exported even if
-not actually needed for completeness in this sense.  The {\tt WITH}
+not actually needed for completeness in this sense.  The \texttt{WITH}
 subclause may only reference theory instances, \ie\ theory names with
 actuals provided for all of the corresponding formal parameters.
 
-As a practical matter, it is probably best not to include an {\tt
-EXPORTING} clause unless there is a good reason.  That way everything
-that is declared will be visible at higher levels of the {\tt IMPORTING}
-chain.
+As a practical matter, it is probably best not to include an
+\texttt{EXPORTING} clause unless there is a good reason.  That way
+everything that is declared will be visible at higher levels of the
+\texttt{IMPORTING} chain.
 
-\index{exporting@{\tt EXPORTING}|)}
+\index{exporting@\texttt{EXPORTING}|)}
 
-\subsection{{\tt IMPORTING} Clauses}
+\subsection{\texttt{IMPORTING} Clauses}
+\index{importings|(}
 
-{\tt IMPORTING} clauses import the visible names of another theory.  {\tt
-IMPORTING} clauses may appear in the formal parameters list, the assuming
-part, or the theory part of a theory.  In addition, theory abbreviations
-implicitly import the theory name that they abbreviate (see
+\texttt{IMPORTING} clauses import the visible names of another theory.
+\texttt{IMPORTING} clauses may appear in the formal parameters list, the
+assuming part, or the theory part of a theory.  In addition, theory
+abbreviations implicitly import the theory name that they abbreviate (see
 Section~\ref{theory-abbreviations}).
 
-The names appearing in an {\tt IMPORTING} or theory abbreviation specifies a
+The names appearing in an \texttt{IMPORTING} or theory abbreviation specifies a
 theory and optionally gives an instance of that theory, by providing
 actual parameters corresponding to the formal parameters of the theory
-used.  {\tt IMPORTING}s are cumulative; entities made visible at some point
+used.  \texttt{IMPORTING}s are cumulative; entities made visible at some point
 in a theory are visible to every declaration following.
 
-An {\tt IMPORTING} with actual parameters provided is said to be a {\em
-theory instance\/}.\index{theory instance} We use the same terminology for
-an {\tt IMPORTING} that refers to theory that has no formal parameters.
-Otherwise it is referred to as a {\em generic\/}\index{generic reference}
+An \texttt{IMPORTING} with actual parameters provided is said to be a \emph{
+theory instance}.\index{theory instance} We use the same terminology for
+an \texttt{IMPORTING} that refers to theory that has no formal parameters.
+Otherwise it is referred to as a \emph{generic}\index{generic reference}
 reference.
 
-A single theory may appear in any number of {\tt IMPORTING}s of another
+A single theory may appear in any number of \texttt{IMPORTING}s of another
 theory, both instantiated and generic.  Obviously, any time there is
-more than one {\tt IMPORTING} of a given theory there is a chance for
+more than one \texttt{IMPORTING} of a given theory there is a chance for
 ambiguity.  Section~\ref{names} discusses such ambiguities, explaining
 how the system attempts to resolve them and how the user can
 disambiguate in situations where the system cannot.
 
-An {\tt IMPORTING} forms a relation between the theory containing the {\tt
-IMPORTING} and the theory referenced.  The transitive closure of the {\tt
-IMPORTING} relation is called the {\em importing chain\/} of a theory.  The
-importing chain must form a directed acyclic graph; hence a theory may not
-end up importing itself, directly or indirectly.
+An \texttt{IMPORTING} forms a relation between the theory containing the
+\texttt{IMPORTING} and the theory referenced.  The transitive closure of
+the \texttt{IMPORTING} relation is called the \emph{importing chain} of a
+theory.  The importing chain must form a directed acyclic graph; hence a
+theory may not end up importing itself, directly or indirectly.
+\index{importings|)}
 
 
 \section{Theory Abbreviations}\label{theory-abbreviations}
@@ -234,21 +228,21 @@ example, given the declaration
 \begin{pvsex}
   fsets: THEORY = sets[[integer -> integer]]
 \end{pvsex}
-where {\tt sets} is a theory in which the function {\tt member} is
-declared, the name {\tt sets[[integer -> integer]].member} may instead
-be written as {\tt fsets.member}.  The body of a theory abbreviation
+where \texttt{sets} is a theory in which the function \texttt{member} is
+declared, the name \texttt{sets[[integer -> integer]].member} may instead
+be written as \texttt{fsets.member}.  The body of a theory abbreviation
 must refer to a theory of the current context or the prelude, and the
 actual parameters must be compatible (in number, kind, and type) with
 the corresponding theory parameters\index{theory parameters}.
 
 In addition to providing an abbreviation, such declarations do an
-implicit {\tt IMPORTING}\index{IMPORTING@{\tt IMPORTING}} of the theory instance.
+implicit \texttt{IMPORTING}\index{IMPORTING@\texttt{IMPORTING}} of the theory instance.
 Theory abbreviations may not be exported.
 
 
 \section{Assuming Part}\label{assuming}
 
-The assuming part consists of top-level declarations and {\tt IMPORTING}s.
+The assuming part consists of top-level declarations and \texttt{IMPORTING}s.
 The assuming part precedes the theory part, so the
 theory part may refer to entities declared in the assuming part.  The
 grammar for the assuming part is given in Figure~\ref{bnf-assuming}.
@@ -256,12 +250,12 @@ grammar for the assuming part is given in Figure~\ref{bnf-assuming}.
 \pvsbnf{bnf-assuming}{Assuming Syntax}
 
 The primary purpose of the assuming part is to provide constraints on the
-use of the theory, by means of {\tt ASSUMPTION}s.  These are formulas
+use of the theory, by means of \texttt{ASSUMPTION}s.  These are formulas
 expressing properties that are expected to hold of any instance of the
 theory.  They are generally stated in terms of the formal parameters, and
 when instantiated they become \emph{assuming} \tccs\ \index{assuming
-TCC}\index{TCC!assuming} {\tt OBLIGATION}s which must be discharged.  For
-example, given the theory {\tt groups} above, the importing
+TCC}\index{TCC!assuming} \texttt{OBLIGATION}s which must be discharged.  For
+example, given the theory \texttt{groups} above, the importing
 \begin{pvsex}
   IMPORTING groups[int, 0, +, -]
 \end{pvsex}
@@ -368,7 +362,7 @@ parameter (e.g., \texttt{rel\_prime[3]}) then the above error is produced.
 
 \section{Theory Part}
 
-The theory part consists of top-level declarations and {\tt IMPORTING}s.
+The theory part consists of top-level declarations and \texttt{IMPORTING}s.
 Declarations are ordered; references may not be made to declarations
 which occur later in the theory.  The theory part usually contains the
 main body of the theory.  Assuming declarations are not allowed in the

@@ -1,44 +1,58 @@
-\section{Inductive Definitions}
+% Master File: language.tex
+\section{Inductive and Coinductive Definitions}
 \label{inductive-definitions}
 \index{inductive definition|(}
 
-PVS provides support for constructing inductive definitions.  Inductive
-definitions are usually presented by giving some rules for generating
-elements of a set and then stating that an object is in the set only if it
-has been generated according to the rules; hence, it is the smallest set
-closed under the rules.  Inductive definitions are similar to recursive
-definitions, in that both involve induction, and both must satisfy
-additional constraints to guarantee that they are total.
+\emph{Inductive} definitions~\cite{Aczel:Handbook} are used frequently in
+mathematics.  In general, some rules are given that generate elements of a
+set, and the inductively defined set is the smallest set that contains
+those elements.  The obvious example of an inductive definition is the
+natural numbers, where the rules are given by Peano's axioms, with the
+induction scheme ensuring that the natural numbers are the smallest set
+containing $1$ and the successor of any natural number.  Language
+definitions are another example.  Most logics have a notion of
+\emph{formulas}, and these are usually defined inductively.
 
+Paulson~\cite{paulson-fixedpoint} notes that this is simply a \emph{least
+fixedpoint} with respect to a given domain of elements and a set of rules,
+which is well-defined if the rules are \emph{monotonic}, by the
+well known Knaster-Tarski theorem.  From this perspective, the greatest
+fixedpoint also exists and corresponds to \emph{coinductive} definitions.
+Inductive and coinductive definitions are similar to recursive
+definitions, in that they have induction principles, and both must satisfy
+additional constraints to guarantee that they are well defined.
+
+We will describe inductive definitions first, as they are more familiar.
 The even integers provide a simple example of an inductive
 definition:\footnote{This is an alternative to the more traditional
 definition of \texttt{even?} in the prelude.}
 \begin{pvsex}
-  even(n:nat): INDUCTIVE bool =
-    n = 0 OR (n > 1 AND even(n - 2))
+  even(n: int): INDUCTIVE bool = n = 0 OR even(n - 2) OR even(n + 2)
 \end{pvsex}
 With this definition, it is easy to prove, for example, that \texttt{0} or
 \texttt{1000} are even, simply by expanding the definition enough
-times.\footnote{In the latter case, \texttt{(apply (repeat (expand
-"even")))} is a good strategy to use, though it should be used with care
-since it does not terminate in all cases.}  More is needed, however, in
-proving general facts, such as if $n$ is even, then $n+1$ is not even.  To
-deal with these, we need a means of stating that an integer is even iff it
-is so as a result of this definition.  In PVS, this is accomplished by the
+times.\footnote{In the latter case, \texttt{(apply (repeat (then (expand
+"even") (flatten) (assert))))} is a good strategy to use, though it should
+be used with care since it does not terminate on \texttt{even} applied to
+anything other than an even numeral.}  More is needed, however, in proving
+general facts, such as if $n$ is even, then $n+1$ is not even.  To deal
+with these, we need a means of stating that an integer is even iff it is
+so as a result of this definition.  In PVS, this is accomplished by the
 automatic creation of two induction schemas, that may be viewed using the
 \texttt{M-x~prettyprint-expanded} command:
-\begin{pvsex}
+\begin{session}
   even_weak_induction: AXIOM
-        (FORALL (P: [nat -> boolean]):
-           (FORALL (n: nat): n = 0 OR (n > 1 AND P(n - 2)) IMPLIES P(n))
-               IMPLIES (FORALL (n: nat): even(n) IMPLIES P(n)));
-  
+    FORALL (P: [int -> boolean]):
+      (FORALL (n: int): n = 0 OR P(n - 2) OR P(n + 2) IMPLIES P(n)) IMPLIES
+       (FORALL (n: int): even(n) IMPLIES P(n));
+
   even_induction: AXIOM
-        (FORALL (P: [nat -> boolean]):
-           (FORALL (n: nat):
-              n = 0 OR (n > 1 AND even(n - 2) AND P(n - 2)) IMPLIES P(n))
-               IMPLIES (FORALL (n: nat): even(n) IMPLIES P(n)));
-\end{pvsex}
+    FORALL (P: [int -> boolean]):
+      (FORALL (n: int):
+         n = 0 OR even(n - 2) AND P(n - 2) OR even(n + 2) AND P(n + 2)
+          IMPLIES P(n))
+       IMPLIES (FORALL (n: int): even(n) IMPLIES P(n));
+\end{session}
 The weak induction axiom states that if \texttt{P} is another predicate
 that satisfies the \texttt{even} form, then any \texttt{even} number
 satisfies \texttt{P}.  Thus \texttt{even} is the smallest such \texttt{P}.
@@ -49,20 +63,20 @@ Guide~\cite{PVS:prover}.
 
 Inductive definitions are predicates, hence must be functions with
 eventual range type \texttt{boolean}.  For example, in
-\begin{pvsex}
+\begin{session}
   f1(n,m:int) INDUCTIVE int = n
   f2(n,m:int)(x,y:int)(z:int): INDUCTIVE [int,int,int -> bool] =
       LAMBDA (a,b,c:int): n = m IMPLIES f2(n,m)(x,y)(z)(a,b,c)
-\end{pvsex}
+\end{session}
 \texttt{f1} is illegal, while \texttt{f2} returns a boolean value if
 applied to enough arguments, hence is valid.
 
-Every occurrence of the definition within the defining body must be
-\emph{positive}.\index{positive occurrence} For this we need to define the
-parity of an occurrence of a term in an expression $A$: If a term occurs
-in $A$ with a given parity, then the occurrence retains its parity in
-\texttt{$A$ AND $B$}, \texttt{$A$ OR $B$}, \texttt{$B$ IMPLIES $A$},
-\texttt{FORALL y:$A$}, \texttt{EXISTS y:$A$}, and reverses it in
+To be monotonic, every occurrence of the definition within the defining
+body must be \emph{positive}.\index{positive occurrence} For this we need
+to define the parity of an occurrence of a term in an expression $A$: If a
+term occurs in $A$ with a given parity, then the occurrence retains its
+parity in \texttt{$A$ AND $B$}, \texttt{$A$ OR $B$}, \texttt{$B$ IMPLIES
+$A$}, \texttt{FORALL y:$A$}, \texttt{EXISTS y:$A$}, and reverses it in
 \texttt{$A$ IMPLIES $B$} and \texttt{NOT $A$}.  Any other occurrence is of
 unknown parity.
 
@@ -71,19 +85,19 @@ and if some occurrence of the definition is negative, a type error is
 generated.  If some occurrence is of unknown parity, then a
 \emph{monotonicity TCC}\index{TCC!monotonicity}\index{monotonicity TCC} is
 generated.  For example, given the declarations
-\begin{pvsex}
+\begin{session}
   f: [nat, bool -> bool]
   G(n:nat): INDUCTIVE bool =
     n = 0 OR f(n, G(n-1))
-\end{pvsex}
+\end{session}
 the monotonicity TCC has the form
-\begin{pvsex}
+\begin{session}
   (FORALL (P1: [nat -> boolean], P2: [nat -> boolean]):
      (FORALL (x: nat): P1(x) IMPLIES P2(x))
          IMPLIES
        (FORALL (x: nat):
           x = 0 OR f(x, P1(x - 1)) IMPLIES x = 0 OR f(x, P2(x - 1))));
-\end{pvsex}
+\end{session}
 
 Inductive definitions act as constants for the most part, so they may be
 expanded or used as rewrite rules in proofs.  However, they are not usable
@@ -105,19 +119,84 @@ take the non-fixed variables as arguments.  If the inductive definition is
 defined for variable $V$ partitioned into fixed variables $F$, and
 non-fixed variables $N$, the general form of the (weak) induction scheme
 is
-\begin{pvsex}
+\begin{session}
   FORALL (\(F\), \(P\)):
    (FORALL (\(N\)):
      \emph{inductive_body}(\(N\))\([P/\emph{def}]\) IMPLIES \(P\)(\(N\)))
       IMPLIES
      (FORALL (\(N\)): \emph{def}(\(V\)) IMPLIES \(P\)(\(N\)))
-\end{pvsex}
+\end{session}
 In the case of \texttt{TC}, this becomes
-\begin{pvsex}
+\begin{session}
   TC_weak_induction: AXIOM
         (FORALL (R: relation, P: [[T, T] -> boolean]):
            (FORALL (x: T, y: T):
               R(x, y) OR (EXISTS z: (P(x, z) AND P(z, y))) IMPLIES P(x, y))
                IMPLIES (FORALL (x: T, y: T): TC(R)(x, y) IMPLIES P(x, y)));
-\end{pvsex}
+\end{session}
+
+\index{coinductive definitions(|}
+Coinductive definitions have the same form as inductive definitions, but
+are introduced with the keyword \texttt{COINDUCTIVE}, and generate the
+greatest fix point, rather than the least fix point.  The monotonicity
+conditions are the same, but the coinduction axioms reverse some of the
+implications.  Thus the general form of the (weak) coinduction scheme is
+\begin{session}
+  FORALL (\(F\), \(P\)):
+   (FORALL (\(N\)):
+     \(P\)(\(N\)) IMPLIES \emph{coinductive_body}(\(N\))\([P/\emph{def}]\))
+      IMPLIES
+     (FORALL (\(N\)): \(P\)(\(N\)) IMPLIES \emph{def}(\(V\)))
+\end{session}
+
+As noted earlier, inductive and coinductive definitions are really
+fixedpoint definitions.  For example, the theory in
+Figure~\ref{inductive-fixpoints} shows that an
+inductive definition is a least fixedpoint, a coinductive definition is a
+greatest fixpoint, an inductively defined set is a subset of a
+coindutively defined set, and, if the universe contains a non-wellfounded
+element, then the coinductively defined set is strictly larger.  These
+results all build on the definitions in  the \texttt{mucalculus} theory of
+the prelude.
+
+{\begin{figure}[htb]\begin{boxedminipage}{\textwidth}%
+{\smaller\smaller\begin{alltt}
+inductive_fixpoint: THEORY
+ BEGIN
+  N: TYPE+
+  n, m: VAR N
+  0: N
+  S: [N -> N]
+  Sax1: AXIOM 0 /= S(n)
+  Sax2: AXIOM S(m) = S(n) => m = n
+  % Assume a non-wellfounded element
+  nwf_exists: AXIOM EXISTS n: n = S(n)
+
+  Nind(n):     INDUCTIVE bool = n = 0 OR Nind(S(n))
+  Ncoind(n): COINDUCTIVE bool = n = 0 OR Ncoind(S(n))
+
+  % NN is the predicate transformer corresponding to the (co)inductive defs
+  NN(p: pred[N])(n): bool = n = 0 OR p(S(n))
+
+  % These use the lfp and gfp defs from the prelude mucalculus theory
+  ind_lfp: FORMULA Nind = lfp(NN)
+  coind_gfp: FORMULA Ncoind = gfp(NN)
+
+  % Repeat Nind_weak_induction, which is proved from lfp_induction
+  Nind_weak_induction_repeated: FORMULA 
+    FORALL (P: [N -> boolean]):
+      (FORALL n: n = 0 OR P(S(n)) IMPLIES P(n)) IMPLIES
+       (FORALL n: Nind(n) IMPLIES P(n));
+
+  % Inductive definitions are a subset of coinductive
+  ind_sub_co: FORMULA Nind(n) => Ncoind(n)
+
+  % Because there is a non-wellfounded element, we can show that
+  % the coinductive set is larger.
+  co_has_more: FORMULA EXISTS n: Ncoind(n) & NOT Nind(n)
+ END inductive_fixpoint
+\end{alltt}}\end{boxedminipage}%
+\caption{Inductive definitions and fixpoints}\label{inductive-fixpoints}\end{figure}}
+
+\index{coinductive definition|)}
 \index{inductive definition|)}

@@ -4,13 +4,16 @@
 {\ites{\hlink{TheoryName}}{,}}
 
 \production{TheoryName}
-{\opt{\hlink{Id} \lit{@}} \hlink{Id} \opt{\hlink{Actuals}}}
+{\opt{Id \lit{@}} Id \opt{Actuals} \opt{Mappings}}
+
+\production{TheoryDeclName}
+{\opt{Id \lit{@}} Id \opt{Actuals} \opt{TheoryMaps}}
 
 \production{Names}
 {\ites{\hlink{Name}}{,}}
 
 \production{Name}
-{\opt{\hlink{Id} \lit{@}} \hlink{IdOp} \opt{\hlink{Actuals}} \opt{\lit{.} \hlink{IdOp}}}
+{\opt{\hlink{Id} \lit{@}} \hlink{IdOp} \opt{\hlink{Actuals}} \opt{\hlink{Mappings}} \opt{\lit{.} \hlink{IdOp}}}
 
 \production{Actuals}
 {\lit{[} \ites{\hlink{Actual}}{,} \lit{]}}
@@ -18,15 +21,47 @@
 \production{Actual}
 {\hlink{Expr} \choice \hlink{TypeExpr}}
 
+\production{Mappings}
+{\lit{\mapb{}} \ites{Mapping}{,} \lit{\mape{}}}
+
+\production{Mapping}
+{MappingLhs MappingRhs}
+
+\production{MappingLhs}
+{IdOp \rep{Bindings} \opt{\lit{:} \brc{\lit{TYPE} \choice \lit{THEORY}
+\choice TypeExpr}}}
+
+\production{MappingRhs}
+{\lit{:=} \brc{Expr \choice TypeExpr}}
+
+\production{TheoryMaps}
+{\lit{\mapb{}} \ites{TheoryMap}{,} \lit{\mape{}}}
+
+\production{TheoryMap}
+{MappingLhs TheoryMapRhs}
+
+\production{TheoryMapRhs}
+{MapSubst \choice MapDef \choice MapRename}
+
+\production{MapSubst}
+{\lit{:=} \brc{Expr \choice TypeExpr}}
+
+\production{MapDef}
+{\lit{=} \brc{Expr \choice TypeExpr}}
+
+\production{MapRename}
+{\lit{::=} \brc{IdOp \choice Number}}
+
 \production{IdOps}
 {\ites{\hlink{IdOp}}{,}}
 
 \production{IdOp}
-{\hlink{Id} \ch \hlink{Opsym}}
+{\hlink{Id} \ch \hlink{Opsym} \ch \hlink{Number}}
 
 \production{Opsym}
-{\hlink{Binop} \choice \hlink{Unaryop} \choice \lit{IF} \choice \lit{TRUE}
-\choice \lit{FALSE} \choice \lit{[||]} \choice \lit{(||)} \choice \lit{\{||\}}}
+{\hlink{Binop} \choice \hlink{Unaryop} \\[-0.1in]
+&\choice& \lit{IF} \choice \lit{TRUE}
+\choice \lit{FALSE} \choice \lit{[||]} \choice \lit{(||)} \choice \lit{\setb||\sete}}
 
 \production{Binop}
 {\lit{o} \choice \lit{IFF} \choice \lit{<=>} \choice \lit{IMPLIES} \choice \lit{=>} \choice \lit{WHEN} \choice 

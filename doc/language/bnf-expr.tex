@@ -8,17 +8,17 @@
 Expr\ \hlink{Arguments} \\[-0.1in] & \choice &
 Expr\ \hlink{Binop}\ Expr \\[-0.1in] & \choice &
 \hlink{Unaryop}\ Expr \\[-0.1in] & \choice &
-Expr \lit{`} \{ \hlink{Id} \choice \hlink{Number} \} \\[-0.1in] & \choice &
+Expr \lit{`} \setb \hlink{Id} \choice \hlink{Number} \sete \\[-0.1in] & \choice &
 \lit{(} \ites{Expr}{,} \lit{)} \\[-0.1in] & \choice &
 \lit{(:} \reps{Expr}{,} \lit{:)} \\[-0.1in] & \choice &
 \lit{[|} \reps{Expr}{,} \lit{|]} \\[-0.1in] & \choice &
 \lit{(|} \reps{Expr}{,} \lit{|)} \\[-0.1in] & \choice &
-\lit{\{|} \reps{Expr}{,} \lit{|\}} \\[-0.1in] & \choice &
+\lit{\setb|} \reps{Expr}{,} \lit{|\sete} \\[-0.1in] & \choice &
 \lit{(\#} \ites{\hlink{Assignment}}{,} \lit{\#)} \\[-0.1in] & \choice &
 Expr \lit{::} \hlink{TypeExpr} \\[-0.1in] & \choice &
 \hlink{IfExpr} \\[-0.1in] & \choice &
 \hlink{BindingExpr} \\[-0.1in] & \choice &
-\lit{\{} \hlink{SetBindings} \lit{|} Expr \lit{\}} \\[-0.1in] & \choice &
+\lit{\setb} \hlink{SetBindings} \lit{|} Expr \lit{\sete} \\[-0.1in] & \choice &
 \lit{LET} \ites{\hlink{LetBinding}}{,} \lit{IN} Expr  \\[-0.1in] & \choice &
 Expr \lit{WHERE} \ites{\hlink{LetBinding}}{,}  \\[-0.1in] & \choice &
 Expr \lit{WITH} \lit{[} \ites{\hlink{Assignment}}{,} \lit{]} \\[-0.1in] & \choice &

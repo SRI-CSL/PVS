@@ -28,8 +28,9 @@ declaration
 simply states that the constant \texttt{c} and the number \texttt{17} are
 both prime numbers.  This declaration leads to the TCC formulas
 \texttt{prime?(c)} and \texttt{prime?(17)}, but in any context in which
-this declaration is visible, these TCCs will not be generated.  Thus no
-TCCs are generated for the formula \texttt{F} in
+this declaration is visible, the use of \texttt{c} or \texttt{17} where a
+prime is expected will not generate TCCs.  Thus no TCCs are generated for
+the formula \texttt{F} in
 \begin{pvsex}
   RP: [(prime?), (prime?) -> bool]
   F: FORMULA RP(c, 17) IMPLIES RP(17, c)
@@ -86,7 +87,8 @@ In this case, the TCC generated is unprovable:
     ((FORALL (x: real): rational_pred(x) AND integer_pred(x)) AND
       (FORALL (x: real): rational_pred(x) AND integer_pred(x)))
      AND
-     (FORALL (x1: [real, real]): rational_pred(f(x1)) AND integer_pred(f(x1)));
+     (FORALL (x1: [real, real]):
+        rational_pred(f(x1)) AND integer_pred(f(x1)));
 \end{pvsex}
 A warning is generated when simple constant judgements are declared to be
 of a function type.\footnote{Earlier versions of PVS simply interpreted
@@ -135,14 +137,14 @@ The subtype judgement is used to fill in edges of the subtype graph that
 otherwise are unknown to the typechecker.  For example, consider the
 following declarations:
 \begin{pvsex}
-  nonzero_real: NONEMPTY_TYPE = \{r: real | r /= 0\} CONTAINING 1
+  nonzero_real: NONEMPTY_TYPE = \setb{}r: real | r /= 0\sete CONTAINING 1
   rational: NONEMPTY_TYPE FROM real
-  nonneg_rat: NONEMPTY_TYPE = \{r: rational | r >= 0\} CONTAINING 0
-  posrat: NONEMPTY_TYPE = \{r: nonneg_rat | r > 0\}  CONTAINING 1
+  nonneg_rat: NONEMPTY_TYPE = \setb{}r: rational | r >= 0\sete CONTAINING 0
+  posrat: NONEMPTY_TYPE = \setb{}r: nonneg_rat | r > 0\sete  CONTAINING 1
   /: [real, nonzero_real -> real]
 \end{pvsex}
 For \texttt{r} of type \texttt{real} and \texttt{q} of type
-\texttt{posrat}, the expression \texttt{r / q} leads to the TCC \texttt{q
+\texttt{posrat}, the expression \texttt{r/q} leads to the TCC \texttt{q
 /= 0}.  One solution, if \texttt{q} is a constant, is to use a constant
 judgement as described above.  But if there are many constants involving
 the type \texttt{posrat}, this requires a lot of judgement declarations,
@@ -160,8 +162,8 @@ is of type \texttt{posrat}.  With the (prelude) judgement declarations
   nnrat_plus_posrat_is_posrat:   JUDGEMENT +(nnx, py) HAS_TYPE posrat
   posrat_times_posrat_is_posrat: JUDGEMENT *(px, py)  HAS_TYPE posrat
 \end{pvsex}
-not only are there no TCCs generated for \texttt{r / q}, but none are
-generated for \texttt{r / (q + 2)}, \texttt{r / ((q + 2) * q)}, etc.
+not only are there no TCCs generated for \texttt{r/q}, but none are
+generated for \texttt{r/(q + 2)}, \texttt{r/((q + 2) * q)}, etc.
 
 Given a subtype judgement declaration of the form
 \begin{pvsex}
@@ -169,8 +171,8 @@ Given a subtype judgement declaration of the form
 \end{pvsex}
 it is an error if \texttt{S} is already known to be a subtype of
 \texttt{T}, or if they are not compatible.  Otherwise, \texttt{T} must be
-of the form \texttt{\{x:\ ST | p(x)\}}, where \texttt{ST} is the least
-compatible type of \texttt{S} and \texttt{T}, and a TCC will is generated
+of the form \texttt{\setb{}x:\ ST | p(x)\sete}, where \texttt{ST} is the least
+compatible type of \texttt{S} and \texttt{T}, and a TCC will be generated
 of the form \texttt{FORALL (x:S): p(x)}.  Remember that subtyping on
 functions only works on range types, so the subtype judgement
 \begin{pvsex}

@@ -10,23 +10,22 @@ abstractions, function application, tuples, a polymorphic
 \texttt{IF-THEN-ELSE}, and function and record overrides.  Expressions may
 appear in the body of a formula or constant declaration, as the predicate
 of a subtype, or as an actual parameter of a theory instance.  The syntax
-for PVS expressions is shown in Figure~\ref{bnf-expr} and
-Figure~\ref{bnf-expr-aux}.
+for PVS expressions is shown in Figures~\ref{bnf-expr} and~\ref{bnf-expr-aux}.
 
 \pvsbnf{bnf-expr}{Expression syntax}
 
 \pvsbnf{bnf-expr-aux}{Expression syntax (continued)}
 
 \index{precedence|(} The language has a number of predefined operators
-(although not all of these have a predefined meaning).
-These are given in Figure~\ref{precedenceops} below, along with their
-relative precedences from lowest to highest.  Most of these operators
-are described in the following sections.  \texttt{IN} is a part of \texttt{
-LET} expressions, \texttt{WITH} goes with override expressions, and the
-double colon
-(\texttt{::}) is for coercion expressions.  The \texttt{o} operator is defined
-in the prelude as the function composition operator.  Note that most of
-these operators may be overloaded, see Section~\ref{names} (page~\pageref{names}) for details.
+(although not all of these have a predefined meaning).  These are given in
+Figure~\ref{precedenceops} below, along with their relative precedence
+from lowest to highest.  Most of these operators are described in the
+following sections.  \texttt{IN} is a part of \texttt{ LET} expressions,
+\texttt{WITH} goes with override expressions, and the double colon
+(\texttt{::}) is for coercion expressions.  The \texttt{o} operator is
+defined in the prelude as the function composition operator.  Note that
+most operators may be overloaded, see Chapter~\ref{lexical}
+(page~\pageref{lexical}) for details.
 
 \begin{figure}[htb]
 \begin{center}{\small\tt
@@ -112,8 +111,8 @@ error.  For example,
   s: VAR S
   t: VAR T
   eq1: FORMULA s = t
-  i: VAR \{x: int | x < 10\}
-  j: VAR \{x: int | x > 100\}
+  i: VAR \setb{}x: int | x < 10\sete
+  j: VAR \setb{}x: int | x > 100\sete
   eq2: FORMULA i = j
 \end{pvsex}
 %
@@ -129,7 +128,7 @@ used for rewriting, which makes for efficient proofs but is incomplete,
 \ie\ the prover may fail to find the proof of a true formula.  On the other
 hand the \texttt{IFF} form is complete, but may lead to a large number of
 cases.  When in doubt, use equality as the prover provides commands
-which turn an equality into an \texttt{IFF}.
+that turn an equality into an \texttt{IFF}.
 
 %The decision to disallow \texttt{eq1} is a pragmatic one; the
 %utility of such a declaration is questionable, and most likely the user
@@ -182,7 +181,16 @@ on numeric types are \texttt{<}\index{<@\texttt{<}}, \texttt{
 <=}\index{<=@\texttt{<=}}, \texttt{>}\index{>@\texttt{>}}, and
 \texttt{>=}\index{>=@\texttt{>=}}.  The numeric operators and axioms are
 all defined in the prelude.  As with the boolean operators, all of these
-operators may be defined on new types and retain their original precedences.
+operators may be defined on new types and retain their original
+precedences.
+
+The numerals may also be treated as names, and
+overloaded.\index{overloading numberals}\index{numerals!overloading} This
+is particularly useful for defining algebraic structures such as groups
+and rings, where it is natural to overload `\texttt{0}' and `\texttt{1}'.
+Note that such use may include actual parameters, just as for names.  Thus
+\texttt{groups[int].0} or \texttt{0[int]} might refer to the group zero
+instantiated with the integer carrier set.
 
 \section{Applications}
 \index{application expressions}
@@ -202,13 +210,10 @@ yields an \texttt{int}.
 If the application involves a dependent function type then the result
 type of the application is substituted for accordingly.  For example,
 \begin{pvsex}
-  f: [a:int, b:\{x:int | a < x\} -> \{y:int | a < y & y <= b\}]
+  f: [a:int, b:\setb{}x:int | a < x\sete -> \setb{}y:int | a < y & y <= b\sete]
 \end{pvsex}
-the application \texttt{f(2,3)} is of type \texttt{\{y:int | 2 < y \& y <=
-3\}}.  This application will also lead to the subtype \tcc
-\begin{pvsex}
-  2 < 3
-\end{pvsex}
+the application \texttt{f(2,3)} is of type \texttt{\setb{}y:int | 2 < y \& y <=
+3\sete}.  This application will also lead to the subtype \tcc\ \texttt{2 < 3}.
 
 Application and tuple expressions have a special relation, due to the
 type equivalence of \texttt{[t$_1$,\ldots,t$_n$ -> t]} and \texttt{
@@ -239,13 +244,13 @@ In \texttt{ex1}, variables \texttt{x}, \texttt{y}, and \texttt{z} are all of typ
 shadowing the global declarations.  \texttt{ex3} illustrates
 the use of constraints; this is equivalent to the declaration
 \begin{pvsex}
-  ex3: AXIOM FORALL (n: \{n: num | n /= 0\}):
-               EXISTS (x: \{x | x /= 0\}): x = 1/n
+  ex3: AXIOM FORALL (n: \setb{}n: num | n /= 0\sete):
+               EXISTS (x: \setb{}x | x /= 0\sete): x = 1/n
 \end{pvsex}
 
 Quantified expressions\index{quantified expressions} are introduced with
-the keywords \texttt{FORALL} and \texttt{EXISTS}.  These expressions are of type
-\texttt{boolean}.
+the keywords \texttt{FORALL} and \texttt{EXISTS}.  These expressions are
+of type \texttt{boolean}.
 
 Lambda expressions\index{lambda expressions} denote unnamed functions.
 For example, the function which adds \texttt{3} to an integer may be
@@ -254,15 +259,17 @@ written
   (LAMBDA (x: int): x + 3)
 \end{pvsex}
 %
-The type of this expression is the function type \texttt{[int -> int]}.
-In addition, when the
-range is \texttt{bool}, a lambda expression may be represented as a set
-expression; see Section~\ref{set-exprs}.
+The type of this expression is the function type \texttt{[int ->
+numfield]}.\footnote{\texttt{numfield} sits between \texttt{number} and
+\texttt{real}, and is where the field operators are introduced.  See
+Section~{prelude-numbers}.}  In addition, when the range is \texttt{bool},
+a lambda expression may be represented as a set expression; see
+Section~\ref{set-exprs}.
 
 All of the binding expressions may involve dependent
 types\index{dependent types} in the bindings, \eg
 \begin{pvsex}
-  FORALL (x: int), (y: \{z: int | x < z\}): p(x,y)
+  FORALL (x: int), (y: \setb{}z: int | x < z\sete): p(x,y)
 \end{pvsex}
 %
 Note that in the instantiation of such an expression during a proof will
@@ -296,7 +303,6 @@ expression, thus reducing redundancy and allowing names to be provided for commo
 Here are two examples:
 \begin{pvsex}
   LET x:int = 2, y:int = x * x IN x + y
-
   x + y WHERE x:int = 2, y:int = x * x
 \end{pvsex}
 %
@@ -315,7 +321,6 @@ expressions is in question.
 The type declaration is optional, so the above could be written as
 \begin{pvsex}
   LET x = 2, y = x * x IN x + y
-
   x + y WHERE x = 2, y = x * x
 \end{pvsex}
 In this case the typechecking of these expressions depends on whether
@@ -326,7 +331,7 @@ is unambiguous is used to determine the type of the variable.  This is
 one way in which these expressions differ from their translation.
 It is usually better to either reference a variable or give the type, as
 the typechecker uses the ``natural'' type of the expression as the type of
-the variable, which can lead to extra TCCs.
+the variable, which can lead to extra \tccs.
 
 The \texttt{LET} expression has a limited form of pattern matching over
 tuples.  An example is
@@ -351,7 +356,7 @@ setof[t]}, which are all type equivalent.\footnote{The prelude theory
 PREDICATE}, and \texttt{SETOF} as alternate equivalents.}
 The choice depends wholly on the intended use of the type.
 Similarly, a set may be given in the form \texttt{(LAMBDA (x:\ t):\
-p(x))} or \texttt{\{x:\ t | p(x)\}}; these are equivalent
+p(x))} or \texttt{\setb{}x:\ t | p(x)\sete}; these are equivalent
 expressions.\footnote{In fact, internally they are represented by the
 same abstract syntax, they simply print differently.} Note that the
 latter form may also represent a type---this usually causes no
@@ -369,7 +374,7 @@ A tuple expression of the type \texttt{[t$_1$,\ldots,t$_n$]} has the form
 allowed, and 1-tuples are treated simply as parenthesized expressions.
 The following relation holds between function types and tuple types:
 \begin{pvsex}
-  [[t\(_1\),\ldots,t\(_n\)] -> t] \(\equiv\) [t\(_1\),\ldots,t\(_n\) -> t]
+  [[t\(\sb{1}\),\ldots,t\(\sb{n}\)] -> t] \(\equiv\) [t\(\sb{1}\),\ldots,t\(\sb{n}\) -> t]
 \end{pvsex}
 %
 This equivalence is most important in theory parameters; it allows one
@@ -394,7 +399,30 @@ analogous to field accessors for record types.  For example,
   ft_deprecated: FORMULA PROJ_2(t) AND PROJ_1(t) > (PROJ_3(t))(0)
 \end{pvsex}
 
-\section{Record Expressions}
+Projection expressions may be used without an argument as long as the
+context determines the tuple type involved.  For example, in the following
+it is obvious what tuple type is involved.
+\begin{pvsex}
+  F: [[[int, bool, [int -> int]] -> bool] -> bool]
+  FP: FORMULA F(PROJ_2)
+\end{pvsex}
+Note that the \texttt{PROJ} keyword must be used in such cases, as, e.g.,
+\texttt{`2} is not an expression.  In the following example we see that
+the context does not provide enough information.
+\begin{pvsex}
+  PP: FORMULA PROJ_2 = PROJ_2
+\end{pvsex}
+To deal with such situations, the syntax for projections has been extended
+to allow the tuple type to be provided.
+\begin{pvsex}
+  PP: FORMULA PROJ_2[[int, bool, [int -> int]]] = PROJ_2
+\end{pvsex}
+In this case only one of the operators needs to be annotated.  This looks
+like a use of actual parameters, but it is not, as the \texttt{PROJ} is
+not a name, and does not belong to a theory.
+
+
+\section{Record Expressions}\label{record-expressions}
 \index{record expressions}
 
 Record expressions are of the form \texttt{(\# a$_1$ := e$_1$, \ldots,
@@ -409,21 +437,35 @@ the given record at the fields of interest.  For example,
   re: [# a, b : int #] = rc WITH [`a := 0]
 \end{pvsex}
 
-Record types may be dependent, and a record expression of a dependent
-type may lead to \tccs.  For example,
+The type of a record expression is determined by the type of its
+components.  Thus \texttt{(\# a := 3, b := 2 \#)} is of type \texttt{[\# a,
+b: real \#]}.  This means that a record expression is never of a dependent
+record type directly, though it may be used where a dependent record is
+expected, and \tccs\ may be generated as a result.  For example,
 \begin{pvsex}
-  R: TYPE = [# a: int, b: \{x: int | x < a\} #]
+  R: TYPE = [# a: int, b: \setb{}x: int | x < a\sete #]
   r: R = (# a := 3, b := 4 #)
 \end{pvsex}
 %
-leads to the (unprovable) TCC \texttt{4 < 3}.
+leads to the (unprovable) \tcc\ \texttt{4 < 3}.
 
 Record expressions may be introduced without introducing the record type
 first, and the type of a record expression is determined by its
 components, independently of any previously declared record type.  For
 this reason record types do not automatically generate associated accessor
-functions.  However, you can define your own functions to provide this
-capability, and even use the same name.  For example:
+functions.
+
+\section{Record Accessors}
+
+The components of an expression of a record type are accessed using the
+corresponding field name.  There are two forms of access.  For example if
+\texttt{r} is of type \texttt{[\# x, y: real \#]}, the x-component may be
+accessed using either \texttt{r`x} or \texttt{x(r)}.  The first form is
+preferred as there is less chance for ambiguity.
+
+As noted above, accessors are not stand-alone functions.  However, you can
+define your own functions to provide this capability, and even use the
+same name.  For example:
 \begin{pvsex}
   point: TYPE = [# x, y: real #]
   x(p:point): real = p`x
@@ -434,13 +476,66 @@ expected.  Note that this means that a subsequent expression of the form
 \texttt{x(p)} could be ambiguous, but the record field accessor is always
 preferred, so in practice such ambiguities don't arise.
 
-\section{Record Accessors}
+\section{Cotuple Expressions}\label{cotuple-expressions}
+\index{cotuple expression}
 
-The components of an expression of a record type are accessed using the
-corresponding field name.  There are two forms of access.  For example if
-\texttt{r} is of type \texttt{[\# x, y: real \#]}, the x-component may be
-accessed using either \texttt{r`x} or \texttt{x(r)}.  The first form is
-preferred, as there is less chance for ambiguity.
+Elements of cotuple types \texttt{[t$_1$ + \ldots + t$_n$]} are constructed
+with the \emph{injection} operators \texttt{IN\_$i$} of type
+\texttt{[t$_i$ -> [t$_1$ + \ldots + t$_n$]]}.  Thus if $e$ is of type
+\texttt{t$_i$}, \texttt{IN\_$i$($e$)} is of the cotuple type.  If $x$ is
+an element of a cotuple type, \texttt{IN?\_$i$($x$)} is a boolean that
+tests if $x$ belongs to the $i^{th}$ component, and if it does,
+\texttt{OUT\_$i$($x$)} returns the associated value of type
+\texttt{t$_i$}.  Note that this is similar to a datatype of the form
+\begin{pvsex}
+  cotup: DATATYPE
+   BEGIN
+    IN_1(OUT_1: t\(\sb{1}\)): IN?_1
+    \(\cdots\)
+    IN_\(n\)(OUT_\(n\): t\(\sb{n}\)): IN?_\(n\)
+   END cotup
+\end{pvsex}
+The differences are that cotuples are not recursive, do not generate all
+the functions and axioms associated with datatypes, and allow for any
+number of component types---using datatypes a new one would have to be
+given for each arity.
+
+The analogy works also for the \texttt{CASES} expression described in
+Section~\ref{cases-expressions}.  This allows access to the values of a
+cotuple element.  It has the form
+\begin{pvsex}
+  CASES \(e\) OF
+    IN_1(x1): f\(\sb{1}\)(x1),
+    \vdots
+    IN_\(n\)(x\(n\)): f\(\sb{n}\)(x\(n\))
+  ENDCASES
+\end{pvsex}
+where each \texttt{f$_i$} is an expression of type \texttt{[t$_i$ ->
+$T$]}, and the common return type $T$ is the type of the \texttt{CASES}
+expression.  For example, if \texttt{x} is of type \texttt{[int + bool +
+[int -> int]}, the following expression will return a boolean value.
+\begin{pvsex}
+  CASES x OF
+    IN_1(i): i > 0,
+    IN_2(b): NOT b,
+    IN_3(f): FORALL (n: int): f(f(n)) = f(n)
+  ENDCASES
+\end{pvsex}
+If there are any missing components in the \texttt{CASES} expression, a
+\emph{cases \tcc}\index{cases TCC}\index{TCC!cases} will be generated
+stating that the cotuple expression must be one of the given selections,
+unless there is an \texttt{ELSE} selection.
+
+Like the projection operators \texttt{PROJ\_$i$}, the \texttt{IN\_$i$},
+\texttt{OUT\_$i$} and \texttt{IN?\_$i$} operators make be disambiguated by
+adding the cotuple type reference to the operator, for example,
+\texttt{IN\_2[int + int](3)} or \texttt{IN?\_1[coT]}.  Note that although
+they have the form of actual parameters, they are not, as these operators
+are built in and not associated with any theory.  Also, for brevity, only
+the cotuple type is given, not the full type of the operator.  There are a
+number of axioms associated with cotuples that are built in to the PVS
+typechecker and prover.
+
 
 \section{Override Expressions}
 \index{override expression}
@@ -460,14 +555,14 @@ is the same function as the \texttt{identity} function (defined in the
 prelude) except at argument values \texttt{0} and \texttt{1}.  This is exactly
 the same expression as either of
 \begin{pvsex}
-  (id WITH [(0) := 1]) WITH [(1) := 2] {\rm or}
-  (LAMBDA x: IF x = 1 THEN 2 ELSIF x = 0 THEN 1 ELSE id(x))
+  (identity WITH [(0) := 1]) WITH [(1) := 2] {\rm or}
+  (LAMBDA x: IF x = 1 THEN 2 ELSIF x = 0 THEN 1 ELSE identity(x))
 \end{pvsex}
 
 This order of evaluation ensures that functions remain total, and allows
 for the possibility of expressions such as
 \begin{pvsex}
-  id WITH [(c) := 1, (d) := 2]
+  identity WITH [(c) := 1, (d) := 2]
 \end{pvsex}
 where \texttt{c} and \texttt{d} may or may not be equal.  If they are
 equal, then the value of the override expression at the common argument is
@@ -494,19 +589,19 @@ with a constructor.  For example, if \texttt{lst} is of type
 \texttt{(cons?[nat])}, then \texttt{lst WITH [`car := 3]} returns a list
 that is the same as \texttt{lst}, but whose first element is \texttt{3}.
 If \texttt{lst} is given type \texttt{list[nat]}, then the same override
-expression generates a TCC obligation to prove that \texttt{lst} is a
+expression generates a \tcc\ obligation to prove that \texttt{lst} is a
 \texttt{cons?}.  Because accessors may be both dependent and overloaded,
-TCCs may get complicated.  For example,
+\tccs\ may get complicated.  For example,
 \begin{pvsex}
   dt: DATATYPE
   BEGIN
    c0: c0?
-   c1(x: int, a: {z: (even?) | z > x}, b: int): c1?
-   c2(x: int, a: {n: nat | n > x}, c: int): c2?
+   c1(x: int, a: \{z: (even?) | z > x\}, b: int): c1?
+   c2(x: int, a: \{n: nat | n > x\}, c: int): c2?
   END dt
 \end{pvsex}
 If \texttt{d} is of type \texttt{dt}, the update expression \texttt{d WITH
-[a := y]} leads to the TCC
+[a := y]} leads to the \tcc
 \begin{pvsex}
   f1_TCC1: OBLIGATION
     (c1?(d) AND even?(y) AND y > x(d)) OR
@@ -517,17 +612,17 @@ Another form of override expression is the maplet, indicated using
 \texttt{|->} in place of \texttt{:=}.  This is used to extend the domain
 of the corresponding element; for example, if \texttt{f:[nat -> int]} is
 given, then \texttt{f WITH [(-1) |-> 0]} is a function of type
-\texttt{[\{i:int | i >= 0 OR i = -1\} -> int]}.  This is especially useful
+\texttt{[\setb{}i:int | i >= 0 OR i = -1\sete -> int]}.  This is especially useful
 with dependent types, see Section~\ref{dependent-types}.  Domain extension
 is also possible for record and tuple types; for example, \texttt{r1 WITH
-[`c |-> 3]} is of type \texttt{[\# a : int, b : [int -> [int,int]], c: int
+[`c |-> 3]} is of type \texttt{[\# a:\ int, b:\ [int -> [int,int]], c:\ int
 \#]}, and if \texttt{t1} is of type \texttt{[int, bool]}, then \texttt{t1
 WITH [`3 |-> 1]} is of type \texttt{[int, bool, int]}.  It is an error to
 extend a tuple type such that gaps are left, so \texttt{t1 WITH [`4 |->
 1]} is illegal, though \texttt{t1 WITH [`3 |-> 1, `4 |-> 1]} is allowed.
 Gaps would also be left if nested arguments were given, so \texttt{r1 WITH
 [`c(0) |-> 0]} is also illegal.  It would have to be given as \texttt{r1
-WITH [`c := LAMBDA (x: int): IF x = 0 THEN 0 ELSE $\cdots$ ENDIF]}, where
+WITH [`c := LAMBDA (x:\ int):\ IF x = 0 THEN 0 ELSE $\cdots$ ENDIF]}, where
 the gap $\cdots$ now has to be filled in.  Domain extension is not
 possible for datatype elements, as a new datatype theory would need to be
 generated for each such extension.

@@ -6,81 +6,82 @@
 
 Entities of PVS are introduced by means of \emph{declarations}, which are
 the main constituents of PVS specifications.  Declarations are used to
-introduce types, variables, constants, formulas, judgements and
-conversions.  Each declaration has an \emph{identifier} and belongs to a
-unique theory.  Declarations also have a body which indicates the
-\emph{kind} of the declaration and provides the signature and definition
-of the declaration.  \emph{Top-level}
+introduce types, variables, constants, formulas, judgements, conversions,
+and other entities.  Most declarations have an \emph{identifier} and
+belong to a unique theory.  Declarations also have a body which indicates
+the \emph{kind} of the declaration and may provide a signature or
+definition for the entity.  \emph{Top-level}
 declarations\index{declaration!top-level} occur in the formal parameters,
 the assertion section and the body of a theory.  \emph{Local}
 declarations\index{declaration!local} for variables may be given, in
 association with constant and recursive declarations and \emph{binding
-expressions} (\eg\ involving \texttt{FORALL} or \texttt{LAMBDA}).  Declarations
-are ordered within a theory; earlier declarations may not reference later
-ones.\footnote{Thus mutual recursion is not directly supported.  The
-effect can be achieved with a simple recursive function that has an
-argument that serves as a switch for selecting between two or more
-expressions.}
+expressions} (\eg\ involving \texttt{FORALL} or \texttt{LAMBDA}).
+Declarations are ordered within a theory; earlier declarations may not
+reference later ones.\footnote{Thus mutual recursion is not directly
+supported.  The effect can be achieved with a single recursive function
+that has an argument that serves as a switch for selecting between two or
+more subexpressions.}
 
-\index{exporting|(}\index{importing|(} Declarations introduced in one
-theory may be referenced in another by means of the \texttt{IMPORTING} and
-\texttt{EXPORTING} clauses.  The \texttt{EXPORTING} clause of a theory
-indicates those entities that may be referenced from outside the theory.
-There is only one such clause for a given theory.  The \texttt{IMPORTING}
-clauses provide access to the entities exported by another theory.  There
-can be many \texttt{IMPORTING} clauses in a theory; in general they may
-appear anywhere a top-level declaration is allowed.  See
-Section~\ref{importings} for more details.
+\index{exporting|(}\index{importing|(}
+Declarations introduced in one theory may be referenced in another by
+means of the \texttt{IMPORTING} and \texttt{EXPORTING} clauses.  The
+\texttt{EXPORTING} clause of a theory indicates those entities that may be
+referenced from outside the theory.  There is only one such clause for a
+given theory.  The \texttt{IMPORTING} clauses provide access to the
+entities exported by another theory.  There can be many \texttt{IMPORTING}
+clauses in a theory; in general they may appear anywhere a top-level
+declaration is allowed.  See Section~\ref{importings} for more details.
 \index{importing|)}\index{exporting|)}
 
 PVS allows the overloading\index{overloading} of declaration identifiers.
 Thus a theory named \texttt{foo} may declare a constant \texttt{foo} and a
 formula \texttt{foo}.  To support this \emph{ad hoc} overloading,
 declarations are classified according to kind\index{declaration!kind}; in
-PVS the kinds are \emph{type}\index{declaration!kind!type},
+PVS the primary kinds are \emph{type}\index{declaration!kind!type},
 \emph{prop}\index{declaration!kind!prop},
 \emph{expr}\index{declaration!kind!expr}, and
 \emph{theory}\index{declaration!kind!theory}.  Type declarations are of
 kind \emph{type}, and may be referenced in type declarations, actual
 parameters, signatures, and expressions.  Formula declarations are of kind
-\emph{prop}, and may only be referenced in proofs (see the PVS Prover
+\emph{prop}, and may be referenced in auto-rewrite declarations
+(Section~\ref{auto-rewrite-decls}) or proofs (see the PVS Prover
 Guide~\cite{PVS:prover}).  Variable, constant, and recursive definition
 declarations are of kind \emph{expr}; these may be referenced in
 expressions and actual parameters.  Newly introduced names need only be
 unique within a kind, as there is no way, for example, to use an
-expression where a type is expected.\footnote{The only exception is actual
-parameters to theories, since theories may be instantiated with types or
-expressions.}
+expression where a type is expected.\footnote{There are a few exceptions,
+for example the actual parameters of theories, since theories may be
+instantiated with types or expressions.}
 
 \pvsbnf{bnf-decls}{Declarations Syntax}
 \index{syntax!declarations}
 
-Declarations consist of an
+Declarations generally consist of an
 \emph{identifier}\index{declaration!identifier}, an optional list of
 \emph{bindings}\index{declaration!binding}, and a
 \emph{body}\index{declaration!body}.  The body determines the kind of the
 declaration, and the bindings and the body together determine the
 signature and definition of the declared entity.  Multiple
 declarations\index{declaration!multiple} may be given in compressed form
-in which one body is specified for multiple identifiers; for example
+in which a common body is specified for multiple identifiers; for example
 %
 \begin{pvsex}
   x, y, z: VAR int
 \end{pvsex}
-In every case this is treated as equivalent to the expanded form, thus
-the above is equivalent to:
+In every case this is treated the same as the expanded form, thus the
+above is equivalent to:
 \begin{pvsex}
   x: VAR int
   y: VAR int
   z: VAR int
 \end{pvsex}
 
-In the rest of this section we describe declarations for types,
-variables, constants, recursive definitions, and formulas.  The
-declarations for theory parameters and theory abbreviations are given in
-Section~\ref{theories}.  Figure~\ref{bnf-decls} gives the grammar for
-declarations.
-
+In the rest of this chapter we describe declarations for types, variables,
+constants, recursive definitions, macros, inductive and coinductive
+definitions, formulas, judgements, conversions, libraries, and
+auto-rewrites.  The declarations for theory parameters, importings,
+exportings, and theory abbreviations are given in Chapter~\ref{theories}.
+Figure~\ref{bnf-decls} gives the syntax for declarations.
 
 \section{Type Declarations}\label{type-declarations}
 \index{type declarations|(}
@@ -99,8 +100,8 @@ There are four kinds of type declaration:
 \item \emph{interpreted type declaration}: \texttt{T:\ TYPE =
 int}\index{interpreted type}\index{type!interpreted}
 
-\item \emph{enumeration type declarations}: \texttt{T:\ TYPE = \{r,
-g, b\}} \index{enumeration types}\index{type!enumeration}
+\item \emph{enumeration type declarations}: \texttt{T:\ TYPE = \setb r,
+g, b\sete} \index{enumeration types}\index{type!enumeration}
 
 \end{itemize}
 
@@ -124,15 +125,15 @@ subtypes of \texttt{T}.  For example,
   T1, T2, T3: TYPE
 \end{pvsex}
 %
-introduces three new pairwise disjoint types.  If desired,
-further constraints may be put on these types by means of \texttt{AXIOM}s
-(see Section~\ref{formula-declarations}).
+introduces three new pairwise disjoint types.  If desired, further
+constraints may be put on these types by means of axioms or assumptions
+(see Section~\ref{formula-declarations} on
+page~\pageref{formula-declarations}).
 
 It should be emphasized that uninterpreted types are important in
 providing the right level of abstraction in a specification.  Specifying
-the type in detail may have the undesired effect of restricting the
-possible implementations, and cluttering the specification with needless
-detail.
+the type body may have the undesired effect of restricting the possible
+implementations, and cluttering the specification with needless detail.
 
 \index{type!uninterpreted|)}\index{uninterpreted type|)}
 
@@ -155,13 +156,13 @@ the \emph{supertype}\index{supertype}\index{type!supertype}
 \end{pvsex}
 %
 in which a new predicate is introduced in the first line and the type
-\texttt{s} is declared as a \emph{predicated} subtype in the second
+\texttt{s} is declared as a \emph{predicate} subtype in the second
 line\footnote{This is described in Section~\ref{subtypes}
 (page~\pageref{subtypes}).}.  No assumptions are made about uninterpreted
 subtypes; in particular, they may or may not be empty, and two different
 uninterpreted subtypes of the same supertype may or may not be disjoint.
 Of course, if the supertypes themselves are disjoint, then the
-uninterpreted subtypes are also.
+uninterpreted subtypes are as well.
 
 \index{uninterpreted subtype|)}
 
@@ -180,21 +181,21 @@ of functions with integer domain and range.  Because PVS uses
 \emph{name equivalence}\index{name equivalence}, any type expression
 \texttt{T} involving \texttt{intfun} is equivalent to the type expression
 obtained by substituting \texttt{[int -> int]} for \texttt{intfun} in
-\texttt{T}.  The available type expressions include subtypes, function
-types, tuple types, and record types.  These are described in
-Section~\ref{types} on page~\pageref{types}.
+\texttt{T}.  The available type expressions are described in
+Chapter~\ref{types} on page~\pageref{types}.
 
 Interpreted type declarations may be given
 parameters.\index{parameterized type names} For example, the type of
 integer subranges may be given as
 \begin{pvsex}
-  subrange(m, n: int): TYPE = \{i:int | m <= i AND i <= n\}
+  subrange(m, n: int): TYPE = \setb{}i:int | m <= i AND i <= n\sete
 \end{pvsex}
 and \texttt{subrange} with two integer parameters may subsequently be used
 wherever a type is expected.  Any use of a parameterized type must include
 all of the parameters, so currying of the parameters is not allowed.  Note
-that \texttt{subrange} may be used to declare a different type without any
-ambiguity, as long as the number of parameters is different.
+that \texttt{subrange} may be overloaded to declare a different type in
+the same theory without any ambiguity, as long as the number or type of
+parameters is different.
 
 \index{type!interpreted|)}\index{interpreted type declarations|)}
 
@@ -204,7 +205,7 @@ ambiguity, as long as the number of parameters is different.
 
 Enumeration type declarations are of the form
 \begin{pvsex}
-  enum: TYPE = \{e_1,\ldots, e_n\}
+  enum: TYPE = \setb{}e_1,\ldots, e_n\sete
 \end{pvsex}
 %
 where the \texttt{e\_i} are distinct identifiers which are taken to
@@ -218,7 +219,7 @@ datatype specification
   END enum
 \end{pvsex}
 %
-explained in Section~\ref{adts}.  Because of this, enumeration types may
+explained in Chapter~\ref{adts}.  Because of this, enumeration types may
 only be given as top-level declarations, and are \emph{not} type
 expressions.  The advantage of treating them as datatypes is that the
 necessary axioms are automatically generated, and the prover has built-in
@@ -237,23 +238,23 @@ facilities for handling datatypes.
 
 As noted before, PVS allows empty types, and the term \emph{type} refers
 to either empty or nonempty types.  Constants declared to be of a given
-type provide elements of the type, so the type must be nonempty or
-there is an inconsistency.  Thus whenever a constant is declared, the
-system checks whether the type is nonempty, and if it cannot decide that
-it is nonempty it generates an \emph{existence TCC}.\index{existence
+type provide elements of the type, so the type must be nonempty or there
+is an inconsistency.  Thus whenever a constant is declared, the system
+checks whether the type is nonempty, and if it cannot decide that it is
+nonempty it generates an \emph{existence TCC}.\index{existence
 TCC}\index{TCC!existence} This is the simple explanation, but it is made
 somewhat complicated by the considerations of formal parameters,
 uninterpreted versus interpreted type declarations, explicit declarations
-of nonemptiness, and \keyword{CONTAINING}\index{CONTAINING@\texttt{CONTAINING}} clauses on subtypes, as well as
-a desire to keep the number of TCCs generated to a minimum, while
-guaranteeing soundness.  The details are provided below.
+of nonemptiness, and
+\keyword{CONTAINING}\index{CONTAINING@\texttt{CONTAINING}} clauses on type
+declarationss, as well as a desire to keep the number of TCCs generated to
+a minimum, while guaranteeing soundness.  The details are provided below.
 
 First note that having variables range over an empty type causes no
 difficulties,\footnote{If the type \texttt{T} is empty, then the following
 two equivalences hold:
 \begin{pvsex}
-  (FORALL (x: T): p(x)) IFF TRUE, 
-  (EXISTS (x: T): p(x)) IFF FALSE
+  (FORALL (x: T): p(x)) IFF TRUE \quad \mbox{\textrm{and}} \quad (EXISTS (x: T): p(x)) IFF FALSE
 \end{pvsex}}
 so variable declarations and variable bindings never trigger the
 nonemptiness check.
@@ -291,12 +292,12 @@ provides a witness.
 \item Interpreted type declarations introduced with the keyword
 \keyword{TYPE} may be nonempty, depending on the type definition.
 
-\item Any interpreted subtype declaration with a \keyword{CONTAINING}
-clause is marked nonempty, and the \keyword{CONTAINING} expression is
-typechecked against the specified type.  In this case no existence TCC is
-generated, since the \keyword{CONTAINING} expression is a witness to the
-type.  Of course, other TCCs may be generated as a result of typechecking
-the \keyword{CONTAINING} expression.
+\item Any interpreted type declaration with a \keyword{CONTAINING} clause
+is marked nonempty, and the \keyword{CONTAINING} expression is typechecked
+against the specified type.  In this case no existence TCC is generated,
+since the \keyword{CONTAINING} expression is a witness to the type.  Of
+course, other TCCs may be generated as a result of typechecking the
+\keyword{CONTAINING} expression.
 
 \end{itemize}
 
@@ -317,18 +318,19 @@ any instance of the theory will need to provide both the type and a
 witness.  The type is marked nonempty in this case.
 
 \item If the type declaration is a formal parameter and a constant is
-declared whose type involves the type, but is not the type itself (e.g.
-\texttt{[t:\ TYPE, f:\ [t -> t]]}), then a
-TCC may be generated, and a comment is added to the TCC indicating that an
-assuming clause may be needed in order to discharge the TCC.  This TCC
-will be generated only if an earlier constant declaration hasn't already
-forced the type to be marked nonempty.  Note that there are circumstances
-in which the formal type may be empty but the type expression involving
-that type is nonempty.  This is discussed further below.
+declared whose type involves the type, but is not the type itself (for
+example, if the formal theory parameters are \texttt{[t:\ TYPE, f:\ [t ->
+t]]}), then a TCC may be generated, and a comment is added to the TCC
+indicating that an assuming clause may be needed in order to discharge the
+TCC.  This TCC will be generated only if an earlier constant declaration
+hasn't already forced the type to be marked nonempty.  Note that there are
+circumstances in which the formal type may be empty but the type
+expression involving that type is nonempty.  This is discussed further
+below.
 
 \end{itemize}
 
-\subsection{Checking Nonemptiness}
+\subsection{Checking Nonemptiness}\label{nonemptiness-check}
 \index{type!nonempty}
 The typechecker knows a type to be nonempty under the
 following circumstances:
@@ -361,8 +363,8 @@ of a subtype are all marked.
 It is possible for two equivalent types to be marked differently, for
 example:
 \begin{pvsex}
-  t1: TYPE = \{x: int | x > 2\}
-  t2: TYPE = \{x: int | x > 2\}
+  t1: TYPE = \setb{}x: int | x > 2\sete
+  t2: TYPE = \setb{}x: int | x > 2\sete
   c1: t1
 \end{pvsex}
 only marks the first type (\texttt{t1}).  Hence, it is best to name your types and
@@ -404,8 +406,8 @@ optionally providing a value.  Since PVS is a higher order logic, the term
 \emph{interpreted} \index{constants!interpreted}%
 \index{constants!uninterpreted} constants.  Uninterpreted constants make
 no assumptions, although they require that the type be nonempty (see
-Section~\ref{subtypes}, page~\pageref{subtypes}).  Here are some examples
-of constant declarations:
+Section~\ref{nonemptiness-check}, page~\pageref{nonemptiness-check}).
+Here are some examples of constant declarations:
 \begin{pvsex}
   n: int
   c: int = 3
@@ -461,11 +463,11 @@ also be treated as if it were declared to be of type \texttt{nat}.
 A construct that is frequently encountered when subtypes are involved is
 shown by this example
 \begin{pvsex}
-  f(x: \{x: int | p(x)\}): int = x + 1
+  f(x: \setb{}x: int | p(x)\sete): int = x + 1
 \end{pvsex}
 %
 There are two useful abbreviations for this expression.  In the first, we
-use the fact that the type \texttt{\{x:\ int | p(x)\}} is equivalent to
+use the fact that the type \texttt{\setb{}x:\ int | p(x)\sete} is equivalent to
 the type expression \texttt{(p)} when \texttt{p} has type \texttt{[int ->
 bool]}, and we can write
 \begin{pvsex}
@@ -493,7 +495,7 @@ predicate as follows:
 PVS allows an alternate syntax for predicates that encourages a
 set-theoretic interpretation:
 \begin{pvsex}
-  odd: [nat -> bool] = \{n: nat | EXISTS (m: nat): n = 2 * m + 1\}
+  odd: [nat -> bool] = \setb{}n: nat | EXISTS (m: nat): n = 2 * m + 1\sete
 \end{pvsex}
 
 \index{constants|)}
@@ -597,11 +599,11 @@ provided, so the termination TCC is as expected.  The second occurrence
 does not have enough arguments.  The recursive signature of that
 occurrence is
 \begin{pvsex}
-  [[(var?), term] -> [\{z1: term | z1 << s\} -> term]]
+  [[(var?), term] -> [\setb{}z1: term | z1 << s\sete -> term]]
 \end{pvsex}
-Hence the signature of \texttt{subst(x, y)} is \texttt{[\{z1:\ term | z1 <<
-s\} -> term]}, and map is instantiated to \texttt{map[\{z1:\ term | z1 <<
-s\}, term]}, which leads to the TCC
+Hence the signature of \texttt{subst(x, y)} is \texttt{[\setb{}z1:\ term | z1 <<
+s\sete -> term]}, and map is instantiated to \texttt{map[\setb{}z1:\ term | z1 <<
+s\sete, term]}, which leads to the TCC
 \begin{pvsex}
 subst_TCC2: OBLIGATION
   FORALL (ss: list[term], t: term, s: term, x: (var?)):
@@ -619,7 +621,7 @@ to include the measure, for example,
        mk_var(i): (IF index(x) = i THEN y ELSE s ENDIF),
        mk_const(i): s,
        mk_apply(t, ss): mk_apply(subst(x, y, t),
-                                 map(LAMBDA (s1: \{z: term|z<<s\}):
+                                 map(LAMBDA (s1: \setb{}z: term|z<<s\sete):
                                        subst(x, y, s1))(ss))
       ENDCASES)
    MEASURE s BY <<
@@ -641,14 +643,14 @@ signature, the last domain type of the measure is constrained (using a
 subtype) in the corresponding position of the recursive function type.  In
 this case the recursive signature is
 \begin{pvsex}
-  [real -> [\{z: [nat, nat] | z`1 < x\} -> [boolean -> boolean]]]
+  [real -> [\setb{}z: [nat, nat] | z`1 < x\sete -> [boolean -> boolean]]]
 \end{pvsex}
 Note that the recursive signature is a dependent type that depends on the
 arguments of the recursive function (\texttt{x} in this case), and hence
 only applies within the body of the recursive definition.
 
 The formal argument that typechecking the body of a recursive function
-using the recursive signature is sounde will appear in a future version of
+using the recursive signature is sound will appear in a future version of
 the semantics manual, for now note that simple attempts to subvert this
 mechanism do not work, as the following example illustrates.
 \begin{pvsex}
@@ -660,7 +662,7 @@ This leads an unprovable TCC.
   fbad_TCC1: OBLIGATION FORALL (x1: nat, x: nat): x < x1;
 \end{pvsex}
 The TCC results from the comaprison of the expected type \texttt{[nat ->
-nat]} to the derived type \texttt{[\{z:\ nat | z < x1\} -> nat]}.  Remember
+nat]} to the derived type \texttt{[\setb{}z:\ nat | z < x1\sete -> nat]}.  Remember
 that in PVS domains of function types must be equal in order for the
 function types to satisfy the subtype relation, and this is exactly what
 the TCC states.
@@ -670,19 +672,20 @@ the TCC states.
 
 When a doubly recursive call is found, the inner recursive calls are
 replaced by variables in the termination \tccs\ generated for the outer
-calls.  For example, in Figure~\ref{f91-alltt} the termination \tcc\ is
+calls.  For example, given the theory of Figure~\ref{f91-alltt} the
+termination \tcc\ is
 
-\begin{pvsex}
+\begin{session}
 f91_TCC5: OBLIGATION
   FORALL (i: nat,
           v: [i1:
-               \{z: nat |
+               \setb{}z: nat |
                         (IF z > 101 THEN 0 ELSE 101 - z ENDIF) <
-                         (IF i > 101 THEN 0 ELSE 101 - i ENDIF)\} ->
-               \{j: nat | IF i1 > 100 THEN j = i1 - 10 ELSE j = 91 ENDIF\}]):
+                         (IF i > 101 THEN 0 ELSE 101 - i ENDIF)\sete ->
+               \setb{}j: nat | IF i1 > 100 THEN j = i1 - 10 ELSE j = 91 ENDIF\sete]):
     NOT i > 100 IMPLIES
      IF i > 100 THEN v(v(i + 11)) = i - 10 ELSE v(v(i + 11)) = 91 ENDIF;
-\end{pvsex}
+\end{session}
 where the inner calls to \texttt{f91} have been replaced by the
 higher-order variable \texttt{v}, with the recursive signature as shown.
 Since the obligation forces us to prove the termination condition for all
@@ -755,15 +758,16 @@ TCCs are generated before the definition is expanded.
 Formula declarations introduce \emph{axioms}\index{axioms},
 \emph{assumptions}\index{assumptions}, \emph{theorems}\index{theorems},
 and \emph{obligations}\index{obligations}.  The identifier associated with
-the declaration may be referenced during proofs (see the \texttt{lemma}
-command in the PVS Prover Guide~\cite{PVS:prover}).  The expression
-that makes up the body of the formula is a boolean expression.  Axioms,
-assumptions, and obligations are introduced with the keywords
-\texttt{AXIOM}, \texttt{ASSUMPTION}, and \texttt{OBLIGATION},
-respectively.  Axioms may also be introduced using the keyword
-\texttt{POSTULATE}\index{postulate}.  In the prelude postulates are used
-to indicate axioms that are provable by the decision procedures, but not
-from other axioms.  Theorems may be introduced with any of the keywords
+the declaration may be referenced in auto-rewrite declarations (see
+Section~\ref{auto-rewrite-decls} and in proofs (see the \texttt{lemma} command
+in the PVS Prover Guide~\cite{PVS:prover}).  The expression that makes up
+the body of the formula is a boolean expression.  Axioms, assumptions, and
+obligations are introduced with the keywords \texttt{AXIOM},
+\texttt{ASSUMPTION}, and \texttt{OBLIGATION}, respectively.  Axioms may
+also be introduced using the keyword \texttt{POSTULATE}\index{postulate}.
+In the prelude postulates are used to indicate axioms that are provable by
+the decision procedures, but not from other axioms.  Theorems may be
+introduced with any of the keywords
 \texttt{CHALLENGE}\index{claim@{\texttt{CHALLENGE}}},
 \texttt{CLAIM}\index{claim@{\texttt{CLAIM}}},
 \texttt{CONJECTURE}\index{conjecture@{\texttt{CONJECTURE}}},
