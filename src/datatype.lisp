@@ -51,8 +51,6 @@ generated")
 
 (defvar *negative-occurrence* nil)
 
-(defvar *no-adt-subtypes* nil)
-
 
 ;;; Three new theories are built and typechecked; this macro wraps around
 ;;; the generation and typechecking of the declarations.
@@ -148,6 +146,14 @@ generated")
 	  (adt-map-theory adt) map-theory
 	  (adt-reduce-theory adt) reduce-theory)
     (save-adt-file adt)
+    (let* ((adt-file (concatenate 'string (string (id adt))
+				  (if (datatype? adt) "_adt" "_codt")))
+	   (proofs (read-pvs-file-proofs adt-file)))
+      (restore-from-context adt-file adt-theory proofs)
+      (when map-theory
+	(restore-from-context adt-file map-theory proofs))
+      (when reduce-theory
+	(restore-from-context adt-file reduce-theory proofs)))
     adt))
 
 
@@ -549,7 +555,18 @@ generated")
 		       (arguments c)))
 	    (constructors adt))
       (setf (nonempty? (adt-type-name adt)) t)
-      (pvs-warning "Datatype ~a may be empty" (id adt))))
+      (pvs-warning "Datatype ~a may be empty" (id adt)))
+  (set-recognizer-nonemptiness adt))
+
+(defun set-recognizer-nonemptiness (adt)
+  (mapc #'set-recognizer-nonemptiness* (constructors adt)))
+
+(defun set-recognizer-nonemptiness* (constructor)
+  (if (arguments constructor)
+      (unless (some #'(lambda (a) (possibly-empty-type? (type a)))
+		    (arguments constructor))
+	(set-nonempty-type (range (type (con-decl constructor)))))
+      (set-nonempty-type (type (con-decl constructor)))))
 
 (defun set-adt-positive-formal-types (adt)
   (setf (positive-types adt)
@@ -1072,10 +1089,6 @@ generated")
 			 :test #'(lambda (x y)
 				   (tc-eq (type-value x) y)))))
 	 (formals (adt-theory adt))))
-
-(defun no-adt-subtypes (adt)
-  (let ((*no-adt-subtypes* t))
-    (occurs-positively? (adt-type-name adt) adt)))
 
 (defun generate-adt-axioms (adt)
   (generate-adt-extensionalities (constructors adt) adt)
@@ -1760,7 +1773,8 @@ generated")
 		   (formals adt))
 	     (or (all-adt-types-are-positive adt)
 		 (pvs-warning
-		  "No map is generated since some formal parameter is not positive")))
+		     "No map is generated since some formal type parameter ~
+                      is not positive")))
     (build-adt-theory (makesym "~a_~a_map"
 			       (id adt)
 			       (if (datatype? adt) "adt" "codt"))
@@ -1867,6 +1881,7 @@ generated")
 	 (ptypes (mapcar #'type-value (mapcar #'car postype-pairs)))
 	 (fvars (generate-adt-map-fvars '|f| postype-pairs adt))
 	 (avar (mk-name-expr (make-new-variable '|a| adt)))
+	 (adt-subtypes (find-adt-subtypes adt))
 	 (rtype (typecheck
 		    (mk-type-name (id adt)
 		      (mapcan #'(lambda (fp)
@@ -1874,6 +1889,10 @@ generated")
 				    (list (mk-actual
 					   (mk-name-expr (id (cdr fp)))))))
 			fpairs))))
+	 (frtype (if (null adt-subtypes)
+		     rtype
+		     (generate-adt-map-subtypes-rangetype
+		      adt-subtypes adt postype-pairs avar rtype)))
 	 (adtinst (typecheck (mk-map-adtinst fpairs adt)))
 	 (curried-cases
 	  (mk-cases-expr avar
@@ -1891,21 +1910,67 @@ generated")
 	    nil))
 	 (fargs (adt-map-formals-arguments fvars postype-pairs fpairs avar adt))
 	 (cdecl (mk-adt-def-decl
-		    '|map| rtype
+		    '|map| frtype
 		    (pc-parse (unparse curried-cases :string t) 'expr)
 		    fargs))
 	 (uncdecl (mk-adt-def-decl
-		      '|map| rtype
+		      '|map| frtype
 		      (pc-parse (unparse uncurried-cases :string t) 'expr)
 		      (append (apply #'append (butlast fargs))
 			      (car (last fargs))))))
     (typecheck-adt-decl cdecl)
     (typecheck-adt-decl uncdecl)))
 
+(defun generate-adt-map-subtypes-rangetype (adt-subtypes adt fpairs avar rtype)
+  (let* ((xvar (mk-name-expr (make-new-variable '|x| adt)))
+	 (xbd (mk-bind-decl (id xvar) rtype))
+	 (srcinst (mk-map-adtinst-src fpairs adt))
+	 (tgtinst (mk-map-adtinst-tgt fpairs adt))
+	 (pred (generate-adt-map-subtypes-rangetype-pred
+		adt-subtypes avar xvar srcinst tgtinst)))
+    (mk-subtype rtype
+      (make-instance 'set-expr
+	'bindings (list xbd)
+	'expression pred))))
+
+(defun generate-adt-map-subtypes-rangetype-pred (adt-subtypes
+						 avar xvar srcinst tgtinst
+						 &optional preds)
+  (if (null adt-subtypes)
+      (mk-conjunction (nreverse preds))
+      (generate-adt-map-subtypes-rangetype-pred
+       (cdr adt-subtypes) avar xvar srcinst tgtinst
+       (cons (generate-adt-map-subtypes-rangetype-pred*
+	      (car adt-subtypes) avar xvar srcinst tgtinst)
+	     preds))))
+
+(defun generate-adt-map-subtypes-rangetype-pred* (adt-subtype avar xvar
+							      srcinst tgtinst)
+  (let ((pred
+	 (mk-application (mk-name-expr '=>)
+	   (mk-application (subst-mod-params (predicate adt-subtype) srcinst)
+	     avar)
+	   (mk-application (subst-mod-params (predicate adt-subtype) tgtinst)
+	     xvar))))
+    (setf (parens pred) 1)
+    pred))
+
 (defun mk-map-adtinst (fpairs adt)
   (typecheck (mk-type-name (id adt)
 	       (mapcar #'(lambda (fp)
 			   (mk-actual (mk-name-expr (id (car fp)))))
+		       fpairs))))
+
+(defun mk-map-adtinst-src (fpairs adt)
+  (typecheck (mk-modname (makesym "~a_adt" (id adt))
+	       (mapcar #'(lambda (fp)
+			   (mk-actual (mk-name-expr (id (car fp)))))
+		       fpairs))))
+
+(defun mk-map-adtinst-tgt (fpairs adt)
+  (typecheck (mk-modname (makesym "~a_adt" (id adt))
+	       (mapcar #'(lambda (fp)
+			   (mk-actual (mk-name-expr (id (cdr fp)))))
 		       fpairs))))
 
 (defun adt-map-formals-arguments (fvars fptypes fpairs avar adt)
@@ -1919,12 +1984,12 @@ generated")
 			fptypes))
 	(list (mk-arg-bind-decl (id avar)
 		(mk-type-name (id adt)
-			      (mapcan #'(lambda (fp)
-					  (unless (typep (car fp) 'importing)
-					    (list (mk-actual
-						   (mk-name-expr
-						       (id (car fp)))))))
+			      (mapcan #'adt-map-formals-actuals
 				      fpairs))))))
+
+(defun adt-map-formals-actuals (fp)
+  (unless (importing? (car fp))
+    (list (mk-actual (mk-name-expr (id (car fp)))))))
 
 (defun generate-adt-map-fvars (id fptypes adt)
   (if (singleton? fptypes)
@@ -3638,10 +3703,10 @@ function, tuple, or record type")
       (occurs-positively?* type (actuals te) t)))
 
 (defmethod occurs-positively?* (type (te datatype-subtype) none)
-  (occurs-positively?* type (supertype te) (or *no-adt-subtypes* none)))
+  (occurs-positively?* type (supertype te) none))
 
 (defmethod occurs-positively?* (type (te subtype) none)
-  (and (occurs-positively?* type (supertype te) (or *no-adt-subtypes* none))
+  (and (occurs-positively?* type (supertype te) none)
        (occurs-positively?* type (predicate te) none)))
 
 (defmethod occurs-positively?* (type (te funtype) none)
@@ -3828,6 +3893,9 @@ function, tuple, or record type")
 (defmethod mk-map-application ((te funtype) fpairs adt maps)
   (declare (ignore fpairs adt))
   (mk-application* '|map| maps))
+
+(defmethod mk-map-application ((te subtype) fpairs adt maps)
+  (mk-map-application (supertype te) fpairs adt maps))
 
 (defun map-application? (expr)
   (and (typep expr 'application)
@@ -4215,3 +4283,33 @@ function, tuple, or record type")
 		 (make-conjunction (list result aval))
 		 aval)
 	     result)))))
+
+(defvar *adt-subtypes* nil)
+
+(defun find-adt-subtypes (adt)
+  (let ((adt-type (adt-type-name adt))
+	(*adt-subtypes* nil))
+    (find-adt-subtypes* (constructors adt) adt-type)
+    *adt-subtypes*))
+
+(defmethod find-adt-subtypes* ((list list) adt-type)
+  (dolist (x list)
+    (find-adt-subtypes* x adt-type)))
+
+(defmethod find-adt-subtypes* ((c adt-constructor) adt-type)
+  (find-adt-subtypes* (arguments c) adt-type))
+
+(defmethod find-adt-subtypes* ((a adtdecl) adt-type)
+  (find-adt-subtypes* (type a) adt-type))
+
+(defmethod find-adt-subtypes* (type adt-type)
+  (mapobject #'(lambda (ex)
+		 (cond ((and (subtype? ex)
+			     (not (expr-as-type? ex))
+			     (tc-eq adt-type (find-supertype ex)))
+			(pushnew ex *adt-subtypes* :test #'tc-eq)
+			t)
+		       ((datatype-subtype? ex)
+			(find-adt-subtypes* (declared-type ex) adt-type)
+			nil)))
+	     type))
