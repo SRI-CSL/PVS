@@ -1345,7 +1345,7 @@
 			     (dep-substit (cdr types)
 			       (acons (car types) proj nil))
 			     (cdr types))))
-	  (projection-type* cdrtypes index (1+ ctr) arg)))))
+	  (make!-projection-type* cdrtypes index (1+ ctr) arg)))))
 
 (defun make!-field-application (field-name arg)
   (assert (and (type arg) (typep (find-supertype (type arg)) 'recordtype)))
