@@ -2665,8 +2665,8 @@
 			   (lcopy newexpr
 			     'argument
 			     (lcopy (argument newexpr)
-			       'exprse(cons newtest
-					      (cdr (arguments newexpr)))))))))
+			       'exprs (cons newtest
+					    (cdr (arguments newexpr)))))))))
 	(let ((result newtest));;instead of (assert-test newtest)
 	  (cond ((tc-eq result *true*)
 		 (let ((newthen
