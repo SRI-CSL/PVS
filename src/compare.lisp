@@ -445,6 +445,11 @@
 
 (defmethod compare* ((old field-application) (new application))
   (and (typep (operator new) 'name-expr)
+       (not (mod-id (operator new)))
+       (not (library (operator new)))
+       (not (actuals (operator new)))
+       (not (mappings (operator new)))
+       (not (target (operator new)))
        (eq (id old) (id (operator new)))
        (compare* (argument old) (argument new))))
 
