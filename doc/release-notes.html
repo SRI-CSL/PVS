@@ -35,7 +35,7 @@
 <TABLE BORDER=0 WIDTH="100%">
 <TR>
 <TD ALIGN=LEFT> <IMG ALIGN=LEFT SRC="images/pvslogo-icon.gif" ALT="">
-<TD ALIGN=CENTER> <FONT SIZE=10><B>PVS 3.0 Beta
+<TD ALIGN=CENTER> <FONT SIZE=10><B>PVS 3.0
 </B></FONT>
 <TD ALIGN=RIGHT> <IMG ALIGN=RIGHT SRC="images/pvslogo-icon.gif" ALT="">
 </TABLE>
@@ -48,11 +48,11 @@
 <TABLE BORDER=0 WIDTH="100%">
   <TR><TD ALIGN=LEFT BGCOLOR="0000FF" >
     <A NAME="ABOUT"></A><FONT SIZE=5 COLOR=FFFFFF>
-    <B>&nbsp;PVS Version 3.0 beta Release Notes</B></FONT></TR>
+    <B>&nbsp;PVS Version 3.0 Release Notes</B></FONT></TR>
 </TABLE>
 <p>
 <h2>Introduction</h2>
-PVS 3.0 beta is now available.  We are still working on updating the
+We are still working on updating the
 documentation, integration of the <a
 href="http://ics.csl.sri.com">ICS</a> decision procedures, and completing
 the validation tests, but we wanted to make it available so that others
@@ -71,17 +71,17 @@ running PVS 3.0 on existing specifications.
 <ul>
   <li><a href="#allegro6.0">Allegro 6.0 Port</a>
 	 
-  <li><a href="#Interpretations">Theory interpretations</a>
+  <li><a href="#Theory interpretations">Theory Interpretations</a>
 	 
-  <li><a href="#Multiple proofs">Multiple proofs</a>
+  <li><a href="#Multiple proofs">Multiple Proofs</a>
 
-  <li><a href="#Library relative pathnames">Library relative pathnames</a>
+  <li><a href="#Better library support">Better Library Support</a>
 
-  <li><a href="#Cotuple types">Cotuple types</a>
+  <li><a href="#Cotuple types">Cotuples</a>
 
-  <li><a href="#Coinductive definitions">Coinductive definitions</a>
+  <li><a href="#Coinductive definitions">Coinductive Definitions</a>
 
-  <li><a href="#Datatype updates">Datatype updates</a>
+  <li><a href="#Datatype updates">Datatype Updates</a>
 
   <li><a href="#Datatype every relation">Datatype <tt>every</tt> relation</a>
   
@@ -92,18 +92,35 @@ running PVS 3.0 on existing specifications.
   <li><a href="#Numbers as constants">Numbers as constants</a>
 
   <li><a href="#Theory search">Theory search</a>
+
+  <li><a href="#Improved decision procedures">Improved Existing (Shostak) Decision Procedures</a>
+      
+  <li><a href="#ICS integration">New (ICS) Decision Procedures</a>
+      
+  <li><a href="#Let reduce">LET Reduction Control</a>
 	 
 </ul>
 
-<h2><a name="Allegro 6.0">Allegro 6.0 Port</a></h2>
+<h2><a name="allegro6.0">Allegro 6.0 Port</a></h2>
 
-   PVS 3.0 has been ported to the case-sensitive version of Allegro
-   version 6.0.  This was done in order to be able to use the XML support
-   provided by Allegro 6.0.  We plan to both write and read XML abstract
-   syntax for PVS, which should make it easier to interact with other
-   systems.
+PVS 3.0 has been ported to the case-sensitive version of Allegro
+version 6.0.  This was done in order to be able to use the XML support
+provided by Allegro 6.0.  We plan to both write and read XML abstract
+syntax for PVS, which should make it easier to interact with other
+systems.
 
-   <h2><a name="Interpretations">Theory Interpretations</a></h2>
+Note: for the most part, you may continue to define pvs-strategies (and
+the files they load) as case insensitive, but in general this cannot
+always be done correctly, and it means that you cannot load such files
+directly at the lisp prompt.  If you suspect that your strategies are not
+being handled properly, try changing it to all lower case (except in
+specific cases), and see if that helps.  If not, send the strategies file
+to <a href="mailto:pvs-bugs@csl-sri.com>pvs-bugs@csl-sri.com</a> and we'll
+fix it as quickly as we can.  Because there is no way to handle it
+robustly, and since case-sensitivity can actually be useful, in the future
+we may no longer support mixed cases in strategy files.
+
+<h2><a name="Theory interpretations">Theory Interpretations</a></h2>
 
    Theory interpretations are described fully in <a
    href="doc/interpretations.html">Theory Interpretations in PVS</a>
@@ -197,15 +214,52 @@ Within such buffers, the following keys have the following effects.<p>
        <td> Delete proof: delete the specified proof from the formula</td>
      </tr>
    </table>
-   
-<h2><a name="Library relative pathnames">Library relative pathnames</a></h2>
 
-   The system now is careful to use relative pathnames instead of absolute
-   pathnames whenever possible in saving information in the
-   <tt>.pvscontext</tt> and <tt>.bin</tt> files.  The only reason this
-   wasn't done in the past is that the situation in which a theory refers
-   to a library with a relative pathname, which in turn refers to a
-   library with a relative pathname was difficult to resolve correctly.
+   
+   
+<h2><a name="Better library support">Better Library Support</a></h2>
+
+   PVS now uses the <tt>PVS_LIBRARY_PATH</tt> environment variable to look
+   for library pathnames, allowing libraries to be specified as simple
+   (subdirectory) names.  This is an extension of the way, for example,
+   the <tt>finite_sets</tt> library is found relative to the PVS
+   installation path - in fact it is implicitly appended to the end the
+   <tt>PVS_LIBRARY_PATH</tt>.
+   <p>
+   The <tt>.pvscontext</tt> file stores, amongst other things, library
+   dependencies.  Any library found as a subdirectory of a path in the
+   <tt>PVS_LIBRARY_PATH</tt> is stored as simply the subdirectory name.
+   Thus if the <tt>.pvscontext</tt> file is included in a tar file, it may
+   be untarred on a different machine as long as the needed libraries
+   may be found in the <tt>PVS_LIBRARY_PATH</tt>.  This makes libraries
+   much more portable.
+   <p>
+   In addition, the <tt>load-prelude-library</tt> command now
+   automatically loads the <tt>pvs-lib.el</tt> file, if it exists, into
+   Emacs and the <tt>pvs-lib.lisp</tt> file, if it exists, into lisp,
+   allowing the library to add new features, e.g., key-bindings.  Note
+   that the <tt>pvs-lib.lisp</tt> file is not needed for new strategies,
+   which should go into the <tt>pvs-strategies</tt> file as usual.  The
+   difference is that the <tt>pvs-strategies</tt> file  is only loaded
+   when a proof is started, and it may be desirable to have some lisp code
+   that is loaded when the library is, i.e., to support some new Emacs
+   key-bindings.
+   <p>
+   The <tt>PVS_LIBRARY_PATH</tt> is a colon-separated list of paths, and
+   the <tt>lib</tt> subdirectory of the PVS path is added implicitly at
+   the end.  Note that the paths given in the <tt>PVS_LIBRARY_PATH</tt>
+   are expected to have subdirectories, e.g., if you have put Ben Di Vito's
+   <a
+   href="http://shemesh.larc.nasa.gov/people/bld/manip.html">Manip-package</a>
+   in <tt>~/pvs-libs/Manip-1.0</tt>, then your <tt>PVS_LIBRARY_PATH</tt>
+   should only include <tt>~/pvs-libs</tt>, not
+   <tt>~/pvs-libs/Manip-1.0</tt>.
+
+   If the <tt>pvs-libs.lisp</tt> file needs to load other files in other
+libraries, use <tt>libload</tt>.  For example, the <tt>Manip-package</tt>
+loads C&eacute;sar A. Mu&ntilde;oz's <a
+   href="http://www.icase.edu./~munoz/Field/field.html">Field Package</a>
+using <tt>(libload "Field.1h/field-strategies")</tt>
 
 <h2><a name="Cotuple types">Cotuple types</a></h2>
 
@@ -376,10 +430,31 @@ updated accordingly, and this check is no longer needed.
      <li><tt>.pvs</tt> files that contain parse errors will be ignored.
    </ul>
 
+<h2><a name="Improved decision procedures">Improved Existing (Shostak) Decision Procedures</a></h2>
+   The existing (named Shostak, for the original author) decision
+procedures have been made more complete.  Note that this sometimes breaks
+existing proofs, though they are generally easy to repair, especially if
+the proof is rerun in parallel with the older PVS version.  If you have
+difficulties repairing your proofs, please let us know.
+      
+<h2><a name="ICS integration">New (ICS) Decision Procedures</a></h2>
+
+   The Linux version of PVS 3.0 now has an alpha test integration of the
+<a href="http://ics.csl.sri.com">ICS decision procedure</a>.  Use <tt>M-x
+set-decision-procedure ics</tt> to try it out.
+
+<h2><a name="Let reduce">LET Reduction Control</a></h2>
+   The <tt>BETA</tt> and <tt>SIMPLIFY</tt> rules, and the <tt>ASSERT</tt>,
+<tt>BASH</tt>, <tt>REDUCE</tt>, <tt>SMASH</tt>, <tt>GRIND</tt>,
+<tt>GROUND</tt>, <tt>USE</tt>, and <tt>LAZY-GRIND</tt> strategies now all
+take an optional <tt>LET-REDUCE?</tt> flag.  It defaults to <tt>t</tt>,
+and is set to <tt>nil</tt> keeps <tt>LET</tt> expressions from being
+reduced.
+
 <hr>
 <address>Sam Owre: <a HREF="mailto:Owre@csl.sri.com">
 Owre@csl.sri.com</a></address>
 <!-- hhmts start -->
-Last modified: Fri Jul 19 20:48:02 PDT 2002
+Last modified: Thu Nov 21 03:01:34 PST 2002
 <!-- hhmts end -->
 </body> </html>
