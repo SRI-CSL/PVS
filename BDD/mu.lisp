@@ -304,7 +304,7 @@
 	       (not (member expr *mu-subtype-list* :test #'tc-eq))
 	       (not (assoc expr *pvs-bdd-inclusivity-formulas*
 			   :test #'tc-eq)))
-      (let ((constraints (collect-type-constraints-step expr))
+      (let ((constraints (collect-type-constraints expr))
 	    (*mu-subtype-list* (cons expr *mu-subtype-list*)))
 	(loop for x in constraints do
 	      (push (cons expr (convert-pvs-to-mu* x))
@@ -672,8 +672,7 @@
 	      (t (let* ((bddhash-name (make-bdd-var-id))
 			(mu-expression (mu-create-bool-var bddhash-name))
 			(is-rel-var (and *build-rel-var*
-					 (not *build-access-var*)))
-			(is-access-var *build-access-var*))
+					 (not *build-access-var*))))
 		   (setf (gethash expr *pvs-bdd-hash*) bddhash-name)
 		   (setf (gethash bddhash-name *bdd-pvs-hash*) expr)
 		   (when is-rel-var
