@@ -1,3 +1,14 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; decision-procedure-interface.lisp -- 
+;; Author          : Sam Owre
+;; Created On      : Thu May 20 19:48:46 2004
+;; Last Modified By: Sam Owre
+;; Last Modified On: Thu May 20 19:49:38 2004
+;; Update Count    : 1
+;; Status          : Stable
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
+
 (in-package :pvs)
 
 ;;; The following macros allow new decision procedures to be plugged in,
@@ -35,7 +46,7 @@
   (list 'shostak 'ics))
 
 (defvar *decision-procedure-descriptions*
-  '((ics . "ICS (alpha)")))
+  '())
 
 (defmacro dpi-init ()
   `(dpi-init* *current-decision-procedure*))
