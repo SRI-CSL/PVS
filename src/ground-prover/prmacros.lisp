@@ -52,3 +52,17 @@
 
 (defmacro singleton? (obj)
   `(and (consp ,obj) (null (cdr ,obj))))
+
+
+(defun add2pot (atoms)
+  (setq s (append atoms s))
+  nil)
+
+(defmacro addneq2pot (atoms)
+  `(add2pot ,atoms))
+
+(defmacro addineq2pot (atoms)
+  `(add2pot ,atoms))
+
+(defmacro addprm2pot (atoms)
+  `(add2pot ,atoms))
