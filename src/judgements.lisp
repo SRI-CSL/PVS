@@ -462,11 +462,11 @@
 		   jtypes
 		   (cons jrange
 			 (delete-if #'(lambda (jty)
-					(subtype-of? jrange jty)) jtypes))))
-	      (generic-application-judgement-types
-	       ex
-	       (cdr gen-judgements)
-	       jtypes))))))
+					(subtype-of? jrange jty)) jtypes)))))
+	    (generic-application-judgement-types
+	     ex
+	     (cdr gen-judgements)
+	     jtypes)))))
 
 (defun instantiate-generic-appl-judgement-types (ex judgements &optional types)
   (if (null judgements)
@@ -620,12 +620,13 @@
 (defun judgement-arguments-match*? (argtypes rdomain jdomain)
   (if (listp argtypes)
       (judgement-list-arguments-match? argtypes rdomain jdomain)
-      (if (recordtype? rdomain)
+      (if (recordtype? (find-supertype rdomain))
 	  (judgement-record-arguments-match?
 	   (delete-duplicates (coerce argtypes 'list) :from-end t :key #'car)
-	   (fields rdomain) (fields jdomain))
+	   (fields (find-supertype rdomain)) (fields (find-supertype jdomain)))
 	  (judgement-vector-arguments-match?
-	   argtypes (types rdomain) (types jdomain) 0))))
+	   argtypes (types (find-supertype rdomain))
+	   (types (find-supertype jdomain)) 0))))
 
 (defmethod types ((te dep-binding))
   (types (type te)))
