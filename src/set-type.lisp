@@ -2222,7 +2222,12 @@ required a context.")
 				  (cdr vars))))
 
 (defun subst-tup-dep-type (expr type types)
-  (substit types (acons type expr nil)))
+  (let ((rest (memq type types)))
+    (assert rest)
+    (let ((srest (substit (cdr rest) (acons type expr nil))))
+      (if (eq srest (cdr rest))
+	  types
+	  (append (ldiff types (cdr rest)) srest)))))
 
 
 ;;; Update-exprs on funtypes
