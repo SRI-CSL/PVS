@@ -2076,7 +2076,10 @@
 	"The domain and range of this conversion are compatible;~%~
          the conversion will never be used:~%  ~a: ~a" (name decl) type))
     (setf (k-combinator? decl) (k-combinator? (declaration (name decl))))
-    (push decl (conversions *current-context*))
+    (let ((ndecl (if (fully-instantiated? (name decl))
+		     decl
+		     (copy decl 'module (module (declaration (name decl)))))))
+      (push ndecl (conversions *current-context*)))
     decl))
 
 (defmethod type ((decl conversion-decl))
