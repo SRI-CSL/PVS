@@ -353,7 +353,7 @@
   (with-slots (operator argument) expr
     (let ((reduced-expr (substit (expression operator)
 			  (pairlis-args (bindings operator)
-					(argument* argument)))))
+					(argument* expr)))))
       (translate-to-dc reduced-expr))))
 
 ;(defun translate-dc-args (arguments expected)
@@ -403,11 +403,15 @@
     (let* ((fields (fields (find-supertype (type argument))))
 	   (sfields (sort-fields fields))
 	   (pos (position id sfields
-			  :test #'(lambda (x y) (eq x (id y))))))
-      (dp::sigproject
-       (dp::mk-term
-	(list dp::*project* (dp::mk-constant pos);;might need to set prtype.
-	      (translate-to-dc argument)))))))
+			  :test #'(lambda (x y) (eq x (id y)))))
+	   (dc-type (dc-prover-type (type expr)))
+	   (result (dp::sigproject
+		    (dp::mk-term
+		     (list dp::*project* (dp::mk-constant pos)
+			   (translate-to-dc argument))))))
+      (when dc-type
+	(setf (dp::node-initial-type result) dc-type))
+      result)))
 
 ;;NSH(5.17.94): Complicated code to deal with tuple mismatch
 ;;between domain of operator and arguments.
@@ -548,7 +552,7 @@
 			 (setf (gethash expr *dc-named-exprs*) apform)
 			 apform))
 		      (t
-		       (add-to-prtype-hash newid (type expr))
+		       (add-to-prtype-hash newid expr prtype)
 		       (setf (gethash expr *dc-named-exprs*)  newid)
 		       newid)))))
 	     (translate-to-dc (expression expr)))))))
