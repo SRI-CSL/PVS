@@ -300,6 +300,15 @@ ws1slisp = src/WS1S/lisp/dfa-foreign.lisp src/WS1S/lisp/dfa.lisp \
            src/WS1S/lisp/signature.lisp src/WS1S/lisp/pvs2dfa.lisp \
            src/WS1S/lisp/ws1s-strategy.lisp
 
+qelisp = src/qe/qe-utils.lisp \
+         src/qe/dp-interface.lisp \
+         src/qe/dnf.lisp \
+         src/qe/qe.lisp
+
+follisp = src/fol/fol-utils.lisp \
+          src/fol/fol.lisp \
+          src/fol/fol-top.lisp
+
 groundevallisp = src/groundeval/eval-macros.lisp \
 		 src/groundeval/eval-utils.lisp \
 		 src/groundeval/ground-expr.lisp \
@@ -318,7 +327,7 @@ inst-by-unif-lisp = src/inst-by-unif/lvars-and-skofuns.lisp \
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
 	     ${decision-procedures} ${ws1slisp} ${groundevallisp} \
-             ${inst-by-unif-lisp}
+             ${inst-by-unif-lisp} ${qelisp} ${follisp}
 
 all-lisp-files = ${ess} ${pvs-parser-in} ${lisp-files}
 
