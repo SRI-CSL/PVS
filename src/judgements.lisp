@@ -389,6 +389,15 @@
 (defmethod judgement-types ((ex record-expr))
   nil)
 
+(defmethod judgement-types* :around (ex)
+  (let ((jhash (judgement-types-hash (judgements *current-context*))))
+    (multiple-value-bind (jtypes there?)
+	(gethash ex jhash)
+      (if there?
+	  jtypes
+	  (let ((njtypes (call-next-method)))
+	    (setf (gethash ex jhash) njtypes))))))
+
 (defmethod judgement-types* ((ex number-expr))
   (append (mapcar #'type
 	    (gethash (number ex)
