@@ -686,7 +686,10 @@
 	    (push 'type (types ex)))))))
 
 (defmethod typecheck-mapping-rhs* (ex rhs)
-  (typecheck* ex nil nil nil))
+  (let ((typed-ex (typecheck* ex nil nil nil)))
+    (when (type-expr? typed-ex)
+      (setf (type-value rhs) typed-ex))
+    typed-ex))
 
 (defun interpretable-declarations (theory)
   (remove-if-not #'interpretable? (all-decls theory)))
