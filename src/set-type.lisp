@@ -855,12 +855,10 @@ required a context.")
 		       (let ((nbindings
 			      (set-let-bindings (bindings operator) argument)))
 			 (when nbindings
-			   (setq optype
-				 (copy optype
-				   'domain (make-domain-type-from-bindings
-					    (bindings operator))))
-			   (reset-let-bound-name-exprs (expression operator)
-						       nbindings))))
+			   (reset-let-bound-operator-type
+			    (bindings operator) optype)
+			   (reset-let-bound-name-exprs
+			    (expression operator) nbindings))))
 		     (setf type (application-range-type argument optype))
 		     (let ((*appl-tcc-conditions*
 			    (cons (appl-tcc-conditions operator argument)
@@ -913,12 +911,35 @@ required a context.")
 		(push bd reset))))))
     reset))
 
+(defun reset-let-bound-operator-type (bindings optype)
+  (if (dep-binding? (domain optype))
+      (let ((dep (domain optype)))
+	(cond ((cdr bindings)
+	       (setf (type dep) (mk-tupletype (mapcar #'type bindings)))
+	       (when (declared-type dep)
+		 (setf (declared-type dep)
+		       (mk-tupletype (mapcar #'(lambda (bd)
+						 (or (declared-type bd)
+						     (type bd)))
+				       bindings)))))
+	      (t (setf (type dep) (type (car bindings)))
+		 (setf (declared-type dep)
+		       (or (declared-type (car bindings))
+			   (type (car bindings))))))
+	(reset-let-bound-name-exprs (range optype) (list dep)))
+      (setf (domain optype)
+	    (make-domain-type-from-bindings bindings))))
+
+
 (defun reset-let-bound-name-exprs (expr nbindings)
   (mapobject #'(lambda (ex)
 		 (when (name? ex)
 		   (dolist (res (resolutions ex))
 		     (when (memq (declaration res) nbindings)
-		       (setf (type res) (type (declaration res)))))))
+		       (setf (type res) (type (declaration res)))
+		       (when (and (name-expr? ex)
+				  (type ex))
+			 (setf (type ex) (type (car (resolutions ex)))))))))
 	     expr))
 
 (defun change-application-class-if-needed (ex)
