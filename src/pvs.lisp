@@ -52,6 +52,7 @@
   (setq *last-proof* nil)
   (clrnumhash)
   (setq *pvs-context-writable* (write-permission? (working-directory)))
+  (setq *pvs-library-path* (get-pvs-library-path))
   ;;(restore-context)
   (setq *pvs-initialized* t)
   (when *to-emacs*
@@ -95,6 +96,23 @@
     (clrhash *imported-libraries*)
     (setq *prelude-libraries-uselist* nil)
     (setq *prelude-library-context* nil)))
+
+(defun get-pvs-library-path ()
+  (setq *pvs-library-path* nil)
+  (let ((libs nil)
+	(pathenv (environment-variable "PVS_LIBRARY_PATH")))
+    (when pathenv
+      (let ((dirs (excl:split-regexp ":" pathenv)))
+	(dolist (dir dirs)
+	  (when (char= (char dir (1- (length dir))) #\/)
+	    (setq dir (subseq dir 0 (1- (length dir)))))
+	  (cond ((directory-p dir)
+		 (pushnew dir libs :test #'file-equal))
+		(t (pushnew dir libs :test #'string=)
+		   (pvs-message "Directory ~a in PVS_LIBRARY_PATH does not exist"
+		     dir))))))
+    (pushnew (concatenate 'string *pvs-path* "/lib") libs :test #'file-equal)
+    (setq *pvs-library-path* (nreverse libs))))
 
 (defvar *pvs-patches-loaded* nil)
 
@@ -817,7 +835,10 @@
   (mapcan #'(lambda (d)
 	      (let ((tn (theory-name d)))
 		(unless (library tn)
-		  (list (id tn)))))
+		  (if (eq (id tn) (id theory))
+		      (type-error (theory-name d)
+			"Theory ~a may not import itself" (id theory))
+		      (list (id tn))))))
     (remove-if-not #'mod-or-using? (all-decls theory))))
 
 (defmethod tcc-info ((d recursive-type))
@@ -1200,6 +1221,43 @@
 			   str)))
 	       (pvs-buffer buffer str t t))
 	      (t (pvs-message "Theory ~a has no TCCs" theoryref)))))))
+
+(defun show-declaration-tccs (bufname origin line &optional unproved-only?)
+  (let* ((decl (get-decl-at-origin bufname origin line))
+	 (theory (module decl))
+	 (tccs (reverse (remove-if (complement #'tcc?) (generated decl))))
+	 ;; Even if tccs is null, there might be tcc comments, so we go on.
+	 (*comment-on-proof-status* t)
+	 (*no-comments* t)
+	 (*unparse-expanded* t)
+	 (*pp-new-projection-forms* t)
+	 (unparsed-a-tcc? nil)
+	 (str (string-trim
+	       '(#\Space #\Tab #\Newline)
+	       (with-output-to-string (out)
+		 (dolist (tcc tccs)
+		   (dolist (cmt (cdr (assq tcc (tcc-comments theory))))
+		     (write cmt :stream out :escape nil)
+		     (terpri out) (terpri out))
+		   (when (or (not unproved-only?)
+			     (unproved? tcc))
+		     (unparse tcc :stream out)
+		     (terpri out) (terpri out)
+		     (setq unparsed-a-tcc? t)))
+		 (dolist (cmt (cdr (assq decl (tcc-comments theory))))
+		   (write cmt :stream out :escape nil)
+		   (terpri out) (terpri out)))))
+	 (buffer (format nil "~a.~a.tccs"
+		   (id theory) (op-to-id decl))))
+    (cond ((not (string= str ""))
+	   (let ((*valid-id-check* nil))
+	     (setf (tcc-form decl)
+		   (if unparsed-a-tcc?
+		       (parse :string str :nt 'theory-part)
+		       str)))
+	   (pvs-buffer buffer str t t))
+	  (t (pvs-message "Declaration ~a.~a has no TCCs"
+	       (id theory) (op-to-id decl))))))
 
 (defun tcc? (decl)
   (and (formula-decl? decl)
@@ -2038,7 +2096,7 @@
 	(unless (gethash fname *pvs-files*)
 	  (let ((theories (ignore-errors (with-no-parse-errors
 					  (parse :file file)))))
-	    (when (member (id theoryref) theories :key #'id)
+	    (when (member (ref-to-id theoryref) theories :key #'id)
 	      ;; Make sure we're not introducing a name clash
 	      ;; E.g., file1 has theories th1 and th2
 	      ;;       file2 has theories th2 and th3
