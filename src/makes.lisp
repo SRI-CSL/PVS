@@ -22,6 +22,10 @@
 (def-pvs-term minus-operator "-" "reals" :expected "[real -> real]")
 (def-pvs-term times-operator "*" "reals")
 (def-pvs-term divides-operator "/" "reals")
+(def-pvs-term greatereq-operator ">=" "reals")
+(def-pvs-term greater-operator ">" "reals")
+(def-pvs-term lesseq-operator "<=" "reals")
+(def-pvs-term less-operator "<" "reals")
 
   
 ;;; This file provides make-class for the useful classes in classes.
@@ -498,6 +502,19 @@
 (defun mk-update-expr-1 (expr index value)
   (let ((assignment (mk-assignment 'uni `((,index)) value)))
     (mk-update-expr expr (list assignment))))
+
+(defun mk-greatereq (a1 a2)
+  (mk-application (greatereq-operator) a1 a2))
+
+(defun mk-greater (a1 a2)
+  (mk-application (greater-operator) a1 a2))
+
+(defun mk-lesseq (a1 a2)
+  (mk-application (lesseq-operator) a1 a2))
+
+(defun mk-less (a1 a2)
+  (mk-application (less-operator) a1 a2))
+
 
 ;;; Note that an expected type is unnecessary; bind-decls always
 ;;; complain if they don't uniquely typecheck.
@@ -1125,6 +1142,17 @@
 			    'assignments assignments)
 	     :expected expected))
 
+(defun make-greatereq (x y)
+  (typecheck (mk-greatereq x y) :expected *boolean* :tccs 'top))
+
+(defun make-greater (x y)
+  (typecheck (mk-greater x y) :expected *boolean* :tccs 'top))
+
+(defun make-lesseq (x y)
+  (typecheck (mk-lesseq x y) :expected *boolean* :tccs 'top))
+
+(defun make-less (x y)
+  (typecheck (mk-less x y) :expected *boolean* :tccs 'top))
 
 ;;; make!- forms assume that the provided expressions are fully
 ;;; typechecked, and generate typed expressions accordingly.
