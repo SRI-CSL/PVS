@@ -109,14 +109,20 @@ useful if more than one specification is to be included in one document")
 	(old-ids *latex-id-macro-list*))
     (read-tex-substitutions (working-directory) (id theory))
     (push (string (id theory)) *latex-files*)
-    (with-open-file (stream file :direction :output :if-exists :supersede)
-      (when *insert-newcommands-into-output*
-	(dolist (nc *latex-newcommands-list*)
-	  (princ nc stream)
-	  (terpri stream)))
-      (format stream "\\begin{alltt}~%")
-      (pp-tex theory stream)
-      (format stream "\\end{alltt}~%"))
+    (multiple-value-bind (v condition)
+	(ignore-errors
+	  (with-open-file (stream file :direction :output :if-exists :supersede)
+	    (when *insert-newcommands-into-output*
+	      (dolist (nc *latex-newcommands-list*)
+		(princ nc stream)
+		(terpri stream)))
+	    (format stream "\\begin{alltt}~%")
+	    (pp-tex theory stream)
+	    (format stream "\\end{alltt}~%")))
+      (declare (ignore v))
+      (when condition
+	(pvs-error "LaTeX generation error"
+	  (format nil "~a" condition))))
     (when gen-subst
       (generate-latex-chart (string (id theory))
 			    (format nil "~a-sub" (id theory))

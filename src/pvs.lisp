@@ -1268,14 +1268,16 @@
   (let ((theory (get-typechecked-theory theoryname))
 	(*use-default-dp?* use-default-dp?))
     (when theory
-      (prove-theories theoryname
-		      (remove-if #'(lambda (th)
-				     (or (from-prelude? th)
-					 (typep th '(or library-datatype
-							library-theory))))
-			(collect-theory-usings theoryname exclude))
-		      retry?
-		      use-default-dp?))
+      (let ((*current-context* (context theory))
+	    (*current-theory* theory))
+	(prove-theories theoryname
+			(remove-if #'(lambda (th)
+				       (or (from-prelude? th)
+					   (typep th '(or library-datatype
+							  library-theory))))
+			  (collect-theory-usings theoryname exclude))
+			retry?
+			use-default-dp?)))
     (status-proof-importchain theoryname)))
 
 

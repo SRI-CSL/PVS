@@ -1185,7 +1185,9 @@
 (defun get-let-binding-type (bd bindings arg anum)
   (if (declared-type bd)
       (typecheck* (declared-type bd) nil nil nil)
-      (let ((vdecl (find-if #'var-decl?
+      (let ((vdecl (find-if #'(lambda (v)
+				(and (var-decl? v)
+				     (eq (module v) (current-theory))))
 		     (gethash (id bd)
 			      (current-declarations-hash)))))
 	(cond ((and vdecl

@@ -109,7 +109,7 @@
 	  (place aorm) (term-place adt-or-module))
     ;;(assert (every #'place (formals aorm)))
     (when *escaped-operators-used*
-      (let ((*current-theory* aorm))
+      (let ((*current-context* (make-new-context aorm)))
 	(pvs-info "This theory uses the operator~p ~:*~{~a~^ ~}~
                  ~%Remember that the backslash character must be doubled ~
                  in strings~%E.g., (expand \"/\\\\\")"

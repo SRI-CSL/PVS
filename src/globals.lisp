@@ -244,7 +244,9 @@ rather than the generated declaration.")
   #-gcl
   (let ((table (copy-pprint-dispatch)))
     (set-pprint-dispatch '(cons string)
-			 #'(lambda (s list) (pprint-linear s list))
+			 #'(lambda (s list)
+			     (let ((*print-escape* t))
+			       (pprint-linear s list)))
 			 1
 			 table)
     table)

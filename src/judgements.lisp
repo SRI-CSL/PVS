@@ -941,7 +941,8 @@
   (if (singleton? (bindings op))
       (substit (expression op)
 	(acons (car (bindings op)) arg nil))
-      (call-next-method)))
+      (substit (expression op)
+	(pairlis (bindings op) (make!-projections arg)))))
 
 (defmethod make!-reduced-application (op arg)
   (make!-application op arg))

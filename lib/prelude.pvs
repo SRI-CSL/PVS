@@ -765,7 +765,7 @@ sets_lemmas [T: TYPE]: THEORY
 
   subset_add: LEMMA subset?(a, add(x, a))
 
-  add_as_union: LEMMA add(x, a) = union(a, {y | y = x})
+  add_as_union: LEMMA add(x, a) = union(a, singleton(x))
 
   singleton_as_add: LEMMA singleton(x) = add(x, emptyset)
 

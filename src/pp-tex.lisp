@@ -90,8 +90,8 @@
       (pprint-indent :block 2)
       ;;(pprint-newline :mandatory)
       (pp-tex-assuming (if *unparse-expanded*
-		       assuming
-		       (remove-if #'generated-by assuming)))
+			   assuming
+			   (remove-if #'generated-by assuming)))
       (pp-tex-theory (if *unparse-expanded*
 		     theory
 		     (remove-if #'generated-by theory)))
@@ -190,6 +190,7 @@
     (let ((*pretty-printing-decl-list* t)
 	  (*pretty-printed-prefix* nil)
 	  (last-one (car (last assuming))))
+      (pprint-newline :mandatory)
       (pprint-logical-block (nil nil)
 	(pp-tex-keyword 'ASSUMING)
 	(pprint-indent :block 1)
@@ -782,7 +783,8 @@
 		(pp-tex* (car nextargs))
 		(pp-tex-arguments nextargs)))
 	  (pprint-exit-if-list-exhausted)
-	  (pprint-newline :fill))))
+	  (unless *in-tex-math-mode*
+	    (pprint-newline :fill)))))
 
 (defmethod pp-tex* ((ex field-assign))
   (pprint-logical-block (nil nil)
@@ -801,7 +803,8 @@
 	  (pprint-exit-if-list-exhausted)
 	  (write-char #\,)
 	  (write-char #\space)
-	  (pprint-newline :fill))))
+	  (unless *in-tex-math-mode*
+	    (pprint-newline :fill)))))
 
 (defmethod pp-tex* ((te subtype))
   (with-slots (supertype predicate) te
@@ -996,7 +999,7 @@
     (if *pp-new-projection-forms*
 	(pprint-logical-block (nil nil)
 	  (pp-tex* (argument ex))
-	  (pp-tex-keyword '|`|)
+	  (write '|`|)
 	  (pp-tex-number (index ex)))
 	(pprint-logical-block (nil nil)
 	  (pp-tex-id id)
@@ -1005,7 +1008,7 @@
 (defmethod pp-tex* ((ex projappl))
   (pprint-logical-block (nil nil)
     (pp-tex* (argument ex))
-    (pp-tex-keyword '|`|)
+    (write '|`|)
     (pp-tex-number (index ex))))
 
 (defmethod pp-tex* ((ex field-application))
@@ -1013,18 +1016,19 @@
     (if *pp-new-projection-forms*
 	(pprint-logical-block (nil nil)
 	  (pp-tex* (argument ex))
-	  (pp-tex-keyword '|`|)
+	  (write '|`|)
 	  (pp-tex-id (id ex)))
 	(pprint-logical-block (nil nil)
 	  (pprint-indent :current 2)
 	  (pp-tex-id id)
-	  (pprint-newline :fill)
+	  (unless *in-tex-math-mode*
+	    (pprint-newline :fill))
 	  (pp-tex-arguments (argument-list argument))))))
 
 (defmethod pp-tex* ((ex fieldappl))
   (pprint-logical-block (nil nil)
     (pp-tex* (argument ex))
-    (pp-tex-keyword '|`|)
+    (write '|`|)
     (pp-tex-id (id ex))))
 
 (defmethod pp-tex* :around ((ex application))
@@ -1081,7 +1085,8 @@
   (pprint-logical-block (nil args)
     (loop (pp-tex-arguments (argument-list (pprint-pop)))
 	  (pprint-exit-if-list-exhausted)
-	  (pprint-newline :fill))))
+	  (unless *in-tex-math-mode*
+	    (pprint-newline :fill)))))
 
 (defmethod pp-tex* ((ex infix-application))
   (with-slots (operator argument) ex
@@ -1102,12 +1107,14 @@
 		       (write-char #\)))
 		(pp-tex* lhs))
 	    (write-char #\space)
-	    (pprint-newline :fill)
+	    (unless *in-tex-math-mode*
+	      (pprint-newline :fill))
 	    (pp-tex-id (if (eq (id operator) 'O) '|o| (id operator))
 		       (when (resolution operator)
 			 (id (module-instance operator))))
 	    (write-char #\space)
-	    (pprint-newline :fill)
+	    (unless *in-tex-math-mode*
+	      (pprint-newline :fill))
 	    (if (and (zerop (parens rhs))
 		     (< (precedence rhs 'right)
 			(gethash oper (third *expr-prec-info*))))
