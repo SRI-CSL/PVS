@@ -51,12 +51,12 @@ if test -d $ALLEGRODIR; then
 else
    AC_MSG_ERROR(cannot find $ALLEGRODIR: please specify --with-allegro=/path/to/allegro)
 fi	
-ALLEGROLIB=`ls $ALLEGRODIR | grep "libacli[[0-9]]*\.so$" | cut -c 4- | cut -d"." -f 1`
+ALLEGROLIB=`ls $ALLEGRODIR | grep "libacl[[0-9]]*\.so$" | cut -c 4- | cut -d"." -f 1`
 if test "x$ALLEGROLIB" = "x"; then
    ALLEGROLIB=`ls $ALLEGRODIR | grep "libacl[[0-9]]*\.so$" | cut -c 4- | cut -d"." -f 1`
 fi
-if test -f $ALLEGRODIR/mlisp ; then
-   LISPEXE=mlisp
+if test -f $ALLEGRODIR/mlisp8 ; then
+   LISPEXE=mlisp8
 else   
    if test -f $ALLEGRODIR/lisp  ; then
    LISPEXE=lisp
