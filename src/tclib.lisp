@@ -226,10 +226,11 @@
 
 ;;; load-prelude-libraries is called from restore-context
 (defun load-prelude-libraries (lib-refs)
-  (mapc #'load-prelude-library lib-refs))
+  (dolist (lib-ref lib-refs)
+    (load-prelude-library (libref-to-pathname lib-ref) t)))
 
 ;;; This is called from the Emacs load-prelude-library command as well.
-(defun load-prelude-library (lib-path)
+(defun load-prelude-library (lib-path &optional restoring?)
   (multiple-value-bind (lib-ref err-msg)
       (pathname-to-libref lib-path)
     (cond (err-msg
@@ -240,7 +241,37 @@
 	     (unless (member lib-ref (cadr *pvs-context*) :test #'string=)
 	       (push lib-ref (cadr *pvs-context*))
 	       (setq *pvs-context-changed* t))
-	     (add-to-prelude-libraries lib-ref)))))
+	     (add-to-prelude-libraries lib-ref)
+	     (load-pvs-lib-lisp-file lib-path)
+	     ;; If restoring? is t, then we need to load the pvs-lib.el
+	     ;; file if it exists.  Otherwise the user invoked it explicitly
+	     ;; From Emacs, which does the loading itself.
+	     (when restoring?
+	       ;; Note that this is a noop if Emacs is not there
+	       (pvs-emacs-eval
+		(format nil "(load \"~apvs-lib\" t nil nil t)"
+		  lib-path)))))))
+
+(defun load-pvs-lib-lisp-file (lib-path)
+  ;; Set up *default-pathname-defaults* and sys:*load-search-list*
+  ;; so that simple loads from the pvs-lib.lisp file work.
+  (let* ((*default-pathname-defaults* lib-path)
+	 (sys:*load-search-list* *pvs-library-path*)
+	 (lfile (format nil "~apvs-lib.lisp" lib-path)))
+    (when (file-exists-p lfile)
+      (let ((bfile (format nil "~apvs-lib.~a" lib-path *pvs-binary-type*)))
+	(when (or (not (file-exists-p bfile))
+		  (compiled-file-older-than-source? lfile bfile))
+	  (multiple-value-bind (ignore error)
+	      (ignore-errors (compile-file lfile))
+	    (cond (error
+		   (pvs-message "Compilation error - ~a" condition)
+		   (pvs-message "Loading lib file ~a interpreted"
+		     (shortname lfile))
+		   (setq bfile nil))
+		  (t
+		   (chmod "ug+w" (namestring bfile))))))
+	(load (or bfile lfile))))))
 
 (defun load-prelude-library* (lib-ref lib-path)
   (if (gethash lib-ref *loaded-libraries*)
@@ -873,10 +904,9 @@
 
 (defun pvs-library-path-ref (lib-ref &optional (libs *pvs-library-path*))
   (when libs
-    (let ((lib-path (concatenate 'string (car libs) "/" lib-ref)))
-      (if (directory-p lib-path)
-	  lib-path
-	  (pvs-library-path-ref lib-ref (cdr libs))))))
+    (if (file-exists-p lib-path)
+	lib-path
+	(pvs-library-path-ref lib-ref (cdr libs)))))
 
 (defun pathname-to-libref (lib-path)
   (if (and (file-exists-p lib-path)
