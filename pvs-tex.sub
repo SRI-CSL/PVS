@@ -21,8 +21,11 @@ iff		id	2	\Leftrightarrow
 <=>		id	2	\Leftrightarrow
 exists1		id	2	{\exists_1}
 *		id	1	\times
++		id	1	+
+-		id	1	-
+/		id	1	/
 
-IMPLIES		id	2	\supset
+IMPLIES		id	1	\supset
 AND		id	1	\wedge
 OR		id	1	\vee
 NOT		id	1	\neg
@@ -85,40 +88,10 @@ PHI		id	1	\Phi
 PSI		id	1	\Psi
 OMEGA		id	1	\Omega
 
-=>		2	1	{#1 \Rightarrow #2}
->=		2	1	{#1 \geq #2}
-<=		2	1	{#1 \leq #2}
-/=		2	1	{#1 \neq #2}
-=		2	1       {#1 = #2}
-and		2	1	{#1 \wedge #2}
-&		2	1	{#1 \wedge #2}
-implies		2	1	{#1 \supset #2}
-or		2	1	{#1 \vee #2}
-not		1	1	{\neg #1}
-iff		2	1	{#1 \Leftrightarrow #2}
-<=>		2	1	{#1 \Leftrightarrow #2}
-*		2	1	{#1 \times #2}
-
-/\		2	1	{#1 \wedge #2}
-\/		2	1	{#1 \vee #2}
-^		2	1	{{#1}^{\scriptscriptstyle\wedge}{#2}}
-==		2	1	{#1 \equiv #2}
-[]		1	1	{\Box #1}
-<>		1	1	{\Diamond #1}
-~		1	1	{\sim #1}
-
-AND		2	1	{#1 \wedge #2}
-IMPLIES		2	1	{#1 \supset #2}
-OR		2	1	{#1 \vee #2}
-NOT		1	1	{\neg #1}
-IFF		2	1	{#1 \Leftrightarrow #2}
-
-And		2	1	{#1 \wedge #2}
-Implies		2	1	{#1 \supset #2}
-Or		2	1	{#1 \vee #2}
-Not		1	1	{\neg #1}
-Iff		2	1	{#1 \Leftrightarrow #2}
-
++		2	1	{#1+#2}
+-		2	1	{#1-#2}
+*		2	1	{#1\times#2}
+/		2	1	{#1/#2}
 member		2	1	{(#1 \in #2)}
 member		0	4	{(\star1 \in \star2)}
 emptyset        0       1       {\emptyset}
