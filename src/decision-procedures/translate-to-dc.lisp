@@ -84,12 +84,58 @@
   (clrhash *local-prtype-hash*)
   (clrhash *dc-named-exprs*)
   (newcounter *dc-translate-id-counter*)
+  (setq *dc-interpreted-names*
+  `((,(mk-name '= nil '|equalities|) . ,dp::*=*)
+    (,(mk-name '/= nil '|notequal|) . ,dp::*nequal*)
+    (,(mk-name 'IMPLIES nil '|booleans|) . ,dp::*implies*)
+    (,(mk-name 'AND nil '|booleans|) . ,dp::*and*)
+    (,(mk-name '& nil '|booleans|) . ,dp::*and*)
+    (,(mk-name 'OR nil '|booleans|) . ,dp::*or*)
+    (,(mk-name 'NOT nil '|booleans|) . ,dp::*not*)
+    (,(mk-name '+ nil '|reals|) . ,dp::*plus*)
+    (,(mk-name '- nil '|reals|) . ,dp::*minus*)
+    (,(mk-name '* nil '|reals|) . ,dp::*times*)
+    (,(mk-name '/ nil '|reals|) . ,dp::*divide*)
+    (,(mk-name '< nil '|reals|) . ,dp::*lessp*)
+    (,(mk-name '<= nil '|reals|) . ,dp::*lesseqp*)
+    (,(mk-name '> nil '|reals|) . ,dp::*greaterp*)
+    (,(mk-name '>= nil '|reals|) . ,dp::*greatereqp*)
+    (,(mk-name '|floor| nil '|floor_ceil|) . ,dp::*floor*)
+    (,(mk-name '^ nil '|bv_caret|) . ,bvec::*bv-extract*)
+    (,(mk-name '|fill| nil '|bv|) . ,bvec::*bv-fill*)
+    (,(mk-name '|bv2nat| nil '|bv_nat|) . ,bvec::*bv2nat*)
+    (,(mk-name '|nat2bv| nil '|bv_nat|) . ,bvec::*nat2bv*)
+    (,(mk-name 'o nil '|bv_concat|) . ,bvec::*bv-compose*)
+    (,(mk-name 'OR nil '|bv_bitwise|) . ,bvec::*bv-or*)
+    (,(mk-name 'AND nil '|bv_bitwise|) . ,bvec::*bv-and*)
+    (,(mk-name 'IFF nil '|bv_bitwise|) . ,bvec::*bv-equiv*)
+    (,(mk-name 'NOT nil '|bv_bitwise|) . ,bvec::*bv-not*)
+    (,(mk-name 'OR nil '|bv_bitwise|) . ,bvec::*bv-xor*)
+	))
+  (setq *dc-interpreted-alist*
+	(let ((*current-alist* nil))
+	  (mapc #'(lambda (x)
+		    (let* ((pvs-name (car x))
+			   (pvs-id (id pvs-name))
+			   (dp-sym (cdr x))
+			   (item (assq pvs-id *current-alist*))
+			   (current-pvs-name-alist
+			    (cdr item)))
+		      (if current-pvs-name-alist
+			  (setf (cdr item)
+				(push (cons pvs-name dp-sym)
+				      current-pvs-name-alist))
+			  (setq *current-alist*
+				(acons pvs-id (cons pvs-name dp-sym)
+				       *current-alist*)))))
+		*dc-interpreted-names*)
+	  *current-alist*))
   (setq *dc-interpreted-names* nil)
   (setq *dc-interpreted-names* (dc-interpreted-names)) ; repeat list???
   (setq *dc-interpreted-alist* nil)
   (setq *dc-interpreted-alist* (interpreted-alist)))
 	
-(defvar *interpret-bit-vectors* nil)
+(defvar *interpret-bit-vectors* t)
 
 (defun interpreted-bv-op? (expr)
   (and *interpret-bit-vectors*
@@ -941,7 +987,7 @@
 (defmethod dc-prover-type ((te dep-binding))
   (dc-prover-type (type te)))
 
-(defvar *translate-iff-to-implies* T)
+(defvar *translate-iff-to-implies* nil)
 
 (defmethod translate-to-dc ((expr iff-or-boolean-equation))
   (if *translate-iff-to-implies*
