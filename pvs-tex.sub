@@ -24,6 +24,8 @@ exists1		id	2	{\exists_1}
 +		id	1	+
 -		id	1	-
 /		id	1	/
+<<		id	1	\ll
+>>		id	1	\gg
 
 IMPLIES		id	1	\supset
 AND		id	1	\wedge
@@ -43,6 +45,9 @@ IF		id	2	{\pvskey{IF}}
 []		id	1	\Box
 <>		id	1	\Diamond
 ~		id	1	\sim
+<|		id	1	\lhd
+|>		id	1	\rhd
+|=		id	1	\models
 
 alpha		id	1	\alpha
 beta		id	1	\beta
