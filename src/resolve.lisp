@@ -2107,8 +2107,7 @@
 				args dtypes))))))))
 
 (defun make-conversion-resolution (res conv name)
-  (let* ((iconv (instantiate-conversion conv (type res)))
-	 (ctype (find-supertype (type iconv)))
+  (let* ((ctype (find-supertype (type conv)))
 	 (dep? (typep (domain ctype) 'dep-binding))
 	 (nname (when dep?
 		  (copy name
@@ -2118,26 +2117,14 @@
 		    (substit (range ctype)
 		      (acons (domain ctype) nname nil))
 		    (range ctype)))
-	 (cconv (copy iconv)))
-    (when (name-expr? cconv)
+	 (cconv (copy conv)))
+    (when (name-expr? conv)
       (change-name-expr-class-if-needed (declaration conv) cconv))
     (make-instance 'conversion-resolution
       'module-instance (module-instance res)
       'declaration (declaration res)
       'type (copy rtype 'from-conversion cconv)
       'conversion cconv)))
-
-(defun instantiate-conversion (conv rtype)
-  (if (fully-instantiated? conv)
-      conv
-      (let* ((ctype (domain (find-supertype (type conv))))
-	     (bindings (tc-match rtype ctype
-				 (instantiate-operator-bindings
-				  (free-params ctype)))))
-	(if (and bindings
-		 (every #'cdr bindings))
-	    (instantiate-operator-from-bindings conv bindings)
-	    conv))))
 
 (defun get-conversion-range-type (conv expr)
   (let* ((ctype (find-supertype (type conv)))
