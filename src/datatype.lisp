@@ -183,7 +183,7 @@ generated")
     (unless (and file-exists?
 		 ce
 		 (equal (ce-write-date ce)
-			(file-write-date (make-specpath (filename adt)))))
+			(file-write-time (make-specpath (filename adt)))))
       (when file-exists?
 	(ignore-errors
 	  (chmod "a+w" (namestring adt-path)))
@@ -222,7 +222,7 @@ generated")
                      ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
 		  (id th) tot prv mat obl
 		  (length (warnings th)) (length (info th))))))
-    (let ((fdate (file-write-date adt-path))
+    (let ((fdate (file-write-time adt-path))
 	  (ce2 (get-context-file-entry adt-file)))
       (setf (generated-file-date adt) fdate)
       (push 'typechecked (status adt))
