@@ -2137,7 +2137,9 @@ corresponding to dir (left-to-right when LR, and right-to-left when RL)."
     in-subst))
 
 (defstep rewrite-with-fnum (fnum &optional subst (fnums *) (dir LR))
-  (let ((sforms (select-seq (s-forms (current-goal *ps*))
+  (let ((fnum (find-sform (s-forms (current-goal *ps*)) (list fnum)))
+	;;NSH(5.9.99): numeralizes labels.
+	 (sforms (select-seq (s-forms (current-goal *ps*))
 			    (list fnum))))
     (if sforms
 	(let ((fmla (formula (car sforms)))
