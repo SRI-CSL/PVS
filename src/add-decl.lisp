@@ -10,8 +10,9 @@
 ;; 
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
-(in-package 'pvs)
+(in-package :pvs)
 
 ;;; Add declaration
 
@@ -100,11 +101,13 @@
 		 (dolist (elt (all-decls th))
 		   (when (and (importing? elt)
 			      (saved-context elt)
-			      (gethash theory
-				       (using-hash (saved-context elt))))
+			      (get-importings
+			       theory
+			       (using-hash (saved-context elt))))
 		     (add-new-decls-to-context decls (saved-context elt))))
 		 (when (and (saved-context th)
-			    (gethash theory (using-hash (saved-context th))))
+			    (get-importings theory
+					    (using-hash (saved-context th))))
 		   (add-new-decls-to-context decls (saved-context th)))))
 	   *pvs-modules*)
   ;; Finally add to the prover/evaluator contexts
@@ -112,7 +115,7 @@
 	     (if (eq theory (theory *current-context*))
 		 (memq (declaration *current-context*)
 		       (memq pdecl (all-decls theory)))
-		 (gethash theory (using-hash *current-context*))))
+		 (get-importings theory (using-hash *current-context*))))
     (cond (*in-checker*
 	   (add-new-decls-to-prover-contexts decls *top-proofstate*))
 	  (*in-evaluator*
@@ -219,7 +222,7 @@
 	    (not (member decl
 			 (remove-if-not #'(lambda (d)
 					    (eq (module d) (current-theory)))
-			   (gethash (id decl) (current-declarations-hash)))
+			   (get-declarations (id decl)))
 			 :test #'add-decl-test)))
     (let* ((thry (theory *current-context*))
 	   (curdecl (declaration *current-context*))
@@ -240,6 +243,7 @@
 			   (assuming thry)))))
 	   (atail (if (or (null cdecl)
 			  (tcc? decl)
+			  (judgement? decl)
                           (and (formula-decl? decl)
                                (eq (spelling decl) 'ASSUMPTION)))
                        atail0 (cdr atail0)))
@@ -251,6 +255,7 @@
 			 (theory thry))))
 	   (ttail (if (or (null cdecl)
 			  (tcc? decl)
+			  (judgement? decl)
                           (and (formula-decl? decl)
                                (eq (spelling decl) 'ASSUMPTION)))
                       ttail0 (cdr ttail0))))
@@ -393,9 +398,9 @@
 ; 					 (declarations theory))))
 		(when (and *in-checker*
 			   *current-context*)
-		  (setf (gethash (id d) (current-declarations-hash))
-			(remove d (gethash (id d)
-					   (current-declarations-hash))))))
+		  (setf (get-lhash (id d) (current-declarations-hash))
+			(remove d (get-lhash (id d)
+					     (current-declarations-hash))))))
 	      (dolist (d (generated decl))
 ;		(put-decl d (declarations theory))
 		(when (and *in-checker*
