@@ -275,7 +275,7 @@
 				  (remhash thid *pvs-modules*)
 				  (remhash (filename theory)
 					   *pvs-files*)))
-			    *pvs-modules*))
+			    *pvs-modules*)))
 		(t (type-error lib-path
 		     "~a.pvscontext is empty - library not loaded"
 		     lib-path)))))))
