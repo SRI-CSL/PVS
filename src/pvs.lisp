@@ -591,47 +591,48 @@
 	theories))))
 
 (defun typecheck-theories (filename theories)
-  (dolist (theory (sort-theories theories))
-    (let ((start-time (get-internal-real-time))
-	  (*current-context* (make-new-context theory))
-	  (*old-tcc-names* nil))
-      (mapc #'(lambda (u) (get-typechecked-theory u))
-	    (get-immediate-usings theory))
-      (unless (typechecked? theory)
-	(typecheck theory)
-	#+pvsdebug (assert (typechecked? theory))
-	(restore-from-context filename theory)
-;;	(when (and *prove-tccs* (module? theory))
-;;	  (prove-unproved-tccs (list theory))
-;;	  (setf (tccs-tried? theory) t))
-	(setf (filename theory) filename)
-	(setf (path theory) (make-specpath filename))
-	(when (module? theory)
-	  (setf (tcc-info theory)
-		(list (car (tcc-info theory))
-		      (length (remove-if-not #'(lambda (d)
-						 (and (formula-decl? d)
-						      (eq (kind d) 'TCC)
-						      (proved? d)))
-				(append (assuming theory) (theory theory))))
-		      (caddr (tcc-info theory)))))
-	(let* ((tot (car (tcc-info theory)))
-	       (prv (cadr (tcc-info theory)))
-	       (mat (caddr (tcc-info theory)))
-	       (obl (- tot prv mat))
-	       (time (realtime-since start-time)))
-	  (if (zerop tot)
-	      (pvs-message "~a typechecked in ~,2,-3fs: No TCCs generated~
+  (let ((all-proofs (read-pvs-file-proofs filename)))
+    (dolist (theory (sort-theories theories))
+      (let ((start-time (get-internal-real-time))
+	    (*current-context* (make-new-context theory))
+	    (*old-tcc-names* nil))
+	(mapc #'(lambda (u) (get-typechecked-theory u))
+	      (get-immediate-usings theory))
+	(unless (typechecked? theory)
+	  (typecheck theory)
+	  #+pvsdebug (assert (typechecked? theory))
+	  (restore-from-context filename theory all-proofs)
+	  ;;	(when (and *prove-tccs* (module? theory))
+	  ;;	  (prove-unproved-tccs (list theory))
+	  ;;	  (setf (tccs-tried? theory) t))
+	  (setf (filename theory) filename)
+	  (setf (path theory) (make-specpath filename))
+	  (when (module? theory)
+	    (setf (tcc-info theory)
+		  (list (car (tcc-info theory))
+			(length (remove-if-not #'(lambda (d)
+						   (and (formula-decl? d)
+							(eq (kind d) 'TCC)
+							(proved? d)))
+				  (append (assuming theory) (theory theory))))
+			(caddr (tcc-info theory)))))
+	  (let* ((tot (car (tcc-info theory)))
+		 (prv (cadr (tcc-info theory)))
+		 (mat (caddr (tcc-info theory)))
+		 (obl (- tot prv mat))
+		 (time (realtime-since start-time)))
+	    (if (zerop tot)
+		(pvs-message "~a typechecked in ~,2,-3fs: No TCCs generated~
                             ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-		(id theory) time (length (warnings theory))
-		(length (info theory)))
-	      (pvs-message
-		  "~a typechecked in ~,2,-3fs: ~d TCC~:p, ~
+		  (id theory) time (length (warnings theory))
+		  (length (info theory)))
+		(pvs-message
+		    "~a typechecked in ~,2,-3fs: ~d TCC~:p, ~
                    ~d proved, ~d subsumed, ~d unproved~
                    ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-		(id theory) time tot prv mat obl
-		(length (warnings theory)) (length (info theory)))))))
-    (setq *current-theory* (car (last theories))))
+		  (id theory) time tot prv mat obl
+		  (length (warnings theory)) (length (info theory)))))))
+    (setq *current-theory* (car (last theories)))))
   theories)
 
 (defun prove-unproved-tccs (theories &optional importchain?)
@@ -867,7 +868,7 @@
   (let ((theories (parse-file filename nil t))
 	(*no-comments* nil))
     (pvs-buffer (makesym "~a.pvs" filename)
-      (format nil "~{~a~}"
+      (format nil "~{~a~^~2%~}"
 	(mapcar #'(lambda (th)
 		    (unparse th
 		      :string t
