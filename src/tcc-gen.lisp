@@ -840,7 +840,6 @@
 				       (not (eq (simple-match y x) 'fail))))
 		     (not (existence-tcc? cdecl)))
 	  (let ((assumptions (remove-if-not #'assumption? (assuming mod))))
-	    (check-assumption-subterm-visibility assumptions modinst)
 	    ;; Don't want to save this module instance unless it does not
 	    ;; depend on any conditions, including implicit ones in the
 	    ;; prover
@@ -867,46 +866,6 @@
 		    (if ndecl
 			(insert-tcc-decl 'assuming modinst ass ndecl)
 			(add-tcc-comment 'assuming modinst ass)))))))))))
-
-(defun check-assumption-subterm-visibility (assumptions modinst)
-  (dolist (ass assumptions)
-    (let* ((subassdef (subst-mod-params (closed-definition ass) modinst
-					(module ass)))
-	   (badobj (find-nonvisible-assuming-reference subassdef)))
-      (when badobj
-	(type-error badobj
-	"Error: assumption refers to ~%  ~a,~%~
-         which is not visible in the current theory"
-	(full-name badobj 1))))))
-
-(defun find-nonvisible-assuming-reference (subassdef)
-  (let ((name nil))
-    (mapobject #'(lambda (ex)
-		   (or name
-		       (when (nonvisible-assuming-reference? ex)
-			 (setq name ex))))
-	       subassdef)
-    name))
-
-(defmethod nonvisible-assuming-reference? ((ex name))
-  (and (resolution ex)
-       (let ((decl (declaration ex)))
-	 (unless (eq (module decl) (current-theory))
-	   (and (not (formal-decl? decl))
-		(not (and (const-decl? decl)
-			  (formal-subtype-decl? (generated-by decl))))
-		(not (binding? decl))
-		(not (skolem-const-decl? decl))
-		(or (not (memq decl (get-declarations (id decl))))
-		    (let ((importings (get-importings (module decl))))
-		      (not (or (some #'(lambda (imp) (null (actuals imp)))
-				     importings)
-			       (member (module-instance ex) importings
-				       :test #'tc-eq))))))))))
-
-(defmethod nonvisible-assuming-reference? (ex)
-  (declare (ignore ex))
-  nil)
 
 (defmethod existence-tcc-type ((decl existence-tcc))
   (existence-tcc-type (definition decl)))
