@@ -292,7 +292,7 @@ static BDDPTR (*const BDD_FUNCTIONS[])(BDDPTR, BDDPTR) = {
   bdd_xor	 /* MU_XOR,	  MU_T_XOR     */
 };
 
-static FILE *mu_output_stream = stdout;
+static FILE *mu_output_stream = 1; /* stdout; */
 
 static const char *const OP_SYMBOLS[] = {
   "&",				/* MU_AND, MU_T_AND */

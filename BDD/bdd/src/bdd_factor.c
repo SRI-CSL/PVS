@@ -130,7 +130,7 @@ static int count;		/* counter used in naming the index */
 
 static bdd_factor_interface bdd_default_factor_interface =
 {
-  stdout,
+  1, /* stdout, */
   print_const,
   print_lit,
   print_or,
