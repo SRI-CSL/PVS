@@ -10,6 +10,7 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(eval-when-compile (require 'comint))
 (require 'ilisp)
 (eval-when-compile (require 'pvs-macros))
 
