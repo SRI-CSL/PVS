@@ -2364,7 +2364,7 @@
   (declare (ignore expected kind arguments))
   (let ((reses (formula-or-definition-resolutions rname)))
     (unless reses
-      (resolution-error rname 'rewrite-name nil))
+      (resolution-error rname 'rewrite-name nil (not *in-checker*)))
     (setf (resolutions rname) reses))
   rname)
 
@@ -2375,7 +2375,7 @@
   (set-type (declared-type rname) nil)
   (let ((reses (definition-resolutions rname)))
     (unless reses
-      (resolution-error rname 'rewrite-name nil))
+      (resolution-error rname 'rewrite-name nil (not *in-checker*)))
     (setf (resolutions rname) reses))
   rname)
 
@@ -2383,7 +2383,7 @@
   (declare (ignore expected kind arguments))
   (let ((reses (formula-resolutions rname)))
     (unless reses
-      (resolution-error rname 'rewrite-name nil))
+      (resolution-error rname 'rewrite-name nil (not *in-checker*)))
     (setf (resolutions rname) reses))
   rname)
 
