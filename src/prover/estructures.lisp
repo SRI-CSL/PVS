@@ -75,7 +75,7 @@
 ;;justify.  
 (defcl s-formula ()
   formula
-  (printout :initform nil :ignorc t)
+  ;;(printout :initform nil :ignorc t)
   (label :initform nil)
   (new? :initform nil :ignorc t)
   (asserted? :initform nil))
