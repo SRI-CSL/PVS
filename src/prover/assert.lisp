@@ -3348,7 +3348,7 @@ Free parameters in the LHS of rewrite must contain all theory formals."
 		   (dolist (d (refers-to decl))
 		     (collect d))))))
       (collect decl)
-      (loop for x in (dependent-decls ps) do (collect x))
+      (loop for x in (proof-dependent-decls ps) do (collect x))
       decls)))
 
 ;;NSH(12.21.93) moved auto-rewrite-defs, auto-rewrite-explicit to strategies.lisp.
