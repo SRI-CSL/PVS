@@ -294,7 +294,7 @@
 	      (multiple-value-bind (*pvs-files* *pvs-modules*)
 		  (get-imported-files-and-theories lib)
 		(let* ((*prelude-libraries* (make-hash-table :test #'equal))
-		       (theories (typecheck-file filename)))
+		       (theories (typecheck-file filename nil nil nil t)))
 		  (cond ((and theories
 			      (every #'typechecked? theories))
 			 (save-context)
