@@ -7,7 +7,10 @@
   `(node-interpreted? ,sym))
 
 (defun interp? (term)
-  (or (and (application-p term)
+  (or (true-p term)
+      (false-p term)
+      (dp-numberp term)
+      (and (application-p term)
 	   (interpsym? (funsym term)))
       (applyupdate-p term)))
 
