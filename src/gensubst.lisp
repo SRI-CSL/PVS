@@ -497,7 +497,7 @@
 
 (defmethod mapobject* (fn (obj type-def-decl))
   (mapobject* fn (type-expr obj))
-  (mapobject* fn (contains te))
+  (mapobject* fn (contains obj))
   (call-next-method))
 
 (defmethod mapobject* (fn (obj const-decl))
