@@ -5,11 +5,9 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Thu Jul  1 18:50:39 1999
 ;; Update Count    : 94
-;; Status          : Alpha test
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -663,7 +661,6 @@
 		       (when (module? oth)
 			 (dolist (ty (nonempty-types oth))
 			   (setf (nonempty? ty) nil)))
-		       (reset-proof-statuses oth)
 		       (when (typep oth 'recursive-type)
 			 (let ((gen (make-specpath (id (adt-theory oth)))))
 			   (when
@@ -673,8 +670,8 @@
 			       (chmod "a+w" (namestring gen)))
 			     (ignore-file-errors
 			      (delete-file (namestring gen))))))
-		       (untypecheck-usedbys oth)
 		       (setf (gethash (id nth) *pvs-modules*) nth)
+		       (untypecheck-usedbys oth)
 		       (setq changed? t))))
 	    ;; Don't need to do anything here, since oth was never typechecked.
 	    (setf (gethash (id nth) *pvs-modules*) nth))
@@ -688,7 +685,11 @@
   (dolist (tid (find-all-usedbys theory))
     (let ((th (get-theory tid)))
       (reset-proof-statuses th)
-      (untypecheck-theory th))))
+      (untypecheck-theory th)
+      (tcdebug "~%~a untypechecked" tid)))
+  (reset-proof-statuses theory)
+  (untypecheck-theory theory)
+  (tcdebug "~%~a untypechecked" (id theory)))
 
 (defun reset-proof-statuses (theory)
   (when theory
@@ -752,8 +753,7 @@
   (multiple-value-bind (theories restored? changed-theories)
       (parse-file filename forced? t)
     (let ((*current-file* filename)
-	  (*typechecking-module* nil)
-	  (*tc-theories* *tc-theories*))
+	  (*typechecking-module* nil))
       (when theories
 	(cond ((and (not forced?)
 		    theories
@@ -818,7 +818,8 @@
 	    (*old-tcc-names* nil))
 	(unless (typechecked? theory)
 	  (typecheck theory)
-	  (assert (typechecked? theory))
+	  (assert (typechecked? theory) nil
+		  "Theory ~a not typechecked?" (id theory))
 	  (restore-from-context filename theory all-proofs)
 	  (set-default-proofs theory)
 	  ;;	(when (and *prove-tccs* (module? theory))
@@ -999,7 +1000,7 @@
 
 (defmethod tcc-strategy (decl)
   (declare (ignore decl))
-  '(tcc))
+  '("" (postpone) nil nil))
 
 (defun sort-theories (theories)
   (let ((usings (mapcar #'(lambda (th)
@@ -1591,6 +1592,18 @@
 
 ;;; Must be a method, since the slot exists for declarations.
 
+(defmethod typechecked? ((theory module))
+  (and (parsed? theory)
+       (memq 'typechecked (status theory))
+       (saved-context theory)
+       (let* ((*current-context* (saved-context theory))
+	      (*current-theory* theory)
+	      (importings (all-importings theory)))
+	 (every #'(lambda (th)
+		    (and (parsed? th)
+			 (memq 'typechecked (status th))))
+		importings))))
+
 (defmethod typechecked? ((theory datatype-or-module))
   (or *in-checker*
       (and (memq 'typechecked (status theory))
@@ -1602,17 +1615,6 @@
 			(and (parsed? th)
 			     (memq 'typechecked (status th))))
 		    importings)))))
-
-(defmethod typechecked? ((theory module))
-  (and (memq 'typechecked (status theory))
-       (saved-context theory)
-       (let* ((*current-context* (saved-context theory))
-	      (*current-theory* theory)
-	      (importings (all-importings theory)))
-	 (every #'(lambda (th)
-		    (and (parsed? th)
-			 (memq 'typechecked (status th))))
-		importings))))
 
 (defmethod typechecked? ((theoryref string))
   (let ((theory (get-theory (pc-parse theoryref 'modname))))
@@ -2286,8 +2288,6 @@
     (when theory
       (copy-theory-proofs-to-orphan-file theoryref)
       (untypecheck-usedbys theory)
-      (when (typechecked? theory)
-	(untypecheck-theory theory))
       (remhash (id theory) *pvs-modules*)
       (setf (gethash (filename theory) *pvs-files*)
 	    (remove theory (gethash (filename theory) *pvs-files*))))))
