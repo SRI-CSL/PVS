@@ -3,7 +3,8 @@
 (eval-when (eval compile load)
   (defvar *develop* t)
   (defvar *node-type* 'array)
-  (defvar *argument-type* 'list))
+  (defvar *argument-type* 'list)
+  (defvar *use-alists* t))
 
 (declaim (special *dp-changed*))
 (defvar *dp-changed* nil)
@@ -868,6 +869,36 @@
 ;		   (forward-chains-hash old-forward-chains))
   new-forward-chains)
 
+
+(defun cong-state*-entry-count (cse)
+  (if *use-alists*
+      (length cse)
+      (hash-table-count cse)))
+
+(defun dp-make-cong-state*-entry ()
+  (if *use-alists*
+      nil
+      (dp-make-eq-hash-table)))
+
+(defmacro dp-clr-cong-state*-entry (cse)
+  (if *use-alists*
+      `(setf ,cse nil)
+      `(dp-clrhash ,cse)))
+
+(defmacro dp-get-from-cong-state*-entry (term cse)
+  (if *use-alists*
+      `(let ((found (assoc ,term ,cse :test #'eq)))
+	 (if found
+	     (values (cdr found) t)
+	     (values nil nil)))
+      `(dp-gethash ,term ,cse)))
+
+(defmacro dp-put-from-cong-state*-entry (term cse value)
+  (if *use-alists*
+      `(push (cons ,term ,value) ,cse)
+      `(setf (dp-gethash ,term ,cse)
+	     ,value)))
+
 (defdpstruct (cong-state*
 	      (:print-function
 	       (lambda (cs* s k)
@@ -875,61 +906,61 @@
 		 (format s "<~D: ~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type, ~D rewrites, ~D forward-chains, ~D schmas>"
 		   (cong-state*-id cs*)
 		   (length (cong-state*-assertions cs*))
-		   (hash-table-count (cong-state*-use-hash cs*))
-		   (hash-table-count (cong-state*-find-hash cs*))
-		   (hash-table-count (cong-state*-sig-hash cs*))
+		   (cong-state*-entry-count (cong-state*-use-hash cs*))
+		   (cong-state*-entry-count (cong-state*-find-hash cs*))
+		   (cong-state*-entry-count (cong-state*-sig-hash cs*))
 		   (length (cong-state*-neq-list cs*))
-		   (hash-table-count (cong-state*-type-hash cs*))
+		   (cong-state*-entry-count (cong-state*-type-hash cs*))
 		   (+ (length (rewrite-rules-rules!
 			       (cong-state*-rewrite-rules cs*)))
 		      (length (rewrite-rules-rules
 			       (cong-state*-rewrite-rules cs*))))
 		   (length (forward-chains-orig-rules
 			    (cong-state*-forward-chains cs*)))
-		   (hash-table-count (cong-state*-schema-hash cs*)))))) ; added -h2 3/99
+		   (cong-state*-entry-count (cong-state*-schema-hash cs*)))))) ; added -h2 3/99
   (assertions nil)
-  (canon-hash (dp-make-eq-hash-table))
-  (seen-hash (dp-make-eq-hash-table))
-  (find-hash (dp-make-eq-hash-table))
-  (use-hash (dp-make-eq-hash-table))
-  (sig-hash (dp-make-eq-hash-table))
+  (canon-hash (dp-make-cong-state*-entry))
+  (seen-hash (dp-make-cong-state*-entry))
+  (find-hash (dp-make-cong-state*-entry))
+  (use-hash (dp-make-cong-state*-entry))
+  (sig-hash (dp-make-cong-state*-entry))
   (neq-list nil)
-  (type-hash (dp-make-eq-hash-table))
+  (type-hash (dp-make-cong-state*-entry))
   (polyhedral-structure (initial-polyhedral-structure))
   (fourier-motzkin (initial-fourier-motzkin))
   (rewrite-rules (initial-rewrite-rules))
   (forward-chains (initial-forward-chains))
   (id 0)
-  (schema-hash (dp-make-eq-hash-table)))    ; added -hr 2/99
+  (schema-hash (dp-make-cong-state*-entry)))    ; added -hr 2/99
 
 (defun print-cong-state* (cs* s)
   (format s "<~D assertions, ~D use, ~D find, ~D sig, ~D neq, ~D type, ~D rewrites, ~D forward-chains, ~D schemas>"
     (length (cong-state*-assertions cs*))
-    (hash-table-count (cong-state*-use-hash cs*))
-    (hash-table-count (cong-state*-find-hash cs*))
-    (hash-table-count (cong-state*-sig-hash cs*))
+    (cong-state*-entry-count (cong-state*-use-hash cs*))
+    (cong-state*-entry-count (cong-state*-find-hash cs*))
+    (cong-state*-entry-count (cong-state*-sig-hash cs*))
     (length (cong-state*-neq-list cs*))
-    (hash-table-count (cong-state*-type-hash cs*))
+    (cong-state*-entry-count (cong-state*-type-hash cs*))
     (+ (length (rewrite-rules-rules! (cong-state*-rewrite-rules cs*)))
        (length (rewrite-rules-rules (cong-state*-rewrite-rules cs*))))
     (length (forward-chains-orig-rules
 	     (cong-state*-forward-chains cs*)))
-   (hash-table-count (cong-state*-schema-hash cs*)))) ; added -hr 3/99
+   (cong-state*-entry-count (cong-state*-schema-hash cs*))))
 
 (defun clear-cong-state* (cong-state*)
   (setf (cong-state*-assertions cong-state*) nil)
-  (dp-clrhash (cong-state*-canon-hash cong-state*))
-  (dp-clrhash (cong-state*-seen-hash cong-state*))
-  (dp-clrhash (cong-state*-find-hash cong-state*))
-  (dp-clrhash (cong-state*-use-hash cong-state*))
-  (dp-clrhash (cong-state*-sig-hash cong-state*))
+  (dp-clr-cong-state*-entry (cong-state*-canon-hash cong-state*))
+  (dp-clr-cong-state*-entry (cong-state*-seen-hash cong-state*))
+  (dp-clr-cong-state*-entry (cong-state*-find-hash cong-state*))
+  (dp-clr-cong-state*-entry (cong-state*-use-hash cong-state*))
+  (dp-clr-cong-state*-entry (cong-state*-sig-hash cong-state*))
   (setf (cong-state*-neq-list cong-state*) nil)
-  (dp-clrhash (cong-state*-type-hash cong-state*))
+  (dp-clr-cong-state*-entry (cong-state*-type-hash cong-state*))
   (clr-polyhedral-structure (cong-state*-polyhedral-structure cong-state*))
   (clr-fourier-motzkin (cong-state*-fourier-motzkin cong-state*))
   (clr-rewrite-rules (cong-state*-rewrite-rules cong-state*))
   (clr-forward-chains (cong-state*-forward-chains cong-state*))
-  (dp-clrhash (cong-state*-schema-hash cong-state*))         ; added -hr 2/99
+  (dp-clr-cong-state*-entry (cong-state*-schema-hash cong-state*))
   cong-state*)
 
 (defdpstruct (made-cong-states
@@ -1120,6 +1151,24 @@
 	(copy-forward-chains-and-hash
 	 (cong-state*-forward-chains cong-state*)
 	 (forward-chains cong-state)))
+  (let* ((cong-state-stack (cong-state-stack cong-state))
+	 (top-cong-state* (when cong-state-stack
+			    (top cong-state-stack))))
+    (when (and *use-alists* top-cong-state*)
+      (setf (cong-state*-canon-hash cong-state*)
+	    (cong-state*-canon-hash top-cong-state*))
+      (setf (cong-state*-seen-hash cong-state*)
+	    (cong-state*-seen-hash top-cong-state*))
+      (setf (cong-state*-find-hash cong-state*)
+	    (cong-state*-find-hash top-cong-state*))
+      (setf (cong-state*-use-hash cong-state*)
+	    (cong-state*-use-hash top-cong-state*))
+      (setf (cong-state*-sig-hash cong-state*)
+	    (cong-state*-sig-hash top-cong-state*))
+      (setf (cong-state*-type-hash cong-state*)
+	    (cong-state*-type-hash top-cong-state*))
+      (setf (cong-state*-schema-hash cong-state*)
+	    (cong-state*-schema-hash top-cong-state*))))	  
   ;(format t "~%**(setf (cong-state*-polhedral-domain ~A) ~A)**"
   ;   cong-state*
   ;  (polyhedral-domain cong-state))
@@ -1166,15 +1215,25 @@
 (defun setf-canon-hash* (term cong-state* term-canon)
   (declare (type node term)
 	   (type cong-state* cong-state*))
-  (setf (dp-gethash term (cong-state*-canon-hash cong-state*))
-	term-canon))
+  (if *use-alists*
+      (push (cons term term-canon) (cong-state*-canon-hash cong-state*))
+      (setf (dp-gethash term (cong-state*-canon-hash cong-state*))
+	    term-canon)))
+
+(defun setf-canon-hash* (term cong-state* term-canon)
+  (declare (type node term)
+	   (type cong-state* cong-state*))
+  (dp-put-from-cong-state*-entry term (cong-state*-canon-hash cong-state*)
+				 term-canon))
 
 (defsetf canon-hash* setf-canon-hash*)
 
 (defun canon-hash (term cong-state)
   (declare (type node term)
 	   (type cong-state cong-state))
-  (canon-from-stack term (cong-state-stack cong-state)))
+  (if *use-alists*
+      (canon-hash* term (top (cong-state-stack cong-state)))
+      (canon-from-stack term (cong-state-stack cong-state))))
 
 (defun canon-from-stack (term cong-state-stack)
   (declare (type node term)
@@ -1193,7 +1252,7 @@
 (defun canon-hash* (term cong-state*)
   (declare (type node term)
 	   (type cong-state* cong-state*))
-  (dp-gethash term (cong-state*-canon-hash cong-state*)))
+  (dp-get-from-cong-state*-entry term (cong-state*-canon-hash cong-state*)))
 
 (defun setf-canon-hash (term cong-state term-canon)
   (declare (type node term)
@@ -1206,15 +1265,17 @@
 (defun setf-seen* (term cong-state* term-seen)
   (declare (type node term)
 	   (type cong-state* cong-state*))
-  (setf (dp-gethash term (cong-state*-seen-hash cong-state*))
-	term-seen))
+  (dp-put-from-cong-state*-entry term (cong-state*-seen-hash cong-state*)
+				 term-seen))
 
 (defsetf seen* setf-seen*)
 
 (defun seen (term cong-state)
   (declare (type node term)
 	   (type cong-state cong-state))
-  (seen-from-stack term (cong-state-stack cong-state)))
+  (if *use-alists*
+      (seen* term (top (cong-state-stack cong-state)))
+      (seen-from-stack term (cong-state-stack cong-state))))
 
 (defun seen-from-stack (term cong-state-stack)
   (declare (type node term)
@@ -1232,7 +1293,7 @@
 (defun seen* (term cong-state*)
   (declare (type node term)
 	   (type cong-state* cong-state*))
-  (dp-gethash term (cong-state*-seen-hash cong-state*)))
+  (dp-get-from-cong-state*-entry term (cong-state*-seen-hash cong-state*)))
 
 (defun setf-seen (term cong-state term-seen)
   (declare (special *dp-changed*)
@@ -1338,8 +1399,10 @@
 
 (defun setf-find* (term cong-state* term-find)
   ;(break "sf")
-  (setf (dp-gethash term (cong-state*-find-hash cong-state*))
-	term-find))
+  ;(when (eq term term-find) (break))
+  ;(when (eq term *bp*) (break))
+  (dp-put-from-cong-state*-entry term (cong-state*-find-hash cong-state*)
+				 term-find))
 
 (defsetf find* setf-find*)
 
@@ -1359,10 +1422,20 @@
 	for-find)))
 
 (defun find-from-stack-top (term cong-state-stack)
-  (let ((find (find-from-stack term cong-state-stack cong-state-stack)))
+  (let ((find (if *use-alists*
+		  (find-from-alists
+		   term (cong-state*-find-hash (top cong-state-stack)))
+		  (find-from-stack term cong-state-stack cong-state-stack))))
     (or find
 	(setf (find* term cong-state-stack)
 	      find))))
+
+(defun find-from-alists (term findalist)
+  (multiple-value-bind (new-term found)
+      (dp-get-from-cong-state*-entry term findalist)
+    (if found
+	(find-from-alists new-term findalist)
+	term)))	
 
 (defun find-from-stack (term cong-state-stack top-cong-state-stack)
   (if cong-state-stack
@@ -1398,20 +1471,22 @@
 	nil)))
 
 (defun find* (term cong-state*)
-  (let ((hash-term (dp-gethash term (cong-state*-find-hash cong-state*))))
+  (let ((hash-term (dp-get-from-cong-state*-entry
+		    term (cong-state*-find-hash cong-state*))))
     (if hash-term
 	(find* hash-term cong-state*)
 	term)))
 
 (defun find+ (term cong-state*)
-  (let ((hash-term (dp-gethash term (cong-state*-find-hash cong-state*))))
+  (let ((hash-term (dp-get-from-cong-state*-entry
+		    term (cong-state*-find-hash cong-state*))))
     (if (and hash-term (not (eq hash-term term)))
 	(find+ hash-term cong-state*)
 	term)))
 
 (defun setf-schema* (term cong-state* term-schema)
-  (setf (dp-gethash term (cong-state*-schema-hash cong-state*))
-        term-schema))
+  (dp-put-from-cong-state*-entry term (cong-state*-schema-hash cong-state*)
+				 term-schema))
 
 (defsetf schema* setf-schema*)
 
@@ -1422,10 +1497,21 @@
       (schema-from-stack-top term (cong-state-stack cong-state))))
 
 (defun schema-from-stack-top (term cong-state-stack)
-  (let ((schema (schema-from-stack term cong-state-stack cong-state-stack)))
+  (let ((schema (if *use-alists*
+		    (schema-from-alists
+		     term (cong-state*-schema-hash (top cong-state-stack)))
+		    (schema-from-stack
+		     term cong-state-stack cong-state-stack))))
     (or schema
         (setf (schema* term cong-state-stack)
               schema))))
+
+(defun schema-from-alists (term schema-alist)
+  (multiple-value-bind (new-term found)
+      (dp-get-from-cong-state*-entry term schema-alist)
+    (if found
+	(schema-from-alists new-term schema-alist)
+	term)))
 
 (defun schema-from-stack (term cong-state-stack top-cong-state-stack)
   (if cong-state-stack
@@ -1461,13 +1547,15 @@
         nil)))
 
 (defun schema* (term cong-state*)
-  (let ((hash-term (dp-gethash term (cong-state*-schema-hash cong-state*))))
+  (let ((hash-term (dp-get-get-from-cong-state*-entry
+		    term (cong-state*-schema-hash cong-state*))))
     (if hash-term
         (schema* hash-term cong-state*)
         term)))
 
 (defun schema+ (term cong-state*)
-  (let ((hash-term (dp-gethash term (cong-state*-schema-hash cong-state*))))
+  (let ((hash-term (dp-get-from-cong-state*-entry
+		    term (cong-state*-schema-hash cong-state*))))
     (if (and hash-term (not (eq hash-term term)))
         (schema+ hash-term cong-state*)
         term)))
@@ -1487,13 +1575,15 @@
 
 (defun setf-use* (term cong-state* term-use)
   (assert term-use)
-  (setf (dp-gethash term (cong-state*-use-hash cong-state*))
-	term-use))
+  (dp-put-from-cong-state*-entry term (cong-state*-use-hash cong-state*)
+				 term-use))
 
 (defsetf use* setf-use*)
 
 (defun use (term cong-state)
-  (use-from-stack term (cong-state-stack cong-state)))
+  (if *use-alists*
+      (use* term (top (cong-state-stack cong-state)))
+      (use-from-stack term (cong-state-stack cong-state))))
 
 (defun use-from-stack (term cong-state-stack)
   (if cong-state-stack
@@ -1506,7 +1596,8 @@
       nil))
 
 (defun use* (term cong-state*)
-  (let ((hash-use (dp-gethash term (cong-state*-use-hash cong-state*))))
+  (let ((hash-use (dp-get-from-cong-state*-entry
+		   term (cong-state*-use-hash cong-state*))))
     hash-use))
 
 (defun setf-use (term cong-state term-use)
@@ -1545,13 +1636,15 @@
 
 
 (defun setf-sig* (term cong-state* term-sig)
-  (setf (dp-gethash term (cong-state*-sig-hash cong-state*))
-	term-sig))
+  (dp-put-from-cong-state*-entry term (cong-state*-sig-hash cong-state*)
+				term-sig))
 
 (defsetf sig* setf-sig*)
 
 (defun sig (term cong-state)
-  (sig-from-stack term (cong-state-stack cong-state)))
+  (if *use-alists*
+      (sig* term (top (cong-state-stack cong-state)))
+      (sig-from-stack term (cong-state-stack cong-state))))
 
 (defun sig-from-stack (term cong-state-stack)
   (if cong-state-stack
@@ -1561,8 +1654,9 @@
       term))
 
 (defun sig* (term cong-state*)
-  (let ((hash-sig (dp-gethash term (cong-state*-sig-hash cong-state*))))
-    hash-sig))
+  (let ((hash-sig (dp-get-from-cong-state*-entry
+		   term (cong-state*-sig-hash cong-state*))))
+    (or hash-sig term)))
 
 (defun setf-sig (term cong-state term-sig)
   (declare (special *dp-changed*))
@@ -1573,13 +1667,15 @@
 (defsetf sig setf-sig)
 
 (defun setf-type* (term cong-state* term-type) ;(break)
-  (setf (dp-gethash term (cong-state*-type-hash cong-state*))
-	term-type))
+  (dp-put-from-cong-state*-entry term (cong-state*-type-hash cong-state*)
+			      term-type))
 
 (defsetf type* setf-type*)
 
 (defun dp-type (term cong-state)
-  (type-from-stack term (cong-state-stack cong-state)))
+  (if *use-alists*
+      (type* term (top (cong-state-stack cong-state)))
+      (type-from-stack term (cong-state-stack cong-state))))
 
 (defun type-from-stack (term cong-state-stack)
   (if cong-state-stack
@@ -1589,7 +1685,8 @@
       (node-initial-type term)))
 
 (defun type* (term cong-state*)
-  (let ((hash-type (dp-gethash term (cong-state*-type-hash cong-state*))))
+  (let ((hash-type (dp-get-from-cong-state*-entry
+		    term (cong-state*-type-hash cong-state*))))
     hash-type))
 
 (defun setf-dp-type (term cong-state term-type)
@@ -1615,10 +1712,13 @@
   (loop for term being the hash-key in (cong-state*-find-hash cong-state*)
 	using (hash-value find)
 	unless (eq term find)
-	collect (cons term find)))
+	collect (cons term find))))
 
 (defun findalist (cong-state)
-  (findalist-from-stack (cong-state-stack cong-state)))
+  (if *use-alists*
+      (and (cong-state-stack cong-state)
+	   (cong-state*-find-hash (top (cong-state-stack cong-state))))
+      (findalist-from-stack (cong-state-stack cong-state))))
 
 (defun findalist-from-stack (cong-state-stack)
   (if cong-state-stack
@@ -1632,7 +1732,10 @@
 	collect (cons term use)))
 
 (defun usealist (cong-state)
-  (usealist-from-stack (cong-state-stack cong-state)))
+  (if *use-alists*
+      (and (cong-state-stack cong-state)
+	   (cong-state*-use-hash (top (cong-state-stack cong-state))))
+      (usealist-from-stack (cong-state-stack cong-state))))
 
 (defun usealist-from-stack (cong-state-stack)
   (if cong-state-stack
@@ -1646,7 +1749,10 @@
 	collect (cons term sig)))
 
 (defun sigalist (cong-state)
-  (sigalist-from-stack (cong-state-stack cong-state)))
+  (if *use-alists*
+      (and (cong-state-stack cong-state)
+	   (cong-state*-sig-hash (top (cong-state-stack cong-state))))
+      (sigalist-from-stack (cong-state-stack cong-state))))
 
 (defun sigalist-from-stack (cong-state-stack)
   (if cong-state-stack
@@ -1660,7 +1766,10 @@
 	collect (cons term type)))
 
 (defun typealist (cong-state)
-  (typealist-from-stack (cong-state-stack cong-state)))
+  (if *use-alists*
+      (and (cong-state-stack cong-state)
+	   (cong-state*-type-hash (top (cong-state-stack cong-state))))
+      (typealist-from-stack (cong-state-stack cong-state))))
 
 (defun typealist-from-stack (cong-state-stack)
   (if cong-state-stack
