@@ -1197,14 +1197,16 @@ See also INDUCT."
 					 #'(lambda (sform)
 					     (eq (formula sform)
 						 fmla)))))
-		   (then (beta)
+		   ;(then (beta)
 			 (let ((fmla ;;NSH(4.25.97) record fmla here
 				(let ((sforms (select-seq
 					       (s-forms (current-goal *ps*))
 					       (list fnum))))
 				  (when sforms (formula (car sforms))))))
 			   (then (let ((x (car *new-fmla-nums*)))
-				   (then (inst? x)
+				   (then (beta x) ;;NSH(4/5/04)
+					          ;;moved beta down here
+					 (inst? x)
 					 (split x)))
 				 (let ((num (find-sform
 					     (s-forms (current-goal *ps*))
@@ -1226,7 +1228,7 @@ See also INDUCT."
 							collect n))
 						 (newfnum (+ fnum
 							     (length newnums))))
-					     (delete newfnum)))))))))
+					     (delete newfnum)))))))); )
 		 (skip))
 	     (skip-msg "Could not find suitable induction scheme."))
 	(let ((msg (format nil "No formula corresponding to fnum ~a"
