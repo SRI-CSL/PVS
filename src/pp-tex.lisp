@@ -969,7 +969,6 @@
     (if (typep declared-type 'dep-domain-tupletype)
 	(let* ((types (types declared-type))
 	       (bindings (var-bindings declared-type))
-	       (tbindings bindings)
 	       (ctr 0)
 	       (*parsing-or-unparsing* t))
 	  (pprint-logical-block (nil types)
@@ -1729,7 +1728,7 @@
 
 (defun pp-tex-mappings (mappings)
   (pprint-logical-block (nil mappings :prefix "{{ " :suffix " }}")
-    (loop (pp-tex** (pprint-pop))
+    (loop (pp-tex* (pprint-pop))
 	  (pprint-exit-if-list-exhausted)
 	  (write ", ")
 	  (pprint-newline :fill))))
