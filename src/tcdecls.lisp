@@ -179,11 +179,28 @@
 	       (eq (id (theory-name decl)) (id (current-theory))))
       (type-error (theory-name decl)
 	"Formal theory declarations may not refer to the containing theory"))
-    (unless (interpretable? (get-theory (theory-name decl)))
-      (pvs-info
-	"Theory ~a has no interpretable types, constants, or theories"
-	(theory-name decl)))
-    (let ((theory (get-typechecked-theory theory-name)))
+    (let ((theory (get-typechecked-theory theory-name))
+	  (abbr-info (if (mappings theory-name) ""
+			 (format nil
+			     "~%No mappings given in therory declaration ~a~%~
+                              Perhaps this should be given the abbreviation form~
+                              ~%  ~a"
+			   (id decl)
+			   (unparse (make-instance 'theory-abbreviation-decl
+				      'id (id decl)
+				      'theory-name theory-name)
+			     :string t)))))
+      (unless (interpretable? theory)
+	(pvs-info
+	    "Theory ~a has no interpretable types, constants, or theories"
+	  theory-name))
+      (when (or (datatype? theory)
+		(generated-by theory))
+	(type-error (theory-name decl)
+	  "Theory declarations may not be used for a datatype~a"
+	  abbr-info))
+      (unless (equal abbrinfo "")
+	(pvs-info abbr-info))
       (typecheck-named-theory* theory theory-name decl))))
 
 (defmethod typecheck-named-theory* ((theory module) theory-name decl)
@@ -209,6 +226,11 @@
       (push interpreted-copy (named-theories *current-context*))
       (typecheck-using* interpreted-copy (mk-modname (id interpreted-copy)))
       (setf (generated-theory decl) interpreted-copy))))
+
+(defmethod typecheck-named-theory* ((theory datatype) theory-name decl)
+  (typecheck-named-theory* (adt-theory theory)
+			   (copy theory-name 'id (id (adt-theory theory)))
+			   decl))
 
 (defun find-local-theory-reference (expr &optional allowed-decls)
   (let ((local-ref nil)
@@ -2434,6 +2456,7 @@
   (case id
     (|boolean| (setq *boolean* type))
     (|number| (setq *number* type))
+    (number_field (setq *number_field* type))
     (|real| (setq *real* type)
      (push-ignored-type-constraints *real*))
     (|rational| (setq *rational* type)
