@@ -200,7 +200,9 @@
 
 (defmethod untypecheck-theory ((decl type-def-decl))
   (when (next-method-p) (call-next-method))
-  (untypecheck-theory (type-expr decl)))
+  (untypecheck-theory (type-expr decl))
+  (when (contains te)
+    (untypecheck-theory (contains te))))
 
 ;; var-decl is a typed-declaration
 
@@ -282,8 +284,6 @@
 
 (defmethod untypecheck-theory ((te subtype))
   (when (next-method-p) (call-next-method))
-  (when (contains te)
-    (untypecheck-theory (contains te)))
   (unless (typep te 'setsubtype)
     (setf (supertype te) nil))
   (untypecheck-theory (predicate te)))

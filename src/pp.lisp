@@ -541,17 +541,30 @@ bind tighter.")
 	(write (case (keyword decl)
 		 (nonempty-type 'NONEMPTY_TYPE)
 		 (t 'TYPE+)))
+	(write 'TYPE))))
+
+(defmethod pp* ((decl type-def-decl))
+  (with-slots (type-expr contains chain?) decl
+    (if (typep decl 'nonempty-type-decl)
+	(write (case (keyword decl)
+		 (nonempty-type 'NONEMPTY_TYPE)
+		 (t 'TYPE+)))
 	(write 'TYPE))
-    (when (typep decl 'type-def-decl)
-      (write-char #\space)
-      (pprint-newline :miser)
-      (if (typep decl 'type-eq-decl)
-	  (write-char #\=)
-	  (write 'FROM))
-      (write-char #\space)
-      (pprint-newline :fill)
-      (pp* type-expr))))
-      
+    (write-char #\space)
+    (pprint-newline :miser)
+    (if (typep decl 'type-eq-decl)
+	(write-char #\=)
+	(write 'FROM))
+    (write-char #\space)
+    (pprint-newline :fill)
+    (pp* type-expr)
+    (when contains
+	(write-char #\space)
+	(pprint-newline :fill)
+	(write 'CONTAINING)
+	(write-char #\space)
+	(pprint-newline :miser)
+	(pp* contains))))
 
 ;; (defmethod pp* ((decl nonempty-type-def-decl)) )
 
@@ -844,17 +857,11 @@ bind tighter.")
 	       (write-char #\])))))
 
 (defmethod pp* ((te type-application))
-  (with-slots (type parameters contains) te
+  (with-slots (type parameters) te
     (pprint-logical-block (nil nil)
       (pp* type)
       (pp-arguments parameters)
-      (when contains
-	(write-char #\space)
-	(pprint-newline :fill)
-	(write 'CONTAINING)
-	(write-char #\space)
-	(pprint-newline :miser)
-	(pp* contains)))))
+      )))
 
 (defun pp-arguments* (args)
   (pprint-logical-block (nil args)
@@ -887,7 +894,7 @@ bind tighter.")
 	  (pprint-newline :fill))))
 
 (defmethod pp* ((te subtype))
-  (with-slots (supertype predicate contains) te
+  (with-slots (supertype predicate) te
     (let* ((bindings (if (typep (predicate te) 'binding-expr)
 			 (bindings (predicate te))
 			 (let* ((id (make-new-variable '|x| te))
@@ -909,23 +916,13 @@ bind tighter.")
 	(write-char #\|)
 	(write-char #\space)
 	(pprint-newline :fill)
-	(pp* expr))
-      (when contains
-	(write-char #\space)
-	(write 'CONTAINING)
-	(write-char #\space)
-	(pp* contains)))))
+	(pp* expr)))))
 
 (defmethod pp* ((te expr-as-type))
-  (with-slots (expr contains) te
+  (with-slots (expr) te
     (write-char #\()
     (pp* expr)
-    (write-char #\))
-    (when contains
-      (write-char #\space)
-      (write 'CONTAINING)
-      (write-char #\space)
-      (pp* contains))))
+    (write-char #\))))
 
 (defmethod pp* ((te recordtype))
   (with-slots (fields) te
@@ -1199,7 +1196,12 @@ bind tighter.")
 (defmethod pp* ((ex unary-application))
   (with-slots (operator argument) ex
     (if (and (typep operator 'name-expr)
-	     (memq (id operator) *unary-operators*))
+	     (not (mod-id operator))
+	     (not (library operator))
+	     (memq (id operator) *unary-operators*)
+	     (>= (precedence argument 'right)
+		 (gethash (sbst-symbol (id operator))
+			  (first *expr-prec-info*))))
 	(pprint-logical-block (nil nil)
 	  (pprint-indent :current 2)
 	  (write (id operator))

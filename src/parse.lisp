@@ -334,7 +334,7 @@
     (when (and (cdr (term-args idops)) formals)
       (parse-error formals ": expected here"))
     (case (sim-term-op decl)
-      ((lib-decl mod-decl type-decl netype-decl datatype)
+      ((lib-decl mod-decl type-decl datatype)
        (let ((badid (find-if #'(lambda (tid)
 				 (assq (ds-id (term-arg0 tid))
 				       *pvs-operators*))
@@ -370,7 +370,7 @@
     (when (and (cdr (term-args idops)) pformals)
       (parse-error formals ": expected here"))
     (case (sim-term-op decl)
-      ((lib-decl mod-decl type-decl netype-decl datatype)
+      ((lib-decl mod-decl type-decl datatype)
        (let ((badid (find-if #'(lambda (tid)
 				 (assq (ds-id (term-arg0 tid))
 				       *pvs-operators*))
@@ -694,14 +694,11 @@
 (defun xt-declaration-body (body &optional idops)
   (case (sim-term-op body)
     (ftype-decl (xt-ftype-decl body))
-    (fnetype-decl (xt-fnetype-decl body))
     (fconst-decl (xt-fconst-decl body))
     (lib-decl (xt-lib-decl body))
     (mod-decl (xt-mod-decl body))
     (uninterp-type-decl (xt-uninterp-type-decl body))
     (type-decl (xt-type-decl body))
-    ;;(uninterp-netype-decl (xt-uninterp-netype-decl body))
-    (netype-decl (xt-netype-decl body))
     (judgement (xt-judgement-decl body idops))
     (var-decl (xt-var-decl body))
     (uninterp-const-decl (xt-const-decl body))
@@ -713,25 +710,23 @@
     (t (error "Decl not recognized - ~a" body))))
 
 (defun xt-ftype-decl (ftype-decl)
-  (let ((type-expr (term-arg0 ftype-decl)))
-    (if (is-sop 'theory-formal-decl-null-1 type-expr)
-	(make-instance 'formal-type-decl
-	  'place (term-place ftype-decl))
-	(make-instance 'formal-subtype-decl
-	  'type-expr (xt-not-enum-type-expr type-expr)
-	  'place (term-place ftype-decl)))))
-
-(defun xt-fnetype-decl (ftype-decl)
-  (let ((keyword (sim-term-op (term-arg0 ftype-decl)))
+  (let ((tkey (sim-term-op (term-arg0 ftype-decl)))
 	(type-expr (term-arg1 ftype-decl)))
-    (if (is-sop 'theory-formal-decl-null-2 type-expr)
-	(make-instance 'formal-nonempty-type-decl
-	  'keyword keyword
-	  'place (term-place ftype-decl))
-	(make-instance 'formal-nonempty-subtype-decl
-	  'type-expr (xt-not-enum-type-expr type-expr)
-	  'keyword keyword
-	  'place (term-place ftype-decl)))))
+    (if (eq tkey 'type)
+	(if (is-sop 'notype type-expr)
+	    (make-instance 'formal-type-decl
+	      'place (term-place ftype-decl))
+	    (make-instance 'formal-subtype-decl
+	      'type-expr (xt-not-enum-type-expr type-expr)
+	      'place (term-place ftype-decl)))
+	(if (is-sop 'notype type-expr)
+	    (make-instance 'formal-nonempty-type-decl
+	      'keyword tkey
+	      'place (term-place ftype-decl))
+	    (make-instance 'formal-nonempty-subtype-decl
+	      'type-expr (xt-not-enum-type-expr type-expr)
+	      'keyword tkey
+	      'place (term-place ftype-decl))))))
 
 (defun xt-fconst-decl (fconst-decl)
   (let ((dtype (term-arg0 fconst-decl)))
@@ -758,46 +753,47 @@
     'place (term-place mod-decl)))
 
 (defun xt-uninterp-type-decl (utd)
-  (make-instance 'type-decl
-    'place (term-place utd)))
-
-;(defun xt-uninterp-netype-decl (utd)
-;  (make-instance 'nonempty-type-decl
-;    'keyword (sim-term-op (term-arg0 utd))
-;    'place (term-place utd)))
+  (let ((tkey (sim-term-op (term-arg0 utd)))
+	(place (term-place utd)))
+    (if (eq tkey 'type)
+	(make-instance 'type-decl
+	  'place place)
+	(make-instance 'nonempty-type-decl
+	  'keyword tkey
+	  'place place))))
 
 (defun xt-type-decl (type-decl)
-  (let ((tdef (xt-typedef (term-arg0 type-decl))))
-    (setf (place tdef) (term-place type-decl))
-    tdef))
-
-(defun xt-typedef (typedef)
-  (let ((alt (term-arg0 typedef))
-	(type-expr (term-arg1 typedef)))
-    (if (is-sop 'equal alt)
-	(make-instance 'type-eq-decl
-	  'type-expr (xt-type-expr type-expr))
-	(make-instance 'type-from-decl
-	  'type-expr (xt-type-expr type-expr)))))
-
-(defun xt-netype-decl (utd)
-  (if (is-sop 'no-type-def (term-arg1 utd))
-      (make-instance 'nonempty-type-decl
-	'keyword (sim-term-op (term-arg0 utd))
-	'place (term-place utd))
-      (let ((tdef (xt-netypedef (term-arg1 utd))))
-	(setf (keyword tdef) (sim-term-op (term-arg0 utd)))
-	(setf (place tdef) (term-place utd))
-	tdef)))
-
-(defun xt-netypedef (typedef)
-  (let ((alt (term-arg0 typedef))
-	(type-expr (term-arg1 typedef)))
-    (if (is-sop 'equal alt)
-	(make-instance 'nonempty-type-eq-decl
-	  'type-expr (xt-type-expr type-expr))
-	(make-instance 'nonempty-type-from-decl
-	  'type-expr (xt-type-expr type-expr)))))
+  (let* ((tkey (sim-term-op (term-arg0 type-decl)))
+	 (tdef (term-arg1 type-decl))
+	 (eq? (is-sop 'equal (term-arg0 tdef)))
+	 (texpr (xt-type-expr (term-arg1 tdef)))
+	 (tcont (term-arg2 type-decl))
+	 (contains (unless (is-sop 'nocontains tcont)
+		     (xt-expr tcont)))
+	 (place (term-place type-decl)))
+    (when (and contains (enumtype? texpr))
+      (parse-error tcont "CONTAINING not expected here"))
+    (if (eq tkey 'type)
+	(if eq?
+	    (make-instance 'type-eq-decl
+	      'type-expr texpr
+	      'contains contains
+	      'place place)
+	    (make-instance 'type-from-decl
+	      'type-expr texpr
+	      'contains contains
+	      'place place))
+	(if eq?
+	    (make-instance 'nonempty-type-eq-decl
+	      'keyword tkey
+	      'type-expr texpr
+	      'contains contains
+	      'place place)
+	    (make-instance 'nonempty-type-from-decl
+	      'keyword tkey
+	      'type-expr texpr
+	      'contains contains
+	      'place place)))))
 
 (defun xt-var-decl (var-decl)
   (let ((dtype (term-arg0 var-decl)))
@@ -889,20 +885,14 @@
 
 (defun xt-type-appl (type-expr)
   (let ((type (term-arg0 type-expr))
-	(args (term-arg1 type-expr))
-	(containing (term-arg2 type-expr)))
+	(args (term-arg1 type-expr)))
     (make-instance 'type-application
       'type (change-class (xt-name type) 'type-name)
       'parameters (mapcar #'xt-expr (term-args args))
-      'contains (unless (is-sop 'nocontaining containing)
-		  (xt-expr containing))
       'place (term-place type-expr))))
 
 (defun xt-enumtype (type-expr)
-  (let ((args (xt-enumtype-args (term-arg0 type-expr)))
-	(containing (term-arg1 type-expr)))
-    (unless (is-sop 'nocontaining containing)
-      (parse-error containing "CONTAINING not expected here"))
+  (let ((args (xt-enumtype-args (term-arg0 type-expr))))
     (xt-enum args type-expr)))
 
 (defun xt-enum (args enum)
@@ -939,21 +929,16 @@
 (defun xt-subtype (type-expr)
   (let* ((args (term-arg0 type-expr))
 	 (expr (term-arg1 type-expr))
-	 (containing (term-arg2 type-expr))
 	 (set-expr (mk-ergo-term* 'set-expr args expr))
 	 (pred (make-xt-bind-expr 'set-expr set-expr set-expr)))
     (setf (place pred) (term-place type-expr))
     (make-instance 'subtype
       'predicate pred
-      'contains (unless (is-sop 'nocontaining containing)
-		  (xt-expr containing))
       'place (term-place type-expr))))
 	  
 (defun xt-expr-as-type (expr-as-type)
   (make-instance 'expr-as-type
     'expr (xt-expr (term-arg0 expr-as-type))
-    'contains (unless (is-sop 'nocontains (term-arg1 expr-as-type))
-		(xt-expr (term-arg1 expr-as-type)))
     'place (term-place expr-as-type)))
 
 (defun xt-idops (idops)

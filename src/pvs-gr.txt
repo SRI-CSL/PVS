@@ -113,14 +113,10 @@ theory-formal ::= {[{'(' importing ')'} <importing-elt(importing,nosemic())>]
                    idops ':' theory-formal-decl}
 		     <theory-formal(opt,idops,theory-formal-decl)>;
 
-theory-formal-decl ::= {'TYPE' [{'FROM' type-expr} <type-expr>]}
-			<ftype-decl(opt)>
-		 |  {{'NONEMPTY_TYPE'|'TYPE+'}
-                               [{'FROM' type-expr} <type-expr>]}
-			<fnetype-decl({nonempty-type()|typeplus()},opt)>
-		 |  {type-expr}
-			<fconst-decl(type-expr)>
-		 ;
+theory-formal-decl ::= {type-keyword ['FROM' type-expr]}
+		        <ftype-decl(type-keyword,[notype()|type-expr])>
+		     | {type-expr} <fconst-decl(type-expr)>
+		     ;
 
 exporting ::= {'EXPORTING' exportings [{ 'WITH' exportingmods}]}
 	        <exporting(exportings,[noexportingmods()|exportingmods])>;
@@ -195,20 +191,27 @@ adformal ::= typed-id
 
 assuming-decl ::= theory-decl | assumption;
 
-theory-decl ::= lib-decl | mod-decl | type-decl | netype-decl
-              | var-decl | const-decl | def-decl | ind-decl
+theory-decl ::= lib-decl | mod-decl | type-decl | var-decl
+              | const-decl | def-decl | ind-decl
               | formula-decl | datatype | judgement;
 
 lib-decl ::= {'LIBRARY' ['='] string} <lib-decl([noeq()|eq()],string)>;
 
 mod-decl ::= {'THEORY' '=' modname} <mod-decl(modname)>;
 
-type-decl ::= {'TYPE' [type-def]}
-                <[uninterp-type-decl() | type-decl(type-def)]>;
+type-decl ::= {type-keyword [type-def ['CONTAINING' expr]^c]}
+                <[uninterp-type-decl(type-keyword)
+                 |type-decl(type-keyword,type-def,
+                            [nocontains()|expr]^c)]>;
 
-netype-decl ::= {{'NONEMPTY_TYPE'|'TYPE+'} [type-def]}
-		 <netype-decl({nonempty-type()|typeplus()},
-                              [no-type-def()|type-def])>;
+type-keyword ::= 'TYPE' <type()>
+               | 'NONEMPTY_TYPE' <nonempty-type()>
+               | 'TYPE+' <typeplus()>
+               ;
+
+% '=' must appear in name type-def, to avoid overlap with '=' as an opsym.
+type-def ::= {{'=' <equal()> | 'FROM' <from()>} type-expr}
+			<type-def(alt,type-expr)>;
 
 var-decl ::= {'VAR' type-expr} <var-decl(type-expr)>;
 
@@ -227,26 +230,16 @@ assumption ::= {'ASSUMPTION' expr} <assumption(expr)>;
 
 formula-decl ::= {formula-name expr} <formula-decl(formula-name,expr)>;
 
-% '=' must appear in name type-def, to avoid overlap with '=' as an opsym.
-type-def ::= {{'=' <equal()> | 'FROM' <from()>} type-expr}
-			<type-def(alt,type-expr)>;
-
-type-expr ::= {name [arguments ['CONTAINING' expr]^c]}
-                <[type-name(name)
-                 |type-appl(name,arguments,[nocontaining()|expr]^c)]>
+type-expr ::= {name [arguments]}
+                <[type-name(name)|type-appl(name,arguments)]>
 	    | type-expr-sans-name
 	    ;
 
-type-expr-sans-name ::= { '(' expr ')' ['CONTAINING' expr^c]}
-                        	<expr-as-type(expr,[nocontains()|expr^c])>
-		     |  {'{' set-formals ['|' expr] '}'
-                                         ['CONTAINING' expr^1]^c}
-				<[enumtype(set-formals,
-                                           [nocontaining()|expr^1]^c)
-				  |subtype(set-formals,expr,
-                                           [nocontaining()|expr^1]^c)]>
-		     |  comp-type-expr
-		     ;
+type-expr-sans-name ::= { '(' expr ')'} <expr-as-type(expr)>
+		      | {'{' set-formals ['|' expr] '}'}
+			<[enumtype(set-formals) | subtype(set-formals,expr)]>
+		      | comp-type-expr
+		      ;
 
 % Broken out so that type expressions could appear in actual parameters;
 % names cause conflicts.
@@ -256,16 +249,6 @@ comp-type-expr	::= recordtype
 		     	[{'->' type-expr} <type-expr>]^r ']'}
 		     <funtype(opt^f,dom(dep-type-expr*),opt^r)>
 		 ;
-
-%enum-or-subtype ::= {idops '}' } <enum(idops)>
-%		 |  {subtype ['CONTAINING' expr]}
-%			<subtype(subtype,[nocontains()|expr])>
-%		 ;
-
-%subtype		::= {{idop | {'(' idops ')'} <idops>} [':' type-expr]
-%                           /+4 '|' !+ expr !- '}'}
-%			<psubtype(alt, [nobindtype() | type-expr],expr)>
-%		 ;
 
 recordtype ::= {'[#' {field-decls ++ ','} '#]'}
                 <recordtype(fields(field-decls+))>;

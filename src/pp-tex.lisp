@@ -420,18 +420,32 @@
   (with-slots (type-expr chain?) decl
     (if (typep decl 'nonempty-type-decl)
 	(pp-tex-keyword (case (keyword decl)
-		 (nonempty_type 'NONEMPTY_TYPE)
-		 (t 'TYPE+)))
+			  (nonempty_type 'NONEMPTY_TYPE)
+			  (t 'TYPE+)))
+	(pp-tex-keyword 'TYPE))))
+
+(defmethod pp-tex* ((decl type-def-decl))
+  (with-slots (type-expr contains chain?) decl
+    (if (typep decl 'nonempty-type-decl)
+	(pp-tex-keyword (case (keyword decl)
+			  (nonempty_type 'NONEMPTY_TYPE)
+			  (t 'TYPE+)))
 	(pp-tex-keyword 'TYPE))
-    (when (typep decl 'type-def-decl)
-      (write-char #\space)
-      (pprint-newline :miser)
-      (if (typep decl 'type-eq-decl)
-	  (write-char #\=)
-	  (pp-tex-keyword 'FROM))
+    (write-char #\space)
+    (pprint-newline :miser)
+    (if (typep decl 'type-eq-decl)
+	(write-char #\=)
+	(pp-tex-keyword 'FROM))
+    (write-char #\space)
+    (pprint-newline :fill)
+    (pp-tex* type-expr)
+    (when contains
       (write-char #\space)
       (pprint-newline :fill)
-      (pp-tex* type-expr))))
+      (pp-tex-keyword 'CONTAINING)
+      (write-char #\space)
+      (pprint-newline :miser)
+      (pp-tex* contains))))
       
 
 ;; (defmethod pp-tex* ((decl nonempty-type-def-decl)) )
@@ -706,17 +720,10 @@
 	       (write-char #\])))))
 
 (defmethod pp-tex* ((te type-application))
-  (with-slots (type parameters contains) te
+  (with-slots (type parameters) te
     (pprint-logical-block (nil nil)
       (pp-tex* type)
-      (pp-tex-arguments parameters)
-      (when contains
-	(write-char #\space)
-	(pprint-newline :fill)
-	(pp-tex-keyword 'CONTAINING)
-	(write-char #\space)
-	(pprint-newline :miser)
-	(pp-tex* contains)))))
+      (pp-tex-arguments parameters))))
 
 (defun pp-tex-arguments* (args)
   (pprint-logical-block (nil args)
@@ -735,7 +742,7 @@
 	  (pprint-newline :fill))))
 
 (defmethod pp-tex* ((te subtype))
-  (with-slots (supertype predicate contains) te
+  (with-slots (supertype predicate) te
     (let* ((bindings (if (typep (predicate te) 'binding-expr)
 			 (bindings (predicate te))
 			 (let* ((id (make-new-variable '|x| te))
@@ -752,23 +759,13 @@
 	(write-char #\space)
 	(write-char #\|)
 	(write-char #\space)
-	(pp-tex* expr))
-      (when contains
-	(write-char #\space)
-	(pp-tex-keyword 'CONTAINING)
-	(write-char #\space)
-	(pp-tex* contains)))))
+	(pp-tex* expr)))))
 
 (defmethod pp-tex* ((te expr-as-type))
-  (with-slots (expr contains) te
+  (with-slots (expr) te
     (write-char #\()
     (pp-tex* expr)
-    (write-char #\))
-    (when contains
-      (write-char #\space)
-      (pp-tex-keyword 'CONTAINING)
-      (write-char #\space)
-      (pp-tex* contains))))
+    (write-char #\))))
 
 (defmethod pp-tex* ((te recordtype))
   (with-slots (fields) te
