@@ -336,13 +336,11 @@
        (compare* (parameters old) (parameters new))))
 
 (defmethod compare* ((old subtype) (new subtype))
-  (and ;;(compare* (contains old) (contains new))
-       ;;(compare* (supertype old) (supertype new))
+  (and (eq (class-of old) (class-of new))
        (compare* (predicate old) (predicate new))))
 
 (defmethod compare* ((old setsubtype) (new setsubtype))
-  (and ;;(compare* (contains old) (contains new))
-       (compare* (supertype old) (supertype new))
+  (and (compare* (supertype old) (supertype new))
        (compare* (formals old) (formals new))
        (compare* (formula old) (formula new))))
 
