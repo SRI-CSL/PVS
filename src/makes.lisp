@@ -27,7 +27,7 @@
 (def-pvs-term lesseq-operator "<=" "reals")
 (def-pvs-term less-operator "<" "reals")
 (def-pvs-term floor-operator "floor" "floor_ceil")
-
+(def-pvs-term unary-minus-operator "-" "reals" :expected "[real -> real]")
   
 ;;; This file provides make-class for the useful classes in classes.
 ;;; For each such class, it basically provides a nicer syntax to replace
