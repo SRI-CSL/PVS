@@ -9,55 +9,62 @@
 (defvar *translate-rewrite-rule* nil)
 (defvar *translate-from-dc-hash* (dp::dp-make-eq-hash-table))
 
+(defvar *dc-interpreted-names* nil)
+				      
+(defun dc-interpreted-names ()
+  (or *dc-interpreted-names*
+      (setf *dc-interpreted-names*
+      `((= |equalities| ,dp::*=*)
+	(/= |notequal| ,dp::*nequal*)
+	(IMPLIES |booleans| ,dp::*implies*)
+	(AND  |booleans| ,dp::*and*)
+	(& |booleans| ,dp::*and*)
+	(OR |booleans| ,dp::*or*)
+	(NOT |booleans| ,dp::*not*)
+	(+ |reals| ,dp::*plus*)
+	(- |reals| ,dp::*minus*)
+	(* |reals| ,dp::*times*)
+	(/ |reals| ,dp::*divide*)
+	(< |reals| ,dp::*lessp*)
+	(<= |reals| ,dp::*lesseqp*)
+	(> |reals| ,dp::*greaterp*)
+	(>= |reals| ,dp::*greatereqp*)
+	(|floor| |floor_ceil| ,dp::*floor*)
+	(|emptyset| |sets| ,dp::*emptyset*)
+	(|fullset| |sets| ,dp::*fullset*)
+	(|union| |sets| ,dp::*union*)
+	(|intersection| |sets| ,dp::*intersection*)
+	(|complement| |sets| ,dp::*complement*)
+	(^ |bv_caret| ,bvec::*bv-extract*)
+	(|fill| |bv| ,bvec::*bv-fill*)
+	(|bv2nat| |bv_nat| ,bvec::*bv2nat*)
+	(|nat2bv| |bv_nat| ,bvec::*nat2bv*)
+	(o |bv_concat| ,bvec::*bv-compose*)
+	(OR |bv_bitwise| ,bvec::*bv-or*)
+	(AND |bv_bitwise| ,bvec::*bv-and*)
+	(IFF |bv_bitwise| ,bvec::*bv-equiv*)
+	(NOT |bv_bitwise| ,bvec::*bv-not*)
+	(XOR |bv_bitwise| ,bvec::*bv-xor*)))))
 
-(defparameter *dc-interpreted-names*
-  `((,(mk-name '= nil '|equalities|) . ,dp::*=*)
-    (,(mk-name '/= nil '|notequal|) . ,dp::*nequal*)
-    (,(mk-name 'IMPLIES nil '|booleans|) . ,dp::*implies*)
-    (,(mk-name 'AND nil '|booleans|) . ,dp::*and*)
-    (,(mk-name '& nil '|booleans|) . ,dp::*and*)
-    (,(mk-name 'OR nil '|booleans|) . ,dp::*or*)
-    (,(mk-name 'NOT nil '|booleans|) . ,dp::*not*)
-    (,(mk-name '+ nil '|reals|) . ,dp::*plus*)
-    (,(mk-name '- nil '|reals|) . ,dp::*minus*)
-    (,(mk-name '* nil '|reals|) . ,dp::*times*)
-    (,(mk-name '/ nil '|reals|) . ,dp::*divide*)
-    (,(mk-name '< nil '|reals|) . ,dp::*lessp*)
-    (,(mk-name '<= nil '|reals|) . ,dp::*lesseqp*)
-    (,(mk-name '> nil '|reals|) . ,dp::*greaterp*)
-    (,(mk-name '>= nil '|reals|) . ,dp::*greatereqp*)
-    (,(mk-name '|floor| nil '|floor_ceil|) . ,dp::*floor*)
-    (,(mk-name '^ nil '|bv_caret|) . ,bvec::*bv-extract*)
-    (,(mk-name '|fill| nil '|bv|) . ,bvec::*bv-fill*)
-    (,(mk-name '|bv2nat| nil '|bv_nat|) . ,bvec::*bv2nat*)
-    (,(mk-name '|nat2bv| nil '|bv_nat|) . ,bvec::*nat2bv*)
-    (,(mk-name 'o nil '|bv_concat|) . ,bvec::*bv-compose*)
-    (,(mk-name 'OR nil '|bv_bitwise|) . ,bvec::*bv-or*)
-    (,(mk-name 'AND nil '|bv_bitwise|) . ,bvec::*bv-and*)
-    (,(mk-name 'IFF nil '|bv_bitwise|) . ,bvec::*bv-equiv*)
-    (,(mk-name 'NOT nil '|bv_bitwise|) . ,bvec::*bv-not*)
-    (,(mk-name 'XOR nil '|bv_bitwise|) . ,bvec::*bv-xor*)
-	))
+(defvar *dc-interpreted-alist* nil)
 
-(defparameter *dc-interpreted-alist*
-  (let ((*current-alist* nil))
-    (mapc #'(lambda (x)
-	      (let* ((pvs-name (car x))
-		     (pvs-id (id pvs-name))
-		     (dp-sym (cdr x))
-		     (item (assq pvs-id *current-alist*))
-		     (current-pvs-name-alist
-		      (cdr item)))
-		(if current-pvs-name-alist
-		    (setf (cdr item)
-			  (push (cons pvs-name dp-sym)
-				current-pvs-name-alist))
-		    (setq *current-alist*
-			  (acons pvs-id (cons pvs-name dp-sym)
-				 *current-alist*)))))
-	      *dc-interpreted-names*)
-    *current-alist*))
-
+(defun interpreted-alist ()
+  "Constructs a list of associations
+   (id . ((pvs-name1 . dp-sym1)...(pvs-namek . dp-symk))).
+   The id entry is used for fast fail and a list of assocs
+   is needed to allow for overloading."
+  (or *dc-interpreted-alist*
+      (setf *dc-interpreted-alist*
+	(let ((*alist* nil))
+	  (loop for (id mod-id dp-sym) in (dc-interpreted-names)
+		do (let* ((pvs-name (mk-name id nil mod-id))
+			  (translations (assq id *alist*)))
+		     (if translations
+			 (push (cons pvs-name dp-sym)
+			       (cdr translations))
+			 (push (cons id (acons pvs-name dp-sym nil))
+			       *alist*))))
+	  *alist*))))
 
 (defvar *translate-to-dc-hash* (make-hash-table :hash-function 'pvs-sxhash
 						:test 'tc-eq))
@@ -77,82 +84,47 @@
   (clrhash *local-prtype-hash*)
   (clrhash *dc-named-exprs*)
   (newcounter *dc-translate-id-counter*)
-  (setq *dc-interpreted-names*
-  `((,(mk-name '= nil '|equalities|) . ,dp::*=*)
-    (,(mk-name '/= nil '|notequal|) . ,dp::*nequal*)
-    (,(mk-name 'IMPLIES nil '|booleans|) . ,dp::*implies*)
-    (,(mk-name 'AND nil '|booleans|) . ,dp::*and*)
-    (,(mk-name '& nil '|booleans|) . ,dp::*and*)
-    (,(mk-name 'OR nil '|booleans|) . ,dp::*or*)
-    (,(mk-name 'NOT nil '|booleans|) . ,dp::*not*)
-    (,(mk-name '+ nil '|reals|) . ,dp::*plus*)
-    (,(mk-name '- nil '|reals|) . ,dp::*minus*)
-    (,(mk-name '* nil '|reals|) . ,dp::*times*)
-    (,(mk-name '/ nil '|reals|) . ,dp::*divide*)
-    (,(mk-name '< nil '|reals|) . ,dp::*lessp*)
-    (,(mk-name '<= nil '|reals|) . ,dp::*lesseqp*)
-    (,(mk-name '> nil '|reals|) . ,dp::*greaterp*)
-    (,(mk-name '>= nil '|reals|) . ,dp::*greatereqp*)
-    (,(mk-name '|floor| nil '|floor_ceil|) . ,dp::*floor*)
-    (,(mk-name '^ nil '|bv_caret|) . ,bvec::*bv-extract*)
-    (,(mk-name '|fill| nil '|bv|) . ,bvec::*bv-fill*)
-    (,(mk-name '|bv2nat| nil '|bv_nat|) . ,bvec::*bv2nat*)
-    (,(mk-name '|nat2bv| nil '|bv_nat|) . ,bvec::*nat2bv*)
-    (,(mk-name 'o nil '|bv_concat|) . ,bvec::*bv-compose*)
-    (,(mk-name 'OR nil '|bv_bitwise|) . ,bvec::*bv-or*)
-    (,(mk-name 'AND nil '|bv_bitwise|) . ,bvec::*bv-and*)
-    (,(mk-name 'IFF nil '|bv_bitwise|) . ,bvec::*bv-equiv*)
-    (,(mk-name 'NOT nil '|bv_bitwise|) . ,bvec::*bv-not*)
-    (,(mk-name 'R nil '|bv_bitwise|) . ,bvec::*bv-xor*)
-	))
-  (setq *dc-interpreted-alist*
-	(let ((*current-alist* nil))
-	  (mapc #'(lambda (x)
-		    (let* ((pvs-name (car x))
-			   (pvs-id (id pvs-name))
-			   (dp-sym (cdr x))
-			   (item (assq pvs-id *current-alist*))
-			   (current-pvs-name-alist
-			    (cdr item)))
-		      (if current-pvs-name-alist
-			  (setf (cdr item)
-				(push (cons pvs-name dp-sym)
-				      current-pvs-name-alist))
-			  (setq *current-alist*
-				(acons pvs-id (cons pvs-name dp-sym)
-				       *current-alist*)))))
-		*dc-interpreted-names*)
-	  *current-alist*)))
-
+  (setq *dc-interpreted-names* nil)
+  (setq *dc-interpreted-names* (dc-interpreted-names)) ; repeat list???
+  (setq *dc-interpreted-alist* nil)
+  (setq *dc-interpreted-alist* (interpreted-alist)))
+	
 (defvar *interpret-bit-vectors* nil)
 
-(defun interpreted-bv-op? (expr dp-sym)
+(defun interpreted-bv-op? (expr)
   (and *interpret-bit-vectors*
        (let ((actuals (actuals (module-instance expr))))
-	 (when (every #'number-expr? actuals)
-	   dp-sym))))
+	 (every #'number-expr? actuals))))
 
 (defun really-interpreted? (pvs-name expr-mod-instance)
+  (assert (name-expr? pvs-name))
   (eq (mod-id pvs-name) (id expr-mod-instance)))
+
+(defun choose-interpretation (id mod-id alist)
+  (if (null alist) nil
+      (let* ((assoc (car alist))
+	     (name (car assoc)))
+	(if (and (eq (id name) id)
+		 (eq (mod-id name) mod-id))
+	    (cdr assoc)
+	  (choose-interpretation id mod-id (cdr alist))))))
 
 (defmethod interpretation ((expr name-expr))
   (with-slots (id resolutions) expr
-    (let ((possible-interp (cdr (assq id (if *newdc*
-					     *dc-interpreted-alist*
-					     *interpreted-alist*)))))
-      (and possible-interp
-	   (let ((expr-mi (module-instance (car resolutions))))
-	     (and expr-mi
-		  (let ((dp-sym
-			 (cdr
-			  (assoc expr-mi
-				 possible-interp
-				 :test #'really-interpreted?))))
+    (let ((alist (cdr (assq id (if *newdc*
+				   (interpreted-alist)
+				   *interpreted-alist*)))))
+      (and alist
+	   (let ((mi (module-instance (car resolutions))))
+	     (and mi
+		  (let ((dp-sym (choose-interpretation id (id mi) alist)))
 		    (when dp-sym
-		     (if (eq (dp::node-type dp-sym)
-			     'bvec::bv-op)
-			 (interpreted-bv-op? expr dp-sym)
-			 dp-sym)))))))))
+		      (if (eq (dp::node-type dp-sym) 'bvec::bv-op)
+			  (and (interpreted-bv-op? expr) dp-sym)
+			  dp-sym)))))))))
+
+(defmethod interpretation (expr)
+  nil)
 
 ;;; Translate into list representation for passing to the prover.
 ;;; This also sets up the global variables typealist, and inserts
@@ -550,24 +522,9 @@
 			 (dp::negation-p (car args)))
 		    (dp::arg 1 (car args)))
 		   ((eq op bvec::*bv-fill*)
-		    (let* ((width (number (expr (car (actuals operator)))))
-			   (num (car args))
-			   (value
-			    (cond
-			     ((eq num dp::*zero*)
-			      0)
-			     ((eq num dp::*one*)
-			      (1- (expt 2 width)))
-			     (t (break))))
-			   (value? (1- (expt 2 width))))
-		      (bvec::make-bv-const value width)))
+		    (translate-fill-to-dc (car (actuals operator)) args))
 		   ((eq op bvec::*nat2bv*)
-		    (let* ((width (number (expr (car actuals))))
-					;operator
-			   (num (car args)))
-		      (if (dp::dp-numberp num)
-			  (bvec::make-bv-const (dp::constant-id num width))
-			  (bvec::make-bv-var num (dp::mk-constant width)))))
+		    (translate-nat2bv-to-dc (car (actuals operator)) args))
 		   (*translate-rewrite-rule*
 		    (dp::sigma (dp::mk-term (cons op args))
 			       *init-dp-state*))
@@ -587,6 +544,26 @@
 		     (bvec::make-bv-var translated-expr
 					(dp::mk-constant bvlength))
 		     translated-expr)))))))
+
+(defun translate-fill-to-dc (actual args)
+  (let* ((width (number (expr actual)))
+	 (num (car args))
+	 (value
+	  (cond
+	   ((eq num dp::*zero*)
+	    0)
+	   ((eq num dp::*one*)
+	    (1- (expt 2 width)))
+	   (t (break))))
+	 (value? (1- (expt 2 width))))
+    (bvec::make-bv-const value width)))
+
+(defun translate-nat2bv-to-dc (actual args)
+  (let* ((width (number (expr actual)))
+	 (num (car args)))
+    (if (dp::dp-numberp num)
+	(bvec::make-bv-const (dp::constant-id num width))
+	(bvec::make-bv-var num (dp::mk-constant width)))))
 
 (defun dc-mk-typed-term (args dc-type)
   (let ((result (dp::mk-term args)))
@@ -964,7 +941,7 @@
 (defmethod dc-prover-type ((te dep-binding))
   (dc-prover-type (type te)))
 
-(defvar *translate-iff-to-implies* nil)
+(defvar *translate-iff-to-implies* T)
 
 (defmethod translate-to-dc ((expr iff-or-boolean-equation))
   (if *translate-iff-to-implies*
