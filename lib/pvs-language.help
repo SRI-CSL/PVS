@@ -51,6 +51,7 @@ list[t:TYPE] : DATATYPE
   END list
 state: THEORY
    BEGIN
+    CONVERSION+ K_conversion
     state: TYPE+
     l: [state -> list[int]]
     x: [state -> real]
@@ -59,7 +60,7 @@ state: THEORY
     F: FORMULA box(b IMPLIES length(l) + 3 > x)
    END state
 
-K_conversion automatically converts F to
+% K_conversion automatically converts F to
 
   F2: FORMULA
     box(LAMBDA (x3: state):
@@ -69,6 +70,23 @@ K_conversion automatically converts F to
                   (x2)
                > x(x2))
                (x3))
+
+	       
+assum[x, y: int]: THEORY
+ BEGIN
+  ASSUMING
+   diff: ASSUMPTION x /= y
+  ENDASSUMING
+  ...
+ END assum
+
+ 
+interp: THEORY
+ BEGIN
+  IMPORTING group{{G := int, + := +, 0 := 0, - := -}} AS G1
+  G2: THEORY group{{G := nzreal, + := *,
+                    - := (lambda (x:nzreal): 1/x), 0 := 1}}
+ END interp
 
 =============================Lexical Rules====================================
 
@@ -82,29 +100,34 @@ Numbers are composed of digits; floating point numbers are not supported.
 
 ============================Reserved Words====================================
 
-AND         CONTAINING  FALSE       LEMMA          SUBTYPES
-ANDTHEN     CONVERSION  FORALL      LET            SUBTYPE_OF
-ARRAY       COROLLARY   FORMULA     LIBRARY        TABLE
-ASSUMING    DATATYPE    FROM        MEASURE        THEN
-ASSUMPTION  ELSE        FUNCTION    NONEMPTY_TYPE  THEOREM
-AXIOM       ELSIF       HAS_TYPE    NOT            THEORY
-BEGIN       END         IF          O              TRUE
-BUT         ENDASSUMING IFF         OBLIGATION     TYPE
-BY          ENDCASES    IMPLIES     OF             TYPE+
-CASES       ENDCOND     IMPORTING   OR             VAR 
-CHALLENGE   ENDIF       IN          ORELSE         WHEN
-CLAIM       ENDTABLE    INDUCTIVE   POSTULATE      WHERE
-CLOSURE     EXISTS      JUDGEMENT   PROPOSITION    WITH
-COND        EXPORTING   LAMBDA      RECURSIVE      XOR
-CONJECTURE  FACT        LAW         SUBLEMMA
+AND             CODATATYPE      ENDIF           JUDGEMENT       RECURSIVE
+ANDTHEN         COINDUCTIVE     ENDTABLE        LAMBDA          SUBLEMMA
+ARRAY           COND            EXISTS          LAW             SUBTYPES
+AS              CONJECTURE      EXPORTING       LEMMA           SUBTYPE_OF
+ASSUMING        CONTAINING      FACT            LET             TABLE
+ASSUMPTION      CONVERSION      FALSE           LIBRARY         THEN
+AUTO_REWRITE    CONVERSION+     FORALL          MACRO           THEOREM
+AUTO_REWRITE+   CONVERSION-     FORMULA         MEASURE         THEORY
+AUTO_REWRITE-   CORECURSIVE     FROM            NONEMPTY_TYPE   TRUE
+AXIOM           COROLLARY       FUNCTION        NOT             TYPE
+BEGIN           DATATYPE        HAS_TYPE        O               TYPE+
+BUT             ELSE            IF              OBLIGATION      VAR
+BY              ELSIF           IFF             OF              WHEN
+CASES           END             IMPLIES         OR              WHERE
+CHALLENGE       ENDASSUMING     IMPORTING       ORELSE          WITH
+CLAIM           ENDCASES        IN              POSTULATE       XOR
+CLOSURE         ENDCOND         INDUCTIVE       PROPOSITION     
 
 ===============================Special Symbols================================
 
-&   (   )    *    +    ,   -   ->  .   /   /=   :   :=
-
-;   <   <=   <=>  =    =>  >   >=  |   [    ]   [#  #]
-
-{   }   (#   #)   \/   /\  ~   ==  []  <>
+#      (#     ++     /\     <<     =>     [#     ^      |)     |}
+##     (:     ,      :      <<=    >      []     ^^     |-     }
+#)     (|     -      :)     <=     >=     [|     `      |->    }}
+#]     (||)   ->     ::     <=>    >>     [||]   {      |=     ~
+%      )      .      ::=    <>     >>=    \      {{     |>     
+&      *      /      :=     <|     @      \/     {|     |[     
+&&     **     //     ;      =      @@     ]      {||}   |]     
+(      +      /=     <      ==     [      ]|     |      ||     
 
 
 ==============================Type Declarations===============================
