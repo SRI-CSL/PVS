@@ -189,8 +189,9 @@
 (defun solve (eqn cong-state)
   (let ((solved (solve* eqn cong-state)))
     (loop for seqn in solved
-	  collect (canon-after-solve seqn cong-state))))
-  
+	  do (adduse-of-term seqn cong-state))
+    solved))
+
 (defun canon-after-solve (eqn cong-state)
   (if (or (false-p eqn) (true-p eqn)) eqn
       (let ((c-lhs (canon (lhs eqn) cong-state))
