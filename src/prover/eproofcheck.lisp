@@ -18,17 +18,15 @@
   (let ((decl (get-formula *current-theory*
 			   (if (stringp name)(intern name) name))))
     (if decl
-	(timeprover
-	 (prove-decl decl
-		     :strategy
-		     (when strategy `(then ,strategy (query*)))))
+	(prove-decl decl
+		    :strategy
+		    (when strategy `(then ,strategy (query*))))
 	(error-format-if "~%No such formula.  Try again."))))
 
 (defmethod prove ((decl formula-decl) &key  strategy)
-  (timeprover
-   (prove-decl decl
-	       :strategy
-	       (when strategy `(then ,strategy (query*))))))
+  (prove-decl decl
+	      :strategy
+	      (when strategy `(then ,strategy (query*)))))
 
 ; dave_sc
 (defvar *first-strategy-error* nil)
