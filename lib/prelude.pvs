@@ -230,10 +230,13 @@ functions [D, R: TYPE]: THEORY
   Drel: VAR PRED[[D, D]]
   Rrel: VAR PRED[[R, R]]
 
-  extensionality: POSTULATE
+  extensionality_postulate: POSTULATE
      (FORALL (x: D): f(x) = g(x)) IFF f = g
 
-%  function_prop: LEMMA f = g IMPLIES (FORALL x: f(x) = g(x))
+  % The extensionality lemma is provided as it is easier to use
+  % as a rewrite than the above postulate.
+  extensionality: LEMMA
+     (FORALL (x: D): f(x) = g(x)) IMPLIES f = g
 
   congruence: POSTULATE f = g AND x1 = x2 IMPLIES f(x1) = g(x2)
 
