@@ -5,34 +5,119 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Tue Dec 21 14:35:57 1999
 ;; Update Count    : 1
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Status          : Beta test
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
-(defun html-pvs-file (file-name &optional all? force?)
-  (cond ((not *pvs-context-writable*)
-	 (pvs-message "You do not have write permission in this context"))
-	((not (ensure-html-subdirectory))
-	 nil)
-	((typechecked-file? file-name)
-	 (html-pvs-file* file-name force?)
-	 (when all?
-	   (dolist (dep (file-dependencies file-name))
-	     (html-pvs-file* dep force?))))
-	(t (pvs-message "File ~a has not been typechecked" file-name))))
+(defvar *include-prelude-operators*)
 
-(defun html-prelude ()
-  (let ((html-file (format nil "~a/lib/prelude.html" *pvs-path*))
+(defvar *pvs-url-mapping* nil)
+
+(defvar *pvs-html-hrefs*)
+
+(defvar *pvs-html-dirs*)
+
+(defvar *force-dirs*)
+
+(defun html-pvs-file (file-name
+		      &optional include-prelude-operators? all? force?)
+    (cond ((not *pvs-context-writable*)
+	   (pvs-message "You do not have write permission in this context"))
+	  ((typechecked-file? file-name)
+	   (check-pvs-url-mapping)
+	   (let ((*include-prelude-operators* include-prelude-operators?)
+		 (*pvs-html-hrefs* (make-hash-table :test #'eq))
+		 (*pvs-html-dirs* (make-hash-table :test #'equal))
+		 (*force-dirs* nil))
+	     (html-directory)
+	     (html-pvs-file* file-name force?)
+	     (when all?
+	       (html-prelude include-prelude-operators? force?)
+	       (dolist (dep (file-dependencies file-name))
+		 (html-pvs-file* dep force?)))))
+	  (t (pvs-message "File ~a has not been typechecked" file-name))))
+
+(defun check-pvs-url-mapping (&optional (mappings *pvs-url-mapping*))
+  (when mappings
+    (unless (and (listp mappings)
+		 (stringp (car mappings))
+		 (stringp (cadr mappings))
+		 (every #'(lambda (m) (and (listp m) (= (length m) 3)))
+			(cddr mappings)))
+      (html-pvs-error 
+	"*pvs-url-mapping* must be a list of the form~%  ~
+       '(\"baseurl\" \"basedir\" (\"specdir\" \"url\" \"htmldir\") ...)"))
+    (check-valid-url (car mappings))
+    (unless (file-exists-p (cadr mappings))
+      (html-pvs-error
+	"*pvs-url-mapping* element ~a must refer to an existing directory"
+	(cadr mappings)))
+    (unless (directory-p (cadr mappings))
+      (html-pvs-error
+	"*pvs-url-mapping* element ~a must refer to a directory"
+	(cadr mappings)))
+    (check-pvs-url-mappings (cddr mappings) (cadr mappings))
+    (copy-support-html-files)))
+
+(defun copy-support-html-files ()
+  (when *pvs-url-mapping*
+    (unless (file-exists-p (concatenate 'string
+			     (ensure-trailing-slash (cadr *pvs-url-mapping*))
+			     "pvs-style.css"))
+      (copy-file (concatenate 'string *pvs-path* "/lib/pvs-style.css")
+		 (cadr *pvs-url-mapping*)))))
+
+(defun check-valid-url (string)
+  ;; Fill this in sometime...
+  (unless (valid-url? string)
+    (html-pvs-error
+      "*pvs-url-mapping* element ~a must refer to a valid URL"
+      string))
+  t)
+
+(defun valid-url? (string)
+  ;; It would be nice to actually check if the URI is real, instead of a
+  ;; simple syntax check.
+  (ignore-errors (net.uri:parse-uri string)))
+
+(defun check-pvs-url-mappings (mappings basedir)
+  (when mappings
+    (let ((map (car mappings)))
+      (unless (directory-p (car map))
+	(html-pvs-error
+	  "Invalid *pvs-url-mapping* entry: ~a does not exist"
+	  (car map)))
+      (check-valid-url (cadr map))
+      (let ((htmldir (if (char= (char (caddr map) 0) #\/)
+			 (caddr map)
+			 (concatenate 'string basedir (caddr map)))))
+	(if (file-exists-p htmldir)
+	    (unless (directory-p htmldir)
+	      (html-pvs-error
+		"Invalid *pvs-url-mapping* entry: ~a is not a directory"
+		htmldir))
+	    (make-directory-path htmldir))
+	(unless (write-permission? htmldir)
+	  (html-pvs-error
+	    "Invalid *pvs-url-mapping* entry: no write permission for ~a"
+	    htmldir))))
+    (check-pvs-url-mappings (cdr mappings) basedir)))
+
+(defun html-prelude (&optional include-prelude-operators? force?)
+  (let ((*include-prelude-operators* include-prelude-operators?)
+	(html-file (make-htmlpath "prelude"
+				  (concatenate 'string *pvs-path* "/lib/")))
 	(pvs-file (format nil "~a/lib/prelude.pvs" *pvs-path*))
 	(*html-theories* *prelude-theories*))
-    (with-open-file (*html-out* html-file
-				:direction :output
-				:if-exists :supersede)
-      (html-theories "prelude" pvs-file))))
+    (when (or force?
+	      (not (file-exists-p html-file))
+	      (file-older html-file pvs-file))
+      (with-open-file (*html-out* html-file
+				  :direction :output
+				  :if-exists :supersede)
+	(html-theories "prelude" pvs-file)))))
 
 (defvar *html-out* nil)
 
@@ -42,16 +127,42 @@
   (format *html-out* "~?" ctl args))
 
 (defun html-pvs-file* (file-name force?)
-  (let ((html-file (make-htmlpath file-name))
-	(pvs-file (make-specpath file-name)))
-    (when (or force?
-	      (not (file-exists-p html-file))
-	      (file-older html-file pvs-file))
-      (let ((*html-theories* (get-theories file-name)))
-	(with-open-file (*html-out* html-file
-				    :direction :output
-				    :if-exists :supersede)
-	  (html-theories file-name pvs-file))))))
+  (let ((pos (position #\/ file-name :from-end t)))
+    (if pos
+	(let ((libref (subseq file-name 0 (1+ pos)))
+	      (orig-context-path *pvs-context-path*))
+	  (with-pvs-context libref
+	    (restore-context)
+	    (multiple-value-bind (*pvs-files* *pvs-modules*)
+		(get-imported-files-and-theories libref)
+	      (relativize-imported-libraries
+	       libref orig-context-path
+	       (let* ((dir (libref-to-pathname libref))
+		      (file (subseq file-name (1+ pos)))
+		      (html-file (make-htmlpath file dir))
+		      (pvs-file (let ((*pvs-context-path* dir))
+				  (make-specpath file))))
+		 (assert (file-exists-p pvs-file))
+		 (when (or force?
+			   (not (file-exists-p html-file))
+			   (file-older html-file pvs-file))
+		   (let ((*html-theories* (get-theories file)))
+		     (with-open-file (*html-out* html-file
+						 :direction :output
+						 :if-exists :supersede)
+		       (html-theories file-name pvs-file))
+		     (pvs-message "~a generated" html-file))))))))
+	(let ((html-file (make-htmlpath file-name))
+	      (pvs-file (make-specpath file-name)))
+	  (when (or force?
+		    (not (file-exists-p html-file))
+		    (file-older html-file pvs-file))
+	    (let ((*html-theories* (get-theories file-name)))
+	      (with-open-file (*html-out* html-file
+					  :direction :output
+					  :if-exists :supersede)
+		(html-theories file-name pvs-file))
+	      (pvs-message "~a generated" html-file)))))))
 
 (defun html-theories (file-name pvs-file)
   (fmt-html
@@ -61,10 +172,14 @@
   (fmt-html
    "~%<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\" xml:lang=\"en\">")
   (fmt-html "~%<html>~%<head>~%  <title>PVS File: ~a</title>" file-name)
+  (when (car *pvs-url-mapping*)
+    (fmt-html "~%  <base href=\"~a\" />" (car *pvs-url-mapping*)))
   (fmt-html "~%  <meta http-equiv=\"Content-Type\" content=\"text/html; charset=ISO-8859-1\"/>")
   (fmt-html
-   "~%  <link rel=\"stylesheet\" href=\"~a/lib/pvs-style.css\" type=\"text/css\"/>"
-   *pvs-path*)
+   "~%  <link rel=\"stylesheet\" href=\"~apvs-style.css\" type=\"text/css\"/>"
+   (if *pvs-url-mapping*
+       ""
+       (concatenate 'string *pvs-path* "/lib/")))
   (fmt-html "~%</head>~%<body>")
   (fmt-html "~%<h2><a name=\"~a.pvs\">~a.pvs</a></h2>" file-name file-name)
   (when (cdr *html-theories*)
@@ -97,29 +212,80 @@
 			(id (module (cdr e)))
 			(decl-to-declname (cdr e))))
 		     (modname
-		      (fmt-html "<a href=\"~@[~a~]#~a\">"
-			(html-pvs-file-reference (get-theory (cdr e)))
-			(id (cdr e))))
-		     (t (fmt-html "<a href=\"~@[~a~]#~a-~a\">"
-			  (html-pvs-file-reference
-			   (module (declaration (cdr e))))
-			  (id (module-instance (cdr e)))
-			  (decl-to-declname (declaration (cdr e))))))
+		      (let ((th (get-theory (cdr e))))
+			(assert th)
+			(fmt-html "<a href=\"~@[~a~]#~a\">"
+				  (html-pvs-file-reference th)
+				  (id th))))
+		     (t (let ((decl (declaration (cdr e))))
+			  (fmt-html "<a href=\"~@[~a~]#~a-~a\" title=\"~a\">"
+			    (html-pvs-file-reference (module decl))
+			    (id (module-instance (cdr e)))
+			    (decl-to-declname decl)
+			    (typecase decl
+			      (type-decl "Type Declaration")
+			      (typed-declaration (type decl))
+			      (lib-decl "library-declaration")
+			      (mod-decl "theory-declaration")
+			      (theory-abbreviation-decl
+			       "theory-abbreviation-declaration")
+			      (assuming-decl "assuming-declaration")
+			      (tcc-decl "tcc-declaration")
+			      (formula-decl "formula-declaration")
+			      (judgement "judgement-declaration")
+			      (conversion-decl "conversion-declaration")
+			      (auto-rewrite-decl "auto-rewrite-declaration")
+			      (t (break "What?")))))))
+		   (push (cdr e) started))
+		 (when (eq (car e) :begin-span)
+		   (typecase (cdr e)
+		     (datatype-or-module
+		      (fmt-html "<span class=\"~a\">"
+			(typecase (cdr e)
+			  (module "theory")
+			  (datatype "datatype")
+			  (codatatype "codatatype"))))
+		     (declaration
+		      (fmt-html "<span class=\"~a\">"
+			(typecase (cdr e)
+			  (type-decl "type-declaration")
+			  (formal-decl "formal-declaration")
+			  (lib-decl "library-declaration")
+			  (mod-decl "theory-declaration")
+			  (theory-abbreviation-decl
+			   "theory-abbreviation-declaration")
+			  (var-decl "variable-declaration")
+			  (macro-decl "macro-declaration")
+			  (def-decl "recursive-declaration")
+			  (inductive-decl "inductive-declaration")
+			  (coinductive-decl "coinductive-declaration")
+			  (const-decl "constant-declaration")
+			  (assuming-decl "assuming-declaration")
+			  (tcc-decl "tcc-declaration")
+			  (formula-decl "formula-declaration")
+			  (judgement "judgement-declaration")
+			  (conversion-decl "conversion-declaration")
+			  (auto-rewrite-decl "auto-rewrite-declaration")
+			  (t (break "What?"))))))
 		   (push (cdr e) started)))
 	       (when (and (char= ch #\%)
 			  (not in-comment))
-		 (fmt-html "<em>")
+		 (fmt-html "<span class=\"comment\">")
 		 (setq in-comment t))
 	       (when (and (char= ch #\newline)
 			  in-comment)
-		 (fmt-html "</em>")
+		 (fmt-html "</span>")
 		 (setq in-comment nil))
 	       (write-char ch *html-out*)
 	       (dolist (e centries)
 		 (when (eq (car e) :end)
 		   (assert (memq (cdr e) started))
 		   (setq started (delete (cdr e) started :count 1))
-		   (fmt-html "</a>")))
+		   (fmt-html "</a>"))
+		 (when (eq (car e) :end-span)
+		   (assert (memq (cdr e) started))
+		   (setq started (delete (cdr e) started :count 1))
+		   (fmt-html "</span>")))
 	       (case ch
 		 (#\linefeed
 		  (incf frow)
@@ -128,12 +294,21 @@
 		 (t (incf fcol)))))))
 
 (defun html-pvs-file-reference (theory)
-  (unless (memq theory *html-theories*)
-    (cond ((from-prelude? theory)
-	   (format nil "~a/lib/prelude.html" *pvs-path*))
-	  ((library-datatype-or-theory? theory)
-	   (break "html-pvs-file-reference to library"))
-	  (t (concatenate 'string (filename theory) ".html")))))
+  (or (gethash theory *pvs-html-hrefs*)
+      (if (from-prelude? theory)
+	  (concatenate 'string
+	    (html-relative-reference (concatenate 'string *pvs-path*
+						  "/lib"))
+	    "prelude.html")
+	  (let ((fname (concatenate 'string (filename theory) ".html")))
+	    (setf (gethash theory *pvs-html-hrefs*)
+		  (concatenate 'string
+		    (html-relative-reference
+		     (if (library-datatype-or-theory? theory)
+			 (libref-to-pathname (lib-ref theory))
+			 *pvs-context-path*))
+		    fname))))))
+  
 
 (defvar *html-anchors* nil)
 
@@ -156,11 +331,14 @@
     (if srentry
 	(let ((scentry (cdr (assoc scol srentry :test #'=))))
 	  (if scentry
-	      (nconc scentry `((:begin . ,theory)))
-	      (nconc srentry `((,scol (:begin . ,theory))))))
+	      (nconc scentry `((:begin-span . ,theory) (:begin . ,theory)))
+	      (nconc srentry
+		     `((,scol (:begin-span . ,theory) (:begin . ,theory))))))
 	(setq *html-anchors*
 	      (nconc *html-anchors*
-		     `((,srow (,scol (:begin . ,theory)))))))
+		     `((,srow
+			(,scol (:begin-span . ,theory) (:begin . ,theory)))))))
+    ;; Get end of anchor
     (let ((erentry (cdr (assoc erow *html-anchors* :test #'=))))
       (if erentry
 	  (let ((ecentry (cdr (assoc ecol erentry :test #'=))))
@@ -170,6 +348,18 @@
 	  (setq *html-anchors*
 		(nconc *html-anchors*
 		       `((,erow (,ecol (:end . ,theory))))))))
+    ;; Get end of span
+    (let* ((erow (ending-row place))
+	   (ecol (ending-col place))
+	   (erentry (cdr (assoc erow *html-anchors* :test #'=))))
+      (if erentry
+	  (let ((ecentry (cdr (assoc ecol erentry :test #'=))))
+	    (if ecentry
+		(nconc ecentry `((:end-span . ,theory)))
+		(nconc erentry `((,ecol (:end-span . ,theory))))))
+	  (setq *html-anchors*
+		(nconc *html-anchors*
+		       `((,erow (,ecol (:end-span . ,theory))))))))
     nil))
 
 (defmethod collect-html-anchors* ((ex declaration))
@@ -186,11 +376,13 @@
 	     (if srentry
 		 (let ((scentry (cdr (assoc scol srentry :test #'=))))
 		   (if scentry
-		       (nconc scentry `((:begin . ,ex)))
-		       (nconc srentry `((,scol (:begin . ,ex))))))
+		       (nconc scentry `((:begin-span . ,ex) (:begin . ,ex)))
+		       (nconc srentry
+			      `((,scol (:begin-span . ,ex) (:begin . ,ex))))))
 		 (setq *html-anchors*
 		       (nconc *html-anchors*
-			      `((,srow (,scol (:begin . ,ex)))))))
+			      `((,srow (,scol (:begin-span . ,ex)
+					      (:begin . ,ex)))))))
 	     (let ((erentry (cdr (assoc erow *html-anchors* :test #'=))))
 	       (if erentry
 		   (let ((ecentry (cdr (assoc ecol erentry :test #'=))))
@@ -199,7 +391,18 @@
 			 (nconc erentry `((,ecol (:end . ,ex))))))
 		   (setq *html-anchors*
 			 (nconc *html-anchors*
-				`((,erow (,ecol (:end . ,ex)))))))))
+				`((,erow (,ecol (:end . ,ex))))))))
+	     (let* ((erow (ending-row place))
+		    (ecol (ending-col place))
+		    (erentry (cdr (assoc erow *html-anchors* :test #'=))))
+	       (if erentry
+		   (let ((ecentry (cdr (assoc ecol erentry :test #'=))))
+		     (if ecentry
+			 (nconc ecentry `((:end-span . ,ex)))
+			 (nconc erentry `((,ecol (:end-span . ,ex))))))
+		   (setq *html-anchors*
+			 (nconc *html-anchors*
+				`((,erow (,ecol (:end-span . ,ex)))))))))
 	   (call-next-method))))
 
 (defmethod collect-html-anchors* ((ex implicit-conversion))
@@ -209,17 +412,27 @@
 (defmethod collect-html-anchors* ((ex modname))
   (call-next-method))
 
+(defparameter *html-ignored-prelude-names*
+  '(bool boolean TRUE FALSE NOT AND & OR IMPLIES => WHEN IFF <=>
+	 = /= IF + - * / < <= > >= O ~))
+
 (defmethod collect-html-anchors* ((ex name))
   (when (and (place ex)
 	     (or (modname? ex)
 		 (and (declaration ex)
 		      (not (binding? (declaration ex)))
-		      (not (generated-by (declaration ex))))))
+		      (not (generated-by (declaration ex)))
+		      (or *include-prelude-operators*
+			  (not (and (memq (id ex) *html-ignored-prelude-names*)
+				    (from-prelude?
+				     (module (declaration ex)))))))))
     (let* ((place (place ex))
 	   (srow (starting-row place))
 	   (scol (starting-col place))
 	   (erow srow)
-	   (ecol (+ scol (length (string (id ex))) -1))
+	   (ecol (+ scol
+		    (if (library ex) (length (string (library ex))) -1)
+		    (length (string (id ex)))))
 	   (srentry (cdr (assoc srow *html-anchors* :test #'=))))
       (assert (and srow scol erow ecol))
       (if srentry
@@ -247,30 +460,111 @@
   (declare (ignore ex))
   nil)
 
-(defun ensure-html-subdirectory ()
-  (let ((subdir (make-pathname
-		 :defaults *pvs-context-path*
-		 :name "pvshtml")))
-    (if (file-exists-p subdir)
-	(if (directory-p subdir)
-	    subdir
-	    (pvs-message "~a is a regular file,~%  and can't be used as a~
-                          subdirectory for html files unless it is moved."
-	      subdir))
-	(multiple-value-bind (result error)
-	    (ignore-errors (excl:make-directory subdir))
-	  (declare (ignore result))
-	  (cond (error
-		 (pvs-message "Error creating ~a: ~a" subdir error))
-		(t (pvs-message "Created directory ~a" subdir)
-		   subdir))))))
-
-(defmethod make-htmlpath ((name symbol))
-  (make-htmlpath (string name)))
-
-(defmethod make-htmlpath ((name string))
-  (make-pathname :defaults *pvs-context-path*
-		 :directory (append (pathname-directory *pvs-context-path*)
-				    (list "pvshtml"))
+(defun make-htmlpath (name &optional (pvs-dir *pvs-context-path*))
+  (make-pathname :directory (html-directory pvs-dir)
 		 :name name
 		 :type "html"))
+
+;;; This walks through the mappings looking for the place to put something
+;;; in the 
+(defun html-directory (&optional (pvs-dir *pvs-context-path*))
+  (or (gethash pvs-dir *pvs-html-dirs*)
+      (setf (gethash pvs-dir *pvs-html-dirs*)
+	    (if (null *pvs-url-mapping*)
+		(let ((html-dir (concatenate 'string
+				  (ensure-trailing-slash (namestring pvs-dir))
+				  "pvshtml/")))
+		  (cond ((file-exists-p html-dir)
+			 (if (write-permission? html-dir)
+			     html-dir
+			     (html-pvs-error
+			      "Do not have write permission for ~a" html-dir)))
+			(t (make-directory-path html-dir)
+			   html-dir)))
+		(html-directory*
+		 (cddr *pvs-url-mapping*)
+		 (ensure-trailing-slash (namestring pvs-dir))
+		 (ensure-trailing-slash (cadr *pvs-url-mapping*)))))))
+
+;;; Checks to see if the *pvs-context-path* is a subdirectory of one of the
+;;; mappings, returning it if so.  Otherwise returns the *pvs-context-path*
+;;; concatenated with "pvshtml".
+(defun html-directory* (mappings pvs-dir base-html-dir)
+  (if (null mappings)
+      (html-pvs-error
+	"~a is not a subdirectory of any of the mappings of *pvs-url-mapping*"
+	pvs-dir)
+      (let* ((map (car mappings))
+	     (subdir (subdirectoryp pvs-dir (car map))))
+	(cond (subdir
+	       (let* ((dir (if (member (char (caddr map) 0) '(#\/ #\~)
+				       :test #'char=)
+			       (caddr map)
+			       (concatenate 'string
+				 base-html-dir (caddr map))))
+		      (html-dir (concatenate 'string dir subdir)))
+		 (cond ((file-exists-p html-dir)
+			(if (write-permission? html-dir)
+			    html-dir
+			    (html-pvs-error
+			      "Do not have write permission for ~a" html-dir)))
+		       (t (make-directory-path html-dir)
+			  html-dir))))
+	      (t (html-directory* (cdr mappings) pvs-dir base-html-dir))))))
+
+;;; Given a pvs directory (context), returns the URL reference relative to the
+;;; base URL, if it exists; otherwise returns a full URL.
+(defun html-relative-reference (pvs-dir)
+  (unless (file-exists-p pvs-dir)
+    (html-pvs-error "~a does not exist" pvs-dir))
+  (unless (directory-p pvs-dir)
+    (html-pvs-error "~a is not a directory" pvs-dir))
+  (if (null *pvs-url-mapping*)
+      (concatenate 'string
+	(ensure-trailing-slash (namestring pvs-dir))
+	"pvshtml/")
+      (html-relative-reference*
+       (cddr *pvs-url-mapping*)
+       (ensure-trailing-slash (namestring pvs-dir))
+       (car *pvs-url-mapping*))))
+
+(defun html-relative-reference* (mappings pvs-dir base-url)
+  (if (null mappings)
+      (html-pvs-error "~a is not mapped to anything" pvs-dir)
+      (let* ((map (car mappings))
+	     (subdir (subdirectoryp pvs-dir (car map))))
+	(if subdir
+	    (concatenate 'string
+	      (ensure-trailing-slash (cadr map))
+	      (if (string= subdir "")
+		  ""
+		  (ensure-trailing-slash
+		   (if (char= (char subdir 0) #\/)
+		       (subseq subdir 1)
+		       subdir))))
+	    (html-relative-reference* (cdr mappings) pvs-dir base-url)))))
+
+(defun make-directory-path (html-dir)
+  (dolist (dir (directory-path html-dir))
+    (unless (file-exists-p dir)
+      (cond ((or *force-dirs*
+		 (let ((ans (pvs-query "Create directory ~a? " dir)))
+		   (prog1 ans
+		     (when (eq ans :auto)
+		       (setq *force-dirs* t)))))
+	     (excl:make-directory dir)
+	     (pvs-message "Directory ~a created" dir))
+	    (t (html-pvs-error "Directory ~a not created" dir))))))
+
+(defun pvshtml-url-and-directory ()
+  (let ((entry (assoc *pvs-context-path* *pvs-url-mapping*
+		      :test #'subdirectoryp)))
+    (if entry
+	(values (cadr entry) (caddr entry))
+	(values ""
+		(append (pathname-directory *pvs-context-path*)
+			    (list "pvshtml"))))))
+
+(defun html-pvs-error (err &rest args)
+  (pvs-error "Html-pvs-file error"
+    (format nil "~?" err args)))
