@@ -399,7 +399,8 @@ full : makefileutils makebdd makepolylib makews1s ${pvsfull} ${emacs}
 
 runtime : makefileutils makebdd makepolylib makews1s ${pvsrt} ${emacs}
 
-${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files}
+${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files} \
+             lib/prelude.pvs lib/prelude.prf
 	rm -rf ${bindir}/full
 	rm -f bin/.runtime-$(LISPEXT)s
 	if [ ! -f bin/.full-$(LISPEXT)s ]; then rm -f ${all-fasl-files}; fi
@@ -422,7 +423,8 @@ ${pvsfull} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files}
 	touch ${pvsfull}
 	touch bin/.full-$(LISPEXT)s
 
-${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files}
+${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${lisp-files} \
+           lib/prelude.pvs lib/prelude.prf
 	rm -rf ${bindir}/runtime
 	rm -f bin/.full-$(LISPEXT)s
 	if [ ! -f bin/.runtime-$(LISPEXT)s ]; then rm -f ${all-fasl-files}; fi
