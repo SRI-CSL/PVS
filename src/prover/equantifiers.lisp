@@ -1187,9 +1187,6 @@ is not of the form: (<var> <term>...)" subst)
   expression        ;;with polarity instead of expressions. 
   polarity)
 
-(defmethod freevars* ((expr template) frees)
-  (freevars* (template-expression expr) frees))
-
 (defun mk-template (expr polarity)
   (make-template :expression expr :polarity polarity))
 
