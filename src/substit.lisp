@@ -580,13 +580,17 @@
 
 
 (defmethod substit* ((expr cases-expr) alist)
-  (let ((ntype (substit* (type expr) alist)))
-    (lcopy expr
-      'expression (substit* (expression expr) alist)
-      'selections (mapcar #'(lambda (s) (substit* s alist))
-			  (selections expr))
-      'else-part (substit* (else-part expr) alist)
-      'type ntype)))
+  (let* ((ntype (substit* (type expr) alist))
+	 (nexpr (substit* (expression expr) alist)))
+    (if (or (eq nexpr (expression expr))
+	    (compatible? (type nexpr) (type (expression expr))))
+	(lcopy expr
+	  'expression nexpr
+	  'selections (mapcar #'(lambda (s) (substit* s alist))
+			(selections expr))
+	  'else-part (substit* (else-part expr) alist)
+	  'type ntype)
+	(substit* (translate-cases-to-if expr) alist))))
 
 (defmethod substit* ((expr selection) alist)
   (let ((new-bindings (make-new-bindings (args expr) alist)))
