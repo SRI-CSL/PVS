@@ -183,6 +183,9 @@
 		(translate-to-dc-actuals (cdr actuals))))
       nil))
 
+(defmethod translate-to-dc ((expr constructor-name-expr))
+  (call-next-method (lift-adt expr)))
+
 (defun dc-unique-prover-name (expr)
   (cond ((constant? expr) ;;NSH(2.16.94): changed to deal with Ricky's
 	                  ;;soundness bug where actuals are ignored.
@@ -450,7 +453,7 @@
 		      ;;(skolem-application? expr)
 		      ))
 	     (break))
-	    (t (dc-mk-typed-term (cons (translate-to-dc operator) args)
+	    (t (dc-mk-typed-term (cons (translate-to-dc (lift-adt operator)) args)
 				 (dc-prover-type (type expr))))))))
 
 (defun dc-mk-typed-term (args dc-type)
