@@ -344,7 +344,7 @@
   (let ((all-mappings (nconc (mapcar #'(lambda (m)
 					 (cons (declaration (lhs m)) (rhs m)))
 			       (mappings thname))
-			     (mapping theory))))
+			     (theory-mapping theory))))
     (dolist (amap all-mappings)
       (when (module? (car amap))
 	(setq all-mappings
@@ -362,15 +362,16 @@
     (when interpretation
       (dolist (decl (interpretable-declarations theory))
 	(unless (assq decl mapping)
-	  (push (cons decl (find decl int-decls
-				 :test #'(lambda (x y)
-					   (and (declaration? y)
-						(same-id x y)))))
-		mapping))))
+	  (let ((fdecl (find decl int-decls
+			     :test #'(lambda (x y)
+				       (and (declaration? y)
+					    (same-id x y))))))
+	    (unless (eq decl fdecl)
+	      (push (cons decl fdecl) mapping))))))
     #+pvsdebug (assert (every #'cdr mapping))
     mapping))
 
-(defmethod mapping (module)
+(defmethod theory-mapping (module)
   (declare (ignore module))
   nil)
 
@@ -450,7 +451,7 @@
 	   (append (mapcar #'(lambda (x)
 			       (let ((interp
 				      (assq (car x)
-					    (mapping interpreted-theory))))
+					    (theory-mapping interpreted-theory))))
 				 (if interp
 				     (cons (cdr interp) (cdr x))
 				     x)))
@@ -1009,7 +1010,12 @@
   (let* ((decl (declaration expr))
 	 (act (cdr (assq decl bindings))))
     (if act
-	(expr act)
+	(if (declaration? act)
+	    (mk-name-expr (id act) nil nil
+			  (mk-resolution act
+			    (mk-modname (id (module act)))
+			    (type act)))
+	    (expr act))
 	(let ((nexpr (call-next-method)))
 	  (if (eq nexpr expr)
 	      expr
