@@ -29,6 +29,12 @@ if test "x$with_allegro" = "x"; then
 else
    ALLEGRODIR=$with_allegro
 fi
+changequote(<<, >>)dnl
+ALLEGROLIB=`ls $ALLEGRODIR | grep "libacli[0-9]" | cut -c 4-`
+if test "x$ALLEGROLIB" = "x"; then
+   ALLEGROLIB=`ls $ALLEGRODIR | grep "libacl[0-9]" | cut -c 4-`
+fi
+changequote([, ])dnl
 if test -f $ALLEGRODIR/mlisp ; then
    LISP=allegro6.2
    LISPEXE=mlisp
@@ -42,6 +48,10 @@ else
    fi
 fi
 AC_MSG_RESULT($ALLEGRODIR)
+AC_MSG_CHECKING(lisp verson)
+LISPVERSION=`$ALLEGRODIR/$LISPEXE -e '(format t "~a" (lisp-implementation-version))' -kill | tail -1 | cut -d" " -f 1`
+LISP=allegro$LISPVERSION				  
+AC_MSG_RESULT($LISP)
 AC_SUBST(ALLEGRODIR)
 AC_SUBST(LISP)
 AC_SUBST(LISPEXE)

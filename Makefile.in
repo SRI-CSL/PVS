@@ -480,7 +480,7 @@ makews1s :
 
 src/ics-interface/$(PLATFORM)/ics_lisp_error.so : src/ics-interface/$(PLATFORM)/ics_lisp_error.o
 	umask 002; \
-	$(LD) -G -o $@ $< -L@ALLEGRODIR@ -lacli601
+	$(LD) -G -o $@ $< -L@ALLEGRODIR@ -l@ALLEGROLIB@
 
 src/ics-interface/$(PLATFORM)/ics_lisp_error.o : src/ics-interface/ics_lisp_error.c
 	umask 002; \
