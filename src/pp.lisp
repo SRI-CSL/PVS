@@ -1068,7 +1068,6 @@ bind tighter.")
     (if (typep declared-type 'dep-domain-tupletype)
 	(let* ((types (types declared-type))
 	       (bindings (var-bindings declared-type))
-	       (tbindings bindings)
 	       (ctr 0)
 	       (*parsing-or-unparsing* t))
 	  (pprint-logical-block (nil types)
@@ -1577,6 +1576,7 @@ bind tighter.")
 	      (cdr (exprs arg)))))
 
 (defmethod real-projected-arg-tuple-expr? (arg)
+  (declare (ignore arg))
   nil)
 
 (defmethod pp* ((ex if-expr))
@@ -1618,6 +1618,7 @@ bind tighter.")
        (chained-else? (expression ex))))
 
 (defmethod chained-else? (ex)
+  (declare (ignore ex))
   nil)
 
 (defmethod pp* ((ex chained-if-expr))
