@@ -267,7 +267,7 @@
 		  (:file "resolve")
 		  (:file "tcc-gen")
 		  (:file "set-type")
-		  ;;(:file "check-for-tccs")
+		  (:file "check-for-tccs")
 		  (:file "tcexprs")
 		  (:file "tcdecls")
 		  (:file "judgements")
