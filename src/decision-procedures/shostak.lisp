@@ -31,6 +31,15 @@
 (defvar *bass* nil)
 
 (defun invoke-process (eqn cong-state)
+  (let ((pos-res (invoke-process* eqn cong-state)))
+    (or pos-res
+	(when (need-neg-processing eqn cong-state)
+	  (invoke-process-neg eqn cong-state)))))
+
+(defun need-neg-processing (eqn cong-state)
+  (integer-inequality-p eqn cong-state))
+
+(defun invoke-process* (eqn cong-state)
   (when (and nil
 	     (eq eqn pvs::*beqn*)
 	     (equal (cong-state-used-assertions cong-state)
@@ -54,25 +63,55 @@
 	(setf (cong-state-used-assertions cong-state)
 	      (cdr (cong-state-used-assertions cong-state))))
       *false*)
-     (*dp-changed* (check-and-canonize-neqs cong-state))
+     (*dp-changed* (invoke-process-changed canon-eqn cong-state))
      (t (setf (cong-state-used-assertions result)
 	      (cdr (cong-state-used-assertions result)))
 	*true*))))
 
+
+(defun invoke-process-changed (canon-eqn cong-state)
+  (let ((check-neqs (check-and-canonize-neqs cong-state)))
+    (cond
+     ((false-p check-neqs)
+      (setf (cong-state-used-assertions cong-state)
+	    (cdr (cong-state-used-assertions cong-state)))
+      *false*)
+     (t nil))))
+
+(defun invoke-process-neg (eqn cong-state)
+  (let ((neg-result (negate-and-check-eqn eqn cong-state)))
+    (cond
+     ((true-p neg-result)
+      (setf (cong-state-used-assertions cong-state)
+	    (cdr (cong-state-used-assertions cong-state)))
+      *false*)
+     ((false-p neg-result)
+      (setf (cong-state-used-assertions cong-state)
+	    (cdr (cong-state-used-assertions cong-state)))
+      *true*)
+     (t nil))))
+
+(defun negate-and-check-eqn (eqn cong-state)
+  (nprotecting-cong-state
+   (new-cong-state (pop-cong-state cong-state))
+   (invoke-process* (signegation (mk-negation eqn) new-cong-state)
+		    new-cong-state)))
+
 (defun canon-neq (neq cong-state)
-  (let* ((eq (lhs neq))
-	 (new-lhs (canon (lhs eq) cong-state 'nomod))
-	 (new-rhs (canon (rhs eq) cong-state 'nomod)))
-    (if (eq new-lhs new-rhs)
-	*false*
-	(mk-nequality new-lhs new-rhs))))
+  (if (false-p neq) neq
+      (let* ((eq (lhs neq))
+	     (new-lhs (canon (lhs eq) cong-state 'nomod))
+	     (new-rhs (canon (rhs eq) cong-state 'nomod)))
+	(if (eq new-lhs new-rhs)
+	    *false*
+	    (mk-nequality new-lhs new-rhs)))))
 
 (defun check-and-canonize-neqs (cong-state)
   (let ((false-eq?
 	 (loop for neq in (nequals cong-state)
 	       for canon-neq = (canon-neq neq cong-state)
 	       collect canon-neq into new-neqs
-	       thereis (eq canon-neq *false*)
+	       thereis (and (false-p canon-neq) (not (false-p neq)))
 	       finally (setf (nequals cong-state) new-neqs))))
     (cond
      (false-eq?
