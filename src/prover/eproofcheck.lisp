@@ -1690,7 +1690,8 @@
 (defun assert-tccforms* (tccforms ps)
   (if (null tccforms) nil
       (multiple-value-bind (sig value)
-	  (assert-if (tccinfo-formula (car tccforms)))
+	  (let ((*sequent-typealist* nil))
+	    (assert-if (tccinfo-formula (car tccforms))))
 	(cond ((tc-eq value *true*)
 	       (assert-tccforms* (cdr tccforms) ps))
 	      ((eq sig 'X) (cons (car tccforms)
