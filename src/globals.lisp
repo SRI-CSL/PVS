@@ -114,6 +114,10 @@ prelude libraries")
 (defvar *in-typechecker* nil
   "A flag indicating that we are in the typechecker")
 
+(defvar *in-evaluator* nil)
+
+(defvar *pvs-eval-do-timing* nil)
+
 (defvar *in-coercion* nil)
 
 (defvar *noninteractive* nil)
