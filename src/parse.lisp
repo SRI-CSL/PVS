@@ -313,14 +313,14 @@
 
 (defun xt-assuming-part (assumings)
   (mapcan #'(lambda (ass)
-	      (if (is-sop 'importing-elt ass)
+	      (if (is-sop 'using-elt ass)
 		  (xt-importing-elt ass)
 		  (xt-assuming ass)))
 	  (term-args assumings)))
 
 (defun xt-assumings (assumings)
   (mapcan #'(lambda (ass)
-	      (if (is-sop 'importing-elt ass)
+	      (if (is-sop 'using-elt ass)
 		  (xt-importing-elt ass)
 		  (xt-assuming ass)))
 	  (term-args assumings)))

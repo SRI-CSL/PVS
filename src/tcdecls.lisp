@@ -26,9 +26,9 @@
       (setf (declaration *current-context*) decl)
       (typecase decl
 	(declaration (typecheck-decl decl))
-	(using (tcdebug "~%    Processing using")
-	       (let ((*generating-adt* nil))
-		 (typecheck-usings (modules decl))))
+	(importing (tcdebug "~%    Processing using")
+		   (let ((*generating-adt* nil))
+		     (typecheck* decl nil nil nil)))
 	(datatype (unless (typechecked? decl)
 		    (tcdebug "~%    Processing Datatype ~a" (id decl))
 		    (unwind-protect

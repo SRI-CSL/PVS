@@ -210,7 +210,7 @@
 (defmethod typecheck* ((use importing) expected kind arguments)
   (declare (ignore expected kind arguments))
   (typecheck-using (theory-name use))
-  (setf (saved-context use) (copy-context (current-context)))
+  (setf (saved-context use) (copy-context *current-context*))
   use)
 
 (defun typecheck-using (theory-inst)
@@ -239,10 +239,6 @@
 	   (check-compatible-params (formals-sans-usings mod)
 				    (actuals inst) nil))
 	  (t (setq nmodinst (set-type-actuals inst))))
-;    (unless (from-prelude? mod)
-;      (pushnew nmodinst
-;	       (instances-used *current-theory*)
-;	       :test #'tc-eq))
     (unless *ignore-exportings*
       (add-exporting-with-theories mod nmodinst))
     (add-to-using nmodinst)))
@@ -314,6 +310,9 @@
 		  (remove-if-not #'mod-or-using?
 		    (all-decls theory)))))
 	immediate-usings)))
+
+(defmethod theory-name ((mdecl mod-decl))
+  (modname mdecl))
 
 (defun datatype-instances (imported-adt)
   (let* ((adt (get-theory imported-adt))
