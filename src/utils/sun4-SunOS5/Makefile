@@ -1,4 +1,4 @@
-LD = /pkg/binutils/bin/ld
+LD = ld
 LDFLAGS = -G -L./
 CC=gcc
 CFLAGS=-fPIC
@@ -14,7 +14,7 @@ obj=file_utils.o
 all : file_utils.so
 
 file_utils.so: ${obj}
-	$(LD) ../utils-ld-table $(LDFLAGS) -o file_utils.so ${obj}
+	$(LD) ../utils-ld-table $(LDFLAGS) --retain-symbols-file ../utils-ld-symbols -o file_utils.so ${obj}
 
 clean :
 	rm -f *.o *.a *.so

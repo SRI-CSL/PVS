@@ -1,0 +1,8 @@
+/* Table to add symbol table entries for the unique entry points to file_utils.so */
+
+fileutils___file_exists_p
+fileutils___directory_p
+fileutils___read_permission_p
+fileutils___write_permission_p
+fileutils___file_write_time
+fileutils___getfileinfo
