@@ -581,7 +581,8 @@ The save-pvs-file command saves the PVS file of the current buffer."
 		((file-equal file lname)
 		 (setq shortname lname)))
 	  (setq lname (apply 'concat
-			(mapcar '(lambda (x) (concat "/" x)) dirnames)))
+			(cons "/" (mapcar '(lambda (x) (concat "/" x))
+				    dirnames))))
 	  (setq hname (concat "~" lname)))
 	shortname)
       file))
