@@ -2399,6 +2399,9 @@
 		nte)))
 	te)))
 
+(defmethod find-supertype ((te type-var))
+  te)
+
 ;;; copy-all makes copies all the way down the object.  Because it uses
 ;;; gensubst, this function may only be used when the object has been
 ;;; typechecked, and *current-context* must be set.
