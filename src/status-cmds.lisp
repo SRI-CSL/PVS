@@ -309,7 +309,7 @@
 
 (defmethod provable-formula? ((decl formula-decl))
   (or (not (memq (spelling decl) '(ASSUMPTION AXIOM)))
-      (justification decl)))
+      (proved? decl)))
 
 (defmethod provable-formula? (obj)
   (declare (ignore obj))
