@@ -228,22 +228,22 @@ lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 
 fasl-files = $(lisp-files:.lisp=.$(LISPEXT))
 
-ifeq ($(shell if [ -x ${emacs20} ] ; then echo OK ; fi), OK)
+ifeq ($(shell if [ -x ${EMACS20} ] ; then echo OK ; fi), OK)
 emacs20-elc = $(pvs-emacs20-src:.el=.elc) $(ilisp-emacs20-src:.el=.elc)
 emacs += emacs/emacs20/pvs-load.elc
 endif
 
-ifeq ($(shell if [ -x ${emacs19} ] ; then echo OK ; fi), OK)
+ifeq ($(shell if [ -x ${EMACS19} ] ; then echo OK ; fi), OK)
 emacs19-elc = $(pvs-emacs19-src:.el=.elc) $(ilisp-emacs19-src:.el=.elc)
 emacs += emacs/emacs19/pvs-load.elc
 endif
 
-ifeq ($(shell if [ -x ${xemacs20} ] ; then echo OK ; fi), OK)
+ifeq ($(shell if [ -x ${XEMACS20} ] ; then echo OK ; fi), OK)
 xemacs20-elc = $(pvs-xemacs20-src:.el=.elc) $(ilisp-xemacs20-src:.el=.elc)
 emacs += emacs/xemacs20/pvs-load.elc
 endif
 
-ifeq ($(shell if [ -x ${xemacs19} ] ; then echo OK ; fi), OK)
+ifeq ($(shell if [ -x ${XEMACS19} ] ; then echo OK ; fi), OK)
 xemacs19-elc = $(pvs-xemacs19-src:.el=.elc) $(ilisp-xemacs19-src:.el=.elc)
 emacs += emacs/xemacs19/pvs-load.elc
 endif
