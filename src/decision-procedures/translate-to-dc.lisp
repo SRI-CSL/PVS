@@ -118,6 +118,11 @@
 (defmethod translate-to-dc ((list list))
   (mapcar #'(lambda (l) (translate-to-dc l)) list))
 
+(defmethod translate-to-dc ((expr field-decl))
+  (let ((newconst (dc-unique-prover-name expr)))
+    (add-to-prtype-hash newconst expr (type expr))
+    newconst))
+
 (defmethod translate-to-dc ((expr name-expr))
   (let* ((pos (position expr *bindings*	;(NSH:4-5-91)
 			:test #'same-declaration))
@@ -143,7 +148,7 @@
 (defun dc-unique-prover-name (expr)
   (cond ((constant? expr) ;;NSH(2.16.94): changed to deal with Ricky's
 	                  ;;soundness bug where actuals are ignored.
-	 (let* ((id-hash (pvs-gethash (normalize-name-expr-actuals expr)
+	(let* ((id-hash (pvs-gethash (normalize-name-expr-actuals expr)
 				      *dc-translate-id-hash*))
 		(newconst
 		 (or id-hash
@@ -169,6 +174,20 @@
 		   newconst)
 	     ;;(format t "~%adding ~a to typealist" (car newconst))
 	     (add-to-prtype-hash  newconst expr))
+	   newconst))
+	((typep expr 'field-decl)
+	 (let* ((id-hash (pvs-gethash expr
+				      *dc-translate-id-hash*))
+		(newconst
+		 (or id-hash
+		     (dp::mk-constant
+			    (intern (format nil "~a-~a"
+				      (id expr)
+				      (funcall
+				       *dc-translate-id-counter*)))))))
+	   (unless id-hash
+	     (setf (pvs-gethash expr *dc-translate-id-hash*)
+		   newconst))
 	   newconst))
 	(t (add-to-local-prtype-hash (id expr) expr)
 	   (if *translate-rewrite-rule*
@@ -228,22 +247,38 @@
   (dp::mk-constant (number expr)))
 
 (defmethod translate-to-dc ((expr record-expr))
-  ;; Creates a dummy record and an update of it.
-  (let* ((dummy (get-rec-type-dummy-name (type expr)))
-	 (dc-dummy (dp::mk-constant dummy))
-	 (decl (mk-const-decl dummy (type expr)))
-	 (res (make-resolution decl (mod-name *current-context*)
-			       (type expr)))
-	 (name (mk-name dummy nil nil res))
-	 (nexpr (mk-name-expr name)))
-    (setf (type nexpr) (type expr))
-    (translate-dc-assignments (assignments expr)
-			   dc-dummy
-			   (type expr))))
+  (translate-dc-assignments-to-record (assignments expr)
+				      (find-supertype (type expr)))))
 
+(defun sort-assignments (assignments)
+  (sort (copy-list assignments)
+	#'string-lessp
+	:key #'(lambda (assignment)
+		 (id (caar (arguments assignment))))))
+
+(defun dc-sort-fields (fields)
+  (sort (copy-list fields)
+	#'string-lessp
+	:key #'id))
+
+(defun translate-dc-record-constructor (type)
+  (let* ((sorted-fields (dc-sort-fields (fields type)))
+	 (tr-sorted-values (mapcar #'(lambda (ass)
+				       (translate-to-dc (expression ass)))
+				   sorted-assignments)))
+    (dp::mk-term
+     (cons dp::*record* tr-sorted-fields))))
+
+(defun translate-dc-assignments-to-record (assignments type)
+  (let* ((sorted-assignments (sort-assignments assignments))
+	 (tr-sorted-values (mapcar #'(lambda (ass)
+				       (translate-to-dc (expression ass)))
+				   sorted-assignments))
+	 (tr-record-constructor (translate-dc-record-constructor type)))
+    (dp::mk-term (cons tr-record-constructor tr-sorted-values))))
 
 (defmethod translate-to-dc ((expr tuple-expr))
-  (dp::mk-term (cons (dp::mk-constant 'TUPCONS) (translate-to-dc (exprs expr)))))
+  (dp::mk-term (cons dp::*tuple* (translate-to-dc (exprs expr)))))
 	
 ;(defmethod translate-to-dc ((expr coercion))
 ;  (translate-to-dc (expression expr)))
@@ -492,6 +527,7 @@
 ;;;        (1) (APPLY int UPDATE g(1) (x' y') 1))
 
 (defmethod translate-to-dc ((expr update-expr))
+  (break)
   (translate-dc-assignments (assignments expr)
 			 (translate-to-dc (expression expr))
 			 (type expr)))
@@ -509,40 +545,6 @@
 			 (expression assign)
 			 trbasis
 			 (find-supertype type)))
-
-(defun translate-dc-assign-args (args value trbasis type)
-  (if args
-      (dp::mk-term (list dp::*update*
-		     trbasis
-		     (typecase type
-		       (recordtype
-			(position (caar args) (sort-fields (fields type))
-				  :test #'same-id))
-		       (tupletype
-			(1- (number (caar args))))
-		       (t (if (singleton? (car args))
-			      (translate-to-dc (caar args))
-			      (cons (dp::mk-constant 'tupcons)
-				    (translate-to-dc (car args))))))
-		     (let* ((nbasis (typecase type
-				      (recordtype
-				       (mk-assign-application (caar args) (list basis)))
-				      (tupletype
-				       (make-projection-application
-					(number (caar args)) basis))
-				      (t (mk-assign-application basis (car args)))))
-			    (ntrbasis (translate-to-dc nbasis)))
-		       (translate-dc-assign-args (cdr args)
-						 value
-						 ;nbasis
-						 ntrbasis
-						 (typecase type
-						   (recordtype
-						    (range (type (caar args))))
-						   (tupletype
-						    (type nbasis))
-						   (t (range type)))))))
-  (translate-to-dc value)))
 
 (defun translate-dc-assign-args (args value trbasis type)
   (if args
@@ -593,6 +595,99 @@
 				     ntrbasis
 				     ntrbasis-type))))
   (translate-to-dc value)))
+
+(defun translate-dc-assign-args (args value trbasis type)
+  (if args
+      (typecase type
+	(recordtype (translate-dc-assign-args-record args value trbasis type))
+	(tupletype (translate-dc-assign-args-tuple args value trbasis type))
+	(t (translate-dc-assign-args-update args value trbasis type)))
+      (translate-to-dc value)))
+
+(defun translate-dc-assign-args-record (args value trbasis type)
+  (if ((dp::constant-p trbasis)
+       (translate-dc-assign-args-base-record args value trbasis type))
+      (let* ((tr-record-constructor
+	      (if (constant-p trbasis)
+		  (translate-dc-record-constructor type)
+		  (dp::funysm trbasis)))
+	     (position (position (caar args) (dc-sort-fields (fields type))
+				 :test #'same-id))
+	     (new-value 
+	      (let* ((ntrbasis-type
+		      (find-supertype 
+		       (type (find (caar args)(fields type)
+				   :test #'same-id))))
+		     (ntrbasis
+		      (make-dc-field-application
+		       (mk-funtype type ntrbasis-type)
+		       (position (caar args)
+				 (sort-fields (fields type))
+				 :test #'same-id)
+		       trbasis)))
+		(translate-dc-assign-args (cdr args)
+					  value
+					  ntrbasis
+					  ntrbasis-type)))
+	     (args
+	      (if (dp::constant-p trbasis)
+		  (translate-dc-record-name-to-record-args trbasis type
+							   position
+							   new-value)
+		  (let ((old-args (dp::funargs trbasis)))
+		    (setf (nth position old-args)
+			  new-value)
+		    old-args))))
+	(dp::mk-term (cons tr-record-constructor args)))))
+
+(defun translate-dc-record-name-to-record-args (trbasis type position value)
+  (loop for i from 0 below (length (fields type))
+	collect (if (= i position)
+		    value
+		    (dp::mk-term (list trbasis
+				       (dp::mk-constant fieldnum))))))
+
+(defun translate-dc-assign-args-tuple (args value trbasis type)
+      (dp::mk-term (list dp::*update*
+		     trbasis
+		     (dp::mk-constant (1- (number (caar args))))
+		     (let* ((ntrbasis-type
+			     (find-supertype 
+			      (nth (1- (number (caar args)))
+				   (types type))))
+			    (ntrbasis
+			     (make-dc-projection-application
+			      ntrbasis-type (number (caar args)) trbasis)))
+		       (translate-dc-assign-args (cdr args)
+						 value
+						 ntrbasis
+						 ntrbasis-type)))))
+
+(defun translate-dc-assign-args-update (args value trbasis type)
+      (dp::mk-term (list dp::*update*
+		     trbasis
+		     (if (singleton? (car args))
+			 (translate-to-dc (caar args))
+			 (dp::mk-term
+			  (list (dp::mk-constant 'tupcons)
+				(translate-to-dc (car args)))))
+		     (let* ((ntrbasis-type
+			     (find-supertype 
+			      (range type)))
+			    (ntrbasis
+			     (make-dc-assign-application
+			      type
+			      trbasis
+			      (if (singleton? (car args))
+				  (translate-to-dc (caar args))
+				  (dp::mk-term
+				   (cons 'TUPCONS
+					 (translate-to-dc (car args))))))))
+		       (translate-dc-assign-args (cdr args)
+						 value
+						 ntrbasis
+						 ntrbasis-type)))))
+
 
 (defun make-dc-field-application (field-accessor-type fieldnum dc-expr)
   (let ((appl (dp::mk-term (list dc-expr (dp::mk-constant fieldnum)))))
