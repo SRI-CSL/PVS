@@ -473,7 +473,14 @@
     decls))
 
 (defun xt-subtype-judgement* (jdecl dtype place)
-  (cond ((is-sop 'jnamedecl jdecl)
+  (cond ((is-sop 'jsubtypedecl jdecl)
+	 (let ((type (xt-not-enum-type-expr (term-arg0 jdecl))))
+	   (make-instance 'subtype-judgement
+	     'declared-subtype type
+	     'declared-type dtype
+	     'chain? t
+	     'place place)))
+	((is-sop 'jnamedecl jdecl)
 	 (let ((name (xt-name (term-arg0 jdecl))))
 	   (make-instance 'subtype-judgement
 	     'declared-subtype (change-class name 'type-name)
