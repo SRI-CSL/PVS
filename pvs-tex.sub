@@ -30,8 +30,11 @@ AND		id	1	\wedge
 OR		id	1	\vee
 NOT		id	1	\neg
 IFF		id	2	\equiv
-FALSE		id	5	{\textsc{\textrm{false}}}
-TRUE		id	4	{\textsc{\textrm{true}}}
+XOR		id	3	{\pvskey{XOR}}
+WHEN		id	4	{\pvskey{WHEN}}
+FALSE		id	5	{\pvskey{FALSE}}
+TRUE		id	4	{\pvskey{TRUE}}
+IF		id	2	{\pvskey{IF}}
 
 /\		id	1	\wedge
 \/		id	1	\vee
