@@ -28,6 +28,9 @@
 (defvar *pvs-path* nil
   "Set by Emacs")
 
+(defvar *pvs-emacs-interface* nil
+  "Set to t by Emacs in pvs-load - affects how pvs-emacs functions work")
+
 (defparameter *pvs-directories*
   '("" "src" "src/prover" "src/decision-procedures" "src/interface"
     "src/decision-procedures/polylib" "src/utils" "BDD" "src/interface"
@@ -45,7 +48,11 @@
 
 (defvar *pvs-context* nil)
 
-(defvar *pvs-context-path* nil)
+(defvar *pvs-context-path* nil
+  "The current context path - this can change when loading libraries")
+
+(defvar *pvs-current-context-path* nil
+  "The current context path - this one only changes with change-context")
 
 (defvar *pvs-initialized* nil)
 (defvar *pvs-files* nil)
@@ -54,7 +61,7 @@
   "Used to send large amounts of information to/from emacs")
 
 (defvar *pvs-verbose* nil
-  "Flag indicating whether to print messages output with verbose-msg")
+  "Flag indicating level of messages to print when noninteractive")
 
 (defvar *suppress-msg* nil
   "Flag indicating whether to suppress messages output with pvs-message")
@@ -145,6 +152,12 @@ prelude libraries")
 (defvar *in-coercion* nil)
 
 (defvar *noninteractive* nil)
+(defvar *noninteractive-timeout* nil)
+(defvar *proof-timeout* nil)
+
+(defvar *recursive-calls-without-enough-args* nil)
+
+(defvar *recursive-subtype-term* nil)
 
 (defvar *expression-types* (make-hash-table :test 'eq))
 
@@ -165,6 +178,8 @@ prelude libraries")
 
 (defvar *type-error-catch* nil
   "Set to a value to throw to when trying to control typechecking.")
+
+(defvar *already-checked-for-k-conversion* nil)
 
 (defvar *tc-match-exact* nil)
 
@@ -253,6 +268,27 @@ generate unique accessors for these types")
 declarations.  Used by pvs-error to put the cursor on the datatype declaration
 rather than the generated declaration.")
 
+(defun pprint-comment-strings (stream string)
+  (let ((lines (mk::split-string string :item #\newline))
+	(ccol (1+ (excl:stream-line-column stream))))
+    (when (and (cdr lines) (integerp ccol) (> ccol 0)
+	       (every #'(lambda (line)
+			  (and (> (length line) ccol)
+			       (= (count #\space line :end ccol) ccol)))
+		      (cdr lines)))
+      (setq lines
+	    (cons (car lines)
+		  (mapcar #'(lambda (line)
+			      (subseq line ccol))
+		    (cdr lines)))))
+    (pprint-logical-block (stream lines :prefix "\"" :suffix "\"")
+      (pprint-indent :block 0)
+      (loop (pprint-exit-if-list-exhausted)
+	    (write (pprint-pop) :stream stream :escape nil :pretty nil
+		   :pprint-dispatch nil)
+	    (pprint-exit-if-list-exhausted)
+	    (pprint-newline :mandatory stream)))))
+
 (defvar *proof-script-pprint-dispatch*
   #-gcl
   (let ((table (copy-pprint-dispatch)))
@@ -260,6 +296,10 @@ rather than the generated declaration.")
 			 #'(lambda (s list)
 			     (let ((*print-escape* t))
 			       (pprint-linear s list)))
+			 1
+			 table)
+    (set-pprint-dispatch 'string
+			 #'pprint-comment-strings
 			 1
 			 table)
     table)
@@ -287,6 +327,8 @@ that gensubst does not try to pseudo-normalize inappropriately.")
 (defvar *use-default-dp?* nil)
 (defvar *prover-print-lines* nil)
 (defvar *print-lines* nil)
+
+(defvar *substit-dont-simplify* nil)
 
 (defvar *context-modified* nil
   "Set by add-declaration and modify-declaration to indicate that the
@@ -345,6 +387,7 @@ Needed to generate the same dummy name for record literals.")
 (defvar *pplinelength* 78)
 (defvar *ppmorespace* 0)
 (defvar *ppnewlinecomments* 'indent)
+(defvar *ppmacros* nil)
 ;(defvar *prbell* 'yes)
 ;(defvar *prbetareduce* 'yes)
 ;(defvar *prchain* 'terse)
@@ -396,6 +439,8 @@ Needed to generate the same dummy name for record literals.")
     (<\| . |triangleleft|)
     (\|> . |triangleright|)
     ([\|\|] . |specialbrackets|)
+    (\(\|\|\) . |specialparens|)
+    ({\|\|} . |specialbraces|)
     (O . |oh|)
     (|o| . |oh|)
     ))
