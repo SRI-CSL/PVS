@@ -18,20 +18,24 @@
      (setf *index* (1+ *index*)))
   
   (defun symtab-index (expr)
-    (or (gethash expr *symtab*)
+    (or (index-of-boundvar expr)
+        (gethash expr *symtab*)
 	(symtab-add-index expr)))
 	
   (defun symtab-add-index (expr)
     (prog1
       (setf *index* (1+ *index*))
       (setf *size* (1+ *size*))
-      (setf (gethash *symtab* expr) *index*)))
+      (setf (gethash expr *symtab*) *index*)))
 
   (defun symtab-shadow (expr)
     (assert (typep expr 'name-expr))
     (prog1
-      (symtab-add-index expr)
-      (push expr *bvars*)))
+      (setf *index* (1+ *index*))
+      (push (cons expr *index*) *bvars*)))
+
+  (defun index-of-boundvar (expr)
+    (cdr (assoc expr *bvars* :test #'tc-eq)))
 
   (defun symtab-shadow* (exprs &optional acc)
     (if (null exprs)
@@ -52,17 +56,27 @@
 	  (fvars   (make-array *size* :element-type 'string))
 	  (types   (make-string *size*))
 	  (i       0))
-      (loop for (index . expr) in *symtab* do
+      (maphash #'(lambda (expr index)
 		   (setf (elt offsets i) index)
 		   (setf (elt fvars i) (format nil "~a" expr))
                    (let* ((level (level expr))
 			  (char (cond ((eql level 0) #\0)
 				      ((eql level 1) #\1)
-				      ((eql level 2) #\2))))
+				      ((eql level 2) #\2)
+				      (t
+				       (break)))))
 			 (setf (elt types i) char))
 		   (setf i (1+ i)))
-      (values *symtab* *size* offsets fvars types)))
+	       *symtab*)
+      (values (symtab) *size* offsets fvars types)))
 
+ (defun symtab ()
+   (let ((alist nil))
+     (maphash #'(lambda (e x)
+		  (push (cons x e) alist))
+	     *symtab*)
+     alist))
+ 
   (defun shielding? (expr)
     (some #'(lambda (bvar)
 	      (occurs-in bvar expr))
