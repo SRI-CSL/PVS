@@ -565,23 +565,25 @@ instantiation mechanism.  This defaults to the (INST?) strategy."
   "Simplifying with decision procedures, rewriting, propositional
 reasoning, quantifier instantiation, skolemization, if-lifting.")
 
-(defun generate-instantiator-command (if-match polarity? instantiator)
+(defun generate-instantiator-command (if-match polarity? instantiator &optional fnum)
   (let* ((instcmd (if (consp instantiator)
 		      (car instantiator)
 		      instantiator))
 	 (givenargs (when (listp
 			   instantiator)
 		      (cdr instantiator)))
-	 (okargs (or (cddr (assq instcmd *prover-keywords*))
+	 (okkeys (or (assq instcmd *prover-keywords*)
 		     (format t "~a is not a valid prover command" instcmd)
 		     (restore)))
+	 (okargs (cddr okkeys))
 	 (instargs (append (when (and (memq :if-match okargs)
 				      (not (memq :if-match givenargs)))
 			     (list :if-match if-match))
 			   (when (and (memq :polarity? okargs)
 				      (not (memq :if-match givenargs)))
 			     (list :polarity? polarity?))))
-	 (command (append (list instcmd) givenargs instargs)))
+	 (fnum    (when fnum (list fnum)))
+	 (command (append (list instcmd) fnum givenargs instargs)))
     (if (check-arguments command)
 	command
 	'(fail))))
@@ -2701,7 +2703,7 @@ or succedent formula in the sequent."
   (then@ (lemma lemma subst)
 	 (if *new-fmla-nums*
 	     (let ((fnum (car *new-fmla-nums*))
-		   (command (generate-instantiator-command if-match nil instantiator)))
+		   (command (generate-instantiator-command if-match nil instantiator fnum)))
 	       (then 
 		(beta fnum)
 		(repeat command)))
