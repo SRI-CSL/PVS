@@ -51,6 +51,7 @@ if [ -f $HOME/.emacs ]
 fi
 PVSXINIT=${PVSXINIT:-""}
 PVSFORCEDP=nil
+pvsruntime=
 while [ $# -gt 0 ]
 do
    case $1 in
@@ -63,6 +64,8 @@ do
 		 else echo "The -redhat flag only makes sense under Linux"
 	      fi
 	      shift;;
+     -runtime) pvsruntime=1
+               shift;;
      -decision-procedures)
         case $2 in
 	  new)  PVSDEFAULTDP=new;;
@@ -156,7 +159,7 @@ fi
 
 binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
 
-if [ -d $binpath/full -a -x $binpath/full/$PVSIMAGE ]
+if [ -d $binpath/full -a -x $binpath/full/$PVSIMAGE -a ! "$pvsruntime" ]
    then PATH=$binpath/full:$binpath:$PVSPATH/bin:$PATH
 elif [ -d $binpath/runtime -a -x $binpath/runtime/$PVSIMAGE ]
    then PATH=$binpath/runtime:$binpath:$PVSPATH/bin:$PATH
