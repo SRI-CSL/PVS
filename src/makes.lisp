@@ -1546,7 +1546,6 @@
 	     'argument (make!-arg-tuple-expr ex1 ex2)
 	     'type *boolean*))))
 
-
 (defun make!-conjunction* (exprs)
   (make!-conjunction** (reverse exprs) *true*))
 
