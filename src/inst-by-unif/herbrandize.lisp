@@ -1,9 +1,7 @@
 (in-package :pvs)
 
-(defun herbrandize (fmlas &optional xs renamings bndngs)
-  (let ((*bound-variables* (append bndngs *bound-variables*)))
-    (declare (special *bound-variables*))
-    (herbrandize* fmlas xs renamings)))
+(defun herbrandize (fmlas &optional xs renamings)
+    (herbrandize* fmlas xs renamings))
 
 (defmethod herbrandize* ((fmlas null) xs subst)
   (values nil xs subst))
