@@ -301,8 +301,7 @@
 		     (find-match-polarity lhs-template
 					  (args2 expr) bind-alist
 					  subst order
-				      
-					  (toggle polarity)
+					  polarity
 					  )
 		   (if (eq insub 'fail)
 		       (find-match-polarity

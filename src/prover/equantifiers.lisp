@@ -1098,43 +1098,46 @@ is not of the form: (<var> <term>...)" subst)
   ((expr application) boundvars polarity accum)
   (let* ((op (operator expr))
 	 (arg-templates 
-	  (when (and (name-expr? op)
-		     (interpreted? op))
-	    (cond
-	     ((memq (id (operator expr)) '(< <=))
-	      (find-templates-with-arithmetic-polarity
-	       (args1 expr) boundvars
-	       (arith-polarity polarity 'less)
-	       (find-templates-with-arithmetic-polarity (args2 expr)
-					     boundvars
-					     (arith-polarity polarity 'more)
-					     accum)))
-	     ((memq (id (operator expr)) '(> >=))
-	      (find-templates-with-arithmetic-polarity
-	       (args1 expr) boundvars
-	       (arith-polarity polarity 'more)
-	       (find-templates-with-arithmetic-polarity (args2 expr)
-					     boundvars
-					     (arith-polarity polarity 'less)
-					     accum)))
-	     ((is-plus? op)
-	      (find-templates-with-arithmetic-polarity
-	       (args1 expr) boundvars polarity
-	       (find-templates-with-arithmetic-polarity
-		(args2 expr) boundvars polarity accum)))
-	     ((is-sub-minus? op)
-	      (find-templates-with-arithmetic-polarity
-	       (args1 expr)
-	       boundvars
-	       polarity
-	       (find-templates-with-arithmetic-polarity
-		(args2 expr)
-		boundvars (toggle polarity) accum)))
-	     ((is-minus? op)
-	      (find-templates-with-arithmetic-polarity
-	       (argument expr)
-	       boundvars (toggle polarity) accum))
-	     (t nil)))))
+	  (if (and (name-expr? op)
+		   (interpreted? op))
+	      (cond
+	       ((memq (id (operator expr)) '(< <=))
+		(find-templates-with-arithmetic-polarity
+		 (args1 expr) boundvars
+		 (arith-polarity polarity 'less)
+		 (find-templates-with-arithmetic-polarity (args2 expr)
+							  boundvars
+							  (arith-polarity
+							   polarity 'more)
+							  accum)))
+	       ((memq (id (operator expr)) '(> >=))
+		(find-templates-with-arithmetic-polarity
+		 (args1 expr) boundvars
+		 (arith-polarity polarity 'more)
+		 (find-templates-with-arithmetic-polarity (args2 expr)
+							  boundvars
+							  (arith-polarity
+							   polarity 'less)
+							  accum)))
+	       ((is-plus? op)
+		(find-templates-with-arithmetic-polarity
+		 (args1 expr) boundvars polarity
+		 (find-templates-with-arithmetic-polarity
+		  (args2 expr) boundvars polarity accum)))
+	       ((is-sub-minus? op)
+		(find-templates-with-arithmetic-polarity
+		 (args1 expr)
+		 boundvars
+		 polarity
+		 (find-templates-with-arithmetic-polarity
+		  (args2 expr)
+		  boundvars (toggle polarity) accum)))
+	       ((is-minus? op)
+		(find-templates-with-arithmetic-polarity
+		 (argument expr)
+		 boundvars (toggle polarity) accum))
+	       (t accum))
+	      accum)))
     (if (template? expr boundvars)
 	(cons (mk-template expr polarity)
 	      arg-templates)
