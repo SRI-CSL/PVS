@@ -492,16 +492,21 @@ runtime-image-files = $(wildcard ${bindir}/runtime/*)
 full-image-files = $(wildcard ${bindir}/full/*)
 
 system-files = README pvs pvs-tex.sub pvs.sty bin/relocate bin/pvs-platform \
-	       Examples \
+	       bin/tarmail bin/untarmail Examples \
                lib/prelude.pvs lib/prelude.prf lib/list_adt.pvs \
                lib/ordstruct_adt.pvs lib/character_adt.pvs \
                lib/pvs-language.help lib/pvs-prover.help lib/pvs.help \
                lib/pvs.grammar lib/pvs.bnf wish/pvs-support.tcl \
+               lib/strategies.lisp lib/release-notes \
                wish/gray.xbm wish/sequent.xbm \
                emacs/README emacs/go-pvs.el $(pvs-emacs-src) \
+               emacs/emacs-src/pvs.xpm \
                $(ilisp-emacs-src) emacs/emacs20 emacs/xemacs20 emacs/xemacs21
 
 emacs19-files = emacs/emacs19 emacs/xemacs19
+
+lib/strategies.lisp : src/prover/strategies.lisp
+	(cd lib; ln -sf ../src/prover/strategies.lisp strategies.lisp)
 
 ${runtime-image-tar} : ${pvsrt}
 	$(TAR) $(TARFLAGS) -f ${runtime-image-tar} ${runtime-image-files}
@@ -514,6 +519,8 @@ ${system-tar} : ${system-files}
 
 ${emacs19-tar} : $(emacs19-files)
 	$(TAR) $(TARFLAGS) -f ${emacs19-tar} ${emacs19-files}
+
+tar : ${full-image-tar} ${runtime-image-tar} ${system-tar} ${emacs19-tar}
 
 install:
 	@echo "target install is deprecated - read README.configure"
