@@ -1500,6 +1500,7 @@
 	 (let* ((stype (domain (find-supertype (type (predicate type)))))
 		(tval (mk-subtype stype (pseudo-normalize (predicate type)))))
 	   (setf (supertype type) stype)
+	   (setf (print-type tval) (print-type type))
 	   tval))
 	(t (let ((stype (typecheck* (supertype type) nil nil nil)))
 	     (if (named-type-expr? type)
@@ -1907,6 +1908,52 @@
 
 (defmethod type ((decl conversion-decl))
   (type (name decl)))
+
+;;; Disabling conversions
+
+(defmethod typecheck* ((decl conversionminus-decl) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (unless (typechecked? decl)
+    (typecheck* (name decl) nil 'expr nil)
+    (unless (singleton? (resolutions (name decl)))
+      (type-ambiguity (name decl)))
+    (setf (type (name decl)) (type (resolution (name decl)))))
+  (disable-conversion decl)
+  decl)
+
+(defun disable-conversion (decl)
+  (let ((new-convs (remove-if #'(lambda (cd)
+				  (tc-eq (name decl) (name cd)))
+		     (conversions *current-context*))))
+    (if (equal new-convs (conversions *current-context*))
+		 ;;; Three possibilities in this case
+	(let ((similar-convs
+	       (remove-if-not #'(lambda (cd)
+				  (same-declaration (name decl)
+						    (name cd)))
+		 (conversions *current-context*))))
+	  ;; Don't need to do anything if the conversion doesn't
+	  ;; appear.  Won't even complain since it may have been
+	  ;; removed earlier by a similar declaration in a
+	  ;; different theory.
+	  (when similar-convs
+	    ;; If we are removing the generic version, and
+	    ;; instances are in the conversions list, simply
+	    ;; remove them.
+	    (if (not (fully-instantiated? (name decl)))
+		(setf (conversions *current-context*)
+		      (remove-if #'(lambda (cd)
+				     (memq cd similar-convs))
+			(conversions *current-context*)))
+		;; Otherwise, add it to the disabled-conversions list
+		(pushnew decl (disabled-conversions *current-context*)
+			 :test #'tc-eq :key #'name))))
+	(if (fully-instantiated? (name decl))
+	    (setf (conversions *current-context*) new-convs)
+	    (setf (conversions *current-context*)
+		  (remove-if #'(lambda (cd)
+				 (same-declaration (name decl) (name cd)))
+		    (conversions *current-context*))))))
     
 
 (defun check-duplication (decl)
