@@ -454,20 +454,13 @@
 
 (defcl conversion-decl (declaration)
   k-combinator?
-  (name :parse t))
-
-(defcl typed-conversion-decl (conversion-decl)
-  (declared-type :parse t))
+  (expr :parse t))
 
 ;;; Same as conversion-decl, but prints differently
 (defcl conversionplus-decl (conversion-decl))
 
-(defcl typed-conversionplus-decl (typed-conversion-decl))
-
 ;;; Not only prints differently, but removes the conversion(s)
 (defcl conversionminus-decl (conversion-decl))
-
-(defcl typed-conversionminus-decl (typed-conversion-decl))
 
 (defcl auto-rewrite-decl (declaration)
   (rewrite-names :parse t))
