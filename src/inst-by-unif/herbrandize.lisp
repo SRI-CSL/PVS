@@ -155,8 +155,11 @@
   (mapcar #'mk-new-var bndngs))
 
 (defun mk-new-var (bndng)
-  (let ((id (gentemp (makesym "~a?" (id bndng)))))
-    (dp::mk-new-variable id nil)))
+  (let ((id (gentemp (makesym "~a?" (id bndng))))
+	(type (if (subtype-of? (type bndng) *integer*)
+		  dp::*integer*
+	        nil)))
+    (dp::mk-new-variable id type)))
 
 (defun mk-new-skofun (bndng xs)
   (let* ((id (gentemp (makesym "~a!" (id bndng))))
