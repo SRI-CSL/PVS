@@ -868,7 +868,7 @@ Assumes that an Proof buffer exists."
 The regexp looks for a substring consisting of a left paren followed by
 anything but a left paren or a \", ignoring whitespace."
   (interactive "p")
-  (let ((case-fold-search nil))
+  (let ((case-fold-search t))
     (if (not (re-search-forward "([ \t\n\r]*[^(\" \t\n\r]" (point-max) t))
 	(progn
 	  (goto-char (point-max))
