@@ -137,6 +137,9 @@ prettyprint-theory,      ppt (C-c C-q t) Prettyprint theory in current buffer
 prettyprint-pvs-file,    ppf (C-c C-q f) Prettyprint file in current buffer
 prettyprint-declaration, ppd (C-c C-q d) Prettyprint the indicated declaration
 prettyprint-region,      ppr (C-c C-q r) Prettyprint region of current buffer
+prettyprint-theory-instance, ppti (C-c C-q i) Prettyprint the specified theory
+                                         instance, performing substitutions
+					 for actual parameters and mappings
 pvs-set-linelength                       Set the prettyprinter line length
 
 ------------------------------Viewing TCCs------------------------------------
