@@ -17,13 +17,19 @@
 ;;; Define this first, so we can start logging right away.
 
 (defun pvs-log-message (kind msg)
-  (save-excursion
-    (set-buffer (get-buffer-create "PVS Log"))
-    (goto-char (point-max))
-    (insert (format "%s(%s): %s\n"
-		kind
-	      (substring (current-time-string) 4 19)
-	      msg))))
+  (let ((buf (current-buffer)))
+    (unwind-protect
+	 (let* ((cpoint (point))
+		(at-end (= cpoint (point-max))))
+	   (set-buffer (get-buffer-create "PVS Log"))
+	   (goto-char (point-max))
+	   (insert (format "%s(%s): %s\n"
+		       kind
+		     (substring (current-time-string) 4 19)
+		     msg))
+	   (unless at-end
+	     (goto-char cpoint)))
+      (set-buffer buf))))
 
 (defun pvs-msg (msg &rest args)
   (let ((m (apply 'format msg args)))
