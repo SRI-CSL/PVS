@@ -330,10 +330,10 @@ generated")
 
 (defun generate-adt-importing (importings)
   (when importings
-    (let ((cusing (pc-parse (unparse (car importings) :string t)
+    (let ((cimporting (pc-parse (unparse (car importings) :string t)
 			    'theory-elt))
 	  (*adt-decl* (car importings)))
-      (typecheck-adt-decl cusing))))
+      (typecheck-adt-decl cimporting))))
 
 (defun generate-adt-type (adt)
   (let ((*adt-decl* adt)
