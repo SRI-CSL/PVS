@@ -420,6 +420,7 @@
   ;;(assert (or *in-checker* *current-file*))
   (cond ((and *to-emacs*
 	      (or (not *in-checker*)
+		  (not *in-evaluator*)
 		  *tc-add-decl*))
 	 (pvs-error "Parser error"
 	   (if args
@@ -427,7 +428,9 @@
 	       message)
 	   *current-file*
 	   (place obj)))
-	((and  *in-checker* (not *tcdebug*))
+	((and (or *in-checker*
+		  *in-evaluator*)
+	      (not *tcdebug*))
 	 (if args
 	     (format t "~%~?" message args)
 	     (format t "~%~a" message))
