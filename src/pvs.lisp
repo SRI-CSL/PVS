@@ -1263,8 +1263,8 @@
 		   (push decl decls-tried)
 		   (incf total)
 		   (pvs-prove-decl decl retry?)
-		   (incf realtime (real-proof-time decl))
-		   (incf runtime (run-proof-time decl))
+		   (incf realtime (or (real-proof-time decl) 0))
+		   (incf runtime (or (run-proof-time decl) 0))
 		   (if (unproved? decl) (incf unfin) (incf proved))
 		   (when *justifications-changed?*
 		     (save-all-proofs (module decl))))
@@ -1277,7 +1277,7 @@
       (ppd fdecl))
     (pvs-buffer "PVS Status"
       (with-output-to-string (out)
-	(format out "~2%~vTProof summary for proofchain for ~a.~a"
+	(format out "~2%Proof summary for proofchain for ~a.~a"
 	  (id (module fdecl)) (id fdecl))
 	(let* ((maxtime (reduce #'max decls-tried
 				:key #'(lambda (d)
