@@ -666,34 +666,38 @@
 	 (prev-imp (find-if #'importing? prev-decls))
 	 (rem-decls (if prev-imp
 			(ldiff prev-decls (memq prev-imp prev-decls))
-			prev-decls)))
-    (if (or (not prev-imp) (saved-context prev-imp))
-	(copy-context (if prev-imp
-			  (saved-context prev-imp)
-			  *prelude-context*)
-		      (module decl)
-		      (reverse rem-decls)
-		      (or (car rem-decls) decl))
-	(let ((*current-context* (make-new-context (module decl))))
-	  (setf (declaration *current-context*)
-		(or (car prev-decls) decl))
-	  (dolist (d (reverse prev-decls))
-	    (typecase d
-	      (mod-decl
-	       (put-decl d (current-declarations-hash))
-	       (let* ((thname (theory-name d))
-		      (th (get-theory thname)))
-		 (add-exporting-with-theories th thname)
-		 (add-to-using thname))
-	       (setf (saved-context d) (copy-context *current-context*)))
-	      (importing
-	       (let* ((thname (theory-name d))
-		      (th (get-theory thname)))
-		 (add-usings-to-context* th thname))
-	       (setf (saved-context d) (copy-context *current-context*)))
-	      (declaration (put-decl d (current-declarations-hash)))
-	      (datatype nil)))
-	  *current-context*))))
+			prev-decls))
+	 (*current-context*
+	  (if (or (not prev-imp) (saved-context prev-imp))
+	      (copy-context (if prev-imp
+				(saved-context prev-imp)
+				*prelude-context*)
+			    (module decl)
+			    (reverse rem-decls)
+			    (or (car rem-decls) decl))
+	      (make-new-context (module decl)))))
+    (setf (declaration *current-context*)
+	  (or (car prev-decls) decl))
+    (dolist (d (reverse prev-decls))
+      (typecase d
+	(mod-decl
+	 (put-decl d (current-declarations-hash))
+	 (let* ((thname (theory-name d))
+		(th (get-theory thname)))
+	   (add-exporting-with-theories th thname)
+	   (add-to-using thname))
+	 (setf (saved-context d) (copy-context *current-context*)))
+	(importing
+	 (let* ((thname (theory-name d))
+		(th (get-theory thname)))
+	   (add-usings-to-context* th thname))
+	 (setf (saved-context d) (copy-context *current-context*)))
+	(subtype-judgement (add-to-known-subtypes (subtype d) (type d)))
+	(judgement (add-judgement-decl d))
+	(conversion-decl (push decl (conversions *current-context*)))
+	(declaration (put-decl d (current-declarations-hash)))
+	(datatype nil)))
+    *current-context*))
 	      
 
 (defmethod add-imported-assumings ((decl assuming-tcc))
