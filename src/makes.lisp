@@ -1065,6 +1065,12 @@
   (defun show-numhash ()
     (ppr numhash)))
 
+(defun make-difference (a1 a2 type)
+  (typecheck (make-instance 'infix-application
+	       'operator (difference-operator)
+	       'argument (make!-arg-tuple-expr a1 a2))
+    :expected type))
+
 (defun mk-field-name-expr (id res kind)
   (make-instance 'field-name-expr
     'id id
@@ -1410,7 +1416,7 @@
 
 (defun make!-negation (ex)
   (assert (and (type ex) (tc-eq (type ex) *boolean*)))
-  (make-instance 'unary-application
+  (make-instance 'unary-negation
     'operator (not-operator)
     'argument ex
     'type *boolean*))
@@ -1418,7 +1424,7 @@
 (defun make!-conjunction (ex1 ex2)
   (assert (and (type ex1) (type ex2)
 	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
-  (make-instance 'infix-application
+  (make-instance 'infix-conjunction
     'operator (and-operator)
     'argument (make!-arg-tuple-expr ex1 ex2)
     'type *boolean*))
@@ -1435,7 +1441,7 @@
 (defun make!-disjunction (ex1 ex2)
   (assert (and (type ex1) (type ex2)
 	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
-  (make-instance 'infix-application
+  (make-instance 'infix-disjunction
     'operator (or-operator)
     'argument (make!-arg-tuple-expr ex1 ex2)
     'type *boolean*))
@@ -1452,7 +1458,7 @@
 (defun make!-implication (ex1 ex2)
   (assert (and (type ex1) (type ex2)
 	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
-  (make-instance 'infix-application
+  (make-instance 'infix-implication
     'operator (implies-operator)
     'argument (make!-arg-tuple-expr ex1 ex2)
     'type *boolean*))
@@ -1460,7 +1466,7 @@
 (defun make!-iff (ex1 ex2)
   (assert (and (type ex1) (type ex2)
 	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
-  (make-instance 'infix-application
+  (make-instance 'infix-iff
     'operator (iff-operator)
     'argument (make!-arg-tuple-expr ex1 ex2)
     'type *boolean*))
