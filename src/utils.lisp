@@ -695,6 +695,9 @@
 			    (reverse rem-decls)
 			    (or (car rem-decls) decl))
 	      (make-new-context (module decl)))))
+    ;;; Need to clear this hash or the known-subtypes table won't get
+    ;;; updated properly - see add-to-known-subtypes.
+    (clrhash *subtype-of-hash*)
     (dolist (d (reverse rem-decls))
       (typecase d
 	(lib-decl
