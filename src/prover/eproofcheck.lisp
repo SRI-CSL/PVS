@@ -464,7 +464,7 @@
 	   (if (string-equal descr "")
 	       (or *default-proof-description* descr)
 	       descr)))
-	(t (or *default-proof-description* descr))))
+	(t (or *default-proof-description* ""))))
 
 (defun rerun-prove (decl)
   (if (and *noninteractive*
