@@ -32,6 +32,8 @@
 (def-pvs-term rational_pred "rational_pred" "rationals")
 (def-pvs-term real_pred "real_pred" "reals")
 
+(def-pvs-term expt-operator "expt" "exponentiation")
+
 (def-pvs-term upfrom-subtype "upfrom" "int_types" :nt type-expr)
 (def-pvs-term below-subtype "below" "nat_types" :nt type-expr)
 (def-pvs-term upto-subtype "upto" "nat_types" :nt type-expr)
