@@ -814,9 +814,10 @@ let the user decide what to do."
 		(progn
 		  (message "Ignore message")
 		  (if buffer 
-		      (funcall
-		       (ilisp-temp-buffer-show-function)
-		       buffer)
+		      (if (ilisp-temp-buffer-show-function)
+			  (funcall (ilisp-temp-buffer-show-function)
+				   buffer)
+			  (view-buffer buffer))
 		      (pvs-bury-output))
 		  t)
 		(save-excursion
