@@ -114,6 +114,24 @@
     'definition definition
     'semi t))
 
+(defun mk-inductive-decl (id type &optional definition formals dtype)
+  (make-instance 'inductive-decl
+    'id id
+    'formals (if (every@ #'consp formals) formals (list formals))
+    'declared-type (or dtype type)
+    'type type
+    'definition definition
+    'semi t))
+
+(defun mk-coinductive-decl (id type &optional definition formals dtype)
+  (make-instance 'coinductive-decl
+    'id id
+    'formals (if (every@ #'consp formals) formals (list formals))
+    'declared-type (or dtype type)
+    'type type
+    'definition definition
+    'semi t))
+
 (defun mk-proj-decl (id type &optional definition formals dtype)
   (make-instance 'proj-decl
     'id id
@@ -1159,7 +1177,7 @@
   (let* ((appl (apply #'mk-application op args))
 	 (ftype (find-supertype (type op)))
 	 (rtype (if (dep-binding? (domain ftype))
-		    (dep-substit (range ftype)
+		    (substit (range ftype)
 				 (acons (domain ftype) (argument appl) nil))
 		    (range ftype))))
     (setf (type appl) rtype)
@@ -1363,7 +1381,7 @@
 		       'argument arg
 		       'type cartype))
 	       (cdrtypes (if dep?
-			     (dep-substit (cdr types)
+			     (substit (cdr types)
 			       (acons (car types) proj nil))
 			     (cdr types))))
 	  (make!-projection-type* cdrtypes index (1+ ctr) arg)))))
@@ -1392,7 +1410,7 @@
 		    'id (id (car fields))
 		    'argument arg
 		    'type (type (car fields))))
-	     (cdrfields (dep-substit (cdr fields)
+	     (cdrfields (substit (cdr fields)
 				     (acons (car fields) fapp nil))))
 	(field-application-type* cdrfields field-id arg))))
 
@@ -1410,18 +1428,30 @@
 
 (defun make!-negation (ex)
   (assert (and (type ex) (tc-eq (type ex) *boolean*)))
-  (make-instance 'unary-negation
-    'operator (not-operator)
-    'argument ex
-    'type *boolean*))
+  (cond ((tc-eq ex *true*)
+	 *false*)
+	((tc-eq ex *false*)
+	 *true*)
+	(t (make-instance 'unary-negation
+	     'operator (not-operator)
+	     'argument ex
+	     'type *boolean*))))
 
 (defun make!-conjunction (ex1 ex2)
   (assert (and (type ex1) (type ex2)
 	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
-  (make-instance 'infix-conjunction
-    'operator (and-operator)
-    'argument (make!-arg-tuple-expr ex1 ex2)
-    'type *boolean*))
+  (cond ((tc-eq ex1 *true*)
+	 ex2)
+	((tc-eq ex1 *false*)
+	 *false*)
+	((tc-eq ex2 *true*)
+	 ex1)
+	((tc-eq ex2 *false*)
+	 *false*)
+	(t (make-instance 'infix-conjunction
+	     'operator (and-operator)
+	     'argument (make!-arg-tuple-expr ex1 ex2)
+	     'type *boolean*))))
 
 (defun make!-conjunction* (exprs &optional conj)
   (cond ((null exprs)
@@ -1435,10 +1465,18 @@
 (defun make!-disjunction (ex1 ex2)
   (assert (and (type ex1) (type ex2)
 	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
-  (make-instance 'infix-disjunction
-    'operator (or-operator)
-    'argument (make!-arg-tuple-expr ex1 ex2)
-    'type *boolean*))
+  (cond ((tc-eq ex1 *true*)
+	 *true*)
+	((tc-eq ex1 *false*)
+	 ex2)
+	((tc-eq ex2 *true*)
+	 *true*)
+	((tc-eq ex2 *false*)
+	 ex1)
+	(t (make-instance 'infix-disjunction
+	     'operator (or-operator)
+	     'argument (make!-arg-tuple-expr ex1 ex2)
+	     'type *boolean*))))
 
 (defun make!-disjunction* (exprs &optional disj)
   (cond ((null exprs)
@@ -1452,18 +1490,35 @@
 (defun make!-implication (ex1 ex2)
   (assert (and (type ex1) (type ex2)
 	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
-  (make-instance 'infix-implication
-    'operator (implies-operator)
-    'argument (make!-arg-tuple-expr ex1 ex2)
-    'type *boolean*))
+  
+  (cond ((tc-eq ex1 *true*)
+	 ex2)
+	((tc-eq ex1 *false*)
+	 *true*)
+	((tc-eq ex2 *true*)
+	 *true*)
+	((tc-eq ex2 *false*)
+	 (make!-negation ex1))
+	(t (make-instance 'infix-implication
+	     'operator (implies-operator)
+	     'argument (make!-arg-tuple-expr ex1 ex2)
+	     'type *boolean*))))
 
 (defun make!-iff (ex1 ex2)
   (assert (and (type ex1) (type ex2)
 	       (tc-eq (type ex1) *boolean*) (tc-eq (type ex2) *boolean*)))
-  (make-instance 'infix-iff
-    'operator (iff-operator)
-    'argument (make!-arg-tuple-expr ex1 ex2)
-    'type *boolean*))
+  (cond ((tc-eq ex1 *true*)
+	 ex2)
+	((tc-eq ex1 *false*)
+	 (make!-negation ex2))
+	((tc-eq ex2 *true*)
+	 ex1)
+	((tc-eq ex2 *false*)
+	 (make!-negation ex1))
+	(t (make-instance 'infix-iff
+	     'operator (iff-operator)
+	     'argument (make!-arg-tuple-expr ex1 ex2)
+	     'type *boolean*))))
 
 (defun make!-plus (ex1 ex2)
   (assert (type ex1))

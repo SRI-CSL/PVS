@@ -102,8 +102,12 @@
 	 (adt-or-mod (term-arg2 adt-or-module))
 	 (aorm (case (sim-term-op adt-or-mod)
 		 (module (funcall #'xt-module adt-or-mod id))
-		 (datatype (funcall #'xt-datatype adt-or-mod id))
-		 (datatypes (funcall #'xt-datatypes adt-or-mod id)))))
+		 ((datatype codatatype)
+		  (funcall #'xt-datatype (sim-term-op adt-or-mod)
+			   adt-or-mod id))
+		 ((datatypes codatatypes)
+		  (funcall #'xt-datatypes (sim-term-op adt-or-mod)
+			   adt-or-mod id)))))
     (setf (id aorm) id
 	  (formals aorm) (xt-theory-formals formals)
 	  (place aorm) (term-place adt-or-module))
@@ -116,7 +120,7 @@
 	  *escaped-operators-used*)))
     aorm))
 
-(defun xt-datatypes (datatype &optional id inline)
+(defun xt-datatypes (class datatype &optional id inline)
   (let* ((subtypes-term (term-arg0 datatype))
 	 (subtypes (mapcar #'(lambda (st)
 			       (make-instance 'type-name
@@ -138,13 +142,17 @@
       (parse-error (term-arg4 datatype)
 	"End id ~a does not match datatype id ~a" endid id))
     (if (or (null id) inline)
-	(make-instance 'inline-datatype-with-subtypes
+	(make-instance (if (eq class 'datatypes)
+			   'inline-datatype-with-subtypes
+			   'inline-codatatype-with-subtypes)
 	  'subtypes subtypes
 	  'assuming assuming
 	  'importings importings
 	  'constructors adtcases
 	  'place (term-place datatype))
-	(make-instance 'datatype-with-subtypes
+	(make-instance (if (eq class 'datatypes)
+			   'datatype-with-subtypes
+			   'codatatype-with-subtypes)
 	  'subtypes subtypes
 	  'assuming assuming
 	  'importings importings
@@ -192,7 +200,7 @@
 	      (xt-chained-decls (term-args idops) dtype nil decl
 				theory-formal)))))
 
-(defun xt-datatype (datatype &optional id inline)
+(defun xt-datatype (class datatype &optional id inline)
   (let ((assuming (term-arg0 datatype))
 	(importing (term-arg1 datatype))
 	(adtcases (term-arg2 datatype))
@@ -201,7 +209,13 @@
 		(eq id endid))
       (parse-error (term-arg3 datatype)
 	"End id ~a does not match datatype id ~a" endid id))
-    (make-instance (if (or (null id) inline) 'inline-datatype 'datatype)
+    (make-instance (if (or (null id) inline)
+		       (if (eq class 'datatype)
+			   'inline-datatype
+			   'inline-codatatype)
+		       (if (eq class 'datatype)
+			   'datatype
+			   'codatatype))
       'assuming (unless (is-sop 'datatype-null-2 assuming)
 		  (xt-assumings assuming))
       'importings (unless (is-sop 'datatype-null-1 importing)
@@ -403,7 +417,8 @@
 	 (parse-error (term-arg0 idops)
 	   "Datatype identifier must be an id"))
 	(t (let* ((id (ds-vid (term-arg0 (term-arg0 idops))))
-		  (adt (funcall #'xt-datatypes decl id t)))
+		  (adt (funcall #'xt-datatypes (sim-term-op decl)
+				decl id t)))
 	     (setf (id adt) id
 		   (formals adt) (xt-theory-formals formals)
 		   (semi adt) (when (is-sop 'semic semi) t))
@@ -420,7 +435,8 @@
 	 (parse-error (term-arg0 idops)
 	   "Datatype identifier must be an id"))
 	(t (let* ((id (ds-vid (term-arg0 (term-arg0 idops))))
-		  (adt (funcall #'xt-datatype decl id t)))
+		  (adt (funcall #'xt-datatype (sim-term-op decl)
+				decl id t)))
 	     (setf (id adt) id
 		   (formals adt) (xt-theory-formals formals)
 		   (semi adt) (when (is-sop 'semic semi) t))
@@ -706,6 +722,8 @@
     (const-decl (xt-const-decl body))
     (def-decl (xt-def-decl body))
     (ind-decl (xt-ind-decl body))
+    (corec-decl (xt-corec-decl body))
+    (coind-decl (xt-coind-decl body))
     (assumption (xt-assumption body))
     (formula-decl (xt-formula-decl body))
     (t (error "Decl not recognized - ~a" body))))
@@ -831,6 +849,24 @@
   (let ((type-expr (term-arg0 ind-decl))
 	(def (term-arg1 ind-decl)))
     (values (make-instance 'inductive-decl
+	      'declared-type (xt-not-enum-type-expr type-expr)
+	      'definition (xt-expr def)
+	      'place (term-place ind-decl))
+	    type-expr)))
+
+(defun xt-corec-decl (corec-decl)
+  (let ((type-expr (term-arg0 corec-decl))
+	(def (term-arg1 corec-decl)))
+    (values (make-instance 'corecursive-decl
+	      'declared-type (xt-not-enum-type-expr type-expr)
+	      'definition (xt-expr def)
+	      'place (term-place corec-decl))
+	    type-expr)))
+
+(defun xt-coind-decl (ind-decl)
+  (let ((type-expr (term-arg0 ind-decl))
+	(def (term-arg1 ind-decl)))
+    (values (make-instance 'coinductive-decl
 	      'declared-type (xt-not-enum-type-expr type-expr)
 	      'definition (xt-expr def)
 	      'place (term-place ind-decl))
@@ -1251,6 +1287,8 @@
 		     (parse-error expr "Projection may not have a theory id"))
 		    ((library name)
 		     (parse-error expr "Projection may not have a library id"))
+		    ((zerop prindex)
+		     (parse-error expr "Projection index may not be zero"))
 		    (t (make-instance 'projection-expr
 			 'id upid
 			 'index prindex
@@ -1291,10 +1329,12 @@
 
 (defun xt-projappl (expr)
   (let ((index (ds-number (term-arg1 expr))))
-    (make-instance 'projappl
-      'index index
-      'argument (xt-expr (term-arg0 expr))
-      'place (term-place expr))))
+    (if (zerop index)
+	(parse-error (term-arg1 expr) "Projection index may not be zero")
+	(make-instance 'projappl
+	  'index index
+	  'argument (xt-expr (term-arg0 expr))
+	  'place (term-place expr)))))
 
 (defun xt-term-expr (expr)
   (let* ((op (term-arg0 expr))

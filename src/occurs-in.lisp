@@ -132,12 +132,14 @@
 
 (defmethod occurs-in (obj (ex cases-expr))
   (or (when (tc-eq obj ex) ex)
+      (occurs-in obj (expression ex))
       (occurs-in obj (selections ex))
-      (occurs-in obj (expression ex))))
+      (occurs-in obj (else-part ex))))
 
 (defmethod occurs-in (obj (ex selection))
-  (or (occurs-in obj (expression ex))
-      (occurs-in obj (constructor ex))))
+  (or (occurs-in obj (constructor ex))
+      (occurs-in obj (args ex))
+      (occurs-in obj (expression ex))))
 
 (defmethod occurs-in (obj (ex update-expr))
   (or (when (tc-eq obj ex) ex)
@@ -170,7 +172,7 @@
 (defmethod id-occurs-in (x y)
   (eql x y))
 
-(defmethod id-occurs-in (id (adt datatype))
+(defmethod id-occurs-in (id (adt recursive-type))
   (or (id-occurs-in id (formals adt))
       (id-occurs-in id (assuming adt))
       (id-occurs-in id (constructors adt))))
@@ -262,6 +264,16 @@
 
 (defmethod id-occurs-in (id (ex binding-expr))
   (or (id-occurs-in id (bindings ex))
+      (id-occurs-in id (expression ex))))
+
+(defmethod id-occurs-in (id (ex cases-expr))
+  (or (id-occurs-in id (expression ex))
+      (id-occurs-in id (selections ex))
+      (id-occurs-in id (else-part ex))))
+
+(defmethod id-occurs-in (id (ex selection))
+  (or (id-occurs-in id (constructor ex))
+      (id-occurs-in id (args ex))
       (id-occurs-in id (expression ex))))
 
 (defmethod id-occurs-in (id (ex update-expr))
