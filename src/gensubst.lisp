@@ -17,6 +17,8 @@
 
 (defvar *dont-expand-adt-subtypes* nil)
 
+(defvar *gensubst-reset-types* nil)
+
 (defun gensubst (obj substfn testfn)
   (unwind-protect (gensubst* obj substfn testfn)
     (clrhash *gensubst-cache*)))
@@ -253,8 +255,14 @@
 
 (defmethod gensubst* :around ((ex expr) substfn testfn)
   (let ((nex (call-next-method)))
-    (unless (or (eq ex nex) (type ex))
-      (setf (types nex) (gensubst* (types ex) substfn testfn)))
+    (if *gensubst-reset-types*
+	(unless (eq ex nex)
+	  (setf (type ex) nil
+		(types ex) nil)
+	  (when (name-expr? ex)
+	    (setf (resolutions ex) nil)))
+	(unless (or (eq ex nex) (type ex))
+	  (setf (types nex) (gensubst* (types ex) substfn testfn))))
     nex))
 
 (defmethod gensubst* ((ex name-expr) substfn testfn)
