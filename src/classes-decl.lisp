@@ -123,10 +123,6 @@
 	  type-name type-name? type-value types update-expr using-hash
 	  var-decl visible?))
 
-(export '(boolean-equation conjunction disequation disjunction equation
-	  iff iff-or-boolean-equation implication negation
-	  propositional-application))
-
 ;;; So we can unparse a list of modules into a single file.
 
 (defcl modules ()
