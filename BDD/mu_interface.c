@@ -19,7 +19,11 @@ Date: 05/09/98
 #include "mu.h"
 
 #include <setjmp.h> /* For interrupt handling */
-#include <signal.h> /* For interrupt handling */
+#ifdef SIGNALS_LINUX
+#include <bsd/signal.h> /* For interrupt handling */
+#else
+#include <signal.h>
+#endif
 
 int debug;
 int warnings;
@@ -183,6 +187,7 @@ BDD_LIST bdd___bdd_sum_of_cubes (BDDPTR f, int irredundant)
 void new_handler(int sig)
  {
    signal(SIGINT, old_handler);
+   fprintf(stderr, "IN NEW HANDLER\n");
    longjmp(catch, -1);
  }
 

@@ -1,11 +1,11 @@
 BDD = ../bdd/src
 MU = ../mu/src
 UTILS = ../bdd/utils
-INCLUDES = -I$(BDD) -I$(UTILS) -I$(MU)
+INCLUDES = -I/usr/include -I$(BDD) -I$(UTILS) -I$(MU)
 LD = $(CC)
 LDFLAGS = -shared -L./
 CC = gcc
-CFLAGS = -D_POSIX_SOURCE -DSYSV $(INCLUDES)
+CFLAGS = -D_POSIX_SOURCE -DSYSV $(INCLUDES) --DSIGNALS_LINUX
 XCFLAGS = -O
 SHELL = /bin/sh
 VPATH = ..:../bdd/utils:../bdd/src:../mu/src
@@ -22,7 +22,7 @@ utilobj = double.o list.o hash.o alloc.o
 all : mu.so
 
 mu.so : ${muobj} libutils.a
-	$(LD) ../bdd-ld-table ../mu-ld-table $(LDFLAGS) -o  mu.so  ${muobj} -lutils  -lm 
+	$(LD) ../bdd-ld-table ../mu-ld-table $(LDFLAGS) -o  mu.so  ${muobj} -lutils  -lm -lbsd
 
 libutils.a : ${utilobj}
 	ar r libutils.a ${utilobj}
