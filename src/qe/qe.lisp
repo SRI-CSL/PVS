@@ -274,7 +274,7 @@
 	(if (null new-ineq)
 	    (FME1 lower (cdr uppers) (cons lower (cons (car uppers) acc)))
 	  (let* ((new-ineq (dp-canon new-ineq *state*))
-		 (result (dp::invoke-process new-ineq *state*))
+		 (result (dp::invoke-process (top-translate-to-dc new-ineq) *state*))
 		 (newacc (cond ((or (tc-eq new-ineq *true*)
 				    (eq result dp::*true*))
 				acc)
@@ -329,7 +329,7 @@
   (let ((solved-expr nil)
 	(lowers nil) (uppers nil) (diseqns nil) (noccurs nil) (others nil))
     (loop for fml in conjuncts
-       do (let ((res (dp::invoke-process (top-translate-to-dc fml) *state*)))
+       do (let ((res (top-translate-to-dc fml))) ; (dp::invoke-process (top-translate-to-dc fml) *state*)))
 	    (cond ((eq res dp::*false*)
 		   (throw-unsat "~%Inconsistency: ~a" fml))
 		  ((eq res dp::*true*)

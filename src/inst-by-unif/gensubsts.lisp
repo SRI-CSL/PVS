@@ -149,14 +149,15 @@
   (declare (special *state*))
   #+dbg(assert (every #'node-p hyps))
   #+dbg(assert (every #'node-p concs))
-  (let ((*insts* nil))
+  (let ((*instantiations* nil))
     (loop for hyp in hyps
 	  do (loop for conc in concs
 		   do (when (or (var-occurs-p hyp)
 				(var-occurs-p conc)) 
 			(let ((new-subst (E-unify hyp conc *state* subst))) 
-			  (setf *insts* (add-to-subst new-subst *insts*))))))
-    *insts*))
+			  (setf *instantiations*
+				(add-to-subst new-subst *instantiations*))))))
+    *instantiations*))
 
 (defun var-occurs-p (trm)
   (declare (special *lvars*))
