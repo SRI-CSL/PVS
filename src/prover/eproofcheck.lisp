@@ -161,6 +161,7 @@
 (defvar *dump-sequents-to-file* nil)
 
 (defmethod prove-decl ((decl formula-decl) &key strategy)
+  (ensure-default-proof decl)
   (let ((init-real-time (get-internal-real-time))
 	(init-run-time (get-run-time))
 	(*skovar-counter* nil)
@@ -368,35 +369,71 @@
 	(list (runtime-since init-run-time)
 	      (realtime-since init-real-time)
 	      nil))
-  (cond ((eq (status-flag *top-proofstate*) '!)
-	 ;;(not *proving-tcc*)
-	 (setf (justification2 decl)(justification decl)
-	       (justification decl)
-	       (justification *top-proofstate*))
-	 (setf (new-ground? decl) *new-ground?*)
-	 (when *context-modified*
-	   (setf (proof-status decl) 'unfinished)
-	   (let ((ans (pvs-yes-or-no-p
-		       "~%Context was modified in mid-proof.~
-                        ~%Would you like to rerun the proof? ")))
-	     (if ans (prove-decl decl
-				 :strategy
-				 '(then (rerun)
-					(query*)))))))
-	((not (eq (status-flag *top-proofstate*) `X))
-	 (let ((ans (or (null (justification decl))
-			(and (not *proving-tcc*)
-			     (pvs-yes-or-no-p
-			      "~%Would you like the partial proof to be saved?~
-                               ~%(***Old proof will be overwritten.***)~%")))))
-	   (when ans
-	     (when (justification decl)
-	       (format t "~%Use M-x revert-proof to revert to previous proof."))
-	     (setf (justification2 decl)(justification decl)
-		   (justification decl)
-		   (collect-justification *top-proofstate*)
-		   (proof-status decl) 'unfinished)
-	     (setf (new-ground? decl) *new-ground?*))))))
+  (let ((prinfo (default-proof decl))
+	(script (extract-justification-sexp
+		 (collect-justification *top-proofstate*))))
+    (cond ((null (script prinfo))
+	   (setf (script prinfo) script))
+	  ((and (not *proving-tcc*);; interactive
+		script
+		(not (equal script '("" (POSTPONE) NIL NIL)))
+		(not (equal (script prinfo) script))
+		(let ((ids (mapcar #'id
+			     (remove-if-not #'(lambda (prinfo)
+						(equal (script prinfo) script))
+			       (proofs decl)))))
+		  (pvs-yes-or-no-p
+		   "~@[This proof is already associated with this formula ~
+                       as ~{~a~^, ~}~%~]~
+                    Would you like the proof to be saved~@[ anyway~]? "
+		   ids ids)))
+	   (cond ((pvs-yes-or-no-p
+		   "Would you like to overwrite the current proof (named ~a)? "
+		   (id prinfo))
+		  (setf (script prinfo) script))
+		 (t (let ((id (read-proof-id (next-proof-id decl)))
+			  (description (read-proof-description)))
+		      (setq prinfo
+			    (make-default-proof decl script id
+						description)))))))
+    (setf (real-time prinfo) (- (get-internal-real-time) init-real-time))
+    (setf (run-time prinfo) (- (get-run-time) init-run-time))
+    (setf (run-date prinfo) (get-universal-time))
+    (setf (proof-status decl)
+	  (if (and (eq (status-flag *top-proofstate*) '!)
+		   (not *context-modified*))
+	      'proved
+	      'unfinished))
+    (format-if "~%~%Run time  = ~,2,-3F secs." (run-time prinfo))
+    (format-if "~%Real time = ~,2,-3F secs.~%" (real-time prinfo))
+    (when *context-modified*
+      (setf (proof-status decl) 'unfinished)
+      (when (and (not *proving-tcc*)
+		 (pvs-yes-or-no-p
+		  "~%Context was modified in mid-proof.  ~
+                     Would you like to rerun the proof?~%"))
+	(let ((*in-checker* nil))
+	  (prove-decl decl :strategy '(then (rerun) (query*))))))))
+
+(defun read-proof-id (default)
+  (format t "Please enter an id (default ~a): " default)
+  (let ((id (read-line)))
+    (cond ((equal id "") default)
+	  ((valid-proof-id id) (intern id))
+	  (t (format t "~a is not a legal proof identifier:~%" id)
+	     (read-proof-id default)))))
+
+(defun valid-proof-id (str)
+  (and (alpha-char-p (char str 0))
+       (every #'(lambda (ch)
+		  (or (alpha-char-p ch)
+		      (digit-char-p ch)
+		      (member ch '(#\_ #\? #\-) :test #'char=)))
+	      (subseq str 1))))
+
+(defun read-proof-description ()
+  (format t "Please enter a description: ")
+  (read-line))
 
 (defun rerun-prove (decl)
   (if (and *noninteractive* *pvs-verbose*)
