@@ -536,35 +536,33 @@
   T)
 
 (defmethod connective-occurs? ((expr projection-application))
-  (connective-occurs? (argument expr)))
+  (with-slots (argument) expr
+    (connective-occurs? argument)))
 
 (defmethod connective-occurs? ((expr tuple-expr))
-  (connective-occurs? (exprs expr)))
+  (with-slots (exprs) expr
+    (connective-occurs? exprs)))
 
 (defmethod connective-occurs? ((expr record-expr))
-  (connective-occurs? (assignments expr)))
+  (with-slots (assignments) expr
+    (connective-occurs? assignments)))
 
 (defmethod connective-occurs? ((expr assignment))
-  (or (connective-occurs? (arguments expr))
-      (connective-occurs? (expression expr))))
+  (with-slots (arguments expression) expr)
+  (or (connective-occurs? arguments)
+      (connective-occurs? expression)))
 
 (defmethod connective-occurs? ((expr field-application))
-  (connective-occurs? (argument expr)))
+  (with-slots (argument)
+      (connective-occurs? argument)))
+
+(defmethod connective-occurs? ((expr propositional-application))
+  T)
 
 (defmethod connective-occurs? ((expr application))
-    (or ;;NSH(4.8.96) (negation? expr)
-	(implication? expr)(conjunction? expr)
-	(disjunction? expr)(iff? expr)
-;	(and (equation? expr)(typep (args1 expr) 'tuple-expr)
-;	     (typep (args2 expr) 'tuple-expr))
-;	(and (equation? expr)(typep (args1 expr) 'record-expr)
-;	     (typep (args2 expr) 'record-expr))
-;;	(and (equation? expr)(adt-subtype? (type (args1 expr)))
-;;	     (adt-subtype? (type (args2 expr))))
-;	(and (projection? (operator expr))
-;	     (typep (args1 expr) 'tuple-expr))
-	(connective-occurs? (operator expr))
-	(connective-occurs? (argument expr))))
+  (with-slots (operator argument) expr
+    (or (connective-occurs? operator)
+	(connective-occurs? argument))))
 
 (defmethod connective-occurs? ((expr list))
   (some #'connective-occurs? expr))
@@ -602,27 +600,32 @@
   T)
 
 (defmethod update-or-connective-occurs? ((expr projection-application))
-  (update-or-connective-occurs? (argument expr)))
+  (with-slots (argument) expr
+    (update-or-connective-occurs? argument)))
 
 (defmethod update-or-connective-occurs? ((expr tuple-expr))
-  (update-or-connective-occurs? (exprs expr)))
+  (with-slots (exprs) expr
+    (update-or-connective-occurs? exprs)))
 
 (defmethod update-or-connective-occurs? ((expr record-expr))
   (update-or-connective-occurs? (assignments expr)))
 
 (defmethod update-or-connective-occurs? ((expr assignment))
-  (or (update-or-connective-occurs? (arguments expr))
-      (update-or-connective-occurs? (expression expr))))
+  (with-slots (arguments expression) expr
+    (or (update-or-connective-occurs? arguments)
+	(update-or-connective-occurs? expression))))
 
 (defmethod update-or-connective-occurs? ((expr field-application))
-  (update-or-connective-occurs? (argument expr)))
+  (with-slots (argument) expr
+    (update-or-connective-occurs? argument)))
+
+(defmethod update-or-connective-occurs? ((expr propositional-application))
+  T)
 
 (defmethod update-or-connective-occurs? ((expr application))
-    (or ;;NSH(4.8.96) (negation? expr)
-	(implication? expr)(conjunction? expr)
-	(disjunction? expr)(iff? expr)
-	(update-or-connective-occurs? (operator expr))
-	(update-or-connective-occurs? (argument expr))))
+  (with-slots (operator argument) expr
+    (or (update-or-connective-occurs? operator)
+	(update-or-connective-occurs? argument))))
 
 (defmethod update-or-connective-occurs? ((expr list))
   (some #'update-or-connective-occurs? expr))
@@ -961,7 +964,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun collect-type-constraints (expr) ;(break "in-ctc")
-  (when (and (not *assert-typepreds-off*)
+  (when (and ;(not *assert-typepreds-off*) ;checked record-type-constraints
 	     (not (null *subtype-hash*))
 	     (not (gethash expr *subtype-hash*)))
     (collect-type-constraints* expr)))
@@ -974,8 +977,8 @@
 ;;collect-type-constraints.  Probably should turn off collect-type-preds
 ;;for pseudo-normalize.
 (defun record-type-constraints (expr)
-  (unless (or *assert-typepreds-off*
-	      (update-or-connective-occurs? expr))
+  (unless  *assert-typepreds-off*
+	   ;;   (update-or-connective-occurs? expr)
     (let ((constraints (collect-type-constraints expr)))
       (when (and *subtype-hash* constraints)
 	(setq *assert-typepreds* (nconc constraints *assert-typepreds*))
