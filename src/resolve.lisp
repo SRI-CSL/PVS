@@ -1523,7 +1523,9 @@
 	     (format nil
 		 "Expecting a~a~%No resolution for ~a~
                   ~@[ with arguments of types: ~:{~%  ~a : ~{~a~^, ~}~}~]~
-                  ~:[~;~%Check the actual parameters~]"
+                  ~:[~;~%Check the actual parameters~]
+                  ~:[~;~% There is a variable declaration with this name,~% ~
+                          but free variables are not allowed here.~]"
 	       (case kind
 		 (expr "n expression")
 		 (type " type")
@@ -1532,7 +1534,9 @@
 	       name
 	       (mapcar #'(lambda (a) (list a (full-name (ptypes a) 1)))
 		 arguments)
-	       reses)
+	       reses
+	       (some #'var-decl?
+		     (gethash (id name) (current-declarations-hash))))
 	     name))
       (if (and (eq kind 'expr)
 	       (conversion-occurs-in? arguments))
