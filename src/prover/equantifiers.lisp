@@ -1654,6 +1654,7 @@ is not of the form: (<var> <term>...)" subst)
   (cadr (exprs expr)))
 
 (defmethod args2* (expr)
+  (declare (ignore expr))
   nil)
 
 
