@@ -35,7 +35,7 @@
 
 # PVSPATH should be set after installation by <PVS>/bin/relocate or by hand
 # to the location of the PVS installation
-PVSPATH=/homes/owre/pvs2.3
+PVSPATH=
 
 #-------------------------------------------------
 # Nothing below this line should need modification

@@ -17,7 +17,7 @@
 	*ignore-package-name-case* t))
 
 (eval-when (eval load)
-  (defparameter *pvs-path* "/homes/owre/pvs2.3")
+  (defparameter *pvs-path* "")
   #+allegro (chdir *pvs-path*))
 
 (eval-when (eval load)
@@ -134,7 +134,7 @@
 		    #-gcl
 		    (load (format nil "~a/src/xp" *pvs-path*))
 		    #+gcl
-		    (load "/homes/owre/lisp/xp/xp-code")
+		    (load (format nil "~a/src/xp-code" *pvs-path*))
 		    (apply (find-symbol "INSTALL" :xp) :package :pvs nil))
 		  (load (format nil "~a/ess/dist-ess.lisp" *pvs-path*))
 		  #-gcl
