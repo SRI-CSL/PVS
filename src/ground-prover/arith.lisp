@@ -1029,11 +1029,14 @@
 
 (defun linearp (term)
   (or *jmr-mult*
-      (cond
+      (linear? term)))
+
+(defun linear? (term)
+  (cond
        ((and (listp term)(eq (funsym term) 'TIMES))
 	(and (qnumberp (arg1 term))
 	     (linearp (arg2 term))))
-       (t t))))
+       (t t)))
 
 ; returns t if only occurrence of var in plus expr l is in term t
 
