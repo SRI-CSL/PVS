@@ -200,7 +200,7 @@
 ;;; ICS interface
 
 (defmethod dpi-init* ((dp (eql 'ics)))
-  (ics-init nil))
+  (ics-init t))  ;; call it definitely with t here.
 
 (defmethod dpi-start* ((dp (eql 'ics)) prove-body)
   (pvs-to-ics-reset)
