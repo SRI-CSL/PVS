@@ -1196,10 +1196,8 @@
   (dp-gethash term (cong-state*-canon-hash cong-state*)))
 
 (defun setf-canon-hash (term cong-state term-canon)
-  (declare (special *dp-changed*)
-	   (type node term)
+  (declare (type node term)
 	   (type cong-state cong-state))
-  (setq *dp-changed* t)
   (setf (canon-hash* term (top (cong-state-stack cong-state)))
 	term-canon))
 
