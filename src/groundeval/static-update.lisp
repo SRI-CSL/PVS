@@ -236,6 +236,59 @@
 ;;since these cannot be updated if nothing is known
 ;;about their type.  
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;contains-possible-closure? is used to check if
+;;the expression's type is such that some updateable structure might
+;;be saved in the result either because the type itself contained
+;;updateable structure or because it included a function type which
+;;would correspond to a closure value which might keep some variables
+;;live in the value.   Used in updateable-free-formal-vars.
+
+(defmethod contains-possible-closure? ((texpr tupletype))
+  (contains-possible-closure? (types texpr)))
+
+(defmethod contains-possible-closure? ((texpr funtype))
+  T)
+
+(defmethod contains-possible-closure? ((texpr recordtype))
+  (contains-possible-closure? (mapcar #'type (fields texpr))))
+
+(defmethod contains-possible-closure? ((texpr subtype))
+  (contains-possible-closure? (find-supertype texpr)))
+
+(defmethod contains-possible-closure? ((texpr adt-type-name))
+  (some #'(lambda (constr)
+	    (and (funtype? (type constr))
+		 (let* ((dom (domain (type constr)))
+			(types (if (tupletype? dom)
+				 (types dom)
+				 (list dom))))
+		 (loop for ty in types
+		       thereis (and (not (tc-eq (find-supertype ty)
+					texpr))
+				    (contains-possible-closure? ty))))))
+	(constructors texpr)))
+
+
+(defmethod contains-possible-closure? ((texpr list))
+  (when (consp texpr)
+    (or (contains-possible-closure? (car texpr))
+	(contains-possible-closure? (cdr texpr)))))
+
+(defmethod contains-possible-closure? ((texpr actual))
+  (contains-possible-closure? (type-value texpr)))
+
+(defmethod contains-possible-closure? ((texpr type-name))
+  (formal-type-decl? (declaration texpr)))
+;;In the context, formal type parameters can later become
+;;updateable.  
+
+(defmethod contains-possible-closure? ((texpr T))
+  NIL) ;;It is okay to say not updateable? for uninterpreted
+;;since these cannot be updated if nothing is known
+;;about their type.  
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
