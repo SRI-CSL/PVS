@@ -619,7 +619,7 @@
   ;;(assert (fully-instantiated? jdomain))
   ;;(assert (every #'fully-instantiated? argtypes))
   (if (null argtypes)
-      (subtype-wrt? (type argument) jdomain rdomain)
+      (judgement-arguments-match*? (list (type argument)) rdomain jdomain)
       (judgement-arguments-match*? argtypes rdomain jdomain)))
 
 
@@ -831,9 +831,14 @@
 		    j-argtype argtypes domtypes))
 	 judgement-argtypes argtypes domain-types))
 
+;; Returns true when type1 is a subtype of type2, given that it must be
+;; of type reltype, e.g., (subtype-wrt? rat nzrat nzreal) is true.
+;; Another way to put this is that type1 intersected with reltype is a
+;; subtype of type2.  The typical use is for things like (a / b), where
+;; a, b: rat We would like to use the judgement rat_div_nzrat_is_rat,
+;; and simply get the TCC "b /= 0", rather than disallow all judgements
+;; and get the TCC "rational_pred(b) AND b /= 0".
 (defun subtype-wrt? (type1 type2 reltype &optional bindings)
-  ;; returns true when type1 is a subtype of type2, given that it must be
-  ;; of type reltype, e.g., (subtype-wrt? rat nzrat nzreal) is true.
   (subtype-wrt?* type1 type2 reltype bindings))
 
 (defmethod subtype-wrt?* ((te1 type-expr) (te2 type-expr) reltype bindings)
