@@ -125,23 +125,25 @@
 (defvar *incl-excl-var-id-indx-pairs*  nil) ;; (bddvarid . index)
 
 
-(addrule 'musimp () ((fnums *)
-		     (dynamic-ordering? nil))
-	 (musimp-fun fnums dynamic-ordering?)
-	 "MU Calculus Simplification .
-  Dynamic ordering means the BDD package can reorder literals
-  to reduce BDD size."
-	 "~%Applying musimp,")
+(addrule 'musimp () ((fnums *) dynamic-ordering? irredundant?)
+  (musimp-fun fnums dynamic-ordering? irredundant?)
+  "MU Calculus Simplification.  Dynamic-ordering? set to T means the BDD
+package can reorder literals to reduce BDD size.  Irredundant? T computes
+the disjunctive normal form of the result (which can take quite a bit of
+time)."
+  "~%Applying musimp,")
 
 
-(defun musimp-fun (&optional fnums dynamic-ordering?)
-  #'(lambda (ps)(run-musimp ps fnums dynamic-ordering?)))
+(defun musimp-fun (&optional fnums dynamic-ordering? irredundant?)
+  #'(lambda (ps) (run-musimp ps fnums dynamic-ordering? irredundant?)))
 
 
-(defun run-musimp (ps fnums dynamic-ordering?)
+(defun run-musimp (ps fnums dynamic-ordering? irredundant?)
   (bdd_init)
   (mu_init)
-  (let* ((*bdd-initialized* t)
+  (let* ((init-real-time (get-internal-real-time))
+	 (init-run-time (get-run-time))
+	 (*bdd-initialized* t)
 	 (*pvs-bdd-hash* (make-hash-table
 			  :hash-function 'pvs-sxhash :test 'tc-eq))
 	 (*bdd-pvs-hash* (make-hash-table))
@@ -165,15 +167,19 @@
 		  collect
 		  (cdr x)))))
 	 (mu-output (run-pvsmu mu-formula dynamic-ordering?))
-	 (list-of-conjuncts (mu-translate-from-bdd-list  
-			     (bdd_sum_of_cubes mu-output 1)))
+	 (sum-of-cubes (bdd_sum_of_cubes mu-output (if irredundant? 1 0)))
+	 (list-of-conjuncts (mu-translate-from-bdd-list sum-of-cubes))
          (lit-list (mu-from-bdd-list-to-pvs-list list-of-conjuncts)))
     (mu_quit)
     (bdd_quit)
-    (mu-add-bdd-subgoals ps sforms lit-list remaining-sforms)
-    )
-  )
-
+    (cond ((zerop bdd_interrupted)
+	   (multiple-value-prog1
+	    (mu-add-bdd-subgoals ps sforms lit-list remaining-sforms)
+	    (format t
+		"~%Finished MU simplification in ~,2,-3f real, ~,2,-3f cpu seconds"
+	      (realtime-since init-real-time) (runtime-since init-run-time))))
+	  (t (format t "~%MU Simplifier interrupted")
+	     (values 'X nil)))))
 
 (defun mu-from-bdd-list-to-pvs-list (list-of-conjuncts)
    (init-hash-tables) ;; definition in mu.lisp
