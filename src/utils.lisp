@@ -2372,37 +2372,51 @@ space")
 	    ;; LAMBDA (x: atype): (# f1 := conv(x`f1) ... #)
 	    (let* ((aid (make-new-variable '|x| (list atype etype)))
 		   (abd (make-bind-decl aid atype))
-		   (avar (make-variable-expr abd))
-		   (assigns (find-record-assignment-conversions
-			     (fields atype) (fields etype) avar)))
-	      (when assigns
-		(list (make!-lambda-expr (list abd)
-			(make-record-expr assigns etype))))))))
+		   (avar (make-variable-expr abd)))
+	      (multiple-value-bind (assigns convs)
+		  (find-record-assignment-conversions
+		   (fields atype) (fields etype) avar
+		   (dependent? atype) (dependent? etype))
+		(when assigns
+		  (list (change-class
+			 (make!-lambda-expr (list abd)
+			   (make-record-expr assigns etype))
+			 'rectype-conversion
+			 'conversions convs))))))))
 
-(defun find-record-assignment-conversions (afields efields avar
-						   &optional assigns)
+(defun find-record-assignment-conversions (afields efields avar adep? edep?
+						   &optional assigns convs)
   (if (null afields)
-      (nreverse assigns)
+      (values (nreverse assigns) (nreverse convs))
       (let* ((afld (car afields))
-	     (efld (find (id afld) efields :key #'id))
-	     (assign (find-record-assignment-conversion afld efld avar)))
-	(when assign
-	  (find-record-assignment-conversions
-	   (cdr afields) efields avar
-	   (cons assign assigns))))))
+	     (efld (find (id afld) efields :key #'id)))
+	(multiple-value-bind (assign conv aarg earg)
+	    (find-record-assignment-conversion afld efld avar adep? edep?)
+	  (when assign
+	    (find-record-assignment-conversions
+	     (if aarg
+		 (substit (cdr afields) (acons afld aarg nil))
+		 (cdr afields))
+	     (if earg
+		 (substit efields (acons efld earg nil))
+		 efields)
+	     avar adep? edep?
+	     (cons assign assigns)
+	     (cons conv convs)))))))
 
-(defun find-record-assignment-conversion (afld efld avar)
+(defun find-record-assignment-conversion (afld efld avar adep? edep?)
   (let* ((arg (list (list (make-instance 'field-assignment-arg
 			    'id (id afld)))))
 	 (fappl (make!-field-application efld avar))
+	 (conv (unless (tc-eq (type afld) (type efld))
+		 (car (find-conversions-for (type afld) (type efld)))))
 	 (expr (if (tc-eq (type afld) (type efld))
 		   fappl
-		   (let ((convs (find-conversions-for
-				 (type afld) (type efld))))
-		     (when convs
-		       (make!-application (car convs) fappl))))))
+		   (when conv
+		     (make!-application conv fappl)))))
     (when expr
-      (mk-assignment 'uni arg expr))))
+      (values (mk-assignment 'uni arg expr) conv
+	      (when adep? fappl) (when edep? expr)))))
 
 (defmethod find-conversions-for ((atype tupletype) (etype tupletype))
   (append (call-next-method)
@@ -2411,31 +2425,49 @@ space")
 	    ;; LAMBDA (x: atype): (conv(x`1) ... )
 	    (let* ((aid (make-new-variable '|x| (list atype etype)))
 		   (abd (make-bind-decl aid atype))
-		   (avar (make-variable-expr abd))
-		   (args (find-tupletype-conversions
-			  (types atype) (types etype) 1 avar)))
-	      (when args
-		(list (make!-lambda-expr (list abd)
-			(make!-tuple-expr* args))))))))
+		   (avar (make-variable-expr abd)))
+	      (multiple-value-bind (args convs)
+		  (find-tupletype-conversions
+		   (types atype) (types etype) 1 avar)
+		(when args
+		  (list (change-class
+			 (make!-lambda-expr (list abd)
+			   (make!-tuple-expr* args))
+			 'tuptype-conversion
+			 'conversions convs))))))))
 
-(defun find-tupletype-conversions (atypes etypes index avar &optional args)
+(defun find-tupletype-conversions (atypes etypes index avar
+					  &optional args convs)
   (if (null atypes)
-      (nreverse args)
+      (values (nreverse args) (nreverse convs))
       (let* ((atype (car atypes))
-	     (etype (car etypes))
-	     (arg (find-tupletype-conversion atype etype index avar)))
-	(when arg
-	  (find-tupletype-conversions
-	   (cdr atypes) (cdr etypes) (1+ index) avar
-	   (cons arg args))))))
+	     (etype (car etypes)))
+	(multiple-value-bind (arg conv aarg earg)
+	    (find-tupletype-conversion atype etype index avar)
+	  (when arg
+	    (find-tupletype-conversions
+	     (if aarg
+		 (substit (cdr atypes) (acons (car atypes) aarg nil))
+		 (cdr atypes))
+	     (if earg
+		 (substit (cdr etypes) (acons (car etypes) earg nil))
+		 (cdr etypes))
+	     (1+ index) avar
+	     (cons arg args)
+	     (cons conv convs)))))))
 
 (defun find-tupletype-conversion (atype etype index avar)
-  (let ((pappl (make!-projection-application index avar)))
-    (if (tc-eq atype etype)
-	pappl
-	(let ((convs (find-conversions-for atype etype)))
-	  (when convs
-	    (make!-application (car convs) pappl))))))
+  (let* ((pappl (make!-projection-application index avar))
+	 (conv (unless (tc-eq atype etype)
+		 (car (find-conversions-for atype etype))))
+	 (expr (if (tc-eq atype etype)
+		   pappl
+		   (when conv
+		     (make!-application conv pappl)))))
+    (when expr
+      (values expr conv
+	      (when (dep-binding? atype) pappl)
+	      (when (dep-binding? etype) expr)))))
 
 (defmethod find-conversions-for ((atype funtype) (etype funtype))
   (let* ((nconvs (call-next-method))
@@ -2458,29 +2490,39 @@ space")
 	 (daid (make-new-variable '|x| (list atype etype)))
 	 (dabd (make-bind-decl daid detype))
 	 (davar (make-variable-expr dabd))
+	 (dconv (unless (tc-eq datype detype)
+		  ;; Note contravariance
+		  (car (find-conversions-for detype datype))))
 	 (arg (if (tc-eq datype detype)
 		  davar
-		  ;; Note contravariance
-		  (let ((dconvs (find-conversions-for detype datype)))
-		    (when dconvs
-		      (make!-application (car dconvs) davar)))))
+		  (when dconv
+		    (make!-application dconv davar))))
+	 (ratype (if (dep-binding? (domain atype))
+		     (substit (range atype) (acons (domain atype) arg nil))
+		     (range atype)))
+	 (retype (if (dep-binding? (domain etype))
+		     (substit (range etype) (acons (domain etype) davar nil))
+		     (range etype)))
+	 (rconv (unless (tc-eq ratype retype)
+		  ;; covariant
+		  (car (find-conversions-for ratype retype))))
 	 (fconvs (when arg
 		   (let* ((appl (make!-application fvar arg))
-			  (expr (if (compatible? (range atype) (range etype))
+			  (expr (if (tc-eq ratype retype)
 				    appl
-				    (let ((rconvs (find-conversions-for
-						   (range atype)
-						   (range etype))))
-				      (when rconvs
-					(make!-application (car rconvs)
-					  appl))))))
+				    (when rconv
+				      (make!-application rconv appl)))))
 		     (when expr
-		       (list (make!-lambda-expr (list fbd)
-			       (make!-lambda-expr (list dabd)
-				 expr))))))))
+		       (list (change-class
+			      (make!-lambda-expr (list fbd)
+				(make!-lambda-expr (list dabd)
+				  expr))
+			      'funtype-conversion
+			      'domain-conversion dconv
+			      'range-conversion rconv)))))))
     (or sconvs
-	fconvs
-	nconvs)))
+	nconvs
+	fconvs)))
 
 (defmethod find-conversions-for (atype etype)
   (find-conversions* (conversions *current-context*)
@@ -2536,13 +2578,17 @@ space")
 
 (defun compatible-conversion (conversion type)
   (let* ((ctype (find-supertype (type conversion)))
-	 (fparams (free-params ctype))
+	 (fparams (remove-if #'(lambda (fp)
+				 (memq fp (formals-sans-usings
+					     (current-theory))))
+		    (free-params ctype)))
 	 (theory (when fparams (module (car fparams))))
 	 (fmls (when theory (formals-sans-usings theory))))
     (if (and fmls
 	     (not (eq theory (current-theory)))
 	     (not (fully-instantiated? ctype)))
-	(let ((bindings (tc-match type ctype (mapcar #'list fmls))))
+	(let ((bindings (tc-match-conversion conversion type ctype
+					     (mapcar #'list fmls))))
 	  (when (and bindings (every #'cdr bindings))
 	    (let* ((acts (mapcar #'(lambda (a)
 				     (mk-res-actual (cdr a) theory))
@@ -2562,6 +2608,30 @@ space")
 		    (subst-mod-params (expr conversion) nmi))))))
 	(when (compatible? ctype type)
 	  (expr conversion)))))
+
+(defun tc-match-conversion (conversion type ctype bindings)
+  (let ((nbindings (tc-match type ctype bindings)))
+    (when nbindings
+      (if (every #'cdr nbindings)
+	  nbindings
+	  (tc-match-conversion* (expr conversion) nbindings)))))
+
+(defmethod tc-match-conversion* ((expr application) bindings)
+  (let ((nbindings (tc-match (type (argument expr))
+			     (domain (type (operator expr)))
+			     bindings)))
+    (if nbindings
+	(if (every #'cdr nbindings)
+	    nbindings
+	    (tc-match (domain (type (operator expr)))
+		      (type (argument expr))
+		      nbindings))
+	(tc-match (domain (type (operator expr)))
+		  (type (argument expr))
+		  bindings))))
+
+(defmethod tc-match-conversion* ((expr name-expr) bindings)
+  bindings)
 
 (defun subtypes-satisfied? (actuals formals &optional alist)
   (or (notany #'(lambda (fm) (typep fm 'formal-subtype-decl)) formals)
