@@ -378,6 +378,9 @@
       (remove-if-not #'mod-or-using?
 	(all-decls theory)))))
 
+(defmethod modname ((d formal-theory-decl))
+  (theory-name d))
+
 (defmethod theory-name ((mdecl mod-decl))
   (modname mdecl))
 

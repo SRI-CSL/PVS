@@ -168,12 +168,6 @@
 		       (gethash (mod-id name) (current-declarations-hash)))))
       (get-theory-aliases* mod-decls))))
 
-(defmethod modname ((d formal-theory-decl))
-  (theory-name d))
-
-(defmethod theory-name ((d mod-decl))
-  (modname d))
-
 (defun get-theory-aliases* (mod-decls &optional modnames)
   (if (null mod-decls)
       (delete-duplicates modnames :test #'tc-eq)
