@@ -614,26 +614,34 @@
 			      body)))
 	  (cond ((enum-adt? typ1)
 		 `(every ,(pvs2cl-lambda (list bind1)
-					expr-rest
-					bindings
-					(append (updateable-vars expr)
-						livevars))
-			(list ,@(pvs2cl_up* (constructors typ1)
-					    bindings livevars))))
+					 expr-rest
+					 bindings
+					 (append (updateable-vars expr)
+						 livevars))
+			 (list ,@(pvs2cl_up* (constructors typ1)
+					     bindings livevars))))
 		((car sub)
-		  (let ((i (gentemp)))
-		    `(loop for ,i
-			   from ,(car sub)
-			   to ,(cdr sub)
-			   always
-			   (pvs-funcall ,(pvs2cl-lambda (list bind1)
-							expr-rest
-							bindings
-							(append (updateable-vars expr)
-								livevars))
-					,i))))
+		 (let ((lfrom (if (number-expr? (car sub))
+				  (number (car sub))
+				  (or (pvs2cl_up* (cdr sub) bindings livevars)
+				      (undef (car sub)))))
+		       (lto (if (number-expr? (cdr sub))
+				(number (cdr sub))
+				(or (pvs2cl_up* (cdr sub) bindings livevars)
+				    (undef (cdr sub)))))
+		       (i (gentemp)))
+		   `(loop for ,i
+			  from ,lfrom
+			  to ,lto
+			  always
+			  (pvs-funcall ,(pvs2cl-lambda (list bind1)
+						       expr-rest
+						       bindings
+						       (append (updateable-vars expr)
+							       livevars))
+				       ,i))))
 		(t (throw 'no-defn (values nil 
-			  "Cannot handle non-scalar/subrange quantifiers.")))))
+					   "Cannot handle non-scalar/subrange quantifiers.")))))
 	(pvs2cl_up* body bindings livevars))))
 
 (defmethod pvs2cl_up* ((expr exists-expr) bindings livevars)
@@ -658,19 +666,27 @@
 			(list ,@(pvs2cl_up* (constructors typ1)
 					    bindings livevars))))
 		((car sub)
-		  (let ((i (gentemp)))
-		    `(loop for ,i
-			   from ,(car sub)
-			   to ,(cdr sub)
-			   thereis
-			   (pvs-funcall ,(pvs2cl-lambda (list bind1)
-							expr-rest
-							bindings
-							(append (updateable-vars expr)
-								livevars))
-					,i))))
+		 (let ((lfrom (if (number-expr? (car sub))
+				  (number (car sub))
+				  (or (pvs2cl_up* (cdr sub) bindings livevars)
+				      (undef (car sub)))))
+		       (lto (if (number-expr? (cdr sub))
+				(number (cdr sub))
+				(or (pvs2cl_up* (cdr sub) bindings livevars)
+				    (undef (cdr sub)))))
+		       (i (gentemp)))
+		   `(loop for ,i
+			  from ,lfrom
+			  to ,lto
+			  thereis
+			  (pvs-funcall ,(pvs2cl-lambda (list bind1)
+						       expr-rest
+						       bindings
+						       (append (updateable-vars expr)
+							       livevars))
+				       ,i))))
 		(t (throw 'no-defn (values nil
-			  "Cannot handle non-scalar/subrange quantifiers.")))))
+					   "Cannot handle non-scalar/subrange quantifiers.")))))
 	(pvs2cl_up* body bindings livevars))))
 			
 
