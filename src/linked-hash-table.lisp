@@ -32,9 +32,6 @@
   (let ((ht (if (linked-hash-table-p lht)
 		(lhash-table lht)
 		lht)))
-    (when (and (lhash-next lht)
-	       (lhash-next (lhash-next lht)))
-      (break "Two levels already?"))
     (assert (hash-table-p ht))
     (make-linked-hash-table
      :table (make-hash-table
