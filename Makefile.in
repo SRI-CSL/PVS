@@ -519,7 +519,10 @@ system-tar = pvs-system.tgz
 
 emacs19-tar = pvs-emacs19.tgz
 
-tarfiles : ${release-notes} ${runtime-image-tar} ${full-image-tar} ${system-tar} ${emacs19-tar}
+source-tar = pvs-source.tgz
+
+tarfiles : ${release-notes} ${runtime-image-tar} ${full-image-tar} \
+           ${system-tar} ${emacs19-tar} ${source-tar}
 
 runtime-image-files = $(wildcard ${bindir}/runtime/*)
 
@@ -543,6 +546,18 @@ system-files = README pvs pvs-tex.sub pvs.sty bin/relocate bin/pvs-platform \
                emacs/emacs-src/pvs.xpm \
                $(ilisp-emacs-src) emacs/emacs20 emacs/xemacs21
 
+configure-files = Makefile.in README README.configure configure.in \
+                  pvs.in pvs.system.in
+
+bdd-sources = BDD/bdd-ld-table BDD/mu-ld-table \
+              BDD/bdd_interface.c BDD/mu_interface.c \
+              BDD/ix86-redhat5/Makefile BDD/sun4-SunOS5/Makefile \
+              BDD/bdd BDD/mu
+
+ws1s-sources = src/WS1S/README src/WS1S/ws1s-ld-table \
+               src/WS1S/ws1s_extended_interface.c src/WS1S/mona-1.4 \
+               src/WS1S/ix86-redhat5/Makefile src/WS1S/sun4-SunOS5/Makefile
+
 emacs19-files = emacs/emacs19
 
 lib/strategies.lisp : src/prover/strategies.lisp
@@ -560,7 +575,18 @@ ${system-tar} : ${system-files}
 ${emacs19-tar} : $(emacs19-files)
 	$(TAR) $(TARFLAGS) -f ${emacs19-tar} ${emacs19-files}
 
-tar : ${full-image-tar} ${runtime-image-tar} ${system-tar} ${emacs19-tar}
+${source-tar} : ${pvs-make-files} ${configure-files} \
+                src/make-allegro-pvs.lisp.in src/make-pvs.lisp.in \
+                src/metering.lisp src/utils/utils-ld-table \
+                src/utils/file_utils.c wish \
+                ${ff-files} ${ess} ess/README ess/allegro-runtime.lisp.in \
+                ess/dist-ess.lisp.in ess/term/terms/rel/*.txt \
+                ${pvs-parser-in} ${lisp-files} \
+                ${bdd-sources} ${ws1s-sources}
+	$(TAR) $(TARFLAGS) -f $@ $^ --exclude CVS
+
+tar : ${full-image-tar} ${runtime-image-tar} ${system-tar} \
+      ${emacs19-tar} ${source-tar}
 
 install:
 	@echo "target install is deprecated - read README.configure"
