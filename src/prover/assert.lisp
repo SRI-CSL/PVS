@@ -80,7 +80,8 @@
 			*init-alists*
 			*alists*)))
 	 (assert-sequent goalsequent sformnums rewrite-flag))
-      (clrhash *subst-type-hash*))))
+      (when *subst-type-hash*
+	(clrhash *subst-type-hash*)))))
 
 (defun find-remaining-sformnums (sforms sformnums sub-sformnums
 					&optional (pos 1)(neg -1)(acc nil))
