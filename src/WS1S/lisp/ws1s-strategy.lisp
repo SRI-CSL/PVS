@@ -98,9 +98,7 @@
 
 (defun ws1s-sforms (sforms)
   (let* ((fmla (make!-disjunction* (mapcar #'formula sforms)))
-	 (newfmla (unwind-protect
-		      (ws1s-simplify fmla)
-		    fmla))
+	 (newfmla (ws1s-simplify fmla))
 	 (new-sform (unless (or (tc-eq fmla newfmla)
 				(tc-eq newfmla *false*)
 				(and (negation? newfmla)
@@ -113,26 +111,29 @@
 (defun ws1s-simplify (fmla)
   (declare (special *output-examples* *output-automaton*))
   (multiple-value-bind (dfa symtab)
-      (bool-to-dfa fmla)
-    (assert (dfa? dfa))
-    (let* ((status (dfa-status dfa))
-	   (newfmla (cond ((eq status :valid) *true*)
-			  ((eq status :inconsistent) *false*)
-			  (t fmla))))
-      (ws1s-output fmla newfmla)
-      (when (or *output-examples* *output-automaton*)
-	(multiple-value-bind (symtab num offsets fvars types)
-	    (symtab-strip symtab)
-	  (multiple-value-bind (counterex length-of-counterex)
-	      (dfa-counterexample dfa num offsets)
-	    (multiple-value-bind (witness length-of-witness)
-		(dfa-witness dfa num offsets)
-	      (when *output-examples*
-		(ws1s-example-output "Counterexample: " counterex length-of-counterex num types fvars)
-		(ws1s-example-output "Witness: " witness length-of-witness num types fvars))
-	      (when *output-automaton*
-		(ws1s-automaton-output dfa num fvars offsets))))))
-      newfmla)))
+      (fmla-to-dfa fmla)
+    (if (not dfa)
+	(progn
+	  (ws1s-msg (format nil "Not WS1S translatable ~a" fmla))
+	  fmla)
+      (let* ((status (dfa-status dfa))
+	     (newfmla (cond ((eq status :valid) *true*)
+			    ((eq status :inconsistent) *false*)
+			    (t fmla))))
+	(ws1s-output fmla newfmla)
+	(when (or *output-examples* *output-automaton*)
+	  (multiple-value-bind (symtab num offsets fvars types)
+	      (symtab-strip symtab)
+	    (multiple-value-bind (counterex length-of-counterex)
+		(dfa-counterexample dfa num offsets)
+	      (multiple-value-bind (witness length-of-witness)
+		  (dfa-witness dfa num offsets)
+		(when *output-examples*
+		  (ws1s-example-output "Counterexample: " counterex length-of-counterex num types fvars)
+		  (ws1s-example-output "Witness: " witness length-of-witness num types fvars))
+		(when *output-automaton*
+		  (ws1s-automaton-output dfa num fvars offsets))))))
+	newfmla))))
  
 (defun ws1s-output (fmla newfmla)
   (format t "~2%Formula ")
@@ -169,16 +170,40 @@
   (labels ((loop* (j acc)
 	     (if (= j length) acc
 	       (let ((newacc (if (set? (elt example (+ (* i length) j 1)))
-				 (make!-application* (add-to-fset)
+				 (make!-application* (add-operator)
 						     (list (make!-number-expr j) acc))
 			       acc)))
 		 (loop* (1+ j) newacc)))))
-    (loop* 0 (empty-fset-of-nats))))
+    (loop* 0 (emptyset-operator))))
 
 (defun ws1s-automaton-output (p num fvars offsets)
   (format t "~2%Free vars:~2%" fvars)
   (dfa-print p num fvars offsets)
   (format t "~%"))
 
+;; Analyze symbol table
 
-
+(defun symtab-strip (symtab)
+  (let* ((size (length symtab))
+	 (offsets (make-array size :element-type 'fixnum))
+	 (fvars   (make-array size :element-type 'string))
+	 (types   (make-string size))
+	 (i       0))
+    (mapc  #'(lambda (bndng)
+	       (let ((idx (cdr bndng))
+		     (expr (car bndng)))
+		 (setf (elt offsets i) idx)
+		 (setf (elt fvars i) (format nil "~a" expr))
+		 (setf (elt types i)
+		       (let ((level (level expr)))
+			 (assert level)
+			 (cond ((eql level 0) #\0)
+			       ((eql level 1) #\1)
+			       ((eql level 2) #\2))))
+		 (setf i (1+ i))))
+      symtab)
+    (values symtab
+	    size
+	    offsets
+	    fvars
+	    types)))
