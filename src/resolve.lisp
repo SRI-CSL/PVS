@@ -1816,23 +1816,36 @@
       (if (actuals modname)
 	  (type-error modname "May not instantiate the current theory")
 	  modname)
-      (if (get-theory modname)
-	  (progn
-	    (typecheck* modname nil nil nil)
-	    (let* ((importings (get-importings (get-theory modname))))
-	      (unless importings
-		(type-error modname
-		  "Theory ~a is not imported in the current context"
-		  (id modname)))
-	      (when (and (actuals modname)
-			 (not (member modname importings :test #'tc-eq))
-			 (not (find-if #'(lambda (mi) (null (actuals mi)))
-				importings)))
-		(type-error modname
-		  "Theory instance ~a is not imported in the current context"
-		  modname)))
-	    modname)
-	  (resolve-theory-abbreviation modname))))
+      (let* ((gth (get-theory modname))
+	     (iths (unless (or gth (library modname))
+		     (get-imported-theories (id modname)))))
+	(when (cdr iths)
+	  (type-error modname
+	    "Theory instance ~a is ambiguous - include the library~%  ~
+               one of ~{~a~^ ~}"
+	    modname
+	    (mapcar #'(lambda (th) (libref-to-libid (lib-ref th))) iths)))
+	(if (or gth iths)
+	    (let* ((th (or gth (car iths)))
+		   (nmodname (if iths
+				 (copy modname
+				   'library (libref-to-libid (lib-ref th)))
+				 modname)))
+	      (typecheck* nmodname nil nil nil)
+	      (let* ((importings (get-importings th)))
+		(unless importings
+		  (type-error nmodname
+		    "Theory ~a is not imported in the current context"
+		    (id nmodname)))
+		(when (and (actuals nmodname)
+			   (not (member nmodname importings :test #'tc-eq))
+			   (not (find-if #'(lambda (mi) (null (actuals mi)))
+				  importings)))
+		  (type-error nmodname
+		    "Theory instance ~a is not imported in the current context"
+		    nmodname)))
+	      nmodname)
+	    (resolve-theory-abbreviation modname)))))
 
 (defun resolve-theory-abbreviation (theory-name)
   (let* ((abbrs (remove-if-not #'mod-decl?
@@ -1882,7 +1895,9 @@
                         instances are visible,~% but don't match the ~
                         given actuals:~%   ~{~a~^, ~}~]
                   ~:[~;~% There is a variable declaration with this name,~% ~
-                          but free variables are not allowed here.~]"
+                          but free variables are not allowed here.~]~
+                  ~:[~;~% There is a mapping for this name, but once mapped ~
+                          the name is not available.~]"
 	       (if *in-checker* 1 0)
 	       (if *typechecking-actual*
 		   "n expression or type"
@@ -1902,7 +1917,8 @@
 			     (id (module-instance r))))
 		 reses)
 	       (some #'var-decl?
-		     (get-declarations (id name))))
+		     (get-declarations (id name)))
+	       (some-matching-mapping-element? name))
 	     name))
       (if (and (eq kind 'expr)
 	       (conversion-occurs-in? arguments))
@@ -1925,6 +1941,25 @@
 	      (type-error-noconv obj error)
 	      (progn (set-strategy-errors error)
 		     nil)))))))
+
+(defun some-matching-mapping-element? (name)
+  (unless (or (mod-id name)
+	      (actuals name)
+	      (mappings name))
+    (let ((found-one nil))
+      (maphash #'(lambda (th thinsts)
+		   (declare (ignore th))
+		   (or found-one
+		       (setq found-one
+			     (find-if #'(lambda (thinst)
+					  (member (id name) (mappings thinst)
+						  :key #'(lambda (m)
+							   (unless
+							       (mapping-def? m)
+							     (id (lhs m))))))
+			       thinsts))))
+	       (lhash-table (current-using-hash)))
+      found-one)))
 
 (defun resolution-args-error (infolist name arguments)
   (let ((info (car (best-guess-resolution-error infolist arguments))))
