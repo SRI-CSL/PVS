@@ -560,26 +560,63 @@
     cdecls))
 
 (defun xt-conversion (decl)
-  (let* ((enames (term-args decl))
-	 (jdecls (mapcar #'(lambda (ename)
-			     (let ((name (xt-name (term-arg0 ename)))
-				   (ntype (term-arg1 ename)))
-			       (if (is-sop 'notype ntype)
-				   (make-instance 'conversion-decl
-				     'id (id name)
-				     'name (change-class name 'name-expr)
-				     'chain? t
-				     'place (term-place decl))
-				   (make-instance 'typed-conversion-decl
-				     'id (id name)
-				     'name (change-class name 'name-expr)
-				     'declared-type (xt-not-enum-type-expr
-						     ntype)
-				     'chain? t
-				     'place (term-place decl)))))
-			 enames)))
-    (setf (chain? (car (last jdecls))) nil)
-    jdecls))
+  (xt-conversion* (term-args decl) (sim-term-op decl)))
+
+(defun xt-conversion* (enames convkey &optional result)
+  (cond ((null enames)
+	 (setf (chain? (car result)) nil)
+	 (nreverse result))
+	(t (let ((cdecl (xt-conversion** (car enames)
+					 (null (cdr enames))
+					 convkey)))
+	     (xt-conversion* (cdr enames) convkey
+			     (cons cdecl result))))))
+
+(defun xt-conversion** (ename last? convkey)
+  (let ((name (xt-name (term-arg0 ename)))
+	(ntype (term-arg1 ename)))
+    (if (is-sop 'notype ntype)
+	(case convkey
+	  (conversionplus
+	   (make-instance 'conversionplus-decl
+	     'id (id name)
+	     'name (change-class name 'name-expr)
+	     'chain? (not last?)
+	     'place (term-place name)))
+	  (conversionminus
+	   (make-instance 'conversionminus-decl
+	     'id (id name)
+	     'name (change-class name 'name-expr)
+	     'chain? (not last?)
+	     'place (term-place name)))
+	  (t
+	   (make-instance 'conversion-decl
+	     'id (id name)
+	     'name (change-class name 'name-expr)
+	     'chain? (not last?)
+	     'place (term-place name))))
+	(case convkey
+	  (conversionplus
+	   (make-instance 'typed-conversionplus-decl
+	     'id (id name)
+	     'name (change-class name 'name-expr)
+	     'declared-type (xt-not-enum-type-expr ntype)
+	     'chain? (not last?)
+	     'place (term-place name)))
+	  (conversionminus
+	   (make-instance 'typed-conversionminus-decl
+	     'id (id name)
+	     'name (change-class name 'name-expr)
+	     'declared-type (xt-not-enum-type-expr ntype)
+	     'chain? (not last?)
+	     'place (term-place name)))
+	  (t
+	   (make-instance 'typed-conversion-decl
+	     'id (id name)
+	     'name (change-class name 'name-expr)
+	     'declared-type (xt-not-enum-type-expr ntype)
+	     'chain? (not last?)
+	     'place (term-place name)))))))
 
 
 (defun xt-chained-decls (idops dtype formals decl absyn &optional result)
