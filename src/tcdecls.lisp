@@ -457,10 +457,12 @@
     (mapobject #'(lambda (ex)
 		   (when (and (name? ex)
 			      (resolution ex)
+			      (not (dep-binding? (declaration ex)))
 			      (not (from-prelude? (declaration ex)))
 			      (not (from-prelude-library? (declaration ex))))
 		     (let* ((th (module (declaration ex)))
 			    (entry (assq th ref-usings)))
+		       (assert th)
 		       (if entry
 			   (pushnew (module-instance ex) (cdr entry)
 				    :test #'tc-eq)
