@@ -1,5 +1,5 @@
 #                               -*- Mode: Tcl -*- 
-# new-pvs-support.tcl -- 
+# pvs-support.tcl -- 
 # Author          : Carl Witty with mods by Sam Owre
 # Created On      : Thu Apr 27 02:27:14 1995
 # Last Modified By: Sam Owre
@@ -415,6 +415,12 @@ proc proof-show {name theory path} {
 	}
 	set linebot [expr $seqbot+$ysep]
 	set rule [set ${fullpath}(rule)]
+	if {[string index $rule 0] == "+"} {
+	    set rule [string range $rule 1 end]
+	    set rulebitmap "gray25"
+	} else {
+	    set rulebitmap ""
+	}
 	set alen [get-option abbrevLen]
 	if $alen {
 	    if {[string length $rule]>$alen} {
@@ -430,16 +436,16 @@ proc proof-show {name theory path} {
 	$proofwin create text 0 $linebot -text $rule \
 	    -tags "$fullpath.rule $fullpath $fullpath.real rule [ancestors $fullpath $top .desc]" \
 	    -anchor n \
-	    -fill [get-option foreground]
+	    -fill [get-option foreground] -stipple $rulebitmap
     }
 
     dag-add-item $proofwin $fullpath [kids $fullpath [set ${fullpath}(kids)]] [ancestors $fullpath $top .desc]
     dag-add-destroy-cb $proofwin $fullpath "global $fullpath; catch {unset $fullpath}"
-    if [info exists ${fullpath}(done)] {
-	my-foreground $proofwin $fullpath [get-option doneColor]
-    } elseif [info exists ${fullpath}(tcc)] {
-	my-foreground $proofwin $fullpath [get-option tccColor]
-    }
+     if [info exists ${fullpath}(done)] {
+ 	my-foreground $proofwin $fullpath [get-option doneColor]
+     } elseif [info exists ${fullpath}(tcc)] {
+ 	my-foreground $proofwin $fullpath [get-option tccColor]
+     }
 }
 
 proc get-full-rule {proofwin top} {
