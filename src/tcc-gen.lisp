@@ -1285,7 +1285,7 @@
   (let ((npred (make-equality-between-predicates t1 p1 p2)))
     (equality-predicates-list (actuals (module-instance t1))
 			      (actuals (module-instance t2))
-			      npred bindings)))
+			      bindings npred)))
 
 (defmethod equality-predicates* ((t1 subtype) (t2 type-expr) p1 p2 bindings)
   (equality-predicates*
