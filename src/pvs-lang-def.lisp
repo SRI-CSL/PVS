@@ -11,7 +11,7 @@
 :code-package "PVS"
 :abs-syn-package "PVS"
 :use-packages '("ERGOLISP" "OPER" "OCC" "TERM" "SORT" "SB-RUNTIME" "LANG" "NEWATTR")
-:grammar-file (format nil "~a/src/pvs-gr.txt")
+:grammar-file (format nil "~a/src/pvs-gr.txt" *pvs-path*)
 :sub-languages '("LEXICAL-TERMINALS")
 :lexer-file (format nil "~a/src/new-pvs-lexer.lisp" *pvs-path*)
 :parser-file (format nil "~a/src/new-pvs-parser.lisp" *pvs-path*)

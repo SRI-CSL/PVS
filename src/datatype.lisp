@@ -175,7 +175,8 @@ generated")
 	  (chmod "a+w" (namestring adt-path)))
 	(ignore-file-errors
 	 (delete-file (namestring adt-path))))
-      (let* ((adtmod (unparse-expanded mods :string t))
+      (let* ((adtmod (let ((*unparse-expanded* t))
+		       (unparse mods :string t)))
 	     (condition (nth-value 1
 			  (ignore-file-errors
 			   (with-open-file (str adt-path :direction :output

@@ -76,8 +76,9 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod print-object ((te type-expr) stream)
   (if *debugging-print-object*
       (call-next-method)
-      (let ((*no-comments* t))
-	(unparse-expanded te :stream stream))))
+      (let ((*no-comments* t)
+	    (*unparse-expanded* t))
+	(unparse te :stream stream))))
 
 
 (defmethod print-object ((fd field-decl) stream)
