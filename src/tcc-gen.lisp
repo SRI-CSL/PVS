@@ -219,7 +219,7 @@
     (setf (tcc-disjuncts ndecl)
 	  (if (binding-expr? (definition ndecl))
 	      (cons (bindings (definition ndecl))
-		    (simplify-disjunct (expression (definition ndecl))))
+		    (simplify-disjunct (expression (definition ndecl)) nil))
 	      (cons nil (simplify-disjunct (definition ndecl) nil))))
     (let ((match (car (member ndecl *tccdecls* :test #'subsumes)))
 	  (decl (declaration *current-context*)))
