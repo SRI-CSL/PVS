@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; pvs-mu.lisp -- Interface to the Mu-calculus model-checker
+;; mu.lisp -- Interface to the Mu-calculus model-checker
 ;; Author          : Sree, Shankar and Saidi
 ;; Created On      : Wed May  3 19:51:22 1995
 ;; Last Modified By: Sam Owre
@@ -395,9 +395,10 @@ time).  Verbose? set to T provides more information."
           ((implication? expr)  (convert-pvs-to-mu-implication expr))
           ((negation? expr)   (convert-pvs-to-mu-negation expr))
           ((branch? expr)  (convert-pvs-to-mu-branch  expr))
-          ((disequation? expr)  (convert-pvs-to-mu-inequality  expr))
+          ((disequation? expr)  (convert-pvs-to-mu-disequality  expr))
           ((equation? expr) (convert-pvs-to-mu-equality expr))
-          ((mu-nu-expr-application? expr) (convert-pvs-to-mu-nu-application  expr))
+          ((inequation? expr) (convert-pvs-to-mu-inequality expr))
+	  ((mu-nu-expr-application? expr) (convert-pvs-to-mu-nu-application  expr))
           ((mu-nu-expr? expr) (convert-pvs-to-mu-nu-expression expr))
           ((reachable-expr? expr) (convert-pvs-to-mu-reachable expr))
           ((not (tc-eq (find-supertype (type expr)) *boolean*))
@@ -514,7 +515,7 @@ time).  Verbose? set to T provides more information."
 )
 
 
-(defun convert-pvs-to-mu-inequality  (expr)
+(defun convert-pvs-to-mu-disequality  (expr)
  (let ((fml1 (convert-pvs-to-mu* (make-equality (args1 expr)(args2 expr)))))
                  (mu-mk-not fml1))
 )
@@ -621,19 +622,95 @@ time).  Verbose? set to T provides more information."
       (convert-pvs-to-mu-equality-with-subrangetype-in-arg expr))
      (t (make-mu-variable expr)))))
 
+(defun convert-pvs-to-mu-inequality (expr)
+  (if (and (args2 expr)
+	   (or (number-expr? (args1 expr))
+	       (sub-range? (type (args1 expr))))
+	   (or (number-expr? (args2 expr))
+	       (sub-range? (type (args2 expr)))))
+      (convert-pvs-to-mu-inequality-with-subrange-args
+       (id (operator expr)) (args1 expr) (args2 expr))
+      (make-mu-variable expr)))
 
-(defmethod convert-number (number)
-  (let* ((len (max 1 (ceiling (log (1+ number) 2))))
-         (format-bitstring (format nil "~~~d,'0b" len)) 
-         (bit-string (format nil format-bitstring number))
-         (lisp-list-values (nreverse  ;lsb first: little-endian
-               (loop for i from 0 to (1- len)
-	             collect (if (eql (digit-char-p (elt bit-string i)) 1)
-		                   (mu-mk-true) (mu-mk-false))))))
-;; (lisp-to-c-list lisp-list-values))
-    lisp-list-values)
-)
+(defun convert-pvs-to-mu-inequality-with-subrange-args (op a1 a2)
+  (case op
+    (< (convert-pvs-to-mu-lt-with-subrange-args a1 a2))
+    (<= (convert-pvs-to-mu-le-with-subrange-args a1 a2))
+    (> (convert-pvs-to-mu-lt-with-subrange-args a2 a1))
+    (>= (convert-pvs-to-mu-le-with-subrange-args a2 a1))))
 
+(defun convert-pvs-to-mu-lt-with-subrange-args (a1 a2)
+  (let ((args1-atoms (convert-pvs-to-mu* a1))
+	(args2-atoms (convert-pvs-to-mu* a2)))
+    (create-mu-lt args1-atoms args2-atoms)))
+
+(defun convert-pvs-to-mu-le-with-subrange-args (a1 a2)
+  (let ((args1-atoms (convert-pvs-to-mu* a1))
+	(args2-atoms (convert-pvs-to-mu* a2)))
+    (create-mu-le args1-atoms args2-atoms)))
+
+(defun create-mu-lt (bdd-args1 bdd-args2 &optional muform)
+  (cond ((null bdd-args1)
+	 (add-positive-bdd-var-forms muform bdd-args2))
+	((null bdd-args2)
+	 (add-negated-bdd-var-forms muform bdd-args1))
+	(t (create-mu-lt
+	    (cdr bdd-args1) (cdr bdd-args2)
+	    (if muform
+		(make-mu-disjunction
+		 (list (make-mu-conjunction
+			(list (mu-mk-not (car bdd-args1)) (car bdd-args2)))
+		       (make-mu-conjunction
+			(list (mu-mk-equiv (car bdd-args1) (car bdd-args2))
+			      muform))))
+		(make-mu-conjunction
+		 (list (mu-mk-not (car bdd-args1)) (car bdd-args2))))))))
+
+(defun add-positive-bdd-var-forms (muform bdd-args)
+  (if (null bdd-args)
+      muform
+      (add-positive-bdd-var-forms
+       (make-mu-disjunction (list (car bdd-args) muform))
+       (cdr bdd-args))))
+
+(defun create-mu-le (bdd-args1 bdd-args2 &optional muform)
+  (cond ((null bdd-args1)
+	 (add-positive-bdd-var-forms muform bdd-args2))
+	((null bdd-args2)
+	 (add-negated-bdd-var-forms muform bdd-args1))
+	(t (create-mu-lt
+	    (cdr bdd-args1) (cdr bdd-args2)
+	    (make-mu-disjunction
+	     (list (make-mu-conjunction
+		    (list (mu-mk-not (car bdd-args1)) (car bdd-args2)))
+		   (if muform
+		       (make-mu-conjunction
+			(list (mu-mk-equiv (car bdd-args1) (car bdd-args2))
+			      muform))
+		       (mu-mk-equiv (car bdd-args1) (car bdd-args2)))))))))
+
+
+; (defmethod convert-number (number)
+;   (let* ((len (max 1 (ceiling (log (1+ number) 2))))
+;          (format-bitstring (format nil "~~~d,'0b" len)) 
+;          (bit-string (format nil format-bitstring number))
+;          (lisp-list-values (nreverse  ;lsb first: little-endian
+;                (loop for i from 0 to (1- len)
+; 	             collect (if (eql (digit-char-p (elt bit-string i)) 1)
+; 		                   (mu-mk-true) (mu-mk-false))))))
+; ;; (lisp-to-c-list lisp-list-values))
+;     lisp-list-values)
+; )
+
+(defun convert-number (number)
+  (if (zerop number)
+      (list (mu-mk-false))
+      (let ((num-list nil))
+	(dotimes (i (integer-length number))
+	  (if (logbitp i number)
+	      (push (mu-mk-true) num-list)
+	      (push (mu-mk-false) num-list)))
+	(nreverse num-list))))
 
 ;; given a pvs expr, it forms a basic expr-string that's bdd-isable and
 ;; a correspondng *recognizer-forms-(a? Hassen)list*: which is an assoc list such as:
@@ -1673,3 +1750,16 @@ time).  Verbose? set to T provides more information."
     (copy ex
       'bindings nbindings
       'expression (substit nexpr alist))))
+
+(defmethod inequation? ((ex application))
+  (inequality? (operator ex)))
+
+(defmethod inequation? (ex)
+  nil)
+
+(defmethod inequality? ((ex name-expr))
+  (and (memq (id ex) '(> >= < <=))
+       (eq (id (module-instance ex)) '|reals|)))
+
+(defmethod inequality? (ex)
+  nil)
