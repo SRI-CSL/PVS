@@ -1,6 +1,7 @@
 (in-package 'pvs)
 
 (defvar *eval-array-bound* 10000)
+(defvar *eval-verbose* nil)
 
 (defmacro compile-load (file)
   `(progn (compile-file ,file)
