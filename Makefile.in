@@ -486,11 +486,10 @@ runtime-image-files = $(wildcard ${bindir}/runtime/*)
 
 full-image-files = $(wildcard ${bindir}/full/*)
 
-release-notes = doc/release-notes/pvs3.0-release-notes.texi \
-                doc/release-notes/pvs3.0-release-notes.info \
-                doc/release-notes/pvs3.0-release-notes.html \
-                doc/release-notes/pvs3.0-release-notes.ps \
-                doc/release-notes/pvs3.0-release-notes.pdf
+release-notes = doc/release-notes/pvs-release-notes.info \
+                doc/release-notes/pvs-release-notes.html \
+                doc/release-notes/pvs-release-notes.ps \
+                doc/release-notes/pvs-release-notes.pdf
 
 system-files = README pvs pvs-tex.sub pvs.sty bin/relocate bin/pvs-platform \
 	       bin/tarmail bin/untarmail Examples \
