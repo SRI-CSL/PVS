@@ -173,6 +173,11 @@
     (catch 'type-error
       ,@forms)))
 
+(defmacro with-no-parse-errors (&rest forms)
+  `(let ((*parse-error-catch* 'parse-error))
+     (catch 'parse-error
+       ,@forms)))
+
 ;;; with-pvs-context is a macro that temporarily changes the context,
 ;;; restoring everything to the previous state on exiting.
 
