@@ -3,8 +3,8 @@
 ;; Author          : Sam Owre
 ;; Created On      : Thu Dec  2 13:42:15 1993
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Thu Nov  5 15:14:42 1998
-;; Update Count    : 12
+;; Last Modified On: Fri Jan 22 15:56:53 1999
+;; Update Count    : 14
 ;; Status          : Beta test
 ;; 
 ;; HISTORY
@@ -178,7 +178,17 @@ print object produces an error, and won't allow inspection of the object.")
 (defmethod print-object ((alists dpinfo) stream)
   (if (or (not *print-expanded-dpinfo*) *debugging-print-object*)
       (call-next-method)
-      (format stream "<#dpinfo:~a>" (dpinfo-findalist alists))))
+      (format stream "#<DPINFO: ~a>" (dpinfo-findalist alists))))
+
+(defmethod print-object ((rule rule-instance) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (format stream "#<RULE-INSTANCE: ~s>" (rule-input rule))))
+
+(defmethod print-object ((rule rule-entry) stream)
+  (if *debugging-print-object*
+      (call-next-method)
+      (format stream "#<RULE-ENTRY: ~s>" (name rule))))
 
 ;(defmethod print-object ((list cons) stream)
 ;  (if *debugging-print-object*
