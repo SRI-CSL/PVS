@@ -176,8 +176,7 @@
   :finally-do (progn
 		#+lucid (precompile-generic-functions)
 		#+lcl4.1 (clos::flush-pv-caches)
-                (load "@ICSOBJ@/ics-pvs.lisp")
-                (load "@ICSOBJ@/ics.lisp")
+                 (load "@ICSOBJ@/ics.lisp")
 		(pvs::bdd_init)
 		(pvs::load-prelude)
 		#+allegro
@@ -328,31 +327,20 @@
 		  (:file "generate-lisp-for-theory"))
      :depends-on (basic))
    (:module ws1s
-     :source-pathname "src/WS1S/lisp"
-     :components ((:file "dfa-foreign")
-		  (:file "dfa")
-		  (:file "pvs-utils")
-		  (:file "symtab")
-		  (:file "signature")
-		  (:file "pvs2dfa")
-		  (:file "ws1s-strategy")))
-    (:module inst-by-unif
-      :source-pathname "src/inst-by-unif"
-      :components ((:file "herbrandize")
-		   (:file "unify")
-		   (:file "gensubsts")
-		   (:file "inst-by-unif")))
-     (:module qe
-       :source-pathname "src/qe"
-       :components ((:file "qe-utils")
-		    (:file "dnf")
-		    (:file "qe-core")
-		    (:file "qe")))
-      (:module fol
-       :source-pathname "src/fol"
-       :components ((:file "fol")
-		    (:file "fol-top")))
-      (:module abstraction
-	:source-pathname "src/abstraction"
-	:components ((:file "abstract")))
-      ))
+	    :source-pathname "src/WS1S/lisp"
+	    :components ((:file "dfa-foreign")
+			 (:file "dfa")
+			 (:file "pvs-utils")
+			 (:file "symtab")
+			 (:file "signature")
+			 (:file "pvs2dfa")
+			 (:file "ws1s-strategy")))
+   (:module ics
+	    :source-pathname "src/ics-interface"
+	    :components ((:file "ics-pvs")
+			 (:file "ics-strategies"))
+	    :depends-on (basic))
+   (:module abstraction
+	    :source-pathname "src/abstraction"
+	    :components ((:file "abstract")))
+   ))
