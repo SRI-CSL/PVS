@@ -620,6 +620,22 @@
   nil)
 
 
+(defmethod boolean-binop-type? ((te funtype))
+  (with-slots (domain range) te
+    (and (tc-eq range *boolean*)
+	 (boolean-binop-domain-type? domain))))
+
+(defmethod boolean-binop-type? (te)
+  nil)
+
+(defmethod boolean-binop-domain-type? ((te tupletype))
+  (with-slots (types) te
+    (every #'(lambda (ty) (tc-eq ty *boolean*))
+	   types)))
+
+(defmethod boolean-binop-domain-type? (te)
+  nil)
+
 
 (defmethod context ((theory module))
   (if (saved-context theory)
