@@ -278,11 +278,7 @@
 (defmethod get-theory ((name name))
   (with-slots (mod-id library id) name
     (unless mod-id
-      (if library
-	  (let ((lib-decls (remove-if-not #'lib-decl?
-			     (gethash library (current-declarations-hash)))))
-	    (get-lib-theory (sort lib-decls #'< :key #'locality) library id))
-	  (get-theory* id library)))))
+      (get-theory* id library))))
 
 (defmethod get-theory ((str string))
   (get-theory (pc-parse str 'modname)))
@@ -692,6 +688,7 @@
 	 (boolean-binop-domain-type? domain))))
 
 (defmethod boolean-binop-type? (te)
+  (declare (ignore te))
   nil)
 
 (defmethod boolean-binop-domain-type? ((te tupletype))
@@ -700,6 +697,7 @@
 	   types)))
 
 (defmethod boolean-binop-domain-type? (te)
+  (declare (ignore te))
   nil)
 
 
@@ -1177,7 +1175,8 @@
 					(bindings expr))))))
 
 
-(defmethod actuals ((n null)) NIL)
+(defmethod actuals ((n null))
+  nil)
 
 (defun universal-closure (form)
   (let ((freevars-form (sort-freevars
@@ -1342,7 +1341,7 @@
       (type var)))
 
 (defmethod bindings ((expr expr))
-  NIL)
+  nil)
 
 ;;;;;;;;;; ADT methods ;;;;;;;;;;;
 
@@ -1600,13 +1599,13 @@
 
 (defmethod constructors ((te cotupletype))
   (let ((index 0))
-    (mapcar #'(lambda (ty rec)
+    (mapcar #'(lambda (rec)
 		(incf index)
 		(make-instance 'injection-expr
 		  'id (makesym "IN_~d" index)
 		  'index index
 		  'type (mk-funtype te (make!-expr-as-type rec))))
-      (types te) (recognizers te))))
+      (recognizers te))))
 
 (defmethod constructors ((te subtype))
   (constructors (supertype te)))
@@ -1623,6 +1622,7 @@
 (defmethod recognizers ((te cotupletype))
   (let ((index 0))
     (mapcar #'(lambda (ty)
+		(declare (ignore ty))
 		(incf index)
 		(make-instance 'injection?-expr
 		  'id (makesym "IN?_~d" index)
@@ -3537,6 +3537,7 @@ space")
     (gensubst expr #'expose-binding-types! #'expose-binding-types?)))
 
 (defmethod expose-binding-types? (ex)
+  (declare (ignore ex))
   nil)
 
 (defmethod expose-binding-types? ((ex type-application))
