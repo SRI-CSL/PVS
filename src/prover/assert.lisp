@@ -2406,7 +2406,7 @@
 		 (pushnew (declaration res) *dependent-decls*)
 		 (values '? rhs)))
 	      ((not (eql (op*-depth expr)
-			  (op*-depth lhs-hashentry)))
+			 (op*-depth lhs-hashentry)))
 	       (auto-rewrite* expr oldsig (cdr hashentry) op*))
 	      (t (let* ((def-or-lemma? (if (is-res-auto-rewrite res)
 					   (if (typep res-decl 'def-decl)
@@ -2497,77 +2497,7 @@
 					     (cdr hashentry) op*))
 			     (t 
 			      (if defbody
-				  (multiple-value-bind
-				      (sigrhs newrhs)
-					;; NSH(5.25.95):
-					;;				  The
-					;;				  heuristic
-					;;				  of
-					;;				  disregarding
-					;;				  the
-					;;				  nested
-					;;				  rewrite
-					;;				  of
-					;;				  a
-					;;				  recursive
-					;;				  function
-					;;				  if
-					;;				  it
-					;;				  yields
-					;;				  a
-					;;				  branch
-					;;				  is
-					;;				  ineffective
-					;;				  because
-					;;				  it
-					;;				  interacts
-					;;				  badly
-					;;				  with
-					;;				  hashing
-					;;				  -
-					;;				  rewriting
-					;;				  should
-					;;				  be
-					;;				  context-free
-					;;				  and
-					;;				  only
-					;;				  logical-context-sensitive.
-					;;				  So,
-					;;				  I've
-					;;				  rolled
-					;;				  it
-					;;				  back
-					;;				  to
-					;;				  where
-					;;				  the
-					;;				  heuristic
-					;;				  is
-					;;				  that
-					;;				  the
-					;;				  top
-					;;				  branching
-					;;				  structure
-					;;				  must
-					;;				  simplify
-					;;				  for
-					;;				  the
-					;;				  rewrite
-					;;				  to
-					;;				  occur.
-					;;				  (*last-recursive-rewrite-res*
-					;;				  (if
-					;;				  (eq
-					;;				  def-or-lemma?
-					;;				  'def-decl)
-					;;				  res
-					;;				  ;;NSH(5.21.95):strengthens
-					;;				  ;;simplification
-					;;				  heuristic
-					;;				  for
-					;;				  ;;recursive
-					;;				  functions.
-					;;				  *last-recursive-rewrite-res*))
-
+				  (multiple-value-bind (sigrhs newrhs)
 				      (cond ((is-res-auto-rewrite! res)
 					     (inc-rewrite-depth res)
 					     (flag-assert-if (substit rhs subst)))
