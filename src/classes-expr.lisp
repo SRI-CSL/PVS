@@ -32,6 +32,7 @@
   (library :parse t)
   (actuals :parse t)
   (id :parse t)
+  (mappings :parse t)
   resolutions)
 
 (defcl name-expr (name expr)
@@ -323,8 +324,7 @@
 (defcl untyped-bind-decl (bind-decl))
 
 
-(defcl modname (name)
-  (mappings :parse t))
+(defcl modname (name))
 
 (defcl full-modname (modname))
 
@@ -338,6 +338,14 @@
 (defcl modname-no-tccs (modname)) 
 
 (defcl actual (syntax)
+  (expr :parse t)
+  type-value)
+
+(defcl mapping (syntax)
+  (lhs :parse t)
+  (rhs :parse t))
+
+(defcl mapping-rhs (actual)
   (expr :parse t)
   type-value)
 
