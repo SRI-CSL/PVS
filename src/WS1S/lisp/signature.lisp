@@ -30,9 +30,6 @@
 (def-pvs-term emptyset-operator "emptyset[nat]" "record_prelude_example"
                                     :expected "set[nat]")
 
-
-                        
-
 (defun ws1s-types ()
   (list *boolean*
 	*naturalnumber*
