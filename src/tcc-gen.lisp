@@ -35,7 +35,7 @@
 (defun generate-subtype-tcc (expr expected incs)
   (if (every #'(lambda (i) (member i *tcc-conditions* :test #'tc-eq))
 	     incs)
-      (unless *in-checker*
+      (unless (or *in-checker* *in-evaluator*)
 	(if (numberp (tccs-simplified))
 	    (incf (tccs-simplified))
 	    (setf (tccs-simplified) 1)))
@@ -43,7 +43,7 @@
 	     (ndecl (make-subtype-tcc-decl expr incs)))
 	(if ndecl
 	    (insert-tcc-decl 'subtype expr expected ndecl)
-	    (unless *in-checker*
+	    (unless (or *in-checker* *in-evaluator*)
 	      (incf (tccs-simplified)))))))
 
 (defvar *simplify-tccs* nil)
@@ -201,7 +201,7 @@
 ;			      (cons (copy (car conditions)) antes)))))
 
 (defun insert-tcc-decl (kind expr type ndecl)
-  (if *in-checker*
+  (if (or *in-checker* *in-evaluator*)
       (add-tcc-info kind expr type ndecl)
       (insert-tcc-decl1 kind expr type ndecl)))
 
@@ -403,7 +403,7 @@
 		   (typecheck* (mk-application ordering appl2 appl1)
 			       *boolean* nil nil))))
 	   (xform (if (and *simplify-tccs*
-			   (not *in-checker*))
+			   (not (or *in-checker* *in-evaluator*)))
 		      (pseudo-normalize
 		       (subst-var-for-recs form (declaration *current-context*)))
 		      (beta-reduce
@@ -459,7 +459,7 @@
 	 (form (typecheck* (mk-application '|well_founded?| wfform)
 			   *boolean* nil nil))
 	 (xform (if (and *simplify-tccs*
-			 (not *in-checker*))
+			 (not (or *in-checker* *in-evaluator*)))
 		    (pseudo-normalize form)
 		    (beta-reduce form)))
 	 (id (make-tcc-name)))
@@ -476,7 +476,7 @@
 	      (typep (declaration *current-context*) 'adt-accessor-decl))
     (when (possibly-empty-type? type)
       (generate-existence-tcc type expr)
-      (unless (or *in-checker*
+      (unless (or (or *in-checker* *in-evaluator*)
 		  *tcc-conditions*)
 	(set-nonempty-type type)))))
 
@@ -651,7 +651,7 @@
     (unless (or (eq mod (current-theory))
 		(null (assuming mod))
 		(and (formals-sans-usings mod) (null (actuals modinst))))
-      (let ((cdecl (or (and *in-checker*
+      (let ((cdecl (or (and (or *in-checker* *in-evaluator*)
 			    *top-proofstate*
 			    (declaration *top-proofstate*))
 		       (declaration *current-context*))))
@@ -661,7 +661,7 @@
 	  ;; Don't want to save this module instance unless it does not
 	  ;; depend on any conditions, including implicit ones in the
 	  ;; prover
-	  (unless (or *in-checker*
+	  (unless (or (or *in-checker* *in-evaluator*)
 		      *tcc-conditions*)
 	    (push modinst (assuming-instances *current-theory*)))
 	  (dolist (ass (remove-if-not #'assumption? (assuming mod)))
@@ -741,13 +741,13 @@
 	 (*old-tcc-name* nil)
 	 (ndecl (typecheck* (mk-cases-tcc id uform) nil nil nil)))
     ;;(assert (tc-eq (type uform) *boolean*))
-    (when *in-checker*
+    (when (or *in-checker* *in-evaluator*)
       (push uform *tccforms*))
     (insert-tcc-decl 'cases (expression expr) adt ndecl)))
 
 (defun make-tcc-name (&optional expr)
   (assert *current-context*)
-  (if *in-checker*
+  (if (or *in-checker* *in-evaluator*)
       (gensym)
       (make-tcc-name* (current-declaration) expr)))
 
@@ -867,7 +867,7 @@
 	 (ndecl (make-actuals-tcc-decl act mact)))
     (if ndecl
 	(insert-tcc-decl 'actuals act nil ndecl)
-	(unless *in-checker*
+	(unless (or *in-checker* *in-evaluator*)
 	  (incf (tccs-simplified))))))
 
 (defun make-actuals-tcc-decl (act mact)
@@ -1002,7 +1002,7 @@
 	 (ndecl (make-cond-disjoint-tcc expr conditions values)))
     (when ndecl
       (insert-tcc-decl 'disjointness expr nil ndecl)
-      (unless *in-checker*
+      (unless (or *in-checker* *in-evaluator*)
 	(incf (tccs-simplified))))))
 
 (defun make-cond-disjoint-tcc (expr conditions values)
@@ -1063,7 +1063,7 @@
 	 (ndecl (make-cond-coverage-tcc expr conditions)))
     (when ndecl
       (insert-tcc-decl 'coverage expr nil ndecl)
-      (unless *in-checker*
+      (unless (or *in-checker* *in-evaluator*)
 	(incf (tccs-simplified))))))
 
 (defun make-cond-coverage-tcc (expr conditions)
