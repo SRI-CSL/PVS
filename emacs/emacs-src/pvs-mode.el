@@ -55,6 +55,7 @@
     (define-key pvs-mode-map "\C-c\C-qt" 'prettyprint-theory)
     (define-key pvs-mode-map "\C-c\C-qr" 'prettyprint-region)
     (define-key pvs-mode-map "\C-c\C-qd" 'prettyprint-declaration)
+    (define-key pvs-mode-map "\C-c\C-qi" 'prettyprint-theory-instance)
     (define-key pvs-mode-map "\C-c\C-sf" 'status-pvs-file)
     (define-key pvs-mode-map "\C-c\C-st" 'status-theory)
     (define-key pvs-mode-map "\C-c\C-si" 'status-importchain)
