@@ -345,6 +345,11 @@
 	       (or (eq dth (current-theory))
 		   (visible? decl))
 	       (not (disallowed-free-variable? decl))
+	       (or (null acts)
+		   (not (eq dth (current-theory)))
+		   (progn (push (list :current-theory-actuals decl)
+				*resolve-error-info*)
+			  nil))
 	       (or (null args)
 		   (case kind
 		     (type (and (formals decl)
@@ -1886,7 +1891,9 @@
     (multiple-value-bind (obj error)
 	(if (and *resolve-error-info*
 		 (or (assq :arg-mismatch *resolve-error-info*)
-		     (not (assq :no-instantiation *resolve-error-info*))))
+		     (not (or (assq :no-instantiation *resolve-error-info*)
+			      (assq :current-theory-actuals
+				    *resolve-error-info*)))))
 	    (resolution-args-error *resolve-error-info* name arguments)
 	    (values
 	     name
@@ -1896,6 +1903,7 @@
                   ~@[~2% Check the actual parameters; the following ~
                         instances are visible,~% but don't match the ~
                         given actuals:~%   ~{~a~^, ~}~]~
+                  ~:[~;~2% May not instantiate the current theory~]~
                   ~:[~;~2% There is a variable declaration with this name,~% ~
                           but free variables are not allowed here.~]~
                   ~:[~;~2% There is a mapping for this name, but once mapped ~
@@ -1920,6 +1928,7 @@
 			     (actuals (module-instance r))
 			     (id (module-instance r))))
 		 reses)
+	       (assq :current-theory-actuals *resolve-error-info*)
 	       (some #'var-decl?
 		     (get-declarations (id name)))
 	       (some-matching-mapping-element? name)
@@ -1944,10 +1953,10 @@
 		    (format nil
 			"~a~%Enabling K_conversion before this declaration might help"
 		      error)))
-	  (if type-error?
-	      (type-error-noconv obj error)
-	      (progn (set-strategy-errors error)
-		     nil)))))))
+	    (if type-error?
+		(type-error-noconv obj error)
+		(progn (set-strategy-errors error)
+		       nil)))))))
 
 (defun some-matching-mapping-element? (name)
   (unless (or (mod-id name)
