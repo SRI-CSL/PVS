@@ -1862,9 +1862,10 @@
   (write (get-pp-tex-keyword symbol)))
 
 (defun get-pp-tex-keyword (symbol)
-  (let ((texstr (gethash symbol *latex-keyword-strings*)))
+  (let* ((sym (if *in-tex-math-mode* (makesym "~a%" symbol) symbol))
+	 (texstr (gethash sym *latex-keyword-strings*)))
     (or texstr
-	(setf (gethash symbol *latex-keyword-strings*)
+	(setf (gethash sym *latex-keyword-strings*)
 	      (let* ((ktrans (cdr (assq symbol *latex-keyword-list*)))
 		     (trans (if ktrans
 				(if *in-tex-math-mode*
@@ -1877,8 +1878,6 @@
 		     (str (make-new-tex-string len)))
 		(setf (gethash str *pvs-tex-substitution-hash*) trans)
 		str)))))
-
-
 
 (defun make-new-tex-string (length)
   (let ((cnt (get-next-tex-symbol-counter length))
