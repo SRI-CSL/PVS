@@ -3776,13 +3776,14 @@ chronological order are:~3%")
 		 (pick-freevars-entries (freevars expr) alist))
 	   hash))
 
-(defun pick-freevars-entries (freevars alist)
-  (when (consp freevars)
-    (let ((entry (assq (declaration (car freevars)) alist)))
-      (if entry
-	  (cons (cdr entry)
-		(pick-freevars-entries (cdr freevars) alist))
-	  (pick-freevars-entries (cdr freevars) alist)))))
+(defun pick-freevars-entries (freevars alist &optional entries)
+  (if (null freevars)
+      (nreverse entries)
+      (let ((entry (assq (declaration (car freevars)) alist)))
+	(pick-freevars-entries (cdr freevars) alist
+			       (if entry
+				   (cons (cdr entry) entries)
+				   entries)))))
 
 (defun install-subst-hash (expr alist result hash)
   (let* ((fv (freevars expr))
