@@ -2645,6 +2645,21 @@ space")
 		 "Aug" "Sep" "Oct" "Nov" "Dec"))
       date hour min sec year)))
 
+(defconstant millisecond-factor
+  (/ 1000 internal-time-units-per-second))
+
+(defun get-run-time ()
+  (multiple-value-bind (rtuser rtsys gcuser gcsys)
+      (excl::get-internal-run-times)
+    (- rtuser gcuser)))
+
+(defun runtime-since (time)
+  (floor (- (get-run-time) time) millisecond-factor))
+
+(defun realtime-since (time)
+  (floor (- (get-internal-real-time) time) millisecond-factor))
+  
+
 (defmethod change-application-class-if-necessary (expr new-expr)
   (declare (ignore expr))
   new-expr)
