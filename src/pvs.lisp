@@ -163,38 +163,77 @@
   (dolist (pfile (append (collect-pvs-patch-files)
 			 (user-pvs-lisp-file)))
     (let* ((bfile (make-pathname :defaults pfile :type *pvs-binary-type*))
-	   (compile? (and #+runtime nil
-			  (file-exists-p pfile)
+	   (compile? (and (file-exists-p pfile)
 			  (or (not (file-exists-p bfile))
-			      (compiled-file-older-than-source? pfile bfile)))))
-      (multiple-value-bind (ignore error)
-	  (ignore-file-errors
-	   (cond (compile?
-		  (pvs-message "Compiling patch file ~a"
-		    (pathname-name pfile))
-		  (multiple-value-bind (ignore condition)
-		      (ignore-file-errors
-		       (values (compile-file pfile)))
-		    (declare (ignore ignore))
-		    (cond (condition
-			   (pvs-message "Compilation error - ~a" condition)
-			   (pvs-message "Loading patch file ~a interpreted"
-			     (shortname pfile))
-			   (load pfile))
-			  (t
-			   (chmod "ug+w" (namestring bfile))
-			   (pvs-message "Compilation complete: loading ~a"
-			     (shortname bfile))
-			   (load bfile)))))
-		 (t (pvs-message "Loading compiled patch file ~a"
-		      (shortname bfile))
-		    (load bfile))))
-	(declare (ignore ignore))
-	(if error
-	    (pvs-message "Error in loading ~a:~%  ~a"
-	      (shortname pfile) error)
-	    (pushnew (pathname-name pfile) *pvs-patches-loaded*
-		     :test #'string=))))))
+			      (compiled-file-older-than-source?
+			       pfile bfile))))
+	   (compilation-error? nil)
+	   (tried-loading? nil)
+	   (bfile-loaded? nil))
+      (when (and (not compile?)
+		 (file-exists-p bfile))
+	;; Everything looks up-to-date, try loading
+	(multiple-value-bind (ignore error)
+	    (ignore-errors (load bfile))
+	  (declare (ignore ignore))
+	  (cond (error
+		 ;; Likely due to a different lisp version
+		 (setq tried-loading? t)
+		 (when (file-exists-p pfile)
+		   (setq compile? t))
+		 (pvs-message "Error in loading ~a:~%  ~a"
+		   (shortname bfile) error))
+		(t (pushnew (pathname-name pfile) *pvs-patches-loaded*
+			    :test #'string=)
+		   (setq bfile-loaded? t)))))
+      (when compile?
+	;; Needs compilation - haven't tried loading yet, or the load failed.
+	(pvs-message "Attempting to compile patch file ~a"
+	  (pathname-name pfile))
+	(multiple-value-bind (ignore condition)
+	    (ignore-file-errors
+	     (values (compile-file pfile)))
+	  (declare (ignore ignore))
+	  (cond (condition
+		 ;; Could be many reasons - permissions, source errors
+		 (pvs-message "Compilation error - ~a" condition)
+		 (setq compilation-error? t)
+		 ;; Note that this may fail as well
+		 (ignore-errors (delete-file bfile)))
+		(t
+		 ;; Change so that next person in the same group may compile
+		 (chmod "ug+w" (namestring bfile))
+		 (pvs-message "Compilation complete, generated file ~a"
+		   (shortname bfile))))))
+      (when (and (not bfile-loaded?)
+		 compile?
+		 (not compilation-error?)
+		 (file-exists-p bfile))
+	;; Here when we have not loaded the fasl, needed to compile, and
+	;; didn't get a compilation error
+	(pvs-message "Attempting to load compiled patch file ~a"
+	  (shortname bfile))
+	(multiple-value-bind (ignore error)
+	    (ignore-file-errors (load bfile))
+	  (declare (ignore ignore))
+	  (cond (error
+		 (pvs-message "Error in loading ~a:~%  ~a"
+		   (shortname pfile) error))
+		(t (setq bfile-loaded? t)
+		   (pushnew (pathname-name pfile) *pvs-patches-loaded*
+			    :test #'string=)))))
+      (unless (or bfile-loaded?
+		  (not (file-exists-p pfile)))
+	;; Haven't loaded the fasl, so we try to load the source
+	(pvs-message "Loading file ~a interpreted" (shortname pfile))
+	(multiple-value-bind (ignore error)
+	    (ignore-file-errors (load pfile))
+	  (declare (ignore ignore))
+	  (if error
+	      (pvs-message "Error in loading ~a:~%  ~a"
+		(shortname pfile) error)
+	      (pushnew (pathname-name pfile) *pvs-patches-loaded*
+		       :test #'string=)))))))
 
 (defun collect-pvs-patch-files ()
   (case (ignore-errors (parse-integer
@@ -682,11 +721,14 @@
 				(if changed? (cons oth changed) changed)))))
 
 (defun untypecheck-usedbys (theory)
+  ;;   (format t "~%Untypechecking ~{~%  ~a~}"
+  ;;     (cons (id theory) (find-all-usedbys theory)))
   (dolist (tid (find-all-usedbys theory))
     (let ((th (get-theory tid)))
-      (reset-proof-statuses th)
-      (untypecheck-theory th)
-      (tcdebug "~%~a untypechecked" tid)))
+      (when th
+	(reset-proof-statuses th)
+	(untypecheck-theory th)
+	(tcdebug "~%~a untypechecked" (id th)))))
   (reset-proof-statuses theory)
   (untypecheck-theory theory)
   (tcdebug "~%~a untypechecked" (id theory)))
@@ -1632,10 +1674,10 @@
 	 (typechecked? theory))))
 
 (defmethod typechecked? ((theory library-theory))
-  t)
+  (call-next-method))
 
 (defmethod typechecked? ((theory library-datatype))
-  t)
+  (call-next-method))
 
 (defun get-theories (filename)
   (let ((fn (if (pathnamep filename)
@@ -2501,7 +2543,10 @@
 		      (typechecked? theory)
 		      (memq theory theories))
 	    (let ((*generating-adt* nil))
-	      (typecheck-file (filename theory)))))
+	      (if (library theoryref)
+		  (load-imported-library (library theoryref) theoryref)
+		  (typecheck-file (filename theory))))))
+	#+pvsdebug (assert (typechecked? theory))
 	theory)))
 
 (defun parsed-date (filename)
@@ -2571,6 +2616,34 @@
 				   (all-decls mod))
 				 decls))))
 	     *prelude*)
+    (maphash #'(lambda (lib files&theories)
+		 (maphash #'(lambda (mid mod)
+			      (declare (ignore mid))
+			      (when (module? mod)
+				(setq decls
+				      (append (remove-if-not
+						  #'(lambda (d)
+						      (and (declaration? d)
+							   (eq (ref-to-id ref)
+							       (id d))))
+						(all-decls mod))
+					      decls))))
+			  (cadr files&theories)))
+	     *prelude-libraries*)
+    (maphash #'(lambda (lib files&theories)
+		 (maphash #'(lambda (mid mod)
+			      (declare (ignore mid))
+			      (when (module? mod)
+				(setq decls
+				      (append (remove-if-not
+						  #'(lambda (d)
+						      (and (declaration? d)
+							   (eq (ref-to-id ref)
+							       (id d))))
+						(all-decls mod))
+					      decls))))
+			  (cadr files&theories)))
+	     *imported-libraries*)
     (delete-duplicates decls :test #'eq)))
 
 
