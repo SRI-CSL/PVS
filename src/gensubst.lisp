@@ -413,6 +413,7 @@
       (let ((nexpr (gensubst* (expr act) substfn testfn)))
 	(lcopy act
 	  'expr (if (or *parsing-or-unparsing*
+			*visible-only*
 			(eq nexpr (expr act))
 			(not (typep nexpr 'expr)))
 		    nexpr
