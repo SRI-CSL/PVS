@@ -185,6 +185,9 @@ NIL (the default), ALL, or NONE.")
 (defvar *recursive-tcc-names* nil
   "Keeps track of recursive names for which TCCs have been generated.")
 
+;;; Associate old tcc names with new tccs, so that proofs may be restored.
+(defvar *old-tcc-names* nil)
+
 (defvar *compatible-pred-reason* nil)
 
 (defvar *expressions-seen-for-tccs* nil)
