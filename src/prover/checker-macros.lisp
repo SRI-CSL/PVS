@@ -142,6 +142,7 @@
 (defvar *dp-state*)
 (defvar *newdc* nil) ;;needs to be set to T to get new ground prover
 (defvar *dp-changed*)
+(defvar *infinity* (gensym "*-infinity"))
 
 #+lucid
 (defmacro pvs-format (stream format-string &rest args)

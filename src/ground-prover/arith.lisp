@@ -188,7 +188,7 @@
        (string= "*-infinity" (subseq (string sym) 0 10))))
 
 (defun make-infinity ()
-  (gensym "*-infinity"))
+  *infinity*)
 
 (defun sigplus(u)
   (prog(sum const result)
