@@ -143,7 +143,7 @@
 (defvar *dp-state*)
 (defvar *dp-changed*)
 (defvar *infinity* (gensym "*-infinity"))
-(defvar *quant-simp?*)
+(defvar *quant-simp?* nil)
 
 #+lucid
 (defmacro pvs-format (stream format-string &rest args)
