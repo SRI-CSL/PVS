@@ -283,6 +283,8 @@ functions_alt [D, R: TYPE, Drel: PRED[[D, D]], Rrel: PRED[[R, R]]]: THEORY
 % restrict is the restriction operator on functions, allowing a
 % function defined on a supertype to be applied to a subtype.  Note
 % that it is a conversion, so will be inserted automatically when needed.
+% Note also that the typechecker expands restrict automatically in some
+% cases if it is fully applied, i.e., restrict(f)(x) is replaced with f(x).
 
 restrict [T: TYPE, S: TYPE FROM T, R: TYPE]: THEORY
  BEGIN
@@ -300,6 +302,18 @@ restrict [T: TYPE, S: TYPE FROM T, R: TYPE]: THEORY
     restrict(f: (injective?[T,R])) HAS_TYPE (injective?[S,R])
 
  END restrict
+
+
+% restrict_props provides the lemma that extending a function from a given
+% domain type to the same type is the identity.  This usually comes about
+% because of theory instantiation, and the typechecker has this rule built
+% in, so it won't be needed in general.
+
+restrict_props[T: TYPE, R: TYPE]: THEORY
+ BEGIN
+  f: VAR [T -> R]
+  restrict_full: LEMMA restrict[T, T, R](f) = f
+ END restrict_props
 
 
 % extend is the inverse of restrict.  The difference is that a default
@@ -329,6 +343,18 @@ extend_bool [T: TYPE, S: TYPE FROM T]: THEORY
   CONVERSION extend[T, S, bool, false]
 
  END extend_bool
+
+
+% extend_props provides the lemma that extending a function from a given
+% domain type to the same type is the identity.  This usually comes about
+% because of theory instantiation, and the typechecker has this rule built
+% in, so it won't be needed in general.
+
+extend_props [T: TYPE, R: TYPE, d: R]: THEORY
+ BEGIN
+  f: VAR [T -> R]
+  extend_full: LEMMA extend[T, T, R, d](f) = f
+ END extend_props
 
 % The K combinator is used to trigger lambda conversions.
 % Due to user demand, it is turned off by default.
@@ -4376,9 +4402,7 @@ finite_sets_of_sets[T: TYPE]: THEORY
 % With suggestions and remarks from: 
 % Ulrich Hensel, Marieke Huisman, Hendrik Tews.
 %
-% Timestamp: Friday 27 November 98 16:26:37 bart@irritatie.cs.kun.nl
-%
-%   Updated to PVS 3.0 by Sam Owre 2002-10-15
+% With modifications and additions by Sam Owre, SRI International
 
 EquivalenceClosure[T : TYPE] : THEORY
 BEGIN
@@ -4442,6 +4466,9 @@ BEGIN
   rep_is_repEC: LEMMA
      rep(S)(EquivClass(S)(x)) = repEC(S)(x)
 
+  rep_lemma: LEMMA
+     EquivClass(S)(x)(rep(S)(EquivClass(S)(x)))
+
   % Note that quotient_map has a different range type than EquivClass,
   % and EquivClass(S) is not surjective.
   quotient_map(S)(x) : Quotient(S) =
@@ -4461,79 +4488,100 @@ BEGIN
 
 END QuotientDefinition
 
-KernelDefinition[X, Y : TYPE] : THEORY
+KernelDefinition[X: TYPE, X1: TYPE FROM X, Y : TYPE] : THEORY
 BEGIN
 
   IMPORTING EquivalenceClosure[X]
 
-  f : VAR [X -> Y]
+  f : VAR [X1 -> Y]
   R : VAR PRED[[X, X]]
-  x1, x2 : VAR X
+  x1, x2 : VAR X1
 
   % The following definition would be part of the 'functions' theory
   % but equivalence is defined afterwards.
 
-  EquivalenceKernel(f) : equivalence[X] =
+  EquivalenceKernel(f) : equivalence[X1] =
     { (x1, x2) | f(x1) = f(x2) }
 
   PreservesEq(R)(f) : bool =
-    subset?(R, EquivalenceKernel(f))
+    subset?(restrict[[X, X],[X1, X1], bool](R), EquivalenceKernel(f))
 
   PreservesEqClosure : LEMMA
-    PreservesEq(R) = PreservesEq(EquivClos(R))
+    PreservesEq(R) = PreservesEq(EquivClos[X1](R))
 
   PreservesEq_is_preserving: LEMMA
-    PreservesEq(R) = preserves(R, =[Y])
+    PreservesEq(R) = preserves(restrict[[X, X], [X1, X1], bool](R), =[Y])
 
 END KernelDefinition
 
-QuotientKernelProperties[X : TYPE] : THEORY
+QuotientKernelProperties[X : TYPE, X1: TYPE FROM X] : THEORY
 BEGIN
 
-  S : VAR equivalence[X]
+  S : VAR equivalence[X1]
   R : VAR PRED[[X, X]]
 
   Kernel_quotient_map : LEMMA
-    EquivalenceKernel[X, Quotient(S)](quotient_map(S)) = S
+    EquivalenceKernel[X, X1, Quotient(S)](quotient_map(S)) = S
 
   PreservesEq_quotient_map : LEMMA
-    PreservesEq[X, Quotient(S)](S)(quotient_map(S))
+    PreservesEq[X, X1, Quotient(S)](S)(quotient_map(S))
 
   quotient_map_is_Quotient_EqivalenceRespecting: JUDGEMENT
-    quotient_map(S) HAS_TYPE (PreservesEq[X, Quotient(S)](S))
+    quotient_map(S) HAS_TYPE (PreservesEq[X, X1, Quotient(S)](S))
 
   Kernel_ECquotient_map : LEMMA
-    EquivalenceKernel[X, ECQuotient(S)](quotient_map(S)) = S
+    EquivalenceKernel[X, X1, ECQuotient(S)](quotient_map(S)) = S
 
   PreservesEq_ECquotient_map : LEMMA
-    PreservesEq[X, ECQuotient(S)](S)(quotient_map(S))
+    PreservesEq[X, X1, ECQuotient(S)](S)(quotient_map(S))
 
   quotient_map_is_ECQuotient_EqivalenceRespecting: JUDGEMENT
-    quotient_map(S) HAS_TYPE (PreservesEq[X, ECQuotient(S)](S))
+    quotient_map(S) HAS_TYPE (PreservesEq[X, X1, ECQuotient(S)](S))
 
 END QuotientKernelProperties
 
 
-QuotientExtensionProperties[X, Y : TYPE] : THEORY
+QuotientSubDefinition[X : TYPE, X1: TYPE FROM X] : THEORY
 BEGIN
 
-  S : VAR equivalence[X]
+  x: VAR X1
+  S : VAR {R: equivalence[X] | PreservesEq[X, X, bool](R)(X1_pred)}
 
-  lift(S)(g : (PreservesEq[X, Y](S)))(P : Quotient(S)) : Y
+  QuotientSub(S) : TYPE =
+    { P :set[X] | EXISTS x : P = EquivClass(S)(x) }
+
+  quotient_sub_map(S)(x) : QuotientSub(S) =
+    EquivClass(S)(x)
+
+END QuotientSubDefinition
+
+
+QuotientExtensionProperties[X : TYPE, X1: TYPE FROM X, Y : TYPE] : THEORY
+BEGIN
+
+  S : VAR {R: equivalence[X] | PreservesEq[X, X, bool](R)(X1_pred)}
+
+  lift(S)
+      (g : (PreservesEq[X, X1, Y](S)))
+      (P : QuotientSub[X, X1](S))
+      : Y
     = g(rep(S)(P))
 
   lift_commutation : LEMMA
-    FORALL(g : (PreservesEq[X, Y](S))) : 
-      lift(S)(g) o quotient_map(S) = g
+    FORALL (S),
+           (g : (PreservesEq[X, X1, Y](S))) : 
+      lift(S)(g) o quotient_sub_map[X, X1](S) = g
 
   lift_unicity : LEMMA
-    FORALL(g : (PreservesEq[X, Y](S))) : FORALL(h : [Quotient(S) -> Y]) :
-      h o quotient_map(S) = g IMPLIES h = lift(S)(g)
+    FORALL (S | PreservesEq[X, X, bool](S)(X1_pred)),
+           (g : (PreservesEq[X, X1, Y](S))) :
+      FORALL(h : [QuotientSub[X, X1](S) -> Y]) :
+        h o quotient_sub_map[X, X1](S) = g IMPLIES h = lift(S)(g)
 
 END QuotientExtensionProperties
 
 
-QuotientDistributive[X, Y : TYPE] : THEORY
+QuotientDistributive[X, Y: TYPE] : THEORY
 BEGIN
 
 % This theory makes clear that quotients commute with products: there is an isomorphism 
@@ -4557,13 +4605,13 @@ BEGIN
     EqualityExtension(S) HAS_TYPE equivalence[[X, Y]]
 
   EqualityExtensionPreservesEq : LEMMA
-    PreservesEq[[X, Y], [Quotient(S), Y]]
+    PreservesEq[[X, Y], [X, Y], [Quotient(S), Y]]
         (EqualityExtension(S))
         (LAMBDA(x : X, y : Y) : (quotient_map(S)(x), y))
 
   QuotientDistributive : LEMMA
     bijective?[Quotient(EqualityExtension(S)), [Quotient(S), Y]]
-      (lift(EqualityExtension(S))
+      (lift[[X, Y], [X, Y], [Quotient(S), Y]](EqualityExtension(S))
            (LAMBDA(x : X, y : Y) : (quotient_map(S)(x), y)))
 
   %     [X/S, Y/R] iso [X,Y]/RelExtension(S,R)
@@ -4571,16 +4619,16 @@ BEGIN
   R: VAR equivalence[Y]
 
   RelExtension(S, R) : equivalence[[X, Y]] =
-    LAMBDA(z, w : [X, Y]) : S(z`1, w`1) AND R(z`2, w`2)
+    { (z, w) | S(z`1, w`1) AND R(z`2, w`2) }
 
   RelExtensionPreservesEq : LEMMA
-    PreservesEq[[X, Y], [Quotient(S), Quotient(R)]]
+    PreservesEq[[X, Y], [X, Y], [Quotient(S), Quotient(R)]]
         (RelExtension(S,R))
         (LAMBDA(x : X, y : Y) : (quotient_map(S)(x), quotient_map(R)(y)))
 
   RelQuotientDistributive : LEMMA
     bijective?[Quotient(RelExtension(S,R)), [Quotient(S), Quotient(R)]]
-      (lift(RelExtension(S, R))
+      (lift[[X, Y], [X, Y], [Quotient(S), Quotient(R)]](RelExtension(S, R))
            (LAMBDA(x : X, y : Y) : (quotient_map(S)(x), quotient_map(R)(y))))
 
   %     F: [X -> equivalence[Y]]
@@ -4592,13 +4640,13 @@ BEGIN
     { (f, g) | FORALL (x : X) : F(x)(f(x), g(x)) }
 
   FunExtensionPreservesEq : LEMMA
-    PreservesEq[[X -> Y], [x : X -> Quotient(F(x))]]
+    PreservesEq[[X -> Y], [X -> Y], [x : X -> Quotient(F(x))]]
         (FunExtension(F))
         (LAMBDA(f : [X -> Y]) : LAMBDA (x : X) : quotient_map(F(x))(f(x)))
 
   FunQuotientDistributive : LEMMA
     bijective?[Quotient(FunExtension(F)), [x : X -> Quotient(F(x))]]
-      (lift(FunExtension(F))
+      (lift[[X -> Y], [X -> Y], [x : X -> Quotient(F(x))]](FunExtension(F))
            (LAMBDA(f : [X -> Y]) : (LAMBDA (x : X): (quotient_map(F(x))(f(x))))))
 
 END QuotientDistributive
@@ -4626,8 +4674,8 @@ BEGIN
   QuotientAction : LEMMA
     FORALL(R : equivalence[Quotient(S)]) :
       bijective?[Quotient(R), Quotient(action(S)(R))]
-        (lift[Quotient(S), Quotient(action(S)(R))](R)
-           (lift[X, Quotient(action(S)(R))](S)
+        (lift[Quotient(S), Quotient(S), Quotient(action(S)(R))](R)
+           (lift[X, X, Quotient(action(S)(R))](S)
               (quotient_map[X](action(S)(R)))))
 
 END QuotientIteration
