@@ -374,7 +374,7 @@ pvs-strategies files.")
 		  (cons (pvs-context-libraries)
 			(cons (list :default-decision-procedure
 				    *default-decision-procedure*)
-			      (cons nce (remove oce (pvs-context-entries)))))))
+			      (cons nce (delete oce (pvs-context-entries)))))))
       (setq *pvs-context-changed* t))))
 
 (defun delete-file-from-context (filename)
@@ -452,7 +452,7 @@ pvs-strategies files.")
 		 status)
      :dependencies (mapcar #'id (remove theory (dependencies theory)))
      :formula-info (append finfo
-			   (unless (typechecked? theory)
+			   (unless (memq 'typechecked (status theory))
 			     (hidden-formula-entries tentry finfo valid?))))))
 
 (defun create-formula-entry (decl fentries valid?)
@@ -538,7 +538,15 @@ pvs-strategies files.")
 ;;; the input filename does not depend on the generated one.  We also
 ;;; ignore any dependencies on theories from the prelude.
 
+(defvar *file-dependencies* nil)
+
 (defun file-dependencies (filename)
+  (or (assoc filename *file-dependencies* :test #'string=)
+      (let ((deps (file-dependencies* filename)))
+	(setf *file-dependencies* (acons filename deps *file-dependencies*))
+	deps)))
+
+(defun file-dependencies* (filename)
   (let ((theories (cdr (gethash filename *pvs-files*))))
     (if theories
 	(let ((depfiles nil))
