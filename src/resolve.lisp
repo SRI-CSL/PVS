@@ -49,8 +49,12 @@
     (when (and (null res)
 	       args
 	       (eq k 'expr))
-      (setq res (append (function-conversion name args)
-			(argument-conversion name args))))
+      (let* ((fres (function-conversion name args))
+	     (*ignored-conversions* (if fres
+					(cons "K_conversion"
+					      *ignored-conversions*)
+					*ignored-conversions*)))
+	(setq res (append fres (argument-conversion name args)))))
     (cond ((null res)
 	   (resolution-error name k args))
 	  ((and (cdr res)
