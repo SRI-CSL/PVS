@@ -1462,18 +1462,14 @@ proc reset-options {} {
     option clear
     if {$tk_version >= 4.0} {
 	set pvs [winfo name .]
-	option add $pvs.displayfont \
-	    -adobe-courier-bold-r-normal--12-120-75-75-m-70-iso8859-1 \
-	    startupFile
-	option add $pvs.buttonfont \
-	    -adobe-courier-bold-r-normal--10-100-75-75-m-60-iso8859-1 \
-	    startupFile
+	option add $pvs.displayfont 7x13bold startupFile
+	option add $pvs.buttonfont 5x8 startupFile
 	if {[winfo depth .] > 1 && !$mono} {
 	    option add $pvs.windowbackground wheat startupFile
 	    option add $pvs.displaybackground white startupFile
 	    option add $pvs.displayforeground black startupFile
-	    option add $pvs.activedisplaybackground mediumslateblue startupFile
-	    option add $pvs.activedisplayforeground red startupFile
+	    option add $pvs.activedisplaybackground black startupFile
+	    option add $pvs.activedisplayforeground white startupFile
 	    option add $pvs.buttonbackground lightblue startupFile
 	    option add $pvs.buttonforeground black startupFile
 	    option add $pvs.activebuttonbackground steelblue startupFile
@@ -1510,12 +1506,8 @@ proc reset-options {} {
 	option add $pvs*th-hier*xSep 50 startupFile
 	option add $pvs*th-hier*ySep 100 startupFile
     } else {
-	option add Tk.displayfont \
-	    -adobe-courier-bold-r-normal--12-120-75-75-m-70-iso8859-1 \
-	    startupFile
-	option add Tk.buttonfont \
-	    -adobe-courier-bold-r-normal--10-100-75-75-m-60-iso8859-1 \
-	    startupFile
+	option add Tk.displayfont 7x13bold startupFile
+	option add Tk.buttonfont 5x8 startupFile
 	if {[tk colormodel .]=={color} && !$mono} {
 	    option add Tk.windowbackground wheat startupFile
 	    option add Tk.displaybackground white startupFile
