@@ -2,6 +2,7 @@
 
 (defun dp-integer-atom-p (l)
   (or (eq (node-initial-type l) *integer*)
+      (dp-integerp l)
       (floor-p l)
       (and (times-p l)
 	   (integer-times-p l))))
