@@ -204,6 +204,7 @@
 	  (push-word (store-obj (symbol-package obj)))
 	  (push-string name)))))
 
+#+lucid
 (defun fetch-monitoring ()
   (monitor fetch-object fetch-obj fetch-symbol fetch-integer fetch-string
 	   fetch-temp-string fetch-packaged-symbol fetch-moduleref
