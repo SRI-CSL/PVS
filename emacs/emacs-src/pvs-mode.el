@@ -173,12 +173,7 @@ PVS are automatically put in the proper mode."
 ;;; lines in the buffer.  Will take up the entire window if necessary.
 
 (defun optimize-window-height ()
-  (let ((current-window-height (1- (window-height)))
-        (lines-in-buffer (count-lines (point-min) (point-max))))
-    (cond ((> current-window-height lines-in-buffer)
-           (shrink-window (- current-window-height lines-in-buffer)))
-          ((> lines-in-buffer current-window-height)
-           (enlarge-window (- lines-in-buffer current-window-height))))
-    (goto-char (point-min))))
+  (ilisp-shrink-wrap-window (selected-window))
+  (goto-char (point-min))))
 
 (provide 'pvs-mode)
