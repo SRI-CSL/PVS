@@ -1362,7 +1362,8 @@ naturalnumbers: THEORY
   n: VAR posnat
 
   upfrom_nat_is_nat:   JUDGEMENT upfrom(i) SUBTYPE_OF nat
-  above_nat_is_nat:    JUDGEMENT above(i) SUBTYPE_OF posnat
+  upfrom_posnat_is_posnat: JUDGEMENT upfrom(n) SUBTYPE_OF posnat
+  above_nat_is_posnat: JUDGEMENT above(i) SUBTYPE_OF posnat
   subrange_nat_is_nat: JUDGEMENT subrange(i,j) SUBTYPE_OF nat
   subrange_posnat_is_posnat: JUDGEMENT subrange(n,j) SUBTYPE_OF posnat
 
