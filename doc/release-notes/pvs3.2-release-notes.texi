@@ -510,9 +510,9 @@ declarations, mostly lemmas.  These are in the theories @code{sets},
 The @code{bv_cnv} theory was removed, as the conversion can sometimes
 hide real type errors.  To enable it, just add the following line to
 your specification.
-@code
+@example
   CONVERSION fill[1]
-@end code
+@end example
 
 
 @node 3.2 Bug Fixes
