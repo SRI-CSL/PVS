@@ -1060,7 +1060,10 @@ required a context.")
 	  (instantiate-operator-type
 	   (type operator) operator (argument-list argument) expected))
       (let ((coptypes (delete-if-not #'(lambda (ty)
-					 (compatible? (range ty) expected))
+					 (and (funtype? (find-supertype ty))
+					      (compatible?
+					       (range (find-supertype ty))
+					       expected)))
 			(types operator))))
 	(unless coptypes
 	  (type-incompatible expr (mapcar #'range (types operator))
