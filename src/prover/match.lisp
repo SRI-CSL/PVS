@@ -225,9 +225,15 @@
 (defmethod match* ((expr funtype)(instance funtype) bind-alist subst)
   (with-slots ((d1 domain) (r1 range)) expr
     (with-slots ((d2 domain) (r2 range)) instance
-      (match* r1 r2 bind-alist
-	      (let* ((*tc-match-strictly* t))
-		(match* d1 d2 bind-alist subst))))))
+      (let ((dresult (let* ((*tc-match-strictly* t))
+		       (match* d1 d2 bind-alist subst)))
+	    (*bound-variables* (if (dep-binding? d2)
+				   (cons d2 *bound-variables*)
+				   *bound-variables*))
+	    (nbind-alist (if (and (dep-binding? d1) (dep-binding? d2))
+			     (acons d1 d2 bind-alist)
+			     bind-alist)))
+	(match* r1 r2 nbind-alist dresult)))))
 
 (defmethod match* ((expr tupletype)(instance tupletype) bind-alist subst)
   (with-slots ((ty1 types)) expr
@@ -494,22 +500,22 @@
 				      (and (null (declaration y))
 					   (same-id x y)))))))
       (cond
-       (bind-entry  (if (and (variable? instance)
-			     (binding? (cdr bind-entry)) 
-			     (same-declaration instance
-					       (cdr bind-entry)))
-			subst
-			(if (and (tuple-expr? instance)
-				 (consp (cdr bind-entry))
-				 (eql (length (exprs instance))
-				      (length (cdr bind-entry)))
-				 (loop for 
-				       inst in (exprs instance)
-				       as bdecl in (cdr bind-entry)
-				       always
-				       (same-declaration inst bdecl)))
-			    subst
-			    'fail)))
+       (bind-entry (if (and (variable? instance)
+			    (binding? (cdr bind-entry)) 
+			    (same-declaration instance
+					      (cdr bind-entry)))
+		       subst
+		       (if (and (tuple-expr? instance)
+				(consp (cdr bind-entry))
+				(eql (length (exprs instance))
+				     (length (cdr bind-entry)))
+				(loop for 
+				      inst in (exprs instance)
+				      as bdecl in (cdr bind-entry)
+				      always
+				      (same-declaration inst bdecl)))
+			   subst
+			   'fail)))
        (subst-entry
 	(let* ((subst-term (cdr subst-entry))
 	       (newmodsubst
