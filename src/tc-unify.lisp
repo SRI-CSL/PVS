@@ -107,12 +107,13 @@
 	nbindings)))
 
 (defmethod tc-match* (t1 t2 bindings)
-  (declare (ignore bindings))
+  (declare (ignore t1 t2 bindings))
   #+pvsdebug (when #+scl (eq (type-of t1) (type-of t2))
 		   #-scl (eq (class-of t1) (class-of t2))
 		   (break "Match should handle ~a types"
 			  #+scl (type-of t1)
-			  #-scl (class-of t1))))
+			  #-scl (class-of t1)))
+  nil)
 
 (defmethod tc-match* ((args list) (fargs list) bindings)
   (cond ((or (null bindings) (null args))
@@ -318,7 +319,7 @@
       (when nbindings
 	(mapc #'(lambda (b)
 		  (let ((cdrb (gensubst (cdr b)
-				#'(lambda (ex) arg)
+				#'(lambda (ex) (declare (ignore ex)) arg)
 				#'(lambda (ex) (eq ex (declared-type arg))))))
 		    (unless (eq cdrb (cdr b))
 		      (setf (cdr b) cdrb))))
