@@ -455,6 +455,8 @@ window."
 (defvar *pvs-buffers-to-bury* '("PVS Error"
 				"Declaration"
 				" *Error Output*"
+                                "PVS Warnings"
+                                "PVS Messages"
 				"*Completions*"))
 
 (defun pvs-buffer (output)
