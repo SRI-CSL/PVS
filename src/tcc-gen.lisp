@@ -33,18 +33,19 @@
   type) 
 
 (defun generate-subtype-tcc (expr expected incs)
-  (if (every #'(lambda (i) (member i *tcc-conditions* :test #'tc-eq))
-	     incs)
-      (unless (or *in-checker* *in-evaluator*)
-	(if (numberp (tccs-simplified))
-	    (incf (tccs-simplified))
-	    (setf (tccs-simplified) 1)))
-      (let* ((*old-tcc-name* nil)
-	     (ndecl (make-subtype-tcc-decl expr incs)))
-	(if ndecl
-	    (insert-tcc-decl 'subtype expr expected ndecl)
-	    (unless (or *in-checker* *in-evaluator*)
-	      (incf (tccs-simplified)))))))
+  (unless (eq *generate-tccs* 'none)
+    (if (every #'(lambda (i) (member i *tcc-conditions* :test #'tc-eq))
+	       incs)
+	(unless (or *in-checker* *in-evaluator*)
+	  (if (numberp (tccs-simplified))
+	      (incf (tccs-simplified))
+	      (setf (tccs-simplified) 1)))
+	(let* ((*old-tcc-name* nil)
+	       (ndecl (make-subtype-tcc-decl expr incs)))
+	  (if ndecl
+	      (insert-tcc-decl 'subtype expr expected ndecl)
+	      (unless (or *in-checker* *in-evaluator*)
+		(incf (tccs-simplified))))))))
 
 (defvar *simplify-tccs* nil)
 
