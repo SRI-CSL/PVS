@@ -143,6 +143,32 @@
 			   (provable-formulas theory)))
 		 *prelude*)))))
 
+;;; This is invoked after adding some theories to the prelude Takes a file
+;;; name (e.g., "~/widget/foo", and installs all proofs from
+;;; ~/widget/foo.prf that have now have a corresponding theory in the
+;;; prelude.  This is really only for the PVS maintainers.
+
+(defun merge-proofs-into-updated-prelude (file)
+  (let ((prfpath (make-prf-pathname file)))
+    (if (file-exists-p prfpath)
+	(with-open-file (input prfpath :direction :input)
+	  (restore-prelude-proofs-from-file input prfpath))
+	(format t "~%Proof file ~a does not exist" prfpath))))
+
+(defun restore-prelude-proofs-from-file (input prfpath)
+  (let ((theory-proofs (read input nil nil)))
+    (when theory-proofs
+      (let* ((theoryid (car theory-proofs))
+	     (proofs (cdr theory-proofs))
+	     (theory (gethash theoryid *prelude*)))
+	(unless (every #'consp proofs)
+	  (error "Proofs file ~a is corrupted" prfpath))
+	(cond (theory
+	       (restore-theory-proofs theory proofs)
+	       (format t "~%Theory ~a proofs restored" theoryid))
+	      (t (format t "~%Theory ~a not in prelude, ignoring" theoryid)))
+	(restore-prelude-proofs-from-file input prfpath)))))
+
 (defun save-prelude-proofs ()
   (let ((prfile (namestring (merge-pathnames (format nil "~a/lib/" *pvs-path*)
 					     "prelude.prf"))))
