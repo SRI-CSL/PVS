@@ -160,7 +160,7 @@ generated")
 (defun save-adt-file (adt)
   (let* ((adt-file (concatenate 'string (string (id adt)) "_adt"))
 	 (adt-path (make-specpath adt-file))
-	 (file-exists? #+allegro (excl::filesys-inode (namestring adt-path))
+	 (file-exists? #+allegro (file-exists-p adt-path)
 		       #-allegro (probe-file adt-path))
 	 (adt-theories (adt-generated-theories adt))
 	 (mods (make-instance 'modules 'modules adt-theories))
@@ -936,24 +936,26 @@ generated")
        'AXIOM))))
 
 (defun generate-adt-induction (adt)
-  (typecheck-adt-decl
-   (mk-formula-decl (makesym "~a_induction" (id adt))
-     (mk-forall-expr (list (mk-bind-decl '|p|
-			     (mk-predtype (adt-type-name adt))))
-       (mk-implication (gen-induction-hypothesis adt)
-		       (gen-induction-conclusion adt)))
-     'AXIOM)))
+  (let ((indvar (make-new-variable '|p| adt)))
+    (typecheck-adt-decl
+     (mk-formula-decl (makesym "~a_induction" (id adt))
+       (mk-forall-expr (list (mk-bind-decl indvar
+			       (mk-predtype (adt-type-name adt))))
+	 (mk-implication (gen-induction-hypothesis adt indvar)
+			 (gen-induction-conclusion adt indvar)))
+       'AXIOM))))
 
-(defmethod gen-induction-hypothesis ((adt datatype) &optional ign)
+(defmethod gen-induction-hypothesis ((adt datatype) indvar &optional ign)
   (declare (ignore ign))
   (mk-conjunction
-   (mapcar #'(lambda (c) (gen-induction-hypothesis c adt))
+   (mapcar #'(lambda (c) (gen-induction-hypothesis c indvar adt))
 	   (constructors adt))))
 
-(defmethod gen-induction-hypothesis ((c simple-constructor) &optional adt)
+(defmethod gen-induction-hypothesis ((c simple-constructor) indvar
+				     &optional adt)
   (if (arguments c)
-      (let* ((arghyps (acc-induction-hypotheses (arguments c) adt))
-	     (ppappl (mk-application '|p|
+      (let* ((arghyps (acc-induction-hypotheses (arguments c) indvar adt))
+	     (ppappl (mk-application indvar
 		       (mk-application* (id c)
 			 (mapcar #'get-adt-var-name (arguments c)))))
 	     (indh (mk-forall-expr (adt-forall-bindings
@@ -963,16 +965,16 @@ generated")
 			 (mk-implication (mk-conjunction arghyps) ppappl)
 			 ppappl))))
 	(pc-parse (unparse indh :string t) 'expr))
-      (mk-application '|p| (mk-name-expr (id c)))))
+      (mk-application indvar (mk-name-expr (id c)))))
 
 (defun get-adt-var-name (arg)
   (make-instance 'name-expr 'id (id (get-adt-var arg))))
 
-(defun acc-induction-hypotheses (args adt &optional result)
+(defun acc-induction-hypotheses (args indvar adt &optional result)
   (if (null args)
       (nreverse result)
-      (let ((hyp (acc-induction-hypothesis (car args) adt)))
-	(acc-induction-hypotheses (cdr args) adt
+      (let ((hyp (acc-induction-hypothesis (car args) indvar adt)))
+	(acc-induction-hypotheses (cdr args) indvar adt
 				  (if hyp (cons hyp result) result)))))
 
 
@@ -981,21 +983,21 @@ generated")
 ;;; a positive actual parameter to a different datatype.  In every other case,
 ;;; return NIL.
 
-(defun acc-induction-hypothesis (arg adt)
-  (let ((pred (acc-induction-hypothesis* (type arg) adt)))
+(defun acc-induction-hypothesis (arg indvar adt)
+  (let ((pred (acc-induction-hypothesis* (type arg) indvar adt)))
     (when (and pred
 	       (not (everywhere-true? pred)))
       (mk-application pred (get-adt-var-name arg)))))
 
-(defmethod acc-induction-hypothesis* ((te type-name) adt)
+(defmethod acc-induction-hypothesis* ((te type-name) indvar adt)
   (cond ((tc-eq te (adt-type-name adt))
-	 (mk-name-expr '|p|))
+	 (mk-name-expr indvar))
 	((adt? te)
 	 (let* ((acts (remove-if-not #'type-value
 			(actuals (module-instance te))))
 		(preds (mapcar #'(lambda (act)
 				   (acc-induction-hypothesis*
-				    (type-value act) adt))
+				    (type-value act) indvar adt))
 			       acts)))
 	   (if (every #'(lambda (p) (or (everywhere-true? p) (null p)))
 		      preds)
@@ -1008,10 +1010,10 @@ generated")
 	(t ;;(mk-everywhere-true-function te)
 	 nil)))
 
-(defmethod acc-induction-hypothesis* ((te subtype) adt)
-  (acc-induction-hypothesis* (supertype te) adt))
+(defmethod acc-induction-hypothesis* ((te subtype) indvar adt)
+  (acc-induction-hypothesis* (supertype te) indvar adt))
 
-(defmethod acc-induction-hypothesis* ((te funtype) adt)
+(defmethod acc-induction-hypothesis* ((te funtype) indvar adt)
   (let* ((fid (make-new-variable '|x| te))
 	 (fbd (make-bind-decl fid (domain te)))
 	 (fvar (mk-name-expr fid nil nil
@@ -1021,7 +1023,7 @@ generated")
 		(if (typep (domain te) 'dep-binding)
 		    (substit (range te) (acons (domain te) fvar nil))
 		    (range te))
-		adt)))
+		indvar adt)))
     (when (and pred
 	       (not (everywhere-true? pred)))
       (if (tc-eq (domain te) *naturalnumber*)
@@ -1036,13 +1038,14 @@ generated")
 		(mk-application pred
 		  (mk-application lvar fvar)))))))))
 
-(defmethod acc-induction-hypothesis* ((te recordtype) adt)
+(defmethod acc-induction-hypothesis* ((te recordtype) indvar adt)
   (let* ((rid (make-new-variable '|r| te))
 	 (rbd (make-bind-decl rid te))
 	 (rvar (mk-name-expr rid nil nil
 			     (make-resolution rbd
 			       (current-theory-name) te)))
-	 (preds (acc-induction-fields (fields te) rvar adt (dependent? te))))
+	 (preds (acc-induction-fields (fields te) rvar indvar adt
+				      (dependent? te))))
     (unless (every #'(lambda (p) (or (null p) (everywhere-true? p))) preds)
       (mk-lambda-expr (list rbd)
 	(mk-conjunction
@@ -1052,7 +1055,7 @@ generated")
 			       (mk-application (id fd) rvar)))))
 	   (fields te) preds))))))
 
-(defun acc-induction-fields (fields rvar adt dep? &optional result)
+(defun acc-induction-fields (fields rvar indvar adt dep? &optional result)
   (if (null fields)
       (nreverse result)
       (acc-induction-fields
@@ -1062,17 +1065,18 @@ generated")
 		    (make-field-application (car fields) rvar)
 		    nil))
 	   (cdr fields))
-       rvar adt dep?
-       (cons (acc-induction-hypothesis* (copy-all (type (car fields))) adt)
+       rvar indvar adt dep?
+       (cons (acc-induction-hypothesis* (copy-all (type (car fields)))
+					indvar adt)
 	     result))))
 
-(defmethod acc-induction-hypothesis* ((te tupletype) adt)
+(defmethod acc-induction-hypothesis* ((te tupletype) indvar adt)
   (let* ((tid (make-new-variable '|t| te))
 	 (tbd (make-bind-decl tid te))
 	 (tvar (mk-name-expr tid nil nil
 			     (make-resolution tbd
 			       (current-theory-name) te)))
-	 (preds (acc-induction-tuples (types te) tvar adt)))
+	 (preds (acc-induction-tuples (types te) tvar indvar adt)))
     (unless (every #'null preds)
       (mk-lambda-expr (list tbd)
 	(mk-conjunction
@@ -1087,7 +1091,7 @@ generated")
 				   'argument tvar)))))
 	     preds)))))))
 
-(defun acc-induction-tuples (types tvar adt &optional (index 1) result)
+(defun acc-induction-tuples (types tvar indvar adt &optional (index 1) result)
   (if (null types)
       (nreverse result)
       (acc-induction-tuples
@@ -1097,27 +1101,16 @@ generated")
 		    (make-projection-application index tvar)
 		    nil))
 	   (cdr types))
-       tvar adt (1+ index)
-       (cons (acc-induction-hypothesis* (car types) adt) result))))
+       tvar indvar adt (1+ index)
+       (cons (acc-induction-hypothesis* (car types) indvar adt) result))))
 
-(defmethod acc-induction-hypothesis* ((te dep-binding) adt)
-  (acc-induction-hypothesis* (type te) adt))
+(defmethod acc-induction-hypothesis* ((te dep-binding) indvar adt)
+  (acc-induction-hypothesis* (type te) indvar adt))
 
-(defmethod acc-induction-hypothesis* ((te type-expr) adt)
-  (declare (ignore adt))
+(defmethod acc-induction-hypothesis* ((te type-expr) indvar adt)
+  (declare (ignore indvar adt))
   ;;(mk-everywhere-true-function te)
   )
-
-(defun acc-adt-ind-hyp-preds (adt-type acts &optional result)
-  (if (null acts)
-      (nreverse result)
-      (if (type-value (car acts))
-	  (let ((npred (if (tc-eq (type-value (car acts)) adt-type)
-			   (mk-name-expr '|p|)
-			   (mk-everywhere-true-function
-			    (type-value (car acts))))))
-	    (acc-adt-ind-hyp-preds adt-type (cdr acts) (cons npred result)))
-	  (acc-adt-ind-hyp-preds adt-type (cdr acts) result))))
 
 (defun mk-everywhere-true-function (type)
   (mk-lambda-expr (list (mk-bind-decl (make-new-variable '|x| type) type))
@@ -1127,11 +1120,11 @@ generated")
   (mk-lambda-expr (list (mk-bind-decl (make-new-variable '|x| type) type))
     (copy *false*)))
 
-(defmethod gen-induction-conclusion ((adt datatype))
+(defmethod gen-induction-conclusion ((adt datatype) indvar)
   (let ((tvar (mk-name-expr (makesym "~a_var" (id adt)))))
     (mk-forall-expr (list (mk-bind-decl (id tvar)
 			      (mk-type-name (id adt))))
-      (mk-application '|p| tvar))))
+      (mk-application indvar tvar))))
 
 
 ;;; Generate the every and some functions - only when some formal
