@@ -611,7 +611,7 @@
 		      (t
 		       (push (cons dlib-key libdir) *library-alist*)
 		       (values libdir dlibpath))))
-	      (values nil "Library ~a does not exist"))))))
+	      (values nil nil "Library ~a does not exist"))))))
 
 
 (defun all-decls (theory)
