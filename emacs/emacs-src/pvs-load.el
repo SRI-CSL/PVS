@@ -246,8 +246,10 @@ get to the same state."
      (format "(progn (setq *pvs-path* \"%s\")
                      (pvs-init nil %s)
                      (setq *noninteractive* %s)
-                     (setq *pvs-verbose* %d))"
-	     pvs-path (equal (getenv "PVSMINUSQ") "-q") noninteractive pvs-verbose)
+                     (setq *pvs-verbose* %d)
+                     (setq *force-dp* %s))"
+	     pvs-path (equal (getenv "PVSMINUSQ") "-q")
+	     noninteractive pvs-verbose (getenv "PVSFORCEDP"))
      nil nil 'dont-care))
   (setq *pvs-version-information* nil)
   (sleep-for 1)
