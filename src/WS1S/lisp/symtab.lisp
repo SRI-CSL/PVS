@@ -1,92 +1,94 @@
 (in-package :pvs)
 
-(let ((*index* 0)
-      (*size* 0)
-      (*bvars* nil)
-      (*symtab* nil))
+; Symbol table, implemented as associations (i . expr), where i is an integer index, and expr
+; a PVS expression
 
-  (defun symtab-init ()
-    (setf *index* 0)
-    (setf *size* 0)
-    (setf *bvars* nil)
-    (if *symtab*
-	(clrhash *symtab*)
-	(setf *symtab* (make-hash-table :hash-function 'pvs-sxhash
-					:test 'tc-eq))))
-  
-  (defun symtab-new-index ()
-     (setf *index* (1+ *index*)))
-  
-  (defun symtab-index (expr)
-    (or (index-of-boundvar expr)
-        (gethash expr *symtab*)
-	(symtab-add-index expr)))
-	
-  (defun symtab-add-index (expr)
-    (prog1
-      (setf *index* (1+ *index*))
-      (setf *size* (1+ *size*))
-      (setf (gethash expr *symtab*) *index*)))
+(defvar *index* 0)
 
-  (defun symtab-shadow (expr)
-    (assert (typep expr 'name-expr))
-    (prog1
-      (setf *index* (1+ *index*))
-      (push (cons expr *index*) *bvars*)))
+(defun symtab-boundvars (symtab)
+  (car symtab))
 
-  (defun index-of-boundvar (expr)
-    (cdr (assoc expr *bvars* :test #'tc-eq)))
+(defun symtab-freevars (symtab)
+  (cdr symtab))
 
-  (defun symtab-shadow* (exprs &optional acc)
-    (if (null exprs)
-	(nreverse acc)
-      (symtab-shadow* (cdr exprs)
-		      (cons (symtab-shadow (car exprs)) acc))))
-   
-  (defun symtab-unshadow ()
-    (pop *bvars*))
+(defun symtab-make (bound free)
+  (cons bound free))
 
-  (defun symtab-unshadow* (n)
-    (loop for i from 1 upto n
-       do (symtab-unshadow)))
-  
-  (defun symtab-strip ()
-    (assert (null *bvars*))
-    (let ((offsets (make-array *size* :element-type 'fixnum))
-	  (fvars   (make-array *size* :element-type 'string))
-	  (types   (make-string *size*))
-	  (i       0))
-      (maphash #'(lambda (expr index)
-		   (setf (elt offsets i) index)
-		   (setf (elt fvars i) (format nil "~a" expr))
-                   (let* ((level (level expr))
-			  (char (cond ((eql level 0) #\0)
-				      ((eql level 1) #\1)
-				      ((eql level 2) #\2)
-				      (t
-				       (break)))))
-			 (setf (elt types i) char))
-		   (setf i (1+ i)))
-	       *symtab*)
-      (values (symtab) *size* offsets fvars types)))
+(defun symtab-init ()
+  (setf *index* 0))
 
- (defun symtab ()
-   (let ((alist nil))
-     (maphash #'(lambda (e x)
-		  (push (cons x e) alist))
-	     *symtab*)
-     alist))
- 
-  (defun shielding? (expr)
-    (some #'(lambda (bvar)
-	      (occurs-in (car bvar) expr))
-	  *bvars*))
+(defun symtab-empty ()
+  (cons nil nil))
 
-  (defun fvars (l &optional acc)
-    (if (null l)
-	(nreverse acc)
-      (let* ((entry (car l))
-	     (newacc (cons (cdr entry) acc)))
-	(fvars (cdr l) newacc))))
-)
+(defun symtab-fresh-index ()
+  (setf *index* (1+ *index*))
+  *index*)
 
+(defun symtab-add-free (expr symtab)
+  (assert (consp symtab))
+  (setf *index* (1+ *index*))
+  (let ((new-symtab (symtab-make (symtab-boundvars symtab)
+				 (cons (cons *index* expr) (symtab-freevars symtab)))))
+    (values *index* new-symtab)))
+
+(defun symtab-add-bound (expr symtab)
+  (assert (consp symtab))
+  (setf *index* (1+ *index*))
+  (let ((new-symtab (symtab-make (cons (cons *index* expr) (symtab-boundvars symtab))
+			         (symtab-freevars symtab))))
+    (values *index* new-symtab)))
+
+(defun symtab-add-bounds (exprs symtab &optional indices)
+  (assert (consp symtab))
+  (cond ((null exprs)
+	 (values indices symtab))
+	(t
+	 (multiple-value-bind (new-index new-symtab)
+	     (symtab-add-bound (car exprs) symtab)
+	   (symtab-add-bounds (cdr exprs) new-symtab (cons new-index indices))))))
+
+(defun symtab-index (expr symtab)
+  (assert (consp symtab))
+  (car (or (rassoc expr (symtab-boundvars symtab) :test #'tc-eq)
+	   (rassoc expr (symtab-freevars symtab) :test #'tc-eq))))
+
+(defun symtab-value (idx symtab)
+  (assert (consp symtab))
+  (cdr (or (assoc idx (symtab-boundvars symtab) :test #'=)
+	   (assoc idx (symtab-freevars symtab) :test #'=))))
+
+(defun symtab-strip (symtab)
+  (assert (consp symtab))
+  (assert (eq (symtab-boundvars symtab) nil))
+  (let* ((free (symtab-freevars symtab))
+	 (size (length free))
+	 (offsets (make-array size :element-type 'fixnum))
+	 (fvars   (make-array size :element-type 'string))
+	 (types   (make-string size))
+	 (i       0))
+    (mapc  #'(lambda (bndng)
+	       (let ((idx (car bndng))
+		     (expr (cdr bndng)))
+		 (setf (elt offsets i) idx)
+		 (setf (elt fvars i) (format nil "~a" expr))
+		 (setf (elt types i)
+		       (let ((level (level (type expr))))
+			 (cond ((eql level 0) #\0)
+			       ((eql level 1) #\1)
+			       ((eql level 2) #\2)
+			       (t (break)))))
+		 (setf i (1+ i))))
+      free)
+    (values free
+	    size
+	    offsets
+	    fvars
+	    types)))
+
+
+; An expression is shielding if it contains bound variables
+
+(defun symtab-shielding? (expr symtab)
+  (some #'(lambda (bndng)
+	    (occurs-in (cdr bndng) expr))
+	(symtab-boundvars symtab)))
