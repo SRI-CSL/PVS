@@ -42,7 +42,7 @@
   (if decl
       (cadr (memq decl
 		  (delete-if #'(lambda (d)
-				 (or (typep d '(or using field-decl))
+				 (or (typep d '(or importing field-decl))
 				     (generated-by d)))
 			     (reverse (append (assuming theory)
 					      (theory theory))))))

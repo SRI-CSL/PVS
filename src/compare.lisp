@@ -69,7 +69,7 @@
 
 (defmethod compare* ((old datatype) (new datatype))
   (cond ((and (importings old) (importings new))
-	 (compare* (importings old) (importings new)))
+	 (compare-decl-lists (importings old) (importings new)))
 	((importings old)
 	 (push (list (importings old) 'del) *differences*))
 	((importings new)
@@ -237,7 +237,8 @@
 (defmethod compare* ((old def-decl) (new def-decl))
   (and (call-next-method)
        (compare-bod (definition old) (definition new))
-       (compare-bod (declared-measure old) (declared-measure new))))
+       (compare-bod (declared-measure old) (declared-measure new))
+       (compare-bod (ordering old) (ordering new))))
 
 (defmethod compare* ((old formula-decl) (new formula-decl))
   (and (call-next-method)

@@ -1191,10 +1191,16 @@ where db is to replace db1 and db2")
 (defun make-every-name (atype acts)
   (declare (ignore acts))
   (let* ((adtth (adt-theory (adt atype)))
-	 (decl (find '|every| (theory adtth) :key #'id))
+	 (decl (find '|every| (theory adtth) :key #'decl-id))
 	 (modname (mk-modname (id adtth) (actuals atype)))
 	 (res (make-resolution decl modname)))
     (mk-name-expr '|every| nil nil res)))
+
+(defmethod decl-id ((decl declaration))
+  (id decl))
+
+(defmethod decl-id ((imp importing))
+  nil)
 
 (defun make-compatible-every-pred* (pospred)
   (cond ((null (cdr pospred))

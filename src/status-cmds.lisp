@@ -345,17 +345,20 @@
 	(pvs-message "~a.pvs has not been typechecked" filename))))
 
 (defun status-proofchain-importchain (theoryname)
-  (if (get-theory theoryname)
-      (let ((theories (collect-theory-usings theoryname))
-	    (*disable-gc-printout* t))
-	(if theories
-	    (pvs-buffer "PVS Status"
-	      (with-output-to-string (*standard-output*)
-		(mapc #'pc-analyze theories))
-	      t)
-	    (pvs-message "Theory ~a is not in the current context"
-	      theoryname)))
-      (pvs-message "~a has not been typechecked" theoryname)))
+  (let ((th (get-theory theoryname)))
+    (if th
+	(let* ((*current-theory* th)
+	       (*current-context* (saved-context th))
+	       (theories (collect-theory-usings theoryname))
+	       (*disable-gc-printout* t))
+	  (if theories
+	      (pvs-buffer "PVS Status"
+		(with-output-to-string (*standard-output*)
+		  (mapc #'pc-analyze theories))
+		t)
+	      (pvs-message "Theory ~a is not in the current context"
+		theoryname)))
+	(pvs-message "~a has not been typechecked" theoryname))))
 
 
 (defun full-status-theory (theoryname)
@@ -720,7 +723,8 @@
 
 (defmethod pc-analyze* ((decl declaration) )
   (let ((*depending-chain* *depending-chain* ))
-    (cond ((memq decl *depending-chain*)
+    (cond ((and (not (def-decl? decl))
+		(memq decl *depending-chain*))
 	   (pushnew decl *depending-cycles*)
 	   *dependings*)
 	  ((gethash decl *dependings*)
