@@ -721,7 +721,7 @@ sets [T: TYPE]: THEORY
 
   full?(a): bool = (FORALL x: member(x, a))
 
-  fullset: MACRO set = {x | true}
+  fullset: set = {x | true}
 
   subset?(a, b): bool = (FORALL x: member(x, a) => member(x, b))
 
