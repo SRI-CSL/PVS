@@ -49,9 +49,15 @@
   (let* ((fname (gentemp "undefined"))
 	 (fbody `(defun ,fname (&rest x)
 		   (declare (ignore x))
-		   (throw 'undefined (values 'cant-translate 
-			  (format nil "Hit uninterpreted term ~a during evaluation"
-			    (ref-to-id ,expr)))))))
+		   (if *evaluator-debug-undefined*
+		       (break "hit undefined term")
+		       (throw 'undefined
+			      (values
+			       'cant-translate 
+			       (format nil "Hit uninterpreted term during evaluation: ~a"
+				 (if (declaration? ,expr)
+				     (format nil "~a.~a" (id (module ,expr)) (id ,expr))
+				     ,expr))))))))
     (eval fbody)
     (compile fname)
     fname))
@@ -621,25 +627,29 @@
 			 (list ,@(pvs2cl_up* (constructors typ1)
 					     bindings livevars))))
 		((car sub)
-		 (let ((lfrom (if (number-expr? (car sub))
-				  (number (car sub))
-				  (or (pvs2cl_up* (cdr sub) bindings livevars)
-				      (undef (car sub)))))
-		       (lto (if (number-expr? (cdr sub))
-				(number (cdr sub))
-				(or (pvs2cl_up* (cdr sub) bindings livevars)
-				    (undef (cdr sub)))))
-		       (i (gentemp)))
-		   `(loop for ,i
-			  from ,lfrom
-			  to ,lto
-			  always
-			  (pvs-funcall ,(pvs2cl-lambda (list bind1)
-						       expr-rest
-						       bindings
-						       (append (updateable-vars expr)
-							       livevars))
-				       ,i))))
+		 (if (and (subtype? typ1)
+			  (car (simple-subrange? (supertype typ1))))
+		     (pvs2cl_up* (lift-predicates-in-quantifier expr (list (supertype typ1)))
+				 bindings livevars)
+		     (let  ((lfrom (if (number-expr? (car sub))
+				       (number (car sub))
+				       (or (pvs2cl_up* (cdr sub) bindings livevars)
+					   (undef (car sub)))))
+			    (lto (if (number-expr? (cdr sub))
+				     (number (cdr sub))
+				     (or (pvs2cl_up* (cdr sub) bindings livevars)
+					 (undef (cdr sub)))))
+			    (i (gentemp)))
+		       `(loop for ,i
+			      from ,lfrom
+			      to ,lto
+			      always
+			      (pvs-funcall ,(pvs2cl-lambda (list bind1)
+							   expr-rest
+							   bindings
+							   (append (updateable-vars expr)
+								   livevars))
+					   ,i)))))
 		(t (throw 'no-defn (values 'cant-translate
 					   "Cannot handle non-scalar/subrange quantifiers.")))))
 	(pvs2cl_up* body bindings livevars))))
@@ -666,25 +676,29 @@
 			(list ,@(pvs2cl_up* (constructors typ1)
 					    bindings livevars))))
 		((car sub)
-		 (let ((lfrom (if (number-expr? (car sub))
-				  (number (car sub))
-				  (or (pvs2cl_up* (cdr sub) bindings livevars)
-				      (undef (car sub)))))
-		       (lto (if (number-expr? (cdr sub))
-				(number (cdr sub))
-				(or (pvs2cl_up* (cdr sub) bindings livevars)
-				    (undef (cdr sub)))))
-		       (i (gentemp)))
-		   `(loop for ,i
-			  from ,lfrom
-			  to ,lto
-			  thereis
-			  (pvs-funcall ,(pvs2cl-lambda (list bind1)
-						       expr-rest
-						       bindings
-						       (append (updateable-vars expr)
-							       livevars))
-				       ,i))))
+		 (if (and (subtype? typ1)
+			  (car (simple-subrange? (supertype typ1))))
+		     (pvs2cl_up* (lift-predicates-in-quantifier expr (list (supertype typ1)))
+				 bindings livevars)
+		     (let ((lfrom (if (number-expr? (car sub))
+				      (number (car sub))
+				      (or (pvs2cl_up* (cdr sub) bindings livevars)
+					  (undef (car sub)))))
+			   (lto (if (number-expr? (cdr sub))
+				    (number (cdr sub))
+				    (or (pvs2cl_up* (cdr sub) bindings livevars)
+					(undef (cdr sub)))))
+			   (i (gentemp)))
+		       `(loop for ,i
+			      from ,lfrom
+			      to ,lto
+			      thereis
+			      (pvs-funcall ,(pvs2cl-lambda (list bind1)
+							   expr-rest
+							   bindings
+							   (append (updateable-vars expr)
+								   livevars))
+					   ,i)))))
 		(t (throw 'no-defn (values 'cant-translate
 					   "Cannot handle non-scalar/subrange quantifiers.")))))
 	(pvs2cl_up* body bindings livevars))))
