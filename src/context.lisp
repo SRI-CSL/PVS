@@ -189,10 +189,10 @@ pvs-strategies files.")
     (unless (probe-file (context-pathname dir))
       (write-context))
     (pvs-message "Context changed to ~a"
-      (shortname (working-directory)))
+      (shortname *pvs-context-path*))
     (when *pvs-context-writable*
       (copy-auto-saved-proofs-to-orphan-file))
-    (shortname (working-directory))))
+    (shortname *pvs-context-path*)))
 
 (defun reset-context ()
   (setq *last-proof* nil)
@@ -215,7 +215,7 @@ pvs-strategies files.")
 	   (get-valid-context-directory nil nil))
 	  (t dir))))
 
-(defun context-pathname (&optional (dir (working-directory)))
+(defun context-pathname (&optional (dir *pvs-context-path*))
   (make-pathname :name *context-name* :defaults dir))
 
 (defvar *dont-write-object-files* nil)
@@ -532,7 +532,7 @@ pvs-strategies files.")
 		      (when (and (typep dth '(or library-theory
 						 library-datatype))
 				 (not (equal (library dth)
-					     (working-directory))))
+					     *pvs-context-path*)))
 			(setq depname
 			      (namestring
 			       (merge-pathnames
@@ -774,7 +774,7 @@ pvs-strategies files.")
 ;;; Show Context Path
 
 (defun show-context-path ()
-  (pvs-message (shortname (working-directory))))
+  (pvs-message (shortname *pvs-context-path*)))
 
 
 ;;; Update-from-context is called by typecheck (module)
@@ -843,7 +843,7 @@ pvs-strategies files.")
 			(let ((dir (pathname-directory d)))
 			  (not (or (null dir)
 				   (file-equal (make-pathname :directory dir)
-					       (working-directory))))))))
+					       *pvs-context-path*)))))))
 	      (ce-dependencies entry))))
 
 (defmethod valid-proofs-file (entry)
@@ -868,7 +868,7 @@ pvs-strategies files.")
   (when (or (null context)
 	    (probe-file context))
     (if (or (null context)
-	    (equal (truename context) (truename (working-directory))))
+	    (equal (truename context) (truename *pvs-context-path*)))
 	(sort (mapcan #'(lambda (e)
 			  (let ((file (format nil "~a.~a"
 					(ce-file e)
@@ -1336,7 +1336,7 @@ pvs-strategies files.")
 	       nil)
 	      (t proofs))))))
 
-(defun read-pvs-file-proofs (filename &optional (dir (working-directory)))
+(defun read-pvs-file-proofs (filename &optional (dir *pvs-context-path*))
   (let ((prf-file (make-prf-pathname filename dir)))
     (when (probe-file prf-file)
       (multiple-value-bind (proofs error)
@@ -1474,7 +1474,7 @@ pvs-strategies files.")
 			 (directory-p (environment-variable "PVSPATH"))
 			 "pvs-strategies"))
 	(home-strat-file (merge-pathnames "~/" "pvs-strategies"))
-	(ctx-strat-file (merge-pathnames (working-directory)
+	(ctx-strat-file (merge-pathnames *pvs-context-path*
 					 "pvs-strategies")))
     (load-strategies-file pvs-strat-file *strat-file-dates*)
     (load-strategies-file home-strat-file (cdr *strat-file-dates*))
@@ -1535,7 +1535,7 @@ pvs-strategies files.")
 
 
 (defun collect-theories ()
-  (cons (shortname (working-directory))
+  (cons (shortname *pvs-context-path*)
 	(sort (apply #'append
 		     (mapcar #'collect-theories*
 			     (pvs-context-entries)))
@@ -1629,7 +1629,7 @@ pvs-strategies files.")
 
 (defun copy-auto-saved-proofs-to-orphan-file ()
   (let ((auto-saved-files (directory (make-pathname
-				      :defaults (working-directory)
+				      :defaults *pvs-context-path*
 				      :name :wild
 				      :type "prf#")))
 	(proofs nil))
