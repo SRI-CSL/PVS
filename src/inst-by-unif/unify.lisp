@@ -18,7 +18,9 @@
 	(let ((res (unify trm1 trm2 cs)))
 	  (if (symbolp res) *fail*
 	      (let ((xs (remove-duplicates
-			    (append (vars-of trm1) (vars-of trm2) (dom subst)))))
+			    (append (vars-of trm1)
+				    (vars-of trm2)
+				    (dom subst)))))
 		(make-subst xs res))))
       (npop-cong-state cs))))
 
@@ -37,6 +39,7 @@
 ;; Unification Closure
 
 (defun dp-union* (t1 t2)
+  (declare (special *cs*))
   (let ((equality (canon (mk-equality t1 t2) *cs*)))
     (if (false-p equality)
 	(throw 'fail :inconsistent)
@@ -48,6 +51,7 @@
 		       (dp-union (lhs eqn) (rhs eqn) *cs*))))))))
 
 (defun unif-closure (t1 t2)
+  (declare (special *cs*))
   (let ((s1 (dp-find (canon t1 *cs*) *cs*))
 	(s2 (dp-find (canon t2 *cs*) *cs*)))
     (unless (eq s1 s2)
@@ -104,6 +108,9 @@
 	(init-acyclic)))))
 
 (defun consistent* (s)
+  (declare (special *cs*)
+	   (special *acyclic*)
+	   (special *visited*))
   (when (constant-p s)
     (return-from consistent*))
   (let ((s (dp-schema (dp-find (canon s *cs*) *cs*) *cs*)))
@@ -141,6 +148,7 @@
     (make-subst* xs nil)))
 
 (defun make-subst* (xs subst)
+  (declare (special *cs*))
   (if (null xs)
       (nreverse subst)
     (make-subst* (cdr xs)
@@ -155,7 +163,8 @@
     (instance* e)))
 
 (defun instance* (e)
-;  (assert (consistent? e *cs*))
+  (declare (special *cs*))
+  #+dbg(assert (consistent? e *cs*))
   (let ((s (dp-schema (dp-find (canon e *cs*) *cs*) *cs*)))
     (cond ((dp-variable-p s) s)
 	  ((application-p s)
@@ -185,7 +194,4 @@
 
 (defun dom (subst)
   (mapcar #'car subst))
-
-
-
 
