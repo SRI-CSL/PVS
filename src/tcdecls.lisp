@@ -49,8 +49,7 @@
 	    (tcdebug "~%    Typechecking ~a" decl)
 	    (let ((stime (get-internal-run-time)))
 	      (typecheck* decl nil nil nil)
-	      (setf (typecheck-time decl)
-		    (- (get-internal-run-time) stime)))
+	      (setf (typecheck-time decl) (runtime-since stime)))
 	    (setf (typechecked? decl) t))
 	(unless (or *loading-prelude*
 		    (typechecked? decl))
