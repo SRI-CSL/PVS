@@ -305,8 +305,7 @@ qelisp = src/qe/qe-utils.lisp \
          src/qe/dnf.lisp \
          src/qe/qe.lisp
 
-follisp = src/fol/fol-utils.lisp \
-          src/fol/fol.lisp \
+follisp = src/fol/fol.lisp \
           src/fol/fol-top.lisp
 
 groundevallisp = src/groundeval/eval-macros.lisp \
