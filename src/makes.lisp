@@ -302,7 +302,9 @@
   (cond ((adt-type-name? id)
 	 (copy id 'adt (or adt (adt id))))
 	((type-name? id)
-	 (change-class (copy id) 'adt-type-name 'adt adt))
+	 (change-class (copy id) 'adt-type-name
+	   'adt adt
+	   'single-constructor? (singleton? (constructors adt))))
 	((name? id)
 	 (make-instance 'adt-type-name
 	   'id (id id)
@@ -311,13 +313,15 @@
 	   'parens (parens id)
 	   'library (library id)
 	   'place (place id)
-	   'adt adt))
+	   'adt adt
+	   'single-constructor? (singleton? (constructors adt))))
 	(t (make-instance 'adt-type-name
 	     'id id
 	     'actuals actuals
 	     'mod-id mod-id
 	     'resolutions (when resolution (list resolution))
-	     'adt adt))))
+	     'adt adt
+	     'single-constructor? (singleton? (constructors adt))))))
 
 (defun mk-dep-binding (id &optional type dtype)
   (assert (or dtype type))
@@ -1876,7 +1880,7 @@
   (make-instance 'infix-application
     'operator (plus-operator)
     'argument (make!-arg-tuple-expr ex1 ex2)
-    'type *real*))
+    'type *number_field*))
 
 (defun make!-difference (ex1 ex2)
   (assert (type ex1))
@@ -1887,7 +1891,7 @@
   (make-instance 'infix-application
     'operator (difference-operator)
     'argument (make!-arg-tuple-expr ex1 ex2)
-    'type *real*))
+    'type *number_field*))
 
 (defun make!-minus (ex)
   (assert (type ex))
@@ -1895,7 +1899,7 @@
   (make-instance 'unary-application
     'operator (minus-operator)
     'argument ex
-    'type *real*))
+    'type *number_field*))
 
 (defun make!-times (ex1 ex2)
   (assert (type ex1))
@@ -1905,7 +1909,7 @@
   (make-instance 'infix-application
     'operator (times-operator)
     'argument (make!-arg-tuple-expr ex1 ex2)
-    'type *real*))
+    'type *number_field*))
 
 (defun make!-divides (ex1 ex2)
   (assert (type ex1))
@@ -1915,7 +1919,7 @@
   (make-instance 'infix-application
     'operator (divides-operator)
     'argument (make!-arg-tuple-expr ex1 ex2)
-    'type *real*))
+    'type *number_field*))
 
 (defun make!-forall-expr (bindings expr)
   (assert (and (type expr) (tc-eq (find-supertype (type expr)) *boolean*)))
@@ -2016,7 +2020,7 @@
   (make-instance 'infix-application
     'operator (less-operator)
     'argument (make!-arg-tuple-expr ex1 ex2)
-    'type *real*))
+    'type *boolean*))
 
 (defun make!-lesseq (ex1 ex2)
   (assert (type ex1))
@@ -2026,4 +2030,4 @@
   (make-instance 'infix-application
     'operator (lesseq-operator)
     'argument (make!-arg-tuple-expr ex1 ex2)
-    'type *real*))
+    'type *boolean*))
