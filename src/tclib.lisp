@@ -454,7 +454,8 @@
 		   lib-path)))))
     (add-to-prelude-libraries lib-ref)
     (when (and loaded-files
-	       (not *typechecking-module*))
+	       (not *typechecking-module*)
+	       (not *tc-add-decl*))
       (reset-context)
       (setq *pvs-context-changed* t))
     (mapcar #'(lambda (file)
@@ -548,21 +549,14 @@
 					      (list (get-typechecked-theory
 						     thid))))
 				      theory-ids)))
-		     (cond ((and theories
-				 (every #'typechecked? theories))
-			    (save-context)
-			    (dolist (th theories)
-			      (when (typechecked? th)
-				(unless (library-datatype-or-theory? th)
-				  (change-to-library-class th lib-ref)
-				  (setf (all-imported-theories th) 'unbound))))
-			    theories)
-			   (t
-			    (break "restore-imported-library-files needs fix")
-			    (remhash filename *pvs-files*)
-			    (dolist (th theories)
-			      (remhash (id th) *pvs-modules*))
-			    nil))))))))))))
+		     (when (and theories
+				(every #'typechecked? theories))
+		       (save-context)
+		       (dolist (th theories)
+			 (unless (library-datatype-or-theory? th)
+			   (change-to-library-class th lib-ref)
+			   (setf (all-imported-theories th) 'unbound)))
+		       theories)))))))))))
 
 ;;; Load-imported-library loads imported libraries - called from
 ;;; get-parsed-theory when a library name is given in an IMPORTING clause.
@@ -1133,6 +1127,7 @@
   th)
 
 (defmethod change-to-library-class ((obj library-datatype-or-theory) lib-ref)
+  (declare (ignore lib-ref))
   obj)
 
 (defmethod change-from-library-class (th)
