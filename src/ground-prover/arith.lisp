@@ -44,12 +44,24 @@
 ; if doing so would not result in a loop.
 
 (defun times-arithord-rep (x)
-  (if (qnumberp (cadr x))
+   (if (qnumberp (cadr x))
       (caddr x)
       (cadr x)))
 
 (defun div-arithord-rep (x)
-  (if (qnumberp (cadr x))(caddr x)(cadr x)))
+  (arithord-rep (if (qnumberp (cadr x))(caddr x)(cadr x))))
+
+(defun plus-arithord-rep (x)
+  (arithord-rep (if (qnumberp (cadr x)) (caddr x) (cadr x))))
+
+(defun arithord-rep (x) ;;NSH(11.25.02) added sincenormineq could not 
+  (if (consp x)      ;;solve a nonlinear identity of the ab = 1/(1+ab).
+      (let ((fn (funsym x)))
+	(cond ((eq fn 'TIMES) (times-arithord-rep x))
+	      ((eq fn 'PLUS)(plus-arithord-rep x))
+	      ((eq fn 'DIVIDE) (div-arithord-rep x))
+	      (t x)))
+      x))
 
 (defun arithord1(u v)
     (cond
