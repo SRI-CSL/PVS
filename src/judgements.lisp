@@ -882,8 +882,13 @@
 (defmethod subst-params-decl ((j number-judgement) thname theory)
   (if (or (mappings thname)
 	  (memq theory (free-params-theories j)))
-      (let ((smphash (cdr (get-subst-mod-params-caches thname))))
-	(or (gethash j smphash)
+      (let* ((smphash (cdr (get-subst-mod-params-caches thname)))
+	     (hj (gethash j smphash)))
+	(if hj
+	    (if (and (fully-instantiated? thname)
+		     (eq (module hj) (current-theory)))
+		hj
+		(copy hj 'module (current-theory)))
 	    (let ((nj (lcopy j
 			'declared-type (subst-mod-params (declared-type j)
 							 thname theory)
@@ -902,8 +907,13 @@
 (defmethod subst-params-decl ((j name-judgement) thname theory)
   (if (or (mappings thname)
 	  (memq theory (free-params-theories j)))
-      (let ((smphash (cdr (get-subst-mod-params-caches thname))))
-	(or (gethash j smphash)
+      (let* ((smphash (cdr (get-subst-mod-params-caches thname)))
+	     (hj (gethash j smphash)))
+	(if hj
+	    (if (and (fully-instantiated? thname)
+		     (eq (module hj) (current-theory)))
+		hj
+		(copy hj 'module (current-theory)))
 	    (let ((nj (lcopy j
 			'declared-type (subst-mod-params (declared-type j)
 							 thname theory)
@@ -923,8 +933,13 @@
 (defmethod subst-params-decl ((j application-judgement) thname theory)
   (if (or (mappings thname)
 	  (memq theory (free-params-theories j)))
-      (let ((smphash (cdr (get-subst-mod-params-caches thname))))
-	(or (gethash j smphash)
+      (let* ((smphash (cdr (get-subst-mod-params-caches thname)))
+	     (hj (gethash j smphash)))
+	(if hj
+	    (if (and (fully-instantiated? thname)
+		     (eq (module hj) (current-theory)))
+		hj
+		(copy hj 'module (current-theory)))
 	    (let ((nj (lcopy j
 			'declared-type (subst-mod-params (declared-type j)
 							 thname theory)
