@@ -3844,14 +3844,14 @@ e LHS free variables in ~a" hyp lhs)
   (and (memq (id x)
 	     '(+ - * / < <= > >=))
        (memq (id (module x))
-	     '(|numbers| |reals| |rationals|
+	     '(|numbers| |number_fields| |reals| |rationals|
 	       |integers| |naturalnumbers|))))
 
 (defmethod arithop-decl? ((x const-decl))
   (and (memq (id x)
 	     '(+ - * / < <= > >=))
        (memq (id (module x))
-	     '(|numbers| |reals| |rationals|
+	     '(|numbers| |number_fields| |reals| |rationals|
 	       |integers| |naturalnumbers|))))
 
 (defmethod arithop-decl? ((x t))

@@ -281,7 +281,7 @@
        (member (id (module-instance n2))
 	       (member (id (module-instance n1))
 		       '(|naturalnumbers| |integers|
-			 |rationals| |reals| |numbers|)))))
+			 |rationals| |reals| |number_fields| |numbers|)))))
 ;;T here caused Allegro compiler bug.
 
 (defmethod match* :around
