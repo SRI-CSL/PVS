@@ -3,7 +3,7 @@
 (defpvs pvs-lisp-theory typecheck (theoryname)
   "Generates the Lisp code for a given theory and displays it in a buffer"
   (interactive (complete-theory-name "Generate lisp for theory: "))
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (message "Generating Lisp for theory...")
   (pvs-send-and-wait (format "(generate-lisp-for-theory \"%s\")"
 			 theoryname) nil nil 'dont-care)
@@ -30,7 +30,7 @@
   (confirm-not-in-checker)
   (pvs-evaluator-busy)
   (save-some-pvs-buffers)
-  (ilisp-bury-output)
+  (pvs-bury-output)
   (ilisp-send (format "(evaluation-mode \"%s\")" theory) nil 'pr t))
 
 (defvar pvs-in-evaluator nil)

@@ -185,32 +185,27 @@
 	 (cond ((bufferp buffer-or-window)
 		(ilisp-needed-buffer-height buffer-or-window))
 	       ((windowp buffer-or-window)
-		(ilisp-needed-window-height buffer-or-window)))))
-    (max window-min-height
-	 (min ilisp-output-max-height
-	      (max ilisp-output-min-height
-		   height)))))
-
+                (ilisp-needed-buffer-height (window-buffer buffer-or-window))))))
+    (min (/ (frame-height) 2)
+	 height)))
 
 ;; A first guess at the height needed to display this buffer.
 (defun ilisp-needed-buffer-height (buffer)
   (save-excursion
     (set-buffer buffer)
     (1+ (count-lines (point-min) (point-max)))))
-
-
+    
 ;; The height this window must be to display its entire buffer.
 (defun ilisp-needed-window-height (window)
   (save-window-excursion
     (select-window window)
     (save-excursion
       (set-buffer (window-buffer))
-      (+ 2 (save-excursion 
-	     (goto-char (point-min))
-	     ;; Any upper bound on the height of an emacs window will
-	     ;; do here.  How about 1000.
-	     (vertical-motion 1000))))))
-
+      (save-excursion 
+	(goto-char (point-min))
+	;; Any upper bound on the height of an emacs window will do
+	;; here.  How about 1000.
+	(vertical-motion 1000)))))
 
 (defun ilisp-shrink-wrap-window (window)
   (let ((previously-selected-window (selected-window))

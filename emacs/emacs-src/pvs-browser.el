@@ -71,7 +71,7 @@ or the resolution determined by the typechecker for an overloaded name."
   (interactive
    (let* ((name-and-origin (if (string-equal (buffer-name) "Declaration")
 			       (list nil "Declaration")
-			       (pvs-formula-origin)))
+			     (pvs-formula-origin)))
 	  (bufname (car name-and-origin))
 	  (origin (cadr name-and-origin))
 	  (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
@@ -82,10 +82,11 @@ or the resolution determined by the typechecker for an overloaded name."
   (if (member-equal origin '("tccs" "ppe"))
       (message
        "The show-declaration command is not available in this buffer.")
+    (progn 
       (pvs-send-and-wait (format "(show-declaration \"%s\" \"%s\" '(%d %d))"
-			     bufname origin line (real-current-column))
-			 nil 'declaration 'dont-care)))
-
+				 bufname origin line (real-current-column))
+			 nil 'declaration 'dont-care))))
+     
 (defpvs goto-declaration browse (bufname origin line column)
   "Go to declaration of symbol at cursor
 
@@ -96,7 +97,7 @@ declaration."
   (interactive
    (let* ((name-and-origin (if (string-equal (buffer-name) "Declaration")
 			       (list nil "Declaration")
-			       (pvs-formula-origin)))
+			     (pvs-formula-origin)))
 	  (bufname (car name-and-origin))
 	  (origin (cadr name-and-origin))
 	  (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
@@ -105,7 +106,7 @@ declaration."
   (pvs-bury-output)
   (save-some-pvs-files)
   (pvs-send-and-wait (format "(goto-declaration \"%s\" \"%s\" '(%d %d))"
-			 bufname origin line (real-current-column))
+			     bufname origin line (real-current-column))
 		     nil 'declaration 'dont-care))
 
 (defpvs find-declaration browse (symbol)

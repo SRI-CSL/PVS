@@ -1707,7 +1707,7 @@
     (pvs-buffer "Prover Help"
       (with-output-to-string (*standard-output*)
 	(funcall (help-rule-fun rule) nil))
-      'popto t)))
+      'temp t)))
 
 ;;; Misc functions
 

@@ -180,7 +180,7 @@ KEYMAP."
   (ilisp-defkey global-map "b" 'switch-to-lisp)
 
   ;; Globally defined output-control commands.
-  (ilisp-defkey global-map "1" 'ilisp-bury-output)
+  (ilisp-defkey global-map "1" 'pvs-bury-output)
   (ilisp-defkey global-map "v" 'ilisp-scroll-output)
   (ilisp-defkey global-map "G" 'ilisp-grow-output)
 

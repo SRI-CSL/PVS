@@ -452,6 +452,10 @@ window."
 	(terpri 'external-debugging-output)))
   file)
   
+(defvar *pvs-buffers-to-bury* '("PVS Error"
+				"Declaration"
+				" *Error Output*"
+				"*Completions*"))
 
 (defun pvs-buffer (output)
   (apply 'pvs-buffer* (parse-pvs-message output)))
@@ -503,36 +507,43 @@ window."
 			    (eq major-mode 'fundamental-mode))
 		    (pvs-view-mode))
 		  (when (and append-p at-end)
-		    (goto-char (point-max)))))
-	      (case (intern display)
-		(NIL nil)
-		(T (pop-to-buffer buf)
-		   ;;(resize-info-buffer)
-		   (cond (append-p
-			  (when at-end
-			    (goto-char (point-max))))
-			 (t (goto-char (point-min)) ;was cpoint
-			    (beginning-of-line)))
-		   (pop-to-buffer obuf))
-		(POPTO (pop-to-buffer buf)
-		       (cond (append-p
-			  (when at-end
-			    (goto-char (point-max))))
-			 (t (goto-char cpoint)
-			    (beginning-of-line))))
-		(TEMP
-		 (with-output-to-temp-buffer bufname
-		   (set-buffer bufname)
-		   (insert-file-contents file nil))
-		 (let ((rh (substitute-command-keys "\\[pvs-bury-output]")) 
-		       (s (substitute-command-keys "\\[ilisp-scroll-output]")))
-		   (message
-		    (format 
-			"%s removes help window, %s scrolls, M-- %s scrolls back"
-			rh s s)))
-		 ))
+		    (goto-char (point-max))))
+		(case (intern display)
+		  (NIL nil)
+		  (T (pop-to-buffer buf)
+		     (ilisp-show-output buf)
+		     (cond (append-p
+			    (when at-end
+			      (goto-char (point-max))))
+			   (t (goto-char (point-min)) ;was cpoint
+			      (beginning-of-line)))
+		     (pop-to-buffer obuf))
+		  (POPTO (pop-to-buffer buf)
+			 (cond (append-p
+				(when at-end
+				  (goto-char (point-max))))
+			       (t (goto-char cpoint)
+				  (beginning-of-line))))
+		  (TEMP
+		   (with-output-to-temp-buffer bufname
+		     (set-buffer bufname)
+		     (insert-file-contents file nil))
+		   (ilisp-show-output buf)
+		   (pvs-add-to-buffer-list bufname)
+		   (let ((rh (substitute-command-keys "\\[pvs-bury-output]")) 
+			 (s (substitute-command-keys "\\[ilisp-scroll-output]")))
+		     (message
+		      (format 
+			  "%s removes help window, %s scrolls, M-- %s scrolls back"
+			  rh s s))))))
 	      (delete-file file)))
 	t)))
+
+(defun pvs-add-to-buffer-list (bufname)
+    "Add to the given buffer name to the list of buffers
+     that should be buried with pvs-bury-output."
+    (or (member bufname *pvs-buffers-to-bury*)
+        (push bufname *pvs-buffers-to-bury*)))
 
 (defvar *pvs-buffer-mode-alist*
   '(("Proof" . edit-proof-mode)
@@ -1240,9 +1251,9 @@ Returns nil if there isn't one longer than `completion-min-length'."
 	     (set-syntax-table cmpl-saved-syntax)
 	     nil)
 	    )
-    (error ;; restore table if no symbol
-	   (set-syntax-table cmpl-saved-syntax)
-	   nil)
+    (error;; restore table if no symbol
+     (set-syntax-table cmpl-saved-syntax)
+     nil)
     ))
 
 (defun pvs-set-completion-functions ()
@@ -1254,14 +1265,10 @@ Returns nil if there isn't one longer than `completion-min-length'."
 
 (eval-after-load "completion" '(pvs-set-completion-functions))
 
-(pvs-set-completion-functions)
-
-) ;; end of when emacs19 < 19.31
-
+(pvs-set-completion-functions))
 
 (defun pvs-bury-output ()
   "Bury all temporary windows"
   (interactive)
   (ilisp-bury-output)
-  (ilisp-bury-output "PVS Error")
-  (ilisp-bury-output "*Completions*"))
+  (mapcar #'ilisp-bury-output *pvs-buffers-to-bury*))
