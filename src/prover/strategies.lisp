@@ -601,12 +601,13 @@ reasoning, quantifier instantiation, skolemization, if-lifting.")
 
 	 
 (defstep reduce (&optional (if-match t)(updates? t) polarity?
-			   (instantiator inst?) (let-reduce? t) quant-simp?)
+			   (instantiator inst?) (let-reduce? t) quant-simp?
+			   no-replace?)
     (repeat* (try (bash$ :if-match if-match :updates? updates?
 			 :polarity? polarity? :instantiator instantiator
 			 :let-reduce? let-reduce?
 			 :quant-simp? quant-simp?)
-               (replace*)
+               (if no-replace? (skip)(replace*))
                (skip)))
 "Core of GRIND (ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, FLATTEN,
 LIFT-IF, i.e., BASH then REPLACE*) without reestablishing all the rewrites.
@@ -677,7 +678,8 @@ EXCLUDE is a list of rewrite rules. "
 			  polarity?
 			  (instantiator inst?)
 			  (let-reduce? t)
-			  quant-simp?)
+			  quant-simp?
+			  no-replace?)
   (then
    (install-rewrites$ :defs defs :theories theories
 		     :rewrites rewrites :exclude exclude)
@@ -685,7 +687,8 @@ EXCLUDE is a list of rewrite rules. "
     (replace*)
     (reduce$ :if-match if-match :updates? updates?
 	     :polarity? polarity? :instantiator instantiator
-	     :let-reduce? let-reduce? :quant-simp? quant-simp?))
+	     :let-reduce? let-reduce? :quant-simp? quant-simp?
+	     :no-replace? no-replace?))
     "A super-duper strategy.  Does auto-rewrite-defs/theories,
 auto-rewrite then applies skolem!, inst?, lift-if, bddsimp, and
 assert, until nothing works. Here
