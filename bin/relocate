@@ -1,0 +1,10 @@
+#! /bin/sh
+
+# Relocate PVSPATH and reset PVSALLEGRO in the pvs shell script.
+
+echo Setting PVSPATH in the \"pvs\" shell script to $PWD
+chmod u+w pvs
+sed -e "s,^PVSPATH=.*$,PVSPATH=$PWD," \
+    -e "s,allegro-full,allegro," < pvs > /tmp/tmp.$$
+mv /tmp/tmp.$$ pvs
+chmod a+x pvs
