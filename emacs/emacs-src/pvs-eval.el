@@ -7,9 +7,9 @@
   (message "Generating Lisp for theory...")
   (pvs-send-and-wait (format "(generate-lisp-for-theory \"%s\")"
 			 theoryname) nil nil 'dont-care)
-  (message "")
   (let ((buf (pvs-find-lisp-file theoryname)))
     (when buf
+      (message "")
       (save-excursion
 	(set-buffer buf)
 	(setq pvs-context-sensitive t)
