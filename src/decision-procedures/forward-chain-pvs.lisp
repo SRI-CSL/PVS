@@ -108,7 +108,7 @@ forward-chain with names."
   (let ((name (pc-parse name 'modname))
 	(current? (eq (id name)(id *current-theory*)))
 	(theory-name (resolve-theory-name name))
-	(theory (get-module theory-name))
+	(theory (get-theory theory-name))
 	(exclude (if (listp exclude) exclude (list exclude)))
 	(exclude (mapcar #'(lambda (x) (pc-parse x 'name)) exclude))
 	(okay?  (and theory

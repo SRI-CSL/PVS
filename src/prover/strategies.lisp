@@ -291,7 +291,7 @@ righthand-side.  Examples:
   (let ((name (pc-parse name 'modname))
 	(current? (eq (id name)(id *current-theory*)))
 	(theory-name (resolve-theory-name name))
-	(theory (get-module theory-name))
+	(theory (get-theory theory-name))
 	(exclude (if (listp exclude) exclude (list exclude)))
 	(exclude (mapcar #'(lambda (x) (pc-parse x 'name)) exclude))
 	(okay?  (and theory
@@ -427,7 +427,7 @@ the theories to be installed."
 	    (rest-theories (cdr theories))
 	    (theory-name (typecheck (pc-parse theory 'modname)
 			      :context *current-context*))
-	    (module (get-module theory-name))
+	    (module (get-theory theory-name))
 	    (decls (append (assuming module)(theory module)))
 	    (names (loop for decl in
 			 decls
@@ -2366,11 +2366,11 @@ found. "
 
 (defun forward-match (res conc antec-fmlas formlist)
   (let* ((mod-inst (module-instance res))
-	 (current-mod? (eq (get-module (id mod-inst))
+	 (current-mod? (eq (get-theory (id mod-inst))
 			   *current-theory*))
 	 (actuals (unless current-mod? (actuals mod-inst)))
 	 (formals (unless current-mod?
-		    (formals-sans-usings (get-module mod-inst))))
+		    (formals-sans-usings (get-theory mod-inst))))
 	 (*modsubst*
 	  (if formals (if actuals T
 			  (mapcar #'(lambda (x) (list x)) formals))
@@ -2410,11 +2410,11 @@ found. "
 	(C (cadddr info)))
   (loop for F1 in *-* thereis
 	(let* ((mod-inst (module-instance resolution))
-	       (current-mod? (eq (get-module (id mod-inst))
+	       (current-mod? (eq (get-theory (id mod-inst))
 				 *current-theory*))
 	       (actuals (unless current-mod? (actuals mod-inst)))
 	       (formals (unless current-mod?
-			  (formals-sans-usings (get-module mod-inst))))
+			  (formals-sans-usings (get-theory mod-inst))))
 	       (*modsubst*
 		(if formals (if actuals T
 				(mapcar #'(lambda (x) (list x)) formals))

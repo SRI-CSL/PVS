@@ -1401,7 +1401,7 @@ which should be fully instantiated. Please supply actual parameters.")
 	   (recognizer? (predicate texpr)))
       (let* ((constructor (constructor (predicate texpr)))
 	     (fmla-decl (when constructor
-			  (get-formula (get-module
+			  (get-formula (get-theory
 					(module-instance constructor))
 				       (intern
 					(format nil
@@ -1414,7 +1414,7 @@ which should be fully instantiated. Please supply actual parameters.")
 	     ;;of generated ADTs.
 	     (fmla-decl (if fmla-decl fmla-decl 
 			(when constructor
-			  (get-formula (get-module
+			  (get-formula (get-theory
 					(module-instance constructor))
 				       (intern
 					(format nil

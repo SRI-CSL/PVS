@@ -64,7 +64,7 @@
 	 '(skip))
 	(t (let* ((res (car resolutions))
 		  (mod-inst (module-instance res))
-		  (current-mod? (eq (get-module (id mod-inst)) *current-theory*))
+		  (current-mod? (eq (get-theory (id mod-inst)) *current-theory*))
 		  (forms (create-formulas res context))
 		  (rule (search-and-rewrite* name-expr res mod-inst
 					      forms sforms

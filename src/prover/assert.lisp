@@ -2382,12 +2382,12 @@
 	     (modsubst
 	      (if (and res-decl
 		       (typep res-decl 'formula-decl))
-		  (let* ((current-mod? (eq (get-module (id mod-inst))
-					   *current-theory*))
+		  (let* ((current-mod? (eq (get-theory mod-inst)
+					   (current-theory)))
 			 (actuals (unless current-mod? (actuals mod-inst)))
 			 (formals (unless current-mod?
 				    (formals-sans-usings
-				     (get-module mod-inst)))))
+				     (get-theory mod-inst)))))
 		    (if (or (null formals) actuals)
 			T
 			(mapcar #'(lambda (x) (list x))
@@ -2999,12 +2999,12 @@ cannot be used for rewriting." name)
 
 (defun check-auto-rewrite (res fmla)
   (let* ((mod-inst (module-instance res))
-	 (current-mod? (eq (get-module (id mod-inst))
+	 (current-mod? (eq (get-theory (id mod-inst))
 			   *current-theory*))
 	 (actuals (unless current-mod?
 		    (actuals mod-inst)))
 	 (formals (unless current-mod?
-		    (formals-sans-usings (get-module mod-inst)))))
+		    (formals-sans-usings (get-theory mod-inst)))))
     (multiple-value-bind
 	(lhs rhs hyp)
 	(split-rewrite fmla)
@@ -3344,7 +3344,7 @@ Free parameters in the LHS of rewrite must contain all theory formals."
 			       :context *current-context*)))
 	 ;;(*generate-tccs* NIL)
 	 (modules (loop for name in names
-			collect (get-module name)))
+			collect (get-theory name)))
 	(check (check-theory-names names modules defs-only?)))
     (cond ((null names) (values 'X nil))
 	  ((not check) (values 'X nil))
@@ -3564,7 +3564,7 @@ Free parameters in the LHS of rewrite must contain all theory formals."
 	(t (let* ((name (car names))
 		  (name (typecheck (pc-parse name 'modname)
 			      :context *current-context*))
-		  (module (get-module name))
+		  (module (get-theory name))
 		  (carval (stop-rewrite-theory-name name module ps))
 		  (cdrval (stop-rewrite-theory-names (cdr names) ps)))
 	     (if (or (eq carval '?)(eq cdrval '?))
