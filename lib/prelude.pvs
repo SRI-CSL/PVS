@@ -2928,7 +2928,21 @@ finite_sequences [T: TYPE]: THEORY
 
   o_assoc: LEMMA fs1 o (fs2 o fs3) = (fs1 o fs2) o fs3
 
-END finite_sequences
+ END finite_sequences
+
+
+lift(T: TYPE): DATATYPE
+ BEGIN
+  bottom: bottom?
+  up(down: T): up?
+ END lift
+
+
+union[T1, T2: TYPE]: DATATYPE
+ BEGIN
+  inl(left: T1): inl?
+  inr(right: T2): inr?
+ END union
 
 
 % ordstruct provides the building blocks for defining the
