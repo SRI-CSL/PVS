@@ -435,7 +435,9 @@
 (defcl monotonicity-tcc (tcc-decl))
 
 ;;; judgement class is a mixin
-(defcl judgement (typed-declaration))
+(defcl judgement (typed-declaration)
+  (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound)
+  (free-parameter-theories :ignore t :initform 'unbound :fetch-as 'unbound))
 
 (defcl subtype-judgement (judgement)
   (declared-subtype :parse t)
