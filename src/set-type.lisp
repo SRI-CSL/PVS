@@ -103,7 +103,7 @@ required a context.")
     (setf (types ex) nil))
   #+pvsdebug (assert (fully-typed? ex))
   #+pvsdebug (assert (fully-instantiated? ex))
-  (unless (or (branch? ex) (memq ex *ignore-for-tccs*))
+  (unless (typep ex '(or branch lambda-expr))
     (check-for-subtype-tcc ex expected)))
 
 (defun look-for-conversion (expr expected)
@@ -930,6 +930,9 @@ required a context.")
 	   (change-class ex 'boolean-equation)
 	   (change-class ex 'equation)))
     (/= (change-class ex 'disequation))))
+
+(defmethod change-to-propositional-class ((ex else-condition))
+  ex)
     
 
 (defmethod appl-tcc-conditions ((op lambda-expr) argument)
@@ -1664,49 +1667,67 @@ required a context.")
   (values (nreverse conditions) (nreverse values) t))
 
 
-;;; For lambda-exprs, we set the type of the body first, to the
-;;; result-type if it is given, and to the range of the expected type
-;;; otherwise.  If the result-type is given, we must also check that the
-;;; result type is a subtype of the expected type.  We then check the
-;;; types of the bind-decls against the expected types, they must be equal
-;;; (or generate TCCs to that effect).  Throughout this process, we must
-;;; allow for dependent types.  Note that there is no need to check for
-;;; function conversions here, they only apply if the lambda-expr is
-;;; an operator of an application, in which case the expected here
-;;; reflects the chosen conversion.
+;;; For lambda-exprs, we set the type of the body first to the range of
+;;; the expected type.  We then check the types of the bind-decls against
+;;; the expected types, they must be equal (or generate TCCs to that
+;;; effect).  Throughout this process, we must allow for dependent types.
+;;; Note that there is no need to check for function conversions here,
+;;; they only apply if the lambda-expr is an operator of an application,
+;;; in which case the expected here reflects the chosen conversion.
 
 (defmethod set-type* ((ex lambda-expr) expected)
   (let ((sexpected (find-supertype expected)))
     (unless (typep sexpected 'funtype)
       (type-error ex "~a expected here" expected))
-    ;;(set-formals-types (bindings ex))
-    (when (result-type ex)
-      (set-type (result-type ex) nil))
-    (let* ((dtypes (lambda-expr-expected-domain ex sexpected))
-	   (rng (if (dep-binding? (domain sexpected))
-		    (substit (range sexpected)
-		      (acons (domain sexpected)
-			     (let ((vars (mapcar #'make-variable-expr
-						 (bindings ex))))
-			       (if (cdr vars)
-				   (make!-tuple-expr vars)
-				   (car vars)))
-			     nil))
-		    (range sexpected)))
-	   (*bound-variables* (append (bindings ex) *bound-variables*)))
-      (set-lambda-dep-types (bindings ex) dtypes)
-      (let ((*tcc-conditions* (add-bindings-to-tcc-conditions
-			       (bindings ex) *tcc-conditions*)))
-	(cond ((type-value ex)
-	       #+pvsdebug (assert (fully-instantiated? (type-value ex)))
-	       (set-type* (expression ex) (type-value ex)))
-	      (t (let ((*ignore-for-tccs*
-			(cons (expression ex) *ignore-for-tccs*)))
-		   (set-type* (expression ex) rng)))))
-      (let ((ftype (make-formals-funtype (list (bindings ex))
-					 (type (expression ex)))))
-	(setf (type ex) ftype)))))
+    (let* ((edomain (if (dep-binding? (domain sexpected))
+			(type (domain sexpected))
+			(domain sexpected)))
+	   (erange (if (dep-binding? (domain sexpected))
+		       (substit (range sexpected)
+			 (acons (domain sexpected)
+				(let ((vars (mapcar #'make-variable-expr
+					      (bindings ex))))
+				  (if (cdr vars)
+				      (make!-tuple-expr vars)
+				      (car vars)))
+				nil))
+		       (range sexpected)))
+	   (adomain (get-lambda-expr-domain ex)))
+      (unless (compatible? adomain edomain)
+	(type-incompatible ex (list adomain) expected))
+      (let ((*bound-variables* (append (bindings ex)
+				       *bound-variables*)))
+	(set-type* (expression ex) erange)
+	(let ((atype (make-formals-funtype (list (bindings ex))
+					   (type (expression ex)))))
+	  (setf (type ex) atype)
+	  (unless (tc-eq adomain edomain)
+	    (or (find-funtype-conversion atype sexpected ex)
+		(let ((epreds (equality-predicates adomain edomain)))
+		  (when epreds
+		    (generate-subtype-tcc ex expected (list epreds)))))))
+	(let ((toppreds (compatible-preds sexpected expected ex)))
+	  (when toppreds
+	    (generate-subtype-tcc ex expected toppreds)))))))
 
+
+(defun get-lambda-expr-domain (ex)
+  (get-lambda-expr-domain* (bindings ex)))
+
+(defun get-lambda-expr-domain* (bindings &optional types)
+  (if (null bindings)
+      (if (cdr types)
+	  (mk-tupletype (nreverse types))
+	  (car types))
+      (let ((bind (car bindings)))
+	(if (member bind (freevars (cdr bindings)) :key #'declaration)
+	    (let ((db (mk-dep-binding (id bind) (type bind)
+				      (declared-type bind))))
+	      (get-lambda-expr-domain*
+	       (substit (cdr bindings) (acons bind db nil))
+	       (cons db types)))
+	    (get-lambda-expr-domain* (cdr bindings)
+				     (cons (type bind) types))))))
 
 ;;; set-lambda-dep-types is called to handle lambda-expressions.  The
 ;;; input is a list of bindings and expected-types, where the
@@ -1742,6 +1763,7 @@ required a context.")
 			     (and (consp y) (eq x (car y)))))
 	   conditions
 	   (cons (car bindings) conditions)))))
+
 
 (defun lambda-expr-expected-domain (expr expected)
   (let* ((dexp (domain expected))
