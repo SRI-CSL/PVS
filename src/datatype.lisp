@@ -1282,6 +1282,12 @@ generated")
     (multiple-value-bind (pos? negocc)
 	(occurs-positively? adt-type atype)
       (unless pos?
+	(when (and negocc
+		   (not (place negocc)))
+	  (multiple-value-bind (pos2? negocc2)
+	      (occurs-positively? adt-type (declared-type arg))
+	    (when (and negocc2 (place negocc2))
+	      (setq negocc negocc2))))
 	(let ((*current-theory* *adt*))
 	  (setf (filename *current-theory*) *current-file*)
 	  (type-error (or negocc (declared-type arg))
