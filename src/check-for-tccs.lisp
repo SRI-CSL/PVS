@@ -581,6 +581,12 @@
 
 
 ;;; Check-types for type expressions
+(defmethod check-for-tccs* :around ((te type-expr) expected)
+  (declare (ignore expected))
+  (unless (and (type-name? (print-type te))
+	       (not (eq (module (declaration (print-type te)))
+			(current-theory))))
+    (call-next-method)))
 
 (defmethod check-for-tccs* ((te type-name) expected)
   (declare (ignore expected))
