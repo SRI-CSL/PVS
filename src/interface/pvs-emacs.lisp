@@ -725,7 +725,7 @@
 		  "(None of these are fully instantiated)"))))))
 
 (defun format-resolution (res)
-  (format nil "~@[~a@~]~@[~a~]~@[[~{~a~^,~}]~].~a~@[ : ~a~]"
+  (format nil "~@[~a@~]~@[~a~]~@[[~{~a~^,~}]~]~@[~I~<{{~;~@{~W~^, ~:_~}~;}}~:>~].~a~@[ : ~a~]"
     (let ((th (module (declaration res))))
       (when (typep th 'library-theory)
 	(libref-to-libid (lib-ref th))))
@@ -733,6 +733,8 @@
       (id (module-instance res)))
     (mapcar #'(lambda (act) (unparse (full-name act 1) :string t))
       (actuals (module-instance res)))
+    (when (module-instance res)
+      (mappings (module-instance res)))
     (id (declaration res))
     (when (type-expr? (type res))
       (unparse (type res) :string t))))
