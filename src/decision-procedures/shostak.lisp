@@ -14,6 +14,15 @@
 	   (interpsym? (funsym term)))
       (applyupdate-p term)))
 
+(declaim (notinline canonsig-merge canonsig-canon))
+
+(defun canonsig-merge (w cong-state &optional (no-mod nil))
+  (canonsig w cong-state no-mod))
+
+(defun canonsig-canon (w cong-state &optional (no-mod nil))
+  ;(format t "~%Canonizing: ~S" (node-to-list w))
+  (canonsig w cong-state no-mod))
+
 (defvar *current-cs* nil)
 
 (defun test-process (eqns equality &optional (cs (null-single-cong-state)))
@@ -31,13 +40,16 @@
 (defvar *bass* nil)
 
 (defun invoke-process (eqn cong-state)
-  (let ((pos-res (invoke-process* eqn cong-state)))
-    (or pos-res
-	(when (need-neg-processing eqn cong-state)
-	  (invoke-process-neg eqn cong-state)))))
+  (if (need-neg-processing eqn cong-state)
+      (let ((neg-res (invoke-process-neg eqn cong-state)))
+	(or neg-res (invoke-process* eqn cong-state)))
+      (invoke-process* eqn cong-state)))
 
 (defun need-neg-processing (eqn cong-state)
-  (integer-inequality-p (recursive-sigma eqn cong-state) cong-state))
+  (let ((norm-eqn (recursive-sigma eqn cong-state)))
+    (or (integer-inequality-p norm-eqn cong-state)
+	(and (ineq-p eqn)
+	     (dp-numberp (rhs eqn))))))
 
 (defun invoke-process* (eqn cong-state)
   (when (and nil
@@ -53,6 +65,7 @@
 	 (*contradiction* nil) ;(x (break))
 	 (canon-eqn (canon eqn cong-state 'no-mod))
 	 ;(x (when (false-p canon-eqn) (break)))
+	 ;(x (break))
 	 (result (process* canon-eqn (add-assertion eqn cong-state))))
     (declare (special *dp-changed*))
     (declare (special *contradiction*))
@@ -93,9 +106,16 @@
 
 (defun negate-and-check-eqn (eqn cong-state)
   (nprotecting-cong-state
-   (new-cong-state (pop-cong-state cong-state))
+   (new-cong-state cong-state)
    (invoke-process* (signegation (mk-negation eqn) new-cong-state)
 		    new-cong-state)))
+
+(defun make-nequality (lhs rhs cong-state)
+  (let ((new-eq (sigma (mk-equality lhs rhs) cong-state)))
+    (cond
+     ((true-p new-eq) *false*)
+     ((false-p new-eq) *true*)
+     (t (mk-equality new-eq *false*)))))
 
 (defun canon-neq (neq cong-state)
   (if (false-p neq) neq
@@ -104,13 +124,26 @@
 	     (new-rhs (canon (rhs eq) cong-state 'nomod)))
 	(if (eq new-lhs new-rhs)
 	    *false*
-	    (mk-nequality new-lhs new-rhs)))))
+	    (make-nequality new-lhs new-rhs cong-state)))))
+
+(defun find-neq (neq cong-state)
+  (if (false-p neq) neq
+      (let* ((eq (lhs neq))
+	     (new-lhs (dp-find (lhs eq) cong-state))
+	     (new-rhs (dp-find (rhs eq) cong-state)))
+	(if (eq new-lhs new-rhs)
+	    *false*
+	    (make-nequality new-lhs new-rhs cong-state)))))
 
 (defun check-and-canonize-neqs (cong-state)
   (let ((false-eq?
 	 (loop for neq in (nequals cong-state)
+	       for find-neq = (find-neq neq cong-state)
 	       for canon-neq = (canon-neq neq cong-state)
-	       collect canon-neq into new-neqs
+	       unless (true-p canon-neq) collect canon-neq into new-neqs
+	       when (and (not (eq canon-neq neq))
+			 (eq neq find-neq))
+	       do (break "This is not a problem. ~%Just send email to cyrluk and do a :cont 0")
 	       thereis (and (false-p canon-neq) (not (false-p neq)))
 	       finally (setf (nequals cong-state) new-neqs))))
     (cond
@@ -185,7 +218,7 @@
 	    (add-use t2 u cong-state))
 	   (t (let* ((u-find (dp-find u cong-state))
 		     (u_sig (replace-term-in-term t1 t2 u))
-		     (u_sigma (canonsig (sigma u_sig cong-state) cong-state)))
+		     (u_sigma (canonsig-merge (sigma u_sig cong-state) cong-state)))
 		;;(break "interp")
 		(cond
 		 ((true-p u-find) ;(when (false-p u_sigma) (break))
@@ -203,8 +236,8 @@
       ((replarg
 	(arg)
 	(if (eq arg t1) t2 arg)))
-    (let ((args (map-args-array #'replarg (the application term))))
-      (let ((result (mk-term-array args)))
+    (let ((args (map-args-list #'replarg (the application term))))
+      (let ((result (mk-term args)))
 	(setf (node-external-info result)
 	      (node-external-info t1))
 	result))))
@@ -217,19 +250,34 @@
   (canon* term cong-state no-mod))
 
 (defun canon* (term cong-state &optional (no-mod nil))
-  (canonsig (signature term cong-state no-mod) cong-state no-mod))
+  (canonsig-canon (signature term cong-state no-mod) cong-state no-mod))
+
+(defun mk-term-cs (list)
+  (mk-term list))
 
 (defun canonsig (w cong-state &optional (no-mod nil))
+  (declare (notinline mk-term-cs))
   (cond
+   ((interpsym? w) w)
    ((equality-p w) w)
    ((application-p w)
-    (let ((ww (if (interp? w)
-		 (or (sigma (replace-args-with-canonsig w cong-state no-mod)
-			cong-state)
-		  (replace-args-with-canonsig w cong-state no-mod))
+    (let ((ww (if (and (interp? w)
+		       (not (project-p w)))
+		 (or (sigma
+		      (mk-term-cs
+			  (cons (funsym w)
+				(map-funargs-list #'canonsig
+						  w cong-state no-mod)))
+		      cong-state)
+		     t
+		     (full-replace-args-with-canonsig w cong-state no-mod)
+		     t
+		     (replace-args-with-canonsig w cong-state no-mod)
+		     t
+		     (replace-args-with-canonsig w cong-state no-mod))
 		 w)))
       (if (application-p ww)
-	  (loop for u in (use (arg 0 ww) cong-state)
+	  (loop for u in (use (arg 1 ww) cong-state)
 		when (or		;(break)
 		      (eq ww (sig u cong-state)))
 		return (dp-find u cong-state)
@@ -237,7 +285,6 @@
 			  (map-args #'add-use ww ww cong-state))
 		(return ww))
 	  (dp-find ww cong-state))))
-   ((interpsym? w) w)
    (t (dp-find w cong-state))))
 
 (defun signature (term cong-state &optional (no-mod nil))
@@ -246,9 +293,9 @@
   (if (application-p term)
       (let ((result
 	     (sigma
-	      (mk-term-array (map-args-array
-			      #'canon* (the application term)
-			      cong-state no-mod))
+	      (mk-term (map-args-list
+			#'canon* (the application term)
+			cong-state no-mod))
 	      cong-state)))
 	(setf (node-external-info result)
 	      (node-external-info term))
@@ -257,10 +304,21 @@
 
 (defun replace-args-with-canonsig (w cong-state &optional (no-mod nil))
   (let ((result
-	 (mk-term-array (map-args-array #'canonsig w cong-state no-mod))))
+	 (mk-term
+	     (cons (funsym w)
+		   (map-funargs-list #'canonsig w cong-state no-mod)))))
     (setf (node-external-info result)
 	  (node-external-info w))
     result))
+
+(defun full-replace-args-with-canonsig (w cong-state &optional (no-mod ni l))
+  (let ((result
+	 (mk-term
+	     (cons (funsym w)
+		   (map-funargs-list #'canonsig w cong-state no-mod)))))
+    (setf (node-external-info result)
+	  (node-external-info w))
+    (sigma result cong-state)))
 
 (defun adduse-of-term (term cong-state)
   (declare (type node term)
