@@ -235,7 +235,7 @@ xemacs19-src = $(addprefix emacs/xemacs19/,$(notdir ${pvs-emacs-src}))
 
 fasl-files = $(lisp-files:.lisp=.$(LISPEXT))
 
-all : makebdd makepolylib ${pvsfull} ${pvsrt}
+all : makebdd makepolylib ${pvsfull} ${pvsrt} ${emacs}
 
 ${fasl-files} : ${pvs-make-files} ${ff-files} ${lisp-files}
 	$(LISP) -e '(load "pvs.system")' \
@@ -288,28 +288,28 @@ ${xemacs19-src} : ${emacs-src}
 
 ifeq ($(shell if [ -x ${emacs20} ] ; then echo OK ; fi), OK)
 emacs20-elc = $(emacs20-src:.el=.elc)
-all =+ ${emacs20-elc}
+emacs =+ ${emacs20-elc}
 ${emacs20-elc} : ${emacs20-src}
 	(cd emacs/emacs20; $(EMACS20) -batch -l pvs-byte-compile.el)
 endif
 
 ifeq ($(shell if [ -x ${emacs19} ] ; then echo OK ; fi), OK)
 emacs19-elc = $(emacs19-src:.el=.elc)
-all =+ ${emacs19-elc}
+emacs =+ ${emacs19-elc}
 ${emacs19-elc} : ${emacs19-src}
 	(cd emacs/emacs19; $(EMACS19) -batch -l pvs-byte-compile.el)
 endif
 
 ifeq ($(shell if [ -x ${xemacs20} ] ; then echo OK ; fi), OK)
 xemacs20-elc = $(xemacs20-src:.el=.elc)
-all =+ ${xemacs20-elc}
+emacs =+ ${xemacs20-elc}
 ${xemacs20-elc} : ${xemacs20-src}
 	(cd emacs/xemacs20; $(XEMACS20) -batch -l pvs-byte-compile.el)
 endif
 
 ifeq ($(shell if [ -x ${xemacs19} ] ; then echo OK ; fi), OK)
 xemacs19-elc = $(xemacs19-src:.el=.elc)
-all =+ ${xemacs19-elc}
+emacs =+ ${xemacs19-elc}
 ${xemacs19-elc} : ${xemacs19-src}
 	(cd emacs/xemacs19; $(XEMACS19) -batch -l pvs-byte-compile.el)
 endif
