@@ -31,8 +31,7 @@
 ;;; Theory
 
 (defmethod free-params* ((theory datatype-or-module) frees)
-  (declare (ignore frees))
-  (formals-sans-usings theory))
+  (union (formals-sans-usings theory) frees :test #'eq))
 
 (defmethod free-params* ((decl declaration) frees)
   (free-params* (module decl) frees))
@@ -41,58 +40,52 @@
   (free-params* (theory-name importing) frees))
 
 (defmethod free-params* ((exporting exporting) frees)
-  (declare (ignore frees))
-  nil)
+  frees)
 
 (defmethod free-params* ((jdecl subtype-judgement) frees)
-  (declare (ignore frees))
   (with-slots (free-parameters) jdecl
-    (if (eq free-parameters 'unbound)
-	(setf free-parameters
-	      (free-params* (subtype jdecl)
-		(free-params* (declared-subtype jdecl)
-		  (free-params* (declared-type jdecl)
-		    (free-params* (type jdecl) nil))))))
-	free-parameters))
+    (when (eq free-parameters 'unbound)
+      (setf free-parameters
+	    (free-params* (subtype jdecl)
+	      (free-params* (declared-subtype jdecl)
+		(free-params* (declared-type jdecl)
+		  (free-params* (type jdecl) nil))))))
+    (union free-parameters frees :test #'eq)))
 
 (defmethod free-params* ((jdecl number-judgement) frees)
-  (declare (ignore frees))
   (with-slots (free-parameters) jdecl
-    (if (eq free-parameters 'unbound)
-	(setf free-parameters
-	      (free-params* (type jdecl)
-		(free-params* (declared-type jdecl) nil)))
-	free-parameters)))
+    (when (eq free-parameters 'unbound)
+      (setf free-parameters
+	    (free-params* (type jdecl)
+	      (free-params* (declared-type jdecl) nil))))
+    (union free-parameters frees :test #'eq)))
 
 (defmethod free-params* ((jdecl name-judgement) frees)
-  (declare (ignore frees))
   (with-slots (free-parameters) jdecl
-    (if (eq free-parameters 'unbound)
-	(setf free-parameters
-	      (free-params* (name jdecl)
-		(free-params* (type jdecl)
-		  (free-params* (declared-type jdecl) nil))))
-	free-parameters)))
+    (when (eq free-parameters 'unbound)
+      (setf free-parameters
+	    (free-params* (name jdecl)
+	      (free-params* (type jdecl)
+		(free-params* (declared-type jdecl) nil)))))
+    (union free-parameters frees :test #'eq)))
 
 (defmethod free-params* ((jdecl application-judgement) frees)
-  (declare (ignore frees))
   (with-slots (free-parameters) jdecl
-    (if (eq free-parameters 'unbound)
-	(setf free-parameters
-	      (free-params* (name jdecl)
-		(free-params* (formals jdecl) 
-		  (free-params* (type jdecl)
-		    (free-params* (declared-type jdecl)
-		      (free-params* (judgement-type jdecl) nil))))))
-	free-parameters)))
+    (when (eq free-parameters 'unbound)
+      (setf free-parameters
+	    (free-params* (name jdecl)
+	      (free-params* (formals jdecl) 
+		(free-params* (type jdecl)
+		  (free-params* (declared-type jdecl)
+		    (free-params* (judgement-type jdecl) nil)))))))
+    (union free-parameters frees :test #'eq)))
 
 (defmethod free-params* ((cdecl conversion-decl) frees)
-  (declare (ignore frees))
   (with-slots (free-parameters) cdecl
-    (if (eq free-parameters 'unbound)
-	(setf free-parameters
-	      (free-params* (expr cdecl) nil))
-	free-parameters)))
+    (when (eq free-parameters 'unbound)
+      (setf free-parameters
+	    (free-params* (expr cdecl) nil)))
+    (union free-parameters frees :test #'eq)))
 
 ;;; Type expressions
 
@@ -182,7 +175,8 @@
 (defun free-params-list (list frees)
   (if (null list)
       frees
-      (free-params-list (cdr list) (free-params* (car list) frees))))
+      (let ((car-frees (free-params* (car list) frees)))
+	(free-params-list (cdr list) car-frees))))
 
 (defmethod free-params* ((expr bind-decl) frees)
   (let ((tfrees (free-params* (type expr) nil)))
@@ -347,6 +341,7 @@
 	  frees))))
 
 (defmethod free-params-res ((decl mapping) mi type frees)
+  (declare (ignore mi type))
   (free-params* (lhs decl) (free-params* (rhs decl) frees)))
 
 (defmethod free-params* ((act actual) frees)
