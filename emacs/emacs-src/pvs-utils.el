@@ -1572,7 +1572,8 @@ Point will be on the offending delimiter."
 	       (when pvs-expected-output
 		 (let ((standard-output logbuf)
 		       (expected-list (pvs-expected-output-regexps
-				       pvs-expected-output)))
+				       pvs-expected-output))
+		       (last-point (point-min)))
 		   (dolist (exp expected-list)
 		     (pvs-message "Checking for%s expected output"
 		       (if (null (cdr expected-list))
@@ -1584,9 +1585,10 @@ Point will be on the offending delimiter."
 			       (t (format " %dth" (+ pos 1)))))))
 		     (let ((foundit nil))
 		       (save-excursion
-			 (goto-char (point-min))
+			 (goto-char last-point)
 			 (setq foundit
-			       (re-search-forward exp nil t)))
+			       (re-search-forward exp nil t))
+			 (when foundit (setq last-point foundit)))
 		       (if foundit
 			   (pvs-message "Found expected output")
 			   (pvs-message "ERROR: expected output not found - check %s"
@@ -1594,7 +1596,8 @@ Point will be on the offending delimiter."
 	       (when pvs-unexpected-output
 		 (let ((standard-output logbuf)
 		       (unexpected-list (pvs-expected-output-regexps
-					 pvs-unexpected-output)))
+					 pvs-unexpected-output))
+		       (last-point (point-min)))
 		   (dolist (exp unexpected-list)
 		     (pvs-message "Checking for%s unexpected output"
 		       (if (null (cdr unexpected-list))
@@ -1606,9 +1609,10 @@ Point will be on the offending delimiter."
 			       (t (format " %dth" (+ pos 1)))))))
 		     (let ((foundit nil))
 		       (save-excursion
-			 (goto-char (point-min))
+			 (goto-char last-point)
 			 (setq foundit
-			       (re-search-forward exp nil t)))
+			       (re-search-forward exp nil t))
+			 (when foundit (setq last-point foundit)))
 		       (if foundit
 			   (pvs-message "ERROR: unexpected output found - check %s"
 			     logfile)
@@ -1650,9 +1654,10 @@ Point will be on the offending delimiter."
 		(prove-importchain theory)
 		(prove-importchain filename)))
 	(if formula
-	    (ilisp-send (format "(prove-formula \"%s\" \"%s\" t)"
+	    (progn (ilisp-send (format "(prove-formula \"%s\" \"%s\" t)"
 			    (or theory filename) formula)
 			nil 'pr t 'pvs-handler)
+		   (pvs-wait-for-it))
 	    (if theory
 		(prove-theory theory)
 		(prove-pvs-file filename))))
