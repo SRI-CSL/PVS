@@ -1080,9 +1080,9 @@ BEGIN
 
   S: VAR (nonempty?[real])
 
-  upper_bound?(x, S): bool = FORALL (s: (S)): s < x
+  upper_bound?(x, S): bool = FORALL (s: (S)): s <= x
 
-  lower_bound?(x, S): bool = FORALL (s: (S)): x < s
+  lower_bound?(x, S): bool = FORALL (s: (S)): x <= s
 
   least_upper_bound?(x, S): bool =
     upper_bound?(x, S) AND
