@@ -683,14 +683,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;NSH(4.28.94) : code for higher-order matching.
 
-;;; SO 8/17/94 - use new form of application
-(defmethod arguments* ((expr application) &optional accum)
-  (with-slots ((op operator)) expr
-    (arguments* op (cons (arguments expr) accum))))
-
-(defmethod arguments* ((expr expr) &optional accum)
-  accum)
-
 (defun check-ho-pattern-args-list* (args-list bind-alist)
   (every #'(lambda (args) (check-ho-pattern-args args bind-alist))
 	 args-list))
