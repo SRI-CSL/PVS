@@ -224,11 +224,10 @@
   (ics-empty-state))
 
 (defmethod dpi-process* ((dp (eql 'ics)) (pvs-expr expr) state)
-  (let* ((ics-expr (translate-to-ics pvs-expr))
-	 (result (ics-process state ics-expr)))
-    (cond ((eql result :unsat)
+  (let ((result (ics-process state pvs-expr)))
+    (cond ((eq result :unsat)
 	   (values *false* state))
-	  ((eql result :valid)
+	  ((eq result :valid)
 	   (values *true* state))
 	  (t
 	   (values nil result)))))
@@ -237,8 +236,7 @@
   (break "Hypothesis: only called when ICS returns disjunction"))
 	 
 (defmethod dpi-valid?* ((dp (eql 'ics)) state (pvs-expr expr))
-  (let ((ics-expr (translate-to-ics pvs-expr)))
-    (ics-is-valid state ics-expr)))
+  (ics-is-valid state pvs-expr))
 
 (defmethod dpi-push-state* ((dp (eql 'ics)) state)
   state)
