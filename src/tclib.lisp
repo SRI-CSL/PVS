@@ -389,17 +389,18 @@
 
 
 (defun load-pvs-lib-emacs-file (lib-path)
-  (let ((emacs-file (concatenate 'string lib-path "pvs-lib.el")))
-    (when (file-exists-p emacs-file)
-      ;; Note that this is a noop if Emacs is not there
-      (pvs-message "Loading prelude library Emacs file ~a" emacs-file)
-      (let ((result (pvs-emacs-eval
-		     (format nil "(load-pvs-lib-file ~s)" lib-path))))
-	(cond ((and (stringp result)
-		    (string= result "t"))
-	       (pvs-message "~a loaded" emacs-file)
-	       (list emacs-file))
-	      (t (pvs-message "Error in loading ~a" emacs-file)))))))
+  (when *pvs-emacs-interface*
+    (let ((emacs-file (concatenate 'string lib-path "pvs-lib.el")))
+      (when (file-exists-p emacs-file)
+	;; Note that this is a noop if Emacs is not there
+	(pvs-message "Loading prelude library Emacs file ~a" emacs-file)
+	(let ((result (pvs-emacs-eval
+		       (format nil "(load-pvs-lib-file ~s)" lib-path))))
+	  (cond ((and (stringp result)
+		      (string= result "t"))
+		 (pvs-message "~a loaded" emacs-file)
+		 (list emacs-file))
+		(t (pvs-message "Error in loading ~a" emacs-file))))))))
 
 
 (defun load-prelude-library-context (lib-ref lib-path)
