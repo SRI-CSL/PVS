@@ -883,6 +883,10 @@
 (defmethod check-inductive-occurrences* ((ex selection) decl parity)
   (check-inductive-occurrences* (expression ex) decl parity))
 
+
+;;; inductive-occurrence? checks that the expression is a fully applied
+;;; form of the inductive constant.
+
 (defmethod inductive-occurrence? (ex (type subtype) decl)
   (inductive-occurrence? ex (find-supertype type) decl))
 
@@ -893,6 +897,23 @@
   (eq (declaration ex) decl))
 
 (defmethod inductive-occurrence? (ex type decl)
+  (declare (ignore ex type decl))
+  nil)
+
+;;; partial-inductive-occurrence? is like inductive-occurrence?, but does
+;;; not require the occurrence to be fully applied.
+
+(defmethod partial-inductive-occurrence? (ex (type subtype) decl)
+  (partial-inductive-occurrence? ex (find-supertype type) decl))
+
+(defmethod partial-inductive-occurrence? ((ex application) (type funtype) decl)
+  (partial-inductive-occurrence? (operator ex) (find-supertype (range type)) decl))
+
+(defmethod partial-inductive-occurrence? ((ex name-expr) type decl)
+  (declare (ignore type))
+  (eq (declaration ex) decl))
+
+(defmethod partial-inductive-occurrence? (ex type decl)
   (declare (ignore ex type decl))
   nil)
 
@@ -942,21 +963,19 @@
   ex)
 
 (defun fixed-inductive-variables (decl vars)
-  (let ((fvars (copy-list vars))
-	(occs nil))
+  (let ((fvars (copy-list vars)))
     (mapobject #'(lambda (ex)
-		   (cond ((inductive-occurrence?
-			   ex (find-supertype (type decl)) decl)
-			  (mapc #'(lambda (v a)
-				    (unless (and (typep a 'name-expr)
-						 (eq (declaration a) v))
-				      (setq fvars (delete v fvars))))
-				vars (ind-def-arguments ex))
-			  (push (operator ex) occs))
-			 ((and (typep ex 'name-expr)
-			       (eq (declaration ex) decl)
-			       (not (memq ex occs)))
-			  (setq fvars nil))))
+		   (when (partial-inductive-occurrence?
+			  ex (find-supertype (type decl)) decl)
+		     (let ((indargs (ind-def-arguments ex)))
+		       (mapc #'(lambda (v a)
+				 (unless (and (typep a 'name-expr)
+					      (eq (declaration a) v))
+				   (setq fvars (delete v fvars))))
+			     vars indargs)
+		       (dolist (v (nthcdr (length indargs) vars))
+			 (setq fvars (delete v fvars))))
+		     t))
 	       (definition decl))
     fvars))
 
@@ -1022,29 +1041,61 @@
 	   (make-application* nvar (mapcar #'make-variable-expr rem-vars)))))))
 
 (defun subst-strong-pred-for-ind (nvar fixed-vars expr decl)
-  (gensubst expr
-    #'(lambda (ex)
-	(typecase ex
-	  (application
-	   (make-conjunction
-	    (list (copy ex)
-		  (subst-pred-for-ind nvar fixed-vars ex decl))))
-	  (name-expr
-	   (let* ((vid (make-new-variable '|x| expr))
-		  (vtype (domain (find-supertype (type nvar))))
-		  (bd (make-bind-decl vid vtype))
-		  (var (make-variable-expr bd)))
-	     (change-class (make-lambda-expr (list bd)
-			     (make-conjunction
-			      (list (make-application (copy ex) var)
-				    (make-application (copy nvar) var))))
-			   'set-expr)))))
-    #'(lambda (ex)
-	(typecase ex
-	  (application
-	   (inductive-occurrence? ex (find-supertype (type decl)) decl))
-	  (name-expr
-	   (eq (declaration ex) decl))))))
+  (let ((stype (find-supertype (type decl))))
+    (gensubst expr
+      #'(lambda (ex)
+	  (let ((fmls (collect-decl-formals decl)))
+	    (typecase ex
+	      (application
+	       (make-inductive-conjunction
+		(copy ex)
+		nvar
+		fmls
+		fixed-vars))
+	      (name-expr
+	       (make-inductive-conjunction ex nvar fmls fixed-vars)))))
+      #'(lambda (ex)
+	  (typecase ex
+	    (application
+	     (partial-inductive-occurrence? ex stype decl))
+	    (name-expr
+	     (eq (declaration ex) decl)))))))
+
+(defun collect-decl-formals (decl)
+  (append (formals decl)
+	  (lambda-bindings* (definition decl))))
+
+(defmethod lambda-bindings* ((ex lambda-expr))
+  (cons (bindings ex)
+	(lambda-bindings* (expression ex))))
+
+(defmethod lambda-bindings* (ex)
+  (declare (ignore ex))
+  nil)
+
+(defun make-inductive-conjunction (inddef pred fmls fixed-vars &optional vars)
+  (if (tc-eq (type inddef) *boolean*)
+      (make!-conjunction
+       inddef
+       (if vars
+	   (make!-application* pred vars)
+	   pred))
+      (let* ((bds (mapcar #'(lambda (x)
+			      (make-bind-decl
+				  (make-new-variable (id x) (list inddef pred))
+				  (or (declared-type x) (type x))))
+		    (car fmls)))
+	     (vars (mapcar #'make-variable-expr bds)))
+	(make!-set-expr bds
+	  (make-inductive-conjunction
+	   (make!-application* inddef vars)
+	   pred
+	   (cdr fmls)
+	   fixed-vars
+	   (nconc vars (mapcan #'(lambda (x y)
+				   (unless (memq x fixed-vars)
+				     (list y)))
+			 (car fmls) vars)))))))
 
 (defun make-inductive-conclusion (var rem-vars decl)
   (let* ((dname (mk-name-expr (id decl) nil nil
