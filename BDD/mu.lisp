@@ -1487,9 +1487,9 @@
 					(resolution op)))))
 	       (and (singleton? mu-actuals)
 		    (or (mu-translateable?
-			 (type-value (car mu-actuals))
+			 (type-value (car mu-actuals)))
  (format t "~%Theory mucalculus with type ~a is not model-checkable."
-			  (type-value (car mu-actuals)))))))))
+			  (type-value (car mu-actuals))))))))
       nil))
 
 
