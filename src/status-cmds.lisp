@@ -49,7 +49,7 @@
 
 (defun theory-status-string (theoryref)
   (let ((theory (get-theory theoryref)))
-    (format nil "~a is ~a~@[~a~]~@[~a~]"
+    (format nil "~a is ~a~@[~a~]~@[~a~]~@[~a~]"
       theoryref
       (cond ((null theory)
 	     (if (context-file-of theoryref)
@@ -58,6 +58,8 @@
 	    ((typechecked? theory) "typechecked")
 	    ((parsed? theory) "parsed")
 	    (t "not yet parsed"))
+      (when (memq 'modified (status theory))
+	" (decls added)")
       (when theory
 	(final-proof-summary theory))
       (when theory
@@ -501,8 +503,7 @@
 		       ((and (or (typep y 'const-decl)
 				 (typep y 'def-decl))
 			     (definition y))
-			(push y *defn-dependings*))
-		       (t)))
+			(push y *defn-dependings*))))
 	     *dependings*)
     (cond (*depending-cycles* "circular")
 	  ((and (null *unproved-dependings*)
@@ -510,8 +511,11 @@
 	   "complete")
 	  (t "incomplete"))))
 
-(defun show-proofs-pvs-file (file)
-  (let ((proofs (read-pvs-file-proofs file)))
+(defun show-proofs-pvs-file (file &optional all?)
+  (let* ((all-proofs (read-pvs-file-proofs file))
+	 (proofs (if all?
+		     all-proofs
+		     (proofs-with-associated-decls file all-proofs))))
     (cond (proofs
 	   (setq *displayed-proofs* proofs)
 	   (pvs-buffer "Show Proofs"
@@ -522,11 +526,47 @@
 		 (show-all-proofs-file proofs outstr valid?)))
 	     'popto t)
 	   t)
+	  (all-proofs
+	   (pvs-message "None of the proofs in this file are valid -~
+                         include an argument to see them"))
 	  (t (pvs-message "No proofs found in this file")))))
 
-(defun show-proofs-theory (theoryname)
+(defun proofs-with-associated-decls (file proofs)
+  (let ((alist (theory-formula-alist file))
+	(aproofs nil))
+    (dolist (thproof proofs)
+      (let ((entry (assq (car thproof) alist)))
+	(when entry
+	  (let ((fproofs (remove-if #'(lambda (fpr)
+					(not (memq (car fpr) (cdr entry))))
+			   (cdr thproof))))
+	    (when fproofs
+	      (push (cons (car thproof) fproofs) aproofs))))))
+    (nreverse aproofs)))
+
+(defun theory-formula-alist (file)
+  (let* ((theories (cdr (gethash file *pvs-modules*)))
+	 (ce (unless theories (context-entry-of file))))
+    (cond (theories
+	   (mapcar #'(lambda (th)
+		       (cons (id th)
+			     (mapcar #'id
+			       (remove-if-not #'(lambda (d)
+						  (provable-formula? d))
+				 (all-decls th)))))
+	     theories))
+	  (ce
+	   (mapcar #'(lambda (te)
+		       (cons (te-id te)
+			     (mapcar #'fe-id (te-formula-info te))))
+	     (ce-theories ce))))))
+
+(defun show-proofs-theory (theoryname &optional all?)
   (let* ((file (context-file-of theoryname))
-	 (proofs (when file (read-pvs-file-proofs file))))
+	 (all-proofs (when file (read-pvs-file-proofs file)))
+	 (proofs (if all?
+		     all-proofs
+		     (proofs-with-associated-decls file all-proofs))))
     (cond (proofs
 	   (setq *displayed-proofs* proofs)
 	   (pvs-buffer "Show Proofs"
@@ -541,7 +581,7 @@
 	  (file (pvs-message "No proofs found in this theory"))
 	  (t (pvs-message "Theory not found in context; may need to retypecheck.")))))
 
-(defun show-proofs-importchain (theoryname)
+(defun show-proofs-importchain (theoryname &optional all?)
   (let* ((imports (context-usingchain theoryname))
 	 (files (delete-duplicates (mapcar #'context-file-of imports)
 				   :test #'string=))
@@ -549,7 +589,7 @@
 			    (let ((ce (context-entry-of ff)))
 			      (and ce (valid-proofs-file ce))))
 			files))
-	 (proofs (get-importchain-proofs theoryname imports files)))
+	 (proofs (get-importchain-proofs theoryname imports files all?)))
     (cond (proofs
 	   (setq *displayed-proofs* proofs)
 	   (pvs-buffer "Show Proofs"
@@ -561,13 +601,22 @@
 	   t)
 	  (t (pvs-message "No proofs found in this file")))))
 
-(defun get-importchain-proofs (theoryname imports files)
+(defun get-importchain-proofs (theoryname imports files &optional all?)
   (declare (ignore theoryname))
-  (let ((all-proofs (mapappend #'read-pvs-file-proofs files)))
-    (remove-if-not #'(lambda (pr)
-		       (member (car pr) imports
-			       :test #'(lambda (x y) (eq x (intern y)))))
-      all-proofs)))
+  (let ((all-proofs nil))
+    (dolist (file files)
+      (let* ((proofs (read-pvs-file-proofs file))
+	     (vproofs (if all?
+			  proofs
+			  (proofs-with-associated-decls file proofs))))
+	(setq all-proofs
+	      (nconc all-proofs
+		     (remove-if-not #'(lambda (pr)
+					(member (car pr) imports
+						:test #'(lambda (x y)
+							  (eq x (intern y)))))
+		       vproofs)))))
+    all-proofs))
 
 (defun show-all-proofs-file (proofs outstr valid?)
   (when proofs
@@ -788,6 +837,7 @@
   (get-judgement-tcc (generated-by jtcc) decls))
   
 (defmethod get-judgement-tcc (decl &optional decls)
+  (declare (ignore decl decls))
   nil)
   
 (defmethod pc-analyze ((decl t))
@@ -982,20 +1032,26 @@
 
 (defun display-proofs-buffer (&optional line)
   (let ((idsize (max 8
-		     (apply #'max
-		       (mapcar #'(lambda (fs)
-				   (length (string (id (cdr fs)))))
-			 (cddr *show-proofs-info*)))))
+		     (if (cddr *show-proofs-info*)
+			 (apply #'max
+			   (mapcar #'(lambda (fs)
+				       (length (string (id (cdr fs)))))
+			     (cddr *show-proofs-info*)))
+			 0)))
 	(declsize (max 11
-		       (apply #'max
-			 (mapcar #'(lambda (fs)
-				     (length (string (id (car fs)))))
-			   (cddr *show-proofs-info*)))))
+		       (if (cddr *show-proofs-info*)
+			   (apply #'max
+			     (mapcar #'(lambda (fs)
+					 (length (string (id (car fs)))))
+			       (cddr *show-proofs-info*)))
+			   0)))
 	(thsize (max 6
-		     (apply #'max
-			 (mapcar #'(lambda (fs)
-				     (length (string (id (module (car fs))))))
-			   (cddr *show-proofs-info*))))))
+		     (if (cddr *show-proofs-info*)
+			 (apply #'max
+			   (mapcar #'(lambda (fs)
+				       (length (string (id (module (car fs))))))
+			     (cddr *show-proofs-info*)))
+			 0))))
     (pvs-buffer "Display Proofs"
       (format nil "~a~%~{~a~%~}"
 	(display-proofs-header (car *show-proofs-info*)
@@ -1301,6 +1357,7 @@
        (cons decl used))))
 
 (defmethod collect-proof-used-declarations* (obj used)
+  (declare (ignore obj used))
   (break "collect-proof-used-declarations*"))
 
 (defmethod collect-proof-used-declarations* ((list list) used)
