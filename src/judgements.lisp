@@ -505,6 +505,9 @@
 (defmethod no-dep-bindings ((te tupletype))
   (every #'no-dep-bindings (types te)))
 
+(defmethod no-dep-bindings ((te cotupletype))
+  (every #'no-dep-bindings (types te)))
+
 (defmethod no-dep-bindings ((te dep-binding))
   nil)
 
@@ -762,6 +765,9 @@
 	  (aref atypes (1- (index ex)))
 	  (projection-application-types atypes ex)))))
 
+(defmethod judgement-types* ((ex injection-application))
+  nil)
+
 (defmethod judgement-types* ((ex tuple-expr))
   (let* ((exprs (exprs ex))
 	 (jtypes (mapcar #'judgement-types* exprs)))
@@ -901,6 +907,9 @@
 			  bindings))))
 
 (defmethod subtype-wrt?* ((te1 tupletype) (te2 tupletype) reltype bindings)
+  (subtype-wrt?-list (types te1) (types te2) (types reltype) bindings))
+
+(defmethod subtype-wrt?* ((te1 cotupletype) (te2 cotupletype) reltype bindings)
   (subtype-wrt?-list (types te1) (types te2) (types reltype) bindings))
 
 (defun subtype-wrt?-list (types1 types2 reltypes bindings)
@@ -1450,6 +1459,9 @@
 (defmethod simple-match* ((ex tupletype) (inst tupletype) bindings subst)
   (simple-match* (types ex) (types inst) bindings subst))
 
+(defmethod simple-match* ((ex cotupletype) (inst cotupletype) bindings subst)
+  (simple-match* (types ex) (types inst) bindings subst))
+
 (defmethod simple-match* ((ex list) (inst list) bindings subst)
   (simple-match-list ex inst bindings subst))
 
@@ -1507,6 +1519,13 @@
 
 (defmethod simple-match* ((ex projection-application)
 			  (inst projection-application)
+			  bindings subst)
+  (if (= (index ex) (index inst))
+      (simple-match* (argument ex) (argument inst) bindings subst)
+      'fail))
+
+(defmethod simple-match* ((ex injection-application)
+			  (inst injection-application)
 			  bindings subst)
   (if (= (index ex) (index inst))
       (simple-match* (argument ex) (argument inst) bindings subst)

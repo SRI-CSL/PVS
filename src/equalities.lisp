@@ -180,6 +180,12 @@ where db is to replace db1 and db2")
       (or (eq t1 t2)
 	  (tc-eq-types ty1 ty2 bindings)))))
 
+(defmethod tc-eq* ((t1 cotupletype) (t2 cotupletype) bindings)
+  (with-slots ((ty1 types)) t1
+    (with-slots ((ty2 types)) t2
+      (or (eq t1 t2)
+	  (tc-eq-types ty1 ty2 bindings)))))
+
 (defun tc-eq-types (types1 types2 bindings)
   (declare (list types1 types2))
   (cond ((null types1) (null types2))
@@ -274,6 +280,25 @@ where db is to replace db1 and db2")
 	 (tc-eq (cdr bind) e2))))
 
 (defmethod tc-eq* ((e1 name-expr) (e2 projection-application) bindings)
+  (let ((bind (assoc e1 bindings :test #'tc-eq)))
+    (and bind
+	 (tc-eq (cdr bind) e2))))
+
+(defmethod tc-eq* ((e1 injection-application) (e2 injection-application)
+		   bindings)
+  (or (eq e1 e2)
+      (with-slots ((id1 index) (arg1 argument)) e1
+	(with-slots ((id2 index) (arg2 argument)) e2
+	  (assert (and id1 id2))
+	  (and (= id1 id2)
+	       (tc-eq* arg1 arg2 bindings))))))
+
+(defmethod tc-eq* ((e1 injection-application) (e2 name-expr) bindings)
+  (let ((bind (assoc e1 bindings :test #'tc-eq)))
+    (and bind
+	 (tc-eq (cdr bind) e2))))
+
+(defmethod tc-eq* ((e1 name-expr) (e2 injection-application) bindings)
   (let ((bind (assoc e1 bindings :test #'tc-eq)))
     (and bind
 	 (tc-eq (cdr bind) e2))))
@@ -851,6 +876,10 @@ where db is to replace db1 and db2")
   (and (length= (types atype) (types etype))
        (every #'compatible?* (types atype) (types etype))))
 
+(defmethod compatible?* ((atype cotupletype) (etype cotupletype))
+  (and (length= (types atype) (types etype))
+       (every #'compatible?* (types atype) (types etype))))
+
 (defmethod compatible?* ((atype recordtype) (etype recordtype))
   (and (length= (fields atype) (fields etype))
        (compatible-fields? (fields atype) (fields etype))))
@@ -941,6 +970,9 @@ where db is to replace db1 and db2")
 				(new-tc-eq-list-bindings d1 d2 bindings))))))
 
 (defmethod strict-compatible?* ((atype tupletype) (etype tupletype) bindings)
+  (strict-compatible-types (types atype) (types etype) bindings))
+
+(defmethod strict-compatible?* ((atype cotupletype) (etype cotupletype) bindings)
   (strict-compatible-types (types atype) (types etype) bindings))
 
 (defun strict-compatible-types (types1 types2 bindings)
@@ -1115,6 +1147,16 @@ where db is to replace db1 and db2")
       (let* ((stype (compatible-type* (car atypes) (car etypes))))
 	(compatible-tupletypes (cdr atypes) (cdr etypes)
 			       (cons stype types)))))
+
+(defmethod compatible-type* ((atype cotupletype) (etype cotupletype))
+  (compatible-cotupletypes (types atype) (types etype) nil))
+
+(defun compatible-cotupletypes (atypes etypes types)
+  (if (null atypes)
+      (mk-cotupletype (nreverse types))
+      (let* ((stype (compatible-type* (car atypes) (car etypes))))
+	(compatible-cotupletypes (cdr atypes) (cdr etypes)
+				 (cons stype types)))))
 
 (defmethod compatible-type* ((atype recordtype) (etype recordtype))
   (compatible-recordtypes (fields atype) (fields etype) atype nil))
@@ -1459,6 +1501,10 @@ where db is to replace db1 and db2")
 			      (aexpr tuple-expr) incs)
   incs)
 
+(defmethod compatible-preds* ((atype cotupletype) (etype cotupletype)
+			      (aexpr injection-application) incs)
+  incs)
+
 (defmethod compatible-preds* ((atype tupletype) (etype tupletype) aexpr incs)  
   (compatible-tupletype-preds (types atype) (types etype)
 			      (cond ((tuple-expr? aexpr) (exprs aexpr))
@@ -1486,6 +1532,31 @@ where db is to replace db1 and db2")
 	     (substit (cdr aexprs) (acons adep aexp nil))
 	     (cdr aexprs))
 	 (append preds incs)))))
+
+(defmethod compatible-preds* ((atype cotupletype) (etype cotupletype) aexpr incs)  
+  (compatible-cotupletype-preds (types atype) (types etype) aexpr incs))
+
+;;; Given S_i = {x: T_i | p_i(x)}, 1 <= i <= n,
+;;; Returns  CASES aexpr OF IN_1(x): p_1(x), ..., IN_n(x): p_n(x) ENDCASES
+(defun compatible-cotupletype-preds (atypes etypes aexpr incs
+					    &optional (index 1) sels)
+  (if (null atypes)
+      (cons (make!-unpack-expr aexpr (nreverse sels)) incs)
+      (let* ((id (make-new-variable '|x| aexpr))
+	     (bd (make-bind-decl id (car atypes)))
+	     (var (make-variable-expr bd))
+	     (pred (compatible-preds* (car atypes) (car etypes) var))
+	     (in-expr (make-instance 'injection-expr
+			'id (makesym "IN_~d" index)
+			'index index)))
+	(compatible-cotupletype-preds
+	 (cdr atypes) (cdr etypes) aexpr incs (1+ index)
+	 (cons (make-instance 'in-selection
+		 'constructor in-expr
+		 'args (list var)
+		 'index index
+		 'expression pred)
+	       sels)))))
 
 (defmethod compatible-preds* ((atype recordtype) (etype recordtype)
 			      (aexpr record-expr) incs)
@@ -1554,6 +1625,9 @@ where db is to replace db1 and db2")
        (strict-subtype-of*? (range t1) (range t2) dist)))
 
 (defmethod strict-subtype-of*? ((t1 tupletype) (t2 tupletype) dist)
+  (strict-subtype-of*? (types t1) (types t2) dist))
+
+(defmethod strict-subtype-of*? ((t1 cotupletype) (t2 cotupletype) dist)
   (strict-subtype-of*? (types t1) (types t2) dist))
 
 (defmethod strict-subtype-of*? ((t1 dep-binding) (t2 dep-binding) dist)
@@ -1675,6 +1749,10 @@ where db is to replace db1 and db2")
     (subtype-of*? (range t1) (range t2))))
 
 (defmethod subtype-of*? ((t1 tupletype) (t2 tupletype))
+  (when (length= (types t1) (types t2))
+    (subtype-of-list (types t1) (types t2))))
+
+(defmethod subtype-of*? ((t1 cotupletype) (t2 cotupletype))
   (when (length= (types t1) (types t2))
     (subtype-of-list (types t1) (types t2))))
 
@@ -1874,6 +1952,39 @@ where db is to replace db1 and db2")
       (let ((npred (make!-reduced-application (car cpreds)
 		     (make!-projection-application num var))))
 	(subtype-tuple-preds* (cdr cpreds) var num (cons npred preds))))) 
+
+(defmethod subtype-preds ((t1 cotupletype) (t2 cotupletype) &optional incs)
+  (when (length= (types t1) (types t2))
+    (let* ((vid (make-new-variable '|t| (list t1 t2)))
+	   (vb (mk-bind-decl vid t2 t2))
+	   (var (mk-name-expr vid nil nil
+			      (make-resolution vb
+				(current-theory-name) t2))))
+      (multiple-value-bind (ty pred)
+	  (subtype-cotuple-preds (types t1) (types t2) t2 vb var)
+	(when ty
+	  (values t2 (cons pred incs)))))))
+
+(defun subtype-cotuple-preds (types1 types2 type2 vb var
+				     &optional (index 1) sels)
+  (if (null types1)
+      (values type2
+	      (make!-lambda-expr (list vb)
+		(make!-unpack-expr var (nreverse sels))))
+      (multiple-value-bind (ty cpreds)
+	  (subtype-preds (car types1) (car types2))
+	(when ty
+	  (let ((in-expr (make-instance 'injection-expr
+			   'id (makesym "IN_~d" index)
+			   'index index)))
+	    (subtype-cotuple-preds
+	     (cdr types1) (cdr types2) type2 vb var (1+ index)
+	     (cons (make-instance 'in-selection
+		     'constructor in-expr
+		     'args (list var)
+		     'index index
+		     'expression pred)
+	       sels)))))))
 
 (defmethod subtype-preds ((t1 recordtype) (t2 recordtype) &optional incs)
   (when (length= (fields t1) (fields t2))
@@ -2165,6 +2276,9 @@ where db is to replace db1 and db2")
 	       predicate)
     (unless done
       proj)))
+
+(defmethod type-canon* ((te cotupletype) predicates)
+  te)
 	       
 (defmethod type-canon* ((te recordtype) predicates)
   (type-canon-recordtype te predicates))

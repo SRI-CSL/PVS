@@ -302,6 +302,14 @@
 		   (gensubst* (type ex) substfn testfn))))
     (lcopy ex 'argument narg 'type ntype)))
 
+(defmethod gensubst* ((ex injection-application) substfn testfn)
+  (let ((narg (gensubst* (argument ex) substfn testfn))
+	(ntype (if (or *parsing-or-unparsing*
+		       *visible-only*)
+		   (type ex)
+		   (gensubst* (type ex) substfn testfn))))
+    (lcopy ex 'argument narg 'type ntype)))
+
 (defmethod gensubst* ((ex field-application) substfn testfn)
   (let ((narg (gensubst* (argument ex) substfn testfn))
 	(ntype (if (or *parsing-or-unparsing*
@@ -557,6 +565,9 @@
 (defmethod mapobject* (fn (te tupletype))
   (mapobject* fn (types te)))
 
+(defmethod mapobject* (fn (te cotupletype))
+  (mapobject* fn (types te)))
+
 (defmethod mapobject* (fn (te recordtype))
   (mapobject* fn (fields te)))
 
@@ -605,6 +616,9 @@
   (mapobject* fn (else-part ex)))
 
 (defmethod mapobject* (fn (ex projection-application))
+  (mapobject* fn (argument ex)))
+
+(defmethod mapobject* (fn (ex injection-application))
   (mapobject* fn (argument ex)))
 
 (defmethod mapobject* (fn (ex field-application))
@@ -756,6 +770,12 @@
       'type nil
       'argument (copy-untyped* argument))))
 
+(defmethod copy-untyped* ((ex injection-application))
+  (with-slots (argument) ex
+    (copy ex
+      'type nil
+      'argument (copy-untyped* argument))))
+
 (defmethod copy-untyped* ((ex field-application))
   (with-slots (id argument) ex
     (make-instance 'application
@@ -874,6 +894,15 @@
       'nonempty? nil)))
 
 (defmethod copy-untyped* ((ex tupletype))
+  (with-slots (types) ex
+    (copy ex
+      'types (copy-untyped* types)
+      'generated? nil
+      'print-type nil
+      'from-conversion nil
+      'nonempty? nil)))
+
+(defmethod copy-untyped* ((ex cotupletype))
   (with-slots (types) ex
     (copy ex
       'types (copy-untyped* types)

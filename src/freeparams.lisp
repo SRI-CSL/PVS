@@ -159,6 +159,12 @@
     (setf (free-parameters expr) afrees)
     (union afrees frees :test #'eq)))
 
+(defmethod free-params* ((expr injection-application) frees)
+  (let ((afrees (free-params* (argument expr)
+		  (free-params* (type expr) nil))))
+    (setf (free-parameters expr) afrees)
+    (union afrees frees :test #'eq)))
+
 (defmethod free-params* ((expr field-application) frees)
   (let ((afrees (free-params* (argument expr)
 		  (free-params* (type expr) nil))))
