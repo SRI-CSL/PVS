@@ -1487,6 +1487,14 @@
     'expression expr
     'type (make-formals-funtype (list bindings) (type expr))))
 
+(defun make!-set-expr (bindings expr)
+  (assert (every #'type bindings))
+  (assert (type expr))
+  (make-instance 'set-expr
+    'bindings bindings
+    'expression expr
+    'type (make-formals-funtype (list bindings) (type expr))))
+
 (defmethod make!-bind-decl (id (type type-expr))
   (mk-bind-decl id (or (print-type type) type) type))
 
