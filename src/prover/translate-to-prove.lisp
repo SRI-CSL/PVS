@@ -3,12 +3,11 @@
 ;; Author          : N. Shankar
 ;; Created On      : Fri Apr  3 22:08:11 1998
 ;; Last Modified By: Sam Owre
-;; Last Modified On: Sat Oct 31 03:38:54 1998
-;; Update Count    : 5
-;; Status          : Beta test
-;; 
-;; HISTORY
+;; Last Modified On: Thu May 20 22:23:25 2004
+;; Update Count    : 6
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
 (in-package :pvs)
 
@@ -282,11 +281,12 @@
 
 (defmethod translate-to-prove ((expr injection-expr))
   (let* ((id (make-new-variable '|x| expr))
+	 (cotuptype (find-supertype (range (find-supertype (type expr)))))
 	 (bd (make-bind-decl id (domain (find-supertype (type expr)))))
 	 (varex (make-variable-expr bd)))
     (translate-to-prove
      (make!-lambda-expr (list bd)
-       (make!-injection-application (index expr) varex (type expr))))))
+       (make!-injection-application (index expr) varex cotuptype)))))
 
 (defmethod translate-to-prove ((expr injection?-expr))
   (let* ((id (make-new-variable '|x| expr))
@@ -313,16 +313,19 @@
 (defmethod translate-to-prove ((expr injection-application))
   (let ((arg (translate-to-prove (argument expr))))
     (list (make-apply-name (mk-funtype (type (argument expr)) (type expr)))
+	  (id expr)
 	  arg)))
 
 (defmethod translate-to-prove ((expr extraction-application))
   (let ((arg (translate-to-prove (argument expr))))
     (list (make-apply-name (mk-funtype (type (argument expr)) (type expr)))
+	  (id expr)
 	  arg)))
 
 (defmethod translate-to-prove ((expr injection?-application))
   (let ((arg (translate-to-prove (argument expr))))
     (list (make-apply-name (mk-funtype (type (argument expr)) (type expr)))
+	  (id expr)
 	  arg)))
 
 (defmethod translate-to-prove ((expr field-application))
@@ -373,6 +376,10 @@
 		       (cons (if (symbolp op)
 				 (list op) op)
 			     args))))))))
+
+(defmethod lift-adt ((ex injection-expr) &optional op?)
+  (declare (ignore op?))
+  ex)
 
 (defmethod lift-adt ((ex constructor-name-expr) &optional op?)
   (if op?
