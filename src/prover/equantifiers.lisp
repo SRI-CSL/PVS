@@ -68,15 +68,21 @@
 	(pvs-gentemp string (1+ count))
 	(intern next))))
 
-(defun new-boundvar-id (id)
+(defun new-boundvar-id (id expr)
   (let* ((string (string (op-to-id id)))
 	 (pos (position #\_ string :from-end t))
 	 (prefix (if pos (subseq string 0 pos)
 		     string))
 	 (suffix (if pos (subseq string (1+ pos) ) "")))
     (if (every #'digit-char-p suffix)
-	(gentemp (concatenate 'string  prefix "_"))
-	(gentemp  (concatenate 'string string "_")))))
+	(new-boundvar-id* prefix expr 1)
+	(new-boundvar-id* string expr 1))))
+
+(defun new-boundvar-id* (idstr expr num)
+  (let ((id (makesym "~a_~d" idstr num)))
+    (if (id-occurs-in id expr)
+	(new-boundvar-id* idstr expr (1+ num))
+	id)))
          
 
 (defun new-symbol (name counter)
