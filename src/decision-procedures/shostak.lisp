@@ -11,7 +11,9 @@
       (false-p term)
       (dp-numberp term)
       (and (application-p term)
-	   (interpsym? (funsym term)))
+	   (or (interpsym? (funsym term))
+	       (and (application-p (funsym term))
+		    (interpsym? (funsym (funsym term))))))
       (applyupdate-p term)))
 
 (declaim (notinline canonsig-merge canonsig-canon))
@@ -83,14 +85,17 @@
 	*true*))))
 
 
+(defvar *dbg-diseqs* nil)
+
 (defun invoke-process-changed (canon-eqn cong-state)
-  (let ((check-neqs (check-and-canonize-neqs cong-state)))
-    (cond
-     ((false-p check-neqs)
-      (setf (cong-state-used-assertions cong-state)
-	    (cdr (cong-state-used-assertions cong-state)))
-      *false*)
-     (t nil))))
+  (when *dbg-diseqs*
+    (let ((check-neqs (check-and-canonize-neqs cong-state)))
+      (cond
+       ((false-p check-neqs) (break)
+	(setf (cong-state-used-assertions cong-state)
+	      (cdr (cong-state-used-assertions cong-state)))
+	*false*)
+       (t nil)))))
 
 (defun invoke-process-neg (eqn cong-state)
   (let ((neg-result (negate-and-check-eqn eqn cong-state)))
@@ -124,7 +129,7 @@
 	   (new-lhs (canon lhs cong-state 'nomod))
 	   (new-rhs (canon rhs cong-state 'nomod)))
       (if (eq new-lhs new-rhs)
-	  *false*
+	  (prog1 *false* (break))
 	  (make-nequality new-lhs new-rhs cong-state))))))
 
 (defun find-neq (neq cong-state)
@@ -191,7 +196,7 @@
     (cond
      ((equality-p (arg 1 eqn))
       (add-neq (mk-equality (arg 1 eqn) *false*) cong-state)
-      cong-state)
+      (dp-merge (arg 1 eqn) *false* cong-state))
      (t (dp-merge (arg 1 eqn) *false* cong-state))))
    ((false-p eqn) *false*)
    ((true-p eqn) cong-state)
@@ -200,6 +205,8 @@
     (forward-chain eqn cong-state))
    (t (dp-merge eqn *true* cong-state)
       (forward-chain eqn cong-state))))
+
+(defvar *dbg* nil)
 
 (defun dp-merge (t1 t2 cong-state)
   ;(declare (special *contradiction*))
@@ -214,29 +221,35 @@
       (break))
     (dp-union t1 t2 cong-state)
     (type-union t1 t2 cong-state)
-    (loop for u in (use t1 cong-state) do
+    (loop for u in (use t1 cong-state) do (when *dbg* (break))
 	  (cond
 	   ((uninterp? u)
 	    (replace-term-in-sig t1 t2 u cong-state)
 	    (loop for v in (use t2 cong-state)
 		  when (eq (sig v cong-state) (sig u cong-state))
-		  do ;;(break "uninterp")
+		  do (when *dbg* (break "uninterp"))
 		     (process* (sigma
 				(mk-equality
-				 (dp-find u cong-state)
-				 (dp-find v cong-state))
+				 (sigma (dp-find u cong-state) cong-state)
+				 (sigma (dp-find v cong-state) cong-state))
 				cong-state)
 			       cong-state))
 	    (add-use t2 u cong-state))
 	   (t (let* ((u-find (dp-find u cong-state))
 		     (u_sig (replace-term-in-term t1 t2 u))
 		     (u_sigma (canonsig-merge (sigma u_sig cong-state) cong-state)))
-		;;(break "interp")
+		(when *dbg* (break "interp"))
 		(cond
 		 ((true-p u-find) ;(when (false-p u_sigma) (break))
 		  (process* (canonsig
 			     (sigma
-			     (mk-equality u_sigma u-find) cong-state)
+			      (mk-equality u_sigma u-find) cong-state)
+			     cong-state)
+			    cong-state))
+		 ((and (equality-p u) (false-p u-find)) ;found a disequality.
+		  (process* (canonsig
+			     (sigma
+			      (mk-equality u_sigma u-find) cong-state)
 			     cong-state)
 			    cong-state))
 		 ((eq u-find u)
@@ -385,4 +398,5 @@
     (map-args #'add-use (the application term)
 	      (the application term) (the cong-state cong-state)))
    (t nil))
+  (add-interp-use-of-term term cong-state)
   (setf (seen term cong-state) t))
