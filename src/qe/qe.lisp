@@ -16,7 +16,18 @@
 
 (addrule 'qe nil ((fnums '*))
     (qelim-step fnums)
-    "Quantifier Elimination.")
+    "Quantifier Elimination. Replaces sequent formulas
+     specified by 'fnums' with equivalent formulas, where
+     arithmetic (both *reals* and *integers*) and boolean quantifiers
+     have been eliminated whenever possible; i.e. the formula should,
+     usually, only contain linear arithmetic terms and bound variables
+     should, usually, not occur in the scope of uninterpreted functions.
+
+     NOTE: This code is highly experimental, and its functionality,
+     speed, and robustness is likely to improve in the near future.
+     Thus, proof scripts using this command may break in future releases
+     of PVS.")
+     
 
 (defun qelim-step (fnums)
   #'(lambda (ps)
@@ -75,9 +86,9 @@
 		     (qelim* (args2 fml))))
 
 (defmethod qelim* ((fml branch))
-  (make!-branch (qelim* (condition fml))
-		(qelim* (then-part fml))
-		(qelim* (else-part fml))))
+  (make!-if-expr (qelim* (condition fml))
+		 (qelim* (then-part fml))
+		 (qelim* (else-part fml))))
 
 (defmethod qelim* ((fml iff-or-boolean-equation))
   (make!-iff (qelim* (args1 fml))
@@ -97,14 +108,18 @@
       fml))
 
 (defmethod qelim1 ((bndng bind-decl) fml)
+  (error-format-if "~%Eliminating ~a" bndng)
   (cond ((tc-eq (type bndng) *boolean*)
 	 (qelim1-boolean bndng fml))
-	((tc-eq (find-supertype (type bndng)) *number*) ; needed?
+	(;(tc-eq (find-supertype (type bndng)) *number*) ; needed?
+	 (or (tc-eq (type bndng) *real*) (tc-eq (type bndng) *integer*))
 	 (let* ((dnf (dnf fml)))
+	   (error-format-if "~%Disjunctions: ~a" (length dnf)) 
 	   (if (in-scope-of-floor? bndng dnf)
                (let* ((new-bndng (my-make-new-bind-decl bndng))
 		      (*bound-variables* (cons new-bndng *bound-variables*)))
 		 (declare (special *bound-variables))
+		 (error-format-if "~%Eliminating ~a in floor" bndng)
 		 (let ((elim-dnf (eliminate-shielded new-bndng bndng dnf)))
 		   (if (or (in-scope-of-floor? bndng elim-dnf)
 			   (in-scope-of-floor? new-bndng elim-dnf))
@@ -134,20 +149,22 @@
 			   new-acc))))
 
 (defun qelim-conjuncts (bndng conjuncts)
-   (when (complementary-pair? conjuncts)
-     (return-from qelim-conjuncts *false*))
-   (let ((*dp-state* (dp::null-single-cong-state))) ; (new-cs *dp-state*)))
-     (declare (special *dp-state*))
- ;  (protecting-dp-state ((*state* *state*))
+  (declare (special *state*))
+  (error-format-if "~%Eliminate ~a" bndng)
+  (when (complementary-pair? conjuncts)
+    (return-from qelim-conjuncts *false*))
+  (protecting-dp-state ((*state* *state*))
      (multiple-value-bind (lower-ineqs upper-ineqs solved-eqs disequalities noccurs others)
-	 (partition bndng conjuncts)
+	 (partition-conjuncts bndng conjuncts)
        (assert (every #'(lambda (fml) (not (occurs-in bndng fml))) noccurs))
+      
        (cond ((some #'(lambda (diseq)
-				   (inconsistent-disequality diseq *state*))
-			       disequalities)
+			(inconsistent-disequality diseq *state*))
+		    disequalities)
 	      *false*)
 	     ((consp solved-eqs)
 	      (let ((solved-expr (choose-solved-form bndng solved-eqs)))
+		(error-format-if "~%Solved Form: ~a" solved-expr)
 		(assert (not (occurs-in bndng solved-expr)))
 		(let ((subst (acons bndng solved-expr nil)))
 		  (conjuncts-to-fml
@@ -168,14 +185,26 @@
 	     ((and (null lower-ineqs)
 		   (null upper-ineqs))
 	      (conjuncts-to-fml noccurs))
-	     (t (let ((new-ineqs (FME lower-ineqs upper-ineqs bndng)))
+	     ((or (null lower-ineqs)
+		  (null upper-ineqs))
+	      (conjuncts-to-fml noccurs))
+	     (t (error-format-if "~%FME: ~{~a~^, ~}, ~{~a~^, ~}" lower-ineqs upper-ineqs)
+	        (let ((new-ineqs (FME lower-ineqs upper-ineqs bndng)))
 		  (cond ((some #'(lambda (fml) (tc-eq fml *false*)) new-ineqs)
 			 *false*)
 			((not (occurs-in bndng disequalities))
 			 (conjuncts-to-fml
-			  (append new-ineqs noccurs)))
+			  (append new-ineqs noccurs disequalities)))
 			(t
 			 (unable-to-eliminate bndng (conjuncts-to-fml conjuncts))))))))))
+
+(defun display-partition (lower-ineqs upper-ineqs solved-eqs disequalities noccurs others)
+  (error-format-if "~% --> Lower ineqs: ~a, Upper ineqs: ~a, Eqs: ~a, Diseqs: ~a, Noccurs: ~a, Others: ~a" (length lower-ineqs)
+	     (length upper-ineqs)
+	     (length solved-eqs)
+	     (length disequalities)
+	     (length noccurs)
+	     (length others)))
 
 (defun FME (lower-ineqs upper-ineqs bndng &optional acc)
   "Fourier-Motzkin Elimination."
@@ -184,6 +213,7 @@
 	   (union (FME1 (car lower-ineqs) upper-ineqs bndng) acc :test #'tc-eq))))
 
 (defun FME1 (lower-ineq upper-ineqs bndng &optional acc)
+  (declare (special *state*))
   (if (null upper-ineqs) (nreverse acc)
       (let* ((upper-ineq (car upper-ineqs))
 	     (new-ineq (solve-for (eliminate-variable bndng
@@ -212,14 +242,14 @@
                 (nonstrict-ineq? upper-ineq))
            (make!-le lower upper))
           (t
-           (break)))))
+	   (throw 'unable nil)))))
 
 (defun solved-form (expr bndng)
   (let ((lhs (args1 expr))
 	(rhs (args2 expr)))
      (cond ((solved? lhs rhs bndng) rhs)
 	   ((solved? rhs lhs bndng) lhs)
-	   (t (break)))))
+	   (t (throw 'unable nil)))))
 
 (defun solved? (x expr bndng)
   (and (var-bound-by? x bndng)
@@ -239,7 +269,7 @@
 
 (defun choose-solved-form (bndng equalities) 
   (if (null equalities)
-      (break)
+      (throw 'unable nil)
       (let ((lhs (args1 (car equalities)))
 	    (rhs (args2 (car equalities))))
 	(cond ((not (occurs-in bndng rhs))
@@ -249,7 +279,8 @@
 	      (t
 	       (choose-solved-form bndng (cdr equalities)))))))
 	      
-(defun partition (bndng conjuncts)
+(defun partition-conjuncts (bndng conjuncts)
+  (declare (special *state*))
   (let ((lower-ineqs nil)
 	(upper-ineqs nil)
 	(solved-eqs nil)
@@ -316,6 +347,7 @@
 ; Quantifier Elimination for Booleans
 
 (defun qelim1-boolean (bndng fml)
+  (declare (special *state*))
   (let ((lhs (substitute-and-simplify fml (acons bndng *true* nil) *state*))
 	(rhs (substitute-and-simplify fml (acons bndng *false* nil) *state*)))
     (cond ((tc-eq lhs *false*) rhs)
@@ -334,6 +366,7 @@
   (and inside (tc-eq bndng (declaration expr))))
 
 (defmethod in-scope-of-floor? (bndng (expr number-expr) &optional inside)
+  (declare (ignore bndng) (ignore inside))
   nil)
 
 (defmethod in-scope-of-floor? (bndng (expr application) &optional inside)
@@ -357,6 +390,7 @@
 (defun eliminate-shielded1 (new-bndng bndng conjuncts)
   (let ((delta (delta bndng conjuncts)))
     (assert (not (null delta))) ; ???
+    (error-format-if ", delta: ~a" delta)
     (cond ((= delta 1)
 	   (list conjuncts))
 	  ((integerp delta)
@@ -401,7 +435,8 @@
 	 :test #'eql))
       
 (defmethod coefficients* ((expr name-expr))
-    (if (tc-eq (declaration expr) *bndng*) (list 1) '()))
+  (declare (special *bndng*))
+  (if (tc-eq (declaration expr) *bndng*) (list 1) '()))
 
 (defmethod coefficients* ((expr number-expr))
     '())
@@ -411,6 +446,7 @@
     (if (tc-eq op (times-operator))
 	(multiple-value-bind (coefficient arg)
 	    (destructure-linear-multiplication expr)
+	  (declare (ignore arg))
 	  (cons (denominator coefficient)
 		(coefficients* (arguments expr))))
       (coefficients* (arguments expr)))))
