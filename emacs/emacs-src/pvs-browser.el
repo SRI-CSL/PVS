@@ -229,6 +229,7 @@ and removes the declaration buffer."
       (pvs-insert-declarations)
       (goto-char (point-min))
       (toggle-read-only)
+      (ilisp-display-buffer-in-typeout-window buf)
       buf)))
 
 (defun pvs-insert-declarations ()
