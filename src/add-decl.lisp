@@ -134,7 +134,7 @@
   (reset-places decls)
   (cond (typechecked?
 	 ;; Check that declarations are unique
-	 (dolist (d (remove-if #'using? decls))
+	 (dolist (d (remove-if #'importing? decls))
 	   (let ((tdecls (gethash (id d) (declarations (module d)))))
 	     (mapc #'(lambda (td) (duplicate-decls d td)) tdecls)))
 	 (dolist (d decls)
@@ -175,7 +175,7 @@
 
 (defun add-decl (decl &optional (insert? t) (generated? t) (assuming? nil))
   (when (or (adt-def-decl? decl)
-	    (using? decl)
+	    (importing? decl)
 	    (not (member decl
 			 (remove-if-not #'(lambda (d)
 					    (eq (module d) (current-theory)))
@@ -218,7 +218,7 @@
       #+pvsdebug (assert (or atail0 ttail0 (not insert?)
 			     (not *insert-add-decl*)
 			     (formal-decl? curdecl)))
-      (unless (using? decl)
+      (unless (importing? decl)
 	(unless (binding? decl)
 	  (setf (module decl) thry)
 	  (when generated?
@@ -241,7 +241,7 @@
 			 (append (ldiff (theory thry) ttail)
 				 (cons decl ttail))
 			 (cons decl ttail))))))
-      (unless (or (using? decl)
+      (unless (or (importing? decl)
 		  (null *insert-add-decl*))
 	(put-decl decl (current-declarations-hash)))
       decl)))

@@ -736,7 +736,7 @@
 
 
 (defun make-tcc-name (&optional (num 1))
-  (let* ((decl-id (if (using? (declaration *current-context*))
+  (let* ((decl-id (if (importing? (current-declaration))
 		      (make-tcc-using-id)
 		      (op-to-id
 		       (or (if (declaration?
@@ -772,7 +772,7 @@
   (let ((mod (theory *current-context*)))
     (makesym "IMPORTING~d"
 	     (1+ (position (declaration *current-context*)
-			   (remove-if-not #'using?
+			   (remove-if-not #'importing?
 					  (append (formals mod)
 						  (assuming mod)
 						  (theory mod))))))))
