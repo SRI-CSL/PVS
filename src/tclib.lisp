@@ -942,7 +942,9 @@
 			 ;; It's already a full pathname
 			 lib-ref)
 			((char= (char lib-ref 0) #\.)
-			 (merge-pathnames lib-ref *pvs-current-context-path*))
+			 (namestring
+			  (merge-pathnames lib-ref
+					   *pvs-current-context-path*)))
 			(t 
 			 ;; Otherwise it's a PVS library ref
 			 ;; (e.g., finite_sets) in the PVS_LIBRARY_PATH
