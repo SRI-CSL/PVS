@@ -902,6 +902,13 @@ proc show-proof-commands {commands} {
     set win .proof-commands
     catch {destroy $win}
     toplevel $win -relief raised -bd 2
+    wm maxsize $win 2000 2000
+    frame $win.fr
+    button $win.fr.dismiss -text Dismiss -command "destroy $win"
+    pack $win.fr.dismiss -side left -padx 2 -pady 2
+    button $win.fr.help -text Help -bd 2 -command "help-commands-window"
+    pack $win.fr.help -side right -padx 2 -pady 2
+    pack $win.fr -side bottom -padx 2 -pady 2 -fill x
     scrollbar $win.scrollbar -command "$win.text yview"
     pack $win.scrollbar -side right -fill y
     listbox $win.text -bd 2 -relief raised -geometry 25x25\
@@ -910,16 +917,18 @@ proc show-proof-commands {commands} {
     bind $win.text <Button-2> "help-command $win.text %y"
     bind $win.text <Button-3> "help-strategy $win.text %y"
     tk_listboxSingleSelect $win.text
-    pack $win.text -side left
+    pack $win.text -side left -fill both -expand 1
     foreach cmd $commands {
 	$win.text insert end $cmd
     }
+    wm iconname $win {PVS Prover Commands}
+    wm title $win "PVS Prover Commands"
 }
 
 proc send-command {win y} {
     set index [$win nearest $y]
     set cmd [$win get $index]
-    emacs-evaln "(progn (set-buffer (ilisp-buffer)) \
+    emacs-evaln "(progn (switch-to-lisp t t) \
                    (goto-char (point-max)) (pvs-prover-any-command \"$cmd\"))"
 }
 
@@ -1130,5 +1139,25 @@ this case.  When the stick button is depressed, it disappears."
     pack $win.dismiss -side left -padx 2 -pady 2
     wm iconname $win {PVS help sequent}
     wm title $win "Sequent Help"
+}
+
+
+proc help-commands-window {} {
+    set win .commands-help
+    catch {destroy $win}
+    toplevel $win -relief raised -bd 2
+    message $win.text -aspect 390 -text \
+	"This displays all of the prover commands, including user-defined ones.
+
+The mouse has the following bindings on a command name:
+
+Left   - sends command to the prover window
+Middle - provides help for that command
+Right  - provides the strategy description"
+    button $win.dismiss -text Dismiss -command "destroy $win"
+    pack $win.text -side top
+    pack $win.dismiss -side left -padx 2 -pady 2
+    wm iconname $win {PVS Command Help}
+    wm title $win "Prover Command Help"
 }
 
