@@ -1577,18 +1577,7 @@
 	 (tuptype (if (equal types (types type))
 		      type
 		      (mk-tupletype types))))
-    ;;(create-projections types tuptype 1)
     tuptype))
-
-(defun create-projections (types tuptype num)
-  (when types
-    (let ((decl (mk-proj-decl (makesym "PROJ_~d" num)
-		  (mk-funtype (list tuptype)
-			      (if (dep-binding? (car types))
-				  (type (car types))
-				  (car types))))))
-      (add-decl decl))
-    (create-projections (cdr types) tuptype (1+ num))))
 
 (defun typecheck-tuples (types result)
   (if (null types)
