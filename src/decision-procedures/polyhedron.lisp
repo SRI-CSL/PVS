@@ -156,6 +156,57 @@
 	    (cons neq
 		  brand-new-equalities)))))))
 
+(defun ineq-covered-by-polyhedral-structure (ineq cong-state)
+  (let ((diff (make-ineq-to-difference eqn))
+	(strict (ineq-strict? eqn))
+	(predicate (funsym eqn))
+	(poly-s (polyhedral-structure cong-state)))
+    (add-to-index-from-diff-terms diff poly-s)
+    (let* ((max-ineq-vars (polyhedral-structure-max-vars
+			   poly-s))
+	   (ineq-var-to-index-hash
+	    (polyhedral-structure-ineq-var-to-index-hash poly-s))
+	   (ineq-var-index-array
+	    (polyhedral-structure-ineq-var-index-array poly-s))
+	   (max-rays (polyhedral-structure-max-rays
+		      poly-s))
+	   (epsilon-leq-0-poly (polyhedral-structure-epsilon-poly
+				poly-s))
+	   (ineq-constraint (make-diff-constraint diff strict max-ineq-vars
+						  ineq-var-to-index-hash))
+	   (old-polyhedron (polyhedral-structure-polyhedron
+			    poly-s)))
+      ;(break)
+      ;;(when (eq eqn *beqn*) (break))
+      (cond
+      ((= (pol_status) 1) (setq new-polyhedron old-polyhedron)
+       (setf (polyhedral-structure-aux-input-eqns poly-s)
+		(cons eqn (polyhedral-structure-aux-input-eqns poly-s)))
+       (setq *dp-changed* t)
+       (list (mk-equality eqn *true*)))
+       ((= (mydomainincludes epsilon-leq-0-poly new-polyhedron) 1)
+	(setq *dp-changed* t)
+	(setq *contradiction* t)
+	(setf (polyhedral-structure-polyhedron poly-s)
+	      new-polyhedron)
+	(setf (polyhedral-structure-input-eqns poly-s)
+	      (cons eqn (polyhedral-structure-input-eqns poly-s)))
+	(list *false*))
+       ((= (mydomainincludes new-polyhedron old-polyhedron)  1)
+	(list *true*))
+       (t (setf (polyhedral-structure-polyhedron poly-s)
+		new-polyhedron)
+	  (setf (polyhedral-structure-input-eqns poly-s)
+		(cons eqn (polyhedral-structure-input-eqns poly-s)))
+	  (setq *dp-changed* t)
+	  (let* ((old-equalities (polyhedral-structure-equalities poly-s))
+		 (new-equalities (polyhedral-structure-to-equalities
+				  poly-s cong-state))
+		 (brand-new-equalities
+		  (set-difference new-equalities old-equalities :test #'eq)))
+	    (cons (mk-equality eqn *true*)
+		  brand-new-equalities))))))
+
 (defun add-ineq-constraint (eqn cong-state)
   (declare (special *dp-changed*))
   (declare (special *contradiction*))
@@ -250,18 +301,29 @@
 ;;;                                 until (= ps 0)
 ;;;                                 finally (return np)))
 	       (ineq-polyhedron (constraints2polyhedron ineq-constraint
-							max-rays)))
+							max-rays))
+	       (intersect-polyhedron (domainintersection old-polyhedron
+							 ineq-polyhedron
+							 max-rays)))
+	  ;(break)
 	  ;;(when (eq eqn *beqn*) (break))
 	  (cond
-	   ((= (mydomainincludes epsilon-leq-0-poly
-				 (domainintersection old-polyhedron
-						     ineq-polyhedron
-						     max-rays))
+	   ((= (mydomainincludes epsilon-leq-0-poly intersect-polyhedron)
 	       1)
+	    (domain_free intersect-polyhedron)
+	    (domain_free ineq-polyhedron)
+	    (matrix_free ineq-constraint)
 	    *false*)
-	   ((= (mydomainincludes old-polyhedron ineq-polyhedron) 1)
+	   ((= (mydomainincludes ineq-polyhedron old-polyhedron) 1)
+	    (domain_free intersect-polyhedron)
+	    (domain_free ineq-polyhedron)
+	    (matrix_free ineq-constraint)
 	    *true*)
-	   (t eqn)))
+	   (t 
+	    (domain_free intersect-polyhedron)
+	    (domain_free ineq-polyhedron)
+	    (matrix_free ineq-constraint)
+	    eqn)))
 	eqn)))
 
 (defun add-constraint (constraint cong-state)
@@ -334,11 +396,12 @@
 	(labels ((check-var
 		  (var poly-s)
 		  (unless (or missing-var
-			   (dp-gethash
-			    var
-			    (polyhedral-structure-ineq-var-to-index-hash
-			     poly-s)))
-		    (setq missing-var t))))
+			      (dp-numberp var)
+			      (dp-gethash
+			       (term-var var)
+			       (polyhedral-structure-ineq-var-to-index-hash
+				poly-s)))
+		    (setq missing-var var))))
 	  (map-funargs #'check-var diff poly-s))
 	(not missing-var))
       (dp-gethash diff (polyhedral-structure-ineq-var-to-index-hash poly-s))))
