@@ -65,7 +65,7 @@
 ;;; requires keeping both forward and reversed occurrences. 
 
 ;;; Occurrences are given a sexp printed representation.  Lists prefixed with
-;;; #p (for path) are occurrences.  They are always printed in descending order
+;;; #t (for path) are occurrences.  They are always printed in descending order
 ;;; (that is from root to subterm). 
 
 
@@ -247,9 +247,9 @@
 	nil)))
 
 #|
-(assert (occ-equal (occ-diff #p(1 2 3) #p(1 2 3 4 5)) #p(4 5)))
-(assert (eq (occ-diff #p(1 2 3) #p(1 2)) nil))
-(assert (eq (occ-diff #p(1 2 3) #p(1 2 5)) nil)))
+(assert (occ-equal (occ-diff #t(1 2 3) #t(1 2 3 4 5)) #t(4 5)))
+(assert (eq (occ-diff #t(1 2 3) #t(1 2)) nil))
+(assert (eq (occ-diff #t(1 2 3) #t(1 2 5)) nil)))
 |#
 
 ;;; Printing functions
@@ -257,17 +257,17 @@
 (defun print-occ (occ stream depth)
   "Generates printed representation of OCC."  
   (declare (ignore depth))
-  (format stream "#p~S" (occ-path occ)))
+  (format stream "#t~S" (occ-path occ)))
 
 (defun read-list-to-occ (stream subchar arg)
   (declare (ignore subchar arg))
   (list-to-occ (read stream)))
 
-(defun ergolisp::\#p ()
-  (set-dispatch-macro-character #\# #\p #'read-list-to-occ))
+(defun ergolisp::\#t ()
+  (set-dispatch-macro-character #\# #\t #'read-list-to-occ))
 
 (eval-when (load eval)
-  (ergolisp::\#p))
+  (ergolisp::\#t))
 
 
 
