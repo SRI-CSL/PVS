@@ -112,13 +112,24 @@
 	(load bin))))
 
 (defun make-file-name (file)
-  (dolist (dir *pvs-directories*)
-    (let* ((defaults (or (probe-file (format nil "~a/~a/" *pvs-path* dir))
-			 (directory-p dir)))
-	   (path (make-pathname :name file :type "lisp" :defaults defaults)))
-      (when (file-exists-p path)
-	(return-from make-file-name path))))
-  (error "File ~a.lisp cannot be found" file))
+  (let* ((dir (pathname-directory file))
+	 (name (pathname-name file))
+	 (type (or (pathname-type file) "lisp")))
+    (cond (dir
+	   (let ((path (make-pathname :directory dir :name name :type type)))
+	     (if (file-exists-p path)
+		 path
+		 (error "File ~a cannot be found" path))))
+	  (t (dolist (dir *pvs-directories*)
+	       (let* ((defaults (or (probe-file (format nil "~a/~a/"
+						  *pvs-path* dir))
+				    (directory-p dir)))
+		      (path (make-pathname :name name :type type
+					   :defaults defaults)))
+		 (when (file-exists-p path)
+		   (return-from make-file-name path))))
+	     (error "File ~a.~a cannot be found in *pvs-directories*"
+		    name type)))))
 
 (defun compiled-file-older-than-source? (sourcefile binfile)
   (or (not (file-exists-p binfile))
