@@ -194,7 +194,7 @@
     (put-decl (make-instance 'skolem-const-decl
 		'id (id id)
 		'type ctype
-		'module (module context))
+		'module (theory context))
 	      (declarations-hash context))
     (typecheck id
       :expected ctype
@@ -539,7 +539,8 @@ Please provide skolem constants for these variables." overlap)
 					'references references)))))))))))))
 		      
 (defun skolem-step-assert-typepred (fmla)
-  (let* ((sign (not (negation? fmla)))
+  (let* ((*sequent-typealist* nil)
+	 (sign (not (negation? fmla)))
 	 (body (if sign
 		   fmla
 		   (args1 fmla))))
