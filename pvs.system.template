@@ -50,6 +50,7 @@
 (defpackage "ILISP")
 (defpackage "DP")
 (defpackage "POLY")
+(defpackage "BVEC")
 
 (unless (find-package "MAKE")
   (let ((*enable-package-locked-errors* nil))
