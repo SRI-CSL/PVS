@@ -624,8 +624,9 @@
 (defmethod place ((obj cons))
   (let ((start (place (car obj)))
 	(end (place (car (last obj)))))
-    (vector (starting-row start) (starting-col start)
-	    (ending-row end) (ending-col end))))
+    (when (and start end)
+      (vector (starting-row start) (starting-col start)
+	      (ending-row end) (ending-col end)))))
 
 (defmethod place ((obj sbrt::place))
   (vector (sbrt::place-linenumber obj)
