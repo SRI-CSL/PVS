@@ -10,8 +10,6 @@ XCFLAGS = -O
 SHELL = /bin/sh
 VPATH = ..:../bdd/utils:../bdd/src:../mu/src
 
-bddobj = bdd_interface.o bdd_fns.o bdd.o bdd_factor.o bdd_quant.o bdd_vfns.o
-
 muobj = bdd_interface.o bdd.o bdd_factor.o bdd_quant.o bdd_fns.o bdd_vfns.o \
         appl.o mu_interface.o mu.o
 
@@ -21,13 +19,10 @@ utilobj = double.o list.o hash.o alloc.o
 .SUFFIXES: .c .o
 .c.o : ; $(CC) $(XCFLAGS) ${CFLAGS} -c $< -o $@
 
-all : bdd.so mu.so
-
-bdd.so : libutils.a ${bddobj}
-	$(LD) ../bdd-ld-table $(LDFLAGS) -o bdd.so ${bddobj} -lutils -lm
+all : mu.so
 
 mu.so : ${muobj}
-	$(LD) ../mu-ld-table $(LDFLAGS) -o  mu.so  ${muobj} -lutils  -lm 
+	$(LD) ../bdd-ld-table ../mu-ld-table $(LDFLAGS) -o  mu.so  ${muobj} -lutils  -lm 
 
 utils : libutils.a
 
