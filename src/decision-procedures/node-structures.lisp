@@ -138,43 +138,46 @@
 	      :element-type 'node
 	      :initial-contents arguments))
 
-(defun mk-term (arguments)
+(defun mk-term (arguments &optional (type nil))
   (let ((arg-array (mk-arg-array arguments)))
-    (mk-term-array arg-array)))
+    (mk-term-array arg-array type)))
 
-(defun mk-term-array (arg-array)
+(defun mk-term-array (arg-array &optional (type nil))
   (let ((hashed-term (dp-gethash arg-array *term-hash*)))
     (or hashed-term; (break)
 	(setf (dp-gethash arg-array *term-hash*)
-	      (mk-term* arg-array)))))
+	      (mk-term* arg-array type)))))
 
-(defun mk-term* (arg-array)
+(defun mk-term* (arg-array type)
   (let ((new-node (make-application :sxhash (dp-sxhash arg-array)
 				    :index (incf *max-node-index*)
+				    :initial-type type
 				    :arguments arg-array)))
     new-node))
 
-(defun mk-constant (id)
+(defun mk-constant (id &optional (type nil))
   (let ((hashed-constant (dp-gethash id *term-hash*)))
     (or hashed-constant
 	(setf (dp-gethash id *term-hash*)
-	      (mk-constant* id)))))
+	      (mk-constant* id type)))))
 
-(defun mk-constant* (id)
+(defun mk-constant* (id type)
   (let ((new-constant (make-constant :sxhash (dp-sxhash id)
 				     :index (incf *max-node-index*)
+				     :initial-type type
 				     :id id)))
     new-constant))
 
-(defun mk-variable (id)
+(defun mk-variable (id &optional (type nil))
   (let ((hashed-variable (dp-gethash id *term-hash*)))
     (or hashed-variable
 	(setf (dp-gethash id *term-hash*)
-	      (mk-variable* id)))))
+	      (mk-variable* id type)))))
 
-(defun mk-variable* (id)
+(defun mk-variable* (id type)
   (let ((new-variable (make-dp-variable :sxhash (dp-sxhash id)
 					:index (incf *max-node-index*)
+					:initial-type type
 					:id id)))
     new-variable))
 
@@ -304,6 +307,8 @@
 (defvar *difference* (mk-arith-operator 'difference))
 (defvar *sup* (mk-arith-operator 'sup))
 (defvar *inf* (mk-arith-operator 'inf))
+(defvar *floor* (mk-arith-operator 'floor))
+(defvar *ceiling* (mk-arith-operator 'ceiling))
 
 ;;interpreted arithmetic function symbols
 (defvar *arithfuns*
@@ -1138,6 +1143,8 @@
   (setq *difference* (mk-arith-operator 'difference))
   (setq *sup* (mk-arith-operator 'sup))
   (setq *inf* (mk-arith-operator 'inf))
+  (setq *floor* (mk-arith-operator 'floor))
+  (setq *ceiling* (mk-arith-operator 'ceiling))
   (setq *arithfuns*
 	(list *plus* *times* *divide* *minus* *difference* *sup* *inf*))
   (setq *lesseqp* (mk-arith-pred 'lesseqp))
