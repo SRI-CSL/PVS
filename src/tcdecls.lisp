@@ -1778,6 +1778,7 @@
     (|integer| (setq *integer* type)
      (push-ignored-type-constraints *integer*))
     (|naturalnumber| (setq *naturalnumber* type)
-     (push-ignored-type-constraints *naturalnumber*))
+     ;;(push-ignored-type-constraints *naturalnumber*)
+     )
     (|posint| (setq *posint* type))
     (|ordinal| (setq *ordinal* type))))
