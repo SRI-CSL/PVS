@@ -248,7 +248,7 @@
 					  (id (car fields))))
 		 assns)))
       (when ass
-	(check-for-tccs* ass rectype))
+	(check-assignment-types ass expr rectype))
       (let* ((dep? (and (dependent? rectype)
 			(some #'(lambda (fld)
 				  (member (car fields) (freevars fld)
@@ -318,42 +318,96 @@
 (defmethod check-for-tccs* ((ass assignment) expected)
   (with-slots (arguments expression) ass
     (assert (typep expected '(or funtype recordtype tupletype)))
-    (check-assignment-types arguments expression expected)))
+    (check-assignment-types ass expression expected)))
 
-(defmethod check-assignment-types ((args null) expr expected)
+(defun check-assignment-types (assignment expr expected)
+  (assert assignment)
+  (assert expected)
+  (let ((args (arguments assignment)))
+    (check-assignment-types*
+     args
+     (expression assignment)
+     expected
+     (maplet? assignment)
+     (when (some-dependent-arg-domain-type args expected) expr))))
+
+(defmethod check-assignment-types* ((args null) expr expected maplet? oexpr)
   (check-for-tccs* expr expected))
 
-(defmethod check-assignment-types (args expr (expected funtype))
+(defmethod check-assignment-types* (args expr (expected funtype) maplet? oexpr)
   (with-slots (domain range) expected
     (let* ((dtypes (domain-types expected))
-	   (exprs (if (length= dtypes (car args))
-		      (car args)
-		      (exprs (caar args)))))
+	   (exprs (cond ((length= dtypes (car args))
+			 (car args))
+			((cdr dtypes)
+			 (get-arguments-list (caar args)))
+			(t (exprs (caar args))))))
       (check-tup-types exprs dtypes)
-      (check-assignment-types
-       (cdr args)
-       expr
-       (if (typep domain 'dep-binding)
-	   (let ((arg (if (and (eq exprs (car args))
-			       (cdr (car args)))
-			  (make-tuple-expr (car args))
-			  (caar args))))
-	     (substit range
-	       (acons domain arg nil)))
-	   range)))))
+      (let* ((nrange (if (typep domain 'dep-binding)
+			 (let ((arg (if (and (eq exprs (car args))
+					     (cdr (car args)))
+					(make-tuple-expr (car args))
+					(caar args))))
+			   (substit range
+			     (acons domain arg nil)))
+			 range))
+	     (srange (find-supertype nrange)))
+	(if (and oexpr
+		 (typep srange '(or recordtype tupletype))
+		 (dependent? srange))
+	    (let* ((nexpr (apply #'make!-application oexpr (car args)))
+		   (nupdate (make!-update-expr
+			     nexpr
+			     (list (make-instance 'assignment
+				     'arguments (cdr args)
+				     'expression expr))))
+		   (nass (complete-assignments nupdate
+					       (find-supertype nrange))))
+	      (if (typep srange 'recordtype)
+		  (check-rec-assignment-types nass nexpr (fields srange)
+					    (type nexpr) nil)
+		  (check-tup-assignment-types nass nexpr (types srange)
+					    (type nexpr))))
+	    (check-assignment-types*
+	     (cdr args)
+	     expr
+	     nrange
+	     maplet?
+	     (when oexpr
+	       (apply #'make!-application oexpr (car args)))))))))
 
-(defmethod check-assignment-types (args expr (expected recordtype))
+(defmethod check-assignment-types* (args expr (expected recordtype)
+					 maplet? oexpr)
   (let ((field (find-if #'(lambda (fld) (eq (id (caar args)) (id fld)))
 		 (fields expected))))
     (assert field)
-    (check-assignment-types (cdr args) expr (type field))))
+    (let* ((dep? (and oexpr
+		      (freevars field)
+		      (some #'(lambda (fd)
+				(member fd (freevars field)
+					:key #'declaration))
+			    (fields expected))))
+	   (ftype (if dep?
+		      (field-application-type field expected oexpr)
+		      (type field))))
+      (check-assignment-types*
+       (cdr args) expr ftype maplet?
+       (when dep?
+	 (make!-field-application field oexpr))))))
 
-(defmethod check-assignment-types (args expr (expected tupletype))
-  (check-assignment-types (cdr args) expr (nth (1- (number (caar args)))
-					       (types expected))))
+(defmethod check-assignment-types* (args expr (expected tupletype)
+					 maplet? oexpr)
+  (check-assignment-types*
+   (cdr args)
+   expr
+   (nth (1- (number (caar args))) (types expected))
+   maplet?
+   (when oexpr
+     (make!-projection-application (number (caar args)) oexpr))))
 
-(defmethod check-assignment-types (args expr (expected dep-binding))
-  (check-assignment-types args expr (type expected)))
+(defmethod check-assignment-types* (args expr (expected dep-binding)
+					 maplet? oexpr)
+  (check-assignment-types* args expr (type expected) maplet? oexpr))
 
 
 ;;; Check-types for type expressions
