@@ -1146,17 +1146,18 @@ echo area."
   "Extend the prelude with the specified context
 
 The load-prelude-library command prompts for a context pathname (i.e.,
-directory), and extends the prelude with all of the theories that make up
-that context.  Note that the theories that make up the context are defined
-by the .pvscontext file in the associated directory - there may be
-specification files in the same directory that are not a part of the
-context.  The files that make up the context are typechecked if necessary,
-and internally the prelude is extended.  All of the theories of the
-current context are untypechecked, as they may not typecheck the same way
-in the extended prelude.  The PVS context is updated to reflect that the
-prelude has been extended.  Thus the next time this context is entered,
-the prelude will automatically be extended (by typechecking the libraries
-if necessary)."
+directory, or subdirectory of a directory in PVS_LIBRARY_PATH), and
+extends the prelude with all of the theories that make up that context.
+Also loads pvs-lib.lisp and pvs-lib.el files from that context, if they
+exist.  Note that the theories that make up the context are defined by the
+.pvscontext file in the associated directory - there may be specification
+files in the same directory that are not a part of the context.  The files
+that make up the context are typechecked if necessary, and internally the
+prelude is extended.  All of the theories of the current context are
+untypechecked, as they may not typecheck the same way in the extended
+prelude.  The PVS context is updated to reflect that the prelude has been
+extended.  Thus the next time this context is entered, the prelude will
+automatically be extended (by typechecking the libraries if necessary)."
   (interactive (list (pvs-complete-library-path
 		      "(Load prelude library from) directory: ")))
   (let ((default-directory (pvs-current-directory t)))
@@ -1169,9 +1170,10 @@ if necessary)."
       (setq dir (concat dir "/")))
     (if (file-equal dir *pvs-current-directory*)
 	(message "Cannot use current context as a prelude")
-	(pvs-send (format "(load-prelude-library \"%s\")" dir)))
-    (load-pvs-lib-file dir)))
+	(pvs-send (format "(load-prelude-library \"%s\" %s)"
+		      dir (and current-prefix-arg t))))))
 
+;;; This is invoked from the load-prelude-library lisp function.
 (defun load-pvs-lib-file (dir)
   (let* ((load-path (cons dir load-path))
 	 (el-file (concat dir "pvs-lib.el"))
@@ -1181,15 +1183,20 @@ if necessary)."
 	   (when (and (file-exists-p el-file)
 		      (file-newer-than-file-p el-file elc-file))
 	     (pvs-msg "Source file %s is newer" el-file))
-	   (if (load elc-file nil nil t)
-	       (pvs-msg "%s loaded" elc-file)
-	       (pvs-msg "%s not loaded" elc-file)))
+	   (let ((success (load elc-file nil nil t)))
+	     (if success
+		 (pvs-msg "%s loaded" elc-file)
+		 (pvs-msg "%s not loaded" elc-file))
+	     success))
 	  ((file-exists-p el-file)
 	   (pvs-msg "Attempting to load file %s..." el-file)
-	   (if (load el-file nil nil t)
-	       (pvs-msg "%s loaded" el-file)
-	       (pvs-msg "%s not loaded" el-file)))
-	  (t (pvs-msg "%s not found" el-file)))))
+	   (let ((success (load el-file nil nil t)))
+	     (if success
+		 (pvs-msg "%s loaded" el-file)
+		 (pvs-msg "%s not loaded" el-file))
+	     success))
+	  (t (pvs-msg "%s not found" el-file)
+	     nil))))
 
 
 (defpvs remove-prelude-library library (dir)
