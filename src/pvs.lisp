@@ -1294,7 +1294,7 @@
 		  (format nil "~v<n/a~>" timelength))))
 	  (format out "~%    Totals: ~d formulas, ~d attempted, ~d succeeded ~
                        (~,2,-3f s)"
-	    total (+ proved unfin) proved time)))
+	    total (+ proved unfin) proved runtime)))
       t)))
 
 (defun pvs-prove-decl (decl retry?)
