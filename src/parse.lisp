@@ -2055,7 +2055,7 @@
 				(xt-simplebind-domain-type x range))
 			    (car formals)))
 	      (tvar (make-new-variable '|t| (cons range dom)))
-	      (domain (xt-funtype-domain dom tvar)))
+	      (domain (xt-funtype-domain dom range tvar)))
 	 (make-instance 'funtype
 	   'domain domain
 	   'range (xt-subst-new-domain-dep domain range))))))
