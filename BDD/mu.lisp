@@ -369,7 +369,7 @@
 		   expr)))
     (cond ((disjunction? expr) (convert-pvs-to-mu-disjunction expr))
           ((conjunction? expr) (convert-pvs-to-mu-conjunction expr))  
-          ((iff? expr)  (convert-pvs-to-mu-iff expr))
+          ((iff-or-boolean-equation? expr)  (convert-pvs-to-mu-iff expr))
           ((implication? expr)  (convert-pvs-to-mu-implication expr))
           ((not-expr? expr)   (convert-pvs-to-mu-negation expr))
           ((branch? expr)  (convert-pvs-to-mu-branch  expr))

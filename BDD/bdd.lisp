@@ -325,7 +325,7 @@
 	((conjunction? expr)
 	 (bdd-and (translate-to-bdd* (args1 expr))
 		  (translate-to-bdd* (args2 expr))))
-	((iff? expr)
+	((iff-or-boolean-equation? expr)
 	 (bdd-equiv (translate-to-bdd* (args1 expr))
 		    (translate-to-bdd* (args2 expr))))
 	((not-expr? expr)
