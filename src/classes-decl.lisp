@@ -136,7 +136,8 @@
   subtypes)
 
 (defcl library-datatype (datatype)
-  library)
+  library
+  library-path)
 
 
 (defcl inline-datatype-with-subtypes (inline-datatype datatype-with-subtypes))
@@ -180,7 +181,8 @@
   typecheck-time)
 
 (defcl library-theory (module)
-  library)
+  library
+  library-path)
 
 (defcl exporting (syntax)
   (names :documentation "a list of names and absexpnames" :parse t)
