@@ -13,7 +13,10 @@
 (in-package 'pvs)
 
 (defmacro tcdebug (ctl &rest args)
-  `(when *tcdebug* (format t ,ctl ,@args)))
+  `(when *tcdebug*
+     (if *to-emacs*
+	 (pvs-message ,ctl ,@args)
+	 (format t ,ctl ,@args))))
 
 (defmacro makesym (ctl &rest args)
   `(intern (format nil ,ctl ,@args) :pvs))
