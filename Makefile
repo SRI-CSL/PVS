@@ -329,6 +329,9 @@ lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${decision-procedures} ${ws1slisp} ${groundevallisp} \
              ${inst-by-unif-lisp} ${qelisp} ${follisp} ${abstractionlisp}
 
+templatedeps = pvs src/make-allegro-pvs.lisp pvs.system \
+               ess/dist-ess.lisp ess/allegro-runtime.lisp
+
 all-lisp-files = ${ess} ${pvs-parser-in} ${lisp-files}
 
 fasl-files = $(lisp-files:.lisp=.$(LISPEXT))
@@ -355,7 +358,42 @@ xemacs19-elc = $(pvs-xemacs19-src:.el=.elc) $(ilisp-xemacs19-src:.el=.elc)
 emacs += emacs/xemacs19/pvs-load.elc
 endif
 
-all : full
+all : ${templatedeps} full
+
+pvs : pvs.template
+	@echo "Run make install [PVSPATH=cdir]"
+	@echo "where cdir is the current directory (this is not done automatically"
+	@echo "since pwd may not give the right values for mounted directories)"
+	rm -f pvs
+	exit 1
+
+src/make-allegro-pvs.lisp : src/make-allegro-pvs.lisp.template
+	@echo "Run make install [PVSPATH=cdir]"
+	@echo "where cdir is the current directory (this is not done automatically"
+	@echo "since pwd may not give the right values for mounted directories)"
+	rm src/make-allegro-pvs.lisp
+	exit 1
+
+pvs.system : pvs.system.template
+	@echo "Run make install [PVSPATH=cdir]"
+	@echo "where cdir is the current directory (this is not done automatically"
+	@echo "since pwd may not give the right values for mounted directories)"
+	rm -f pvs.system
+	exit 1
+
+ess/dist-ess.lisp : ess/dist-ess.lisp.template
+	@echo "Run make install [PVSPATH=cdir]"
+	@echo "where cdir is the current directory (this is not done automatically"
+	@echo "since pwd may not give the right values for mounted directories)"
+	rm ess/dist-ess.lisp
+	exit 1
+
+ess/allegro-runtime.lisp : ess/allegro-runtime.lisp.template
+	@echo "Run make install [PVSPATH=cdir]"
+	@echo "where cdir is the current directory (this is not done automatically"
+	@echo "since pwd may not give the right values for mounted directories)"
+	rm ess/allegro-runtime.lisp
+	exit 1
 
 full : makefileutils makebdd makepolylib makews1s ${pvsfull} ${emacs}
 
@@ -418,8 +456,8 @@ src/pvs-methods.lisp : src/make-pvs-methods.lisp src/defcl.lisp \
 		-L src/make-pvs-methods.lisp
 
 ${LISP} :
-	echo "Need to set the LISP variable in Makefile to a valid"
-	echo "allegro 5.0 lisp executable for this platform"
+	@echo "Need to set the LISP variable in Makefile to a valid"
+	@echo "allegro 5.0 lisp executable for this platform"
 
 .PHONY: all makefileutils makebdd makepolylib makews1s install clean
 makefileutils :
