@@ -132,23 +132,26 @@ the formula.  With an argument, runs the proof in the background."
 ;;; will attempt to get back to the beginning of the formula that was
 ;;; attempted.
 
-(defun pvs-prove-formula (name origin &optional rerun-proof background display)
+(defun pvs-prove-formula (name origin &optional rerun-proof background display
+			       unproved)
   (let* ((prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
 	 (line (+ (current-line-number) prelude-offset))
 	 (rerun (pvs-send-and-wait
-		 (format "(rerun-proof-at? \"%s\" %d \"%s\" %s)"
-		     name line origin rerun-proof)
+		 (format "(rerun-proof-at? \"%s\" %d \"%s\" %s %s)"
+		     name line origin rerun-proof unproved)
 		 nil nil "T\\|NIL")))
     (if rerun
 	(ilisp-send
-	 (format "(prove-file-at \"%s\" %d %s \"%s\" \"%s\" %d %s %s)"
+	 (format "(prove-file-at \"%s\" %d %s \"%s\" \"%s\" %d %s %s %s)"
 	     name line (eq rerun 'T) origin (buffer-name)
-	     prelude-offset background display)
+	     prelude-offset background display unproved)
 	 nil 'pr (not background))
 	(setq *pvs-error* t))))
 
 (defpvs prove-next-unproved-formula prove ()
-  "Invokes the prover on the next unproved formula at or beyond the
+  "Invokes the prover on the next unproved formula.
+
+Invokes the prover on the next unproved formula at or beyond the
 current cursor position.  If the formula already has a proof, you will
 be asked whether to go ahead and run it or to start anew.  Note that
 starting a new proof will not delete the old proof unless you allow the
@@ -172,13 +175,7 @@ prover to overwrite it at the end of the proof session."
 					nil 'tc nil)
 	       (error "%s is not typechecked" name))))
       (unless *pvs-error*
-	(ilisp-send
-	 (format "(prove-next-unproved-formula \"%s\" %d %s \"%s\" \"%s\" %d)"
-	     name line (and current-prefix-arg t) origin (buffer-name)
-	     prelude-offset)
-	 nil 'pru t)
-	(unless *pvs-error*
-	  (switch-to-lisp t t))))))
+	(pvs-prove-formula name origin nil nil pvs-x-show-proofs t)))))
 
 (defpvs prove-theory prove (theory)
   "Attempt to prove all the formulas of a theory.
@@ -1254,7 +1251,9 @@ the given STRATEGY.
 
 Attempts all untried formulas in the specified PVS FILE which have no
 associated proofs, using the specified STRATEGY which defaults to (GRIND).
-With an argument (e.g., M-0 or C-u) proves untried TCCs as well."
+With an argument (e.g., M-0 or C-u) proves untried TCCs as well.  If a
+strategy is supplied, it becomes the default for the next invocation of
+prove-untried-pvs-file or prove-untried-theory."
   (interactive (append (complete-pvs-file-name
 			"Prove untried in PVS file named: ")
 		       (list (read-from-minibuffer
@@ -1280,7 +1279,9 @@ the given STRATEGY.
 
 Attempts all untried formulas in the specified THEORY which have no
 associated proofs, using the specified STRATEGY which defaults to (GRIND).
-With an argument (e.g., M-0 or C-u) proves untried TCCs as well."
+With an argument (e.g., M-0 or C-u) proves untried TCCs as well.  If a
+strategy is supplied, it becomes the default for the next invocation of
+prove-untried-pvs-file or prove-untried-theory."
   (interactive (append (complete-theory-name
 			"Prove untried in theory named: ")
 		       (list (read-from-minibuffer
@@ -1297,8 +1298,10 @@ With an argument (e.g., M-0 or C-u) proves untried TCCs as well."
   (pvs-bury-output)
   (save-some-pvs-buffers)
   (pvs-send (format "(prove-untried-theory \"%s\" '%s %s)"
-		theory strategy (and current-prefix-arg t))
-	    nil))
+		theory strategy (and current-prefix-arg t)
+		(when (equal theory (current-theory))
+		  (format "\"%s\"" (current-pvs-file t))))
+	    nil 'prut))
 
 
 ;;; These all pertain only to a proof in progress
@@ -1604,7 +1607,7 @@ Letters do not insert themselves; instead, they are commands:
   (if (eq (point) (point-max))
       (error "At end of buffer")
       (let ((start (point)))
-	(cond ((memq pvs-emacs-system '(xemacs19 xemacs20))
+	(cond ((memq pvs-emacs-system '(xemacs21 xemacs20 xemacs19))
 	       (insert-face "!!" 'font-lock-pvs-checkpoint-face))
 	      (t (insert "!!")
 		 (overlay-put (make-overlay start (point))
