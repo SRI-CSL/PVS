@@ -1951,6 +1951,28 @@ pvs-strategies files.")
 	 ;; extension
 	 )))
 
+(defun restore-proofs-from-split-file (file)
+  (let ((prfpath (make-prf-pathname file)))
+    (if (file-exists-p prfpath)
+	(with-open-file (input prfpath :direction :input)
+	  (restore-proofs-from-split-file* input prfpath))
+	(format t "~%Proof file ~a does not exist" prfpath))))
+
+(defun restore-proofs-from-split-file* (input prfpath)
+  (let ((theory-proofs (read input nil nil)))
+    (when theory-proofs
+      (let* ((theoryid (car theory-proofs))
+	     (proofs (cdr theory-proofs))
+	     (theory (get-theory theoryid)))
+	(unless (every #'consp proofs)
+	  (error "Proofs file ~a is corrupted" prfpath))
+	(cond (theory
+	       (restore-theory-proofs theory proofs)
+	       (format t "~%Theory ~a proofs restored" theoryid))
+	      (t (format t "~%Theory ~a not found, ignoring" theoryid)))
+	(restore-proofs-from-split-file* input prfpath)))))
+
+
 ;;; There are 3 forms of justification used in PVS.
 ;;;   justification - this is what is generated during proof
 ;;;   justification-sexp - what is saved to file:
