@@ -145,7 +145,7 @@
 (defun ics-state-unchanged? (state1 state2)
    (assert (state-wrap? state1))
    (assert (state-wrap? state2))
-   (zerop (ics_context_eq (state-unwrap state1) (state-unwrap2))))
+   (zerop (ics_context_eq (state-unwrap state1) (state-unwrap state2))))
 
 
 ;; Return a unique name for an expression
