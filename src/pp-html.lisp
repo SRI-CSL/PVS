@@ -35,6 +35,7 @@
 	     (html-pvs-file* file-name force?)
 	     (when all?
 	       (html-prelude include-prelude-operators? force?)
+	       (html-prelude-libraries include-prelude-operators? force?)
 	       (dolist (dep (file-dependencies file-name))
 		 (html-pvs-file* dep force?)))))
 	  (t (pvs-message "File ~a has not been typechecked" file-name))))
@@ -118,6 +119,33 @@
 				  :direction :output
 				  :if-exists :supersede)
 	(html-theories "prelude" pvs-file)))))
+
+(defun html-prelude-libraries (&optional include-prelude-operators? force?)
+  (unless (zerop (hash-table-count *prelude-libraries*))
+    (let ((*include-prelude-operators* include-prelude-operators?))
+      (maphash
+       #'(lambda (lib-ref files&theories)
+	   (with-pvs-context lib-ref
+	     (restore-context)
+	     (let* ((*pvs-files* (car files&theories))
+		    (*pvs-modules* (cadr files&theories))
+		    (dir (libref-to-pathname lib-ref)))
+	       (maphash
+		#'(lambda (file theories)
+		    (let ((html-file (make-htmlpath file))
+			  (pvs-file (make-specpath file))
+			  (*html-theories* (cdr theories)))
+		      (assert (file-exists-p pvs-file))
+		      (when (or force?
+				(not (file-exists-p html-file))
+				(file-older html-file pvs-file))
+			(with-open-file (*html-out* html-file
+						    :direction :output
+						    :if-exists :supersede)
+			  (html-theories file pvs-file))
+			(pvs-message "~a generated" html-file))))
+		*pvs-files*))))
+       *prelude-libraries*))))
 
 (defvar *html-out* nil)
 
