@@ -2975,7 +2975,7 @@ required a context.")
     (set-assignment-arg-types* (cdr args-list) (cdr values) ex expected)))
 
 (defmethod set-assignment-arg-types* (args-list values ex (expected subtype))
-  (set-assignment-arg-types* args-list values ex (supertype expected)))
+  (call-next-method))
 
 (defmethod set-assignment-arg-types* (args-list values ex (expected recordtype))
   (with-slots (fields) expected
