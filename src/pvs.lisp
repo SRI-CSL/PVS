@@ -307,7 +307,7 @@
     (check-for-theory-clashes new-theories filename)
     ;;(check-import-circularities new-theories filename)
     (update-parsed-file filename file theories new-theories forced?)
-    (pvs-message "~a parsed in ~,2f seconds" filename time)
+    (pvs-message "~a parsed in ~,2,-3f seconds" filename time)
     #+pvsdebug (assert (every #'(lambda (nth) (get-theory (id nth)))
 			      new-theories))
     (mapcar #'(lambda (nth) (get-theory (id nth))) new-theories)))
@@ -544,9 +544,7 @@
       (parse-file filename forced? t)
     (let ((*current-file* filename)
 	  (*typechecking-module* nil)
-	  (*tc-theories* *tc-theories*)
-	  ;;(start-time (get-internal-real-time))
-	  )
+	  (*tc-theories* *tc-theories*))
       (when theories
 	(cond ((and (not forced?)
 		    theories
@@ -608,15 +606,14 @@
 	       (prv (cadr (tcc-info theory)))
 	       (mat (caddr (tcc-info theory)))
 	       (obl (- tot prv mat))
-	       (time (/ (- (get-internal-real-time) start-time)
-			internal-time-units-per-second 1.0)))
+	       (time (realtime-since start-time)))
 	  (if (zerop tot)
-	      (pvs-message "~a typechecked in ~,2fs: No TCCs generated~
+	      (pvs-message "~a typechecked in ~,2,-3fs: No TCCs generated~
                             ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
 		(id theory) time (length (warnings theory))
 		(length (info theory)))
 	      (pvs-message
-		  "~a typechecked in ~,2fs: ~d TCC~:p, ~
+		  "~a typechecked in ~,2,-3fs: ~d TCC~:p, ~
                    ~d proved, ~d subsumed, ~d unproved~
                    ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
 		(id theory) time tot prv mat obl
@@ -701,14 +698,12 @@
     (unless (justification decl)
       (setf (justification decl) (tcc-strategy decl))
       (setq *justifications-changed?* t))
-    (let* ((start-time (get-internal-real-time))
-	   (*proving-tcc* 'TCC)
-	   (proof (rerun-prove decl))
-	   (proof-time (/ (- (get-internal-real-time) start-time)
-			  internal-time-units-per-second 1.0)))
+    (let* ((*proving-tcc* 'TCC)
+	   (proof (rerun-prove decl)))
       (pvs-message
-	  "~:[Unable to prove~;Proved~] ~:[~;TCC ~]~a in ~,2f seconds"
-	(eq (status-flag proof) '!) (tcc? decl) (id decl) proof-time)
+	  "~:[Unable to prove~;Proved~] ~:[~;TCC ~]~a in ~,2,-3f seconds"
+	(eq (status-flag proof) '!) (tcc? decl) (id decl)
+	(real-proof-time decl))
       ;; Must return non-NIL if proved, NIL otherwise.
       (if (eq (status-flag proof) '!)
 	  (setf (proof-status decl) 'proved)
@@ -1245,15 +1240,17 @@
 	       (prove-proofchain-decl fdecl retry?))))))
 
 (defun prove-proofchain-decl (fdecl retry?)
-  (let ((decls-tried nil) (total 0) (proved 0) (time 0) (unfin 0))
+  (let ((decls-tried nil) (total 0) (proved 0) (unfin 0)
+	(realtime 0) (runtime 0))
     (read-strategies-files)
     (labels ((ppd (decl)
 	       (unless (memq decl decls-tried)
 		 (let ((*justifications-changed?* nil))
 		   (push decl decls-tried)
 		   (incf total)
-		   (incf time (nth-value 1
-				(pvs-prove-decl decl retry?)))
+		   (pvs-prove-decl decl retry?)
+		   (incf realtime (real-proof-time decl))
+		   (incf runtime (run-proof-time decl))
 		   (if (unproved? decl) (incf unfin) (incf proved))
 		   (when *justifications-changed?*
 		     (save-all-proofs (module decl))))
@@ -1265,13 +1262,27 @@
 		 (ppds (cdr decls)))))
       (ppd fdecl))
     (pvs-buffer "PVS Status"
-      (with-output-to-string (*standard-output*)
-	(mapc #'(lambda (decl)
-		  (format t "~%    ~55,1,0,'.a~10a"
-		    (id decl) (proof-status-string decl)))
-	      decls-tried)
-	(format t "~%    Totals: ~d formulas, ~d attempted, ~d succeeded."
-	  total (+ proved unfin) proved))
+      (with-output-to-string (out)
+	(format out "~2%~vTProof summary for proofchain for ~a.~a"
+	  (id (module fdecl)) (id fdecl))
+	(let* ((maxtime (reduce #'max decls-tried
+				:key #'(lambda (d)
+					 (or (run-proof-time d) 0))
+				:initial-value 0))
+	       (timelength (length (format nil "~,2,-3f" maxtime)))
+	       (idlength (- 48 timelength)))
+	  (dolist (decl decls-tried)
+	    (format out "~%    ~v,1,0,'.a~19a [~a](~a s)"
+	      idlength
+	      (id decl)
+	      (proof-status-string decl)
+	      (if (justification decl) (if (new-ground? decl) 'N 'O) 'U)
+	      (if (run-proof-time decl)
+		  (format nil "~v,2,-3f" timelength (run-proof-time decl))
+		  (format nil "~v<n/a~>" timelength))))
+	  (format out "~%    Totals: ~d formulas, ~d attempted, ~d succeeded ~
+                       (~,2,-3f s)"
+	    total (+ proved unfin) proved time)))
       t)))
 
 (defun pvs-prove-decl (decl retry?)
@@ -1280,52 +1291,52 @@
 		  (eq (kind decl) 'tcc))
 	      (or retry?
 		  (unproved? decl)))
-	 (let ((start-time (get-internal-real-time))
-	       (*rerunning-proof* (format nil "Proving ~a.~a"
+	 (let ((*rerunning-proof* (format nil "Proving ~a.~a"
 				    (id *current-theory*) (id decl))))
 	   (setf (proof-status decl) 'unproved)
 	   (cond ((justification decl)
 		  (pvs-message "Rerunning proof of ~a" (id decl))
-		  (let ((pstat (rerun-prove decl))
-			(time (/ (- (get-internal-real-time) start-time)
-				 internal-time-units-per-second 1.0)))
-		    (pvs-message "~a ~aproved in ~,2f seconds"
-		      (id decl) (if (unproved? decl) "un" "") time)
+		  (let ((pstat (rerun-prove decl)))
+		    (pvs-message
+			"~a ~aproved in ~,2,-3f real, ~,2,-3f cpu seconds"
+		      (id decl) (if (unproved? decl) "un" "")
+		      (real-proof-time decl) (run-proof-time decl))
 		    (when (eq (proof-status decl) 'unproved)
 		      (setf (proof-status decl) 'unfinished))
 		    (update-context-proof-status decl)
-		    (values pstat time)))
+		    pstat))
 		 (t (pvs-message "Proving ~a..." (id decl))
-		    (let ((pstat (prove-tcc decl))
-			  (time (/ (- (get-internal-real-time) start-time)
-				   internal-time-units-per-second 1.0)))
-		      (values pstat time))))))
+		    (prove-tcc decl)))))
 	((or (justification decl)
 	     (not (unproved? decl)))
 	 (pvs-message "~a is already proved" (id decl))
-	 (values nil 0))
+	 nil)
 	(t (pvs-message "~a has no proof" (id decl))
-	   (values nil 0))))
+	   nil)))
 
 
 (defun get-proofchain (fdecl)
   (union (refers-to fdecl) (proof-refers-to fdecl)))
 
 (defun prove-theories (name theories retry? &optional use-default-dp?)
-  (let ((total 0) (proved 0) (time 0)
+  (let ((total 0) (proved 0) (realtime 0) (runtime 0)
 	(*use-default-dp?* use-default-dp?))
     (read-strategies-files)
     (dolist (theory theories)
       (let ((*justifications-changed?* nil))
 	(dolist (d (provable-formulas theory))
 	  (incf total)
-	  (let ((ptime (nth-value 1 (pvs-prove-decl d retry?))))
-	    (incf time ptime))
+	  (pvs-prove-decl d retry?)
+	  (when (real-proof-time d)
+	    (incf realtime (real-proof-time d)))
+	  (when (run-proof-time d)
+	    (incf runtime (run-proof-time d)))
 	  (unless (unproved? d) (incf proved)))
 	(when *justifications-changed?*
 	  (save-all-proofs *current-theory*))))
-    (pvs-message "~a: ~d proofs attempted, ~d proved in ~,2f seconds"
-		   name total proved time)))
+    (pvs-message
+	"~a: ~d proofs attempted, ~d proved in ~,2,-3f real, ~,2,-3f cpu seconds"
+      name total proved realtime runtime)))
 
 
 
