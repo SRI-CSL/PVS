@@ -226,7 +226,7 @@
 
 (defcl typed-declaration (declaration)
   (declared-type :parse t)
-  declared-type-string
+  (declared-type-string :fetch-as nil)
   type)
 
 
@@ -325,20 +325,20 @@
   (spelling :documentation "One of formula, axiom, lemma, etc." :parse t)
   (definition :parse t)
   ;; The universal closure of the definition, used in create-formulas
-  closed-definition
+  (closed-definition :fetch-as nil)
   kind
-  (tcc-disjuncts
-   :documentation "The disjuncts of the definition used for TCCs")
   (justification :fetch-as nil)
   (justification2 :fetch-as nil)
-  new-ground?
-  modified-proof?
+  (new-ground? :fetch-as nil)
+  (modified-proof? :fetch-as nil)
   (proof-status
    :documentation "One of proved, unproved, unfinished, or unchecked")
   proof-refers-to
   proof-time)
 
 (defcl tcc-decl (formula-decl)
+  (tcc-disjuncts
+   :documentation "The disjuncts of the definition used for TCCs")
   importing-instance)
 
 (defcl subtype-tcc (tcc-decl))
