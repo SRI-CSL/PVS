@@ -122,14 +122,6 @@
   (set-nonempty-type (type-value decl))
   decl)
 
-(defmethod typecheck* ((decl nonempty-type-eq-decl) expected kind arguments)
-  (declare (ignore expected kind arguments))
-  (call-next-method)
-  (check-nonempty-type-of decl)
-  (when *loading-prelude*
-    (set-prelude-types (id decl) (type-value decl)))
-  decl)
-
 (defmethod typecheck* ((decl formal-subtype-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
   (check-duplication decl)
@@ -308,8 +300,8 @@
     (set-prelude-types (id decl) (type-value decl)))
   decl)
 
-(defmethod typecheck* ((decl nonempty-type-from-decl) expected kind arguments)
-  (call-next-method))
+;(defmethod typecheck* ((decl nonempty-type-from-decl) expected kind arguments)
+;  (call-next-method))
 
 (defmethod check-nonempty-type-of ((decl nonempty-type-def-decl))
   (let ((ctype (copy (type-value decl) 'print-type nil)))
@@ -414,14 +406,14 @@
 ;			       (car typeslist) (cdr typeslist)
 ;			       nil nil))))
 
-(defun make-formals-funtype (formals range &optional dont-typecheck)
+(defun make-formals-funtype (formals range)
   (let ((*generate-tccs* 'none))
     (if (null formals)
 	range
 	(let ((nrange (make-formals-funtype (cdr formals) range)))
-	  (make-formals-funtype* (car formals) nrange dont-typecheck)))))
+	  (make-formals-funtype* (car formals) nrange)))))
 
-(defun make-formals-funtype* (formals range dont-typecheck)
+(defun make-formals-funtype* (formals range)
   (if (some #'(lambda (ff) (occurs-in ff range)) formals)
       (let* ((ndom (make-formals-domain formals))
 	     (nvar (if (cdr formals)
@@ -746,7 +738,6 @@
       (nth-domain (range funtype) (cdr doms))))
 
 (defmethod measure-incompatible (decl type (meas lambda-expr) mtypes)
-  (declare (ignore decl))
   (let ((ftypes (remove-if-not #'(lambda (mty) (typep mty 'funtype))
 		  mtypes)))
     (if ftypes
@@ -953,8 +944,8 @@
 	 (body (definition-body decl))
 	 (wprem (weak-induction-hypothesis wvar fixed-vars rem-vars body decl))
 	 (sprem (strong-induction-hypothesis svar fixed-vars rem-vars body decl))
-	 (wconc (make-inductive-conclusion wvar fixed-vars rem-vars decl))
-	 (sconc (make-inductive-conclusion svar fixed-vars rem-vars decl))
+	 (wconc (make-inductive-conclusion wvar rem-vars decl))
+	 (sconc (make-inductive-conclusion svar rem-vars decl))
 	 (wform (make-forall-expr (append fixed-vars (list wbd))
 		  (make-implication wprem wconc)))
 	 (sform (make-forall-expr (append fixed-vars (list sbd))
@@ -1048,14 +1039,14 @@
   (let ((*generate-tccs* 'none))
     (if (null rem-vars)
 	(make-implication
-	 (subst-strong-pred-for-ind nvar fixed-vars rem-vars expr decl)
+	 (subst-strong-pred-for-ind nvar fixed-vars expr decl)
 	 nvar)
 	(make-forall-expr rem-vars
 	  (make-implication
-	   (subst-strong-pred-for-ind nvar fixed-vars rem-vars expr decl)
+	   (subst-strong-pred-for-ind nvar fixed-vars expr decl)
 	   (make-application* nvar (mapcar #'make-variable-expr rem-vars)))))))
 
-(defun subst-strong-pred-for-ind (nvar fixed-vars rem-vars expr decl)
+(defun subst-strong-pred-for-ind (nvar fixed-vars expr decl)
   (gensubst expr
     #'(lambda (ex)
 	(typecase ex
@@ -1080,7 +1071,7 @@
 	  (name-expr
 	   (eq (declaration ex) decl))))))
 
-(defun make-inductive-conclusion (var fixed-vars rem-vars decl)
+(defun make-inductive-conclusion (var rem-vars decl)
   (let* ((dname (mk-name-expr (id decl) nil nil
 			      (make-resolution decl
 				(mod-name *current-context*)
@@ -1279,6 +1270,7 @@
 			    (conversion (resolution (operator expr)))))))))
 
 (defmethod look-for-expected-from-conversion (expr)
+  (declare (ignore expr))
   nil)
 
 
@@ -1602,7 +1594,7 @@
   (declare (ignore expected kind arguments))
   (setf (type decl) (typecheck* (declared-type decl) nil nil nil))
   (set-type (declared-type decl) nil)
-  (let ((*no-conversions-allowed*))
+  (let ((*no-conversions-allowed* t))
     (typecheck* (name decl) (type decl) nil nil))
   (add-judgement-decl decl))
 
@@ -1662,133 +1654,6 @@
 	 (mk-application* expr names)
 	 (cdr formals)))))
 
-(defun typecheck-funtype-judgement (decl)
-  (let* ((jtype (find-supertype (type decl)))
-	 (jdom (domain-types jtype))
-	 (jran (range jtype))
-	 (ntype (find-supertype (type (resolution (name decl)))))
-	 (ndom (domain-types ntype))
-	 (nran (range ntype))
-	 (bds (make-new-bind-decls jdom))
-	 (bvars (mapcar #'make-variable-expr bds))
-	 (*bound-variables* (append bds *bound-variables*)))
-    (check-judgement-types jdom ndom bvars)
-    (let ((appl (mk-application* (name decl) bvars))
-	  (range (if (typep (domain (type decl)) 'dep-binding)
-		     (substit (range (type decl))
-		       (acons (domain (type decl))
-			      (make-arg-tuple-expr bvars)
-			      nil))
-		     (range (type decl)))))
-      (typecheck* appl range nil nil))
-    (let* ((*generate-tccs* 'none)
-	   (ctype (compatible-type (type decl)
-				   (type (resolution (name decl)))))
-	   (incs (compatible-preds ctype (type decl) (name decl))))
-      (generate-subtype-tcc (name decl) (type decl) incs))
-    (if (some #'(lambda (x) (typep x 'dep-binding))
-	      ndom)
-	(let ((ctype (make-judgement-dependent-type
-		      ndom jdom jran bvars decl)))
-	  (when ctype
-	    (setf (comparison-type decl) ctype)))
-	(add-domains-to-known-subtypes decl bvars jdom jran))))
-
-(defun add-domains-to-known-subtypes (decl vars jdom jran)
-  (let* ((op (name decl))
-	 (res (resolution op))
-	 (jtypes (get-judgements res))
-	 (joptypes (find-best-judgement-optypes vars (type res) jtypes)))
-    (dolist (joptype joptypes)
-      (let ((boptype (type res)))
-	(mapc #'add-to-known-subtypes jdom (domain-types boptype))))))
-
-;;; This is essentially the same as find-best-judgment-optype in
-;;; set-type.lisp, except that the expected is not provided, and it
-;;; returns a list of types.
-
-(defun find-best-judgement-optypes (args optype jtypes)
-  ;; jtypes is a list of types and judgement-resolutions
-  (let ((best-optypes (find-best-operator-types args (cons optype jtypes))))
-    (assert best-optypes)
-    best-optypes))
-
-(defun find-best-operator-types (args optypes)
-  (assert optypes)
-  (let* ((*generate-tccs* 'none)
-	 (*substituted-subtypes* nil)
-	 (distances (optype-distances args optypes nil nil)))
-    (minimal-optypes* distances optypes (apply #'min distances) nil)))
-
-(defun make-judgement-dependent-type (ndom jdom jran bvars decl)
-  (let ((newdom (make-judgement-dependent-domain ndom jdom)))
-    (add-domains-to-known-subtypes decl bvars newdom jran)
-    (unless (equal newdom jdom)
-      (let* ((dtype (find-supertype (type decl)))
-	     (tupdom (if (cdr newdom) (mk-tupletype newdom) (car newdom)))
-	     (ftype (if (typep (domain dtype) 'dep-binding)
-			(let ((dv (make-new-dep-binding-variable 'x tupdom)))
-			  (mk-funtype (declaration dv)
-				      (substit (range dtype)
-					(acons (domain dtype) dv nil))))
-			(mk-funtype tupdom (range dtype)))))
-	(if (eq (type decl) dtype)
-	    ftype
-	    (let* ((nvar (make-new-variable-name-expr 'y ftype))
-		   (appl (beta-reduce
-			  (typecheck* (mk-application (predicate dtype) nvar)
-				      *boolean* nil nil)))
-		   (lam-expr (make-lambda-expr (list (declaration nvar))
-			       appl)))
-	      (mk-subtype ftype lam-expr)))))))
-
-(defun make-new-dep-binding-variable (id type)
-  (let ((bd (typecheck* (mk-dep-binding id type) nil nil nil)))
-    (mk-name-expr id nil nil (make-resolution bd nil type)
-		  'variable)))
-	      
-(defun make-judgement-dependent-domain (ndom jdom &optional ntypes bindings)
-  (if (null ndom)
-      (nreverse ntypes)
-      (if (typep (car ndom) 'dep-binding)
-	  (if (typep (car jdom) 'dep-binding)
-	      (make-judgement-dependent-domain
-	       (cdr ndom) (cdr jdom)
-	       (cons (car jdom) ntypes)
-	       (acons (car ndom) (car jdom) bindings))
-	      (let ((jbind (mk-dep-binding (id (car ndom)) (car jdom))))
-		(make-judgement-dependent-domain
-		 (cdr ndom) (cdr jdom)
-		 (cons jbind ntypes)
-		 (acons (car ndom) jbind bindings))))
-	  (if (and (some #'(lambda (fv)
-			     (assoc (declaration fv) bindings))
-			 (freevars (car ndom)))
-		   (not (tc-eq-with-bindings (car ndom) (car jdom) bindings)))
-	      (let ((ntype (make-judgement-dependent-domain*
-			    (car ndom) (car jdom) bindings)))
-		(make-judgement-dependent-domain
-		 (cdr ndom) (cdr jdom) (cons ntype ntypes) bindings))
-	      (make-judgement-dependent-domain
-	       (cdr ndom) (cdr jdom) (cons (car jdom) ntypes) bindings)))))
-
-(defmethod make-judgement-dependent-domain* ((ndom subtype) (jdom type-expr)
-					   bindings)
-  (let* ((*generate-tccs* 'none)
-	 (id (if (typep (predicate ndom) 'lambda-expr)
-		 (id (car (bindings (predicate ndom))))
-		 (make-new-variable '|x| jdom)))
-	 (nvar (make-new-variable-name-expr id jdom))
-	 (npred (substit (predicate ndom) bindings))
-	 (appl (beta-reduce
-		(typecheck* (mk-application npred nvar)
-			    *boolean* nil nil)))
-	 (lam-expr (make-lambda-expr (list (declaration nvar)) appl)))
-    (mk-setsubtype jdom lam-expr)))
-
-(defun check-judgement-types (jdom ndom bvars)
-  (let ((*no-conversions-allowed* t))
-    (check-tup-types bvars ndom)))
 
 ;;; add-to-known-subtypes updates the known-subtypes of the current
 ;;; context.  It first checks to see whether the subtype relation is
@@ -1855,9 +1720,11 @@
   (get-direct-subtype-alist* (type te) 1 nil endtype))
 
 (defmethod get-direct-subtype-alist ((te type-expr) &optional endtype)
+  (declare (ignore endtype))
   nil)
 
 (defmethod get-direct-subtype-alist* :around (te dist alist endtype)
+  (declare (ignore dist))
   (if (and endtype
 	   (tc-eq te endtype))
       (nreverse alist)
@@ -1869,6 +1736,7 @@
 			     endtype))
 
 (defmethod get-direct-subtype-alist* ((te type-expr) dist alist endtype)
+  (declare (ignore endtype))
   (nreverse (acons te dist alist)))
 
 
@@ -1946,6 +1814,7 @@
       (null (formals y))))
 
 (defun tc-unifiable? (x y)
+  (declare (ignore x y))
   nil)
 	
 
