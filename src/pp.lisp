@@ -1161,8 +1161,8 @@ bind tighter.")
     (write (id ex))))
 
 (defmethod pp* ((ex application))
-  (let ((operator (operator* ex))
-	(args (argument* ex)))
+  (let ((operator (get-pp-operator* ex))
+	(args (get-pp-argument* ex)))
     (pprint-logical-block (nil nil)
       (pprint-indent :current 2)
       (if (and (zerop (parens operator))
@@ -1177,6 +1177,31 @@ bind tighter.")
 	  (pprint-newline :miser)
 	  (pprint-newline :fill))
       (pp-arguments-list args))))
+
+(defmethod get-pp-operator* ((expr application))
+  (get-pp-operator* (operator expr)))
+
+(defmethod get-pp-operator* ((expr infix-application))
+  expr)
+
+(defmethod get-pp-operator* ((expr unary-application))
+  expr)
+
+(defmethod get-pp-operator* ((expr expr))
+  expr)
+
+(defmethod get-pp-argument* ((expr application) &optional args)
+  (get-pp-argument* (operator expr) (cons (argument expr) args)))
+
+(defmethod get-pp-argument* ((expr infix-application) &optional args)
+  args)
+
+(defmethod get-pp-argument* ((expr unary-application) &optional args)
+  args)
+
+(defmethod get-pp-argument* ((expr expr) &optional args)
+  args)
+
 
 (defmethod simple-name? ((ex name))
   (and (not (mod-id ex))
