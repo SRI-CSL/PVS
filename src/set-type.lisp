@@ -2179,7 +2179,11 @@ required a context.")
 	    (t (set-type* expression (car fetypes))
 	       (set-assignment-types-for-funtype
 		assignments expected expression (car utypes))
-	       (setf (type expr) (car utypes)))))))
+	       (setf (type expr)
+		     (if (fully-instantiated? (car utypes))
+			 (car utypes)
+			 (instantiate-from (car utypes) (type expression)
+					   expr))))))))
 
 (defun set-assignment-types-for-funtype (assignments expected expression utype)
   (set-assignment-types (car assignments) expected expression)
