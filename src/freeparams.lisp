@@ -5,9 +5,7 @@
 ;; Last Modified By: Sam Owre
 ;; Last Modified On: Thu Jun  9 21:24:13 1994
 ;; Update Count    : 6
-;; Status          : Unknown, Use with caution!
-;; 
-;; HISTORY
+;; Status          : Stable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   Copyright (c) 2002 SRI International, Menlo Park, CA 94025, USA.
 
@@ -153,6 +151,8 @@
 (defmethod free-params* ((te dep-binding) frees)
   (free-params* (type te) frees))
 
+(defmethod free-params* ((conv conversion-result) frees)
+  (free-params* (expr conv) frees))
 
 ;;; Expressions
 
@@ -200,6 +200,11 @@
 (defmethod free-params* ((expr number-expr) frees)
   (setf (free-parameters expr) nil)
   frees)
+
+(defmethod free-params* ((expr fieldex) frees)
+  (let ((afrees (free-params* (type expr) nil)))
+    (setf (free-parameters expr) afrees)
+    (union afrees frees :test #'eq)))
 
 (defmethod free-params* ((expr projection-expr) frees)
   (let ((afrees (free-params* (type expr) nil)))
