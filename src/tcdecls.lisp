@@ -182,7 +182,7 @@
     (let ((theory (get-typechecked-theory theory-name))
 	  (abbr-info (if (mappings theory-name) ""
 			 (format nil
-			     "~%No mappings given in therory declaration ~a~%~
+			     "~%No mappings given in theory declaration ~a~%~
                               Perhaps this should be given the abbreviation form~
                               ~%  ~a"
 			   (id decl)
@@ -194,11 +194,6 @@
 	(pvs-info
 	    "Theory ~a has no interpretable types, constants, or theories"
 	  theory-name))
-      (when (or (datatype? theory)
-		(generated-by theory))
-	(type-error (theory-name decl)
-	  "Theory declarations may not be used for a datatype~a"
-	  abbr-info))
       (unless (equal abbr-info "")
 	(pvs-info abbr-info))
       (typecheck-named-theory* theory theory-name decl))))
