@@ -61,19 +61,22 @@
 	 (new-rhs (dp-find (rhs eq) cong-state)))
     (if (eq new-lhs new-rhs)
 	*false*
-	neq)))
+	(mk-nequality new-lhs new-rhs))))
 
 (defun check-and-canonize-neqs (cong-state)
   (let ((false-eq?
 	 (loop for neq in (nequals cong-state)
 	       for canon-neq = (canon-neq neq cong-state)
-	       thereis (eq canon-neq *false*))))
+	       collect canon-neq into new-neqs
+	       thereis (eq canon-neq *false*)
+	       finally (setf (nequals cong-state) new-neqs))))
     (cond
      (false-eq?
       (setq *contradiction* t)
       (add-neq *false* cong-state)
       *false*)
      (t nil))))
+
 
 (defun process (eqns cong-state)
   (if eqns
