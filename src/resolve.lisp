@@ -1538,45 +1538,62 @@
 (defun resolution-error (name kind arguments)
   (let ((reses (when (actuals name)
 		 (resolve (copy name 'actuals nil) kind arguments))))
-    (if (and *resolve-error-info*
-	     (or (assq :arg-mismatch *resolve-error-info*)
-		 (not (assq :no-instantiation *resolve-error-info*))))
-	(resolution-args-error *resolve-error-info* name arguments)
-	(type-error name
-	  "Expecting a~a~%No resolution for ~a~@[ with arguments of types:~
-       ~:{~%  ~a : ~{~a~^, ~}~}~]~:[~;~%Check the actual parameters~]"
-	  (case kind
-	    (expr "n expression")
-	    (type " type")
-	    (formula " formula")
-	    (t kind))
-	  name
-	  (mapcar #'(lambda (a)
-		      (list a (full-name (ptypes a) 1)))
-		  arguments)
-	  reses))))
+    (multiple-value-bind (obj error)
+	(if (and *resolve-error-info*
+		 (or (assq :arg-mismatch *resolve-error-info*)
+		     (not (assq :no-instantiation *resolve-error-info*))))
+	    (resolution-args-error *resolve-error-info* name arguments)
+	    (values
+	     name
+	     (format nil
+		 "Expecting a~a~%No resolution for ~a~
+                  ~@[ with arguments of types: ~:{~%  ~a : ~{~a~^, ~}~}~]~
+                  ~:[~;~%Check the actual parameters~]"
+	       (case kind
+		 (expr "n expression")
+		 (type " type")
+		 (formula " formula")
+		 (t kind))
+	       name
+	       (mapcar #'(lambda (a) (list a (full-name (ptypes a) 1)))
+		 arguments)
+	       reses)
+	     name))
+      (if (and (eq kind 'expr)
+	       (conversion-occurs-in? arguments))
+	  (let* ((appl (mk-application* name arguments))
+		 (*type-error*
+		  (format nil
+		      "--------------~%With conversions, it becomes the ~
+                     expression ~%  ~a~%and leads to the error:~%  ~a"
+		    appl error))
+		 (*no-conversions-allowed* t))
+	    (untypecheck-theory appl)
+	    (typecheck appl))
+	  (type-error obj error)))))
 
 (defun resolution-args-error (infolist name arguments)
-  (when infolist
-    (let ((info (car (best-guess-resolution-error infolist arguments))))
-      (case (car info)
-	(:arg-length
-	 (type-error name
-	   "Wrong number of arguments:~%  ~d provided, ~d expected"
-	   (length arguments)
-	   (length (if (typep (cadr info) 'expr)
-		       (domain-types (type (cadr info)))
-		       (car (formals (cadr info)))))))
-	(:arg-mismatch
-	 ;; Info = (:arg-mismatch decl argnum args types)
-	 (type-error (car (fourth info))
-	   "~:r argument to ~a has the wrong type~
-          ~%     Found: ~{~a~%~^~12T~}  Expected: ~a"
-	   (third info)
-	   name
-	   (mapcar #'(lambda (fn) (unpindent fn 12 :string t))
+  (let ((info (car (best-guess-resolution-error infolist arguments))))
+    (case (car info)
+      (:arg-length
+       (values name
+	       (format nil
+		   "Wrong number of arguments:~%  ~d provided, ~d expected"
+		 (length arguments)
+		 (length (if (typep (cadr info) 'expr)
+			     (domain-types (type (cadr info)))
+			     (car (formals (cadr info))))))))
+      (:arg-mismatch
+       ;; Info = (:arg-mismatch decl argnum args types)
+       (values (car (fourth info))
+	       (format nil
+		   "~:r argument to ~a has the wrong type~
+                    ~%     Found: ~{~a~%~^~12T~}  Expected: ~a"
+		 (third info)
+		 name
+		 (mapcar #'(lambda (fn) (unpindent fn 12 :string t))
 		   (full-name (ptypes (car (fourth info))) 1))
-	   (full-name (car (fifth info)) 1)))))))
+		 (full-name (car (fifth info)) 1)))))))
 
 (defun best-guess-resolution-error (infolist arguments)
   (if (cdr infolist)
