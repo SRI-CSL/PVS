@@ -377,10 +377,23 @@ proc proof-show {path} {
 	    set bbox [$proofwin bbox $seq]
 	    set seqbot [lindex $bbox 3]
 	    set linebot [expr $seqbot+[get-option ySep $proofwin]]
+	    set rule [set ${path}(rule)]
+	    set alen [get-option abbrevLen]
+	    if $alen {
+		puts "rule=$rule
+alen=$alen
+len=[string length $rule]"
+		if {[string length $rule]>$alen} {
+		    if {[regexp {^[^ ]* } $rule whole]} {
+			set rule "$whole...)"
+		    }
+		}
+	    }
+	    set ${path}(rule_abbr) $rule
 	    $proofwin create line 0 $seqbot 0 $linebot \
 		-tags "$path.line $path $path.real [ancestors $path .desc]" \
 		-fill [get-option foreground]
-	    $proofwin create text 0 $linebot -text [set ${path}(rule)] \
+	    $proofwin create text 0 $linebot -text $rule \
 		-tags "$path.rule $path $path.real rule [ancestors $path .desc]" \
 		-anchor n \
 		-fill [get-option foreground]
@@ -395,6 +408,60 @@ proc proof-show {path} {
 	my-foreground $proofwin $path [get-option tccColor]
     }
 }
+
+proc get-full-rule {} {
+    global proofwin pathtorlabel
+    upvar #0 dag-$proofwin dag
+
+    set path $dag(idtotag,[$proofwin find withtag current])
+    global $path
+
+    if {![string compare [set ${path}(rule)] [set ${path}(rule_abbr)]]} {
+	return
+    }
+
+    for {set label 1} {[winfo exists .rule$label]} {incr label} {
+    }
+
+    if [info exists pathtorlabel($path)] {
+	return
+    }
+    set pathtorlabel($path) $label
+
+    set win .rule$label.rule
+    set bbox [$proofwin bbox $path.rule]
+    set x [lindex $bbox 2]
+    set y [expr round(([lindex $bbox 1]+[lindex $bbox 3])/2)]
+    $proofwin create text $x $y -anchor w \
+	-tags "$path $path.rlabel $path.rlabel$label rlabel [ancestors $path .desc] rlabel.$label" \
+	-text $label
+    update-color $path $path.rlabel$label
+    
+    frame .rule$label
+    toplevel $win -class Command
+    frame $win.fr
+    pack $win.fr -expand yes -fill both
+    text $win.fr.text -bd 2 -relief raised
+    $win.fr.text insert end [set ${path}(rule)]
+    set height [lindex [split [$win.fr.text index end] .] 0]
+    set wd 0
+    for {set i 1} {$i<=$height} {incr i} {
+	set linewd [lindex [split [$win.fr.text index "$i.0 lineend"] .] 1]
+	if {$linewd>$wd} {set wd $linewd}
+    }
+    $win.fr.text config -height $height -width $wd -state disabled -wrap none
+    pack $win.fr.text -expand yes -fill both
+    button $win.dismiss -text Dismiss -command "destroy $win"
+    pack $win.dismiss -side left -padx 2 -pady 2
+    bind $win <Destroy> "catch {$proofwin delete $path.rlabel$label}"
+    bind $win <Destroy> "+unset pathtorlabel($path)"
+    bind $win <Destroy> "+after 1 {catch {destroy .rule$label}}"
+    wm iconname $win {PVS command}
+    wm title $win "Command $label [set ${path}(rule_abbr)]"
+
+    dag-add-destroy-cb $proofwin $path "disable-sequent $win"
+}
+    
 
 proc get-current-sequent {} {
     global proofwin
@@ -413,6 +480,9 @@ proc show-sequent {path seq_label text} {
     for {set label 1} {[winfo exists .sequent$label]} {incr label} {
     }
 
+    if [info exists pathtolabel($path)] {
+	return
+    }
     set pathtolabel($path) $label
 
     set win .sequent$label.sequent
@@ -450,6 +520,7 @@ proc show-sequent {path seq_label text} {
     button $win.dismiss -text Dismiss -command "destroy $win"
     pack $win.dismiss -side left -padx 2 -pady 2
     bind $win <Destroy> "catch {$proofwin delete $path.label$label}"
+    bind $win <Destroy> "+unset pathtolabel($path)"
     bind $win <Destroy> "+after 1 {catch {destroy .sequent$label}}"
     wm geometry $win 80x$height
     wm iconname $win {PVS sequent}
@@ -493,10 +564,12 @@ proc update-color {path tag} {
 	return
     }
 
-    if {$path==$curpath} {
-	my-foreground $proofwin $tag [get-option currentColor]
-	$proofwin addtag current-subgoal withtag $tag
-	return
+    if {[info exists curpath]} {
+	if {$path==$curpath} {
+	    my-foreground $proofwin $tag [get-option currentColor]
+	    $proofwin addtag current-subgoal withtag $tag
+	    return
+	}
     }
 
     set seqid [$proofwin find withtag $path.sequent]
@@ -781,6 +854,7 @@ proc setup-proof {name file directory counter} {
     dag-bind-move $proofwin .desc Control 1 to
     dag-bind-move $proofwin {} Control 2 both
     $proofwin bind sequent <1> {get-current-sequent}
+    $proofwin bind rule <1> {get-full-rule}
     bind $proofwin <Destroy> "pvs-send {(stop-displaying-proof $counter)}"
     bind $proofwin <Destroy> {+
 	foreach kid [winfo children .] {
@@ -810,6 +884,8 @@ proc reset-options {} {
 	option add Tk.doneColor @gray startupFile
 	option add Tk.ancestorColor black startupFile
     }
+
+    option add Tk.abbrevLen 35 startupFile
 
     option add Tk.maxHeight 30 startupFile
 
