@@ -220,14 +220,15 @@ generated")
     (let ((fdate (file-write-date adt-path))
 	  (ce2 (get-context-file-entry adt-file)))
       (setf (generated-file-date adt) fdate)
-      (when ce2
-	(setf (ce-write-date ce2) fdate)
-	(setq *pvs-context-changed* t))
       (push 'typechecked (status adt))
       (dolist (th adt-theories)
 	(setf (filename th) adt-file))
       (setf (gethash adt-file *pvs-files*)
-	    (cons fdate (adt-generated-theories adt))))))
+	    (cons fdate (adt-generated-theories adt)))
+      (cond (ce2
+	     (setf (ce-write-date ce2) fdate)
+	     (setq *pvs-context-changed* t))
+	    (t (update-context adt-file))))))
 
 
 (defun adt-generated-theories (adt)
