@@ -266,7 +266,7 @@ ${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${fasl-files}
 		-L src/make-pvs.lisp
 	touch ${pvsrt}
 
-${pvs-parser-out} : ${pvs-parser-in}
+pvs-parser.lisp : ${pvs-parser-in}
 	$(LISP) -L src/make-pvs-parser
 
 src/pvs-methods.lisp : src/make-pvs-methods.lisp src/defcl.lisp \
