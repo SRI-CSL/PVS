@@ -561,14 +561,14 @@ M-x show-hidden-formulas to see the hidden formulas."
 
 (addrule 'replace (fnum) ((fnums *) dir hide? actuals? dont-delete?)
   (replace-rule-fun fnum fnums dir hide? actuals? dont-delete?)
-  "Rewrites the given formulas in FNUMS with the formula FNUM.  If
-FNUM is an antecedent equality, then it rewrites left-to-right if DIR is
-LR (the default), and right-to-left if DIR is RL.  If FNUM is not an
-antecedent equality, then any occurrence of the formula FNUM in FNUMS is
-replaced by TRUE if FNUM is an antecedent, FALSE for a succedent.  If
-HIDE? is T, then FNUM is hidden afterward.  When ACTUALS?  is T, the
-replacement is done within actuals of names in addition to the expression
-level replacements.  When the DONT-DELETE? flag is T, top-level sequent
+  "Rewrites the given formulas in FNUMS with the formula FNUM.  If FNUM is
+an antecedent equality, then it rewrites left-to-right if DIR is LR (the
+default), and right-to-left if DIR is RL.  If FNUM is not an antecedent
+equality, then any occurrence of the formula FNUM in FNUMS is replaced by
+TRUE if FNUM is an antecedent, FALSE for a succedent.  If HIDE? is T, then
+FNUM is hidden afterward.  When ACTUALS?  is T, the replacement is done
+within actuals of names in addition to the expression level replacements,
+including in types.  When the DONT-DELETE? flag is T, top-level sequent
 formulas are not deleted through being replaced by TRUE/FALSE."
   "~%Replacing using formula ~a,")
 
@@ -763,13 +763,13 @@ identifiers" name1 name2)
   (label-step label fnums push?)
   "Labels a collection of formulas given by FNUMS by the
 string  LABEL.  If PUSH? is T, then the new label is added to any existing
-ones.  Otherwise, the new labels replaces all existing ones."
+ones.  Otherwise, the new label replaces all existing ones."
   "~%Using ~a to label formula(s) ~a")
 
 (addrule 'unlabel () (fnums label)
   (unlabel-step fnums label)
   "Removes specified label (or all labels if none specified)
-   from the formulas FNUMS (or when FNUMS is not specified,  all formulas)."
+   from the formulas FNUMS (or when FNUMS is not specified, all formulas)."
   "~%Removing labels")
 	 
 
@@ -799,7 +799,11 @@ which eliminates all top-level disjuncts in the indicated FNUMS."
 (addrule 'set-print-lines () (lines)
   #'(lambda (ps)
       (declare (ignore ps))
-      (setq *prover-print-lines* (unless (zerop lines) lines))
+      (unless (or (null lines) (and (integerp lines) (>= lines 0)))
+	(error-format-if
+	 "~%Illegal lines: ~a; must be a positive number or nil" lines))
+      (setq *prover-print-lines*
+	    (unless (or (null lines) (zerop lines)) lines))
       (values 'X nil nil))
   "Sets the number of lines to print to LINES."
   "~%Setting print lines to ~a")
@@ -807,7 +811,11 @@ which eliminates all top-level disjuncts in the indicated FNUMS."
 (addrule 'set-print-length () (length)
   #'(lambda (ps)
       (declare (ignore ps))
-      (setq *prover-print-length* (unless (zerop length) length))
+      (unless (or (null length) (and (integerp length) (>= length 0)))
+	(error-format-if
+	 "~%Illegal length: ~a; must be a positive number or nil" length))
+      (setq *prover-print-length*
+	    (unless (or (null length) (zerop length)) length))
       (values 'X nil nil))
   "Sets the print length"
   "~%Setting print length to ~a")
@@ -815,7 +823,11 @@ which eliminates all top-level disjuncts in the indicated FNUMS."
 (addrule 'set-print-depth () (depth)
   #'(lambda (ps)
       (declare (ignore ps))
-      (setq *prover-print-depth* (unless (zerop depth) depth))
+      (unless (or (null depth) (and (integerp depth) (>= depth 0)))
+	(error-format-if
+	 "~%Illegal depth: ~a; must be a positive number or nil" depth))
+      (setq *prover-print-depth*
+	    (unless (or (null depth) (zerop depth) depth)))
       (values 'X nil nil))
   "Sets the print depth."
   "~%Setting print depth to ~a")
