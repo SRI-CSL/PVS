@@ -1110,8 +1110,9 @@ is T) and disjunctively simplifies."
 			 (or (bounded-int-type? actual-type)
 			     (if (adt?  actual-supertype)
 				 (intern (format nil "~a.~a_induction"
-					   (module-instance (resolution
-							     actual-supertype))
+					   (raise-actuals
+					    (module-instance
+					     (resolution actual-supertype)))
 					   (id actual-supertype)))
 				 (if (compatible? actual-type
 						  *naturalnumber*)
