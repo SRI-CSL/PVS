@@ -899,6 +899,14 @@
        (check-inductive-occurrences* (then-part ex) decl parity)
        (check-inductive-occurrences* (else-part ex) decl parity)))
 
+(defmethod check-inductive-occurrences* ((ex cases-expr) decl parity)
+  (and (check-inductive-occurrences* (selections ex) decl parity)
+       (or (null (else-part ex))
+	   (check-inductive-occurrences* (else-part ex) decl parity))))
+
+(defmethod check-inductive-occurrences* ((ex selection) decl parity)
+  (check-inductive-occurrences* (expression ex) decl parity))
+
 (defmethod inductive-occurrence? (ex (type subtype) decl)
   (inductive-occurrence? ex (find-supertype type) decl))
 
