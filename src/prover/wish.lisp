@@ -215,7 +215,10 @@
   (unless (member theory *modules-visited*)
     (push theory *modules-visited*)
     (let* ((imps (get-immediate-usings theory))
-	   (deps (delete-if #'null
+	   (deps (delete-if #'(lambda (dep)
+				(or (null dep)
+				    (and (not include-libraries?)
+					 (library-datatype-or-theory? dep))))
 		   (mapcar #'(lambda (tname)
 			       (let ((th (get-theory tname)))
 				 (when th
