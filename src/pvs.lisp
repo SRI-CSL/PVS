@@ -722,6 +722,7 @@
   (list "" (list (class-name (class-of decl)))))
 
 (defmethod tcc-strategy (decl)
+  (declare (ignore decl))
   '(tcc))
 
 (defun sort-theories (theories)
@@ -823,7 +824,7 @@
 (defun prettyprint-decl (d theory)
   (let* ((place (place (if (consp d) (car d) d)))
 	 (indent (- *default-char-width* (col-begin place)))
-	 (dstr (unpindent decls indent :string t :comment? t))
+	 (dstr (unpindent d indent :string t :comment? t))
          (dfinal (string-trim '(#\Space #\Tab #\Newline) dstr)))
     (pvs-modify-buffer (shortname (working-directory))
                        (filename theory)
@@ -1113,7 +1114,7 @@
 		    (decl (get-decl-at line 'formula-decl theories)))
 	       (values (find-if #'(lambda (d)
 				    (and (formula-decl? d)
-					 (eq (id d) id)))
+					 (eq (id d) (id decl))))
 			 (all-decls (get-theory name)))
 		       (place decl))))
 	(tccs (let* ((theory (get-theory name))
@@ -1413,6 +1414,7 @@
 ;;; edit-proof-at.
 
 (defun prove-proof-at (line step? display?)
+  (declare (ignore line))
   (let* ((fdecl (car *edit-proof-info*))
 	 (*current-theory* (module fdecl)))
     (read-strategies-files)
@@ -1446,8 +1448,7 @@
 		   
 
 (defun remove-proof-at (name line origin)
-  (multiple-value-bind (fdecl place)
-      (formula-decl-to-prove name line origin)
+  (let ((fdecl (formula-decl-to-prove name line origin)))
     (cond ((and fdecl (justification fdecl))
 	   (let ((just (justification fdecl)))
 	     (setf (justification fdecl) nil)
@@ -1465,8 +1466,7 @@
 	  (t (pvs-message "Unable to find formula declaration")))))
 
 (defun revert-proof-at (name line origin)
-  (multiple-value-bind (fdecl place)
-      (formula-decl-to-prove name line origin)
+  (let ((fdecl (formula-decl-to-prove name line origin)))
     (cond ((and fdecl (justification2 fdecl))
 	   (let ((just (justification fdecl)))
 	     (setf (justification fdecl) (justification2 fdecl))
@@ -1505,6 +1505,7 @@
     nil))
 
 (defun pos-to-place (pos sexpr)
+  (declare (ignore pos sexpr))
   (let ((row 0) (col 0))
 ;    (dotimes (i pos)
 ;      (cond ((char= (aref string i) #\newline)
@@ -2066,19 +2067,22 @@
     (sort skoconsts #'string-lessp :key #'id)))
 
 (defun get-patch-version ()
-  (when (and (boundp '*patch-revision*)
-	     (search "$Revision: " *patch-revision*))
-    (subseq *patch-revision* 11 (- (length *patch-revision*) 2))))
+  (when (boundp '*patch-revision*)
+    (let ((str (symbol-value '*patch-revision*)))
+      (when (search "$Revision: " str)
+	(subseq str 11 (- (length str) 2))))))
 
 (defun get-patch-test-version ()
-  (when (and (boundp '*patch-test-revision*)
-	     (search "$Revision: " *patch-test-revision*))
-    (subseq *patch-test-revision* 11 (- (length *patch-test-revision*) 2))))
+  (when (boundp '*patch-test-revision*)
+    (let ((str (symbol-value '*patch-test-revision*)))
+      (when (search "$Revision: " str)
+	(subseq str 11 (- (length str) 2))))))
 
 (defun get-patch-exp-version ()
-  (when (and (boundp '*patch-exp-revision*)
-	     (search "$Revision: " *patch-exp-revision*))
-    (subseq *patch-exp-revision* 11 (- (length *patch-exp-revision*) 2))))
+  (when (boundp '*patch-exp-revision*)
+    (let ((str (symbol-value '*patch-exp-revision*)))
+      (when (search "$Revision: " str)
+	(subseq str 11 (- (length str) 2))))))
 
 (defun collect-strategy-names ()
   (let ((names nil))
@@ -2111,7 +2115,7 @@
     (let* ((*current-theory* (if theory-name
 				 (get-typechecked-theory theory-name)
 				 (car (last *prelude-theories*))))
-	   (*current-context* (copy (context *current-theory*)))
+	   (*current-context* (or context (copy (context *current-theory*))))
 	   (*generate-tccs* 'none)
 	   (*from-buffer* "Formula Decl"))
       (pvs-buffer *from-buffer* formula-decl nil t)
@@ -2156,9 +2160,9 @@
     (setq *to-emacs* nil)
     (setq *prove-formula-proof* nil)
     (unwind-protect
-	(let ((proof (prove-decl fdecl :context *current-context*)))
-	  (setq *prove-formula-proof*
-		(extract-justification-sexp (justification fdecl))))
+	(progn (prove-decl fdecl :context *current-context*)
+	       (setq *prove-formula-proof*
+		     (extract-justification-sexp (justification fdecl))))
       (pvs-emacs-eval "(pvs-ready)"))))
 
 (defun get-prove-formula-proof ()
