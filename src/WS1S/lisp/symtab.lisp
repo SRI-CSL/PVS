@@ -58,7 +58,6 @@
 	   (assoc idx (symtab-freevars symtab) :test #'=))))
 
 (defun symtab-strip (symtab)
-  (assert (consp symtab))
   (assert (eq (symtab-boundvars symtab) nil))
   (let* ((free (symtab-freevars symtab))
 	 (size (length free))
