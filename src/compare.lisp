@@ -435,6 +435,14 @@
 	   (and *compare-selections*
 		(null (declared-type new))))))
 
+(defmethod compare* ((old bind-decl) (new bind-decl))
+  (and (compare* (id old) (id new))
+       (or (null (declared-type new))
+	   (compare* (declared-type old) (declared-type new)))))
+
+(defmethod compare* ((old untyped-bind-decl) (new untyped-bind-decl))
+  (compare* (id old) (id new)))
+
 ;(defmethod compare* ((old modname) (new modname))
 ;  (and (call-next-method)
 ;       (compare (renamings old) (renamings new))))
