@@ -1,10 +1,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pvs-mu.lisp -- Interface to the Mu-calculus model-checker
-;; Author          : Sree and Shankar
+;; Author          : Sree, Shankar and Saidi
 ;; Created On      : Wed May  3 19:51:22 1995
-;; Last Modified By: Natarajan Shankar
-;; Last Modified On: Sat Jun  1 21:40:13 1996
-;; Update Count    : 15
+;; Last Modified By: Sam Owre
+;; Last Modified On: Fri Apr  3 14:22:30 1998
+;; Update Count    : 16
 ;; Status          : Beta test
 ;; 
 ;; HISTORY
