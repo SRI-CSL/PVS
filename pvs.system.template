@@ -353,6 +353,14 @@
 		  (:file "rewrite-optimize")
 		  (:file "simplify"))
      :depends-on ("dc-structure"))
+   (:module bvec
+     :source-pathname "src/decision-procedures/bit-vectors"
+     :components ((:file "bvec_structure")
+		  (:file "bvec_arith")
+		  (:file "bvec_fixed_solver")
+		  (:file "bvec_bdd_solve")
+		  (:file "bvec_slicing"))
+     :depends-on ("dc-structure"))
    (:module forward-chain
      :source-pathname "src/decision-procedures"
      :components ((:file "forward-chain-pvs")

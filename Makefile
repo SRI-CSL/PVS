@@ -295,6 +295,11 @@ decision-procedures = src/decision-procedures/types.lisp \
                       src/decision-procedures/simplify.lisp \
                       src/decision-procedures/forward-chain-pvs.lisp \
                       src/decision-procedures/forward-chain.lisp \
+                      src/decision-procedures/bit-vectors/bvec_structure.lisp \
+                      src/decision-procedures/bit-vectors/bvec_arith.lisp \
+                      src/decision-procedures/bit-vectors/bvec_fixed_solver.lisp \
+                      src/decision-procedures/bit-vectors/bvec_bdd_solve.lisp \
+                      src/decision-procedures/bit-vectors/bvec_slicing.lisp \
                       src/decision-procedures/polylib/dp-foreign.lisp
 
 ws1slisp = src/WS1S/lisp/dfa-foreign.lisp src/WS1S/lisp/dfa.lisp \
