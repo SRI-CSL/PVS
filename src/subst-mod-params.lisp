@@ -287,6 +287,9 @@
 		   pre-bindings
 		   bindings))))
 
+(defmethod generated-theory ((th module))
+  th)
+
 ;;; mapping1 is an alist of declaration to declaration mappings
 ;;; mapping2 is an alist of declaration to rhs-mappings
 (defun compose-mappings (mapping1 mapping2 &optional composition)
@@ -1382,22 +1385,25 @@
 				(not (library-datatype-or-theory?
 				      (module decl))))
 			   res
-			   (mk-resolution decl
-			     (mk-modname (id mi)
-			       (if (memq (id mi) '(|equalities| |notequal|))
-				   (list (mk-actual
-					  (find-supertype
-					   (type-value (car nacts)))))
-				   nacts)
-			       (when (library-datatype-or-theory?
-				      (module decl))
-				 (get-lib-id (module decl)))
-			       (unless (or (eq type ntype)
-					   (not (eq (id mi) (id modinst)))
-					   (not (eq (library mi)
-						    (library modinst))))
-				 (mappings modinst)))
-			     ntype))))))))))
+			   (let* ((rhs (cdr (assq (module decl) bindings)))
+				  (nmappings (when rhs (mappings (expr rhs)))))
+			     (mk-resolution decl
+			       (mk-modname (id mi)
+				 (if (memq (id mi) '(|equalities| |notequal|))
+				     (list (mk-actual
+					    (find-supertype
+					     (type-value (car nacts)))))
+				     nacts)
+				 (when (library-datatype-or-theory?
+					(module decl))
+				   (get-lib-id (module decl)))
+				 (or nmappings
+				     (unless (or (eq type ntype)
+					     (not (eq (id mi) (id modinst)))
+					     (not (eq (library mi)
+						      (library modinst))))
+				       (mappings modinst))))
+			       ntype)))))))))))
 
 (defmethod make-resolution (decl modinst &optional type)
   (assert (modname? modinst))
