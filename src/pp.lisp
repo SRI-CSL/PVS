@@ -305,7 +305,7 @@ bind tighter.")
 
 (defmethod pp* ((exp exporting))
   (with-slots (kind names but-names modules) exp
-    (unless (eq kind 'DEFAULT)
+    (unless (eq kind 'default)
       (pprint-logical-block (nil nil)
 	(write 'EXPORTING)
 	(write-char #\space)
