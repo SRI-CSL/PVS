@@ -4160,8 +4160,9 @@ e LHS free variables in ~a" hyp lhs)
 				   :test #'tc-eq)
 			  (member res *macro-names* :test #'tc-eq))
 		      (stop-rewrite-res res)
-		      (error-format-if "~%~a is not an auto-rewrite"
-				 (id (declaration res)))))
+		      (error-format-if "~%~a.~a is not an auto-rewrite"
+				       (module-instance res)
+				       (id (declaration res)))))
 	    (if (and (eq *auto-rewrites-names* old-auto-rewrites-names)
 		     (eq *auto-rewrites!-names* old-auto-rewrites!-names)
 		     (eq *macro-names* old-macro-names))
@@ -4182,13 +4183,15 @@ e LHS free variables in ~a" hyp lhs)
   (cond ((member res *auto-rewrites-names* :test #'tc-eq)
 	 (setq *auto-rewrites-names*
 	       (remove res *auto-rewrites-names* :test #'tc-eq))
-	 (format-if "~%Turned off ~a" (id (declaration res)))
+	 (format-if "~%Turned off ~a.~a"
+		    (module-instance res) (id (declaration res)))
 ;;	 (pushnew res *auto-rewrites-off* :test #'tc-eq)
 	 nil)
 	((member res *auto-rewrites!-names* :test #'tc-eq)
 	 (setq *auto-rewrites!-names*
 	       (remove res *auto-rewrites!-names* :test #'tc-eq))
-	 (format-if "~%Turned off ~a" (id (declaration res)))
+	 (format-if "~%Turned off ~a.~a"
+		    (module-instance res) (id (declaration res)))
 ;;	 (pushnew res *auto-rewrites-off* :test #'tc-eq)
 	 nil)
 	((member res *macro-names* :test #'tc-eq)
