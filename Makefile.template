@@ -41,7 +41,8 @@ pvs-make-files = pvs.system src/defsystem.lisp src/make-pvs.lisp \
 		 src/closopt.lisp
 
 ff-files = BDD/$(PLATFORM)/bdd.so BDD/$(PLATFORM)/mu.so \
-           src/decision-procedures/polylib/$(PLATFORM)/polylib.so
+           src/decision-procedures/polylib/$(PLATFORM)/polylib.so \
+           src/WS1S/$(PLATFORM)/ws1s.so
 
 ess = ess/dist-ess.lisp \
 	ess/init-load.lisp \
@@ -222,9 +223,11 @@ decision-procedures = src/decision-procedures/types.lisp \
                       src/decision-procedures/forward-chain-pvs.lisp \
                       src/decision-procedures/forward-chain.lisp
 
+ws1slisp = dfa-foreign dfa pvs-utils symtab signature pvs2dfa ws1s-strategy
+
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
-	     ${decision-procedures}
+	     ${decision-procedures} ${ws1slisp}
 
 fasl-files = $(lisp-files:.lisp=.$(LISPEXT))
 
@@ -248,7 +251,7 @@ xemacs19-elc = $(pvs-xemacs19-src:.el=.elc) $(ilisp-xemacs19-src:.el=.elc)
 emacs += emacs/xemacs19/pvs-load.elc
 endif
 
-all : makebdd makepolylib ${pvsfull} ${pvsrt} ${emacs}
+all : makebdd makepolylib makews1s ${pvsfull} ${pvsrt} ${emacs}
 
 src/pvs-lexer.${LISPEXT} : ${pvs-make-files} ${ff-files} ${lisp-files}
 	$(LISP) -e '(load "pvs.system")' \
@@ -278,11 +281,13 @@ ${LISP} :
 	echo "Need to set the LISP variable in Makefile to a valid"
 	echo "allegro 5.0 lisp executable for this platform"
 
-.PHONY: all makebdd makepolylib
+.PHONY: all makebdd makepolylib makews1s
 makebdd :
 	$(MAKE) -C BDD/$(PLATFORM)
 makepolylib :
 	$(MAKE) -C src/decision-procedures/polylib/$(PLATFORM)
+makews1s :
+	$(MAKE) -C src/WS1S/$(PLATFORM)
 
 pvs-emacs-src = $(wildcard emacs/emacs-src/*.el)
 ilisp-emacs-src = $(wildcard emacs/emacs-src/ilisp/*.el)
