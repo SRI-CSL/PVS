@@ -118,9 +118,9 @@
 ;; PVS decision procedure interface
 
 (defun ics-init (&optional full (verbose 0))
-;;   (ics_caml_startup (if full 1 0) #(0))
-;;   (register_lisp_error_function
-;;    (nth-value 1 (ff:register-function `ics_error)))
+  (ics_caml_startup (if full 1 0) #(0))
+  (register_lisp_error_function
+   (nth-value 1 (ff:register-function `ics_error)))
   ;;(ics_init verbose)
   )
 
