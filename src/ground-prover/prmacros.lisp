@@ -50,3 +50,5 @@
 
 (defconstant *boolops* '(and or implies not IF iff))
 
+(defmacro singleton? (obj)
+  `(and (consp ,obj) (null (cdr ,obj))))
