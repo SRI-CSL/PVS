@@ -917,8 +917,13 @@
   (dolist (d prev-decls)
     (typecase d
       ((or importing mod-decl theory-abbreviation-decl formal-theory-decl)
-       (let* ((thname (subst-mod-params (theory-name d) thinst theory))
-	      (th (get-theory thname)))
+       (let* ((lthname (if (and (library-datatype-or-theory? theory)
+				(null (library (theory-name d))))
+			   (copy (theory-name d)
+			     'library (libref-to-libid (lib-ref theory)))
+			   (theory-name d)))
+	      (thname (subst-mod-params lthname thinst theory))
+	      (th (get-theory lthname)))
 	 (add-usings-to-context* th thname))))))
 
 (defmethod update-context-importing-for-mapped-tcc (decl)
@@ -2033,7 +2038,7 @@
   nil)
 
 (defmethod ppr ((obj hash-table))
-  (maphash #'(lambda (x y) (format t "~%~s - ~s" x y))
+  (maphash #'(lambda (x y) (format t "~%~@<~w~:_ ==> ~w~:>" x y))
 	   obj))
 
 (defmethod ref-to-id ((ref symbol))
@@ -2554,8 +2559,10 @@ space")
 	  (not (fully-instantiated? expr)))
       expr
       (let* ((fvars (freevars expr))
-	     (key (unless fvars (cons expr include-typepreds?)))
+	     (key (unless nil;fvars
+		    (cons expr include-typepreds?)))
 	     (nexpr (when key (gethash key *pseudo-normalize-hash*))))
+	;;(push expr pnexprs)
 	(if nexpr
 	    (if (tc-eq nexpr expr)
 		expr
