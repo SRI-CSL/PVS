@@ -5,11 +5,11 @@
 (defun fail? (subst)
   (eq subst *fail*))
 
-;; Top-Level Unification
+;; Top-Level E-Unification
 
 (defun E-unify (trm1 trm2 cs subst)
-  #+dbg(assert (node-p t1))
-  #+dbg(assert (node-p t2))
+  #+dbg(assert (node-p trm1))
+  #+dbg(assert (node-p trm2))
   #+dbg(assert (not (null cs)))
   (let ((cs (push-new-cong-state cs)))
     (loop for (x . e) in subst
@@ -36,6 +36,7 @@
 	(consistent? t1 *cs*)
 	*cs*))))
 
+
 ;; Unification Closure
 
 (defun dp-union* (t1 t2)
@@ -43,8 +44,9 @@
   (let ((equality (canon (mk-equality t1 t2) *cs*)))
     (if (false-p equality)
 	(throw 'fail :inconsistent)
-      (let ((solved-form (solve equality *cs*)))
-	(if (false-p solved-form)
+      (let ((solved-form (solve equality *cs*))) ; to be added: if there is a variable
+	                                         ; in there, solve for it!
+	(if (false-p solved-form)             
 	    (throw 'fail :inconsistent)
 	    (loop for eqn in solved-form
 		  do (when (equality-p eqn)
@@ -59,6 +61,8 @@
 	    (r2 (dp-schema s2 *cs*)))
 	(cond ((and (application-p r1)
 		    (application-p r2))
+		;    (uninterp? r1)
+		;    (uninterp? r2))
 	       (multiple-value-bind (op1 args1)
 		   (destructure-application r1)
 		 (multiple-value-bind (op2 args2)
@@ -194,3 +198,12 @@
 
 (defun dom (subst)
   (mapcar #'car subst))
+
+
+
+
+
+
+
+
+
