@@ -2,8 +2,10 @@
 
 (defun get-current-enum-types ()
   (let* ((all-enum-type-decls
-	  (loop for (th . ignore) in (using *current-context*)
-		nconc (loop for i in (theory th)
+	  (loop for i-list being each hash-value in
+		(declarations-hash *current-context*)
+		;;(th . ignore) in (using *current-context*)
+		nconc (loop for i in i-list
 			    when (and (typep i 'type-decl)
 				      (enum-adt? (type-value i)))
 			    collect (type-value i))))
@@ -17,4 +19,5 @@
 	  (loop for et in enum-types
 		collect
 		(loop for r in (constructors et)
-		      collect (top-translate-to-prove r))))))
+		      collect (let ((*newdc* t))
+				(top-translate-to-prove r)))))))
