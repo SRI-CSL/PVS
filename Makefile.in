@@ -537,8 +537,8 @@ ilisp-xemacs21-src = $(addprefix emacs/xemacs21/,$(notdir ${ilisp-emacs-src}))
 ilisp-xemacs20-src = $(addprefix emacs/xemacs20/,$(notdir ${ilisp-emacs-src}))
 ilisp-xemacs19-src = $(addprefix emacs/xemacs19/,$(notdir ${ilisp-emacs-src}))
 
-emacs/emacs-src/pvs-prelude-files-and-regions.el : lib/prelude.pvs
-	./pvs -batch -l emacs/emacs-src/pvs-set-prelude-info.el \
+emacs/emacs-src/pvs-prelude-files-and-regions.el : lib/prelude.pvs ${pvsfull}
+	-./pvs -batch -l emacs/emacs-src/pvs-set-prelude-info.el \
                         -f set-prelude-files-and-regions
 
 emacs/emacs20/%.el : emacs/emacs-src/%.el
