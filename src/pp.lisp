@@ -98,41 +98,31 @@ hash tables gives a binding number for a given operator; higher numbers
 bind tighter.")
 
 ;;; Unparse takes the following keywords:
-;;; :string :stream :char-width :file :sb-tex :style
+;;; :string :stream :char-width :file :style
 
-(defmethod unparse :around (obj &rest keys)
-  (if *use-pp*
-      (let ((*default-char-width* (or (cadr (memq :char-width keys))
-				      *default-char-width*))
-	    (*print-pretty* (or (not (memq :pretty keys))
-				(cadr (memq :pretty keys)))))
-	(cond ((memq :string keys)
-	       (with-output-to-string (*standard-output*)
-		 (pp obj)))
-	      ((memq :stream keys)
-	       (let ((*standard-output* (cadr (memq :stream keys))))
-		 (pp obj)))
-	      ((memq :file keys)
-	       (with-open-file (*standard-output* (cadr (memq :file keys))
-						  :direction :output)
-		 (pp obj)))
-	      (t (pp obj))))
-      (call-next-method)))
-
-(defun unparse-decl (decl)
-  (let ((ndecl (if (bind-decl? decl)
-		   (mk-var-decl (id decl)
-				(or (declared-type decl) (type decl)))
-		   decl)))
-    (string-trim '(#\Space #\Tab #\Newline)
-		 (unparse ndecl
-		   :string t
-		   :char-width *default-char-width*))))
+(defun unparse (obj &key string stream file char-width
+		    length level lines (pretty t))
+   (let ((*print-length* length)
+	 (*print-level* level)
+	 (*print-lines* lines)
+	 (*print-pretty* pretty)
+	 (*print-escape* nil)
+	 (*print-right-margin* (or char-width *default-char-width*)))
+     (cond (string 
+	    (with-output-to-string (*standard-output*)
+	      (pp obj)))
+	   (stream
+	    (let ((*standard-output* stream))
+	      (pp obj)))
+	   (file
+	    (with-open-file (*standard-output* file :direction :output)
+	      (pp obj)))
+	   (t (pp obj)))))
 
 (defun unpindent (inst indent &key (width *default-char-width*)
-		       string comment?)
+		       length level lines string comment?)
   (let* ((str (unparse inst
-		:string t
+		:string t :length length :level level :lines lines
 		:char-width (- width indent (if comment? 2 0)))))
     (if string
 	(with-output-to-string (*standard-output*)
@@ -150,13 +140,18 @@ bind tighter.")
 		  (position #\linefeed str :start (1+ end))
 		  comment? t)))
 
+(defun unparse-decl (decl)
+  (let ((ndecl (if (bind-decl? decl)
+		   (mk-var-decl (id decl)
+				(or (declared-type decl) (type decl)))
+		   decl)))
+    (string-trim '(#\Space #\Tab #\Newline)
+		 (unparse ndecl
+		   :string t
+		   :char-width *default-char-width*))))
+
 (defun pp (obj)
-  (let ((*print-escape* nil)
-	(*print-level* nil)
-	(*print-length* nil)
-	(*print-right-margin* *default-char-width*))
-    ;;(setf (slot-value *standard-output* 'excl::charpos) 0)
-    (pp* obj)))
+  (pp* obj))
 
 ;(defmethod pp* :around ((syn syntax))
 ;  (call-next-method)
@@ -1291,7 +1286,7 @@ bind tighter.")
     (pprint-logical-block (nil nil)
       (pprint-indent :current 2)
       (pp* argument)
-      (write-char "::")
+      (write "::")
       (write-char #\space)
       (pprint-newline :fill)
       (pp* (declared-type (car (bindings operator)))))))
