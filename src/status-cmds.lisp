@@ -674,12 +674,12 @@
 		   
 (defun axiom? (x)
   (and (typep x 'formula-decl)
-       (memq (spelling x) '(axiom postulate))))
+       (memq (spelling x) '(AXIOM POSTULATE))))
 
 
 (defun assumption? (x)
   (and (typep x 'formula-decl)
-       (eq (spelling x) 'assumption)))
+       (eq (spelling x) 'ASSUMPTION)))
     
 
 
