@@ -782,6 +782,8 @@ Key bindings are:
   (set-syntax-table pvs-mode-syntax-table)
   )
 
+(defvar show-proof-file-default nil)
+
 (defpvs show-proof-file edit-proof (context filename)
   "Display proofs of a PVS file from any context
 
@@ -790,13 +792,14 @@ in the specified context in a buffer that allows them to selected or
 deleted.  A selected proof is displayed in the Proof buffer and may be
 installed on a formula - see the edit-proof command."
   (interactive
-   (let* ((cdir (pvs-current-directory))
+   (let* ((cdir (or show-proof-file-default (pvs-current-directory)))
 	  (dir (read-file-name "Show proof file of context: "
 			       cdir cdir t)))
      (unless (file-directory-p dir)
        (error "%s is not a directory." dir))
      (unless (string-match "/$" dir)
        (setq dir (concat dir "/")))
+     (setq show-proof-file-default dir)
      (cons dir (complete-pvs-file-name-in-dir
 		"Show proof file for PVS file: " dir))))
   (when (pvs-send-and-wait (format "(show-proof-file \"%s\" \"%s\")"
