@@ -893,8 +893,11 @@ e.g., C-u or M-0."
 	(dname (file-name-as-directory directory))
 	(pvs-libdirs nil)
 	(overwrite nil))
+    (unless (file-name-absolute-p dname)
+      (error "Directory to undump into must be absolute, not relative"))
     (save-excursion
       (set-buffer buf)
+      (setq default-directory dname)
       (goto-char (point-min))
       (let ((found-one (re-search-forward "^[$][$][$].*$" nil t)))
 	(while found-one
@@ -934,7 +937,8 @@ ESC or `q' to not overwrite any of the remaining files,
 		  (t (pvs-msg "Skipping %s" fname)))))
 	(goto-char (point-min)))
       (ilisp-bury-output)
-      (pvs-msg "Finished undumping %s" filename))))
+      (pvs-msg "Finished undumping %s" filename)
+      (kill-buffer buf))))
 
 (defun pvs-get-dump-directory (dir)
   (save-excursion
