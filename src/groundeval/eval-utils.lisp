@@ -44,38 +44,6 @@
 	  'argument (make-instance 'arg-tuple-expr
 		      'exprs (list cond then else))))))
 
-(defun mk-bind-decl (id dtype &optional type)
-  (assert (symbolp id))
-;;  (assert (or (null type) *current-context*))
-  (let ((bd (make-instance 'bind-decl
-	      'id id
-	      'declared-type (when dtype (or (print-type dtype) dtype))
-	      'type type
-	      'types (list type))))
-    (when type
-      (setf (resolutions bd);;was (mod-name *current-context*)
-	    (list (make-resolution bd nil type))))
-    bd))
-
-(defmethod make-resolution (decl modinst &optional type)
-  (let* ((*smp-include-actuals* t)
-	 (rtype (if type
-		    (subst-mod-params type modinst)
-		    (typecase decl
-		      (type-decl
-		       (let ((*free-bindings*
-			      (append (apply #'append (formals decl))
-				      *free-bindings*)))
-			 (subst-mod-params (type-value decl) modinst)))
-		      ((or expname typed-declaration simple-decl)
-		       (subst-mod-params (type decl) modinst))))))
-    #+pvsdebug (assert (or (null (actuals modinst))
-			   (fully-instantiated? rtype)))
-    (make-instance 'resolution
-      'declaration decl
-      'module-instance (or modinst (mod-name *current-context*))
-      'type rtype)))
-
 (defun mk-translate-cases-to-if (cases-expr)
   (mk-translate-cases-to-if* (expression cases-expr)
 			  (selections cases-expr)

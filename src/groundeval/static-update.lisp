@@ -1,9 +1,16 @@
 (in-package 'pvs)
 
 ;;updateable? ensures that a type is definitely destructively
-;;updateable, whenever it is updateable.  In contrast, the
+;;updateable, wherever it is updateable.  In contrast, the
 ;;method contains-updateable? is true whenever the type has
-;;any destructively updateable content.  
+;;any destructively updateable content.  Destructive updates
+;;can only be safely invoked when all the content is updateable
+;;content is destructively updateable since it would otherwise
+;;be necessary to analyze the actual updates to make sure that
+;;they all correspond to destructively updateable types.  This is
+;;worth considering in a future extension, but it is improbable that
+;;there'll be examples where some fields are destructively updateable
+;;and others are only nondestructively updateable.
 
 (defmethod updateable? ((texpr tupletype))
   (updateable? (types texpr)))
@@ -39,9 +46,9 @@
 
 
 (defmethod updateable? ((texpr list))
-  (when (consp texpr)
-    (and (updateable? (car texpr))
-	 (updateable? (cdr texpr)))))
+  (or (null texpr)
+      (and (updateable? (car texpr))
+	   (updateable? (cdr texpr)))))
 
 ;;This is subsumed by fall-through case.
 ;(defmethod updateable? ((texpr type-name))

@@ -240,6 +240,9 @@
 					  formals
 					  (append actuals
 						  arguments)))))
+	  (when (and (null check)
+		     *eval-verbose*)
+	    (format t "~%Destructive update check failed on ~a[~{~a,~}](~{~a,~})" op actuals arguments))
 	  (if (or actuals
 		  (eq *external* (module decl)))
 	      (if check
@@ -929,7 +932,8 @@
 	name)))
 
 (defun pvs2cl-resolution (expr)
-  (let ((decl (declaration expr)))
+  (let* ((decl (declaration expr))
+	 (*current-context* (saved-context (module decl))))
     (unless (eval-info decl)
       (make-eval-info decl))
     (if (datatype-constant? expr)
@@ -1081,6 +1085,8 @@
 	     (id decl)
 	     (setf (in-name-m decl) 'no-defn)
 	     (progn
+	       (when *eval-verbose*
+		 (format t "~%~a <internal_app> ~a" (id decl) id2))
 	       (setf (in-name-m decl) id2)
 	       (let ((*destructive?* nil))
 		 (setf (definition (in-defn-m decl))
@@ -1099,7 +1105,9 @@
 	  (install-definition
 	   (id decl)
 	   (setf (in-name-d decl) 'no-defn)
-	   (progn (setf (in-name-d decl) id-d)
+	   (progn (when *eval-verbose*
+		    (format t "~%~a <internal_dest> ~a" (id decl) id-d))
+		  (setf (in-name-d decl) id-d)
 		  (let ((*destructive?* T)
 			(*output-vars* NIL))
 		    (setf (definition (in-defn-d decl))
@@ -1121,6 +1129,8 @@
 	   (id decl)
 	   (setf (in-name decl) 'no-defn)
 	   (progn
+	     (when *eval-verbose*
+		    (format t "~%~a <internal_0> ~a" (id decl) id))
 	     (let ((*destructive?* NIL))
 	       (setf (definition (in-defn decl))
 		     `(defun ,id ()
