@@ -526,26 +526,7 @@
 	    (lcopy expr 'argument narg 'type ntype))))
 
 (defmethod subst-mod-params* ((expr field-name-expr) modinst bindings)
-  (with-slots (type resolutions) expr
-    (let* ((decl (declaration (car resolutions)))
-	   (fld (cdr (assq decl bindings))))
-      (if fld
-	  (copy expr
-	    'type (type fld)
-	    'resolutions (or (resolutions fld)
-			     (list (mk-resolution fld
-				     (current-theory-name) (type fld)))))
-	  (let ((ntype (subst-mod-params* type modinst bindings)))
-	    #+pvsdebug (assert (fully-instantiated? ntype))
-	    (if (eq type ntype)
-		expr
-		(let* ((fields (fields (domain (find-supertype ntype))))
-		       (nfld (car (member decl fields :test #'same-id)))
-		       (nres (mk-resolution nfld
-			       (current-theory-name) (type nfld))))
-		  (copy expr
-		    'type ntype
-		    'resolutions (list nres)))))))))
+  expr)
 
 (defmethod subst-mod-params* ((expr field-application) modinst bindings)
   (with-slots (argument type) expr
