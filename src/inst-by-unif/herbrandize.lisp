@@ -1,9 +1,11 @@
 (in-package :pvs)
 
-(defun herbrandize (fmlas &optional xs renamings always-skolemize)
+(defun herbrandize (fmlas &optional xs renamings always-skolemize relativize)
   #+dbg(assert (every #'expr? fmlas))
-  (let ((*always-skolemize* always-skolemize))
-    (declare (special *always-skolemize*))
+  (let ((*always-skolemize* always-skolemize)
+	(*relativize* relativize))
+    (declare (special *always-skolemize*)
+	     (special *relativize*))
     (herbrandize* fmlas xs renamings)))
 
 (defmethod herbrandize* ((fmlas null) xs subst)
@@ -51,7 +53,8 @@
     (values term xs subst)))
 
 (defmethod herbrandize* ((fmla forall-expr) xs subst)
-  (let* ((fmla (relativize-quantifier fmla))
+  (declare (special *relativize*))
+  (let* ((fmla (relativize-quantifier fmla *relativize*))
 	 (bndngs (bindings fmla)))
     (unless (safe-to-skolemize? bndngs)
       (throw 'not-skolemizable nil))
@@ -66,7 +69,8 @@
  		      (append assocs subst))))))
 
 (defmethod herbrandize* ((fmla exists-expr) xs subst)
-  (let* ((fmla (relativize-quantifier fmla))
+  (declare (special *relativize*))
+  (let* ((fmla (relativize-quantifier fmla *relativize*))
 	 (bndngs (bindings fmla)))
     (let ((*bound-variables* (append bndngs *bound-variables*)))
       (declare (special *bound-variables*))
@@ -112,7 +116,8 @@
       (values (dp::mk-implication term1 term2) xs2 subst2))))
 
 (defmethod skolemize* ((fmla forall-expr) xs subst)
- (let* ((fmla (relativize-quantifier fmla))
+  (declare (special *relativize*))
+  (let* ((fmla (relativize-quantifier fmla *relativize*))
 	 (bndngs (bindings fmla)))
     (let ((*bound-variables* (append bndngs *bound-variables*)))
       (declare (special *bound-variables*))
@@ -125,7 +130,8 @@
 		    (append assocs subst))))))
 		      
 (defmethod skolemize* ((fmla exists-expr) xs subst)
- (let* ((fmla (relativize-quantifier fmla))
+  (declare (special *relativize*))
+ (let* ((fmla (relativize-quantifier fmla *relativize*))
 	 (bndngs (bindings fmla)))
     (unless (safe-to-skolemize? bndngs)
       (throw 'not-skolemizable nil))
@@ -144,9 +150,11 @@
 		 (nonempty? (type bndng)))
 	     bndngs)))
 
-(defun relativize-quantifier (fmla)
-  (lift-predicates-in-quantifier fmla
-				 (list *naturalnumber* *integer*)))
+(defun relativize-quantifier (fmla &optional relativize)
+  (if relativize
+      (lift-predicates-in-quantifier fmla
+				     (list *naturalnumber* *integer*))
+    fmla))
 
 (defun expand-iff (fmla)
   (make!-conjunction (make!-implication (args1 fmla) (args2 fmla))
