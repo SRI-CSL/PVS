@@ -86,10 +86,20 @@
 		    :initial-value (apply fn1 args))))
     #'identity))
 
-;;; The following allows slot-exists-p to be called on anything.
-;#+gcl
-;(defmethod pcl::find-slot-definition (obj slot)
-;  nil)
+(defun list-pvs-libraries ()
+  (dolist (path *pvs-library-path*)
+    (dolist (lib (directory path))
+      (when (directory-p lib)
+	(format t "~%~a/ - ~a" (file-namestring lib) lib)))))
+
+(defun libload (filestr)
+  (let* ((lib (directory-namestring filestr))
+	 (file (file-namestring filestr))
+	 (libpath (libref-to-pathname lib))
+	 (*default-pathname-defaults* (if (string= libpath "./")
+					  *default-pathname-defaults*
+					  libpath)))
+    (load file)))
 
 (defmacro lf (file &optional force)
   `(make-file ,file ,force))
