@@ -456,17 +456,21 @@
 
 (defun directory-p (dir)
   (let* ((dirstr (namestring dir))
-	 (dirslash (if (char= (char dirstr (1- (length dirstr))) #\/)
-		       dirstr
-		       (concatenate 'string dirstr "/")))
-	 (dirnoslash (if (char= (char dirstr (1- (length dirstr))) #\/)
-			 (subseq dirstr 0 (1- (length dirstr)))
-			 dirstr)))
+	 (dirslash (merge-pathnames
+		    (if (char= (char dirstr (1- (length dirstr))) #\/)
+			dirstr
+			(concatenate 'string dirstr "/"))
+		    *pvs-context-path*))
+	 (dirnoslash (merge-pathnames
+		      (if (char= (char dirstr (1- (length dirstr))) #\/)
+			  (subseq dirstr 0 (1- (length dirstr)))
+			  dirstr)
+		      *pvs-context-path*)))
     (cond ((not (probe-file dirnoslash))
 	   (values nil (format nil "Directory ~a does not exist." dir)))
 	  ((not (probe-file dirslash))
 	   (values nil (format nil "~a is not a directory." dir)))
-	  (t (pathname dirslash)))))
+	  (t dirslash))))
 
 (defun splice (new-elt after-elt list)
   (let ((tail (and after-elt (memq after-elt list))))

@@ -4,11 +4,11 @@
   `(compile-file ,str)
   `(load ,str))
 
-(defun fully-instantiated? (obj)
-  (let ((formals (when *current-theory*
-		   (formals-sans-usings *current-theory*))))
-    (every #'(lambda (fp) (memq fp formals))
-	   (free-params obj))))
+; (defun fully-instantiated? (obj)
+;   (let ((formals (when *current-theory*
+; 		   (formals-sans-usings *current-theory*))))
+;     (every #'(lambda (fp) (memq fp formals))
+; 	   (free-params obj))))
 
 (defun get-branch-decl ()
   (let ((if-theory (get-theory "if_def")))

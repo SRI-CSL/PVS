@@ -578,13 +578,6 @@
 (defmethod pvs2cl_up*((expr projection-expr) bindings livevars)
   `(project ,(index expr) ,(pvs2cl_up* (argument expr) bindings livevars)))
 
-
-(defun sort-assignments (assigns)                
-  (let ((restructure   (copy-list assigns)))     
-    (sort restructure                            
-          #'string-lessp                         
-          :key #'(lambda (x) (id (caar (arguments x)))))))
-
 (defun sorted-fields (typ)                
   (let ((restructure   (copy-list (fields typ))))     
     (sort restructure                            
@@ -1140,53 +1133,6 @@
 	     (compile id)
 	     id))))))
 
-;;This should be in the patch.  *match-cache* is initialized
-;;if needed since it is called in checking sub-type?.  
-(defun match (expr instance bind-alist subst)
-  (let* ((*match-cache* (or *match-cache* ;;for initialization
-			                   ;;not shadowing
-			    (make-hash-table :test #'eq)))
-	  (hashed-table-expr
-	  (unless *no-bound-variables-in-match* ;;NSH(10.19.95)
-	      (gethash expr *match-cache*)))  ;;should not cache or lookup
-	 (hashed-value (when hashed-table-expr
-			 (gethash instance hashed-table-expr)))
-	 (hashed-result (when hashed-value (car hashed-value)))
-	 (hashed-modsubst (when hashed-value (cdr hashed-value)))
-	 (*dont-cache-match?* nil)
-	 (*remaining-actuals-matches* nil)) ;;(break "match1")
-    (cond ((and hashed-value
-		(eq hashed-result 'FAIL))
-	   'FAIL)
-	  (hashed-value
-	   (setq *modsubst* hashed-modsubst)
-	   (if subst
-	       (merge-subst subst hashed-result)
-	       hashed-result))
-	  (t (let* ((frees (freevars expr)) ;just to set no-freevars?
-		    (res (match* expr instance bind-alist subst))
-		    (result
-		     (if (or (eq res 'fail)
-			     (not (subsetp frees res :test
-					   #'(lambda (x y) ;;nsh(7.12.95)
-					       ;;was tc-eq.
-					       (same-declaration x (car y))))))
-			 'fail
-			 (match-remaining-actuals
-			  *remaining-actuals-matches* res)))) ;;(break "match2")
-	       (when (and (null subst)
-			  (null *dont-cache-match?*)
-			  (null *no-bound-variables-in-match*))
-		 (if hashed-table-expr
-		   (setf (gethash instance hashed-table-expr)
-			 (cons result *modsubst*))
-		   (setf (gethash expr *match-cache*)
-			 (let ((hash (make-hash-table :test #'eq)))
-			   (setf (gethash instance hash)
-				 (cons result *modsubst*))
-			   hash))))
-	       result)))))
-
 (defun pvs2cl-theory (theory)
   (let* ((theory (get-theory theory))
 	 (*current-context* (context theory)))
@@ -1438,10 +1384,6 @@
 	     (if sub
 		 `(integer ,@sub)
 		 (pvs2cl-lisp-type* (supertype type)))))))
-
-(defcl adt-type-name (type-name)
-  recognizer-names
-  struct-name)
 
 
 (defmethod pvs2cl-lisp-type* ((type adt-type-name))
