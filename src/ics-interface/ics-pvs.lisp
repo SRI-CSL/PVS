@@ -124,7 +124,7 @@
   (ics_init verbose))
 
 (defun ics-empty-state ()
-  (let ((empty (state-wrap (ics_state_empty))))
+  (let ((empty (state-wrap (ics_context_empty))))
     (wrap-finalize! empty)
     empty))
 
@@ -299,6 +299,13 @@
 	  ((tc-eq op (divides-operator))
 	   (ics_term_mk_div (translate-term-to-ics* (args1 expr))
 			    (translate-term-to-ics* (args2 expr))))
+	  ((tc-eq op (floor-operator))
+	   (ics_term_mk_floor (ics_empty_context)
+			      (translate-term-to-ics* (args1 expr))))
+	  ((tc-eq op (divides-operator))
+	   (ics_term_mk_div (ics_empty_context)
+			    (translate-term-to-ics* (args1 expr))
+			    (translate-term-to-ics* (args2 expr))))
 	  (t
 	   (let ((name (unique-name-ics op))
 		 (terms (translate-term-list-to-ics* (arguments expr))))
@@ -437,10 +444,12 @@
 	       (if (singleton? (car args))
 		   (translate-term-to-ics* (caar args))
 		 (ics_term_mk_tuple (translate-term-list-to-ics* (car args)))))))))
-    (ics_term_mk_update 
-     trbasis 
-     (ics_term_mk_num (ics_num_of_int position)) 
-     (translate-assign-args-to-ics* (cdr args) value next-trbasis next-trbasis-type))))
+    (ics_term_mk_update
+     (ics_context_empty)
+     (ics_triple
+      trbasis 
+      (ics_term_mk_num (ics_num_of_int position)) 
+      (translate-assign-args-to-ics* (cdr args) value next-trbasis next-trbasis-type)))))
 
 (defun make-ics-field-application (field-accessor-type fieldnum length term)
   "Forget about the 'field-accessor-type' for now"
@@ -459,4 +468,4 @@
 (defun make-ics-assign-application (fun-type term term-args)
   "Forget about the 'fun-type' for now"
   (declare (ignore fun-type))
-  (ics_term_mk_select term term-args))
+  (ics_term_mk_select (ics_context_empty) (ics_par term term-args)))
