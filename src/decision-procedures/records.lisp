@@ -37,10 +37,12 @@
       ((mk-project-eqn (field1 record2)
          (prog1
 	     (mk-equality field1
-			  (sigproject
-			   (mk-term
-			       `(,*project*
-				 ,(mk-constant index) ,record2))))
+			  (canon
+			   (sigproject
+			    (mk-term
+				`(,*project*
+				  ,(mk-constant index) ,record2)))
+			   cong-state t))
 	   (incf index))))
   (let ((new-eqns (map-funargs-list #'mk-project-eqn lhs rhs)))
     new-eqns))))
@@ -61,10 +63,12 @@
       ((mk-project-eqn (field1 record2)
          (prog1
 	     (mk-equality field1
-			  (sigproject
-			   (mk-term
-			       `(,*project*
-				 ,(mk-constant index) ,record2))))
+			  (canon
+			   (sigproject
+			    (mk-term
+				`(,*project*
+				  ,(mk-constant index) ,record2)))
+			   cong-state t))
 	   (incf index))))
   (let ((new-eqns (map-funargs-list #'mk-project-eqn lhs rhs)))
     new-eqns))))
