@@ -288,7 +288,7 @@ beginning of the previous one."
 				  pvs-string-positions
 				  (pvs-string-positions))))
     (some '(lambda (strpos)
-	     (and (<= (car strpos) (point))
+	     (and (< (car strpos) (point))
 		  (>= (cdr strpos) (point))))
 	  pvs-string-positions)))
 
