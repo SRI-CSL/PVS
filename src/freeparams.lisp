@@ -336,7 +336,6 @@
 	(let ((afrees (free-params* actuals nil)))
 	  (union afrees frees :test #'eq))
 	(let ((theory (module decl)))
-	  (break)
 	  (when theory
 	    (dolist (x (formals-sans-usings theory))
 	      (setq frees (pushnew x frees :test #'eq))))
