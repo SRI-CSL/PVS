@@ -13,6 +13,7 @@
    ((update-p term) 'array)
    ((adt-p term) 'adt)
    ((bv-p term) 'bv)
+   ((set-p term) 'set)
    (t nil)))
 
 (defun occurs-under-interp (term1 term2)
@@ -26,15 +27,11 @@
 (defun array-p (term) nil)
 
 (defun bv-p (term)
-  nil
-  ;(bvec::is-bv? term)
-  )
+  (bvec::is-bv? term))
 
 (defun sigbvec (term cong-state)
   (declare (ignore cong-state))
-  term
-  ;(bvec::fixed-sigma term)
-  )
+  (bvec::fixed-sigma term))
 
 (defun sigma (term cong-state &optional (after-solve nil))
   ;;; assumes immediate args are already in sigma-normal form.
@@ -51,6 +48,7 @@
    ((if-p term) (sigif term cong-state))
    ((bool-p term) (sigbool term cong-state after-solve))
    ((bv-p term) (sigbvec term cong-state))
+   ((set-p term) (sigset term cong-state))
    (t term)))
 
 (defun recursive-sigma (term cong-state)
@@ -67,13 +65,11 @@
 	
 (defvar *process-types* t)
 
-
 (defun dp-rational-atom-p (term cong-state)
   (dp-integer-atom-p term cong-state))
 
 (defun dp-real-atom-p (term)
   t)
-
 
 (defun sigtype (term cong-state)
   (if *process-types*
@@ -257,6 +253,7 @@
       (arith (arith-solve-neq neq cong-state))
       (array (array-solve-neq neq cong-state))
       (bv (bv-solve-neq neq cong-state))
+      (set (set-solve-neq neq cong-state))
       (t (list neq)))))
 
 (defun solve-bool (bool cong-state)
@@ -287,6 +284,7 @@
       (array (array-solve eqn cong-state))
       (adt (adt-solve eqn cong-state))
       (bv (bv-solve eqn cong-state))
+      (set (set-solve eqn cong-state))
       (t (list eqn)))))
 
 (defun bv-solve (eq cong-state)
