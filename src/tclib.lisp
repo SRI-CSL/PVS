@@ -457,7 +457,8 @@
 		   "~a.pvscontext is empty~%  no PVS files loaded"
 		   lib-path)))))
     (add-to-prelude-libraries lib-ref)
-    (when loaded-files
+    (when (and loaded-files
+	       (not *typechecking-module*))
       (reset-context)
       (setq *pvs-context-changed* t))
     (mapcar #'(lambda (file)
