@@ -324,7 +324,10 @@
 (defun compatible-resolution-conversion (conversion res arguments)
   (let ((nconv (compatible-operator-conversion
 		conversion (type res) arguments)))
-    (when nconv
+    (when (and nconv
+	       (not (member (expr nconv)
+			    (disabled-conversions *current-context*)
+			    :key #'expr :test #'tc-eq)))
       (make-instance 'conversion-result
 	'expr (copy (expr nconv))
 	'conversion nconv))))
@@ -436,7 +439,7 @@
       (let ((nconv (compatible-operator-conversion conv optype args)))
 	(when (and nconv
 		   (not (member nconv (disabled-conversions *current-context*)
-				:key #'name :test #'tc-eq)))
+				:key #'expr :test #'tc-eq)))
 	  (push nconv conversions))))
     (nreverse conversions)))
 
@@ -563,7 +566,7 @@
 ;;; rather than
 ;;;  LAMBDA (x:T): IF a(x) THEN b(x) ELSE c(x) ENDIF : [T -> int]
 (defmethod application-conversion-argument (arg conv vars)
-  (declare (ignore conv vars))
+  (declare (ignore conv))
   (let ((var1 (find-if #'(lambda (v)
 			   (every #'(lambda (ty)
 				      (let ((sty (find-supertype ty)))
@@ -1124,7 +1127,7 @@
 	 type
 	 disabled-convs
 	 (if (and cos
-		  (not (member cos disabled-convs :test #'tc-eq :key #'name)))
+		  (not (member cos disabled-convs :test #'tc-eq :key #'expr)))
 	     (cons cos result)
 	     result)))))
 
@@ -1200,12 +1203,10 @@
 (defun subtypes-satisfied? (actuals formals &optional alist)
   (or (notany #'(lambda (fm) (typep fm 'formal-subtype-decl)) formals)
       (multiple-value-bind (nfml nalist)
-	  (let ((*in-subtypes-sat* t))
-	    (subst-actuals-in-next-formal (car actuals) (car formals) alist))
+	  (subst-actuals-in-next-formal (car actuals) (car formals) alist)
 	(and (or (not (typep nfml 'formal-subtype-decl))
-		 (let ((*in-subtypes-sat* t))
 		 (subtype-of? (type-canon (type-value (car actuals)))
-			      (type-canon (type-value nfml)))))
+			      (type-canon (type-value nfml))))
 	     (subtypes-satisfied? (cdr actuals) (cdr formals) nalist)))))
 
 (defun check-conversion (name)
@@ -1235,7 +1236,7 @@
        (let ((cos (when (k-combinator? (car conversions))
 		    (compatible-k-conversion (car conversions) type))))
 	 (if (and cos
-		  (not (member cos disabled-convs :test #'tc-eq :key #'name)))
+		  (not (member cos disabled-convs :test #'tc-eq :key #'expr)))
 	     (cons cos result)
 	     result)))))
 
