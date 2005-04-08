@@ -280,6 +280,16 @@ functions_alt [D, R: TYPE, Drel: PRED[[D, D]], Rrel: PRED[[R, R]]]: THEORY
  END functions_alt
 
 
+transpose[T1, T2, T3: TYPE]: THEORY
+ BEGIN
+  f: VAR [T1 -> [T2 -> T3]]
+  x: VAR T1
+  y: VAR T2
+
+  transpose(f)(y)(x): T3 = f(x)(y)
+ END transpose
+
+
 % restrict is the restriction operator on functions, allowing a
 % function defined on a supertype to be applied to a subtype.  Note
 % that it is a conversion, so will be inserted automatically when needed.
@@ -537,7 +547,7 @@ orders [T: TYPE]: THEORY
  END orders
 
 
-orders_alt [T: TYPE, <: pred[[T, T]], pe: nonempty_pred[T]]: THEORY
+orders_alt [T: TYPE, < : pred[[T, T]], pe: nonempty_pred[T]]: THEORY
  BEGIN
   x: VAR T
   upper_bound?: [T -> bool] = upper_bound?(<)(pe)
@@ -646,7 +656,7 @@ extend_order_props[T: TYPE, S: TYPE FROM T]: THEORY
 % wf_induction defines induction for any type that has a well-founded
 % relation.
 
-wf_induction [T: TYPE, <: (well_founded?[T])]: THEORY
+wf_induction [T: TYPE, < : (well_founded?[T])]: THEORY
  BEGIN
 
   wf_induction: LEMMA
@@ -663,7 +673,7 @@ wf_induction [T: TYPE, <: (well_founded?[T])]: THEORY
 % measure_induction builds on well-founded induction.  It allows
 % induction over a type T for which a measure function m is defined.
 
-measure_induction [T: TYPE, M: TYPE, m: [T -> M], <: (well_founded?[M])]: THEORY
+measure_induction [T: TYPE, M: TYPE, m: [T -> M], < : (well_founded?[M])]: THEORY
  BEGIN
 
  measure_induction: LEMMA
