@@ -32,7 +32,7 @@
 (defvar *inner-check-for-tccs* nil)
 
 (defmethod check-for-tccs* :around (ex expected)
-  (declare (ignore expected))
+  (declare (ignore ex expected))
   (if (eq *generate-tccs* 'top)
       (unless *inner-check-for-tccs*
 	(let ((*inner-check-for-tccs* t))
@@ -331,7 +331,6 @@
   (check-for-tccs* value expected))
 
 (defmethod check-assignment-arg-types* (args-list values ex (expected subtype))
-  (declare (ignore args-list values ex))
   (check-assignment-arg-types* args-list values ex (supertype expected)))
 
 (defmethod check-assignment-arg-types* (args-list values ex (expected recordtype))
@@ -619,5 +618,9 @@
   (mapc #'(lambda (ty) (check-for-tccs* ty expected)) (types te)))
 
 (defmethod check-for-tccs* ((te recordtype) expected)
+  (mapc #'(lambda (fd) (check-for-tccs* (declared-type fd) expected))
+	(fields te)))
+
+(defmethod check-for-tccs* ((te struct-sub-recordtype) expected)
   (mapc #'(lambda (fd) (check-for-tccs* (declared-type fd) expected))
 	(fields te)))
