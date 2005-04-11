@@ -304,7 +304,8 @@
 		  (push (make-conversion-resolution r conv name)
 			creses))))
 	  reses)
-    creses))
+    (append (get-recordtype-conversion-resolutions name arguments)
+	    creses)))
 
 (defun get-resolution-conversions (res arguments)
   (get-resolution-conversions*
@@ -1310,3 +1311,178 @@
 						 :test #'equal)))
 			       (cons nbindings bindings-list)
 			       bindings-list)))))
+
+(defmethod find-proj-application-conversion ((ex projection-application))
+  (find-proj-application-conversion*
+   (current-conversions) (argument ex) (index ex)))
+
+(defun find-proj-application-conversion* (conversions ex index)
+  (when conversions
+    (let ((conv (compatible-tupletype-conversion
+		 (car conversions) ex index)))
+      (if (and conv
+	       (not (member conv (disabled-conversions *current-context*)
+			    :key #'expr :test #'tc-eq)))
+	  (let* ((ctype (type conv))
+		 (dom (domain (find-supertype ctype)))
+		 (nex (copy ex)))
+	    (add-conversion-info (expr conv) ex)
+	    (change-class ex 'implicit-conversion)
+	    (setf (argument ex) nex)
+	    (setf (types nex)
+		  (list (if (typep dom 'dep-binding) (type dom) dom)))
+	    (setf (operator ex) (copy (expr conv)))
+	    (setf (types ex) (list ctype))
+	    (typecheck* ex nil nil nil))
+	  (find-proj-application-conversion*
+	   (cdr conversions) ex index)))))
+
+(defun compatible-tupletype-conversion (conversion ex index)
+  (let* ((theory (module conversion))
+	 (ctype (find-supertype (type (expr conversion))))
+	 (fmls (formals-sans-usings theory)))
+    (and (typep ctype 'funtype)
+	 (typep (find-supertype (range ctype)) 'tupletype)
+	 (<= index (length (types (find-supertype (range ctype)))))
+	 (if (and fmls
+		  (not (eq theory (current-theory)))
+		  (remove-if #'(lambda (fp)
+				 (memq fp (formals-sans-usings
+					   (current-theory))))
+		    (free-params conversion)))
+	     (compatible-tupletype-conversion*
+	      (ptypes ex) conversion ex index)
+	     (when (some #'(lambda (atype)
+			     (compatible? atype (domain ctype)))
+			 (ptypes ex))
+	       conversion)))))
+
+(defun compatible-recordtype-conversion* (types conversion ex index)
+  (when types
+    (let* ((theory (module conversion))
+	   (ctype (find-supertype (type (expr conversion))))
+	   (fmls (formals-sans-usings theory))
+	   (bindings (tc-match (car types) (domain ctype)
+			       (mapcar #'list fmls))))
+      (if (and bindings (every #'cdr bindings))
+	  (let* ((acts (mapcar #'(lambda (a)
+				   (mk-res-actual (cdr a) theory))
+			 bindings))
+		 (nmi (mk-modname (id theory) acts)))
+	    (when (with-no-type-errors
+		   (check-compatible-params
+		    (formals-sans-usings theory) acts nil))
+	      (subst-params-decl conversion nmi theory) (car types)))
+	  (compatible-recordtype-conversion*
+	   (cdr types) conversion ex index)))))
+
+
+;;; Field applications - more difficult than projections because they can be
+;;; applications of the form fld(ex).
+
+(defmethod find-field-application-conversion ((ex field-application))
+  (find-field-application-conversion*
+   (current-conversions) (argument ex) (id ex)))
+
+(defun find-field-application-conversion* (conversions ex field-id)
+  (when conversions
+    (let ((conv (compatible-recordtype-conversion
+		 (car conversions) ex field-id)))
+      (if (and conv
+	       (not (member conv (disabled-conversions *current-context*)
+			    :key #'expr :test #'tc-eq)))
+	  (let* ((ctype (type conv))
+		 (dom (domain (find-supertype ctype)))
+		 (nex (copy ex)))
+	    (add-conversion-info (expr conv) ex)
+	    (change-class ex 'implicit-conversion)
+	    (setf (argument ex) nex)
+	    (setf (types nex)
+		  (list (if (typep dom 'dep-binding) (type dom) dom)))
+	    (setf (operator ex) (copy (expr conv)))
+	    (setf (types ex) (list ctype))
+	    (typecheck* ex nil nil nil))
+	  (find-field-application-conversion*
+	   (cdr conversions) ex field-id)))))
+
+(defun compatible-recordtype-conversion (conversion ex field-id)
+  (let* ((theory (module conversion))
+	 (ctype (find-supertype (type (expr conversion))))
+	 (fmls (formals-sans-usings theory)))
+    (and (typep ctype 'funtype)
+	 (typep (find-supertype (range ctype)) 'recordtype)
+	 (member field-id (fields (find-supertype (range ctype))) :key #'id)
+	 (if (and fmls
+		  (not (eq theory (current-theory)))
+		  (remove-if #'(lambda (fp)
+				 (memq fp (formals-sans-usings
+					   (current-theory))))
+		    (free-params conversion)))
+	     (compatible-recordtype-conversion*
+	      (ptypes ex) conversion ex field-id)
+	     (when (some #'(lambda (atype)
+			     (compatible? atype (domain ctype)))
+			 (ptypes ex))
+	       conversion)))))
+
+(defun compatible-recordtype-conversion* (types conversion ex field-id)
+  (when types
+    (let* ((theory (module conversion))
+	   (ctype (find-supertype (type (expr conversion))))
+	   (fmls (formals-sans-usings theory))
+	   (bindings (tc-match (car types) (domain ctype)
+			       (mapcar #'list fmls))))
+      (if (and bindings (every #'cdr bindings))
+	  (let* ((acts (mapcar #'(lambda (a)
+				   (mk-res-actual (cdr a) theory))
+			 bindings))
+		 (nmi (mk-modname (id theory) acts)))
+	    (when (with-no-type-errors
+		   (check-compatible-params
+		    (formals-sans-usings theory) acts nil))
+	      (subst-params-decl conversion nmi theory) (car types)))
+	  (compatible-recordtype-conversion*
+	   (cdr types) conversion ex field-id)))))
+
+(defun get-recordtype-conversion-resolutions (name arguments)
+  (when (and (null (library name))
+	     (null (mod-id name))
+	     (null (actuals name)))
+    (get-recordtype-conversion-resolutions*
+     (current-conversions) (mk-arg-tuple-expr* arguments) (id name))))
+
+(defun get-recordtype-conversion-resolutions* (conversions ex field-id
+							   &optional reses)
+  (if (null conversions)
+      (nreverse reses)
+      (let* ((conv (compatible-recordtype-conversion
+		   (car conversions) ex field-id))
+	     (res (when conv
+		    (make-recordtype-conversion-resolution conv ex field-id))))
+	(get-recordtype-conversion-resolutions*
+	 (cdr conversions) ex field-id
+	 (if res
+	     (cons res reses)
+	     reses)))))
+
+(defun make-recordtype-conversion-resolution (conv ex field-id)
+  (let* ((rtype (range (type (expr conv))))
+	 (fdecl (find field-id (fields rtype) :key #'id))
+	 (ftype
+	  (if (and (dependent? rtype)
+		   (some #'(lambda (x)
+			     (and (not (eq x fdecl))
+				  (occurs-in x fdecl)))
+			 (fields rtype)))
+	      (let* ((db (mk-dep-binding
+			  (make-new-variable '|r| rtype)
+			  rtype))
+		     (ne (make-dep-field-name-expr
+			  db rtype))
+		     (ftype (field-application-type
+			     (id fdecl) rtype ne)))
+		(mk-funtype db ftype))
+	      (mk-funtype (list rtype) (type fdecl)))))
+    (change-class (make-resolution fdecl (current-theory-name) ftype)
+	'conversion-resolution
+      'conversion conv)))
