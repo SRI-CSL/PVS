@@ -219,6 +219,11 @@
   (let ((tuptypes (delete-if-not #'(lambda (ty)
 				     (typep (find-supertype ty) 'tupletype))
 		    (ptypes (argument expr)))))
+    (unless (or tuptypes
+		*no-conversions-allowed*)
+      (let ((cexpr (find-proj-application-conversion expr)))
+	(when cexpr
+	  (setf tuptypes (types cexpr)))))
     (unless tuptypes
       (type-error expr
 	"The argument to a projection must be of a tuple type."))
@@ -365,10 +370,18 @@
   (declare (ignore expected kind arguments))
   (typecheck* (argument expr) nil nil nil)
   (let ((atypes (delete-if-not #'(lambda (pty)
-				   (typep (find-supertype pty) 'recordtype))
+				   (typep (find-supertype pty)
+					  '(or recordtype struct-sub-recordtype)))
 		  (ptypes (argument expr)))))
+    (unless (or atypes
+		*no-conversions-allowed*)
+      (let ((cexpr (find-field-application-conversion expr)))
+	(when cexpr
+	  (setf atypes (types cexpr)))))
     (unless atypes
-      (type-error expr "Argument must be of a recordtype"))
+      (if (fieldappl? expr)
+	  (type-error expr "Expression must be of a recordtype")
+	  (type-error expr "Argument must be of a recordtype")))
     (let ((ptypes (delete-if-not #'(lambda (pty)
 				     (member expr (fields (find-supertype pty))
 					     :test #'same-id))
@@ -1533,8 +1546,8 @@
 	       #'(lambda (ty)
 		   (let ((sty (find-supertype ty)))
 		     (and (not (from-conversion sty))
-			  (typep sty '(or funtype tupletype
-					  recordtype adt-type-name))))))
+			  (typep sty '(or funtype tupletype recordtype
+					  adt-type-name struct-subtype))))))
 	    (ptypes (expression expr)))))
   (when (and (cdr (ptypes (expression expr)))
 	     (name-expr? (expression expr)))
@@ -1627,6 +1640,12 @@
 	    (mk-tupletype etypes))))
 
 (defmethod find-update-commontype* ((te recordtype) expr (args cons) value)
+  (find-update-common-recordtype te expr args value))
+
+(defmethod find-update-commontype* ((te struct-sub-recordtype) expr (args cons) value)
+  (find-update-common-recordtype te expr args value))
+
+(defun find-update-common-recordtype (te expr args value)
   (let* ((sfields (subst-fields te
 				(typecheck* (copy-untyped expr) te nil nil)))
 	 (fdecl (find (caar args) sfields :test #'same-id))
@@ -1690,12 +1709,14 @@
 	      te)))))
 
 (defmethod find-update-commontype* ((te adt-type-name) expr (args cons) value)
+  (declare (ignore expr value))
   te)
 
 (defmethod find-update-commontype* ((te subtype) expr (args cons) value)
   (find-update-commontype* (supertype te) expr args value))
 
 (defmethod find-update-commontype* ((te type-expr) expr (args null) value)
+  (declare (ignore expr))
   (let ((tvalue (typecheck* (copy-untyped value) te nil nil)))
     (assert (and tvalue (type tvalue)))
     (reduce #'compatible-type (cons te (judgement-types tvalue)))))
@@ -1959,7 +1980,7 @@
 	     (upred (make!-lambda-expr (list vb)
 		      (make!-equation var carg)))
 	     (tpred (beta-reduce upred)))
-	(mk-subtype stype tpred))))
+	(mk-subtype type tpred))))
 
 (defmethod extend-domain-type (arg type expr)
   (declare (ignore arg expr))
@@ -1995,7 +2016,7 @@
 
 (defun typecheck-assignments (assigns type)
   (when assigns
-    (let ((assign (car assigns)))
+     (let ((assign (car assigns)))
       (when (and (maplet? assign)
 		 (cdr (arguments assign)))
 	(type-error assign "Maplet assignment may not be nested"))
@@ -2073,7 +2094,22 @@
 	(when acc
 	  (pushnew acc accs :test #'tc-eq))))
     (nreverse accs)))
-    
+
+(defmethod typecheck-ass-args (args (rtype struct-sub-recordtype) maplet?)
+  (when args
+    (unless (and (null (cdar args))
+		 (name-expr? (caar args)))
+      (type-error (caar args) "Field name expected"))
+    (let ((fieldpos (position (caar args) (fields rtype) :test #'same-id)))
+      (cond (fieldpos
+	     (when (cdr args)
+	       (typecheck-ass-args (cdr args)
+				   (type (nth fieldpos (fields rtype)))
+				   maplet?)))
+	    ((and maplet?
+		  (null (cdr args))))
+	    (t (type-error (caar args) "Field ~a not found in ~a"
+			   (id (caar args)) rtype))))))
 
 (defmethod typecheck-ass-args (args type maplet?)
   (declare (ignore type maplet?))
