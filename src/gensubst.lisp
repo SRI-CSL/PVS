@@ -250,6 +250,15 @@
 		       (gensubst* (declared-type fd) substfn testfn))))
 	  (lcopy fd 'type ntype 'declared-type dtype)))))
 
+(defmethod gensubst* ((te struct-sub-recordtype) substfn testfn)
+  (let ((fields (gensubst* (fields te) substfn testfn)))
+    (if (eq fields (fields te))
+	te
+	(copy te
+	  'fields (if *parsing-or-unparsing*
+		      fields
+		      (sort-fields fields
+				   (dependent-fields? fields)))))))
 
 ;;; Expressions
 
@@ -714,6 +723,9 @@
     (mapobject* fn (type fd)))
   (mapobject* fn (declared-type fd)))
 
+(defmethod mapobject* (fn (te struct-sub-recordtype))
+  (mapobject* fn (fields te)))
+
 ;;; Expressions
 
 (defmethod mapobject* :around (fn (ex expr))
@@ -1154,3 +1166,12 @@
       'declared-type (copy-untyped* declared-type)
       'type nil
       'resolutions nil)))
+
+(defmethod copy-untyped* ((ex struct-sub-recordtype))
+  (with-slots (fields) ex
+    (copy ex
+      'fields (copy-untyped* fields)
+      'dependent? nil
+      'print-type nil
+      'from-conversion nil
+      'nonempty? nil)))
