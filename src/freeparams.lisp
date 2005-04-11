@@ -154,6 +154,11 @@
 (defmethod free-params* ((conv conversion-result) frees)
   (free-params* (expr conv) frees))
 
+(defmethod free-params* ((texpr struct-sub-recordtype) frees)
+  (let ((ffrees (free-params* (fields texpr) nil))) 
+    (setf (free-parameters texpr) ffrees)
+    (union ffrees frees :test #'eq)))
+
 ;;; Expressions
 
 (defmethod free-params* :around ((expr expr) frees)
