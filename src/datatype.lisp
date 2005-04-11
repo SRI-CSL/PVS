@@ -1091,7 +1091,12 @@ generated")
 	  (make!-if-expr cond tpred else)))))
   
 
-;;; The common-accessors list is of the form
+;;; The common-accessors list is built from entries of the form
+;;; ((acc-decl type freevars) acc-decl ...)
+;;; which reflects accessors with the same identifier and type as the caar
+;;; Lists of these are made from accessors with the same id and different,
+;;; but compatible, types.
+;;; Finally, lists of these are made for each accessor id, resulting in
 ;;;  ( (((acc-decl type freevars) acc-decl ...)
 ;;;     ((acc-decl type freevars) acc-decl ...))
 ;;;    (((acc-decl type freevars) acc-decl ...)) ... )
@@ -1129,9 +1134,9 @@ generated")
   (and (same-id (car a&t1) (car a&t2))
        (multiple-value-bind (bindings mismatch?)
 	   (collect-same-arg&type-bindings (caddr a&t1) (caddr a&t2))
-	 ;;(declare (ignore bindings))
+	 (declare (ignore bindings))
 	 (unless mismatch?
-	   (compatible? (cadr a&t1) (cadr a&t2))))))
+	   (strict-compatible? (cadr a&t1) (cadr a&t2))))))
 
 (defun same-arg&type (a&t1 a&t2)
   (and (same-id (car a&t1) (car a&t2))
@@ -1296,6 +1301,7 @@ generated")
 		   (not (place negocc)))
 	  (multiple-value-bind (pos2? negocc2)
 	      (occurs-positively? adt-type (declared-type arg))
+	    (declare (ignore pos2?))
 	    (when (and negocc2 (place negocc2))
 	      (setq negocc negocc2))))
 	(let ((*current-theory* *adt*))
@@ -1478,6 +1484,7 @@ generated")
 			     (cons nbd result)))))
 
 (defun generate-disjoint-axiom (adt)
+  (declare (ignore adt))
   ;; We no longer generate the disjointness axiom because it can get large
   ;; and significantly slow down typechecking.  For a datatype with n
   ;; constructors, it would need to generate choose(n, 2) = n!/(n-2)!2!
