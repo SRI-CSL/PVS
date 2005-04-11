@@ -236,6 +236,11 @@
 (defcl disequation (application))
 (defcl infix-disequation (disequation infix-application))
 
+
+;; This is just a special class for prettyprinting 3.1416, which internally is
+;; (/ 31416 10000) 
+(defcl decimal (application))
+
   
 (defcl if-expr (application))
 
