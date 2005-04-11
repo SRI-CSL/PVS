@@ -367,6 +367,10 @@
 
 (defcl nonempty-type-from-decl (type-from-decl nonempty-type-def-decl))
 
+(defcl struct-subtype-decl (type-def-decl))
+
+(defcl nonempty-struct-subtype-decl (struct-subtype-decl nonempty-type-def-decl))
+
 
 ;;; Formal theory parameter declarations
 
@@ -380,6 +384,15 @@
 (defcl formal-subtype-decl (formal-type-decl type-from-decl))
 
 (defcl formal-nonempty-subtype-decl (formal-subtype-decl nonempty-type-decl))
+
+(defcl formal-struct-subtype-decl (formal-type-decl struct-subtype-decl))
+
+(defcl formal-nonempty-struct-subtype-decl (formal-struct-subtype-decl nonempty-type-decl))
+
+(defcl formal-type-appl-decl (formal-type-decl)
+  types)
+
+(defcl formal-nonempty-type-appl-decl (formal-type-appl-decl))
 
 (defcl formal-const-decl (formal-decl typed-declaration)
   (possibly-empty-type? :restore-as nil))
@@ -522,6 +535,12 @@
   (name :parse t)
   (formals :parse t)
   judgement-type)
+
+(defcl rec-number-judgement (number-judgement))
+
+(defcl rec-name-judgement (name-judgement))
+
+(defcl rec-application-judgement (application-judgement))
 
 (defcl conversion-decl (declaration)
   (k-combinator? :restore-as nil)
@@ -706,8 +725,19 @@
 
 (defcl recordtype (type-expr)
   (fields :parse t)
-  ;;generated?
   (dependent? :restore-as nil))
+
+(defcl struct-subtype (type-expr)
+  generated-by)
+
+(defcl struct-sub-recordtype (struct-subtype)
+  type
+  (fields :parse t)
+  (dependent? :restore-as nil))
+
+(defcl type-extension (type-expr)
+  (type :parse t)
+  (extension :parse t))
 
 ;;; This is used solely by save-theories.  The idea is to store the
 ;;; print-type of a type whenever it appears, and to recreate the
