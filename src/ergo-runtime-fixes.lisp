@@ -52,7 +52,7 @@
       ^ + - * / ++ ~ ** // ^^ \|- \|= <\| \|> = /= == < <= > >=
       << >> <<= >>= |#| @@ |##|))
 
-(defparameter *unary-operators* '(NOT - ~ [] <>))
+(defparameter *unary-operators* '(NOT + - ~ [] <>))
 
 (defvar *elsif-places* nil)
 
@@ -424,6 +424,44 @@ with the comment so as to put it in the proper place")
 				       (lexical-read-char self nil)))))))
      (when char (return)))
     (values (car char) place *newline-comments*)))
+
+(defun alpha-lexer (stream char &aux 
+			        (buffer (lexical-stream-stringbuffer stream)))
+  (setf (fill-pointer buffer) 0)
+  (vector-push-extend char buffer)
+  (loop
+   (setq char (lexical-read-char stream :eof))
+   (cond ((equal char :eof)
+	  (return))
+	 ((is-lexical-escape? stream char)
+	  (setq char (lexical-read-char stream :eof)))
+	 ((not (member (elt (lexical-stream-readtable stream)
+			    (char-code char)) '(:alphabetic :number)))
+	  (return)))
+   (if (not (equal char :eof))
+       (vector-push-extend char buffer)))
+  (lexical-unread-char stream)		; Not quoted. 
+  (let ((str #-(or lucid harlequin-common-lisp) buffer
+	     #+(or lucid harlequin-common-lisp)
+	     (coerce buffer 'simple-string)))
+    (multiple-value-bind (integer length)
+	(parse-integer str :junk-allowed t)
+      (cond ((and integer
+		  (= length (length str)))
+	     (if (char= (char str 0) #\0)
+		 (intern str *sbst-package*)
+		 integer))
+	    (integer
+	     (format t "Error: integer contains illegal characters.~%")
+	     :illegal-token)
+	  ;; Because of a bug in Lucid common lisp, we have to make the buffer
+	  ;; into a simple-string before we can intern it.
+	    (t
+	     (intern (if *case-sensitive*
+			 str
+			 #+(and allegro (version>= 6)) (string-downcase str)
+			 #-(and allegro (version>= 6)) (string-upcase str))
+		     *sbst-package*))))))
 
 (defun open-lexical-stream (stream &aux result)
   (setq result (make-lexical-stream :stream stream))
@@ -1032,6 +1070,7 @@ with the comment so as to put it in the proper place")
 
 (defun lam-error (fs-list)
   (multiple-value-bind (type name place) (peek-first)
+    (declare (ignore name))
     (do-syntax-error "Look ahead set match error.~%~
 		     Missing ~A inserted here:~%~A~%Bad token is ~A~%"
 		     (caar fs-list) type place)))
