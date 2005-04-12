@@ -273,7 +273,9 @@
 	 (let* ((thname (expr actual))
 		(theory (generated-theory (declaration (expr actual))))
 		(interpreted-theory (generated-theory formal))
-		(source-theory (get-theory (theory-name formal)))
+		(source-theory (get-theory* (id (theory-name formal))
+					    (or (library (theory-name formal))
+						(get-lib-id (module formal)))))
 		(pre-bindings (make-subst-mod-params-bindings
 			       thname
 			       (formals-sans-usings source-theory)
@@ -284,9 +286,9 @@
 	   ;; Now we compose the inverses of the mappings of the interpreted
 	   ;; theory and the source 
 	   (append (compose-mappings
-		    (inverse-mapping (mapping interpreted-theory)
+		    (inverse-mapping (theory-mapping interpreted-theory)
 				     interpreted-theory)
-		    (mapping theory))
+		    (theory-mapping theory))
 		   pre-bindings
 		   bindings))))
 
@@ -939,6 +941,25 @@
 (defmethod formal-subtype-binding-match (subtype formal)
   (declare (ignore subtype formal))
   nil)
+
+(defmethod subst-mod-params* ((type struct-sub-recordtype) modinst bindings)
+  (let ((act (cdr (assoc type bindings
+			 :test #'formal-struct-subtype-binding-match))))
+    (if act
+	(type-value act)
+	(let ((ntype (subst-mod-params* (type type) modinst bindings))
+	      (nfields (subst-mod-params* (fields type) modinst bindings)))
+	  (lcopy type
+	    'type ntype
+	    'fields nfields)))))
+
+(defmethod formal-struct-subtype-binding-match (type (formal formal-struct-subtype-decl))
+  (tc-eq type (type-value formal)))
+
+(defmethod formal-struct-subtype-binding-match (type formal)
+  (declare (ignore type formal))
+  nil)
+
 
 (defmethod subst-mod-params* ((type funtype) modinst bindings)
   (with-slots ((dom domain) (ran range)) type
