@@ -2505,6 +2505,7 @@
 (defun exit-pvs ()
   (multiple-value-bind (ignore condition)
       (ignore-errors (save-context))
+    (declare (ignore ignore))
     (if condition
 	(progn
 	  (if (pvs-yes-or-no-p "Problem saving context - ~a~%Exit anyway? "
