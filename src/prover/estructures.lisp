@@ -146,7 +146,7 @@
   (format-string :initform nil))
 
 (defcl rule-instance ()
-  rule
+  (rule :fetch-as nil)
   rule-input
   (rule-format :initform nil))
 
