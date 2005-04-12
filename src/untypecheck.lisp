@@ -437,7 +437,7 @@
 
 (defmethod untypecheck-theory :around ((ex expr))
   (let* ((utheory (or *untypechecking-theory* (current-theory)))
-	 (macro (assq ex (macro-expressions utheory))))
+	 (macro (when utheory (assq ex (macro-expressions utheory)))))
     (cond (macro
 	   (change-class ex (class-of (cdr macro)))
 	   (copy-slots ex (cdr macro))
