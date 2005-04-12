@@ -137,7 +137,8 @@
   (declare (ignore expected kind arguments))
   (unless (and (memq 'typechecked (status m))
 	       (typechecked? m))
-    (let ((*subtype-of-hash* (make-hash-table :test #'equal)))
+    (let ((*subtype-of-hash* (make-hash-table :test #'equal))
+	  (*bound-variables* *bound-variables*))
       (reset-pseudo-normalize-caches)
       (tcdebug "~%Typecheck ~a" (id m))
       (setf (formals-sans-usings m)
@@ -604,9 +605,9 @@
 					'mappings (mappings theoryname)))))
 			 thinsts)
 		       thinsts))
-	 (lib-id (when (library-datatype-or-theory? th)
-		   (car (rassoc (lib-ref th) (current-library-alist)
-				:test #'equal))))
+;; 	 (lib-id (when (library-datatype-or-theory? th)
+;; 		   (car (rassoc (lib-ref th) (current-library-alist)
+;; 				:test #'equal))))
 	 (lthinsts (if (library-datatype-or-theory? th)
 		       (mapcar #'(lambda (thinst)
 				   (if (library thinst)
@@ -828,11 +829,11 @@
 	    (cdr formals) (cdr actuals)
 	    (if (formal-theory-decl? (car formals))
 		(let* ((mdecl (declaration (resolution (expr (car actuals)))))
-		       (fmappings (mapping (generated-theory (car formals))))
+		       (fmappings (theory-mapping (generated-theory (car formals))))
 		       (amappings (typecase mdecl
 				    (theory-abbreviation-decl (mapping mdecl))
 				    (mod-decl
-				     (mapping (generated-theory mdecl)))
+				     (theory-mapping (generated-theory mdecl)))
 				    (t (make-subst-mod-params-map-bindings
 					(expr (car actuals))
 					(mappings (expr (car actuals)))
@@ -861,11 +862,18 @@
     (formal-type-decl
      (unless (type-value actual)
        (type-error actual "Expression provided where a type is expected"))
-     (when (formal-subtype-decl? formal)
-       (let ((type (subst-types (supertype (type-value formal)) assoc)))
-	 (unless (compatible? (type-value actual) type)
-	   (type-error actual "~a Should be a subtype of ~a"
-		       (type-value actual) type)))))
+     (typecase formal
+       (formal-subtype-decl
+	(let ((type (subst-types (supertype (type-value formal)) assoc)))
+	  (unless (compatible? (type-value actual) type)
+	    (type-error actual "~a Should be a subtype of ~a"
+			(type-value actual) type))))
+       (formal-struct-subtype-decl
+	(let ((struct-type (type (resolution (type-expr formal))))
+	      (act-type (type-value actual)))
+	  (unless (sub-struct-type? act-type struct-type)
+	    (type-error actual
+	      "Not a structural subtype"))))))
     (formal-theory-decl
      (unless (typep (declaration (expr actual))
 		    '(or module mod-decl theory-abbreviation-decl
@@ -874,6 +882,16 @@
     (t (let ((type (subst-types (type formal) assoc)))
 	 (typecheck* (expr actual) type nil nil))))
   t)
+
+(defmethod sub-struct-type? ((t1 recordtype) (t2 recordtype))
+  (let ((subfields (remove-if (complement
+			       #'(lambda (fld)
+				   (member (id fld) (fields t2) :key #'id)))
+		     (fields t1))))
+    (tc-eq subfields (fields t2))))
+
+(defmethod sub-struct-type? ((t1 type-expr) (t2 type-expr))
+  nil)
 
 (defun subst-types (type assoc)
   (if assoc
