@@ -56,12 +56,11 @@
   (unless (gethash m *prelude*)
     (mapc #'(lambda (u) (pushnew m (used-by (car u)) :test #'eq))
 	  (all-usings m))
-    (let ((*in-module* m))
-      (dolist (d (all-decls m))
-	(let ((*generate-xref-declaration* d)
-	      (*xref-names-seen* nil)
-	      (*xref-types-seen* nil))
-	  (generate-xref d)))))
+    (dolist (d (all-decls m))
+      (let ((*generate-xref-declaration* d)
+	    (*xref-names-seen* nil)
+	    (*xref-types-seen* nil))
+	(generate-xref d))))
   m)
 
 (defmethod generate-xref ((use importing))
@@ -122,6 +121,9 @@
   (generate-xref (types te)))
 
 (defmethod generate-xref ((te recordtype))
+  (generate-xref (fields te)))
+
+(defmethod generate-xref ((te struct-sub-recordtype))
   (generate-xref (fields te)))
 
 (defmethod generate-xref ((d field-decl))
