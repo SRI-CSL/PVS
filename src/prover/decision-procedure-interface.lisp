@@ -231,7 +231,8 @@
 (defmethod dpi-end* ((dp (eql 'ics)) proofstate)
   (declare (ignore proofstate))
   (pvs-to-ics-reset)
-  (ics_reset))
+  ;;(ics_reset)
+  )
 
 (defmethod dpi-empty-state* ((dp (eql 'ics)))
   (ics-empty-state))
@@ -246,6 +247,7 @@
 	   (values nil result)))))
 
 (defmethod dpi-process* ((dp (eql 'ics)) ics-expr state)
+  (declare (ignore ics-expr state))
   (break "Hypothesis: only called when ICS returns disjunction"))
 	 
 (defmethod dpi-valid?* ((dp (eql 'ics)) state (pvs-expr expr))
