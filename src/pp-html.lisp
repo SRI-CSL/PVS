@@ -130,7 +130,8 @@
 	     (restore-context)
 	     (let* ((*pvs-files* (car files&theories))
 		    (*pvs-modules* (cadr files&theories))
-		    (dir (libref-to-pathname lib-ref)))
+		    ;;(dir (libref-to-pathname lib-ref))
+		    )
 	       (maphash
 		#'(lambda (file theories)
 		    (let ((html-file (make-htmlpath file))
