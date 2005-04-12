@@ -3480,7 +3480,7 @@ invokes apply-extensionality.  Otherwise it decomposes the
 	(car resolutions))
       (let* ((name (pc-parse (format nil "~a.~a_weak_induction"
 			      (module-instance (resolution rel))
-			      (id rel))
+			      (op-to-id (id rel)))
 		    'name))
 	    (resolutions (resolve name 'formula nil *current-context*)))
 	(car resolutions))))
@@ -3492,7 +3492,7 @@ invokes apply-extensionality.  Otherwise it decomposes the
 	(car resolutions))
       (let* ((name (pc-parse (format nil "~a.~a_weak_coinduction"
 			      (module-instance (resolution rel))
-			      (id rel))
+			      (op-to-id (id rel)))
 		    'name))
 	    (resolutions (resolve name 'formula nil *current-context*)))
 	(car resolutions))))
