@@ -349,8 +349,8 @@
 				 subst order polarity))
 	(find-out-match-polarity lhs-template expr bind-alist subst
 				 order insub inmodsubst polarity))
-      (find-match (template-expression lhs-template) bind-alist subst
-		  order)))
+      (find-match (template-expression lhs-template) (expression expr)
+		  bind-alist subst order)))
 
 (defmethod find-match-polarity (lhs-template (expr list) bind-alist subst
 				    order polarity)
@@ -554,15 +554,15 @@
 (defun find-out-match (lhs expr bind-alist subst order
 			   insub inmodsubst)
   (if (eq insub 'fail)
-	(call-match lhs expr bind-alist subst)
-	(if (eq order 'out)  ;;NSH(9/92)order does not support
-	                     ;;outside-in rewriting.
-	    (multiple-value-bind (topsub topmodsubst)
-		(call-match lhs expr bind-alist subst)
-	      (if (eq topsub 'fail)
-		  (values insub inmodsubst)
-		  (values topsub topmodsubst)))
-	    (values insub inmodsubst))))
+      (call-match lhs expr bind-alist subst)
+      (if (eq order 'out) ;;NSH(9/92)order does not support
+	  ;;outside-in rewriting.
+	  (multiple-value-bind (topsub topmodsubst)
+	      (call-match lhs expr bind-alist subst)
+	    (if (eq topsub 'fail)
+		(values insub inmodsubst)
+		(values topsub topmodsubst)))
+	  (values insub inmodsubst))))
 
 (defmethod find-match (lhs (expr application) bind-alist subst order)
   (multiple-value-bind (insub inmodsubst)
