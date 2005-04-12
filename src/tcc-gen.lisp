@@ -278,7 +278,7 @@
 		      substs))
 	     (nbindings (get-tcc-closure-bindings bindings nbody))
 	     (nexpr (if nbindings
-			(make!-forall-expr (reverse nbindings) nbody)
+			(make!-forall-expr nbindings nbody)
 			nbody)))
 	(add-tcc-conditions* nexpr conditions substs nil))))
 
@@ -300,20 +300,12 @@
 ;;; Puts the dependent bindings after the non-dependent ones
 
 (defun get-tcc-closure-bindings (bindings body)
-  (let ((nbindings (remove-if-not #'(lambda (ff)
-				      (some #'(lambda (fff)
-						(member fff bindings
-							:test #'same-declaration))
-					    (freevars ff)))
-		     (freevars body))))
-    (sort-freevars
-     (append (remove-if #'(lambda (b)
-			    (or (some #'(lambda (nb)
-					  (same-declaration b nb))
-				      nbindings)
-				(not (possibly-empty-type? (type b)))))
-	       bindings)
-	     (mapcar #'declaration nbindings)))))
+  (let ((fvars (freevars body)))
+    (remove-if (complement
+		#'(lambda (bd)
+		    (or (member bd fvars :key #'declaration)
+			(possibly-empty-type? (type bd)))))
+      bindings)))
 
 
 (defun insert-tcc-decl (kind expr type ndecl)
@@ -959,7 +951,7 @@
   nil)
 
 (defun find-uninterpreted (expr thinst theory mappings-alist)
-  (let ((refs (collect-references expr))
+  (let (;;(refs (collect-references expr))
 	(theories (interpreted-theories thinst theory))
 	(foundit nil))
     (mapobject #'(lambda (ex)
@@ -1014,6 +1006,11 @@
 (defun make-mapped-axiom-tcc-decl (axiom modinst mod)
   (let* ((*generate-tccs* 'none)
 	 (*generating-mapped-axiom-tcc* t))
+    (unless (closed-definition axiom)
+      (let* ((*in-checker* nil)
+	     (*current-context* (context axiom)))
+	(setf (closed-definition axiom)
+	      (universal-closure (definition axiom)))))
     (multiple-value-bind (expr mappings-alist)
 	(subst-mod-params (closed-definition axiom) modinst mod)
       (let* ((tform (add-tcc-conditions expr))
