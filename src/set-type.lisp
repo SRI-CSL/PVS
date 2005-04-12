@@ -202,7 +202,7 @@ required a context.")
     (when (or (actuals (module-instance ex))
 	      (mappings (module-instance ex)))
       (setf (module-instance (resolution ex))
-	    (set-type-actuals ex)))
+	    (set-type-actuals ex (module (declaration (resolution ex))))))
     (change-name-expr-class-if-needed (declaration res) ex)
     (let ((alias (cdr (assq (declaration res) (boolean-aliases)))))
       (when alias
@@ -550,28 +550,31 @@ required a context.")
 ;;; should be split into two methods
 
 (defmethod set-type-actuals ((modinst modname) &optional theory)
-  (let ((fmls (formals-sans-usings (or theory (get-theory modinst))))
-	(acts (actuals modinst)))
-    (set-type-actuals* acts fmls)
-    (when (mappings modinst)
-      (unless (fully-instantiated? modinst)
-	(type-error modinst
-	  "Actual parameters must be provided to include mappings"))
-      (set-type-mappings modinst)))
-  (let ((nmodinst (simplify-modinst modinst)))
-    (unless (eq *generate-tccs* 'none)
-      (generate-assuming-tccs nmodinst modinst)
-      ;; This is now done in typecheck-using* after doing add-to-using
-      ;; (when (mappings modinst)
+  (let ((thry (or theory (get-theory modinst))))
+    (assert thry)
+    (let ((fmls (formals-sans-usings thry))
+	  (acts (actuals modinst)))
+      (set-type-actuals* acts fmls)
+      (when (mappings modinst)
+	(unless (fully-instantiated? modinst)
+	  (type-error modinst
+	    "Actual parameters must be provided to include mappings"))
+	(set-type-mappings modinst)))
+    (let ((nmodinst (simplify-modinst modinst)))
+      (unless (eq *generate-tccs* 'none)
+	(generate-assuming-tccs nmodinst modinst thry)
+	;; This is now done in typecheck-using* after doing add-to-using
+	;; (when (mappings modinst)
 	;; (generate-mapped-axiom-tccs nmodinst))
-      ;; Compare the given actuals with those determined by the typechecker 
-      ;;(generate-actuals-tccs (actuals expr) (actuals nmodinst))
-      )
-    nmodinst))
+	;; Compare the given actuals with those determined by the typechecker 
+	;;(generate-actuals-tccs (actuals expr) (actuals nmodinst))
+	)
+      nmodinst)))
 
 (defmethod set-type-actuals ((expr name) &optional theory)
   #+pvsdebug (assert (null *set-type-actuals-name*))
   (let* ((modinst (module-instance expr))
+	 (thry (or theory (module (declaration expr))))
 	 (*typecheck-using* nil)
 	 (*set-type-actuals-name* expr))
     (unless modinst
@@ -587,7 +590,7 @@ required a context.")
     (let ((*generate-tccs* (cond ((eq *generate-tccs* 'none) 'none)
 				 ((typep modinst 'modname-no-tccs) 'all)
 				 (t *generate-tccs*)))
-	  (fmls (formals-sans-usings (or theory (get-theory modinst)))))
+	  (fmls (formals-sans-usings thry)))
       (set-type-actuals* (actuals modinst) fmls))
     (set-type-mappings modinst)
     (when (typep modinst 'modname-no-tccs)
@@ -604,7 +607,7 @@ required a context.")
 	      (actuals expr) (actuals modinst))))
     (let ((nmodinst (simplify-modinst modinst)))
       (unless (eq *generate-tccs* 'none)
-	(generate-assuming-tccs nmodinst expr)
+	(generate-assuming-tccs nmodinst expr thry)
 	(when (mappings modinst)
 	  (generate-mapped-axiom-tccs nmodinst))
 	;; Compare the given actuals with those determined by the typechecker
@@ -667,6 +670,16 @@ required a context.")
 	 (svar (mk-name-expr vid nil nil
 			     (make-resolution vb (current-theory-name) tact))))
     (check-for-subtype-tcc svar (supertype texp))))
+
+(defmethod set-type-actual (act (formal formal-struct-subtype-decl))
+  (call-next-method)
+  (let ((tact (find-supertype (type-value act)))
+	(texp (type-value formal)))
+    (dolist (fld (fields texp))
+      (unless (member (id fld) (fields tact) :key #'id)
+	(type-error fld
+	  "Field ~a missing for structural subtype ~a"
+	  (id fld) (type-value act))))))
 
 (defmethod set-type-actual (act (formal formal-const-decl))
   #+pvsdebug (assert (fully-typed? (type formal)))
@@ -761,7 +774,7 @@ required a context.")
 (defun map-depends-on (map1 map2)
   (let ((d1 (declaration (lhs map1))))
     ;; uninterpreted type declarations can't possibly depend on anything
-    (unless (typep d1 '(or type-decl datatype-or-module))
+    (unless (typep d1 '(or type-decl datatype-or-module mod-decl))
       (let ((d2 (declaration (lhs map2)))
 	    (refs (collect-references (type d1))))
 	(and (memq d2 refs) t)))))
@@ -953,7 +966,11 @@ required a context.")
 			    'mappings (append mappings (mappings thinst))))
 	      (subst-type (subst-mod-params (type (declaration lhs))
 					    mapthinst
-					    (module (declaration lhs)))))
+					    (if (eq (id mapthinst)
+						    (id (module
+							 (declaration lhs))))
+						(module (declaration lhs))
+						(get-theory thinst)))))
 	 (set-type* (expr rhs) subst-type)))))
 
 ;;; Need to deal with type of lhs.  Here is what we mean:
@@ -1024,10 +1041,10 @@ required a context.")
 (defun subst-actuals-in-next-formal (act formal alist)
   (if (formal-theory-decl? formal)
       (let* ((mdecl (declaration (resolution (expr act))))
-	     (fmappings (mapping (generated-theory formal)))
+	     (fmappings (theory-mapping (generated-theory formal)))
 	     (amappings (typecase mdecl
 			  (theory-abbreviation-decl (mapping mdecl))
-			  (mod-decl (mapping (generated-theory mdecl)))
+			  (mod-decl (theory-mapping (generated-theory mdecl)))
 			  (t (make-subst-mod-params-map-bindings
 			      (expr act) (mappings (expr act)) nil))))
 	     (nalist (compose-formal-to-actual-mapping fmappings amappings)))
@@ -1864,14 +1881,14 @@ required a context.")
 			    optypes9)))
 	  (assert optypes)
 	  #+pvsdebug (assert (null (duplicates? optypes :test #'tc-eq)))
+	  (when (typep operator 'name-expr)
+	    (setf (resolutions operator)
+		  (remove-if-not #'(lambda (r)
+				     (member (type r) optypes
+					     :test #'tc-eq))
+		    (resolutions operator))))
 	  (cond ((cdr optypes)
 		 (setf (types operator) optypes)
-		 (when (typep operator 'name-expr)
-		   (setf (resolutions operator)
-			 (remove-if-not #'(lambda (r)
-					    (member (type r) optypes
-						    :test #'tc-eq))
-			   (resolutions operator))))
 		 (type-ambiguity operator))
 		((has-type-vars? (car optypes))
 		 (type-error operator
@@ -2156,16 +2173,23 @@ required a context.")
       (nreverse result)
       (instantiable-operator-types
        op (cdr optypes) args expected
-       (if (instantiable-operator-type (car optypes) op args expected)
-	   (cons (car optypes) result)
-	   result))))
+       (let* ((*dont-worry-about-full-instantiations* t)
+	      (optype (instantiate-operator-type
+		       (car optypes) op args expected)))
+	 (if (and (eq optype (car optypes))
+		  (not (fully-instantiated? optype)))
+	     result
+	     (cons (car optypes) result))))))
 
 (defun instantiable-operator-type (optype op args expected)
   (declare (ignore op))
   (or (fully-instantiated? optype)
       *dont-worry-about-full-instantiations*
       (let* ((frees (free-params optype))
-	     (bindings (instantiate-operator-bindings frees))
+	     (bindings ;;(instantiate-operator-bindings frees)
+	      (mapcar #'list (remove-if #'(lambda (x)
+					(eq (module x) (current-theory)))
+			   frees)))
 	     (domain (domain-types optype))
 	     (range (range optype)))
 	(assert bindings)
@@ -2969,6 +2993,7 @@ required a context.")
 		   ass)
 	   nil))))
 
+
 ;;; Have to be careful here to make sure the right TCCs are generated.
 ;;;     r: [# x: int, y: int #]
 ;;;     s: [# x, y, z: nat #] = r WITH [`y := 2, `z |-> -5]
@@ -2977,17 +3002,24 @@ required a context.")
 
 (defmethod set-type* ((expr update-expr) (expected recordtype))
   (with-slots (expression assignments) expr
-    (let ((etypes (collect-compatible-recordtypes (ptypes expr) expected)))
-      (check-unique-type etypes expr expected)
-      (let* ((stype (find-supertype (car etypes)))
-	     (atype (if (fully-instantiated? stype)
-			stype
-			(instantiate-from stype expected expr)))
-	     (args-list (mapcar #'arguments assignments))
-	     (values (mapcar #'expression assignments)))
-	(set-type* expression (contract-expected expr atype))
-	(set-assignment-arg-types args-list values expression expected)
-	(setf (type expr) atype)))))
+    (set-type-update-expr-recordtype expression assignments expr expected)))
+
+(defmethod set-type* ((expr update-expr) (expected struct-sub-recordtype))
+  (with-slots (expression assignments) expr
+    (set-type-update-expr-recordtype expression assignments expr expected)))
+
+(defun set-type-update-expr-recordtype (expression assignments expr expected)
+  (let ((etypes (collect-compatible-recordtypes (ptypes expr) expected)))
+    (check-unique-type etypes expr expected)
+    (let* ((stype (find-supertype (car etypes)))
+	   (atype (if (fully-instantiated? stype)
+		      stype
+		      (instantiate-from stype expected expr)))
+	   (args-list (mapcar #'arguments assignments))
+	   (values (mapcar #'expression assignments)))
+      (set-type* expression (contract-expected expr atype))
+      (set-assignment-arg-types args-list values expression expected)
+      (setf (type expr) atype))))
 
 (defmethod set-type* ((expr update-expr) (expected tupletype))
   (with-slots (expression assignments) expr
@@ -3121,17 +3153,27 @@ required a context.")
   (with-slots (fields) expected
     (if (every #'null args-list)
 	(call-next-method)
- 	(progn
-	  (mapc #'(lambda (a v)
-		    (unless a (set-type* v expected)))
-		args-list values)
-	  ;; This is wrong - if we're going to recurse we need to make all
-	  ;; arguments homogeneous, i.e., r WITH [`a`x := 3, `a := e] leads to e
-	  ;; being set-typed above, but then need to construct the args-list for
-	  ;; `a`x := e`x, etc.
-	  (multiple-value-bind (cargs-list cvalues)
-	      (complete-assignments args-list values ex expected)
-	    (set-assignment-rec-arg-types cargs-list cvalues ex fields))))))
+	(set-assignment-arg-types-recordtype fields args-list values
+					     ex expected))))
+
+(defmethod set-assignment-arg-types* (args-list values ex (expected struct-sub-recordtype))
+  (with-slots (fields) expected
+    (if (every #'null args-list)
+	(call-next-method)
+	(set-assignment-arg-types-recordtype fields args-list values
+					     ex expected))))
+
+(defun set-assignment-arg-types-recordtype (fields args-list values ex expected)
+  (mapc #'(lambda (a v)
+	    (unless a (set-type* v expected)))
+	args-list values)
+  ;; This is wrong - if we're going to recurse we need to make all
+  ;; arguments homogeneous, i.e., r WITH [`a`x := 3, `a := e] leads to e
+  ;; being set-typed above, but then need to construct the args-list for
+  ;; `a`x := e`x, etc.
+  (multiple-value-bind (cargs-list cvalues)
+      (complete-assignments args-list values ex expected)
+    (set-assignment-rec-arg-types cargs-list cvalues ex fields)))
 
 (defmethod set-assignment-arg-types* (args-list values ex (expected tupletype))
   (with-slots (types) expected
@@ -3403,6 +3445,12 @@ required a context.")
   (set-type* value expected))
 
 (defmethod contract-expected (expr (expected recordtype))
+  (contract-expected-recordtype expr expected))
+
+(defmethod contract-expected (expr (expected struct-sub-recordtype))
+  (contract-expected-recordtype expr expected))
+
+(defun contract-expected-recordtype (expr expected)
   (let* ((new-ids (mapcar #'(lambda (a) (id (caar (arguments a))))
 		    (remove-if-not #'maplet? (assignments expr))))
 	 (types (collect-compatible-recordtypes
@@ -3432,7 +3480,7 @@ required a context.")
   (delete-if-not
       #'(lambda (ty)
 	  (let ((sty (find-supertype ty)))
-	    (and (typep sty 'recordtype)
+	    (and (typep sty '(or recordtype struct-sub-recordtype))
 		 (or ignore-ids
 		     (length= (fields sty) (fields expected)))
 		 (every #'(lambda (fld)
@@ -3658,6 +3706,17 @@ required a context.")
 			   (fields rtype))))
     (complete-rec-assignments args-list values (fields rtype) ex nil nil)))
 
+(defmethod complete-assignments (args-list values ex (rtype struct-sub-recordtype))
+  ;; Used to check for dependent?, but we really need all assignments if
+  ;; we're going to generate correct TCCs.
+  ;; Since field-decls don't point to their associated recordtypes
+  ;; (they can't, since they may appear in several different ones due
+  ;; to copying and dependent substitutions), we create the
+  ;; association list in *field-records*.
+  (let ((*field-records* (mapcar #'(lambda (fld) (cons fld rtype))
+			   (fields rtype))))
+    (complete-rec-assignments args-list values (fields rtype) ex nil nil)))
+
 (defun complete-rec-assignments (args-list values fields ex cargs cvalues)
   (if (null fields)
       (values (append args-list (nreverse cargs))
@@ -3790,7 +3849,7 @@ required a context.")
 ;	     :test #'tc-eq))
   (when (actuals (module-instance te))
     (setf (module-instance (resolution te))
-	  (set-type-actuals te)))
+	  (set-type-actuals te (module (declaration (resolution te))))))
   #+pvsdebug (fully-typed? te)
   (when (and (typep (type (resolution te)) 'type-name)
 	     (adt (type (resolution te))))
@@ -3851,11 +3910,20 @@ required a context.")
   (declare (ignore expected))
   (set-type-fields (fields te)))
 
+(defmethod set-type* ((te struct-sub-recordtype) expected)
+  (declare (ignore expected))
+  (set-type-fields (fields te)))
+
 (defun set-type-fields (field-decls)
   (when field-decls
     (set-type* (declared-type (car field-decls)) nil)
     (let ((*bound-variables* (cons (car field-decls) *bound-variables*)))
       (set-type-fields (cdr field-decls)))))
+
+(defmethod set-type* ((te type-extension) expected)
+  (declare (ignore expected))
+  (set-type* (type te) nil)
+  (set-type-fields (extension te)))
 
 
 ;;; instantiate-from
