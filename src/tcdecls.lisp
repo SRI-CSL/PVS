@@ -142,6 +142,53 @@
   (set-nonempty-type (type-value decl))
   decl)
 
+(defmethod typecheck* ((decl formal-struct-subtype-decl) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (check-duplication decl)
+  (let* ((tn (mk-type-name (id decl)))
+	 (res (mk-resolution decl (current-theory-name) tn)))
+    (setf (resolutions tn) (list res))
+    (type-def-decl-value decl tn))
+  decl)
+
+(defmethod typecheck* ((decl formal-nonempty-struct-subtype-decl) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (call-next-method)
+  (put-decl decl)
+  (make-nonempty-assumption (type-value decl))
+  (set-nonempty-type (type-value decl))
+  decl)
+
+(defmethod typecheck* ((decl formal-type-appl-decl) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (check-duplication decl)
+  ;;(check-type-application-formals decl)
+  (dolist (te (types decl))
+    (typecheck* te nil nil nil)
+    (let ((reses (remove-if (complement
+			     #'(lambda (r)
+				 (and (dep-binding? (declaration r))
+				      (type-name? (type (declaration r)))
+				      (formal-type-appl-decl?
+				       (declaration (type (declaration r)))))))
+		   (resolutions te))))
+      (cond ((cdr reses)
+	     (type-error te "Type error"))
+	    ((null reses)
+	     (type-error te "Must resolve to a formal dependent type"))
+	    (t (set-type te (type (car reses)))))))
+  (let ((tn (make-self-resolved-type-name decl)))
+    (setf (type-value decl) tn))
+  decl)
+
+(defmethod typecheck* ((decl formal-nonempty-type-appl-decl) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (call-next-method)
+  (put-decl decl)
+  (make-nonempty-assumption (type-value decl))
+  (set-nonempty-type (type-value decl))
+  decl)
+
 
 (defmethod typecheck* ((decl formal-const-decl) expected kind arguments)
   (declare (ignore expected kind arguments))
@@ -149,6 +196,7 @@
     (setf (type decl)
 	  (typecheck* (declared-type decl) nil nil nil)))
   (set-type (declared-type decl) nil)
+  (assert (fully-instantiated? (type decl)))
   (if (free-params (type decl))
       (set-nonempty-type (type decl))
       (check-nonempty-type (type decl) (id decl)))
@@ -238,33 +286,58 @@
 	     imappings)))))
 
 (defun determine-implicit-mapping (decl target tgt-theory)
-  (let ((tgt-decls (remove-if (complement
-			       #'(lambda (d)
-				   (and (declaration? d)
-					(eq (id d) (id decl))
-					(visible? d)
-					(eq (kind-of d) (kind-of decl)))))
-		     (all-decls tgt-theory))))
-    (cond ((null tgt-decls)
+  (let* ((tgt-decls (remove-if (complement
+				#'(lambda (d)
+				    (and (declaration? d)
+					 (eq (id d) (id decl))
+					 (visible? d)
+					 (eq (kind-of d) (kind-of decl)))))
+		      (all-decls tgt-theory)))
+	 (reses (unless tgt-decls
+		  (resolutions (resolve (id decl) (kind-of decl) nil
+					(context tgt-theory))))))
+    (cond ((and (null tgt-decls)
+		(null reses))
 	   (pvs-info "No implicit mapping found for ~a" (id decl)))
-	  ((cdr tgt-decls)
+	  ((or (cdr tgt-decls)
+	       (cdr reses))
 	   (break "Need to refine"))
 	  (t (mk-mapping
 	      (mk-name (id decl) nil (id (module decl))
-		       (make-resolution decl (mk-modname (id (module decl)))))
-	      (typecase decl
-		(type-decl (typecheck*
-			    (mk-type-name (id decl)
-			      (actuals target) (id target)
-			      (make-resolution (car tgt-decls) target)
-			      (mappings target) (library target))
-			    nil nil nil))
-		(module (mk-modname (id decl) (actuals target)
-				    (library target)
-				    (mappings target)))
-		(t (mk-name-expr (id decl) (actuals target) (id target)
-				 (make-resolution (car tgt-decls) target)
-				 (mappings target) (library target)))))))))
+		       (make-resolution decl
+			 (mk-modname (id (module decl)))))
+	      (let ((tdecl (or (car tgt-decls) (declaration (car reses)))))
+		(typecase decl
+		  (type-decl (typecheck*
+			      (if tgt-decls
+				  (mk-type-name (id decl)
+				    (actuals target) (id target)
+				    (make-resolution (or (car tgt-decls)
+							 (declaration (car reses)))
+				      target)
+				    (mappings target) (library target))
+				  (mk-type-name (id tdecl)
+				    (actuals (module-instance (car reses)))
+				    (id (module-instance (car reses)))
+				    (car reses)
+				    (mappings (module-instance (car reses)))
+				    (library (module-instance (car reses)))))
+			      nil nil nil))
+		  (module (if tgt-decls
+			      (mk-modname (id decl) (actuals target)
+					  (library target)
+					  (mappings target))
+			      (module-instance (car reses))))
+		  (t (if tgt-decls
+			 (mk-name-expr (id decl) (actuals target) (id target)
+				       (make-resolution (car tgt-decls) target)
+				       (mappings target) (library target))
+			 (mk-name-expr (id tdecl)
+			   (actuals (module-instance (car reses)))
+			   (id (module-instance (car reses)))
+			   (car reses)
+			   (mappings (module-instance (car reses)))
+			   (library (module-instance (car reses)))))))))))))
 
 
 (defmethod typecheck-named-theory* ((theory module) theory-name decl
@@ -341,8 +414,7 @@
 
 (defun find-local-theory-reference (expr &optional allowed-decls)
   (let ((local-ref nil)
-	(place-ex nil)
-	(*ignore-declared-types* t))
+	(place-ex nil))
     (mapobject #'(lambda (ex)
 		   (or local-ref
 		       (if (name? ex)
@@ -718,6 +790,17 @@
 	   (set-type (type-expr decl) nil)
 	   (setf (type-value decl) utype)
 	   (setf (print-type utype) tn)
+	   utype))
+	((struct-subtype-decl? decl)
+	 (when (enumtype? (type-expr decl))
+	   (type-error decl
+	     "Enumtype must be declared at top level"))
+	 (check-type-application-formals decl)
+	 (let* ((*bound-variables* (apply #'append (formals decl)))
+		(stype (typecheck* (type-expr decl) nil nil nil))
+		(utype (generate-uninterpreted-projtype decl stype)))
+	   (set-type (type-expr decl) nil)
+	   (setf (type-value decl) utype)
 	   utype))
 	((enumtype? (type-expr decl))
 	 (change-class tn 'adt-type-name
@@ -1483,9 +1566,9 @@
 		  (make!-implication wprem wconc)))
 	 (sform (make!-forall-expr (append fixed-vars (list sbd))
 		  (make!-implication sprem sconc)))
-	 (wid (makesym "~a_weak_~ainduction" (id decl)
+	 (wid (makesym "~a_weak_~ainduction" (op-to-id (id decl))
 		       (if (inductive-decl? decl) "" "co")))
-	 (sid (makesym "~a_~ainduction" (id decl)
+	 (sid (makesym "~a_~ainduction" (op-to-id (id decl))
 		       (if (inductive-decl? decl) "" "co")))
 	 (wdecl (typecheck* (mk-formula-decl wid wform 'AXIOM) nil nil nil))
 	 (sdecl (typecheck* (mk-formula-decl sid sform 'AXIOM) nil nil nil)))
@@ -1911,30 +1994,56 @@
   (declare (ignore expected kind arguments))
   (typecheck* (parameters type) nil nil nil)
   (let ((te (typecheck* (type type) nil 'type (parameters type))))
-    ;; Note that te is just the subtype associated with the
-    ;; type-application; the parameters have not yet been substituted
-    (unless (formals (declaration (type type)))
-      (type-error type "~a may not be used in a type application" te))
-    (unless (length= (car (formals (declaration (type type))))
-		     (parameters type))
-      (type-error type "Wrong number of actuals in ~a" type))
-    (let ((*generate-tccs* 'none)
-	  (typeslist (make-formals-type-app
-		      (subst-mod-params (formals (declaration (type type)))
-					(module-instance
-					 (resolution (type type)))
-					(module (declaration (type type)))))))
-      (set-type-for-application-parameters (parameters type) (car typeslist)))
-    (let ((tval (substit te (pairlis (car (formals (declaration (type type))))
-				     (parameters type)))))
-      ;; tval now has the parameters
-      (unless (print-type tval)
-	(setf (print-type tval) type))
-      (when (or (nonempty-type-decl? (declaration (type type)))
-		(nonempty? type))
-	(setf (nonempty? tval) t)
-	(setf (nonempty? type) t))
-      tval)))
+    (cond ((formal-type-appl-decl? (declaration (type type)))
+	   (break)
+	   (let ((*generate-tccs* 'none)
+		 (typeslist (make-formals-type-app
+			     (subst-mod-params
+			      (parameters (declaration (type type)))
+			      (module-instance
+			       (resolution (type type)))
+			      (module (declaration (type type)))))))
+	     (set-type-for-application-parameters
+	      (parameters type) (car typeslist)))
+	   (let ((tval (substit te (pairlis (car (formals
+						  (declaration (type type))))
+					    (parameters type)))))
+	     ;; tval now has the parameters
+	     (unless (print-type tval)
+	       (setf (print-type tval) type))
+	     (when (or (nonempty-type-decl? (declaration (type type)))
+		       (nonempty? type))
+	       (setf (nonempty? tval) t)
+	       (setf (nonempty? type) t))
+	     tval))
+	  (t
+	   ;; Note that te is just the subtype associated with the
+	   ;; type-application; the parameters have not yet been substituted
+	   (unless (formals (declaration (type type)))
+	     (type-error type "~a may not be used in a type application" te))
+	   (unless (length= (car (formals (declaration (type type))))
+			    (parameters type))
+	     (type-error type "Wrong number of actuals in ~a" type))
+	   (let ((*generate-tccs* 'none)
+		 (typeslist (make-formals-type-app
+			     (subst-mod-params
+			      (formals (declaration (type type)))
+			      (module-instance
+			       (resolution (type type)))
+			      (module (declaration (type type)))))))
+	     (set-type-for-application-parameters
+	      (parameters type) (car typeslist)))
+	   (let ((tval (substit te (pairlis (car (formals
+						  (declaration (type type))))
+					    (parameters type)))))
+	     ;; tval now has the parameters
+	     (unless (print-type tval)
+	       (setf (print-type tval) type))
+	     (when (or (nonempty-type-decl? (declaration (type type)))
+		       (nonempty? type))
+	       (setf (nonempty? tval) t)
+	       (setf (nonempty? type) t))
+	     tval)))))
 
 (defun set-type-for-application-parameters (parameters types)
   (when parameters
@@ -2127,6 +2236,42 @@
     (typecheck* pexpr ftype nil nil)
     (mk-subtype stype pexpr)))
 
+;;; Generates a new uninterpreted type and an uninterpreted projection
+;;; function from that type to the given stype.
+(defun generate-uninterpreted-projtype (decl stype)
+  (let* ((pname (makesym "~a_proj" (id decl)))
+	 ;;(pexpr (mk-name-expr pname))
+	 (tname (make-self-resolved-type-name decl))
+	 (struct-subtype (generate-struct-subtype stype tname))
+	 (surjname (mk-name-expr 'surjective?
+		     (list (mk-actual struct-subtype) (mk-actual stype))))
+	 (surjtype (typecheck* (mk-expr-as-type surjname) nil nil nil))
+	 (cdecl (declaration *current-context*))
+	 (ndecl (typecheck* (mk-const-decl pname surjtype nil nil)
+			    nil nil nil)))
+    (setf (generated-by struct-subtype) decl)
+    (setf (declaration *current-context*) cdecl)
+    (add-decl ndecl)
+    struct-subtype))
+
+;; (defun generate-dep-type-binding (decl tname)
+;;   (let ((bd (mk-dep-binding (binding-id decl) tname)))
+;;     (pushnew bd (generated decl))
+;;     tname))
+
+(defmethod make-self-resolved-type-name ((decl type-decl))
+  (let* ((tname (mk-type-name (id decl)))
+	 (tres (mk-resolution decl (current-theory-name) tname)))
+    (setf (resolutions tname) (list tres))
+    tname))
+
+(defmethod generate-struct-subtype ((te recordtype) type)
+  (make-instance 'struct-sub-recordtype
+    'type type
+    'print-type type
+    'fields (fields te)
+    'dependent? (dependent? te)))
+
 
 ;;; Tuple Types - in the following, the f_i are optional; any that are
 ;;; missing will not be used in typechecking the following types.
@@ -2289,6 +2434,27 @@
   (set-type (declared-type db) nil)
   db)
 
+(defmethod typecheck* ((te type-extension) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (let ((etype (typecheck* (type te) nil nil nil)))
+    (set-type (type te) nil)
+    (let ((stype (find-supertype etype)))
+      (unless (typep stype '(or recordtype struct-sub-recordtype))
+	(type-error (type te)
+	  "Type extensions may only be applied to record types"))
+      (dolist (fld (extension te))
+	(when (member (id fld) (fields stype) :key #'id)
+	  (type-error fld
+	    "Field ~a already is in recordtype ~a" (id fld) (type te))))
+      (when (duplicates? (extension te) :test #'same-id)
+	(type-error te "Duplicate field names not allowed"))
+      (let ((extended-type
+	     (typecheck* (copy stype
+			   'fields (append (fields stype) (extension te)))
+			 nil nil nil)))
+	(setf (print-type extended-type) te)
+	extended-type))))
+
 
 ;;; Judgements
 
@@ -2398,6 +2564,69 @@
       (unless (place expr)
 	(setf (place expr) (place (name decl))))
       (typecheck* expr (type decl) nil nil)))
+  (setf (judgement-type decl)
+	(make-formals-funtype (formals decl) (type decl)))
+  (when (formals-sans-usings (current-theory))
+    (generic-judgement-warning decl))
+  (add-judgement-decl decl))
+
+(defmethod typecheck* ((decl rec-number-judgement) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (break "rec-number-judgement")
+  (let ((*generate-tccs* 'none))
+    (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
+  (set-type (declared-type decl) nil)
+  (let ((*compatible-pred-reason*
+	 (acons (number-expr decl) "judgement" *compatible-pred-reason*)))
+    (typecheck* (number-expr decl) (type decl) 'expr nil))
+  (when (formals-sans-usings (current-theory))
+    (generic-judgement-warning decl))
+  (add-judgement-decl decl))
+
+(defmethod typecheck* ((decl rec-name-judgement) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (break "rec-name-judgement")
+  (let ((*generate-tccs* 'none))
+    (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
+  (when (funtype? (find-supertype (type decl)))
+    (pvs-warning "Judgement at line ~d may lead to unprovable TCCs~
+                  ~%See language document for details."
+      (starting-row (place decl))))
+  (set-type (declared-type decl) nil)
+  (let ((*no-conversions-allowed* t)
+	(*compatible-pred-reason*
+	 (acons (name decl) "judgement" *compatible-pred-reason*)))
+    (typecheck* (name decl) (type decl) nil nil))
+  (when (formals-sans-usings (current-theory))
+    (generic-judgement-warning decl))
+  (add-judgement-decl decl))
+
+(defmethod typecheck* ((decl rec-application-judgement) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (typecheck* (formals decl) nil nil nil)
+  (let ((fmlist (apply #'append (formals decl))))
+    (let ((dup (duplicates? fmlist :key #'id)))
+      (when dup
+	(type-error dup
+	  "May not use duplicate arguments in judgements")))
+    (set-formals-types fmlist))
+  (let* ((*bound-variables* (reverse (apply #'append (formals decl)))))
+    (let ((*generate-tccs* 'none))
+      (setf (type decl) (typecheck* (declared-type decl) nil nil nil)))
+    (set-type (declared-type decl) nil)
+    (let* ((*no-conversions-allowed* t)
+	   (expr (mk-application-for-formals (name decl) (formals decl)))
+	   (*compatible-pred-reason*
+	    (acons expr "judgement" *compatible-pred-reason*)))
+      (unless (place expr)
+	(setf (place expr) (place (name decl))))
+      (let ((*generate-tccs* 'none))
+	(typecheck* expr (type decl) nil nil))
+      (unless (and (name-expr? (operator* expr))
+		   (def-decl? (declaration (operator* expr))))
+	(type-error expr "~a does not resolve to a recursive function"
+		    (operator* expr)))
+      (break "rec-application-judgement")))
   (setf (judgement-type decl)
 	(make-formals-funtype (formals decl) (type decl)))
   (when (formals-sans-usings (current-theory))
