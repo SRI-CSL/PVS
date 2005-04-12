@@ -545,7 +545,8 @@
 		       (make-hash-table :test #'equal))
 		      (theories (mapcan
 				    #'(lambda (thid)
-					(unless (gethash thid *pvs-modules*)
+					(unless (or (gethash thid *pvs-modules*)
+						    (find #\. (string thid)))
 					  (list (get-typechecked-theory
 						 thid))))
 				  theory-ids)))
