@@ -206,6 +206,7 @@
 	(push (cons id type) *sequent-typealist*))))
 
 (defmethod add-explicit-prover-type (ex)
+  (declare (ignore ex))
   nil)
 
 (defun add-to-typealist (id expr &optional type)
