@@ -30,13 +30,14 @@ Operators
 	'<<' '>>' '::' '#' '@' '@@' '##' '[|' '|]' '(|' '|)' '{|' '|}'
         '|[' ']|' '!'
         '<<=' '>>=' '`' '\''
-	'[||]' '(||)' '{||}' '||' '|-' '|=' '<|' '|>' ':->'
+	'[||]' '(||)' '{||}' '||' '|-' '|=' '<|' '|>' ':->' '<:'
 
 Lexical Terminals
 	id, number, string %, literal
 
 Precedence Information
-  type-expr  '[' initial
+  type-expr  'WITH' medial left
+             '[' initial
              jux medial left
 
   expr  'HAS_TYPE' aggregate,
@@ -63,7 +64,7 @@ Precedence Information
 		'||' medial left 
 	'+' medial left, '-' medial left, '++' medial left, '~' medial left
 	'*' medial left, '/' medial left, '**' medial left, '//' medial left
-	'-' initial
+	'-' initial, '+' initial
 	'O' medial left
 	':' medial left, '::' medial left, 'HAS_TYPE' medial left
 	'[]' initial, '<>' initial
@@ -109,13 +110,24 @@ constructor ::= {idop [{'(' {{{idops ':' type-expr}
 theory-formals	::= {'[' {theory-formal ++ ','} ']'}
 			<theory-formals(theory-formal+)>;
 
-theory-formal ::= {[{'(' importing ')'}
-                     <importing-elt(importing,nosemic())>]
-                   idops ':' theory-formal-decl}
-		     <theory-formal(opt,idops,theory-formal-decl)>;
+theory-formal ::= {[{'(' [idop ':' lib-decl] importing ')'}
+                     <formal-importing-elt([nolib()|lib-fdecl(idop,lib-decl)],
+                                           importing)>]
+                   idopappls ':' theory-formal-decl}
+		     <theory-formal(opt,idopappls,theory-formal-decl)>;
 
-theory-formal-decl ::= {type-keyword ['FROM' type-expr]}
-		        <ftype-decl(type-keyword,[notype()|type-expr])>
+%% theory-formal ::= {[{'(' importing ')'}
+%%                      <formal-importing-elt(importing)>]
+%%                    depidops ':' theory-formal-decl}
+%% 		     <theory-formal(opt,depidops,theory-formal-decl)>;
+
+idopappls ::= {idopappl++','} <idopappls(idopappl+)>;
+
+idopappl ::= {idop ['(' type-expr++',' ')']}
+                <[idop|idopappl(idop,deptypes(type-expr+))]>;
+
+theory-formal-decl ::= {type-keyword [{'FROM' type-expr}|{'<:' type-expr}]}
+		        <ftype-decl(type-keyword,[notype()|{type-expr|struct-subtype(type-expr)}])>
 		     | {type-expr} <fconst-decl(type-expr)>
 		     | {'THEORY' theory-decl-modname}
                            <ftheory-decl(theory-decl-modname)>
@@ -179,9 +191,11 @@ importing ::= {'IMPORTING' {importing-item++ ','}}
 importing-item ::= {modname ['AS' id]}
                   <[modname|theory-abbreviation-decl(modname,id)]>;
 
-judgement ::= {'JUDGEMENT' {jdecl++','} {'HAS_TYPE'|'SUBTYPE_OF'} type-expr}
+judgement ::= {['RECURSIVE'] 'JUDGEMENT' {jdecl++','}
+               {'HAS_TYPE'|'SUBTYPE_OF'} type-expr}
 	      <{judgement(jdecls(doubleplus),
-                 {has-type()|subtype-of()},type-expr)>;
+                 [{has-type()|subtype-of()}|{rec-has-type()|rec-subtype-of()}],
+                 type-expr)>;
 
 jdecl ::= type-expr-sans-name <jsubtypedecl(type-expr-sans-name)>
         | {name [pdformals+]} <[jnamedecl(name)|jappldecl(name,pdf(plus))]>
@@ -244,7 +258,7 @@ type-keyword ::= 'TYPE' <type()>
                ;
 
 % '=' must appear in name type-def, to avoid overlap with '=' as an opsym.
-type-def ::= {{'=' <equal()> | 'FROM' <from()>} type-expr}
+type-def ::= {{'=' <equal()> | 'FROM' <from()> | '<:' <`\<\:()>} type-expr}
 			<type-def(alt,type-expr)>;
 
 var-decl ::= {'VAR' type-expr} <var-decl(type-expr)>;
@@ -271,9 +285,13 @@ assumption ::= {'ASSUMPTION' expr} <assumption(expr)>;
 
 formula-decl ::= {formula-name expr} <formula-decl(formula-name,expr)>;
 
-type-expr ::= {name [arguments]}
-                <[type-name(name)|type-appl(name,arguments)]>
-	    | type-expr-sans-name
+type-expr ::= {name [arguments] ['WITH' type-extension]^e}
+                <[[type-name(name)|type-appl(name,arguments)]
+                 |[extended-type-name(name,type-extension)
+                  |extended-type-appl(name,arguments,type-extension)]]^e>
+	    | {type-expr-sans-name ['WITH' type-extension]}
+                <[type-expr-sans-name
+                 |extended-type(type-expr-sans-name,type-extension)]>
 	    ;
 
 type-expr-sans-name ::= { '(' expr ')'} <expr-as-type(expr)>
@@ -286,21 +304,22 @@ type-expr-sans-name ::= { '(' expr ')'} <expr-as-type(expr)>
 % names cause conflicts.
 
 comp-type-expr	::= recordtype
-		 |  {[fun-array]^f '[' dep-type-exprs
+		 |  {[fun-array]^f '[' [dep-type-exprs]^d
 		     	[{'->' type-expr} <type-expr>]^r ']'}
-		     <funtype(opt^f,dep-type-exprs,opt^r)>
+		     <funtype(opt^f,[emptytuple()|dep-type-exprs]^d,opt^r)>
 		 ;
 
-recordtype ::= {'[#' field-decls [{',' field-decls++','}|{'+' field-decls++'+'}] '#]'}
-                <[recordtype(fields(list(field-decls)))
+recordtype ::= {'[#' [field-decls [{',' field-decls++','}|{'+' field-decls++'+'}]]^r '#]'}
+                <[recordtype(fields(list()))|[recordtype(fields(list(field-decls)))
                  |{recordtype(fields(cons(field-decls,field-decls+)))
-                  |varianttype(fields(cons(field-decls,field-decls+)))}]>;
+                  |varianttype(fields(cons(field-decls,field-decls+)))}]]^r>;
 
 field-decls ::= {ids ':' type-expr} <field-decls(ids,type-expr)>;
 
 fun-array ::= 'FUNCTION' <function()> | 'ARRAY' <array()>;
 
-dep-type-exprs ::= {dep-type-expr [{',' dep-type-expr++','}|{'+' dep-type-expr++'+'}]}
+dep-type-exprs ::= {dep-type-expr
+                    [{',' dep-type-expr++','}|{'+' dep-type-expr++'+'}]}
                    <[dom(list(dep-type-expr))
                     |{dom(cons(dep-type-expr,dep-type-expr+))
                      |cotupletype(cons(dep-type-expr,dep-type-expr+))}]>;
@@ -308,6 +327,13 @@ dep-type-exprs ::= {dep-type-expr [{',' dep-type-expr++','}|{'+' dep-type-expr++
 dep-type-expr ::= type-expr
 	       |  {idop ':' type-expr} <dep-binding(idop,type-expr)>
 	       ;
+
+type-extension ::= {'[#' field-decls [{',' field-decls++','}|{'+' field-decls++'+'}] '#]'}
+                <[record-extension(fields(list(field-decls)))
+                 |{record-extension(fields(cons(field-decls,field-decls+)))
+                  |variant-extension(fields(cons(field-decls,field-decls+)))}]>
+	| {'[' dep-type-exprs ']'}
+		<tuple-extension(dep-type-exprs)>;
 
 
 %% Expressions
@@ -373,6 +399,7 @@ expr ::= string <string-expr(string)>
        | {'~' expr} <unary-term-expr(`~(),expr)>
        | {'[]' expr} <unary-term-expr(`\[\](),expr)>
        | {'<>' expr} <unary-term-expr(`\<\>(),expr)>
+       | {'+' expr} <unary-term-expr(`+(),expr)>
        | {'-' expr} <unary-term-expr(`-(),expr)>
        | {expr '::' type-expr} <coercion(expr,type-coercion(type-expr))>
        | {'IF' expr^c 'THEN' expr^t
