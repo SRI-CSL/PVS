@@ -127,10 +127,11 @@
 
 (defmethod freevars* ((expr name-expr))
   (with-slots (type resolutions free-variables) expr
-    (if (variable? expr)
-	(let ((tfrees (freevars* type)))
-	  (cons (copy expr) tfrees))
-	(freevars* (actuals (module-instance (car resolutions)))))))
+    (let ((tfrees (freevars* type)))
+      (if (variable? expr)
+	  (cons (copy expr) tfrees)
+	  (fv-union (freevars* (actuals (module-instance (car resolutions))))
+		    tfrees)))))
 
 (defmethod freevars* ((res resolution))
   (with-slots (module-instance) res
@@ -271,6 +272,9 @@
 
 (defmethod freevars* ((te dep-binding))
   (freevars* (type te)))
+
+(defmethod freevars* ((texpr struct-sub-recordtype))
+  (freevars* (fields texpr)))
 
 (defmethod freevars* ((sym symbol))
   nil)
