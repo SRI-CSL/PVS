@@ -347,10 +347,14 @@
 	       (not (disallowed-free-variable? decl))
 	       (or (null args)
 		   (case kind
-		     (type (and (formals decl)
-				(or (length= (formals decl) args)
-				    (singleton? (formals decl))
-				    (singleton? args))))
+		     (type (or (and (formals decl)
+				    (or (length= (formals decl) args)
+					(singleton? (formals decl))
+					(singleton? args)))
+			       (and (formal-type-appl-decl? decl)
+				    (or (length= (parameters decl) args)
+					(singleton? (parameters decl))
+					(singleton? args)))))
 		     (expr (let ((ftype (find-supertype (type decl))))
 			     (or (and (typep ftype 'funtype)
 				      (or (length= (domain-types ftype) args)
@@ -1397,6 +1401,36 @@
 				fargs))
 		   (list modinst)))))))
 
+(defmethod compatible-arguments? ((decl formal-type-appl-decl) modinst args mod)
+  (declare (ignore mod))
+  (when args
+    (let ((fargs (parameters decl)))
+      (and fargs
+	   (or (length= fargs args)
+	       (and (singleton? args)
+		    (some #'(lambda (ty)
+			      (let ((sty (find-supertype ty)))
+				(and (typep sty 'tupletype)
+				     (length= (types sty) fargs))))
+			  (ptypes (car args))))
+	       (progn (push (list :arg-length decl)
+			    *resolve-error-info*)
+		      nil))
+	   (if (not (fully-instantiated? modinst))
+	       (compatible-uninstantiated?
+		decl
+		modinst
+		(mapcar #'(lambda (fd) (find-supertype (type fd)))
+		  (car (formals decl)))
+		args)
+	       (when (compatible-args?
+		      decl args
+		      (mapcar #'(lambda (fa)
+				  (subst-mod-params (type fa) modinst
+						    (module decl)))
+			fargs))
+		 (list modinst)))))))
+
 (defun uninstantiated-theory? (modinst)
   (assert *current-theory*)
   (unless (same-id modinst *current-theory*)
@@ -1758,24 +1792,28 @@
 
 (defmethod resolve ((name symbol) kind args &optional
 		    (context *current-context*))
-  (let* ((n (mk-name-expr name))
-	 (res (resolve n kind args context)))
+  (let* ((k (or kind 'expr))
+	 (n (if (eq kind 'expr)
+		(mk-name-expr name)
+		(mk-type-name name)))
+	 (res (resolve n k args context)))
     (when (singleton? res)
       (setf (resolutions n) res)
       n)))
 
 (defmethod resolve ((name name) kind args
 		    &optional (context *current-context*))
-  (let ((res (resolution name)))
+  (let ((k (or kind 'expr))
+	(res (resolution name)))
     (if (resolution name)
-	(when (eq (kind-of (declaration res)) kind)
+	(when (eq (kind-of (declaration res)) k)
 	  (list res))
 	(let* ((*current-context* context)
 	       (nname (if (actuals name)
 			  (copy-untyped name)
 			  name))
 	       (*get-all-resolutions* t))
-	  (resolve* nname kind args)))))
+	  (resolve* nname k args)))))
 
 (defun formula-or-definition-resolutions (name)
   (let* ((*resolve-error-info* nil)
@@ -1928,6 +1966,7 @@
 		     (get-declarations (id name)))
 	       (some-matching-mapping-element? name)
 	       (when (and (or (null kind) (eq kind 'expr))
+			  arguments
 			  (resolve (mk-name-expr (id name)) 'expr arguments))
 		 (format nil "~a~a" (id name) arguments)))
 	     name))
