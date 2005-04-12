@@ -856,26 +856,25 @@
 			prev-decls))
 	 (*current-theory* theory)
 	 (*current-context*
-	  (if (or (not prev-imp) (saved-context prev-imp))
-	      (cond (prev-imp
-		     (copy-context (saved-context prev-imp)
-				   theory (reverse rem-decls)
-				   (or (car rem-decls) decl)))
-		    ((from-prelude? decl)
-		     (let ((prevp
-			    (cadr (memq theory
-					(reverse
-					 *prelude-theories*)))))
-		       (copy-context (saved-context
-				      (if (datatype? prevp)
-					  (or (adt-reduce-theory prevp)
-					      (adt-map-theory prevp)
-					      (adt-theory prevp))
-					  prevp))
-				     theory
-				     (reverse rem-decls)
-				     (or (car rem-decls) decl))))
-		    (t (make-new-context theory))))))
+	  (cond ((and prev-imp (saved-context prev-imp))
+		 (copy-context (saved-context prev-imp)
+			       theory (reverse rem-decls)
+			       (or (car rem-decls) decl)))
+		((from-prelude? decl)
+		 (let ((prevp
+			(cadr (memq theory
+				    (reverse
+				     *prelude-theories*)))))
+		   (copy-context (saved-context
+				  (if (datatype? prevp)
+				      (or (adt-reduce-theory prevp)
+					  (adt-map-theory prevp)
+					  (adt-theory prevp))
+				      prevp))
+				 theory
+				 (reverse rem-decls)
+				 (or (car rem-decls) decl))))
+		(t (make-new-context theory)))))
     ;;; Need to clear this hash or the known-subtypes table won't get
     ;;; updated properly - see add-to-known-subtypes.
     (clrhash *subtype-of-hash*)
