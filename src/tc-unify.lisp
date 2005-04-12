@@ -70,7 +70,10 @@
 			    (types obj)))))
 	(if creses
 	    (delete-duplicates
-	     (nconc (mapcar #'(lambda (r) (supertype (range (type r))))
+	     (nconc (mapcar #'(lambda (r)
+				(if (conversion-resolution? r)
+				    (range (type r))
+				    (supertype (range (type r)))))
 		      creses)
 		    (mapcan #'(lambda (r)
 				(unless (memq r creses)
@@ -423,6 +426,23 @@
 (defmethod tc-match* ((fld field-decl) (ffld field-decl) bindings)
   (when (eq (id fld) (id ffld))
     (tc-match* (type fld) (type ffld) bindings)))
+
+(defmethod tc-match* ((arg recordtype) (farg struct-sub-recordtype) bindings)
+  (when bindings
+    (let ((fbinding (assoc farg bindings
+			   :test #'(lambda (x y)
+				     (and (typep y 'formal-struct-subtype-decl)
+					  (tc-eq x (type-value y)))))))
+      (cond ((null fbinding)
+	     (or (call-next-method)
+		 (break "tc-match* (recordtype struct-sub-recordtype)")))
+	    ((null (cdr fbinding))
+	     (when *tc-match-strictly*
+	       (push arg *tc-strict-matches*))
+	     (setf (cdr fbinding) arg)
+	     bindings)
+	    ((tc-eq arg (cdr fbinding))
+	     bindings)))))
 
 (defmethod tc-match-names ((n1 name) (n2 name) bindings)
   (if (tc-eq n1 n2)
