@@ -1080,19 +1080,19 @@
   (let* ((acc (caar arguments))
 	 (pos (position acc (accessors (operator expr)) :test #'same-id))
 	 (expr-args (arguments expr))
-	 (expr-arg (nth pos args))
+	 (expr-arg (nth pos expr-args))
 	 (new-arg (if (cdr arguments)
 		      (let ((assign (make-assignment (cdr arguments) value)))
 			(simplify-nested-updates
 			 expr-arg assign (make!-update-expr expr-arg assign)))
 		      value))
-	 (new-expr (if (tc-eq arg new-arg)
+	 (new-expr (if (tc-eq expr-arg new-arg)
 		       expr
 		       (copy expr
 			 'argument (if (tuple-expr? (argument expr))
 				       (copy (argument expr)
 					 'exprs (let ((nargs
-						       (copy-list args)))
+						       (copy-list expr-args)))
 						  (setf (nth pos nargs)
 							new-arg)
 						  nargs))
