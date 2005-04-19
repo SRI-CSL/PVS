@@ -209,7 +209,7 @@ required a context.")
 	(setf (declaration res) alias)))
     (when (and (typep (declaration ex) 'bind-decl)
 	       (not (memq (declaration ex) *bound-variables*)))
-      (type-error ex "Bound variable outside of context"))
+      (type-error ex "Bound variable ~a outside of context" ex))
     (unless (compatible? (type res) expected)
       (if (integerp (id ex))
 	  (change-class ex 'number-expr 'number (id ex)
@@ -675,11 +675,13 @@ required a context.")
   (call-next-method)
   (let ((tact (find-supertype (type-value act)))
 	(texp (type-value formal)))
-    (dolist (fld (fields texp))
-      (unless (member (id fld) (fields tact) :key #'id)
-	(type-error fld
-	  "Field ~a missing for structural subtype ~a"
-	  (id fld) (type-value act))))))
+    (when (recordtype? tact)
+      (dolist (fld (fields texp))
+	(unless (member (id fld) (fields tact) :key #'id)
+	  (type-error fld
+	    "Field ~a missing for structural subtype ~a"
+	    (id fld) (type-value act)))))))
+	
 
 (defmethod set-type-actual (act (formal formal-const-decl))
   #+pvsdebug (assert (fully-typed? (type formal)))
@@ -3023,17 +3025,24 @@ required a context.")
 
 (defmethod set-type* ((expr update-expr) (expected tupletype))
   (with-slots (expression assignments) expr
-    (let ((etypes (collect-compatible-tupletypes (ptypes expr) expected)))
-      (check-unique-type etypes expr expected)
-      (let* ((stype (find-supertype (car etypes)))
-	     (atype (if (fully-instantiated? stype)
-			stype
-			(instantiate-from stype expected expr)))
-	     (args-list (mapcar #'arguments assignments))
-	     (values (mapcar #'expression assignments)))
-	(set-type* expression (contract-expected expr atype))
-	(set-assignment-arg-types args-list values expression expected)
-	(setf (type expr) atype)))))
+    (set-type-update-expr-tupletype expression assignments expr expected)))
+
+(defmethod set-type* ((expr update-expr) (expected struct-sub-tupletype))
+  (with-slots (expression assignments) expr
+    (set-type-update-expr-tupletype expression assignments expr expected)))
+
+(defun set-type-update-expr-tupletype (expression assignments expr expected)
+  (let ((etypes (collect-compatible-tupletypes (ptypes expr) expected)))
+    (check-unique-type etypes expr expected)
+    (let* ((stype (find-supertype (car etypes)))
+	   (atype (if (fully-instantiated? stype)
+		      stype
+		      (instantiate-from stype expected expr)))
+	   (args-list (mapcar #'arguments assignments))
+	   (values (mapcar #'expression assignments)))
+      (set-type* expression (contract-expected expr atype))
+      (set-assignment-arg-types args-list values expression expected)
+      (setf (type expr) atype))))
 
 (defmethod set-type* ((expr update-expr) (expected funtype))
   (with-slots (expression assignments) expr
@@ -3145,8 +3154,8 @@ required a context.")
     ((or funtype recordtype tupletype adt-type-name)
      (set-assignment-arg-types* args-list values ex (supertype expected))
      (mapc #'(lambda (a v)
-	      (unless a (set-type* v expected)))
-	  args-list values))
+	      (unless a (check-for-subtype-tcc v expected)))
+	   args-list values))
     (t (call-next-method))))
 
 (defmethod set-assignment-arg-types* (args-list values ex (expected recordtype))
@@ -3177,11 +3186,18 @@ required a context.")
 
 (defmethod set-assignment-arg-types* (args-list values ex (expected tupletype))
   (with-slots (types) expected
-    (if (every #'null args-list)
-	(call-next-method)
-	(multiple-value-bind (cargs-list cvalues)
-	    (complete-assignments args-list values ex expected)
-	  (set-assignment-tup-arg-types cargs-list cvalues ex types 1)))))
+    (set-assignment-arg-types-tupletype types args-list values ex expected)))
+
+(defmethod set-assignment-arg-types* (args-list values ex (expected struct-sub-tupletype))
+  (with-slots (types) expected
+    (set-assignment-arg-types-tupletype types args-list values ex expected)))
+
+(defun set-assignment-arg-types-tupletype (types args-list values ex expected)
+  (if (every #'null args-list)
+      (call-next-method)
+      (multiple-value-bind (cargs-list cvalues)
+	  (complete-assignments args-list values ex expected)
+	(set-assignment-tup-arg-types cargs-list cvalues ex types 1))))
 
 (defmethod set-assignment-arg-types* (args-list values ex (expected funtype))
   (with-slots (domain range) expected
@@ -3494,6 +3510,12 @@ required a context.")
     types))
 
 (defmethod contract-expected (expr (expected tupletype))
+  (contract-expected-tupletype expr expected))
+
+(defmethod contract-expected (expr (expected struct-sub-tupletype))
+  (contract-expected-tupletype expr expected))
+
+(defun contract-expected-tupletype (expr expected)
   (let* ((new-indices (mapcar #'(lambda (a) (number (caar (arguments a))))
 			(remove-if-not #'maplet? (assignments expr))))
 	 (types (collect-compatible-tupletypes
@@ -3514,7 +3536,7 @@ required a context.")
   (remove-if-not
       #'(lambda (ty)
 	  (let ((sty (find-supertype ty)))
-	    (and (typep sty 'tupletype)
+	    (and (typep sty '(or tupletype struct-sub-tupletype))
 		 (or ignore-indices
 		     (= (length (types sty)) (length (types expected))))
 		 (let ((index 0))
@@ -3742,6 +3764,9 @@ required a context.")
 (defmethod complete-assignments (args-list values ex (type tupletype))
   (complete-tup-assignments args-list values (types type) ex 1 nil nil))
 
+(defmethod complete-assignments (args-list values ex (type struct-sub-tupletype))
+  (complete-tup-assignments args-list values (types type) ex 1 nil nil))
+
 (defun complete-tup-assignments (args-list values types ex num cargs cvalues)
   (if (null types)
       (values (append args-list (nreverse cargs))
@@ -3866,13 +3891,13 @@ required a context.")
 
 (defmethod set-type* ((te type-application) expected)
   (declare (ignore expected))
-  (set-type* (type te) nil)
   (let ((typeslist (make-formals-type-app
 		      (subst-mod-params (formals (declaration (type te)))
 					(module-instance
 					 (resolution (type te)))
 					(module (declaration (type te)))))))
-    (set-type-for-application-parameters (parameters te) (car typeslist)))) 
+    (set-type-for-application-parameters (parameters te) (car typeslist))
+    (set-type* (type te) nil)))
 
 (defmethod set-type* ((te subtype) expected)
   (when (print-type te)
@@ -3920,10 +3945,25 @@ required a context.")
     (let ((*bound-variables* (cons (car field-decls) *bound-variables*)))
       (set-type-fields (cdr field-decls)))))
 
+(defmethod set-type* ((te struct-sub-tupletype) expected)
+  (declare (ignore expected))
+  (set-type-types (types te)))
+
+(defun set-type-types (types)
+  (when types
+    (set-type* (car types) nil)
+    (let ((*bound-variables*
+	   (if (dep-binding? (car types))
+	       (cons (car types) *bound-variables*)
+	       *bound-variables*)))
+      (set-type-types (cdr types)))))
+
 (defmethod set-type* ((te type-extension) expected)
   (declare (ignore expected))
   (set-type* (type te) nil)
-  (set-type-fields (extension te)))
+  (if (recordtype? (type te))
+      (set-type-fields (extension te))
+      (set-type-types (extension te))))
 
 
 ;;; instantiate-from
