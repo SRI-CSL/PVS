@@ -217,7 +217,8 @@
   (declare (ignore kind expected argument))
   (typecheck* (argument expr) nil nil nil)
   (let ((tuptypes (delete-if-not #'(lambda (ty)
-				     (typep (find-supertype ty) 'tupletype))
+				     (typep (find-supertype ty)
+					    '(or tupletype struct-sub-tupletype)))
 		    (ptypes (argument expr)))))
     (unless (or tuptypes
 		*no-conversions-allowed*)
@@ -1602,6 +1603,12 @@
 		(cdr args) value))))
 
 (defmethod find-update-commontype* ((te tupletype) expr args value)
+  (find-update-common-tupletype te expr args value))
+
+(defmethod find-update-commontype* ((te struct-sub-tupletype) expr args value)
+  (find-update-common-tupletype te expr args value))
+
+(defun find-update-common-tupletype (te expr args value)
   (if (null args)
       (call-next-method)
       (let* ((index (number (caar args)))
@@ -1635,9 +1642,9 @@
 			 (append stypes (list mtype))
 			 stypes)))
 	(assert (every #'(lambda (ty) (not (dep-binding? ty))) etypes))
-	(if (eq etypes (types te)))
+	(if (eq etypes (types te))
 	    te
-	    (mk-tupletype etypes))))
+	    (mk-tupletype etypes)))))
 
 (defmethod find-update-commontype* ((te recordtype) expr (args cons) value)
   (find-update-common-recordtype te expr args value))
@@ -1719,7 +1726,7 @@
   (declare (ignore expr))
   (let ((tvalue (typecheck* (copy-untyped value) te nil nil)))
     (assert (and tvalue (type tvalue)))
-    (reduce #'compatible-type (cons te (judgement-types tvalue)))))
+    (reduce #'compatible-type (cons te (judgement-types+ tvalue)))))
 
 
 (defmethod update-expr-type (assignments expr (te tupletype))
@@ -2110,6 +2117,20 @@
 		  (null (cdr args))))
 	    (t (type-error (caar args) "Field ~a not found in ~a"
 			   (id (caar args)) rtype))))))
+
+(defmethod typecheck-ass-args (args (tuptype struct-sub-tupletype) maplet?)
+  (when args
+    (unless (and (null (cdar args))
+		 (number-expr? (caar args)))
+      (type-error (caar args) "Number expected"))
+    (unless (or (<= (number (caar args)) (length (types tuptype)))
+		maplet?)
+      (type-error (caar args)
+	"Number out of range for type ~a" tuptype))
+    (when (cdr args)
+      (typecheck-ass-args (cdr args)
+			  (nth (1- (number (caar args))) (types tuptype))
+			  maplet?))))
 
 (defmethod typecheck-ass-args (args type maplet?)
   (declare (ignore type maplet?))
