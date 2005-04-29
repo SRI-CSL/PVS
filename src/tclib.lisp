@@ -340,11 +340,21 @@
 	(pvs-message "Loading ~a..." (or bfile lfile))
 	(let ((*libloads* nil))
 	  (multiple-value-bind (ignore error)
-	      (load (or bfile lfile))
+	      (ignore-errors (load (or bfile lfile)))
 	    (declare (ignore ignore))
 	    (cond (error
 		   (pvs-message "Error loading ~a:~%  ~a"
-		     (or bfile lfile) error))
+		     (or bfile lfile) error)
+		   (when bfile
+		     (pvs-message "Trying source ~a:" lfile)
+		     (multiple-value-bind (ignore lerror)
+			 (ignore-errors (load lfile))
+		       (declare (ignore ignore))
+		       (cond (lerror
+			      (pvs-message "Error loading ~a:~%  ~a"
+				lfile error))
+			     (t (pvs-message "~a loaded" lfile)
+				(cons lfile *libloads*))))))
 		  (t (pvs-message "~a loaded" (or bfile lfile))
 		     (cons lfile *libloads*)))))))))
 
