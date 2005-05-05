@@ -837,7 +837,7 @@
        (qnumberp (caddr expr))))
 
 (defun subsumed-upper? (ineq1 ineq2) ;;ineq must be lessp or lesseqp
-  (and (bound-inequality? ineq2)
+  (and (equal (cadr ineq1)(cadr ineq2));;NSH(5-5-05)
        (if (eq (car ineq2) 'lesseqp)
 	   (or (qlessp (caddr ineq2)(caddr  ineq1))
 	       (and (eq (car ineq1) 'lesseqp)
@@ -846,7 +846,7 @@
 		(qlesseqp (caddr ineq2)(caddr  ineq1))))))
 
 (defun subsumed-lower? (ineq1 ineq2) ;;ineq must be greaterp or greatereqp
-  (and (bound-inequality? ineq2)
+  (and (equal (cadr ineq1)(cadr ineq2));;NSH(5-5-05)
        (if (eq (car ineq2) 'greatereqp)
 	   (or (qlessp (caddr  ineq1)(caddr ineq2))
 	       (and (eq (car ineq1) 'greatereqp)
