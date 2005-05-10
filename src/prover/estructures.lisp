@@ -60,6 +60,9 @@
 					      :test 'tc-eq))
   (current-xrule :initform nil))
 
+(defcl apply-proofstate (proofstate)
+  (apply-parent-proofstate :initform nil))
+
 
 (defcl tcc-sequent (sequent)
   tcc

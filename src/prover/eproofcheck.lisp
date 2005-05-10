@@ -860,7 +860,9 @@
 	(if (current-rule parent-ps)
 	    parent-ps
 	    (get-parent-proofstate parent-ps))
-	*in-apply*)))
+	(if (apply-proofstate? ps)
+	    (get-parent-proofstate (apply-parent-proofstate ps))
+	    nil))))
 
 (defun strat-eval* (strat ps)
   (let* ((*ps* ps)

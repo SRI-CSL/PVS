@@ -309,9 +309,9 @@ See also HIDE, REVEAL"
 		   (newps0 (copy ps
 			     'strategy new-strat
 			     'parent-proofstate nil))
-		   (newps (if (typep newps0 'top-proofstate)
-			      (change-class newps0 'proofstate)
-			      newps0))
+		   (newps (change-class newps0 'apply-proofstate))
+		   (dummy (setf (apply-parent-proofstate newps)
+				ps))
 		   (*noninteractivemode* t)
 		   (*suppress-printing* t)
 		   (*dependent-decls* nil)
