@@ -2242,22 +2242,22 @@ statement.  If always? is T, then it uses auto-rewrite! else auto-rewrite."
 					     dont-delete?)
     (if (select-seq (s-forms (current-goal *ps*)) fnums)
 	(then (beta fnum dir)
-	      (branch (split fnum)
-		      ((if *new-fmla-nums*
-			   (let ((newnum  (car *new-fmla-nums*)))
+	      (try-branch (split fnum)
+		      ((let ((newnum  (car *new-fmla-nums*)))
 			     (let ((newnums (list newnum)))
 			       (then (assert newnums dir)
 				     (replace newnum
 					      fnums
 					      dir :dont-delete? dont-delete?)
 				     (delete newnums))))
-			   (then (assert fnum dir)
-				 (replace fnum
-					       fnums
-					       dir :dont-delete? dont-delete?)
-				 (delete fnum)))
 		       (then (beta *)
-			     (assert *)))))
+			     (assert *)))
+		      (then (assert fnum dir)
+			    (replace fnum
+				     fnums
+				     dir :dont-delete? dont-delete?)
+			    (delete fnum)))
+		       )
 	(skip-msg "Invalid target formula(s) given to rewrite-directly-with-fnum"))
     "Beta-reduces, splits, and simplifies FNUM, and does a replacement in FNUMS
 corresponding to dir (left-to-right when LR, and right-to-left when RL)."
@@ -2333,16 +2333,19 @@ corresponding to dir (left-to-right when LR, and right-to-left when RL)."
 				       t nil)))))
 	  (if (eq out-subst 'fail)
 	      (skip-msg "No matching substitution found")
-	      (let ((fnum1 (inc-fnum fnum))  
+	      (let ((fnum1 (inc-fnum fnum))
+		    (sign-fnum (if (> fnum 0) 1 -1))
 		    (rules
-		     (if subs
-			 (cons `(inst-cp ,fnum :terms ,(car subs))
-			       (loop for sub in (cdr subs)
+		     (cons `(copy ,fnum)
+			   (when subs
+			     (loop for sub in subs
 				     collect
-				     `(inst ,fnum1 :terms ,sub)))
-			 (list `(copy ,fnum)))))
-		(then (then :steps rules)
-		      (rewrite-directly-with-fnum fnum1 fnums dir dont-delete?)))))
+				     `(inst  ,sign-fnum :terms ,sub))))))
+		(then (then@ :steps rules)
+		      (let ((fnums (gather-fnums (s-forms (current-goal *ps*))
+						 '* nil
+						 #'(lambda (sf)(memq sf fnums-sforms)))))
+		      (rewrite-directly-with-fnum sign-fnum fnums dir dont-delete?))))))
 	(skip-msg "No rewritable FNUM found.")))
   "Rewrites using the formula named in FNUM given input substitution
 SUBST, target FNUMS where rewrites are to occur, and the rewrite direction
