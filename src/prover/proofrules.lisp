@@ -881,7 +881,8 @@
 		       (type (find x
 				   (substitutable-vars
 				    (car forms))
-				   :test #'same-id )))
+				   :test #'(lambda (x y)
+					     (format-equal x (id y))))))
 		 (mapcar #'cdr  subalist)
 		 (mapcar #'(lambda (x)
 			     (if (type (cdr x))
