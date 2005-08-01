@@ -10,7 +10,10 @@
 ;; HISTORY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(require 'tcl)
+;; Try to get the default tcl, if it exists
+;; Otherwise get the one from the PVS path
+(let ((load-path (cons nil load-path)))
+  (require 'tcl))
 
 (setq tcl-prompt-regexp "^% ")
 
