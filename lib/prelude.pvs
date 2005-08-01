@@ -2250,7 +2250,7 @@ real_defs: THEORY
 
   sgn(m): int = IF m >= 0 THEN 1 ELSE -1 ENDIF
 
-  abs(m): {n: nonneg_real | n >= m}
+  abs(m): {n: nonneg_real | n >= m AND n >= -m}
     = IF m < 0 THEN -m ELSE m ENDIF
 
   nonzero_abs_is_pos: JUDGEMENT abs(x:nzreal) HAS_TYPE {y: posreal | y >= x}
@@ -4314,6 +4314,14 @@ map_props [T1, T2, T3: TYPE]: THEORY
   map_seq_composition: LEMMA map(f2)(map(f1)(s)) = map(f2 o f1)(s)
 
  END map_props
+
+more_map_props [T1, T2: TYPE]: THEORY
+ BEGIN
+  f: VAR [T1 -> T2]
+  l: VAR list[T1]
+
+  map_length: LEMMA length(map(f)(l)) = length(l)
+END more_map_props
 
 
 % filters defines filter functions for sets and lists, which take a set
