@@ -84,6 +84,9 @@
 (defvar *suppress-msg* nil
   "Flag indicating whether to suppress messages output with pvs-message")
 
+(defvar *making-interpreted-theory* nil
+  "Flag indicating that an interpreted theory is being created")
+
 (defvar *pp-new-projection-forms* nil
   "Flag indicating to prettyprint new projection forms, e.g., foo`1 rather
 than proj_1(foo).")
