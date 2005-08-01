@@ -159,6 +159,11 @@
     (setf (free-parameters texpr) ffrees)
     (union ffrees frees :test #'eq)))
 
+(defmethod free-params* ((texpr struct-sub-tupletype) frees)
+  (let ((tfrees (free-params* (types texpr) nil))) 
+    (setf (free-parameters texpr) tfrees)
+    (union tfrees frees :test #'eq)))
+
 ;;; Expressions
 
 (defmethod free-params* :around ((expr expr) frees)
