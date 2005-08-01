@@ -296,18 +296,23 @@ command."
 	(pvs-view-mode)
 	(use-local-map pvs-show-formulas-map)))))
 
-(defpvs show-tccs tcc (theory)
+(defpvs show-tccs tcc (theory &optional arg)
   "Shows all the TCCs of the indicated theory
 
 The show-tccs command pops up a buffer with the name \"THEORY.tccs\".
 displaying just the TCCs of the theory.  Proofs of any displayed TCCs may
 be initiated in the usual way, simply by moving the cursor to the formula
-to be proved and invoking the prove command."
-  (interactive (complete-theory-name "Show TCCs of theory named: "))
+to be proved and invoking the prove command.
+
+With a nonnegative argument (e.g., C-u or M-0), shows only the unproved TCCs.
+With a negative argument (M--), shows all TCCs, including comments for
+trivial TCCs."
+  (interactive (append (complete-theory-name "Show TCCs of theory named: ")
+		       (list (when current-prefix-arg
+			       (prefix-numeric-value current-prefix-arg)))))
   (unless (interactive-p) (pvs-collect-theories))
   (message "Creating the %s.tccs buffer..." theory)
-  (pvs-send-and-wait (format "(show-tccs \"%s\" %s)"
-			 theory (and current-prefix-arg t))
+  (pvs-send-and-wait (format "(show-tccs \"%s\" %s)" theory arg)
 		     nil (pvs-get-abbreviation 'show-tccs)
 		     'dont-care)
   (let ((buf (get-buffer (format "%s.tccs" theory))))
