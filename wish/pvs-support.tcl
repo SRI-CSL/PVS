@@ -6,6 +6,7 @@
 # Last Modified On: Thu May  4 19:04:20 1995
 # Update Count    : 14
 # Status          : Alpha test
+# $Id$
 
 
 wm withdraw .
@@ -467,9 +468,12 @@ proc get-full-rule {proofwin top} {
     set path $dag(idtotag,[$proofwin find withtag current])
     global $path
 
-    if {![string compare [set ${path}(rule)] [set ${path}(rule_abbr)]]} {
-	return
-    }
+# permit popups also for fully displayed proof commands
+# to enable easy copying
+#
+#    if {![string compare [set ${path}(rule)] [set ${path}(rule_abbr)]]} {
+#	return
+#    }
 
     for {set label 1} {[winfo exists .rule$label]} {incr label} {
     }
@@ -509,8 +513,20 @@ proc get-full-rule {proofwin top} {
     }
     $rulewin.fr.text config -height $height -width $wd -state disabled -wrap none
     pack $rulewin.fr.text -expand yes -fill both
-    button $rulewin.dismiss -text Dismiss -command "destroy $rulewin"
-    pack $rulewin.dismiss -side left -padx 2 -pady 2
+
+    # mark the hotkey D and bind the hotkeys d and q to this button
+    button $rulewin.dismiss -text Dismiss -underline 0 -command "destroy $rulewin"
+    bind $rulewin <Alt-d> "$rulewin.dismiss invoke; break"
+    bind $rulewin <Key-q> "$rulewin.dismiss invoke"
+
+    # add a second cut button (hotkey c) that sets the selection 
+    # with the complete proof command
+    button $rulewin.cut -text "Cut all" -underline 0 \
+	-command "$rulewin.fr.text tag add sel 0.0 end"
+    bind $rulewin <Alt-c> "$rulewin.cut invoke"
+
+    # pack both buttons
+    pack $rulewin.dismiss $rulewin.cut -side left -padx 2 -pady 2
     bind $rulewin <Destroy> "+catch {$proofwin delete $path.rlabel$label}"
     bind $rulewin <Destroy> "+catch {unset pathtorlabel($path)}"
     bind $rulewin <Destroy> "+after 1 {catch {destroy .rule$label}}"
@@ -520,7 +536,51 @@ proc get-full-rule {proofwin top} {
     set next [lindex [set dag(succs,$path)] 0]
     dag-add-destroy-cb $proofwin $next "catch {destroy $rulewin}"
 }
+
+# send proof cmd to emacs and run it on current goal
+proc run-pvs-command {cmd} {
+    regsub -all {"} $cmd {\\\"} cmd2
+    # " -> this comment is for emacs syntaxhighlighting
     
+    set command "(if pvs-in-checker \
+                   (progn \
+                     (switch-to-lisp t t) \
+                     (goto-char (point-max)) \
+                     (insert \"$cmd2\") \
+                     (return-ilisp)))"
+    emacs-evaln $command
+}
+
+
+# produce the popup menu on rules, 
+# bound to right-click's on a proof-command occurs
+proc rule-menu {x y proofwin top interactive} {
+    upvar #0 dag-$proofwin dag
+
+    set path $dag(idtotag,[$proofwin find withtag current])
+    global $path
+
+    set cmd [set ${path}(rule)]
+
+    if {$interactive} {
+	$proofwin.rulemenu entryconfigure 2 -command "run-pvs-command {$cmd}"
+    }
+
+    tk_popup $proofwin.rulemenu $x $y
+}
+
+
+# copy the proof cmd into the primary selection
+proc rule-select {proofwin top} {
+    upvar #0 dag-$proofwin dag
+
+    set path $dag(idtotag,[$proofwin find withtag current])
+    global $path
+    global current_selection
+
+    set current_selection [set ${path}(rule)]
+    selection own $proofwin
+}
 
 # proc get-current-sequent {proofwin} {
 #     upvar #0 dag-$proofwin dag
@@ -602,14 +662,23 @@ proc show-sequent {proofwin top} {
 	wm minsize $seqwin 80 $height
 	wm maxsize $seqwin 2000 2000
     }
+    #in the following, many keybindings are added
+    # => the goal is to make every button and menu
+    #    accessable with the keyboard
+    #    if possible a letter is underlined on a button
+    #    the keybinding will be Alt+underlined_key
     pack $seqwin.fr.text -expand yes -fill both
-    button $seqwin.dismiss -text Dismiss -bd 2 -command "destroy .sequent$label"
+    button $seqwin.dismiss -text Dismiss -bd 2 -command "destroy .sequent$label" -underline 0
+    bind $seqwin <Alt-d> "$seqwin.dismiss invoke; break"
     pack $seqwin.dismiss -side left -padx 2 -pady 2
-    button $seqwin.print -text "Print" -bd 2 -command "print-text $seqwin.fr.text"
+    button $seqwin.print -text "Print" -bd 2 -command "print-text $seqwin.fr.text" -underline 0
+    bind $seqwin <Alt-p> "$seqwin.print invoke"
     pack $seqwin.print -side left -padx 2 -pady 2
-    button $seqwin.stick -text Stick -bd 2 -command "stick $seqwin $path"
+    button $seqwin.stick -text Stick -bd 2 -command "stick $seqwin $path" -underline 2
+    bind $seqwin <Alt-i> "$seqwin.stick invoke"
     pack $seqwin.stick -side left -padx 2 -pady 2
-    button $seqwin.help -text Help -bd 2 -command "help-sequent"
+    button $seqwin.help -text Help -bd 2 -command "help-sequent" -underline 0
+    bind $seqwin <Alt-h> "$seqwin.help invoke"
     pack $seqwin.help -side right -padx 2 -pady 2
     bind $seqwin <Destroy> "catch {$proofwin delete $path.label$label}"
     bind $seqwin <Destroy> "+catch {unset pathtolabel($path)}"
@@ -944,6 +1013,17 @@ proc setup-dag-win {title icon PSname win_name class} {
 	scrollbar $fr.bottom.hscroll -width $sbwidth -bd 2 -relief sunken \
 	    -command "$c xview" -orient horiz
     }
+ 
+    # this makes the mouse wheel work for scrolling
+    # ideally it should scroll one unit and
+    # the scroll unit should be adjusted, 
+    # however, the positioning code does not tolerate 
+    # changing the scroll unit
+    bind $c <Button-5> "$c yview scroll 50 units"
+    bind $c <Button-4> "$c yview scroll -50 units"
+    bind $c <Shift-Button-5> "$c xview scroll 50 units"
+    bind $c <Shift-Button-4> "$c xview scroll -50 units"
+
     pack $fr.bottom -side bottom -fill x
     pack $fr.bottom.right -side right
     if {$tk_version >= 4.0} {
@@ -958,23 +1038,27 @@ proc setup-dag-win {title icon PSname win_name class} {
     label $top.message -text ""
     pack $top.message -fill x -side bottom
     if {$tk_version >= 4.0} {
+	# mark the hotkey D and bind the hotkeys Alt-d and q to this button
 	button $top.dismiss -bd 3 -highlightthickness 2 -relief raised \
 	    -padx 4 -pady 4 \
-	    -text "Dismiss" -command "destroy $win_name"
+	    -text "Dismiss" -command "destroy $win_name" -underline 0
     } else {
 	button $top.dismiss -bd 3 \
 	    -padx 4 -pady 4 \
-	    -text "Dismiss" -command "destroy $win_name"
+	    -text "Dismiss" -command "destroy $win_name" -underline 0
     }
+    bind $top <Alt-d> "$top.dismiss invoke;break"
+    bind $top <Key-q> "$top.dismiss invoke"
+
     pack $top.dismiss -side left -padx 4 -pady 2
     if {$tk_version >= 4.0} {
 	menubutton $top.ps -bd 3 -highlightthickness 2 -relief raised \
 	    -padx 4 -pady 5 \
-	    -text "Gen PS" -menu $top.ps.menu
+	    -text "Gen PS" -menu $top.ps.menu -underline 4
     } else {
 	menubutton $top.ps -bd 3 \
 	    -padx 4 -pady 5 \
-	    -text "Gen PS" -menu $top.ps.menu -relief raised
+	    -text "Gen PS" -menu $top.ps.menu -relief raised -underline 4
     }
     menu $top.ps.menu
     $top.ps.menu add command -label "Portrait (Letter)" -command "gen-ps $top $PSname 0 0"
@@ -985,21 +1069,22 @@ proc setup-dag-win {title icon PSname win_name class} {
     if {$tk_version >= 4.0} {
 	button $top.help -bd 3 -highlightthickness 2 -relief raised \
 	    -padx 4 -pady 4 \
-	    -text "Help" -command "help-$class"
+	    -text "Help" -command "help-$class" -underline 0
     } else {
 	button $top.help -bd 3 -relief raised \
 	    -padx 4 -pady 4 \
-	    -text "Help" -command "help-$class"
+	    -text "Help" -command "help-$class" -underline 0
     }
+    bind $top <Alt-h> "$top.help invoke"
     pack $top.help -side right -padx 4 -pady 2
     if {$tk_version >= 4.0} {
 	menubutton $top.conf -bd 3 -highlightthickness 2 -relief raised \
 	    -padx 4 -pady 5 \
-	    -text Config -menu $top.conf.menu
+	    -text Config -menu $top.conf.menu -underline 0
     } else {
 	menubutton $top.conf -bd 3 -relief raised \
 	    -padx 4 -pady 5 \
-	    -text Config -menu $top.conf.menu
+	    -text Config -menu $top.conf.menu -underline 0
     }
     pack $top.conf -side right -padx 4 -pady 2
     menu $top.conf.menu
@@ -1084,9 +1169,13 @@ proc show-prover-commands {commands} {
 	wm geometry $win $geom
     }
     frame $win.fr
-    button $win.fr.dismiss -text Dismiss -bd 3 -command "destroy $win"
+    # underline and bind hotkey d
+    button $win.fr.dismiss -text Dismiss -bd 3 -command "destroy $win" -underline 0
+    bind $win <Alt-d> "$win.fr.dismiss invoke; break"
     pack $win.fr.dismiss -side left -padx 2 -pady 2
-    button $win.fr.help -text Help -bd 3 -command "help-commands-window"
+    # underline and bind hotkey h
+    button $win.fr.help -text Help -bd 3 -command "help-commands-window" -underline 0
+    bind $win <Alt-h> "$win.fr.help invoke"
     pack $win.fr.help -side right -padx 2 -pady 2
     pack $win.fr -side bottom -padx 2 -pady 2 -fill x
     if {$tk_version >= 4.0} {
@@ -1353,6 +1442,8 @@ proc show-declaration {id width height decl} {
     text $win.text -width $width -height $height
     $win.text insert end $decl
     button $win.dismiss -text Dismiss -command "destroy $win"
+    # bind hotkey d
+    bind $win <Alt-d> "$win.dismiss invoke; break"
     pack $win.text -side top
     pack $win.dismiss -side left -padx 2 -pady 2
     wm iconname $win {PVS Declaration}
@@ -1465,7 +1556,26 @@ proc setup-proof {name theory directory counter interactive} {
 	set text "Sequent is only available for interactive proofs"
 	$pw bind sequent <1> "show-message $win \"$text\""
     }
+
+    # generate a contextmenu that will appear, when the right mouse
+    # button is pressed on a rule
+    # item two is changed later for interactive proofs, see rule-menu
+    menu $pw.rulemenu
+    $pw.rulemenu add command -label "Rule Window" \
+         -command "get-full-rule $pw $theory-$name-top" \
+         -underline 5
+
+    $pw.rulemenu add command -label "Run" -underline 0 \
+         -command "show-message $win \"Only available for \
+                                       interactive proofs\""
+    $pw.rulemenu add command -label "Select" -underline 0 \
+	-command "rule-select $pw $theory-$name-top"
+
+    # set the selection handler for dealing with the primary selection
+    selection handle $pw {handle-selection}
+
     $pw bind rule <1> "get-full-rule $pw $theory-$name-top"
+    $pw bind rule <3> "rule-menu %X %Y $pw $theory-$name-top $interactive"
     bind $pw <Destroy> "+pvs-send {(stop-displaying-proof $counter)}"
     bind $pw <Destroy> {+
 	foreach kid [winfo children .] {
@@ -1474,6 +1584,14 @@ proc setup-proof {name theory directory counter interactive} {
 	    }
 	}
     }
+}
+
+# this is the selection handler
+# the other function, which is used for selecting rules is
+# rule-select defined above
+proc handle-selection {offset max} {
+    global current_selection
+    return [string range $current_selection $offset [expr $offset + $max - 1]]
 }
 
 proc reset-options {} {
@@ -1701,10 +1819,22 @@ proc help-Proof {} {
 The mouse has the following bindings:
 
 Left on turnstile - display the corresponding sequent
-Left on rule      - expand the rule if not already expanded
+Left on rule - display the rule in its own window
 C-Left on turnstile or rule - moves the subtree rooted at that pair
-C-Middle on turnstile or rule - moves the turnstile/rule pair only"
-    button $win.dismiss -text Dismiss -command "destroy $win"
+C-Middle on turnstile or rule - moves the turnstile/rule pair only
+mouse wheel - move the viewport vertically
+shift mouse wheel - move the viewport horizontally
+Right on rule - context menu with the following options
+    Rule Window - display the rule in its own window
+    Run - rerun this proof command on the current goal
+    Select - copy command to the primary selection
+
+Buttons that have an underscored letter, can be invoked via Alt-x,
+where x is the corresponding letter.
+Apart from the underscored letters there is the following key binding:
+q - dismiss the window "
+    button $win.dismiss -text Dismiss -command "destroy $win" -underline 0
+    bind $win <Alt-d> "$win.dismiss invoke; break"
     pack $win.text -side top
     pack $win.dismiss -side left -padx 2 -pady 2
     wm iconname $win {PVS help prooftree}
@@ -1721,7 +1851,9 @@ The mouse has the following bindings:
 
 Left on theory name - display that theory in an Emacs buffer
 C-Left on theory name - moves the name"
-    button $win.dismiss -text Dismiss -command "destroy $win"
+    # underline and bind d
+    button $win.dismiss -text Dismiss -command "destroy $win" -underline 0
+    bind $win <Alt-d> "$win.dismiss invoke; break"
     pack $win.text -side top
     pack $win.dismiss -side left -padx 2 -pady 2
     wm iconname $win {PVS help hierarchy}
@@ -1740,8 +1872,12 @@ one of the sequents of the proof tree; it may not be visible.
 The Dismiss button removes the sequent window.  The window is also
 removed when the proof tree is modified so that the associated sequent
 no longer exists.  The Stick button causes the sequent to remain even in
-this case.  When the stick button is depressed, it disappears."
-    button $win.dismiss -text Dismiss -command "destroy $win"
+this case.  When the stick button is depressed, it disappears. All buttons
+can be invoked via mouse or via Alt-hotkey, where hotkey is the underscored
+letter on the button."
+    # underline and bind d
+    button $win.dismiss -text Dismiss -command "destroy $win" -underline 0
+    bind $win <Alt-d> "$win.dismiss invoke; break"
     pack $win.text -side top
     pack $win.dismiss -side left -padx 2 -pady 2
     wm iconname $win {PVS help sequent}
@@ -1758,12 +1894,15 @@ proc help-commands-window {} {
 
 The following mouse and key bindings are available:
 
+Alt-x     - invoke the button, which has letter \"x\" underscored
 Space, d  - page down
 Delete, u - page up
 Left, c   - sends selected command to the prover window
 Middle, h - provides help for selected command
 Right, s  - provides strategy description for selected command"
-    button $win.dismiss -text Dismiss -command "destroy $win"
+    # underline and bind d
+    button $win.dismiss -text Dismiss -command "destroy $win" -underline 0
+    bind $win <Alt-d> "$win.dismiss invoke; break"
     pack $win.text -side top
     pack $win.dismiss -side left -padx 2 -pady 2
     wm iconname $win {PVS Command Help}
