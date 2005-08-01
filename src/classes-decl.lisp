@@ -149,6 +149,7 @@
 	  :documentation "A list containing the completed actions"
 	  :restore-as nil)
   (generated-by :documentation "a module id" :restore-as nil)
+  generated-theories
   (tcc-comments :documentation
 		"An alist of TCCs and comments that follow."
 		:restore-as nil)
@@ -390,7 +391,7 @@
 (defcl formal-nonempty-struct-subtype-decl (formal-struct-subtype-decl nonempty-type-decl))
 
 (defcl formal-type-appl-decl (formal-type-decl)
-  types)
+  (parameters :parse t))
 
 (defcl formal-nonempty-type-appl-decl (formal-type-appl-decl))
 
@@ -735,9 +736,24 @@
   (fields :parse t)
   (dependent? :restore-as nil))
 
+(defcl struct-sub-tupletype (struct-subtype)
+  type
+  (types :parse t)
+  (dependent? :restore-as nil))
+
 (defcl type-extension (type-expr)
   (type :parse t)
   (extension :parse t))
+
+(defcl binding-type (type-expr)
+  (bindings :parse t)
+  (type :parse t))
+
+(defcl quant-type (binding-type))
+
+(defcl forall-type (quant-type))
+
+(defcl exists-type (quant-type))
 
 ;;; This is used solely by save-theories.  The idea is to store the
 ;;; print-type of a type whenever it appears, and to recreate the
