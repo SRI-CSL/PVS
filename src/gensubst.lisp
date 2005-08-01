@@ -260,6 +260,10 @@
 		      (sort-fields fields
 				   (dependent-fields? fields)))))))
 
+(defmethod gensubst* ((te struct-sub-tupletype) substfn testfn)
+  (let ((types (gensubst* (types te) substfn testfn)))
+    (lcopy te 'types types)))
+
 ;;; Expressions
 
 (defmethod gensubst* :around ((ex expr) substfn testfn)
@@ -726,6 +730,9 @@
 (defmethod mapobject* (fn (te struct-sub-recordtype))
   (mapobject* fn (fields te)))
 
+(defmethod mapobject* (fn (te struct-sub-tupletype))
+  (mapobject* fn (types te)))
+
 ;;; Expressions
 
 (defmethod mapobject* :around (fn (ex expr))
@@ -1171,6 +1178,15 @@
   (with-slots (fields) ex
     (copy ex
       'fields (copy-untyped* fields)
+      'dependent? nil
+      'print-type nil
+      'from-conversion nil
+      'nonempty? nil)))
+
+(defmethod copy-untyped* ((ex struct-sub-tupletype))
+  (with-slots (types) ex
+    (copy ex
+      'fields (copy-untyped* types)
       'dependent? nil
       'print-type nil
       'from-conversion nil
