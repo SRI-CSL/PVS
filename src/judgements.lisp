@@ -1227,12 +1227,17 @@
 
 (defmethod type-predicates* ((te subtype) preds all?)
   (unless (or (member te *subtypes-seen* :test #'tc-eq)
-	      (and (not all?)
+	      (and (null all?)
 		   preds
 		   (ignored-type-constraint te)))
     (push te *subtypes-seen*)
     (let ((pred (predicate te)))
-      (type-predicates* (supertype te) (cons pred preds) all?))))
+      (type-predicates* (supertype te)
+			(if (and (consp all?)
+				 (member pred all? :test #'tc-eq))
+			    preds
+			    (cons pred preds))
+			all?))))
 
 (defmethod type-predicates* ((te dep-binding) preds all?)
   (type-predicates* (type te) preds all?))
