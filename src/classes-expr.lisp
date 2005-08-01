@@ -30,6 +30,9 @@
   type
   (free-variables :ignore t :initform 'unbound :fetch-as 'unbound)
   (free-parameters :ignore t :initform 'unbound :fetch-as 'unbound)
+;;   (tcc-status :documentation "An alist of expected types and tcc-status -
+;;      'none means no TCCs could be generated,
+;;      'nocond means that a TCC was generated without conditions")
   ;;from-macro
   )
 
@@ -335,6 +338,9 @@
 (defcl lambda-conversion (lambda-expr))
 
 (defcl set-expr (lambda-expr))
+
+(defcl set-list-expr (set-expr)
+  exprs)
 
 (defcl let-lambda-expr (lambda-expr))
 
