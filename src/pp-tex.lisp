@@ -636,9 +636,8 @@
 (defmethod pp-tex* ((decl mod-decl))
   (with-slots (modname) decl
     (pp-tex-keyword 'THEORY)
-    (when (typep decl 'lib-eq-decl)
-      (write-char #\space)
-      (write-char #\=))
+    (write-char #\space)
+    (write-char #\=)
     (write-char #\space)
     (pprint-newline :fill)
     (pp-tex* modname)))
@@ -1013,6 +1012,37 @@
 	    (write-char #\space)
 	    (pprint-newline :linear)))))
 
+(defmethod pp-tex* ((te struct-sub-recordtype))
+  (with-slots (fields) te
+    (if fields
+	(pprint-logical-block (nil fields
+	       :prefix (get-pp-tex-id '\[\#)
+	       :suffix (get-pp-tex-id '\#\]))
+	  (loop (pp-tex* (pprint-pop))
+		(pprint-exit-if-list-exhausted)
+		(write-char #\,)
+		(write-char #\space)
+		(pprint-newline :linear)))
+	(progn (write (get-pp-tex-id '\[\#))
+	       (write #\space)
+	       (write (get-pp-tex-id '\#\]))))))
+
+(defmethod pp* ((te struct-sub-tupletype))
+  (with-slots (types) te
+    (if types
+	(pprint-logical-block
+	    (nil types
+		 :prefix (get-pp-tex-id '\[)
+		 :suffix (get-pp-tex-id '\]))
+	  (loop (pp-tex* (pprint-pop))
+		(pprint-exit-if-list-exhausted)
+		(write-char #\,)
+		(write-char #\space)
+		(pprint-newline :linear)))
+	(progn (write (get-pp-tex-id '\[))
+	       (write #\space)
+	       (write (get-pp-tex-id '\]))))))
+
 (defmethod pp-tex* ((te funtype))
   (with-slots (domain range) te
     (pprint-logical-block
@@ -1115,6 +1145,21 @@
 	    (write-char #\+)
 	    (write-char #\space)
 	    (pprint-newline :fill)))))
+
+(defmethod pp-tex* ((te quant-type))
+  (pprint-logical-block (nil nil)
+    (write (if (forall-type? te)
+	       (pp-tex-keyword 'FORALL)
+	       (pp-tex-keyword 'EXISTS)))
+    (pprint-indent :current 1)
+    (write-char #\space)
+    (pprint-newline :miser)
+    (pp-tex-lambda-formal (pp-chained-decls (bindings te)) nil nil)
+    (pprint-indent :block 2)
+    (write-char #\:)
+    (write-char #\space)
+    (pprint-newline :fill)
+    (pp-tex* (type te))))
 
 
 ;;; Expressions
@@ -1629,6 +1674,18 @@
       (write-char #\space)
       (pprint-newline :fill)
       (pp-tex* expression))))
+
+(defmethod pp-tex* ((ex set-list-expr))
+  (with-slots (exprs) ex
+    (pprint-logical-block
+	(nil exprs :prefix "\\{:" :suffix " :\\}")
+      (when exprs
+	(write-char #\space)
+	(loop (pp-tex* (pprint-pop))
+	      (pprint-exit-if-list-exhausted)
+	      (write-char #\,)
+	      (write-char #\space)
+	      (pprint-newline :fill))))))
 
 (defmethod pp-tex* ((ex let-expr))
   (if (lambda-expr? (operator ex))
