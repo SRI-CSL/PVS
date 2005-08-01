@@ -1526,8 +1526,10 @@
   (prettyprint-expanded theory))
 
 
-(defun show-tccs (theoryref &optional unproved-only?)
+(defun show-tccs (theoryref &optional arg)
   (let* ((theory (get-typechecked-theory theoryref))
+	 (unproved-only? (and arg (not (minusp arg))))
+	 (include-trivial? (and arg (minusp arg)))
 	 (*no-comments* nil))
     (when theory
       (let* ((*comment-on-proof-status* t)
@@ -1540,8 +1542,11 @@
 		   (with-output-to-string (out)
 		     (dolist (decl (all-decls theory))
 		       (dolist (cmt (cdr (assq decl (tcc-comments theory))))
-			 (write cmt :stream out :escape nil)
-			 (terpri out) (terpri out))
+			 (when (or include-trivial?
+				   (not (eq (fourth cmt) 'in-context)))
+			   (write (apply #'print-tcc-comment decl cmt)
+				  :stream out :escape nil)
+			   (terpri out) (terpri out)))
 		       (when (and (tcc? decl)
 				  (or (not unproved-only?)
 				      (unproved? decl)))
