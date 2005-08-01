@@ -689,9 +689,8 @@ bind tighter.")
 (defmethod pp* ((decl mod-decl))
   (with-slots (modname) decl
     (write 'THEORY)
-    (when (typep decl 'lib-eq-decl)
-      (write-char #\space)
-      (write-char #\=))
+    (write-char #\space)
+    (write-char #\=)
     (write-char #\space)
     (pprint-newline :fill)
     (pp* modname)))
@@ -1069,6 +1068,17 @@ bind tighter.")
 		(pprint-newline :linear)))
 	(write "[# #]"))))
 
+(defmethod pp* ((te struct-sub-tupletype))
+  (with-slots (types) te
+    (if types
+	(pprint-logical-block (nil types :prefix "[" :suffix "]")
+	  (loop (pp* (pprint-pop))
+		(pprint-exit-if-list-exhausted)
+		(write-char #\,)
+		(write-char #\space)
+		(pprint-newline :linear)))
+	(write "[]"))))
+
 (defmethod pp* ((te funtype))
   (with-slots (domain range) te
     (pprint-logical-block (nil nil :prefix "[" :suffix "]")
@@ -1188,6 +1198,18 @@ bind tighter.")
 	     (write-char #\,)
 	     (write-char #\space)
 	     (pprint-newline :linear))))))
+
+(defmethod pp* ((te quant-type))
+  (pprint-logical-block (nil nil)
+    (write (if (forall-type? te) "FORALL" "EXISTS"))
+    (pprint-indent :current 1)
+    (write " ")
+    (pprint-newline :miser)
+    (pp-lambda-formal (pp-chained-decls (bindings te)) nil nil)
+    (pprint-indent :block 2)
+    (write ": ")
+    (pprint-newline :fill)
+    (pp* (type te))))
 
 
 ;;; Expressions
@@ -1911,6 +1933,17 @@ bind tighter.")
       (pprint-newline :fill)
       (pp* expression))))
 
+(defmethod pp* ((ex set-list-expr))
+  (with-slots (exprs) ex
+    (pprint-logical-block (nil exprs :prefix "{:" :suffix " :}")
+      (when exprs
+	(write-char #\space)
+	(loop (pp* (pprint-pop))
+	      (pprint-exit-if-list-exhausted)
+	      (write-char #\,)
+	      (write-char #\space)
+	      (pprint-newline :fill))))))
+
 (defmethod pp* ((ex let-expr))
   (if (lambda-expr? (operator ex))
       (multiple-value-bind (let-bindings expr)
@@ -2346,7 +2379,18 @@ bind tighter.")
       (call-next-method)
       (pprint-logical-block (nil nil)
 	(pp* (lhs map))
-	(pp-decl-formals (formals map))
+	(pp-decl-formals (if *making-interpreted-theory*
+			     (mapcar
+				 #'(lambda (fmls)
+				     (mapcar
+					 #'(lambda (fml)
+					     (if (declared-type fml)
+						 fml
+						 (copy fml
+						   'declared-type (type fml))))
+				       fmls))
+			       (formals map))
+			     (formals map)))
 	(when (kind map)
 	  (write ": ")
 	  (if (eq (kind map) 'expr)
