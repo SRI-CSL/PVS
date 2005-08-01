@@ -25,12 +25,12 @@ Operators
 %  
 	'('  ')'  '-'  '+'  '*' '/' ':=' '::=' '|->'  ';'  ','  '='  '/='
 	'<'  '<='  '>'  '>=' '{' '}' '[' ']' '.' '&' '<=>'
-	'->' ':' '=>' '[#' '#]' '(#' '#)' '(:' ':)' '{{' '}}' '|'
+	'->' ':' '=>' '[#' '#]' '(#' '#)' '(:' ':)' '{:' ':}' '{{' '}}' '|'
         '^' '/\\' '\\/' '[]' '<>' '~' '==' '++' '**' '//' '^^'
 	'<<' '>>' '::' '#' '@' '@@' '##' '[|' '|]' '(|' '|)' '{|' '|}'
         '|[' ']|' '!'
         '<<=' '>>=' '`' '\''
-	'[||]' '(||)' '{||}' '||' '|-' '|=' '<|' '|>' ':->' '<:'
+	'[||]' '(||)' '{||}' '||' '|-' '|=' '<|' '|>' ':->' %'<:'
 
 Lexical Terminals
 	id, number, string %, literal
@@ -126,7 +126,7 @@ idopappls ::= {idopappl++','} <idopappls(idopappl+)>;
 idopappl ::= {idop ['(' type-expr++',' ')']}
                 <[idop|idopappl(idop,deptypes(type-expr+))]>;
 
-theory-formal-decl ::= {type-keyword [{'FROM' type-expr}|{'<:' type-expr}]}
+theory-formal-decl ::= {type-keyword [{'FROM' type-expr}|{'<' ':' type-expr}]}
 		        <ftype-decl(type-keyword,[notype()|{type-expr|struct-subtype(type-expr)}])>
 		     | {type-expr} <fconst-decl(type-expr)>
 		     | {'THEORY' theory-decl-modname}
@@ -258,8 +258,9 @@ type-keyword ::= 'TYPE' <type()>
                ;
 
 % '=' must appear in name type-def, to avoid overlap with '=' as an opsym.
-type-def ::= {{'=' <equal()> | 'FROM' <from()> | '<:' <`\<\:()>} type-expr}
-			<type-def(alt,type-expr)>;
+type-def ::= {{'=' <equal()> | 'FROM' <from()> | {'<' ':'} <`\<\:()>}
+              type-expr}
+		<type-def(alt,type-expr)>;
 
 var-decl ::= {'VAR' type-expr} <var-decl(type-expr)>;
 
@@ -298,6 +299,9 @@ type-expr-sans-name ::= { '(' expr ')'} <expr-as-type(expr)>
 		      | {'{' set-formals ['|' expr] '}'}
 			<[enumtype(set-formals) | subtype(set-formals,expr)]>
 		      | comp-type-expr
+                      | {{'FORALL' | 'EXISTS'} lambda-formals ':' type-expr}
+                        <quant-type({forall()|exists()},lambda-formals,
+                                    type-expr)>
 		      ;
 
 % Broken out so that type expressions could appear in actual parameters;
@@ -428,7 +432,8 @@ expr ::= string <string-expr(string)>
        | table-expr
        ;
 
-set-expr ::= {'{' set-formals '|' expr '}'} <set-expr(set-formals,expr)>;
+set-expr ::= {'{' set-formals '|' expr '}'} <set-expr(set-formals,expr)>
+           | {'{:' expr**',' ':}'} <set-list-expr(expr*)>;
 
 cond-case ::= {expr^l '->' expr^r} <cond-case(expr^l,expr^r)>;
 
