@@ -220,6 +220,12 @@ where db is to replace db1 and db2")
       (or (eq t1 t2)
 	  (tc-eq-types ty1 ty2 bindings)))))
 
+(defmethod tc-eq* ((t1 struct-sub-tupletype) (t2 struct-sub-tupletype) bindings)
+  (with-slots ((types1 types)) t1
+    (with-slots ((types2 types)) t2
+      (or (eq t1 t2)
+	  (tc-eq-types types1 types2 bindings)))))
+
 (defmethod tc-eq* ((t1 cotupletype) (t2 cotupletype) bindings)
   (with-slots ((ty1 types)) t1
     (with-slots ((ty2 types)) t2
@@ -2588,6 +2594,29 @@ where db is to replace db1 and db2")
       (make!-conjunction* (gensubst (cdr predicates)
 			  #'(lambda (ex) (declare (ignore ex)) nvar)
 			  #'(lambda (ex) (tc-eq ex (car predicates))))))))
+
+;;; intersection-type returns the largest type contained in the given types,
+;;; whihc must be compatible.  It can return the empty type.
+
+(defun intersection-type (t1 t2)
+  (assert (compatible? t1 t2))
+  (cond ((subtype-of? t1 t2)
+	 t1)
+	((subtype-of? t2 t1)
+	 t2)
+	(t (let* ((preds1 (type-predicates t1 t))
+		  (preds2 (type-predicates t2 preds1)))
+	     (assert (and preds1 preds2))
+	     (make-intersection-subtype t1 preds2)))))
+
+(defun make-intersection-subtype (ty preds)
+  (if (null preds)
+      ty
+      (mk-subtype ty
+	(let* ((bd (make-new-bind-decl ty))
+	       (var (make-variable-expr bd)))
+	  (make!-set-expr (list bd) (make!-application (car preds) var))))))
+
 
 ;; lifts dependent subtype predicates to the top, e.g.,
 ;; [x: int, {y:int | y < x}] ==> {z: [int, int] | z`2 < z`1}
