@@ -1420,13 +1420,12 @@
 	       (compatible-uninstantiated?
 		decl
 		modinst
-		(mapcar #'(lambda (fd) (find-supertype (type fd)))
-		  (car (formals decl)))
+		types
 		args)
 	       (when (compatible-args?
 		      decl args
 		      (mapcar #'(lambda (fa)
-				  (subst-mod-params (type fa) modinst
+				  (subst-mod-params fa modinst
 						    (module decl)))
 			fargs))
 		 (list modinst)))))))
@@ -1915,6 +1914,7 @@
 ;;; Resolution error handling
 
 (defun resolution-error (name kind arguments &optional (type-error? t))
+  (unless (name? name) (setq name (mk-name name)))
   (let ((reses (when (actuals name)
 		 (mapcan #'(lambda (k)
 			     (resolve (copy name 'actuals nil) k arguments))
