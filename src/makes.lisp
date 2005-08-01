@@ -1057,7 +1057,7 @@
 
 (defun projection-application-type (projapp type)
   (let ((tuptype (find-supertype type)))
-    (assert (typep tuptype 'tupletype))
+    (assert (typep tuptype '(or tupletype struct-sub-tupletype)))
     (projection-type* (types tuptype) (index projapp) 1 (argument projapp) type)))
 
 (defun projection-type* (types index ctr arg type)
@@ -1089,7 +1089,7 @@
 (defun field-application-type (field type arg)
   (let ((field-id (ref-to-id field))
 	(rtype (find-supertype type)))
-    (assert (typep rtype 'recordtype))
+    (assert (typep rtype '(or recordtype struct-sub-recordtype)))
     (if (dependent? rtype)
 	(field-application-type* (fields rtype) field-id arg)
 	(type (find field-id (fields rtype)
@@ -1577,35 +1577,62 @@
 (defun make!-chained-if-expr (cond then else)
   (make!-if-expr* cond then else t))
 
-(defun make!-if-expr* (cond then else chained?)
+(defun make!-if-expr* (cond then else chained? &optional reduce?)
   (assert (and (type cond) (type then) (type else)))
   (assert (tc-eq (find-supertype (type cond)) *boolean*))
   (assert (compatible? (type then) (type else)))
-  (let* ((stype (compatible-type (type then) (type else)))
-	 (ifoptype (make-instance 'funtype
-		     'domain (make-instance 'tupletype
-			       'types (list *boolean* stype stype))
-		     'range stype))
-	 (if-res (mk-resolution (if-declaration)
-		   (mk-modname '|if_def| (list (mk-actual stype)))
-		   ifoptype))
-	 (if-name (make-instance 'name-expr
-		    'id 'IF
-		    'type ifoptype
-		    'resolutions (list if-res)))
-	 (if-args (make-instance 'arg-tuple-expr
-		    'exprs (list cond then else)
-		    'type (make-instance 'tupletype
-			    'types (list *boolean* (type then) (type else))))))
-    (if chained?
-	(make-instance 'chained-branch
-	  'type stype
-	  'operator if-name
-	  'argument if-args)
-	(make-instance 'mixfix-branch
-	  'type stype
-	  'operator if-name
-	  'argument if-args))))
+  (cond ((and reduce? (tc-eq cond *true*))
+	 then)
+	((and reduce? (tc-eq cond *false*))
+	 else)
+	((and reduce? (tc-eq then else))
+	 then)
+	((and reduce? (tc-eq then *true*))
+	 (make!-disjunction cond else))
+	((and reduce? (tc-eq then *false*))
+	 (make!-conjunction (negate cond) else))
+	((and reduce? (tc-eq else *true*))
+	 (make!-conjunction (negate cond) then))
+	((and reduce? (tc-eq else *false*))
+	 (make!-disjunction cond then))
+	(t (let* ((stype (compatible-type (type then) (type else)))
+		  (ifoptype (make-instance 'funtype
+			      'domain (make-instance 'tupletype
+					'types (list *boolean* stype stype))
+			      'range stype))
+		  (if-res (mk-resolution (if-declaration)
+			    (mk-modname '|if_def| (list (mk-actual stype)))
+			    ifoptype))
+		  (if-name (make-instance 'name-expr
+			     'id 'IF
+			     'type ifoptype
+			     'resolutions (list if-res)))
+		  (if-args (make-instance 'arg-tuple-expr
+			     'exprs (list cond then else)
+			     'type (make-instance 'tupletype
+				     'types (list *boolean*
+						  (type then) (type else))))))
+	     (if chained?
+		 (make-instance 'chained-branch
+		   'type stype
+		   'operator if-name
+		   'argument if-args)
+		 (make-instance 'mixfix-branch
+		   'type stype
+		   'operator if-name
+		   'argument if-args))))))
+
+(defun make!-cases-expr (ex selections &optional else)
+  (assert (type ex))
+  (let ((cex (mk-cases-expr ex selections else))
+	(seltype (reduce #'compatible-type
+			 (mapcar #'(lambda (s) (type (expression s)))
+			   selections))))
+    (setf (type cex)
+	  (if else
+	      (compatible-type seltype (type else))
+	      seltype))
+    cex))
 
 (defun make!-arg-tuple-expr (&rest args)
   (funcall #'make!-arg-tuple-expr* args))
@@ -1822,6 +1849,8 @@
 	 ex1)
 	((tc-eq ex2 *false*)
 	 *false*)
+	((tc-eq ex1 ex2)
+	 ex1)
 	(t (make-instance 'infix-conjunction
 	     'operator (and-operator)
 	     'argument (make!-arg-tuple-expr ex1 ex2)
@@ -1848,6 +1877,8 @@
 	((tc-eq ex2 *true*)
 	 *true*)
 	((tc-eq ex2 *false*)
+	 ex1)
+	((tc-eq ex1 ex2)
 	 ex1)
 	(t (make-instance 'infix-disjunction
 	     'operator (or-operator)
@@ -1976,6 +2007,21 @@
     'bindings bindings
     'expression expr
     'type (make-formals-funtype (list bindings) (type expr))))
+
+(defun make!-set-list-expr (exprs type)
+  (assert (every #'type exprs))
+  (let* ((id (make-new-variable 'x exprs))
+	 (bd (make-bind-decl id type))
+	 (var (make-variable-expr bd))
+	 (dj (make!-disjunction*
+	      (mapcar #'(lambda (e)
+			  (make!-equation var e))
+		exprs))))
+    (make-instance 'set-list-expr
+      'exprs exprs
+      'bindings (list bd)
+      'expression dj
+      'type (mk-funtype type *boolean*))))
 
 (defmethod make!-bind-decl (id (type type-expr))
   (mk-bind-decl id (or (print-type type) type) type))
