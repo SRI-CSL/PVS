@@ -343,7 +343,8 @@
 		  (:file "static-update")
 		  (:file "pvseval-update")
 		  (:file "cl2pvs")
-		  (:file "generate-lisp-for-theory"))
+		  (:file "generate-lisp-for-theory")
+		  (:file "random-test"))
      :depends-on (basic))
    (:module ws1s
 	    :source-pathname "src/WS1S/lisp"
