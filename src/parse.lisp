@@ -753,7 +753,7 @@
 				(types (term-args (term-arg1 (car idops)))))
 			    (change-class (copy decl) 'formal-type-appl-decl
 			      'id tid
-			      'types (mapcar #'xt-type-expr types))))
+			      'parameters (mapcar #'xt-type-expr types))))
 			 (t
 			  (copy decl
 			    'id (if (is-id (car idops))
@@ -766,7 +766,7 @@
 				       (types (term-args (term-arg1 (car idops)))))
 				   (change-class decl 'formal-type-appl-decl
 				     'id tid
-				     'types (mapcar #'xt-type-expr types))))
+				     'parameters (mapcar #'xt-type-expr types))))
 				(t
 				 (setf (id decl)
 				       (if (is-id (car idops))
@@ -1145,6 +1145,7 @@
     (EXTENDED-TYPE-NAME
      (xt-extended-type-name type-expr))
     (STRUCT-SUBTYPE (xt-struct-subtype type-expr))
+    (QUANT-TYPE (xt-quant-type type-expr))
     (t (error "type-expr not recognized - ~a" type-expr))))
 
 (defun xt-type-name (type-name)
@@ -1373,6 +1374,23 @@
 			'place (term-place field-decls))
 		      field-decls)))
 
+;; <quant-type({forall()|exists()},lambda-formals, type-expr)>
+(defun xt-quant-type (te)
+  (let* ((quant (term-arg0 te))
+	 (commas? (xt-lambda-formals-check (term-arg1 te)))
+	 (bindings (xt-lambda-formals (term-arg1 te) commas?))
+	 (texpr (xt-type-expr (term-arg2 te))))
+    (case (sim-term-op quant)
+      (FORALL (make-instance 'forall-type
+		'bindings (caar bindings)
+		'type texpr
+		'place (term-place te)))
+      (EXISTS (make-instance 'exists-type
+		'bindings (caar bindings)
+		'type texpr
+		'place (term-place te))))))
+
+
 ;;; Expressions
 
 (defun xt-expr (expr)
@@ -1398,6 +1416,7 @@
     (BIND-EXPR (xt-bind-expr expr))
     (NAME-BIND-EXPR (xt-name-bind-expr expr))
     (SET-EXPR (xt-set-expr expr))
+    (SET-LIST-EXPR (xt-set-list-expr expr))
     (LET-EXPR (xt-let-expr expr))
     (WHERE-EXPR (xt-where-expr expr))
     (UPDATE-EXPR (xt-update-expr expr))
@@ -2071,6 +2090,11 @@
 (defun xt-set-expr (set-expr)
   (make-xt-bind-expr 'set-expr set-expr set-expr))
 
+(defun xt-set-list-expr (exs)
+  (let* ((exprs (mapcar #'xt-expr (term-args exs)))
+	 (tvar (make-new-variable 'x exprs)))
+    (make-instance 'set-list-expr
+      'exprs exprs)))
 
 (defun xt-let-expr (lexpr)
   (let* ((let-bindings (term-arg0 lexpr))
@@ -2454,9 +2478,14 @@
 
 (defun xt-assign* (ass-arg)
   (case (sim-term-op ass-arg)
-    (ID-ASSIGN (list (make-instance 'id-assign
-			  'id (ds-id (term-arg0 ass-arg))
-			  'place (term-place ass-arg))))
+    (ID-ASSIGN (let ((id (ds-id (term-arg0 ass-arg))))
+		 (if (every #'digit-char-p (string id))
+		     (list (make-instance 'proj-assign
+			 'number (parse-integer (string id))
+			 'place (term-place ass-arg)))
+		     (list (make-instance 'id-assign
+			     'id (ds-id (term-arg0 ass-arg))
+			     'place (term-place ass-arg))))))
     (PROJ-ASSIGN (list (make-instance 'proj-assign
 			 'number (ds-number (term-arg0 ass-arg))
 			 'place (term-place ass-arg))))
@@ -2699,11 +2728,14 @@
       'id (makesym "~a!~d" (id name) number))))
 
 (defun ds-vid (term)
-  (let ((id (ds-id term)))
+  (let* ((tid (ds-id term))
+	 (id (if (and (symbolp tid)
+		      (every #'digit-char-p (string tid)))
+		 (parse-integer (string tid))
+		 tid)))
     (when (memq id '(|/\\| |\\/|))
       (pushnew id *escaped-operators-used*))
     (if (or (numberp id)
-	    (every #'digit-char-p (string id))
 	    (valid-pvs-id id))
 	id
 	(parse-error term "Invalid id"))))
