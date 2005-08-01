@@ -13,10 +13,7 @@ case `uname -s` in
 	 esac
 	 os=SunOS
          os_version=`uname -r | cut -d"." -f1`;;
-  Linux) case `uname -m` in
-	   i?86) arch=ix86;;
-	   *)    arch=`uname -m`;;
-	 esac
+  Linux) arch=ix86
 	 os=redhat
 	 os_version=5;;
   AIX) arch=powerpc-ibm
