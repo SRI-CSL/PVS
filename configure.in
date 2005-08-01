@@ -58,7 +58,7 @@ dnl Check for allegro path
 AC_MSG_CHECKING(allegropath)
 AC_ARG_WITH(allegropath, [ --with-allegro=/path/to/allegro ])
 if test "x$with_allegro" = "x"; then
-   ALLEGRODIR=/csl/allegro/allegro6.2
+   ALLEGRODIR=/csl/allegro/allegro7.0
 else
    ALLEGRODIR=$with_allegro
 fi
