@@ -138,6 +138,8 @@
   (unless (and (memq 'typechecked (status m))
 	       (typechecked? m))
     (let ((*subtype-of-hash* (make-hash-table :test #'equal))
+	  (*beta-cache* (make-hash-table :test #'eq))
+	  (*assert-if-arith-hash* (make-hash-table :test #'eq))
 	  (*bound-variables* *bound-variables*))
       (reset-pseudo-normalize-caches)
       (tcdebug "~%Typecheck ~a" (id m))
@@ -235,6 +237,13 @@
   use)
 
 (defun typecheck-using (theory-inst)
+  (let ((lib-id (library theory-inst)))
+    (when lib-id
+      (let ((lib-ref (get-library-reference lib-id)))
+	(when (file-equal (libref-to-pathname lib-ref) *pvs-context-path*)
+	  (type-error theory-inst
+	    "Library \"~a\" refers to the current PVS context - it must be external"
+	    lib-id)))))
   (if (and (null (library theory-inst))
 	   (eq (id theory-inst) (id (current-theory))))
       (type-error theory-inst "A theory may not import itself")
@@ -889,6 +898,9 @@
 				   (member (id fld) (fields t2) :key #'id)))
 		     (fields t1))))
     (tc-eq subfields (fields t2))))
+
+(defmethod sub-struct-type? ((t1 tupletype) (t2 tupletype))
+  (every #'tc-eq (types t1) (types t2)))
 
 (defmethod sub-struct-type? ((t1 type-expr) (t2 type-expr))
   nil)
