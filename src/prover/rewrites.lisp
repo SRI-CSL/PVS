@@ -16,7 +16,9 @@
 
 (defun rewrite-step (lemma fnums &optional subst target-fnums
 			       dir order dont-delete?)
-  (let* ((lemmaname-expr (pc-parse lemma 'bname))
+  (let* ((lemmaname-expr (unless (and (integerp lemma)
+				      (minusp lemma))
+			   (pc-parse lemma 'bname)))
 	 (resolutions (formula-or-definition-resolutions lemmaname-expr))
 	 (sforms (select-seq (s-forms *goal*)
 			     (if (numberp fnums) (list fnums)
