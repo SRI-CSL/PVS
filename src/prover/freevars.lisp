@@ -276,6 +276,9 @@
 (defmethod freevars* ((texpr struct-sub-recordtype))
   (freevars* (fields texpr)))
 
+(defmethod freevars* ((texpr struct-sub-tupletype))
+  (freevars* (types texpr)))
+
 (defmethod freevars* ((sym symbol))
   nil)
 
