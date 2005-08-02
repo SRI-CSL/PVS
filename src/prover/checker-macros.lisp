@@ -211,7 +211,7 @@
 	     (if (memq test '(eq eql equal equalp))
 		 (make-hash-table :test test)
 		 (make-hash-table :test test :hash-function 'pvs-sxhash)))
-	   ,val))))
+	   (clrhash ,val)))))
 
 ;;The rulebase is represented as a hash-table.
 
