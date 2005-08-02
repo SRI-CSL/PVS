@@ -613,6 +613,12 @@
     (copy-slots ex expr)
     (untypecheck-theory ex)))
 
+(defmethod untypecheck-theory ((ex set-list-expr))
+  (setf (bindings ex) nil
+	(expression ex) nil)
+  (when (next-method-p) (call-next-method))
+  (untypecheck-theory (exprs ex)))
+
 (defmethod untypecheck-theory ((ex binding-expr))
   (when (next-method-p) (call-next-method))
   (untypecheck-theory (bindings ex))
