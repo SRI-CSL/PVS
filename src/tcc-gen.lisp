@@ -34,7 +34,7 @@
 (defun generate-subtype-tcc (expr expected incs)
   (if (every #'(lambda (i) (member i *tcc-conditions* :test #'tc-eq))
 	     incs)
-      (add-tcc-comment 'subtype expr expected)
+      (add-tcc-comment 'subtype expr expected 'in-context)
       (let* ((*old-tcc-name* nil)
 	     (ndecl (make-subtype-tcc-decl expr incs)))
 	(if ndecl
@@ -62,6 +62,12 @@
 		       (pseudo-normalize tform))
 		      (t tform)))
 	 (id (make-tcc-name expr)))
+    (when (and (forall-expr? uform)
+	       (duplicates? (bindings uform) :key #'id))
+      (break "repeated bindings in make-subtype-tcc-decl"))
+    (when (some #'(lambda (fv) (not (memq (declaration fv) *keep-unbound*)))
+		(freevars uform))
+      (break "make-subtype-tcc-decl freevars"))
     (assert (tc-eq (find-supertype (type uform)) *boolean*))
     (unless (tc-eq uform *true*)
       (when (and *false-tcc-error-flag*
@@ -154,9 +160,9 @@
 (defvar *substitute-let-bindings* nil)
 
 (defun add-tcc-conditions (expr)
-  (multiple-value-bind (conditions vdecl1)
+  (multiple-value-bind (conditions vdecl1 ch1?)
       (subst-var-for-recs (remove-duplicates *tcc-conditions* :test #'equal))
-    (multiple-value-bind (srec-expr vdecl)
+    (multiple-value-bind (srec-expr vdecl ch?)
 	(subst-var-for-recs expr vdecl1)
       (let* ((osubsts (get-tcc-binding-substitutions
 		       (reverse (cons srec-expr conditions))))
@@ -168,8 +174,24 @@
 						   osubsts))
 				osubsts)
 			 osubsts)))
-	(universal-closure (add-tcc-conditions* (raise-actuals srec-expr)
-						conditions substs nil))))))
+	(universal-closure (add-tcc-conditions*
+			    (raise-actuals srec-expr)
+			    (if (and vdecl (or ch1? ch?))
+				(insert-var-into-conditions vdecl conditions)
+				conditions)
+			    substs nil))))))
+
+(defun insert-var-into-conditions (vdecl conditions)
+  (let* ((fvars (freevars vdecl))
+	 (elt (find-if #'(lambda (bd)
+			   (and (binding? bd)
+				(member bd fvars :key #'declaration)))
+		conditions)))
+    (if elt
+	(let ((post (memq elt conditions)))
+	  (append (ldiff conditions post) (list vdecl) post))
+	(append conditions (list vdecl)))))
+    
 
 (defun add-tcc-conditions* (expr conditions substs antes)
   (if (null conditions)
@@ -264,6 +286,7 @@
 	     (nbd (or (cdr (assq bd substs)) bd)))
 	(add-tcc-bindings expr (cdr conditions) substs antes
 			  (if (or (occurs-in bd expr)
+				  (occurs-in bd bindings)
 				  (occurs-in bd antes)
 				  (occurs-in bd substs)
 				  (possibly-empty-type? (type bd)))
@@ -335,10 +358,7 @@
 	     (not (and (declaration? decl)
 		       (id decl)
 		       (assq expr *compatible-pred-reason*))))
-	(add-tcc-comment kind expr type
-			 (format nil "% is subsumed by ~a"
-			   (id match))
-			 match))
+	(add-tcc-comment kind expr type (list 'subsumed match) match))
        (t (when match
 	    (pvs-warning "The judgement TCC generated for and named ~a ~
                           is subsumed by ~a,~%  ~
@@ -924,10 +944,11 @@
 		  (if ndecl
 		      (add-tcc-comment
 		       'mapped-axiom nil modinst
-		       (format nil
-			   "%~a~%  % was not generated because ~a is non-empty"
-			 (unpindent ndecl 2 :string t :comment? t)
-			 (unpindent netype 2 :string t :comment? t)))
+		       (cons 'map-to-nonempty 
+			     (format nil
+				 "%~a~%  % was not generated because ~a is non-empty"
+			       (unpindent ndecl 2 :string t :comment? t)
+			       (unpindent netype 2 :string t :comment? t))))
 		      (add-tcc-comment
 		       'mapped-axiom nil modinst))))))))))
 
@@ -1194,7 +1215,8 @@
 			'bindings (append (bindings sexpr)
 					  (list (declaration vname))))
 		      sexpr)
-		  vbd))
+		  vbd
+		  (not (eq sexpr expr))))
 	expr)))
 
 (defun make-new-variable (base expr &optional num)
@@ -1342,17 +1364,62 @@
 	     (newpreds (if npred (cons npred preds) preds))
 	     (carl1 (car l1))
 	     (carl2 (car l2))
-	     (dep-binding? (and (dep-binding? carl1)
+	     (dep-bindings? (and (dep-binding? carl1)
 				(dep-binding? carl2))))
-	(if dep-binding?
-	    (let*
-		((bd (make-bind-decl (id carl1) carl1))
-		 (bdvar (make-variable-expr bd))
-		 (new-cdrl1 (subst-var-into-deptypes bdvar carl1 (cdr l1)))
-		 (new-cdrl2 (subst-var-into-deptypes bdvar carl2 (cdr l2)))
-		 (*bound-variables* (cons bd *bound-variables*)))
-	      (equality-predicates-list new-cdrl1 new-cdrl2 bindings newpreds))
-	    (equality-predicates-list (cdr l1)(cdr l2) bindings newpreds)))))
+	(cond (dep-bindings?
+	       (let* ((bd (make-bind-decl (id carl1) carl1))
+		      (bdvar (make-variable-expr bd))
+		      (new-cdrl1 (subst-var-into-deptypes
+				  bdvar carl1 (cdr l1)))
+		      (new-cdrl2 (subst-var-into-deptypes
+				  bdvar carl2 (cdr l2)))
+		      (*bound-variables* (cons bd *bound-variables*))
+		      (epred (equality-predicates-list
+			      new-cdrl1 new-cdrl2 bindings newpreds)))
+		 (when epred
+		   (make!-forall-expr (list bd) epred))))
+	      ((dep-binding? carl1)
+	       (let* ((bd (make-unique-binding carl1 l2))
+		      (bdvar (make-variable-expr bd))
+		      (new-cdrl1 (subst-var-into-deptypes
+				  bdvar carl1 (cdr l1)))
+		      (*bound-variables* (cons bd *bound-variables*))
+		      (epred (equality-predicates-list
+			      new-cdrl1 (cdr l2) bindings newpreds)))
+		 (when epred
+		   (make!-forall-expr (list bd) epred))))
+	      ((dep-binding? carl2)
+	       (let* ((bd (make-unique-binding carl2 l1))
+		      (bdvar (make-variable-expr bd))
+		      (new-cdrl2 (subst-var-into-deptypes
+				  bdvar carl2 (cdr l2)))
+		      (*bound-variables* (cons bd *bound-variables*))
+		      (epred (equality-predicates-list
+			      (cdr l1) new-cdrl2 bindings newpreds)))
+		 (when epred
+		   (make!-forall-expr (list bd) epred))))
+	      (t
+	       (equality-predicates-list (cdr l1) (cdr l2) bindings newpreds))))))
+
+;; make-new-var makes a unique binding from the given binding
+(defun make-unique-binding (binding expr)
+  (if (unique-binding? binding expr)
+      (make-bind-decl (id binding) (type binding))
+      (let ((vid (make-new-variable (id binding) expr 1)))
+	(make-bind-decl vid (type binding)))))
+
+(defun unique-binding? (binding expr)
+  (let ((unique? t))
+    (mapobject #'(lambda (ex)
+		   (or (not unique?)
+		       (when (and (name? ex)
+				  (declaration ex)
+				  (not (eq (declaration ex) binding))
+				  (eq (id ex) (id binding)))
+			 (setq unique? nil)
+			 t)))
+	       expr)
+    unique?))
 
 (defmethod equality-predicates* ((a1 actual) (a2 actual) p1 p2 bindings)
   (if (type-value a1)
@@ -1464,59 +1531,72 @@
 
 (defun add-tcc-comment (kind expr type &optional reason subsumed-by)
   (unless (or *in-checker* *in-evaluator* *collecting-tccs*)
-    (cond (subsumed-by
-	   (incf (tccs-matched))
-	   (push subsumed-by (refers-to (current-declaration))))
-	  (t (if (numberp (tccs-simplified))
-		 (incf (tccs-simplified))
-		 (setf (tccs-simplified) 1))))
     (let* ((decl (current-declaration))
-	   (submsg (case kind
-		     (actuals nil)
-		     (assuming (format nil "generated from assumption ~a.~a"
-				 (id (module type)) (id type)))
-		     (cases
-		      (format nil
-			  "for missing ELSE of CASES expression over datatype ~a"
-			(id type)))
-		     (coverage nil)
-		     (disjointness nil)
-		     (existence nil)
-		     (mapped-axiom
-		      (unpindent type 4 :string t :comment? t))
-		     ((subtype termination-subtype)
-		      (format nil "expected type ~a"
-			(unpindent type 19 :string t :comment? t)))
-		     (termination nil)
-		     (well-founded (format nil "for ~a" (id decl)))))
+	   (theory (current-theory))
 	   (place (or (place *set-type-actuals-name*)
-		     (place expr) (place type)))
-	   (plstr (when place
-		    (format nil "(at line ~d, column ~d)"
-		      (starting-row place) (starting-col place))))
-	   (tccstr (format nil
-		       "% The ~@[~a ~]~a TCC ~@[~a~] in decl ~a for~
-                        ~:[ ~;~%    % ~]~@[~a~]~@[~%    %~a~]~%  ~a"
-		     (cdr (assq expr *compatible-pred-reason*))
-		     kind plstr (if (importing? decl) "IMPORTING" (id decl))
-		     (> (+ (length (cdr (assq expr
-					      *compatible-pred-reason*)))
-			   (length (string kind))
-			   (length plstr)
-			   (length (unpindent (or *set-type-actuals-name* expr)
-					      4 :string t :comment? t))
-			   25)
-			*default-char-width*)
-		     (when (or *set-type-actuals-name* expr)
-		       (unpindent (or *set-type-actuals-name* expr)
-				  4 :string t :comment? t))
-		     submsg
-		     (or reason
-			 "% was not generated because it simplifies to TRUE."))))
-      (pvs-info tccstr)
-      (let* ((decl (current-declaration))
-	     (theory (current-theory))
-	     (entry (assq decl (tcc-comments theory))))
-	(if entry
-	    (nconc entry (list tccstr))
-	    (push (list decl tccstr) (tcc-comments theory)))))))
+		      (place expr) (place type)))
+	   (preason (cdr (assq expr *compatible-pred-reason*)))
+	   (aname (or *set-type-actuals-name* expr))
+	   (tcc-comment (list kind aname type reason place preason))
+	   (decl-tcc-comments (assq decl (tcc-comments theory))))
+      (unless (member tcc-comment (cdr decl-tcc-comments) :test #'equal)
+	(if decl-tcc-comments
+	    (nconc decl-tcc-comments (list tcc-comment))
+	    (push (list decl tcc-comment) (tcc-comments theory)))
+	(cond (subsumed-by
+	       (incf (tccs-matched))
+	       (push subsumed-by (refers-to (current-declaration))))
+	      (t (if (numberp (tccs-simplified))
+		     (incf (tccs-simplified))
+		     (setf (tccs-simplified) 1))))))))
+
+(defun print-tcc-comment (decl kind expr type reason place preason)
+  (let* ((submsg (case kind
+		   (actuals nil)
+		   (assuming (format nil "generated from assumption ~a.~a"
+			       (id (module type)) (id type)))
+		   (cases
+		    (format nil
+			"for missing ELSE of CASES expression over datatype ~a"
+		      (id type)))
+		   (coverage nil)
+		   (disjointness nil)
+		   (existence nil)
+		   (mapped-axiom
+		    (unpindent type 4 :string t :comment? t))
+		   ((subtype termination-subtype)
+		    (format nil "expected type ~a"
+		      (unpindent type 19 :string t :comment? t)))
+		   (termination nil)
+		   (well-founded (format nil "for ~a" (id decl)))))
+	 (plstr (when place
+		  (format nil "(at line ~d, column ~d)"
+		    (starting-row place) (starting-col place)))))
+    (format nil
+	"% The ~@[~a ~]~a TCC ~@[~a~] in decl ~a for~
+                        ~:[ ~;~%    % ~]~@[~a~]~@[~%    % ~a~]~%  ~a"
+      preason kind plstr
+      (if (importing? decl) "IMPORTING" (id decl))
+      (> (+ (length preason)
+	    (length (string kind))
+	    (length plstr)
+	    (if expr
+		(length (unpindent expr 4 :string t :comment? t))
+		0)
+	    25)
+	 *default-char-width*)
+      (when expr
+	(unpindent expr 4 :string t :comment? t))
+      submsg
+      (tcc-reason-string reason))))
+
+(defun tcc-reason-string (reason)
+  (cond ((eq reason 'in-context)
+	 "% TCC is in the logical context")
+	((and (consp reason) (eq (car reason) 'subsumed))
+	 (format nil "% is subsumed by ~a" (cdr reason)))
+	((and (consp reason) (eq (car reason) 'map-to-nonempty))
+	 (cdr reason))
+	((null reason)
+	 "% was not generated because it simplifies to TRUE.")
+	(t (break "problem"))))
