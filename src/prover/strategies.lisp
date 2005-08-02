@@ -1167,16 +1167,13 @@ is T) and disjunctively simplifies."
 	     (forall? fmla)
 	     (member var (bindings fmla)
 		     :test #'(lambda (x y)
-			       (or (format-equal x (id y))
-				   (format-equal x
-						 (symbol-prefix (id y)))))))
-	(let ((actual-var  (or (find var (bindings fmla)
-				     :test #'(lambda (x y)(format-equal x (id y))))
+			       (or (format-equal x y)
+				   (format-equal x (symbol-prefix (id y)))))))
+	(let ((actual-var  (or (find var (bindings fmla) :test #'format-equal)
 			       (find var (bindings fmla);;get var in fmla
-				     :test
-				     #'(lambda (x y)
-					 (format-equal
-					  x (symbol-prefix (id y)))))))
+				     :test #'format-equal
+				     :key #'(lambda (x)
+					      (symbol-prefix (id x))))))
 	      (remaining-vars (remove actual-var (bindings fmla)
 				      :test #'eq)));;get non-var vars
 	  (if (not (null (freevars (type actual-var))))
@@ -1254,7 +1251,7 @@ See also INDUCT."
 	(new-var-symbol (new-sko-symbol var *current-context*))
 	(skolem-list (if (forall? fmla)
 			 (loop for x in (bindings fmla)
-			       collect (if (format-equal var (id x))
+			       collect (if (format-equal var x)
 					   new-var-symbol
 					   "_"))
 			 nil)))
@@ -1418,16 +1415,13 @@ simplifies using given REWRITES. "
     ;;select induction formula and variables
     (if (and fmla
 	     (forall? fmla)
-	     (subsetp vars (bindings fmla)
-		     :test #'(lambda (x y)(format-equal x (id y)))))
+	     (subsetp vars (bindings fmla) :test #'format-equal))
 	;;if induction formula universally quantifies induction
 	;;variables
 	(let ((actual-vars  (loop for var in vars
 				  collect
 				  (find var (bindings fmla)
-					:test
-					#'(lambda (x y)
-					    (format-equal x (id y))))))
+					:test #'format-equal)))
 	      (remaining-vars (loop for var in (bindings fmla)
 				    when (not (memq var actual-vars))
 				    collect var)))
