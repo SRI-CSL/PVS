@@ -126,6 +126,9 @@
 (defmethod generate-xref ((te struct-sub-recordtype))
   (generate-xref (fields te)))
 
+(defmethod generate-xref ((te struct-sub-tupletype))
+  (generate-xref (types te)))
+
 (defmethod generate-xref ((d field-decl))
   (generate-xref (declared-type d)))
 
