@@ -864,14 +864,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun check-all-recognizers (arg)
-  (let ((recs (recognizers (find-supertype (type arg))))
-	(constructor
-	      (if (and (name-expr? arg)(constructor? arg))
-		  arg
-		  (if (and (application? arg)
-			   (constructor? (operator arg)))
-		      (operator arg)
-		      nil))))
+  (let* ((stype (find-supertype (type arg)))
+	 (recs (when (adt? stype) (recognizers stype)))
+	 (constructor
+	  (if (and (name-expr? arg) (constructor? arg))
+	      arg
+	      (if (and (application? arg)
+		       (constructor? (operator arg)))
+		  (operator arg)
+		  nil))))
     (if constructor
 	(let ((cons-rec (recognizer constructor)))
 	  (loop for rec in recs
