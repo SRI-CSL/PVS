@@ -805,21 +805,21 @@
   (declare (ignore alist))
   sym)
 
-(defun pseudo-normalize* (expr)
-  (gensubst expr #'pseudo-normalize! #'pseudo-normalize?))
+;; (defun pseudo-normalize* (expr)
+;;   (gensubst expr #'pseudo-normalize! #'pseudo-normalize?))
 
-(defmethod pseudo-normalize? (ex)
-  (declare (ignore ex))
-  nil)
+;; (defmethod pseudo-normalize? (ex)
+;;   (declare (ignore ex))
+;;   nil)
 
-(defmethod pseudo-normalize? ((ty subtype))
-  t)
+;; (defmethod pseudo-normalize? ((ty subtype))
+;;   t)
 
-(defmethod pseudo-normalize? ((act actual))
-  (not (type-value act)))
+;; (defmethod pseudo-normalize? ((act actual))
+;;   (not (type-value act)))
 
-(defmethod pseudo-normalize! ((ty subtype))
-  (lcopy ty 'predicate (pseudo-normalize (predicate ty))))
+;; (defmethod pseudo-normalize! ((ty subtype))
+;;   (lcopy ty 'predicate (pseudo-normalize (predicate ty))))
 
-(defmethod pseudo-normalize! ((act actual))
-  (lcopy act 'expr (pseudo-normalize (expr act))))
+;; (defmethod pseudo-normalize! ((act actual))
+;;   (lcopy act 'expr (pseudo-normalize (expr act))))
