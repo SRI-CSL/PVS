@@ -160,12 +160,21 @@
 	  (t
 	   input))))
 
+(defparameter *default-random-test-size* 100)
+
+(defparameter *default-random-test-count* 10)
+
 (defun evaluate ()
   (let ((result
 	 (catch 'abort
 	   (catch 'quit
 	     (catch 'tcerror
-	       (let* ((input (ignore-errors (gqread)))
+	       (let* ((raw-input (ignore-errors (gqread)))
+		      (test? (and (consp raw-input)
+				  (eq (car raw-input) 'test)))
+		      (input (if test?
+				 (cadr raw-input)
+				 raw-input))
 		      (pr-input (pc-parse input 'expr))
 		      (*tccforms* nil)
 		      (tc-input (pc-typecheck pr-input)))
@@ -173,39 +182,88 @@
 		   (format t "typechecks to:~%")
 		   (show tc-input))
 		 (when *tccforms*
-		   (format t "~%Typechecking ~s produced the following TCCs:~%" input)
-		   (evaluator-print-tccs *tccforms*)
-		   (format t "~%~%Evaluating in the presence of unproven TCCs may be unsound~%")
-		   (unless (pvs-y-or-n-p "Do you wish to proceed with evaluation?")
-		     (throw 'abort t)))
-		 (multiple-value-bind (cl-input error)
-		     (catch 'no-defn (pvs2cl tc-input))
-		   (when (eq cl-input 'cant-translate)
-		     (format t "~s could not be translated:~%~a" input error)
+		   (format t "~%Typechecking ~s produced the following TCCs:~%"
+		     input)
+		   (let ((unproved-tccs (evaluate-tccs)))
+		     (when unproved-tccs
+		       (format t "~%~%Evaluating in the presence of unproven TCCs may be unsound~%")
+		       (unless (pvs-y-or-n-p "Do you wish to proceed with evaluation?")
+			 (throw 'abort t)))))
+		 (when test?
+		   (unless (or (null (cddr raw-input))
+			       (posnat? (caddr raw-input)))
+		     (format t "test count must be a positive integer")
 		     (throw 'abort t))
-		   (when *evaluator-debug*
-		     (format t "~a translates to~% ~s~%" tc-input cl-input))
-		   (multiple-value-bind (cl-eval error)
-		       (catch 'undefined
-			 (if *pvs-eval-do-timing*
-			     (time (eval cl-input))
-			     (eval cl-input)))
-		     (if (not error)
-			 (let ((clval (if *convert-back-to-pvs*
-					  (catch 'cant-translate
-					    (cl2pvs cl-eval (type tc-input)))
-					  cl-eval)))
-			   (format t "~%==> ~%")
-			   (cond ((and clval *convert-back-to-pvs*)
-				  (unparse clval))
-				 (t
-				  (when *convert-back-to-pvs*
-				    (format t "Result not ground.  Cannot convert back to PVS."))
-				  (format t "~%~a" cl-eval))))
-			 (format t "~%~a" error))))
+		   (unless (or (null (cdddr raw-input))
+			       (posnat? (cadddr raw-input)))
+		     (format t "test size must be a positive integer")
+		     (throw 'abort t)))
+		 (if test?
+		     (run-random-test
+		      tc-input
+		      (or (third raw-input) *default-random-test-count*)
+		      (or (fourth raw-input) *default-random-test-size*)
+		      (fifth raw-input)
+		      (sixth raw-input)
+		      (seventh raw-input))
+		     (multiple-value-bind (cl-input error)
+			 (catch 'undefined (pvs2cl tc-input))
+		       (when (eq cl-input 'cant-translate)
+			 (format t "~s could not be translated:~%~a" input error)
+			 (throw 'abort t))
+		       (when *evaluator-debug*
+			 (format t "~a translates to~% ~s~%" tc-input cl-input))
+		       (multiple-value-bind (cl-eval error)
+			   (catch 'undefined
+			     (if *pvs-eval-do-timing*
+				 (time (eval cl-input))
+				 (eval cl-input)))
+			 (if (not error)
+			     (let ((clval (if *convert-back-to-pvs*
+					      (catch 'cant-translate
+						(cl2pvs cl-eval (type tc-input)))
+					      cl-eval)))
+			       (format t "~%==> ~%")
+			       (cond ((and clval *convert-back-to-pvs*)
+				      (unparse clval))
+				     (t
+				      (when *convert-back-to-pvs*
+					(format t "Result not ground.  Cannot convert back to PVS."))
+				      (format t "~%~a" cl-eval))))
+			     (format t "~%~a" error)))))
 		 t))))))
     (when result
       (evaluate))))
+
+(defun evaluate-tccs ()
+  (let ((unproved nil))
+    (dolist (tcc *tccforms*)
+      (format t "~%~a TCC for ~a: ~a"
+	(tccinfo-kind tcc) (tccinfo-expr tcc) (tccinfo-formula tcc))
+      (multiple-value-bind (tcc-input error)
+	  (catch 'undefined (pvs2cl (tccinfo-formula tcc)))
+	(cond ((eq tcc-input 'cant-translate)
+	       (push tcc unproved)
+	       (format t "TCC could not be translated:~%~a" error))
+	      (t (when *evaluator-debug*
+		   (format t "~a translates to~% ~s~%"
+		     (tccinfo-formula tcc) tcc-input))
+		 (multiple-value-bind (tcc-eval error)
+		     (catch 'undefined (eval tcc-input))
+		   (cond ((not error)
+			  (let ((tccval (catch 'cant-translate
+					  (cl2pvs tcc-eval *boolean*))))
+			    (format t "~%==> ~%")
+			    (unparse tccval)
+			    (unless (tc-eq tccval *true*)
+			      (push tcc unproved))))
+			 ((eq tcc-eval 'cant-translate)
+			  (push tcc unproved)
+			  (format t "~%TCC could not be translated:~%~a"
+			    error))
+			 (t (format t "~%~a" error)
+			    (push tcc unproved))))))))
+    unproved))
 
 (defun evaluator-print-tccs (tccforms)
   (when tccforms
@@ -250,7 +308,7 @@
 ; 	(format out "~%Generated TCCs: ")
 ; 	(evaluator-print-tccs *tccforms*))
       (multiple-value-bind (cl-input error)
-	  (catch 'no-defn (pvs2cl expr))
+	  (catch 'undefined (pvs2cl expr))
 	(cond ((eq cl-input 'cant-translate)
 	       (format out "~%Expression ~s could not be translated: ~%~a"
 		 expr error))
