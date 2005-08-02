@@ -871,18 +871,13 @@
   (cond ((null forms) nil)
 	((let ((subvars (substitutable-vars (car forms))))
 	   (loop for (id . nil) in subalist
-		 always (member id subvars
-				:test
-				#'(lambda (x y) (format-equal x (id y))))))
+		 always (member id subvars :test #'format-equal)))
 	 (let ((formal-inst
 		(tc-unify-over
 		 (loop for (x . nil) in subalist
 		       collect
-		       (type (find x
-				   (substitutable-vars
-				    (car forms))
-				   :test #'(lambda (x y)
-					     (format-equal x (id y))))))
+		       (type (find x (substitutable-vars (car forms))
+				   :test #'format-equal)))
 		 (mapcar #'cdr  subalist)
 		 (mapcar #'(lambda (x)
 			     (if (type (cdr x))
@@ -905,18 +900,32 @@
 					     res-params)))))))
 	(t (check-with-subst* (cdr forms) subalist mod-inst res-params))))
 
-(defun format-equal (x y)
-  (let* ((x (format nil "~a" x))
-	 (posx (position-if
-		#'(lambda (x)(member x (list  #\! #\$)))
-		x))
-	 (y (format nil "~a" y))
-	 (posy (position-if
-		#'(lambda (x)(member x (list  #\! #\$)))
-		y))
-	 (x (subseq x 0 posx))
-	 (y (subseq y 0 posy)))
-    (equal x y)))
+(defmethod format-equal ((x string) (y string))
+  (let* ((posx (position-if #'(lambda (c) (member c '(#\! #\$) :test #'char=))
+			    x))
+	 (posy (position-if #'(lambda (c) (member c '(#\! #\$) :test #'char=))
+			    y))
+	 (xp (subseq x 0 posx))
+	 (yp (subseq y 0 posy)))
+    (string= xp yp)))
+
+(defmethod format-equal ((x name) y)
+  (format-equal (string (id x)) y))
+
+(defmethod format-equal ((x symbol) y)
+  (format-equal (string x) y))
+
+(defmethod format-equal (x y)
+  (format-equal (format nil "~a" x) y))
+
+(defmethod format-equal ((x string) (y name))
+  (format-equal x (string (id y))))
+
+(defmethod format-equal ((x string) (y symbol))
+  (format-equal x (string y)))
+
+(defmethod format-equal ((x string) y)
+  (format-equal x (format nil "~a" y)))
 
 
 (defun delete-first-occurrence (x y &key test)
