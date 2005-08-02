@@ -39,7 +39,8 @@
   (dolist (use usings)
     (unless (memq (car use) *modules-visited*)
       (when (theory-interpretation? (car use))
-	(pushnew (car use) *store-mapped-theories*))
+	(pushnew (car use) *store-mapped-theories*)
+	(pushnew (from-theory (car use)) *store-mapped-theories*))
       (push (car use) *modules-visited*)
       (accessible-interpreted-theories* (all-usings (car use))))))
 
@@ -55,38 +56,49 @@
 
 
 (defun get-theory-from-binfile (filename)
-  (let* ((file (make-binpath filename))
-	 (start-time (get-internal-real-time))
-	 (*bin-theories-set* nil)
-	 (vtheory (ignore-lisp-errors (fetch-object-from-file file)))
-	 (load-time (get-internal-real-time)))
-    (if (and (listp vtheory)
-	     (integerp (car vtheory))
-	     (= (car vtheory) *binfile-version*))
-	(let* ((theory (cdr vtheory))
-	       (*restore-object-hash* (make-hash-table :test #'eq))
-	       (*restore-objects-seen* nil)
-	       (*assert-if-arith-hash* (make-hash-table :test #'eq))
-	       (*subtype-of-hash* (make-hash-table :test #'equal))
-	       (*current-context* (prerestore-context (saved-context theory))))
-	  (assert (current-theory))
-	  (assert (judgement-types-hash (judgements *current-context*)))
-	  (restore-object theory)
-	  (assert (datatype-or-module? theory))
-	  (assert (not (eq (lhash-next (declarations-hash (saved-context theory)))
-			   'prelude-declarations-hash)))
-	  (postrestore-context *current-context*)
-	  (pvs-message
-	      "Restored theory from ~a.bin in ~,2,-3fs (load part took ~,2,-3fs)"
-	    filename (realtime-since start-time)
-	    (floor (- load-time start-time) millisecond-factor))
-	  theory)
-	(progn (pvs-message "Bin file version for ~a is out of date"
-		 filename)
+  (let ((file (make-binpath filename))
+	(start-time (get-internal-real-time))
+	(*bin-theories-set* nil)
+	(*fetched-theory-decls* nil))
+    (multiple-value-bind (vtheory fetch-error)
+	(ignore-lisp-errors (fetch-object-from-file file))
+      (let ((load-time (get-internal-real-time)))
+	(cond ((and (consp vtheory)
+		    (integerp (car vtheory))
+		    (= (car vtheory) *binfile-version*))
+	       (let* ((theory (cdr vtheory))
+		      (*restore-object-hash* (make-hash-table :test #'eq))
+		      (*restore-objects-seen* nil)
+		      (*assert-if-arith-hash* (make-hash-table :test #'eq))
+		      (*subtype-of-hash* (make-hash-table :test #'equal))
+		      (*current-context* (prerestore-context
+					  (saved-context theory))))
+		 (assert (current-theory))
+		 (assert (judgement-types-hash (judgements *current-context*)))
+		 (restore-object theory)
+		 (assert (datatype-or-module? theory))
+		 (assert (not (eq (lhash-next (declarations-hash
+					       (saved-context theory)))
+				  'prelude-declarations-hash)))
+		 (postrestore-context *current-context*)
+		 (pvs-message
+		     "Restored theory from ~a.bin in ~,2,-3fs ~
+                      (load part took ~,2,-3fs)"
+		   filename (realtime-since start-time)
+		   (floor (- load-time start-time) millisecond-factor))
+		 theory))
+	      (fetch-error
+	       (pvs-message "Error in fetching ~a - ~a" filename fetch-error)
 	       (ignore-errors (delete-file file))
 	       (dolist (thid *bin-theories-set*)
 		 (remhash thid *pvs-modules*))
-	       nil))))
+	       nil)
+	      (t (pvs-message "Bin file version for ~a is out of date"
+		   filename)
+		 (ignore-errors (delete-file file))
+		 (dolist (thid *bin-theories-set*)
+		   (remhash thid *pvs-modules*))
+		 nil))))))
 
 (defun list-of-modules ()
   (let ((theory-list nil))
@@ -129,13 +141,30 @@
   (if (typep obj '(not (or inline-recursive-type enumtype)))
       (if *saving-theory*
 	  (if (external-library-reference? obj)
-	      (reserve-space 3
-		(push-word (store-obj 'modulelibref))
-		(push-word (store-obj (id obj)))
-		(push-word (store-obj (lib-ref obj))))
-	      (reserve-space 2
-		(push-word (store-obj 'moduleref))
-		(push-word (store-obj (id obj)))))
+	      (if (theory-interpretation? obj)
+		  (let ((decl (generated-by-decl obj)))
+		    (reserve-space 5
+		      (push-word (store-obj 'inttheorylibref))
+		      (push-word (store-obj (id obj)))
+		      (push-word (store-obj (lib-ref obj)))
+		      (push-word (store-obj (id (module decl))))
+		      (push-word (store-obj
+				  (position decl (all-decls (module decl)))))))
+		  (reserve-space 3
+		    (push-word (store-obj 'modulelibref))
+		    (push-word (store-obj (id obj)))
+		    (push-word (store-obj (lib-ref obj)))))
+	      (if (theory-interpretation? obj)
+		  (let ((decl (generated-by-decl obj)))
+		    (reserve-space 4
+		      (push-word (store-obj 'inttheoryref))
+		      (push-word (store-obj (id obj)))
+		      (push-word (store-obj (id (module decl))))
+		      (push-word (store-obj
+				  (position decl (all-decls (module decl)))))))
+		  (reserve-space 2
+		    (push-word (store-obj 'moduleref))
+		    (push-word (store-obj (id obj))))))
 	  (let ((*saving-theory* obj))
 	    (call-next-method)))
       (call-next-method)))
@@ -152,6 +181,9 @@
 
 (defmethod external-library-reference? ((obj library-datatype-or-theory))
   (not (eq obj (gethash (id obj) *pvs-modules*))))
+
+(defmethod external-library-reference? ((obj theory-interpretation))
+  (external-library-reference? (module (generated-by-decl obj))))
 
 (defmethod external-library-reference? (obj)
   (declare (ignore obj))
@@ -176,9 +208,7 @@
 (setf (get 'moduleref 'fetcher) 'fetch-moduleref)
 (defun fetch-moduleref ()
   (let* ((mod-name (fetch-obj (stored-word 1)))
-	 (theory (or (get-theory mod-name)
-		     (find mod-name *fetched-theory-interpretations*
-			   :test #'same-id))))
+	 (theory (get-theory mod-name)))
     (unless theory
       ;;(break "Attempt to fetch unknown theory ~s" mod-name)
       (error "Attempt to fetch unknown theory ~s" mod-name)
@@ -196,6 +226,66 @@
       (error "Attempt to fetch unknown library theory ~s from ~s"
 	     mod-name lib-ref)
       )
+    theory))
+
+(defstruct int-theory-ref
+  mod-name from-theory pos)
+
+(setf (get 'inttheoryref 'fetcher) 'fetch-inttheoryref)
+(defun fetch-inttheoryref ()
+  (let* ((mod-name (fetch-obj (stored-word 1)))
+	 (from-theory (fetch-obj (stored-word 2)))
+	 (pos (fetch-obj (stored-word 3)))
+	 (theory (or (get-theory mod-name)
+		     (find mod-name *fetched-theory-interpretations*
+			   :test #'same-id)
+		     (let ((fth (get-theory from-theory)))
+		       (when fth
+			 (let ((decl (nth pos (all-decls fth))))
+			   (cond (decl
+				  (generated-theory decl))
+				 (t
+				  (break "fetch-inttheoryref")
+				  (register-for-updating)
+				  (make-int-theory-ref
+				    :mod-name mod-name
+				    :from-theory fth
+				    :pos pos)))))))))
+    (unless theory
+      ;;(break "Attempt to fetch unknown theory ~s" mod-name)
+      (error "Attempt to fetch unknown theory ~s" mod-name)
+      )
+    (pushnew theory *fetched-theory-interpretations*)
+    theory))
+
+(setf (get 'inttheorylibref 'fetcher) 'fetch-inttheorylibref)
+(defun fetch-inttheorylibref ()
+  (let* ((mod-name (fetch-obj (stored-word 1)))
+	 (lib-ref (fetch-obj (stored-word 2)))
+	 (from-theory (fetch-obj (stored-word 3)))
+	 (pos (fetch-obj (stored-word 4)))
+	 (theory (or (get-theory* mod-name lib-ref)
+		     (get-theory* mod-name nil)
+		     (find mod-name *fetched-theory-interpretations*
+			   :test #'same-id)
+		     (let ((fth (get-theory* from-theory lib-ref)))
+		       (when fth
+			 (let ((decl (nth pos (all-decls fth))))
+			   (cond (decl
+				  (generated-theory decl))
+				 (t
+				  (break "fetch-inttheorylibref")
+				  (register-for-updating)
+				  (make-int-theory-ref
+				   :mod-name mod-name
+				   :from-theory fth
+				   :pos pos)))))))))
+    (unless theory
+      ;;(break "Attempt to fetch unknown theory ~s" mod-name)
+      (error "Attempt to fetch unknown library theory ~s from ~s"
+	     mod-name lib-ref)
+      )
+    (pushnew theory *fetched-theory-interpretations*)
     theory))
 
 (defmethod update-fetched :around ((obj datatype-or-module))
@@ -228,7 +318,9 @@
 
 (defmethod store-object* :around ((obj declaration))
   (with-slots (module) obj
-    (if (and module (not (eq module *saving-theory*)))
+    (if (and module
+	     (not (eq module *saving-theory*))
+	     (not (typep obj 'skolem-const-decl)))
 	(if (external-library-reference? module)
 	    (reserve-space 4
 	      (push-word (store-obj 'decllibref))
@@ -242,7 +334,8 @@
 (defun store-declref (obj)
   (let ((module (module obj)))
     (reserve-space 3
-      (unless (or (from-prelude? module)
+      (unless (or (not *saving-theory*)
+		  (from-prelude? module)
 		  (assq module (all-usings *saving-theory*))
 		  (memq module *store-mapped-theories*))
 	(break "Attempt to store declaration in illegal theory"))
@@ -493,7 +586,9 @@
   (let* ((lib-ref (fetch-obj (stored-word 1)))
 	 (mod-name (fetch-obj (stored-word 2)))
 	 (theory (or (get-theory* mod-name lib-ref)
-		     (get-theory* mod-name nil))))
+		     (get-theory* mod-name nil)
+		     (find mod-name *fetched-theory-interpretations*
+			   :test #'same-id))))
     (unless theory
       ;;(break "Attempt to fetch declaration from unknown theory ~s" mod-name)
       (error "Attempt to fetch declaration from unknown theory ~s" mod-name))
@@ -743,7 +838,6 @@
 	 lhash)
 	(t (restore-using-hash (lhash-next lhash))
 	   lhash)))
-      
 
 (defun restore-context-conversions (conversions &optional convs)
   (cond ((null conversions)
