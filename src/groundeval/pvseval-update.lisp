@@ -94,7 +94,7 @@
   (let ((*current-context*
 	 (if context context *current-context*))
 	(*current-theory* (theory *current-context*))
-	(*generate-tccs* 'NONE))
+	(*generate-tccs* 'none))
     (pvs2cl_up* expr nil nil)))
 
 ;;Should be a macro.  applied function name to argument list.
@@ -265,6 +265,24 @@
 					(append
 					 (updateable-free-formal-vars operator)
 					 livevars))))))))
+
+(defmethod pvs2cl_up* ((expr equation) bindings livevars)
+  (cond ((and (set-list-expr? (args1 expr))
+	      (set-list-expr? (args2 expr)))
+	 (let ((set1 (pvs2cl_up* (exprs (args1 expr)) bindings livevars))
+	       (set2 (pvs2cl_up* (exprs (args2 expr)) bindings livevars)))
+	   `(and (subsetp ',set1 ',set2 :test #'equalp)
+		 (subsetp ',set2 ',set1 :test #'equalp))))
+	(t (call-next-method))))
+
+(defmethod pvs2cl_up* ((expr disequation) bindings livevars)
+  (cond ((and (set-list-expr? (args1 expr))
+	      (set-list-expr? (args2 expr)))
+	 (let ((set1 (pvs2cl_up* (exprs (args1 expr)) bindings livevars))
+	       (set2 (pvs2cl_up* (exprs (args2 expr)) bindings livevars)))
+	   `(not (and (subsetp ',set1 ',set2 :test #'equalp)
+		      (subsetp ',set2 ',set1 :test #'equalp)))))
+	(t (call-next-method))))
 
 (defun pvs2cl-defn-application (op* expr bindings livevars)
   (with-slots (operator argument) expr
@@ -527,7 +545,7 @@
 							   ;;(append (updateable-vars expr)
 								;;   livevars)
 					   ,i)))))
-		(t (let ((undef (undefined expr "Hit non-scalar/subrange quantifier in ~a")))
+		(t (let ((undef (undefined expr "Hit non-scalar/subrange quantifier in ~% ~a")))
 		   `(funcall ',undef)))))
 	(pvs2cl_up* body bindings livevars))))
 
@@ -582,7 +600,7 @@
 								;;   livevars)
 					   ,i)))))
 		(t
-		 (let ((undef (undefined expr "Hit non-scalar/subrange quantifier in ~a")))
+		 (let ((undef (undefined expr "Hit non-scalar/subrange quantifier in ~% ~a")))
 		   `(funcall ',undef)))))
 	(pvs2cl_up* body bindings livevars))))
 			
@@ -1078,6 +1096,8 @@
 	 (if (memq (id expr) *primitive-constants*) ;the only constants
 	     (pvs2cl-primitive expr)	;else need to return closures.
 	     `(function ,(pvs2cl-primitive expr))))
+	((lazy-random-function? expr)
+	 (generate-lazy-random-lisp-function expr))
 	(t (pvs2cl-resolution expr)
 	   (if (datatype-constant? expr)
 	       (if (scalar-constant? expr)
@@ -1531,6 +1551,8 @@
 	(mk-name '|ceiling| nil '|floor_ceil|)
 	(mk-name '|rem| nil '|modulo_arithmetic|)
 	(mk-name '|ndiv| nil '|modulo_arithmetic|)
+	(mk-name '|even?| nil '|integers|)
+	(mk-name '|odd?| nil '|integers|)
 	(mk-name '|cons| nil '|list_adt|)
 	(mk-name '|car| nil '|list_adt|)
 	(mk-name '|cdr| nil '|list_adt|)
@@ -1699,10 +1721,11 @@
 
 (defun subrange-index (type)
   (let ((below (simple-below? type)))
-    (if below (list 0 (if (number-expr? below)
-			  (1- (number below))
-			  '*))
-	(let ((upto (simple-upto?  type)))
+    (if below
+	(list 0 (if (number-expr? below)
+		    (1- (number below))
+		    '*))
+	(let ((upto (simple-upto? type)))
 	  (or (and upto (if (number-expr? upto)
 			    (list 0 (number upto))
 			    (list 0 '*)))
@@ -1726,9 +1749,12 @@
     (cdr (assoc '|m| subst :test #'same-id))))
 
 (defun simple-below? (type)
-  (let* ((bindings (make-empty-bindings (free-params (below-subtype))))
-	 (subst (tc-match type (below-subtype) bindings)))
-    (cdr (assoc '|m| subst :test #'same-id))))
+  (when (and (subtype? type)
+	     (tc-eq (type (predicate type))
+		    (type (predicate (below-subtype)))))
+    (let* ((bindings (make-empty-bindings (free-params (below-subtype))))
+	   (subst (tc-match type (below-subtype) bindings)))
+      (cdr (assoc '|m| subst :test #'same-id)))))
 
 ; here we want to treat below and upto as special cases of subranges
 (defun simple-subrange? (type)
