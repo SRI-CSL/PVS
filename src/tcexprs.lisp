@@ -1062,7 +1062,7 @@
   ;;(assert (every #'types (argument-list expr)))
   (when (lambda-expr? (operator expr))
     (if (typep expr '(or let-expr where-expr))
-	(progn
+	(let ((*generate-tccs* 'none))
 	  (typecheck* (argument expr) nil nil nil)
 	  (typecheck-let-bindings (bindings (operator expr)) (argument expr)))
 	(typecheck* (bindings (operator expr)) nil nil nil)))
@@ -1370,7 +1370,6 @@
 			      dtype)
 		   substs)))
       (setf (type bd) type)
-      (assert (type bd))
       (unless (fully-instantiated? type)
 	(type-error (car bindings)
 	  "Could not determine the full theory instance"))
@@ -1417,7 +1416,7 @@
       (let ((atypes (remove-duplicates
 			(mapcar #'(lambda (aty)
 				    (nth anum (types (find-supertype aty))))
-				(types arg))
+			  (types arg))
 		      :test #'tc-eq)))
 	(if (cdr atypes)
 	    (if (typep arg 'tuple-expr)
@@ -1426,7 +1425,11 @@
 	    (car atypes)))
       (if (cdr (types arg))
 	  (type-ambiguity arg)
-	  (car (types arg)))))
+	  (if (fully-instantiated? (car (types arg)))
+	      (let ((carg (typecheck* (copy-untyped arg)
+				      (car (types arg)) nil nil)))
+		(car (judgement-types+ carg)))
+	      (car (types arg))))))
 
 (defun set-dep-projections (projections types)
   (when projections
@@ -1523,6 +1526,45 @@
 		      (make-formals-funtype (list (bindings expr)) ty))
 	    (ptypes (expression expr))))))
 
+(defmethod typecheck* ((expr set-list-expr) expected kind arguments)
+  (declare (ignore expected kind arguments))
+  (cond ((exprs expr)
+	 (typecheck* (exprs expr) nil nil nil)
+	 (let ((types (get-possible-set-list-types (exprs expr))))
+	   (unless types
+	     (type-error expr
+	       "Could not find a compatible type for ~a" expr))
+	   (setf (types expr)
+		 (mapcar #'(lambda (ty) (mk-funtype ty *boolean*)) types))))
+	(t (let ((tvar (make-instance 'type-variable
+			 'id (make-new-variable 'T expr))))
+	     (setf (types expr) (list tvar))))))
+
+(defun get-possible-set-list-types (exprs)
+  (get-possible-set-list-types*
+   (ptypes (car exprs)) (cdr exprs)))
+
+(defun get-possible-set-list-types* (types exprs &optional ptypes)
+  (if (null types)
+      (nreverse ptypes)
+      (let ((type (get-possible-set-list-types** (car types) exprs)))
+	(get-possible-set-list-types*
+	 (cdr types) exprs
+	 (if type
+	     (cons type ptypes)
+	     ptypes)))))
+
+(defun get-possible-set-list-types** (type exprs)
+  (if (null exprs)
+      type
+      (let ((compats (remove-if (complement #'(lambda (ty)
+						(strict-compatible? ty type)))
+		       (ptypes (car exprs)))))
+	(when compats
+	  (get-possible-set-list-types**
+	   (reduce #'compatible-type compats :initial-value type)
+	   (cdr exprs))))))
+  
 
 ;;; Quant-expr -
 
@@ -1603,48 +1645,50 @@
 		(cdr args) value))))
 
 (defmethod find-update-commontype* ((te tupletype) expr args value)
-  (find-update-common-tupletype te expr args value))
-
-(defmethod find-update-commontype* ((te struct-sub-tupletype) expr args value)
-  (find-update-common-tupletype te expr args value))
-
-(defun find-update-common-tupletype (te expr args value)
   (if (null args)
       (call-next-method)
-      (let* ((index (number (caar args)))
-	     (dtype (nth (1- index) (types te)))
-	     (mtype (unless dtype
-		      ;; In a maplet - (cdr args) is nil, value has unique type
-		      ;; and index = (1+ (length (type te)))
-		      (car (ptypes value))))
-	     (ptype (if (dep-binding? dtype) (type dtype) dtype))
-	     (pappl (when ptype
-		      (make-instance 'projappl
-			'id (makesym "PROJ_~d" index)
-			'index index
-			'argument expr)))
-	     (tpappl (when ptype
-		       (typecheck* (copy-untyped pappl) ptype nil nil)))
-	     (ttype (when ptype
-		      (find-update-commontype* ptype tpappl (cdr args) value)))
-	     (rtypes (if (some #'dep-binding? (types te))
-			 (let ((texpr (typecheck* (copy-untyped expr)
-						  te nil nil)))
-			   (subst-tuptypes te texpr))
-			 (types te)))
-	     (stypes (if (or (null dtype)
-			     (tc-eq ttype ptype))
-			 rtypes
-			 (let ((ctypes (copy-list rtypes)))
-			   (setf (nth (1- index) ctypes) ttype)
-			   ctypes)))
-	     (etypes (if mtype
-			 (append stypes (list mtype))
-			 stypes)))
-	(assert (every #'(lambda (ty) (not (dep-binding? ty))) etypes))
-	(if (eq etypes (types te))
-	    te
-	    (mk-tupletype etypes)))))
+      (find-update-common-tupletype te expr args value)))
+
+(defmethod find-update-commontype* ((te struct-sub-tupletype) expr args value)
+  (if (null args)
+      (call-next-method)
+      (find-update-common-tupletype te expr args value)))
+
+(defun find-update-common-tupletype (te expr args value)
+  (let* ((index (number (caar args)))
+	 (dtype (nth (1- index) (types te)))
+	 (mtype (unless dtype
+		  ;; In a maplet - (cdr args) is nil, value has unique type
+		  ;; and index = (1+ (length (type te)))
+		  (car (ptypes value))))
+	 (ptype (if (dep-binding? dtype) (type dtype) dtype))
+	 (pappl (when ptype
+		  (make-instance 'projappl
+		    'id (makesym "PROJ_~d" index)
+		    'index index
+		    'argument expr)))
+	 (tpappl (when ptype
+		   (typecheck* (copy-untyped pappl) ptype nil nil)))
+	 (ttype (when ptype
+		  (find-update-commontype* ptype tpappl (cdr args) value)))
+	 (rtypes (if (some #'dep-binding? (types te))
+		     (let ((texpr (typecheck* (copy-untyped expr)
+					      te nil nil)))
+		       (subst-tuptypes te texpr))
+		     (types te)))
+	 (stypes (if (or (null dtype)
+			 (tc-eq ttype ptype))
+		     rtypes
+		     (let ((ctypes (copy-list rtypes)))
+		       (setf (nth (1- index) ctypes) ttype)
+		       ctypes)))
+	 (etypes (if mtype
+		     (append stypes (list mtype))
+		     stypes)))
+    (assert (every #'(lambda (ty) (not (dep-binding? ty))) etypes))
+    (if (eq etypes (types te))
+	te
+	(mk-tupletype etypes))))
 
 (defmethod find-update-commontype* ((te recordtype) expr (args cons) value)
   (find-update-common-recordtype te expr args value))
