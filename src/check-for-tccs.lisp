@@ -40,10 +40,10 @@
       (call-next-method)))
 
 (defmethod check-for-tccs* :around ((ex expr) expected)
-   (call-next-method)
-   (unless (or (typep ex '(or branch lambda-expr))
-	       (memq ex *skip-tcc-check-exprs*))
-     (check-for-subtype-tcc ex expected)))
+  (call-next-method)
+  (unless (or (typep ex '(or branch lambda-expr update-expr))
+	      (memq ex *skip-tcc-check-exprs*))
+    (check-for-subtype-tcc ex expected)))
 
 (defmethod check-for-tccs* ((ex name-expr) expected)
   (declare (ignore expected))
@@ -74,6 +74,7 @@
 	 (texp (type-value formal))
 	 (vid (make-new-variable '|x| act))
 	 (vb (make!-bind-decl vid tact))
+	 (*tcc-conditions* (cons vb *tcc-conditions*))
 	 (svar (mk-name-expr vid nil nil
 			     (make-resolution vb nil tact))))
     (check-for-subtype-tcc svar (supertype texp))))
@@ -100,6 +101,7 @@
     (let ((type (if (dep-binding? (car expected))
 		    (type (car expected))
 		    (car expected))))
+      (assert (type (car exprs)))
       (check-for-tccs* (car exprs) type)
       (check-tup-types (cdr exprs)
 		       (if (dep-binding? (car expected))
@@ -297,7 +299,7 @@
     (let ((atype (find-supertype (type expr)))
 	  (args-list (mapcar #'arguments assignments))
 	  (values (mapcar #'expression assignments)))
-      (check-assignment-arg-types args-list values expression atype))))
+      (check-assignment-arg-types args-list values expression expected))))
 
 (defmethod check-for-tccs* ((expr update-expr) (expected datatype-subtype))
   (with-slots (expression assignments) expr
@@ -331,7 +333,13 @@
   (check-for-tccs* value expected))
 
 (defmethod check-assignment-arg-types* (args-list values ex (expected subtype))
-  (check-assignment-arg-types* args-list values ex (supertype expected)))
+  (typecase (find-supertype expected)
+    ((or funtype recordtype tupletype adt-type-name)
+     (check-assignment-arg-types* args-list values ex (supertype expected))
+     (mapc #'(lambda (a v)
+	       (unless a (check-for-subtype-tcc v expected)))
+	   args-list values))
+    (t (call-next-method))))
 
 (defmethod check-assignment-arg-types* (args-list values ex (expected recordtype))
   (with-slots (fields) expected
@@ -624,3 +632,7 @@
 (defmethod check-for-tccs* ((te struct-sub-recordtype) expected)
   (mapc #'(lambda (fd) (check-for-tccs* (declared-type fd) expected))
 	(fields te)))
+
+(defmethod check-for-tccs* ((te struct-sub-tupletype) expected)
+  (mapc #'(lambda (ty) (check-for-tccs* ty expected))
+	(types te)))
