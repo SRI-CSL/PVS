@@ -574,7 +574,7 @@
 (defun load-imported-library (lib-id theoryname)
   (assert (symbolp lib-id))
   (multiple-value-bind (lib-ref err-msg)
-      (get-library-reference lib-id)
+      (get-library-reference lib-id) 
     (if err-msg
 	(type-error theoryname err-msg)
 	(let ((theory-name
@@ -588,8 +588,8 @@
 
 (defun load-library-theory (lib-ref theory-name)
   (if (or (gethash lib-ref *prelude-libraries*)
-	  (file-equal lib-ref *pvs-context-path*))
-      (get-theory (copy theory-name 'library nil))
+	  (file-equal (libref-to-pathname lib-ref) *pvs-context-path*))
+      (get-typechecked-theory (copy theory-name 'library nil))
       (let ((value nil)
 	    (changed-theories nil)
 	    (orig-context-path *pvs-context-path*))
