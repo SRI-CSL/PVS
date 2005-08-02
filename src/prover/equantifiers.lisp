@@ -679,18 +679,14 @@ Please provide skolem constants for these variables." overlap)
 				      (subsetp subnames
 					       (quant-bndvars*
 						(formula sform) t)
-					       :test #'(lambda (x y)
-							 (format-equal (id x)(id y)))))
+					       :test #'format-equal))
 				 (and (negation? (formula sform))
 				      (forall-expr?
 				       (args1 (formula sform)))
 				      (subsetp subnames
 					       (quant-bndvars*
 						(args1 (formula sform)) nil)
-					       :test #'(lambda (x y)
-							 (format-equal
-							  (id x)
-							  (id y))))))))))))
+					       :test #'format-equal)))))))))
 
 (defun quant-body* (fmla sign)
   (if sign
@@ -877,10 +873,8 @@ is not of the form: (<var> <term>...)" subst)
 				 collect (cons (pc-parse x 'name) y)))
 		(bad-subst (loop for (x . nil) in pre-alist
 				 thereis
-				 (unless (member (id x) boundvars
-						 :test
-						 #'(lambda (u v)
-						     (format-equal u (id v))))
+				 (unless (member x boundvars
+						 :test #'format-equal)
 				   x))))
 	   (cond (bad-subst
 		  (find-quant-terms* (cdr sforms) subst where
@@ -908,14 +902,8 @@ is not of the form: (<var> <term>...)" subst)
   (let* ((alist
 	  (loop for (x . y) in pre-alist
 		collect
-		(let*
-		    ((v (find (id x)
-			      boundvars
-			      :test
-			      #'(lambda (u v)
-				  (format-equal
-				   u (id v)))))
-		     (term (pc-parse y 'expr)))
+		(let* ((v (find x boundvars :test #'format-equal))
+		       (term (pc-parse y 'expr)))
 		  (cons v term))))
 	 (alist (tc-alist alist))
 	 (*all-boundvars* boundvars) ;;NSH(11.6.95) for use in template?
