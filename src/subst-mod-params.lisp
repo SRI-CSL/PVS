@@ -281,14 +281,16 @@
 			       (formals-sans-usings source-theory)
 			       (actuals thname)
 			       nil
-			       (extended-mappings thname theory))))
+			       (extended-mappings thname theory)))
+		(inv-mappings
+		 (inverse-mapping (theory-mapping interpreted-theory)
+				  interpreted-theory)))
 	   (assert interpreted-theory)
 	   ;; Now we compose the inverses of the mappings of the interpreted
 	   ;; theory and the source 
-	   (append (compose-mappings
-		    (inverse-mapping (theory-mapping interpreted-theory)
-				     interpreted-theory)
-		    (theory-mapping theory))
+	   (append (compose-mappings inv-mappings
+				     (theory-mapping theory))
+		   (compose-mappings inv-mappings pre-bindings)
 		   pre-bindings
 		   bindings))))
 
@@ -710,19 +712,28 @@
 	       'generated-by nil
 	       'semi t))
 	    ((assq decl bindings)
-	     (copy decl
-	       'formals (subst-mod-params* formals modinst bindings)
-	       'definition (cdr (assq decl bindings))
-	       'type (subst-mod-params* type modinst bindings)
-	       'declared-type (subst-mod-params* declared-type modinst bindings)
-	       'generated-by nil))
+	     (let ((nformals (subst-mod-params* formals modinst bindings)))
+	       (copy decl
+		 'formals nformals
+		 'definition (if nformals
+				 (make-applications
+				  (expr (cdr (assq decl bindings)))
+				  (mapcar #'(lambda (fms)
+					      (mapcar #'mk-name-expr fms))
+				    nformals))
+				 (cdr (assq decl bindings)))
+		 'type (subst-mod-params* type modinst bindings)
+		 'declared-type (subst-mod-params* declared-type modinst bindings)
+		 'generated-by nil
+		 'semi t)))
 	    (t (lcopy decl
 		 'formals (subst-mod-params* formals modinst bindings)
 		 'declared-type (subst-mod-params* declared-type modinst bindings)
 		 'type (subst-mod-params* type modinst bindings)
 		 'definition (subst-mod-params* definition modinst bindings)
 		 'def-axiom (subst-mod-params* def-axiom modinst bindings)
-		 'generated-by nil))))))
+		 'generated-by nil
+		 'semi t))))))
 
 (defmethod subst-mod-params* ((decl def-decl) modinst bindings)
   (with-slots (formals declared-type definition declared-measure ordering) decl
@@ -884,10 +895,12 @@
 	       (var (make-variable-expr bd))
 	       (preds (make!-conjunction*
 		       (adt-compatible-preds ntype type var nil)))
+	       (pred (make!-lambda-expr (list bd) preds))
 	       (stype (make-instance 'datatype-subtype
 			'supertype ntype
-			'predicate (make!-lambda-expr (list bd) preds)
+			'predicate pred
 			'declared-type type)))
+	  ;;(setf (tcc-status pred) (list (cons (type pred) 'none)))
 	  (setf (print-type stype) type)
 	  stype))))
 
@@ -976,6 +989,17 @@
     (if (equal ntypes (types type))
 	type
 	(copy type 'types ntypes))))
+
+(defmethod subst-mod-params* ((type struct-sub-tupletype) modinst bindings)
+  (let ((act (cdr (assoc type bindings
+			 :test #'formal-struct-subtype-binding-match))))
+    (if act
+	(type-value act)
+	(let ((ntype (subst-mod-params* (type type) modinst bindings))
+	      (ntypes (subst-mod-params* (types type) modinst bindings)))
+	  (lcopy type
+	    'type ntype
+	    'types ntypes)))))
 
 (defmethod subst-mod-params* ((type cotupletype) modinst bindings)
   (let ((ntypes (subst-mod-params-type-list (types type) modinst bindings)))
@@ -1196,15 +1220,19 @@
     (lcopy expr 'exprs nexprs 'type ntype)))
 
 (defmethod subst-mod-params* ((expr cases-expr) modinst bindings)
-  (let ((nexpr (subst-mod-params* (expression expr) modinst bindings))
-	(nsels (subst-mod-params* (selections expr) modinst bindings))
-	(nelse (subst-mod-params* (else-part expr) modinst bindings))
-	(type (subst-mod-params* (type expr) modinst bindings)))
-	  (lcopy expr
-	    'expression nexpr
-	    'selections nsels
-	    'else-part nelse
-	    'type type)))
+  (if (some #'(lambda (sel) (assq (declaration (constructor sel))
+				  bindings))
+	    (selections expr))
+      (subst-mod-params* (translate-cases-to-if expr) modinst bindings)
+      (let ((nexpr (subst-mod-params* (expression expr) modinst bindings))
+	    (nsels (subst-mod-params* (selections expr) modinst bindings))
+	    (nelse (subst-mod-params* (else-part expr) modinst bindings))
+	    (type (subst-mod-params* (type expr) modinst bindings)))
+	(lcopy expr
+	  'expression nexpr
+	  'selections nsels
+	  'else-part nelse
+	  'type type))))
 
 (defmethod subst-mod-params* ((expr application) modinst bindings)
   (with-slots (operator argument) expr
