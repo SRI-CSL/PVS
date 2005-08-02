@@ -242,7 +242,7 @@ required a context.")
     (change-class ex 'fieldex-lambda-expr
       'bindings (list bd)
       'expression expr
-      'type (make-formals-funtype (list (list bd)) (type cex)))))
+      'type (make-formals-funtype (list (list bd)) (type expr)))))
 
 (defmethod set-type* ((ex projection-expr) expected)
   (assert (singleton? (types ex)))
