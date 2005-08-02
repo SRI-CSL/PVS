@@ -871,7 +871,8 @@
     
 (defmethod pc-analyze* ((fdecl formula-decl))
   (let ((*depending-chain* *depending-chain*))
-    (cond ((memq fdecl *depending-chain*)
+    (cond ((and (not (judgement-tcc? fdecl))
+		(memq fdecl *depending-chain*))
 	   (pushnew fdecl *depending-cycles*)
 	   *dependings*)
 	  ((memq fdecl *dependings*)
@@ -883,13 +884,15 @@
 		   ((or (axiom? fdecl)
 			(assumption? fdecl))
 		    ;; No need to include proof-refers-to in this case
-		    (pc-analyze* (union (refers-to fdecl)
+		    (let ((decls (union (refers-to fdecl)
 					(remove-if-not #'tcc?
 					  (generated fdecl)))))
-		   (t (pc-analyze* (union (union (refers-to fdecl)
+		      (pc-analyze* (union decls (possible-judgements decls)))))
+		   (t (let ((decls (union (union (refers-to fdecl)
 						 (proof-refers-to fdecl))
 					  (remove-if-not #'tcc?
-					    (generated fdecl))))))))))
+					    (generated fdecl)))))
+			(pc-analyze* (union decls (possible-judgements decls))))))))))
 
 
 (defmethod pc-analyze* ((decl declaration))
