@@ -2610,6 +2610,13 @@ space")
       (setq *pseudo-normalize-translate-id-hash*
 	    (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))))
 
+(defun remove-pseudo-normalize-freevar-entries ()
+  (maphash #'(lambda (x y)
+	       (declare (ignore y))
+	       (when (freevars (car x))
+		 (remhash x *pseudo-normalize-hash*)))
+	   *pseudo-normalize-hash*))
+
 (defun remove-pseudo-normalize-cache ()
   (setq *pseudo-normalize-hash* nil)
   (setq *pseudo-normalize-translate-id-hash* nil))
@@ -3838,3 +3845,5 @@ space")
 	       (let ((name (slot-value slot 'excl::name)))
 		 (equals (slot-value x name) (slot-value y name))))
 	   slots)))
+
+(defun posnat? (x) (and (integerp x) (plusp x)))
