@@ -199,7 +199,8 @@
     (cond ((null binding)
 	   nil)
 	  ((null (cdr binding))
-	   (unless (dependent-type? arg)
+	   (unless (and (dependent-type? arg)
+			(not (formal-type-appl-decl? (declaration farg))))
 	     (when *tc-match-strictly*
 	       (push arg *tc-strict-matches*))
 	     (setf (cdr binding) arg))
@@ -415,6 +416,23 @@
 
 (defmethod tc-match* ((arg tupletype) (farg tupletype) bindings)
   (tc-match* (types arg) (types farg) bindings))
+
+(defmethod tc-match* ((arg tupletype) (farg struct-sub-tupletype) bindings)
+  (when bindings
+    (let ((fbinding (assoc farg bindings
+			   :test #'(lambda (x y)
+				     (and (typep y 'formal-struct-subtype-decl)
+					  (tc-eq x (type-value y)))))))
+      (cond ((null fbinding)
+	     (or (call-next-method)
+		 (break "tc-match* (tupletype struct-sub-tupletype)")))
+	    ((null (cdr fbinding))
+	     (when *tc-match-strictly*
+	       (push arg *tc-strict-matches*))
+	     (setf (cdr fbinding) arg)
+	     bindings)
+	    ((tc-eq arg (cdr fbinding))
+	     bindings)))))
 
 (defmethod tc-match* ((arg cotupletype) (farg cotupletype) bindings)
   (tc-match* (types arg) (types farg) bindings))
