@@ -74,6 +74,8 @@
 (defun pvs_rem (x) #'(lambda (y)(rem y x))) ;;(svref x 0)(svref x 1)))
 (defun pvs_ndiv (x) (let ((z (/ (svref x 0)(svref x 1))))
 		     (if (< z 0)(ceiling z)(floor z))))
+(defun pvs_even? (x) (evenp x))
+(defun pvs_odd? (x) (oddp x))
 (defun pvs_cons (x) (cons (svref x 0)(svref x 1)))
 (defun pvs_car (x) (car x))
 (defun pvs_cdr (x) (cdr x))
@@ -136,6 +138,8 @@
        (if (eq (< ,xx 0)(< ,yy 0))
 	   (floor ,xx ,yy)
 	   (ceiling ,xx ,yy)))))
+(defmacro pvs__even? (x) `(evenp ,x))
+(defmacro pvs__odd? (x) `(oddp ,x))
 (defmacro pvs__cons (x y) `(cons ,x ,(the list y)))
 
 (defmacro pvs__member (x y) `(not (null (member ,x ,y :test #'equalp))))
