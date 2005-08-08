@@ -283,7 +283,7 @@
 		 (*print-pretty* nil)
 		 (*output-to-emacs*
 		  (format nil ":pvs-err ~a&~a&~a&~a&~d ~d :end-pvs-err"
-		    buff
+		    (protect-emacs-output (namestring buff))
 		    (unless *from-buffer*
 		      (protect-emacs-output (namestring *pvs-context-path*)))
 		    (protect-emacs-output msg)
