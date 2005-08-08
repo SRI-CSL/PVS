@@ -173,8 +173,11 @@
 			(newres
 			 (if (eq modsubst t)
 			     res
-			     (subst-mod-params res modinst
-					       (module (declaration res)))))
+			     (subst-mod-params
+			      res modinst
+			      (when (eq (id modinst)
+					(id (module (declaration res))))
+				(module (declaration res))))))
 			(full-name-expr
 			 (copy name-expr
 			   'resolutions (list newres)
