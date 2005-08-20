@@ -819,21 +819,24 @@
 ;definition is used, i.e., if we want more lambdas removed, these
 ;variables have to be listed in the substitution.
 
-(defun check-with-subst (resolutions subalist context)
+(defun check-with-subst (resolutions subalist
+				     &optional (context *current-context*))
   (if (null resolutions) nil
       (let* ((resolution (car resolutions))
 	     (mod-inst (module-instance resolution))
-	     ;;(current-mod? (eq (get-theory mod-inst) *current-theory*))
 	     (res-params (external-free-params resolution))
 	     (forms (reverse (create-formulas resolution context)))
-	     (form (check-with-subst* forms subalist
-				      mod-inst res-params))
+	     ;;(form (check-with-subst* forms subalist mod-inst res-params))
 	     (rest (check-with-subst (cdr resolutions) subalist context)))
-	;; (break)
-	(if (and form
-		 (not (assoc form rest :test #'tc-eq)))
-	    (cons (cons form resolution) rest)
-	    rest))))
+	(multiple-value-bind (form thinst)
+	    (check-with-subst* forms subalist mod-inst res-params)
+	  (if (and form
+		   (not (assoc form rest :test #'tc-eq)))
+	      (acons form
+		     (subst-mod-params resolution thinst
+				       (module (declaration resolution)))
+		     rest)
+	      rest)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;check-with-subst* checks if every substituted variable in subalist is a
@@ -893,9 +896,14 @@
 			   (if (eq formal-inst t)
 			       (car forms)
 			       (subst-mod-params-alist (car forms)
+						       formal-inst)))
+			  (newmod-inst
+			   (if (eq formal-inst t)
+			       mod-inst
+			       (subst-mod-params-alist mod-inst
 						       formal-inst))))
 		      (if (fully-instantiated? newform)
-			  newform
+			  (values newform newmod-inst)
 			  (check-with-subst* (cdr forms) subalist mod-inst
 					     res-params)))))))
 	(t (check-with-subst* (cdr forms) subalist mod-inst res-params))))
