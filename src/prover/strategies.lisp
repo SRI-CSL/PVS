@@ -251,7 +251,8 @@ E.g., (try (skip)(flatten)(skolem!)) is just (skolem!)
 
 
 (defstep assert (&optional (fnums *) rewrite-flag
-			   flush? linear? cases-rewrite? (type-constraints? t)
+			   flush? linear? (cases-rewrite? t)
+			   (type-constraints? t)
 			   ignore-prover-output? (let-reduce? t) quant-simp?
 			   implicit-typepreds?)
   (simplify
@@ -289,7 +290,8 @@ Example:
   "Simplifying and recording with decision procedures")
 
 (defstep do-rewrite (&optional (fnums *) rewrite-flag
-			       flush? linear? cases-rewrite? (type-constraints? t))
+			       flush? linear? (cases-rewrite? t)
+			       (type-constraints? t))
   (simplify
    fnums nil t rewrite-flag flush? linear? cases-rewrite? type-constraints?) 
   "Uses decision procedures to rewrite the formulas in FNUMS.
