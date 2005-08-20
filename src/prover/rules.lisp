@@ -597,7 +597,7 @@ are reduced.  Example reduction steps are:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (addrule 'simplify ()
 	 ((fnums *) record? rewrite? 
-	  rewrite-flag flush? linear? cases-rewrite? (type-constraints? t)
+	  rewrite-flag flush? linear? (cases-rewrite? t) (type-constraints? t)
 	  ignore-prover-output? let-reduce? quant-simp? implicit-typepreds?)
   (invoke-simplification fnums record? rewrite?
 			 rewrite-flag flush? nil ;;NSH(10-26-01)was linear?
