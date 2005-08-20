@@ -2452,8 +2452,9 @@ bind tighter.")
 
 (defmethod pp* ((list list))
   (if (and list
-	   (every #'declaration? list)
-	   (every #'module list))
+	   (or (and (every #'declaration? list)
+		    (every #'module list))
+	       (every #'importing? list)))
       (pp-theory list)
       (let ((*pretty-printing-decl-list* t)
 	    (*pretty-printed-prefix* nil))

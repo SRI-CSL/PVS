@@ -630,6 +630,9 @@
 			      (same-id (expr act) (type (car tres))))
 		     (setf (mod-id (type (car tres)))
 			   (mod-id (expr act))))
+		   (when (and (place (expr act))
+			      (null (place (type (car tres)))))
+		     (setf (place (type (car tres))) (place (expr act))))
 		   (setf (type-value act) (type (car tres)))
 		   (push 'type (types (expr act))))))))))
       ;; with-no-type-errors not needed here;

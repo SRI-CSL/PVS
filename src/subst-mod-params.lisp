@@ -252,20 +252,22 @@
 				       (typep (car d)
 					      '(or declaration module)))
 				   bindings))
-	 (setq *subst-mod-free-params* (mapcar #'car bindings))
 	 (make-subst-mod-params-map-bindings modinst mappings bindings))
 	(t (let ((pred-binding (make-subst-mod-params-pred-binding
-				modinst (car formals) (car actuals) bindings)))
+				modinst (car formals) (car actuals) bindings))
+		 (nbindings (make-subst-mod-params-binding
+			     (car formals) (car actuals) bindings)))
+	     (push (caar nbindings) *subst-mod-free-params*)
+	     (when pred-binding
+	       (push (car pred-binding) *subst-mod-free-params*))
 	     (make-subst-mod-params-bindings
 	      modinst
 	      (cdr formals)
 	      (cdr actuals)
 	      mappings
-	      (let ((nbindings (make-subst-mod-params-binding
-				(car formals) (car actuals) bindings)))
-		(if pred-binding
-		    (cons pred-binding nbindings)
-		    nbindings)))))))
+	      (if pred-binding
+		  (cons pred-binding nbindings)
+		  nbindings))))))
 
 (defmethod make-subst-mod-params-binding ((formal formal-theory-decl) actual
 					  bindings)
