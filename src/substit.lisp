@@ -631,6 +631,7 @@
 	     (btype (type bind))
 	     (check (or (member (id bind) freevars :key #'id)
 			(member (id bind) boundvars :key #'id)
+			(bindings-subst-clash bind alist)
 ;; 			(some #'(lambda (fv)
 ;; 				  (let ((bval (cdr (assq (declaration fv)
 ;; 							 alist))))
@@ -663,6 +664,19 @@
 	 (acons bind new-binding alist)
 	 (cons new-binding expr)
 	 (cons new-binding nbindings)))))
+
+(defun bindings-subst-clash (bind alist)
+  (let ((found-one nil)) 
+    (mapobject #'(lambda (x) 
+		   (or found-one
+		       (type-expr? x)
+		       (when (name-expr? x)
+			 (when (and (eq (id x) (id bind))
+				    (not (eq (declaration x) bind)))
+			   (setq found-one t))
+			 t)))
+	       (mapcar #'cdr alist))
+    found-one))
 
 
 (defmethod substit* ((expr cases-expr) alist)
