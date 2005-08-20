@@ -1474,6 +1474,10 @@
 		    (range ftype))))
     (setf (type appl) rtype)
     (change-application-class-if-needed appl)
+    (when (and (name-expr? op)
+	       (eq (id op) 'cons)
+	       (eq (id (module (declaration op))) 'list_adt))
+      (change-class appl 'list-expr))
     appl))
 
 (defun make!-number-expr (number)
@@ -1504,12 +1508,21 @@
 		  'mod-id mod-id
 		  'type (type res)
 		  'resolutions (list res)))
-    (adt-constructor-decl (make-instance 'constructor-name-expr
-			    'id id
-			    'actuals actuals
-			    'mod-id mod-id
-			    'type (type res)
-			    'resolutions (list res)))
+    (adt-constructor-decl (if (and (eq id 'null)
+				   (eq (id (module (declaration res)))
+				       'list_adt))
+			      (make-instance 'null-expr
+				'id id
+				'actuals actuals
+				'mod-id mod-id
+				'type (type res)
+				'resolutions (list res))
+			      (make-instance 'constructor-name-expr
+				'id id
+				'actuals actuals
+				'mod-id mod-id
+				'type (type res)
+				'resolutions (list res))))
     (adt-recognizer-decl (make-instance 'recognizer-name-expr
 			   'id id
 			   'actuals actuals
