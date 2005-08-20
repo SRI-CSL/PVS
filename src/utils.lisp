@@ -529,7 +529,7 @@
     (when (and (eq (car dirlist) :absolute)
 	       (eq (car reldirlist) :absolute))
       (or (relative-path* (cdr dirlist) (cdr reldirlist) depth)
-	  path))))
+	  (namestring path)))))
 
 (defun relative-path* (dirlist reldirlist depth)
   (if (and dirlist

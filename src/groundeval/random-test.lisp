@@ -519,7 +519,7 @@ The current theory may also be instantiated this way.")
 					 (id (car s)))
 				     (if lf
 					 (lazy-function-values lf)
-					 (list (cdr s))))))
+					 (cdr s)))))
 		   subst)))
 	     (multiple-value-bind (cl-eval error)
 		 (ignore-lisp-errors (catch 'undefined (eval cl-input)))
@@ -527,7 +527,8 @@ The current theory may also be instantiated this way.")
 		   (let ((clval (catch 'cant-translate
 				  (cl2pvs cl-eval (type expr)))))
 		     (cond (clval
-			    (when (tc-eq clval *false*)
+			    (cond
+			     ((tc-eq clval *false*)
 			      (format t
 				  "~%The formula is falsified with the substitutions: ~{~% ~a ==> ~{~a~^, ~}~}"
 				(mapcan
@@ -546,7 +547,8 @@ The current theory may also be instantiated this way.")
 				  subst))
 			      (unless all?
 				(setq terminated? t)
-				(return))))
+				(return)))
+			     (verbose? (format t " Formula is valid"))))
 			   (t
 			    (format t "Result not ground.  Cannot convert back to PVS.")
 			    (format t "~%~a" cl-eval))))

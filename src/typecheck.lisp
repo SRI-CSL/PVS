@@ -240,6 +240,8 @@
   (let ((lib-id (library theory-inst)))
     (when lib-id
       (let ((lib-ref (get-library-reference lib-id)))
+	(unless lib-ref
+	  (type-error theory-inst "Cannot find library ~a" lib-id))
 	(when (file-equal (libref-to-pathname lib-ref) *pvs-context-path*)
 	  (type-error theory-inst
 	    "Library \"~a\" refers to the current PVS context - it must be external"
