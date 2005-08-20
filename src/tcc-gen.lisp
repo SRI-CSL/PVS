@@ -176,7 +176,12 @@
 			 osubsts)))
 	(universal-closure (add-tcc-conditions*
 			    (raise-actuals srec-expr)
-			    (if (and vdecl (or ch1? ch?))
+			    (if (and vdecl
+				     (or ch1?
+					 (and ch?
+					      (member vdecl
+						      (freevars srec-expr)
+						      :test #'same-declaration))))
 				(insert-var-into-conditions vdecl conditions)
 				conditions)
 			    substs nil))))))
@@ -349,7 +354,8 @@
 (defun insert-tcc-decl1 (kind expr type ndecl)
   (let ((*generate-tccs* 'none))
     (setf (tcc-disjuncts ndecl) (get-tcc-disjuncts ndecl))
-    (let ((match (car (member ndecl *tccdecls* :test #'subsumes)))
+    (let ((match (unless (assuming-tcc? ndecl)
+		   (car (member ndecl *tccdecls* :test #'subsumes))))
 	  (decl (declaration *current-context*)))
       (when (eq (spelling ndecl) 'OBLIGATION)
 	(incf (total-tccs)))
@@ -1271,96 +1277,111 @@
 	    (t (equality-predicates (type-value act) (type-value mact))))
       (mk-application '= (expr act) (expr mact))))
 
-(defun equality-predicates (t1 t2)
-  (equality-predicates* t1 t2 nil nil nil))
+(defun equality-predicates (t1 t2 &optional precond)
+  (equality-predicates* t1 t2 nil nil precond nil))
 
-(defmethod equality-predicates* :around (t1 t2 p1 p2 bindings)
+(defmethod equality-predicates* :around (t1 t2 p1 p2 precond bindings)
   (if (tc-eq-with-bindings t1 t2 bindings)
-      (make-equality-between-predicates t1 p1 p2)
+      (make-equality-between-predicates t1 p1 p2 precond)
       (call-next-method)))
 
-(defun make-equality-between-predicates (t1 p1 p2)
+(defun make-equality-between-predicates (t1 p1 p2 precond)
   (when (or p1 p2)
     (let* ((vid (make-new-variable '|x| (append p1 p2)))
 	   (bd (make-bind-decl vid t1))
-	   (var (make-variable-expr bd)))
-      (make!-forall-expr (list bd)
-	(make!-iff
-	  (make!-conjunction* (mapcar #'(lambda (p)
-					  (make!-reduced-application p var))
-				p1))
-	  (make!-conjunction* (mapcar #'(lambda (p)
-					  (make!-reduced-application p var))
-				p2)))))))
+	   (var (make-variable-expr bd))
+	   (iff (make!-iff
+		 (make!-conjunction*
+		  (mapcar #'(lambda (p)
+			      (make!-reduced-application p var))
+		    p1))
+		 (make!-conjunction*
+		  (mapcar #'(lambda (p)
+			      (make!-reduced-application p var))
+		    p2))))
+	   (ex (if precond
+		   (make!-implication (make!-application precond var) iff)
+		   iff)))
+      (make!-forall-expr (list bd) ex))))
 
-(defmethod equality-predicates* ((t1 dep-binding) t2 p1 p2 bindings)
-  (equality-predicates* (type t1) t2 p1 p2 bindings))
+(defmethod equality-predicates* ((t1 dep-binding) t2 p1 p2 precond bindings)
+  (equality-predicates* (type t1) t2 p1 p2 precond bindings))
 
-(defmethod equality-predicates* (t1 (t2 dep-binding) p1 p2 bindings)
-  (equality-predicates* t1 (type t2) p1 p2 bindings))
+(defmethod equality-predicates* (t1 (t2 dep-binding) p1 p2 precond bindings)
+  (equality-predicates* t1 (type t2) p1 p2 precond bindings))
 
-(defmethod equality-predicates* ((t1 type-name) (t2 type-name) p1 p2 bindings)
+(defmethod equality-predicates* ((t1 type-name) (t2 type-name) p1 p2 precond
+				 bindings)
   (assert (eq (declaration t1) (declaration t2)))
-  (let ((npred (make-equality-between-predicates t1 p1 p2)))
+  (let ((npred (make-equality-between-predicates t1 p1 p2 precond)))
     (equality-predicates-list (actuals (module-instance t1))
 			      (actuals (module-instance t2))
 			      bindings npred)))
 
-(defmethod equality-predicates* ((t1 subtype) (t2 type-expr) p1 p2 bindings)
+(defmethod equality-predicates* ((t1 subtype) (t2 type-expr) p1 p2 precond
+				 bindings)
   (equality-predicates*
-   (supertype t1) t2 (cons (predicate t1) p1) p2 bindings))
+   (supertype t1) t2 (cons (predicate t1) p1) p2 precond bindings))
 
-(defmethod equality-predicates* ((t1 type-expr) (t2 subtype) p1 p2 bindings)
+(defmethod equality-predicates* ((t1 type-expr) (t2 subtype) p1 p2 precond
+				 bindings)
   (equality-predicates*
-   t1 (supertype t2) p1 (cons (predicate t2) p2) bindings))
+   t1 (supertype t2) p1 (cons (predicate t2) p2) precond bindings))
 
-(defmethod equality-predicates* ((t1 subtype) (t2 subtype) p1 p2 bindings)
+(defmethod equality-predicates* ((t1 subtype) (t2 subtype) p1 p2 precond
+				 bindings)
   (cond ((subtype-of? t1 t2)
 	 (equality-predicates* (supertype t1) t2
-			       (cons (predicate t1) p1) p2
+			       (cons (predicate t1) p1) p2 precond
 			       bindings))
 	((subtype-of? t2 t1)
 	 (equality-predicates* t1 (supertype t2)
-			       p1 (cons (predicate t2) p2)
+			       p1 (cons (predicate t2) p2) precond
 			       bindings))
 	(t
 	 (equality-predicates* (supertype t1) (supertype t2)
 			       (cons (predicate t1) p1)
 			       (cons (predicate t2) p2)
+			       precond
 			       bindings))))
 
-(defmethod equality-predicates* ((t1 funtype) (t2 funtype) p1 p2 bindings)
-  (let ((npred (make-equality-between-predicates t1 p1 p2)))
+(defmethod equality-predicates* ((t1 funtype) (t2 funtype) p1 p2 precond
+				 bindings)
+  (let ((npred (make-equality-between-predicates t1 p1 p2 precond)))
     (equality-predicates-list (list (domain t1) (range t1))
 			      (list (domain t2) (range t2))
 			      bindings
 			      (when npred (list npred)))))
 
-(defmethod equality-predicates* ((t1 tupletype) (t2 tupletype) p1 p2 bindings)
-  (let ((npred (make-equality-between-predicates t1 p1 p2)))
+(defmethod equality-predicates* ((t1 tupletype) (t2 tupletype) p1 p2 precond
+				 bindings)
+  (let ((npred (make-equality-between-predicates t1 p1 p2 precond)))
     (equality-predicates-list (types t1) (types t2) bindings
 			      (when npred (list npred)))))
 
-(defmethod equality-predicates* ((t1 cotupletype) (t2 cotupletype) p1 p2 bindings)
-  (let ((npred (make-equality-between-predicates t1 p1 p2)))
+(defmethod equality-predicates* ((t1 cotupletype) (t2 cotupletype) p1 p2
+				 precond bindings)
+  (let ((npred (make-equality-between-predicates t1 p1 p2 precond)))
     (equality-predicates-list (types t1) (types t2) bindings
 			      (when npred (list npred)))))
 
 (defmethod equality-predicates* ((t1 recordtype) (t2 recordtype) p1 p2
-				 bindings)
-  (let ((npred (make-equality-between-predicates t1 p1 p2)))
+				 precond bindings)
+  (let ((npred (make-equality-between-predicates t1 p1 p2 precond)))
     (equality-predicates-list (fields t1) (fields t2) bindings
 			      (when npred (list npred)))))
 
-(defmethod equality-predicates* ((f1 field-decl) (f2 field-decl) p1 p2 binding)
+(defmethod equality-predicates* ((f1 field-decl) (f2 field-decl) p1 p2
+				 precond binding)
   (assert (and (null p1) (null p2)))
-  (equality-predicates* (type f1) (type f2) nil nil binding))
+  (equality-predicates* (type f1) (type f2) nil nil precond binding))
 
 (defun equality-predicates-list (l1 l2 bindings preds)
   (if (null l1)
       (when preds
 	(make!-conjunction* (nreverse preds)))
-      (let* ((npred (equality-predicates* (car l1) (car l2) nil nil bindings))
+      (let* ((npred (equality-predicates* (car l1) (car l2) nil nil nil
+					  bindings))
 	     (newpreds (if npred (cons npred preds) preds))
 	     (carl1 (car l1))
 	     (carl2 (car l2))
@@ -1421,10 +1442,12 @@
 	       expr)
     unique?))
 
-(defmethod equality-predicates* ((a1 actual) (a2 actual) p1 p2 bindings)
+(defmethod equality-predicates* ((a1 actual) (a2 actual) p1 p2 precond
+				 bindings)
   (if (type-value a1)
-      (equality-predicates* (type-value a1) (type-value a2) p1 p2 bindings)
-      (let ((npred (equality-predicates* p1 p2 nil nil bindings)))
+      (equality-predicates* (type-value a1) (type-value a2) p1 p2 precond
+			    bindings)
+      (let ((npred (equality-predicates* p1 p2 nil nil precond bindings)))
 	(if npred
 	    (make!-conjunction npred (make-equation (expr a1) (expr a2)))
 	    (make-equation (expr a1) (expr a2))))))
