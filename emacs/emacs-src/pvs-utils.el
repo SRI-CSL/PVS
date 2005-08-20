@@ -918,7 +918,6 @@ The save-pvs-file command saves the PVS file of the current buffer."
 			  (buffer-name))))
 	(theories (append (pvs-collect-theories)
 			  (when with-prelude-p
-			    (set-prelude-files-and-regions)
 			    (apply 'append
 			      (mapcar 'cdr *prelude-files-and-regions*))))))
     (if (null theories)

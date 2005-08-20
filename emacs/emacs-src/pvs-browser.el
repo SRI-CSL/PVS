@@ -305,7 +305,6 @@ still complete, if it was in the full theory."
 	  (pop-to-buffer buf))
 	(pvs-browse-quit)
 	(cond ((null file)
-	       (set-prelude-files-and-regions)
 	       (let* ((freg (get-prelude-file-and-region (third entry)))
 		      (line (save-excursion
 			      (let ((noninteractive t));; Shut up about read-only
@@ -347,9 +346,10 @@ Returns to Declaration List when done."
 	       (ilisp-shrink-wrap-window (car view-window)))
 	      (t
 	       (other-window 1)
-	       (split-window-vertically (ilisp-desired-height buf))
-	       (set-window-buffer (selected-window) buf)
-	       (other-window -1)))))))
+	       (when (< (ilisp-desired-height buf) (window-height))
+		 (split-window-vertically (ilisp-desired-height buf))
+		 (set-window-buffer (selected-window) buf)
+		 (other-window -1))))))))
 
 (defun pvs-browse-quit ()
   (interactive)
