@@ -37,7 +37,7 @@
 (defmethod lift-constructor-type ((obj application))
   (if (constructor-name-expr? (operator obj))
       (supertype (type obj))
-      (type obj)))
+      (car (judgement-types+ obj))))
 
 (defmethod lift-constructor-type (obj)
   (type obj))
