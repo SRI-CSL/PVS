@@ -2484,14 +2484,19 @@
 			 'number (parse-integer (string id))
 			 'place (term-place ass-arg)))
 		     (list (make-instance 'id-assign
-			     'id (ds-id (term-arg0 ass-arg))
+			     'id id
 			     'place (term-place ass-arg))))))
     (PROJ-ASSIGN (list (make-instance 'proj-assign
 			 'number (ds-number (term-arg0 ass-arg))
 			 'place (term-place ass-arg))))
-    (ASSIGN-ID (list (make-instance 'name-expr
-		       'id (ds-id (term-arg0 ass-arg))
-		       'place (term-place ass-arg))))
+    (ASSIGN-ID (let ((id (ds-id (term-arg0 ass-arg))))
+		 (if (every #'digit-char-p (string id))
+		     (list (make-instance 'number-expr
+			     'number (parse-integer (string id))
+			     'place (term-place ass-arg)))
+		     (list (make-instance 'name-expr
+			     'id id
+			     'place (term-place ass-arg))))))
     (ASSIGN-SKONAME (list (make-instance 'name-expr
 			    'id (makesym "~a!~d"
 					 (ds-id (term-arg0 ass-arg))
