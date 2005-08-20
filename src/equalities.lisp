@@ -1707,9 +1707,12 @@ where db is to replace db1 and db2")
 (defun compatible-funtype-pred (atype adom edom avar evar ;;apred epred
 				      aexpr arng erng incs)
   (declare (ignore atype evar))
-  (let* ((dpreds (equality-predicates adom edom))
+  (let* ((dpreds (equality-predicates adom edom
+				      (when (tc-eq (find-supertype arng)
+						   *boolean*)
+					aexpr)))
 	 (dpred (when dpreds
-		   (typecheck* dpreds *boolean* nil nil)))
+		  (typecheck* dpreds *boolean* nil nil)))
 	 (*bound-variables* (append (when (dep-binding? adom) (list adom))
 				    (when (dep-binding? edom) (list edom))
 				    *bound-variables*))
@@ -1738,9 +1741,9 @@ where db is to replace db1 and db2")
 			   (forall-expr? (car ran-preds)))
 		      (make!-forall-expr (cons (declaration avar)
 					       (bindings (car ran-preds)))
-					 (expression (car ran-preds)))
+			(expression (car ran-preds)))
 		      (make!-forall-expr (list (declaration avar))
-					 (make!-conjunction* ran-preds)))))
+			(make!-conjunction* ran-preds)))))
 	 (conj (if dpred
 		   (if rpred
 		       (make!-conjunction dpred rpred)
