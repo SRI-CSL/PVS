@@ -460,20 +460,11 @@
     (let ((clashes (collect-theory-clashes new-theories filename)))
       (when clashes
 	;; clashes is an assoc list with (new-theory . oldfilename) entries
-	(unless (pvs-yes-or-no-p
-		 "~d theor~@P clash~:[~;es~] with those in other files - continue? "
-		 (length clashes) (length clashes) (eql (length clashes) 1))
-	  (parse-error (caar clashes)
-	    "Theory ~a has been declared previously in file ~a.pvs"
-	    (id (caar clashes)) (cdar clashes)))
-	;; At some point, should spit out pvs-info here.
-	(dolist (clfname (remove-duplicates (mapcar #'cdr clashes)
-			   :test #'string=))
-	  (dolist (clth (get-theories clfname))
-	    (delete-theory clth))
-	  (remhash clfname *pvs-files*)
-	  (delete-file-from-context clfname))
-	(reset-typecheck-caches)))))
+	(parse-error (find (caar clashes) new-theories :test #'same-id)
+	  "~{~{Theory ~a is declared in ~a.pvs and ~a.pvs~%~}~}"
+	  (mapcar #'(lambda (clash)
+		      (list (id (car clash)) (cdr clash) filename))
+	    clashes))))))
 
 (defun check-import-circularities (theories)
   (let ((*modules-visited* nil))
@@ -1406,7 +1397,7 @@
 
 (defun prettyprint-decl (d theory)
   (let* ((*show-conversions* nil)
-	 (place (place (if (consp d) (car d) d)))
+	 (place (place d))
 	 (indent (col-begin place))
 	 (dstr (unpindent d indent :string t))
          (dfinal (string-trim '(#\Space #\Tab #\Newline) dstr))
@@ -2252,11 +2243,12 @@
 				     (id (car *edit-proof-info*)))
 		  (pvs-message ""))
 		(pvs-message "No proof is being edited.")))
-    (let ((sexpr (ignore-errors (with-open-file (in tmpfilename) (read in)))))
+    (let ((sexpr (ignore-errors (with-open-file (in tmpfilename)
+				  (read-preserving-comments-as-strings in)))))
       (unless (listp sexpr)
 	(justification-error sexpr sexpr "Proof must be a list"))
       (multiple-value-bind (msg subexpr)
-	  (check-edited-justification sexpr)
+	  (check-edited-justification (remove-leading-comments sexpr))
 	(if subexpr
 	    (justification-error subexpr sexpr msg)
 	    (let ((just (revert-justification
@@ -2301,6 +2293,28 @@
 			   (pvs-message "Proof installed on ~a as ~a"
 			     (id fdecl) (id prinfo)))
 			 t)))))))))
+
+(defun read-preserving-comments-as-strings (stream)
+  (let ((*readtable* (copy-readtable)))
+    (set-macro-character #\; #'pvs-lisp-comment-reader t)
+    (read stream t nil t)))
+
+(defun pvs-lisp-comment-reader (stream char)
+  (pvs-lisp-read-comment stream (list char)))
+
+(defun pvs-lisp-read-comment (stream chars)
+  (let ((ch (read-char stream nil 'eof t)))
+    (if (char= ch #\Newline)
+	(cons (coerce (nreverse chars) 'string)
+	      (read-preserving-comments stream))
+	(pvs-lisp-read-comment stream (cons ch chars)))))
+
+(defun remove-leading-comments (sexpr)
+  (if (and (stringp (car sexpr))
+	   (plusp (length (car sexpr)))
+	   (char= (char (car sexpr) 0) #\;))
+      (remove-leading-comments (cdr sexpr))
+      sexpr))
 
 
 ;;; Called from install-proof by Emacs while in an edit proof buffer.  The

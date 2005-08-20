@@ -245,13 +245,18 @@ required a context.")
       'type (make-formals-funtype (list (list bd)) (type expr)))))
 
 (defmethod set-type* ((ex projection-expr) expected)
-  (assert (singleton? (types ex)))
-  (unless (compatible? (car (types ex)) expected)
-    (type-incompatible ex (types ex) expected))
-  (if (actuals ex)
-      (setf (type ex) (car (types ex)))
-      (let ((etype (compatible-type expected (car (types ex)))))
-	(setf (type ex) etype))))
+  (assert (types ex))
+  (let ((ctypes (remove-if (complement
+			    #'(lambda (ty) (compatible? ty expected)))
+		  (types ex))))
+    (unless ctypes
+      (type-incompatible ex (types ex) expected))
+    (when (cdr ctypes)
+      (type-ambiguity ex))
+    (if (actuals ex)
+	(setf (type ex) (car ctypes))
+	(let ((etype (compatible-type expected (car ctypes))))
+	  (setf (type ex) etype)))))
 
 (defmethod set-type* ((ex injection-expr) expected)
   (assert (singleton? (types ex)))
@@ -1598,6 +1603,27 @@ required a context.")
 		       ;; We generate TCCs later - first we need to allow
 		       ;; conversions to kick in on the operator
 		       (set-type* argument (domain optype)))
+		     (when (and (declaration? (current-declaration))
+				(eq (id (current-declaration))
+				    'final_queue_ntop)
+				(name-expr? operator)
+				(null (actuals operator))
+				(actuals (module-instance operator))
+				(judgement-types (argument ex)))
+		       (let ((res (resolve (copy (operator ex)
+					     'resolutions nil
+					     'type nil)
+					   'expr
+					   (arguments ex))))
+			 (when (and (singleton? res)
+				    (not (tc-eq (car res)
+						(resolution (operator ex)))))
+			   ;; May need to rerun tc-match to get proper actuals
+			   (setf (types operator) (list (type (car res))))
+			   (setf (resolutions operator) res)
+			   (setf optype
+				 (determine-operator-type
+				  operator argument expected ex)))))
 		     (when (typep ex '(or let-expr where-expr))
 		       (let ((nbindings
 			      (set-let-bindings (bindings operator) argument)))
