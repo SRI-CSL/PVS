@@ -82,6 +82,7 @@
            (cond ((eql holdchar #\=) 'SBST::|::=|)
                  (t (lexical-unread-char stream) 'SBST::|::|)))
           ((eql holdchar #\)) 'SBST::|:)|)
+          ((eql holdchar #\}) 'SBST::|:}|)
           ((eql holdchar #\-)
            (setf holdchar (lexical-read-char stream :eof))
            (if (and PVS-ESCAPE-CHAR (eql holdchar PVS-ESCAPE-CHAR))
