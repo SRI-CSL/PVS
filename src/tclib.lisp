@@ -653,8 +653,8 @@
 				*pvs-modules*))
 		     (setq value
 			   (format nil
-			       "Theory ~a not found in the PVS context of ~
-                               library ~a"
+			       "Theory ~a ~_not found in the PVS context of ~
+                                library ~a"
 			     theory-name lib-ref))))))))
 	(dolist (cth changed-theories)
 	  (untypecheck-usedbys cth))
@@ -1159,34 +1159,72 @@
     (t th))
   th)
 
-(defun relativize-imported-library (old-context-path new-context-path
-						     &optional mods)
-  (let ((new-mods nil))
-    (maphash #'(lambda (ref files&theories)
-		 (when (char= (char ref 0) #\.)
-		   (let* ((new-lref (cdr (assoc ref mods :test #'string=)))
-			  (old-lib-dir (unless new-lref
-					 (merge-pathnames ref old-context-path)))
-			  (new-lib-ref (or new-lref
-					   (relative-path old-lib-dir
-							  new-context-path))))
-		     (unless (string= new-lib-ref ref) ;; a sibling directory
-		       (assert (or (null old-lib-dir)
-				   (file-exists-p old-lib-dir)))
+(defun relativize-imported-library (from-context-path to-context-path)
+  (let ((ref-alist nil))
+    (maphash #'(lambda (from-ref files&theories)
+		 (when (char= (char from-ref 0) #\.)
+		   (let* ((from-lib-dir (merge-pathnames
+					 from-ref from-context-path))
+			  (to-ref (relative-path from-lib-dir
+						     to-context-path)))
+		     (unless (string= to-ref from-ref) ;; a sibling dir
+		       (assert (or (null from-lib-dir)
+				   (file-exists-p from-lib-dir)))
 		       (assert (file-exists-p
 				(merge-pathnames
-				 new-lib-ref new-context-path)))
-		       (push (cons new-lib-ref ref) new-mods)
+				 to-ref to-context-path)))
+		       (push (cons to-ref from-ref) ref-alist)
 		       (maphash #'(lambda (id theory)
 				    (declare (ignore id))
-				    (assert (string= ref (lib-ref theory)))
-				    (setf (lib-ref theory) new-lib-ref))
+				    (assert (string= from-ref (lib-ref theory)))
+				    (setf (lib-ref theory) to-ref))
 				(cadr files&theories))))))
 	     *imported-libraries*)
     ;; We mapped the theories, now change the *imported-libraries* keys
-    (loop for (new . old) in new-mods
-	  do (let ((val (gethash old *imported-libraries*)))
+    (loop for (to-ref . from-ref) in ref-alist
+	  do (let ((val (gethash from-ref *imported-libraries*)))
 	       (assert val)
-	       (remhash old *imported-libraries*)
-	       (setf (gethash new *imported-libraries*) val)))
-    new-mods))
+	       (remhash from-ref *imported-libraries*)
+	       (setf (gethash to-ref *imported-libraries*) val)))
+    ref-alist))
+
+;;; This undoes the changes made by relativize-imported-library - keep in
+;;; mind that there will be new libraries here, which need to be relativized.
+(defun revert-relativized-imported-library (from-context-path to-context-path
+							      ref-alist)
+  (maphash #'(lambda (from-ref files&theories)
+	       (let ((to-ref (cdr (assoc from-ref ref-alist :test #'string=))))
+		 (if to-ref
+		     (unless (string= to-ref from-ref)
+		       (maphash #'(lambda (id theory)
+				    (declare (ignore id))
+				    (assert (string= from-ref
+						     (lib-ref theory)))
+				    (setf (lib-ref theory) to-ref))
+				(cadr files&theories)))
+		     ;; Wasn't already there - may need to relativize
+		     (when (char= (char from-ref 0) #\.)
+		       (let* ((from-lib-dir (merge-pathnames from-ref
+							     from-context-path))
+			      (to-ref (relative-path from-lib-dir
+						     to-context-path)))
+			 (unless (string= to-ref from-ref) ;; a sibling dir
+			   (assert (or (null from-lib-dir)
+				       (file-exists-p from-lib-dir)))
+			   (assert (file-exists-p
+				    (merge-pathnames
+				     to-ref to-context-path)))
+			   (push (cons from-ref to-ref) ref-alist)
+			   (maphash #'(lambda (id theory)
+					(declare (ignore id))
+					(assert (string= from-ref (lib-ref theory)))
+					(setf (lib-ref theory) to-ref))
+				    (cadr files&theories))))))))
+	   *imported-libraries*)
+  ;; We mapped the theories, now change the *imported-libraries* keys
+  (loop for (from-ref . to-ref) in ref-alist
+	do (let ((val (gethash from-ref *imported-libraries*)))
+	     (assert val)
+	     (remhash from-ref *imported-libraries*)
+	     (setf (gethash to-ref *imported-libraries*) val)))
+  ref-alist)
