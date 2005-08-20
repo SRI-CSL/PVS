@@ -247,7 +247,7 @@
 			  (change-from-library-class th))
 		      (cadr ,entry))
 	     ,@forms)
-	 (relativize-imported-library
+	 (revert-relativized-imported-library
 	  *pvs-context-path* ,cpath ,mods)
 	 (maphash #'(lambda (id th)
 		      (declare (ignore id))
