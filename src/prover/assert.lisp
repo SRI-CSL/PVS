@@ -849,6 +849,10 @@
   (declare (ignore sign))
   (assert-if expr))
 
+(defmethod assert-if-inside-sign* ((expr name-expr) sign)
+  (declare (ignore sign))
+  (do-auto-rewrite expr 'X))
+
 
 (defmethod assert-if-inside ((expr branch))
   (assert-if expr))
