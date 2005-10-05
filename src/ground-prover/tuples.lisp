@@ -29,18 +29,29 @@
 (defun sigtupsel (term)
   ; currently an error if term is an atom.
   (when *tupleflg* (terpri) (princ "sigtupsel: ") (pprint  term))
-  (prog (ans tuple1)
-    (setq ans
+ ; (prog (ans tuple1)
+;    (setq ans
 	  (cond
 	    ((is-tupsel-n (funsym term))
-	     (setq tuple1 (arg2 term))
-	     (cond ( (and (consp tuple1)			
-			  (eq (funsym tuple1) 'tupcons) )
-		     (nth (arg1 term) (argsof tuple1)) )
-		   (t term) ))
+	     (sigtupselterm (arg1 term)(arg2 term) term (funsym term)))
 	    (t       term) ))
-    (when *tupleflg* (terpri) (princ "       ==> ") (pprint ans))
-    (return ans) ))
+;    (when *tupleflg* (terpri) (princ "       ==> ") (pprint ans))
+;    (return ans) ))
+
+(defun sigtupselterm (n term tupselterm tupselop)
+  (cond ((not (consp term))
+	 (maketupselterm n term tupselterm tupselop))
+	((eq (funsym term) 'tupcons)
+	 (nth n (argsof term)))
+	((eq (funsym term) 'update)
+	 (if (eql n (arg2 term))
+	     (arg3 term)
+	     (sigtupselterm n (arg1 term) nil tupselop)))
+	(t (maketupselterm n term tupselterm tupselop))))
+
+(defun maketupselterm (n term tupselterm tupselop)
+  (or tupselterm
+      `(,tupselop ,n ,term)))
 
 
 ; ------------------------------------------------------------------------
