@@ -3833,7 +3833,9 @@
 			  (prefix? string (string (car res))))
 		collect (symbol-index (string (car res)))))
 	 (all-occurrences (append occurrences occurrences!))
-	 (new-index (if all-occurrences (apply #'max all-occurrences) 1))
+	 (new-index (if all-occurrences
+			(1+ (apply #'max all-occurrences))
+			1))
 	 (name (intern (format nil "~a$~a" string new-index))))
     (install-rewrite-res (list name fmla) name fmla always?)))
 
