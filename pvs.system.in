@@ -16,7 +16,8 @@
   (rplacd (assoc 'tpl::*saved-package*
 		 tpl:*default-lisp-listener-bindings*)
 	  'common-lisp:*package*)
-  )
+  ;; Can't directly call (pvs::pvs-init)
+  (apply (find-symbol "pvs-init" :pvs) nil))
 
 #+allegro
 (eval-when (eval load)
@@ -346,6 +347,12 @@
 		  (:file "generate-lisp-for-theory")
 		  (:file "random-test"))
      :depends-on (basic))
+   (:module PVSio
+     :source-pathname "src/PVSio"
+     :components ((:file "pvs-lib")
+		  (:file "defattach")
+		  (:file "eval")
+		  (:file "pvsio")))
    (:module ws1s
 	    :source-pathname "src/WS1S/lisp"
 	    :components ((:file "dfa-foreign")
