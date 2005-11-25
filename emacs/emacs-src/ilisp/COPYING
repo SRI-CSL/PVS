@@ -2,20 +2,24 @@ COPYING -- TERMS AND LICENSING AGREEMENT FOR ILISP
 -------------------------------------------------------------------------------
 
 This file is part of ILISP.
-Version: 5.8
-Date:    15 July 1996
+Version: 5.12.0
+Date:    2002-05-28
 
 Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
               1993, 1994 Ivan Vasquez
               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-              1996 Marco Antoniotti and Rick Campbell
+              1996-2000 Marco Antoniotti and Rick Campbell
+              2001 Paolo Amoroso, Marco Antoniotti, Martin Atzmueller,
+                   Craig Brozefsky, William Deakin, Matthias Koeppe
 
 Other authors' names for which this Copyright notice also holds
-may appear later in this file.
+may appear later in this file, in the ACKNOWLEGMENTS file and in
+individual files (in which case the content of the file is to be
+intended to be copyrighted by that author).
 
-Send mail to 'ilisp-request@naggum.no' to be included in the
-ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-mailing list were bugs and improvements are discussed.
+Please visit the ILISP Project at Sourceforge
+(http://sourceforge.net/projects/ilisp) for news and support.
+ILISP mailing lists are also hosted at Sourceforge.
 
 -------------------------------------------------------------------------------
 

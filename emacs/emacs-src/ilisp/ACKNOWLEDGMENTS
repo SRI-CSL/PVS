@@ -1,14 +1,70 @@
-Thanks to Guido Bosch, David Braunegg, Tim Bradshaw, Thomas M. Breuel,
-Hans Chalupsky, Kimball Collins, Brian Dennis, David Duff, Tom
-Emerson, Michael Ernst, Scott Fahlman, David Gadbois, Robert
-P. Goldman, Marty Hall, Richard Harris, Jim Healy, Christopher Hoover,
-Larry Hunter, Ben Hyde, Chuck Irvine, Michael Kashket, Mark
-Kantrowitz, Qiegang Long, Erik Naggum, Dan Pierson, Yusuf Pisan, Frank
-Ritter, Jeffrey Mark Siskind, Neil Smithline, Richard Stallman, Larry
-Stead, Jason Trenouth, Christof Ullwer, Bjorn Victor, Fred White, Ben
-Wing, Matsuo Yoshihiro, Jamie Zawinski, Paul Fuqua (for the CMU-CL GC
-display code) and Marco Antoniotti for bug reports, suggestions and
-code.  Our apologies to anyone we may have forgotten.
+Thanks to
+
+Chris McConnell (the author of the original ILISP),
+
+Paolo Amoroso,
+Martin Atzmueller,
+David Bakash,
+Daniel Barlow,
+Guido Bosch,
+Tim Bradshaw,
+David Braunegg,
+Thomas M. Breuel,
+Craig Brozefsky (Debian packaging),
+Gary Byers (for the OpenMCL code), 
+Rick Campbell,
+Hans Chalupsky,
+Kimball Collins,
+William Deakin,
+Brian Dennis,
+David Duff,
+Tom Emerson,
+Michael Ernst,
+Scott Fahlman,
+Karl Fogel,
+Paul Fuqua (for the CMU-CL GC display code),
+David Gadbois,
+Robert P. Goldman,
+Marty Hall,
+Richard Harris,
+Utz-Uwe Haus,
+Jim Healy,
+Matthias Hoelzl,
+Christopher Hoover,
+Larry Hunter,
+Ben Hyde,
+Chuck Irvine,
+Mark Kantrowitz,
+Michael Kashket,
+Matthias Koeppe,
+Hannu Koivisto,
+Qiegang Long,
+Christian Lynbech,
+Erik Naggum,
+Dan Pierson,
+Yusuf Pisan,
+Frank Ritter,
+Ole Rohne,
+Jeffrey Mark Siskind,
+Neil Smithline,
+Richard Stallman,
+Larry Stead,
+Jason Trenouth,
+Christof Ullwer,
+Reini Urban,
+Bjorn Victor,
+Edmund Weitz,
+Fred White,
+Ben Wing,
+Matsuo Yoshihiro,
+Jamie Zawinski
+
+for bug reports, suggestions and code.  Our apologies to anyone we may
+have forgotten.
 
 Special thanks to Todd Kaufmann for the texinfo file, work on bridge,
 epoch-pop and for really exercising everything.
+
+And, of course, to the original author of ILISP, Chris McConnell.
+
+The ILISP Maintainers

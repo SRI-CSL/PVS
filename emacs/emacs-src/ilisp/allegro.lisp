@@ -1,37 +1,31 @@
 ;;; -*- Mode: Lisp -*-
 
 ;;; allegro.lisp --
-
+;;; ILISP Franz ACL dialect support definitions.
+;;;
 ;;; This file is part of ILISP.
-;;; Version: 5.8
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
 ;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
+;;; $Id$
 
-;;;
 ;;; Allegro initializations
 ;;; Author: Chris McConnell, ccm@cs.cmu.edu
-;;;
 
-(in-package "ILISP")
+(in-package :ilisp)
 
-(use-package 'xref)
+;;; 20001203 Patch suggested by Larry Hunter <Larry.Hunter@uchsc.edu>
+;;; EXCL::FN_SYMDEF is no longer available by default.
+
+#+(or allegro-v5.0 (and allegro (version>= 6)))
+(eval-when (compile load) (require :llstructs))
+
 ;;;
 (defun ilisp-callers (symbol package)
-  "Print a list of all of the functions that call FUNCTION and return
-T if successful." 
+  "Print a list of all of the functions that call FUNCTION.
+Returns T if successful."
   (ilisp-errors
    (let ((function (ilisp-find-symbol symbol package))
 	 (callers nil)
@@ -65,8 +59,8 @@ T if successful."
 
 ;;;
 (defun ilisp-source-files (symbol package type)
-  "Print each file for PACKAGE:SYMBOL's TYPE definition on a line and
-return T if successful."
+  "Print each file for PACKAGE:SYMBOL's TYPE definition on a line.
+Returns T if successful."
   (ilisp-errors
    (let* ((symbol (ilisp-find-symbol symbol package))
 	  (type (if (equal type "any") t (ilisp-find-symbol type "keyword")))
@@ -81,10 +75,11 @@ return T if successful."
 	   t)
 	 nil))))
 
-;;;
-(dolist (symbol '(ilisp-callers ilisp-source-files))
-  (export symbol))
-;(unless (compiled-function-p #'ilisp-callers)
-;  (break "allegro init not compiled")
-;  (format t "\"ILISP: File is not compiled, use M-x ilisp-compile-inits\""))
+;;;===========================================================================
+;;; Epilogue
 
+(eval-when (load eval)
+  (unless (compiled-function-p #'ilisp-callers)
+    (ilisp-message t "File is not compiled, use M-x ilisp-compile-inits")))
+
+;;; end of file -- allegro.lisp --
