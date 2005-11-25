@@ -333,6 +333,9 @@ pvs-prover = src/prover/checker-macros.lisp \
 
 bddlisp = BDD/bdd.lisp BDD/mu.lisp
 
+PVSiolisp = src/PVSio/pvs-lib src/PVSio/defattach src/PVSio/eval \
+            src/PVSio/pvsio
+
 ws1slisp = src/WS1S/lisp/dfa-foreign.lisp src/WS1S/lisp/dfa.lisp \
            src/WS1S/lisp/pvs-utils.lisp src/WS1S/lisp/symtab.lisp \
            src/WS1S/lisp/signature.lisp src/WS1S/lisp/pvs2dfa.lisp \
@@ -356,7 +359,7 @@ inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
 
 lisp-files = ${pvs-parser-out} ${ground-prover} ${pvs-src} \
 	     ${emacs-interface} ${pvs-prover} ${bddlisp} \
-	     ${ws1slisp} ${groundevallisp} \
+	     ${PVSiolisp} ${ws1slisp} ${groundevallisp} \
              ${abstractionlisp}
 
 ifneq (@ICSPATH@,)
@@ -378,6 +381,7 @@ pvs-src := $(patsubst %,$(PVSPATH)%,$(pvs-src))
 emacs-interface := $(patsubst %,$(PVSPATH)%,$(emacs-interface))
 pvs-prover := $(patsubst %,$(PVSPATH)%,$(pvs-prover))
 bddlisp := $(patsubst %,$(PVSPATH)%,$(bddlisp))
+PVSIOlisp := $(patsubst %,$(PVSPATH)%,$(PVSiolisp))
 ws1slisp := $(patsubst %,$(PVSPATH)%,$(ws1slisp))
 abstractionlisp := $(patsubst %,$(PVSPATH)%,$(abstractionlisp))
 groundevallisp := $(patsubst %,$(PVSPATH)%,$(groundevallisp))
@@ -470,6 +474,9 @@ ${pvsrt} : ${pvs-make-files} ${ess} ${ff-files} ${libics-file} ${lisp-files} \
 	$(PVSLISP) -e '(defvar *runtime* t)' \
 		-L $(PVSPATH)src/make-pvs.lisp
 	touch ${pvsrt}
+
+parser : $(PVSPATH)src/pvs-lexer.lisp
+.PHONY : parser
 
 $(PVSPATH)src/pvs-lexer.lisp : ${pvs-parser-in}
 	umask 002; \
