@@ -1,27 +1,17 @@
 ;;; -*- Mode: Emacs-Lisp -*-
 
 ;;; ilcompat.el --
-
+;;;
 ;;; This file is part of ILISP.
-;;; Version: 5.8
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
 ;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
+;;; $Id$
 
+(require 'cl)
 
-;;;============================================================================
 ;;; Global definitions/declarations
 
 
@@ -48,8 +38,19 @@
 Declared as '(member xemacs-20 xemacs-19 fsf-20 fsf-19).
 Set in ilcompat.el")
 
-;;;============================================================================
-;;; Code
+(defconst +ilisp-emacs-minor-version-number+
+  (cond ((eq +ilisp-emacs-version-id+ 'fsf-18) 59)
+	((or  (eq +ilisp-emacs-version-id+ 'lucid-19)
+	      (eq +ilisp-emacs-version-id+ 'lucid-19-new)
+	      )
+	 12)			      ; Does emacs-minor-version work?
+	((eq +ilisp-emacs-version-id+ 'xemacs) 14)
+	(t emacs-minor-version))
+  "The minor version of (X)Emacs ILISP is running in.
+Set in ilcompat.el.")
+
+
+;;; Load Emacs version specific compatibility modules
 
 (cond ((memq +ilisp-emacs-version-id+ '(xemacs-19 xemacs-20))
        (load "ilxemacs" nil noninteractive))
@@ -57,18 +58,31 @@ Set in ilcompat.el")
        (load "ilfsf19" nil noninteractive))
       ((eq +ilisp-emacs-version-id+ 'fsf-20)
        (load "ilfsf20" nil noninteractive))
+      ((eq +ilisp-emacs-version-id+ 'fsf-21)
+       (load "ilfsf21" nil noninteractive))
       (t
-       (load "ilfsf20" nil noninteractive)) ;; fall through assumption to Emacs 20
+       ;; fall through assumption to Emacs 20
+       (load "ilfsf20" nil noninteractive))
       )
 
-;;;============================================================================
+;;; Misc. bug work-arounds and compatibility bindings
+
+(unless (eval-when-compile (ignore-errors (last '(a . b))))
+  ;; From Emacs 19.34's cl.el.
+  (defun last (x &optional n)
+    "Returns the last link in the list LIST.
+With optional argument N, returns Nth-to-last link (default 1)."
+    (if n
+        (let ((m 0) (p x))
+          (while (consp p) (incf m) (pop p))
+          (if (<= n 0) p
+            (if (< n m) (nthcdr (- m n) x) x)))
+      (while (consp (cdr x)) (pop x))
+      x)))
+
+
 ;;; Epilogue
 
-(provide 'compat)
+(provide 'ilcompat)
 
-;;; end of file -- compat.el --
-
-
-
-
-
+;;; end of file -- ilcompat.el --

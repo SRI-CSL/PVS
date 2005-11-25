@@ -1,43 +1,36 @@
 ;;; -*- Mode: Emacs-Lisp -*-
 
 ;;; ilisp-bat.el --
-
-;;; This file is part of ILISP.
-;;; Version: 5.8
-;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
-
-;;;
 ;;; Inferior LISP interaction package batch submodule.
-
 ;;; See ilisp.el for more information.
+;;;
+;;; This file is part of ILISP.
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
+;;;
+;;; $Id$
+
 (defun mark-change-lisp (arg)
-  "Mark the current defun as being changed so that lisp-eval-changes,
-or lisp-compile-changes will work on it.  With a prefix, unmark."
+  "Mark the current defun as being changed.
+This is to make 'lisp-eval-changes' or 'lisp-compile-changes' work on
+it.  With a prefix, unmark."
   (interactive "P")
   (let (point name)
     (save-excursion
       (setq point (lisp-defun-begin)
 	    name (lisp-def-name)))
     (if arg
-	(let ((marker (car (lisp-memk point lisp-changes 'marker-position))))
+	(let ((marker (car (member* point lisp-changes
+				    :test #'equal
+				    :key #'marker-position))))
 	  (message "%s marked as unchanged" name)
 	  (setq lisp-changes (delq marker lisp-changes)))
 	(message "%s marked as changed" name)
-	(if (not (lisp-memk point lisp-changes 'marker-position))
+	(if (not (member* point lisp-changes
+			  :test #'equal
+			  :key #'marker-position))
 	    (let ((new (make-marker)))
 	      (set-marker new point)
 	      (setq lisp-changes (cons new lisp-changes)))))))
@@ -75,9 +68,11 @@ or lisp-compile-changes will work on it.  With a prefix, unmark."
   "Handle an error during a batch process by keeping the change on the
 list and passing it on to the normal error handler." 
   (let ((change (car ilisp-pending-changes)))
-    (if (and comint-errorp
-	     (not (lisp-memk change lisp-changes 'marker-position)))
-	(setq lisp-changes (nconc lisp-changes (cons change nil)))))
+    (when (and comint-errorp
+	       (not (member* change lisp-changes
+			     :test #'equal
+			     :key #'marker-position)))
+      (setq lisp-changes (nconc lisp-changes (cons change nil)))))
   (setq ilisp-pending-changes (cdr ilisp-pending-changes))
   (apply comint-handler args))
 

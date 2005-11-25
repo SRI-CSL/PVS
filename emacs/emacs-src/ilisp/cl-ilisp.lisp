@@ -1,30 +1,19 @@
 ;;; -*- Mode: Lisp -*-
 
 ;;; cl-ilisp.lisp --
-
-;;; This file is part of ILISP.
-;;; Version: 5.8
-;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
-
-
-
 ;;; Common Lisp initializations
 ;;; Author: Chris McConnell, ccm@cs.cmu.edu
+;;;
+;;; This file is part of ILISP.
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
+;;;
+;;; $Id$
 
+
+;;; Old history log.
 ;;;
 ;;; ange-ftp hack added by ivan Wed Mar 10 12:30:15 1993
 ;;; ilisp-errors *gc-verbose* addition ivan Tue Mar 16 03:21:51 1993
@@ -53,23 +42,24 @@
   (setq excl:*cltl1-in-package-compatibility-p* t))
 
 
-(in-package "ILISP")
+(in-package :ilisp)
 
 ;;;
-;;; GCL 2.2 doesn't have defpackage (yet) so we need to put the export
-;;; here. (toy@rtp.ericsson.se)
+;;; GCL 2.2 and GCL 2.3 do not have defpackage (yet) so we need to put
+;;; the export here. (toy@rtp.ericsson.se)
 ;;;
-;;; Please note that while the comment and the fix posted by Richard
-;;; Toy are correct, they are deprecated by at least one of the ILISP
+;;; Please note that while the comment and the fix posted by R. Toy
+;;; are correct, they are deprecated by at least one of the ILISP
 ;;; maintainers. :) By removing the 'nil' in the following #+, you
-;;; will fix the problem but will not do a good service to the CL
-;;; community.  The right thing to do is to install DEFPACKAGE in your
-;;; GCL and to write the GCL maintainers and to ask them to
-;;; incorporate DEFPACKAGE in their standard builds.
-;;; Marco Antoniotti <marcoxa@icsi.berkeley.edu> 19960715
-;;;
+;;; will fix the problem.  However you are advised to install
+;;; DEFPACKAGE in your GCL and to write the GCL maintainers and to ask
+;;; them to incorporate DEFPACKAGE in their standard builds if this is
+;;; not so yet.
 
-#+(and nil gcl)
+;;; 19960715 Marco Antoniotti
+;;; 20010831 Marco Antoniotti
+
+#+(or (and nil gcl))
 (export '(ilisp-errors
 	  ilisp-save
 	  ilisp-restore
@@ -88,17 +78,84 @@
 	  ilisp-untrace
 	  ilisp-compile-file
 	  ilisp-casify
+          ilisp-print-info-message
 	  ilisp-matching-symbols))
 
 
 ;;;
 (defvar *ilisp-old-result* nil "Used for save/restore of top level values.")
 
-#+:ANSI-CL
+(defvar *ilisp-message-addon-string* "ILISP:")
+
+(defmacro the-symbol-if-defined (((if-symbol if-package)
+                                  (&optional else-symbol else-package)
+                                  &key eval-p)
+                                 &body body)
+  (let* ((sym-if (and (find-package if-package)
+                      (find-symbol (symbol-name if-symbol)
+                                   (find-package if-package))))
+          (sym-else
+           (unless sym-if
+             (and else-symbol
+                  (find-package else-package)
+                  (find-symbol (symbol-name else-symbol)
+                               (find-package else-package)))))
+         (tmp-symbol (or sym-if sym-else)))
+    (if (consp (first body))
+      `(let ((the-symbol (symbol-value ',tmp-symbol)))
+        ,@body)
+      (if eval-p
+        `,(eval tmp-symbol)
+        `',tmp-symbol))))
+                   
+(defmacro the-function-if-defined (((if-function if-package)
+                                    (&optional else-function else-package)
+                                    &key function-binding-p)
+                                   &body body)
+  (let* ((fun-if
+           (ignore-errors
+             (find-symbol (symbol-name if-function)
+                          (find-package if-package))))
+         (fun-else
+           (unless fun-if
+             (ignore-errors
+               (and else-function
+                    (find-symbol (symbol-name else-function)
+                                 (find-package else-package)))))))
+    (when (or fun-if fun-else)
+      (if function-binding-p        
+        `(let ((the-function (symbol-function ',(or fun-if fun-else))))
+          ,@body)
+        `(,(or fun-if fun-else) ,@body)))))
+      
+
+;;; Martin Atzmueller 2000-01-15
+;;; ilisp-message was mostly set up because Clisp expects an
+;;; ~& or ~% before the message-string, otherwise it does not display anything!"
+
+(defun ilisp-message (format-output-stream format-control-string &rest args)
+  "ilisp-message provides an interface to create 'special' ILISP messages, i.e. \"ILISP: ... \" in an uniform way."
+  (let* ((format-string (apply #'format nil " ~@?" format-control-string args))
+         (concat-string (if (equal (char format-string 0) #\")
+                            ""
+                          (if format-output-stream
+                              "\""
+                            ""))))
+    (format format-output-stream
+            (concatenate 'string "~&" concat-string *ilisp-message-addon-string* format-string concat-string))))
+
+
+;; MNA: ecl (ecls-0.5) still had special-form-p in COMMON-LISP,
+;; which produced an error, when redefined.
+#+(and (or :cormanlisp :ansi-cl) (not :ecl))
 (defun special-form-p (symbol)
   "Backward compatibility for non ANSI CL's."
   (special-operator-p symbol))
 
+#+(and :cltl2 (not :ansi-cl))
+(defun special-form-p (symbol)
+  "For CLTL2 Lisp just use the old one."
+  (lisp:special-form-p symbol))
 ;;;
 (defmacro ilisp-handler-case (expression &rest handlers)
   "Evaluate EXPRESSION using HANDLERS to handle errors."
@@ -109,10 +166,17 @@
       #+lucid `(lucid::handler-case ,expression ,@handlers)
       #-(or allegro lucid) expression))
 
+
+;;; ilisp-readtable-case --
 ;;;
+;;; 19991218 Marco Antoniotti
+;;; READTABLE-CASE is ANSI.  However, I feel magnanimous today, so I
+;;; leave the check in to make it easier for non conforming
+;;; implementations.
+
 (defun ilisp-readtable-case (readtable)
   (if (fboundp 'readtable-case)
-      (funcall #'readtable-case readtable)
+      (readtable-case readtable)
       #+allegro (case excl:*current-case-mode*
 		  (:case-insensitive-upper :upcase)
 		  (:case-insensitive-lower :downcase)
@@ -127,15 +191,23 @@
 	 #+cmu
 	 (ext:*gc-verbose* nil) ; cmulisp outputs "[GC ...]" which
 				; doesn't read well...
-	 #+ecl
-	 (sys:*gc-verbose* nil) ; ecolisp also outputs "[GC ...]"
 	 )
-     (princ " ")			;Make sure we have output
+     (princ " ")			; Make sure we have output
+
+     ;; 19990912 Martin Atzmueller
+     ;; Gross CLisp HS hack so that the command-index stays the same
+     ;; after an ILISP-command that has to use the inferior lisp
+     ;;
+     ;; 19990912 Marco Antoniotti
+     ;; Put here since the change is very localized and not requiring
+     ;; a separate init file.
+     #+:clisp
+     (setq system::*command-index* (max 0 (- system::*command-index* 2)))
+
      (ilisp-handler-case
       ,form	
       (error (error)
-       (with-output-to-string (string)
-	 (format string "ILISP: ~A" error))))))
+             (ilisp-message nil "~A" error)))))
 
 
 ;;;
@@ -145,34 +217,52 @@
   (unless *ilisp-old-result*
     (setq *ilisp-old-result* (list /// // +++ ++ + /))))
 
-;;;
-;(defun ilisp-restore ()
-;  "Restore the old result history."
-;  (declare (special / // /// + ++ +++ * ** -))
-;  (setq // (pop *ilisp-old-result*)
-;	** (first //)
-;	/  (pop *ilisp-old-result*)
-;	*  (first /)
-;	++  (pop *ilisp-old-result*)
-;	+   (pop *ilisp-old-result*)
-;	-   (pop *ilisp-old-result*))
-;  (values-list (pop *ilisp-old-result*)))
+;;; owre - modified to handle pvs commands quietly
+;; (defun ilisp-restore ()
+;;   "Restore the old result history."
+;;   (declare (special / // + ++ * ** -))
+    
+;;   (setq // (pop *ilisp-old-result*)
+;; 	** (first //)
+;; 	/  (pop *ilisp-old-result*)
+;; 	*  (first /)
+;; 	++  (pop *ilisp-old-result*)
+;; 	+   (pop *ilisp-old-result*)
+;; 	-   (pop *ilisp-old-result*))
 
+;;     ;; Martin Atzmueller 2000-01-26
+;;     (let ((new/ (pop *ilisp-old-result*)))
+;;       (if (some #'(lambda (new+)
+;; 		    (and (stringp new+)
+;; 			 (search *ilisp-message-addon-string* new+)))
+;; 		new/)
+;; 	  nil
+;; 	(values-list new/))))
 
 (defun ilisp-restore ()
   "Restore the old result history."
-  (declare (special / // /// + ++ +++ * ** - *ilisp-old-result*))
+  (declare (special / // + ++ * ** -))
+    
   (setq // (pop *ilisp-old-result*)
 	** (first //)
 	/  (pop *ilisp-old-result*)
 	*  (first /)
 	++  (pop *ilisp-old-result*)
 	+   (pop *ilisp-old-result*)
-        -   (pop *ilisp-old-result*))
+	-   (pop *ilisp-old-result*))
+
+  ;; owre - added
   (when pvs::*to-emacs* 
     (pop *ilisp-old-result*))
-  (values-list (pop *ilisp-old-result*)))
-
+  ;; Martin Atzmueller 2000-01-26
+  (let ((new/ (pop *ilisp-old-result*)))
+    (if (some #'(lambda (new+)
+		  (and (stringp new+)
+		       (search *ilisp-message-addon-string* new+)))
+	      new/)
+	nil
+	(values-list new/))))
+  
 ;;; ilisp-symbol-name --
 ;;;
 ;;; ':capitalize' case added under suggestion by Rich Mallory.
@@ -183,19 +273,25 @@
     (:downcase (string-downcase symbol-name))
     (:capitalize (string-capitalize symbol-name))
     (:preserve symbol-name)))
-  
+
+
+;;; ilisp-find-package --
 ;;;
+;;; Notes:
+;;; 19990806 Unknown Author (blame Marco Antoniotti for this)
+;;; Added test for KEYWORD case.
+
 (defun ilisp-find-package (package-name)
   "Return package PACKAGE-NAME or the current package."
-  (if (string-equal package-name "nil")
-      *package*
-      (or (find-package (ilisp-symbol-name package-name))
-	  (error "Package ~A not found" package-name))))
+  (cond ((string-equal package-name "nil") *package*)
+	((string-equal package-name "") (find-package "KEYWORD"))
+	(t (or (find-package (ilisp-symbol-name package-name))
+	       (error "Package ~A not found" package-name)))))
 
 ;;;
 (defun ilisp-find-symbol (symbol-name package-name)
-  "Return the symbol associated with SYMBOL-NAME in PACKAGE-NAME trying to
-handle case issues intelligently."
+  "Return the symbol associated with SYMBOL-NAME in PACKAGE-NAME.
+The trick is to try to handle print case issues intelligently."
   (find-symbol (ilisp-symbol-name symbol-name)
 	       (ilisp-find-package package-name)))
 
@@ -223,6 +319,22 @@ handle case issues intelligently."
     (read-from-string form)))
 |#
 
+;;; 2000-09-29 11:28:36 rurban
+;;; I needed this for Xemacs/cmd.exe/cormanlisp which swallows all my backslashes.
+;;; Slashes do work fine on NT.
+(defun ilisp-w32-fix-filename (filename)
+  "Pathslash hack: replace all '\\' by '/' in filenames.
+Convert cygwin paths also.
+This will only work on Microsoft NT, not on a Win95 based OS."
+  ;; (setq filename "r:\\gnu\\XEMACS~1.35\\lisp\\replace.elc")
+  ;; (setq filename "/cygdrive/r/xx") => "r:/"
+  (do ((pos (position #\\ filename) (position #\\ filename)))
+      ((null pos) filename)
+    (setf (aref filename pos) #\/))
+  (if (string-equal "/cygdrive/" (subseq filename 0 10))
+      (setf filename (concatenate 'string (subseq filename 10 11) ":" (subseq filename 11)))
+      filename))
+
 ;;;
 (defun ilisp-eval (form package filename)
   "Evaluate FORM in PACKAGE recording FILENAME as the source file."
@@ -235,6 +347,8 @@ handle case issues intelligently."
 	  (if (and at-location colon-location)
 	      (subseq filename (1+ colon-location))
 	      filename))
+	 #+:cormanlisp
+	 (filename (ilisp-w32-fix-filename filename))
 	 (*package* (ilisp-find-package package))
 	 #+allegro (excl::*source-pathname* filename)
 	 #+allegro (excl::*redefinition-warnings* nil)
@@ -262,42 +376,10 @@ handle case issues intelligently."
   ;; Marco Antoniotti: Jan 2 1995.
   #-lucid
   (ilisp-eval
-   (format nil "(funcall (compile nil '(lisp:lambda () ~A)))"
+   (format nil "(funcall (compile nil '(lambda () ~A)))"
 	   form)
    package
    filename)
-  
-  ;; The following piece of conditional code is left in the
-  ;; distribution just for historical purposes.
-  ;; It will disappear in the next release.
-  ;; Marco Antoniotti: Jan 2 1995.
-  #+lucid-ilisp-5.6
-  (labels ((compiler (form env)
-		     (if (and (consp form)
-			      (eq (first form) 'function)
-			      (consp (second form)))
-			 #-LCL3.0
-		       (evalhook `(compile nil ,form) nil nil env)
-		       #+LCL3.0
-		       ;; If we have just compiled a named-lambda, and the
-		       ;; name didn't make it in to the procedure object,
-		       ;; then stuff the appropriate symbol in to the
-		       ;; procedure object.
-		       (let* ((proc (evalhook `(compile nil ,form)
-					      nil nil env))
-			      (old-name (and proc (sys:procedure-ref proc 1)))
-			      (lambda (second form))
-			      (name (and (eq (first lambda)
-					     'lucid::named-lambda)
-					 (second lambda))))
-			 (when (or (null old-name)
-				   (and (listp old-name)
-					(eq :internal (car old-name))))
-			       (setf (sys:procedure-ref proc 1) name))
-			 proc)
-		       (evalhook form #'compiler nil env))))
-	  (let ((*evalhook* #'compiler))
-	    (ilisp-eval form package filename)))
   #+lucid
   ;; Following form is a patch provided by Christopher Hoover
   ;; <ch@lks.csi.com>
@@ -316,17 +398,24 @@ handle case issues intelligently."
   "Describe SEXP in PACKAGE."
   (ilisp-errors
    (let ((*package* (ilisp-find-package package)))
-     (describe (eval (read-from-string sexp))))))
+     (let ((item-to-be-described (read-from-string sexp)))
+       (if (atom item-to-be-described)
+	   (describe item-to-be-described)
+	   (describe (eval item-to-be-described)))))))
 
 ;;;
 (defun ilisp-inspect (sexp package)
   "Inspect SEXP in PACKAGE."
   (ilisp-errors
    (let ((*package* (ilisp-find-package package)))
-     (inspect (eval (read-from-string sexp))))))
+    (let ((item-to-be-described (read-from-string sexp)))
+       (if (atom item-to-be-described)
+	   (inspect item-to-be-described)
+	   (inspect (eval item-to-be-described)))))))
 
 ;;;
 (defun ilisp-arglist (symbol package)
+  "Returns the argument list of SYMBOL from PACKAGE."
   (ilisp-errors
     (let ((fn (ilisp-find-symbol symbol package))
 	  (*print-length* nil)
@@ -341,19 +430,36 @@ handle case issues intelligently."
   (values))
 
 
+;;; print-function-arglist --
+;;; This function is really invoked only by the #\Space binding of
+;;; ILISP-PRINT-INFO-MESSAGE.
+
+;;; 19991218 Marco Antoniotti
+;;; Unfortunately the function GET-FUNCTION-ARGLIST may default to
+;;; DOCUMENTATION, which returns a string.  Hence the change.
+;;;
+;;; 19991218 Marco Antoniotti
+;;; Using the arglist command bound to #\Space would probably be
+;;; better.  Anyway...
+
 (defun print-function-arglist (fn)
   "Pretty arglist printer"
-  (let* ((a (get-function-arglist fn))
-	 (arglist (ldiff a (member '&aux a)))
+  (let* ((arglist-doc (get-function-arglist fn))
 	 (desc (ilisp-function-short-description fn)))
     (format t "~&~s~a" fn (or desc ""))
     (write-string ": ")
-    (if arglist
-	(write arglist :case :downcase :escape nil)
-      (write-string "()"))
-    (terpri)))
-
-
+    (typecase arglist-doc
+      (string (write-string arglist-doc))
+      (list (let ((arglist (ldiff arglist-doc
+				  (member '&aux arglist-doc))))
+	      (if arglist
+		  (write arglist :case :downcase :escape nil)
+		  (write-string "()"))))
+      (t (error (ilisp-message nil
+			       "arglist doc very messed up [~S]."
+			       arglist-doc))))
+    (terpri)
+    (values)))
 
 (defun ilisp-generic-function-p (symbol)
   (let ((generic-p
@@ -387,22 +493,64 @@ handle case issues intelligently."
 	   #+allegro
 	   (excl::arglist symbol)
 
-	   #+(or ibcl kcl ecl gcl)
+	   #+(or ibcl kcl gcl)
 	   (help symbol)
 
+           #+:ecl
+            (si::help symbol)
+            
 	   #+lucid
 	   (lucid::arglist symbol)
 	   
 	   #+lispworks
 	   (system::function-lambda-list symbol)
+
+	   #+clisp
+	   (arglist symbol)
+
+	   #+cmu
+	   (arglist symbol (symbol-package symbol))
 	   
-	   #-(or allegro lucid kcl ibcl ecl)
+	   #+:sbcl
+	   (arglist symbol (symbol-package symbol))
+
+	   #+:openmcl
+	   (arglist symbol (symbol-package symbol))
+	   
+	   #-(or allegro lucid kcl ibcl ecl gcl lispworks clisp cmu :sbcl :openmcl)
 	   (documentation symbol 'function)))))
+
+
+(defun ilisp-print-info-message (symbol package)
+  "Returns the argument list or the value of SYMBOL from PACKAGE.
+Error messages are generated appropriately."
+  (ilisp-errors
+   (let ((real-symbol (ilisp-find-symbol symbol package))
+	 (*print-length* nil)
+	 (*print-level* nil)
+	 (*package* (ilisp-find-package package)))
+     (cond ((null real-symbol)
+	    (format t "")
+	    ;; (ilisp-message t "symbol ~S not present in ~S." symbol package)
+	    (values))
+	   ((special-form-p real-symbol)
+	    (format t "~S: special-operator." real-symbol)
+	    (values))
+	   ((fboundp real-symbol)
+	    (print-function-arglist real-symbol))
+	   ((ignore-errors (boundp real-symbol))
+	    (format t "~S is bound to ~S."
+		    real-symbol (symbol-value real-symbol))
+	    (values))
+	   (t
+	    (format t "Symbol ~S is unbound." real-symbol)
+	    (values))))))
+
 
 ;;;
 (defun ilisp-documentation (symbol package type)
-  "Return the TYPE documentation for SYMBOL in PACKAGE.  If TYPE is
-\(qualifiers* (class ...)), the appropriate method will be found."
+  "Return the TYPE documentation for SYMBOL in PACKAGE.
+If TYPE is \(qualifiers* (class ...)), the appropriate method will be found."
   (ilisp-errors
    (let* ((real-symbol (ilisp-find-symbol symbol package))
 	  (type (if (and (not (zerop (length type)))
@@ -442,8 +590,7 @@ handle case issues intelligently."
 
 ;;;
 (defun ilisp-macroexpand (expression package)
-  "Macroexpand EXPRESSION as long as the top level function is still a
-macro." 
+  "Macroexpand EXPRESSION as long as the top level function is still a macro." 
   (ilisp-errors
    (let ((*print-length* nil)
 	 (*print-level* nil)
@@ -460,8 +607,7 @@ macro."
 	 (*package* (ilisp-find-package package)))
      (pprint (macroexpand-1 (read-from-string expression))))))
 
-;;;
-#-lispworks
+
 (defun ilisp-trace (symbol package breakp)
   "Trace SYMBOL in PACKAGE."
   (declare (ignore breakp)) ; No way to do this in CL.
@@ -469,22 +615,21 @@ macro."
    (let ((real-symbol (ilisp-find-symbol symbol package)))
      (when real-symbol (eval `(trace ,real-symbol))))))
 
-;;; Jason Trenouth: SEP 6 94 -- LispWorks can trace-break
-#+lispworks
-(defun ilisp-trace (symbol package breakp)
-  "Trace SYMBOL in PACKAGE."
-  (ilisp-errors
-   (let ((real-symbol (ilisp-find-symbol symbol package)))
-     breakp ;; idiom for (declare (ignorable breakp))
-     (when real-symbol (eval `(trace (,real-symbol :break breakp)))))))
-
-
 
 (defun ilisp-untrace (symbol package)
   "Untrace SYMBOL in PACKAGE."
   (ilisp-errors
    (let ((real-symbol (ilisp-find-symbol symbol package)))
      (when real-symbol (eval `(untrace ,real-symbol))))))
+
+
+;;; ilisp-compile-file-extension --
+;;;
+;;; 19990806 Marco Antoniotti
+
+(defun ilisp-compile-file-extension ()
+  (pathname-type (compile-file-pathname "ilisp-foo")))
+
    
 ;;;
 (defun ilisp-compile-file (file extension)
@@ -496,8 +641,8 @@ macro."
 
 ;;;
 (defun ilisp-casify (pattern string lower-p upper-p)
-  "Return STRING with its characters converted to the case of PATTERN,
-continuing with the last case beyond the end."
+  "Return STRING with its characters converted to the case of PATTERN.
+It continues with the 'last case' beyond the end."
   (cond (lower-p (string-downcase string))
 	(upper-p (string-upcase string))
 	(t
@@ -515,8 +660,8 @@ continuing with the last case beyond the end."
 
 ;;;
 (defun ilisp-words (string)
-  "Return STRING broken up into words.  Each word is (start end
-delimiter)."
+  "Return STRING broken up into words.
+Each word is (start end delimiter)."
   (do* ((length (length string))
 	(start 0)
 	(end t)
@@ -555,11 +700,13 @@ delimiter)."
     (when start2 (incf start2))))
 
 ;;;
-(defun ilisp-matching-symbols (string package &optional (function-p nil)
+(defun ilisp-matching-symbols (string package
+				      &optional
+				      (function-p nil)
 				      (external-p nil)
 				      (prefix-p nil))
-  "Return a list of the symbols that have STRING as a prefix in
-PACKAGE. FUNCTION-P indicates that only symbols with a function value
+  "Return a list of the symbols that have STRING as a prefix in PACKAGE.
+FUNCTION-P indicates that only symbols with a function value
 should be considered.  EXTERNAL-P indicates that only external symbols
 should be considered.  PREFIX-P means that partial matches should not
 be considered.  The returned strings have the same case as the
@@ -618,15 +765,22 @@ original string."
 		     (check-symbol2 symbol symbol-string words)))
 		 (do-symbols (symbol *package*)
 		   (check-symbol2 symbol symbol-string words))))))
-       (prin1 results)
+       ;; 19990806 Unknown Author (blame Marco Antoniotti for this)
+       ;; () doesn't depend on *PACKAGE*
+       ;;
+       ;; (prin1 results)
+       (if results (prin1 results) (princ "()"))
        nil))))
 
-
+#-:cormanlisp
 (eval-when (load eval)
   (when
-      #+cmu (eval:interpreted-function-p #'ilisp-matching-symbols)
-      #-cmu (not (compiled-function-p #'ilisp-matching-symbols))
-      (format *standard-output*
-	      "\"ILISP: File is not compiled, use M-x ilisp-compile-inits\"")))
+      #+(and :CMU (or :CMU17 :CMU18))
+      (eval:interpreted-function-p #'ilisp-matching-symbols)
+      #-(and :CMU (or :CMU17 :CMU18))
+      (not (compiled-function-p #'ilisp-matching-symbols))
+      (ilisp-message *standard-output*
+		     "File is not compiled, use M-x ilisp-compile-inits")))
+
 
 ;;; end of file -- cl-ilisp.lisp --
