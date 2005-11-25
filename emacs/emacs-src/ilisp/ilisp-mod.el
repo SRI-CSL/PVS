@@ -1,30 +1,15 @@
 ;;; -*- Mode: Emacs-Lisp -*-
 
 ;;; ilisp-mod.el --
-
-;;; This file is part of ILISP.
-;;; Version: 5.8
-;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
-
-
-
-;;;
 ;;; ILISP mode top level definitions.
-;;; 
+;;;
+;;; This file is part of ILISP.
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
+;;;
+;;; $Id$
 
 ;;;%ilisp-mode
 
@@ -82,19 +67,21 @@
 (ilisp-set-doc 'lisp-mode ilisp-documentation)
 
 ;;;%%ILISP
-(defun lisp-command-args (string)
-  "Break up STRING into (command args ...)."
-  (let ((len (length string))
-	(position 0)
-	(arg 0)
-	(args nil))
-    (while (< position len)
-      (if (eq (aref string position) ?\ )
-	  (setq args (cons (substring string arg position)  args)
-		arg (1+ position)))
-      (setq position (1+ position)))
-    (setq args (reverse (cons (substring string arg position)  args)))
-    args))
+(defun lisp-command-args (command-line)
+  "Break up COMMAND-LINE into (command args ...)"
+  (condition-case nil
+      (loop with start = 0
+            while start
+            for pos = (string-match "\\S-" command-line start)
+            while pos
+            if (char-equal (aref command-line pos) ?\")
+            collect (let ((str+end-pos (read-from-string command-line pos)))
+                      (setq start (cdr str+end-pos))
+                      (car str+end-pos))
+            else collect (let ((end-pos (string-match "\\s-" command-line pos)))
+                           (setq start end-pos)
+                           (substring command-line pos end-pos)))
+    (error (error "Invalid inferior Lisp program command line"))))
 
 
 
@@ -123,10 +110,11 @@ Takes the program name from the variable ilisp-program.
 	(use-local-map ilisp-mode-map) ;;; SO.
 	(rplaca (car comint-send-queue) 
 		(function (lambda ()
-			    (run-hooks 'ilisp-init-hook))))
-	(setq ilisp-initialized (lisp-del ilisp-buffer ilisp-initialized))
-	(if (not (lisp-memk names ilisp-buffers 'car))
-	    (setq ilisp-buffers (cons (list names) ilisp-buffers)))
+			    (run-hooks 'ilisp-init-hook-local))))
+	(setq ilisp-initialized (delete* ilisp-buffer ilisp-initialized
+					 :test #'equal))
+	(unless (member* names ilisp-buffers :key #'car)
+	  (setq ilisp-buffers (cons (list names) ilisp-buffers)))
 	;;;;;;;;;;;;(lisp-pop-to-buffer ilisp-buffer)  ;;;; evil
 	(setq start (window-start (selected-window))
 	      ilisp-program program)
@@ -134,14 +122,16 @@ Takes the program name from the variable ilisp-program.
 	(insert (format "Starting %s ...\n" ilisp-program))
 	(set-marker (process-mark (ilisp-process)) (point))
 	(funcall comint-update-status 'start)
-	(if ilisp-motd
-	    (progn (lisp-display-output (format ilisp-motd ilisp-version))
-		   (sleep-for 3)
-		   (set-window-start (selected-window) start)))
-	(if (not ilisp-prefix-match)
-	    (require 'completer)))
+	
+	(when ilisp-motd
+	  (lisp-display-output (format ilisp-motd ilisp-*version*))
+	  (sleep-for 3)
+	  (set-window-start (selected-window) start))
+
+	(unless ilisp-*prefix-match* (require 'completer)))
+
       ;;;;;;;;;;;;;;(lisp-pop-to-buffer ilisp-buffer) ;;;;;;;;;evil
-      )  
+      )
   (use-local-map ilisp-use-map)
   ;; This is necessary to get mode documentation to come out right
   (set-default 'ilisp-use-map ilisp-use-map))

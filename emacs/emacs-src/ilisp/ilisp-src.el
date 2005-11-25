@@ -1,67 +1,66 @@
 ;;; -*- Mode: Emacs-Lisp -*-
 
 ;;; ilisp-src.el --
-
+;;;
 ;;; This file is part of ILISP.
-;;; Version: 5.8
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
 ;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
+;;; $Id$
 
-
+(require 'cl)
 
 ;;; See ilisp.el for more information.
 
 ;;;%Source file operations
-(if (not (boundp 'tags-file-name)) (defvar tags-file-name nil))
+(unless (boundp 'tags-file-name)
+  (defvar tags-file-name nil))
+
 (defvar lisp-last-definition nil "Last definition (name type) looked for.")
+
 (defvar lisp-last-file nil "Last used source file.")
+
 (defvar lisp-first-point nil "First point found in last source file.")
+
 (defvar lisp-last-point nil "Last point in last source file.")
+
 (defvar lisp-last-locator nil "Last source locator used.")
+
 (defvar lisp-search nil "Set to T when searching for definitions.")
+
 (defvar lisp-using-tags nil "Set to T when using tags.")
 
 ;;;%%lisp-directory
 (defvar lisp-edit-files t
-  "If T, then buffers in one of lisp-source-modes will be searched by
-edit-definitions-lisp if the source cannot be found through the
+  "Controls editing of of source files through Emacs' buffers.
+If T, then buffers in one of 'lisp-source-modes' will be searched by
+'edit-definitions-lisp' if the source cannot be found through the
 inferior LISP.  It can also be a list of files to edit definitions
 from set up by \(\\[lisp-directory]).  If it is set to nil, then no
 additional files will be searched.")
 
 ;;;
 (defun lisp-extensions ()
-  "Return a regexp for matching the extensions of files that enter one
-of lisp-source-modes according to auto-mode-alist."
+  "Return a regexp for matching file extensions.
+The extensions are those of files that enter one of
+'lisp-source-modes' according to 'auto-mode-alist'."
   (let ((entries auto-mode-alist)
 	(extensions nil))
-    (while entries
-      (let ((entry (car entries)))
-	(if (memq (cdr entry) lisp-source-modes)
-	    (setq extensions 
-		  (concat "\\|" (car entry) extensions))))
-      (setq entries (cdr entries)))
-  (substring extensions 2)))
+    (dolist (entry entries)
+      (when (memq (cdr entry) lisp-source-modes)
+	(setq extensions 
+	      (concat "\\|" (car entry) extensions))))
+    (substring extensions 2)))
 
 ;;;
 (defun lisp-directory (directory add)
-  "Edit the files in DIRECTORY that have an auto-mode alist entry in
-lisp-source-modes.  With a positive prefix, add the files on to the
-already existing files.  With a negative prefix, clear the list.  In
-either case set tags-file-name to nil so that tags are not used."
+  "Edit the files in DIRECTORY.
+The files must have an 'auto-mode' alist entry in 'lisp-source-modes'.
+With a positive prefix, add the files on to the already existing
+files.  With a negative prefix, clear the list.  In either case set
+tags-file-name to nil so that tags are not used."
   (interactive 
    (list (if (not (eq current-prefix-arg '-))
 	     (read-file-name "Lisp Directory: "
@@ -87,10 +86,12 @@ either case set tags-file-name to nil so that tags are not used."
 ;;;%%Utilities
 
 (defun fix-source-filenames ()
-  "Apply the ilisp-source-directory-fixup-alist to the current buffer
-   (which will be *Edit-Definitions*) to change any pre-compiled
-   source-file locations to point to local source file locations.  
-   See ilisp-source-directory-fixup-alist."
+  "Apply the 'ilisp-source-directory-fixup-alist' to the current buffer.
+(The buffer should be *Edit-Definitions*) The aim is to change any
+pre-compiledsource-file locations to point to local source file
+locations.
+
+See 'ilisp-source-directory-fixup-alist'."
   (let ((alist (ilisp-value 'ilisp-source-directory-fixup-alist t))
 	cons)
     (if alist
@@ -103,10 +104,15 @@ either case set tags-file-name to nil so that tags are not used."
 	    (setq alist (cdr alist)))))))
 
 (defun lisp-setup-edit-definitions (message edit-files)
-  "Set up *Edit-Definitions* with MESSAGE. If EDIT-FILES is T, insert
-all buffer filenames that are in one of lisp-source-modes into the
-current buffer.  If it is a list of files set up by lisp-directory,
-insert those in the buffer.  If it is a string put that in the buffer."
+  "Set up *Edit-Definitions* with MESSAGE.
+If EDIT-FILES is T, insert all buffer filenames that are in one of
+lisp-source-modes into the current buffer.  If it is a list of files
+set up by lisp-directory, insert those in the buffer.  If it is a
+string put that in the buffer."
+
+  ;; Note
+  ;; 19990804 Marco Antoniotti
+  ;; Are we sure we want to set 'lisp-using-tags' to nil?
   (setq lisp-using-tags nil
 	lisp-search (not (stringp edit-files)))
   (set-buffer (get-buffer-create "*Edit-Definitions*"))
@@ -148,8 +154,8 @@ insert those in the buffer.  If it is a string put that in the buffer."
 (defun lisp-locate-definition (locator definition file point 
 				       &optional
 				       back pop)
-  "Use LOCATOR to find the next DEFINITION (symbol . type) in FILE
-starting at POINT, optionally BACKWARDS and POP to buffer.  Return T
+  "Use LOCATOR to find the next DEFINITION (symbol . type) in FILE.
+Search starts at POINT, optionally BACKWARDS and POP to buffer.  Return T
 if successful."
   (if file 
       (if (not (file-exists-p file))
@@ -224,10 +230,11 @@ if successful."
 
 ;;;
 (defun lisp-next-definition (back pop)
-  "Go to the next definition from *Edit-Definitions* going BACK with
-prefix and POPPING.  Return 'first if found first time, 'none if no
-definition ever, T if another definition is found, and nil if no more
-definitions are found."
+  "Go to the next definition from *Edit-Definitions*.
+Movement is BACK with prefix and POPping.  Return 'first if found
+first time, 'none if no definition ever, T if another definition is
+found, and nil if no more definitions are found."
+
   (let ((done nil)
 	(result nil))
     (while
@@ -251,8 +258,9 @@ definitions are found."
 
 ;;;%%Next-definition
 (defun next-definition-lisp (back &optional pop)
-  "Edit the next definition from *Edit-Definitions* going BACK with
-prefix and optionally POPPING or call tags-loop-continue if using tags."
+  "Edit the next definition from *Edit-Definitions*.
+Movement is BACK with prefix and optionally POPping or call
+'tags-loop-continue' if using tags."
   (interactive "P")
   (if lisp-using-tags
       (tags-loop-continue)
@@ -274,11 +282,11 @@ prefix and optionally POPPING or call tags-loop-continue if using tags."
 
 ;;;%%Edit-definitions
 (defun edit-definitions-lisp (symbol type &optional stay search locator)
-  "Find the source files for the TYPE definitions of SYMBOL.  If STAY,
-use the same window.  If SEARCH, do not look for symbol in inferior
-LISP.  The definition will be searched for through the inferior LISP
-and if not found it will be searched for in the current tags file and
-if not found in the files in lisp-edit-files set up by
+  "Find the source files for the TYPE definitions of SYMBOL.
+If STAY, use the same window.  If SEARCH, do not look for symbol in
+inferior LISP.  The definition will be searched for through the
+inferior LISP and if not found it will be searched for in the current
+tags file and if not found in the files in lisp-edit-files set up by
 \(\\[lisp-directory]) or the buffers in one of lisp-source-modes if
 lisp-edit-files is T.  If lisp-edit-files is nil, no search will be
 done if not found through the inferior LISP.  TYPES are from
@@ -322,9 +330,19 @@ first type in ilisp-source-types."
     (unwind-protect
        (if (and tags-file-name (not source-ok))
 	   (progn (setq lisp-using-tags t)
-		  (if (string-match "Lucid" emacs-version)
-		      (find-tag symbol-name stay)
-		      (find-tag symbol-name nil stay))
+		  (cond 
+		   (search
+		    ;; Search through all files listed in tags table
+		    (setq tags-loop-scan (list locator
+					       (list 'quote symbol) 
+					       type t nil)
+			  tags-loop-operate nil)
+		    (tags-loop-continue t))
+		   (t
+		    ;; Use tags
+		    (if (string-match "Lucid" emacs-version)
+			(find-tag symbol-name stay)
+		      (find-tag symbol-name nil stay))))
 		  (setq tagged t)))
        (if (not tagged)
 	   (progn
@@ -351,12 +369,16 @@ first type in ilisp-source-types."
       (re-search-forward regexp nil t)))
 
 ;;;
+
 (defvar lisp-last-pattern nil "Last search regexp.")
+
 (defun search-lisp (pattern regexp)
-  "Search for PATTERN through the files in lisp-edit-files if it is a
-list and the current buffers in one of lisp-source-modes otherwise.
-If lisp-edit-files is nil, no search will be done.  If called with a
-prefix, search for regexp.  If there is a tags file, call tags-search instead."
+  "Search for PATTERN through the files or buffers.
+Search for file in 'lisp-edit-files' if it is a list or the
+current buffers in one of 'lisp-source-modes' otherwise.  If
+lisp-edit-files is nil, no search will be done.  If called with a
+prefix, search for regexp.  If there is a tags file, call 'tags-search'
+instead."
   (interactive
    (list (read-string (if current-prefix-arg 
 			  "Search for regexp: "
@@ -377,12 +399,14 @@ prefix, search for regexp.  If there is a tags file, call tags-search instead."
 
 ;;;%%Replacing
 (defvar lisp-last-replace nil "Last replace regexp.")
+
 (defun replace-lisp (old new regexp)
-  "Query replace OLD by NEW through the files in lisp-edit-files if it
-is a list and the current buffers in one of lisp-source-modes
-otherwise.  If lisp-edit-files is nil, no search will be done.  If
-called with a prefix, replace regexps.  If there is a tags file, then
-call tags-query-replace instead."
+  "Query replace OLD by NEW through the files or the current buffers.
+The query is done in 'lisp-edit-files' if it is a list and the current
+buffers in one of 'lisp-source-modes' otherwise.  If 'lisp-edit-files'
+is NIL, no search will be done.  If called with a prefix, replace
+regexps.  If there is a tags file, then call tags-query-replace
+instead."
   (interactive
    (let ((old (read-string (if current-prefix-arg
 			       "Replace regexp: "
@@ -393,28 +417,29 @@ call tags-query-replace instead."
 			    (format "Replace %s by: " old))
 			lisp-last-replace)
 	   current-prefix-arg)))
-  (if tags-file-name
-      (progn (setq lisp-using-tags t)
-	     (tags-query-replace (if regexp old (regexp-quote old))
-				 new))
-      (setq lisp-last-pattern old
-	    lisp-last-replace new)
-      (lisp-setup-edit-definitions 
-       (format "Replacing %s by %s:\n\n" old new)
-       lisp-edit-files)
-      (let (file)
-	(while (setq file (lisp-next-file nil))
-	  (lisp-find-file file)
-	  (let ((point (point)))
-	    (goto-char (point-min))
-	    (if (if regexp 
-		    (re-search-forward old nil t)
-		    (search-forward old nil t))
-		(progn (beginning-of-line)
-		       (if regexp
-			   (query-replace-regexp old new)
-			   (query-replace old new)))
-		(goto-char point)))))))
+  (cond (tags-file-name
+	 (setq lisp-using-tags t)
+	 (tags-query-replace (if regexp old (regexp-quote old))
+			     new))
+	(t
+	 (setq lisp-last-pattern old
+	       lisp-last-replace new)
+	 (lisp-setup-edit-definitions 
+	  (format "Replacing %s by %s:\n\n" old new)
+	  lisp-edit-files)
+	 (let ((file nil))
+	   (while (setq file (lisp-next-file nil))
+	     (lisp-find-file file)
+	     (let ((point (point)))
+	       (goto-char (point-min))
+	       (if (if regexp 
+		       (re-search-forward old nil t)
+		       (search-forward old nil t))
+		   (progn (beginning-of-line)
+			  (if regexp
+			      (query-replace-regexp old new)
+			      (query-replace old new)))
+		   (goto-char point))))))))
 
 ;;;%%Edit-callers
 (defvar lisp-callers nil 
@@ -422,8 +447,8 @@ call tags-query-replace instead."
 
 ;;;
 (defun who-calls-lisp (function &optional no-show)
-  "Put the functions that call FUNCTION into the buffer *All-Callers*
-and show it unless NO-SHOW is T.  Return T if successful."
+  "Put the functions that call FUNCTION into the buffer *All-Callers*.
+Show the buffer *All-Callers* unless NO-SHOW is T.  Return T if successful."
   (interactive 
    (let* ((function (lisp-defun-name))
 	  (symbol (lisp-buffer-symbol function)))
@@ -443,7 +468,7 @@ and show it unless NO-SHOW is T.  Return T if successful."
 		       (lisp-symbol-package function))
 	       (concat "Finding callers of " name)
 	       'callers)))
-	 (last-line (lisp-last-line callers))
+	 (last-line (if callers (lisp-last-line callers)))
 	 (case-fold-search t))
     (set-buffer (get-buffer-create "*All-Callers*"))
     (erase-buffer)
@@ -469,10 +494,11 @@ and show it unless NO-SHOW is T.  Return T if successful."
 
 ;;;
 (defun next-caller-lisp (back &optional pop)
-  "Edit the next caller from *All-Callers*.  With prefix, edit
-the previous caller.  If it can't get caller information from the
-inferior LISP, this will search using the current source files.  See
-lisp-directory."
+  "Edit the next caller from *All-Callers*.
+With prefix, edit the previous caller.  If it can't get caller
+information from the inferior LISP, this will search using the current
+source files.  See lisp-directory."
+
   (interactive "P")
   (if (not lisp-callers)
       (next-definition-lisp back pop)
@@ -495,8 +521,8 @@ lisp-directory."
 
 ;;;
 (defun edit-callers-lisp (function)
-  "Edit the callers of FUNCTION.  With a minus prefix use the symbol
-at the start of the current defun."
+  "Edit the callers of FUNCTION.
+With a minus prefix use the symbol at the start of the current defun."
   (interactive
    (let* ((function (lisp-defun-name)))
      (if (lisp-minus-prefix)
@@ -523,8 +549,8 @@ at the start of the current defun."
 
 ;;;
 (defun lisp-locate-ilisp (symbol type first back)
-  "Find SYMBOL's TYPE definition in the current file and return T if
-successful.  A definition is of the form
+  "Find SYMBOL's TYPE definition in the current file.
+Return T if successful.  A definition is of the form
 \(def<whitespace>(?name<whitespace>."
   (lisp-re back
 	   "^[ \t\n]*(def[^ \t\n]*[ \t\n]+(?%s[ \t\n(]+" 
@@ -538,6 +564,13 @@ successful.  A definition is of the form
 
 
 ;;;%%Common LISP
+
+;;; ilisp-cl-source-locater-patterns --
+;;;
+;;; Note:
+;;;
+;;; 19990804 Marco Antoniotti
+;;; The new ones (method and generic-fucntion) should be carefully checked.
 
 (defvar ilisp-cl-source-locater-patterns
   '((setf
@@ -560,13 +593,20 @@ successful.  A definition is of the form
 
     (class
      "^\\(.\\)?[ \t\n]*(defclass\\([ \t\n]+\\(.\\)?[ \t\n]*\\|[ \t\n]*.[ \t\n]+\\)%s[ \t\n(]")
+
+    (method
+     "^\\(.\\)?[ \t\n]*(defmethod\\([ \t\n]+\\(.\\)?[ \t\n]*\\|[ \t\n]*.[ \t\n]+\\)%s[ \t\n(]")
+
+    (generic-function
+     "^\\(.\\)?[ \t\n]*(defgeneric\\([ \t\n]+\\(.\\)?[ \t\n]*\\|[ \t\n]*.[ \t\n]+\\)%s[ \t\n(]")
     ))
 
 
 (defun ilisp-locate-clisp-defn (name type back)
-  (let ((pattern (car (cdr (assoc (intern type) ilisp-cl-source-locater-patterns)))))
-    (if pattern
-	(lisp-re back pattern name))))
+  (let ((pattern (car (cdr (assoc (intern type)
+				  ilisp-cl-source-locater-patterns)))))
+    (when pattern
+      (lisp-re back pattern name))))
 
 
 
@@ -600,9 +640,10 @@ successful.  A definition is of the form
 
 
 (defun lisp-locate-clisp (symbol type first back)
-  "Try to find SYMBOL's TYPE definition in the current buffer and return
-T if sucessful.  FIRST is T if this is the first time in a file.  BACK
-is T to go backwards."
+  "Try to find SYMBOL's TYPE definition in the current buffer.
+Return T if sucessful.  FIRST is T if this is the first time in a
+file.  BACK is T to go backwards."
+
   (let* ((name (regexp-quote (lisp-symbol-name symbol)))
 	 (prefix 
 	  ;; Automatically generated defstruct accessors
@@ -631,10 +672,51 @@ is T to go backwards."
      (ilisp-locate-clisp-defn name type back)
 
      ;; Standard def form
-     (if first (lisp-locate-ilisp symbol type first back))
+     (when first (lisp-locate-ilisp symbol type first back))
      ;; Automatically generated defstruct accessors
-     (if (and first prefix) (lisp-re back prefix))
+     (when (and first prefix) (lisp-re back prefix))
      ;; Defclass accessors
      (lisp-re back class name)
      ;; Give up!
      )))
+
+;;;%% Locators for Scheme
+
+;;; Matthias Koeppe <mail.math.uni-magdeburg.de>
+;;;
+;;; The standard locators would fail on "(define (thunk) ....)"  and
+;;; report "(define (procedure ...) ....)" as a call to procedure.
+
+(defun ilisp-locate-scheme-definition (symbol type first back)
+  "Find SYMBOL's TYPE definition in the current file. Return T if successful.
+This is the Scheme counterpart of `lisp-locate-ilisp'."
+  (lisp-re back
+	   "[ \t\n]*(def[^ \t\n]*[ \t\n]+(*%s\[ \t\n()]" 
+	   (regexp-quote (lisp-symbol-name symbol))))
+
+(defun ilisp-locate-scheme-calls (symbol type first back)
+  "Locate calls to SYMBOL.
+This is the Scheme counterpart of `lisp-locate-calls'."
+  (let ((call-regexp 
+	 (format "[( \t\n]+%s[ \t\n()]+"
+		 (regexp-quote 
+		  ;; Scheme has no package prefixes, so we use
+		  ;; lisp-symbol-name instead of lisp-buffer-symbol.
+		  (lisp-symbol-name symbol))))
+	(def-regexp "[ \t\n]*(def[^ \t\n]*[ \t\n]+(*")
+	(result 'unknown))
+    (while (eq result 'unknown)
+      (cond 
+       ((if back
+	    (re-search-backward call-regexp nil t)
+	  (re-search-forward call-regexp nil t))
+	(if (not (save-excursion	; check whether definition
+		   (goto-char (match-beginning 0))
+		   (backward-sexp) (backward-char)
+		   (looking-at def-regexp)))
+	    (setq result t)))
+       (t (setq result nil))))
+    result))	    
+
+
+;;; end of file -- ilisp-src.el --

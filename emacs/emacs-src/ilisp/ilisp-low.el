@@ -1,33 +1,15 @@
 ;;; -*- Mode: Emacs-Lisp -*-
 
 ;;; ilisp-low.el --
-
+;;; ILISP low level interface functions Lisp <-> Emacs.
+;;;
 ;;; This file is part of ILISP.
-;;; Version: 5.8
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
 ;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
-
-
-
-;;;
-;;; ILISP low level interface functions Lisp <-> Emacs
-;;;
-;;;
-
-
+;;; $Id$
 
 ;;;%Lisp mode extensions
 ;;;%%Sexps
@@ -62,7 +44,7 @@ symbol will be returned.  Optional NAMEP will return only the name without the d
 	 ;; (( \( (def*) (( \( (setf)) | \(?)) | \(?) (symbol)
 	 ;; 12    3    3 45    6    65      42      1 7      7
 	 ;;0011\(22 def*        22         32 43\(54 setf54         43   \(?32 11      00 60           60
-	 "\\(\\((\\(def[^ \t\n]*\\)[ \t\n]+\\(\\((\\(setf\\)[ \t\n]+\\)\\|(?\\)\\)\\|(?\\)\\([^ \t\n)]*\\)")
+	 "\\(\\((\\(def[^ \t\n]*\\)[ \t\n]+\\(\\((\\(setf\\)[ \t\n]+\\)\\|(*\\)\\)\\|(?\\)\\([^ \t\n)]*\\)")
 	(let ((symbol (buffer-substring (match-beginning 7) (match-end 7))))
 	  (if (match-end 6)
 	      (concat (if (not namep) 

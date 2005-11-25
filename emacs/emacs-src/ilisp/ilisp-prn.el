@@ -1,39 +1,22 @@
 ;;; -*- Mode: Emacs-Lisp -*-
 
 ;;; ilisp-prn.el --
-
+;;; ILISP paren handling.
+;;;
 ;;; This file is part of ILISP.
-;;; Version: 5.8
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
 ;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
-
-
-
-;;;
-;;;
-;;; ILISP paren handling
-;;;
-;;;
+;;; $Id$
 
 
 ;;;%Unbalanced parentheses
 (defun lisp-skip (end)
-  "Skip past whitespace, comments, backslashed characters and strings
-in the current buffer as long as you are before END.  This does move
-the point."
+  "Skip past whitespace, comments, backslashed characters and strings.
+The operation is done in the current buffer as long as we are before END.
+This does move the point."
   (if (< (point) end)
       (let ((comment (and comment-start (string-to-char comment-start)))
 	    (done nil)
@@ -53,8 +36,8 @@ the point."
 
 ;;;
 (defun lisp-count-pairs (begin end left-delimiter right-delimiter)
-  "Return the number of top-level pairs of LEFT-DELIMITER and
-RIGHT-DELIMITER between BEGIN and END.  If they don't match, the point
+  "Return the number of top-level pairs of LEFT-DELIMITER and RIGHT-DELIMITER.
+Counting is done only between BEGIN and END.  If they don't match, the point
 will be placed on the offending entry."
   (let ((old-point (point))
 	(sexp 0)
@@ -80,8 +63,8 @@ will be placed on the offending entry."
 
 ;;;
 (defun find-unbalanced-region-lisp (start end)
-  "Go to the point in region where LEFT-DELIMITER and RIGHT-DELIMITER
-become unbalanced.  Point will be on the offending delimiter."
+  "Go to the point where LEFT-DELIMITER and RIGHT-DELIMITER become unbalanced.
+Point will be on the offending delimiter within the region."
   (interactive "r")
   (lisp-count-pairs start end
 		    (string-to-char left-delimiter)
@@ -90,10 +73,12 @@ become unbalanced.  Point will be on the offending delimiter."
 
 ;;;
 (defun find-unbalanced-lisp (arg)
-  "Go to the point in buffer where LEFT-DELIMITER and RIGHT-DELIMITER
-become unbalanced.  Point will be on the offending delimiter.  If
-called with a prefix, use the current region."
+  "Go to the point where LEFT-DELIMITER and RIGHT-DELIMITER become unbalanced.
+Point will be on the offending delimiter in the buffer.
+If called with a prefix, use the current region."
   (interactive "P")
   (if arg
       (call-interactively 'find-unbalanced-region-lisp)
       (find-unbalanced-region-lisp (point-min) (point-max))))
+
+;;; end of file -- ilisp-prn.el --

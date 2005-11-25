@@ -1,40 +1,28 @@
 ;;; -*- Mode: Emacs-Lisp -*-
 
 ;;; ilisp-mnb.el --
-
+;;; ILISP Menu Setup.
+;;;
 ;;; This file is part of ILISP.
-;;; Version: 5.8
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
 ;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
+;;; $Id$
 
-
-
-
-;(require 'ilisp-key)
+(require 'ilisp-key)
 
 (defvar lisp-general-menu-map (make-sparse-keymap "Lisp")
   "Keymap for main LISP menu")
 
 
 (defkey-ilisp [menu-bar lisp]
-    (cons "Lisp" lisp-general-menu-map))
+  (cons "Lisp" lisp-general-menu-map))
 
 
 (defkey-ilisp [menu-bar lisp repair]
-    '("Repair Connection" . repair-ilisp))
+  '("Repair Connection" . repair-ilisp))
 
 (defkey-ilisp [menu-bar lisp reset]
     '("Reset Connection" . reset-ilisp))
@@ -109,25 +97,24 @@
   "Kludge to keep track whether the Inf. Lisp is active or not.")
 
 (defun ilisp-update-menu (status)
-  (if (eq status 'exit)
-      (progn
-	;; (setq ilisp-process-active-p nil)
-	(put 'macroexpand-lisp 'menu-enable 'ilisp-buffer)
-	(put 'macroexpand-1-lisp 'menu-enable 'ilisp-buffer)
-	(put 'set-package-lisp 'menu-enable 'ilisp-buffer)
-	(put 'arglist-lisp 'menu-enable 'ilisp-buffer)
-	(put 'documentation-lisp 'menu-enable 'ilisp-buffer)
-	(put 'inspect-lisp 'menu-enable 'ilisp-buffer)
-	(put 'describe-lisp 'menu-enable 'ilisp-buffer)
-	(put 'eval-defun-and-go-lisp 'menu-enable 'ilisp-buffer)
-	;; (put 'run-ilisp 'menu-enable '(and (null ilisp-buffer)
-	;;                                ilisp-process-active-p)
-	(put 'run-ilisp 'menu-enable (null ilisp-buffer))
-	(put 'reset-ilisp 'menu-enable 'ilisp-buffer)
-	(put 'repair-ilisp 'menu-enable 'ilisp-buffer)
-	)
-    ;; no-op otherwise
-    ))
+  (when (eq status 'exit)
+    ;; (setq ilisp-process-active-p nil)
+    (put 'macroexpand-lisp 'menu-enable 'ilisp-buffer)
+    (put 'macroexpand-1-lisp 'menu-enable 'ilisp-buffer)
+    (put 'set-package-lisp 'menu-enable 'ilisp-buffer)
+    (put 'arglist-lisp 'menu-enable 'ilisp-buffer)
+    (put 'documentation-lisp 'menu-enable 'ilisp-buffer)
+    (put 'inspect-lisp 'menu-enable 'ilisp-buffer)
+    (put 'describe-lisp 'menu-enable 'ilisp-buffer)
+    (put 'eval-defun-and-go-lisp 'menu-enable 'ilisp-buffer)
+    ;; (put 'run-ilisp 'menu-enable '(and (null ilisp-buffer)
+    ;;                                ilisp-process-active-p)
+    (put 'run-ilisp 'menu-enable (null ilisp-buffer))
+    (put 'reset-ilisp 'menu-enable 'ilisp-buffer)
+    (put 'repair-ilisp 'menu-enable 'ilisp-buffer)
+    )
+  ;; no-op otherwise
+  )
 
 ;;;(setplist 'lisp-command-menu nil)
 ;;;(def-menu 'lisp-command-menu
@@ -164,3 +151,5 @@
 ;;;  )
 
 (provide 'ilisp-mnb)
+
+;;; end of file -- ilisp-mnb.el --

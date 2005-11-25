@@ -1,30 +1,15 @@
 ;;; -*- Mode: Emacs-Lisp -*-
 
 ;;; ilisp-utl.el --
-
-;;; This file is part of ILISP.
-;;; Version: 5.8
-;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
-
-
-
-;;;
 ;;; ILISP misc tools.
 ;;;
+;;; This file is part of ILISP.
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
+;;;
+;;; $Id$
 
 (defun lisp-show-send (string)
   "Show STRING in the *ilisp-send* buffer."
@@ -39,8 +24,9 @@
 
 ;;;
 (defun lisp-slashify (string)
-  "Put string in the *ilisp-send* buffer, put backslashes before
-quotes and backslashes and return the resulting string."
+  "Put string in the *ilisp-send* buffer, backslashifying troublesome chars.
+I.e. put backslashes before quotes and backslashes and return the resulting
+string."
   (save-excursion
     (lisp-show-send string)
     (set-buffer "*ilisp-send*")
@@ -58,8 +44,8 @@ quotes and backslashes and return the resulting string."
 
 ;;;%%String
 (defun lisp-prefix-p (s1 s2)
-  "Returns t if S1 is a prefix of S2 considering all non alphanumerics
-as word delimiters."
+  "Returns t if S1 is a prefix of S2.
+It considers all non alphanumerics as word delimiters."
   (let ((len1 (length s1)))
     (and (<= len1 (length s2))
 	 (let ((start 0)
@@ -103,8 +89,8 @@ as word delimiters."
 	  "." extension))
 
 (defun ilisp-directory (file &optional dirs)
-  "Return the directory of DIRS that FILE is found in.  By default
-load-path is used for the directories."
+  "Return the directory of DIRS that FILE is found in.
+By default 'load-path' is used for the directories."
   (let* ((dirs (or dirs (cons "" load-path)))
 	 (dir (car dirs)))
     (while (and dir (not (file-exists-p (expand-file-name file dir))))
@@ -115,13 +101,25 @@ load-path is used for the directories."
 
 ;;; ilisp-update-status --
 ;;;
-;;; Note: changed in order to propagate the status change in the
-;;;       underlying process to the menu.
+;;; Notes:
+;;;
+;;; 19970412 Marco Antoniotti
+;;; Changed in order to propagate the status change in the
+;;; underlying process to the menu.
+;;;
+;;; 19990806 Martin Atzmueller
+;;; Added test for FEATUREP ILISP-EASY-MENU.
 
 (defun ilisp-update-status (status)
-  "Update process STATUS of the whole Ilisp system.
+  "Update process STATUS of the whole ILISP system.
 It updates the STATUS of the current buffer and let all lisp mode
 buffers know as well.  Also, do some 'exterior' things like make sure
 that the menubar is in a consistent state."
   (setq ilisp-status (if lisp-show-status (format " :%s" status)))
+;;   (when (and (not (member +ilisp-emacs-version-id+
+;; 			  '(xemacs lucid-19 lucid-19-new)))
+;; 	     (not (featurep 'ilisp-easy-menu)))
+;;     (ilisp-update-menu status))
   (comint-update-status status))
+
+;;; end of file -- ilisp-utl.el --

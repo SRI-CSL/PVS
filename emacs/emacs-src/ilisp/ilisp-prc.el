@@ -1,31 +1,17 @@
 ;;; -*- Mode: Emacs-Lisp -*-
 
 ;;; ilisp-prc.el --
-
+;;; ILISP process handling.
+;;;
 ;;; This file is part of ILISP.
-;;; Version: 5.8
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
 ;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
+;;; $Id$
 
 
-
-;;;
-;;; ILISP process handling
-;;;
-;;;
 (defun ilisp-process ()
   "Return the current ILISP process."
   (get-buffer-process (ilisp-buffer)))
@@ -51,12 +37,13 @@
       (or (get-buffer ilisp-buffer)
 	  (get-buffer
 	   (setq ilisp-buffers
-		 (lisp-del (substring ilisp-buffer 1 
-				      (1- (length ilisp-buffer)))
-			   ilisp-buffers 
-			   (function (lambda (s1 s2)
-				       (string= s1 (car s2)))))
-		 ilisp-buffer 
+		 (delete* (substring ilisp-buffer
+				     1 
+				     (1- (length ilisp-buffer)))
+			  ilisp-buffers 
+			  :test (function (lambda (s1 s2)
+					    (string= s1 (car s2)))))
+		 ilisp-buffer
 		 (format "*%s*" (car (car ilisp-buffers))))))))
 
 
@@ -73,3 +60,5 @@
 	      ilisp-buffers nil t)))
     (if (not (zerop (length new)))
 	(setq ilisp-buffer (format "*%s*" new)))))
+
+;;; end of file -- ilisp-prc.el --

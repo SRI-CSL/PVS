@@ -1,32 +1,19 @@
 ;;; -*- Mode: Lisp -*-
 
 ;;; ilisp-pkg.lisp --
-
-;;; This file is part of ILISP.
-;;; Version: 5.8
-;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
-
-
-
-;;; CLtL2 defpackage definition for ILISP.
+;;; ANSI CL DEFPACKAGE definition for ILISP.
 ;;;
 ;;; Common Lisp initializations
 ;;;
 ;;; Author: Marco Antoniotti, marcoxa@cs.nyu.edu
+;;;
+;;; This file is part of ILISP.
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
+;;;
+;;; $Id$
 
 ;;;----------------------------------------------------------------------------
 ;;; Prologue
@@ -54,32 +41,45 @@
 ;;; incorporate DEFPACKAGE in their standard builds.
 ;;; Marco Antoniotti <marcoxa@icsi.berkeley.edu> 19960715
 ;;;
+;;; "The use of keyword and uninterned symbol names in the package
+;;; definition is a result of internecine wars during the ANSI
+;;; definition process. The solution to make CL case insensitive and
+;;; have the reader use uppercase appears, with the power of
+;;; hindsight, short-sighted. However, the backwardly incompatible
+;;; solution provided by Franz Inc seems a sub-optimal fix."
+;;; 27 March 2002 Will Deakin
 
 #-(and nil gcl)
-(defpackage :ilisp (:use :lisp #+:CMU "CONDITIONS")
+(defpackage :ilisp (:nicknames :ILISP) (:use :common-lisp #+:CMU :conditions)
   ;; The following symbols should properly 'shadow' the inherited
   ;; ones.
-  (:export "ilisp-errors"
-	   "ilisp-save"
-	   "ilisp-restore"
-	   "ilisp-symbol-name"
-	   "ilisp-find-symbol"
-	   "ilisp-find-package"
-	   "ilisp-eval"
-	   "ilisp-compile"
-	   "ilisp-describe"
-	   "ilisp-inspect"
-	   "ilisp-arglist"
-	   "ilisp-documentation"
-	   "ilisp-macroexpand"
-	   "ilisp-macroexpand-1"
-	   "ilisp-trace"
-	   "ilisp-untrace"
-	   "ilisp-compile-file"
-	   "ilisp-casify"
-	   "ilisp-matching-symbols"
-	   "ilisp-callers"
-	   "ilisp-source-files")
+  (:export #:ilisp-errors
+           #:ilisp-save
+           #:ilisp-restore
+           #:ilisp-symbol-name
+           #:ilisp-find-symbol
+           #:ilisp-find-package
+           #:ilisp-eval
+           #:ilisp-compile
+           #:ilisp-describe
+           #:ilisp-inspect
+           #:ilisp-arglist
+           #:ilisp-documentation
+           #:ilisp-macroexpand
+           #:ilisp-macroexpand-1
+           #:ilisp-trace
+           #:ilisp-untrace
+           #:ilisp-compile-file-extension
+           #:ilisp-compile-file
+           #:ilisp-casify
+           #:ilisp-matching-symbols
+           #:ilisp-callers
+           #:ilisp-source-files
+           #:ilisp-print-info-message
+           #+:SBCL #:sbcl-trace
+           #+:CMU #:cmulisp-trace
+           #+(or :SBCL :CMU) #:source-file
+	   )
   )
 ;;; ILISP --
 

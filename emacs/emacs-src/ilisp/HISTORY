@@ -1,6 +1,203 @@
 # -*- Mode: Text -*-
 
 ILISP HISTORY
+===============================================================================
+Version: 5.12.
+
+Even Newer Version.
+
+Please refer to the ChangeLog entries to see what relevant changes
+have happened.  These changes include some help for Window users and
+other stuff involving so many cool changes that I'm going to give up
+now ;)
+
+===============================================================================
+Version: 5.11.
+
+New Version.
+
+Please refer to the ChangeLog entries to see what relevant changes
+have happened.  There are way too many changes.
+
+
+===============================================================================
+Version: 5.10.1.
+
+ILISP is on SOURCEFORGE!
+
+Fixes and enhancements since 5.9.4.
+
+Many.
+
+-- More CLish conventions for naming variables.
+   Note that 'ilisp-prefix' is now 'ilisp-*prefix*' . Check your ilisp
+   initializations in your .emacs or wherever you keep them.
+
+-- Better FSF compliance (see variable
+   'ilisp-*use-fsf-compliant-keybindings*')
+
+-- changed vars in ilisp-def:
+   ilisp-*prefix*
+   ilisp-*use-fsf-compliant-keybindings*
+   ilisp-*use-frame-for-output*
+   ilisp-*prefix-match*
+   ilisp-*version*
+   ilisp-*arglist-message-lisp-space-p*
+   ilisp-*use-frame-for-arglist-output-p*
+   ilisp-*enable-imenu-p*
+   ilisp-*enable-cl-easy-menu-p*
+   ilisp-*enable-scheme-easy-menu-p*
+   ilisp-*enable-ild-support-p*
+   ilisp-*use-hyperspec-interface-p*
+   ilisp-*use-fi-clman-interface-p*
+   ilisp-*directory*
+
+-- *.el: replaced vars.
+
+-- In ilisp-key: new custom: ilisp-bindings-*bind-space-p*:
+   if t bind #\SPACE to #'ilisp-arglist-message-lisp-space
+
+-- Changed vars in ilisp-out:
+   changed all sink's to ilisp-output-sink's
+   ilisp-*icon-file*   
+   ilisp-*last-ilisp-output-sink*
+
+-- doc/ilisp.texi: replaced found vars of above with their replacements.
+
+-- doc/ilisp.texi: documented the frame-p stuff, arglist-p stuff,
+   imenu-p stuff.
+
+-- doc/ilisp.texi: documented imenu.el, ilisp-imenu.el.
+
+-- ilisp-out.el & ilisp-chs.el: in ilisp-display-output-default: now
+   printing of error messages
+   in the lisp-listener should work!!
+   at least it works for clisp, as I found out.
+
+-- ilisp-def: new variable ilisp-*arglist-message-switch-back-p*
+
+-- ilisp-hi: in lisp-send-region: fixed a bug; we had multiple outputs despite
+   the fact that we should not have had that (eq switch 'result) => no display.
+
+-- sblisp.lisp: changed #'arglist; code is a adapted version of #'arglist in
+   cmulisp.lisp. did not work for (arglist 'make-array) for example.
+
+-- cl-ilisp: reformatting of last ) ) [oops! :)]
+             bugfix: special-operator-p replaced by special-form-p in
+             #'ilisp-print-info-message.
+             added support for ECL (ECLS).
+
+===============================================================================
+Version: 5.9.4.
+
+Fixes and enhancements since 5.9.3.
+
+-- Cleaned up CLisp support (a leftover glitch from a previous
+   'merge').
+
+-- Corrected a few typos here and there, especially in the
+   INSTALLATION file.
+
+-- the CL functions ILISP-DESCRIBE and ILISP-INSPECT try now to be a
+   little smarter regarding symbols.  The generic behavior implemented
+   in 'cl-ilisp.lisp' should be ok for many CL implementations (it
+   works beautifully with CMUCL), but it may need some tuning for
+   other ones.
+
+===============================================================================
+Version 5.9.3
+
+Fixes and enhancements since 5.9.1.
+
+-- Better treatment of CLisp.
+
+-- The #\Space (?Space) key is now bound to the
+   ILISP-ARGLIST-MESSAGE-LISP-SPACE function. In an ILISP buffer it
+   will give you the arglist associated with a function you are about
+   to type in.
+
+The main bug list of 5.9.1 is still in place.
+
+
+===============================================================================
+Version 5.9.2
+
+Fixes and enhancements since 5.9.1.
+
+5.9.2 is mainly a bug fix releases with some simple bugs fixed.  The
+main bug list of 5.9.1 is still in place.
+
+
+===============================================================================
+Version 5.9.1
+
+Fixes and enhancements since 5.9
+
+-- Documentation fixed.
+
+-- Wrong symlink in 'extra' directory fixed.
+
+-- Hopefully fixed most problems with 'ilisp-*-binary-extension's.
+   Not perfect, but it should work now thanks to Hannu Koivisto. See
+   file 'ilisp-cl.el'.
+
+-- README.CL-HS file removed from distribution.
+
+-- ild.mail file removed from distribution.
+
+-- Slightly changed 'Welcome' file.
+
+-- Many buglets fixed.
+
+Known Bugs
+
+-- When using different implementations within the same session of
+   (X)Emacs, it may happen that the by switching from one to the other
+   in sequence, some settings are not cleared correctly.
+   This bug has been reported by Hannu Koivisto using CLisp and CMUCL.
+
+-- Multiprocessing handling is not up to par to Franz ELI interface
+   when using Allegro.  Similar problems may appear in Harlequin
+   Lispworks and Liquid and in the experimental versions of CMUCL
+   floating around.
+
+===============================================================================
+Version 5.9
+
+The major change in this release concerns the new Home for ILISP at CONS.ORG.
+
+Fixes and enhancements since 5.8 alpha
+
+-- Changed behavior of package definitions in buffers thanks to Martin
+   Atzmueller.  Now (DEFPACKAGE "ZUT" ...) (IN-PACKAGE "ZUT") works as
+   expected/desired.
+
+-- New Menus (thanks to Martin Atzmueller).
+
+-- Major Change for toplevel dialect: it is now called 'common-lisp'
+   (it used to be 'clisp'). Note however, that for the time being, the
+   name of the CLISP dialect remains 'clisp-hs'.
+
+-- Many bug fixes to CLISP dialect.
+
+-- The 'hyperspec' package and new 'ilisp-easy-menus' are distributed
+   with ILISP.  They are not loaded by default.
+
+-- Fixed loading of compatibility files for Emacs 20.xx.
+
+-- Fixed compilation and loading of 'ilisp-chs'.
+
+-- Fixed missing EXCL::FN_SYMDEF in ACL 5.0 (Larry Hunter)
+
+-- ILD Debugger interface by J. M. Siskind has been integrated in the
+   dialect definitions.  Please report any problems you may have with
+   it.
+
+-- Changed default binding for 'clisp-hs-program' form "clisp" to "clisp -I"
+   to account for buffer flushing behavior of this implementation.
+
+-- Added several Scheme dialects (thanks to Christian Lynbech).
+
 
 ===============================================================================
 Version 5.8 alpha
@@ -21,7 +218,7 @@ Fixes and enhancements since 5.7
 
 -- The file ILISP.prj (if present) can be safely ignored unless you
    want to use the PRCS project control system
-   (http://http.cs.berkeley.edu/~jmacd/prcs-home.html)
+   (http://xcf.berkeley.edu/~jmacd/prcs.html)
 
 -- Changed 'comint-ipc' and 'bridge'. They now use
    'process-send-string' instead of defining specialized versions of

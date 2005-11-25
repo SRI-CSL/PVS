@@ -8,9 +8,9 @@
 ;;; IPC extensions for comint
 ;;; Copyright (C) 1990 Chris McConnell, ccm@cs.cmu.edu.
 ;;;
-;;; Send mail to ilisp@naggum.no if you have problems.
+;;; Send mail to ilisp@cons.org if you have problems.
 ;;;
-;;; Send mail to ilisp-request@naggum.no if you want to be on the
+;;; Send mail to majordomo@cons.org if you want to be on the
 ;;; ilisp mailing list.
 
 ;;; This file is part of GNU Emacs.
@@ -50,8 +50,8 @@
 
 ;;;%Parameters
 (defvar comint-log nil
-  "If T, then record all process input and output in a buffer called
-process name.")
+  "If T, then record all process input and output in a buffer.
+The name of the buffer is the process name.")
 
 (defvar comint-send-newline t 
   "If T then add a newline to string in comint-default-send.")
@@ -175,16 +175,16 @@ is put in the send stream.")
 	(substring string start end))))
 
 ;;;
-;(defun comint-log (process string &optional output)
-;  "Log to PROCESS, STRING marking as optional OUTPUT."
-;  (if comint-log
-;      (save-excursion
-;	(set-buffer (get-buffer-create (process-name process)))
-;	(goto-char (point-max))
-;	(if output
-;	    (progn
-;	      (insert "{") (insert string) (insert "}"))
-;	    (insert string)))))
+;; (defun comint-log (process string &optional output)
+;;   "Log to PROCESS, STRING marking as optional OUTPUT."
+;;   (if comint-log
+;;       (save-excursion
+;; 	(set-buffer (get-buffer-create (process-name process)))
+;; 	(goto-char (point-max))
+;; 	(if output
+;; 	    (progn
+;; 	      (insert "{") (insert string) (insert "}"))
+;; 	    (insert string)))))
 
 (defvar comint-log-size 15000)
 (defvar comint-log-verbose t)
@@ -206,7 +206,6 @@ is put in the send stream.")
 	(if (> (buffer-size) comint-log-size)
 	    (delete-region (point-min) (- (buffer-size) comint-log-size))))))
 
-
 ;;; v5.7b Removed by suggestion of erik@naggum.no (Erik Naggum).
 
 ;;; (defun comint-send-string (proc str)
@@ -226,14 +225,15 @@ is put in the send stream.")
 ;;; 	(setq i next-i)))))
 
 ;;; v5.7b See above
-;(defun comint-sender (process string)
-;  "Send to PROCESS STRING with newline if comint-send-newline."
-;  ;; (comint-send-string process string)
-;  (process-send-string process string)
-;  (if comint-send-newline
-;      (progn
-;	(comint-log process "\n")
-;	(process-send-string process "\n"))))
+;; (defun comint-sender (process string)
+;;   "Send to PROCESS STRING with newline if comint-send-newline."
+;;   ;; (comint-send-string process string)
+;;   (comint-log process string)
+;;   (process-send-string process string)
+;;   (if comint-send-newline
+;;       (progn
+;; 	(comint-log process "\n")
+;; 	(process-send-string process "\n"))))
 
 (defun comint-sender (process string)
   "Send to PROCESS STRING with newline if comint-send-newline."
@@ -360,6 +360,7 @@ returned."
     (beep t)
     (comint-display-error output)
     (set-buffer comint-original-buffer)
+    ;; owre - added this extra test for XEmacs
     (unless (memq +ilisp-emacs-version-id+ '(xemacs-20 xemacs-19))
       (while (not (sit-for delay nil))
 	(execute-kbd-macro (read-key-sequence nil))))
@@ -369,6 +370,7 @@ returned."
 	  (echo-keystrokes 0)
 	  char)
       (while (progn (message prompt)
+		    ;; owre - added XEmacs test
 		    (if (memq +ilisp-emacs-version-id+ '(xemacs-20 xemacs-19))
 			(let ((event (next-command-event)))
 			  (setq char
@@ -380,8 +382,9 @@ returned."
 				(if (integerp event)
 				    (downcase event)
 				    0))))
+		    ;; owre - added extra test
 		    (not (memq char keys)))
-	(if (= char ? )
+	(if (= char ? ) 
 	    (ilisp-scroll-output)
 	    (setq quit-flag nil)
 	    (beep)))
@@ -449,7 +452,7 @@ comint-send or comint-default-send, or results will be mixed up."
 	 (message (car messagep))
 	 (wait-p (car wait-p))
 	 (sync (stringp wait-p)))
-    ;;; (comint-log process output t)   ;; leave logging up to PVS
+    ;; (comint-log process output t)  ;; leave logging up to PVS
     ;; Remove leading whitespace
     (if (and (null old-result)
 	     (save-excursion (goto-char (process-mark process)) (bolp))
@@ -496,30 +499,30 @@ comint-send or comint-default-send, or results will be mixed up."
 			       (string-match comint-error-regexp
 					     comint-output))))
 		(unwind-protect
-		     ;; (if handler
-		     ;;	    (setq handler
-		     ;;		 (funcall handler comint-errorp wait-p
-		     ;;		          message output last)))
+		    ;; (if handler
+		    ;;	    (setq handler
+		    ;;		 (funcall handler comint-errorp wait-p
+		    ;;		          message output last)))
 
-		     ;; v5.7b Patch suggested by fujieda@jaist.ac.jp
-		     ;; (Kazuhiro Fujieda). Here is his comment.
+		    ;; v5.7b Patch suggested by fujieda@jaist.ac.jp
+		    ;; (Kazuhiro Fujieda). Here is his comment.
 
-		     ;; "When the 'handler' is called, the current
-		     ;; buffer may be changed. 'comint-process-filter'
-		     ;; accesses some buffer-local variables, for
-		     ;; example 'comint-send-queue' and
-		     ;; 'comint-end-queue'.  If the current buffer is
-		     ;; changed in the 'handler', the entities of
-		     ;; these buffer-local variables is replaced, and
-		     ;; corrupt successive behaviors."
+		    ;; "When the 'handler' is called, the current
+		    ;; buffer may be changed. 'comint-process-filter'
+		    ;; accesses some buffer-local variables, for
+		    ;; example 'comint-send-queue' and
+		    ;; 'comint-end-queue'.  If the current buffer is
+		    ;; changed in the 'handler', the entities of
+		    ;; these buffer-local variables is replaced, and
+		    ;; corrupt successive behaviors."
 
-		     ;; The code hereafter fixes the problem.
-
-		     (if handler
-			 (save-excursion
-			   (setq handler
-				 (funcall handler comint-errorp wait-p
-					  message output last))))
+		    ;; The code hereafter fixes the problem.
+		    
+		    (if handler
+			(save-excursion
+			  (setq handler
+				(funcall handler comint-errorp wait-p
+					 message output last))))
 
 		  (if (and error handler no-insert comint-fix-error)
 		      (setq comint-send-queue 
@@ -546,13 +549,15 @@ comint-send or comint-default-send, or results will be mixed up."
 			      (rplaca messagep "Done")
 			      (rplaca running nil)
 			      (comint-dispatch-send process))))
-		      ;; Not waiting
-		      (rplaca messagep "Done")
-		      (rplaca running nil)
-		      (comint-dispatch-send process))))
-	      (rplacd result nil))))
+		    ;; Not waiting
+		    (rplaca messagep "Done")
+		    (rplaca running nil)
+		    (comint-dispatch-send process))))
+	    (rplacd result nil))))
     (store-match-data match-data)
-    (set-buffer comint-original-buffer)))
+    (if (or (get-buffer-window comint-original-buffer)
+	    (eq (window-buffer (minibuffer-window)) comint-original-buffer))
+	(set-buffer comint-original-buffer))))
 
 ;;;
 (defun comint-dispatch-send (process)
@@ -791,12 +796,6 @@ of the interrupt text in output using comint-interrupt-regexp to find it."
 	   (ok nil))
       (setq comint-aborting nil)
       (if (and top-level (or (stringp wait) prompt))
-	  ; the following were here in pvs-ilisp-mods.
-	  ; not sure if they are necessary now...
-	  ;(equal comint-status " :ready")
-	  ;(or (stringp wait) prompt comint-queue-emptied)
-	  ;
-	  
 	  (progn
 	    (setq comint-send-queue (cons send comint-send-queue))
 	    (comint-dispatch-send process))
