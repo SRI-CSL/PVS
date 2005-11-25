@@ -106,22 +106,35 @@ beginning of the previous one."
 	nil)))
 
 (defun current-theory-region ()
-  (let ((case-fold-search t))
-    (save-match-data
-      (unless (= (point) (point-max))
-	(forward-char 1))
-      (backward-theory t)
-      (unless (beginning-of-theory)
-	(error "Can't determine theory boundaries"))
-      (looking-at "\\w+")
-      (let ((start (point))
-	    (th-id (buffer-substring (match-beginning 0) (match-end 0))))
-	(find-theory-or-datatype-forward)
-	(unless (beginning-of-theory (point))
-	  (goto-char (point-max)))
-	(if (< start (point))
-	    (list th-id start (point))
-	    nil)))))
+  (or (current-prelude-theory-region)
+      (let ((case-fold-search t))
+	(save-match-data
+	  (unless (= (point) (point-max))
+	    (forward-char 1))
+	  (backward-theory t)
+	  (unless (beginning-of-theory)
+	    (error "Can't determine theory boundaries"))
+	  (looking-at "\\w+")
+	  (let ((start (point))
+		(th-id (buffer-substring (match-beginning 0) (match-end 0))))
+	    (find-theory-or-datatype-forward)
+	    (unless (beginning-of-theory (point))
+	      (goto-char (point-max)))
+	    (if (< start (point))
+		(list th-id start (point))
+		nil))))))
+
+(defun current-prelude-theory-region ()
+  (let ((prelude-file (format "%s/lib/prelude.pvs" pvs-path)))
+    (when (file-equal (buffer-file-name) prelude-file)
+      (let ((prelude-regions
+	     (cdr (assoc prelude-file *prelude-files-and-regions*))))
+	(while (and prelude-regions
+		    (< (caddr (car prelude-regions)) (point)))
+	  (pop prelude-regions))
+	(car prelude-regions)))))
+      
+      
 
 (defun theory-regions ()
   (when (current-pvs-file t)
@@ -991,8 +1004,8 @@ The save-pvs-file command saves the PVS file of the current buffer."
 					      nil nil 'list))
 	 (file (current-pvs-file t))
 	 (current-theories (pvs-current-theories)))
-;;    (when (not (consp dir-and-theories))
-;;      (error "collect-theories did not return a list"))
+    ;;    (when (not (consp dir-and-theories))
+    ;;      (error "collect-theories did not return a list"))
     (setq *pvs-current-directory* (car dir-and-theories))
     (setq *pvs-theories*
 	  (append current-theories
@@ -1001,10 +1014,19 @@ The save-pvs-file command saves the PVS file of the current buffer."
 		    (cdr dir-and-theories))))))
 
 (defun pvs-current-theories ()
-  (let* ((cur-file (current-pvs-file t))
-	 (cur-theories (when cur-file (buffer-theories))))
-    (when cur-theories
-      (mapcar '(lambda (th) (list th cur-file)) cur-theories))))
+  (or (pvs-current-prelude-theories)
+      (let* ((cur-file (current-pvs-file t))
+	     (cur-theories (when cur-file (buffer-theories))))
+	(when cur-theories
+	  (mapcar '(lambda (th) (list th cur-file)) cur-theories)))))
+
+(defun pvs-current-prelude-theories ()
+  (let ((prelude-file (format "%s/lib/prelude.pvs" pvs-path)))
+    (when (file-equal (buffer-file-name) prelude-file)
+      (let ((prelude-regions
+	     (cdr (assoc prelude-file *prelude-files-and-regions*))))
+	(mapcar 'car prelude-regions)))))
+
 
 (defun force-completing-read (prompt list)
   (let ((val (completing-read prompt (mapcar 'list list) nil t)))
@@ -1560,16 +1582,15 @@ Point will be on the offending delimiter."
 		 (let ((standard-output logbuf)
 		       (expected-list (pvs-expected-output-regexps
 				       pvs-expected-output))
-		       (last-point (point-min)))
+		       (last-point (point-min))
+		       (count 0))
 		   (dolist (exp expected-list)
 		     (pvs-message "Checking for%s expected output"
 		       (if (null (cdr expected-list))
 			   ""
-			   (let ((pos (position exp expected-list
-						:test 'equal)))
-			     (case pos
-			       (0 " 1st") (1 " 2nd") (2 " 3rd")
-			       (t (format " %dth" (+ pos 1)))))))
+			   (case (incf count)
+			     (1 " 1st") (2 " 2nd") (3 " 3rd")
+			     (t (format " %dth" count)))))
 		     (let ((foundit nil))
 		       (save-excursion
 			 (goto-char last-point)
