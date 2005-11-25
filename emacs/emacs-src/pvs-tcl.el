@@ -105,6 +105,7 @@
 ;;; out of order.  Instead, it appends the output to the string
 ;;; which is currently being processed by the top-level pvs-process-filter.
 (defun pvs-tcl-process-filter (process output)
+  (comint-log process (format "\nrec:{%s}\n" output))
   (if *pvs-tcl-recursive-process-filter*
       (setq *pvs-tcl-process-output* (concat *pvs-tcl-process-output* output))
       (let ((*pvs-tcl-recursive-process-filter* t))
