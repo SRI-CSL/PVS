@@ -16,6 +16,8 @@
 
 (defvar *skip-tcc-check-exprs* nil)
 
+(defvar *checking-implicit-conversion* nil)
+
 ;;; check-for-tccs is called by set-type when the type is already set, but
 ;;; TCCs need to be checked for.  Thus it is effectively called from the
 ;;; prover.  This is similar to what typecheck and set-type do, but
@@ -40,6 +42,12 @@
       (call-next-method)))
 
 (defmethod check-for-tccs* :around ((ex expr) expected)
+  (unless (compatible? (type ex) expected)
+    (if *checking-implicit-conversion*
+	(type-error *checking-implicit-conversion*
+	  "Incompatible types for ~a~%     Found: ~a~%  Expected: ~a"
+	  ex (type ex) expected *checking-implicit-conversion*)
+	(type-incompatible ex (list (type ex)) expected)))
   (call-next-method)
   (unless (or (typep ex '(or branch lambda-expr update-expr))
 	      (memq ex *skip-tcc-check-exprs*))
@@ -171,6 +179,10 @@
   (declare (ignore expected))
   (with-slots (id argument) expr
     (check-for-tccs* (argument expr) (type argument))))
+
+(defmethod check-for-tccs* :around ((expr implicit-conversion) expected)
+  (let ((*checking-implicit-conversion* expr))
+    (call-next-method)))
 
 (defmethod check-for-tccs* ((expr application) expected)
   (declare (ignore expected))
@@ -468,16 +480,18 @@
     (multiple-value-bind (cargs cvalues rem-args rem-values)
 	(collect-same-first-fun-assignment-args args-list values)
       (dolist (arg cargs)
-	(mapc #'check-for-tccs* (car arg) (domain-types* domain)))
+	(check-tup-types (car arg) (domain-types* domain)))
       (let ((arg (when (caar cargs) (make!-arg-tuple-expr* (caar cargs)))))
 	(check-assignment-arg-types*
 	 (mapcar #'cdr cargs)
 	 cvalues
-	 (when ex
+	 (when (and ex arg)
 	   (make!-application ex arg))
-	 (if (dep-binding? domain)
-	     (substit range (acons domain arg nil))
-	     range)))
+	 (if arg
+	     (if (dep-binding? domain)
+		 (substit range (acons domain arg nil))
+		 range)
+	     funtype)))
       (check-assignment-fun-arg-types rem-args rem-values ex domain range))))
 
 (defun check-assignment-update-arg-types (args-list values ex expected)
@@ -614,6 +628,11 @@
 (defmethod check-for-tccs* ((te funtype) expected)
   (with-slots (domain range) te
     (check-for-tccs* domain expected)
+;;     (if (dep-binding? domain)
+;; 	(let* ((bd (make-bind-decl (id domain) (type domain)))
+;; 	       (*tcc-conditions* (cons bd *tcc-conditions*)))
+;; 	  (check-for-tccs* (substit range (acons domain bd nil)) expected))
+;; 	(check-for-tccs* range expected))
     (check-for-tccs* range expected)))
 
 (defmethod check-for-tccs* ((te dep-binding) expected)
