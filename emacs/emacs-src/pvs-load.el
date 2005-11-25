@@ -276,30 +276,9 @@ get to the same state."
 	(make-local-variable 'kill-buffer-hook)
 	(setq kill-buffer-hook (list 'dont-kill-pvs-buffer))
 	(set-syntax-table pvs-mode-syntax-table))
-      (pvs-send-and-wait "(progn (in-package \"PVS\") nil)" nil nil 'dont-care)
-      (sleep-for 1)
       (load (format "patch%d" (pvs-major-version-number)) t t)
       (setq debug-on-error nil)
-      (let ((comint-log nil))
-	(pvs-send-and-wait
-	 (format "(progn (setq *pvs-path* \"%s\")
-                     (setq *pvs-emacs-interface* t)
-                     (pvs-init nil %s)
-                     (setq *noninteractive* %s)
-                     (setq *noninteractive-timeout* %s)
-                     (setq *pvs-verbose* %d)
-                     (setq *force-dp* %s)
-                     (when '%s
-                       (set-decision-procedure '%s)))"
-	     pvs-path (equal (pvs-getenv "PVSMINUSQ") "-q")
-	     noninteractive (pvs-getenv "PVSTIMEOUT")
-	     pvs-verbose
-	     (pvs-getenv "PVSFORCEDP")
-	     (pvs-getenv "PVSDEFAULTDP")
-	     (pvs-getenv "PVSDEFAULTDP"))
-	 nil nil 'dont-care))
       (setq *pvs-version-information* nil)
-      (sleep-for 1)
       ;; sets *pvs-current-directory* and pops up the welcome buffer
       (condition-case ()
 	  (init-change-context *pvs-current-directory*)
