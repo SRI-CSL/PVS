@@ -1,36 +1,19 @@
 ;;; -*- Mode: Emacs-Lisp -*-
 
 ;;; ilisp-cmp.el --
-
-;;; This file is part of ILISP.
-;;; Version: 5.8
-;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
-
-
-
-;;;
 ;;; ILISP completion
-;;;
-;;;
-;;;%Completion
 ;;; The basic idea behind the completion stuff is to use as much of
 ;;; the standard Emacs stuff as possible.  The extensions here go out
 ;;; to the inferior LISP to complete symbols if necessary.  
-;;; 
+;;;
+;;; This file is part of ILISP.
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
+;;;
+;;; $Id$
+
 (defun ilisp-display-choices (symbol choices)
   "Display the possible choices for SYMBOL in alist CHOICES."
   (with-output-to-temp-buffer "*Completions*"
@@ -53,49 +36,57 @@
 
 ;;;%%ilisp-complete
 (defun ilisp-complete (symbol &optional function-p)
-  "Return a list of the possible completions for symbol from the
-inferior LISP.  If FUNCTION-P is T, only symbols with function
-bindings will be considered.  If no package is specified the buffer
-package will be used."
-  (let* ((choices 
+  "Return the possible completions for symbol from the inferior LISP.
+The type of the result is a list.  If FUNCTION-P is T, only symbols
+with function bindings will be considered.  If no package is specified
+the buffer package will be used."
+  (let* ((choices-string
 	  (ilisp-send 
 	   (format  (ilisp-value 'ilisp-complete-command) 
 		    (lisp-symbol-name symbol) (lisp-symbol-package symbol)
 		    function-p
 		    (string= (lisp-symbol-delimiter symbol) ":")
-		    ilisp-prefix-match)
+		    ilisp-*prefix-match*)
 	   (if (not ilisp-complete)
 	       (concat "Complete " 
 		       (if function-p "function ")
 		       (lisp-buffer-symbol symbol)))
-	   'complete)))
-    (if (ilisp-value 'comint-errorp t)
-	(progn (lisp-display-output choices)
-	       (error "Error completing %s" (lisp-buffer-symbol symbol)))
-	(setq choices (read choices)
-	      choices (if (eq choices 'NIL) nil choices)))
+	   'complete))
+	 choices)
+    (if (or (ilisp-value 'comint-errorp t)
+	    (ignore-errors (string-match ilisp-error-regexp choices-string)))
+	(setq choices 'error)
+      (setq choices (read choices-string)
+	    choices (if (eq choices 'NIL) nil choices)))
+    (unless (listp choices)
+      (lisp-display-output choices-string)
+      (error "Error completing %s" (lisp-buffer-symbol symbol)))
     (setq ilisp-original symbol
 	  ilisp-original-function-p function-p
 	  ilisp-original-table choices)))
 
 ;;;%%ilisp-completion-table
 (defun ilisp-completion-table (symbol function-p)
-  "Return the completion table for SYMBOL trying to use the current
-one.  If FUNCTION-P is T, only symbols with function cells will be
-returned."
+  "Return the completion table for SYMBOL trying to use the current one.
+If FUNCTION-P is T, only symbols with function cells will be returned."
   (if (ilisp-can-complete symbol function-p) 
       ilisp-original-table
       (ilisp-complete symbol function-p)))
 
 ;;;%%Minibuffer completion
 (defun ilisp-restore-prefix ()
-  "Restore the prefix from ilisp-mini-prefix at the start of the
-minibuffer."
+  "Restore the prefix from ilisp-mini-prefix at the start of the minibuffer."
   (if ilisp-mini-prefix
       (save-excursion
-	(goto-char (point-min))
+	(goto-char (ilisp-minibuffer-prompt-end))
 	(insert ilisp-mini-prefix)
 	(setq ilisp-mini-prefix nil))))
+
+;;; Support for Emacs 21 minibuffer prompt
+(defun ilisp-minibuffer-prompt-end ()
+  (if (fboundp 'minibuffer-prompt-end)
+      (minibuffer-prompt-end)
+    (point-min)))	       
 
 ;;;
 (defun ilisp-current-choice ()
@@ -103,7 +94,7 @@ minibuffer."
 If there is a paren at the start of the minibuffer, or there is not an
 ilisp-table, this will be from the inferior LISP.  Otherwise, it will
 be the ilisp-table."
-  (if (or (null ilisp-table) (eq (char-after 1) ?\())
+  (if (or (null ilisp-table) (eq (char-after (ilisp-minibuffer-prompt-end)) ?\())
       (progn
 	(let* ((symbol-info (lisp-previous-symbol))
 	       (symbol (car symbol-info)))
@@ -111,8 +102,8 @@ be the ilisp-table."
 		(ilisp-completion-table symbol ilisp-completion-function-p)))
 	(save-excursion 
 	  (skip-chars-backward "^: \(")
-	  (setq ilisp-mini-prefix (buffer-substring (point-min) (point)))
-	  (delete-region (point-min) (point)))
+	  (setq ilisp-mini-prefix (buffer-substring (ilisp-minibuffer-prompt-end) (point)))
+	  (delete-region (ilisp-minibuffer-prompt-end) (point)))
 	;; Nothing can match this table
 	(if (not minibuffer-completion-table)
 	    (setq minibuffer-completion-table '((" ")))))
@@ -145,7 +136,7 @@ be the ilisp-table."
 (defun ilisp-completion-word ()
   "Inferior LISP minibuffer complete word."
   (interactive)
-  (if (eq (char-after 1) ?\()
+  (if (eq (char-after (ilisp-minibuffer-prompt-end)) ?\()
       (insert " ")
       (ilisp-current-choice)
       (funcall ilisp-completion-word)
@@ -156,7 +147,7 @@ be the ilisp-table."
   "Only allow a paren if ilisp-paren is T."
   (interactive)
   (if ilisp-paren 
-      (if (or (eq last-input-char ?\() (eq (char-after 1) ?\())
+      (if (or (eq last-input-char ?\() (eq (char-after (ilisp-minibuffer-prompt-end)) ?\())
 	  (insert last-input-char)
 	  (beep))
       (beep)))
@@ -167,12 +158,12 @@ be the ilisp-table."
 (defun ilisp-completion-exit ()
   "Inferior LISP completion complete and exit."
   (interactive)
-  (if (eq (char-after 1) ?\()
+  (if (eq (char-after (ilisp-minibuffer-prompt-end)) ?\()
       (progn (find-unbalanced-lisp nil)
 	     (exit-minibuffer))
       (if ilisp-no-complete
 	  (exit-minibuffer)
-	  (if (= (point-min) (point-max))
+	  (if (= (ilisp-minibuffer-prompt-end) (point-max))
 	      (exit-minibuffer)
 	      (ilisp-current-choice)
 	      (unwind-protect (funcall ilisp-completion-exit)
@@ -180,30 +171,31 @@ be the ilisp-table."
 
 ;;;%%ilisp-completer
 (defun ilisp-completer (symbol function-p)
-  "Complete SYMBOL from the inferior LISP using only function symbols
-if FUNCTION-P is T.  Return (SYMBOL LCS-SYMBOL CHOICES UNIQUEP)."
+  "Complete SYMBOL from the inferior LISP.
+If FUNCTION-P is T, only function symbols are returned.
+Return (SYMBOL LCS-SYMBOL CHOICES UNIQUEP)."
   (let* ((name (lisp-symbol-name symbol))
 	 (table (ilisp-completion-table symbol function-p))
 	 (choice (and table (try-completion name table))))
-    (cond ((eq choice t)		;Name is it
+    (cond ((eq choice t)		; Name is it
 	   (list symbol symbol nil t))
-	  ((string= name choice)	;Name is LCS
+	  ((string= name choice)	; Name is LCS
 	   (list symbol symbol (all-completions name table) nil))
-	  (choice			;New LCS
+	  (choice			; New LCS
 	   (let ((symbol
 		  (lisp-symbol (lisp-symbol-package symbol) 
 			       (lisp-symbol-delimiter symbol)
 			       choice)))
 	     (list symbol symbol (all-completions choice table) nil)))
-	  ((and (not ilisp-prefix-match) table)	;Try partial matches
+	  ((and (not ilisp-*prefix-match*) table)	;Try partial matches
 	   (let ((matches
 		  (completer name table nil (regexp-quote completer-words))))
 	     (cons (lisp-symbol (lisp-symbol-package symbol)
 				(lisp-symbol-delimiter symbol)
 				(car matches))
 		   (cons  (lisp-symbol (lisp-symbol-package symbol)
-				(lisp-symbol-delimiter symbol)
-				(car (cdr matches)))
+				       (lisp-symbol-delimiter symbol)
+				       (car (cdr matches)))
 			  (cdr (cdr matches)))))))))
 
 
@@ -234,9 +226,9 @@ readers and return it."
 
 ;;;
 (defun ilisp-read (prompt &optional initial-contents)
-  "PROMPT in the minibuffer with optional INITIAL-CONTENTS and return
-the result.  Completion of symbols though the inferior LISP is
-allowed."
+  "PROMPT in the minibuffer and return the result.
+The optional INITIAL-CONTENTS may be specified as an initial value
+Completion of symbols though the inferior LISP is allowed."
   (let ((ilisp-complete t)
 	(ilisp-paren t)
 	(ilisp-no-complete t)
@@ -248,26 +240,27 @@ allowed."
 (defvar lisp-program-map nil
   "Minibuffer map for reading a program and arguments.")
 
+
 ;;;
 (defun lisp-read-program (prompt &optional initial)
-  "Read a program with PROMPT and INITIAL.  TAB or Esc-TAB will complete
-filenames."
-  (if (null lisp-program-map)
-      (progn 
-	(if (fboundp 'set-keymap-parent)
-	    (progn
-	      (setq lisp-program-map (make-sparse-keymap))
-	      (set-keymap-parent lisp-program-map minibuffer-local-map))
-	  (setq lisp-program-map (copy-keymap minibuffer-local-map)))
-	(define-key lisp-program-map "\M-\t" 'comint-dynamic-complete)
-	(define-key lisp-program-map "\t" 'comint-dynamic-complete)
-	(define-key lisp-program-map "?" 'comint-dynamic-list-completions)))
+  "Read a program with PROMPT and INITIAL.
+TAB or Esc-TAB will complete filenames."
+  (unless lisp-program-map
+    (if (fboundp 'set-keymap-parent)
+	(progn
+	  (setq lisp-program-map (make-sparse-keymap))
+	  (set-keymap-parent lisp-program-map minibuffer-local-map))
+      (setq lisp-program-map (copy-keymap minibuffer-local-map)))
+    (define-key lisp-program-map "\M-\t" 'comint-dynamic-complete)
+    (define-key lisp-program-map "\t" 'comint-dynamic-complete)
+    (define-key lisp-program-map "?" 'comint-dynamic-list-completions))
   (read-from-minibuffer prompt initial lisp-program-map))
+
 
 ;;;%%ilisp-read-symbol
 (defun ilisp-read-symbol (prompt &optional default function-p no-complete)
-  "PROMPT in the minibuffer with optional DEFAULT and return a symbol
-from the inferior LISP.  If FUNCTION-P is T, only symbols with
+  "PROMPT in the minibuffer and return a symbol from the inferior LISP.
+PROMPT may use an optional DEFAULT. If FUNCTION-P is T, only symbols with
 function values will be returned.  If NO-COMPLETE is T, then
 uncompleted symbols will be allowed."
   (let* ((ilisp-complete t)
@@ -300,23 +293,24 @@ Symbols are from table, other specs are in parentheses."
 ;;;%%complete-lisp
 (autoload 'complete "completion" "Complete previous symbol." t)
 (defun complete-lisp (mode)
-  "Complete the current symbol using information from the current
-ILISP buffer.  If in a string, complete as a filename.  If called with
+  "Complete the current symbol using information from the current ILISP buffer.
+If in a string, complete as a filename.  If called with
 a positive prefix force all symbols to be considered.  If called with
 a negative prefix, undo the last completion.  Partial completion is
-allowed unless ilisp-prefix-match is T.  If a symbol starts after a
+allowed unless ilisp-*prefix-match* is T.  If a symbol starts after a
 left paren or #', then only function symbols will be considered.
 Package specifications are also allowed and the distinction between
 internal and exported symbols is considered."
   (interactive "P")
   (if (< (prefix-numeric-value mode) 0)
       (completer-undo)
-      (let* ((filep
-	      (save-excursion
-		(skip-chars-backward "^ \t\n")
-		(= (char-after (point)) ?\"))))
+      (let* ((filep (save-excursion
+		      (skip-chars-backward "^ \t\n")
+		      (= (or (char-after (point)) ?\") ?\")))
+	     )
 	(if filep
 	    (comint-dynamic-complete)
+	    ;; (ilisp-pathname-complete)
 	    (let* ((symbol-info (lisp-previous-symbol))
 		   (symbol (car symbol-info))
 		   (name (lisp-symbol-name symbol))
@@ -333,3 +327,20 @@ internal and exported symbols is considered."
 			      completer-words)))
 	(message "Completed"))))
 
+
+;;; ilisp-pathname-complete --
+;;; Incomplete :) function.  You are most welcome to provide an
+;;; implementation complying with the IIR #1 appeared on ILISP@CONS.ORG.
+;;; 19990709 Marco Antoniotti
+
+(defun ilisp-pathname-complete ()
+  "Completes the filename, trying to translate LOGICAL-PATHNAMES as well."
+  (let ((maybe-logical-pathname-p (save-excursion
+				    (skip-chars-backward "^ :\t\n")
+				    (= (char-after (point)) ?\:)))
+	)
+    (if (not maybe-logical-pathname-p)
+	(comint-dynamic-complete)
+	())))
+
+;;; end of file -- ilisp-cmp.el --

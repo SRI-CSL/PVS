@@ -1,38 +1,31 @@
 ;;; -*- Mode: Emacs-Lisp -*-
 
 ;;; ilisp-cl.el --
-
-;;; This file is part of ILISP.
-;;; Version: 5.8
-;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
-
-
-;;;
 ;;; ILISP Common Lisp dialect definition
 ;;;
-
-
-;;;%%Common LISP
+;;; This file is part of ILISP.
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
+;;;
+;;; $Id$
 
 (defvar ilisp-cl-ilisp-package-file "ilisp-pkg.lisp")
 
-(defvar ilisp-clisp-init-file "cl-ilisp.lisp")
+(defvar ilisp-cl-ilisp-init-file "cl-ilisp.lisp")
 
-(defdialect clisp "Common LISP"
+
+;;; common-lisp --
+;;;
+;;; Notes:
+;;; 19990806 Martin Atzmueller
+;;; Added several package related entries.
+;;;
+;;; 19990806 Marco Antoniotti
+;;; MAJOR CHANGE. Changed the name of the dialect to COMMON-LISP
+
+(defdialect common-lisp "Common LISP"
   ilisp
   (setq ilisp-load-or-send-command 
 	"(or (and (load \"%s\" :if-does-not-exist nil) t)
@@ -43,21 +36,39 @@
   ;; everything.
   ;; Check what ilisp-load-init does to understand why I am forced to
   ;; do this.
-  ;; Marco Antoniotti 11/22/94
+  ;; Marco Antoniotti 19941122
   (ilisp-load-init 'ilisp-package-kludge ilisp-cl-ilisp-package-file)
 
-  (ilisp-load-init 'clisp ilisp-clisp-init-file)
-  (setq ilisp-package-regexp
-	"^[ \t]*(in-package[ \t\n]*"
+  ;; 19990912 Marco Antoniotti
+  ;; Changed the argument below from 'clisp to 'common-lisp.
+  (ilisp-load-init 'common-lisp ilisp-cl-ilisp-init-file)
+  (setq ilisp-package-separator-regexp
+	":+"
 
 	ilisp-package-command
-	"(let ((*package* *package*)) %s (package-name *package*))"
+	;;; "(nth-value 0 (ignore-errors (let ((*package* *package*)) %s (package-name *package*))))"
+          "(let ((*package* *package*)) (nth-value 0 (ignore-errors %s (package-name *package*))))"
+
+        ilisp-no-package-in-core-regexp
+        "^nil"
+
+        ilisp-fallback-package
+        "\"COMMON-LISP-USER\""
+
+	ilisp-in-package-command-string
+	"in-package"
+         
+	ilisp-defpackage-command-string
+	"defpackage"
 
 	ilisp-package-name-command
 	"(package-name *package*)"
 
 	ilisp-in-package-command
 	"(in-package \"%s\")"
+
+         ilisp-hash-form-regexp
+         "\\(^[ \t]*#[+-].\\)\\|\\(^[ \t]*(\\(.*::?\\)?defpackage[ \t\n]\\)\\|\\(^[ \t]*(\\(.*::?\\)?in-package[ \t\n]*\\)"
 
 	ilisp-last-command
 	"*"
@@ -133,10 +144,23 @@
 	ilisp-set-directory-command
 	"(setq *default-pathname-defaults* (parse-namestring \"%s\"))")
 
+  ;; Note:
+  ;; 19990912 Marco Antoniotti
+  ;; This is probably the best and simplest way to fix things.
+  ;; cfr. Hannu Koivisto's posting on 'ilisp@cons.org'.
+
+  (setf ilisp-binary-command
+	"(pathname-type (compile-file-pathname \"ILISP-DUMMY-STRING\"))"
+
+	ilisp-init-binary-command ilisp-binary-command)
+
   (setq ilisp-load-command
 	"(load \"%s\")")
 
   (setq ilisp-compile-file-command 
-	"(ILISP:ilisp-compile-file \"%s\" \"%s\")"))
+	"(ILISP:ilisp-compile-file \"%s\" \"%s\")")
+
+  (setq ilisp-print-info-message-command
+	"(ILISP:ilisp-print-info-message \"%s\" \"%s\")" ))
 
 ;;; end of file -- ilisp-cl.el --
