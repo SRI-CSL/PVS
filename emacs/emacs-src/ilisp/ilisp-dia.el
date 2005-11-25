@@ -1,24 +1,15 @@
 ;;; -*- Mode: Emacs-Lisp -*-
 
 ;;; ilisp-dia.el --
-
+;;; ILISP Dialect definition code.
+;;;
 ;;; This file is part of ILISP.
-;;; Version: 5.8
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
 ;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
+;;; $Id$
 
 
 ;;;%%CUSTOMIZING DIALECTS
@@ -37,20 +28,27 @@
 ;;; These are the currently supported dialects.  The dialects
 ;;; are listed so that the indentation correponds to the hierarchical
 ;;; relationship between dialects.
-;;; clisp
+;;; common-lisp
 ;;;   allegro
-;;;   Clisp     (Haible and Stoll)
+;;;   clisp     (Haible and Stoll)
 ;;;   lispworks (Harlequin)
 ;;;   lucid
 ;;;   cmulisp
+;;;   sbcl    (really a derivative of CMUCL)
 ;;;   kcl
 ;;;     akcl
 ;;;     ibcl
 ;;;     ecl
 ;;;     gcl
+;;;   openmcl
 ;;; scheme
 ;;;   oaklisp
 ;;;   Scheme->C (still "in fieri")
+;;;   scm
+;;;   chez (Chez Scheme)
+;;;   stk
+;;;     snow (stk without Tk)
+;;;   guile (yep! Here it comes. Still incomplete though)
 ;;;
 ;;; If anyone figures out support for other dialects I would be happy
 ;;; to include it in future releases.
@@ -84,17 +82,20 @@
 ;;; ILISP dialect definition code.
 ;;;
 
+(require 'cl)
+
 ;;;%Dialects
 (defun lisp-add-dialect (dialect)
   "Add DIALECT as a supported ILISP dialect."
-  (if (not (lisp-memk dialect ilisp-dialects 'car))
-      (setq ilisp-dialects
-	    (cons (list dialect) ilisp-dialects))))
+  (when (not (member* dialect ilisp-dialects :key #'car :test #'equal))
+    (setq ilisp-dialects
+	  (cons (list dialect) ilisp-dialects))))
 
 ;;;
 (defun ilisp-start-dialect (buffer program setup)
   ;; Allow dialects to be started from command line
-  (if (eq current-prefix-arg 0) (setq current-prefix-arg nil))
+  (when (eq current-prefix-arg 0)
+    (setq current-prefix-arg nil))
   (setq ilisp-last-buffer (current-buffer)
 	buffer (if current-prefix-arg
 		   (read-from-minibuffer "Buffer: " buffer)
@@ -109,11 +110,12 @@
 
 ;;;
 (defmacro defdialect (dialect full-name parent &rest body)
-  "Define a new ILISP dialect.  DIALECT is the name of the function to
-invoke the inferior LISP. The hook for that LISP will be called
-DIALECT-hook.  The default program will be DIALECT-program.  FULL-NAME
-is a string that describes the inferior LISP.  PARENT is the name of
-the parent dialect."
+  "Define a new ILISP dialect.
+DIALECT is the name of the function to invoke the inferior LISP. The
+hook for that LISP will be called DIALECT-hook.  The default program
+will be DIALECT-program.  FULL-NAME is a string that describes the
+inferior LISP.  PARENT is the name of the parent dialect."
+
   (let ((setup (read (format "setup-%s" dialect)))
 	(hook (read (format "%s-hook" dialect)))
 	(program (read (format "%s-program" dialect)))
@@ -147,30 +149,34 @@ the parent dialect."
   (kill-all-local-variables)
   (lisp-mode)
   (setq ilisp-buffer (format "*%s*" buffer))
+  (when ilisp-*enable-ilisp-special-frame-p*
+    (push ilisp-buffer special-display-buffer-names))
   (set-buffer (get-buffer-create ilisp-buffer))
   (setq major-mode 'ilisp-mode
 	mode-name "ILISP")
   (lisp-mode-variables t)
+
   ;; Set variables to nil
   (let ((binary ilisp-binary-extension)
 	(init ilisp-init-binary-extension)
 	(vars ilisp-locals))
-    (while (not (null vars))
-      (make-local-variable (car vars))
-      (set (car vars) nil)
-      (setq vars (cdr vars)))
+    (dolist (var vars)
+      (make-local-variable var)
+      (set var nil))
+
     ;; Preserve from initialization
-    (if binary (setq ilisp-binary-extension binary))
-    (if init (setq ilisp-init-binary-extension init)))
+    (when binary (setq ilisp-binary-extension binary))
+    (when init (setq ilisp-init-binary-extension init)))
   ;; Comint defaults
   (set-ilisp-input-ring-size 200)
   (setq comint-prompt-regexp "^[^<> ]*>+:? *"
-
+	comint-use-prompt-regexp-instead-of-fields t ; Emacs 21 fields don't seem to work with comint-ipc (?)
 	comint-get-old-input 'ilisp-get-old-input
 	comint-input-sentinel (function ignore)
 	comint-input-filter 'ilisp-input-filter
 	comint-input-sender 'comint-default-send
 	comint-eol-on-send t)
+
   ;; Comint-ipc defaults
   (setq comint-send-newline t
 	comint-always-scroll nil
@@ -183,23 +189,38 @@ the parent dialect."
 	comint-update-status 'ilisp-update-status
 	comint-prompt-status 'comint-prompt-status
 	comint-abort-hook 'ilisp-abort-handler)
+
   (setq ilisp-use-map ilisp-mode-map
-	ilisp-init-hook '((lambda () (ilisp-init nil nil t)))
+	ilisp-init-hook-local '((lambda ()
+                                  (ilisp-init nil nil t)
+                                  (run-hooks 'ilisp-init-hook)))
 	ilisp-filter-regexp "\\`\\s *\\(:\\(\\w\\|\\s_\\)*\\)?\\s *\\'"
 	ilisp-filter-length 3
 	ilisp-error-filter 'ilisp-error-filter
 	ilisp-error-regexp ".*" 
-	ilisp-symbol-delimiters "^ \t\n\('\"#.\)<>"
+
+	;; 20000216 Marco Antoniotti
+	;; Removed the 'dot' (.) from the set of symbol delimiters.
+	;; This allows the correct handling of symbols like
+	;; CL.ENV:*OS*.
+	;; The relevant code is in 'lisp-previous-symbol' et al. in
+	;; 'ilisp-snd.el'.
+	;; ilisp-symbol-delimiters "^ \t\n\('\"#.\)<>"
+	ilisp-symbol-delimiters "^ \t\n\('\"#\)<>"
 	ilisp-program "lisp"
 	ilisp-locator 'lisp-locate-ilisp
 	ilisp-calls-locator 'lisp-locate-calls)
+
   (run-hooks 'ilisp-mode-hook))
 
+
 (defun run-ilisp ()
-  "Create an inferior LISP prompting for dialect.  With prefix, prompt
-for buffer name as well."
+  "Create an inferior LISP prompting for dialect.
+With prefix, prompt for buffer name as well."
   (interactive)
   (let ((dialect (completing-read "Dialect: " ilisp-dialects nil t)))
     (if (not (zerop (length dialect)))
 	(call-interactively (read dialect)))))
 
+
+;;; end of file -- ilisp-dia.lisp --

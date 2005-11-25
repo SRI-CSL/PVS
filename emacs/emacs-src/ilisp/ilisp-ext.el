@@ -1,25 +1,14 @@
 ;;; -*- Mode: Emacs-Lisp -*-
 
 ;;; ilisp-ext.el --
-
+;;;
 ;;; This file is part of ILISP.
-;;; Version: 5.8
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
 ;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
-
+;;; $Id$
 
 ;;; Lisp mode extensions from the ILISP package.
 ;;; Copyright (C) 1990, 1991, 1992 Chris McConnell, ccm@cs.cmu.edu.
@@ -448,13 +437,24 @@ than 1, the first N buffers on the buffer list are rotated."
 (define-key emacs-lisp-mode-map "\M-q"    'reindent-lisp)
 (define-key emacs-lisp-mode-map "\M-\C-a" 'beginning-of-defun-lisp)
 (define-key emacs-lisp-mode-map "\M-\C-e" 'end-of-defun-lisp)
-(define-key emacs-lisp-mode-map "\C-\M-r" 'reposition-window-lisp)
-(define-key emacs-lisp-mode-map "]"       'close-all-lisp)
+(unless ilisp-*use-fsf-compliant-keybindings*
+  ;; FSF Emacs 20 has `reposition-window' bound to C-M-l
+  ;; and `isearch-backward-regexp' bound to C-M-r
+  (define-key emacs-lisp-mode-map "\C-\M-r" 'reposition-window-lisp))
+(when ilisp-bindings-*bind-right-bracket-p*
+  (define-key emacs-lisp-mode-map "]"       'close-all-lisp))
+
 (define-key lisp-mode-map       "\M-q"    'reindent-lisp)
-(define-key lisp-mode-map       "\C-\M-r" 'reposition-window-lisp)
-(define-key lisp-mode-map       "]"       'close-all-lisp)
-(define-key global-map          "\M-\C-l" 'previous-buffer-lisp)
+(when ilisp-bindings-*bind-right-bracket-p*
+  (define-key lisp-mode-map       "]"       'close-all-lisp))
+(unless ilisp-*use-fsf-compliant-keybindings*
+  ;; FSF Emacs 20 has `reposition-window' bound to C-M-l
+  ;; and `isearch-backward-regexp' bound to C-M-r
+  (define-key lisp-mode-map       "\C-\M-r" 'reposition-window-lisp)
+  (define-key global-map          "\M-\C-l" 'previous-buffer-lisp))
 
 ;;;
 (run-hooks 'ilisp-ext-load-hook)
 (provide 'ilisp-ext)
+
+;;; end of file -- ilisp-ext.el --
