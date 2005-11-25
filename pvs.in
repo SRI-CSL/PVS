@@ -56,6 +56,7 @@ opsys=`uname -s`
 flags=
 batch=
 rawmode=
+PVSINEMACS=t
 getversion=
 nobg=
 if [ -f $HOME/.emacs ]
@@ -105,14 +106,16 @@ do
              exit 1;;
 	esac
         shift;;
-     -batch) batch="$1";;
+     -batch) PVSNONINTERACTIVE=t
+             batch="$1";;
      -timeout) PVSTIMEOUT=$2
          if expr $PVSTIMEOUT : '\([0-9]*\)' != $PVSTIMEOUT > /dev/null; then
 	   echo "The -timeout must be an integer"
 	   exit 1
 	 fi
 	 shift;;
-     -raw) rawmode="yes";;
+     -raw) unset PVSINEMACS
+           rawmode="yes";;
      -v) case $2 in
            0|1|2|3) PVSVERBOSE=$2
                     shift;;
@@ -231,6 +234,7 @@ PVSIMAGE="$PVSLISP"
 export ALLEGRO_CL_HOME DISPLAY LD_LIBRARY_PATH
 export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSTIMEOUT
 export PVSPATCHLEVEL PVSMINUSQ PVSFORCEDP PVSDEFAULTDP
+export PVSNONINTERACTIVE PVSINEMACS
 
 pvsemacsinit="-load $PVSPATH/emacs/go-pvs.el $loadafter"
 
