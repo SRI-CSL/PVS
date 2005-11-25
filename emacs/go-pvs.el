@@ -47,4 +47,4 @@
 ;;; pvs-load.elc - if not, can complain now and give instructions for
 ;;; re-compilation.
  
-(load "pvs-load" nil nil nil)
+(load "pvs-load" nil noninteractive nil)
