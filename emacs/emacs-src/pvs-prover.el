@@ -2094,10 +2094,10 @@ Letters do not insert themselves; instead, they are commands:
     (when (and (not *pvs-error*)
 	       installed
 	       (or step
-		   (save-excursion
-		     (set-buffer "Proof")
-		     (goto-char (point-min))
-		     (re-search-forward "!!!" nil t))
+;; 		   (save-excursion
+;; 		     (set-buffer "Proof")
+;; 		     (goto-char (point-min))
+;; 		     (re-search-forward "!!!" nil t))
 		   (y-or-n-p "Run the proof? ")))
       (when step
 	(pop-to-buffer (get-buffer "Proof"))
