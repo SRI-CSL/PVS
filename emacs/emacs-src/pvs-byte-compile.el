@@ -73,7 +73,7 @@
     (let ((files '(completer
 		   comint-ipc
 		   ilisp-def
-		   ilisp-el
+		   ;;ilisp-el
 		   ilisp-sym
 		   ilisp-inp
 		   ilisp-ind
