@@ -1,31 +1,19 @@
 ;;; -*- Mode: Emacs-Lisp -*-
 
 ;;; ilisp.el --
-
+;;;
 ;;; This file is part of ILISP.
-;;; Version: 5.8
+;;; Please refer to the file COPYING for copyrights and licensing
+;;; information.
+;;; Please refer to the file ACKNOWLEGDEMENTS for an (incomplete) list
+;;; of present and past contributors.
 ;;;
-;;; Copyright (C) 1990, 1991, 1992, 1993 Chris McConnell
-;;;               1993, 1994 Ivan Vasquez
-;;;               1994, 1995, 1996 Marco Antoniotti and Rick Busdiecker
-;;;               1996 Marco Antoniotti and Rick Campbell
-;;;
-;;; Other authors' names for which this Copyright notice also holds
-;;; may appear later in this file.
-;;;
-;;; Send mail to 'ilisp-request@naggum.no' to be included in the
-;;; ILISP mailing list. 'ilisp@naggum.no' is the general ILISP
-;;; mailing list were bugs and improvements are discussed.
-;;;
-;;; ILISP is freely redistributable under the terms found in the file
-;;; COPYING.
-
-     
+;;; $Id$     
 
 ;;; Author: Chris McConnell <ccm@cs.cmu.edu>
-;;; Maintainer: The Net <ilisp@naggum.no>
+;;; Maintainer: The Net <ilisp@cons.org>
 ;;; Created: 14 Jun 1994
-;;; Version: 5.8
+
 ;;; Keywords: lisp common-lisp scheme comint
 
 ;;; This file may become part of GNU Emacs in the near future.
@@ -103,12 +91,13 @@
 ;; Ivan Vazquez, Fred White
 
 
+(require 'cl)
 
 (load "ilcompat" nil noninteractive)                       ; emacs version specific stuff
 (load "comint-ipc" nil noninteractive)                     ; comint IPC extensions
 
 (load "ilisp-def" nil noninteractive)
-(load "ilisp-el" nil noninteractive)
+;;(load "ilisp-el" nil noninteractive)
 (load "ilisp-sym" nil noninteractive)
 (load "ilisp-inp" nil noninteractive)
 (load "ilisp-ind" nil noninteractive)
@@ -137,6 +126,15 @@
 
 (load "ilisp-cl" nil noninteractive)
 (load "ilisp-acl" nil noninteractive)
+(load "ilisp-cmu" nil noninteractive)
+;; (load "ilisp-sbcl")
+;; (load "ilisp-chs")
+;; (load "ilisp-hlw")
+;; (load "ilisp-kcl")
+;; (load "ilisp-luc")
+;; (load "ilisp-sch")
+;; (load "ilisp-openmcl")
+;; (load "ilisp-ccl")
 
 ;;; Create the keymaps before running the hooks.
 ;;; This is necessary if you want the lispm bindings in the load
@@ -150,11 +148,56 @@
 (run-hooks 'ilisp-site-hook)
 (run-hooks 'ilisp-load-hook)		; It seem s more reasonable.
 
-(if (not ilisp-mode-map) (ilisp-bindings))
+(unless ilisp-mode-map (ilisp-bindings))
 
 ;;; Optional:
-; (load "ilisp-menu")
-;(if (not (member +ilisp-emacs-version-id+ '(xemacs lucid-19 lucid-19-new)))
-;    (load "ilisp-mnb"))
+
+;;; Old version menu using XEmacs DEF-MENU.
+;;; (load "ilisp-menu")
+;;;
+;;; 19990818 Marco Antoniotti
+
+;;; Load the simple keymap based "Lisp" menu if the easy-menus are not
+;;; yet loaded.
+;;;
+;;; 19990818 Marco Antoniotti
+
+;; (message "Loading menu interface.")
+;; (message "'ilisp-*enable-cl-easy-meny-p*' is %s"
+;; 	 ilisp-*enable-cl-easy-menu-p*)
+
+(unless (and (member +ilisp-emacs-version-id+
+		     '(xemacs lucid-19 lucid-19-new fsf-20 fsf-21))
+	     (or ilisp-*enable-cl-easy-menu-p*
+		 ilisp-*enable-scheme-easy-menu-p*))
+  (load "ilisp-mnb" nil noninteractive))
+
+(when (and (member +ilisp-emacs-version-id+
+		   '(xemacs lucid-19 lucid-19-new fsf-20 fsf-21))
+	   ilisp-*enable-cl-easy-menu-p*)
+  (load "ilisp-cl-easy-menu" nil noninteractive))
+
+(when (and (member +ilisp-emacs-version-id+
+		   '(xemacs lucid-19 lucid-19-new fsf-20 fsf-21))
+	   ilisp-*enable-scheme-easy-menu-p*)
+  (load "ilisp-scheme-easy-menu" nil noninteractive))
+
+
+;;; ILD Support by J. M. Siskind <qobi@neci.nj.nec.com>
+;;;
+;;; 19990818 Marco Antoniotti
+
+;; (when ilisp-*enable-ild-support-p*
+;;   (load "ild"))
+ 
+;;; IMENU Support
+;;;
+;;; 2000-03-04 Martin Atzmueller
+
+;; (when ilisp-*enable-imenu-p*
+;;   (when (ignore-errors (require 'imenu))
+;;     (load "ilisp-imenu")))
 
 (provide 'ilisp)
+
+;;; end of file -- ilisp.el --
