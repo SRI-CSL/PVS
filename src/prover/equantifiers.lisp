@@ -943,8 +943,9 @@ is not of the form: (<var> <term>...)" subst)
 				   (loop for cd in (collect-skolem-constants)
 					 collect (mk-name-expr (id cd)
 						   nil nil 
-						   (mk-resolution cd nil
-								    (type cd))))))
+						   (mk-resolution
+						       cd (current-theory-name)
+						       (type cd))))))
 				  (if skolem-consts
 				      (append fmlas
 					      skolem-consts)
