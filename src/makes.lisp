@@ -134,10 +134,18 @@
     'declared-type type
     'ordnum num))
 
-(defun mk-adt-accessor-decl (id type)
-  (make-instance 'adt-accessor-decl
-    'id id
-    'declared-type type))
+(defun mk-adt-accessor-decl (id type adt acc-decls)
+  (if (cdr acc-decls)
+      (make-instance 'shared-adt-accessor-decl
+	'id id
+	'declared-type type
+	'constructors (mapcar #'(lambda (d)
+				  (find d (constructors adt)
+					:key #'arguments :test #'memq))
+			acc-decls))
+      (make-instance 'adt-accessor-decl
+	'id id
+	'declared-type type)))
 
 (defun mk-adt-def-decl (id type &optional definition formals dtype)
   (make-instance 'adt-def-decl
@@ -1729,7 +1737,7 @@
 	cartype
 	(let* ((proj (make-instance 'projappl
 		       'id (makesym "PROJ_~d" index)
-		       'index index
+		       'index ctr
 		       'argument arg
 		       'type cartype))
 	       (cdrtypes (if dep?
