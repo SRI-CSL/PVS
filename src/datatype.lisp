@@ -344,7 +344,8 @@ generated")
 		  (mk-forall-expr (list bibd abd bbd)
 		    (mk-application '=>
 		      (mk-application bivar avar bvar)
-		      (mk-application '= avar bvar))))))
+		      (mk-application '= avar bvar)))
+		  'AXIOM)))
     (typecheck-adt-decl cdecl)
     (typecheck-adt-decl fdecl)))
 
@@ -862,7 +863,35 @@ generated")
       (setf (acc-decls c)
 	    (find-corresponding-acc-decls
 	     (arguments c) common-accessors acc-decls)))
+    ;;(generate-common-accessor-evel-defns acc-decls adt)
     acc-decls))
+
+;; This doesn't work - the ground evaluator will call it recursively
+;; (defun generate-common-accessor-evel-defns (acc-decls adt)
+;;   (when acc-decls
+;;     (generate-common-accessor-evel-defn (car acc-decls) adt)
+;;     (generate-common-accessor-evel-defns (cdr acc-decls) adt)))
+
+;; (defmethod generate-common-accessor-evel-defn ((d shared-adt-accessor-decl)
+;; 					       adt)
+;;   (let* ((vid (make-new-variable 'x adt))
+;; 	 (bd (make-bind-decl vid (domain (type d))))
+;; 	 (var (make-variable-expr bd))
+;; 	 (body (mk-lambda-expr (list bd)
+;; 		 (mk-cases-expr var
+;; 		   (mapcar #'(lambda (c)
+;; 			       (mk-selection (mk-name-expr (id c))
+;; 				 (mapcar #'(lambda (a)
+;; 					     (mk-bind-decl (id a) nil))
+;; 				   (arguments c))
+;; 				 (mk-name-expr (id d))))
+;; 		     (constructors d))
+;; 		   nil))))
+;;     (typecheck* body (type d) nil nil)
+;;     (setf (eval-fun d) body)))
+  
+;; (defmethod generate-common-accessor-evel-defn ((d adt-accessor-decl) adt)
+;;   nil)
 
 (defun find-corresponding-acc-decls (accs common-accessors acc-decls
 					  &optional result)
@@ -895,7 +924,8 @@ generated")
   (let* ((domain (get-accessor-domain-type entry adt))
 	 (range (get-accessor-range-type entry domain adt))
 	 (acc-type (make-accessor-funtype domain range (caddr (caar entry))))
-	 (acc-decl (mk-adt-accessor-decl (id (caaar entry)) acc-type)))
+	 (acc-decl (mk-adt-accessor-decl (id (caaar entry)) acc-type
+					 adt (cdar entry))))
     (typecheck-adt-decl acc-decl)
     (when (cddr (car entry))
       (make-common-accessor-subtype-judgements (cdar entry) domain adt))
