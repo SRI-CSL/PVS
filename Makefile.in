@@ -350,7 +350,8 @@ groundevallisp = src/groundeval/eval-macros.lisp \
 		 src/groundeval/static-update.lisp \
 		 src/groundeval/pvseval-update.lisp \
 		 src/groundeval/cl2pvs.lisp \
-		 src/groundeval/generate-lisp-for-theory.lisp
+		 src/groundeval/generate-lisp-for-theory.lisp \
+                 src/groundeval/random-test.lisp
 
 inst-by-unif-lisp = src/inst-by-unif/unify.lisp \
                     src/inst-by-unif/herbrandize.lisp \
