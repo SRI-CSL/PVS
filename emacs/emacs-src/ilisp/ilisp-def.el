@@ -470,7 +470,7 @@ the next one.")
 
 ;;; ilisp-bindings-*bind-space-p*
 (defcustom ilisp-bindings-*bind-space-p*
-  t
+  nil
   "If non-nil the 'SPACE' key will be bound to #'ilisp-arglist-message-lisp-space."
   :group 'ILisp-interaction)
 
