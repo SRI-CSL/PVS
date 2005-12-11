@@ -443,6 +443,9 @@
 
 (defcl adt-accessor-decl (const-decl))
 
+(defcl shared-adt-accessor-decl (adt-accessor-decl)
+  constructors)
+
 (defcl def-decl (const-decl)
   (declared-measure :parse t)
   (ordering :parse t)
