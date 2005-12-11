@@ -306,7 +306,8 @@ pvs-src = src/closopt.lisp \
           src/status-cmds.lisp \
 	  src/add-decl.lisp \
 	  src/list-decls.lisp \
-	  src/tex-support.lisp
+	  src/tex-support.lisp \
+          src/raw-api.lisp
 
 emacs-interface = src/interface/pvs-emacs.lisp \
 		  src/interface/emacs-calls.lisp \
