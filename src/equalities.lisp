@@ -1231,65 +1231,93 @@ where db is to replace db1 and db2")
 ;;; Compatible-Type for types checks whether two types have a common
 ;;; supertype.  It returns the (least) common supertype.
 
-(defun compatible-type (t1 t2)
+(defun compatible-type (t1 t2 &optional bindings)
   (when (compatible? t1 t2)
-    (compatible-type* t1 t2)))
+    (compatible-type* t1 t2 bindings)))
 
-(defmethod compatible-type* :around ((atype type-expr) (etype type-expr))
-  (if (tc-eq atype etype)
+(defmethod compatible-type* :around ((atype type-expr) (etype type-expr)
+				     bindings)
+  (if (tc-eq-with-bindings atype etype bindings)
       atype
       (call-next-method)))
+  
+(defmethod compatible-type* ((atype dep-binding) etype bindings)
+  (let ((stype (compatible-type* (type atype) etype bindings)))
+    (if (tc-eq-with-bindings stype (type atype) bindings)
+	atype
+	(mk-dep-binding (id atype) stype))))
 
-(defmethod compatible-type* ((atype dep-binding) etype)
-  (compatible-type* (type atype) etype))
-
-(defmethod compatible-type* (atype (etype dep-binding))
-  (compatible-type* atype (type etype)))
+(defmethod compatible-type* (atype (etype dep-binding) bindings)
+  (compatible-type* atype (type etype) bindings))
 
 
-(defmethod compatible-type* ((atype type-variable) (etype type-expr))
+(defmethod compatible-type* ((atype type-variable) (etype type-expr) bindings)
+  (declare (ignore bindings))
   etype)
 
-(defmethod compatible-type* ((atype type-expr) (etype type-variable))
+(defmethod compatible-type* ((atype type-expr) (etype type-variable) bindings)
+  (declare (ignore bindings))
   atype)
 
-(defmethod compatible-type* ((atype dep-binding) (etype type-variable))
+(defmethod compatible-type* ((atype dep-binding) (etype type-variable)
+			     bindings)
+  (declare (ignore bindings))
   atype)
 
-(defmethod compatible-type* ((atype subtype) (etype type-variable))
+(defmethod compatible-type* ((atype subtype) (etype type-variable) bindings)
+  (declare (ignore bindings))
   atype)
 
-(defmethod compatible-type* ((atype rec-type-variable) (etype recordtype))
+(defmethod compatible-type* ((atype rec-type-variable) (etype recordtype)
+			     bindings)
+  (declare (ignore bindings))
   etype)
 
-(defmethod compatible-type* ((atype recordtype) (etype rec-type-variable))
+(defmethod compatible-type* ((atype recordtype) (etype rec-type-variable)
+			     bindings)
+  (declare (ignore bindings))
   atype)
 
-(defmethod compatible-type* ((atype dep-binding) (etype rec-type-variable))
+(defmethod compatible-type* ((atype dep-binding) (etype rec-type-variable)
+			     bindings)
+  (declare (ignore bindings))
   atype)
 
-(defmethod compatible-type* ((atype tup-type-variable) (etype tupletype))
+(defmethod compatible-type* ((atype tup-type-variable) (etype tupletype)
+			     bindings)
+  (declare (ignore bindings))
   etype)
 
-(defmethod compatible-type* ((atype tupletype) (etype tup-type-variable))
+(defmethod compatible-type* ((atype tupletype) (etype tup-type-variable)
+			     bindings)
+  (declare (ignore bindings))
   atype)
 
-(defmethod compatible-type* ((atype dep-binding) (etype tup-type-variable))
+(defmethod compatible-type* ((atype dep-binding) (etype tup-type-variable)
+			     bindings)
+  (declare (ignore bindings))
   atype)
 
-(defmethod compatible-type* ((atype cotup-type-variable) (etype cotupletype))
+(defmethod compatible-type* ((atype cotup-type-variable) (etype cotupletype)
+			     bindings)
+  (declare (ignore bindings))
   etype)
 
-(defmethod compatible-type* ((atype cotupletype) (etype cotup-type-variable))
+(defmethod compatible-type* ((atype cotupletype) (etype cotup-type-variable)
+			     bindings)
+  (declare (ignore bindings))
   atype)
 
-(defmethod compatible-type* ((atype dep-binding) (etype cotup-type-variable))
+(defmethod compatible-type* ((atype dep-binding) (etype cotup-type-variable)
+			     bindings)
+  (declare (ignore bindings))
   atype)
 
 
 ;;; Note that we return the instantiated type, if there is one.
 
-(defmethod compatible-type* ((atype type-name) (etype type-name))
+(defmethod compatible-type* ((atype type-name) (etype type-name) bindings)
+  (declare (ignore bindings))
   (let* ((a1 (actuals atype))
 	 (a2 (actuals etype)))
     (cond ((and a1 a2)
@@ -1304,12 +1332,14 @@ where db is to replace db1 and db2")
 	       etype))
 	  (t atype))))
 
-(defmethod compatible-type* ((atype type-name) etype)
+(defmethod compatible-type* ((atype type-name) etype bindings)
+  (declare (ignore bindings))
   (if (declaration-outside-formals? atype)
       etype
       (call-next-method)))
 
-(defmethod compatible-type* (atype (etype type-name))
+(defmethod compatible-type* (atype (etype type-name) bindings)
+  (declare (ignore bindings))
   (if (declaration-outside-formals? etype)
       atype
       (call-next-method)))
@@ -1319,11 +1349,21 @@ where db is to replace db1 and db2")
 ;;; compatible supertype since the case where they are both subtypes is
 ;;; another method.
 
-(defmethod compatible-type* ((atype subtype) (etype type-expr))
-  (compatible-type* (supertype atype) etype))
+(defmethod compatible-type* ((atype subtype) (etype type-expr) bindings)
+  (compatible-type* (supertype atype) etype bindings))
 
-(defmethod compatible-type* ((atype type-expr) (etype subtype))
-  (compatible-type* atype (supertype etype)))
+(defmethod compatible-type* ((atype datatype-subtype) (etype adt-type-name)
+			     bindings)
+  (let* ((dtype (find-declared-adt-supertype atype))
+	 (ctype (compatible-type* dtype etype bindings)))
+    (if ctype
+	(if (tc-eq ctype dtype)
+	    atype
+	    (call-next-method))
+	(call-next-method))))
+
+(defmethod compatible-type* ((atype type-expr) (etype subtype) bindings)
+  (compatible-type* atype (supertype etype) bindings))
 
 ;;; This is the tricky one, since we don't want to go higher than
 ;;; necessary.  For example, given posint as a subtype of nat, we don't
@@ -1331,36 +1371,41 @@ where db is to replace db1 and db2")
 ;;; direct check whether one is a subtype of the other.  If that fails,
 ;;; we can recurse on both supertypes at the same time.
 
-(defmethod compatible-type* ((atype subtype) (etype subtype))
+(defmethod compatible-type* ((atype subtype) (etype subtype) bindings)
   (cond ((subtype-of? atype etype) etype)
 	((subtype-of? etype atype) atype)
-	(t (compatible-type* (supertype atype) (supertype etype)))))
+	(t (compatible-type* (supertype atype) (supertype etype) bindings))))
 
-(defun adt-compatible-type (acts1 acts2 formals type postypes compacts)
+(defun adt-compatible-type (acts1 acts2 formals type postypes compacts
+				  bindings)
   (cond ((null acts1)
 	 (typecheck* (mk-type-name (id type) (nreverse compacts))
 				  nil nil nil))
-	((tc-eq (car acts1) (car acts2))
+	((tc-eq-with-bindings (car acts1) (car acts2) bindings)
 	 (adt-compatible-type (cdr acts1) (cdr acts2) (cdr formals) type
-			      postypes (cons (car acts1) compacts)))
+			      postypes (cons (car acts1) compacts) bindings))
 	((member (car formals) postypes
 		 :test #'(lambda (x y)
 			   (let ((ydecl (declaration y)))
 			     (and (typep ydecl 'formal-type-decl)
 				  (same-id x ydecl)))))
 	 (let ((ntype (compatible-type (type-value (car acts1))
-				       (type-value (car acts2)))))
+				       (type-value (car acts2))
+				       bindings)))
 	   (adt-compatible-type (cdr acts1) (cdr acts2) (cdr formals) type
-			      postypes (cons (mk-actual ntype) compacts))))))
+				postypes (cons (mk-actual ntype) compacts)
+				bindings)))))
 
-(defmethod compatible-type* ((t1 datatype-subtype) (t2 datatype-subtype))
+(defmethod compatible-type* ((t1 datatype-subtype) (t2 datatype-subtype)
+			     bindings)
   (adt-compatible-type
    (actuals (module-instance (find-declared-adt-supertype t1)))
    (actuals (module-instance (find-declared-adt-supertype t2)))
    (formals-sans-usings (adt t1))
    t1
    (positive-types (adt t1))
-   nil))
+   nil
+   bindings))
 
 
 ;;; An actual funtype is compatible with an expected funtype only if the
@@ -1368,48 +1413,67 @@ where db is to replace db1 and db2")
 ;;; function types, so an array is compatible with a function of the same
 ;;; signature.
 
-(defmethod compatible-type* ((atype funtype) (etype funtype))
+(defmethod compatible-type* ((atype funtype) (etype funtype) bindings)
   (with-slots ((adom domain) (arng range)) atype
     (with-slots ((edom domain) (erng range)) etype
-      (let* ((ainst? (or (fully-instantiated? adom)
-			 (not (fully-instantiated? edom))))
+      (let* ((ainst? (fully-instantiated? adom))
+	     (einst? (fully-instantiated? edom))
 	     (dom (cond ((or (type-var? adom) (type-var? edom))
-			 (compatible-type* adom edom))
-			(ainst? adom)
+			 (compatible-type* adom edom bindings))
+			((and ainst? einst?)
+			 (when (compatible-type* adom edom bindings)
+			   adom))
+			((not einst?)
+			 adom)
 			(t edom))))
-	(if ainst?
-	    (lcopy atype 'domain dom 'range (compatible-type* arng erng))
-	    (lcopy etype 'domain dom 'range (compatible-type* arng erng)))))))
+	(when dom
+	  (let ((nbindings (if (and (dep-binding? adom)
+				    (dep-binding? edom))
+			       (acons adom edom bindings)
+			       bindings)))
+	    (if ainst?
+		(lcopy atype 'domain dom
+		       'range (compatible-type* arng erng nbindings))
+		(lcopy etype 'domain dom
+		       'range (compatible-type* arng erng nbindings)))))))))
 
-(defmethod compatible-type* ((atype tupletype) (etype tupletype))
-  (compatible-tupletypes (types atype) (types etype) nil))
+(defmethod compatible-type* ((atype tupletype) (etype tupletype) bindings)
+  (compatible-tupletypes (types atype) (types etype) nil bindings))
 
-(defun compatible-tupletypes (atypes etypes types)
+(defun compatible-tupletypes (atypes etypes types bindings)
   (if (null atypes)
       (mk-tupletype (nreverse types))
-      (let* ((stype (compatible-type* (car atypes) (car etypes)))
-	     (dtype (if (dep-binding? (car atypes))
-			(mk-dep-binding (id (car atypes)) stype)
-			stype))
-	     (acdr (if (dep-binding? dtype)
-		       (substit (cdr atypes) (acons (car atypes) dtype nil))
-		       (cdr atypes))))
-	(compatible-tupletypes acdr (cdr etypes) (cons dtype types)))))
+      (let ((stype (compatible-type* (car atypes) (car etypes) bindings)))
+	(assert (or (null stype)
+		    (not (dep-binding? (car atypes)))
+		    (dep-binding? stype)))
+	(when stype
+	  (compatible-tupletypes
+	   (if (or (not (dep-binding? stype))
+		   (eq stype (car atypes)))
+	       (cdr atypes)
+	       (substit (cdr atypes) (acons (car atypes) stype nil)))
+	   (cdr etypes)
+	   (cons stype types)
+	   (if (and (dep-binding? stype)
+		    (dep-binding? (car etypes)))
+	       (acons (car atypes) (car etypes) bindings)
+	       bindings))))))
 
-(defmethod compatible-type* ((atype cotupletype) (etype cotupletype))
-  (compatible-cotupletypes (types atype) (types etype) nil))
+(defmethod compatible-type* ((atype cotupletype) (etype cotupletype) bindings)
+  (compatible-cotupletypes (types atype) (types etype) nil bindings))
 
-(defun compatible-cotupletypes (atypes etypes types)
+(defun compatible-cotupletypes (atypes etypes types bindings)
   (if (null atypes)
       (mk-cotupletype (nreverse types))
-      (let* ((stype (compatible-type* (car atypes) (car etypes))))
+      (let* ((stype (compatible-type* (car atypes) (car etypes) bindings)))
 	(compatible-cotupletypes (cdr atypes) (cdr etypes)
-				 (cons stype types)))))
+				 (cons stype types) bindings))))
 
-(defmethod compatible-type* ((atype recordtype) (etype recordtype))
-  (compatible-recordtypes (fields atype) (fields etype) atype nil))
+(defmethod compatible-type* ((atype recordtype) (etype recordtype) bindings)
+  (compatible-recordtypes (fields atype) (fields etype) atype nil bindings))
 
-(defun compatible-recordtypes (afields efields atype fields)
+(defun compatible-recordtypes (afields efields atype fields bindings)
   (if (null afields)
       (let ((nfields (nreverse fields)))
 	(if (equal nfields (fields atype))
@@ -1419,7 +1483,7 @@ where db is to replace db1 and db2")
 	      'dependent? (dependent? atype))))
       (let* ((afld (car afields))
 	     (efld (find afld efields :test #'same-id))
-	     (stype (compatible-type* (type afld) (type efld)))
+	     (stype (compatible-type* (type afld) (type efld) bindings))
 	     (nfield (if (eq stype (type afld))
 			 afld
 			 (mk-field-decl (id afld) stype stype)))
@@ -1434,7 +1498,7 @@ where db is to replace db1 and db2")
 				(acons afld fne nil))))))
 	(compatible-recordtypes cdrfields
 				(remove efld efields :test #'eq)
-				atype (cons nfield fields)))))
+				atype (cons nfield fields) bindings))))
 
 
 ;;; Compatible-Preds takes an actual type, an expected type, and an expression
@@ -1514,9 +1578,12 @@ where db is to replace db1 and db2")
 			   (let ((ydecl (declaration (or (print-type y) y))))
 			     (and (typep ydecl 'formal-type-decl)
 				  (same-id x ydecl)))))
-	 (adt-compatible-pred-actuals
-	  (cdr aacts) (cdr eacts) (cdr formals) atype postypes aexpr incs
-	  (adt-compatible-pred-actuals* (car aacts) (car eacts) pospreds)))
+	 (multiple-value-bind (nincs npospreds)
+	     (adt-compatible-pred-actuals* (car aacts) (car eacts)
+					   incs pospreds)
+	   (adt-compatible-pred-actuals
+	    (cdr aacts) (cdr eacts) (cdr formals) atype postypes aexpr
+	    nincs npospreds)))
 	((tc-eq (car aacts) (car eacts))
 	 (adt-compatible-pred-actuals (cdr aacts) (cdr eacts) (cdr formals)
 				      atype postypes aexpr incs pospreds))
@@ -1525,13 +1592,16 @@ where db is to replace db1 and db2")
 	    (cons (actual-equality (car aacts) (car eacts)) incs)
 	    pospreds))))
 
-(defun adt-compatible-pred-actuals* (aact eact pospreds)
+(defun adt-compatible-pred-actuals* (aact eact incs pospreds)
   #+pvsdebug (assert (and (type-value aact) (type-value eact)))
   (let* ((atype (type-value aact))
 	 (etype (type-value eact))
 	 (stype (compatible-type atype etype))
-	 (preds (nth-value 1 (subtype-preds etype stype))))
-    (cons (cons aact preds) pospreds)))
+	 (subtype? (subtype-of? etype stype))
+	 (preds (when subtype? (nth-value 1 (subtype-preds etype stype)))))
+    (if subtype?
+	(values incs (cons (cons aact preds) pospreds))
+	(values (cons (make-actuals-equality aact eact) incs) pospreds))))
 
 (defun make-compatible-every-pred (pospreds atype aacts aexpr)
   (let ((every (make-every-name atype aacts))
@@ -2165,23 +2235,23 @@ where db is to replace db1 and db2")
 
 (defun subtype-tuple-preds (types1 types2 type2 vb var &optional (num 1) preds)
   (if (null types1)
-      (values type2
-	      (make!-lambda-expr (list vb)
-		(make!-conjunction* (nreverse preds))))
+      (when preds
+	(values type2
+		(make!-lambda-expr (list vb)
+		  (make!-conjunction* (nreverse preds)))))
       (multiple-value-bind (ty cpreds)
 	  (subtype-preds (car types1) (car types2))
-	(when ty
-	  (let ((npreds (subtype-tuple-preds* cpreds var num)))
-	    (subtype-tuple-preds (if (typep (car types1) 'dep-binding)
-				     (substit (cdr types1)
-				       (acons (car types1)
-					      (make!-projection-application
-					       num var)
-					      nil))
-				     (cdr types1))
-				 (cdr types2)
-				 type2 vb var (1+ num)
-				 (nconc npreds preds)))))))
+	(let ((npreds (when ty (subtype-tuple-preds* cpreds var num))))
+	  (subtype-tuple-preds (if (typep (car types1) 'dep-binding)
+				   (substit (cdr types1)
+				     (acons (car types1)
+					    (make!-projection-application
+					     num var)
+					    nil))
+				   (cdr types1))
+			       (cdr types2)
+			       type2 vb var (1+ num)
+			       (nconc npreds preds))))))
 
 (defun subtype-tuple-preds* (cpreds var num &optional preds)
   (if (null cpreds)
