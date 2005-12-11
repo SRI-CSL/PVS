@@ -1790,11 +1790,11 @@ context."
 (defvar pvs-ready-hook nil)
 
 (defun pvs-busy ()
-  (pushw)
+  ;;(pushw)
   (run-hooks 'pvs-busy-hook))
 
 (defun pvs-ready ()
-  (popw)
+  ;;(popw)
   (run-hooks 'pvs-ready-hook))
 
 ;(add-hook 'pvs-busy-hook
