@@ -248,7 +248,9 @@ pvs-strategies files.")
 ;;; changes since the last time the context was saved.
 
 (defun save-context ()
-  (cond ((not (file-exists-p *pvs-context-path*))
+  (cond ((null *pvs-context-path*)
+	 nil)
+	((not (file-exists-p *pvs-context-path*))
 	 (pvs-message "Directory ~a seems to have disappeared!"
 	   (namestring *pvs-context-path*)))
 	(t (unless *loading-prelude*
@@ -872,7 +874,7 @@ pvs-strategies files.")
 	    (if (with-open-file (in ctx-file)
 		  (and (char= (read-char in) #\()
 		       (char= (read-char in) #\")))
-		(with-open-file (in ctx-file) (read in))
+		(ignore-lisp-errors (with-open-file (in ctx-file) (read in)))
 		(fetch-object-from-file ctx-file))
 	  (cond (error
 		 (pvs-message "PVS context unreadable - resetting")
