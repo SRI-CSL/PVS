@@ -308,7 +308,8 @@
 		  (:file "list-decls")
 		  (:file "pp-tex")
 		  (:file "tex-support")
-		  (:file "pp-html"))
+		  (:file "pp-html")
+		  (:file "raw-api"))
      :depends-on (basic))
    (:module proof-checker
      :source-pathname "src/prover/"
