@@ -486,6 +486,8 @@
 
 (defcl mapping-rhs (actual))
 
+(defcl mapping-rhs-rename (mapping-rhs))
+
 ;;; The resolution class holds the possibilities generated during name
 ;;; resolution.  The inclusions are the predicates which will become
 ;;; TCCs if that particular resolution is chosen.
