@@ -140,8 +140,8 @@
 	'id id
 	'declared-type type
 	'constructors (mapcar #'(lambda (d)
-				  (find d (constructors adt)
-					:key #'arguments :test #'memq))
+				  (id (find d (constructors adt)
+					    :key #'arguments :test #'memq)))
 			acc-decls))
       (make-instance 'adt-accessor-decl
 	'id id
