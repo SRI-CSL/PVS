@@ -360,16 +360,37 @@
 	(list (type expr)))))
 
 (defmethod judgement-types ((ex expr))
-  (judgement-types-expr ex))
+  (multiple-value-bind (jtypes jdecls)
+      (judgement-types-expr ex)
+    (when *in-checker*
+      (assert *ps*)
+      (mapcar #'(lambda (jd)
+		  (pushnew jd (dependent-decls *ps*)))
+	(jdecls-list jdecls)))
+    (values jtypes jdecls)))
+
+;;; A jdecls list is generally a list, but for tuples and records, a vector
+;;; of lists is kept instead, corresponding to the vector of types.  This
+;;; basically flattens everything into a single list.
+(defun jdecls-list (jdecls &optional result)
+  (cond ((null jdecls) result)
+	((vectorp jdecls) (jdecls-list (coerce jdecls 'list) result))
+	((atom jdecls) (if (member jdecls result :test #'tc-eq)
+			   result
+			   (cons jdecls result)))
+	(t (jdecls-list (car jdecls) (jdecls-list (cdr jdecls) result)))))
 
 (defun judgement-types-expr (ex)
   (let ((jhash (judgement-types-hash (current-judgements))))
-    (multiple-value-bind (jtypes there?)
+    (multiple-value-bind (jtypes&jdecls there?)
 	(gethash ex jhash)
       (if there?
-	  jtypes
-	  (let ((types (judgement-types* ex)))
-	    (setf (gethash ex jhash) types))))))
+	  (values-list jtypes&jdecls)
+	  (multiple-value-bind (types jdecls)
+	      (judgement-types* ex)
+	    (let ((jlist (jdecls-list jdecls)))
+	      (setf (gethash ex jhash) (list types jlist))
+	      (values types jlist)))))))
 
 (defmethod judgement-types ((ex tuple-expr))
   nil)
@@ -379,42 +400,78 @@
 
 (defmethod judgement-types* :around (ex)
   (let ((jhash (judgement-types-hash (current-judgements))))
-    (multiple-value-bind (jtypes there?)
+    (multiple-value-bind (jtypes&jdecls there?)
 	(gethash ex jhash)
       (if there?
-	  jtypes
-	  (let ((njtypes (call-next-method)))
-	    (setf (gethash ex jhash) njtypes))))))
+	  (values-list jtypes&jdecls)
+	  (multiple-value-bind (njtypes jdecls)
+	      (call-next-method)
+	    (let ((jtypes (remove (type ex) njtypes :test #'tc-eq)))
+	      #+pvsdebug (assert (valid-judgement-type-value jtypes))
+	      #+pvsdebug (assert (or (and (listp njtypes) (listp jdecls))
+				     (and (vectorp njtypes)
+					  (or (null jdecls)
+					      (vectorp jdecls)))))
+	      (setf (gethash ex jhash)
+		    (list jtypes jdecls))
+	      (values jtypes jdecls)))))))
+
+(defun valid-judgement-type-value (types)
+  (if (listp types)
+      (every #'type-expr? types)
+      (and (vectorp types)
+	   (if (symbolp (car (aref types 0)))
+	       (every #'(lambda (tys)
+			  (and (symbolp (car tys))
+			       (valid-judgement-type-value (cdr tys))))
+		      types)
+	       (every #'valid-judgement-type-value types)))))
 
 (defmethod judgement-types* ((ex number-expr))
-  (append (mapcar #'type
-	    (cdr (assoc (number ex)
-			(number-judgements-alist (current-judgements))
-			:test #'=)))
-	  (cons (available-numeric-type (number ex))
-		(when (and *even_int* *odd_int*)
-		  (list (if (evenp (number ex)) *even_int* *odd_int*))))))
+  (let ((jdecls (cdr (assoc (number ex)
+			    (number-judgements-alist (current-judgements))
+			    :test #'=))))
+    (values
+     (append (mapcar #'type jdecls)
+	     (let ((antype (available-numeric-type (number ex))))
+	       (if (tc-eq antype (type ex))
+		   (when (and *even_int* *odd_int*)
+		     (list (if (evenp (number ex)) *even_int* *odd_int*)))
+		   (cons antype
+			 (when (and *even_int* *odd_int*)
+			   (list (if (evenp (number ex))
+				     *even_int* *odd_int*)))))))
+     jdecls)))
 
 (defmethod judgement-types* ((ex name-expr))
   (let ((entry (name-judgements ex)))
     (when entry
-      (delete-if-not #'(lambda (ty) (compatible? ty (type ex)))
+      (let ((mjudgements (remove-if (complement
+				     #'(lambda (mj)
+					 (compatible? (type mj) (type ex))))
+			   (minimal-judgements entry))))
 	(if (generic-judgements entry)
-	    (let ((inst-types (instantiate-generic-judgement-types
-			       ex (generic-judgements entry))))
-	      (minimal-types
-	       (nconc (delete-if (complement #'fully-instantiated?) inst-types)
-		      (mapcar #'type (minimal-judgements entry)))))
-	    (mapcar #'type (minimal-judgements entry)))))))
+	    (multiple-value-bind (inst-types gjdecls)
+		(instantiate-generic-judgement-types
+		 ex (generic-judgements entry))
+	      (assert (or (null inst-types) gjdecls))
+	      (values 
+	       (nconc inst-types (mapcar #'type mjudgements))
+	       (nconc gjdecls mjudgements)))
+	    (values (mapcar #'type mjudgements) mjudgements))))))
 
-(defun instantiate-generic-judgement-types (name judgements &optional types)
+(defun instantiate-generic-judgement-types (name judgements
+						 &optional types jdecls)
   (if (null judgements)
-      types
-      (let ((type (instantiate-generic-judgement-type name (car judgements))))
+      (values types jdecls)
+      (let* ((type (instantiate-generic-judgement-type name (car judgements)))
+	     (add? (and type (fully-instantiated? type)
+			(compatible? type (type name)))))
 	(instantiate-generic-judgement-types
 	 name
 	 (cdr judgements)
-	 (if type (cons type types) types)))))
+	 (if add? (cons type types) types)
+	 (if add? (cons (car judgements) jdecls) jdecls)))))
 
 (defun instantiate-generic-judgement-type (name judgement)
   (let ((bindings (tc-match name (name judgement)
@@ -443,27 +500,65 @@
 		  (entry (when (<= currynum (length vector))
 			   (aref vector (1- currynum)))))
 	     (when entry
-	       (let* (;;(argtypes (judgement-types+ (argument ex)))
-		      (gtypes (compute-application-judgement-types
-			       ex
-			       (judgements-graph entry)))
-		      (jtypes (generic-application-judgement-types
-			       ex (generic-judgements entry) gtypes)))
-		 jtypes))))))
+	       (multiple-value-bind (gtypes ijdecls)
+		   (compute-application-judgement-types
+		    ex (judgements-graph entry))
+		 (multiple-value-bind (jtypes jdecls)
+		     (generic-application-judgement-types
+		      ex (generic-judgements entry) gtypes ijdecls)
+		   (values jtypes jdecls))))))))
       (lambda-expr
        (judgement-types* (beta-reduce ex))))))
 
 (defmethod judgement-types* ((ex branch))
-  (let ((then-types (judgement-types+ (then-part ex)))
-	(else-types (judgement-types+ (else-part ex))))
-    (join-compatible-types then-types else-types)))
+  (multiple-value-bind (then-types then-jdecls)
+      (judgement-types* (then-part ex))
+    (multiple-value-bind (else-types else-jdecls)
+	(judgement-types* (else-part ex))
+      (when (or then-types else-types)
+	;; May have to convert a vector
+	(let* ((ttypes (jtypes-to-types then-types (then-part ex)))
+	       (etypes (jtypes-to-types else-types (else-part ex)))
+	       (comp-types (join-compatible-types ttypes etypes (type ex))))
+	  (when comp-types
+	    (values comp-types
+		    (jdecls-union then-jdecls else-jdecls))))))))
 
-(defun join-compatible-types (types1 types2 &optional compats)
+(defun jdecls-union (jdecls1 jdecls2)
+  (let ((ldecls1 (jdecls-list jdecls1))
+	(ldecls2 (jdecls-list jdecls2)))
+    (union ldecls1 ldecls2 :test #'tc-eq)))
+
+(defun jtypes-to-types (jtypes ex)
+  (typecase jtypes
+    (vector (jvector-to-types jtypes))
+    (null (list (type ex)))
+    (t jtypes)))
+
+(defun jvector-to-types (jtypes)
+  (let ((tlist (coerce jtypes 'list)))
+    (assert (every #'consp tlist))
+    (if (symbolp (caar tlist))
+	;; These are field ids - create recordtypes
+	(let* ((field-decls (mapcar #'(lambda (fld&types)
+					(mapcar #'(lambda (ty)
+						    (mk-field-decl
+						     (car fld&types) ty ty))
+					  (jtypes-to-types (cdr fld&types) nil)))
+			      tlist))
+	       (recfields (cartesian-product field-decls)))
+	  (mapcar #'(lambda (rf) (make-recordtype rf))
+	    recfields))
+	;; otherwise tupletypes
+	(mapcar #'mk-tupletype (cartesian-product tlist)))))
+
+(defun join-compatible-types (types1 types2 type &optional compats)
   (if (null types1)
-      compats
+      (delete type compats :test #'tc-eq)
       (join-compatible-types
        (cdr types1)
        types2
+       type
        (join-compatible-types* (car types1) types2 compats))))
 
 (defun join-compatible-types* (type types compats)
@@ -478,9 +573,9 @@
 					(subtype-of? ty ctype))
 			   compats)))))))
 
-(defun generic-application-judgement-types (ex gen-judgements jtypes)
+(defun generic-application-judgement-types (ex gen-judgements jtypes jdecls)
   (if (null gen-judgements)
-      jtypes
+      (values jtypes jdecls)
       (let* ((jdecl (car gen-judgements))
 	     (jtype (instantiate-generic-appl-judgement-type ex jdecl)))
 	(if jtype
@@ -491,20 +586,27 @@
 		   (rdomains (operator-domain ex))
 		   (jrange (when (length= argtypes (formals jdecl))
 			     (compute-appl-judgement-range-type
-			      arguments argtypes rdomains domains range))))
+			      arguments argtypes rdomains domains range)))
+		   (dont-add? (or (null jrange)
+				  (some #'(lambda (jty)
+					    (subtype-of? jty jrange))
+					jtypes))))
 	      (generic-application-judgement-types
 	       ex
 	       (cdr gen-judgements)
-	       (if (or (null jrange)
-		       (some #'(lambda (jty) (subtype-of? jty jrange)) jtypes))
+	       (if dont-add?
 		   jtypes
 		   (cons jrange
 			 (delete-if #'(lambda (jty)
-					(subtype-of? jrange jty)) jtypes)))))
+					(subtype-of? jrange jty)) jtypes)))
+	       (if dont-add?
+		   jdecls
+		   (cons jdecl jdecls))))
 	    (generic-application-judgement-types
 	     ex
 	     (cdr gen-judgements)
-	     jtypes)))))
+	     jtypes
+	     jdecls)))))
 
 (defun instantiate-generic-appl-judgement-types (ex judgements &optional types)
   (if (null judgements)
@@ -605,29 +707,34 @@
   te)
 
 (defun compute-appl-judgement-types (arguments argtypes rdomains graph
-					       &optional jtypes exclude)
+					       &optional jtypes exclude jdecls)
   (if (null graph)
-      (nreverse jtypes)
+      (values (nreverse jtypes) (nreverse jdecls))
       (let* ((excluded? (memq (caar graph) exclude))
 	     (range (unless excluded?
 		      (compute-appl-judgement-types*
 		       arguments
 		       argtypes
 		       rdomains
-		       (caar graph)))))
+		       (caar graph))))
+	     (dont-add? (or (null range)
+			    (some #'(lambda (r) (subtype-of? r range))
+				  jtypes))))
 	(compute-appl-judgement-types
 	 arguments
 	 argtypes
 	 rdomains
 	 (cdr graph)
-	 (if (or (null range)
-		 (some #'(lambda (r) (subtype-of? r range)) jtypes))
+	 (if dont-add?
 	     jtypes
 	     (cons range
 		   (delete-if #'(lambda (r) (subtype-of? range r)) jtypes)))
 	 (if (or range excluded?)
 	     (append (car graph) exclude)
-	     exclude)))))
+	     exclude)
+	 (if dont-add?
+	     jdecls
+	     (cons (caar graph) jdecls))))))
 
 (defun compute-appl-judgement-types* (arguments argtypes rdomains jdecl)
   (let* ((jtype (judgement-type jdecl))
@@ -832,31 +939,53 @@
 (defmethod judgement-types* ((ex extraction-application))
   nil)
 
+;;; Here we create a vector of types, rather than a set of tuple types.
+;;; Thus if ex`i has n_i types, we create one vector where the ith element
+;;; consists of n_i types, rather than n_1 * ... * n_m tuple types.
 (defmethod judgement-types* ((ex tuple-expr))
   (let* ((exprs (exprs ex))
-	 (jtypes (mapcar #'judgement-types* exprs)))
-    (unless (every #'null jtypes)
+	 (jtypes&decls (mapcar #'(lambda (ex)
+				   (multiple-value-list
+				    (judgement-types* ex)))
+			 exprs)))
+    (unless (every #'(lambda (jt&d) (null (car jt&d))) jtypes&decls)
       (let* ((len (length exprs))
-	     (vec (make-array len)))
+	     (tvec (make-array len))
+	     (jvec (unless (every #'(lambda (jt&d) (null (cadr jt&d)))
+				  jtypes&decls)
+		     (make-array len))))
 	(dotimes (i len)
-	  (setf (aref vec i)
-		(or (nth i jtypes)
-		    (list (type (nth i exprs))))))
-	vec))))
+	  (setf (aref tvec i)
+		(or (car (nth i jtypes&decls))
+		    (list (type (nth i exprs)))))
+	  (when jvec
+	    (setf (aref jvec i)
+		  (cadr (nth i jtypes&decls)))))
+	#+pvsdebug (assert (valid-judgement-type-value tvec))
+	(values tvec jvec)))))
 
+;;; As with tuple-exprs, we keep the types as a vector of types, one for
+;;; each field, rather than creating the full set of recordtypes.  The only
+;;; difference is that the field id is included as the car of the types.
 (defmethod judgement-types* ((ex record-expr))
   (let* ((exprs (mapcar #'expression (assignments ex)))
 	 (args (mapcar #'arguments (assignments ex)))
-	 (jtypes (mapcar #'judgement-types* exprs)))
-    (unless (every #'null jtypes)
+	 (jtypes&decls (mapcar #'(lambda (ex)
+				   (multiple-value-list
+				    (judgement-types* ex)))
+			 exprs)))
+    (unless (every #'(lambda (jt&d) (null (car jt&d))) jtypes&decls)
       (let* ((len (length exprs))
-	     (vec (make-array len)))
+	     (tvec (make-array len))
+	     (jvec (make-array len)))
 	(dotimes (i len)
-	  (setf (aref vec i)
+	  (setf (aref tvec i)
 		(cons (id (caar (nth i args)))
-		      (or (nth i jtypes)
-			  (list (type (nth i exprs)))))))
-	vec))))
+		      (or (car (nth i jtypes&decls))
+			  (list (type (nth i exprs))))))
+	  (setf (aref jvec i)
+		(cadr (nth i jtypes&decls))))
+	(values tvec jvec)))))
 
 (defmethod judgement-types* ((ex quant-expr))
   nil)
@@ -1854,26 +1983,27 @@
 
 ;;; Used by add-name-step in prover/proofrules.lisp
 (defun update-judgements-with-new-name (name expr context)
-  (let ((judgements-copied? nil)
-	(jtypes (judgement-types expr)))
-    (when jtypes
-      (let ((jthash (copy (judgement-types-hash (judgements context)))))
-	(setf (gethash name jthash) jtypes)
-	(setf (judgements context)
-	      (copy (judgements context) 'judgement-types-hash jthash))
-	(setq judgements-copied? t)))
-    (when (name-expr? expr)
-      (let* ((applalist (application-judgements-alist (judgements context)))
-	     (appl-judgements (cdr (assq (declaration expr) applalist))))
-	(when appl-judgements
-	  (let ((capplalist (acons (declaration name) appl-judgements
-				   applalist)))
-	    (if judgements-copied?
-		(setf (application-judgements-alist (judgements context))
-		      capplalist)
-		(setf (judgements context)
-		      (copy (judgements context)
-			'application-judgements-alist capplalist)))))))))
+  (let ((judgements-copied? nil))
+    (multiple-value-bind (jtypes jdecls)
+	(judgement-types expr)
+      (when jtypes
+	(let ((jthash (copy (judgement-types-hash (judgements context)))))
+	  (setf (gethash name jthash) (list jtypes jdecls))
+	  (setf (judgements context)
+		(copy (judgements context) 'judgement-types-hash jthash))
+	  (setq judgements-copied? t)))
+      (when (name-expr? expr)
+	(let* ((applalist (application-judgements-alist (judgements context)))
+	       (appl-judgements (cdr (assq (declaration expr) applalist))))
+	  (when appl-judgements
+	    (let ((capplalist (acons (declaration name) appl-judgements
+				     applalist)))
+	      (if judgements-copied?
+		  (setf (application-judgements-alist (judgements context))
+			capplalist)
+		  (setf (judgements context)
+			(copy (judgements context)
+			  'application-judgements-alist capplalist))))))))))
 
 ;;; Subtype judgement handling
 
@@ -1958,10 +2088,13 @@
        (pushnew (car new-elts) elts :test #'tc-eq))))
 
 (defun known-subtype-of? (t1 t2)
-  (let ((it (cons t1 t2)))
-    (unless (member it *subtypes-seen* :test #'tc-eq)
-      (let ((*subtypes-seen* (cons it *subtypes-seen*)))
-	(check-known-subtypes t1 t2)))))
+  (unless (and (null (free-params t1))
+	       (null (free-params t2))
+	       (not (strict-compatible? t1 t2)))
+    (let ((it (cons t1 t2)))
+      (unless (member it *subtypes-seen* :test #'tc-eq)
+	(let ((*subtypes-seen* (cons it *subtypes-seen*)))
+	  (check-known-subtypes t1 t2))))))
 
 (defun check-known-subtypes (t1 t2)
   (check-known-subtypes* t1 t2 (known-subtypes *current-context*)))
@@ -1999,12 +2132,17 @@
 			(not (eq subst 'fail))
 			(tc-eq tt1 kt))
 		(some #'(lambda (ks)
-			  (subtype-of*?
-			   (substit (if thinst
-					(subst-mod-params ks thinst theory)
-					ks)
-			     subst)
-			   tt2))
+			  (let* ((subst2 (when (freevars ks)
+					   (simple-match ks tt2)))
+				 (kss (unless (eq subst2 'fail)
+					(substit ks subst2))))
+			    (when kss
+			      (subtype-of*?
+			       (substit (if thinst
+					    (subst-mod-params ks thinst theory)
+					    kss)
+				 subst)
+			       tt2))))
 		      (cdr ksubtypes))))))))))
 
 (defun subst-theory-inst-from-free-params (bindings)
