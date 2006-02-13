@@ -3931,7 +3931,9 @@ e LHS free variables in ~a" hyp lhs)
 ;	(t (select-from-fmlas (cdr fmlas)))
 
 (defmethod auto-rewrite-hashname ((expr name-expr))
-  expr)
+  (if (variable? expr)
+      (call-next-method)
+      expr))
 
 (defmethod auto-rewrite-hashname ((expr record-expr))
   'recordcons)
