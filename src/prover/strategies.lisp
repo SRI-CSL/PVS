@@ -1006,9 +1006,9 @@ the user instead."
 ;;   "")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defstep skosimp (&optional (fnum *) preds?)
+(defstep skosimp (&optional (fnum *) preds? dont-simplify?)
   (then (if preds? (skolem-typepred fnum)
-	    (skolem! fnum))
+	    (skolem! fnum :dont-simplify? dont-simplify?))
 	(flatten))
   "Skolemize (with typepreds on skolem constants when PREDS? is T)
 then disjunctively simplify.  "
@@ -1016,8 +1016,8 @@ then disjunctively simplify.  "
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defstep skosimp* (&optional preds?)
-  (repeat (then (if preds? (skolem-typepred)(skolem!))
+(defstep skosimp* (&optional preds? dont-simplify?)
+  (repeat (then (if preds? (skolem-typepred :dont-simplify? dont-simplify?)(skolem!))
 		(flatten)))
   "Repeatedly Skolemizes (with typepreds on skolem constants when PREDS?
 is T) and disjunctively simplifies."
@@ -1963,10 +1963,10 @@ See also CASE, CASE*.  Hides FORMULA when HIDE? is T."
   "Apply left-to-right replacement with formulas in FNUMS."
   "Repeatedly applying the replace rule")
 
-(defstep skolem! (&optional (fnum *) keep-underscore? )
+(defstep skolem! (&optional (fnum *) keep-underscore? dont-simplify?)
   (let ((sformnum (find-!quant fnum *ps*)))
     (let ((newterms (fill-up-terms sformnum nil *ps* keep-underscore?)))
-      (skolem sformnum newterms)))
+      (skolem sformnum newterms :dont-simplify? dont-simplify?)))
   "Skolemizes by automatically generating skolem constants.
 When KEEP-UNDERSCORE? is T, a bound variable x_1 is replaced by skolem constant
 x_1!n rather than x!n, for some number n."
@@ -2891,11 +2891,11 @@ or (LAMBDA x: ...)."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;NSH(7.27.94): skolem then typepred the skolem constants.
 
-(defstep skolem-typepred (&optional (fnum *))
+(defstep skolem-typepred (&optional (fnum *) dont-simplify?)
   (let ((sformnum (find-!quant fnum *ps*))
 	(newterms (fill-up-terms sformnum nil *ps*))
 	(x `(typepred ,@newterms))) 
-    (then (skolem sformnum newterms)
+    (then (skolem sformnum newterms :dont-simplify? dont-simplify?)
 	  x))
   "Skolemizes and then introduces type-constraints of the Skolem
 constants.
