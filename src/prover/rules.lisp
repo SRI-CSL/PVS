@@ -537,11 +537,13 @@ are to be left uninstantiated.
   "~%Instantiating the top quantifier in ~a with the terms: ~% ~a,")
 
 
-(addrule 'skolem  (fnum constants) (skolem-typepreds?)
-  (skolem-rule-fun fnum constants skolem-typepreds?)
+(addrule 'skolem  (fnum constants) (skolem-typepreds? dont-simplify?)
+  (skolem-rule-fun fnum constants skolem-typepreds? dont-simplify?)
   "Replaces the universally quantified variables in FNUM with new
 skolem constants in CONSTANTS.  If SKOLEM-TYPEPREDS? is T, then typepreds
-will be generated for the introduced constants.
+will be generated for the introduced constants.  If DONT-SIMPLIFY? is T,
+then the simplifications that occur automatically during substitution are
+suppressed.  
 Example: (skolem 1 (\"A\" \"B\"))
 See also SKOLEM!, SKOSIMP, SKOSIMP*."
   "~%For the top quantifier in ~a, we introduce Skolem constants: ~2I~:_~a,")
