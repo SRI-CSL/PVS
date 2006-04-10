@@ -294,7 +294,9 @@
 	   (typecheck-actuals inst)
 	   (typecheck-mappings (mappings inst) inst)
 	   (setq nmodinst (set-type-actuals inst mod))
-	   (unless (fully-instantiated? inst)
+	   (unless (if (actuals inst)
+		       (fully-instantiated? (actuals inst))
+		       (fully-instantiated? (copy inst 'mappings nil)))
 	     (type-error inst "Importing actuals must be fully instantiated"))
 	   (check-compatible-params (formals-sans-usings mod)
 				    (actuals inst) nil))
@@ -335,7 +337,8 @@
 (defun add-theory-mappings-importings (theory inst)
   (declare (ignore theory))
   (mapc #'(lambda (map)
-	    (when (mod-decl? (declaration (lhs map)))
+	    (when (and (not (mapping-rename? map))
+		       (mod-decl? (declaration (lhs map))))
 	      (add-to-using (mk-modname (id (expr (rhs map)))
 			      (actuals (expr (rhs map)))
 			      (library (expr (rhs map)))
@@ -554,7 +557,8 @@
     (setf (get-importings theory)
 	  (append thimps (list theoryname))))
   (maphash #'(lambda (th ithinsts)
-	       (unless (eq th theory)
+	       (unless (or (eq th theory)
+			   (unimported-mapped-theory? th theory theoryname))
 		 (let* ((thinsts (exportable-theory-instances ithinsts theory))
 			(curimps (get-importings th))
 			(expinsts (get-exported-theory-instances
@@ -606,14 +610,14 @@
 
 (defun subst-theory-importings (th thinsts theoryname theory)
   (let* ((mthinsts (if (mappings theoryname)
-		       (mapcan #'(lambda (thinst)
-				   (when (and (eq (id theoryname) (id thinst))
-					      (eq (library theoryname)
-						  (library thinst))
-					      (fully-instantiated? thinst))
-				     (list
-				      (copy thinst
-					'mappings (mappings theoryname)))))
+		       (mapcar #'(lambda (thinst)
+				   (if (and (eq (id theoryname) (id thinst))
+					    (eq (library theoryname)
+						(library thinst))
+					    (fully-instantiated? thinst))
+				       (copy thinst
+					 'mappings (mappings theoryname))
+				       thinst))
 			 thinsts)
 		       thinsts))
 ;; 	 (lib-id (when (library-datatype-or-theory? th)
@@ -655,10 +659,9 @@
 	       (dolist (decl decls)
 		 (when (and (declaration? decl)
 			    (visible? decl)
-			    (exportable? decl theory))
-		   (when (and (eq (id (current-theory)) 'min_seq)
-			      (eq (id decl) 'amax))
-		     (break "update-declarations-hash"))
+			    (exportable? decl theory)
+			    (not (unimported-mapped-theory?
+				  (module decl) theory theoryname)))
 		   (let ((map (find decl (mappings theoryname)
 				    :key #'(lambda (m)
 					     (declaration (lhs m))))))
@@ -677,20 +680,26 @@
 ;;; subst-params-decl).  
 (defun exportable? (decl theory)
   (assert *current-context*)
-  (or (eq (module decl) (current-theory))
-      (from-prelude? decl)
-      (from-prelude-library? decl)
-      (unless (or (from-prelude? theory)
-		  (from-prelude-library? theory))
-	(let ((exp (exporting theory)))
-	  (if (eq (module decl) theory)
-	      (or (eq (kind exp) 'default)
-		  (if (eq (names exp) 'all)
-		      (not (member decl (but-names exp) :test #'expname-test))
-		      (member decl (names exp) :test #'expname-test)))
-	      (or ;;(eq (kind exp) 'default)
-	       (and (rassoc (module decl) (closure exp) :test #'eq)
-		    (exportable? decl (module decl)))))))))
+  (let ((th (module decl)))
+    (or (eq th (current-theory))
+	(from-prelude? decl)
+	(from-prelude-library? decl)
+	(unless (or (from-prelude? theory)
+		    (from-prelude-library? theory)
+		    (and (theory-interpretation? th)
+			 (formal-theory-decl? (generated-by-decl th))
+			 (not (memq (generated-by-decl th)
+				    (formals (current-theory))))))
+	  (let ((exp (exporting theory)))
+	    (if (eq (module decl) theory)
+		(or (eq (kind exp) 'default)
+		    (if (eq (names exp) 'all)
+			(not (member decl (but-names exp)
+				     :test #'expname-test))
+			(member decl (names exp) :test #'expname-test)))
+		(or ;;(eq (kind exp) 'default)
+		 (and (rassoc (module decl) (closure exp) :test #'eq)
+		      (exportable? decl (module decl))))))))))
 
 (defun remove-uninstantiated-repeated-importings (entry imps)
   (remove-if
@@ -785,7 +794,18 @@
   (declare (ignore theoryname))
   (when (saved-context theory)
     (dolist (nt (named-theories (saved-context theory)))
-      (pushnew nt (named-theories *current-context*)))))
+      (unless (unimported-mapped-theory? nt theory theoryname)
+	(pushnew nt (named-theories *current-context*))))))
+
+(defmethod unimported-mapped-theory? ((th theory-interpretation)
+				      theory theoryname)
+  (or (formal-theory-decl? (generated-by-decl th))
+      (and (mod-decl? (generated-by-decl th))
+	   (find (generated-by-decl th) (mappings theoryname)
+		 :key #'(lambda (map) (declaration (lhs map)))))))
+
+(defmethod unimported-mapped-theory? (th theory theoryname)
+  nil)
 
 (defun list-diff (l1 l2 &optional elts)
   (if (or (null l1) (equal l1 l2))
@@ -841,6 +861,8 @@
 	    (if (formal-theory-decl? (car formals))
 		(let* ((mdecl (declaration (resolution (expr (car actuals)))))
 		       (fmappings (theory-mapping (generated-theory (car formals))))
+		       (tmappings (theory-mapping (generated-theory
+						   (declaration (expr (car actuals))))))
 		       (amappings (typecase mdecl
 				    (theory-abbreviation-decl (mapping mdecl))
 				    (mod-decl
@@ -850,9 +872,9 @@
 					(mappings (expr (car actuals)))
 					nil))))
 		       (nalist (compose-formal-to-actual-mapping
-				fmappings amappings)))
-		  (assert (= (length fmappings) (length amappings)))
-		  (nconc nalist assoc))
+				(compose-formal-to-actual-mapping tmappings fmappings)
+				amappings)))
+		  (append nalist assoc))
 		(acons (car formals)
 		       (if (formal-type-decl? (car formals))
 			   (type-value (car actuals))
@@ -886,13 +908,41 @@
 	    (type-error actual
 	      "Not a structural subtype"))))))
     (formal-theory-decl
-     (unless (typep (declaration (expr actual))
-		    '(or module mod-decl theory-abbreviation-decl
-		         formal-theory-decl))
-       (type-error actual "Theory name expected here")))
+     (check-compatible-theory-param formal (expr actual) assoc))
     (t (let ((type (subst-types (type formal) assoc)))
 	 (typecheck* (expr actual) type nil nil))))
   t)
+
+(defun check-compatible-theory-param (formal act assoc)
+  (unless (typep (declaration act)
+		 '(or module mod-decl theory-abbreviation-decl
+		      formal-theory-decl))
+    (type-error act "Theory name expected here"))
+  (check-compatible-theory-param*
+   (from-theory (generated-theory formal)) (declaration act) act assoc))
+
+(defmethod check-compatible-theory-param* (ftheory (adecl module) act assoc)
+  (declare (ignore assoc))
+  (unless (eq ftheory adecl)
+    (type-error act "Theory name should be (an alias of) ~a" (id ftheory))))
+
+(defmethod check-compatible-theory-param* (ftheory
+					   (adecl theory-abbreviation-decl)
+					   act assoc)
+  (check-compatible-theory-param* ftheory
+				  (get-theory (theory-name adecl))
+				  act assoc))
+
+(defmethod check-compatible-theory-param* (ftheory (adecl formal-theory-decl)
+						   act assoc)
+  (check-compatible-theory-param* ftheory
+				  (from-theory (generated-theory adecl))
+				  act assoc))
+
+(defmethod check-compatible-theory-param* (ftheory (adecl mod-decl) act assoc)
+  (check-compatible-theory-param* ftheory
+				  (from-theory (generated-theory adecl))
+				  act assoc))
 
 (defmethod sub-struct-type? ((t1 recordtype) (t2 recordtype))
   (let ((subfields (remove-if (complement
@@ -982,7 +1032,7 @@
 		    (check-duplication (copy (declaration
 					      (car (resolutions (lhs mapping))))
 					 'id (id (expr (rhs mapping)))
-					 'module (current-theory))))))
+					 'module 'unbound)))))
 	    (unless (mapping-rename? mapping)
 	      (typecheck-mapping-rhs mapping))
 	    ;;(assert (ptypes (expr (rhs mapping))))
