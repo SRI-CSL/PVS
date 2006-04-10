@@ -227,7 +227,8 @@
     (let* ((theory (get-typechecked-theory theory-name))
 	   (tgt-name (target theory-name))
 	   (tgt-theory (when tgt-name (get-typechecked-theory tgt-name)))
-	   (abbr-info (if (or (mappings theory-name)
+	   (abbr-info (if (or (formal-theory-decl? decl)
+			      (mappings theory-name)
 			      (target theory-name))
 			  ""
 			  (format nil
@@ -372,6 +373,9 @@
       (typecheck-using* interpreted-copy (mk-modname (id interpreted-copy)))
       (push interpreted-copy (generated-theories (current-theory)))
       (assert (null (generated-theory decl)))
+      (dolist (map (mappings theory-name))
+	(when (mapping-rename? map)
+	  (setf (module (mapped-decl map)) interpreted-copy)))
       (setf (generated-theory decl) interpreted-copy))))
 
 (defun cleanup-mapped-axiom-tccs (thdecl cur-th src-th int-th)
@@ -439,31 +443,50 @@
 (defmethod module ((th module))
   th)
 
+(defvar *theory-mapping-renames* nil)
+
 ;;; theory and theory-name are the theory to be mapped
 ;;; (current-theory) is the theory referencing theory-name
 (defun make-interpreted-copy (theory theory-name decl tgt-theory tgt-name)
-  (let* ((*all-subst-mod-params-caches*
-	  (if (every #'mapping-subst? (mappings theory-name))
-	      *all-subst-mod-params-caches*
-	      nil))
-	 (stheory (subst-mod-params theory theory-name theory))
-	 (itheory (add-referring-theory-importings theory-name stheory))
-	 (*making-interpreted-theory* t)
-	 (ntheory (pc-parse (unparse (copy itheory 'id (id decl)) :string t)
-		    'adt-or-theory))
-	 (*generate-tccs* 'none)
-	 (*current-context* (make-new-context ntheory)))
-    (change-class ntheory 'theory-interpretation
-		  'from-theory theory
-		  'from-theory-name theory-name)
-    (push ntheory (named-theories *current-context*))
-    (typecheck* ntheory nil nil nil)
-    (setf (generated-by ntheory) (id theory))
+  (let ((mapped (car (member decl *theory-mapping-renames*
+			     :key #'mapped-decl :test #'same-id)))
+	(ntheory nil))
+    (if mapped
+	(setq ntheory (generated-theory (mapped-decl mapped)))
+	(let* ((*all-subst-mod-params-caches*
+		(if (every #'mapping-subst? (mappings theory-name))
+		    *all-subst-mod-params-caches*
+		    nil))
+	       (stheory (subst-mod-params theory theory-name theory))
+	       (itheory (add-referring-theory-importings theory-name stheory))
+	       (*making-interpreted-theory* t)
+	       (ptheory (pc-parse (unparse (copy itheory 'id (id decl)) :string t)
+			  'adt-or-theory))
+	       (*generate-tccs* 'none)
+	       (*theory-mapping-renames*
+		(append *theory-mapping-renames*
+			(remove-if (complement
+				    #'(lambda (map)
+					(and (mapping-rename? map)
+					     (mod-decl? (mapped-decl map)))))
+			  (mappings theory-name))))
+	       (*current-context* (make-new-context ptheory)))
+	  (change-class ptheory 'theory-interpretation
+	    'from-theory theory
+	    'from-theory-name theory-name)
+	  (push ptheory (named-theories *current-context*))
+	  (typecheck* ptheory nil nil nil)
+	  (setf (generated-by ptheory) (id theory))
+	  (setq ntheory ptheory)))
+    (dolist (map (mappings theory-name))
+      (when (mapping-rename? map)
+	(setf (mapped-decl map)
+	      (find (id (mapped-decl map)) (theory ntheory) :key #'id))))
     (setf (generated-by-decl ntheory) decl)
     (setf (theory-mapping ntheory)
 	  (get-interpreted-mapping theory ntheory theory-name))
     (setf (all-usings ntheory)
-	  (let ((imps nil))
+	  (let ((imps (all-usings ntheory)))
 	    (map-lhash #'(lambda (th thinsts)
 			   (unless (from-prelude? th)
 			     (push (cons th thinsts) imps)))
@@ -889,8 +912,12 @@
   (let ((*generate-tccs* 'none))
     (if (null formals)
 	range
-	(let ((nrange (make-formals-funtype (cdr formals) range)))
-	  (make-formals-funtype* (car formals) nrange)))))
+	(let* ((nrange (make-formals-funtype (cdr formals) range))
+	       (ft (make-formals-funtype* (car formals) nrange)))
+;; 	  (when (and (declaration? (current-declaration))
+;; 		     (eq (id (current-declaration)) 'insertM))
+;; 	    (break "make-formals-funtype"))
+	  ft))))
 
 (defun make-formals-funtype* (formals range)
   (if (some #'(lambda (ff)
@@ -904,6 +931,7 @@
 	     (nvar (mk-name-expr nvar nil nil
 				 (make-resolution ndep
 				   (theory-name *current-context*) ndom)))
+	     (*bound-variables* (cons ndep *bound-variables*))
 	     (nrange (subst-formals-funtype formals range ndep nvar)))
 	(mk-funtype ndep nrange))
       (mk-funtype (make-formals-domain formals) range)))
@@ -971,6 +999,7 @@
     (unless (typep decl 'adt-def-decl)
       (typecheck-measure decl)
       (setf (recursive-signature decl) (compute-recursive-signature decl)))
+    ;;(assert (null (freevars (recursive-signature decl))))
     (set-nonempty-type rtype)
     (put-decl decl)
     (let ((*recursive-calls-without-enough-args*
@@ -1010,7 +1039,9 @@
 
 (defun compute-recursive-signature* (type depth decl &optional domtypes)
   (if (= depth 0)
-      (let* ((dom (domain type))
+      (let* ((dom (if (dep-binding? (domain type))
+		      (type (domain type))
+		      (domain type)))
 	     (vid (make-new-variable '|z| (cons decl domtypes)))
 	     (bd (make-bind-decl vid dom))
 	     (avar (make-variable-expr bd))
@@ -1031,13 +1062,13 @@
 					     (type dtype)))
 			       domtypes)))
 	(setq *recursive-subtype-term* arg2)
-	(if (dep-binding? dom)
-	    (let ((dsubtype (mk-dep-binding (make-new-variable (id dom)
-					      (freevars (range type)))
-					    subtype)))
+	(if (dep-binding? (domain type))
+	    (let ((dsubtype (mk-dep-binding
+			     (make-new-variable (id (domain type))
+			       (freevars (range type))) subtype)))
 	      (mk-funtype* (cons dsubtype clean-domtypes)
 			   (substit (range type)
-			     (acons dom dsubtype nil))))
+			     (acons (domain type) dsubtype nil))))
 	    (mk-funtype* (cons subtype clean-domtypes) (range type))))
       (if (dep-binding? (domain type))
 	  (let ((ndep (mk-dep-binding (make-new-variable (id (domain type))
@@ -1227,10 +1258,12 @@
 				     pranges))
 	      mtypes)))
       (cond ((singleton? ctypes)
-	     (setf (measure-depth decl) (length doms))
-	     (typecheck (measure decl)
-	       :expected (mk-funtype* doms (car ctypes))
-	       :tccs 'all)
+	     (let ((eftype (mk-funtype* doms (car ctypes))))
+	       (assert (null (freevars eftype)))
+	       (setf (measure-depth decl) (length doms))
+	       (typecheck (measure decl)
+		 :expected eftype
+		 :tccs 'all))
 	     (typecheck-ordering decl))
 	    ((funtype? ftype)
 	     (let ((ptypes
@@ -1242,8 +1275,14 @@
 	       (if ptypes
 		   (typecheck-measure-with-ordering
 		    decl (range ftype)
-		    (when (lambda-expr? meas) (expression meas)) 
-		    (mapcar #'range mtypes)
+		    (when (lambda-expr? meas) (expression meas))
+		    (mapcar #'(lambda (mty)
+				(if (and (dep-binding? (domain mty))
+					 (dep-binding? (domain ftype)))
+				    (substit (range mty)
+				      (acons (domain mty) (domain ftype) nil))
+				    (range mty)))
+		      mtypes)
 		    ordering
 		    (cons (domain ftype) doms))
 		   (measure-incompatible decl type meas mtypes))))
@@ -1261,13 +1300,65 @@
 (defun typecheck-ordering* (decl ordering mtype)
   (let ((expected (mk-funtype (list mtype mtype) *boolean*)))
     (cond ((some #'(lambda (ty) (compatible? ty expected)) (types ordering))
-	   (typecheck ordering :expected expected :tccs 'all)
-	   (generate-well-founded-tcc decl mtype))
+	   (let* ((otype (lift-measure-type-for-ordering mtype ordering nil))
+		  (exp (mk-funtype (list otype otype) *boolean*)))
+	     (typecheck ordering :expected exp :tccs 'all)
+	     (generate-well-founded-tcc decl otype)))
 	  ((typep (find-supertype mtype) 'funtype)
 	   (typecheck-ordering* decl ordering (range (find-supertype mtype))))
 	  (t (type-error ordering
 	       "Ordering is incompatible with the measure.")))))
-	
+
+(defmethod lift-measure-type-for-ordering :around ((mtype type-expr) ordering
+						   bindings)
+  (if (freevars mtype)
+      (let ((otype (call-next-method)))
+	(check-for-ordering-freevars otype ordering bindings)
+	otype)
+      mtype))
+
+(defun check-for-ordering-freevars (otype ordering bindings)
+  (when (freevars otype)
+    (let ((fvs (remove-if #'(lambda (fv)
+			      (assq (declaration fv) bindings))
+		 (freevars otype))))
+      (when fvs
+	(type-error ordering
+	  "Order type has free variables ~{~a~^,~}: ~%  ~a"
+	  fvs otype)))))
+
+(defmethod lift-measure-type-for-ordering ((mtype type-expr) ordering bindings)
+  mtype)
+
+(defmethod lift-measure-type-for-ordering ((mtype funtype) ordering bindings)
+  (let ((dom (domain mtype)))
+    (check-for-ordering-freevars (if (dep-binding? dom) (type dom) dom)
+				 ordering bindings)
+    (let ((ran (lift-measure-type-for-ordering
+		(range mtype) ordering
+		(if (dep-binding? dom)
+		    (acons dom dom bindings)))))
+      (mk-funtype dom ran))))
+
+(defmethod lift-measure-type-for-ordering ((mtype tupletype) ordering bindings)
+  (let ((ntypes (lift-measure-type-for-ordering (types mtype) ordering
+						bindings)))
+    (mk-tupletype ntypes)))
+
+(defmethod lift-measure-type-for-ordering ((list list) ordering bindings)
+  (when list
+    (let ((cartype (lift-measure-type-for-ordering (car list) ordering
+						   bindings)))
+      (cons cartype
+	    (lift-measure-type-for-ordering
+	     (if (dep-binding? cartype)
+		 (substit (cdr list) (acons (car list) cartype nil))
+		 (cdr list))
+	     ordering
+	     (acons cartype (car list) bindings))))))
+      
+(defmethod lift-measure-type-for-ordering ((mtype subtype) ordering bindings)
+  (lift-measure-type-for-ordering (supertype mtype) ordering bindings))
 
 
 (defun typecheck-measure* (decl type meas mtypes &optional doms)
@@ -2450,33 +2541,73 @@
 
 (defmethod typecheck* ((te type-extension) expected kind arguments)
   (declare (ignore expected kind arguments))
-  (let ((etype (typecheck* (type te) nil nil nil)))
+  (let ((lhstype (typecheck* (type te) nil nil nil))
+	(rhstype (typecheck* (extension te) nil nil nil)))
     (set-type (type te) nil)
-    (let ((stype (find-supertype etype)))
-      (typecase stype
+    (set-type (extension te) nil)
+    (let ((slhstype (find-supertype lhstype))
+	  (srhstype (find-supertype rhstype)))
+      (typecase slhstype
 	((or recordtype struct-sub-recordtype)
-	 (dolist (fld (extension te))
-	   (when (member (id fld) (fields stype) :key #'id)
-	     (type-error fld
-	       "Field ~a already is in recordtype ~a" (id fld) (type te))))
-	 (when (duplicates? (extension te) :test #'same-id)
-	   (type-error te "Duplicate field names not allowed"))
-	 (let ((extended-type
-		(typecheck* (copy stype
-			      'fields (append (fields stype) (extension te)))
-			    nil nil nil)))
+	 (unless (typep srhstype '(or recordtype struct-sub-recordtype))
+	   (type-error te
+	     "Type ~a is a recordtype, ~a is not" (type te) (extension te)))
+	 (unless (and (eq slhstype lhstype)
+		      (eq srhstype rhstype))
+	   (pvs-warning "The extended type ~a will not be a subtype" te))
+	 (let ((extended-type (recordtype-union slhstype srhstype te)))
 	   (setf (print-type extended-type) te)
 	   extended-type))
 	((or tupletype struct-sub-tupletype)
-	 (let ((extended-type
-		(typecheck* (copy stype
-			      'types (append (types stype) (extension te)))
-			    nil nil nil)))
+	 (unless (typep srhstype '(or tupletype struct-sub-tupletype))
+	   (type-error te
+	     "Type ~a is a tupletype, ~a is not" (type te) (extension te)))
+	 (let* ((extended-type
+		 (typecheck* (copy slhstype
+			       'types (append (types slhstype)
+					      (types srhstype)))
+			     nil nil nil)))
 	   (setf (print-type extended-type) te)
 	   extended-type))
 	(t (type-error (type te)
 	     "Type extensions may only be applied to record and tuple types"
 	     ))))))
+
+(defun recordtype-union (rt1 rt2 te)
+  (let ((nfields (recordtype-union* (fields rt1) (fields rt2) te)))
+    (typecheck* (if (or (struct-sub-recordtype? rt1)
+			(struct-sub-recordtype? rt2))
+		    (make-instance 'struct-sub-recordtype
+		      'generated-by te
+		      'fields nfields)
+		    (make-instance 'recordtype
+		      'fields nfields))
+		nil nil nil)))
+
+(defun recordtype-union* (flds1 flds2 te &optional bindings nfields)
+  (if (null flds1)
+      (cond ((null flds2)
+	     (pvs-warning "~-100I~_~<The record extension ~_~w ~_adds no new fields~:>"
+	       (list te))
+	     (nreverse nfields))
+	    (t (append (nreverse nfields)
+		       (substit flds2
+			 (mapcar #'(lambda (x) (cons (cdr x) (car x)))
+			   bindings)))))
+      (let* ((fld1 (car flds1))
+	     (fld2 (find (id fld1) flds2 :key #'id)))
+	(when (and fld2
+		   (not (tc-eq-with-bindings (type fld1) (type fld2)
+					     bindings)))
+	  (type-error fld1
+	    "~-100I~_~<Field ~a appears with different types: ~_~a~:_ and ~:_~a~:>"
+	    (list (id fld1) (type fld1) (type fld2))))
+	(recordtype-union* (cdr flds1)
+			   (if fld2 (remove fld2 flds2) flds2)
+			   te
+			   (if fld2 (acons fld1 fld2 bindings) bindings)
+			   (cons fld1 nfields)))))
+  
 
 (defmethod typecheck* ((te quant-type) expected kind args)
   (declare (ignore expected kind arguments))
@@ -2902,7 +3033,8 @@
   (declare (ignore expected kind arguments))
   (let ((reses (formula-or-definition-resolutions rname)))
     (unless reses
-      (resolution-error rname 'rewrite-name nil (not *in-checker*)))
+      (let ((*resolve-error-info* nil))
+	(resolution-error rname 'rewrite-name nil (not *in-checker*))))
     (setf (resolutions rname) reses))
   rname)
 
