@@ -488,7 +488,7 @@
 	       stype))))))
 
 (defmethod judgement-types* ((ex application))
-  (let* ((op (operator* ex)))
+  (let ((op (operator* ex)))
     (typecase op
       (name-expr
        (let* ((decl (declaration op))
@@ -508,7 +508,20 @@
 		      ex (generic-judgements entry) gtypes ijdecls)
 		   (values jtypes jdecls))))))))
       (lambda-expr
-       (judgement-types* (beta-reduce ex))))))
+       (let ((bex (beta-reduce ex)))
+	 (or (judgement-types* bex)
+	     (unless (tc-eq (type ex) (type bex))
+	       (list (type bex)))))))))
+
+;; (defun simple-application-judgement-types (ex)
+;;   (let ((op (operator* ex)))
+;;     (when (and (declaration? (current-declaration))
+;; 	       (name-expr? op)
+;; 	       ;; Check that actuals were derived
+;; 	       (null (actuals op))
+;; 	       (actuals (module-instance op)))
+;;       (let ((ajtypes (mapcar #'judgement-types* (argument* ex))))
+;; 	))))
 
 (defmethod judgement-types* ((ex branch))
   (multiple-value-bind (then-types then-jdecls)
