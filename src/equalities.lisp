@@ -154,16 +154,16 @@ where db is to replace db1 and db2")
 ;;; the canonical form.
 
 (defmethod tc-eq* :around ((t1 type-expr) (t2 type-expr) bindings)
-   (with-slots ((pt1 print-type) (fc1 from-conversion)) t1
-     (with-slots ((pt2 print-type) (fc2 from-conversion)) t2
-       (or (eq t1 t2)
-	   (and (call-next-method)
-		(or (not *strong-tc-eq-flag*)
-		    (and (if pt1
-			     (and pt2
-				  (tc-eq* pt1 pt2 bindings))
-			     (null pt2))
-			 (eq fc1 fc2))))))))
+  (or (eq t1 t2)
+      (and (call-next-method)
+	   (or (not *strong-tc-eq-flag*)
+	       (let ((pt1 (print-type t1))
+		     (pt2 (print-type t2)))
+		 (and (if pt1
+			  (and pt2
+			       (tc-eq* pt1 pt2 bindings))
+			  (null pt2))
+		      (eq (from-conversion t1) (from-conversion t2))))))))
 
 (defmethod tc-eq* ((t1 subtype) (t2 subtype) bindings)
   (with-slots ((st1 supertype) (p1 predicate)) t1
@@ -1450,6 +1450,7 @@ where db is to replace db1 and db2")
 	(when stype
 	  (compatible-tupletypes
 	   (if (or (not (dep-binding? stype))
+		   (not (dep-binding? (car atypes)))
 		   (eq stype (car atypes)))
 	       (cdr atypes)
 	       (substit (cdr atypes) (acons (car atypes) stype nil)))
@@ -2188,7 +2189,7 @@ where db is to replace db1 and db2")
 	     (subtype-preds (range t1) (range t2))
 	   (when ty
 	     (let* ((xid (make-new-variable '|x| (list t1 t2)))
-		    (tupty (domain t2))
+		    (tupty (dep-binding-type (domain t2)))
 		    (xb (mk-bind-decl xid tupty tupty))
 		    (xvar (mk-name-expr xid nil nil
 					(make-resolution xb
@@ -2209,7 +2210,7 @@ where db is to replace db1 and db2")
 	       (values t2 (cons npred incs))))))))
 
 (defun extract-domain (ftype)
-  (let ((dom (domain ftype)))
+  (let ((dom (dep-binding-type (domain ftype))))
     (if (and (singleton? dom)
 	     (tupletype? (car dom)))
 	(types (car dom))
