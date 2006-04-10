@@ -2000,6 +2000,9 @@
 			    (1- *full-name-depth*)))
       'mappings (mappings (module-instance (resolution x))))))
 
+(defmethod module ((map mapping))
+  (module (declaration (lhs map))))
+
 (defmethod full-name? ((x injection-expr))
   (null (actuals x)))
 
@@ -2040,8 +2043,11 @@
 
 (defvar *raise-actuals-of-actuals* nil)
 
-(defun raise-actuals (obj &optional (actuals-also? t))
+(defvar *raise-actuals-theory-ids* nil)
+
+(defun raise-actuals (obj &optional (actuals-also? t) theory-ids?)
   (let ((*raise-actuals-of-actuals* actuals-also?)
+	(*raise-actuals-theory-ids* theory-ids?)
 	(*pseudo-normalizing* t)
 	(*visible-only* t))
     (gensubst obj #'raise-actuals! #'raise-actuals?)))
@@ -2064,9 +2070,15 @@
 
 (defun raise-actuals-name? (x)
   (and (resolution x)
-       (null (actuals x))
        (module-instance (resolution x))
-       (actuals (module-instance (resolution x)))))
+       (or (and (null (actuals x))
+		(actuals (module-instance (resolution x))))
+	   (and *raise-actuals-theory-ids*
+		(null (mod-id x))
+		(declaration x)
+		(module? (module (declaration x)))
+		(not (from-prelude? (module (declaration x))))
+		(not (eq (id (module-instance x)) (id (current-theory))))))))
 
 (defmethod raise-actuals? ((x type-expr))
   (or (call-next-method)
@@ -2081,7 +2093,20 @@
 (defmethod raise-actuals! (x) x)
 
 (defmethod raise-actuals! ((x name))
-  (copy x 'actuals (actuals (module-instance (resolution x)))))
+  (copy x
+    'actuals (if (actuals x)
+		 (if *raise-actuals-of-actuals*
+		     (raise-actuals (actuals x) *raise-actuals-theory-ids*
+				    *raise-actuals-theory-ids*)
+		     (actuals x))
+		 (if *raise-actuals-of-actuals*
+		     (raise-actuals (actuals (module-instance (resolution x)))
+				    *raise-actuals-theory-ids*
+				    *raise-actuals-theory-ids*)
+		     (actuals (module-instance (resolution x)))))
+    'mod-id (or (mod-id x)
+		(and *raise-actuals-theory-ids*
+		     (id (module-instance (resolution x)))))))
 
 #+(or lucid allegro)
 (defmethod ppr (obj)
@@ -2354,12 +2379,12 @@
 	     (bd (make-bind-decl bid (domain type)))
 	     (bvar (make-variable-expr bd))
 	     (car-arg (if (cdar args)
-			  (make-tuple-expr (car args))
+			  (make!-tuple-expr* (car args))
 			  (caar args)))
-	     (eqn (make-equation bvar car-arg)))
+	     (eqn (make!-equation bvar car-arg)))
 	(push car-arg *translate-update-conditions*)
 	(let ((nex (make-update-if-application ex bvar)))
-	  (make-lambda-expr (list bd)
+	  (make!-lambda-expr (list bd)
 	    (make-update-function-if-expr eqn type nex (cdr args) expr))))
       (translate-update-to-if! expr)))
 
@@ -2368,10 +2393,10 @@
 	(else (make-update-if-application (else-part ex) arg)))
     (if (tc-eq then else)
 	then
-	(make-if-expr (condition ex) then else))))
+	(make!-if-expr (condition ex) then else))))
 
 (defmethod make-update-if-application (ex arg)
-  (beta-reduce (make-application ex arg)))
+  (make!-application ex arg))
     
   
 (defun make-update-function-if-expr (eqn type ex args expr)
@@ -2390,7 +2415,7 @@
 	       (nex (if needs-reducing?
 			(reduce-update-if-expr ex eqn nil)
 			ex)))
-	  (make-if-expr eqn nthen nex)))))
+	  (make!-if-expr eqn nthen nex)))))
 
 (defun reduce-update-if-expr (ex eqn true?)
   (gensubst ex
@@ -2644,6 +2669,7 @@ space")
 		   (*assert-typepreds* nil)
 		   (*sequent-typealist* nil)
 		   ;;(typealist primtypealist);;NSH(2.16.94)
+		   (*local-typealist* nil)
 		   (*assert-flag* 'simplify)
 		   (*process-output* nil)
 		   (*assert-if-arith-hash*
@@ -3847,3 +3873,15 @@ space")
 	   slots)))
 
 (defun posnat? (x) (and (integerp x) (plusp x)))
+
+(defun make-new-symbol (string &optional num)
+  (let ((str (if num (format nil "~a-~d" string num) string)))
+    (if (find-symbol str)
+	(make-new-symbol string (if num (1+ num) 1))
+	(intern str))))
+
+(defmethod dep-binding-type ((te dep-binding))
+  (type te))
+
+(defmethod dep-binding-type ((te type-expr))
+  te)
