@@ -139,27 +139,25 @@
 			     alist))))
 	(sterm term))
     (dolist (th theories)
-      (let ((lib-id (get-lib-id th)))
+      (let* ((lib-id (get-lib-id th))
+	     (thname
+	      (mk-modname (id th)
+		(mapcar #'(lambda (fp)
+			    (or (cdr (assq fp new-alist))
+				(let ((res (make-resolution fp
+					     (mk-modname (id th)))))
+				  (mk-res-actual
+				   (if (type-decl? fp)
+				       (mk-type-name (id fp) nil nil res)
+				       (mk-name-expr (id fp) nil nil res))
+				   th))))
+		  (formals-sans-usings th))
+		lib-id)))
 	;; This is not necessarily true - we may be retypechecking within
 	;; the library context, in which case it is already a
 	;; library-theory.
 	;; (assert (or lib-id (not (library-datatype-or-theory? th))))
-	(setf sterm
-	      (subst-mod-params
-	       sterm
-	       (mk-modname (id th)
-		 (mapcar #'(lambda (fp)
-			     (or (cdr (assq fp new-alist))
-				 (let ((res (make-resolution fp
-					      (mk-modname (id th)))))
-				   (mk-res-actual
-				    (if (type-decl? fp)
-					(mk-type-name (id fp) nil nil res)
-					(mk-name-expr (id fp) nil nil res))
-				    th))))
-		   (formals-sans-usings th))
-		 lib-id)
-	       th))))
+	(setf sterm (subst-mod-params sterm thname th))))
     sterm))
 
 (defmethod subst-theory-params (term (modinst modname))
@@ -181,7 +179,10 @@
 			   (free-params obj))
 		     (some #'(lambda (a)
 			       (and (name-expr? (expr a))
-				    (module? (declaration (expr a)))))
+				    (typep (declaration (expr a))
+					   '(or module mod-decl
+						formal-theory-decl
+						theory-abbreviation-decl))))
 			   (actuals modinst)))))
 	(let* ((*generate-tccs* 'none)
 	       (caches (get-subst-mod-params-caches modinst))
@@ -200,6 +201,8 @@
 				    (pairlis formals (actuals modinst))))
 	  #+pvsdebug (assert (or (typep nobj 'modname)
 				 (fully-instantiated? nobj)))
+	  ;; Note that it may be that nobj is tc-eq to obj, without being eq
+	  ;; True even for strong-tc-eq.
 	  (values nobj *subst-mod-params-map-bindings*))
 	obj)))
 
@@ -238,7 +241,7 @@
   nil)
 
 (defmethod initial-subst-mod-params-mappings ((theory theory-interpretation))
-  (setq *subst-mod-params-map-bindings* (mapping theory)))
+  (setq *subst-mod-params-map-bindings* (theory-mapping theory)))
 
 
 ;;; Create the formals to actuals bindings.  This would simply be a call
@@ -272,7 +275,10 @@
 (defmethod make-subst-mod-params-binding ((formal formal-theory-decl) actual
 					  bindings)
   (acons formal actual
-	 (let* ((thname (expr actual))
+	 (let* ((thname (if (theory-abbreviation-decl?
+			     (declaration (expr actual)))
+			    (get-theory-alias (expr actual))
+			    (expr actual)))
 		(theory (generated-theory (declaration (expr actual))))
 		(interpreted-theory (generated-theory formal))
 		(source-theory (get-theory* (id (theory-name formal))
@@ -296,8 +302,18 @@
 		   pre-bindings
 		   bindings))))
 
+(defun get-theory-alias (thabbr)
+  (let* ((thabbr-decl (declaration thabbr))
+	 (thname (theory-name thabbr-decl))
+	 (containing-theory (module thabbr-decl)))
+    (assert (fully-instantiated? (module-instance thabbr)))
+    (subst-mod-params thname (module-instance thabbr) containing-theory)))
+
 (defmethod generated-theory ((th module))
   th)
+
+(defmethod generated-theory ((th theory-abbreviation-decl))
+  (get-theory (theory-name th)))
 
 ;;; mapping1 is an alist of declaration to declaration mappings
 ;;; mapping2 is an alist of declaration to rhs-mappings
@@ -603,8 +619,9 @@
     'theory-name theory-name))
 
 (defmethod create-importing-for-binding ((decl mod-decl) theory-name)
-  (make-instance 'importing
-    'theory-name theory-name))
+  (unless (mapping-rhs-rename? theory-name)
+    (make-instance 'importing
+      'theory-name theory-name)))
 
 (defmethod create-importing-for-binding (decl expr)
   (declare (ignore decl expr))
@@ -630,10 +647,15 @@
 
 (defmethod subst-mod-params* ((mn modname) modinst bindings)
   (with-slots (id actuals) mn
-    (if (eq id (id modinst))
-	modinst
-	(let ((nacts (subst-mod-params* actuals modinst bindings)))
-	  (lcopy mn 'actuals nacts)))))
+    (let ((entry (assoc id bindings :key #'id)))
+      (if entry
+	  (cdr entry)
+	  (if (eq id (id modinst))
+	      (if (library modinst)
+		  modinst
+		  (lcopy modinst 'library (library mn)))
+	      (let ((nacts (subst-mod-params* actuals modinst bindings)))
+		(lcopy mn 'actuals nacts)))))))
 
 (defmethod subst-mod-params* ((decl declaration) modinst bindings)
   (declare (ignore modinst bindings))
@@ -654,9 +676,19 @@
 					'generated-by nil)))
 	       (setf (semi ndecl) t)
 	       ndecl))
-	    (t (lcopy decl
-		 'type-value (subst-mod-params* type-value modinst bindings)
-		 'generated-by nil))))))
+	    (t (let* ((val (when (theory-interpretation? (module decl))
+			     (cdr (assq (generated-by-decl (module decl))
+					bindings)))))
+		 (if val
+		     (let* ((thinst (expr val)) ; val is an actual
+			    (ndecl (find (id decl)
+					 (all-decls (get-theory thinst))))
+			    (res (make-resolution ndecl thinst)))
+		       (type res))
+		     (lcopy decl
+		       'type-value (subst-mod-params* type-value modinst
+						      bindings)
+		       'generated-by nil))))))))
 
 (defmethod subst-mod-params* ((decl type-def-decl) modinst bindings)
   (with-slots (type-value type-expr contains) decl
@@ -676,9 +708,15 @@
   (with-slots (modname) decl
     (let ((adecl (cdr (assq decl bindings))))
       (if adecl
-	  (lcopy decl
-	    'modname (module-instance (expr adecl))
-	    'generated-by nil)
+ 	  (if (mapping-rhs-rename? adecl)
+ 	      (lcopy decl
+ 		'id (id (expr adecl)))
+	      (make-instance 'importing
+		'theory-name (expr adecl))
+;; 	      (lcopy decl
+;; 		'modname (module-instance (expr adecl))
+;; 		'generated-by nil)
+	      )
 	  (lcopy decl
 	    'modname (subst-mod-params* modname modinst bindings)
 	    'generated-by nil)))))
@@ -786,9 +824,9 @@
 ;;; Type Expressions
 
 (defmethod subst-mod-params* ((list list) modinst bindings)
-  (let ((nlist   (if (some #'binding? list)
-		     (subst-mod-params-bindings list modinst bindings)
-		     (subst-mod-params-list list modinst bindings))))
+  (let ((nlist (if (some #'binding? list)
+		   (subst-mod-params-bindings list modinst bindings)
+		   (subst-mod-params-list list modinst bindings))))
     (if (equal list nlist)
 	list
 	nlist)))
@@ -812,38 +850,56 @@
 	(if (and *subst-mod-params-module?*
 		 (eq (module decl) (get-theory modinst)))
 	    type
-	    (let* ((mi (module-instance res))
-		   (nacts (subst-mod-params* (actuals mi) modinst bindings)))
-	      #+pvsdebug (assert (not (and nacts (eq (id mi) (id modinst)))))
-	      #+pvsdebug (assert (fully-instantiated? nacts))
-	      (if nacts
-		  (if (eq (actuals mi) nacts)
-		      type
-		      ;; If modinst has a library, but mi does not, we may
-		      ;; have to add a library to mi.  If (module decl) is a
-		      ;; library theory, definitely need it, but how do we
-		      ;; know it is the same library?
-		      (let* ((lib (when (and (library-datatype-or-theory?
+	    (or (mapped-theory-value (module decl) type modinst bindings)
+		(let* ((mi (module-instance res))
+		       (nacts (subst-mod-params*
+			       (actuals mi) modinst bindings)))
+		  #+pvsdebug (assert (not (and nacts
+					       (eq (id mi) (id modinst)))))
+		  #+pvsdebug (assert (fully-instantiated? nacts))
+		  (if nacts
+		      (if (eq (actuals mi) nacts)
+			  type
+			  ;; If modinst has a library, but mi does not, we
+			  ;; may have to add a library to mi.  If (module
+			  ;; decl) is a library theory, definitely need it,
+			  ;; but how do we know it is the same library?
+			  (let* ((lib
+				  (when (and (library-datatype-or-theory?
 					      (module decl))
 					     (not (library-datatype-or-theory?
 						   (current-theory))))
 				    (car (rassoc (lib-ref (module decl))
 						 (current-library-alist)
 						 :test #'equal))))
-			     (nmodinst (copy mi 'actuals nacts 'library lib)))
-			#+pvsdebug
-			(assert (or lib
-				    (not (library-datatype-or-theory?
-					  (module decl)))
-				    (from-prelude-library? decl)
-				    (library-datatype-or-theory?
-				     (current-theory))
-				    (file-equal (lib-ref (module decl))
-						*pvs-context-path*)))
-			(subst-mod-params-type-name type nmodinst bindings)))
-		  (if (eq (id mi) (id modinst))
-		      (subst-mod-params-type-name type modinst bindings)
-		      type)))))))
+				 (nmodinst (copy mi 'actuals nacts
+						 'library lib)))
+			    #+pvsdebug
+			    (assert (or lib
+					(not (library-datatype-or-theory?
+					      (module decl)))
+					(from-prelude-library? decl)
+					(library-datatype-or-theory?
+					 (current-theory))
+					(file-equal (lib-ref (module decl))
+						    *pvs-context-path*)))
+			    (subst-mod-params-type-name type nmodinst
+							bindings)))
+		      (if (eq (id mi) (id modinst))
+			  (subst-mod-params-type-name type modinst bindings)
+			  type))))))))
+
+(defmethod mapped-theory-value ((th theory-interpretation)
+				type modinst bindings)
+  (let ((val (cdr (assq (generated-by-decl th) bindings))))
+    (when val
+      (let* ((thinst (expr val))	; val is an actual
+	     (ndecl (find (id type) (all-decls (get-theory thinst)) :key #'id))
+	     (res (make-resolution ndecl thinst)))
+	(type res)))))
+
+(defmethod mapped-theory-value ((th module) type modinst bindings)
+  nil)
 
 ;;; just goes ahead and copies the type with the new module
 ;;; instance in the newly created resolution
@@ -861,6 +917,9 @@
 		   (subst-mod-params* (copy (type-value decl) 'print-type nil)
 				      modinst bindings))
 		  (type-decl ntype)
+		  (mapping
+		   (assert (type-value (rhs decl)))
+		   (type-value (rhs decl)))
 		  (t (error "bad type-decl")))))
     (setf (type nres) rtype)
     #+pvsdebug (assert (subsetp (free-params ntype) (free-params modinst)))
@@ -1203,6 +1262,10 @@
 			      modinst ntype)))
 		  (mk-name-expr number nil nil nres))))))))
 
+(defmethod id ((rhs mapping-rhs))
+  (when (name? (or (type-value rhs) (expr rhs)))
+    (id (or (type-value rhs) (expr rhs)))))
+
 (defvar *number-declarations* (make-hash-table :test '=))
 
 (defun number-declaration (number)
@@ -1210,6 +1273,15 @@
       (let ((decl (mk-const-decl number *number*)))
 	(setf (module decl) (get-theory "numbers"))
 	(setf (gethash number *number-declarations*) decl))))
+
+(defmethod number-declaration? ((decl const-decl))
+  (and (module decl)
+       (eq (id (module decl)) 'numbers)
+       (integerp (id decl))))
+
+(defmethod number-declaration? (obj)
+  nil)
+       
 
 (defmethod subst-mod-params* ((expr record-expr) modinst bindings)
   (let ((ass (subst-mod-params* (assignments expr) modinst bindings))
@@ -1386,6 +1458,7 @@
 		  (and (null type-value) (null (type-value nact))))
 	      nact
 	      (lcopy nact
+		'expr (lcopy (expr nact) 'parens (parens expr))
 		'type-value (subst-mod-params* type-value modinst bindings))))
 	(let ((ntype (when type-value
 		       (subst-mod-params* type-value modinst bindings))))
@@ -1537,3 +1610,7 @@
   (multiple-value-bind (instances theories)
       (theory-insts-of-param-alist alist)
     (subst-mod-params-instances ex instances theories)))
+
+(defun subst-mod-params-substlist (alist inst theory)
+  (let ((cars (subst-mod-params (mapcar #'car alist) inst theory)))
+    (mapcar #'(lambda (x y) (cons x (cdr y))) cars alist)))
