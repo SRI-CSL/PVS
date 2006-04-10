@@ -307,14 +307,21 @@
 ;;; Names
 
 (defmethod free-params* ((mi modname) frees)
-  (with-slots (actuals) mi
+  (with-slots (actuals mappings) mi
     (if actuals
-	(let ((afrees (free-params* actuals nil)))
-	  (union afrees frees :test #'eq))
-	(let ((theory (get-theory mi)))
-	  (dolist (x (formals-sans-usings theory))
-	    (setq frees (pushnew x frees :test #'eq)))
-	  frees))))
+	(let ((afrees (free-params* actuals nil))
+	      (mfrees (free-params* mappings nil)))
+	  (union mfrees (union afrees frees :test #'eq)
+		 :test #'eq))
+	(let ((theory (get-theory mi))
+	      (mfrees (free-params* mappings nil)))
+	  (if theory
+	      (union mfrees (formals-sans-usings theory) :test #'eq)
+	      frees)))))
+
+(defmethod free-params* ((map mapping) frees)
+  (let ((mfrees (free-params* (rhs map) nil)))
+    (union mfrees frees :test #'eq)))
 
 (defmethod free-params* ((map mapping-rhs) frees)
   (with-slots (expr type-value) map
