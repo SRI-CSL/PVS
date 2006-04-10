@@ -1695,7 +1695,7 @@
   (assert (type expr))
   (let ((tuptype (find-supertype (type expr))))
     (assert (tupletype? tuptype))
-    (make-projections* (types tuptype) expr 1 nil)))
+    (make!-projections* (types tuptype) expr 1 nil)))
 
 (defun make!-projections* (types arg index projapps)
   (assert (type arg))
@@ -1767,6 +1767,20 @@
       'argument arg
       'type cotuptype)))
 
+(defun make!-injections (expr)
+  (let ((cotuptype (find-supertype (type expr))))
+    (assert (cotupletype? cotuptype))
+    (make!-injections* (types cotuptype) expr 1 nil)))
+
+(defun make!-injections* (types expr index injapps)
+  (assert (type expr))
+  (if (null types)
+      (nreverse injapps)
+      (let* ((injappl (make!-injection-application index expr (car types)
+						   (actuals expr))))
+	(make!-injections* (cdr types) expr (1+ index)
+			   (cons injappl injapps)))))
+
 (defun make!-injection?-application (index arg &optional actuals)
   (assert (type arg))
   (assert (cotupletype? (find-supertype (type arg))))
@@ -1801,6 +1815,16 @@
 	    'id fid
 	    'argument arg
 	    'type ftype)))))
+
+;;; We provide an optional type, in case we need to make sure the list
+;;; of field applications matches the order of fields in that type
+(defun make!-field-applications (arg &optional type)
+  (let ((rtype (find-supertype (or type (type arg)))))
+    (assert (recordtype? rtype))
+    (make!-field-applications* arg (fields rtype))))
+
+(defun make!-field-applications* (arg fields)
+  (mapcar #'(lambda (fld) (make!-field-application fld arg)) arg))
 
 (defun make!-field-application-type (field-id type arg)
   (let ((rtype (find-supertype type)))
