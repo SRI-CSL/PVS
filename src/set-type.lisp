@@ -308,6 +308,8 @@ required a context.")
 				   (cons op *applied-operators*)
 				   *applied-operators*)))
      (call-next-method)
+     ;; Note that the call-next-method could have modified ex
+     (setf op (operator* ex))
      (typecase ex
        (field-application
 	(when (from-macro (argument ex))
@@ -555,26 +557,29 @@ required a context.")
 ;;; should be split into two methods
 
 (defmethod set-type-actuals ((modinst modname) &optional theory)
-  (let ((thry (or theory (get-theory modinst))))
-    (assert thry)
-    (let ((fmls (formals-sans-usings thry))
-	  (acts (actuals modinst)))
-      (set-type-actuals* acts fmls)
-      (when (mappings modinst)
-	(unless (fully-instantiated? modinst)
-	  (type-error modinst
-	    "Actual parameters must be provided to include mappings"))
-	(set-type-mappings modinst)))
-    (let ((nmodinst (simplify-modinst modinst)))
-      (unless (eq *generate-tccs* 'none)
-	(generate-assuming-tccs nmodinst modinst thry)
-	;; This is now done in typecheck-using* after doing add-to-using
-	;; (when (mappings modinst)
-	;; (generate-mapped-axiom-tccs nmodinst))
-	;; Compare the given actuals with those determined by the typechecker 
-	;;(generate-actuals-tccs (actuals expr) (actuals nmodinst))
-	)
-      nmodinst)))
+  (when (or (actuals modinst)
+	    (mappings modinst))
+    (let ((thry (or theory (get-theory modinst))))
+      (assert thry)
+      (let ((fmls (formals-sans-usings thry))
+	    (acts (actuals modinst)))
+	(set-type-actuals* acts fmls)
+	(when (mappings modinst)
+	  (unless (or (fully-instantiated? (actuals modinst))
+		      (fully-instantiated? (copy modinst 'actuals nil)))
+	    (type-error modinst
+	      "Actual parameters must be provided to include mappings"))
+	  (set-type-mappings modinst thry)))
+      (let ((nmodinst (simplify-modinst modinst)))
+	(unless (eq *generate-tccs* 'none)
+	  (generate-assuming-tccs nmodinst modinst thry)
+	  ;; This is now done in typecheck-using* after doing add-to-using
+	  ;; (when (mappings modinst)
+	  ;; (generate-mapped-axiom-tccs nmodinst))
+	  ;; Compare the given actuals with those determined by the typechecker 
+	  ;;(generate-actuals-tccs (actuals expr) (actuals nmodinst))
+	  )
+	nmodinst))))
 
 (defmethod set-type-actuals ((expr name) &optional theory)
   #+pvsdebug (assert (null *set-type-actuals-name*))
@@ -600,7 +605,7 @@ required a context.")
 				 (t *generate-tccs*)))
 	  (fmls (formals-sans-usings thry)))
       (set-type-actuals* (actuals modinst) fmls))
-    (set-type-mappings modinst)
+    (set-type-mappings modinst thry)
     (when (typep modinst 'modname-no-tccs)
       (change-class modinst 'modname))
     #+pvsdebug (fully-typed? (actuals modinst))
@@ -725,11 +730,21 @@ required a context.")
 	     (change-class (expr act) 'theory-name-expr)))
     (set-type-actuals (expr act))))
 
-(defun set-type-mappings (thinst)
+(defun set-type-mappings (thinst theory)
   (when (mappings thinst)
     (let ((cthinst (copy thinst 'mappings nil)))
+      (unless (fully-instantiated? thinst)
+	(type-error thinst
+	  "Actual parameters must be provided to include mappings"))
       (set-type-lhs-mappings (mappings thinst) cthinst)
-      (let ((smappings (sort-mappings (mappings thinst))))
+      (let* ((smappings (sort-mappings (mappings thinst)))
+	     (entry (get-importings theory))
+	     (there? (member thinst entry :test #'tc-eq))
+	     (*current-context* (if there?
+				    (copy-context *current-context*)
+				    *current-context*)))
+	(unless there?
+	  (add-to-using thinst theory))
 	(set-type-mappings* smappings cthinst)))))
 
 (defun sort-mappings (mappings &optional sorted)
@@ -940,7 +955,29 @@ required a context.")
 	 (setf (resolutions (expr rhs))
 	       (list (mk-resolution decl (current-theory-name) subst-type)))
 	 (setf (type (expr rhs)) subst-type)))
-      (t (break "set-type-mapping (mapping-rename) theory")))))
+      (t (let* ((theory (from-theory (generated-theory decl)))
+		(ntheory (pc-parse (unparse (copy (generated-theory decl)
+					      'id (id (expr rhs)))
+				     :string t) 'adt-or-theory))
+		(*generate-tccs* 'none)
+		(*current-context* (make-new-context ntheory)))
+	   (change-class ntheory 'theory-interpretation
+		  'from-theory (from-theory (generated-theory decl))
+		  'from-theory-name (from-theory-name (generated-theory decl)))
+	   (push ntheory (named-theories *current-context*))
+	   (typecheck* ntheory nil nil nil)
+	   (setf (generated-by ntheory) (id theory))
+	   (setf (generated-by-decl ntheory) decl)
+	   (setf (theory-mapping ntheory)
+		 (get-interpreted-mapping theory ntheory thinst))
+	   (setf (mapped-decl map)
+		 (copy decl
+		   'id (id (expr rhs))
+		   'generated-theory ntheory
+		   'saved-context (saved-context ntheory)))
+	   (setf (resolutions (expr rhs))
+		 (list (mk-resolution ntheory
+			 (mk-modname (id ntheory)) nil))) )))))
 
 (defun set-type-mapping-rhs (rhs lhs thinst mappings)
   (typecase (declaration lhs)
@@ -968,20 +1005,67 @@ required a context.")
 		"Theory name ~a is ambiguous" (expr rhs)))
 	     ((null threses)
 	      (type-error (expr rhs)
-		"No resolution for theory name ~a" (expr rhs)))
+		"~a is not an instance of ~a"
+		(expr rhs) thid))
 	     (t (setf (resolutions (expr rhs)) threses)
+		(when (actuals (expr rhs))
+		  (set-type-actuals (change-class (copy (expr rhs)) 'modname)
+				    (declaration (car threses))))
 		(when (mappings (expr rhs))
-		  (set-type-mappings (name-to-modname (expr rhs))))))))
+		  (set-type-mappings (name-to-modname (expr rhs))
+				     (declaration (expr rhs))))))))
     (t (let* ((mapthinst (lcopy thinst
 			    'mappings (append mappings (mappings thinst))))
-	      (subst-type (subst-mod-params (type (declaration lhs))
-					    mapthinst
-					    (if (eq (id mapthinst)
-						    (id (module
-							 (declaration lhs))))
-						(module (declaration lhs))
-						(get-theory thinst)))))
-	 (set-type* (expr rhs) subst-type)))))
+	      (stype (subst-mod-params (type (declaration lhs))
+				       mapthinst
+				       (if (eq (id mapthinst)
+					       (id (module
+						    (declaration lhs))))
+					   (module (declaration lhs))
+					   (get-theory thinst))))
+	      (subst-type (subst-mod-params-all-mappings stype))
+	      (subst-types (if (free-params stype)
+			       (possible-mapping-subst-types
+				(types (expr rhs)) stype)
+			       (list stype))))
+	 (set-type* (expr rhs) (or (car subst-types) subst-type))))))
+
+(defun possible-mapping-subst-types (types stype &optional stypes)
+  (if (null types)
+      (nreverse stypes)
+      (let* ((bindings (tc-match stype (car types) 
+				 (mapcar #'list (free-parameters stype)))))
+	(possible-mapping-subst-types
+	 (cdr types) stype
+	 (if (and bindings
+		  (every #'cdr bindings))
+	     (cons (subst-theory-params stype bindings) stypes)
+	     stypes)))))
+
+(defun subst-mod-params-all-mappings (type)
+  (let* ((refs (collect-references type))
+	 (theories (delete-duplicates (mapcar #'module refs)))
+	 (map-insts (get-unique-imported-mapping-instances theories)))
+    (subst-mod-params-all-mappings* type map-insts)))
+
+(defun subst-mod-params-all-mappings* (type map-insts)
+  (if (null map-insts)
+      type
+      (subst-mod-params-all-mappings*
+       (subst-mod-params type (cdar map-insts) (caar map-insts))
+       (cdr map-insts))))
+
+(defun get-unique-imported-mapping-instances (theories &optional thinsts)
+  (if (null theories)
+      thinsts
+      (let ((insts (get-importings (car theories))))
+	(get-unique-imported-mapping-instances
+	 (cdr theories)
+	 (append (mapcar #'(lambda (i) (cons (car theories) i))
+		   (remove-if (complement #'mappings) insts))
+		 thinsts)))))
+	    
+      
 
 ;;; Need to deal with type of lhs.  Here is what we mean:
 ;;;  T1: THEORY BEGIN t: TYPE END T1
@@ -1006,6 +1090,7 @@ required a context.")
   d)
 
 (defmethod theory-ref ((d name-expr))
+  (assert (resolution d))
   (let ((decl (declaration (resolution d))))
     (typecase decl
       (mod-decl (modname decl))
@@ -1052,13 +1137,16 @@ required a context.")
   (if (formal-theory-decl? formal)
       (let* ((mdecl (declaration (resolution (expr act))))
 	     (fmappings (theory-mapping (generated-theory formal)))
+	     (tmappings (theory-mapping (generated-theory
+					 (declaration (expr act)))))
 	     (amappings (typecase mdecl
 			  (theory-abbreviation-decl (mapping mdecl))
 			  (mod-decl (theory-mapping (generated-theory mdecl)))
 			  (t (make-subst-mod-params-map-bindings
 			      (expr act) (mappings (expr act)) nil))))
-	     (nalist (compose-formal-to-actual-mapping fmappings amappings)))
-	(assert (= (length fmappings) (length amappings)))
+	     (nalist (compose-formal-to-actual-mapping
+		      (compose-formal-to-actual-mapping tmappings fmappings)
+		      amappings)))
 	(values formal (nconc nalist alist)))
       (let* ((pred (get-actual-subtype-predicate act formal alist))
 	     (nalist (if pred
@@ -1077,14 +1165,20 @@ required a context.")
    (get-theory (theory-name mdecl)) nil (theory-name mdecl)))
 
 (defun compose-formal-to-actual-mapping (fmappings amappings)
-  (mapcar #'(lambda (fmap)
-	      (let ((amap (assq (car fmap) amappings)))
-		(assert amap)
-		(cons (cdr fmap)
-		      (if (mapping-rhs? (cdr amap))
-			  (or (type-value (cdr amap)) (expr (cdr amap)))
-			  (cdr amap)))))
-    fmappings))
+  (cond ((null fmappings) amappings)
+	((null amappings) fmappings)
+	(t
+	 ;; This assertion is too strong - see test2 in bugs/760
+	 ;;(assert (every #'(lambda (am) (assq (car am) fmappings)) amappings))
+	 (mapcan #'(lambda (fmap)
+		     (let ((amap (assq (car fmap) amappings)))
+		       (when amap
+			 (list (cons (cdr fmap)
+				     (if (mapping-rhs? (cdr amap))
+					 (or (type-value (cdr amap))
+					     (expr (cdr amap)))
+					 (cdr amap)))))))
+	   fmappings))))
 
 (defmethod get-actual-subtype-predicate (act (formal formal-subtype-decl) alist)
   (let ((tact (type-value act)))
@@ -1604,26 +1698,54 @@ required a context.")
 		       ;; conversions to kick in on the operator
 		       (set-type* argument (domain optype)))
 		     (when (and (declaration? (current-declaration))
-				(eq (id (current-declaration))
-				    'final_queue_ntop)
 				(name-expr? operator)
 				(null (actuals operator))
 				(actuals (module-instance operator))
-				(judgement-types (argument ex)))
+				(some #'judgement-types (arguments ex)))
 		       (let ((res (resolve (copy (operator ex)
 					     'resolutions nil
 					     'type nil)
 					   'expr
 					   (arguments ex))))
-			 (when (and (singleton? res)
-				    (not (tc-eq (car res)
-						(resolution (operator ex)))))
-			   ;; May need to rerun tc-match to get proper actuals
-			   (setf (types operator) (list (type (car res))))
-			   (setf (resolutions operator) res)
-			   (setf optype
-				 (determine-operator-type
-				  operator argument expected ex)))))
+			 (cond ((and (singleton? res)
+				     (not (tc-eq (car res)
+						 (resolution (operator ex)))))
+				;; May need to rerun tc-match to get proper
+				;; actuals
+				(setf (types operator) (list (type (car res))))
+				(setf (resolutions operator) res)
+				(setf optype
+				      (determine-operator-type
+				       operator argument expected ex)))
+			       ((and (typep (declaration operator)
+					    'adt-constructor-decl)
+				     (adt-type-name? (find-supertype expected))
+				     (some #'(lambda (act)
+					       (and (type-value act)
+						    (dependent?
+						     (type-value act))))
+					   (actuals (module-instance
+						     (find-supertype
+						      expected)))))
+				(let ((res (resolve (copy operator
+						      'resolutions nil
+						      'actuals
+						      (actuals (module-instance
+								(find-supertype
+								 expected)))
+						      'type nil)
+						    'expr
+						    (arguments ex))))
+				  (when (and (singleton? res)
+					     (not (tc-eq (car res)
+							 (resolution
+							  operator))))
+				    (setf (types operator)
+					  (list (type (car res))))
+				    (setf (resolutions operator) res)
+				    (setf optype
+					  (determine-operator-type
+					   operator argument expected ex))))))))
 		     (when (typep ex '(or let-expr where-expr))
 		       (let ((nbindings
 			      (set-let-bindings (bindings operator) argument)))
@@ -2636,13 +2758,23 @@ required a context.")
 			(push-tcc-condition (make!-negation econd)
 					   *tcc-conditions*))))
 	      (set-type* eelse expected))
-	    (let ((iftype (compatible-type (type ethen) (type eelse))))
+	    (let* ((iftype (compatible-type (type ethen) (type eelse))))
 	      (assert iftype)
 	      ;;(set-type* op (mk-funtype (list *boolean* iftype iftype)
 	      ;;			iftype))
-	      (setf (type op) (mk-funtype (list *boolean* iftype iftype)
-					  iftype))
-	      (setf (resolutions op) reses)
+	      (let ((res (resolve (copy (operator ex)
+				    'resolutions nil
+				    'type nil)
+				  'expr (arguments ex))))
+		(cond ((and (singleton? res)
+			    (not (tc-eq (car res)
+					(resolution (operator ex)))))
+		       (setf (type op) (type (car res)))
+		       (setf (resolutions op) (list (car res))))
+		      (t (setf (type op)
+			       (mk-funtype (list *boolean* iftype iftype)
+					   iftype))
+			 (setf (resolutions op) reses))))
 	      (unless (eq (id (current-theory)) '|if_def|)
 		(setf (actuals (module-instance op))
 		      (list (mk-actual iftype))))
@@ -3282,7 +3414,7 @@ required a context.")
   (with-slots (domain range) expected
     (if (every #'null args-list)
 	(call-next-method)
-	(set-assignment-fun-arg-types args-list values ex domain range))))
+	(set-assignment-fun-arg-types args-list values ex expected))))
 
 (defmethod set-assignment-arg-types* (args-list values ex
 						(expected datatype-subtype))
@@ -3351,8 +3483,10 @@ required a context.")
 				 (range (type c))
 				 (instantiate-from
 				  (range (type c)) (type ex) ex))))
-		(setf (gethash ex jhash)
-		      (cons rectype (judgement-types ex)))
+		(multiple-value-bind (jtypes jdecls)
+		    (judgement-types ex)
+		  (setf (gethash ex jhash)
+			(list (cons rectype jtypes) jdecls)))
 		(set-assignment-accessor-arg-types cargs-list cvalues ex accs))
 	    (setf (gethash ex jhash)
 		  (cdr (gethash ex jhash))))
@@ -3467,22 +3601,24 @@ required a context.")
        (unless done-with-index?
 	 (cons value cvalues))))))
 
-(defun set-assignment-fun-arg-types (args-list values ex domain range)
+(defun set-assignment-fun-arg-types (args-list values ex funtype)
   (when args-list
     (multiple-value-bind (cargs cvalues rem-args rem-values)
 	(collect-same-first-fun-assignment-args args-list values)
       (dolist (arg cargs)
-	(mapc #'set-type* (car arg) (domain-types* domain)))
+	(set-tup-types (car arg) (domain-types* (domain funtype))))
       (let ((arg (when (caar cargs) (make!-arg-tuple-expr* (caar cargs)))))
 	(set-assignment-arg-types*
 	 (mapcar #'cdr cargs)
 	 cvalues
-	 (when ex
+	 (when (and ex arg)
 	   (make!-application ex arg))
-	 (if (dep-binding? domain)
-	     (substit range (acons domain arg nil))
-	     range)))
-      (set-assignment-fun-arg-types rem-args rem-values ex domain range))))
+	 (if arg
+	     (if (dep-binding? (domain funtype))
+		 (substit (range funtype) (acons (domain funtype) arg nil))
+		 (range funtype))
+	     funtype)))
+      (set-assignment-fun-arg-types rem-args rem-values ex funtype))))
 
 (defun collect-same-first-fun-assignment-args (args-list values
 							 &optional cargs cvalues)
@@ -4005,6 +4141,13 @@ required a context.")
 (defmethod set-type* ((te funtype) expected)
   (with-slots (domain range) te
     (set-type* domain expected)
+;;     (if (dep-binding? domain)
+;; 	(let ((bd (make-bind-decl (id domain) (type domain))))
+;; 	  (let ((*generate-tccs* 'none))
+;; 	    (set-type* range expected))
+;; 	  (let ((*tcc-conditions* (cons bd *tcc-conditions*)))
+;; 	    (check-for-tccs (substit range (acons domain bd nil)) expected)))
+;; 	(set-type* range expected))
     (set-type* range expected)))
 
 (defmethod set-type* ((te dep-binding) expected)
@@ -4046,9 +4189,19 @@ required a context.")
 (defmethod set-type* ((te type-extension) expected)
   (declare (ignore expected))
   (set-type* (type te) nil)
-  (if (recordtype? (type te))
-      (set-type-fields (extension te))
-      (set-type-types (extension te))))
+  (set-type* (extension te) nil))
+
+(defmethod essentially-recordtype? ((te recordtype))
+  t)
+
+(defmethod essentially-recordtype? ((te type-name))
+  (essentially-recordtype? (type (resolution te))))
+
+(defmethod essentially-recordtype? ((te type-extension))
+  (essentially-recordtype? (type te)))
+
+(defmethod essentially-recordtype? ((te type-expr))
+  nil)
 
 
 ;;; instantiate-from
