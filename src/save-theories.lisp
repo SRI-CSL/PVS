@@ -170,7 +170,6 @@
       (call-next-method)))
 
 (defmethod store-object* :around ((obj adt-type-name))
-  (unless (slot-value obj 'adt) (break "Should have an adt"))
   (if (inline-recursive-type? (adt obj))
       (call-next-method)
       (call-next-method (copy obj
@@ -194,15 +193,14 @@
 				       *store-mapped-theories*)))
     (call-next-method)))
 
-(defmethod store-object* :around ((obj resolution))
-  (when (datatype? (get-theory (module-instance obj)))
-    (break "Huh?"))
-  (call-next-method))
+;; (defmethod store-object* :around ((obj resolution))
+;;   (assert (not (datatype? (get-theory (module-instance obj)))))
+;;   (call-next-method))
 
 ;; (defmethod store-object* :around ((obj resolution))
-;;   (when (and (null (library (module-instance obj)))
-;; 	     (library-datatype-or-theory? (module (declaration obj))))
-;;     (break "Problem"))
+;;   (assert (not (and (null (library (module-instance obj)))
+;; 		    (library-datatype-or-theory?
+;; 		     (module (declaration obj))))))
 ;;   (call-next-method))
 
 (setf (get 'moduleref 'fetcher) 'fetch-moduleref)
@@ -210,9 +208,7 @@
   (let* ((mod-name (fetch-obj (stored-word 1)))
 	 (theory (get-theory mod-name)))
     (unless theory
-      ;;(break "Attempt to fetch unknown theory ~s" mod-name)
-      (error "Attempt to fetch unknown theory ~s" mod-name)
-      )
+      (error "Attempt to fetch unknown theory ~s" mod-name))
     theory))
 
 (setf (get 'modulelibref 'fetcher) 'fetch-modulelibref)
@@ -222,10 +218,8 @@
 	 (theory (or (get-theory* mod-name lib-ref)
 		     (get-theory* mod-name nil))))
     (unless theory
-      ;;(break "Attempt to fetch unknown theory ~s" mod-name)
       (error "Attempt to fetch unknown library theory ~s from ~s"
-	     mod-name lib-ref)
-      )
+	     mod-name lib-ref))
     theory))
 
 (defstruct int-theory-ref
@@ -242,19 +236,10 @@
 		     (let ((fth (get-theory from-theory)))
 		       (when fth
 			 (let ((decl (nth pos (all-decls fth))))
-			   (cond (decl
-				  (generated-theory decl))
-				 (t
-				  (break "fetch-inttheoryref")
-				  (register-for-updating)
-				  (make-int-theory-ref
-				    :mod-name mod-name
-				    :from-theory fth
-				    :pos pos)))))))))
+			   (assert decl)
+			   (generated-theory decl)))))))
     (unless theory
-      ;;(break "Attempt to fetch unknown theory ~s" mod-name)
-      (error "Attempt to fetch unknown theory ~s" mod-name)
-      )
+      (error "Attempt to fetch unknown theory ~s" mod-name))
     (pushnew theory *fetched-theory-interpretations*)
     theory))
 
@@ -271,20 +256,11 @@
 		     (let ((fth (get-theory* from-theory lib-ref)))
 		       (when fth
 			 (let ((decl (nth pos (all-decls fth))))
-			   (cond (decl
-				  (generated-theory decl))
-				 (t
-				  (break "fetch-inttheorylibref")
-				  (register-for-updating)
-				  (make-int-theory-ref
-				   :mod-name mod-name
-				   :from-theory fth
-				   :pos pos)))))))))
+			   (assert decl)
+			   (generated-theory decl)))))))
     (unless theory
-      ;;(break "Attempt to fetch unknown theory ~s" mod-name)
       (error "Attempt to fetch unknown library theory ~s from ~s"
-	     mod-name lib-ref)
-      )
+	     mod-name lib-ref))
     (pushnew theory *fetched-theory-interpretations*)
     theory))
 
@@ -318,6 +294,7 @@
 
 (defmethod store-object* :around ((obj declaration))
   (with-slots (module) obj
+    (assert *saving-theory*)
     (if (and module
 	     (not (eq module *saving-theory*))
 	     (not (typep obj 'skolem-const-decl)))
@@ -334,14 +311,17 @@
 (defun store-declref (obj)
   (let ((module (module obj)))
     (reserve-space 3
-      (unless (or (not *saving-theory*)
+      (assert (or (not *saving-theory*)
 		  (from-prelude? module)
 		  (assq module (all-usings *saving-theory*))
 		  (memq module *store-mapped-theories*))
-	(break "Attempt to store declaration in illegal theory"))
-      (push-word (store-obj 'declref))
-      (push-word (store-obj (id module)))
-      (push-word (position obj (all-decls module))))))
+	      () "Attempt to store declaration in illegal theory")
+      (cond ((number-declaration? obj)
+	     (push-word (store-obj 'number-declref))
+	     (push-word (store-obj (id obj))))
+	    (t (push-word (store-obj 'declref))
+	       (push-word (store-obj (id module)))
+	       (push-word (position obj (all-decls module))))))))
 
 (defmethod store-object* :around ((obj inline-recursive-type))
   (with-slots ((theory adt-theory)) obj
@@ -354,9 +334,9 @@
 	      (push-word (store-obj (id theory)))
 	      (push-word (position obj (all-decls theory))))
 	    (reserve-space 3
-	      (unless (or (from-prelude? theory)
+	      (assert (or (from-prelude? theory)
 			  (assq theory (all-usings *saving-theory*)))
-		(break "Storing inline-recursive-type from unimported theory"))
+		      () "Storing inline-recursive-type from unimported theory")
 	      (push-word (store-obj 'declref))
 	      (push-word (store-obj (id theory)))
 	      (push-word (position obj (all-decls theory)))))
@@ -404,7 +384,8 @@
 		    (eq (declaration
 			 (resolution (print-type (type-value type-decl))))
 			type-decl))
-	       (and (type-application? (print-type (type-value type-decl)))
+	       (and (type-expr? (type-value type-decl))
+		    (type-application? (print-type (type-value type-decl)))
 		    (eq (declaration
 			 (type (print-type (type-value type-decl))))
 			type-decl))))
@@ -573,7 +554,6 @@
 		     (find mod-name *fetched-theory-interpretations*
 			   :test #'same-id))))
     (unless theory
-      ;;(break "Attempt to fetch declaration from unknown theory ~s" mod-name)
       (error "Attempt to fetch declaration from unknown theory ~s" mod-name))
     (let* ((decl-pos (stored-word 2))
 	   (decl (nth decl-pos (all-decls theory))))
@@ -590,13 +570,16 @@
 		     (find mod-name *fetched-theory-interpretations*
 			   :test #'same-id))))
     (unless theory
-      ;;(break "Attempt to fetch declaration from unknown theory ~s" mod-name)
       (error "Attempt to fetch declaration from unknown theory ~s" mod-name))
     (let* ((decl-pos (stored-word 3))
 	   (decl (nth decl-pos (all-decls theory))))
-      (unless decl
-	(break "Declaration was not found"))
+      (assert decl () "Declaration was not found")
       decl)))
+
+(setf (get 'number-declref 'fetcher) 'fetch-number-declref)
+(defun fetch-number-declref ()
+  (let* ((number (fetch-obj (stored-word 1))))
+    (number-declaration number)))
 
 (defmethod update-fetched :around ((obj adt-type-name))
   (call-next-method)
@@ -1116,7 +1099,7 @@
 (defmethod setf-restored-object* (nobj parent slot)
   #+pvsdebug (assert (eq (type-of (class-of parent)) 'standard-class))
   #+pvsdebug (assert (slot-exists-p parent slot))
-  (when (eq slot 'declarations-hash) (break "setting declarations-hash"))
+  (assert (not (eq slot 'declarations-hash)) () "setting declarations-hash")
   (setf (slot-value parent slot) nobj))
 
 (defmethod restore-object* ((obj cons))
@@ -1299,17 +1282,16 @@
   (let* ((decl (declaration (resolution te)))
 	 (tval (type-value decl))
 	 (thinst (module-instance (resolution te))))
-    (unless (eq (id (module decl)) (id thinst))
-      (break "Strange type-name resolution"))
+    (assert (eq (id (module decl)) (id thinst))
+	    () "Strange type-name resolution")
     (restore-object* (actuals thinst))
-    (if (store-print-type? tval)
-	(break)
-	(let* ((type-expr (if (actuals thinst)
-			      (subst-mod-params tval thinst (module decl))
-			      (copy tval 'print-type te))))
-	  #+pvsdebug (assert (or (print-type type-expr) (tc-eq te type-expr)))
-	  #+pvsdebug (assert (true-type-expr? type-expr))
-	  type-expr))))
+    (assert (not (store-print-type? tval)))
+    (let* ((type-expr (if (actuals thinst)
+			  (subst-mod-params tval thinst (module decl))
+			  (copy tval 'print-type te))))
+      #+pvsdebug (assert (or (print-type type-expr) (tc-eq te type-expr)))
+      #+pvsdebug (assert (true-type-expr? type-expr))
+      type-expr)))
 
 (defmethod type-expr-from-print-type ((te expr-as-type))
   (let* ((suptype (find-supertype (type (expr te))))
