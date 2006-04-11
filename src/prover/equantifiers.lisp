@@ -938,21 +938,20 @@ is not of the form: (<var> <term>...)" subst)
   (if polarity?
       (find-match-list-with-polarity template fmlas
 				     alist if-match polarity)
-      (if (variable? template)
-	  (let ((fmlas (if (variable? template) ;;NSH(11-2-05)
-			   (let ((skolem-consts ;;matches hidden skolem constants 
-				   (loop for cd in (collect-skolem-constants)
-					 collect (mk-name-expr (id cd)
-						   nil nil 
-						   (mk-resolution
-						       cd (current-theory-name)
-						       (type cd))))))
-				  (if skolem-consts
-				      (append fmlas
-					      skolem-consts)
-				      fmlas))
-			    fmlas)))
-	    (find-match-list template fmlas alist if-match)))))
+      (let ((fmlas (if (variable? template) ;;NSH(11-2-05)
+		       (let ((skolem-consts ;;matches hidden skolem constants 
+			      (loop for cd in (collect-skolem-constants)
+				    collect (mk-name-expr (id cd)
+					      nil nil 
+					      (mk-resolution
+						  cd (current-theory-name)
+						  (type cd))))))
+			 (if skolem-consts
+			     (append fmlas
+				     skolem-consts)
+			     fmlas))
+		       fmlas)))
+	(find-match-list template fmlas alist if-match))))
 
 (defun top-find-match-list-templates
   (templates fmlas alist if-match polarity polarity?)
