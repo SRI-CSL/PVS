@@ -1,3 +1,6 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;   Copyright (c) 2002-2004 SRI International, Menlo Park, CA 94025, USA.
+
 (in-package :pvs)
 
 (defun cl2pvs (sexpr type &optional context)
@@ -124,13 +127,15 @@
   (cond ((char-list-type? type)
 	 (cl2pvs*-string (coerce sexpr 'string)))
 	((list-type? type)
-	 (cl2pvs*-list sexpr (type-value (car (actuals (find-supertype type)))) context))
+	 (cl2pvs*-list sexpr (type-value (car (actuals (find-supertype type))))
+		       context))
 	((char-type? type)
 	 (cl2pvs*-char sexpr type context))
 	(t
 	 (let* ((recognizers (recognizers type))
 		(recognizer-funs (loop for rec in recognizers
-				       collect (lisp-function (declaration rec))))
+				       collect (lisp-function
+						(declaration rec))))
 		(recognizer (loop for recfun in recognizer-funs
 				  as rec in recognizers
 				  thereis
