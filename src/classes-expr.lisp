@@ -51,7 +51,7 @@
   ;;(kind :documentation "Variable, constant, etc.")
   )
 
-(defcl theory-name-expr (name-expr)
+(defcl theory-name-expr (name-expr modname)
   ;; For names with resolutions to a theory
   )
 
