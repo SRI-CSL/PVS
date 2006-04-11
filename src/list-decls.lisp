@@ -219,7 +219,8 @@
 
 (defun find-element-containing-pos (list pos)
   (when list
-    (if (within-place pos (place (car list)))
+    (if (and (place (car list))
+	     (within-place pos (place (car list))))
 	(car list)
 	(find-element-containing-pos (cdr list) pos))))
 
@@ -396,14 +397,14 @@
 
 (defun format-decl-list (decl type theory)
   (list (format nil "~25A ~25A ~25A"
-	  (struncate (if (typep decl 'importing)
-			 (unparse decl :string t)
+	  (struncate (if (typep decl '(or importing auto-rewrite-decl))
+			 (unparse decl :string t :no-newlines? t)
 			 (id decl))
 		     25)
 	  (struncate type 25)
 	  (struncate (id theory) 25))
-	(if (typep decl 'importing)
-	    (unparse decl :string t)
+	(if (typep decl '(or importing auto-rewrite-decl))
+	    (unparse decl :string t :no-newlines? t)
 	    (string (id decl)))
 	(string (id theory))
 	(when (filename theory)
@@ -450,6 +451,7 @@
 	  (conversion-decl "CONVERSION")
 	  (datatype "DATATYPE")
 	  (adt-constructor "CONSTRUCTOR")
+	  (auto-rewrite-decl "AUTO_REWRITE")
 	  (t (error "decl ~a not recognized" decl))))))
   
 
