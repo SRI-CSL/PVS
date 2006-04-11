@@ -286,13 +286,13 @@ assumption ::= {'ASSUMPTION' expr} <assumption(expr)>;
 
 formula-decl ::= {formula-name expr} <formula-decl(formula-name,expr)>;
 
-type-expr ::= {name [arguments] ['WITH' type-extension]^e}
+type-expr ::= {name [arguments] ['WITH' type-expr]^e}
                 <[[type-name(name)|type-appl(name,arguments)]
-                 |[extended-type-name(name,type-extension)
-                  |extended-type-appl(name,arguments,type-extension)]]^e>
-	    | {type-expr-sans-name ['WITH' type-extension]}
+                 |[extended-type-name(name,type-expr)
+                  |extended-type-appl(name,arguments,type-expr)]]^e>
+	    | {type-expr-sans-name ['WITH' type-expr]}
                 <[type-expr-sans-name
-                 |extended-type(type-expr-sans-name,type-extension)]>
+                 |extended-type(type-expr-sans-name,type-expr)]>
 	    ;
 
 type-expr-sans-name ::= { '(' expr ')'} <expr-as-type(expr)>
@@ -331,13 +331,6 @@ dep-type-exprs ::= {dep-type-expr
 dep-type-expr ::= type-expr
 	       |  {idop ':' type-expr} <dep-binding(idop,type-expr)>
 	       ;
-
-type-extension ::= {'[#' field-decls [{',' field-decls++','}|{'+' field-decls++'+'}] '#]'}
-                <[record-extension(fields(list(field-decls)))
-                 |{record-extension(fields(cons(field-decls,field-decls+)))
-                  |variant-extension(fields(cons(field-decls,field-decls+)))}]>
-	| {'[' dep-type-exprs ']'}
-		<tuple-extension(dep-type-exprs)>;
 
 
 %% Expressions
@@ -574,7 +567,9 @@ opsym ::= '+' <`+()> | '-' <`-()> | '*' <`*()> | '/' <`\/()>
 
 actuals ::= {'[' {actual ++ ','} ']'} <actuals(actual+)>;
 
-actual ::= expr | comp-type-expr;
+% mappings are not really allowed, but we want to give a reasonable error
+% see xt-actual in parse.lisp
+actual ::= expr | comp-type-expr | mappings;
 
 mappings ::= {'{{' mapping++ ',' '}}'} <mappings(mapping+)>;
 
