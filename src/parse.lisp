@@ -1144,6 +1144,8 @@
 		   "Variant record types are not yet supported"))
     (EXTENDED-TYPE-NAME
      (xt-extended-type-name type-expr))
+    (EXTENDED-TYPE
+     (xt-extended-type type-expr))
     (STRUCT-SUBTYPE (xt-struct-subtype type-expr))
     (QUANT-TYPE (xt-quant-type type-expr))
     (t (error "type-expr not recognized - ~a" type-expr))))
@@ -1162,22 +1164,25 @@
       'extension extension
       'place (term-place type-expr))))
 
+(defun xt-extended-type (type-expr)
+  (let ((type (xt-type-expr (term-arg0 type-expr)))
+	(extension (xt-type-extension (term-arg1 type-expr))))
+    (make-instance 'type-extension
+      'type type
+      'extension extension
+      'place (term-place type-expr))))
+
 (defun xt-struct-subtype (type-expr)
   (xt-type-expr (term-arg0 type-expr)))
 
 (defun xt-type-extension (ext)
-  (case (sim-term-op ext)
-    (RECORD-EXTENSION
-     (xt-record-extension ext))
-    (TUPLE-EXTENSION
-     (xt-tuple-extension ext))
-    (t (break))))
+  (xt-type-expr ext))
 
 (defun xt-record-extension (ext)
   (xt-fields (term-arg0 ext)))
 
 (defun xt-tuple-extension (ext)
-  (xt-dep-type-exprs (term-arg0 ext)))
+  (xt-dep-type-exprs ext))
 
 (defun xt-type-appl (type-expr)
   (let ((type (term-arg0 type-expr))
@@ -2612,14 +2617,16 @@
   (mapcar #'xt-actual (term-args actuals)))
 
 (defun xt-actual (act)
-  (make-instance 'actual
-    'expr (if (member (sim-term-op act)
-		      '(SUBTYPE EXPR-AS-TYPE ENUM-OR-SUBTYPE
-			FUNTYPE ;; PREDTYPE
-			RECORDTYPE))
-	      (xt-not-enum-type-expr act)
-	      (xt-expr act))
-    'place (term-place act)))
+  (if (eq (sim-term-op act) 'MAPPINGS)
+      (parse-error act "Mappings must be preceded by a theory name")
+      (make-instance 'actual
+	'expr (if (member (sim-term-op act)
+			  '(SUBTYPE EXPR-AS-TYPE ENUM-OR-SUBTYPE
+				    FUNTYPE ;; PREDTYPE
+				    RECORDTYPE))
+		  (xt-not-enum-type-expr act)
+		  (xt-expr act))
+	'place (term-place act))))
 
 (defun xt-mappings (mappings)
   (mapcar #'xt-mapping (term-args mappings)))
@@ -2674,7 +2681,8 @@
 	  (MAPPING-RENAME
 	   (make-instance 'mapping-rename
 	     'lhs (xt-mapping-lhs (term-arg0 mapping))
-	     'rhs (make-instance 'mapping-rhs 'expr expr 'place (place expr))
+	     'rhs (make-instance 'mapping-rhs-rename
+		    'expr expr 'place (place expr))
 	     'kind kind
 	     'declared-type dtype)))
 	(let ((formals (xt-pdf (term-arg1 lhs))))
@@ -2698,7 +2706,7 @@
 	  (MAPPING-RENAME
 	   (make-instance 'mapping-rename-with-formals
 	     'lhs (xt-mapping-lhs (term-arg0 mapping))
-	     'rhs (make-instance 'mapping-rhs
+	     'rhs (make-instance 'mapping-rhs-rename
 		    'expr (mk-lambda-exprs formals expr))
 	     'formals formals
 	     'kind kind
