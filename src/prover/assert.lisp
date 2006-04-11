@@ -1730,6 +1730,10 @@
 (defun is-predicate? (expr)
   (predtype? (type expr)))
 
+(defmethod arity ((decl typed-declaration))
+  (if (funtype? (type decl))
+      (arity (type decl))
+      0))
 
 (defmethod arity ((expr expr))
   (arity (type expr)))
@@ -2848,8 +2852,8 @@
   ;;hashentry is a list of rewrite rules for op*
   (if (null hashentry)
       (values oldsig expr)
-      (let* ((hashentry1 (car hashentry));;get first rewrite rule
-	     (res (res hashentry1));; get resolution for rewrite rule.
+      (let* ((hashentry1 (car hashentry)) ;;get first rewrite rule
+	     (res (res hashentry1)) ;; get resolution for rewrite rule.
 	     (res-decl (unless (consp res) (declaration res)))
 	     ;;to handle antecedent rewrites.
 	     (mod-inst (when res-decl (module-instance res)))
@@ -2896,10 +2900,7 @@
 				     (if (generic? res)
 					 (tc-eq (declaration op*) res-decl)
 					 (tc-eq (resolution op*) res)))
-			    (let (	;(defs (def-axiom (declaration op*)))
-				  (defns (create-formulas (resolution op*))))
-					;if (is-res-auto-rewrite! res)
-					;   (last defns)
+			    (let ((defns (create-formulas (resolution op*))))
 			      (car defns))))
 			(defbody (when defn (if (forall-expr? defn)
 						(expression defn)
@@ -2916,9 +2917,8 @@
 				     (or (def-decl? res-decl)
 					 (is-res-auto-rewrite-non! res))
 				     (is-res-auto-rewrite-non! res))))
-		   (multiple-value-bind
-		       (psubst modsubst)
-		       (if defn;;NSH(5.8.98) Optimizes defns
+		   (multiple-value-bind (usubst modsubst)
+		       (if defn
 			   (values
 			    (loop for vars in (arguments* lhs)
 				  as args in (arguments* expr)
@@ -2927,12 +2927,15 @@
 					 args))
 			    t)
 			   (if lhs
-			       (let ((*modsubst* modsubst);;no tccs in match
-				     (*generate-tccs* 'none));;NSH(11.24.98)
+			       (let ((*modsubst* modsubst) ;;no tccs in match
+				     (*generate-tccs* 'none))
 				 (values (match lhs expr nil nil)
 					 *modsubst*))
 			       'fail))
-		     (let* ((modsubst (unless (or (eq psubst 'fail)
+		     (let* ((psubst (if (eq usubst 'fail)
+					usubst
+					(sort-alist usubst)))
+			    (modsubst (unless (or (eq psubst 'fail)
 						  (eq modsubst t))
 					(if (every #'cdr modsubst)
 					    (copy mod-inst
@@ -2946,12 +2949,8 @@
 					   (null modsubst)
 					   (eq modsubst 'fail))
 				       psubst
-				       (loop for (x . y) in psubst
-					     collect
-					     (cons (subst-mod-params
-						    x modsubst
-						    (module res-decl))
-						   y))))
+				       (subst-mod-params-substlist
+					psubst modsubst (module res-decl))))
 			    (nsubst (when (consp subst)
 				      (mapcan #'(lambda (p1 p2)
 						  (unless (eq (car p1) (car p2))
@@ -2971,7 +2970,7 @@
 				       rhs
 				       (subst-mod-params rhs modsubst)))))
 		       (cond ((or (eq subst 'fail)(eq modsubst 'fail))
-			      (if lhs;;then match must've failed.
+			      (if lhs ;;then match must've failed.
 				  (track-rewrite-format
 				   res expr
 				   "LHS ~a does not match."
@@ -2988,7 +2987,7 @@
 						rhs subst
 						if-flag
 						res)))
-				    (decf *auto-rewrite-depth*);;NSH(5.26.95)
+				    (decf *auto-rewrite-depth*)	;;NSH(5.26.95)
 				    (cond ((and if-flag (eq sigrhs 'X))
 			 ;;;then ignore current rewrite.
 					   (track-rewrite-format
@@ -3010,15 +3009,12 @@
 					     ;;Records too many dependencies
 					     ;;but this is conservative.
 					     (values '? newrhs))))
-				  (multiple-value-bind
-				      (subst tccforms)
+				  (multiple-value-bind (subst tccforms)
 				      (let* ((*tccforms* nil)
 					     (*keep-unbound* *bound-variables*)
-					     (subst (sort-alist subst))
-					     (subst (tc-alist subst nil 'top))
-					     )
-					(values subst *tccforms*))
-				    (when (modname? modsubst);;NSH(2.8.97)
+					     (tsubst (tc-alist subst nil 'top)))
+					(values tsubst *tccforms*))
+				    (when (modname? modsubst) ;;NSH(2.8.97)
 				      ;;ensure generation of assumption TCCS
 				      ;;for generic rewrites.
 				      (typecheck modsubst :tccs 'all))
