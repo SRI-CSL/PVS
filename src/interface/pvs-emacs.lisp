@@ -110,9 +110,12 @@
 	     (not *in-evaluator*))
     (let ((warning (format nil "~?" ctl args)))
       (if (warnings (current-theory))
-	  (unless (member warning (warnings (current-theory)) :test #'string=)
-	    (nconc (warnings (current-theory)) (list warning)))
-	  (setf (warnings (current-theory)) (list warning)))))
+	  (unless (member warning (warnings (current-theory))
+			  :key #'cdr :test #'string=)
+	    (nconc (warnings (current-theory))
+		   (list (cons (current-declaration) warning))))
+	  (setf (warnings (current-theory))
+		(list (cons (current-declaration) warning))))))
   nil)
 
 ;;; Collect messages until the end of parsing/typechecking, and provide
@@ -126,7 +129,7 @@
 	   (pvs-message "Theory ~a has no warning messages" theoryname))
 	  (t (pvs-buffer "PVS Warnings"
 	       (format nil "Warnings for theory ~a:~2%~{~a~^~2%~}"
-		 theoryname (warnings theory))
+		 theoryname (mapcar #'cdr (warnings theory)))
 	       t t)))))
 
 (defun show-pvs-file-warnings (filename)
@@ -138,7 +141,9 @@
 		  "Warnings for file ~a.pvs:~
                ~:{~2%Warnings for theory ~a:~@{~{~2%~a~}~}~}"
 		filename
-		(mapcar #'(lambda (th) (list (id th) (warnings th))) theories))
+		(mapcar #'(lambda (th)
+			    (list (id th) (mapcar #'cdr (warnings th))))
+		  theories))
 	      t t)
 	    (pvs-message "No warnings associated with ~a.pvs" filename))
 	(pvs-message "~a.pvs has not been typechecked" filename))))
@@ -154,8 +159,10 @@
 	       (not *in-checker*)
 	       (not *in-evaluator*))
       (if (info (current-theory))
-	  (nconc (info (current-theory)) (list info))
-	  (setf (info (current-theory)) (list info)))))
+	  (nconc (info (current-theory))
+		 (list (cons (current-declaration) info)))
+	  (setf (info (current-theory))
+		(list (cons (current-declaration) info))))))
   nil)
 
 (defun show-theory-messages (theoryname)
@@ -170,7 +177,7 @@
                     ~2%Use M-x show-theory-conversions to see the conversions.~
                     ~2%~{~a~^~2%~}"
 		 theoryname
-		 (info theory))
+		 (mapcar #'cdr (info theory)))
 	       t t)))))
 
 (defun show-pvs-file-messages (filename)
@@ -183,15 +190,20 @@
                    ~2%Use M-x show-theory-conversions to see the conversions.~
                ~:{~2%Messages for theory ~a:~@{~{~2%~a~}~}~}"
 		filename
-		(mapcar #'(lambda (th) (list (id th) (info th))) theories))
+		(mapcar #'(lambda (th)
+			    (list (id th) (mapcar #'cdr (info th))))
+		  theories))
 	      t t)
 	    (pvs-message "No messages associated with ~a.pvs" filename))
 	(pvs-message "~a.pvs has not been typechecked" filename))))
 
 ;;; Conversions are treated separately
 
+(defvar *print-conversions* t)
+
 (defun pvs-conversion-msg (ctl &rest args)
-  (when (or *noninteractive* *in-checker* *in-evaluator*)
+  (when (and *print-conversions*
+	     (or *noninteractive* *in-checker* *in-evaluator*))
     (pvs-message "~% ~?~%" ctl args)
     ;;(format-if "~% ~?~%" ctl args)
     )
@@ -200,8 +212,10 @@
 	     (not *in-evaluator*))
     (let ((cmsg (format nil "~?" ctl args)))
       (if (conversion-messages (current-theory))
-	  (nconc (conversion-messages (current-theory)) (list cmsg))
-	  (setf (conversion-messages (current-theory)) (list cmsg)))))
+	  (nconc (conversion-messages (current-theory))
+		 (list (cons (current-declaration) cmsg)))
+	  (setf (conversion-messages (current-theory))
+		(list (cons (current-declaration) cmsg))))))
   nil)
 
 (defun show-theory-conversions (theoryname)
@@ -215,7 +229,7 @@
 		   "Conversions for theory ~a:~
                     ~2%Use pretty-print-expanded (M-x ppe) to see the conversions as used in the theory.
                     ~2%~{~a~^~2%~}"
-		 theoryname (conversion-messages theory))
+		 theoryname (mapcar #'cdr (conversion-messages theory)))
 	       t t)))))
 
 (defun show-pvs-file-conversions (filename)
@@ -228,7 +242,9 @@
                    ~2%Use pretty-print-expanded (M-x ppe) to see the conversions as used in the theory.
                ~:{~2%Conversions for theory ~a:~@{~{~2%~a~}~}~}"
 		filename
-		(mapcar #'(lambda (th) (list (id th) (conversion-messages th)))
+		(mapcar #'(lambda (th)
+			    (list (id th)
+				  (mapcar #'cdr (conversion-messages th))))
 		  theories))
 	      t t)
 	    (pvs-message "No conversions associated with ~a.pvs" filename))
@@ -238,11 +254,13 @@
 
 (defun pvs-log (ctl &rest args)
   (unless *suppress-msg*
-    (let* ((*print-pretty* nil)
-	   (*output-to-emacs*
-	    (protect-emacs-output
-	     (format nil ":pvs-log ~? :end-pvs-log" ctl args))))
-      (to-emacs))))
+    (if *to-emacs*
+	(let* ((*print-pretty* nil)
+	       (*output-to-emacs*
+		(protect-emacs-output
+		 (format nil ":pvs-log ~? :end-pvs-log" ctl args))))
+	  (to-emacs))
+	(format t "~%~?" ctl args))))
 
 (defun verbose-msg (ctl &rest args)
   ;; Writes out a message.  The message should fit on one line, and
@@ -270,33 +288,39 @@
 
 (defun pvs-error (msg err &optional itheory iplace)
   ;; Indicates an error; no recovery possible.
-  (if *rerunning-proof*
-      (restore)
-      (if *to-emacs*
-	  (let* ((place (if *adt-decl* (place *adt-decl*) iplace))
-		 (buff (if *adt-decl*
-			   (or (filename *generating-adt*)
-			       (and (current-theory)
-				    (filename (current-theory)))
-			       *current-file*)
-			   (or *from-buffer* itheory)))
-		 (*print-pretty* nil)
-		 (*output-to-emacs*
-		  (format nil ":pvs-err ~a&~a&~a&~a&~d ~d :end-pvs-err"
-		    (protect-emacs-output (namestring buff))
-		    (unless *from-buffer*
-		      (protect-emacs-output (namestring *pvs-context-path*)))
-		    (protect-emacs-output msg)
-		    (write-to-temp-file err)
-		    (line-begin place) (col-begin place))))
-	    (to-emacs)
-	    (if *in-checker*
-		(restore)
-		(pvs-abort)))
-	  (progn (format t "~%~%~a~%~a" msg err)
-		 (if *in-checker*
-		     (restore)
-		     (error "PVS error"))))))
+  (cond (*rerunning-proof*
+	 (restore))
+	((and *pvs-emacs-interface*
+	      *to-emacs*)
+	 (let* ((place (if *adt-decl* (place *adt-decl*) iplace))
+		(buff (if *adt-decl*
+			  (or (filename *generating-adt*)
+			      (and (current-theory)
+				   (filename (current-theory)))
+			      *current-file*)
+			  (or *from-buffer* itheory)))
+		(*print-pretty* nil)
+		(*output-to-emacs*
+		 (format nil ":pvs-err ~a&~a&~a&~a&~d ~d :end-pvs-err"
+		   (when buff (protect-emacs-output (namestring buff)))
+		   (unless *from-buffer*
+		     (protect-emacs-output (namestring *pvs-context-path*)))
+		   (protect-emacs-output msg)
+		   (write-to-temp-file err)
+		   (line-begin place) (col-begin place))))
+	   (to-emacs)
+	   (if *in-checker*
+	       (restore)
+	       (pvs-abort))))
+	((null *pvs-emacs-interface*)
+	 (format t "~%<pvserror msg=\"~a\">~%\"~a\"~%</pvserror>"
+	   (protect-emacs-output msg) (protect-emacs-output err))
+	 (pvs-abort))
+	(t
+	 (format t "~%~%~a~%~a" msg err)
+	 (if *in-checker*
+	     (restore)
+	     (error "PVS error")))))
 
 (defun pvs-abort ()
   #-allegro (abort)
@@ -504,7 +528,8 @@
 			    (format nil "~?" message args)
 			    message)
 			obj)))
-	((and *to-emacs*
+	((and (or *to-emacs*
+		  (null *pvs-emacs-interface*))
 	      (or (not *in-checker*)
 		  (not *in-evaluator*)
 		  *tc-add-decl*))
