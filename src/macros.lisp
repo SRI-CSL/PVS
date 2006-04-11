@@ -23,6 +23,11 @@
 (defmacro makesym (ctl &rest args)
   `(intern (format nil ,ctl ,@args) :pvs))
 
+(defmacro makenewsym (ctl &rest args)
+  (let ((str (gentemp)))
+    `(let ((,str (format nil ,ctl ,@args)))
+       (make-new-symbol ,str))))
+
 (defmacro msgtime (ctl &rest args)
   `(progn (format t ,ctl ,@(butlast args)) (time ,(car (last args)))))
 
@@ -136,20 +141,23 @@
 	(id (gensym))
 	(bd (gensym))
 	(nvar (gensym))
-	(op (gensym)))
+	(op (gensym))
+	(lexpr (gensym)))
     `(let* ((,type ,vtype)
 	    (,op ,operator)
 	    (,id (make-new-variable ,vsym (cons ,type ,op)))
-	    (,bd (typecheck* (mk-bind-decl ,id ,type ,type) nil nil nil))
-	    (,nvar (mk-name-expr ,id nil nil (make-resolution ,bd
-					       (current-theory-name) ,type))))
-      (beta-reduce (make-lambda-expr (list ,bd)
-		     (if (listp ,op)
-			 (make!-conjunction*
-			  (mapcar #'(lambda (o)
-				      (make!-application o ,nvar))
-				  ,op))
-			 (make!-application ,op ,nvar)))))))
+	    (,bd (make-bind-decl ,id ,type))
+	    (,nvar (make-variable-expr ,bd))
+	    (,lexpr (make!-lambda-expr (list ,bd)
+		      (if (listp ,op)
+			  (make!-conjunction*
+			   (mapcar #'(lambda (o)
+				       (make!-application o ,nvar))
+			     ,op))
+			  (make!-application ,op ,nvar)))))
+;;        (unless (tc-eq ,lexpr (beta-reduce ,lexpr))
+;; 	 (break "Why?"))
+       ,lexpr)))
 
 (defmacro gen-forall-expr (vsym vtype operator)
   (let ((type (gensym))
