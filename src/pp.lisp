@@ -31,6 +31,8 @@
 
 (defvar *pp-print-parens* nil)
 
+(defvar *pp-no-newlines?* nil)
+
 (defvar pvs-prec-info (make-hash-table :test #'eq))
 
 (mapc #'(lambda (nt) (init-prec-info nt pvs-prec-info)) '(type-expr expr))
@@ -109,13 +111,14 @@ bind tighter.")
 ;;; :string :stream :char-width :file :style
 
 (defun unparse (obj &key string stream file char-width
-		    length level lines (pretty t))
+		    length level lines (pretty t) no-newlines?)
    (let ((*print-length* length)
 	 (*print-level* level)
 	 (*print-lines* lines)
 	 (*print-pretty* pretty)
 	 (*print-escape* nil)
-	 (*print-right-margin* (or char-width *default-char-width*)))
+	 (*print-right-margin* (or char-width *default-char-width*))
+	 (*pp-no-newlines?* no-newlines?))
      (cond (string
 	    (decf *print-right-margin* 4)
 	    (with-output-to-string (*standard-output*)
@@ -322,7 +325,8 @@ bind tighter.")
 	  (pprint-indent :block 4)
 	  (pprint-newline :fill)
 	  (pp-exportingmods kind modules)))
-      (pprint-newline :mandatory))))
+      (unless *pp-no-newlines?*
+	(pprint-newline :mandatory)))))
 
 (defun pp-exportings (names but-names)
   (pprint-logical-block (nil names)
@@ -939,7 +943,8 @@ bind tighter.")
 	       *pretty-printing-decl-list*)
       (write-char #\,)
       (write-char #\space))
-    (pprint-newline :mandatory)))
+    (unless *pp-no-newlines?*
+      (pprint-newline :mandatory))))
 
 (defmethod pp* :around ((decl auto-rewrite-decl))
   (with-slots (rewrite-names semi) decl
@@ -956,7 +961,8 @@ bind tighter.")
     (pp-rewrite-names rewrite-names)
     (when semi
       (write-char #\;))
-    (pprint-newline :mandatory)))
+    (unless *pp-no-newlines?*
+      (pprint-newline :mandatory))))
 
 (defun pp-rewrite-names (names)
   (pprint-logical-block (nil names)
@@ -2158,8 +2164,9 @@ bind tighter.")
 (defmethod pp* ((ass maplet))
   (with-slots (arguments expression) ass
     (pprint-logical-block (nil nil)
-      (pprint-indent :current 2)
-      (if (typep ass 'uni-assignment)
+       (pprint-indent :current 2)
+      (if (and (typep ass 'uni-assignment)
+	       (simple-name? (caar arguments)))
 	  (pp* (caar arguments))
 	  (pp-arguments* arguments))
       (write-char #\space)
