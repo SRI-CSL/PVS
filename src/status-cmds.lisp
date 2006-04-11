@@ -809,6 +809,7 @@
   ;;; involved in the proof of the decl.  This includes all subtype and
   ;;; number judgements, as well as any name or application judgements
   ;;; whose decl is in decls.
+  ;;; [owre - 2005-09-11] Now just collect subtype judgements.
   (let ((jtccs nil))
     (dolist (jdecl (judgement-declarations (current-judgements)))
       (let ((tcc (get-judgement-tcc jdecl decls)))
@@ -827,23 +828,26 @@
 
 (defmethod get-judgement-tcc ((jdecl number-judgement) &optional decls)
   ;; Similarly, don't really know when a number-judgement kicked in.
-  (if (generated-by jdecl)
-      (get-judgement-tcc (generated-by jdecl) decls)
-      (find-if #'judgement-tcc? (generated jdecl))))
+;;   (if (generated-by jdecl)
+;;       (get-judgement-tcc (generated-by jdecl) decls)
+;;       (find-if #'judgement-tcc? (generated jdecl)))
+  )
 
 (defmethod get-judgement-tcc ((jdecl name-judgement) &optional decls)
   ;; Ignore it, if the associated declaration is not in decls
-  (when (memq (declaration (name jdecl)) decls)
-    (if (generated-by jdecl)
-	(get-judgement-tcc (generated-by jdecl) decls)
-	(when (memq (declaration (name jdecl)) decls)
-	  (find-if #'judgement-tcc? (generated jdecl))))))
+;;  (when (memq (declaration (name jdecl)) decls)
+;;     (if (generated-by jdecl)
+;; 	(get-judgement-tcc (generated-by jdecl) decls)
+;; 	(when (memq (declaration (name jdecl)) decls)
+;; 	  (find-if #'judgement-tcc? (generated jdecl)))))
+  )
 
 (defmethod get-judgement-tcc ((jdecl application-judgement) &optional decls)
-  (when (memq (declaration (name jdecl)) decls)
-    (if (generated-by jdecl)
-	(get-judgement-tcc (generated-by jdecl) decls)
-	(find-if #'judgement-tcc? (generated jdecl)))))
+;;   (when (memq (declaration (name jdecl)) decls)
+;;     (if (generated-by jdecl)
+;; 	(get-judgement-tcc (generated-by jdecl) decls)
+;; 	(find-if #'judgement-tcc? (generated jdecl))))
+  )
 
 (defmethod get-judgement-tcc ((jtcc judgement-tcc) &optional decls)
   (get-judgement-tcc (generated-by jtcc) decls))
@@ -1302,7 +1306,8 @@
 	  (pvs-message "No unused declarations found for ~a" formularefs)))))
 
 (defun unused-by-proofs-of (fdecls)
-  (let* ((used (collect-proof-used-declarations fdecls))
+  (let* ((used-rewrites (used-auto-rewrites fdecls))
+	 (used (append (collect-proof-used-declarations fdecls) used-rewrites))
 	 (unused nil))
     (do-all-declarations #'(lambda (d)
 			     (let ((th (module d)))
@@ -1328,6 +1333,7 @@
 
 (defun unused-by-proof-of (fdecl)
   (let* ((*current-context* (context fdecl))
+	 (used-rewrites (used-auto-rewrites fdecl))
 	 (used (collect-proof-used-declarations fdecl))
 	 (unused nil))
     (do-all-declarations #'(lambda (d)
@@ -1337,8 +1343,43 @@
 					   (library-datatype-or-theory? th)
 					   (memq d used))
 				 (pushnew d unused)))))
-    
+    (dolist (ar (auto-rewrites *current-context*))
+      (unless (memq ar used-rewrites)
+	(push ar unused)))
     (sort unused #'string< :key #'id)))
+
+(defun used-auto-rewrites (fdecl)
+  (let* ((rewrites+ (mapappend #'rewrite-names
+			       (auto-rewrites *current-context*)))
+	 (rewrites- (mapappend #'rewrite-names
+			       (disabled-auto-rewrites *current-context*)))
+	 (rewrites (set-difference rewrites+ rewrites- :test #'tc-eq)))
+    (used-auto-rewrites* rewrites
+			 (if (listp fdecl)
+			     (remove-duplicates
+				 (mapappend #'proof-refers-to fdecl))
+			     (proof-refers-to fdecl)))))
+
+(defun used-auto-rewrites* (rewrites used &optional used-rewrites)
+  (if (null rewrites)
+      (remove-if (complement
+		  #'(lambda (ar)
+		      (some #'(lambda (nm) (memq nm used-rewrites))
+			    (rewrite-names ar))))
+	(auto-rewrites *current-context*))
+      (used-auto-rewrites*
+       (cdr rewrites) used
+       (if (used-auto-rewrite (car rewrites) used)
+	   (cons (car rewrites) used-rewrites)
+	   used-rewrites))))
+
+(defun used-auto-rewrite (rewrite used)
+  (used-auto-rewrite* (resolutions rewrite) used))
+
+(defun used-auto-rewrite* (reses used)
+  (and reses
+       (or (memq (declaration (car reses)) used)
+	   (used-auto-rewrite* (cdr reses) used))))
 
 (defmethod collect-proof-used-declarations ((decl-list list))
   (collect-proof-used-decl-list decl-list nil))
