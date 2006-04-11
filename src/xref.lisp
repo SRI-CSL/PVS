@@ -181,10 +181,6 @@
 
 ;;; Expressions
 
-;(defmethod generate-xref ((e expr))
-;  (break)
-;  (assert (type e)))
-
 (defmethod generate-xref ((e number-expr))
   (assert (type e)))
 

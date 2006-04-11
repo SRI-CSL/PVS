@@ -629,7 +629,7 @@
 	    (assert (fully-instantiated? type))
 	    (when (and type (compatible? type t2))
 	      (compatible-type t2 type)))
-	  (ignore-errors (compatible-type t1 t2)))))
+	  (ignore-lisp-errors (compatible-type t1 t2)))))
 
 (defun typecheck-selections (expr adt type args)
   (when (duplicates? (selections expr) :test #'same-id :key #'constructor)
