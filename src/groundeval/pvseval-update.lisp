@@ -2,8 +2,7 @@
 
 (in-package :pvs)
 
-
-(defstep eval (expr &optional destructive?)
+(defstep ground-eval (expr &optional destructive?)
   (let ((tc-expr (pc-typecheck (pc-parse expr 'expr)))
 	(cl-expr (let ((*destructive?* destructive?))
 		   (pvs2cl tc-expr)))
@@ -20,6 +19,7 @@
 (defvar *destructive?* nil)
 (defvar *output-vars* nil)
 (defvar *external* nil)
+(defvar *pvsio2cl-primitives* nil)
 
 ;;lisp-id generates a Lisp identifier for a PVS identifier that
 ;;doesn't clash with existing Lisp constants and globals.
@@ -53,24 +53,50 @@
 
 
 (defun undefined (expr &optional message)
-  (let* ((fname (gentemp "undefined"))
-	 (msg-fmt (or message
-		      "Hit uninterpreted term ~a during evaluation"))
-	 (fbody `(defun ,fname (&rest x)
-		   (declare (ignore x))
-		   (if *evaluator-debug-undefined*
-		       (break "hit undefined term")
-		       (throw 'undefined
-			      (values
-			       'cant-translate 
-			       (format nil ,msg-fmt
-				 (if (declaration? ,expr)
-				     (format nil "~a.~a" (id (module ,expr)) (id ,expr))
-				     ,expr))))))))
-    (eval fbody)
-    (compile fname)
-    fname))
-
+  (let* ((th    (string (id (module expr))))
+	 (nm    (when (const-decl? expr)
+		  (string (id expr))))
+	 (ptype (when nm (print-type (type expr))))
+	 (nargs (when nm (arity expr)))
+	 (fnm   (when nm (makesym "pvsio_~a_~a_~a" th nm nargs))))
+    (cond ((and nm (= nargs 0) (find-nameargs th (cons nm nargs)))
+	   fnm)
+	  ((and nm (= nargs 0) ptype (type-name? ptype)
+		(eq '|Global| (id ptype)))
+	   (let* ((fname (gentemp "global"))
+		  (mod   (module-instance 
+			  (car (resolutions ptype))))
+		  (act   (actuals mod))
+		  (doc (format nil "Global mutable variable of type ~a" 
+			       (car act)))
+		  (arg (if (eq 'stdprog (id mod))
+			   '(cons nil t)
+			 `(list ,(pvs2cl (expr (cadr act))))))
+		  (fbody `(progn 
+			    (defparameter ,fname ,arg)
+			    (defattach-th-nm ,th ,(id expr) () ,doc ,fname))))
+	     (eval fbody)
+	     fnm))
+	  (t (let* ((fname (gentemp "undefined"))
+		    (msg-fmt
+		     (or message
+			 "Hit uninterpreted term ~a during evaluation"))
+		    (fbody `(defun ,fname (&rest x)
+			      (declare (ignore x))
+			      (if *evaluator-debug-undefined*
+				  (break "hit undefined term")
+				(throw 'undefined
+				       (values
+					'cant-translate 
+					(format nil ,msg-fmt
+						(if (declaration? ,expr)
+						    (format nil "~a.~a" 
+							    (id (module ,expr))
+							    (id ,expr))
+						  ,expr))))))))
+	       (eval fbody)
+	       (compile fname)
+	       fname)))))
 
 ;  lisp-function
 ;  lisp-function2
@@ -504,9 +530,7 @@
 	       (sub (simple-subrange? typ1))
 	       (bind-rest (cdr binds))
 	       (expr-rest (if bind-rest
-			      (mk-forall-expr
-				  bind-rest
-				body)
+			      (make!-forall-expr bind-rest body)
 			      body)))
 	  (cond ((enum-adt? (find-supertype typ1))
 		 (if (subtype? typ1)
@@ -854,7 +878,7 @@
   
 	
 (defun mk-fun-array (expr size) 
-  (if (or (simple-vector-p expr)(null size))
+  (if (or (simple-vector-p expr) (hash-table-p expr) (null size))
       expr
       (cond ((pvs-outer-array-p expr)
 	     (let* ((arr (make-array size :initial-element 0))
@@ -1323,7 +1347,7 @@
 					; problematic (e.g., t or nil).
 	    (make-binding-ids-without-dups
 	     (cdr bindings)
-	     (cons (gentemp id) aux))
+	     (cons (gentemp (string id)) aux))
 	    (make-binding-ids-without-dups
 	     (cdr bindings)
 	     (cons id aux))))
@@ -1444,10 +1468,32 @@
     (lisp-function (declaration expr))))
 
 (defun pvs2cl-constructors (constrs datatype)
-  (if (consp constrs)
-      (cons (pvs2cl-constructor (car constrs) datatype)
-	    (pvs2cl-constructors (cdr constrs) datatype))
-      nil))
+  ;; First create the structures, in case there are shared accessors
+  (let ((structs (unless (enum-adt? datatype) (mk-newconstructors constrs))))
+    (pvs2cl-constructors* constrs structs structs datatype)))
+
+(defun pvs2cl-constructors* (constrs structs all-structs datatype)
+  (when constrs
+    (cons (pvs2cl-constructor (car constrs) (car structs) all-structs datatype)
+	  (pvs2cl-constructors* (cdr constrs) (cdr structs)
+				all-structs datatype))))
+
+(defun mk-newconstructors (constrs)
+  (mapcar #'(lambda (constructor)
+	      (let* ((id (id constructor))
+		     (accessors (accessors constructor))
+		     (accessor-ids (mapcar #'id accessors))
+		     (struct-id (mk-newconstructor id accessor-ids))
+		     (recognizer-id (makesym "~a?" struct-id))
+		     (constructor-symbol (makesym "make-~a" struct-id))
+		     (defn `(defstruct (,struct-id
+					(:constructor ,constructor-symbol 
+						      ,accessor-ids)
+					(:predicate ,recognizer-id))
+			      ,@accessor-ids)))
+		(eval defn)
+		(cons struct-id defn)))
+    constrs))
 
 (defun mk-newconstructor (id accessor-ids &optional (counter 0))
   (let* ((const-str (format nil "~a_~a" id counter))
@@ -1462,9 +1508,8 @@
     (if (or const-str? mk-str? rec-str? acc-strs?)
 	(mk-newconstructor id accessor-ids (1+ counter))
 	(intern const-str))))
-			 
 
-(defun pvs2cl-constructor (constructor datatype) ;;fix multi-constructor accessors
+(defun pvs2cl-constructor (constructor struct all-structs datatype)
   (let ((decl (declaration constructor)))
     (or (and (eval-info decl)
 	     (lisp-function decl))
@@ -1486,41 +1531,70 @@
 	       (eval rec-defn)
 	       (compile rec-id)
 	       pos))
-	    (t  (let* ((id (id constructor))
-		       (accessors (accessors constructor))
-		       (accessor-ids (mapcar #'id accessors))
-		       (struct-id (mk-newconstructor id
-						     accessor-ids))
-		       (recognizer-id (makesym "~a?" struct-id))
-		       (constructor-symbol (makesym "MAKE-~a" struct-id))
-		       (defn `(defstruct (,struct-id (:constructor ,constructor-symbol 
-								   ,accessor-ids)
-						     (:predicate ,recognizer-id))
-				,@accessor-ids)))
-		  (make-eval-info (declaration constructor))
-		  (setf (definition (in-defn (declaration constructor)))
-			defn)
-		  (setf (in-name (declaration constructor))
-			constructor-symbol)
-		  (make-eval-info (declaration (recognizer constructor)))
-		  (setf (in-name (declaration (recognizer constructor)))
-			(makesym "~a?" struct-id))
-		  (eval defn)
-		  (loop for x in accessors
-			do (progn (make-eval-info (declaration x))
-				  (setf (in-name (declaration x))
-					(makesym "~a-~a" struct-id (id x)))))
-		  ))))))
+	    (t (let* ((accessors (accessors constructor))
+		      (struct-id (car struct))
+		      (constructor-symbol (makesym "make-~a" struct-id))
+		      (defn (cdr struct)))
+		 (make-eval-info (declaration constructor))
+		 (setf (definition (in-defn (declaration constructor)))
+		       defn)
+		 (setf (in-name (declaration constructor))
+		       constructor-symbol)
+		 (make-eval-info (declaration (recognizer constructor)))
+		 (setf (in-name (declaration (recognizer constructor)))
+		       (makesym "~a?" struct-id))
+		 (loop for x in accessors
+		       do (unless (eval-info (declaration x))
+			    (make-eval-info (declaration x))
+			    (setf (in-name (declaration x))
+				  (pvs2cl-accessor-defn
+				   (declaration x) struct-id all-structs
+				   datatype))))
+		 ))))))
+
+(defmethod pvs2cl-accessor-defn ((acc adt-accessor-decl)
+				 struct-id all-structs datatype)
+  (declare (ignore all-structs datatype))
+  (makesym "~a-~a" struct-id (id acc)))
+
+(defmethod pvs2cl-accessor-defn ((acc shared-adt-accessor-decl) struct-id
+				 all-structs datatype)
+  (declare (ignore struct-id))
+  (let* ((acc-id (makenewsym "~a-~a" (id datatype) (id acc)))
+	 (var (gentemp))
+	 (constr-structs (pairlis (constructors datatype) all-structs))
+	 (defn `(defun ,acc-id (,var)
+		  (typecase ,var
+		    ,@(mapcar #'(lambda (cid)
+				  (let ((struct (cdr (assoc cid constr-structs
+							    :key #'id))))
+				    (assert struct)
+				    (list (car struct)
+					  (list (makesym "~a-~a"
+							 (car struct) (id acc))
+						var))))
+			(constructors acc))))))
+    (eval defn)
+    acc-id))
+    
 	  
 (defun pvs2cl-primitive-app (expr bindings livevars)
-  (let ((op (operator expr))
-	(args (arguments expr)))
-    (if (> (length args) 1)
-	(mk-funapp (pvs2cl-primitive2 op)
-		   (pvs2cl_up* args bindings livevars))
-	(mk-funapp (pvs2cl-primitive op)
-		    (list (pvs2cl_up* (argument expr) bindings livevars)))))
-)
+  (let* ((op    (operator expr))
+	 (args  (arguments expr))
+	 (nargs (length args))
+	 (th    (string (id (module-instance op))))
+	 (nm    (when (name-expr? op) 
+		  (string (id op))))
+	 (f     (when nm (find-nameargs th (cons nm nargs))))
+	 (fn    (cond (f (intern (format nil "pvsio_~a_~a_~a" th nm nargs)))
+		      ((> nargs 1) (pvs2cl-primitive2 op))
+		      (t           (pvs2cl-primitive op))))
+	 (xtra  (if f (list (format nil "~a" (type op))) nil)))
+    (if (> nargs 1)
+	(mk-funapp fn (append (pvs2cl_up* args bindings livevars) xtra))
+	(mk-funapp fn (append (list (pvs2cl_up* (argument expr)
+						bindings livevars)) xtra)))))
+
 (defparameter *pvs2cl-primitives*
   (list (mk-name '= nil '|equalities|)
 	(mk-name '/= nil '|notequal|)
@@ -1546,6 +1620,7 @@
 	(mk-name '>= nil '|reals|)
 	(mk-name '|real_pred| nil '|reals|)
 	(mk-name '|integer_pred| nil '|integers|)
+	(mk-name '|integer?| nil '|integers|)
 	(mk-name '|rational_pred| nil '|rationals|)
 	(mk-name '|floor| nil '|floor_ceil|)
 	(mk-name '|ceiling| nil '|floor_ceil|)
@@ -1574,8 +1649,10 @@
 	   (id (module-instance n)))))
 
 (defmethod pvs2cl-primitive? ((expr name-expr))
-   (member expr *pvs2cl-primitives*
-	       :test #'same-primitive?))
+  (or (member expr *pvs2cl-primitives*
+	      :test #'same-primitive?)
+      (member expr *pvsio2cl-primitives*
+	      :test #'same-primitive?)))
 
 (defmethod pvs2cl-primitive? ((expr expr))
   nil)
