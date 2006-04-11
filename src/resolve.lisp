@@ -13,7 +13,7 @@
 
 (export '(get-decl-resolutions resolve))
 
-(defvar *resolve-error-info* nil)
+(defvar *resolve-error-info*)
 
 (defvar *field-records* nil)
 
@@ -140,13 +140,15 @@
 			#'(lambda (d) (eq (id (module d)) (mod-id name)))
 		      ldecls)
 		    ldecls))
-	 (theory-aliases (get-theory-aliases name)))
+	 (theory-aliases (get-theory-aliases name))
+	 (dreses (get-decls-resolutions decls (actuals name) (mappings name)
+					kind args)))
     (nconc (get-binding-resolutions name kind args)
 	   (get-record-arg-resolutions name kind args)
 	   (get-mapping-lhs-resolutions name kind args)
-	   (get-decls-resolutions decls (actuals name) (mappings name)
-				  kind args)
+	   dreses
 	   (when (and (eq kind 'module)
+		      (null dreses)
 		      (null args)
 		      (or (null *typechecking-actual*)
 			  (some #'(lambda (th)
@@ -304,7 +306,14 @@
   (declare (ignore args kind))
   (when (mod-id name)
     (if (find (id name) (mappings name) :key #'(lambda (m) (id (lhs m))))
-	(break "In given mappings")
+	(let* ((theory (get-theory (mod-id name)))
+	       (mapping (find (id name) (mappings name)
+			      :key #'(lambda (m) (id (lhs m))))))
+	  (list (make-instance 'mapping-resolution
+		  'declaration mapping
+		  'module-instance name
+		  'type (or (type-value (rhs mapping))
+			    (type (expr (rhs mapping)))))))
 	(let* ((theory (get-theory (mod-id name)))
 	       (aliases (get-theory-aliases name))
 	       (names (if (theory-interpretation? theory)
@@ -510,10 +519,11 @@
   acts)
 
 (defun make-resolution-with-mappings (decl thinst mappings)
-  (if (every #'(lambda (m)
+  (if (or (eq (module decl) (current-theory))
+	  (every #'(lambda (m)
 		     (member (lhs m) (mappings thinst)
 			     :test #'same-id :key #'lhs))
-	     mappings)
+		 mappings))
       (make-resolution decl thinst)
       (let* ((nmappings (append (mappings thinst) mappings))
 	     (nthinst (copy thinst 'mappings nmappings)))
@@ -582,11 +592,12 @@
 
 (defmethod typecheck* ((act actual) expected kind arguments)
   (declare (ignore expected kind arguments))
-  #+pvsdebug (when (type (expr act)) (break "Type set already???"))
+  #+pvsdebug (assert (not (type (expr act))) () "Type set already???")
   (unless (typed? act)
     (typecase (expr act)
       (name-expr
-       (let* ((name (expr act))
+       (let* ((*resolve-error-info* nil)
+	      (name (expr act))
 	      (tres (let ((*typechecking-actual* t))
 		      (with-no-type-errors (resolve* name 'type nil)))))
 	 (multiple-value-bind (eres error obj)
@@ -1515,7 +1526,8 @@
 		       (compatible-args**? ptype (car types)))
 		   (ptypes (car args)))
 	     (compatible-args*? decl (cdr args) (cdr types) (1+ argnum)))
-	    (t (push (list :arg-mismatch decl argnum args types)
+	    (t (assert (boundp '*resolve-error-info*))
+	       (push (list :arg-mismatch decl argnum args types)
 		     *resolve-error-info*)
 	       nil))))
 
@@ -1527,7 +1539,8 @@
 
 (defun disallowed-free-variable? (decl)
   (and (typep decl 'var-decl)
-       (not (typep (declaration *current-context*) 'formula-decl))))
+       (not (typep (current-declaration)
+		   '(or formula-decl subtype-judgement)))))
 
 
 ;;; Filter-preferences returns a subset of the list of decls, filtering
@@ -1810,7 +1823,8 @@
     (if (resolution name)
 	(when (eq (kind-of (declaration res)) k)
 	  (list res))
-	(let* ((*current-context* context)
+	(let* ((*resolve-error-info* nil)
+	       (*current-context* context)
 	       (nname (if (actuals name)
 			  (copy-untyped name)
 			  name))
@@ -1898,10 +1912,10 @@
               in the current context"
 	     (id theory-name)))
 	  ((singleton? abbrs)
-	   (if (fully-instantiated? (modname (car abbrs)))
-	       (modname (car abbrs))
-	       (break "resolve-theory-abbreviation not fully-instantiated")))
-	  (t (break "resolve-theory-abbreviation too many abbreviations")))))
+	   (assert (fully-instantiated? (modname (car abbrs)))
+		   () "resolve-theory-abbreviation not fully-instantiated")
+	   (modname (car abbrs)))
+	  (t (error "resolve-theory-abbreviation too many abbreviations")))))
     
 
 (defmethod imported-theory-abbreviation (decl)
@@ -1935,7 +1949,7 @@
 	     name
 	     (format nil
 		 "~v%Expecting a~a~%No resolution for ~a~
-                  ~@[ with arguments of possible types: ~:{~%  ~<~a~3i : ~{~_ ~a~^,~}~>~}~]~
+                  ~@[ with arguments of possible types: ~:{~%  ~a~3i : ~{~:_~a~^,~}~}~]~
                   ~@[~2% Check the actual parameters; the following ~
                         instances are visible,~% but don't match the ~
                         given actuals:~%   ~:I~{~a~^, ~_~}~]~
