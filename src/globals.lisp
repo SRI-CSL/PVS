@@ -52,11 +52,11 @@
     (subseq excl::cl-release-date 0 end)))
 
 (eval-when (eval compile load)
-  (defparameter *pvs-version* "3.3 Beta")
+  (defparameter *pvs-version* "3.3")
 
   ;; Not used in PVS sources, but may be useful for patches, strategies, etc.
   ;;(pushnew (intern (format nil "pvs~a" *pvs-version*) :keyword) *features*)
-  (pushnew :pvs3.2 *features*)
+  (pushnew :pvs3.3 *features*)
   )
 
 (defparameter *binfile-version* 22)
