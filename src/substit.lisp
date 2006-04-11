@@ -555,7 +555,8 @@
 		      (substit* (expression expr) nalist)))
 	     (ntype (if (quant-expr? expr)
 			(type expr)
-			(substit* (type expr) alist))))
+			(make-formals-funtype (list new-bindings)
+					      (type nexpr)))))
 	(copy expr
 	  'bindings new-bindings
 	  'type ntype
