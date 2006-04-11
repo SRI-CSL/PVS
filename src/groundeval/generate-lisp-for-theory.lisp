@@ -162,6 +162,8 @@
 
 (defparameter *default-random-test-size* 100)
 
+(defparameter *default-random-test-dtsize* 10)
+
 (defparameter *default-random-test-count* 10)
 
 (defun evaluate ()
@@ -203,9 +205,10 @@
 		      tc-input
 		      (or (third raw-input) *default-random-test-count*)
 		      (or (fourth raw-input) *default-random-test-size*)
-		      (fifth raw-input)
-		      (sixth raw-input)
-		      (seventh raw-input))
+		      (or (fifth raw-input) *default-random-test-dtsize*)
+		      (sixth raw-input) ;; all?
+		      (seventh raw-input) ;; verbose?
+		      (eighth raw-input)) ;; instance
 		     (multiple-value-bind (cl-input error)
 			 (catch 'undefined (pvs2cl tc-input))
 		       (when (eq cl-input 'cant-translate)
