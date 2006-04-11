@@ -85,7 +85,8 @@
   object-date ;; is now a list of object-dates corresponding to the theories
   dependencies
   theories
-  extension)
+  extension
+  (md5sum 0))
 
 (defstruct (theory-entry (:conc-name te-)
 			 (:print-function
@@ -357,7 +358,11 @@ pvs-strategies files.")
   (id th))
 
 (defmethod binpath-name ((inm modname) (th theory-interpretation))
-  (copy inm 'mod-id (id (module (generated-by-decl th)))))
+  (let ((gth (module (generated-by-decl th))))
+    (if (theory-interpretation? gth)
+	(binpath-name (copy inm 'id (makesym "~a.~a" (id gth) (id th)))
+		      gth)
+	(copy inm 'mod-id (id gth)))))
 
 (defmethod binpath-name ((inm modname) th)
   (declare (ignore th))
@@ -480,8 +485,10 @@ pvs-strategies files.")
 	 (file-entry (get-context-file-entry filename))
 	 (prf-file (make-prf-pathname filename))
 	 (proofs-write-date (file-write-time prf-file))
-	 (fdeps (file-dependencies filename)))
+	 (fdeps (file-dependencies filename))
+	 (md5sum (excl:md5-file (make-specpath filename))))
     (assert (cdr theories))
+    (assert (plusp md5sum))
     (make-context-entry
      :file filename
      :write-date (car theories)
@@ -493,7 +500,8 @@ pvs-strategies files.")
 				      (create-theory-entry th file-entry))
 			    (cdr theories))))
 		 (assert tes)
-		 tes))))
+		 tes)
+     :md5sum md5sum)))
 
 (defun create-theory-entry (theory file-entry)
   (let* ((valid? (when file-entry (valid-context-entry file-entry)))
@@ -622,7 +630,8 @@ pvs-strategies files.")
 			 'library (get-lib-id (from-theory (car use))))
 		       int-names)
 		 (push (cadr use) int-names))))
-    (values (cons theory int-theories) (cons name int-names))))
+    (values (cons theory (nreverse int-theories))
+	    (cons name (nreverse int-names)))))
 
 (defun add-generated-adt-theories (i-theories i-names
 					      &optional imp-theories imp-names)
