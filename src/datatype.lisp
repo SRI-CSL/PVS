@@ -179,9 +179,15 @@ generated")
 	 (adt-theories (adt-generated-theories adt))
 	 (mods (make-instance 'modules 'modules adt-theories))
 	 (ce (unless *loading-prelude*
-	       (get-context-file-entry (filename adt)))))
+	       (get-context-file-entry (filename adt))))
+	 (adt-ce (get-context-file-entry adt-file))
+	 (checksum-ok? (and adt-ce
+			    file-exists?
+			    (equal (excl:md5-file adt-path)
+				   (ce-md5sum adt-ce)))))
     (unless (and file-exists?
 		 ce
+		 checksum-ok?
 		 (equal (ce-write-date ce)
 			(file-write-time (make-specpath (filename adt)))))
       (when file-exists?
@@ -202,26 +208,28 @@ generated")
 	(if condition
 	    (pvs-message "Error in writing out ~a: ~a"
 	      (namestring adt-path) condition)
-	    (let ((ntheories (parse :file adt-path))
-		  (*copy-lex-exact* t))
-	      (mapc #'copy-lex adt-theories ntheories)
-	      (pvs-message "Wrote pvs file ~a" adt-file))))
+	    (pvs-message "Wrote pvs file ~a" adt-file)))
       (chmod "a-w" (namestring adt-path)))
+    (let ((ntheories (parse :file adt-path)))
+      (copy-lex adt-theories ntheories t)
+      (assert (every #'place (theory (car adt-theories)))))
     (dolist (th adt-theories)
       (let* ((tot (car (tcc-info th)))
 	     (prv (cadr (tcc-info th)))
 	     (mat (caddr (tcc-info th)))
 	     (obl (- tot prv mat)))
 	(if (zerop tot)
-	    (pvs-message "In DATATYPE theory ~a: No TCCs generated~
+	    (pvs-message "In ~aDATATYPE theory ~a: No TCCs generated~
                           ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-		  (id th) (length (warnings th)) (length (info th)))
+	      (if (codatatype? adt) "CO" "")
+	      (id th) (length (warnings th)) (length (info th)))
 	    (pvs-message
-		    "In DATATYPE theory ~a: ~d TCC~:p, ~d proved, ~
+		    "In ~aDATATYPE theory ~a: ~d TCC~:p, ~d proved, ~
                      ~d subsumed, ~d unproved~
                      ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
-		  (id th) tot prv mat obl
-		  (length (warnings th)) (length (info th))))))
+	      (if (codatatype? adt) "CO" "")
+	      (id th) tot prv mat obl
+	      (length (warnings th)) (length (info th))))))
     (let ((fdate (file-write-time adt-path))
 	  (ce2 (get-context-file-entry adt-file)))
       (setf (generated-file-date adt) fdate)
@@ -4981,7 +4989,8 @@ function, tuple, or record type")
 
 
 (defun generate-codt-coreduce (codt dom codtinst struct)
-  (let* ((dtype (typecheck* (mk-type-name dom) nil nil nil))
+  (let* ((*generate-tccs* 'none)
+	 (dtype (typecheck* (mk-type-name dom) nil nil nil))
 	 (coreduce-type (generate-coreduce-function-type dtype codt struct))
 	 (opid (make-new-variable '|op| codt))
 	 (opbd (make-bind-decl opid coreduce-type))
