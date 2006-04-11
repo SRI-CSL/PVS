@@ -1,5 +1,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; -*- Mode: Lisp -*- ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pvs.lisp -- Main file for PVS handling PVS commands.
+;;             Note that the API for the PVS image depends on the following
+;;             environment variables:
+;;             PVSPATH, PVS_LIBRARY_PATH, PVSPATCHLEVEL, PVSMINUSQ
 ;; Author          : Sam Owre
 ;; Created On      : Wed Dec  1 15:00:38 1993
 ;; Last Modified By: Sam Owre
@@ -27,13 +30,29 @@
 
 (defvar *started-with-minus-q* nil)
 
-;;; Invoked from Emacs
+(defvar *parsing-files*)
+
 
 ;;; A robodoc header
 ;****f* interface/pvs-init
 ;*
 ;*  NAME
 ;*    pvs-init -- initialize the pvs session
+;*      Used to be invoked from Emacs, it is now called form the
+;*      lisp initialization code - see make-pvs.lisp and pvs.system
+;*      It uses a number of environment variables - these are mostly
+;*      set in the pvs shell script:
+;*        PVSPATH - must be set to the PVS directory (where it was installed)
+;*        PVSINEMACS - set if the pvs lisp image was invoked from emacs
+;*        PVS_LIBRARY_PATH - 
+;*        PVSMINUSQ - set if the shell script was given a -q
+;*        PVSNONINTERACTIVE - set if -batch was given
+;*        PVSTIMEOUT - set to the -timeout value
+;*        PVSDEFAULTDP - set to -decision-procedures arg (shostak or ics)
+;*        PVSFORCEDP - set to -force-decision-procedures arg
+;*        PVSPATCHLEVEL - the patches level (0 - 3)
+;*        PVSVERBOSE - the verbosity (0 - 3)
+;*              
 ;*  SYNOPSIS
 ;*    pvs-init &optional dont-load-patches dont-load-user-lisp
 ;*  FUNCTION
@@ -50,14 +69,38 @@
 ;*    pvs-emacs/pvs
 ;*
 ;******
- 
+
 (defun pvs-init (&optional dont-load-patches dont-load-user-lisp)
   (setq excl:*enclose-printer-errors* nil)
   (setq *print-pretty* t)
   (setf (symbol-function 'ilisp::ilisp-restore) #'pvs-ilisp-restore)
   #+allegro (setq top-level::*print-length* nil
 		  top-level::*print-level* nil)
-  (setq *started-with-minus-q* dont-load-user-lisp)
+  (setq *pvs-path* (environment-variable "PVSPATH"))
+  (unless *pvs-path*
+    (error "PVSPATH environment variable should be set to the PVS directory"))
+  (setq *started-with-minus-q*
+	(or dont-load-user-lisp
+	    (let ((mq (environment-variable "PVSMINUSQ")))
+	      (and mq (not (equalp mq ""))))))
+  (setq *pvs-emacs-interface*
+	(let ((ei (environment-variable "PVSINEMACS")))
+	  (and ei (not (equal ei "")))))
+  (setq *noninteractive*
+	(let ((ni (environment-variable "PVSNONINTERACTIVE")))
+	  (and ni (not (equal ni "")))))
+  (setq *noninteractive-timeout*
+	(let ((to (environment-variable "PVSTIMEOUT")))
+	  (and to (ignore-errors (parse-integer to)))))
+  (setq *pvs-verbose*
+	(let ((str (environment-variable "PVSVERBOSE")))
+	  (when str
+	    (or (ignore-errors (parse-integer str)) 0))))
+  (setq *force-dp*
+	(let ((fd (environment-variable "PVSFORCEDP")))
+	  (and fd (intern fd :pvs))))
+  (let ((dp (environment-variable "PVSDEFAULTDP")))
+    (when dp (set-decision-procedure (intern dp :pvs))))
   (unless dont-load-patches
     (load-pvs-patches))
   (pvs-init-globals)
@@ -418,6 +461,8 @@
 (defun parse-file* (filename file theories forced?)
   ;;(save-context)
   (pvs-message "Parsing ~a" filename)
+  (when (boundp '*parsing-files*)
+    (pushnew filename *parsing-files* :test #'string=))
   (multiple-value-bind (new-theories time)
       (let ((*no-obligations-allowed* t))
 	(parse :file file))
@@ -460,11 +505,20 @@
     (let ((clashes (collect-theory-clashes new-theories filename)))
       (when clashes
 	;; clashes is an assoc list with (new-theory . oldfilename) entries
-	(parse-error (find (caar clashes) new-theories :test #'same-id)
-	  "~{~{Theory ~a is declared in ~a.pvs and ~a.pvs~%~}~}"
-	  (mapcar #'(lambda (clash)
-		      (list (id (car clash)) (cdr clash) filename))
-	    clashes))))))
+	(unless (pvs-yes-or-no-p
+		 "~d theor~@P clash~:[~;es~] with those in other files - continue? "
+		 (length clashes) (length clashes) (eql (length clashes) 1))
+	  (parse-error (caar clashes)
+	    "Theory ~a has been declared previously in file ~a.pvs"
+	    (id (caar clashes)) (cdar clashes)))
+	;; At some point, should spit out pvs-info here.
+	(dolist (clfname (remove-duplicates (mapcar #'cdr clashes)
+			   :test #'string=))
+	  (dolist (clth (get-theories clfname))
+	    (delete-theory clth))
+	  (remhash clfname *pvs-files*)
+	  (delete-file-from-context clfname))
+	(reset-typecheck-caches)))))
 
 (defun check-import-circularities (theories)
   (let ((*modules-visited* nil))
@@ -839,52 +893,54 @@
 
 (defun typecheck-file (filename &optional forced? prove-tccs? importchain?
 				nomsg?)
-  (multiple-value-bind (theories restored? changed-theories)
-      (parse-file filename forced? t)
-    (let ((*current-file* filename)
-	  (*typechecking-module* nil))
-      (when theories
-	(cond ((and (not forced?)
-		    theories
-		    (every #'(lambda (th)
-			       (let ((*current-context* (saved-context th))
-				     (*current-theory* th))
-				 (typechecked? th)))
-			   theories))
-	       (unless (or nomsg? restored?)
-		 (pvs-message
-		     "~a ~:[is already typechecked~;is typechecked~]~a"
-		   filename
-		   restored?
-		   (if (and prove-tccs? (not *in-checker*))
-		       " - attempting proofs of TCCs" ""))))
-	      ((and *in-checker*
-		    (not *tc-add-decl*))
-	       (pvs-message "Must exit the prover first"))
-	      ((and *in-evaluator*
-		    (not *tc-add-decl*))
-	       (pvs-message "Must exit the evaluator first"))
-	      (t (pvs-message "Typechecking ~a" filename)
-		 (when forced?
-		   (delete-generated-adt-files theories))
-		 (typecheck-theories filename theories)
-		 #+pvsdebug (assert (every #'typechecked? theories))
-		 (update-context filename)))
-	(when prove-tccs?
-	  (if *in-checker*
-	      (pvs-message
-		  "Must exit the prover before running typecheck-prove")
-	      (if importchain?
-		  (prove-unproved-tccs
-		   (delete-duplicates (mapcan #'(lambda (th)
-						  (let* ((*current-theory* th)
-							 (*current-context* (saved-context th)))
-						    (collect-theory-usings th)))
-					theories)
-				      :test #'eq)
-		   t)
-		  (prove-unproved-tccs theories))))
-	(values theories changed-theories)))))
+  (let ((*parsing-files* (when (boundp '*parsing-files*) *parsing-files*)))
+    (multiple-value-bind (theories restored? changed-theories)
+	(parse-file filename forced? t)
+      (let ((*current-file* filename)
+	    (*typechecking-module* nil))
+	(when theories
+	  (cond ((and (not forced?)
+		      theories
+		      (every #'(lambda (th)
+				 (let ((*current-context* (saved-context th))
+				       (*current-theory* th))
+				   (typechecked? th)))
+			     theories))
+		 (unless (or nomsg? restored?)
+		   (pvs-message
+		       "~a ~:[is already typechecked~;is typechecked~]~a"
+		     filename
+		     restored?
+		     (if (and prove-tccs? (not *in-checker*))
+			 " - attempting proofs of TCCs" ""))))
+		((and *in-checker*
+		      (not *tc-add-decl*))
+		 (pvs-message "Must exit the prover first"))
+		((and *in-evaluator*
+		      (not *tc-add-decl*))
+		 (pvs-message "Must exit the evaluator first"))
+		(t (pvs-message "Typechecking ~a" filename)
+		   (when forced?
+		     (delete-generated-adt-files theories))
+		   (typecheck-theories filename theories)
+		   #+pvsdebug (assert (every #'typechecked? theories))
+		   (update-context filename)))
+	  (when prove-tccs?
+	    (if *in-checker*
+		(pvs-message
+		    "Must exit the prover before running typecheck-prove")
+		(if importchain?
+		    (prove-unproved-tccs
+		     (delete-duplicates
+		      (mapcan #'(lambda (th)
+				  (let* ((*current-theory* th)
+					 (*current-context* (saved-context th)))
+				    (collect-theory-usings th)))
+			theories)
+					:test #'eq)
+		     t)
+		    (prove-unproved-tccs theories))))
+	  (values theories changed-theories))))))
 
 (defun delete-generated-adt-files (theories)
   (dolist (th theories)
@@ -1006,11 +1062,12 @@
 	  (filename (car theories)) (if importchain? "on importchain" ""))
 	(pvs-message
 	    "File ~a typechecked:~a ~d TCCs, ~d proved, ~d subsumed, ~d unproved~
-             ~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
+             ~[~:;; ~:*~d conversion~:p~]~[~:;; ~:*~d warning~:p~]~[~:;; ~:*~d msg~:p~]"
 	  (filename (car theories))
 	  (if importchain? " importchain has" "")
 	  tot proved subsumed
 	  (- tot proved subsumed)
+	  (reduce #'+ (mapcar #'(lambda (th) (length (conversion-messages th))) theories))
 	  (reduce #'+ (mapcar #'(lambda (th) (length (warnings th))) theories))
 	  (reduce #'+ (mapcar #'(lambda (th) (length (info th))) theories))))))
 
@@ -1446,7 +1503,7 @@
   (let* ((context-theory (when context-theoryname
 			   (get-typechecked-theory context-theoryname)))
 	 (*current-context* (context context-theory))
-	 (theoryname (pc-parse theoryname-string 'modname))
+	 (theoryname (pc-parse theoryname-string 'theory-decl-modname))
 	 (*collecting-tccs* t)
 	 (*tccforms* nil))
     (typecheck-using theoryname)
@@ -1978,7 +2035,10 @@
 	       (fdecl (find-if #'(lambda (d) (and (formula-decl? d)
 						  (eq (id d) fid)))
 			(all-decls theory)))
-	       (strat (when rerun? '(rerun))))
+	       (strat (when rerun? '(rerun)))
+	       (*current-theory* theory)
+	       (*current-context* (when fdecl (context fdecl))))
+	  (read-strategies-files)
 	  (if fdecl
 	      (prove formname :strategy strat)
 	      (pvs-message "Formula ~a not found" formname)))
@@ -2269,13 +2329,13 @@
 		      ((some #'(lambda (prinfo)
 				 (equal (script prinfo) just))
 			     (proofs fdecl))
-		       (let ((prinfo (find #'(lambda (prinfo)
-					       (equal (script prinfo) just))
-					   (proofs fdecl))))
+		       (let ((prinfo (find-if #'(lambda (prinfo)
+						  (equal (script prinfo) just))
+				       (proofs fdecl))))
 			 (setf (default-proof fdecl) prinfo)
 			 (unless (from-prelude? (module fdecl))
-			     (save-all-proofs (module fdecl)))
-			 (pvs-message "Proof installed on ~a as ~a"
+			   (save-all-proofs (module fdecl)))
+			 (pvs-message "Proof already found on ~a as ~a"
 			   (id fdecl) (id prinfo))
 			 t))
 		      (t (let ((prinfo (make-proof-info
@@ -2306,7 +2366,7 @@
   (let ((ch (read-char stream nil 'eof t)))
     (if (char= ch #\Newline)
 	(cons (coerce (nreverse chars) 'string)
-	      (read-preserving-comments stream))
+	      (read-preserving-comments-as-strings stream))
 	(pvs-lisp-read-comment stream (cons ch chars)))))
 
 (defun remove-leading-comments (sexpr)
@@ -2383,8 +2443,9 @@
 (defun justification-error (subexpr sexpr msg)
   (let ((pos (or (ignore-errors (matching-position subexpr sexpr "" 0))
 		 0))
-	(*from-buffer* "Proof"))
-    (pvs-error "Proof Syntax Error" (or msg "Proof syntax error")
+	(*from-buffer* "Proof")
+	(err (format nil "~a - ~s" (or msg "Proof syntax error") subexpr)))
+    (pvs-error "Proof Syntax Error" err
 	       "Proof" (pos-to-place pos sexpr))
     nil))
 
@@ -2882,6 +2943,7 @@
 	(t name)))
 
 (defun within-place (pos place)
+  (assert (vectorp place))
   (and (<= (starting-row place) (car pos) (ending-row place))
        (if (= (starting-row place) (ending-row place))
 	   (<= (starting-col place) (cadr pos) (ending-col place))
