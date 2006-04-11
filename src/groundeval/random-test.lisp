@@ -78,8 +78,22 @@
 	     "~a uninterpreted - use :instance to provide a type" te))))
 
 (defmethod random-generator* ((te tupletype) i d)
-  (make!-tuple-expr* (mapcar #'(lambda (ctype) (random-generator* ctype i d))
-		       (types te))))
+  (make!-tuple-expr* (random-generator-types (types te) i d)))
+
+(defmethod random-generator* ((te dep-binding) i d)
+  (random-generator* (type te) i d))
+
+(defun random-generator-types (types i d &optional values)
+  (if (null types)
+      (nreverse values)
+      (let* ((ty (car types))
+	     (rval (random-generator* ty i d)))
+	(random-generator-types
+	 (if (dep-binding? ty)
+	     (substit (cdr types) (acons ty rval nil))
+	     (cdr types))
+	 i d
+	 (cons rval values)))))
 
 (defmethod random-generator* ((te cotupletype) i d)
   (one-of (let ((index 0))
@@ -107,10 +121,19 @@
 
 (defmethod random-generator* ((te recordtype) i d)
   (make-record-expr
-   (mapcar #'(lambda (fld) (make-assignment (mk-name-expr (id fld))
-			     (random-generator* (type fld) i d)))
-     (fields te))
+   (random-generator-fields (fields te) i d)
    te))
+
+(defun random-generator-fields (fields i d &optional assigns)
+  (if (null fields)
+      (nreverse assigns)
+      (let* ((fld (car fields))
+	     (rval (random-generator* (type fld) i d))
+	     (assn (make-assignment (mk-name-expr (id fld)) rval)))
+	(random-generator-fields
+	 (substit (cdr fields) (acons fld rval nil))
+	 i d
+	 (cons assn assigns)))))
 
 (defun lazy-random-function? (ex)
   (and (boundp '*lazy-random-functions*)
@@ -181,7 +204,9 @@
 (defun make-random-subrange-if-expr* (pairs var &optional if-expr)
   (let ((eqn (make!-equation var (caar pairs))))
     (if (null (cdr pairs))
-	(make!-if-expr eqn (cdar pairs) if-expr)
+	(if if-expr
+	    (make!-if-expr eqn (cdar pairs) if-expr)
+	    (cdar pairs))
 	(make-random-subrange-if-expr*
 	 (cdr pairs) var
 	 (if if-expr
@@ -202,21 +227,18 @@
 (defmethod random-funtype-values ((dom subtype) ran i d)
   (cond ((below? dom)
 	 (let ((ub (below? dom)))
-	   (if (number-expr? ub)
-	       (random-subrange-funtype-values 0 (1- (number ub)) ran i d)
-	       (break "Below of a non-number"))))
+	   (when (number-expr? ub)
+	     (random-subrange-funtype-values 0 (1- (number ub)) ran i d))))
 	((upto? dom)
 	 (let ((ub (upto? dom)))
-	   (if (number-expr? ub)
-	       (random-subrange-funtype-values 0 (number ub) ran i d)
-	       (break "Upto of a non-number"))))
+	   (when (number-expr? ub)
+	     (random-subrange-funtype-values 0 (number ub) ran i d))))
 	((subrange? dom)
 	 (let ((bds (subrange? dom)))
-	   (if (and (ground-number-expr? (car bds))
-		    (ground-number-expr? (cdr bds)))
-	       (random-subrange-funtype-values
-		(ground-number (car bds)) (ground-number (cdr bds)) ran i d)
-	       (break "Subrange of a non-number"))))
+	   (when (and (ground-number-expr? (car bds))
+		      (ground-number-expr? (cdr bds)))
+	     (random-subrange-funtype-values
+	      (ground-number (car bds)) (ground-number (cdr bds)) ran i d))))
 	(t (let ((pairs (random-funtype-values (supertype dom) ran i d)))
 	     (remove-if #'(lambda (elt)
 			    (let ((pred (make!-application (predicate dom)
@@ -471,8 +493,8 @@ The current theory may also be instantiated this way.")
 		      #'(lambda (x) (cdr (assoc x varalist :test #'tc-eq)))
 		      #'(lambda (x) (assoc x varalist :test #'tc-eq))))
 	     (uform (universal-closure sform)))
-	(run-random-test uform count size dtsize all? varalist verbose?
-			 instance subtype-gen-bound)))))
+	(run-random-test uform count size dtsize all? verbose?
+			 instance subtype-gen-bound varalist)))))
 
 (defun create-sequent-formula (sforms)
   (make!-implication (make!-conjunction*
@@ -484,8 +506,8 @@ The current theory may also be instantiated this way.")
 
 
 (defun run-random-test (ex count size dtsize
-			   &optional all? skomap verbose? instance
-			   (subtype-gen-bound 1000))
+			   &optional all? verbose? instance
+			   (subtype-gen-bound 1000) skomap)
   (let* ((*random-subtype-gen-bound* subtype-gen-bound)
 	 (inst (when instance
 		 (typecheck (pc-parse instance 'modname))))
@@ -574,7 +596,7 @@ The current theory may also be instantiated this way.")
       (nreverse subst)
       (let ((bd (car vars)))
 	(multiple-value-bind (v err)
-	    (ignore-errors
+	    (ignore-lisp-errors
 	      (funcall (random-generator (type bd)) size dtsize))
 	  (if err
 	      (invoke-restart 'terminate-random-loop
