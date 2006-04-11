@@ -328,12 +328,16 @@
 ;;; Puts the dependent bindings after the non-dependent ones
 
 (defun get-tcc-closure-bindings (bindings body)
-  (let ((fvars (freevars body)))
-    (remove-if (complement
-		#'(lambda (bd)
-		    (or (member bd fvars :key #'declaration)
-			(possibly-empty-type? (type bd)))))
-      bindings)))
+  (when bindings
+    (let ((fvars (union (freevars body)
+			(reduce #'(lambda (x y) (union x y :test #'tc-eq))
+				(mapcar #'freevars bindings))
+			:test #'tc-eq)))
+      (remove-if (complement
+		  #'(lambda (bd)
+		      (or (member bd fvars :key #'declaration)
+			  (possibly-empty-type? (type bd)))))
+	bindings))))
 
 
 (defun insert-tcc-decl (kind expr type ndecl)
@@ -354,8 +358,7 @@
 (defun insert-tcc-decl1 (kind expr type ndecl)
   (let ((*generate-tccs* 'none))
     (setf (tcc-disjuncts ndecl) (get-tcc-disjuncts ndecl))
-    (let ((match (unless (assuming-tcc? ndecl)
-		   (car (member ndecl *tccdecls* :test #'subsumes))))
+    (let ((match (car (member ndecl *tccdecls* :test #'subsumes)))
 	  (decl (declaration *current-context*)))
       (when (eq (spelling ndecl) 'OBLIGATION)
 	(incf (total-tccs)))
@@ -364,7 +367,7 @@
 	     (not (and (declaration? decl)
 		       (id decl)
 		       (assq expr *compatible-pred-reason*))))
-	(add-tcc-comment kind expr type (list 'subsumed match) match))
+	(add-tcc-comment kind expr type (list 'subsumed match) match t))
        (t (when match
 	    (pvs-warning "The judgement TCC generated for and named ~a ~
                           is subsumed by ~a,~%  ~
@@ -490,7 +493,8 @@
 		       
 
 (defun subsumes (tcc2 tcc1)
-  (and (<= (length (tcc-disjuncts tcc1)) (length (tcc-disjuncts tcc2)))
+  (and (or (not (assuming-tcc? tcc2)) (assuming-tcc? tcc1))
+       (<= (length (tcc-disjuncts tcc1)) (length (tcc-disjuncts tcc2)))
        (if (same-binding-op tcc2 tcc1)
 	   (multiple-value-bind (bindings leftovers)
 	       (subsumes-bindings (car (tcc-disjuncts tcc1))
@@ -605,7 +609,7 @@
 
 (defun outer-arguments* (bindings depth mtype &optional args)
   (let ((nargs (mapcar #'make-variable-expr
-		 (or (car bindings)
+		 (or (typecheck* (car bindings) nil nil nil)
 		     (make-new-bind-decls
 		       (domain-types (find-supertype mtype)))))))
     (if (zerop depth)
@@ -656,15 +660,16 @@
 (defmethod well-founded-type? ((otype type-expr))
   nil)
 
-(defun check-nonempty-type (type expr)
-  (unless (or (nonempty? type)
-	      (typep (declaration *current-context*) 'adt-accessor-decl)
-	      (member type (nonempty-types (current-theory)) :test #'tc-eq))
-    (when (possibly-empty-type? type)
-      (generate-existence-tcc type expr)
-      (unless (or (or *in-checker* *in-evaluator*)
-		  *tcc-conditions*)
-	(set-nonempty-type type)))))
+(defun check-nonempty-type (te expr)
+  (let ((type (if (dep-binding? te) (type te) te)))
+    (unless (or (nonempty? type)
+		(typep (declaration *current-context*) 'adt-accessor-decl)
+		(member type (nonempty-types (current-theory)) :test #'tc-eq))
+      (when (possibly-empty-type? type)
+	(generate-existence-tcc type expr)
+	(unless (or (or *in-checker* *in-evaluator*)
+		    *tcc-conditions*)
+	  (set-nonempty-type type))))))
 
 (defmethod possibly-empty-type? :around ((te type-expr))
   (unless (nonempty? te)
@@ -1044,7 +1049,9 @@
 	     (xform (if *simplify-tccs*
 			(pseudo-normalize tform)
 			(beta-reduce tform)))
-	     (uform (expose-binding-types (universal-closure xform)))
+	     (uform (raise-actuals (expose-binding-types
+				    (universal-closure xform))
+				   t t))
 	     (id (make-tcc-name nil (id axiom))))
 	(unless (tc-eq uform *true*)
 	  (when (and *false-tcc-error-flag*
@@ -1422,6 +1429,17 @@
 	      (t
 	       (equality-predicates-list (cdr l1) (cdr l2) bindings newpreds))))))
 
+(defmethod equality-predicates* ((a1 actual) (a2 actual) p1 p2 precond
+				 bindings)
+  (if (type-value a1)
+      (equality-predicates* (type-value a1) (type-value a2) p1 p2 precond
+			    bindings)
+      (let ((npred (equality-predicates* p1 p2 nil nil precond bindings)))
+	(if npred
+	    (make!-conjunction npred (make-equation (expr a1) (expr a2)))
+	    (make-equation (expr a1) (expr a2))))))
+
+
 ;; make-new-var makes a unique binding from the given binding
 (defun make-unique-binding (binding expr)
   (if (unique-binding? binding expr)
@@ -1441,17 +1459,6 @@
 			 t)))
 	       expr)
     unique?))
-
-(defmethod equality-predicates* ((a1 actual) (a2 actual) p1 p2 precond
-				 bindings)
-  (if (type-value a1)
-      (equality-predicates* (type-value a1) (type-value a2) p1 p2 precond
-			    bindings)
-      (let ((npred (equality-predicates* p1 p2 nil nil precond bindings)))
-	(if npred
-	    (make!-conjunction npred (make-equation (expr a1) (expr a2)))
-	    (make-equation (expr a1) (expr a2))))))
-
 
 (defun generate-cond-disjoint-tcc (expr conditions values)
   (let* ((*old-tcc-name* nil)
@@ -1552,7 +1559,7 @@
 		(get-arithmetic-value (car exprs)))
 	   (tcc-evaluates-to-true* (cdr exprs)))))
 
-(defun add-tcc-comment (kind expr type &optional reason subsumed-by)
+(defun add-tcc-comment (kind expr type &optional reason subsumed-by in-insert?)
   (unless (or *in-checker* *in-evaluator* *collecting-tccs*)
     (let* ((decl (current-declaration))
 	   (theory (current-theory))
@@ -1562,16 +1569,19 @@
 	   (aname (or *set-type-actuals-name* expr))
 	   (tcc-comment (list kind aname type reason place preason))
 	   (decl-tcc-comments (assq decl (tcc-comments theory))))
-      (unless (member tcc-comment (cdr decl-tcc-comments) :test #'equal)
-	(if decl-tcc-comments
-	    (nconc decl-tcc-comments (list tcc-comment))
-	    (push (list decl tcc-comment) (tcc-comments theory)))
-	(cond (subsumed-by
-	       (incf (tccs-matched))
-	       (push subsumed-by (refers-to (current-declaration))))
-	      (t (if (numberp (tccs-simplified))
-		     (incf (tccs-simplified))
-		     (setf (tccs-simplified) 1))))))))
+      (cond ((member tcc-comment (cdr decl-tcc-comments) :test #'equal)
+	     (when in-insert?
+	       (decf (total-tccs))))
+	    (t
+	     (if decl-tcc-comments
+		 (nconc decl-tcc-comments (list tcc-comment))
+		 (push (list decl tcc-comment) (tcc-comments theory)))
+	     (cond (subsumed-by
+		    (incf (tccs-matched))
+		    (push subsumed-by (refers-to (current-declaration))))
+		   (t (if (numberp (tccs-simplified))
+			  (incf (tccs-simplified))
+			  (setf (tccs-simplified) 1)))))))))
 
 (defun print-tcc-comment (decl kind expr type reason place preason)
   (let* ((submsg (case kind
@@ -1617,7 +1627,7 @@
   (cond ((eq reason 'in-context)
 	 "% TCC is in the logical context")
 	((and (consp reason) (eq (car reason) 'subsumed))
-	 (format nil "% is subsumed by ~a" (cdr reason)))
+	 (format nil "% is subsumed by ~a" (id (cadr reason))))
 	((and (consp reason) (eq (car reason) 'map-to-nonempty))
 	 (cdr reason))
 	((null reason)
