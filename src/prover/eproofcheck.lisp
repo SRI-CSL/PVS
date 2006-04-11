@@ -615,11 +615,12 @@
 (defun qread (prompt)
   (format t "~%~a"  prompt)
   (force-output)
-  (let ((input (unwind-protect
-		   (progn (excl:set-case-mode :case-insensitive-lower)
-			  (ignore-errors (read)))
-		 (excl:set-case-mode :case-sensitive-lower))))
-    (cond ((member input '(quit q exit (quit)(exit)(q))
+  (let ((input (ignore-errors (read))))
+    (cond ((and (consp input)
+		(eq (car input) 'lisp))
+	   (format t "~%~s~%"  (eval (cadr input)))
+	   (qread prompt))
+	  ((member input '(quit q exit (quit)(exit)(q))
 		   :test #'equal)
 	   (if (pvs-y-or-n-p "~%Do you really want to quit?  ")
 	       (throw 'quit nil)
@@ -862,7 +863,10 @@
 	    parent-ps
 	    (get-parent-proofstate parent-ps))
 	(if (apply-proofstate? ps)
-	    (get-parent-proofstate (apply-parent-proofstate ps))
+	    (let ((apply-parent (apply-parent-proofstate ps)))
+	      (if (current-rule apply-parent)
+		  apply-parent
+		  (get-parent-proofstate apply-parent)))
 	    nil))))
 
 (defun strat-eval* (strat ps)
@@ -3399,7 +3403,7 @@
 	(cond ((or (stringp label)(symbolp label))
 	       (cond ((memq (intern label) '(quote nil * + -))
 		      (error-format-if
-		       "~%Label cannot be NIL, QUOTE, *, +, or -.")
+		       "~%Label cannot be nil, quote, *, +, or -.")
 		      (values 'X nil nil))
 		     ((and (or (digit-char-p (char (string label) 0))
 			       (char= (char (string label) 0) #\-))
