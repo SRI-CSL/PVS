@@ -13,8 +13,9 @@
 
 (defvar *copy-lex-exact* nil)
 
-(defun copy-lex (otheory ntheory)
-  (copy-lex* otheory ntheory))
+(defun copy-lex (otheory ntheory &optional exact?)
+  (let ((*copy-lex-exact* exact?))
+    (copy-lex* otheory ntheory)))
 
 (defmethod copy-lex* :around ((old syntax) (new syntax))
   (call-next-method)
@@ -68,6 +69,7 @@
 
 (defmethod copy-lex* :around ((old declaration) (new declaration))
   (call-next-method)
+  (assert (equalp (place old) (place new)))
   (copy-lex* (formals old) (formals new))
   (setf (chain? old) (chain? new))
   (setf (semi old) (semi new)))
@@ -76,8 +78,8 @@
   (call-next-method)
   (copy-lex* (declared-type old) (declared-type new)))
 
-(defmethod copy-lex* ((old declaration) (new declaration))
-  )
+;; (defmethod copy-lex* ((old declaration) (new declaration))
+;;   (call-next-method))
 
 (defmethod copy-lex* ((old typed-declaration) (new typed-declaration))
   )
