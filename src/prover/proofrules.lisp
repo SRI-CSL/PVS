@@ -334,30 +334,30 @@
 
 
 (defmethod simplify-ifs :around ((expr expr) trueconds falseconds)
-	   (let ((top-hash-value (gethash
-				  expr
-				  *top-simplify-ifs-hash*)))
-	     ;;(when top-hash-value (break "top"))
-	     (if (and top-hash-value
-		      (loop for lst in top-hash-value
-			    thereis (and (subsetp trueconds lst); :test #'tc-eq)
-					 (subsetp falseconds lst)))); :test #'tc-eq))))
-			expr
-		 (let* ((result (call-next-method))
-			(result
-			 (if (and (type result)
-				  (tc-eq (find-supertype (type result))
-					 *boolean*))
-			     (truefalsecond-reduce result
-						   trueconds
-						   falseconds)
-			     result)))
-		   (cond ((eq result expr)
-			  (push (append trueconds falseconds)
-				(gethash expr
-					 *top-simplify-ifs-hash*))
-			  result)
-			 (t result))))))
+  (let ((top-hash-value (gethash
+			 expr
+			 *top-simplify-ifs-hash*)))
+    ;; Note that we only hash exprs that simplify to themselves.
+    (if (and top-hash-value
+	     (loop for lst in top-hash-value
+		   thereis (and (subsetp trueconds lst)	; :test #'tc-eq)
+				(subsetp falseconds lst)))) ; :test #'tc-eq))))
+	expr
+	(let* ((result (call-next-method))
+	       (result
+		(if (and (type result)
+			 (tc-eq (find-supertype (type result))
+				*boolean*))
+		    (truefalsecond-reduce result
+					  trueconds
+					  falseconds)
+		    result)))
+	  (cond ((eq result expr)
+		 (push (append trueconds falseconds)
+		       (gethash expr
+				*top-simplify-ifs-hash*))
+		 result)
+		(t result))))))
 		 
 
 (defmethod simplify-ifs ((expr branch) trueconds falseconds)
@@ -474,16 +474,19 @@
 			    (substit (range stype)
 			      (acons (domain stype) arg nil))
 			    (range stype))))))
-	(let* ((op (simplify-ifs operator trueconds falseconds))
-	       (arg (simplify-ifs argument trueconds falseconds))
-	       (stype (find-supertype (type op))))
-	  (lcopy expr
-	    'operator op
-	    'argument arg
-	    'type (if (typep (domain stype) 'dep-binding)
-		      (substit (range stype)
-			(acons (domain stype) arg nil))
-		      (range stype)))))))
+	(let ((op (simplify-ifs operator trueconds falseconds))
+	      (arg (simplify-ifs argument trueconds falseconds)))
+	  (if (and (eq op operator)
+		   (eq arg argument))
+	      expr
+	      (let ((stype (find-supertype (type op))))
+		(copy expr
+		  'operator op
+		  'argument arg
+		  'type (if (typep (domain stype) 'dep-binding)
+			    (substit (range stype)
+			      (acons (domain stype) arg nil))
+			    (range stype)))))))))
 
 (defmethod simplify-ifs ((expr record-expr) trueconds falseconds)
   (with-slots (assignments) expr
@@ -1565,19 +1568,19 @@ which should be fully instantiated. Please supply actual parameters.")
 		    :tccs 'all
 		    :context *current-context*))
 	 (context (copy-prover-context)))
-     (cond ((not (valid-pvs-id* name))
-	    (error-format-if "~%Error: ~a is not a valid symbol." name)
-	    (values 'X nil nil))
-	   ((resolve pc-name 'expr nil)
-	    (error-format-if "~%Error: ~a is already declared." name)
-	    (values 'X nil nil))
-	   ((freevars tc-expr)
+    (cond ((not (valid-pvs-id* name))
+	   (error-format-if "~%Error: ~a is not a valid symbol." name)
+	   (values 'X nil nil))
+	  ((resolve pc-name 'expr nil)
+	   (error-format-if "~%Error: ~a is already declared." name)
+	   (values 'X nil nil))
+	  ((freevars tc-expr)
 	   (error-format-if "~%Free variables ~a in expr = name"
 			    (freevars tc-expr))
 	   (values 'X nil nil))
-	   (t (setf (declarations-hash context)
-		    (copy (declarations-hash context)))
-	      (let ((decl (make-instance
+	  (t (setf (declarations-hash context)
+		   (copy (declarations-hash context)))
+	     (let ((decl (make-instance
 			     'skolem-const-decl
 			   'definition tc-expr
 			   'id name
@@ -1585,19 +1588,19 @@ which should be fully instantiated. Please supply actual parameters.")
 			   'module (module context))))
 	       (make-def-axiom decl)
 	       (put-decl decl (declarations-hash context)))
-	      (let* ((name (typecheck (pc-parse name 'expr)
-			     :tccs 'all
-			     :context context))
-		     (formula (make-equality tc-expr name))
-		     (references nil)
-		     (fvars (freevars formula)))
-		(update-judgements-with-new-name name tc-expr context)
-		(push-references-list formula references)
-		(setf (disabled-auto-rewrites context)
+	     (let* ((name (typecheck (pc-parse name 'expr)
+			    :tccs 'all
+			    :context context))
+		    (formula (make-equality tc-expr name))
+		    (references nil)
+		    (fvars (freevars formula)))
+	       (update-judgements-with-new-name name tc-expr context)
+	       (push-references-list formula references)
+	       (setf (disabled-auto-rewrites context)
 		     (push (make-instance 'auto-rewrite-minus-decl
 			     'rewrite-names (list name))
 			   (disabled-auto-rewrites context)))
-		(values '?
+	       (values '?
 		       (list
 			(cons (copy (current-goal ps)
 				's-forms
