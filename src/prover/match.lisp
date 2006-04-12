@@ -774,7 +774,9 @@
     (cond ;((eq subst 'fail) 'fail)
         ((higher-order-pattern? lhs bind-alist)
 	 (match-ho-pattern lhs instance bind-alist subst))
-	((and (tc-eq (find-supertype (type lhs)) *number*)
+	((and (type instance) ;; instance could be the expr of an actual
+					; with a type-value
+	      (tc-eq (find-supertype (type lhs)) *number*)
 	      (tc-eq (find-supertype (type instance)) *number*))
 	 (if (is-addition? lhs)
 	     (if (number-expr? (args1 lhs))
