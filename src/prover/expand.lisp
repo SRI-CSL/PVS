@@ -341,6 +341,19 @@ list of positive numbers" occurrence)
       (lcopy expr
 	'expression (expand-defn name (expression expr) occurrence))))
 
+(defmethod expand-defn (name (expr lambda-expr) occurrence)
+  (if (and (plusp *max-occurrence*)
+	   (< *max-occurrence* *count-occurrences*))
+      expr
+      (let ((exp-expr (expand-defn name (expression expr) occurrence)))
+	(if (eq exp-expr (expression expr))
+	    expr
+	    (copy expr
+	      'expression exp-expr
+	      'type (if (tc-eq (range (type expr)) (type exp-expr))
+			(type expr)
+			(lcopy (type expr) 'range (type exp-expr))))))))
+
 (defmethod expand-defn (name (expr tuple-expr) occurrence)
   (if (and (plusp *max-occurrence*)
 	   (< *max-occurrence* *count-occurrences*))
