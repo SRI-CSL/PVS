@@ -1,10 +1,10 @@
 (finite_sets_minmax_props
  (max_le 0
-  (max_le-1 nil 3270909603 3270909856
-   ("" (skosimp*)
+  (max_le-1 nil 3338234952 3338235002
+   ("" (skolem!)
     (("" (typepred "max(SS!1)")
       (("" (prop)
-        (("1" (skosimp*)
+        (("1" (skosimp)
           (("1" (inst?)
             (("1" (lemma "lt_transitive")
               (("1" (inst - "x!1" "max(SS!1)" "a!1")
@@ -12,14 +12,14 @@
               nil))
             nil))
           nil)
-         ("2" (inst -1 "max(SS!1)") (("2" (assert) nil nil)) nil))
+         ("2" (inst - "max(SS!1)") (("2" (assert) nil nil)) nil))
         nil))
       nil))
     nil)
-   unchecked
+   proved
    ((max const-decl
          "{a: T | SS(a) AND (FORALL (x: T): SS(x) IMPLIES x <= a)}"
-         finite_sets_minmax "finite_sets/")
+         finite_sets_minmax nil)
     (<= formal-const-decl "(total_order?[T])" finite_sets_minmax_props
         nil)
     (total_order? const-decl "bool" orders nil)
@@ -35,15 +35,15 @@
     (NOT const-decl "[bool -> bool]" booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
-    (lt_transitive formula-decl nil finite_sets_minmax "finite_sets/"))
-   35606 1120 t shostak))
+    (lt_transitive formula-decl nil finite_sets_minmax nil))
+   49914 860 t shostak))
  (le_max 0
-  (le_max-1 nil 3270909909 3270910090
-   ("" (skosimp*)
+  (le_max-1 nil 3338235006 3338235060
+   ("" (skolem!)
     (("" (typepred "max(SS!1)")
       (("" (prop)
         (("1" (inst?) (("1" (assert) nil nil)) nil)
-         ("2" (skosimp*)
+         ("2" (skosimp)
           (("2" (inst - "x!1")
             (("2" (assert)
               (("2" (lemma "lt_transitive")
@@ -59,7 +59,7 @@
    proved
    ((max const-decl
          "{a: T | SS(a) AND (FORALL (x: T): SS(x) IMPLIES x <= a)}"
-         finite_sets_minmax "finite_sets/")
+         finite_sets_minmax nil)
     (<= formal-const-decl "(total_order?[T])" finite_sets_minmax_props
         nil)
     (total_order? const-decl "bool" orders nil)
@@ -75,6 +75,6 @@
     (NOT const-decl "[bool -> bool]" booleans nil)
     (bool nonempty-type-eq-decl nil booleans nil)
     (boolean nonempty-type-decl nil booleans nil)
-    (lt_transitive formula-decl nil finite_sets_minmax "finite_sets/"))
-   181000 1650 t shostak)))
+    (lt_transitive formula-decl nil finite_sets_minmax nil))
+   53881 930 t shostak)))
 

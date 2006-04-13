@@ -1,18 +1,938 @@
-(BitvectorMultiplicationWidenNarrow (IMP_BitvectorMultiplication_TCC1 0 (IMP_BitvectorMultiplication_TCC1-1 nil 3249114873 3249243357 ("" (use "N_size") nil nil) proved ((N_size formula-decl nil BitvectorMultiplicationWidenNarrow nil)) 38 20 nil nil)) (IMP_BitvectorMultiplication_TCC2 0 (IMP_BitvectorMultiplication_TCC2-1 nil 3249114873 3249243357 ("" (assuming-tcc) nil nil) proved nil 239 80 nil nil)) (bv2nat_narrow 0 (bv2nat_narrow-1 nil 3249114873 3249243361 ("" (skosimp*) (("" (case "BV!1 = (fill[N](FALSE) o narrow(BV!1))") (("1" (case "bv2nat(BV!1) = bv2nat(fill[N](FALSE) o narrow(BV!1))") (("1" (replace -1 1) (("1" (rewrite "bv2nat_concat") (("1" (rewrite "bv2nat_fill_F") (("1" (assert) nil nil)) nil)) nil)) nil) ("2" (assert) nil nil)) nil) ("2" (hide 2) (("2" (lemma "bv2nat_upperbound[2*N]") (("2" (inst?) (("1" (assert) (("1" (apply-extensionality :hide? t) (("1" (grind) nil nil)) nil)) nil) ("2" (use "N_size") (("2" (assert) nil nil)) nil)) nil)) nil)) nil)) nil)) nil) proved ((narrow const-decl "bvec[N]" BitvectorUtil nil) (FALSE const-decl "bool" booleans nil) (fill const-decl "bit" bv nil) (below type-eq-decl nil nat_types nil) (O const-decl "bvec[n + m]" bv_concat_def nil) (+ const-decl "[numfield, numfield -> numfield]" number_fields nil) (= const-decl "[T, T -> boolean]" equalities nil) (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil) (below type-eq-decl nil naturalnumbers nil) (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow nil) (posnat nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (* const-decl "[numfield, numfield -> numfield]" number_fields nil) (numfield nonempty-type-eq-decl nil number_fields nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (>= const-decl "bool" reals nil) (bool nonempty-type-eq-decl nil booleans nil) (int nonempty-type-eq-decl nil integers nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (rational nonempty-type-from-decl nil rationals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (real nonempty-type-from-decl nil reals nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (number_field nonempty-type-from-decl nil number_fields nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (boolean nonempty-type-decl nil booleans nil) (number nonempty-type-decl nil numbers nil) (bv2nat_fill_F formula-decl nil bv_nat_rules nil) (bv2nat_concat formula-decl nil bv_arith_concat nil) (exp2 def-decl "posnat" exp2 nil) (bv2nat const-decl "below(exp2(N))" bv_nat nil) (bv2nat_upperbound formula-decl nil BitvectorUtil nil) (N_size formula-decl nil BitvectorMultiplicationWidenNarrow nil) (bv2nat_rec def-decl "nat" bv_nat nil) (b2n const-decl "nbit" bit nil) (^ const-decl "bit" bv nil) (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil)) 3836 1810 nil nil)) (bv2nat_times_rec 0 (bv2nat_times_rec-1 nil 3249114873 3249243363 ("" (skosimp*) (("" (lemma "bv2nat_iterate[2*N]") (("" (inst - "BV1!1" "bv2nat(BV2!1)") (("" (split -) (("1" (rewrite "times_rec_iterate") (("1" (assert) nil nil)) nil) ("2" (hide 2) (("2" (lemma "exp2_sum") (("2" (inst - "N" "N") (("2" (assert) (("2" (replace -1) (("2" (lemma " lt_times_lt_pos1") (("2" (inst?) (("2" (assert) nil nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil) proved ((N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow nil) (posnat nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (>= const-decl "bool" reals nil) (bool nonempty-type-eq-decl nil booleans nil) (int nonempty-type-eq-decl nil integers nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (rational nonempty-type-from-decl nil rationals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (real nonempty-type-from-decl nil reals nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (number_field nonempty-type-from-decl nil number_fields nil) (* const-decl "[numfield, numfield -> numfield]" number_fields nil) (numfield nonempty-type-eq-decl nil number_fields nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (boolean nonempty-type-decl nil booleans nil) (number nonempty-type-decl nil numbers nil) (bv2nat_iterate formula-decl nil BitvectorMultiplication nil) (times_rec_iterate formula-decl nil BitvectorMultiplication nil) (exp2_sum formula-decl nil exp2 nil) (lt_times_lt_pos1 formula-decl nil real_props nil) (nonneg_real nonempty-type-eq-decl nil real_types nil) (posreal nonempty-type-eq-decl nil real_types nil) (bv2nat const-decl "below(exp2(N))" bv_nat nil) (exp2 def-decl "posnat" exp2 nil) (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil) (below type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil)) 1513 750 nil nil)) (bv2nat_times 0 (bv2nat_times-1 nil 3249114873 3249243364 ("" (skosimp*) (("" (expand "*") (("" (rewrite "times_rec_iterate") (("" (rewrite "bv2nat_iterate[2*N]") (("" (assert) nil nil)) nil)) nil)) nil)) nil) proved ((* const-decl "bvec[N]" BitvectorMultiplication nil) (bv2nat_iterate formula-decl nil BitvectorMultiplication nil) (exp2 def-decl "posnat" exp2 nil) (bv2nat const-decl "below(exp2(N))" bv_nat nil) (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow nil) (posnat nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (>= const-decl "bool" reals nil) (bool nonempty-type-eq-decl nil booleans nil) (int nonempty-type-eq-decl nil integers nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (rational nonempty-type-from-decl nil rationals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (real nonempty-type-from-decl nil reals nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (number_field nonempty-type-from-decl nil number_fields nil) (* const-decl "[numfield, numfield -> numfield]" number_fields nil) (numfield nonempty-type-eq-decl nil number_fields nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (boolean nonempty-type-decl nil booleans nil) (number nonempty-type-decl nil numbers nil) (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil) (below type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (times_rec_iterate formula-decl nil BitvectorMultiplication nil)) 1417 620 nil nil)) (bv2int_times_TCC1 0 (bv2int_times_TCC1-1 nil 3249114873 3249243364 ("" (subtype-tcc) nil nil) proved nil 94 90 nil nil)) (bv2int_times 0 (bv2int_times-1 nil 3249114873 3249243369 ("" (use "N_size") (("" (skosimp*) (("" (case "bv2int(BV2!1) = IF bv2nat(BV2!1) < exp2(2 * N - 1)
-                                                                          THEN bv2nat(BV2!1)
-                                                                        ELSE bv2nat(BV2!1) - exp2(2 * N)
-                                                                        ENDIF") (("1" (lift-if) (("1" (split -) (("1" (flatten) (("1" (replace -2) (("1" (expand "*") (("1" (rewrite "times_rec_iterate") (("1" (rewrite "bv2int_iterate[2*N]") (("1" (assert) nil nil)) nil)) nil)) nil)) nil)) nil) ("2" (flatten) (("2" (lemma "bv2int_iterate[2*N]") (("2" (inst - "BV1!1" "exp2(2 * N) - bv2nat(BV2!1)") (("1" (assert) (("1" (lemma "times_min_second[2*N]") (("1" (inst?) (("1" (lemma "bv_double_neg[2*N]") (("1" (inst -1 "(BV1!1 * BV2!1)") (("1" (replace -1 2 rl) (("1" (replace -2 2 rl) (("1" (hide -1 -2) (("1" (rewrite "bv2int_neg") (("1" (assert) (("1" (expand "minint") (("1" (expand "*") (("1" (rewrite "times_rec_iterate") (("1" (rewrite "bv2nat_minus_bv[2*N]") (("1" (replace -1) (("1" (hide -1) (("1" (assert) nil nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil) ("2" (assert) nil nil)) nil)) nil)) nil)) nil)) nil) ("2" (expand "bv2int") (("2" (propax) nil nil)) nil) ("3" (assert) nil nil)) nil)) nil)) nil) proved ((BV2!1 skolem-const-decl "bvec[2 * N]" BitvectorMultiplicationWidenNarrow nil) (times_min_second formula-decl nil BitvectorMultiplication nil) (bv_double_neg formula-decl nil bv_arithmetic nil) (bv2nat_minus_bv formula-decl nil bv_arithmetic nil) (bv2int_neg formula-decl nil bv_arithmetic nil) (- const-decl "[numfield -> numfield]" number_fields nil) (- const-decl "{bvn: bvec[N] |
+(BitvectorMultiplicationWidenNarrow
+ (IMP_BitvectorMultiplication_TCC1 0
+  (IMP_BitvectorMultiplication_TCC1-1 nil 3342396152 3342396186
+   ("" (lemma "N_size") (("" (propax) nil nil)) nil) proved
+   ((N_size formula-decl nil BitvectorMultiplicationWidenNarrow nil))
+   4624 140 t nil))
+ (IMP_BitvectorMultiplication_TCC2 0
+  (IMP_BitvectorMultiplication_TCC2-1 nil 3342396152 3342396152
+   ("" (assuming-tcc) nil nil) proved nil 270 270 nil nil))
+ (bv2nat_narrow 0
+  (bv2nat_narrow-1 nil 3342396210 3342397978
+   ("" (skosimp)
+    (("" (case "BV!1 = (fill[N](FALSE) o narrow(BV!1))")
+      (("1"
+        (case-replace
+         "bv2nat(BV!1) = bv2nat(fill[N](FALSE) o narrow(BV!1))")
+        (("1" (rewrite "bv2nat_concat")
+          (("1" (rewrite "bv2nat_fill_F") (("1" (assert) nil nil))
+            nil))
+          nil)
+         ("2" (assert) nil nil))
+        nil)
+       ("2" (hide 2)
+        (("2" (lemma "N_size")
+          (("2" (assert)
+            (("2" (use "bv2nat_upperbound[2*N]")
+              (("2" (apply-extensionality :hide? t)
+                (("2" (grind) nil nil)) nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((narrow const-decl "bvec[N]" BitvectorUtil nil)
+    (FALSE const-decl "bool" booleans nil)
+    (fill const-decl "bit" bv nil)
+    (below type-eq-decl nil nat_types nil)
+    (O const-decl "bvec[n + m]" bv_concat_def nil)
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow
+     nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (bv2nat_concat formula-decl nil bv_arith_concat nil)
+    (bv2nat_fill_F formula-decl nil bv_nat_rules nil)
+    (bv2nat const-decl "below(exp2(N))" bv_nat nil)
+    (exp2 def-decl "posnat" exp2 nil)
+    (N_size formula-decl nil BitvectorMultiplicationWidenNarrow nil)
+    (bv2nat_upperbound formula-decl nil BitvectorUtil nil)
+    (bv2nat_rec def-decl "nat" bv_nat nil)
+    (b2n const-decl "nbit" bit nil) (^ const-decl "bit" bv nil)
+    (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil))
+   100296 6790 t shostak))
+ (bv2nat_times_rec 0
+  (bv2nat_times_rec-1 nil 3342398028 3342398207
+   ("" (skosimp)
+    (("" (lemma "bv2nat_iterate[2 * N]")
+      (("" (inst - "BV1!1" "bv2nat(BV2!1)")
+        (("" (rewrite "times_rec_iterate")
+          (("" (assert)
+            (("" (hide 2)
+              (("" (lemma "exp2_sum")
+                (("" (inst - "N" "N")
+                  (("" (assert)
+                    (("" (replace -1)
+                      (("" (use "lt_times_lt_pos1")
+                        (("" (assert) nil nil)) nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow
+     nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (bv2nat_iterate formula-decl nil BitvectorMultiplication nil)
+    (times_rec_iterate formula-decl nil BitvectorMultiplication nil)
+    (nonneg_real nonempty-type-eq-decl nil real_types nil)
+    (posreal nonempty-type-eq-decl nil real_types nil)
+    (lt_times_lt_pos1 formula-decl nil real_props nil)
+    (exp2_sum formula-decl nil exp2 nil)
+    (bv2nat const-decl "below(exp2(N))" bv_nat nil)
+    (exp2 def-decl "posnat" exp2 nil) (bvec type-eq-decl nil bv nil)
+    (bit type-eq-decl nil bit nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil))
+   73439 3250 t shostak))
+ (bv2nat_times 0
+  (bv2nat_times-1 nil 3342398220 3342398253
+   ("" (skosimp)
+    (("" (expand "*")
+      (("" (rewrite "times_rec_iterate")
+        (("" (rewrite "bv2nat_iterate[2 * N]") (("" (assert) nil nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((* const-decl "bvec[N]" BitvectorMultiplication nil)
+    (bv2nat_iterate formula-decl nil BitvectorMultiplication nil)
+    (exp2 def-decl "posnat" exp2 nil)
+    (bv2nat const-decl "below(exp2(N))" bv_nat nil)
+    (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow
+     nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (times_rec_iterate formula-decl nil BitvectorMultiplication nil))
+   32603 1600 t shostak))
+ (bv2int_times_TCC1 0
+  (bv2int_times_TCC1-1 nil 3342396152 3342396153
+   ("" (subtype-tcc) nil nil) proved nil 280 280 nil nil))
+ (bv2int_times 0
+  (bv2int_times-1 nil 3342398261 3342398596
+   ("" (lemma "N_size")
+    (("" (skosimp)
+      (("" (assert)
+        ((""
+          (case "bv2int(BV2!1) = IF bv2nat(BV2!1) < exp2(2 * N - 1) THEN bv2nat(BV2!1) ELSE bv2nat(BV2!1) - exp2(2 * N) ENDIF")
+          (("1" (lift-if)
+            (("1" (ground)
+              (("1" (replace -2)
+                (("1" (expand "*")
+                  (("1" (rewrite "times_rec_iterate")
+                    (("1" (rewrite "bv2int_iterate[2 * N]")
+                      (("1" (assert) nil nil)) nil))
+                    nil))
+                  nil))
+                nil)
+               ("2" (lemma "bv2int_iterate[2 * N]")
+                (("2" (inst - "BV1!1" "exp2(2 * N) - bv2nat(BV2!1)")
+                  (("2" (assert)
+                    (("2" (use "times_min_second[2 * N]")
+                      (("2" (lemma "bv_double_neg[2 * N]")
+                        (("2" (inst - "BV1!1 * BV2!1")
+                          (("2" (replace -1 2 rl)
+                            (("2" (replace -2 2 rl)
+                              (("2"
+                                (hide -1 -2)
+                                (("2"
+                                  (rewrite "bv2int_neg")
+                                  (("2"
+                                    (assert)
+                                    (("2"
+                                      (expand* "minint" "*")
+                                      (("2"
+                                        (rewrite "times_rec_iterate")
+                                        (("2"
+                                          (rewrite
+                                           "bv2nat_minus_bv[2 * N]")
+                                          (("2" (assert) nil nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil)
+           ("2" (expand "bv2int") (("2" (propax) nil nil)) nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (bv2nat const-decl "below(exp2(N))" bv_nat nil)
+    (exp2 def-decl "posnat" exp2 nil)
+    (IF const-decl "[boolean, T, T -> T]" if_def nil)
+    (bv2int const-decl "rng_2s_comp" bv_int nil)
+    (rng_2s_comp type-eq-decl nil bv_int nil)
+    (maxint const-decl "int" bv_int nil)
+    (minint const-decl "int" bv_int nil)
+    (<= const-decl "bool" reals nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow
+     nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (* const-decl "bvec[N]" BitvectorMultiplication nil)
+    (bv2int_iterate formula-decl nil BitvectorMultiplication nil)
+    (times_rec_iterate formula-decl nil BitvectorMultiplication nil)
+    (times_min_second formula-decl nil BitvectorMultiplication nil)
+    (- const-decl "{bvn: bvec[N] |
          bv2int(bvn) =
-          IF bv2int(bv) = minint THEN bv2int(bv) ELSE -(bv2int(bv)) ENDIF}" bv_arithmetic nil) (* const-decl "bvec[N]" BitvectorMultiplication nil) (bv2int_iterate formula-decl nil BitvectorMultiplication nil) (times_rec_iterate formula-decl nil BitvectorMultiplication nil) (number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (= const-decl "[T, T -> boolean]" equalities nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (numfield nonempty-type-eq-decl nil number_fields nil) (* const-decl "[numfield, numfield -> numfield]" number_fields nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (posnat nonempty-type-eq-decl nil integers nil) (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow nil) (below type-eq-decl nil naturalnumbers nil) (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil) (AND const-decl "[bool, bool -> bool]" booleans nil) (<= const-decl "bool" reals nil) (minint const-decl "int" bv_int nil) (maxint const-decl "int" bv_int nil) (rng_2s_comp type-eq-decl nil bv_int nil) (bv2int const-decl "rng_2s_comp" bv_int nil) (IF const-decl "[boolean, T, T -> T]" if_def nil) (exp2 def-decl "posnat" exp2 nil) (bv2nat const-decl "below(exp2(N))" bv_nat nil) (- const-decl "[numfield, numfield -> numfield]" number_fields nil) (N_size formula-decl nil BitvectorMultiplicationWidenNarrow nil)) 4491 2170 nil nil)) (bv2int_times_widens 0 (bv2int_times_widens-1 nil 3249114873 3249243373 ("" (skosimp*) (("" (lemma "bv2int_times") (("" (inst?) (("" (assert) (("" (rewrite "bv2int_widen") (("" (rewrite "bv2int_widen") (("" (assert) (("" (hide 2) (("" (typepred "bv2int[N](bv1!1)") (("" (typepred "bv2int[N](bv2!1)") (("" (expand "minint") (("" (expand "maxint") (("" (assert) (("" (lemma "exp2_sum") (("" (inst - "N-1" "N-1") (("" (assert) (("" (expand "exp2" 1) (("" (replace -1) (("" (hide -1) (("" (assert) (("" (case-replace "bv2int[N](bv1!1)=0") (("1" (assert) nil nil) ("2" (case-replace "bv2int[N](bv2!1)=0") (("1" (assert) nil nil) ("2" (case "bv2int(bv1!1) > 0") (("1" (case "bv2int(bv2!1) > 0") (("1" (lemma "lt_times_lt_pos1") (("1" (inst - "bv2int(bv1!1)" "bv2int(bv2!1)" "exp2(N - 1)" "exp2(N - 1)") (("1" (assert) (("1" (lemma "pos_times_lt") (("1" (inst - "bv2int(bv1!1)" "bv2int(bv2!1)") (("1" (assert) nil nil)) nil)) nil)) nil) ("2" (assert) nil nil) ("3" (assert) nil nil)) nil)) nil) ("2" (lemma "neg_times_lt") (("2" (inst - "bv2int(bv1!1)" "bv2int(bv2!1)") (("2" (assert) (("2" (lemma "lt_times_lt_neg1") (("2" (inst - "bv2int[N](bv2!1)" "-bv2int[N](bv1!1)" "-exp2(N - 1)" "-exp2(N - 1)") (("2" (assert) (("2" (case-replace "bv2int[N](bv2!1) = -exp2(N - 1)") (("1" (lemma "lt_times_lt_neg1") (("1" (inst - "-bv2int[N](bv1!1)" "-exp2(N - 1)" "-exp2(N - 1)" "-exp2(N - 1)") (("1" (assert) nil nil)) nil)) nil) ("2" (assert) nil nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil) ("2" (case "bv2int(bv2!1) > 0") (("1" (lemma "neg_times_lt") (("1" (inst - "bv2int[N](bv2!1)" "bv2int[N](bv1!1)") (("1" (assert) (("1" (lemma "lt_times_lt_neg1") (("1" (inst - "-bv2int[N](bv2!1)" "bv2int[N](bv1!1)" "-exp2(N - 1)" "-exp2(N - 1)") (("1" (assert) nil nil)) nil)) nil)) nil)) nil)) nil) ("2" (case "bv2int[N](bv1!1) * bv2int(bv2!1) > 0") (("1" (assert) (("1" (lemma "lt_times_lt_neg1") (("1" (inst - "bv2int[N](bv1!1)" "bv2int[N](bv2!1)" "-exp2(N - 1)" "-exp2(N - 1)") (("1" (assert) (("1" (case-replace "bv2int[N](bv1!1) = -exp2(N - 1)") (("1" (lemma "lt_times_lt_neg1") (("1" (inst - "bv2int[N](bv2!1)" "bv2int[N](bv1!1)" "-exp2(N - 1)" "-exp2(N - 1)") (("1" (assert) nil nil)) nil)) nil) ("2" (assert) nil nil)) nil)) nil)) nil)) nil)) nil) ("2" (use "pos_times_lt") (("2" (assert) nil nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil) proved ((bv2int_times formula-decl nil BitvectorMultiplicationWidenNarrow nil) (exp2_sum formula-decl nil exp2 nil) (bv1!1 skolem-const-decl "bvec[N]" BitvectorMultiplicationWidenNarrow nil) (bv2!1 skolem-const-decl "bvec[N]" BitvectorMultiplicationWidenNarrow nil) (posreal nonempty-type-eq-decl nil real_types nil) (nonneg_real nonempty-type-eq-decl nil real_types nil) (pos_times_lt formula-decl nil real_props nil) (lt_times_lt_pos1 formula-decl nil real_props nil) (lt_times_lt_neg1 formula-decl nil real_props nil) (nonpos_real nonempty-type-eq-decl nil real_types nil) (negreal nonempty-type-eq-decl nil real_types nil) (- const-decl "[numfield -> numfield]" number_fields nil) (neg_times_lt formula-decl nil real_props nil) (= const-decl "[T, T -> boolean]" equalities nil) (exp2 def-decl "posnat" exp2 nil) (- const-decl "[numfield, numfield -> numfield]" number_fields nil) (NOT const-decl "[bool -> bool]" booleans nil) (<= const-decl "bool" reals nil) (minint const-decl "int" bv_int nil) (AND const-decl "[bool, bool -> bool]" booleans nil) (maxint const-decl "int" bv_int nil) (rng_2s_comp type-eq-decl nil bv_int nil) (bv2int const-decl "rng_2s_comp" bv_int nil) (bv2int_widen formula-decl nil BitvectorUtil nil) (widen const-decl "bvec[2 * N]" BitvectorUtil nil) (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil) (below type-eq-decl nil naturalnumbers nil) (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow nil) (posnat nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (* const-decl "[numfield, numfield -> numfield]" number_fields nil) (numfield nonempty-type-eq-decl nil number_fields nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (>= const-decl "bool" reals nil) (bool nonempty-type-eq-decl nil booleans nil) (int nonempty-type-eq-decl nil integers nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (rational nonempty-type-from-decl nil rationals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (real nonempty-type-from-decl nil reals nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (number_field nonempty-type-from-decl nil number_fields nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (boolean nonempty-type-decl nil booleans nil) (number nonempty-type-decl nil numbers nil)) 4260 2050 nil nil)) (bv2int_times_int2bv_first_TCC1 0 (bv2int_times_int2bv_first_TCC1-1 nil 3249114873 3249243374 ("" (subtype-tcc) nil nil) proved ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bv2nat const-decl "below(exp2(N))" bv_nat nil) (minint const-decl "int" bv_int nil) (maxint const-decl "int" bv_int nil)) 887 420 nil nil)) (bv2int_times_int2bv_first 0 (bv2int_times_int2bv_first-1 nil 3249114873 3249243375 ("" (skosimp*) (("" (lemma "bv2int_times") (("" (inst?) (("1" (assert) nil nil) ("2" (expand "minint") (("2" (expand "maxint") (("2" (assert) nil nil)) nil)) nil)) nil)) nil)) nil) proved ((bv2int_times formula-decl nil BitvectorMultiplicationWidenNarrow nil) (int2bv const-decl "{bv | bv2int(bv) = iv}" bv_int nil) (bv2int const-decl "rng_2s_comp" bv_int nil) (= const-decl "[T, T -> boolean]" equalities nil) (rng_2s_comp type-eq-decl nil bv_int nil) (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil) (below type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (AND const-decl "[bool, bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (<= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (numfield nonempty-type-eq-decl nil number_fields nil) (* const-decl "[numfield, numfield -> numfield]" number_fields nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (posnat nonempty-type-eq-decl nil integers nil) (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow nil) (minint const-decl "int" bv_int nil) (k!1 skolem-const-decl "int" BitvectorMultiplicationWidenNarrow nil) (maxint const-decl "int" bv_int nil)) 938 480 nil nil)) (bv2int_times_int2bv_second 0 (bv2int_times_int2bv_second-1 nil 3249114873 3249243376 ("" (skosimp*) (("" (lemma "bv2int_times") (("" (inst?) (("1" (assert) nil nil) ("2" (expand "minint") (("2" (expand "maxint") (("2" (assert) nil nil)) nil)) nil)) nil)) nil)) nil) proved ((bv2int_times formula-decl nil BitvectorMultiplicationWidenNarrow nil) (int2bv const-decl "{bv | bv2int(bv) = iv}" bv_int nil) (bv2int const-decl "rng_2s_comp" bv_int nil) (= const-decl "[T, T -> boolean]" equalities nil) (rng_2s_comp type-eq-decl nil bv_int nil) (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil) (below type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (AND const-decl "[bool, bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (<= const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (numfield nonempty-type-eq-decl nil number_fields nil) (* const-decl "[numfield, numfield -> numfield]" number_fields nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (posnat nonempty-type-eq-decl nil integers nil) (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow nil) (minint const-decl "int" bv_int nil) (k!1 skolem-const-decl "int" BitvectorMultiplicationWidenNarrow nil) (maxint const-decl "int" bv_int nil)) 946 490 nil nil)) (narrow_iterate 0 (narrow_iterate-1 nil 3249114873 3249243379 ("" (induct "n") (("1" (skosimp*) (("1" (expand "iterate") (("1" (apply-extensionality :hide? t) (("1" (grind) nil nil)) nil)) nil)) nil) ("2" (skosimp*) (("2" (expand "iterate" +) (("2" (rewrite "narrow_plus") (("2" (inst?) (("2" (replace -1) (("2" (propax) nil nil)) nil)) nil)) nil)) nil)) nil)) nil) proved ((narrow_plus formula-decl nil BitvectorUtil nil) (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil) (nat_induction formula-decl nil naturalnumbers nil) (FALSE const-decl "bool" booleans nil) (fill const-decl "bit" bv nil) (below type-eq-decl nil nat_types nil) (+ const-decl "{bv: bvec[N] |
+          IF bv2int(bv) = minint THEN bv2int(bv) ELSE -(bv2int(bv)) ENDIF}"
+       bv_arithmetic nil)
+    (- const-decl "[numfield -> numfield]" number_fields nil)
+    (bv2int_neg formula-decl nil bv_arithmetic nil)
+    (bv2nat_minus_bv formula-decl nil bv_arithmetic nil)
+    (bv_double_neg formula-decl nil bv_arithmetic nil)
+    (N_size formula-decl nil BitvectorMultiplicationWidenNarrow nil))
+   106234 5170 t shostak))
+ (bv2int_times_widens 0
+  (bv2int_times_widens-1 nil 3342398617 3342399808
+   ("" (skolem!)
+    (("" (use "bv2int_times")
+      (("" (assert)
+        (("" (rewrite "bv2int_widen")
+          (("" (rewrite "bv2int_widen")
+            (("" (assert)
+              (("" (hide 2)
+                (("" (typepred "bv2int[N](bv1!1)")
+                  (("" (typepred "bv2int[N](bv2!1)")
+                    (("" (expand* "minint" "maxint")
+                      (("" (assert)
+                        (("" (lemma "exp2_sum")
+                          (("" (inst - "N - 1" "N - 1")
+                            (("" (assert)
+                              ((""
+                                (expand "exp2" +)
+                                ((""
+                                  (replace -1)
+                                  ((""
+                                    (hide -1)
+                                    ((""
+                                      (assert)
+                                      ((""
+                                        (case-replace
+                                         "bv2int[N](bv1!1) = 0")
+                                        (("1" (assert) nil nil)
+                                         ("2"
+                                          (case-replace
+                                           "bv2int[N](bv2!1) = 0")
+                                          (("1" (assert) nil nil)
+                                           ("2"
+                                            (case "bv2int(bv1!1) > 0")
+                                            (("1"
+                                              (case
+                                               "bv2int(bv2!1) > 0")
+                                              (("1"
+                                                (assert)
+                                                (("1"
+                                                  (lemma
+                                                   "lt_times_lt_pos1")
+                                                  (("1"
+                                                    (inst
+                                                     -
+                                                     "bv2int(bv1!1)"
+                                                     "bv2int(bv2!1)"
+                                                     "exp2(N - 1)"
+                                                     "exp2(N - 1)")
+                                                    (("1"
+                                                      (lemma
+                                                       "pos_times_lt")
+                                                      (("1"
+                                                        (inst
+                                                         -
+                                                         "bv2int(bv1!1)"
+                                                         "bv2int(bv2!1)")
+                                                        (("1"
+                                                          (assert)
+                                                          nil
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil)
+                                               ("2"
+                                                (lemma "neg_times_lt")
+                                                (("2"
+                                                  (inst
+                                                   -
+                                                   "bv2int(bv1!1)"
+                                                   "bv2int(bv2!1)")
+                                                  (("2"
+                                                    (assert)
+                                                    (("2"
+                                                      (lemma
+                                                       "lt_times_lt_neg1")
+                                                      (("2"
+                                                        (inst-cp
+                                                         -
+                                                         "bv2int[N](bv2!1)"
+                                                         "-bv2int[N](bv1!1)"
+                                                         "-exp2(N - 1)"
+                                                         "-exp2(N - 1)")
+                                                        (("2"
+                                                          (assert)
+                                                          (("2"
+                                                            (inst
+                                                             -
+                                                             "-bv2int[N](bv1!1)"
+                                                             "-exp2(N - 1)"
+                                                             "-exp2(N - 1)"
+                                                             "-exp2(N - 1)")
+                                                            (("2"
+                                                              (assert)
+                                                              nil
+                                                              nil))
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil)
+                                             ("2"
+                                              (case
+                                               "bv2int(bv2!1) > 0")
+                                              (("1"
+                                                (lemma "neg_times_lt")
+                                                (("1"
+                                                  (inst
+                                                   -
+                                                   "bv2int[N](bv2!1)"
+                                                   "bv2int[N](bv1!1)")
+                                                  (("1"
+                                                    (assert)
+                                                    (("1"
+                                                      (lemma
+                                                       "lt_times_lt_neg1")
+                                                      (("1"
+                                                        (inst
+                                                         -
+                                                         "-bv2int[N](bv2!1)"
+                                                         "bv2int[N](bv1!1)"
+                                                         "-exp2(N - 1)"
+                                                         "-exp2(N - 1)")
+                                                        (("1"
+                                                          (assert)
+                                                          nil
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil)
+                                               ("2"
+                                                (use "pos_times_lt")
+                                                (("2"
+                                                  (assert)
+                                                  (("2"
+                                                    (lemma
+                                                     "lt_times_lt_neg1")
+                                                    (("2"
+                                                      (inst-cp
+                                                       -
+                                                       "bv2int[N](bv1!1)"
+                                                       "bv2int[N](bv2!1)"
+                                                       "-exp2(N - 1)"
+                                                       "-exp2(N - 1)")
+                                                      (("2"
+                                                        (assert)
+                                                        (("2"
+                                                          (inst
+                                                           -
+                                                           "bv2int[N](bv2!1)"
+                                                           "bv2int[N](bv1!1)"
+                                                           "-exp2(N - 1)"
+                                                           "-exp2(N - 1)")
+                                                          (("2"
+                                                            (assert)
+                                                            nil
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (exp2 def-decl "posnat" exp2 nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (neg_times_lt formula-decl nil real_props nil)
+    (- const-decl "[numfield -> numfield]" number_fields nil)
+    (negreal nonempty-type-eq-decl nil real_types nil)
+    (nonpos_real nonempty-type-eq-decl nil real_types nil)
+    (lt_times_lt_neg1 formula-decl nil real_props nil)
+    (posreal nonempty-type-eq-decl nil real_types nil)
+    (nonneg_real nonempty-type-eq-decl nil real_types nil)
+    (pos_times_lt formula-decl nil real_props nil)
+    (lt_times_lt_pos1 formula-decl nil real_props nil)
+    (exp2_sum formula-decl nil exp2 nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (<= const-decl "bool" reals nil)
+    (minint const-decl "int" bv_int nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (maxint const-decl "int" bv_int nil)
+    (rng_2s_comp type-eq-decl nil bv_int nil)
+    (bv2int const-decl "rng_2s_comp" bv_int nil)
+    (bv2int_widen formula-decl nil BitvectorUtil nil)
+    (number nonempty-type-decl nil numbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (>= const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow
+     nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil)
+    (widen const-decl "bvec[2 * N]" BitvectorUtil nil)
+    (bv2int_times formula-decl nil BitvectorMultiplicationWidenNarrow
+     nil))
+   3266 2950 t shostak))
+ (bv2int_times_int2bv_first_TCC1 0
+  (bv2int_times_int2bv_first_TCC1-1 nil 3342396152 3342396153
+   ("" (subtype-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bv2nat const-decl "below(exp2(N))" bv_nat nil)
+    (minint const-decl "int" bv_int nil)
+    (maxint const-decl "int" bv_int nil))
+   759 730 nil nil))
+ (bv2int_times_int2bv_first 0
+  (bv2int_times_int2bv_first-1 nil 3342399812 3342399868
+   ("" (skosimp)
+    (("" (use "bv2int_times") (("" (assert) nil nil)) nil)) nil)
+   proved
+   ((bv2int_times formula-decl nil BitvectorMultiplicationWidenNarrow
+     nil)
+    (int2bv const-decl "{bv | bv2int(bv) = iv}" bv_int nil)
+    (bv2int const-decl "rng_2s_comp" bv_int nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (rng_2s_comp type-eq-decl nil bv_int nil)
+    (maxint const-decl "int" bv_int nil)
+    (minint const-decl "int" bv_int nil)
+    (<= const-decl "bool" reals nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow
+     nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil))
+   12041 1150 t shostak))
+ (bv2int_times_int2bv_second 0
+  (bv2int_times_int2bv_second-1 nil 3342399871 3342399881
+   ("" (skosimp)
+    (("" (use "bv2int_times") (("" (assert) nil nil)) nil)) nil)
+   proved
+   ((bv2int_times formula-decl nil BitvectorMultiplicationWidenNarrow
+     nil)
+    (int2bv const-decl "{bv | bv2int(bv) = iv}" bv_int nil)
+    (bv2int const-decl "rng_2s_comp" bv_int nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (rng_2s_comp type-eq-decl nil bv_int nil)
+    (maxint const-decl "int" bv_int nil)
+    (minint const-decl "int" bv_int nil)
+    (<= const-decl "bool" reals nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow
+     nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil))
+   9851 1060 t shostak))
+ (narrow_iterate 0
+  (narrow_iterate-1 nil 3342399887 3342399938
+   ("" (induct "n")
+    (("1" (skolem!)
+      (("1" (expand "iterate") (("1" (grind-with-ext) nil nil)) nil))
+      nil)
+     ("2" (skosimp*)
+      (("2" (expand "iterate" +)
+        (("2" (rewrite "narrow_plus")
+          (("2" (inst?) (("2" (assert) nil nil)) nil)) nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((narrow_plus formula-decl nil BitvectorUtil nil)
+    (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil)
+    (upto nonempty-type-eq-decl nil naturalnumbers nil)
+    (<= const-decl "bool" reals nil)
+    (nat_induction formula-decl nil naturalnumbers nil)
+    (FALSE const-decl "bool" booleans nil)
+    (fill const-decl "bit" bv nil)
+    (below type-eq-decl nil nat_types nil)
+    (+ const-decl "{bv: bvec[N] |
          bv2nat(bv) =
           IF bv2nat(bv1) + bv2nat(bv2) < exp2(N)
             THEN bv2nat(bv1) + bv2nat(bv2)
           ELSE bv2nat(bv1) + bv2nat(bv2) - exp2(N)
-          ENDIF}" bv_arith_nat nil) (- const-decl "[numfield, numfield -> numfield]" number_fields nil) (+ const-decl "[numfield, numfield -> numfield]" number_fields nil) (IF const-decl "[boolean, T, T -> T]" if_def nil) (bv2nat const-decl "below(exp2(N))" bv_nat nil) (exp2 def-decl "posnat" exp2 nil) (iterate def-decl "T" function_iterate nil) (narrow const-decl "bvec[N]" BitvectorUtil nil) (= const-decl "[T, T -> boolean]" equalities nil) (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil) (below type-eq-decl nil naturalnumbers nil) (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow nil) (posnat nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (* const-decl "[numfield, numfield -> numfield]" number_fields nil) (numfield nonempty-type-eq-decl nil number_fields nil) (< const-decl "bool" reals nil) (pred type-eq-decl nil defined_types nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (>= const-decl "bool" reals nil) (bool nonempty-type-eq-decl nil booleans nil) (int nonempty-type-eq-decl nil integers nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (rational nonempty-type-from-decl nil rationals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (real nonempty-type-from-decl nil reals nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (number_field nonempty-type-from-decl nil number_fields nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (boolean nonempty-type-decl nil booleans nil) (number nonempty-type-decl nil numbers nil)) 2545 1300 nil nil)) (bv2nat_split_TCC1 0 (bv2nat_split_TCC1-1 nil 3249114873 3249243379 ("" (subtype-tcc) nil nil) proved nil 249 100 nil nil)) (bv2nat_split_TCC2 0 (bv2nat_split_TCC2-1 nil 3249114873 3249243379 ("" (subtype-tcc) nil nil) proved nil 252 100 nil nil)) (bv2nat_split_TCC3 0 (bv2nat_split_TCC3-1 nil 3249114873 3249243379 ("" (subtype-tcc) nil nil) proved nil 271 110 nil nil)) (bv2nat_split_TCC4 0 (bv2nat_split_TCC4-1 nil 3249114873 3249243380 ("" (subtype-tcc) nil nil) proved nil 50 40 nil nil)) (bv2nat_split 0 (bv2nat_split-1 nil 3249114873 3249243388 ("" (skosimp*) (("" (expand "bv2nat") (("" (case "FORALL(n:nat) : n <= 2*N IMPLIES bv2nat_rec(n, BV!1) =
-                     exp2(N) * (IF n >= N THEN bv2nat_rec(n-N, BV!1 ^ (2*N - 1, N)) ELSE 0 ENDIF) +
-                      bv2nat_rec(IF n<N THEN n ELSE N ENDIF, BV!1 ^ (N - 1, 0))") (("1" (inst -1 "2*N") (("1" (assert) nil nil)) nil) ("2" (hide 2) (("2" (induct "n") (("1" (grind) nil nil) ("2" (skosimp*) (("2" (case "1 + j!1 < N") (("1" (assert) (("1" (expand "bv2nat_rec" 1) (("1" (replace*) (("1" (grind) nil nil)) nil)) nil)) nil) ("2" (case-replace "j!1 = N-1") (("1" (assert) (("1" (expand "bv2nat_rec" +) (("1" (replace*) (("1" (grind) nil nil)) nil)) nil)) nil) ("2" (assert) (("2" (expand "bv2nat_rec" 3 3) (("2" (expand "bv2nat_rec" 3 1) (("2" (assert) (("2" (replace*) (("2" (hide -1) (("2" (case-replace "exp2(j!1) * b2n(BV!1 ^ j!1) = b2n(BV!1 ^ (2 * N - 1, N) ^ (j!1 - N)) * exp2(j!1 - N) * exp2(N)") (("2" (hide 4) (("2" (expand "b2n") (("2" (expand "^") (("2" (lemma "exp2_sum") (("2" (inst - "N" "j!1-N") (("2" (assert) (("2" (reduce) nil nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil) ("3" (reduce) nil nil) ("4" (reduce) nil nil) ("5" (reduce) nil nil) ("6" (reduce) nil nil) ("7" (reduce) nil nil) ("8" (reduce) nil nil)) nil)) nil) ("3" (reduce) nil nil) ("4" (reduce) nil nil) ("5" (reduce) nil nil) ("6" (reduce) nil nil) ("7" (reduce) nil nil) ("8" (reduce) nil nil)) nil)) nil)) nil) proved ((bv2nat const-decl "below(exp2(N))" bv_nat nil) (exp2_sum formula-decl nil exp2 nil) (nbit type-eq-decl nil bit nil) (below type-eq-decl nil nat_types nil) (b2n const-decl "nbit" bit nil) (^ const-decl "bit" bv nil) (nat_induction formula-decl nil naturalnumbers nil) (pred type-eq-decl nil defined_types nil) (AND const-decl "[bool, bool -> bool]" booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (IMPLIES const-decl "[bool, bool -> bool]" booleans nil) (<= const-decl "bool" reals nil) (numfield nonempty-type-eq-decl nil number_fields nil) (* const-decl "[numfield, numfield -> numfield]" number_fields nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (posnat nonempty-type-eq-decl nil integers nil) (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow nil) (= const-decl "[T, T -> boolean]" equalities nil) (upto nonempty-type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (below type-eq-decl nil naturalnumbers nil) (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil) (bv2nat_rec def-decl "nat" bv_nat nil) (+ const-decl "[numfield, numfield -> numfield]" number_fields nil) (exp2 def-decl "posnat" exp2 nil) (IF const-decl "[boolean, T, T -> T]" if_def nil) (- const-decl "[numfield, numfield -> numfield]" number_fields nil) (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil)) 8163 3920 nil nil)) (narrow_times 0 (narrow_times-1 nil 3249114873 3249243390 ("" (use "N_size") (("" (skosimp*) (("" (expand "*") (("" (rewrite "times_rec_iterate[N]") (("" (rewrite "times_rec_iterate[2*N]") (("" (rewrite "narrow_iterate") (("" (rewrite "bv2nat_split") (("" (lemma "iterate_add[bvec[N]]") (("" (inst?) (("" (replace -1 1 rl) (("" (hide -1) (("" (expand "o") (("" (lemma "iterate_modulo[N]") (("" (inst - "narrow(BV1!1)" "bv2nat(BV2!1 ^ (2 * N - 1, N))") (("" (replace -1) (("" (hide -1) (("" (expand "narrow") (("" (propax) nil nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil) proved ((times_rec_iterate formula-decl nil BitvectorMultiplication nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (below type-eq-decl nil naturalnumbers nil) (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil) (numfield nonempty-type-eq-decl nil number_fields nil) (* const-decl "[numfield, numfield -> numfield]" number_fields nil) (narrow const-decl "bvec[N]" BitvectorUtil nil) (number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (posnat nonempty-type-eq-decl nil integers nil) (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow nil) (bv2nat const-decl "below(exp2(N))" bv_nat nil) (exp2 def-decl "posnat" exp2 nil) (narrow_iterate formula-decl nil BitvectorMultiplicationWidenNarrow nil) (iterate_add formula-decl nil function_iterate nil) (O const-decl "T3" function_props nil) (iterate_modulo formula-decl nil BitvectorMultiplication nil) (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil) (upto nonempty-type-eq-decl nil naturalnumbers nil) (<= const-decl "bool" reals nil) (+ const-decl "{bv: bvec[N] |
+          ENDIF}" bv_arith_nat nil)
+    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (IF const-decl "[boolean, T, T -> T]" if_def nil)
+    (bv2nat const-decl "below(exp2(N))" bv_nat nil)
+    (exp2 def-decl "posnat" exp2 nil)
+    (iterate def-decl "T" function_iterate nil)
+    (narrow const-decl "bvec[N]" BitvectorUtil nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow
+     nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (< const-decl "bool" reals nil)
+    (pred type-eq-decl nil defined_types nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil))
+   51155 2790 t shostak))
+ (bv2nat_split_TCC1 0
+  (bv2nat_split_TCC1-1 nil 3342396152 3342396154
+   ("" (subtype-tcc) nil nil) proved nil 317 280 nil nil))
+ (bv2nat_split_TCC2 0
+  (bv2nat_split_TCC2-1 nil 3342396152 3342396154
+   ("" (subtype-tcc) nil nil) proved nil 285 280 nil nil))
+ (bv2nat_split_TCC3 0
+  (bv2nat_split_TCC3-1 nil 3342396152 3342396154
+   ("" (subtype-tcc) nil nil) proved nil 297 290 nil nil))
+ (bv2nat_split_TCC4 0
+  (bv2nat_split_TCC4-1 nil 3342396152 3342396154
+   ("" (subtype-tcc) nil nil) proved nil 132 100 nil nil))
+ (bv2nat_split 0
+  (bv2nat_split-1 nil 3342399948 3342400199
+   ("" (skolem!)
+    (("" (expand "bv2nat")
+      ((""
+        (case "FORALL (n: nat): n <= 2 * N IMPLIES bv2nat_rec(n, BV!1) = exp2(N) * (IF n >= N THEN bv2nat_rec(n - N, BV!1 ^ (2 * N - 1, N)) ELSE 0 ENDIF) + bv2nat_rec(IF n < N THEN n ELSE N ENDIF, BV!1 ^ (N - 1, 0))")
+        (("1" (inst - "2 * N") (("1" (assert) nil nil)) nil)
+         ("2" (hide 2)
+          (("2" (induct "n")
+            (("1" (grind) nil nil)
+             ("2" (skosimp)
+              (("2" (case "1 + j!1 < N")
+                (("1" (assert)
+                  (("1" (expand "bv2nat_rec" +)
+                    (("1" (replace*) (("1" (grind) nil nil)) nil))
+                    nil))
+                  nil)
+                 ("2" (case-replace "j!1 = N - 1")
+                  (("1" (assert)
+                    (("1" (expand "bv2nat_rec" +)
+                      (("1" (replace*) (("1" (grind) nil nil)) nil))
+                      nil))
+                    nil)
+                   ("2" (assert)
+                    (("2" (expand "bv2nat_rec" 3 3)
+                      (("2" (expand "bv2nat_rec" 3 1)
+                        (("2" (assert)
+                          (("2" (replace*)
+                            (("2" (hide -1)
+                              (("2"
+                                (case-replace
+                                 "exp2(j!1) * b2n(BV!1 ^ j!1) = b2n(BV!1 ^ (2 * N - 1, N) ^ (j!1 - N)) * exp2(j!1 - N) * exp2(N)")
+                                (("2"
+                                  (hide 4)
+                                  (("2"
+                                    (expand* "b2n" "^")
+                                    (("2"
+                                      (lemma "exp2_sum")
+                                      (("2"
+                                        (inst - "N" "j!1 - N")
+                                        (("2" (reduce) nil nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil)
+             ("3" (reduce) nil nil) ("4" (reduce) nil nil)
+             ("5" (reduce) nil nil) ("6" (reduce) nil nil)
+             ("7" (reduce) nil nil) ("8" (reduce) nil nil))
+            nil))
+          nil)
+         ("3" (reduce) nil nil) ("4" (reduce) nil nil)
+         ("5" (reduce) nil nil) ("6" (reduce) nil nil)
+         ("7" (reduce) nil nil) ("8" (reduce) nil nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((bv2nat const-decl "below(exp2(N))" bv_nat nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (exp2_sum formula-decl nil exp2 nil)
+    (nbit type-eq-decl nil bit nil)
+    (below type-eq-decl nil nat_types nil)
+    (b2n const-decl "nbit" bit nil) (^ const-decl "bit" bv nil)
+    (nat_induction formula-decl nil naturalnumbers nil)
+    (pred type-eq-decl nil defined_types nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (>= const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (<= const-decl "bool" reals nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow
+     nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (upto nonempty-type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil)
+    (bv2nat_rec def-decl "nat" bv_nat nil)
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (exp2 def-decl "posnat" exp2 nil)
+    (IF const-decl "[boolean, T, T -> T]" if_def nil)
+    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil))
+   250670 9260 t shostak))
+ (narrow_times 0
+  (narrow_times-1 nil 3342400227 3342400345
+   ("" (lemma "N_size")
+    (("" (skolem!)
+      (("" (expand "*")
+        (("" (rewrite "times_rec_iterate[N]")
+          (("" (rewrite "times_rec_iterate[2 * N]")
+            (("" (rewrite "narrow_iterate")
+              (("" (rewrite "bv2nat_split")
+                (("" (use "iterate_add[bvec[N]]")
+                  (("" (replace -1 1 rl)
+                    (("" (hide -1)
+                      (("" (expand "o")
+                        (("" (lemma "iterate_modulo[N]")
+                          ((""
+                            (inst - "narrow(BV1!1)"
+                             "bv2nat(BV2!1 ^ (2 * N - 1, N))")
+                            (("" (expand "narrow")
+                              (("" (assert) nil nil)) nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((times_rec_iterate formula-decl nil BitvectorMultiplication nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (narrow const-decl "bvec[N]" BitvectorUtil nil)
+    (number nonempty-type-decl nil numbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (>= const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow
+     nil)
+    (bv2nat const-decl "below(exp2(N))" bv_nat nil)
+    (exp2 def-decl "posnat" exp2 nil)
+    (narrow_iterate formula-decl nil BitvectorMultiplicationWidenNarrow
+     nil)
+    (iterate_add formula-decl nil function_iterate nil)
+    (^ const-decl "bvec[PROJ_1(sp) - PROJ_2(sp) + 1]" bv_caret nil)
+    (upto nonempty-type-eq-decl nil naturalnumbers nil)
+    (<= const-decl "bool" reals nil)
+    (+ const-decl "{bv: bvec[N] |
          bv2nat(bv) =
           IF bv2nat(bv1) + bv2nat(bv2) < exp2(N)
             THEN bv2nat(bv1) + bv2nat(bv2)
           ELSE bv2nat(bv1) + bv2nat(bv2) - exp2(N)
-          ENDIF}" bv_arith_nat nil) (- const-decl "[numfield, numfield -> numfield]" number_fields nil) (+ const-decl "[numfield, numfield -> numfield]" number_fields nil) (IF const-decl "[boolean, T, T -> T]" if_def nil) (= const-decl "[T, T -> boolean]" equalities nil) (bv2nat_split formula-decl nil BitvectorMultiplicationWidenNarrow nil) (* const-decl "bvec[N]" BitvectorMultiplication nil) (N_size formula-decl nil BitvectorMultiplicationWidenNarrow nil)) 1857 920 nil nil)) (times_is_java_times 0 (times_is_java_times-1 nil 3249114873 3249243390 ("" (skosimp*) (("" (rewrite "narrow_times") (("" (rewrite "narrow_widen") (("" (rewrite "narrow_widen") nil nil)) nil)) nil)) nil) proved ((narrow_times formula-decl nil BitvectorMultiplicationWidenNarrow nil) (number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (numfield nonempty-type-eq-decl nil number_fields nil) (* const-decl "[numfield, numfield -> numfield]" number_fields nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (posnat nonempty-type-eq-decl nil integers nil) (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow nil) (below type-eq-decl nil naturalnumbers nil) (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil) (widen const-decl "bvec[2 * N]" BitvectorUtil nil) (narrow_widen formula-decl nil BitvectorUtil nil)) 61 60 nil nil)))
+          ENDIF}" bv_arith_nat nil)
+    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (IF const-decl "[boolean, T, T -> T]" if_def nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (iterate_modulo formula-decl nil BitvectorMultiplication nil)
+    (O const-decl "T3" function_props nil)
+    (bv2nat_split formula-decl nil BitvectorMultiplicationWidenNarrow
+     nil)
+    (* const-decl "bvec[N]" BitvectorMultiplication nil)
+    (N_size formula-decl nil BitvectorMultiplicationWidenNarrow nil))
+   117691 3520 t shostak))
+ (times_is_java_times 0
+  (times_is_java_times-1 nil 3342400368 3342400399
+   ("" (skolem!)
+    (("" (rewrite "narrow_times")
+      (("" (rewrite "narrow_widen")
+        (("" (rewrite "narrow_widen") nil nil)) nil))
+      nil))
+    nil)
+   proved
+   ((narrow_times formula-decl nil BitvectorMultiplicationWidenNarrow
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (>= const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (N formal-const-decl "posnat" BitvectorMultiplicationWidenNarrow
+     nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil)
+    (widen const-decl "bvec[2 * N]" BitvectorUtil nil)
+    (narrow_widen formula-decl nil BitvectorUtil nil))
+   31339 470 t shostak)))
+

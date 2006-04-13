@@ -1,10 +1,246 @@
-(bv_arith_concat (not_over_concat 0 (not_over_concat-1 nil 3249241276 3249242827 ("" (skosimp*) (("" (expand "NOT") (("" (apply-extensionality) (("" (hide 2) (("" (grind) nil)))))))) nil) proved ((NOT const-decl "bvec[N]" bv_bitwise nil) (NOT const-decl "[bool -> bool]" booleans nil) (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil) (O const-decl "bvec[n + m]" bv_concat_def nil) (below type-eq-decl nil naturalnumbers nil) (+ const-decl "[numfield, numfield -> numfield]" number_fields nil) (numfield nonempty-type-eq-decl nil number_fields nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (>= const-decl "bool" reals nil) (bool nonempty-type-eq-decl nil booleans nil) (int nonempty-type-eq-decl nil integers nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (rational nonempty-type-from-decl nil rationals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (real nonempty-type-from-decl nil reals nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (number_field nonempty-type-from-decl nil number_fields nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (boolean nonempty-type-decl nil booleans nil) (number nonempty-type-decl nil numbers nil)) 843 330 nil nil)) (bv2nat_concat 0 (bv2nat_concat-1 nil 3249241276 3249242834 ("" (skosimp*) (("" (case "m!1 = 0") (("1" (replace -1) (("1" (expand "bv2nat" 1 3) (("1" (expand "bv2nat_rec") (("1" (rewrite "bvconcat_bot0") (("1" (expand "exp2") (("1" (replace -1) (("1" (assert) (("1" (same-name "bv2nat[n!1 + m!1]" "bv2nat[n!1]") (("1" (assert) nil))))))))))))))))) ("2" (case "n!1 = 0") (("1" (expand "bv2nat" + 2) (("1" (same-name "bv2nat[n!1 + m!1]" "bv2nat[m!1]") (("1" (replace -1) (("1" (expand "bv2nat_rec") (("1" (assert) (("1" (rewrite "bvconcat_top0") nil))))))) ("2" (propax) nil))))) ("2" (rewrite "bv2nat_as_sum[n!1+m!1]") (("2" (lemma "sigma_split") (("2" (inst -1 "extend((LAMBDA (ii: below(n!1 + m!1)):
-                      exp2(ii) * (bvn!1 o bvm!1)(ii)))" "n!1+m!1-1" "0" "m!1-1") (("1" (assert) (("1" (replace -1) (("1" (hide -1) (("1" (case "sigma(0, m!1 - 1,
-            extend((LAMBDA (ii: below(n!1 + m!1)):
-                      exp2(ii) * (bvn!1 o bvm!1)(ii)))) = bv2nat[m!1](bvm!1)") (("1" (replace -1) (("1" (hide -1) (("1" (assert) (("1" (lemma "sigma_shift") (("1" (expand "extend") (("1" (expand "o ") (("1" (inst -1 " (LAMBDA (nn: nat):
-			  IF nn < n!1 + m!1 THEN exp2(nn)
-			      * IF nn < m!1 THEN bvm!1(nn)
-				ELSE bvn!1(nn - m!1)
-				ENDIF
-			  ELSE 0
-			  ENDIF)" "n!1-1" "0" "m!1") (("1" (assert) (("1" (replace -1) (("1" (hide -1) (("1" (rewrite "bv2nat_as_sum[n!1]") (("1" (lemma "sigma_mult") (("1" (inst -1 "extend((LAMBDA (ii: below(n!1)): exp2(ii) * bvn!1(ii)))" "n!1-1" "0" "exp2(m!1)") (("1" (replace -1 + rl) (("1" (hide -1) (("1" (expand "extend") (("1" (rewrite "sigma_restrict_eq") (("1" (hide 2 3 4) (("1" (expand "restrict") (("1" (apply-extensionality 1) (("1" (hide 2) (("1" (lift-if) (("1" (lemma "exp2_sum") (("1" (inst?) (("1" (ground) nil))))))))) ("2" (hide 2) (("2" (skosimp*) (("2" (assert) nil))))))))))) ("2" (hide 2) (("2" (skosimp*) (("2" (assert) nil))))))))))))))))))))))))) ("2" (skosimp*) (("2" (assert) nil))))))))))))))))) ("2" (assert) (("2" (hide 4) (("2" (rewrite "bv2nat_as_sum[m!1]") (("2" (rewrite "sigma_restrict_eq") (("2" (hide 2) (("2" (expand "extend") (("2" (expand "restrict") (("2" (apply-extensionality 1) (("1" (hide 2) (("1" (lift-if) (("1" (ground) (("1" (expand "o ") (("1" (propax) nil))))))))) ("2" (hide 2) (("2" (skosimp*) (("2" (assert) nil))))) ("3" (hide 2) (("3" (skosimp*) (("3" (assert) nil))))))))))))))))))))))))))))) ("2" (assert) nil) ("3" (assert) nil)))))))))))) nil) proved ((nat nonempty-type-eq-decl nil naturalnumbers nil) (>= const-decl "bool" reals nil) (bool nonempty-type-eq-decl nil booleans nil) (int nonempty-type-eq-decl nil integers nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (rational nonempty-type-from-decl nil rationals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (real nonempty-type-from-decl nil reals nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (number_field nonempty-type-from-decl nil number_fields nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (= const-decl "[T, T -> boolean]" equalities nil) (boolean nonempty-type-decl nil booleans nil) (number nonempty-type-decl nil numbers nil) (bv2nat const-decl "below(exp2(N))" bv_nat nil) (bvconcat_bot0 formula-decl nil bv_concat nil) (< const-decl "bool" reals nil) (below type-eq-decl nil naturalnumbers nil) (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil) (+ const-decl "[numfield, numfield -> numfield]" number_fields nil) (numfield nonempty-type-eq-decl nil number_fields nil) (exp2 def-decl "posnat" exp2 nil) (bv2nat_rec def-decl "nat" bv_nat nil) (bv2nat_as_sum formula-decl nil bv_sum nil) (O const-decl "bvec[n + m]" bv_concat_def nil) (- const-decl "[numfield, numfield -> numfield]" number_fields nil) (m!1 skolem-const-decl "nat" bv_arith_concat nil) (n!1 skolem-const-decl "nat" bv_arith_concat nil) (extend const-decl "[nat -> nat]" bv_sum nil) (* const-decl "[numfield, numfield -> numfield]" number_fields nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (posnat nonempty-type-eq-decl nil integers nil) (nbit type-eq-decl nil bit nil) (b2n const-decl "nbit" bit nil) (sigma def-decl "nat" sums nil) (sigma_shift formula-decl nil sums nil) (sigma_mult formula-decl nil sums nil) (exp2_sum formula-decl nil exp2 nil) (restrict const-decl "[nat -> nat]" sums nil) (sigma_restrict_eq formula-decl nil sums nil) (IF const-decl "[boolean, T, T -> T]" if_def nil) (NOT const-decl "[bool -> bool]" booleans nil) (AND const-decl "[bool, bool -> bool]" booleans nil) (IMPLIES const-decl "[bool, bool -> bool]" booleans nil) (sigma_split formula-decl nil sums nil) (bvconcat_top0 formula-decl nil bv_concat nil)) 7692 3620 nil nil)))
+(bv_arith_concat
+ (not_over_concat 0
+  (not_over_concat-1 nil 3341452868 3341452895
+   ("" (grind-with-ext) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (< const-decl "bool" reals nil)
+    (O const-decl "bvec[n + m]" bv_concat_def nil)
+    (NOT const-decl "bvec[N]" bv_bitwise nil)
+    (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil))
+   26328 500 t shostak))
+ (bv2nat_concat 0
+  (bv2nat_concat-1 nil 3341452899 3341453972
+   ("" (skolem!)
+    (("" (case "m!1 = 0")
+      (("1" (replace -1)
+        (("1" (expand "bv2nat" 1 3)
+          (("1" (expand "bv2nat_rec")
+            (("1" (rewrite "bvconcat_bot0")
+              (("1" (expand "exp2")
+                (("1" (assert)
+                  (("1" (same-name "bv2nat[m!1 + n!1]" "bv2nat[n!1]")
+                    (("1" (assert) nil nil)) nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil)
+       ("2" (case "n!1 = 0")
+        (("1" (expand "bv2nat" + 2)
+          (("1" (assert)
+            (("1" (same-name "bv2nat[m!1 + n!1]" "bv2nat[m!1]")
+              (("1" (expand "bv2nat_rec")
+                (("1" (rewrite "bvconcat_top0")
+                  (("1" (assert) nil nil)) nil))
+                nil))
+              nil))
+            nil))
+          nil)
+         ("2" (rewrite "bv2nat_as_sum[m!1 + n!1]")
+          (("2" (assert)
+            (("2" (lemma "sigma_split")
+              (("2"
+                (inst -
+                 "extend(LAMBDA (ii: below(m!1 + n!1)): exp2(ii) * b2n((bvn!1 o bvm!1)(ii)))"
+                 "n!1 + m!1 - 1" 0 "m!1 - 1")
+                (("2" (assert)
+                  (("2" (replace -1)
+                    (("2" (hide -1)
+                      (("2"
+                        (case "sigma(0, m!1 - 1, extend(LAMBDA (ii: below(m!1 + n!1)): exp2(ii) * b2n((bvn!1 o bvm!1)(ii)))) = bv2nat[m!1](bvm!1)")
+                        (("1" (replace -1)
+                          (("1" (hide -1)
+                            (("1" (assert)
+                              (("1"
+                                (expand* "extend" "o")
+                                (("1"
+                                  (lemma "sigma_shift")
+                                  (("1"
+                                    (inst
+                                     -
+                                     "LAMBDA (nn: nat): IF nn < m!1 + n!1 THEN exp2(nn) * IF nn < m!1 THEN b2n(bvm!1(nn)) ELSE b2n(bvn!1(nn - m!1)) ENDIF ELSE 0 ENDIF"
+                                     "n!1 - 1"
+                                     0
+                                     "m!1")
+                                    (("1"
+                                      (assert)
+                                      (("1"
+                                        (replace -1)
+                                        (("1"
+                                          (hide -1)
+                                          (("1"
+                                            (rewrite
+                                             "bv2nat_as_sum[n!1]")
+                                            (("1"
+                                              (lemma "sigma_mult")
+                                              (("1"
+                                                (inst
+                                                 -
+                                                 "extend(LAMBDA (ii: below(n!1)): exp2(ii) * b2n(bvn!1(ii)))"
+                                                 "n!1 - 1"
+                                                 0
+                                                 "exp2(m!1)")
+                                                (("1"
+                                                  (replace -1 + rl)
+                                                  (("1"
+                                                    (hide -1)
+                                                    (("1"
+                                                      (expand "extend")
+                                                      (("1"
+                                                        (rewrite
+                                                         "sigma_restrict_eq")
+                                                        (("1"
+                                                          (hide 2 3 4)
+                                                          (("1"
+                                                            (apply-extensionality
+                                                             :hide?
+                                                             t)
+                                                            (("1"
+                                                              (expand
+                                                               "restrict")
+                                                              (("1"
+                                                                (lift-if)
+                                                                (("1"
+                                                                  (use
+                                                                   "exp2_sum")
+                                                                  (("1"
+                                                                    (ground)
+                                                                    nil
+                                                                    nil))
+                                                                  nil))
+                                                                nil))
+                                                              nil)
+                                                             ("2"
+                                                              (skosimp)
+                                                              (("2"
+                                                                (assert)
+                                                                nil
+                                                                nil))
+                                                              nil))
+                                                            nil))
+                                                          nil)
+                                                         ("2"
+                                                          (skosimp)
+                                                          (("2"
+                                                            (assert)
+                                                            nil
+                                                            nil))
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil)
+                                     ("2"
+                                      (skosimp)
+                                      (("2" (assert) nil nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil)
+                         ("2" (assert)
+                          (("2" (hide 4)
+                            (("2" (rewrite "bv2nat_as_sum[m!1]")
+                              (("2"
+                                (rewrite "sigma_restrict_eq")
+                                (("2"
+                                  (hide 2)
+                                  (("2"
+                                    (apply-extensionality :hide? t)
+                                    (("2"
+                                      (expand* "extend" "restrict" "o")
+                                      nil
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (bv2nat const-decl "below(exp2(N))" bv_nat nil)
+    (bvconcat_bot0 formula-decl nil bv_concat nil)
+    (< const-decl "bool" reals nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (exp2 def-decl "posnat" exp2 nil)
+    (bv2nat_rec def-decl "nat" bv_nat nil)
+    (bv2nat_as_sum formula-decl nil bv_sum nil)
+    (O const-decl "bvec[n + m]" bv_concat_def nil)
+    (sigma_split formula-decl nil sums nil)
+    (sigma_shift formula-decl nil sums nil)
+    (sigma_mult formula-decl nil sums nil)
+    (exp2_sum formula-decl nil exp2 nil)
+    (restrict const-decl "[nat -> nat]" sums nil)
+    (sigma_restrict_eq formula-decl nil sums nil)
+    (IF const-decl "[boolean, T, T -> T]" if_def nil)
+    (IMPLIES const-decl "[bool, bool -> bool]" booleans nil)
+    (AND const-decl "[bool, bool -> bool]" booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (m!1 skolem-const-decl "nat" bv_arith_concat nil)
+    (n!1 skolem-const-decl "nat" bv_arith_concat nil)
+    (sigma def-decl "nat" sums nil)
+    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (b2n const-decl "nbit" bit nil) (nbit type-eq-decl nil bit nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (extend const-decl "[nat -> nat]" bv_sum nil)
+    (bvconcat_top0 formula-decl nil bv_concat nil))
+   423763 11290 t shostak)))
+

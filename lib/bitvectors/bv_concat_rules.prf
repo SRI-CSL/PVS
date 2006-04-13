@@ -1,1 +1,160 @@
-(bv_concat_rules (bv_concat_null_r 0 (bv_concat_null_r-1 nil 3249241302 3249243178 ("" (skosimp*) (("" (rewrite "bvconcat_bot0") nil)) nil) proved ((bvconcat_bot0 formula-decl nil bv_concat nil) (number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (below type-eq-decl nil naturalnumbers nil) (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil) (FALSE const-decl "bool" booleans nil)) 260 70 nil nil)) (bv_concat_null_l 0 (bv_concat_null_l-1 nil 3249241302 3249243178 ("" (skosimp*) (("" (rewrite "bvconcat_top0") nil)) nil) proved ((bvconcat_top0 formula-decl nil bv_concat nil) (number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (below type-eq-decl nil naturalnumbers nil) (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil) (FALSE const-decl "bool" booleans nil)) 66 60 nil nil)) (bv_concat_associative 0 (bv_concat_associative-1 nil 3249241302 3249243179 ("" (skosimp*) (("" (rewrite "bv_concat_assoc") nil)) nil) proved ((bv_concat_assoc formula-decl nil bv_concat nil) (number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (below type-eq-decl nil naturalnumbers nil) (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil)) 250 90 nil nil)) (bv_concat_fill_fill 0 (bv_concat_fill_fill-1 nil 3249241302 3249243179 ("" (skosimp*) (("" (apply-extensionality :hide? t) (("" (grind) nil)))) nil) proved ((number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (numfield nonempty-type-eq-decl nil number_fields nil) (+ const-decl "[numfield, numfield -> numfield]" number_fields nil) (below type-eq-decl nil naturalnumbers nil) (fill const-decl "bit" bv nil) (below type-eq-decl nil nat_types nil) (O const-decl "bvec[n + m]" bv_concat_def nil) (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil)) 600 250 nil nil)) (bv_concat_2fill 0 (bv_concat_2fill-1 nil 3249241302 3249243180 ("" (skosimp*) (("" (apply-extensionality :hide? t) (("" (grind) nil)))) nil) proved ((number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (numfield nonempty-type-eq-decl nil number_fields nil) (+ const-decl "[numfield, numfield -> numfield]" number_fields nil) (below type-eq-decl nil naturalnumbers nil) (fill const-decl "bit" bv nil) (below type-eq-decl nil nat_types nil) (O const-decl "bvec[n + m]" bv_concat_def nil) (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil)) 931 460 nil nil)) (bv_concat_top_rule_TCC1 0 (bv_concat_top_rule_TCC1-1 nil 3249241302 3249243181 ("" (subtype-tcc) nil nil) proved nil 427 150 nil nil)) (bv_concat_top_rule_TCC2 0 (bv_concat_top_rule_TCC2-1 nil 3249241302 3249243181 ("" (subtype-tcc) nil nil) proved nil 36 40 nil nil)) (bv_concat_top_rule 0 (bv_concat_top_rule-1 nil 3249241302 3249243181 ("" (skosimp*) (("" (expand "^") (("" (expand "o ") (("" (propax) nil)))))) nil) proved ((^ const-decl "bit" bv nil) (O const-decl "bvec[n + m]" bv_concat_def nil)) 299 140 nil nil)) (bv_not_over_concat 0 (bv_not_over_concat-1 nil 3249241302 3249243182 ("" (skosimp*) (("" (apply-extensionality :hide? t) (("" (grind) nil)))) nil) proved ((number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (numfield nonempty-type-eq-decl nil number_fields nil) (+ const-decl "[numfield, numfield -> numfield]" number_fields nil) (below type-eq-decl nil naturalnumbers nil) (O const-decl "bvec[n + m]" bv_concat_def nil) (NOT const-decl "bvec[N]" bv_bitwise nil) (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil)) 681 330 nil nil)))
+(bv_concat_rules
+ (bv_concat_null_r 0
+  (bv_concat_null_r-1 nil 3341619589 3341619598
+   ("" (skolem!) (("" (rewrite "bvconcat_bot0") nil nil)) nil) proved
+   ((bvconcat_bot0 formula-decl nil bv_concat nil)
+    (number nonempty-type-decl nil numbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (>= const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil)
+    (FALSE const-decl "bool" booleans nil))
+   8892 270 t shostak))
+ (bv_concat_null_l 0
+  (bv_concat_null_l-1 nil 3341619600 3341619610
+   ("" (skolem!) (("" (rewrite "bvconcat_top0") nil nil)) nil) proved
+   ((bvconcat_top0 formula-decl nil bv_concat nil)
+    (number nonempty-type-decl nil numbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (>= const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil)
+    (FALSE const-decl "bool" booleans nil))
+   10230 300 t shostak))
+ (bv_concat_associative 0
+  (bv_concat_associative-1 nil 3341619617 3341619623
+   ("" (skolem!) (("" (rewrite "bv_concat_assoc") nil nil)) nil) proved
+   ((bv_concat_assoc formula-decl nil bv_concat nil)
+    (number nonempty-type-decl nil numbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (>= const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (bit type-eq-decl nil bit nil) (bvec type-eq-decl nil bv nil))
+   6077 650 t shostak))
+ (bv_concat_fill_fill 0
+  (bv_concat_fill_fill-1 nil 3341619897 3341619915
+   ("" (grind-with-ext) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (< const-decl "bool" reals nil) (fill const-decl "bit" bv nil)
+    (below type-eq-decl nil nat_types nil)
+    (O const-decl "bvec[n + m]" bv_concat_def nil)
+    (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil))
+   17228 450 t shostak))
+ (bv_concat_2fill 0
+  (bv_concat_2fill-1 nil 3341619919 3341619935
+   ("" (grind-with-ext) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (< const-decl "bool" reals nil) (fill const-decl "bit" bv nil)
+    (below type-eq-decl nil nat_types nil)
+    (O const-decl "bvec[n + m]" bv_concat_def nil)
+    (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil))
+   15568 710 t shostak))
+ (bv_concat_top_rule_TCC1 0
+  (bv_concat_top_rule_TCC1-1 nil 3341619578 3341619579
+   ("" (subtype-tcc) nil nil) proved nil 354 340 nil nil))
+ (bv_concat_top_rule_TCC2 0
+  (bv_concat_top_rule_TCC2-1 nil 3341619578 3341619579
+   ("" (subtype-tcc) nil nil) proved nil 61 30 nil nil))
+ (bv_concat_top_rule 0
+  (bv_concat_top_rule-1 nil 3341619938 3341619947 ("" (grind) nil nil)
+   proved
+   ((O const-decl "bvec[n + m]" bv_concat_def nil)
+    (^ const-decl "bit" bv nil))
+   9654 460 t shostak))
+ (bv_not_over_concat 0
+  (bv_not_over_concat-1 nil 3341619950 3341619957
+   ("" (grind-with-ext) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (>= const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (< const-decl "bool" reals nil)
+    (O const-decl "bvec[n + m]" bv_concat_def nil)
+    (NOT const-decl "bvec[N]" bv_bitwise nil)
+    (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil))
+   7156 760 t shostak)))
+

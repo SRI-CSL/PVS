@@ -1,9 +1,331 @@
-(bv_adder (oba_correct 0 (oba_correct-1 nil 3242707738 3249243059 ("" (skosimp*) (("" (expand "oba_cout") (("" (expand "oba_sum") (("" (expand "XOR") (("" (grind) nil)))))))) nil) proved ((oba_cout const-decl "bit" bv_adder nil) (XOR const-decl "bool" xor_def nil) (/= const-decl "boolean" notequal nil) (b2n const-decl "nbit" bit nil) (oba_sum const-decl "bit" bv_adder nil)) 994 530 nil nil)) (n_cout_rec_TCC1 0 (n_cout_rec_TCC1-1 nil 3242707738 3249243059 ("" (subtype-tcc) nil nil) proved nil 37 40 nil nil)) (n_cout_rec_TCC2 0 (n_cout_rec_TCC2-1 nil 3242707738 3249243059 ("" (subtype-tcc) nil nil) proved ((boolean nonempty-type-decl nil booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (NOT const-decl "[bool -> bool]" booleans nil) (number nonempty-type-decl nil numbers nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (< const-decl "bool" reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (>= const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (posnat nonempty-type-eq-decl nil integers nil) (N formal-const-decl "posnat" bv_adder nil) (below type-eq-decl nil nat_types nil)) 253 100 nil nil)) (n_cout_rec_TCC3 0 (n_cout_rec_TCC3-1 nil 3242707738 3249243059 ("" (termination-tcc) nil nil) proved nil 37 40 nil nil)) (adder_correct_rec_TCC1 0 (adder_correct_rec_TCC1-1 nil 3242707738 3249243059 ("" (subtype-tcc) nil nil) proved nil 190 30 nil nil)) (adder_correct_rec 0 (adder_correct_rec-1 nil 3242707738 3249243067 ("" (induct "n" 1 "below_induction[N]") (("1" (skosimp*) (("1" (expand "bv2nat_rec") (("1" (expand "bv2nat_rec") (("1" (expand "exp2") (("1" (expand "exp2") (("1" (expand "bv_adder") (("1" (grind) nil nil)) nil)) nil)) nil)) nil)) nil)) nil) ("2" (skosimp*) (("2" (expand "bv2nat_rec" 1) (("2" (inst?) (("2" (rewrite "commutative_add" 1 :subst ("x" "1" "y" "jb!1")) (("2" (rewrite "commutative_add" 1 :subst ("x" "b2n(a_cin!1)" "y" "bv2nat_rec(1 + jb!1, x!1) + bv2nat_rec(1 + jb!1, y!1)")) (("2" (name-replace "AA" "b2n(a_cin!1) + bv2nat_rec(1 + jb!1, x!1) + bv2nat_rec(1 + jb!1, y!1)") (("2" (expand "n_cout_rec" 1) (("2" (expand "exp2" 1 2) (("2" (expand "bv_adder" 1 2) (("2" (expand "^" 1 7) (("2" (lemma "oba_correct" :subst ("a" "x!1 ^ (1 + jb!1)" "b" "y!1 ^ (1 + jb!1)" "cin" "n_cout_rec(jb!1, x!1, y!1, a_cin!1)")) (("1" (name-replace "BB" "oba_cout(x!1 ^ (1 + jb!1), y!1 ^ (1 + jb!1),
-                            n_cout_rec(jb!1, x!1, y!1, a_cin!1))") (("1" (name-replace "CC" "oba_sum(x!1 ^ (1 + jb!1), y!1 ^ (1 + jb!1),
-                         n_cout_rec(jb!1, x!1, y!1, a_cin!1))") (("1" (name-replace "DD" "bv2nat_rec(1 + jb!1, bv_adder(x!1, y!1, a_cin!1))") (("1" (name-replace "EE" "b2n(n_cout_rec(jb!1, x!1, y!1, a_cin!1))") (("1" (lemma "associative_mult" :subst ("x" "2" "y" "b2n(BB)" "z" "exp2(1 + jb!1)")) (("1" (replace -1 1) (("1" (hide -1) (("1" (lemma "commutative_mult" :subst ("x" "(2 * b2n(BB))" "y" "exp2(1 + jb!1)")) (("1" (replace -1 1) (("1" (hide -1) (("1" (case-replace "DD + exp2(1 + jb!1) * (2 * b2n(BB)) + (exp2(1 + jb!1) * b2n(CC)) =
-       DD + (exp2(1 + jb!1) * ((2 * b2n(BB)) +  b2n(CC)))") (("1" (hide -1) (("1" (replace -1 1 rl) (("1" (hide -1) (("1" (replace -2 1 rl) (("1" (assert) nil nil)) nil)) nil)) nil)) nil) ("2" (hide 2) (("2" (rewrite "distributive") (("2" (rewrite "commutative_mult" :subst ("x" "(2 * b2n(BB))" "y" "exp2(1 + jb!1)")) (("2" (assert) nil nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil) ("2" (hide 2 -2) (("2" (assert) nil nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil) proved ((oba_correct formula-decl nil bv_adder nil) (commutative_mult formula-decl nil number_fields nil) (distributive formula-decl nil number_fields nil) (associative_mult formula-decl nil number_fields nil) (commutative_add formula-decl nil number_fields nil) (^ const-decl "bit" bv nil) (/= const-decl "boolean" notequal nil) (XOR const-decl "bool" xor_def nil) (oba_sum const-decl "bit" bv_adder nil) (oba_cout const-decl "bit" bv_adder nil) (below_induction formula-decl nil bounded_nat_inductions nil) (number nonempty-type-decl nil numbers nil) (boolean nonempty-type-decl nil booleans nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number_field nonempty-type-from-decl nil number_fields nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (real nonempty-type-from-decl nil reals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (rational nonempty-type-from-decl nil rationals nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (int nonempty-type-eq-decl nil integers nil) (bool nonempty-type-eq-decl nil booleans nil) (>= const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (posnat nonempty-type-eq-decl nil integers nil) (N formal-const-decl "posnat" bv_adder nil) (bv_adder const-decl "bvec[N]" bv_adder nil) (bv2nat_rec def-decl "nat" bv_nat nil) (upto nonempty-type-eq-decl nil naturalnumbers nil) (<= const-decl "bool" reals nil) (n_cout_rec def-decl "bit" bv_adder nil) (b2n const-decl "nbit" bit nil) (nbit type-eq-decl nil bit nil) (exp2 def-decl "posnat" exp2 nil) (* const-decl "[numfield, numfield -> numfield]" number_fields nil) (+ const-decl "[numfield, numfield -> numfield]" number_fields nil) (numfield nonempty-type-eq-decl nil number_fields nil) (= const-decl "[T, T -> boolean]" equalities nil) (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil) (below type-eq-decl nil nat_types nil) (pred type-eq-decl nil defined_types nil) (below type-eq-decl nil naturalnumbers nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil)) 7821 3670 t nil)) (adder_correct_TCC1 0 (adder_correct_TCC1-1 nil 3242707738 3249243067 ("" (subtype-tcc) nil nil) proved nil 54 50 nil nil)) (adder_correct 0 (adder_correct-1 nil 3242707738 3249243068 ("" (skosimp*) (("" (expand "bv2nat") (("" (rewrite "adder_correct_rec" 1 :subst ("n" "N-1" "x" "x!1" "y" "y!1" "a_cin" "a_cin!1")) nil)))) nil) proved ((bv2nat const-decl "below(exp2(N))" bv_nat nil) (bvec type-eq-decl nil bv nil) (below type-eq-decl nil naturalnumbers nil) (- const-decl "[numfield, numfield -> numfield]" number_fields nil) (numfield nonempty-type-eq-decl nil number_fields nil) (below type-eq-decl nil nat_types nil) (N formal-const-decl "posnat" bv_adder nil) (posnat nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (>= const-decl "bool" reals nil) (bool nonempty-type-eq-decl nil booleans nil) (int nonempty-type-eq-decl nil integers nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (rational nonempty-type-from-decl nil rationals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (real nonempty-type-from-decl nil reals nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (number_field nonempty-type-from-decl nil number_fields nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (number nonempty-type-decl nil numbers nil) (bit type-eq-decl nil bit nil) (boolean nonempty-type-decl nil booleans nil) (adder_correct_rec formula-decl nil bv_adder nil)) 1145 510 nil nil)) (adder_is_add 0 (adder_is_add-1 nil 3242707738 3249243070 ("" (skosimp*) (("" (typepred "bv1!1 + bv2!1") (("" (rewrite "bv2nat_inj") (("" (replace -1 1) (("" (hide -1) (("" (lemma "adder_correct" :subst ("a_cin" "false" "x" "bv1!1" "y" "bv2!1")) (("" (name-replace "AA" "b2n(n_cout_rec(N - 1, bv1!1, bv2!1, FALSE))") (("" (expand "b2n" -1) (("" (replace -1 1 rl) (("" (hide -1) (("" (hide 2) (("" (typepred "bv2nat(bv_adder(bv1!1, bv2!1, FALSE))") (("" (case "AA=0 OR AA=1") (("1" (prop) (("1" (replace -1 1) (("1" (assert) nil nil)) nil) ("2" (replace -1 1) (("2" (assert) nil nil)) nil)) nil) ("2" (typepred "AA") (("2" (hide -3 2) (("2" (grind) nil nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil)) nil) proved ((+ const-decl "{bv: bvec[N] |
+(bv_adder
+ (oba_correct 0
+  (oba_correct-1 nil 3341433750 3341433776 ("" (grind) nil nil) proved
+   ((b2n const-decl "nbit" bit nil)
+    (oba_cout const-decl "bit" bv_adder nil)
+    (/= const-decl "boolean" notequal nil)
+    (XOR const-decl "bool" xor_def nil)
+    (oba_sum const-decl "bit" bv_adder nil))
+   26024 710 t shostak))
+ (n_cout_rec_TCC1 0
+  (n_cout_rec_TCC1-1 nil 3341433728 3341433728
+   ("" (subtype-tcc) nil nil) proved nil 14 10 nil nil))
+ (n_cout_rec_TCC2 0
+  (n_cout_rec_TCC2-1 nil 3341433728 3341433728
+   ("" (subtype-tcc) nil nil) proved
+   ((boolean nonempty-type-decl nil booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (number nonempty-type-decl nil numbers nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (< const-decl "bool" reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (>= const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (N formal-const-decl "posnat" bv_adder nil)
+    (below type-eq-decl nil nat_types nil))
+   109 90 nil nil))
+ (n_cout_rec_TCC3 0
+  (n_cout_rec_TCC3-1 nil 3341433728 3341433728
+   ("" (termination-tcc) nil nil) proved nil 21 20 nil nil))
+ (adder_correct_rec_TCC1 0
+  (adder_correct_rec_TCC1-1 nil 3341433728 3341433728
+   ("" (subtype-tcc) nil nil) proved nil 15 20 nil nil))
+ (adder_correct_rec 0
+  (adder_correct_rec-1 nil 3341433801 3341434172
+   ("" (induct "n" :name "below_induction[N]")
+    (("1" (skosimp*)
+      (("1"
+        (expand* "bv2nat_rec" "bv2nat_rec" "exp2" "exp2" "bv_adder")
+        (("1" (grind) nil nil)) nil))
+      nil)
+     ("2" (skosimp*)
+      (("2" (expand "bv2nat_rec" +)
+        (("2" (inst?)
+          (("2" (rewrite "commutative_add" 1 :subst ("x" 1 "y" "jb!1"))
+            (("2"
+              (rewrite "commutative_add" 1 :subst
+               ("x" "b2n(a_cin!1)" "y"
+                "bv2nat_rec(1 + jb!1, x!1) + bv2nat_rec(1 + jb!1, y!1)"))
+              (("2"
+                (name-replace "AA"
+                 "b2n(a_cin!1) + bv2nat_rec(1 + jb!1, x!1) + bv2nat_rec(1 + jb!1, y!1)")
+                (("2" (expand "n_cout_rec" +)
+                  (("2" (expand "exp2" 1 2)
+                    (("2" (expand "bv_adder" 1 2)
+                      (("2" (expand "^" 1 7)
+                        (("2"
+                          (lemma "oba_correct" :subst
+                           ("a" "x!1 ^ (1 + jb!1)" "b"
+                            "y!1 ^ (1 + jb!1)" "cin"
+                            "n_cout_rec(jb!1, x!1, y!1, a_cin!1)"))
+                          (("2"
+                            (name-replace "BB"
+                             "oba_cout(x!1 ^ (1 + jb!1), y!1 ^ (1 + jb!1), n_cout_rec(jb!1, x!1, y!1, a_cin!1))")
+                            (("2"
+                              (name-replace "CC"
+                               "oba_sum(x!1 ^ (1 + jb!1), y!1 ^ (1 + jb!1), n_cout_rec(jb!1, x!1, y!1, a_cin!1))")
+                              (("2"
+                                (name-replace
+                                 "DD"
+                                 "bv2nat_rec(1 + jb!1, bv_adder(x!1, y!1, a_cin!1))")
+                                (("2"
+                                  (name-replace
+                                   "EE"
+                                   "b2n(n_cout_rec(jb!1, x!1, y!1, a_cin!1))")
+                                  (("2"
+                                    (lemma
+                                     "associative_mult"
+                                     :subst
+                                     ("x"
+                                      "2"
+                                      "y"
+                                      "b2n(BB)"
+                                      "z"
+                                      "exp2(1 + jb!1)"))
+                                    (("2"
+                                      (replace -1 1)
+                                      (("2"
+                                        (hide -1)
+                                        (("2"
+                                          (lemma
+                                           "commutative_mult"
+                                           :subst
+                                           ("x"
+                                            "(2 * b2n(BB))"
+                                            "y"
+                                            "exp2(1 + jb!1)"))
+                                          (("2"
+                                            (replace -1 1)
+                                            (("2"
+                                              (hide -1)
+                                              (("2"
+                                                (case-replace
+                                                 "DD + exp2(1 + jb!1) * (2 * b2n(BB)) + (exp2(1 + jb!1) * b2n(CC)) = DD + (exp2(1 + jb!1) * ((2 * b2n(BB)) +  b2n(CC)))")
+                                                (("1"
+                                                  (hide -1)
+                                                  (("1"
+                                                    (replace -1 1 rl)
+                                                    (("1"
+                                                      (hide -1)
+                                                      (("1"
+                                                        (replace
+                                                         -2
+                                                         1
+                                                         rl)
+                                                        (("1"
+                                                          (assert)
+                                                          nil
+                                                          nil))
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil)
+                                                 ("2"
+                                                  (hide 2)
+                                                  (("2"
+                                                    (rewrite
+                                                     "distributive")
+                                                    (("2"
+                                                      (rewrite
+                                                       "commutative_mult"
+                                                       :subst
+                                                       ("x"
+                                                        "(2 * b2n(BB))"
+                                                        "y"
+                                                        "exp2(1 + jb!1)"))
+                                                      (("2"
+                                                        (assert)
+                                                        nil
+                                                        nil))
+                                                      nil))
+                                                    nil))
+                                                  nil))
+                                                nil))
+                                              nil))
+                                            nil))
+                                          nil))
+                                        nil))
+                                      nil))
+                                    nil))
+                                  nil))
+                                nil))
+                              nil))
+                            nil))
+                          nil))
+                        nil))
+                      nil))
+                    nil))
+                  nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((oba_correct formula-decl nil bv_adder nil)
+    (commutative_mult formula-decl nil number_fields nil)
+    (distributive formula-decl nil number_fields nil)
+    (associative_mult formula-decl nil number_fields nil)
+    (commutative_add formula-decl nil number_fields nil)
+    (oba_cout const-decl "bit" bv_adder nil)
+    (oba_sum const-decl "bit" bv_adder nil)
+    (XOR const-decl "bool" xor_def nil)
+    (/= const-decl "boolean" notequal nil) (^ const-decl "bit" bv nil)
+    (below_induction formula-decl nil bounded_nat_inductions nil)
+    (number nonempty-type-decl nil numbers nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (>= const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (N formal-const-decl "posnat" bv_adder nil)
+    (bv_adder const-decl "bvec[N]" bv_adder nil)
+    (bv2nat_rec def-decl "nat" bv_nat nil)
+    (upto nonempty-type-eq-decl nil naturalnumbers nil)
+    (<= const-decl "bool" reals nil)
+    (n_cout_rec def-decl "bit" bv_adder nil)
+    (b2n const-decl "nbit" bit nil) (nbit type-eq-decl nil bit nil)
+    (exp2 def-decl "posnat" exp2 nil)
+    (* const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil)
+    (below type-eq-decl nil nat_types nil)
+    (pred type-eq-decl nil defined_types nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil))
+   370697 8320 t shostak))
+ (adder_correct_TCC1 0
+  (adder_correct_TCC1-1 nil 3341433728 3341433728
+   ("" (subtype-tcc) nil nil) proved nil 80 60 nil nil))
+ (adder_correct 0
+  (adder_correct-1 nil 3341434199 3341434237
+   ("" (skolem!)
+    (("" (expand "bv2nat")
+      ((""
+        (rewrite "adder_correct_rec" 1 :subst
+         ("n" "N-1" "x" "x!1" "y" "y!1" "a_cin" "a_cin!1"))
+        nil nil))
+      nil))
+    nil)
+   proved
+   ((bv2nat const-decl "below(exp2(N))" bv_nat nil)
+    (bvec type-eq-decl nil bv nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (below type-eq-decl nil nat_types nil)
+    (N formal-const-decl "posnat" bv_adder nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (number nonempty-type-decl nil numbers nil)
+    (bit type-eq-decl nil bit nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (adder_correct_rec formula-decl nil bv_adder nil))
+   38338 1000 t shostak))
+ (adder_is_add 0
+  (adder_is_add-1 nil 3341434245 3341434565
+   ("" (skolem!)
+    (("" (typepred "bv1!1 + bv2!1")
+      (("" (rewrite "bv2nat_inj")
+        (("" (replace -1 1)
+          (("" (hide -1)
+            ((""
+              (lemma "adder_correct"
+               ("a_cin" "false" "x" "bv1!1" "y" "bv2!1"))
+              ((""
+                (name-replace "AA"
+                 "b2n(n_cout_rec(N - 1, bv1!1, bv2!1, FALSE))")
+                (("" (expand "b2n" -)
+                  (("" (lift-if) (("" (ground) nil nil)) nil)) nil))
+                nil))
+              nil))
+            nil))
+          nil))
+        nil))
+      nil))
+    nil)
+   proved
+   ((+ const-decl "{bv: bvec[N] |
          bv2nat(bv) =
           IF bv2nat(bv1) + bv2nat(bv2) < exp2(N)
             THEN bv2nat(bv1) + bv2nat(bv2)
           ELSE bv2nat(bv1) + bv2nat(bv2) - exp2(N)
-          ENDIF}" bv_arith_nat nil) (- const-decl "[numfield, numfield -> numfield]" number_fields nil) (+ const-decl "[numfield, numfield -> numfield]" number_fields nil) (IF const-decl "[boolean, T, T -> T]" if_def nil) (numfield nonempty-type-eq-decl nil number_fields nil) (bv2nat const-decl "below(exp2(N))" bv_nat nil) (exp2 def-decl "posnat" exp2 nil) (bvec type-eq-decl nil bv nil) (bit type-eq-decl nil bit nil) (below type-eq-decl nil naturalnumbers nil) (N formal-const-decl "posnat" bv_adder nil) (posnat nonempty-type-eq-decl nil integers nil) (> const-decl "bool" reals nil) (nonneg_int nonempty-type-eq-decl nil integers nil) (< const-decl "bool" reals nil) (nat nonempty-type-eq-decl nil naturalnumbers nil) (>= const-decl "bool" reals nil) (int nonempty-type-eq-decl nil integers nil) (integer_pred const-decl "[rational -> boolean]" integers nil) (rational nonempty-type-from-decl nil rationals nil) (rational_pred const-decl "[real -> boolean]" rationals nil) (real nonempty-type-from-decl nil reals nil) (real_pred const-decl "[number_field -> boolean]" reals nil) (number_field nonempty-type-from-decl nil number_fields nil) (number_field_pred const-decl "[number -> boolean]" number_fields nil) (= const-decl "[T, T -> boolean]" equalities nil) (number nonempty-type-decl nil numbers nil) (NOT const-decl "[bool -> bool]" booleans nil) (bool nonempty-type-eq-decl nil booleans nil) (boolean nonempty-type-decl nil booleans nil) (adder_correct formula-decl nil bv_adder nil) (OR const-decl "[bool, bool -> bool]" booleans nil) (nbit type-eq-decl nil bit nil) (b2n const-decl "nbit" bit nil) (below type-eq-decl nil nat_types nil) (n_cout_rec def-decl "bit" bv_adder nil) (AND const-decl "[bool, bool -> bool]" booleans nil) (FALSE const-decl "bool" booleans nil) (bv_adder const-decl "bvec[N]" bv_adder nil) (bv2nat_inj formula-decl nil bv_nat nil)) 1539 740 t nil)))
+          ENDIF}" bv_arith_nat nil)
+    (- const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (+ const-decl "[numfield, numfield -> numfield]" number_fields nil)
+    (IF const-decl "[boolean, T, T -> T]" if_def nil)
+    (numfield nonempty-type-eq-decl nil number_fields nil)
+    (bv2nat const-decl "below(exp2(N))" bv_nat nil)
+    (exp2 def-decl "posnat" exp2 nil) (bvec type-eq-decl nil bv nil)
+    (bit type-eq-decl nil bit nil)
+    (below type-eq-decl nil naturalnumbers nil)
+    (N formal-const-decl "posnat" bv_adder nil)
+    (posnat nonempty-type-eq-decl nil integers nil)
+    (> const-decl "bool" reals nil)
+    (nonneg_int nonempty-type-eq-decl nil integers nil)
+    (< const-decl "bool" reals nil)
+    (nat nonempty-type-eq-decl nil naturalnumbers nil)
+    (>= const-decl "bool" reals nil)
+    (int nonempty-type-eq-decl nil integers nil)
+    (integer_pred const-decl "[rational -> boolean]" integers nil)
+    (rational nonempty-type-from-decl nil rationals nil)
+    (rational_pred const-decl "[real -> boolean]" rationals nil)
+    (real nonempty-type-from-decl nil reals nil)
+    (real_pred const-decl "[number_field -> boolean]" reals nil)
+    (number_field nonempty-type-from-decl nil number_fields nil)
+    (number_field_pred const-decl "[number -> boolean]" number_fields
+     nil)
+    (= const-decl "[T, T -> boolean]" equalities nil)
+    (number nonempty-type-decl nil numbers nil)
+    (NOT const-decl "[bool -> bool]" booleans nil)
+    (bool nonempty-type-eq-decl nil booleans nil)
+    (boolean nonempty-type-decl nil booleans nil)
+    (adder_correct formula-decl nil bv_adder nil)
+    (nbit type-eq-decl nil bit nil) (b2n const-decl "nbit" bit nil)
+    (below type-eq-decl nil nat_types nil)
+    (n_cout_rec def-decl "bit" bv_adder nil)
+    (FALSE const-decl "bool" booleans nil)
+    (bv_adder const-decl "bvec[N]" bv_adder nil)
+    (bv2nat_inj formula-decl nil bv_nat nil))
+   26428 1790 t shostak)))
+
