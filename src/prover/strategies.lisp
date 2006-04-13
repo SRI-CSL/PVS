@@ -251,7 +251,7 @@ E.g., (try (skip)(flatten)(skolem!)) is just (skolem!)
 
 
 (defstep assert (&optional (fnums *) rewrite-flag
-			   flush? linear? (cases-rewrite? t)
+			   flush? linear? cases-rewrite?
 			   (type-constraints? t)
 			   ignore-prover-output? (let-reduce? t) quant-simp?
 			   implicit-typepreds?)
@@ -290,7 +290,7 @@ Example:
   "Simplifying and recording with decision procedures")
 
 (defstep do-rewrite (&optional (fnums *) rewrite-flag
-			       flush? linear? (cases-rewrite? t)
+			       flush? linear? cases-rewrite?
 			       (type-constraints? t))
   (simplify
    fnums nil t rewrite-flag flush? linear? cases-rewrite? type-constraints?) 
@@ -603,9 +603,10 @@ defined, it looks for 'context-strategy', and if that is not found, it
 invokes 'grind'."
   "")
 
-(defstep bash (&optional (if-match t)(updates? t) polarity? (instantiator inst?) (let-reduce? t) quant-simp? implicit-typepreds?)
+(defstep bash (&optional (if-match t)(updates? t) polarity? (instantiator inst?) (let-reduce? t) quant-simp? implicit-typepreds? cases-rewrite?)
   (then (assert :let-reduce? let-reduce? :quant-simp? quant-simp?
-		:implicit-typepreds? implicit-typepreds?)
+		:implicit-typepreds? implicit-typepreds?
+		:cases-rewrite? cases-rewrite?)
 	(bddsimp)
 	(if if-match (let ((command (generate-instantiator-command
 				     if-match polarity? instantiator)))
@@ -649,12 +650,13 @@ reasoning, quantifier instantiation, skolemization, if-lifting.")
 	 
 (defstep reduce (&optional (if-match t)(updates? t) polarity?
 			   (instantiator inst?) (let-reduce? t) quant-simp?
-			   no-replace? implicit-typepreds?)
+			   no-replace? implicit-typepreds? cases-rewrite?)
     (repeat* (try (bash$ :if-match if-match :updates? updates?
 			 :polarity? polarity? :instantiator instantiator
 			 :let-reduce? let-reduce?
 			 :quant-simp? quant-simp?
-			 :implicit-typepreds? implicit-typepreds?)
+			 :implicit-typepreds? implicit-typepreds?
+			 :cases-rewrite? cases-rewrite?)
                (if no-replace? (skip)(replace*))
                (skip)))
 "Core of GRIND (ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, FLATTEN,
@@ -664,10 +666,11 @@ See BASH for more explanation."
   propositional reasoning, quantifier instantiation, skolemization,
  if-lifting and equality replacement")
 
-(defstep smash (&optional (updates? t) (let-reduce? t) quant-simp? implicit-typepreds?)
+(defstep smash (&optional (updates? t) (let-reduce? t) quant-simp? implicit-typepreds? cases-rewrite?)
   (repeat* (then (bddsimp)
 		 (assert :let-reduce? let-reduce? :quant-simp? quant-simp?
-			 :implicit-typepreds? implicit-typepreds?)
+			 :implicit-typepreds? implicit-typepreds?
+			 :cases-rewrite? cases-rewrite?)
 		 (lift-if :updates? updates?)))
   "Repeatedly tries BDDSIMP, ASSERT, and LIFT-IF.  If the UPDATES?
 option is NIL, update applications are not if-lifted."
@@ -728,19 +731,22 @@ EXCLUDE is a list of rewrite rules. "
 			  polarity?
 			  (instantiator inst?)
 			  (let-reduce? t)
+			  cases-rewrite?
 			  quant-simp?
 			  no-replace?
 			  implicit-typepreds?)
   (then
    (install-rewrites$ :defs defs :theories theories
 		      :rewrites rewrites :exclude exclude)
-   (then (bddsimp)(assert :let-reduce? let-reduce?))
+   (then (bddsimp)(assert :let-reduce? let-reduce?
+			  :cases-rewrite? cases-rewrite?))
    (replace*)
    (reduce$ :if-match if-match :updates? updates?
 	    :polarity? polarity? :instantiator instantiator
 	    :let-reduce? let-reduce? :quant-simp? quant-simp?
 	    :no-replace? no-replace?
-	    :implicit-typepreds? implicit-typepreds?))
+	    :implicit-typepreds? implicit-typepreds?
+	    :cases-rewrite? cases-rewrite?))
     "A super-duper strategy.  Does auto-rewrite-defs/theories,
 auto-rewrite then applies skolem!, inst?, lift-if, bddsimp, and
 assert, until nothing works. Here
@@ -966,13 +972,15 @@ is applied.")
 resulting subgoals.  The last step is used for any excess subgoals.
 If STEP does nothing, then ELSE-STEP is applied.")
 
-(defstep ground (&optional (let-reduce? t) quant-simp? implicit-typepreds?)
+(defstep ground (&optional (let-reduce? t) quant-simp? implicit-typepreds?
+			   cases-rewrite?)
   (try (flatten)
        (ground$)
        (try (split)
 	    (ground$)
 	    (assert :let-reduce? let-reduce? :quant-simp? quant-simp?
-		    :implicit-typepreds? implicit-typepreds?)))
+		    :implicit-typepreds? implicit-typepreds?
+		    :cases-rewrite? cases-rewrite?)))
   "Does propositional simplification followed by the use of decision procedures."
   "Applying propositional simplification and decision procedures")
 
@@ -2968,15 +2976,15 @@ or succedent formula in the sequent."
 ;;added exclude argument to grind and if-match argument to use.
 (defstep use (lemma &optional subst (if-match best) (instantiator inst?)
 		    polarity? let-reduce?)
-  (then@ (lemma lemma subst)
-	 (if *new-fmla-nums*
-	     (let ((fnum (car *new-fmla-nums*))
-		   (command (generate-instantiator-command
-			     if-match polarity? instantiator fnum)))
-	       (then 
-		(beta fnum :let-reduce? let-reduce?)
-		(repeat command)))
-	     (skip)))
+  (try-branch (lemma lemma subst)
+	      ((let ((fnum (car *new-fmla-nums*))
+		     (command (generate-instantiator-command
+			       if-match polarity? instantiator fnum)))
+		 (then 
+		  (beta fnum :let-reduce? let-reduce?)
+		  (repeat command)))
+	       (skip))
+	      (skip))
   "Introduces lemma LEMMA, then does BETA and INST? (repeatedly) on
  the lemma.  The INSTANTIATOR argument may be used to specify an alternative
  to INST?."
@@ -3213,53 +3221,54 @@ is needed, the best option is to use CASE."
 	 (cons new-id expr)))))
 
 (defstep generalize-skolem-constants (&optional (fnums *))
-  (then (merge-fnums fnums)
-	(let ((sforms (s-forms (current-goal *ps*))))
-	  (if (or *new-fmla-nums*
-		  (and (singleton? sforms)
-		       (find-sform sforms fnums)))
-	      (let ((fnums (if *new-fmla-nums* *new-fmla-nums* fnums))
-		    (sforms (select-seq sforms fnums))
-		    (sform (car sforms))
-		    (form (formula sform))
-		    (skolem-constants
-		     (collect-subterms form
-				       #'skolem-constant?))
-		    (skolem-constants
-		     (sort skolem-constants
-			   #'(lambda (x y)
-			       (member x (collect-subterms y #'skolem-constant?)))))
-		    (constant-bind-decl-alist
-		     (make-constant-bind-decl-alist skolem-constants nil form))
-		    (constant-variable-alist
-		     (loop for (x . y) in constant-bind-decl-alist
-			   collect (cons x (make-variable-expr y))))
-		    (newform1 (gensubst form
+  (try (merge-fnums fnums)
+       (let ((sforms (s-forms (current-goal *ps*))))
+	 (if (or *new-fmla-nums*
+		 (and (singleton? sforms)
+		      (find-sform sforms fnums)))
+	     (let ((fnums (if *new-fmla-nums* *new-fmla-nums* fnums))
+		   (sforms (select-seq sforms fnums))
+		   (sform (car sforms))
+		   (form (formula sform))
+		   (skolem-constants
+		    (collect-subterms form
+				      #'skolem-constant?))
+		   (skolem-constants
+		    (sort skolem-constants
+			  #'(lambda (x y)
+			      (member x (collect-subterms y #'skolem-constant?)))))
+		   (constant-bind-decl-alist
+		    (make-constant-bind-decl-alist skolem-constants nil form))
+		   (constant-variable-alist
+		    (loop for (x . y) in constant-bind-decl-alist
+			  collect (cons x (make-variable-expr y))))
+		   (newform1 (gensubst form
 			       #'(lambda (x)
 				   (cdr (assoc x constant-variable-alist
 					       :test #'tc-eq)))
 			       #'(lambda (x)
 				   (assoc x constant-variable-alist
 					  :test #'tc-eq))))
-		    (newform (universal-closure newform1))
-		    (instantiation-list
-		     (when (forall? newform)
-		       (loop for bd in (bindings newform)
-			     collect
-			     (let ((entry (rassoc bd constant-bind-decl-alist
-						  :test #'tc-eq)))
-			       (if entry (car entry) "_"))))))
-		(branch
-		 (case newform)
-		 ((then (inst -1 :terms instantiation-list)
-			(prop))
-		  (let ((hfnums (find-all-sformnums
-				 (s-forms (current-goal *ps*))
-				 '*
-				 #'(lambda (x)
-				     (member x sforms :key #'formula)))))
-		    (hide hfnums)))))
-	      (skip-msg "Merge-fnums failed."))))
+		   (newform (universal-closure newform1))
+		   (instantiation-list
+		    (when (forall? newform)
+		      (loop for bd in (bindings newform)
+			    collect
+			    (let ((entry (rassoc bd constant-bind-decl-alist
+						 :test #'tc-eq)))
+			      (if entry (car entry) "_"))))))
+	       (branch
+		(case newform)
+		((then (inst -1 :terms instantiation-list)
+		       (prop))
+		 (let ((hfnums (find-all-sformnums
+				(s-forms (current-goal *ps*))
+				'*
+				#'(lambda (x)
+				    (member x sforms :key #'formula)))))
+		   (hide hfnums)))))
+	     (skip-msg "Merge-fnums failed.")))
+       (skip-msg "Merge-fnums failed."))
   "Merges the formulas and universally generalizes the skolem constants
 in the given fnums."
   "Merging and generalizing")
@@ -3850,12 +3859,13 @@ labels, otherwise, the old labels are deleted."
   "Labelling some formulas")
 
 (defstep with-labels (rule labels &optional push?)
-  (then rule
-	(let ((fnums *new-fmla-nums*)
-	      (labels (if (consp labels) labels (list labels)))
-	      (current-labels
-	       (nth-or-last (subgoalnum *ps*) labels)))
-	  (label-fnums current-labels fnums :push? push?)))
+  (try (apply rule)
+       (let ((fnums *new-fmla-nums*)
+	     (labels (if (consp labels) labels (list labels)))
+	     (current-labels
+	      (nth-or-last (subgoalnum *ps*) labels)))
+	 (label-fnums current-labels fnums :push? push?))
+       (skip))
   "If RULE generates subgoal sequents S1...Sn where each Si has
 new formulas, i.e., those numbered with {}, numbered fi1..fim, then
 if LABELS is a list of list of labels ((l11 ... l1k)...(ln1...lnm)),
@@ -3879,7 +3889,7 @@ top-level antecedent conjunctions, equivalences, and negations, and
 succedent disjunctions, implications, and negations from the sequent."
  "Applying disjunctive simplification to flatten sequent")
 
-(defstep model-check (&optional (dynamic-ordering? t) (cases-rewrite? t)
+(defstep model-check (&optional (dynamic-ordering? t) cases-rewrite?
 				defs	; NIL, T, !, explicit, or explicit!
 				theories
 				rewrites
@@ -3945,13 +3955,16 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
 
 (defstep lazy-grind  (&optional (if-match t) (defs !) rewrites
                                 theories exclude (updates? t) (let-reduce? t)
-				quant-simp? implicit-typepreds?)
+				quant-simp? implicit-typepreds?
+				cases-rewrite?)
   (then
    (grind$ :if-match nil :defs defs :rewrites rewrites 
 	   :theories theories :exclude exclude :updates? updates?
 	   :let-reduce? let-reduce? :quant-simp? quant-simp?
-	   :implicit-typepreds? implicit-typepreds?)
-   (reduce$ :if-match if-match :updates? updates? :let-reduce? let-reduce?))
+	   :implicit-typepreds? implicit-typepreds?
+	   :cases-rewrite? cases-rewrite?)
+   (reduce$ :if-match if-match :updates? updates? :let-reduce? let-reduce?
+	    :cases-rewrite? cases-rewrite?))
   "Equiv. to (grind) with the instantiations postponed until after simplification."
   "By skolemization, if-lifting, simplification and instantiation")
 
@@ -3988,31 +4001,35 @@ DEFS, THEORIES, REWRITES, and EXCLUDE are as in INSTALL-REWRITES."
 			  polarity?
 			  (instantiator inst?)
 			  (let-reduce? t)
+			  cases-rewrite?
 			  quant-simp?
 			  no-replace?
 			  implicit-typepreds?)
   (then
    (install-rewrites$ :defs defs :theories theories
 		      :rewrites rewrites :exclude exclude)
-   (then (bddsimp) (assert :let-reduce? let-reduce?))
+   (then (bddsimp) (assert :let-reduce? let-reduce?
+			   :cases-rewrite? cases-rewrite?))
    (replace*)
    (reduce-with-ext$ :if-match if-match :updates? updates?
 		     :polarity? polarity? :instantiator instantiator
 		     :let-reduce? let-reduce? :quant-simp? quant-simp?
 		     :no-replace? no-replace?
-		     :implicit-typepreds? implicit-typepreds?))
+		     :implicit-typepreds? implicit-typepreds?
+		     :cases-rewrite? cases-rewrite?))
   "Like GRIND, but calls REDUCE-EXT, which also uses APPLY-EXTENSIONALITY.  See GRIND for an explanation of the arguments."
   "Trying repeated skolemization, instantiation, if-lifting, and extensionality")
 
 (defstep reduce-with-ext (&optional (if-match t)(updates? t) polarity?
 				    (instantiator inst?) (let-reduce? t)
 				    quant-simp? no-replace?
-				    implicit-typepreds?)
+				    implicit-typepreds? cases-rewrite?)
   (repeat* (then (bash$ :if-match if-match :updates? updates?
 		       :polarity? polarity? :instantiator instantiator
 		       :let-reduce? let-reduce?
 		       :quant-simp? quant-simp?
-		       :implicit-typepreds? implicit-typepreds?)
+		       :implicit-typepreds? implicit-typepreds?
+		       :cases-rewrite? cases-rewrite?)
 		 (apply-extensionality$ :hide? t)
 		 (if no-replace? (skip) (replace*))))
   "Core of GRIND-WITH-EXT (ASSERT, BDDSIMP, INST?, SKOLEM-TYPEPRED, FLATTEN,
@@ -4377,3 +4394,163 @@ APPLY-EXTENSIONALITY.  See reduce for an explanation of the arguments."
 		  (not (member (car args) subexprs :test #'tc-eq)))
 	     (cons (car args) subexprs)
 	     subexprs)))))
+
+(defstep let-name-replace (&optional (fnum *) hide? (where top))
+  (let ((sformnum (find-sform (s-forms (current-goal *ps*)) fnum
+			      #'(lambda (x)
+				  (contains-let-expr? x where)))))
+    (if sformnum
+	(let ((namesteps (get-let-replace-forms sformnum hide? where))
+	      (step `(then ,@namesteps)))
+	  step)
+	(if (eq where 'top)
+	    (skip-msg "No top-level LETs found")
+	    (skip-msg "No LETs found occuring outside a binding"))))
+  "Replaces the LET variables by names in LET expressions in FNUM that do
+not occur in a binding.  It attempts to use the names given by the LET, then
+appends \"_1\", etc. until a new name is generated.  If HIDE? is t, the
+names are hidden.  WHERE may be one of:
+  top - for only a top-level LET expession,
+  first - for the first LET expression not inside a binding
+  all - for all LET expressions not inside a binding.
+See name-replace."
+  "Replacing the LET variables with names")
+
+(defun get-let-replace-forms (sformnum hide? where)
+  (let ((let-exprs (collect-let-exprs (select-seq (s-forms (current-goal *ps*))
+						  (list sformnum))
+				      where)))
+    (create-let-replace-forms let-exprs hide?)))
+
+;;; The names-alist gives the old-name to new-name mapping
+;;;     let-alist gives the old-name to argument mapping, as given by the let
+(defun create-let-replace-forms (let-exprs hide? &optional names-alist steps)
+  (if (null let-exprs)
+      (nreverse steps)
+      (multiple-value-bind (lnames-alist lsteps let-alist)
+	  (create-let-replace-form (car let-exprs) names-alist hide?)
+	(create-let-replace-forms (let-reduce-subst (cdr let-exprs)
+						    lnames-alist
+						    let-alist)
+				  hide?
+				  (append lnames-alist names-alist)
+				  (append lsteps steps)))))
+
+(defun create-let-replace-form (let-expr names-alist hide?)
+  (let ((bindings (bindings (operator let-expr))))
+    (create-let-replace-form*
+     (substit let-expr names-alist)
+     bindings
+     (if (singleton? bindings)
+	 (list (argument let-expr))
+	 (if (tuple-expr? (argument let-expr))
+	     (arguments let-expr)
+	     (make!-projections (argument let-expr))))
+     names-alist
+     hide?)))
+
+(defun create-let-replace-form* (let-expr bindings args names-alist hide?
+					  &optional let-alist steps)
+  (if (null bindings)
+      (values names-alist steps let-alist)
+      (let* ((name (create-let-replace-name (car bindings) names-alist 1))
+	     (arg (substit (car args) names-alist))
+	     (argstr (unparse arg :string t))
+	     (new-names-alist (acons (car bindings) name names-alist)))
+	(multiple-value-bind (red-ex let-alist1)
+	    (let-reduce1 let-expr)
+	  (let* ((eqn (make!-equation let-expr red-ex))
+		 (eqnstr (unparse (expose-binding-types eqn) :string t)))
+	    (create-let-replace-form*
+	     (let-reduce1 let-expr new-names-alist)
+	     (cdr bindings)
+	     (substit (cdr args) new-names-alist)
+	     new-names-alist hide?
+	     (append let-alist let-alist1)
+	     (cons `(branch
+		     (case-replace$ ,eqnstr :hide? t)
+		     ((name-replace$ ,(id name) ,argstr :hide? ,hide?)
+		      (beta)))
+		   steps)))))))
+
+(defun let-reduce1 (let-expr &optional names-alist)
+  (let ((lex (operator let-expr)))
+    (if (cdr (bindings lex))
+	(let* ((arguments (arguments let-expr))
+	       (args (if (singleton? arguments)
+			 ;; create projections
+			 (make!-projections (car arguments))
+			 arguments))
+	       (alist (acons (car (bindings lex)) (car args) nil)))
+	  (values (copy let-expr
+		    'operator (copy lex
+				'bindings (substit (cdr (bindings lex)) alist)
+				'expression (substit (expression lex) alist))
+		    'argument (make!-arg-tuple-expr* (cdr args)))
+		  alist))
+	(let ((alist (acons (car (bindings lex)) (argument let-expr) nil)))
+	  (values (substit (expression lex) (append alist names-alist))
+		  alist)))))
+
+(defun let-reduce-subst (ex names-alist let-alist)
+  (let ((ex1 (substit ex let-alist))
+	(*replace-cache* (make-hash-table :test #'eq)))
+    (replace-expr (cdar let-alist) (cdar names-alist) ex1)))
+
+(defun create-let-replace-name (binding names-alist &optional num)
+  (let ((nid (if num (makesym "~a_~d" (id binding) num) (id binding))))
+    (if (or (resolve nid 'expr nil)
+	    (member nid names-alist :key #'cdr :test #'same-id))
+	(create-let-replace-name binding names-alist (if num (1+ num) 1))
+      (let ((bd (lcopy binding 'id nid)))
+	(make-variable-expr bd)))))
+
+(defun contains-let-expr? (expr where)
+  (case where
+    ((all first)
+     (let ((foundit nil))
+       (mapobject #'(lambda (ex)
+		      (or foundit
+			  (when (let-expr? ex)
+			    (setq foundit t))
+			  (binding-expr? ex)))
+		  expr)
+       foundit))
+    (top (let-expr? expr))
+    (t (error-format-if "Illegal :where value - ~a" where))))
+
+(defun collect-let-exprs (expr where)
+  (case where
+    (all (let ((let-exprs nil))
+	   (mapobject #'(lambda (ex)
+			  (when (let-expr? ex)
+			    (let ((lexprs (collect-let-exprs
+					   (expression (operator ex))
+					   where)))
+			      (setq let-exprs (nconc let-exprs
+						     (cons ex lexprs)))))
+			  (binding-expr? ex))
+		      expr)
+	   let-exprs))
+    (first (let ((let-exprs nil))
+	     (mapobject #'(lambda (ex)
+			    (or let-exprs
+				(when (let-expr? ex)
+				  (setq let-exprs
+					(collect-chained-let-exprs ex)))
+				(binding-expr? ex)))
+			expr)
+	     let-exprs))
+    (t (collect-chained-let-exprs expr))))
+
+(defmethod collect-chained-let-exprs ((ex let-expr) &optional (first? t))
+  (if first?
+      (cons ex (collect-chained-let-exprs (expression (operator ex))))))
+
+(defmethod collect-chained-let-exprs ((ex chained-let-expr) &optional first?)
+  (declare (ignore first?))
+  (cons ex (collect-chained-let-exprs (expression (operator ex)))))
+
+(defmethod collect-chained-let-exprs (ex &optional first?)
+  (declare (ignore ex first?))
+  nil)
