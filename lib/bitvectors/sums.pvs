@@ -24,7 +24,7 @@ BEGIN
         ELSIF high = low THEN F(low) 
         ELSE  F(high) + sigma(low, high-1, F)
         ENDIF
-   MEASURE (LAMBDA low, high, F: high)
+   MEASURE high
 
 %  sigma_rec(high, F): RECURSIVE nat
 %      = IF high = 0 THEN F(0)

@@ -1,7 +1,7 @@
 finite_sets_minmax[T: TYPE, <= : (total_order?[T])]: THEORY
 BEGIN
 
-  IMPORTING  finite_sets_inductions[T] %, sets_aux[T]
+  IMPORTING  finite_sets_inductions[T]
 
   fsmin(x,y:T): T = IF x <= y THEN x ELSE y ENDIF
   fsmax(x,y:T): T = IF x <= y THEN y ELSE x ENDIF

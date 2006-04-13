@@ -38,7 +38,7 @@ BEGIN
    %         cin --->|               |
    %                 |---------------|
    %
-   % =========================================================================  
+   % =========================================================================
    
    oba_sum (a,b,cin): bit = (a XOR b XOR cin)
    oba_cout (a,b,cin): bit = ((a AND b) OR (a AND cin) OR (b AND cin))
@@ -61,7 +61,7 @@ BEGIN
    %      c    s           c    s              c    s           c    s
    %       n    n           n-1  n-1            1    1           0    0
    %
-   % =========================================================================  
+   % =========================================================================
    
    n_cout_rec (n,x,y,a_cin): RECURSIVE bit =
      IF n =0 THEN oba_cout(x^(0),y^(0),a_cin)
@@ -76,7 +76,7 @@ BEGIN
       ENDIF)
    
    adder_correct_rec: LEMMA 
-       exp2(n+1)*n_cout_rec(n,x,y,a_cin)+bv2nat_rec(n+1,bv_adder(x,y,a_cin)) =  
+       exp2(n+1)*n_cout_rec(n,x,y,a_cin)+bv2nat_rec(n+1,bv_adder(x,y,a_cin)) =
        bv2nat_rec(n+1,x) + bv2nat_rec(n+1,y) + a_cin
    
    adder_correct: THEOREM 

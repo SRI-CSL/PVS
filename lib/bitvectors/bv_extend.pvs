@@ -59,6 +59,3 @@ BEGIN
   lsb_extend__def       : LEMMA lsb_extend(k)(bv)        = bv o fill[k-N](bv^0)
 
 END bv_extend
-
-
-
