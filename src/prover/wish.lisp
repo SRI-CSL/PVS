@@ -30,6 +30,43 @@
 ;;; prove-decl, undo-proof, proofstepper, success-step, and rule-apply
 ;;; call various functions defined here.
 
+;; emacs: x-show-proof
+;;   pvs:   call-x-show-proof-at
+;;     tcl:   setup-proof fmid thid dir ctr 0
+;;     pvs: write-justification-status (recursive)
+;;       tcl: proof-num-children - - - -
+;;            proof-rule - - - {-}
+;;            proof-done - - - 0
+;;            proof-show - - - 0
+;;     tcl: layout-proof - - 0
+
+;; emacs: x-show-current-proof
+;;   pvs: call-x-show-proof
+;;     tcl: setup-proof fmid thid dir ctr 1
+;;     pvs: display-proof-from
+;;       tcl: delete-proof-subtree - - -
+;;       pvs: write-proof-status (recursive)
+;;         tcl: proof-num-children - - - -
+;;              proof-rule - - - {-}
+;;              proof-sequent - - - {-} {-}
+;;              proof-done - - - 1
+;;              proof-tcc -
+;;              proof-show - - - 1
+;;       tcl: layout-proof - - 1
+;;     pvs: display-current
+;;       tcl: proof-current - - -
+;;            proof-current - - {}
+
+;; pvs: proofstepper
+;;   pvs: display-proofstate
+;;     pvs: display-proof-from
+;;       (see above)
+;;     pvs: display-current
+;;       (see above)
+
+;; pvs: proofstepper
+;;   tcl: proof-done - - - 1
+
 (defun wish-top-proofstate (&optional (from (or *top-proofstate* *last-proof*)))
   (if (wish-current-rule from)
       from
@@ -89,6 +126,7 @@
       ps
       (path-to-proofstate (nth (car path) (x-subgoals ps)) (cdr path))))
 
+;;; Only called from call-x-show-proof, i.e., on interactive proof
 (defun display-proof-from (ps)
   (let* ((top-ps (or *top-proofstate* *last-proof*))
 	 (path (path-to-subgoal (wish-top-proofstate) ps))
@@ -116,6 +154,7 @@
 	 (format nil "proof-current ~a ~a {}" fid thid))))
   (setf *current-displayed* ps))
 
+;;; Called from proofstepper
 (defun display-proofstate (proofstate)
   (when (and (not *in-apply*) *displaying-proof*)
     (let ((changed (and *current-displayed*
@@ -134,20 +173,23 @@
   (setf *displaying-proof* (remove-if #'(lambda (x) (<= x n))
 			     *displaying-proof*)))
 
-(defun request-sequent (path)
-  (if *top-proofstate*
-      (let* ((tcl-path (path-to-tcl-path path))
-	     (top-ps *top-proofstate*)
-	     (sequent (path-subgoal (wish-top-proofstate) path))
-	     (fdecl (declaration top-ps))
-	     (fid (id fdecl))
-	     (thid (id (module fdecl))))
-	(with-output-to-temp-file
-	 (format t "show-sequent ~a ~a ~a {~a} {~a}"
-	   fid thid tcl-path (label sequent) sequent)))
-      (with-output-to-temp-file
-       (format t ""))))
+;;; No longer used
+;; (defun request-sequent (path)
+;;   (if *top-proofstate*
+;;       (let* ((tcl-path (path-to-tcl-path path))
+;; 	     (top-ps *top-proofstate*)
+;; 	     (sequent (path-subgoal (wish-top-proofstate) path))
+;; 	     (fdecl (declaration top-ps))
+;; 	     (fid (id fdecl))
+;; 	     (thid (id (module fdecl))))
+;; 	(with-output-to-temp-file
+;; 	 (format t "show-sequent ~a ~a ~a {~a} {~a}"
+;; 	   fid thid tcl-path (label sequent) sequent)))
+;;       (with-output-to-temp-file
+;;        (format t ""))))
 
+;;; Called from Emacs x-show-current-proof, or before-prove
+;;; i.e., on interactive proof
 (defun call-x-show-proof ()
   (if (and *in-checker* *ps*)
       (progn
@@ -232,6 +274,7 @@
       (mapc #'(lambda (dep) (module-hierarchy* dep include-libraries?))
 	    deps))))
 
+;;; called only on interactive proof
 (defun write-proof-status (ps path)
   (let* ((tcl-path (path-to-tcl-path path))
 	 (subs (x-subgoals ps))
@@ -243,10 +286,10 @@
     (cond ((and (null rule) (eql (length subs) 1)) ;;NSH(8.19.95):
 	                             ;;see comment in display-proof-from above
 	   (write-proof-status (car subs) path))
-	  (t (format t "proof-num-children ~a ~a ~a ~a~%"
+	  (t (format t "proof-num-children ~a ~a ~a ~a 1~%"
 	       fid thid tcl-path (length subs))
 	     (when rule
-	       (format t "proof-rule ~a ~a ~a {~a}~%" fid thid tcl-path
+	       (format t "proof-rule ~a ~a ~a {~a} 1~%" fid thid tcl-path
 		       (let ((*print-case* :downcase))
 			 (format nil "~@[+~*~]~s" (null (current-rule ps))
 				 rule))))
@@ -269,13 +312,14 @@
 	    (wish-parent-proofstate pp)
 	    pp))))
 
+;;; Only called from x-show-proof, i.e., on non-interactive proof
 (defun write-justification-status (just path fid thid)
   (let ((tcl-path (path-to-tcl-path path))
 	(subs (subgoals just)))
-    (format t "proof-num-children ~a ~a ~a ~a~%"
+    (format t "proof-num-children ~a ~a ~a ~a 0~%"
       fid thid tcl-path (length subs))
     (when (rule just)
-      (format t "proof-rule ~a ~a ~a {~a}~%"
+      (format t "proof-rule ~a ~a ~a {~a} 0~%"
 	fid thid tcl-path
 	(let ((*print-case* :downcase))
 	  (format nil "~s" (rule just)))))
@@ -285,7 +329,7 @@
       (write-justification-status
        (nth i subs) (append path (list i)) fid thid))))
   
-
+;;; Called by proofstepper and success-step (hence interactive)
 (defun wish-done-proof (proofstate)
   (unless *in-apply*
     (when *displaying-proof*
@@ -351,6 +395,11 @@
 ;  (pvs-wish (format nil "source ~a" file)))
 
 (defun pvs-wish-source (file)
+;;   (format t "~%sending wish cmd:")
+;;   (with-open-file (str file)
+;;     (loop for line = (read-line str nil 'eof)
+;; 	  until (eq line 'eof)
+;; 	  do (format t "~% ~a" line)))
   (pvs-wish (format nil "catch {source ~a}; exec rm -f ~a" file file)))
 
 (defun pvs-long-wish (cmd)
