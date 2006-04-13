@@ -66,27 +66,19 @@
 		   (t rule))))))
 
 (defun tc-alist (in-alist &optional out-alist (tccs 'all))
-  (cond ((null in-alist)
-	 out-alist)
-	(t (tc-alist (cdr in-alist)
-		     (let* ((var (caar in-alist))
-			    (term (cdar in-alist))
-			    (expected (when (slot-exists-p var 'type)
-					(substit (type var) out-alist))))
-		       (if (set-difference (freevars expected)
-					   *bound-variables*
-					   :test #'same-declaration)
-			   (type-error expected "Free variables in type ~a" expected)
-			   (cons
-			    (cons var
-				  (typecheck
-				   term
-				   :expected
-				   expected
-				   :tccs tccs ;;NSH(10.20.94)
-				   :context *current-context*))
-			    out-alist)))
-		     tccs))))
+  (if (null in-alist)
+      (nreverse out-alist)
+      (let* ((var (caar in-alist))
+	     (term (cdar in-alist))
+	     (expected (when (slot-exists-p var 'type)
+			 (substit (type var) out-alist)))
+	     (new-term (typecheck term :expected expected :tccs tccs))
+	     (new-out-alist (acons var new-term out-alist)))
+	(when (some #'(lambda (fv)
+			(not (memq (declaration fv) *bound-variables*)))
+		    (freevars expected))
+	  (type-error expected "Free variables in type ~a" expected))
+	(tc-alist (cdr in-alist) new-out-alist tccs))))
 
 (defun check-modsubst (modsubst)
   (cond ((or (null modsubst)(eq modsubst t))
