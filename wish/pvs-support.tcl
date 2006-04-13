@@ -352,14 +352,17 @@ proc kids {path nkids} {
 
 proc delete-proof-subtree {name theory relpath} {
     set proofwin .proof.u_$theory-$name-i.fr.c
-    set path $theory-$name-$relpath
+    set path $theory-$name-i-$relpath
     catch {move-dag-item $proofwin $path 0 0}
-
     dag-delete-subtree $proofwin $path
 }
 
-proc proof-num-children {name theory path kids} {
-    set fullpath $theory-$name-$path
+proc proof-num-children {name theory path kids interactive} {
+    if {$interactive} {
+	set fullpath $theory-$name-i-$path
+    } else {
+	set fullpath $theory-$name-$path
+    }
     global $fullpath
     set ${fullpath}(kids) $kids
     catch {unset ${fullpath}(rule)}
@@ -367,27 +370,32 @@ proc proof-num-children {name theory path kids} {
     catch {unset ${fullpath}(tcc)}
 }
 
-proc proof-rule {name theory path rule} {
-    set fullpath $theory-$name-$path
+proc proof-rule {name theory path rule interactive} {
+    if {$interactive} {
+	set fullpath $theory-$name-i-$path
+    } else {
+	set fullpath $theory-$name-$path
+    }
     global $fullpath
     set ${fullpath}(rule) $rule
 }
 
 proc proof-sequent {name theory path seqlabel sequent} {
-    set fullpath $theory-$name-$path
+    set fullpath $theory-$name-i-$path
     global $fullpath
     set ${fullpath}(seqlabel) $seqlabel
     set ${fullpath}(sequent) $sequent
 }
 
 proc proof-done {name theory path interactive} {
-    set fullpath $theory-$name-$path
-    global $fullpath
     if {$interactive} {
 	set pwin .proof.u_$theory-$name-i.fr.c
+	set fullpath $theory-$name-i-$path
     } else {
 	set pwin .proof.u_$theory-$name.fr.c
+	set fullpath $theory-$name-$path
     }
+    global $fullpath
     set ${fullpath}(done) 1
 
     my-foreground $pwin $fullpath [get-option doneColor]
@@ -395,20 +403,21 @@ proc proof-done {name theory path interactive} {
 
 proc proof-tcc {path} {
     global $path
-
     set ${path}(tcc) 1
 }
 
 proc proof-show {name theory path interactive} {
     global env
-    set top $theory-$name-top
-    set fullpath $theory-$name-$path
-    global $fullpath
     if {$interactive} {
 	set proofwin .proof.u_$theory-$name-i.fr.c
+	set top $theory-$name-i-top
+	set fullpath $theory-$name-i-$path
     } else {
 	set proofwin .proof.u_$theory-$name.fr.c
+	set top $theory-$name-top
+	set fullpath $theory-$name-$path
     }
+    global $fullpath
     set seq \
 	[$proofwin create bitmap 0 0 \
 	     -bitmap @$env(PVSPATH)/wish/sequent.xbm \
@@ -782,10 +791,11 @@ proc my-config {win type tag opt val} {
 proc layout-proof {name theory interactive} {
     if {$interactive} {
 	set proofwin .proof.u_$theory-$name-i.fr.c
+	set top $theory-$name-i-top
     } else {
 	set proofwin .proof.u_$theory-$name.fr.c
+	set top $theory-$name-top
     }
-    set top $theory-$name-top
     tree-layout $proofwin $top
     canvas-set-scroll $proofwin
 }
@@ -814,8 +824,8 @@ proc proof-current {name theory relpath} {
     global tk_version
     global curpath
     set proofwin .proof.u_$theory-$name-i.fr.c
-    set ptop $theory-$name-top
-    set path $theory-$name-$relpath
+    set ptop $theory-$name-i-top
+    set path $theory-$name-i-$relpath
 
     if {[info exists curpath]} {
 	$proofwin delete current-circle
@@ -1164,7 +1174,6 @@ proc show-prover-commands {commands} {
     toplevel $win -relief flat
     wm maxsize $win 2000 2000
     set geom [get-option geometry $win]
-    puts $geom
     if {$geom != {}} {
 	wm geometry $win $geom
     }
@@ -1531,8 +1540,10 @@ proc setup-proof {name theory directory counter interactive} {
     catch {frame .proof}
     if {$interactive} {
 	set win .proof.u_$theory-$name-i
+	set top $theory-$name-i-top
     } else {
 	set win .proof.u_$theory-$name
+	set top $theory-$name-top
     }
     set pw \
 	[setup-dag-win \
@@ -1551,7 +1562,7 @@ proc setup-proof {name theory directory counter interactive} {
     dag-bind-move $pw .desc Control 1 to
     dag-bind-move $pw {} Control 2 both
     if {$interactive} {
-	$pw bind sequent <1> "show-sequent $pw $theory-$name-top"
+	$pw bind sequent <1> "show-sequent $pw $top"
     } else {
 	set text "Sequent is only available for interactive proofs"
 	$pw bind sequent <1> "show-message $win \"$text\""
@@ -1562,20 +1573,20 @@ proc setup-proof {name theory directory counter interactive} {
     # item two is changed later for interactive proofs, see rule-menu
     menu $pw.rulemenu
     $pw.rulemenu add command -label "Rule Window" \
-         -command "get-full-rule $pw $theory-$name-top" \
+         -command "get-full-rule $pw $top" \
          -underline 5
 
     $pw.rulemenu add command -label "Run" -underline 0 \
          -command "show-message $win \"Only available for \
                                        interactive proofs\""
     $pw.rulemenu add command -label "Select" -underline 0 \
-	-command "rule-select $pw $theory-$name-top"
+	-command "rule-select $pw $top"
 
     # set the selection handler for dealing with the primary selection
     selection handle $pw {handle-selection}
 
-    $pw bind rule <1> "get-full-rule $pw $theory-$name-top"
-    $pw bind rule <3> "rule-menu %X %Y $pw $theory-$name-top $interactive"
+    $pw bind rule <1> "get-full-rule $pw $top"
+    $pw bind rule <3> "rule-menu %X %Y $pw $top $interactive"
     bind $pw <Destroy> "+pvs-send {(stop-displaying-proof $counter)}"
     bind $pw <Destroy> {+
 	foreach kid [winfo children .] {
