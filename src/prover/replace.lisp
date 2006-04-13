@@ -57,12 +57,13 @@
 			      *true*)
 			  *false*)))
 	       ;;	     (format-if "~%Replacing using formula ~a," source-sformnum)
-	       (let ((new-s-forms
-		      (replace-loop lhs rhs sformnum
-				    (if (null sformnums)
-					'* sformnums)
-				    (s-forms goalsequent)
-				    1 -1 dont-delete?))) 
+	       (let* ((*replace-cache* (make-hash-table :test #'eq))
+		      (new-s-forms
+		       (replace-loop lhs rhs sformnum
+				     (if (null sformnums)
+					 '* sformnums)
+				     (s-forms goalsequent)
+				     1 -1 dont-delete?)))
 		 (if (every #'eql  new-s-forms (s-forms goalsequent))
 		     (values 'X nil nil)
 		     (let* ((new-s-forms
@@ -95,36 +96,36 @@
 
 
 (defun replace-loop (lhs rhs sformnum sformnums sforms pos neg dont-delete?)
-  (let ((*replace-cache* (make-hash-table :test #'eq)))
-    (if (null sforms) nil
-	(if (negation? (formula (car sforms)))
-	    (if (or (eq sformnum neg)
-		    (not (in-sformnums? (car sforms) pos neg sformnums)))
-		(cons (car sforms)
-		      (replace-loop lhs rhs sformnum sformnums  (cdr sforms)
-				    pos (1- neg) dont-delete?))
-		(let* ((result (replace-expr lhs rhs (car sforms)))
-		       (new-fmla (formula result))
-		       (keep-result 
-			(if (and dont-delete?
-				 (tc-eq new-fmla *false*))
-			    (car sforms)
-			    result)))
-		  (cons keep-result
-			(replace-loop lhs rhs sformnum sformnums (cdr sforms)
-				      pos (1- neg) dont-delete?))))
-	    (if (or (eq sformnum pos)
-		    (not (in-sformnums? (car sforms) pos neg sformnums)))
-		(cons (car sforms)
+  (when sforms
+    (let ((*replace-cache* (make-hash-table :test #'eq)))
+      (if (negation? (formula (car sforms)))
+	  (if (or (eq sformnum neg)
+		  (not (in-sformnums? (car sforms) pos neg sformnums)))
+	      (cons (car sforms)
+		    (replace-loop lhs rhs sformnum sformnums (cdr sforms)
+				  pos (1- neg) dont-delete?))
+	      (let* ((result (replace-expr lhs rhs (car sforms)))
+		     (new-fmla (formula result))
+		     (keep-result 
+		      (if (and dont-delete?
+			       (tc-eq new-fmla *false*))
+			  (car sforms)
+			  result)))
+		(cons keep-result
 		      (replace-loop lhs rhs sformnum sformnums (cdr sforms)
-				    (1+ pos) neg dont-delete?))
-		(let* ((result (replace-expr lhs rhs (car sforms)))
-		       (new-fmla (formula result))
-		       (keep-result 
-			(if (and dont-delete?
-				 (tc-eq new-fmla *false*))
-			    (car sforms)
-			    result)))
+				    pos (1- neg) dont-delete?))))
+	  (if (or (eq sformnum pos)
+		  (not (in-sformnums? (car sforms) pos neg sformnums)))
+	      (cons (car sforms)
+		    (replace-loop lhs rhs sformnum sformnums (cdr sforms)
+				  (1+ pos) neg dont-delete?))
+	      (let* ((result (replace-expr lhs rhs (car sforms)))
+		     (new-fmla (formula result))
+		     (keep-result 
+		      (if (and dont-delete?
+			       (tc-eq new-fmla *false*))
+			  (car sforms)
+			  result)))
 		(cons keep-result
 		      (replace-loop lhs rhs sformnum sformnums (cdr sforms)
 				    (1+ pos) neg dont-delete?))))))))
@@ -289,8 +290,15 @@
 (defmethod replace-expr* (lhs rhs (expr projection-application) lastopinfix?)
   (if (replace-eq lhs expr)
       (parenthesize rhs lastopinfix?)
-      (lcopy expr
-	'argument (replace-expr* lhs rhs (argument expr) nil))))
+      (let ((arg (replace-expr* lhs rhs (argument expr) nil)))
+	(if (tc-eq (argument expr) arg)
+	    expr
+	    (let* ((stype (find-supertype (type arg)))
+		   (ntype (make!-projection-type*
+			   (types stype) (index expr) 1 arg)))
+	      (lcopy expr
+		'argument arg
+		'type ntype))))))
 
 (defmethod replace-expr* (lhs rhs (expr injection-application) lastopinfix?)
   (if (replace-eq lhs expr)
@@ -342,9 +350,21 @@
 (defmethod replace-expr* (lhs rhs (expr binding-expr) lastopinfix?)
   (if (replace-eq lhs expr)
       (parenthesize rhs lastopinfix?)
-      (let ((*bound-variables* (append (bindings expr) *bound-variables*)))
-	(lcopy expr
-	  'expression (replace-expr* lhs rhs (expression expr) nil)))))
+      (let* ((new-bindings (make-new-bindings
+			    (bindings expr)
+			    (acons (mk-bind-decl (gensym) *boolean*)
+				   (make!-tuple-expr* (list lhs rhs)) nil)
+			    (expression expr)))
+	     (nalist (unless (equal new-bindings (bindings expr))
+		       (substit-pairlis (bindings expr) new-bindings nil)))
+	     (nexpr (when nalist (substit (expression expr) nalist)))
+	     (*bound-variables* (append new-bindings *bound-variables*)))
+	(if nalist
+	    (lcopy expr
+	      'bindings new-bindings
+	      'expression (replace-expr* lhs rhs nexpr nil))
+	    (lcopy expr
+	      'expression (replace-expr* lhs rhs (expression expr) nil))))))
 
 (defmethod replace-expr* (lhs rhs (expr cases-expr) lastopinfix?)
   (if (replace-eq expr lhs)
