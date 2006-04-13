@@ -599,7 +599,7 @@ are reduced.  Example reduction steps are:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (addrule 'simplify ()
 	 ((fnums *) record? rewrite? 
-	  rewrite-flag flush? linear? (cases-rewrite? t) (type-constraints? t)
+	  rewrite-flag flush? linear? cases-rewrite? (type-constraints? t)
 	  ignore-prover-output? let-reduce? quant-simp? implicit-typepreds?)
   (invoke-simplification fnums record? rewrite?
 			 rewrite-flag flush? nil ;;NSH(10-26-01)was linear?
@@ -826,7 +826,8 @@ which eliminates all top-level disjuncts in the indicated FNUMS."
 	(error-format-if
 	 "~%Illegal length: ~a; must be a positive number or nil" length))
       (setq *prover-print-length*
-	    (unless (or (null length) (zerop length)) length))
+	    (unless (or (null length) (zerop length))
+	      length))
       (values 'X nil nil))
   "Sets the print length"
   "~%Setting print length to ~a")
@@ -838,7 +839,8 @@ which eliminates all top-level disjuncts in the indicated FNUMS."
 	(error-format-if
 	 "~%Illegal depth: ~a; must be a positive number or nil" depth))
       (setq *prover-print-depth*
-	    (unless (or (null depth) (zerop depth) depth)))
+	    (unless (or (null depth) (zerop depth))
+	      depth))
       (values 'X nil nil))
   "Sets the print depth."
   "~%Setting print depth to ~a")
