@@ -334,8 +334,8 @@ pvs-prover = src/prover/checker-macros.lisp \
 
 bddlisp = BDD/bdd.lisp BDD/mu.lisp
 
-PVSiolisp = src/PVSio/pvs-lib src/PVSio/defattach src/PVSio/eval \
-            src/PVSio/pvsio
+PVSiolisp = src/PVSio/pvs-lib.lisp src/PVSio/defattach.lisp \
+            src/PVSio/eval.lisp src/PVSio/pvsio.lisp
 
 ws1slisp = src/WS1S/lisp/dfa-foreign.lisp src/WS1S/lisp/dfa.lisp \
            src/WS1S/lisp/pvs-utils.lisp src/WS1S/lisp/symtab.lisp \
@@ -556,7 +556,8 @@ system-files = README pvs pvs-tex.sub pvs.sty bin/relocate bin/pvs-platform \
                wish/gray.xbm wish/sequent.xbm \
                emacs/README emacs/go-pvs.el $(pvs-emacs-src) \
                emacs/emacs-src/pvs.xpm \
-               $(ilisp-emacs-src) emacs/emacs20 emacs/xemacs21
+               $(ilisp-emacs-src) emacs/emacs20 emacs/xemacs21 \
+               lib/PVSio
 
 configure-files = Makefile.in README README.configure configure.in \
                   pvs.in pvs.system.in
