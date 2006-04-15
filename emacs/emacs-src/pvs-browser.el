@@ -230,7 +230,7 @@ proofchain is still complete, if it was in the full theory."
 			    bufname origin line)
 			"Collecting..." 'unusedby 'list)))
 	(unless pvs-decls
-	  (error "No nuused declarations found for formula %s" ))
+	  (error "No nuused declarations found for formula"))
 	(setq *pvs-decls* pvs-decls)
 	(pvs-make-browse-buffer))))
 
@@ -252,7 +252,7 @@ still complete, if it was in the full theory."
 		      theory)
 		    "Collecting..." 'unusedby 'list)))
     (unless pvs-decls
-      (error "No nuused declarations found for formula %s" ))
+      (error "No unused declarations found for given formulas"))
     (setq *pvs-decls* pvs-decls)
     (pvs-make-browse-buffer)))
 
@@ -270,7 +270,8 @@ still complete, if it was in the full theory."
       (set-buffer-modified-p nil)
       (toggle-read-only)
       (pvs-browse-mode)
-      (pvs-display-browse-buffer buf)
+      (unless noninteractive
+	(pvs-display-browse-buffer buf))
       buf)))
 
 (defun pvs-insert-declarations ()
@@ -283,7 +284,8 @@ still complete, if it was in the full theory."
   "Select this line's declaration in full screen."
   (interactive)
   (unless (string-equal (buffer-name) "Browse")
-    (error "The pvs-browse-view command is not available in this buffer"))
+    (error "The pvs-browse-select command is not available in buffer %s"
+	   (buffer-name)))
   (if (<= (current-line-number) 2)
       (error "Please select from list of choices below."))
   (let* ((entry (nth (- (current-line-number) 3) *pvs-decls*))
@@ -326,7 +328,8 @@ still complete, if it was in the full theory."
 Returns to Declaration List when done."
   (interactive)
   (unless (string-equal (buffer-name) "Browse")
-    (error "The pvs-browse-view command is not available in this buffer"))
+    (error "The pvs-browse-view command is not available in buffer %s"
+	   (buffer-name)))
   (if (<= (current-line-number) 2)
       (error "Please select from list of choices below."))
   (let* ((cbuf (current-buffer))
