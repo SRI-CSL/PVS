@@ -20,7 +20,7 @@
   (excl:generate-application
 	     (format nil "~a-~a"
 	       (or (sys:getenv "SYSTEM") "pvs")
-	       (or (sys:getenv "LISP") "allegro7.0"))
+	       (or (sys:getenv "LISP") "allegro8.0"))
 	     builddir	     
 	     (list :list2 "@PVSPATH@/src/make-allegro-pvs.lisp")
 	     :additional-arguments nil
