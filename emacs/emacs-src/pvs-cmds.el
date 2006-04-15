@@ -845,7 +845,7 @@ and pvs-tex.sub files from your home directory."
 
 ;;; dump-pvs-files
 
-(defpvs dump-pvs-files dump-files (pvs-file libraries-p dump-file)
+(defpvs dump-pvs-files dump-files (pvs-file libraries-p dmp-file)
   "Dump files in transitive closure of import lists to file
 
 The dump-pvs-files command creates a new file that contains all the
@@ -856,16 +856,17 @@ PVS file.  If given an argument, includes library files as well."
 		       (list (y-or-n-p "Include libraries? "))
 		       (list (read-file-name
 			      "Dump theories into file name: "))))
-  (when (or (not (file-exists-p dump-file))
-	    (yes-or-no-p (format "File %s exists - overwrite? "
-			     dump-file)))
-    (let ((dump-buffer (get-buffer-create "*pvs-temp-buffer*")))
-      (save-excursion
-	(set-buffer dump-buffer)
-	(erase-buffer)
-	(dump-pvs-files-to-current-buffer pvs-file libraries-p)
-	(write-file dump-file)
-	(kill-buffer dump-buffer)))))
+  (let* ((default-directory *pvs-current-directory*)
+	 (dump-file (expand-file-name dmp-file)))
+    (when (or (not (file-exists-p dump-file))
+	      (yes-or-no-p (format "File %s exists - overwrite? " dump-file)))
+      (let ((dump-buffer (get-buffer-create "*pvs-temp-buffer*")))
+	(save-excursion
+	  (set-buffer dump-buffer)
+	  (erase-buffer)
+	  (dump-pvs-files-to-current-buffer pvs-file libraries-p)
+	  (write-file dump-file)
+	  (kill-buffer dump-buffer))))))
 
 (defpvs edit-pvs-dump-file dump-files (dump-file)
   "Edit a PVS dump file
@@ -897,11 +898,14 @@ making use of outline mode."
       (insert-file-contents "~/.pvs.lisp")
       (goto-char (point-max)))
     (when (file-exists-p "~/.pvsemacs")
-      (insert (format "\n$$$PVSHOME/.pvs.lisp\n"))
-      (insert-file-contents "~/.pvs.lisp")
+      (insert (format "\n$$$PVSHOME/.pvsemacs\n"))
+      (insert-file-contents "~/.pvsemacs")
       (goto-char (point-max)))
-    (dolist (x (get-pvs-file-dependencies pvs-file libraries-p))
+    (dolist (x (save-excursion
+		 (get-pvs-file-dependencies pvs-file libraries-p)))
       (let ((file (expand-file-name (format "%s.pvs" x))))
+	(unless (file-exists-p file)
+	  (error "File missing? %s" file))
 	(when (file-exists-p file)
 	  (insert (format "\n$$$%s.pvs\n" x))
 	  (insert-file-contents file)
@@ -924,7 +928,8 @@ making use of outline mode."
     (unless (member (cadddr versions) '(nil NIL))
       (insert (format "%%                    patch-exp version %s\n"
 		  (cadddr versions))))
-    (let ((prelude-libs (pvs-send-and-wait "(pvs-context-libraries)")))
+    (let ((prelude-libs (save-excursion
+			  (pvs-send-and-wait "(pvs-context-libraries)"))))
       (dolist (lib prelude-libs)
 	(insert (format "\n(load-prelude-library \"%s\")" lib))))))
 
@@ -1763,7 +1768,7 @@ context."
       (cdr (assoc file files-alist)))))
 
 (defun typecheck-formula (formula-decl &optional theory-name)
-  (let ((*pvs-error* nil)
+  (let ((pvs-error nil)
 	(tname (or theory-name (current-theory))))
     (pvs-bury-output)
     (pvs-busy)
@@ -1771,7 +1776,7 @@ context."
 			   formula-decl (when tname (format "\"%s\"" tname)))
 		       nil nil 'dont-care)
     (pvs-ready)
-    (not *pvs-error*)))
+    (not pvs-error)))
 
 (defun prove-formula (formula-decl &optional theory-name proof)
   (when (typecheck-formula formula-decl theory-name)
