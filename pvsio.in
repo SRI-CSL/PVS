@@ -1,0 +1,221 @@
+#!/bin/sh
+# Release: PVSio-2.d (11/09/05)
+
+PVSPATH=@PVSPATH@
+
+#-------------------------------------------------
+# Nothing below this line should need modification
+
+EXPR=
+TCCS=nil
+VERB=nil
+TIME=nil
+PACK=PVSio
+
+usage() {
+  echo "pvsio [-options ...] [<file>@]<theory>[:<main>]
+where options include:
+  -e|-expr <expr>           evaluate <expr> after startup
+  -h|-help                  print this message
+  -p|-packages <p1>,..,<pn> load packages <p1>,..,<pn>
+  -tccs                     generate TCCs     
+  -timing                   print timing information for each evaluation
+  -verbose                  print typechecking information
+  -version                  print PVSio version
+  <file>@<theory>:<main>    load <theory> from <file>.pvs, evaluate <main>, 
+                            and exit 
+
+  If <file> is not provided, <theory> is assumed to be the name of the file 
+  as well. If <theory> is not provided, PVSio starts a top level read-eval-loop.
+"  
+}
+
+while [ $# -gt 0 ]
+do
+   case $1 in
+   -e|-expr)     EXPR="$EXPR$2;"
+                 shift;;
+   -h|-help)     usage
+                 exit 0;;
+   -p|-packages) PACK="$PACK,$2"
+                 shift;;
+   -tccs)        TCCS=t;;
+   -timing)      TIME=t;;
+   -verbose)     VERB=t;;
+   -version)     echo "PVSio-2.d (11/09/05)"
+                 exit 0;;
+   -*)           usage
+                 echo "Error: $1 is not a valid option"
+                 exit 0;;
+   *)            ARG="$1"
+   esac
+   shift
+done
+
+PACK=`echo "(\"$PACK\")" | sed -e "s/,/\" \"/g"`
+
+if [ -z $ARG ] 
+then
+  echo "pvsio__ : THEORY BEGIN END pvsio__" > /tmp/pvsio__.pvs
+  ARG="/tmp/pvsio__"
+#  usage
+#  echo Error: Theory is missing
+#  exit 0
+fi
+
+MAIN=
+
+case $ARG in
+  *@*) FILE=`echo $ARG | sed -e "s/\([^@]*\)@.*/\1/"`
+       THMA=`echo $ARG | sed -e "s/[^@]*@//"`;;
+  *:*) FILE=`echo $ARG | sed -e "s/\([^:]\):.*$/\1/"`
+       THMA=`echo $ARG | sed -e "s+.*/++"`;;
+  *)   FILE=$ARG
+       THMA=`echo $ARG | sed -e "s+.*/++"`;;
+esac
+
+case $THMA in
+  *:*) THEORY=`echo $THMA | sed -e "s/\([^:]\):.*$/\1/"`
+       MAIN=`echo $THMA | sed -e "s/[^:]*://"`;;
+  *)   THEORY=$THMA
+esac
+
+if [ -z $FILE ]
+then
+  echo Error: Invalid theory name $ARG
+  exit 0
+fi
+
+if [ -z $THEORY ]
+then
+  echo Error: Invalid theory name $ARG
+  exit 0
+fi
+
+if [ -z $EXPR ]
+then EXPR=nil
+else EXPR="\"$EXPR\""
+fi
+
+if [ -z $MAIN ]
+then MAIN=nil
+else MAIN="\"$MAIN;\""
+fi
+
+# Script for starting PVSio
+#-------------------------------------------------
+# Nothing below this line should need modification
+
+
+# get the command-line options
+opsys=`uname -s`
+flags=
+batch=
+rawmode=
+getversion=
+nobg=
+if [ -f $HOME/.emacs ]
+  then dotemacs="-l $HOME/.emacs"
+  else dotemacs=
+fi
+PVSXINIT=${PVSXINIT:-""}
+PVSFORCEDP=nil
+pvsruntime=
+# Determine the system type and set PVSARCH accordingly
+case $opsys in
+  SunOS) majvers=`uname -r | cut -d"." -f1`
+	 if [ $majvers = 4 ]
+	    then echo "PVS 3.3 only runs under Mac OS X, Linux, FreeBSD, or Solaris"; exit 1
+	 fi
+	 PVSARCH=sun4;;
+  Linux) # If Linux, we need to determine the Redhat version to use.
+	 opsys=redhat
+	 majvers=5
+	 othervers=4 
+	 PVSARCH=ix86
+	 # Allegro does not work with Linux's New Posix Thread Library (NPTL)
+	 # used in newer Red Hat kernels and 2.6 kernels.  This will force
+	 # the old thread-implementation.
+	 LD_ASSUME_KERNEL=2.4.19
+	 export LD_ASSUME_KERNEL
+	 ;;
+  FreeBSD) opsys=redhat
+	   majvers=5
+	   othervers=4 
+	   PVSARCH=ix86
+	   # Allegro does not work with Linux's New Posix Thread Library (NPTL)
+	   # used in newer Red Hat kernels and 2.6 kernels.  This will force
+	   # the old thread-implementation.
+	   LD_ASSUME_KERNEL=2.4.19
+	   export LD_ASSUME_KERNEL
+           ;;
+  Darwin) opsys=MacOSX
+          majvers=7
+	  PVSARCH=powerpc
+	  ;;
+  *) echo "PVS 3.3 only runs under Solaris, Linux, FreeBSD (linux-enabled), or Mac (Darwin 7.4)"; exit 1
+esac
+
+binpath=$PVSPATH/bin/$PVSARCH-$opsys${majvers}
+
+PVSALLE=`find $binpath/runtime -name pvs-allegro*.? -print`
+PVSLISP=`basename $PVSALLE`
+
+if [ -d $binpath/full -a -x $binpath/full/$PVSIMAGE -a ! "$pvsruntime" ]
+   then PATH=$binpath/full:$binpath:$PVSPATH/bin:$PATH
+    LD_LIBRARY_PATH=$binpath/full:$LD_LIBRARY_PATH
+elif [ -d $binpath/runtime -a -x $binpath/runtime/$PVSIMAGE ]
+   then PATH=$binpath/runtime:$binpath:$PVSPATH/bin:$PATH
+    LD_LIBRARY_PATH=$binpath/runtime:$LD_LIBRARY_PATH
+   else echo "Cannot find $binpath/runtime/$PVSIMAGE"
+        echo "Check the values of PVSPATH and PVSLISP"
+	exit 1
+fi
+
+ALLEGRO_CL_HOME=$PVSPATH/bin/$PVSARCH-$opsys${majvers}/home
+PVSPATCHLEVEL=${PVSPATCHLEVEL:-2}
+
+case $PVSPATCHLEVEL in
+    none) PVSPATCHLEVEL=0;;
+    rel)  PVSPATCHLEVEL=1;;
+    test) PVSPATCHLEVEL=2;;
+    exp)  PVSPATCHLEVEL=3;;
+esac
+
+PVSVERBOSE=${PVSVERBOSE:-0}
+PVSIMAGE="$PVSLISP"
+
+export ALLEGRO_CL_HOME DISPLAY LD_LIBRARY_PATH
+export PVSARCH PVSIMAGE PVSPATH PATH PVSLISP PVSVERBOSE PVSTIMEOUT
+export PVSPATCHLEVEL PVSMINUSQ PVSFORCEDP PVSDEFAULTDP
+
+$PVSIMAGE -qq -e "(in-package :pvs)" -e "
+(progn 
+  (when (not (probe-file \"$FILE.pvs\"))
+    (format t \"File not found: $FILE.pvs~%\")
+    (excl:exit 0 :no-unwind t :quiet t))
+  (when $TIME (setq pvs::*pvs-eval-do-timing* t))
+  (multiple-value-bind (val err)
+    (ignore-errors
+      (with-open-file 
+        (*standard-output*
+         (format nil \"~a$THEORY.log\" (directory-namestring \"$FILE\")) 
+         :direction :output 
+         :if-exists :supersede)
+        (pvs::pvs-init)
+        (pvs::change-context (directory-namestring \"$FILE\"))
+        (dolist (pack '$PACK) (pvs::load-prelude-library pack))
+        (when (null $VERB)
+          (unwind-protect
+            (pvs::typecheck-file (file-namestring\"$FILE\") nil nil nil t)
+            (fresh-line)
+            (finish-output))))
+      (when $VERB
+        (pvs::typecheck-file (file-namestring\"$FILE\") nil nil nil t))
+      (when $EXPR (pvs::evaluation-mode-pvsio \"$THEORY\" $EXPR $TCCS t nil))
+      (pvs::evaluation-mode-pvsio \"$THEORY\" $MAIN $TCCS t (null $MAIN))
+      t)
+    (when err (format t \"~%~a ($FILE.pvs). See $THEORY.log~%\" err)))
+  (fresh-line)
+  (excl:exit 0 :no-unwind t :quiet t))"
+
