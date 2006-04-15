@@ -71,7 +71,7 @@ intervenes."
 ;;;          Where foo is the dialect, and foo-check-prompt is a function
 ;;;          that determines from old and new whether the new is an error.
 
-(defvar *pvs-error* nil)
+(defvar pvs-error)
 (defvar in-pvs-emacs-eval nil)
 (defvar *default-char-width* 80)
 (defvar pvs-message-delay 300
@@ -183,7 +183,8 @@ intervenes."
 	 (output (pvs-send* string msg status)))
     (if pvs-aborted
 	(setq quit-flag t)
-	(pvs-extract-expected-from-output output expected))))
+	(unless (and (boundp 'pvs-error) pvs-error)
+	  (pvs-extract-expected-from-output output expected)))))
 
 (defun pvs-extract-expected-from-output (output expected)
   (unless (or in-pvs-emacs-eval
@@ -207,6 +208,9 @@ intervenes."
   (sit-for 1))
 
 (defun pvs-send* (string &optional message status and-go)
+  (save-excursion
+    (set-buffer (ilisp-buffer))
+    (setq buffer-read-only nil))
   (let (*pvs-output-pos*)
     (comint-log (ilisp-process) (format "\nsent:{%s}\n" string))
     (prog1
@@ -442,7 +446,8 @@ want to set this to nil for slow terminals, or connections over a modem.")
   (apply 'pvs-error* (parse-pvs-message output)))
 
 (defun pvs-error* (file dir msg err place)
-  (setq *pvs-error* t)
+  (when (boundp 'pvs-error)
+    (setq pvs-error t))
   (if noninteractive
       (progn
 	(when pvs-validating
@@ -649,7 +654,8 @@ window."
 	  (quit (if (not *pvs-initialized*)
 		    (comint-simple-send (ilisp-process) "nil")
 		    (comint-simple-send (ilisp-process) ":abort")
-		    (setq *pvs-error* t)
+		    (when (boundp 'pvs-error)
+		      (setq pvs-error t))
 		    (setq pvs-aborted t)
 		    (keyboard-quit)))))))
 

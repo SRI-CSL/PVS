@@ -70,7 +70,7 @@ prover to overwrite it at the end of the proof session."
 	 (dotpos (position ?. oname))
 	 (name (if dotpos (substring oname 0 dotpos) oname))
 	 (declname (when dotpos (substring oname (1+ dotpos)))))
-    (let ((*pvs-error* nil))
+    (let ((pvs-error nil))
       (cond ((equal origin "pvs")
 	     (save-some-pvs-buffers)
 	     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
@@ -80,9 +80,9 @@ prover to overwrite it at the end of the proof session."
 	     (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" name)
 					nil 'tc nil)
 	       (error "%s is not typechecked" name))))
-      (unless *pvs-error*
+      (unless pvs-error
 	(pvs-prove-formula name declname origin rerun nil pvs-x-show-proofs)
-	(unless *pvs-error*
+	(unless pvs-error
 	  (switch-to-lisp t t))))))
 
 (defpvs x-prove prove (&optional rerun)
@@ -116,7 +116,7 @@ the formula.  With an argument, runs the proof in the background."
 	 (dotpos (position ?. oname))
 	 (name (if dotpos (substring oname 0 dotpos) oname))
 	 (declname (when dotpos (substring oname (1+ dotpos)))))
-    (let ((*pvs-error* nil))
+    (let ((pvs-error nil))
       (cond ((equal origin "pvs")
 	     (save-some-pvs-buffers)
 	     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
@@ -126,7 +126,7 @@ the formula.  With an argument, runs the proof in the background."
 	     (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" name)
 					nil 'tc nil)
 	       (error "%s is not typechecked" name))))
-      (unless *pvs-error*
+      (unless pvs-error
 	(pvs-prove-formula name declname origin 't (and current-prefix-arg t)
 			   pvs-x-show-proofs)))))
 
@@ -154,7 +154,8 @@ the formula.  With an argument, runs the proof in the background."
 	     line (when (member rerun '(t T)) t) origin (buffer-name)
 	     prelude-offset background display unproved)
 	 nil 'pr (not background))
-	(setq *pvs-error* t))))
+	(when (boundp 'pvs-error)
+	  (setq pvs-error t)))))
 
 (defpvs prove-next-unproved-formula prove ()
   "Invokes the prover on the next unproved formula.
@@ -175,7 +176,7 @@ prover to overwrite it at the end of the proof session."
 	 (declname (when dotpos (substring oname (1+ dotpos))))
 	 (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
 	 (line (+ (current-line-number) prelude-offset)))
-    (let ((*pvs-error* nil))
+    (let ((pvs-error nil))
       (cond ((equal origin "pvs")
 	     (save-some-pvs-buffers)
 	     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
@@ -185,7 +186,7 @@ prover to overwrite it at the end of the proof session."
 	     (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" name)
 					nil 'tc nil)
 	       (error "%s is not typechecked" name))))
-      (unless *pvs-error*
+      (unless pvs-error
 	(pvs-prove-formula name declname origin nil nil pvs-x-show-proofs t)))))
 
 (defpvs prove-theory prove (theory)
@@ -568,7 +569,7 @@ documentation for edit-proof-mode for more information."
 	 (dotpos (position ?. oname))
 	 (name (if dotpos (substring oname 0 dotpos) oname))
 	 (declname (when dotpos (substring oname (1+ dotpos)))))
-    (let* ((*pvs-error* nil)
+    (let* ((pvs-error nil)
 	   (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
 	   (line (+ (current-line-number) prelude-offset)))
       (cond ((equal origin "pvs")
@@ -580,7 +581,7 @@ documentation for edit-proof-mode for more information."
 	     (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" name)
 					nil 'tc nil)
 	       (error "%s is not typechecked" name))))
-      (unless *pvs-error*
+      (unless pvs-error
 	(when (get-buffer "Proof")
 	  (kill-buffer "Proof"))
 	(set-proof-script-font-lock-keywords)
@@ -1312,7 +1313,7 @@ through using the edit-proof command."
 	 (declname (when dotpos (substring oname (1+ dotpos))))
 	 (line (current-line-number))
 	 (bname (buffer-name)))
-    (let ((*pvs-error* nil))
+    (let ((pvs-error nil))
       (cond ((equal origin "pvs")
 	     (save-some-pvs-buffers)
 	     (pvs-send-and-wait (format "(typecheck-file \"%s\" nil nil nil t)"
@@ -1322,7 +1323,7 @@ through using the edit-proof command."
 	     (unless (pvs-send-and-wait (format "(typechecked\? \"%s\")" name)
 					nil 'tc nil)
 	       (error "%s is not typechecked" name))))
-      (unless *pvs-error*
+      (unless pvs-error
 	(let* ((prelude-offset (if (equal origin "prelude-theory")
 				   pvs-prelude 0))
 	       (line (+ (current-line-number) prelude-offset)))
@@ -2081,7 +2082,7 @@ Letters do not insert themselves; instead, they are commands:
     (goto-char (point-min))
     (while (search-forward "(checkpoint)" nil t)
       (replace-match "!!!" nil t)))
-  (let* ((*pvs-error* nil)
+  (let* ((pvs-error nil)
 	 (prelude-offset (if (equal origin "prelude-theory") pvs-prelude 0))
 	 (line (+ (current-line-number) prelude-offset))
 	 (installed (pvs-send-and-wait
@@ -2091,7 +2092,7 @@ Letters do not insert themselves; instead, they are commands:
 			 line (when origin (format "\"%s\"" origin))
 			 (buffer-name) prelude-offset)
 		     nil nil 'bool)))
-    (when (and (not *pvs-error*)
+    (when (and (not pvs-error)
 	       installed
 	       (or step
 ;; 		   (save-excursion
