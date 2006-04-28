@@ -1711,6 +1711,10 @@ where db is to replace db1 and db2")
 							  aexpr)
 			       incs))))
 
+(defmethod compatible-preds* ((atype subtype) (etype datatype-subtype)
+			      aexpr incs)
+  (compatible-preds* (supertype atype) etype aexpr incs))
+
 (defmethod compatible-preds* ((atype datatype-subtype) (etype datatype-subtype)
 			      aexpr incs)
   (adt-compatible-preds atype etype aexpr incs))
