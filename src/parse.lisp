@@ -616,27 +616,14 @@
 
 
 (defun xt-rec-judgement* (jdecl dtype place)
-  (case (sim-term-op jdecl)
-    (JNAMEDECL
-     (let ((ex (xt-name (term-arg0 jdecl) nil)))
-       (if (number-expr? ex)
-	   (make-instance 'rec-number-judgement
-	     'number-expr ex
-	     'declared-type dtype
-	     'chain? t
-	     'place place)
-	   (make-instance 'rec-name-judgement
-	     'name (change-class ex 'name-expr)
-	     'declared-type dtype
-	     'chain? t
-	     'place place))))
-    (JAPPLDECL (make-instance 'rec-application-judgement
-		 'name (change-class (xt-name (term-arg0 jdecl) nil) 'name-expr)
-		 'formals (xt-pdf (term-arg1 jdecl))
-		 'declared-type dtype
-		 'chain? t
-		 'place place))
-    (t (parse-error jdecl "Types may not have HAS_TYPE judgements."))))
+  (if (eq (sim-term-op jdecl) 'JAPPLDECL)
+      (make-instance 'rec-application-judgement
+	'name (change-class (xt-name (term-arg0 jdecl) nil) 'name-expr)
+	'formals (xt-pdf (term-arg1 jdecl))
+	'declared-type dtype
+	'chain? t
+	'place place)
+      (parse-error jdecl "Recursive judgements are only for applications")))
 
 ;;; Conversions
 
