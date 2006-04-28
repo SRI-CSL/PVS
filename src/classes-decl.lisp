@@ -498,6 +498,8 @@
 
 (defcl judgement-tcc (subtype-tcc))
 
+(defcl recursive-judgement-tcc (judgement-tcc))
+
 (defcl existence-tcc (tcc-decl))
 
 (defcl assuming-tcc (tcc-decl)
