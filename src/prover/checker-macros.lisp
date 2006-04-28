@@ -456,7 +456,7 @@
 ;;NSH(1.31.94):modified to use tccinfo in *tccforms*
 (defmacro make-assert-expr (expr)
   `(let* ((*tccforms* nil)
-	  (*keep-unbound*  *bound-variables*)
+	  (*keep-unbound* *bound-variables*)
 	  (*generate-tccs* (if (and *generate-tccs*
 				    (not (eq *generate-tccs* 'none)))
 			       *generate-tccs*
@@ -465,7 +465,7 @@
 	  (expr ,expr)
 	  (tcc-fmlas (when (not (eq *generate-tccs* 'none))
 		       (loop for tccinfo in *tccforms*
-			     when (not (forall-expr?;;NSH(8.19.98)
+			     when (not (forall-expr? ;;NSH(8.19.98)
 					;;prunes out TCCs w/freevars
 					(tccinfo-formula tccinfo)))
 			     nconc (and+ (tccinfo-formula tccinfo)))))
