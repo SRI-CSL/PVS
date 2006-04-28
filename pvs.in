@@ -173,8 +173,10 @@ case $opsys in
 	 # Allegro does not work with Linux's New Posix Thread Library (NPTL)
 	 # used in newer Red Hat kernels and 2.6 kernels.  This will force
 	 # the old thread-implementation.
-	 LD_ASSUME_KERNEL=2.4.19
-	 export LD_ASSUME_KERNEL
+	 export LD_ASSUME_KERNEL=2.4.19;
+	 # See if setting this leads to problems - if it does, then
+	 # uname exits with an error and we unset it.
+	 uname -a > /dev/null 2>&1 || unset LD_ASSUME_KERNEL
 	 ;;
   FreeBSD) opsys=redhat
 	   majvers=5
@@ -183,8 +185,10 @@ case $opsys in
 	   # Allegro does not work with Linux's New Posix Thread Library (NPTL)
 	   # used in newer Red Hat kernels and 2.6 kernels.  This will force
 	   # the old thread-implementation.
-	   LD_ASSUME_KERNEL=2.4.19
-	   export LD_ASSUME_KERNEL
+	   export LD_ASSUME_KERNEL=2.4.19;
+	   # See if setting this leads to problems - if it does, then
+	   # uname exits with an error and we unset it.
+	   uname -a > /dev/null 2>&1 || unset LD_ASSUME_KERNEL
            ;;
   Darwin) opsys=MacOSX
           majvers=7
