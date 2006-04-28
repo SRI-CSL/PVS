@@ -80,6 +80,11 @@
 			((equal (cdr (assq expr *compatible-pred-reason*))
 				"judgement")
 			 (mk-judgement-tcc id uform))
+			((rec-application-judgement? (current-declaration))
+			 ;; The below doesn't work - expr is not known a priori
+			 ;;(equal (cdr (assq expr *compatible-pred-reason*))
+				;;"recursive-judgement")
+			 (mk-recursive-judgement-tcc id uform))
 			(t (mk-subtype-tcc id uform)))
 		  nil nil nil))))
 
@@ -358,7 +363,7 @@
 (defun insert-tcc-decl1 (kind expr type ndecl)
   (let ((*generate-tccs* 'none))
     (setf (tcc-disjuncts ndecl) (get-tcc-disjuncts ndecl))
-    (let ((match (car (member ndecl *tccdecls* :test #'subsumes)))
+    (let ((match (car (member ndecl *tccdecls* :test #'tcc-subsumed-by)))
 	  (decl (declaration *current-context*)))
       (when (eq (spelling ndecl) 'OBLIGATION)
 	(incf (total-tccs)))
@@ -367,6 +372,17 @@
 	     (not (and (declaration? decl)
 		       (id decl)
 		       (assq expr *compatible-pred-reason*))))
+	#+pvsdebug
+	(when (and (not (tc-eq (definition ndecl) (definition match)))
+		   (not (tc-eq (simplify-expression
+				(make!-implication (definition match)
+						   (definition ndecl))
+				:strategy '(lazy-grind))
+			       *true*)))
+	  ;; lazy-grind doesn't always work, but neither does anything else.
+	  ;; To make certain that subsumption is correct, run
+	  ;; simplify-expression with :interactive? t
+	  (break "Something may be wrong with subsumes"))
 	(add-tcc-comment kind expr type (list 'subsumed match) match t))
        (t (when match
 	    (pvs-warning "The judgement TCC generated for and named ~a ~
@@ -434,7 +450,9 @@
 	(add-comment ndecl
 	  "~@(~@[~a ~]~a~) TCC generated ~@[~a~]for~:[ ~;~%    %~]~a~
            ~@[~%    % ~a~]"
-	  (cdr (assq expr *compatible-pred-reason*))
+	  (or (cdr (assq expr *compatible-pred-reason*))
+	      (when (rec-application-judgement? (current-declaration))
+		"Recursive judgement"))
 	  kind
 	  plstr
 	  (> (+ (length (cdr (assq expr *compatible-pred-reason*)))
@@ -491,8 +509,7 @@
 	       expr)
     foundit))
 		       
-
-(defun subsumes (tcc2 tcc1)
+(defun tcc-subsumed-by (tcc2 tcc1)
   (and (or (not (assuming-tcc? tcc2)) (assuming-tcc? tcc1))
        (<= (length (tcc-disjuncts tcc1)) (length (tcc-disjuncts tcc2)))
        (if (same-binding-op tcc2 tcc1)
@@ -1147,6 +1164,9 @@
   (or (when (equal (cdr (assq expr *compatible-pred-reason*)) "judgement")
 	(id decl))
       (call-next-method)))
+
+(defmethod make-tcc-name* ((decl rec-application-judgement) expr extra-id)
+  (call-next-method))
 
 (defmethod make-tcc-name* ((imp importing) expr extra-id)
   (declare (ignore expr))
