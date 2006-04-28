@@ -297,10 +297,11 @@
     (generate-xref (car resolutions))))
 
 (defmethod generate-xref ((n name-expr))
-  (assert (type n))
+  (assert (or (type n) (typep (declaration n) 'theory-abbreviation-decl)))
   (unless (memq n *xref-names-seen*)
     (push n *xref-names-seen*)
-    (unless (typep (declaration n) '(or module mod-decl formal-theory-decl))
+    (unless (typep (declaration n) '(or module mod-decl formal-theory-decl
+					theory-abbreviation-decl))
       (generate-xref (type n))))
   (call-next-method))
 
