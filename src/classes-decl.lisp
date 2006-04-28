@@ -542,10 +542,6 @@
   (formals :parse t)
   judgement-type)
 
-(defcl rec-number-judgement (number-judgement))
-
-(defcl rec-name-judgement (name-judgement))
-
 (defcl rec-application-judgement (application-judgement))
 
 (defcl conversion-decl (declaration)
