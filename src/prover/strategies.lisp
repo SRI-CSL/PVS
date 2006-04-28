@@ -498,83 +498,97 @@ AUTO-REWRITE-THEORY, or AUTO-REWRITE-THEORIES. E.g.,
 
 (defhelper subtype-tcc ()
   (tcc$ explicit)
-  "The strategy used for subtype TCCs- invokes GRIND with non-recursive
-definitions as auto-rewrites"
+  "The strategy used for subtype TCCs - invokes 'tcc' (defaults to 'grind',
+but may be redefined) with non-recursive definitions as auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper termination-tcc ()
   (tcc$ !)
-  "The strategy used for termination TCCs - invokes GRIND with all
-definitions as auto-rewrites."
+  "The strategy used for termination TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with all definitions as auto-rewrites."
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper existence-tcc ()
   (tcc$ explicit)
-  "The strategy used for existence TCCs - invokes GRIND with non-recursive
-definitions as auto-rewrites"
+  "The strategy used for existence TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with non-recursive definitions as
+auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper judgement-tcc ()
   (tcc$ explicit)
-  "The strategy used for judgement TCCs - invokes GRIND with non-recursive
-definitions as auto-rewrites"
+  "The strategy used for judgement TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with non-recursive definitions as
+auto-rewrites"
+  "Trying repeated skolemization, instantiation, and if-lifting")
+
+(defhelper recursive-judgement-tcc ()
+  (tcc$)
+  "The strategy used for recursive judgement TCCs - invokes 'tcc' (defaults
+to 'grind', but may be redefined) with all definitions as auto-rewrites."
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper assuming-tcc ()
   (tcc$ explicit)
-  "The strategy used for assuming TCCs - invokes GRIND with non-recursive
-definitions as auto-rewrites"
+  "The strategy used for assuming TCCs - invokes 'tcc' (defaults to 'grind',
+but may be redefined) with non-recursive definitions as auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper mapped-axiom-tcc ()
   (tcc$ explicit)
-  "The strategy used for mapped axiom TCCs - invokes GRIND with non-recursive
-definitions as auto-rewrites"
+  "The strategy used for mapped axiom TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with non-recursive definitions as
+auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper cases-tcc ()
   (tcc$ explicit)
-  "The strategy used for cases TCCs - invokes GRIND with non-recursive
-definitions as auto-rewrites"
+  "The strategy used for cases TCCs - invokes 'tcc' (defaults to 'grind',
+but may be redefined) with non-recursive definitions as auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper well-founded-tcc ()
   (tcc$ explicit)
-  "The strategy used for well-founded TCCs - invokes GRIND with non-recursive
-definitions as auto-rewrites"
+  "The strategy used for well-founded TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with non-recursive definitions as
+auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper same-name-tcc ()
   (tcc$ explicit)
-  "The strategy used for same-name TCCs - invokes GRIND with non-recursive
-definitions as auto-rewrites"
+  "The strategy used for same-name TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with non-recursive definitions as
+auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper cond-disjoint-tcc ()
   (tcc$ explicit)
-  "The strategy used for cond-disjoint TCCs - invokes GRIND with non-recursive
-definitions as auto-rewrites"
+  "The strategy used for cond-disjoint TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with non-recursive definitions as
+auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper cond-coverage-tcc ()
   (tcc$ explicit)
-  "The strategy used for cond-coverage TCCs - invokes GRIND with non-recursive
-definitions as auto-rewrites"
+  "The strategy used for cond-coverage TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with non-recursive definitions as
+auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper monotonicity-tcc ()
   (tcc$ explicit)
-  "The strategy used for monotonicity TCCs - invokes GRIND with non-recursive
-definitions as auto-rewrites"
+  "The strategy used for monotonicity TCCs - invokes 'tcc' (defaults to
+'grind', but may be redefined) with non-recursive definitions as
+auto-rewrites"
   "Trying repeated skolemization, instantiation, and if-lifting")
 
 (defhelper tcc (&optional (defs !))
   (grind$ :defs defs)
-  "The guts of the tcc-strategy defined as (GRIND :DEFS DEFS).
+  "The guts of the tcc-strategy defined as '(grind :defs defs)'.
 Does auto-rewrite-explicit, then applies skolem!, inst?, lift-if,
-bddsimp, and assert, until nothing works.  DEFS is either
- NIL: The definitions in the statement are not installed as auto-rewrites
- T: All defns are installed as conditional rewrites
+bddsimp, and assert, until nothing works.  :defs is either
+ nil: The definitions in the statement are not installed as auto-rewrites ;
+ t: All defns are installed as conditional rewrites
  !: All defns are installed, but with explicit (non-recursive) defns as
     unconditional rewrites
  explicit: Only explicit defns installed as conditional rewrites
