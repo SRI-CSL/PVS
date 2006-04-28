@@ -214,6 +214,14 @@
     'definition expr
     'semi t))
 
+(defun mk-recursive-judgement-tcc (id expr)
+  (make-instance 'recursive-judgement-tcc
+    'id id
+    'spelling 'OBLIGATION
+    'kind 'tcc
+    'definition expr
+    'semi t))
+
 (defun mk-existence-tcc (id expr)
   (make-instance 'existence-tcc
     'id id
