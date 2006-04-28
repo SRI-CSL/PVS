@@ -63,15 +63,20 @@
 
 (defvar *ops* (init-symbol-table))
 
-(defun simplify-expression (expr module-name strategy
-				 &optional display? (id 'simplify-expr))
-  (let* ((*suppress-printing* t)
+(defun simplify-expression (expr &key module-name (strategy '(grind))
+				 display? (id 'simplify-expr) interactive?)
+  (assert (or module-name *current-context*))
+  (let* ((*suppress-printing* (not interactive?))
 	 (*printproofstate* nil)
-	 (*proving-tcc* t)
+	 (*proving-tcc* (not interactive?))
 	 (*generate-tccs* t)
 	 (*subgoals* t)
-	 (*current-theory* (get-theory module-name))
-	 (*current-context* (context *current-theory*))
+	 (*current-theory* (if module-name
+			       (get-theory module-name)
+			       *current-theory*))
+	 (*current-context* (if module-name
+				(context *current-theory*)
+				*current-context*))
 	 (expr (typecheck-uniquely (pc-parse expr 'expr)))
 	 (sk-id 'F!1)
 	 (bexpr (if (tc-eq (find-supertype (type expr)) *boolean*)
@@ -94,7 +99,8 @@
 		      'id (ref-to-id id)
 		      'module *current-theory*
 		      'spelling 'formula
-		      'definition cexpr))
+		      'definition cexpr
+		      'closed-definition cexpr))
 	 (*start-proof-display* display?)
 	 ;; The next section needed for translate-to-prove, which is used
 	 ;; by arith-order, make-prod, and arith-ord-translate.  This will
@@ -108,7 +114,9 @@
     (newcounter *translate-id-counter*)
     (initprover)
     ;; remove above once term-lt is written
-    (prove-decl expr-decl :strategy `(then (then ,strategy (postpone)) (quit))
+    (prove-decl expr-decl
+		:strategy (unless interactive?
+			    `(then (then ,strategy (postpone)) (quit)))
 		:context *current-context*)
     (let ((mform (merge-subgoals *subgoals*)))
       (remove-skolem-constants
