@@ -111,7 +111,7 @@ required a context.")
 	   (setf (types ex) nil)))
   #+pvsdebug (assert (fully-typed? ex))
   #+pvsdebug (assert (fully-instantiated? ex))
-  (unless (typep ex '(or branch lambda-expr update-expr))
+  (unless (typep ex '(or branch lambda-expr update-expr cases-expr))
     (check-for-subtype-tcc ex expected)))
 
 
@@ -733,7 +733,7 @@ required a context.")
 (defun set-type-mappings (thinst theory)
   (when (mappings thinst)
     (let ((cthinst (copy thinst 'mappings nil)))
-      (unless (fully-instantiated? thinst)
+      (unless (fully-instantiated? cthinst)
 	(type-error thinst
 	  "Actual parameters must be provided to include mappings"))
       (set-type-lhs-mappings (mappings thinst) cthinst)
@@ -743,8 +743,8 @@ required a context.")
 	     (*current-context* (if there?
 				    (copy-context *current-context*)
 				    *current-context*)))
-	(unless there?
-	  (add-to-using thinst theory))
+;; 	(unless there?
+;; 	  (add-to-using thinst theory))
 	(set-type-mappings* smappings cthinst)))))
 
 (defun sort-mappings (mappings &optional sorted)
@@ -994,10 +994,13 @@ required a context.")
 			  #'(lambda (r)
 			      (and (typep (declaration r)
 					  '(or module mod-decl
-					       formal-theory-decl))
-				   (eq (id (if (module? (declaration r))
-					       (declaration r)
-					       (theory-ref (declaration r))))
+					       formal-theory-decl
+					       theory-abbreviation-decl))
+				   (eq (id (typecase (declaration r)
+					     (module (declaration r))
+					     (theory-abbreviation-decl
+					      (theory-name (declaration r)))
+					     (t (theory-ref (declaration r)))))
 				       thid))))
 		       (resolutions (expr rhs)))))
        (cond ((cdr threses)
@@ -1094,6 +1097,7 @@ required a context.")
   (let ((decl (declaration (resolution d))))
     (typecase decl
       (mod-decl (modname decl))
+      (theory-abbreviation-decl (theory-ref (theory-name decl)))
       (t (module-instance (resolution d))))))
 
 
