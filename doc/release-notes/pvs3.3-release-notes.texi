@@ -1,0 +1,332 @@
+@node PVS 3.3 Release Notes
+@chapter PVS 3.3 Release Notes
+
+Release notes for PVS version 3.3.
+
+@ifinfo
+@menu
+* 3.3 Installation Notes::
+* 3.3 New Features::
+* 3.3 Bug Fixes::
+* 3.3 Incompatibilities::
+@end menu
+@end ifinfo
+
+@node    3.3 Installation Notes
+@section Installation Notes
+
+Installation is the same as usual.  However, if you have received
+patches from SRI that you have put into your @code{~/.pvs.lisp} file,
+they should be removed.  If you anticipate wanting to try the newer
+and older versions together, you can do this by using @code{#-pvs3.3}
+in front of the patches.  This is a directive to the Lisp reader, and
+causes the following s-expression to be ignored unless it is an
+earlier version of PVS.
+
+@node 3.3 New Features
+@section New Features
+
+@menu
+* Record and Tuple Type Extensions::
+* Structural Subtypes::
+* Empty and Singleton Record and Tuple Types::
+* PVSio::
+* Random Testing::
+* Recursive Judgements TCCs::
+* Decimal Representation for Numbers::
+* Unary plus::
+@end menu
+
+@node Record and Tuple Type Extensions
+@subsection Record and Tuple Type Extensions
+
+Record and tuple types may now be extended using the @code{WITH}
+keyword.  Thus, one may create colored points and moving points from
+points as follows.
+@example
+  point: TYPE = [@kbd{#} x, y: real @kbd{#}]
+  colored_point: TYPE = point WITH [# color: Color #]
+  moving_point: TYPE = point WITH [# vx, vy: real #]
+@end example
+Similarly, tuples may be extended:
+@example
+  R3: TYPE = [real, real, real]
+  R5: TYPE = R3 WITH [real, real]
+@end example
+For record types, it is an error to extend with new field names that
+match any field names in the base record type.  The extensions may not
+be dependent on the base type, though they may introduce dependencies
+within themselves.
+@example
+  dep_bad: TYPE = point WITH [# z: @{r: real | x*x + y*y < 1@} #]
+  dep_ok: TYPE = point WITH [# a: int, b: below(a) #]
+@end example
+Note that the extension is a type expression, and may appear anywhere
+that a type is allowed.
+
+
+@node Structural Subtypes
+@subsection Structural Subtypes
+
+PVS now has support for structural subtyping for record and tuple
+types.  A record type @code{S} is a structural subtype of @code{R} if
+every field of @code{R} occurs in @code{S}, and similarly, a tuple
+type @code{T} is a structural subtype of a tuple formed from some
+prefix of @code{T}.  Section @ref{Record and Tuple Type Extensions}
+ gives examples, as @code{colored_point} is a structural
+subtype of @code{point}, and @code{R5} is a structural subtype of
+@code{R3}.  Structural subtypes are akin to the class hierarchy of
+object-oriented systems, where the fields of a record can be viewed as
+the slots of a class instance.  The PVS equivalent of setting a slot
+value is the override expression (sometimes called update), and this
+has been modified to work with structural subtypes, allowing the
+equivalent of generic methods to be defined.  Here is an example.
+@example
+points: THEORY
+BEGIN
+ point: TYPE+ = [# x, y: real #]
+END points
+
+genpoints[(IMPORTING points) gpoint: TYPE <: point]: THEORY
+BEGIN
+ move(p: gpoint)(dx, dy: real): gpoint =
+  p WITH [`x := p`x + dx, `y := p`y + dy]
+END genpoints
+
+colored_points: THEORY
+BEGIN
+ IMPORTING points
+ Color: TYPE = @{red, green, blue@}
+ colored_point: TYPE = point WITH [# color: Color #]
+ IMPORTING genpoints[colored_point]
+ p: colored_point
+ move0: LEMMA move(p)(0, 0) = p
+END colored_points
+@end example
+The declaration for @code{gpoint} uses the structural subtype operator
+@code{<:}.  This is analogous to the @code{FROM} keyword, which
+introduces a (predicate) subtype.  This example also serves to explain
+why we chose to separate structural and predicate subtyping.  If they
+were treated uniformly, then @code{gpoint} could be instantiated with
+the unit disk; but in that case the @code{move} operator would not
+necessarily return a @code{gpoint}.  The TCC could not be generated
+for the @code{move} declaration, but would have to be generated when
+the @code{move} was referenced.  This both complicates the
+typechecking, and makes TCCs and error messages more inscrutable.  If
+you really want to deal with both, simply include a structural subtype
+followed by a (predicate) subtype, for example:
+@example
+genpoints[(IMPORTING points) gpoint: TYPE <: point,
+          spoint: TYPE FROM gpoint]: THEORY
+@end example
+
+@node Empty and Singleton Record and Tuple Types
+@subsection Empty and Singleton Record and Tuple Types
+
+Empty and singleton record and tuple types are now allowed in PVS.
+Thus the following are valid declarations:
+@example
+Tup0: TYPE = [ ]
+Tup1: TYPE = [int]
+Rec0: TYPE = [# #]
+@end example
+Note that the space is important in the empty tuple type, as otherwise
+it is taken to be an operator (the box operator).
+
+@node PVSio
+@subsection PVSio
+
+C@'esar Mu@~noz has kindly provided lisp code for PVSio, which has
+been incorporated into PVS.  See the PVSio web page
+@url{http://research.nianet.org/~munoz/PVSio/} for more information.
+
+@node Random Testing
+@subsection Random Testing
+
+We have developed a capability for random test generation in PVS,
+based, in part, on work done in Haskell and Isabelle.  Random tests
+may be generated for universally quantified formulas in the ground
+evaluator or in the prover.  In each case, the purpose is to try and
+find a counter example to the given formula, by evaluating a number of
+instances until one of them returns @code{FALSE}.  The falsifying
+instance is then displayed.
+
+This is a good way to test a specification before attempting a proof.
+Unlike model checking, it is inherently incomplete; on the other hand,
+there is no requirement for all types to be finite, only that all involved
+types and constants have interpretations.
+
+In the ground evaluator, we added the @code{test} command:@footnote{This
+is not a prover command; the optional arguments are as in Lisp, i.e.,
+positional, not keyword arguments.}
+@example
+  (test expr &optional (count 10) (size 100) (dtsize 10)
+               all? verbose? instance)
+@end example
+
+For the prover, there is a similar rule:
+@example
+  (random-test &optional (fnum *) (count 10) (size 100)
+               (dtsize 10) all? verbose? instance
+               (subtype-gen-bound 1000))
+@end example
+
+The @code{count} argument controls how many random tests to try.
+The @code{size} and @code{dtsize} control the possible
+ranges of random values, as described below.  Normally the tests stop when
+a counter example is found; setting the @code{all?} flag to
+@code{t} causes further tests to be run until @code{count} is
+reached.  The @code{verbose?} flag indicates that all random
+test values should be displayed.  This is often useful to understand why a
+given test seems to always be true.  The @code{instance} argument
+allows formals and uninterpreted types and constants to be given as a
+theory instance with actuals and mappings.  The current theory may also be
+instantiated this way.  For example, @code{th[int, 0]@{@{T := bool, c :=
+true@}@}} may be a theory instance, providing actuals and mappings for the
+terms involved in the given formula.  The
+@code{subtype-gen-bound} is used to control how many random
+values to generate in attempting to satisfy a subtype predicate, as
+described below.
+
+In the prover, the universal formula is generated from the formulas
+specified by the @code{fnum} argument, first creating an implication from
+the conjunction of antecedents to the disjunction of consequents.  Any
+Skolem constants are then universally quantified and the result passed to
+the random tester.  This is useful for checking if the given sequent is
+worth proving; if it comes back with a counter example, then it may not be
+worth trying to prove.  Of course, it may just be that a lemma is needed,
+or relevant formulas were hidden, and that it isn't a real counter
+example.
+
+The random values are generated per type.  For numeric types, the builtin
+Lisp @code{random} function is used:
+@itemize @bullet
+@item
+@code{nat} uses random(0..@code{size})
+@item
+@code{int} uses random(-@code{size}..@code{size})
+@item
+@code{rat} creates two random @code{int}s, the second nonzero,
+and returns the quotient
+@item
+@code{real} and above just use @code{rat} values
+@end itemize
+All other subtypes create a random value for the supertype, and then check
+if it satisfies the subtype predicate.  It stops after
+@code{subtype-gen-bound} attempts.  Higher-order subtypes such as
+@code{surjective?} are not currently supported.  Function types
+generate a lazy function, so that, e.g.,
+@example
+    FORALL (f: [int -> int], x, y, z: int):
+       f(x) + f(f(y)) > f(f(f(z)))
+@end example
+creates a function that memoizes its values.
+Other types (e.g., record and tuple types) are built up recursively from
+their component types.
+
+Datatypes are controlled by @code{dtsize}.  For example, with
+@code{size} and @code{dtsize} set to their defaults (@code{100} and
+@code{10}, respectively), a variable of type @code{list[int]} will
+generate lists of length between 0 and 10, with integer values between
+-100 and 100.
+
+
+@node Recursive Judgements TCCs
+@subsection Recursive Judgements TCCs
+
+Judgements on recursive functions often lead to difficult proofs, as
+one generally has to prove the resulting obligation using tedious
+induction.  For example, here is a definition of append on lists of
+integer, and a judgement that it is closed on lists of natural
+numbers (note that this example is artificial; append is defined
+polymorphically in the prelude):
+@example
+ append_int(l1, l2: list[int]): RECURSIVE list[int] =
+    CASES l1 OF
+      null: l2,
+      cons(x, y): cons(x, append_int(y, l2))
+    ENDCASES
+    MEASURE length(l1)
+    
+ append_nat: JUDGEMENT append_int(a, b: list[nat]) HAS_TYPE list[nat]
+@end example
+This yields the TCC
+@example
+append_nat_TCC1: OBLIGATION
+  FORALL (a, b: list[nat]): every[int]({i: int | i >= 0})(append_int(a, b));
+@end example
+Which is difficult to prove automatically (or even manually).
+
+We have modified the way such TCCs are generated, by
+@itemize @bullet
+@item creating the predicate on the top-level call to the function,
+in this case @code{every(@{i: int | i >= 0@})(append_int(a, b))}.
+@item substituting the variables into the body of the recursive
+definition
+@item typechecking the substituted body against the expected result
+type (@code{list[nat]}), with the predicate as a condition.
+@end itemize
+With these changes, the TCC becomes
+@example
+append_nat_TCC1: OBLIGATION
+  FORALL (a, b: list[nat], x: int, y: list[int]):
+    every({i: int | i >= 0})(append_int(a, b)) AND a = cons(x, y) IMPLIES
+     every[int]({i: int | i >= 0})(cons[int](x, append_int(y, b)));
+@end example
+and this is easily discharged automatically.
+
+
+
+@c @node Quantified Type Expressions
+@c @subsection Quantified Type Expressions
+
+@c @node Dependent Types in Formal Parameters
+@c @subsection Dependent Types in Formal Parameters
+
+@node Decimal Representation for Numbers
+@subsection Decimal Representation for Numbers
+
+PVS now has support for decimal representation of numbers, for
+example, @code{3.1416}.  Internally, this is treated as a fraction, in
+this case @code{31416/10000}.  So there is no floating point
+arithmetic involved, and the results are exact, since Common Lisp
+represents fractions exactly.  The decimal representation must start
+with an integer, i.e., @code{0.007} rather than @code{.007}.
+
+@node Unary plus
+@subsection Unary @code{+}
+
+The @code{+} operator may now be used as a unary operator.  Note that
+there is no definition for unary @code{+}, for example, @code{+1} will
+lead to a type error.  This was added primarily for user declarations.
+
+@c @node Library Declarations in Formals
+@c @subsection Library Declarations in Formals
+
+@node 3.3 Bug Fixes
+@section Bug Fixes
+
+This version fixes many (though not all) bugs.  Generally those marked as
+@code{analyzed} in the PVS bugs list have been fixed, and most have
+been incorporated into our validation suite.
+
+@node 3.3 Incompatibilities
+@section Incompatibilities
+There were some improvements made to judgements and TCC generation,
+that in some cases lead to different forms of TCCs.  In the validation
+suite, these were all easily detected and the proofs were not
+difficult to repair.
+
+It was noted in bug number 920 that the instantiator only looks for
+matches within the sequent, though often there are matches from the
+Skolem constants that are not visible.  The @code{inst?} command was
+modified to look in the Skolem constants as a last resort, so earlier
+proofs would still work.  Unfortunately, @code{grind} and similar
+strategies use @code{inst?} eagerly, and may now find a Skolem
+constant match that is incorrect, rather than waiting for a better
+match after further processing.  This is exactly the problem that
+@code{lazy-grind} was created for.  In our validation suite only a
+few formulas needed to be repaired, and those generally could be fixed
+simply by replacing @code{grind} by @code{lazy-grind}.  Since hidden
+Skolem constants are difficult for a new user to deal with, we feel
+that this is a worthwhile change.
