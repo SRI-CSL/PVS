@@ -929,7 +929,7 @@
 	 (prev-decls (ldiff thdecls (memq decl thdecls)))
 	 (*insert-add-decl* nil)
 	 (imp-context (when (and (generated-by decl)
-				 (typep decl
+				 (typep (generated-by decl)
 					'(or importing theory-abbreviation-decl
 					     mod-decl formal-theory-decl)))
 			(saved-context (generated-by decl)))))
