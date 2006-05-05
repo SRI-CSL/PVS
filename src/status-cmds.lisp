@@ -663,23 +663,18 @@
 			     (and (typep d 'formula-decl)
 				  (eq (id d) (car prf))))
 		  decls)))
-      (show-all-proofs-theory-proof decl prf outstr proofs decls theory)))
-
-(defun show-all-proofs-theory-proof (decl prf outstr proofs decls theory)
-  (when decl
-    (format outstr "~3%~a.~a: ~a [~a](~a s)~2%"
-      (id theory) (id decl)
-      (proof-status-string decl)
-      (if (justification decl) (decision-procedure-used decl) "Untried")
-      (if (run-proof-time decl)
-	  (format nil "~,2,-3f" (run-proof-time decl))
-	  (format nil "n/a")))
-    (write (if prf
-	       (get-editable-justification
+      (when decl
+	(format outstr "~3%~a.~a: ~a [~a](~a s)~2%"
+	  (id theory) (id decl)
+	  (proof-status-string decl)
+	  (if (justification decl) (decision-procedure-used decl) "Untried")
+	  (if (run-proof-time decl)
+	      (format nil "~,2,-3f" (run-proof-time decl))
+	      (format nil "n/a")))
+	(write (get-editable-justification
 		(convert-proof-form-to-lowercase prf))
-	       (editable-justification (justification decl)))
-	   :stream outstr :pretty t :escape t :level nil
-	   :length nil :pprint-dispatch *proof-script-pprint-dispatch*)))
+	       :stream outstr :pretty t :escape t :level nil
+	       :length nil :pprint-dispatch *proof-script-pprint-dispatch*)))))
 
 (defun show-all-proofs-theory-ctx (outstr proofs finfo thid valid?)
   (dolist (prf proofs)
