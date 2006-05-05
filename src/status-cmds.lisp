@@ -513,9 +513,12 @@
 
 (defun show-proofs-pvs-file (file &optional all?)
   (let* ((all-proofs (read-pvs-file-proofs file))
-	 (proofs (if all?
-		     all-proofs
-		     (proofs-with-associated-decls file all-proofs))))
+	 (proofs (if all-proofs
+		     (if all?
+			 all-proofs
+			 (proofs-with-associated-decls file all-proofs))
+		     (collect-theories-proofs
+		      (cdr (gethash file *pvs-files*))))))
     (cond (proofs
 	   (setq *displayed-proofs* proofs)
 	   (pvs-buffer "Show Proofs"
@@ -527,8 +530,8 @@
 	     'popto t)
 	   t)
 	  (all-proofs
-	   (pvs-message "None of the proofs in this file are valid -~
-                         include an argument to see them"))
+	   (pvs-message "None of the proofs in this file have a formula -~
+                         include an argument to see them anyway"))
 	  (t (pvs-message "No proofs found in this file")))))
 
 (defun proofs-with-associated-decls (file proofs)
@@ -564,9 +567,14 @@
 (defun show-proofs-theory (theoryname &optional all?)
   (let* ((file (context-file-of theoryname))
 	 (all-proofs (when file (read-pvs-file-proofs file)))
-	 (proofs (if all?
-		     all-proofs
-		     (proofs-with-associated-decls file all-proofs))))
+	 (proofs (if all-proofs
+		     (if all?
+			 all-proofs
+			 (proofs-with-associated-decls file all-proofs))
+		     (when file
+		       (let ((th (get-theory theoryname)))
+			 (when th
+			   (collect-theories-proofs (list th))))))))
     (cond (proofs
 	   (setq *displayed-proofs* proofs)
 	   (pvs-buffer "Show Proofs"
@@ -606,9 +614,12 @@
   (let ((all-proofs nil))
     (dolist (file files)
       (let* ((proofs (read-pvs-file-proofs file))
-	     (vproofs (if all?
-			  proofs
-			  (proofs-with-associated-decls file proofs))))
+	     (vproofs (if proofs
+			  (if all?
+			      proofs
+			      (proofs-with-associated-decls file proofs))
+			  (collect-theories-proofs
+			   (cdr (gethash file *pvs-files*))))))
 	(setq all-proofs
 	      (nconc all-proofs
 		     (remove-if-not #'(lambda (pr)
@@ -652,18 +663,23 @@
 			     (and (typep d 'formula-decl)
 				  (eq (id d) (car prf))))
 		  decls)))
-      (when decl
-	(format outstr "~3%~a.~a: ~a [~a](~a s)~2%"
-	  (id theory) (id decl)
-	  (proof-status-string decl)
-	  (if (justification decl) (decision-procedure-used decl) "Untried")
-	  (if (run-proof-time decl)
-	      (format nil "~,2,-3f" (run-proof-time decl))
-	      (format nil "n/a")))
-	(write (get-editable-justification
+      (show-all-proofs-theory-proof decl prf outstr proofs decls theory)))
+
+(defun show-all-proofs-theory-proof (decl prf outstr proofs decls theory)
+  (when decl
+    (format outstr "~3%~a.~a: ~a [~a](~a s)~2%"
+      (id theory) (id decl)
+      (proof-status-string decl)
+      (if (justification decl) (decision-procedure-used decl) "Untried")
+      (if (run-proof-time decl)
+	  (format nil "~,2,-3f" (run-proof-time decl))
+	  (format nil "n/a")))
+    (write (if prf
+	       (get-editable-justification
 		(convert-proof-form-to-lowercase prf))
-	       :stream outstr :pretty t :escape t :level nil
-	       :length nil :pprint-dispatch *proof-script-pprint-dispatch*)))))
+	       (editable-justification (justification decl)))
+	   :stream outstr :pretty t :escape t :level nil
+	   :length nil :pprint-dispatch *proof-script-pprint-dispatch*)))
 
 (defun show-all-proofs-theory-ctx (outstr proofs finfo thid valid?)
   (dolist (prf proofs)
