@@ -25,8 +25,9 @@
 exported from the ergolisp package.  This should have happened in
 ergolisp-exports.lisp.  Then also export them from the current package."
   (flet ((already-exported (sym)
-	   (string= (package-name (symbol-package sym))
-		    (string :ergolisp))))
+	   (when (package-name (symbol-package sym))
+	     (string= (package-name (symbol-package sym))
+		      (string :ergolisp)))))
     (let ((symbols (if (listp symbol-or-symbols)
 		       symbol-or-symbols
 		       (list symbol-or-symbols))))
