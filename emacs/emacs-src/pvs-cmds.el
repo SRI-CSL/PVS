@@ -1328,7 +1328,8 @@ Exit PVS, saving the context."
   (cond ((and ilisp-buffer
 	      (get-buffer ilisp-buffer)
 	      (ilisp-process)
-	      (eq (process-status (ilisp-process)) 'run))
+	      (eq (process-status (ilisp-process)) 'run)
+	      pvs-initialized)
 	 (confirm-not-in-checker)
 	 (when (or noninteractive
 		   (y-or-n-p "Do you want to exit PVS? "))
