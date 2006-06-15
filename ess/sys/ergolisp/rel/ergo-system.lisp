@@ -101,13 +101,24 @@ segmentation violation in this implementation of Common Lisp.")
 			;; :print-herald nil
 			))
 
+#+clisp
+(defun ergo-disksave (filename &key (restart-function #'(lambda () nil))
+			       &allow-other-keys)
+  (ext:saveinitmem filename
+			:init-function
+			#'(lambda () (dolist (i *disksave-hooks*)
+				       (funcall i))
+			    (funcall restart-function))
+			:quiet t
+			))
+
 #+(or ibcl kcl)
 (defun ergo-disksave (filename &allow-other-keys)
   (warn "Ibuki Common Lisp apparently allows no restart function.
 Ignoring DISKSAVE-HOOKS.")
   (lisp:save filename))
 
-#-(or lucid allegro cmu ibcl kcl harlequin-common-lisp)
+#-(or clisp lucid allegro cmu ibcl kcl harlequin-common-lisp)
 (error "Please define ERGO-DISKSAVE for this implementation of Lisp
 in the file sys/ergolisp/rel/ergo-system.lisp.")
 
