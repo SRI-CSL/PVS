@@ -18,7 +18,7 @@
 ;; For some reason the next line does NOT work in compiled code in Lucid.
 ;; It is therefore repeated in the init-load file.
 #+lucid (import '(system::cd) :tools)
-#+allegro (import '(user::cd) :tools)
+#+allegro (import '(cl-user::cd) :tools)
 
 (export '(user-name))
 (export '(cd wdir while-connected-to))	; No longer necessary, but useful.
@@ -45,7 +45,7 @@ Returns a string if defined or nil if undefined."
   #-(or allegro lucid cmu gcl) nil
   )
 
-#-(or allegro lucid)
+#-(or cmu allegro lucid)
 (warn "The function GETENV which is used to determine if you are running
 a version of the X Window system is undefined for this Common Lisp
 implementation.  This means that a number of features that require the
@@ -67,11 +67,17 @@ Looks at the DISPLAY environment variable."
 #+allegro
 (defun cd (&optional (pathname (user-homedir-pathname)))
   (excl:chdir pathname))
+#+cmu
+(defun cd (&optional (pathname (user-homedir-pathname)))
+  (unix::unix-chdir pathname))
 #+allegro
 (defun wdir ()
   (excl:current-directory))
+#+cmu
+(defun wdir ()
+  (nth-value 1 (UNIX:UNIX-CURRENT-DIRECTORY)))
 
-#-(or lucid allegro)
+#-(or lucid allegro cmu)
 (warn "Functions CD and WDIR not defined for this implementation of Lisp.
 These functions are not essential.")
 
@@ -388,8 +394,11 @@ Currently only #'get-universal-time is supported.")
   #+(and lucid mips) "mbin"		; DEC
     ;;; These are experimental
   #+gcl "o"
-  #+cmu "sparcf"
+  #+(and cmu linux) "x86f"
+  #+(and cmu darwin) "lfasl"
+  #+(and clisp pc386) "lfasl"
   #+harlequin-common-lisp "wfasl"
+  #+clisp "fas"
   )
 
 #-(or lucid allegro cmu ibcl kcl harlequin-common-lisp)
