@@ -18,7 +18,8 @@
 (in-package :ERGO-TYPES) (use-package :ergolisp)
 
 (eexport '(Nat Optional Ref
-	       Boolean boolean-equal List-of
+	       ;;Boolean
+	       boolean-equal List-of
 	       Sequence-of Function-of
 	       Alist-of Hash-table-of))
 
@@ -38,11 +39,11 @@
 function argument, constr field, or whatever, will be destructively modified."
   type)
 
-(deftype Boolean (&rest doc-args)
-  "Boolean type, i.e. NIL or T.  Arguments may be given for documentation or
-other purposes."
-  (declare (ignore doc-args))
-  '(member nil t))
+;; (deftype Boolean (&rest doc-args)
+;;   "Boolean type, i.e. NIL or T.  Arguments may be given for documentation or
+;; other purposes."
+;;   (declare (ignore doc-args))
+;;   '(member nil t))
 
 (proclaim '(inline boolean-equal))
 (defun boolean-equal (b1 b2)
