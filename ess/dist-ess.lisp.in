@@ -1,4 +1,4 @@
-;;; -*- Mode: Lisp; Package: user -*-
+;;; -*- Mode: Lisp; Package: cl-user -*-
 ;;;
 ;;; Construction of core images with the ESS.
 ;;; NOTE: for "Ergo internal" versions with more experimental
@@ -10,7 +10,7 @@
 ;;; Instructions:  see ess/README
 ;;;
 
-(in-package :user)
+(in-package :cl-user)
 
 (defvar *ess-path* "@PVSPATH@/ess")
 
@@ -143,7 +143,7 @@ accessible via anonymous ftp.")
 
 ;;; Switching back to user-visible stuff.
 
-(in-package "USER")
+(in-package :cl-user)
 
 #+(and lucid lcl3.0)
 (defun load-production-compiler ()
