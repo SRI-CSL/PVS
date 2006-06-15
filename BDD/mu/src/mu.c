@@ -556,8 +556,10 @@ static BDDPTR mu_fixed_point (Term T, R_Interpret Ip)
     if (BDD_EQUAL_P (Tiplus1, Ti)) { /* Convergence! */
       undo_binding (Z);
       bdd_free (Tiplus1);
-      if (mu_verbose)
+      if (mu_verbose) {
 	fprintf (stdout, "\nFixed-point found in %d steps.\n", i);
+	fflush (stdout);
+      }
       return Ti;
     }
 
@@ -638,8 +640,10 @@ static BDDPTR mu_reachable_aux (BDDPTR N, BDDPTR S0, BDDPTR Inv, int n)
   BDDPTR    Tk = bdd_assign (S0);
   BDDPTR Front = bdd_assign (Tk);
 
-  if (mu_verbose)
+  if (mu_verbose) {
     fprintf (stdout, "Starting Reachable calculation:\n");
+    fflush (stdout);
+  }
 
   /* x_list = (     $0 ,     $1 , ...,     $n-1  ),
      y_list = (     $n ,   $n+1 , ...,    $2n-1  ),
@@ -673,9 +677,11 @@ static BDDPTR mu_reachable_aux (BDDPTR N, BDDPTR S0, BDDPTR Inv, int n)
 
     /* Front <= Inv must hold: */
     if (!BDD_COVERS (Inv, Front)) {
-      if (mu_verbose)
+      if (mu_verbose) {
 	fprintf (stdout,
 		 "\nInvariant violated during Reachable calculation.\n");
+	fflush (stdout);
+      }
       bdd_free (Front);
       bdd_free (Tk);
       Tk = bdd_0 ();
@@ -722,8 +728,10 @@ static BDDPTR mu_reachable_aux (BDDPTR N, BDDPTR S0, BDDPTR Inv, int n)
 
     if (BDD_EQUAL_P (Tkplus1, Tk)) { /* Convergence! */
       bdd_free (Tkplus1);
-      if (mu_verbose)
+      if (mu_verbose) {
 	fprintf (stdout, "\nFixed-point found in %d steps.\n", k);
+	fflush (stdout);
+      }
       break;
     }
 
@@ -910,6 +918,7 @@ static BDDPTR mu_reachable (Term T, R_Interpret Ip, Term FT)
     fprintf (stdout, "Reachable took %.2f msec (%u BDD nodes).\n",
 	             (clock () - start_t) / CLOCKS_PER_MSEC, 
                      bdd_size (R));
+    fflush (stdout);
     bdd_free (Domain);
   }
   return R;
@@ -967,6 +976,7 @@ static BDDPTR mu_abstract (LIST vars, BDDPTR f)
 	       BDD_VAR_RANK (x),
 	       i,
 	       BDD_VAR_RANK (d));
+      fflush (stderr);
       i++;
     } END_FOR_EACH_LIST_ELEM;
   }
@@ -988,6 +998,7 @@ BDDPTR mu_interpret_term (Term T, R_Interpret Ip, Term FT)
     if (T_TYPE (T) == MU_R_VAR)
       fprintf (stderr, " `%s'", R_VAR_NAME (T_R_VAR (T)));
     fprintf (stderr, "\n");
+    fflush (stderr);
   }
 
   /* Cannot cache result when term T contains Relational vars bound by
@@ -1155,6 +1166,7 @@ static BDDPTR mu_apply (BDDPTR t, BDDPTR *args, int nr_args)
       const char *str;
 
       fprintf (stderr, "/* $%d <- ", i);
+      fflush (stderr);
       var_table = signature->table;
       str = bdd_get_output_string (BDD_END_S);
       bdd_set_output_string (BDD_END_S, " */\n");
@@ -1277,6 +1289,7 @@ BDDPTR mu_interpret_formula (Formula f, R_Interpret Ip, Term FT)
     if (F_TYPE (f) == MU_B_VAR)
       fprintf (stderr, " `%s'", B_VAR_NAME (F_VAR (f)));
     fprintf (stderr, "\n");
+    fflush (stderr);
   }
 
   if (!BDD_VOID_P (F_BDD (f))) {
@@ -1700,8 +1713,10 @@ int mu_mk_rel_var_dcl (char *name)
     T_R_VAR (T) = index;
     SET_R_VAR_INFO (index, T);
 
-    if (mu_verbose)
+    if (mu_verbose) {
       fprintf (stdout, "Added Relational variable `%s' to Ip.\n", name);
+      fflush (stdout);
+    }
   }
 /*
   else
@@ -1715,8 +1730,10 @@ Term mu_mk_rel_var (R_Interpret Ip, char *name)
   int index;
   int flag;
 
-  if (mu_verbose)
+  if (mu_verbose) {
     fprintf (stdout, "Looking up Relational variable: `%s'.\n", name);
+    fflush (stdout);
+  }
 
   flag = (int) INSERT;
   index = lookup (Ip->table, name, strlen (name), NULL, &flag);
@@ -1923,8 +1940,10 @@ void mu_mk_let (int var, Term T)
 
   R_VAR_VALUE (var) = R = mu_interpret_term (T, Ip, NULL);
 
-  if (mu_verbose)
+  if (mu_verbose) {
     fprintf (stdout, "done (%d BDD nodes).\n", bdd_size (R));
+    fflush (stdout);
+  }
 
   /* Inherit arity of defining term: */
   T_ARITY (R_VAR_INFO (var)) = T_ARITY (T);
@@ -1936,6 +1955,7 @@ void mu_mk_let (int var, Term T)
     fprintf (stdout, "let %s = ", name);
     mu_print_term_infix (stdout, T);
     fputs (";\n", stdout);
+    fflush (stdout);
   }
 
   /* Save definition: */
@@ -1955,25 +1975,31 @@ void mu_mk_let (int var, Term T)
 
   bdd_dynamic_order_exhaustive ();
 
-  if (mu_verbose)
+  if (mu_verbose) {
     fprintf (stdout, "Definition for `%s' took %d msec (%d BDD nodes).\n",
 	     name, (clock () - start_t) / CLOCKS_PER_MSEC,
 	     bdd_size (R));
+    fflush (stdout);
+  }
 }
 
 void mu_init (void)
 {
   /* Guard against multiple initialisations: */
   if (MU_PACKAGE_INITIALIZED) {
-    if (mu_verbose)
+    if (mu_verbose) {
       fprintf (stdout, "[mu_init]: Package already initialized.\n");
+      fflush (stdout);
+    }
     return;
   }
 
-  if (mu_verbose)
+  if (mu_verbose) {
     fprintf (stdout,
 "[mu_init]: v1.4 Copyright (C) 1992-1997 G. Janssen, Eindhoven University\n");
-
+    fflush (stdout);
+  }
+  
   signature = CALLOC_STRUCT (_Signature);
 
   signature->table = hashtab_create (0);
@@ -2009,8 +2035,10 @@ void mu_quit (void)
 {
   /* Guard against quit without init (includes multiple quits): */
   if (!MU_PACKAGE_INITIALIZED) {
-    if (mu_verbose)
+    if (mu_verbose) {
       fprintf (stdout, "[mu_quit]: Package not initialized.\n");
+      fflush (stdout);
+    }
     return;
   }
 
@@ -2670,4 +2698,5 @@ void mu_print_stats (FILE *fp)
 {
   fprintf (fp, "*** MU Package Statistics ***\n");
   fprintf (fp, "Formula/Term Cache hits: %d.\n", mu_cache_hits);
+  fflush (fp);
 }
