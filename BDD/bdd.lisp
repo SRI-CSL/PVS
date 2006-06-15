@@ -766,8 +766,7 @@
 			(values 'X nil))))))))
 
 (defun bddsimp-conjuncts (selected-sforms irredundant?)
-  (let* ((*pvs-bdd-hash* (make-hash-table
-			  :hash-function 'pvs-sxhash :test 'tc-eq))
+  (let* ((*pvs-bdd-hash* (make-pvs-hash-table))
 	 (*bdd-pvs-hash* (make-hash-table))
 	 (*bdd-counter* (let ((x 0)) #'(lambda () (incf x))))
 	 (*recognizer-forms-alist* nil)
@@ -782,8 +781,7 @@
 
 (defun bdd-simplify (expr &optional ignore-boolean-equalities?)
   (unless *bdd-initialized* (bdd_init))
-  (let* ((*pvs-bdd-hash* (make-hash-table
-			  :hash-function 'pvs-sxhash :test 'tc-eq))
+  (let* ((*pvs-bdd-hash* (make-pvs-hash-table))
 	 (*bdd-pvs-hash* (make-hash-table))
 	 (*recognizer-forms-alist* nil)
 	 (*ignore-boolean-equalities?* ignore-boolean-equalities?)

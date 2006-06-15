@@ -147,8 +147,7 @@ time).  Verbose? set to T provides more information."
 	 (init-run-time (get-run-time))
 	 (*bdd-initialized* t)
 	 (*mu-verbose* verbose?)
-	 (*pvs-bdd-hash* (make-hash-table
-			  :hash-function 'pvs-sxhash :test 'tc-eq))
+	 (*pvs-bdd-hash* (make-pvs-hash-table))
 	 (*bdd-pvs-hash* (make-hash-table))
 	 (*pvs-bdd-inclusivity-formulas* nil)
 	 (*bdd-counter* *bdd-counter*)
@@ -1721,11 +1720,10 @@ time).  Verbose? set to T provides more information."
 ;;)
 
 (defun mu_bdd_var_id  (bdd-id)
-(string-to-number  
-    (string-left-trim "b" 
-        (ff:char*-to-string 
-             (get_mu_bool_var_name  bdd-id))))
-)
+  (string-to-number  
+   (string-left-trim "b" 
+		     (ff:char*-to-string 
+		      (get_mu_bool_var_name bdd-id)))))
 
 
 (defun map-bdds-to-ids (bddlist)
