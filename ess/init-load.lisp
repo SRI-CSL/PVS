@@ -1,6 +1,6 @@
 ;; This loads some files on startup.
 
-(in-package :user)
+(in-package :cl-user)
 
 (defvar *lisp-initialized* nil
   "Have we loaded the standard lisp environment?  Useful for disksaving.")
@@ -34,10 +34,19 @@
   (progn
     (unless (find-package :ergolisp) (make-package :ergolisp))
     (import '(excl::memq) :ergolisp))
+  #+cmu
+  (progn
+    (unless (find-package :ergolisp) (make-package :ergolisp))
+    (import '(extensions::memq) :ergolisp)
+    (export '(extensions::memq) :ergolisp)
+    )
   (load (format nil "~a/sys/ergolisp/rel/ergolisp.lisp" *ess-path*))
   (load (format nil "~a/sys/ergolisp/rel/ergolisp-exports.lisp" *ess-path*))
   (load (format nil "~a/sys/ergolisp/rel/ergo-system.lisp" *ess-path*))
   (load (format nil "~a/sys/tools/rel/retry.lisp" *ess-path*))
+  #+(or clisp cmu)
+  (progn
+    (unless (find-package :tools) (make-package :tools)))
   (load (format nil "~a/sys/tools/rel/box-system.lisp" *ess-path*))
   (load (format nil "~a/sys/tools/rel/box" *ess-path*))
   (load (format nil "~a/box-defs" *ess-path*))
