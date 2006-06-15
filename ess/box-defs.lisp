@@ -19,7 +19,7 @@
 
 (export '(*plain-readtable*))
 
-(import '(user::*ess-path*))
+(import '(cl-user::*ess-path*))
 
 (defparameter *plain-readtable* (copy-readtable nil))
 
@@ -37,12 +37,12 @@ a conflict with the lisp-processor for files with .lisp extension."
   (:needs)
   (:path)
   (:generates "tools::lisp-load" &key
-	      (file #,(concatenate 'string "*" *lisp-compiled-suffix-string*)
+	      (file #.(concatenate 'string "*" *lisp-compiled-suffix-string*)
 		    :input)))
 
 (defbox lisp-source-loader
   (:generates "tools::lisp-load" &key
-	      (file #,(concatenate 'string "*" *lisp-source-suffix-string*)
+	      (file #.(concatenate 'string "*" *lisp-source-suffix-string*)
 		    :input)))
 
 (defbox ccom
@@ -63,8 +63,8 @@ a conflict with the lisp-processor for files with .lisp extension."
   (:needs)
   (:path)
   (:generates "tools::lisp-compile" &key
-	      (source-file #,(concatenate 'string "*" *lisp-source-suffix-string*) :input)
-	      (compiled-file #,(concatenate 'string "*" *lisp-compiled-suffix-string*)
+	      (source-file #.(concatenate 'string "*" *lisp-source-suffix-string*) :input)
+	      (compiled-file #.(concatenate 'string "*" *lisp-compiled-suffix-string*)
 			     :output)))
 
 (defbox cload
@@ -1131,7 +1131,7 @@ of substitution predicates."
    (progn
      (let ((*default-pathname-defaults* (pathname (format nil "~a/if/clx/rel/")) *ess-path*))
        (load "defsystem.lisp")
-       (funcall (intern "LOAD-CLX" (find-package "USER")))))))
+       (funcall (intern "LOAD-CLX" (find-package :cl-user)))))))
 
 (defbox clx-files
   "References all files in clx box.
