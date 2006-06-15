@@ -8,13 +8,11 @@
 ;;;			Frank Pfenning (fp@cs.cmu.edu)			;;;
 ;;; ******************************************************************* ;;;
 
-#-gcl
-(defpackage "CLET")
-(in-package "CLET") (use-package :ergolisp)
+(in-package :ergolisp)
 
 ;;; Next two forms to be superseded by an eexport eventually.
-(export '(lisp::clet*) :lisp)
-(export '(clet*))
+;;(import 'clet* :ergolisp)
+(export 'clet*)
 
 ;;; Evaluate code in a peculiar environment.
 ;;; Var&vals is a list of things of the form (variable value . cleanup)
