@@ -14,8 +14,7 @@ case `uname -s` in
 	 os=SunOS
          os_version=`uname -r | cut -d"." -f1`;;
   Linux) arch=ix86
-	 os=redhat
-	 os_version=5;;
+	 os=Linux;;
   AIX) arch=powerpc-ibm
        os=AIX
        os_version=`uname -r`;;
