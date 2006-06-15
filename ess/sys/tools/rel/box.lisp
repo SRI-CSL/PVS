@@ -37,7 +37,7 @@
 ;;;   the lisp-compile function.
 
 (in-package :tools) (use-package :ergolisp)
-
+(use-package :retry)
 (export '(defbox eload egen eforce eload-force eflag))
 (export '(boxload boxgen boxforce boxload-force boxflag))
 (export '(crategen crateload crateload-force))
@@ -54,19 +54,19 @@
 (eexport '(\#>))
 (eexport '(push2 pop2))
 
-;;;
+;;;
 ;;; Structure and variable definitions.
 ;;;
 	 
 (defstruct (crate (:print-function print-crate))
-  (name nil :type symbol)
+  (name nil :type string)
   (boxes '() :type list)		; boxes, in the order specified.
   (sorted-boxes '() :type list)		; boxes, in the load-order.
   (doc-string nil :type (or null simple-string))
   )
 
 (defstruct (box (:print-function print-box))
-  (name nil :type symbol)
+  (name nil :type string)
   (needs '() :type list)		; boxes this depends on when running
   (path '() :type list)			; path were to look for files in box
   (generates '() :type list)		; what box generates.  See longer doc.
@@ -303,7 +303,10 @@ warning.  T means the current value of *error-output*.")
 
 (defun boxwarn (format-string &rest args)
   (when *box-warn*
-    (if excl::*break-on-warnings*
+    (if ; break-on-warnings seems to be obsolete, and unimplemented 
+        ; in cmu lisp 18d
+        #+cmu *break-on-signals*
+	#-cmu *break-on-warnings*
 	(break "~&[WARNING: ~?]~%" format-string args)
 	(format (if (eq *box-warn* t) *error-output* *box-warn*)
 		"~&[WARNING: ~?]~%" format-string args))))
