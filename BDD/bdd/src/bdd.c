@@ -2756,6 +2756,7 @@ BDDPTR bdd_ite (BDDPTR F, BDDPTR G, BDDPTR H)
   bdd_nr_ite_calls++;
   alive = unique_table.nr_items - bdd_nr_dead_nodes;
 
+  if (history >= 0) {
   increase = ((float) alive) / ++history;
 
   if (bdd_dyna_monitor) {
@@ -2808,6 +2809,7 @@ BDDPTR bdd_ite (BDDPTR F, BDDPTR G, BDDPTR H)
 	}
 /*      }*/
     }
+  }
   }
   history = alive;
 
