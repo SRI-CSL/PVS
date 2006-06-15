@@ -65,7 +65,7 @@
 (defmethod make-load-form ((obj oper-struct))
   (make-load-form-saving-slots obj))
 
-#+allegro
+#+(or allegro cmu)
 (defmethod make-load-form ((obj oper-struct) &optional environment)
   (make-load-form-saving-slots obj))
 

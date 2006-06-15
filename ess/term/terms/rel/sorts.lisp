@@ -83,7 +83,7 @@
 (defmethod make-load-form ((obj ttype-struct))
   (make-load-form-saving-slots obj))
 
-#+allegro
+#+(or allegro cmu)
 (defmethod make-load-form ((obj ttype-struct) &optional environment)
   (make-load-form-saving-slots obj))
   
@@ -109,7 +109,7 @@
 (defmethod make-load-form ((obj opsig-struct))
   (make-load-form-saving-slots obj))
 
-#+allegro
+#+(or allegro cmu)
 (defmethod make-load-form ((obj opsig-struct) &optional environment)
   (make-load-form-saving-slots obj))
 
