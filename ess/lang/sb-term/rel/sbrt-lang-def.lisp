@@ -10,8 +10,8 @@
 :name "lexical-terminals"
 :conc-name "sbrt"
 :working-dir "/usr/ergo/ess/lang/sb-term/rel/"
-:code-package :sb-runtime
-:abs-syn-package :sb-runtime
+:code-package "sb-runtime"
+:abs-syn-package "sb-runtime"
 :use-packages '(:oper :occ :term :sort :lang)
 :grammar-file ""
 :sub-languages 'nil

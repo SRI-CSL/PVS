@@ -15,7 +15,7 @@
 
 ;;; Parser Runtime System
 
-(in-package "SB-RUNTIME")  (use-package :ergolisp)
+(in-package :sb-runtime)  (use-package :ergolisp)
 
 (export '(lbp lam-error
 	      *parser-error-count* *parser-error* *parser-return-errors*
