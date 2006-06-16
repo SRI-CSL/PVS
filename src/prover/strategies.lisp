@@ -135,7 +135,9 @@
 		       (remove-if #'(lambda (a)
 				      (memq a '(&optional &rest)))
 			 args))))
-	  `(progn (defun ,(makesym "(DEFRULE) ~a" name) ,largs
+	  ;; the defun |(DEFRULE) name| is only there for cross referencing
+	  `(progn #-cmu
+		  (defun ,(makesym "(DEFRULE) ~a" name) ,largs
 		    ,@lbody
 		    (list ,@largs))
 		  (defrule* ',name ',args ',body
@@ -156,7 +158,8 @@
 		       (remove-if #'(lambda (a)
 				      (memq a '(&optional &rest)))
 			 args))))
-	  `(progn (defun ,(makesym "(defstrat) ~a" name) ,largs
+	  `(progn #-cmu
+		  (defun ,(makesym "(defstrat) ~a" name) ,largs
 		    ,@lbody
 		    (list ,@largs))
 		  (defstrat* ',name ',args ',body
@@ -177,7 +180,8 @@
 		       (remove-if #'(lambda (a)
 				      (memq a '(&optional &rest)))
 			 args))))
-	  `(progn (defun ,(makesym "(defstep) ~a" name) ,largs
+	  `(progn #-cmu
+		  (defun ,(makesym "(defstep) ~a" name) ,largs
 		    ,@lbody
 		    (list ,@largs))
 		  (defstep* ',name ',args ',body
@@ -200,7 +204,8 @@
 		       (remove-if #'(lambda (a)
 				      (memq a '(&optional &rest)))
 			 args))))
-	  `(progn (defun ,(makesym "(DEFHELPER) ~a" name) ,largs
+	  `(progn #-cmu
+		  (defun ,(makesym "(DEFHELPER) ~a" name) ,largs
 		    ,@lbody
 		    (list ,@largs))
 		  (defhelper* ',name ',args ',body
@@ -4568,3 +4573,7 @@ See name-replace."
 (defmethod collect-chained-let-exprs (ex &optional first?)
   (declare (ignore ex first?))
   nil)
+
+(defstep inst! (&optional (fnums *) copy? (relativize? t))
+  (skip-msg "inst! does not work for now.")
+  "" "")
