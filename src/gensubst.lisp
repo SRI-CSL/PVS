@@ -1003,10 +1003,10 @@
 (defmethod copy-untyped* ((ex field-application))
   (with-slots (id argument) ex
     (make-instance 'application
-      'place (place ex)
-      'parens (parens ex)
-      'operator (make-instance 'name-expr 'id id)
-      'argument (copy-untyped* argument))))
+      :place (place ex)
+      :parens (parens ex)
+      :operator (make-instance 'name-expr :id id)
+      :argument (copy-untyped* argument))))
 
 (defmethod copy-untyped* ((ex fieldappl))
   (with-slots (id actuals argument) ex
@@ -1052,20 +1052,20 @@
 (defmethod copy-untyped* ((ex table-expr))
   (with-slots (row-expr col-expr row-headings col-headings table-entries) ex
     (make-instance 'table-expr
-      'row-expr (copy-untyped* row-expr)
-      'col-expr (copy-untyped* col-expr)
-      'row-headings (copy-untyped* row-headings)
-      'col-headings (copy-untyped* col-headings)
-      'table-entries (copy-untyped* table-entries))))
+      :row-expr (copy-untyped* row-expr)
+      :col-expr (copy-untyped* col-expr)
+      :row-headings (copy-untyped* row-headings)
+      :col-headings (copy-untyped* col-headings)
+      :table-entries (copy-untyped* table-entries))))
 
 (defmethod copy-untyped* ((ex let-table-expr))
   (with-slots (row-expr col-expr row-headings col-headings table-entries) ex
     (make-instance 'table-expr
-      'row-expr (copy-untyped* row-expr)
-      'col-expr (copy-untyped* col-expr)
-      'row-headings (copy-untyped* row-headings)
-      'col-headings (copy-untyped* col-headings)
-      'table-entries (copy-untyped* table-entries))))
+      :row-expr (copy-untyped* row-expr)
+      :col-expr (copy-untyped* col-expr)
+      :row-headings (copy-untyped* row-headings)
+      :col-headings (copy-untyped* col-headings)
+      :table-entries (copy-untyped* table-entries))))
 
 (defmethod copy-untyped* ((ex argument-conversion))
   (with-slots (operator) ex
