@@ -167,10 +167,11 @@
 
 (defmethod add-explicit-prover-type ((ex application))
   (when (and (name-expr? (operator ex))
-	     (memq (id (operator ex)) '(integer_pred rational_pred real_pred))
+	     (memq (id (operator ex))
+		   '(|integer_pred| |rational_pred| |real_pred|))
 	     (from-prelude? (declaration (operator ex))))
     (let ((type (case (id (operator ex))
-		  (integer_pred 'integer)
+		  (|integer_pred| 'integer)
 		  (t 'number))))
       (if (name-expr? (argument ex))
 	  (let* ((norm-expr (normalize-name-expr-actuals (argument ex)))
@@ -481,7 +482,7 @@
 (defvar *integer-pred* nil)
 
 (defvar *top-translate-to-prove-hash*
-  (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+  (make-pvs-hash-table))
 
 (defun top-translate-to-prove (expr &optional no-explicit?)
   (let ((*bindings* nil)
