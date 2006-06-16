@@ -59,9 +59,9 @@ generated")
 	    (,vadt ,adt)
 	    (*generating-adt* ,vadt)
 	    (*current-theory* (make-instance 'rectype-theory
-				'id ,vtid
-				'exporting (make-instance 'exporting
-					     'kind 'default)))
+				:id ,vtid
+				:exporting (make-instance 'exporting
+					     :kind 'default)))
 	    (*current-context* (make-new-context *current-theory*))
 	    (*typechecking-module* t)
 	    (*tccs* nil)
@@ -177,13 +177,14 @@ generated")
 	 (file-exists? #+allegro (file-exists-p adt-path)
 		       #-allegro (probe-file adt-path))
 	 (adt-theories (adt-generated-theories adt))
-	 (mods (make-instance 'modules 'modules adt-theories))
+	 (mods (make-instance 'modules :modules adt-theories))
 	 (ce (unless *loading-prelude*
 	       (get-context-file-entry (filename adt))))
 	 (adt-ce (get-context-file-entry adt-file))
 	 (checksum-ok? (and adt-ce
 			    file-exists?
-			    (equal (excl:md5-file adt-path)
+			    (equal #+allegro (excl:md5-file adt-path)
+				   #-allegro (md5:md5sum-file adt-path) 
 				   (ce-md5sum adt-ce)))))
     (unless (and file-exists?
 		 ce
@@ -295,10 +296,10 @@ generated")
   (generate-adt-subterm adt)
   (unless (or (enumtype? adt)
 	      (every #'(lambda (c) (null (arguments c))) (constructors adt)))
-    (generate-adt-reduce adt 'nat)
-    (when (and (not (eq (id adt) 'ordstruct))
+    (generate-adt-reduce adt '|nat|)
+    (when (and (not (eq (id adt) '|ordstruct|))
 	       (get-theory "ordstruct_adt"))
-      (generate-adt-reduce adt 'ordinal))))
+      (generate-adt-reduce adt '|ordinal|))))
 
 (defmethod positive-types ((adt inline-recursive-type))
   nil)
@@ -318,7 +319,7 @@ generated")
   (let* ((rvid (make-new-variable 'R adt))
 	 (rtype (typecheck (mk-type-name 'PRED
 			     (list (make-instance 'actual
-				     'expr
+				     :expr
 				     (mk-tupletype
 				      (list (mk-type-name (id adt))
 					    (mk-type-name (id adt)))))))))
@@ -460,13 +461,13 @@ generated")
 	   (mapcar #'(lambda (rel)
 		       (incf num)
 		       (let ((aproj (make-instance 'projappl
-				      'id (makesym "PROJ_~d" num)
-				      'index num
-				      'argument (copy avar)))
+				      :id (makesym "PROJ_~d" num)
+				      :index num
+				      :argument (copy avar)))
 			     (bproj (make-instance 'projappl
-				      'id (makesym "PROJ_~d" num)
-				      'index num
-				      'argument (copy bvar))))
+				      :id (makesym "PROJ_~d" num)
+				      :index num
+				      :argument (copy bvar))))
 			 (mk-application rel aproj bproj)))
 	     rels))))))
 
@@ -679,7 +680,7 @@ generated")
 
 (defun copy-importing (imp)
   (make-instance 'importing
-    'theory-name (pc-parse (unparse (theory-name imp) :string t) 'modname)))
+    :theory-name (pc-parse (unparse (theory-name imp) :string t) 'modname)))
 
 (defun generate-adt-type (adt)
   (let ((*adt-decl* adt)
@@ -734,9 +735,9 @@ generated")
     (dolist (c (constructors adt))
       (when (multiple-recognizer-subtypes? c (constructors adt))
 	(let ((jdecl (make-instance 'subtype-judgement
-		       'declared-subtype (mk-expr-as-type
+		       :declared-subtype (mk-expr-as-type
 					  (mk-name-expr (recognizer c)))
-		       'declared-type (subtype c))))
+		       :declared-type (subtype c))))
 	  (typecheck-adt-decl jdecl)
 	  (put-decl jdecl))))))
 
@@ -835,9 +836,9 @@ generated")
 		   (get-declarations id))
 	 1)
       (make-instance 'coercion
-	'operator (mk-lambda-expr (list (mk-bind-decl '|x| type))
+	:operator (mk-lambda-expr (list (mk-bind-decl '|x| type))
 		    (mk-name-expr '|x|))
-	'argument (mk-name-expr id))
+	:argument (mk-name-expr id))
       (mk-name-expr id)))
 
 (defun generate-adt-constructor-domain (accessors &optional result)
@@ -951,8 +952,8 @@ generated")
 	 (tsubtype (typecheck* subtype nil nil nil)))
     (unless (subtype-of? tsubtype domain)
       (let ((jdecl (make-instance 'subtype-judgement
-		     'declared-subtype subtype
-		     'declared-type domain)))
+		     :declared-subtype subtype
+		     :declared-type domain)))
 	(typecheck-adt-decl jdecl)
 	(put-decl jdecl)))))
 
@@ -1102,8 +1103,8 @@ generated")
 	     (pred (get-accessor-range-type-pred entry dvar tvar adt)))
 	(mk-subtype suptype
 	  (make-instance 'set-expr
-	    'bindings (list tbd)
-	    'expression pred)))
+	    :bindings (list tbd)
+	    :expression pred)))
       (cadaar entry)))
 
 (defun get-accessor-range-type-pred (entry dvar tvar adt)
@@ -1217,8 +1218,8 @@ generated")
      (mk-const-decl fname
        (mk-funtype (mk-type-name (id adt))
 		   (make-instance 'type-application
-		     'type (mk-type-name '|upto|)
-		     'parameters (list (mk-number-expr (1- len)))))))))
+		     :type (mk-type-name '|upto|)
+		     :parameters (list (mk-number-expr (1- len)))))))))
 
 (defun generate-adt-uninterpreted-ord-axiom (adt)
   (let* ((fname (makesym "~a_ord" (id adt))))
@@ -1261,8 +1262,8 @@ generated")
     (typecheck-adt-decl
      (mk-const-decl '|ord|
        (make-instance 'type-application
-	 'type (mk-type-name '|upto|)
-	 'parameters (list (mk-number-expr (1- len))))
+	 :type (mk-type-name '|upto|)
+	 :parameters (list (mk-number-expr (1- len))))
        (when (and *generate-all-adt-axioms*
 		  (<= len *ord-definition-cutoff*))
 	 (mk-cases-expr (mk-name-expr var)
@@ -1488,13 +1489,13 @@ generated")
 					(get-declarations (id c)))
 			      1)
 			   (make-instance 'coercion
-			     'operator (mk-lambda-expr
+			     :operator (mk-lambda-expr
 					   (list (mk-bind-decl '|x|
 						   (mk-expr-as-type
 						    (mk-name-expr
 							(recognizer c)))))
 					 (mk-name-expr '|x|))
-			     'argument cappl)
+			     :argument cappl)
 			   cappl)))
 	(typecheck-adt-decl
 	 (mk-formula-decl (makesym "~a_~a_~a"
@@ -1633,7 +1634,7 @@ generated")
 			  (acons (car bds) var result)))))
 
 (defun get-adt-var-name (arg)
-  (make-instance 'name-expr 'id (id (get-adt-var arg))))
+  (make-instance 'name-expr :id (id (get-adt-var arg))))
 
 (defun acc-induction-hypotheses (args indvar adt subst-alist &optional result)
   (if (null args)
@@ -1772,9 +1773,9 @@ generated")
 		       (when pred
 			 (list (mk-application pred
 				 (make-instance 'projappl
-				   'id (makesym "PROJ_~d" num)
-				   'index num
-				   'argument tvar)))))
+				   :id (makesym "PROJ_~d" num)
+				   :index num
+				   :argument tvar)))))
 	     preds)))))))
 
 (defun acc-induction-tuples (types tvar indvar adt &optional (index 1) result)
@@ -1808,8 +1809,8 @@ generated")
 			(let* ((bd (make-bind-decl varid type))
 			       (var (make-variable-expr bd))
 			       (in-expr (make-instance 'injection-expr
-					  'id (makesym "IN_~d" num)
-					  'index num))
+					  :id (makesym "IN_~d" num)
+					  :index num))
 			       (sel-expr (if pred
 					     (mk-application pred var)
 					     *true*)))
@@ -2062,9 +2063,9 @@ generated")
 				   (everywhere-false? pred))
 			 (list (mk-application pred
 				 (make-instance 'projappl
-				   'id (makesym "PROJ_~d" num)
-				   'index num
-				   'argument (copy arg))))))
+				   :id (makesym "PROJ_~d" num)
+				   :index num
+				   :argument (copy arg))))))
 	     preds))))))
 
 (defmethod acc-predicate-selection (arg (te cotupletype) pvars ptypes adt
@@ -2083,8 +2084,8 @@ generated")
 			(let* ((bd (make-bind-decl varid type))
 			       (var (make-variable-expr bd))
 			       (in-expr (make-instance 'injection-expr
-					  'id (makesym "IN_~d" num)
-					  'index num))
+					  :id (makesym "IN_~d" num)
+					  :index num))
 			       (sel-expr (if pred
 					     (mk-application pred var)
 					     (if (eq funid '|every|)
@@ -2215,9 +2216,9 @@ generated")
 				     (everywhere-false? pred))
 			   (list (mk-application pred
 				   (make-instance 'projappl
-				     'id (makesym "PROJ_~d" num)
-				     'index num
-				     'argument tvar)))))
+				     :id (makesym "PROJ_~d" num)
+				     :index num
+				     :argument tvar)))))
 	       preds)))))))
 
 (defmethod acc-predicate-selection* ((te cotupletype) pvars ptypes adt funid)
@@ -2241,8 +2242,8 @@ generated")
 			  (let* ((bd (make-bind-decl varid type))
 				 (var (make-variable-expr bd))
 				 (in-expr (make-instance 'injection-expr
-					    'id (makesym "IN_~d" num)
-					    'index num))
+					    :id (makesym "IN_~d" num)
+					    :index num))
 				 (sel-expr (if pred
 					       (mk-application pred var)
 					       (if (eq funid '|every|)
@@ -2365,7 +2366,7 @@ generated")
   (let* ((mod (mk-modname (makesym "~a_~a" (id adt)
 				   (if (datatype? adt) "adt" "codt"))))
 	 (imp (make-instance 'importing
-		'theory-name mod)))
+		:theory-name mod)))
     (typecheck-adt-decl imp)
     (dolist (im (importings adt))
       (dolist (nthname (adt-map-importing im fpairs adt))
@@ -2469,8 +2470,8 @@ generated")
 		adt-subtypes avar xvar srcinst tgtinst)))
     (mk-subtype rtype
       (make-instance 'set-expr
-	'bindings (list xbd)
-	'expression pred))))
+	:bindings (list xbd)
+	:expression pred))))
 
 (defun generate-adt-map-subtypes-rangetype-pred (adt-subtypes
 						 avar xvar srcinst tgtinst
@@ -2617,8 +2618,8 @@ generated")
 ;;     (setf (types nexpr) (list 'type)
 ;; 	  (resolutions nexpr) (list (resolution ntype)))
 ;;     (make-instance 'actual
-;;       'type-value ntype
-;;       'expr nexpr)))
+;;       :type-value ntype
+;;       :expr nexpr)))
 
 (defmethod acc-map-selection (arg (te type-name) pvars ptypes fpairs
 				  adt curried?)
@@ -2739,9 +2740,9 @@ generated")
 	   (mapcar #'(lambda (map)
 		       (incf num)
 		       (let ((proj (make-instance 'projappl
-				     'id (makesym "PROJ_~d" num)
-				     'index num
-				     'argument (copy arg))))
+				     :id (makesym "PROJ_~d" num)
+				     :index num
+				     :argument (copy arg))))
 			 (if (identity-fun? map)
 			     proj
 			     (mk-application map proj))))
@@ -2762,15 +2763,15 @@ generated")
 			(let* ((bd (make-bind-decl varid type))
 			       (var (make-variable-expr bd))
 			       (in-expr (make-instance 'injection-expr
-					  'id (makesym "IN_~d" num)
-					  'index num))
+					  :id (makesym "IN_~d" num)
+					  :index num))
 			       (sel-expr (make-instance 'injection-application
-					   'id (makesym "IN_~d" num)
-					   'index num
-					   'actuals (subst-map-actuals
+					   :id (makesym "IN_~d" num)
+					   :index num
+					   :actuals (subst-map-actuals
 						     (list (mk-actual te))
 						     fpairs)
-					   'argument (mk-application map
+					   :argument (mk-application map
 						       var))))
 			  (mk-selection in-expr (list bd) sel-expr)))
 	      maps (types te)))
@@ -2867,9 +2868,9 @@ generated")
 	     (mapcar #'(lambda (map)
 			 (incf num)
 			 (let ((proj (make-instance 'projappl
-				       'id (makesym "PROJ_~d" num)
-				       'index num
-				       'argument tvar)))
+				       :id (makesym "PROJ_~d" num)
+				       :index num
+				       :argument tvar)))
 			   (if (identity-fun? map)
 			       proj
 			       (mk-application map proj))))
@@ -2895,15 +2896,15 @@ generated")
 			  (let* ((bd (make-bind-decl varid type))
 				 (var (make-variable-expr bd))
 				 (in-expr (make-instance 'injection-expr
-					    'id (makesym "IN_~d" num)
-					    'index num))
+					    :id (makesym "IN_~d" num)
+					    :index num))
 				 (sel-expr (make-instance 'injection-application
-					     'id (makesym "IN_~d" num)
-					     'index num
-					     'actuals (subst-map-actuals
+					     :id (makesym "IN_~d" num)
+					     :index num
+					     :actuals (subst-map-actuals
 						       (list (mk-actual te))
 						       fpairs)
-					     'argument (mk-application map
+					     :argument (mk-application map
 							 var))))
 			    (mk-selection in-expr (list bd) sel-expr)))
 		maps (types te)))
@@ -3242,22 +3243,22 @@ generated")
 		 (incf num)
 		 (let* ((inid (makesym "IN?_~d" num))
 			(ain? (make-instance 'injection?-application
-				'id inid
-				'index num
-				'argument avar))
+				:id inid
+				:index num
+				:argument avar))
 			(bin? (make-instance 'injection?-application
-				'id inid
-				'index num
-				'argument bvar))
+				:id inid
+				:index num
+				:argument bvar))
 			(outid (makesym "OUT_~d" num))
 			(aout (typecheck (make-instance 'extraction-application
-					   'id outid
-					   'index num
-					   'argument avar)))
+					   :id outid
+					   :index num
+					   :argument avar)))
 			(bout (typecheck (make-instance 'extraction-application
-					   'id outid
-					   'index num
-					   'argument bvar)))
+					   :id outid
+					   :index num
+					   :argument bvar)))
 			(every-sub (adt-every-rel type pvars aout bout ptypes fpairs adt)))
 		   (mk-conjunction (list ain? bin? every-sub))))
        (types te)))))
@@ -3299,7 +3300,7 @@ generated")
 (defun generate-adt-reduce-formals (adt ran)
   (let ((formals (append (mapcar #'copy-adt-formals (formals adt))
 			 (list (make-instance 'formal-type-decl
-				 'id ran)))))
+				 :id ran)))))
     (setf (formals (current-theory)) formals)
     (setf (formals-sans-usings (current-theory))
 	  (remove-if #'importing? (formals (current-theory))))
@@ -3326,7 +3327,7 @@ generated")
 			    (mk-actual (mk-name-expr (id ff))))
 		  (formals-sans-usings (adt-theory adt)))))
 	 (imp (make-instance 'importing
-		'theory-name mod)))
+		:theory-name mod)))
     (typecheck-adt-decl imp)
     (dolist (im (importings adt))
       (dolist (nthname
@@ -3438,14 +3439,14 @@ generated")
 	 (red (mk-application* fname funlist)))
     (mk-lambda-expr (list (mk-bind-decl (id avar) (mk-type-name (id adt))))
       (make-instance 'let-expr
-	'operator (mk-lambda-expr (list (mk-bind-decl redid ran))
+	:operator (mk-lambda-expr (list (mk-bind-decl redid ran))
 		    (mk-cases-expr avar
 		      (mapcar #'(lambda (c fdom)
 				  (gen-adt-reduce-selection
 				   c adt redvar fname fdom adtinst))
 			(constructors adt) fdoms)
 		      nil))
-	'argument red))))
+	:argument red))))
 
 (defun gen-adt-reduce-selection (c adt red fname fdom adtinst)
   (if (arguments c)
@@ -3609,9 +3610,9 @@ generated")
 	   (mapcar #'(lambda (fun)
 		       (incf num)
 		       (let ((proj (make-instance 'projappl
-				     'id (makesym "PROJ_~d" num)
-				     'index num
-				     'argument (copy arg))))
+				     :id (makesym "PROJ_~d" num)
+				     :index num
+				     :argument (copy arg))))
 			 (if (identity-fun? fun)
 			     proj
 			     (mk-application fun proj))))
@@ -3631,12 +3632,12 @@ generated")
 			(let* ((bd (make-bind-decl varid type))
 			       (var (make-variable-expr bd))
 			       (in-expr (make-instance 'injection-expr
-					  'id (makesym "IN_~d" num)
-					  'index num))
+					  :id (makesym "IN_~d" num)
+					  :index num))
 			       (sel-expr (make-instance 'injection-application
-					   'id (makesym "IN_~d" num)
-					   'index num
-					   'argument (mk-application fun
+					   :id (makesym "IN_~d" num)
+					   :index num
+					   :argument (mk-application fun
 						       var))))
 			  (mk-selection in-expr (list bd) sel-expr)))
 	      funs (types te)))
@@ -3737,9 +3738,9 @@ generated")
 	     (mapcar #'(lambda (fun)
 			 (incf num)
 			 (let ((proj (make-instance 'projappl
-				       'id (makesym "PROJ_~d" num)
-				       'index num
-				       'argument tvar)))
+				       :id (makesym "PROJ_~d" num)
+				       :index num
+				       :argument tvar)))
 			   (if (identity-fun? fun)
 			       proj
 			       (mk-application fun proj))))
@@ -3765,12 +3766,12 @@ generated")
 			  (let* ((bd (make-bind-decl varid type))
 				 (var (make-variable-expr bd))
 				 (in-expr (make-instance 'injection-expr
-					    'id (makesym "IN_~d" num)
-					    'index num))
+					    :id (makesym "IN_~d" num)
+					    :index num))
 				 (sel-expr (make-instance 'injection-application
-					     'id (makesym "IN_~d" num)
-					     'index num
-					     'argument (mk-application fun
+					     :id (makesym "IN_~d" num)
+					     :index num
+					     :argument (mk-application fun
 							 var))))
 			    (mk-selection in-expr (list bd) sel-expr)))
 		funs (types te)))
@@ -3924,14 +3925,14 @@ generated")
     (mk-lambda-expr (list (mk-bind-decl (id avar)
 			      (mk-type-name (id adt))))
       (make-instance 'let-expr
-	'operator (mk-lambda-expr (list (mk-bind-decl redid ran))
+	:operator (mk-lambda-expr (list (mk-bind-decl redid ran))
 		    (mk-cases-expr avar
 		      (mapcar #'(lambda (c fdom)
 				  (gen-adt-reduce-selection2
 				   c adt redvar fname avar fdom adtinst))
 			(constructors adt) fdoms)
 		      nil))
-	'argument red))))
+	:argument red))))
 
 (defun gen-adt-reduce-selection2 (c adt red fname avar fdom adtinst)
   (if (arguments c)
@@ -4134,7 +4135,7 @@ generated")
 	  (mk-disjunction
 	   (mapcar #'(lambda (a)
 		       (acc-subterm-selection (make-instance 'name-expr
-						'id (id (get-adt-var a)))
+						:id (id (get-adt-var a)))
 					      (substit (type a) subst)
 					      xvar adt))
 	     (arguments c)))))
@@ -4241,9 +4242,9 @@ generated")
 				   (unless (everywhere-false? sub)
 				     (list (mk-application sub
 					     (make-instance 'projappl
-					       'id (makesym "PROJ_~d" num)
-					       'index num
-					       'argument tvar)))))
+					       :id (makesym "PROJ_~d" num)
+					       :index num
+					       :argument tvar)))))
 			 subs))))))
 	  (setf (parens le) 1)
 	  le))))
@@ -4267,8 +4268,8 @@ generated")
 			  (let* ((bd (make-bind-decl varid type))
 				 (var (make-variable-expr bd))
 				 (in-expr (make-instance 'injection-expr
-					    'id (makesym "IN_~d" num)
-					    'index num))
+					    :id (makesym "IN_~d" num)
+					    :index num))
 				 (sel-expr (mk-application sub var)))
 			    (mk-selection in-expr (list bd) sel-expr)))
 		subs (types te))
@@ -4321,7 +4322,7 @@ generated")
 	  (mk-disjunction
 	   (mapcar #'(lambda (a)
 		       (acc-<<-selection (make-instance 'name-expr
-					   'id (id (get-adt-var a)))
+					   :id (id (get-adt-var a)))
 					 (substit (type a) subst)
 					 xvar adt))
 	     (arguments c)))))
@@ -4427,9 +4428,9 @@ generated")
 				   (unless (everywhere-false? sub)
 				     (list (mk-application sub
 					     (make-instance 'projappl
-					       'id (makesym "PROJ_~d" num)
-					       'index num
-					       'argument tvar)))))
+					       :id (makesym "PROJ_~d" num)
+					       :index num
+					       :argument tvar)))))
 			 subs))))))
 	  (setf (parens le) 1)
 	  le))))
@@ -4453,8 +4454,8 @@ generated")
 			  (let* ((bd (make-bind-decl varid type))
 				 (var (make-variable-expr bd))
 				 (in-expr (make-instance 'injection-expr
-					    'id (makesym "IN_~d" num)
-					    'index num))
+					    :id (makesym "IN_~d" num)
+					    :index num))
 				 (sel-expr (mk-application sub var)))
 			    (mk-selection in-expr (list bd) sel-expr)))
 		subs (types te))
@@ -4918,14 +4919,14 @@ function, tuple, or record type")
 
 (defmethod generate-codt-structure-datatype ((codt codatatype-with-subtypes) dom)
   (make-instance 'inline-datatype-with-subtypes
-    'id (makesym "~a_struct" (id codt))
-    'constructors (generate-codt-structure-constructors codt dom)
-    'subtypes (generate-codt-structure-subtypes codt)))
+    :id (makesym "~a_struct" (id codt))
+    :constructors (generate-codt-structure-constructors codt dom)
+    :subtypes (generate-codt-structure-subtypes codt)))
 
 (defmethod generate-codt-structure-datatype ((codt codatatype) dom)
   (make-instance 'inline-datatype
-    'id (makesym "~a_struct" (id codt))
-    'constructors (generate-codt-structure-constructors codt dom)))
+    :id (makesym "~a_struct" (id codt))
+    :constructors (generate-codt-structure-constructors codt dom)))
 
 (defun generate-codt-structure-constructors (codt dom)
   (generate-codt-structure-constructors* (constructors codt) codt dom))
@@ -4943,27 +4944,27 @@ function, tuple, or record type")
 
 (defmethod generate-codt-structure-constructor (constructor codt dom)
   (make-instance 'simple-constructor
-    'id (makesym "inj_~a" (id constructor))
-    'arguments (mapcar #'(lambda (arg)
+    :id (makesym "inj_~a" (id constructor))
+    :arguments (mapcar #'(lambda (arg)
 			   (generate-codt-structure-argument arg codt dom))
 		 (arguments constructor))
-    'recognizer (makesym "inj_~a" (recognizer constructor))))
+    :recognizer (makesym "inj_~a" (recognizer constructor))))
 
 (defmethod generate-codt-structure-constructor
     ((constructor constructor-with-subtype) codt dom)
   (make-instance 'constructor-with-subtype
-    'id (makesym "inj_~a" (id constructor))
-    'arguments (mapcar #'(lambda (arg)
+    :id (makesym "inj_~a" (id constructor))
+    :arguments (mapcar #'(lambda (arg)
 			   (generate-codt-structure-argument arg codt dom))
 		 (arguments constructor))
-    'recognizer (makesym "inj_~a" (recognizer constructor))
-    'subtype (make-instance 'type-name
-	       'id (makesym "inj_~a" (id (subtype constructor))))))
+    :recognizer (makesym "inj_~a" (recognizer constructor))
+    :subtype (make-instance 'type-name
+	       :id (makesym "inj_~a" (id (subtype constructor))))))
 
 (defun generate-codt-structure-argument (arg codt dom)
   (make-instance 'adtdecl
-    'id (makesym "inj_~a" (id arg))
-    'declared-type (generate-codt-structure-accessor-type
+    :id (makesym "inj_~a" (id arg))
+    :declared-type (generate-codt-structure-accessor-type
 		    (pc-parse (unparse (declared-type arg) :string t)
 		      'type-expr)
 		    (typecheck (mk-type-name (id (adt-type-name codt))))
@@ -4984,7 +4985,7 @@ function, tuple, or record type")
 (defun generate-codt-structure-subtypes (codt)
   (mapcar #'(lambda (st)
 	      (make-instance 'type-name
-		'id (makesym "inj_~a" (id st))))
+		:id (makesym "inj_~a" (id st))))
     (subtypes codt)))
 
 
