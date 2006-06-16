@@ -89,13 +89,13 @@
 		 theory))
 	      (fetch-error
 	       (pvs-message "Error in fetching ~a - ~a" filename fetch-error)
-	       (ignore-errors (delete-file file))
+	       (ignore-lisp-errors (delete-file file))
 	       (dolist (thid *bin-theories-set*)
 		 (remhash thid *pvs-modules*))
 	       nil)
 	      (t (pvs-message "Bin file version for ~a is out of date"
 		   filename)
-		 (ignore-errors (delete-file file))
+		 (ignore-lisp-errors (delete-file file))
 		 (dolist (thid *bin-theories-set*)
 		   (remhash thid *pvs-modules*))
 		 nil))))))
@@ -481,10 +481,10 @@
 				(application-judgements-alist judgements)
 				(application-judgements-alist pjudgements))))
 	  (make-instance 'judgements
-	    'judgement-types-hash nil
-	    'number-judgements-alist num-judgements
-	    'name-judgements-alist name-judgements
-	    'application-judgements-alist appl-judgements)))))
+	    :judgement-types-hash nil
+	    :number-judgements-alist num-judgements
+	    :name-judgements-alist name-judgements
+	    :application-judgements-alist appl-judgements)))))
 
 (defun create-store-number-judgements (num-judgements pnum-judgements
 						      &optional numjs)
@@ -602,7 +602,7 @@
 		      (eq (declaration (print-type obj))
 			  *saving-declaration*))))
        (let* ((spt (make-instance 'store-print-type
-		     'print-type (print-type obj)))
+		     :print-type (print-type obj)))
 	      (sop *store-object-ptr*))
 	 #+pvsdebug (assert (type-expr? (print-type obj)))
 	 #+pvsdebug (assert (print-type-correct? obj))
@@ -855,10 +855,9 @@
 		 *restore-objects-seen*)
 	   (copy pjudgements
 	     'judgement-types-hash
-	     (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq)))
+	     (make-pvs-hash-table)))
 	  (t
-	   (setf (judgement-types-hash judgements)
-		 (make-hash-table :hash-function 'pvs-sxhash :test 'tc-eq))
+	   (setf (judgement-types-hash judgements) (make-pvs-hash-table))
 	   (setf (number-judgements-alist judgements)
 		 (restore-number-judgements-alist
 		  (number-judgements-alist judgements)
@@ -1010,13 +1009,13 @@
   (when (consp (type-value obj))
     (let* ((tn (apply #'make-instance (or (car (type-value obj))
 					  'type-name)
-		 'id (id obj) (cdr (type-value obj))))
+		 :id (id obj) (cdr (type-value obj))))
 	   (res (mk-resolution obj (mk-modname (id (module obj))) tn)))
       (setf (resolutions tn) (list res))
       (let ((ptype (if (formals obj)
 		       (make-instance 'type-application
-			 'type tn
-			 'parameters (mapcar #'mk-name-expr
+			 :type tn
+			 :parameters (mapcar #'mk-name-expr
 				       (car (formals obj))))
 		       tn)))
 	(when (adt-type-name? tn)
@@ -1182,8 +1181,8 @@
 					  tn))
 		      (ptype (if (formals decl)
 				 (make-instance 'type-application
-				   'type tn
-				   'parameters (mapcar #'mk-name-expr
+				   :type tn
+				   :parameters (mapcar #'mk-name-expr
 						 (car (formals decl))))
 				 tn))
 		      (tval (type-def-decl-saved-value decl ptype)))
