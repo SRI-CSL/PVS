@@ -1480,8 +1480,8 @@ where db is to replace db1 and db2")
 	(if (equal nfields (fields atype))
 	    atype
 	    (make-instance 'recordtype
-	      'fields nfields
-	      'dependent? (dependent? atype))))
+	      :fields nfields
+	      :dependent? (dependent? atype))))
       (let* ((afld (car afields))
 	     (efld (find afld efields :test #'same-id))
 	     (stype (compatible-type* (type afld) (type efld) bindings))
@@ -1878,15 +1878,15 @@ where db is to replace db1 and db2")
 	     (var (make-variable-expr bd))
 	     (pred (compatible-preds* (car atypes) (car etypes) var nil))
 	     (in-expr (make-instance 'injection-expr
-			'id (makesym "IN_~d" index)
-			'index index)))
+			:id (makesym "IN_~d" index)
+			:index index)))
 	(compatible-cotupletype-preds
 	 (cdr atypes) (cdr etypes) aexpr incs (1+ index)
 	 (cons (make-instance 'in-selection
-		 'constructor in-expr
-		 'args (list var)
-		 'index index
-		 'expression pred)
+		 :constructor in-expr
+		 :args (list var)
+		 :index index
+		 :expression pred)
 	       sels)))))
 
 (defmethod compatible-preds* ((atype recordtype) (etype recordtype)
@@ -1920,10 +1920,10 @@ where db is to replace db1 and db2")
       (nreverse ntypes)
       (if (dep-binding? (car types))
 	  (let ((pappl (make-instance 'projappl
-			 'id (makesym "PROJ_~d" index)
-			 'index index
-			 'argument expr
-			 'type (type (car types)))))
+			 :id (makesym "PROJ_~d" index)
+			 :index index
+			 :argument expr
+			 :type (type (car types)))))
 	    (subst-tuptypes* (substit (cdr types)
 			       (acons (car types) pappl nil))
 			     expr
@@ -2287,8 +2287,8 @@ where db is to replace db1 and db2")
 	  (subtype-preds (car types1) (car types2))
 	(when ty
 	  (let ((in-expr (make-instance 'injection-expr
-			   'id (makesym "IN_~d" index)
-			   'index index))
+			   :id (makesym "IN_~d" index)
+			   :index index))
 		(pred (make!-conjunction*
 		       (mapcar #'(lambda (o)
 				   (make!-reduced-application o var))
@@ -2296,10 +2296,10 @@ where db is to replace db1 and db2")
 	    (subtype-cotuple-preds
 	     (cdr types1) (cdr types2) type2 vb var (1+ index)
 	     (cons (make-instance 'in-selection
-		     'constructor in-expr
-		     'args (list var)
-		     'index index
-		     'expression pred)
+		     :constructor in-expr
+		     :args (list var)
+		     :index index
+		     :expression pred)
 	       sels)))))))
 
 (defmethod subtype-preds ((t1 recordtype) (t2 recordtype) &optional incs)
@@ -2432,8 +2432,8 @@ where db is to replace db1 and db2")
 (defmethod type-canon* ((te type-expr) predicates)
   (if predicates
       (make-instance 'subtype
-	'supertype te
-	'predicate (make-lambda-conjunction te predicates))
+	:supertype te
+	:predicate (make-lambda-conjunction te predicates))
       te))
 
 (defun make-lambda-conjunction (te predicates)
@@ -2500,7 +2500,7 @@ where db is to replace db1 and db2")
   (type-canon* (supertype te) (cons (predicate te)  predicates)))
 
 (defmethod type-canon* ((te dep-binding) predicates)
-  (lcopy te 'type (type-canon* (type te) predicates)))
+  (lcopy te :type (type-canon* (type te) predicates)))
 
 (defmethod type-canon* ((te tupletype) predicates)
   (type-canon-tupletype te predicates))
@@ -2511,12 +2511,12 @@ where db is to replace db1 and db2")
     (let* ((parts (partition-projection-predicates
 		   var (mapcan #'conjuncts npreds)))
 	   (ntypes (add-tupletype-preds (types te) parts))
-	   (ntuptype (make-instance 'tupletype 'types ntypes))
+	   (ntuptype (make-instance 'tupletype :types ntypes))
 	   (toppreds (cdr (assq nil parts))))
       (if toppreds
 	  (make-instance 'subtype
-	    'supertype ntuptype
-	    'predicate (make-lambda-expr-or-eta-equivalent (declaration var)
+	    :supertype ntuptype
+	    :predicate (make-lambda-expr-or-eta-equivalent (declaration var)
 			 (make!-conjunction* toppreds)))
 	  ntuptype))))
 
@@ -2606,12 +2606,12 @@ where db is to replace db1 and db2")
     (let* ((parts (partition-field-predicates
 		   var (mapcan #'conjuncts npreds)))
 	   (nfields (add-field-type-preds (fields te) parts))
-	   (nrectype (make-instance 'recordtype 'fields nfields))
+	   (nrectype (make-instance 'recordtype :fields nfields))
 	   (toppreds (cdr (assq nil parts))))
       (if toppreds
 	  (make-instance 'subtype
-	    'supertype nrectype
-	    'predicate (make-lambda-expr-or-eta-equivalent
+	    :supertype nrectype
+	    :predicate (make-lambda-expr-or-eta-equivalent
 			(declaration var)
 			(make!-conjunction* toppreds)))
 	  nrectype))))
@@ -2658,8 +2658,8 @@ where db is to replace db1 and db2")
 				 (when npreds (list npreds)))))
 	(add-field-type-preds (cdr fields) parts
 			      (cons (lcopy (car fields)
-				      'type ntype
-				      'declared-type ntype)
+				      :type ntype
+				      :declared-type ntype)
 				    nfields)))))
 
 (defun make-new-field-type-preds (field predicates)
@@ -2674,14 +2674,15 @@ where db is to replace db1 and db2")
 			  #'(lambda (ex) (tc-eq ex (car predicates))))))))
 
 ;;; intersection-type returns the largest type contained in the given types,
-;;; whihc must be compatible.  It can return the empty type.
+;;; whihc must be compatible.  It can return the empty type.  Note that this
+;;; never returns a dep-binding.
 
 (defun intersection-type (t1 t2)
   (assert (compatible? t1 t2))
   (cond ((subtype-of? t1 t2)
-	 t1)
+	 (dep-binding-type t1))
 	((subtype-of? t2 t1)
-	 t2)
+	 (dep-binding-type t2))
 	(t (let* ((preds1 (type-predicates t1 t))
 		  (preds2 (type-predicates t2 preds1)))
 	     (assert (and preds1 preds2))
