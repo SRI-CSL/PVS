@@ -122,33 +122,33 @@
 	 (type (if (null governing-vars)
 		   (type boundvar)
 		 (make-instance 'funtype
-				'domain (loop for x in governing-vars
-					      collect (type x))
-				'range (type boundvar))))
+		   :domain (loop for x in governing-vars
+				 collect (type x))
+		   :range (type boundvar))))
 	 (const-decl (make-instance 'const-decl
-				  'id id
-				  'module (module context)
-				  'type type)))
+		       :id id
+		       :module (module context)
+		       :type type)))
     (add-decl const-decl  context)
     (typecheck (pc-parse id 'expr)
 	       :expected type
 	       :context context)))
 
 ;  (make-instance 'name-expr
-;    'type (cond ((null governing-vars)
+;    :type (cond ((null governing-vars)
 ;		 (type boundvar))
 ;		(t (make-instance 'funtype
 ;		     'domain (loop for x in governing-vars collect (type x))
 ;		     'range (type boundvar))))
-;    'name (make-instance 'name
-;	    'id (new-symbol (format nil "~a~a"  "#" (id (name boundvar)))
+;    :name (make-instance 'name
+;	    :id (new-symbol (format nil "~a~a"  "#" (id (name boundvar)))
 ;			    *skofun-counter*))))
 ;;(NSH4-19: make-skoterm and make-skofun not used any more.
 ;(defun make-skoterm (skofun governing-vars context)
 ;  (if (null governing-vars) skofun
 ;    (let ((skoterm (make-instance 'application
-;				  'operator skofun
-;				  'arguments governing-vars)))
+;				  :operator skofun
+;				  :arguments governing-vars)))
 ;      (typecheck skoterm
 ;		 :expected (range (type skofun))
 ;		 :context context)
@@ -158,16 +158,16 @@
 ;  (let* ((id (new-symbol (format nil "~a~a"  "?" (id boundvar))
 ;			 *skovar-counter*))
 ;	 (var-decl (make-instance 'var-decl
-;				  'id id
-;				  'module (module context)
-;				  'type (type boundvar))))
+;				  :id id
+;				  :module (module context)
+;				  :type (type boundvar))))
 ;    (add-decl var-decl context)
 ;    (typecheck (pc-parse id 'expr) :context context)))
 				  
 ;  (make-instance 'name-expr
-;    'type (type boundvar)
-;    'name (make-instance 'name
-;	    'id (new-symbol (format nil "~a~a"  "?" (id (name boundvar)))
+;    :type (type boundvar)
+;    :name (make-instance 'name
+;	    :id (new-symbol (format nil "~a~a"  "?" (id (name boundvar)))
 ;			    *skovar-counter*))))
 
 (defun declared? (id context)
@@ -192,9 +192,9 @@
   (setf (declarations-hash context) (copy (declarations-hash context)))
   (let ((ctype (lcopy type 'from-conversion nil)))
     (put-decl (make-instance 'skolem-const-decl
-		'id (id id)
-		'type ctype
-		'module (theory context))
+		:id (id id)
+		:type ctype
+		:module (theory context))
 	      (declarations-hash context))
     (typecheck id
       :expected ctype
@@ -348,8 +348,8 @@ Please provide skolem constants for these variables." overlap)
 
 ;(defun quant-rule (sformnum substs)
 ;  (make-instance 'rule
-;    'rule-part (quant-rule-fun sformnum substs)
-;    'rule-input `(quant ,sformnum ,substs)))
+;    :rule-part (quant-rule-fun sformnum substs)
+;    :rule-input `(quant ,sformnum ,substs)))
 
 (defun quant-rule-fun ( sformnum  terms &optional copy?)
   #'(lambda (ps)
@@ -478,7 +478,7 @@ Please provide skolem constants for these variables." overlap)
 					     (copy subgoal
 					       's-forms
 					       (cons (make-instance 's-formula
-						       'formula
+						       :formula
 						       (tccinfo-formula tccinfo))
 						     other-sforms))
 					     'tcc-sequent))
@@ -569,7 +569,7 @@ Please provide skolem constants for these variables." overlap)
 	    (let* ((new-sforms
 		    (mapcar #'(lambda (fmla)
 				(make-instance 's-formula
-				  'formula (negate fmla)))
+				  :formula (negate fmla)))
 		      preds))
 		   (references nil))
 	      (push-references-list
@@ -1580,8 +1580,8 @@ is not of the form: (<var> <term>...)" subst)
 ;
 ;(defun add-subst-rule (varname term)
 ;  (make-instance 'rule
-;    'rule-part (add-subst-fun varname term)
-;    'rule-input `(add-subst ,varname ,term)))
+;    :rule-part (add-subst-fun varname term)
+;    :rule-input `(add-subst ,varname ,term)))
 ;
 ;(defun add-subst-fun (varname term)
 ;  #'(lambda (ps) (add-subst-step varname term ps)))
@@ -1657,8 +1657,8 @@ is not of the form: (<var> <term>...)" subst)
 ;
 ;(defun apply-subst-rule (varname )
 ;  (make-instance 'rule
-;    'rule-part (apply-subst-fun varname)
-;    'rule-input `(apply-subst ,varname)))
+;    :rule-part (apply-subst-fun varname)
+;    :rule-input `(apply-subst ,varname)))
 ;
 ;(defun apply-subst-fun (varname )
 ;  #'(lambda (ps) (apply-subst-step varname ps)))
